@@ -134,8 +134,10 @@ non-phylogenetic species-level covariance). Their sum is
 
 \subsection{Per-row \code{indep()} / legacy \code{unique()} and \code{sigma_eps}: auto-suppression}{
 
-For Gaussian / lognormal / Gamma fits, the engine also estimates a
+For Gaussian and lognormal fits, the engine also estimates a
 single observation-scale residual \code{sigma_eps} (the sigma_eps of the response).
+Ordinary Gamma carries its own per-trait shape \code{phi_gamma} and does not use
+\code{sigma_eps}.
 In new code, write observation-level diagonal residual terms as
 \code{indep(0 + trait | g)}. The legacy \code{unique(0 + trait | g)} spelling is
 still accepted as compatibility syntax. If that grouping \code{g} has \strong{one row

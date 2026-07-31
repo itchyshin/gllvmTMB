@@ -2446,6 +2446,11 @@ no planted axis collapsing in >5% of healthy non-separated replicates), run at *
 **every attempted fit in the denominator**, against **fixed pre-declared truths** rather than
 truths redrawn per seed. §11: tolerances cannot be widened after seeing the result.
 
+🔴 **SUPERSEDED 2026-07-31 by Gate 3 — the estimator is JJ, not GH.** The paragraph below is
+kept as the dated record of what was believed before the campaign ran, and it is a good example
+of why the gate existed: the reasoning was principled and the measurement disagreed. See the
+2026-07-31 entry at the end of this file.
+
 **Estimator: GH quadrature, not the JJ/Pólya-Gamma bound** — already Design 104 §4.2's policy
 (*"EXACT where it exists, GH otherwise"*), now derived rather than assumed. JJ's objective is
 coercive in `‖Λ‖`, so it cannot produce a runaway and its 0/320 degeneracy record was a theorem
@@ -2454,3 +2459,217 @@ structurally blind to contraction. Recomputed from `dev/totoro-grid/results/grid
 scale `tr(Sigma_hat)/tr(Sigma_true)` runs 1.670 → 1.015 → 0.857 → 0.780 across n = 40/100/200/400
 — through 1 and still falling. GH is not innocent either: **4.302 at n=40**, which is why the fence
 sets `n >= 100` as a hard error rather than a warning.
+## 2026-07-31  The AGHQ small-n runaway is an OPTIMISER FAILURE, not the MLE — every "AGHQ alone" number is single-start
+
+Decision: record, from 120 fits through the SHIPPED engine (#843, PR #870), that the AGHQ
+runaway at n = 100 is substantially an optimiser artefact, and that the fix already exists in
+the code, switched off. This **withdraws the empirical basis** for the in-source claim at
+`R/fit-multi.R:5314-5318` that "the runaway IS the maximum-likelihood solution -- ties in
+40/40". That investigation (`09C-truthstart.csv`) ran on `dev/aghq-r-reference.R`, invalidated
+at `decisions.md:1706-1709`. Re-run on `gllvmTMB()` itself, in exactly the `aghq` arm of
+`18-shipped-engine-campaign.R` (n=100, p=6, q=2, binomial, `aghq = 9`, `aghq_ridge = Inf`,
+40 seeds), **the objective ties in 13/40, not 40/40 -- and 0/16 on the catastrophic seeds.**
+
+**On the 16/40 seeds with ||Lambda_hat||/||Lambda|| > 5, the runaway is not the MLE, 16/16.**
+Started at the truth the same engine reaches a strictly better objective by 1.14-12.94 nll
+(median 4.70) and median frob 16.23 -> 2.12. Where the default fit is already fine the two
+arms agree and the objective is genuinely flat, so the start is the whole story exactly where
+it fails.
+
+**The fix needs no new idea.** The truth-free alternative start the engine already builds
+(`R/fit-multi.R:5296-5313`) is discarded under `aghq_ridge = Inf` because the selection at
+`:5321` is gated on a finite tau. Run to convergence it recovers the lost optimum 16/16,
+median gap closed 1.00. Best-of-both (run both, keep the better FINAL objective -- not the
+start-point objective, which is the weak proxy that made the unpenalised case look unfixable)
+takes catastrophic fits 16/40 -> 1/40 and matches the truth start's objective without using
+the truth (381.433 vs 381.434). Altstart is worse on 6/40, so the rule is multi-start, not
+"always use the alternative".
+
+**Consequence, binding on future citation:** `aghq_ridge = Inf` IS the `aghq` arm of every
+campaign in `dev/aghq-evidence/`, so **no "AGHQ alone" small-n number may be cited without the
+single-start caveat**, including the 73%-runaway-at-n=100 headline in #842/#843. "AGHQ alone
+is worse at small n" cannot stand as measured.
+
+**Not decided here:** whether to ungate the selection. That changes fitted results for every
+`aghq_ridge = Inf` fit and is the maintainer's call (#843). **Not established here:** anything
+at n >= 400, any other family, the default grammar, or whether the AGHQ argmin is *good* --
+this slice says where the optimiser lands, not whether the answer is right. Residual moderate
+runaway survives the start fix (65% -> 52%, and 48% from the truth) and is unexplained.
+
+Two secondary findings, both in-source comments that now mislead and neither changing
+behaviour: (1) `aghq_multistart` is read at `:5308` but `gllvmTMBcontrol()` never produces it,
+so the documented off-switch is dead and it mislabels `19-warmstart-vs-flatness.R`'s
+"discriminating arm" -- same class as D2/#844, filed as #871; (2) the `MEASURED (Totoro, 954
+fits)` table justifying the ridge's tau = 2 at `:4997` is from the invalidated reference AND
+is contradicted in direction by the shipped engine (it says Laplace runs away MORE than AGHQ,
+50% vs 13%; `18-shipped.csv` measured laplace 47% / aghq 73%) -- routed to #847, where it
+implies the tau recalibration should be sequenced AFTER the start decision or it will be
+calibrated to compensate for an optimiser bug.
+
+Evidence: `docs/dev-log/audits/2026-07-31-aghq-truthstart-shipped-engine.md`,
+`dev/aghq-evidence/22-truthstart-shipped.R`, `23-altstart-shipped.R`. Results LOCAL (D-50).
+
+## 2026-07-31  The AGHQ estimator campaign is DESIGNED and BLOCKED — the loop cannot certify convergence at n >= 400
+
+Decision: record the ADEMP campaign design as pre-registered and turnkey, and record that
+it must NOT run yet, for a measured reason rather than caution.
+
+**The design** (`docs/design/2026-07-31-aghq-estimator-campaign-ADEMP.md`) follows Morris,
+White & Crowther (2019) and the Williams et al. (2024) 11 reporting items. Five arms fitted
+to the SAME data per replicate (PAIRED -- 2.2x tighter than unpaired, which is how
+n_sim = 400 was justified from a real 40-seed pilot rather than habit). The primary estimand
+is the ROTATION-INVARIANT trait correlation, because Lambda is identified only up to
+rotation. Contrasts are LIKE-FOR-LIKE on the penalty and `aghq_ridge` vs plain `laplace` is
+BANNED by pre-registration as the confound #842 named. `Lambda_hat` is stored for every fit,
+so the primary estimand remains a post-hoc choice. Arm `aghq_ms` is DERIVED
+(`min(aghq, aghq_alt)` on the final objective), so the campaign costs 5 fits per replicate,
+not 6. The acceptance rule is fixed in advance with an EQUIVALENCE branch, so "no practical
+difference" is a conclusion rather than a failed test, and four predictions are
+pre-registered with P2's failure named in advance as a publishable, lane-closing result.
+
+**The blocker (#874).** The smoke test showed the AGHQ loop reports convergence in **0% of
+fits at n = 400 and n = 1600**, and 0-2.5% at n = 100, under the engine's own criterion.
+Two parts, both binding on future work:
+
+ 1. **`opt$convergence` is the WRONG FIELD on the AGHQ path** -- it is nlminb's code for the
+    per-pass iteration cap from the continuation schedule and returns 1 on a healthy fit.
+    The engine's verdict is `aghq$stop_reason`; only a value beginning "converged" counts.
+    **No future AGHQ convergence number may be taken from `opt$convergence`.**
+ 2. **`aghq_grad_tol` is a FIXED 1e-4 while the gradient at the stop grows ~sqrt(n)**
+    (median max|grad| 1.39e-4 -> 2.68e-4 -> 6.72e-4 at n = 100/400/1600; step ratios 1.93
+    and 2.51 against an n-ratio of 4.00). Under a tolerance scaled 1e-4*(n/100), 27/27
+    near-misses at n = 400 and 34/37 at n = 1600 would clear. Same class as #847 (tau = 2)
+    and the #857 inventory, and the worst instance so far: it does not bias an estimate, it
+    stops the engine certifying convergence in the regime the method is for.
+
+**Consequence, binding:** the campaign's converged-only analysis population -- the one that
+answers "is AGHQ a better ESTIMATOR" rather than "does the AGHQ code emit better numbers" --
+is EMPTY at every n. Running the 16,000 fits now returns a full table tagged
+OPTIMISER-LIMITED, comparing Laplace AT ITS OPTIMUM against AGHQ SOMEWHERE. The design does
+not change; the sequence does: fix the tolerance and have the stalled branch report its
+gradient (engine changes, maintainer's call), then run.
+
+**Not claimed:** that the fits are bad (accuracy is a separate axis); that the stopped
+points are true optima ("mode fixed, objective stagnated" plus a small tolerance multiple is
+supportive, not a certificate); that sqrt(n) is a derived rate (it describes three points).
+The `stalled at cap 1` branch does not report its gradient, so a third of the fits are
+unclassifiable from outside the engine and the counterfactual is a LOWER bound.
+
+Evidence: `docs/dev-log/audits/2026-07-31-aghq-convergence-nladder.md` (270 fits; 150 on
+Totoro in its own lane dir, Codex's design90/91 untouched). Results LOCAL (D-50).
+
+## 2026-07-31  Three AGHQ engine fixes land — and multi-start selection is only as good as the objective it ranks on
+
+Decision: record the three fixes (#843, #871, #874, PR #875) and, more importantly, the
+correction that emerged while making them.
+
+**#843 -- multi-start.** AGHQ ran from ONE start under `aghq_ridge = Inf`. Both starts now run
+to convergence and the better fit wins. Catastrophic fits **16/40 -> 1/40**; seed 2003 frob
+29.700 -> 2.365, objective 379.7134 -> 375.179. **#871 -- `aghq_multistart`** was read but
+never produced by `gllvmTMBcontrol()`; it had to be made reachable BEFORE the default could
+change, and `FALSE` reproduces the old answer exactly. **#874 -- convergence.** The gradient
+tolerance was ABSOLUTE while the gradient grows with the data, so convergence was unreachable
+at scale (0% at n = 400 and n = 1600, in three families). A RELATIVE leg, OR-ed with the
+absolute one so it can only ever ADD convergent cases: n=100 8.3% -> 25%, n=400 0% -> 58.3%,
+with the estimates **byte-identical** -- a criterion fix must change the verdict, not the
+answer.
+
+**THE CORRECTION, and it is binding on future work.** "Select the better final objective" --
+this lane's own recommendation two slices earlier -- is INCOMPLETE. Selection is only as
+trustworthy as the objective it ranks on. Measured on the q = 2 golden fixture at **k = 3**:
+the alternative start reached a LOWER AGHQ objective (1.884065 vs 1.909543) at a point where
+the k = 3 quadrature is wrong by **0.107** against an independent nested-`integrate()` oracle,
+while the warm start sat at 2.9e-09 from it. **The optimiser had exploited quadrature error**
+-- the same shape as a runaway exploiting Laplace's error, which is the failure this lane
+began on. At k = 5, 7, 9 the two starts agree to the last digit, so the trap is specific to a
+grid too coarse to be believed. Ranking is now on **(converged, objective)**; when both runs
+agree on convergence it reduces exactly to the objective comparison.
+
+**Two consequences that generalise beyond AGHQ.** (1) Any multi-start or model-selection rule
+that ranks on an APPROXIMATE criterion inherits that approximation's error, and fails silently
+because the criterion reports success. (2) The campaign's own evidence base could never have
+caught this -- it uses k = 9, where the quadrature is accurate. Only a fixture whose ground
+truth comes from OUTSIDE the machinery did. Keep at least one such oracle in any estimator
+validation.
+
+**Also binding: state which suite number you mean.** The AGHQ suite reports **105** assertions
+with skips active and **1571** with `NOT_CRAN=true`. The k = 3 regression was hiding in that
+15x gap. Full suite on the final state: **9012 assertions, 0 failures**.
+
+**Not decided here:** whether the campaign may now run. #874 was its blocker and is cleared,
+but n = 400 convergence is 58%, not 100%, and the residual STALLS are a separate, unfixed
+question -- the new gradient reporting shows they sit at ~50x tolerance, so they are genuinely
+not near-misses. The campaign must be RE-GATED on a fresh smoke before 16,000 fits are spent.
+
+Evidence: `docs/dev-log/after-task/2026-07-31-aghq-engine-fixes.md`. Results LOCAL (D-50).
+
+## 2026-07-31  Gate 3 reports — estimator JJ, rule R2, fence q<=2. And two reporting passes were wrong before a panel caught them.
+
+**Maintainer decisions, Shinichi Nakagawa, in session**, on the corrected Gate 3 result
+(`docs/dev-log/2026-07-31-gate3-result-corrected.md`): **(1) estimator = JJ; (2) rule = R2 (paired
+exclusion); (3) fence at `q <= 2`.**
+
+**This supersedes the 2026-07-30 "Estimator: GH quadrature, not the JJ/Pólya-Gamma bound" entry
+above**, which is left in place as the dated record of what was believed before the campaign ran.
+That reasoning was principled — JJ's objective is coercive in `‖Λ‖`, so its clean degeneracy record
+was a theorem before a fit ran, and the `rel_frob > 10` detector is structurally blind to
+contraction. The measurement disagreed anyway. **That is what the gate was for.**
+
+**What Gate 3 measured.** 2,160 datasets × 3 arms = 6,480 fits, known truth, fixed rank, full
+denominators, no filtering on status or admitted, run on Totoro
+(`docs/dev-log/2026-07-31-gate3-totoro-migration.md`). Under R2, `va_jj` passes the RMSE criterion in
+**every cell** (50/50; 54/54 raw) with a worst gap of 0.0393 against a 0.05 tolerance, and holds the
+lower `Sigma_B` error in 52 of 54 cells ignoring Laplace entirely (sign test p = 1.7e-13) — in all
+eleven leave-one-out subsets over truth, q, p and n. `va_gh` passes 13/50. **`va_jj` clears the full
+frozen conjunction in 100% of `q <= 2` cells under BOTH pre-declared rules** (36/36, 34/34), so the
+shipped boundary does not depend on the recorded §11 departure.
+
+**`q <= 4` was refused on its own terms.** The 2026-07-31 scope freeze admitted it *conditionally* —
+"only if Gate 3's q = 4 cells pass on their own terms." Every `va_jj` axis-collapse failure sits in
+the single `q = 4, p = 8` corner at rates 0.26–0.77 against a 0.05 tolerance, every lower 2·MCSE
+bound above the threshold. Four latent axes are not identifiable from eight responses. **The fence
+ships at `q <= 2` — narrower than hoped, and further from A3's 5+ factors, not closer.**
+
+### 🔴 The reporting failed twice before the numbers were trustworthy
+
+Recorded because the errors are more transferable than the result.
+
+1. **A conjunction reported as one half.** The first pass reported "va_jj passes 50/50" — that is
+   `pass_rmse` alone. The frozen rule is RMSE **and** collapse.
+2. **A pooled median hid the signal.** κ was said to "clear the contraction worry" from a pooled
+   median of 1.68, while a real JJ contraction subgroup (`T-strong × n=400`, median κ 0.74) sat
+   underneath it. Exactly the *check the gradient any pooled summary pools over* failure already in
+   this repo's ledger.
+3. **Then an over-correction.** Told GH scored better on the collapse half, the second pass declared
+   "a genuine crossover, neither arm wins." Also wrong — and **declining a conclusion the evidence
+   supports is a defect symmetric with overclaiming.**
+
+A **D-43 panel of three fresh reviewers returned 3/3 NOT-DONE**, and an independent reimplementation
+then reproduced every shipped number to float precision. **The analyser's arithmetic was never in
+doubt; the reporting was.**
+
+### The collapse criterion cannot rank the two arms — do not cite it as if it can
+
+`any_axis_collapsed` is TRUE **zero times in 6,480 rows** for `va_gh`. Not rare — never. Its
+degenerate solutions are intercepted upstream by a variance-domain guard that **`va_jj` does not have
+at all**, and those rows are then removed from the collapse denominator by `status == "ok"`: va_gh
+loses 39.4% of attempts from that denominator, va_jj 28.2%. Under the alternative denominator the
+direction **flips**. The two arms are not measured with the same instrument on that criterion.
+
+Also killed: "fails collapse in ~18% of cells" is **not** "above the 5% tolerance" — the tolerance is
+a **per-cell rate**, and `va_jj`'s pooled collapse rate is **4.45%**, below it.
+
+### Three analyser defects fixed, all one family
+
+An undefined value silently becoming a verdict: R2 **dropped 4 cells outright** where the ML
+comparator was degenerate in 40/40 replicates (breaking the both-rules-every-cell commitment *and*
+hiding a finding about Laplace); `is.finite(x) & x <= tol` scored 6 **unmeasured** cells as failures;
+and `max_abs_gradient` was computed by the engine and dropped by the row builder. The second was
+found only because the first was fixed inconsistently — same bug, one function away.
+
+**Not supported by this evidence, and not claimed:** any interval or coverage statement
+(`calibrated = FALSE`); anything at `q >= 3`; anything at `n = 400, p = 80`, where the usable-fit
+rate is 6% and the RMSE is a survivor statistic; and poisson-log, which the fence admits on
+theoretical grounds but Gate 3 never tested (the campaign was Bernoulli).
+
+> Register: `docs/design/35-validation-debt-register.md` Section 15 (VA-01..VA-09).

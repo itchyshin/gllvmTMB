@@ -5331,6 +5331,19 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ## it can only improve the objective, and it costs one extra adaptation run.
       ## Set control$aghq_multistart = FALSE to restore the single warm start.
       aghq_starts <- list(opt$par)
+      ## DIAGNOSTIC HOOK (#843) -- deliberately NOT a `gllvmTMBcontrol()` argument.
+      ## Replaces the Laplace warm start with a caller-supplied vector so the AGHQ
+      ## arm's OWN argmin can be probed from a known point (e.g. the true
+      ## parameters). Reached only by hand-augmenting the control list; a control
+      ## built by `gllvmTMBcontrol()` has no such field, so this is inert for every
+      ## user and changes no shipped behaviour.
+      if (!is.null(control$aghq_start_par)) {
+        inj <- control$aghq_start_par
+        if (!identical(names(inj), names(opt$par))) {
+          cli::cli_abort("{.code control$aghq_start_par} does not match the fitted parameter vector.")
+        }
+        aghq_starts[[1L]] <- inj
+      }
       if (!identical(control$aghq_multistart, FALSE)) {
         alt <- opt$par
         lam_i <- which(names(alt) == "theta_rr_B")
@@ -5356,23 +5369,32 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ## cannot tell a runaway from a good fit. The ridge is what makes the two
       ## distinguishable, because it charges ||Lambda||^2. Without a penalty there is
       ## nothing to choose on, so the Laplace warm start is kept as before.
+      ## START SELECTION IS NOW DONE ON THE CONVERGED FIT, NOT THE START POINT (#843).
+      ##
+      ## What was here: pick one start by evaluating the objective AT the start,
+      ## and only when a ridge was in force -- because "without a penalty there is
+      ## nothing to choose on". That reasoning was sound given its evidence, and
+      ## the evidence was withdrawn. It rested on a 40-seed truth-start study run
+      ## on dev/aghq-r-reference.R, which decisions.md:1706-1709 invalidated as not
+      ## modelling the shipped AGHQ arm.
+      ##
+      ## Re-run on the shipped engine (2026-07-31, 40 seeds, n=100 p=6 q=2
+      ## binomial): the objective ties in 13/40, NOT 40/40 -- and 0/16 on the seeds
+      ## that ran away catastrophically. On those 16 the runaway is provably NOT the
+      ## maximum-likelihood solution: started at the truth the same engine reaches a
+      ## strictly better objective on 16/16, by 1.14 to 12.94 nll.
+      ##
+      ## So an unpenalised objective cannot rank two START POINTS -- true -- but it
+      ## ranks two CONVERGED FITS perfectly well, and that is all this needs. Both
+      ## starts are now run to convergence and the better final objective wins,
+      ## measured: catastrophic fits (||Lambda_hat||/||Lambda|| > 5) fall 16/40 ->
+      ## 1/40, and the result matches a truth start WITHOUT using the truth
+      ## (median objective 381.433 against 381.434).
+      ##
+      ## Cost is one extra adaptation run. `aghq_multistart = FALSE` buys it back
+      ## (and that switch only started working in #871 -- it was read here but never
+      ## produced by gllvmTMBcontrol(), so `...` swallowed it).
       par_cur <- aghq_starts[[1L]]
-      if (length(aghq_starts) > 1L && is.finite(aghq_ridge_tau) && aghq_ridge_tau > 0) {
-        lam_i <- which(names(opt$par) == "theta_rr_B")
-        pen_of <- function(p) {
-          v <- tryCatch(obj_lap$fn(p), error = function(e) NA_real_)
-          if (!is.finite(v)) return(Inf)
-          v + 0.5 * sum(p[lam_i]^2) / (aghq_ridge_tau^2)
-        }
-        scores <- vapply(aghq_starts, pen_of, numeric(1))
-        if (all(!is.finite(scores))) scores[1L] <- 0     # nothing to choose on
-        par_cur <- aghq_starts[[which.min(scores)]]
-        if (isTRUE(control$verbose)) {
-          cat(sprintf("  AGHQ start selection (penalised): laplace %.4f, alternative %.4f -> %s\n",
-                      scores[1L], scores[2L],
-                      if (which.min(scores) == 1L) "laplace" else "alternative"))
-        }
-      }
       mode_prev <- NULL
       obj_aghq <- NULL
       opt_aghq <- NULL
@@ -5442,6 +5464,20 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       stage_ceiling <- length(cap_sched)
       shift_tol <- as.numeric(control$aghq_shift_tol %||% 1e-4)
       grad_tol  <- as.numeric(control$aghq_grad_tol  %||% 1e-4)
+      ## RELATIVE gradient tolerance (#874). `grad_tol` is absolute, but the
+      ## gradient of a likelihood summed over n x p observations grows with the
+      ## data, so a fixed threshold becomes unreachable at scale -- measured 0%
+      ## convergence at n = 400 and n = 1600 across three families. The test below
+      ## is an OR, so this leg only ever ADDS convergent cases; set it to 0 to
+      ## recover the old absolute-only rule.
+      grad_tol_rel <- as.numeric(control$aghq_grad_tol_rel %||% 1e-6)
+      ## Scale-free gradient: max|grad| / max(1, |F|). `max(1, .)` keeps it finite
+      ## and absolute-like when the objective is near zero.
+      rel_grad <- function(g, f) {
+        if (!is.finite(g)) return(Inf)
+        den <- if (is.finite(f)) max(1, abs(f)) else 1
+        g / den
+      }
       f_tol     <- as.numeric(control$aghq_f_tol     %||% 1e-9)
       ## Escalate on SUCCESS COUNT, not on a mode-shift threshold: measured on a
       ## healthy 60x6 binomial q=2 cell, the shift plateaus around 1.5e-2 - 2e-2
@@ -5450,6 +5486,21 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ## shrink it on a rejection -- the trust-region radius pattern.
       esc_patience <- as.integer(control$aghq_escalate_patience %||% 3L)
       rho_min <- as.numeric(control$aghq_rho_min %||% (1 / 64))
+      ## ---- run the adaptation from EVERY start, keep the best FINAL fit (#843) --
+      ## Deliberately NOT re-indented: the body below is unchanged, so the diff shows
+      ## only this wrapper and the capture at the end. With one start (the default
+      ## before #843, or `aghq_multistart = FALSE`) this loop runs once and the
+      ## behaviour is identical to before.
+      aghq_runs <- vector("list", length(aghq_starts))
+      for (.start_i in seq_along(aghq_starts)) {
+      par_cur <- aghq_starts[[.start_i]]
+      mode_prev <- NULL
+      obj_aghq <- NULL
+      opt_aghq <- NULL
+      stage <- 1L
+      stage_ceiling <- length(cap_sched)
+      g_cur <- NA_real_
+      g_rel_cur <- NA_real_
       F_prev <- Inf
       n_ok <- 0L
       step_dir <- NULL
@@ -5612,7 +5663,17 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
           step_dir <- NULL
           step_rho <- 1
           if (stage == 1L) {
-            aghq_stop <- "stalled (no honest descent at cap 1 after backtracking)"
+            ## REPORT THE GRADIENT HERE (#874). This branch is the single most
+            ## common AGHQ stop -- 81 of 120 fits in one measured cell -- and it
+            ## used to say only "stalled", with no gradient. From outside the
+            ## engine that made it IMPOSSIBLE to tell a genuine local-optimum stop
+            ## from a real failure to descend, so a third of every campaign's fits
+            ## were unclassifiable. One number fixes that.
+            g_last <- tryCatch(max(abs(obj_try$gr(par_cur))), error = function(e) NA_real_)
+            aghq_stop <- sprintf(
+              paste0("stalled (no honest descent at cap 1 after backtracking); ",
+                     "max |grad| = %.3g (relative %.3g) against tolerances of %.3g / %.3g"),
+              g_last, rel_grad(g_last, F_best), grad_tol, grad_tol_rel)
             break
           }
           ## Overreached: permanently lower the working cap by one stage.
@@ -5631,9 +5692,14 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         ## re-lands on par_best, so its dF is exactly 0 and its mode shift can be
         ## tiny -- both legs would pass vacuously one pass after a failure. Require
         ## two consecutive accepted passes before the test is allowed to fire.
+        ## `g_ok` is the gradient leg of the convergence test: absolute OR relative
+        ## (#874). Computed once here so the test, the message and the reported
+        ## fields cannot disagree about what was decided.
+        g_rel_cur <- rel_grad(g_cur, F_cur)
+        g_ok <- (is.finite(g_cur) && g_cur < grad_tol) ||
+                (grad_tol_rel > 0 && is.finite(g_rel_cur) && g_rel_cur < grad_tol_rel)
         if (n_ok >= 2L && is.finite(shift) && shift < shift_tol &&
-            ((is.finite(g_cur) && g_cur < grad_tol) ||
-             (is.finite(dF) && abs(dF) < f_tol))) {
+            (g_ok || (is.finite(dF) && abs(dF) < f_tol))) {
           ## STUCK IS NOT SETTLED. The test above is an OR, so the f_tol leg can
           ## fire alone -- and it fires most easily in the one case where it means
           ## the opposite of convergence: the optimiser took its capped iteration,
@@ -5651,19 +5717,21 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
           ## help, and forcing them risks the binomial path that genuinely
           ## converges here (12 passes, par_shift 0.55). What changes is that it
           ## is no longer CALLED convergence when the gradient says otherwise.
-          stalled <- isTRUE(identical(par_cur, par_start_aghq)) &&
-            is.finite(g_cur) && g_cur >= grad_tol
+          stalled <- isTRUE(identical(par_cur, par_start_aghq)) && !g_ok
           aghq_stop <- if (stalled) {
             sprintf(paste0("STALLED at the warm start: the optimiser moved nothing, ",
                            "so the objective and adaptation mode were unchanged; ",
-                           "max |grad| = %.3g against a tolerance of %.3g. NOT converged."),
-                    g_cur, grad_tol)
-          } else if (is.finite(g_cur) && g_cur < grad_tol) {
-            "converged (adaptation mode fixed; gradient below tolerance)"
+                           "max |grad| = %.3g (relative %.3g) against tolerances of ",
+                           "%.3g / %.3g. NOT converged."),
+                    g_cur, g_rel_cur, grad_tol, grad_tol_rel)
+          } else if (g_ok) {
+            sprintf(paste0("converged (adaptation mode fixed; gradient below tolerance; ",
+                           "max |grad| = %.3g, relative %.3g)"), g_cur, g_rel_cur)
           } else {
             sprintf(paste0("stopped: adaptation mode fixed and objective stagnated, ",
-                           "but max |grad| = %.3g exceeds the tolerance of %.3g"),
-                    g_cur, grad_tol)
+                           "but max |grad| = %.3g (relative %.3g) exceeds the tolerances ",
+                           "of %.3g / %.3g"),
+                    g_cur, g_rel_cur, grad_tol, grad_tol_rel)
           }
           break
         }
@@ -5711,6 +5779,70 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         }
       }
       aghq_trace <- do.call(rbind, aghq_trace[seq_len(max(aghq_passes, 0L))])
+      aghq_runs[[.start_i]] <- list(
+        obj_aghq = obj_aghq, opt_aghq = opt_aghq, F_best = F_best,
+        par_best = par_best, par_start_aghq = par_start_aghq,
+        aghq_stop = aghq_stop, aghq_err = aghq_err, aghq_passes = aghq_passes,
+        aghq_mode_shift = aghq_mode_shift, aghq_trace = aghq_trace,
+        g_cur = g_cur, g_rel_cur = g_rel_cur,
+        converged = isTRUE(grepl("^converged", aghq_stop))
+      )
+      }
+      ## SELECT ON THE FINAL OBJECTIVE. Penalised when a ridge is in force, because
+      ## that is the objective the arm actually optimised; unpenalised otherwise.
+      ## A failed run scores Inf, so it can never win; if every run failed we keep
+      ## the first so the existing error path fires unchanged.
+      .score_of <- function(r) {
+        if (is.null(r) || is.null(r$obj_aghq) || !is.finite(r$F_best)) return(Inf)
+        if (is.finite(aghq_ridge_tau) && aghq_ridge_tau > 0) {
+          li <- which(names(r$par_best) == "theta_rr_B")
+          if (length(li)) {
+            return(r$F_best + 0.5 * sum(r$par_best[li]^2) / (aghq_ridge_tau^2))
+          }
+        }
+        r$F_best
+      }
+      .scores <- vapply(aghq_runs, .score_of, numeric(1))
+      ## A CONVERGED FIT OUTRANKS A NON-CONVERGED ONE, whatever the objective says.
+      ##
+      ## Selecting on the objective alone is only as trustworthy as the objective,
+      ## and at small k it is not trustworthy at all. Measured on the q = 2 golden
+      ## fixture at k = 3: the alternative start reaches a LOWER AGHQ objective
+      ## (1.884065 against 1.909543) at a point where the k = 3 quadrature is wrong
+      ## by 0.107 against a nested-integrate() oracle -- while the warm start sits
+      ## at 2.9e-09 from that oracle. The optimiser had exploited quadrature error,
+      ## which is the same shape as the runaway exploiting Laplace's error. At
+      ## k = 5, 7 and 9 the two starts agree to the last digit, so the trap is
+      ## specific to a grid too coarse to be believed.
+      ##
+      ## The convergence flag is the available signal that separates them: at k = 3
+      ## the spurious winner had NOT converged and the honest one had. Ranking on
+      ## (converged, objective) is ordinary multi-start practice, not a patch tuned
+      ## to one fixture -- and when both runs agree on convergence it reduces
+      ## exactly to the objective comparison.
+      .conv <- vapply(aghq_runs, function(r) isTRUE(r$converged) && is.finite(.score_of(r)),
+                      logical(1))
+      .pick <- if (all(!is.finite(.scores))) {
+        1L
+      } else if (any(.conv)) {
+        which(.conv)[which.min(.scores[.conv])]
+      } else {
+        which.min(.scores)
+      }
+      if (isTRUE(control$verbose) && length(aghq_runs) > 1L) {
+        cat(sprintf("  AGHQ multi-start: objectives %s | converged %s -> start %d\n",
+                    paste(sprintf("%.4f", .scores), collapse = ", "),
+                    paste(.conv, collapse = ", "), .pick))
+      }
+      .r <- aghq_runs[[.pick]]
+      obj_aghq <- .r$obj_aghq; opt_aghq <- .r$opt_aghq; F_best <- .r$F_best
+      par_best <- .r$par_best; par_start_aghq <- .r$par_start_aghq
+      aghq_stop <- .r$aghq_stop; aghq_err <- .r$aghq_err
+      aghq_passes <- .r$aghq_passes; aghq_mode_shift <- .r$aghq_mode_shift
+      aghq_trace <- .r$aghq_trace
+      g_cur <- .r$g_cur; g_rel_cur <- .r$g_rel_cur
+      aghq_n_starts <- length(aghq_runs)
+      aghq_start_used <- .pick
       if (is.null(obj_aghq)) {
         aghq_info$reason <- paste0(
           "laplace: AGHQ pass failed (", aghq_err %||% "unknown", ")"
@@ -5750,7 +5882,25 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
             aghq_mode_shift[aghq_passes]
           ),
           passes = aghq_passes,
+          ## Multi-start bookkeeping (#843): how many starts were run to
+          ## convergence, and which one won on the final objective.
+          n_starts = aghq_n_starts,
+          start_used = aghq_start_used,
           stop_reason = aghq_stop,
+          ## MACHINE-READABLE CONVERGENCE (#874). `stop_reason` is prose, and a
+          ## caller who needs the verdict had to regex it -- which is exactly what
+          ## the 2026-07-31 convergence audit had to do, and a regex over prose is
+          ## not an interface. These four fields are.
+          ##
+          ## NOTE for anyone measuring AGHQ convergence: `opt$convergence` is NOT
+          ## the field. On this path it is nlminb's code for the PER-PASS ITERATION
+          ## CAP set by the continuation schedule, so it reports 1 ("iteration
+          ## limit reached") on a perfectly healthy fit. Use `converged` here.
+          converged = isTRUE(grepl("^converged", aghq_stop)),
+          grad_max = if (exists("g_cur", inherits = FALSE)) g_cur else NA_real_,
+          grad_rel = if (exists("g_rel_cur", inherits = FALSE)) g_rel_cur else NA_real_,
+          grad_tol = grad_tol,
+          grad_tol_rel = grad_tol_rel,
           mode_shift = aghq_mode_shift[seq_len(aghq_passes)],
           trace = aghq_trace
         )

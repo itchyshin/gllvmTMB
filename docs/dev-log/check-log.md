@@ -47091,3 +47091,121 @@ The entry above was written before the fix landed and is stale as worded. The
 `d = 1` now fits cleanly for gaussian, poisson and binomial. Do NOT re-file it. The
 accurate record is `docs/dev-log/after-task/2026-07-30-gaussian-arm-vgh-pluralism.md`
 §7a. Caught by a scoping scout that checked the claim instead of trusting it.
+
+## 2026-07-30 (session close) — three cross-lane routings, and a brain claim bounded (Claude)
+
+Lane `claude/vgh-pluralism-20260730` is **closed and merged**; four PRs landed today
+(#840 gaussian arm, #850 lane transition, #853 session close, #857 constants
+inventory). `R/`, `src/`, `NEWS.md` and `check_gllvmTMB()` were **not** touched by any
+of them. This entry exists so the three findings that belong to OTHER lanes are routed
+rather than left in a closed lane's documents.
+
+**🔵 Three directed notes, all information rather than requests. Nothing was acted on
+in any of these surfaces.**
+
+1. **→ LA + AGHQ + ridge lane** —
+   `docs/dev-log/handover/2026-07-30-request-to-la-aghq-ridge-lane-take-D3.md` plus the
+   findings brief `…-to-la-aghq-ridge-lane-gaussian-findings.md`. **D3 has no owner**
+   and the inventory (#857) upgraded it from a patch to a **reformulation**: `τ = 2` is
+   one of **48** genuinely scale-dependent constants (16 high) across 22 files, so
+   re-tuning the number is the wrong move — make the ridge relative and family-gate it.
+   Load-bearing argument: D3 composes with that audit's own **D4** into a **silently
+   penalised MAP-not-MLE fit**.
+2. **→ Profile / Tier-2a lane** —
+   `docs/dev-log/handover/2026-07-30-to-profile-tier2a-lane-gtol-certificate-coupling.md`.
+   `.gllvmTMB_converged_gtol = 1e-2` is compared against a gradient the code itself
+   documents as **"unscaled"** (`R/diagnose.R:12`), and `R/profile-derived.R:941-942`
+   makes the coverage certificate **conditional on that flag**. **Stated narrowly and
+   deliberately:** this means the certificate's *conditioning set* is scale-dependent.
+   It does **NOT** mean the measured 0.94 is wrong. That is a question for that lane,
+   not a defect this lane asserts. It is the only high-severity hit in the inventory
+   that reaches a **public label**.
+3. **→ HVT-1 / VA-R3 (Codex-owned)** —
+   `docs/dev-log/handover/2026-07-30-to-hvt1-va-r3-lane-variance-domain-gate-scale.md`.
+   `R/va-r3-proto.R:1271` `variance_domain_ok <- max_projected_variance <= 4` is the
+   **worst instance found anywhere**: `4 = 2²` encodes "loadings are about 2", it is a
+   hard `admitted = FALSE` gate rather than a warning, and its binomial-Taylor
+   justification is applied to Poisson and gaussian too. Orthogonal to that lane's
+   `ORACLE_NOT_CERTIFIED` conclusion — a gate can be correctly frozen and still be
+   scale-dependent. First thing to check is whether it is *reachable* at realistic trait
+   scales; if not, it closes in a line. `codex/hvt1-*` was neither read, run, nor claimed.
+
+**A brain claim was BOUNDED, not just annotated.** The vault note *"VGH in gllvmTMB —
+the settled position"* asserted VA has **zero** degenerate fits (0/148, and 0/920 on the
+Totoro grid). Measured today: VGH's 0/148 holds only at **n ≥ 60, p ≤ 12, q = 2** — and
+`q` was **never a grid column** (`dev/heywood/vgh-vs-laplace-degeneracy.R:30`, module
+scalar). At n=40/p=80/q=4, `rel_frob` 10.671/10.449 on 2 of 4 seeds and `atten_F > 2` on
+4 of 4 — **with `converged = TRUE` on every one** (`R/va-vgh.R:603` only tests
+`outer < maxit`). **So the "98% silent failure" property that note attributes to Laplace
+as its distinguishing defect is SHARED.** The note's Q4 summary row and its
+strategic-consequence line were both amended, not merely footnoted — a caveat below a
+summary table does not protect the summary table.
+
+**Consequence for the roadmap:** *"both engines plus an honest gate"* is still the right
+shape, but its differentiator is regime-bounded and possibly narrower than where users
+are. **Do not open an engine-building arc on the 0/148 figure.** The campaign to locate
+the boundary is approved and scoped but **unstarted** —
+`docs/dev-log/handover/2026-07-30-claude-handover-campaign-approved.md`.
+
+Checks: `rcmdcheck --as-cran` **0E/0W/1N** (New submission) on the settled tree, tests OK
+216 s, CI green on every PR. Log retained at `dev/vgh/checks/`. Not run: `pkgdown` (no
+user-facing surface changed). Two merged worktrees removed after verifying each was fully
+merged with nothing unpushed.
+
+## 2026-07-31 — Gamma/sigma_eps documentation correction (Claude)
+
+Branch: `claude/gamma-sigma-eps-doc-fix-20260731`, cut clean from `origin/main`
+`6b2d34a4`. Documentation only — no `R/` behaviour, no `src/`, no `NAMESPACE`
+change.
+
+Fixes a stale claim, not a wording preference. `R/unique-keyword.R:127` (rendered
+into `man/diag_re.Rd`) told users that "Gaussian / lognormal / **Gamma** fits"
+share one observation-scale `sigma_eps`. The Gamma half stopped being true at
+`dff9b363` (2026-07-05), which gave ordinary Gamma its own per-trait
+`log_phi_gamma`. Ground truth: `src/gllvmTMB.cpp:312` restricts `sigma_eps` to
+family ids {0, 3}, and `R/fit-multi.R:4630` states it directly.
+
+Checks:
+
+```sh
+Rscript --vanilla -e 'devtools::document(quiet = TRUE)'
+Rscript --vanilla -e 'rcmdcheck::rcmdcheck(args = "--as-cran", error_on = "never")'
+```
+
+Outcome: `document()` regenerated `man/diag_re.Rd` only; `NAMESPACE` unchanged.
+`--as-cran` **0 errors, 0 warnings, 1 note** in 6m 44s. The single note is
+`checking CRAN incoming feasibility ... New submission`, which is the standard
+note for a package not yet on CRAN and is unrelated to this change.
+
+Two neighbouring mentions were checked and deliberately left alone:
+`R/unique-keyword.R` ~155 (about the family-agnostic standalone diagonal tier,
+not `sigma_eps` ownership) and `R/extract-sigma.R:1437` (`fids %in% c(0L, 3L, 4L)`,
+a continuity test for the Lambda-only advisory). Neither is a `sigma_eps`
+ownership claim.
+
+Provenance: found while re-deriving the documentation surface for #856. That
+issue has since been closed by the maintainer as filed on a false premise and the
+branch exploring it is **not for merging**; this fix is independent of it and
+true on `main` today, so it was lifted out on its own.
+
+## 2026-07-31  #843 shipped-engine truth start — Claude, evidence lane (PR #870)
+
+Checks for the AGHQ truth-start slice, recorded because the result withdraws the empirical
+basis of a shipped in-source justification.
+
+- `R CMD INSTALL` from `main` (`5999811a`): **EXIT=0**. Done FIRST because the installed
+  binary was built 2026-07-18 — 13 days stale, missing #844. A "shipped-engine" measurement
+  on a stale install is the same class of error as one on `dev/aghq-r-reference.R`.
+- `test-aghq-control-wiring.R` / `test-aghq-surface.R` / `test-aghq-golden.R` against the
+  patched source: **75 assertions, 0 failures, 0 errors** (5 pre-existing skips). The
+  `control$aghq_start_par` hook is additive and inert.
+- Pre-flight, run before any campaign fit: LQ rotation preserves Σ (`max|ΔΣ| = 3.55e-15`);
+  rotated Λ lower-triangular (`0`); **the C++ template round-trips the truth → packed-parameter
+  mapping (`max|ΔΛ| = 0`)** — the template, not the harness, certifies the map.
+- 120 shipped-engine fits (40 seeds × 3 arms), 0 failures. Local, 4 cores, ~25 min.
+  Totoro not used: the toolchain build would have cost more than the job. Results LOCAL (D-50).
+
+Directed note → whoever takes the AGHQ campaign next: **the `aghq` arm of every campaign in
+`dev/aghq-evidence/` is single-start and optimiser-limited.** Decide the start rule before
+scoping arms, or the campaign measures the start rather than the estimator. See
+`docs/dev-log/handover/2026-07-31-aghq-truthstart-done-campaign-next.md`.

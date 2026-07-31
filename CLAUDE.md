@@ -11,22 +11,47 @@ This repository is shared by humans, Codex, and Claude Code. Read
 > current handover. Read it before any repository mutation. Milestone state is not in
 > either place and must be re-derived from `git`.
 
-- **2026-07-31 (LATEST) — VA SHIPS IN 0.6; Gate 3 is RUNNING.** Lane
-  `claude/va-in-06-20260730`, **PR #869** (open, **not for merge** — the campaign's verdict is part
-  of its evidence). Maintainer decisions 2026-07-30/31: VA ships in 0.6 reversing the 2026-07-21
-  cut, and **Laplace stays the DEFAULT with AGHQ for accuracy — VA and EVA are OPT-IN.**
-  `gllvmTMBcontrol(integration=)` + a hard fence are built, tested and honest (it aborts rather than
-  silently returning Laplace) but **NOT yet routed**. Gates 0/1/2 PASS by measurement. The
-  **separation guard** landed — `main` had accepted Bernoulli VA fits with no separation check since
-  PR #797. **EVA is settled: ours ≡ gllvm's algebra, and its degeneracy is genuine** (its own
-  objective scores the runaway 291 nats above the truth; more restarts make it *worse*) — a **67.7%
-  mode-selection failure**, not a 7-OOM error.
-  **🔴 A campaign is writing to `/private/tmp/gllvmtmb-va-in-06` — do NOT delete or clean that
-  worktree, and read `dev/va-gate3/results/LIVENESS-NOTE.md` before judging it dead (0% CPU is by
-  design).** **START HERE:** `docs/dev-log/handover/2026-07-31-claude-handover.md`, then the
-  operative spec `docs/dev-log/2026-07-31-gate0-scope-extension-and-s11-departure.md`, then the lane
-  map. **Needs Shinichi:** the estimator (Gate 3 decides), the `RMSE_ml` rule once both variants are
-  visible, and whether `"eva"` stays a fenced value.
+- **2026-07-31 (LATEST) — VA IS ROUTED AND GATE 3 HAS REPORTED.** Lane
+  `claude/va-routing-20260731` (fast-forward of `claude/va-in-06-20260730`, **PR #869**).
+  `gllvmTMB(control = gllvmTMBcontrol(integration = "va"))` now returns a real
+  `c("gllvmTMB_va","gllvmTMB")` fit; the admission fence is reachable at last (it could never fire
+  before, because `gllvmTMB()` aborted before `q`/`p`/`n`/family/link existed); and every
+  likelihood-shaped method fails loudly, verified under a real `R CMD INSTALL`.
+  **Gate 3 (2,160 datasets x 3 arms, run on Totoro) settled two open questions and the maintainer
+  decided both: estimator = JJ, rule = R2.** `va_jj` clears the full frozen conjunction in **100% of
+  q <= 2 cells under BOTH pre-declared rules**; `va_gh` was measured and **rejected**. `q = 4` was
+  measured and **failed** on axis collapse at p = 8, so **the fence ships at `q <= 2`, not 4** —
+  narrower than hoped and further from A3's 5+ factors, stated rather than buried.
+  **`"eva"` is no longer an admitted value** of `integration`: EVA gives valid inference for the
+  coefficients but not for `Lambda Lambda'`, this package's estimand — and gllvm's own EVA hits the
+  identical pathology while reporting `convergence = TRUE` on 71% of blown-up fits.
+  🔴 **Read the corrections before citing any Gate 3 number.** The first two reporting passes were
+  BOTH wrong — a conjunction reported as its RMSE half, then an over-correction that denied a
+  conclusion the evidence supports — and a 3/3 NOT-DONE panel caught them. The collapse criterion
+  **cannot rank the arms**: va_gh's detector fires zero times in 6,480 rows.
+  **START HERE:** `docs/dev-log/2026-07-31-gate3-result-corrected.md`, then
+  `docs/design/35-validation-debt-register.md` Section 15 (VA-01..VA-09), then the lane map.
+  **Needs Shinichi:** nothing blocking on this lane.
+
+- **2026-07-30 — THE SCALE-DEPENDENT-CONSTANTS CLASS NOW HAS AN OWNER AND EVIDENCE** (this
+  resolves a "Needs Shinichi" flagged twice below). 8 PRs merged (#832, #839, #842, #845, #846,
+  #849, #854, #858); `R/` touched only by the #832 export. **It is a CLASS, not a bug** — ~10
+  instances, 10 confirmed by fitting at 1x and 10x/0.01x — with one generative mechanism: the
+  package argues from *"latent scores are standardised N(0, I)"* and then applies constants to
+  **Lambda**, but standardising the latent is exactly what pushes the response scale INTO Lambda.
+  **🔴 The worst instance (#851) is far broader than the loadings:** at sd(y) ~ 9268 *every*
+  reported quantity is wrong — Sigma, fixed effects, logLik, and **correlations and communality
+  (rel.err 1)** — with `convergence = 0` and a PD Hessian throughout. **Two fixes were built and
+  WITHDRAWN** (see the handover's Gotchas; do not retry scale-Lambda-alone, and do not use
+  `||Lambda||/k` as an acceptance test — use `dev/scale-equivariance-check.R`, both blocks).
+  Also: **AGHQ's integrator is CORRECT** (six independent checks) while **its estimator is NOT
+  established**; and **D3 is decided** — keep the ridge, fix tau (#847), because the ridge cuts
+  runaway 32% -> 8% at `lam_sd = 3` even while costing sigma. New: #851, #855 (standardisation
+  design, feasibility gate COMPLETE), #856 (`log_sigma_eps` is a scalar shared across all gaussian
+  AND lognormal rows while every other family's dispersion is per-trait).
+  **START HERE:** `docs/dev-log/handover/2026-07-30-claude-handover-scale-constant-lane.md`, then
+  the lane map. **Needs Shinichi:** #856 (deliberate or incidental? it gates #855), and the
+  sequencing call between #851/#855 and #847/#848.
 
 - **2026-07-30 — SESSION CLOSED; the re-aimed degeneracy campaign is APPROVED and
   UNSTARTED.** `main` @ `bef1a5aa` (#840 + #850 merged). **🔴 The campaign's original premise was

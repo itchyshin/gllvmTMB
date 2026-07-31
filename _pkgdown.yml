@@ -319,6 +319,7 @@ reference:
     desc: Target-specific likelihood-profile routes and fallbacks; inspect each target and do not assume universal calibration
     contents:
     - profile_ci_phylo_signal
+    - profile_ci_total_variance
 
   - title: Experimental Julia bridge
     desc: Optional point-estimation bridge; use only after reading the explicit method limitations, and do not assume R/TMB feature parity

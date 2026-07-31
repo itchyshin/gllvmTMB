@@ -57,12 +57,17 @@ stalled branch), #843 (ungate the start selection), and #871, which #843 depends
 
 ## 5. Checks Run
 
-- **New tests: 27 assertions, 0 failures, 0 skipped** — run with `NOT_CRAN=true`, because
+- **New tests: 30 assertions, 0 failures, 0 skipped** — run with `NOT_CRAN=true`, because
   the first run showed 5 of 7 tests silently **skipped** on `skip_on_cran()` and *skipped is
   not passing*.
-- **AGHQ suite: 105 assertions, 0 failures** (up from 103 — the two added assertions).
-- **Full suite: see PR #875** — re-run against the final state, after an earlier run was
-  invalidated by my own test correction mid-flight and stopped rather than left to mislead.
+- **AGHQ suite: 1571 assertions, 0 failures, 0 skipped** with `NOT_CRAN=true`. The same
+  suite reports **105** when skips are active — a 15× difference, and the gap is exactly
+  where the k = 3 regression below was hiding. Any "the suite passes" claim on this repo
+  should state which of those two numbers it means.
+- **Full suite: 9009 assertions** — one failure on the first pass, which was a genuine
+  regression in my own change (§9), fixed and re-run. Result on PR #875.
+- An earlier full-suite run was invalidated by my own test correction mid-flight; stopped
+  rather than left running to produce a misleading number.
 - `devtools::document()` clean; no NAMESPACE change, so no pkgdown index risk (a break this
   repo has hit four times).
 - **Behavioural verification, which is the real check:**
@@ -132,6 +137,34 @@ it and the last place anyone would look.
   corrected the tests mid-flight. Stopped it rather than let two runs fight and one mislead.
 - The gaussian regression cost real time to diagnose, and the first hypothesis (that #874
   caused it) was wrong — isolating it required running the two changes independently.
+- 🔴 **The full suite caught a real regression in my own fix that the isolated AGHQ run had
+  skipped.** The q = 2 golden test went red at k = 3 under multi-start, and it was not a
+  stale assertion:
+
+  | k = 3 | objective | converged | error vs nested-`integrate()` oracle |
+  |---|---|---|---|
+  | single start | 1.909543 | yes | **2.9e-09** |
+  | multi-start | **1.884065** | no | **1.07e-01** |
+
+  The alternative start reached a *lower* AGHQ objective at a point where the k = 3
+  quadrature is wrong by 0.107 — **the optimiser had exploited quadrature error**, which is
+  the same shape as a runaway exploiting Laplace's error, i.e. the very failure this lane
+  began on. At k = 5, 7, 9 the two starts agree to the last digit, so the trap is specific
+  to a grid too coarse to be believed.
+
+  Fixed by ranking on **(converged, objective)** rather than objective alone — ordinary
+  multi-start practice, and when both runs agree on convergence it reduces exactly to the
+  comparison it replaces. Verified on *both* sides, because a fix that trades one failure
+  for another is not a fix: the golden ladder is restored and monotone (1.1e-09, 2.9e-09,
+  2.2e-10, 1.7e-11, 5.3e-14 at k = 1/3/5/7/9), and seed 2003 still escapes the runaway
+  (29.700 → 2.365), because there *both* runs are non-converged so the rule falls back to
+  the objective as designed.
+
+  **The lesson I did not expect:** my first framing of #843 was "selection on the final
+  objective is the right rule". That is incomplete — selection is only as trustworthy as the
+  objective, and I had no way to see that from the n = 100 binomial evidence, because there
+  k = 9 is accurate. It took a fixture with an *independent oracle* to expose it. The
+  campaign's own arms use k = 9 and would never have shown this.
 
 ## 10. Known Residuals
 
@@ -159,8 +192,19 @@ it and the last place anyone would look.
   convergence change moves the answer, it was never a convergence change.
 - **Make the off-switch work before changing the default.** #871 looked cosmetic until #843
   needed it.
-- **Skipped tests inflate confidence.** Any new test file should be run once with
-  `NOT_CRAN=true` and its skip count read, not just its failure count.
+- **Skipped tests inflate confidence, and here the factor was 15×.** The AGHQ suite reports
+  **105** assertions with skips active and **1571** with `NOT_CRAN=true`. Read the skip
+  count, not just the failure count — and prefer stating both when claiming a suite passes.
+- 🔴 **"Select the better objective" is incomplete: selection is only as trustworthy as the
+  objective.** At k = 3 the coarse quadrature let the optimiser find a spuriously low value,
+  and choosing it made the fit an order of magnitude worse against an independent oracle.
+  This generalises well beyond AGHQ — any model-selection or multi-start rule that ranks on
+  an *approximate* criterion inherits the approximation's error, and the failure is silent
+  because the criterion reports success.
+- **An independent oracle earns its keep precisely where the evidence base is blind.** The
+  n = 100 binomial campaign uses k = 9, where the quadrature is accurate, so it could never
+  have surfaced this. Only the golden fixture with a nested-`integrate()` truth did. Keep at
+  least one test whose ground truth comes from outside the machinery under test.
 
 ## 12. Cross-Product Coverage
 

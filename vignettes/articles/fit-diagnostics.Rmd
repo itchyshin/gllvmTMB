@@ -164,16 +164,21 @@ key_components <- c(
   "max_gradient",
   "sdreport",
   "pd_hessian",
-  "weak_axis_unit",
-  "boundary_sigma_eps"
+  "weak_axis_unit"
 )
 health[
-  health$component %in% key_components,
+  health$component %in% key_components |
+    startsWith(health$component, "boundary_sigma_eps"),
   c("component", "status", "message")
 ]
 ```
 
-These six displayed rows pass for this example. The full table contains more
+The residual-scale check is matched by prefix because it is reported once per
+Gaussian or lognormal trait: a multi-trait fit gives `boundary_sigma_eps[1]`,
+`boundary_sigma_eps[2]`, and so on, while a single-trait fit keeps the bare
+`boundary_sigma_eps`. An exact-match filter would silently drop those rows.
+
+The displayed rows pass for this example. The full table contains more
 checks, so always inspect every warning rather than treating a selected subset
 as the whole verdict. Here are all non-passing rows, including their thresholds,
 meaning, and suggested action.
@@ -202,10 +207,12 @@ and may therefore be hard to interpret; it does not by itself prove
 that the fitted response distribution is wrong.
 
 `boundary_sigma_eps` checks the continuous-family residual scale when
-that parameter is active. A warning means the estimate is below the
-reported threshold, so the residual scale is close to its boundary; it
-does not apply when the model or response family maps that parameter
-off.
+that parameter is active, once for each Gaussian or lognormal trait. A
+warning means that trait's estimate is below the reported threshold, so
+its residual scale is close to its boundary; it does not apply when the
+model or response family maps that parameter off. Because suppression is
+decided per trait, a fit can legitimately report one trait as mapped off
+and another as estimated.
 
 The same table records intentionally skipped standard errors. A no-SE
 fit can still be useful for point estimates or refit-based uncertainty, such

@@ -82,8 +82,17 @@ test_that("traits() formula-LHS marker is recognised and a basic fit runs", {
   fit <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
     traits(tidyselect::all_of(trait_cols)) ~ 1 +
       env_temp +
-      latent(1 | individual, d = 1) +
-      unique(1 | individual),
+      ## This test is about the `traits()` LHS grammar, not about covariance
+      ## identifiability, so it uses the simplest well-identified structure.
+      ## It previously paired `latent(..., unique = FALSE)` with `unique()` on
+      ## the same grouping. That pairing is well-POSED but weakly IDENTIFIED --
+      ## register RE-09 records the Lambda/Psi split as a "deliberately wide
+      ## band" -- which left the `convergence == 0` assertion below riding on a
+      ## near-flat ridge, where nlminb's exit code turns on the starting values
+      ## rather than on the grammar this test exists to check. The pairing
+      ## keeps its own coverage in `test-re09-latent-unique-unit.R` and in the
+      ## wide-versus-long test immediately below.
+      indep(1 | individual),
     data = wide,
     unit = "individual",
     family = gaussian()
@@ -528,8 +537,14 @@ test_that("long-format calls without traits() are not intercepted", {
   fit <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
     value ~ 0 +
       trait +
-      latent(0 + trait | site, d = 1) +
-      unique(0 + trait | site),
+      ## What this test checks is that a long-format call is NOT intercepted
+      ## by the wide `traits()` path, so the covariance structure is incidental
+      ## and is kept well identified -- see the note on the first test in this
+      ## file (#851). The previous `latent(..., unique = FALSE) + unique()`
+      ## pairing on the same grouping has a weakly identified Lambda/Psi split
+      ## (RE-09), which made the `convergence == 0` assertion below a report on
+      ## the optimiser's path across a flat ridge rather than on routing.
+      indep(0 + trait | site),
     data = long
   )))
   expect_equal(fit$opt$convergence, 0L)

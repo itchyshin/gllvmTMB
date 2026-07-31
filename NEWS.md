@@ -277,6 +277,58 @@ bridge remains experimental and is not required for the main workflow.
 
 ## Fixed
 
+* **Ordination no longer collapses when the response is on a large scale.**
+  Starting values for the latent structure were built as though the response had
+  a standard deviation of about 1 — a hardcoded loading start, a matching
+  variance start, and latent scores beginning at exactly zero. Standardising the
+  latent scores is precisely what pushes the response scale into the loadings, so
+  where that assumption did not hold the fit could collapse: loadings, the
+  covariance, the fixed effects, **and the correlations and communality that most
+  users actually report** all came back wrong, with every convergence signal
+  green. Nothing warned you.
+
+  All three starts now follow the data. The loadings and the variance term are
+  placed on the scale of the working residuals, and the latent scores are seeded
+  from the data instead of from zero — scaled to unit variance, since the scores
+  are standardised by definition and it is the starting *direction* that was
+  missing, not the magnitude.
+
+  For an ordinary single-tier `latent()` model on 4 traits, multiplying the
+  response by 100 now reproduces every expected transformation to within about
+  one part in 100,000. At a factor of 5000 it holds to about 1% in the worst of
+  eight simulated datasets — looser, but well inside the 2% we accept, and the
+  quantities most people report (the correlations and the communality) hold
+  there too. Two other implementations of the same model do not hold that law on
+  the same data: their worst cases are roughly 100% and 200% out, meaning a
+  loading that should have doubled did not move. If you have worked around this
+  by rescaling your response by hand, you no longer need to.
+
+  This covers **Gaussian responses**, and the ordinary latent structure on your
+  unit grouping — `latent()` and the variance term it carries. Everything else
+  deliberately keeps its previous starting values: any model with a
+  non-Gaussian response, the phylogenetic, spatial, kernel and random-slope
+  latent terms, and the **second grouping of a nested two-tier fit** (the
+  within-unit level, e.g. species-within-site). Starting values for the latent
+  scores are also left alone when you give `latent()` a predictor with
+  `lv = ~ ...`, because there the scores have a fitted mean rather than a free
+  one.
+
+  The reason for drawing the line there rather than wider: "multiply the
+  response by 100" is only a meaningful thing to do to an unbounded continuous
+  response, and that is the only case the collapse was measured on. A count or a
+  presence/absence on an awkward scale may well have the same problem — but
+  moving a starting value that has not been measured trades a known problem for
+  an unmeasured one, which is the whole reason the old default was dangerous. If
+  you fit any of the excluded forms on a response far from unit scale, rescaling
+  it by hand is still worth doing.
+
+  One case is **not** fully resolved. In a nested two-tier fit the residual scale
+  error is around 2%, and that remainder is a property of the likelihood surface
+  rather than of the starting values — a fit can report convergence while sitting
+  some distance from the optimum, because a wide region of parameter space is
+  nearly flat there. That is tracked separately and no starting value will
+  address it.
+
 * **`check_gllvmTMB()` no longer passes a binomial fit whose loading has run
   away.** The loading row could only fire when the trait's marginal prevalence
   was also extreme (at or beyond 0.9). But quasi-complete separation is a

@@ -1,0 +1,33 @@
+# Line-ending policy.
+#
+# Byte identity is a GATE in this repository, not a nicety. Design 85 section 11
+# ("Gate 0 -- scope and coordinate freeze") specifies a byte-identity checksum as
+# the mechanism by which the frozen Gate-1 fixture is held fixed, and
+# `R/eva-proto.R` stamps `tools::sha256sum()` of that file into the provenance of
+# every result it produces.
+#
+# Git's default `core.autocrlf` on Windows rewrites LF to CRLF at checkout. That
+# changes the bytes, and therefore the hash. Two things then break, one loudly and
+# one silently:
+#
+#   * `tests/testthat/test-eva-gate1.R` compares against a pinned digest and fails
+#     -- this was the repository's ONLY Windows CI failure, on every branch;
+#   * the `parameter_file_sha256` provenance field silently becomes
+#     platform-dependent, which is the worse half, because nothing reports it.
+#
+# Measured 2026-07-31 on the stored file:
+#   LF   (as committed) sha256 = a3cb2b9302132b2a917639ac30ce070d5d0f67e9c21f50ffbcc232ead448b036
+#   CRLF (same content) sha256 = 4cb55e963180c4c570c76b74faeb65ee8ef98e656412e7f9e46a5296465b9b14
+# The first is exactly the digest pinned in the test, so the fixture's committed
+# bytes are correct and only their on-disk representation was at issue.
+#
+# `-text` disables all end-of-line conversion for these paths, on every platform.
+# It does not change what is stored in git, so the pinned digest is unaffected.
+# Applied to the whole fixture directory rather than the one file, because
+# anything shipped there is a candidate for the same byte-identity treatment.
+inst/extdata/** -text
+
+# Everything else keeps git's default handling. This file deliberately does NOT
+# set a repository-wide `* text=auto` policy: that would renormalise line endings
+# across the entire history-tracked tree, which is a much larger change than the
+# defect it would fix here.

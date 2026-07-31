@@ -28,7 +28,17 @@ Ran pkgdown's own code path locally (pkgdown 2.2.0), the same one CI hits:
 | `pkgdown:::data_reference_index()` | reproduced the exact CI error | `PASS: reference index complete` |
 | `pkgdown::check_pkgdown()` | — | `✔ No problems found.` |
 
-The clean `check_pkgdown()` is the Rose sweep: it confirms this was the **only** index drift, not one of a set.
+The clean `check_pkgdown()` is the Rose sweep: it confirms this was the **only** index drift, not one of a set. Re-run afterwards against the merged `main` config (byte-identical `_pkgdown.yml`) to confirm the merged state, not just the pre-merge branch: `✔ No problems found.`, reference index OK.
+
+CI confirmation after the merge:
+
+| run | result |
+|---|---|
+| R-CMD-check on merge commit `4ee5c81b` | success |
+| pkgdown `30594538673` — `build` | **success** (first green build since 19:44 UTC) |
+| pkgdown `30594538673` — `deploy` | **success** (site republished) |
+
+That closes the 13-failure streak.
 
 Not run: a full `pkgdown::build_site()` (unnecessary — the failure is in index validation, which the above exercises directly) and `devtools::check()` (`_pkgdown.yml` is not part of the R package build).
 

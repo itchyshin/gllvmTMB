@@ -266,6 +266,14 @@ bridge remains experimental and is not required for the main workflow.
   you have worked around this by rescaling your response by hand, you no longer
   need to.
 
+  This covers the ordinary latent structure on your unit grouping — `latent()`
+  and the variance term it carries. The phylogenetic, spatial, kernel and
+  random-slope latent terms deliberately keep their previous starting values: the
+  collapse above has only been measured for the ordinary case, and moving a
+  starting value that has not been measured trades a known problem for an
+  unmeasured one. If you fit one of those forms on a response far from unit
+  scale, rescaling it by hand is still worth doing.
+
   One case is **not** fully resolved. In a nested two-tier fit the residual scale
   error is around 2%, and that remainder is a property of the likelihood surface
   rather than of the starting values — a fit can report convergence while sitting

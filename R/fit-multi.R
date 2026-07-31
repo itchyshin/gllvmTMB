@@ -3758,11 +3758,19 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## start exactly.
   lam_scale_init <- .gllvmTMB_loading_start_scale(resid_init)
 
-  init_rr_theta <- function(p, rank) {
-    ## Lambda_B/W ~ I_rank diagonal start, scaled to the data:
-    ## lam_diag = 0.5 * sd(resid_init), lam_lower = 0.
+  ## `scale` is OPT-IN and defaults to the historical 1.0, because this helper
+  ## is shared by six tiers (B, B_slope, W, spde_slope, kernel, phy_slope) and
+  ## only the B tier has a companion Psi start that moves with it
+  ## (`theta_diag_B`, below). Scaling Lambda WITHOUT its Psi is the one variant
+  ## already measured and rejected here -- it changes the shared/independent
+  ## BALANCE rather than the scale -- so handing the scale to a tier whose Psi
+  ## stays at log(1) would silently put that tier in the known-bad regime. Every
+  ## #851 measurement is single-tier `latent()`, i.e. the B tier; the other five
+  ## keep the historical 0.5 and stay byte-identical to main.
+  init_rr_theta <- function(p, rank, scale = 1.0) {
+    ## Lambda ~ I_rank diagonal start: lam_diag = 0.5 * scale, lam_lower = 0.
     c(
-      rep(0.5 * lam_scale_init, rank),
+      rep(0.5 * scale, rank),
       rep(0.0, p * rank - rank * (rank - 1L) / 2L - rank)
     )
   }
@@ -3779,7 +3787,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   tmb_params <- list(
     b_fix        = unname(b_fix_init),
     log_sigma_eps = log_sigma_eps_init,
-    theta_rr_B   = if (use_rr_B) init_rr_theta(n_traits, d_B) else rep(0.0, theta_rr_B_len),
+    theta_rr_B   = if (use_rr_B) {
+                     init_rr_theta(n_traits, d_B, scale = lam_scale_init)
+                   } else rep(0.0, theta_rr_B_len),
     ## Latent-score start (issue #851). Seeded from an SVD of the grouped
     ## residual matrix rather than left at exactly zero. This is the one piece
     ## the previous attempt omitted, and the piece the diagnosis points at: the
@@ -3829,7 +3839,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     ## 0.0204 -> 0.0202 (noise) while k = 100 got about 10x looser
     ## (6.4e-06 -> 7.0e-05, both still well inside tolerance). No evidence for
     ## it, so it is not carried. The residual scale error is NOT W-tier
-    ## asymmetry.
+    ## asymmetry. Consequently the W tier keeps the HISTORICAL start outright --
+    ## Lambda included (`init_rr_theta` is called without `scale`) -- rather than
+    ## the scaled-Lambda/unscaled-Psi hybrid, which is the known-bad balance.
     z_W          = matrix(0, nrow = max(d_W, 1L), ncol = n_site_species),
     theta_diag_W = rep(0.0, n_traits),
     s_W          = matrix(0, nrow = n_traits, ncol = n_site_species),

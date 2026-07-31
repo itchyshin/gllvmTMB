@@ -240,8 +240,16 @@
   )
   R <- mat$resid
 
-  lambda <- if (rank > 0L) .gllvmTMB_default_rr_lambda(n_traits, rank)
-            else matrix(0.0, n_traits, 0L)
+  ## The starting Lambda for any column the SVD does NOT recover. It has to be
+  ## on the residual's scale, because the columns the SVD DOES recover carry
+  ## that scale, and the two sit in the same matrix: at `r_eff < rank` this
+  ## packed a literal 0.5 next to siblings of 7726 and 3863 on a response
+  ## scaled by 1e4. `theta_diag` below is data derived too, so this is the
+  ## yardstick all three now share.
+  lam_scale <- .gllvmTMB_loading_start_scale(resid)
+  lambda <- if (rank > 0L) {
+              .gllvmTMB_default_rr_lambda(n_traits, rank, scale = lam_scale)
+            } else matrix(0.0, n_traits, 0L)
   z <- if (rank > 0L) matrix(0.0, n_groups, rank)
        else matrix(0.0, n_groups, 0L)
   theta_rr <- if (rank > 0L) {
@@ -325,10 +333,17 @@
   list(resid = out, count = count)
 }
 
-.gllvmTMB_default_rr_lambda <- function(p, rank) {
+## `scale` exists for the same reason it exists on `init_rr_theta()` (issue
+## #851): a bare 0.5 assumes the response has sd ~ 1. Here it must be passed,
+## not defaulted away, because THIS function's companion Psi start is data
+## derived unconditionally (`sd_rem`, below), so a scale-blind Lambda beside it
+## is the Lambda-moves-without-Psi imbalance #851 measured as harmful -- and
+## the mixture is visible WITHIN a single Lambda whenever the SVD recovers
+## fewer directions than were asked for (see the caller).
+.gllvmTMB_default_rr_lambda <- function(p, rank, scale = 1.0) {
   lambda <- matrix(0.0, nrow = p, ncol = rank)
   diag_idx <- seq_len(min(p, rank))
-  if (length(diag_idx) > 0L) lambda[cbind(diag_idx, diag_idx)] <- 0.5
+  if (length(diag_idx) > 0L) lambda[cbind(diag_idx, diag_idx)] <- 0.5 * scale
   lambda
 }
 

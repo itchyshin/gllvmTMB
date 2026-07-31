@@ -3798,9 +3798,20 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     ## the all-zero score start. Scale-FREE by construction -- the scores are
     ## standardised to unit variance, so this changes the starting DIRECTION,
     ## never the magnitude. Falls back to zeros on every degenerate path.
+    ##
+    ## NOT seeded when an `lv` predictor is present (`use_lv_B`). There the
+    ## scores are not free -- they carry a MODELLED mean, `alpha_lv_B %*% x` --
+    ## and `alpha_lv_B` starts at exactly zero. Seeding the scores from the
+    ## residual structure while telling the model that structure has zero
+    ## coefficient is an internally inconsistent start: it asserts and denies
+    ## the same signal. It measures as such -- on the `lv = ~habitat` fixture
+    ## the seeded start stops at max|grad| 3.37e-03 against 2.04e-03 without it
+    ## (same objective, 59.30745), i.e. the inconsistency costs convergence
+    ## tightness and buys nothing. Neither scale-equivariance oracle uses an
+    ## `lv` predictor, so this gate does not touch the #851 result.
     z_B          = {
       .z0 <- matrix(0, nrow = max(d_B, 1L), ncol = n_sites)
-      .zs <- if (use_rr_B && d_B >= 1L) {
+      .zs <- if (use_rr_B && !use_lv_B && d_B >= 1L) {
         .gllvmTMB_latent_score_start(
           resid = resid_init, trait_id = trait_id, group_id = site_id,
           n_traits = n_traits, n_groups = n_sites, rank = d_B

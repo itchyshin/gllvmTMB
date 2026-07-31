@@ -14,12 +14,12 @@
 ## ARMS (5 fits per replicate, all on the SAME data -- the design is PAIRED):
 ##   1 laplace        gllvmTMBcontrol()
 ##   2 laplace_ridge  gllvmTMBcontrol(aghq_ridge = 2)          <- the fair control
-##   3 aghq           aghq = 9, aghq_ridge = Inf                <- shipped, single-start
-##   4 aghq_alt       as 3 but started at the truth-free alternative start
+##   3 aghq_single    aghq = 9, aghq_ridge = Inf, aghq_multistart = FALSE  <- pre-#843
+##   4 aghq           aghq = 9, aghq_ridge = Inf                <- shipped (multi-start)
 ##   5 aghq_ridge     aghq = 9 (ridge on by default)
-## Arm `aghq_ms` of the design is NOT a sixth fit: it is min(arm 3, arm 4) on the FINAL
-## objective, computed at summarise time. That is what "run both, keep the better final
-## objective" means, and it is why the campaign costs 5 fits and not 6.
+## Since #843 the engine itself runs both starts and keeps the better FINAL objective,
+## so the old derived `aghq_ms` arm is gone. `aghq_single` is retained so the campaign
+## can still measure the pre-#843 behaviour and price what multi-start bought.
 ##
 ## USAGE
 ##   Rscript 24-estimator-campaign.R              # smoke: 1 cell, 10 seeds
@@ -77,39 +77,26 @@ fam_obj <- function(f) switch(f, binomial = binomial(), poisson = poisson(), gau
 corr_of <- function(S) { d <- sqrt(diag(S)); d[d <= 0] <- NA; S / outer(d, d) }
 
 ## ---- arms (design §M) -------------------------------------------------------
+## ARMS REDEFINED 2026-07-31 after #843/#871/#874 landed. The previous set was
+## written against a SINGLE-START engine and is now mislabelled:
+##   - `aghq` (aghq_ridge = Inf) is MULTI-START by default now, not "the shipped
+##     single start" the design called it;
+##   - `aghq_alt` injected a start through the diagnostic hook, but the engine now
+##     builds its own second start too, so that arm was neither one thing nor the
+##     other;
+##   - the derived `aghq_ms` = min(aghq, aghq_alt) is REDUNDANT -- running both
+##     starts and keeping the better final objective is exactly what the engine
+##     does internally.
+## The historical single-start arm is kept, explicitly, so the campaign can still
+## measure what the old evidence base measured and price the change.
 ARM_CTL <- list(
   laplace       = function() gllvmTMBcontrol(),
   laplace_ridge = function() gllvmTMBcontrol(aghq_ridge = 2),
-  aghq          = function() gllvmTMBcontrol(aghq = 9, aghq_ridge = Inf),
-  aghq_alt      = function() gllvmTMBcontrol(aghq = 9, aghq_ridge = Inf),   # + injected start
-  aghq_ridge    = function() gllvmTMBcontrol(aghq = 9)
+  aghq_single   = function() gllvmTMBcontrol(aghq = 9, aghq_ridge = Inf,
+                                             aghq_multistart = FALSE),  # pre-#843
+  aghq          = function() gllvmTMBcontrol(aghq = 9, aghq_ridge = Inf), # shipped: multi-start
+  aghq_ridge    = function() gllvmTMBcontrol(aghq = 9)                    # shipped + ridge
 )
-
-## The truth-free alternative start, exactly as R/fit-multi.R:5310-5323 builds it.
-##
-## THE FAMILY GUARD IS LOAD-BEARING and was missing from the first draft of this
-## function. The engine applies the empirical-LOGIT intercepts only when
-## `identical(family_id_vec[1L], 1L)` -- i.e. binomial. For every other family the
-## intercepts stay at their Laplace values and only the loadings move to 0.3.
-## Dropping that guard does not merely diverge from the engine, it produces a
-## catastrophically bad start off the logit scale: measured at poisson n = 1600,
-## `aghq_alt` took 941 s against `aghq`'s 19 s, a 50x slowdown. Caught by exercising
-## the Stage 2 family switch, which is the whole reason that exercise was run.
-## Binomial -- Stage 1 and every slice-1 number -- is unaffected either way.
-alt_start <- function(par, df, p, n, family) {
-  a <- par
-  li <- which(names(a) == "theta_rr_B"); bi <- which(names(a) == "b_fix")
-  if (!length(li) || !length(bi)) return(NULL)
-  a[li] <- 0.3
-  if (identical(family, "binomial")) {
-    pr <- colMeans(as.matrix(df[, paste0("sp", seq_len(p))]))
-    if (all(is.finite(pr))) {
-      eps <- 1 / (4 * n)
-      a[bi] <- stats::qlogis(pmin(pmax(pr, eps), 1 - eps))
-    }
-  }
-  a
-}
 
 ## ---- one replicate: all 5 arms on the SAME data ------------------------------
 one <- function(job) {
@@ -121,12 +108,6 @@ one <- function(job) {
   fits <- list(); rows <- list()
   for (arm in names(ARM_CTL)) {
     ctl <- ARM_CTL[[arm]]()
-    if (arm == "aghq_alt") {
-      if (is.null(fits$aghq)) next
-      a <- alt_start(fits$aghq$opt$par, d$df, job$p, job$n, job$family)
-      if (is.null(a)) next
-      ctl$aghq_start_par <- a
-    }
     t0 <- Sys.time()
     f <- tryCatch(suppressWarnings(gllvmTMB(d$fml, data = d$df, family = fam, control = ctl)),
                   error = function(e) structure(list(msg = conditionMessage(e)), class = "failed"))

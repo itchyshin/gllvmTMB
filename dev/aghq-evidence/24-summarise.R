@@ -18,28 +18,10 @@ DELTA <- 0.02      # pre-registered practical threshold on the paired rho-MAE di
 ## AGHQ cell INCONCLUSIVE. A cell below OPT_LIMITED is TAGGED, not discarded.
 OPT_LIMITED <- 0.50
 
-## ---- arm `aghq_ms`: min(aghq, aghq_alt) on the FINAL objective ---------------
-## This is the design's "run both starts, keep the better final objective". It is derived,
-## not fitted -- which is why the campaign costs 5 fits per replicate and not 6.
-key <- c("family", "n", "p", "q", "lam_sd", "seed")
-mk_ms <- function(d) {
-  a <- d[d$arm == "aghq" & d$ok, ]; b <- d[d$arm == "aghq_alt" & d$ok, ]
-  if (!nrow(a) || !nrow(b)) return(NULL)
-  m <- merge(a, b, by = key, suffixes = c(".a", ".b"))
-  if (!nrow(m)) return(NULL)
-  take_b <- !is.na(m$obj.b) & !is.na(m$obj.a) & m$obj.b < m$obj.a
-  out <- a[0, ]
-  src <- lapply(seq_len(nrow(m)), function(i) {
-    r <- if (take_b[i]) b[b$seed == m$seed[i] & b$n == m$n[i] & b$family == m$family[i] &
-                          b$lam_sd == m$lam_sd[i], ][1, ]
-         else            a[a$seed == m$seed[i] & a$n == m$n[i] & a$family == m$family[i] &
-                          a$lam_sd == m$lam_sd[i], ][1, ]
-    r$arm <- "aghq_ms"; r
-  })
-  do.call(rbind, src)
-}
-ms <- mk_ms(res)
-allr <- if (is.null(ms)) res else rbind(res, ms)
+## `aghq_ms` is GONE (2026-07-31). Running both starts and keeping the better final
+## objective is now what the engine does internally (#843), so there is nothing left to
+## derive here. `aghq_single` is the pre-#843 arm, fitted directly.
+allr <- res
 
 ## ---- performance table, per cell x arm, every number with its MCSE (item 11) --
 mcse_mean <- function(x) sd(x, na.rm = TRUE) / sqrt(sum(!is.na(x)))
@@ -52,7 +34,7 @@ cells <- unique(allr[, c("family","n","lam_sd")])
 cells <- cells[order(cells$family, cells$n, cells$lam_sd), ]
 for (i in seq_len(nrow(cells))) {
   cc <- cells[i, ]
-  for (a in c("laplace","laplace_ridge","aghq","aghq_alt","aghq_ms","aghq_ridge")) {
+  for (a in c("laplace","laplace_ridge","aghq_single","aghq","aghq_ridge")) {
     s <- allr[allr$family == cc$family & allr$n == cc$n & allr$lam_sd == cc$lam_sd &
               allr$arm == a & allr$ok, ]
     if (!nrow(s)) next
@@ -68,9 +50,9 @@ for (i in seq_len(nrow(cells))) {
 
 ## ---- the paired contrasts + the acceptance rule (§P.1, §P.3) ------------------
 CONTRASTS <- list(
-  c("laplace",       "aghq_ms"),     # PRIMARY -- unpenalised both sides
-  c("laplace_ridge", "aghq_ridge"),  # PRIMARY -- penalised both sides
-  c("aghq",          "aghq_ms")      # S1 -- how much of the shipped arm is the start?
+  c("laplace",     "aghq"),        # PRIMARY -- unpenalised both sides
+  c("laplace_ridge", "aghq_ridge"),# PRIMARY -- penalised both sides
+  c("aghq_single", "aghq")         # S1 -- what multi-start (#843) actually bought
 )
 verdict <- function(dbar, mcse, conv_rate) {
   lo <- dbar - 1.96 * mcse; hi <- dbar + 1.96 * mcse
@@ -124,7 +106,7 @@ nr <- allr[allr$ok & allr$frob_rat <= 2, ]
 for (i in seq_len(nrow(cells))) {
   cc <- cells[i, ]
   A <- nr[nr$family==cc$family & nr$n==cc$n & nr$lam_sd==cc$lam_sd & nr$arm=="laplace", ]
-  B <- nr[nr$family==cc$family & nr$n==cc$n & nr$lam_sd==cc$lam_sd & nr$arm=="aghq_ms", ]
+  B <- nr[nr$family==cc$family & nr$n==cc$n & nr$lam_sd==cc$lam_sd & nr$arm=="aghq", ]
   if (!nrow(A) || !nrow(B)) next
   m <- merge(A[,c("seed","rho_mae")], B[,c("seed","rho_mae")], by="seed", suffixes=c(".A",".B"))
   if (nrow(m) < 2) next
@@ -137,9 +119,9 @@ for (i in seq_len(nrow(cells))) {
 ## ---- §P.3b convergence as a PRIMARY outcome ---------------------------------
 say("\n=== CONVERGENCE (engine's own criterion: aghq$stop_reason) ===\n")
 say("NOT a gate -- a reported outcome. opt$convergence on the AGHQ path is the per-pass cap.\n")
-aa <- allr[allr$ok & allr$arm %in% c("aghq","aghq_alt","aghq_ridge"), ]
+aa <- allr[allr$ok & allr$arm %in% c("aghq_single","aghq","aghq_ridge"), ]
 if (nrow(aa)) {
-  for (a in c("aghq","aghq_alt","aghq_ridge")) {
+  for (a in c("aghq_single","aghq","aghq_ridge")) {
     s <- aa[aa$arm == a, ]; if (!nrow(s)) next
     r <- mean(s$converged, na.rm = TRUE)
     say("  %-12s converged %5.1f%% [MCSE %.1f%%]  of %d fits\n", a, 100*r, 100*mcse_prop(r, nrow(s)), nrow(s))
@@ -157,7 +139,7 @@ cv <- allr[allr$ok & allr$converged, ]
 for (i in seq_len(nrow(cells))) {
   cc <- cells[i, ]
   A <- cv[cv$family==cc$family & cv$n==cc$n & cv$lam_sd==cc$lam_sd & cv$arm=="laplace", ]
-  B <- cv[cv$family==cc$family & cv$n==cc$n & cv$lam_sd==cc$lam_sd & cv$arm=="aghq_ms", ]
+  B <- cv[cv$family==cc$family & cv$n==cc$n & cv$lam_sd==cc$lam_sd & cv$arm=="aghq", ]
   if (!nrow(A) || !nrow(B)) next
   m <- merge(A[,c("seed","rho_mae")], B[,c("seed","rho_mae")], by="seed", suffixes=c(".A",".B"))
   if (nrow(m) < 2) { say("  %-9s n=%-5d lam=%.1f : only %d converged pairs -- NOT REPORTABLE\n",

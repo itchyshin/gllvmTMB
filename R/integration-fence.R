@@ -1,9 +1,13 @@
 ## Admission fence for the opt-in variational integration routes.
 ##
-## `integration = "va"` / `"eva"` are research routes. They are admitted only
-## inside the region for which evidence exists or is being gathered, and the
-## fence ERRORS rather than warns: a warning would let a user keep a fit from
-## outside the evidenced region, which is the outcome the fence exists to stop.
+## `integration = "va"` is a research route. It is admitted only inside the
+## region for which evidence exists or is being gathered, and the fence ERRORS
+## rather than warns: a warning would let a user keep a fit from outside the
+## evidenced region, which is the outcome the fence exists to stop.
+##
+## The fence takes `integration` as a plain string rather than matching a fixed
+## set, so it still guards any route reached by a hand-built control list, not
+## only the values `gllvmTMBcontrol()` admits.
 ##
 ## The boundaries are not taste. Each is traceable:
 ##   * `unique = FALSE` -- every VA measurement in this package suppresses Psi.

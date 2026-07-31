@@ -503,15 +503,15 @@ gllvmTMB <- function(
   integration_route <- control$integration %||% "laplace"
   if (!identical(integration_route, "laplace")) {
     .gllvmTMB_check_integration_fence(integration_route, engine = engine)
-    if (identical(integration_route, "eva")) {
+    ## `gllvmTMBcontrol()` admits only "laplace" and "va", so anything else here
+    ## arrives from a hand-built control list rather than the documented API.
+    ## Abort rather than fall through: an unrouted value must never reach the
+    ## Laplace assembly and come back looking like the route that was asked for.
+    if (!identical(integration_route, "va")) {
       cli::cli_abort(c(
-        "{.arg integration} = {.val {integration_route}} is not yet routed from {.fn gllvmTMB}.",
-        "i" = "The engine, its TMB template and its dispatch all exist, but the
-               formula-to-long-format translation layer that connects them to
-               {.fn gllvmTMB} is not built yet.",
-        "i" = "Reachable today only as
-               {.code gllvmTMB:::.approximation_engine_fit(engine = \"eva\", ...)},
-               which is research-only and takes long-format vectors.",
+        "{.arg integration} = {.val {integration_route}} is not a routed
+         integration method.",
+        "i" = "{.fn gllvmTMBcontrol} admits {.val laplace} and {.val va}.",
         ">" = "Use {.code integration = \"laplace\"} (the default)."
       ))
     }
@@ -1229,20 +1229,20 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #'   route that yields a marginal likelihood, so it is the only one for which
 #'   [logLik()], [AIC()], [BIC()] and likelihood-ratio tests are defined.
 #'
-#'   `"va"` and `"eva"` select opt-in **research** routes whose objective is an
-#'   evidence lower bound, not a marginal likelihood. They report no calibrated
+#'   `"va"` selects an opt-in **research** route whose objective is an evidence
+#'   lower bound, not a marginal likelihood. It reports no calibrated
 #'   uncertainty: no standard errors, no confidence intervals, and no coverage
-#'   claim. A bound must not be compared across ranks or models, so they cannot
+#'   claim. A bound must not be compared across ranks or models, so it cannot
 #'   be used for model or rank selection.
 #'
-#'   These routes are admitted only inside the region for which evidence exists
-#'   — `latent(..., unique = FALSE)`, binomial-logit or Poisson-log, `d` up to
+#'   It is admitted only inside the region for which evidence exists —
+#'   `latent(..., unique = FALSE)`, binomial-logit or Poisson-log, `d` up to
 #'   4, up to 80 responses, at least 100 units, and the native TMB engine — and
-#'   requesting one outside that region is an **error**, not a warning.
-#'   They cannot be combined with `aghq`, which is an alternative evaluation of
+#'   requesting it outside that region is an **error**, not a warning.
+#'   It cannot be combined with `aghq`, which is an alternative evaluation of
 #'   the same integral rather than an additional layer.
 #'
-#'   Offering these values advertises nothing about their accuracy.
+#'   Offering this value advertises nothing about its accuracy.
 #'
 #'   `"va"` returns an object of class `"gllvmTMB_va"` (see
 #'   [gllvmTMB_va-methods]) rather than an ordinary fit, so that every method
@@ -1255,8 +1255,13 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #'   weights, `REML`, `lambda_constraint`, `Xcoef_fixed`, or a further random
 #'   effect) is an **error**, never a silent omission.
 #'
-#'   `"eva"` is **not yet routed from [gllvmTMB()]** and aborts with an
-#'   explanatory message rather than silently returning a Laplace fit.
+#'   There is no `"eva"` value. The EVA engine exists in this package and is
+#'   reachable as a research route, but it is not wired to [gllvmTMB()], and an
+#'   argument value that could only ever raise an error would advertise a
+#'   capability the package does not have. Its own measurements are the reason
+#'   it is not a candidate here: EVA delivers valid inference for the
+#'   regression coefficients but not for `Lambda Lambda'`, which is the
+#'   between-response covariance this package exists to estimate.
 #' @param aghq Adaptive Gauss-Hermite quadrature for the between-unit latent
 #'   block. `FALSE` (default) fits by Laplace approximation. A positive integer
 #'   requests that many quadrature nodes. `"auto"` lets the package decide, and
@@ -1345,14 +1350,18 @@ gllvmTMBcontrol <- function(
   start_from = NULL,
   se = TRUE,
   verbose = FALSE,
-  ## Which integration method evaluates the latent-variable integral.
+  ## Which integration method evaluates the latent-variable integral. "eva" is
+  ## deliberately NOT admitted: its engine exists and is reachable as a research
+  ## route, but it is not wired to gllvmTMB(), and offering an argument value
+  ## that can only ever error would advertise a capability the package does not
+  ## have. See the note on the `integration` parameter.
   ## "laplace" is the default and the only route carrying a marginal
   ## likelihood, so it is the only one for which logLik()/AIC()/BIC()/LRT are
   ## defined. "va" and "eva" are OPT-IN research routes whose objective is an
   ## ELBO -- not a marginal likelihood (Design 85 s10) -- with no calibrated
   ## uncertainty. Offering a value here does NOT advertise it: admission to any
   ## user-facing claim is Design 85 s11 Gate 3's to grant, not this argument's.
-  integration = c("laplace", "va", "eva"),
+  integration = c("laplace", "va"),
   aghq = FALSE,
   aghq_iter_cap = 1L,
   aghq_n_adapt = 400L,

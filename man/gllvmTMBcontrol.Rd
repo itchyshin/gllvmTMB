@@ -17,7 +17,7 @@ gllvmTMBcontrol(
   start_from = NULL,
   se = TRUE,
   verbose = FALSE,
-  integration = c("laplace", "va", "eva"),
+  integration = c("laplace", "va"),
   aghq = FALSE,
   aghq_iter_cap = 1L,
   aghq_n_adapt = 400L,
@@ -104,20 +104,20 @@ the user can see which seed led to the winning fit. Default
 route that yields a marginal likelihood, so it is the only one for which
 \code{\link[=logLik]{logLik()}}, \code{\link[=AIC]{AIC()}}, \code{\link[=BIC]{BIC()}} and likelihood-ratio tests are defined.
 
-\code{"va"} and \code{"eva"} select opt-in \strong{research} routes whose objective is an
-evidence lower bound, not a marginal likelihood. They report no calibrated
+\code{"va"} selects an opt-in \strong{research} route whose objective is an evidence
+lower bound, not a marginal likelihood. It reports no calibrated
 uncertainty: no standard errors, no confidence intervals, and no coverage
-claim. A bound must not be compared across ranks or models, so they cannot
+claim. A bound must not be compared across ranks or models, so it cannot
 be used for model or rank selection.
 
-These routes are admitted only inside the region for which evidence exists
-— \code{latent(..., unique = FALSE)}, binomial-logit or Poisson-log, \code{d} up to
+It is admitted only inside the region for which evidence exists —
+\code{latent(..., unique = FALSE)}, binomial-logit or Poisson-log, \code{d} up to
 4, up to 80 responses, at least 100 units, and the native TMB engine — and
-requesting one outside that region is an \strong{error}, not a warning.
-They cannot be combined with \code{aghq}, which is an alternative evaluation of
+requesting it outside that region is an \strong{error}, not a warning.
+It cannot be combined with \code{aghq}, which is an alternative evaluation of
 the same integral rather than an additional layer.
 
-Offering these values advertises nothing about their accuracy.
+Offering this value advertises nothing about its accuracy.
 
 \code{"va"} returns an object of class \code{"gllvmTMB_va"} (see
 \link{gllvmTMB_va-methods}) rather than an ordinary fit, so that every method
@@ -130,8 +130,13 @@ term away from the unit grouping, a constrained ordination, an offset,
 weights, \code{REML}, \code{lambda_constraint}, \code{Xcoef_fixed}, or a further random
 effect) is an \strong{error}, never a silent omission.
 
-\code{"eva"} is \strong{not yet routed from \code{\link[=gllvmTMB]{gllvmTMB()}}} and aborts with an
-explanatory message rather than silently returning a Laplace fit.}
+There is no \code{"eva"} value. The EVA engine exists in this package and is
+reachable as a research route, but it is not wired to \code{\link[=gllvmTMB]{gllvmTMB()}}, and an
+argument value that could only ever raise an error would advertise a
+capability the package does not have. Its own measurements are the reason
+it is not a candidate here: EVA delivers valid inference for the
+regression coefficients but not for \verb{Lambda Lambda'}, which is the
+between-response covariance this package exists to estimate.}
 
 \item{aghq}{Adaptive Gauss-Hermite quadrature for the between-unit latent
 block. \code{FALSE} (default) fits by Laplace approximation. A positive integer

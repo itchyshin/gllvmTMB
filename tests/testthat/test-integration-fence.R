@@ -1,14 +1,51 @@
+## Build a complete crossed unit x trait Bernoulli frame. Defined at the top
+## because testthat evaluates the file top-to-bottom, so any test using it must
+## come after the definition.
+.fence_fixture <- function(n, p, seed = 1L) {
+  set.seed(seed)
+  Y <- matrix(rbinom(n * p, 1L, 0.5), n, p)
+  data.frame(y = as.numeric(t(Y)),
+             trait = factor(rep(seq_len(p), times = n)),
+             site  = factor(rep(seq_len(n), each = p)))
+}
+
 test_that("gllvmTMBcontrol gains integration, defaulting to laplace", {
   expect_identical(gllvmTMBcontrol()$integration, "laplace")
   expect_identical(gllvmTMBcontrol(integration = "va")$integration, "va")
-  expect_identical(gllvmTMBcontrol(integration = "eva")$integration, "eva")
   expect_error(gllvmTMBcontrol(integration = "nope"))
+})
+
+test_that("\"eva\" is not an admitted integration value", {
+  ## The EVA engine exists and stays reachable as a research route, but it is
+  ## not wired to gllvmTMB(). An argument value that could only ever error
+  ## would advertise a capability the package does not have -- and EVA's own
+  ## measurements are why it is not a candidate: it delivers valid inference
+  ## for the coefficients but not for Lambda Lambda', which is the estimand
+  ## this package exists to compute.
+  expect_error(gllvmTMBcontrol(integration = "eva"), "should be one of")
+  ## The research route is untouched by that decision.
+  expect_identical(
+    .approximation_engine_fit("eva", fixture = "bernoulli")$engine, "eva"
+  )
+})
+
+test_that("a hand-built control list cannot smuggle an unrouted route through", {
+  ## `gllvmTMBcontrol()` is the documented gate, but it is not the only way a
+  ## control list can be constructed. An unrouted value must still abort rather
+  ## than fall through and come back as a Laplace fit.
+  df <- .fence_fixture(n = 120L, p = 6L)
+  ctl <- gllvmTMBcontrol()
+  ctl$integration <- "eva"          # bypasses match.arg entirely
+  expect_error(
+    gllvmTMB(y ~ 0 + trait + latent(0 + trait | site, d = 2L, unique = FALSE),
+             data = df, family = stats::binomial(), unit = "site", control = ctl),
+    "not a routed integration method"
+  )
 })
 
 test_that("AGHQ and a variational route cannot be requested together", {
   ## They are alternative evaluations of the same integral, not layers.
   expect_error(gllvmTMBcontrol(integration = "va", aghq = TRUE), "cannot be combined")
-  expect_error(gllvmTMBcontrol(integration = "eva", aghq = TRUE), "cannot be combined")
   expect_no_error(gllvmTMBcontrol(integration = "laplace", aghq = TRUE))
   expect_no_error(gllvmTMBcontrol(integration = "va", aghq = FALSE))
 })
@@ -58,15 +95,6 @@ test_that("n = 40 is refused because the measurement says so, not by taste", {
   )
 })
 
-## Build a complete crossed unit x trait Bernoulli frame.
-.fence_fixture <- function(n, p, seed = 1L) {
-  set.seed(seed)
-  Y <- matrix(rbinom(n * p, 1L, 0.5), n, p)
-  data.frame(y = as.numeric(t(Y)),
-             trait = factor(rep(seq_len(p), times = n)),
-             site  = factor(rep(seq_len(n), each = p)))
-}
-
 test_that("a variational request never silently returns a Laplace fit", {
   ## The failure this guards against is not an error, it is a SUCCESS that
   ## quietly ignored the argument -- the caller keeps a Laplace fit believing
@@ -75,13 +103,11 @@ test_that("a variational request never silently returns a Laplace fit", {
   df <- .fence_fixture(n = 120L, p = 6L)
   fml <- y ~ 0 + trait + latent(0 + trait | site, d = 2L, unique = FALSE)
 
-  ## "eva" is still unrouted and must still abort rather than fall back.
-  expect_error(
-    gllvmTMB(fml, data = df, family = stats::binomial(), unit = "site",
-             control = gllvmTMBcontrol(integration = "eva")),
-    "not yet routed"
-  )
-  ## …and the out-of-region case fails on the FENCE, before any parsing, so the
+  ## The unrouted-route case is covered by its own test above (a hand-built
+  ## control list is now the only way to reach one, since `gllvmTMBcontrol()`
+  ## admits "laplace" and "va" only).
+  ##
+  ## Here: the out-of-region case fails on the FENCE, before any parsing, so the
   ## more specific complaint is the one the user sees.
   expect_error(
     gllvmTMB(fml, data = df, family = stats::binomial(), unit = "site",

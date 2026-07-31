@@ -3823,6 +3823,13 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     theta_diag_B_slope = rep(0.0, n_lhs_cols_B_diag),
     s_B_slope    = matrix(0, nrow = n_lhs_cols_B_diag, ncol = n_sites),
     theta_rr_W   = if (use_rr_W) init_rr_theta(n_traits, d_W) else rep(0.0, theta_rr_W_len),
+    ## NOTE (#851): giving the W tier the same scaled Psi start and seeded
+    ## scores as the B tier was TRIED and REVERTED. It was a natural symmetry
+    ## argument and it did not survive its own test: the k = 5000 residual moved
+    ## 0.0204 -> 0.0202 (noise) while k = 100 got about 10x looser
+    ## (6.4e-06 -> 7.0e-05, both still well inside tolerance). No evidence for
+    ## it, so it is not carried. The residual scale error is NOT W-tier
+    ## asymmetry.
     z_W          = matrix(0, nrow = max(d_W, 1L), ncol = n_site_species),
     theta_diag_W = rep(0.0, n_traits),
     s_W          = matrix(0, nrow = n_traits, ncol = n_site_species),

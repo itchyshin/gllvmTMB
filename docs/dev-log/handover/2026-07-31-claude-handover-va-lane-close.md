@@ -4,6 +4,29 @@ Date: 2026-07-31. Author: Claude. Target: **Claude** (same platform), fresh lane
 Branch `claude/va-in-06-20260730`, **pushed**. Worktree `/private/tmp/gllvmtmb-va-in-06`.
 Commit list: `git log --oneline origin/main..origin/claude/va-in-06-20260730`.
 
+## ⚠ UPDATE — five things happened after this file was first written
+
+1. **THE CAMPAIGN IS RUNNING RIGHT NOW.** Do **not** delete the worktree
+   `/private/tmp/gllvmtmb-va-in-06`, and do not `git clean` it — the run is writing per-cell output
+   there and the resume path depends on those files. Check progress with
+   `ls dev/va-gate3/results/cells/ | wc -l` against 2,160.
+2. **Both pass rules are now implemented.** `analyse-gate3.R` had only R1 (raw); the frozen spec
+   requires R1 **and** R2 (paired exclusion of ML-degenerate replicates). R2 landed *before* results
+   were visible, which is what kept it inside §11. On partial data R1 showed **12 cells with
+   `sigma_rmse_ml > 100`** — VA "passing" because Laplace exploded — and R2 shows **0**.
+3. **The routing job is now a line-numbered brief**, not an open question:
+   `docs/dev-log/2026-07-31-integration-routing-brief.md`. Every input the engine needs already
+   exists in `fit-multi.R` by **line 2256**; insert the branch there. The real work is the *return
+   object*, and the brief recommends a distinct `c("gllvmTMB_va","gllvmTMB")` class.
+4. **Read `dev/va-gate3/results/LIVENESS-NOTE.md` before judging the campaign dead.** The
+   `run-gate3.R` processes sit at **0.0% CPU in state `SN`** by design — they sleep while their
+   persistent `callr` sessions compute. I misread that as a deadlock and killed a healthy run. The
+   correct check counts **all** R processes; healthy is ~30 processes at 1300–1500% total CPU.
+5. **Live cell output is now `.gitignore`d.** I had committed 40 per-cell `.rds` files from a
+   running campaign, against this repo's own established convention. Untracked with `--cached`, so
+   the files remain on disk. Add the *durable* artefacts explicitly when the run completes: the
+   combined `gate3.rds`/`.csv`, both verdict CSVs, and the `.md` records.
+
 ## The position, settled
 
 **Laplace stays the default, with AGHQ for accuracy. VA and EVA are opt-in.** (Maintainer,

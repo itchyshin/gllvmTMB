@@ -1,0 +1,151 @@
+"n","seed","arm","converged","stop_reason","passes","par_shift","frob_rat","elapsed_s"
+100,2004,"aghq",FALSE,"stalled (no honest descent at cap 1 after backtracking)",8,0,35.9935975740646,2.74155521392822
+100,2012,"aghq",FALSE,"stalled (no honest descent at cap 1 after backtracking)",8,0,16.1481922871528,2.73598957061768
+100,2003,"aghq",FALSE,"stalled (no honest descent at cap 1 after backtracking)",8,0,29.7002368912113,2.88202476501465
+100,2016,"aghq",FALSE,"stalled (no honest descent at cap 1 after backtracking)",9,0.854536693434947,10.7042257978754,2.95062518119812
+100,2002,"aghq",FALSE,"stalled (no honest descent at cap 1 after backtracking)",11,0.145524374782368,16.3024907966695,3.40938258171082
+100,2006,"aghq",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.000128 exceeds the tolerance of 0.0001",12,1.56211844034725,1.52232675089721,3.45280599594116
+100,2013,"aghq",FALSE,"stalled (no honest descent at cap 1 after backtracking)",12,0.0559115968531403,15.5757684236028,3.48413372039795
+100,2008,"aghq",FALSE,"stalled (no honest descent at cap 1 after backtracking)",12,0.0860738655396698,20.456924222614,3.55127668380737
+100,2009,"aghq",FALSE,"stalled (no honest descent at cap 1 after backtracking)",14,0.792024815687521,29.7499890609532,3.9286777973175
+100,2015,"aghq",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.00012 exceeds the tolerance of 0.0001",15,2.40820648312562,1.45424062058953,4.25908994674683
+100,2018,"aghq",FALSE,"stalled (no honest descent at cap 1 after backtracking)",20,1.43117168349403,15.1576016716839,4.99143195152283
+100,2023,"aghq",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.000143 exceeds the tolerance of 0.0001",12,1.00753885481544,1.49615199487295,3.60457324981689
+100,2024,"aghq",FALSE,"stalled (no honest descent at cap 1 after backtracking)",9,0.561164462899799,25.3152279067682,3.12917900085449
+100,2017,"aghq",FALSE,"stalled (no honest descent at cap 1 after backtracking)",35,2.08673249928823,7.9084858877083,7.64059162139893
+100,2014,"aghq",FALSE,"stalled (no honest descent at cap 1 after backtracking)",44,3.25980536451738,1.95067967777935,9.13103914260864
+100,2011,"aghq",FALSE,"stalled (no honest descent at cap 1 after backtracking)",47,4.47764474049531,3.404620956022,9.60158467292786
+400,2017,"aghq",FALSE,"stalled (no honest descent at cap 1 after backtracking)",8,0,11.7893264166557,9.76915192604065
+100,2005,"aghq",FALSE,"stalled (no honest descent at cap 1 after backtracking)",48,4.8200667105091,3.04466235449532,9.92540335655212
+100,2010,"aghq",FALSE,"stalled (no honest descent at cap 1 after backtracking)",49,4.80655701493661,2.41742135923645,9.93990516662598
+100,2019,"aghq",FALSE,"stalled (no honest descent at cap 1 after backtracking)",49,2.29077144937889,1.66676346589322,9.91531419754028
+100,2001,"aghq",FALSE,"stalled (no honest descent at cap 1 after backtracking)",56,2.48921854925333,1.80089105326077,11.2492225170135
+100,2007,"aghq",FALSE,"stalled (no honest descent at cap 1 after backtracking)",58,5.87100064577307,2.18154599375214,11.7732150554657
+400,2003,"aghq",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.000342 exceeds the tolerance of 0.0001",11,0.323625106288334,0.943581002848258,12.1077055931091
+400,2019,"aghq",FALSE,"stalled (no honest descent at cap 1 after backtracking)",12,0.967454486882249,15.6566626930177,13.2431292533875
+400,2006,"aghq",FALSE,"adaptation failed at pass 13; kept the last honest iterate",12,4.24931938129447,2.3578601071363,13.4048137664795
+400,2002,"aghq",FALSE,"stalled (no honest descent at cap 1 after backtracking)",12,0.739389886988394,13.2377932696092,13.7429909706116
+100,2002,"aghq_ridge",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.000176 exceeds the tolerance of 0.0001",14,2.70733303546213,1.1805594016151,3.97052049636841
+100,2020,"aghq",FALSE,"stalled (no honest descent at cap 1 after backtracking)",72,4.29447737564798,1.87474713001393,14.2429118156433
+400,2014,"aghq",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.000132 exceeds the tolerance of 0.0001",14,0.390689592740876,0.745780134087327,14.3916187286377
+100,2021,"aghq",FALSE,"stalled (no honest descent at cap 1 after backtracking)",57,5.36041102257268,2.55931401308187,11.7585544586182
+400,2001,"aghq",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.000277 exceeds the tolerance of 0.0001",14,0.755899042196352,1.10120118263616,14.5373392105103
+400,2005,"aghq",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.000298 exceeds the tolerance of 0.0001",14,0.380401949459735,1.07676848132825,14.5518403053284
+100,2022,"aghq",FALSE,"stalled (no honest descent at cap 1 after backtracking)",57,6.88182685289828,2.43810799281833,11.6660010814667
+400,2012,"aghq",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.000378 exceeds the tolerance of 0.0001",14,0.574932991401665,1.13887999062829,14.7071483135223
+400,2007,"aghq",FALSE,"stalled (no honest descent at cap 1 after backtracking)",14,0.0244243349527774,12.9088286410083,15.2755219936371
+100,2003,"aghq_ridge",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.000156 exceeds the tolerance of 0.0001",12,2.21068376943583,1.31470873427983,3.73759627342224
+100,2025,"aghq",FALSE,"stalled (no honest descent at cap 1 after backtracking)",44,2.97349409221737,2.16399796759278,9.3743691444397
+100,2004,"aghq_ridge",TRUE,"converged (adaptation mode fixed; gradient below tolerance)",12,2.0145417210431,1.71592711591907,3.56381750106812
+400,2008,"aghq",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.000173 exceeds the tolerance of 0.0001",17,1.37397833216708,1.2343714524968,17.0729491710663
+400,2023,"aghq",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.000208 exceeds the tolerance of 0.0001",14,0.304457390897574,1.01246031090375,14.3971359729767
+100,2001,"aghq_ridge",FALSE,"stalled (no honest descent at cap 1 after backtracking)",41,0.594000656998793,1.27784163042238,8.64849305152893
+400,2011,"aghq",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.000213 exceeds the tolerance of 0.0001",19,2.44621585386908,1.84000091628677,19.0796008110046
+400,2013,"aghq",FALSE,"stalled (no honest descent at cap 1 after backtracking)",19,1.10664757565839,15.4344946103159,19.9983747005463
+100,2009,"aghq_ridge",TRUE,"converged (adaptation mode fixed; gradient below tolerance)",11,2.13929732275251,1.22649535772167,3.55869460105896
+100,2007,"aghq_ridge",FALSE,"stalled (no honest descent at cap 1 after backtracking)",38,0.315671724379897,0.931932111802978,8.24200987815857
+100,2005,"aghq_ridge",FALSE,"stalled (no honest descent at cap 1 after backtracking)",43,0.574598725900519,1.06723120333618,8.8317608833313
+100,2006,"aghq_ridge",FALSE,"stalled (no honest descent at cap 1 after backtracking)",41,0.479512083251122,1.23195315623112,8.76661658287048
+100,2010,"aghq_ridge",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.000158 exceeds the tolerance of 0.0001",12,0.397244276152404,1.0300967060116,3.63494920730591
+400,2001,"aghq_ridge",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.000278 exceeds the tolerance of 0.0001",14,0.504619604289981,1.04607000507751,14.533686876297
+400,2002,"aghq_ridge",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.000228 exceeds the tolerance of 0.0001",14,2.36524287845085,1.01833279053194,15.6729953289032
+100,2008,"aghq_ridge",FALSE,"stalled (no honest descent at cap 1 after backtracking)",42,1.77270396515988,1.22601158816875,8.99088954925537
+100,2011,"aghq_ridge",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.000118 exceeds the tolerance of 0.0001",11,0.583192231743079,1.61782830225983,3.45118594169617
+400,2005,"aghq_ridge",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.000297 exceeds the tolerance of 0.0001",14,0.315668156921065,1.05130419544524,14.3271832466125
+400,2006,"aghq_ridge",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.000205 exceeds the tolerance of 0.0001",14,1.07810472927424,1.20488579662944,14.9860763549805
+400,2007,"aghq_ridge",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.000261 exceeds the tolerance of 0.0001",14,2.85282431412385,1.16712821082116,15.624388217926
+400,2009,"aghq_ridge",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.000302 exceeds the tolerance of 0.0001",14,0.776601177610966,1.16197713571897,14.154821395874
+100,2012,"aghq_ridge",FALSE,"stalled (no honest descent at cap 1 after backtracking)",41,2.04409487827386,1.43386390563755,8.66107797622681
+100,2014,"aghq_ridge",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.000159 exceeds the tolerance of 0.0001",11,0.881953213349348,0.947645988996938,3.37997984886169
+100,2013,"aghq_ridge",FALSE,"stalled (no honest descent at cap 1 after backtracking)",43,3.05788258043872,1.11729859947697,9.27594780921936
+100,2015,"aghq_ridge",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.000117 exceeds the tolerance of 0.0001",11,0.629036715099866,1.05268686828417,3.40959310531616
+400,2011,"aghq_ridge",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.000381 exceeds the tolerance of 0.0001",15,1.14851571127192,1.38532973952758,16.0212967395782
+400,2003,"aghq_ridge",FALSE,"stalled (no honest descent at cap 1 after backtracking)",30,0.29299928880373,0.92286215518466,27.4340918064117
+400,2012,"aghq_ridge",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.000255 exceeds the tolerance of 0.0001",14,0.460543185142935,1.09022059925984,14.3261671066284
+400,2015,"aghq",FALSE,"stalled (no honest descent at cap 1 after backtracking)",47,1.98063730552059,1.48492430376139,41.6346325874329
+100,2017,"aghq_ridge",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.000135 exceeds the tolerance of 0.0001",12,2.30695657011363,1.08132726513669,3.75140118598938
+400,2004,"aghq",FALSE,"stalled (no honest descent at cap 1 after backtracking)",51,2.65635472568459,2.62401495747077,45.5307245254517
+400,2020,"aghq",FALSE,"stalled (no honest descent at cap 1 after backtracking)",52,3.09673003589858,1.40026329225025,45.4965212345123
+400,2025,"aghq",FALSE,"stalled (no honest descent at cap 1 after backtracking)",42,1.37469276737042,1.30849308026792,37.8589224815369
+400,2009,"aghq",FALSE,"stalled (no honest descent at cap 1 after backtracking)",51,1.12892361240262,1.30853080241051,46.1546256542206
+400,2013,"aghq_ridge",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.000257 exceeds the tolerance of 0.0001",16,2.70091097971557,1.10730863109803,18.0236353874207
+400,2014,"aghq_ridge",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.000264 exceeds the tolerance of 0.0001",14,0.312347293262563,0.721771086274838,14.6975424289703
+400,2010,"aghq",FALSE,"stalled (no honest descent at cap 1 after backtracking)",53,3.00965270149213,1.69412493600253,48.0154175758362
+400,2024,"aghq",FALSE,"stalled (no honest descent at cap 1 after backtracking)",49,2.43181472728738,1.35219432051574,43.6258807182312
+100,2018,"aghq_ridge",TRUE,"converged (adaptation mode fixed; gradient below tolerance)",11,2.01621856969393,1.1105327342157,3.5703649520874
+400,2021,"aghq",FALSE,"stalled (no honest descent at cap 1 after backtracking)",52,1.72442907459721,1.21312512888608,47.3333756923676
+100,2019,"aghq_ridge",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.000106 exceeds the tolerance of 0.0001",11,0.527657477116216,0.994704381207915,3.42241239547729
+100,2016,"aghq_ridge",FALSE,"stalled (no honest descent at cap 1 after backtracking)",52,1.93963990858407,1.07695300768778,10.8829619884491
+400,2015,"aghq_ridge",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.00034 exceeds the tolerance of 0.0001",14,0.572906893586962,1.1331837964048,14.9039723873138
+400,2016,"aghq",FALSE,"stalled (no honest descent at cap 1 after backtracking)",58,3.35049012347724,1.71242521550092,51.5417010784149
+400,2016,"aghq_ridge",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.000311 exceeds the tolerance of 0.0001",14,1.26354596154201,1.0581954026412,14.7783441543579
+400,2022,"aghq",FALSE,"stalled (no honest descent at cap 1 after backtracking)",57,4.41709881469899,1.89076590680199,51.5691483020782
+100,2022,"aghq_ridge",TRUE,"converged (adaptation mode fixed; gradient below tolerance)",11,0.501334062786691,0.980605019946181,3.46344447135925
+1600,2008,"aghq",FALSE,"adaptation failed at pass 13; kept the last honest iterate",12,1.82061970899914,1.38101452075313,55.3655753135681
+100,2020,"aghq_ridge",FALSE,"stalled (no honest descent at cap 1 after backtracking)",41,0.384366713608584,0.861350676147349,8.83957958221436
+100,2023,"aghq_ridge",TRUE,"converged (adaptation mode fixed; gradient below tolerance)",11,0.545809957313465,1.26220175405027,3.24546837806702
+100,2021,"aghq_ridge",FALSE,"stalled (no honest descent at cap 1 after backtracking)",41,0.643919693318984,1.17527372205442,8.65593838691711
+400,2004,"aghq_ridge",FALSE,"stalled (no honest descent at cap 1 after backtracking)",51,1.09627085742118,1.50035864243682,45.2854056358337
+400,2018,"aghq_ridge",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.000268 exceeds the tolerance of 0.0001",14,2.2692371966089,1.30766159631274,15.4959230422974
+1600,2012,"aghq",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.000612 exceeds the tolerance of 0.0001",14,0.54324157118552,1.03871624673909,62.505841255188
+400,2019,"aghq_ridge",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.000268 exceeds the tolerance of 0.0001",14,2.29223757765326,1.08749568969328,15.4304871559143
+400,2008,"aghq_ridge",FALSE,"stalled (no honest descent at cap 1 after backtracking)",52,0.881265040262274,1.05260327498878,47.13720703125
+1600,2020,"aghq",FALSE,"adaptation failed at pass 15; kept the last honest iterate",14,2.15927842167932,1.30517332538967,64.3928959369659
+100,2025,"aghq_ridge",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.000187 exceeds the tolerance of 0.0001",12,0.758492213264849,1.12272651698929,3.65348362922668
+400,2010,"aghq_ridge",FALSE,"stalled (no honest descent at cap 1 after backtracking)",48,1.0574365367105,1.14256321939683,43.4936964511871
+1600,2002,"aghq",FALSE,"stalled (no honest descent at cap 1 after backtracking)",14,0.0184628663473682,10.6403448832737,65.1175887584686
+400,2020,"aghq_ridge",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.000342 exceeds the tolerance of 0.0001",15,1.16132501695976,0.986445067080874,16.103816986084
+100,2024,"aghq_ridge",FALSE,"stalled (no honest descent at cap 1 after backtracking)",42,2.58779466966752,1.48264530766399,9.11355042457581
+400,2022,"aghq_ridge",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.000135 exceeds the tolerance of 0.0001",12,0.736561007404827,1.02259671438107,13.4630835056305
+1600,2018,"aghq",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.000536 exceeds the tolerance of 0.0001",16,1.35638097740117,1.11134670672082,69.5998921394348
+1600,2003,"aghq",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.000561 exceeds the tolerance of 0.0001",16,0.593766620547038,0.933037813352624,69.8851175308228
+400,2023,"aghq_ridge",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.000265 exceeds the tolerance of 0.0001",14,0.26223203428965,0.995910061460701,14.6525509357452
+1600,2001,"aghq",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.000518 exceeds the tolerance of 0.0001",16,0.792414692513842,1.14321924754849,70.1090927124023
+1600,2014,"aghq",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.000804 exceeds the tolerance of 0.0001",17,1.50366227350763,1.06040388694326,72.9036195278168
+400,2024,"aghq_ridge",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.000307 exceeds the tolerance of 0.0001",14,1.26188360672676,1.05779335717485,14.3122806549072
+1600,2002,"aghq_ridge",FALSE,"stalled (no honest descent at cap 1 after backtracking)",14,0.01832406034926,10.6394024754383,65.8965635299683
+400,2025,"aghq_ridge",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.000266 exceeds the tolerance of 0.0001",14,0.756019758208419,1.13348330766122,14.6813015937805
+1600,2001,"aghq_ridge",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.000666 exceeds the tolerance of 0.0001",16,0.668408598079257,1.11451803354763,68.7241742610931
+1600,2005,"aghq",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.000865 exceeds the tolerance of 0.0001",19,0.547961866002018,1.00060220263939,78.6700251102448
+1600,2017,"aghq",FALSE,"stalled (no honest descent at cap 1 after backtracking)",18,0.777435043577331,12.6999716367353,78.7245759963989
+1600,2007,"aghq",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.000724 exceeds the tolerance of 0.0001",19,1.74881181874474,1.11067614922842,80.1210029125214
+1600,2025,"aghq",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.00043 exceeds the tolerance of 0.0001",17,1.99208499094989,1.37503861965414,72.7430386543274
+1600,2003,"aghq_ridge",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.000683 exceeds the tolerance of 0.0001",16,0.545204011618765,0.924893210654565,69.5511546134949
+1600,2011,"aghq",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.000543 exceeds the tolerance of 0.0001",20,1.54993771331763,1.29893143849133,83.352769613266
+1600,2007,"aghq_ridge",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.000624 exceeds the tolerance of 0.0001",16,1.2659474105964,1.04247971213526,68.9016404151917
+1600,2004,"aghq",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.000729 exceeds the tolerance of 0.0001",20,2.46542115307247,1.62732060794581,84.7203414440155
+400,2021,"aghq_ridge",FALSE,"stalled (no honest descent at cap 1 after backtracking)",41,0.968979955960776,1.04812153874959,36.8608112335205
+1600,2012,"aghq_ridge",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.000672 exceeds the tolerance of 0.0001",14,0.511045531820933,1.02966812924809,61.5728478431702
+1600,2006,"aghq_ridge",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.000608 exceeds the tolerance of 0.0001",17,1.04450842475585,1.24034022542391,73.1229317188263
+1600,2004,"aghq_ridge",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.000279 exceeds the tolerance of 0.0001",17,1.34419420349232,1.21406589198901,73.8705062866211
+1600,2005,"aghq_ridge",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.000463 exceeds the tolerance of 0.0001",17,0.513240780599573,0.993498977609653,73.2918300628662
+1600,2009,"aghq_ridge",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.000489 exceeds the tolerance of 0.0001",17,0.96446018153277,1.01845552798178,71.980633020401
+400,2017,"aghq_ridge",FALSE,"stalled (no honest descent at cap 1 after backtracking)",52,3.35937532551298,1.01657519195177,45.9847962856293
+1600,2011,"aghq_ridge",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.000756 exceeds the tolerance of 0.0001",16,1.00703711798899,1.14422835892703,68.9944398403168
+1600,2024,"aghq",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.000607 exceeds the tolerance of 0.0001",21,0.88716118487873,1.00101969911041,86.8579607009888
+1600,2013,"aghq_ridge",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.000602 exceeds the tolerance of 0.0001",16,1.44900543001045,1.05099179832346,68.7130703926086
+1600,2015,"aghq_ridge",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.000557 exceeds the tolerance of 0.0001",15,0.604399887791733,0.980177034481378,63.3326902389526
+1600,2014,"aghq_ridge",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.000847 exceeds the tolerance of 0.0001",16,1.15426838422515,0.907844058538185,68.7440619468689
+1600,2018,"aghq_ridge",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.000755 exceeds the tolerance of 0.0001",16,0.989937784838177,1.04439095909064,66.2656173706055
+1600,2019,"aghq_ridge",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.00056 exceeds the tolerance of 0.0001",16,0.618194063875956,1.07737829814961,67.048877954483
+1600,2023,"aghq_ridge",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.000716 exceeds the tolerance of 0.0001",14,0.901523337709169,1.06310326449305,59.0637540817261
+1600,2020,"aghq_ridge",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.000741 exceeds the tolerance of 0.0001",16,1.13778087312074,1.03074705717855,67.1968176364899
+1600,2022,"aghq_ridge",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.000617 exceeds the tolerance of 0.0001",15,0.717410392258767,0.96853429205206,63.4894917011261
+1600,2017,"aghq_ridge",FALSE,"stalled (no honest descent at cap 1 after backtracking)",18,0.778935500314636,12.6629191089507,75.3908350467682
+1600,2024,"aghq_ridge",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.000705 exceeds the tolerance of 0.0001",15,0.801026112891666,0.983562397872078,61.9670786857605
+1600,2025,"aghq_ridge",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.000816 exceeds the tolerance of 0.0001",15,1.08439844297941,1.1020863375637,62.1908395290375
+400,2018,"aghq",FALSE,"stalled (no honest descent at cap 1 after backtracking)",159,7.64527998286532,13.0108855730205,131.478448390961
+1600,2015,"aghq",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.00512 exceeds the tolerance of 0.0001",36,0.66208381690471,0.991953503321226,134.027876615524
+1600,2008,"aghq_ridge",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.0684 exceeds the tolerance of 0.0001",37,0.991305867764558,1.08081502411006,138.574968099594
+1600,2009,"aghq",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.000566 exceeds the tolerance of 0.0001",46,1.15895347332419,1.06752407416559,169.310931682587
+1600,2016,"aghq",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.00107 exceeds the tolerance of 0.0001",48,1.56236607312588,1.18708286022036,174.94212603569
+1600,2023,"aghq",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.00131 exceeds the tolerance of 0.0001",49,1.29178677523166,1.17256559154282,176.412692785263
+1600,2006,"aghq",FALSE,"stalled (no honest descent at cap 1 after backtracking)",52,1.45694721728927,1.37310076907653,188.954055070877
+1600,2010,"aghq_ridge",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.00167 exceeds the tolerance of 0.0001",47,1.147410529915,1.20061954833452,169.996867418289
+1600,2010,"aghq",FALSE,"stalled (no honest descent at cap 1 after backtracking)",54,1.62000480163576,1.38933084215763,193.963225603104
+1600,2021,"aghq",FALSE,"stalled (no honest descent at cap 1 after backtracking)",54,1.76030611789233,1.23146095648701,195.309620380402
+1600,2019,"aghq",FALSE,"stalled (no honest descent at cap 1 after backtracking)",57,0.710181335083235,1.09432239555482,205.187047243118
+1600,2016,"aghq_ridge",FALSE,"stopped: adaptation mode fixed and objective stagnated, but max |grad| = 0.00152 exceeds the tolerance of 0.0001",46,0.935329798776691,1.01664152356826,166.684899568558
+1600,2013,"aghq",FALSE,"stalled (no honest descent at cap 1 after backtracking)",58,2.30041930288878,1.20326272313862,207.858870029449
+1600,2022,"aghq",FALSE,"stalled (no honest descent at cap 1 after backtracking)",60,0.823891415068986,0.989418884585028,213.982446908951
+1600,2021,"aghq_ridge",FALSE,"stalled (no honest descent at cap 1 after backtracking)",52,1.35591246738922,1.13875292187483,183.046047925949

@@ -1,0 +1,53 @@
+[1] TRUE
+[1] TRUE
+=== 24 AGHQ ESTIMATOR CAMPAIGN -- stage smoke ===
+gllvmTMB 0.6.0 | built load_all (source) | git d1cdedca
+master seed 20260731 | 1 cells x 40 seeds = 40 replicates x 5 arms = 200 fits | 4 cores
+
+    family   n lam_sd p q
+1 binomial 100      1 6 2
+
+elapsed 5.6 min | 200 rows
+
+=== PERFORMANCE TABLE (mean [MCSE]) ===
+family        n    lam arm             nfit          rho MAE      sigma |r-1|           frob  runaway%     conv%
+binomial    100    1.0 laplace           40   0.3812 [0.0294]   0.2144 [0.0305]   1.230 [2.012]     48[8]      100%
+binomial    100    1.0 laplace_ridge     40   0.3235 [0.0279]   0.1504 [0.0205]   0.891 [0.037]      0[0]      100%
+binomial    100    1.0 aghq              40   0.3803 [0.0299]   0.3363 [0.0508]   2.176 [1.978]     55[8]        2%
+binomial    100    1.0 aghq_alt          40   0.3375 [0.0285]   0.3764 [0.0375]   1.743 [0.109]     40[8]       10%
+binomial    100    1.0 aghq_ms           40   0.3375 [0.0285]   0.3766 [0.0374]   1.743 [0.109]     38[8]        0%
+binomial    100    1.0 aghq_ridge        40   0.3311 [0.0278]   0.2178 [0.0282]   1.071 [0.035]      0[0]       15%
+
+=== PAIRED CONTRASTS vs the PRE-REGISTERED rule (delta = 0.02) ===
+positive dbar = the SECOND arm is more accurate
+
+family        n    lam contrast (A - B)           npair        dbar     95%% CI   verdict
+binomial    100    1.0 laplace - aghq_ms             40      0.0436 0.0102,0.0770   INCONCLUSIVE  [OPTIMISER-LIMITED: AGHQ converged 0%]
+binomial    100    1.0 laplace_ridge - aghq_ridge    40     -0.0077 -0.0155,0.0002   NO PRACTICAL DIFFERENCE  [OPTIMISER-LIMITED: AGHQ converged 15%]
+binomial    100    1.0 aghq - aghq_ms                40      0.0427 0.0167,0.0687   INCONCLUSIVE  [OPTIMISER-LIMITED: AGHQ converged 0%]
+
+=== S2 quadrature-moved rate (par_shift > 1e-6) ===
+A family where this is ~0 needs no accuracy claim: the optimisation did not move.
+  binomial  n=100   lam=1.0 : moved  85.0% [MCSE 5.6%]  median |shift| 9.776e-01
+
+=== SENSITIVITY (pre-registered): primary contrast, non-runaway fits only ===
+  binomial  n=100   lam=1.0 : dbar -0.0253 [MCSE 0.0071] on 18/40 pairs retained
+
+=== CONVERGENCE (engine's own criterion: aghq$stop_reason) ===
+NOT a gate -- a reported outcome. opt$convergence on the AGHQ path is the per-pass cap.
+  aghq         converged   2.5% [MCSE 2.5%]  of 40 fits
+  aghq_alt     converged  10.0% [MCSE 4.7%]  of 40 fits
+  aghq_ridge   converged  15.0% [MCSE 5.6%]  of 40 fits
+
+  why the loop stopped:
+    81 x  stalled (no honest descent at cap 1 after backtracking)
+    26 x  stopped: adaptation mode fixed and objective stagnated, but max |grad| = <value> exceeds...
+    11 x  converged (adaptation mode fixed; gradient below tolerance)
+     1 x  adaptation failed at pass 10; kept the last honest iterate
+     1 x  adaptation failed at pass 13; kept the last honest iterate
+
+=== PRIMARY CONTRAST on CONVERGED-ONLY fits (§P.3b population ii) ===
+
+=== FIT FAILURES: 0 ===
+  none
+EXIT=0

@@ -29,6 +29,7 @@ gllvmTMBcontrol(
   aghq_f_tol = 1e-09,
   aghq_escalate_patience = 3L,
   aghq_rho_min = 1/64,
+  warn_runaway = TRUE,
   allow_nongaussian_reml = FALSE,
   ...
 )

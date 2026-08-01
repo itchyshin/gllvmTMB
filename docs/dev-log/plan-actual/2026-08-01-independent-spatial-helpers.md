@@ -57,3 +57,20 @@ parameterisation, barrier feature, spatiotemporal feature, or drmTMB code was
 implemented. Historical design notes that cite sdmTMB as a comparator or
 sister-package boundary were retained; only false current inheritance and
 citation-obligation claims were removed.
+
+## Integration follow-through
+
+The initial closeout correctly withheld merge readiness because three
+repository-wide tests were red. At the maintainer's direction, the continuation
+diagnosed and repaired all three rather than merging around them. It also fixed
+the synthetic `some::wrapper()` dependency warning found by the full package
+check. Current `origin/main`, including PR #885's AGHQ work, merged cleanly; a
+combined focused suite confirmed that AGHQ routing and spatial mesh
+normalisation coexist in `R/fit-multi.R`.
+
+The exact combined tree passed the full no-manual package check with zero
+errors. The remaining local warning was repository-network access plus the
+synthetic fixture; after the fixture repair, the dependency-focused check had
+zero warnings. The two remaining notes are local clock verification and macOS
+`xcrun_db` detritus. Networked three-OS CI is therefore the final external gate,
+not an unresolved package-level test failure.

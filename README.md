@@ -237,7 +237,8 @@ Run `citation("gllvmTMB")` for formatted entries:
 The spatial helpers are independently implemented in gllvmTMB using the
 published SPDE/GMRF construction and the public `fmesher` API. We thank the
 sdmTMB authors for the inspiration its spatial interface provided; no sdmTMB
-source code is included or adapted. TMB itself is a runtime dependency rather
+source code is included or adapted (helper scope: SPA-01; the broader spatial
+family remains partial under FG-13). TMB itself is a runtime dependency rather
 than included code; the gllvmTMB C++ engine in `src/gllvmTMB.cpp` is original
 work by the package author, written against the TMB API.
 

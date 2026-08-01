@@ -273,3 +273,113 @@ supported for this branch, but the branch must not be described as globally
 merge-ready until current main's article policy, fixed-fixture convergence, and
 visual snapshot gates are resolved or formally adjudicated. The recovery
 checkpoint names the exact resume command and remaining gate.
+
+## Post-plan integration closure
+
+The maintainer subsequently authorised the recommended integration work. The
+three package-wide blockers above are now resolved rather than waived:
+
+1. The article guard now distinguishes actual `match.arg()` choice vectors from
+   functions that validate a larger custom set.
+2. The functional-phylogeography test now enforces the scale-free optimizer and
+   scaled-gradient criterion it claimed. The fitted spatial direction and
+   correlation recovery remain explicit assertions.
+3. The ellipse snapshot's four `0.01` coordinate changes were accepted only
+   after side-by-side rendering showed no visible geometry, label, colour, or
+   layout change.
+
+The Rose walk-around also removed a fictitious `some` package dependency from
+a quoted namespace-parser fixture without weakening that test. Current
+`origin/main` at `bb9eb75e`, including the independently completed AGHQ ridge
+work, was merged in `1ca93ec8`. The combined AGHQ/spatial focused suite,
+`pkgdown::check_pkgdown()`, the isolated sdmTMB oracle at `1e-10`, and
+`git diff --check` passed. A retained full no-manual check on the combined tree
+returned zero errors; after the quoted-fixture repair, a dependency-focused
+check returned zero errors and zero warnings, with only the environment's clock
+and `xcrun_db` notes.
+
+This supersedes the earlier merge-readiness withholding. The branch is ready
+for a draft pull request and networked three-OS CI; it still must not be merged
+unless those required checks pass.
+
+Rose's final pre-publish gate is PASS after the public scope statements were
+linked to SPA-01 and FG-13. Shannon's coordination gate is WARN because the
+open handover PR #881 is now stale and conflicting; the new integration PR will
+supersede it instead of merging its obsolete red-main wording.
+
+# Protocol-validated closeout addendum
+
+## 1. Goal
+
+Replace the inherited R-side spatial helpers with an independently authored
+literature/fmesher implementation while leaving the TMB likelihood unchanged.
+
+## 2. Implemented
+
+Independent mesh, CRS, compatibility, isotropic-range plotting, tests,
+documentation, provenance migration, black-box oracle, and package-wide gate
+repairs are implemented on `codex/spatial-independent-helpers`.
+
+## 3a. Decisions and Rejected Alternatives
+
+New objects use `gllvmTMBmesh`; legacy objects warn through a temporary bridge.
+True anisotropy was rejected for this arc because the engine estimates scalar
+`kappa`, not `H`. Copying sdmTMB or importing it at runtime was rejected.
+
+## 4. Files Touched
+
+The complete implementation, test, documentation, generated-help, provenance,
+and receipt inventory is recorded under the earlier “Files created or changed”
+heading. The integration continuation additionally changed three baseline test
+files and their paired SVG snapshot.
+
+## 5. Checks Run
+
+Focused and package-wide tests, retained `devtools::check()`, documentation,
+pkgdown, the isolated sdmTMB oracle, stale-provenance scans, and
+`git diff --check` were run. Exact commands and outcomes are recorded above and
+in `docs/dev-log/check-log.md`.
+
+## 6. Tests of the Tests
+
+Failure-before-fix evidence covered the article choice guard, the raw-versus-
+scaled gradient boundary, non-finite FEM matrices, empty CRS data, latent-slope
+range extraction, and the visual snapshot. The tests fail on their intended
+defects and pass after the narrow repairs.
+
+## 7a. Issue Ledger
+
+drmTMB issue #881 records future mesh/SPDE work. No gllvmTMB issue was silently
+closed; PR publication and CI are recorded separately from this report.
+
+## 8. Consistency Audit
+
+The formula grammar, TMB `A_proj/M0/M1/M2` interface, help, README, vignette,
+pkgdown index, citation, copyright, design records, and validation register were
+checked for agreement. The AGHQ/main merge retained both routing paths.
+
+## 9. What Did Not Go Smoothly
+
+The first closeout found three unrelated red tests, the first D-43 panel found
+three additional omissions, and the final package check exposed a fictitious
+`some` dependency. Each was diagnosed and repaired rather than waived.
+
+## 10. Known Residuals
+
+The compatibility bridge needs a later lifecycle decision. Local checks retain
+clock-verification and macOS `xcrun_db` notes. Networked three-OS CI remains the
+external merge gate.
+
+## 11. Team Learning
+
+Literature-first implementation plus a post-hoc executable oracle cleanly
+separated specification from comparison. Scale-free recovery evidence was more
+informative than a raw-gradient threshold at the same optimum.
+
+## 12. Cross-Product Coverage
+
+This arc covers R-side mesh construction, projection/FEM matrices, CRS,
+isotropic range plotting, legacy normalization, current spatial fit ingestion,
+and their documentation. It does NOT cover directional anisotropy,
+spatiotemporal fields, barriers, new spatial likelihoods, interval calibration,
+heavy recovery grids, or drmTMB implementation.

@@ -96,6 +96,62 @@ repair and returned DONE. This supports the independent-helper and
 code-provenance-debt-removal claims, but the global red tests withhold a
 merge-ready claim.
 
+### Package-wide integration closure
+
+At the maintainer's direction, the three current-main blockers were diagnosed
+and repaired before publishing this branch:
+
+- `test-article-prescribed-calls.R` had treated every character-vector default
+  as an exhaustive `match.arg()` choice list. The guard now inspects the
+  function body and applies that rule only when the argument is actually passed
+  to `match.arg()`. This preserves the explicitly validated
+  `methods = "profile_retention"` route.
+- `test-funcphylo-spatial-recovery.R` claimed a scale-free convergence arbiter
+  but asserted the composite flag that also requires the raw gradient to fall
+  below `0.01`. Under the test harness the fit had optimizer convergence,
+  scaled gradient `1.736e-6`, cosine recovery `0.99933`, and maximum correlation
+  error `2.17e-9`. The test now asserts optimizer convergence and scaled-gradient
+  stationarity, while retaining both recovery checks.
+- The dispatcher correlation-ellipse SVG differed only in four rendered
+  coordinates by `0.01`. Old and new images were rendered and visually
+  compared before accepting the current snapshot.
+- A quoted `some::wrapper()` parser fixture created a fictitious undeclared
+  package dependency. It now uses the already declared `stats` namespace while
+  preserving the same `::` parse-tree shape.
+
+The branch merged current `origin/main` at `bb9eb75e` (including PR #885) in
+`1ca93ec8`; the automatic overlap reconciliation retained both the independent
+mesh normalizer and the landed AGHQ routing. Verification on that combined
+tree:
+
+```sh
+Rscript --vanilla -e 'devtools::test(filter = "aghq-auto-ridge|aghq-auto-psi-equivalence|gllvmTMBcontrol|mesh|utm-conversions|anisotropy|stage4-spde|spatial-mode|spatial-orientation|article-prescribed-calls|funcphylo-spatial-recovery|plot-visual-snapshots", reporter = "summary")'
+Rscript --vanilla -e 'result <- devtools::check(args = "--no-manual", quiet = TRUE, check_dir = "/private/tmp/gllvmtmb-spatial-final-check-20260801", error_on = "never"); cat(sprintf("CHECK_LEDGER errors=%d warnings=%d notes=%d\\n", length(result$errors), length(result$warnings), length(result$notes)))'
+Rscript --vanilla -e 'devtools::test(filter = "scan-deprecated-namespace", reporter = "summary")'
+Rscript --vanilla -e 'result <- devtools::check(args = c("--no-manual", "--no-tests", "--no-examples", "--no-vignettes"), quiet = TRUE, check_dir = "/private/tmp/gllvmtmb-spatial-deps-check-20260801", error_on = "never"); cat(sprintf("CHECK_LEDGER errors=%d warnings=%d notes=%d\\n", length(result$errors), length(result$warnings), length(result$notes)))'
+Rscript --vanilla -e 'pkgdown::check_pkgdown()'
+SDMTMB_ORACLE_LIB=/private/tmp/gllvmtmb-sdmtmb-oracle Rscript --vanilla dev/verify-sdmtmb-spatial-oracle.R
+git diff --check
+```
+
+The combined focused suite passed. The retained full package check reached
+`errors=0 warnings=1 notes=2`; the warning combined unavailable CRAN and
+Bioconductor indices with the quoted `some::` fixture, and the notes were
+unavailable clock verification and macOS `xcrun_db` detritus. After repairing
+the fixture, its focused test passed and the dependency-focused check returned
+`errors=0 warnings=0 notes=2`, leaving only the two environment notes.
+`pkgdown::check_pkgdown()`, the isolated oracle at tolerance `1e-10`, and
+`git diff --check` all passed. The networked three-OS PR run remains the final
+merge gate.
+
+Rose's pre-publish audit returned PASS after the new roxygen, NEWS, README, and
+vignette wording explicitly linked the IN helper scope to SPA-01, the PARTIAL
+broader spatial family to FG-13, and rejected anisotropy/spatiotemporal/barrier
+claims. Shannon returned WARN: the working changes belong to this branch and
+PR #885 is landed, but the remaining handover PR #881 is conflicting and stale
+because it still reports the now-repaired red tests. The integration PR should
+supersede that handover rather than merge its obsolete status text.
+
 ## 2026-07-24 -- BIRDBASE-relevant performance-audit baseline
 
 Branch: `codex/performance-audit-20260724`; clean worktree from `origin/main`.

@@ -1,5 +1,15 @@
 # Recovery checkpoint and handoff -- independent spatial helpers
 
+## Superseded integration status
+
+The maintainer authorised the recommended follow-through on 2026-08-01. Commit
+`f7b133cd` repaired the three package-wide blockers recorded below, current
+`origin/main` at `bb9eb75e` was merged in `1ca93ec8`, and the combined focused,
+pkgdown, oracle, and package-check gates passed. This checkpoint remains as the
+historical record of why the branch was initially withheld; the current status
+is recorded in the paired after-task report and check-log integration
+supplement.
+
 Date: 2026-08-01 12:06:27 MDT
 
 ## Goal and lane

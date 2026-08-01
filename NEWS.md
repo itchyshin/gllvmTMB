@@ -15,7 +15,9 @@ bridge remains experimental and is not required for the main workflow.
   axes are explicitly the model assumption `H = I`; gllvmTMB does not estimate
   directional anisotropy. Delta and spatiotemporal states remain unsupported.
   This changes no TMB likelihood or spatial covariance parameterisation
-  (validation row SPA-01).
+  (IN: validation row SPA-01; PARTIAL: broader spatial-family evidence FG-13;
+  REJECTED here: directional anisotropy, delta/spatiotemporal fields, barriers,
+  and new spatial likelihoods).
 
 * **`offset()` now works, for count responses.** `offset(log(trap_nights))`
   in a Poisson or negative-binomial model is the standard way to model a rate

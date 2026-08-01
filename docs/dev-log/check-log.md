@@ -47458,3 +47458,51 @@ counts will silently convert an environment problem into what looks like a packa
 problem. When a failure appears on exactly one platform, verify the environment before
 attributing it to the code — and never leave `--vanilla` between a test and the library it
 needs.
+
+## 2026-08-01 — restore the VA-methods pkgdown reference route (Codex)
+
+**Branch:** `codex/pkgdown-va-methods-index` from `origin/main` at `07438715`.
+**Scope:** `_pkgdown.yml` only, plus this check receipt and the paired after-task report.
+No R behavior, VA prose, roxygen, generated Rd, AGHQ code, or PR #881 content changed.
+
+The red pkgdown runs were reproduced locally before the fix:
+
+```text
+Rscript --vanilla -e 'pkgdown::check_pkgdown()'
+Error: In _pkgdown.yml, 1 topic missing from index: "gllvmTMB_va-methods".
+```
+
+Added `gllvmTMB_va-methods` to the existing **Methods and plots on fitted models**
+reference section. Indexing is intentional: `R/va-methods.R` defines the documented
+topic, `NAMESPACE` registers its user-facing `gllvmTMB_va` S3 methods, and
+`R/gllvmTMB.R` links to the topic. It was not marked internal.
+
+Checks after the fix:
+
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'` -> PASS,
+  `No problems found.`
+- `Rscript --vanilla -e 'pkgdown::build_site(new_process = FALSE, install = FALSE)'`
+  -> PASS when rerun with normal network/cache access; reference metadata was clean,
+  the site completed, and `pkgdown-site/reference/gllvmTMB_va-methods.html` was written.
+  The first sandboxed attempt reached `Reference metadata ok` and then stopped because
+  DNS/cache access to `cloud.r-project.org` was unavailable; this was an execution-
+  environment restriction, not a package error.
+- `test -f pkgdown-site/reference/gllvmTMB_va-methods.html` -> PASS.
+- `rg -n 'gllvmTMB_va-methods\\.html|VA fit|variational' pkgdown-site/reference/index.html pkgdown-site/reference/gllvmTMB_va-methods.html`
+  -> PASS; the reference index links the VA methods page and labels it as methods for
+  `integration = "va"` fits.
+- `rg -n 'gllvmTMB_va-methods|S3method\\(.*gllvmTMB_va|@keywords internal' R/va-methods.R NAMESPACE R/gllvmTMB.R`
+  -> PASS for the public-topic/S3-method evidence; the sole `@keywords internal` hit is
+  an unrelated helper in `R/gllvmTMB.R`, not the VA methods topic.
+- `git status --short --branch` and `git diff -- _pkgdown.yml` -> generated
+  `pkgdown-site/` remained excluded; the implementation diff is the intended one-line
+  `_pkgdown.yml` addition.
+
+Rose pre-publish verdict: **PASS** for this navigation-only slice. Exported-method
+registration, documented topic, reference-index membership, generated page, and index
+link agree. No capability wording or formula/likelihood contract changed.
+
+Deliberately not run: `devtools::test()` and `devtools::check()`. This change is pkgdown
+navigation only and the required full site build exercises the affected path. GitHub
+R-CMD-check and pkgdown remain the merge gates; main's pkgdown run must be green before
+the tau lane resumes.

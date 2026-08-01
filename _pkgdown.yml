@@ -53,6 +53,8 @@ navbar:
         href: articles/random-regression-reaction-norms.html
       - text: Choosing latent rank
         href: articles/model-selection-latent-rank.html
+      - text: Explore loading constraints
+        href: articles/lambda-constraint-suggest.html
       - text: Joint species distribution model
         href: articles/joint-sdm.html
       - text: Phylogenetic covariance among traits
@@ -98,6 +100,7 @@ articles:
     - articles/behavioural-syndromes
     - articles/random-regression-reaction-norms
     - articles/model-selection-latent-rank
+    - articles/lambda-constraint-suggest
     - articles/joint-sdm
     - articles/phylogenetic-gllvm
     - articles/missing-data

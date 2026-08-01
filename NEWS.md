@@ -82,6 +82,33 @@ bridge remains experimental and is not required for the main workflow.
   covers the unit-tier loadings only. `check_gllvmTMB()` now names this remedy
   when it reports a runaway loading.
 
+  `aghq_ridge = "auto"` adds a narrower **experimental, opt-in** scale-aware
+  route for pure single-trial Bernoulli models with one ordinary unit-tier
+  `latent()` block. It first runs an unpenalised 9-node multi-start AGHQ pilot,
+  then uses
+  `tau = min(6, max(1, ||Lambda_pilot||_F / sqrt(p q)))`. A plain Laplace fit is
+  never used as the scale yardstick. If that pilot or the scale-aware final fit
+  is unusable, the function returns an independently started `tau = 2` fit and
+  records the reason in `fit$aghq$ridge_auto`; it does not silently claim that
+  auto-selection succeeded. Both pilot and returned AGHQ fits use the calibrated
+  9-node multi-start estimator; conflicting `aghq` or `aghq_multistart` controls
+  are replaced with a warning.
+
+  This scope is supported as a **runaway/failure-avoidance** capability, not as
+  a general accuracy improvement (MIS-36). In the 600-replicate calibration,
+  the auto fit was usable in 135 replicates. A transparent auto-when-usable,
+  otherwise-`tau = 2` policy did not increase per-cell failure or runaway rates
+  and stayed within the preregistered +0.02 loading-error non-inferiority margin,
+  but its six-cell macro-mean loading-error difference was +0.00282 (slightly
+  worse).
+  Caps 5, 6, and 8 were indistinguishable for fresh valid pilots; cap 6 is the
+  smallest candidate supported by the stored wider-range rescore. Other
+  families, covariance tiers, and likelihood-based model comparison remain
+  outside this claim. The measured grid used logit, `p = 6`, `q = 2`, and
+  `n = 100`, `400`, or `1600`; other links and dimensions are explicit
+  extrapolations, not covered accuracy claims. The package default stays
+  `tau = 2`.
+
 * **Adaptive quadrature (`gllvmTMBcontrol(aghq = k)`) now tries two starting
   points and keeps the better fit.** It previously ran from a single start — the
   Laplace optimum — on the grounds that without a penalty there is nothing to

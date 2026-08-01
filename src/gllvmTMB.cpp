@@ -2490,8 +2490,20 @@ Type objective_function<Type>::operator()()
       error("gllvmTMB_multi: aghq_d must equal d_B in Stage 1a");
     if (use_lv_B == 1)
       error("gllvmTMB_multi: use_aghq does not yet support use_lv_B");
-    if (use_diag_B == 1)
-      error("gllvmTMB_multi: use_aghq Stage 1a is loadings-only (no s_B)");
+    if (use_diag_B == 1) {
+      // R may retain the ordinary latent() auto-Psi parameter stubs after the
+      // single-trial Bernoulli gate has mapped every one off and fixed s_B = 0.
+      // That route is mathematically loadings-only and is admitted. Any free
+      // diagonal remains a genuine extra random block and is still fenced.
+      if (diag_B_skip.size() != n_traits)
+        error("gllvmTMB_multi: diag_B_skip has wrong length under use_aghq");
+      bool any_free_diag_B = false;
+      for (int t = 0; t < n_traits; t++) {
+        if (diag_B_skip(t) == 0) any_free_diag_B = true;
+      }
+      if (any_free_diag_B)
+        error("gllvmTMB_multi: use_aghq Stage 1a is loadings-only (free s_B remains)");
+    }
     if (has_mi == 1)
       error("gllvmTMB_multi: use_aghq does not yet support mi() predictors");
     if (aghq_nodes.cols() != aghq_d)

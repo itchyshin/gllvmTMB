@@ -3,7 +3,7 @@
 This repository is shared by humans, Codex, and Claude Code. Read
 `AGENTS.md` first; it is the source of truth for project rules.
 
-## Live Phase Snapshot — 2026-07-31
+## Live Phase Snapshot — 2026-07-30
 
 > **🔴 MULTI-LANE REPO — this snapshot is NOT a single lane's status.** No one bullet
 > represents the project. **The lane map is authoritative for ownership:**
@@ -11,22 +11,28 @@ This repository is shared by humans, Codex, and Claude Code. Read
 > current handover. Read it before any repository mutation. Milestone state is not in
 > either place and must be re-derived from `git`.
 
-- **2026-07-31 — AGHQ LANE: the estimator question is ANSWERED NARROWLY and the headline is a
-  NEGATIVE.** 3 PRs merged (#870, #875, #876); `main` green. Three engine fixes shipped —
-  **#843** AGHQ now runs both starts (catastrophic fits **16/40 → 1/40**), **#871** the dead
-  `aghq_multistart` control, **#874** convergence was unreachable at scale (0% certified at
-  n ≥ 400; now a relative gradient leg). A **12,000-fit ADEMP campaign** ran on **DRAC/fir**
-  (Totoro was committed to the VA lane) and was adversarially verified: **10 claims in, 10
-  refuted as phrased**. **Established, all-fits, σ_λ=3:** AGHQ beats Laplace by Δρ-MAE
-  0.115–0.169 (≥19 MCSE). 🔴 **But the ESTIMATOR question is NOT answered** — both filter
-  populations are invalid (`converged` is TRUE for 4800/4800 Laplace fits *including 49.1%
-  that ran away*), so this measures the AGHQ **package**, not the estimator; and the effect is
-  a **runaway-avoidance signal**, not broad accuracy (median paired Δ = +0.00014 at n=400
-  σ_λ=1). **#847 is now the top open task** — a scale-aware τ is the **only** route for
-  default-grammar users, and my multi-start hypothesis for it was **REFUTED by experiment**
-  (70% vs 65%). New: a **fit-time runaway warning** (PR **#877 OPEN**), because plain defaults
-  run away in **98–99%** of fits at σ_λ=3 silently. 🔴 No public claim without Shinichi.
-  **START HERE:** `docs/dev-log/handover/2026-07-31-codex-handover.md`
+- **2026-07-31 (LATEST) — VA IS ROUTED AND GATE 3 HAS REPORTED.** Lane
+  `claude/va-routing-20260731` (fast-forward of `claude/va-in-06-20260730`, **PR #869**).
+  `gllvmTMB(control = gllvmTMBcontrol(integration = "va"))` now returns a real
+  `c("gllvmTMB_va","gllvmTMB")` fit; the admission fence is reachable at last (it could never fire
+  before, because `gllvmTMB()` aborted before `q`/`p`/`n`/family/link existed); and every
+  likelihood-shaped method fails loudly, verified under a real `R CMD INSTALL`.
+  **Gate 3 (2,160 datasets x 3 arms, run on Totoro) settled two open questions and the maintainer
+  decided both: estimator = JJ, rule = R2.** `va_jj` clears the full frozen conjunction in **100% of
+  q <= 2 cells under BOTH pre-declared rules**; `va_gh` was measured and **rejected**. `q = 4` was
+  measured and **failed** on axis collapse at p = 8, so **the fence ships at `q <= 2`, not 4** —
+  narrower than hoped and further from A3's 5+ factors, stated rather than buried.
+  **`"eva"` is no longer an admitted value** of `integration`: EVA gives valid inference for the
+  coefficients but not for `Lambda Lambda'`, this package's estimand — and gllvm's own EVA hits the
+  identical pathology while reporting `convergence = TRUE` on 71% of blown-up fits.
+  🔴 **Read the corrections before citing any Gate 3 number.** The first two reporting passes were
+  BOTH wrong — a conjunction reported as its RMSE half, then an over-correction that denied a
+  conclusion the evidence supports — and a 3/3 NOT-DONE panel caught them. The collapse criterion
+  **cannot rank the arms**: va_gh's detector fires zero times in 6,480 rows.
+  **START HERE:** `docs/dev-log/2026-07-31-gate3-result-corrected.md`, then
+  `docs/design/35-validation-debt-register.md` Section 15 (VA-01..VA-09), then the lane map.
+  **Needs Shinichi:** nothing blocking on this lane.
+
 - **2026-07-30 — THE SCALE-DEPENDENT-CONSTANTS CLASS NOW HAS AN OWNER AND EVIDENCE** (this
   resolves a "Needs Shinichi" flagged twice below). 8 PRs merged (#832, #839, #842, #845, #846,
   #849, #854, #858); `R/` touched only by the #832 export. **It is a CLASS, not a bug** — ~10

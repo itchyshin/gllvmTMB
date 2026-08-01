@@ -2602,3 +2602,74 @@ question -- the new gradient reporting shows they sit at ~50x tolerance, so they
 not near-misses. The campaign must be RE-GATED on a fresh smoke before 16,000 fits are spent.
 
 Evidence: `docs/dev-log/after-task/2026-07-31-aghq-engine-fixes.md`. Results LOCAL (D-50).
+
+## 2026-07-31  Gate 3 reports — estimator JJ, rule R2, fence q<=2. And two reporting passes were wrong before a panel caught them.
+
+**Maintainer decisions, Shinichi Nakagawa, in session**, on the corrected Gate 3 result
+(`docs/dev-log/2026-07-31-gate3-result-corrected.md`): **(1) estimator = JJ; (2) rule = R2 (paired
+exclusion); (3) fence at `q <= 2`.**
+
+**This supersedes the 2026-07-30 "Estimator: GH quadrature, not the JJ/Pólya-Gamma bound" entry
+above**, which is left in place as the dated record of what was believed before the campaign ran.
+That reasoning was principled — JJ's objective is coercive in `‖Λ‖`, so its clean degeneracy record
+was a theorem before a fit ran, and the `rel_frob > 10` detector is structurally blind to
+contraction. The measurement disagreed anyway. **That is what the gate was for.**
+
+**What Gate 3 measured.** 2,160 datasets × 3 arms = 6,480 fits, known truth, fixed rank, full
+denominators, no filtering on status or admitted, run on Totoro
+(`docs/dev-log/2026-07-31-gate3-totoro-migration.md`). Under R2, `va_jj` passes the RMSE criterion in
+**every cell** (50/50; 54/54 raw) with a worst gap of 0.0393 against a 0.05 tolerance, and holds the
+lower `Sigma_B` error in 52 of 54 cells ignoring Laplace entirely (sign test p = 1.7e-13) — in all
+eleven leave-one-out subsets over truth, q, p and n. `va_gh` passes 13/50. **`va_jj` clears the full
+frozen conjunction in 100% of `q <= 2` cells under BOTH pre-declared rules** (36/36, 34/34), so the
+shipped boundary does not depend on the recorded §11 departure.
+
+**`q <= 4` was refused on its own terms.** The 2026-07-31 scope freeze admitted it *conditionally* —
+"only if Gate 3's q = 4 cells pass on their own terms." Every `va_jj` axis-collapse failure sits in
+the single `q = 4, p = 8` corner at rates 0.26–0.77 against a 0.05 tolerance, every lower 2·MCSE
+bound above the threshold. Four latent axes are not identifiable from eight responses. **The fence
+ships at `q <= 2` — narrower than hoped, and further from A3's 5+ factors, not closer.**
+
+### 🔴 The reporting failed twice before the numbers were trustworthy
+
+Recorded because the errors are more transferable than the result.
+
+1. **A conjunction reported as one half.** The first pass reported "va_jj passes 50/50" — that is
+   `pass_rmse` alone. The frozen rule is RMSE **and** collapse.
+2. **A pooled median hid the signal.** κ was said to "clear the contraction worry" from a pooled
+   median of 1.68, while a real JJ contraction subgroup (`T-strong × n=400`, median κ 0.74) sat
+   underneath it. Exactly the *check the gradient any pooled summary pools over* failure already in
+   this repo's ledger.
+3. **Then an over-correction.** Told GH scored better on the collapse half, the second pass declared
+   "a genuine crossover, neither arm wins." Also wrong — and **declining a conclusion the evidence
+   supports is a defect symmetric with overclaiming.**
+
+A **D-43 panel of three fresh reviewers returned 3/3 NOT-DONE**, and an independent reimplementation
+then reproduced every shipped number to float precision. **The analyser's arithmetic was never in
+doubt; the reporting was.**
+
+### The collapse criterion cannot rank the two arms — do not cite it as if it can
+
+`any_axis_collapsed` is TRUE **zero times in 6,480 rows** for `va_gh`. Not rare — never. Its
+degenerate solutions are intercepted upstream by a variance-domain guard that **`va_jj` does not have
+at all**, and those rows are then removed from the collapse denominator by `status == "ok"`: va_gh
+loses 39.4% of attempts from that denominator, va_jj 28.2%. Under the alternative denominator the
+direction **flips**. The two arms are not measured with the same instrument on that criterion.
+
+Also killed: "fails collapse in ~18% of cells" is **not** "above the 5% tolerance" — the tolerance is
+a **per-cell rate**, and `va_jj`'s pooled collapse rate is **4.45%**, below it.
+
+### Three analyser defects fixed, all one family
+
+An undefined value silently becoming a verdict: R2 **dropped 4 cells outright** where the ML
+comparator was degenerate in 40/40 replicates (breaking the both-rules-every-cell commitment *and*
+hiding a finding about Laplace); `is.finite(x) & x <= tol` scored 6 **unmeasured** cells as failures;
+and `max_abs_gradient` was computed by the engine and dropped by the row builder. The second was
+found only because the first was fixed inconsistently — same bug, one function away.
+
+**Not supported by this evidence, and not claimed:** any interval or coverage statement
+(`calibrated = FALSE`); anything at `q >= 3`; anything at `n = 400, p = 80`, where the usable-fit
+rate is 6% and the RMSE is a survivor statistic; and poisson-log, which the fence admits on
+theoretical grounds but Gate 3 never tested (the campaign was Bernoulli).
+
+> Register: `docs/design/35-validation-debt-register.md` Section 15 (VA-01..VA-09).

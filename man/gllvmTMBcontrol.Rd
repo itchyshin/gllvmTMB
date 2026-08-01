@@ -192,6 +192,11 @@ cap is escalated. Default \code{3L}.}
 \item{aghq_rho_min}{Minimum trust-region-style acceptance ratio for a pass.
 Default \code{1/64}.}
 
+\item{warn_runaway}{If \code{TRUE} (default), warn once per session when a
+binomial latent-variable fit triggers the package's existing runaway-loading
+diagnostic. Set \code{FALSE} to silence the fit-time warning; the diagnostic
+remains available through \code{\link[=gllvmTMB_diagnose]{gllvmTMB_diagnose()}}.}
+
 \item{allow_nongaussian_reml}{Permit \code{REML = TRUE} for non-Gaussian families.
 Default \code{FALSE}; the restricted likelihood is defined by a Gaussian
 marginalisation, so this is an escape hatch, not an endorsement.}

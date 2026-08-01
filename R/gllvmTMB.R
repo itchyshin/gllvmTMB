@@ -878,6 +878,12 @@ gllvmTMB <- function(
   if (isTRUE(.mn_expand$expanded)) {
     .fit$multinomial_meta <- .mn_expand[c("K", "categories", "baseline")]
   }
+  ## The variational route is built inside gllvmTMB_multi_fit(), which cannot
+  ## see the user's call. Attach it here, where match.call() is the call the
+  ## user actually wrote, so print() can show it.
+  if (inherits(.fit, "gllvmTMB_va")) {
+    .fit$call <- match.call()
+  }
   ## WARN ON AN IMPLAUSIBLE LOADING SCALE -- because the failure is COMMON and SILENT.
   ##
   ## Measured, 12,000 fits, binomial p=6 q=2 (docs/dev-log/audits/
@@ -1313,6 +1319,10 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #' @param aghq_ridge Ridge penalty on the loadings, as the scale `tau`;
 #'   `Inf` disables it. Default `2`. Naming it explicitly also makes the
 #'   `Laplace + ridge` control reachable without quadrature.
+#' @param warn_runaway If `TRUE` (default), warn once per session when a
+#'   binomial latent-variable fit triggers the package's existing runaway-loading
+#'   diagnostic. Set `FALSE` to silence the fit-time warning; the diagnostic
+#'   remains available through [gllvmTMB_diagnose()].
 #' @param aghq_continuation If `TRUE` (default), the adaptation loop may raise
 #'   `aghq_iter_cap` across passes. `FALSE` pins the cap and disables escalation.
 #' @param aghq_shift_tol,aghq_grad_tol,aghq_f_tol Convergence tolerances for the

@@ -2,6 +2,24 @@
 
 **2026-07-31 · Claude (Fable 5) · branch `claude/851-scale-aware-start-20260731` · PR #873**
 
+> ## ⚠ CORRECTION (2026-07-31, same session)
+>
+> **Every "18 fail / 3 err" figure below is wrong, and the error was mine.** That was not
+> `main`'s state — it was my Totoro harness. `main`'s true baseline on the same 348 files
+> is **3 fail / 0 err** (PASS 14534). Fifteen failures and all three errors came from
+> invoking the suite so that subprocess CLI tests could not see the installed package
+> (Totoro sets `R_LIBS_USER` in `~/.Renviron`; those tests shell out with
+> `Rscript --vanilla`, which ignores it), plus a missing `tweedie` Suggests.
+>
+> **What this does and does not change.** The comparisons below are all branch-vs-baseline
+> on the *same* harness, so every conclusion about *this work* still holds: the branch
+> matched `main` file-for-file at each stage, and no failure was attributable to #851.
+> What is void is the separate claim, repeated here and in three other places, that
+> `main` itself was not green. It was.
+>
+> Full account, including the false-confirmation step that nearly buried the fix:
+> `docs/dev-log/check-log.md`, entry "CORRECTION: `main` was green all along".
+
 ## 1. Goal
 
 Resolve the test regressions caused by the #851 scale-aware starting values, without

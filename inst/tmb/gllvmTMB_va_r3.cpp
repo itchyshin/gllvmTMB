@@ -115,12 +115,15 @@ Type va_r3_jj_softplus_expectation(const Type &mu, const Type &v)
 template <class Type>
 Type objective_function<Type>::operator()()
 {
-  // Data are long-format complete cells. unit_id and trait_id are zero-based.
+  // Data are long-format dense cells (exactly N*T rows). unit_id and trait_id
+  // are zero-based. Design 107: is_y_observed gates the density term; masked
+  // rows keep a sentinel y/n_trials that is never evaluated.
   DATA_VECTOR(y);
   DATA_VECTOR(n_trials);
   DATA_MATRIX(X);
   DATA_IVECTOR(unit_id);
   DATA_IVECTOR(trait_id);
+  DATA_IVECTOR(is_y_observed);     // 1 = response observed, 0 = masked (Design 107)
   DATA_INTEGER(N);
   DATA_INTEGER(T);
   DATA_INTEGER(q);
@@ -154,7 +157,8 @@ Type objective_function<Type>::operator()()
   if (n_obs != N * T)
     error("gllvmTMB_va_r3: the research objective requires exactly N*T cells");
   if (n_trials.size() != n_obs || unit_id.size() != n_obs ||
-      trait_id.size() != n_obs || X.rows() != n_obs)
+      trait_id.size() != n_obs || is_y_observed.size() != n_obs ||
+      X.rows() != n_obs)
     error("gllvmTMB_va_r3: response-side data dimensions do not agree");
   if (X.cols() != beta.size())
     error("gllvmTMB_va_r3: ncol(X) must equal length(beta)");
@@ -175,24 +179,29 @@ Type objective_function<Type>::operator()()
   if (eval_method == 1 && family != 1)
     error("gllvmTMB_va_r3: eval_method = 1 (Jaakkola-Jordan/PG bound) is only defined for the binomial family");
 
-  // Check that the long data contain each unit-trait cell exactly once.
+  // Dense convention: each unit-trait cell is exactly one row. Family range
+  // checks apply only to observed cells (Design 107); masked sentinels are
+  // never fed to a density call.
   std::vector<int> cell_count(N * T, 0);
   for (int r = 0; r < n_obs; ++r) {
     int i = unit_id(r);
     int t = trait_id(r);
+    int obs = is_y_observed(r);
     if (i < 0 || i >= N || t < 0 || t >= T)
       error("gllvmTMB_va_r3: unit_id or trait_id is out of range");
+    if (obs != 0 && obs != 1)
+      error("gllvmTMB_va_r3: is_y_observed entries must be 0 or 1");
     cell_count[i * T + t] += 1;
     if (!std::isfinite(asDouble(y(r))) || !std::isfinite(asDouble(n_trials(r))))
       error("gllvmTMB_va_r3: y and n_trials must be finite");
-    if (family == 1) {
+    if (obs == 1 && family == 1) {
       double yd = asDouble(y(r));
       double nd = asDouble(n_trials(r));
       if (nd < 1.0 || std::floor(nd) != nd || yd < 0.0 || yd > nd ||
           std::floor(yd) != yd)
         error("gllvmTMB_va_r3: binomial cells require integer n >= 1 and 0 <= y <= n");
     }
-    if (family == 2 || family == 3) {
+    if (obs == 1 && (family == 2 || family == 3)) {
       double yd = asDouble(y(r));
       if (yd < 0.0 || std::floor(yd) != yd)
         error("gllvmTMB_va_r3: Poisson/nbinom2 cells require finite non-negative integer y");
@@ -322,6 +331,15 @@ Type objective_function<Type>::operator()()
     if (!std::isfinite(asDouble(v)))
       Rf_error("gllvmTMB_va_r3: non-finite variance projection at unit %d trait %d", i, t);
 
+    mu_by_obs(r) = mu;
+    v_by_obs(r) = v;
+
+    // Design 107: never evaluate a family density on a masked sentinel row.
+    if (is_y_observed(r) == 0) {
+      expected_loglik_by_obs(r) = Type(0.0);
+      continue;
+    }
+
     Type ell = Type(0.0);
     if (family == 0) {
       Type residual = y(r) - mu;
@@ -368,8 +386,6 @@ Type objective_function<Type>::operator()()
     if (!std::isfinite(asDouble(ell)))
       Rf_error("gllvmTMB_va_r3: non-finite expected log-likelihood at unit %d trait %d", i, t);
 
-    mu_by_obs(r) = mu;
-    v_by_obs(r) = v;
     expected_loglik_by_obs(r) = ell;
     expected_loglik_by_unit(i) += ell;
   }
@@ -382,6 +398,7 @@ Type objective_function<Type>::operator()()
     error("gllvmTMB_va_r3: non-finite negative ELBO");
 
   REPORT(eval_method);
+  REPORT(is_y_observed);
   REPORT(Lambda);
   REPORT(Sigma_B);
   REPORT(m);

@@ -61,7 +61,8 @@
     rank_source = c("fixed_fixture", "ml_bic"), fixed_global = NULL,
     source = NULL, rebuild = FALSE,
     control = list(eval.max = 2000L, iter.max = 2000L), silent = TRUE,
-    eval_method = c("auto", "jj", "gh")) {
+    eval_method = c("auto", "jj", "gh"),
+    is_y_observed = NULL) {
   family <- .approximation_engine_scalar_character(family, "family")
   link <- .approximation_engine_scalar_character(link, "link")
   eval_method <- match.arg(eval_method)
@@ -69,7 +70,7 @@
   if (is.na(expected_link) || !identical(link, expected_link) ||
       !identical(unique, FALSE)) {
     stop(
-      "VA-R3 admits only complete binomial-logit or Poisson-log data with unique = FALSE.",
+      "VA-R3 admits only dense binomial-logit or Poisson-log data with unique = FALSE.",
       call. = FALSE
     )
   }
@@ -86,7 +87,7 @@
     trait_id = trait_id, q = q, N = N, T = T,
     family = family, link = link, unique = FALSE,
     psi = psi, structured = structured, provider = provider, lv = lv,
-    missing = missing
+    missing = missing, is_y_observed = is_y_observed
   )
   started <- proc.time()[["elapsed"]]
   raw <- .va_r3_fit(
@@ -96,7 +97,8 @@
     psi = psi, structured = structured, provider = provider, lv = lv,
     missing = missing, H = H, rank_source = rank_source,
     fixed_global = fixed_global, source = source, rebuild = rebuild,
-    control = control, silent = silent, eval_method = eval_method
+    control = control, silent = silent, eval_method = eval_method,
+    is_y_observed = is_y_observed
   )
   elapsed <- proc.time()[["elapsed"]] - started
   best <- raw$best %||% list()

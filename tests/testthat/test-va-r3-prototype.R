@@ -37,7 +37,7 @@ test_that("R3 accepts only the predeclared complete ordinary model cell", {
                "ordinary latent")
   expect_error(do.call(.va_r3_validate_data,
                        within(args, trait_id <- c(1L, 1L, 1L, 2L))),
-               "exactly one complete")
+               "exactly one dense")
   rank_deficient <- args
   rank_deficient$X <- matrix(1, 4L, 2L)
   expect_error(do.call(.va_r3_validate_data, rank_deficient),

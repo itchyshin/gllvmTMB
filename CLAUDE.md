@@ -11,8 +11,13 @@ This repository is shared by humans, Codex, and Claude Code. Read
 > current handover. Read it before any repository mutation. Milestone state is not in
 > either place and must be re-derived from `git`.
 
-- **2026-07-31 (LATEST) — VA IS ROUTED AND GATE 3 HAS REPORTED.** Lane
-  `claude/va-routing-20260731` (fast-forward of `claude/va-in-06-20260730`, **PR #869**).
+- **2026-07-31 (LATEST) — VA LANE CLOSED AND MERGED TO `main` (`c5da0903`, PR #869).** Branches
+  and worktrees deleted; nothing to resume. **NEXT SESSION = Codex**, for live-toolchain work
+  Claude could not do — **`main` is currently RED on two tests** (`test-funcphylo-spatial-recovery.R:54`,
+  `test-plot-visual-snapshots.R:301`), both reproduced on a clean `origin/main` and therefore
+  **pre-existing**, arriving with the AGHQ/scale-start work — attributed but **not diagnosed**. Also
+  **`R CMD check --as-cran` has NOT been run** on the merged tree, which added a public S3 class and
+  13 method registrations. **START HERE:** `docs/dev-log/handover/2026-07-31-codex-handover.md`.
   `gllvmTMB(control = gllvmTMBcontrol(integration = "va"))` now returns a real
   `c("gllvmTMB_va","gllvmTMB")` fit; the admission fence is reachable at last (it could never fire
   before, because `gllvmTMB()` aborted before `q`/`p`/`n`/family/link existed); and every

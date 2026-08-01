@@ -5021,6 +5021,18 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     }
   }
 
+  ## A pure single-trial Bernoulli fit through ordinary `latent()` still has
+  ## `use_diag_B = 1` because the grammar requested the automatic Psi companion,
+  ## but the family gate above can map EVERY theta_diag_B and s_B coordinate off,
+  ## zero s_B, and mark every trait in diag_B_skip. In that exact case there is
+  ## no free diagonal random effect left: keeping `s_B` in TMB's `random` vector
+  ## is plumbing residue, not a different model. This predicate is mirrored by
+  ## the Stage-1a fence in src/gllvmTMB.cpp. Any zero in diag_B_skip means that a
+  ## real Psi coordinate remains and AGHQ must stay fenced.
+  diag_B_all_skipped <- isTRUE(use_diag_B) &&
+    length(tmb_data$diag_B_skip) == n_traits &&
+    isTRUE(all(tmb_data$diag_B_skip == 1L))
+
   ## The TMB engine is compiled at install time as src/gllvmTMB.cpp; the
   ## DLL is registered via NAMESPACE useDynLib() and loaded automatically.
   ## (Earlier versions compiled the engine at runtime under
@@ -5036,7 +5048,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   if (isTRUE(REML)) random <- c(random, "b_fix")
   if (use_rr_B)   random <- c(random, "z_B")
   if (use_rr_B_slope) random <- c(random, "z_B_slope")
-  if (use_diag_B) random <- c(random, "s_B")
+  if (use_diag_B && !diag_B_all_skipped) random <- c(random, "s_B")
   if (use_diag_B_slope) random <- c(random, "s_B_slope")
   if (use_rr_W)   random <- c(random, "z_W")
   if (use_diag_W) random <- c(random, "s_W")

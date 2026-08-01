@@ -1,10 +1,7 @@
 ## Centralised import declarations.
 ##
-## Many of gllvmTMB's R files were inherited from sdmTMB and use
-## `cli_abort()` / `cli_warn()` / `cli_inform()` and `assert_that()`
-## as bare names. This file imports them once for the whole package
-## namespace so the rest of R/*.R doesn't need per-file
-## `@importFrom` blocks.
+## Centralised imports make the package's error and assertion helpers available
+## without repeating `@importFrom` declarations in each R source file.
 
 #' @importFrom cli cli_abort cli_warn cli_inform
 #' @importFrom assertthat assert_that
@@ -16,5 +13,6 @@
 ## imported, so it is not visible from the package namespace.
 #' @importFrom stats dnorm plogis
 #' @importFrom methods as
+#' @importFrom rlang .data
 #' @keywords internal
 NULL

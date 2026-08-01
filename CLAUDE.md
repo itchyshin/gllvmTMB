@@ -417,12 +417,19 @@ assumption is that if a stopping point arrives and the chat does not
 surface links, the maintainer cannot review. This rule is durable and
 applies to every session.
 
-## Reusing sdmTMB / drmTMB Code
+## Spatial-helper provenance and sister-package reuse
 
-The R-side spatial helpers (`R/mesh.R`, `R/crs.R`, `R/plot.R`'s
-`plot_anisotropy*`) are inherited from sdmTMB; `inst/COPYRIGHTS`
-records the provenance and DESCRIPTION's `Authors@R` credits Sean
-Anderson, Eric Ward, Philina English, and Lewis Barnett.
+The R-side mesh and CRS helpers (`R/mesh.R`, `R/crs.R`) are
+independently authored against the public `fmesher` and `sf` APIs.
+They preserve the established `A_proj` and FEM (`M0/M1/M2`) interface
+consumed by the native TMB likelihood. `inst/COPYRIGHTS` records that
+no sdmTMB source is included or adapted. sdmTMB may be used only as an
+isolated post-implementation behavioural comparator, never as a
+runtime dependency or implementation source. The retained
+`plot_anisotropy*()` entry points now show the fitted isotropic practical
+range (`sqrt(8) / kappa`) for native gllvmTMB spatial fits. Their equal axes
+are labelled as the model assumption `H = I`, never as estimated anisotropy;
+delta and spatiotemporal states fail clearly.
 
 Selective reuse of A-inverse phylogenetic or further SPDE speed
 modules from sister packages requires provenance notes in

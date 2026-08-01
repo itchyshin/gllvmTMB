@@ -83,8 +83,9 @@ Model Builder.
   does NOT do" section), see `docs/design/04-sister-package-scope.md`.
 - The phylogenetic representation is a sparse A^-1 (Hadfield &
   Nakagawa 2010, re-implemented from the same algorithm in
-  `src/gllvmTMB.cpp`). The spatial representation is the SPDE/GMRF
-  approximation inherited from sdmTMB.
+  `src/gllvmTMB.cpp`). The spatial representation is an independently
+  authored SPDE/GMRF helper layer built on the public `fmesher` API;
+  it preserves the native TMB input contract.
 
 ## Design Rules
 

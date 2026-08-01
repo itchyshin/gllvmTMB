@@ -1,208 +1,164 @@
-## The `plot_anisotropy()` / `plot_anisotropy2()` routines below
-## are inherited via sdmTMB (https://github.com/pbs-assess/sdmTMB)
-## from VAST (James Thorson) and the TMB anisotropy R example
-## (Kasper Kristensen). All upstream paths are GPL-3. Provenance
-## is recorded in `inst/COPYRIGHTS`.
-
-#' Plot anisotropy from a gllvmTMB model
+#' Plot the isotropic spatial range from a gllvmTMB model
 #'
-#' Anisotropy is when spatial correlation is directionally dependent.
-#' These plotting functions help visualise the estimated anisotropy
-#' from a `gllvmTMB()` fit that used `spatial_*()` keywords with an
-#' anisotropic SPDE mesh.
+#' @description
+#' `gllvmTMB` currently fits isotropic SPDE/GMRF spatial fields. Consequently,
+#' these helpers draw a circle whose radius is the fitted practical range,
+#' `sqrt(8) / kappa`. Equal axes describe the model assumption (`H = I`); they
+#' are not evidence that anisotropy was estimated.
 #'
-#' @param object A fitted `gllvmTMB` model object with an anisotropic
-#'   spatial component.
-#' @param return_data Logical. Return a data frame? `plot_anisotropy()` only.
-#' @param model Which model if a delta model (only for `plot_anisotropy2()`;
-#'   `plot_anisotropy()` always plots both).
+#' @param object A fitted `gllvmTMB_multi` model containing an intercept-only or
+#'   random-slope spatial field.
+#' @param return_data If `TRUE`, return the range geometry instead of a plot.
+#' @param model Retained for compatibility. Only `model = 1` is supported
+#'   because gllvmTMB has one shared spatial range parameter.
 #'
-#' @return
-#' `plot_anisotropy()`: One or more ellipses illustrating the estimated
-#' anisotropy. The ellipses are centred at coordinates of zero in the space
-#' of the X-Y coordinates being modelled. The ellipses show the spatial
-#' range (distance at which correlation is effectively independent) in any
-#' direction from zero. Uses \pkg{ggplot2}. If anisotropy was turned off
-#' when fitting the model, `NULL` is returned instead of a \pkg{ggplot2}
-#' object.
+#' @return `plot_anisotropy()` returns a `ggplot2` object, or a data frame when
+#'   `return_data = TRUE`. `plot_anisotropy2()` draws the same geometry with
+#'   base graphics and invisibly returns a list containing `data`, `range`,
+#'   `kappa`, `H = diag(2)`, and `anisotropy_estimated = FALSE`.
 #'
-#' `plot_anisotropy2()`: A plot of eigenvectors illustrating the estimated
-#' anisotropy. A list of the plotted data is invisibly returned. Uses base
-#' graphics. If anisotropy was turned off when fitting the model, `NULL` is
-#' returned instead of a plot object.
-#' @references Code adapted from VAST and TMB anisotropy examples, via
-#'   sdmTMB.
-#' @importFrom rlang .data
+#' @section Scope:
+#' These functions do not estimate or diagnose directional anisotropy. Delta
+#' and spatiotemporal spatial models are not supported by this plotting
+#' contract and fail explicitly.
+#'
 #' @export
-#' @rdname plot_anisotropy
 plot_anisotropy <- function(object, return_data = FALSE) {
-  stopifnot(inherits(object, "gllvmTMB"))
-  if (!check_for_H(object)) return(NULL)
-  delta <- isTRUE(object$family$delta)
-
-  # Calculate anisotropy components for model 1
-  comp1 <- calculate_anisotropy_components(object, m = 1)
-  eig <- comp1$eig
-  maj1_s <- comp1$maj_s
-  min1_s <- comp1$min_s
-  maj1_st <- comp1$maj_st
-  min1_st <- comp1$min_st
-
-  # Calculate anisotropy components for model 2 if delta
-  if (delta) {
-    comp2 <- calculate_anisotropy_components(object, m = 2)
-    eig2 <- comp2$eig
-    maj2_s <- comp2$maj_s
-    min2_s <- comp2$min_s
-    maj2_st <- comp2$maj_st
-    min2_st <- comp2$min_st
+  if (
+    !is.logical(return_data) || length(return_data) != 1L || is.na(return_data)
+  ) {
+    cli::cli_abort("{.arg return_data} must be one non-missing logical value.")
   }
 
-  rss <- function(V) sqrt(sum(V[1]^2 + V[2]^2))
-  get_angle <- function(m) {
-    a <- -1 * (atan(m[1] / m[2]) / (2 * pi) * 360 - 90)
-    a * (pi / 180)
+  range_data <- .gllvm_spatial_range_geometry(object)
+  if (return_data) {
+    return(range_data)
   }
-
-  angle1_s <- get_angle(maj1_s)
-  angle1_st <- get_angle(maj1_st)
-
-  if (delta) {
-    angle2_s <- get_angle(maj2_s)
-    angle2_st <- get_angle(maj2_st)
-    dat <- data.frame(
-      angle = c(angle1_s, angle1_st, angle2_s, angle2_st),
-      a = c(rss(maj1_s), rss(maj1_st), rss(maj2_s), rss(maj2_st)),
-      b = c(rss(min1_s), rss(min1_st), rss(min2_s), rss(min2_st)),
-      model = rep(object$family$family, each = 2L),
-      model_num  = rep(seq(1L, 2L), each = 2L),
-      random_field = rep(c("spatial", "spatiotemporal"), 2L),
-      stringsAsFactors = FALSE
-    )
-    dat$model <- factor(dat$model, levels = object$family$family)
-    for (i in seq(1L, 2L)) {
-      if (object$spatiotemporal[i] == "off") {
-        x <- dat$random_field == "spatiotemporal" & dat$model_num == i
-        dat <- dat[!x, , drop = FALSE]
-      }
-    }
-    for (i in seq(1L, 2L)) {
-      if (object$spatial[i] == "off") {
-        x <- dat$random_field == "spatial" & dat$model_num == i
-        dat <- dat[!x, , drop = FALSE]
-      }
-    }
-  } else {
-    dat <- data.frame(
-      angle = c(angle1_s, angle1_st),
-      a = c(rss(maj1_s), rss(maj1_st)),
-      b = c(rss(min1_s), rss(min1_st)),
-      model = object$family$family,
-      random_field = rep(c("spatial", "spatiotemporal"), 1L),
-      stringsAsFactors = FALSE
-    )
-    if (object$spatiotemporal == "off") {
-      x <- dat$random_field == "spatiotemporal"
-      dat <- dat[!x, , drop = FALSE]
-    }
-    if (object$spatial == "off") {
-      x <- dat$random_field == "spatial"
-      dat <- dat[!x, , drop = FALSE]
-    }
-  }
-
-  if (return_data) return(dat)
   if (!requireNamespace("ggplot2", quietly = TRUE)) {
-    cli_abort("ggplot2 must be installed to use this function.")
+    cli::cli_abort("Install {.pkg ggplot2} to use {.fn plot_anisotropy}.")
   }
-  if (!requireNamespace("ggforce", quietly = TRUE)) {
-    cli_abort("ggforce must be installed to use this function.")
-  }
-  g <- ggplot2::ggplot(dat,
-    ggplot2::aes(
-      x0 = 0, y0 = 0,
-      a = .data$a, b = .data$b,
-      angle = .data$angle,
-      colour = `if`(delta, .data$model, NULL),
-      linetype = .data$random_field
-    )
-  ) +
-    ggforce::geom_ellipse() +
-    ggplot2::coord_fixed() +
-    ggplot2::labs(linetype = "Random field", colour = "Model",
-      x = object$spde$xy_cols[1], y = object$spde$xy_cols[2]) +
-    ggplot2::scale_colour_brewer(palette = "Dark2")
-  g
+
+  ggplot2::ggplot(range_data, ggplot2::aes(x = .data$x, y = .data$y)) +
+    ggplot2::geom_path(linewidth = 0.8, colour = "#0072B2") +
+    ggplot2::geom_hline(yintercept = 0, linewidth = 0.25, colour = "grey70") +
+    ggplot2::geom_vline(xintercept = 0, linewidth = 0.25, colour = "grey70") +
+    ggplot2::coord_equal() +
+    ggplot2::labs(
+      title = "Isotropic spatial range",
+      subtitle = "Equal axes reflect the fitted H = I model assumption; anisotropy is not estimated",
+      x = range_data$axis_x[[1L]],
+      y = range_data$axis_y[[1L]],
+      caption = sprintf(
+        "Practical range = sqrt(8) / kappa = %.4g",
+        range_data$range[[1L]]
+      )
+    ) +
+    ggplot2::theme_minimal()
 }
 
-#' @export
 #' @rdname plot_anisotropy
-plot_anisotropy2 <- function(object, model = 1) {
-  stopifnot(inherits(object, "gllvmTMB"))
-  if (!check_for_H(object)) return(NULL)
-  report <- object$tmb_obj$report(object$tmb_obj$env$last.par.best)
-  if (model == 1) eig <- eigen(report$H)
-  if (model == 2) eig <- eigen(report$H2)
-  dat <- data.frame(
-    x0 = c(0, 0),
-    y0 = c(0, 0),
-    x1 = eig$vectors[1, , drop = TRUE] * eig$values,
-    y1 = eig$vectors[2, , drop = TRUE] * eig$values
-  )
-  plot(0,
-    xlim = range(c(dat$x0, dat$x1)),
-    ylim = range(c(dat$y0, dat$y1)),
-    type = "n", asp = 1, xlab = "", ylab = ""
-  )
-  graphics::arrows(dat$x0, dat$y0, dat$x1, dat$y1)
-  invisible(list(eig = eig, dat = dat, H = report$H))
-}
-
-# Calculate anisotropic eigenvectors and ranges for a given model
-# Returns list with: eig, range_s, range_st, maj_s, min_s, maj_st, min_st
-calculate_anisotropy_components <- function(x, m = 1L) {
-  # Get report and extract H matrices
-  report <- x$tmb_obj$report(x$tmb_obj$env$last.par.best)
-  delta <- isTRUE(x$family$delta)
-
-  # Extract range values from sd_report
-  est_rep <- as.list(x$sd_report, "Estimate", report = TRUE)
-  range_values <- as.numeric(est_rep$range[, m])
-  range_s <- range_values[1]
-  range_st <- if (length(range_values) > 1) range_values[2] else range_values[1]
-
-  # Get eigenvalues/vectors from H matrix (or H2 for delta model 2)
-  H <- if (delta && m == 2) report$H2 else report$H
-  eig <- eigen(H)
-
-  # Calculate major and minor axis vectors for spatial field
-  maj_s <- eig$vectors[, 1, drop = TRUE] * eig$values[1] * range_s
-  min_s <- eig$vectors[, 2, drop = TRUE] * eig$values[2] * range_s
-
-  # Calculate major and minor axis vectors for spatiotemporal field
-  maj_st <- eig$vectors[, 1, drop = TRUE] * eig$values[1] * range_st
-  min_st <- eig$vectors[, 2, drop = TRUE] * eig$values[2] * range_st
-
-  list(
-    eig = eig,
-    range_s = range_s,
-    range_st = range_st,
-    maj_s = maj_s,
-    min_s = min_s,
-    maj_st = maj_st,
-    min_st = min_st
-  )
-}
-
-check_for_H <- function(obj) {
-  H <- any(grepl(
-    pattern = "ln_H_input",
-    x = names(obj$sd_report$par.fixed),
-    ignore.case = TRUE
-  ))
-  if (!H) {
-    cli::cli_inform("`anisotropy = FALSE` in `sdmTMB()`; no anisotropy figure is available.")
-    # FIXME in the future plot the isotropic covariance instead of NULL?
+#' @export
+plot_anisotropy2 <- function(object, model = 1L) {
+  if (!is.numeric(model) || length(model) != 1L || is.na(model) || model != 1) {
+    cli::cli_abort(
+      "{.arg model} must be 1; gllvmTMB fits one shared spatial range parameter."
+    )
   }
-  H
+  range_data <- .gllvm_spatial_range_geometry(object)
+  graphics::plot(
+    range_data$x,
+    range_data$y,
+    type = "l",
+    asp = 1,
+    xlab = range_data$axis_x[[1L]],
+    ylab = range_data$axis_y[[1L]],
+    main = "Isotropic spatial range"
+  )
+  graphics::abline(h = 0, v = 0, col = "grey70", lty = 3)
+  invisible(list(
+    data = range_data,
+    range = range_data$range[[1L]],
+    kappa = range_data$kappa[[1L]],
+    H = diag(2L),
+    anisotropy_estimated = FALSE
+  ))
+}
+
+.gllvm_spatial_range_geometry <- function(object) {
+  if (!inherits(object, "gllvmTMB_multi")) {
+    cli::cli_abort(
+      "{.arg object} must be a fitted {.cls gllvmTMB_multi} model."
+    )
+  }
+  if (.gllvm_fit_uses_delta(object)) {
+    cli::cli_abort(
+      "Isotropic-range plotting is not supported for delta spatial models."
+    )
+  }
+  if (isTRUE(object$use$spatiotemporal)) {
+    cli::cli_abort(
+      "Isotropic-range plotting is not supported for spatiotemporal models."
+    )
+  }
+
+  spatial_flags <- c(
+    isTRUE(object$use$spde),
+    isTRUE(object$use$spde_slope),
+    isTRUE(object$use$spde_latent_slope)
+  )
+  if (!any(spatial_flags)) {
+    cli::cli_abort(
+      "{.arg object} does not contain a fitted gllvmTMB spatial field."
+    )
+  }
+
+  kappa <- if (!is.null(object$report$kappa)) {
+    object$report$kappa
+  } else {
+    object$report$kappa_s
+  }
+  if (
+    !is.numeric(kappa) || length(kappa) != 1L || !is.finite(kappa) || kappa <= 0
+  ) {
+    cli::cli_abort(
+      "The fitted model does not contain one finite positive spatial kappa estimate."
+    )
+  }
+
+  range <- sqrt(8) / as.numeric(kappa)
+  theta <- seq(0, 2 * pi, length.out = 361L)
+  axes <- object$mesh$xy_cols
+  if (!is.character(axes) || length(axes) != 2L) {
+    axes <- c("x", "y")
+  }
+  data.frame(
+    x = range * cos(theta),
+    y = range * sin(theta),
+    theta = theta,
+    range = range,
+    kappa = as.numeric(kappa),
+    axis_x = axes[[1L]],
+    axis_y = axes[[2L]],
+    anisotropy_estimated = FALSE,
+    model_assumption = "isotropic (H = I)",
+    stringsAsFactors = FALSE
+  )
+}
+
+.gllvm_fit_uses_delta <- function(object) {
+  family <- object$family
+  if (is.null(family)) {
+    return(FALSE)
+  }
+  if (isTRUE(family$delta)) {
+    return(TRUE)
+  }
+  if (!is.list(family)) {
+    return(FALSE)
+  }
+  any(vapply(
+    family,
+    function(entry) is.list(entry) && isTRUE(entry$delta),
+    logical(1)
+  ))
 }

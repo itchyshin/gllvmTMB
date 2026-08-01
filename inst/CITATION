@@ -2,9 +2,8 @@
 ##
 ## - Primary entry: the gllvmTMB methods paper (Nakagawa et al., in prep).
 ##   Update the DOI / journal / volume / pages when the paper lands.
-## - Recommended companions: cite TMB (Kristensen et al. 2016) for any
-##   gllvmTMB fit, and sdmTMB (Anderson et al. 2025) when the spatial
-##   path (`spatial_*()` keywords) is used.
+## - Recommended companion: cite TMB (Kristensen et al. 2016) for any
+##   gllvmTMB fit.
 
 bibentry(
   bibtype  = "Manual",
@@ -53,39 +52,5 @@ bibentry(
   ),
   header   = paste(
     "Please also cite TMB, the engine underlying every gllvmTMB fit:"
-  )
-)
-
-bibentry(
-  bibtype  = "Article",
-  key      = "sdmTMB",
-  title    = "sdmTMB: An R Package for Fast, Flexible, and User-Friendly
-              Generalized Linear Mixed Effects Models with Spatial and
-              Spatiotemporal Random Fields",
-  author   = c(
-    person(c("Sean", "C."), "Anderson"),
-    person(c("Eric", "J."), "Ward"),
-    person(c("Philina", "A."), "English"),
-    person(c("Lewis", "A.", "K."), "Barnett"),
-    person(c("James", "T."), "Thorson")
-  ),
-  journal  = "Journal of Statistical Software",
-  year     = "2025",
-  volume   = "115",
-  number   = "2",
-  pages    = "1--36",
-  doi      = "10.18637/jss.v115.i02",
-  textVersion = paste(
-    "Anderson SC, Ward EJ, English PA, Barnett LAK, Thorson JT (2025).",
-    "sdmTMB: An R Package for Fast, Flexible, and User-Friendly",
-    "Generalized Linear Mixed Effects Models with Spatial and",
-    "Spatiotemporal Random Fields.",
-    "Journal of Statistical Software, 115(2), 1-36.",
-    "doi:10.18637/jss.v115.i02"
-  ),
-  header   = paste(
-    "When using the spatial_*() keywords, please also cite sdmTMB,",
-    "from which gllvmTMB's mesh / SPDE / anisotropy R helpers are",
-    "inherited:"
   )
 )

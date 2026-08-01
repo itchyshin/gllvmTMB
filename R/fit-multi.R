@@ -3355,8 +3355,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   if (use_spde || use_spde_slope || use_spde_latent_slope) {
     if (is.null(mesh))
       cli::cli_abort("{.fn spatial_indep}/{.fn spatial_scalar}/{.fn spatial_latent} found in formula but {.arg mesh} is NULL.")
-    if (!inherits(mesh, "sdmTMBmesh"))
-      cli::cli_abort("Pass {.arg mesh} as a result of {.fn make_mesh}.")
+    mesh <- .gllvm_normalize_mesh(mesh)
     if (!isTRUE(nrow(mesh$A_st) == n_obs))
       cli::cli_abort(c(
         "make_mesh() projection has {nrow(mesh$A_st)} rows but the long-format data has {n_obs}.",

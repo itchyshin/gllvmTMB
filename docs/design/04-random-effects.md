@@ -350,7 +350,7 @@ contract.
 ## Spatial random effects (`spatial_*`)
 
 Spatial keywords use the Lindgren-Rue-Lindström (2011) SPDE
-construction inherited from `sdmTMB`. The precision matrix is
+construction implemented in gllvmTMB. The precision matrix is
 
 $$
 Q_\text{spde} = \kappa^4 M_0 + 2\kappa^2 M_1 + M_2

@@ -3,42 +3,36 @@
 \name{plot_anisotropy}
 \alias{plot_anisotropy}
 \alias{plot_anisotropy2}
-\title{Plot anisotropy from a gllvmTMB model}
+\title{Plot the isotropic spatial range from a gllvmTMB model}
 \usage{
 plot_anisotropy(object, return_data = FALSE)
 
-plot_anisotropy2(object, model = 1)
+plot_anisotropy2(object, model = 1L)
 }
 \arguments{
-\item{object}{A fitted \code{gllvmTMB} model object with an anisotropic
-spatial component.}
+\item{object}{A fitted \code{gllvmTMB_multi} model containing an intercept-only or
+random-slope spatial field.}
 
-\item{return_data}{Logical. Return a data frame? \code{plot_anisotropy()} only.}
+\item{return_data}{If \code{TRUE}, return the range geometry instead of a plot.}
 
-\item{model}{Which model if a delta model (only for \code{plot_anisotropy2()};
-\code{plot_anisotropy()} always plots both).}
+\item{model}{Retained for compatibility. Only \code{model = 1} is supported
+because gllvmTMB has one shared spatial range parameter.}
 }
 \value{
-\code{plot_anisotropy()}: One or more ellipses illustrating the estimated
-anisotropy. The ellipses are centred at coordinates of zero in the space
-of the X-Y coordinates being modelled. The ellipses show the spatial
-range (distance at which correlation is effectively independent) in any
-direction from zero. Uses \pkg{ggplot2}. If anisotropy was turned off
-when fitting the model, \code{NULL} is returned instead of a \pkg{ggplot2}
-object.
-
-\code{plot_anisotropy2()}: A plot of eigenvectors illustrating the estimated
-anisotropy. A list of the plotted data is invisibly returned. Uses base
-graphics. If anisotropy was turned off when fitting the model, \code{NULL} is
-returned instead of a plot object.
+\code{plot_anisotropy()} returns a \code{ggplot2} object, or a data frame when
+\code{return_data = TRUE}. \code{plot_anisotropy2()} draws the same geometry with
+base graphics and invisibly returns a list containing \code{data}, \code{range},
+\code{kappa}, \code{H = diag(2)}, and \code{anisotropy_estimated = FALSE}.
 }
 \description{
-Anisotropy is when spatial correlation is directionally dependent.
-These plotting functions help visualise the estimated anisotropy
-from a \code{gllvmTMB()} fit that used \verb{spatial_*()} keywords with an
-anisotropic SPDE mesh.
+\code{gllvmTMB} currently fits isotropic SPDE/GMRF spatial fields. Consequently,
+these helpers draw a circle whose radius is the fitted practical range,
+\code{sqrt(8) / kappa}. Equal axes describe the model assumption (\code{H = I}); they
+are not evidence that anisotropy was estimated.
 }
-\references{
-Code adapted from VAST and TMB anisotropy examples, via
-sdmTMB.
+\section{Scope}{
+
+These functions do not estimate or diagnose directional anisotropy. Delta
+and spatiotemporal spatial models are not supported by this plotting
+contract and fail explicitly.
 }

@@ -299,7 +299,7 @@ factor):
   sparse $A^{-1}$ (the tree-derived covariance matrix). Requires
   either `tree = ape::phylo` or `vcv = Cphy` as a keyword argument.
 - **spatial** → spatial correlation via SPDE / GMRF precision
-  (inherited from `sdmTMB`). Requires `mesh = make_mesh(...)`
+  (implemented in gllvmTMB). Requires `mesh = make_mesh(...)`
   passed as a keyword argument.
 
 ## The ordinary `latent()` decomposition rule
@@ -634,7 +634,7 @@ The `sites` grouping factor identifies which observations share a
 spatial location. The `mesh` argument is built via
 `make_mesh(df, c("lon", "lat"), cutoff = ...)`. The SPDE / GMRF
 precision approximation is the Lindgren-Rue-Lindström (2011)
-construction inherited from `sdmTMB` (Anderson et al. 2025).
+construction implemented in gllvmTMB.
 
 The earlier syntax `spatial_unique(0 + trait | coords)` (with
 `coords` as the grouping-factor name) is **deprecated** in favour

@@ -85,7 +85,7 @@ formula grammar, the following five capabilities:
        (Kirkpatrick & Meyer 2004; Meyer 2009) for quantitative
        genetics.
 3. **Spatial GLLVMs** via fast SPDE / GMRF precision matrices
-   (inherited from `sdmTMB`; Lindgren et al. 2011). Multi-trait
+   (implemented in gllvmTMB; Lindgren et al. 2011). Multi-trait
    spatial fields, not just one trait at a time.
 4. **Meta-analytic GLLVMs** via `meta_V(V = V)`, including
    block-diagonal within-study correlation through `block_V()`.
@@ -235,7 +235,7 @@ sister packages have separate scopes:
   with three or more responses belongs in `gllvmTMB`.
 - **`sdmTMB`** (sister) -- single-response spatial / spatiotemporal
   models with SPDE random fields. We inherit the SPDE / mesh /
-  anisotropy R helpers from `sdmTMB` (with provenance in
+  spatial helper implementation in gllvmTMB (with provenance in
   `inst/COPYRIGHTS`).
 - **`glmmTMB`** -- single-response mixed models. `gllvmTMB`'s
   reduced-rank `latent()` and diagonal `unique()` keywords share

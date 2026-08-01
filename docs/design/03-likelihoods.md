@@ -297,8 +297,8 @@ family or interval-calibration claim.
 
 When `spatial_*(0 + trait | sites, mesh = mesh)` is in the
 formula, the spatial random field is approximated by the
-Lindgren-Rue-Lindström (2011) SPDE construction inherited from
-`sdmTMB` (Anderson et al. 2025). The precision matrix is built on
+Lindgren-Rue-Lindström (2011) SPDE construction implemented in
+gllvmTMB. The precision matrix is built on
 the mesh nodes:
 
 $$
@@ -309,8 +309,8 @@ where $M_0$, $M_1$, $M_2$ are the finite-element mass / stiffness
 matrices, and $\kappa = \sqrt{8}/\text{range}$ is the inverse-
 range parameter. Mesh nodes' field values are linearly
 interpolated to observation locations via a sparse projection
-matrix $A_{n \times n_\text{mesh}}$. Status: `claimed`; Phase 0B
-verifies via a single-trait sdmTMB cross-comparison.
+matrix $A_{n \times n_\text{mesh}}$. Status: `claimed`; external
+comparisons are verification aids, not implementation provenance.
 
 For `spatial_latent(0 + trait | sites, d = K)`, the shared fields
 use the unscaled base SPDE prior and the scale is absorbed into the

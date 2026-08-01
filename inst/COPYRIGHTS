@@ -8,34 +8,10 @@
 ## families (including ordinal_probit), the diagnostic and extractor
 ## machinery -- is licensed GPL-3 by Shinichi Nakagawa.
 ##
-## The GPL-3 components listed below were inherited from sdmTMB
-## (Anderson et al. 2025) and through sdmTMB from the upstream code
-## base of TMB (Kristensen et al. 2016). The body that follows
-## describes the upstream provenance of the inherited code, not
-## gllvmTMB's own attribution scope.
-##
-## ----------------------------------------------------------------
-##
-## Spatial mesh and SPDE machinery (R/mesh.R, R/crs.R, R/plot.R)
-##
-## The R-side spatial helpers in R/mesh.R (`make_mesh()`,
-## `plot.sdmTMBmesh`, the SPDE-matrix construction calling
-## fmesher::fm_fem(), and the anisotropy mesh utilities), R/crs.R
-## (`add_utm_columns()`), and R/plot.R (`plot_anisotropy()` /
-## `plot_anisotropy2()`) are inherited from sdmTMB
-## (https://github.com/pbs-assess/sdmTMB), with minimal API and
-## naming changes. sdmTMB is GPL-3 licensed.
-##
-## Upstream copyright holders of the inherited sdmTMB code:
-##
-##   * Sean C. Anderson  (ORCID: 0000-0001-9563-1937)
-##   * Eric J. Ward      (ORCID: 0000-0002-4359-0296)
-##   * Philina A. English (ORCID: 0000-0003-2992-6782)
-##   * Lewis A. K. Barnett (ORCID: 0000-0002-9381-8375)
-##
-## See the upstream sdmTMB DESCRIPTION at
-## https://github.com/pbs-assess/sdmTMB for the full sdmTMB author
-## list.
+## The R-side spatial helpers in R/mesh.R, R/crs.R, and R/plot.R are
+## independently authored gllvmTMB GPL-3 code. They use the public fmesher
+## API and the published SPDE/GMRF construction; no sdmTMB source code is
+## included or adapted.
 ##
 ## TMB engine (src/gllvmTMB.cpp)
 ##
@@ -52,22 +28,6 @@
 ## TMB itself is GPL-2/GPL-3 licensed. See the upstream TMB
 ## DESCRIPTION at https://github.com/kaskr/adcomp for the full TMB
 ## author list.
-##
-## Anisotropy plotting (R/plot.R)
-##
-## The `plot_anisotropy()` / `plot_anisotropy2()` R routines were
-## adapted via sdmTMB from VAST (James Thorson) and the TMB
-## anisotropy R example (Kasper Kristensen). Both upstream paths are
-## GPL-3.
-##
-## Upstream copyright holders of the anisotropy-plot routines
-## (transitive, via sdmTMB):
-##
-##   * James T. Thorson (VAST author,
-##     https://github.com/James-Thorson-NOAA/VAST,
-##     ORCID: 0000-0001-7415-1010)
-##   * Kasper Kristensen (TMB anisotropy R example,
-##     https://github.com/kaskr/adcomp)
 ##
 ## Sparse phylogenetic precision builder (R/phylo-tree-precision.R)
 ##

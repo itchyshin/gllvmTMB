@@ -4,6 +4,59 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-08-01 -- independent spatial-helper rewrite
+
+Branch: `codex/spatial-independent-helpers`; clean worktree created from
+`origin/main` at `bca04b29`. The active Claude profile-coverage lane was not
+touched.
+
+`R/mesh.R`, `R/crs.R`, and `R/plot.R` were independently rewritten against
+the public fmesher/sf APIs and the Lindgren-Rue-Lindstrom SPDE construction.
+No TMB likelihood, formula grammar, or response-family parameterisation
+changed. New meshes are `gllvmTMBmesh`; valid legacy `sdmTMBmesh` objects are
+accepted with a lifecycle warning.
+
+Checks:
+
+```sh
+Rscript --vanilla -e 'devtools::document(quiet = TRUE)'
+Rscript --vanilla -e 'devtools::test(filter = "mesh|utm-conversions|anisotropy-unsupported", reporter = "summary")'
+Rscript --vanilla -e 'devtools::test(filter = "spatial-mode-dispatch|spatial-orientation|stage4-spde", reporter = "summary")'
+Rscript --vanilla -e 'devtools::test(filter = "mesh", reporter = "summary")'
+SDMTMB_ORACLE_LIB=/private/tmp/gllvmtmb-sdmtmb-oracle Rscript --vanilla dev/verify-sdmtmb-spatial-oracle.R
+Rscript --vanilla -e 'pkgdown::check_pkgdown()'
+Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'
+rg -n -i 'inherited from sdmTMB|inherits sdmTMB|sdmTMB.*cite|cite.*sdmTMB|from which gllvmTMB|SPDE inheritance' AGENTS.md CLAUDE.md README.md DESCRIPTION R inst vignettes docs/design _pkgdown.yml NAMESPACE man
+git diff --check
+```
+
+Outcome: focused helper and spatial integration tests passed. The isolated,
+developer-only oracle passed at `1e-10` for the selected `A_st`, `c0`, `g1`,
+`g2`, and CRS fixtures; its pinned receipt is
+`docs/dev-log/artifacts/2026-08-01-sdmtmb-spatial-black-box-oracle.md`.
+`pkgdown::check_pkgdown()` reported no problems; the local no-manual check
+exited successfully; the stale-provenance scan had no current inheritance or
+citation-obligation result; and `git diff --check` passed. `devtools::document`
+reported pre-existing `AIC.gllvmTMB_multi` / `BIC.gllvmTMB_multi` roxygen export
+notes unrelated to this lane.
+
+The full `devtools::test()` run completed with the spatial-helper files green,
+but with two pre-existing repository failures outside this lane:
+`test-funcphylo-spatial-recovery.R` did not converge at its fixed fixture, and
+`test-plot-visual-snapshots.R` reported a changed correlation-ellipse vdiffr
+snapshot. It also reported 785 intentional skips and two warnings about
+all-zero binary rows in an unrelated gllvm comparator. These are recorded as
+merge blockers, not attributed to the independent-helper rewrite.
+
+Fresh D-43 re-review after the repair was unanimous: the code/interface,
+test-evidence, and provenance/help reviewers each returned DONE. The
+no-manual `devtools::check()` rerun was started after this final documentation
+pass; it failed on an unrelated vdiffr snapshot plus pre-existing namespace
+`weights` registration warnings, repository-index network warnings, clock, and
+`xcrun_db` notes. Its test phase had 8,064 passes, 822 skips, two warnings, and
+the one visual-snapshot failure; the prior funcphylo fixture did not fail in
+this run.
+
 ## 2026-07-24 -- BIRDBASE-relevant performance-audit baseline
 
 Branch: `codex/performance-audit-20260724`; clean worktree from `origin/main`.

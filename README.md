@@ -224,9 +224,8 @@ overpromise):
 
 ## Citation and acknowledgements
 
-If you use gllvmTMB, please cite the package and the engine /
-dependency papers it builds on. Run `citation("gllvmTMB")` for
-formatted entries; the curated list is:
+If you use gllvmTMB, please cite the package and its TMB engine.
+Run `citation("gllvmTMB")` for formatted entries:
 
 - **gllvmTMB**: Nakagawa S (2026). *gllvmTMB: Fit Multivariate
   Models from Wide Response Data.* R package version 0.6.0.
@@ -235,21 +234,12 @@ formatted entries; the curated list is:
   Bell BM (2016). *TMB: Automatic Differentiation and Laplace
   Approximation.* Journal of Statistical Software, 70(5), 1-21.
   <https://doi.org/10.18637/jss.v070.i05>
-- **sdmTMB (when using `spatial_*()` keywords)**: Anderson SC,
-  Ward EJ, English PA, Barnett LAK, Thorson JT (2025). *sdmTMB:
-  An R Package for Fast, Flexible, and User-Friendly Generalized
-  Linear Mixed Effects Models with Spatial and Spatiotemporal
-  Random Fields.* Journal of Statistical Software, 115(2), 1-36.
-  <https://doi.org/10.18637/jss.v115.i02>
-
-gllvmTMB inherits SPDE / mesh / anisotropy R helpers (`R/mesh.R`,
-`R/crs.R`, parts of `R/plot.R`) from `sdmTMB` (Sean C. Anderson,
-Eric J. Ward, Philina A. English, Lewis A. K. Barnett) under
-GPL-3. Provenance is recorded in `inst/COPYRIGHTS`, and the
-inherited R files carry file-top comments pointing at that file.
-TMB itself is a runtime dependency rather than included code; the
-gllvmTMB C++ engine in `src/gllvmTMB.cpp` is original work by the
-package author, written against the TMB API.
+The spatial helpers are independently implemented in gllvmTMB using the
+published SPDE/GMRF construction and the public `fmesher` API. We thank the
+sdmTMB authors for the inspiration its spatial interface provided; no sdmTMB
+source code is included or adapted. TMB itself is a runtime dependency rather
+than included code; the gllvmTMB C++ engine in `src/gllvmTMB.cpp` is original
+work by the package author, written against the TMB API.
 
 ## Sister packages
 
@@ -257,9 +247,9 @@ package author, written against the TMB API.
   regression, including location-scale and bivariate
   residual-correlation models.
 - `glmmTMB` fits single-response GLMMs.
-- `sdmTMB` fits spatial single-response models. `gllvmTMB`
-  inherits sdmTMB's SPDE and mesh code for its `spatial_*()`
-  keywords.
+- `sdmTMB` fits spatial single-response models; `gllvmTMB` fits
+  multivariate stacked-trait spatial models through its own `spatial_*()`
+  helper layer.
 - `gllvm` (Niku et al. 2019; Korhonen et al. 2025 for `gllvm`
   2.0) is the established multivariate GLLVM / ordination package,
   with variational, extended-variational, and Laplace approximation

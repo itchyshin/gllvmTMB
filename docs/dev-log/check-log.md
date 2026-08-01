@@ -47512,13 +47512,13 @@ the tau lane resumes.
   orientation guide, not as the retired same-data loading-selection workflow.
   It uses only the predeclared `lower_triangular` convention, a rendered
   constraint-matrix figure, public `check_gllvmTMB()` / `extract_Sigma()`
-  calls, and an explicit LAM-04 scope boundary.
+  calls, and an explicit scope boundary.
 - Added the guide to the Model Guides navbar and article index; linked it from
   `joint-sdm.Rmd`; clarified the README's deferred-guides row.
 - `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/lambda-constraint-suggest", pkg = ".", lazy = FALSE, new_process = FALSE, quiet = FALSE)'`
   -> PASS; wrote the article and constraint figure.
 - `Rscript --vanilla -e 'devtools::test(filter = "suggest-lambda-constraint", reporter = "summary")'`
-  -> PASS; LAM-04 heavy recovery cells skipped without `GLLVMTMB_HEAVY_TESTS=1`.
+  -> PASS; four configured heavy recovery cells skipped without `GLLVMTMB_HEAVY_TESTS=1`.
 - `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
   -> PASS, `No problems found.`
 - `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/joint-sdm", pkg = ".", lazy = FALSE, new_process = FALSE, quiet = TRUE); cat("JOINT_SDM_DONE\\n")'`
@@ -47534,3 +47534,46 @@ the tau lane resumes.
   helper diagnostics or internal validation tracker IDs. Pat passed the
   applied-reader reread; Rose passed once data-derived pins were described as
   a new constrained refit that can change the covariance, not a rotation.
+
+## 2026-08-01 — integrate and verify the runaway fit warning (#877, Codex)
+
+**Branch:** `codex/pr877-integration-20260801`, based on PR #877 head `3d31259f`
+and merged with current `origin/main` at `0b898266` in the isolated worktree
+`/private/tmp/gllvmtmb-pr877-integration`.
+
+The PR adds a once-per-session fit-time warning when the existing binomial
+prevalence/loading diagnostic returns `WARN`, plus the explicit
+`gllvmTMBcontrol(warn_runaway = TRUE)` switch. It does not change the diagnostic,
+the likelihood, or the estimator. The handed-over stage-2/stage-3 campaign
+extensions were retained together.
+
+Integration review found that the stale PR branch displaced current-main VA call
+attachment and carried stale `CLAUDE.md` and decisions-log snapshots. The VA
+attachment was restored in `R/gllvmTMB.R`; both shared documents were restored
+exactly to `origin/main` and are absent from the final net diff.
+
+Checks:
+
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'` -> PASS; generated
+  `man/gllvmTMBcontrol.Rd` documents `warn_runaway`.
+- focused `test-runaway-warning.R` with `NOT_CRAN=true` -> PASS, 10 assertions.
+- focused `test-va-routing-oracle.R` with `NOT_CRAN=true` -> PASS, 31 assertions.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'` -> PASS, `No problems found.`
+- full `NOT_CRAN=true devtools::test()` -> 8,324 passes, 785 skips, 2 warnings,
+  2 unrelated failures: the current spatial-recovery fixture did not converge,
+  and local vdiffr produced a correlation-ellipse mismatch. A focused retry of
+  the spatial file reproduced the same failure; it is not called flaky or fixed.
+- strict `R CMD check` (`--no-manual`, `error_on = "warning"`) -> FAIL after
+  11m35s: 1 error, 4 warnings, 4 notes. The test error is the same local vdiffr
+  correlation-ellipse mismatch (8,042 passes, 822 skips, 2 comparator warnings);
+  the spatial recovery fixture passed in this run. Three namespace warnings and
+  two code-analysis notes arise from the pre-existing
+  `S3method(weights,gllvmTMB_va)` registration without `importFrom(stats,
+  weights)`. The dependency-index warning reflects sandboxed network access;
+  remaining notes include clock verification and `xcrun_db` detritus. Those
+  adjacent repairs are intentionally excluded from #877.
+
+Exact consistency scans and their classified verdicts are recorded in
+`docs/dev-log/after-task/2026-08-01-runaway-fit-warning-877.md`. Rose pre-publish:
+PASS with the explicit warning-not-repair boundary. GitHub R-CMD-check remains the
+merge gate.

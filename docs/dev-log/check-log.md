@@ -47951,3 +47951,35 @@ Exact consistency searches:
 
 Full report:
 `docs/dev-log/after-task/2026-08-01-scale-aware-aghq-tau-847.md`.
+
+## 2026-08-01 — betabinomial C1 slope admission (D-113 track 6)
+
+**Branch / worktree:** `claude/slope-per-family-20260801` @ `/private/tmp/gllvmtmb-slope-per-family-20260801` (from `origin/main`).
+
+**Commands:**
+
+```sh
+NOT_CRAN=true GLLVMTMB_HEAVY_TESTS=1 Rscript --vanilla -e \
+  'devtools::load_all(quiet=TRUE); testthat::test_file("tests/testthat/test-augmented-slope-family-policy.R")'
+# FAIL 0 | WARN 0 | SKIP 0 | PASS 28
+
+NOT_CRAN=true GLLVMTMB_HEAVY_TESTS=1 Rscript --vanilla -e \
+  'devtools::load_all(quiet=TRUE); testthat::test_file("tests/testthat/test-family-slope-recovery.R")'
+# FAIL 0 | WARN 0 | SKIP 0 | PASS 15  (after large-N fixture n_sp=200 / trials=15)
+
+Rscript --vanilla dev/probe-betabinomial-slope.R
+# n_sp=90 conv=1; n_sp=120/200 conv=0 (large-N principle)
+```
+
+**rg hygiene:**
+
+```sh
+rg -n 'family_id = c\(0L, 1L, 2L, 3L, 4L, 5L, 7L, 8L, 9L, 14L, 15L\)' R/fit-multi.R
+rg -n 'betabinomial random slope' tests/testthat/test-family-slope-recovery.R
+rg -n 'betabinomial\\(\\)' R/fit-multi.R tests/testthat/test-augmented-slope-family-policy.R
+```
+
+**Deliberately not run:** full `devtools::test()`; Totoro (local heavy sufficed after N escalation); tweedie admission.
+
+**Reports:** `docs/dev-log/after-task/2026-08-01-slope-per-family-gap-ledger.md`,
+`docs/dev-log/after-task/2026-08-01-slope-per-family-betabinomial-admission.md`.

@@ -132,26 +132,29 @@
 
 .augmented_slope_family_contract <- function() {
   data.frame(
-    family_id = c(0L, 1L, 2L, 3L, 4L, 5L, 7L, 9L, 14L, 15L),
+    family_id = c(0L, 1L, 2L, 3L, 4L, 5L, 7L, 8L, 9L, 14L, 15L),
     family = c(
       "gaussian", "binomial", "poisson", "lognormal", "Gamma",
-      "nbinom2", "Beta", "student", "ordinal_probit", "nbinom1"
+      "nbinom2", "Beta", "betabinomial", "student", "ordinal_probit",
+      "nbinom1"
     ),
-    link_0 = rep(TRUE, 10L),
-    link_1 = c(FALSE, TRUE, rep(FALSE, 8L)),
-    link_2 = rep(FALSE, 10L),
+    link_0 = rep(TRUE, 11L),
+    link_1 = c(FALSE, TRUE, rep(FALSE, 9L)),
+    link_2 = rep(FALSE, 11L),
     admission_basis = c(
       rep("route_specific", 3L),
       "c1_partial",
       rep("route_specific", 3L),
       "c1_partial",
+      "c1_partial",
       rep("route_specific", 2L)
     ),
     evidence = c(
       rep("route-specific validation-register rows", 3L),
-      "Lognormal/Student-t: permitted at runtime; single-seed evidence on one route only",
+      "C1-partial: permitted at runtime; single-seed evidence on one route only",
       rep("route-specific validation-register rows", 3L),
-      "Lognormal/Student-t: permitted at runtime; single-seed evidence on one route only",
+      "C1-partial: permitted at runtime; single-seed evidence on one route only",
+      "C1-partial: permitted at runtime; single-seed evidence on one route only",
       rep("route-specific validation-register rows", 2L)
     ),
     stringsAsFactors = FALSE
@@ -175,8 +178,9 @@
   paste(
     "Augmented structured random slopes are permitted for gaussian(),",
     "binomial() (logit/probit only), poisson(), Gamma(), nbinom2(),",
-    "nbinom1(), Beta(), and ordinal_probit(); lognormal() and student()",
-    "are permitted on more limited evidence only.",
+    "nbinom1(), Beta(), and ordinal_probit(); lognormal(), student(),",
+    "and betabinomial() (logit only) are permitted on more limited",
+    "evidence only.",
     "Validation depth remains family- and covariance-mode-specific."
   )
 }
@@ -1546,12 +1550,13 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## in register rows PHY-11..PHY-16 (binomial and ordinal are partial). It
   ## must not be read as a uniform recovery or inference claim. It holds the
   ## runtime family/link contract in .augmented_slope_family_contract().
-  ## Lognormal and Student-t are C1-partial family-generalisation admissions
-  ## (RE-14), not route-specific recovery claims. Binomial cloglog remains
-  ## reserved because no augmented-slope recovery cell or explicit admission
-  ## covers link id 2. Family is unknown at parse time, so the reservation is
-  ## enforced here where family_id_vec and link_id_vec exist. The message keeps
-  ## the parser's "LHS richer than" phrasing so the contract substring is stable.
+  ## Lognormal, Student-t, and betabinomial are C1-partial family-generalisation
+  ## admissions (RE-14), not route-specific recovery claims. Binomial cloglog
+  ## remains reserved because no augmented-slope recovery cell or explicit
+  ## admission covers link id 2. Family is unknown at parse time, so the
+  ## reservation is enforced here where family_id_vec and link_id_vec exist.
+  ## The message keeps the parser's "LHS richer than" phrasing so the contract
+  ## substring is stable.
   if (use_phylo_slope_indep && any(!.augmented_slope_family_allowed(family_id_vec, link_id_vec))) {
     cli::cli_abort(c(
       "{.fn phylo_indep} LHS richer than {.code 0 + trait} is not yet supported for this family.",

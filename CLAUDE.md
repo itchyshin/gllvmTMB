@@ -3,7 +3,7 @@
 This repository is shared by humans, Codex, and Claude Code. Read
 `AGENTS.md` first; it is the source of truth for project rules.
 
-## Live Phase Snapshot — 2026-07-30
+## Live Phase Snapshot — 2026-07-31
 
 > **🔴 MULTI-LANE REPO — this snapshot is NOT a single lane's status.** No one bullet
 > represents the project. **The lane map is authoritative for ownership:**
@@ -11,6 +11,22 @@ This repository is shared by humans, Codex, and Claude Code. Read
 > current handover. Read it before any repository mutation. Milestone state is not in
 > either place and must be re-derived from `git`.
 
+- **2026-07-31 — AGHQ LANE: the estimator question is ANSWERED NARROWLY and the headline is a
+  NEGATIVE.** 3 PRs merged (#870, #875, #876); `main` green. Three engine fixes shipped —
+  **#843** AGHQ now runs both starts (catastrophic fits **16/40 → 1/40**), **#871** the dead
+  `aghq_multistart` control, **#874** convergence was unreachable at scale (0% certified at
+  n ≥ 400; now a relative gradient leg). A **12,000-fit ADEMP campaign** ran on **DRAC/fir**
+  (Totoro was committed to the VA lane) and was adversarially verified: **10 claims in, 10
+  refuted as phrased**. **Established, all-fits, σ_λ=3:** AGHQ beats Laplace by Δρ-MAE
+  0.115–0.169 (≥19 MCSE). 🔴 **But the ESTIMATOR question is NOT answered** — both filter
+  populations are invalid (`converged` is TRUE for 4800/4800 Laplace fits *including 49.1%
+  that ran away*), so this measures the AGHQ **package**, not the estimator; and the effect is
+  a **runaway-avoidance signal**, not broad accuracy (median paired Δ = +0.00014 at n=400
+  σ_λ=1). **#847 is now the top open task** — a scale-aware τ is the **only** route for
+  default-grammar users, and my multi-start hypothesis for it was **REFUTED by experiment**
+  (70% vs 65%). New: a **fit-time runaway warning** (PR **#877 OPEN**), because plain defaults
+  run away in **98–99%** of fits at σ_λ=3 silently. 🔴 No public claim without Shinichi.
+  **START HERE:** `docs/dev-log/handover/2026-07-31-codex-handover.md`
 - **2026-07-30 — THE SCALE-DEPENDENT-CONSTANTS CLASS NOW HAS AN OWNER AND EVIDENCE** (this
   resolves a "Needs Shinichi" flagged twice below). 8 PRs merged (#832, #839, #842, #845, #846,
   #849, #854, #858); `R/` touched only by the #832 export. **It is a CLASS, not a bug** — ~10

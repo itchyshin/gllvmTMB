@@ -4,6 +4,154 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-08-01 -- independent spatial-helper rewrite
+
+Branch: `codex/spatial-independent-helpers`; clean worktree created from
+`origin/main` at `bca04b29`. The active Claude profile-coverage lane was not
+touched.
+
+`R/mesh.R`, `R/crs.R`, and `R/plot.R` were independently rewritten against
+the public fmesher/sf APIs and the Lindgren-Rue-Lindstrom SPDE construction.
+No TMB likelihood, formula grammar, or response-family parameterisation
+changed. New meshes are `gllvmTMBmesh`; valid legacy `sdmTMBmesh` objects are
+accepted with a lifecycle warning.
+
+Checks:
+
+```sh
+Rscript --vanilla -e 'devtools::document(quiet = TRUE)'
+Rscript --vanilla -e 'devtools::test(filter = "mesh|utm-conversions|anisotropy-unsupported", reporter = "summary")'
+Rscript --vanilla -e 'devtools::test(filter = "spatial-mode-dispatch|spatial-orientation|stage4-spde", reporter = "summary")'
+Rscript --vanilla -e 'devtools::test(filter = "mesh", reporter = "summary")'
+SDMTMB_ORACLE_LIB=/private/tmp/gllvmtmb-sdmtmb-oracle Rscript --vanilla dev/verify-sdmtmb-spatial-oracle.R
+Rscript --vanilla -e 'pkgdown::check_pkgdown()'
+Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'
+rg -n -i 'inherited from sdmTMB|inherits sdmTMB|sdmTMB.*cite|cite.*sdmTMB|from which gllvmTMB|SPDE inheritance' AGENTS.md CLAUDE.md README.md DESCRIPTION R inst vignettes docs/design _pkgdown.yml NAMESPACE man
+git diff --check
+```
+
+Outcome: focused helper and spatial integration tests passed. The isolated,
+developer-only oracle passed at `1e-10` for the selected `A_st`, `c0`, `g1`,
+`g2`, and CRS fixtures; its pinned receipt is
+`docs/dev-log/artifacts/2026-08-01-sdmtmb-spatial-black-box-oracle.md`.
+`pkgdown::check_pkgdown()` reported no problems; the local no-manual check
+exited successfully; the stale-provenance scan had no current inheritance or
+citation-obligation result; and `git diff --check` passed. `devtools::document`
+reported pre-existing `AIC.gllvmTMB_multi` / `BIC.gllvmTMB_multi` roxygen export
+notes unrelated to this lane.
+
+The full `devtools::test()` run completed with the spatial-helper files green,
+but with two pre-existing repository failures outside this lane:
+`test-funcphylo-spatial-recovery.R` did not converge at its fixed fixture, and
+`test-plot-visual-snapshots.R` reported a changed correlation-ellipse vdiffr
+snapshot. It also reported 785 intentional skips and two warnings about
+all-zero binary rows in an unrelated gllvm comparator. These are recorded as
+merge blockers, not attributed to the independent-helper rewrite.
+
+Fresh D-43 re-review after the repair was unanimous: the code/interface,
+test-evidence, and provenance/help reviewers each returned DONE. The
+no-manual `devtools::check()` rerun was started after this final documentation
+pass; it failed on an unrelated vdiffr snapshot plus pre-existing namespace
+`weights` registration warnings, repository-index network warnings, clock, and
+`xcrun_db` notes. Its test phase had 8,064 passes, 822 skips, two warnings, and
+the one visual-snapshot failure; the prior funcphylo fixture did not fail in
+this run.
+
+### Final current-main integration supplement
+
+The branch merged `origin/main` at `cee55a07` in merge commit `8980ae4b` and
+reran the gates after the D-43 panel found three additional omissions. Repairs
+added an explicit non-finite sparse-FEM rejection test, removed a current
+inheritance claim from `docs/design/00-vision.md`, recovered latent-slope
+`kappa` through the fitted TMB `parList()` when that route has no duplicated
+`REPORT(kappa*)`, and rejected zero-row CRS input.
+
+```sh
+NOT_CRAN=true Rscript --vanilla -e 'devtools::load_all(quiet=TRUE); testthat::test_file("tests/testthat/test-mesh.R"); testthat::test_file("tests/testthat/test-utm-conversions.R"); testthat::test_file("tests/testthat/test-anisotropy.R"); testthat::test_file("tests/testthat/test-stage4-spde.R"); testthat::test_file("tests/testthat/test-spatial-mode-dispatch.R"); testthat::test_file("tests/testthat/test-spatial-orientation.R")'
+SDMTMB_ORACLE_LIB=/private/tmp/gllvmtmb-sdmtmb-oracle Rscript --vanilla dev/verify-sdmtmb-spatial-oracle.R
+Rscript --vanilla -e 'pkgdown::check_pkgdown()'
+NOT_CRAN=true Rscript --vanilla -e 'devtools::test(reporter = "summary")'
+Rscript --vanilla -e 'result <- devtools::check(args = "--no-manual", quiet = TRUE, error_on = "never"); cat(sprintf("CHECK_LEDGER errors=%d warnings=%d notes=%d\\n", length(result$errors), length(result$warnings), length(result$notes)))'
+rg -n -i 'inherited from sdmTMB|inherits sdmTMB|inherit.*spatial helper|spatial helper.*inherit|sdmTMB.*cite|cite.*sdmTMB|from which gllvmTMB|SPDE inheritance|plot_anisotropy\*.*from sdmTMB' AGENTS.md CLAUDE.md README.md DESCRIPTION NEWS.md R inst vignettes docs/design _pkgdown.yml NAMESPACE man
+git diff --check
+```
+
+Final focused outcome: 122 assertions passed, zero failures, warnings, or
+skips. The isolated oracle again passed at `1e-10`; pkgdown again reported no
+problems; the expanded stale-provenance scan returned no current claim; and
+`git diff --check` passed.
+
+The full suite reported 785 intentional skips, two unrelated gllvm-comparator
+warnings, and three failures outside this lane: the newly merged
+`lambda-constraint-suggest.Rmd` uses a method not admitted by
+`test-article-prescribed-calls.R`; the known `funcphylo` fixed spatial fixture
+did not converge; and the correlation-ellipse vdiffr snapshot differed. The
+no-manual package check returned `errors=1 warnings=1 notes=2`; its error is the
+global test phase. No `.new.svg` was retained.
+
+The repaired D-43 panel was unanimous DONE: Curie found the finite-FEM test gap,
+Rose found the vision-note inheritance claim, and Gauss/Noether found the
+latent-slope report boundary plus empty-CRS input. Each reviewer rechecked the
+repair and returned DONE. This supports the independent-helper and
+code-provenance-debt-removal claims, but the global red tests withhold a
+merge-ready claim.
+
+### Package-wide integration closure
+
+At the maintainer's direction, the three current-main blockers were diagnosed
+and repaired before publishing this branch:
+
+- `test-article-prescribed-calls.R` had treated every character-vector default
+  as an exhaustive `match.arg()` choice list. The guard now inspects the
+  function body and applies that rule only when the argument is actually passed
+  to `match.arg()`. This preserves the explicitly validated
+  `methods = "profile_retention"` route.
+- `test-funcphylo-spatial-recovery.R` claimed a scale-free convergence arbiter
+  but asserted the composite flag that also requires the raw gradient to fall
+  below `0.01`. Under the test harness the fit had optimizer convergence,
+  scaled gradient `1.736e-6`, cosine recovery `0.99933`, and maximum correlation
+  error `2.17e-9`. The test now asserts optimizer convergence and scaled-gradient
+  stationarity, while retaining both recovery checks.
+- The dispatcher correlation-ellipse SVG differed only in four rendered
+  coordinates by `0.01`. Old and new images were rendered and visually
+  compared before accepting the current snapshot.
+- A quoted `some::wrapper()` parser fixture created a fictitious undeclared
+  package dependency. It now uses the already declared `stats` namespace while
+  preserving the same `::` parse-tree shape.
+
+The branch merged current `origin/main` at `bb9eb75e` (including PR #885) in
+`1ca93ec8`; the automatic overlap reconciliation retained both the independent
+mesh normalizer and the landed AGHQ routing. Verification on that combined
+tree:
+
+```sh
+Rscript --vanilla -e 'devtools::test(filter = "aghq-auto-ridge|aghq-auto-psi-equivalence|gllvmTMBcontrol|mesh|utm-conversions|anisotropy|stage4-spde|spatial-mode|spatial-orientation|article-prescribed-calls|funcphylo-spatial-recovery|plot-visual-snapshots", reporter = "summary")'
+Rscript --vanilla -e 'result <- devtools::check(args = "--no-manual", quiet = TRUE, check_dir = "/private/tmp/gllvmtmb-spatial-final-check-20260801", error_on = "never"); cat(sprintf("CHECK_LEDGER errors=%d warnings=%d notes=%d\\n", length(result$errors), length(result$warnings), length(result$notes)))'
+Rscript --vanilla -e 'devtools::test(filter = "scan-deprecated-namespace", reporter = "summary")'
+Rscript --vanilla -e 'result <- devtools::check(args = c("--no-manual", "--no-tests", "--no-examples", "--no-vignettes"), quiet = TRUE, check_dir = "/private/tmp/gllvmtmb-spatial-deps-check-20260801", error_on = "never"); cat(sprintf("CHECK_LEDGER errors=%d warnings=%d notes=%d\\n", length(result$errors), length(result$warnings), length(result$notes)))'
+Rscript --vanilla -e 'pkgdown::check_pkgdown()'
+SDMTMB_ORACLE_LIB=/private/tmp/gllvmtmb-sdmtmb-oracle Rscript --vanilla dev/verify-sdmtmb-spatial-oracle.R
+git diff --check
+```
+
+The combined focused suite passed. The retained full package check reached
+`errors=0 warnings=1 notes=2`; the warning combined unavailable CRAN and
+Bioconductor indices with the quoted `some::` fixture, and the notes were
+unavailable clock verification and macOS `xcrun_db` detritus. After repairing
+the fixture, its focused test passed and the dependency-focused check returned
+`errors=0 warnings=0 notes=2`, leaving only the two environment notes.
+`pkgdown::check_pkgdown()`, the isolated oracle at tolerance `1e-10`, and
+`git diff --check` all passed. The networked three-OS PR run remains the final
+merge gate.
+
+Rose's pre-publish audit returned PASS after the new roxygen, NEWS, README, and
+vignette wording explicitly linked the IN helper scope to SPA-01, the PARTIAL
+broader spatial family to FG-13, and rejected anisotropy/spatiotemporal/barrier
+claims. Shannon returned WARN: the working changes belong to this branch and
+PR #885 is landed, but the remaining handover PR #881 is conflicting and stale
+because it still reports the now-repaired red tests. The integration PR should
+supersede that handover rather than merge its obsolete status text.
+
 ## 2026-07-24 -- BIRDBASE-relevant performance-audit baseline
 
 Branch: `codex/performance-audit-20260724`; clean worktree from `origin/main`.

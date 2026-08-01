@@ -49,8 +49,8 @@ The five things that distinguish `gllvmTMB` from sister packages:
    into one engine.
 2. **Four-component covariance decomposition** when phylogeny or
    spatial is present:
-   `Sigma_phy = Lambda_phy Lambda_phy^T + diag(s_phy)` and
-   `Sigma_non = Lambda_non Lambda_non^T + diag(s_non)`, summing
+   `Sigma_phy = Lambda_phy Lambda_phy^T + diag(psi_phy)` and
+   `Sigma_non = Lambda_non Lambda_non^T + diag(psi_non)`, summing
    to `Omega`. Most sister packages give you only one of these
    layers at a time.
 3. **4 x 5 keyword grid** as the canonical formula surface:
@@ -81,8 +81,8 @@ real (`unit`, `trait`) row layout from the start.
 
 ### `gllvmTMB` vs `sdmTMB`
 
-Overlap: spatial random fields via SPDE. `gllvmTMB` inherits the
-SPDE / mesh code from `sdmTMB` (per `inst/COPYRIGHTS`) but uses
+Overlap: spatial random fields via SPDE. `gllvmTMB` has an
+independently implemented SPDE / mesh helper layer and uses
 it for the multivariate spatial layer (`spatial_latent +
 spatial_unique`) rather than for univariate species distribution
 modelling.
@@ -169,12 +169,10 @@ cover:
 
 ## Code provenance and citation
 
-When a `gllvmTMB` fit uses spatial keywords (`spatial_*()`),
-cite the sdmTMB paper for the SPDE / mesh approach
-(Anderson et al. 2025, JSS). When it uses TMB (every fit), cite
-the TMB paper (Kristensen et al. 2016, JSS). The sister-package
-relationship is explicit in `inst/COPYRIGHTS` and `inst/CITATION`
-and the Authors@R / Copyright fields of `DESCRIPTION`.
+Spatial helpers are independently implemented in gllvmTMB using the
+Lindgren-Rue-Lindström SPDE/GMRF construction. Cite TMB (Kristensen et
+al. 2016, JSS) for every gllvmTMB fit; spatial method references belong
+in the relevant methods documentation rather than package-code provenance.
 
 ## See also
 

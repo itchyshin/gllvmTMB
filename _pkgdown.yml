@@ -156,7 +156,7 @@ reference:
     - profile_cross_rho_ci
     - diagnose_kernel_separability
     - make_mesh
-    - plot.sdmTMBmesh
+    - plot.gllvmTMBmesh
     - add_utm_columns
     - get_crs
     - plot_anisotropy

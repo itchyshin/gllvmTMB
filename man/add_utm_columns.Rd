@@ -2,7 +2,6 @@
 % Please edit documentation in R/crs.R
 \name{add_utm_columns}
 \alias{add_utm_columns}
-\alias{get_crs}
 \title{Add UTM coordinates to a data frame}
 \usage{
 add_utm_columns(
@@ -13,45 +12,30 @@ add_utm_columns(
   utm_crs = get_crs(dat, ll_names),
   units = c("km", "m")
 )
-
-get_crs(dat, ll_names = c("longitude", "latitude"))
 }
 \arguments{
-\item{dat}{Data frame that contains longitude and latitude columns.}
+\item{dat}{Data frame containing longitude and latitude columns.}
 
-\item{ll_names}{Longitude and latitude column names. \strong{Note the order.}}
+\item{ll_names}{Character names of longitude then latitude columns.}
 
-\item{ll_crs}{Input CRS value for \code{ll_names}.}
+\item{ll_crs}{Input coordinate reference system.}
 
-\item{utm_names}{Output column names for the UTM columns.}
+\item{utm_names}{Names for the two new coordinate columns.}
 
-\item{utm_crs}{Output CRS value for the UTM zone; tries to detect with
-\code{\link[=get_crs]{get_crs()}} but can be specified manually.}
+\item{utm_crs}{Output UTM CRS; by default inferred with \code{\link[=get_crs]{get_crs()}}.}
 
-\item{units}{UTM units.}
+\item{units}{Output coordinate units: kilometres or metres.}
 }
 \value{
-A copy of the input data frame with new columns for UTM coordinates.
+A copy of \code{dat} with the requested UTM coordinate columns.
 }
 \description{
-Add UTM (Universal Transverse Mercator) coordinates to a data frame. This is
-useful since geostatistical modeling should generally be performed in an
-equal-distance projection. You can do this yourself separately with the
-\code{\link[sf:st_as_sf]{sf::st_as_sf()}}, \code{\link[sf:st_transform]{sf::st_transform()}}, and \code{\link[sf:st_coordinates]{sf::st_coordinates()}} functions
-in the \pkg{sf} package.
-}
-\details{
-\strong{Note that longitudes west of the prime meridian should be encoded
-as running from -180 to 0 degrees.}
-
-You may wish to work in km's rather than the standard UTM meters so that the
-range parameter estimate is not too small, which can cause computational
-issues. This depends on the the scale of your data.
+Transform longitude/latitude columns to an equal-distance UTM coordinate
+reference system with \code{\link[sf:st_transform]{sf::st_transform()}}.
 }
 \examples{
-\dontshow{if (require("sf", quietly = TRUE)) withAutoprint(\{ # examplesIf}
-d <- data.frame(lat = c(52.1, 53.4), lon = c(-130.0, -131.4))
-get_crs(d, c("lon", "lat"))
+\dontshow{if (requireNamespace("sf", quietly = TRUE)) withAutoprint(\{ # examplesIf}
+d <- data.frame(lat = c(52.1, 53.4), lon = c(-130, -131.4))
 add_utm_columns(d, c("lon", "lat"))
 \dontshow{\}) # examplesIf}
 }

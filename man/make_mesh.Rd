@@ -2,13 +2,12 @@
 % Please edit documentation in R/mesh.R
 \name{make_mesh}
 \alias{make_mesh}
-\alias{plot.sdmTMBmesh}
 \title{Construct an SPDE mesh for gllvmTMB}
 \usage{
 make_mesh(
   data,
   xy_cols,
-  type = c("kmeans", "cutoff", "cutoff_search"),
+  type = c("cutoff", "kmeans", "cutoff_search"),
   cutoff,
   n_knots,
   seed = 42,
@@ -18,59 +17,56 @@ make_mesh(
   concave = convex,
   ...
 )
-
-\method{plot}{sdmTMBmesh}(x, ...)
 }
 \arguments{
-\item{data}{A data frame.}
+\item{data}{A data frame containing the coordinate columns.}
 
-\item{xy_cols}{A character vector of x and y column names contained in
-\code{data}. These should likely be in an equal distance projection. For
-a helper function to convert to UTMs, see \code{\link[=add_utm_columns]{add_utm_columns()}}.}
+\item{xy_cols}{Character names of exactly two finite numeric coordinate
+columns in \code{data}.}
 
-\item{type}{Method to create the mesh. Also see \code{mesh} argument to supply
-your own mesh.}
+\item{type}{Mesh construction method: \code{"cutoff"}, \code{"kmeans"}, or
+\code{"cutoff_search"}.}
 
-\item{cutoff}{An optional cutoff if type is \code{"cutoff"}. The minimum allowed
-triangle edge length.}
+\item{cutoff}{Minimum vertex separation for \code{type = "cutoff"}.}
 
-\item{n_knots}{The number of desired knots if \code{type} is not \code{"cutoff"}.}
+\item{n_knots}{Number of coordinate centres for \code{"kmeans"}, or target
+number of mesh vertices for \code{"cutoff_search"}. The latter returns the
+closest valid mesh when the exact target is unavailable.}
 
-\item{seed}{Random seed. Affects \code{\link[stats:kmeans]{stats::kmeans()}} determination of knot
-locations if \code{type = "kmeans"}.}
+\item{seed}{Seed used only while selecting k-means centres. The caller's RNG
+state is restored before this function returns.}
 
-\item{mesh}{An optional mesh created via \pkg{fmesher} instead of using the above
-convenience options.}
+\item{mesh}{Optional pre-built \code{fmesher} mesh.}
 
-\item{fmesher_func}{Which \pkg{fmesher} function to use. Options include
-\code{\link[fmesher:fm_rcdt_2d_inla]{fmesher::fm_rcdt_2d_inla()}} and \code{\link[fmesher:fm_mesh_2d_inla]{fmesher::fm_mesh_2d_inla()}} along with
-version without the \verb{_inla} on the end.}
+\item{fmesher_func}{Mesh constructor from \pkg{fmesher}.}
 
-\item{convex}{If specified, passed to \code{\link[fmesher:fm_nonconvex_hull]{fmesher::fm_nonconvex_hull()}}.
-Distance to extend non-convex hull from data.}
+\item{convex, concave}{Optional non-convex-hull controls passed to
+\code{\link[fmesher:fm_nonconvex_hull]{fmesher::fm_nonconvex_hull()}}.}
 
-\item{concave}{If specified, passed to \code{\link[fmesher:fm_nonconvex_hull]{fmesher::fm_nonconvex_hull()}}.
-"Minimum allowed reentrant curvature". Defaults to \code{convex}.}
-
-\item{...}{Passed to \code{\link[graphics:plot]{graphics::plot()}}.}
-
-\item{x}{Output from \code{\link[=make_mesh]{make_mesh()}}.}
+\item{...}{Additional arguments passed to \code{fmesher_func}.}
 }
 \value{
-\code{make_mesh()}: A list of class \code{sdmTMBmesh}. The element \code{mesh} is the output
-from \code{fmesher_func} (default is \code{\link[fmesher:fm_mesh_2d_inla]{fmesher::fm_mesh_2d_inla()}}). See
-\code{mesh$mesh$n} for the number of vertices.
-
-\code{plot.sdmTMBmesh()}: A plot of the mesh and data points. To make your
-own \pkg{ggplot2} version, pass \code{your_mesh$mesh} to \code{inlabru::gg()}.
+A \code{gllvmTMBmesh} object containing \code{loc_xy}, \code{xy_cols}, \code{mesh}, the
+finite-element matrices in \code{spde}, mesh centres in \code{loc_centers}, and the
+observation-to-mesh projection matrix \code{A_st}.
 }
 \description{
-Construct an SPDE mesh for use with the \code{gllvmTMB()}
-\verb{spatial_*()} keywords.
+Construct a triangular mesh and the finite-element quantities used by the
+\verb{spatial_*()} keywords. The helper uses the public \pkg{fmesher} API; the
+SPDE/GMRF construction follows Lindgren, Rue, and Lindstrom (2011).
+Scope: mesh/FEM construction and fit ingestion are IN under validation row
+SPA-01; the broader spatial-family evidence remains PARTIAL under FG-13;
+directional anisotropy, spatiotemporal fields, barriers, and likelihood
+changes are REJECTED from this helper contract.
 }
 \examples{
 set.seed(1)
 df <- data.frame(X = runif(40), Y = runif(40))
-mesh <- make_mesh(df, c("X", "Y"), cutoff = 0.1, type = "cutoff")
+mesh <- make_mesh(df, c("X", "Y"), cutoff = 0.1)
 plot(mesh)
+}
+\references{
+Lindgren F, Rue H, Lindstrom J (2011). An explicit link between
+Gaussian fields and Gaussian Markov random fields: the SPDE approach.
+\emph{Journal of the Royal Statistical Society: Series B}, 73, 423-498.
 }

@@ -221,11 +221,11 @@ simulation input; it is not new bootstrap calibration evidence.
 
 ### Section 5 — Spatial GLLVM
 
-Row-owner: **Boole + Gauss** (SPDE inheritance from sdmTMB).
+Row-owner: **Boole + Gauss** (independent SPDE implementation).
 
 | ID | Capability | Status | Test evidence | Notes |
 |----|------------|--------|---------------|-------|
-| SPA-01 | SPDE mesh construction via `make_mesh()` | `covered` | `test-mesh.R` | inherited from sdmTMB |
+| SPA-01 | SPDE mesh construction via `make_mesh()` | `covered` | `test-mesh.R`, `test-stage4-spde.R`, `test-anisotropy.R`; `dev/verify-sdmtmb-spatial-oracle.R` | Independently implemented with fmesher's public API. Tests cover cutoff, k-means, validity-first cutoff search, supplied fmesher meshes, projection/FEM invariants, malformed inputs, the temporary legacy-class bridge, and one native R-to-TMB fit. The plotting surface reports the isotropic practical range only; no directional anisotropy is estimated. |
 | SPA-02 | `spatial_latent` + spatial unique total covariance | `partial` | `test-keyword-grid.R` (`spatial_latent(unique = TRUE)` parser / random blocks / report / extractor), `test-spatial-latent-recovery.R`, `test-spatial-pair-binary.R`; gap audit `docs/dev-log/audits/2026-07-03-spatial-derived-profile-gap.md` | `spatial_latent(..., unique = TRUE)` keeps shared and per-trait unique fields active, reports shared/unique/total spatial covariance, and supports Gaussian point extraction. The row remains partial because source/family depth is narrow. Nonlinear spatial correlation/communality profiles are withdrawn and blocked pending an exact constraint solver, optimizer-status ledger, and target-specific calibration; they are not awaiting only a heavier smoke test. |
 | SPA-03 | `spatial_scalar` | `covered` | `test-stage4-spde.R`, `test-spatial-scalar-binary.R` | Phase B-INF Lane 2 / B4 (Design 58): binary probit recovery + CI smoke (`confint(parm = "tau_spde", method = "profile")`) + tied-tau contract verified (`log_tau_spde` entries collapse to a single value via TMB `map`). |
 | SPA-04 | `spatial_indep / spatial_dep` | `covered` | `test-stage4-spde.R`, `test-spatial-depindep-binary.R` | Binary-probit structural/recovery evidence is covered: healthy SPDE fits, finite-positive scale reports, and non-degenerate point correlations for `spatial_dep`. The nonlinear `rho:spatial` profile route is explicitly withdrawn and tested through `gllvmTMB_nonlinear_profile_withdrawn`. A spatial bootstrap request currently returns a labelled Wald fallback; it is not spatial bootstrap calibration. |

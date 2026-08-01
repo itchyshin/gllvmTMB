@@ -28,6 +28,10 @@ test_that("Stage 4: spde() converges and recovers sensible kappa / range", {
   range_est <- sqrt(8) / as.numeric(fit$report$kappa)
   expect_gt(range_est, 0.05)
   expect_lt(range_est, 5.0)
+  range_data <- plot_anisotropy(fit, return_data = TRUE)
+  expect_equal(unique(range_data$range), range_est)
+  expect_true(all(!range_data$anisotropy_estimated))
+  expect_equal(unique(range_data$model_assumption), "isotropic (H = I)")
 })
 
 test_that("Stage 4: spde() + diag combined model converges", {

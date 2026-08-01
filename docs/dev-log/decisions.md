@@ -2673,3 +2673,24 @@ rate is 6% and the RMSE is a survivor statistic; and poisson-log, which the fenc
 theoretical grounds but Gate 3 never tested (the campaign was Bernoulli).
 
 > Register: `docs/design/35-validation-debt-register.md` Section 15 (VA-01..VA-09).
+
+## 2026-08-01 -- Spatial helpers are independently authored; range plots remain isotropic
+
+This decision supersedes historical statements that gllvmTMB's R-side mesh,
+CRS, or anisotropy helpers are inherited from sdmTMB. `R/mesh.R`, `R/crs.R`,
+and `R/plot.R` are now independently authored against the published SPDE/GMRF
+construction and public fmesher/sf APIs. Valid legacy `sdmTMBmesh` objects are
+accepted temporarily through a warning-and-normalization bridge, but new
+objects are `gllvmTMBmesh`. sdmTMB is acknowledged as inspiration for the
+original interface and may be used only as an isolated post-implementation
+black-box comparator; it is not a required citation, runtime dependency, or
+implementation source.
+
+The native TMB engine remains isotropic: it reports scalar `kappa`, not an
+estimated anisotropy matrix `H`. Consequently, `plot_anisotropy()` and
+`plot_anisotropy2()` draw the practical-range circle `sqrt(8) / kappa`, label
+`H = I` as a model assumption, and report
+`anisotropy_estimated = FALSE`. Unequal-axis anisotropy remains deferred until
+the likelihood estimates the necessary directional structure. See
+`docs/dev-log/research/2026-08-01-independent-spatial-helper-literature.md` and
+`docs/dev-log/plan-actual/2026-08-01-independent-spatial-helpers.md`.

@@ -1,112 +1,133 @@
-## Inherited from sdmTMB (https://github.com/pbs-assess/sdmTMB)
-## under GPL-3, with minimal API and naming changes. Upstream
-## copyright holders are listed in `inst/COPYRIGHTS`.
-
 #' Add UTM coordinates to a data frame
 #'
-#' Add UTM (Universal Transverse Mercator) coordinates to a data frame. This is
-#' useful since geostatistical modeling should generally be performed in an
-#' equal-distance projection. You can do this yourself separately with the
-#' [sf::st_as_sf()], [sf::st_transform()], and [sf::st_coordinates()] functions
-#' in the \pkg{sf} package.
+#' Transform longitude/latitude columns to an equal-distance UTM coordinate
+#' reference system with [sf::st_transform()].
 #'
-#' @param dat Data frame that contains longitude and latitude columns.
-#' @param ll_names Longitude and latitude column names. **Note the order.**
-#' @param ll_crs Input CRS value for `ll_names`.
-#' @param utm_names Output column names for the UTM columns.
-#' @param utm_crs Output CRS value for the UTM zone; tries to detect with
-#'   [get_crs()] but can be specified manually.
-#' @param units UTM units.
-#'
-#' @details
-#' **Note that longitudes west of the prime meridian should be encoded
-#' as running from -180 to 0 degrees.**
-#'
-#' You may wish to work in km's rather than the standard UTM meters so that the
-#' range parameter estimate is not too small, which can cause computational
-#' issues. This depends on the the scale of your data.
-#'
-#' @return
-#' A copy of the input data frame with new columns for UTM coordinates.
+#' @param dat Data frame containing longitude and latitude columns.
+#' @param ll_names Character names of longitude then latitude columns.
+#' @param ll_crs Input coordinate reference system.
+#' @param utm_names Names for the two new coordinate columns.
+#' @param utm_crs Output UTM CRS; by default inferred with [get_crs()].
+#' @param units Output coordinate units: kilometres or metres.
+#' @return A copy of `dat` with the requested UTM coordinate columns.
 #' @export
 #'
-#' @examplesIf require("sf", quietly = TRUE)
-#' d <- data.frame(lat = c(52.1, 53.4), lon = c(-130.0, -131.4))
-#' get_crs(d, c("lon", "lat"))
+#' @examplesIf requireNamespace("sf", quietly = TRUE)
+#' d <- data.frame(lat = c(52.1, 53.4), lon = c(-130, -131.4))
 #' add_utm_columns(d, c("lon", "lat"))
-add_utm_columns <- function(dat,
-                            ll_names = c("longitude", "latitude"),
-                            ll_crs = 4326,
-                            utm_names = c("X", "Y"),
-                            utm_crs = get_crs(dat, ll_names),
-                            units = c("km", "m")) {
+add_utm_columns <- function(
+  dat,
+  ll_names = c("longitude", "latitude"),
+  ll_crs = 4326,
+  utm_names = c("X", "Y"),
+  utm_crs = get_crs(dat, ll_names),
+  units = c("km", "m")
+) {
   if (!requireNamespace("sf", quietly = TRUE)) {
-    cli_abort("The sf package must be installed to use this function.")
-  }
-
-  assert_that(length(ll_names) == 2L)
-  assert_that(all(ll_names %in% names(dat)))
-  units <- match.arg(units)
-  if (any(utm_names %in% names(dat))) {
-    cli_abort(c("`utm_names` were found in `names(dat)`.",
-      "Remove them or choose different `utm_names`.")
+    cli::cli_abort(
+      "The {.pkg sf} package must be installed to transform coordinates."
     )
   }
-  if (grepl("lat", ll_names[1]) || grepl("lon", ll_names[2])) {
-    cli_warn("Make sure you didn't reverse the longitude and latitude in `ll_names`.")
+  .gllvm_validate_coordinate_names(dat, ll_names, "ll_names")
+  if (
+    !is.character(utm_names) ||
+      length(utm_names) != 2L ||
+      anyDuplicated(utm_names)
+  ) {
+    cli::cli_abort("{.arg utm_names} must contain two distinct output names.")
   }
-
-  x <- sf::st_as_sf(dat, crs = ll_crs, coords = ll_names)
-  x <- sf::st_transform(x, utm_crs)
-  x <- sf::st_coordinates(x)
-  x <- as.data.frame(x)
-  if (units == "km") {
-    x$X <- x$X / 1000
-    x$Y <- x$Y / 1000
+  if (any(utm_names %in% names(dat))) {
+    cli::cli_abort(
+      "Choose {.arg utm_names} that are not already present in {.arg dat}."
+    )
   }
-  dat[[utm_names[1]]] <- x$X
-  dat[[utm_names[2]]] <- x$Y
+  if (
+    grepl("lat", ll_names[[1L]], ignore.case = TRUE) ||
+      grepl("lon", ll_names[[2L]], ignore.case = TRUE)
+  ) {
+    cli::cli_warn("{.arg ll_names} should be longitude followed by latitude.")
+  }
+  units <- match.arg(units)
+  coordinates <- as.matrix(dat[, ll_names, drop = FALSE])
+  if (!is.numeric(coordinates) || any(!is.finite(coordinates))) {
+    cli::cli_abort(
+      "Longitude and latitude columns must be finite numeric values."
+    )
+  }
+  points <- sf::st_as_sf(dat, coords = ll_names, crs = ll_crs, remove = FALSE)
+  transformed <- sf::st_coordinates(sf::st_transform(points, utm_crs))
+  multiplier <- if (identical(units, "km")) 1 / 1000 else 1
+  dat[[utm_names[[1L]]]] <- transformed[, 1L] * multiplier
+  dat[[utm_names[[2L]]]] <- transformed[, 2L] * multiplier
   dat
 }
 
-#' @rdname add_utm_columns
+#' Infer a UTM coordinate reference system
+#'
+#' @param dat Data frame containing longitude and latitude columns.
+#' @param ll_names Character names of longitude then latitude columns.
+#' @return An EPSG code for the predominant UTM zone.
 #' @export
 get_crs <- function(dat, ll_names = c("longitude", "latitude")) {
-  lon <- dat[[ll_names[1]]]
-  lat <- dat[[ll_names[2]]]
-  # https://gis.stackexchange.com/a/190209
-  zones <- round((183 + lon) / 6, 0)
-  one_zone <- TRUE
-  if (length(unique(zones)) > 1L) {
-    warning("Multiple UTM zones detected.\n",
-      "Proceeding with the most common value.\n",
-      "You may wish to choose a different projection.",
-      call. = FALSE
+  .gllvm_validate_coordinate_names(dat, ll_names, "ll_names")
+  longitude <- dat[[ll_names[[1L]]]]
+  latitude <- dat[[ll_names[[2L]]]]
+  if (
+    !is.numeric(longitude) ||
+      !is.numeric(latitude) ||
+      any(!is.finite(longitude)) ||
+      any(!is.finite(latitude)) ||
+      any(longitude < -180 | longitude > 180) ||
+      any(latitude < -90 | latitude > 90)
+  ) {
+    cli::cli_abort(
+      "Longitude must lie in [-180, 180] and latitude in [-90, 90]."
     )
-    one_zone <- FALSE
   }
-  check <- rev(sort(table(zones)))
-  zone <- as.numeric(names(check)[[1]])
-
-  lat_zones <- round((45 + lat) / 90, 0)
-  if (length(unique(lat_zones)) > 1L) {
-    warning("North and south latitudes detected.\n",
-      "Proceeding with the most common value.\n",
-      "You may wish to choose a different projection.",
-      call. = FALSE
+  zone <- floor((longitude + 180) / 6) + 1L
+  zone[zone == 61L] <- 60L
+  northern <- latitude >= 0
+  if (length(unique(zone)) > 1L) {
+    cli::cli_warn(
+      "Coordinates span multiple UTM zones; using the most frequent zone."
     )
-    one_zone <- FALSE
   }
-  check <- rev(sort(table(lat_zones)))
-  lat_zone <- as.numeric(names(check)[[1]])
-
-  crs_val <- 32700 - lat_zone * 100 + zone
-  .message <- if (one_zone) "Detected" else "Proceeding with"
-  message(
-    .message, " UTM zone ", zone, if (lat_zone == 1) "N" else "S", "; CRS = ",
-    crs_val, "."
+  if (length(unique(northern)) > 1L) {
+    cli::cli_warn(
+      "North and south latitudes detected; using the predominant hemisphere."
+    )
+  }
+  predominant_zone <- as.integer(names(sort(table(zone), decreasing = TRUE))[[
+    1L
+  ]])
+  predominant_north <- as.logical(names(sort(
+    table(northern),
+    decreasing = TRUE
+  ))[[1L]])
+  epsg <- if (predominant_north) {
+    32600L + predominant_zone
+  } else {
+    32700L + predominant_zone
+  }
+  cli::cli_inform(
+    "Using UTM zone {predominant_zone}{if (predominant_north) 'N' else 'S'} (EPSG:{epsg})."
   )
-  message("Visit ", paste0("https://epsg.io/", crs_val, " to verify."))
+  as.numeric(epsg)
+}
 
-  crs_val
+.gllvm_validate_coordinate_names <- function(dat, coordinate_names, argument) {
+  if (!is.data.frame(dat) || !nrow(dat)) {
+    cli::cli_abort("{.arg dat} must be a non-empty data frame.")
+  }
+  if (
+    !is.character(coordinate_names) ||
+      length(coordinate_names) != 2L ||
+      anyDuplicated(coordinate_names) ||
+      !all(coordinate_names %in% names(dat))
+  ) {
+    cli::cli_abort(
+      "{.arg {argument}} must name two distinct columns in {.arg dat}."
+    )
+  }
+  invisible(NULL)
 }

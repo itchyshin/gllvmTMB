@@ -6,6 +6,19 @@ bridge remains experimental and is not required for the main workflow.
 
 ## New
 
+* **Spatial mesh, CRS, and range-plot helpers are now independently authored
+  gllvmTMB code.** `make_mesh()` returns a `gllvmTMBmesh` built through
+  fmesher's public mesh, finite-element, and basis APIs, while valid legacy
+  `sdmTMBmesh` objects receive a temporary lifecycle warning and conversion.
+  `plot_anisotropy()` and `plot_anisotropy2()` now show the fitted isotropic
+  practical range, `sqrt(8) / kappa`, for native gllvmTMB spatial fits. Equal
+  axes are explicitly the model assumption `H = I`; gllvmTMB does not estimate
+  directional anisotropy. Delta and spatiotemporal states remain unsupported.
+  This changes no TMB likelihood or spatial covariance parameterisation
+  (IN: validation row SPA-01; PARTIAL: broader spatial-family evidence FG-13;
+  REJECTED here: directional anisotropy, delta/spatiotemporal fields, barriers,
+  and new spatial likelihoods).
+
 * **`offset()` now works, for count responses.** `offset(log(trap_nights))`
   in a Poisson or negative-binomial model is the standard way to model a rate
   rather than a raw count, and until now gllvmTMB rejected it. Both closest

@@ -28,7 +28,10 @@ test_that("scan_for_deprecated walks into the args of a :: call", {
   if (exists("diag", envir = seen, inherits = FALSE)) {
     rm("diag", envir = seen)
   }
-  rhs <- quote(foo(some::wrapper(diag(0 + trait | g))))
+  # `wrapper()` is intentionally not evaluated; using the declared stats
+  # namespace exercises the same `::` parse-tree shape without creating a
+  # fictitious undeclared package dependency under R CMD check.
+  rhs <- quote(foo(stats::wrapper(diag(0 + trait | g))))
   expect_message(
     gllvmTMB:::scan_for_deprecated(rhs),
     "diag",

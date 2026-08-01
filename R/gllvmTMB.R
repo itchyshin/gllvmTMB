@@ -1331,8 +1331,12 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #'   scale-aware final fit is unusable, the returned fit transparently falls
 #'   back to the shipped `tau = 2` route; inspect
 #'   `fit$aghq$ridge_auto`. Evidence supports failure/runaway avoidance in this
-#'   scope, not a broad loading-accuracy improvement. When `aghq` is omitted,
-#'   `"auto"` selects 9-node AGHQ; an explicit `aghq = FALSE` is incompatible.
+#'   scope, not a broad loading-accuracy improvement. The measured grid used a
+#'   logit link with `p = 6`, `q = 2`, and `n = 100`, `400`, or `1600`; other
+#'   links and dimensions are extrapolations (validation row MIS-36). The
+#'   `"auto"` route always uses 9-node multi-start AGHQ for both pilot and final
+#'   fits; a conflicting node/start control is replaced with a warning, while an
+#'   explicit `aghq = FALSE` is incompatible.
 #' @param warn_runaway If `TRUE` (default), warn once per session when a
 #'   binomial latent-variable fit triggers the package's existing runaway-loading
 #'   diagnostic. Set `FALSE` to silence the fit-time warning; the diagnostic
@@ -1413,6 +1417,10 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #'
 #' # Switch the optimiser to optim + BFGS for finicky two-level rr fits.
 #' gllvmTMBcontrol(optimizer = "optim", optArgs = list(method = "BFGS"))
+#'
+#' # Experimental, opt-in scale-aware ridge for the calibrated Bernoulli AGHQ
+#' # scope. The route uses the calibrated 9-node multi-start rule.
+#' gllvmTMBcontrol(aghq_ridge = "auto")
 #'
 #' @export
 gllvmTMBcontrol <- function(
@@ -1503,6 +1511,7 @@ gllvmTMBcontrol <- function(
   ## caller names `aghq_ridge` and never from the default.
   aghq_ridge_explicit <- !missing(aghq_ridge)
   aghq_explicit <- !missing(aghq)
+  aghq_multistart_explicit <- !missing(aghq_multistart)
   spde_mode <- match.arg(spde_mode)
   optimizer <- match.arg(optimizer)
   init_strategy <- match.arg(init_strategy)
@@ -1518,7 +1527,20 @@ gllvmTMBcontrol <- function(
         ">" = "Omit {.arg aghq} to use the calibrated 9-node rule, or set {.code aghq = 9}."
       ))
     }
-    if (isFALSE(aghq)) aghq <- 9L
+    if (isTRUE(aghq_explicit) && !identical(aghq, 9L)) {
+      cli::cli_warn(c(
+        "{.code aghq_ridge = \"auto\"} uses the calibrated {.code aghq = 9} final estimator.",
+        "i" = "The requested {.arg aghq} setting has been replaced by 9 nodes."
+      ))
+    }
+    if (isTRUE(aghq_multistart_explicit) && !isTRUE(aghq_multistart)) {
+      cli::cli_warn(c(
+        "{.code aghq_ridge = \"auto\"} uses multi-start AGHQ for both the pilot and final fit.",
+        "i" = "The requested {.code aghq_multistart = FALSE} setting has been replaced by {.code TRUE}."
+      ))
+    }
+    aghq <- 9L
+    aghq_multistart <- TRUE
   }
   ## AGHQ and the variational routes are alternative evaluations of the SAME
   ## latent integral, not layers. Requesting both is incoherent, and silently

@@ -47757,3 +47757,49 @@ did not alter `R/va-methods.R`, `NAMESPACE`, either live-validation report, or a
 snapshot. The successful pre-merge matrix run is retained at
 https://github.com/itchyshin/gllvmTMB/actions/runs/30704545282, but it is not the
 final-head gate; CI must rerun on the merge commit before PR #883 is ready.
+
+## 2026-08-01 — scale-aware AGHQ tau, issue #847 (Codex)
+
+Implemented explicit experimental `gllvmTMBcontrol(aghq_ridge = "auto")` for
+pure single-trial Bernoulli ordinary unit-tier latent fits. The pilot and final
+estimator are 9-node multi-start AGHQ; the pilot is unpenalised,
+`tau_raw = max(1, ||Lambda_pilot||_F / sqrt(pq))`, and
+`tau_used = min(6, tau_raw)`. An unusable pilot or final fit returns an
+independently started `tau = 2` fit with warning and provenance. Numeric/`Inf`
+behavior and the fixed-2 package default are unchanged.
+
+The strict 600-replicate Totoro selection gate returned
+`NO_CAP_PASSED_SELECTION`, so no default confirmation or default flip occurred.
+The separately labelled transparent-fallback sensitivity used auto in 135/600,
+had no cell with higher failure/runaway rates, met the +0.02 loading-error
+non-inferiority margin in all six cells, and had six-cell macro loading delta
+`+0.002819895`. This supports avoidance only, not broad accuracy.
+
+Checks:
+
+- focused auto-tau tests: PASS, 58 expectations;
+- default-grammar auto-Psi equivalence: PASS, 90 expectations;
+- AGHQ control/surface/multistart/runaway neighbours: PASS;
+- strict byte revalidation: PASS, MD5 `3399541e3b944c858e7d7b7c9f836f00`,
+  package SHA `54d6f366e972643c663be9645ed598aa98e81869`, decision
+  `NO_CAP_PASSED_SELECTION`;
+- `devtools::document(quiet = TRUE)`: PASS; generated Rd spot-check clean;
+- `pkgdown::check_pkgdown()`: PASS;
+- `pkgdown::build_site(new_process = FALSE, install = FALSE)`: PASS after the
+  sandboxed CRAN/cache restriction was removed;
+- full `NOT_CRAN=true devtools::test()`: auto-tau PASS; three current-main,
+  non-overlapping failures (article allowlist, spatial convergence, ellipse
+  snapshot);
+- strict `R CMD check --no-manual`: 12m09s, testthat `8190 pass / 822 skip / 2
+  warnings / 1 failure`; sole failure is the same current-main ellipse snapshot;
+- final adversarial review: READY; Rose pre-publish: PASS; `git diff --check`:
+  PASS.
+
+Exact consistency searches:
+
+- `rg -n 'aghq_ridge|ridge_auto|scale-aware|tau = 2|tau=2' R man README.md NEWS.md vignettes docs/design _pkgdown.yml` — PASS;
+- `rg -n '\\bS_B\\b|\\bS_W\\b|\\\\bf S' R/gllvmTMB.R man/gllvmTMBcontrol.Rd NEWS.md docs/design/35-validation-debt-register.md` — PASS;
+- `rg -n 'gllvmTMB_wide|meta_known_V|\\bphylo\\(|\\bgr\\(|\\bmeta\\(|block_V\\(|phylo_rr\\(' NEWS.md R/gllvmTMB.R man/gllvmTMBcontrol.Rd` — PASS; existing migration/deprecation matches only.
+
+Full report:
+`docs/dev-log/after-task/2026-08-01-scale-aware-aghq-tau-847.md`.

@@ -132,6 +132,7 @@
   cli::cli_warn(c(
     "{.code aghq_ridge = \"auto\"} is experimental and opt-in.",
     "i" = "It is calibrated for pure single-trial Bernoulli models with one ordinary unit-tier latent block and 9-node multi-start AGHQ.",
+    "i" = "The measured grid used logit, p = 6, q = 2, and n = 100, 400, or 1600; other links and dimensions are extrapolations.",
     "i" = "Evidence supports failure/runaway avoidance at that scope, not a broad loading-accuracy improvement.",
     ">" = "Read {.code fit$aghq$ridge_auto} for the pilot, selected scale, clipping, and any fallback."
   ), .frequency = "once", .frequency_id = "gllvmTMB-aghq-auto-ridge")
@@ -158,6 +159,8 @@
   candidate_problem <- decision$problem
   if (isTRUE(decision$ok)) {
     candidate_control <- control
+    candidate_control$aghq <- 9L
+    candidate_control$aghq_multistart <- TRUE
     candidate_control$aghq_ridge <- decision$tau_used
     candidate_control$aghq_ridge_explicit <- TRUE
     candidate_control$start_from <- pilot
@@ -176,6 +179,8 @@
   }
 
   fallback_control <- control
+  fallback_control$aghq <- 9L
+  fallback_control$aghq_multistart <- TRUE
   fallback_control$aghq_ridge <- fallback_tau
   fallback_control$aghq_ridge_explicit <- TRUE
   fallback_control$start_from <- control$start_from

@@ -64,6 +64,27 @@ established result is a runaway-avoidance signal. At `n = 400`,
 `sigma_lambda = 1`, the median paired difference is `+0.00014`, with exactly
 half the replicates favoring each arm.
 
+## Outcome after the selection gate (2026-08-01)
+
+The preregistered selection gate returned **NO_CAP_PASSED_SELECTION**. Valid
+unpenalised multi-start AGHQ pilots were sparse (162/600), and the strict
+pilot-dependent cap policy was materially worse than the shipped fixed
+`tau = 2` route at the first failure/runaway gate. No cap was locked, the
+disjoint-seed confirmation was therefore not run, and the package default
+remains `tau = 2`.
+
+The maintainer subsequently authorised implementation at the narrower positive
+evidence scope, with limits carried in warnings and documentation. A separately
+labelled posthoc sensitivity therefore evaluated a transparent policy: use the
+cap-6 auto fit only when its final AGHQ fit is valid, otherwise return an
+independently started shipped-style `tau = 2` fit. The auto result was used in
+135/600 replicates; no cell had a higher failure or runaway rate, all six cells
+met the preregistered +0.02 loading-error non-inferiority margin, and the
+six-cell macro-mean loading-error difference was +0.002819895. This admits an
+explicit experimental runaway/failure-avoidance route only. It does **not**
+support a default flip or a broad accuracy claim. Receipts live under
+`docs/dev-log/artifacts/aghq-tau-847/`.
+
 ## Orientation and prior-work sweep
 
 - Authoritative resume point:

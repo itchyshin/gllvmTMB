@@ -47624,3 +47624,44 @@ Closeout gates:
   PR #882 moved remote `main` to `0b898266` and overlaps this branch only in an
   append to this file. Main CI was in progress. This pinned arc therefore does
   not rebase, merge, duplicate `_pkgdown.yml`, or claim upstream green state.
+
+## 2026-08-01 — integrate qualified `stats::weights` registration on current main (Codex)
+
+**Branch:** `codex/weights-s3-registration-20260801` from `origin/main`
+`0b898266f82a9640220c73632f72628d754320a6`.
+
+Replayed validated commit `c27f118a` as `793bb339`. The only conflict was the
+append-only tail of this file after PR #882; both the pkgdown receipt and the
+live-validation receipt were retained. The implementation remains two lines:
+`@exportS3Method stats::weights` in `R/va-methods.R` and generated
+`S3method(stats::weights,gllvmTMB_va)` in `NAMESPACE`.
+
+Checks:
+
+- `TMPDIR=/private/tmp Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  — PASS; no additional generated diff.
+- Fresh-library `R CMD INSTALL` — PASS, including temporary/final load checks.
+- Base-only installed-package namespace load plus `stats::weights()` dispatch —
+  PASS; the existing deliberate VA error was reached.
+- `NOT_CRAN=true Rscript --vanilla -e 'devtools::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-va-routing-oracle.R", reporter = "summary")'`
+  — PASS, 31 expectations.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'` — PASS, `No problems found.`
+- Full source build with vignettes — PASS; produced `gllvmTMB_0.6.0.tar.gz`.
+- Network-enabled `env -u GLLVMTMB_HEAVY_TESTS TMPDIR=/private/tmp NOT_CRAN=true R CMD check --as-cran gllvmTMB_0.6.0.tar.gz`
+  — **1 ERROR, 0 WARNINGs, 1 NOTE**. The sole error is the pre-existing
+  dispatcher ellipse snapshot at `test-plot-visual-snapshots.R:301`; the note is
+  `New submission`. Testthat: `FAIL 1 / WARN 2 / SKIP 822 / PASS 8032`.
+  Namespace/S3 checks, examples, `--run-donttest`, vignettes, manuals, and all
+  other tests passed. The first sandboxed attempt was discarded as an environment
+  failure because CRAN/Bioconductor DNS was blocked.
+- Expected and candidate ellipse SVGs were both 21,896 bytes; `cmp -l` found two
+  character positions and the unified diff showed the same four 0.01-coordinate
+  shifts recorded by the preceding arc. No snapshot was accepted or modified.
+
+Scope exclusions held: no spatial optimizer, tolerance, snapshot, AGHQ,
+scale-start, Poisson VA-09, likelihood, grammar, or public capability change.
+Shannon pre-PR audit: **WARN** — PR #877 is non-mergeable and this branch will
+bring the open-PR count to the soft cap of three, but its implementation and
+closure paths do not collide with PRs #877 or #881 and no CI run is active.
+Full integration report:
+`docs/dev-log/after-task/2026-08-01-weights-s3-registration-integration.md`.

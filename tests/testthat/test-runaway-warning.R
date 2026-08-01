@@ -8,6 +8,17 @@
 ## It WARNS and does not fix: the remedy has its own measured failure regime
 ## (aghq_ridge = 2 still runs away in 67% of fits at n=1600, sigma_lambda=3; #847).
 
+## THE WARNING IS `.frequency = "once"` PER SESSION, which is right for users and
+## makes a naive test ORDER-DEPENDENT: if any earlier test in the same session has
+## already tripped it, the expectation below sees silence. Locally each file runs in
+## its own session and it passed; in `R CMD check` the whole suite is one session and
+## it failed. Reset the once-per-session state before every expectation that needs
+## the warning to actually fire.
+.rw_reset <- function() {
+  try(rlang::reset_warning_verbosity("gllvmTMB-loading-runaway"), silent = TRUE)
+  invisible(NULL)
+}
+
 .rw_cell <- function(seed = 2003L, lam = 3, n = 100L, p = 6L, q = 2L) {
   set.seed(seed)
   Lt <- matrix(stats::rnorm(p * q, 0, lam), p, q)
@@ -33,11 +44,13 @@ test_that("warn_runaway is a real control argument, defaulting to TRUE", {
 test_that("a runaway fit warns by default, and the warning is actionable", {
   skip_on_cran()
   d <- .rw_cell()
+  .rw_reset()
   expect_warning(
     fit <- gllvmTMB::gllvmTMB(d$fml, data = d$df, family = stats::binomial()),
     "runaway trait loading"
   )
   ## the warning must carry the remedy AND its cost, not just an alarm
+  .rw_reset()
   w <- tryCatch({
     gllvmTMB::gllvmTMB(d$fml, data = d$df, family = stats::binomial()); NULL
   }, warning = function(x) conditionMessage(x))
@@ -51,6 +64,7 @@ test_that("a runaway fit warns by default, and the warning is actionable", {
 test_that("warn_runaway = FALSE silences it, and the check remains available", {
   skip_on_cran()
   d <- .rw_cell()
+  .rw_reset()
   n_rw <- 0L
   fit <- withCallingHandlers(
     gllvmTMB::gllvmTMB(d$fml, data = d$df, family = stats::binomial(),
@@ -71,6 +85,7 @@ test_that("a healthy fit does NOT warn", {
   ## Guards against the warning being useless by firing on everything. Small
   ## loadings, larger n -- the regime where the campaign measured low runaway.
   d <- .rw_cell(seed = 11L, lam = 0.5, n = 300L)
+  .rw_reset()
   n_rw <- 0L
   withCallingHandlers(
     gllvmTMB::gllvmTMB(d$fml, data = d$df, family = stats::binomial()),

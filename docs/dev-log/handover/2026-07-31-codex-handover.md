@@ -126,7 +126,12 @@ the headline depends on Stage 2.
    loads. Full stack: `gcc/12.3` → `proj/9.2.0 udunits/2.2.28 geos/3.12.0 gdal/3.9.1` →
    `r/4.5.0`. Install on a **login node** (compute nodes have no internet).
 7. **Right-size from `seff`, never from laptop timings** — mine were **50–60× over**.
-8. **Check the installed build DATE, not the branch.** The local install was 13 days stale and
+8. **A `.frequency = "once"` warning makes a naive test ORDER-DEPENDENT.** My runaway
+   test passed locally (each file = its own session) and **failed in `R CMD check`**, where
+   the whole suite is one session and an earlier test had already consumed the once-per-
+   session warning. Fix: `rlang::reset_warning_verbosity("<frequency_id>")` before each
+   expectation. **A green `test_file()` does not imply a green `R CMD check`.**
+9. **Check the installed build DATE, not the branch.** The local install was 13 days stale and
    Totoro's was 2 days stale; either would have made a "shipped-engine" campaign worthless.
 
 ## How to Resume

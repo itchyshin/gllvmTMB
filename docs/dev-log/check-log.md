@@ -47406,3 +47406,55 @@ and re-dispatched. Note that the previously recorded Windows blocker
 (`2026-07-19-codex-handover-release-evidence.md` §3c) was a *different* test
 (`test-example-behavioural-reaction-norm.R:316`), so that record does **not** substitute
 for this comparison and was not used as if it did.
+
+## 2026-07-31 — CORRECTION: `main` was green all along; the harness was not (Claude)
+
+**Every statement in this session's earlier entries that `main` is "not green (18
+failures / 3 errors)" is WRONG, and the error was mine.** Corrected here rather than
+edited out of the entries above, so the mistake and its cause stay legible.
+
+Measured on Totoro after fixing the harness — same 348 files, same tree:
+
+| | as reported | actual |
+|---|---|---|
+| PASS | 14173 | **14534** |
+| FAIL | 18 | **3** |
+| ERROR | 3 | **0** |
+| SKIP | 196 | 128 |
+
+Fifteen failures and **all three** errors were artifacts of how I invoked the suite, not
+defects in the package. Two independent causes:
+
+1. **`test-m3-pilot-manifest.R` (16 fail + 2 err).** Those tests shell out with
+   `system2(Rscript, "--vanilla", "dev/power-pilot-run.R", ...)`, and that script calls
+   `library(gllvmTMB)`. Totoro sets `R_LIBS_USER=~/R/lib` in `~/.Renviron`, and
+   `--vanilla` implies `--no-environ`, so the child process never saw the library the
+   package is installed in. Every CLI test failed with *"there is no package called
+   'gllvmTMB'"* — invisible in an aggregate runner that records only counts. Fixed by
+   seeding `R_LIBS` from `.libPaths()` in `fullsuite.R` / `fullsuite-main.R`.
+2. **`test-tweedie-fixed-p.R` (1 err).** The `tweedie` Suggests package was not installed
+   on Totoro. Installed.
+
+A third, self-inflicted step nearly buried the fix: the first repair set `R_LIBS` from
+`.libPaths()` *inside a runner itself launched with* `Rscript --vanilla`, so it captured
+the already-wrong path set and changed nothing. The count stayed at 18/3 and read as
+confirmation that the diagnosis was wrong. The runners now prepend `~/R/lib` explicitly
+and are launched without `--vanilla`.
+
+**The evidence that should have caught this immediately was already in hand:** `main`'s
+own ubuntu CI was green throughout, and `test-m3-pilot-manifest.R` passed on the Mac. Two
+green platforms against one red one is a statement about the third *environment*, not
+about the code. I read it the other way round for most of a session and repeated the 18/3
+figure in this log, the #851 after-task report, two PR descriptions and a spawned task
+brief.
+
+**True remaining failures on `main`: 3, in 2 files** — `test-profile-derived-curves.R` (2)
+and `test-funcphylo-spatial-recovery.R` (1). The latter also appeared once on ubuntu CI
+while `main`'s own ubuntu run was green, so it is a flakiness candidate rather than a hard
+failure. Neither is diagnosed; neither is claimed here as understood.
+
+**Standing lesson for `~/gllvm_work` on Totoro:** a runner that aggregates only pass/fail
+counts will silently convert an environment problem into what looks like a package
+problem. When a failure appears on exactly one platform, verify the environment before
+attributing it to the code — and never leave `--vanilla` between a test and the library it
+needs.

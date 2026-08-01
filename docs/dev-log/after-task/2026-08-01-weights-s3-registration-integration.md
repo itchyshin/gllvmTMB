@@ -191,6 +191,12 @@ sandbox blocked CRAN/Bioconductor DNS. Rerunning the same tarball with network
 access resolved that environment failure. The full rerun then confirmed the
 known snapshot error, so this branch is not described as a clean local CRAN check.
 
+After the first successful three-OS matrix, PR #877 merged and moved `origin/main`
+to `bca04b29`. GitHub therefore marked #883 conflicting even though the only
+overlap was another append to `docs/dev-log/check-log.md`. The branch merged the
+new main without rewriting history, retained both receipts, and requires CI to
+rerun on the resulting final head.
+
 ## 10. Known Residuals
 
 The branch has not passed a zero-error local `R CMD check --as-cran`: the existing
@@ -214,9 +220,10 @@ and language that separates a verified S3 repair from the unresolved visual drif
 
 **Shannon** identified the dirty primary checkout and foreign PRs before editing;
 the new worktree kept this lane disjoint from PRs #877 and #881. The pre-PR
-audit returned **WARN** only because PR #877 is currently non-mergeable and this
-PR will bring the open-PR count to the soft cap of three; no file collision or
-active CI run blocks this push.
+audit returned **WARN** only because PR #877 was non-mergeable and opening #883
+brought the open-PR count to the soft cap of three; no file collision or
+active CI run blocked that push. PR #877 subsequently merged; its only overlap
+was reconciled append-only in the check log.
 
 ## 12. Cross-Product Coverage
 

@@ -47665,3 +47665,56 @@ bring the open-PR count to the soft cap of three, but its implementation and
 closure paths do not collide with PRs #877 or #881 and no CI run is active.
 Full integration report:
 `docs/dev-log/after-task/2026-08-01-weights-s3-registration-integration.md`.
+
+## 2026-08-01 — integrate and verify the runaway fit warning (#877, Codex)
+
+**Branch:** `codex/pr877-integration-20260801`, based on PR #877 head `3d31259f`
+and merged with current `origin/main` at `0b898266` in the isolated worktree
+`/private/tmp/gllvmtmb-pr877-integration`.
+
+The PR adds a once-per-session fit-time warning when the existing binomial
+prevalence/loading diagnostic returns `WARN`, plus the explicit
+`gllvmTMBcontrol(warn_runaway = TRUE)` switch. It does not change the diagnostic,
+the likelihood, or the estimator. The handed-over stage-2/stage-3 campaign
+extensions were retained together.
+
+Integration review found that the stale PR branch displaced current-main VA call
+attachment and carried stale `CLAUDE.md` and decisions-log snapshots. The VA
+attachment was restored in `R/gllvmTMB.R`; both shared documents were restored
+exactly to `origin/main` and are absent from the final net diff.
+
+Checks:
+
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'` -> PASS; generated
+  `man/gllvmTMBcontrol.Rd` documents `warn_runaway`.
+- focused `test-runaway-warning.R` with `NOT_CRAN=true` -> PASS, 10 assertions.
+- focused `test-va-routing-oracle.R` with `NOT_CRAN=true` -> PASS, 31 assertions.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'` -> PASS, `No problems found.`
+- full `NOT_CRAN=true devtools::test()` -> 8,324 passes, 785 skips, 2 warnings,
+  2 unrelated failures: the current spatial-recovery fixture did not converge,
+  and local vdiffr produced a correlation-ellipse mismatch. A focused retry of
+  the spatial file reproduced the same failure; it is not called flaky or fixed.
+- strict `R CMD check` (`--no-manual`, `error_on = "warning"`) -> FAIL after
+  11m35s: 1 error, 4 warnings, 4 notes. The test error is the same local vdiffr
+  correlation-ellipse mismatch (8,042 passes, 822 skips, 2 comparator warnings);
+  the spatial recovery fixture passed in this run. Three namespace warnings and
+  two code-analysis notes arise from the pre-existing
+  `S3method(weights,gllvmTMB_va)` registration without `importFrom(stats,
+  weights)`. The dependency-index warning reflects sandboxed network access;
+  remaining notes include clock verification and `xcrun_db` detritus. Those
+  adjacent repairs are intentionally excluded from #877.
+
+Exact consistency scans and their classified verdicts are recorded in
+`docs/dev-log/after-task/2026-08-01-runaway-fit-warning-877.md`. Rose pre-publish:
+PASS with the explicit warning-not-repair boundary. GitHub R-CMD-check remains the
+merge gate.
+
+### Post-matrix main integration for PR #883
+
+While PR #883's manual three-OS matrix was running, PR #877 merged and moved
+`origin/main` from `0b898266` to `bca04b29`. The only overlap with #883 was this
+append-only check log. Merging `origin/main` retained both complete receipts and
+did not alter `R/va-methods.R`, `NAMESPACE`, either live-validation report, or any
+snapshot. The successful pre-merge matrix run is retained at
+https://github.com/itchyshin/gllvmTMB/actions/runs/30704545282, but it is not the
+final-head gate; CI must rerun on the merge commit before PR #883 is ready.

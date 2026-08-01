@@ -884,6 +884,47 @@ gllvmTMB <- function(
   if (inherits(.fit, "gllvmTMB_va")) {
     .fit$call <- match.call()
   }
+  ## WARN ON AN IMPLAUSIBLE LOADING SCALE -- because the failure is COMMON and SILENT.
+  ##
+  ## Measured, 12,000 fits, binomial p=6 q=2 (docs/dev-log/audits/
+  ## 2026-07-31-campaign-stage1-verified.md): under plain defaults the fitted loading
+  ## norm exceeds twice the truth in 98-99% of fits at sigma_lambda = 3 across every
+  ## n, and 49% at n = 100 even at sigma_lambda = 1. That is the common case, not an
+  ## edge case -- and the fit reports `convergence = 0` with a positive-definite
+  ## Hessian and no message, so a user has NO signal unless one is given.
+  ##
+  ## This SURFACES the detection that already exists in
+  ## `.gllvmTMB_binomial_prevalence_loading_row()` rather than inventing a second
+  ## rule. Deliberately: a new absolute constant here would be another instance of
+  ## the #857 scale-dependent-constant class, and the existing thresholds at least
+  ## have a link-scale rationale (a logit loading IS the trait's latent SD in link
+  ## units, so 6 saturates) and are already documented and tunable via
+  ## `gllvmTMB_diagnose()`.
+  ##
+  ## It WARNS and does not fix. The remedy has a measured failure regime of its own
+  ## (`aghq_ridge = 2` still runs away in 67% of fits at n = 1600, sigma_lambda = 3;
+  ## see #847), and a fix users trust that silently fails is worse than no fix.
+  ## Scoped to binomial because that is the family the 12,000 fits measured.
+  if (!identical(control$warn_runaway, FALSE)) {
+    .rw <- tryCatch(
+      .gllvmTMB_binomial_prevalence_loading_row(.fit),
+      error = function(e) NULL
+    )
+    if (!is.null(.rw) && identical(as.character(.rw$status), "WARN")) {
+      ## Surface the check's OWN message/action verbatim rather than writing a
+      ## second copy here. Two reasons: the wording is already reviewed and shipped
+      ## via `gllvmTMB_diagnose()`, and a second copy would drift from the first the
+      ## moment either is edited.
+      cli::cli_warn(c(
+        "This fit shows a runaway trait loading; {.emph treat it as unusable until checked}.",
+        "*" = "{as.character(.rw$value)}",
+        "i" = "{as.character(.rw$message)}",
+        ">" = "{as.character(.rw$action)}",
+        ">" = "Full check: {.run gllvmTMB_diagnose(fit)}. Silence this with \\
+               {.code gllvmTMBcontrol(warn_runaway = FALSE)}."
+      ), .frequency = "once", .frequency_id = "gllvmTMB-loading-runaway")
+    }
+  }
   .fit
 }
 
@@ -1278,6 +1319,10 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #' @param aghq_ridge Ridge penalty on the loadings, as the scale `tau`;
 #'   `Inf` disables it. Default `2`. Naming it explicitly also makes the
 #'   `Laplace + ridge` control reachable without quadrature.
+#' @param warn_runaway If `TRUE` (default), warn once per session when a
+#'   binomial latent-variable fit triggers the package's existing runaway-loading
+#'   diagnostic. Set `FALSE` to silence the fit-time warning; the diagnostic
+#'   remains available through [gllvmTMB_diagnose()].
 #' @param aghq_continuation If `TRUE` (default), the adaptation loop may raise
 #'   `aghq_iter_cap` across passes. `FALSE` pins the cap and disables escalation.
 #' @param aghq_shift_tol,aghq_grad_tol,aghq_f_tol Convergence tolerances for the
@@ -1419,6 +1464,10 @@ gllvmTMBcontrol <- function(
   aghq_f_tol = 1e-9,
   aghq_escalate_patience = 3L,
   aghq_rho_min = 1 / 64,
+  ## Warn when the fitted loading scale is implausible. Default TRUE: the failure is
+  ## common (98-99% of fits at large loadings) and otherwise SILENT. Set FALSE to
+  ## suppress; the check itself is always available via `gllvmTMB_diagnose()`.
+  warn_runaway = TRUE,
   allow_nongaussian_reml = FALSE,
   ...
 ) {
@@ -1490,6 +1539,7 @@ gllvmTMBcontrol <- function(
     aghq_f_tol = as.numeric(aghq_f_tol),
     aghq_escalate_patience = as.integer(aghq_escalate_patience),
     aghq_rho_min = as.numeric(aghq_rho_min),
+    warn_runaway = isTRUE(warn_runaway),
     allow_nongaussian_reml = isTRUE(allow_nongaussian_reml)
   )
 }

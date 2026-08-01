@@ -84,6 +84,11 @@ SPA-01/FG-13/SPA-02 evidence boundary remains visible; no deprecated syntax or
 new capability claim was introduced. The page still distinguishes independent
 code authorship from the sdmTMB courtesy acknowledgement.
 
+Pre-merge coordination found that PR #891 advanced `main`. Its only overlap
+with this lane was the append-only `docs/dev-log/check-log.md`; both complete
+entries were preserved. There was no article, after-task-report, API, or test
+overlap.
+
 ## 9. What Did Not Go Smoothly
 
 The first compact table used dollar signs inside plain table-cell strings.

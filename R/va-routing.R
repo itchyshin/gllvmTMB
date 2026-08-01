@@ -55,10 +55,11 @@
   list(family = fam$family, link = fam$link)
 }
 
-## The engine requires a COMPLETE crossed unit x trait design -- exactly one
+## The engine requires a DENSE crossed unit x trait design -- exactly one
 ## row per (unit, trait) cell (`.va_r3_validate_data()`, R/va-r3-proto.R). Long-
 ## format community data is frequently ragged, so this is checked here to give
-## one clear message rather than a deep internal stop().
+## one clear message rather than a deep internal stop(). Design 107 keeps this
+## dense layout under response="include" (masked cells remain as rows).
 .va_route_check_complete_design <- function(unit_id, trait_id, n_units, n_traits) {
   cell <- as.integer(unit_id) * n_traits + as.integer(trait_id)
   expected <- n_units * n_traits
@@ -212,15 +213,8 @@
     unique = unique_flag, engine = engine
   )
 
-  ## Guards for inputs the engine has no channel for. Each would otherwise be
-  ## silently ignored: the engine signature simply has no parameter for them.
-  if (!is.null(is_y_observed) && !all(is_y_observed == 1L)) {
-    .va_route_abort(
-      "The model has masked (missing) responses.",
-      "The variational route has no response-mask channel; a masked row would
-       enter the objective as a real observation."
-    )
-  }
+  ## Design 107 Gate A Stage 1: dense response masks travel as is_y_observed
+  ## into the VA template (term-skip). Predictor missingness (mi) stays refused.
   if (isTRUE(mi_enabled)) {
     .va_route_abort(
       "The model has {.fn mi} missing predictors.",
@@ -310,7 +304,8 @@
       unit_id = unit_id, trait_id = trait_id,
       q = q, N = n_units, T = n_traits,
       family = fl$family, link = fl$link,
-      eval_method = eval_method
+      eval_method = eval_method,
+      is_y_observed = is_y_observed
     ),
     error = function(e) {
       cli::cli_abort(c(

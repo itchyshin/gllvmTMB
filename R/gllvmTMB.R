@@ -841,7 +841,7 @@ gllvmTMB <- function(
       call           = match.call()
     ))
   }
-  .fit <- gllvmTMB_multi_fit(
+  fit_once <- function(.control) gllvmTMB_multi_fit(
     parsed,
     data,
     trait = trait,
@@ -857,7 +857,7 @@ gllvmTMB <- function(
     mesh = mesh,
     lambda_constraint = lambda_constraint,
     Xcoef_fixed = Xcoef_fixed,
-    control = control,
+    control = .control,
     silent = silent,
     unit_obs = unit_obs,
     impute = impute,
@@ -872,6 +872,11 @@ gllvmTMB <- function(
       data_original = data_original
     )
   )
+  .fit <- if (.gllvmTMB_aghq_auto_requested(control)) {
+    .gllvmTMB_fit_aghq_auto_ridge(fit_once, control)
+  } else {
+    fit_once(control)
+  }
   ## Attach multinomial category metadata (baseline label + category order) so
   ## predict(type = "response") can reconstruct per-category softmax
   ## probabilities from the K-1 pseudo-trait rows.
@@ -1317,8 +1322,17 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #'   pass. Default `1L`. Later passes escalate when continuation is enabled.
 #' @param aghq_n_adapt Maximum number of adaptation passes. Default `400L`.
 #' @param aghq_ridge Ridge penalty on the loadings, as the scale `tau`;
-#'   `Inf` disables it. Default `2`. Naming it explicitly also makes the
-#'   `Laplace + ridge` control reachable without quadrature.
+#'   `Inf` disables it. Default `2`. Naming a numeric value explicitly also
+#'   makes the `Laplace + ridge` control reachable without quadrature.
+#'   `"auto"` is an **opt-in experimental** route for pure single-trial
+#'   Bernoulli models with one ordinary unit-tier `latent()` block. It uses an
+#'   unpenalised 9-node multi-start AGHQ pilot, then
+#'   `tau = min(6, max(1, ||Lambda_pilot||_F / sqrt(pq)))`. If the pilot or
+#'   scale-aware final fit is unusable, the returned fit transparently falls
+#'   back to the shipped `tau = 2` route; inspect
+#'   `fit$aghq$ridge_auto`. Evidence supports failure/runaway avoidance in this
+#'   scope, not a broad loading-accuracy improvement. When `aghq` is omitted,
+#'   `"auto"` selects 9-node AGHQ; an explicit `aghq = FALSE` is incompatible.
 #' @param warn_runaway If `TRUE` (default), warn once per session when a
 #'   binomial latent-variable fit triggers the package's existing runaway-loading
 #'   diagnostic. Set `FALSE` to silence the fit-time warning; the diagnostic
@@ -1488,12 +1502,24 @@ gllvmTMBcontrol <- function(
   ## cannot see. So the Laplace-path ridge is opt-in ONLY: it fires when the
   ## caller names `aghq_ridge` and never from the default.
   aghq_ridge_explicit <- !missing(aghq_ridge)
+  aghq_explicit <- !missing(aghq)
   spde_mode <- match.arg(spde_mode)
   optimizer <- match.arg(optimizer)
   init_strategy <- match.arg(init_strategy)
   start_method <- .gllvmTMB_normalize_start_method(start_method)
   integration <- match.arg(integration)
   aghq <- .gllvmTMB_normalize_aghq(aghq)
+  aghq_ridge <- .gllvmTMB_normalize_aghq_ridge(aghq_ridge)
+  if (identical(aghq_ridge, "auto")) {
+    if (isTRUE(aghq_explicit) && isFALSE(aghq)) {
+      cli::cli_abort(c(
+        "{.code aghq_ridge = \"auto\"} cannot be combined with an explicit {.code aghq = FALSE}.",
+        "i" = "The scale yardstick is an unpenalised multi-start AGHQ pilot, never a plain Laplace fit.",
+        ">" = "Omit {.arg aghq} to use the calibrated 9-node rule, or set {.code aghq = 9}."
+      ))
+    }
+    if (isFALSE(aghq)) aghq <- 9L
+  }
   ## AGHQ and the variational routes are alternative evaluations of the SAME
   ## latent integral, not layers. Requesting both is incoherent, and silently
   ## letting one win would hand back a fit that is not the one asked for.

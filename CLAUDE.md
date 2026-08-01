@@ -11,14 +11,21 @@ This repository is shared by humans, Codex, and Claude Code. Read
 > current handover. Read it before any repository mutation. Milestone state is not in
 > either place and must be re-derived from `git`.
 
+- **2026-08-01 — MISSING-DATA LEDGER CLOSED (#336/#337/#338).** Phase 2b/2c/3
+  engines were already on `main` (MIS-27/MIS-28 `covered`). Ledger lane
+  `cursor/missing-data-ledger-336-20260801` added the #336 shared-group
+  independence pin and closes the open issues. Do **not** rebuild Phase 2b.
+  D-112 remains **0.6 recovery-only**; do not resume coverage re-measure.
+  **START HERE:** `docs/dev-log/after-task/2026-08-01-missing-data-ledger-closure.md`,
+  then the lane map above. **Default next D-113 lane:** Design 107 VA
+  missing-data (Ayumi); tweedie remains the alternate gap-ledger pick.
+
 - **2026-08-01 — D-113 BETABINOMIAL C1 SLOPE ADMISSION LANDED.** PR
   [#887](https://github.com/itchyshin/gllvmTMB/pull/887) squash-merged at
   `2716f74b`: `betabinomial` `family_id` 8 now has the large-N
   (`n_sp = 200`, trials = 15) C1 augmented-slope recovery cell under #388.
-  D-112 remains **0.6 recovery-only**; do not resume coverage re-measure.
-  **START HERE:** `docs/dev-log/handover/2026-08-01-cursor-handover.md`, then
-  the lane map above. **Default next D-113 lane:** missing-data #336/#332 from
-  a fresh `origin/main` worktree; tweedie is the alternative gap-ledger pick.
+  Handover: `docs/dev-log/handover/2026-08-01-cursor-handover.md` (historical
+  for the slope closeout; next pick superseded by the ledger-closure note above).
 
 - **2026-07-31 (LATEST) — VA IS ROUTED AND GATE 3 HAS REPORTED.** Lane
   `claude/va-routing-20260731` (fast-forward of `claude/va-in-06-20260730`, **PR #869**).

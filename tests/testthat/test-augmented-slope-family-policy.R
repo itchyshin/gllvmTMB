@@ -13,19 +13,21 @@ test_that("augmented-slope family contract has one canonical admission table", {
   expect_equal(anyDuplicated(contract$family_id), 0L)
   expect_equal(
     contract$family_id,
-    c(0L, 1L, 2L, 3L, 4L, 5L, 7L, 9L, 14L, 15L)
+    c(0L, 1L, 2L, 3L, 4L, 5L, 7L, 8L, 9L, 14L, 15L)
   )
   expect_equal(
     contract$family[contract$admission_basis == "c1_partial"],
-    c("lognormal", "student")
+    c("lognormal", "betabinomial", "student")
   )
   expect_true(all(
     contract$evidence[contract$admission_basis == "c1_partial"] ==
-      "Lognormal/Student-t: permitted at runtime; single-seed evidence on one route only"
+      "C1-partial: permitted at runtime; single-seed evidence on one route only"
   ))
   expect_true(contract$link_0[contract$family == "binomial"])
   expect_true(contract$link_1[contract$family == "binomial"])
   expect_false(contract$link_2[contract$family == "binomial"])
+  expect_true(contract$link_0[contract$family == "betabinomial"])
+  expect_false(contract$link_1[contract$family == "betabinomial"])
   expect_false(any(contract$link_1[contract$family != "binomial"]))
   expect_false(any(contract$link_2))
 })
@@ -41,13 +43,15 @@ test_that("augmented-slope family/link admission is exhaustive and link aware", 
     grid$link_id
   )
   expected <-
-    grid$family_id %in% c(0L, 1L, 2L, 3L, 4L, 5L, 7L, 9L, 14L, 15L) &
+    grid$family_id %in% c(0L, 1L, 2L, 3L, 4L, 5L, 7L, 8L, 9L, 14L, 15L) &
     ((grid$family_id == 1L & grid$link_id %in% c(0L, 1L)) |
       (grid$family_id != 1L & grid$link_id == 0L))
 
   expect_equal(observed, expected)
   expect_true(gllvmTMB:::.augmented_slope_family_allowed(3L, 0L))
+  expect_true(gllvmTMB:::.augmented_slope_family_allowed(8L, 0L))
   expect_true(gllvmTMB:::.augmented_slope_family_allowed(9L, 0L))
+  expect_false(gllvmTMB:::.augmented_slope_family_allowed(8L, 1L))
   expect_false(gllvmTMB:::.augmented_slope_family_allowed(1L, 2L))
   expect_false(gllvmTMB:::.augmented_slope_family_allowed(16L, 0L))
   expect_equal(
@@ -78,11 +82,12 @@ test_that("all six structured augmented-slope guards use the canonical policy", 
   scope <- gllvmTMB:::.augmented_slope_family_scope_text()
   expect_match(scope, "lognormal\\(\\)")
   expect_match(scope, "student\\(\\)")
+  expect_match(scope, "betabinomial\\(\\)")
   ## The canonical text must still state the weaker-evidence caveat for
-  ## lognormal()/student(). This previously asserted the internal register
-  ## token "C1-partial", which R-10 removed from user-facing message text;
-  ## the assertion tracks the plain-English wording that replaced it so the
-  ## test still checks the same property.
+  ## lognormal()/student()/betabinomial(). This previously asserted the
+  ## internal register token "C1-partial", which R-10 removed from
+  ## user-facing message text; the assertion tracks the plain-English
+  ## wording that replaced it so the test still checks the same property.
   expect_match(scope, "more limited evidence")
   expect_match(scope, "logit/probit only")
 })

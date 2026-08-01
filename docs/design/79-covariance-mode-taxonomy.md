@@ -213,7 +213,9 @@ slope appears.
   `\|`≠`\|\|`).
 - Family generality for slopes beyond lognormal/student: **tweedie** is
   structurally ready but its slope recovery is **ridge-biased** (needs a
-  ridge-aware DGP); betabinomial needs a trials/size DGP.
+  ridge-aware DGP + multi-seed campaign). **betabinomial** C1 admitted
+  2026-08-01 (`test-family-slope-recovery.R`, multi-trial DGP, large-N;
+  RE-14) — still not route-specific for dep/latent/spatial.
 
 ### 7.3 `||` is not free sugar
 

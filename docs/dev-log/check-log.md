@@ -47982,11 +47982,42 @@ Checks:
   `xcrun_db`);
 - article-tier: Tier 1 PASS; prose review: PASS; Rose pre-publish: PASS;
   `git diff --check`: PASS.
-- Shannon pre-publish census: WARN while unrelated PR #887 CI is active; its
-  only overlap is the append-only `docs/dev-log/check-log.md`, with no code,
-  article, navigation, or report-file overlap. Reconcile against `origin/main`
-  before merge.
+- Shannon pre-publish census: PASS after unrelated PR #887 completed green and
+  merged. Its only overlap was this append-only check log; both complete
+  receipts were preserved while reconciling `origin/main`.
 
 Exact consistency searches and classified verdicts are recorded in
 `docs/dev-log/after-task/2026-08-01-spatial-pkgdown-guide.md`. No R API,
 likelihood, formula grammar, feature status, or simulation campaign changed.
+
+## 2026-08-01 — betabinomial C1 slope admission (D-113 track 6)
+
+**Branch / worktree:** `claude/slope-per-family-20260801` @ `/private/tmp/gllvmtmb-slope-per-family-20260801` (from `origin/main`).
+
+**Commands:**
+
+```sh
+NOT_CRAN=true GLLVMTMB_HEAVY_TESTS=1 Rscript --vanilla -e \
+  'devtools::load_all(quiet=TRUE); testthat::test_file("tests/testthat/test-augmented-slope-family-policy.R")'
+# FAIL 0 | WARN 0 | SKIP 0 | PASS 28
+
+NOT_CRAN=true GLLVMTMB_HEAVY_TESTS=1 Rscript --vanilla -e \
+  'devtools::load_all(quiet=TRUE); testthat::test_file("tests/testthat/test-family-slope-recovery.R")'
+# FAIL 0 | WARN 0 | SKIP 0 | PASS 15  (after large-N fixture n_sp=200 / trials=15)
+
+Rscript --vanilla dev/probe-betabinomial-slope.R
+# n_sp=90 conv=1; n_sp=120/200 conv=0 (large-N principle)
+```
+
+**rg hygiene:**
+
+```sh
+rg -n 'family_id = c\(0L, 1L, 2L, 3L, 4L, 5L, 7L, 8L, 9L, 14L, 15L\)' R/fit-multi.R
+rg -n 'betabinomial random slope' tests/testthat/test-family-slope-recovery.R
+rg -n 'betabinomial\\(\\)' R/fit-multi.R tests/testthat/test-augmented-slope-family-policy.R
+```
+
+**Deliberately not run:** full `devtools::test()`; Totoro (local heavy sufficed after N escalation); tweedie admission.
+
+**Reports:** `docs/dev-log/after-task/2026-08-01-slope-per-family-gap-ledger.md`,
+`docs/dev-log/after-task/2026-08-01-slope-per-family-betabinomial-admission.md`.

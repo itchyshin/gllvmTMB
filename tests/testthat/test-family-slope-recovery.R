@@ -9,7 +9,9 @@
 ##
 ## NOTE (Design 80 Bar-2): acceptance here is adequate-N convergence + plausible
 ## variance recovery. The small-cluster ML-vs-REML downward-bias diagnostic is a
-## follow-up (V close-out); tweedie(6)/betabinomial(8) await their own cells.
+## follow-up (V close-out). betabinomial(8) is admitted here under #388 with a
+## multi-trial cbind(succ, fail) DGP; tweedie(6) remains gated pending a
+## multi-seed campaign + maintainer sign-off.
 
 skip_heavy_ape <- function() {
   testthat::skip_on_cran()
@@ -50,6 +52,25 @@ make_family_slope_mu <- function(seed, n_sp = 90L, n_rep = 10L) {
     data = d, phylo_tree = fx$tree, unit = "species", family = fam)))
 }
 
+## Multi-trial beta-binomial on the phylo slope path (Design 79 trials/size DGP).
+## Linear predictor is logit-scale mu from make_family_slope_mu(); overdispersion
+## matches the intercept recovery fixture (phi = 3). Default trials = 15 and the
+## caller uses a larger n_sp than the continuous C1 cells — probe 2026-08-01
+## showed n_sp=90 fails to converge while n_sp=200 / N=15 clears (large-N).
+.fit_betabinomial_slope <- function(fx, n_trials = 15L, phi = 3) {
+  p <- stats::plogis(fx$df$mu)
+  p <- pmin(pmax(p, 1e-4), 1 - 1e-4)
+  p_rand <- stats::rbeta(length(p), shape1 = p * phi, shape2 = (1 - p) * phi)
+  p_rand <- pmin(pmax(p_rand, 1e-6), 1 - 1e-6)
+  d <- fx$df
+  d$succ <- stats::rbinom(length(p), size = n_trials, prob = p_rand)
+  d$fail <- as.integer(n_trials) - d$succ
+  suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+    cbind(succ, fail) ~ 0 + trait + phylo_indep(1 + x | species),
+    data = d, phylo_tree = fx$tree, unit = "species",
+    family = gllvmTMB::betabinomial())))
+}
+
 .check_slope_c1_plausibility <- function(fit, true_slope_sd) {
   expect_equal(fit$opt$convergence, 0L)
   sd_b <- fit$report$sd_b
@@ -78,6 +99,17 @@ test_that("student random slope fits with pooled slope-SD plausibility (C1)", {
   y <- fx$df$mu + stats::rt(nrow(fx$df), df = 5) * 0.3
   .check_slope_c1_plausibility(
     .fit_family_slope(fx, y, student()),
+    sqrt(fx$s2_slope)
+  )
+})
+
+test_that("betabinomial random slope fits with pooled slope-SD plausibility (C1)", {
+  skip_heavy_ape()
+  ## Large-N cell: n_sp=90 fails to converge for multi-trial betabinomial;
+  ## n_sp=200 / trials=15 recovers within the C1 pooled slope-SD band.
+  fx <- make_family_slope_mu(seed = 7L, n_sp = 200L, n_rep = 10L)
+  .check_slope_c1_plausibility(
+    .fit_betabinomial_slope(fx, n_trials = 15L),
     sqrt(fx$s2_slope)
   )
 })

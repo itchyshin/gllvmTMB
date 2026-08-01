@@ -235,12 +235,13 @@ The after-task report was added at closeout rather than as the first branch
 change. This is a process WARN under the Shannon checklist, although no work was
 lost and the report is included in the same PR.
 
-Shannon's final pre-publish census found one foreign lane, PR #887
-(`claude/slope-per-family-20260801`), with its configured R CMD check still in
-progress. Its only file overlap is the append-only `docs/dev-log/check-log.md`;
-there is no implementation, article, navigation, or after-task-file overlap.
-Publication therefore waits for that active check to finish, then reconciles
-the check log against `origin/main` before merge.
+Shannon's final pre-publish census initially found one foreign lane, PR #887
+(`claude/slope-per-family-20260801`), with its configured R CMD check in
+progress. That check completed green and the PR merged before this branch was
+published. Its only file overlap was the append-only
+`docs/dev-log/check-log.md`; both complete receipts were preserved while
+reconciling `origin/main`. There was no implementation, article, navigation,
+or after-task-file overlap. Final Shannon verdict: PASS.
 
 ## 10. Known Residuals
 

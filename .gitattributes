@@ -23,8 +23,20 @@
 #
 # `-text` disables all end-of-line conversion for these paths, on every platform.
 # It does not change what is stored in git, so the pinned digest is unaffected.
-# Applied to the whole fixture directory rather than the one file, because
-# anything shipped there is a candidate for the same byte-identity treatment.
+#
+# MATCHED BY BASENAME, deliberately, and this is the part that is easy to get
+# wrong: the fixture exists TWICE -- `docs/design/86-eva-gate1-parameters.json`
+# and `inst/extdata/86-eva-gate1-parameters.json` -- and `.eva_gate1_file()`
+# resolves the `docs/design/` copy FIRST, walking up from the working directory,
+# falling back to the installed `inst/extdata` copy only when that walk fails.
+# Under `R CMD check` the walk reaches the workspace checkout, so the copy that
+# actually gets hashed is the one in `docs/`. A first attempt at this fix pinned
+# only `inst/extdata/**` and left Windows failing on exactly the same digest.
+# A pattern with no slash matches the basename at any depth, so both copies --
+# and any future copy -- are covered.
+86-eva-gate1-parameters.json -text
+
+# Forward cover for anything else shipped as a frozen fixture.
 inst/extdata/** -text
 
 # Everything else keeps git's default handling. This file deliberately does NOT

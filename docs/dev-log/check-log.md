@@ -47506,3 +47506,31 @@ Deliberately not run: `devtools::test()` and `devtools::check()`. This change is
 navigation only and the required full site build exercises the affected path. GitHub
 R-CMD-check and pkgdown remain the merge gates; main's pkgdown run must be green before
 the tau lane resumes.
+## 2026-08-01 — restore a bounded `suggest_lambda_constraint()` pkgdown guide (Codex)
+
+- Restored `vignettes/articles/lambda-constraint-suggest.Rmd` as a new public
+  orientation guide, not as the retired same-data loading-selection workflow.
+  It uses only the predeclared `lower_triangular` convention, a rendered
+  constraint-matrix figure, public `check_gllvmTMB()` / `extract_Sigma()`
+  calls, and an explicit LAM-04 scope boundary.
+- Added the guide to the Model Guides navbar and article index; linked it from
+  `joint-sdm.Rmd`; clarified the README's deferred-guides row.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/lambda-constraint-suggest", pkg = ".", lazy = FALSE, new_process = FALSE, quiet = FALSE)'`
+  -> PASS; wrote the article and constraint figure.
+- `Rscript --vanilla -e 'devtools::test(filter = "suggest-lambda-constraint", reporter = "summary")'`
+  -> PASS; LAM-04 heavy recovery cells skipped without `GLLVMTMB_HEAVY_TESTS=1`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> PASS, `No problems found.`
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/joint-sdm", pkg = ".", lazy = FALSE, new_process = FALSE, quiet = TRUE); cat("JOINT_SDM_DONE\\n")'`
+  -> PASS.
+- Full `pkgdown::build_articles(lazy = FALSE)` did not reach the completion
+  marker after pre-existing article renders; isolated renders for both
+  touched articles passed. See the paired after-task report for the exact
+  evidence and retained boundary.
+- Expanded the guide with a rendered `varimax_threshold` versus
+  `wald_retention` pin-matrix comparison and a non-rendered, explicit
+  `profile_retention` sensitivity workflow. Reader-facing prose now explains
+  the 0.30 display threshold and 0.90 retention rule without showing raw
+  helper diagnostics or internal validation tracker IDs. Pat passed the
+  applied-reader reread; Rose passed once data-derived pins were described as
+  a new constrained refit that can change the covariance, not a rotation.

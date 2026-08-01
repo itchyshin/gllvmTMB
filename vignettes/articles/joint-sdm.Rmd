@@ -417,8 +417,11 @@ mutually exclude.
 
 * [Morphometrics](morphometrics.html) — Gaussian stacked-trait analogue with ordinary `latent()`.
 * [Choosing latent rank](model-selection-latent-rank.html) — how to compare candidate values of `d`.
-* Loading-constraint helpers — `?confirmatory_lambda` and
-  `?suggest_lambda_constraint` document the advanced API contracts.
+* [Explore loading constraints](lambda-constraint-suggest.html) — a reproducible
+  lower-triangular `suggest_lambda_constraint()` workflow. It is an
+  exploratory orientation, not confirmatory evidence.
+* `?confirmatory_lambda` documents the separate advanced API for a
+  prespecified loading hypothesis.
 * [`vignette("response-families")`](response-families.html) — full table of supported families and the per-family $\sigma^2_d$.
 
 ## References

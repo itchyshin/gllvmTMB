@@ -47559,6 +47559,204 @@ Deliberately not run: `devtools::test()` and `devtools::check()`. This change is
 navigation only and the required full site build exercises the affected path. GitHub
 R-CMD-check and pkgdown remain the merge gates; main's pkgdown run must be green before
 the tau lane resumes.
+## 2026-08-01 — restore a bounded `suggest_lambda_constraint()` pkgdown guide (Codex)
+
+- Restored `vignettes/articles/lambda-constraint-suggest.Rmd` as a new public
+  orientation guide, not as the retired same-data loading-selection workflow.
+  It uses only the predeclared `lower_triangular` convention, a rendered
+  constraint-matrix figure, public `check_gllvmTMB()` / `extract_Sigma()`
+  calls, and an explicit scope boundary.
+- Added the guide to the Model Guides navbar and article index; linked it from
+  `joint-sdm.Rmd`; clarified the README's deferred-guides row.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/lambda-constraint-suggest", pkg = ".", lazy = FALSE, new_process = FALSE, quiet = FALSE)'`
+  -> PASS; wrote the article and constraint figure.
+- `Rscript --vanilla -e 'devtools::test(filter = "suggest-lambda-constraint", reporter = "summary")'`
+  -> PASS; four configured heavy recovery cells skipped without `GLLVMTMB_HEAVY_TESTS=1`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> PASS, `No problems found.`
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/joint-sdm", pkg = ".", lazy = FALSE, new_process = FALSE, quiet = TRUE); cat("JOINT_SDM_DONE\\n")'`
+  -> PASS.
+- Full `pkgdown::build_articles(lazy = FALSE)` did not reach the completion
+  marker after pre-existing article renders; isolated renders for both
+  touched articles passed. See the paired after-task report for the exact
+  evidence and retained boundary.
+- Expanded the guide with a rendered `varimax_threshold` versus
+  `wald_retention` pin-matrix comparison and a non-rendered, explicit
+  `profile_retention` sensitivity workflow. Reader-facing prose now explains
+  the 0.30 display threshold and 0.90 retention rule without showing raw
+  helper diagnostics or internal validation tracker IDs. Pat passed the
+  applied-reader reread; Rose passed once data-derived pins were described as
+  a new constrained refit that can change the covariance, not a rotation.
+
+### Follow-up validation after synchronising with `main`
+
+- `Rscript --vanilla -e 'pkgdown::build_articles(lazy = FALSE); cat("PKGDOWN_ARTICLES_DONE\\n")'`
+  -> PASS; the full article batch completed and wrote every article, including
+  `lambda-constraint-suggest`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown(); cat("PKGDOWN_CHECK_DONE\\n")'`
+  -> PASS, `No problems found.`
+- `Rscript --vanilla -e 'devtools::test(filter = "suggest-lambda-constraint", reporter = "summary")'`
+  -> PASS; four configured heavy recovery cells were skipped because the
+  opt-in heavy-test setting was not enabled.
+
+## 2026-08-01 — current-main live validation and VA S3 namespace repair (Codex)
+
+Branch `codex/current-main-live-validation-20260801`, immutable baseline
+`074387156888c915d07de445988c516b5f99d09f`. All work ran in isolated
+`/private/tmp` worktrees; the dirty primary profile checkout was read only and
+never used. PR #881, AGHQ/scale-start, Poisson VA-09, optimizer policy,
+tolerances, and snapshot acceptance were excluded.
+
+### Diagnostic classifications
+
+- `test-profile-derived-curves.R`: complete heavy-gated file passed twice in
+  fresh processes (28.8 s and 28.3 s). Both historical expectation surfaces
+  are `NOT_REPRODUCED` on this SHA/host.
+- `test-funcphylo-spatial-recovery.R`: line 54 failed in three of three direct
+  fresh-process runs, so it is `REPRODUCIBLE` under the predeclared direct
+  contract. A source-unchanged equivalent fit was healthy (optimizer code 0,
+  max gradient `0.006637`, scaled gradient `8.52e-07`, loading cosine
+  `0.99933167`, correlation error `2.17e-09`), and the test passed inside both
+  built-package checks. Overall attribution is therefore execution-context
+  sensitive and remains unresolved; no convergence/start/tolerance change.
+- Dispatcher correlation ellipse: `INTERPRETABLE_VISUAL_DRIFT`. Expected and
+  retained candidate SVGs are both 21,896 bytes; one polygon line differs at
+  four coordinates by 0.01 SVG units. No snapshot was accepted or copied.
+
+### Ordinary baseline check
+
+Authoritative clean command:
+
+```sh
+env -u GLLVMTMB_HEAVY_TESTS TMPDIR=/private/tmp NOT_CRAN=true \
+Rscript --vanilla -e \
+'devtools::check(args = "--no-manual", quiet = TRUE, check_dir = "/private/tmp/gllvmtmb-main-check-artifacts-clean-20260801", error_on = "never")'
+```
+
+Result after 11m23.9s: **1 ERROR, 4 WARNINGs, 4 NOTEs**; testthat
+`FAIL 1 / WARN 2 / SKIP 822 / PASS 8032`. The error is the classified ellipse
+snapshot. Three warnings and two notes share one new root cause:
+`S3method(weights,gllvmTMB_va)` could not resolve the generic when only base was
+attached. The remaining warning combines unavailable package indices with a
+deliberately quoted `some::wrapper` scanner fixture; the remaining notes are
+unavailable clock verification and macOS `xcrun_db` detritus.
+
+Two earlier checks produced the same substantive findings but are quarantined
+for summary purposes because a runner log at source root introduced an extra
+top-level-file NOTE. Their retained SVG supplied the exact visual diff.
+
+### Single selected repair and verification
+
+`R/va-methods.R` now uses `@exportS3Method stats::weights`; regenerated
+`NAMESPACE` contains `S3method(stats::weights,gllvmTMB_va)`. No public method,
+signature, behavior, help topic, test, snapshot, likelihood, grammar, or
+optimizer policy changed.
+
+Checks:
+
+```sh
+TMPDIR=/private/tmp Rscript --vanilla -e 'devtools::document(quiet = TRUE)'
+R CMD INSTALL --library=/private/tmp/gllvmtmb-repair-verification-lib .
+R_DEFAULT_PACKAGES=NULL R_LIBS=/private/tmp/gllvmtmb-repair-verification-lib \
+  Rscript --vanilla -e "loadNamespace('gllvmTMB')"
+TMPDIR=/private/tmp NOT_CRAN=true Rscript --vanilla -e \
+  'devtools::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-va-routing-oracle.R", reporter = "summary")'
+git diff --check
+```
+
+All passed; the oracle reported 31 passing expectations. The complete repaired
+branch check ran for 11m39.7s and reported **1 ERROR, 1 WARNING, 2 NOTEs** with
+the same testthat counts. Thus the repair removed exactly the three namespace
+warnings and two dependent namespace notes; it did not change or mask the
+ellipse failure.
+
+`pkgdown::check_pkgdown()` separately failed on pinned baseline `07438715`
+because the existing public `gllvmTMB_va-methods` topic is absent from
+`_pkgdown.yml`. During closeout, PR #882 independently fixed that exact omission
+and merged to remote `main` at `0b898266`. This branch does not duplicate or
+absorb #882. Because #882 also appended this check log, later integration must
+reconcile the append-only overlap; no rebase or merge was attempted while its
+main CI was active.
+
+Exact consistency searches and verdicts:
+
+```sh
+rg -n 'test-profile-derived-curves|test-funcphylo-spatial-recovery|dispatcher-correlation-ellipse' docs/dev-log/handover docs/dev-log/check-log.md tests/testthat
+```
+
+Found the historical claims and all three live surfaces; this entry supersedes
+counts for this SHA without erasing history.
+
+```sh
+rg -n 'main.*(red|green)|18 fail|3 err|three failures|3 fail' docs/dev-log/handover/2026-07-31-claude-handover-851-lane-closed.md docs/dev-log/check-log.md
+```
+
+Confirmed the prior Totoro harness correction; no aggregate fail count was used
+for attribution here.
+
+```sh
+rg -n 'VA-09|AGHQ|scale-start|scale-aware start' docs/dev-log/handover/2026-07-31-claude-handover-851-lane-closed.md docs/dev-log/handover/2026-07-31-codex-handover.md docs/design/35-validation-debt-register.md
+```
+
+Confirmed the excluded lanes and VA-09 register boundary. The missing local
+handover path is expected because its file remains on unmerged PR #881.
+
+Full durable report:
+`docs/dev-log/after-task/2026-08-01-current-main-live-validation.md`.
+
+Closeout gates:
+
+- `Rscript --vanilla /Users/z3437171/Dropbox/Github\ Local/Shinichi/tools/check-after-task.R docs/dev-log/after-task/2026-08-01-current-main-live-validation.md` — PASS (`after-task structure check passed`).
+- Enforced Ultra Plan routing audit — PASS (three Luna receipts; Terra majority;
+  Sol minority; maximum one compaction per audited session).
+- Rose V3 final scope/claim re-audit — PASS after correcting unsupported SVG
+  cause wording, actor attribution, exact check command, and the #882
+  historical/current split.
+- Shannon end-of-session coordination — WARN: PRs #881 and #877 remain open;
+  PR #882 moved remote `main` to `0b898266` and overlaps this branch only in an
+  append to this file. Main CI was in progress. This pinned arc therefore does
+  not rebase, merge, duplicate `_pkgdown.yml`, or claim upstream green state.
+
+## 2026-08-01 — integrate qualified `stats::weights` registration on current main (Codex)
+
+**Branch:** `codex/weights-s3-registration-20260801` from `origin/main`
+`0b898266f82a9640220c73632f72628d754320a6`.
+
+Replayed validated commit `c27f118a` as `793bb339`. The only conflict was the
+append-only tail of this file after PR #882; both the pkgdown receipt and the
+live-validation receipt were retained. The implementation remains two lines:
+`@exportS3Method stats::weights` in `R/va-methods.R` and generated
+`S3method(stats::weights,gllvmTMB_va)` in `NAMESPACE`.
+
+Checks:
+
+- `TMPDIR=/private/tmp Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  — PASS; no additional generated diff.
+- Fresh-library `R CMD INSTALL` — PASS, including temporary/final load checks.
+- Base-only installed-package namespace load plus `stats::weights()` dispatch —
+  PASS; the existing deliberate VA error was reached.
+- `NOT_CRAN=true Rscript --vanilla -e 'devtools::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-va-routing-oracle.R", reporter = "summary")'`
+  — PASS, 31 expectations.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'` — PASS, `No problems found.`
+- Full source build with vignettes — PASS; produced `gllvmTMB_0.6.0.tar.gz`.
+- Network-enabled `env -u GLLVMTMB_HEAVY_TESTS TMPDIR=/private/tmp NOT_CRAN=true R CMD check --as-cran gllvmTMB_0.6.0.tar.gz`
+  — **1 ERROR, 0 WARNINGs, 1 NOTE**. The sole error is the pre-existing
+  dispatcher ellipse snapshot at `test-plot-visual-snapshots.R:301`; the note is
+  `New submission`. Testthat: `FAIL 1 / WARN 2 / SKIP 822 / PASS 8032`.
+  Namespace/S3 checks, examples, `--run-donttest`, vignettes, manuals, and all
+  other tests passed. The first sandboxed attempt was discarded as an environment
+  failure because CRAN/Bioconductor DNS was blocked.
+- Expected and candidate ellipse SVGs were both 21,896 bytes; `cmp -l` found two
+  character positions and the unified diff showed the same four 0.01-coordinate
+  shifts recorded by the preceding arc. No snapshot was accepted or modified.
+
+Scope exclusions held: no spatial optimizer, tolerance, snapshot, AGHQ,
+scale-start, Poisson VA-09, likelihood, grammar, or public capability change.
+Shannon pre-PR audit: **WARN** — PR #877 is non-mergeable and this branch will
+bring the open-PR count to the soft cap of three, but its implementation and
+closure paths do not collide with PRs #877 or #881 and no CI run is active.
+Full integration report:
+`docs/dev-log/after-task/2026-08-01-weights-s3-registration-integration.md`.
 
 ## 2026-08-01 — integrate and verify the runaway fit warning (#877, Codex)
 
@@ -47602,3 +47800,13 @@ Exact consistency scans and their classified verdicts are recorded in
 `docs/dev-log/after-task/2026-08-01-runaway-fit-warning-877.md`. Rose pre-publish:
 PASS with the explicit warning-not-repair boundary. GitHub R-CMD-check remains the
 merge gate.
+
+### Post-matrix main integration for PR #883
+
+While PR #883's manual three-OS matrix was running, PR #877 merged and moved
+`origin/main` from `0b898266` to `bca04b29`. The only overlap with #883 was this
+append-only check log. Merging `origin/main` retained both complete receipts and
+did not alter `R/va-methods.R`, `NAMESPACE`, either live-validation report, or any
+snapshot. The successful pre-merge matrix run is retained at
+https://github.com/itchyshin/gllvmTMB/actions/runs/30704545282, but it is not the
+final-head gate; CI must rerun on the merge commit before PR #883 is ready.

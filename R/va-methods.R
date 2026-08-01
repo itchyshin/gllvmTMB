@@ -259,7 +259,7 @@ df.residual.gllvmTMB_va <- function(object, ...) {
 }
 
 #' @rdname gllvmTMB_va-methods
-#' @export
+#' @exportS3Method stats::weights
 weights.gllvmTMB_va <- function(object, ...) {
   .va_not_defined(
     "weights",

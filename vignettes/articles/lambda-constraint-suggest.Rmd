@@ -1,0 +1,313 @@
+---
+title: "Explore loading constraints with suggest_lambda_constraint()"
+description: "Explore pre-specified and data-derived loading constraints without turning selected pins into biological hypotheses."
+tier: 1
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{Explore loading constraints with suggest_lambda_constraint()}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 7,
+  fig.height = 4.5,
+  fig.align = "center",
+  cache = FALSE,
+  eval = TRUE,
+  message = FALSE,
+  warning = FALSE
+)
+```
+
+When a reduced-rank model has more than one latent dimension, the columns of
+its loading matrix $\boldsymbol\Lambda$ can be rotated without changing the
+shared covariance $\boldsymbol\Lambda\boldsymbol\Lambda^\top$.
+`suggest_lambda_constraint()` supplies a reproducible *identification
+scaffold*: a matrix that selects one orientation before fitting. It does not
+discover a biological factor structure or test whether a selected loading is
+exactly zero.
+
+This page is for an applied user who needs a stable loading orientation for a
+plot or a reproducible workflow. It uses the binary JSDM teaching fixture, but
+the point is general. The ecological example below is an orientation
+demonstration, not evidence for a confirmatory ecological loading structure.
+
+## Setup
+
+```{r setup}
+library(gllvmTMB)
+library(ggplot2)
+```
+
+## The model and the invariant target
+
+The shipped JSDM fixture records presence or absence for eight species at 120
+sites, with a measured environmental predictor. We fit two residual latent
+dimensions after allowing each species its own environmental response.
+
+```{r data}
+jsdm_path <- system.file(
+  "extdata", "examples", "joint-sdm-example.rds",
+  package = "gllvmTMB"
+)
+if (!nzchar(jsdm_path)) {
+  jsdm_path <- file.path(
+    "inst", "extdata", "examples", "joint-sdm-example.rds"
+  )
+}
+jsdm <- readRDS(jsdm_path)
+df_long <- jsdm$data_long
+```
+
+For a binomial-logit JSDM, the model is
+
+$$
+\operatorname{logit}\{P(y_{it}=1)\} =
+\mathbf{x}_i^\top\boldsymbol\beta_t +
+\boldsymbol\lambda_t^\top\mathbf{u}_i,
+\qquad \mathbf{u}_i \sim \mathcal{N}(\mathbf{0}, \mathbf{I}_d).
+$$
+
+Here $\boldsymbol\lambda_t$ is the row of loadings for species $t$.
+The individual columns of $\boldsymbol\Lambda$ depend on the chosen
+orientation; the implied covariance is the more stable scientific target.
+See [Joint species distribution models](joint-sdm.html) for a full analysis
+and [Covariance and correlation](covariance-correlation.html) for the
+interpretation of $\boldsymbol\Sigma$.
+
+## Choose an identification convention before fitting
+
+`suggest_lambda_constraint()` returns a matrix with `NA` for an estimated
+entry and a number for an exact pin. Its default `"lower_triangular"`
+convention fixes only the strict upper triangle to zero. For $d = 2$, that is
+one zero; for $d = K$, it is $K(K - 1)/2$ zeros. These zeros identify an
+orientation. They are not selected from the JSDM's fitted loadings.
+
+```{r constraint}
+model_formula <- value ~ 0 + trait + (0 + trait):env_1 +
+  latent(0 + trait | site, d = 2)
+
+sug <- suggest_lambda_constraint(
+  model_formula,
+  data = df_long,
+  trait = "trait",
+  unit = "site",
+  convention = "lower_triangular"
+)
+
+sug$constraint
+sug$usage_hint
+```
+
+The figure makes the contract visible. The single blue cell is fixed exactly
+at zero; every white cell is estimated. The first two rows carry the minimal
+lower-triangular scaffold, while the remaining rows are unconstrained.
+
+```{r constraint-figure, fig.alt="A species-by-latent-dimension constraint matrix. White cells labelled estimate are free loadings. One dark blue cell in the first row and second latent dimension is fixed at zero, which supplies the lower-triangular orientation convention."}
+constraint_plot <- as.data.frame(as.table(sug$constraint), stringsAsFactors = FALSE)
+names(constraint_plot) <- c("species", "dimension", "value")
+constraint_plot$status <- ifelse(
+  is.na(constraint_plot$value), "estimated", "fixed at 0"
+)
+
+ggplot(constraint_plot, aes(x = dimension, y = species, fill = status)) +
+  geom_tile(colour = "white", linewidth = 0.7) +
+  geom_text(aes(label = ifelse(is.na(value), "estimate", "0")), size = 3) +
+  scale_fill_manual(values = c("estimated" = "grey95", "fixed at 0" = "#0A617D")) +
+  labs(
+    x = "Latent dimension", y = "Species", fill = NULL,
+    title = "A lower-triangular loading orientation",
+    subtitle = "`NA` means estimate; numeric entries are exact pins"
+  ) +
+  theme_minimal(base_size = 11) +
+  theme(panel.grid = element_blank(), legend.position = "top")
+```
+
+## Fit and check the oriented model
+
+Pass the returned matrix to `gllvmTMB()` through `lambda_constraint`. The
+constraint changes the loading orientation, not the purpose of the model:
+we still interpret residual co-occurrence through
+$\boldsymbol\Lambda\boldsymbol\Lambda^\top$ and the corresponding
+latent-scale correlations.
+
+```{r fit}
+fit_oriented <- gllvmTMB(
+  model_formula,
+  data = df_long,
+  trait = "trait",
+  unit = "site",
+  family = binomial(),
+  lambda_constraint = list(unit = sug$constraint)
+)
+
+health <- check_gllvmTMB(fit_oriented)
+health[health$component %in% c("optimizer_convergence", "max_gradient", "pd_hessian"), ]
+```
+
+Do not interpret loading labels if these health rows fail. A constraint can
+choose a coordinate system; it cannot repair a weakly identified model or add
+information that the data do not contain.
+
+```{r covariance}
+Sigma_oriented <- extract_Sigma(fit_oriented, level = "unit", part = "shared")
+round(Sigma_oriented$Sigma, 2)
+```
+
+## Compare exploratory retention conventions
+
+The lower-triangular convention above is fixed before fitting. The other
+conventions start from an exploratory fit and propose exact zero pins for a
+new, data-derived constrained refit. They answer different screening
+questions, so their disagreement is useful to inspect rather than something
+to hide. Because an exact zero changes the fitted model, its implied covariance
+can differ from the exploratory fit; this is not merely a coordinate rotation.
+
+```{r exploratory-fit}
+fit_exploratory <- gllvmTMB(
+  model_formula,
+  data = df_long,
+  trait = "trait",
+  unit = "site",
+  family = binomial()
+)
+
+comparison_fast <- suggest_lambda_constraints(
+  fit_exploratory,
+  methods = c("varimax_threshold", "wald_retention"),
+  threshold = 0.30,
+  retention_prob = 0.90
+)
+comparison_table <- data.frame(
+  convention = c("Varimax threshold", "Wald retention"),
+  decision = c(
+    "Rotate first, then propose zeros for small standardised loadings.",
+    "Propose zeros when the fitted uncertainty does not support a loading above the chosen threshold."
+  ),
+  proposed_zero_pins = vapply(
+    comparison_fast$suggestions,
+    function(x) x$n_pins,
+    integer(1)
+  ),
+  free_loadings = vapply(
+    comparison_fast$suggestions,
+    function(x) length(x$constraint) - x$n_pins,
+    integer(1)
+  )
+)
+knitr::kable(comparison_table)
+```
+
+`varimax_threshold` first rotates the loading axes so that species associate
+more clearly with one dimension, then proposes zero pins for standardised
+loadings below 0.30. Treat 0.30 as a display choice, not a biological cutoff.
+`wald_retention` retains a loading only when the fitted model assigns at least
+a 90% probability to its standardised magnitude exceeding 0.30; otherwise it
+proposes a zero pin. Neither convention is a hypothesis test for a biological
+zero. The figure compares the resulting pin matrices: blue cells are exact
+zero restrictions in the proposed constrained refit; white cells remain
+estimated.
+
+```{r fast-comparison-figure, fig.alt="Two species-by-latent-dimension matrices compare varimax-threshold and Wald-retention orientation suggestions. Blue cells are proposed exact zero pins and white cells remain estimated. The patterns can differ because one method uses point estimates and the other also uses baseline standard errors."}
+make_constraint_frame <- function(suggestion, method) {
+  out <- as.data.frame(as.table(suggestion$constraint), stringsAsFactors = FALSE)
+  names(out) <- c("species", "dimension", "value")
+  out$method <- method
+  out$status <- ifelse(is.na(out$value), "estimated", "proposed zero")
+  out
+}
+
+fast_constraints <- do.call(
+  rbind,
+  Map(
+    make_constraint_frame,
+    comparison_fast$suggestions,
+    names(comparison_fast$suggestions)
+  )
+)
+
+ggplot(fast_constraints, aes(x = dimension, y = species, fill = status)) +
+  geom_tile(colour = "white", linewidth = 0.7) +
+  geom_text(aes(label = ifelse(is.na(value), "estimate", "0")), size = 3) +
+  facet_wrap(~ method) +
+  scale_fill_manual(values = c("estimated" = "grey95", "proposed zero" = "#0A617D")) +
+  labs(
+    x = "Latent dimension", y = "Species", fill = NULL,
+    title = "Exploratory retention conventions can propose different pins",
+    subtitle = "Each blue cell would become an exact zero in a constrained refit"
+  ) +
+  theme_minimal(base_size = 11) +
+  theme(panel.grid = element_blank(), legend.position = "top")
+```
+
+### The slower profile-retention convention
+
+`profile_retention` replaces the Wald screen with a one-entry-at-a-time
+likelihood-ratio refit. It is useful when you want to see how a
+likelihood-based screen differs from the fast conventions, but it is not a
+confirmation procedure: the same exploratory data proposed both the loading
+and the test. It is also expensive—one refit for each testable loading—and
+leaves an entry free when a test refit is unhealthy. Run it deliberately after
+the exploratory fit is healthy.
+
+```{r profile-retention, eval=FALSE}
+comparison_profile <- suggest_lambda_constraints(
+  fit_exploratory,
+  methods = "profile_retention",
+  retention_prob = 0.90
+)
+comparison_profile$suggestions$profile_retention$constraint
+
+# This is a new, data-derived constrained refit, not a harmless rotation of
+# the exploratory model. Screen it before describing its covariance summaries.
+fit_profile_orientation <- gllvmTMB(
+  model_formula,
+  data = df_long,
+  trait = "trait",
+  unit = "site",
+  family = binomial(),
+  lambda_constraint = list(unit = comparison_profile$recommended$constraint)
+)
+check_gllvmTMB(fit_profile_orientation)
+```
+
+The code is not run during routine article rendering because it performs many
+refits. It is intentionally written out in full so that the cost and the
+post-fit health check are visible rather than hidden. If the exploratory or
+constrained fit is unhealthy, simplify the model or collect more informative
+data; do not treat the profile screen as a repair.
+
+## What this helper does not establish
+
+The other conventions in `suggest_lambda_constraint()` include
+`"varimax_threshold"`, `"wald_retention"`, and `"profile_retention"`.
+They can propose an exploratory, data-derived constrained refit after
+inspecting a fit. They do not convert the selected zeros into prior biological
+hypotheses, and fitting the selected constraint to the same data does not
+confirm those zeros. Therefore this article does not compare their refits with
+AIC, BIC, or likelihood-ratio tests, and it does not report loading confidence
+intervals after selection.
+
+If you have a biological hypothesis before inspecting the data, construct its
+matrix explicitly with `confirmatory_lambda()` and state the exact numerical
+pins as model assumptions. If you need to choose the number of latent
+dimensions, compare a pre-specified set of candidate ranks with the separate
+[Choosing latent rank](model-selection-latent-rank.html) workflow. That page
+uses `logLik()`, AIC, BIC, and `check_gllvmTMB()` for its demonstrated
+Gaussian candidate set; it does not validate information criteria as a
+universal rank-selection rule.
+
+## Next steps
+
+* `?suggest_lambda_constraint` documents all conventions and arguments.
+* [Joint species distribution models](joint-sdm.html) shows the full binary
+  occurrence workflow and its rotation-invariant covariance interpretation.
+* [Can I trust this fit?](fit-diagnostics.html) explains the health table
+  shown above and what to do when a fit is weak.

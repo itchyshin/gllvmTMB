@@ -1,0 +1,143 @@
+Warning message:
+package ‘gllvm’ was built under R version 4.6.1 
+Grid has 80 cells (x2 engines = 160 fit attempts)
+[1/80] n=60 p=8 q=1 seed=1 ... using C++ compiler: ‘Apple clang version 21.0.0 (clang-2100.1.1.101)’
+using SDK: ‘MacOSX26.5.sdk’
+clang++ -arch arm64 -std=gnu++20 -I"/Library/Frameworks/R.framework/Resources/include" -DNDEBUG -I"/Users/z3437171/Library/R/arm64/4.6/library/TMB/include" -I"/Users/z3437171/Library/R/arm64/4.6/library/RcppEigen/include"  -DTMB_SAFEBOUNDS -DTMB_EIGEN_DISABLE_WARNINGS -DLIB_UNLOAD=R_unload_gllvmTMB_eva  -DTMB_LIB_INIT=R_init_gllvmTMB_eva  -DCPPAD_FRAMEWORK  -I/opt/R/arm64/include    -fPIC  -O2  -c gllvmTMB_eva.cpp -o gllvmTMB_eva.o
+clang++ -arch arm64 -std=gnu++20 -dynamiclib -Wl,-headerpad_max_install_names -undefined dynamic_lookup -L/Library/Frameworks/R.framework/Resources/lib -L/opt/R/arm64/lib -o gllvmTMB_eva.so gllvmTMB_eva.o -F/Library/Frameworks/R.framework/.. -framework R
+ours=failed_health_gate(14.4s) gllvm=converged(0.4s)
+[2/80] n=150 p=8 q=1 seed=1 ... ours=failed_health_gate(1.2s) gllvm=converged(0.7s)
+[3/80] n=60 p=20 q=1 seed=1 ... Standard errors for parameters could not be calculated, due to singular fit.
+ours=failed_health_gate(0.7s) gllvm=converged(0.6s)
+[4/80] n=150 p=20 q=1 seed=1 ... ours=failed_health_gate(0.4s) gllvm=converged(0.9s)
+[5/80] n=60 p=8 q=2 seed=1 ... ours=failed_health_gate(0.8s) gllvm=converged(2.0s)
+[6/80] n=150 p=8 q=2 seed=1 ... ours=failed_health_gate(2.9s) gllvm=converged(12.8s)
+[7/80] n=60 p=20 q=2 seed=1 ... Standard errors for parameters could not be calculated, due to singular fit.
+ours=failed_health_gate(1.2s) gllvm=converged(5.7s)
+[8/80] n=150 p=20 q=2 seed=1 ... Standard errors for parameters could not be calculated, due to singular fit.
+ours=failed_health_gate(4.1s) gllvm=converged(4.4s)
+[9/80] n=60 p=8 q=1 seed=2 ... ours=failed_health_gate(0.4s) gllvm=converged(0.3s)
+[10/80] n=150 p=8 q=1 seed=2 ... Standard errors for parameters could not be calculated, due to singular fit.
+ours=healthy(0.2s) gllvm=converged(1.2s)
+[11/80] n=60 p=20 q=1 seed=2 ... Standard errors for parameters could not be calculated, due to singular fit.
+ours=healthy(0.2s) gllvm=converged(0.5s)
+[12/80] n=150 p=20 q=1 seed=2 ... ours=healthy(0.4s) gllvm=converged(0.5s)
+[13/80] n=60 p=8 q=2 seed=2 ... Standard errors for parameters could not be calculated, due to singular fit.
+ours=failed_health_gate(0.6s) gllvm=converged(1.5s)
+[14/80] n=150 p=8 q=2 seed=2 ... Standard errors for parameters could not be calculated, due to singular fit.
+ours=failed_health_gate(2.2s) gllvm=converged(12.3s)
+[15/80] n=60 p=20 q=2 seed=2 ... Standard errors for parameters could not be calculated, due to singular fit.
+ours=failed_health_gate(2.6s) gllvm=converged(1.9s)
+[16/80] n=150 p=20 q=2 seed=2 ... Standard errors for parameters could not be calculated, due to singular fit.
+ours=failed_health_gate(7.9s) gllvm=converged(8.2s)
+[17/80] n=60 p=8 q=1 seed=3 ... ours=failed_health_gate(0.3s) gllvm=converged(0.2s)
+[18/80] n=150 p=8 q=1 seed=3 ... Standard errors for parameters could not be calculated, due to singular fit.
+ours=failed_health_gate(1.3s) gllvm=converged(1.0s)
+[19/80] n=60 p=20 q=1 seed=3 ... ours=healthy(0.2s) gllvm=converged(0.2s)
+[20/80] n=150 p=20 q=1 seed=3 ... ours=healthy(0.4s) gllvm=converged(0.5s)
+[21/80] n=60 p=8 q=2 seed=3 ... ours=failed_health_gate(0.9s) gllvm=converged(1.7s)
+[22/80] n=150 p=8 q=2 seed=3 ... Standard errors for parameters could not be calculated, due to singular fit.
+ours=healthy(0.5s) gllvm=converged(2.1s)
+[23/80] n=60 p=20 q=2 seed=3 ... Standard errors for parameters could not be calculated, due to singular fit.
+ours=failed_health_gate(1.2s) gllvm=converged(9.5s)
+[24/80] n=150 p=20 q=2 seed=3 ... Standard errors for parameters could not be calculated, due to singular fit.
+ours=failed_health_gate(5.1s) gllvm=converged(19.6s)
+[25/80] n=60 p=8 q=1 seed=4 ... ours=healthy(0.2s) gllvm=converged(0.1s)
+[26/80] n=150 p=8 q=1 seed=4 ... Standard errors for parameters could not be calculated, due to singular fit.
+ours=failed_health_gate(1.1s) gllvm=converged(1.1s)
+[27/80] n=60 p=20 q=1 seed=4 ... ours=failed_health_gate(0.5s) gllvm=converged(0.4s)
+[28/80] n=150 p=20 q=1 seed=4 ... ours=failed_health_gate(0.4s) gllvm=converged(0.6s)
+[29/80] n=60 p=8 q=2 seed=4 ... Standard errors for parameters could not be calculated, due to singular fit.
+ours=failed_health_gate(0.6s) gllvm=converged(0.4s)
+[30/80] n=150 p=8 q=2 seed=4 ... ours=healthy(0.4s) gllvm=converged(11.9s)
+[31/80] n=60 p=20 q=2 seed=4 ... Standard errors for parameters could not be calculated, due to singular fit.
+ours=failed_health_gate(0.9s) gllvm=converged(4.5s)
+[32/80] n=150 p=20 q=2 seed=4 ... Standard errors for parameters could not be calculated, due to singular fit.
+ours=failed_health_gate(4.1s) gllvm=converged(11.1s)
+[33/80] n=60 p=8 q=1 seed=5 ... Standard errors for parameters could not be calculated, due to singular fit.
+ours=failed_health_gate(0.4s) gllvm=converged(0.3s)
+[34/80] n=150 p=8 q=1 seed=5 ... Standard errors for parameters could not be calculated, due to singular fit.
+ours=healthy(0.2s) gllvm=converged(1.1s)
+[35/80] n=60 p=20 q=1 seed=5 ... Standard errors for parameters could not be calculated, due to singular fit.
+ours=healthy(0.2s) gllvm=converged(0.7s)
+[36/80] n=150 p=20 q=1 seed=5 ... ours=failed_health_gate(0.4s) gllvm=converged(0.6s)
+[37/80] n=60 p=8 q=2 seed=5 ... Standard errors for parameters could not be calculated, due to singular fit.
+ours=failed_health_gate(0.5s) gllvm=converged(2.6s)
+[38/80] n=150 p=8 q=2 seed=5 ... ours=failed_health_gate(2.6s) gllvm=converged(8.5s)
+[39/80] n=60 p=20 q=2 seed=5 ... Standard errors for parameters could not be calculated, due to singular fit.
+ours=failed_health_gate(1.2s) gllvm=converged(4.7s)
+[40/80] n=150 p=20 q=2 seed=5 ... Standard errors for parameters could not be calculated, due to singular fit.
+ours=failed_health_gate(5.0s) gllvm=converged(4.6s)
+[41/80] n=60 p=8 q=1 seed=6 ... Standard errors for parameters could not be calculated, due to singular fit.
+ours=failed_health_gate(0.4s) gllvm=converged(0.2s)
+[42/80] n=150 p=8 q=1 seed=6 ... ours=healthy(0.3s) gllvm=converged(0.2s)
+[43/80] n=60 p=20 q=1 seed=6 ... ours=healthy(0.2s) gllvm=converged(0.4s)
+[44/80] n=150 p=20 q=1 seed=6 ... ours=healthy(0.4s) gllvm=converged(0.6s)
+[45/80] n=60 p=8 q=2 seed=6 ... Standard errors for parameters could not be calculated, due to singular fit.
+ours=failed_health_gate(0.7s) gllvm=converged(1.7s)
+[46/80] n=150 p=8 q=2 seed=6 ... Standard errors for parameters could not be calculated, due to singular fit.
+ours=failed_health_gate(2.5s) gllvm=not_converged(19.1s)
+[47/80] n=60 p=20 q=2 seed=6 ... Standard errors for parameters could not be calculated, due to singular fit.
+ours=failed_health_gate(1.3s) gllvm=converged(6.1s)
+[48/80] n=150 p=20 q=2 seed=6 ... ours=healthy(0.8s) gllvm=converged(2.0s)
+[49/80] n=60 p=8 q=1 seed=7 ... Standard errors for parameters could not be calculated, due to singular fit.
+ours=failed_health_gate(0.5s) gllvm=converged(0.4s)
+[50/80] n=150 p=8 q=1 seed=7 ... Standard errors for parameters could not be calculated, due to singular fit.
+ours=healthy(0.2s) gllvm=converged(4.2s)
+[51/80] n=60 p=20 q=1 seed=7 ... Standard errors for parameters could not be calculated, due to singular fit.
+ours=failed_health_gate(0.6s) gllvm=converged(0.5s)
+[52/80] n=150 p=20 q=1 seed=7 ... ours=healthy(0.4s) gllvm=converged(0.6s)
+[53/80] n=60 p=8 q=2 seed=7 ... ours=healthy(0.2s) gllvm=converged(1.1s)
+[54/80] n=150 p=8 q=2 seed=7 ... Standard errors for parameters could not be calculated, due to singular fit.
+ours=failed_health_gate(4.6s) gllvm=converged(10.7s)
+[55/80] n=60 p=20 q=2 seed=7 ... Standard errors for parameters could not be calculated, due to singular fit.
+ours=failed_health_gate(1.4s) gllvm=converged(1.6s)
+[56/80] n=150 p=20 q=2 seed=7 ... Standard errors for parameters could not be calculated, due to singular fit.
+ours=failed_health_gate(3.6s) gllvm=converged(5.5s)
+[57/80] n=60 p=8 q=1 seed=8 ... Standard errors for parameters could not be calculated, due to singular fit.
+ours=healthy(0.2s) gllvm=converged(0.3s)
+[58/80] n=150 p=8 q=1 seed=8 ... ours=healthy(0.3s) gllvm=converged(1.9s)
+[59/80] n=60 p=20 q=1 seed=8 ... Standard errors for parameters could not be calculated, due to singular fit.
+ours=healthy(0.2s) gllvm=converged(0.5s)
+[60/80] n=150 p=20 q=1 seed=8 ... ours=failed_health_gate(0.4s) gllvm=converged(1.8s)
+[61/80] n=60 p=8 q=2 seed=8 ... Standard errors for parameters could not be calculated, due to singular fit.
+ours=failed_health_gate(1.2s) gllvm=converged(0.3s)
+[62/80] n=150 p=8 q=2 seed=8 ... ours=healthy(0.4s) gllvm=converged(6.5s)
+[63/80] n=60 p=20 q=2 seed=8 ... Standard errors for parameters could not be calculated, due to singular fit.
+ours=failed_health_gate(2.7s) gllvm=converged(1.2s)
+[64/80] n=150 p=20 q=2 seed=8 ... ours=healthy(0.9s) gllvm=converged(1.8s)
+[65/80] n=60 p=8 q=1 seed=9 ... Standard errors for parameters could not be calculated, due to singular fit.
+ours=failed_health_gate(0.4s) gllvm=converged(0.2s)
+[66/80] n=150 p=8 q=1 seed=9 ... Standard errors for parameters could not be calculated, due to singular fit.
+ours=failed_health_gate(1.2s) gllvm=converged(0.9s)
+[67/80] n=60 p=20 q=1 seed=9 ... Standard errors for parameters could not be calculated, due to singular fit.
+ours=failed_health_gate(0.8s) gllvm=converged(0.5s)
+[68/80] n=150 p=20 q=1 seed=9 ... Standard errors for parameters could not be calculated, due to singular fit.
+ours=healthy(0.4s) gllvm=converged(2.5s)
+[69/80] n=60 p=8 q=2 seed=9 ... Standard errors for parameters could not be calculated, due to singular fit.
+ours=failed_health_gate(0.8s) gllvm=converged(1.2s)
+[70/80] n=150 p=8 q=2 seed=9 ... Standard errors for parameters could not be calculated, due to singular fit.
+ours=failed_health_gate(2.6s) gllvm=converged(5.5s)
+[71/80] n=60 p=20 q=2 seed=9 ... Standard errors for parameters could not be calculated, due to singular fit.
+ours=failed_health_gate(1.1s) gllvm=converged(0.9s)
+[72/80] n=150 p=20 q=2 seed=9 ... Standard errors for parameters could not be calculated, due to singular fit.
+ours=healthy(0.8s) gllvm=converged(8.9s)
+[73/80] n=60 p=8 q=1 seed=10 ... ours=failed_health_gate(0.4s) gllvm=converged(0.3s)
+[74/80] n=150 p=8 q=1 seed=10 ... Standard errors for parameters could not be calculated, due to singular fit.
+ours=healthy(0.2s) gllvm=converged(1.1s)
+[75/80] n=60 p=20 q=1 seed=10 ... Standard errors for parameters could not be calculated, due to singular fit.
+ours=healthy(0.2s) gllvm=converged(0.5s)
+[76/80] n=150 p=20 q=1 seed=10 ... Standard errors for parameters could not be calculated, due to singular fit.
+ours=healthy(0.5s) gllvm=converged(2.2s)
+[77/80] n=60 p=8 q=2 seed=10 ... Standard errors for parameters could not be calculated, due to singular fit.
+ours=failed_health_gate(0.9s) gllvm=converged(0.8s)
+[78/80] n=150 p=8 q=2 seed=10 ... ours=failed_health_gate(2.9s) gllvm=converged(9.5s)
+[79/80] n=60 p=20 q=2 seed=10 ... Standard errors for parameters could not be calculated, due to singular fit.
+ours=failed_health_gate(2.0s) gllvm=converged(1.6s)
+[80/80] n=150 p=20 q=2 seed=10 ... Standard errors for parameters could not be calculated, due to singular fit.
+ours=healthy(0.8s) gllvm=converged(12.4s)
+
+Total elapsed: 370.0 s (6.2 min)
+
+Wrote /private/tmp/gllvmtmb-va-in-06/dev/va-gate3/eva-parity/results/ladder-results.csv 
+Wrote /private/tmp/gllvmtmb-va-in-06/dev/va-gate3/eva-parity/results/ladder-lambda-comparison.csv 

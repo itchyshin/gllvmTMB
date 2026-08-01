@@ -43,6 +43,14 @@ or likelihood-comparable quantity.
 > in this programme, and the gates they name (Design 86 contract, Totoro smoke,
 > DRAC pilot, scientific GO) are **dissolved**, not merely deferred.
 >
+> **⚠ PARTIALLY REVERSED 2026-07-30 (Amendment 4).** 0.6 now ships an opt-in, hard-fenced
+> `engine = "va"`. **This does NOT revive the stages below** — they stay dissolved. The 0.6
+> route is a much smaller fenced subset (`latent(unique = FALSE)`; binomial-logit + poisson-log;
+> `q <= 4`, `p <= 80`, `n >= 100`; **no intervals**, `calibrated = FALSE`) admitted by Design 85
+> §11 Gate 3, not by the EVA programme this arc described. **EVA itself stays out of 0.6** — it
+> is a surrogate that earns its place only on families VA cannot reach (Design 104 §4.4).
+> Record: `docs/dev-log/2026-07-30-va-ships-in-06-reversal.md`.
+>
 > The text is retained verbatim, not deleted, because its discipline is correct
 > whenever EVA revives. A 0.7 reader must apply two corrections: the target cell
 > becomes **sparse binary** (not `q=1` multi-trial, which is information-rich and
@@ -88,6 +96,10 @@ or likelihood-comparable quantity.
   qualifies a pre-bump identity, and M5 must price a second exact-tag 3-OS cycle.
 - **Deferred to 0.7 — not built in 0.6:** candidate surface
   `gllvmTMB(..., control = gllvmTMBcontrol(integration = "eva"))`.
+  **⚠ AMENDED 2026-07-30 (Amendment 4).** The **EVA** surface named here stays deferred. What 0.6
+  now builds is a *different* route — an opt-in, hard-fenced **`engine = "va"`** using GH
+  quadrature, admitted by Design 85 §11 Gate 3, with no intervals. EVA ≠ VA; Design 104 §4.4 keeps
+  EVA out of any family where EXACT or GH is available.
 - Laplace remains the default and, for 0.6, the **only** integration route.
 - Unsupported combinations fail before TMB construction.
 - No EVA `logLik`, AIC/BIC, LRT/anova/model weights, `vcov`, confidence/profile/

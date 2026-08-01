@@ -113,3 +113,13 @@ dev/STOP-LOCAL-PILOT
 # camouflaged among noise -- see this commit's message.
 .claude/settings.local.json
 .claude/launch.json
+
+# Gate 3 campaign RUNTIME artefacts (dev/ is also .Rbuildignore'd).
+# Per-cell fit output and run logs are machine-local and must not dirty the
+# source branch -- same rule as the m3 power-pilot stores above, and the same
+# reason: 2,160 cell files written live by a multi-hour run would churn every
+# commit and were never durable evidence. The DURABLE artefacts are the
+# combined gate3.rds/.csv, the two verdict CSVs, and the .md records, which
+# are added explicitly when the campaign completes.
+dev/va-gate3/results/cells/
+dev/va-gate3/results/campaign*.log

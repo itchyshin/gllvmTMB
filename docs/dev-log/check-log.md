@@ -47209,3 +47209,300 @@ Directed note → whoever takes the AGHQ campaign next: **the `aghq` arm of ever
 `dev/aghq-evidence/` is single-start and optimiser-limited.** Decide the start rule before
 scoping arms, or the campaign measures the start rather than the estimator. See
 `docs/dev-log/handover/2026-07-31-aghq-truthstart-done-campaign-next.md`.
+
+## 2026-07-31 — #851 scale-aware start: regressions resolved (Claude)
+
+Branch: `claude/851-scale-aware-start-20260731`, PR #873 (open, **not merged**).
+Touches `R/fit-multi.R` (starting values only — no `src/`, no `NAMESPACE`, no
+likelihood, no family, no formula grammar), `NEWS.md`, two test files, one `dev/`
+script, three docs.
+
+Inherited state was "5 regressions, 2 undiagnosed". Re-derived from a fresh
+branch-vs-baseline pair it was **two root causes plus three miscalibrated
+assertions**. Root cause 1: `init_rr_theta()` is shared, so scaling its `0.5`
+moved the loading start on six tiers while the companion Psi moved on one —
+leaving five tiers scaling Lambda without its Psi, the variant this branch had
+itself measured and rejected. Root cause 2: the SVD score seeding is internally
+inconsistent under `latent(..., lv = ~x)`, where the scores carry a modelled mean
+whose coefficient starts at zero.
+
+Checks — full suite on **Totoro**, 32 cores, ~17.5 min per run, each against a
+`main` baseline re-derived this session (18 fail / 3 err):
+
+```sh
+# baseline and branch trees; src/ is byte-identical, so the compiled .so is shared
+ssh totoro 'cd ~/gllvm_work && NOT_CRAN=true GLLVMTMB_HEAVY_TESTS=1 \
+  Rscript --vanilla fullsuite.R'
+Rscript --vanilla dev/scale-equivariance-check.R
+Rscript --vanilla dev/851-scale-equivariance-comparators.R
+Rscript --vanilla dev/851-dep-vs-latent-ridge-tolerance.R   # new this session
+R CMD check --as-cran --no-tests --no-vignettes --no-manual  # local, RESTRICTED
+```
+
+Outcome, as a decomposition rather than a single count:
+
+| state | FAIL | ERR | new vs main |
+|---|---|---|---|
+| branch as inherited | 25 | 3 | 7 |
+| + B-tier scoping (`0c52362f`) | 22 | 3 | 4 |
+| + `lv` seeding gate (`f31935e5`) | 21 | 3 | 3 |
+| + test re-fixturing (`b0e41aa4`) | **18** | **3** | **0** |
+| + helper de-duplication (`ae6308d2`) | **18** | **3** | **0** |
+
+The last two rows are identical down to the PASS count (14131 both), which is
+the suite-level confirmation that `ae6308d2` is behaviour-neutral.
+
+The 18/3 run is file-for-file identical to the `main` baseline
+(`test-m3-pilot-manifest.R` 16+2, `test-profile-derived-curves.R` 2,
+`test-tweedie-fixed-p.R` 1 err). PASS rose 14129 → 14131.
+
+Scale-equivariance preserved: oracle k=100 every law OK (6.35e-06 … 1.4e-05);
+cross-package comparator gllvmTMB **0/8** at k=100 and k=5000 (worst 0.0105) vs
+gllvm 3/16 (worst 0.998) and glmmTMB 14/16 (worst 2.00) — the pre-existing
+numbers, reproduced exactly.
+
+**Deliberately NOT run, and why:**
+
+- **Full `R CMD check --as-cran`.** Only the restricted form above was run
+  (`--no-tests --no-vignettes --no-manual`): 2 WARNINGs + 1 NOTE, where both
+  WARNINGs are artefacts of `--no-build-vignettes` (no `inst/doc` built) and the
+  NOTE is the standard "New submission". `checking examples ... OK`. The prior
+  0E/0W/1N is therefore **not** re-established on this branch.
+- **`--as-cran` on Totoro.** Attempted and **abandoned as useless there**: the box
+  lacks nine `Suggests` (`DHARMa`, `ggforce`, `galamm`, `glmmTMB`, `mirt`,
+  `nadiv`, `tweedie`, `vegan`, `vdiffr`), so the run aborts at the dependency
+  stage before examining the package.
+- **`spatial_latent()` / `theta_rr_spde_lv` live coverage.** INLA is installed on
+  **neither** the Mac nor Totoro, so those tests skip on both. The de-duplication
+  of that branch is covered by an exhaustive identity proof over all 820
+  `(p, rank)` pairs with `rank <= p <= 40`, not by a fit.
+- **3-OS CI.** Only `ubuntu-latest (release)` had been dispatched at time of
+  writing, and it was still pending.
+- **`devtools::document()`.** No roxygen block changed; `man/` untouched.
+- **Windows.** Nothing here was run on it.
+
+rg patterns used for the neighbourhood sweep:
+`rg -n "init_rr_theta"` (call-site inventory across tiers) and
+`rg -n "theta_diag_[A-Za-z_]+ *="` (which tiers have a companion Psi start).
+That sweep is what found the blast radius, and separately found two further
+private copies of the helper — folded in as `ae6308d2`.
+
+### Directed note → the AGHQ lane (from the #851 start lane, 2026-07-31)
+
+**`test-aghq-multistart-convergence.R:103` fails on `claude/851-scale-aware-start-20260731`,
+and I have deliberately NOT touched it — it is your test, landed today in #875, and the
+call is yours (or Shinichi's).**
+
+The assertion is the backward-compatibility snapshot
+`expect_equal(unname(f$opt$objective), 379.7134, tolerance = 1e-3)` under
+`aghq_multistart = FALSE`. #851 changes the DEFAULT starting values, so the single start
+this test exercises is no longer the same point, and the pinned objective moves.
+
+Measured on Totoro, same cell (`.ms_cell()`, seed 2003, n=100, p=6, q=2, binomial,
+`aghq = 9`, `aghq_ridge = Inf`, `aghq_multistart = FALSE`), both trees, one fit each:
+
+| tree | objective | ‖Λ̂‖/‖Λ‖ | max&#124;Λ&#124; | aghq$converged |
+|---|---|---|---|---|
+| `origin/main` | 379.7134 | 29.70 | 81.66 | FALSE |
+| `#851 branch` | 380.5439 | 22.57 | 53.34 | FALSE |
+
+**Read it against your own criterion before reading it as a regression.** Your file's own
+header records that this cell's single start is a *known catastrophic runaway* — 29.7 —
+and that a truth-start reaches **375.175**, i.e. neither 379.71 nor 380.54 is the
+maximum-likelihood solution. Both sit inside the pathological region your #843 finding is
+about. On the health metric that finding uses, the #851 start is **less** runaway
+(29.70 → 22.57, and max|Λ| 81.7 → 53.3); on the objective it is 0.83 higher. So this is
+not "the start change made the fit worse" — it is two different non-MLE points in a region
+where the likelihood rewards divergence.
+
+What that implies for the test is your call. The options as I see them:
+
+1. **Re-snapshot** 379.7134 → 380.5439 once #851 lands, keeping the test's intent (the
+   off-switch still runs exactly one start).
+2. **Assert the property instead of the number** — `n_starts == 1L` plus
+   `frob(one) > 5` — which is what "reproduces the old single-start answer" is actually
+   protecting, and which no future start change can move. The sibling test above already
+   uses exactly this shape.
+3. Something I have not thought of, because I do not own this surface.
+
+I lean to (2) on the same reasoning #851 applied to its own re-fixtured tests: a hardcoded
+objective on a fit your own comment calls catastrophic is a snapshot of a pathology, and
+any legitimate change to starts, BLAS, or compiler will move it. But (1) is the smaller
+diff and preserves the exact-reproduction wording.
+
+Cross-lane context: #873 and #875 both touch `R/fit-multi.R`, in different regions —
+`git merge origin/main` into the #851 branch produced **no conflict in `R/`** (only an
+append-append collision in this file, resolved keeping both entries). The interaction is
+behavioural, through starting values, not textual.
+
+**Final state of the #851 branch, after merging `origin/main` (which moved mid-arc when
+the AGHQ lane landed #875) and after Rose's pre-merge audit fixes.** Totoro, 348 files
+(the new `test-scale-equivariance.R` included):
+
+| tree | files | PASS | FAIL | ERROR |
+|---|---|---|---|---|
+| `origin/main` | 347 | 14161 | 18 | 3 |
+| `claude/851-scale-aware-start-20260731` | 348 | 14172 | 19 | 3 |
+
+The 18 + 3 are identical on both, file for file. The one difference is
+`test-aghq-multistart-convergence.R`, which pins a start-dependent objective belonging to
+the AGHQ lane — measurement and options in the directed note above; deliberately not
+touched. `test-scale-equivariance.R` passes, and was verified to FAIL on `origin/main`
+(Λ rel.err 0.99 at k = 5000) before being trusted.
+
+**FINAL — after gating the scale to gaussian fits (`faca8289`).** Totoro, 348 files:
+
+| tree | files | PASS | FAIL | ERROR |
+|---|---|---|---|---|
+| `origin/main` | 347 | 14161 | 18 | 3 |
+| `claude/851-scale-aware-start-20260731` | 348 | **14173** | **18** | **3** |
+
+File-for-file identical failure sets. The `test-aghq-multistart-convergence.R` failure
+reported in the directed note above is **resolved** — not by editing that lane's test, but
+by narrowing #851 to the family it was measured on, which restores their cell exactly
+(379.7133 vs 379.7134, runaway ratio 29.700 both). The directed note is retained as the
+record of the interaction; no action is needed from that lane.
+
+`R CMD check --as-cran --no-tests --no-manual` (local, Mac, vignettes built, all Suggests
+present): **0 errors, 0 warnings, 1 NOTE** — the standard "New submission". The test suite
+is verified by the 348-file Totoro run above rather than inside the check.
+
+### 3-OS CI on the #851 branch (2026-07-31, authorised by Shinichi)
+
+Dispatched with `gh workflow run R-CMD-check.yaml -f full_matrix=true` on `d30ba6f`.
+Routine PR CI is ubuntu-only by design (macOS/Windows bill 10× / 2×), so the full matrix
+is the only thing that sees a Windows-only defect — which is why this one survived.
+
+| leg | branch `d30ba6f` |
+|---|---|
+| `ubuntu-latest` | **success** (also success on the separate PR check) |
+| `macos-latest` | **success** |
+| `windows-latest` | **failure** — `Status: 1 ERROR`, `[ FAIL 1 \| WARN 2 \| SKIP 796 \| PASS 8219 ]` |
+
+**The single Windows failure is a line-ending defect in a frozen-fixture checksum, and it
+is not #851's.** `test-eva-gate1.R:4` compares `tools::sha256sum()` of
+`inst/extdata/86-eva-gate1-parameters.json` against a hardcoded digest. Computed directly:
+
+```
+stored (LF)  sha256 = a3cb2b9302132b2a917639ac30ce070d5d0f67e9c21f50ffbcc232ead448b036   <- the hardcoded value
+same bytes as CRLF   = 4cb55e963180c4c570c76b74faeb65ee8ef98e656412e7f9e46a5296465b9b14
+file contains CRLF as stored? FALSE
+```
+
+The repo has **no `.gitattributes`**, so nothing pins that file's line endings; Windows
+runners check out with `core.autocrlf`, the bytes change, the digest does not match. This
+is arithmetic, not inference. `git diff --stat origin/main...HEAD` also shows the branch
+touches no `eva` / `gate1` / `design86` path at all.
+
+**Not fixed here: EVA / Design 86 is a Codex-owned lane** per
+`2026-07-25-active-lane-split.md`. Filed for routing instead. Two candidate fixes: pin the
+bytes with `.gitattributes` (`... .json -text`), or checksum the *parsed* content so the
+test freezes the parameters rather than the line endings — the test's own name
+("readable and checksummed") reads like the latter's intent implemented as the former.
+
+A matched 3-OS run on `main` @ `7a6b1ee` was dispatched for confirmation. Its ubuntu and
+macOS legs are **success**; the Windows leg was **cancelled** mid-run on the first attempt
+and re-dispatched. Note that the previously recorded Windows blocker
+(`2026-07-19-codex-handover-release-evidence.md` §3c) was a *different* test
+(`test-example-behavioural-reaction-norm.R:316`), so that record does **not** substitute
+for this comparison and was not used as if it did.
+
+## 2026-07-31 — CORRECTION: `main` was green all along; the harness was not (Claude)
+
+**Every statement in this session's earlier entries that `main` is "not green (18
+failures / 3 errors)" is WRONG, and the error was mine.** Corrected here rather than
+edited out of the entries above, so the mistake and its cause stay legible.
+
+Measured on Totoro after fixing the harness — same 348 files, same tree:
+
+| | as reported | actual |
+|---|---|---|
+| PASS | 14173 | **14534** |
+| FAIL | 18 | **3** |
+| ERROR | 3 | **0** |
+| SKIP | 196 | 128 |
+
+Fifteen failures and **all three** errors were artifacts of how I invoked the suite, not
+defects in the package. Two independent causes:
+
+1. **`test-m3-pilot-manifest.R` (16 fail + 2 err).** Those tests shell out with
+   `system2(Rscript, "--vanilla", "dev/power-pilot-run.R", ...)`, and that script calls
+   `library(gllvmTMB)`. Totoro sets `R_LIBS_USER=~/R/lib` in `~/.Renviron`, and
+   `--vanilla` implies `--no-environ`, so the child process never saw the library the
+   package is installed in. Every CLI test failed with *"there is no package called
+   'gllvmTMB'"* — invisible in an aggregate runner that records only counts. Fixed by
+   seeding `R_LIBS` from `.libPaths()` in `fullsuite.R` / `fullsuite-main.R`.
+2. **`test-tweedie-fixed-p.R` (1 err).** The `tweedie` Suggests package was not installed
+   on Totoro. Installed.
+
+A third, self-inflicted step nearly buried the fix: the first repair set `R_LIBS` from
+`.libPaths()` *inside a runner itself launched with* `Rscript --vanilla`, so it captured
+the already-wrong path set and changed nothing. The count stayed at 18/3 and read as
+confirmation that the diagnosis was wrong. The runners now prepend `~/R/lib` explicitly
+and are launched without `--vanilla`.
+
+**The evidence that should have caught this immediately was already in hand:** `main`'s
+own ubuntu CI was green throughout, and `test-m3-pilot-manifest.R` passed on the Mac. Two
+green platforms against one red one is a statement about the third *environment*, not
+about the code. I read it the other way round for most of a session and repeated the 18/3
+figure in this log, the #851 after-task report, two PR descriptions and a spawned task
+brief.
+
+**True remaining failures on `main`: 3, in 2 files** — `test-profile-derived-curves.R` (2)
+and `test-funcphylo-spatial-recovery.R` (1). The latter also appeared once on ubuntu CI
+while `main`'s own ubuntu run was green, so it is a flakiness candidate rather than a hard
+failure. Neither is diagnosed; neither is claimed here as understood.
+
+**Standing lesson for `~/gllvm_work` on Totoro:** a runner that aggregates only pass/fail
+counts will silently convert an environment problem into what looks like a package
+problem. When a failure appears on exactly one platform, verify the environment before
+attributing it to the code — and never leave `--vanilla` between a test and the library it
+needs.
+
+## 2026-08-01 — restore the VA-methods pkgdown reference route (Codex)
+
+**Branch:** `codex/pkgdown-va-methods-index` from `origin/main` at `07438715`.
+**Scope:** `_pkgdown.yml` only, plus this check receipt and the paired after-task report.
+No R behavior, VA prose, roxygen, generated Rd, AGHQ code, or PR #881 content changed.
+
+The red pkgdown runs were reproduced locally before the fix:
+
+```text
+Rscript --vanilla -e 'pkgdown::check_pkgdown()'
+Error: In _pkgdown.yml, 1 topic missing from index: "gllvmTMB_va-methods".
+```
+
+Added `gllvmTMB_va-methods` to the existing **Methods and plots on fitted models**
+reference section. Indexing is intentional: `R/va-methods.R` defines the documented
+topic, `NAMESPACE` registers its user-facing `gllvmTMB_va` S3 methods, and
+`R/gllvmTMB.R` links to the topic. It was not marked internal.
+
+Checks after the fix:
+
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'` -> PASS,
+  `No problems found.`
+- `Rscript --vanilla -e 'pkgdown::build_site(new_process = FALSE, install = FALSE)'`
+  -> PASS when rerun with normal network/cache access; reference metadata was clean,
+  the site completed, and `pkgdown-site/reference/gllvmTMB_va-methods.html` was written.
+  The first sandboxed attempt reached `Reference metadata ok` and then stopped because
+  DNS/cache access to `cloud.r-project.org` was unavailable; this was an execution-
+  environment restriction, not a package error.
+- `test -f pkgdown-site/reference/gllvmTMB_va-methods.html` -> PASS.
+- `rg -n 'gllvmTMB_va-methods\\.html|VA fit|variational' pkgdown-site/reference/index.html pkgdown-site/reference/gllvmTMB_va-methods.html`
+  -> PASS; the reference index links the VA methods page and labels it as methods for
+  `integration = "va"` fits.
+- `rg -n 'gllvmTMB_va-methods|S3method\\(.*gllvmTMB_va|@keywords internal' R/va-methods.R NAMESPACE R/gllvmTMB.R`
+  -> PASS for the public-topic/S3-method evidence; the sole `@keywords internal` hit is
+  an unrelated helper in `R/gllvmTMB.R`, not the VA methods topic.
+- `git status --short --branch` and `git diff -- _pkgdown.yml` -> generated
+  `pkgdown-site/` remained excluded; the implementation diff is the intended one-line
+  `_pkgdown.yml` addition.
+
+Rose pre-publish verdict: **PASS** for this navigation-only slice. Exported-method
+registration, documented topic, reference-index membership, generated page, and index
+link agree. No capability wording or formula/likelihood contract changed.
+
+Deliberately not run: `devtools::test()` and `devtools::check()`. This change is pkgdown
+navigation only and the required full site build exercises the affected path. GitHub
+R-CMD-check and pkgdown remain the merge gates; main's pkgdown run must be green before
+the tau lane resumes.

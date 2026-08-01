@@ -252,6 +252,7 @@ reference:
     - print.gllvmTMB_Sigma_phy_slope
     - summary.gllvmTMB_multi
     - print.summary.gllvmTMB_multi
+    - gllvmTMB_va-methods
     - logLik.gllvmTMB_multi
     - confint.gllvmTMB_multi
     - tidy.gllvmTMB_multi

@@ -150,6 +150,68 @@
        " consistently.", call. = FALSE)
 }
 
+## Fail-closed separation guard for the binomial-logit branch.
+##
+## Design 85's Gate 2 and Gate 3 both presuppose "non-separated" fixtures, but
+## no code enforced that.  At n_trials = 1 the responses are pure 0/1, which is
+## exactly where a separated fixed-effect design drives beta -- and therefore
+## the ELBO's optimum -- to infinity while every finite-precision health check
+## still reports success.
+##
+## Scope, stated honestly: this is a detector on the MARGINAL logistic
+## regression y ~ X - 1 alone.  It is a sound refusal for complete and
+## quasi-complete separation induced by the fixed-effect design (the case the
+## Design-85 fixtures can actually produce), and it makes no claim at all about
+## the joint (beta, Lambda, m, L) surface.  It is deliberately conservative:
+## an extreme but genuinely finite design can trip it, and a refusal is the
+## intended outcome in that case.
+## Detection is by DIVERGENCE, not by a bare magnitude threshold: the marginal
+## IRLS is run twice, once loosely and once four orders tighter.  A finite MLE
+## lands on the same coordinate both times; a separated one keeps walking
+## outward, because where it stops is set by the tolerance rather than by the
+## data.  `eta_limit` is only a backstop for a design that diverges so fast
+## both runs stall at the same place.
+.va_r3_check_separation <- function(y, n_trials, X, eta_limit = 15,
+                                    drift_limit = 1) {
+  n <- as.numeric(n_trials)
+  proportion <- as.numeric(y) / n
+  marginal_eta <- function(maxit, epsilon) {
+    fit <- tryCatch(
+      suppressWarnings(stats::glm.fit(
+        x = X, y = proportion, weights = n, family = stats::binomial(),
+        control = stats::glm.control(maxit = maxit, epsilon = epsilon)
+      )),
+      error = function(e) NULL
+    )
+    if (is.null(fit) || !all(is.finite(fit$coefficients))) return(NULL)
+    list(max_abs_eta = max(abs(drop(X %*% fit$coefficients))),
+         converged = isTRUE(fit$converged))
+  }
+  loose <- marginal_eta(25L, 1e-8)
+  tight <- marginal_eta(200L, 1e-12)
+  if (is.null(loose) || is.null(tight)) {
+    stop("Binomial R3 refuses this design: the marginal logistic regression ",
+         "y ~ X - 1 has no finite fit, which indicates separation. Design 85 ",
+         "admits only non-separated fixtures.", call. = FALSE)
+  }
+  drift <- tight$max_abs_eta - loose$max_abs_eta
+  if (drift > drift_limit || tight$max_abs_eta > eta_limit) {
+    stop("Binomial R3 refuses this design as separated: the marginal logistic ",
+         "regression y ~ X - 1 gives max|eta| = ",
+         format(loose$max_abs_eta, digits = 6), " at tolerance 1e-8 and ",
+         format(tight$max_abs_eta, digits = 6), " at tolerance 1e-12 (drift ",
+         format(drift, digits = 6), ", drift limit ", drift_limit,
+         ", magnitude limit ", eta_limit,
+         "). A coefficient that moves with the tolerance has no finite ",
+         "maximum-likelihood value. Design 85 admits only non-separated ",
+         "fixtures; this guard reads the marginal design only and is ",
+         "deliberately conservative.", call. = FALSE)
+  }
+  invisible(list(max_abs_eta = tight$max_abs_eta, drift = drift,
+                 eta_limit = eta_limit, drift_limit = drift_limit,
+                 converged = tight$converged))
+}
+
 .va_r3_validate_data <- function(y, n_trials, X, unit_id, trait_id, q,
                                  N = NULL, T = NULL,
                                  family = "binomial", link = "logit",
@@ -212,6 +274,7 @@
       stop("Binomial R3 data require integer n_trials >= 1 and integer 0 <= y <= n_trials.",
            call. = FALSE)
     }
+    .va_r3_check_separation(y, n_trials, X)
     family_code <- 1L
   } else if (family == "poisson") {
     if (!identical(link, "log")) {

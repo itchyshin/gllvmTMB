@@ -1,0 +1,62 @@
+Warning message:
+package ‘gllvm’ was built under R version 4.6.1 
+Standard errors for parameters could not be calculated, due to singular fit.
+n40 p20 q4 s7    EVA default (res,n.init=1)  logL=   -327.404 conv=FALSE att=  8.814e+08 max|th|= 1.15e+03 max|sig|= 1.92e+03 max|eta|= 4.44e+04 (22s) 
+Standard errors for parameters could not be calculated, due to singular fit.
+n40 p20 q4 s7    EVA n.init=5                logL=   -312.481 conv=FALSE att=  9.207e+08 max|th|= 1.04e+03 max|sig|= 2.08e+03 max|eta|= 2.97e+04 (104s) 
+Standard errors for parameters could not be calculated, due to singular fit.
+n40 p20 q4 s7    EVA n.init=10               logL=   -312.481 conv=FALSE att=  9.207e+08 max|th|= 1.04e+03 max|sig|= 2.08e+03 max|eta|= 2.97e+04 (201s) 
+Standard errors for parameters could not be calculated, due to singular fit.
+n40 p20 q4 s7    EVA start=zero              logL=   -309.352 conv=FALSE att=  6.399e+08 max|th|= 1.13e+03 max|sig|= 1.25e+03 max|eta|= 3.47e+04 (22s) 
+Standard errors for parameters could not be calculated, due to singular fit.
+n40 p20 q4 s7    EVA start=random n.init=5   logL=   -360.119 conv=TRUE  att=  8.552e+08 max|th|= 2.63e+03 max|sig|=     81.6 max|eta|=  2.8e+04 (109s) 
+Standard errors for parameters could not be calculated, due to singular fit.
+n40 p20 q4 s7    EVA start.lvs=TRUE u        logL=   -329.001 conv=FALSE att=  1.508e+09 max|th|= 1.65e+03 max|sig|=      242 max|eta|= 2.77e+04 (22s) 
+Standard errors for parameters could not be calculated, due to singular fit.
+n40 p20 q4 s7    EVA max.iter=50000          logL=   -327.356 conv=TRUE  att=  3.364e+08 max|th|=  1.2e+03 max|sig|= 2.11e+03 max|eta|= 2.96e+04 (24s) 
+n40 p20 q4 s7    VA reference                logL=   -478.549 conv=TRUE  att=      1.639 max|th|=     2.99 max|sig|=     1.79
+Standard errors for parameters could not be calculated, due to singular fit.
+n40 p20 q4 s1    EVA default (res,n.init=1)  logL=   -320.466 conv=TRUE  att=  1.643e+06 max|th|= 7.53e+03 max|sig|=     0.38 max|eta|= 1.48e+03 (20s) 
+Standard errors for parameters could not be calculated, due to singular fit.
+n40 p20 q4 s1    EVA n.init=5                logL=   -321.905 conv=FALSE att=  9.835e+05 max|th|= 4.52e+03 max|sig|=    0.696 max|eta|= 1.11e+03 (105s) 
+Standard errors for parameters could not be calculated, due to singular fit.
+n40 p20 q4 s1    EVA n.init=10               logL=   -321.905 conv=FALSE att=  9.835e+05 max|th|= 4.52e+03 max|sig|=    0.696 max|eta|= 1.11e+03 (213s) 
+Standard errors for parameters could not be calculated, due to singular fit.
+n40 p20 q4 s1    EVA start=zero              logL=   -361.772 conv=TRUE  att=  7.675e+07 max|th|= 1.19e+04 max|sig|=     12.7 max|eta|= 2.78e+04 (14s) 
+Standard errors for parameters could not be calculated, due to singular fit.
+n40 p20 q4 s1    EVA start=random n.init=5   logL=   -323.218 conv=TRUE  att=  1.442e+06 max|th|= 7.37e+03 max|sig|=    0.579 max|eta|= 1.63e+03 (76s) 
+Standard errors for parameters could not be calculated, due to singular fit.
+n40 p20 q4 s1    EVA start.lvs=TRUE u        logL=   -358.126 conv=FALSE att=  4.477e+06 max|th|= 9.49e+03 max|sig|=     1.13 max|eta|= 6.47e+03 (21s) 
+Standard errors for parameters could not be calculated, due to singular fit.
+n40 p20 q4 s1    EVA max.iter=50000          logL=   -320.301 conv=TRUE  att=  2.443e+06 max|th|= 9.33e+03 max|sig|=    0.346 max|eta|= 1.92e+03 (19s) 
+n40 p20 q4 s1    VA reference                logL=   -498.770 conv=TRUE  att=      1.512 max|th|=      274 max|sig|=     1.22
+Standard errors for parameters could not be calculated, due to singular fit.
+n40 p8 q2 s1     EVA default (res,n.init=1)  logL=   -146.332 conv=TRUE  att=  1.229e+07 max|th|= 1.24e+04 max|sig|=     42.4 max|eta|= 4.02e+03 (2s) 
+Standard errors for parameters could not be calculated, due to singular fit.
+n40 p8 q2 s1     EVA n.init=5                logL=   -162.145 conv=TRUE  att=  6.831e+06 max|th|= 1.74e+04 max|sig|=    0.336 max|eta|= 3.53e+03 (5s) 
+Standard errors for parameters could not be calculated, due to singular fit.
+n40 p8 q2 s1     EVA n.init=10               logL=   -160.746 conv=TRUE  att=  1.697e+06 max|th|= 5.02e+03 max|sig|=    0.762 max|eta|=      770 (12s) 
+Standard errors for parameters could not be calculated, due to singular fit.
+n40 p8 q2 s1     EVA start=zero              logL=   -136.586 conv=TRUE  att=  2.076e+09 max|th|=      752 max|sig|= 1.65e+03 max|eta|= 2.71e+04 (3s) 
+Standard errors for parameters could not be calculated, due to singular fit.
+n40 p8 q2 s1     EVA start=random n.init=5   logL=   -164.016 conv=TRUE  att=  4.273e+07 max|th|=  2.1e+04 max|sig|=    0.712 max|eta|= 1.76e+04 (6s) 
+Standard errors for parameters could not be calculated, due to singular fit.
+n40 p8 q2 s1     EVA start.lvs=TRUE u        logL=   -162.406 conv=TRUE  att=  6.064e+07 max|th|= 2.31e+04 max|sig|=    0.796 max|eta|=  6.7e+03 (1s) 
+Standard errors for parameters could not be calculated, due to singular fit.
+n40 p8 q2 s1     EVA max.iter=50000          logL=   -146.332 conv=TRUE  att=  1.229e+07 max|th|= 1.24e+04 max|sig|=     42.4 max|eta|= 4.02e+03 (2s) 
+n40 p8 q2 s1     VA reference                logL=   -208.679 conv=TRUE  att=      1.743 max|th|=     2.18 max|sig|=     1.39
+n100 p20 q2 s1   EVA default (res,n.init=1)  logL=  -1306.295 conv=TRUE  att=      1.164 max|th|= 7.58e+03 max|sig|= 0.000199 max|eta|=     3.32 (2s) 
+Standard errors for parameters could not be calculated, due to singular fit.
+n100 p20 q2 s1   EVA n.init=5                logL=  -1199.687 conv=TRUE  att=  3.815e+08 max|th|= 1.09e+05 max|sig|=    0.476 max|eta|= 7.29e+04 (31s) 
+Standard errors for parameters could not be calculated, due to singular fit.
+n100 p20 q2 s1   EVA n.init=10               logL=  -1196.953 conv=TRUE  att=  6.282e+08 max|th|= 1.49e+05 max|sig|=    0.491 max|eta|= 8.79e+04 (58s) 
+Standard errors for parameters could not be calculated, due to singular fit.
+n100 p20 q2 s1   EVA start=zero              logL=  -1253.683 conv=TRUE  att=  2.004e+08 max|th|= 7.49e+04 max|sig|=    0.632 max|eta|= 8.65e+04 (3s) 
+Standard errors for parameters could not be calculated, due to singular fit.
+n100 p20 q2 s1   EVA start=random n.init=5   logL=  -1253.002 conv=TRUE  att=  5.034e+08 max|th|= 1.22e+05 max|sig|=    0.613 max|eta|= 1.42e+05 (12s) 
+n100 p20 q2 s1   EVA start.lvs=TRUE u        logL=  -1306.307 conv=TRUE  att=      1.158 max|th|= 1.59e+03 max|sig|=  0.00168 max|eta|=     3.26 (2s) 
+n100 p20 q2 s1   EVA max.iter=50000          logL=  -1306.295 conv=TRUE  att=      1.164 max|th|= 7.58e+03 max|sig|= 0.000199 max|eta|=     3.32 (3s) 
+n100 p20 q2 s1   VA reference                logL=  -1310.864 conv=TRUE  att=     0.8786 max|th|= 9.01e+03 max|sig|= 0.000143
+There were 50 or more warnings (use warnings() to see the first 50)
+
+DONE

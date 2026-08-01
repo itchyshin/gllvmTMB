@@ -111,8 +111,18 @@ test_that("start_method = 'indep' fits a simpler GLMM and copies matching starts
   expect_true(any(abs(fit$tmb_params$s_B) > 1e-8))
   expect_true(any(abs(fit$tmb_params$theta_diag_B) > 1e-8))
   ## The independent warm start seeds the GLMM pieces but leaves the latent
-  ## block at its historical default when no same-shaped rr block is available.
-  expect_equal(fit$tmb_params$theta_rr_B, c(0.5, 0))
+  ## block at the DEFAULT start when no same-shaped rr block is available.
+  ##
+  ## That default used to be the literal c(0.5, 0). It is now
+  ## c(0.5 * sd(working residuals), 0) -- the hardcoded 0.5 silently assumed
+  ## sd(y) ~ 1 and is the defect behind #851, so pinning the old value here
+  ## would be asserting the bug. What this test is FOR is that the `indep`
+  ## warm start does not touch the latent block: the diagonal is still a
+  ## positive multiple of the coefficient and the off-diagonal is still
+  ## exactly zero.
+  expect_length(fit$tmb_params$theta_rr_B, 2L)
+  expect_gt(fit$tmb_params$theta_rr_B[1], 0)
+  expect_equal(fit$tmb_params$theta_rr_B[2], 0)
 })
 
 ## ---------------------------------------------------------------------------
@@ -157,3 +167,55 @@ test_that("start_method = 'indep' fits a simpler GLMM and copies matching starts
 ## check because the threshold was absolute on the sd scale -- is fixed and
 ## covered by test-slope-boundary-flag.R.
 ## ---------------------------------------------------------------------------
+
+## ---------------------------------------------------------------------------
+## The `res` start must return ONE scale, not a mixture of two.
+##
+## `.gllvmTMB_residual_factor_start()` fills Lambda's first `r_eff` columns from
+## the SVD of the grouped residual matrix, where `r_eff` is the number of
+## singular values above an ABSOLUTE threshold. When the residual is rank
+## deficient relative to the requested `d`, the remaining columns keep whatever
+## `.gllvmTMB_default_rr_lambda()` wrote -- and the whole matrix, stale columns
+## included, is then packed into `theta_rr`, overriding the caller's
+## `default_theta`, with `usable = TRUE`. So the caller copies it into the fit.
+##
+## That column was a hardcoded 0.5 with no reference to the response scale, so
+## on a response scaled by 1e4 it packed a literal 0.5 beside siblings of 7726
+## and 3863 -- the same defect class as issue #851, one function over, and in a
+## branch whose companion Psi start (`sd_rem`) was already data derived.
+##
+## The property asserted here is the one that cannot be satisfied by accident:
+## every nonzero entry of the returned `theta_rr` scales by exactly k when the
+## response does. Verified to FAIL on the unfixed code, where the ratios come
+## back `10000, 1, 10000, 10000` -- the offending entry sitting at 1.
+test_that("start_method='res' returns a single-scale Lambda when the SVD is rank deficient", {
+  probe <- function(k) {
+    set.seed(1)
+    n_groups <- 24L; n_traits <- 3L; rank <- 2L
+    l1 <- c(0.8, 0.4, -0.2)
+    s1 <- stats::rnorm(n_groups)
+    R <- k * outer(s1, l1)   # exactly rank 1, but rank 2 is requested
+    gllvmTMB:::.gllvmTMB_residual_factor_start(
+      resid    = as.numeric(t(R)),
+      trait_id = rep(0:(n_traits - 1L), times = n_groups),
+      group_id = rep(0:(n_groups - 1L), each = n_traits),
+      n_traits = n_traits, n_groups = n_groups, rank = rank,
+      jitter.sd = 0, default_theta = rep(-99, 5)
+    )
+  }
+
+  k <- 1e4
+  a <- probe(1)
+  b <- probe(k)
+
+  ## the rank-deficient path is the one under test: it must be the USABLE
+  ## branch, otherwise the caller would discard the result and this would be
+  ## vacuous.
+  expect_true(isTRUE(a$usable))
+  expect_true(isTRUE(b$usable))
+
+  nz <- which(abs(a$theta_rr) > 1e-12)
+  expect_gt(length(nz), 1L)
+  expect_equal(b$theta_rr[nz] / a$theta_rr[nz], rep(k, length(nz)),
+               tolerance = 1e-6)
+})

@@ -47,7 +47,7 @@ This repository is shared by humans, Codex, and Claude Code. Read
   the lane map. **Needs Shinichi:** #856 (deliberate or incidental? it gates #855), and the
   sequencing call between #851/#855 and #847/#848.
 
-- **2026-07-30 (LATEST) — SESSION CLOSED; the re-aimed degeneracy campaign is APPROVED and
+- **2026-07-30 — SESSION CLOSED; the re-aimed degeneracy campaign is APPROVED and
   UNSTARTED.** `main` @ `bef1a5aa` (#840 + #850 merged). **🔴 The campaign's original premise was
   refuted pre-flight, by measurement:** VGH's 0/148 does **not** survive at larger q/p — at
   n=40/p=80/q=4, `rel_frob` 10.671/10.449 on 2 of 4 seeds, `atten_F > 2` on 4 of 4, `max|Λ|`

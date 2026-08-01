@@ -1,0 +1,69 @@
+
+==============================
+Fixture: bernoulli 
+==============================
+N = 2  T = 2  q = 1 
+y (long, in unit-then-trait order as stored): 0 0 0 1 
+unit_id (0-based): 0 0 1 1 
+trait_id (0-based): 0 1 0 1 
+
+Wide reconstruction:
+     sp1 sp2
+[1,]   0   0
+[2,]   0   1
+sum(y long) = 1   sum(Y wide) = 1   equal: TRUE 
+dims: N*T = 4  length(y) = 4  dim(Y) = 2x2   equal: TRUE 
+long-from-wide reconstruction identical to original (reordered) long vector: TRUE 
+VERDICT mapping_ok: TRUE 
+
+Gradient norm at the frozen Gate-1 coordinate (beta, theta_rr, a, log_A_diag, A_off): 0.9872597 
+(A near-zero norm would suggest the frozen point is close to a stationary point; a large norm confirms it is a fixed VALUE-validation probe, not a converged fit.)
+
+X has 1 column(s): fixture uses a SINGLE shared intercept across all traits -- gllvm's default binomial fit instead estimates ONE INTERCEPT PER SPECIES (params$beta0, length T). beta is therefore not directly comparable between engines on this fixture without changing what each model estimates.
+
+--- ours: .eva_fit() from default start ---
+STATUS: failed_health_gate  healthy: FALSE  max_abs_gradient: 2.070176  secs: 0.231 
+beta_hat: -144360.5  (frozen fixture beta was: -3 )
+
+--- gllvm::gllvm(method = 'EVA', family = binomial(link = 'logit')) from default start ---
+  [gllvm warning]: There are responses full of zeros. 
+ 
+  [gllvm warning]: There are rows full of zeros in y. 
+ 
+  [gllvm warning]: 2 parameter(s) have negative variance estimates (lambda x1, sigmaLV x1). The model likely has not converged - consider re-fitting. 
+STATUS: convergence = TRUE  logL: -1.386294  secs: 0.036 
+beta0: -18.90461 -1.646104e-10 
+
+==============================
+Fixture: bernoulli_q2 
+==============================
+N = 2  T = 3  q = 2 
+y (long, in unit-then-trait order as stored): 0 0 1 0 1 0 
+unit_id (0-based): 0 0 0 1 1 1 
+trait_id (0-based): 0 1 2 0 1 2 
+
+Wide reconstruction:
+     sp1 sp2 sp3
+[1,]   0   0   1
+[2,]   0   1   0
+sum(y long) = 2   sum(Y wide) = 2   equal: TRUE 
+dims: N*T = 6  length(y) = 6  dim(Y) = 2x3   equal: TRUE 
+long-from-wide reconstruction identical to original (reordered) long vector: TRUE 
+VERDICT mapping_ok: TRUE 
+
+Gradient norm at the frozen Gate-1 coordinate (beta, theta_rr, a, log_A_diag, A_off): 1.515451 
+(A near-zero norm would suggest the frozen point is close to a stationary point; a large norm confirms it is a fixed VALUE-validation probe, not a converged fit.)
+
+X has 1 column(s): fixture uses a SINGLE shared intercept across all traits -- gllvm's default binomial fit instead estimates ONE INTERCEPT PER SPECIES (params$beta0, length T). beta is therefore not directly comparable between engines on this fixture without changing what each model estimates.
+
+--- ours: .eva_fit() from default start ---
+STATUS: failed_health_gate  healthy: FALSE  max_abs_gradient: 16.05126  secs: 0.216 
+beta_hat: -269479.4  (frozen fixture beta was: -1.7 )
+
+--- gllvm::gllvm(method = 'EVA', family = binomial(link = 'logit')) from default start ---
+  [gllvm warning]: There are responses full of zeros. 
+ 
+STATUS: r_error -- NA/NaN/Inf in foreign function call (arg 1) 
+
+
+DONE.

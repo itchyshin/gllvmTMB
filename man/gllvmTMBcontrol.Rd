@@ -17,6 +17,7 @@ gllvmTMBcontrol(
   start_from = NULL,
   se = TRUE,
   verbose = FALSE,
+  integration = c("laplace", "va"),
   aghq = FALSE,
   aghq_iter_cap = 1L,
   aghq_n_adapt = 400L,
@@ -100,6 +101,48 @@ uncertainty will be obtained by bootstrap or profile methods. Default
 \item{verbose}{If \code{TRUE}, prints a one-line summary per restart so
 the user can see which seed led to the winning fit. Default
 \code{FALSE}.}
+
+\item{integration}{Which method evaluates the latent-variable integral.
+\code{"laplace"} (default) is the Laplace approximation and is the \strong{only}
+route that yields a marginal likelihood, so it is the only one for which
+\code{\link[=logLik]{logLik()}}, \code{\link[=AIC]{AIC()}}, \code{\link[=BIC]{BIC()}} and likelihood-ratio tests are defined.
+
+\code{"va"} selects an opt-in \strong{research} route whose objective is an evidence
+lower bound, not a marginal likelihood. It reports no calibrated
+uncertainty: no standard errors, no confidence intervals, and no coverage
+claim. A bound must not be compared across ranks or models, so it cannot
+be used for model or rank selection.
+
+It is admitted only inside the region for which evidence exists —
+\code{latent(..., unique = FALSE)}, binomial-logit or Poisson-log, \code{d} up to
+2, up to 80 responses, at least 100 units, and the native TMB engine — and
+requesting it outside that region is an \strong{error}, not a warning. The \code{d}
+limit is where a pre-registered recovery gate actually passed: \code{d = 4} was
+measured and refused, because with few responses the planted axes collapse
+far more often than the gate's tolerance allows.
+It cannot be combined with \code{aghq}, which is an alternative evaluation of
+the same integral rather than an additional layer.
+
+Offering this value advertises nothing about its accuracy.
+
+\code{"va"} returns an object of class \code{"gllvmTMB_va"} (see
+\link{gllvmTMB_va-methods}) rather than an ordinary fit, so that every method
+which would treat its objective as a likelihood fails loudly instead of
+returning a number. Because the engine runs its own multi-start and
+optimiser policy, the search settings of \code{\link[=gllvmTMBcontrol]{gllvmTMBcontrol()}} — \code{n_init},
+\code{optimizer}, \code{optArgs}, \code{start_from}, \verb{init_*} and \code{se} — have no effect
+on this route. Any model structure the route cannot represent (a latent
+term away from the unit grouping, a constrained ordination, an offset,
+weights, \code{REML}, \code{lambda_constraint}, \code{Xcoef_fixed}, or a further random
+effect) is an \strong{error}, never a silent omission.
+
+There is no \code{"eva"} value. The EVA engine exists in this package and is
+reachable as a research route, but it is not wired to \code{\link[=gllvmTMB]{gllvmTMB()}}, and an
+argument value that could only ever raise an error would advertise a
+capability the package does not have. Its own measurements are the reason
+it is not a candidate here: EVA delivers valid inference for the
+regression coefficients but not for \verb{Lambda Lambda'}, which is the
+between-response covariance this package exists to estimate.}
 
 \item{aghq}{Adaptive Gauss-Hermite quadrature for the between-unit latent
 block. \code{FALSE} (default) fits by Laplace approximation. A positive integer

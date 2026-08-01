@@ -2417,6 +2417,48 @@ longer exists, so the result is recorded but not reproducible. A confirmatory, p
 (`docs/dev-log/2026-07-29-certificate-gate-preregistration.md`, commit `90798365`). **No live
 certificate. No public claim.**
 
+## 2026-07-30  VA SHIPS IN 0.6 — Amendment 1 reversed on admission, with the costing on the table
+
+**Maintainer decision, Shinichi Nakagawa, in session.** gllvmTMB 0.6 ships an **opt-in, hard-fenced
+`engine = "va"`**, reversing the 2026-07-21 cut of EVA/VA to 0.7 (`LOOP/GOAL.md` Amendment 1,
+preserved by Amendment 3) and re-opening Design 85's closed NO-GO status (`LOOP/GOAL.md:172`) on
+stated terms. Recorded as `LOOP/GOAL.md` **Amendment 4**; full record
+`docs/dev-log/2026-07-30-va-ships-in-06-reversal.md`.
+
+**The decision was taken after the costing was surfaced, not before it.** Design 108 prices the VA
+parity programme at *"26–42 working days excluding spatial, critical path 17–26"*, and the
+2026-07-20 pilot audit is a NO-GO whose stated cause is that the runner selected rank by ML before
+fitting VA — *"the Gate-4 hand-off design, not the required fixed-rank Gate-3 known-DGP
+comparison"*, with failed fits excluded from the denominator. Both were put in front of the
+maintainer. The 0.6 route is a fenced subset far smaller than the programme Design 108 prices.
+
+**What does not change:** Laplace remains the **default** (Design 104 §4.1's first sentence stands);
+Design 85 §10's prohibitions stand in full; **no intervals, SEs, or coverage claims** from the VA
+path (`calibrated = FALSE` stays, which is what defers the ~1,900-replicate-per-cell coverage
+campaign out of 0.6); Design 105 §10's architectural breakages for **multinomial** and
+**zero-inflated / `*_mix`** are not repealed by a decision; TMB template edits stay HIGH-RISK
+(Design 72 §7 — maintainer discussion + Codex, never a Claude auto-merge); no advertising until a
+register row carries VA-vs-LA recovery evidence.
+
+**Admission is earned, not granted by this decision** — by **Design 85 §11 Gate 3 as written**
+(`beta`, `Sigma_B`, fitted probabilities; RMSE no more than 0.05 worse than ML in absolute terms;
+no planted axis collapsing in >5% of healthy non-separated replicates), run at **fixed rank** with
+**every attempted fit in the denominator**, against **fixed pre-declared truths** rather than
+truths redrawn per seed. §11: tolerances cannot be widened after seeing the result.
+
+🔴 **SUPERSEDED 2026-07-31 by Gate 3 — the estimator is JJ, not GH.** The paragraph below is
+kept as the dated record of what was believed before the campaign ran, and it is a good example
+of why the gate existed: the reasoning was principled and the measurement disagreed. See the
+2026-07-31 entry at the end of this file.
+
+**Estimator: GH quadrature, not the JJ/Pólya-Gamma bound** — already Design 104 §4.2's policy
+(*"EXACT where it exists, GH otherwise"*), now derived rather than assumed. JJ's objective is
+coercive in `‖Λ‖`, so it cannot produce a runaway and its 0/320 degeneracy record was a theorem
+before a fit ran; and `rel_frob > 10` requires `‖Sigma_hat‖ > 9‖Sigma_true‖`, so the detector is
+structurally blind to contraction. Recomputed from `dev/totoro-grid/results/grid.csv`, JJ's signed
+scale `tr(Sigma_hat)/tr(Sigma_true)` runs 1.670 → 1.015 → 0.857 → 0.780 across n = 40/100/200/400
+— through 1 and still falling. GH is not innocent either: **4.302 at n=40**, which is why the fence
+sets `n >= 100` as a hard error rather than a warning.
 ## 2026-07-31  The AGHQ small-n runaway is an OPTIMISER FAILURE, not the MLE — every "AGHQ alone" number is single-start
 
 Decision: record, from 120 fits through the SHIPPED engine (#843, PR #870), that the AGHQ

@@ -47,11 +47,10 @@ validation-debt row changed. This is not a convention change.
   JSDM page's navigation link rendered independently in the preceding check.
 - `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/joint-sdm", pkg = ".", lazy = FALSE, new_process = FALSE, quiet = TRUE); cat("JOINT_SDM_DONE\\n")'`
   — PASS; the rendered JSDM page carries the new link.
-- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_articles(lazy = FALSE, quiet = FALSE); cat("BUILD_ARTICLES_DONE\\n")'`
-  — did not reach `BUILD_ARTICLES_DONE`; it rendered pre-existing articles
-  through `behavioural-syndromes` without emitting a diagnostic before the
-  process ended. The two affected articles were therefore rendered separately
-  and passed; this wider batch outcome is not attributed to this change.
+- The original full-batch attempt did not reach its completion marker; the two
+  affected articles were therefore rendered separately and passed. A later
+  clean rerun after synchronising with `main` completed successfully (recorded
+  below).
 - `git diff --check` — PASS.
 
 ## Consistency audit
@@ -96,9 +95,8 @@ same-data selection-plus-confirmation workflow as the load-bearing risk and
 required its removal; they also caught and corrected an overbroad statement
 about the LAM-04 recovery regime. Pat's reader-path check is represented by
 the new purpose-first explanation of `NA` versus exact numeric pins and the
-link back to the JSDM guide. Grace's pkgdown gate passed for the index and both
-affected article renders, while the full article batch remains a separate
-pre-publish gate.
+link back to the JSDM guide. Grace's pkgdown gate passed for the index, both
+affected article renders, and the later full article batch.
 
 ## Design-doc updates
 

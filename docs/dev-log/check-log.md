@@ -47535,6 +47535,17 @@ the tau lane resumes.
   applied-reader reread; Rose passed once data-derived pins were described as
   a new constrained refit that can change the covariance, not a rotation.
 
+### Follow-up validation after synchronising with `main`
+
+- `Rscript --vanilla -e 'pkgdown::build_articles(lazy = FALSE); cat("PKGDOWN_ARTICLES_DONE\\n")'`
+  -> PASS; the full article batch completed and wrote every article, including
+  `lambda-constraint-suggest`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown(); cat("PKGDOWN_CHECK_DONE\\n")'`
+  -> PASS, `No problems found.`
+- `Rscript --vanilla -e 'devtools::test(filter = "suggest-lambda-constraint", reporter = "summary")'`
+  -> PASS; four configured heavy recovery cells were skipped because the
+  opt-in heavy-test setting was not enabled.
+
 ## 2026-08-01 — integrate and verify the runaway fit warning (#877, Codex)
 
 **Branch:** `codex/pr877-integration-20260801`, based on PR #877 head `3d31259f`

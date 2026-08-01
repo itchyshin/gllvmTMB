@@ -397,7 +397,10 @@ make_mesh <- function(
       any(invalid_matrices)
   ) {
     cli::cli_abort(
-      "Mesh projection and finite-element matrices have incompatible dimensions."
+      paste(
+        "Mesh finite-element matrices must be square, finite, and mutually",
+        "conformable with the projection."
+      )
     )
   }
   invisible(mesh)

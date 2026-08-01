@@ -57,6 +57,45 @@ pass; it failed on an unrelated vdiffr snapshot plus pre-existing namespace
 the one visual-snapshot failure; the prior funcphylo fixture did not fail in
 this run.
 
+### Final current-main integration supplement
+
+The branch merged `origin/main` at `cee55a07` in merge commit `8980ae4b` and
+reran the gates after the D-43 panel found three additional omissions. Repairs
+added an explicit non-finite sparse-FEM rejection test, removed a current
+inheritance claim from `docs/design/00-vision.md`, recovered latent-slope
+`kappa` through the fitted TMB `parList()` when that route has no duplicated
+`REPORT(kappa*)`, and rejected zero-row CRS input.
+
+```sh
+NOT_CRAN=true Rscript --vanilla -e 'devtools::load_all(quiet=TRUE); testthat::test_file("tests/testthat/test-mesh.R"); testthat::test_file("tests/testthat/test-utm-conversions.R"); testthat::test_file("tests/testthat/test-anisotropy.R"); testthat::test_file("tests/testthat/test-stage4-spde.R"); testthat::test_file("tests/testthat/test-spatial-mode-dispatch.R"); testthat::test_file("tests/testthat/test-spatial-orientation.R")'
+SDMTMB_ORACLE_LIB=/private/tmp/gllvmtmb-sdmtmb-oracle Rscript --vanilla dev/verify-sdmtmb-spatial-oracle.R
+Rscript --vanilla -e 'pkgdown::check_pkgdown()'
+NOT_CRAN=true Rscript --vanilla -e 'devtools::test(reporter = "summary")'
+Rscript --vanilla -e 'result <- devtools::check(args = "--no-manual", quiet = TRUE, error_on = "never"); cat(sprintf("CHECK_LEDGER errors=%d warnings=%d notes=%d\\n", length(result$errors), length(result$warnings), length(result$notes)))'
+rg -n -i 'inherited from sdmTMB|inherits sdmTMB|inherit.*spatial helper|spatial helper.*inherit|sdmTMB.*cite|cite.*sdmTMB|from which gllvmTMB|SPDE inheritance|plot_anisotropy\*.*from sdmTMB' AGENTS.md CLAUDE.md README.md DESCRIPTION NEWS.md R inst vignettes docs/design _pkgdown.yml NAMESPACE man
+git diff --check
+```
+
+Final focused outcome: 122 assertions passed, zero failures, warnings, or
+skips. The isolated oracle again passed at `1e-10`; pkgdown again reported no
+problems; the expanded stale-provenance scan returned no current claim; and
+`git diff --check` passed.
+
+The full suite reported 785 intentional skips, two unrelated gllvm-comparator
+warnings, and three failures outside this lane: the newly merged
+`lambda-constraint-suggest.Rmd` uses a method not admitted by
+`test-article-prescribed-calls.R`; the known `funcphylo` fixed spatial fixture
+did not converge; and the correlation-ellipse vdiffr snapshot differed. The
+no-manual package check returned `errors=1 warnings=1 notes=2`; its error is the
+global test phase. No `.new.svg` was retained.
+
+The repaired D-43 panel was unanimous DONE: Curie found the finite-FEM test gap,
+Rose found the vision-note inheritance claim, and Gauss/Noether found the
+latent-slope report boundary plus empty-CRS input. Each reviewer rechecked the
+repair and returned DONE. This supports the independent-helper and
+code-provenance-debt-removal claims, but the global red tests withhold a
+merge-ready claim.
+
 ## 2026-07-24 -- BIRDBASE-relevant performance-audit baseline
 
 Branch: `codex/performance-audit-20260724`; clean worktree from `origin/main`.

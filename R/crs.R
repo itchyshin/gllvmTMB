@@ -116,8 +116,8 @@ get_crs <- function(dat, ll_names = c("longitude", "latitude")) {
 }
 
 .gllvm_validate_coordinate_names <- function(dat, coordinate_names, argument) {
-  if (!is.data.frame(dat)) {
-    cli::cli_abort("{.arg dat} must be a data frame.")
+  if (!is.data.frame(dat) || !nrow(dat)) {
+    cli::cli_abort("{.arg dat} must be a non-empty data frame.")
   }
   if (
     !is.character(coordinate_names) ||

@@ -112,11 +112,7 @@ plot_anisotropy2 <- function(object, model = 1L) {
     )
   }
 
-  kappa <- if (!is.null(object$report$kappa)) {
-    object$report$kappa
-  } else {
-    object$report$kappa_s
-  }
+  kappa <- .gllvm_spatial_kappa(object)
   if (
     !is.numeric(kappa) || length(kappa) != 1L || !is.finite(kappa) || kappa <= 0
   ) {
@@ -143,6 +139,28 @@ plot_anisotropy2 <- function(object, model = 1L) {
     model_assumption = "isotropic (H = I)",
     stringsAsFactors = FALSE
   )
+}
+
+.gllvm_spatial_kappa <- function(object) {
+  if (!is.null(object$report$kappa)) {
+    return(object$report$kappa)
+  }
+  if (!is.null(object$report$kappa_s)) {
+    return(object$report$kappa_s)
+  }
+
+  # The reduced-rank spatial random-slope route estimates the same shared
+  # log_kappa_spde parameter but does not currently duplicate it in REPORT().
+  # Read the fitted parameter through TMB's retained parList contract rather
+  # than changing the likelihood or inventing an anisotropy parameter.
+  parameter_list <- tryCatch(
+    object$tmb_obj$env$parList(object$opt$par),
+    error = function(error) NULL
+  )
+  if (!is.null(parameter_list$log_kappa_spde)) {
+    return(exp(parameter_list$log_kappa_spde))
+  }
+  NULL
 }
 
 .gllvm_fit_uses_delta <- function(object) {

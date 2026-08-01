@@ -1,6 +1,7 @@
 # Plan versus actual -- independent spatial helpers
 
-Date: 2026-08-01  
+Date: 2026-08-01
+
 Plan: Ultra Plan -- independent gllvmTMB spatial helpers
 
 ## Delivered as planned

@@ -24,6 +24,10 @@ test_that("UTM conversion works", {
   expect_identical(get_crs(d, c("lon", "lat")), 32609)
   expect_error(get_crs(d, c("longitude", "latitude")), "columns")
   expect_error(
+    get_crs(data.frame(lon = numeric(), lat = numeric()), c("lon", "lat")),
+    "non-empty"
+  )
+  expect_error(
     get_crs(data.frame(lon = 190, lat = 0), c("lon", "lat")),
     "Longitude"
   )

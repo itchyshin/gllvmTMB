@@ -41,6 +41,23 @@ test_that("isotropic range data matches the fitted kappa contract", {
   expect_equal(unique(result$axis_y), "north_km")
 })
 
+test_that("latent-slope range falls back to the retained fitted TMB parameter", {
+  fit <- fake_spatial_fit(
+    kappa = NULL,
+    use = list(spde = FALSE, spde_latent_slope = TRUE)
+  )
+  fit$opt <- list(par = c(log_kappa_spde = log(5)))
+  fit$tmb_obj <- list(
+    env = list(
+      parList = function(par) list(log_kappa_spde = unname(par[[1L]]))
+    )
+  )
+
+  result <- plot_anisotropy(fit, return_data = TRUE)
+  expect_equal(unique(result$kappa), 5)
+  expect_equal(unique(result$range), sqrt(8) / 5)
+})
+
 test_that("isotropic range plotting supports ggplot and base graphics", {
   skip_if_not_installed("ggplot2")
   fit <- fake_spatial_fit()

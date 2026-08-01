@@ -234,9 +234,10 @@ sister packages have separate scopes:
   modelling, bivariate residual correlation `rho12`. Anything
   with three or more responses belongs in `gllvmTMB`.
 - **`sdmTMB`** (sister) -- single-response spatial / spatiotemporal
-  models with SPDE random fields. We inherit the SPDE / mesh /
-  spatial helper implementation in gllvmTMB (with provenance in
-  `inst/COPYRIGHTS`).
+  models with SPDE random fields. sdmTMB inspired gllvmTMB's original
+  spatial interface, but gllvmTMB's current R-side mesh, CRS, and range
+  helpers are independently authored against the public fmesher/sf APIs;
+  no sdmTMB source code is included or adapted.
 - **`glmmTMB`** -- single-response mixed models. `gllvmTMB`'s
   reduced-rank `latent()` and diagonal `unique()` keywords share
   the `glmmTMB::rr()` / `diag()` machinery (McGillycuddy et al.

@@ -1,7 +1,9 @@
 # Independent spatial-helper literature and API specification
 
-Date: 2026-08-01  
-NotebookLM notebook: `c0994d01-a66e-4530-96c1-934aaac0fd82`  
+Date: 2026-08-01
+
+NotebookLM notebook: `c0994d01-a66e-4530-96c1-934aaac0fd82`
+
 Notebook title: *gllvmTMB spatial helpers — curated literature specification*
 
 ## Question and authorship boundary

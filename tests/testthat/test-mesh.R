@@ -34,10 +34,13 @@ test_that("make_mesh validates coordinates and returns the native contract", {
   expect_true(all(Matrix::diag(mesh$spde$c0) >= 0))
   malformed <- mesh
   malformed$spde$g1 <- malformed$spde$g1[, -1L]
-  expect_error(gllvmTMB:::.gllvm_validate_mesh(malformed), "incompatible")
+  expect_error(gllvmTMB:::.gllvm_validate_mesh(malformed), "square, finite")
   malformed <- mesh
   malformed$spde$c0 <- as.matrix(malformed$spde$c0)
   expect_error(gllvmTMB:::.gllvm_validate_mesh(malformed), "sparse")
+  malformed <- mesh
+  malformed$spde$g2@x[[1L]] <- Inf
+  expect_error(gllvmTMB:::.gllvm_validate_mesh(malformed), "square, finite")
   malformed <- mesh
   malformed$A_st[1L, ] <- 0
   expect_error(gllvmTMB:::.gllvm_validate_mesh(malformed), "sparse projection")

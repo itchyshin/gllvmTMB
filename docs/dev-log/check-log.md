@@ -4,6 +4,31 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-08-01 -- Design 108 Stage 2 VA mixed-family
+
+Branch: `cursor/design108-va-mixed-family-20260801` from `origin/main`
+(`3f66d553`, post-#891). Named lane LOOP under `lanes/design108-stage2/LOOP/`;
+root `LOOP/` untouched.
+
+Checks:
+
+```sh
+git diff --check
+NOT_CRAN=true Rscript --vanilla -e 'devtools::load_all(quiet=TRUE); testthat::test_file("tests/testthat/test-va-mixed-family.R")'
+# FAIL 0 | WARN 0 | SKIP 0 | PASS 23
+NOT_CRAN=true Rscript --vanilla -e 'devtools::load_all(quiet=TRUE); testthat::test_file("tests/testthat/test-va-missing-response.R")'
+# FAIL 0 | WARN 0 | SKIP 0 | PASS 10
+NOT_CRAN=true Rscript --vanilla -e 'devtools::load_all(quiet=TRUE); testthat::test_file("tests/testthat/test-integration-fence.R")'
+# FAIL 0 | WARN 0 | SKIP 0 | PASS 39
+NOT_CRAN=true Rscript --vanilla -e 'devtools::load_all(quiet=TRUE); testthat::test_file("tests/testthat/test-va-routing-oracle.R")'
+# FAIL 0 | WARN 0 | SKIP 0 | PASS 31
+NOT_CRAN=true Rscript --vanilla -e 'devtools::load_all(quiet=TRUE); testthat::test_file("tests/testthat/test-va-r3-prototype.R")'
+# FAIL 0 | WARN 0 | SKIP 0 | PASS 352
+```
+
+Deliberately not run: full `devtools::test()`, Totoro Stage 8, coverage,
+Stages 3–14, public advertise.
+
 ## 2026-08-01 -- independent spatial-helper rewrite
 
 Branch: `codex/spatial-independent-helpers`; clean worktree created from

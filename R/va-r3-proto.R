@@ -212,6 +212,37 @@
                  converged = tight$converged))
 }
 
+.va_r3_family_name_to_code <- function(name) {
+  switch(as.character(name),
+    gaussian_anchor = 0L,
+    gaussian = 0L,
+    binomial = 1L,
+    poisson = 2L,
+    nbinom2 = 3L,
+    stop("R3 family must be one of gaussian_anchor/gaussian, binomial, poisson, nbinom2.",
+         call. = FALSE)
+  )
+}
+
+## Laplace family_id (fit-multi) -> VA-R3 family code. Unsupported IDs error.
+.va_r3_laplace_id_to_code <- function(fid) {
+  out <- rep(NA_integer_, length(fid))
+  out[fid == 0L] <- 0L  # gaussian
+  out[fid == 1L] <- 1L  # binomial
+  out[fid == 2L] <- 2L  # poisson
+  out[fid == 5L] <- 3L  # nbinom2
+  if (anyNA(out)) {
+    stop("VA-R3 does not admit Laplace family_id values: ",
+         paste(unique(fid[is.na(out)]), collapse = ", "), ".",
+         call. = FALSE)
+  }
+  as.integer(out)
+}
+
+.va_r3_code_to_name <- function(code) {
+  c("gaussian_anchor", "binomial", "poisson", "nbinom2")[as.integer(code) + 1L]
+}
+
 .va_r3_validate_data <- function(y, n_trials, X, unit_id, trait_id, q,
                                  N = NULL, T = NULL,
                                  family = "binomial", link = "logit",
@@ -219,7 +250,9 @@
                                  structured = FALSE, provider = NULL,
                                  lv = FALSE, missing = FALSE,
                                  gaussian_sd = 1,
-                                 is_y_observed = NULL) {
+                                 is_y_observed = NULL,
+                                 family_codes = NULL,
+                                 estimate_gaussian_sd = TRUE) {
   if (length(q) != 1L || !is.numeric(q) || !is.finite(q) ||
       q != as.integer(q) || q < 0L || q > 6L) {
     stop("q must be one integer in 0..6.", call. = FALSE)
@@ -279,75 +312,117 @@
          call. = FALSE)
   }
 
-  family <- match.arg(family, c("binomial", "poisson", "gaussian_anchor", "nbinom2"))
-  if (family == "binomial") {
-    if (!identical(link, "logit")) {
-      stop("R3 admits only the binomial logit link.", call. = FALSE)
-    }
-    if (!is.numeric(y) || any(!is.finite(y)) ||
-        !is.numeric(n_trials) || any(!is.finite(n_trials))) {
-      stop("Binomial R3 data require finite y and n_trials (sentinels allowed on masked rows).",
+  n_obs <- length(y)
+  if (!is.null(family_codes)) {
+    family_codes <- as.integer(family_codes)
+    if (length(family_codes) != n_obs ||
+        any(!family_codes %in% c(0L, 1L, 2L, 3L))) {
+      stop("family_codes must be length nrow(X) with entries in {0,1,2,3}.",
            call. = FALSE)
     }
-    if (any(observed) &&
-        (any(y[observed] != as.integer(y[observed])) ||
-         any(n_trials[observed] != as.integer(n_trials[observed])) ||
-         any(n_trials[observed] < 1L) ||
-         any(y[observed] < 0L) || any(y[observed] > n_trials[observed]))) {
-      stop("Binomial R3 data require integer n_trials >= 1 and integer 0 <= y <= n_trials on observed rows.",
+  } else if (is.numeric(family) || is.integer(family)) {
+    family_codes <- as.integer(family)
+    if (length(family_codes) == 1L) {
+      family_codes <- rep.int(family_codes, n_obs)
+    }
+    if (length(family_codes) != n_obs ||
+        any(!family_codes %in% c(0L, 1L, 2L, 3L))) {
+      stop("numeric family must be length 1 or nrow(X) with codes in {0,1,2,3}.",
            call. = FALSE)
     }
-    if (any(observed)) {
-      .va_r3_check_separation(y[observed], n_trials[observed], X[observed, , drop = FALSE])
-    }
-    family_code <- 1L
-  } else if (family == "poisson") {
-    if (!identical(link, "log")) {
-      stop("R3 admits only the Poisson log link.", call. = FALSE)
-    }
-    if (!is.numeric(y) || any(!is.finite(y))) {
-      stop("Poisson R3 data require finite y (sentinels allowed on masked rows).",
-           call. = FALSE)
-    }
-    if (any(observed) &&
-        (any(y[observed] != as.integer(y[observed])) || any(y[observed] < 0L))) {
-      stop("Poisson R3 data require finite non-negative integer y on observed rows.",
-           call. = FALSE)
-    }
-    ## The standalone template declares n_trials for every branch; the Poisson
-    ## algebra does not use it, but it must be finite and correctly sized.
-    n_trials <- rep.int(1L, length(y))
-    family_code <- 2L
-  } else if (family == "nbinom2") {
-    if (!identical(link, "log")) {
-      stop("R3 admits only the nbinom2 log link.", call. = FALSE)
-    }
-    if (!is.numeric(y) || any(!is.finite(y))) {
-      stop("nbinom2 R3 data require finite y (sentinels allowed on masked rows).",
-           call. = FALSE)
-    }
-    if (any(observed) &&
-        (any(y[observed] != as.integer(y[observed])) || any(y[observed] < 0L))) {
-      stop("nbinom2 R3 data require finite non-negative integer y on observed rows.",
-           call. = FALSE)
-    }
-    ## The standalone template declares n_trials for every branch; the nbinom2
-    ## algebra does not use it, but it must be finite and correctly sized.
-    n_trials <- rep.int(1L, length(y))
-    family_code <- 3L
   } else {
-    if (!identical(link, "identity")) {
-      stop("The Gaussian algebra anchor uses the identity link.", call. = FALSE)
+    fam_chr <- as.character(family)
+    if (length(fam_chr) == 1L) {
+      family_codes <- rep.int(.va_r3_family_name_to_code(fam_chr), n_obs)
+    } else {
+      if (length(fam_chr) != n_obs) {
+        stop("character family must be length 1 or nrow(X).", call. = FALSE)
+      }
+      family_codes <- vapply(fam_chr, .va_r3_family_name_to_code, integer(1L),
+                             USE.NAMES = FALSE)
     }
-    if (!is.numeric(y) || any(!is.finite(y)) || length(gaussian_sd) != 1L ||
-        !is.numeric(gaussian_sd) || !is.finite(gaussian_sd) ||
-        gaussian_sd <= 0) {
-      stop("The Gaussian anchor requires finite y and one positive gaussian_sd.",
+  }
+
+  ## Per-row link: scalar recycled, or length-n_obs character. Mixed-family
+  ## fits often arrive with a placeholder scalar link from the route; derive
+  ## the dense vector from family_codes in that case (Design 108 Stage 2).
+  if (length(link) == 1L) {
+    uniq_codes <- unique(family_codes)
+    if (length(uniq_codes) > 1L) {
+      link_vec <- vapply(family_codes, function(code) {
+        switch(as.character(code),
+               "0" = "identity", "1" = "logit", "2" = "log", "3" = "log",
+               "logit")
+      }, character(1L))
+    } else {
+      link_vec <- rep.int(as.character(link), n_obs)
+    }
+  } else {
+    link_vec <- as.character(link)
+    if (length(link_vec) != n_obs) {
+      stop("link must be length 1 or nrow(X).", call. = FALSE)
+    }
+  }
+  for (code in unique(family_codes)) {
+    rows <- which(family_codes == code)
+    want <- switch(as.character(code),
+                   "0" = "identity", "1" = "logit", "2" = "log", "3" = "log")
+    if (any(link_vec[rows] != want)) {
+      stop("R3 link for family code ", code, " must be \"", want, "\".",
            call. = FALSE)
     }
-    ## The standalone template declares n_trials for both branches.
-    n_trials <- rep.int(1L, length(y))
-    family_code <- 0L
+  }
+
+  if (!is.numeric(y) || any(!is.finite(y)) ||
+      !is.numeric(n_trials) || any(!is.finite(n_trials))) {
+    stop("R3 data require finite y and n_trials (sentinels allowed on masked rows).",
+         call. = FALSE)
+  }
+
+  bin_obs <- observed & family_codes == 1L
+  if (any(bin_obs) &&
+      (any(y[bin_obs] != as.integer(y[bin_obs])) ||
+       any(n_trials[bin_obs] != as.integer(n_trials[bin_obs])) ||
+       any(n_trials[bin_obs] < 1L) ||
+       any(y[bin_obs] < 0L) || any(y[bin_obs] > n_trials[bin_obs]))) {
+    stop("Binomial R3 data require integer n_trials >= 1 and integer 0 <= y <= n_trials on observed rows.",
+         call. = FALSE)
+  }
+  ## Design 85 separation guard is for pure-binomial designs. Mixed-family
+  ## subsets leave trait-dummy columns all-zero on binomial rows and trip the
+  ## guard spuriously; Stage 2 keeps the guard on the pure-binomial bit-compat
+  ## path only.
+  if (any(bin_obs) && all(family_codes[observed] == 1L)) {
+    .va_r3_check_separation(y[bin_obs], n_trials[bin_obs], X[bin_obs, , drop = FALSE])
+  }
+  count_obs <- observed & family_codes %in% c(2L, 3L)
+  if (any(count_obs) &&
+      (any(y[count_obs] != as.integer(y[count_obs])) || any(y[count_obs] < 0L))) {
+    stop("Poisson/nbinom2 R3 data require finite non-negative integer y on observed rows.",
+         call. = FALSE)
+  }
+  ## Non-binomial branches do not use n_trials; keep finite sentinels.
+  n_trials <- as.integer(n_trials)
+  n_trials[family_codes != 1L] <- 1L
+
+  if (!is.numeric(gaussian_sd) || any(!is.finite(gaussian_sd)) ||
+      any(gaussian_sd <= 0)) {
+    stop("gaussian_sd must be positive and finite (scalar or length T start).",
+         call. = FALSE)
+  }
+  if (length(gaussian_sd) == 1L) {
+    log_sigma_start <- rep(log(as.numeric(gaussian_sd)), T)
+  } else if (length(gaussian_sd) == T) {
+    log_sigma_start <- log(as.numeric(gaussian_sd))
+  } else {
+    stop("gaussian_sd must be length 1 or T.", call. = FALSE)
+  }
+
+  uniq <- unique(family_codes)
+  family_name <- if (length(uniq) == 1L) {
+    .va_r3_code_to_name(uniq)
+  } else {
+    "mixed"
   }
 
   list(
@@ -360,10 +435,13 @@
     N = N,
     T = T,
     q = q,
-    family = family_code,
-    family_name = family,
-    link = link,
-    gaussian_sd = as.numeric(gaussian_sd)
+    family = as.integer(family_codes),
+    family_name = family_name,
+    link = if (length(unique(link_vec)) == 1L) link_vec[1L] else link_vec,
+    log_sigma_start = as.numeric(log_sigma_start),
+    ## Design 108 default is estimated per-trait SD; oracle / variance-domain
+    ## fixtures may pin log_sigma at the start value (pre-Stage-2 DATA_SCALAR).
+    estimate_gaussian_sd = isTRUE(estimate_gaussian_sd)
   )
 }
 
@@ -481,21 +559,27 @@
 ## start) on any degeneracy: too few units, non-finite correlations, a
 ## non-finite eigendecomposition, or a rotation that fails the lower-triangle
 ## check above.
+## Link-scale pseudo-responses for warm starts (Design 108: per-row family).
+.va_r3_link_pseudo <- function(y, n_trials, family_codes) {
+  fam <- as.integer(family_codes)
+  out <- as.numeric(y)
+  bin <- fam == 1L
+  if (any(bin)) {
+    prop <- pmin(pmax((y[bin] + 0.5) / (n_trials[bin] + 1), 1e-6), 1 - 1e-6)
+    out[bin] <- stats::qlogis(prop)
+  }
+  count <- fam %in% c(2L, 3L)
+  if (any(count)) out[count] <- log(y[count] + 0.5)
+  out
+}
+
 .va_r3_warm_theta_rr <- function(data, beta) {
   N <- data$N
   T <- data$T
   q <- data$q
   if (N < 2L) return(NULL)
   eta_fixed <- as.numeric(data$X %*% beta)
-  pseudo <- if (data$family == 1L) {
-    prop <- pmin(pmax((data$y + 0.5) / (data$n_trials + 1), 1e-6), 1 - 1e-6)
-    stats::qlogis(prop)
-  } else if (data$family == 2L || data$family == 3L) {
-    ## Poisson and nbinom2 share the log link.
-    log(data$y + 0.5)
-  } else {
-    data$y
-  }
+  pseudo <- .va_r3_link_pseudo(data$y, data$n_trials, data$family)
   resid <- pseudo - eta_fixed
   Z <- matrix(NA_real_, nrow = N, ncol = T)
   Z[cbind(data$unit_id + 1L, data$trait_id + 1L)] <- resid
@@ -527,19 +611,9 @@
   p <- ncol(data$X)
   start_id <- as.integer(start_id)
   beta <- rep(0, p)
-  if (data$family == 1L) {
-    prop <- (data$y + 0.5) / (data$n_trials + 1)
-    beta_fit <- tryCatch(stats::lm.fit(data$X, stats::qlogis(prop))$coefficients,
-                         error = function(e) rep(0, p))
-  } else if (data$family == 2L || data$family == 3L) {
-    ## Poisson and nbinom2 share a log link, so start beta on the log scale;
-    ## the 0.5 offset keeps zero counts finite.
-    beta_fit <- tryCatch(stats::lm.fit(data$X, log(data$y + 0.5))$coefficients,
-                         error = function(e) rep(0, p))
-  } else {
-    beta_fit <- tryCatch(stats::lm.fit(data$X, data$y)$coefficients,
-                         error = function(e) rep(0, p))
-  }
+  pseudo <- .va_r3_link_pseudo(data$y, data$n_trials, data$family)
+  beta_fit <- tryCatch(stats::lm.fit(data$X, pseudo)$coefficients,
+                       error = function(e) rep(0, p))
   if (length(beta_fit) == p && all(is.finite(beta_fit))) beta <- unname(beta_fit)
 
   ## Start 1 = the factor-analytic warm start (data-driven loadings).  Starts
@@ -582,7 +656,14 @@
     L_off = L_off,
     ## Mapped off (fixed at this default) for every family except nbinom2;
     ## log_phi = 0 means phi = 1 on the natural scale.
-    log_phi = rep(0, T)
+    log_phi = rep(0, T),
+    ## Design 108 Stage 2: per-trait Gaussian log-SD; mapped off for
+    ## non-Gaussian traits. Start from validated log_sigma_start when present.
+    log_sigma = if (!is.null(data$log_sigma_start)) {
+      as.numeric(data$log_sigma_start)
+    } else {
+      rep(0, T)
+    }
   )
 }
 
@@ -597,7 +678,7 @@
 ##
 ## Fields
 ##   family       : R-side name accepted by .va_r3_validate_data()
-##   family_code  : integer passed to the template as DATA_INTEGER(family)
+##   family_code  : integer passed to the template as DATA_IVECTOR(family) entries
 ##   link         : the single link this family admits
 ##   tiers        : evaluation tiers the template implements for it
 ##   default_tier : what eval_method = "auto" resolves to
@@ -683,7 +764,16 @@
 
 .va_r3_resolve_eval_method <- function(eval_method = c("auto", "jj", "gh"), family) {
   eval_method <- match.arg(eval_method)
-  entry <- .va_r3_family_entry(family)
+  codes <- unique(as.integer(family))
+  ## Design 108 Stage 2: mixed-family fits always use GH; JJ is binomial-only.
+  if (length(codes) > 1L) {
+    if (identical(eval_method, "jj")) {
+      stop("eval_method = \"jj\" is only defined for pure-binomial VA fits.",
+           call. = FALSE)
+    }
+    return("gh")
+  }
+  entry <- .va_r3_family_entry(codes)
   if (identical(eval_method, "auto")) return(entry$default_tier)
   if (!eval_method %in% entry$tiers) {
     stop(sprintf(
@@ -801,7 +891,12 @@
                                      family, resolved_eval_method) {
   optimizer <- match.arg(optimizer)
   if (!identical(optimizer, "auto")) return(optimizer)
-  entry <- .va_r3_family_entry(family)
+  codes <- unique(as.integer(family))
+  if (length(codes) > 1L) {
+    ## Mixed-family fits use GH; keep the reference GH optimiser.
+    return("nlminb")
+  }
+  entry <- .va_r3_family_entry(codes)
   choice <- entry$optimizer_by_tier[[resolved_eval_method]]
   ## A tier with no declared route falls back to the reference optimiser rather
   ## than guessing; a new tier must opt in explicitly.
@@ -1120,18 +1215,38 @@
   ## template regardless, so fill in the phi=1 default rather than requiring
   ## every call site to know about a parameter that, for them, is inert.
   if (is.null(parameters$log_phi)) parameters$log_phi <- rep(0, validated$T)
+  if (is.null(parameters$log_sigma)) {
+    parameters$log_sigma <- if (!is.null(validated$log_sigma_start)) {
+      as.numeric(validated$log_sigma_start)
+    } else {
+      rep(0, validated$T)
+    }
+  }
   tmb_data <- validated[c("y", "n_trials", "X", "unit_id", "trait_id",
-                          "is_y_observed",
-                          "N", "T", "q", "family", "gaussian_sd")]
+                          "is_y_observed", "family",
+                          "N", "T", "q")]
   tmb_data$gh_nodes <- rule$nodes
   tmb_data$gh_weights <- rule$weights
   tmb_data$eval_method <- eval_method_code
-  ## log_phi is only a genuine free parameter for nbinom2 (family_code 3);
-  ## every other family maps it off at its default value, so adding it here
-  ## costs those families nothing.
+  ## Per-trait maps (Design 108 Stage 2): log_phi free only on nbinom2 traits;
+  ## log_sigma free only on Gaussian traits.
   map <- list()
-  if (!identical(validated$family, 3L)) {
-    map$log_phi <- factor(rep(NA_integer_, length(parameters$log_phi)))
+  fam <- as.integer(validated$family)
+  tid <- as.integer(validated$trait_id)
+  phi_free <- vapply(seq_len(validated$T) - 1L, function(t) {
+    any(fam[tid == t] == 3L)
+  }, logical(1L))
+  sigma_free <- vapply(seq_len(validated$T) - 1L, function(t) {
+    any(fam[tid == t] == 0L)
+  }, logical(1L))
+  if (!isTRUE(validated$estimate_gaussian_sd)) {
+    sigma_free[] <- FALSE
+  }
+  if (!all(phi_free)) {
+    map$log_phi <- factor(ifelse(phi_free, seq_along(phi_free), NA_integer_))
+  }
+  if (!all(sigma_free)) {
+    map$log_sigma <- factor(ifelse(sigma_free, seq_along(sigma_free), NA_integer_))
   }
   if (!is.null(fixed_global)) {
     if (!is.list(fixed_global) ||
@@ -1168,11 +1283,7 @@
 .va_r3_fit <- function(y, n_trials, X, unit_id, trait_id, q,
                        N = NULL, T = NULL,
                        family = c("binomial", "poisson", "gaussian_anchor", "nbinom2"),
-                       link = switch(family[1L],
-                         gaussian_anchor = "identity",
-                         poisson = "log",
-                         nbinom2 = "log",
-                         "logit"),
+                       link = NULL,
                        unique = FALSE, psi = FALSE, structured = FALSE,
                        provider = NULL, lv = FALSE, missing = FALSE,
                        gaussian_sd = 1, H = 61L,
@@ -1182,8 +1293,41 @@
                        silent = TRUE, eval_method = c("auto", "jj", "gh"),
                        n_starts = 4L,
                        optimizer = c("auto", "nlminb", "lbfgsb"),
-                       is_y_observed = NULL) {
-  family <- match.arg(family)
+                       is_y_observed = NULL,
+                       family_codes = NULL,
+                       estimate_gaussian_sd = TRUE) {
+  family_choices <- c("binomial", "poisson", "gaussian_anchor", "nbinom2",
+                      "gaussian")
+  if (is.null(family_codes)) {
+    if (length(family) == 1L) {
+      family <- match.arg(family, family_choices)
+    } else if (identical(unname(as.character(family)),
+                         c("binomial", "poisson", "gaussian_anchor", "nbinom2"))) {
+      ## Default formal value — match.arg() would return the first choice.
+      family <- "binomial"
+    }
+  }
+  if (is.null(link)) {
+    link <- if (!is.null(family_codes) || length(family) > 1L) {
+      ## Per-row links filled inside validate_data from family codes when needed.
+      "logit"
+    } else {
+      switch(family[1L],
+             gaussian_anchor = "identity",
+             gaussian = "identity",
+             poisson = "log",
+             nbinom2 = "log",
+             "logit")
+    }
+  }
+  ## When family_codes is supplied, build matching per-row links.
+  if (!is.null(family_codes) && length(link) == 1L) {
+    codes <- as.integer(family_codes)
+    link <- vapply(codes, function(c) {
+      switch(as.character(c), "0" = "identity", "1" = "logit",
+             "2" = "log", "3" = "log", "logit")
+    }, character(1L))
+  }
   rank_source <- match.arg(rank_source)
   eval_method <- match.arg(eval_method)
   optimizer <- match.arg(optimizer)
@@ -1191,7 +1335,8 @@
   validated <- .va_r3_validate_data(
     y, n_trials, X, unit_id, trait_id, q, N, T, family, link,
     unique, psi, structured, provider, lv, missing, gaussian_sd,
-    is_y_observed = is_y_observed
+    is_y_observed = is_y_observed, family_codes = family_codes,
+    estimate_gaussian_sd = estimate_gaussian_sd
   )
   ## Validate and resolve eval_method against the family up front, before any
   ## objective is constructed, so a mismatched request fails closed for every
@@ -1350,6 +1495,9 @@
   if (length(healthy_id) >= 3L) {
     agreement_range <- .va_r3_best_three_range(objectives[healthy_id])
   }
+  ## n_starts = 1 may reach the same optimum, but it cannot pass the
+  ## three-start agreement gate — status stays failed_health_gate so the
+  ## bypass is visible (see test-va-r3-prototype.R).
   agreement <- length(healthy_id) >= 3L && agreement_range <= 1e-6
   admitted <- length(healthy_id) >= 3L && agreement
   best_id <- if (length(healthy_id)) {
@@ -1394,9 +1542,8 @@
     research_only = TRUE,
     objective_type = .va_r3_objective_type(resolved_eval_method),
     rank_source = rank_source,
-    family = switch(family, gaussian_anchor = "gaussian", poisson = "poisson",
-                    nbinom2 = "nbinom2", "binomial"),
-    link = link,
+    family = validated$family_name,
+    link = validated$link,
     unique = FALSE,
     q = validated$q,
     eval_method = resolved_eval_method,

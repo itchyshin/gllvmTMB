@@ -129,11 +129,11 @@ Type objective_function<Type>::operator()()
   DATA_INTEGER(q);
   DATA_VECTOR(gh_nodes);
   DATA_VECTOR(gh_weights);
-  DATA_INTEGER(family);            // 0 = Gaussian anchor; 1 = binomial-logit; 2 = Poisson-log;
-                                   // 3 = nbinom2-log
-  DATA_SCALAR(gaussian_sd);        // fixed observation SD for family == 0
+  // Design 108 Stage 2: per-row family codes (dense N*T), same layout as y.
+  // 0 = Gaussian; 1 = binomial-logit; 2 = Poisson-log; 3 = nbinom2-log.
+  DATA_IVECTOR(family);
   DATA_INTEGER(eval_method);       // 0 = Gauss-Hermite quadrature;
-                                   // 1 = Jaakkola-Jordan/Polya-Gamma bound (binomial only)
+                                   // 1 = Jaakkola-Jordan/PG bound (binomial-only fits)
 
   PARAMETER_VECTOR(beta);
   PARAMETER_VECTOR(theta_rr);      // live-engine packing; raw diagonal first
@@ -143,6 +143,9 @@ Type objective_function<Type>::operator()()
   PARAMETER_VECTOR(log_phi);       // T-vector, nbinom2 dispersion on the log
                                    // scale; mapped off (NA) for every other
                                    // family, so it costs nothing there
+  PARAMETER_VECTOR(log_sigma);     // T-vector, Gaussian residual SD on log
+                                   // scale (Design 108 Stage 2); mapped off
+                                   // for non-Gaussian traits
 
   const int n_obs = y.size();
   const int n_off = q * (q - 1) / 2;
@@ -150,15 +153,13 @@ Type objective_function<Type>::operator()()
 
   // Defensive dimension/scope checks. The R adapter performs the richer
   // pre-construction validation required by Design 85.
-  if (family != 0 && family != 1 && family != 2 && family != 3)
-    error("gllvmTMB_va_r3: family must be 0 (Gaussian), 1 (binomial), 2 (Poisson), or 3 (nbinom2)");
   if (N <= 0 || T <= 0 || q <= 0 || q > T)
     error("gllvmTMB_va_r3: require N > 0, T > 0, and 1 <= q <= T");
   if (n_obs != N * T)
     error("gllvmTMB_va_r3: the research objective requires exactly N*T cells");
   if (n_trials.size() != n_obs || unit_id.size() != n_obs ||
       trait_id.size() != n_obs || is_y_observed.size() != n_obs ||
-      X.rows() != n_obs)
+      family.size() != n_obs || X.rows() != n_obs)
     error("gllvmTMB_va_r3: response-side data dimensions do not agree");
   if (X.cols() != beta.size())
     error("gllvmTMB_va_r3: ncol(X) must equal length(beta)");
@@ -170,43 +171,48 @@ Type objective_function<Type>::operator()()
     error("gllvmTMB_va_r3: variational parameter dimensions do not agree");
   if (log_phi.size() != T)
     error("gllvmTMB_va_r3: log_phi must have length T");
+  if (log_sigma.size() != T)
+    error("gllvmTMB_va_r3: log_sigma must have length T");
   if (gh_nodes.size() <= 0 || gh_weights.size() != gh_nodes.size())
     error("gllvmTMB_va_r3: GH nodes and weights must have the same positive length");
-  if (family == 0 && !(asDouble(gaussian_sd) > 0.0))
-    error("gllvmTMB_va_r3: gaussian_sd must be positive for the Gaussian anchor");
   if (eval_method != 0 && eval_method != 1)
     error("gllvmTMB_va_r3: eval_method must be 0 (Gauss-Hermite) or 1 (Jaakkola-Jordan/PG bound)");
-  if (eval_method == 1 && family != 1)
-    error("gllvmTMB_va_r3: eval_method = 1 (Jaakkola-Jordan/PG bound) is only defined for the binomial family");
 
   // Dense convention: each unit-trait cell is exactly one row. Family range
   // checks apply only to observed cells (Design 107); masked sentinels are
   // never fed to a density call.
   std::vector<int> cell_count(N * T, 0);
+  int n_non_binomial = 0;
   for (int r = 0; r < n_obs; ++r) {
     int i = unit_id(r);
     int t = trait_id(r);
     int obs = is_y_observed(r);
+    int fam = family(r);
     if (i < 0 || i >= N || t < 0 || t >= T)
       error("gllvmTMB_va_r3: unit_id or trait_id is out of range");
     if (obs != 0 && obs != 1)
       error("gllvmTMB_va_r3: is_y_observed entries must be 0 or 1");
+    if (fam != 0 && fam != 1 && fam != 2 && fam != 3)
+      error("gllvmTMB_va_r3: family entries must be 0 (Gaussian), 1 (binomial), 2 (Poisson), or 3 (nbinom2)");
+    if (fam != 1) n_non_binomial += 1;
     cell_count[i * T + t] += 1;
     if (!std::isfinite(asDouble(y(r))) || !std::isfinite(asDouble(n_trials(r))))
       error("gllvmTMB_va_r3: y and n_trials must be finite");
-    if (obs == 1 && family == 1) {
+    if (obs == 1 && fam == 1) {
       double yd = asDouble(y(r));
       double nd = asDouble(n_trials(r));
       if (nd < 1.0 || std::floor(nd) != nd || yd < 0.0 || yd > nd ||
           std::floor(yd) != yd)
         error("gllvmTMB_va_r3: binomial cells require integer n >= 1 and 0 <= y <= n");
     }
-    if (obs == 1 && (family == 2 || family == 3)) {
+    if (obs == 1 && (fam == 2 || fam == 3)) {
       double yd = asDouble(y(r));
       if (yd < 0.0 || std::floor(yd) != yd)
         error("gllvmTMB_va_r3: Poisson/nbinom2 cells require finite non-negative integer y");
     }
   }
+  if (eval_method == 1 && n_non_binomial > 0)
+    error("gllvmTMB_va_r3: eval_method = 1 (Jaakkola-Jordan/PG bound) requires every row to be binomial");
   for (int cell = 0; cell < N * T; ++cell) {
     if (cell_count[cell] != 1)
       error("gllvmTMB_va_r3: every unit-trait cell must occur exactly once");
@@ -301,11 +307,11 @@ Type objective_function<Type>::operator()()
 
   const Type log_two_pi = log(Type(2.0) *
     Type(3.141592653589793238462643383279502884));
-  const Type gaussian_var = gaussian_sd * gaussian_sd;
 
   for (int r = 0; r < n_obs; ++r) {
     int i = unit_id(r);
     int t = trait_id(r);
+    int fam = family(r);
 
     Type mu = Type(0.0);
     for (int p = 0; p < X.cols(); ++p)
@@ -341,12 +347,15 @@ Type objective_function<Type>::operator()()
     }
 
     Type ell = Type(0.0);
-    if (family == 0) {
+    if (fam == 0) {
+      // Design 108 Stage 2: per-trait estimated residual SD.
+      Type sigma = exp(log_sigma(t));
+      Type gaussian_var = sigma * sigma;
       Type residual = y(r) - mu;
       ell = -Type(0.5) *
-        (log_two_pi + Type(2.0) * log(gaussian_sd)
+        (log_two_pi + Type(2.0) * log_sigma(t)
          + (residual * residual + v) / gaussian_var);
-    } else if (family == 1) {
+    } else if (fam == 1) {
       Type n = n_trials(r);
       Type log_choose = lgamma(n + Type(1.0))
         - lgamma(y(r) + Type(1.0))
@@ -359,7 +368,7 @@ Type objective_function<Type>::operator()()
         : va_r3_softplus_expectation(mu, v, gh_nodes, gh_weights);
       softplus_expectation_by_obs(r) = softplus_expectation;
       ell = log_choose + y(r) * mu - n * softplus_expectation;
-    } else if (family == 2) {
+    } else if (fam == 2) {
       // Poisson-log: E[exp(eta)] for eta ~ N(mu, v) is exact (log-normal
       // mean), so no quadrature is required.
       ell = y(r) * mu - exp(mu + v / Type(2.0)) - lgamma(y(r) + Type(1.0));
@@ -399,6 +408,8 @@ Type objective_function<Type>::operator()()
 
   REPORT(eval_method);
   REPORT(is_y_observed);
+  REPORT(family);
+  REPORT(log_sigma);
   REPORT(Lambda);
   REPORT(Sigma_B);
   REPORT(m);

@@ -62,23 +62,43 @@
     source = NULL, rebuild = FALSE,
     control = list(eval.max = 2000L, iter.max = 2000L), silent = TRUE,
     eval_method = c("auto", "jj", "gh"),
-    is_y_observed = NULL) {
-  family <- .approximation_engine_scalar_character(family, "family")
-  link <- .approximation_engine_scalar_character(link, "link")
+    is_y_observed = NULL,
+    family_codes = NULL) {
   eval_method <- match.arg(eval_method)
-  expected_link <- switch(family, binomial = "logit", poisson = "log", NA_character_)
-  if (is.na(expected_link) || !identical(link, expected_link) ||
-      !identical(unique, FALSE)) {
+  if (!identical(unique, FALSE)) {
     stop(
-      "VA-R3 admits only dense binomial-logit or Poisson-log data with unique = FALSE.",
+      "VA-R3 admits only dense ordinary latent(..., unique = FALSE) data.",
       call. = FALSE
     )
   }
-  if (identical(eval_method, "jj") && !identical(family, "binomial")) {
-    stop(
-      "eval_method = \"jj\" (Jaakkola-Jordan/PG bound) is only defined for the binomial family.",
-      call. = FALSE
+  if (is.null(family_codes)) {
+    family <- .approximation_engine_scalar_character(family, "family")
+    link <- .approximation_engine_scalar_character(link, "link")
+    expected_link <- switch(family,
+      binomial = "logit", poisson = "log",
+      gaussian = "identity", gaussian_anchor = "identity",
+      NA_character_
     )
+    if (is.na(expected_link) || !identical(link, expected_link)) {
+      stop(
+        "VA-R3 admits dense binomial-logit, Poisson-log, or Gaussian-identity data.",
+        call. = FALSE
+      )
+    }
+    if (identical(eval_method, "jj") && !identical(family, "binomial")) {
+      stop(
+        "eval_method = \"jj\" (Jaakkola-Jordan/PG bound) is only defined for the binomial family.",
+        call. = FALSE
+      )
+    }
+  } else {
+    family_codes <- as.integer(family_codes)
+    if (identical(eval_method, "jj") && !all(family_codes == 1L)) {
+      stop(
+        "eval_method = \"jj\" (Jaakkola-Jordan/PG bound) is only defined for pure-binomial VA fits.",
+        call. = FALSE
+      )
+    }
   }
 
   ## Validate before .va_r3_fit() can construct a quadrature objective.
@@ -87,7 +107,8 @@
     trait_id = trait_id, q = q, N = N, T = T,
     family = family, link = link, unique = FALSE,
     psi = psi, structured = structured, provider = provider, lv = lv,
-    missing = missing, is_y_observed = is_y_observed
+    missing = missing, is_y_observed = is_y_observed,
+    family_codes = family_codes
   )
   started <- proc.time()[["elapsed"]]
   raw <- .va_r3_fit(
@@ -98,7 +119,7 @@
     missing = missing, H = H, rank_source = rank_source,
     fixed_global = fixed_global, source = source, rebuild = rebuild,
     control = control, silent = silent, eval_method = eval_method,
-    is_y_observed = is_y_observed
+    is_y_observed = is_y_observed, family_codes = family_codes
   )
   elapsed <- proc.time()[["elapsed"]] - started
   best <- raw$best %||% list()

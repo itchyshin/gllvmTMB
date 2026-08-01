@@ -191,6 +191,7 @@ examples and interpretations apply.
 | First worked model | Gaussian `latent()` with its default `Psi` companion is the safest public decomposition example and is shown in [Morphometrics](https://itchyshin.github.io/gllvmTMB/articles/morphometrics.html). |
 | Latent-rank choice | [How many latent dimensions should I fit?](https://itchyshin.github.io/gllvmTMB/articles/model-selection-latent-rank.html) compares Gaussian ordinary `latent()` candidate ranks with `logLik()`, AIC, BIC, and `check_gllvmTMB()` rows. These criteria help route model choice within a fixed candidate set; they do not prove the biological rank or replace diagnostics. |
 | Formula keywords | The four taught covariance modes—Scalar, Independent, Dependent, and Latent—are documented across ordinary, animal, phylogenetic, and spatial sources in [Formula keyword grid](https://itchyshin.github.io/gllvmTMB/articles/api-keyword-grid.html). |
+| Multivariate spatial models | [Multivariate spatial models with an SPDE mesh](https://itchyshin.github.io/gllvmTMB/articles/spatial-models.html) shows mesh construction, equivalent long- and wide-format Gaussian fits, practical-range interpretation, current limitations, and the independent-authorship/licensing boundary. |
 | Response families | Families are listed in [Response families](https://itchyshin.github.io/gllvmTMB/articles/response-families.html); evidence depth and supported covariance regimes vary by family. |
 | Fitted diagnostics | [Can I trust this fit?](https://itchyshin.github.io/gllvmTMB/articles/fit-diagnostics.html) shows the first post-fit triage. `check_gllvmTMB()` reports numerical fit health; `predictive_check()`, `residuals()`, and `diagnostic_table()` provide fitted-model response diagnostics for the scoped Gaussian, Poisson, and NB2 paths. These are diagnostic displays, not posterior predictive checks or interval calibration. |
 | Deferred guides | Quantitative-genetic heritability, confirmatory loading constraints, applied mixed-response and ordinal workflows, broad interval calibration, and cross-package agreement do not yet have public worked guides. [`suggest_lambda_constraint()`](https://itchyshin.github.io/gllvmTMB/articles/lambda-constraint-suggest.html) has a narrow public guide for a reproducible exploratory loading orientation; it does not establish confirmatory loading claims. Their underlying functions may exist, but that alone is not a recommendation to use them for those scientific claims. |
@@ -241,6 +242,8 @@ source code is included or adapted (helper scope: SPA-01; the broader spatial
 family remains partial under FG-13). TMB itself is a runtime dependency rather
 than included code; the gllvmTMB C++ engine in `src/gllvmTMB.cpp` is original
 work by the package author, written against the TMB API.
+See the [spatial-model guide](https://itchyshin.github.io/gllvmTMB/articles/spatial-models.html#independence-acknowledgement-and-licensing)
+for the public independence, acknowledgement, and GPL-3 explanation.
 
 ## Sister packages
 

@@ -1,0 +1,302 @@
+---
+title: "Multivariate spatial models with an SPDE mesh"
+description: "Build a mesh, fit equivalent long- and wide-format Gaussian spatial models, interpret the practical range, and understand the current evidence boundary."
+tier: 1
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{Multivariate spatial models with an SPDE mesh}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 6.5,
+  fig.height = 5,
+  fig.align = "center",
+  cache = FALSE,
+  eval = requireNamespace("fmesher", quietly = TRUE),
+  message = FALSE,
+  warning = FALSE
+)
+```
+
+Measurements collected at nearby sites can resemble one another even after
+the measured environment is in the model. This article answers a practical
+question: **how can I fit several continuous traits with spatially structured
+residual variation, while keeping the mesh and the trait covariance explicit?**
+
+The first worked model gives each trait an independent spatial field with a
+common practical range. It uses `spatial_indep()`: *spatial* identifies the
+mesh-based covariance source, and *indep* fixes cross-trait spatial covariance
+to zero while estimating a separate field scale for each trait.
+
+The central long-format call is:
+
+```{r quick-start, eval = FALSE}
+fit_long <- gllvmTMB(
+  value ~ 0 + trait + spatial_indep(0 + trait | site, mesh = mesh),
+  data = spatial_long,
+  trait = "trait",
+  unit = "site",
+  mesh = mesh
+)
+```
+
+> **Evidence boundary.** Mesh construction, projection, finite-element
+> matrices, and ingestion by a Gaussian spatial fit are covered (SPA-01).
+> Evidence across the complete spatial keyword-by-family surface remains
+> partial (FG-13). This article does not support directional anisotropy,
+> barriers, spatiotemporal fields, or interval-coverage claims.
+
+## Simulate a spatial teaching dataset
+
+The teaching dataset has 100 sites, three continuous traits, a true practical
+range of 0.3 coordinate units, and different spatial field variances across
+traits. `simulate_site_trait()` returns stacked long data: each site appears
+once per trait.
+
+```{r setup}
+library(gllvmTMB)
+
+spatial_sim <- simulate_site_trait(
+  n_sites = 100,
+  n_species = 1,
+  n_traits = 3,
+  mean_species_per_site = 1,
+  spatial_range = 0.3,
+  sigma2_spa = c(0.4, 0.6, 0.3),
+  seed = 128
+)
+
+spatial_long <- spatial_sim$data
+head(spatial_long[c("site", "trait", "value", "lon", "lat")])
+```
+
+For this simulation, `lon` and `lat` are normalized equal-distance
+coordinates on a unit square. Real longitude and latitude are angular
+coordinates, so project them before constructing a distance-based mesh:
+
+```{r project-coordinates, eval = FALSE}
+spatial_long <- add_utm_columns(
+  spatial_long,
+  ll_names = c("longitude", "latitude"),
+  utm_names = c("X", "Y"),
+  units = "km"
+)
+```
+
+If sites span several UTM zones or both hemispheres, choose and justify a
+study-appropriate projected CRS instead of accepting an automatic zone
+silently.
+
+## Build and inspect the mesh
+
+`make_mesh()` constructs the triangular mesh, the observation-to-mesh
+projection matrix, and the finite-element matrices used by the SPDE engine.
+The `cutoff` is in the same units as the supplied coordinates; increasing it
+usually produces a coarser mesh.
+
+```{r build-mesh}
+mesh <- make_mesh(
+  spatial_long,
+  xy_cols = c("lon", "lat"),
+  cutoff = 0.07
+)
+
+mesh
+plot(mesh)
+```
+
+Inspect the mesh before fitting. It should cover every sampling location
+without a fringe of extremely narrow triangles. A mesh that is too coarse can
+erase short-range structure; a needlessly fine mesh adds latent variables and
+can make optimization slower.
+
+The projection matrix must follow the rows of the internally stacked data.
+The long data already have that order. If your data start wide, make an
+equivalent row-major coordinate frame before calling `make_mesh()`:
+
+```{r wide-mesh-data, eval = FALSE}
+trait_cols <- c("trait_1", "trait_2", "trait_3")
+mesh_data <- spatial_wide[
+  rep(seq_len(nrow(spatial_wide)), each = length(trait_cols)),
+  c("lon", "lat"),
+  drop = FALSE
+]
+mesh <- make_mesh(mesh_data, c("lon", "lat"), cutoff = 0.07)
+```
+
+This explicit alignment protects against the most consequential mesh failure:
+a projection matrix whose rows no longer correspond to the fitted response
+cells.
+
+## Fit the same model in long and wide form
+
+For trait $t$ at site $i$, the worked model is
+$y_{it} = \alpha_t + u_t(s_i) + \varepsilon_{it}$. The fields $u_t$ are
+independent across traits. Their shared mesh geometry is represented by
+
+$$
+Q(\kappa) = \kappa^4 M_0 + 2\kappa^2 M_1 + M_2,
+$$
+
+where the mesh supplies $M_0$, $M_1$, and $M_2$. The parameter $\kappa$
+controls the practical range; trait-specific scale parameters control how
+strongly each field varies.
+
+```{r fit-long}
+fit_long <- gllvmTMB(
+  value ~ 0 + trait + spatial_indep(0 + trait | site, mesh = mesh),
+  data = spatial_long,
+  trait = "trait",
+  unit = "site",
+  mesh = mesh,
+  silent = TRUE
+)
+
+fit_long$opt$convergence
+```
+
+Some readers store one response column per trait. The compact `traits()`
+formula uses `spatial_indep(1 | site)`; the formula expander creates the same
+trait-specific intercept and spatial-field design as the long call.
+
+```{r make-wide}
+spatial_wide <- reshape(
+  spatial_long[c("site", "lon", "lat", "trait", "value")],
+  idvar = c("site", "lon", "lat"),
+  timevar = "trait",
+  direction = "wide"
+)
+names(spatial_wide) <- sub("value.", "", names(spatial_wide), fixed = TRUE)
+row.names(spatial_wide) <- NULL
+```
+
+```{r fit-wide}
+fit_wide <- gllvmTMB(
+  traits(trait_1, trait_2, trait_3) ~
+    1 + spatial_indep(1 | site, mesh = mesh),
+  data = spatial_wide,
+  unit = "site",
+  mesh = mesh,
+  silent = TRUE
+)
+
+c(
+  long_convergence = fit_long$opt$convergence,
+  wide_convergence = fit_wide$opt$convergence,
+  long_logLik = unname(logLik(fit_long)),
+  wide_logLik = unname(logLik(fit_wide))
+)
+```
+
+The two calls are alternative data interfaces, not different statistical
+models. Use long data when trait labels are already rows; use `traits()` when
+the responses are columns.
+
+## Interpret the practical range
+
+The current spatial engine assumes isotropy: dependence changes with distance
+but not direction. `plot_anisotropy()` therefore displays a circle and reports
+the fitted practical range; it does **not** estimate directional anisotropy.
+
+```{r range-summary}
+data.frame(
+  true_range = spatial_sim$truth$spatial_range,
+  fitted_range = sqrt(8) / as.numeric(fit_long$report$kappa[1]),
+  assumption = "isotropic (H = I)"
+)
+```
+
+```{r range-plot}
+invisible(plot_anisotropy(fit_long))
+```
+
+The fitted value is one point estimate from one simulated dataset. Agreement
+with the generating value is a teaching check, not evidence of unbiased range
+estimation or calibrated uncertainty across designs.
+
+Run the ordinary fit diagnostics before interpreting spatial parameters:
+
+```{r diagnostics}
+check_gllvmTMB(fit_long)
+```
+
+## Choose the spatial covariance mode
+
+All four spatial keywords use the same mesh and SPDE geometry. They answer
+different trait-covariance questions.
+
+| Keyword | Spatial covariance question |
+|---|---|
+| `spatial_scalar()` | Should all traits share one spatial field variance? |
+| `spatial_indep()` | Should traits have separate field variances but zero cross-trait spatial covariance? |
+| `spatial_latent(..., d = K)` | Can $K$ shared spatial axes describe cross-trait spatial covariance? |
+| `spatial_dep()` | Should the model estimate a full cross-trait spatial covariance? |
+
+Start with the simplest mode that answers the biological question. Do not add
+`spatial_indep()` to `spatial_latent()` or `spatial_dep()` in the same formula;
+those combinations duplicate spatial variance and fail explicitly.
+
+For a reduced-rank cross-trait spatial model, change only the spatial term:
+
+```{r latent-spatial-syntax, eval = FALSE}
+fit_shared <- gllvmTMB(
+  value ~ 0 + trait +
+    spatial_latent(0 + trait | site, d = 2, unique = TRUE, mesh = mesh),
+  data = spatial_long,
+  trait = "trait",
+  unit = "site",
+  mesh = mesh
+)
+```
+
+Here `d = 2` requests two shared spatial axes, while `unique = TRUE` retains a
+trait-specific spatial diagonal. This broader family is still partial under
+FG-13/SPA-02, so treat current estimates as model-based point estimates rather
+than calibrated spatial-correlation inference.
+
+## Independence, acknowledgement, and licensing
+
+`gllvmTMB` does not import, link to, or include `sdmTMB`; `sdmTMB` is not a
+runtime or build dependency. We thank the sdmTMB authors because their
+user-facing spatial interface inspired the original gllvmTMB interface. That
+is a courtesy acknowledgement, not a statement that gllvmTMB contains or
+adapts sdmTMB source code.
+
+The current helpers in `R/mesh.R`, `R/crs.R`, and `R/plot.R` were independently
+authored for gllvmTMB from the published SPDE/GMRF construction and the public
+`fmesher` API. They are gllvmTMB code distributed under
+[GPL-3](../LICENSE.html). The repository records the detailed code-provenance
+boundary in [`inst/COPYRIGHTS`](https://github.com/itchyshin/gllvmTMB/blob/main/inst/COPYRIGHTS).
+
+Users should cite gllvmTMB and TMB through `citation("gllvmTMB")`. The sdmTMB
+acknowledgement does not create a separate required citation for using these
+independently implemented helpers.
+
+## What to do next
+
+| If your question is... | Continue with... |
+|---|---|
+| Which spatial covariance mode matches my estimand? | [Formula keyword grid](api-keyword-grid.html) |
+| Do species still co-occur after environmental predictors? | [Joint species distribution models](joint-sdm.html) |
+| Can I trust this fitted object numerically? | [Fit diagnostics](fit-diagnostics.html) |
+| How does the SPDE keyword map to the engine? | [`spatial_indep()` reference](../reference/spatial_indep.html) |
+
+Single-response spatial models belong in
+[`sdmTMB`](https://pbs-assess.github.io/sdmTMB/). Directional anisotropy,
+barrier meshes, and spatiotemporal fields are not implemented in the current
+gllvmTMB spatial helper contract.
+
+## References
+
+Lindgren F, Rue H, Lindström J (2011). An explicit link between Gaussian
+fields and Gaussian Markov random fields: the stochastic partial differential
+equation approach. *Journal of the Royal Statistical Society: Series B*, 73,
+423--498. <https://doi.org/10.1111/j.1467-9868.2011.00777.x>.

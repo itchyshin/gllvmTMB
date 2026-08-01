@@ -40,8 +40,9 @@ using a binomial-logit model with `latent(0 + trait | site, d = K)` for
 residual co-occurrence. The Fisher-z intervals below are model-based
 uncertainty diagnostics; their repeated-sampling coverage has not been
 established for this model class. Single-species spatial SDMs belong in
-`sdmTMB`, and multivariate spatial fields via `spatial_*()` are beyond the
-scope of this introductory JSDM example.
+`sdmTMB`. Multivariate spatial fields via `spatial_*()` are beyond the scope of
+this introductory JSDM example and have a separate
+[worked spatial-model guide](spatial-models.html).
 
 ## Setup
 

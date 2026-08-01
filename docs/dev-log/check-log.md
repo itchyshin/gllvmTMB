@@ -47951,3 +47951,42 @@ Exact consistency searches:
 
 Full report:
 `docs/dev-log/after-task/2026-08-01-scale-aware-aghq-tau-847.md`.
+
+## 2026-08-01 -- spatial pkgdown guide and licensing acknowledgement (Codex)
+
+Added a Tier-1 `vignettes/articles/spatial-models.Rmd` guide for the already
+merged independent spatial helper layer. The page builds and inspects a mesh,
+fits equivalent long and compact-wide Gaussian `spatial_indep()` models,
+reports the isotropic practical range, compares the teaching truth with the
+point estimate, and states the current capability boundary. It says directly
+that sdmTMB inspired the original user-facing interface but is not a runtime or
+build dependency and that no sdmTMB source is included or adapted. The current
+helpers are independently authored gllvmTMB GPL-3 code based on the published
+SPDE/GMRF construction and public fmesher API.
+
+Reader cascade: `_pkgdown.yml`, `README.md`, `vignettes/gllvmTMB.Rmd`, and
+`vignettes/articles/joint-sdm.Rmd` now route to the guide.
+
+Checks:
+
+- focused article-call, mesh, and UTM tests: PASS, 60 expectations;
+- focused spatial article render: PASS; both fits converged and returned
+  identical log likelihoods;
+- `pkgdown::check_pkgdown()`: PASS, no problems;
+- `pkgdown::build_articles(lazy = FALSE)`: PASS for the complete article set;
+- rendered opening and licensing-anchor viewport inspection: PASS;
+- `devtools::document(quiet = TRUE)`: PASS with existing AIC/BIC roxygen
+  notices; recurring trailing blank-line noise removed, no Rd diff retained;
+- `devtools::check(args = "--no-manual", quiet = TRUE)`: PASS in 12m13.9s,
+  0 errors, 0 warnings, 2 environment notes (clock verification and
+  `xcrun_db`);
+- article-tier: Tier 1 PASS; prose review: PASS; Rose pre-publish: PASS;
+  `git diff --check`: PASS.
+- Shannon pre-publish census: WARN while unrelated PR #887 CI is active; its
+  only overlap is the append-only `docs/dev-log/check-log.md`, with no code,
+  article, navigation, or report-file overlap. Reconcile against `origin/main`
+  before merge.
+
+Exact consistency searches and classified verdicts are recorded in
+`docs/dev-log/after-task/2026-08-01-spatial-pkgdown-guide.md`. No R API,
+likelihood, formula grammar, feature status, or simulation campaign changed.

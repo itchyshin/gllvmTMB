@@ -57,6 +57,8 @@ navbar:
         href: articles/lambda-constraint-suggest.html
       - text: Joint species distribution model
         href: articles/joint-sdm.html
+      - text: Multivariate spatial models
+        href: articles/spatial-models.html
       - text: Phylogenetic covariance among traits
         href: articles/phylogenetic-gllvm.html
       - text: Handling missing data
@@ -102,6 +104,7 @@ articles:
     - articles/model-selection-latent-rank
     - articles/lambda-constraint-suggest
     - articles/joint-sdm
+    - articles/spatial-models
     - articles/phylogenetic-gllvm
     - articles/missing-data
 

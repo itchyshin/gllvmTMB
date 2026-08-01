@@ -396,8 +396,9 @@ component:
   relying on coefficients, covariance, or uncertainty.
 - **Choose a specialised model:** use the [Articles chooser](https://itchyshin.github.io/gllvmTMB/articles/index.html) to
   select repeated behaviours, reaction norms, binary occurrence,
-  phylogenetic covariance, missing data, rank selection, or a technical
-  reference.
+  multivariate spatial structure, phylogenetic covariance, missing data, rank
+  selection, or a technical reference. The [spatial-model guide](https://itchyshin.github.io/gllvmTMB/articles/spatial-models.html)
+  shows mesh construction and equivalent long- and wide-format fits.
 
 Family, grouping structure, covariance source, covariance mode, missingness,
 and latent rank answer different scientific questions. Add only the pieces the
@@ -409,7 +410,7 @@ sampling design and estimand require.
 several earlier projects; incorporated code is recorded precisely in
 `inst/COPYRIGHTS`:
 
-* [**sdmTMB**](https://pbs-assess.github.io/sdmTMB/) (Anderson, Ward, English, Barnett, Thorson, et al.): inspiration for the original spatial user interface; no sdmTMB source code is included or adapted (helper scope SPA-01; broader spatial-family evidence remains partial under FG-13).
+* [**sdmTMB**](https://pbs-assess.github.io/sdmTMB/) (Anderson, Ward, English, Barnett, Thorson, et al.): inspiration for the original spatial user interface; sdmTMB is not a gllvmTMB dependency, and no sdmTMB source code is included or adapted. The [spatial-model guide](https://itchyshin.github.io/gllvmTMB/articles/spatial-models.html#independence-acknowledgement-and-licensing) explains the independent GPL-3 implementation (helper scope SPA-01; broader spatial-family evidence remains partial under FG-13).
 * [**glmmTMB**](https://glmmtmb.github.io/glmmTMB/) (Brooks, Bolker, Kristensen, Magnusson, Skaug, Nielsen, Berg, van Bentham, et al.): `rr` / `propto` / `equalto` / `diag` covariance dispatch. The reduced-rank `rr()` machinery in particular is the contribution of [**McGillycuddy, Popovic, Bolker & Warton (2025)**](https://doi.org/10.18637/jss.v112.i01) *J. Stat. Softw.* 112(1).
 * [**GALAMM**](https://lcbc-uio.github.io/galamm/) (Sørensen): mixed-response (`gfam`) and confirmatory fixed-loading (`lambda_constraint`) patterns.
 * [**MCMCglmm**](https://cran.r-project.org/package=MCMCglmm) (Hadfield): sparse $A^{-1}$ phylogeny representation used by `phylo_latent()`.

@@ -1,0 +1,4 @@
+"arm","all_cells_eligible","successful_loading_pairs","common_loading_pairs","mean_candidate_loading_error","mean_paired_loading_delta"
+"auto_cap5",FALSE,125,125,0.0829847294771369,0.0093492499670569
+"auto_cap6",FALSE,125,125,0.0829847294771369,0.0093492499670569
+"auto_cap8",FALSE,125,125,0.0829847294771369,0.0093492499670569

@@ -158,8 +158,21 @@ pass. Default \code{1L}. Later passes escalate when continuation is enabled.}
 \item{aghq_n_adapt}{Maximum number of adaptation passes. Default \code{400L}.}
 
 \item{aghq_ridge}{Ridge penalty on the loadings, as the scale \code{tau};
-\code{Inf} disables it. Default \code{2}. Naming it explicitly also makes the
-\code{Laplace + ridge} control reachable without quadrature.}
+\code{Inf} disables it. Default \code{2}. Naming a numeric value explicitly also
+makes the \code{Laplace + ridge} control reachable without quadrature.
+\code{"auto"} is an \strong{opt-in experimental} route for pure single-trial
+Bernoulli models with one ordinary unit-tier \code{latent()} block. It uses an
+unpenalised 9-node multi-start AGHQ pilot, then
+\verb{tau = min(6, max(1, ||Lambda_pilot||_F / sqrt(pq)))}. If the pilot or
+scale-aware final fit is unusable, the returned fit transparently falls
+back to the shipped \code{tau = 2} route; inspect
+\code{fit$aghq$ridge_auto}. Evidence supports failure/runaway avoidance in this
+scope, not a broad loading-accuracy improvement. The measured grid used a
+logit link with \code{p = 6}, \code{q = 2}, and \code{n = 100}, \code{400}, or \code{1600}; other
+links and dimensions are extrapolations (validation row MIS-36). The
+\code{"auto"} route always uses 9-node multi-start AGHQ for both pilot and final
+fits; a conflicting node/start control is replaced with a warning, while an
+explicit \code{aghq = FALSE} is incompatible.}
 
 \item{aghq_continuation}{If \code{TRUE} (default), the adaptation loop may raise
 \code{aghq_iter_cap} across passes. \code{FALSE} pins the cap and disables escalation.}
@@ -254,5 +267,9 @@ gllvmTMBcontrol(n_init = 3, init_jitter = 0.2)
 
 # Switch the optimiser to optim + BFGS for finicky two-level rr fits.
 gllvmTMBcontrol(optimizer = "optim", optArgs = list(method = "BFGS"))
+
+# Experimental, opt-in scale-aware ridge for the calibrated Bernoulli AGHQ
+# scope. The route uses the calibrated 9-node multi-start rule.
+gllvmTMBcontrol(aghq_ridge = "auto")
 
 }

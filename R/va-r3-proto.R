@@ -218,7 +218,8 @@
                                  unique = FALSE, psi = FALSE,
                                  structured = FALSE, provider = NULL,
                                  lv = FALSE, missing = FALSE,
-                                 gaussian_sd = 1) {
+                                 gaussian_sd = 1,
+                                 is_y_observed = NULL) {
   if (length(q) != 1L || !is.numeric(q) || !is.finite(q) ||
       q != as.integer(q) || q < 0L || q > 6L) {
     stop("q must be one integer in 0..6.", call. = FALSE)
@@ -244,21 +245,37 @@
   T <- as.integer(T)
   if (q > T) stop("q must not exceed T.", call. = FALSE)
 
+  if (is.null(is_y_observed)) {
+    is_y_observed <- rep.int(1L, length(y))
+  } else {
+    is_y_observed <- as.integer(is_y_observed)
+    if (length(is_y_observed) != length(y) ||
+        any(!is_y_observed %in% c(0L, 1L))) {
+      stop("is_y_observed must be length nrow(X) with entries in {0, 1}.",
+           call. = FALSE)
+    }
+  }
+  observed <- is_y_observed == 1L
+
   uid <- .va_r3_normalise_index(unit_id, N, "unit_id")
   tid <- .va_r3_normalise_index(trait_id, T, "trait_id")
   cell <- uid * T + tid
+  ## Dense Design-107 convention: every unit-trait cell is still exactly one
+  ## row; masked responses keep a sentinel y and is_y_observed == 0.
   if (length(y) != N * T || length(unique(cell)) != N * T ||
       !identical(sort(cell), 0:(N * T - 1L))) {
-    stop("R3 requires exactly one complete observation for every unit-trait cell.",
+    stop("R3 requires exactly one dense row for every unit-trait cell.",
          call. = FALSE)
   }
   if (qr(X)$rank != ncol(X)) {
     stop("X must have full column rank.", call. = FALSE)
   }
+  ## `missing = TRUE` still means mi()/predictor missingness (out of scope).
+  ## Response masks travel only through is_y_observed (Design 107).
   if (!identical(unique, FALSE) || !identical(psi, FALSE) ||
       !identical(structured, FALSE) || !is.null(provider) ||
       !identical(lv, FALSE) || !identical(missing, FALSE)) {
-    stop("R3 admits only ordinary latent(..., unique = FALSE) data with no Psi, structured/provider, lv, or missing-data marker.",
+    stop("R3 admits only ordinary latent(..., unique = FALSE) data with no Psi, structured/provider, lv, or missing-predictor marker.",
          call. = FALSE)
   }
 
@@ -267,22 +284,35 @@
     if (!identical(link, "logit")) {
       stop("R3 admits only the binomial logit link.", call. = FALSE)
     }
-    if (!is.numeric(y) || any(!is.finite(y)) || any(y != as.integer(y)) ||
-        !is.numeric(n_trials) || any(!is.finite(n_trials)) ||
-        any(n_trials != as.integer(n_trials)) || any(n_trials < 1L) ||
-        any(y < 0L) || any(y > n_trials)) {
-      stop("Binomial R3 data require integer n_trials >= 1 and integer 0 <= y <= n_trials.",
+    if (!is.numeric(y) || any(!is.finite(y)) ||
+        !is.numeric(n_trials) || any(!is.finite(n_trials))) {
+      stop("Binomial R3 data require finite y and n_trials (sentinels allowed on masked rows).",
            call. = FALSE)
     }
-    .va_r3_check_separation(y, n_trials, X)
+    if (any(observed) &&
+        (any(y[observed] != as.integer(y[observed])) ||
+         any(n_trials[observed] != as.integer(n_trials[observed])) ||
+         any(n_trials[observed] < 1L) ||
+         any(y[observed] < 0L) || any(y[observed] > n_trials[observed]))) {
+      stop("Binomial R3 data require integer n_trials >= 1 and integer 0 <= y <= n_trials on observed rows.",
+           call. = FALSE)
+    }
+    if (any(observed)) {
+      .va_r3_check_separation(y[observed], n_trials[observed], X[observed, , drop = FALSE])
+    }
     family_code <- 1L
   } else if (family == "poisson") {
     if (!identical(link, "log")) {
       stop("R3 admits only the Poisson log link.", call. = FALSE)
     }
-    if (!is.numeric(y) || any(!is.finite(y)) || any(y != as.integer(y)) ||
-        any(y < 0L)) {
-      stop("Poisson R3 data require finite non-negative integer y.", call. = FALSE)
+    if (!is.numeric(y) || any(!is.finite(y))) {
+      stop("Poisson R3 data require finite y (sentinels allowed on masked rows).",
+           call. = FALSE)
+    }
+    if (any(observed) &&
+        (any(y[observed] != as.integer(y[observed])) || any(y[observed] < 0L))) {
+      stop("Poisson R3 data require finite non-negative integer y on observed rows.",
+           call. = FALSE)
     }
     ## The standalone template declares n_trials for every branch; the Poisson
     ## algebra does not use it, but it must be finite and correctly sized.
@@ -292,9 +322,14 @@
     if (!identical(link, "log")) {
       stop("R3 admits only the nbinom2 log link.", call. = FALSE)
     }
-    if (!is.numeric(y) || any(!is.finite(y)) || any(y != as.integer(y)) ||
-        any(y < 0L)) {
-      stop("nbinom2 R3 data require finite non-negative integer y.", call. = FALSE)
+    if (!is.numeric(y) || any(!is.finite(y))) {
+      stop("nbinom2 R3 data require finite y (sentinels allowed on masked rows).",
+           call. = FALSE)
+    }
+    if (any(observed) &&
+        (any(y[observed] != as.integer(y[observed])) || any(y[observed] < 0L))) {
+      stop("nbinom2 R3 data require finite non-negative integer y on observed rows.",
+           call. = FALSE)
     }
     ## The standalone template declares n_trials for every branch; the nbinom2
     ## algebra does not use it, but it must be finite and correctly sized.
@@ -321,6 +356,7 @@
     X = unname(X),
     unit_id = uid,
     trait_id = tid,
+    is_y_observed = as.integer(is_y_observed),
     N = N,
     T = T,
     q = q,
@@ -1085,6 +1121,7 @@
   ## every call site to know about a parameter that, for them, is inert.
   if (is.null(parameters$log_phi)) parameters$log_phi <- rep(0, validated$T)
   tmb_data <- validated[c("y", "n_trials", "X", "unit_id", "trait_id",
+                          "is_y_observed",
                           "N", "T", "q", "family", "gaussian_sd")]
   tmb_data$gh_nodes <- rule$nodes
   tmb_data$gh_weights <- rule$weights
@@ -1144,7 +1181,8 @@
                        control = list(eval.max = 2000L, iter.max = 2000L),
                        silent = TRUE, eval_method = c("auto", "jj", "gh"),
                        n_starts = 4L,
-                       optimizer = c("auto", "nlminb", "lbfgsb")) {
+                       optimizer = c("auto", "nlminb", "lbfgsb"),
+                       is_y_observed = NULL) {
   family <- match.arg(family)
   rank_source <- match.arg(rank_source)
   eval_method <- match.arg(eval_method)
@@ -1152,7 +1190,8 @@
   ## Resolved below, once validated$family and the eval tier are both known.
   validated <- .va_r3_validate_data(
     y, n_trials, X, unit_id, trait_id, q, N, T, family, link,
-    unique, psi, structured, provider, lv, missing, gaussian_sd
+    unique, psi, structured, provider, lv, missing, gaussian_sd,
+    is_y_observed = is_y_observed
   )
   ## Validate and resolve eval_method against the family up front, before any
   ## objective is constructed, so a mismatched request fails closed for every

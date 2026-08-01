@@ -48021,3 +48021,36 @@ rg -n 'betabinomial\\(\\)' R/fit-multi.R tests/testthat/test-augmented-slope-fam
 
 **Reports:** `docs/dev-log/after-task/2026-08-01-slope-per-family-gap-ledger.md`,
 `docs/dev-log/after-task/2026-08-01-slope-per-family-betabinomial-admission.md`.
+
+## 2026-08-01 — Design 107 Gate A Stage 1 (VA response-include)
+
+**Branch / worktree:** `cursor/design107-va-response-mask-20260801` @
+`/private/tmp/gllvmtmb-design107-va-mask-20260801` (from `origin/main`).
+
+**Commands:**
+
+```sh
+git diff --check
+# clean
+
+NOT_CRAN=true Rscript --vanilla -e \
+  'devtools::load_all(quiet=TRUE); testthat::test_file("tests/testthat/test-va-missing-response.R")'
+# FAIL 0 | WARN 0 | SKIP 0 | PASS 10  (rebuilds gllvmTMB_va_r3 once)
+
+NOT_CRAN=true Rscript --vanilla -e \
+  'devtools::load_all(quiet=TRUE); testthat::test_file("tests/testthat/test-va-r3-prototype.R")'
+# FAIL 0 (with load_all)
+```
+
+**rg hygiene:**
+
+```sh
+rg -n 'no response-mask channel|masked \(missing\) responses' R/ tests/
+rg -n 'DATA_IVECTOR\(is_y_observed\)' inst/tmb/gllvmTMB_va_r3.cpp
+rg -n 'VA-10' docs/design/35-validation-debt-register.md
+```
+
+**Deliberately not run:** full `devtools::test()`; Totoro; coverage; Design 108 Stage 2+.
+
+**Reports:** `docs/dev-log/after-task/2026-08-01-design107-va-response-mask.md`,
+`docs/dev-log/plan-actual/2026-08-01-design107-va-response-mask.md`.

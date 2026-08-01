@@ -93,16 +93,6 @@ validate_tau_contract <- function(x, label) {
       anyNA(x$package_built)) {
     stop(label, ": installed package provenance is inconsistent")
   }
-  source_expected <- ifelse(
-    x$arm == "pilot_unpenalised", "unpenalised_multistart_aghq",
-    ifelse(x$arm == "fixed2_shipped", "fixed2_shipped_start",
-           ifelse(x$arm == "fixed2_pilot", "fixed2_pilot_start",
-                  "pilot_unpenalised_multistart_aghq"))
-  )
-  if (anyNA(x$tau_source) || any(x$tau_source != source_expected)) {
-    stop(label, ": tau source mismatch")
-  }
-
   pilot_rows <- x[x$arm == "pilot_unpenalised", ]
   pilot_rows$pilot_valid <- with(
     pilot_rows,
@@ -117,6 +107,25 @@ validate_tau_contract <- function(x, label) {
   finals <- merge(x[x$arm != "pilot_unpenalised", ], pilot_contract,
                   by = key, all.x = TRUE)
   if (anyNA(finals$pilot_valid_contract)) stop(label, ": pilot pairing failed")
+
+  expected_pilot_source <- ifelse(
+    pilot_rows$pilot_valid,
+    "unpenalised_multistart_aghq",
+    "pilot_unpenalised_multistart_aghq"
+  )
+  expected_final_source <- ifelse(
+    finals$arm == "fixed2_shipped", "fixed2_shipped_start",
+    ifelse(
+      finals$pilot_valid_contract & finals$arm == "fixed2_pilot",
+      "fixed2_pilot_start",
+      "pilot_unpenalised_multistart_aghq"
+    )
+  )
+  if (anyNA(pilot_rows$tau_source) || anyNA(finals$tau_source) ||
+      any(pilot_rows$tau_source != expected_pilot_source) ||
+      any(finals$tau_source != expected_final_source)) {
+    stop(label, ": tau source mismatch")
+  }
 
   shipped <- finals$arm == "fixed2_shipped"
   if (any(finals$tau_used[shipped] != 2 | finals$tau_cap[shipped] != 2,

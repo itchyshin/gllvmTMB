@@ -42,17 +42,51 @@
   ), call = NULL, .envir = .envir)
 }
 
-## Resolve the single scalar family / link the fence and the engine want from
-## the per-row vectors. A mixed-family fit cannot be fence-checked at all.
+## Resolve family / link vectors for the fence and VA engine (Design 108 Stage 2).
+## Mixed families are admitted when every row maps to a fenced VA family/link.
 .va_route_family_link <- function(family_per_row, family_id_vec, link_id_vec) {
-  if (length(unique(family_id_vec)) != 1L || length(unique(link_id_vec)) != 1L) {
-    .va_route_abort(
-      "The model mixes families or links across rows.",
-      "The variational route fits one family and one link for every response."
-    )
+  family_id_vec <- as.integer(family_id_vec)
+  link_id_vec <- as.integer(link_id_vec)
+  ## Laplace -> VA code; refuse unsupported families before the fence message.
+  va_codes <- tryCatch(
+    .va_r3_laplace_id_to_code(family_id_vec),
+    error = function(e) {
+      .va_route_abort(
+        "The model uses a response family the variational route does not admit.",
+        conditionMessage(e)
+      )
+    }
+  )
+  ## Link checks: binomial only logit (link_id 0); poisson/nbinom2 log;
+  ## gaussian identity (link_id 0 for gaussian in fit-multi).
+  for (i in seq_along(va_codes)) {
+    code <- va_codes[[i]]
+    lid <- link_id_vec[[i]]
+    ok <- (code == 1L && lid == 0L) ||
+      (code %in% c(2L, 3L) && lid == 0L) ||
+      (code == 0L && lid == 0L)
+    if (!ok) {
+      .va_route_abort(
+        "A response uses a family/link pair the variational route does not admit.",
+        "Admitted: gaussian identity, binomial logit, poisson log (and research nbinom2 log)."
+      )
+    }
   }
-  fam <- family_per_row[[1L]]
-  list(family = fam$family, link = fam$link)
+  fam_names <- vapply(seq_along(va_codes), function(i) {
+    switch(as.character(va_codes[[i]]),
+           "0" = "gaussian", "1" = "binomial", "2" = "poisson",
+           "3" = "nbinom2", "binomial")
+  }, character(1L))
+  link_names <- vapply(va_codes, function(code) {
+    switch(as.character(code),
+           "0" = "identity", "1" = "logit", "2" = "log", "3" = "log", "logit")
+  }, character(1L))
+  list(
+    family = fam_names,
+    link = link_names,
+    family_codes = as.integer(va_codes),
+    is_mixed = length(unique(va_codes)) > 1L
+  )
 }
 
 ## The engine requires a DENSE crossed unit x trait design -- exactly one
@@ -206,12 +240,22 @@
   ## The fence, now with every value it was written to check. Until routing
   ## landed only `engine` was knowable, so `n`/`q`/`p`/family/link were
   ## implemented and tested but unreachable from `gllvmTMB()`.
+  fam_link <- unique(data.frame(
+    family = fl$family, link = fl$link, stringsAsFactors = FALSE
+  ))
   .gllvmTMB_check_integration_fence(
     "va",
-    family = fl$family, link = fl$link,
+    family = fam_link$family, link = fam_link$link,
     q = q, p = n_traits, n = n_units,
     unique = unique_flag, engine = engine
   )
+  ## nbinom2 is template-admitted but not on the public VA fence.
+  if (any(fl$family_codes == 3L)) {
+    .va_route_abort(
+      "Family {.val nbinom2} has no admitted public variational evaluation.",
+      "The variational fence currently admits gaussian, binomial, and poisson."
+    )
+  }
 
   ## Design 107 Gate A Stage 1: dense response masks travel as is_y_observed
   ## into the VA template (term-skip). Predictor missingness (mi) stays refused.
@@ -285,7 +329,15 @@
   ## make and no Gate 3 evidence to carry (the campaign was Bernoulli). Asking
   ## for "jj" there would simply error. "auto" resolves through the family
   ## registry, which is the right behaviour when the family admits one tier.
-  eval_method <- if (identical(fl$family, "binomial")) "jj" else "auto"
+  ## Pure binomial keeps JJ (Gate 3); any mixed or non-binomial admitted set
+  ## uses GH (Design 108 Stage 2). Named explicitly — "auto" would also resolve
+  ## to GH for non-binomial registry entries, but mixed has no single registry
+  ## default_tier, so the route pins "gh" rather than relying on that path.
+  eval_method <- if (!isTRUE(fl$is_mixed) && all(fl$family_codes == 1L)) {
+    "jj"
+  } else {
+    "gh"
+  }
 
   ## KNOWN LIMITATION, recorded rather than guarded. The engine runs its own
   ## multi-start and optimiser policy, so `gllvmTMBcontrol()`'s search settings
@@ -303,9 +355,11 @@
       y = y, n_trials = n_trials, X = X,
       unit_id = unit_id, trait_id = trait_id,
       q = q, N = n_units, T = n_traits,
-      family = fl$family, link = fl$link,
+      family = if (isTRUE(fl$is_mixed)) "binomial" else fl$family[[1L]],
+      link = if (isTRUE(fl$is_mixed)) "logit" else fl$link[[1L]],
       eval_method = eval_method,
-      is_y_observed = is_y_observed
+      is_y_observed = is_y_observed,
+      family_codes = fl$family_codes
     ),
     error = function(e) {
       cli::cli_abort(c(
@@ -334,7 +388,9 @@
 
   .va_route_build_fit(
     fit, call = call, q = q, p = n_traits, n = n_units,
-    eval_method = eval_method, family = fl$family, link = fl$link
+    eval_method = eval_method,
+    family = if (isTRUE(fl$is_mixed)) "mixed" else fl$family[[1L]],
+    link = if (isTRUE(fl$is_mixed)) "mixed" else fl$link[[1L]]
   )
 }
 

@@ -545,7 +545,7 @@ test_that("R3 family registry agrees with the validator and drives eval_method",
       unit_id = 1L, trait_id = 1L, q = 1L,
       family = entry$family, link = entry$link
     )
-    expect_identical(validated$family, entry$family_code)
+    expect_true(all(validated$family == entry$family_code))
 
     ## "auto" resolves to whatever the registry declares.
     expect_identical(
@@ -624,6 +624,9 @@ test_that("R3 fails closed outside the certified projected-variance domain", {
     unit_id = c(1L, 1L), trait_id = 1:2, q = 1L, H = 61L,
     fixed_global = list(beta = 0, theta_rr = c(3, 3)),
     family = "gaussian_anchor", gaussian_sd = 100,
+    ## Pin residual SD so the Stage-2 free log_sigma path cannot collapse the
+    ## projected-variance fixture back inside the certified domain.
+    estimate_gaussian_sd = FALSE,
     rank_source = "fixed_fixture"
   )
   expect_identical(fit$status, "failed_variance_domain")
@@ -789,6 +792,8 @@ test_that("R3 Gaussian variational posterior equals the analytic posterior", {
     y = z$y, n_trials = rep(1L, length(z$y)), X = z$X,
     unit_id = z$unit, trait_id = z$trait, q = z$q,
     family = "gaussian_anchor", gaussian_sd = z$sd, H = 15L,
+    ## Analytic oracle assumes known residual SD (pre-Stage-2 DATA_SCALAR).
+    estimate_gaussian_sd = FALSE,
     fixed_global = list(beta = z$beta,
                         theta_rr = .va_r3_pack_theta_rr(z$Lambda))
   )
@@ -820,14 +825,16 @@ test_that("R3 Gaussian variational gradients match analytic matrix derivatives",
   z <- .va_r3_gaussian_fixture()
   validated <- .va_r3_validate_data(
     z$y, rep(1L, length(z$y)), z$X, z$unit, z$trait, z$q,
-    family = "gaussian_anchor", link = "identity", gaussian_sd = z$sd
+    family = "gaussian_anchor", link = "identity", gaussian_sd = z$sd,
+    estimate_gaussian_sd = FALSE
   )
   parameters <- list(
     beta = z$beta, theta_rr = .va_r3_pack_theta_rr(z$Lambda),
     m = matrix(c(-0.1, 0.2, 0.3, -0.2, 0.05, 0.15, -0.25, 0.1), z$N, z$q),
     log_L_diag = matrix(c(-0.2, 0.1, 0.05, -0.1, 0.15, -0.05, 0.08, -0.12),
                         z$N, z$q),
-    L_off = matrix(c(0.1, -0.05, 0.08, -0.12), z$N, 1L)
+    L_off = matrix(c(0.1, -0.05, 0.08, -0.12), z$N, 1L),
+    log_sigma = rep(log(z$sd), z$T)
   )
   fixed <- list(beta = z$beta, theta_rr = .va_r3_pack_theta_rr(z$Lambda))
   obj <- .va_r3_make_objective(

@@ -34,7 +34,7 @@ offset <- switch(cell_id,
   "binomial-100-1" = 0L, "binomial-100-3" = 1000L,
   "binomial-400-1" = 2000L, "binomial-400-3" = 3000L,
   "binomial-1600-1" = 4000L, "binomial-1600-3" = 5000L,
-  "gaussian-100-1" = 6000L, "gaussian-1600-1" = 7000L,
+  "binomial-1600-3-ms" = 11000L, "gaussian-100-1" = 6000L, "gaussian-1600-1" = 7000L,
   "poisson-100-1"  = 8000L, "poisson-1600-1"  = 9000L,
   stop("unknown cell: ", cell_id))
 SEED <- seed_pool[offset + TASK]
@@ -77,7 +77,17 @@ ARM_CTL <- list(
   laplace_ridge = function() gllvmTMBcontrol(aghq_ridge = 2),
   aghq_single   = function() gllvmTMBcontrol(aghq = 9, aghq_ridge = Inf, aghq_multistart = FALSE),
   aghq          = function() gllvmTMBcontrol(aghq = 9, aghq_ridge = Inf),
-  aghq_ridge    = function() gllvmTMBcontrol(aghq = 9)
+  aghq_ridge    = function() gllvmTMBcontrol(aghq = 9),
+  ## #847 STEP 1 -- the arm that does not exist: Laplace + ridge + MULTI-START.
+  ## laplace_ridge and aghq_ridge use the SAME tau = 2, yet laplace_ridge runs away
+  ## 67% at n=1600 sigma_lambda=3 while aghq_ridge runs away 0%. The two differ in
+  ## quadrature AND start rule, so this arm isolates the start rule: it is Laplace,
+  ## the same tau, with multi-start via jittered restarts selected on the PENALISED
+  ## objective (run_one passes .ridge_tau, best_opt picks the best of n_init).
+  ## No engine change needed -- n_init multi-start already exists on this path.
+  ## If this lands near aghq_ridge, #847's expensive half is a START problem, not a
+  ## tau problem, and the fix works on the DEFAULT grammar where AGHQ cannot.
+  laplace_ridge_ms = function() gllvmTMBcontrol(aghq_ridge = 2, n_init = 5, init_jitter = 0.5)
 )
 
 d  <- mk(N, P, Q, LAM, SEED, FAM)

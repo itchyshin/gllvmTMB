@@ -21,6 +21,8 @@ another long output block.
   converged with code 0 in the rendered teaching fixture.
 - Suppressed the duplicated eleven-row diagnostic return while retaining the
   runnable `check_gllvmTMB()` call and link to the diagnostics guide.
+- Removed the standalone convergence-code output because the subsequent
+  long/wide table already reports it.
 
 ## 3a. Decisions and Rejected Alternatives
 
@@ -61,6 +63,8 @@ environment notes (remote clock verification and `xcrun_db` detritus).
 The rendered mesh and spatial-mode sections were inspected at 1500 x 1200 and
 1500 x 2400 viewports. The mesh section fits in a normal viewport and the
 latent/dep comparison table is readable without horizontal scrolling.
+An output-block sweep of the final local HTML found no printed sparse matrices,
+mesh internals, or three-digit row indices.
 
 ## 6. Tests of the Tests
 
@@ -95,7 +99,8 @@ The first compact table used dollar signs inside plain table-cell strings.
 Pandoc interpreted them as math delimiters and broke the SPDE rows. The labels
 were changed to plain `c0`, `g1`, and `g2`, while exact accessors such as
 `mesh$spde$c0` remain in code-formatted prose. A second eye pass then found and
-removed the neighbouring verbose diagnostics return.
+removed the neighbouring verbose diagnostics return; a final Tufte pass removed
+the redundant standalone convergence line.
 
 ## 10. Known Residuals
 

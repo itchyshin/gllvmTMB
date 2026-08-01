@@ -48030,6 +48030,8 @@ it with a six-row component/size table for `loc_xy`, vertices, `A_st`, and
 `spde` matrices `c0`, `g1`, and `g2`. Added runnable `spatial_latent()` and
 `spatial_dep()` fits and a compact comparison beside `spatial_indep()`; all
 three converged with code 0. Suppressed the duplicate long diagnostic return.
+The final Florence/Tufte pass also removed a redundant standalone convergence
+line and confirmed that the rendered HTML contains no sparse-matrix dump.
 
 Checks: focused and complete article renders PASS; article/mesh/UTM tests PASS
 (60); `pkgdown::check_pkgdown()` PASS; two viewport visual inspections PASS;

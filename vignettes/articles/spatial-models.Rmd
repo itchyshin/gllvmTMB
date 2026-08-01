@@ -190,8 +190,6 @@ fit_long <- gllvmTMB(
   mesh = mesh,
   silent = TRUE
 )
-
-fit_long$opt$convergence
 ```
 
 Some readers store one response column per trait. The compact `traits()`

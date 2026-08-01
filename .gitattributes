@@ -1,0 +1,45 @@
+# Line-ending policy.
+#
+# Byte identity is a GATE in this repository, not a nicety. Design 85 section 11
+# ("Gate 0 -- scope and coordinate freeze") specifies a byte-identity checksum as
+# the mechanism by which the frozen Gate-1 fixture is held fixed, and
+# `R/eva-proto.R` stamps `tools::sha256sum()` of that file into the provenance of
+# every result it produces.
+#
+# Git's default `core.autocrlf` on Windows rewrites LF to CRLF at checkout. That
+# changes the bytes, and therefore the hash. Two things then break, one loudly and
+# one silently:
+#
+#   * `tests/testthat/test-eva-gate1.R` compares against a pinned digest and fails
+#     -- this was the repository's ONLY Windows CI failure, on every branch;
+#   * the `parameter_file_sha256` provenance field silently becomes
+#     platform-dependent, which is the worse half, because nothing reports it.
+#
+# Measured 2026-07-31 on the stored file:
+#   LF   (as committed) sha256 = a3cb2b9302132b2a917639ac30ce070d5d0f67e9c21f50ffbcc232ead448b036
+#   CRLF (same content) sha256 = 4cb55e963180c4c570c76b74faeb65ee8ef98e656412e7f9e46a5296465b9b14
+# The first is exactly the digest pinned in the test, so the fixture's committed
+# bytes are correct and only their on-disk representation was at issue.
+#
+# `-text` disables all end-of-line conversion for these paths, on every platform.
+# It does not change what is stored in git, so the pinned digest is unaffected.
+#
+# MATCHED BY BASENAME, deliberately, and this is the part that is easy to get
+# wrong: the fixture exists TWICE -- `docs/design/86-eva-gate1-parameters.json`
+# and `inst/extdata/86-eva-gate1-parameters.json` -- and `.eva_gate1_file()`
+# resolves the `docs/design/` copy FIRST, walking up from the working directory,
+# falling back to the installed `inst/extdata` copy only when that walk fails.
+# Under `R CMD check` the walk reaches the workspace checkout, so the copy that
+# actually gets hashed is the one in `docs/`. A first attempt at this fix pinned
+# only `inst/extdata/**` and left Windows failing on exactly the same digest.
+# A pattern with no slash matches the basename at any depth, so both copies --
+# and any future copy -- are covered.
+86-eva-gate1-parameters.json -text
+
+# Forward cover for anything else shipped as a frozen fixture.
+inst/extdata/** -text
+
+# Everything else keeps git's default handling. This file deliberately does NOT
+# set a repository-wide `* text=auto` policy: that would renormalise line endings
+# across the entire history-tracked tree, which is a much larger change than the
+# defect it would fix here.

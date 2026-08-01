@@ -64,6 +64,50 @@ skip_if_no_articles <- function() {
   )
 }
 
+## A character-vector default is not necessarily a match.arg() choices list.
+## suggest_lambda_constraints(), for example, deliberately runs several
+## methods by default and validates a larger admissible set explicitly. Only
+## interpret a c(...) default as exhaustive when the function actually passes
+## that argument to match.arg().
+argument_uses_match_arg <- function(fun, arg) {
+  found <- FALSE
+  walk <- function(x) {
+    if (found) return(invisible(NULL))
+    if (is.expression(x) || is.pairlist(x)) {
+      for (part in as.list(x)) walk(part)
+      return(invisible(NULL))
+    }
+    if (!is.call(x)) return(invisible(NULL))
+
+    parts <- as.list(x)
+    if (
+      is.name(parts[[1]]) &&
+        identical(as.character(parts[[1]]), "match.arg") &&
+        length(parts) >= 2L &&
+        is.name(parts[[2]]) &&
+        identical(as.character(parts[[2]]), arg)
+    ) {
+      found <<- TRUE
+      return(invisible(NULL))
+    }
+    for (part in parts) walk(part)
+    invisible(NULL)
+  }
+  walk(body(fun))
+  found
+}
+
+test_that("article guard distinguishes match.arg choices from custom validators", {
+  with_match_arg <- function(method = c("a", "b")) match.arg(method)
+  with_custom_validation <- function(method = c("a", "b")) {
+    if (!method[1] %in% c("a", "b", "c")) stop("unsupported")
+    method
+  }
+
+  expect_true(argument_uses_match_arg(with_match_arg, "method"))
+  expect_false(argument_uses_match_arg(with_custom_validation, "method"))
+})
+
 test_that("articles call only functions gllvmTMB actually exports", {
   skip_if_no_articles()
   exported <- getNamespaceExports("gllvmTMB")
@@ -101,7 +145,8 @@ test_that("articles pass only admissible values to match.arg'd arguments", {
     for (ch in chunk_code(f)) {
       for (cl in calls_in(ch$expr)) {
         if (!cl$fname %in% exported) next
-        fml <- formals(getExportedValue("gllvmTMB", cl$fname))
+        fun <- getExportedValue("gllvmTMB", cl$fname)
+        fml <- formals(fun)
         nms <- cl$argnames
         if (is.null(nms)) next
 
@@ -125,7 +170,9 @@ test_that("articles pass only admissible values to match.arg'd arguments", {
           ## errors when forced -- hence the guard around the inspection.
           default <- fml[[nm]]
           is_choices <- tryCatch(
-            is.call(default) && identical(as.character(default[[1]]), "c"),
+            is.call(default) &&
+              identical(as.character(default[[1]]), "c") &&
+              argument_uses_match_arg(fun, nm),
             error = function(e) FALSE
           )
           if (is_choices) {

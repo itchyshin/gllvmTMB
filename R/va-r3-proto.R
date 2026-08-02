@@ -260,6 +260,220 @@
     "binomial_probit")[as.integer(code) + 1L]
 }
 
+## Per-tier structural contract for the VA-R3 engine (Design 108 Gate A
+## Stage 6; Design 106 s1).
+##
+## Every tier gllvmTMB has is one instance of `a_{k,o}' u_{k, g_k(o)}`
+## (Design 106 s0's table), so the engine needs only the LOADING SHAPE, and
+## there are exactly two of those. They are separate registry rows -- and
+## separate code paths in the template -- because they cost different numbers
+## of variational parameters per level, and the difference is a theorem rather
+## than a tuning choice:
+##
+##   dense     : the loading spans the whole level block, so the variational
+##               block must be a full d x d Cholesky.
+##   diagonal  : the loading is sd_j * e_j, so each observation touches ONE
+##               coordinate. Design 106 Proposition 2 (Fischer's inequality)
+##               says the optimal q is then block diagonal EXACTLY. Restricting
+##               to it loses nothing and saves T(T+1)/2 - T numbers per level:
+##               2T instead of T + T(T+1)/2, i.e. 52 instead of 377 at T = 26.
+##
+## Running a diagonal tier through the dense path would still be CORRECT and
+## would still converge -- which is precisely why the saving has to be
+## structural. `off_per_level` is the field that makes it so.
+##
+## Fields
+##   kind                  : R-side name
+##   kind_code             : integer passed to the template as tier_kind
+##   loading               : how a_{k,o} is formed
+##   loading_par           : which parameter vector carries the loading
+##   loading_length        : length that parameter contributes for this tier
+##   variational_per_level : d_k + d_k + (off), i.e. means + log-diagonals + off
+##   off_per_level         : strict-lower Cholesky entries per level
+##   block_diagonal_exact  : whether Proposition 2 applies
+.va_r3_tier_registry <- list(
+  list(
+    kind = "dense",
+    kind_code = 0L,
+    loading = "Lambda_k(trait, .), packed lower-triangular T x d_k in theta_rr",
+    loading_par = "theta_rr",
+    loading_length = function(d, T) as.integer(T * d - d * (d - 1L) / 2L),
+    variational_per_level = function(d, T) as.integer(2L * d + d * (d - 1L) / 2L),
+    off_per_level = function(d, T) as.integer(d * (d - 1L) / 2L),
+    block_diagonal_exact = FALSE,
+    criterion = paste(
+      "Proposition 2 (i) FAILS -- lambda_j has all d_k entries non-zero, so",
+      "an observation's loading spans the whole level block. A diagonal q",
+      "here is a real restriction, not a free one (Design 106 s1.4, row 2)."
+    )
+  ),
+  list(
+    kind = "diagonal",
+    kind_code = 1L,
+    loading = "sd_{k,j} * e_j, from T per-trait log SDs in log_sd_tier",
+    loading_par = "log_sd_tier",
+    loading_length = function(d, T) as.integer(T),
+    variational_per_level = function(d, T) as.integer(2L * d),
+    off_per_level = function(d, T) 0L,
+    block_diagonal_exact = TRUE,
+    criterion = paste(
+      "Proposition 2 applies EXACTLY -- each observation loads on one trait's",
+      "field and the prior is trait-independent, so Fischer's inequality makes",
+      "the trait-diagonal q optimal. 2T per level rather than T + T(T+1)/2, at",
+      "no accuracy cost (Design 106 s1.4 row 1, s4.2)."
+    )
+  )
+)
+
+.va_r3_tier_entry <- function(kind) {
+  for (entry in .va_r3_tier_registry) {
+    if (identical(entry$kind, kind)) return(entry)
+  }
+  stop("VA-R3 has no tier-registry entry for kind \"", kind, "\".",
+       call. = FALSE)
+}
+
+## Assemble the tier list. Tier 0 is ALWAYS the ordinary latent tier, built
+## here rather than accepted from the caller, so the "tier 0 is dense, has
+## dimension q, has N levels, and its level index is unit_id" invariant the
+## template checks cannot be violated by a call site. Everything else is an
+## EXTRA tier appended after it.
+##
+## `want_psi` is what `latent(..., unique = TRUE)` means: the paired diagonal
+## Psi companion at the same grouping factor (CLAUDE.md's standing grammar
+## note; Design 106 s4.2's third tier).
+.va_r3_build_tiers <- function(unit_id0, N, T, q, n_obs, extra_tiers = NULL,
+                               want_psi = FALSE) {
+  tiers <- list(list(
+    kind = "dense", dim = as.integer(q), n_levels = as.integer(N),
+    level_id = as.integer(unit_id0), label = "latent"
+  ))
+  if (isTRUE(want_psi)) {
+    tiers[[length(tiers) + 1L]] <- list(
+      kind = "diagonal", dim = as.integer(T), n_levels = as.integer(N),
+      level_id = as.integer(unit_id0), label = "psi"
+    )
+  }
+  if (is.null(extra_tiers)) return(tiers)
+  if (!is.list(extra_tiers) || !length(extra_tiers)) {
+    stop("extra_tiers must be a non-empty list of tier specifications.",
+         call. = FALSE)
+  }
+  for (idx in seq_along(extra_tiers)) {
+    spec <- extra_tiers[[idx]]
+    where <- paste0("extra_tiers[[", idx, "]]")
+    if (!is.list(spec) || is.null(spec$kind) || is.null(spec$level_id)) {
+      stop(where, " must be a list with at least `kind` and `level_id`.",
+           call. = FALSE)
+    }
+    entry <- .va_r3_tier_entry(as.character(spec$kind))
+    dim_k <- if (is.null(spec$dim)) {
+      if (identical(entry$kind, "diagonal")) T else q
+    } else as.integer(spec$dim)
+    if (identical(entry$kind, "diagonal") && !identical(dim_k, as.integer(T))) {
+      stop(where, ": a trait-diagonal tier has one field per trait, so dim must be T.",
+           call. = FALSE)
+    }
+    if (dim_k < 1L || dim_k > T) {
+      stop(where, ": dim must satisfy 1 <= dim <= T.", call. = FALSE)
+    }
+    if (length(spec$level_id) != n_obs) {
+      stop(where, ": level_id must have one entry per response row.",
+           call. = FALSE)
+    }
+    n_levels <- if (is.null(spec$n_levels)) {
+      length(unique(spec$level_id))
+    } else as.integer(spec$n_levels)
+    if (length(n_levels) != 1L || is.na(n_levels) || n_levels < 1L) {
+      stop(where, ": n_levels must be a positive integer.", call. = FALSE)
+    }
+    lv <- .va_r3_normalise_index(spec$level_id, n_levels,
+                                 paste0(where, "$level_id"))
+    ## An unused level would carry a free variational block that no
+    ## observation informs. Its optimum is the prior, so it costs nothing in
+    ## the objective and everything in diagnosability -- refuse it loudly
+    ## rather than let a mis-sized n_levels pass as a converged fit.
+    if (!identical(sort(unique(lv)), 0:(n_levels - 1L))) {
+      stop(where, ": every one of the ", n_levels,
+           " declared levels must be used by at least one row.", call. = FALSE)
+    }
+    tiers[[length(tiers) + 1L]] <- list(
+      kind = entry$kind, dim = dim_k, n_levels = n_levels, level_id = lv,
+      label = if (is.null(spec$label)) paste0("tier", idx) else as.character(spec$label)
+    )
+  }
+  tiers
+}
+
+## Flat-layout offsets for the ragged tier structure.
+##
+## Packing decision (Design 108 Stage 6): the variational block is ONE flat
+## vector per role -- m, log_L_diag, L_off -- sliced by offsets computed from
+## (tier_kind, tier_dim, tier_n_levels), rather than a fixed cap of named
+## per-tier parameter slots. A cap would bound K and would be silently wrong
+## at K+1; offsets are unbounded, and the template recomputes them from the
+## same three vectors so a disagreement fails a length check instead of
+## reading across a tier boundary.
+##
+## Within a tier the order is column-major over (coordinate, level) --
+## coordinate slowest, level fastest -- which is exactly as.vector() of the
+## pre-Stage-6 N x q matrices. So at K = 1 the flat vector is the old matrix,
+## element for element, and obj$par is byte-identical.
+.va_r3_tier_layout <- function(tiers, T, N, q, n_obs) {
+  K <- length(tiers)
+  if (!K) stop("A VA-R3 model needs at least one tier.", call. = FALSE)
+  kind <- vapply(tiers, `[[`, character(1L), "kind")
+  kind_code <- vapply(kind, function(k) .va_r3_tier_entry(k)$kind_code,
+                      integer(1L), USE.NAMES = FALSE)
+  dim_k <- vapply(tiers, function(x) as.integer(x$dim), integer(1L))
+  n_levels <- vapply(tiers, function(x) as.integer(x$n_levels), integer(1L))
+  if (!identical(kind_code[1L], 0L) || !identical(dim_k[1L], as.integer(q)) ||
+      !identical(n_levels[1L], as.integer(N))) {
+    stop("Tier 1 must be the dense ordinary latent tier with dim = q and n_levels = N.",
+         call. = FALSE)
+  }
+  per_off <- integer(K)
+  per_theta <- integer(K)
+  per_sd <- integer(K)
+  for (k in seq_len(K)) {
+    entry <- .va_r3_tier_entry(kind[k])
+    per_off[k] <- entry$off_per_level(dim_k[k], T)
+    if (identical(entry$kind, "dense")) {
+      per_theta[k] <- entry$loading_length(dim_k[k], T)
+    } else {
+      per_sd[k] <- entry$loading_length(dim_k[k], T)
+    }
+  }
+  m_size <- n_levels * dim_k
+  off_size <- n_levels * per_off
+  level_id <- matrix(0L, nrow = n_obs, ncol = K)
+  for (k in seq_len(K)) level_id[, k] <- as.integer(tiers[[k]]$level_id)
+  storage.mode(level_id) <- "integer"
+  list(
+    n_tiers = K,
+    kind = kind,
+    kind_code = kind_code,
+    dim = dim_k,
+    n_levels = n_levels,
+    label = vapply(tiers, function(x) as.character(x$label), character(1L)),
+    level_id = level_id,
+    variational_per_level = 2L * dim_k + per_off,
+    off_per_level = per_off,
+    loading_length = per_theta + per_sd,
+    m_offset = as.integer(cumsum(c(0L, m_size))[seq_len(K)]),
+    off_offset = as.integer(cumsum(c(0L, off_size))[seq_len(K)]),
+    theta_offset = as.integer(cumsum(c(0L, per_theta))[seq_len(K)]),
+    sd_offset = as.integer(cumsum(c(0L, per_sd))[seq_len(K)]),
+    level_offset = as.integer(cumsum(c(0L, n_levels))[seq_len(K)]),
+    total_mean = as.integer(sum(m_size)),
+    total_off = as.integer(sum(off_size)),
+    total_theta = as.integer(sum(per_theta)),
+    total_sd = as.integer(sum(per_sd)),
+    total_levels = as.integer(sum(n_levels)),
+    total_variational = as.integer(sum(n_levels * (2L * dim_k + per_off)))
+  )
+}
+
 .va_r3_validate_data <- function(y, n_trials, X, unit_id, trait_id, q,
                                  N = NULL, T = NULL,
                                  family = "binomial", link = "logit",
@@ -269,7 +483,8 @@
                                  gaussian_sd = 1,
                                  is_y_observed = NULL,
                                  family_codes = NULL,
-                                 estimate_gaussian_sd = TRUE) {
+                                 estimate_gaussian_sd = TRUE,
+                                 extra_tiers = NULL) {
   if (length(q) != 1L || !is.numeric(q) || !is.finite(q) ||
       q != as.integer(q) || q < 0L || q > 6L) {
     stop("q must be one integer in 0..6.", call. = FALSE)
@@ -322,14 +537,34 @@
   }
   ## `missing = TRUE` still means mi()/predictor missingness (out of scope).
   ## Response masks travel only through is_y_observed (Design 107).
-  if (!identical(unique, FALSE) || !identical(psi, FALSE) ||
-      !identical(structured, FALSE) || !is.null(provider) ||
+  ##
+  ## Design 108 Gate A Stage 6 lifts the `unique` / `psi` half of this gate and
+  ## NOTHING ELSE. Psi is a trait-diagonal tier, and Design 106 Proposition 1
+  ## makes tiers accumulate in mu and v with no new integrand, quadrature or
+  ## linear algebra. `structured` / `provider` stay CLOSED: a phylogenetic or
+  ## SPDE prior is not a different index, it is a different KL (Design 106 s3),
+  ## and that is Stage 7, which Design 108 makes hard-dependent on this stage.
+  ## `lv` and `missing` are untouched.
+  if (!identical(structured, FALSE) || !is.null(provider) ||
       !identical(lv, FALSE) || !identical(missing, FALSE)) {
-    stop("R3 admits only ordinary latent(..., unique = FALSE) data with no Psi, structured/provider, lv, or missing-predictor marker.",
+    stop("R3 admits only ordinary latent (unstructured) tiers: no structured/provider, lv, or missing-predictor marker.",
          call. = FALSE)
   }
+  tier_flag <- function(x, name) {
+    if (!is.logical(x) || length(x) != 1L || is.na(x)) {
+      stop(name, " must be TRUE or FALSE.", call. = FALSE)
+    }
+    isTRUE(x)
+  }
+  ## `unique = TRUE` and `psi = TRUE` request the SAME thing -- the paired
+  ## diagonal Psi companion of latent(..., unique = TRUE). They are two spellings
+  ## of one tier, not two tiers.
+  want_psi <- tier_flag(unique, "unique") || tier_flag(psi, "psi")
 
   n_obs <- length(y)
+  tiers <- .va_r3_build_tiers(uid, N = N, T = T, q = q, n_obs = n_obs,
+                              extra_tiers = extra_tiers, want_psi = want_psi)
+  tier_layout <- .va_r3_tier_layout(tiers, T = T, N = N, q = q, n_obs = n_obs)
   if (!is.null(family_codes)) {
     family_codes <- as.integer(family_codes)
     if (length(family_codes) != n_obs ||
@@ -463,6 +698,9 @@
     N = N,
     T = T,
     q = q,
+    tiers = tiers,
+    tier_layout = tier_layout,
+    unique = want_psi,
     family = as.integer(family_codes),
     family_name = family_name,
     link = if (length(unique(link_vec)) == 1L) link_vec[1L] else link_vec,
@@ -661,6 +899,21 @@
     theta_rr[seq_len(q)] <- c(0.10, -0.10, 0.20, -0.20)[1L] *
       rep(c(1, -1), length.out = q)
   }
+  ## Extra DENSE tiers append their own packed loadings after tier 1's. There
+  ## is no residual-correlation warm start for them (the residual correlation
+  ## the warm start reads is not attributable to a tier), so they take the same
+  ## constant alternating-diagonal start the tier-1 fallback uses.
+  layout <- data$tier_layout
+  if (!is.null(layout) && layout$n_tiers > 1L) {
+    for (k in seq.int(2L, layout$n_tiers)) {
+      if (identical(layout$kind_code[k], 0L)) {
+        extra <- rep(0, layout$loading_length[k])
+        d_k <- layout$dim[k]
+        extra[seq_len(d_k)] <- 0.10 * rep(c(1, -1), length.out = d_k)
+        theta_rr <- c(theta_rr, extra)
+      }
+    }
+  }
   if (start_id > 1L) {
     diagonal_scale <- c(0.10, -0.10, 0.20, -0.20)[start_id]
     theta_rr[seq_len(q)] <- theta_rr[seq_len(q)] +
@@ -670,9 +923,21 @@
       theta_rr[-seq_len(q)] <- theta_rr[-seq_len(q)] + (0.01 * start_id) * sin(k)
     }
   }
-  m <- matrix(0, nrow = N, ncol = q)
-  log_L_diag <- matrix(0, nrow = N, ncol = q)
-  L_off <- matrix(0, nrow = N, ncol = q * (q - 1L) / 2L)
+  ## The variational block is flat and tier-major. At K = 1 these have length
+  ## N*q, N*q and N*q(q-1)/2, i.e. exactly as.vector() of the pre-Stage-6
+  ## matrices, so every start below is numerically the same start it was.
+  n_mean <- if (is.null(layout)) as.integer(N * q) else layout$total_mean
+  n_off <- if (is.null(layout)) {
+    as.integer(N * q * (q - 1L) / 2L)
+  } else layout$total_off
+  n_sd <- if (is.null(layout)) 0L else layout$total_sd
+  m <- rep(0, n_mean)
+  log_L_diag <- rep(0, n_mean)
+  L_off <- rep(0, n_off)
+  ## Trait-diagonal tiers start at sd = 0.3, the same order of magnitude as the
+  ## constant loading start above; exp(0) = 1 would start Psi dominating the
+  ## loadings it is meant to complement.
+  log_sd_tier <- rep(log(0.3), n_sd)
   if (start_id > 1L) {
     m[] <- c(0.01, 0.02, 0.015)[start_id - 1L] *
       sin(seq_len(length(m)) + start_id)
@@ -681,10 +946,15 @@
       L_off[] <- c(0.005, 0.01, 0.0075)[start_id - 1L] *
         cos(seq_len(length(L_off)) + start_id)
     }
+    if (length(log_sd_tier)) {
+      log_sd_tier <- log_sd_tier + c(0.05, -0.05, 0.10)[start_id - 1L] *
+        cos(seq_len(length(log_sd_tier)) + start_id)
+    }
   }
   list(
     beta = beta,
     theta_rr = theta_rr,
+    log_sd_tier = log_sd_tier,
     m = m,
     log_L_diag = log_L_diag,
     L_off = L_off,
@@ -871,10 +1141,21 @@
     stop("par must carry TMB parameter names to read the variational block.",
          call. = FALSE)
   }
-  take <- function(what) unname(par[nm == what])
-  scores <- matrix(take("m"), nrow = N, ncol = q)
+  ## Stage 6: the variational block is flat and TIER-MAJOR, and tier 1 is the
+  ## ordinary latent tier by construction, so tier 1's coordinates are the
+  ## leading N*q (and N*q(q-1)/2) entries of each group. Taking the head is
+  ## therefore exact, not a heuristic -- and at K = 1 it is the whole vector.
+  take <- function(what, n) {
+    v <- unname(par[nm == what])
+    if (length(v) < n) {
+      stop("par's `", what, "` block is shorter than the latent tier requires.",
+           call. = FALSE)
+    }
+    v[seq_len(n)]
+  }
+  scores <- matrix(take("m", N * q), nrow = N, ncol = q)
   chol_factors <- .va_r3_unpack_variational_chol(
-    take("log_L_diag"), take("L_off"), N, q
+    take("log_L_diag", N * q), take("L_off", N * q * (q - 1L) / 2L), N, q
   )
   se <- matrix(NA_real_, nrow = N, ncol = q)
   for (i in seq_len(N)) {
@@ -1064,6 +1345,7 @@
     list(se_conditional = NULL, se_profile = NULL, pd_hessian = FALSE,
          calibrated = FALSE, status = status, route = "blocked")
   }
+  if (.va_r3_multi_tier(objective)) return(fail(.VA_R3_MULTI_TIER_SE_STATUS))
   nm <- names(par)
   if (is.null(nm)) return(fail("va_unnamed_par_no_fixed_se"))
   fixed_idx <- which(nm %in% c("beta", "theta_rr"))
@@ -1132,9 +1414,30 @@
   )
 }
 
+## Fail-closed marker for the one thing Stage 6 does NOT generalise.
+##
+## H_vv is block diagonal by unit only while a unit's observations touch a
+## single tier. With a second tier the blocks are the CONNECTED COMPONENTS of
+## the tier-level incidence graph -- for a Psi companion at the same grouping
+## that is still the unit, but for a `cluster` tier it is not, and nothing in
+## the parameter names distinguishes the two cases. Returning a Schur
+## complement built on the wrong partition would be a number, not an error,
+## so the multi-tier case refuses instead. Design 108 Stage 14 owns this
+## surface; no VA parameter interval is admitted here in any event.
+.VA_R3_MULTI_TIER_SE_STATUS <- "va_multi_tier_fixed_information_unsupported"
+
+.va_r3_multi_tier <- function(objective) {
+  layout <- attr(objective, "va_r3_tiers")
+  !is.null(layout) && isTRUE(layout$n_tiers > 1L)
+}
+
 ## Recover N and q from the parameter layout alone.
 ##   length(m) = length(log_L_diag) = N*q ;  length(L_off) = N*q(q-1)/2
 ## so q = 2*n_off/n_m + 1 and N = n_m/q. q = 1 is the n_off == 0 case.
+##
+## VALID FOR ONE TIER ONLY. At K > 1 the group lengths are sums over tiers and
+## this arithmetic returns a plausible-looking wrong answer, which is why every
+## caller goes through .va_r3_multi_tier() first.
 .va_r3_infer_dims <- function(par_names) {
   n_m <- sum(par_names == "m")
   n_off <- sum(par_names == "L_off")
@@ -1160,6 +1463,18 @@
                                      route = c("auto", "blocked", "dense"),
                                      max_variational = NULL) {
   route <- match.arg(route)
+  if (.va_r3_multi_tier(objective)) {
+    return(list(
+      se_conditional = NULL, se_profile = NULL, pd_hessian = FALSE,
+      calibrated = FALSE, route = route,
+      status = .VA_R3_MULTI_TIER_SE_STATUS,
+      basis = paste(
+        "refused: the per-unit block-diagonal partition H_vv relies on does not",
+        "hold once a second tier shares observations with the first, and the",
+        "parameter names cannot tell the safe case from the unsafe one"
+      )
+    ))
+  }
   nm <- names(par)
   if (!is.null(nm) && !identical(route, "dense")) {
     dims <- .va_r3_infer_dims(nm)
@@ -1252,10 +1567,18 @@
   )
 }
 
+## The variational block, by parameter name. `profile=` takes NAMES, which is
+## why Stage 6's flattening of these three from PARAMETER_MATRIX to
+## PARAMETER_VECTOR matters here: a name selects the whole block either way,
+## but the flat layout is the one TMB's inner solver indexes contiguously.
+.va_r3_variational_names <- c("m", "log_L_diag", "L_off")
+
 .va_r3_make_objective <- function(validated, H = 61L, source = NULL,
                                   rebuild = FALSE, parameters = NULL,
                                   fixed_global = NULL, silent = TRUE,
-                                  eval_method = c("auto", "jj", "gh")) {
+                                  eval_method = c("auto", "jj", "gh"),
+                                  profile_variational = FALSE,
+                                  inner_control = NULL) {
   if (validated$q == 0L) {
     stop("q = 0 is not applicable and must not construct an R3 objective.",
          call. = FALSE)
@@ -1277,12 +1600,44 @@
       rep(0, validated$T)
     }
   }
+  ## Stage 6 turned the three variational PARAMETER_MATRIXes into flat
+  ## PARAMETER_VECTORs. as.numeric() of an N x q matrix is column-major, which
+  ## is byte-for-byte the layout the matrix already had, so hand-built
+  ## parameter lists written against the pre-Stage-6 signature keep working and
+  ## keep producing the identical par vector.
+  layout <- validated$tier_layout
+  if (is.null(layout)) {
+    stop("validated data carry no tier layout; rebuild with .va_r3_validate_data().",
+         call. = FALSE)
+  }
+  parameters$m <- as.numeric(parameters$m)
+  parameters$log_L_diag <- as.numeric(parameters$log_L_diag)
+  parameters$L_off <- as.numeric(parameters$L_off)
+  if (is.null(parameters$log_sd_tier)) {
+    parameters$log_sd_tier <- rep(log(0.3), layout$total_sd)
+  }
+  parameters$log_sd_tier <- as.numeric(parameters$log_sd_tier)
+  expected <- c(m = layout$total_mean, log_L_diag = layout$total_mean,
+                L_off = layout$total_off, theta_rr = layout$total_theta,
+                log_sd_tier = layout$total_sd)
+  for (nm in names(expected)) {
+    if (length(parameters[[nm]]) != expected[[nm]]) {
+      stop("parameter `", nm, "` must have length ", expected[[nm]],
+           " for this tier layout, not ", length(parameters[[nm]]), ".",
+           call. = FALSE)
+    }
+  }
   tmb_data <- validated[c("y", "n_trials", "X", "unit_id", "trait_id",
                           "is_y_observed", "family",
                           "N", "T", "q")]
   tmb_data$gh_nodes <- rule$nodes
   tmb_data$gh_weights <- rule$weights
   tmb_data$eval_method <- eval_method_code
+  tmb_data$n_tiers <- layout$n_tiers
+  tmb_data$tier_kind <- layout$kind_code
+  tmb_data$tier_dim <- layout$dim
+  tmb_data$tier_n_levels <- layout$n_levels
+  tmb_data$level_id <- layout$level_id
   ## Per-trait maps (Design 108 Stage 2): log_phi free only on nbinom2 traits;
   ## log_sigma free only on Gaussian traits.
   map <- list()
@@ -1309,6 +1664,15 @@
       stop("fixed_global must be a named list containing exactly beta and theta_rr.",
            call. = FALSE)
     }
+    ## fixed_global's contract is "hold the GLOBAL parameters at known values".
+    ## Once a second tier exists there are global parameters it does not name --
+    ## the extra tiers' loadings and log_sd_tier -- so honouring it as written
+    ## would fix some of them and leave the rest free, i.e. fit a different
+    ## model than the caller asked for while reporting success. Refuse instead.
+    if (layout$n_tiers > 1L) {
+      stop("fixed_global is defined for the single-tier model only; a multi-tier fit has global parameters it does not name (extra tier loadings, log_sd_tier).",
+           call. = FALSE)
+    }
     if (length(fixed_global$beta) != ncol(validated$X) ||
         any(!is.finite(fixed_global$beta))) {
       stop("fixed_global$beta has the wrong length or non-finite entries.",
@@ -1322,16 +1686,41 @@
     map$theta_rr <- factor(rep(NA_integer_, length(parameters$theta_rr)))
   }
   if (!length(map)) map <- NULL
-  obj <- TMB::MakeADFun(
-    data = tmb_data,
-    parameters = parameters,
-    map = map,
-    random = NULL,
-    DLL = dll$DLL,
-    silent = silent
-  )
+  ## profile_variational = FALSE is the shipped route and reproduces the joint
+  ## `random = NULL` objective byte for byte. TRUE hands the variational block
+  ## to TMB's inner Newton solver via `profile=`, which appends the named
+  ## parameters to `random` WITH THE LAPLACE APPROXIMATION DISABLED -- no
+  ## -1/2 log det H term is added, so the outer objective is the EXACT profile
+  ## min_{m,L} ELBO(fixed, m, L), not a Laplace approximation of the ELBO.
+  ## `random=` alone would be mathematically wrong here: the variational
+  ## coordinates are optimisation variables of a deterministic bound, not
+  ## latent random variables to integrate over.
+  profile_variational <- isTRUE(profile_variational)
+  obj <- if (profile_variational) {
+    args <- list(
+      data = tmb_data, parameters = parameters, map = map,
+      profile = .va_r3_variational_names,
+      DLL = dll$DLL, silent = silent
+    )
+    if (!is.null(inner_control)) args$inner.control <- inner_control
+    do.call(TMB::MakeADFun, args)
+  } else {
+    TMB::MakeADFun(
+      data = tmb_data,
+      parameters = parameters,
+      map = map,
+      random = NULL,
+      DLL = dll$DLL,
+      silent = silent
+    )
+  }
+  attr(obj, "va_r3_profiled") <- profile_variational
   attr(obj, "va_r3_dll") <- dll
   attr(obj, "va_r3_quadrature") <- rule
+  ## Carried so downstream machinery can ASK the objective what its variational
+  ## layout is instead of inferring it from parameter-name counts -- which is
+  ## exactly the inference that becomes silently wrong at K > 1.
+  attr(obj, "va_r3_tiers") <- layout
   obj
 }
 
@@ -1351,7 +1740,10 @@
                        optimizer = c("auto", "nlminb", "lbfgsb"),
                        is_y_observed = NULL,
                        family_codes = NULL,
-                       estimate_gaussian_sd = TRUE) {
+                       estimate_gaussian_sd = TRUE,
+                       extra_tiers = NULL,
+                       profile_variational = FALSE,
+                       inner_control = NULL) {
   family_choices <- c("binomial", "poisson", "gaussian_anchor", "nbinom2",
                       "binomial_probit", "gaussian")
   if (is.null(family_codes)) {
@@ -1394,7 +1786,7 @@
     y, n_trials, X, unit_id, trait_id, q, N, T, family, link,
     unique, psi, structured, provider, lv, missing, gaussian_sd,
     is_y_observed = is_y_observed, family_codes = family_codes,
-    estimate_gaussian_sd = estimate_gaussian_sd
+    estimate_gaussian_sd = estimate_gaussian_sd, extra_tiers = extra_tiers
   )
   ## Validate and resolve eval_method against the family up front, before any
   ## objective is constructed, so a mismatched request fails closed for every
@@ -1455,6 +1847,13 @@
       stop("fixed_global must be a named list containing exactly beta and theta_rr.",
            call. = FALSE)
     }
+    ## Refuse here as well as in .va_r3_make_objective(): overwriting theta_rr
+    ## below with a single-tier vector would otherwise reach the objective as a
+    ## length mismatch, reported against the wrong cause.
+    if (validated$tier_layout$n_tiers > 1L) {
+      stop("fixed_global is defined for the single-tier model only; a multi-tier fit has global parameters it does not name (extra tier loadings, log_sd_tier).",
+           call. = FALSE)
+    }
     if (length(fixed_global$beta) != ncol(validated$X) ||
         any(!is.finite(fixed_global$beta))) {
       stop("fixed_global$beta has the wrong length or non-finite entries.",
@@ -1466,13 +1865,15 @@
       starts[[k]]$theta_rr <- as.numeric(fixed_global$theta_rr)
     }
   }
+  profile_variational <- isTRUE(profile_variational)
   fits <- vector("list", length(starts))
   objects <- vector("list", length(starts))
   for (k in seq_along(starts)) {
     obj <- .va_r3_make_objective(
       validated, H = H, source = source, rebuild = rebuild && k == 1L,
       parameters = starts[[k]], fixed_global = fixed_global, silent = silent,
-      eval_method = eval_method
+      eval_method = eval_method,
+      profile_variational = profile_variational, inner_control = inner_control
     )
     objects[[k]] <- obj
     opt <- tryCatch(
@@ -1533,6 +1934,25 @@
     } else Inf
     healthy <- identical(opt$convergence, 0L) && is.finite(opt$objective) &&
       finite_parameters && max_abs_gradient < 1e-4
+    ## `par` is contractually the FULL parameter vector, variational block
+    ## included -- report(), the latent read-out, and every test read it that
+    ## way. Under profile_variational the outer optimiser only ever sees the
+    ## global block, so re-evaluate at the reported point and take TMB's
+    ## last.par, which is the outer point plus the inner solve that produced
+    ## the reported objective. Layout and names match the joint object's par
+    ## exactly (verified in test-va-r3-profile.R), so nothing downstream has to
+    ## know which route produced it.
+    outer_par <- opt$par
+    if (profile_variational) {
+      full_par <- tryCatch({
+        obj$fn(opt$par)
+        obj$env$last.par
+      }, error = function(e) rep(NA_real_, length(obj$env$par)))
+      finite_parameters <- finite_parameters && all(is.finite(full_par))
+      healthy <- healthy && all(is.finite(full_par))
+    } else {
+      full_par <- opt$par
+    }
     fits[[k]] <- list(
       start = k,
       convergence = opt$convergence,
@@ -1541,12 +1961,13 @@
       finite_parameters = finite_parameters,
       healthy = healthy,
       message = opt$message,
-      par = opt$par,
+      par = full_par,
       evaluations = opt$evaluations,
       iterations = opt$iterations,
       polish_passes = polish_passes,
       polish_optimizer = polish_optimizer
     )
+    if (profile_variational) fits[[k]]$outer_par <- outer_par
   }
   healthy_id <- which(vapply(fits, `[[`, logical(1), "healthy"))
   objectives <- vapply(fits, `[[`, numeric(1), "objective")
@@ -1603,7 +2024,16 @@
     rank_source = rank_source,
     family = validated$family_name,
     link = validated$link,
-    unique = FALSE,
+    unique = isTRUE(validated$unique),
+    tiers = list(
+      n_tiers = validated$tier_layout$n_tiers,
+      kind = validated$tier_layout$kind,
+      label = validated$tier_layout$label,
+      dim = validated$tier_layout$dim,
+      n_levels = validated$tier_layout$n_levels,
+      variational_per_level = validated$tier_layout$variational_per_level,
+      total_variational = validated$tier_layout$total_variational
+    ),
     q = validated$q,
     eval_method = resolved_eval_method,
     quadrature = list(order = rule$order, convention = rule$convention,
@@ -1612,6 +2042,7 @@
     source_checksum = dll$checksum,
     fixed_global = !is.null(fixed_global),
     optimizer = optimizer,
+    profile_variational = profile_variational,
     starts = fits,
     health = list(
       admitted = admitted,

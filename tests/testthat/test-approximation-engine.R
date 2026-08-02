@@ -31,11 +31,23 @@ test_that("VA-R3 rejects unsupported regime before objective construction", {
   unit <- rep(1:2, each = 2)
   trait <- rep(1:2, 2)
 
+  ## Design 108 Gate A Stage 6 lifted this adapter's `unique` refusal IN
+  ## LOCKSTEP with .va_r3_validate_data(). The replacement assertion is that
+  ## the two gates now AGREE: the adapter must refuse exactly what the
+  ## validator refuses, no more and no less. A duplicated gate that drifts is
+  ## worse than one gate, because the adapter would refuse a model the engine
+  ## admits -- or admit one by a second route after the engine relaxed.
   expect_error(
     .approximation_engine_va_r3_fit(
-      y, trials, X, unit, trait, q = 1L, unique = TRUE
+      y, trials, X, unit, trait, q = 1L, structured = TRUE
     ),
-    "unique = FALSE"
+    "ordinary latent"
+  )
+  expect_error(
+    .approximation_engine_va_r3_fit(
+      y, trials, X, unit, trait, q = 1L, provider = list(kind = "phylo")
+    ),
+    "ordinary latent"
   )
   expect_error(
     .approximation_engine_va_r3_fit(

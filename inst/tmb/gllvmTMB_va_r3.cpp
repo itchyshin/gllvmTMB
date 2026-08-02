@@ -284,11 +284,52 @@ Type objective_function<Type>::operator()()
   DATA_INTEGER(eval_method);       // 0 = Gauss-Hermite quadrature;
                                    // 1 = Jaakkola-Jordan/PG bound (binomial-only fits)
 
+  // ---------------------------------------------------------------------
+  // Design 108 Gate A Stage 6: multiple unstructured tiers (Design 106 s1).
+  //
+  // An observation o loads on ONE level of each tier k:
+  //     eta_o = x_o' beta + sum_k a_{k,o}' u_{k, g_k(o)}
+  // and Proposition 1 makes mu and v ACCUMULATE across tiers, with the KL
+  // decomposing into a sum over tiers and levels.  No new integrand, no new
+  // quadrature, no new linear algebra -- only indexing.
+  //
+  // Two loading SHAPES, and they get two code paths on purpose:
+  //   tier_kind == 0  DENSE.  a_{k,o} = Lambda_k(trait(o), .), a T x d_k
+  //     lower-triangular loadings matrix unpacked from theta_rr.  The
+  //     variational block is a full d_k x d_k Cholesky.
+  //   tier_kind == 1  TRAIT-DIAGONAL (Psi / unique / indep / cluster).
+  //     a_{k,o} = sd_{k,trait(o)} * e_{trait(o)}, so d_k == T and each
+  //     observation loads on exactly ONE coordinate.  Design 106
+  //     Proposition 2 (Fischer's inequality) says the optimal q is then
+  //     block-diagonal EXACTLY, so this path allocates NO off-diagonal
+  //     Cholesky entries at all: 2T numbers per level, not T + T(T+1)/2.
+  //     That is a free reduction, not an approximation -- 7.25x at T = 26 --
+  //     and routing a diagonal tier through the dense path would silently
+  //     forfeit it.
+  //
+  // Tier 0 is the ordinary latent tier by construction: it is dense, has
+  // dimension q, has N levels, and its level index IS unit_id.  Every one of
+  // those is checked below, so the K = 1 layout is provably today's layout.
+  DATA_INTEGER(n_tiers);
+  DATA_IVECTOR(tier_kind);         // length K: 0 = dense, 1 = trait-diagonal
+  DATA_IVECTOR(tier_dim);          // length K: d_k (== T for diagonal tiers)
+  DATA_IVECTOR(tier_n_levels);     // length K: n_k
+  DATA_IMATRIX(level_id);          // n_obs x K, zero-based; column 0 == unit_id
+
   PARAMETER_VECTOR(beta);
-  PARAMETER_VECTOR(theta_rr);      // live-engine packing; raw diagonal first
-  PARAMETER_MATRIX(m);             // N x q variational means
-  PARAMETER_MATRIX(log_L_diag);    // N x q log Cholesky diagonals
-  PARAMETER_MATRIX(L_off);         // N x q(q-1)/2 strict-lower entries
+  PARAMETER_VECTOR(theta_rr);      // dense tiers' packed loadings, tier order;
+                                   // live-engine packing, raw diagonal first
+  PARAMETER_VECTOR(log_sd_tier);   // diagonal tiers' per-trait log SDs, T per
+                                   // diagonal tier, tier order
+  // The variational block is stored FLAT, tier-major, and within a tier in
+  // the same column-major order the pre-Stage-6 N x q matrices used:
+  //     entry (tier k, level g, coordinate c) sits at
+  //     offset_k + c * tier_n_levels(k) + g.
+  // At K = 1 that is exactly as.vector() of the old N x q matrix, element for
+  // element, so the K = 1 parameter vector is byte-identical to Stage 5's.
+  PARAMETER_VECTOR(m);             // variational means
+  PARAMETER_VECTOR(log_L_diag);    // log Cholesky diagonals (log SDs when diagonal)
+  PARAMETER_VECTOR(L_off);         // strict-lower Cholesky entries, dense tiers only
   PARAMETER_VECTOR(log_phi);       // T-vector, nbinom2 dispersion on the log
                                    // scale; mapped off (NA) for every other
                                    // family, so it costs nothing there
@@ -312,12 +353,83 @@ Type objective_function<Type>::operator()()
     error("gllvmTMB_va_r3: response-side data dimensions do not agree");
   if (X.cols() != beta.size())
     error("gllvmTMB_va_r3: ncol(X) must equal length(beta)");
-  if (theta_rr.size() != theta_expected)
+
+  // ---- Tier structure: validate BEFORE any offset arithmetic uses it. ----
+  if (n_tiers < 1)
+    error("gllvmTMB_va_r3: n_tiers must be at least 1");
+  if (tier_kind.size() != n_tiers || tier_dim.size() != n_tiers ||
+      tier_n_levels.size() != n_tiers)
+    error("gllvmTMB_va_r3: tier_kind, tier_dim and tier_n_levels must each have length n_tiers");
+  if (level_id.rows() != n_obs || level_id.cols() != n_tiers)
+    error("gllvmTMB_va_r3: level_id must be n_obs x n_tiers");
+  // Tier 0 IS the ordinary latent tier. Pinning it is what makes the K = 1
+  // path provably the pre-Stage-6 path rather than a coincidence.
+  if (tier_kind(0) != 0 || tier_dim(0) != q || tier_n_levels(0) != N)
+    error("gllvmTMB_va_r3: tier 0 must be the dense ordinary latent tier with tier_dim = q and tier_n_levels = N");
+  for (int k = 0; k < n_tiers; ++k) {
+    if (tier_kind(k) != 0 && tier_kind(k) != 1)
+      error("gllvmTMB_va_r3: tier_kind entries must be 0 (dense) or 1 (trait-diagonal)");
+    if (tier_n_levels(k) < 1)
+      error("gllvmTMB_va_r3: tier_n_levels entries must be positive");
+    if (tier_kind(k) == 0) {
+      if (tier_dim(k) < 1 || tier_dim(k) > T)
+        error("gllvmTMB_va_r3: a dense tier needs 1 <= tier_dim <= T");
+    } else {
+      // A trait-diagonal tier has one field per trait by definition; any
+      // other dimension means the caller packed something else and the
+      // per-trait indexing below would read the wrong coordinate.
+      if (tier_dim(k) != T)
+        error("gllvmTMB_va_r3: a trait-diagonal tier must have tier_dim = T");
+    }
+  }
+
+  // Flat-layout offsets, recomputed here from the tier vectors rather than
+  // trusted from R. The length checks that follow therefore CATCH an R/C++
+  // disagreement instead of silently reading past a tier boundary.
+  std::vector<int> m_offset(n_tiers, 0);
+  std::vector<int> off_offset(n_tiers, 0);
+  std::vector<int> theta_offset(n_tiers, 0);
+  std::vector<int> sd_offset(n_tiers, 0);
+  std::vector<int> level_offset(n_tiers, 0);
+  int total_mean = 0, total_off = 0, total_theta = 0, total_sd = 0,
+      total_levels = 0;
+  for (int k = 0; k < n_tiers; ++k) {
+    m_offset[k] = total_mean;
+    off_offset[k] = total_off;
+    theta_offset[k] = total_theta;
+    sd_offset[k] = total_sd;
+    level_offset[k] = total_levels;
+    const int d = tier_dim(k);
+    const int nk = tier_n_levels(k);
+    total_mean += nk * d;
+    total_levels += nk;
+    if (tier_kind(k) == 0) {
+      total_off += nk * d * (d - 1) / 2;
+      total_theta += T * d - d * (d - 1) / 2;
+    } else {
+      // Proposition 2: zero off-diagonals, T log SDs for the loading.
+      total_sd += T;
+    }
+  }
+  if (theta_rr.size() != total_theta)
+    error("gllvmTMB_va_r3: theta_rr has the wrong live-packed length for the declared dense tiers");
+  if (n_tiers == 1 && theta_rr.size() != theta_expected)
     error("gllvmTMB_va_r3: theta_rr has the wrong live-packed length");
-  if (m.rows() != N || m.cols() != q ||
-      log_L_diag.rows() != N || log_L_diag.cols() != q ||
-      L_off.rows() != N || L_off.cols() != n_off)
+  if (log_sd_tier.size() != total_sd)
+    error("gllvmTMB_va_r3: log_sd_tier must supply T entries per trait-diagonal tier");
+  if (m.size() != total_mean || log_L_diag.size() != total_mean ||
+      L_off.size() != total_off)
     error("gllvmTMB_va_r3: variational parameter dimensions do not agree");
+  if (n_tiers == 1 && (m.size() != N * q || L_off.size() != N * n_off))
+    error("gllvmTMB_va_r3: variational parameter dimensions do not agree");
+  for (int r = 0; r < n_obs; ++r) {
+    for (int k = 0; k < n_tiers; ++k) {
+      if (level_id(r, k) < 0 || level_id(r, k) >= tier_n_levels(k))
+        error("gllvmTMB_va_r3: level_id is out of range for its tier");
+    }
+    if (level_id(r, 0) != unit_id(r))
+      error("gllvmTMB_va_r3: tier 0's level index must be unit_id");
+  }
   if (log_phi.size() != T)
     error("gllvmTMB_va_r3: log_phi must have length T");
   if (log_sigma.size() != T)
@@ -382,23 +494,40 @@ Type objective_function<Type>::operator()()
     }
   }
 
-  // Exact live-engine reconstruction: raw diagonal, then strict lower
-  // triangle column-by-column. Strict upper triangle remains zero.
-  matrix<Type> Lambda(T, q);
-  Lambda.setZero();
-  vector<Type> lam_diag = theta_rr.head(q);
-  vector<Type> lam_lower = theta_rr.tail(theta_rr.size() - q);
-  for (int j = 0; j < q; ++j) {
-    for (int t = j; t < T; ++t) {
-      if (t == j) {
-        Lambda(t, j) = lam_diag(j);
-      } else {
-        int pos = j * T - (j + 1) * j / 2 + t - 1 - j;
-        Lambda(t, j) = lam_lower(pos);
+  // Exact live-engine reconstruction, once per DENSE tier: raw diagonal, then
+  // strict lower triangle column-by-column. Strict upper triangle stays zero.
+  // Diagonal tiers get an empty slot -- their loading is sd_j * e_j and is
+  // read straight out of log_sd_tier, never materialised as a matrix.
+  std::vector<matrix<Type> > Lambda_tier(n_tiers);
+  for (int k = 0; k < n_tiers; ++k) {
+    const int d = tier_dim(k);
+    if (tier_kind(k) != 0) {
+      Lambda_tier[k] = matrix<Type>(0, 0);
+      continue;
+    }
+    matrix<Type> Lk(T, d);
+    Lk.setZero();
+    const int len = T * d - d * (d - 1) / 2;
+    vector<Type> theta_k = theta_rr.segment(theta_offset[k], len);
+    vector<Type> lam_diag = theta_k.head(d);
+    vector<Type> lam_lower = theta_k.tail(len - d);
+    for (int j = 0; j < d; ++j) {
+      for (int t = j; t < T; ++t) {
+        if (t == j) {
+          Lk(t, j) = lam_diag(j);
+        } else {
+          int pos = j * T - (j + 1) * j / 2 + t - 1 - j;
+          Lk(t, j) = lam_lower(pos);
+        }
       }
     }
+    Lambda_tier[k] = Lk;
   }
+  // Reported for back-compatibility: tier 0 IS the ordinary latent tier, so
+  // these keep their pre-Stage-6 meaning exactly.
+  matrix<Type> Lambda = Lambda_tier[0];
   matrix<Type> Sigma_B = Lambda * Lambda.transpose();
+  vector<Type> sd_tier = exp(log_sd_tier);
 
   // Materialise each unit Cholesky only as a q x q work matrix. S is never
   // inverted and its determinant is never formed. Flattened L/S reports are
@@ -407,41 +536,80 @@ Type objective_function<Type>::operator()()
   matrix<Type> S_flat(N, q * q);
   L_flat.setZero();
   S_flat.setZero();
+  // kl_by_unit keeps its pre-Stage-6 meaning: tier 0's per-level KL. The
+  // tier-general quantities are kl_by_level (flat, tier-major) and
+  // kl_by_tier; total_kl below is their sum and is what enters the ELBO.
   vector<Type> kl_by_unit(N);
+  vector<Type> kl_by_level(total_levels);
+  vector<Type> kl_by_tier(n_tiers);
   kl_by_unit.setZero();
+  kl_by_level.setZero();
+  kl_by_tier.setZero();
 
-  for (int i = 0; i < N; ++i) {
-    matrix<Type> Li(q, q);
-    Li.setZero();
-    for (int k = 0; k < q; ++k)
-      Li(k, k) = exp(log_L_diag(i, k));
-    int off_pos = 0;
-    for (int col = 0; col < q; ++col) {
-      for (int row = col + 1; row < q; ++row) {
-        Li(row, col) = L_off(i, off_pos);
-        ++off_pos;
+  for (int k = 0; k < n_tiers; ++k) {
+    const int d = tier_dim(k);
+    const int nk = tier_n_levels(k);
+    const int mo = m_offset[k];
+    const int oo = off_offset[k];
+
+    if (tier_kind(k) == 1) {
+      // Trait-diagonal tier (Design 106 Prop. 2). The variational block is
+      // diag(s_1^2, ..., s_T^2), so the KL is a sum of T univariate KLs and
+      // there is NOTHING off-diagonal to read. This is the whole point of the
+      // second code path: the saving is structural, not a converged-to zero.
+      for (int g = 0; g < nk; ++g) {
+        Type kl = Type(0.0);
+        for (int j = 0; j < d; ++j) {
+          const int pos = mo + j * nk + g;
+          Type log_s = log_L_diag(pos);
+          Type s = exp(log_s);
+          kl += s * s + m(pos) * m(pos) - Type(2.0) * log_s - Type(1.0);
+        }
+        kl = Type(0.5) * kl;
+        if (!std::isfinite(asDouble(kl)))
+          Rf_error("gllvmTMB_va_r3: non-finite KL coordinate at tier %d level %d", k, g);
+        kl_by_level(level_offset[k] + g) = kl;
+        kl_by_tier(k) += kl;
       }
+      continue;
     }
 
-    Type trace_S = Type(0.0);
-    Type mean_sq = Type(0.0);
-    Type logdet_S = Type(0.0);
-    for (int row = 0; row < q; ++row) {
-      mean_sq += m(i, row) * m(i, row);
-      logdet_S += Type(2.0) * log_L_diag(i, row);
-      for (int col = 0; col <= row; ++col)
-        trace_S += Li(row, col) * Li(row, col);
-    }
-    kl_by_unit(i) = Type(0.5) *
-      (trace_S + mean_sq - logdet_S - Type(q));
-    if (!std::isfinite(asDouble(kl_by_unit(i))))
-      Rf_error("gllvmTMB_va_r3: non-finite KL coordinate at unit %d", i);
+    for (int g = 0; g < nk; ++g) {
+      matrix<Type> Li(d, d);
+      Li.setZero();
+      for (int c = 0; c < d; ++c)
+        Li(c, c) = exp(log_L_diag(mo + c * nk + g));
+      int off_pos = 0;
+      for (int col = 0; col < d; ++col) {
+        for (int row = col + 1; row < d; ++row) {
+          Li(row, col) = L_off(oo + off_pos * nk + g);
+          ++off_pos;
+        }
+      }
 
-    matrix<Type> Si = Li * Li.transpose();
-    for (int row = 0; row < q; ++row) {
-      for (int col = 0; col < q; ++col) {
-        L_flat(i, row * q + col) = Li(row, col);
-        S_flat(i, row * q + col) = Si(row, col);
+      Type trace_S = Type(0.0);
+      Type mean_sq = Type(0.0);
+      Type logdet_S = Type(0.0);
+      for (int row = 0; row < d; ++row) {
+        mean_sq += m(mo + row * nk + g) * m(mo + row * nk + g);
+        logdet_S += Type(2.0) * log_L_diag(mo + row * nk + g);
+        for (int col = 0; col <= row; ++col)
+          trace_S += Li(row, col) * Li(row, col);
+      }
+      Type kl = Type(0.5) * (trace_S + mean_sq - logdet_S - Type(d));
+      if (!std::isfinite(asDouble(kl)))
+        Rf_error("gllvmTMB_va_r3: non-finite KL coordinate at tier %d level %d", k, g);
+      kl_by_level(level_offset[k] + g) = kl;
+      kl_by_tier(k) += kl;
+      if (k == 0) {
+        kl_by_unit(g) = kl;
+        matrix<Type> Si = Li * Li.transpose();
+        for (int row = 0; row < d; ++row) {
+          for (int col = 0; col < d; ++col) {
+            L_flat(g, row * d + col) = Li(row, col);
+            S_flat(g, row * d + col) = Si(row, col);
+          }
+        }
       }
     }
   }
@@ -468,21 +636,47 @@ Type objective_function<Type>::operator()()
     Type mu = Type(0.0);
     for (int p = 0; p < X.cols(); ++p)
       mu += X(r, p) * beta(p);
-    for (int k = 0; k < q; ++k)
-      mu += Lambda(t, k) * m(i, k);
 
-    // v_it = ||L_i' lambda_t||^2, without forming S_i.
+    // Design 106 Proposition 1: mu and v ACCUMULATE over tiers. Means add and
+    // variances add because the tiers are uncorrelated under q; there is no
+    // cross term to carry and no new algebra of any kind.
     Type v = Type(0.0);
-    for (int col = 0; col < q; ++col) {
-      Type projected = Type(0.0);
-      projected += exp(log_L_diag(i, col)) * Lambda(t, col);
-      int off_pos = 0;
-      for (int prior_col = 0; prior_col < col; ++prior_col)
-        off_pos += q - prior_col - 1;
-      for (int row = col + 1; row < q; ++row) {
-        projected += L_off(i, off_pos + row - col - 1) * Lambda(t, row);
+    for (int k = 0; k < n_tiers; ++k) {
+      const int d = tier_dim(k);
+      const int nk = tier_n_levels(k);
+      const int mo = m_offset[k];
+      const int oo = off_offset[k];
+      const int g = level_id(r, k);
+
+      if (tier_kind(k) == 1) {
+        // a_{k,o} = sd_{k,t} e_t: the observation touches ONE coordinate, so
+        // both mu and v read a single scalar. No d_k-length inner product,
+        // and no off-diagonal Cholesky to project through.
+        Type sd = sd_tier(sd_offset[k] + t);
+        const int pos = mo + t * nk + g;
+        mu += sd * m(pos);
+        Type projected = sd * exp(log_L_diag(pos));
+        v += projected * projected;
+        continue;
       }
-      v += projected * projected;
+
+      const matrix<Type> &Lam = Lambda_tier[k];
+      for (int c = 0; c < d; ++c)
+        mu += Lam(t, c) * m(mo + c * nk + g);
+
+      // v contribution = ||L_{k,g}' a_{k,o}||^2, without forming S.
+      for (int col = 0; col < d; ++col) {
+        Type projected = Type(0.0);
+        projected += exp(log_L_diag(mo + col * nk + g)) * Lam(t, col);
+        int off_pos = 0;
+        for (int prior_col = 0; prior_col < col; ++prior_col)
+          off_pos += d - prior_col - 1;
+        for (int row = col + 1; row < d; ++row) {
+          projected += L_off(oo + (off_pos + row - col - 1) * nk + g) *
+            Lam(t, row);
+        }
+        v += projected * projected;
+      }
     }
     if (!std::isfinite(asDouble(mu)))
       Rf_error("gllvmTMB_va_r3: non-finite mu coordinate at unit %d trait %d", i, t);
@@ -565,7 +759,7 @@ Type objective_function<Type>::operator()()
   }
 
   Type expected_loglik = expected_loglik_by_unit.sum();
-  Type total_kl = kl_by_unit.sum();
+  Type total_kl = kl_by_level.sum();
   Type elbo = expected_loglik - total_kl;
   Type negative_elbo = -elbo;
   if (!std::isfinite(asDouble(negative_elbo)))
@@ -577,7 +771,19 @@ Type objective_function<Type>::operator()()
   REPORT(log_sigma);
   REPORT(Lambda);
   REPORT(Sigma_B);
-  REPORT(m);
+  // `m` keeps its pre-Stage-6 REPORT shape -- tier 0's N x q variational
+  // means -- because readers downstream index it as a matrix. REPORT() keys
+  // on the token name, so the matrix is bound to a shadowing local inside its
+  // own block; the flat, tier-major block is reported alongside as m_flat.
+  vector<Type> m_flat = m;
+  REPORT(m_flat);
+  {
+    matrix<Type> m(N, q);
+    for (int g = 0; g < N; ++g)
+      for (int c = 0; c < q; ++c)
+        m(g, c) = m_flat(m_offset[0] + c * N + g);
+    REPORT(m);
+  }
   REPORT(L_flat);
   REPORT(S_flat);
   REPORT(mu_by_obs);
@@ -586,6 +792,13 @@ Type objective_function<Type>::operator()()
   REPORT(softplus_expectation_by_obs);
   REPORT(expected_loglik_by_unit);
   REPORT(kl_by_unit);
+  REPORT(kl_by_level);
+  REPORT(kl_by_tier);
+  REPORT(n_tiers);
+  REPORT(tier_kind);
+  REPORT(tier_dim);
+  REPORT(tier_n_levels);
+  REPORT(sd_tier);
   REPORT(expected_loglik);
   REPORT(total_kl);
   REPORT(elbo);

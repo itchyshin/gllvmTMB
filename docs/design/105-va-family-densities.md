@@ -118,13 +118,24 @@ and for the physicists' rule the extreme node reaches
 |---|---|---|
 | 15 | 4.500 | **± 6.4 SD** |
 | 25 | 6.164 | ± 8.7 SD |
-| 61 | ~11.09 | **± 15.7 SD** |
+| 61 | 10.252 | **± 14.50 SD** |
+
+**Correction (2026-08-02):** this table previously read `H = 61 → max node
+~11.09 → ± 15.7 SD`. That figure was wrong. `.va_r3_gh_rule(61)`
+(`R/va-r3-proto.R`) computes the physicists' Gauss-Hermite nodes via
+Golub-Welsch; the actual maximum node at `H = 61` is `10.2520`, which converts
+to SD-of-`eta` reach as `10.2520 * sqrt(2) = 14.4985 ≈ ± 14.50 SD` (verified
+by direct recomputation of the same eigendecomposition this session). This
+matches the comment already present at `inst/tmb/gllvmTMB_va_r3.cpp:122`
+("+/- 14.50 SD at H = 61"), which the design doc had drifted out of sync
+with. The `H = 15` and `H = 25` rows were independently re-verified and are
+correct as stated.
 
 Two consequences, both non-obvious:
 
 1. **Every clamp must move inside the integrand**, applied at each node. A clamp on
    `mu` does nothing for a node 6 SD away.
-2. **Raising `H` makes boundary hazards worse, not better.** `H = 61` probes 15.7
+2. **Raising `H` makes boundary hazards worse, not better.** `H = 61` probes ~14.5
    SD out, where `plogis(eta)` underflows, `pgamma` underflows, and CDF differences
    cancel completely. This is an argument *against* `H = 61` as anything but a
    diagnostic, independent of the timing argument in Design 104 §4.
@@ -303,7 +314,7 @@ The second term is unconditionally negative; the first flips sign at `p = 1/2`.
 As `p -> 0`, `lgamma(phi*p) ~ -log(phi*p) -> +Inf`, so `g(eta) -> -Inf`
 logarithmically. The integral is finite (log divergence against a Gaussian tail),
 but at a quadrature *node* the code will evaluate a very large negative number, and
-at `H = 61` (15.7 SD) `phi*p` underflows to exactly `0` and `lgamma(0) = Inf`
+at `H = 61` (~14.5 SD, corrected above) `phi*p` underflows to exactly `0` and `lgamma(0) = Inf`
 poisons the sum.
 
 Required form:

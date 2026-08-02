@@ -11,6 +11,33 @@ This repository is shared by humans, Codex, and Claude Code. Read
 > current handover. Read it before any repository mutation. Milestone state is not in
 > either place and must be re-derived from `git`.
 
+- **2026-08-02 — CRAN IS OFF THE TABLE; EVIDENCE LANE CLOSED; CAPSTONE IS NEXT.**
+  Shinichi: *"do not worry about CRAN submission — I am not intending to do so."*
+  Everything CRAN-shaped is descoped (3-OS, URL/DESCRIPTION polish, submission
+  prep); **#345 loses its first half and the paper is what remains**. Merged
+  [#900](https://github.com/itchyshin/gllvmTMB/pull/900) (internal held-out CV
+  layer + known-truth fixture + block-conditional recovery tests),
+  [#901](https://github.com/itchyshin/gllvmTMB/pull/901) (glmmTMB corpus adopted;
+  Design 87 latent-variable oracle map; #800 closed),
+  [#903](https://github.com/itchyshin/gllvmTMB/pull/903) (validation-oracles
+  article) and [#906](https://github.com/itchyshin/gllvmTMB/pull/906)
+  (CI-08 audit + `bootstrap_Sigma()` `$coverage_ceiling` guard). **No new
+  exports.** Two long-standing claims were found FALSE and corrected in place:
+  the *"13/15 cells below 94%"* headline is a **retired gate on a
+  rotation-variant `psi` proxy** (PR #364 fixed the estimand on 2026-05-31), and
+  *"the exported `bootstrap_Sigma()` covered 0.78"* was **`n_boot = 10`** against
+  a default of 200 — at B ≥ 200 it reaches 0.9418 (profile route 0.9491).
+  `--as-cran` at `fdefbb91`: **0E/0W/2N**, the only actionable note fixed in
+  [#908](https://github.com/itchyshin/gllvmTMB/pull/908) (**UNMERGED**).
+  **DESCRIPTION on `main` is already `0.6.0` — the Dropbox checkout says 0.5.0
+  because it is 639 commits behind; it is NOT `main`.** Next: **scope the
+  power-study capstone (Design 66) as the paper's evidence chapter** — planning
+  only, needs Shinichi on cells/seeds/families/gate/compute; **no campaign at
+  `n_boot < 200`**. **START HERE:**
+  `docs/dev-log/handover/2026-07-25-active-lane-split.md`, then
+  `docs/dev-log/handover/2026-08-02-claude-handover-evidence-capstone.md` for
+  this lane (other lanes keep their named handovers in the split table).
+
 - **2026-08-02 — DESIGN 108 GATE A STAGE 2 LANDED (VA mixed-family).** PRs
   [#891](https://github.com/itchyshin/gllvmTMB/pull/891) (Stage 1 mask) and
   [#893](https://github.com/itchyshin/gllvmTMB/pull/893) (Stage 2 mixed-family +

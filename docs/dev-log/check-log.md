@@ -48047,6 +48047,27 @@ rg -n 'betabinomial\\(\\)' R/fit-multi.R tests/testthat/test-augmented-slope-fam
 **Reports:** `docs/dev-log/after-task/2026-08-01-slope-per-family-gap-ledger.md`,
 `docs/dev-log/after-task/2026-08-01-slope-per-family-betabinomial-admission.md`.
 
+## 2026-08-01 -- compact spatial article output and correlated-mode examples (Codex)
+
+Visual inspection of the deployed spatial guide showed that bare `mesh`
+printing expanded every coordinate row and buried later components. Replaced
+it with a six-row component/size table for `loc_xy`, vertices, `A_st`, and
+`spde` matrices `c0`, `g1`, and `g2`. Added runnable `spatial_latent()` and
+`spatial_dep()` fits and a compact comparison beside `spatial_indep()`; all
+three converged with code 0. Suppressed the duplicate long diagnostic return.
+The final Florence/Tufte pass also removed a redundant standalone convergence
+line and confirmed that the rendered HTML contains no sparse-matrix dump.
+
+Checks: focused and complete article renders PASS; article/mesh/UTM tests PASS
+(60); `pkgdown::check_pkgdown()` PASS; two viewport visual inspections PASS;
+full `devtools::check(args = "--no-manual")` PASS in 15m01.1s with 0 errors,
+0 warnings, and 2 environment notes; verbose-output scan and
+`git diff --check` PASS. No API, likelihood, mesh contract, validation status,
+or dependency/provenance claim changed.
+
+Full report:
+`docs/dev-log/after-task/2026-08-01-spatial-guide-output-compaction.md`.
+
 ## 2026-08-01 — Design 107 Gate A Stage 1 (VA response-include)
 
 **Branch / worktree:** `cursor/design107-va-response-mask-20260801` @

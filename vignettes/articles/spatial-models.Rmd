@@ -108,8 +108,39 @@ mesh <- make_mesh(
   xy_cols = c("lon", "lat"),
   cutoff = 0.07
 )
+```
 
-mesh
+The compact summary below confirms that all three SPDE finite-element matrices
+are present without printing their sparse entries or every coordinate row.
+
+```{r mesh-summary, echo = FALSE}
+mesh_summary <- data.frame(
+  component = c(
+    "coordinate rows (loc_xy)",
+    "mesh vertices",
+    "projection matrix (A_st)",
+    "SPDE mass matrix (c0)",
+    "SPDE stiffness matrix (g1)",
+    "SPDE curvature matrix (g2)"
+  ),
+  size = c(
+    paste(dim(mesh$loc_xy), collapse = " x "),
+    paste(mesh$mesh$n, "vertices"),
+    paste(dim(mesh$A_st), collapse = " x "),
+    vapply(
+      mesh$spde[c("c0", "g1", "g2")],
+      function(x) paste(dim(x), collapse = " x "),
+      character(1)
+    )
+  )
+)
+knitr::kable(mesh_summary, col.names = c("Component", "Size"))
+```
+
+Access `mesh$spde$c0`, `mesh$spde$g1`, or `mesh$spde$g2` directly when you need
+to inspect a particular matrix.
+
+```{r plot-mesh}
 plot(mesh)
 ```
 
@@ -159,8 +190,6 @@ fit_long <- gllvmTMB(
   mesh = mesh,
   silent = TRUE
 )
-
-fit_long$opt$convergence
 ```
 
 Some readers store one response column per trait. The compact `traits()`
@@ -225,7 +254,7 @@ estimation or calibrated uncertainty across designs.
 Run the ordinary fit diagnostics before interpreting spatial parameters:
 
 ```{r diagnostics}
-check_gllvmTMB(fit_long)
+invisible(check_gllvmTMB(fit_long))
 ```
 
 ## Choose the spatial covariance mode
@@ -244,23 +273,53 @@ Start with the simplest mode that answers the biological question. Do not add
 `spatial_indep()` to `spatial_latent()` or `spatial_dep()` in the same formula;
 those combinations duplicate spatial variance and fail explicitly.
 
-For a reduced-rank cross-trait spatial model, change only the spatial term:
+Fit the reduced-rank and full-covariance alternatives by changing only the
+spatial term:
 
-```{r latent-spatial-syntax, eval = FALSE}
-fit_shared <- gllvmTMB(
+```{r correlated-spatial-fits}
+fit_latent <- gllvmTMB(
   value ~ 0 + trait +
     spatial_latent(0 + trait | site, d = 2, unique = TRUE, mesh = mesh),
   data = spatial_long,
   trait = "trait",
   unit = "site",
-  mesh = mesh
+  mesh = mesh,
+  silent = TRUE
+)
+
+fit_dep <- gllvmTMB(
+  value ~ 0 + trait + spatial_dep(0 + trait | site, mesh = mesh),
+  data = spatial_long,
+  trait = "trait",
+  unit = "site",
+  mesh = mesh,
+  silent = TRUE
 )
 ```
 
+```{r spatial-mode-comparison, echo = FALSE}
+spatial_comparison <- data.frame(
+  mode = c("indep", "latent (d = 2, unique = TRUE)", "dep"),
+  convergence = c(
+    fit_long$opt$convergence,
+    fit_latent$opt$convergence,
+    fit_dep$opt$convergence
+  ),
+  log_likelihood = c(logLik(fit_long), logLik(fit_latent), logLik(fit_dep)),
+  AIC = c(AIC(fit_long), AIC(fit_latent), AIC(fit_dep))
+)
+
+knitr::kable(spatial_comparison, digits = 1)
+```
+
 Here `d = 2` requests two shared spatial axes, while `unique = TRUE` retains a
-trait-specific spatial diagonal. This broader family is still partial under
-FG-13/SPA-02, so treat current estimates as model-based point estimates rather
-than calibrated spatial-correlation inference.
+trait-specific spatial diagonal. `spatial_dep()` estimates the full
+cross-trait spatial covariance. The data were generated with independent
+trait fields, so this table demonstrates runnable syntax and relative fit on
+one dataset; it is not a recovery or model-selection study. These broader
+models remain partial under FG-13/SPA-02, so treat current estimates as
+model-based point estimates rather than calibrated spatial-correlation
+inference.
 
 ## Independence, acknowledgement, and licensing
 

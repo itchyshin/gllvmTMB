@@ -1,6 +1,7 @@
 # Session Handoff: Design 108 Gate A Stage 2 closed (VA mixed-family)
 
-**Meta:** 2026-08-02 · from Cursor · to Claude · fresh context required  
+**Meta:** 2026-08-02 · from Cursor · to Claude · fresh context required
+
 **Capability widget (step 0):** open `docs/dev-log/capability-surface.html` (live artifact
 https://claude.ai/code/artifact/46e611f2-69d1-48e1-8b8b-ccab2e89983d) before planning.
 

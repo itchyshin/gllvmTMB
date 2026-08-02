@@ -11,12 +11,13 @@ Likewise, the primary Dropbox checkout remains deliberately parked and dirty on
 `claude/profile-coverage-remeasure-20260718` for the D-112 coverage history; it
 is not the next D-113 lane.
 
-Start a fresh worktree from `origin/main` for **missing-data #336** (within the
-#332 umbrella) unless Mission Control or Shinichi supersedes this default. The
-alternative next pick is the tweedie slope campaign, but the D-113 programme
-explicitly names missing-data #332 as its primary post-0.6 slice and Ayumi's
-real model is blocked by missing data. Do not restart a coverage re-measure:
-D-112 fixes 0.6 at recovery-only interval framing.
+**SUPERSEDED for "implement #336" (2026-08-01 ledger closure):** Phase 2b/2c/3
+are already on `main` (MIS-27/MIS-28). Issues #336/#337/#338 are ledger-closed
+with the shared-group independence pin; see
+`docs/dev-log/after-task/2026-08-01-missing-data-ledger-closure.md`.
+**Default next D-113 lane:** Design 107 VA missing-data (Ayumi). Tweedie remains
+the alternate gap-ledger pick. Do not restart a coverage re-measure: D-112 fixes
+0.6 at recovery-only interval framing.
 
 The repository remains multi-lane. Read
 `docs/dev-log/handover/2026-07-25-active-lane-split.md` before mutations and

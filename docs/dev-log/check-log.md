@@ -4,6 +4,36 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-08-01 -- missing-data ledger closure (#336/#337/#338)
+
+Branch: `cursor/missing-data-ledger-336-20260801` from `origin/main` @
+`6a5bc352`. Worktree `/private/tmp/gllvmtmb-missing-data-336-20260801`. Root
+`LOOP/` (0.6 lane) not edited; lane kit under
+`lanes/missing-data-ledger-336/LOOP/`.
+
+Added heavy shared-group independence pin in
+`tests/testthat/test-missing-predictor-gaussian.R` (issue #336 gate 2).
+
+Checks:
+
+```sh
+NOT_CRAN=true GLLVMTMB_HEAVY_TESTS=1 Rscript --vanilla -e '
+devtools::load_all(quiet=TRUE)
+testthat::test_file(
+  "tests/testthat/test-missing-predictor-gaussian.R",
+  desc = "shared-group independence: response (1|grp) + covariate (1|grp) keeps b_x unbiased",
+  reporter = "summary"
+)'
+# 1 test / 0 failed / 0 error
+# Probe: lanes/missing-data-ledger-336/probe-shared-group-pin.R → PROBE_PASS
+#   b_x_hat=1.2939 truth=1.2500 abs_err=0.0439
+git diff --check
+```
+
+Deliberately not run: full `devtools::test()`, `R CMD check`, coverage campaigns.
+After-task: `docs/dev-log/after-task/2026-08-01-missing-data-ledger-closure.md`.
+Next capability pointer: Design 107 VA missing-data.
+
 ## 2026-08-01 -- Design 108 Stage 2 VA mixed-family
 
 Branch: `cursor/design108-va-mixed-family-20260801` from `origin/main`

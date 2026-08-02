@@ -48178,3 +48178,87 @@ rg -n 'gllvmTMB_wide' vignettes/articles/spatial-models.Rmd
 the change is article-only, and the full article render evaluates the modified
 spatial fits. Full report:
 `docs/dev-log/after-task/2026-08-02-spatial-guide-mesh-coordinates.md`.
+
+---
+
+## 2026-08-02 — held-out CV evidence layer (Claude, worktree `claude/evidence-cv-20260802`)
+
+Built the first three items from the HMSC cross-package scout
+(`docs/dev-log/audits/2026-07-29-jason-hmsc-cross-package-scout.md`): an **internal** held-out
+cross-validation layer, a canonical known-truth fixture, and block-conditional recovery tests.
+**No new export, no NEWS entry, no register row, no public predictive claim** — so the six-item
+Definition of Done for an advertised capability does not apply. This check-log entry does apply
+(Design Rule 7), which is why it is here.
+
+**Why it was cheap:** the CV primitive already existed. `miss_control(response = "include")` masks
+response cells out of the likelihood via `is_y_observed` and `predict_missing()` predicts them, and
+`include == drop` equivalence is already tested for gaussian/poisson/nbinom1/nbinom2/binomial. This
+arc is a scoring layer on proven machinery, not engine work.
+
+**Checks run.** `devtools::document()` OK with **NAMESPACE unchanged**. `test-cv-internal.R` 119
+expectations / 0 failures (heavy); `test-block-conditional-recovery.R` 11 / 0; the foundation gate
+`test-missing-response-gaussian.R` 42 / 0. Evidence grid: **60 folds attempted, 54 scored, 6
+excluded as non-PD**, 162.6 s. Full `devtools::test()` **green: 359 files, 8,611 pass, 0 fail,
+0 error, 795 skipped**. `rcmdcheck --as-cran` **not** run — release-cleanliness is not claimed. A fresh independent adversarial pass recomputed the
+metrics from raw held-out predictions and they match exactly (AUC 0.6537532 by brute-force pairwise,
+Mann–Whitney, and the harness; log-score matches `sum(dbinom(..., log = TRUE))`).
+
+**Compute.** The "Totoro or DRAC?" question was asked at scope time. Totoro was checked and is live
+(384 cores, idle), but the grid runs in **162.6 s** locally, so it ran locally; results are LOCAL
+and nothing touched GitHub Actions (D-50). A materially larger sweep would flip that call.
+
+**Four defects worth recording, all of the same kind — they would have produced confident, wrong
+numbers rather than failures:**
+
+1. Masked cells carry a **sentinel zero** in `fit$tmb_data$y` (`R/fit-multi.R:2226`, `n_trials`
+   `:2230`). A scorer reading truth from the fit would score every held-out cell against 0. Truth
+   is joined from the pre-mask data on `original_row` **plus trait** — `original_row` alone is
+   1-to-`n_traits` for wide input (demonstrated: two traits masked in one wide row give 4 cells but
+   2 distinct `original_row`).
+2. A proposed sentinel-invariance test was **tautological** — `is_y_observed` is derived from the
+   NA pattern, so filling cells with different values then NA-ing them yields identical data. The
+   correct construction already exists at `test-missing-response-gaussian.R:104` and
+   `test-missing-response-traits.R:160`.
+3. The fixture's first cut made non-Gaussian variants **deterministic transforms** of the Gaussian
+   draw; held-out AUC would have been ≈1 by construction.
+4. The 3-trait/d=2 fixture was **over-parameterised**: with ordinary `latent()` carrying a diagonal
+   Ψ, Σ = ΛΛᵀ + diag(ψ) needs `T·d − d(d−1)/2 + T` free parameters against `T(T+1)/2` unique
+   entries — 8 vs 6. Models converged but the Hessian was not PD and every fold was correctly
+   rejected as `degenerate`. Moved to 5 traits (14 vs 15). **Note for anyone building a fixture:**
+   for single-trial Bernoulli the package maps the diagonal Ψ off, so binomial stays identified
+   where gaussian does not — which is why the two families behaved differently on the same geometry.
+
+Also fixed: fold sizes were systematically imbalanced (213/213/213/213/210) because `sample()`
+permutes cell-to-label assignment but not label frequencies, so with equal per-trait row counts the
+remainder landed on the same folds every time. The round-robin offset now carries across traits.
+
+**Result (internal evidence, not a validated capability) — and read the bounds before the numbers.**
+Against a trait-mean null and a stacked-SDM null the model wins on gaussian (100%/100%), poisson
+(98.7%/97.3%) and nbinom2 (100%/78.5%), and not on binomial (40% vs the env null). **Adversarial
+verification bounded what that means, and two earlier readings of mine are withdrawn:**
+
+- **These deltas measure a site×trait random effect, NOT the d = 2 ordination — measured, not
+  suspected.** A third null was built (`null_diag` = `~ 0 + trait + indep(0 + trait | site)`, a
+  per-trait diagonal site effect with no cross-trait covariance) and the grid re-run. Median Δ
+  against it collapses to **+0.26 (gaussian), +0.51 (poisson), +1.05 (nbinom2), +0.38 (binomial)**,
+  with only 55–69% of trait-folds positive — from +68/+29/+14 against the weaker nulls. **The
+  cross-trait covariance ΛΛᵀ buys essentially nothing here.** Mechanism: `simulate_site_trait()`
+  has no species term and this fixture used `sigma2_eps = 1e-6`, so each (site, trait) cell carries
+  a median of **8 near-exact replicates** — the site effect is already pinned by replication and
+  there is nothing left for cross-trait borrowing to add. The DGP does have cross-trait structure;
+  the *design* makes it unnecessary. **A fixture with ~1 species per site is the design that could
+  detect an ordination benefit.** Until then, no claim about the latent ordination is supportable.
+- **The binomial row is confounded; it is NOT a clean reproduction of Norberg 2019 / Zurell 2020**
+  (an earlier draft said it was). For single-trial Bernoulli the package maps `theta_diag_B`/`s_B`
+  off, so binomial fits Σ_B = ΛΛᵀ with no Ψ (14 free parameters vs gaussian's 20) while the DGP
+  sets ψ_B = 0.3 — structurally unrepresentable. That row mixes misspecification with Bernoulli
+  information loss.
+- The reported quantity is conditional on co-observed cells at the same site, whereas the nulls
+  have no latent layer; Δ is conditional-vs-marginal.
+
+One DGP, one fixture, three seeds. What is demonstrated is that **the harness runs, is leak-free,
+and discriminates** — not anything general about JSDMs.
+
+Nothing is committed or pushed; landing the worktree is the maintainer's call. Full report:
+`docs/dev-log/after-task/2026-08-02-cv-evidence-layer.md`.
+— CV evidence layer (Claude, 2026-08-02)

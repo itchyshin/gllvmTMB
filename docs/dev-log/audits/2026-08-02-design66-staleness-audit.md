@@ -102,18 +102,48 @@ on a fresh-seed 20,000-replicate campaign, passed a 3-lens D-43 panel 3–0, and
 exported at `f04c066c` (`NAMESPACE:174`, wrapper `R/profile-derived.R:1010`). Design 66's
 §6 cannot distinguish these two routes because it predates the second one.
 
-**Why this is the highest-value correction in this document.** It moves on two axes at
-once:
+**Why this is the highest-value correction in this document.** *Evidence quality.* The
+certified route covers 0.9467; the bootstrap route covers 0.9418 at its default. The
+capstone would currently gate its headline claim on the weaker, uncertified arm while the
+certified arm sits unused.
 
-- *Evidence quality.* The certified route covers 0.9467; the bootstrap route covers
-  0.9418 at its default. The capstone would currently gate its headline claim on the
-  weaker, uncertified arm while the certified arm sits unused.
-- *Compute.* The bootstrap cost model is `cells × n_sim × (1 + n_boot)`. With the
-  `n_boot ≥ 200` floor from S-1 forced on it, the `(1 + n_boot)` factor is ~201 refits
-  per replicate. A 1-D profile is a small number of constrained optimisations per
-  replicate, not 200 full refits. **Switching the primary arm plausibly cuts the capstone
-  bill by roughly an order of magnitude** — which is the difference between a campaign
-  that needs a DRAC allocation and one that fits on Totoro.
+> **CORRECTION, 2026-08-02 (same day) — this finding originally claimed a second,
+> compute-cost axis, and that claim was wrong. It is withdrawn.**
+>
+> The withdrawn text read: *"the bootstrap cost model is `cells × n_sim × (1 + n_boot)`
+> … a 1-D profile is a small number of constrained optimisations per replicate, not 200
+> full refits. Switching the primary arm plausibly cuts the capstone bill by roughly an
+> order of magnitude — which is the difference between a campaign that needs a DRAC
+> allocation and one that fits on Totoro."*
+>
+> Two successive adversarial reviews took it apart, and the second **flipped its sign**:
+>
+> 1. **Bootstrap amortises; a profile does not.** One bootstrap refit set yields *every*
+>    requested summary — all `T` diagonal entries and the off-diagonal correlations from
+>    the same draws (`R/bootstrap-sigma.R:346-375`). A profile is a per-scalar `uniroot`
+>    bisection, one interval at a time (`R/profile-derived.R:866-897`).
+> 2. **The scalar count was undercounted.** The off-diagonal target is computed over
+>    `utils::combn(n_traits, 2L)` — **10 pairs at `T = 5`** (`dev/m3-grid.R:1666-1681`),
+>    not one. So the capstone needs **5 or 15** univariate profiles per replicate, not the
+>    "~6" the first correction assumed.
+>
+> Measured against the code, at `refits_per_profile ≈ 14–26` per two-sided scalar
+> interval: **diagonals only (5 scalars) = 1.5×–2.8× cheaper; diagonals plus all pairs
+> (15 scalars) = 1.05×–1.95× MORE EXPENSIVE.** The sign depends on which estimands are
+> gated. And the comparison still assumes equal cost per refit, which favours the profile
+> wrongly — a bootstrap draw is a cold `gllvmTMB()` call while a profile step is a
+> warm-started `nlminb` on the existing tape with an analytic gradient.
+>
+> **No compute-saving figure should be committed anywhere until `refits_per_profile` is
+> measured empirically** (median and upper decile, per family and per RE structure).
+>
+> The evidence-quality argument above is unaffected and still stands on its own. What is
+> retracted is only the claim that switching arms is *also* cheaper.
+>
+> *Why this is recorded rather than quietly edited:* this audit exists to catch unverified
+> quantitative claims, and it made one. The tell was structural and should have been caught
+> on writing — a precisely quantified numerator (201 refits) divided by an entirely
+> unquantified denominator ("a small number"), reported as a ratio.
 
 **Correction to fold in:** re-open the primary/diagnostic assignment in §3 and §6 as an
 explicit decision, with three named candidates: (a) profile primary / bootstrap
@@ -270,7 +300,7 @@ what two of them are worth.
 | 2 | **How many seeds** | §7's floor (`n_sim = 2000` → 0.49 pp) is unchanged and correct. But the *total* bill is now dominated by the interval-method choice, not by `n_sim` (S-1, S-2). |
 | 3 | **Which families** | Unchanged (core-4: gaussian, nbinom2, binomial-probit, ordinal-probit). Note the profile certificate currently covers **gaussian only**, so decision 5 below interacts with this. |
 | 4 | **The pre-registered gate** | L-c (report both 94% and 95%) stands. But the gate is only reachable if the interval method's arithmetic ceiling clears it — at `n_boot = 25` it structurally cannot (S-1). |
-| 5 | **Totoro vs DRAC** | **Answer this last.** It is downstream of the primary-interval decision (S-2): the profile arm plausibly fits on Totoro, the `n_boot ≥ 200` bootstrap arm plausibly does not. And it is gated by the unbuilt compute-admission slice either way (S-6). |
+| 5 | **Totoro vs DRAC** | **Answer this last**, and answer it on a measured number. It is downstream of the primary-interval decision (S-2), but **not in the direction this audit first claimed** — see the withdrawn-claim box in S-2. The profile arm is cheaper only if the gate is diagonals-only; gating the off-diagonal pairs too makes it *more* expensive than bootstrap. Neither arm can be costed until `refits_per_profile` is measured. Gated by the unbuilt compute-admission slice either way (S-6). |
 
 **Newly surfaced, not previously on the list:**
 

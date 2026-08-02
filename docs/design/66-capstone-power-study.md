@@ -1023,7 +1023,7 @@ The capstone is DONE when:
 
 **2026-08-02 reframing.** CRAN submission is not planned, so the earlier
 "CRAN + paper (milestone #3)" gate is retired; the paper alone gates on this
-being DONE (section 0). This changes how item 2 above is read: with no
+being DONE (section 0). This changes how item 3 above is read: with no
 release binary to clear, a core cell that fails H1's 94% gate is not by
 itself grounds to withhold DONE -- it is reported as a finding (the regime
 where calibration degrades), consistent with H3 already being specified as a

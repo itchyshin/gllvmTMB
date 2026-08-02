@@ -34,6 +34,31 @@ Deliberately not run: full `devtools::test()`, `R CMD check`, coverage campaigns
 After-task: `docs/dev-log/after-task/2026-08-01-missing-data-ledger-closure.md`.
 Next capability pointer: Design 107 VA missing-data.
 
+## 2026-08-01 -- Design 108 Stage 2 VA mixed-family
+
+Branch: `cursor/design108-va-mixed-family-20260801` from `origin/main`
+(`3f66d553`, post-#891). Named lane LOOP under `lanes/design108-stage2/LOOP/`;
+root `LOOP/` untouched.
+
+Checks:
+
+```sh
+git diff --check
+NOT_CRAN=true Rscript --vanilla -e 'devtools::load_all(quiet=TRUE); testthat::test_file("tests/testthat/test-va-mixed-family.R")'
+# FAIL 0 | WARN 0 | SKIP 0 | PASS 23
+NOT_CRAN=true Rscript --vanilla -e 'devtools::load_all(quiet=TRUE); testthat::test_file("tests/testthat/test-va-missing-response.R")'
+# FAIL 0 | WARN 0 | SKIP 0 | PASS 10
+NOT_CRAN=true Rscript --vanilla -e 'devtools::load_all(quiet=TRUE); testthat::test_file("tests/testthat/test-integration-fence.R")'
+# FAIL 0 | WARN 0 | SKIP 0 | PASS 39
+NOT_CRAN=true Rscript --vanilla -e 'devtools::load_all(quiet=TRUE); testthat::test_file("tests/testthat/test-va-routing-oracle.R")'
+# FAIL 0 | WARN 0 | SKIP 0 | PASS 31
+NOT_CRAN=true Rscript --vanilla -e 'devtools::load_all(quiet=TRUE); testthat::test_file("tests/testthat/test-va-r3-prototype.R")'
+# FAIL 0 | WARN 0 | SKIP 0 | PASS 352
+```
+
+Deliberately not run: full `devtools::test()`, Totoro Stage 8, coverage,
+Stages 3–14, public advertise.
+
 ## 2026-08-01 -- independent spatial-helper rewrite
 
 Branch: `codex/spatial-independent-helpers`; clean worktree created from
@@ -48051,3 +48076,219 @@ rg -n 'betabinomial\\(\\)' R/fit-multi.R tests/testthat/test-augmented-slope-fam
 
 **Reports:** `docs/dev-log/after-task/2026-08-01-slope-per-family-gap-ledger.md`,
 `docs/dev-log/after-task/2026-08-01-slope-per-family-betabinomial-admission.md`.
+
+## 2026-08-01 -- compact spatial article output and correlated-mode examples (Codex)
+
+Visual inspection of the deployed spatial guide showed that bare `mesh`
+printing expanded every coordinate row and buried later components. Replaced
+it with a six-row component/size table for `loc_xy`, vertices, `A_st`, and
+`spde` matrices `c0`, `g1`, and `g2`. Added runnable `spatial_latent()` and
+`spatial_dep()` fits and a compact comparison beside `spatial_indep()`; all
+three converged with code 0. Suppressed the duplicate long diagnostic return.
+The final Florence/Tufte pass also removed a redundant standalone convergence
+line and confirmed that the rendered HTML contains no sparse-matrix dump.
+
+Checks: focused and complete article renders PASS; article/mesh/UTM tests PASS
+(60); `pkgdown::check_pkgdown()` PASS; two viewport visual inspections PASS;
+full `devtools::check(args = "--no-manual")` PASS in 15m01.1s with 0 errors,
+0 warnings, and 2 environment notes; verbose-output scan and
+`git diff --check` PASS. No API, likelihood, mesh contract, validation status,
+or dependency/provenance claim changed.
+
+Full report:
+`docs/dev-log/after-task/2026-08-01-spatial-guide-output-compaction.md`.
+
+## 2026-08-01 — Design 107 Gate A Stage 1 (VA response-include)
+
+**Branch / worktree:** `cursor/design107-va-response-mask-20260801` @
+`/private/tmp/gllvmtmb-design107-va-mask-20260801` (from `origin/main`).
+
+**Commands:**
+
+```sh
+git diff --check
+# clean
+
+NOT_CRAN=true Rscript --vanilla -e \
+  'devtools::load_all(quiet=TRUE); testthat::test_file("tests/testthat/test-va-missing-response.R")'
+# FAIL 0 | WARN 0 | SKIP 0 | PASS 10  (rebuilds gllvmTMB_va_r3 once)
+
+NOT_CRAN=true Rscript --vanilla -e \
+  'devtools::load_all(quiet=TRUE); testthat::test_file("tests/testthat/test-va-r3-prototype.R")'
+# FAIL 0 (with load_all)
+```
+
+**rg hygiene:**
+
+```sh
+rg -n 'no response-mask channel|masked \(missing\) responses' R/ tests/
+rg -n 'DATA_IVECTOR\(is_y_observed\)' inst/tmb/gllvmTMB_va_r3.cpp
+rg -n 'VA-10' docs/design/35-validation-debt-register.md
+```
+
+**Deliberately not run:** full `devtools::test()`; Totoro; coverage; Design 108 Stage 2+.
+
+**Reports:** `docs/dev-log/after-task/2026-08-01-design107-va-response-mask.md`,
+`docs/dev-log/plan-actual/2026-08-01-design107-va-response-mask.md`.
+
+## 2026-08-02 — reconcile scalar compatibility and mesh documentation (Codex)
+
+Reconciled current spatial reference and design documentation: new examples use
+`spatial_indep(..., common = TRUE)` for one shared spatial-field variance;
+`spatial_scalar()` is now a soft-deprecated compatibility reference. Corrected
+the separate false claim that `coords =` causes the engine to build a mesh:
+users must pass a pre-built `make_mesh()` result aligned to the fitted stacked
+data. Current design tables now describe the 4 × 3 mode grid plus `common` and
+`unique` modifiers.
+
+```sh
+git diff --check
+# PASS
+
+Rscript --vanilla -e 'devtools::document(quiet = TRUE); devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-scalar-family-collapse.R"); testthat::test_file("tests/testthat/test-spatial-deprecation.R")'
+# scalar family: FAIL 0 | WARN 0 | SKIP 0 | PASS 19
+# spatial deprecation: FAIL 0 | WARN 0 | SKIP 1 (On CRAN) | PASS 0
+
+Rscript --vanilla -e 'pkgdown::check_pkgdown(); pkgdown::build_articles(lazy = FALSE)'
+# PASS: No problems found; all articles rendered.
+
+rg -n "engine builds the mesh internally|coords = c\(\"lon\", \"lat\"\).*mesh|mesh = mesh or coords" docs/design R man vignettes README.md NEWS.md AGENTS.md CLAUDE.md
+# no matches.
+
+rg -n "four[- ]mode|four current|four taught|4 × 5|4×5" README.md R/gllvmTMB.R R/brms-sugar.R man/gllvmTMB.Rd man/phylo.Rd vignettes/articles/gllvm-vocabulary.Rmd docs/design/00-vision.md docs/design/01-formula-grammar.md docs/design/02-data-shape-and-weights.md docs/design/03-likelihoods.md docs/design/03-phylogenetic-gllvm.md docs/design/04-random-effects.md docs/design/05-testing-strategy.md docs/design/14-known-relatedness-keywords.md docs/design/35-validation-debt-register.md docs/design/55-structural-slope-grammar.md docs/design/57-mixed-family-link-residual.md
+# no matches.
+
+rg -n "spatial_scalar\(\).*Canonical name|all four spatial keywords|spatial_scalar\(0 \+ trait \| site, mesh = mesh\)" R man vignettes README.md NEWS.md docs/design
+# no matches.
+```
+
+**Deliberately not run:** full `devtools::test()` and `devtools::check()`;
+behaviour did not change. `devtools::document()` reported two pre-existing S3
+export-tag diagnostics in `aghq-report.R`; out of scope. Full report:
+`docs/dev-log/after-task/2026-08-02-scalar-compatibility-doc-reconciliation.md`.
+
+## 2026-08-02 — spatial guide: current scalar syntax and mesh versus coordinates (Codex)
+
+Corrected `vignettes/articles/spatial-models.Rmd`: new code now uses
+`spatial_indep(..., common = TRUE)` for one shared spatial-field variance,
+with `spatial_scalar()` labelled soft-deprecated compatibility syntax. Added a
+reader-facing explanation that coordinates are observed locations while the
+mesh is the triangular SPDE approximation; standardised examples on the
+top-level `mesh = mesh` argument.
+
+```sh
+git diff --check
+# PASS
+
+Rscript --vanilla -e 'rmarkdown::render("vignettes/articles/spatial-models.Rmd", output_dir = tempfile("spatial-render-"), quiet = TRUE)'
+# PASS
+
+Rscript --vanilla -e 'pkgdown::check_pkgdown()'
+# PASS: No problems found.
+
+Rscript --vanilla -e 'pkgdown::build_articles(lazy = FALSE)'
+# PASS
+
+rg -n 'all four spatial keywords|\| `spatial_scalar\(\)` \||spatial_scalar\(.*Canonical name' vignettes/articles/spatial-models.Rmd
+# no matches: obsolete article framing removed.
+
+rg -n 'spatial_indep\(.*common = TRUE|spatial_scalar\(\) is retained' vignettes/articles/spatial-models.Rmd
+# two intentional matches: canonical spelling and compatibility note.
+
+rg -n 'gllvmTMB\(' vignettes/articles/spatial-models.Rmd
+# manually checked: each long-format call has trait = "trait"; traits() wide call does not require it.
+
+rg -n '\bS_B\b|\bS_W\b|\\bf S' vignettes/articles/spatial-models.Rmd
+rg -n 'in prep|in preparation' vignettes/articles/spatial-models.Rmd
+rg -n 'gllvmTMB_wide' vignettes/articles/spatial-models.Rmd
+# no matches in each scan.
+```
+
+**Deliberately not run:** full `devtools::test()` and `devtools::check()`;
+the change is article-only, and the full article render evaluates the modified
+spatial fits. Full report:
+`docs/dev-log/after-task/2026-08-02-spatial-guide-mesh-coordinates.md`.
+
+---
+
+## 2026-08-02 — held-out CV evidence layer (Claude, worktree `claude/evidence-cv-20260802`)
+
+Built the first three items from the HMSC cross-package scout
+(`docs/dev-log/audits/2026-07-29-jason-hmsc-cross-package-scout.md`): an **internal** held-out
+cross-validation layer, a canonical known-truth fixture, and block-conditional recovery tests.
+**No new export, no NEWS entry, no register row, no public predictive claim** — so the six-item
+Definition of Done for an advertised capability does not apply. This check-log entry does apply
+(Design Rule 7), which is why it is here.
+
+**Why it was cheap:** the CV primitive already existed. `miss_control(response = "include")` masks
+response cells out of the likelihood via `is_y_observed` and `predict_missing()` predicts them, and
+`include == drop` equivalence is already tested for gaussian/poisson/nbinom1/nbinom2/binomial. This
+arc is a scoring layer on proven machinery, not engine work.
+
+**Checks run.** `devtools::document()` OK with **NAMESPACE unchanged**. `test-cv-internal.R` 119
+expectations / 0 failures (heavy); `test-block-conditional-recovery.R` 11 / 0; the foundation gate
+`test-missing-response-gaussian.R` 42 / 0. Evidence grid: **60 folds attempted, 54 scored, 6
+excluded as non-PD**, 162.6 s. Full `devtools::test()` **green: 359 files, 8,611 pass, 0 fail,
+0 error, 795 skipped**. `rcmdcheck --as-cran` **not** run — release-cleanliness is not claimed. A fresh independent adversarial pass recomputed the
+metrics from raw held-out predictions and they match exactly (AUC 0.6537532 by brute-force pairwise,
+Mann–Whitney, and the harness; log-score matches `sum(dbinom(..., log = TRUE))`).
+
+**Compute.** The "Totoro or DRAC?" question was asked at scope time. Totoro was checked and is live
+(384 cores, idle), but the grid runs in **162.6 s** locally, so it ran locally; results are LOCAL
+and nothing touched GitHub Actions (D-50). A materially larger sweep would flip that call.
+
+**Four defects worth recording, all of the same kind — they would have produced confident, wrong
+numbers rather than failures:**
+
+1. Masked cells carry a **sentinel zero** in `fit$tmb_data$y` (`R/fit-multi.R:2226`, `n_trials`
+   `:2230`). A scorer reading truth from the fit would score every held-out cell against 0. Truth
+   is joined from the pre-mask data on `original_row` **plus trait** — `original_row` alone is
+   1-to-`n_traits` for wide input (demonstrated: two traits masked in one wide row give 4 cells but
+   2 distinct `original_row`).
+2. A proposed sentinel-invariance test was **tautological** — `is_y_observed` is derived from the
+   NA pattern, so filling cells with different values then NA-ing them yields identical data. The
+   correct construction already exists at `test-missing-response-gaussian.R:104` and
+   `test-missing-response-traits.R:160`.
+3. The fixture's first cut made non-Gaussian variants **deterministic transforms** of the Gaussian
+   draw; held-out AUC would have been ≈1 by construction.
+4. The 3-trait/d=2 fixture was **over-parameterised**: with ordinary `latent()` carrying a diagonal
+   Ψ, Σ = ΛΛᵀ + diag(ψ) needs `T·d − d(d−1)/2 + T` free parameters against `T(T+1)/2` unique
+   entries — 8 vs 6. Models converged but the Hessian was not PD and every fold was correctly
+   rejected as `degenerate`. Moved to 5 traits (14 vs 15). **Note for anyone building a fixture:**
+   for single-trial Bernoulli the package maps the diagonal Ψ off, so binomial stays identified
+   where gaussian does not — which is why the two families behaved differently on the same geometry.
+
+Also fixed: fold sizes were systematically imbalanced (213/213/213/213/210) because `sample()`
+permutes cell-to-label assignment but not label frequencies, so with equal per-trait row counts the
+remainder landed on the same folds every time. The round-robin offset now carries across traits.
+
+**Result (internal evidence, not a validated capability) — and read the bounds before the numbers.**
+Against a trait-mean null and a stacked-SDM null the model wins on gaussian (100%/100%), poisson
+(98.7%/97.3%) and nbinom2 (100%/78.5%), and not on binomial (40% vs the env null). **Adversarial
+verification bounded what that means, and two earlier readings of mine are withdrawn:**
+
+- **These deltas measure a site×trait random effect, NOT the d = 2 ordination — measured, not
+  suspected.** A third null was built (`null_diag` = `~ 0 + trait + indep(0 + trait | site)`, a
+  per-trait diagonal site effect with no cross-trait covariance) and the grid re-run. Median Δ
+  against it collapses to **+0.26 (gaussian), +0.51 (poisson), +1.05 (nbinom2), +0.38 (binomial)**,
+  with only 55–69% of trait-folds positive — from +68/+29/+14 against the weaker nulls. **The
+  cross-trait covariance ΛΛᵀ buys essentially nothing here.** Mechanism: `simulate_site_trait()`
+  has no species term and this fixture used `sigma2_eps = 1e-6`, so each (site, trait) cell carries
+  a median of **8 near-exact replicates** — the site effect is already pinned by replication and
+  there is nothing left for cross-trait borrowing to add. The DGP does have cross-trait structure;
+  the *design* makes it unnecessary. **A fixture with ~1 species per site is the design that could
+  detect an ordination benefit.** Until then, no claim about the latent ordination is supportable.
+- **The binomial row is confounded; it is NOT a clean reproduction of Norberg 2019 / Zurell 2020**
+  (an earlier draft said it was). For single-trial Bernoulli the package maps `theta_diag_B`/`s_B`
+  off, so binomial fits Σ_B = ΛΛᵀ with no Ψ (14 free parameters vs gaussian's 20) while the DGP
+  sets ψ_B = 0.3 — structurally unrepresentable. That row mixes misspecification with Bernoulli
+  information loss.
+- The reported quantity is conditional on co-observed cells at the same site, whereas the nulls
+  have no latent layer; Δ is conditional-vs-marginal.
+
+One DGP, one fixture, three seeds. What is demonstrated is that **the harness runs, is leak-free,
+and discriminates** — not anything general about JSDMs.
+
+Nothing is committed or pushed; landing the worktree is the maintainer's call. Full report:
+`docs/dev-log/after-task/2026-08-02-cv-evidence-layer.md`.
+— CV evidence layer (Claude, 2026-08-02)

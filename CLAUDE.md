@@ -3,13 +3,25 @@
 This repository is shared by humans, Codex, and Claude Code. Read
 `AGENTS.md` first; it is the source of truth for project rules.
 
-## Live Phase Snapshot — 2026-07-30
+## Live Phase Snapshot — 2026-08-02
 
 > **🔴 MULTI-LANE REPO — this snapshot is NOT a single lane's status.** No one bullet
 > represents the project. **The lane map is authoritative for ownership:**
 > `docs/dev-log/handover/2026-07-25-active-lane-split.md`, which names EACH lane's own
 > current handover. Read it before any repository mutation. Milestone state is not in
 > either place and must be re-derived from `git`.
+
+- **2026-08-02 — DESIGN 108 GATE A STAGE 2 LANDED (VA mixed-family).** PRs
+  [#891](https://github.com/itchyshin/gllvmTMB/pull/891) (Stage 1 mask) and
+  [#893](https://github.com/itchyshin/gllvmTMB/pull/893) (Stage 2 mixed-family +
+  per-trait `log_sigma`) merged; register VA-10/VA-11 `partial`; no public claim.
+  Stage 3 lognormal vs Stage 4 probit needs Shinichi G0 — do **not** auto-start.
+  Dropbox `claude/profile-coverage-remeasure-20260718` stays **PROTECTED** dirty
+  (D-112). Sibling [#890](https://github.com/itchyshin/gllvmTMB/pull/890) is a
+  separate missing-data ledger lane. **START HERE:**
+  `docs/dev-log/handover/2026-07-25-active-lane-split.md`, then
+  `docs/dev-log/handover/2026-08-02-claude-handover.md` for the VA baton (other
+  lanes keep their named handovers in the split table).
 
 - **2026-08-01 — MISSING-DATA LEDGER CLOSED (#336/#337/#338).** Phase 2b/2c/3
   engines were already on `main` (MIS-27/MIS-28 `covered`). Ledger lane
@@ -24,8 +36,11 @@ This repository is shared by humans, Codex, and Claude Code. Read
   [#887](https://github.com/itchyshin/gllvmTMB/pull/887) squash-merged at
   `2716f74b`: `betabinomial` `family_id` 8 now has the large-N
   (`n_sp = 200`, trials = 15) C1 augmented-slope recovery cell under #388.
-  Handover: `docs/dev-log/handover/2026-08-01-cursor-handover.md` (historical
-  for the slope closeout; next pick superseded by the ledger-closure note above).
+  D-112 remains **0.6 recovery-only**; do not resume coverage re-measure.
+  Prior Cursor handover: `docs/dev-log/handover/2026-08-01-cursor-handover.md`
+  (historical for the slope closeout; its "next pick" is superseded by the
+  ledger-closure note above). Missing-data #336/#332 remains on the D-113 menu
+  alongside Design 108.
 
 - **2026-07-31 (LATEST) — VA IS ROUTED AND GATE 3 HAS REPORTED.** Lane
   `claude/va-routing-20260731` (fast-forward of `claude/va-in-06-20260730`, **PR #869**).

@@ -20,8 +20,7 @@ A formula marker; never evaluated as a call.
 }
 \description{
 \strong{Deprecated alias.} Engine-internal name; users should write
-\code{\link[=spatial_indep]{spatial_indep()}} (or one of the other \code{\link[=spatial_scalar]{spatial_scalar()}} /
-\code{\link[=spatial_latent]{spatial_latent()}} keywords) in formulas. Kept for backward
+\code{\link[=spatial_indep]{spatial_indep()}} (or \code{\link[=spatial_latent]{spatial_latent()}} / \code{\link[=spatial_dep]{spatial_dep()}}) in formulas. Kept for backward
 compatibility and to document the underlying Matérn / SPDE kernel.
 }
 \details{
@@ -42,7 +41,7 @@ The SPDE construction approximates a \strong{Matérn covariance function}:
 where \eqn{\nu} is the smoothness parameter, \eqn{\kappa > 0} is the
 inverse-range parameter, and \eqn{K_{\nu}} is the modified Bessel
 function of the second kind. \code{gllvmTMB::spatial_indep()} (and its
-siblings \code{spatial_scalar()} / \code{spatial_latent()}) use
+siblings \code{spatial_indep(..., common = TRUE)} / \code{spatial_latent()}) use
 \strong{\eqn{\alpha = 2}} in the Lindgren–Rue–Lindström operator, which
 (in 2 spatial dimensions) corresponds to \strong{\eqn{\nu = 1}}.
 

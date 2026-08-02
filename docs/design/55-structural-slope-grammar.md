@@ -10,7 +10,7 @@ Codex.
 **Status:** Active design contract, drafted 2026-05-26.
 **Backed by:** the approved plan at
 [`please-have-a-robust-elephant.md`](../../) (2026-05-26),
-Design 04 (4 × 5 keyword grid), Design 14 (`animal_*` ↔
+Design 04 (4 × 3 keyword grid plus modifiers), Design 14 (`animal_*` ↔
 `phylo_*(vcv = A)` byte-equivalence), Design 35 (validation-debt
 rows RE-02 / RE-03 / FG-15 / PHY-06 / ANI-06), the augmented-LHS
 guard at `R/brms-sugar.R:1543-1576` and its test at
@@ -32,7 +32,7 @@ they become aliases that redirect to the new syntax.
 
 This design **does not re-derive**:
 
-- the 4 × 5 keyword grid (Design 04, §"Vocabulary");
+- the 4 × 3 keyword grid and its modifiers (Design 04, §"Vocabulary");
 - the augmented-LHS Stage 3 mechanics (the planned-but-unwritten
   doc the codebase refers to as "Design 07"; the
   `cli::cli_abort` fail-loud parser-guard pattern at
@@ -454,7 +454,7 @@ same style.
 ## 10. Cross-references
 
 - [`docs/design/04-random-effects.md`](04-random-effects.md) —
-  4 × 5 keyword grid; Items 11 / 12 reserve / plan random
+  4 × 3 keyword grid plus modifiers; Items 11 / 12 reserve / plan random
   slopes inside structural keywords; M1 caps at `s = 1`.
 - **"Design 07" (planned, not yet written)** — the conventional
   shorthand for the augmented-LHS Stage 3 engine-generalisation

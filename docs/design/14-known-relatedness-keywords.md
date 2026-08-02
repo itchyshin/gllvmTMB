@@ -6,7 +6,7 @@
 **Reviewers**: Fisher (statistical inference), Pat (reader UX),
 Darwin (audience), Jason (sister-package landscape), Ada (orchestration).
 **Cross-refs**:
-[`01-formula-grammar.md`](01-formula-grammar.md) (4×5 grid contract);
+[`01-formula-grammar.md`](01-formula-grammar.md) (4×3 grid plus modifiers contract);
 [`04-random-effects.md`](04-random-effects.md);
 [`00-vision.md`](00-vision.md) item 2 (phylogenetic + animal GLLVM
 unification);
@@ -95,16 +95,18 @@ through v0.3.0. A `lifecycle::deprecate_soft()` note suggests
 animal_* + spatial_* convention. This is **a separate small PR**
 (deferred from M2.8 to keep this slice focused on the new family).
 
-## 4. The 4×5 covariance keyword grid
+## 4. The 4×3 covariance keyword grid
 
-After M2.8 the grid is **4 sources × 5 modes**:
+The current grid is **4 sources × 3 modes**. `common = TRUE` is the
+one-shared-variance modifier of `*_indep()`, while `unique = TRUE` is the
+diagonal-Psi modifier of `*_latent()`:
 
-|         | scalar         | unique         | indep          | dep         | latent         |
-|---------|----------------|----------------|----------------|-------------|----------------|
-| none    | (omit)         | `unique()`     | `indep()`      | `dep()`     | `latent()`     |
-| **animal** | `animal_scalar()` | `animal_unique()` | `animal_indep()` | `animal_dep()` | `animal_latent()` |
-| phylo   | `phylo_scalar()` | `phylo_unique()` | `phylo_indep()` | `phylo_dep()` | `phylo_latent()` |
-| spatial | `spatial_scalar()` | `spatial_unique()` | `spatial_indep()` | `spatial_dep()` | `spatial_latent()` |
+|         | indep          | dep         | latent         |
+|---------|----------------|-------------|----------------|
+| none    | `indep()`      | `dep()`     | `latent()`     |
+| **animal** | `animal_indep()` | `animal_dep()` | `animal_latent()` |
+| phylo   | `phylo_indep()` | `phylo_dep()` | `phylo_latent()` |
+| spatial | `spatial_indep()` | `spatial_dep()` | `spatial_latent()` |
 
 Per pedagogical zoom-out: **individual** (animal pedigree) →
 **species** (phylogeny) → **geography** (spatial). Animal sits at

@@ -46,18 +46,17 @@ latent path.}
 A formula marker; never evaluated.
 }
 \description{
-\code{phylo()} is a unified entry point for the package's four taught
-phylogenetic modes (\code{phylo_scalar}, \code{phylo_indep}, \code{phylo_latent},
-\code{phylo_dep}). It accepts an lme4-bar formula on the
+\code{phylo()} is a unified entry point for the package's three phylogenetic modes
+(\code{phylo_indep}, \code{phylo_latent}, \code{phylo_dep}). It accepts an lme4-bar formula on the
 first argument and dispatches to the appropriate canonical keyword
 based on the LHS shape and the optional \code{mode = ...} argument. The
-four current keywords stay first-class -- \code{phylo()} is an additive
+three current keywords stay first-class -- \code{phylo()} is an additive
 alias matching the lme4 / brms / drmTMB convention.
 }
 \section{Dispatch rules}{
 \tabular{lll}{
    Form \tab Mode default \tab Rewrites to \cr
-   \verb{phylo(1 \| species)} \tab \code{"scalar"} \tab \code{phylo_scalar(species)} \cr
+   \verb{phylo(1 \| species)} \tab \code{"scalar"} \tab \verb{phylo_indep(0 + trait \| species, common = TRUE)} \cr
    \verb{phylo(0 + trait \| species, mode = "indep")} \tab (mandatory) \tab \verb{phylo_indep(0 + trait \| species)} \cr
    \verb{phylo(0 + trait \| species, mode = "latent", d = K)} \tab (mandatory) \tab \code{phylo_latent(species, d = K)} \cr
    \verb{phylo(0 + trait \| species, mode = "dep")} \tab (mandatory) \tab \verb{phylo_dep(0 + trait \| species)} \cr

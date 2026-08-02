@@ -202,16 +202,17 @@ categories; they are not peer data columns alongside `unit` and `unit_obs`.
 
 The **covariance mode** describes the trait-by-trait covariance within a tier:
 
-- `scalar`: one common variance where that source supplies a scalar form;
 - `indep`: separate trait variances with zero cross-trait covariance;
 - `dep`: a full unstructured trait covariance;
 - `latent`: reduced-rank shared covariance, with the diagonal Psi convention
   determined by the keyword family and its `unique` argument.
 
 The canonical source-by-mode interface crosses ordinary, animal,
-phylogenetic, and spatial sources with four taught modes: scalar, independent,
-dependent, and latent. A separate dense-kernel interface provides
-`kernel_indep()`, `kernel_dep()`, and `kernel_latent()`.
+phylogenetic, and spatial sources with three modes: independent, dependent,
+and latent. `common = TRUE` on `*_indep()` is the one-shared-variance
+modifier; `unique = TRUE` on `*_latent()` adds the diagonal Psi companion. A
+separate dense-kernel interface provides `kernel_indep()`, `kernel_dep()`, and
+`kernel_latent()`.
 See the [API keyword grid](api-keyword-grid.html) for exact syntax.
 
 ## Scale and identification terms

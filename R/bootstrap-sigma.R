@@ -72,6 +72,14 @@
 #'
 #' @param fit A fit returned by [gllvmTMB()].
 #' @param n_boot Integer; number of bootstrap replicates. Default 200.
+#'   Values below `2 / (1 - conf) - 1` (39 at the default `conf = 0.95`) are
+#'   refused: the widest interval `B` draws can produce is `[min, max]`, whose
+#'   coverage is at most `(B - 1) / (B + 1)`, so a smaller `B` cannot reach the
+#'   requested level whatever the data are. Values below 1000 warn. Note that
+#'   raising `n_boot` reduces Monte Carlo error in the endpoints but does not
+#'   make a percentile interval second-order accurate — its coverage asymptotes
+#'   slightly below nominal regardless. Use [profile_ci_total_variance()] for
+#'   the `Sigma` diagonals if that matters.
 #' @param level Character vector; which tier(s) to bootstrap.
 #'   Use the canonical levels `c("unit", "unit_obs", "phy")`; legacy
 #'   aliases `"B"` and `"W"` are still accepted. Levels absent from
@@ -197,6 +205,51 @@ bootstrap_Sigma <- function(
   }
   n_boot <- as.integer(n_boot)
   n_cores <- as.integer(n_cores)
+
+  ## Arithmetic floor on n_boot (2026-08-02).
+  ##
+  ## Percentile bounds cannot represent a `conf`-level interval from too few
+  ## draws, WHATEVER the data are. The widest interval B draws can produce is
+  ## [min, max], whose coverage is at most (B - 1) / (B + 1); for that to reach
+  ## `conf` you need B >= 2 / (1 - conf) - 1 (39 at conf = 0.95). Below that the
+  ## returned interval is narrower than nominal by construction.
+  ##
+  ## This is not hypothetical. A 2026-07-29 coverage campaign ran this function
+  ## at n_boot = 10 and recorded 0.78 empirical coverage against nominal 0.95,
+  ## which was then written into the validation-debt register as a property of
+  ## `bootstrap_Sigma()`. It is a property of `bootstrap_Sigma(n_boot = 10)`:
+  ## the ceiling at B = 10 is 9/11 = 0.818. At the documented default of 200 the
+  ## same estimand covers 0.9418. See
+  ## docs/dev-log/audits/2026-08-02-ci08-coverage-explained.md.
+  ## Reported, not merely warned. The 2026-07-29 failure was an automated
+  ## harness, and a script can swallow a warning -- so the ceiling goes into the
+  ## returned object as `coverage_ceiling`, where a campaign can assert on it.
+  min_boot <- as.integer(ceiling(2 / (1 - conf)) - 1)
+  coverage_ceiling <- (n_boot - 1) / (n_boot + 1)
+  if (n_boot < min_boot) {
+    cli::cli_warn(c(
+      "{.arg n_boot} = {n_boot} cannot deliver a {conf * 100}% percentile interval.",
+      "x" = paste0(
+        "The widest interval {n_boot} draws can produce is [min, max], whose ",
+        "coverage is at most {round(coverage_ceiling, 3)} -- below the requested ",
+        "{conf}. This is arithmetic, not a property of your data."
+      ),
+      "i" = "Use {.arg n_boot} >= {min_boot} for {conf * 100}% intervals; 200 is the default, 1000+ is better.",
+      "i" = "{.arg n_cores} >= 2 parallelises the refits via {.pkg future}.",
+      "i" = "The ceiling is returned as {.code $coverage_ceiling} so a script can check it."
+    ))
+  } else if (n_boot < 1000L) {
+    cli::cli_warn(c(
+      "{.arg n_boot} = {n_boot} gives noisy percentile bounds.",
+      "i" = paste0(
+        "Percentile CIs are first-order accurate, so more draws buy precision, ",
+        "not correctness -- but below ~1000 the Monte Carlo error in the ",
+        "endpoints is itself material."
+      ),
+      "i" = "{.arg n_cores} >= 2 parallelises the refits; the cost here is wall-clock, not accuracy.",
+      "i" = "For {.field Sigma} diagonals, {.fn profile_ci_total_variance} needs no resampling at all."
+    ))
+  }
 
   ## Drop levels not present in the fit
   level_avail <- c(
@@ -359,6 +412,39 @@ bootstrap_Sigma <- function(
 
   ci <- .summarise_draws(draws, point_est, conf = conf)
 
+  ## Attrition surfacing (2026-08-02). `.summarise_draws()` already NA-s the
+  ## bounds of `multiple_r_*` entries whose surviving draws fall below 80% of
+  ## `n_boot`, because percentile bounds over only the survivors bias the
+  ## interval narrow. Every OTHER entry -- including the headline `Sigma_*`
+  ## matrices -- keeps its bounds silently, however few refits survived.
+  ##
+  ## Changing that to NA would alter returned values for an exported function,
+  ## so this warns instead: the numbers are unchanged, the thinning is no longer
+  ## invisible, and `n_effective` (already returned per element) is named as the
+  ## place to check. Promoting this to a hard floor is a maintainer decision.
+  thin_report <- vapply(
+    names(ci$n_effective),
+    function(nm) {
+      ne <- ci$n_effective[[nm]]
+      if (is.null(ne) || !length(ne)) return(NA_real_)
+      min(ne, na.rm = TRUE) / n_boot
+    },
+    numeric(1)
+  )
+  thin_report <- thin_report[is.finite(thin_report) & thin_report < 0.8]
+  if (length(thin_report)) {
+    worst <- names(thin_report)[which.min(thin_report)]
+    cli::cli_warn(c(
+      "Bootstrap attrition: {length(thin_report)} summar{?y/ies} lost more than 20% of replicates.",
+      "x" = "Worst: {.field {worst}} kept {round(min(thin_report) * 100)}% of {n_boot} refits.",
+      "i" = paste0(
+        "Percentile bounds computed over only the surviving refits are biased ",
+        "narrow, so these intervals read tighter than they should."
+      ),
+      "i" = "Per-element counts are in {.code $n_effective}; failed refits are in {.code $n_failed}."
+    ))
+  }
+
   out <- list(
     point_est = point_est,
     ci_lower = ci$lower,
@@ -369,6 +455,11 @@ bootstrap_Sigma <- function(
     link_residual = link_residual,
     conf = conf,
     n_boot = n_boot,
+    ## Hard arithmetic ceiling on what a percentile interval from `n_boot`
+    ## draws can cover: [min, max] attains (B - 1) / (B + 1). If this is below
+    ## `conf`, the reported interval CANNOT be a `conf`-level interval, whatever
+    ## the data are. Assert on it in any automated campaign.
+    coverage_ceiling = coverage_ceiling,
     n_failed = n_failed,
     level = level,
     what = what,

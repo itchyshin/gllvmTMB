@@ -31,13 +31,34 @@ test_that("R3 accepts only the predeclared complete ordinary model cell", {
     unit_id = rep(1:2, each = 2L), trait_id = rep(1:2, 2L), q = 1L
   )
   expect_no_error(do.call(.va_r3_validate_data, args))
-  expect_error(do.call(.va_r3_validate_data, c(args, list(unique = TRUE))),
-               "ordinary latent")
+  ## Design 108 Gate A Stage 6 LIFTED the `unique`/`psi` half of this gate:
+  ## Psi is a trait-diagonal tier, and Design 106 Prop. 1 admits it with no new
+  ## machinery. It is now accepted -- and it must arrive as a SECOND tier. An
+  ## `unique = TRUE` that quietly produced a one-tier model would be exactly
+  ## the silent failure this replacement assertion exists to catch.
+  admitted <- do.call(.va_r3_validate_data, c(args, list(unique = TRUE)))
+  expect_identical(admitted$tier_layout$n_tiers, 2L)
+  expect_identical(admitted$tier_layout$kind, c("dense", "diagonal"))
+  expect_true(admitted$unique)
+  ## `psi = TRUE` is the same request under its other spelling, not a third tier.
+  expect_identical(
+    do.call(.va_r3_validate_data, c(args, list(psi = TRUE)))$tier_layout$kind,
+    c("dense", "diagonal")
+  )
+  ## The structured / provider / lv / missing half stays CLOSED. That is Stage
+  ## 7's KL, not Stage 6's index.
   expect_error(do.call(.va_r3_validate_data, c(args, list(structured = TRUE))),
                "ordinary latent")
   expect_error(do.call(.va_r3_validate_data,
+                       c(args, list(provider = list(kind = "phylo")))),
+               "ordinary latent")
+  expect_error(do.call(.va_r3_validate_data, c(args, list(lv = TRUE))),
+               "ordinary latent")
+  expect_error(do.call(.va_r3_validate_data, c(args, list(missing = TRUE))),
+               "ordinary latent")
+  expect_error(do.call(.va_r3_validate_data,
                        within(args, trait_id <- c(1L, 1L, 1L, 2L))),
-               "exactly one complete")
+               "exactly one dense")
   rank_deficient <- args
   rank_deficient$X <- matrix(1, 4L, 2L)
   expect_error(do.call(.va_r3_validate_data, rank_deficient),
@@ -481,11 +502,15 @@ test_that("R3 optimizer auto-routes per family AND per tier", {
   ##   binomial gh       0.57x  (0.35-1.02)  -> nlminb, lbfgsb is SLOWER
   ##   nbinom2  gh       0.42x  (0.26-0.63)  -> nlminb, slower AND the only
   ##                                            same-optimum disagreement
+  ## binomial_probit is the one entry NOT measured: Design 108 Stage 4 is a
+  ## numerics spike and no timing sweep was run, so it takes the reference
+  ## optimiser rather than claiming a route it has no evidence for.
   expected <- list(
     gaussian_anchor = c(gh = "lbfgsb"),
     binomial        = c(gh = "nlminb", jj = "lbfgsb"),
     poisson         = c(gh = "nlminb"),
-    nbinom2         = c(gh = "nlminb")
+    nbinom2         = c(gh = "nlminb"),
+    binomial_probit = c(gh = "nlminb")
   )
   for (entry in .va_r3_family_registry) {
     want <- expected[[entry$family]]
@@ -538,14 +563,15 @@ test_that("R3 family registry agrees with the validator and drives eval_method",
   ## drift from .va_r3_validate_data(), which is what actually assigns the
   ## family code the template sees. Adding a family without a registry entry
   ## (or with the wrong code/link) fails here rather than silently.
-  y_for <- list(gaussian_anchor = 0.5, binomial = 1L, poisson = 2L, nbinom2 = 2L)
+  y_for <- list(gaussian_anchor = 0.5, binomial = 1L, poisson = 2L,
+                nbinom2 = 2L, binomial_probit = 1L)
   for (entry in .va_r3_family_registry) {
     validated <- .va_r3_validate_data(
       y = y_for[[entry$family]], n_trials = 3L, X = matrix(1, 1L, 1L),
       unit_id = 1L, trait_id = 1L, q = 1L,
       family = entry$family, link = entry$link
     )
-    expect_identical(validated$family, entry$family_code)
+    expect_true(all(validated$family == entry$family_code))
 
     ## "auto" resolves to whatever the registry declares.
     expect_identical(
@@ -624,6 +650,9 @@ test_that("R3 fails closed outside the certified projected-variance domain", {
     unit_id = c(1L, 1L), trait_id = 1:2, q = 1L, H = 61L,
     fixed_global = list(beta = 0, theta_rr = c(3, 3)),
     family = "gaussian_anchor", gaussian_sd = 100,
+    ## Pin residual SD so the Stage-2 free log_sigma path cannot collapse the
+    ## projected-variance fixture back inside the certified domain.
+    estimate_gaussian_sd = FALSE,
     rank_source = "fixed_fixture"
   )
   expect_identical(fit$status, "failed_variance_domain")
@@ -789,6 +818,8 @@ test_that("R3 Gaussian variational posterior equals the analytic posterior", {
     y = z$y, n_trials = rep(1L, length(z$y)), X = z$X,
     unit_id = z$unit, trait_id = z$trait, q = z$q,
     family = "gaussian_anchor", gaussian_sd = z$sd, H = 15L,
+    ## Analytic oracle assumes known residual SD (pre-Stage-2 DATA_SCALAR).
+    estimate_gaussian_sd = FALSE,
     fixed_global = list(beta = z$beta,
                         theta_rr = .va_r3_pack_theta_rr(z$Lambda))
   )
@@ -820,14 +851,16 @@ test_that("R3 Gaussian variational gradients match analytic matrix derivatives",
   z <- .va_r3_gaussian_fixture()
   validated <- .va_r3_validate_data(
     z$y, rep(1L, length(z$y)), z$X, z$unit, z$trait, z$q,
-    family = "gaussian_anchor", link = "identity", gaussian_sd = z$sd
+    family = "gaussian_anchor", link = "identity", gaussian_sd = z$sd,
+    estimate_gaussian_sd = FALSE
   )
   parameters <- list(
     beta = z$beta, theta_rr = .va_r3_pack_theta_rr(z$Lambda),
     m = matrix(c(-0.1, 0.2, 0.3, -0.2, 0.05, 0.15, -0.25, 0.1), z$N, z$q),
     log_L_diag = matrix(c(-0.2, 0.1, 0.05, -0.1, 0.15, -0.05, 0.08, -0.12),
                         z$N, z$q),
-    L_off = matrix(c(0.1, -0.05, 0.08, -0.12), z$N, 1L)
+    L_off = matrix(c(0.1, -0.05, 0.08, -0.12), z$N, 1L),
+    log_sigma = rep(log(z$sd), z$T)
   )
   fixed <- list(beta = z$beta, theta_rr = .va_r3_pack_theta_rr(z$Lambda))
   obj <- .va_r3_make_objective(
@@ -983,4 +1016,554 @@ test_that("R3 reasserts the landed one-node O3/Laplace anchors", {
   q2 <- o3_q2_gllvm_unit_self_test()
   expect_lt(abs(q1$laplace_difference), 1e-6)
   expect_lt(abs(q2$laplace_difference), 1e-6)
+})
+
+## ---------------------------------------------------------------------------
+## Design 108 Gate A Stage 6 -- multiple unstructured tiers (Design 106 s1).
+## ---------------------------------------------------------------------------
+
+## Shared fixture builder for the tier tests. Returns the validated data, the
+## layout, hand-built parameters, and the accessors the oracle needs to read a
+## flat, tier-major variational block back out.
+.va_r3_tier_fixture <- function() {
+  N <- 4L; T <- 3L; q <- 2L; n_cluster <- 2L
+  unit <- rep(seq_len(N), each = T)
+  trait <- rep(seq_len(T), N)
+  ## Units 1-2 in cluster 1, units 3-4 in cluster 2: a SECOND grouping factor,
+  ## coarser than the unit. A tier that only ever reused unit_id would pass a
+  ## psi-only test while being wrong for `cluster` -- hence this third tier.
+  cluster <- rep(c(1L, 1L, 2L, 2L), each = T)
+  X <- stats::model.matrix(~ 0 + factor(trait, levels = seq_len(T)))
+  set.seed(7)
+  y <- as.numeric(stats::rbinom(N * T, 5L, 0.5))
+
+  validated <- .va_r3_validate_data(
+    y = y, n_trials = rep(5L, N * T), X = X, unit_id = unit,
+    trait_id = trait, q = q, unique = TRUE,
+    extra_tiers = list(list(kind = "dense", dim = 1L, level_id = cluster,
+                            n_levels = n_cluster, label = "cluster"))
+  )
+  layout <- validated$tier_layout
+
+  Lambda1 <- matrix(0, T, q)
+  Lambda1[row(Lambda1) >= col(Lambda1)] <- c(0.7, -0.2, 0.3, 0.45, 0.5)
+  Lambda3 <- matrix(c(0.6, -0.3, 0.2), T, 1L)
+  set.seed(99)
+  parameters <- list(
+    beta = c(-0.2, 0.1, 0.3),
+    theta_rr = c(.va_r3_pack_theta_rr(Lambda1), .va_r3_pack_theta_rr(Lambda3)),
+    log_sd_tier = log(c(0.4, 0.25, 0.6)),
+    m = round(stats::rnorm(layout$total_mean), 3),
+    log_L_diag = round(stats::rnorm(layout$total_mean, 0, 0.2), 3),
+    L_off = round(stats::rnorm(layout$total_off, 0, 0.3), 3)
+  )
+  ## (tier k, coordinate c, level g) -> position in a flat, tier-major vector.
+  ## Written out longhand rather than reusing the package's offsets, so the
+  ## oracle below is an independent statement of the layout, not a restatement.
+  slot <- function(v, k, c, g, which = "m") {
+    base <- if (identical(which, "off")) layout$off_offset[k] else layout$m_offset[k]
+    v[base + c * layout$n_levels[k] + g + 1L]
+  }
+  chol_dense <- function(k, g) {
+    d <- layout$dim[k]
+    L <- matrix(0, d, d)
+    for (cc in seq_len(d)) {
+      L[cc, cc] <- exp(slot(parameters$log_L_diag, k, cc - 1L, g))
+    }
+    pos <- 0L
+    for (col in seq_len(d)) {
+      for (row in seq.int(col + 1L, length.out = d - col)) {
+        L[row, col] <- slot(parameters$L_off, k, pos, g, which = "off")
+        pos <- pos + 1L
+      }
+    }
+    L
+  }
+  list(N = N, T = T, q = q, n_cluster = n_cluster, X = X,
+       validated = validated, layout = layout, parameters = parameters,
+       Lambda1 = Lambda1, Lambda3 = Lambda3,
+       slot = slot, chol_dense = chol_dense)
+}
+
+test_that("R3 multi-tier mu, v and KL match direct matrix algebra", {
+  # VA/EVA development is paused; these are prototype gates. Do not make
+  # CRAN build a parked prototype's DLL. They still run under devtools::test().
+  skip_on_cran()
+  ## The Stage 6 analogue of the single-tier q>1 oracle above, and the
+  ## load-bearing test of this stage. Design 106 Proposition 1 says mu and v
+  ## ACCUMULATE across tiers and the KL decomposes into a sum over tiers and
+  ## levels. This builds all three by hand, from the stacked model, and asks
+  ## the template to agree -- across THREE tiers of two different kinds at two
+  ## different grouping factors.
+  fx <- .va_r3_tier_fixture()
+  obj <- .va_r3_make_objective(fx$validated, H = 15L,
+                               parameters = fx$parameters, eval_method = "gh")
+  report <- obj$report(obj$par)
+
+  lay <- fx$layout
+  pars <- fx$parameters
+  uid <- fx$validated$unit_id
+  tid <- fx$validated$trait_id
+  expected_mu <- numeric(fx$N * fx$T)
+  expected_v <- numeric(fx$N * fx$T)
+  for (r in seq_len(fx$N * fx$T)) {
+    i <- uid[r]
+    t <- tid[r]
+    g_cluster <- lay$level_id[r, 3L]
+    mu <- drop(fx$X[r, ] %*% pars$beta)
+    v <- 0
+
+    ## Tier 1, dense: a = Lambda1[trait, ], full q x q Cholesky.
+    a1 <- fx$Lambda1[t + 1L, ]
+    m1 <- vapply(seq_len(fx$q), function(c) fx$slot(pars$m, 1L, c - 1L, i),
+                 numeric(1))
+    L1 <- fx$chol_dense(1L, i)
+    mu <- mu + sum(a1 * m1)
+    v <- v + sum((t(L1) %*% a1)^2)
+
+    ## Tier 2, trait-diagonal Psi: a = sd_t * e_t, so ONE coordinate.
+    sd_t <- exp(pars$log_sd_tier[t + 1L])
+    mu <- mu + sd_t * fx$slot(pars$m, 2L, t, i)
+    v <- v + (sd_t * exp(fx$slot(pars$log_L_diag, 2L, t, i)))^2
+
+    ## Tier 3, dense d = 1 at the COARSER cluster grouping.
+    a3 <- fx$Lambda3[t + 1L, ]
+    L3 <- fx$chol_dense(3L, g_cluster)
+    mu <- mu + sum(a3 * fx$slot(pars$m, 3L, 0L, g_cluster))
+    v <- v + sum((t(L3) %*% a3)^2)
+
+    expected_mu[r] <- mu
+    expected_v[r] <- v
+  }
+
+  kl_dense <- function(k, n_levels) {
+    vapply(seq_len(n_levels) - 1L, function(g) {
+      L <- fx$chol_dense(k, g)
+      S <- tcrossprod(L)
+      mm <- vapply(seq_len(lay$dim[k]),
+                   function(c) fx$slot(pars$m, k, c - 1L, g), numeric(1))
+      0.5 * (sum(diag(S)) + sum(mm^2) -
+               as.numeric(determinant(S, logarithm = TRUE)$modulus) - lay$dim[k])
+    }, numeric(1))
+  }
+  kl_diagonal <- function(k, n_levels) {
+    vapply(seq_len(n_levels) - 1L, function(g) {
+      s <- exp(vapply(seq_len(fx$T) - 1L,
+                      function(j) fx$slot(pars$log_L_diag, k, j, g), numeric(1)))
+      mm <- vapply(seq_len(fx$T) - 1L,
+                   function(j) fx$slot(pars$m, k, j, g), numeric(1))
+      0.5 * sum(s^2 + mm^2 - 2 * log(s) - 1)
+    }, numeric(1))
+  }
+  expected_kl <- c(kl_dense(1L, fx$N), kl_diagonal(2L, fx$N),
+                   kl_dense(3L, fx$n_cluster))
+
+  expect_equal(report$mu_by_obs, expected_mu, tolerance = 1e-12)
+  expect_equal(report$v_by_obs, expected_v, tolerance = 1e-12)
+  expect_equal(report$kl_by_level, expected_kl, tolerance = 1e-12)
+  expect_equal(report$total_kl, sum(expected_kl), tolerance = 1e-12)
+  ## Per-tier totals, and the back-compatible kl_by_unit, which keeps its
+  ## pre-Stage-6 meaning: tier 1's per-level KL, NOT the unit's whole KL.
+  expect_equal(as.numeric(report$kl_by_tier),
+               c(sum(expected_kl[seq_len(fx$N)]),
+                 sum(expected_kl[fx$N + seq_len(fx$N)]),
+                 sum(expected_kl[2L * fx$N + seq_len(fx$n_cluster)])),
+               tolerance = 1e-12)
+  expect_equal(report$kl_by_unit, expected_kl[seq_len(fx$N)], tolerance = 1e-12)
+
+  ## Autodiff over the whole ragged block, not just the value.
+  analytic <- as.numeric(obj$gr(obj$par))
+  numeric_gr <- vapply(seq_along(obj$par), function(j) {
+    h <- 1e-6 * max(1, abs(obj$par[j]))
+    plus <- minus <- obj$par
+    plus[j] <- plus[j] + h
+    minus[j] <- minus[j] - h
+    (obj$fn(plus) - obj$fn(minus)) / (2 * h)
+  }, numeric(1))
+  expect_lt(max(abs(analytic - numeric_gr) / pmax(1, abs(numeric_gr))), 1e-5)
+})
+
+test_that("R3 trait-diagonal tiers realise Proposition 2's 2T saving structurally", {
+  ## Design 106 Prop. 2: for a per-trait tier, the block-diagonal q is EXACTLY
+  ## optimal (Fischer's inequality), so the saving is free. Running such a tier
+  ## through the dense code path at d = T would still converge to the same
+  ## answer -- which is precisely why it has to be checked STRUCTURALLY. The
+  ## claim is that the parameters are never allocated, not that they end small.
+  for (T in c(3L, 6L, 26L)) {
+    N <- 5L
+    layout <- .va_r3_tier_layout(
+      .va_r3_build_tiers(rep(seq_len(N) - 1L, each = T), N = N, T = T, q = 2L,
+                         n_obs = N * T, want_psi = TRUE),
+      T = T, N = N, q = 2L, n_obs = N * T
+    )
+    expect_identical(layout$kind, c("dense", "diagonal"))
+    ## 2T per level, not T + T(T+1)/2. At T = 26 that is 52 against 377.
+    expect_identical(layout$variational_per_level[2L], 2L * T)
+    expect_gt((T + T * (T + 1L) / 2L) / layout$variational_per_level[2L], 1)
+    ## The mechanism: a diagonal tier allocates NO off-diagonal Cholesky
+    ## entries at all, so total_off is the dense tier's alone.
+    expect_identical(layout$off_per_level[2L], 0L)
+    expect_identical(layout$total_off, as.integer(N * 2L * (2L - 1L) / 2L))
+  }
+
+  ## And the measured ratio at Ayumi's T, which is the number Design 106 s4.2
+  ## quotes: 377 / 52 = 7.25x, free rather than approximate.
+  expect_equal((26 + 26 * 27 / 2) / (2 * 26), 7.25, tolerance = 1e-12)
+
+  ## The same claim, read off a CONSTRUCTED objective rather than the layout,
+  ## so a template that quietly demanded dense storage would fail here too.
+  # VA/EVA development is paused; these are prototype gates. Do not make
+  # CRAN build a parked prototype's DLL. They still run under devtools::test().
+  skip_on_cran()
+  N <- 4L; T <- 6L; q <- 2L
+  unit <- rep(seq_len(N), each = T)
+  trait <- rep(seq_len(T), N)
+  X <- stats::model.matrix(~ 0 + factor(trait, levels = seq_len(T)))
+  set.seed(51)
+  y <- as.numeric(stats::rbinom(N * T, 4L, 0.5))
+  validated <- .va_r3_validate_data(
+    y = y, n_trials = rep(4L, N * T), X = X, unit_id = unit,
+    trait_id = trait, q = q, unique = TRUE
+  )
+  obj <- .va_r3_make_objective(validated, H = 15L, eval_method = "gh")
+  nm <- names(obj$par)
+  ## m and log_L_diag carry N*q (tier 1) + N*T (tier 2); L_off carries the
+  ## dense tier's N*q(q-1)/2 and NOTHING for the diagonal tier.
+  expect_identical(sum(nm == "m"), as.integer(N * q + N * T))
+  expect_identical(sum(nm == "log_L_diag"), as.integer(N * q + N * T))
+  expect_identical(sum(nm == "L_off"), as.integer(N * q * (q - 1L) / 2L))
+  expect_identical(sum(nm == "log_sd_tier"), T)
+  ## Total variational cost = N*(2q + q(q-1)/2) + N*2T, i.e. the Prop. 2 count.
+  expect_identical(
+    sum(nm %in% c("m", "log_L_diag", "L_off")),
+    as.integer(N * (2L * q + q * (q - 1L) / 2L) + N * 2L * T)
+  )
+})
+
+test_that("R3 K=1 stays byte-identical to the pre-Stage-6 single-tier path", {
+  # VA/EVA development is paused; these are prototype gates. Do not make
+  # CRAN build a parked prototype's DLL. They still run under devtools::test().
+  skip_on_cran()
+  ## Stage 6 turned three PARAMETER_MATRIXes into flat PARAMETER_VECTORs. The
+  ## flat layout is column-major within a tier, which IS as.vector() of the old
+  ## matrix, so the K = 1 parameter vector must be unchanged element for
+  ## element -- names, order and values. The pinned objective below was
+  ## recorded from the pre-Stage-6 template on this exact fixture.
+  set.seed(11)
+  N <- 5L; T <- 4L; q <- 2L
+  unit <- rep(seq_len(N), each = T)
+  trait <- rep(seq_len(T), N)
+  X <- stats::model.matrix(~ 0 + factor(trait, levels = seq_len(T)))
+  y <- as.numeric(stats::rbinom(N * T, 4L, 0.4))
+  validated <- .va_r3_validate_data(
+    y = y, n_trials = rep(4L, N * T), X = X, unit_id = unit,
+    trait_id = trait, q = q
+  )
+  expect_identical(validated$tier_layout$n_tiers, 1L)
+
+  Lambda <- matrix(0, T, q)
+  Lambda[row(Lambda) >= col(Lambda)] <-
+    c(0.7, -0.2, 0.3, 0.45, 0.5, -0.4, 0.25)[seq_len(.va_r3_theta_length(T, q))]
+  matrix_pars <- list(
+    beta = c(-0.2, 0.1, 0.3, -0.05),
+    theta_rr = .va_r3_pack_theta_rr(Lambda),
+    m = matrix(seq(-0.4, 0.4, length.out = N * q), N, q),
+    log_L_diag = matrix(log(seq(0.7, 1.2, length.out = N * q)), N, q),
+    L_off = matrix(seq(-0.2, 0.2, length.out = N), N, 1L)
+  )
+  ## Hand-built parameter lists written against the pre-Stage-6 MATRIX
+  ## signature must still work, and must give the same objective as the flat
+  ## vectors they are equivalent to.
+  flat_pars <- matrix_pars
+  flat_pars$m <- as.numeric(matrix_pars$m)
+  flat_pars$log_L_diag <- as.numeric(matrix_pars$log_L_diag)
+  flat_pars$L_off <- as.numeric(matrix_pars$L_off)
+
+  obj_matrix <- .va_r3_make_objective(validated, H = 15L,
+                                      parameters = matrix_pars,
+                                      eval_method = "gh")
+  obj_flat <- .va_r3_make_objective(validated, H = 15L, parameters = flat_pars,
+                                    eval_method = "gh")
+  expect_identical(names(obj_matrix$par), names(obj_flat$par))
+  expect_identical(unname(obj_matrix$par), unname(obj_flat$par))
+  expect_identical(obj_matrix$fn(obj_matrix$par), obj_flat$fn(obj_flat$par))
+  expect_identical(as.numeric(obj_matrix$gr(obj_matrix$par)),
+                   as.numeric(obj_flat$gr(obj_flat$par)))
+
+  ## The pre-Stage-6 parameter-name contract, unchanged.
+  expect_identical(unique(names(obj_matrix$par)),
+                   c("beta", "theta_rr", "m", "log_L_diag", "L_off"))
+  expect_identical(sum(names(obj_matrix$par) == "m"), as.integer(N * q))
+  expect_identical(sum(names(obj_matrix$par) == "log_L_diag"), as.integer(N * q))
+  expect_identical(sum(names(obj_matrix$par) == "L_off"), as.integer(N))
+  ## No diagonal tier, so log_sd_tier contributes nothing at all.
+  expect_identical(sum(names(obj_matrix$par) == "log_sd_tier"), 0L)
+
+  ## Value recorded from the pre-Stage-6 template on this fixture. The
+  ## tolerance is 1e-10 rather than 0 only because the H = 15 nodes come from
+  ## eigen(); everything else in the path is exact arithmetic.
+  expect_equal(obj_matrix$fn(obj_matrix$par), 36.49217556751487,
+               tolerance = 1e-10)
+
+  ## Reported quantities keep their single-tier meaning exactly.
+  report <- obj_matrix$report(obj_matrix$par)
+  expect_identical(report$n_tiers, 1L)
+  expect_equal(report$kl_by_unit, as.numeric(report$kl_by_level),
+               tolerance = 0)
+  expect_equal(report$total_kl, sum(report$kl_by_unit), tolerance = 1e-14)
+  expect_true(is.matrix(report$Sigma_B))
+  expect_identical(dim(report$Sigma_B), c(T, T))
+})
+
+test_that("R3 tier registry agrees with the layout the engine actually builds", {
+  ## The data-driven analogue of the family-registry guard above. The registry
+  ## is the DECLARED per-kind cost contract; the layout is what the engine
+  ## allocates. Adding a tier kind without wiring its costs -- or changing one
+  ## side's arithmetic -- fails here rather than silently.
+  N <- 5L; T <- 4L; q <- 2L
+  unit0 <- rep(seq_len(N) - 1L, each = T)
+  for (entry in .va_r3_tier_registry) {
+    expect_true(entry$kind_code %in% c(0L, 1L))
+    expect_identical(.va_r3_tier_entry(entry$kind)$kind_code, entry$kind_code)
+
+    d <- if (identical(entry$kind, "diagonal")) T else q
+    ## variational_per_level must be exactly means + log-diagonals + off.
+    expect_identical(entry$variational_per_level(d, T),
+                     as.integer(2L * d + entry$off_per_level(d, T)))
+    ## Prop. 2 holds for exactly the kinds that declare it.
+    expect_identical(entry$block_diagonal_exact,
+                     identical(entry$off_per_level(d, T), 0L))
+
+    tiers <- .va_r3_build_tiers(unit0, N = N, T = T, q = q, n_obs = N * T,
+                                extra_tiers = list(list(
+                                  kind = entry$kind, dim = d,
+                                  level_id = unit0, n_levels = N)))
+    layout <- .va_r3_tier_layout(tiers, T = T, N = N, q = q, n_obs = N * T)
+    expect_identical(layout$kind_code[2L], entry$kind_code)
+    expect_identical(layout$variational_per_level[2L],
+                     entry$variational_per_level(d, T))
+    expect_identical(layout$off_per_level[2L], entry$off_per_level(d, T))
+    expect_identical(layout$loading_length[2L], entry$loading_length(d, T))
+    ## Offsets must tile the flat vectors exactly -- no gap, no overlap.
+    expect_identical(layout$total_mean, as.integer(sum(layout$n_levels * layout$dim)))
+    expect_identical(layout$total_off,
+                     as.integer(sum(layout$n_levels * layout$off_per_level)))
+    expect_identical(layout$m_offset, c(0L, as.integer(N * q)))
+  }
+  ## An unregistered kind is an error, not a silent default.
+  expect_error(.va_r3_tier_entry("mean_field"), "no tier-registry entry")
+})
+
+test_that("R3 refuses tier specifications it cannot honour", {
+  N <- 4L; T <- 3L; q <- 2L
+  unit <- rep(seq_len(N), each = T)
+  trait <- rep(seq_len(T), N)
+  X <- stats::model.matrix(~ 0 + factor(trait, levels = seq_len(T)))
+  base <- list(y = as.numeric(rep(1L, N * T)), n_trials = rep(4L, N * T),
+               X = X, unit_id = unit, trait_id = trait, q = q)
+  bad <- function(spec) {
+    do.call(.va_r3_validate_data, c(base, list(extra_tiers = list(spec))))
+  }
+  ## A trait-diagonal tier has one field per trait by definition.
+  expect_error(bad(list(kind = "diagonal", dim = 2L, level_id = unit)),
+               "dim must be T")
+  expect_error(bad(list(kind = "dense", dim = T + 1L, level_id = unit)),
+               "1 <= dim <= T")
+  expect_error(bad(list(kind = "dense", dim = 1L, level_id = unit[-1L])),
+               "one entry per response row")
+  ## A declared level nothing loads on would carry a free variational block.
+  expect_error(bad(list(kind = "dense", dim = 1L, level_id = unit,
+                        n_levels = N + 1L)),
+               "must be used by at least one row")
+  expect_error(bad(list(level_id = unit)), "`kind` and `level_id`")
+  ## Non-logical unique/psi are a mistake, not a truthy request.
+  expect_error(do.call(.va_r3_validate_data, c(base, list(unique = "yes"))),
+               "must be TRUE or FALSE")
+})
+
+test_that("R3 multi-tier fixed-information fails closed rather than guessing", {
+  # VA/EVA development is paused; these are prototype gates. Do not make
+  # CRAN build a parked prototype's DLL. They still run under devtools::test().
+  skip_on_cran()
+  ## H_vv is block diagonal by UNIT only while a unit's observations touch one
+  ## tier. Nothing in the parameter names distinguishes a Psi companion (still
+  ## per-unit) from a `cluster` tier (not). A Schur complement built on the
+  ## wrong partition would be a number, not an error, so the multi-tier case
+  ## must refuse. Design 108 Stage 14 owns this surface.
+  fx <- .va_r3_tier_fixture()
+  obj <- .va_r3_make_objective(fx$validated, H = 15L,
+                               parameters = fx$parameters, eval_method = "gh")
+  for (route in c("auto", "blocked", "dense")) {
+    info <- .va_r3_fixed_information(obj, obj$par, route = route)
+    expect_identical(info$status, "va_multi_tier_fixed_information_unsupported")
+    expect_null(info$se_profile)
+    expect_null(info$se_conditional)
+    expect_false(info$pd_hessian)
+    expect_false(info$calibrated)
+  }
+  expect_identical(
+    .va_r3_fixed_information_blocked(obj, obj$par, N = fx$N, q = fx$q)$status,
+    "va_multi_tier_fixed_information_unsupported"
+  )
+})
+
+test_that("Stage 6 does NOT open the public variational route to Psi", {
+  ## The research engine now admits a Psi tier. The PUBLIC route must not, and
+  ## this arc changed nothing in R/integration-fence.R. The reason is evidence,
+  ## not capability: no VA recovery study exists for a multi-tier or diag(psi)
+  ## model, and the fence is where that gate lives.
+  expect_error(
+    .gllvmTMB_check_integration_fence("va", family = "poisson", link = "log",
+                                      q = 2L, p = 4L, n = 100L, unique = TRUE),
+    "Psi"
+  )
+  ## Same model without Psi still passes the fence, so the refusal above is
+  ## about Psi specifically and not about the fixture.
+  expect_invisible(
+    .gllvmTMB_check_integration_fence("va", family = "poisson", link = "log",
+                                      q = 2L, p = 4L, n = 100L, unique = FALSE)
+  )
+})
+
+test_that("R3 refuses fixed_global on a multi-tier model rather than half-fixing it", {
+  ## fixed_global names beta and theta_rr only. With a second tier there are
+  ## global parameters it does not name -- the extra loadings and log_sd_tier --
+  ## so honouring it would fix some and leave the rest free: a different model
+  ## than the caller asked for, fitted successfully and reported as theirs.
+  N <- 4L; T <- 3L; q <- 1L
+  unit <- rep(seq_len(N), each = T)
+  trait <- rep(seq_len(T), N)
+  X <- stats::model.matrix(~ 0 + factor(trait, levels = seq_len(T)))
+  set.seed(31)
+  y <- as.numeric(stats::rbinom(N * T, 4L, 0.5))
+  fg <- list(beta = rep(0, T), theta_rr = rep(0.5, T))
+  expect_error(
+    .va_r3_fit(y, rep(4L, N * T), X, unit, trait, q = q, unique = TRUE,
+               n_starts = 1L, fixed_global = fg),
+    "single-tier model only"
+  )
+  ## The same call without the extra tier is still accepted, so the refusal is
+  ## about the tier count and not about the fixture.
+  validated <- .va_r3_validate_data(
+    y = y, n_trials = rep(4L, N * T), X = X, unit_id = unit,
+    trait_id = trait, q = q
+  )
+  expect_no_error(
+    .va_r3_make_objective(validated, H = 15L, fixed_global = fg,
+                          eval_method = "gh")
+  )
+})
+
+test_that("R3 template refuses an inconsistent tier declaration loudly", {
+  # VA/EVA development is paused; these are prototype gates. Do not make
+  # CRAN build a parked prototype's DLL. They still run under devtools::test().
+  skip_on_cran()
+  ## The R adapter computes the tier offsets, so these guards can only be
+  ## tripped by a caller building on the template directly -- which
+  ## test-va-probit-adsafety.R does, deliberately. The template therefore
+  ## RECOMPUTES the offsets from (tier_kind, tier_dim, tier_n_levels) instead
+  ## of trusting R's, so an R/C++ disagreement fails a length check rather than
+  ## reading across a tier boundary and returning a plausible wrong number.
+  dll <- .va_r3_load_dll()
+  rule <- .va_r3_gh_rule(15L)
+  probe <- function(mutate) {
+    base <- list(
+      dat = list(y = 1, n_trials = 4, X = matrix(1, 1L, 1L), unit_id = 0L,
+                 trait_id = 0L, is_y_observed = 1L, N = 1L, T = 1L, q = 1L,
+                 gh_nodes = rule$nodes, gh_weights = rule$weights,
+                 family = 1L, eval_method = 0L, n_tiers = 1L, tier_kind = 0L,
+                 tier_dim = 1L, tier_n_levels = 1L,
+                 level_id = matrix(0L, 1L, 1L)),
+      par = list(beta = 0, theta_rr = 1, log_sd_tier = numeric(0), m = 0,
+                 log_L_diag = 0, L_off = numeric(0), log_phi = 0,
+                 log_sigma = 0)
+    )
+    z <- mutate(base)
+    tryCatch({
+      TMB::MakeADFun(z$dat, z$par, DLL = dll$DLL, silent = TRUE)
+      NA_character_
+    }, error = function(e) conditionMessage(e))
+  }
+  ## The unmutated probe must build, or the negatives below prove nothing.
+  expect_true(is.na(probe(identity)))
+
+  expect_match(probe(function(z) { z$dat$tier_kind <- 1L; z }),
+               "tier 0 must be the dense ordinary latent tier")
+  expect_match(probe(function(z) { z$dat$tier_dim <- 2L; z }),
+               "tier 0 must be the dense ordinary latent tier")
+  expect_match(probe(function(z) {
+    z$dat$n_tiers <- 2L
+    z$dat$tier_kind <- c(0L, 1L)
+    z$dat$tier_dim <- c(1L, 3L)          # T is 1, so 3 is not a trait-diagonal
+    z$dat$tier_n_levels <- c(1L, 1L)
+    z$dat$level_id <- matrix(0L, 1L, 2L)
+    z$par$log_sd_tier <- 0
+    z$par$m <- rep(0, 4L)
+    z$par$log_L_diag <- rep(0, 4L)
+    z
+  }), "trait-diagonal tier must have tier_dim = T")
+  expect_match(probe(function(z) { z$dat$level_id <- matrix(3L, 1L, 1L); z }),
+               "level_id is out of range")
+  expect_match(probe(function(z) { z$dat$level_id <- matrix(0L, 1L, 2L); z }),
+               "level_id must be n_obs x n_tiers")
+  expect_match(probe(function(z) { z$par$m <- c(0, 0); z }),
+               "variational parameter dimensions do not agree")
+  expect_match(probe(function(z) { z$par$log_sd_tier <- 0; z }),
+               "log_sd_tier must supply T entries per trait-diagonal tier")
+})
+
+test_that("R3 multi-tier path NESTS the single-tier path exactly", {
+  # VA/EVA development is paused; these are prototype gates. Do not make
+  # CRAN build a parked prototype's DLL. They still run under devtools::test().
+  skip_on_cran()
+  ## The strongest available statement that the K > 1 code path did not perturb
+  ## the K = 1 one: a Psi tier whose loading sd -> 0 and whose variational
+  ## block sits AT THE PRIOR (m = 0, S = I) contributes exactly zero to mu, to
+  ## v and to the KL. The two-tier objective must therefore collapse onto the
+  ## one-tier objective at the same tier-1 coordinates -- and it does so to
+  ## exact zero, not to a tolerance, because every added term is an exact zero
+  ## rather than a small number.
+  set.seed(17)
+  N <- 6L; T <- 4L; q <- 2L
+  unit <- rep(seq_len(N), each = T)
+  trait <- rep(seq_len(T), N)
+  X <- stats::model.matrix(~ 0 + factor(trait, levels = seq_len(T)))
+  y <- as.numeric(stats::rbinom(N * T, 4L, 0.45))
+  validate <- function(psi) {
+    .va_r3_validate_data(y = y, n_trials = rep(4L, N * T), X = X,
+                         unit_id = unit, trait_id = trait, q = q, unique = psi)
+  }
+  Lambda <- matrix(0, T, q)
+  Lambda[row(Lambda) >= col(Lambda)] <-
+    c(0.7, -0.2, 0.3, 0.45, 0.5, -0.4, 0.25)[seq_len(.va_r3_theta_length(T, q))]
+  base <- list(
+    beta = c(-0.2, 0.1, 0.3, -0.05),
+    theta_rr = .va_r3_pack_theta_rr(Lambda),
+    m = as.numeric(matrix(seq(-0.4, 0.4, length.out = N * q), N, q)),
+    log_L_diag = as.numeric(matrix(log(seq(0.7, 1.2, length.out = N * q)),
+                                   N, q)),
+    L_off = seq(-0.2, 0.2, length.out = N)
+  )
+  two_tier <- base
+  two_tier$m <- c(base$m, rep(0, N * T))
+  two_tier$log_L_diag <- c(base$log_L_diag, rep(0, N * T))
+  two_tier$log_sd_tier <- rep(log(1e-12), T)
+
+  one <- .va_r3_make_objective(validate(FALSE), H = 15L, parameters = base,
+                               eval_method = "gh")
+  two <- .va_r3_make_objective(validate(TRUE), H = 15L, parameters = two_tier,
+                               eval_method = "gh")
+  r1 <- one$report(one$par)
+  r2 <- two$report(two$par)
+
+  expect_identical(one$fn(one$par), two$fn(two$par))
+  expect_identical(as.numeric(r1$mu_by_obs), as.numeric(r2$mu_by_obs))
+  expect_identical(as.numeric(r1$v_by_obs), as.numeric(r2$v_by_obs))
+  expect_identical(r1$total_kl, r2$total_kl)
+  ## The added tier is genuinely inert here -- not merely small.
+  expect_identical(as.numeric(r2$kl_by_tier[2L]), 0)
+  ## ... and it really was a second tier, so the equality above is a nesting
+  ## result and not a silently-dropped tier.
+  expect_identical(r2$n_tiers, 2L)
+  expect_identical(sum(names(two$par) == "log_sd_tier"), T)
 })

@@ -306,7 +306,26 @@ package contributors.
     advertised in user-facing prose, only in the register).
 
   Reference register row IDs (e.g. FG-NN, FAM-NN, MIX-NN) so
-  readers and future auditors can trace each claim to evidence.
+  future auditors can trace each claim to evidence — **in the
+  internal artifacts**: the register itself, `docs/design/`,
+  after-task reports, `docs/dev-log/check-log.md`, and PR bodies.
+  **Reader-facing surfaces state the boundary in plain language and
+  carry no register codes.**
+
+  *Reconciled 2026-08-02.* As written, this clause said "readers
+  and future auditors" and so required codes on the very surfaces
+  `CLAUDE.md` forbids them on ("reader-facing content shows only
+  what makes sense to the reader — no internal register codes on
+  any surface (articles, reference/roxygen, NEWS, printed
+  output)"). The two rules were in direct conflict on articles,
+  NEWS and roxygen. The split above honours both intents and costs
+  nothing: the **scope-boundary statement itself is still required
+  everywhere**, and traceability is preserved for the people who
+  actually audit — who read the register and the design docs, not
+  the vignettes. A reader who meets `FAM-20A` in an article learns
+  nothing; an auditor who meets it in an after-task report can
+  follow it.
+
   This rule, had it existed 2026-05-15, would have prevented
   the article-port overpromise crisis.
 

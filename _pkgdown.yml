@@ -93,6 +93,8 @@ navbar:
         href: articles/profile-likelihood-ci.html
       - text: Common pitfalls
         href: articles/pitfalls.html
+      - text: Validation oracles
+        href: articles/validation-oracles.html
 
 articles:
   - title: Model Guides
@@ -125,6 +127,7 @@ articles:
     - articles/convergence-start-values
     - articles/profile-likelihood-ci
     - articles/pitfalls
+    - articles/validation-oracles
 
 reference:
   - title: Start here

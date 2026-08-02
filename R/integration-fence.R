@@ -34,10 +34,21 @@
 ##     claim, not the gap to that target.
 ##   * `engine = "julia"` -- the bridge implements no variational route at all.
 ##     R first, Julia next (maintainer, 2026-07-31).
+##   * binomial-PROBIT is DELIBERATELY ABSENT (Design 108 Gate A Stage 4). The
+##     VA template implements it (family code 4, tail-safe log Phi), and the
+##     route now translates it correctly instead of silently mis-routing it onto
+##     the logit branch -- but implementing a family is not evidence about it.
+##     No recovery, coverage, or bound-tightness measurement exists for probit
+##     under VA, and Design 108 s2 is explicit that the Bernoulli-LOGIT evidence
+##     does not transfer. The single-link `links` entry below is therefore what
+##     refuses it, with the message a user who wrote binomial(link = "probit")
+##     needs. Admitting it requires Stage 8's measurement, not this code.
 .gllvmTMB_integration_fence_limits <- function() {
   list(
-    families = c("binomial", "poisson"),
-    links = c(binomial = "logit", poisson = "log"),
+    ## Design 108 Stage 2: gaussian (identity) admitted alongside binomial /
+    ## poisson so mixed-family VA and estimated residual SD are reachable.
+    families = c("binomial", "poisson", "gaussian"),
+    links = c(binomial = "logit", poisson = "log", gaussian = "identity"),
     q_max = 2L,
     p_max = 80L,
     n_min = 100L
@@ -73,15 +84,33 @@
         "Every variational measurement in this package suppresses {.field Psi};
          no evidence exists for the Psi-carrying model.")
   }
-  if (!is.null(family) && !family %in% lim$families) {
-    bad("Family {.val {family}} has no admitted variational evaluation.",
-        "Admitted: {.val {lim$families}}.")
+  if (!is.null(family)) {
+    fams <- unique(as.character(family))
+    bad_f <- setdiff(fams, lim$families)
+    if (length(bad_f)) {
+      bad("Family {.val {bad_f}} has no admitted variational evaluation.",
+          "Admitted: {.val {lim$families}}.")
+    }
   }
   if (!is.null(family) && !is.null(link)) {
-    want <- lim$links[[family]]
-    if (!is.null(want) && !identical(link, want)) {
-      bad("Link {.val {link}} is not admitted for family {.val {family}}.",
-          "Admitted link for {.val {family}}: {.val {want}}.")
+    fams <- as.character(family)
+    links <- as.character(link)
+    if (length(links) == 1L && length(fams) > 1L) {
+      links <- rep.int(links, length(fams))
+    }
+    if (length(fams) == 1L && length(links) > 1L) {
+      fams <- rep.int(fams, length(links))
+    }
+    if (length(fams) != length(links)) {
+      bad("Family and link vectors have unequal length.",
+          "Supply one link per family row, or a single shared link.")
+    }
+    for (i in seq_along(fams)) {
+      want <- lim$links[[fams[[i]]]]
+      if (!is.null(want) && !identical(links[[i]], want)) {
+        bad("Link {.val {links[[i]]}} is not admitted for family {.val {fams[[i]]}}.",
+            "Admitted link for {.val {fams[[i]]}}: {.val {want}}.")
+      }
     }
   }
   if (!is.null(q) && q > lim$q_max) {

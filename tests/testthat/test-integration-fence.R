@@ -92,7 +92,12 @@ test_that("the fence errors, rather than warns, outside every boundary", {
   expect_error(bad(q = 6L), "exceeds the evidenced maximum")
   expect_error(bad(p = 200L), "exceeds the evidenced maximum")
   expect_error(bad(unique = TRUE), "Psi")
-  expect_error(bad(family = "gaussian"), "no admitted variational evaluation")
+  ## Design 108 Stage 2 admits gaussian identity; Gamma remains outside the fence.
+  expect_error(bad(family = "Gamma"), "no admitted variational evaluation")
+  expect_no_error(do.call(
+    .gllvmTMB_check_integration_fence,
+    utils::modifyList(ok, list(family = "gaussian", link = "identity"))
+  ))
   expect_error(bad(link = "probit"), "not admitted for family")
   expect_error(bad(engine = "julia"), "no variational route")
 })
@@ -158,10 +163,12 @@ test_that("the data-aware fence limits are reachable from gllvmTMB()", {
              control = gllvmTMBcontrol(integration = "va")),
     "exceeds the evidenced maximum"
   )
-  ## A family with no admitted variational evaluation.
+  ## A family with no admitted public variational evaluation. Gaussian identity
+  ## is admitted under Design 108 Stage 2; nbinom2 is template-only and hits
+  ## the fence before the dedicated public-route refusal.
   expect_error(
     gllvmTMB(fml2, data = .fence_fixture(n = 120L, p = 6L),
-             family = stats::gaussian(), unit = "site",
+             family = nbinom2(), unit = "site",
              control = gllvmTMBcontrol(integration = "va")),
     "no admitted variational evaluation"
   )

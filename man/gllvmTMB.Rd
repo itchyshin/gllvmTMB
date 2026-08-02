@@ -37,7 +37,7 @@ gllvmTMB(
 \arguments{
 \item{formula}{A glmmTMB-style formula, e.g.
 \code{value ~ 0 + trait + (0 + trait):env_temp + (0 + trait):env_precip}.
-Fixed effects and any of the four-mode grid covstructs above are
+Fixed effects and any of the three-mode grid covstructs above are
 supported (plus \code{\link[=phylo_slope]{phylo_slope()}}, \code{\link[=animal_slope]{animal_slope()}}, and \code{\link[=meta_V]{meta_V()}}).
 
 An \code{offset()} term is supported for \strong{count responses only} — \code{poisson()},
@@ -324,15 +324,16 @@ the same trait covariance, pairwise correlations, shared latent axes,
 and trait-specific variance. The formula syntax also supports fixed
 effects plus covariance-structure keywords organised by
 \emph{correlation source} (none / animal / phylo / spatial) and
-\emph{mode} (scalar / independent / dependent / latent):
+three \emph{modes} (independent / dependent / latent). The \code{common = TRUE}
+modifier on \verb{*_indep()} gives the one-shared-variance special case:
 }
 \details{
-\tabular{lllll}{
-\strong{source \\ mode} \tab \strong{scalar} \tab \strong{independent} \tab \strong{dependent} \tab \strong{latent} \cr
-\emph{none}    \tab (omit)             \tab \code{\link[=indep]{indep()}}         \tab \code{\link[=dep]{dep()}}         \tab \code{\link[=latent]{latent()}}         \cr
-\emph{animal}  \tab \code{\link[=animal_scalar]{animal_scalar()}}  \tab \code{\link[=animal_indep]{animal_indep()}}  \tab \code{\link[=animal_dep]{animal_dep()}}  \tab \code{\link[=animal_latent]{animal_latent()}}  \cr
-\emph{phylo}   \tab \code{\link[=phylo_scalar]{phylo_scalar()}}   \tab \code{\link[=phylo_indep]{phylo_indep()}}   \tab \code{\link[=phylo_dep]{phylo_dep()}}   \tab \code{\link[=phylo_latent]{phylo_latent()}}   \cr
-\emph{spatial} \tab \code{\link[=spatial_scalar]{spatial_scalar()}} \tab \code{\link[=spatial_indep]{spatial_indep()}} \tab \code{\link[=spatial_dep]{spatial_dep()}} \tab \code{\link[=spatial_latent]{spatial_latent()}} \cr
+\tabular{llll}{
+\strong{source \\ mode} \tab \strong{independent} \tab \strong{dependent} \tab \strong{latent} \cr
+\emph{none}    \tab \code{\link[=indep]{indep()}}         \tab \code{\link[=dep]{dep()}}         \tab \code{\link[=latent]{latent()}}         \cr
+\emph{animal}  \tab \code{\link[=animal_indep]{animal_indep()}}  \tab \code{\link[=animal_dep]{animal_dep()}}  \tab \code{\link[=animal_latent]{animal_latent()}}  \cr
+\emph{phylo}   \tab \code{\link[=phylo_indep]{phylo_indep()}}   \tab \code{\link[=phylo_dep]{phylo_dep()}}   \tab \code{\link[=phylo_latent]{phylo_latent()}}   \cr
+\emph{spatial} \tab \code{\link[=spatial_indep]{spatial_indep()}} \tab \code{\link[=spatial_dep]{spatial_dep()}} \tab \code{\link[=spatial_latent]{spatial_latent()}} \cr
 }
 
 The three covariance modes (\code{indep} / \code{dep} / \code{latent}) encode

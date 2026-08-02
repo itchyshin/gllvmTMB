@@ -112,34 +112,230 @@ Type va_r3_jj_softplus_expectation(const Type &mu, const Type &v)
   return CppAD::CondExpGt(xi2, threshold, exact, expansion);
 }
 
+// ---------------------------------------------------------------------------
+// Design 108 Gate A Stage 4: a tail-safe log Phi for use INSIDE the quadrature.
+//
+// Design 105 s1.3 is the reason this exists.  Every probit guard in the shipped
+// engine was written for a single evaluation at eta = mu, but under the
+// physicists' Gauss-Hermite rule the integrand is evaluated at
+// eta_h = mu + sqrt(2v) x_h, and the extreme node reaches +/- 6.36 SD of eta at
+// H = 15 and +/- 14.50 SD at H = 61.  Past x ~ -37.5 the double-precision
+// pnorm() underflows to 0, and past x ~ -38.6 dnorm() does too, so the naive
+// derivative dnorm(x)/pnorm(x) becomes 0/0 = NaN -- which is a NaN gradient,
+// not a slightly wrong one.  Verified: dnorm(-40)/pnorm(-40) is NaN in double.
+//
+// Laplace continued fraction for the Mills ratio (Laplace 1805; the standard
+// convergent -- NOT asymptotic -- expansion), evaluated by backward recurrence:
+//
+//   Phi(-z) / phi(z) = 1 / (z + 1/(z + 2/(z + 3/(z + ...))))     for z > 0
+//
+// This returns the tail c(z) so that the Mills ratio is 1/(z + c) and its
+// reciprocal, the inverse Mills ratio phi(z)/Phi(-z), is exactly (z + c).  The
+// recurrence only ever divides by (z + c) with c >= 0 and z >= va_r3_logphi_z0,
+// so every denominator is bounded below by that switch point: the whole helper
+// is a bounded rational function of z with no branch and nothing that can
+// vanish.  With the switch at z = 10 and K = 20 terms the value agrees with R's
+// pnorm(log.p = TRUE) to 0 ULP over z in [10, 200] (measured, not asserted).
+template <class Type>
+Type va_r3_mills_cf(const Type &z)
+{
+  const int K = 20;
+  Type c = Type(0.0);
+  for (int k = K; k >= 1; --k)
+    c = Type(static_cast<double>(k)) / (z + c);
+  return c;
+}
+
+// The switch point |x| = z0 between the continued fraction and log(pnorm()).
+// Both sides have headroom at 10: pnorm(-10) = 7.6e-24 is 284 orders above
+// underflow, and the CF has already converged to 0 ULP by z = 10 with K = 20.
+static const double va_r3_logphi_z0 = 10.0;
+
+// log Phi(x), tail-safe for arbitrarily negative x.
+//
+// AD-safety rests on ONE rule, the same one the shipped engine's
+// gll_log_pnorm() uses (src/gllvmTMB.cpp:83): CppAD::CondExp evaluates BOTH
+// branches, so an UNSELECTED branch that computes a non-finite value can still
+// contaminate the tape.  The fix is to clamp the INPUT of each branch, never
+// its output, so that neither branch can produce a non-finite value or a
+// non-finite partial in the region where it is not used.
+//
+// WHAT THE CLAMP ACTUALLY PROTECTS -- measured, do not weaken on the strength
+// of a gradient check (adversarial review, 2026-08-02).  An earlier version of
+// this comment said an unselected log(0) "would poison the GRADIENT".  That is
+// WRONG on this CppAD/TMB build, and the error is dangerous in one specific
+// way: it invites a future reader to test only obj$gr(), see it finite, and
+// conclude the clamp is unnecessary.  Removing the clamp and probing at
+// x = -50 gives, measurably:
+//     clamped (as shipped) : fn 1254.83   gr -50.02   he  0.999601
+//     unclamped            : fn 1254.83   gr -50.02   he  NaN
+// The gradient stays finite AND CORRECT; it is the HESSIAN that dies.  So any
+// check that this clamp is still needed MUST call obj$he(), not just obj$gr().
+// test-va-probit-adsafety.R's `finite` predicate does include he() -- that is
+// why the test is stronger than the rationale this comment used to give.
+//
+// Only the LEFT tail needs the special form.  The right tail is handled by
+// symmetry at the call site (log(1 - Phi(eta)) is always written log Phi(-eta)),
+// so the cancellation-prone difference of two nearly-equal CDFs -- Design 105
+// s6.3's objection -- is never formed at all.
+template <class Type>
+Type va_r3_log_pnorm(const Type &x)
+{
+  const Type z0 = Type(va_r3_logphi_z0);
+  const Type half_log_two_pi = Type(0.5) *
+    log(Type(2.0) * Type(3.141592653589793238462643383279502884));
+  // Tail branch: z = max(-x, z0) >= z0 > 0, so the continued fraction is
+  // evaluated only where it converges, and -0.5 z^2 - log(z + c) is finite for
+  // every finite z.
+  Type z = CppAD::CondExpGt(-x, z0, -x, z0);
+  Type tail = -Type(0.5) * z * z - half_log_two_pi - log(z + va_r3_mills_cf(z));
+  // Direct branch: xd = max(x, -z0) >= -10, where pnorm(xd) >= 7.62e-24 and
+  // the derivative dnorm(xd)/pnorm(xd) <= 10.03.  Nothing underflows.
+  Type xd = CppAD::CondExpLt(x, -z0, -z0, x);
+  Type direct = log(pnorm(xd));
+  return CppAD::CondExpLt(x, -z0, tail, direct);
+}
+
+// Inverse Mills ratio lambda(x) = phi(x)/Phi(x) = d/dx log Phi(x).
+//
+// Needed only by the small-v expansion below, but it carries the same 0/0
+// hazard, so it gets the same two-branch treatment.  In the tail it is the
+// continued-fraction DENOMINATOR (z + c) read off directly -- no division by a
+// probability that has underflowed.
+template <class Type>
+Type va_r3_inv_mills(const Type &x)
+{
+  const Type z0 = Type(va_r3_logphi_z0);
+  Type z = CppAD::CondExpGt(-x, z0, -x, z0);
+  Type tail = z + va_r3_mills_cf(z);
+  Type xd = CppAD::CondExpLt(x, -z0, -z0, x);
+  Type direct = dnorm(xd, Type(0.0), Type(1.0), false) / pnorm(xd);
+  return CppAD::CondExpLt(x, -z0, tail, direct);
+}
+
+// E[ y log Phi(eta) + (n - y) log Phi(-eta) ] for eta ~ N(mu, v), by the same
+// physicists' Gauss-Hermite rule the softplus expectation uses.
+//
+// Small v: as for softplus, sqrt(v) has an unbounded derivative at v = 0, so
+// the GH branch receives max(v, threshold) and the outer CondExp selects a
+// heat-kernel expansion below the threshold.  Here the expansion is carried to
+// FIRST order in v,
+//     E[g(mu + sqrt(v) Z)] = g(mu) + v g''(mu)/2 + O(v^2),
+// with g''(x) obtained from the standard identity
+//     d^2/dx^2 log Phi(x) = -lambda(x) (x + lambda(x)).
+// Stopping at first order (rather than the softplus branch's third) is a
+// deliberate, bounded choice: at the shared threshold v = 1e-6 the omitted term
+// is O(v^2) = 1e-12 in the value and O(v) = 1e-6 RELATIVE in dE/dv, against an
+// O(1) leading term -- while the fourth derivative of log Phi is a quartic in
+// lambda whose hand-derivation is a correctness risk with no measurable payoff.
+template <class Type>
+Type va_r3_probit_expectation(const Type &mu, const Type &v,
+                              const Type &y, const Type &n,
+                              const vector<Type> &gh_nodes,
+                              const vector<Type> &gh_weights)
+{
+  const Type threshold = Type(1e-6);
+
+  Type lam_p = va_r3_inv_mills(mu);
+  Type lam_q = va_r3_inv_mills(-mu);
+  // g(eta) = y logPhi(eta) + (n-y) logPhi(-eta); the second term's second
+  // derivative in eta is logPhi''(-mu), hence the sign flip on mu below.
+  Type d2_p = -lam_p * (mu + lam_p);
+  Type d2_q = -lam_q * (-mu + lam_q);
+  Type expansion = y * va_r3_log_pnorm(mu) + (n - y) * va_r3_log_pnorm(-mu)
+    + v * (y * d2_p + (n - y) * d2_q) / Type(2.0);
+
+  Type safe_v = CppAD::CondExpGt(v, threshold, v, threshold);
+  Type scale = sqrt(Type(2.0) * safe_v);
+  Type weighted_sum = Type(0.0);
+  for (int h = 0; h < gh_nodes.size(); ++h) {
+    Type eta_h = mu + scale * gh_nodes(h);
+    weighted_sum += gh_weights(h) *
+      (y * va_r3_log_pnorm(eta_h) + (n - y) * va_r3_log_pnorm(-eta_h));
+  }
+  const Type sqrt_pi = sqrt(Type(3.141592653589793238462643383279502884));
+  Type quadrature = weighted_sum / sqrt_pi;
+
+  return CppAD::CondExpGt(v, threshold, quadrature, expansion);
+}
+
 template <class Type>
 Type objective_function<Type>::operator()()
 {
-  // Data are long-format complete cells. unit_id and trait_id are zero-based.
+  // Data are long-format dense cells (exactly N*T rows). unit_id and trait_id
+  // are zero-based. Design 107: is_y_observed gates the density term; masked
+  // rows keep a sentinel y/n_trials that is never evaluated.
   DATA_VECTOR(y);
   DATA_VECTOR(n_trials);
   DATA_MATRIX(X);
   DATA_IVECTOR(unit_id);
   DATA_IVECTOR(trait_id);
+  DATA_IVECTOR(is_y_observed);     // 1 = response observed, 0 = masked (Design 107)
   DATA_INTEGER(N);
   DATA_INTEGER(T);
   DATA_INTEGER(q);
   DATA_VECTOR(gh_nodes);
   DATA_VECTOR(gh_weights);
-  DATA_INTEGER(family);            // 0 = Gaussian anchor; 1 = binomial-logit; 2 = Poisson-log;
-                                   // 3 = nbinom2-log
-  DATA_SCALAR(gaussian_sd);        // fixed observation SD for family == 0
+  // Design 108 Stage 2: per-row family codes (dense N*T), same layout as y.
+  // 0 = Gaussian; 1 = binomial-logit; 2 = Poisson-log; 3 = nbinom2-log;
+  // 4 = binomial-probit (Design 108 Gate A Stage 4; research spike, not on the
+  // public integration fence).
+  DATA_IVECTOR(family);
   DATA_INTEGER(eval_method);       // 0 = Gauss-Hermite quadrature;
-                                   // 1 = Jaakkola-Jordan/Polya-Gamma bound (binomial only)
+                                   // 1 = Jaakkola-Jordan/PG bound (binomial-only fits)
+
+  // ---------------------------------------------------------------------
+  // Design 108 Gate A Stage 6: multiple unstructured tiers (Design 106 s1).
+  //
+  // An observation o loads on ONE level of each tier k:
+  //     eta_o = x_o' beta + sum_k a_{k,o}' u_{k, g_k(o)}
+  // and Proposition 1 makes mu and v ACCUMULATE across tiers, with the KL
+  // decomposing into a sum over tiers and levels.  No new integrand, no new
+  // quadrature, no new linear algebra -- only indexing.
+  //
+  // Two loading SHAPES, and they get two code paths on purpose:
+  //   tier_kind == 0  DENSE.  a_{k,o} = Lambda_k(trait(o), .), a T x d_k
+  //     lower-triangular loadings matrix unpacked from theta_rr.  The
+  //     variational block is a full d_k x d_k Cholesky.
+  //   tier_kind == 1  TRAIT-DIAGONAL (Psi / unique / indep / cluster).
+  //     a_{k,o} = sd_{k,trait(o)} * e_{trait(o)}, so d_k == T and each
+  //     observation loads on exactly ONE coordinate.  Design 106
+  //     Proposition 2 (Fischer's inequality) says the optimal q is then
+  //     block-diagonal EXACTLY, so this path allocates NO off-diagonal
+  //     Cholesky entries at all: 2T numbers per level, not T + T(T+1)/2.
+  //     That is a free reduction, not an approximation -- 7.25x at T = 26 --
+  //     and routing a diagonal tier through the dense path would silently
+  //     forfeit it.
+  //
+  // Tier 0 is the ordinary latent tier by construction: it is dense, has
+  // dimension q, has N levels, and its level index IS unit_id.  Every one of
+  // those is checked below, so the K = 1 layout is provably today's layout.
+  DATA_INTEGER(n_tiers);
+  DATA_IVECTOR(tier_kind);         // length K: 0 = dense, 1 = trait-diagonal
+  DATA_IVECTOR(tier_dim);          // length K: d_k (== T for diagonal tiers)
+  DATA_IVECTOR(tier_n_levels);     // length K: n_k
+  DATA_IMATRIX(level_id);          // n_obs x K, zero-based; column 0 == unit_id
 
   PARAMETER_VECTOR(beta);
-  PARAMETER_VECTOR(theta_rr);      // live-engine packing; raw diagonal first
-  PARAMETER_MATRIX(m);             // N x q variational means
-  PARAMETER_MATRIX(log_L_diag);    // N x q log Cholesky diagonals
-  PARAMETER_MATRIX(L_off);         // N x q(q-1)/2 strict-lower entries
+  PARAMETER_VECTOR(theta_rr);      // dense tiers' packed loadings, tier order;
+                                   // live-engine packing, raw diagonal first
+  PARAMETER_VECTOR(log_sd_tier);   // diagonal tiers' per-trait log SDs, T per
+                                   // diagonal tier, tier order
+  // The variational block is stored FLAT, tier-major, and within a tier in
+  // the same column-major order the pre-Stage-6 N x q matrices used:
+  //     entry (tier k, level g, coordinate c) sits at
+  //     offset_k + c * tier_n_levels(k) + g.
+  // At K = 1 that is exactly as.vector() of the old N x q matrix, element for
+  // element, so the K = 1 parameter vector is byte-identical to Stage 5's.
+  PARAMETER_VECTOR(m);             // variational means
+  PARAMETER_VECTOR(log_L_diag);    // log Cholesky diagonals (log SDs when diagonal)
+  PARAMETER_VECTOR(L_off);         // strict-lower Cholesky entries, dense tiers only
   PARAMETER_VECTOR(log_phi);       // T-vector, nbinom2 dispersion on the log
                                    // scale; mapped off (NA) for every other
                                    // family, so it costs nothing there
+  PARAMETER_VECTOR(log_sigma);     // T-vector, Gaussian residual SD on log
+                                   // scale (Design 108 Stage 2); mapped off
+                                   // for non-Gaussian traits
 
   const int n_obs = y.size();
   const int n_off = q * (q - 1) / 2;
@@ -147,57 +343,140 @@ Type objective_function<Type>::operator()()
 
   // Defensive dimension/scope checks. The R adapter performs the richer
   // pre-construction validation required by Design 85.
-  if (family != 0 && family != 1 && family != 2 && family != 3)
-    error("gllvmTMB_va_r3: family must be 0 (Gaussian), 1 (binomial), 2 (Poisson), or 3 (nbinom2)");
   if (N <= 0 || T <= 0 || q <= 0 || q > T)
     error("gllvmTMB_va_r3: require N > 0, T > 0, and 1 <= q <= T");
   if (n_obs != N * T)
     error("gllvmTMB_va_r3: the research objective requires exactly N*T cells");
   if (n_trials.size() != n_obs || unit_id.size() != n_obs ||
-      trait_id.size() != n_obs || X.rows() != n_obs)
+      trait_id.size() != n_obs || is_y_observed.size() != n_obs ||
+      family.size() != n_obs || X.rows() != n_obs)
     error("gllvmTMB_va_r3: response-side data dimensions do not agree");
   if (X.cols() != beta.size())
     error("gllvmTMB_va_r3: ncol(X) must equal length(beta)");
-  if (theta_rr.size() != theta_expected)
+
+  // ---- Tier structure: validate BEFORE any offset arithmetic uses it. ----
+  if (n_tiers < 1)
+    error("gllvmTMB_va_r3: n_tiers must be at least 1");
+  if (tier_kind.size() != n_tiers || tier_dim.size() != n_tiers ||
+      tier_n_levels.size() != n_tiers)
+    error("gllvmTMB_va_r3: tier_kind, tier_dim and tier_n_levels must each have length n_tiers");
+  if (level_id.rows() != n_obs || level_id.cols() != n_tiers)
+    error("gllvmTMB_va_r3: level_id must be n_obs x n_tiers");
+  // Tier 0 IS the ordinary latent tier. Pinning it is what makes the K = 1
+  // path provably the pre-Stage-6 path rather than a coincidence.
+  if (tier_kind(0) != 0 || tier_dim(0) != q || tier_n_levels(0) != N)
+    error("gllvmTMB_va_r3: tier 0 must be the dense ordinary latent tier with tier_dim = q and tier_n_levels = N");
+  for (int k = 0; k < n_tiers; ++k) {
+    if (tier_kind(k) != 0 && tier_kind(k) != 1)
+      error("gllvmTMB_va_r3: tier_kind entries must be 0 (dense) or 1 (trait-diagonal)");
+    if (tier_n_levels(k) < 1)
+      error("gllvmTMB_va_r3: tier_n_levels entries must be positive");
+    if (tier_kind(k) == 0) {
+      if (tier_dim(k) < 1 || tier_dim(k) > T)
+        error("gllvmTMB_va_r3: a dense tier needs 1 <= tier_dim <= T");
+    } else {
+      // A trait-diagonal tier has one field per trait by definition; any
+      // other dimension means the caller packed something else and the
+      // per-trait indexing below would read the wrong coordinate.
+      if (tier_dim(k) != T)
+        error("gllvmTMB_va_r3: a trait-diagonal tier must have tier_dim = T");
+    }
+  }
+
+  // Flat-layout offsets, recomputed here from the tier vectors rather than
+  // trusted from R. The length checks that follow therefore CATCH an R/C++
+  // disagreement instead of silently reading past a tier boundary.
+  std::vector<int> m_offset(n_tiers, 0);
+  std::vector<int> off_offset(n_tiers, 0);
+  std::vector<int> theta_offset(n_tiers, 0);
+  std::vector<int> sd_offset(n_tiers, 0);
+  std::vector<int> level_offset(n_tiers, 0);
+  int total_mean = 0, total_off = 0, total_theta = 0, total_sd = 0,
+      total_levels = 0;
+  for (int k = 0; k < n_tiers; ++k) {
+    m_offset[k] = total_mean;
+    off_offset[k] = total_off;
+    theta_offset[k] = total_theta;
+    sd_offset[k] = total_sd;
+    level_offset[k] = total_levels;
+    const int d = tier_dim(k);
+    const int nk = tier_n_levels(k);
+    total_mean += nk * d;
+    total_levels += nk;
+    if (tier_kind(k) == 0) {
+      total_off += nk * d * (d - 1) / 2;
+      total_theta += T * d - d * (d - 1) / 2;
+    } else {
+      // Proposition 2: zero off-diagonals, T log SDs for the loading.
+      total_sd += T;
+    }
+  }
+  if (theta_rr.size() != total_theta)
+    error("gllvmTMB_va_r3: theta_rr has the wrong live-packed length for the declared dense tiers");
+  if (n_tiers == 1 && theta_rr.size() != theta_expected)
     error("gllvmTMB_va_r3: theta_rr has the wrong live-packed length");
-  if (m.rows() != N || m.cols() != q ||
-      log_L_diag.rows() != N || log_L_diag.cols() != q ||
-      L_off.rows() != N || L_off.cols() != n_off)
+  if (log_sd_tier.size() != total_sd)
+    error("gllvmTMB_va_r3: log_sd_tier must supply T entries per trait-diagonal tier");
+  if (m.size() != total_mean || log_L_diag.size() != total_mean ||
+      L_off.size() != total_off)
     error("gllvmTMB_va_r3: variational parameter dimensions do not agree");
+  if (n_tiers == 1 && (m.size() != N * q || L_off.size() != N * n_off))
+    error("gllvmTMB_va_r3: variational parameter dimensions do not agree");
+  for (int r = 0; r < n_obs; ++r) {
+    for (int k = 0; k < n_tiers; ++k) {
+      if (level_id(r, k) < 0 || level_id(r, k) >= tier_n_levels(k))
+        error("gllvmTMB_va_r3: level_id is out of range for its tier");
+    }
+    if (level_id(r, 0) != unit_id(r))
+      error("gllvmTMB_va_r3: tier 0's level index must be unit_id");
+  }
   if (log_phi.size() != T)
     error("gllvmTMB_va_r3: log_phi must have length T");
+  if (log_sigma.size() != T)
+    error("gllvmTMB_va_r3: log_sigma must have length T");
   if (gh_nodes.size() <= 0 || gh_weights.size() != gh_nodes.size())
     error("gllvmTMB_va_r3: GH nodes and weights must have the same positive length");
-  if (family == 0 && !(asDouble(gaussian_sd) > 0.0))
-    error("gllvmTMB_va_r3: gaussian_sd must be positive for the Gaussian anchor");
   if (eval_method != 0 && eval_method != 1)
     error("gllvmTMB_va_r3: eval_method must be 0 (Gauss-Hermite) or 1 (Jaakkola-Jordan/PG bound)");
-  if (eval_method == 1 && family != 1)
-    error("gllvmTMB_va_r3: eval_method = 1 (Jaakkola-Jordan/PG bound) is only defined for the binomial family");
 
-  // Check that the long data contain each unit-trait cell exactly once.
+  // Dense convention: each unit-trait cell is exactly one row. Family range
+  // checks apply only to observed cells (Design 107); masked sentinels are
+  // never fed to a density call.
   std::vector<int> cell_count(N * T, 0);
+  // The Jaakkola-Jordan bound is a bound on the LOGISTIC term specifically, so
+  // it admits family code 1 and nothing else -- binomial-PROBIT (code 4) is a
+  // binomial family for which the bound is undefined, and must be counted here.
+  int n_non_jj = 0;
   for (int r = 0; r < n_obs; ++r) {
     int i = unit_id(r);
     int t = trait_id(r);
+    int obs = is_y_observed(r);
+    int fam = family(r);
     if (i < 0 || i >= N || t < 0 || t >= T)
       error("gllvmTMB_va_r3: unit_id or trait_id is out of range");
+    if (obs != 0 && obs != 1)
+      error("gllvmTMB_va_r3: is_y_observed entries must be 0 or 1");
+    if (fam != 0 && fam != 1 && fam != 2 && fam != 3 && fam != 4)
+      error("gllvmTMB_va_r3: family entries must be 0 (Gaussian), 1 (binomial-logit), 2 (Poisson), 3 (nbinom2), or 4 (binomial-probit)");
+    if (fam != 1) n_non_jj += 1;
     cell_count[i * T + t] += 1;
     if (!std::isfinite(asDouble(y(r))) || !std::isfinite(asDouble(n_trials(r))))
       error("gllvmTMB_va_r3: y and n_trials must be finite");
-    if (family == 1) {
+    if (obs == 1 && (fam == 1 || fam == 4)) {
       double yd = asDouble(y(r));
       double nd = asDouble(n_trials(r));
       if (nd < 1.0 || std::floor(nd) != nd || yd < 0.0 || yd > nd ||
           std::floor(yd) != yd)
         error("gllvmTMB_va_r3: binomial cells require integer n >= 1 and 0 <= y <= n");
     }
-    if (family == 2 || family == 3) {
+    if (obs == 1 && (fam == 2 || fam == 3)) {
       double yd = asDouble(y(r));
       if (yd < 0.0 || std::floor(yd) != yd)
         error("gllvmTMB_va_r3: Poisson/nbinom2 cells require finite non-negative integer y");
     }
   }
+  if (eval_method == 1 && n_non_jj > 0)
+    error("gllvmTMB_va_r3: eval_method = 1 (Jaakkola-Jordan/PG bound) requires every row to be binomial-logit (family code 1)");
   for (int cell = 0; cell < N * T; ++cell) {
     if (cell_count[cell] != 1)
       error("gllvmTMB_va_r3: every unit-trait cell must occur exactly once");
@@ -215,23 +494,40 @@ Type objective_function<Type>::operator()()
     }
   }
 
-  // Exact live-engine reconstruction: raw diagonal, then strict lower
-  // triangle column-by-column. Strict upper triangle remains zero.
-  matrix<Type> Lambda(T, q);
-  Lambda.setZero();
-  vector<Type> lam_diag = theta_rr.head(q);
-  vector<Type> lam_lower = theta_rr.tail(theta_rr.size() - q);
-  for (int j = 0; j < q; ++j) {
-    for (int t = j; t < T; ++t) {
-      if (t == j) {
-        Lambda(t, j) = lam_diag(j);
-      } else {
-        int pos = j * T - (j + 1) * j / 2 + t - 1 - j;
-        Lambda(t, j) = lam_lower(pos);
+  // Exact live-engine reconstruction, once per DENSE tier: raw diagonal, then
+  // strict lower triangle column-by-column. Strict upper triangle stays zero.
+  // Diagonal tiers get an empty slot -- their loading is sd_j * e_j and is
+  // read straight out of log_sd_tier, never materialised as a matrix.
+  std::vector<matrix<Type> > Lambda_tier(n_tiers);
+  for (int k = 0; k < n_tiers; ++k) {
+    const int d = tier_dim(k);
+    if (tier_kind(k) != 0) {
+      Lambda_tier[k] = matrix<Type>(0, 0);
+      continue;
+    }
+    matrix<Type> Lk(T, d);
+    Lk.setZero();
+    const int len = T * d - d * (d - 1) / 2;
+    vector<Type> theta_k = theta_rr.segment(theta_offset[k], len);
+    vector<Type> lam_diag = theta_k.head(d);
+    vector<Type> lam_lower = theta_k.tail(len - d);
+    for (int j = 0; j < d; ++j) {
+      for (int t = j; t < T; ++t) {
+        if (t == j) {
+          Lk(t, j) = lam_diag(j);
+        } else {
+          int pos = j * T - (j + 1) * j / 2 + t - 1 - j;
+          Lk(t, j) = lam_lower(pos);
+        }
       }
     }
+    Lambda_tier[k] = Lk;
   }
+  // Reported for back-compatibility: tier 0 IS the ordinary latent tier, so
+  // these keep their pre-Stage-6 meaning exactly.
+  matrix<Type> Lambda = Lambda_tier[0];
   matrix<Type> Sigma_B = Lambda * Lambda.transpose();
+  vector<Type> sd_tier = exp(log_sd_tier);
 
   // Materialise each unit Cholesky only as a q x q work matrix. S is never
   // inverted and its determinant is never formed. Flattened L/S reports are
@@ -240,41 +536,80 @@ Type objective_function<Type>::operator()()
   matrix<Type> S_flat(N, q * q);
   L_flat.setZero();
   S_flat.setZero();
+  // kl_by_unit keeps its pre-Stage-6 meaning: tier 0's per-level KL. The
+  // tier-general quantities are kl_by_level (flat, tier-major) and
+  // kl_by_tier; total_kl below is their sum and is what enters the ELBO.
   vector<Type> kl_by_unit(N);
+  vector<Type> kl_by_level(total_levels);
+  vector<Type> kl_by_tier(n_tiers);
   kl_by_unit.setZero();
+  kl_by_level.setZero();
+  kl_by_tier.setZero();
 
-  for (int i = 0; i < N; ++i) {
-    matrix<Type> Li(q, q);
-    Li.setZero();
-    for (int k = 0; k < q; ++k)
-      Li(k, k) = exp(log_L_diag(i, k));
-    int off_pos = 0;
-    for (int col = 0; col < q; ++col) {
-      for (int row = col + 1; row < q; ++row) {
-        Li(row, col) = L_off(i, off_pos);
-        ++off_pos;
+  for (int k = 0; k < n_tiers; ++k) {
+    const int d = tier_dim(k);
+    const int nk = tier_n_levels(k);
+    const int mo = m_offset[k];
+    const int oo = off_offset[k];
+
+    if (tier_kind(k) == 1) {
+      // Trait-diagonal tier (Design 106 Prop. 2). The variational block is
+      // diag(s_1^2, ..., s_T^2), so the KL is a sum of T univariate KLs and
+      // there is NOTHING off-diagonal to read. This is the whole point of the
+      // second code path: the saving is structural, not a converged-to zero.
+      for (int g = 0; g < nk; ++g) {
+        Type kl = Type(0.0);
+        for (int j = 0; j < d; ++j) {
+          const int pos = mo + j * nk + g;
+          Type log_s = log_L_diag(pos);
+          Type s = exp(log_s);
+          kl += s * s + m(pos) * m(pos) - Type(2.0) * log_s - Type(1.0);
+        }
+        kl = Type(0.5) * kl;
+        if (!std::isfinite(asDouble(kl)))
+          Rf_error("gllvmTMB_va_r3: non-finite KL coordinate at tier %d level %d", k, g);
+        kl_by_level(level_offset[k] + g) = kl;
+        kl_by_tier(k) += kl;
       }
+      continue;
     }
 
-    Type trace_S = Type(0.0);
-    Type mean_sq = Type(0.0);
-    Type logdet_S = Type(0.0);
-    for (int row = 0; row < q; ++row) {
-      mean_sq += m(i, row) * m(i, row);
-      logdet_S += Type(2.0) * log_L_diag(i, row);
-      for (int col = 0; col <= row; ++col)
-        trace_S += Li(row, col) * Li(row, col);
-    }
-    kl_by_unit(i) = Type(0.5) *
-      (trace_S + mean_sq - logdet_S - Type(q));
-    if (!std::isfinite(asDouble(kl_by_unit(i))))
-      Rf_error("gllvmTMB_va_r3: non-finite KL coordinate at unit %d", i);
+    for (int g = 0; g < nk; ++g) {
+      matrix<Type> Li(d, d);
+      Li.setZero();
+      for (int c = 0; c < d; ++c)
+        Li(c, c) = exp(log_L_diag(mo + c * nk + g));
+      int off_pos = 0;
+      for (int col = 0; col < d; ++col) {
+        for (int row = col + 1; row < d; ++row) {
+          Li(row, col) = L_off(oo + off_pos * nk + g);
+          ++off_pos;
+        }
+      }
 
-    matrix<Type> Si = Li * Li.transpose();
-    for (int row = 0; row < q; ++row) {
-      for (int col = 0; col < q; ++col) {
-        L_flat(i, row * q + col) = Li(row, col);
-        S_flat(i, row * q + col) = Si(row, col);
+      Type trace_S = Type(0.0);
+      Type mean_sq = Type(0.0);
+      Type logdet_S = Type(0.0);
+      for (int row = 0; row < d; ++row) {
+        mean_sq += m(mo + row * nk + g) * m(mo + row * nk + g);
+        logdet_S += Type(2.0) * log_L_diag(mo + row * nk + g);
+        for (int col = 0; col <= row; ++col)
+          trace_S += Li(row, col) * Li(row, col);
+      }
+      Type kl = Type(0.5) * (trace_S + mean_sq - logdet_S - Type(d));
+      if (!std::isfinite(asDouble(kl)))
+        Rf_error("gllvmTMB_va_r3: non-finite KL coordinate at tier %d level %d", k, g);
+      kl_by_level(level_offset[k] + g) = kl;
+      kl_by_tier(k) += kl;
+      if (k == 0) {
+        kl_by_unit(g) = kl;
+        matrix<Type> Si = Li * Li.transpose();
+        for (int row = 0; row < d; ++row) {
+          for (int col = 0; col < d; ++col) {
+            L_flat(g, row * d + col) = Li(row, col);
+            S_flat(g, row * d + col) = Si(row, col);
+          }
+        }
       }
     }
   }
@@ -292,43 +627,81 @@ Type objective_function<Type>::operator()()
 
   const Type log_two_pi = log(Type(2.0) *
     Type(3.141592653589793238462643383279502884));
-  const Type gaussian_var = gaussian_sd * gaussian_sd;
 
   for (int r = 0; r < n_obs; ++r) {
     int i = unit_id(r);
     int t = trait_id(r);
+    int fam = family(r);
 
     Type mu = Type(0.0);
     for (int p = 0; p < X.cols(); ++p)
       mu += X(r, p) * beta(p);
-    for (int k = 0; k < q; ++k)
-      mu += Lambda(t, k) * m(i, k);
 
-    // v_it = ||L_i' lambda_t||^2, without forming S_i.
+    // Design 106 Proposition 1: mu and v ACCUMULATE over tiers. Means add and
+    // variances add because the tiers are uncorrelated under q; there is no
+    // cross term to carry and no new algebra of any kind.
     Type v = Type(0.0);
-    for (int col = 0; col < q; ++col) {
-      Type projected = Type(0.0);
-      projected += exp(log_L_diag(i, col)) * Lambda(t, col);
-      int off_pos = 0;
-      for (int prior_col = 0; prior_col < col; ++prior_col)
-        off_pos += q - prior_col - 1;
-      for (int row = col + 1; row < q; ++row) {
-        projected += L_off(i, off_pos + row - col - 1) * Lambda(t, row);
+    for (int k = 0; k < n_tiers; ++k) {
+      const int d = tier_dim(k);
+      const int nk = tier_n_levels(k);
+      const int mo = m_offset[k];
+      const int oo = off_offset[k];
+      const int g = level_id(r, k);
+
+      if (tier_kind(k) == 1) {
+        // a_{k,o} = sd_{k,t} e_t: the observation touches ONE coordinate, so
+        // both mu and v read a single scalar. No d_k-length inner product,
+        // and no off-diagonal Cholesky to project through.
+        Type sd = sd_tier(sd_offset[k] + t);
+        const int pos = mo + t * nk + g;
+        mu += sd * m(pos);
+        Type projected = sd * exp(log_L_diag(pos));
+        v += projected * projected;
+        continue;
       }
-      v += projected * projected;
+
+      const matrix<Type> &Lam = Lambda_tier[k];
+      for (int c = 0; c < d; ++c)
+        mu += Lam(t, c) * m(mo + c * nk + g);
+
+      // v contribution = ||L_{k,g}' a_{k,o}||^2, without forming S.
+      for (int col = 0; col < d; ++col) {
+        Type projected = Type(0.0);
+        projected += exp(log_L_diag(mo + col * nk + g)) * Lam(t, col);
+        int off_pos = 0;
+        for (int prior_col = 0; prior_col < col; ++prior_col)
+          off_pos += d - prior_col - 1;
+        for (int row = col + 1; row < d; ++row) {
+          projected += L_off(oo + (off_pos + row - col - 1) * nk + g) *
+            Lam(t, row);
+        }
+        v += projected * projected;
+      }
     }
     if (!std::isfinite(asDouble(mu)))
       Rf_error("gllvmTMB_va_r3: non-finite mu coordinate at unit %d trait %d", i, t);
     if (!std::isfinite(asDouble(v)))
       Rf_error("gllvmTMB_va_r3: non-finite variance projection at unit %d trait %d", i, t);
 
+    mu_by_obs(r) = mu;
+    v_by_obs(r) = v;
+
+    // Design 107: never evaluate a family density on a masked sentinel row.
+    if (is_y_observed(r) == 0) {
+      expected_loglik_by_obs(r) = Type(0.0);
+      continue;
+    }
+
     Type ell = Type(0.0);
-    if (family == 0) {
+    if (fam == 0) {
+      // Design 108 Stage 2: per-trait estimated residual SD.
+      Type sigma = exp(log_sigma(t));
+      Type gaussian_var = sigma * sigma;
       Type residual = y(r) - mu;
       ell = -Type(0.5) *
-        (log_two_pi + Type(2.0) * log(gaussian_sd)
+        (log_two_pi + Type(2.0) * log_sigma(t)
          + (residual * residual + v) / gaussian_var);
-    } else if (family == 1) {
+    } else if (fam == 1) {
       Type n = n_trials(r);
       Type log_choose = lgamma(n + Type(1.0))
         - lgamma(y(r) + Type(1.0))
@@ -341,11 +714,11 @@ Type objective_function<Type>::operator()()
         : va_r3_softplus_expectation(mu, v, gh_nodes, gh_weights);
       softplus_expectation_by_obs(r) = softplus_expectation;
       ell = log_choose + y(r) * mu - n * softplus_expectation;
-    } else if (family == 2) {
+    } else if (fam == 2) {
       // Poisson-log: E[exp(eta)] for eta ~ N(mu, v) is exact (log-normal
       // mean), so no quadrature is required.
       ell = y(r) * mu - exp(mu + v / Type(2.0)) - lgamma(y(r) + Type(1.0));
-    } else {
+    } else if (fam == 3) {
       // nbinom2-log: log p(y|eta) = lgamma(y+phi) - lgamma(phi) - lgamma(y+1)
       //   + phi*log(phi) - (y+phi)*log(phi + exp(eta)) + y*eta
       // The only hard term is E[log(phi + exp(eta))]. Since
@@ -364,27 +737,53 @@ Type objective_function<Type>::operator()()
       ell = lgamma(y(r) + phi) - lgamma(phi) - lgamma(y(r) + Type(1.0))
         - y(r) * log_phi_t + y(r) * mu
         - (y(r) + phi) * softplus_expectation;
+    } else {
+      // fam == 4, Design 108 Gate A Stage 4 -- binomial-probit:
+      //   log p(y|eta) = log_choose + y log Phi(eta) + (n-y) log(1 - Phi(eta))
+      // The second term is written log Phi(-eta) by symmetry, so no difference
+      // of two nearly-equal CDFs is ever formed (Design 105 s6.3's objection)
+      // and BOTH terms go through the one tail-safe log-scale primitive.
+      // No dispersion parameter: log_phi is nbinom2's and log_sigma Gaussian's.
+      Type n = n_trials(r);
+      Type log_choose = lgamma(n + Type(1.0))
+        - lgamma(y(r) + Type(1.0))
+        - lgamma(n - y(r) + Type(1.0));
+      ell = log_choose +
+        va_r3_probit_expectation(mu, v, y(r), n, gh_nodes, gh_weights);
     }
     if (!std::isfinite(asDouble(ell)))
       Rf_error("gllvmTMB_va_r3: non-finite expected log-likelihood at unit %d trait %d", i, t);
 
-    mu_by_obs(r) = mu;
-    v_by_obs(r) = v;
     expected_loglik_by_obs(r) = ell;
     expected_loglik_by_unit(i) += ell;
   }
 
   Type expected_loglik = expected_loglik_by_unit.sum();
-  Type total_kl = kl_by_unit.sum();
+  Type total_kl = kl_by_level.sum();
   Type elbo = expected_loglik - total_kl;
   Type negative_elbo = -elbo;
   if (!std::isfinite(asDouble(negative_elbo)))
     error("gllvmTMB_va_r3: non-finite negative ELBO");
 
   REPORT(eval_method);
+  REPORT(is_y_observed);
+  REPORT(family);
+  REPORT(log_sigma);
   REPORT(Lambda);
   REPORT(Sigma_B);
-  REPORT(m);
+  // `m` keeps its pre-Stage-6 REPORT shape -- tier 0's N x q variational
+  // means -- because readers downstream index it as a matrix. REPORT() keys
+  // on the token name, so the matrix is bound to a shadowing local inside its
+  // own block; the flat, tier-major block is reported alongside as m_flat.
+  vector<Type> m_flat = m;
+  REPORT(m_flat);
+  {
+    matrix<Type> m(N, q);
+    for (int g = 0; g < N; ++g)
+      for (int c = 0; c < q; ++c)
+        m(g, c) = m_flat(m_offset[0] + c * N + g);
+    REPORT(m);
+  }
   REPORT(L_flat);
   REPORT(S_flat);
   REPORT(mu_by_obs);
@@ -393,6 +792,13 @@ Type objective_function<Type>::operator()()
   REPORT(softplus_expectation_by_obs);
   REPORT(expected_loglik_by_unit);
   REPORT(kl_by_unit);
+  REPORT(kl_by_level);
+  REPORT(kl_by_tier);
+  REPORT(n_tiers);
+  REPORT(tier_kind);
+  REPORT(tier_dim);
+  REPORT(tier_n_levels);
+  REPORT(sd_tier);
   REPORT(expected_loglik);
   REPORT(total_kl);
   REPORT(elbo);

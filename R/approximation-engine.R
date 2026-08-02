@@ -10,8 +10,12 @@
       family = "binomial or Poisson",
       trials = "complete cells (binomial: integer n_trials >= 1; Poisson: no trials)",
       link = "logit or log",
-      unique = FALSE,
-      covariance = "ordinary latent loadings only"
+      ## Stage 6: `unique = TRUE` is admitted as a trait-diagonal Psi tier,
+      ## which Design 106 Proposition 2 makes exact rather than approximate.
+      ## The description is a string rather than FALSE because the honest
+      ## answer is no longer a single flag.
+      unique = "FALSE, or TRUE as an exact trait-diagonal Psi tier (Design 106 Prop. 2)",
+      covariance = "unstructured tiers only: ordinary latent loadings, optionally plus dense or trait-diagonal extra tiers; no structured (phylo/SPDE) prior"
     ),
     eva = list(
       family = "binomial, Poisson, or Gaussian (identity, test-only)",
@@ -61,42 +65,73 @@
     rank_source = c("fixed_fixture", "ml_bic"), fixed_global = NULL,
     source = NULL, rebuild = FALSE,
     control = list(eval.max = 2000L, iter.max = 2000L), silent = TRUE,
-    eval_method = c("auto", "jj", "gh")) {
-  family <- .approximation_engine_scalar_character(family, "family")
-  link <- .approximation_engine_scalar_character(link, "link")
+    eval_method = c("auto", "jj", "gh"),
+    is_y_observed = NULL,
+    family_codes = NULL,
+    extra_tiers = NULL) {
   eval_method <- match.arg(eval_method)
-  expected_link <- switch(family, binomial = "logit", poisson = "log", NA_character_)
-  if (is.na(expected_link) || !identical(link, expected_link) ||
-      !identical(unique, FALSE)) {
-    stop(
-      "VA-R3 admits only complete binomial-logit or Poisson-log data with unique = FALSE.",
-      call. = FALSE
+  ## Design 108 Gate A Stage 6 lifted the `unique` refusal here IN LOCKSTEP
+  ## with .va_r3_validate_data() (R/va-r3-proto.R). Two copies of one gate that
+  ## disagree is worse than either: this adapter would refuse a model the
+  ## engine admits, or -- after the engine relaxed -- admit one silently by a
+  ## different route. `unique`/`psi` now travel through to the validator, which
+  ## turns them into a trait-diagonal Psi tier; `structured`, `provider`, `lv`
+  ## and `missing` are still refused there, unchanged.
+  ##
+  ## This does NOT open the public route. R/integration-fence.R still refuses
+  ## `unique = TRUE` under `integration = "va"`, and nothing in this arc
+  ## touched it: there is no VA recovery evidence for a multi-tier or diag(psi)
+  ## model, and the fence is where that evidence gate lives.
+  if (is.null(family_codes)) {
+    family <- .approximation_engine_scalar_character(family, "family")
+    link <- .approximation_engine_scalar_character(link, "link")
+    expected_link <- switch(family,
+      binomial = "logit", poisson = "log",
+      gaussian = "identity", gaussian_anchor = "identity",
+      NA_character_
     )
-  }
-  if (identical(eval_method, "jj") && !identical(family, "binomial")) {
-    stop(
-      "eval_method = \"jj\" (Jaakkola-Jordan/PG bound) is only defined for the binomial family.",
-      call. = FALSE
-    )
+    if (is.na(expected_link) || !identical(link, expected_link)) {
+      stop(
+        "VA-R3 admits dense binomial-logit, Poisson-log, or Gaussian-identity data.",
+        call. = FALSE
+      )
+    }
+    if (identical(eval_method, "jj") && !identical(family, "binomial")) {
+      stop(
+        "eval_method = \"jj\" (Jaakkola-Jordan/PG bound) is only defined for the binomial family.",
+        call. = FALSE
+      )
+    }
+  } else {
+    family_codes <- as.integer(family_codes)
+    if (identical(eval_method, "jj") && !all(family_codes == 1L)) {
+      stop(
+        "eval_method = \"jj\" (Jaakkola-Jordan/PG bound) is only defined for pure-binomial VA fits.",
+        call. = FALSE
+      )
+    }
   }
 
   ## Validate before .va_r3_fit() can construct a quadrature objective.
   .va_r3_validate_data(
     y = y, n_trials = n_trials, X = X, unit_id = unit_id,
     trait_id = trait_id, q = q, N = N, T = T,
-    family = family, link = link, unique = FALSE,
+    family = family, link = link, unique = unique,
     psi = psi, structured = structured, provider = provider, lv = lv,
-    missing = missing
+    missing = missing, is_y_observed = is_y_observed,
+    family_codes = family_codes, extra_tiers = extra_tiers
   )
   started <- proc.time()[["elapsed"]]
   raw <- .va_r3_fit(
     y = y, n_trials = n_trials, X = X, unit_id = unit_id,
     trait_id = trait_id, q = q, N = N, T = T,
-    family = family, link = link, unique = FALSE,
+    family = family, link = link, unique = unique,
     psi = psi, structured = structured, provider = provider, lv = lv,
     missing = missing, H = H, rank_source = rank_source,
     fixed_global = fixed_global, source = source, rebuild = rebuild,
-    control = control, silent = silent, eval_method = eval_method
+    control = control, silent = silent, eval_method = eval_method,
+    is_y_observed = is_y_observed, family_codes = family_codes,
+    extra_tiers = extra_tiers
   )
   elapsed <- proc.time()[["elapsed"]] - started
   best <- raw$best %||% list()

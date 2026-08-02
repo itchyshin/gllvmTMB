@@ -42,6 +42,29 @@ instrument.
 
 ## 🔴 The caveat that matters most to a reader
 
+> ## ⚠️ SUPERSEDED 2026-08-02 — both halves of this section are now wrong
+>
+> Kept verbatim below because this document is a dated record, not a living one. **Do not cite
+> either claim.**
+>
+> **1. The certified route IS reachable.** Commit `f04c066c` exported
+> `profile_ci_total_variance()` behind a per-row `interval_status` fence — `NAMESPACE:174`, wrapper
+> at `R/profile-derived.R:1010` delegating to the certified internal at `:856`. The certificate now
+> closes a gap in the **capability** surface as well as the evidence surface.
+>
+> **2. The 0.78 is not a property of `bootstrap_Sigma()`.** It is a property of
+> `bootstrap_Sigma(n_boot = 10)`. This campaign ran the bootstrap arm at **ten replicates** against
+> a documented default of 200 (`2026-07-29-certificate-run-record-v2.md:9-13`, `NBOOT=10`). A
+> percentile interval from B draws cannot cover more than (B−1)/(B+1) = **0.818** at B = 10 —
+> arithmetic, independent of the data. Holding the draws fixed and varying only B:
+> **0.8073 (B=10) → 0.9418 (B=200)**, against 0.9491 for the profile route. The 17-point gap
+> collapses to ~0.7 points, inside 1 MCSE. So the profile route was measured at full precision and
+> the bootstrap route with a 20×-thinned instrument: **they were never the same measurement.**
+>
+> `bootstrap_Sigma()` now returns `$coverage_ceiling` so an automated campaign can assert
+> `coverage_ceiling >= conf` before trusting its own numbers — the check that would have caught
+> this. Full analysis: `docs/dev-log/audits/2026-08-02-ci08-coverage-explained.md`.
+
 **The certified route is not reachable by users.** `.profile_ci_total_variance()`
 (`R/profile-derived.R:813`) has no exported entry point; the harness reaches it via `gllvmTMB:::`.
 The route a user *can* call for this estimand, `bootstrap_Sigma()`, covered **0.7774 (d1) / 0.7810

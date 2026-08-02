@@ -822,3 +822,49 @@ them is plan drift and must say so explicitly rather than resolve it quietly.
 pre-registered falsifier, and the requirement that the pilot fix `n_sim` before any grid is
 bought. The trait-intercept SD (0.3) and the Psi magnitude remain **flagged placeholders
 awaiting maintainer confirmation** — they were not part of this approval.
+
+---
+
+## GAP FOUND 2026-08-02 — the uninformative-cell trap (must be closed before the grid)
+
+Added by the orchestrating session. The protocol sizes `n_sim` for **detecting a difference
+if one exists**. It does not anywhere establish that **the planted tier-2 signal is
+recoverable in principle** at a given cell. Those are different questions, and the gap
+between them is a route to a confident wrong answer.
+
+**The failure mode.** If the planted phylogenetic signal is too weak relative to noise at a
+given `(N, T, q, phylo_scale)`, then *both* engines fail to recover tier 2, the paired
+difference `d ~ 0`, and the campaign reports **"VA is no better than Laplace"** — when the
+truth is *"this cell contained nothing to discriminate on."* A null from an uninformative
+cell is indistinguishable, in the output table, from a null from genuine engine equivalence.
+Pool enough such cells and the campaign returns a confident, wrong, well-evidenced negative.
+
+**This is not hypothetical.** The N=30 smoke produced tier-2 `rel_frob` of 0.86 / 0.93 /
+0.84 / 10.50 across the four arms — **nobody recovered tier 2**. A campaign built out of
+cells like that would return `d ~ 0` everywhere and read as a clean null result.
+
+**The distinction to hold onto:**
+- `n_sim` **power** asks: *can we detect `d` if `d` exists?*
+- **Detectability** asks: *is there any recoverable signal for the engines to differ on?*
+A cell can be perfectly powered for a contrast that is structurally impossible to observe.
+
+**Required fix — an informativeness precondition, reported per cell.** A cell is
+**INFORMATIVE** only if at least one arm achieves acceptable tier-2 recovery in that cell.
+A cell where **no** arm recovers tier 2 is **UNINFORMATIVE** and:
+  1. must be **labelled** as such in the results table,
+  2. must be **excluded** from any aggregate statement about engine equivalence,
+  3. is itself a **reportable result** — it maps the region where the two-tier model is not
+     estimable at all by either engine, which is worth knowing independently.
+
+**Do NOT** silently drop uninformative cells: that would bias the surviving set toward cells
+where recovery happens to work, which is its own distortion. Label, report, and exclude only
+from the equivalence claim — with the count of excluded cells stated.
+
+**Cheapest implementation:** derive it from data the harness already returns. No new fitting
+run is needed — `INFORMATIVE := any(arm tier-2 rel_frob <= <stated level>)`, with the level
+stipulated and named as a stipulation, exactly as for the precision-control criterion.
+
+**Relationship to the control.** The gaussian positive control asks *"is the instrument
+working?"*; the informativeness precondition asks *"does this cell contain a signal?"* Both
+must hold before a cell's contrast is interpretable. They are not substitutes: a working
+instrument pointed at an empty cell still returns a confident zero.

@@ -907,9 +907,33 @@ gllvmTMB <- function(
   ## units, so 6 saturates) and are already documented and tunable via
   ## `gllvmTMB_diagnose()`.
   ##
-  ## It WARNS and does not fix. The remedy has a measured failure regime of its own
-  ## (`aghq_ridge = 2` still runs away in 67% of fits at n = 1600, sigma_lambda = 3;
-  ## see #847), and a fix users trust that silently fails is worse than no fix.
+  ## It WARNS and does not fix. The remedy has a measured failure regime of its
+  ## own, and a fix users trust that silently fails is worse than no fix.
+  ##
+  ## That regime is NARROW, and an earlier version of this comment stated it in a
+  ## way that was wrong twice (corrected 2026-08-02). It read: "`aghq_ridge = 2`
+  ## still runs away in 67% of fits at n = 1600, sigma_lambda = 3; see #847".
+  ##   (a) WRONG ARM. #847's own table gives `laplace_ridge` 67% and `aghq_ridge`
+  ##       0% at that cell -- same tau = 2, same DGP, same seeds, opposite
+  ##       outcome. The 67% belongs to the ridge on the LAPLACE path.
+  ##   (b) NO REGIME. It was quoted as a property of the ridge. It is not.
+  ##       Reproduced 2026-08-02 (720 fits, 30 seeds/cell, Totoro) using #847's
+  ##       own statistic, median ||Lambda_hat||_F / ||Lambda||_F, "runaway" being
+  ##       that ratio > 2:
+  ##
+  ##         binomial-LOGIT, sigma_lambda = 3, ridge:
+  ##           p = 6 : n=100 0.0%/0.671 | n=400 3.3%/1.252 | n=1600 53.3%/2.087
+  ##                   (#847: 0%/0.666  |       1%/1.216   |        67%/2.185)
+  ##           p = 12: 0% at EVERY n (median ratio 0.708 / 0.896 / 1.081)
+  ##         binomial-PROBIT and ordinal-PROBIT, same arm, 3600 fits: 0% at the
+  ##           n=1600 / sigma_lambda=3 cell under BOTH that criterion and
+  ##           rel_frob > 10 (median ratio 0.959).
+  ##
+  ##       So the failure needs LOGIT and small p TOGETHER. Outside that corner
+  ##       the ridge was strongly protective in every cell measured -- e.g.
+  ##       55.2% -> 0.2% runaway at n = 60 on the probit grid. Do not cite the
+  ##       67% without its regime, and do not read it as "the ridge is unsafe".
+  ##
   ## Scoped to binomial because that is the family the 12,000 fits measured.
   if (!identical(control$warn_runaway, FALSE)) {
     .rw <- tryCatch(

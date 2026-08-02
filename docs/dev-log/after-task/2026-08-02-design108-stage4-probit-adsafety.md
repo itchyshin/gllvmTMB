@@ -142,9 +142,16 @@ doc corrections (§10), and the `gll_log_pnorm` vs continued-fraction divergence
    Stage 1"* contradicted the handover's "§6 prefers Stage 4". It does not — §6 opens *"The next
    slice I would actually run: Stage 4."* Caught by reading the section myself rather than trusting
    a subagent summary. The Gate-0 decision rested on the corrected reading.
-2. **I over-read the ridge as a cheap fix.** A n=60 smoke showed `aghq_ridge = 2` recovering and I
-   suggested it might make the programme unnecessary. `R/gllvmTMB.R:909-911` records the opposite:
-   *"`aghq_ridge = 2` still runs away in 67% of fits at n = 1600, sigma_lambda = 3."*
+2. **I over-read the ridge as a cheap fix, then over-corrected on a bad citation.** A n=60 smoke
+   showed `aghq_ridge = 2` recovering and I suggested it might make the programme unnecessary. I
+   retracted that on `R/gllvmTMB.R:909-911`, which read *"`aghq_ridge = 2` still runs away in 67% of
+   fits at n = 1600, sigma_lambda = 3."* **That comment was itself wrong twice** — it named the
+   wrong arm (#847's table gives `laplace_ridge` 67% and `aghq_ridge` **0%** at that cell) and gave
+   no regime. Reproduced 2026-08-02 (720 logit fits): the 67% needs **logit AND p = 6 together**
+   (p=6, n=1600: 53.3% / median ratio 2.087, matching #847's 67% / 2.185; **p=12: 0% at every n**;
+   probit: **0%**). So my original read was closer to right than my retraction was. Comment corrected
+   in the same change as this note. **Lesson: I treated an in-code comment as primary evidence. It
+   is a claim like any other, and this one had propagated into three further documents.**
 3. **The §0.2 campaign was designed on a mild DGP only** (loading SD 0.7) and would very likely have
    concluded "the ridge fixes silent divergence" purely by never visiting the regime where the ridge
    is *already measured* to fail. Caught pre-launch.

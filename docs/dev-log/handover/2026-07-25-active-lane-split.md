@@ -3,8 +3,14 @@
 This coordination note prevents a new session from treating this repository as
 a single writable lane.  It is a map, not a release/capability claim.
 
+**Refresh 2026-08-02 (Cursor→Claude):** Design 108 Gate A Stage 2 (VA mixed-family)
+**MERGED** as [#893](https://github.com/itchyshin/gllvmTMB/pull/893). Next VA stage
+needs Shinichi G0 — see `2026-08-02-claude-handover.md`. Sibling [#890](https://github.com/itchyshin/gllvmTMB/pull/890)
+missing-data ledger remains open and separately owned unless reassigned.
+
 | Lane | Owner | State | Start here | Boundary |
 | --- | --- | --- | --- | --- |
+| **Design 108 Gate A (VA parity)** | Cursor → Claude | **Stage 1 + Stage 2 MERGED** (#891, #893). Stage 3/4 **not started** — waiting Shinichi pick | `2026-08-02-claude-handover.md`; design `docs/design/108-va-parity-programme.md` | VA stays hard-fenced; no public mixed-family claim; no VA `mi()`; do not auto-start Stage 4; fresh WT per stage |
 | 0.6 release / M5 | Claude | separate committed/pushed release worktree | `2026-07-23-codex-handover.md` | reword/RC ceremony only; no CRAN submission or final tag without Shinichi |
 | Profile / Tier-2a | Claude | dirty primary checkout on `claude/profile-coverage-remeasure-20260718` | `2026-07-25-claude-handover.md` | do not overwrite its uncommitted files from another checkout |
 | Eta simulation | Codex | **left in Codex** at `/private/tmp/gllvmtmb-design100-progress-oracle` on `codex/design100-progress-oracle-20260724` | Codex's local Design-100 materials | Claude must not run, edit, claim, or absorb this lane |

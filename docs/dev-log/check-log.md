@@ -48100,3 +48100,45 @@ rg -n 'VA-10' docs/design/35-validation-debt-register.md
 
 **Reports:** `docs/dev-log/after-task/2026-08-01-design107-va-response-mask.md`,
 `docs/dev-log/plan-actual/2026-08-01-design107-va-response-mask.md`.
+
+## 2026-08-02 — spatial guide: current scalar syntax and mesh versus coordinates (Codex)
+
+Corrected `vignettes/articles/spatial-models.Rmd`: new code now uses
+`spatial_indep(..., common = TRUE)` for one shared spatial-field variance,
+with `spatial_scalar()` labelled soft-deprecated compatibility syntax. Added a
+reader-facing explanation that coordinates are observed locations while the
+mesh is the triangular SPDE approximation; standardised examples on the
+top-level `mesh = mesh` argument.
+
+```sh
+git diff --check
+# PASS
+
+Rscript --vanilla -e 'rmarkdown::render("vignettes/articles/spatial-models.Rmd", output_dir = tempfile("spatial-render-"), quiet = TRUE)'
+# PASS
+
+Rscript --vanilla -e 'pkgdown::check_pkgdown()'
+# PASS: No problems found.
+
+Rscript --vanilla -e 'pkgdown::build_articles(lazy = FALSE)'
+# PASS
+
+rg -n 'all four spatial keywords|\| `spatial_scalar\(\)` \||spatial_scalar\(.*Canonical name' vignettes/articles/spatial-models.Rmd
+# no matches: obsolete article framing removed.
+
+rg -n 'spatial_indep\(.*common = TRUE|spatial_scalar\(\) is retained' vignettes/articles/spatial-models.Rmd
+# two intentional matches: canonical spelling and compatibility note.
+
+rg -n 'gllvmTMB\(' vignettes/articles/spatial-models.Rmd
+# manually checked: each long-format call has trait = "trait"; traits() wide call does not require it.
+
+rg -n '\bS_B\b|\bS_W\b|\\bf S' vignettes/articles/spatial-models.Rmd
+rg -n 'in prep|in preparation' vignettes/articles/spatial-models.Rmd
+rg -n 'gllvmTMB_wide' vignettes/articles/spatial-models.Rmd
+# no matches in each scan.
+```
+
+**Deliberately not run:** full `devtools::test()` and `devtools::check()`;
+the change is article-only, and the full article render evaluates the modified
+spatial fits. Full report:
+`docs/dev-log/after-task/2026-08-02-spatial-guide-mesh-coordinates.md`.

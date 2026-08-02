@@ -51,10 +51,10 @@ fitter is self-consistent with gllvmTMB's own simulator. This is why the map
 below matters: it is not a completeness score, it is a record of where that
 second, independent kind of evidence exists.
 
-## Two traps to avoid
+## Three traps to avoid
 
-Two comparisons look like a straightforward external check and are not.
-Both apply throughout the map below.
+Three comparisons look like a straightforward external check and are not.
+All three apply throughout the map below.
 
 ### The estimator trap: variational approximation is not Laplace
 
@@ -88,6 +88,20 @@ sit in the same neighbourhood. A Bayesian comparator can corroborate that a
 covariance structure is roughly the right shape; it cannot, by itself, settle
 a likelihood-level question.
 
+### The `tmbstan` trap: the same objective function is not independence
+
+`tmbstan` looks like a Stan-based oracle and is not one. It does not
+re-derive the likelihood; it wraps the *same* TMB objective function
+gllvmTMB already builds and integrates the random effects with Hamiltonian
+Monte Carlo instead of the Laplace approximation. Agreement with `tmbstan`
+therefore shows only that TMB's own objective is internally consistent
+under a different integration scheme — it cannot catch an error in the
+objective itself, because it is the same objective. `tmbstan` answers a
+different, genuinely useful question instead: is the Laplace approximation
+adequate, by checking it against an HMC integration of the same random
+effects. It is not installed on this machine, and it should not be
+presented as an external check on the likelihood.
+
 ## The oracle map
 
 The grid below is the same source-by-mode grid used throughout gllvmTMB: five
@@ -114,8 +128,11 @@ inside each `indep` cell, because several packages that cannot check plain
 - **Uncertain.** Whether any external reference exists for this cell has not
   been established either way; it needs further scouting before it can be
   built or ruled out.
-- **None.** No known package can check this cell. Simulation recovery is the
-  only available evidence.
+- **None.** No third-party package implements this cell's model. Simulation
+  recovery is the only evidence currently in hand — a hand-written Stan
+  reference is a separate, unbuilt route, discussed below rather than shown
+  in the table, because it is available in principle for every cell here,
+  not something specific to a "None" verdict.
 
 Cells marked $\dagger$ rest on a Bayesian comparator — `MCMCglmm` or `Hmsc` —
 and so carry the posterior-mean caveat above, rather than repeating it in
@@ -234,6 +251,12 @@ was checked from both directions.
 
 ## What cannot be externally validated
 
+**Read "cannot be externally validated" below as "no third-party package
+implements this model."** That is narrower than it may sound, and the
+distinction matters: the next section describes a Stan route that is, in
+principle, available for every item on this list, unbuilt as it currently
+is.
+
 Stated plainly, not hedged:
 
 - **`phylo_latent()`, `animal_latent()`, and `kernel_latent()`** — at any
@@ -243,13 +266,16 @@ Stated plainly, not hedged:
   cannot touch the ordination loadings at all (a separate, positive finding,
   not just an absence), and the one other package with a phylogenetic
   mechanism structures its trait-regression coefficients, not its ordination
-  loadings. Simulation recovery is the only evidence available for these
-  three keywords.
+  loadings. Simulation recovery is the only evidence in hand for these three
+  keywords; see below for the unbuilt Stan route.
 - **Phylogenetic multinomial** (a `phylo_latent()` term on multinomial
-  category contrasts). This compounds two independent absences — no package
-  models `phylo_latent()`, and separately no package models gllvmTMB's
-  multinomial family — so it has no possible external reference regardless
-  of covariance structure. It is already partially implemented in gllvmTMB.
+  category contrasts). This compounds two independent no-third-party-package
+  cells — no package models `phylo_latent()`, and separately no package
+  models gllvmTMB's multinomial family. **This is not a permanent gap**: a
+  hand-written Stan reference can encode the exact combined likelihood, so
+  it is a build target rather than a case with no possible external
+  reference (no such Stan model has been written). It is already partially
+  implemented in gllvmTMB.
 - **`meta_V()`**, the known-sampling-covariance meta-analysis keyword. None
   of the packages considered here model a *known*, externally supplied
   sampling covariance matrix as a variance component; the closest peers are
@@ -260,6 +286,45 @@ Stated plainly, not hedged:
   `truncated_poisson()`, combined with any source-structured mode.** No
   package considered here has a peer for these families, regardless of the
   covariance structure chosen alongside them.
+
+### A stronger check that has not been built: the Stan route
+
+Stan is a general-purpose probabilistic programming language, not a fixed
+catalogue of models. `rstan` and `cmdstanr` are both installed on this
+machine, and a Stan program can hand-encode the exact likelihood of any
+cell in this document, including every "None" above — nothing about "no
+third-party package implements this" limits what can be written from
+scratch.
+
+The check that matters here is not a fitted-estimate comparison, which is
+what every ✓ and ✓✓ cell above actually does. It is evaluating the
+log-likelihood at a fixed, shared parameter vector in both gllvmTMB's TMB
+implementation and a hand-written Stan model of the same likelihood, and
+requiring agreement to machine precision. That is a *stronger* check than
+comparing fitted point estimates under a tolerance: there is nothing to
+estimate, so the estimator trap and the posterior-mean trap above cannot
+arise, and there is no tolerance band for a shared error to hide inside —
+the two numbers either match to machine precision or they do not. It is
+also the one route available for every cell in this document at once,
+independent of whether any third-party package exists at all.
+
+That strength comes with a limitation that this whole page is otherwise
+warning against, and it deserves the same weight here. A Stan model that
+gllvmTMB's own contributors write encodes *their* reading of the
+mathematics. It catches **implementation** errors — a template bug, a
+wrong parameterisation, a missing Jacobian, an indexing mistake — but not
+a **shared conceptual misunderstanding**: if the TMB template and a
+self-written Stan program both encode the same wrong reading of the
+model, they still agree to machine precision, and the check reports
+success on a shared error. A third-party package embodies someone else's
+independent reading of the theory; a self-written reference does not. The
+mitigation is to derive the Stan model from the model's published
+definition rather than from gllvmTMB's own code, and preferably to have it
+written by someone who did not write the TMB template.
+
+No Stan model has been written for any cell in this document. This
+section describes a route that exists, not evidence that has been
+gathered.
 
 ## Current scope boundary
 
@@ -283,12 +348,15 @@ posterior-mean caveat above. The `spatial_` `indep`/`dep`/shared-variance
 cells are uncertain rather than checked.
 
 **PLANNED / NONE.** `phylo_latent()`, `animal_latent()`, `kernel_latent()`,
-phylogenetic multinomial, `meta_V()`, and every family named in the previous
-section have no external reference and are not expected to gain one; nothing
-here is a near-term build target. Building a `gllvm`-`colMat`-based
-comparator and labelling it a phylogenetic- or animal-`latent()` check would
-misrepresent what `colMat` estimates — that combination is deliberately not
-planned.
+`meta_V()`, and every family named in the previous section have no
+third-party package reference and are not expected to gain one; nothing
+here is a near-term build target. **Phylogenetic multinomial is the one
+exception**: it has no third-party package peer either, but a hand-written
+Stan reference is a genuine build target for it (see above), so it is not
+treated the same as the permanent gaps in this paragraph. Building a
+`gllvm`-`colMat`-based comparator and labelling it a phylogenetic- or
+animal-`latent()` check would misrepresent what `colMat` estimates — that
+combination is deliberately not planned.
 
 ## Where to go next
 

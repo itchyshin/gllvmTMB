@@ -20,7 +20,15 @@ bootstrap_Sigma(
 \arguments{
 \item{fit}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}.}
 
-\item{n_boot}{Integer; number of bootstrap replicates. Default 200.}
+\item{n_boot}{Integer; number of bootstrap replicates. Default 200.
+Values below \code{2 / (1 - conf) - 1} (39 at the default \code{conf = 0.95}) are
+refused: the widest interval \code{B} draws can produce is \verb{[min, max]}, whose
+coverage is at most \code{(B - 1) / (B + 1)}, so a smaller \code{B} cannot reach the
+requested level whatever the data are. Values below 1000 warn. Note that
+raising \code{n_boot} reduces Monte Carlo error in the endpoints but does not
+make a percentile interval second-order accurate — its coverage asymptotes
+slightly below nominal regardless. Use \code{\link[=profile_ci_total_variance]{profile_ci_total_variance()}} for
+the \code{Sigma} diagonals if that matters.}
 
 \item{level}{Character vector; which tier(s) to bootstrap.
 Use the canonical levels \code{c("unit", "unit_obs", "phy")}; legacy

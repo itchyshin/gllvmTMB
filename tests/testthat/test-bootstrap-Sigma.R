@@ -60,6 +60,7 @@ test_that("bootstrap_Sigma returns the expected list structure (smoke test)", {
       "link_residual",
       "conf",
       "n_boot",
+      "coverage_ceiling",
       "n_failed",
       "level",
       "what",
@@ -259,4 +260,61 @@ test_that("Failed refits are tallied in n_failed, not in CIs", {
       expect_equal(dim(boot$ci_lower$Sigma_B), dim(boot$point_est$Sigma_B))
     }
   )
+})
+
+# ---- coverage_ceiling: the arithmetic guard on n_boot ----------------------
+#
+# A percentile interval from B draws cannot cover more than (B - 1) / (B + 1),
+# because the widest interval B draws can produce is [min, max]. Below that
+# ceiling the reported interval is narrower than nominal BY CONSTRUCTION,
+# whatever the data are.
+#
+# This is not hypothetical: the 2026-07-29 coverage campaign ran this function
+# at n_boot = 10 and its 0.78 empirical coverage was written into the
+# validation-debt register as a property of bootstrap_Sigma(). It is a property
+# of bootstrap_Sigma(n_boot = 10) -- ceiling 9/11 = 0.818. The failure was an
+# automated harness, which is why the ceiling is a RETURNED FIELD and not only
+# a warning: a script can assert on it.
+# See docs/dev-log/audits/2026-08-02-ci08-coverage-explained.md.
+
+test_that("coverage_ceiling reports the arithmetic limit and warns below conf", {
+  skip_if_not_heavy()
+  sim <- simulate_site_trait(
+    n_sites = 25, n_species = 3, n_traits = 3,
+    mean_species_per_site = 3, seed = 20260802L
+  )
+  fit <- gllvmTMB(
+    value ~ 0 + trait + latent(0 + trait | site, d = 1),
+    data = sim$data, family = gaussian(),
+    unit = "site", cluster = "species"
+  )
+
+  ## B = 10 cannot deliver 95%: ceiling 9/11 = 0.818. Must warn AND report.
+  expect_warning(
+    boot_low <- bootstrap_Sigma(
+      fit, n_boot = 10L, level = "unit", what = "Sigma", progress = FALSE
+    ),
+    "cannot deliver"
+  )
+  expect_equal(boot_low$coverage_ceiling, 9 / 11)
+  expect_lt(boot_low$coverage_ceiling, boot_low$conf)
+
+  ## B = 39 is exactly the floor at conf = 0.95: (39-1)/(39+1) = 0.95.
+  expect_equal((39 - 1) / (39 + 1), 0.95)
+
+  ## The ceiling must track conf, not be hard-coded to 0.95. At conf = 0.80 the
+  ## arithmetic floor is ceiling(2 / 0.2) - 1 = 9, so B = 10 clears it and the
+  ## "cannot deliver" warning must NOT fire -- but the separate low-B noise
+  ## warning still does, since 10 < 1000. Those are different conditions and
+  ## the test distinguishes them rather than lumping them together.
+  expect_warning(
+    boot_80 <- bootstrap_Sigma(
+      fit, n_boot = 10L, conf = 0.80, level = "unit",
+      what = "Sigma", progress = FALSE
+    ),
+    "noisy percentile bounds"
+  )
+  expect_gte(boot_80$coverage_ceiling, boot_80$conf)
+  ## Same B, same ceiling -- only the requested level changed.
+  expect_equal(boot_80$coverage_ceiling, 9 / 11)
 })

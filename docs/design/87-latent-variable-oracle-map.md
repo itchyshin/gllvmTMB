@@ -24,6 +24,26 @@ the vocabulary is). No verdict (which cells have an oracle, which are
 NONE) changed; §1 and §6 also gained clarifying qualifiers where the old
 "`indep`" wording had become ambiguous between the `common = TRUE` and
 default (`common = FALSE`) sub-cases.
+**Stan-route correction (2026-08-02):** neither this document nor the
+companion article (`vignettes/articles/validation-oracles.Rmd`) mentioned
+Stan anywhere before this revision, despite `rstan` 2.32.7 and `cmdstanr`
+0.9.0 being installed on this machine. Every verdict below that read
+"NONE" or "no possible external reference" conflated two different
+claims: *no third-party package implements this model* (true, checked)
+and *cannot be externally validated at all* (false — a hand-written Stan
+program implementing the same likelihood is a possible route for every
+cell in this document, because Stan is a general-purpose language, not a
+fixed model catalogue). "NONE" is corrected throughout to mean the
+former, narrower claim. §6 gains a new §6.1 on the Stan route, its
+strength relative to the ✓✓/✓ cells above, its real limitation (a
+self-written reference encodes the author's own reading of the
+mathematics and so cannot catch a conceptual error shared with the TMB
+implementation), and the `tmbstan` non-oracle trap. The phylogenetic-
+multinomial verdict in §1 and §6 changes from a permanent gap to a build
+target on this basis. **No Stan model has been written for any cell as of
+this revision** — this is a route that exists, not evidence that has been
+gathered.
+
 **Backed by:** direct inspection of installed `gllvm` 2.0.13 (`NAMESPACE`,
 `tools::Rd_db`, vignettes 7 and 9, one fresh diagnostic fit run this session);
 `tests/testthat/test-comparator-gllvm.R`; `dev/s2-gllvm-colmat-reference.R` +
@@ -122,19 +142,25 @@ compatibility aliases that fold into `indep`, not modes of their own).
   mechanisms (`row.eff`, `lvCor`) do not cleanly match these cells'
   definitions (§3.2), and a candidate `glmmTMB` route (`mat()`/`exp()`
   covariance structures) was not checked this session.
-- **3 have NO possible external reference and must rest on known-truth
-  simulation alone**: `phylo_latent`, `animal_latent`, `kernel_latent`
-  (source-structured relatedness combined with reduced-rank ordination —
-  no package does this). Note §6 lists more items than this under "cannot
-  be externally validated" — `meta_V()` and the compound families — but
-  those are **not cells of this grid**, which is why the earlier count of 5
-  did not reconcile. Separately, any `*_latent(unique = TRUE)`
-  diagonal companion for a structured source inherits
-  `indep`'s absence of a `gllvm` oracle even where the loadings piece has
-  one).
+- **3 have no third-party package reference**: `phylo_latent`,
+  `animal_latent`, `kernel_latent` (source-structured relatedness combined
+  with reduced-rank ordination — no package does this). This is narrower
+  than "cannot be externally validated at all": a hand-written Stan
+  program implementing the same likelihood is a route available to all
+  three (§6.1) — unbuilt, and a different, weaker kind of evidence than a
+  third-party package (§6.1 states the limitation in full). Absent that
+  Stan work, known-truth simulation is the only evidence currently in
+  hand. Note §6 lists more items than this under "no third-party package
+  reference" — `meta_V()` and the compound families — but those are **not
+  cells of this grid**, which is why the earlier count of 5 did not
+  reconcile. Separately, any `*_latent(unique = TRUE)` diagonal companion
+  for a structured source inherits `indep`'s absence of a `gllvm` oracle
+  even where the loadings piece has one).
 - Outside the structural grid: **phylogenetic multinomial** (Design 84,
-  already partially implemented) and **`meta_V()`** known-sampling-covariance
-  meta-analysis have no package-level peer at all — see §6.
+  already partially implemented) has no third-party package peer, but is a
+  Stan build target rather than a permanent gap (§6.1); **`meta_V()`**
+  known-sampling-covariance meta-analysis has no package-level peer and no
+  Stan work has been scoped for it — see §6.
 
 **The single most useful new finding** (verified this session, not assumed):
 `gllvm`'s `colMat` mechanism is **not** a general phylogenetic/animal/kernel
@@ -311,8 +337,10 @@ Legend: **✓✓** = already built and passing in this repo; **✓** = verified
 mechanism exists, not yet built as a comparator; **~** = plausible
 mechanism, capability not verified this session (flagged, not asserted);
 **MCMCglmm(post.)** = Bayesian posterior mean, not an MLE — a real but
-weaker reference (see §3.2); **NONE** = no package can validate this cell;
-simulation-only.
+weaker reference (see §3.2); **NONE** = no third-party package implements
+this cell's model (a hand-written Stan reference is a separate, unbuilt
+route available for any NONE cell — §6.1); simulation is the only
+evidence in hand today.
 
 | source \ mode | `indep(common = TRUE)` | `indep` (default) | `dep` | `latent` |
 |---|---|---|---|---|
@@ -455,12 +483,20 @@ comparison).
 
 ## 6. What cannot be externally validated
 
+**Read "cannot be externally validated" below as "no third-party package
+implements this model."** §6.1 adds the Stan route, which is a different
+and always-available kind of check that does not depend on a third-party
+catalogue existing at all — it is unbuilt for every item below, but it is
+not blocked the way a missing third-party package blocks the rest of this
+document.
+
 Stated plainly, per the task:
 
 - **`phylo_latent()`, `animal_latent()`, `kernel_latent()`** — any family,
   any rank. No package combines a known relatedness/tree/kernel structure
   with reduced-rank ordination loadings the way these keywords do.
-  Simulation-recovery is the only route.
+  Simulation-recovery is the only route in hand; §6.1 describes the
+  unbuilt Stan route available for all three.
 - **The default (`common = FALSE`) `phylo_indep()` / `phylo_dep()` /
   `animal_indep()` / `animal_dep()` / `kernel_indep()` / `kernel_dep()`, if
   `MCMCglmm` is ruled out or its posterior-mean caveat is judged too weak to
@@ -471,9 +507,12 @@ Stated plainly, per the task:
   `gllvm`/`glmmTMB::propto()` oracle, §3.1.)
 - **Phylogenetic multinomial** (`phylo_latent()` × `multinomial()`, Design
   84, already partially implemented as of 0.6). Compounds two independent
-  NONEs (§3.1's `phylo_latent` row, §4's `multinomial` family) — the
-  clearest concrete instance of an already-shipped feature with no
-  possible external reference.
+  no-third-party-package cells (§3.1's `phylo_latent` row, §4's
+  `multinomial` family). **This is not a permanent gap**: per §6.1, it is
+  buildable via a hand-written Stan reference, so it is a build target —
+  the clearest concrete instance of an already-shipped feature that has no
+  third-party package peer but does have an unbuilt route to external
+  checking. No such Stan model has been written.
 - **`meta_V()`** (known-sampling-covariance meta-analysis). Outside the
   scope of every package considered here (`gllvm`, `Hmsc`, `MCMCglmm`,
   `galamm` — none model a *known*, externally supplied sampling covariance
@@ -492,6 +531,68 @@ These are not gaps in scouting effort — §3.2 traces the specific evidence
 a read of `Hmsc`'s own phylo mechanism) for the two structural NONEs that
 matter most. The families list is a straightforward absence, checked by
 enumeration.
+
+### 6.1 The Stan route: a stronger check that has not been built
+
+`rstan` 2.32.7 and `cmdstanr` 0.9.0 are both installed on this machine.
+Stan is a general-purpose probabilistic programming language, not a fixed
+catalogue of models — a Stan program can hand-encode the exact likelihood
+of any cell in this document, including every cell marked NONE in
+§3.1/§6, because nothing about "no third-party package implements this"
+limits what can be written from scratch.
+
+**The check that matters is not a fitted-estimate comparison.** It is
+evaluating the log-likelihood at a fixed, shared parameter vector in both
+the TMB implementation and a hand-written Stan model of the same
+likelihood, and requiring agreement to machine precision. This is a
+*stronger* instrument than most of §3.1's ✓✓ cells, which compare
+*fitted* point estimates under a tolerance (1% relative log-likelihood,
+10–25% Frobenius error on Sigma, ≥0.95 Procrustes correlation) — those
+tolerances absorb optimiser noise and could in principle also absorb a
+small shared error. A fixed-parameter log-likelihood check has no
+tolerance to hide behind: the two numbers either match to machine
+precision or they do not. It is also immune to both traps this document
+is built around (§2.6, §3.2): there is nothing to estimate, so neither
+the VA-vs-Laplace estimator gap nor the posterior-mean-vs-MLE gap can
+arise. And it is available for every cell in the grid, not only the
+NONEs — it could in principle be run against the ✓✓ cells too, as a
+strictly harder check than what they currently have.
+
+**The real limitation, stated prominently.** A Stan model that gllvmTMB's
+own contributors write encodes *their* reading of the mathematics. It is
+therefore a check on **implementation** — a TMB template bug, a wrong
+parameterisation, a missing Jacobian term, an indexing error — not a
+check on a **shared conceptual misunderstanding**. If the TMB template
+and a self-written Stan program both encode the same wrong reading of the
+underlying model, they will still agree to machine precision, and the
+check will report success on a shared error. That is precisely the
+failure mode this whole document (and the companion article) is about: a
+same-author blind spot does not disappear just because the second
+implementation is in a different language. A third-party package embodies
+someone else's independent reading of the theory; a self-written Stan
+reference does not. Mitigation: derive the Stan model from the
+**published model definition** — the paper or textbook the feature is
+based on — rather than from gllvmTMB's own R or C++ code, and preferably
+have someone who did not write the TMB template write the Stan model, so
+the two implementations are each read from the source material
+independently rather than from each other.
+
+**The `tmbstan` trap.** `tmbstan` is not an independent implementation —
+it wraps the *same* TMB objective function gllvmTMB already builds and
+runs HMC over it instead of Laplace-approximating the random effects. It
+therefore cannot serve as an oracle for the likelihood at all: agreement
+with `tmbstan` only shows that TMB's own objective is internally
+consistent under a different integration scheme, not that the objective
+encodes the right model. `tmbstan` answers a genuinely different and
+separately useful question instead — is the Laplace approximation
+adequate, by comparing it against a Bayesian HMC integration of the same
+random effects — but it is not a substitute for the fixed-parameter Stan
+check above and must not be presented as one. `tmbstan` is not installed
+on this machine.
+
+No Stan model has been written for any cell in this document as of this
+revision (2026-08-02). Everything above describes a route that exists,
+not evidence that has been gathered.
 
 ---
 

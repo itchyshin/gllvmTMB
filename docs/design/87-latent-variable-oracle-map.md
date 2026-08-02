@@ -11,6 +11,19 @@ records what is and is not possible.
 to multinomial and high-dimensional VA work (`83-multinomial-response-family.md`,
 `84-phylogenetic-multinomial-tier2.md`, `85-highdim-nongaussian-va-formal-contract.md`,
 `86-eva-gate1-parameters.json`). This document is therefore Design 87.
+**Naming correction (2026-08-02):** this document originally used `scalar`
+as if it were a fifth co-equal mode alongside `indep`/`dep`/`latent`. Per
+Design 79 §5/§5.1, `scalar` is not a mode at all — it is the soft-deprecated
+spelling of the `common = TRUE` parsimony modifier on `indep` (and
+source-specific `phylo_indep(common = TRUE)`, `animal_indep(common =
+TRUE)`, `spatial_indep(common = TRUE)`, `kernel_indep(common = TRUE)`).
+Every mention below is corrected accordingly; `*_scalar()` is kept only
+where explicitly flagged as the deprecated alias. §1 restates the cell
+count under the corrected terminology (the total, 20, is unchanged — only
+the vocabulary is). No verdict (which cells have an oracle, which are
+NONE) changed; §1 and §6 also gained clarifying qualifiers where the old
+"`indep`" wording had become ambiguous between the `common = TRUE` and
+default (`common = FALSE`) sub-cases.
 **Backed by:** direct inspection of installed `gllvm` 2.0.13 (`NAMESPACE`,
 `tools::Rd_db`, vignettes 7 and 9, one fresh diagnostic fit run this session);
 `tests/testthat/test-comparator-gllvm.R`; `dev/s2-gllvm-colmat-reference.R` +
@@ -34,7 +47,7 @@ session or the cited artifact — treated as a lead, not a claim.
 | `gllvm` 2.0.13 installed, no `testdata/` dir, 6 shipped datasets, GPL-2 | [V] | `find.package`, `list.dirs`, `data(package=)`, `DESCRIPTION` |
 | `gllvm`'s 56 exports, `?gllvm` full argument list | [V] | `getNamespaceExports`, `tools::Rd_db` |
 | `colMat` structures column-effect (environmental-slope) covariance only, never the `num.lv` ordination loadings | [V-prior] | `dev/s2-gllvm-colmat-reference-RESULTS.md` §A/§D (two-tree decisive test + negative controls) |
-| Absent `colMat`, a `gllvm` random column effect has **one shared variance across all species, zero cross-species covariance** — i.e. structurally `scalar`, never `indep`/`dep` | [V] | fresh fit this session (§2.3 below): `getEnvironCov()` returned a diagonal matrix with the *same* value (0.892) on every entry |
+| Absent `colMat`, a `gllvm` random column effect has **one shared variance across all species, zero cross-species covariance** — i.e. structurally `indep(common = TRUE)`, never the default `indep(common = FALSE)`/`dep` | [V] | fresh fit this session (§2.3 below): `getEnvironCov()` returned a diagonal matrix with the *same* value (0.892) on every entry |
 | `gllvm`'s `lvCor`/`row.eff` correlation options (`corAR1`, `corExp`, `corCS`, `corMatern`, `propto`) exist and structure the site/row axis | [V] | vignette 9 (`Correlation structures for latent variables and row effects`) read directly |
 | A Poisson and a binary unconstrained-ordination `gllvm` comparator already exist, shipped, passing | [V] | read `tests/testthat/test-comparator-gllvm.R` in full |
 | `gllvmTMB` is Laplace-only; VA/EVA vs Laplace log-likelihoods are not directly comparable, VA is a biased-downward ELBO | [V-prior] | `docs/design/72-variational-approximation-feasibility.md`; `docs/design/85-...md` (Laplace is the only admissible route) |
@@ -49,41 +62,74 @@ session or the cited artifact — treated as a lead, not a claim.
 
 ## 1. Executive summary
 
-The structural grid is **5 sources × 5 modes = 25 cells** (`scalar` /
-`unique` / `indep` / `dep` / `latent` × no-prefix / `phylo_` / `animal_` /
-`spatial_` / `kernel_`; Design 79 §5). `unique` alone is not an independent
-structure — standalone `*_unique()` is diagonal-only and inherits `indep`'s
-answer; `*_latent(unique = TRUE)`'s diagonal companion inherits it too
-(CLAUDE.md: "Standalone `phylo_unique`/`animal_unique` carry diagonal-only
-structure"). That collapses the grid to **20 structurally distinct
-questions** for oracle purposes, asked at two columns (`indep`/`dep`
-answers cover their `unique`/`+diag` cousins).
+Per Design 79 §5, the canonical grid is **3 modes** (`indep` / `dep` /
+`latent`) × **5 sources** (no-prefix / `phylo_` / `animal_` / `spatial_` /
+`kernel_`) = **15 top-level cells**. `scalar` is not a fourth mode — it is
+the `common = TRUE` parsimony modifier on `indep` (Design 79 §5.1); `unique`
+is a separate soft-deprecated compatibility alias, diagonal-only, that
+inherits `indep`'s default (`common = FALSE`) answer, as does the
+`*_latent(unique = TRUE)` diagonal companion (CLAUDE.md: "Standalone
+`phylo_unique`/`animal_unique` carry diagonal-only structure"). Neither
+`scalar` nor `unique` is a mode of its own.
+
+For **oracle purposes**, though, `common = TRUE` and the default `common =
+FALSE` are not interchangeable inside `indep`: §2.3 shows `gllvm`'s `colMat`
+mechanism reaches only `common = TRUE` (one shared variance), never the
+default per-trait-distinct variances or `dep`'s free covariance. So the map
+below tracks **4 oracle-relevant columns per source** —
+`indep(common = TRUE)`, `indep` (default), `dep`, `latent` — for **5 × 4 =
+20 structurally distinct questions**, the same total this document used
+before this naming correction; only the vocabulary changes (3 canonical
+modes, not 5, with `indep` counted twice for oracle purposes because its
+two sub-cases have different oracle answers; `scalar` and `unique` are both
+compatibility aliases that fold into `indep`, not modes of their own).
+
+> **Counts corrected 2026-08-02.** An earlier version of this section read
+> 6 / 6 / 3 / 5, which did not reconcile against §3.1's own table: the "6
+> strong" bullet named only five members, and it conflated two different
+> things that the table's legend distinguishes — **✓✓ = "already built and
+> passing in this repo"** (a shipped comparator test) versus a mechanism
+> merely *verified by a scout fit this session*. The "5 NONE" figure was also
+> counting non-grid items (`meta_V()`, the compound families) that §6 lists
+> but that are not cells of this 5 × 4 grid. The tally below is re-derived
+> cell by cell from the table and sums to 20. **§3.1's table remains the
+> authority; these are its totals, not an independent claim.**
 
 **Of those 20 cells:**
-- **6 have a strong, already-tested external reference**: the no-prefix
-  row's `scalar`/`indep`/`dep`/`latent` (all four via `glmmTMB`/`lme4`,
-  `latent` doubly so via `gllvm` — shipped as
-  `tests/testthat/test-comparator-gllvm.R`), plus `phylo_scalar` (`gllvm`
-  colMat, verified this session, **and** `glmmTMB::propto()`, already
-  `covered`).
-- **6 have a plausible but untested-in-this-repo reference**: `animal_scalar`
-  (`gllvm` colMat / `MCMCglmm` native pedigree use), `kernel_scalar` (`gllvm`
-  colMat's bare-matrix form), and the four `indep`/`dep` cells for
-  `phylo_`/`animal_`/`kernel_` via `MCMCglmm`'s `idh`/`us` + `pedigree`/`ginverse`
-  (posterior mean, not MLE — a real but weaker reference).
+- **2 have a shipped comparator that passes in this repo** — the only cells
+  where "already built and passing" is literally true: the no-prefix
+  `latent` (`test-stage2-rr-diag.R` via `glmmTMB::rr()+diag()`, **and**
+  `test-comparator-gllvm.R` via `gllvm`'s unconstrained ordination), and
+  `phylo_indep(common = TRUE)` (`test-stage3-propto-equalto.R` via
+  `glmmTMB::propto()`).
+- **5 have a verified mechanism but no comparator built**: the no-prefix
+  `indep(common = TRUE)` (`gllvm` with no `colMat`, verified by the §2.3
+  fit; plus `glmmTMB`/`lme4`'s shared-variance RE), the no-prefix `indep`
+  and `dep` (`glmmTMB`/`lme4`'s `diag()`/`us()` — textbook), and
+  `animal_indep(common = TRUE)` / `kernel_indep(common = TRUE)` (`gllvm`'s
+  `colMat`, which follows from its documented behaviour; the §2.3 fit was
+  run *without* `colMat`).
+- **7 have a plausible but unverified reference**, six of them resting on
+  `MCMCglmm`'s posterior mean rather than an MLE: the default
+  (`common = FALSE`) `indep` and `dep` cells for `phylo_`, `animal_` and
+  `kernel_` via `idh`/`us` + `pedigree`/`ginverse`; plus `spatial_latent`
+  (`gllvm`'s `lvCor(corExp/corMatern)` and `Hmsc`'s spatial latent factors —
+  neither fitted, and `lvCor` is a dense exact GP against our SPDE
+  approximation, so agreement could only be approximate).
 - **3 are genuinely uncertain and would need a scout before either building
-  or declaring them unvalidatable**: `spatial_scalar`, `spatial_indep`,
-  `spatial_dep` — `gllvm`'s own spatial mechanisms (`row.eff`, `lvCor`) do
-  not cleanly match these cells' definitions (§3.2), and a candidate
-  `glmmTMB` route (`mat()`/`exp()` covariance structures) was not checked
-  this session.
-- **5 have NO possible external reference and must rest on known-truth
+  or declaring them unvalidatable**: `spatial_indep(common = TRUE)`,
+  `spatial_indep` (default), `spatial_dep` — `gllvm`'s own spatial
+  mechanisms (`row.eff`, `lvCor`) do not cleanly match these cells'
+  definitions (§3.2), and a candidate `glmmTMB` route (`mat()`/`exp()`
+  covariance structures) was not checked this session.
+- **3 have NO possible external reference and must rest on known-truth
   simulation alone**: `phylo_latent`, `animal_latent`, `kernel_latent`
   (source-structured relatedness combined with reduced-rank ordination —
-  no package does this), plus `spatial_latent` (partial: see §3.2, one
-  plausible but unverified `gllvm`/`Hmsc` route exists and is worth a
-  scout, not a clean NONE), and any `*_latent`/`*_unique(unique=TRUE)`
-  diagonal companion for a structured source (the +diag(ψ) piece inherits
+  no package does this). Note §6 lists more items than this under "cannot
+  be externally validated" — `meta_V()` and the compound families — but
+  those are **not cells of this grid**, which is why the earlier count of 5
+  did not reconcile. Separately, any `*_latent(unique = TRUE)`
+  diagonal companion for a structured source inherits
   `indep`'s absence of a `gllvm` oracle even where the loadings piece has
   one).
 - Outside the structural grid: **phylogenetic multinomial** (Design 84,
@@ -93,20 +139,23 @@ answers cover their `unique`/`+diag` cousins).
 **The single most useful new finding** (verified this session, not assumed):
 `gllvm`'s `colMat` mechanism is **not** a general phylogenetic/animal/kernel
 comparator across `indep`/`dep`/`latent` — it is a Pagel's-lambda blend on a
-**single shared variance**, i.e. structurally `*_scalar()` only, never
-`*_indep()` or `*_dep()`, for any source. `gllvm` therefore cannot serve as
-the oracle for `phylo_indep`/`phylo_dep`/`animal_indep`/`animal_dep`/
-`kernel_indep`/`kernel_dep` at all; `MCMCglmm` is the correct (if weaker,
-posterior-mean) reference for that half of the grid.
+**single shared variance**, i.e. structurally `*_indep(common = TRUE)`
+only, never the default `*_indep()` (`common = FALSE`) or `*_dep()`, for
+any source. `gllvm` therefore cannot serve as the oracle for the default
+(`common = FALSE`) `phylo_indep`/`phylo_dep`/`animal_indep`/`animal_dep`/
+`kernel_indep`/`kernel_dep` at all — it reaches only their `common = TRUE`
+sub-case; `MCMCglmm` is the correct (if weaker, posterior-mean) reference
+for that default-`indep`/`dep` half of the grid.
 
 **Top-3 comparisons worth building first**: (1) `spatial_latent` via
 `gllvm`'s `lvCor(corExp/corMatern)` — same conceptual model (GP-correlated
-latent scores), unbuilt, moderate confidence; (2) a `phylo_scalar`/
-`animal_scalar` `MCMCglmm` scout to corroborate the already-covered
-`gllvm`/`glmmTMB` route with a genuinely independent (Bayesian, pedigree-native)
-implementation; (3) the `phylo_indep`/`animal_indep` `MCMCglmm` `idh` +
-`pedigree` comparator, because it is the one place `gllvm` structurally
-cannot help at all and a reference otherwise does exist.
+latent scores), unbuilt, moderate confidence; (2) a `phylo_indep(common =
+TRUE)`/`animal_indep(common = TRUE)` `MCMCglmm` scout to corroborate the
+already-covered `gllvm`/`glmmTMB` route with a genuinely independent
+(Bayesian, pedigree-native) implementation; (3) the default (`common =
+FALSE`) `phylo_indep`/`animal_indep` `MCMCglmm` `idh` + `pedigree`
+comparator, because it is the one place `gllvm` structurally cannot help at
+all and a reference otherwise does exist.
 
 ---
 
@@ -180,13 +229,15 @@ sp2  0      0.892  0      0      0      0      0      0
 One scalar variance is fit and applied identically to all 8 species; there
 is no per-species variance parameter and no cross-species covariance
 parameter anywhere in `fit$params`, with or without `colMat`. This is
-`gllvm`'s **only** column-effect covariance shape: `*_scalar()`
-(source-blended when `colMat` is supplied, ordinary `scalar()` when it is
-not). It is structurally incapable of representing `*_indep()`'s
-per-trait-distinct-but-uncorrelated variances or `*_dep()`'s free
-covariance, for any source. This was not previously stated explicitly
-anywhere in this repo's `gllvm` scout material and materially narrows what
-`gllvm` can be an oracle for.
+`gllvm`'s **only** column-effect covariance shape: `*_indep(common =
+TRUE)` (source-blended when `colMat` is supplied, ordinary
+`indep(common = TRUE)` when it is not; `*_scalar()`/`scalar()` is the
+soft-deprecated alias for the same thing, Design 79 §5.1). It is
+structurally incapable of representing the default `*_indep()`'s
+(`common = FALSE`) per-trait-distinct-but-uncorrelated variances or
+`*_dep()`'s free covariance, for any source. This was not previously stated
+explicitly anywhere in this repo's `gllvm` scout material and materially
+narrows what `gllvm` can be an oracle for.
 
 ### 2.4 `lvCor` and `row.eff`: a genuine but axis-shifted spatial/temporal mechanism
 
@@ -200,8 +251,9 @@ grid:
 
 - **Row effects are community-shared**: `row.eff`'s realized value is added
   *identically* to every species' linear predictor — it is not "each trait
-  draws from a shared-variance spatially-correlated field" (`spatial_scalar`'s
-  definition), it is "every trait shares the literal same field." This is a
+  draws from a shared-variance spatially-correlated field"
+  (`spatial_indep(common = TRUE)`'s definition), it is "every trait shares
+  the literal same field." This is a
   strictly different (more restrictive) model.
 - **`lvCor`-on-ordination** (structure the LV scores $u_i$ by site
   coordinates, then let species-specific $\Theta_j$ loadings scale them) is
@@ -262,26 +314,30 @@ mechanism, capability not verified this session (flagged, not asserted);
 weaker reference (see §3.2); **NONE** = no package can validate this cell;
 simulation-only.
 
-| source \ mode | `scalar` | `indep` | `dep` | `latent` |
+| source \ mode | `indep(common = TRUE)` | `indep` (default) | `dep` | `latent` |
 |---|---|---|---|---|
 | **no prefix** | `glmmTMB`/`lme4` shared-variance RE ✓ · `gllvm` (no `colMat`) ✓✓ (verified §2.3) | `glmmTMB`/`lme4` `diag(0+trait\|g)` ✓ — textbook | `glmmTMB`/`lme4` `us(0+trait\|g)` ✓ — textbook | `glmmTMB::rr()+diag()` ✓✓ **covered** (`test-stage2-rr-diag.R`) · `gllvm::gllvm(num.lv=)` ✓✓ **shipped** (`test-comparator-gllvm.R`, Poisson + binary) · `galamm` ~ (Laplace + explicit λ-constraint, untested here) |
-| **`phylo_`** | `gllvm` `colMat` ✓✓ (verified §2.3, Pagel's-λ blend on shared variance) · `glmmTMB::propto()` ✓✓ **covered** (`test-stage3-propto-equalto.R`) | `MCMCglmm` `idh(trait):animal`+`pedigree`/`inverseA` MCMCglmm(post.) ~ (untested here) · `gllvm` **NONE** (structurally scalar-only, verified §2.3) | `MCMCglmm` `us(trait):animal`+`pedigree` MCMCglmm(post.) ~ (untested here) · `gllvm` **NONE** | **NONE** — no package puts a tree on reduced-rank ordination loadings (`gllvm`'s `colMat` cannot touch `Theta`, S2 §D; `Hmsc`'s phylo signal structures `Beta`/trait-regression, not `Lambda`, per the Hmsc audit) |
+| **`phylo_`** | `gllvm` `colMat` ✓✓ (verified §2.3, Pagel's-λ blend on shared variance) · `glmmTMB::propto()` ✓✓ **covered** (`test-stage3-propto-equalto.R`) | `MCMCglmm` `idh(trait):animal`+`pedigree`/`inverseA` MCMCglmm(post.) ~ (untested here) · `gllvm` **NONE** (gllvm reaches only `common = TRUE`, verified §2.3) | `MCMCglmm` `us(trait):animal`+`pedigree` MCMCglmm(post.) ~ (untested here) · `gllvm` **NONE** | **NONE** — no package puts a tree on reduced-rank ordination loadings (`gllvm`'s `colMat` cannot touch `Theta`, S2 §D; `Hmsc`'s phylo signal structures `Beta`/trait-regression, not `Lambda`, per the Hmsc audit) |
 | **`animal_`** | `gllvm` `colMat` (pedigree-as-`C`) ✓✓ — same mechanism as phylo, verified · `MCMCglmm` `idv`+`pedigree` ✓ (`MCMCglmm`'s native use case) · `glmmTMB::propto()` (pedigree A) ✓ | `MCMCglmm` `idh`+`pedigree` MCMCglmm(post.) ~ (untested here, but this is literally what `MCMCglmm` was built for) | `MCMCglmm` `us`+`pedigree` MCMCglmm(post.) ~ (untested here) | **NONE** — same reasoning as `phylo_latent` |
-| **`spatial_`** | `gllvm` `row.eff`/`lvCor` **mismatched** (community-shared field, not per-trait draws from a shared-variance field — §2.4); `glmmTMB` `mat()`/`exp()`+`diag()` candidate **[R], unverified** | same mismatch as `scalar`; **not confidently established** either way — needs a scout, not a clean NONE | same; **not confidently established** | `gllvm` `lvCor(corExp/corMatern)` ~ (conceptually matched, exact-GP vs SPDE-approx, unbuilt — top build priority §7) · `Hmsc` `HmscRandomLevel(sDim=)` MCMCglmm/Hmsc(post.) ~ (genuine spatial-latent-factor peer per the Hmsc audit, untested here) |
+| **`spatial_`** | `gllvm` `row.eff`/`lvCor` **mismatched** (community-shared field, not per-trait draws from a shared-variance field — §2.4); `glmmTMB` `mat()`/`exp()`+`diag()` candidate **[R], unverified** | same mismatch as `indep(common = TRUE)`; **not confidently established** either way — needs a scout, not a clean NONE | same; **not confidently established** | `gllvm` `lvCor(corExp/corMatern)` ~ (conceptually matched, exact-GP vs SPDE-approx, unbuilt — top build priority §7) · `Hmsc` `HmscRandomLevel(sDim=)` MCMCglmm/Hmsc(post.) ~ (genuine spatial-latent-factor peer per the Hmsc audit, untested here) |
 | **`kernel_`** | `gllvm` `colMat` bare-matrix form ✓✓ (verified — `?gllvm`'s `colMat` doc explicitly allows "only a (p.d.) matrix of similarity," no tree/pedigree semantics required) · `MCMCglmm` `idv`+`ginverse(K)` ~ | `MCMCglmm` `idh`+`ginverse(K)` MCMCglmm(post.) ~ (untested here) · `gllvm` **NONE** | `MCMCglmm` `us`+`ginverse(K)` MCMCglmm(post.) ~ (untested here) · `gllvm` **NONE** | **NONE** — same reasoning as `phylo_latent`, no tie to any tree/pedigree assumption needed to make the point |
 
 `unique` is not a separate column: standalone `*_unique()` is diagonal-only
-and answers exactly as `indep` above; the `*_latent(unique = TRUE)`
-diagonal companion inherits the same answer as its row's `indep` cell even
-in rows where the loadings-only piece has a reference (e.g. `phylo_latent`'s
-loadings piece is already NONE, so this only bites materially for a
-hypothetical future `spatial_latent(unique = TRUE)` or `kernel_latent(unique
-= TRUE)`, where the loadings piece might have a partial reference but the
-+diag(ψ) piece would not).
+and answers exactly as `indep` (default, `common = FALSE`) above; the
+`*_latent(unique = TRUE)` diagonal companion inherits the same answer as
+its row's `indep` cell even in rows where the loadings-only piece has a
+reference (e.g. `phylo_latent`'s loadings piece is already NONE, so this
+only bites materially for a hypothetical future `spatial_latent(unique =
+TRUE)` or `kernel_latent(unique = TRUE)`, where the loadings piece might
+have a partial reference but the +diag(ψ) piece would not). `scalar` folds
+the same way, into `indep`'s `common = TRUE` sub-case (§2.3, §3.2) — like
+`unique`, it is a compatibility spelling (Design 79 §5.1), not a mode of
+its own.
 
 ### 3.2 Notes on the non-obvious calls
 
-**Why `gllvm` colMat is marked NONE for `indep`/`dep`, not just "weaker."**
+**Why `gllvm` colMat is marked NONE for the default `indep` (`common =
+FALSE`) / `dep`, not just "weaker."**
 This is a structural absence, verified by fitting (§2.3), not a judgement
 call about fit quality. There is no argument combination, documented or
 undocumented, that produces a per-species-distinct or freely-covarying
@@ -304,8 +360,8 @@ proof of MLE correctness, only evidence the two are in the same
 neighbourhood (this mirrors the Hmsc audit's identical caveat about
 posterior-mean comparators, §3c/§4 there).
 
-**Why `spatial_*` `scalar`/`indep`/`dep` are "not confidently established"
-rather than a clean ✓ or NONE.** This is an honest gap in this session's
+**Why `spatial_*` `indep(common = TRUE)`/`indep`/`dep` are "not confidently
+established" rather than a clean ✓ or NONE.** This is an honest gap in this session's
 verification, not a claim either way. `gllvm`'s only source-structured
 spatial mechanisms are `row.eff` (community-shared, wrong shape) and
 `lvCor` (an ordination-axis mechanism, i.e. the `latent` column). Whether
@@ -369,8 +425,8 @@ priority order:
    The shipped tests use 10% (Poisson) and 25% (binary, noisier per-obs
    information); a new cell should re-derive its own band empirically
    rather than reuse these numbers blind.
-4. **Signal-parameter direction, not value, for the `colMat` `scalar`
-   cells.** Per S2, `rho.sp` is not on a scale directly comparable to
+4. **Signal-parameter direction, not value, for the `colMat`
+   `indep(common = TRUE)` cells.** Per S2, `rho.sp` is not on a scale directly comparable to
    `gllvmTMB`'s phylogenetic signal parameterisation, but the qualitative
    behaviour (correct tree → non-boundary $\rho$; wrong tree → boundary
    $\rho$ = 0 with a boundary warning) is a genuine, cheap, falsifiable
@@ -405,12 +461,14 @@ Stated plainly, per the task:
   any rank. No package combines a known relatedness/tree/kernel structure
   with reduced-rank ordination loadings the way these keywords do.
   Simulation-recovery is the only route.
-- **`phylo_indep()` / `phylo_dep()` / `animal_indep()` / `animal_dep()` /
-  `kernel_indep()` / `kernel_dep()`, if `MCMCglmm` is ruled out or its
-  posterior-mean caveat is judged too weak to count as "external
-  validation."** As given, these have a plausible-but-untested `MCMCglmm`
-  reference (§3.1); if the standard is an MLE-level oracle specifically,
-  they too are NONE.
+- **The default (`common = FALSE`) `phylo_indep()` / `phylo_dep()` /
+  `animal_indep()` / `animal_dep()` / `kernel_indep()` / `kernel_dep()`, if
+  `MCMCglmm` is ruled out or its posterior-mean caveat is judged too weak to
+  count as "external validation."** As given, these have a
+  plausible-but-untested `MCMCglmm` reference (§3.1); if the standard is an
+  MLE-level oracle specifically, they too are NONE. (Their `common = TRUE`
+  sub-case is unaffected by this caveat — it already has an MLE-quality
+  `gllvm`/`glmmTMB::propto()` oracle, §3.1.)
 - **Phylogenetic multinomial** (`phylo_latent()` × `multinomial()`, Design
   84, already partially implemented as of 0.6). Compounds two independent
   NONEs (§3.1's `phylo_latent` row, §4's `multinomial` family) — the
@@ -455,7 +513,8 @@ enumeration.
    this repo. Cost: moderate — MCMC needs a burn-in/thinning/convergence
    check on top of the usual fixture work, and the posterior-mean-vs-MLE
    framing needs to be stated in the test, not just implied.
-3. **`MCMCglmm` corroboration of `phylo_scalar`/`animal_scalar`.** Lower
+3. **`MCMCglmm` corroboration of `phylo_indep(common = TRUE)`/
+   `animal_indep(common = TRUE)`.** Lower
    priority than 1–2 because this cell is already double-covered
    (`gllvm` + `glmmTMB::propto()`), but a third, genuinely independent
    (Bayesian, pedigree-native) implementation agreeing would meaningfully

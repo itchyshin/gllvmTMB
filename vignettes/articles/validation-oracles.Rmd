@@ -1,0 +1,301 @@
+---
+title: "Validation oracles: what an external package can and cannot check"
+description: "Why an independent implementation is stronger evidence than simulation recovery alone, and a source-by-mode map of which gllvmTMB covariance cells have one, which have a weaker one, and which have none."
+tier: 2
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{Validation oracles: what an external package can and cannot check}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+```
+
+This page is about evidence, not features. It explains what a validation
+oracle is, why gllvmTMB relies on more than its own simulations, and which
+parts of the covariance grid currently have an independent check and which do
+not. Read it alongside [Fit diagnostics](fit-diagnostics.html), which asks
+whether a *particular* fit is numerically trustworthy; this page instead asks
+whether the *model class itself* has been checked against outside evidence.
+
+## What a validation oracle is
+
+A **validation oracle** is an independent implementation of the same
+statistical model — written by someone else, from their own reading of the
+same theory, in a different codebase. If gllvmTMB and an external package
+independently arrive at the same answer on a well-defined quantity (a
+log-likelihood, a set of loadings up to rotation, a residual correlation),
+that agreement is real evidence: it is unlikely that two differently written
+implementations share the same coding mistake.
+
+## Why simulation recovery is not enough on its own
+
+Most of gllvmTMB's own validation evidence is simulation recovery: generate
+data from a known model, fit it, and check that the estimates land near the
+truth. That is necessary, but it has a structural blind spot. A simulator and
+a fitter written by the same person, from the same understanding of a model,
+can be wrong **in the same direction** and still agree with each other
+perfectly — the recovery check would then confirm only that the code
+reproduces its own assumptions, not that those assumptions are correct.
+
+An externally written package does not share that specific misunderstanding.
+It was written by different people, from a different codebase, often with a
+different parameterisation. Agreement with it is evidence that both
+implementations encode the same right model — not just that gllvmTMB's
+fitter is self-consistent with gllvmTMB's own simulator. This is why the map
+below matters: it is not a completeness score, it is a record of where that
+second, independent kind of evidence exists.
+
+## Two traps to avoid
+
+Two comparisons look like a straightforward external check and are not.
+Both apply throughout the map below.
+
+### The estimator trap: variational approximation is not Laplace
+
+gllvmTMB fits every model by the TMB Laplace approximation; it has no other
+estimator. `gllvm` defaults to a **variational approximation** (`method =
+"VA"`, falling back to `"EVA"` for families without a VA implementation) and
+only switches to Laplace (`method = "LA"`) on request, for the subset of
+families that support it. A VA fit optimises a lower bound on the
+log-likelihood, not the log-likelihood itself, and that bound is biased
+downward. A raw log-likelihood comparison between a gllvmTMB fit and a
+default `gllvm` fit is therefore not comparing the same quantity — the two
+numbers can differ for a reason that has nothing to do with either
+implementation being wrong.
+
+Two ways around this: request `gllvm(..., method = "LA")` where that family
+supports it, so both sides use the same estimator; or, where only VA/EVA is
+available, loosen the comparison from "do the numbers match" to "did both
+optimisers reach a comparably good fit," using a generous relative tolerance
+rather than an exact match.
+
+### The posterior-mean trap: a Bayesian mean is not an MLE
+
+`Hmsc` and `MCMCglmm` are both Bayesian: they return a posterior summary
+(typically a posterior mean), not a maximum-likelihood estimate. A posterior
+mean and gllvmTMB's MLE are different estimands, and they carry different
+priors, defaults, and shrinkage behaviour into the comparison. If the two
+disagree, that is not automatically evidence of an engine bug — the prior may
+simply pull the answer elsewhere. If they agree, that is not automatically
+proof that gllvmTMB's MLE is correct — only evidence that the two estimates
+sit in the same neighbourhood. A Bayesian comparator can corroborate that a
+covariance structure is roughly the right shape; it cannot, by itself, settle
+a likelihood-level question.
+
+## The oracle map
+
+The grid below is the same source-by-mode grid used throughout gllvmTMB: five
+correlation **sources** (no prefix, `phylo_`, `animal_`, `spatial_`,
+`kernel_`) crossed with three covariance **modes** (`indep`, `dep`, `latent`).
+See the [formula keyword grid](api-keyword-grid.html) for the full syntax.
+The one-shared-variance case (`common = TRUE` on `indep()`, which the
+soft-deprecated `scalar()` spelling still names) is called out separately
+inside each `indep` cell, because several packages that cannot check plain
+`indep` or `dep` can still check this narrower case.
+
+### Status legend
+
+- **Tested.** An automated comparator already exists in gllvmTMB's own test
+  suite, comparing a gllvmTMB fit against an external package's fit on
+  simulated data with a known answer, and it passes.
+- **Confirmed, not yet asserted.** The external package's mechanism was
+  checked directly — by fitting it and reading what it actually estimates —
+  and it matches the cell's definition. gllvmTMB does not yet run an
+  automated agreement test against it.
+- **Documented, not yet fit.** The external package's own documentation
+  describes a mechanism that should match the cell's definition, but neither
+  side has actually been fit and compared.
+- **Uncertain.** Whether any external reference exists for this cell has not
+  been established either way; it needs further scouting before it can be
+  built or ruled out.
+- **None.** No known package can check this cell. Simulation recovery is the
+  only available evidence.
+
+Cells marked $\dagger$ rest on a Bayesian comparator — `MCMCglmm` or `Hmsc` —
+and so carry the posterior-mean caveat above, rather than repeating it in
+every cell.
+
+### The table
+
+<div class="table-responsive">
+<table class="table table-striped" style="min-width: 640px;">
+<caption>Source &times; mode: what can check each cell</caption>
+<thead><tr>
+<th>Source</th><th><code>indep()</code></th><th><code>dep()</code></th><th><code>latent()</code></th>
+</tr></thead>
+<tbody>
+<tr><th>none</th>
+<td>Shared-variance case: confirmed, not yet asserted (a <code>gllvm</code>
+fit with no similarity matrix supplied was checked directly and returns
+exactly one shared variance across traits, the same shape as
+<code>common = TRUE</code>); documented, not yet built
+(<code>glmmTMB</code>/<code>lme4</code>'s shared-variance random effect).
+Plain <code>indep</code>: documented, not yet built into the suite
+(<code>glmmTMB</code>/<code>lme4</code>'s <code>diag(0 + trait | g)</code>).</td>
+<td>Documented, not yet built
+(<code>glmmTMB</code>/<code>lme4</code>'s <code>us(0 + trait | g)</code>).</td>
+<td><strong>Tested</strong> — <code>glmmTMB::rr()+diag()</code>, and
+<code>gllvm</code>'s own unconstrained ordination (Poisson and binary
+responses; loadings compared after a Procrustes rotation).</td></tr>
+<tr><th><code>phylo_</code></th>
+<td>Shared-variance case: <strong>tested</strong> against
+<code>glmmTMB::propto()</code>; separately, <code>gllvm</code>'s
+<code>colMat</code> mechanism is documented, not yet fit — the
+one-shared-variance shape was verified by fitting <em>without</em>
+<code>colMat</code>, and the <code>colMat</code> extension follows from
+<code>gllvm</code>'s documented behaviour rather than from a fit. Plain
+<code>indep</code>: documented, not yet fit
+(<code>MCMCglmm</code>'s <code>idh(trait):animal</code> with a
+tree-derived inverse relationship matrix)$^\dagger$.</td>
+<td>Documented, not yet fit (<code>MCMCglmm</code>'s
+<code>us(trait):animal</code> variant)$^\dagger$.</td>
+<td><strong>None.</strong></td></tr>
+<tr><th><code>animal_</code></th>
+<td>Shared-variance case: documented, not yet fit
+(<code>gllvm</code>'s <code>colMat</code>, with the pedigree supplied as the
+similarity matrix — the same mechanism as the <code>phylo_</code> row, and
+established the same way, from documentation rather than a fit);
+documented (<code>MCMCglmm</code>'s <code>idv()</code> with a pedigree,
+its native use case$^\dagger$; <code>glmmTMB::propto()</code> with a
+pedigree-derived relationship matrix). Plain <code>indep</code>: documented,
+not yet fit (<code>MCMCglmm</code>'s <code>idh()</code> + pedigree)$^\dagger$.</td>
+<td>Documented, not yet fit (<code>MCMCglmm</code>'s <code>us()</code> +
+pedigree)$^\dagger$.</td>
+<td><strong>None.</strong></td></tr>
+<tr><th><code>spatial_</code></th>
+<td><strong>Uncertain.</strong> <code>gllvm</code>'s own spatial mechanisms
+do not match this cell's definition (see below); whether another package's
+mechanism does was not established.</td>
+<td><strong>Uncertain</strong>, for the same reason.</td>
+<td>Documented, not yet fit (<code>gllvm</code>'s
+<code>lvCor(corExp)</code> / <code>lvCor(corMatern)</code> — and note
+<code>lvCor</code> is a dense exact Gaussian process while gllvmTMB uses an
+SPDE approximation, so even a successful comparison would agree only
+approximately, not exactly; <code>Hmsc</code>'s spatial latent
+factors$^\dagger$).</td></tr>
+<tr><th><code>kernel_</code></th>
+<td>Shared-variance case: documented, not yet fit
+(<code>gllvm</code>'s <code>colMat</code> accepting a bare similarity
+matrix, per its documentation); documented (<code>MCMCglmm</code>'s
+<code>idv()</code> with a
+supplied relationship matrix)$^\dagger$. Plain <code>indep</code>:
+documented, not yet fit (<code>MCMCglmm</code>'s <code>idh()</code> with a
+supplied relationship matrix)$^\dagger$.</td>
+<td>Documented, not yet fit (<code>MCMCglmm</code>'s <code>us()</code> with
+a supplied relationship matrix)$^\dagger$.</td>
+<td><strong>None.</strong></td></tr>
+</tbody>
+</table>
+</div>
+
+`unique = TRUE` (the diagonal companion added to a `*_latent()` term) is not
+a separate column here. It inherits the same answer as its row's `indep`
+cell — including where the loadings-only part of that row has a partial
+reference. `spatial_latent(..., unique = TRUE)`, for example, would still
+have no external check on its diagonal component even though the
+loadings-only part has a documented, unfit candidate.
+
+### Why `gllvm` cannot check `indep()` or `dep()`, for any source
+
+This is worth stating plainly because it is easy to assume otherwise:
+`gllvm`'s `colMat` mechanism — its one route to a source-structured
+cross-trait covariance — fits exactly **one shared variance across all
+traits**, blended by a single relatedness signal parameter. It has no
+per-trait-distinct variance and no free cross-trait covariance parameter,
+with or without a similarity matrix supplied. The shape was confirmed by
+fitting: eight traits simulated with genuinely different slope variances all
+came back with one identical fitted variance. To be precise about what that
+fit does and does not show — it was run *without* `colMat`; the conclusion
+that supplying `colMat` cannot change the shape rests on there being no
+per-species variance or cross-species covariance parameter anywhere in the
+fitted object to begin with, not on a second fit. `gllvm` can
+therefore corroborate the shared-variance (`common = TRUE`) case of any
+source, but it structurally cannot serve as a reference for that source's
+plain `indep()` or `dep()` cell — no combination of arguments changes that.
+
+### Why the `spatial_` `indep`/`dep`/shared-variance cells are uncertain, not "none"
+
+`gllvm` has two spatial mechanisms, and neither matches these cells cleanly.
+Its `row.eff` term adds the identical realised value to every trait's linear
+predictor — every trait shares the literal same spatial field, which is a
+stricter model than "each trait draws its own value from a shared-variance
+spatially correlated field." Its `lvCor` mechanism instead structures the
+*ordination* axis (the `latent()` column, where it does plausibly match).
+Whether another package's mechanism fills the `spatial_` `indep`/`dep`/
+shared-variance gap was not checked. That is an honest gap in current
+scouting, not a checked absence — unlike the `*_latent()` row below, which
+was checked from both directions.
+
+## What cannot be externally validated
+
+Stated plainly, not hedged:
+
+- **`phylo_latent()`, `animal_latent()`, and `kernel_latent()`** — at any
+  rank, with any response family. No package combines a source-structured
+  relatedness matrix with reduced-rank ordination loadings the way these
+  keywords do. This was checked from both directions: `gllvm`'s `colMat`
+  cannot touch the ordination loadings at all (a separate, positive finding,
+  not just an absence), and the one other package with a phylogenetic
+  mechanism structures its trait-regression coefficients, not its ordination
+  loadings. Simulation recovery is the only evidence available for these
+  three keywords.
+- **Phylogenetic multinomial** (a `phylo_latent()` term on multinomial
+  category contrasts). This compounds two independent absences — no package
+  models `phylo_latent()`, and separately no package models gllvmTMB's
+  multinomial family — so it has no possible external reference regardless
+  of covariance structure. It is already partially implemented in gllvmTMB.
+- **`meta_V()`**, the known-sampling-covariance meta-analysis keyword. None
+  of the packages considered here model a *known*, externally supplied
+  sampling covariance matrix as a variance component; the closest peers are
+  general-purpose meta-analysis packages, which were out of scope for this
+  comparison and were not evaluated.
+- **Any `delta_*` compound family, `gengamma()`, `gamma_mix()`,
+  `lognormal_mix()`, `student()`, or `censored_poisson()`/
+  `truncated_poisson()`, combined with any source-structured mode.** No
+  package considered here has a peer for these families, regardless of the
+  covariance structure chosen alongside them.
+
+## Current scope boundary
+
+**IN.** Two cells have a shipped, passing comparator inside gllvmTMB's own
+test suite: ordinary (no-prefix) `latent()`, checked against both
+`glmmTMB::rr()+diag()` and `gllvm`'s unconstrained ordination; and the
+phylogenetic shared-variance case, checked against `glmmTMB::propto()`.
+
+**PARTIAL.** Most of the grid falls here, at varying strength, and the
+distinction that matters is between a mechanism we have *fitted* and one we
+have only *read about*. Exactly one cell rests on a direct fit: a `gllvm` run
+with no similarity matrix supplied was checked and returns one shared variance
+across traits, matching the no-prefix shared-variance case. Everything else in
+this tier is documented rather than fitted — the `gllvm`-`colMat`
+shared-variance cases for `phylo_`, `animal_` and `kernel_` follow from
+`gllvm`'s documented behaviour (the diagnostic fit above was run *without*
+`colMat`), and `spatial_latent()`'s match to `gllvm`'s `lvCor` has not been
+fitted at all. Most of the `phylo_`/`animal_`/`kernel_` `indep()` and `dep()`
+cells have only a documented, unfit `MCMCglmm` mechanism, carrying the
+posterior-mean caveat above. The `spatial_` `indep`/`dep`/shared-variance
+cells are uncertain rather than checked.
+
+**PLANNED / NONE.** `phylo_latent()`, `animal_latent()`, `kernel_latent()`,
+phylogenetic multinomial, `meta_V()`, and every family named in the previous
+section have no external reference and are not expected to gain one; nothing
+here is a near-term build target. Building a `gllvm`-`colMat`-based
+comparator and labelling it a phylogenetic- or animal-`latent()` check would
+misrepresent what `colMat` estimates — that combination is deliberately not
+planned.
+
+## Where to go next
+
+- [Formula keyword grid](api-keyword-grid.html): the full source-by-mode
+  syntax this map is organised around.
+- [gllvmTMB vocabulary](gllvm-vocabulary.html): definitions for loadings,
+  Sigma, Psi, and the other terms used above.
+- [Fit diagnostics](fit-diagnostics.html): whether a specific fitted model is
+  numerically trustworthy, as distinct from whether the model class has
+  external evidence behind it.

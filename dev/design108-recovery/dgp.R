@@ -12,6 +12,22 @@
 ##     INTERNAL-NODES-FIRST, TIPS-LAST, and `node_of_species` is 0-BASED --
 ##     both facts are read off the machinery here, never hard-coded.
 ##
+##   CORRECTED 2026-08-02 (estimand-mismatch diagnostic, see
+##   ../CONTROL-DIAGNOSTIC.md "Mismatch 1"): tier 2's Psi is ALSO
+##   phylogenetically structured in the fitted model
+##   (`phylo_latent(unique = TRUE)` puts `Psi_phy (x) A` on the diagonal
+##   companion -- R/brms-sugar.R:3555-3559, src/gllvmTMB.cpp:1181-1208,
+##   "g_phy_diag.col(t) ~ N(0, A)") -- so the DGP must draw tier 2's psi-noise
+##   field the SAME way, `g_t ~ N(0, A) * sqrt(psi2_t)`, reusing the model's
+##   own `A` (via the SAME `Ainv` already built for the loadings field below),
+##   never a second, independently-coded correlation structure. Drawing it
+##   iid (the pre-fix behaviour) gives `sd_phy_diag` nothing to estimate --
+##   the model has no free parameter that can produce cross-species
+##   correlation among iid noise -- so that psi component gets silently
+##   absorbed elsewhere (measured: `psi_phy_hat` collapsed to ~2e-8) and every
+##   downstream `rel_frob` against tier 2's truth was comparing against an
+##   object the model could not, even in principle, produce.
+##
 ## `phylo_scale` is a single scalar multiplying BOTH Lambda_2 and psi_2 (the
 ## whole tier-2 trait covariance scales as phylo_scale^2, and the realized
 ## tier-2 contribution to the linear predictor scales as phylo_scale^1) so
@@ -130,7 +146,13 @@ simulate_two_tier <- function(N, T, q = 2L, seed,
   ## then restrict to the tip rows for this species set (0-based -> 1-based).
   U2_aug <- .d108_simulate_gmrf(Ainv, q)                 # n_aug x q
   U2 <- U2_aug[tip_row, , drop = FALSE]                  # N x q, unit marginal var
-  Z2 <- matrix(stats::rnorm(N * T), N, T)
+  ## Psi's noise field is ALSO phylo-structured (Mismatch 1, header comment
+  ## above): draw one GMRF column per TRAIT over the SAME augmented `Ainv`
+  ## the loadings field uses -- never a second, hand-rolled correlation
+  ## structure -- then restrict to tips and scale by sqrt(psi2_base), exactly
+  ## mirroring what the fitted model's `g_phy_diag.col(t) ~ N(0, A)` does.
+  Z2_aug <- .d108_simulate_gmrf(Ainv, T)                  # n_aug x T
+  Z2 <- Z2_aug[tip_row, , drop = FALSE]                   # N x T, unit marginal var
   F2_base <- U2 %*% t(Lambda2_base) + sweep(Z2, 2, sqrt(psi2_base), `*`)  # N x T
 
   Lambda2 <- phylo_scale * Lambda2_base
@@ -158,14 +180,33 @@ simulate_two_tier <- function(N, T, q = 2L, seed,
   long <- long[order(long$unit, long$trait), ]
   rownames(long) <- NULL
 
+  ## Mismatch 2 (../CONTROL-DIAGNOSTIC.md): PROTOCOL.md's estimand is the
+  ## LOADINGS-ONLY `Sigma_B = Lambda Lambda'` (PROTOCOL.md:382-383); this DGP
+  ## previously labelled the TOTAL (`Lambda Lambda' + diag(psi)`) as
+  ## `Sigma_B`, which is a different object. Both are now reported under
+  ## names that cannot be confused: `Sigma_B_loadings` (the protocol's
+  ## estimand) and `Sigma_B_total` (loadings plus the diagonal Psi
+  ## companion). `Sigma_B` is kept, UNCHANGED in value (== `Sigma_B_total`,
+  ## its pre-fix meaning), only for backward compatibility with existing
+  ## callers; new code should read one of the two unambiguous names instead.
+  Sigma1_loadings <- Lambda1 %*% t(Lambda1)
+  Sigma2_loadings <- Lambda2 %*% t(Lambda2)
+
   truth <- list(
     beta0 = beta0,
-    tier1 = list(Lambda = Lambda1, psi = psi1, Sigma_B = Sigma1,
+    tier1 = list(Lambda = Lambda1, psi = psi1,
+                Sigma_B = Sigma1,                    # back-compat alias, == Sigma_B_total
+                Sigma_B_loadings = Sigma1_loadings,   # Lambda Lambda' only (PROTOCOL.md estimand)
+                Sigma_B_total = Sigma1,               # Lambda Lambda' + diag(psi)
                 U = U1, B = B1, realized = F1),
-    tier2 = list(Lambda = Lambda2, psi = psi2, Sigma_B = Sigma2,
+    tier2 = list(Lambda = Lambda2, psi = psi2,
+                Sigma_B = Sigma2,                     # back-compat alias, == Sigma_B_total
+                Sigma_B_loadings = Sigma2_loadings,    # Lambda Lambda' only (PROTOCOL.md estimand)
+                Sigma_B_total = Sigma2,                # Lambda Lambda' + diag(psi)
                 Lambda_base = Lambda2_base, psi_base = psi2_base,
                 Sigma_B_base = Sigma2_base, phylo_scale = phylo_scale,
                 U = U2, U_aug = U2_aug, B = phylo_scale * sweep(Z2, 2, sqrt(psi2_base), `*`),
+                Z_aug = Z2_aug,   # n_aug x T phylo-structured psi-noise field (for self-checks)
                 realized = F2, realized_base = F2_base),
     eta = eta, p = p
   )

@@ -4,7 +4,7 @@
 ##   cd /private/tmp/gllvmtmb-d108-recovery && NOT_CRAN=true \
 ##     Rscript --vanilla -e 'devtools::load_all(quiet=TRUE); source("dev/design108-recovery/dgp-selfcheck.R")'
 ##
-## Three checks, in order of how directly they test the DGP:
+## Four checks, in order of how directly they test the DGP:
 ##
 ##  A. STRUCTURAL: on a small tree, the tier-2 GMRF sampler's empirical
 ##     tip-level covariance (over many independent replicate draws) matches
@@ -26,6 +26,20 @@
 ##  C. LARGE-N CONVERGENCE: at large N, the empirical across-species
 ##     covariance of each tier's realized trait-space field converges to
 ##     that tier's stated Sigma_B -- i.e. `truth` really is the truth.
+##
+##  D. TIER-2 PSI IS PHYLOGENETICALLY STRUCTURED, NOT IID (added 2026-08-02,
+##     ../CONTROL-DIAGNOSTIC.md "Mismatch 1" -- the check that would have
+##     caught the original bug). The fitted model's `phylo_latent(unique =
+##     TRUE)` puts `Psi_phy (x) A` on tier 2's diagonal companion, so the
+##     DGP's psi-noise field must ALSO carry that cross-species correlation.
+##     Verified two ways on the SAME empirical cross-species covariance of
+##     the (unit-marginal-variance) psi-noise field, estimated from many
+##     independent trait columns of a single `simulate_two_tier()` draw
+##     (each trait's psi-noise column is an independent GMRF replicate over
+##     the SAME `Ainv`, so no extra `obs_seed` re-draws are needed): (1) it
+##     tracks the dense `solve(Ainv)` tip block (small `rel_frob`), and (2)
+##     it is NOT close to the identity (non-trivial mean absolute
+##     off-diagonal) -- ruling out exactly the pre-fix iid behaviour.
 
 stopifnot(requireNamespace("ape", quietly = TRUE))
 source("dev/design108-recovery/dgp.R")
@@ -149,8 +163,14 @@ stopifnot(is.finite(err1_plain), err1_plain < 0.15)
 ## Each (species, replicate) outer product is individually unbiased for
 ## Sigma_2 regardless of the cross-species correlation (that correlation
 ## only affects the estimator's variance, not its bias), so averaging over
-## many independent replicates must converge -- and does, below.
-N2 <- 300L; T2 <- 24L; R <- 150L
+## many independent replicates must converge -- and does, below. R was
+## raised 150 -> 400 when tier 2's Psi became ALSO phylo-structured
+## (../CONTROL-DIAGNOSTIC.md "Mismatch 1"): the same near-duplicate-relatives
+## variance inflation this comment already documents for the loadings field
+## now applies to the psi field too, so R=150 no longer clears the same
+## 0.10 threshold (measured 0.12); this is the estimator needing more
+## replicates, not a bias, per the reasoning above.
+N2 <- 300L; T2 <- 24L; R <- 400L
 truth_seed <- 555L
 set.seed(9001L)
 tree2 <- ape::rcoal(N2)
@@ -173,5 +193,37 @@ cat(sprintf("  tier 2 (uncentered, %d reps x N=%d): rel_frob = %.4f\n", R, N2, e
 stopifnot(is.finite(err1_rep), err1_rep < 0.10)
 stopifnot(is.finite(err2_rep), err2_rep < 0.10)
 cat("  CHECK C: PASS\n")
+
+cat("\n== CHECK D: tier-2 Psi is phylogenetically structured, not iid ==\n")
+
+## Reuse Check A's small tree/dense-solve(Ainv) so the target A block is
+## already on hand -- `A_small_dense` is indexed by AUGMENTED NODE, so it is
+## valid under any species-to-node map, not just Check A's. One
+## simulate_two_tier() draw with many traits gives many independent
+## psi-noise columns (each trait's field is an independent GMRF replicate
+## over the SAME Ainv) -- no extra obs_seed re-draws needed.
+##
+## NB: `simulate_two_tier()` uses `tree$tip.label` (the tree's OWN order) for
+## its species-to-node map, not Check A's `sort(tree_small$tip.label)`, so
+## `tip_row_d` need not equal `tip_row_small` -- both are valid, just
+## differently ordered, so the A-block below is re-sliced with `tip_row_d`
+## rather than reusing Check A's `A_tip_true`.
+T_d <- 3000L
+sim_d <- simulate_two_tier(N = 8L, T = T_d, q = 2L, seed = 99L, tree = tree_small)
+tip_row_d <- sim_d$node_of_species + 1L
+A_tip_true_d <- A_small_dense[tip_row_d, tip_row_d]
+Z_tip <- sim_d$truth$tier2$Z_aug[tip_row_d, , drop = FALSE]  # 8 x T_d, unit marginal var
+Z_tip_cov_hat <- stats::cov(t(Z_tip))                         # 8 x 8
+
+err_D_vs_A <- rel_frob(Z_tip_cov_hat, A_tip_true_d)
+err_D_vs_I <- rel_frob(Z_tip_cov_hat, diag(8))
+offdiag_mean_abs <- mean(abs(Z_tip_cov_hat[upper.tri(Z_tip_cov_hat)]))
+cat(sprintf("  rel_frob(empirical psi-noise tip covariance, dense solve(Ainv) tip block) = %.4f (T=%d)\n",
+            err_D_vs_A, T_d))
+cat(sprintf("  rel_frob(empirical psi-noise tip covariance, identity) = %.4f\n", err_D_vs_I))
+cat(sprintf("  mean |off-diagonal| of empirical psi-noise tip covariance = %.4f\n", offdiag_mean_abs))
+stopifnot(is.finite(err_D_vs_A), err_D_vs_A < 0.10)   # tracks A ...
+stopifnot(offdiag_mean_abs > 0.10)                    # ... and is nowhere near the identity
+cat("  CHECK D: PASS\n")
 
 cat("\nALL CHECKS PASSED.\n")

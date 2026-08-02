@@ -402,9 +402,11 @@ register on origin/main) is:
 
 A naive product is well over 10^4 cells before n_sim and bootstrap are
 applied; at the per-fit cost in section 8 this is not affordable. The
-study is therefore **tiered**: a small core confirmatory grid that *must*
-pass to support the paper/CRAN claims, plus extension grids that are
-nice-to-have and can be staged or dropped under budget pressure.
+study is therefore **tiered**: a small core confirmatory grid that carries
+the paper's claims, plus extension grids that are nice-to-have and can be
+staged or dropped under budget pressure. (CRAN submission is not planned --
+see section 0 -- so "must pass" here means the grid the paper's evidence
+chapter rests on, not a release gate.)
 
 ### 4.2 Tier 0 -- Core confirmatory grid (MUST pass)
 
@@ -792,7 +794,7 @@ smoke check, not an adjudication.
   ample for reporting the crossing point. Power does not need more than
   the coverage floor.
 - **Extension tiers:** n_sim = 1000 is acceptable (these inform register
-  promotions, not the headline CRAN gate).
+  promotions, not the paper's headline claim).
 
 The MCSE arithmetic gives the **floor**; the ceiling is the compute
 budget (section 8). Final n_sim is Q-d.

@@ -1567,10 +1567,18 @@
   )
 }
 
+## The variational block, by parameter name. `profile=` takes NAMES, which is
+## why Stage 6's flattening of these three from PARAMETER_MATRIX to
+## PARAMETER_VECTOR matters here: a name selects the whole block either way,
+## but the flat layout is the one TMB's inner solver indexes contiguously.
+.va_r3_variational_names <- c("m", "log_L_diag", "L_off")
+
 .va_r3_make_objective <- function(validated, H = 61L, source = NULL,
                                   rebuild = FALSE, parameters = NULL,
                                   fixed_global = NULL, silent = TRUE,
-                                  eval_method = c("auto", "jj", "gh")) {
+                                  eval_method = c("auto", "jj", "gh"),
+                                  profile_variational = FALSE,
+                                  inner_control = NULL) {
   if (validated$q == 0L) {
     stop("q = 0 is not applicable and must not construct an R3 objective.",
          call. = FALSE)
@@ -1678,14 +1686,35 @@
     map$theta_rr <- factor(rep(NA_integer_, length(parameters$theta_rr)))
   }
   if (!length(map)) map <- NULL
-  obj <- TMB::MakeADFun(
-    data = tmb_data,
-    parameters = parameters,
-    map = map,
-    random = NULL,
-    DLL = dll$DLL,
-    silent = silent
-  )
+  ## profile_variational = FALSE is the shipped route and reproduces the joint
+  ## `random = NULL` objective byte for byte. TRUE hands the variational block
+  ## to TMB's inner Newton solver via `profile=`, which appends the named
+  ## parameters to `random` WITH THE LAPLACE APPROXIMATION DISABLED -- no
+  ## -1/2 log det H term is added, so the outer objective is the EXACT profile
+  ## min_{m,L} ELBO(fixed, m, L), not a Laplace approximation of the ELBO.
+  ## `random=` alone would be mathematically wrong here: the variational
+  ## coordinates are optimisation variables of a deterministic bound, not
+  ## latent random variables to integrate over.
+  profile_variational <- isTRUE(profile_variational)
+  obj <- if (profile_variational) {
+    args <- list(
+      data = tmb_data, parameters = parameters, map = map,
+      profile = .va_r3_variational_names,
+      DLL = dll$DLL, silent = silent
+    )
+    if (!is.null(inner_control)) args$inner.control <- inner_control
+    do.call(TMB::MakeADFun, args)
+  } else {
+    TMB::MakeADFun(
+      data = tmb_data,
+      parameters = parameters,
+      map = map,
+      random = NULL,
+      DLL = dll$DLL,
+      silent = silent
+    )
+  }
+  attr(obj, "va_r3_profiled") <- profile_variational
   attr(obj, "va_r3_dll") <- dll
   attr(obj, "va_r3_quadrature") <- rule
   ## Carried so downstream machinery can ASK the objective what its variational
@@ -1712,7 +1741,9 @@
                        is_y_observed = NULL,
                        family_codes = NULL,
                        estimate_gaussian_sd = TRUE,
-                       extra_tiers = NULL) {
+                       extra_tiers = NULL,
+                       profile_variational = FALSE,
+                       inner_control = NULL) {
   family_choices <- c("binomial", "poisson", "gaussian_anchor", "nbinom2",
                       "binomial_probit", "gaussian")
   if (is.null(family_codes)) {
@@ -1834,13 +1865,15 @@
       starts[[k]]$theta_rr <- as.numeric(fixed_global$theta_rr)
     }
   }
+  profile_variational <- isTRUE(profile_variational)
   fits <- vector("list", length(starts))
   objects <- vector("list", length(starts))
   for (k in seq_along(starts)) {
     obj <- .va_r3_make_objective(
       validated, H = H, source = source, rebuild = rebuild && k == 1L,
       parameters = starts[[k]], fixed_global = fixed_global, silent = silent,
-      eval_method = eval_method
+      eval_method = eval_method,
+      profile_variational = profile_variational, inner_control = inner_control
     )
     objects[[k]] <- obj
     opt <- tryCatch(
@@ -1901,6 +1934,25 @@
     } else Inf
     healthy <- identical(opt$convergence, 0L) && is.finite(opt$objective) &&
       finite_parameters && max_abs_gradient < 1e-4
+    ## `par` is contractually the FULL parameter vector, variational block
+    ## included -- report(), the latent read-out, and every test read it that
+    ## way. Under profile_variational the outer optimiser only ever sees the
+    ## global block, so re-evaluate at the reported point and take TMB's
+    ## last.par, which is the outer point plus the inner solve that produced
+    ## the reported objective. Layout and names match the joint object's par
+    ## exactly (verified in test-va-r3-profile.R), so nothing downstream has to
+    ## know which route produced it.
+    outer_par <- opt$par
+    if (profile_variational) {
+      full_par <- tryCatch({
+        obj$fn(opt$par)
+        obj$env$last.par
+      }, error = function(e) rep(NA_real_, length(obj$env$par)))
+      finite_parameters <- finite_parameters && all(is.finite(full_par))
+      healthy <- healthy && all(is.finite(full_par))
+    } else {
+      full_par <- opt$par
+    }
     fits[[k]] <- list(
       start = k,
       convergence = opt$convergence,
@@ -1909,12 +1961,13 @@
       finite_parameters = finite_parameters,
       healthy = healthy,
       message = opt$message,
-      par = opt$par,
+      par = full_par,
       evaluations = opt$evaluations,
       iterations = opt$iterations,
       polish_passes = polish_passes,
       polish_optimizer = polish_optimizer
     )
+    if (profile_variational) fits[[k]]$outer_par <- outer_par
   }
   healthy_id <- which(vapply(fits, `[[`, logical(1), "healthy"))
   objectives <- vapply(fits, `[[`, numeric(1), "objective")
@@ -1989,6 +2042,7 @@
     source_checksum = dll$checksum,
     fixed_global = !is.null(fixed_global),
     optimizer = optimizer,
+    profile_variational = profile_variational,
     starts = fits,
     health = list(
       admitted = admitted,

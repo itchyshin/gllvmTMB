@@ -481,11 +481,15 @@ test_that("R3 optimizer auto-routes per family AND per tier", {
   ##   binomial gh       0.57x  (0.35-1.02)  -> nlminb, lbfgsb is SLOWER
   ##   nbinom2  gh       0.42x  (0.26-0.63)  -> nlminb, slower AND the only
   ##                                            same-optimum disagreement
+  ## binomial_probit is the one entry NOT measured: Design 108 Stage 4 is a
+  ## numerics spike and no timing sweep was run, so it takes the reference
+  ## optimiser rather than claiming a route it has no evidence for.
   expected <- list(
     gaussian_anchor = c(gh = "lbfgsb"),
     binomial        = c(gh = "nlminb", jj = "lbfgsb"),
     poisson         = c(gh = "nlminb"),
-    nbinom2         = c(gh = "nlminb")
+    nbinom2         = c(gh = "nlminb"),
+    binomial_probit = c(gh = "nlminb")
   )
   for (entry in .va_r3_family_registry) {
     want <- expected[[entry$family]]
@@ -538,7 +542,8 @@ test_that("R3 family registry agrees with the validator and drives eval_method",
   ## drift from .va_r3_validate_data(), which is what actually assigns the
   ## family code the template sees. Adding a family without a registry entry
   ## (or with the wrong code/link) fails here rather than silently.
-  y_for <- list(gaussian_anchor = 0.5, binomial = 1L, poisson = 2L, nbinom2 = 2L)
+  y_for <- list(gaussian_anchor = 0.5, binomial = 1L, poisson = 2L,
+                nbinom2 = 2L, binomial_probit = 1L)
   for (entry in .va_r3_family_registry) {
     validated <- .va_r3_validate_data(
       y = y_for[[entry$family]], n_trials = 3L, X = matrix(1, 1L, 1L),

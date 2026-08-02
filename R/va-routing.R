@@ -48,38 +48,52 @@
   family_id_vec <- as.integer(family_id_vec)
   link_id_vec <- as.integer(link_id_vec)
   ## Laplace -> VA code; refuse unsupported families before the fence message.
+  ## LINK-AWARE by construction. Laplace gives binomial-logit and
+  ## binomial-probit the same family_id and separates them by link_id only, so
+  ## a link-blind map would send probit data to VA code 1 -- whose template
+  ## branch is the LOGISTIC softplus. That is a wrong model reported healthy,
+  ## which is precisely what this file exists to prevent, so the link travels
+  ## into the mapping rather than being checked after it.
   va_codes <- tryCatch(
-    .va_r3_laplace_id_to_code(family_id_vec),
+    .va_r3_laplace_id_to_code(family_id_vec, link_id_vec),
     error = function(e) {
       .va_route_abort(
-        "The model uses a response family the variational route does not admit.",
+        "The model uses a response family/link the variational route does not admit.",
         conditionMessage(e)
       )
     }
   )
-  ## Link checks: binomial only logit (link_id 0); poisson/nbinom2 log;
-  ## gaussian identity (link_id 0 for gaussian in fit-multi).
+  ## Link checks: code 1 is binomial-LOGIT and admits link_id 0 ONLY -- widening
+  ## it to link_id 1 would re-open the wrong-model trap above. Probit has its own
+  ## code (4) with its own template branch. poisson/nbinom2 log; gaussian
+  ## identity (link_id 0 for gaussian in fit-multi).
   for (i in seq_along(va_codes)) {
     code <- va_codes[[i]]
     lid <- link_id_vec[[i]]
     ok <- (code == 1L && lid == 0L) ||
       (code %in% c(2L, 3L) && lid == 0L) ||
-      (code == 0L && lid == 0L)
+      (code == 0L && lid == 0L) ||
+      (code == 4L && lid == 1L)
     if (!ok) {
       .va_route_abort(
         "A response uses a family/link pair the variational route does not admit.",
-        "Admitted: gaussian identity, binomial logit, poisson log (and research nbinom2 log)."
+        "Admitted: gaussian identity, binomial logit, poisson log (and research nbinom2 log / binomial probit)."
       )
     }
   }
+  ## Code 4 reports as family "binomial" with link "probit" so the FENCE, not
+  ## this translation layer, is what refuses it -- and refuses it with the
+  ## message a user who wrote binomial(link = "probit") needs to read. There is
+  ## no recovery evidence for probit under VA, so it stays outside the fence.
   fam_names <- vapply(seq_along(va_codes), function(i) {
     switch(as.character(va_codes[[i]]),
            "0" = "gaussian", "1" = "binomial", "2" = "poisson",
-           "3" = "nbinom2", "binomial")
+           "3" = "nbinom2", "4" = "binomial", "binomial")
   }, character(1L))
   link_names <- vapply(va_codes, function(code) {
     switch(as.character(code),
-           "0" = "identity", "1" = "logit", "2" = "log", "3" = "log", "logit")
+           "0" = "identity", "1" = "logit", "2" = "log", "3" = "log",
+           "4" = "probit", "logit")
   }, character(1L))
   list(
     family = fam_names,

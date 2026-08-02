@@ -219,28 +219,45 @@
     binomial = 1L,
     poisson = 2L,
     nbinom2 = 3L,
-    stop("R3 family must be one of gaussian_anchor/gaussian, binomial, poisson, nbinom2.",
+    binomial_probit = 4L,
+    stop("R3 family must be one of gaussian_anchor/gaussian, binomial, poisson, nbinom2, binomial_probit.",
          call. = FALSE)
   )
 }
 
-## Laplace family_id (fit-multi) -> VA-R3 family code. Unsupported IDs error.
-.va_r3_laplace_id_to_code <- function(fid) {
+## Laplace (family_id, link_id) -> VA-R3 family code. Unsupported pairs error.
+##
+## LINK-AWARE, and that is load-bearing rather than tidy. Laplace encodes
+## binomial-logit and binomial-PROBIT with the SAME family_id (1), separated
+## only by link_id (0 = logit, 1 = probit; R/fit-multi.R:371-374). A link-blind
+## map sends both to VA code 1, whose template branch hard-codes the logistic
+## softplus -- i.e. it would fit a LOGIT model to PROBIT data and report the fit
+## healthy, with no error anywhere in the stack. `lid` is therefore REQUIRED
+## with no default: a default would let a caller re-open that trap by omission.
+.va_r3_laplace_id_to_code <- function(fid, lid) {
+  fid <- as.integer(fid)
+  lid <- as.integer(lid)
+  if (length(lid) == 1L) lid <- rep.int(lid, length(fid))
+  if (length(lid) != length(fid)) {
+    stop("family_id and link_id must have the same length.", call. = FALSE)
+  }
   out <- rep(NA_integer_, length(fid))
-  out[fid == 0L] <- 0L  # gaussian
-  out[fid == 1L] <- 1L  # binomial
-  out[fid == 2L] <- 2L  # poisson
-  out[fid == 5L] <- 3L  # nbinom2
+  out[fid == 0L & lid == 0L] <- 0L  # gaussian identity
+  out[fid == 1L & lid == 0L] <- 1L  # binomial logit
+  out[fid == 2L & lid == 0L] <- 2L  # poisson log
+  out[fid == 5L & lid == 0L] <- 3L  # nbinom2 log
+  out[fid == 1L & lid == 1L] <- 4L  # binomial probit (Design 108 Stage 4)
   if (anyNA(out)) {
-    stop("VA-R3 does not admit Laplace family_id values: ",
-         paste(unique(fid[is.na(out)]), collapse = ", "), ".",
-         call. = FALSE)
+    bad <- unique(paste0("(", fid[is.na(out)], ", ", lid[is.na(out)], ")"))
+    stop("VA-R3 does not admit Laplace (family_id, link_id) pairs: ",
+         paste(bad, collapse = ", "), ".", call. = FALSE)
   }
   as.integer(out)
 }
 
 .va_r3_code_to_name <- function(code) {
-  c("gaussian_anchor", "binomial", "poisson", "nbinom2")[as.integer(code) + 1L]
+  c("gaussian_anchor", "binomial", "poisson", "nbinom2",
+    "binomial_probit")[as.integer(code) + 1L]
 }
 
 .va_r3_validate_data <- function(y, n_trials, X, unit_id, trait_id, q,
@@ -316,8 +333,8 @@
   if (!is.null(family_codes)) {
     family_codes <- as.integer(family_codes)
     if (length(family_codes) != n_obs ||
-        any(!family_codes %in% c(0L, 1L, 2L, 3L))) {
-      stop("family_codes must be length nrow(X) with entries in {0,1,2,3}.",
+        any(!family_codes %in% c(0L, 1L, 2L, 3L, 4L))) {
+      stop("family_codes must be length nrow(X) with entries in {0,1,2,3,4}.",
            call. = FALSE)
     }
   } else if (is.numeric(family) || is.integer(family)) {
@@ -326,8 +343,8 @@
       family_codes <- rep.int(family_codes, n_obs)
     }
     if (length(family_codes) != n_obs ||
-        any(!family_codes %in% c(0L, 1L, 2L, 3L))) {
-      stop("numeric family must be length 1 or nrow(X) with codes in {0,1,2,3}.",
+        any(!family_codes %in% c(0L, 1L, 2L, 3L, 4L))) {
+      stop("numeric family must be length 1 or nrow(X) with codes in {0,1,2,3,4}.",
            call. = FALSE)
     }
   } else {
@@ -352,6 +369,7 @@
       link_vec <- vapply(family_codes, function(code) {
         switch(as.character(code),
                "0" = "identity", "1" = "logit", "2" = "log", "3" = "log",
+               "4" = "probit",
                "logit")
       }, character(1L))
     } else {
@@ -366,7 +384,8 @@
   for (code in unique(family_codes)) {
     rows <- which(family_codes == code)
     want <- switch(as.character(code),
-                   "0" = "identity", "1" = "logit", "2" = "log", "3" = "log")
+                   "0" = "identity", "1" = "logit", "2" = "log", "3" = "log",
+                   "4" = "probit")
     if (any(link_vec[rows] != want)) {
       stop("R3 link for family code ", code, " must be \"", want, "\".",
            call. = FALSE)
@@ -379,7 +398,8 @@
          call. = FALSE)
   }
 
-  bin_obs <- observed & family_codes == 1L
+  ## Codes 1 (logit) and 4 (probit) are the same binomial response shape.
+  bin_obs <- observed & family_codes %in% c(1L, 4L)
   if (any(bin_obs) &&
       (any(y[bin_obs] != as.integer(y[bin_obs])) ||
        any(n_trials[bin_obs] != as.integer(n_trials[bin_obs])) ||
@@ -392,7 +412,14 @@
   ## subsets leave trait-dummy columns all-zero on binomial rows and trip the
   ## guard spuriously; Stage 2 keeps the guard on the pure-binomial bit-compat
   ## path only.
-  if (any(bin_obs) && all(family_codes[observed] == 1L)) {
+  ##
+  ## Design 108 Stage 4 extends it to binomial-PROBIT unchanged. Separation is a
+  ## property of the DESIGN -- whether a hyperplane perfectly splits the 0/1
+  ## responses -- not of the link, so the marginal-logistic detector is the same
+  ## detector for probit data. If anything the refusal matters MORE there: the
+  ## normal tail is thinner than the logistic one, so a separated probit
+  ## likelihood flattens out faster.
+  if (any(bin_obs) && all(family_codes[observed] %in% c(1L, 4L))) {
     .va_r3_check_separation(y[bin_obs], n_trials[bin_obs], X[bin_obs, , drop = FALSE])
   }
   count_obs <- observed & family_codes %in% c(2L, 3L)
@@ -401,9 +428,10 @@
     stop("Poisson/nbinom2 R3 data require finite non-negative integer y on observed rows.",
          call. = FALSE)
   }
-  ## Non-binomial branches do not use n_trials; keep finite sentinels.
+  ## Non-binomial branches do not use n_trials; keep finite sentinels. Both
+  ## binomial codes (1 logit, 4 probit) DO use it, so neither may be reset.
   n_trials <- as.integer(n_trials)
-  n_trials[family_codes != 1L] <- 1L
+  n_trials[!(family_codes %in% c(1L, 4L))] <- 1L
 
   if (!is.numeric(gaussian_sd) || any(!is.finite(gaussian_sd)) ||
       any(gaussian_sd <= 0)) {
@@ -567,6 +595,12 @@
   if (any(bin)) {
     prop <- pmin(pmax((y[bin] + 0.5) / (n_trials[bin] + 1), 1e-6), 1 - 1e-6)
     out[bin] <- stats::qlogis(prop)
+  }
+  probit <- fam == 4L
+  if (any(probit)) {
+    prop <- pmin(pmax((y[probit] + 0.5) / (n_trials[probit] + 1), 1e-6),
+                 1 - 1e-6)
+    out[probit] <- stats::qnorm(prop)
   }
   count <- fam %in% c(2L, 3L)
   if (any(count)) out[count] <- log(y[count] + 0.5)
@@ -750,6 +784,27 @@
     ## produced the ONLY same-optimum disagreement in the whole sweep
     ## (max|dpar| 0.0119 at q=2 with identical objectives). Routing here to
     ## nlminb keeps "auto" away from the one cell that disagreed.
+    optimizer_by_tier = list(gh = "nlminb")
+  ),
+
+  ## Binomial-PROBIT (Design 108 Gate A Stage 4). E[log Phi(eta)] has no closed
+  ## form and no analogue of the Jaakkola-Jordan bound, so Gauss-Hermite is the
+  ## only tier -- asking for "jj" here is an error, not a fallback.
+  ##
+  ## RESEARCH SPIKE, not a capability: this entry makes the family reachable
+  ## from the prototype engine only. It is deliberately NOT on the public
+  ## integration fence (R/integration-fence.R), so `integration = "va"` still
+  ## refuses binomial-probit from the formula API. No recovery evidence exists.
+  ##
+  ## optimizer: no benchmark has been run for this family, so it inherits the
+  ## reference optimiser rather than claiming a measured choice.
+  list(
+    family = "binomial_probit",
+    family_code = 4L,
+    link = "probit",
+    tiers = "gh",
+    default_tier = "gh",
+    expectation = "quadrature",
     optimizer_by_tier = list(gh = "nlminb")
   )
 )
@@ -1282,7 +1337,8 @@
 
 .va_r3_fit <- function(y, n_trials, X, unit_id, trait_id, q,
                        N = NULL, T = NULL,
-                       family = c("binomial", "poisson", "gaussian_anchor", "nbinom2"),
+                       family = c("binomial", "poisson", "gaussian_anchor",
+                                  "nbinom2", "binomial_probit"),
                        link = NULL,
                        unique = FALSE, psi = FALSE, structured = FALSE,
                        provider = NULL, lv = FALSE, missing = FALSE,
@@ -1297,12 +1353,13 @@
                        family_codes = NULL,
                        estimate_gaussian_sd = TRUE) {
   family_choices <- c("binomial", "poisson", "gaussian_anchor", "nbinom2",
-                      "gaussian")
+                      "binomial_probit", "gaussian")
   if (is.null(family_codes)) {
     if (length(family) == 1L) {
       family <- match.arg(family, family_choices)
     } else if (identical(unname(as.character(family)),
-                         c("binomial", "poisson", "gaussian_anchor", "nbinom2"))) {
+                         c("binomial", "poisson", "gaussian_anchor", "nbinom2",
+                           "binomial_probit"))) {
       ## Default formal value — match.arg() would return the first choice.
       family <- "binomial"
     }
@@ -1317,6 +1374,7 @@
              gaussian = "identity",
              poisson = "log",
              nbinom2 = "log",
+             binomial_probit = "probit",
              "logit")
     }
   }
@@ -1325,7 +1383,7 @@
     codes <- as.integer(family_codes)
     link <- vapply(codes, function(c) {
       switch(as.character(c), "0" = "identity", "1" = "logit",
-             "2" = "log", "3" = "log", "logit")
+             "2" = "log", "3" = "log", "4" = "probit", "logit")
     }, character(1L))
   }
   rank_source <- match.arg(rank_source)
@@ -1357,7 +1415,8 @@
       objective_type = .va_r3_objective_type(resolved_eval_method),
       rank_source = rank_source,
       family = switch(family, gaussian_anchor = "gaussian", poisson = "poisson",
-                      nbinom2 = "nbinom2", "binomial"),
+                      nbinom2 = "nbinom2", binomial_probit = "binomial_probit",
+                      "binomial"),
       link = link,
       unique = FALSE,
       eval_method = resolved_eval_method,

@@ -112,6 +112,153 @@ Type va_r3_jj_softplus_expectation(const Type &mu, const Type &v)
   return CppAD::CondExpGt(xi2, threshold, exact, expansion);
 }
 
+// ---------------------------------------------------------------------------
+// Design 108 Gate A Stage 4: a tail-safe log Phi for use INSIDE the quadrature.
+//
+// Design 105 s1.3 is the reason this exists.  Every probit guard in the shipped
+// engine was written for a single evaluation at eta = mu, but under the
+// physicists' Gauss-Hermite rule the integrand is evaluated at
+// eta_h = mu + sqrt(2v) x_h, and the extreme node reaches +/- 6.36 SD of eta at
+// H = 15 and +/- 14.50 SD at H = 61.  Past x ~ -37.5 the double-precision
+// pnorm() underflows to 0, and past x ~ -38.6 dnorm() does too, so the naive
+// derivative dnorm(x)/pnorm(x) becomes 0/0 = NaN -- which is a NaN gradient,
+// not a slightly wrong one.  Verified: dnorm(-40)/pnorm(-40) is NaN in double.
+//
+// Laplace continued fraction for the Mills ratio (Laplace 1805; the standard
+// convergent -- NOT asymptotic -- expansion), evaluated by backward recurrence:
+//
+//   Phi(-z) / phi(z) = 1 / (z + 1/(z + 2/(z + 3/(z + ...))))     for z > 0
+//
+// This returns the tail c(z) so that the Mills ratio is 1/(z + c) and its
+// reciprocal, the inverse Mills ratio phi(z)/Phi(-z), is exactly (z + c).  The
+// recurrence only ever divides by (z + c) with c >= 0 and z >= va_r3_logphi_z0,
+// so every denominator is bounded below by that switch point: the whole helper
+// is a bounded rational function of z with no branch and nothing that can
+// vanish.  With the switch at z = 10 and K = 20 terms the value agrees with R's
+// pnorm(log.p = TRUE) to 0 ULP over z in [10, 200] (measured, not asserted).
+template <class Type>
+Type va_r3_mills_cf(const Type &z)
+{
+  const int K = 20;
+  Type c = Type(0.0);
+  for (int k = K; k >= 1; --k)
+    c = Type(static_cast<double>(k)) / (z + c);
+  return c;
+}
+
+// The switch point |x| = z0 between the continued fraction and log(pnorm()).
+// Both sides have headroom at 10: pnorm(-10) = 7.6e-24 is 284 orders above
+// underflow, and the CF has already converged to 0 ULP by z = 10 with K = 20.
+static const double va_r3_logphi_z0 = 10.0;
+
+// log Phi(x), tail-safe for arbitrarily negative x.
+//
+// AD-safety rests on ONE rule, the same one the shipped engine's
+// gll_log_pnorm() uses (src/gllvmTMB.cpp:83): CppAD::CondExp evaluates BOTH
+// branches, so an UNSELECTED branch that computes a non-finite value can still
+// contaminate the tape.  The fix is to clamp the INPUT of each branch, never
+// its output, so that neither branch can produce a non-finite value or a
+// non-finite partial in the region where it is not used.
+//
+// WHAT THE CLAMP ACTUALLY PROTECTS -- measured, do not weaken on the strength
+// of a gradient check (adversarial review, 2026-08-02).  An earlier version of
+// this comment said an unselected log(0) "would poison the GRADIENT".  That is
+// WRONG on this CppAD/TMB build, and the error is dangerous in one specific
+// way: it invites a future reader to test only obj$gr(), see it finite, and
+// conclude the clamp is unnecessary.  Removing the clamp and probing at
+// x = -50 gives, measurably:
+//     clamped (as shipped) : fn 1254.83   gr -50.02   he  0.999601
+//     unclamped            : fn 1254.83   gr -50.02   he  NaN
+// The gradient stays finite AND CORRECT; it is the HESSIAN that dies.  So any
+// check that this clamp is still needed MUST call obj$he(), not just obj$gr().
+// test-va-probit-adsafety.R's `finite` predicate does include he() -- that is
+// why the test is stronger than the rationale this comment used to give.
+//
+// Only the LEFT tail needs the special form.  The right tail is handled by
+// symmetry at the call site (log(1 - Phi(eta)) is always written log Phi(-eta)),
+// so the cancellation-prone difference of two nearly-equal CDFs -- Design 105
+// s6.3's objection -- is never formed at all.
+template <class Type>
+Type va_r3_log_pnorm(const Type &x)
+{
+  const Type z0 = Type(va_r3_logphi_z0);
+  const Type half_log_two_pi = Type(0.5) *
+    log(Type(2.0) * Type(3.141592653589793238462643383279502884));
+  // Tail branch: z = max(-x, z0) >= z0 > 0, so the continued fraction is
+  // evaluated only where it converges, and -0.5 z^2 - log(z + c) is finite for
+  // every finite z.
+  Type z = CppAD::CondExpGt(-x, z0, -x, z0);
+  Type tail = -Type(0.5) * z * z - half_log_two_pi - log(z + va_r3_mills_cf(z));
+  // Direct branch: xd = max(x, -z0) >= -10, where pnorm(xd) >= 7.62e-24 and
+  // the derivative dnorm(xd)/pnorm(xd) <= 10.03.  Nothing underflows.
+  Type xd = CppAD::CondExpLt(x, -z0, -z0, x);
+  Type direct = log(pnorm(xd));
+  return CppAD::CondExpLt(x, -z0, tail, direct);
+}
+
+// Inverse Mills ratio lambda(x) = phi(x)/Phi(x) = d/dx log Phi(x).
+//
+// Needed only by the small-v expansion below, but it carries the same 0/0
+// hazard, so it gets the same two-branch treatment.  In the tail it is the
+// continued-fraction DENOMINATOR (z + c) read off directly -- no division by a
+// probability that has underflowed.
+template <class Type>
+Type va_r3_inv_mills(const Type &x)
+{
+  const Type z0 = Type(va_r3_logphi_z0);
+  Type z = CppAD::CondExpGt(-x, z0, -x, z0);
+  Type tail = z + va_r3_mills_cf(z);
+  Type xd = CppAD::CondExpLt(x, -z0, -z0, x);
+  Type direct = dnorm(xd, Type(0.0), Type(1.0), false) / pnorm(xd);
+  return CppAD::CondExpLt(x, -z0, tail, direct);
+}
+
+// E[ y log Phi(eta) + (n - y) log Phi(-eta) ] for eta ~ N(mu, v), by the same
+// physicists' Gauss-Hermite rule the softplus expectation uses.
+//
+// Small v: as for softplus, sqrt(v) has an unbounded derivative at v = 0, so
+// the GH branch receives max(v, threshold) and the outer CondExp selects a
+// heat-kernel expansion below the threshold.  Here the expansion is carried to
+// FIRST order in v,
+//     E[g(mu + sqrt(v) Z)] = g(mu) + v g''(mu)/2 + O(v^2),
+// with g''(x) obtained from the standard identity
+//     d^2/dx^2 log Phi(x) = -lambda(x) (x + lambda(x)).
+// Stopping at first order (rather than the softplus branch's third) is a
+// deliberate, bounded choice: at the shared threshold v = 1e-6 the omitted term
+// is O(v^2) = 1e-12 in the value and O(v) = 1e-6 RELATIVE in dE/dv, against an
+// O(1) leading term -- while the fourth derivative of log Phi is a quartic in
+// lambda whose hand-derivation is a correctness risk with no measurable payoff.
+template <class Type>
+Type va_r3_probit_expectation(const Type &mu, const Type &v,
+                              const Type &y, const Type &n,
+                              const vector<Type> &gh_nodes,
+                              const vector<Type> &gh_weights)
+{
+  const Type threshold = Type(1e-6);
+
+  Type lam_p = va_r3_inv_mills(mu);
+  Type lam_q = va_r3_inv_mills(-mu);
+  // g(eta) = y logPhi(eta) + (n-y) logPhi(-eta); the second term's second
+  // derivative in eta is logPhi''(-mu), hence the sign flip on mu below.
+  Type d2_p = -lam_p * (mu + lam_p);
+  Type d2_q = -lam_q * (-mu + lam_q);
+  Type expansion = y * va_r3_log_pnorm(mu) + (n - y) * va_r3_log_pnorm(-mu)
+    + v * (y * d2_p + (n - y) * d2_q) / Type(2.0);
+
+  Type safe_v = CppAD::CondExpGt(v, threshold, v, threshold);
+  Type scale = sqrt(Type(2.0) * safe_v);
+  Type weighted_sum = Type(0.0);
+  for (int h = 0; h < gh_nodes.size(); ++h) {
+    Type eta_h = mu + scale * gh_nodes(h);
+    weighted_sum += gh_weights(h) *
+      (y * va_r3_log_pnorm(eta_h) + (n - y) * va_r3_log_pnorm(-eta_h));
+  }
+  const Type sqrt_pi = sqrt(Type(3.141592653589793238462643383279502884));
+  Type quadrature = weighted_sum / sqrt_pi;
+
+  return CppAD::CondExpGt(v, threshold, quadrature, expansion);
+}
+
 template <class Type>
 Type objective_function<Type>::operator()()
 {
@@ -130,7 +277,9 @@ Type objective_function<Type>::operator()()
   DATA_VECTOR(gh_nodes);
   DATA_VECTOR(gh_weights);
   // Design 108 Stage 2: per-row family codes (dense N*T), same layout as y.
-  // 0 = Gaussian; 1 = binomial-logit; 2 = Poisson-log; 3 = nbinom2-log.
+  // 0 = Gaussian; 1 = binomial-logit; 2 = Poisson-log; 3 = nbinom2-log;
+  // 4 = binomial-probit (Design 108 Gate A Stage 4; research spike, not on the
+  // public integration fence).
   DATA_IVECTOR(family);
   DATA_INTEGER(eval_method);       // 0 = Gauss-Hermite quadrature;
                                    // 1 = Jaakkola-Jordan/PG bound (binomial-only fits)
@@ -182,7 +331,10 @@ Type objective_function<Type>::operator()()
   // checks apply only to observed cells (Design 107); masked sentinels are
   // never fed to a density call.
   std::vector<int> cell_count(N * T, 0);
-  int n_non_binomial = 0;
+  // The Jaakkola-Jordan bound is a bound on the LOGISTIC term specifically, so
+  // it admits family code 1 and nothing else -- binomial-PROBIT (code 4) is a
+  // binomial family for which the bound is undefined, and must be counted here.
+  int n_non_jj = 0;
   for (int r = 0; r < n_obs; ++r) {
     int i = unit_id(r);
     int t = trait_id(r);
@@ -192,13 +344,13 @@ Type objective_function<Type>::operator()()
       error("gllvmTMB_va_r3: unit_id or trait_id is out of range");
     if (obs != 0 && obs != 1)
       error("gllvmTMB_va_r3: is_y_observed entries must be 0 or 1");
-    if (fam != 0 && fam != 1 && fam != 2 && fam != 3)
-      error("gllvmTMB_va_r3: family entries must be 0 (Gaussian), 1 (binomial), 2 (Poisson), or 3 (nbinom2)");
-    if (fam != 1) n_non_binomial += 1;
+    if (fam != 0 && fam != 1 && fam != 2 && fam != 3 && fam != 4)
+      error("gllvmTMB_va_r3: family entries must be 0 (Gaussian), 1 (binomial-logit), 2 (Poisson), 3 (nbinom2), or 4 (binomial-probit)");
+    if (fam != 1) n_non_jj += 1;
     cell_count[i * T + t] += 1;
     if (!std::isfinite(asDouble(y(r))) || !std::isfinite(asDouble(n_trials(r))))
       error("gllvmTMB_va_r3: y and n_trials must be finite");
-    if (obs == 1 && fam == 1) {
+    if (obs == 1 && (fam == 1 || fam == 4)) {
       double yd = asDouble(y(r));
       double nd = asDouble(n_trials(r));
       if (nd < 1.0 || std::floor(nd) != nd || yd < 0.0 || yd > nd ||
@@ -211,8 +363,8 @@ Type objective_function<Type>::operator()()
         error("gllvmTMB_va_r3: Poisson/nbinom2 cells require finite non-negative integer y");
     }
   }
-  if (eval_method == 1 && n_non_binomial > 0)
-    error("gllvmTMB_va_r3: eval_method = 1 (Jaakkola-Jordan/PG bound) requires every row to be binomial");
+  if (eval_method == 1 && n_non_jj > 0)
+    error("gllvmTMB_va_r3: eval_method = 1 (Jaakkola-Jordan/PG bound) requires every row to be binomial-logit (family code 1)");
   for (int cell = 0; cell < N * T; ++cell) {
     if (cell_count[cell] != 1)
       error("gllvmTMB_va_r3: every unit-trait cell must occur exactly once");
@@ -372,7 +524,7 @@ Type objective_function<Type>::operator()()
       // Poisson-log: E[exp(eta)] for eta ~ N(mu, v) is exact (log-normal
       // mean), so no quadrature is required.
       ell = y(r) * mu - exp(mu + v / Type(2.0)) - lgamma(y(r) + Type(1.0));
-    } else {
+    } else if (fam == 3) {
       // nbinom2-log: log p(y|eta) = lgamma(y+phi) - lgamma(phi) - lgamma(y+1)
       //   + phi*log(phi) - (y+phi)*log(phi + exp(eta)) + y*eta
       // The only hard term is E[log(phi + exp(eta))]. Since
@@ -391,6 +543,19 @@ Type objective_function<Type>::operator()()
       ell = lgamma(y(r) + phi) - lgamma(phi) - lgamma(y(r) + Type(1.0))
         - y(r) * log_phi_t + y(r) * mu
         - (y(r) + phi) * softplus_expectation;
+    } else {
+      // fam == 4, Design 108 Gate A Stage 4 -- binomial-probit:
+      //   log p(y|eta) = log_choose + y log Phi(eta) + (n-y) log(1 - Phi(eta))
+      // The second term is written log Phi(-eta) by symmetry, so no difference
+      // of two nearly-equal CDFs is ever formed (Design 105 s6.3's objection)
+      // and BOTH terms go through the one tail-safe log-scale primitive.
+      // No dispersion parameter: log_phi is nbinom2's and log_sigma Gaussian's.
+      Type n = n_trials(r);
+      Type log_choose = lgamma(n + Type(1.0))
+        - lgamma(y(r) + Type(1.0))
+        - lgamma(n - y(r) + Type(1.0));
+      ell = log_choose +
+        va_r3_probit_expectation(mu, v, y(r), n, gh_nodes, gh_weights);
     }
     if (!std::isfinite(asDouble(ell)))
       Rf_error("gllvmTMB_va_r3: non-finite expected log-likelihood at unit %d trait %d", i, t);

@@ -15,7 +15,18 @@
       ## The description is a string rather than FALSE because the honest
       ## answer is no longer a single flag.
       unique = "FALSE, or TRUE as an exact trait-diagonal Psi tier (Design 106 Prop. 2)",
-      covariance = "unstructured tiers only: ordinary latent loadings, optionally plus dense or trait-diagonal extra tiers; no structured (phylo/SPDE) prior"
+      ## Stage 7: an extra tier may carry a STRUCTURED prior through a shared
+      ## sparse precision (`structured = list(Ainv = ...)`), which is the
+      ## phylogenetic / pedigree / dense-kernel case. Tier 1 stays the ordinary
+      ## latent tier, and the SPDE case is NOT admitted: its precision depends
+      ## on an estimated kappa, so its log-determinant is not a data constant
+      ## (Design 106 s3.4) and a node-factorised q is a poor approximation
+      ## under the multi-node A_proj loading (s3.6).
+      covariance = paste(
+        "ordinary latent loadings, optionally plus dense or trait-diagonal",
+        "extra tiers; an extra tier may take a structured prior from one",
+        "shared fixed sparse precision (phylo/pedigree/kernel); no SPDE"
+      )
     ),
     eva = list(
       family = "binomial, Poisson, or Gaussian (identity, test-only)",
@@ -71,17 +82,20 @@
     extra_tiers = NULL) {
   eval_method <- match.arg(eval_method)
   ## Design 108 Gate A Stage 6 lifted the `unique` refusal here IN LOCKSTEP
-  ## with .va_r3_validate_data() (R/va-r3-proto.R). Two copies of one gate that
-  ## disagree is worse than either: this adapter would refuse a model the
-  ## engine admits, or -- after the engine relaxed -- admit one silently by a
-  ## different route. `unique`/`psi` now travel through to the validator, which
-  ## turns them into a trait-diagonal Psi tier; `structured`, `provider`, `lv`
-  ## and `missing` are still refused there, unchanged.
+  ## with .va_r3_validate_data() (R/va-r3-proto.R), and Stage 7 lifts the
+  ## `structured` one the same way. Two copies of one gate that disagree is
+  ## worse than either: this adapter would refuse a model the engine admits,
+  ## or -- after the engine relaxed -- admit one silently by a different route.
+  ## `unique`/`psi` travel through to the validator, which turns them into a
+  ## trait-diagonal Psi tier; `structured` now travels through as the shared
+  ## sparse precision a `structured = TRUE` extra tier attaches to. `provider`,
+  ## `lv` and `missing` are still refused there, unchanged.
   ##
   ## This does NOT open the public route. R/integration-fence.R still refuses
-  ## `unique = TRUE` under `integration = "va"`, and nothing in this arc
-  ## touched it: there is no VA recovery evidence for a multi-tier or diag(psi)
-  ## model, and the fence is where that evidence gate lives.
+  ## `unique = TRUE` and every phylo/spatial term under `integration = "va"`,
+  ## and nothing in this arc touched it: there is no VA recovery evidence for a
+  ## multi-tier, diag(psi) or phylogenetic model, and the fence is where that
+  ## evidence gate lives.
   if (is.null(family_codes)) {
     family <- .approximation_engine_scalar_character(family, "family")
     link <- .approximation_engine_scalar_character(link, "link")

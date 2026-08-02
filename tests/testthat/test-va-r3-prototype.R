@@ -45,17 +45,19 @@ test_that("R3 accepts only the predeclared complete ordinary model cell", {
     do.call(.va_r3_validate_data, c(args, list(psi = TRUE)))$tier_layout$kind,
     c("dense", "diagonal")
   )
-  ## The structured / provider / lv / missing half stays CLOSED. That is Stage
-  ## 7's KL, not Stage 6's index.
+  ## Stage 7 opened `structured` -- but only as a list carrying the precision.
+  ## A bare TRUE names a structure with nothing to be structured BY and is
+  ## still refused; `provider` / `lv` / `missing` stay CLOSED, untouched. The
+  ## structured tier itself is exercised in test-va-r3-structured-phylo.R.
   expect_error(do.call(.va_r3_validate_data, c(args, list(structured = TRUE))),
-               "ordinary latent")
+               "must be FALSE, or a list")
   expect_error(do.call(.va_r3_validate_data,
                        c(args, list(provider = list(kind = "phylo")))),
-               "ordinary latent")
+               "no structured provider")
   expect_error(do.call(.va_r3_validate_data, c(args, list(lv = TRUE))),
-               "ordinary latent")
+               "no structured provider")
   expect_error(do.call(.va_r3_validate_data, c(args, list(missing = TRUE))),
-               "ordinary latent")
+               "no structured provider")
   expect_error(do.call(.va_r3_validate_data,
                        within(args, trait_id <- c(1L, 1L, 1L, 2L))),
                "exactly one dense")
@@ -1473,7 +1475,16 @@ test_that("R3 template refuses an inconsistent tier declaration loudly", {
                  gh_nodes = rule$nodes, gh_weights = rule$weights,
                  family = 1L, eval_method = 0L, n_tiers = 1L, tier_kind = 0L,
                  tier_dim = 1L, tier_n_levels = 1L,
-                 level_id = matrix(0L, 1L, 1L)),
+                 level_id = matrix(0L, 1L, 1L),
+                 ## Stage 7's structured-prior DATA. The base probe declares
+                 ## the tier UNSTRUCTURED, so the precision slots are the
+                 ## placeholders the template never reads.
+                 tier_structured = 0L,
+                 Ainv_struct = Matrix::sparseMatrix(i = integer(0),
+                                                    j = integer(0),
+                                                    x = numeric(0),
+                                                    dims = c(1L, 1L)),
+                 diag_Ainv_struct = 0, log_det_A_struct = 0),
       par = list(beta = 0, theta_rr = 1, log_sd_tier = numeric(0), m = 0,
                  log_L_diag = 0, L_off = numeric(0), log_phi = 0,
                  log_sigma = 0)
@@ -1496,12 +1507,53 @@ test_that("R3 template refuses an inconsistent tier declaration loudly", {
     z$dat$tier_kind <- c(0L, 1L)
     z$dat$tier_dim <- c(1L, 3L)          # T is 1, so 3 is not a trait-diagonal
     z$dat$tier_n_levels <- c(1L, 1L)
+    z$dat$tier_structured <- c(0L, 0L)
     z$dat$level_id <- matrix(0L, 1L, 2L)
     z$par$log_sd_tier <- 0
     z$par$m <- rep(0, 4L)
     z$par$log_L_diag <- rep(0, 4L)
     z
   }), "trait-diagonal tier must have tier_dim = T")
+  ## Stage 7's own guards, probed the same way. Each is a declaration the R
+  ## adapter cannot produce, so the template has to catch it itself.
+  expect_match(probe(function(z) { z$dat$tier_structured <- c(0L, 0L); z }),
+               "tier_structured must have length n_tiers")
+  expect_match(probe(function(z) { z$dat$tier_structured <- 1L; z }),
+               "tier 0 is the ordinary latent tier and must be unstructured")
+  expect_match(probe(function(z) {
+    ## Two tiers, the second structured against a 3x3 precision while
+    ## declaring 1 level: the level set and the matrix disagree.
+    z$dat$n_tiers <- 2L
+    z$dat$tier_kind <- c(0L, 0L)
+    z$dat$tier_dim <- c(1L, 1L)
+    z$dat$tier_n_levels <- c(1L, 1L)
+    z$dat$tier_structured <- c(0L, 1L)
+    z$dat$level_id <- matrix(0L, 1L, 2L)
+    z$dat$Ainv_struct <- Matrix::sparseMatrix(i = 1:3, j = 1:3, x = rep(1, 3),
+                                              dims = c(3L, 3L))
+    z$dat$diag_Ainv_struct <- rep(1, 3)
+    z$par$m <- rep(0, 2L)
+    z$par$log_L_diag <- rep(0, 2L)
+    z$par$theta_rr <- c(1, 1)
+    z
+  }), "one level per row of Ainv_struct")
+  expect_match(probe(function(z) {
+    z$dat$n_tiers <- 2L
+    z$dat$tier_kind <- c(0L, 0L)
+    z$dat$tier_dim <- c(1L, 1L)
+    z$dat$tier_n_levels <- c(1L, 1L)
+    z$dat$tier_structured <- c(0L, 1L)
+    z$dat$level_id <- matrix(0L, 1L, 2L)
+    ## A COVARIANCE where a precision belongs would still be square and
+    ## symmetric; a non-positive diagonal is the cheap, always-available tell.
+    z$dat$Ainv_struct <- Matrix::sparseMatrix(i = 1L, j = 1L, x = -1,
+                                              dims = c(1L, 1L))
+    z$dat$diag_Ainv_struct <- -1
+    z$par$m <- rep(0, 2L)
+    z$par$log_L_diag <- rep(0, 2L)
+    z$par$theta_rr <- c(1, 1)
+    z
+  }), "finite and strictly positive")
   expect_match(probe(function(z) { z$dat$level_id <- matrix(3L, 1L, 1L); z }),
                "level_id is out of range")
   expect_match(probe(function(z) { z$dat$level_id <- matrix(0L, 1L, 2L); z }),

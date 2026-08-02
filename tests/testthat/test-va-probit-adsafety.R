@@ -46,7 +46,18 @@
               ## Stage-5 model rather than changing it -- (mu, v) and every
               ## derivative measured below are unaltered.
               n_tiers = 1L, tier_kind = 0L, tier_dim = 1L,
-              tier_n_levels = 1L, level_id = matrix(0L, 1L, 1L))
+              tier_n_levels = 1L, level_id = matrix(0L, 1L, 1L),
+              ## Design 108 Stage 7 added the structured-prior DATA. This
+              ## fixture's one tier is the ordinary latent tier, so it is
+              ## UNSTRUCTURED and the precision slots are the placeholders the
+              ## template never reads. Same model, same (mu, v), same
+              ## derivatives -- what changed is the declaration, not the cell.
+              tier_structured = 0L,
+              Ainv_struct = Matrix::sparseMatrix(i = integer(0),
+                                                 j = integer(0),
+                                                 x = numeric(0),
+                                                 dims = c(1L, 1L)),
+              diag_Ainv_struct = 0, log_det_A_struct = 0)
   par <- list(beta = mu, theta_rr = 1, log_sd_tier = numeric(0),
               m = 0, log_L_diag = 0.5 * log(v),
               L_off = numeric(0), log_phi = 0, log_sigma = 0)

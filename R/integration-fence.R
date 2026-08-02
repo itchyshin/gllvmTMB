@@ -34,6 +34,15 @@
 ##     claim, not the gap to that target.
 ##   * `engine = "julia"` -- the bridge implements no variational route at all.
 ##     R first, Julia next (maintainer, 2026-07-31).
+##   * binomial-PROBIT is DELIBERATELY ABSENT (Design 108 Gate A Stage 4). The
+##     VA template implements it (family code 4, tail-safe log Phi), and the
+##     route now translates it correctly instead of silently mis-routing it onto
+##     the logit branch -- but implementing a family is not evidence about it.
+##     No recovery, coverage, or bound-tightness measurement exists for probit
+##     under VA, and Design 108 s2 is explicit that the Bernoulli-LOGIT evidence
+##     does not transfer. The single-link `links` entry below is therefore what
+##     refuses it, with the message a user who wrote binomial(link = "probit")
+##     needs. Admitting it requires Stage 8's measurement, not this code.
 .gllvmTMB_integration_fence_limits <- function() {
   list(
     ## Design 108 Stage 2: gaussian (identity) admitted alongside binomial /

@@ -124,9 +124,11 @@ test_that("integration = \"va\" admits mixed binomial+poisson under the fence", 
 })
 
 test_that("Laplace-to-VA family id map covers gaussian/binomial/poisson/nbinom2", {
+  ## Design 108 Stage 4 made the map LINK-aware; link_id 0 is the canonical link
+  ## for all four of these, so the Stage-2 mapping is unchanged.
   expect_identical(
-    .va_r3_laplace_id_to_code(c(0L, 1L, 2L, 5L)),
+    .va_r3_laplace_id_to_code(c(0L, 1L, 2L, 5L), c(0L, 0L, 0L, 0L)),
     c(0L, 1L, 2L, 3L)
   )
-  expect_error(.va_r3_laplace_id_to_code(14L), "does not admit")
+  expect_error(.va_r3_laplace_id_to_code(14L, 0L), "does not admit")
 })

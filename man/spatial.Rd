@@ -44,12 +44,11 @@ or this function.}
 A formula marker; never evaluated.
 }
 \description{
-\code{spatial()} is a unified entry point for the package's four taught
-spatial modes (\code{spatial_scalar}, \code{spatial_indep}, \code{spatial_latent},
-\code{spatial_dep}). It accepts an lme4-bar formula on
+\code{spatial()} is a unified entry point for the package's three spatial modes
+(\code{spatial_indep}, \code{spatial_latent}, \code{spatial_dep}). It accepts an lme4-bar formula on
 the first argument and dispatches to the appropriate canonical
 keyword based on the LHS shape and the optional \code{mode = ...} argument.
-The four current keywords stay first-class -- \code{spatial()} is an
+The three current keywords stay first-class -- \code{spatial()} is an
 additive alias matching the lme4 / brms / drmTMB convention.
 }
 \details{
@@ -60,7 +59,7 @@ Hadfield A^-1).
 \section{Dispatch rules}{
 \tabular{lll}{
    Form \tab Mode default \tab Rewrites to \cr
-   \verb{spatial(1 \| site)} \tab \code{"scalar"} \tab \verb{spatial_scalar(0 + trait \| coords)} \cr
+   \verb{spatial(1 \| site)} \tab \code{"scalar"} \tab \verb{spatial_indep(0 + trait \| coords, common = TRUE)} \cr
    \verb{spatial(0 + trait \| coords, mode = "indep")} \tab (mandatory) \tab \verb{spatial_indep(0 + trait \| coords)} \cr
    \verb{spatial(0 + trait \| coords, mode = "latent", d = K)} \tab (mandatory) \tab \verb{spatial_latent(0 + trait \| coords, d = K)} \cr
    \verb{spatial(0 + trait \| coords, mode = "dep")} \tab (mandatory) \tab \verb{spatial_dep(0 + trait \| coords)} \cr
@@ -105,7 +104,7 @@ convention; user muscle memory transfers.
 \examples{
 \dontrun{
 library(fmesher)
-# Single shared spatial-field variance (= spatial_scalar)
+# Single shared spatial-field variance (= spatial_indep(..., common = TRUE))
 fit_s <- gllvmTMB(value ~ 0 + trait + spatial(1 | site, mesh = mesh),
                   data  = df,
                   trait = "trait",
@@ -133,7 +132,7 @@ fit_legacy <- gllvmTMB(value ~ 0 + trait + spatial(0 + trait | coords),
 }
 }
 \seealso{
-\code{\link[=spatial_scalar]{spatial_scalar()}}, \code{\link[=spatial_indep]{spatial_indep()}},
+\code{\link[=spatial_indep]{spatial_indep()}},
 \code{\link[=spatial_latent]{spatial_latent()}}, \code{\link[=spatial_dep]{spatial_dep()}}, \code{\link[=phylo]{phylo()}} (phylogenetic
 parallel), \code{\link[=spde]{spde()}} (deeper deprecated alias).
 }

@@ -238,18 +238,17 @@
 
 #' Phylogenetic random effect: lme4-bar mode-dispatch wrapper
 #'
-#' `phylo()` is a unified entry point for the package's four taught
-#' phylogenetic modes (`phylo_scalar`, `phylo_indep`, `phylo_latent`,
-#' `phylo_dep`). It accepts an lme4-bar formula on the
+#' `phylo()` is a unified entry point for the package's three phylogenetic modes
+#' (`phylo_indep`, `phylo_latent`, `phylo_dep`). It accepts an lme4-bar formula on the
 #' first argument and dispatches to the appropriate canonical keyword
 #' based on the LHS shape and the optional `mode = ...` argument. The
-#' four current keywords stay first-class -- `phylo()` is an additive
+#' three current keywords stay first-class -- `phylo()` is an additive
 #' alias matching the lme4 / brms / drmTMB convention.
 #'
 #' @section Dispatch rules:
 #' | Form                                            | Mode default | Rewrites to                                |
 #' |-------------------------------------------------|--------------|--------------------------------------------|
-#' | `phylo(1 \| species)`                           | `"scalar"`   | `phylo_scalar(species)`                    |
+#' | `phylo(1 \| species)`                           | `"scalar"`   | `phylo_indep(0 + trait \| species, common = TRUE)` |
 #' | `phylo(0 + trait \| species, mode = "indep")`   | (mandatory)  | `phylo_indep(0 + trait \| species)`        |
 #' | `phylo(0 + trait \| species, mode = "latent", d = K)` | (mandatory) | `phylo_latent(species, d = K)`        |
 #' | `phylo(0 + trait \| species, mode = "dep")`     | (mandatory)  | `phylo_dep(0 + trait \| species)`          |
@@ -987,9 +986,9 @@ phylo_unique <- function(
 #' -- same engine, new name. See [spde()] for the technical details on
 #' the Matern \eqn{\nu = 1} kernel.
 #'
-#' Compare to [spatial_scalar()] (ONE shared variance across traits)
-#' and [spatial_latent()] (K-dim spatial latent factors with a loading
-#' matrix).
+#' Compare to [spatial_indep()] with `common = TRUE` (one shared variance
+#' across traits) and [spatial_latent()] (K-dim spatial latent factors with a
+#' loading matrix).
 #'
 #' @section Formula orientation:
 #' The canonical orientation is `0 + trait | coords` (LHS = trait factor,
@@ -1011,7 +1010,7 @@ phylo_unique <- function(
 #'   supplied here or through the top-level `mesh =` argument to [gllvmTMB()].
 #'   The engine does not construct a mesh automatically from `coords`.
 #' @return A formula marker; never evaluated.
-#' @seealso [spatial_scalar()], [spatial_latent()], [spde()] (deprecated alias).
+#' @seealso [spatial_indep()], [spatial_latent()], [spde()] (deprecated alias).
 #' @examples
 #' \dontrun{
 #'   sim <- simulate_site_trait(
@@ -1021,7 +1020,7 @@ phylo_unique <- function(
 #'   mesh <- make_mesh(sim$data, c("lon", "lat"), cutoff = 0.1)
 #'   fit <- gllvmTMB(
 #'     value ~ 0 + trait +
-#'             spatial_unique(0 + trait | site, mesh = mesh),
+#'             spatial_indep(0 + trait | site, mesh = mesh),
 #'     data  = sim$data,
 #'     trait = "trait",
 #'     unit  = "site"
@@ -1032,9 +1031,14 @@ spatial_unique <- function(formula, coords = NULL, mesh = NULL) {
   invisible(NULL)
 }
 
-#' One shared spatial-field variance across traits: `spatial_scalar(0 + trait | coords)`
+#' Deprecated alias for one shared spatial-field variance
 #'
-#' Canonical name for the SPDE / GMRF Matern spatial random field with
+#' `r lifecycle::badge("deprecated")`
+#'
+#' `spatial_scalar()` is soft-deprecated compatibility syntax in gllvmTMB
+#' 0.2.0. Write
+#' `spatial_indep(0 + trait | coords, common = TRUE)` in new code. The two
+#' spellings fit the same SPDE / GMRF Matérn model with
 #' **one shared variance \eqn{\tau^{2}}** across all traits and a shared
 #' range parameter \eqn{\kappa}. Each trait carries its own independent
 #' field draw on the mesh, but every trait's field has the same marginal
@@ -1043,10 +1047,10 @@ spatial_unique <- function(formula, coords = NULL, mesh = NULL) {
 #' `log_tau_spde` parameters tied via TMB's `map` mechanism so they
 #' collapse to a single estimable scalar.
 #'
-#' Use this when domain knowledge (or parsimony) says all traits should
-#' share the same amount of spatial structure. Compare to
-#' [spatial_indep()] (D independent variances) and [spatial_latent()]
-#' (K-dim factor decomposition).
+#' Use `spatial_indep(..., common = TRUE)` when domain knowledge (or parsimony)
+#' says all traits should share the same amount of spatial structure. Omit
+#' `common = TRUE` for separate trait-specific spatial variances, or use
+#' [spatial_latent()] for a reduced-rank cross-trait decomposition.
 #'
 #' @section Formula orientation:
 #' The canonical orientation is `0 + trait | coords` (parallel to
@@ -1075,7 +1079,7 @@ spatial_unique <- function(formula, coords = NULL, mesh = NULL) {
 #'   mesh <- make_mesh(sim$data, c("lon", "lat"), cutoff = 0.1)
 #'   fit <- gllvmTMB(
 #'     value ~ 0 + trait +
-#'             spatial_scalar(0 + trait | site, mesh = mesh),
+#'             spatial_indep(0 + trait | site, mesh = mesh, common = TRUE),
 #'     data  = sim$data,
 #'     trait = "trait",
 #'     unit  = "site"
@@ -1092,7 +1096,7 @@ spatial_scalar <- function(formula, coords = NULL, mesh = NULL) {
 #' SPDE fields drive all T traits via a T x K loading matrix
 #' \eqn{\boldsymbol\Lambda_{\mathrm{spa}}}. The spatial analogue of
 #' [phylo_latent()] and the third cell of the spatial column of the API
-#' grid (alongside [spatial_scalar()] and [spatial_indep()]).
+#' grid (alongside [spatial_indep()] and [spatial_dep()]).
 #'
 #' Internally this rewrites to `spde(form, .spatial_latent = TRUE, d = K)`
 #' and toggles the TMB template's `spde_lv_k` switch to K. With
@@ -1141,7 +1145,7 @@ spatial_scalar <- function(formula, coords = NULL, mesh = NULL) {
 #'   supplied here or through the top-level `mesh =` argument to [gllvmTMB()].
 #'   The engine does not construct a mesh automatically from `coords`.
 #' @return A formula marker; never evaluated.
-#' @seealso [spatial_indep()], [spatial_scalar()], [phylo_latent()].
+#' @seealso [spatial_indep()], [spatial_dep()], [phylo_latent()].
 #' @examples
 #' \dontrun{
 #'   sim <- simulate_site_trait(
@@ -1165,12 +1169,11 @@ spatial_latent <- function(formula, d = 1, unique = FALSE,
 
 #' Spatial random field: lme4-bar mode-dispatch wrapper
 #'
-#' `spatial()` is a unified entry point for the package's four taught
-#' spatial modes (`spatial_scalar`, `spatial_indep`, `spatial_latent`,
-#' `spatial_dep`). It accepts an lme4-bar formula on
+#' `spatial()` is a unified entry point for the package's three spatial modes
+#' (`spatial_indep`, `spatial_latent`, `spatial_dep`). It accepts an lme4-bar formula on
 #' the first argument and dispatches to the appropriate canonical
 #' keyword based on the LHS shape and the optional `mode = ...` argument.
-#' The four current keywords stay first-class -- `spatial()` is an
+#' The three current keywords stay first-class -- `spatial()` is an
 #' additive alias matching the lme4 / brms / drmTMB convention.
 #'
 #' This is the spatial parallel of the [phylo()] mode-dispatch wrapper:
@@ -1180,7 +1183,7 @@ spatial_latent <- function(formula, d = 1, unique = FALSE,
 #' @section Dispatch rules:
 #' | Form                                                 | Mode default | Rewrites to                                |
 #' |------------------------------------------------------|--------------|--------------------------------------------|
-#' | `spatial(1 \| site)`                                 | `"scalar"`   | `spatial_scalar(0 + trait \| coords)`      |
+#' | `spatial(1 \| site)`                                 | `"scalar"`   | `spatial_indep(0 + trait \| coords, common = TRUE)` |
 #' | `spatial(0 + trait \| coords, mode = "indep")`       | (mandatory)  | `spatial_indep(0 + trait \| coords)`       |
 #' | `spatial(0 + trait \| coords, mode = "latent", d = K)` | (mandatory) | `spatial_latent(0 + trait \| coords, d = K)` |
 #' | `spatial(0 + trait \| coords, mode = "dep")`         | (mandatory)  | `spatial_dep(0 + trait \| coords)`         |
@@ -1234,14 +1237,14 @@ spatial_latent <- function(formula, d = 1, unique = FALSE,
 #' @param unique Logical; forwarded to [spatial_latent()] when
 #'   `mode = "latent"`. The default `FALSE` keeps the low-rank-only path.
 #' @return A formula marker; never evaluated.
-#' @seealso [spatial_scalar()], [spatial_indep()],
+#' @seealso [spatial_indep()],
 #'   [spatial_latent()], [spatial_dep()], [phylo()] (phylogenetic
 #'   parallel), [spde()] (deeper deprecated alias).
 #' @export
 #' @examples
 #' \dontrun{
 #' library(fmesher)
-#' # Single shared spatial-field variance (= spatial_scalar)
+#' # Single shared spatial-field variance (= spatial_indep(..., common = TRUE))
 #' fit_s <- gllvmTMB(value ~ 0 + trait + spatial(1 | site, mesh = mesh),
 #'                   data  = df,
 #'                   trait = "trait",

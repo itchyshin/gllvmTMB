@@ -8,14 +8,15 @@
 #' and trait-specific variance. The formula syntax also supports fixed
 #' effects plus covariance-structure keywords organised by
 #' \emph{correlation source} (none / animal / phylo / spatial) and
-#' \emph{mode} (scalar / independent / dependent / latent):
+#' three \emph{modes} (independent / dependent / latent). The `common = TRUE`
+#' modifier on `*_indep()` gives the one-shared-variance special case:
 #'
-#' \tabular{lllll}{
-#'   \strong{source \\ mode} \tab \strong{scalar} \tab \strong{independent} \tab \strong{dependent} \tab \strong{latent} \cr
-#'   \emph{none}    \tab (omit)             \tab [indep()]         \tab [dep()]         \tab [latent()]         \cr
-#'   \emph{animal}  \tab [animal_scalar()]  \tab [animal_indep()]  \tab [animal_dep()]  \tab [animal_latent()]  \cr
-#'   \emph{phylo}   \tab [phylo_scalar()]   \tab [phylo_indep()]   \tab [phylo_dep()]   \tab [phylo_latent()]   \cr
-#'   \emph{spatial} \tab [spatial_scalar()] \tab [spatial_indep()] \tab [spatial_dep()] \tab [spatial_latent()] \cr
+#' \tabular{llll}{
+#'   \strong{source \\ mode} \tab \strong{independent} \tab \strong{dependent} \tab \strong{latent} \cr
+#'   \emph{none}    \tab [indep()]         \tab [dep()]         \tab [latent()]         \cr
+#'   \emph{animal}  \tab [animal_indep()]  \tab [animal_dep()]  \tab [animal_latent()]  \cr
+#'   \emph{phylo}   \tab [phylo_indep()]   \tab [phylo_dep()]   \tab [phylo_latent()]   \cr
+#'   \emph{spatial} \tab [spatial_indep()] \tab [spatial_dep()] \tab [spatial_latent()] \cr
 #' }
 #'
 #' The three covariance modes (`indep` / `dep` / `latent`) encode
@@ -43,7 +44,7 @@
 #'
 #' @param formula A glmmTMB-style formula, e.g.
 #'   `value ~ 0 + trait + (0 + trait):env_temp + (0 + trait):env_precip`.
-#'   Fixed effects and any of the four-mode grid covstructs above are
+#'   Fixed effects and any of the three-mode grid covstructs above are
 #'   supported (plus [phylo_slope()], [animal_slope()], and [meta_V()]).
 #'
 #'   An `offset()` term is supported for **count responses only** — `poisson()`,

@@ -7,8 +7,7 @@
 #' Spatial reduced-rank Gaussian random field per trait (Matérn, SPDE/GMRF)
 #'
 #' \strong{Deprecated alias.} Engine-internal name; users should write
-#' [spatial_indep()] (or one of the other [spatial_scalar()] /
-#' [spatial_latent()] keywords) in formulas. Kept for backward
+#' [spatial_indep()] (or [spatial_latent()] / [spatial_dep()]) in formulas. Kept for backward
 #' compatibility and to document the underlying Matérn / SPDE kernel.
 #'
 #' A formula keyword for adding a spatial random field to a `gllvmTMB()`
@@ -29,7 +28,7 @@
 #' where \eqn{\nu} is the smoothness parameter, \eqn{\kappa > 0} is the
 #' inverse-range parameter, and \eqn{K_{\nu}} is the modified Bessel
 #' function of the second kind. `gllvmTMB::spatial_indep()` (and its
-#' siblings `spatial_scalar()` / `spatial_latent()`) use
+#' siblings `spatial_indep(..., common = TRUE)` / `spatial_latent()`) use
 #' **\eqn{\alpha = 2}** in the Lindgren–Rue–Lindström operator, which
 #' (in 2 spatial dimensions) corresponds to **\eqn{\nu = 1}**.
 #'

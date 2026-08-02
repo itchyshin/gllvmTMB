@@ -48101,6 +48101,42 @@ rg -n 'VA-10' docs/design/35-validation-debt-register.md
 **Reports:** `docs/dev-log/after-task/2026-08-01-design107-va-response-mask.md`,
 `docs/dev-log/plan-actual/2026-08-01-design107-va-response-mask.md`.
 
+## 2026-08-02 — reconcile scalar compatibility and mesh documentation (Codex)
+
+Reconciled current spatial reference and design documentation: new examples use
+`spatial_indep(..., common = TRUE)` for one shared spatial-field variance;
+`spatial_scalar()` is now a soft-deprecated compatibility reference. Corrected
+the separate false claim that `coords =` causes the engine to build a mesh:
+users must pass a pre-built `make_mesh()` result aligned to the fitted stacked
+data. Current design tables now describe the 4 × 3 mode grid plus `common` and
+`unique` modifiers.
+
+```sh
+git diff --check
+# PASS
+
+Rscript --vanilla -e 'devtools::document(quiet = TRUE); devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-scalar-family-collapse.R"); testthat::test_file("tests/testthat/test-spatial-deprecation.R")'
+# scalar family: FAIL 0 | WARN 0 | SKIP 0 | PASS 19
+# spatial deprecation: FAIL 0 | WARN 0 | SKIP 1 (On CRAN) | PASS 0
+
+Rscript --vanilla -e 'pkgdown::check_pkgdown(); pkgdown::build_articles(lazy = FALSE)'
+# PASS: No problems found; all articles rendered.
+
+rg -n "engine builds the mesh internally|coords = c\(\"lon\", \"lat\"\).*mesh|mesh = mesh or coords" docs/design R man vignettes README.md NEWS.md AGENTS.md CLAUDE.md
+# no matches.
+
+rg -n "four[- ]mode|four current|four taught|4 × 5|4×5" README.md R/gllvmTMB.R R/brms-sugar.R man/gllvmTMB.Rd man/phylo.Rd vignettes/articles/gllvm-vocabulary.Rmd docs/design/00-vision.md docs/design/01-formula-grammar.md docs/design/02-data-shape-and-weights.md docs/design/03-likelihoods.md docs/design/03-phylogenetic-gllvm.md docs/design/04-random-effects.md docs/design/05-testing-strategy.md docs/design/14-known-relatedness-keywords.md docs/design/35-validation-debt-register.md docs/design/55-structural-slope-grammar.md docs/design/57-mixed-family-link-residual.md
+# no matches.
+
+rg -n "spatial_scalar\(\).*Canonical name|all four spatial keywords|spatial_scalar\(0 \+ trait \| site, mesh = mesh\)" R man vignettes README.md NEWS.md docs/design
+# no matches.
+```
+
+**Deliberately not run:** full `devtools::test()` and `devtools::check()`;
+behaviour did not change. `devtools::document()` reported two pre-existing S3
+export-tag diagnostics in `aghq-report.R`; out of scope. Full report:
+`docs/dev-log/after-task/2026-08-02-scalar-compatibility-doc-reconciliation.md`.
+
 ## 2026-08-02 — spatial guide: current scalar syntax and mesh versus coordinates (Codex)
 
 Corrected `vignettes/articles/spatial-models.Rmd`: new code now uses

@@ -71,7 +71,7 @@ formula grammar, the following five capabilities:
 
 1. **Multivariate GLMMs by reduced-rank regression** -- the
    ordinary `latent()` decomposition of trait covariance
-   (**Σ = ΛΛᵀ + Ψ** by default), exposed via a clean **4 × 5**
+   (**Σ = ΛΛᵀ + Ψ** by default), exposed via a clean **4 × 3**
    covariance keyword grid (see
    `docs/design/01-formula-grammar.md`).
 2. **Phylogenetic + animal-model GLLVMs** via the same sparse
@@ -122,14 +122,16 @@ A model is defined by:
 2. trait-level fixed effects on the RHS (e.g.
    `value ~ 0 + trait + (0 + trait):env`);
 3. one or more covariance-structure keywords drawn from the
-   **4 × 5** grid:
+   **4 × 3** grid, with `common = TRUE` as the shared-variance modifier
+   of `*_indep()` and `unique = TRUE` as the diagonal-Psi modifier of
+   `*_latent()`:
 
-| correlation \ mode | scalar | unique | indep | dep | latent |
-|---|---|---|---|---|---|
-| none    | (omit)             | `unique()`         | `indep()`         | `dep()`         | `latent()`         |
-| animal  | `animal_scalar()`  | `animal_unique()`  | `animal_indep()`  | `animal_dep()`  | `animal_latent()`  |
-| phylo   | `phylo_scalar()`   | `phylo_unique()`   | `phylo_indep()`   | `phylo_dep()`   | `phylo_latent()`   |
-| spatial | `spatial_scalar()` | `spatial_unique()` | `spatial_indep()` | `spatial_dep()` | `spatial_latent()` |
+| correlation \ mode | indep | dep | latent |
+|---|---|---|---|
+| none    | `indep()`         | `dep()`         | `latent()`         |
+| animal  | `animal_indep()`  | `animal_dep()`  | `animal_latent()`  |
+| phylo   | `phylo_indep()`   | `phylo_dep()`   | `phylo_latent()`   |
+| spatial | `spatial_indep()` | `spatial_dep()` | `spatial_latent()` |
 
 4. a per-trait response family from `R/families.R` (single family
    or `family = list(...)` for mixed-family);
@@ -394,7 +396,7 @@ Ada orchestrates.
 | Persona | Owns | Primary question |
 |---------|------|------------------|
 | **Ada** | Orchestration; integration; merge authority | What should happen next, and is everything consistent? |
-| **Boole** | Formula grammar (4 × 5 keyword grid + `traits()` LHS) | Is the syntax memorable, parseable, internally consistent? |
+| **Boole** | Formula grammar (4 × 3 keyword grid plus modifiers + `traits()` LHS) | Is the syntax memorable, parseable, internally consistent? |
 | **Gauss** | TMB likelihoods + numerical stability | Is the likelihood correct and numerically stable? |
 | **Noether** | Math-vs-implementation alignment | Do equations, R syntax, and TMB implementation match? |
 | **Fisher** | Statistical inference (CIs, coverage, profile) | Do simulations, comparators, profiles support the claim? |

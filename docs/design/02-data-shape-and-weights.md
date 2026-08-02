@@ -214,8 +214,8 @@ path:
 | `latent(1 \| unit, d = K)` | `latent(0 + trait \| unit, d = K)` |
 | `unique(1 \| unit)` | `unique(0 + trait \| unit)` |
 | `indep(1 \| unit)` / `dep(1 \| unit)` | `indep(0 + trait \| unit)` / `dep(0 + trait \| unit)` |
-| `spatial_unique(1 \| coords)` | `spatial_unique(0 + trait \| coords)` |
-| `spatial_scalar(1 \| coords)` / `spatial_latent(1 \| coords, d = K)` / `spatial_dep(1 \| coords)` | corresponding `spatial_*(0 + trait \| coords, ...)` call |
+| `spatial_indep(1 \| coords, common = TRUE)` | `spatial_indep(0 + trait \| coords, common = TRUE)` |
+| `spatial_indep(1 \| coords)` / `spatial_latent(1 \| coords, d = K)` / `spatial_dep(1 \| coords)` | corresponding `spatial_*(0 + trait \| coords, ...)` call |
 | `phylo_indep(1 \| species)` / `phylo_dep(1 \| species)` | `phylo_indep(0 + trait \| species)` / `phylo_dep(0 + trait \| species)` |
 | `phylo_latent(species, d = K)` / `phylo_unique(species)` | unchanged; these keywords already name their species axis |
 | `(1 \| batch)` | unchanged; the regular random-intercept parser handles it |

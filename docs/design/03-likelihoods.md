@@ -210,13 +210,14 @@ need their own named recovery evidence before a certificate claim.
   model (same covariance as standalone `unique()`); `dep` uses a
   full Cholesky factor.
 
-- **Scalar `(omit) ↔ no trait-specific term`** contributes the
-  correlation-source structure to the linear predictor but no
-  trait-specific component.
+- **Shared-variance `indep(..., common = TRUE)`** ties the diagonal
+  trait variances to one value while retaining the correlation-source
+  structure in the linear predictor.
 
 The phylogenetic and spatial keywords plug into the same
 random-effects machinery via the correlation-source rows of the
-4 × 5 grid (see `docs/design/01-formula-grammar.md`).
+4 × 3 grid plus its `common` and `unique` modifiers (see
+`docs/design/01-formula-grammar.md`).
 
 ### Laplace accuracy caveat
 

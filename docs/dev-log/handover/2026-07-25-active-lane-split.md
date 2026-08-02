@@ -3,6 +3,17 @@
 This coordination note prevents a new session from treating this repository as
 a single writable lane.  It is a map, not a release/capability claim.
 
+**Refresh 2026-08-02 #2 (Claude, end of session): Design 108 GATE A IS CLOSED.**
+Stages **4** (#896, probit + tail-safe log-Phi, AD-SAFE), **6** (#907, multi-tier — closes Gate A)
+and **R3** (#907, the opt-in `profile=` route) are on `main`; **Stage 7** (structured phylo KL) is
+open as **#911**. R3 removed the programme's real blocker — the outer problem collapses from
+`114N + 206` to **206, constant in N**, measured RSS exponent 1.70 → 0.966, so 10,000 species is
+reachable. Everything remains **FENCED**: no export, no `method=`, no public claim, pending Stage 8.
+🔴 **The recommended next arc is the VA-vs-Laplace recovery study, BEFORE Stages 3/5** — this
+session's 4,320-fit campaign partly undercut Design 108 §0.2's own justification (silent divergence
+decays with n and the ridge suppresses it), so two premises are now unvalidated.
+**START HERE:** `2026-08-02-claude-handover-gate-a-closed.md`.
+
 **Refresh 2026-08-02 (Cursor→Claude):** Design 108 Gate A Stage 2 (VA mixed-family)
 **MERGED** as [#893](https://github.com/itchyshin/gllvmTMB/pull/893). Next VA stage
 needs Shinichi G0 — see `2026-08-02-claude-handover.md`. Sibling [#890](https://github.com/itchyshin/gllvmTMB/pull/890)

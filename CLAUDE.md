@@ -11,6 +11,30 @@ This repository is shared by humans, Codex, and Claude Code. Read
 > current handover. Read it before any repository mutation. Milestone state is not in
 > either place and must be re-derived from `git`.
 
+- **2026-08-02 — DESIGN 108 GATE A IS CLOSED; 10,000 SPECIES IS NOW REACHABLE.**
+  Stages **4** ([#896](https://github.com/itchyshin/gllvmTMB/pull/896) — tail-safe `log Phi` +
+  binomial-probit, **verdict AD-SAFE**, adversarially established against a 3,744-cell break grid)
+  and **6** ([#907](https://github.com/itchyshin/gllvmTMB/pull/907) — multiple unstructured tiers,
+  the stage that CLOSES Gate A) are on `main`, with **R3** (same PR — the opt-in
+  `profile_variational` route). **Stage 7** (structured phylogenetic KL) is open as
+  [#911](https://github.com/itchyshin/gllvmTMB/pull/911).
+  **R3 removed the programme's real blocker:** `MakeADFun(random = NULL)` made nlminb's workspace
+  O(P^2) — measured, matching `n(n+27)/2` doubles to 2% at n=16,000 — i.e. **1,127 GB at N=5,000
+  and 4,508 GB at N=10,000** for the target model. The profile route collapses the outer problem
+  from `114N + 206` to **206, constant in N** (RSS exponent 1.70 → 0.966; at N=8,000 the joint
+  route did not finish 3 iterations in 23 min at ≥6.4 GB, profile took 1,697 MB / 12.5 s). It is
+  **opt-in and default-off** — SEs under `profile=` are untested. **EVERYTHING REMAINS FENCED:**
+  no export, no `method=`, no NEWS/README/article claim. 🔴 **Recommended next arc: the
+  VA-vs-Laplace recovery study, BEFORE Stages 3 and 5** — this session's 4,320-fit campaign partly
+  undercut Design 108 §0.2's own justification (Laplace silent divergence decays with n, 18.1% at
+  n≤150 → 0.6% at n≥1600, and `aghq_ridge = 2` suppresses it), and Stage 7 records the
+  tips-vs-augmented question as statistically unsettled. Also corrected on `main`: the
+  *"67% runaway"* comment (wrong arm AND no regime — it needs logit **and** p=6 together), the
+  H=61 reach (**±14.4985 SD**, not ±15.7), and Design 108 §6's stale `family == 3`.
+  Filed [#897](https://github.com/itchyshin/gllvmTMB/issues/897): `ordinal_probit` has **no**
+  degeneracy detector (239/239 unflagged where binomial catches 272/272).
+  **START HERE:** `docs/dev-log/handover/2026-08-02-claude-handover-gate-a-closed.md`.
+
 - **2026-08-02 — CRAN IS OFF THE TABLE; EVIDENCE LANE CLOSED; CAPSTONE IS NEXT.**
   Shinichi: *"do not worry about CRAN submission — I am not intending to do so."*
   Everything CRAN-shaped is descoped (3-OS, URL/DESCRIPTION polish, submission

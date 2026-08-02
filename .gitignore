@@ -123,3 +123,8 @@ dev/STOP-LOCAL-PILOT
 # are added explicitly when the campaign completes.
 dev/va-gate3/results/cells/
 dev/va-gate3/results/campaign*.log
+
+# Design 108 recovery campaign: results stay LOCAL (D-50) -- scripts and
+# write-ups are committed, raw fitted results are not.
+dev/design108-recovery/pilot-results/*.rds
+dev/design108-recovery/pilot-results/*.csv

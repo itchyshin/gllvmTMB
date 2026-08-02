@@ -32,22 +32,27 @@ test_that("VA-R3 rejects unsupported regime before objective construction", {
   trait <- rep(1:2, 2)
 
   ## Design 108 Gate A Stage 6 lifted this adapter's `unique` refusal IN
-  ## LOCKSTEP with .va_r3_validate_data(). The replacement assertion is that
-  ## the two gates now AGREE: the adapter must refuse exactly what the
-  ## validator refuses, no more and no less. A duplicated gate that drifts is
-  ## worse than one gate, because the adapter would refuse a model the engine
-  ## admits -- or admit one by a second route after the engine relaxed.
+  ## LOCKSTEP with .va_r3_validate_data(), and Stage 7 lifted `structured` the
+  ## same way. The assertion is that the two gates AGREE: the adapter must
+  ## refuse exactly what the validator refuses, no more and no less. A
+  ## duplicated gate that drifts is worse than one gate, because the adapter
+  ## would refuse a model the engine admits -- or admit one by a second route
+  ## after the engine relaxed.
+  ##
+  ## `structured = TRUE` is still refused, on a sharper ground than before: a
+  ## structured tier means nothing without the precision it is structured BY,
+  ## so the admitted form is a list carrying `Ainv`.
   expect_error(
     .approximation_engine_va_r3_fit(
       y, trials, X, unit, trait, q = 1L, structured = TRUE
     ),
-    "ordinary latent"
+    "must be FALSE, or a list"
   )
   expect_error(
     .approximation_engine_va_r3_fit(
       y, trials, X, unit, trait, q = 1L, provider = list(kind = "phylo")
     ),
-    "ordinary latent"
+    "no structured provider"
   )
   expect_error(
     .approximation_engine_va_r3_fit(

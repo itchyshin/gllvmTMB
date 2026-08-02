@@ -316,6 +316,57 @@ Type objective_function<Type>::operator()()
   DATA_IVECTOR(tier_n_levels);     // length K: n_k
   DATA_IMATRIX(level_id);          // n_obs x K, zero-based; column 0 == unit_id
 
+  // ---------------------------------------------------------------------
+  // Design 108 Gate A Stage 7: STRUCTURED prior on a tier (Design 106 s3).
+  //
+  // A structured tier differs from an unstructured one in EXACTLY one place:
+  // its KL.  The data term is untouched -- the loading shapes above are still
+  // the only two -- so nothing in the mu/v accumulation changes.
+  //
+  // Convention (Design 106 s3.2), copied from the shipped Laplace engine
+  // (src/gllvmTMB.cpp:1166-1174, 1203-1208) rather than reinvented:
+  //
+  //     g_{.,c} ~ N(0, A)  independently for each coordinate c,
+  //     eta += a_{k,o}' u_{k,g},     the SCALE living in the loading a,
+  //     -log p(g_c) = 0.5*( n*log(2pi) + log_det_A + g_c' Ainv g_c )
+  //
+  // This is the STANDARDIZED-FIELD convention: the field is unit-scale and the
+  // scale sits in the linear predictor.  Its consequence is the one that makes
+  // this stage tractable -- under it the structured KL contains NO model
+  // hyperparameters at all.  `Ainv` is pure DATA.
+  //
+  // With prior precision Q_p = I_d (x) Ainv and a level-factorised
+  // q = prod_g N(m_g, S_g), Design 106 s3.1 + s3.3 give
+  //
+  //   KL = 0.5*[ sum_g Ainv_gg * tr(S_g)          <- s3.3: only diag(Ainv)
+  //            + sum_c m_.c' Ainv m_.c            <- s3.5a: the Laplace block
+  //            - n*d
+  //            - sum_g logdet(S_g)
+  //            + d * log_det_A ]                  <- s3.4: kept, not dropped
+  //
+  // Setting Ainv = I collapses every term to the existing per-level
+  // 0.5*(tr(S_g) + m_g'm_g - logdet(S_g) - d), EXACTLY.  That identity is the
+  // stage's primary oracle and is asserted to 1e-14 in
+  // tests/testthat/test-va-r3-structured-phylo.R.
+  //
+  // ONE shared precision, not one per tier.  That mirrors the engine, which
+  // runs phylo_rr, phylo_diag and phylo_slope through the single
+  // Ainv_phy_rr / log_det_A_phy_rr pair, and it is what
+  // `phylo_latent(unique = TRUE)` needs: a structured low-rank tier and a
+  // structured diagonal Psi tier over the SAME tree.  Two different trees are
+  // out of scope for this stage and are refused on the R side.
+  //
+  // The number of levels of a structured tier is nrow(Ainv) and nothing else.
+  // For the augmented Hadfield representation those levels are tips PLUS
+  // internal nodes, so most of them carry no observation at all; the R adapter
+  // therefore relaxes its "every level must be used" check for structured
+  // tiers only.  No 2N-1 (or 2N-2) arithmetic appears anywhere: polytomies and
+  // non-bifurcating trees are handled by reading the matrix.
+  DATA_IVECTOR(tier_structured);   // length K: 0 = iid prior, 1 = uses Ainv
+  DATA_SPARSE_MATRIX(Ainv_struct); // shared structured precision, n_struct^2
+  DATA_VECTOR(diag_Ainv_struct);   // diag(Ainv), the ONLY thing the trace needs
+  DATA_SCALAR(log_det_A_struct);   // log det A = -log det Ainv (engine's sign)
+
   PARAMETER_VECTOR(beta);
   PARAMETER_VECTOR(theta_rr);      // dense tiers' packed loadings, tier order;
                                    // live-engine packing, raw diagonal first
@@ -380,6 +431,39 @@ Type objective_function<Type>::operator()()
       // per-trait indexing below would read the wrong coordinate.
       if (tier_dim(k) != T)
         error("gllvmTMB_va_r3: a trait-diagonal tier must have tier_dim = T");
+    }
+  }
+
+  // ---- Structured-tier contract (Stage 7). --------------------------------
+  if (tier_structured.size() != n_tiers)
+    error("gllvmTMB_va_r3: tier_structured must have length n_tiers");
+  if (tier_structured(0) != 0)
+    error("gllvmTMB_va_r3: tier 0 is the ordinary latent tier and must be unstructured");
+  int n_structured = 0;
+  for (int k = 0; k < n_tiers; ++k) {
+    if (tier_structured(k) != 0 && tier_structured(k) != 1)
+      error("gllvmTMB_va_r3: tier_structured entries must be 0 or 1");
+    n_structured += (tier_structured(k) == 1);
+  }
+  if (n_structured > 0) {
+    const int n_struct = Ainv_struct.rows();
+    if (n_struct < 1 || Ainv_struct.cols() != n_struct)
+      error("gllvmTMB_va_r3: Ainv_struct must be square and non-empty when a tier is structured");
+    if (diag_Ainv_struct.size() != n_struct)
+      error("gllvmTMB_va_r3: diag_Ainv_struct must have one entry per row of Ainv_struct");
+    for (int g = 0; g < n_struct; ++g) {
+      // A precision diagonal is strictly positive.  A zero or negative entry
+      // means the caller supplied a covariance, a sign-flipped matrix, or a
+      // mis-aligned diagonal -- each of which produces a KL that runs.
+      if (!std::isfinite(asDouble(diag_Ainv_struct(g))) ||
+          !(asDouble(diag_Ainv_struct(g)) > 0.0))
+        error("gllvmTMB_va_r3: diag_Ainv_struct entries must be finite and strictly positive");
+    }
+    if (!std::isfinite(asDouble(log_det_A_struct)))
+      error("gllvmTMB_va_r3: log_det_A_struct must be finite");
+    for (int k = 0; k < n_tiers; ++k) {
+      if (tier_structured(k) == 1 && tier_n_levels(k) != n_struct)
+        error("gllvmTMB_va_r3: a structured tier must have one level per row of Ainv_struct");
     }
   }
 
@@ -538,19 +622,45 @@ Type objective_function<Type>::operator()()
   S_flat.setZero();
   // kl_by_unit keeps its pre-Stage-6 meaning: tier 0's per-level KL. The
   // tier-general quantities are kl_by_level (flat, tier-major) and
-  // kl_by_tier; total_kl below is their sum and is what enters the ELBO.
+  // kl_by_tier; total_kl below is what enters the ELBO, and equals
+  // sum(kl_by_level) + sum(kl_const_by_tier) = sum(kl_by_tier).
   vector<Type> kl_by_unit(N);
   vector<Type> kl_by_level(total_levels);
   vector<Type> kl_by_tier(n_tiers);
+  // A structured tier's KL carries one term, 0.5*d*log_det_A, that belongs to
+  // the TIER and not to any level.  It is reported separately rather than
+  // smeared over levels, so kl_by_level keeps meaning "the level-decomposable
+  // part" on every tier.  kl_by_tier(k) includes it; total_kl adds it once.
+  vector<Type> kl_const_by_tier(n_tiers);
   kl_by_unit.setZero();
   kl_by_level.setZero();
   kl_by_tier.setZero();
+  kl_const_by_tier.setZero();
+  Type kl_const_total = Type(0.0);
 
   for (int k = 0; k < n_tiers; ++k) {
     const int d = tier_dim(k);
     const int nk = tier_n_levels(k);
     const int mo = m_offset[k];
     const int oo = off_offset[k];
+    const bool structured = (tier_structured(k) == 1);
+
+    // The quadratic form m' (I_d (x) Ainv) m, computed exactly as the Laplace
+    // engine computes its prior block (src/gllvmTMB.cpp:1419-1421): one sparse
+    // matrix product against the whole n x d mean matrix, O(nnz * d).  Row g of
+    // the product gives level g's share of the quadratic form, which is what
+    // lets the level decomposition survive a prior that couples levels.
+    matrix<Type> AinvM;
+    if (structured) {
+      matrix<Type> Mmat(nk, d);
+      for (int c = 0; c < d; ++c)
+        for (int g = 0; g < nk; ++g) Mmat(g, c) = m(mo + c * nk + g);
+      AinvM = Ainv_struct * Mmat;
+      Type tier_const = Type(0.5) * Type(d) * log_det_A_struct;
+      kl_const_by_tier(k) = tier_const;
+      kl_by_tier(k) += tier_const;
+      kl_const_total += tier_const;
+    }
 
     if (tier_kind(k) == 1) {
       // Trait-diagonal tier (Design 106 Prop. 2). The variational block is
@@ -559,11 +669,26 @@ Type objective_function<Type>::operator()()
       // second code path: the saving is structural, not a converged-to zero.
       for (int g = 0; g < nk; ++g) {
         Type kl = Type(0.0);
-        for (int j = 0; j < d; ++j) {
-          const int pos = mo + j * nk + g;
-          Type log_s = log_L_diag(pos);
-          Type s = exp(log_s);
-          kl += s * s + m(pos) * m(pos) - Type(2.0) * log_s - Type(1.0);
+        if (structured) {
+          // Same T univariate KLs, with the iid precision 1 replaced by
+          // Ainv_gg on the trace and the quadratic form replaced by level g's
+          // row of m' Ainv m.  At Ainv = I these are literally the two
+          // expressions in the else-branch.
+          Type qgg = diag_Ainv_struct(g);
+          for (int j = 0; j < d; ++j) {
+            const int pos = mo + j * nk + g;
+            Type log_s = log_L_diag(pos);
+            Type s = exp(log_s);
+            kl += qgg * s * s + m(pos) * AinvM(g, j)
+              - Type(2.0) * log_s - Type(1.0);
+          }
+        } else {
+          for (int j = 0; j < d; ++j) {
+            const int pos = mo + j * nk + g;
+            Type log_s = log_L_diag(pos);
+            Type s = exp(log_s);
+            kl += s * s + m(pos) * m(pos) - Type(2.0) * log_s - Type(1.0);
+          }
         }
         kl = Type(0.5) * kl;
         if (!std::isfinite(asDouble(kl)))
@@ -591,12 +716,22 @@ Type objective_function<Type>::operator()()
       Type mean_sq = Type(0.0);
       Type logdet_S = Type(0.0);
       for (int row = 0; row < d; ++row) {
-        mean_sq += m(mo + row * nk + g) * m(mo + row * nk + g);
+        if (!structured)
+          mean_sq += m(mo + row * nk + g) * m(mo + row * nk + g);
         logdet_S += Type(2.0) * log_L_diag(mo + row * nk + g);
         for (int col = 0; col <= row; ++col)
           trace_S += Li(row, col) * Li(row, col);
       }
-      Type kl = Type(0.5) * (trace_S + mean_sq - logdet_S - Type(d));
+      Type kl;
+      if (structured) {
+        Type row_quad = Type(0.0);
+        for (int c = 0; c < d; ++c)
+          row_quad += m(mo + c * nk + g) * AinvM(g, c);
+        kl = Type(0.5) * (diag_Ainv_struct(g) * trace_S + row_quad
+                          - logdet_S - Type(d));
+      } else {
+        kl = Type(0.5) * (trace_S + mean_sq - logdet_S - Type(d));
+      }
       if (!std::isfinite(asDouble(kl)))
         Rf_error("gllvmTMB_va_r3: non-finite KL coordinate at tier %d level %d", k, g);
       kl_by_level(level_offset[k] + g) = kl;
@@ -759,7 +894,9 @@ Type objective_function<Type>::operator()()
   }
 
   Type expected_loglik = expected_loglik_by_unit.sum();
-  Type total_kl = kl_by_level.sum();
+  // kl_const_total is EXACTLY zero when no tier is structured, so this adds
+  // 0.0 on the pre-Stage-7 path and the Stage 6 byte-identity is preserved.
+  Type total_kl = kl_by_level.sum() + kl_const_total;
   Type elbo = expected_loglik - total_kl;
   Type negative_elbo = -elbo;
   if (!std::isfinite(asDouble(negative_elbo)))
@@ -794,6 +931,8 @@ Type objective_function<Type>::operator()()
   REPORT(kl_by_unit);
   REPORT(kl_by_level);
   REPORT(kl_by_tier);
+  REPORT(kl_const_by_tier);
+  REPORT(tier_structured);
   REPORT(n_tiers);
   REPORT(tier_kind);
   REPORT(tier_dim);

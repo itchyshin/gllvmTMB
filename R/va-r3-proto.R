@@ -139,11 +139,26 @@
   )
 }
 
-.va_r3_normalise_index <- function(x, size, name) {
+## `zero_based = TRUE` switches off the 1-vs-0 sniffing, and that is not a
+## convenience -- it is a correctness requirement for structured tiers.
+##
+## The augmented Hadfield precision orders nodes internal-FIRST, tips LAST
+## (R/phylo-tree-precision.R), so every tip's 0-based row index is >= 1 and
+## <= n_aug - 1. Both arms of the sniff below then match, the 1-based arm wins,
+## and every observation is silently attached to the WRONG augmented node --
+## a fit that runs and is wrong, which is the exact failure mode this stage is
+## most exposed to. Structured callers must therefore say which base they mean.
+.va_r3_normalise_index <- function(x, size, name, zero_based = FALSE) {
   if (!is.numeric(x) || any(!is.finite(x)) || any(x != as.integer(x))) {
     stop(name, " must contain finite integer indices.", call. = FALSE)
   }
   x <- as.integer(x)
+  if (isTRUE(zero_based)) {
+    if (all(x >= 0L & x < size)) return(x)
+    stop(name, " must be 0-based indices in 0..", size - 1L,
+         " (a structured tier indexes rows of Ainv, which are NOT sniffable ",
+         "for base because internal nodes come first).", call. = FALSE)
+  }
   if (all(x >= 1L & x <= size)) return(x - 1L)
   if (all(x >= 0L & x < size)) return(x)
   stop(name, " must use either 1..", size, " or 0..", size - 1L,
@@ -333,6 +348,102 @@
        call. = FALSE)
 }
 
+## The shared structured precision (Design 108 Gate A Stage 7; Design 106 s3).
+##
+## `structured` is FALSE, or a list carrying `Ainv` -- the PRECISION, never the
+## covariance. Exactly one precision is admitted per fit and every structured
+## tier uses it. That mirrors the shipped Laplace engine, where phylo_rr,
+## phylo_diag and phylo_slope all read the single `Ainv_phy_rr` /
+## `log_det_A_phy_rr` pair, and it is what `phylo_latent(unique = TRUE)` needs:
+## a structured low-rank tier plus a structured diagonal Psi tier over the SAME
+## tree. Two different trees in one fit are out of scope for this stage.
+##
+## `log_det_A` follows the engine's sign convention EXACTLY
+## (R/fit-multi.R:3174, 3226): log det A = -log det(A^{-1}). Supply it to skip
+## the determinant, which is the right move for a large sparse precision whose
+## log-determinant the builder already knows.
+.va_r3_structured_precision <- function(structured) {
+  if (is.null(structured) || identical(structured, FALSE)) return(NULL)
+  if (!is.list(structured) || is.null(structured$Ainv)) {
+    stop("`structured` must be FALSE, or a list carrying `Ainv` (the shared ",
+         "structured PRECISION). VA-R3 never sees the covariance.",
+         call. = FALSE)
+  }
+  Ainv <- structured$Ainv
+  if (!(is.matrix(Ainv) || methods::is(Ainv, "Matrix"))) {
+    stop("`structured$Ainv` must be a matrix or a Matrix.", call. = FALSE)
+  }
+  if (nrow(Ainv) != ncol(Ainv) || nrow(Ainv) < 1L) {
+    stop("`structured$Ainv` must be square and non-empty.", call. = FALSE)
+  }
+  sparse <- methods::as(Matrix::Matrix(Ainv, sparse = TRUE), "CsparseMatrix")
+  if (!methods::is(sparse, "generalMatrix")) {
+    sparse <- methods::as(sparse, "generalMatrix")
+  }
+  if (any(!is.finite(sparse@x))) {
+    stop("`structured$Ainv` must be finite.", call. = FALSE)
+  }
+  asymmetry <- max(abs(sparse - Matrix::t(sparse)))
+  scale_ainv <- max(abs(sparse@x), 1)
+  if (!is.finite(asymmetry) || asymmetry > 1e-8 * scale_ainv) {
+    stop("`structured$Ainv` must be symmetric (max asymmetry ",
+         format(asymmetry, digits = 3), ").", call. = FALSE)
+  }
+  diag_Ainv <- as.numeric(Matrix::diag(sparse))
+  if (any(!is.finite(diag_Ainv)) || any(diag_Ainv <= 0)) {
+    stop("`structured$Ainv` must have a strictly positive diagonal; a ",
+         "non-positive entry means a covariance, a sign flip, or a ",
+         "mis-aligned matrix was supplied.", call. = FALSE)
+  }
+  log_det_A <- structured$log_det_A
+  if (is.null(log_det_A)) {
+    det_ainv <- tryCatch(Matrix::determinant(sparse, logarithm = TRUE),
+                         error = function(e) NULL)
+    if (is.null(det_ainv) || !identical(as.numeric(det_ainv$sign), 1)) {
+      stop("`structured$Ainv` has no usable log-determinant; supply ",
+           "`structured$log_det_A` (= log det A = -log det Ainv) directly.",
+           call. = FALSE)
+    }
+    log_det_A <- -as.numeric(det_ainv$modulus)
+  }
+  log_det_A <- as.numeric(log_det_A)
+  if (length(log_det_A) != 1L || !is.finite(log_det_A)) {
+    stop("`structured$log_det_A` must be one finite number.", call. = FALSE)
+  }
+  list(Ainv = sparse, diag_Ainv = diag_Ainv, log_det_A = log_det_A,
+       n_levels = as.integer(nrow(sparse)),
+       rownames = rownames(sparse))
+}
+
+## Build the shared structured precision from a tree, using the SAME builder,
+## the same `correlation = TRUE` scaling and the same node ordering the shipped
+## Laplace engine uses (R/fit-multi.R:3172-3182). Going through this helper is
+## how a caller inherits the engine's convention instead of re-deriving it --
+## including the augmented node set, which is tips PLUS internal nodes minus
+## the root, so `n_aug` is read off `nrow(Ainv)` and never computed as 2N-1.
+##
+## Returns the `structured` list the validator wants, plus the species -> node
+## map (0-based) that a structured tier's `level_id` must be built from.
+.va_r3_phylo_structure <- function(tree, species_levels) {
+  if (!inherits(tree, "phylo")) {
+    stop("`tree` must be an ape::phylo tree.", call. = FALSE)
+  }
+  prec <- .gllvm_phylo_tree_precision(tree, correlation = TRUE)
+  Ainv <- prec$precision
+  node_of_species <- match(as.character(species_levels), rownames(Ainv))
+  if (anyNA(node_of_species)) {
+    stop("Species levels absent from the tree: ",
+         paste(utils::head(species_levels[is.na(node_of_species)], 5L),
+               collapse = ", "), ".", call. = FALSE)
+  }
+  list(
+    structured = list(Ainv = Ainv, log_det_A = -prec$log_det_precision),
+    n_aug = as.integer(nrow(Ainv)),
+    n_tips = length(prec$tip_label),
+    node_of_species = as.integer(node_of_species - 1L)
+  )
+}
+
 ## Assemble the tier list. Tier 0 is ALWAYS the ordinary latent tier, built
 ## here rather than accepted from the caller, so the "tier 0 is dense, has
 ## dimension q, has N levels, and its level index is unit_id" invariant the
@@ -343,15 +454,15 @@
 ## Psi companion at the same grouping factor (CLAUDE.md's standing grammar
 ## note; Design 106 s4.2's third tier).
 .va_r3_build_tiers <- function(unit_id0, N, T, q, n_obs, extra_tiers = NULL,
-                               want_psi = FALSE) {
+                               want_psi = FALSE, structured = NULL) {
   tiers <- list(list(
     kind = "dense", dim = as.integer(q), n_levels = as.integer(N),
-    level_id = as.integer(unit_id0), label = "latent"
+    level_id = as.integer(unit_id0), label = "latent", structured = FALSE
   ))
   if (isTRUE(want_psi)) {
     tiers[[length(tiers) + 1L]] <- list(
       kind = "diagonal", dim = as.integer(T), n_levels = as.integer(N),
-      level_id = as.integer(unit_id0), label = "psi"
+      level_id = as.integer(unit_id0), label = "psi", structured = FALSE
     )
   }
   if (is.null(extra_tiers)) return(tiers)
@@ -367,6 +478,11 @@
            call. = FALSE)
     }
     entry <- .va_r3_tier_entry(as.character(spec$kind))
+    want_struct <- isTRUE(spec$structured)
+    if (want_struct && is.null(structured)) {
+      stop(where, ": structured = TRUE, but the fit was given no `structured` ",
+           "precision to attach it to.", call. = FALSE)
+    }
     dim_k <- if (is.null(spec$dim)) {
       if (identical(entry$kind, "diagonal")) T else q
     } else as.integer(spec$dim)
@@ -381,25 +497,45 @@
       stop(where, ": level_id must have one entry per response row.",
            call. = FALSE)
     }
-    n_levels <- if (is.null(spec$n_levels)) {
+    n_levels <- if (!is.null(spec$n_levels)) {
+      as.integer(spec$n_levels)
+    } else if (want_struct) {
+      ## Read the node count off the matrix. This is the whole reason no
+      ## `2 * N - 1` appears anywhere: polytomies, unrooted input and any other
+      ## non-bifurcating tree are handled by construction.
+      structured$n_levels
+    } else {
       length(unique(spec$level_id))
-    } else as.integer(spec$n_levels)
+    }
     if (length(n_levels) != 1L || is.na(n_levels) || n_levels < 1L) {
       stop(where, ": n_levels must be a positive integer.", call. = FALSE)
     }
     lv <- .va_r3_normalise_index(spec$level_id, n_levels,
-                                 paste0(where, "$level_id"))
-    ## An unused level would carry a free variational block that no
-    ## observation informs. Its optimum is the prior, so it costs nothing in
-    ## the objective and everything in diagnosability -- refuse it loudly
-    ## rather than let a mis-sized n_levels pass as a converged fit.
-    if (!identical(sort(unique(lv)), 0:(n_levels - 1L))) {
+                                 paste0(where, "$level_id"),
+                                 zero_based = want_struct)
+    if (want_struct) {
+      if (!identical(as.integer(n_levels), structured$n_levels)) {
+        stop(where, ": a structured tier has one level per row of Ainv (",
+             structured$n_levels, "), not ", n_levels, ".", call. = FALSE)
+      }
+      ## Deliberately NO "every level is used" check here, and the difference
+      ## is structural rather than lenient: in the augmented Hadfield
+      ## representation the INTERNAL nodes carry no observation at all, by
+      ## construction. They are not unused -- they are the conditionally
+      ## independent innovations that make Ainv sparse, and the prior informs
+      ## every one of them through Ainv's off-diagonals.
+    } else if (!identical(sort(unique(lv)), 0:(n_levels - 1L))) {
+      ## An unused level would carry a free variational block that no
+      ## observation informs. Its optimum is the prior, so it costs nothing in
+      ## the objective and everything in diagnosability -- refuse it loudly
+      ## rather than let a mis-sized n_levels pass as a converged fit.
       stop(where, ": every one of the ", n_levels,
            " declared levels must be used by at least one row.", call. = FALSE)
     }
     tiers[[length(tiers) + 1L]] <- list(
       kind = entry$kind, dim = dim_k, n_levels = n_levels, level_id = lv,
-      label = if (is.null(spec$label)) paste0("tier", idx) else as.character(spec$label)
+      label = if (is.null(spec$label)) paste0("tier", idx) else as.character(spec$label),
+      structured = want_struct
     )
   }
   tiers
@@ -427,9 +563,14 @@
                       integer(1L), USE.NAMES = FALSE)
   dim_k <- vapply(tiers, function(x) as.integer(x$dim), integer(1L))
   n_levels <- vapply(tiers, function(x) as.integer(x$n_levels), integer(1L))
+  structured <- vapply(tiers, function(x) isTRUE(x$structured), logical(1L))
   if (!identical(kind_code[1L], 0L) || !identical(dim_k[1L], as.integer(q)) ||
       !identical(n_levels[1L], as.integer(N))) {
     stop("Tier 1 must be the dense ordinary latent tier with dim = q and n_levels = N.",
+         call. = FALSE)
+  }
+  if (structured[1L]) {
+    stop("Tier 1 is the ordinary latent tier and must be unstructured; a phylogenetic tier is an EXTRA tier.",
          call. = FALSE)
   }
   per_off <- integer(K)
@@ -455,6 +596,8 @@
     kind_code = kind_code,
     dim = dim_k,
     n_levels = n_levels,
+    structured = structured,
+    structured_code = as.integer(structured),
     label = vapply(tiers, function(x) as.character(x$label), character(1L)),
     level_id = level_id,
     variational_per_level = 2L * dim_k + per_off,
@@ -538,18 +681,21 @@
   ## `missing = TRUE` still means mi()/predictor missingness (out of scope).
   ## Response masks travel only through is_y_observed (Design 107).
   ##
-  ## Design 108 Gate A Stage 6 lifts the `unique` / `psi` half of this gate and
-  ## NOTHING ELSE. Psi is a trait-diagonal tier, and Design 106 Proposition 1
-  ## makes tiers accumulate in mu and v with no new integrand, quadrature or
-  ## linear algebra. `structured` / `provider` stay CLOSED: a phylogenetic or
-  ## SPDE prior is not a different index, it is a different KL (Design 106 s3),
-  ## and that is Stage 7, which Design 108 makes hard-dependent on this stage.
-  ## `lv` and `missing` are untouched.
-  if (!identical(structured, FALSE) || !is.null(provider) ||
-      !identical(lv, FALSE) || !identical(missing, FALSE)) {
-    stop("R3 admits only ordinary latent (unstructured) tiers: no structured/provider, lv, or missing-predictor marker.",
+  ## Design 108 Gate A Stage 6 lifted the `unique` / `psi` half of this gate.
+  ## Stage 7 lifts the `structured` clause, and NOTHING ELSE: a phylogenetic
+  ## prior is not a different index, it is a different KL (Design 106 s3), and
+  ## that KL is now implemented for a shared `Ainv`. `provider` (an external
+  ## covariance provider), `lv` and `missing` stay CLOSED, unchanged.
+  ##
+  ## `structured = TRUE` on its own is still an error: a structured tier means
+  ## nothing without the precision it is structured BY, so the admitted form is
+  ## a list carrying `Ainv`.
+  if (!is.null(provider) || !identical(lv, FALSE) ||
+      !identical(missing, FALSE)) {
+    stop("R3 admits no structured provider, lv, or missing-predictor marker.",
          call. = FALSE)
   }
+  structured_spec <- .va_r3_structured_precision(structured)
   tier_flag <- function(x, name) {
     if (!is.logical(x) || length(x) != 1L || is.na(x)) {
       stop(name, " must be TRUE or FALSE.", call. = FALSE)
@@ -563,8 +709,17 @@
 
   n_obs <- length(y)
   tiers <- .va_r3_build_tiers(uid, N = N, T = T, q = q, n_obs = n_obs,
-                              extra_tiers = extra_tiers, want_psi = want_psi)
+                              extra_tiers = extra_tiers, want_psi = want_psi,
+                              structured = structured_spec)
   tier_layout <- .va_r3_tier_layout(tiers, T = T, N = N, q = q, n_obs = n_obs)
+  ## A precision with no tier to consume it means the formula and the tree
+  ## disagree about whether there is a phylogenetic term. The shipped engine
+  ## aborts on exactly this (R/fit-multi.R:3148-3156) rather than silently
+  ## fitting a "phylogenetic" model with no phylogeny in it.
+  if (!is.null(structured_spec) && !any(tier_layout$structured)) {
+    stop("`structured` supplied a precision, but no tier declares ",
+         "structured = TRUE to use it.", call. = FALSE)
+  }
   if (!is.null(family_codes)) {
     family_codes <- as.integer(family_codes)
     if (length(family_codes) != n_obs ||
@@ -700,6 +855,7 @@
     q = q,
     tiers = tiers,
     tier_layout = tier_layout,
+    structured = structured_spec,
     unique = want_psi,
     family = as.integer(family_codes),
     family_name = family_name,
@@ -1638,6 +1794,24 @@
   tmb_data$tier_dim <- layout$dim
   tmb_data$tier_n_levels <- layout$n_levels
   tmb_data$level_id <- layout$level_id
+  ## Stage 7. When no tier is structured the template never reads these, so the
+  ## placeholder is a 1x1 empty sparse matrix -- it exists to satisfy
+  ## DATA_SPARSE_MATRIX, not to be used. The pre-Stage-7 tape is unchanged
+  ## because `tier_structured` gates the whole structured block behind an
+  ## ordinary C++ `if` on DATA, which lays down no AD nodes.
+  tmb_data$tier_structured <- layout$structured_code
+  structured <- validated$structured
+  if (is.null(structured)) {
+    tmb_data$Ainv_struct <- Matrix::sparseMatrix(
+      i = integer(0), j = integer(0), x = numeric(0), dims = c(1L, 1L)
+    )
+    tmb_data$diag_Ainv_struct <- 0
+    tmb_data$log_det_A_struct <- 0
+  } else {
+    tmb_data$Ainv_struct <- structured$Ainv
+    tmb_data$diag_Ainv_struct <- structured$diag_Ainv
+    tmb_data$log_det_A_struct <- structured$log_det_A
+  }
   ## Per-trait maps (Design 108 Stage 2): log_phi free only on nbinom2 traits;
   ## log_sigma free only on Gaussian traits.
   map <- list()
@@ -2031,8 +2205,14 @@
       label = validated$tier_layout$label,
       dim = validated$tier_layout$dim,
       n_levels = validated$tier_layout$n_levels,
+      structured = validated$tier_layout$structured,
       variational_per_level = validated$tier_layout$variational_per_level,
       total_variational = validated$tier_layout$total_variational
+    ),
+    structured = if (is.null(validated$structured)) NULL else list(
+      n_levels = validated$structured$n_levels,
+      log_det_A = validated$structured$log_det_A,
+      nnz = length(validated$structured$Ainv@x)
     ),
     q = validated$q,
     eval_method = resolved_eval_method,

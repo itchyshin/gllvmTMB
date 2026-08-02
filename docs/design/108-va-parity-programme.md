@@ -310,12 +310,24 @@ after the in-flight JJ work has landed.
 **Stage 4 — the tail-safe `log Φ` primitive, as a standalone spike, sequenced
 after the in-flight JJ wiring lands.**
 
-Scope: add `family == 3` (binomial-probit) to the template with a log-scale
-`log Φ` and a Mills-ratio-guarded derivative; verify AD-safety at the actual
-quadrature reach (`H = 15` → ±6.4 SD; `H = 61` → the wider rule) by
-finite-differencing `dE/dmu` and `dE/dv` against the integrand; fit one
-Bernoulli-probit toy and compare against the shipped Laplace engine. Nothing
-else — no mixed-family, no missing data, no tiers.
+**Correction (2026-08-02):** Stage 4 has since landed (PR #896). This section's
+"add `family == 3` (binomial-probit)" is stale and, taken literally, collides
+with the shipped template: code `3` is `nbinom2` and binomial-probit landed as
+code **`4`** (`inst/tmb/gllvmTMB_va_r3.cpp:348`: "family entries must be 0
+(Gaussian), 1 (binomial-logit), 2 (Poisson), 3 (nbinom2), or 4
+(binomial-probit)"). The prose below is left as the historical plan record
+(what was scoped before implementation), with the family-code number fixed so
+it does not mislead a future reader about which slot is free; the AD-safety
+verdict is AD-SAFE, and probit is deliberately still refused at the public
+fence per the Live Phase Snapshot.
+
+Scope (as originally planned): add `family == 4` (binomial-probit) to the
+template with a log-scale `log Φ` and a Mills-ratio-guarded derivative; verify
+AD-safety at the actual quadrature reach (`H = 15` → ±6.4 SD; `H = 61` →
+±14.50 SD, corrected in Design 105 §1.3) by finite-differencing `dE/dmu` and
+`dE/dv` against the integrand; fit one Bernoulli-probit toy and compare
+against the shipped Laplace engine. Nothing else — no mixed-family, no
+missing data, no tiers.
 
 **Why that one, and not the cheaper Stage 1:**
 

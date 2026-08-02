@@ -84,45 +84,52 @@ modes, not 5, with `indep` counted twice for oracle purposes because its
 two sub-cases have different oracle answers; `scalar` and `unique` are both
 compatibility aliases that fold into `indep`, not modes of their own).
 
-> ⚠️ **The four bucket counts below do not reconcile against §3.1's table, and
-> are known to be unreliable (flagged 2026-08-02, not yet adjudicated).** The
-> "6 strong" bullet names only five members, and
-> `animal_indep(common = TRUE)` / `kernel_indep(common = TRUE)` are marked
-> ✓✓ ("already built and passing", per the table's own legend) in §3.1 yet are
-> bucketed under "6 plausible" here. Resolving it means re-adjudicating those
-> verdicts, which is a re-analysis rather than a bookkeeping fix, so it is left
-> open deliberately. **Read §3.1's table cell by cell as the authority; treat
-> these headline numbers as indicative only.** The companion article
-> (`vignettes/articles/validation-oracles.Rmd`) deliberately does not reproduce
-> them for this reason.
+> **Counts corrected 2026-08-02.** An earlier version of this section read
+> 6 / 6 / 3 / 5, which did not reconcile against §3.1's own table: the "6
+> strong" bullet named only five members, and it conflated two different
+> things that the table's legend distinguishes — **✓✓ = "already built and
+> passing in this repo"** (a shipped comparator test) versus a mechanism
+> merely *verified by a scout fit this session*. The "5 NONE" figure was also
+> counting non-grid items (`meta_V()`, the compound families) that §6 lists
+> but that are not cells of this 5 × 4 grid. The tally below is re-derived
+> cell by cell from the table and sums to 20. **§3.1's table remains the
+> authority; these are its totals, not an independent claim.**
 
 **Of those 20 cells:**
-- **6 have a strong, already-tested external reference**: the no-prefix
-  row's `indep(common = TRUE)`/`indep`/`dep`/`latent` (all four via
-  `glmmTMB`/`lme4`, `latent` doubly so via `gllvm` — shipped as
-  `tests/testthat/test-comparator-gllvm.R`), plus `phylo_indep(common =
-  TRUE)` (`gllvm` colMat, verified this session, **and**
-  `glmmTMB::propto()`, already `covered`).
-- **6 have a plausible but untested-in-this-repo reference**:
-  `animal_indep(common = TRUE)` (`gllvm` colMat / `MCMCglmm` native
-  pedigree use), `kernel_indep(common = TRUE)` (`gllvm` colMat's
-  bare-matrix form), and the default (`common = FALSE`) `indep`/`dep`
-  cells for `phylo_`/`animal_`/`kernel_` via `MCMCglmm`'s `idh`/`us` +
-  `pedigree`/`ginverse` (posterior mean, not MLE — a real but weaker
-  reference).
+- **2 have a shipped comparator that passes in this repo** — the only cells
+  where "already built and passing" is literally true: the no-prefix
+  `latent` (`test-stage2-rr-diag.R` via `glmmTMB::rr()+diag()`, **and**
+  `test-comparator-gllvm.R` via `gllvm`'s unconstrained ordination), and
+  `phylo_indep(common = TRUE)` (`test-stage3-propto-equalto.R` via
+  `glmmTMB::propto()`).
+- **5 have a verified mechanism but no comparator built**: the no-prefix
+  `indep(common = TRUE)` (`gllvm` with no `colMat`, verified by the §2.3
+  fit; plus `glmmTMB`/`lme4`'s shared-variance RE), the no-prefix `indep`
+  and `dep` (`glmmTMB`/`lme4`'s `diag()`/`us()` — textbook), and
+  `animal_indep(common = TRUE)` / `kernel_indep(common = TRUE)` (`gllvm`'s
+  `colMat`, which follows from its documented behaviour; the §2.3 fit was
+  run *without* `colMat`).
+- **7 have a plausible but unverified reference**, six of them resting on
+  `MCMCglmm`'s posterior mean rather than an MLE: the default
+  (`common = FALSE`) `indep` and `dep` cells for `phylo_`, `animal_` and
+  `kernel_` via `idh`/`us` + `pedigree`/`ginverse`; plus `spatial_latent`
+  (`gllvm`'s `lvCor(corExp/corMatern)` and `Hmsc`'s spatial latent factors —
+  neither fitted, and `lvCor` is a dense exact GP against our SPDE
+  approximation, so agreement could only be approximate).
 - **3 are genuinely uncertain and would need a scout before either building
   or declaring them unvalidatable**: `spatial_indep(common = TRUE)`,
   `spatial_indep` (default), `spatial_dep` — `gllvm`'s own spatial
   mechanisms (`row.eff`, `lvCor`) do not cleanly match these cells'
   definitions (§3.2), and a candidate `glmmTMB` route (`mat()`/`exp()`
   covariance structures) was not checked this session.
-- **5 have NO possible external reference and must rest on known-truth
+- **3 have NO possible external reference and must rest on known-truth
   simulation alone**: `phylo_latent`, `animal_latent`, `kernel_latent`
   (source-structured relatedness combined with reduced-rank ordination —
-  no package does this), plus `spatial_latent` (partial: see §3.2, one
-  plausible but unverified `gllvm`/`Hmsc` route exists and is worth a
-  scout, not a clean NONE), and any `*_latent`/`*_unique(unique=TRUE)`
-  diagonal companion for a structured source (the +diag(ψ) piece inherits
+  no package does this). Note §6 lists more items than this under "cannot
+  be externally validated" — `meta_V()` and the compound families — but
+  those are **not cells of this grid**, which is why the earlier count of 5
+  did not reconcile. Separately, any `*_latent(unique = TRUE)`
+  diagonal companion for a structured source inherits
   `indep`'s absence of a `gllvm` oracle even where the loadings piece has
   one).
 - Outside the structural grid: **phylogenetic multinomial** (Design 84,

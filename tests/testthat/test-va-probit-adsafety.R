@@ -38,10 +38,18 @@
               X = matrix(1, 1L, 1L), unit_id = 0L, trait_id = 0L,
               is_y_observed = as.integer(observed), N = 1L, T = 1L, q = 1L,
               gh_nodes = rule$nodes, gh_weights = rule$weights,
-              family = 4L, eval_method = 0L)
-  par <- list(beta = mu, theta_rr = 1, m = matrix(0, 1, 1),
-              log_L_diag = matrix(0.5 * log(v), 1, 1),
-              L_off = matrix(0, 1, 0), log_phi = 0, log_sigma = 0)
+              family = 4L, eval_method = 0L,
+              ## Design 108 Stage 6 made the tier structure DATA. This fixture
+              ## builds on the template directly, so it declares the single
+              ## dense ordinary latent tier explicitly: one tier, dimension
+              ## q = 1, one level, level index = unit_id. That restates the
+              ## Stage-5 model rather than changing it -- (mu, v) and every
+              ## derivative measured below are unaltered.
+              n_tiers = 1L, tier_kind = 0L, tier_dim = 1L,
+              tier_n_levels = 1L, level_id = matrix(0L, 1L, 1L))
+  par <- list(beta = mu, theta_rr = 1, log_sd_tier = numeric(0),
+              m = 0, log_L_diag = 0.5 * log(v),
+              L_off = numeric(0), log_phi = 0, log_sigma = 0)
   TMB::MakeADFun(dat, par,
                  map = list(theta_rr = factor(NA), m = factor(NA),
                             log_phi = factor(NA), log_sigma = factor(NA)),

@@ -803,3 +803,22 @@ plainly that it is an extrapolation. The §3.6 ELBO question is unaffected — i
 about the bound, not about scale, and is best measured where both routes fit comfortably.
 *Do not*, however, let this be read as evidence tips-only is statistically worse: per Design
 109, cost and recovery are separate axes, and §3.6 remains genuinely open.
+
+---
+
+## DECISIONS LOCKED (maintainer, 2026-08-02)
+
+The maintainer approved all three recommendations above **as recommended**. They are no
+longer proposals. The campaign follows them; a downstream slice that departs from any of
+them is plan drift and must say so explicitly rather than resolve it quietly.
+
+| # | Decision | Binding consequence |
+|---|---|---|
+| 1 | `gaussian_control` is crossed through **every** cell, at ~**1/3** the seeds of a substantive cell | Coverage is NOT thinned and the `q` ladder is NOT shrunk. A control-cell failure triggers a **full-seed re-run of that cell** before any conclusion is drawn from it — a low-seed failure is a trigger to look, not a verdict. |
+| 2 | Joint-vs-profiled is measured as a **bridge at the top of Part A** (N~1500), not at envelope scale | Part B is profiled-only and must cite the bridge as its warrant. **If the bridge shows disagreement, that is a PRIMARY finding** and is reported as such — not absorbed as a caveat. The joint route is not merely discouraged at scale; it is arithmetically impossible (~1,127 GB at N=5,000). |
+| 3 | Arm 4 (tips-only) runs across **Part A only** | The cost crossover is reported as an **extrapolation** from the Part A ladder plus Stage 7's sparsity measurements, and must be labelled as an extrapolation. The Design 106 §3.6 ELBO question is unaffected — it is a statement about the bound, not about scale. Per Design 109, cost and recovery are separate axes: nothing here licenses "tips-only is statistically worse." |
+
+**Unchanged by this approval:** the seven non-negotiables, the planted-truth-only rule, the
+pre-registered falsifier, and the requirement that the pilot fix `n_sim` before any grid is
+bought. The trait-intercept SD (0.3) and the Psi magnitude remain **flagged placeholders
+awaiting maintainer confirmation** — they were not part of this approval.

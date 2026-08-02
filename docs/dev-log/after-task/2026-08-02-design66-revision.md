@@ -208,3 +208,80 @@ relying on the brief's own disjointness claim.
 - **Next action:** maintainer review of the three judgment calls flagged in
   the PR body, then a decision on whether/how to schedule the
   `refits_per_profile` measurement and the compute-admission design slice.
+
+---
+
+## 11. Addendum — two commits landed AFTER this report was written
+
+This report was written by the integration slice and then overtaken by two
+further commits in the same arc. Recorded here rather than by rewriting the
+sections above, so the original record stands.
+
+### 11.1 `6286be09` — the audit's compute claim was withdrawn
+
+Section 3's "explicitly not touched" line says
+`docs/dev-log/audits/2026-08-02-design66-staleness-audit.md` was left
+untouched. **That is no longer true.** The orchestrator subsequently edited and
+committed it, for a reason that belongs in the permanent record:
+
+The audit's S-2 finding argued the certified profile route was better on two
+axes — evidence quality *and* compute cost. The compute half was wrong. It
+claimed "roughly an order of magnitude" cheaper. Two adversarial reviews took
+it apart and the second **flipped its sign**:
+
+1. Bootstrap **amortises** (one refit set yields every requested summary from
+   the same draws, `R/bootstrap-sigma.R:346-375`); a profile does not — it is a
+   per-scalar `uniroot` bisection (`R/profile-derived.R:866-897`).
+2. The scalar count was undercounted. The off-diagonal target runs over
+   `utils::combn(n_traits, 2L)` — **ten pairs at T=5**
+   (`dev/m3-grid.R:1666-1681`) — so the capstone needs **5 or 15** univariate
+   profiles per replicate, not the "~6" the first correction assumed.
+
+Measured: diagonals-only = 1.5x-2.8x cheaper; diagonals plus pairs =
+1.05x-1.95x **more expensive**. The claim was withdrawn *in place*, with the
+superseded text quoted verbatim inside a correction box, and **no compute-saving
+figure is committed anywhere** pending an empirical `refits_per_profile`
+measurement. The evidence-quality half of S-2 is unaffected and stands.
+
+Same commit also fixed a cross-reference this integration broke: section 10's
+reframing paragraph pointed at "item 2", but the compute-admission prerequisite
+was inserted as item 1, so the H1 adjudication it refers to is item 3.
+
+### 11.2 `fa6cb152` — two CRAN residuals the fencing missed
+
+Section 4 records the structural verification as passing. It did, but a
+follow-up sweep found two surviving pieces of stale CRAN framing **outside the
+three sites the drafting agent was fenced to**:
+
+- section 4.1 — "a core confirmatory grid that *must* pass to support the
+  paper/CRAN claims"
+- section 7.2 — "these inform register promotions, not the headline CRAN gate"
+
+Neither asserted outright that the capstone gates CRAN, which is why the
+structural check passed them. Both are fixed. Five CRAN mentions remain in the
+file, all of them statements that submission is not planned, plus the retained
+superseded quote in section 10.
+
+### 11.3 Revised file list for this arc
+
+```
+docs/design/66-capstone-power-study.md                        (17 sites + section 6A + 3 later fixes)
+docs/dev-log/audits/2026-08-02-design66-staleness-audit.md    (new, then corrected in place)
+docs/dev-log/check-log.md                                     (dated entry)
+docs/dev-log/after-task/2026-08-02-design66-revision.md       (this report + this addendum)
+docs/dev-log/plan-actual/2026-08-02-design66-revision.md      (reconciliation)
+GitHub issues #345, #349                                      (dated update appended; NEITHER closed)
+```
+
+Still untouched, as fenced: `docs/design/35-validation-debt-register.md`, `R/`,
+`src/`, `tests/`, `NAMESPACE`, `DESCRIPTION`.
+
+### 11.4 The process lesson
+
+**Fencing prevents collisions only where a fence was drawn.** Section 3 was
+fenced after a plan reviewer predicted an S2/S4 collision there, and section 3
+came through clean. Section 10 was *not* fenced, both patches touched it, and
+the result was a broken cross-reference. Sections 4.1 and 7.2 were outside every
+fence and kept their stale text. The fence is a whitelist, and anything outside
+it is unowned — so a fenced multi-agent edit needs a whole-file sweep for the
+*concept* afterwards, not only a check of the fenced sites.

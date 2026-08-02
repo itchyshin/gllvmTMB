@@ -152,7 +152,8 @@ rank-sensitive decomposition.
 ## What This Does Not Change
 
 This note does not change the formula grammar, likelihood,
-parameterisation, exported functions, or the 4 × 5 keyword grid. It
+parameterisation, exported functions, or the 4 × 3 keyword grid plus its
+modifiers. It
 documents how the existing current-code path should be explained in
 articles and examples.
 

@@ -41,9 +41,9 @@ Formerly \code{spde(0 + trait | coords)} and \code{spatial(0 + trait | coords)}
 -- same engine, new name. See \code{\link[=spde]{spde()}} for the technical details on
 the Matern \eqn{\nu = 1} kernel.
 
-Compare to \code{\link[=spatial_scalar]{spatial_scalar()}} (ONE shared variance across traits)
-and \code{\link[=spatial_latent]{spatial_latent()}} (K-dim spatial latent factors with a loading
-matrix).
+Compare to \code{\link[=spatial_indep]{spatial_indep()}} with \code{common = TRUE} (one shared variance
+across traits) and \code{\link[=spatial_latent]{spatial_latent()}} (K-dim spatial latent factors with a
+loading matrix).
 }
 \section{Formula orientation}{
 
@@ -65,7 +65,7 @@ canonical orientation, so existing fits remain byte-identical.
   mesh <- make_mesh(sim$data, c("lon", "lat"), cutoff = 0.1)
   fit <- gllvmTMB(
     value ~ 0 + trait +
-            spatial_unique(0 + trait | site, mesh = mesh),
+            spatial_indep(0 + trait | site, mesh = mesh),
     data  = sim$data,
     trait = "trait",
     unit  = "site"
@@ -73,5 +73,5 @@ canonical orientation, so existing fits remain byte-identical.
 }
 }
 \seealso{
-\code{\link[=spatial_scalar]{spatial_scalar()}}, \code{\link[=spatial_latent]{spatial_latent()}}, \code{\link[=spde]{spde()}} (deprecated alias).
+\code{\link[=spatial_indep]{spatial_indep()}}, \code{\link[=spatial_latent]{spatial_latent()}}, \code{\link[=spde]{spde()}} (deprecated alias).
 }

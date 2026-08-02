@@ -187,7 +187,7 @@ This memo does **NOT** decide:
 
 - `~/.claude/plans/please-have-a-robust-elephant.md` — Active Plan 2026-05-26 evening revision; Phase B-mix-0 is this memo's target.
 - `docs/design/02-family-registry.md:174-191` — current `check_auto_residual()` deferral for delta/hurdle mixed-family.
-- `docs/design/55-structural-slope-grammar.md` — augmented-LHS grammar contract (4 × 5 keyword grid).
+- `docs/design/55-structural-slope-grammar.md` — augmented-LHS grammar contract (4 × 3 keyword grid plus modifiers).
 - `docs/design/56-augmented-lhs-engine-stage3.md` §5.2, §7, §7.3, §9.x — engine shape and validation contract.
 - `R/extract-sigma.R:14-72, 99+` — `link_residual_per_trait()` per-family σ²_d constants and post-hoc machinery.
 - `R/families.R:685-759` — ordinal_probit family definition.

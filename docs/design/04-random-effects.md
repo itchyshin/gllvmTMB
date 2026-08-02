@@ -1,6 +1,6 @@
 # Random Effects
 
-**Maintained by:** Boole (R API + parser owner for the 4 × 5
+**Maintained by:** Boole (R API + parser owner for the 4 × 3
 keyword grid) and Fisher (inference semantics on the
 reduced-rank decomposition).
 **Reviewers:** Curie (simulation-recovery + boundary cases),
@@ -9,7 +9,7 @@ implementation alignment), Emmy (S3 dispatch on the random-
 effects output).
 
 The random-effects machinery is the heart of `gllvmTMB`. The
-4 × 5 covariance keyword grid (see
+4 × 3 covariance keyword grid (see
 `docs/design/01-formula-grammar.md`) is the user-facing surface;
 this document describes the contract underneath — what each
 keyword does to the latent variables, how the TMB template
@@ -36,7 +36,7 @@ discipline, adapted for the multi-trait stacked grammar):
    `value ~ 0 + trait + (0 + trait):env`. Baseline; serves
    primarily as a comparator for the random-effects fits.
 2. **Ordinary random intercepts** `(1 | g)`. Pass-through to
-   `glmmTMB::glmmTMB()`-style RE. Orthogonal to the 4 × 5 grid;
+   `glmmTMB::glmmTMB()`-style RE. Orthogonal to the 4 × 3 grid;
    used for groupings that are NOT the unit / unit_obs / cluster
    axes. **Status: `claimed`** (Phase 0B verifies).
 3. **`unique(0 + trait | g)` trait-diagonal** $\boldsymbol\Psi$.
@@ -88,18 +88,17 @@ discipline, adapted for the multi-trait stacked grammar):
 
 ## Vocabulary
 
-The **4 × 5** keyword grid plus ordinary RE form the
-random-effects vocabulary (expanded from 4 × 5 in M2.8 by
-adding the `animal_*` row; per [`14-known-relatedness-keywords.md`](14-known-relatedness-keywords.md)):
+The **4 × 3** keyword grid plus ordinary RE form the
+random-effects vocabulary. `common = TRUE` is the one-shared-variance
+modifier of `*_indep()` and `unique = TRUE` is the diagonal-Psi modifier of
+`*_latent()` (per [`14-known-relatedness-keywords.md`](14-known-relatedness-keywords.md)):
 
 | Source | Keyword pattern | What it adds to the linear predictor |
 |--------|-----------------|-------------------------------------|
 | Ordinary RE | `(1 \| g)` | Standard random intercept by `g`; not multi-trait-aware |
-| 4 × 5 grid: scalar | (omit / `animal_scalar` / `phylo_scalar` / `spatial_scalar`) | Single scalar covariance source for all traits |
-| 4 × 5 grid: `unique` | `unique() / animal_unique() / phylo_unique() / spatial_unique()` | Per-trait variance ($\Psi$) on grouping factor |
-| 4 × 5 grid: `indep` | `indep() / animal_indep() / phylo_indep() / spatial_indep()` | Explicit marginal / independent trait covariance; diagonal, no off-diagonal |
-| 4 × 5 grid: `dep` | `dep() / animal_dep() / phylo_dep() / spatial_dep()` | Unstructured trait covariance |
-| 4 × 5 grid: `latent` | `latent() / animal_latent() / phylo_latent() / spatial_latent()` | Reduced-rank $\Lambda$ ($T \times K$) |
+| 4 × 3 grid: `indep` | `indep() / animal_indep() / phylo_indep() / spatial_indep()` | Explicit marginal / independent trait covariance; diagonal, no off-diagonal. `common = TRUE` ties all trait variances to one shared value. |
+| 4 × 3 grid: `dep` | `dep() / animal_dep() / phylo_dep() / spatial_dep()` | Unstructured trait covariance |
+| 4 × 3 grid: `latent` | `latent() / animal_latent() / phylo_latent() / spatial_latent()` | Reduced-rank $\Lambda$ ($T \times K$); `unique = TRUE` adds the diagonal $\Psi$ companion. |
 | Predictor-informed latent scores | `latent(..., lv = ~ x)` | Term-local fixed-effect mean for latent scores; Design 73, ordinary unit-tier C1 partial for Gaussian and pure binomial logit/probit/cloglog |
 | Random slope | `latent(1 + x \| unit, d = K)` / structured `phylo_*()` and `spatial_*()` slope keywords | Per-group random regression slope on covariate `x`; ordinary Gaussian default `latent()` path is partial under RE-12, structured paths follow their validation rows |
 | `meta_V` | `meta_V(V = V)` | Known **sampling variance** added to residual. **V is reserved** for sampling variance per the A-vs-V boundary rule (Design 14 §3); relatedness covariance uses **A** / **Ainv** / **pedigree**. `meta_known_V()` is a deprecated alias. |
@@ -413,18 +412,16 @@ is compatibility syntax for the same `unique = TRUE` fold.
 
 ### Spatial syntax convention (2026-05-16)
 
-Spatial keywords take a grouping factor `sites` plus geometry
-specification (`mesh = mesh` or `coords = c("lon", "lat")`):
+Spatial keywords take a grouping factor `sites` plus a pre-built
+`mesh = mesh`:
 
 ```r
-spatial_unique(0 + trait | sites, mesh = mesh)
-# or
-spatial_unique(0 + trait | sites, coords = c("lon", "lat"))
+spatial_indep(0 + trait | sites, mesh = mesh)
 ```
 
-Both reach the same engine via the precomputed mesh. The
-`sites` grouping factor groups observations sharing a spatial
-location; the geometry argument supplies the SPDE mesh.
+The `sites` grouping factor groups observations sharing a spatial location.
+`make_mesh()` builds the mesh from coordinate rows aligned with the fitted
+stacked data; `coords =` identifies columns but does not build that mesh.
 
 ### Tier vs partition
 
@@ -671,9 +668,9 @@ intercept) are **`planned (post-RE-12)`**. The use case (slope
 varies across levels, but no per-level intercept offset) is
 rare; comes back as a follow-up slice after RE-12 closes.
 
-### Other 4 × 5 cells
+### Other 4 × 3 cells
 
-Other 4 × 5 cells (`indep`, `dep`, and the phylo / spatial
+Other 4 × 3 cells (`indep`, `dep`, and the phylo / spatial
 analogues) move by validation-debt row, not by this ordinary RE-12
 slice. Current public status is:
 
@@ -777,11 +774,11 @@ The remaining three are Phase 0B verification targets.
 
 ## Cross-references
 
-- `docs/design/00-vision.md` — package vision; the 4 × 5 grid
+- `docs/design/00-vision.md` — package vision; the 4 × 3 grid
   + reduced-rank decomposition + phylogenetic and spatial
   extensions ARE the package's identity.
 - `docs/design/01-formula-grammar.md` — full formula grammar
-  contract; the 4 × 5 keyword grid + `traits()` LHS expansion
+  contract; the 4 × 3 keyword grid + `traits()` LHS expansion
   + unit / unit_obs / cluster taxonomy + crossed-vs-nested rule.
 - `docs/design/02-family-registry.md` — per-family registry;
   the link-residual contract that combines with the trait
@@ -807,7 +804,7 @@ The remaining three are Phase 0B verification targets.
 
 ## Persona-active engagement
 
-- **Boole** owns the parser surface for the 4 × 5 keywords +
+- **Boole** owns the parser surface for the 4 × 3 keywords +
   ordinary RE + slash-form-rejected enforcement.
 - **Fisher** reviews inference semantics on the reduced-rank
   decomposition — what $\boldsymbol\Lambda$ rotation does to

@@ -2,7 +2,7 @@
 % Please edit documentation in R/brms-sugar.R
 \name{spatial_scalar}
 \alias{spatial_scalar}
-\title{One shared spatial-field variance across traits: \code{spatial_scalar(0 + trait | coords)}}
+\title{Deprecated alias for one shared spatial-field variance}
 \usage{
 spatial_scalar(formula, coords = NULL, mesh = NULL)
 }
@@ -23,7 +23,13 @@ The engine does not construct a mesh automatically from \code{coords}.}
 A formula marker; never evaluated.
 }
 \description{
-Canonical name for the SPDE / GMRF Matern spatial random field with
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}}
+}
+\details{
+\code{spatial_scalar()} is soft-deprecated compatibility syntax in gllvmTMB
+0.2.0. Write
+\code{spatial_indep(0 + trait | coords, common = TRUE)} in new code. The two
+spellings fit the same SPDE / GMRF Matérn model with
 \strong{one shared variance \eqn{\tau^{2}}} across all traits and a shared
 range parameter \eqn{\kappa}. Each trait carries its own independent
 field draw on the mesh, but every trait's field has the same marginal
@@ -31,12 +37,11 @@ variance and the same correlation length. Implementation: the same
 SPDE engine as \code{\link[=spatial_indep]{spatial_indep()}}, with the per-trait
 \code{log_tau_spde} parameters tied via TMB's \code{map} mechanism so they
 collapse to a single estimable scalar.
-}
-\details{
-Use this when domain knowledge (or parsimony) says all traits should
-share the same amount of spatial structure. Compare to
-\code{\link[=spatial_indep]{spatial_indep()}} (D independent variances) and \code{\link[=spatial_latent]{spatial_latent()}}
-(K-dim factor decomposition).
+
+Use \code{spatial_indep(..., common = TRUE)} when domain knowledge (or parsimony)
+says all traits should share the same amount of spatial structure. Omit
+\code{common = TRUE} for separate trait-specific spatial variances, or use
+\code{\link[=spatial_latent]{spatial_latent()}} for a reduced-rank cross-trait decomposition.
 }
 \section{Formula orientation}{
 
@@ -56,7 +61,7 @@ alias and emits a one-shot \code{lifecycle::deprecate_warn()} per session
   mesh <- make_mesh(sim$data, c("lon", "lat"), cutoff = 0.1)
   fit <- gllvmTMB(
     value ~ 0 + trait +
-            spatial_scalar(0 + trait | site, mesh = mesh),
+            spatial_indep(0 + trait | site, mesh = mesh, common = TRUE),
     data  = sim$data,
     trait = "trait",
     unit  = "site"

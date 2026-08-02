@@ -190,7 +190,7 @@ examples and interpretations apply.
 | Missing predictors | Supported for one explicitly modelled `mi()` predictor: Gaussian fixed, grouped, phylogenetic, binary, ordered, and unordered fixed-effect routes. Multiple `mi()` terms, non-Gaussian bounded/count predictors, and structured discrete predictor models are planned. |
 | First worked model | Gaussian `latent()` with its default `Psi` companion is the safest public decomposition example and is shown in [Morphometrics](https://itchyshin.github.io/gllvmTMB/articles/morphometrics.html). |
 | Latent-rank choice | [How many latent dimensions should I fit?](https://itchyshin.github.io/gllvmTMB/articles/model-selection-latent-rank.html) compares Gaussian ordinary `latent()` candidate ranks with `logLik()`, AIC, BIC, and `check_gllvmTMB()` rows. These criteria help route model choice within a fixed candidate set; they do not prove the biological rank or replace diagnostics. |
-| Formula keywords | The four taught covariance modes—Scalar, Independent, Dependent, and Latent—are documented across ordinary, animal, phylogenetic, and spatial sources in [Formula keyword grid](https://itchyshin.github.io/gllvmTMB/articles/api-keyword-grid.html). |
+| Formula keywords | The three covariance modes—Independent, Dependent, and Latent—are documented across ordinary, animal, phylogenetic, and spatial sources in [Formula keyword grid](https://itchyshin.github.io/gllvmTMB/articles/api-keyword-grid.html). `common = TRUE` on `*_indep()` is the one-shared-variance modifier; `unique = TRUE` on `*_latent()` adds the diagonal Psi companion. |
 | Multivariate spatial models | [Multivariate spatial models with an SPDE mesh](https://itchyshin.github.io/gllvmTMB/articles/spatial-models.html) shows mesh construction, equivalent long- and wide-format Gaussian fits, practical-range interpretation, current limitations, and the independent-authorship/licensing boundary. |
 | Response families | Families are listed in [Response families](https://itchyshin.github.io/gllvmTMB/articles/response-families.html); evidence depth and supported covariance regimes vary by family. |
 | Fitted diagnostics | [Can I trust this fit?](https://itchyshin.github.io/gllvmTMB/articles/fit-diagnostics.html) shows the first post-fit triage. `check_gllvmTMB()` reports numerical fit health; `predictive_check()`, `residuals()`, and `diagnostic_table()` provide fitted-model response diagnostics for the scoped Gaussian, Poisson, and NB2 paths. These are diagnostic displays, not posterior predictive checks or interval calibration. |
@@ -258,8 +258,8 @@ for the public independence, acknowledgement, and GPL-3 explanation.
   2.0) is the established multivariate GLLVM / ordination package,
   with variational, extended-variational, and Laplace approximation
   paths plus a matrix-in API; `gllvmTMB` is the TMB-Laplace
-  alternative with stacked-trait formula grammar and the four-mode
-  covariance-keyword grid.
+  alternative with stacked-trait formula grammar and the three-mode
+  covariance-keyword grid plus `common` and `unique` modifiers.
 - `MCMCglmm` and `brms` are Bayesian alternatives for multivariate
   phylogenetic / multi-response models; `gllvmTMB` returns ML point
   estimates with profile, Wald, or bootstrap routes where supported. Method

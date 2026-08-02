@@ -95,7 +95,7 @@ support from end-to-end verification:
 | `phylo_scalar(species, vcv = Cphy)` | **covered** | Single trait-scalar phylogenetic random effect; the simplest phylogenetic mixed-model form. Test evidence: `test-stage35-phylo-rr.R` + `test-formula-grammar-smoke.R` (dense-vcv path) (validation-debt register PHY-04; Phase 0B.2 promotion 2026-05-16). |
 | `phylo_indep` / `phylo_dep` | **covered** | Marginal-only phylogenetic trait covariance (`phylo_indep`, equivalent to `phylo_unique`) and full-rank phylogenetic latent covariance (`phylo_dep`, equivalent to `phylo_latent(..., d = n_traits)`). Test evidence: `test-canonical-keywords.R`, `test-stage35-phylo-rr.R` + `test-formula-grammar-smoke.R` (both forms) (validation-debt register PHY-05; Phase 0B.2 promotion 2026-05-16). |
 | `animal_latent(id, d = K, pedigree = ped)` / `animal_latent(..., unique = TRUE)` | **covered / explicit animal Psi fold** | Bare `animal_latent()` is reduced-rank additive-genetic loadings on the same relatedness matrix $A$; `unique = TRUE` adds the diagonal $\boldsymbol\Psi_\text{animal}$ companion. The explicit `animal_latent(..., unique = FALSE) + animal_unique()` pair remains accepted compatibility syntax; duplicate `unique = TRUE + animal_unique()` errors. Test evidence: `test-animal-keyword.R`, `test-matrix-animal-nongaussian.R`, `test-animal-latent-unique-fold.R` (validation-debt register ANI-05; animal latent-Psi fold 2026-06-21; explicit source-Psi contract 2026-07-03). |
-| `spatial_latent(0 + trait \| sites, d = K, unique = TRUE, mesh = mesh)` or `spatial_latent(0 + trait \| sites, d = K, unique = TRUE, coords = c("lon", "lat"))` and siblings | **partial / Gaussian total-covariance fold covered** | Spatial analogues of the phylo keywords. Grouping factor is `sites`; spatial geometry supplied via either `mesh = make_mesh(...)` or `coords = c("lon", "lat")` (engine builds the mesh internally). `spatial_latent(..., unique = FALSE)` is the old low-rank-only path, while `unique = TRUE` estimates the total spatial covariance $\Sigma_\text{spde} = \Lambda_\text{spde}\Lambda_\text{spde}^\top + \Psi_\text{spde}$ by keeping both shared and per-trait SPDE fields active. Legacy `spatial_latent(...) + spatial_unique(...)` remains accepted as compatibility syntax for the same unique fold. See "Spatial axis convention" below. Test evidence: `test-keyword-grid.R` (parser marker, both random blocks, total extractor, rank-1 total correlations not forced to `+/-1`), `test-spatial-latent-recovery.R` (low-rank path), `test-stage4-spde.R` (spatial_unique), `test-formula-grammar-smoke.R` (spatial_indep, spatial_dep, spatial_scalar) (validation-debt register SPA-03, SPA-04; Phase 0B.2 promotion 2026-05-16). Validation-debt register SPA-02 remains `partial` because source/family recovery depth is narrow. Nonlinear spatial communality/correlation/proportion profiles are separately withdrawn and blocked; they are not awaiting only a heavier smoke test. |
+| `spatial_latent(0 + trait \| sites, d = K, unique = TRUE, mesh = mesh)` and siblings | **partial / Gaussian total-covariance fold covered** | Spatial analogues of the phylo keywords. Grouping factor is `sites`; spatial geometry is supplied by a precomputed `mesh = make_mesh(...)` built from coordinate rows aligned with the fitted stacked data. `coords =` identifies coordinate columns but does not build a mesh. `spatial_latent(..., unique = FALSE)` is the old low-rank-only path, while `unique = TRUE` estimates the total spatial covariance $\Sigma_\text{spde} = \Lambda_\text{spde}\Lambda_\text{spde}^\top + \Psi_\text{spde}$ by keeping both shared and per-trait SPDE fields active. Legacy `spatial_latent(...) + spatial_unique(...)` remains accepted as compatibility syntax for the same unique fold. See "Spatial axis convention" below. Test evidence: `test-keyword-grid.R` (parser marker, both random blocks, total extractor, rank-1 total correlations not forced to `+/-1`), `test-spatial-latent-recovery.R` (low-rank path), `test-stage4-spde.R` (spatial_unique), `test-formula-grammar-smoke.R` (spatial_indep, spatial_dep, spatial_scalar) (validation-debt register SPA-03, SPA-04; Phase 0B.2 promotion 2026-05-16). Validation-debt register SPA-02 remains `partial` because source/family recovery depth is narrow. Nonlinear spatial communality/correlation/proportion profiles are separately withdrawn and blocked; they are not awaiting only a heavier smoke test. |
 | `kernel_latent(unit, K = A, d = q, name = "known")` / `kernel_latent(..., unique = TRUE)` | **covered / explicit kernel Psi fold** | Bare `kernel_latent()` is generic dense-kernel reduced-rank loadings for one named user-supplied matrix `K`; `unique = TRUE` adds the kernel-structured diagonal $\boldsymbol\Psi_\text{kernel}$ companion. The explicit `kernel_latent(..., unique = FALSE) + kernel_unique()` pair remains accepted compatibility syntax, and `kernel_unique()` alone warns as compatibility syntax; duplicate `unique = TRUE + kernel_unique()` errors; the Paper 2 multi-kernel path remains latent-only and keeps explicit kernel-level Psi deferred. C1 routes through the phylo-equivalent dense `vcv` path and exposes the tier via `extract_Sigma(level = "known")`. Test evidence: `test-kernel-latent-unique-fold.R` and `test-kernel-equivalence.R` check parser emission, malformed-`unique` rejection, explicit-vs-pair equivalence, and dense `phylo_latent(..., vcv = A)` equivalence to less than `1e-6`; `test-unique-family-deprecation.R` covers the lifecycle warning (validation-debt register KER-02; Design 65 C1; kernel latent-Psi fold 2026-06-21; explicit source-Psi contract 2026-07-03). |
 | `kernel_indep(unit, K = A)` / `kernel_dep(unit, K = A)` | **covered** | Generic dense-kernel marginal-only and full-rank companion modes. C1 fit equivalence is covered in `test-kernel-equivalence.R` against `phylo_indep(..., vcv = A)` and `phylo_dep(..., vcv = A)`; the engine route is the same phylo-equivalent dense `vcv` slot used by `kernel_latent()` / `kernel_unique()` (validation-debt register KER-02; Design 65 C1). |
 | `meta_V(V = V)` | **partial** | Known sampling covariance, desugars to `equalto(0 + obs \| grp_V, V)`. Pass `known_V = V` to `gllvmTMB()` alongside. Test evidence: `test-formula-grammar-smoke.R` (single-V additive form and V-only parser compatibility), `test-traits-keyword.R` (wide `traits(...)` preservation), and `test-block-V.R` (block-V helper) (validation-debt register MET-01, MET-02). The legacy `meta_known_V(V = V)` is retained as a deprecated alias; both names desugar identically in the parser. Single-V inference validation remains partial under MET-01. |
@@ -616,32 +616,34 @@ gllvmTMB(
 
 ## Spatial axis convention
 
-Spatial keywords (`spatial_scalar`, `spatial_unique`, `spatial_indep`,
-`spatial_dep`, `spatial_latent`) operate on a **sites grouping
-factor** with the spatial geometry supplied via either a
-precomputed mesh or coordinate columns. The canonical form
-(maintainer 2026-05-16 ratification) is:
+Spatial keywords (`spatial_indep`, `spatial_dep`, `spatial_latent`) operate on
+a **sites grouping factor**. Coordinate columns locate observations; a
+precomputed mesh supplies the required SPDE geometry. The canonical form is:
 
 ```r
-# With a precomputed mesh:
-spatial_unique(0 + trait | sites, mesh = mesh)
+# Build the mesh from the coordinate rows that match the fitted stacked data:
+mesh <- make_mesh(df, c("lon", "lat"), cutoff = 0.1)
 
-# Or with coordinate columns (engine builds the mesh internally):
-spatial_unique(0 + trait | sites, coords = c("lon", "lat"))
+# Supply the mesh either here ...
+spatial_indep(0 + trait | sites, mesh = mesh)
+
+# ... or through gllvmTMB(..., mesh = mesh).
 ```
 
-The `sites` grouping factor identifies which observations share a
-spatial location. The `mesh` argument is built via
-`make_mesh(df, c("lon", "lat"), cutoff = ...)`. The SPDE / GMRF
-precision approximation is the Lindgren-Rue-Lindström (2011)
-construction implemented in gllvmTMB.
+The `sites` grouping factor identifies which observations share a spatial
+location. `make_mesh()` records the coordinate columns, constructs the
+triangular mesh, and creates the sparse observation-to-mesh projection. The
+engine does **not** build a mesh automatically from `coords =`; a mesh made
+from rows aligned with the fitted stacked data is required. The SPDE / GMRF
+precision approximation is the Lindgren-Rue-Lindström (2011) construction
+implemented in gllvmTMB.
 
 The earlier syntax `spatial_unique(0 + trait | coords)` (with
 `coords` as the grouping-factor name) is **deprecated** in favour
 of the new form, which puts the grouping factor and the spatial
-geometry argument on equal footing with the rest of the keyword
-grammar (every keyword has a `g` grouping factor; spatial keywords
-additionally take `coords =` or `mesh =`).
+geometry argument on equal footing with the rest of the keyword grammar
+(every keyword has a `g` grouping factor; spatial keywords additionally need
+a pre-built `mesh`).
 
 ## Meta-analysis keyword: `meta_V` (renamed from `meta_known_V`)
 

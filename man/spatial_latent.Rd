@@ -35,7 +35,7 @@ Canonical name for the reduced-rank spatial random effect: K shared
 SPDE fields drive all T traits via a T x K loading matrix
 \eqn{\boldsymbol\Lambda_{\mathrm{spa}}}. The spatial analogue of
 \code{\link[=phylo_latent]{phylo_latent()}} and the third cell of the spatial column of the API
-grid (alongside \code{\link[=spatial_scalar]{spatial_scalar()}} and \code{\link[=spatial_indep]{spatial_indep()}}).
+grid (alongside \code{\link[=spatial_indep]{spatial_indep()}} and \code{\link[=spatial_dep]{spatial_dep()}}).
 }
 \details{
 Internally this rewrites to \code{spde(form, .spatial_latent = TRUE, d = K)}
@@ -88,5 +88,5 @@ alias and emits a one-shot \code{lifecycle::deprecate_warn()} per session
 }
 }
 \seealso{
-\code{\link[=spatial_indep]{spatial_indep()}}, \code{\link[=spatial_scalar]{spatial_scalar()}}, \code{\link[=phylo_latent]{phylo_latent()}}.
+\code{\link[=spatial_indep]{spatial_indep()}}, \code{\link[=spatial_dep]{spatial_dep()}}, \code{\link[=phylo_latent]{phylo_latent()}}.
 }

@@ -1,0 +1,20 @@
+using C++ compiler: ‘Apple clang version 21.0.0 (clang-2100.1.1.101)’
+using SDK: ‘MacOSX26.5.sdk’
+clang++ -arch arm64 -std=gnu++20 -I"/Library/Frameworks/R.framework/Resources/include" -DNDEBUG -I"/Users/z3437171/Library/R/arm64/4.6/library/TMB/include" -I"/Users/z3437171/Library/R/arm64/4.6/library/RcppEigen/include"  -DTMB_SAFEBOUNDS -DTMB_EIGEN_DISABLE_WARNINGS -DLIB_UNLOAD=R_unload_gllvmTMB_va_r3  -DTMB_LIB_INIT=R_init_gllvmTMB_va_r3  -DCPPAD_FRAMEWORK  -I/opt/R/arm64/include    -fPIC  -O2  -c gllvmTMB_va_r3.cpp -o gllvmTMB_va_r3.o
+clang++ -arch arm64 -std=gnu++20 -dynamiclib -Wl,-headerpad_max_install_names -undefined dynamic_lookup -L/Library/Frameworks/R.framework/Resources/lib -L/opt/R/arm64/lib -o gllvmTMB_va_r3.so gllvmTMB_va_r3.o -F/Library/Frameworks/R.framework/.. -framework R
+
+########## n_starts = 1 (the campaign's setting) ##########
+   N q seed n_starts stage secs     va_t2                    detail
+ 500 1    2        1    OK 83.4  1.000000 status=failed_health_gate
+ 500 1    3        1    OK 59.7  9.193294 status=failed_health_gate
+ 500 1    4        1    OK 67.7 16.534597 status=failed_health_gate
+ 500 1    1        1    OK 67.3  1.000000 status=failed_health_gate
+
+########## n_starts = 4 (the harness .d108_fit_va default) ##########
+   N q seed n_starts stage  secs     va_t2                    detail
+ 500 1    2        4    OK 279.2 15.905192 status=failed_health_gate
+ 500 1    3        4    OK 263.5  9.193337 status=failed_health_gate
+ 500 1    4        4    OK 257.4 16.534597 status=failed_health_gate
+ 500 1    1        4    OK 282.7  1.000000 status=failed_health_gate
+
+ROSE_ATTACK1_DONE

@@ -441,3 +441,156 @@ VA rather than to the specification. The corrected re-run in §10 is what would 
 **Net effect on the verdict:** this section *strengthens* the single-arm finding (VA's structured
 tier-2 estimates are degenerate, and not for want of starts) while leaving §1 and §2 — which are
 what defeat the comparative claim and the completion claim — untouched.
+
+---
+
+# APPENDIX — second, independent adversarial panel (2026-08-03, later session)
+
+**Why this exists.** A later session, rehydrating from
+`docs/dev-log/handover/2026-08-03-claude-handover.md`, found this file absent from
+`origin/claude/d108-recovery-campaign` and re-dispatched the review as **five fresh adversaries
+in independent contexts** — selection/survivorship, degeneracy accounting, informativeness
+precondition, estimand + DGP, and decision generalisation — each with a default of NOT-HOLDING.
+The original review then landed mid-session. Both panels are retained.
+
+**All five returned REFUTED, and they converge with §§1–12 above.** The convergence is
+evidentially meaningful: the **scale mismatch (§1)** was found independently by two of the five,
+and the **collapse-scored-as-success defect (§8)** by a different two — none of whom could see
+this document or each other.
+
+Below are only the findings **not already covered above**.
+
+## A1. PROTOCOL violation — the mandated `d_prop` metric was never used
+
+`PROTOCOL.md:894` (Orchestrator Decision 1, 2026-08-02) states: *"The pilot must report
+`SD(d_prop)`, **not** `SD(d)` in raw `rel_frob` units."* §2 of PILOT-FINDINGS reports raw `d`
+only. On the mandated scale, mean `d_prop` = −3.418 / −12.832 / −17.673 / −40.688 and **all four
+2·MCSE bands exclude zero**: [−6.31, −0.52], [−20.23, −5.43], [−35.23, −0.12], [−79.07, −2.31].
+
+**The INDETERMINATE verdict exists only on the metric the protocol explicitly forbade.** (This is
+independent of §1 — it says the *reported* analysis was not the *specified* analysis. §1 still
+governs whether either analysis is interpretable.)
+
+## A2. The 2·MCSE band is the wrong instrument, and it produces a FALSE POSITIVE
+
+At n = 6, `2·SE` has normal-theory coverage **0.898**, not 0.95 (`2*pt(2,5)-1`); the correct
+multiplier is `t(5,.975) = 2.571`.
+
+**N=500 q=1's "Laplace better" verdict rests on a lower bound of 0.004.** With the correct
+`t(7,.975) = 2.365` the band is **[−0.415, 5.019] — it includes zero.** That verdict does not
+survive its own method applied correctly.
+
+This *adds* to §7: §7 shows the median/sign-test framing makes the direction stronger; A2 shows
+the mean/2·MCSE framing was also mis-calibrated in the other direction. Skew is 0.45–1.30 and one
+observation carries 43–52% of each cell's sum.
+
+## A3. The 0.5 gate's cited ancestry does not exist
+
+`PROTOCOL.md:69-73` claims: *"`dev/design108-stage8/analyse-silent-divergence.R` lines 78–85
+already implements this gate exactly — reused verbatim."* Those lines contain **no `rel_frob` gate
+at all** — they are a silent-divergence *rate* check — and `grep -c "0\.5"` over that entire file
+returns **0**. Its only `rel_frob` threshold is `degenerate := rel_frob > 10`, twenty times larger
+and a different construct.
+
+So the level's only real referent is a function default (`harness.R:662`,
+`rel_frob_gate = 0.5`) which *is* the level. **Circular, with a false external citation.**
+
+## A4. The precondition IS satisfiable — the design was fixable, not doomed
+
+§5 establishes the precondition fails. It does not establish whether it *could* have been met.
+It could: the campaign's own `pilot-results/job1b_floor_corrected.rds` — same DGP, same estimand,
+same N, but **T = 20** — gives tier-2 medians **0.460 / 0.416 / 0.382 / 0.449**, clearing 0.5 in
+**all four cells**. At replicate level, **17 of 80 Laplace fits already clear 0.5** (6/20, 6/20,
+3/20, 2/20).
+
+So "no arm achieves acceptable tier-2 recovery" is an artifact of applying the precondition to a
+**20-seed median**, whereas its first use (`PILOT-FINDINGS.md:126-138`) applied it **per (N, seed)** —
+the granularity changed between the document's two uses of its own gate. `:584` lists "T=10, not
+20–30" as a scope limit without noticing that **T=20 is exactly where its own control cleared the
+gate it then declares unmeetable.**
+
+*Caveat:* job1b's arm is `gaussian_control`, which replaces the response with
+`eta_true + rnorm(n, 0, gauss_sd)` (`harness.R:472-473`) — it observes eta almost directly. It
+proves the planted signal is recoverable in principle; it does not prove the probit Laplace arm
+reaches 0.5 at T=10.
+
+**Consequence for planning:** a corrected re-run (§10) should raise T, not only fix the arms.
+
+## A5. The "~7 days" denominator is itself wrong by 3–5×
+
+§10 concludes this evidence cannot retire ~7 days. Stronger: **the 7-day figure is inflated and
+self-contradicted.** It is sourced to one sentence
+(`docs/dev-log/handover/2026-08-02-claude-handover-gate-a-closed.md:156`) and has **no derivation
+anywhere** — searched `docs/`, full history via `git log --all -S`, and `~/.claude/plans/`. Both
+governing documents cost the stages at **1.5–2.5 d**:
+
+| source | Stage 3 | Stage 5 | sum |
+|---|---|---|---|
+| `docs/design/108-va-parity-programme.md:195,197` | **0.5 d** | **1–2 d** | **1.5–2.5 d** |
+| the same handover, `:164,:157` | **0.5 d** | **1–2 d** | **1.5–2.5 d** |
+| the decision's denominator | — | — | **~7 d** |
+
+A two-day agent campaign plus an 80-cell Totoro grid was spent to avoid 1.5–2.5 days of
+implementation. The arithmetic was never done, and the inflation runs in the direction that makes
+cancellation attractive. Stage 3 is **0.5 d and EXACT** — cheaper to implement than to keep
+debating.
+
+## A6. Reproducibility — the driver is not in the repository
+
+`campaign_grid.csv` was produced by `/private/tmp/totoro_grid.R`, **untracked scratch, not in the
+worktree**. No number in the "THE CAMPAIGN'S ANSWER" or "TOTORO GRID" sections can be re-derived
+from the repository as committed — and the arm specification that §1 shows to be defective is
+precisely what is missing. **Action: commit the driver.** (This is adjacent to §11's honest limit
+about the Totoro-side copies, but distinct: the *driver itself* is unversioned.)
+
+## A7. The positive-control gate reads the wrong column
+
+`harness.R:506-517` added `S1L`/`S2L` to the control specifically so its `rel_frob` would not be a
+silent `NA` and "the control gate" would not "pass VACUOUSLY". But
+`.d108_positive_control_gate()` (`harness.R:664-667`) filters on `rel_frob_tier1` /
+`rel_frob_tier2` — the **total** columns — and never touches `rel_frob_loadings_tier*`, which
+`harness.R:566-567` names as the PROTOCOL estimand that "the analysis reads". **The fix is not
+consumed by the gate it was written to protect.**
+
+## A8. The medians line mixes denominators and re-orders cells
+
+VA medians are over n = 8/7/6/6; the Laplace medians printed beside them are over **all n = 20** —
+an unpaired comparison inside a paired section. The paired-subset Laplace medians are
+0.655 / 0.751 / 0.528 / 0.614 and do not match the reported figures. The line is also in q-major
+order while the table three lines above is N-major, so a reader matching positionally mis-assigns
+the two middle cells in both arms.
+
+This repeats the document's own recorded lesson at `:359-361`: *"Any rate computed with
+`na.rm = TRUE` needs its denominator reported beside it."*
+
+## A9. Checked and CLEAN — recorded so no one re-audits these
+
+- **DGP Kronecker structure.** `dgp.R:154-156` draws one GMRF column per trait over the same
+  `Ainv`, scaled per trait — covariance `diag(psi2_base) ⊗ A`, i.e. `Ψ_phy ⊗ A`. **The earlier iid
+  bug has NOT recurred.** Verified numerically: `solve(Ainv)[tips,tips]` matches
+  `ape::vcv(tree, corr=TRUE)` to `max |Δ| = 4.7e-14`, unit tip marginals to `4.7e-14`.
+- **All 16 `score()` pairings inside `run_cell()`** (`harness.R:595-645`) pair total-with-total and
+  loadings-with-loadings across the gllvm control, Laplace, VA-augmented and VA-tips-only arms.
+  **No crossing.** `part="shared"` confirmed to be `Λ_phy Λ_phy'` and `part="total"` to add
+  `diag(sd²)` (`R/extract-sigma.R:1236-1246`).
+- **Tier index arithmetic.** Tiers are 1 = ordinary dense, 2 = ordinary ψ, 3 = phylo dense,
+  4 = phylo ψ; `.d108_va_tier_sigma(par, layout, 3L, 4L, T0)` reads the **phylo** tier correctly.
+  Offsets verified (`R/va-r3-proto.R:576-587, 608-609`); `harness.R:188-189`'s `stopifnot` fails
+  closed on any reordering that changes tier kinds.
+- **The PR #919 estimand question** — independently re-derived, agreeing with §9. `ΛΛ'` is exactly
+  invariant under a column sign flip (`S = diag(±1)`, `SS' = I_q` since `s_k² = 1`) and under any
+  orthogonal `Q`: `(ΛS)(ΛS)' = ΛSS'Λ' = ΛΛ'`. Confirmed over all `2^q` modes at T=6, q=3 —
+  difference **exactly 0** (not rounding); general `Q` to 1.78e-15. The sign group is precisely the
+  *diagonal* subgroup of an invariance the estimand already enjoys over all of `O(q)`.
+- **Selection/survivorship**, tested independently and **negative**, matching §3: Laplace tier-2
+  error on VA-success seeds 0.6762 vs VA-failure seeds 0.7153, Wilcoxon p = 0.863.
+
+## A10. Panel conclusion
+
+Nothing in the second panel overturns §§1–12; it **corroborates** them from independent contexts
+and adds A1–A8 as further defects and A9 as a clean bill on four things worth not re-auditing.
+
+The publishable sentence at §10 stands. So does its decision recommendation: **a corrected re-run
+of roughly one day** — fixing the arms (§1), seeding the DLL per worker (§2), logging failure
+reasons, recording `status`/`admitted`, **and raising T (A4)** — not a seven-day cancellation of
+work that its own design doc costs at 1.5–2.5 days (A5).

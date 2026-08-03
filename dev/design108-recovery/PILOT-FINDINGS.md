@@ -657,3 +657,52 @@ rules out OOM/time and fits a startup race. *The mechanism is inferred; the repr
 confound. Nor does the evidence clear VA. **The corrected re-run is ~1 day, not 7:** use
 `.d108_fit_va()` so both arms fit the same model, seed the DLL per worker, and log failure
 REASONS rather than `NA`.
+
+---
+
+## Second adversarial panel (same day) — five more defects, and one change to the re-run
+
+A later session re-dispatched the review as **five fresh adversaries in independent contexts**
+(the original had not yet landed). All five returned REFUTED and **converged with the retraction
+above** — the scale mismatch was found independently by two of them, the collapse-scoring defect
+by two others. Full detail: `ADVERSARIAL-REVIEW.md` **§APPENDIX A1–A9**. Only the items that
+change what someone should *do* are repeated here.
+
+**① The re-run should also raise `T`.** The retraction's fix list (same model, seed the DLL, log
+reasons) is necessary but not sufficient — at T=10 the cells fail the informativeness
+precondition. **They are not doomed to:** the campaign's own `job1b_floor_corrected.rds` — same
+DGP, same estimand, same N, **T=20** — gives tier-2 medians **0.460 / 0.416 / 0.382 / 0.449**,
+clearing 0.5 in **all four cells**. `§5`'s scope-limit line ("T=10, not 20–30") did not notice
+that T=20 is exactly where its own control cleared the gate `§4` declares unmet. **Add "raise T"
+to the re-run spec.** (A4)
+
+**② The "~7 days" figure is itself wrong by 3–5×.** The retraction says it cannot be retired;
+stronger — it was never 7 days. `docs/design/108-va-parity-programme.md:195,197` costs Stage 3 at
+**0.5 d** and Stage 5 at **1–2 d** — **1.5–2.5 d total** — and the handover that states "~7 days"
+sizes both stages the same way eight lines later. No derivation of 7 exists anywhere
+(`git log --all -S`, `docs/`, `~/.claude/plans/`). Stage 3 is 0.5 d and EXACT. (A5)
+
+**③ Two analyses the PROTOCOL mandated were not run**, and each flips the INDETERMINATE cells
+independently of the scale problem: the per-cell **sign test** (`PROTOCOL.md:664`) and **`d_prop`**
+rather than raw `d` (`PROTOCOL.md:894` — "**not** `SD(d)` in raw `rel_frob` units"). On `d_prop`
+all four bands exclude zero. (A1)
+
+**④ The 2·MCSE band was also mis-calibrated.** At n=6 it has **0.898** coverage, not 0.95. Under
+the correct `t(7,.975)`, N=500 q=1 — the cell reported as "Laplace better" on a lower bound of
+**0.004** — becomes **[−0.415, 5.019], including zero**. A false positive, in the opposite
+direction from the false negatives. (A2)
+
+**⑤ Housekeeping with teeth.** The 0.5 gate's cited ancestry is **false** —
+`PROTOCOL.md:69-73` says it is implemented at `analyse-silent-divergence.R:78-85`; that file has
+no `rel_frob` gate and `grep -c "0\.5"` returns 0 (A3). The driver `/tmp/totoro_grid.R` is
+**untracked scratch and not in the repo**, so no headline number is reproducible from the
+worktree — **commit it** (A6). `.d108_positive_control_gate()` filters the *total* columns while
+the analysis reads the *loadings* columns, so the anti-vacuity fix at `harness.R:506-517` is not
+consumed by the gate it was written for (A7). The medians line mixes n=6–8 VA against n=20
+Laplace and is in a different cell order from the table above it (A8).
+
+**Verified CLEAN and not worth re-auditing** (A9): the DGP's `Ψ_phy ⊗ A` Kronecker structure (the
+old iid bug has **not** recurred — matches `ape::vcv(corr=TRUE)` to 4.7e-14); all 16 `score()`
+pairings inside `run_cell()`; the tier index arithmetic `(3L, 4L)`; and the PR #919 question,
+re-derived independently — `ΛΛ'` is invariant under sign flip and rotation, difference **exactly
+0** over all `2^q` modes.

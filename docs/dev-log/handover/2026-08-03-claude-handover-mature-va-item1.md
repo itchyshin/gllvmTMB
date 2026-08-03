@@ -103,6 +103,25 @@ matches finite difference to 1.4e-08; and the `n`-scaling check above.
 `test-va-probit-adsafety.R`, `test-integration-fence.R`, `test-va-routing-oracle.R`,
 `test-va-mixed-family.R`, `test-approximation-engine.R`.
 
+## Measured so far — speed YES, accuracy NOT YET
+
+| measurement | result |
+|---|---|
+| per-evaluation, N=250 T=20 (clean, interleaved) | `fn` 46.5→3.0 ms, `gr` 108.5→7.0 ms — **15.5×** |
+| per-evaluation, N=100 T=10 | `fn` 9.5×, `gr` 24× — weighted **19.0×** |
+| fit level, N=60 T=4 | joint 21.0→0.8 s (**26×**), profile 26.7→1.3 s (**20×**) |
+| fit level, N=100 T=10 | 431.7→24.4 s (**17.7×**) |
+| completion at N=250 T=20 | **AC completes (248 s); GH does not complete here at all** |
+| **accuracy `rel_frob ≤ 0.298`** | **NOT MEASURED — the binding falsifier** |
+
+Objectives cross-check from a second direction: GH returns 363.2771 on **both** the joint and
+profile routes and AC returns 384.7019 on both, so the profile route computes the same objective
+as the joint one and AC sits above GH on the NLL scale everywhere — the looser bound, as
+required. None of that depends on the optimiser agreeing with itself.
+
+**GH's non-completion at the reference cell is UNVERIFIED as a tier property** — it may be this
+machine. Do not cite it as one.
+
 ## 🔴 THE RE-AIM — Item 1 alone cannot hit the speed target
 
 **This is the most important thing in this handover.** The derivation found that Amdahl caps
@@ -136,10 +155,35 @@ tiers**. The *objective* is unaffected by any of that — only the `A_i` corolla
 
 | Artifact | Branch | State |
 |---|---|---|
-| AC tier + derivation + reference read + design-108 correction | `claude/mature-va-albert-chib` | **PUSHED** `f60451bb`, no PR |
+| AC tier + derivation + reference read + design-108 correction + measurements | `claude/mature-va-albert-chib` | **PUSHED**, no PR |
 | Adversarial review + campaign correction + the driver | `claude/d108-recovery-campaign` | **PUSHED** `fa0cee95` |
+| **`gll_log1mexp` AD-safety fix (shipped engine)** | `claude/log1mexp-adsafety-20260803` | **PR #925 OPEN** — needs Shinichi |
 | Register-code guard | `claude/register-code-guard` | **PR #917 OPEN** — needs Shinichi |
 | Brain log | `~/shinichi-brain` | committed `184eacd` (local-only, D-37) |
+
+### Spin-off: a real defect in the SHIPPED Laplace ordinal path (PR #925)
+
+The derivation turned this up while assessing whether `gll_log_pnorm_diff` could be ported into
+the VA template. It cannot, for this reason.
+
+`CppAD::CondExp` evaluates **both** branches, so both must be finite even when one is
+unselected. In `gll_log1mexp` neither was over a reachable range: `gll_log_pnorm`'s direct
+branch is `log(pnorm(x))` and `pnorm(x)` rounds to **exactly 1.0** for `x > 8.2924`, so when both
+ordinal boundaries sit >8.3 from `eta` on the same side, the two log-probabilities are
+bit-identical, their difference is exactly 0, and `log1mexp(0)` is `-Inf`. **`fn()` and `gr()`
+stay finite AND CORRECT; only `he()` goes NaN** — no gradient check can see it.
+
+Fixed with an input ceiling at the double unit roundoff, `-1.2e-16`. **The magnitude is load
+bearing**: `-1e-300` or `-1e-20` rescues the series branch but leaves the direct branch at
+`log(0)`. Exposure is the whole interval `(-1.1e-16, 0]`, not just exactly 0, which also covers
+`gll_log_inv_logit_diff` (cumulative logit).
+
+**The guard is demonstrated to fail against the unfixed engine** (5 failures reverted, 37
+passing restored). A false start worth carrying: my first test pushed the **cutpoints** and
+passed against the defect — it guarded nothing. The lever is **`eta`**, not the cutpoints: for
+K=3 the interior term is `a = tau_2 - eta`, `b = -eta`, and both must be past 8.2924 **on the
+same side**; enlarging `tau_2` widens `a` while leaving `b ~ 0`. Regression with
+`GLLVMTMB_HEAVY_TESTS=1`: 190 passed / 0 failed, including 12 ordinal recovery assertions.
 
 Campaign and benchmark results are **LOCAL (D-50)** — `.rds`/`.csv` gitignored, never committed.
 

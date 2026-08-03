@@ -304,8 +304,8 @@ bridge remains experimental and is not required for the main workflow.
   `bootstrap_Sigma()` refuses an `n_boot` below the arithmetic floor, warns
   below the default, and returns `$coverage_ceiling` so a simulation campaign
   can assert `coverage_ceiling >= conf` on its own configuration before trusting
-  its own numbers (IN: the guard and its tests; PARTIAL: non-Gaussian and
-  mixed-family bootstrap calibration remain uncertified, CI-08/CI-10).
+  its own numbers. The guard and its tests are covered; bootstrap interval
+  calibration for non-Gaussian and mixed-family fits remains uncertified.
 
 * Ordinary `latent()` now represents
   `Sigma = Lambda Lambda^T + Psi` by default. Use

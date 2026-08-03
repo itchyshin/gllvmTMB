@@ -706,3 +706,64 @@ old iid bug has **not** recurred — matches `ape::vcv(corr=TRUE)` to 4.7e-14); 
 pairings inside `run_cell()`; the tier index arithmetic `(3L, 4L)`; and the PR #919 question,
 re-derived independently — `ΛΛ'` is invariant under sign flip and rotation, difference **exactly
 0** over all `2^q` modes.
+
+---
+
+# ✅ THE VALID COMPARISON — corrected grid, and the Stages 3/5 VERDICT
+
+Both defects the adversarial review found are fixed: **both arms fit `binomial_probit` on raw
+`y` via `.d108_fit_va()` / `.d108_fit_laplace()`** (same model, same estimand), and the TMB DLL
+is **seeded per worker** per `harness.R:103-110`. N=500, T=10, q in {1,2}, 10 seeds, Totoro.
+
+## Completion — the earlier 34% is RETRACTED for good
+
+**VA 20/20. Laplace 20/20.** The 66% failure rate was entirely the missing DLL seeding. The
+adversary's diagnosis is confirmed outright.
+
+## Paired contrast `d = VA - Laplace`, 2*MCSE
+
+| tier | q | mean d | 2*MCSE band | verdict |
+|---|---|---:|---|---|
+| **2 (phylo)** | 1 | 12.466 | [-4.291, 29.222] | **INDETERMINATE** |
+| **2 (phylo)** | 2 | 27.870 | [17.507, 38.233] | Laplace better |
+| 1 | 1 | 0.302 | [0.186, 0.418] | **Laplace better** |
+| 1 | 2 | 0.193 | [0.119, 0.267] | **Laplace better** |
+
+**Tier 1 holds on a VALID comparison** — Laplace better at both q. This vindicates the
+DIRECTION of the original claim while confirming its MAGNITUDE (8x) was a scoring artefact.
+
+## Tier 2 is UNINFORMATIVE at N=500 — stated, not buried
+
+Best median tier-2 recovery: **0.782** (q=1), **0.692** (q=2). Both exceed the stipulated 0.5.
+**Neither engine recovers the phylogenetic tier at N=500.** By the informativeness precondition
+recorded above, a cell where no arm recovers tier 2 cannot discriminate the engines — so the
+q=2 "Laplace better" is **a comparison between two failures** and must not be cited as a
+recovery result.
+
+VA degeneracy flips with `q`: **2/10 at q=1, 8/10 at q=2** — the same q-dependence the
+corrected control curve showed. Not noise.
+
+## VERDICT ON STAGES 3/5 — NOT worth the ~7 days NOW (a SEQUENCING call, not a kill)
+
+The tier-2 comparison is uninformative, but **the Stages 3/5 question does not rest on tier 2.**
+Stages 3 and 5 add FAMILIES (lognormal, ordinal_probit) to the VA engine. They do not touch the
+phylo tier and do not touch speed. The question is whether extending this engine's family
+surface is worth 7 days **in its current state**. On that the evidence is sufficient:
+
+- Tier 1, the one tier where the comparison IS valid: **Laplace better at both q**, bands
+  exclude zero.
+- VA's **own health gate rejects 20/20 fits** (19 `failed_variance_domain`, 1 `failed_health_gate`).
+- **8/10 degenerate at q=2.**
+- **65x slower** than the mature reference on the base engine.
+- The closed-form evaluator its target families need **does not exist yet** (Item 1).
+
+**Verdict: NO — not now.** Adding families to an engine that fails its own health gate on every
+fit, loses where comparison is valid, and lacks the evaluator its target families require, is
+sequenced wrong.
+
+**Decisive specific:** **Stage 5 IS ordinal-probit, and Albert-Chib Theorem 3 gives
+ordinal-probit a closed form.** Building Stage 5 on Gauss-Hermite now means **building it
+twice**. Do Item 1 first; Stage 5 then becomes substantially cheaper than 7 days.
+
+**Revisit after the mature-VA arc lands**, with this exact grid re-run at larger N to settle the
+tier-2 question the present size cannot.

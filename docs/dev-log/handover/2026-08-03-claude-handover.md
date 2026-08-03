@@ -1,5 +1,63 @@
 # Session Handoff: Design 108 campaign ANSWERED · mature-VA arc approved and re-aimed
 
+> # ⛔ RETRACTION — READ FIRST (added 2026-08-03, after adversarial review)
+>
+> **The Design 108 comparison in this handover DOES NOT HOLD. Do not cite it.**
+>
+> The adversarial review found the two arms were fitted to **different models**. The DGP is
+> binomial-probit; the Laplace arm fitted that correctly, but the campaign script inlined the
+> VA arm as `gaussian_anchor`/identity on `scale(y)`, bypassing the harness's own
+> `.d108_fit_va()`. Attenuation across traits spans **0.37-0.77** — not a correctable scalar.
+>
+> **VA's oracle floor (tier 2) is 0.709-0.782 against Laplace's observed 0.561-0.764: in 3 of 4
+> cells a PERFECT VA loses anyway.** The test could not return "VA wins". Tier 1 **reverses** —
+> VA's excess-over-floor is smaller than Laplace's in all four cells, so "Laplace better 8x on
+> tier 1" is an artefact of the scoring.
+>
+> **The 34% completion rate is a HARNESS property, not VA's** — the grid forked 40 ways without
+> seeding the TMB DLL per worker, which `harness.R:103-110` documents as required. The "failed"
+> cells complete fine single-threaded.
+>
+> **Stages 3/5 CANNOT be retired on this evidence** — that would retire an arc on a confound.
+> **The corrected re-run is ~1 day, not 7.**
+>
+> What survives, and is publishable as written: *the VA prototype produced degenerate estimates
+> of the structured phylo tier in every fit that returned (9/27 collapsed to zero, 18 exceeded
+> the error of estimating nothing), a pattern multi-start does not repair and the engine's own
+> health gate rejects — so the prototype does not currently recover a structured phylo tier. The
+> pilot does NOT support a comparison against Laplace.*
+>
+> Full review: `dev/design108-recovery/ADVERSARIAL-REVIEW.md` on
+> `claude/d108-recovery-campaign` (commit `fdbf5e0e`).
+>
+> ## ⏳ A CORRECTED GRID IS RUNNING — COLLECT IT
+>
+> Both defects the review found are fixed and the re-run is IN FLIGHT on Totoro:
+> the VA arm now goes through `.d108_fit_va()` (binomial_probit on raw `y`, **the same model
+> the Laplace arm fits**), the DLL stash is built once and seeded per worker
+> (`harness.R:103-110`), and failure REASONS are logged instead of bare `NA`.
+> Grid: N=500, q in {1,2}, 10 seeds, 20 cells on 20 cores. Smaller than the invalid 80-cell
+> run because probit carries a measured 8.8x GH penalty — but VALID, which that one was not.
+>
+> ```sh
+> SOCK=$(ls ~/.ssh/cm-*totoro* | head -1)
+> ssh -o ControlPath="$SOCK" -o ControlMaster=no -o BatchMode=yes totoro \
+>   'tail -14 ~/gllvm_work/d108-recovery/grid_fixed.log; \
+>    ls -la ~/gllvm_work/d108-recovery/grid_fixed.*'
+> ```
+>
+> Results at `totoro:~/gllvm_work/d108-recovery/grid_fixed.{rds,csv}` — **LOCAL only (D-50)**.
+> Script: `~/gllvm_work/grid_fixed.R`. Confirmed working: the stash checksum
+> `7d55033ea0a82310591b7a9e2945081a` matches the local build, so the seeding fix is live.
+>
+> **This is the ONLY valid VA-vs-Laplace comparison in the project.** Report it with 2*MCSE
+> bands and the informativeness check, and do NOT prefer whichever result matches an earlier
+> claim. If both arms are degenerate at N=500, that is the answer and the re-run moves up.
+>
+> **The mature-VA arc is UNAFFECTED** — it rests on the profile and the literature, not on this
+> comparison. VA's value was always speed-via-closed-form, not accuracy.
+
+
 **Meta:** 2026-08-03 · from Claude · to Claude · fresh context required
 **`origin/main` at write:** `dbd0b2d5`
 

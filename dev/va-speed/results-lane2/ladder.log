@@ -1,0 +1,37 @@
+== warm-up (untimed) ==
+using C++ compiler: ‘g++ (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0’
+g++ -std=gnu++17 -I"/usr/share/R/include" -DNDEBUG -I"/home/snakagaw/R/x86_64-pc-linux-gnu-library/4.5/TMB/include" -I"/home/snakagaw/R/x86_64-pc-linux-gnu-library/4.5/RcppEigen/include"  -DTMB_SAFEBOUNDS -DTMB_EIGEN_DISABLE_WARNINGS -DLIB_UNLOAD=R_unload_gllvmTMB_va_r3  -DTMB_LIB_INIT=R_init_gllvmTMB_va_r3  -DCPPAD_FRAMEWORK      -fpic  -O2  -c gllvmTMB_va_r3.cpp -o gllvmTMB_va_r3.o
+g++ -std=gnu++17 -shared -L/usr/lib/R/lib -Wl,-Bsymbolic-functions -flto=auto -ffat-lto-objects -Wl,-z,relro -o gllvmTMB_va_r3.so gllvmTMB_va_r3.o -L/usr/lib/R/lib -lR
+== warm-up done ==
+
+N      seed  arm             secs   objective    npar   load
+100    1     per_unit        1.19    3074.646     559    0.6
+100    1     collapsed       0.78    3074.646     262    0.6
+100    2     collapsed       1.01    2868.361     262    0.6
+100    2     per_unit        1.10    2868.361     559    0.6
+250    1     per_unit        5.89    7697.875    1309    0.6
+250    1     collapsed       2.63    7697.875     562    0.6
+250    2     collapsed       2.49    7216.185     562    0.6
+250    2     per_unit        3.87    7216.185    1309    0.7
+500    1     per_unit       17.06   15318.607    2559    0.7
+500    1     collapsed       7.79   15318.607    1062    0.8
+500    2     collapsed      10.70   14687.280    1062    0.8
+500    2     per_unit       11.84   14687.280    2559    0.9
+1000   1     per_unit      104.12   30402.575    5059    0.9
+1000   1     collapsed      25.90   30402.575    2062    1.1
+1000   2     collapsed      26.14   29257.048    2062    1.1
+1000   2     per_unit       94.14   29257.048    5059    1.0
+
+--- speedup and parameter share by N ---
+N        per_unit  collapsed   speedup    npar_pu   npar_col    obj_delta
+100          1.14       0.90     1.28x        559        262     1.85e-11
+250          4.88       2.56     1.90x       1309        562     2.66e-11
+500         14.45       9.25     1.56x       2559       1062     2.10e-11
+1000        99.13      26.02     3.81x       5059       2062     7.66e-12
+
+HYPOTHESIS (benefit grows with N): SUPPORTED -- speedup rises with N
+speedups: N=100:1.28x  N=250:1.90x  N=500:1.56x  N=1000:3.81x
+
+load median 0.7 spread 0.6; other R procs: 0
+
+N_LADDER_DONE

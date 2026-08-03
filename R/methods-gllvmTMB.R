@@ -349,6 +349,140 @@
   out
 }
 
+## d(inverse-link)/d(eta) per row, same (family_id, link_id) dispatch as
+## `.apply_linkinv_per_row()` above -- used to delta-method-transform a
+## link-scale SE into a response-scale SE (`predict(..., se.fit = TRUE,
+## type = "response")`). Every branch mirrors the corresponding branch of
+## `.apply_linkinv_per_row()`; a family added there without an entry here
+## would silently fall through to the log-link default, so keep the two
+## functions' family/link dispatch in sync.
+.dlinkinv_per_row <- function(eta, family_id, link_id, sigma_eps = NULL) {
+  n <- length(eta)
+  out <- eta
+  sigma_eps <- as.numeric(sigma_eps %||% 0)
+  sigma_eps <- if (length(sigma_eps) && is.finite(sigma_eps[1L])) {
+    sigma_eps[1L]
+  } else {
+    0
+  }
+  for (i in seq_len(n)) {
+    fid <- family_id[i]
+    lid <- link_id[i]
+    e <- eta[i]
+    if (fid == 0L || fid == 9L) {
+      ## gaussian / student: identity link, derivative 1.
+      out[i] <- 1
+    } else if (fid == 1L || fid == 7L || fid == 8L) {
+      ## binomial / Beta / betabinomial: dispatch on link_id.
+      out[i] <- if (lid == 1L) {
+        stats::dnorm(e)                          # d/de pnorm(e)
+      } else if (lid == 2L) {
+        exp(e) * exp(-exp(e))                    # d/de (1 - exp(-exp(e)))
+      } else {
+        p <- stats::plogis(e)
+        p * (1 - p)                               # d/de plogis(e)
+      }
+    } else if (fid == 14L) {
+      ## ordinal_probit: out was pnorm(e).
+      out[i] <- stats::dnorm(e)
+    } else if (fid == 3L) {
+      ## lognormal: out was exp(e + 0.5 * sigma_eps^2); sigma_eps does not
+      ## depend on e, so the derivative keeps the same multiplier.
+      out[i] <- exp(e + 0.5 * sigma_eps^2)
+    } else {
+      ## log-link families (poisson, Gamma, nbinom1/2, tweedie,
+      ## truncated, delta): d/de exp(e) = exp(e).
+      out[i] <- exp(e)
+    }
+  }
+  out
+}
+
+## Validate that a `predict(..., se.fit = TRUE)` request is one this
+## function can currently answer. Kept separate from the SE computation
+## itself so the guard runs (and fails fast) before any prediction work.
+.gllvmTMB_predict_se_guard <- function(object, newdata) {
+  if (!is.null(newdata)) {
+    cli::cli_abort(c(
+      "{.code se.fit = TRUE} is not yet supported together with {.arg newdata}.",
+      "i" = "Standard errors are currently only available for the training rows ({.code newdata = NULL})."
+    ), class = "gllvmTMB_predict_se_newdata_unsupported")
+  }
+  if (!is.null(object$tmb_data$family_id_vec) &&
+        any(object$tmb_data$family_id_vec == 16L)) {
+    cli::cli_abort(c(
+      "{.code se.fit = TRUE} is not supported for {.fn multinomial} fits.",
+      "i" = "The response is a per-observation softmax over categories, not a per-row delta-method target yet."
+    ), class = "gllvmTMB_predict_se_multinomial_unsupported")
+  }
+  if (isTRUE(object$tmb_data$has_mi == 1L)) {
+    cli::cli_abort(c(
+      "{.code se.fit = TRUE} is not yet supported for fits with a missing-covariate {.fn mi} model.",
+      "i" = "The masked/imputed cells' linear predictor is not simply {.code X_fix \\%*\\% b_fix}, which {.code se.fit} assumes."
+    ), class = "gllvmTMB_predict_se_mi_unsupported")
+  }
+  if (isTRUE(object$REML)) {
+    cli::cli_abort(c(
+      "{.code se.fit = TRUE} is not yet supported for {.arg REML = TRUE} fits.",
+      "i" = "REML integrates {.field b_fix} into TMB's random vector, so it never appears in {.code sd_report$par.fixed} and {.code .gllvmTMB_predict_se_link()} cannot read a {.field b_fix} covariance block for it.",
+      ">" = "Refit with {.code REML = FALSE} to get {.code se.fit}."
+    ), class = "gllvmTMB_predict_se_reml_unsupported")
+  }
+  if (is.null(object$sd_report)) {
+    cli::cli_abort(c(
+      "{.code se.fit = TRUE} requires the fit's TMB {.fn sdreport}.",
+      "i" = "This fit has no {.field sd_report} ({.code gllvmTMBcontrol(se = FALSE)}, or {.fn sdreport} failed at fitting time).",
+      ">" = "Refit with {.code control = gllvmTMBcontrol(se = TRUE)} (the default)."
+    ), class = "gllvmTMB_predict_se_no_sdreport")
+  }
+  invisible(TRUE)
+}
+
+## Conditional (fixed-effect-only) delta-method standard error of the
+## training-row linear predictor. `eta_fix = X_fix %*% b_fix` is exactly
+## linear in `b_fix` (src/gllvmTMB.cpp:848 `eta_fix`), and every
+## random-effect contribution to `eta` is held FIXED at its predicted
+## (conditional-mode) value -- so d(eta)/d(b_fix) is exactly the free-column
+## design matrix `X_fix` and d(eta)/d(everything else) is 0. No extra
+## `sdreport()` call or numerical Jacobian is needed: `fit$sd_report$cov.fixed`
+## already carries Cov(b_fix) from the one production `sdreport()` call
+## (R/fit-multi.R). This propagates ONLY fixed-effect (Wald) uncertainty --
+## random-effect uncertainty is NOT included. Including it would need the
+## joint fixed + random precision (`TMB::sdreport(obj, getJointPrecision =
+## TRUE)`), which this fit's `sdreport()` does not compute
+## (`getJointPrecision = FALSE`, R/fit-multi.R) and which this function does
+## not attempt.
+.gllvmTMB_predict_se_link <- function(fit) {
+  X_fix <- fit$X_fix
+  n_obs <- if (!is.null(X_fix)) nrow(X_fix) else length(fit$report$eta)
+  status <- .gllvmTMB_xcoef_status(fit)
+  free <- status != "fixed"
+  if (is.null(X_fix) || !any(free)) {
+    return(rep(0, n_obs))
+  }
+  sd_rep <- fit$sd_report
+  if (!isTRUE(sd_rep$pdHess)) {
+    cli::cli_warn(c(
+      "Fit's Hessian is not positive-definite at the optimum.",
+      "i" = "Returning {.code NA} standard errors -- Wald inference is unavailable for this fit."
+    ))
+    return(rep(NA_real_, n_obs))
+  }
+  par_names <- names(sd_rep$par.fixed)
+  idx <- which(par_names == "b_fix")
+  if (length(idx) != sum(free)) {
+    cli::cli_abort(c(
+      "Could not align the {.field b_fix} block in {.code sd_report$par.fixed} with the free fixed-effect columns.",
+      "i" = "Expected {sum(free)} free {.field b_fix} entries; found {length(idx)}.",
+      "i" = "This usually means {.field sd_report} is stale relative to {.field tmb_obj}; refit and retry."
+    ), class = "gllvmTMB_predict_se_block_mismatch")
+  }
+  V <- sd_rep$cov.fixed[idx, idx, drop = FALSE]
+  Xf <- X_fix[, free, drop = FALSE]
+  var_eta <- rowSums((Xf %*% V) * Xf)
+  sqrt(pmax(var_eta, 0))
+}
+
 ## Map internal flag names to user-facing printed labels.
 ##
 ## NOTE: phylo_unique (LEGACY-alone path), spatial_scalar, and spatial_latent
@@ -1592,20 +1726,41 @@ sanity_multi <- function(object, gradient_thresh = 1e-2, se_thresh = 100) {
 #'   sites/species not present in the training data the random
 #'   effects cannot be drawn, so the prediction is fixed-effects-only
 #'   regardless of `re_form`.
+#' @param se.fit Logical, default `FALSE`. If `TRUE`, add an `se.fit`
+#'   column: a **conditional, fixed-effect-only, delta-method (Wald)**
+#'   standard error of `est`. "Conditional" means the random-effect
+#'   contributions to the linear predictor are held fixed at their
+#'   predicted (conditional-mode) values -- their own uncertainty is
+#'   **not** propagated, only the fixed-effect coefficients' `sdreport()`
+#'   covariance is. This is a smaller quantity than a full marginal SE
+#'   would be; it is also not a claim about coverage, which has not been
+#'   measured for this quantity. `type = "link"` returns the SE of the
+#'   linear predictor directly; `type = "response"` multiplies it by the
+#'   local derivative of the per-row inverse link (the standard
+#'   delta-method transform), so it approximates the SE of the
+#'   inverse-link fitted value, not an exact one. Currently only
+#'   supported for `newdata = NULL` (training rows), non-`multinomial()`
+#'   fits, and fits without an active `mi()` missing-covariate model.
 #' @param ... Unused.
 #'
 #' @return A data frame with the original row identifiers plus an `est`
-#'   column on the requested link or response scale.
+#'   column on the requested link or response scale, and (if
+#'   `se.fit = TRUE`) an `se.fit` column carrying the conditional
+#'   delta-method standard error described above.
 #' @export
 predict.gllvmTMB_multi <- function(
   object,
   newdata = NULL,
   type = c("link", "response"),
   re_form = ~.,
+  se.fit = FALSE,
   ...
 ) {
   type <- match.arg(type)
   .aghq_warn_re_gap(object, "predict()")
+  if (isTRUE(se.fit)) {
+    .gllvmTMB_predict_se_guard(object, newdata)
+  }
   ## Tier-1 fence (Design 83): a multinomial() fit stores K-1 category-contrast
   ## pseudo-trait rows; the response scale is a per-observation softmax over
   ## categories, NOT a per-row inverse link. Returning per-pseudo-row values
@@ -1776,6 +1931,34 @@ predict.gllvmTMB_multi <- function(
         out$est <- object$family$linkinv(out$est)
       }
     }
+  }
+  if (isTRUE(se.fit)) {
+    ## `.gllvmTMB_predict_se_guard()` already required `newdata = NULL`, so
+    ## `eta` here is the training-row link-scale predictor built above --
+    ## untouched by the `type == "response"` block, which only overwrites
+    ## `out$est`, not the local `eta`.
+    se_link <- .gllvmTMB_predict_se_link(object)
+    if (type == "response") {
+      fid_vec <- object$tmb_data$family_id_vec
+      lid_vec <- object$tmb_data$link_id_vec
+      if (!is.null(fid_vec) && length(fid_vec) == length(eta)) {
+        deriv <- .dlinkinv_per_row(
+          eta, fid_vec, lid_vec,
+          sigma_eps = object$report$sigma_eps
+        )
+        out$se.fit <- se_link * abs(deriv)
+      } else {
+        cli::cli_warn(c(
+          "Could not determine the per-row inverse-link derivative for {.code type = \"response\"}.",
+          "i" = "Returning {.code NA} for {.field se.fit}."
+        ))
+        out$se.fit <- rep(NA_real_, length(eta))
+      }
+    } else {
+      out$se.fit <- se_link
+    }
+    attr(out, "se.fit.scale") <- type
+    attr(out, "se.fit.conditional") <- TRUE
   }
   out
 }

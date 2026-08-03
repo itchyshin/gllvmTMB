@@ -174,3 +174,23 @@ pdHess, rel_frob_tier1, rel_frob_tier2, elapsed_s, total_s, clean` (`clean` uses
 degeneracy-style gate — `rel_frob <= 0.5` both tiers, `pdHess == TRUE`, `convergence == 0` — and
 is retained in the file for transparency even though the headline finding here is the trend
 plateau, not this pointwise flag).
+
+---
+
+## Operational note for the grid launcher (found 2026-08-02, orchestrator)
+
+**The shared VA-template DLL cache is NOT wired into the fit path.** `harness.R:140-152`
+defines the compile-then-persist helper and it works (verified across two separate processes:
+18 s cold compile -> 0.36 s warm load), but there is **no call site in `run_cell()`**. A fresh
+`Rscript` therefore recompiles the template from scratch — directly observed in a clean run
+after the confound fix, which spent its first ~25 s in `clang++` despite a populated cache at
+`~/.cache/gllvmtmb-va-r3-dll/<md5>/`.
+
+Consequence for **S5**: at ~25 s per worker on Totoro's Linux toolchain this is trivial if
+workers are persistent and paid once each, and material if the launcher spawns a fresh R
+session per cell — thousands of cells x 25 s is hours of pure compilation. **The launcher must
+seed the cache before fanning out**, or call the helper at worker startup. This is a launcher
+requirement, not a harness defect.
+
+Note the cache is keyed on the md5 of `inst/tmb/gllvmTMB_va_r3.cpp`, so it survives changes to
+`harness.R` (as here) but correctly invalidates if the template itself changes.

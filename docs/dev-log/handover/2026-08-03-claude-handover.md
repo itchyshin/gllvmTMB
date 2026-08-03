@@ -124,7 +124,44 @@ FOUR prior manual sweeps and no guard script** — so #917 adds a test, and it *
 
 **Campaign results are LOCAL (D-50)** — `.rds`/`.csv` gitignored, never committed.
 
-### The Totoro grid — IN FLIGHT, collect it
+### The Totoro grid — COLLECTED, and it FORCED A CORRECTION
+
+**Ran: 80 cells, 20 seeds, N in {500,1000} x q in {1,2}, 40 cores.** Results LOCAL (D-50) at
+`totoro:~/gllvm_work/d108-recovery/campaign_grid.{rds,csv}`; a copy is in the campaign worktree.
+
+**The PRIMARY finding is completion, not accuracy:**
+
+| arm | cells returning a number |
+|---|---|
+| **VA** | **27/80 (34%)** |
+| Laplace | **80/80 (100%)** |
+
+**CORRECTION — the strong form of this handover's verdict is WITHDRAWN.** With MCSE, the paired
+tier-2 contrast is **INDETERMINATE in two of four cells**: 2*MCSE bands `[-0.536, 20.853]`
+(N=1000 q=1) and `[-0.095, 47.184]` (N=1000 q=2) both include zero, because VA's runaways
+inflate the variance. The two cells that DO exclude zero are both at **N=500 — the SMALLER
+size**, which is backwards from "at realistic size".
+
+**The cells also FAIL the informativeness precondition:** Laplace's tier-2 medians are
+0.561-0.764 against a stipulated 0.5, so no arm achieves acceptable tier-2 recovery anywhere.
+
+Degeneracy rates carry wide, overlapping Wilson intervals (1/8 `[0.02,0.47]`, 2/7 `[0.08,0.64]`,
+2/6 `[0.10,0.70]`, 3/6 `[0.19,0.81]`) — **not a precise rate; do not quote as one.**
+
+Full detail: `PILOT-FINDINGS.md`, commit `30dd716f`.
+
+### 🔴 ADVERSARIAL REVIEW — DISPATCHED, RESULT NOT YET IN
+
+Running with a default of **NOT-HOLDING** and six named attacks. Output lands at
+`dev/design108-recovery/ADVERSARIAL-REVIEW.md` on `claude/d108-recovery-campaign`.
+**READ IT BEFORE CITING ANY VERDICT.**
+
+Its first and most important attack: **is the 66% non-completion a VA property or a HARNESS
+property?** If VA's failures trace to `n_starts = 1`, an iteration cap, or unrefined starting
+values, the headline measures **our scripting, not the estimator**, and collapses. That single
+question decides whether the Stages 3/5 verdict stands.
+
+### (superseded) the grid as originally described
 
 Launched to close the two gaps the local 3-seed run left: **no MCSE**, and **no compute-discipline
 compliance**. 80 cells (N in {500,1000} x q in {1,2} x 20 seeds), 40 cores.

@@ -33,6 +33,14 @@ arc's target as *"the largest gap"*.
 > Every dataset B point agreed on the **first run**; no tuning was performed.
 >
 > **The two implementations encode the same model on the augmented sample space.**
+>
+> **Adversarial review (fresh context, vacuity lens): QUALIFIED.** The density claim survived
+> every attack, and the reviewer strengthened it with evidence this arc had not produced — a
+> third independent implementation agreeing to **exactly 0**, and a cross-partial test showing
+> the Stan side reconstructs the precision's **38 nonzeros out of 196 in the right places**
+> without ever seeing the matrix. Three controls were found weaker than claimed and one set of
+> numbers was unreproducible; **all are corrected in place**, and §13 records what changed.
+> Cite this arc with §13 attached.
 
 The two sides reach that number by **genuinely different routes**. TMB evaluates
 `−½(n_aug·log2π + log_det_A_phy_rr + g′ A⁻¹ g)` against an assembled sparse precision. Stan
@@ -114,9 +122,15 @@ comparison ran**. Summary of what changed from Arc 1:
 | **9** | **node permutation** | **NEW** | engine is internal-first/tips-last; the Stan model is tips-first |
 | **10** | **branch-length rescaling** | **NEW** | `b_v = edge.length / height` (`correlation = TRUE`) |
 
-**Rule 9 is evidence about the fence, not just a mapping.** The Stan model was written by an
-agent forbidden to read `src/`, `R/fit-multi.R`, or any Arc 1 driver. It chose **tips-first**
-node indexing. The engine uses **internal-first**. An author who had peeked would have matched.
+**Rule 9, with its weight corrected after review.** The Stan model was written by an agent
+forbidden to read `src/`, `R/fit-multi.R`, or any Arc 1 driver. It chose **tips-first** node
+indexing; the engine uses **internal-first**. An earlier revision called this "evidence about
+the fence". The reviewer rightly downgraded it: `model-spec-phylo.md` §8.5 ends with
+"η then reads `g_sk = a_tip(s),k`", which nudges *any* author toward putting tips first, and
+§8.5 fixes no node ordering at all. **Weak-to-moderate corroboration, not proof.** The load-
+bearing evidence for the chronology is the git content check in §11; the fence itself — what the
+author was able to open — is not testable from the artifacts, and this document should not
+pretend otherwise.
 
 ### Out-of-sample points — transport frozen
 
@@ -202,16 +216,60 @@ Each breaks exactly one rule. All shifts are 11–14 orders above the `≤1.8e�
 | C5 | tip block permuted (wrong species map) | `+31.9878` |
 | C6 | `branch_len` read as an SD instead of a variance | `−496.9393` |
 
-**C1 is the vacuity control and it is the one that matters.** Arc 2's specific way to be
-meaningless would be for the internal-node scores to be inert — they never enter `η`, so if the
-density did not move, this arc would be testing nothing Arc 1 had not already tested. It moves.
-The internal nodes are live, and they are live *only* through the prior.
+### C1 is the weakest number here, not the strongest — corrected after adversarial review
 
-**C4 is exact.** The measured shift is `−0.91893853320468111`; `−½log(2π)` is
-`−0.91893853320467267`. They agree to `8.66e−15`. Adding the root as an extra node — i.e.
-believing the documented `2S−1` — costs **exactly one Gaussian normalising constant per latent
-axis**, because the root sits at its own mean with unit variance so only the `−½log(2π)`
-survives. This is the documentation error of §7, quantified.
+An earlier revision of this document called C1 "the vacuity control and the one that matters".
+**That was wrong, and the number understates the effect by a factor of 27.** The adversarial
+reviewer decomposed the `−0.2688` shift into a linear term `+3.4143409226586527` and a quadratic
+term `−3.6831876440959377`: it is a **near-cancellation**, not a sensitivity measurement. A
+slightly different θ would have made it print near zero. Worse, C1 perturbs only the **Stan**
+side, so on its own it says nothing about whether the **engine** reads internal nodes.
+
+The correct instrument is the **second difference**, `lp(+1) + lp(−1) − 2·lp(0) = −P_vv`, run on
+**both** sides at **every** internal node:
+
+| Stan row | Stan 2nd-diff | `−P_vv` (engine matrix) | TMB 2nd-diff |
+|---|---|---|---|
+| 9 | `−7.3663752881918754` | `−7.3663752881918896` | `−7.3663752881919322` |
+| 10 | `−15.018176801288348` | `−15.01817680128835` | `−15.018176801288348` |
+| 11 | `−14.682129501747625` | `−14.682129501747623` | `−14.682129501747625` |
+| 12 | `−21.693343627925458` | `−21.693343627925469` | `−21.693343627925515` |
+| 13 | `−34.241388544338918` | `−34.241388544338889` | `−34.241388544338918` |
+| 14 | `−43.75615370649524` | `−43.756153706495255` | `−43.756153706495354` |
+
+**No internal node is inert on either side.** C1 happened to land on the node with the *smallest*
+curvature of the six.
+
+### The strongest evidence in this arc — the sparsity PATTERN
+
+Also supplied by the reviewer, and absent from every earlier revision. Mixed second differences
+`∂²/∂a_u ∂a_v = −P_uv` test whether the Stan side reconstructs the tree's **topology**, not
+merely its dimension:
+
+| pair | parent–child? | Stan | TMB | `−P_uv` |
+|---|---|---|---|---|
+| (10, 9) | yes | `1.865852490525775` | `1.8658524905257821` | `1.8658524905257816` |
+| (11, 9) | yes | `1.7207995420700968` | `1.7207995420700968` | `1.7207995420700986` |
+| (13, 10) | yes | `8.1393486656182077` | `8.1393486656182077` | `8.1393486656182041` |
+| (14, 12) | yes | `13.411135783800781` | `13.411135783800773` | `13.411135783800781` |
+| (9, 14) | **no** | `1.42e−14` | `0` | `−0` |
+| (1, 2) | **no** | `0` | `0` | `−0` |
+
+A model that never receives the matrix reproduces its **38 nonzeros out of 196 in the right
+places**. That is the claim this arc should be cited for.
+
+### C4 is arithmetically tautological — corrected
+
+An earlier revision claimed C4 "quantifies the documentation error of §7". **It does not.** The
+reviewer set the added root node's variance to `4.0` and the shift became
+`−1.6120857137646283 = −½log(2π·4)`. The shift is simply whatever variance you assign the extra
+node; C4 measures **the Stan file's own normalising constant**, not the engine's node count. The
+exactness (`8.4e−15`) is real and the arithmetic is right, but it tests nothing about `2S−2`.
+
+What actually falsifies a wrong node count is the guard at `gauss-reconcile-tree.R:102`,
+`stopifnot(all(branch_stan > 0))`: the parent/branch arrays are built by walking `tree$edge`, so
+if `n_aug ≠ #edges` some entry is never filled and the run aborts. The node-count finding rests
+on direct measurement across four tree shapes (§7), not on C4.
 
 ### The star-phylogeny control
 
@@ -224,11 +282,27 @@ Stan (star) : -174.61647155550571        |diff| 5.68e-14
 star vs real-tree TMB objective differs by -44.7367
 ```
 
-Both sides agree to the same floor on a degenerate tree, **and** the density moves by 44.74
-when the real phylogeny is swapped for a star. So both sides track a real change in tree
-structure and still agree — the agreement is not an artefact of the phylogeny cancelling out.
-This is Arc 1 §11.1's control, adapted, and it doubles as a dimension check: a harness that
-reported `n_aug = 2S−2 = 14` on a star tree would not be reading the engine.
+Both sides agree to the same floor on a degenerate topology, and it doubles as a dimension
+check: a harness that reported `n_aug = 2S−2 = 14` on a star tree would not be reading the
+engine.
+
+**But the `−44.74` is confounded, and an earlier revision oversold it.** The adversarial
+reviewer showed the shift is *entirely* the prior term (`prior_star − prior_real =
+−44.736738814018111`; the data term moves by `2.84e−14`) and compares sample spaces of
+**different dimension with different parameter counts** — only `−5.5136` of it is the
+node-count term. As a "the phylogeny matters" control it does not isolate what it claims.
+
+The **dimension-free** version, which the reviewer ran: a *different* `rcoal(8)` — same
+`n_aug = 14`, same parameter count, only the topology and branch lengths differ.
+
+```
+TMB   341.5519106300257     Stan -341.55191063002553     |diff| 1.71e-13
+objective moved by +122.19870026050197 relative to the fixture tree
+```
+
+That is the control the star was being asked to be: both sides track a large change in tree
+structure at fixed dimension, and still agree at the floor. The star control's genuine
+content — agreement on a degenerate topology — stands.
 
 ---
 
@@ -286,7 +360,10 @@ against the closed form `Σ log(b_v)` exactly.
 
 ## 9. Relationship to Arc 1 — the joints differ, the marginals do not
 
-Measured on `rcoal(30)`, `T = 3`, `K = 1`, identical data through both routes:
+Measured by `marginal-tree-vs-vcv.R` (shipped because the adversarial reviewer correctly
+objected that these digits were produced by an ad-hoc call and were reproducible from nothing in
+the repo — "either ship the script or drop the digits"). `rcoal(30)`, seed `20260803`, `T = 3`,
+`K = 1`, identical data through both routes, each evaluated at its own optimum:
 
 ```
 n_aug_phy   tree= : 58        vcv= : 30
@@ -329,10 +406,11 @@ the latent-block equivalence.
    It says nothing about the Laplace approximation, the inner optimisation, gradients,
    `sdreport()`, or anything downstream. §9's marginal comparison is a separate, coarser check.
 6. **No optimum involved.** All points are hand-chosen or seeded draws.
-7. **Small, ultrametric, well-conditioned trees.** `S ≤ 10`. `correlation = TRUE` requires
-   ultrametricity; the non-ultrametric case is **unresolved** — the Stan side's companion note
-   (`stan-side-tree.md` §5) flags that §8.5's "scale that makes root-to-tip depth 1" phrasing
-   presupposes it, and this arc did not test a non-ultrametric tree.
+7. **Small, well-conditioned trees.** `S ≤ 10`. On ultrametricity the earlier revision left an
+   open caveat; the reviewer closed it by measurement: the engine **rejects** a non-ultrametric
+   tree outright (`tree must be ultrametric`) when `correlation = TRUE`. So the Stan side's
+   concern in `stan-side-tree.md` §5 is **moot for this route** — there is no non-ultrametric
+   case to disagree about. It would return if `correlation = FALSE` were ever exposed.
 8. **No coverage, calibration, or recovery claim. No validation-debt register row moved.**
 
 ## 11. Honest boundary
@@ -383,6 +461,9 @@ Rscript dev/stan-oracle-phylo-tree/gauss-reconcile-tree.R
 
 # dataset B: second tree, T=4, K=2, permuted tips, ragged, +3 rank-2 controls
 Rscript dev/stan-oracle-phylo-tree/gauss-reconcile-tree-k2.R
+
+# the sec.9 marginal comparison (tree= vs vcv= at their own optima)
+Rscript dev/stan-oracle-phylo-tree/marginal-tree-vs-vcv.R
 ```
 
 Both drivers run TMB and Stan in a **single R session** with the data regenerated in-session,
@@ -401,3 +482,46 @@ Recorded rather than silently patched, because the driver is the pre-registered 
 - the `ctrl()` helper leaks a bare `[1] …` echo of its return value between control lines.
 
 Neither touches any compared quantity.
+
+---
+
+## 13. Adversarial review — vacuity lens (fresh context, told to refute)
+
+**Verdict: QUALIFIED.** The density claim survived every attack the reviewer could construct;
+three of the six controls carry less weight than earlier revisions implied, and one set of
+numbers was not reproducible. All are corrected in place above. This section records what the
+review did, because the corrections are more informative than the original claims.
+
+### What the reviewer independently established (stronger than anything the arc had)
+
+- **A third implementation.** The reviewer transcribed `gllvm_phylo_tree.stan:141-183` into R
+  themselves and evaluated it against `joint_obj$fn(theta)`: agreement to **exactly `0`**. Real
+  Stan differs from TMB by `2.84e−14`, which they identified as **exactly 1 ulp** at 219.
+- **Term split at P1**: data `164.95794578986826`, phylo prior `54.39526457965549` — the prior
+  is **25% of the objective**, not a rounding detail.
+- **The sparsity pattern** (§6) — the single strongest result in the arc.
+- **Transport uniqueness.** A sweep of all **32 combinations** of the five discrete knobs
+  (sign · `/height` · variance-vs-SD · permutation · root sentinel) at **three** θ points:
+  **exactly 1 of 32 matches at all three**, and exactly 1 matches at P1 alone. A knob fitted to
+  P1 would have shown more than one P1 match. Smallest wrong-combination mismatch: `0.384`.
+- **Pre-registration, verified two ways.** `git grep -c "219\.35321" cd0c58cf -- dev/` → no
+  match; `git diff cd0c58cf HEAD` on the driver and the `.stan` is **empty**; and the compiled
+  Stan `.rds` was first written at `10:32:27`, *after* the `10:31:41` commit — so no `log_prob`
+  could have run before the pre-registration existed.
+- **Extra generalisation:** polytomy (`n_aug = 5`) agrees to `1.42e−14`; a `K = 2` case agrees
+  to **exactly `0`**; non-ultrametric trees are rejected by the engine.
+
+### The corrections applied
+
+| # | claim | status |
+|---|---|---|
+| 1 | "C1 is the vacuity control and the one that matters" | **wrong emphasis**; C1 is a near-cancellation understating curvature 27×. Replaced with two-sided second differences on both sides, plus cross-partials. |
+| 2 | "C4 quantifies the documentation error" | **wrong**; C4 is arithmetically tautological — set the root's variance to 4 and the shift becomes `−½log(2π·4)`. Corrected. |
+| 3 | star control shows "both sides track a real change in tree structure" | **confounded** across dimensions/parameter counts. Dimension-free replacement added. |
+| 4 | the §9 `rcoal(30)` marginal digits | **were not reproducible** from the repo. `marginal-tree-vs-vcv.R` now ships and reproduces them byte-for-byte. |
+| 5 | rule 9 is "evidence about the fence" | **overstated**; §8.5's own phrasing nudges any author toward tips-first. Downgraded to weak-to-moderate corroboration. |
+| 6 | §12 referenced `gauss-reconcile-tree-k2.R` before it existed | **historical** — dataset B landed during the review and now exists with results. |
+
+The reviewer also noted that `reconciliation-tree.md` changed three times during the review
+(10:35 → 10:42 → 10:47). That is a real process defect: an artifact under adversarial review
+should be frozen. Recorded rather than excused.

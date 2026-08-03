@@ -225,11 +225,35 @@ source("dev/design108-recovery/dgp.R")
                        log_det_A = as.numeric(determinant(A, logarithm = TRUE)$modulus))
     lid_dense <- unit - 1L                  # 0-based tip index directly
   }
+  ## FIXED 2026-08-02 (Noether's confound diagnostic): the phylo_psi tier
+  ## MUST be structured=TRUE over the SAME node index as the phylo dense
+  ## tier (`lid_dense`), not an unstructured N-level tier over `unit - 1L`.
+  ## Before this fix, this tier's declaration (kind="diagonal", dim=T,
+  ## n_levels=N, level_id=unit-1L, structured=FALSE) was BYTE-IDENTICAL to
+  ## the ordinary-tier's own automatic Psi companion (tier 2, built inside
+  ## `.va_r3_build_tiers()`'s `want_psi` branch) -- same kind/dim/n_levels/
+  ## level_id/structured. The objective could not tell the two apart, so
+  ## psi mass split between "ordinary psi" and "phylo psi" was determined by
+  ## the OPTIMIZER'S STARTING VALUES, not the data (measured: mirrored
+  ## starts both reached the same objective with tier-4 shares of 0.00% and
+  ## 100.00%; the harness's own default `n_starts = 4` gave 52.74% on one
+  ## call and 0.00% on another, same objective to 7 s.f. -- an interior
+  ## stall on a flat ridge, invisible to both the multi-start `agreement`
+  ## gate and to `v_by_obs`, which only ever sums across tiers). With
+  ## `structured = TRUE` and `level_id = lid_dense`, this tier's `n_levels`
+  ## becomes `nrow(structured$Ainv)` (n_aug for "augmented", N for
+  ## "tips_only") -- generically DIFFERENT from the ordinary Psi tier's `N`
+  ## for the augmented route (n_aug = 2N-2 != N for N > 2), so the two
+  ## tiers' parameter blocks are different lengths and the swap that caused
+  ## the confound can no longer even be FORMED. This is also now the
+  ## correct match to what `phylo_latent(unique = TRUE)`'s shipped Laplace
+  ## engine puts on the diagonal companion: `Psi_phy (x) A`, phylogenetically
+  ## structured, not iid per species (src/gllvmTMB.cpp:1181-1208).
   extra_tiers <- list(
     list(kind = "dense", dim = as.integer(q), level_id = as.integer(lid_dense),
          structured = TRUE, label = "phylo"),
-    list(kind = "diagonal", dim = as.integer(T), level_id = as.integer(unit - 1L),
-         structured = FALSE, label = "phylo_psi")
+    list(kind = "diagonal", dim = as.integer(T), level_id = as.integer(lid_dense),
+         structured = TRUE, label = "phylo_psi")
   )
   list(structured = structured, extra_tiers = extra_tiers)
 }
@@ -400,6 +424,29 @@ source("dev/design108-recovery/dgp.R")
 ## between engines, so it always uses Laplace regardless of which arms are
 ## under test. It MUST recover cleanly; `.d108_positive_control_gate()`
 ## below checks that mechanically.
+##
+## DELIBERATELY LAPLACE-ONLY, not just for the reason above -- a symmetric
+## VA-side gaussian control is NOT comparable without further work, and is
+## NOT added here (flagged 2026-08-02, Noether's third comparability
+## finding, "handle now rather than let it surface later"). The two
+## engines parameterise Gaussian residual noise differently for this
+## two-tier, no-explicit-residual-term formula: the shipped Laplace route
+## auto-inserts a per-row OLRE (`indep(0 + trait | <row>)`) and auto-
+## SUPPRESSES the explicit `sigma_eps` to near-zero (~1/1000 sd(y); message
+## "Auto-suppressing `sigma_eps`: ... already absorbs the observation
+## residual" -- observed on every gaussian_control fit in this harness),
+## whereas `.va_r3_fit(family = "gaussian_anchor"/"gaussian", ...)` carries
+## a FREE per-trait `log_sigma` (`estimate_gaussian_sd = TRUE` by default,
+## R/va-r3-proto.R ~866, ~1826) with no auto-inserted row-level OLRE tier in
+## this harness's declaration. A VA gaussian arm built by naively swapping
+## `family` on the SAME tier declaration would therefore be fitting a
+## DIFFERENT residual-noise model than the Laplace control, not a comparable
+## one -- exactly the class of silent mismatch this campaign exists to
+## catch. Until that is resolved (either add a matching per-row OLRE tier to
+## the VA declaration and pin `log_sigma` near-zero via
+## `estimate_gaussian_sd = FALSE`, or find and cite the equivalent
+## identifiability argument on the VA side), no VA gaussian control is run,
+## and none should be added without addressing this comment.
 .d108_fit_gaussian_control <- function(sim, q, gauss_sd = 0.3, obs_seed) {
   dat <- sim$data
   set.seed(obs_seed)

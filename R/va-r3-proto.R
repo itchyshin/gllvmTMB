@@ -1365,8 +1365,28 @@
          "(lengths ", length(ac$best$par), " vs ", length(obj$par), "). ",
          "Transplanting them would optimise the wrong coordinates.", call. = FALSE)
   }
+  ## Reset the variance tier off the boundary before handing the vector to GH.
+  ##
+  ## WHY: AC collapses a real psi at low `n_trials` (claims 13/22). Ending on GH
+  ## does NOT undo that, because stage 2 STARTS from AC's `log_sd_tier`, and psi
+  ## is parameterised on the log scale, where
+  ##     d f / d(log sigma) = (d f / d sigma) * sigma
+  ## so the gradient is scaled by sigma itself. At sigma ~ 1e-4 that direction is
+  ## numerically flat and `nlminb`, a LOCAL optimiser, cannot climb back out.
+  ## psi -> 0 is an attracting boundary, and the route inherited it.
+  ##
+  ## Measured (N=100 T=10 q=1 n_trials=6, psi=0.6 planted, 3 seeds, interleaved,
+  ## on a quiet machine -- dev/va-speed/26-warm-reset-probe.R):
+  ##   without reset  psi = 0.0001 / 0.2427 / 0.0000, objective 19-52 nats WORSE
+  ##   with reset     psi = 0.6207 / 0.5023 / 0.5074, matching cold GH to 4-5 s.f.
+  ##                  on objective AND rel_frob, still 12.3x faster than cold.
+  ## The warm loadings, fixed effects and variational block are all KEPT -- only
+  ## the tier SDs are returned to the ordinary default start.
+  start <- ac$best$par
+  sd_idx <- which(names(start) == "log_sd_tier")
+  if (length(sd_idx)) start[sd_idx] <- log(0.3)
   ctl <- if (is.null(control)) list(eval.max = 800L, iter.max = 400L) else control
-  fit <- stats::nlminb(start = ac$best$par, objective = obj$fn,
+  fit <- stats::nlminb(start = start, objective = obj$fn,
                        gradient = obj$gr, control = ctl)
   list(best = list(par = fit$par, objective = fit$objective,
                    convergence = fit$convergence, iterations = fit$iterations,

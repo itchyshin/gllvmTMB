@@ -65,6 +65,29 @@ constructed from the same tree and aligned identically. Numerical agreement
 still depends on labels, scaling, and fitting health; the function does not
 estimate or report ancestral states.
 
+The two routes differ in one respect worth knowing. The \verb{vcv =} route adds a
+fixed \code{1e-8} ridge to the supplied matrix before inverting it; the \verb{tree =}
+route builds the sparse precision analytically from branch lengths and adds
+no ridge. The two therefore agree with each other only to roughly \code{1e-5} in
+log-density, and less on large or poorly conditioned trees.
+}
+
+\subsection{Species are matched by FACTOR LEVEL, not by tree tip order}{
+
+The species column is aligned to the phylogeny through the order of its
+\strong{factor levels}: \code{levels(data$species)} is looked up against the tip
+labels, and whatever order those levels happen to be in is the order the
+latent scores are indexed by. Tree tip order is not consulted.
+
+If the factor's levels do not correspond to the species you intend, the
+model still fits and issues no warning. It simply fits a different
+phylogeny. Set the levels explicitly:
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{data$species <- factor(data$species, levels = tree$tip.label)
+}\if{html}{\out{</div>}}
+
+Every example below does this. It is not decoration.
+
 See the
 \href{https://itchyshin.github.io/gllvmTMB/articles/phylogenetic-gllvm.html}{phylogenetic covariance article}
 for the benchmark.

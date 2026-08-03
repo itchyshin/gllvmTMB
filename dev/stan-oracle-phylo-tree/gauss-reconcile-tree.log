@@ -1,0 +1,69 @@
+
+====================================================================
+STRUCTURE (measured)
+====================================================================
+n_tip 8  Nnode 7  edges 14  n_aug_phy 14 
+2S-2 = 14    2S-1 = 15 
+species_aug_id (0-idx): 6,7,8,9,10,11,12,13 
+log_det_A_phy_rr: -25.229441850133327 
+root-to-tip depth (should be 1): 0.076622363972038504 (spot check below)
+
+====================================================================
+COMPILING STAN MODEL
+====================================================================
+the number of chains is less than 1; sampling not done
+
+====================================================================
+HEADLINE — dataset A, point P1
+====================================================================
+TMB  joint fn(theta)        : 219.35321036952374 
+Stan log_prob(adjust=FALSE) : -219.35321036952377 
+|difference|                : 2.8421709430404007e-14 
+relative difference         : 1.2957051954026395e-16 
+
+Jacobian audit: log_prob(TRUE) - log_prob(FALSE) = -1.2039728043259288  vs log(sigma_eps) = -1.2039728043259361  |diff| = 7.3274719625260332e-15 
+
+====================================================================
+OUT-OF-SAMPLE POINTS (transport frozen)
+====================================================================
+A/P1   TMB 219.35321036952374     Stan -219.35321036952377      |diff| 2.8421709430404007e-14 rel 1.2957051954026395e-16
+A/P2   TMB 154.46894678233485     Stan -154.46894678233488      |diff| 2.8421709430404007e-14 rel 1.8399626606151188e-16
+A/P3   TMB 14710.23884943166      Stan -14710.238849431662      |diff| 1.8189894035458565e-12 rel 1.2365464777046323e-16
+A/P4   TMB 221.14796463834116     Stan -221.14796463834105      |diff| 1.1368683772161603e-13 rel 5.1407589442451425e-16
+
+====================================================================
+CONTROLS (shift in the Stan log-density vs the agreed value)
+====================================================================
+  C1 internal-node perturbed by +1 (eta blind)   shift -0.26884672143728494
+[1] -219.6221
+  C2 engine order fed directly (no permutation)  shift -4.8245144768918351
+[1] -224.1777
+the number of chains is less than 1; sampling not done
+  C3 branch lengths unscaled (no /height)        shift 7.6138755010630916
+the number of chains is less than 1; sampling not done
+  C4 root added as a 15th node (2S-1)            shift -0.91893853320468111
+  C5 tip block permuted (wrong species map)      shift 31.987818883987103
+[1] -187.3654
+the number of chains is less than 1; sampling not done
+  C6 branch_len read as SD not variance          shift -496.93927315351647
+
+====================================================================
+STAR-PHYLOGENY CONTROL
+====================================================================
+star n_aug_phy: 8  (real tree: 14 )   2S-2 would be 14 
+the number of chains is less than 1; sampling not done
+TMB (star) : 174.61647155550565 
+Stan (star): -174.61647155550571 
+|diff|     : 5.6843418860808015e-14 
+star vs real-tree TMB objective differs by: -44.736738814018082 
+
+====================================================================
+INTEGRITY
+====================================================================
+gllvm_phylo_tree.stan mtime unchanged: TRUE 
+difference-of-differences (constant-free):
+  (P2-P1): 0 
+  (P3-P1): 1.7905676941154525e-12 
+  (P4-P1): -1.4210854715202004e-13 
+
+max |difference| over 4 points: 1.8189894035458565e-12 

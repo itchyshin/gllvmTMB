@@ -186,12 +186,21 @@ DATA_IVECTOR(species_aug_id);      // n_obs, 0-indexed row in g_phy
 
 It is built on the R side in `R/fit-multi.R` (verified):
 
+> **STALE as of 2026-07-06 (recorded 2026-08-03).** The bullet below describes the
+> superseded `MCMCglmm::inverseA()` implementation. Two things in it are now wrong:
+> the tree route is built by `.gllvm_phylo_tree_precision()` (`R/phylo-tree-precision.R`,
+> no MCMCglmm dependency), and the **leading minus on `log_det_A_phy_rr` was a bug**,
+> fixed under issue #611 (`docs/dev-log/after-task/2026-07-05-phylo-tree-logdet-sign.md`).
+> The engine stores `+log|A_aug|`; measured `-25.229441850133327` on the Arc 2 fixture.
+> The `R/fit-multi.R:1340-1350` line reference is also stale (now `:3157-3182`).
+
 - Sparse tree path: `inv <- MCMCglmm::inverseA(phylo_tree)` ->
   `Ainv_phy_rr <- inv$Ainv` (already a sparse `dgCMatrix`),
   `log_det_A_phy_rr <- -sum(log(inv$dii))`, `n_aug_phy <- nrow(Ainv_phy_rr)`,
   and `species_aug_id` maps each observation's tip to its augmented row
-  (`R/fit-multi.R:1340-1350`). `n_aug_phy = 2*n_tips - 1` (tips + internal
-  nodes) -- a genuinely sparse augmented precision, NOT a dense `n^2` matrix.
+  (`R/fit-multi.R:1340-1350`). `n_aug_phy = n_tip + Nnode - 1` -- one row per EDGE of the tree (tips +
+  internal nodes, root EXCLUDED; = 2*n_tips - 2 only when fully bifurcating,
+  never 2*n_tips - 1) -- a genuinely sparse augmented precision, NOT a dense `n^2` matrix.
 - VCV / dense fallback paths (`R/fit-multi.R:1366-1386`) collapse to
   `n_aug_phy == n_species`, `species_aug_id == species_id`.
 - All three are packed into `tmb_data` at `R/fit-multi.R:1686-1689`.

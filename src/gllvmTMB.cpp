@@ -377,10 +377,12 @@ Type objective_function<Type>::operator()()
   // for efficient quadratic-form evaluation.
   //
   // Stage-40 (true sparse-$A^{-1}$ trick): A^-1 is built over tips +
-  // internal nodes via MCMCglmm::inverseA(tree), giving a genuinely
-  // sparse matrix of dimension n_aug_phy = 2*n_tips - 1 (or close to it
-  // depending on tree topology). Each observation's contribution reads
-  // g_phy at the augmented row corresponding to its tip species, via
+  // internal nodes by .gllvm_phylo_tree_precision() (R/phylo-tree-precision.R;
+  // no MCMCglmm dependency), giving a genuinely sparse matrix of dimension
+  // n_aug_phy = n_tip + Nnode - 1 -- one row per EDGE of the tree, the root
+  // excluded. That is 2*n_tips - 2 for a fully bifurcating tree and SMALLER
+  // for any polytomy; it is never 2*n_tips - 1. Each observation's contribution
+  // reads g_phy at the augmented row corresponding to its tip species, via
   // species_aug_id.
   //
   // Backward-compatible fallback: when no tree is provided, R passes
@@ -1165,8 +1167,10 @@ Type objective_function<Type>::operator()()
     }
     // Prior: each column of g_phy is N(0, A), evaluated through the sparse Ainv.
     // -log p(g_k) = 0.5 * (n_aug_phy * log(2pi) + log_det_A + g_k' Ainv g_k)
-    // In the Stage-40 sparse-$A^{-1}$ path n_aug_phy = 2*n_tips - 1 (tips +
-    // internal nodes); in the legacy dense path n_aug_phy == n_species.
+    // In the Stage-40 sparse-$A^{-1}$ path n_aug_phy = n_tip + Nnode - 1, i.e.
+    // one row per EDGE of the tree (tips + internal nodes, root excluded) --
+    // 2*n_tips - 2 only when the tree is fully bifurcating, and never
+    // 2*n_tips - 1. In the legacy dense path n_aug_phy == n_species.
     for (int k = 0; k < d_phy; k++) {
       vector<Type> g_k = g_phy.col(k);
       Type quad = (g_k.matrix().transpose() * Ainv_phy_rr * g_k.matrix())(0, 0);

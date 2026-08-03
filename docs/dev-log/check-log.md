@@ -91,8 +91,33 @@ rg -n "loading_scale|Sigma_total|joint-delta|Fisher-z|profile.*standardized|sigm
 ```
 
 No parser/article code changed, so `pkgdown::build_articles(lazy = FALSE)` was
-not run. No empirical interval-coverage campaign was run: deterministic algebra
-and routing are covered, while calibration remains a separate Totoro/DRAC lane.
+not run during the initial implementation gate. The later all-documents sweep
+found that `vignettes/articles/lambda-constraint-suggest.Rmd` exercises both
+repaired decision routes, so it was updated and rendered directly:
+
+```sh
+rg -n "loading_ci|wald_asym|sigma_d2|varimax_threshold|wald_retention|standardized loading|standardised loading" \
+  --glob '!docs/dev-log/after-task/**' --glob '!docs/dev-log/check-log.md' \
+  --glob '!docs/dev-log/plans/**' --glob '!tests/**' --glob '!R/**' \
+  --glob '!man/**' .
+# The constraint article was the only additional public inference explanation;
+# other hits were current contracts, navigation, point-estimate prose, or history.
+
+R_USER_CACHE_DIR=/private/tmp/gllvmtmb-r-cache Rscript --vanilla -e \
+  'pkgdown::build_article("articles/lambda-constraint-suggest")'
+# PASS: wrote articles/lambda-constraint-suggest.html.
+
+rg -n "\\b(FG|FAM|MIX|CI|EXT|KER|MIS|RE)-[0-9]{2}\\b|\\b(Stage|Gate) [A-Z0-9]+\\b|\\b(Ada|Boole|Gauss|Noether|Curie|Pat|Darwin|Rose|Grace|Emmy|Fisher|Jason|Shannon)\\b" \
+  vignettes/articles/lambda-constraint-suggest.Rmd
+# No matches: no internal register codes, stage labels, or agent-role names.
+```
+
+An attempted `devtools::test(filter = "reader-facing-no-register-codes")`
+matched no test files and exited with `No test files found`; it is not counted
+as a gate. The direct reader-facing token scan above is the recorded evidence.
+
+No empirical interval-coverage campaign was run: deterministic algebra and
+routing are covered, while calibration remains a separate Totoro/DRAC lane.
 Targeted `lintr` was unavailable because `lintr` is not installed. Full report:
 `docs/dev-log/after-task/2026-08-03-standardized-loading-inference.md`.
 

@@ -88,9 +88,16 @@ Design, status, and closeout:
 - `docs/dev-log/after-task/2026-08-03-standardized-loading-inference.md`
 - `NEWS.md`
 
-No README, vignette, article, `_pkgdown.yml`, `ROADMAP.md`, NAMESPACE, TMB, or
-compiled source changed. The affected roxygen examples were regenerated and
-checked; no other example uses `sigma_d2` outside historical dev-log records.
+Public article:
+
+- `vignettes/articles/lambda-constraint-suggest.Rmd`
+
+No README, `_pkgdown.yml`, `ROADMAP.md`, NAMESPACE, TMB, or compiled source
+changed. The affected roxygen examples were regenerated and checked; no other
+example uses `sigma_d2` outside historical dev-log records. The one public
+article that exercises both repaired constraint routes now states their common
+standardised estimand, joint-covariance propagation, and remaining inference
+boundaries.
 
 ## 3a. Decisions and Rejected Alternatives
 
@@ -139,6 +146,14 @@ high, with a public-path deterministic test.
   -> PASS with 34 deliberate heavy-test skips and no failures;
   `pkgdown::check_pkgdown()` again found no problems; `git diff --check` again
   passed.
+- `R_USER_CACHE_DIR=/private/tmp/gllvmtmb-r-cache Rscript --vanilla -e 'pkgdown::build_article("articles/lambda-constraint-suggest")'`
+  -> PASS; the public constraint article rendered successfully with the
+  standardised-loading equation and inference boundaries. An initial call with
+  the incomplete article key (`"lambda-constraint-suggest"`) stopped before
+  rendering and was replaced by the registered pkgdown key above.
+- `rg -n "\\b(FG|FAM|MIX|CI|EXT|KER|MIS|RE)-[0-9]{2}\\b|\\b(Stage|Gate) [A-Z0-9]+\\b|\\b(Ada|Boole|Gauss|Noether|Curie|Pat|Darwin|Rose|Grace|Emmy|Fisher|Jason|Shannon)\\b" vignettes/articles/lambda-constraint-suggest.Rmd`
+  -> no matches; the public article contains no internal register codes, stage
+  labels, or agent-role names.
 - Targeted `lintr::lint()` could not run because `lintr` is not installed in
   this R library; package tests/check and `git diff --check` remain the style
   and syntax gates.
@@ -172,7 +187,11 @@ and pinned raw versus standardized behavior.
   -> source, generated help, design contracts, register, and limitations all
   expose the same scale distinction and raw-profile boundary.
 - `_pkgdown.yml` already lists every affected exported topic; no navigation
-  edit is needed. Generated Rd tails and keyword placement were spot-checked.
+  edit is needed. The repository-wide loading-inference sweep found one public
+  article that exercises both repaired constraint routes; it was updated and
+  rendered. README and the remaining vignettes contain only scope/navigation or
+  point-estimate loading references and did not need inference wording changes.
+  Generated Rd tails and keyword placement were spot-checked.
 
 Rose pre-publish verdict: PASS. The final NEWS entry states the estimand,
 limitations, and deprecation without internal register codes. No method list,
@@ -209,7 +228,12 @@ call omitted `devtools::load_all()` and produced package-not-loaded errors; it
 was discarded and rerun through `devtools::test()`. The first package-wide run
 was intentionally interrupted so reviewer-requested tests would be included in
 the authoritative run. `devtools::document()` also surfaced unrelated existing
-CV-link and S3-tag diagnostics.
+CV-link and S3-tag diagnostics. During the later documentation sweep, the first
+single-article render used an incomplete pkgdown key and stopped before
+rendering; the registered `articles/lambda-constraint-suggest` key passed. A
+separate inherited `reader-facing-no-register-codes` test filter matched no
+test file, so it was not treated as evidence and was replaced by the exact
+reader-facing token scan recorded above.
 
 ## 11. Team Learning
 

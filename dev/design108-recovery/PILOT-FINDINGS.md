@@ -252,3 +252,67 @@ and is why `q` is a grid column.
 
 Control-only, roughly N^1.1 at q=1 (22/54/105/248 s) and steeper at q=2 (32/89/213/414 s).
 q=2 costs ~1.7x q=1 at N=1000. **VA cost is still unmeasured** -- Job 2b.
+
+---
+
+## JOB 2d/2e — the external check: our VA is CORRECT, and more accurate than gllvm's
+
+Prompted by the maintainer: measure whether gllvm's VA is trustworthy HERE rather than
+transferring a degeneracy rate from a different method under different conditions, and
+whether OUR VA has bugs. Both were open questions dressed up as settled ones.
+
+**Design.** One-tier regime (`phylo_scale = 0`, which the DGP's anchor test proves reduces
+EXACTLY), binomial-probit, N=250, T=20, q=1. Both engines fit the SAME single-tier model on
+the SAME data, scored against planted truth. An earlier attempt was flawed and is not cited:
+it kept our 198-level structured tier at `phylo_scale = 0`, so ours fitted a strictly larger
+model and the cost comparison was meaningless.
+
+| engine | median time | median `rel_frob` | degenerate |
+|---|---|---|---|
+| gllvm VA (mature reference) | **0.79 s** | 0.357 | **0/6** |
+| **our VA** | 47.3 s | **0.283** | 0/3 |
+| our Laplace | 114.5 s | **0.170** | 0/6 |
+
+### 1. Our VA is NOT buggy -- it is the MORE accurate of the two VAs
+
+Ours beats gllvm's on **3/3 paired seeds** (0.314/0.283/0.250 vs 0.357/0.342/0.361), a 21%
+median improvement. Stage 7's KL verification (direct-algebra oracle to 2.26e-16, iid
+reduction exactly 0.000e+00) is borne out END-TO-END, which it had never been before: every
+prior check was of the objective, not of recovery.
+
+### 2. gllvm's VA is trustworthy here -- the 68% figure does NOT transfer
+
+0/6 degenerate, converged every time, `rel_frob` nowhere near the >10 threshold. The
+68%-degenerate record is gllvm's **EVA**, from a different grid under different conditions.
+Transferring it would have been the same error this project forbids elsewhere (Bernoulli-logit
+evidence does not transfer to probit). It was a lead, not evidence.
+
+### 3. CORRECTION: "VA is slower than Laplace at every tested n" does not hold here
+
+Our VA is **2.4x FASTER than our own Laplace** at this cell (47 s vs 114 s). The 640-cell
+grid's headline was a different configuration. The claim is configuration-dependent and was
+repeated here without that qualifier; it should not be cited unqualified again.
+
+### 4. The cost problem DECOMPOSES -- which makes it tractable
+
+- **base VA, single tier: 60x slower than gllvm.** Target of the two unbuilt borrowings from
+  the 2026-07-27 plan: #3 block-diagonal/low-rank variational covariance (gllvm
+  `Ab.struct="blockdiagonal"`, `Ab.struct.rank=1`) and #4 two-stage warm-up (`diag.iter=1`).
+  We hold a proof gllvm does not cite: **Design 106 Proposition 2** shows a zero off-diagonal
+  block of `S` is **exactly optimal, not an approximation**, under stated conditions -- so we
+  know both that it is safe and precisely where it stops being.
+- **the structured phylo tier adds ~56x on top** (>3600 s, never finished, vs 47 s without
+  it). This is OUR unique capability, gllvm cannot express it, and its cost has never been
+  profiled. R3 fixed the OUTER problem (memory, constant in N); this lives in the INNER solve
+  -- exactly where Proposition 2 applies, and where Stage 7 measured `nnz/dim` staying FLAT.
+  Sparsity is right; wall-clock is not. That gap is the single most informative unopened box.
+- **the n>=2500 wall remains unexplained** (the L-BFGS-B memory hypothesis was measured and
+  REFUTED). Now diagnosable against a reference implementation that does not have it.
+
+### 5. What this does to the campaign's verdict
+
+The strong form -- "VA loses, drop Stages 3/5" -- rested on VA being both slower and no more
+accurate. On this evidence it is MORE accurate than the mature competitor and FASTER than our
+own Laplace in the base configuration. **That verdict is withdrawn.** The narrower, supported
+statement: VA's cost problem is real, now decomposed, and has named unbuilt fixes; the
+structured-tier question is gated on those, not on VA being a dead end.

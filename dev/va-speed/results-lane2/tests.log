@@ -1,0 +1,16 @@
+ℹ Testing gllvmTMB
+gllvmTMB is EXPERIMENTAL (lifecycle: experimental). Use at your own risk: the package is not complete, is not fully human-verified, and needs extensive further validation. Point estimates are the supported claim; no cell's interval coverage is certified, and covariance routes have focused-test evidence only. See NEWS and the package website for scope.
+✔ | F W  S  OK | Context
+
+⠏ |          0 | va-r3-warm-psi                                                 using C++ compiler: 'g++ (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0'
+g++ -std=gnu++17 -I"/usr/share/R/include" -DNDEBUG -I"/home/snakagaw/R/x86_64-pc-linux-gnu-library/4.5/TMB/include" -I"/home/snakagaw/R/x86_64-pc-linux-gnu-library/4.5/RcppEigen/include"  -DTMB_SAFEBOUNDS -DTMB_EIGEN_DISABLE_WARNINGS -DLIB_UNLOAD=R_unload_gllvmTMB_va_r3  -DTMB_LIB_INIT=R_init_gllvmTMB_va_r3  -DCPPAD_FRAMEWORK      -fpic  -O2  -c gllvmTMB_va_r3.cpp -o gllvmTMB_va_r3.o
+g++ -std=gnu++17 -shared -L/usr/lib/R/lib -Wl,-Bsymbolic-functions -flto=auto -ffat-lto-objects -Wl,-z,relro -o gllvmTMB_va_r3.so gllvmTMB_va_r3.o -L/usr/lib/R/lib -lR
+
+⠋ |          1 | va-r3-warm-psi                                                 
+⠹ |          3 | va-r3-warm-psi                                                 
+✔ |          4 | va-r3-warm-psi [94.4s]
+
+══ Results ═════════════════════════════════════════════════════════════════════
+Duration: 94.4 s
+
+[ FAIL 0 | WARN 0 | SKIP 0 | PASS 4 ]

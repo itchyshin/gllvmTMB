@@ -144,7 +144,34 @@ hold at ψ = 0.6, n_trials = 6.
   to 4–5 s.f." property was also only ever established at ψ = 0.
 - **The variance-recovery corollary is unmeasured** and must not be quoted (ledger claim 22).
 - **Any future warm-route measurement must plant ψ > 0 and report ψ**, or it repeats the error.
-- If the collapse replicates: the fix is not to abandon the route but to stop it inheriting a
-  boundary start — e.g. reset `log_sd_tier` to its default before stage 2 while keeping the
-  warm loadings/means, or multi-start stage 2. Both are cheap and testable. **Untested — a
-  hypothesis, not a recommendation.**
+- The collapse replicated, so the hypothesised fix was tested. **It works — see §6.**
+
+## 6. THE REPAIR — tested, and it recovers the route
+
+`26-warm-reset-probe.R`, same regime and discipline as §4b (3 seeds, interleaved, order rotated
+per seed, Totoro, 0 competing R jobs). Three arms: cold, warm as-was, and `warm_reset` — which
+keeps the warm loadings, fixed effects and variational block and resets **only** `log_sd_tier`
+to its ordinary default of log(0.3).
+
+| arm | median secs | median objective | median rel_frob | median ψ (truth 0.6) |
+|---|---|---|---|---|
+| cold | 192.4 | 1810.82 | 0.377405 | **0.5074** |
+| warm (as-was) | 13.3 | 1862.54 | 0.345388 | **0.0001** |
+| **warm_reset** | **15.7** | **1810.82** | **0.377406** | **0.5074** |
+
+Per seed, `warm_reset` matches cold to 4–5 significant figures on **objective, rel_frob and ψ
+simultaneously** — 1838.44/0.32442/0.6207, 1715.90/0.67755/0.5023, 1810.82/0.37741/0.5074 — and
+is **12.3× faster**. The mechanism in §3 is therefore confirmed: the collapse was a *boundary
+start*, not a property of ending on GH.
+
+**Shipped** in `43341784` with a regression test (`tests/testthat/test-va-r3-warm-psi.R`, 4/4)
+that plants ψ > 0 and asserts recovery — the check the original evidence could not perform.
+**Full VA suite green afterwards: 966 pass, 0 fail, 0 warn** (`results-lane2/vatests.log`).
+
+**What this does NOT cover** (ledger claim 28): one cell, three seeds. Other `n_trials`, other
+N/T, q > 1, and the structured tiers are untested, and whether 12.3× holds elsewhere is unknown.
+Nothing is promoted; `default_tier` is still `"gh"` and the integration fence is shut.
+
+**The honest headline:** the arc's "best result" was wrong in the way that mattered, and is now
+right — 12.3× at *identical* accuracy and variance recovery, rather than 14.5× at a collapsed
+variance. It was found only because this run planted ψ > 0 and printed it.

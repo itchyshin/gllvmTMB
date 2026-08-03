@@ -1,0 +1,146 @@
+ℹ Testing gllvmTMB
+gllvmTMB is EXPERIMENTAL (lifecycle: experimental). Use at your own risk: the package is not complete, is not fully human-verified, and needs extensive further validation. Point estimates are the supported claim; no cell's interval coverage is certified, and covariance routes have focused-test evidence only. See NEWS and the package website for scope.
+✔ | F W  S  OK | Context
+
+⠏ |          0 | approximation-engine                                           
+⠏ |         10 | approximation-engine                                           
+⠹ |         23 | approximation-engine                                           using C++ compiler: 'g++ (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0'
+g++ -std=gnu++17 -I"/usr/share/R/include" -DNDEBUG -I"/home/snakagaw/R/x86_64-pc-linux-gnu-library/4.5/TMB/include" -I"/home/snakagaw/R/x86_64-pc-linux-gnu-library/4.5/RcppEigen/include"  -DTMB_SAFEBOUNDS -DTMB_EIGEN_DISABLE_WARNINGS -DLIB_UNLOAD=R_unload_gllvmTMB_eva  -DTMB_LIB_INIT=R_init_gllvmTMB_eva  -DCPPAD_FRAMEWORK      -fpic  -O2  -c gllvmTMB_eva.cpp -o gllvmTMB_eva.o
+g++ -std=gnu++17 -shared -L/usr/lib/R/lib -Wl,-Bsymbolic-functions -flto=auto -ffat-lto-objects -Wl,-z,relro -o gllvmTMB_eva.so gllvmTMB_eva.o -L/usr/lib/R/lib -lR
+
+⠦ |      1  26 | approximation-engine                                           
+✔ |      1  38 | approximation-engine [18.3s]
+
+⠏ |          0 | va-missing-response                                            using C++ compiler: 'g++ (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0'
+g++ -std=gnu++17 -I"/usr/share/R/include" -DNDEBUG -I"/home/snakagaw/R/x86_64-pc-linux-gnu-library/4.5/TMB/include" -I"/home/snakagaw/R/x86_64-pc-linux-gnu-library/4.5/RcppEigen/include"  -DTMB_SAFEBOUNDS -DTMB_EIGEN_DISABLE_WARNINGS -DLIB_UNLOAD=R_unload_gllvmTMB_va_r3  -DTMB_LIB_INIT=R_init_gllvmTMB_va_r3  -DCPPAD_FRAMEWORK      -fpic  -O2  -c gllvmTMB_va_r3.cpp -o gllvmTMB_va_r3.o
+g++ -std=gnu++17 -shared -L/usr/lib/R/lib -Wl,-Bsymbolic-functions -flto=auto -ffat-lto-objects -Wl,-z,relro -o gllvmTMB_va_r3.so gllvmTMB_va_r3.o -L/usr/lib/R/lib -lR
+
+⠹ |          3 | va-missing-response                                            
+⠴ |          6 | va-missing-response                                            
+⠏ |         10 | va-missing-response                                            
+✔ |         10 | va-missing-response [28.5s]
+
+⠏ |          0 | va-mixed-family                                                Warning: 4 external pointers will be removed
+using C++ compiler: 'g++ (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0'
+g++ -std=gnu++17 -I"/usr/share/R/include" -DNDEBUG -I"/home/snakagaw/R/x86_64-pc-linux-gnu-library/4.5/TMB/include" -I"/home/snakagaw/R/x86_64-pc-linux-gnu-library/4.5/RcppEigen/include"  -DTMB_SAFEBOUNDS -DTMB_EIGEN_DISABLE_WARNINGS -DLIB_UNLOAD=R_unload_gllvmTMB_va_r3  -DTMB_LIB_INIT=R_init_gllvmTMB_va_r3  -DCPPAD_FRAMEWORK      -fpic  -O2  -c gllvmTMB_va_r3.cpp -o gllvmTMB_va_r3.o
+g++ -std=gnu++17 -shared -L/usr/lib/R/lib -Wl,-Bsymbolic-functions -flto=auto -ffat-lto-objects -Wl,-z,relro -o gllvmTMB_va_r3.so gllvmTMB_va_r3.o -L/usr/lib/R/lib -lR
+
+⠙ |         12 | va-mixed-family                                                
+⠧ |         18 | va-mixed-family                                                
+✔ |         23 | va-mixed-family [25.9s]
+
+⠏ |          0 | va-probit-adsafety                                             
+⠦ |          7 | va-probit-adsafety                                             
+-- Design 108 Stage 4 AD-safety, H = 15 (extreme node 6.3639 SD of eta) --
+cell                      dE/dmu AD      dE/dmu FD        rel       dE/dv AD       dE/dv FD        rel  min eta
+bulk bernoulli            0.7337576      0.7337576   4.88e-13     -0.2666131     -0.2666131   4.07e-12     -6.1
+bulk binomial n=10       -0.5251462     -0.5251462   9.22e-12      -2.790678      -2.790678   2.92e-13     -5.4
+left tail mu=-30            30.0333        30.0333   1.02e-13     -0.4994463     -0.4994463   4.61e-10    -36.4
+deep tail mu=-40           40.02498       40.02498   5.32e-13     -0.4996881     -0.4996881   1.85e-09    -46.4
+
+⠼ |         25 | va-probit-adsafety                                             huge v=100                 4.059181       4.059181   7.95e-13     -0.2516668     -0.2516668   5.95e-13    -63.6
+right tail mu=+30          -30.0333       -30.0333   1.55e-13     -0.4994463     -0.4994463   4.61e-10     23.6
+both tails                 100.2678       100.2678   8.42e-13      -2.492238      -2.492238   2.44e-11    -51.8
+
+-- Design 108 Stage 4 AD-safety, H = 61 (extreme node 14.4985 SD of eta) --
+cell                      dE/dmu AD      dE/dmu FD        rel       dE/dv AD       dE/dv FD        rel  min eta
+bulk bernoulli            0.7337576      0.7337576   6.57e-13     -0.2666131     -0.2666131   3.41e-12    -14.2
+bulk binomial n=10       -0.5251462     -0.5251462   1.29e-11      -2.790678      -2.790678   2.32e-12    -11.7
+left tail mu=-30            30.0333        30.0333   3.18e-13     -0.4994463     -0.4994463   2.98e-10    -44.5
+deep tail mu=-40           40.02498       40.02498   5.32e-13     -0.4996881     -0.4996881   1.19e-09    -54.5
+huge v=100                 4.121156       4.121156   1.52e-12     -0.2520039     -0.2520039   1.34e-12   -145.0
+right tail mu=+30          -30.0333       -30.0333   2.66e-13     -0.4994463     -0.4994463   4.61e-10     15.5
+
+⠋ |         61 | va-probit-adsafety                                             both tails                 100.2678       100.2678   8.46e-13      -2.492234      -2.492234   1.09e-11    -92.5
+
+⠧ |         98 | va-probit-adsafety                                             
+⠧ |        108 | va-probit-adsafety                                             
+-- Stage 4 toy: max|log Sigma_B ratio| vs Laplace probit 0.1696, vs Laplace logit 0.9653
+
+⠙ |        112 | va-probit-adsafety                                             
+✔ |        114 | va-probit-adsafety [3.5s]
+
+⠏ |          0 | va-r3-profile                                                  
+⠸ |         14 | va-r3-profile                                                  
+⠦ |         17 | va-r3-profile                                                  
+⠼ |         25 | va-r3-profile                                                  
+⠹ |         33 | va-r3-profile                                                  
+⠋ |         41 | va-r3-profile                                                  
+✔ |         41 | va-r3-profile [1.5s]
+
+⠏ |          0 | va-r3-prototype                                                
+⠹ |         53 | va-r3-prototype                                                
+⠹ |        163 | va-r3-prototype                                                
+⠇ |        169 | va-r3-prototype                                                
+⠸ |        174 | va-r3-prototype                                                
+⠸ |        184 | va-r3-prototype                                                
+⠴ |        196 | va-r3-prototype                                                
+⠼ |        205 | va-r3-prototype                                                
+⠇ |        209 | va-r3-prototype                                                
+⠏ |        230 | va-r3-prototype                                                
+⠧ |        298 | va-r3-prototype                                                
+⠙ |        342 | va-r3-prototype                                                
+⠴ |        366 | va-r3-prototype                                                
+⠙ |        422 | va-r3-prototype                                                
+⠦ |        457 | va-r3-prototype                                                
+✔ |        479 | va-r3-prototype [3.6s]
+
+⠏ |          0 | va-r3-separation                                               
+✔ |          6 | va-r3-separation
+
+⠏ |          0 | va-r3-structured-phylo                                         
+⠋ |          1 | va-r3-structured-phylo                                         
+⠏ |         20 | va-r3-structured-phylo                                         
+⠹ |         43 | va-r3-structured-phylo                                         
+⠴ |         46 | va-r3-structured-phylo                                         ! `phylo_tree = ...` as a global argument to `gllvmTMB()` is deprecated.
+i Pass `tree = ...` inside the phylo_*() keyword instead, e.g. `phylo_latent(species, d = 2, tree = tree)`.
+> The legacy global path still works; the in-keyword syntax avoids silent index/order mismatch.
+This message is displayed once per session.
+
+⠧ |         68 | va-r3-structured-phylo                                         
+✔ |         70 | va-r3-structured-phylo
+
+⠏ |          0 | va-r3-warm-psi                                                 
+⠋ |          1 | va-r3-warm-psi                                                 
+⠹ |          3 | va-r3-warm-psi                                                 
+✔ |          4 | va-r3-warm-psi [68.6s]
+
+⠏ |          0 | va-routing-oracle                                              
+⠋ |          1 | va-routing-oracle                                              
+⠙ |          2 | va-routing-oracle                                              
+⠙ |         22 | va-routing-oracle                                              
+✔ |         31 | va-routing-oracle
+
+⠏ |          0 | vgh-oracle                                                     
+⠹ |          3 | vgh-oracle                                                     
+⠸ |          4 | vgh-oracle                                                     
+⠼ |          5 | vgh-oracle                                                     
+⠴ |          6 | vgh-oracle                                                     
+⠦ |          7 | vgh-oracle                                                     
+⠙ |         12 | vgh-oracle                                                     
+⠙ |         32 | vgh-oracle                                                     
+⠦ |         37 | vgh-oracle                                                     
+⠙ |         42 | vgh-oracle                                                     
+✔ |         51 | vgh-oracle [29.7s]
+
+⠏ |          0 | vgh-pooled-phi                                                 
+⠋ |          1 | vgh-pooled-phi                                                 
+⠧ |          8 | vgh-pooled-phi                                                 
+⠋ |         21 | vgh-pooled-phi                                                 
+✔ |         35 | vgh-pooled-phi [1.4s]
+
+⠏ |          0 | vgh-verify                                                     
+⠼ |         35 | vgh-verify                                                     
+✔ |         45 | vgh-verify
+
+⠏ |          0 | vgh-warmstart                                                  
+✔ |         19 | vgh-warmstart
+
+══ Results ═════════════════════════════════════════════════════════════════════
+Duration: 182.7 s
+
+── Skipped tests (1) ───────────────────────────────────────────────────────────
+• The sealed EVA helper is present in this integration checkout. (1):
+  'test-approximation-engine.R:131:3'
+
+[ FAIL 0 | WARN 0 | SKIP 1 | PASS 966 ]

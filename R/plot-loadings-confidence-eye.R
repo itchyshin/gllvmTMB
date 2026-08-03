@@ -16,7 +16,7 @@
 
 #' Confidence Eye plot for per-species loading uncertainty
 #'
-#' A bar-and-whisker visualisation of the entries of `Lambda` with
+#' A bar-and-whisker visualisation of raw or standardised loadings with
 #' point estimates and Wald (or other-method) confidence intervals from
 #' [loading_ci()]. Default rendering uses the "Confidence Eye" contract:
 #' a pale CI region (`geom_linerange`) and a hollow point estimate
@@ -32,9 +32,11 @@
 #'
 #' @param fit A multivariate `gllvmTMB()` fit, OR a data frame already
 #'   produced by [loading_ci()] / [flag_unreliable_loadings()].
-#' @param level,method,conf_level Forwarded to [loading_ci()] when
+#' @param level,method,conf_level,loading_scale Forwarded to [loading_ci()] when
 #'   `fit` is a fit object. Ignored when `fit` is already a
-#'   `loading_ci()` data frame.
+#'   `loading_ci()` data frame, except that an explicitly supplied
+#'   `loading_scale` must match the frame's recorded scale. The y-axis label
+#'   reports the displayed scale.
 #' @param null_region Optional length-2 numeric drawn as a shaded
 #'   "biologically negligible" band so the reader can tell at a glance
 #'   which CIs sit outside it. If supplied, also colours points by
@@ -67,7 +69,8 @@ plot_loadings_confidence_eye <- function(fit,
                                          conf_level  = 0.95,
                                          null_region = NULL,
                                          sort_by     = c("trait_order", "magnitude"),
-                                         ylim        = NULL) {
+                                         ylim        = NULL,
+                                         loading_scale = NULL) {
 
   if (!requireNamespace("ggplot2", quietly = TRUE))
     cli::cli_abort("{.pkg ggplot2} is required for {.fn plot_loadings_confidence_eye}.")
@@ -82,19 +85,39 @@ plot_loadings_confidence_eye <- function(fit,
     )
 
   if (is.data.frame(fit)) {
-    needed <- c("trait", "axis", "estimate", "se", "lower", "upper", "pinned")
+    needed <- c(
+      "trait", "axis", "estimate", "se", "lower", "upper", "pinned",
+      "loading_scale"
+    )
     if (!all(needed %in% names(fit)))
       cli::cli_abort(
         "Data-frame input must have columns {.code {needed}} (output of {.fn loading_ci})."
       )
     df <- fit
+    if (!is.null(loading_scale)) {
+      loading_scale <- match.arg(loading_scale, c("raw", "standardized"))
+      observed_scale <- unique(as.character(df$loading_scale))
+      observed_scale <- observed_scale[!is.na(observed_scale)]
+      if (length(observed_scale) != 1L ||
+          !identical(loading_scale, observed_scale))
+        cli::cli_abort(
+          "{.arg loading_scale} must match the scale recorded in the data frame."
+        )
+    }
   } else {
     df <- if (!is.null(null_region)) {
       flag_unreliable_loadings(fit, null_region = null_region,
                                level = level, method = method,
-                               conf_level = conf_level)
+                               conf_level = conf_level,
+                               loading_scale = loading_scale)
     } else {
-      loading_ci(fit, level = level, method = method, conf_level = conf_level)
+      loading_ci(
+        fit,
+        level = level,
+        method = method,
+        conf_level = conf_level,
+        loading_scale = loading_scale
+      )
     }
   }
 
@@ -102,6 +125,15 @@ plot_loadings_confidence_eye <- function(fit,
   ## annotate reliability post-hoc.
   if (!is.null(null_region) && is.null(df$unreliable))
     df <- flag_unreliable_loadings(df, null_region = null_region)
+
+  scale_values <- unique(as.character(df$loading_scale))
+  scale_values <- scale_values[!is.na(scale_values)]
+  if (length(scale_values) != 1L ||
+      !scale_values %in% c("raw", "standardized"))
+    cli::cli_abort(
+      "Loading intervals must carry one unambiguous {.code loading_scale}."
+    )
+  displayed_scale <- scale_values[[1L]]
 
   ## ---- CI-availability gate: refuse to draw eyes when no bounds ----
   ## The fallback ("Hessian non-PD; CIs unavailable. Hollow points only.")
@@ -234,8 +266,17 @@ plot_loadings_confidence_eye <- function(fit,
       panel.grid.minor = ggplot2::element_blank()
     ) +
     ggplot2::labs(
-      x = NULL, y = expression(hat(Lambda)),
-      title = "Loading estimates with confidence eyes",
+      x = NULL,
+      y = if (identical(displayed_scale, "standardized")) {
+        expression(hat(rho))
+      } else {
+        expression(hat(Lambda))
+      },
+      title = if (identical(displayed_scale, "standardized")) {
+        "Standardized loading estimates with confidence eyes"
+      } else {
+        "Raw loading estimates with confidence eyes"
+      },
       subtitle = if (pd_failure)
         "Hessian non-PD; CIs unavailable (`?loading_ci`). Hollow points only."
       else if (!is.null(null_region))

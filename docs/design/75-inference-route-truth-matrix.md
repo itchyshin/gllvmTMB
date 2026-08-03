@@ -39,7 +39,9 @@ match the profile column.
    vocabulary already admits `fallback`, but no `fallback` row is emitted and
    no `wald` / `bootstrap` / `estimated_likelihood` row exists.
 2. The **dispatch layer does route Wald and bootstrap.** `confint()` accepts
-   `method = c("profile", "wald", "bootstrap")` (loadings add `wald_asym`);
+   `method = c("profile", "wald", "bootstrap")` (loadings add
+   standardized-only `wald_asym`; raw loading inference remains `wald`,
+   `profile`, or bootstrap);
    `extract_Sigma()` / `extract_repeatability()` / the derived-summary
    extractors accept `method = c("profile", "wald", "bootstrap")`; the
    derived-summary `confint` helpers (`.confint_icc`, `.confint_phylo_signal`,

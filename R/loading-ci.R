@@ -1,8 +1,11 @@
-## Per-entry confidence intervals on the reduced-rank loading matrix Λ
+## Per-entry confidence intervals on raw or standardised reduced-rank loadings
 ## from a confirmatory gllvmTMB() fit. The maths is the delta method on
-## a numerical Jacobian J = ∂vec(Λ)/∂theta_rr_packed; the covariance is
-## fit$sd_report$cov.fixed restricted to the theta_rr_<level> rows; the
-## CI is symmetric Wald.
+## a numerical Jacobian J = ∂vec(Λ)/∂theta for raw loadings, or
+## J = ∂vec(rho)/∂theta for standardised loadings. The covariance is
+## the complete fit$sd_report$cov.fixed matrix, so uncertainty in every fixed
+## parameter that enters the reported estimand can propagate into the result.
+## The CI is symmetric Wald on the requested scale, or Fisher-z Wald for
+## standardised loadings.
 ##
 ## Why "confirmatory-only" in v1: a per-entry CI on an unconstrained
 ## exploratory fit is a property of the rotation convention, not the
@@ -22,13 +25,13 @@
 
 #' Confidence intervals on individual entries of the loading matrix
 #'
-#' Return per-entry CIs on the reduced-rank loading matrix
-#' `Lambda_<level>` of a confirmatory `gllvmTMB()` fit. Method v1 is the
-#' delta-method Wald CI: a numerical Jacobian
-#' `J = d vec(Lambda) / d theta_rr` is combined with the TMB
-#' `sdreport()` covariance to give
-#' `cov(vec(Lambda)) = J %*% cov.fixed %*% t(J)`, from which symmetric
-#' Wald intervals are read.
+#' Return per-entry CIs on either the raw reduced-rank loading matrix
+#' `Lambda_<level>` or the standardised loading
+#' `rho[t,k] = Lambda[t,k] / sqrt(Sigma_total[t,t])` of a confirmatory
+#' `gllvmTMB()` fit. A numerical Jacobian of the complete requested loading
+#' vector is combined with the TMB `sdreport()` covariance. On the
+#' standardised scale this includes covariance among axes and uncertainty in
+#' fitted denominator components such as `Psi`.
 #'
 #' Per-entry CIs are **only well-defined for confirmatory fits** — i.e.
 #' fits supplied with a `lambda_constraint` that fixes enough entries
@@ -53,32 +56,34 @@
 #'   one-shot deprecation warning.
 #' @param method CI method:
 #'   \describe{
-#'     \item{`"wald"` (default)}{Symmetric Wald via delta method.}
+#'     \item{`"wald"` (default)}{Symmetric Wald via the joint delta method
+#'       on the requested `loading_scale`.}
 #'     \item{`"wald_asym"`}{Asymmetric Wald via the Fisher-z transformation
-#'       on the standardised loading
-#'       \eqn{\rho = \Lambda / \sqrt{\Lambda^2 + \sigma_d^2}}.
-#'       Same cost as `"wald"` (no refit) but captures the bounded-support
-#'       asymmetry that symmetric Wald on \eqn{\Lambda} ignores. CIs are
-#'       wider toward large \eqn{|\Lambda|} and narrower toward 0 — the
-#'       qualitatively correct shape, leaving higher-order
-#'       log-likelihood-curvature corrections to the profile path.}
+#'       on \eqn{\rho_{tk} = \Lambda_{tk}/\sqrt{\Sigma_{total,tt}}}.
+#'       This method is available only with
+#'       `loading_scale = "standardized"`; its bounds stay in `(-1, 1)`.
+#'       It captures bounded-support asymmetry but not higher-order
+#'       log-likelihood curvature.}
 #'     \item{`"profile"`}{Profile-likelihood inversion through
 #'       [loading_profile()]. This refits across a grid for each free
 #'       loading entry and can be used when Wald inference is blocked by a
-#'       non-positive-definite Hessian.}
+#'       non-positive-definite Hessian. The current profile target is raw
+#'       `Lambda`, so `loading_scale = "standardized"` is refused.}
 #'   }
-#' @param sigma_d2 link-implicit residual variance on the link scale.
-#'   Only used when `method = "wald_asym"`. Defaults to `1` (binomial
-#'   probit and ordinal_probit; the cleanest non-Gaussian case). For
-#'   logit use \eqn{\pi^2/3}; for cloglog use \eqn{\pi^2/6}. Set to the
-#'   fitted unique variance for Gaussian. A future version will
-#'   auto-detect per-trait from the family.
+#' @param sigma_d2 Deprecated compatibility argument; ignored. Standardised
+#'   inference now derives each denominator from model-implied total variance
+#'   via [extract_Sigma()] instead of accepting one scalar residual variance.
+#' @param loading_scale `NULL`, `"raw"`, or `"standardized"`. `NULL` uses
+#'   `"raw"` for `"wald"` / `"profile"` and `"standardized"` for
+#'   `"wald_asym"`. Estimates, SEs, bounds, and downstream null regions are
+#'   always on this recorded scale.
 #' @param conf_level Confidence level. Defaults to 0.95.
 #'
 #' @return A data frame (one row per Lambda entry) with columns
-#'   `trait`, `axis`, `estimate`, `se`, `lower`, `upper`, `method`, and
-#'   `pinned` (logical: `TRUE` for entries fixed by `lambda_constraint`,
-#'   whose SE is exactly 0 by construction).
+#'   `trait`, `axis`, `estimate`, `se`, `lower`, `upper`, `method`,
+#'   `loading_scale`, and `pinned`. `pinned = TRUE` records that the raw
+#'   loading was fixed by `lambda_constraint`. Its raw SE is zero, but its
+#'   standardised SE can be nonzero because total variance can still vary.
 #'
 #' @seealso [flag_unreliable_loadings()] for a decision-aid summary;
 #'   [confirmatory_lambda()] to build a confirmatory constraint matrix;
@@ -100,6 +105,7 @@
 #'   lambda_constraint = list(unit = M)
 #' )
 #' loading_ci(fit, level = "unit")
+#' loading_ci(fit, level = "unit", loading_scale = "standardized")
 #' }
 #'
 #' @export
@@ -107,13 +113,47 @@ loading_ci <- function(fit,
                        level      = c("unit", "unit_obs"),
                        method     = c("wald", "wald_asym", "profile"),
                        conf_level = 0.95,
-                       sigma_d2   = 1) {
+                       sigma_d2   = 1,
+                       loading_scale = NULL) {
 
   if (!inherits(fit, "gllvmTMB_multi"))
     cli::cli_abort("{.code fit} must be a multi-trait {.fun gllvmTMB} fit.")
 
+  if (!missing(sigma_d2)) {
+    lifecycle::deprecate_warn(
+      when = "0.6.0",
+      what = "loading_ci(sigma_d2)",
+      details = c(
+        i = paste0(
+          "Standardisation now uses each trait's model-implied total ",
+          "variance from `extract_Sigma()`; `sigma_d2` is ignored."
+        )
+      ),
+      id = "gllvmTMB-loading-ci-sigma-d2"
+    )
+  }
+
   level  <- match.arg(level)
   method <- match.arg(method)
+  if (is.null(loading_scale)) {
+    loading_scale <- if (identical(method, "wald_asym")) {
+      "standardized"
+    } else {
+      "raw"
+    }
+  } else {
+    loading_scale <- match.arg(loading_scale, c("raw", "standardized"))
+  }
+  if (identical(method, "wald_asym") && identical(loading_scale, "raw"))
+    cli::cli_abort(c(
+      "{.code method = \"wald_asym\"} is defined on the standardised-loading scale.",
+      i = "Use {.code loading_scale = \"standardized\"}, or use {.code method = \"wald\"} for raw Lambda intervals."
+    ))
+  if (identical(method, "profile") && identical(loading_scale, "standardized"))
+    cli::cli_abort(c(
+      "Standardised profile intervals are not implemented.",
+      i = "The current profile targets raw {.code Lambda}; use {.code loading_scale = \"raw\"}, or a standardised Wald method."
+    ))
 
   if (!is.numeric(conf_level) || length(conf_level) != 1L ||
       conf_level <= 0 || conf_level >= 1)
@@ -159,7 +199,12 @@ loading_ci <- function(fit,
   if (is.null(trait_names))
     trait_names <- paste0("trait_", seq_len(n_traits))
 
-  est    <- as.numeric(Lambda)
+  Lambda_out <- if (identical(loading_scale, "standardized")) {
+    .standardize_loadings_by_total_variance(fit, Lambda, level)
+  } else {
+    Lambda
+  }
+  est    <- as.numeric(Lambda_out)
   pinned <- as.logical(!is.na(fit$lambda_constraint[[internal_level]]))
 
   ## ---- Profile path bypasses the pdHess gate (LRT doesn't need the
@@ -179,6 +224,7 @@ loading_ci <- function(fit,
       lower      = est,
       upper      = est,
       method     = "profile",
+      loading_scale = loading_scale,
       pinned     = pinned,
       pd_hessian = pd_ok,
       ci_status  = ifelse(pinned, "pinned", "interval_unavailable"),
@@ -217,6 +263,7 @@ loading_ci <- function(fit,
       lower      = NA_real_,
       upper      = NA_real_,
       method     = method,
+      loading_scale = loading_scale,
       pinned     = pinned,
       pd_hessian = FALSE,
       ci_status  = "not_available_non_positive_definite_hessian",
@@ -224,12 +271,18 @@ loading_ci <- function(fit,
     ))
   }
 
-  ## ---- Delta-method SE on Lambda (shared helper) ----
-  se_info <- .lambda_se_at_mle(fit, internal_level)
-  se_lambda <- as.numeric(se_info$se_lambda)
-  ## Pinned entries: enforce SE = 0 explicitly (delta method already does
-  ## this numerically; enforce so floating-point noise doesn't leak in).
-  se_lambda[pinned] <- 0
+  ## ---- Delta-method SE on the requested loading scale ----
+  delta_info <- .loading_delta_at_mle(
+    fit = fit,
+    internal_level = internal_level,
+    loading_scale = loading_scale
+  )
+  est <- as.numeric(delta_info$Lambda)
+  se_lambda <- as.numeric(delta_info$se)
+  ## A raw pinned loading is fixed exactly. A standardised loading can still
+  ## vary through other axes, Psi, or a parameter-dependent link residual;
+  ## retain `pinned = TRUE` as provenance without forcing its derived SE to 0.
+  if (identical(loading_scale, "raw")) se_lambda[pinned] <- 0
 
   ## ---- CI bounds: symmetric Wald, or asymmetric via Fisher-z ----
   z <- stats::qnorm(0.5 + conf_level / 2)
@@ -237,8 +290,7 @@ loading_ci <- function(fit,
     lower <- est - z * se_lambda
     upper <- est + z * se_lambda
   } else {  # "wald_asym"
-    asym <- .lambda_ci_asym(est = est, se = se_lambda,
-                            sigma_d2 = sigma_d2,
+    asym <- .lambda_ci_asym(rho = est, se_rho = se_lambda,
                             conf_level = conf_level)
     lower <- asym$lower
     upper <- asym$upper
@@ -252,6 +304,7 @@ loading_ci <- function(fit,
     lower      = lower,
     upper      = upper,
     method     = method,
+    loading_scale = loading_scale,
     pinned     = pinned,
     pd_hessian = TRUE,
     ci_status  = "ok",
@@ -266,7 +319,8 @@ loading_ci <- function(fit,
 #' doi:10.3758/BF03193163): given per-entry CIs on Lambda, flag the
 #' entries whose `conf_level` confidence interval **does not exclude**
 #' a user-supplied "null region" — a band around zero considered
-#' biologically negligible. Loadings flagged as `unreliable = TRUE`
+#' biologically negligible on the interval's recorded `loading_scale`.
+#' Loadings flagged as `unreliable = TRUE`
 #' are the ones for which the data do not provide evidence that the
 #' species responds non-trivially to the axis.
 #'
@@ -277,9 +331,10 @@ loading_ci <- function(fit,
 #'   produced by [loading_ci()].
 #' @param null_region Length-2 numeric, sorted ascending. The
 #'   "negligible" band. Defaults to `c(-0.1, 0.1)`.
-#' @param level,method,conf_level Forwarded to [loading_ci()] when
+#' @param level,method,conf_level,loading_scale Forwarded to [loading_ci()] when
 #'   `fit` is a fit object. Ignored when `fit` is already a
-#'   `loading_ci()` data frame.
+#'   `loading_ci()` data frame, except that an explicitly supplied
+#'   `loading_scale` must match the frame's scale.
 #'
 #' @return The `loading_ci()` data frame with one extra logical column
 #'   `unreliable`: `TRUE` if the CI overlaps `null_region`, `FALSE` if
@@ -307,7 +362,8 @@ flag_unreliable_loadings <- function(fit,
                                      null_region = c(-0.1, 0.1),
                                      level       = c("unit", "unit_obs"),
                                      method      = "wald",
-                                     conf_level  = 0.95) {
+                                     conf_level  = 0.95,
+                                     loading_scale = NULL) {
 
   if (!is.numeric(null_region) || length(null_region) != 2L ||
       anyNA(null_region) || null_region[1] >= null_region[2])
@@ -316,14 +372,35 @@ flag_unreliable_loadings <- function(fit,
     )
 
   if (is.data.frame(fit)) {
-    needed <- c("estimate", "lower", "upper", "pinned")
+    needed <- c("estimate", "lower", "upper", "pinned", "loading_scale")
     if (!all(needed %in% names(fit)))
       cli::cli_abort(
         "Data-frame input must have columns {.code {needed}} (output of {.fn loading_ci})."
       )
     df <- fit
+    observed_scale <- unique(as.character(df$loading_scale))
+    observed_scale <- observed_scale[!is.na(observed_scale)]
+    if (length(observed_scale) != 1L ||
+        !observed_scale %in% c("raw", "standardized"))
+      cli::cli_abort(
+        "Data-frame input must contain one unambiguous {.code loading_scale}: {.val raw} or {.val standardized}."
+      )
+    if (!is.null(loading_scale)) {
+      loading_scale <- match.arg(loading_scale, c("raw", "standardized"))
+      if (!identical(loading_scale, observed_scale))
+        cli::cli_abort(c(
+          "{.arg loading_scale} does not match the data-frame scale.",
+          x = "Requested {.val {loading_scale}} but the intervals are {.val {observed_scale}}."
+        ))
+    }
   } else {
-    df <- loading_ci(fit, level = level, method = method, conf_level = conf_level)
+    df <- loading_ci(
+      fit,
+      level = level,
+      method = method,
+      conf_level = conf_level,
+      loading_scale = loading_scale
+    )
   }
 
   ## A CI [lo, hi] overlaps the null region [a, b] iff hi >= a and lo <= b.

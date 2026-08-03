@@ -561,6 +561,45 @@ matrix from tidy rows, assert varimax covariance invariance
 under ordering and sign flips, and check explicit anchor-trait
 signs.
 
+#### `loading_ci(fit, level, method, loading_scale)`
+
+**Return**: a data frame with one row per trait and latent axis.
+Stable columns are `trait`, `axis`, `estimate`, `se`, `lower`,
+`upper`, `method`, `loading_scale`, `pinned`, `pd_hessian`, and
+`ci_status`. The estimate, SE, bounds, and any downstream
+`null_region` decision always share the recorded loading scale.
+
+`loading_scale = "raw"` targets the fitted `Lambda` entries.
+`loading_scale = "standardized"` targets
+`rho[t,k] = Lambda[t,k] / sqrt(Sigma_total[t,t])`, using the same
+model-implied total variance as
+`extract_rotated_loadings_table(loading_scale = "standardized")`.
+Its covariance is the full numerical delta result
+`J_rho %*% cov.fixed %*% t(J_rho)`: covariance among axes and
+uncertainty in fitted `Psi` or parameter-dependent link residuals
+are included. Marginal raw-loading SE rescaling is not an accepted
+substitute.
+
+Raw `wald` and raw `profile` retain their existing targets.
+`wald_asym` is Fisher-z Wald on standardized `rho` only, and its
+bounds remain in `(-1, 1)`. Standardized profile intervals are
+refused because the current profile fixes raw `Lambda` rather than
+the derived total-variance ratio. A data-dependent rotation used by
+the constraint suggester remains a documented first-order
+approximation: the fitted rotation matrix is held fixed while the
+complete standardized-loading vector is differentiated.
+
+`pinned = TRUE` records that the raw loading was fixed by
+`lambda_constraint`. Raw pinned intervals collapse to the point.
+The corresponding standardized loading may still have nonzero
+uncertainty through its denominator; reliability calls nevertheless
+remain `NA` because the row is a constraint, not an inferential
+selection.
+
+Validation-debt row: `CI-13`. The deterministic algebra and routing
+are covered; empirical coverage of standardized Wald / Fisher-z
+intervals remains uncertified.
+
 #### `getLV(fit, level = "unit", rotate = c("none", "varimax", "promax"), se = FALSE)`
 
 Legacy alias for `extract_ordination(fit)`. Kept through

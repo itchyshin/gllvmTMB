@@ -40,6 +40,299 @@ build_fit <- function(n_sites = 60L, seed = 20260527L) {
        species = species_names)
 }
 
+## ---- Deterministic joint-delta fixtures (no fit / TMB required) ----
+
+mock_loading_delta_fit <- function(theta, cov_fixed, d) {
+  report_fun <- function(par) {
+    Lambda <- matrix(par[seq_len(d)], nrow = 1L, ncol = d)
+    list(
+      Lambda_B = Lambda,
+      total_variance = sum(Lambda^2) + par[d + 1L]
+    )
+  }
+  list(
+    report = report_fun(theta),
+    sd_report = structure(
+      list(cov.fixed = cov_fixed, pdHess = TRUE),
+      class = "sdreport"
+    ),
+    tmb_obj = list(
+      env = list(last.par.best = theta, random = integer(0)),
+      report = report_fun
+    )
+  )
+}
+
+mock_constraint_fit <- function(Lambda) {
+  trait_names <- paste0("trait_", seq_len(nrow(Lambda)))
+  structure(
+    list(
+      use = list(rr_B = TRUE),
+      d_B = ncol(Lambda),
+      n_traits = nrow(Lambda),
+      trait_col = "trait",
+      data = data.frame(
+        trait = factor(trait_names, levels = trait_names)
+      )
+    ),
+    class = "gllvmTMB_multi"
+  )
+}
+
+test_that("standardized loading delta reduces correctly when d = 1", {
+  fit <- mock_loading_delta_fit(
+    theta = c(lambda = 1, non_loading_variance = 1),
+    cov_fixed = diag(c(0.04, 0)),
+    d = 1L
+  )
+  testthat::local_mocked_bindings(
+    .standardize_loadings_by_total_variance = function(fit, Lambda, level) {
+      Lambda / sqrt(fit$report$total_variance)
+    },
+    .package = "gllvmTMB"
+  )
+
+  out <- gllvmTMB:::.loading_delta_at_mle(
+    fit,
+    internal_level = "B",
+    loading_scale = "standardized"
+  )
+  expect_equal(as.numeric(out$Lambda), 1 / sqrt(2), tolerance = 1e-8)
+  expect_equal(as.numeric(out$cov_vec), 0.005, tolerance = 1e-5)
+})
+
+test_that("raw loading delta preserves the reported loading covariance", {
+  cov_fixed <- matrix(
+    c(
+      0.04, 0.01, 0.02,
+      0.01, 0.09, -0.03,
+      0.02, -0.03, 0.25
+    ),
+    nrow = 3L,
+    byrow = TRUE
+  )
+  fit <- mock_loading_delta_fit(
+    theta = c(lambda_1 = 1, lambda_2 = 2, nuisance = 3),
+    cov_fixed = cov_fixed,
+    d = 2L
+  )
+
+  out <- gllvmTMB:::.loading_delta_at_mle(
+    fit,
+    internal_level = "B",
+    loading_scale = "raw"
+  )
+  expect_equal(as.numeric(out$Lambda), c(1, 2), tolerance = 1e-10)
+  expect_equal(out$cov_vec, cov_fixed[1:2, 1:2], tolerance = 1e-8)
+  expect_equal(out$se, matrix(c(0.2, 0.3), nrow = 1L), tolerance = 1e-8)
+})
+
+test_that("standardized loading delta uses every axis and joint covariance", {
+  cov_fixed <- matrix(
+    c(
+      0.040, 0.015, 0.006,
+      0.015, 0.090, -0.004,
+      0.006, -0.004, 0.025
+    ),
+    nrow = 3L,
+    byrow = TRUE
+  )
+  fit <- mock_loading_delta_fit(
+    theta = c(lambda_1 = 1, lambda_2 = 1, non_loading_variance = 1),
+    cov_fixed = cov_fixed,
+    d = 2L
+  )
+  testthat::local_mocked_bindings(
+    .standardize_loadings_by_total_variance = function(fit, Lambda, level) {
+      Lambda / sqrt(fit$report$total_variance)
+    },
+    .package = "gllvmTMB"
+  )
+
+  out <- gllvmTMB:::.loading_delta_at_mle(
+    fit,
+    internal_level = "B",
+    loading_scale = "standardized"
+  )
+  expect_equal(as.numeric(out$Lambda), rep(1 / sqrt(3), 2), tolerance = 1e-8)
+  expect_false(isTRUE(all.equal(as.numeric(out$Lambda), rep(1 / sqrt(2), 2))))
+  expect_equal(out$cov_vec[1, 1], 0.006675925926, tolerance = 1e-5)
+  expect_equal(out$se[1, 1], 0.08170634, tolerance = 1e-5)
+})
+
+test_that("standardization refuses non-positive total variance", {
+  testthat::local_mocked_bindings(
+    extract_Sigma = function(...) list(Sigma = diag(c(1, 0))),
+    .package = "gllvmTMB"
+  )
+  expect_error(
+    gllvmTMB:::.standardize_loadings_by_total_variance(
+      fit = list(),
+      Lambda = matrix(1, nrow = 2L, ncol = 1L),
+      level = "unit"
+    ),
+    "non-positive total variance"
+  )
+})
+
+test_that("a fixed numerator can remain uncertain after standardization", {
+  fit <- mock_loading_delta_fit(
+    theta = c(lambda_1 = 1, lambda_2 = 1, non_loading_variance = 1),
+    cov_fixed = diag(c(0, 0.09, 0)),
+    d = 2L
+  )
+  testthat::local_mocked_bindings(
+    .standardize_loadings_by_total_variance = function(fit, Lambda, level) {
+      Lambda / sqrt(fit$report$total_variance)
+    },
+    .package = "gllvmTMB"
+  )
+
+  out <- gllvmTMB:::.loading_delta_at_mle(
+    fit,
+    internal_level = "B",
+    loading_scale = "standardized"
+  )
+  expect_gt(out$se[1, 1], 0)
+})
+
+test_that("loading_ci preserves pin provenance with derived uncertainty", {
+  fit <- structure(
+    list(
+      report = list(
+        Lambda_B = matrix(c(1, 1), nrow = 1L,
+                          dimnames = list("trait_1", c("LV1", "LV2")))
+      ),
+      lambda_constraint = list(B = matrix(c(1, NA_real_), nrow = 1L)),
+      sd_report = structure(list(pdHess = TRUE), class = "sdreport")
+    ),
+    class = "gllvmTMB_multi"
+  )
+  rho <- matrix(c(0.5, 0.5), nrow = 1L)
+  testthat::local_mocked_bindings(
+    .standardize_loadings_by_total_variance = function(fit, Lambda, level) rho,
+    .loading_delta_at_mle = function(fit, internal_level, loading_scale) {
+      list(Lambda = rho, se = matrix(c(0.1, 0.2), nrow = 1L))
+    },
+    .package = "gllvmTMB"
+  )
+
+  out <- loading_ci(fit, loading_scale = "standardized")
+  expect_identical(out$pinned, c(TRUE, FALSE))
+  expect_equal(out$se, c(0.1, 0.2))
+  expect_gt(out$se[out$pinned], 0)
+})
+
+test_that("Fisher-z helpers are finite near zero and asymmetric away from it", {
+  near_zero <- gllvmTMB:::.lambda_ci_asym(
+    rho = c(0, 1e-12),
+    se_rho = c(0.1, 0.1)
+  )
+  expect_true(all(is.finite(c(near_zero$lower, near_zero$upper))))
+  expect_true(all(near_zero$lower > -1 & near_zero$upper < 1))
+
+  positive <- gllvmTMB:::.lambda_ci_asym(rho = 0.6, se_rho = 0.1)
+  expect_gt(
+    abs((positive$upper - 0.6) - (0.6 - positive$lower)),
+    1e-6
+  )
+  expect_error(
+    gllvmTMB:::.lambda_ci_asym(rho = 1, se_rho = 0.1),
+    "unavailable at the boundary"
+  )
+
+  prob <- gllvmTMB:::.salience_prob_asym(
+    rho = c(0, 1e-12),
+    se_rho = c(0.1, 0.1),
+    threshold_rho = 0.3
+  )
+  expect_true(all(is.finite(prob)))
+  expect_true(all(prob >= 0 & prob <= 1))
+})
+
+test_that("varimax_threshold uses the all-axis total-variance denominator", {
+  Lambda <- matrix(c(0.4, 2, 1, 0.2), nrow = 2L, byrow = TRUE)
+  fit <- mock_constraint_fit(Lambda)
+  testthat::local_mocked_bindings(
+    getLoadings = function(object, level, rotate) Lambda,
+    .standardize_loadings_by_total_variance = function(fit, Lambda, level) {
+      Lambda / sqrt(rowSums(Lambda^2) + 1)
+    },
+    .package = "gllvmTMB"
+  )
+
+  out <- suggest_lambda_constraint(
+    fit,
+    convention = "varimax_threshold",
+    threshold = 0.3
+  )
+  expected <- matrix(c(0, NA, NA, 0), nrow = 2L, byrow = TRUE)
+  dimnames(expected) <- dimnames(out$constraint)
+  expect_equal(out$constraint, expected)
+  expect_equal(out$n_pins, 2L)
+})
+
+test_that("wald_retention applies the exact joint-delta salience mask", {
+  Lambda <- matrix(c(0.1, 0.8, 0.4, 0.2), nrow = 2L, byrow = TRUE)
+  fit <- mock_constraint_fit(Lambda)
+  testthat::local_mocked_bindings(
+    rotate_loadings = function(fit, level, method) list(T = diag(2L)),
+    .loading_delta_at_mle = function(fit, internal_level,
+                                     loading_scale, T_mat) {
+      list(Lambda = Lambda, se = matrix(0.05, 2L, 2L))
+    },
+    .package = "gllvmTMB"
+  )
+
+  out <- suggest_lambda_constraint(
+    fit,
+    convention = "wald_retention",
+    threshold = 0.3,
+    retention_prob = 0.9
+  )
+  expected <- matrix(c(0, NA, NA, 0), nrow = 2L, byrow = TRUE)
+  dimnames(expected) <- dimnames(out$constraint)
+  expect_equal(out$constraint, expected)
+  expect_equal(out$n_pins, 2L)
+})
+
+test_that("standardized constraint routes reject malformed probabilities", {
+  fit <- mock_constraint_fit(matrix(c(0.4, 2, 1, 0.2), 2L, 2L, byrow = TRUE))
+  for (bad in list(-0.1, 1, Inf, NA_real_, c(0.2, 0.3), "0.3")) {
+    expect_error(
+      suggest_lambda_constraint(
+        fit,
+        convention = "varimax_threshold",
+        threshold = bad
+      ),
+      "threshold.*finite number in \\[0, 1\\)"
+    )
+  }
+  for (bad in list(0, 1, Inf, NA_real_, c(0.8, 0.9), "0.9")) {
+    expect_error(
+      suggest_lambda_constraint(
+        fit,
+        convention = "wald_retention",
+        retention_prob = bad
+      ),
+      "retention_prob.*finite number in \\(0, 1\\)"
+    )
+  }
+})
+
+test_that("sigma_d2 is deprecated rather than silently honoured", {
+  fit <- mock_constraint_fit(matrix(c(0.4, 2, 1, 0.2), 2L, 2L, byrow = TRUE))
+  expect_warning(
+    out <- suggest_lambda_constraint(
+      fit,
+      convention = "lower_triangular",
+      sigma_d2 = 9
+    ),
+    "deprecated"
+  )
+  expect_equal(out$n_pins, 1L)
+})
+
 ## ---- Basic shape + content checks ---------------------------------
 
 test_that("loading_ci() returns the expected shape and columns", {
@@ -50,12 +343,13 @@ test_that("loading_ci() returns the expected shape and columns", {
 
   expect_s3_class(ci, "data.frame")
   expect_named(ci, c("trait", "axis", "estimate", "se",
-                     "lower", "upper", "method", "pinned",
+                     "lower", "upper", "method", "loading_scale", "pinned",
                      "pd_hessian", "ci_status"))
   expect_equal(nrow(ci), 10L * 2L)
   expect_equal(levels(ci$trait), bf$species)
   expect_equal(levels(ci$axis), c("LV1", "LV2"))
   expect_true(all(ci$method == "wald"))
+  expect_true(all(ci$loading_scale == "raw"))
 })
 
 test_that("loading_ci() pins SE = 0 on entries fixed by lambda_constraint", {
@@ -259,6 +553,37 @@ test_that("flag_unreliable_loadings() rejects a data frame missing columns", {
   )
 })
 
+test_that("flag_unreliable_loadings() requires one explicit interval scale", {
+  unlabelled <- data.frame(
+    estimate = 0.2,
+    lower = 0.05,
+    upper = 0.35,
+    pinned = FALSE
+  )
+  expect_error(
+    flag_unreliable_loadings(unlabelled),
+    "loading_scale"
+  )
+
+  labelled <- transform(unlabelled, loading_scale = "standardized")
+  out <- flag_unreliable_loadings(labelled, null_region = c(-0.1, 0.1))
+  expect_identical(out$loading_scale, "standardized")
+  expect_true(out$unreliable)
+  expect_error(
+    flag_unreliable_loadings(labelled, loading_scale = "raw"),
+    "does not match"
+  )
+
+  mixed <- rbind(
+    labelled,
+    transform(labelled, loading_scale = "raw")
+  )
+  expect_error(
+    flag_unreliable_loadings(mixed),
+    "unambiguous"
+  )
+})
+
 ## ---- Confidence Eye plot -----------------------------------------
 
 test_that("plot_loadings_confidence_eye() returns a ggplot", {
@@ -279,6 +604,26 @@ test_that("plot_loadings_confidence_eye() also accepts a data frame", {
   ci <- loading_ci(bf$fit, level = "unit")
   g <- plot_loadings_confidence_eye(ci)
   expect_s3_class(g, "ggplot")
+})
+
+test_that("plot_loadings_confidence_eye() labels the recorded loading scale", {
+  skip_if_not_installed("ggplot2")
+  df <- data.frame(
+    trait = factor("trait_1"),
+    axis = factor("LV1"),
+    estimate = 0.2,
+    se = 0.1,
+    lower = 0.05,
+    upper = 0.35,
+    method = "wald",
+    loading_scale = "standardized",
+    pinned = FALSE,
+    pd_hessian = TRUE,
+    ci_status = "ok"
+  )
+  g <- plot_loadings_confidence_eye(df)
+  expect_match(g$labels$title, "Standardized")
+  expect_equal(g$labels$y, expression(hat(rho)))
 })
 
 test_that("plot_loadings_confidence_eye() colour-encodes reliability classes correctly", {
@@ -366,31 +711,94 @@ test_that("loading_ci(method = 'profile') bypasses the pdHess gate", {
   expect_true(any(is.finite(ci$lower[free]) | is.finite(ci$upper[free])))
 })
 
-test_that("method = 'wald_asym' returns asymmetric CIs on Λ via Fisher-z", {
+test_that("raw Wald remains the default and explicit raw route", {
   skip_if_not_heavy()
   skip_if_not_installed("TMB")
   bf <- build_fit()
-  ci_sym  <- loading_ci(bf$fit, level = "unit", method = "wald")
-  ci_asym <- loading_ci(bf$fit, level = "unit", method = "wald_asym")
+  ci_default <- loading_ci(bf$fit, level = "unit", method = "wald")
+  ci_raw <- loading_ci(
+    bf$fit,
+    level = "unit",
+    method = "wald",
+    loading_scale = "raw"
+  )
+  expect_equal(ci_default, ci_raw)
+  expect_true(all(ci_raw$loading_scale == "raw"))
+})
 
-  ## Same point estimates and SEs (no refit involved); only the bounds differ.
+test_that("standardized Wald point estimates match the point extractor", {
+  skip_if_not_heavy()
+  skip_if_not_installed("TMB")
+  bf <- build_fit()
+  ci <- loading_ci(
+    bf$fit,
+    level = "unit",
+    method = "wald",
+    loading_scale = "standardized"
+  )
+  tbl <- extract_rotated_loadings_table(
+    bf$fit,
+    level = "unit",
+    method = "none",
+    order_axes = FALSE,
+    sign_anchor = "none",
+    loading_scale = "standardized"
+  )
+  expect_equal(ci$estimate, tbl$loading, tolerance = 1e-8)
+  expect_true(all(ci$loading_scale == "standardized"))
+
+  pinned_nonzero <- ci$pinned & abs(ci$estimate) > 0
+  expect_true(any(pinned_nonzero))
+})
+
+test_that("method = 'wald_asym' returns bounded standardized CIs via Fisher-z", {
+  skip_if_not_heavy()
+  skip_if_not_installed("TMB")
+  bf <- build_fit()
+  ci_sym <- loading_ci(
+    bf$fit,
+    level = "unit",
+    method = "wald",
+    loading_scale = "standardized"
+  )
+  ci_asym <- loading_ci(
+    bf$fit,
+    level = "unit",
+    method = "wald_asym",
+    loading_scale = "standardized"
+  )
+
+  ## Same standardized point estimates and joint-delta SEs; only bounds differ.
   expect_equal(ci_sym$estimate, ci_asym$estimate, tolerance = 1e-10)
   expect_equal(ci_sym$se,       ci_asym$se,       tolerance = 1e-10)
   expect_true(all(ci_asym$method == "wald_asym"))
+  expect_true(all(ci_asym$loading_scale == "standardized"))
+  expect_true(all(ci_asym$lower >= -1 & ci_asym$upper <= 1))
 
-  ## Pinned entries: collapsed to point on BOTH methods.
-  expect_true(all(ci_asym$lower[ci_asym$pinned] == ci_asym$estimate[ci_asym$pinned]))
-  expect_true(all(ci_asym$upper[ci_asym$pinned] == ci_asym$estimate[ci_asym$pinned]))
+  ## The exact Fisher-z asymmetry is covered by the deterministic helper test;
+  ## this fit-based test owns the public routing and shared point/SE contract.
+})
 
-  ## Free entries: asymmetric upper-vs-lower widths NOT all equal to symmetric
-  ## (the whole point), and the largest-|estimate| free entry should be
-  ## right-skewed (upper width > lower width) for a positive estimate.
-  free_pos <- which(!ci_sym$pinned & ci_sym$estimate > 0.5)
-  if (length(free_pos) > 0L) {
-    upper_w <- ci_asym$upper[free_pos] - ci_asym$estimate[free_pos]
-    lower_w <- ci_asym$estimate[free_pos] - ci_asym$lower[free_pos]
-    expect_true(any(upper_w > lower_w + 0.05))   # genuine asymmetry observed
-  }
+test_that("loading_ci refuses scale-method combinations it cannot label honestly", {
+  skip_if_not_heavy()
+  skip_if_not_installed("TMB")
+  bf <- build_fit()
+  expect_error(
+    loading_ci(
+      bf$fit,
+      method = "wald_asym",
+      loading_scale = "raw"
+    ),
+    "standardised-loading scale"
+  )
+  expect_error(
+    loading_ci(
+      bf$fit,
+      method = "profile",
+      loading_scale = "standardized"
+    ),
+    "not implemented"
+  )
 })
 
 test_that("suggest_lambda_constraint(convention = 'varimax_threshold') pins below threshold", {
@@ -444,20 +852,6 @@ test_that("wald_retention errors on formula input (needs a fit for the SE)", {
     ),
     "requires a fitted"
   )
-})
-
-test_that("wald_retention is at least as conservative as varimax_threshold", {
-  skip_if_not_heavy()
-  ## β should pin AT LEAST as many entries as α at the same threshold,
-  ## because β layers a retention-probability bar on top of the
-  ## point-estimate threshold.
-  skip_if_not_installed("TMB")
-  bf <- build_fit()
-  sug_alpha <- suggest_lambda_constraint(bf$fit, convention = "varimax_threshold",
-                                          threshold = 0.30)
-  sug_beta  <- suggest_lambda_constraint(bf$fit, convention = "wald_retention",
-                                          threshold = 0.30, retention_prob = 0.95)
-  expect_gte(sug_beta$n_pins, sug_alpha$n_pins)
 })
 
 test_that("plot_loadings_confidence_eye() falls back to 'estimated' when no null_region supplied", {

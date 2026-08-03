@@ -33,27 +33,25 @@
 #'   `fit_or_formula` is a formula and the data does not already use
 #'   defaults.
 #' @param threshold Salience threshold on the standardised loading
-#'   \eqn{\rho = \Lambda / \sqrt{\Lambda^2 + \sigma_d^2}}. Used by
+#'   \eqn{\rho_{tk} = \Lambda_{tk} / \sqrt{\Sigma_{total,tt}}}. Used by
 #'   `"varimax_threshold"` and `"wald_retention"`. Comrey-Lee 1992
-#'   convention: 0.30 = "fair" salience (default). Raise to 0.40 for
-#'   "good" / 0.50 for "very good".
+#'   convention: 0.30 = "fair" salience (default). Must be a finite scalar
+#'   in `[0, 1)`. Raise to 0.40 for "good" / 0.50 for "very good".
 #' @param retention_prob Retention probability for `"wald_retention"`
 #'   and `"profile_retention"`:
 #'   \itemize{
 #'     \item{`"wald_retention"`: pin entry if
-#'       `Pr(|Lambda| > threshold) < retention_prob`.}
+#'       `Pr(|rho| > threshold) < retention_prob`.}
 #'     \item{`"profile_retention"`: pin entry if a profile LRT fails to
 #'       reject `H0: Lambda = 0` at significance level
 #'       `1 - retention_prob`.}
 #'   }
-#'   Default 0.90 follows the applied-EFA bootstrap convention; the
-#'   stricter BSEM 0.95 often over-prunes at moderate sample sizes and
-#'   produces non-PD refits.
-#' @param sigma_d2 Link-implicit residual variance on the link scale,
-#'   used by `"wald_retention"` to compute `Pr(|Lambda| > threshold)`
-#'   from the standardised \eqn{\rho}. Defaults to `1` (probit /
-#'   ordinal_probit). Use \eqn{\pi^2/3} for logit, \eqn{\pi^2/6} for
-#'   cloglog, or the fitted residual variance for Gaussian.
+#'   Must be a finite scalar in `(0, 1)`. Default 0.90 follows the applied-EFA
+#'   bootstrap convention; the stricter BSEM 0.95 often over-prunes at
+#'   moderate sample sizes and produces non-PD refits.
+#' @param sigma_d2 Deprecated compatibility argument; ignored by the
+#'   standardised-loading conventions. Their denominators now come from the
+#'   model-implied total variance returned by [extract_Sigma()].
 #' @param site Deprecated alias for `unit`. Emits a one-shot warning and maps
 #'   to `unit`.
 #'
@@ -101,13 +99,13 @@ suggest_lambda_constraint <- function(
   unit = "site",
   threshold = 0.30, # Comrey-Lee convention on standardised loading
   retention_prob = 0.90, # Unified across `wald_retention` and `profile_retention`:
-  #   * wald_retention: pin if Pr(|Lambda| > threshold) < retention_prob
+  #   * wald_retention: pin if Pr(|rho| > threshold) < retention_prob
   #   * profile_retention: pin if LRT fails to reject H0:Lambda = 0
   #     at significance level (1 - retention_prob)
   # 0.90 follows the applied-EFA bootstrap convention (less
   # restrictive than the BSEM 0.95) — at moderate sample sizes
   # 0.95 frequently over-prunes and produces non-PD refits.
-  sigma_d2 = 1, # Link-implicit residual variance for `wald_retention`
+  sigma_d2 = 1, # Deprecated compatibility argument; standardisation is automatic
   site = NULL
 ) {
   level <- match.arg(level, c("unit", "unit_obs", "B", "W"))
@@ -124,6 +122,19 @@ suggest_lambda_constraint <- function(
   }
   ## level was already normalised at function entry (line above)
   convention <- match.arg(convention)
+  if (!missing(sigma_d2)) {
+    lifecycle::deprecate_warn(
+      when = "0.6.0",
+      what = "suggest_lambda_constraint(sigma_d2)",
+      details = c(
+        i = paste0(
+          "Standardisation now uses each trait's model-implied total ",
+          "variance from `extract_Sigma()`; `sigma_d2` is ignored."
+        )
+      ),
+      id = "gllvmTMB-suggest-lambda-constraint-sigma-d2"
+    )
+  }
 
   ## ---- Resolve T (n_traits), K (rank), trait_names ---------------------
   if (inherits(fit_or_formula, "gllvmTMB_multi")) {
@@ -196,6 +207,22 @@ suggest_lambda_constraint <- function(
     ))
   }
 
+  if (convention %in% c("varimax_threshold", "wald_retention") &&
+      (!is.numeric(threshold) || length(threshold) != 1L ||
+       !is.finite(threshold) || threshold < 0 || threshold >= 1)) {
+    cli::cli_abort(
+      "{.arg threshold} must be one finite number in [0, 1) for standardised-loading retention."
+    )
+  }
+  if (convention %in% c("wald_retention", "profile_retention") &&
+      (!is.numeric(retention_prob) || length(retention_prob) != 1L ||
+       !is.finite(retention_prob) || retention_prob <= 0 ||
+       retention_prob >= 1)) {
+    cli::cli_abort(
+      "{.arg retention_prob} must be one finite number in (0, 1)."
+    )
+  }
+
   ## ---- Build constraint matrix ----------------------------------------
   M <- matrix(NA_real_, nrow = n_traits, ncol = K)
   rownames(M) <- trait_names
@@ -250,30 +277,27 @@ suggest_lambda_constraint <- function(
         level = .canonical_level_name(level),
         rotate = "varimax"
       )
-      ## Threshold on the standardised-loading scale (Comrey-Lee). For
-      ## binomial probit (sigma_d^2 = 1), the raw-Lambda threshold is
-      ## numerically close: Lambda_c = threshold * sqrt(sigma_d2) /
-      ## sqrt(1 - threshold^2). We apply the threshold directly on the
-      ## rotated raw loading for this convention -- the simple textbook
-      ## reading. For the uncertainty-aware version use "wald_retention".
-      thr_lambda <- threshold *
-        sqrt(sigma_d2) /
-        sqrt(pmax(1 - threshold^2, .Machine$double.eps))
-      mask <- abs(L_rot) < thr_lambda
+      rho_rot <- .standardize_loadings_by_total_variance(
+        fit,
+        Lambda = L_rot,
+        level = .canonical_level_name(level)
+      )
+      ## Comrey-Lee thresholds live on the standardised-loading scale.
+      ## Compare rho directly: one raw-Lambda cutoff cannot represent a
+      ## trait-specific total-variance denominator when K > 1.
+      mask <- abs(rho_rot) < threshold
       M[mask] <- 0
       n_pins <- sum(mask)
       note <- sprintf(
-        "varimax_threshold: rotated Lambda to varimax, pinned %d entries with |Lambda_rot| < %.3f (= threshold %.2f on the standardised-loading scale with sigma_d^2 = %.3f). Hard cutoff; no uncertainty. Use 'wald_retention' for the uncertainty-aware version.",
+        "varimax_threshold: rotated Lambda to varimax, standardised each row by sqrt(Sigma_total[t,t]), and pinned %d entries with |rho| < %.2f. Hard cutoff; no uncertainty. Use 'wald_retention' for the uncertainty-aware version.",
         n_pins,
-        thr_lambda,
-        threshold,
-        sigma_d2
+        threshold
       )
     }
   } else if (convention == "wald_retention") {
     ## β: uncertainty-aware retention. Asymmetric Wald via Fisher-z on
     ## the standardised loading; pin entries whose retention probability
-    ## P(|Lambda| > threshold_rho) falls below retention_prob.
+    ## P(|rho| > threshold_rho) falls below retention_prob.
     if (!inherits(fit_or_formula, "gllvmTMB_multi")) {
       cli::cli_abort(
         "{.code convention = \"wald_retention\"} requires a fitted {.fun gllvmTMB} model; cannot be supplied as a formula."
@@ -282,12 +306,13 @@ suggest_lambda_constraint <- function(
     if (K == 1L) {
       note <- paste0(
         "K = 1: no rotational ambiguity; wald_retention falls back to ",
-        "a salience filter on the un-rotated Lambda."
+        "a salience filter on the unrotated rho."
       )
     }
-    ## 1. Un-rotated Lambda + cov(vec(Lambda)) at the MLE.
-    se_info <- .lambda_se_at_mle(fit, internal_level = level)
-    ## 2. Rotate (varimax) and propagate SE through the rotation Jacobian.
+    ## Treat the fitted varimax rotation as fixed, then evaluate the complete
+    ## standardised-loading vector at every fixed-parameter perturbation. This
+    ## includes cross-axis covariance plus fitted denominator uncertainty.
+    T_rot <- NULL
     if (K > 1L) {
       rot <- rotate_loadings(
         fit,
@@ -295,35 +320,29 @@ suggest_lambda_constraint <- function(
         method = "varimax"
       )
       T_rot <- rot$T
-      rot_info <- .lambda_se_after_rotation(
-        Lambda = se_info$Lambda,
-        cov_vec_lambda = se_info$cov_vec_lambda,
-        T_mat = T_rot
-      )
-      Lambda_use <- rot_info$Lambda
-      se_use <- as.numeric(rot_info$se_lambda)
-    } else {
-      Lambda_use <- se_info$Lambda
-      se_use <- as.numeric(se_info$se_lambda)
     }
-    ## 3. Asymmetric retention probability per entry.
-    P_salient <- .salience_prob_asym(
-      est = as.numeric(Lambda_use),
-      se = se_use,
-      threshold_rho = threshold,
-      sigma_d2 = sigma_d2
+    delta_info <- .loading_delta_at_mle(
+      fit,
+      internal_level = level,
+      loading_scale = "standardized",
+      T_mat = T_rot
     )
-    ## 4. Pin where retention probability < retention_prob.
+    ## Asymmetric retention probability per entry.
+    P_salient <- .salience_prob_asym(
+      rho = as.numeric(delta_info$Lambda),
+      se_rho = as.numeric(delta_info$se),
+      threshold_rho = threshold
+    )
+    ## Pin where retention probability < retention_prob.
     mask <- matrix(P_salient < retention_prob, nrow = n_traits, ncol = K)
     M[mask] <- 0
     n_pins <- sum(mask)
     note <- sprintf(
-      "wald_retention: %s pinned %d entries where Pr(|Lambda| > %.2f standardised) < %.2f under asymmetric Wald (Fisher-z) sampling distribution with sigma_d^2 = %.3f. Captures bounded-support asymmetry; use profile_retention when you want likelihood-ratio refits for higher-order curvature checks.",
-      if (K > 1L) "varimax-rotated Lambda;" else "Lambda (K=1, no rotation);",
+      "wald_retention: %s pinned %d entries where Pr(|rho| > %.2f) < %.2f under the joint-delta Fisher-z approximation. Each rho uses sqrt(Sigma_total[t,t]); the fitted rotation matrix is treated as fixed. Use profile_retention when you want raw-Lambda likelihood-ratio refits for higher-order curvature checks.",
+      if (K > 1L) "varimax-rotated loadings;" else "unrotated loadings (K=1);",
       n_pins,
       threshold,
-      retention_prob,
-      sigma_d2
+      retention_prob
     )
   } else if (convention == "profile_retention") {
     ## Per-entry likelihood-ratio test against zero, in the un-rotated
@@ -530,6 +549,19 @@ suggest_lambda_constraints <- function(
   sigma_d2 = 1,
   site = NULL
 ) {
+  if (!missing(sigma_d2)) {
+    lifecycle::deprecate_warn(
+      when = "0.6.0",
+      what = "suggest_lambda_constraints(sigma_d2)",
+      details = c(
+        i = paste0(
+          "Standardisation now uses each trait's model-implied total ",
+          "variance from `extract_Sigma()`; `sigma_d2` is ignored."
+        )
+      ),
+      id = "gllvmTMB-suggest-lambda-constraints-sigma-d2"
+    )
+  }
   allowed <- c(
     "lower_triangular",
     "pin_top_one",
@@ -562,7 +594,6 @@ suggest_lambda_constraints <- function(
       unit = unit,
       threshold = threshold,
       retention_prob = retention_prob,
-      sigma_d2 = sigma_d2,
       site = site
     )
   }
@@ -607,8 +638,8 @@ suggest_lambda_constraints <- function(
     lower_triangular = "rotation convention",
     pin_top_one = "single anchor",
     none = "no pins",
-    varimax_threshold = "varimax point threshold",
-    wald_retention = "asymmetric Wald retention",
+    varimax_threshold = "standardized varimax point threshold",
+    wald_retention = "standardized joint-delta Fisher-z retention",
     profile_retention = "profile LRT retention"
   )
 }

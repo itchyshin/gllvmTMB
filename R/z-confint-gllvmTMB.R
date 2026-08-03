@@ -254,9 +254,10 @@
 ##
 ## Return shape: data.frame with columns
 ##   `parameter` (e.g. "Lambda[trait_1,LV1]"), `estimate`, `lower`,
-##   `upper`, `method`, `pd_hessian`, `ci_status`. Pinned entries are
-##   included when `parm = "Lambda"` (lower == upper == estimate,
-##   ci_status == "pinned") so the row order is stable across methods.
+##   `upper`, `method`, `loading_scale`, `pd_hessian`, `ci_status`. Pinned entries are
+##   included when `parm = "Lambda"` so row order is stable. Raw pinned
+##   intervals collapse to the point; a standardised pinned loading can retain
+##   denominator uncertainty, while `ci_status = "pinned"` records provenance.
 .confint_lambda <- function(
   object,
   parm,
@@ -283,20 +284,34 @@
 
   if (method %in% c("wald", "wald_asym")) {
     ## `loading_ci()` already implements the pdHess gate (NA + status
-    ## columns) and the pinned-entry collapse; we just filter rows
+    ## columns) and raw pinned-entry collapse; we just filter rows
     ## down to the requested entries and rename to a `parameter`
     ## column for matrix consistency with the Sigma path.
     ci <- loading_ci(
       fit = object,
       level = "unit",
       method = method,
-      conf_level = level
+      conf_level = level,
+      loading_scale = if (identical(method, "wald_asym")) {
+        "standardized"
+      } else {
+        "raw"
+      }
     )
     trait_lab <- as.character(ci$trait)
     axis_lab <- as.character(ci$axis)
-    parameter <- sprintf("Lambda[%s,%s]", trait_lab, axis_lab)
+    parameter <- sprintf(
+      if (identical(ci$loading_scale[[1L]], "standardized")) {
+        "rho[%s,%s]"
+      } else {
+        "Lambda[%s,%s]"
+      },
+      trait_lab,
+      axis_lab
+    )
     ## Promote pinned-entry status: `loading_ci()` reports `ci_status =
-    ## "ok"` for pinned entries (their bounds collapse to the point).
+    ## "ok"` for pinned entries. Raw bounds collapse to the point; derived
+    ## standardised rows can retain denominator uncertainty.
     ## To match the profile-path convention -- and to give callers a
     ## single way to identify pinned entries from the confint output --
     ## upgrade those rows to `"pinned"`. Keep "ok" for free entries on
@@ -319,6 +334,7 @@
       lower = ci$lower,
       upper = ci$upper,
       method = ci$method,
+      loading_scale = ci$loading_scale,
       pd_hessian = ci$pd_hessian,
       ci_status = ci$ci_status,
       stringsAsFactors = FALSE,
@@ -345,6 +361,7 @@
       lower = ci$lower,
       upper = ci$upper,
       method = ci$method,
+      loading_scale = "raw",
       pd_hessian = ci$pd_hessian,
       ci_status = ci$ci_status,
       stringsAsFactors = FALSE,
@@ -437,6 +454,7 @@
       lower = lower,
       upper = upper,
       method = "profile",
+      loading_scale = "raw",
       pd_hessian = pd_ok,
       ci_status = ci_status,
       stringsAsFactors = FALSE,
@@ -477,6 +495,7 @@
     lower = lower,
     upper = upper,
     method = "profile",
+    loading_scale = "raw",
     pd_hessian = pd_ok,
     ci_status = ci_status,
     stringsAsFactors = FALSE,
@@ -1385,7 +1404,9 @@
 #'       [loading_ci()] / [loading_profile()]. For these tokens the method
 #'       choices are
 #'       \code{c("wald", "wald_asym", "profile")} with default
-#'       \code{"wald"}.
+#'       \code{"wald"}. Wald and profile rows target raw \code{Lambda};
+#'       \code{"wald_asym"} targets the standardised loading \code{rho} and
+#'       labels rows accordingly.
 #'     \item \code{"icc"} (all traits), \code{"icc:<trait_name>"} (one
 #'       trait by name), \code{"icc:<t1>;<t2>"} (multiple by name), or
 #'       \code{"icc:[1,3]"} (1-based trait indices). Routes to
@@ -1436,6 +1457,8 @@
 #'   \code{"bootstrap"}. For \code{parm = "Lambda..."} the accepted
 #'   methods are \code{c("wald", "wald_asym", "profile")} with default
 #'   \code{"wald"} (matching the base R \code{confint()} convention).
+#'   \code{"wald_asym"} returns Fisher-z intervals for standardised
+#'   loadings rather than raw \code{Lambda}.
 #' @param nsim Number of bootstrap replicates passed to [bootstrap_Sigma()]
 #'   when \code{method = "bootstrap"}. Default \code{500}. Use a small
 #'   value (e.g. \code{50}) during development or testing.
@@ -1454,9 +1477,11 @@
 #'     requested \code{parm}, so legacy calls still return legacy
 #'     \code{"Sigma_B[...]"} or \code{"Sigma_W[...]"} labels.
 #'   \item \strong{Lambda path} -- a \code{data.frame} with columns
-#'     \code{parameter} (e.g. \code{"Lambda[trait_1,LV1]"}),
+#'     \code{parameter} (e.g. \code{"Lambda[trait_1,LV1]"} for raw rows or
+#'     \code{"rho[trait_1,LV1]"} for standardised rows),
 #'     \code{estimate}, \code{lower}, \code{upper}, \code{method},
-#'     \code{pd_hessian}, and \code{ci_status}. When \code{pdHess = FALSE}
+#'     \code{loading_scale}, \code{pd_hessian}, and \code{ci_status}. When
+#'     \code{pdHess = FALSE}
 #'     on a Wald path,
 #'     \code{lower}/\code{upper} are \code{NA} and \code{ci_status}
 #'     flags the reason).

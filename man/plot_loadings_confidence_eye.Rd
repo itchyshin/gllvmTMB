@@ -11,16 +11,19 @@ plot_loadings_confidence_eye(
   conf_level = 0.95,
   null_region = NULL,
   sort_by = c("trait_order", "magnitude"),
-  ylim = NULL
+  ylim = NULL,
+  loading_scale = NULL
 )
 }
 \arguments{
 \item{fit}{A multivariate \code{gllvmTMB()} fit, OR a data frame already
 produced by \code{\link[=loading_ci]{loading_ci()}} / \code{\link[=flag_unreliable_loadings]{flag_unreliable_loadings()}}.}
 
-\item{level, method, conf_level}{Forwarded to \code{\link[=loading_ci]{loading_ci()}} when
+\item{level, method, conf_level, loading_scale}{Forwarded to \code{\link[=loading_ci]{loading_ci()}} when
 \code{fit} is a fit object. Ignored when \code{fit} is already a
-\code{loading_ci()} data frame.}
+\code{loading_ci()} data frame, except that an explicitly supplied
+\code{loading_scale} must match the frame's recorded scale. The y-axis label
+reports the displayed scale.}
 
 \item{null_region}{Optional length-2 numeric drawn as a shaded
 "biologically negligible" band so the reader can tell at a glance
@@ -43,7 +46,7 @@ Default \code{NULL} (no clipping).}
 A \code{ggplot} object.
 }
 \description{
-A bar-and-whisker visualisation of the entries of \code{Lambda} with
+A bar-and-whisker visualisation of raw or standardised loadings with
 point estimates and Wald (or other-method) confidence intervals from
 \code{\link[=loading_ci]{loading_ci()}}. Default rendering uses the "Confidence Eye" contract:
 a pale CI region (\code{geom_linerange}) and a hollow point estimate

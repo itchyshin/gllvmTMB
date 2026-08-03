@@ -206,16 +206,29 @@ knitr::kable(comparison_table)
 ```
 
 `varimax_threshold` first rotates the loading axes so that species associate
-more clearly with one dimension, then proposes zero pins for standardised
-loadings below 0.30. Treat 0.30 as a display choice, not a biological cutoff.
-`wald_retention` retains a loading only when the fitted model assigns at least
-a 90% probability to its standardised magnitude exceeding 0.30; otherwise it
-proposes a zero pin. Neither convention is a hypothesis test for a biological
-zero. The figure compares the resulting pin matrices: blue cells are exact
-zero restrictions in the proposed constrained refit; white cells remain
-estimated.
+more clearly with one dimension. It then standardises each rotated loading as
 
-```{r fast-comparison-figure, fig.alt="Two species-by-latent-dimension matrices compare varimax-threshold and Wald-retention orientation suggestions. Blue cells are proposed exact zero pins and white cells remain estimated. The patterns can differ because one method uses point estimates and the other also uses baseline standard errors."}
+$$
+\rho_{tk} = \frac{\Lambda_{tk}}{\sqrt{\Sigma_{\mathrm{total},tt}}}
+$$
+
+and proposes zero pins when $|\rho_{tk}| < 0.30$. The denominator is the fitted
+total variance for trait $t$: it includes every latent axis and any fitted
+diagonal or link-scale variance components. Treat 0.30 as a display choice,
+not a biological cutoff.
+
+`wald_retention` uses the same standardised loading. It retains a loading only
+when the joint delta-method approximation assigns at least 90% probability to
+its magnitude exceeding 0.30; otherwise it proposes a zero pin. That
+approximation uses the complete fixed-parameter covariance, including
+cross-axis covariance and uncertainty in the total-variance denominator. It
+treats the fitted varimax rotation as fixed, and standardised-loading interval
+coverage has not been calibrated. Neither convention is a hypothesis test for
+a biological zero. The figure compares the resulting pin matrices: blue cells
+are exact zero restrictions in the proposed constrained refit; white cells
+remain estimated.
+
+```{r fast-comparison-figure, fig.alt="Two species-by-latent-dimension matrices compare varimax-threshold and Wald-retention orientation suggestions. Blue cells are proposed exact zero pins and white cells remain estimated. The patterns can differ because one method uses standardized point estimates and the other also uses joint delta-method uncertainty."}
 make_constraint_frame <- function(suggestion, method) {
   out <- as.data.frame(as.table(suggestion$constraint), stringsAsFactors = FALSE)
   names(out) <- c("species", "dimension", "value")

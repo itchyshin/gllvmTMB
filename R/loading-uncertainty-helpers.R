@@ -8,12 +8,13 @@
 ##   1. Delta-method Wald SE on the un-rotated Λ via a numerical
 ##      Jacobian of `tmb_obj$report()` (so works for any reported
 ##      quantity without a C++ template change).
-##   2. Asymmetric Wald via Fisher-z transformation: transform
-##      Λ → standardised loading ρ = Λ / sqrt(Λ² + σ²_d) (bounded
-##      in (-1, 1)), then z = atanh(ρ), do symmetric Wald on z,
-##      back-transform. Captures the bounded-support asymmetry that
-##      symmetric Wald on Λ ignores; matches the shape (not the exact
-##      magnitude) of profile and bootstrap CIs.
+##   2. Standardised-loading delta inference using
+##      rho[t,k] = Lambda[t,k] / sqrt(Sigma_total[t,t]). The numerical
+##      Jacobian is taken against the complete fixed-parameter vector, so
+##      same-trait cross-axis covariance plus fitted Psi / link-residual
+##      uncertainty enter the result.
+##   3. Asymmetric Wald via Fisher-z transformation of rho, with bounds
+##      returned on the standardised-loading scale.
 ##
 ## Profile loading intervals now live in loading_profile() /
 ## loading_ci(method = "profile"). Bootstrap retention remains a later
@@ -44,6 +45,44 @@
 #' @noRd
 .lambda_se_at_mle <- function(fit, internal_level) {
 
+  out <- .loading_delta_at_mle(
+    fit = fit,
+    internal_level = internal_level,
+    loading_scale = "raw"
+  )
+  list(
+    Lambda = out$Lambda,
+    cov_vec_lambda = out$cov_vec,
+    se_lambda = out$se
+  )
+}
+
+
+#' Compute loading estimates and their full delta covariance at the MLE
+#'
+#' For `loading_scale = "standardized"`, evaluates
+#' `rho[t,k] = Lambda[t,k] / sqrt(Sigma_total[t,t])` at every numerical
+#' fixed-parameter perturbation. This propagates covariance among axes and
+#' uncertainty in fitted denominator components such as `Psi` and
+#' parameter-dependent link residuals. An optional rotation matrix is treated
+#' as fixed, matching the package's existing first-order rotated-SE contract.
+#'
+#' @param fit A multivariate `gllvmTMB()` fit.
+#' @param internal_level Internal loading level (`"B"` or `"W"`).
+#' @param loading_scale One of `"raw"` or `"standardized"`.
+#' @param T_mat Optional fixed orthogonal rotation matrix.
+#'
+#' @return A list with `Lambda`, `cov_vec`, `se`, and `loading_scale`.
+#'
+#' @keywords internal
+#' @noRd
+.loading_delta_at_mle <- function(fit,
+                                  internal_level,
+                                  loading_scale = c("raw", "standardized"),
+                                  T_mat = NULL) {
+
+  loading_scale <- match.arg(loading_scale)
+
   if (is.null(fit$sd_report) || !inherits(fit$sd_report, "sdreport"))
     cli::cli_abort(c(
       "Fit does not carry a TMB {.code sdreport}.",
@@ -53,7 +92,25 @@
   lam_name <- paste0("Lambda_", internal_level)
   if (is.null(fit$report[[lam_name]]))
     cli::cli_abort("Fit has no {.code {lam_name}} reported.")
-  Lambda <- as.matrix(fit$report[[lam_name]])
+  Lambda_raw <- as.matrix(fit$report[[lam_name]])
+  if (!is.null(T_mat) && !identical(dim(T_mat), rep(ncol(Lambda_raw), 2L)))
+    cli::cli_abort("Rotation matrix dimension mismatch.")
+
+  evaluate_loading <- function(report) {
+    Lambda <- as.matrix(report[[lam_name]])
+    if (!is.null(T_mat)) Lambda <- Lambda %*% T_mat
+    if (identical(loading_scale, "raw")) return(Lambda)
+
+    fit_at_par <- fit
+    fit_at_par$report <- report
+    .standardize_loadings_by_total_variance(
+      fit_at_par,
+      Lambda = Lambda,
+      level = .canonical_level_name(internal_level)
+    )
+  }
+
+  Lambda <- evaluate_loading(fit$report)
 
   obj      <- fit$tmb_obj
   par_best <- obj$env$last.par.best
@@ -69,15 +126,19 @@
     par_plus <- par_best
     par_plus[fixed_idx[p]] <- par_plus[fixed_idx[p]] + eps
     rep_plus <- obj$report(par_plus)
-    J[, p] <- (as.numeric(rep_plus[[lam_name]]) - Lambda_vec) / eps
+    J[, p] <- (as.numeric(evaluate_loading(rep_plus)) - Lambda_vec) / eps
   }
 
   cov_lambda <- J %*% fit$sd_report$cov.fixed %*% t(J)
   list(
-    Lambda         = Lambda,
-    cov_vec_lambda = cov_lambda,
-    se_lambda      = matrix(sqrt(pmax(diag(cov_lambda), 0)),
-                            nrow = nrow(Lambda), ncol = ncol(Lambda))
+    Lambda = Lambda,
+    cov_vec = cov_lambda,
+    se = matrix(
+      sqrt(pmax(diag(cov_lambda), 0)),
+      nrow = nrow(Lambda),
+      ncol = ncol(Lambda)
+    ),
+    loading_scale = loading_scale
   )
 }
 
@@ -110,51 +171,48 @@
 }
 
 
-#' Asymmetric Wald CI on Λ via Fisher-z on the standardised loading
+#' Asymmetric Wald CI on a standardised loading via Fisher-z
 #'
-#' Pipeline: Λ → ρ = Λ / sqrt(Λ² + σ²_d) → z = atanh(ρ) → symmetric
-#' Wald on z → back-transform to ρ via tanh → back-transform to Λ via
-#' Λ = ρ √(σ²_d) / √(1 - ρ²). Captures the bounded-support asymmetry
-#' (the dominant source for loadings); does NOT capture higher-order
-#' log-likelihood curvature (which profile would) or joint structure
-#' across parameters (which bootstrap would).
+#' Pipeline: rho -> z = atanh(rho) -> symmetric Wald on z -> tanh. The
+#' caller supplies SE(rho) from the complete joint delta method. The returned
+#' bounds are therefore on the standardised-loading scale and lie in (-1, 1).
 #'
 #' Vectorised over entries.
 #'
-#' @param est numeric vector of Λ̂ estimates.
-#' @param se  numeric vector of SE(Λ̂) at the same entries.
-#' @param sigma_d2 link-implicit residual variance (scalar or vector,
-#'   length 1 or `length(est)`).
+#' @param rho numeric vector of standardised-loading estimates.
+#' @param se_rho numeric vector of delta-method SEs on the same scale.
 #' @param conf_level confidence level (scalar in (0, 1)).
 #'
-#' @return list with `lower`, `upper` (asymmetric Λ-CI), and
-#'   `rho_hat`, `z_hat`, `se_z` for diagnostics.
+#' @return list with `lower`, `upper`, `rho_hat`, `z_hat`, and `se_z`.
 #'
 #' @keywords internal
 #' @noRd
-.lambda_ci_asym <- function(est, se, sigma_d2 = 1, conf_level = 0.95) {
+.lambda_ci_asym <- function(rho, se_rho, conf_level = 0.95) {
 
-  ## Pinned entries (se = 0) stay pinned in the CI.
-  pinned <- se == 0
-  rho_hat <- est / sqrt(est^2 + sigma_d2)
-  se_rho  <- se * sigma_d2 / (est^2 + sigma_d2)^(3/2)
+  if (any(!is.finite(rho)) || any(!is.finite(se_rho)))
+    cli::cli_abort("Standardised loading estimates and SEs must be finite.")
+  if (any(abs(rho[se_rho > 0]) >= 1 - sqrt(.Machine$double.eps)))
+    cli::cli_abort(c(
+      "Fisher-z loading intervals are unavailable at the boundary {.code |rho| = 1}.",
+      i = "Use {.code method = \"wald\"} with {.code loading_scale = \"standardized\"} instead."
+    ))
+
+  fixed <- se_rho == 0
+  rho_hat <- pmin(pmax(rho, -1 + .Machine$double.eps),
+                  1 - .Machine$double.eps)
   z_hat   <- atanh(rho_hat)
   se_z    <- se_rho / pmax(1 - rho_hat^2, .Machine$double.eps)
   zcrit   <- stats::qnorm(0.5 + conf_level / 2)
 
   z_lo <- z_hat - zcrit * se_z
   z_hi <- z_hat + zcrit * se_z
-  rho_lo <- tanh(z_lo); rho_hi <- tanh(z_hi)
-  ## Back-transform ρ → Λ: Λ = ρ √(σ²_d) / √(1 - ρ²); preserves sign.
-  Lambda_lo <- rho_lo * sqrt(sigma_d2) / sqrt(pmax(1 - rho_lo^2, .Machine$double.eps))
-  Lambda_hi <- rho_hi * sqrt(sigma_d2) / sqrt(pmax(1 - rho_hi^2, .Machine$double.eps))
-
-  ## Pinned entries: CI collapses to the point estimate.
-  Lambda_lo[pinned] <- est[pinned]
-  Lambda_hi[pinned] <- est[pinned]
+  rho_lo <- tanh(z_lo)
+  rho_hi <- tanh(z_hi)
+  rho_lo[fixed] <- rho[fixed]
+  rho_hi[fixed] <- rho[fixed]
 
   list(
-    lower   = Lambda_lo, upper = Lambda_hi,
+    lower   = rho_lo, upper = rho_hi,
     rho_hat = rho_hat,   z_hat = z_hat, se_z = se_z
   )
 }
@@ -233,7 +291,7 @@
 }
 
 
-#' Asymmetric Wald retention probability  P(|Λ_{i,k}| > threshold_rho)
+#' Asymmetric Wald retention probability P(|rho_{i,k}| > threshold_rho)
 #'
 #' The retention question lives naturally on the standardised loading
 #' scale (Comrey-Lee 0.30 / 0.40 / 0.50 thresholds are ρ-scale
@@ -241,7 +299,7 @@
 #' is approximately Normal, so the probability is a closed-form pnorm
 #' calculation.
 #'
-#' @param est,se,sigma_d2 see `.lambda_ci_asym()`.
+#' @param rho,se_rho see `.lambda_ci_asym()`.
 #' @param threshold_rho threshold on the standardised loading scale
 #'   (e.g. 0.30 for Comrey-Lee). Scalar.
 #'
@@ -249,23 +307,18 @@
 #'
 #' @keywords internal
 #' @noRd
-.salience_prob_asym <- function(est, se, threshold_rho, sigma_d2 = 1) {
-  rho_hat <- est / sqrt(est^2 + sigma_d2)
-  se_rho  <- se * sigma_d2 / (est^2 + sigma_d2)^(3/2)
+.salience_prob_asym <- function(rho, se_rho, threshold_rho) {
+  rho_hat <- pmin(pmax(rho, -1 + .Machine$double.eps),
+                  1 - .Machine$double.eps)
   z_hat   <- atanh(rho_hat)
   se_z    <- se_rho / pmax(1 - rho_hat^2, .Machine$double.eps)
   z_c     <- atanh(threshold_rho)
 
-  ## Pinned entries (se = 0): salience probability is 1 if |est| >
-  ## threshold_lambda, else 0. We use the lambda-scale threshold here
-  ## because for pinned entries the z-scale would be degenerate.
-  pinned <- se == 0
-  thr_lambda <- threshold_rho * sqrt(sigma_d2) /
-                sqrt(pmax(1 - threshold_rho^2, .Machine$double.eps))
-  prob <- numeric(length(est))
-  prob[!pinned] <-
-    1 - stats::pnorm((z_c - z_hat[!pinned]) / se_z[!pinned]) +
-        stats::pnorm((-z_c - z_hat[!pinned]) / se_z[!pinned])
-  prob[pinned] <- as.numeric(abs(est[pinned]) > thr_lambda)
+  fixed <- se_rho == 0
+  prob <- numeric(length(rho))
+  prob[!fixed] <-
+    1 - stats::pnorm((z_c - z_hat[!fixed]) / se_z[!fixed]) +
+        stats::pnorm((-z_c - z_hat[!fixed]) / se_z[!fixed])
+  prob[fixed] <- as.numeric(abs(rho[fixed]) > threshold_rho)
   prob
 }

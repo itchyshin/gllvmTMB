@@ -225,11 +225,13 @@ test_that("confint(fit, parm = 'Lambda') returns one row per entry", {
 
   expect_s3_class(ci, "data.frame")
   expect_true(all(c("parameter", "estimate", "lower", "upper",
-                    "method", "pd_hessian", "ci_status") %in% names(ci)))
+                    "method", "loading_scale", "pd_hessian",
+                    "ci_status") %in% names(ci)))
   ## 10 species x 2 axes = 20 entries
   expect_equal(nrow(ci), 20L)
   ## Default method is "wald" for Lambda
   expect_true(all(ci$method == "wald"))
+  expect_true(all(ci$loading_scale == "raw"))
   ## Parameter labels follow "Lambda[trait,axis]" pattern
   expect_true(all(grepl("^Lambda\\[", ci$parameter)))
 })
@@ -286,6 +288,9 @@ test_that("method = 'wald_asym' returns finite asymmetric bounds for free entrie
   bf <- build_fit_for_confint()
   ci <- confint(bf$fit, parm = "Lambda", method = "wald_asym")
   expect_true(all(ci$method == "wald_asym"))
+  expect_true(all(ci$loading_scale == "standardized"))
+  expect_true(all(grepl("^rho\\[", ci$parameter)))
+  expect_true(all(ci$lower >= -1 & ci$upper <= 1))
   free <- ci$ci_status != "pinned"
   expect_true(any(free))
   expect_true(all(is.finite(ci$lower[free])))

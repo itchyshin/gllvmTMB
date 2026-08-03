@@ -583,6 +583,39 @@ verification runs):
 - Numerical: latent residual variance fixed at $1$ by
   construction; cutpoints estimated on log-difference scale to
   preserve ordering. Mode-fixing convention via `extract_cutpoints()`.
+- **AD-safety of the interior-category CDF difference (fixed 2026-08-03).**
+  The interior term is computed by `gll_log_pnorm_diff`
+  (`src/gllvmTMB.cpp`), which selects between two algebraically
+  equivalent forms with `CppAD::CondExp`. CondExp **evaluates both
+  branches**, so both must be finite even when only one is selected.
+  They were not. `gll_log_pnorm`'s direct branch is `log(pnorm(x))`,
+  and `pnorm(x)` rounds to **exactly** $1.0$ for $x > 8.2924$, so when
+  both category boundaries sit more than $\approx 8.3$ from $\eta$ on
+  the same side, the two log-probabilities become bit-identical, their
+  difference is exactly $0$, and `gll_log1mexp(0)` returns $-\infty$ on
+  the unselected branch. The reachable condition is $|\eta| \gtrsim 8.3$
+  — a rare extreme category under a large linear predictor — **not** a
+  large cutpoint, which widens one boundary while leaving the other
+  near zero.
+  The consequence is specific and easy to miss: `fn()` and `gr()` stay
+  finite **and correct**, and only `he()` returns `NaN`. No gradient
+  check can see it (measured and documented at
+  `inst/tmb/gllvmTMB_va_r3.cpp:154-180`).
+  Fixed by a ceiling on the **input** of `gll_log1mexp` at the double
+  unit roundoff, $-1.2\times10^{-16}$. The magnitude is load bearing: a
+  $-10^{-300}$ or $-10^{-20}$ floor rescues the series branch but leaves
+  the direct branch computing $\log(1 - e^{-\epsilon}) = \log 0$, because
+  $e^{-\epsilon}$ rounds back to exactly $1$. Where the clamp binds,
+  CondExp returns a constant so the propagated partial is exactly $0$;
+  where it does not bind — every ordinary argument — the value is
+  bit-identical to before. The same fix covers
+  `gll_log_inv_logit_diff` (cumulative logit), whose exposure is the
+  whole interval $(-1.1\times10^{-16}, 0]$ rather than exactly $0$,
+  reachable when two adjacent cutpoints fall within $\sim10^{-16}$.
+  Guard: `tests/testthat/test-log1mexp-adsafety.R`, which asserts
+  `he()` (never `gr()` alone) and is demonstrated to **fail against the
+  unfixed engine** — an earlier version that pushed cutpoints instead of
+  $\eta$ passed against the defect and guarded nothing.
 
 ### Tweedie
 

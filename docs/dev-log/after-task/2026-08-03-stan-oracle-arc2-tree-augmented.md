@@ -106,12 +106,28 @@ transport rule; all shifts are 11–14 orders above the `≤1.8e−12` agreement
 | tip block permuted | `+31.9878` |
 | `branch_len` read as an SD not a variance | `−496.9393` |
 
-The star-phylogeny control is the strongest single piece: `n_aug` collapses 14 → 8, both sides
-still agree to `5.68e−14`, and the density moves `44.74` when the real tree is swapped for a
-star. So both sides track real phylogenetic structure *and* agree on a degenerate one.
+**The adversarial reviewer downgraded three of these, and was right.** Recorded here because
+the corrections matter more than the original claims:
 
-The root control is **exact**: `−0.91893853320468` measured against `−½log(2π) =
-−0.91893853320467`, agreeing to `8.7e−15`.
+- **C1 was the weakest number, not the strongest.** `−0.2688` is a near-cancellation of a
+  linear `+3.414` and a quadratic `−3.683`; the true curvature at that node is `−7.366`, 27×
+  larger, and it was the *smallest* of the six internal nodes. C1 also perturbs only the Stan
+  side, so alone it says nothing about the engine. The correct instrument is the **two-sided
+  second difference on both sides** — measured `−7.37` to `−43.76` across the six nodes,
+  matching `−P_vv` on the engine's own matrix.
+- **C4 is arithmetically tautological.** Setting the added root's variance to `4.0` gives
+  `−½log(2π·4)`. It measures the Stan file's normalising constant, not the engine's node count.
+  The real falsifier of a wrong `n_aug` is the `stopifnot(all(branch_stan > 0))` guard.
+- **The star control's `−44.74` is confounded** — entirely the prior term, across different
+  dimensions and parameter counts. The dimension-free replacement (a different `rcoal(8)` at the
+  same `n_aug = 14`) moves the objective `+122.20` with both sides agreeing to `1.71e−13`.
+
+**The strongest evidence in the arc came from the reviewer, not from me:** mixed second
+differences show the Stan side reproduces the precision's **38 nonzeros out of 196 in the right
+places** — parent–child pairs match `−P_uv`, non-adjacent pairs are exactly `0`. A model that
+never receives the matrix reconstructs the tree's topology. The reviewer also transcribed the
+Stan model into R independently and matched TMB to **exactly 0**, and swept all 32 transport
+combinations at three θ points, finding exactly one match at all three.
 
 ## 7a. Issue Ledger
 
@@ -156,6 +172,18 @@ the two tests that appeared to disagree about `tree=` vs `vcv=` equivalence.
 - Two cosmetic defects in my committed driver (a diagnostic that prints one branch length
   instead of a path sum; a bare `[1]` echo from a helper). Recorded rather than patched, for the
   chronology reason in §3a.
+- **I quoted §9's marginal figures from an ad-hoc shell call and never saved the script.** The
+  reviewer could not reproduce them, guessed a different data recipe, and got different numbers.
+  The digits turned out to be right — `marginal-tree-vs-vcv.R` now ships and reproduces them
+  byte-for-byte — but "either ship the script or drop the digits" was a fair hit, and quoting a
+  17-significant-figure number with no reproduction path is exactly the habit this programme
+  exists to discourage.
+- **I edited the document three times while it was under adversarial review** (10:35 → 10:42 →
+  10:47), so the reviewer's first two findings were against text that had already moved. An
+  artifact under review should be frozen. Recorded rather than excused.
+- **Two of my own control interpretations were wrong** (C1's emphasis, C4's meaning) and a third
+  was confounded (the star). None changed the headline result, but all three had been written
+  confidently. The lesson is in §11.
 
 ## 10. Known Residuals
 
@@ -183,6 +211,16 @@ grep found the programme was entirely absent from the brain until now):
 4. **Design the control that makes the check vacuous, then run it.** Arc 1's was the star
    phylogeny; Arc 2's was internal-node inertness.
 5. **Two different numerical routes beat two spellings of one route.**
+6. **A control that "fires" is not automatically a control that means what you think.** Two of
+   this arc's six were misread by their own author: one was a near-cancellation understating the
+   effect 27×, another was arithmetically tautological. Both *moved the density*, which is why
+   they passed the "10 orders above the floor" bar and still proved nothing. **Decompose a
+   control's shift before citing it** — linear versus quadratic, and whether it constrains the
+   engine or only the oracle.
+7. **Prefer second differences to one-sided shifts** when testing sensitivity. `lp(+1)+lp(−1)−2lp(0)`
+   isolates curvature and cannot near-cancel; a one-sided shift mixes a linear and a quadratic
+   term and can print near zero at an unlucky θ.
+8. **Freeze the artifact during adversarial review**, and ship a script for every quoted number.
 
 ## 12. Cross-Product Coverage
 

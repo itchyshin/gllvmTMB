@@ -408,3 +408,57 @@ with the best EVA objective and the degenerate mode has it.
 That is the "surrogate, not a bound" property biting: a surrogate that is not a bound can
 score a degenerate solution ABOVE truth. So EVA's risk is real and mechanistic -- but it is a
 risk to be MEASURED at our dimensions, not a reason the arm cannot run.
+
+---
+
+## THE CAMPAIGN'S CORE MEASUREMENT — first structured two-tier run, and what it does NOT answer
+
+Structured two-tier (198-node phylo tier), **gaussian**, N=150, T=10, q=1, 4 seeds, both arms
+on the SAME data, scored against PLANTED TRUTH on the loadings estimand.
+
+| | median time | tier-1 `rel_frob` | tier-2 `rel_frob` |
+|---|---|---|---|
+| VA (structured, `profile_variational=TRUE`) | **10.7 s** | 0.769 | **NOT EXTRACTED** |
+| Laplace | 18.7 s | **0.382** | 1.182 |
+
+### What it shows
+
+**Laplace recovers tier 1 about 2x better than VA** (0.382 vs 0.769), consistent across all
+four seeds. VA is FASTER here (10.7 s vs 18.7 s) — the first structured fit where VA beats
+Laplace on time, which is `profile_variational = TRUE` working as R3 designed.
+
+### TWO REASONS THIS IS NOT THE CAMPAIGN'S ANSWER — stated so nobody cites it as one
+
+1. **VA's tier-2 was never extracted.** The script pulled `report$Lambda`, which is tier 1's
+   loadings, and no phylo-tier equivalent. So the actual headline question — *does structured
+   VA recover the PHYLOGENETIC tier better than Laplace* — has **no VA number**. That is a
+   defect in the measurement script, not a property of the engines, and it must be fixed before
+   this cell is re-run.
+2. **N=150 is below the size where tier 2 is interpretable at all.** Laplace's tier-2
+   `rel_frob` is **1.182** (range 0.79-2.73) — error exceeding the truth's own norm, i.e.
+   essentially no recovery. That matches the corrected control curve, where tier 2 was still
+   0.38-0.43 at **N=1000**. **This cell FAILS the informativeness precondition** recorded above:
+   a cell where no arm recovers tier 2 cannot discriminate the engines, and `d ~ 0` there is not
+   evidence of equivalence.
+
+### Scope limit that was designed in, not discovered
+
+**Gaussian, not Ayumi's probit.** Gaussian is the one family whose VA expectation is EXACT, so
+this isolates the structured-tier question from the GH cost that blocks probit — now measured
+at **8.8x on this exact model** (structured tier, `profile=TRUE`, N=100/T=8: gaussian 22.8 s vs
+binomial-probit 199.7 s).
+
+### Reconciliation of the >3600 s claim — RESOLVED, nothing retracted
+
+The earlier ">3600 s with `profile_variational = TRUE`" was **iteration count without an
+iteration cap, compounded by GH** — not a failure of the profiled route. With `iter.max = 100`
+both families finish. The profiler's `N^0.9` scaling was real. **Both prior measurements were
+true; neither needed retracting.** They differed in the iteration cap and the family.
+
+### Where that leaves the campaign
+
+The structured-tier question remains **OPEN and unmeasured**. What is now known is that it is
+*runnable*: the structural cost was the default `profile_variational = FALSE`, and with the
+profiled route the gaussian structured fit takes ~11 s at N=150. The blockers are now (a) fix
+the tier-2 extraction, and (b) reach an N where tier 2 is informative — which the control curve
+puts well above 1000.

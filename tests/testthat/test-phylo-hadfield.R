@@ -6,8 +6,17 @@
 #      via Matrix::solve(); correct, but does not exploit tree
 #      topology sparsity.
 #   2. Hadfield sparse path (phylo_tree = tree): builds A^-1 over tips
-#      + internal nodes via MCMCglmm::inverseA(tree); ~5n non-zeros
-#      versus n^2 in the dense path.
+#      + internal nodes via .gllvm_phylo_tree_precision()
+#      (R/phylo-tree-precision.R -- a native ape + Matrix construction
+#      that replaced MCMCglmm::inverseA() on 2026-07-06, commits
+#      52bd9e98 / 26659ca6); ~5n non-zeros versus n^2 in the dense path.
+#
+# NOTE: this file does NOT use MCMCglmm. It was previously gated behind
+# skip_if_not_installed("MCMCglmm"), which would have silently skipped
+# the whole file -- including the only numerical check that the two
+# phylogeny input routes agree -- the moment MCMCglmm left Suggests.
+# A silent skip is indistinguishable from a pass. Guard removed
+# 2026-08-03; keep it removed.
 #
 # These two paths must give identical MLEs for Sigma_phy, Lambda_phy,
 # and the fixed effects on the same data. They differ only in
@@ -18,7 +27,6 @@
 # augmented dimensions are passed through correctly.
 
 skip_if_not_installed("ape")
-skip_if_not_installed("MCMCglmm")
 skip_if_not_installed("Matrix")
 
 make_phylo_sim <- function(n_sp = 50, n_traits = 4, seed = 7) {
@@ -111,8 +119,10 @@ test_that("species_aug_id maps each obs to a tip row of the augmented Ainv", {
     phylo_tree = s$tree
   )
   ## species_aug_id is 0-indexed; every value must point inside the
-  ## augmented matrix. With n_aug ~= 2 * n_tips - 1 = 59 here, expect
-  ## values in [0, n_aug-1].
+  ## augmented matrix. n_aug = n_tip + Nnode - 1 -- one row per EDGE of
+  ## the tree, root excluded -- so for this bifurcating 30-tip fixture
+  ## n_aug = 30 + 29 - 1 = 58 (NOT 2 * n_tips - 1 = 59; the root is not
+  ## a row). Expect values in [0, n_aug - 1].
   ids <- fit$tmb_data$species_aug_id
   n_aug <- fit$tmb_data$n_aug_phy
   expect_true(all(ids >= 0L))
@@ -121,9 +131,11 @@ test_that("species_aug_id maps each obs to a tip row of the augmented Ainv", {
   expect_equal(length(unique(ids)), nlevels(s$df$species))
 })
 
-test_that("phylo_tree path requires MCMCglmm and an ape::phylo object", {
+test_that("phylo_tree rejects a non-phylo object with a clear message", {
   s <- make_phylo_sim(n_sp = 20)
-  ## Wrong class for phylo_tree — should error with a clear message
+  ## Wrong class for phylo_tree — should error with a clear message.
+  ## (Previously named "...requires MCMCglmm and an ape::phylo object";
+  ## the MCMCglmm half was never tested here and is no longer true.)
   expect_error(
     gllvmTMB(
       value ~ 0 + trait + phylo_latent(species, d = 1),

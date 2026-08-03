@@ -11,7 +11,6 @@
 ## Tiny fixture: 1 site, 20 species, 3 traits, ultrametric tree.
 make_phy_fixture <- function(seed = 7) {
   testthat::skip_if_not_installed("ape")
-  testthat::skip_if_not_installed("MCMCglmm")
   set.seed(seed)
   n_sp <- 20
   tree <- ape::rcoal(n_sp)

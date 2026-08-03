@@ -1,7 +1,6 @@
 test_that("Phase 56.1 augmented phylo slope stubs stay dormant by default", {
   testthat::skip_on_cran()
   testthat::skip_if_not_installed("ape")
-  testthat::skip_if_not_installed("MCMCglmm")
 
   set.seed(56)
   n_sp <- 10

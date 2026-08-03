@@ -15,7 +15,6 @@
 skip_if_not_phylo_unique_slope_deps <- function() {
   testthat::skip_on_cran()
   testthat::skip_if_not_installed("ape")
-  testthat::skip_if_not_installed("MCMCglmm")
   testthat::skip_if_not_installed("tidyr")
 }
 

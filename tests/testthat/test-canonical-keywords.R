@@ -428,7 +428,6 @@ test_that("indep(common = TRUE) is the standalone scalar diagonal replacement", 
 
 test_that("phylo_indep(0+trait|species) standalone fits identically to phylo_unique(species) standalone", {
   testthat::skip_if_not_installed("ape")
-  testthat::skip_if_not_installed("MCMCglmm")
   set.seed(11)
   n_sp <- 12
   tree <- ape::rcoal(n_sp); tree$tip.label <- paste0("sp", seq_len(n_sp))
@@ -471,7 +470,6 @@ test_that("indep + latent on same grouping is a hard error", {
 
 test_that("phylo_indep + phylo_latent is a hard error", {
   testthat::skip_if_not_installed("ape")
-  testthat::skip_if_not_installed("MCMCglmm")
   set.seed(13)
   n_sp <- 10
   tree <- ape::rcoal(n_sp); tree$tip.label <- paste0("sp", seq_len(n_sp))
@@ -509,7 +507,6 @@ test_that("indep + unique on same grouping is a redundancy error", {
 
 test_that("print(fit) labels phylo_indep distinctly from phylo_unique", {
   testthat::skip_if_not_installed("ape")
-  testthat::skip_if_not_installed("MCMCglmm")
   set.seed(15)
   n_sp <- 10
   tree <- ape::rcoal(n_sp); tree$tip.label <- paste0("sp", seq_len(n_sp))
@@ -574,7 +571,6 @@ test_that("dep(0+trait|g) standalone fits identically to latent(0+trait|g, d=n_t
 
 test_that("phylo_dep(0+trait|species) standalone fits identically to phylo_latent(species, d=n_traits) standalone", {
   testthat::skip_if_not_installed("ape")
-  testthat::skip_if_not_installed("MCMCglmm")
   set.seed(21)
   n_sp <- 12
   tree <- ape::rcoal(n_sp); tree$tip.label <- paste0("sp", seq_len(n_sp))
@@ -643,7 +639,6 @@ test_that("dep + indep on same grouping is a redundancy error", {
 
 test_that("phylo_dep + phylo_latent is a hard error", {
   testthat::skip_if_not_installed("ape")
-  testthat::skip_if_not_installed("MCMCglmm")
   set.seed(23)
   n_sp <- 10
   tree <- ape::rcoal(n_sp); tree$tip.label <- paste0("sp", seq_len(n_sp))
@@ -669,7 +664,6 @@ test_that("phylo_dep + phylo_latent is a hard error", {
 
 test_that("phylo_dep + phylo_unique is a redundancy error", {
   testthat::skip_if_not_installed("ape")
-  testthat::skip_if_not_installed("MCMCglmm")
   set.seed(25)
   n_sp <- 10
   tree <- ape::rcoal(n_sp); tree$tip.label <- paste0("sp", seq_len(n_sp))
@@ -695,7 +689,6 @@ test_that("phylo_dep + phylo_unique is a redundancy error", {
 
 test_that("phylo_dep + phylo_indep is a redundancy error", {
   testthat::skip_if_not_installed("ape")
-  testthat::skip_if_not_installed("MCMCglmm")
   set.seed(27)
   n_sp <- 10
   tree <- ape::rcoal(n_sp); tree$tip.label <- paste0("sp", seq_len(n_sp))

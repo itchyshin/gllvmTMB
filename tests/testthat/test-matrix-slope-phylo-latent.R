@@ -323,7 +323,6 @@ test_that("phylo_latent(1 + x | sp, d = 1) x binomial-logit: converges + PD; rec
 test_that("phylo_latent(1 + x | sp, d = 1) x ordinal_probit: converges + PD; recovers latent slope structure; CI smoke", {
   skip_if_not_heavy()
   skip_if_not_slope_phylo_latent_deps()
-  testthat::skip_if_not_installed("MCMCglmm")
   ordinal_cut <- function(eta) {
     ystar <- eta + stats::rnorm(length(eta), 0, 1)  # sigma_d^2 = 1 EXACT
     taus  <- c(0, 0.7, 1.4)

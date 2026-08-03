@@ -52,10 +52,52 @@ Type gll_log1mexp(Type log_p)
 {
   // log(1 - exp(log_p)) for log_p <= 0, with a small-argument series guard
   // (drm_log1mexp). u = -log_p >= 0; for tiny u use the Taylor series.
-  Type u = -log_p;
+  //
+  // AD-SAFETY CEILING ON THE INPUT. CppAD::CondExp evaluates BOTH branches, so
+  // both must be finite at every reachable argument even when only one is
+  // selected. At log_p = 0 neither is: series_arg is 0 so log(0) = -Inf, and
+  // 1 - exp(0) is 0 so log(0) = -Inf again. A non-finite value on an UNSELECTED
+  // branch leaves fn() and gr() finite AND CORRECT while making he() return
+  // NaN -- the failure mode measured and documented at
+  // inst/tmb/gllvmTMB_va_r3.cpp:154-180, and invisible to any gradient check.
+  //
+  // log_p = 0 is REACHABLE, not hypothetical. gll_log_pnorm's direct branch is
+  // log(pnorm(x)), and pnorm(x) rounds to EXACTLY 1.0 for x > 8.2924 (measured),
+  // so in gll_log_pnorm_diff the two log-probabilities become bit-identical and
+  // their difference is exactly 0 whenever both cutpoints sit more than ~8.3
+  // from eta on the same side -- a rare extreme ordinal category under a
+  // moderately large eta, on the shipped Laplace ordinal_probit path (fid 14).
+  //
+  // The ceiling sits at the double unit roundoff, and that MAGNITUDE IS LOAD
+  // BEARING: a -1e-300 or -1e-20 floor rescues the SERIES branch but leaves the
+  // DIRECT branch computing log(1 - exp(-1e-300)) = log(0) = -Inf, because
+  // exp(tiny) rounds back to exactly 1. At -1.2e-16, 1 - exp(ac) is 1.11e-16
+  // rather than 0, so BOTH branches are finite (series -36.659, direct -36.737).
+  // Clamp the INPUT, never the output -- the discipline at va_r3:154-180.
+  //
+  // The cubic u - u^2/2 + u^3/6 has derivative ((u-1)^2 + 1)/2 > 0, so it is
+  // strictly increasing from 0 and strictly positive for every u > 0: once u is
+  // floored away from 0 the series branch is finite at any argument.
+  //
+  // Where the clamp binds, CondExp returns a constant, so the propagated partial
+  // is exactly 0 and no spurious gradient is manufactured. Where it does not
+  // bind -- log_p <= -1.2e-16, i.e. every ordinary argument -- the value is
+  // bit-identical to the previous implementation (verified at log_p = -0.5,
+  // -1e-3, -1e-7, -1e-12).
+  //
+  // Semantics where it binds: a cell probability that has underflowed to zero in
+  // THIS parameterisation is treated as ~1.1e-16 rather than as impossible. The
+  // true probability there is tiny but positive -- Phi(-8.5) - Phi(-9) is a real
+  // number -- so this recovers a finite approximation rather than inventing one.
+  // A genuinely zero-width category now returns a large finite negative instead
+  // of -Inf; that is a model-specification error either way, and -Inf makes the
+  // entire objective non-finite rather than diagnosing it.
+  Type ceil_a = Type(-1.2e-16);
+  Type ac = CppAD::CondExpGt(log_p, ceil_a, ceil_a, log_p);   // min(log_p, ceil)
+  Type u = -ac;
   Type series_arg = u - u * u / Type(2.0) + u * u * u / Type(6.0);
   Type series = log(series_arg);
-  Type direct = log(Type(1.0) - exp(log_p));
+  Type direct = log(Type(1.0) - exp(ac));
   return CppAD::CondExpLt(u, Type(1e-6), series, direct);
 }
 
@@ -127,6 +169,17 @@ Type gll_log_inv_logit_diff(Type upper, Type lower)
   // log( F(upper) - F(lower) ) for upper > lower, stable form (drm_log_inv_
   // logit_diff): the log of the cumulative-logit cell probability of a middle
   // ordered category.
+  //
+  // This function has no CondExp of its own, but it inherits gll_log1mexp's, and
+  // therefore inherited that function's unselected-branch hazard: the exposure
+  // is the whole interval (-1.1e-16, 0], not just exactly 0, because for any
+  // tiny-but-nonzero argument the series branch is selected while the UNSELECTED
+  // direct branch computes log(1 - exp(tiny)) = log(0) = -Inf. Reachable here
+  // when two adjacent cutpoints fall within ~1e-16 of each other on the eta
+  // scale -- far narrower than the probit route, which reaches log_p = 0 by
+  // ordinary CDF rounding above 8.2924, but the same defect and the same NaN
+  // Hessian. Fixed at source by the input ceiling in gll_log1mexp; nothing is
+  // needed here.
   return upper + gll_log1mexp(lower - upper) -
     logspace_add(Type(0.0), upper) -
     logspace_add(Type(0.0), lower);

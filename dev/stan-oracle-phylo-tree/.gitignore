@@ -1,0 +1,3 @@
+# Compiled Stan model -- regenerate with gauss-reconcile-tree.R
+*.rds
+!tmb-fixture-tree.rds

@@ -360,3 +360,51 @@ from nothing degenerating -- a count over an all-NA column with no denominator c
 the same shape as the vacuous control gate caught earlier today. **Any rate computed with
 `na.rm = TRUE` needs its denominator reported beside it**, or a fully-failed arm reads as a
 clean one.
+
+---
+
+## CORRECTION to Job 2f (2026-08-03) — my EVA test was wrong, not EVA
+
+The maintainer asked "wrong tests??" and was right. Commit `a66d3643` claims *"gllvm's EVA
+cannot fit binomial at all -- logit or probit."* **That is FALSE.** Measured:
+
+| call | result |
+|---|---|
+| EVA, Bernoulli (binary 0/1), logit, no `Ntrials` | **OK -- fits** |
+| EVA, Bernoulli, **probit** | **OK -- fits** |
+| EVA, binomial `Ntrials = 6` (what I tested) | ERROR: "Binomial distribution not yet supported" |
+
+gllvm's EVA rejects **multi-trial binomial only**. It fits Bernoulli, including probit.
+
+**How the error happened, because the chain matters.** I set `n_trials = 6` earlier in this
+same session to dodge the silent Psi-drop that Bernoulli triggers in our Laplace arm. That fix
+put every EVA call into the one configuration EVA refuses, and I read a narrow refusal as a
+blanket incapability -- generalising from a single failed call without varying the parameter
+that caused it. Exactly the shape of the `H = 11` and `n_starts = 2` false alarms earlier
+today: an invalid argument of mine surfacing as a defect in the thing under test. Third
+instance. The fix is not "be careful" -- it is **never conclude a capability is absent from
+one failed call; vary the argument first** (the project's own rule: to check a capability is
+present, USE it; a negative probe cannot prove absence).
+
+### What this restores
+
+1. **The EVA-for-probit arm (P0c) is TESTABLE** on Bernoulli-probit. It is not blocked.
+2. **The 68% degeneracy record is back ON-target**, not off it. It was measured on
+   Bernoulli-logit -- a real binomial case. My claim that "both EVA records were off-target"
+   is withdrawn for that one; only the "every evaluable cell" claim keeps its caveat.
+3. **A NEW question the maintainer's challenge exposes:** are Ayumi's binomial columns
+   **Bernoulli or multi-trial?** If Bernoulli, EVA is available for her model. If multi-trial,
+   EVA is unavailable regardless of how good it is. This was never checked and it gates P0c.
+
+### What does NOT change
+
+The 2026-07-31 misuse probe stands, and it was rigorous: it defaulted to "we are at fault",
+checked the reconstruction byte-for-byte against gllvm's own `getLoadings()`, and still
+concluded **GENUINE METHOD BEHAVIOUR** -- EVA's own objective prefers a runaway solution
+(attenuation 8.8e+08) at -327.4 over the TRUE parameters at -618.6, by 291 nats, and MORE
+restarts make it WORSE (n.init 5 -> 3.8e+08, 10 -> 6.3e+08) because gllvm selects the restart
+with the best EVA objective and the degenerate mode has it.
+
+That is the "surrogate, not a bound" property biting: a surrogate that is not a bound can
+score a degenerate solution ABOVE truth. So EVA's risk is real and mechanistic -- but it is a
+risk to be MEASURED at our dimensions, not a reason the arm cannot run.

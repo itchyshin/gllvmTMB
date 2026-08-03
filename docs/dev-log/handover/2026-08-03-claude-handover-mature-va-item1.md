@@ -384,3 +384,76 @@ terms — has no VA family code.
 6. **Filed, not fixed:** `extract_Sigma(part = "unique"/"psi")` returns an all-NA
    diagonal where `total`/`shared` are finite.
 7. **Later:** the proper multi-seed simulation arc on Totoro/DRAC.
+
+---
+
+# FINAL STATE — read this first, then §SESSION 2, then the top
+
+## Did we implement "mature VA for all"? **No — roughly half of Item 1.**
+
+| family | closed form | status |
+|---|---|---|
+| gaussian | exact | pre-existing ✓ |
+| poisson | exact | pre-existing ✓ |
+| binomial-logit | JJ bound | pre-existing ✓ |
+| **binomial-probit** | **Albert–Chib** | ✅ **BUILT this session** (`eval_method = "ac"`) |
+| **ordinal-probit** | **Albert–Chib Thm 3** | ❌ **NOT BUILT** — the VA engine has **no ordinal family at all** (codes 0–4) |
+| nbinom2 | none | stays on quadrature, by design |
+
+So the GOAL's *"after Item 1, only nbinom2 lacks a closed form"* is **not yet true**.
+Ordinal is a **new family code**, not a branch: two `DATA_IVECTOR`s, a `PARAMETER_VECTOR`,
+a stable `log(Φ(a) − Φ(b))`, and the R-side wiring. **Nothing is promoted:**
+`default_tier` is still `"gh"`, the integration fence is shut.
+
+Items 2–4 of MATURE-VA: Item 2 deliberately not done (speed rule unestablished);
+Item 3 partial (falls out of Item 1, so probit only); Item 4 measured but underpowered.
+
+## What is SOLID
+
+1. **The AC tier is correct and verified.** Objective substitution proven; 21/21 checks;
+   `he()` finite; 245 existing VA tests green. Reproduces gllvm's optimum to **1.06e-04**,
+   independent of starting values.
+2. **AC collapses a real ψ at low `n_trials`** — 2.2e-04 against a planted 0.6 at n=6 where
+   GH recovers 0.56; both recover by n=20. **Replicated on fresh seeds.** This alone means
+   AC must not become a default.
+3. **Warm-starting GH from AC** reaches GH's accuracy in **36.8 vs 138.6 iterations**.
+   Because it ends on GH it inherits GH's ψ recovery. **This is the arc's best result.**
+4. **The `A_i` collapse is real in our engine** — per-unit `log_L_diag` identical to 1e-16,
+   matching the predicted closed form to 2.6e-14, converging back from jittered starts.
+5. **Why gllvm is fast** (`21-WHY-GLLVM-IS-FAST.md`): **not** the A-collapse — that lives in
+   a dead non-TMB path. It is a single BFGS over one flat vector, made cheap by three
+   parameterisation choices (identifiability hard-coded, whitened latents, log-Cholesky `A`).
+   **And gllvm leaves the collapse on the table: 57% of its outer parameters at n=200.**
+6. **The ψ = unique + link conditional is already correctly implemented.** No change needed.
+7. **PR #925 MERGED** (`431e173f`) — the shipped-engine NaN-Hessian fix.
+
+## What is NOT settled — do not quote
+
+- **Package-vs-package accuracy is UNRESOLVED.** Two of my own claims were retracted
+  (`0c9bdaf4`): "our GH beats gllvm's VA" (6 seeds) and "our LA beats gllvm's LA by 28%"
+  (**one** seed). The 2×2 campaign contradicts both — but at **2 seeds** it settles nothing
+  either. Per-seed `rel_frob` ranges 0.13–0.46.
+- **All speed comparisons across packages carry a model mismatch** unless `unique=FALSE`.
+  Like-for-like, AC vs gllvm-VA is **3.7×**; with the ψ tier it looks like 264×.
+- **The `n·v/2` puzzle** — two provably different objectives share an optimum to 1e-5;
+  the explanation is inference, not measurement.
+
+## Next arc — recommended order
+
+1. **Implement the warm start as a real route** (not a probe), and confirm the ~3× serially.
+   Highest value per unit of work, and it sidesteps AC's collapse.
+2. **The `A_i` collapse.** 🔴 **Needs Shinichi** — changes the variational parameterisation.
+   Now known to be an *overtake*, not a catch-up.
+3. **Check our conditioning against gllvm's three choices** — our loadings diagonal is
+   unconstrained (PR #919) where they pin it. Cost-free in identifiability.
+4. **Ordinal (Item 1B)** — a new family; Stage 5 is now sequenced behind it by maintainer
+   decision.
+5. **The real simulation arc on Totoro/DRAC** — enough seeds for a paired test, ψ as a
+   factor, both `unique` settings. **Nothing about package-vs-package accuracy should be
+   claimed before this.**
+
+## Landing state
+
+All lanes pushed and clean. `claude/mature-va-albert-chib` (no PR — fenced research).
+`claude/d108-recovery-campaign` (evidence lane). `claude/log1mexp-adsafety-20260803` merged.
+Read `dev/va-speed/20-CLAIMS-LEDGER.md` before citing anything from this arc.

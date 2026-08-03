@@ -276,6 +276,36 @@ bridge remains experimental and is not required for the main workflow.
 
 ## Changed
 
+* **The default number of bootstrap replicates is now 999, raised from 200.**
+  `bootstrap_Sigma()` is the only exported function whose signature changes.
+  The same raise was applied to the internal bootstrap paths behind
+  `extract_lv_effects()`, `extract_communality()`, `extract_repeatability()`,
+  the loading intervals, and the phylogenetic-signal intervals, so every
+  bootstrap interval in the package now uses one replicate count — those
+  extractors take longer and return slightly different bounds without any
+  change to their own arguments. **Calls that relied on the old default return
+  slightly different interval bounds and take roughly five times longer.** Pass
+  `n_boot = 200` to `bootstrap_Sigma()` to restore the previous behaviour; for
+  exploratory work that remains a reasonable time-for-precision trade.
+
+  Two distinct things bound this argument, and only the lower one is a
+  correctness constraint. A percentile interval built from `B` draws is bounded
+  by its widest possible realisation, whose coverage cannot exceed
+  `(B - 1) / (B + 1)` whatever the data are — so below roughly `2 / (1 - conf)`
+  the interval *cannot* reach the requested level. Above that threshold what
+  remains is Monte Carlo error in the endpoints, which is a precision question.
+  The old default of 200 already cleared the ceiling comfortably (0.990 at
+  `conf = 0.95`), so this change buys endpoint precision for intervals that get
+  reported — it does not fix a correctness bug. 999 rather than 1000 so that
+  `(1 - conf) / 2 * (B + 1)` is a whole number at `conf = 0.95`, letting the
+  bounds land on order statistics instead of being interpolated between them.
+
+  `bootstrap_Sigma()` refuses an `n_boot` below the arithmetic floor, warns
+  below the default, and returns `$coverage_ceiling` so a simulation campaign
+  can assert `coverage_ceiling >= conf` on its own configuration before trusting
+  its own numbers (IN: the guard and its tests; PARTIAL: non-Gaussian and
+  mixed-family bootstrap calibration remain uncertified, CI-08/CI-10).
+
 * Ordinary `latent()` now represents
   `Sigma = Lambda Lambda^T + Psi` by default. Use
   `latent(..., unique = FALSE)` for the earlier loadings-only subset.

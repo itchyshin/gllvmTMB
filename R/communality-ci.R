@@ -212,7 +212,7 @@
 #' per-trait percentile bounds at the requested confidence level.
 #'
 #' @inheritParams .communality_wald_ci
-#' @param nsim Integer; number of bootstrap replicates. Default 200.
+#' @param nsim Integer; number of bootstrap replicates. Default 999.
 #' @param seed Optional RNG seed for reproducibility.
 #'
 #' @return Length-3 numeric vector with names `estimate`, `lower`,
@@ -222,7 +222,7 @@
 #' @noRd
 .communality_bootstrap_ci <- function(fit, tier, trait_idx,
                                       level = 0.95,
-                                      nsim = 200L, seed = NULL) {
+                                      nsim = 999L, seed = NULL) {
   if (!inherits(fit, "gllvmTMB_multi"))
     cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
   if (!is.numeric(level) || length(level) != 1L ||

@@ -1214,24 +1214,34 @@
   ),
 
   ## Binomial-PROBIT (Design 108 Gate A Stage 4). E[log Phi(eta)] has no closed
-  ## form and no analogue of the Jaakkola-Jordan bound, so Gauss-Hermite is the
-  ## only tier -- asking for "jj" here is an error, not a fallback.
+  ## form, and no analogue of the Jaakkola-Jordan bound exists, so asking for
+  ## "jj" here is an error rather than a fallback.
+  ##
+  ## "ac" is the Albert-Chib closed form (dev/va-speed/ALBERT-CHIB-DERIVATION.md):
+  ## a truncated-normal augmentation whose auxiliary z profiles out analytically,
+  ## leaving y logPhi(mu) + (n-y) logPhi(-mu) - n v/2. It touches no quadrature
+  ## node, which is where ~75% of this family's fit cost currently goes.
+  ##
+  ## `default_tier` STAYS "gh". AC is a strictly lower bound on the GH objective,
+  ## i.e. a DIFFERENT objective, so it does not inherit GH's accuracy evidence and
+  ## must not become the default before it carries its own against planted truth
+  ## (MATURE-VA.md Item 1's falsifier: rel_frob must stay <= 0.298).
   ##
   ## RESEARCH SPIKE, not a capability: this entry makes the family reachable
   ## from the prototype engine only. It is deliberately NOT on the public
   ## integration fence (R/integration-fence.R), so `integration = "va"` still
   ## refuses binomial-probit from the formula API. No recovery evidence exists.
   ##
-  ## optimizer: no benchmark has been run for this family, so it inherits the
-  ## reference optimiser rather than claiming a measured choice.
+  ## optimizer: no benchmark has been run for this family, so both tiers inherit
+  ## the reference optimiser rather than claiming a measured choice.
   list(
     family = "binomial_probit",
     family_code = 4L,
     link = "probit",
-    tiers = "gh",
+    tiers = c("gh", "ac"),
     default_tier = "gh",
     expectation = "quadrature",
-    optimizer_by_tier = list(gh = "nlminb")
+    optimizer_by_tier = list(gh = "nlminb", ac = "nlminb")
   )
 )
 
@@ -1243,13 +1253,20 @@
        call. = FALSE)
 }
 
-.va_r3_resolve_eval_method <- function(eval_method = c("auto", "jj", "gh"), family) {
+.va_r3_resolve_eval_method <- function(eval_method = c("auto", "jj", "gh", "ac"), family) {
   eval_method <- match.arg(eval_method)
   codes <- unique(as.integer(family))
   ## Design 108 Stage 2: mixed-family fits always use GH; JJ is binomial-only.
+  ## Albert-Chib is likewise single-family only -- `eval_method` is one global
+  ## scalar in the template, so a mixed fit cannot ask for a probit-specific
+  ## evaluator on some rows and quadrature on others.
   if (length(codes) > 1L) {
     if (identical(eval_method, "jj")) {
       stop("eval_method = \"jj\" is only defined for pure-binomial VA fits.",
+           call. = FALSE)
+    }
+    if (identical(eval_method, "ac")) {
+      stop("eval_method = \"ac\" is only defined for pure binomial-probit VA fits.",
            call. = FALSE)
     }
     return("gh")
@@ -1265,12 +1282,33 @@
   eval_method
 }
 
-.va_r3_eval_method_code <- function(eval_method = c("auto", "jj", "gh"), family) {
-  if (identical(.va_r3_resolve_eval_method(eval_method, family), "jj")) 1L else 0L
+## The tier -> template-code map. This was a BOOLEAN collapse
+## (`if (jj) 1L else 0L`) while only two tiers existed; with a third it must be
+## an exhaustive switch. The failure mode a boolean collapse produces here is the
+## worst kind available: an unrecognised tier maps silently to 0L and the fit
+## runs Gauss-Hermite while reporting the tier that was asked for -- a wrong
+## answer with no error. `switch` without a default errors instead.
+.va_r3_eval_method_code <- function(eval_method = c("auto", "jj", "gh", "ac"), family) {
+  resolved <- .va_r3_resolve_eval_method(eval_method, family)
+  code <- switch(resolved, gh = 0L, jj = 1L, ac = 2L)
+  if (is.null(code)) {
+    stop("VA-R3 has no template code for eval_method = \"", resolved, "\".",
+         call. = FALSE)
+  }
+  code
 }
 
+## Same exhaustiveness requirement, and the same reason: mislabelling the
+## objective would license comparing values across tiers that do not compute the
+## same quantity. GH and AC differ by a strict bound gap, not by numerical noise.
 .va_r3_objective_type <- function(resolved_eval_method) {
-  if (identical(resolved_eval_method, "jj")) "ELBO_JJ" else "ELBO_GH"
+  type <- switch(resolved_eval_method,
+                 gh = "ELBO_GH", jj = "ELBO_JJ", ac = "ELBO_AC")
+  if (is.null(type)) {
+    stop("VA-R3 has no objective label for eval_method = \"",
+         resolved_eval_method, "\".", call. = FALSE)
+  }
+  type
 }
 
 ## Latent-variable posterior summary from a fitted parameter vector.
@@ -1732,7 +1770,7 @@
 .va_r3_make_objective <- function(validated, H = 61L, source = NULL,
                                   rebuild = FALSE, parameters = NULL,
                                   fixed_global = NULL, silent = TRUE,
-                                  eval_method = c("auto", "jj", "gh"),
+                                  eval_method = c("auto", "jj", "gh", "ac"),
                                   profile_variational = FALSE,
                                   inner_control = NULL) {
   if (validated$q == 0L) {
@@ -1909,7 +1947,7 @@
                        rank_source = c("fixed_fixture", "ml_bic"),
                        fixed_global = NULL, source = NULL, rebuild = FALSE,
                        control = list(eval.max = 2000L, iter.max = 2000L),
-                       silent = TRUE, eval_method = c("auto", "jj", "gh"),
+                       silent = TRUE, eval_method = c("auto", "jj", "gh", "ac"),
                        n_starts = 4L,
                        optimizer = c("auto", "nlminb", "lbfgsb"),
                        is_y_observed = NULL,

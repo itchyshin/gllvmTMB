@@ -259,6 +259,42 @@ Type va_r3_probit_expectation(const Type &mu, const Type &v,
   return CppAD::CondExpGt(v, threshold, quadrature, expansion);
 }
 
+// Albert-Chib closed-form replacement for va_r3_probit_expectation above.
+//
+// Returns E[ y log Phi(eta) + (n - y) log Phi(-eta) ] in the SAME UNITS as the
+// GH evaluator, so both plug into the identical `ell = log_choose + <evaluator>`
+// formula at the fam == 4 dispatch -- the same contract
+// va_r3_jj_softplus_expectation() honours for fam == 1.
+//
+// DERIVATION: dev/va-speed/ALBERT-CHIB-DERIVATION.md.  Augmenting with a
+// truncated-normal auxiliary z ~ N(eta, 1) and maximising the augmented ELBO
+// over a free-form q(z) at fixed q(a) has the closed-form maximiser
+// q*(z) = TN(mu, 1, H_y), and the profiled value collapses to the expression
+// below -- no residual free parameter, so z never becomes a TMB parameter.
+// The closed form was confirmed against a 200-node GH reference to 6.2e-11.
+//
+// THIS IS A DIFFERENT OBJECTIVE.  It is a strict LOWER BOUND on the GH value,
+// not an approximation to it, so it does NOT inherit GH's accuracy evidence and
+// must carry its own against planted truth.  It is also loosest exactly on
+// well-fitted cells, which at convergence is most of them.
+//
+// n * v / 2, NOT v / 2: there is one latent z per TRIAL, and each charges v/2.
+// The two coincide only at n = 1.  gllvm subtracts v/2 once per cell regardless
+// of trial.size; at n = 20 that is not a lower bound at all, exceeding the true
+// value by up to 10.98 nats (measured).  gllvmTMB carries n_trials, so it must
+// use the n-scaled form -- copying the reference here would be wrong.
+//
+// No gh_nodes, no threshold, no CondExp: v enters LINEARLY, so the sqrt(v)
+// unbounded-derivative-at-zero problem that forces the GH evaluator's small-v
+// expansion branch does not arise here at all.
+template <class Type>
+Type va_r3_probit_ac_expectation(const Type &mu, const Type &v,
+                                 const Type &y, const Type &n)
+{
+  return y * va_r3_log_pnorm(mu) + (n - y) * va_r3_log_pnorm(-mu)
+    - n * v / Type(2.0);
+}
+
 template <class Type>
 Type objective_function<Type>::operator()()
 {
@@ -520,8 +556,8 @@ Type objective_function<Type>::operator()()
     error("gllvmTMB_va_r3: log_sigma must have length T");
   if (gh_nodes.size() <= 0 || gh_weights.size() != gh_nodes.size())
     error("gllvmTMB_va_r3: GH nodes and weights must have the same positive length");
-  if (eval_method != 0 && eval_method != 1)
-    error("gllvmTMB_va_r3: eval_method must be 0 (Gauss-Hermite) or 1 (Jaakkola-Jordan/PG bound)");
+  if (eval_method != 0 && eval_method != 1 && eval_method != 2)
+    error("gllvmTMB_va_r3: eval_method must be 0 (Gauss-Hermite), 1 (Jaakkola-Jordan/PG bound), or 2 (Albert-Chib closed form)");
 
   // Dense convention: each unit-trait cell is exactly one row. Family range
   // checks apply only to observed cells (Design 107); masked sentinels are
@@ -531,6 +567,14 @@ Type objective_function<Type>::operator()()
   // it admits family code 1 and nothing else -- binomial-PROBIT (code 4) is a
   // binomial family for which the bound is undefined, and must be counted here.
   int n_non_jj = 0;
+  // The Albert-Chib closed form is the MIRROR IMAGE: the truncated-normal
+  // augmentation is specific to the PROBIT link, so it admits family code 4 and
+  // nothing else -- binomial-LOGIT (code 1) is a binomial family for which the
+  // augmentation does not apply. These two counters admit disjoint families and
+  // are deliberately kept as separate variables rather than one shared "non-X"
+  // count, because the condition each guards is the other's complement within
+  // the binomial pair and a shared counter would silently invert one of them.
+  int n_non_ac = 0;
   for (int r = 0; r < n_obs; ++r) {
     int i = unit_id(r);
     int t = trait_id(r);
@@ -543,6 +587,7 @@ Type objective_function<Type>::operator()()
     if (fam != 0 && fam != 1 && fam != 2 && fam != 3 && fam != 4)
       error("gllvmTMB_va_r3: family entries must be 0 (Gaussian), 1 (binomial-logit), 2 (Poisson), 3 (nbinom2), or 4 (binomial-probit)");
     if (fam != 1) n_non_jj += 1;
+    if (fam != 4) n_non_ac += 1;
     cell_count[i * T + t] += 1;
     if (!std::isfinite(asDouble(y(r))) || !std::isfinite(asDouble(n_trials(r))))
       error("gllvmTMB_va_r3: y and n_trials must be finite");
@@ -561,6 +606,8 @@ Type objective_function<Type>::operator()()
   }
   if (eval_method == 1 && n_non_jj > 0)
     error("gllvmTMB_va_r3: eval_method = 1 (Jaakkola-Jordan/PG bound) requires every row to be binomial-logit (family code 1)");
+  if (eval_method == 2 && n_non_ac > 0)
+    error("gllvmTMB_va_r3: eval_method = 2 (Albert-Chib closed form) requires every row to be binomial-probit (family code 4)");
   for (int cell = 0; cell < N * T; ++cell) {
     if (cell_count[cell] != 1)
       error("gllvmTMB_va_r3: every unit-trait cell must occur exactly once");
@@ -883,8 +930,15 @@ Type objective_function<Type>::operator()()
       Type log_choose = lgamma(n + Type(1.0))
         - lgamma(y(r) + Type(1.0))
         - lgamma(n - y(r) + Type(1.0));
+      // eval_method is fixed DATA, not an AD parameter, so an ordinary
+      // if/else (not CondExp) selects the tier, exactly as fam == 1 does --
+      // no AD nodes are laid down for the unused branch. eval_method == 2 is
+      // the Albert-Chib closed form, which is a DIFFERENT (strictly lower)
+      // objective than the GH quadrature, not a faster route to the same one.
       ell = log_choose +
-        va_r3_probit_expectation(mu, v, y(r), n, gh_nodes, gh_weights);
+        ((eval_method == 2)
+           ? va_r3_probit_ac_expectation(mu, v, y(r), n)
+           : va_r3_probit_expectation(mu, v, y(r), n, gh_nodes, gh_weights));
     }
     if (!std::isfinite(asDouble(ell)))
       Rf_error("gllvmTMB_va_r3: non-finite expected log-likelihood at unit %d trait %d", i, t);

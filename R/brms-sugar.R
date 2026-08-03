@@ -673,6 +673,29 @@ NULL
 #' still depends on labels, scaling, and fitting health; the function does not
 #' estimate or report ancestral states.
 #'
+#' The two routes differ in one respect worth knowing. The `vcv =` route adds a
+#' fixed `1e-8` ridge to the supplied matrix before inverting it; the `tree =`
+#' route builds the sparse precision analytically from branch lengths and adds
+#' no ridge. The two therefore agree with each other only to roughly `1e-5` in
+#' log-density, and less on large or poorly conditioned trees.
+#'
+#' ## Species are matched by FACTOR LEVEL, not by tree tip order
+#'
+#' The species column is aligned to the phylogeny through the order of its
+#' **factor levels**: `levels(data$species)` is looked up against the tip
+#' labels, and whatever order those levels happen to be in is the order the
+#' latent scores are indexed by. Tree tip order is not consulted.
+#'
+#' If the factor's levels do not correspond to the species you intend, the
+#' model still fits and issues no warning. It simply fits a different
+#' phylogeny. Set the levels explicitly:
+#'
+#' ```r
+#' data$species <- factor(data$species, levels = tree$tip.label)
+#' ```
+#'
+#' Every example below does this. It is not decoration.
+#'
 #' See the
 #' [phylogenetic covariance article](https://itchyshin.github.io/gllvmTMB/articles/phylogenetic-gllvm.html)
 #' for the benchmark.

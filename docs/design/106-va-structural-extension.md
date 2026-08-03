@@ -502,7 +502,9 @@ TOTAL                                    53,970 variational coordinates
 ```
 
 **With the augmented tree route** (`phylo_tree` -> `Ainv` including internal
-nodes; a rooted bifurcating tree gives `n_aug ~ 2N - 1 = 10,793` — verify
+nodes. MEASURED 2026-08-03 (Arc 2): `n_aug = n_tip + Nnode - 1`, i.e. one per
+EDGE of the tree, root EXCLUDED. For a rooted bifurcating tree that is
+`2N - 2 = 10,792`, not `2N - 1 = 10,793`; a polytomous tree gives fewer still
 against `nrow(Ainv)` for the actual tree):
 
 ```
@@ -767,7 +769,9 @@ not. Both readings are defensible; they answer different questions, and Design
    dense quasi-Newton methods are normally implemented; it should be confirmed
    against what `nlminb` / `optim(method="BFGS")` actually allocate at
    `P ~ 5 x 10^4` before it drives a decision.
-4. **`n_aug` for Ayumi's actual tree** (§4.2). `2N - 1 = 10,793` assumes rooted
+4. **`n_aug` for Ayumi's actual tree** (§4.2). SETTLED 2026-08-03 (Arc 2):
+   `n_aug = n_tip + Nnode - 1` = `2N - 2 = 10,792` if fully bifurcating, FEWER
+   with polytomies. The old `2N - 1 = 10,793` figure assumed rooted
    and fully bifurcating. Read `nrow(Ainv)` for the real tree; polytomies reduce
    it.
 5. **Whether the augmented route is worth its cost at all** (§3.6). The

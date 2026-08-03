@@ -14,10 +14,11 @@ bridge remains experimental and is not required for the main workflow.
   practical range, `sqrt(8) / kappa`, for native gllvmTMB spatial fits. Equal
   axes are explicitly the model assumption `H = I`; gllvmTMB does not estimate
   directional anisotropy. Delta and spatiotemporal states remain unsupported.
-  This changes no TMB likelihood or spatial covariance parameterisation
-  (IN: validation row SPA-01; PARTIAL: broader spatial-family evidence FG-13;
-  REJECTED here: directional anisotropy, delta/spatiotemporal fields, barriers,
-  and new spatial likelihoods).
+  This changes no TMB likelihood or spatial covariance parameterisation.
+  The mesh/plotting helpers themselves are covered by focused tests; broader
+  spatial-family evidence remains partial; directional anisotropy,
+  delta/spatiotemporal fields, barriers, and new spatial likelihoods are
+  rejected here.
 
 * **`offset()` now works, for count responses.** `offset(log(trap_nights))`
   in a Poisson or negative-binomial model is the standard way to model a rate
@@ -97,7 +98,7 @@ bridge remains experimental and is not required for the main workflow.
   are replaced with a warning.
 
   This scope is supported as a **runaway/failure-avoidance** capability, not as
-  a general accuracy improvement (MIS-36). In the 600-replicate calibration,
+  a general accuracy improvement. In the 600-replicate calibration,
   the auto fit was usable in 135 replicates. A transparent auto-when-usable,
   otherwise-`tau = 2` policy did not increase per-cell failure or runaway rates
   and stayed within the preregistered +0.02 loading-error non-inferiority margin,

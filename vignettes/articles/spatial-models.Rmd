@@ -49,9 +49,9 @@ fit_long <- gllvmTMB(
 ```
 
 > **Evidence boundary.** Mesh construction, projection, finite-element
-> matrices, and ingestion by a Gaussian spatial fit are covered (SPA-01).
-> Evidence across the complete spatial keyword-by-family surface remains
-> partial (FG-13). This article does not support directional anisotropy,
+> matrices, and ingestion by a Gaussian spatial fit are covered by focused
+> tests. Evidence across the complete spatial keyword-by-family surface
+> remains partial. This article does not support directional anisotropy,
 > barriers, spatiotemporal fields, or interval-coverage claims.
 
 ## Simulate a spatial teaching dataset
@@ -339,9 +339,10 @@ $\Sigma_{\mathrm{spatial}} = \Lambda_{\mathrm{spatial}}
 cross-trait spatial covariance. The data were generated with independent
 trait fields, so this table demonstrates runnable syntax and relative fit on
 one dataset; it is not a recovery or model-selection study. These broader
-models remain partial under FG-13/SPA-02, so treat current estimates as
-model-based point estimates rather than calibrated spatial-correlation
-inference.
+models remain only partially validated — both the wider spatial-keyword
+family and this paired latent/unique total-covariance route lack full
+recovery evidence — so treat current estimates as model-based point
+estimates rather than calibrated spatial-correlation inference.
 
 ## Independence, acknowledgement, and licensing
 

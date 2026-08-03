@@ -1,7 +1,7 @@
 ---
 title: "Cross-family trait correlations, including nominal responses"
 description: "Fit the partially-validated ordinary-unit cross-family route, recover latent correlations across five response families, and compute the reference-invariant nominal summary on its admitted non-ordinal partner set."
-tier: 2 # worked demonstration of the multi-family latent factor and the 2C nominal summary
+tier: 2 # worked demonstration of the multi-family latent factor and the reference-invariant nominal summary
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -23,6 +23,7 @@ knitr::opts_chunk$set(
   message  = FALSE,
   warning  = FALSE
 )
+options(cli.num_colors = 1, crayon.enabled = FALSE)
 ```
 
 Traits do not arrive on one scale. A single organism carries continuous
@@ -246,13 +247,13 @@ plot(R_true[offd], R_hat[offd],
 abline(0, 1, lty = 2, col = "grey40")
 ```
 
-## Summarising the nominal trait: the 2C multiple correlation
+## Summarising the nominal trait: the reference-invariant multiple correlation
 
 The pairwise table above lists a *separate* correlation for each nominal
 contrast (`cat:2`, `cat:3`). Often a reader wants **one number** for "how
 strongly is the categorical trait associated with each partner?" that does not
 depend on which category was chosen as the reference. That is what
-`extract_cross_correlations()` reports (reporting decision 2C): a
+`extract_cross_correlations()` reports: a
 **reference-invariant multiple correlation** between the categorical trait and
 each single-scale partner, optionally with the underlying $(K-1)$-vector.
 
@@ -266,7 +267,7 @@ without the ordinal trait for the observation-scale one-number summary.
 ```{r cross-cor}
 ordinal_refusal <- tryCatch(
   extract_cross_correlations(fit, level = "unit", link_residual = "auto"),
-  error = conditionMessage
+  error = function(e) cli::ansi_strip(conditionMessage(e))
 )
 ordinal_refusal
 
@@ -356,7 +357,7 @@ These are limits of the capability as it stands at 0.6, not incidental notes.
 - [`?extract_Sigma`](../reference/extract_Sigma.html) — the unified covariance
   extractor.
 - [`?extract_cross_correlations`](../reference/extract_cross_correlations.html) —
-  the reference-invariant nominal summary (decision 2C).
+  the reference-invariant nominal summary.
 - **McFadden (1974)** Conditional logit analysis of qualitative choice behavior.
   In *Frontiers in Econometrics*, ed. P. Zarembka, pp. 105–142. Academic Press.
 - **Nakagawa & Schielzeth (2010)** Repeatability for Gaussian and non-Gaussian

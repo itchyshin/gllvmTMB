@@ -5,10 +5,10 @@
 #' these helpers draw a circle whose radius is the fitted practical range,
 #' `sqrt(8) / kappa`. Equal axes describe the model assumption (`H = I`); they
 #' are not evidence that anisotropy was estimated.
-#' Scope: the fitted isotropic-range display is IN under validation row SPA-01;
-#' the broader spatial-family evidence remains PARTIAL under FG-13; directional
-#' anisotropy, delta/spatiotemporal fields, and new likelihoods are REJECTED
-#' from this plotting contract.
+#' Scope: the fitted isotropic-range display is covered by focused tests; the
+#' broader spatial-family evidence remains partial; directional anisotropy,
+#' delta/spatiotemporal fields, and new likelihoods are rejected from this
+#' plotting contract.
 #'
 #' @param object A fitted `gllvmTMB_multi` model containing an intercept-only or
 #'   random-slope spatial field.
@@ -24,7 +24,7 @@
 #' @section Scope:
 #' These functions do not estimate or diagnose directional anisotropy. Delta
 #' and spatiotemporal spatial models are not supported by this plotting
-#' contract and fail explicitly (SPA-01; FG-13).
+#' contract and fail explicitly.
 #'
 #' @export
 plot_anisotropy <- function(object, return_data = FALSE) {

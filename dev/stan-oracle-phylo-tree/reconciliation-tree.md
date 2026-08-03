@@ -258,6 +258,18 @@ merely its dimension:
 A model that never receives the matrix reproduces its **38 nonzeros out of 196 in the right
 places**. That is the claim this arc should be cited for.
 
+The reviewer sampled six pairs. `verify-sparsity-pattern.R` — written afterwards to make this
+test a permanent artifact rather than a line in a review transcript — sweeps **all 91 pairs**:
+
+```
+adjacent pairs disagreeing with -P_uv (tol 1e-8): 0   max err:  3.73e-14
+non-adjacent pairs with nonzero mixed derivative : 0   max |val|: 4.26e-14
+```
+
+So the correspondence is not a sample; it is **exhaustive over the whole matrix**. The Stan
+side reconstructs the engine's precision structure — every nonzero in place, exact zeros
+everywhere else — from a parent map and branch lengths alone.
+
 ### C4 is arithmetically tautological — corrected
 
 An earlier revision claimed C4 "quantifies the documentation error of §7". **It does not.** The

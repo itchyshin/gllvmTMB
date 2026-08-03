@@ -54,10 +54,10 @@ observation-to-mesh projection matrix \code{A_st}.
 Construct a triangular mesh and the finite-element quantities used by the
 \verb{spatial_*()} keywords. The helper uses the public \pkg{fmesher} API; the
 SPDE/GMRF construction follows Lindgren, Rue, and Lindstrom (2011).
-Scope: mesh/FEM construction and fit ingestion are IN under validation row
-SPA-01; the broader spatial-family evidence remains PARTIAL under FG-13;
-directional anisotropy, spatiotemporal fields, barriers, and likelihood
-changes are REJECTED from this helper contract.
+Scope: mesh/FEM construction and fit ingestion are covered by focused
+tests; evidence across the broader spatial-family surface remains
+partial; directional anisotropy, spatiotemporal fields, barriers, and
+likelihood changes are rejected from this helper contract.
 }
 \examples{
 set.seed(1)

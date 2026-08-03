@@ -263,13 +263,12 @@ new stacked-trait analysis.
 ## Scope and next pages
 
 **In:** the article's ordinary long/wide formula route and Gaussian teaching
-fit are covered by FG-01–FG-04 and FAM-01; `extract_Sigma()` and the ordinary
-interpretation route are covered by EXT-01 and EXT-05. **Partial:** response
+fit are covered by focused tests; `extract_Sigma()` and the ordinary
+interpretation route are covered by focused tests. **Partial:** response
 families, relationship sources, and interval targets have narrower evidence;
 the linked articles state their boundaries. **Not advertised here:** unsupported
 family constructors, experimental Julia-engine parity, causal kernel claims,
-or universal interval calibration. These identifiers are traceability links to
-the package's validation register, not prerequisites for using the guide.
+or universal interval calibration.
 
 | If your next question is... | Go here next |
 |---|---|

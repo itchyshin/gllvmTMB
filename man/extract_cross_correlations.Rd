@@ -79,8 +79,7 @@ route (recovery evidence for this route is not yet complete).
 For a fit where a \code{multinomial()} trait shares a latent factor with
 other-family traits, report the association between the nominal trait and each
 partner trait. A nominal trait spans K-1 baseline-category contrasts, so its
-association with a single-scale partner is a \emph{vector}, summarized two ways
-(reporting decision 2C):
+association with a single-scale partner is a \emph{vector}, summarized two ways:
 \itemize{
 \item \code{multiple_r}: the reference-invariant multiple correlation
 \eqn{R = \sqrt{\Sigma_{pc}\,\Sigma_{cc}^{-1}\,\Sigma_{cp}/\sigma_{pp}}}

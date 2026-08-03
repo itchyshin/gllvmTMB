@@ -1358,7 +1358,7 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #'   `fit$aghq$ridge_auto`. Evidence supports failure/runaway avoidance in this
 #'   scope, not a broad loading-accuracy improvement. The measured grid used a
 #'   logit link with `p = 6`, `q = 2`, and `n = 100`, `400`, or `1600`; other
-#'   links and dimensions are extrapolations (validation row MIS-36). The
+#'   links and dimensions are extrapolations. The
 #'   `"auto"` route always uses 9-node multi-start AGHQ for both pilot and final
 #'   fits; a conflicting node/start control is replaced with a warning, while an
 #'   explicit `aghq = FALSE` is incompatible.

@@ -169,7 +169,7 @@ back to the shipped \code{tau = 2} route; inspect
 \code{fit$aghq$ridge_auto}. Evidence supports failure/runaway avoidance in this
 scope, not a broad loading-accuracy improvement. The measured grid used a
 logit link with \code{p = 6}, \code{q = 2}, and \code{n = 100}, \code{400}, or \code{1600}; other
-links and dimensions are extrapolations (validation row MIS-36). The
+links and dimensions are extrapolations. The
 \code{"auto"} route always uses 9-node multi-start AGHQ for both pilot and final
 fits; a conflicting node/start control is replaced with a warning, while an
 explicit \code{aghq = FALSE} is incompatible.}

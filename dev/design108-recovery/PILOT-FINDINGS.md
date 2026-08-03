@@ -767,3 +767,46 @@ twice**. Do Item 1 first; Stage 5 then becomes substantially cheaper than 7 days
 
 **Revisit after the mature-VA arc lands**, with this exact grid re-run at larger N to settle the
 tier-2 question the present size cannot.
+
+---
+
+## ✅ THE CORRECTED RE-RUN LANDED (2026-08-03, reported by Shinichi)
+
+The review above recommended a corrected re-run of roughly one day — same model on both
+arms, per-worker DLL seeding, failure reasons logged, and a larger `T`. It was run. **Recorded
+here as reported by the maintainer, not as something this document measured.**
+
+| item | outcome |
+|---|---|
+| **Completion** | **20/20 on BOTH arms.** The 34% was **entirely** the missing DLL seed. The completion headline is **retracted for good** — it was never an estimator property. |
+| **Tier 1** | **Laplace better at both `q`**, 2·MCSE bands excluding zero. The *direction* of the original claim is **vindicated**; the **8× magnitude was a scoring artefact**. |
+| **Tier 2** | **Uninformative at N=500** — best medians **0.782 / 0.692** against the 0.5 threshold. **Neither engine recovers the phylo tier**, so the `q=2` gap is two failures being compared, not a winner and a loser. |
+| **VA degeneracy** | **`q`-dependent: 2/10 at `q=1`, 8/10 at `q=2`.** Not a single rate — it scales with latent dimension. |
+
+**Net effect on this document.** The retraction stands and is now confirmed from the other
+side: the completion claim is dead on its own terms, the tier-1 direction survives while its
+magnitude does not, and tier 2 remains uninterpretable — which is what §6/A4 argued, for the
+reason A4 gave (the cell, not the engines). §A4's specific recommendation — *raise `T`* — is
+the live lever: tier 2 needs **N well above 500** to become interpretable at all.
+
+**Still open, for anyone returning to the campaign.** The corrected grid script is ready to
+re-run at larger `N`: `~/gllvm_work/grid_fixed.R` on Totoro.
+
+### The three method rules this cost, in the maintainer's words
+
+Worth more than any number above, and they generalise past this repo:
+
+1. **Never inline a fit.** Use `.d108_fit_va()` / `.d108_fit_laplace()`. Inlining is what made
+   the arms incommensurable.
+2. **Changing one arm's family silently changes the estimand.** The gaussian choice had a sound
+   stated reason and still invalidated the comparison, because the other arm stayed on probit.
+3. **Never conclude a capability is absent from ONE failed call.** Three false alarms in a day
+   (`H=11`, `n_starts=2`, `Ntrials=6`) were all invalid arguments surfacing as apparent defects.
+
+### Consequence for Stages 3/5 — DECIDED
+
+**NO, not now — a sequencing call, not a kill.** The decisive reason is one this review did not
+have: **Stage 5 *is* ordinal-probit, and Albert–Chib Theorem 3 gives ordinal-probit a closed
+form.** Building Stage 5 on Gauss–Hermite means **building it twice**. Item 1 first makes
+Stage 5 far cheaper than the "~7 days" figure — which A5 had separately shown was inflated
+3–5× against its own design doc.

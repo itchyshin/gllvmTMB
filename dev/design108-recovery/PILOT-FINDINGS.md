@@ -583,3 +583,77 @@ does it invalidate the contrast, or only limit it?
 
 **Gaussian**, not Ayumi's probit (probit adds a measured 8.8x GH penalty). **T=10**, not 20-30.
 **N <= 1000**, not 5397. Whatever the verdict, it is a verdict about *this* regime.
+
+---
+
+# ⛔ RETRACTION — the campaign verdict DOES NOT HOLD (adversarial review, 2026-08-03)
+
+Full review: `dev/design108-recovery/ADVERSARIAL-REVIEW.md`. **Everything above claiming a
+VA-vs-Laplace comparison is RETRACTED.** The measurement was invalid.
+
+## The error: the two arms fitted DIFFERENT MODELS
+
+The DGP is **binomial-probit** (`dgp.R:167`). The Laplace arm fitted that correctly —
+`binomial(link="probit")` on raw `y` (`harness.R:404`), achievable floor **0**. But the campaign
+script **inlined** the VA arm as `family="gaussian_anchor", link="identity"` on
+`scale(sim$data$y)` (`/tmp/totoro_grid.R:15,19-23`), **bypassing the harness's own
+`.d108_fit_va()`**, which correctly uses `binomial_probit` on raw `y` (`harness.R:302-303`).
+
+A gaussian-identity fit on standardised counts targets `D Sigma D` with per-trait attenuation
+`k_t` in **[0.37, 0.77]** — a **2.08x spread**, so not a correctable scalar.
+
+**Measured VA oracle floor (tier 2): 0.709 / 0.772 / 0.717 / 0.782**, against Laplace's
+*observed* 0.561-0.764. **In 3 of 4 cells a PERFECT VA loses anyway.** The test could not
+return "VA wins".
+
+**Tier 1 REVERSES.** VA's excess-over-floor is 0.034-0.096 against Laplace's 0.101-0.186 —
+**smaller in all four cells**. So "Laplace better on tier 1 by 8x" is an artefact of the
+scoring, not a result.
+
+**How it happened, recorded because the lesson is the point:** the gaussian choice was made
+deliberately, to isolate the structured-tier question from probit's GH cost. That reasoning was
+sound. What was NOT checked is that changing the VA arm's family while leaving the Laplace arm
+on probit makes the two arms incommensurable. It is the same apples-to-oranges failure this
+file records catching in the Bernoulli-Psi case — committed by the same author, later the same
+day, in the opposite direction.
+
+## The 34% completion rate is a HARNESS property, NOT a VA property
+
+The grid ran `mclapply(mc.cores = 40L)` calling `.va_r3_fit()` directly, **never invoking the
+DLL-seeding protocol the harness documents as required for every worker**
+(`harness.R:103-110`, `.d108_build_va_r3_dll_stash` / `.d108_seed_va_r3_dll`). Laplace used the
+already-loaded main DLL — hence 80/80.
+
+Reproduced: N=500 q=1 seeds 2, 3, 4 are **NA in the campaign CSV but all complete
+single-threaded** (va_t2 = 1.000, 9.193, 16.535), and seed 1 reproduces the campaign value
+exactly, confirming a faithful replica. Failures are **seed-random** and the completion rate is
+**flat in size** (0.375 at N=500 vs 0.300 at N=1000, Fisher **p=0.637**; q **p=1.0**) — which
+rules out OOM/time and fits a startup race. *The mechanism is inferred; the reproduction is not.*
+
+## Attacks that FAILED — recorded so the review is not read as one-sided
+
+- **Selection bias: absent.** Wilcoxon **p=0.863** on Laplace performance, survived vs failed cells.
+- **Median/sign test STRENGTHENS the measured direction** — 26/27, **p=4.17e-07**.
+- **`n_starts=1` is NOT the culprit.** `n_starts=4` reproduces the same numbers at 4x the cost,
+  with the health gate rejecting the fits even at four starts.
+- **PR #919 raises no objection.** It corrects a claim about `Lambda`'s diagonal; `Lambda Lambda'`
+  is sign/rotation-invariant, so the Frobenius comparison is sound.
+
+## What CAN be said — the narrowed claim, publishable as written
+
+> In a mixed-family pilot (N <= 1000, T = 10, q in {1,2}, 20 seeds) the VA prototype produced
+> degenerate estimates of the structured phylogenetic tier in every fit that returned — nine of
+> 27 collapsed to zero and the remaining 18 exceeded the error of estimating nothing, a pattern
+> that multi-start does not repair and that the engine's own health gate rejects — so the
+> prototype does not currently recover a structured phylo tier. The pilot does **not**, however,
+> support a comparison against the Laplace engine: the two arms were fitted under different
+> response models with different achievable error floors (so a perfect VA would have "lost" in
+> three of four cells), and the VA arm's non-completions trace to an unseeded TMB DLL under a
+> 40-way fork rather than to the estimator.
+
+## Consequence for Stages 3/5
+
+**The ~7 days CANNOT be retired on this evidence** — that would be retiring an arc on a
+confound. Nor does the evidence clear VA. **The corrected re-run is ~1 day, not 7:** use
+`.d108_fit_va()` so both arms fit the same model, seed the DLL per worker, and log failure
+REASONS rather than `NA`.

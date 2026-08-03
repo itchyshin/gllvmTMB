@@ -868,3 +868,63 @@ stipulated and named as a stipulation, exactly as for the precision-control crit
 working?"*; the informativeness precondition asks *"does this cell contain a signal?"* Both
 must hold before a cell's contrast is interpretable. They are not substitutes: a working
 instrument pointed at an empty cell still returns a confident zero.
+
+---
+
+## DECISIONS TAKEN BY THE ORCHESTRATOR (2026-08-02) — stated so they can be overruled
+
+The maintainer said "finish these" without settling three open items. Rather than block, each is
+decided below with its reasoning. **Each is a judgement, not a measurement**, and any of them can
+be reversed without redoing work already done.
+
+### 1. `delta` is now a PROPORTIONAL improvement, not an absolute difference
+
+**Decision.** The effect size worth detecting is **a >= 10% RELATIVE reduction in `rel_frob`
+against the Laplace arm**, i.e. `d_prop = (rf_laplace - rf_va) / rf_laplace >= 0.10`, replacing the
+original absolute `delta = 0.1`.
+
+**Why.** The original `delta` was denominated in a metric whose scale then changed underneath it.
+Measured at N=80/T=5: tier-1 loadings truth has diag mean **0.225** against a total of **0.860**,
+and `rel_frob` normalises by `||Sigma_true||`, so the same absolute error is roughly **2x larger**
+on the loadings scale than on the totals scale (control tier-1: 0.602 loadings vs 0.333 total). An
+absolute `delta` therefore means something different depending on which estimand is the headline —
+which is precisely the class of defect that cost this campaign a day. A proportional target is
+**scale-free**: it survives an estimand change, a metric change, and a change of tier.
+
+**Consequence for sizing.** The pilot must report `SD(d_prop)`, not `SD(d)` in raw `rel_frob`
+units. The MCSE formula is unchanged in form; only the quantity differs.
+
+### 2. The tree is SPANNED by seeds, not blocked within a cell
+
+**Decision.** Each seed draws a **new tree**. The tree is not held fixed within a cell.
+
+**Why.** The instinct to block is to reduce variance, but **the design is PAIRED** — the same
+simulated data, on the same tree, goes to every arm. So tree-driven variation **cancels in the
+contrast** and only inflates the *absolute* recovery numbers. Blocking would buy precision on a
+quantity we are not making the headline claim about, while making the claim conditional on one
+topology. Spanning makes tree variability part of the reported uncertainty, which is the honest
+representation of "does VA beat Laplace on a phylogeny", as opposed to "on THIS phylogeny".
+
+**Consequence.** Absolute per-arm `rel_frob` will show wide within-N spread (already observed:
+tier-2 spread far exceeds tier-1's, with mean off-diagonal correlation ranging 0.26-0.63 across
+draws). That spread is **expected and must not be reported as instability**. The paired contrast is
+where the signal lives.
+
+**Residual risk, stated:** if the VA-vs-Laplace difference itself DEPENDS on tree shape — i.e. an
+interaction rather than a main effect — pairing does not cancel it, and spanning would average over
+a real effect. Watch for it: if `d_prop` shows within-N spread comparable to its mean, tree shape
+is an effect modifier and must become an explicit axis. This is a **falsifiable prediction of the
+choice**, and it is checkable from the pilot.
+
+### 3. The two placeholder DGP parameters STAY, labelled as stipulations
+
+**Decision.** Trait-intercept SD **0.3** and the current Psi magnitude are kept, and every report
+naming them must call them **stipulated, not derived**.
+
+**Why.** They define the regime the campaign measures IN; they are not estimated and no conclusion
+turns on their exact value. Blocking on them would stall a campaign for a number that a sensitivity
+check can settle later at a fraction of the cost.
+
+**Consequence.** Any claim of the form "VA recovers better" is conditional on this regime, and must
+say so. A one-cell sensitivity check at a different Psi magnitude belongs in the closeout, not the
+critical path.

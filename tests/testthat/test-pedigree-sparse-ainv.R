@@ -10,7 +10,6 @@
 ## test pins the mathematical correctness of the helper itself.
 
 test_that("pedigree_to_Ainv_sparse returns sparse dgCMatrix", {
-  skip_if_not_installed("MCMCglmm")
   ped <- data.frame(
     id   = paste0("i", 1:6),
     sire = c(NA, NA, "i1", "i1", "i3", "i3"),
@@ -27,7 +26,6 @@ test_that("pedigree_to_Ainv_sparse returns sparse dgCMatrix", {
 })
 
 test_that("pedigree_to_Ainv_sparse matches solve(pedigree_to_A)", {
-  skip_if_not_installed("MCMCglmm")
   ## Standard half-sib pedigree fixture (matches the M2.8 animal-keyword
   ## test setup: 4 founders + 16 offspring).
   set.seed(42L)
@@ -59,7 +57,6 @@ test_that("pedigree_to_Ainv_sparse matches solve(pedigree_to_A)", {
 })
 
 test_that("pedigree_to_Ainv_sparse errors on bad input", {
-  skip_if_not_installed("MCMCglmm")
   ## Not a data frame
   expect_error(pedigree_to_Ainv_sparse(matrix(0, 3, 3)),
                "data frame")
@@ -69,7 +66,6 @@ test_that("pedigree_to_Ainv_sparse errors on bad input", {
 })
 
 test_that("pedigree_to_Ainv_sparse accepts MCMCglmm-style synonym columns", {
-  skip_if_not_installed("MCMCglmm")
   ped_synonyms <- data.frame(
     animal = c("a", "b", "c", "d"),
     father = c(NA, NA, "a", "a"),

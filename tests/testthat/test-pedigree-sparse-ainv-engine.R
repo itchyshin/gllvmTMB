@@ -79,7 +79,6 @@ make_sparse_ainv_extra_node_fixture <- function(n_ind = 22L, n_traits = 2L,
 
 test_that("animal_*(pedigree = ped) stores a SPARSE phylo_vcv on the fit (proves sparse engine path is hit)", {
   skip_on_cran()
-  skip_if_not_installed("MCMCglmm")
   fx <- make_sparse_ainv_fixture()
   fit_scalar <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
     value ~ 0 + trait + animal_scalar(species, pedigree = fx$ped),
@@ -110,7 +109,6 @@ test_that("animal_*(A = dense) still stores a DENSE phylo_vcv (preserves legacy 
 
 test_that("animal_scalar(Ainv = sparse_Ainv) matches animal_scalar(A = dense_A) byte-for-byte", {
   skip_on_cran()
-  skip_if_not_installed("MCMCglmm")
   fx <- make_sparse_ainv_fixture()
   Ainv_sparse <- gllvmTMB::pedigree_to_Ainv_sparse(fx$ped)
   fit_sparse <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
@@ -129,7 +127,6 @@ test_that("animal_scalar(Ainv = sparse_Ainv) matches animal_scalar(A = dense_A) 
 
 test_that("animal_unique(Ainv = sparse_Ainv) matches animal_unique(A = dense_A) byte-for-byte", {
   skip_on_cran()
-  skip_if_not_installed("MCMCglmm")
   fx <- make_sparse_ainv_fixture()
   Ainv_sparse <- gllvmTMB::pedigree_to_Ainv_sparse(fx$ped)
   fit_sparse <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
@@ -148,7 +145,6 @@ test_that("animal_unique(Ainv = sparse_Ainv) matches animal_unique(A = dense_A) 
 
 test_that("animal_unique(Ainv = sparse_Ainv) keeps unphenotyped pedigree nodes as augmented precision rows", {
   skip_on_cran()
-  skip_if_not_installed("MCMCglmm")
   fx <- make_sparse_ainv_extra_node_fixture()
   Ainv_sparse <- gllvmTMB::pedigree_to_Ainv_sparse(fx$ped)
   fit_sparse <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
@@ -179,7 +175,6 @@ test_that("animal_unique(Ainv = sparse_Ainv) keeps unphenotyped pedigree nodes a
 
 test_that("sparse Ainv without rownames matching species levels errors with a clear message", {
   skip_on_cran()
-  skip_if_not_installed("MCMCglmm")
   fx <- make_sparse_ainv_fixture()
   Ainv_sparse <- gllvmTMB::pedigree_to_Ainv_sparse(fx$ped)
   ## Strip rownames to simulate user error

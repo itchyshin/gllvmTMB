@@ -38,7 +38,6 @@
 
 skip_unless_phylo_deps <- function() {
   testthat::skip_if_not_installed("ape")
-  testthat::skip_if_not_installed("MCMCglmm")
 }
 
 # ---- Fixtures --------------------------------------------------------------

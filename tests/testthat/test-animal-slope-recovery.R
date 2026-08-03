@@ -137,8 +137,9 @@ test_that("animal_slope(x | id, pedigree = ped) recovers sigma_slope via sparse 
   skip_if_not_heavy()
   skip_on_cran()
   ## animal_slope(pedigree=) auto-routes through pedigree_to_Ainv_sparse(),
-  ## which wraps MCMCglmm::inverseA() (Design 47 §10).
-  skip_if_not_installed("MCMCglmm")
+  ## a native ape + Matrix builder (Design 47 §10). It does NOT wrap
+  ## MCMCglmm::inverseA() -- see test-pedigree-precision.R:87, which
+  ## asserts it "works without MCMCglmm".
   fx <- make_animal_slope_fixture()
   fit <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
     value ~ 0 + trait + animal_slope(x | species, pedigree = fx$ped),

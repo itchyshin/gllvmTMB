@@ -66,7 +66,6 @@
 skip_if_not_slope_ordinal_deps <- function() {
   testthat::skip_on_cran()
   testthat::skip_if_not_installed("ape")
-  testthat::skip_if_not_installed("MCMCglmm")
   testthat::skip_if_not_installed("TMB")
 }
 

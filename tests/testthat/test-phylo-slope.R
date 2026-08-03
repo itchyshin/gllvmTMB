@@ -11,7 +11,6 @@ skip_if_not_ape <- function() {
   ## tests exercise the full code path.
   testthat::skip_on_cran()
   testthat::skip_if_not_installed("ape")
-  testthat::skip_if_not_installed("MCMCglmm")
 }
 
 test_that("phylo_slope: sigma_slope and per-species slopes are recovered", {

@@ -224,18 +224,21 @@ fitted — with an *iid* prior standing in for the phylogeny.
 >    a *strictly lower bound* on the GH objective — a different objective, which
 >    inherits none of GH's accuracy evidence. Stage 8's recovery study is
 >    therefore owed for the AC tier separately, not merely for probit.
-> 2. **Stage 5 as specced may be negative work — MAINTAINER DECISION, not taken
->    here.** Row 5 above specifies ordinal via `logspace_sub` of two `log Φ`s
->    under the shared 1-D GH rule. Albert–Chib extends to cumulative-probit
->    ordinal by the same construction, giving a closed form there too. Whether
->    Stage 5 should be built as written, built on the AC route, or dropped is
->    Shinichi's call. Note that ordinal is **not** a branch in the `fam == 4`
->    block under either route: the VA template has no ordinal family at all
->    (codes are validated to `0..4`), so it is a new family code either way.
->    Note also that the AC ordinal term *does* form a difference of two nearly
->    equal CDFs, which §6.3 flags and which the binary tier avoids entirely by
->    the `log Φ(−η)` symmetry — so the numerical work Row 5 anticipates does not
->    disappear on the AC route.
+> 2. **Stage 5 — DECIDED by the maintainer, 2026-08-03: build Item 1 first, then
+>    Stage 5 on the Albert–Chib route.** Row 5 above specifies ordinal via
+>    `logspace_sub` of two `log Φ`s under the shared 1-D GH rule. Albert–Chib
+>    Theorem 3 gives cumulative-probit ordinal a closed form, so **building
+>    Stage 5 on Gauss–Hermite means building it twice**. The call is explicitly
+>    a *sequencing* decision, not a kill: Item 1 first makes Stage 5 far cheaper
+>    than the 1–2 d Row 5 quotes (and far cheaper than the "~7 days" figure that
+>    was in any case inflated 3–5× — see (3) and the campaign retraction).
+>    Two things Row 5's estimate must still absorb under the AC route: ordinal is
+>    **not** a branch in the `fam == 4` block — the VA template has no ordinal
+>    family at all (codes validated `0..4`), so it is a new family code either
+>    way — and the AC ordinal term *does* form a difference of two nearly equal
+>    CDFs, which §6.3 flags and which the binary tier avoids entirely via the
+>    `log Φ(−η)` symmetry. The numerical work Row 5 anticipates does not
+>    disappear on the AC route; only the duplicated GH implementation does.
 > 3. **The cost model in Rows 4–5 is optimistic about what removing quadrature
 >    buys.** GH is ~75% of single-tier fit time, so eliminating it caps the gain
 >    at ~4× by Amdahl — not the ~65× gap to the reference. The derivation locates

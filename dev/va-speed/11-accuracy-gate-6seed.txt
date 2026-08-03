@@ -1,0 +1,25 @@
+=== 1. THE GATE (MATURE-VA Item 1: AC rel_frob <= 0.298) ===
+  AC median = 0.2259  ->  PASS
+  AC per-seed: 0.1052, 0.1847, 0.2104, 0.2413, 0.2660, 0.4044
+  AC cells above 0.298: 1 of 6
+
+=== 2. AC vs gllvm -- IMPLEMENTATION AGREEMENT ===
+  max relative difference 1.061e-04 over 6 seeds
+  paired sign test, AC vs gllvm: AC better in 3/6, exact p = 1.000
+
+=== 3. AC vs OUR GH tier -- the edge we were told to protect ===
+  medians: GH 0.1974   AC 0.2259   (lower is better)
+  AC better in 2 of 6 seeds
+  exact paired sign test: p = 0.6875  -> NO significant difference either way at n=6
+  per-seed (AC - GH): +0.1106, -0.2511, +0.0733, +0.1326, +0.0208, -0.1258
+  median difference +0.0470
+
+=== 4. DEGENERACY (the defect that invalidated the last campaign) ===
+  gh     collapses(|rf-1|<1e-6): 0   runaways(rf>10): 0   max 0.4615
+  ac     collapses(|rf-1|<1e-6): 0   runaways(rf>10): 0   max 0.4044
+  gllvm  collapses(|rf-1|<1e-6): 0   runaways(rf>10): 0   max 0.4044
+
+=== 5. VARIABILITY ===
+  gh     sd 0.1316   range [0.1308, 0.4615]
+  ac     sd 0.0997   range [0.1052, 0.4044]
+  gllvm  sd 0.0997   range [0.1052, 0.4044]

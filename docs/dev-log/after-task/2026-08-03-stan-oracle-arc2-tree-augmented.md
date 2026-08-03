@@ -133,7 +133,7 @@ combinations at three θ points, finding exactly one match at all three.
 
 **Found — documentation vs implementation:**
 
-1. **The augmented node count is wrong in five places.** `n_aug = n_tip + Nnode − 1` = the
+1. **The augmented node count is wrong in six statements across four files.** `n_aug = n_tip + Nnode − 1` = the
    number of **edges** in the tree. `2·n_tips − 1` (`src/gllvmTMB.cpp:1168`,
    `docs/design/69:193`) is wrong for every tree; `2·n_tips − 2` is right only for a fully
    bifurcating tree. A **polytomous tree fits successfully** with `n_aug_phy = 5` where the

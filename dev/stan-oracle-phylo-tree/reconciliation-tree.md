@@ -51,7 +51,7 @@ instrument than Arc 1, where both sides consumed the same matrix.
 Two findings sit outside the density comparison, both in the **implemented-vs-documented**
 model:
 
-1. **The augmented node count is misdocumented in five places**, and the error is exactly one
+1. **The augmented node count is misdocumented in six statements across four files**, and the error is exactly one
    `−½log(2π)` per latent axis. §7.
 2. **`src/gllvmTMB.cpp:380` still credits `MCMCglmm::inverseA(tree)`**, which the native builder
    replaced. §8.
@@ -318,7 +318,7 @@ content — agreement on a degenerate topology — stands.
 
 ---
 
-## 7. Finding 1 — the augmented node count is misdocumented, in five places
+## 7. Finding 1 — the augmented node count is misdocumented, in six statements across four files
 
 The engine computes `n_aug = n_tip + Nnode − 1` (`R/phylo-tree-precision.R:203-207`), the root
 excluded. Equivalently, and more naturally: **`n_aug` is the number of EDGES in the tree** —
@@ -435,11 +435,27 @@ transport — node ordering, the tip map, the log-determinant sign, the rescalin
 `transport-tree.md`.
 
 Arc 1 §11.3 criticised that arc for *claiming* an a-priori derivation the timestamps did not
-support. This arc's answer is structural rather than rhetorical: the model, the transport and
-the driver are committed in `cd0c58cf` with **no result of the comparison in existence at that
-commit**, and the fence was enforced by *what the author was allowed to open*, not by
-self-restraint. The tips-first/internal-first mismatch (rule 9) is independent evidence that
-the fence held.
+support. This arc's answer to **the chronology** is structural rather than rhetorical: the
+model, the transport and the driver are committed in `cd0c58cf` with **no result of the
+comparison in existence at that commit**, and that is checkable by anyone (below).
+
+**The fence's enforcement mechanism is a separate question, and it is NOT verifiable from the
+artifacts.** An earlier revision of this section claimed the fence "was enforced by what the
+author was allowed to open, not by self-restraint". That is stronger than anything here
+supports, and — caught by the second adversarial lens — it **contradicted this document's own
+corrected §5**, which says the opposite about the same rule. Nothing shows the author was
+*technically prevented* from opening `src/`. The strongest honest claim is that **a fresh agent
+context was given a brief that withheld those files and never had them in context to begin
+with**, which is different from, and does not require, ruling out self-restraint. Rule 9 is
+weak-to-moderate corroboration at best (§5).
+
+**A gap in the fence declaration, and it was not previously acknowledged.**
+`stan-side-tree.md` §4 lists in detail what was not opened under `dev/stan-oracle-phylo/`,
+`dev/stan-oracle/`, `src/`, and the TMB-building R files. It says nothing about **this arc's own
+concurrent TMB-side output** — `tmb-fixture-tree.json/.rds`, `tmb-side-tree.R/.md` — which a
+parallel agent was writing into the *same directory*. The mtimes are suggestive
+(`gllvm_phylo_tree.stan` last modified 10:26:08; the fixture appears at 10:27) but suggestive is
+not proof. The vector is unaddressed; naming it is better than leaving it implicit.
 
 **The pre-registration claim is checkable, and was checked.** Anyone can run:
 
@@ -450,7 +466,7 @@ git log --format="%h %s" --follow -- dev/stan-oracle-phylo-tree/gauss-reconcile-
 ```
 
 The headline value appears **nowhere** in `cd0c58cf` and first exists at `58d98450`. A naive
-grep for `log_prob(fit0` does hit the pre-registration commit five times — those are the
+grep for `log_prob(fit0` does hit the pre-registration driver four times — those are the
 driver's *call sites*, not its output, and the distinction is the point: the code that would
 produce the number was fixed before the number existed.
 
@@ -537,3 +553,48 @@ review did, because the corrections are more informative than the original claim
 The reviewer also noted that `reconciliation-tree.md` changed three times during the review
 (10:35 → 10:42 → 10:47). That is a real process defect: an artifact under adversarial review
 should be frozen. Recorded rather than excused.
+
+### 13.1 Provenance of the numbers in §13 — and where the standard is not yet met
+
+A **second** adversarial lens (scope and chronology) reviewed the same arc and made a fair
+consistency objection. This document twice fixed a "quoted number with no reproduction path"
+by shipping a script — `marginal-tree-vs-vcv.R` for §9, `verify-sparsity-pattern.R` for the
+sparsity result. **Two claims in §13 have not been held to that standard**, and are labelled
+accordingly:
+
+| claim | status |
+|---|---|
+| the sparsity pattern, second differences, cross-partials | **reproducible** — `verify-sparsity-pattern.R`, extended to an exhaustive 91-pair sweep |
+| the §9 marginal figures | **reproducible** — `marginal-tree-vs-vcv.R`, reproduces byte-for-byte |
+| C1's linear/quadratic decomposition, C4's variance-4 probe, the dimension-free tree control | **reproducible in principle**, derived from committed artifacts; not scripted |
+| **"a third implementation… agreement to exactly 0"** | **REVIEWER-REPORTED, NOT INDEPENDENTLY REPRODUCED HERE.** No committed script backs it. |
+| **"32 combinations… exactly 1 of 32 matches at all three points"** | **REVIEWER-REPORTED, NOT INDEPENDENTLY REPRODUCED HERE.** No committed script backs it. |
+
+Both are cited above as if established. They are **corroborating testimony from a fresh context,
+not artifacts of this repository**, and a reader should weight them accordingly. The honest
+position is that the arc's own reproducible evidence — seven points across two trees, the
+exhaustive sparsity sweep, the controls, and the pure-R third implementation in
+`verify-algebra.R` — does not depend on either.
+
+### 13.2 What the second lens verified independently
+
+Its chronology and scope verdicts were both **QUALIFIED**, with the §11 fence overclaim (now
+corrected) as the substantive finding. It also confirmed, by its own execution rather than by
+reading this document:
+
+- **Re-ran both committed drivers** and got output **byte-identical** to the committed
+  `gauss-reconcile-tree.log`, and reproduced all of dataset B's points and controls.
+- `model-spec-phylo.md` §8.5 is **byte-identical** between `dbd0b2d5` and HEAD, so the spec was
+  not written to fit the implementation.
+- The pre-registration chronology, to second resolution: `gllvm_phylo_tree.stan` last modified
+  10:26:08; `cd0c58cf` committed 10:31:41; the compiled Stan `.rds` first written 10:32:27 —
+  **46 seconds after** the commit, so no `log_prob` could have run before pre-registration.
+- Reproduced the **entire node-count table** (`rcoal(8)`/`rcoal(25)`/star/polytomy → 14/48/7/5)
+  and confirmed all seven cited line locations verbatim.
+- Fitted the polytomy through the **public API** itself and got `n_aug_phy == 5`.
+- Scope: only one file outside `dev/` changed (the required after-task report);
+  `docs/design/35-validation-debt-register.md` untouched; no coverage or calibration language.
+
+It also observed that the branch was **not frozen during its review either** — five further
+commits landed while it worked. The freeze defect recurred after being written up, which is
+worse than the original lapse.

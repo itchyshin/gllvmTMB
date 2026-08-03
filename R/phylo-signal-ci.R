@@ -396,7 +396,7 @@
 #' @param trait_idx Integer vector of 1-based trait indices, or `NULL`
 #'   (default) for all traits.
 #' @param level Confidence level. Default 0.95.
-#' @param nsim Integer; number of bootstrap replicates. Default 200.
+#' @param nsim Integer; number of bootstrap replicates. Default 999.
 #' @param seed Optional RNG seed for reproducibility.
 #'
 #' @return A data frame with columns `trait`, `H2`, `lower`, `upper`,
@@ -408,7 +408,7 @@
   fit,
   trait_idx = NULL,
   level = 0.95,
-  nsim = 200L,
+  nsim = 999L,
   seed = NULL
 ) {
   .phylo_signal_check_has_phy(fit)

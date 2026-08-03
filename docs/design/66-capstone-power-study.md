@@ -57,14 +57,29 @@ is retired under D-50 and remains only in Git history.
 
 ## 0. Why this doc exists (and what it is not)
 
-The capstone is the **final validation milestone** before CRAN + paper:
-the large, pre-registered power/accuracy/coverage study that converts the
-package's per-capability recovery tests into one defensible, paper-ready
-evidence surface. Issue #349 is currently a one-line stub. This doc
-turns that stub into an ADEMP pre-specification (Morris, White & Crowther
-2019) so the headline claims are falsifiable, the grid is sized by Monte
-Carlo arithmetic rather than convenience, and the compute budget is
-costed before any cluster time is spent.
+The capstone is the **paper's evidence chapter**: the large, pre-registered
+power/accuracy/coverage study that converts the package's per-capability
+recovery tests into one defensible, paper-ready evidence surface. CRAN
+submission is not planned -- the maintainer ruled it out 2026-08-02 -- so the
+capstone answers to the paper alone, not to a release gate. Issue #349 is
+currently a one-line stub. This doc turns that stub into an ADEMP
+pre-specification (Morris, White & Crowther 2019) so the headline claims are
+falsifiable, the grid is sized by Monte Carlo arithmetic rather than
+convenience, and the compute budget is costed before any cluster time is
+spent.
+
+**Why the reframing is not cosmetic.** A release gate is adequate once it
+clears a pass/fail bar: the cheapest grid that resolves the binary wins, and
+a cell that fails is a blocker to eliminate. An evidence chapter is held to a
+different standard -- a defensible characterisation: the power curve, the
+regimes where calibration degrades, and an honest statement of what was not
+checked. Under that standard, claim H3 (section 2; already specified as "the
+curve, not a single pass/fail") rises in priority relative to H1's binary
+coverage gate, and a cell that fails becomes a finding worth reporting rather
+than only a blocker worth eliminating. This reframing is dated 2026-08-02
+(audit `docs/dev-log/audits/2026-08-02-design66-staleness-audit.md`, finding
+S-3) and should be read alongside section 10, which restates what "DONE"
+means under it.
 
 This is a **refinement of #349, not a parallel artefact.** The M3 grid
 (Design 42) already validates *coverage* for a `family x d` slice at the
@@ -98,7 +113,7 @@ by #346 / CI-08 / CI-10).
 | **A**ims | Falsifiable claims (section 2) about coverage, bias, and power across the capability matrix. |
 | **D**ata-generating mechanisms | Tiered factorial grid (section 4): family x RE-structure x source x d x n x signal x replication. |
 | **E**stimands | Rotation-invariant targets (section 5): `Sigma_unit_diag`, total off-diagonal correlation; raw `psi`/loadings are diagnostic only. |
-| **M**ethods | TMB Laplace ML; profile vs parametric-bootstrap CIs; convergence + PD-Hessian filtering (section 6). |
+| **M**ethods | TMB Laplace ML; TWO distinct interval routes -- the certified chi-square_1 profile on `log V_t` (`profile_ci_total_variance()`) and the parametric bootstrap (`bootstrap_Sigma()`) -- whose primary/diagnostic assignment is an OPEN maintainer decision (section 3); convergence + PD-Hessian filtering (section 6). |
 | **P**erformance measures | Coverage, bias, relative bias, empirical SE, RMSE, CI width, power, Type-I error -- each with an MCSE formula (section 7). |
 
 The M3 grid is already reported in ADEMP terms (Design 42 sec.1) and
@@ -109,11 +124,15 @@ the capstone inherits both conventions.
 
 ## 2. Aims -- the headline claims (falsifiable targets)
 
-The capstone exists to support, or refute, the claims the paper and the
-CRAN submission will make. Each is stated as a falsifiable target with a
-pass/fail rule. The maintainer must confirm the exact claim set (section
-12, Q-c) before the grid is frozen, because the grid must be sized to
-support whichever gate is chosen.
+The capstone exists to support, or refute, the claims the paper will make.
+CRAN submission is not planned (maintainer ruling, 2026-08-02); the
+capstone's sole audience is the methods paper (section 0). Each claim below
+is still stated as a falsifiable target with a pass/fail rule, but a failing
+cell is now read as a finding to characterise, not only a blocker to
+eliminate -- see section 0's release-gate-versus-evidence-chapter
+distinction. The maintainer must confirm the exact claim set (section 12,
+Q-c) before the grid is frozen, because the grid must be sized to support
+whichever gate is chosen.
 
 **Claim H1 (coverage).** Across the core confirmatory grid, the 95 %
 parametric-bootstrap CIs on the rotation-invariant estimand
@@ -148,6 +167,34 @@ be a pre-specified structure-present decision, such as off-diagonal
 correlation, a variance-share component, or another explicitly defined
 null, before the metric is used in the capstone.
 
+**Boundary caveat on the choice of H4 null (2026-08-02).** The three
+candidate nulls above are NOT interchangeable, and the difference is a
+matter of which asymptotic null distribution applies. If H4's rejection
+rule is CI-exclusion on a *variance-type* quantity whose true value under
+H0 sits on the BOUNDARY of the parameter space -- a `Sigma_unit_diag`
+component, or a variance share, equal to 0 -- then the null distribution
+of the profile deviance `2(L_max - L_0)` is not chi-square_1. It is the
+50/50 mixture `0.5 * delta_0 + 0.5 * chi-square_1` (Self & Liang 1987;
+*flagged unverified in this draft, see section 11*). A profile route that
+takes its critical value from `qchisq(level, 1)` -- which is exactly what
+`.profile_ci_via_refit()` does by default via `.qchisq_threshold(level)`,
+`R/profile-derived.R:394` -- would then be CONSERVATIVE at the boundary:
+Type-I error *below* nominal alpha, not the inflation H4 exists to
+detect. A percentile bootstrap CI on a non-negative quantity has its own,
+different, small-sample boundary behaviour (mass piling at the constraint,
+so the lower endpoint is not free to fall below 0). Neither route is a
+clean instrument for a boundary null, and the two fail differently, so a
+"both arms agree" reading would be misleading rather than reassuring.
+
+**Steer H4 to the INTERIOR null.** The off-diagonal correlation of
+`Sigma_unit` is the recommended H4 target, because its null value
+(rho = 0) is an interior point of (-1, 1) and the ordinary chi-square_1
+reference applies. The variance-share option is retained in the caveat
+above only as a *documented alternative that carries a boundary
+correction as a prerequisite*, not as an equally-weighted candidate. If a
+variance-type null is nonetheless chosen, the mixture reference and its
+verification are a deliverable of the study, not an assumption.
+
 **Non-claims (state explicitly in the paper).** (i) We do not claim
 asymptotic coverage at n = 10,000; the anchor is the moderate field-study
 regime (Design 42 sec.2). (ii) We do not claim recovery of
@@ -178,21 +225,135 @@ regression check.
 
 **The capstone inherits PR #364's estimand discipline without exception.**
 
+### 3.1 Two different profile routes -- do not confuse them (2026-08-02)
+
+Everything this document said about "the profile" before 2026-08-02 meant
+**route P-psi**. A second and unrelated profile route now exists. They
+target different quantities, have opposite rotation properties, and carry
+opposite evidence.
+
+| | **P-psi** (the demoted diagnostic) | **P-V** (the certified route) |
+|---|---|---|
+| Target | per-trait unique variance `psi[t]` (`theta_diag_B`) | per-trait TOTAL variance `V_t = (Lambda Lambda')[t,t] + psi[t]` |
+| Rotation | **variant** -- not an estimand | **invariant** -- the canonical target |
+| Reference | chi-square_1 profile | chi-square_1 profile on `log V_t` |
+| Entry point | M3 legacy `"psi"` target in `dev/m3-grid.R` | `profile_ci_total_variance()`, `NAMESPACE:174`, wrapper `R/profile-derived.R:1010` -> certified internal `:856` |
+| Standing | **DEMOTED by PR #364** -- reported, never gated | **CERTIFIED** under a pre-registered gate; see below |
+| Measured | 0.9384 (d1) / 0.8653 (d2) -- FAILS | 0.9467 / 0.9467 -- clears the 0.94 gate |
+
+`psi` remains a diagnostic and PR #364's demotion of **P-psi** stands
+untouched. Nothing below reinstates it. Wherever this document says
+"profile", it now means **P-V** unless it says `psi`.
+
+### 3.2 What the P-V certificate does and does not cover
+
+The certificate (`docs/dev-log/2026-07-29-certificate-disposition.md`,
+pre-registration `docs/dev-log/2026-07-29-certificate-gate-preregistration.md`)
+records 0.9467 in both cells on a fresh-seed 20,000-replicate campaign
+and passed a 3-lens D-43 panel 3-0. It arrives with fences that travel
+with it. Every one of these must be carried into any capstone use:
+
+1. **Two-sided only.** The interval is not equal-tailed -- upper-tail
+   misses run about 1.53x lower-tail misses -- so **one-sided use is
+   invalid**, and so is any test of `V_t = 0`.
+2. **A marginal average that FAILS in the smallest-`V_t` ventile**
+   (d1 0.9259, d2 0.9369). Coverage is averaged over the simulated `V_t`
+   distribution; it does not hold sub-regime.
+3. **Conditional on convergence** (96.9 % d1, 99.4 % d2). Non-converged
+   fits get no guarantee.
+4. **A 0.94 FLOOR, never nominal 0.95.** Both cells sit roughly 3.3
+   clustered SEs below 0.95. Restating the result as 95 % coverage is
+   explicitly prohibited by the pre-registration.
+5. **The two certified cells share 19,000 of 20,000 seeds** and are NOT
+   independent replicates. "Both cells clear" is roughly 1.1 cells of
+   corroboration, not 2.
+6. **Certified for gaussian, d in {1, 2}, n_units = 150 ONLY.**
+
+### 3.3 The certificate has ZERO evidence on the RE-structure axis
+
+This is not a sixth family fence; it is a different kind of gap, and it
+is the one that matters most for this study.
+
+The certified cells were fit by `dev/m3-grid.R:1092-1096` as
+
+    value ~ 0 + trait + latent(0 + trait | unit, d = d) + unique(0 + trait | unit)
+
+-- a plain diagonal `Sigma_unit` with a reduced-rank `Lambda`, and **no
+`phylo_*`, `spatial_*`, `animal_*` or `kernel_*` random-effect term of
+any kind**. (The pre-registration itself names only "a **diagonal**
+`Sigma_unit` specification, gaussian family" and the harness whose
+sha256 it froze; the formula above is read from that harness, which is
+the primary source.)
+
+But section 4.2 DEFINES the Tier-0 core grid by crossing
+**`phylo_dep`, `spatial_dep`, `animal_dep`, `phylo_latent`** -- the
+structured between-unit tier is the axis that makes the core grid the
+core grid, and is the package's signature surface (section 0, item 2).
+
+So the certificate is **not merely "gaussian / d / n"-scoped**. On the
+axis this study is built around it has no evidence at all, and the models
+are not a rescaling of the certified ones: a structured tier replaces the
+identity between-unit kernel with a fixed `K`, adds tier-variance and
+correlation parameters, and changes the shape of the likelihood surface
+that P-V's `uniroot` bisection walks -- including how flat that surface
+is (section 2 non-claim (iii): OU/BM surfaces are often flat at few
+tips). **This revision must not be read as "the profile route just needs
+re-certifying on more families."** Extending P-V to the structured tiers
+is a *deliverable of this study*, not an assumption it may make.
+
+### 3.4 OPEN DECISION -- primary interval method (NOT resolved here)
+
+Section 12 locks the grid; it does **not** lock this. Before 2026-08-02
+the assignment was "bootstrap primary, profile diagnostic" only because
+the only profile this document knew about was P-psi. That premise is
+gone, so the assignment is **re-opened as an explicit maintainer
+decision** with three named candidates. **This document does not choose
+between them, and no lane may swap them by fiat.**
+
+- **(a) Profile primary / bootstrap secondary.** Gates on P-V; reports
+  bootstrap alongside. Buys the only route with a pre-registered
+  certificate, at a 0.94 floor, and buys it only on the axis where the
+  certificate is silent (3.3). Requires the structured-tier extension as
+  in-scope work.
+- **(b) Bootstrap primary at `n_boot >= 200`.** Keeps PR #364's
+  assignment and the single route that amortises across all estimands
+  from one refit set (section 8). Costs the `(1 + n_boot)` factor
+  re-priced in section 8, and the arm has no certificate -- 0.9418 at
+  B=200 is a measurement, not a gate that anyone pre-registered.
+- **(c) Both arms on every core cell, reporting the pair.** Most
+  informative and most defensible for a paper: agreement between an
+  amortising resampling route and a per-scalar likelihood route is real
+  evidence, and disagreement is a finding. It is also the most expensive
+  and it does **not** average the two costs -- it adds them.
+
+Inputs the decision needs and does not yet have: (i) the measured
+`refits_per_profile` demanded by section 8; (ii) whether the off-diagonal
+correlation estimand is gated, which changes the cost comparison's sign
+(section 8); (iii) whether extending P-V to the structured tiers is in
+scope. Until it is taken, section 6 states both routes without ranking
+them, and no gate language anywhere in this document may assume either.
+
 Primary estimands (rotation-invariant; the claims in section 2 are about
 these):
 
 - **`Sigma_unit_diag`** -- the diagonal of the implied between-unit trait
   covariance `Sigma_unit` (T x T). This is the canonical rotation-free
   target (Design 42 sec.1; constructed in `m3_make_truth()` in
-  `dev/m3-grid.R`). Primary CI method: parametric bootstrap.
+  `dev/m3-grid.R`). **Primary CI method: OPEN (section 3.4)** -- the
+  candidates are P-V (`profile_ci_total_variance()`), parametric
+  bootstrap (`bootstrap_Sigma()`), or both.
 - **Total off-diagonal correlation of `Sigma_unit`** -- the cross-trait
   correlation structure (the "shared latent axis" signal). Surfaced via
   `extract_Sigma(level, part)` (EXT-01, rotation-invariant).
 - **(Conditional) Gamma = Lambda_H Lambda_P^T** -- the host-trait x
   partner-trait coevolution block, *only if* the coevolution kernel
   (Design 65 / #361) is in scope for the capstone (section 12, Q-e).
-  Default assumption in this draft: **deferred** to a follow-up, because
-  the `kernel_*()` engine is not yet built on origin/main.
+  Default assumption in this draft: **deferred** to a follow-up. The
+  `kernel_*()` engine is built, exported (`kernel_dep`, `kernel_indep`,
+  `kernel_latent`, `kernel_scalar`, `kernel_unique`; `NAMESPACE`), and
+  tested (register KER-01/02/03, all `covered`); the deferral rests on
+  budget, not on engine availability -- see section 4.5 and section 12
+  L-e.
 
 Diagnostic-only quantities (reported, never gated):
 
@@ -223,7 +384,10 @@ register on origin/main) is:
   - animal: scalar, unique, indep, dep, latent, slope (`R/animal-keyword.R`)
   - (`relmat` is realized via `phylo_*(vcv=)` / `animal_*(A=/Ainv=)` and is
     soft-deprecated toward `kernel_*()` per Design 65; not a separate live
-    keyword family. `kernel_*()` is NOT built on origin/main -- #361.)
+    keyword family. `kernel_*()` is built, exported, and tested on
+    origin/main (`kernel_dep`, `kernel_indep`, `kernel_latent`,
+    `kernel_scalar`, `kernel_unique`; register KER-01/02/03, all
+    `covered`) -- see section 4.5.)
 - **Families wired:** gaussian, poisson, nbinom2, binomial(logit/probit/
   cloglog), betabinomial, gamma, beta, lognormal, student-t, tweedie,
   ordinal_probit (register FAM-01..14 = covered). nbinom1 is fid 15,
@@ -238,9 +402,11 @@ register on origin/main) is:
 
 A naive product is well over 10^4 cells before n_sim and bootstrap are
 applied; at the per-fit cost in section 8 this is not affordable. The
-study is therefore **tiered**: a small core confirmatory grid that *must*
-pass to support the paper/CRAN claims, plus extension grids that are
-nice-to-have and can be staged or dropped under budget pressure.
+study is therefore **tiered**: a small core confirmatory grid that carries
+the paper's claims, plus extension grids that are nice-to-have and can be
+staged or dropped under budget pressure. (CRAN submission is not planned --
+see section 0 -- so "must pass" here means the grid the paper's evidence
+chapter rests on, not a release gate.)
 
 ### 4.2 Tier 0 -- Core confirmatory grid (MUST pass)
 
@@ -315,10 +481,11 @@ completion).
 
 ### 4.5 Tier 3 -- Coevolution / Gamma extension (DEFERRED by default)
 
-If and only if the `kernel_*()` engine (Design 65 / #361) lands before
-the capstone runs, add a coevolution grid with `Gamma` as estimand.
-Default in this draft: **out of scope** (section 12, Q-e). Listed so the
-grid schema reserves the slot.
+The `kernel_*()` engine (Design 65 / #361) is built, exported, and tested
+on origin/main (register KER-01/02/03, all `covered`); its absence is no
+longer the reason this tier is deferred. Default in this draft: **out of
+scope** on budget grounds, flagged for re-decision (section 12, Q-e and
+L-e). Listed so the grid schema reserves the slot.
 
 ### 4.6 Replication structure (do not skip)
 
@@ -397,17 +564,44 @@ public design note.
   reduced-rank loadings + structured between-unit covariance are the
   fitted objects; the estimands in section 3 are derived from them via
   the rotation-invariant extractors (EXT-01).
-- **Interval methods:**
-  - **Primary: parametric bootstrap** on total `Sigma_unit_diag` and the
-    off-diagonal correlation. This is the M3 PRIMARY method (PR #364);
+- **Interval methods.** Three routes exist for the primary estimands.
+  **Which of the first two is PRIMARY is an open maintainer decision
+  (section 3.4); this section deliberately does not rank them.** Both are
+  stated at equal weight so that the cost model in section 8 can price
+  either arm, and so that no downstream text can quietly assume one.
+  - **Route B -- parametric bootstrap**, `bootstrap_Sigma()`, on total
+    `Sigma_unit_diag` and the off-diagonal correlation. This was the M3
+    PRIMARY method (PR #364);
     `m3_target_method("Sigma_unit_diag", n_boot)` returns `"bootstrap"`
     when `n_boot > 0`. Bootstrap support is gated by
-    `m3_bootstrap_supported(fit)`.
-  - **Diagnostic: profile likelihood** on per-trait `psi`
-    (`theta_diag_B`) -- reported, not gated (PR #364 demotion).
+    `m3_bootstrap_supported(fit)`. **Hard floor `n_boot >= 200` for any
+    claim-bearing cell, and each such cell must assert
+    `coverage_ceiling >= conf` from the returned object** -- see section 8,
+    lever 2, for why this is arithmetic and not a tuning preference
+    (`R/bootstrap-sigma.R:227-241`). One refit set yields every requested
+    summary at once (`R/bootstrap-sigma.R:346-375`).
+  - **Route P-V -- chi-square_1 profile on `log V_t`**,
+    `profile_ci_total_variance()` (`NAMESPACE:174`; wrapper
+    `R/profile-derived.R:1010` delegating to the certified internal at
+    `:856`). This is the ONLY route with a pre-registered certificate
+    (0.9467, both cells, 20,000 reps, D-43 panel 3-0), and that
+    certificate carries six live fences plus a total absence of evidence
+    on the RE-structure axis -- **all of them restated in section 3.2 and
+    3.3 and all of them binding on any capstone use.** The function marks
+    every returned row `certified-0.94` / `route-only` / `none` in its
+    `interval_status` column (`R/profile-derived.R:953, :957`); a
+    claim-bearing campaign should record that column per row rather than
+    infer regime membership. Unlike Route B this route does **not**
+    amortise: it is a separate `uniroot` bisection per scalar quantity
+    (`R/profile-derived.R:866-897`, and per trait pair at
+    `dev/m3-grid.R:1666-1681`). Section 8 prices that.
+  - **Route P-psi -- profile likelihood on per-trait `psi`**
+    (`theta_diag_B`) -- reported, not gated (PR #364 demotion). This is a
+    DIFFERENT route from P-V and its demotion is unaffected by P-V's
+    certificate (section 3.1).
   - Wald / Fisher-z intervals exist for some family paths (register
-    FAM-02, CI-10) and may be reported as a third diagnostic where
-    cheap, but the gate is the bootstrap.
+    FAM-02, CI-10) and may be reported as a further diagnostic where
+    cheap. They are not certificate-bearing on any cell.
 - **Convergence + identifiability filtering (reuse M3 machinery,
   Design 48):** each replicate records optimizer convergence,
   `median_max_gradient`, `sdreport_ok_rate`, `pd_hessian_rate`,
@@ -428,6 +622,127 @@ public design note.
   and multi-start are available for the count cells that need them. The
   start policy is a *fixed method per family*, recorded per cell, not a
   per-replicate search that could bias coverage optimistically.
+
+---
+
+## 6A. Validation oracles -- what external comparator exists per core cell, and what does not
+
+Design 66 predates `docs/design/87-latent-variable-oracle-map.md` (dated 2026-08-02,
+this document's first oracle survey). This section states what Design 87 found for
+exactly the four Tier-0 core RE structures section 4.2 fixes -- `phylo_dep`,
+`spatial_dep`, `animal_dep`, `phylo_latent` -- and what that means for what kind of
+evidence this capstone can and cannot produce.
+
+### 6A.1 The four core cells against Design 87's oracle map
+
+| Core cell (section 4.2) | External oracle (Design 87 §3.1) | Epistemic status (Design 87's own words) |
+|---|---|---|
+| `phylo_dep` | `MCMCglmm` `us(trait):animal` + `pedigree`/`inverseA` | Marked `~` (plausible mechanism, not verified this session). A Bayesian posterior mean under an inverse-Wishart-family prior, not an MLE. Design 87 §3.2: "no fit was attempted" and "a posterior mean ... is not an MLE -- disagreement is not diagnostic of an engine bug, and agreement is not proof of MLE correctness." |
+| `animal_dep` | `MCMCglmm` `us` + `pedigree` | Same caveat as `phylo_dep` -- untested, posterior-mean, not an MLE (Design 87 §3.1 `animal_` row, `dep` column). |
+| `spatial_dep` | None cleanly matched. `gllvm`'s `row.eff`/`lvCor` do not fit the cell's definition; a `glmmTMB` `mat()`/`exp()` candidate is unchecked. | Design 87 §3.2: "not confidently established either way -- needs a scout, not a clean NONE." An admitted gap in Design 87's own verification, not a rated absence. |
+| `phylo_latent` | **NONE.** No package combines a relatedness/tree structure with reduced-rank ordination loadings. | Design 87 §3.1: "no package puts a tree on reduced-rank ordination loadings." §3.2 marks this a *checked* absence, not a scouting gap: `gllvm`'s `colMat` is proven structurally incapable of touching the ordination axis (S2 §D, a positive empirical result, not an unchecked claim), and `Hmsc`'s phylogenetic mechanism structures the trait-regression coefficients `Beta`, not the ordination loadings `Lambda` (per the Hmsc cross-package scout, `docs/dev-log/audits/2026-07-29-jason-hmsc-cross-package-scout.md`). |
+
+**All four core cells lack an MLE-quality external oracle** -- but "no MLE oracle" is
+not one uniform state, and this document should not collapse it into one. Design 87
+distinguishes three different epistemic positions across these four cells, and the
+distinction matters for how each finding should be reported if the corresponding
+capstone cell under- or over-covers:
+
+1. **Untested plausible reference** (`phylo_dep`, `animal_dep`): a mechanism exists,
+   is documented, and has not been run. A future `MCMCglmm` scout could resolve this
+   one way or the other; the caveat is temporary if someone builds it (Design 87 §7
+   lists this scout as its #2 build priority).
+2. **Admitted scouting gap** (`spatial_dep`): Design 87 itself does not know whether
+   an oracle exists. This is not a claim that none does -- it is a claim that this
+   repository has not looked hard enough to say.
+3. **Checked absence** (`phylo_latent`): verified from both directions this session
+   (Design 87 §3.2). No amount of further scouting inside the current package roster
+   (`gllvm`, `MCMCglmm`, `Hmsc`, `galamm`) will produce a third-party MLE oracle for
+   this cell, because none of the four implements the underlying decomposition at
+   all.
+
+### 6A.2 The limitation, stated in the terms the paper will use
+
+Say this plainly, because a reviewer will otherwise say it for us: **the capstone's
+structural axis is self-validation against known simulated truth, with no
+independent implementation agreeing.** Every core-cell coverage and power number this
+study reports is checked against the data-generating process that produced it, not
+against a second estimator that arrived at a similar answer by a different route. For
+a coverage and power study this is not fatal -- the estimand is defined by the
+simulation, so validating against known simulated truth is the correct primary
+evidence and needs no third-party package to exist. But it is a real limitation on
+what the capstone's numbers can be read to support, and it must be stated as such
+rather than left implicit: a coverage claim on `phylo_dep` or `phylo_latent`
+demonstrates that `gllvmTMB`'s own estimator and its own interval method are
+internally well-calibrated against the process that generated the data; it does not,
+and currently cannot, demonstrate that a different implementation of the same model
+would recover the same truth. Readers who expect a coverage study to double as a
+cross-implementation validation should not be left to discover the absence on their
+own.
+
+### 6A.3 The one available instrument: a fixed-parameter Stan check
+
+Design 87 §6.1 describes one route that exists for every cell in this table,
+including the three that have no third-party package peer at all: a hand-written
+Stan model of the same likelihood, checked not by fitting but by evaluating the
+log-likelihood at a fixed, shared parameter vector in both the TMB implementation and
+the Stan model and requiring agreement to machine precision. `rstan` 2.32.7 and
+`cmdstanr` 0.9.0 are installed on this machine (Design 87's verification ledger,
+§0). **No such model has been written for any cell as of this document.**
+
+This is a *stronger* check than most of Design 87's ✓✓ cells (the shipped `gllvm` and
+`glmmTMB` comparators this package already has), not a weaker fallback for the cells
+that lack one. Those comparators agree that a **fitted** point estimate matches under
+a tolerance -- 1% relative log-likelihood, 10-25% relative Frobenius error on Sigma,
+>=0.95 Procrustes correlation on loadings (Design 87 §5). A tolerance-based check can
+absorb a small shared error along with genuine optimiser noise; there is room inside
+the band for two implementations to agree despite each carrying the same
+minor mistake. A fixed-parameter log-likelihood comparison has no such room: the two
+numbers either match to machine precision or they do not, and there is nothing left
+over for a tolerance to hide behind. It is also immune to the two traps that make the
+rest of Design 87's map hedge so carefully -- there is nothing being estimated, so
+neither the VA-vs-Laplace estimator gap (§2.6) nor the posterior-mean-vs-MLE gap
+(§3.2) can arise.
+
+### 6A.4 The Stan route's own limitation, stated with equal prominence
+
+This instrument should not be sold past what it is. A Stan model written by this
+package's own contributors encodes *their* reading of the mathematics. It therefore
+checks **implementation** -- a TMB template bug, a wrong parameterisation, a missing
+Jacobian term, an indexing error -- and not a **shared conceptual misunderstanding**.
+If the TMB template and a self-written Stan program both encode the same wrong
+reading of the underlying model, they will still agree to machine precision, and the
+check will report a pass on a shared error (Design 87 §6.1, stated there in exactly
+these terms). A third-party package embodies someone else's independent reading of
+the theory; a self-written Stan reference does not, by construction. Mitigation, per
+Design 87 §6.1: derive the Stan model from the *published* model definition -- the
+paper or textbook a feature is based on -- rather than from this package's own R or
+C++ code, and preferably have someone who did not write the TMB template write the
+Stan model, so the two implementations are each read from the source material
+independently rather than from each other.
+
+**`tmbstan` is not an oracle for this purpose.** It wraps the *same* TMB objective
+function `gllvmTMB` already builds and runs HMC over it instead of Laplace-
+approximating the random effects. Agreement with `tmbstan` shows only that TMB's own
+objective is internally consistent under a different integration scheme -- it cannot
+show that the objective encodes the right model, because it is the same objective
+being checked against itself. `tmbstan` answers a different, separately useful
+question instead: whether the Laplace approximation is adequate, by comparing it
+against a Bayesian HMC integration of the *same* random effects. That question is
+real and worth asking elsewhere in this package's validation programme, but it is not
+a substitute for the fixed-parameter Stan check above and must not be presented as
+one (Design 87 §6.1). `tmbstan` is not installed on this machine.
+
+### 6A.5 Open decision
+
+Whether a hand-written, fixed-parameter Stan check for `phylo_latent` (the one core
+cell with a checked-absent third-party oracle) is in scope for this capstone, or a
+separate slice on its own timeline, is not resolved here -- it is the maintainer's
+call, and it interacts with the compute-admission gate (section 12) and the
+primary-interval-method decision this audit raises separately. It is also relevant
+beyond this capstone: the phylogenetic multinomial (Design 84, partially shipped) has
+no third-party package peer either (Design 87 §1, §6), and would need the same kind
+of instrument if it is ever to have one.
 
 ---
 
@@ -479,7 +794,7 @@ smoke check, not an adjudication.
   ample for reporting the crossing point. Power does not need more than
   the coverage floor.
 - **Extension tiers:** n_sim = 1000 is acceptable (these inform register
-  promotions, not the headline CRAN gate).
+  promotions, not the paper's headline claim).
 
 The MCSE arithmetic gives the **floor**; the ceiling is the compute
 budget (section 8). Final n_sim is Q-d.
@@ -496,11 +811,80 @@ The `+1` is the point fit; `n_boot` is the parametric-bootstrap refits per
 replicate. Worked estimates (wall-clock uses a nominal mean fit time;
 calibrate against `mean_runtime_s` from a pilot before committing):
 
+**Re-priced 2026-08-02 at the `n_boot >= 200` floor.** The former table
+priced every scenario at `n_boot = 100`, which lever 2 below shows is not
+admissible for a claim-bearing cell. At the floor the multiplier is
+`(1 + 200) = 201`, so the bootstrap bill is just over 2x what this table
+previously reported.
+
+*Arm B -- parametric bootstrap.* `fits = cells x n_sim x (1 + n_boot)`:
+
 | Scenario | cells | n_sim | n_boot | fits | at 2 s/fit | at 20 s/fit |
 |---|---|---|---|---|---|---|
-| Core, spoke design | 50  | 1000 | 100 | 5.05e6 | ~117 days(1 core) | ~3.2 yr(1 core) |
-| Core, spoke design | 50  | 2000 | 100 | 1.01e7 | ~234 days(1core)  | ~6.4 yr(1core) |
-| Core, full 192     | 192 | 2000 | 100 | 3.88e7 | ~2.5 yr(1 core)   | ~25 yr(1 core)  |
+| Core, spoke design | 50  | 1000 | 200 | 1.01e7 | ~233 days(1 core) | ~6.4 yr(1 core) |
+| Core, spoke design | 50  | 2000 | 200 | 2.01e7 | ~465 days(1 core) | ~12.7 yr(1 core) |
+| Core, full 192     | 192 | 2000 | 200 | 7.72e7 | ~4.9 yr(1 core)   | ~49 yr(1 core)  |
+
+*Arm P-V -- profile.* The bootstrap formula does not describe this arm at
+all, because the bootstrap AMORTISES and the profile does not. One
+bootstrap refit set of `>= 201` yields the whole `Sigma_unit` summary --
+every diagonal entry AND the off-diagonal correlations -- from the same
+draws (`R/bootstrap-sigma.R:346-375`: each refit is a full `gllvmTMB()`
+call and `extract_fn()` pulls every requested `what` from it). A profile
+is a **per-scalar-quantity `uniroot` bisection**: one per trait for the
+diagonals (`R/profile-derived.R:866-897`) and one per trait PAIR for the
+correlations (`dev/m3-grid.R:1666-1681`, `utils::combn(n_traits, 2L)`).
+The arm therefore costs
+
+    fits = cells x n_sim x (1 + n_estimands x refits_per_profile)
+
+with the `+1` again the point fit. The two multipliers:
+
+- **`n_estimands`.** At the harness default `T = 5`
+  (`M3_DEFAULT_N_TRAITS`, `dev/m3-grid.R:46`): **5** if only
+  `Sigma_unit_diag` is gated; **15** if section 3's off-diagonal
+  correlation estimand is gated too (5 diagonals + `choose(5,2) = 10`
+  pairs). Which it is follows from the open decision in section 3.4 and
+  is not settled here. It changes the SIGN of the comparison below.
+- **`refits_per_profile` -- NOT YET MEASURED.** Each bisection step is
+  one penalised `nlminb` on the existing TMB objective, warm-started at
+  the MLE with an analytic target gradient. Per bound
+  (`R/profile-derived.R:448-506`): up to 8 bracket-widening probes plus
+  the finite floor/ceiling probe (`max_expand = 8L`, trials
+  `q_hat +/- 0.35 * 1.6^(0:7)`, floor/ceiling `q_hat -/+ 15`), then
+  `stats::uniroot` with `tol = 0.005` and `root_maxiter = 25L`, which
+  also re-evaluates both bracket endpoints. Reading those constants:
+  **hard worst case 2 x (9 + 2 + 25) = 72 refits per scalar**; a
+  well-behaved bound that crosses on its first or second probe costs
+  roughly 7-13, i.e. **~14-26 per scalar for the two-sided interval.**
+  **These are code-derived bounds, not measurements. An empirical
+  `refits_per_profile` -- median and upper decile, per family and per RE
+  structure, since a flat structured-tier surface will widen brackets --
+  MUST be measured on a bounded non-claim smoke before any
+  compute-saving number is committed to a budget or a maintainer
+  decision.**
+
+**What the comparison actually says.** At `refits_per_profile` in 14-26
+against Arm B's 201 refits per replicate, and counting refits only:
+
+| gated estimands | Arm P-V refits/rep | vs Arm B's 201 |
+|---|---|---|
+| diagonals only (`n_estimands = 5`) | 71 - 131 | **~1.5x - 2.8x CHEAPER** |
+| diagonals + all pairs (`n_estimands = 15`) | 211 - 391 | **~1.05x - 1.95x MORE EXPENSIVE** |
+| diagonals only, worst case (72/scalar) | 361 | ~1.8x more expensive |
+
+**The profile arm is not an order-of-magnitude saving, and under the
+section 3 estimand set it may be no saving at all.** Any planning
+statement that says otherwise is wrong. Two honest qualifications, in
+both directions: (i) the table counts refits and assumes they cost the
+same, which they do not -- a bootstrap refit is a cold full `gllvmTMB()`
+call including formula parsing, `MakeADFun` taping, the
+`single_trait_warmup` start strategy and `sdreport`, while a profile step
+reuses the tape and warm-starts at the MLE with an exact gradient, so the
+per-refit cost almost certainly favours P-V; (ii) that advantage is
+UNMEASURED, and so is `refits_per_profile`. **Both must be measured
+together before the ratio is used to choose a compute target
+(section 12, L-a addendum).**
 
 These are *single-core* figures to make the scale unmistakable: the
 capstone is **embarrassingly parallel** but **not a GitHub Actions job**.
@@ -517,14 +901,53 @@ realistic on HPC.
 **Levers to cut the bill (in priority order):**
 
 1. **Stage it:** run Tier 0 first; gate Tiers 1-3 on Tier 0 passing.
-2. **Reduce n_boot:** bootstrap dominates the cost (the `(1+n_boot)`
-   factor). The M3 production default is n_boot = 25; the capstone needs
-   enough bootstrap reps for a stable interval but n_boot = 100 is a
-   reasonable target and n_boot = 50 halves the bill versus 100. (The
+2. **`n_boot` is NOT a lever -- it is a floor. (Corrected 2026-08-02;
+   the former lever 2 is DELETED as unsafe.)** The deleted text offered
+   `n_boot = 50` as a way to halve the bill and asserted that "the
    bootstrap-replication count trades against interval noise, *not*
-   against the coverage MCSE, which is set by n_sim.)
+   against the coverage MCSE, which is set by n_sim". **That parenthetical
+   is false, and the falsity is arithmetic rather than empirical.** A
+   percentile interval built from `B` draws is bounded by its own widest
+   realisation `[min, max]`, whose coverage cannot exceed `(B-1)/(B+1)`
+   **whatever the data are**. That is a ceiling on the estimand itself,
+   not Monte Carlo noise that averages away over replicates:
+
+   | `n_boot` (B) | max attainable coverage `(B-1)/(B+1)` |
+   |---|---|
+   | 25 (the quoted M3 production default) | **0.9231 -- BELOW this study's own 0.94 gate** |
+   | 39 (`ceiling(2/(1-conf)) - 1` at conf = 0.95) | 0.9500 -- bare minimum for a nominal-95 % request |
+   | 50 (the deleted "halve the bill" lever) | 0.9608 -- 1.1 pp of headroom against nominal 95 % |
+   | 100 (the former cost-table setting) | 0.9802 |
+   | 200 (the `bootstrap_Sigma()` default) | 0.9901 |
+
+   At `n_boot = 25` a capstone cell **could not pass H1 even with a
+   perfect estimator**, and the failure would present as a coverage
+   shortfall and be misread as a package defect. Empirically, holding the
+   draws fixed and varying only B, the same estimand moves 0.8073 (B=10)
+   -> 0.9418 (B=200) -- barely above the 0.94 gate at the default, with no
+   slack to trade.
+
+   **Therefore: hard floor `n_boot >= 200` for every claim-bearing cell,
+   and every such cell must assert `coverage_ceiling >= conf` from the
+   returned object before its own numbers are trusted.**
+   `bootstrap_Sigma()` returns `$coverage_ceiling` for exactly this
+   purpose and warns below `min_boot` (`R/bootstrap-sigma.R:227-241`); a
+   warning alone is insufficient because the 2026-07-29 failure was an
+   automated harness and a script can swallow a warning.
+
+   **Keep the two quantities separate.** `n_sim` sets the coverage MCSE
+   -- section 7's arithmetic and its `n_sim = 2000` floor are correct and
+   are NOT touched by this correction. `n_boot` separately imposes a hard
+   ceiling on the coverage that is achievable at all. Raising `n_sim`
+   cannot lift a `n_boot` ceiling, and raising `n_boot` does not shrink
+   the MCSE.
 3. **Fractional core (spoke vs full 192):** the single biggest lever.
 4. **Family subset** (Q-f): 4 core families, not 14.
+5. **The interval-method choice (section 3.4)** is now a first-order cost
+   term in both directions -- see the Arm P-V pricing above. It is a
+   scientific decision that happens to move the bill, **not** a budget
+   lever to be pulled for cost reasons, and its saving is at most ~2.8x
+   and may be negative.
 
 **Recommendation:** budget the core (Tier 0) explicitly. The intended route is
 Totoro for bounded smoke and DRAC for frozen claim-bearing arrays, with
@@ -566,24 +989,50 @@ null-signal cell produces ~alpha rejections, before any production sweep.
 
 The capstone is DONE when:
 
-1. The core (Tier 0) grid has run at the agreed n_sim with the agreed
+1. **PREREQUISITE -- the compute-admission slice exists, is reviewed, and
+   is frozen.** Under the 2026-07-20 D-50 supersession (header, L11-18;
+   section 4.7) no 48-cell pilot, no claim-bearing fit campaign and no
+   production DRAC array is admitted until a separate compute-admission
+   slice freezes and validates source/archive/runner checksums, campaign
+   and task identity, immutable destination paths, retry policy, and
+   result schema -- followed by explicit maintainer approval. **Verified
+   2026-08-02: no such design document exists.**
+   `grep -rl 'compute-admission' docs/ dev/` returns seven files, none of
+   them a design doc: this document, `docs/dev-log/check-log.md`,
+   `docs/dev-log/audits/2026-08-02-design66-staleness-audit.md`,
+   `docs/dev-log/after-task/2026-07-20-m1-heavy-baseline.md`,
+   `dev/power-pilot-run.R`, `dev/precompute-m3-grid.R`, and
+   `dev/m3-pilot-launch.R`. **This item is not stale, it is LIVE AND
+   UNSATISFIED**, and it binds execution regardless of how the open
+   decisions in section 3.4 and section 12 resolve. It is listed first
+   because it is a gate on starting, not a box to tick at the end: any
+   capstone plan that does not schedule it before the grid is sized is
+   planning a campaign it is not permitted to run.
+2. The core (Tier 0) grid has run at the agreed n_sim with the agreed
    family/RE subset, on the agreed compute, with all six M3 quality
    gates (section 6) satisfied *and* the fit-exclusion rate reported per
    cell.
-2. H1 (coverage >= 94 % on `Sigma_unit_diag`, MCSE < 0.5 pp), H2
+3. H1 (coverage >= 94 % on `Sigma_unit_diag`, MCSE < 0.5 pp), H2
    (|rel bias| < 5 %), H3 (a power curve per RE source, monotone in n and
    signal), and H4 (Type-I ~= alpha) are each adjudicated -- supported or
    honestly reported as partial -- on the core grid.
-3. The long per-replicate artefacts + seeds + failed-fit rows are
+4. The long per-replicate artefacts + seeds + failed-fit rows are
    archived (Williams et al. 2024 transparency).
-4. The register rows are updated: CI-08 and CI-10 move from `partial`
+5. The register rows are updated: CI-08 and CI-10 move from `partial`
    toward `covered` (or stay partial with the new evidence), and the
    exercised FAM-*/RE-*/ANI-* rows cite the capstone artefact.
-5. A paper-ready report (tables + power curves) is produced.
+6. A paper-ready report (tables + power curves) is produced.
 
-CRAN + paper (milestone #3) gate on this being DONE; the capstone itself
-gates on all other tracks being done (issue #349: "Gated on all other
-tracks").
+**2026-08-02 reframing.** CRAN submission is not planned, so the earlier
+"CRAN + paper (milestone #3)" gate is retired; the paper alone gates on this
+being DONE (section 0). This changes how item 3 above is read: with no
+release binary to clear, a core cell that fails H1's 94% gate is not by
+itself grounds to withhold DONE -- it is reported as a finding (the regime
+where calibration degrades), consistent with H3 already being specified as a
+curve rather than a pass/fail. DONE still requires every hypothesis to be
+honestly adjudicated -- supported, or reported as partial with the reason --
+not that every cell pass. The capstone itself still gates on all other
+tracks being done (issue #349: "Gated on all other tracks").
 
 ---
 
@@ -635,6 +1084,19 @@ locks the scientific grid, estimands, and intended evidence depth. Its original
 local/HPC launch instructions are historical and do not override the 2026-07-20
 compute-admission boundary above.
 
+**2026-08-02 addendum --** the sentence above is retained verbatim and its
+scope is clarified rather than changed. What section 12 locks is the
+**scientific grid, the estimand discipline, and the intended evidence
+depth**. It never locked the **interval METHOD**, and it could not have:
+the only profile route this document knew of when L-a through L-g were
+written was the demoted `psi` proxy (route P-psi), and the certified
+route P-V did not exist. **Section 3.4 re-opens the primary/diagnostic
+assignment as an explicit maintainer decision with three named
+candidates. It is not resolved by this addendum, by section 3, or by
+section 6.** No L-row below is reversed; L-a and L-c carry their own
+dated addenda where the re-pricing and the interval-arithmetic ceiling
+bear on them.
+
 - **L-a (compute target) -- PHASED pilot then HPC core (resolves Q-a +
   Q-d).** The scientific design targets a pilot at `n_sim ~= 200` to size
   wall-time and expose gross miscalibration, followed by an `n_sim = 2000` HPC
@@ -644,6 +1106,21 @@ compute-admission boundary above.
   `n_sim = 200`, coverage MCSE is ~1.54 pp (section 7.1), so that stage is a
   sizing/diagnostic instrument rather than gate adjudication; the intended
   94/95 adjudication remains the `n_sim = 2000` target.
+
+  **2026-08-02 addendum --** the `n_sim` figures above stand unchanged;
+  the **bill** attached to them does not. Section 8 is re-priced at the
+  `n_boot >= 200` floor, which raises the bootstrap arm by just over 2x
+  against the retired `n_boot = 100` table (spoke design at
+  `n_sim = 2000`: ~465 single-core-days at 2 s/fit, not ~234). The
+  profile arm has its own cost term, `cells x n_sim x n_estimands x
+  refits_per_profile`, whose `refits_per_profile` is **unmeasured** and
+  whose `n_estimands` (5 or 15 at `T = 5`) depends on the open decision
+  in section 3.4. Consequently: **the choice of compute target -- Totoro
+  versus DRAC -- cannot be settled from this row.** It is downstream of
+  (i) section 3.4, (ii) a measured `refits_per_profile`, and (iii) the
+  unbuilt compute-admission slice (section 10, item 1), which gates
+  execution either way. Nothing in this addendum authorises a campaign or
+  chooses an arm.
 - **L-b (core grid) -- core-4 confirmatory grid; proposed pilot is a bounded
   subset (resolves Q-b).** The intended confirmatory grid is the core-4 cross
   (section 4.2). The proposed pilot is a deliberately bounded enumeration of
@@ -659,6 +1136,28 @@ compute-admission boundary above.
   per cell. The n_sim FLOOR is sized to adjudicate the stricter 95% gate
   (this is why Phase 2 uses n_sim = 2000, section 7.2). `pilot_status()`
   reports both gates side by side.
+
+  **2026-08-02 addendum --** the gate above is unchanged and both
+  thresholds are still reported. Two constraints on its REACHABILITY were
+  not visible when it was locked, and neither is a renegotiation of the
+  threshold.
+
+  1. **A gate is only reachable if the interval arithmetic can reach it.**
+     For the bootstrap arm, coverage cannot exceed `(n_boot-1)/(n_boot+1)`
+     whatever the data are (section 8, lever 2). The 95 % half of this row
+     is therefore unreachable below `n_boot = 39`, and structurally
+     unreachable even for the 94 % half at the M3 production default of
+     `n_boot = 25` (ceiling 0.9231). Reporting both gates requires
+     `n_boot >= 200` on any claim-bearing cell, plus the
+     `coverage_ceiling >= conf` assertion.
+  2. **The one certified route is certified at 0.94, not at 0.95.** Route
+     P-V's pre-registration fixes the gate at `coverage >= 0.94` and
+     explicitly prohibits restating the result as nominal or
+     unconditional 95 % coverage; both certified cells sit roughly 3.3
+     clustered SEs below 0.95 (section 3.2, fence 4). So if section 3.4
+     resolves toward P-V, this row's 95 % column remains a **reported
+     descriptive number** and must not be read as a gate that route has
+     ever cleared. Nothing here relaxes the 94 % gate or tightens it.
 - **L-d (n_sim target) -- pilot ~= 200, core = 2000 (resolves Q-d; folded
   into L-a).** The proposed pilot uses `n_sim ~= 200` for sizing; the intended
   core uses `n_sim = 2000` for gate adjudication at MCSE < 0.5 pp. The
@@ -670,6 +1169,20 @@ compute-admission boundary above.
   Gamma estimand and the Tier-3 coevolution grid (section 4.5) are a
   follow-up study, not part of the core-4 confirmatory campaign. The
   grid schema reserves the slot but no Gamma cells are run here.
+
+  **2026-08-02 addendum --** the premise above is factually dead: the
+  `kernel_*()` engine is built, exported (`kernel_dep`, `kernel_indep`,
+  `kernel_latent`, `kernel_scalar`, `kernel_unique`; `NAMESPACE`), and
+  tested (register KER-01/02/03, all `covered`, named test files
+  `test-kernel-latent-unique-fold.R`, `test-kernel-equivalence.R`,
+  `test-coevolution-two-kernel.R`, `test-coevolution-prototype.R`).
+  Deferring Tier 3 out of the core-4 confirmatory campaign may still be
+  the right call, but on budget grounds, not engine availability. This is
+  not a re-decision by this patch -- L-e stays DEFERRED as locked, and the
+  text above is retained verbatim and unedited. It is flagged for
+  Shinichi to re-decide on its merits (audit
+  `docs/dev-log/audits/2026-08-02-design66-staleness-audit.md`, finding
+  S-4).
 - **L-f (families) -- core 4 (resolves Q-f).** The confirmatory grid is
   the 4-family representative subset: gaussian, nbinom2,
   binomial(probit), ordinal_probit. All-14-families and mixed-family

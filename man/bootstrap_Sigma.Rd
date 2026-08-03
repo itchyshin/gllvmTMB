@@ -6,7 +6,7 @@
 \usage{
 bootstrap_Sigma(
   fit,
-  n_boot = 200,
+  n_boot = 999,
   level = c("unit", "unit_obs", "phy", "B", "W"),
   what = c("Sigma", "R", "communality", "ICC", "cross_corr"),
   conf = 0.95,
@@ -20,15 +20,30 @@ bootstrap_Sigma(
 \arguments{
 \item{fit}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}.}
 
-\item{n_boot}{Integer; number of bootstrap replicates. Default 200.
+\item{n_boot}{Integer; number of bootstrap replicates. Default 999.
 Values below \code{2 / (1 - conf) - 1} (39 at the default \code{conf = 0.95}) are
 refused: the widest interval \code{B} draws can produce is \verb{[min, max]}, whose
 coverage is at most \code{(B - 1) / (B + 1)}, so a smaller \code{B} cannot reach the
-requested level whatever the data are. Values below 1000 warn. Note that
-raising \code{n_boot} reduces Monte Carlo error in the endpoints but does not
+requested level whatever the data are. Values below 999 warn.
+
+Two different things bound \code{n_boot}, and they bite at different scales.
+Below the refusal threshold the \emph{arithmetic ceiling} binds: the interval
+cannot reach the requested level however much data you have. Above it, what
+binds is Monte Carlo error in the endpoints, which is a precision question
+and shrinks with \code{B}. Conflating the two is how a replicate count comes to
+be treated as a free budget lever when the low end of it is a correctness
+constraint.
+
+The default is 999 rather than 1000 so that \code{(1 - conf) / 2 * (B + 1)} is a
+whole number at \code{conf = 0.95} (25), letting the percentile bounds land on
+order statistics rather than being interpolated between them.
+
+Raising \code{n_boot} reduces Monte Carlo error in the endpoints but does not
 make a percentile interval second-order accurate — its coverage asymptotes
 slightly below nominal regardless. Use \code{\link[=profile_ci_total_variance]{profile_ci_total_variance()}} for
-the \code{Sigma} diagonals if that matters.}
+the \code{Sigma} diagonals if that matters. For exploratory work a smaller \code{B}
+(200, say) is a reasonable time-for-precision trade; for a number you
+intend to publish, do not go below the default.}
 
 \item{level}{Character vector; which tier(s) to bootstrap.
 Use the canonical levels \code{c("unit", "unit_obs", "phy")}; legacy

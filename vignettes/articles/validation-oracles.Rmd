@@ -134,7 +134,7 @@ inside each `indep` cell, because several packages that cannot check plain
   in the table, because it is available in principle for every cell here,
   not something specific to a "None" verdict.
 
-Cells marked $\dagger$ rest on a Bayesian comparator — `MCMCglmm` or `Hmsc` —
+Cells marked &dagger; rest on a Bayesian comparator — `MCMCglmm` or `Hmsc` —
 and so carry the posterior-mean caveat above, rather than repeating it in
 every cell.
 
@@ -169,9 +169,9 @@ one-shared-variance shape was verified by fitting <em>without</em>
 <code>gllvm</code>'s documented behaviour rather than from a fit. Plain
 <code>indep</code>: documented, not yet fit
 (<code>MCMCglmm</code>'s <code>idh(trait):animal</code> with a
-tree-derived inverse relationship matrix)$^\dagger$.</td>
+tree-derived inverse relationship matrix)<sup>&dagger;</sup>.</td>
 <td>Documented, not yet fit (<code>MCMCglmm</code>'s
-<code>us(trait):animal</code> variant)$^\dagger$.</td>
+<code>us(trait):animal</code> variant)<sup>&dagger;</sup>.</td>
 <td><strong>None.</strong></td></tr>
 <tr><th><code>animal_</code></th>
 <td>Shared-variance case: documented, not yet fit
@@ -179,11 +179,11 @@ tree-derived inverse relationship matrix)$^\dagger$.</td>
 similarity matrix — the same mechanism as the <code>phylo_</code> row, and
 established the same way, from documentation rather than a fit);
 documented (<code>MCMCglmm</code>'s <code>idv()</code> with a pedigree,
-its native use case$^\dagger$; <code>glmmTMB::propto()</code> with a
+its native use case<sup>&dagger;</sup>; <code>glmmTMB::propto()</code> with a
 pedigree-derived relationship matrix). Plain <code>indep</code>: documented,
-not yet fit (<code>MCMCglmm</code>'s <code>idh()</code> + pedigree)$^\dagger$.</td>
+not yet fit (<code>MCMCglmm</code>'s <code>idh()</code> + pedigree)<sup>&dagger;</sup>.</td>
 <td>Documented, not yet fit (<code>MCMCglmm</code>'s <code>us()</code> +
-pedigree)$^\dagger$.</td>
+pedigree)<sup>&dagger;</sup>.</td>
 <td><strong>None.</strong></td></tr>
 <tr><th><code>spatial_</code></th>
 <td><strong>Uncertain.</strong> <code>gllvm</code>'s own spatial mechanisms
@@ -195,17 +195,17 @@ mechanism does was not established.</td>
 <code>lvCor</code> is a dense exact Gaussian process while gllvmTMB uses an
 SPDE approximation, so even a successful comparison would agree only
 approximately, not exactly; <code>Hmsc</code>'s spatial latent
-factors$^\dagger$).</td></tr>
+factors<sup>&dagger;</sup>).</td></tr>
 <tr><th><code>kernel_</code></th>
 <td>Shared-variance case: documented, not yet fit
 (<code>gllvm</code>'s <code>colMat</code> accepting a bare similarity
 matrix, per its documentation); documented (<code>MCMCglmm</code>'s
 <code>idv()</code> with a
-supplied relationship matrix)$^\dagger$. Plain <code>indep</code>:
+supplied relationship matrix)<sup>&dagger;</sup>. Plain <code>indep</code>:
 documented, not yet fit (<code>MCMCglmm</code>'s <code>idh()</code> with a
-supplied relationship matrix)$^\dagger$.</td>
+supplied relationship matrix)<sup>&dagger;</sup>.</td>
 <td>Documented, not yet fit (<code>MCMCglmm</code>'s <code>us()</code> with
-a supplied relationship matrix)$^\dagger$.</td>
+a supplied relationship matrix)<sup>&dagger;</sup>.</td>
 <td><strong>None.</strong></td></tr>
 </tbody>
 </table>

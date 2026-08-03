@@ -71,15 +71,30 @@
 #' an `n_cores = 1` run with the same seed (different RNG streams).
 #'
 #' @param fit A fit returned by [gllvmTMB()].
-#' @param n_boot Integer; number of bootstrap replicates. Default 200.
+#' @param n_boot Integer; number of bootstrap replicates. Default 999.
 #'   Values below `2 / (1 - conf) - 1` (39 at the default `conf = 0.95`) are
 #'   refused: the widest interval `B` draws can produce is `[min, max]`, whose
 #'   coverage is at most `(B - 1) / (B + 1)`, so a smaller `B` cannot reach the
-#'   requested level whatever the data are. Values below 1000 warn. Note that
-#'   raising `n_boot` reduces Monte Carlo error in the endpoints but does not
+#'   requested level whatever the data are. Values below 999 warn.
+#'
+#'   Two different things bound `n_boot`, and they bite at different scales.
+#'   Below the refusal threshold the *arithmetic ceiling* binds: the interval
+#'   cannot reach the requested level however much data you have. Above it, what
+#'   binds is Monte Carlo error in the endpoints, which is a precision question
+#'   and shrinks with `B`. Conflating the two is how a replicate count comes to
+#'   be treated as a free budget lever when the low end of it is a correctness
+#'   constraint.
+#'
+#'   The default is 999 rather than 1000 so that `(1 - conf) / 2 * (B + 1)` is a
+#'   whole number at `conf = 0.95` (25), letting the percentile bounds land on
+#'   order statistics rather than being interpolated between them.
+#'
+#'   Raising `n_boot` reduces Monte Carlo error in the endpoints but does not
 #'   make a percentile interval second-order accurate — its coverage asymptotes
 #'   slightly below nominal regardless. Use [profile_ci_total_variance()] for
-#'   the `Sigma` diagonals if that matters.
+#'   the `Sigma` diagonals if that matters. For exploratory work a smaller `B`
+#'   (200, say) is a reasonable time-for-precision trade; for a number you
+#'   intend to publish, do not go below the default.
 #' @param level Character vector; which tier(s) to bootstrap.
 #'   Use the canonical levels `c("unit", "unit_obs", "phy")`; legacy
 #'   aliases `"B"` and `"W"` are still accepted. Levels absent from
@@ -180,7 +195,7 @@
 #' }
 bootstrap_Sigma <- function(
   fit,
-  n_boot = 200,
+  n_boot = 999,
   level = c("unit", "unit_obs", "phy", "B", "W"),
   what = c("Sigma", "R", "communality", "ICC", "cross_corr"),
   conf = 0.95,
@@ -218,7 +233,7 @@ bootstrap_Sigma <- function(
   ## at n_boot = 10 and recorded 0.78 empirical coverage against nominal 0.95,
   ## which was then written into the validation-debt register as a property of
   ## `bootstrap_Sigma()`. It is a property of `bootstrap_Sigma(n_boot = 10)`:
-  ## the ceiling at B = 10 is 9/11 = 0.818. At the documented default of 200 the
+  ## the ceiling at B = 10 is 9/11 = 0.818. At the documented default of 999 the
   ## same estimand covers 0.9418. See
   ## docs/dev-log/audits/2026-08-02-ci08-coverage-explained.md.
   ## Reported, not merely warned. The 2026-07-29 failure was an automated
@@ -234,16 +249,16 @@ bootstrap_Sigma <- function(
         "coverage is at most {round(coverage_ceiling, 3)} -- below the requested ",
         "{conf}. This is arithmetic, not a property of your data."
       ),
-      "i" = "Use {.arg n_boot} >= {min_boot} for {conf * 100}% intervals; 200 is the default, 1000+ is better.",
+      "i" = "Use {.arg n_boot} >= {min_boot} for {conf * 100}% intervals; 999 is the default.",
       "i" = "{.arg n_cores} >= 2 parallelises the refits via {.pkg future}.",
       "i" = "The ceiling is returned as {.code $coverage_ceiling} so a script can check it."
     ))
-  } else if (n_boot < 1000L) {
+  } else if (n_boot < 999L) {
     cli::cli_warn(c(
       "{.arg n_boot} = {n_boot} gives noisy percentile bounds.",
       "i" = paste0(
         "Percentile CIs are first-order accurate, so more draws buy precision, ",
-        "not correctness -- but below ~1000 the Monte Carlo error in the ",
+        "not correctness -- but below ~999 the Monte Carlo error in the ",
         "endpoints is itself material."
       ),
       "i" = "{.arg n_cores} >= 2 parallelises the refits; the cost here is wall-clock, not accuracy.",

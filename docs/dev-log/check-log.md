@@ -48292,3 +48292,41 @@ and discriminates** — not anything general about JSDMs.
 Nothing is committed or pushed; landing the worktree is the maintainer's call. Full report:
 `docs/dev-log/after-task/2026-08-02-cv-evidence-layer.md`.
 — CV evidence layer (Claude, 2026-08-02)
+
+## 2026-08-02 — Design 66 revised against six-finding staleness audit (Claude, worktree `capstone-scope`, branch `claude/capstone-scope-20260802`)
+
+Integrated three independently-drafted patches (S-2 CRAN reframing +
+kernel-engine correction, 7 sites; S-4 interval-method / section-8 re-pricing
+/ H4 boundary / section-12 addenda, 10 sites) plus one new inserted section
+(S-3 validation-oracles, numbered 6A) into
+`docs/design/66-capstone-power-study.md`, per the six-finding audit at
+`docs/dev-log/audits/2026-08-02-design66-staleness-audit.md`. All 17 OLD/NEW
+blocks were applied by verbatim old-text match (never by line number). One
+genuine text overlap was found and handled: s2's section-10 OLD block and
+s4's section-10 OLD block both contain the original items 4–5 verbatim
+(register-rows / paper-ready-report), so s2 was applied to that region
+before s4 to keep both verbatim matches valid; all other sites were disjoint
+by construction. Section 12 (LOCKED) was not edited in place — the preamble,
+L-a, L-c, and L-e each keep their pre-2026-08-02 text verbatim with a dated
+`**2026-08-02 addendum --**` appended below, matching the file's existing
+locking convention.
+
+**Commands run:** `git diff --stat` (confirmed only
+`docs/design/66-capstone-power-study.md` changed by this session, beyond the
+pre-existing staged audit-file diff this session did not touch); `grep -n
+'^## '` on the target file (confirmed sections 0–12 in order, plus 6A, no
+renumbering); `grep -c '```'` (0, confirmed no fence markers exist or were
+introduced — the doc uses no triple-backtick code fences). Both `gh issue
+edit 345/349 --body-file` ran after fetching each body with `gh issue view
+--json body -q .body` and appending a dated "CRAN descoped" section;
+existing body text was preserved verbatim in both.
+
+**Deliberately NOT run / NOT done:** no compute of any kind (no local, no
+Totoro, no DRAC); no register row (CI-08, CI-10, KER-*) was moved; the open
+decisions this revision documents (section 3.4 primary-interval-method;
+section 12 L-e re-decision; the `refits_per_profile` measurement; whether
+the compute-admission design doc gets built) were left open, not resolved;
+no `devtools::test()` / `R CMD check` run (no R/, src/, or tests/ files were
+touched — docs-only change).
+
+— Design 66 integration (Claude, 2026-08-02)

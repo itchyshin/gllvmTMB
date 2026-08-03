@@ -24,7 +24,7 @@
 #' not inferential evidence.
 #'
 #' @param fit A fitted \code{gllvmTMB} model with a predictor-informed latent term.
-#' @param n_boot Number of bootstrap replicates (default 200).
+#' @param n_boot Number of bootstrap replicates (default 999).
 #' @param conf Confidence level (default 0.95).
 #' @param seed Optional integer seed for reproducible replicates.
 #' @param n_cores Cores for parallel refits (requires \pkg{future.apply} when > 1).
@@ -37,7 +37,7 @@
 #' @keywords internal
 #' @noRd
 bootstrap_ci_lv_effects <- function(fit,
-                                    n_boot = 200,
+                                    n_boot = 999,
                                     conf = 0.95,
                                     seed = NULL,
                                     n_cores = 1,

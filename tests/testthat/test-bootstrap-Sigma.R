@@ -305,7 +305,8 @@ test_that("coverage_ceiling reports the arithmetic limit and warns below conf", 
   ## The ceiling must track conf, not be hard-coded to 0.95. At conf = 0.80 the
   ## arithmetic floor is ceiling(2 / 0.2) - 1 = 9, so B = 10 clears it and the
   ## "cannot deliver" warning must NOT fire -- but the separate low-B noise
-  ## warning still does, since 10 < 1000. Those are different conditions and
+  ## warning still does, since 10 < 999 (the default, and the noise threshold).
+  ## Those are different conditions and
   ## the test distinguishes them rather than lumping them together.
   expect_warning(
     boot_80 <- bootstrap_Sigma(

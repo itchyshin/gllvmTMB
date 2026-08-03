@@ -88,7 +88,7 @@
                                   level      = c("unit", "unit_obs"),
                                   entries    = NULL,
                                   conf_level = 0.95,
-                                  nsim       = 200L,
+                                  nsim       = 999L,
                                   seed       = NULL) {
 
   if (!inherits(fit, "gllvmTMB_multi"))

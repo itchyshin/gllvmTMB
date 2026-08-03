@@ -252,3 +252,119 @@ Read AGENTS.md and docs/dev-log/handover/2026-08-03-claude-handover-mature-va-it
 Run the handover rehydration steps, reconcile with git, then continue the OWED steps —
 starting with the unfinished speed/accuracy measurement, which is the arc's binding falsifier.
 ```
+
+---
+
+# SESSION 2 — what the measurements actually showed, and how the arc re-aimed
+
+Everything below postdates the sections above. **The headline changed twice.**
+
+## The one-line summary
+
+**gllvmTMB already has the better VA — it is our GH tier, not AC.** AC reproduces
+gllvm's answer; GH beats it. So the goal is not "make AC good", it is **"make GH
+affordable"**, and warm-starting GH from AC does most of that.
+
+## 1. The 264× speed gap was an artifact of comparing different models
+
+Our benchmark set `unique = TRUE`, adding a diagonal ψ tier; gllvm with `num.lv=1`
+fits **no such tier**. Measured at N=250/T=20, AC:
+
+| `unique` | params | time | rel_frob |
+|---|---|---|---|
+| TRUE | 10,560 | 191.1 s | 0.20293 |
+| **FALSE** | **540** | **2.9 s** | **0.20301** |
+
+Like-for-like, clean and interleaved: **ours 2.71 s vs gllvm 0.74 s — 3.7×**, not 264×.
+
+## 2. AC ≡ gllvm's VA. That is validation, not victory
+
+Max relative difference **1.06e-04** over 6 seeds; paired sign test 3/6, p = 1.000.
+**Independence proven by construction** (the adversarial reviewer demanded it): from
+the default start and two whole-vector perturbations (sd 0.5, 1.0), the objective is
+identical to 6 decimals (1649.569276) and rel_frob spread is 2.36e-06. Same optimum,
+different starts, separate packages.
+
+So adopting AC buys **parity** with the reference. The tier that *beats* it is GH:
+median rel_frob **0.1974 vs gllvm's 0.2259** over 6 seeds, and 0.298 vs 0.359 at the
+locked cell. GH optimises a **tighter bound**.
+
+## 3. 🔴 AC COLLAPSES A REAL VARIANCE — and this is disqualifying on its own
+
+Planted ψ SD = 0.6, same data through both tiers:
+
+| `n_trials` | AC (ψ / rel_frob) | GH (ψ / rel_frob) |
+|---|---|---|
+| 1 | 0.0000 / 0.7837 | 0.0000 / 0.3517 |
+| 6 | **0.0001** / 0.4195 | **0.6207** / 0.3244 |
+| 20 | 0.5399 / 0.3584 | 0.6259 / 0.3556 |
+
+**GH recovers ψ where AC collapses it**, and AC is 29% worse on the loadings there.
+This is the derivation's Risk R1 materialising. The ψ tier is **identified, not
+degenerate** — the profiled objective rises monotonically 1998.70 → 2398.77 across
+ψ SD 0.01 → 1.50 — so at `n_trials = 6` the optimum simply sits at the **wrong
+place**. *Identified but biased* is more dangerous than unidentified: a user gets a
+confident zero for a variance that is really there.
+
+**The earlier "GATE PASSED" was measured on a DGP with ψ = 0** — AC's single most
+favourable corner. It stands for what it measured and must not be read as general.
+
+## 4. ✅ THE FIX: warm-start GH from AC — GH's accuracy at ¼ the iterations
+
+Five seeds, N=100/T=10:
+
+| arm | rel_frob | iterations | fn evals |
+|---|---|---|---|
+| AC | 0.26136 | 145.8 | 181.4 |
+| GH-cold | 0.24412 | 138.6 | 178.6 |
+| **GH-warm** | **0.24603** | **36.8** | **48.2** |
+
+Same optimum (objectives agree to 4–5 s.f.), 0.8% apart on accuracy, **3.8× fewer
+iterations**; per seed 2.4×–7.1×. Arithmetic on measured costs gives ~**3.0× whole-fit**
+with GH's accuracy retained — *inference, not an end-to-end timing; confirm serially
+before quoting.*
+
+Because the route **ends on GH**, it inherits GH's variance recovery and therefore
+**avoids §3's defect entirely.** That is why this is the answer and AC-alone is not.
+
+## 5. Our Laplace beats gllvm's Laplace, and does not collapse ψ
+
+| `n_trials` | ours-LA | gllvm-LA |
+|---|---|---|
+| 1 | 0.3566 | 0.3566 |
+| 6 | **0.2346** | 0.3226 |
+| 20 | **0.2228** | 0.3088 |
+
+~28% better at n ≥ 6. At n=6 with real ψ, **ours-LA is the best of every arm** (vs GH
+0.3244, AC 0.4195). ψ is retained: total−shared = 0.4736, implied SD 0.688 vs planted
+0.6. Speed at this small binomial cell: 1.6–7.1 s vs 0.3–0.4 s.
+
+## 6. The ψ = unique + link conditional is ALREADY implemented correctly
+
+Verified across four families: only `gaussian_anchor` carries `log_sigma`
+(observation-level residual); the B-tier ψ is family-agnostic. **Nothing to fix.**
+The rule is conditional on **tier position**, and which tier is "lowest" depends on
+replication and `n_trials` — not on the level's name. See
+`dev/va-speed/15-PSI-TIER-WHICH-LEVEL.md`, which retracts an over-simple claim I made
+in `6102e044`.
+
+**Gap, not defect:** overdispersed Poisson — the only family that should carry both
+terms — has no VA family code.
+
+## Next immediate steps
+
+1. **OWED — the 2×2 campaign is IN FLIGHT.** `dev/va-speed/18-four-way.R`, driver at
+   `/tmp/fwdrive.sh`, results `/tmp/fw-n<n>-p<psi>-s<seed>.rds`. Grid: N=100/T=10 ×
+   `n_trials` {6,20} × ψ {0, 0.6} × seeds {1,2}, five arms, **serial and interleaved**.
+   Do not run anything CPU-heavy alongside it.
+2. **OWED — confirm the warm-start speedup end-to-end**, serially. Only the iteration
+   counts are measured; the 3.0× is arithmetic.
+3. **OWED — implement the warm start as a real route**, not a probe.
+4. **DEFERRED — the `A_i` collapse.** `∂E/∂v ≡ −n/2` makes the variational covariance
+   data-independent, so the per-unit `log_L_diag` block should reduce to one value per
+   tier-dimension. Not the fenced block-diagonal-`S` item. **Needs Shinichi's word** —
+   it changes the variational parameterisation.
+5. **🔴 Needs Shinichi:** PR #925 (shipped-engine AD-safety, likelihood-touching).
+6. **Filed, not fixed:** `extract_Sigma(part = "unique"/"psi")` returns an all-NA
+   diagonal where `total`/`shared` are finite.
+7. **Later:** the proper multi-seed simulation arc on Totoro/DRAC.

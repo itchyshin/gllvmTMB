@@ -1,0 +1,24 @@
+
+## N=100 T=10 unique=FALSE  JOINT route, ASYMMETRIC start (sd(log_L_diag@start)=0.450)
+   npar=220  iterations=160  fn=212  gr=161  conv=0  obj=1649.569275  max|grad|=2.081e-03
+   tier coord      mean           sd        range  pred_4_1          dev
+ latent     1 -1.466632 7.459161e-07 2.675117e-06 -1.466631 9.671692e-07
+   START sd = 4.504e-01  ->  FINAL max sd across coords = 7.459e-07 | max range = 2.675e-06 | max |mean - pred(4.1)| = 9.672e-07
+
+## N=100 T=10 unique=TRUE  JOINT route, ASYMMETRIC start (sd(log_L_diag@start)=0.507)
+   npar=2230  iterations=218  fn=271  gr=219  conv=0  obj=1649.569276  max|grad|=6.030e-04
+   tier coord          mean           sd        range      pred_4_1
+ latent     1 -1.466631e+00 9.276905e-07 6.411645e-06 -1.466630e+00
+    psi     1  1.547821e-07 8.377904e-07 7.808100e-06 -3.928191e-12
+    psi     2  4.591253e-08 9.286162e-07 9.500958e-06 -1.436402e-09
+    psi     9  1.016916e-07 3.239333e-07 2.410432e-06 -3.470113e-12
+    psi    10 -1.759643e-07 4.188161e-07 3.878457e-06 -7.928899e-10
+          dev
+ 1.919111e-07
+ 1.547861e-07
+ 4.734893e-08
+ 1.016951e-07
+ 1.751715e-07
+   START sd = 5.074e-01  ->  FINAL max sd across coords = 1.138e-06 | max range = 1.292e-05 | max |mean - pred(4.1)| = 8.891e-07
+
+JITTER_DONE

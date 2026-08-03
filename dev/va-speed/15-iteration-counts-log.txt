@@ -1,0 +1,55 @@
+       cell unique    route npar_outer npar_full iterations fn gr conv
+ N=100,T=10  FALSE profiled         20       220         26 38 26    0
+ objective max_abs_grad max_sd_lld max_range_lld max_dev_pred
+  1649.569  0.000275545          0             0 2.597922e-14
+
+       cell unique    route npar_outer npar_full iterations  fn  gr conv
+ N=100,T=10   TRUE profiled         30      2230        153 194 154    0
+ objective max_abs_grad   max_sd_lld max_range_lld max_dev_pred
+  1649.569 8.721942e-05 5.904344e-17  2.220446e-16 5.440093e-13
+
+       cell unique    route npar_outer npar_full iterations fn gr conv
+ N=250,T=20  FALSE profiled         40       540         62 77 63    0
+ objective max_abs_grad   max_sd_lld max_range_lld max_dev_pred
+  7753.467  0.002429282 6.600121e-17  2.220446e-16 9.103829e-15
+
+       cell unique    route npar_outer npar_full iterations  fn  gr conv
+ N=250,T=20   TRUE profiled         60     10560        297 375 298    0
+ objective max_abs_grad   max_sd_lld max_range_lld max_dev_pred
+  7753.467  0.008943302 4.307591e-17  1.385663e-16 2.575717e-14
+
+       cell unique route npar_outer npar_full iterations  fn  gr conv objective
+ N=100,T=10  FALSE joint        220       220        152 198 153    0  1649.569
+ max_abs_grad   max_sd_lld max_range_lld max_dev_pred
+  0.001493166 1.022662e-16  4.440892e-16 1.526136e-06
+
+       cell unique route npar_outer npar_full iterations  fn  gr conv objective
+ N=100,T=10   TRUE joint       2230      2230        205 269 206    0  1649.569
+ max_abs_grad   max_sd_lld max_range_lld max_dev_pred
+ 0.0004584331 9.727459e-17  4.440892e-16 1.119216e-06
+
+       cell unique route npar_outer npar_full iterations  fn  gr conv objective
+ N=250,T=20  FALSE joint        540       540        277 368 277    0  7753.467
+ max_abs_grad   max_sd_lld max_range_lld max_dev_pred
+  0.004287952 9.439453e-17  4.440892e-16 3.060635e-06
+
+
+===== FULL TABLE =====
+       cell unique    route npar_outer npar_full iterations  fn  gr conv
+ N=100,T=10  FALSE profiled         20       220         26  38  26    0
+ N=100,T=10   TRUE profiled         30      2230        153 194 154    0
+ N=250,T=20  FALSE profiled         40       540         62  77  63    0
+ N=250,T=20   TRUE profiled         60     10560        297 375 298    0
+ N=100,T=10  FALSE    joint        220       220        152 198 153    0
+ N=100,T=10   TRUE    joint       2230      2230        205 269 206    0
+ N=250,T=20  FALSE    joint        540       540        277 368 277    0
+ objective max_abs_grad   max_sd_lld max_range_lld max_dev_pred
+  1649.569 2.755450e-04 0.000000e+00  0.000000e+00 2.597922e-14
+  1649.569 8.721942e-05 5.904344e-17  2.220446e-16 5.440093e-13
+  7753.467 2.429282e-03 6.600121e-17  2.220446e-16 9.103829e-15
+  7753.467 8.943302e-03 4.307591e-17  1.385663e-16 2.575717e-14
+  1649.569 1.493166e-03 1.022662e-16  4.440892e-16 1.526136e-06
+  1649.569 4.584331e-04 9.727459e-17  4.440892e-16 1.119216e-06
+  7753.467 4.287952e-03 9.439453e-17  4.440892e-16 3.060635e-06
+
+UNCAPPED_DONE

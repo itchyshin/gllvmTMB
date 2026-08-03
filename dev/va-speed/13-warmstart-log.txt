@@ -1,0 +1,54 @@
+using C++ compiler: ‘Apple clang version 21.0.0 (clang-2100.1.1.101)’
+using SDK: ‘MacOSX26.5.sdk’
+clang++ -arch arm64 -std=gnu++20 -I"/Library/Frameworks/R.framework/Resources/include" -DNDEBUG -I"/Users/z3437171/Library/R/arm64/4.6/library/TMB/include" -I"/Users/z3437171/Library/R/arm64/4.6/library/RcppEigen/include"  -DTMB_SAFEBOUNDS -DTMB_EIGEN_DISABLE_WARNINGS -DLIB_UNLOAD=R_unload_gllvmTMB_va_r3  -DTMB_LIB_INIT=R_init_gllvmTMB_va_r3  -DCPPAD_FRAMEWORK  -I/opt/R/arm64/include    -fPIC  -O2  -c gllvmTMB_va_r3.cpp -o gllvmTMB_va_r3.o
+clang++ -arch arm64 -std=gnu++20 -dynamiclib -Wl,-headerpad_max_install_names -undefined dynamic_lookup -L/Library/Frameworks/R.framework/Resources/lib -L/opt/R/arm64/lib -o gllvmTMB_va_r3.so gllvmTMB_va_r3.o -F/Library/Frameworks/R.framework/.. -framework R
+ seed     arm objective rel_frob iterations fn_evals convergence   max_grad
+    1      AC    1649.6  0.24132        153      194           0 8.7219e-05
+    1 GH-cold    1617.3  0.13077        135      177           0 4.6595e-04
+    1 GH-warm    1618.6  0.13207         24       34           0 3.5762e-04
+---- seed 1 done ----
+ seed     arm objective rel_frob iterations fn_evals convergence   max_grad
+    2      AC    1568.0  0.21043        132      167           0 0.00029064
+    2 GH-cold    1517.0  0.46153        142      178           0 0.00010591
+    2 GH-warm    1517.6  0.46116         59       70           0 0.00104864
+---- seed 2 done ----
+ seed     arm objective rel_frob iterations fn_evals convergence   max_grad
+    3      AC    1646.2  0.40437        146      180           0 0.00023414
+    3 GH-cold    1614.0  0.33111        149      197           0 0.00062920
+    3 GH-warm    1615.2  0.33407         21       31           0 0.00046903
+---- seed 3 done ----
+ seed     arm objective rel_frob iterations fn_evals convergence   max_grad
+    4      AC    1563.6  0.26596        157      198           0 0.00038616
+    4 GH-cold    1518.2  0.13333        130      177           0 0.00040466
+    4 GH-warm    1520.7  0.13901         46       60           0 0.00057875
+---- seed 4 done ----
+ seed     arm objective rel_frob iterations fn_evals convergence   max_grad
+    5      AC    1568.4  0.18469        141      168           0 0.00014274
+    5 GH-cold    1527.6  0.16386        137      164           0 0.00045391
+    5 GH-warm    1527.6  0.16385         34       46           0 0.00097017
+---- seed 5 done ----
+
+===== ALL SEEDS =====
+ seed     arm objective rel_frob iterations fn_evals convergence   max_grad
+    1      AC    1649.6  0.24132        153      194           0 8.7219e-05
+    1 GH-cold    1617.3  0.13077        135      177           0 4.6595e-04
+    1 GH-warm    1618.6  0.13207         24       34           0 3.5762e-04
+    2      AC    1568.0  0.21043        132      167           0 2.9064e-04
+    2 GH-cold    1517.0  0.46153        142      178           0 1.0591e-04
+    2 GH-warm    1517.6  0.46116         59       70           0 1.0486e-03
+    3      AC    1646.2  0.40437        146      180           0 2.3414e-04
+    3 GH-cold    1614.0  0.33111        149      197           0 6.2920e-04
+    3 GH-warm    1615.2  0.33407         21       31           0 4.6903e-04
+    4      AC    1563.6  0.26596        157      198           0 3.8616e-04
+    4 GH-cold    1518.2  0.13333        130      177           0 4.0466e-04
+    4 GH-warm    1520.7  0.13901         46       60           0 5.7875e-04
+    5      AC    1568.4  0.18469        141      168           0 1.4274e-04
+    5 GH-cold    1527.6  0.16386        137      164           0 4.5391e-04
+    5 GH-warm    1527.6  0.16385         34       46           0 9.7017e-04
+
+===== MEANS =====
+     arm  rel_frob iterations fn_evals
+      AC 0.2613550      145.8    181.4
+ GH-cold 0.2441181      138.6    178.6
+ GH-warm 0.2460335       36.8     48.2
+WARMSTART_DONE

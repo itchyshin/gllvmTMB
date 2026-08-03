@@ -1,0 +1,139 @@
+
+########## N=100 T=10 unique=TRUE route=profiled
+       cell unique    route npar_outer npar_full iterations eval_fn eval_gr
+ N=100,T=10   TRUE profiled         30      2230        100     113     101
+ convergence objective max_abs_grad
+           1  1650.144    0.2649114
+-- log_L_diag spread across units, per tier-coordinate --
+   tier coord         mean           sd        range     pred_4_1
+ latent     1 -1.465432443 7.401487e-17 2.220446e-16 -1.465432443
+    psi     1 -0.001237239 1.349390e-17 3.209238e-17 -0.001237239
+    psi     2 -0.001459533 3.626025e-17 8.695301e-17 -0.001459533
+    psi     3 -0.001023678 3.976201e-17 8.630249e-17 -0.001023678
+ abs_dev_from_pred
+      4.125589e-13
+      7.199102e-17
+      4.770490e-17
+      3.122502e-17
+   ... (11 coords total)
+ tier coord         mean           sd        range     pred_4_1
+  psi     9 -0.001017562 4.822278e-18 3.664603e-17 -0.001017562
+  psi    10 -0.001989267 1.097361e-17 1.097213e-16 -0.001989267
+ abs_dev_from_pred
+      3.469447e-17
+      6.071532e-18
+   MAX sd across all coords = 7.401e-17 | MAX range = 2.220e-16 | MAX |mean-pred(4.1)| = 4.126e-13
+
+########## N=100 T=10 unique=FALSE route=profiled
+       cell unique    route npar_outer npar_full iterations eval_fn eval_gr
+ N=100,T=10  FALSE profiled         20       220         26      38      26
+ convergence objective max_abs_grad
+           0  1649.569  0.000275545
+-- log_L_diag spread across units, per tier-coordinate --
+   tier coord      mean sd range  pred_4_1 abs_dev_from_pred
+ latent     1 -1.466629  0     0 -1.466629      2.620126e-14
+   MAX sd across all coords = 0.000e+00 | MAX range = 0.000e+00 | MAX |mean-pred(4.1)| = 2.620e-14
+
+########## N=250 T=20 unique=TRUE route=profiled
+       cell unique    route npar_outer npar_full iterations eval_fn eval_gr
+ N=250,T=20   TRUE profiled         60     10560        100     116     101
+ convergence objective max_abs_grad
+           1  7757.859      2.02942
+-- log_L_diag spread across units, per tier-coordinate --
+   tier coord         mean           sd        range     pred_4_1
+ latent     1 -1.981087292 3.446801e-17 2.220446e-16 -1.981087292
+    psi     1 -0.001867384 4.435826e-19 1.301043e-18 -0.001867384
+    psi     2 -0.003582258 7.895922e-18 4.770490e-17 -0.003582258
+    psi     3 -0.002020999 2.176575e-18 2.428613e-17 -0.002020999
+ abs_dev_from_pred
+      0.000000e+00
+      3.599551e-17
+      5.811324e-17
+      4.336809e-19
+   ... (21 coords total)
+ tier coord         mean sd range     pred_4_1 abs_dev_from_pred
+  psi    19 -0.001631486  0     0 -0.001631486      8.543513e-17
+  psi    20 -0.001752381  0     0 -0.001752381      8.370041e-17
+   MAX sd across all coords = 3.447e-17 | MAX range = 2.220e-16 | MAX |mean-pred(4.1)| = 8.544e-17
+
+########## N=250 T=20 unique=FALSE route=profiled
+       cell unique    route npar_outer npar_full iterations eval_fn eval_gr
+ N=250,T=20  FALSE profiled         40       540         62      77      63
+ convergence objective max_abs_grad
+           0  7753.467  0.002429282
+-- log_L_diag spread across units, per tier-coordinate --
+   tier coord      mean           sd        range  pred_4_1 abs_dev_from_pred
+ latent     1 -1.980661 6.600121e-17 2.220446e-16 -1.980661      8.881784e-16
+   MAX sd across all coords = 6.600e-17 | MAX range = 2.220e-16 | MAX |mean-pred(4.1)| = 8.882e-16
+
+########## N=100 T=10 unique=TRUE route=joint
+       cell unique route npar_outer npar_full iterations eval_fn eval_gr
+ N=100,T=10   TRUE joint       2230      2230        100     130     101
+ convergence objective max_abs_grad
+           1   1661.86     12.97639
+-- log_L_diag spread across units, per tier-coordinate --
+   tier coord          mean           sd        range      pred_4_1
+ latent     1 -1.0314703953 3.725556e-15 1.909584e-14 -1.1932636171
+    psi     1 -0.0016254464 1.545202e-16 7.359564e-16 -0.0012568234
+    psi     2 -0.0009998647 3.275236e-16 1.455867e-15 -0.0006001748
+    psi     3 -0.0019264679 2.869746e-16 1.424642e-15 -0.0015470517
+ abs_dev_from_pred
+      0.1617932218
+      0.0003686229
+      0.0003996899
+      0.0003794162
+   ... (11 coords total)
+ tier coord         mean           sd       range      pred_4_1
+  psi     9 -0.001311821 1.715671e-15 6.26799e-15 -0.0008695947
+  psi    10 -0.001262869 8.332444e-16 3.66829e-15 -0.0009069200
+ abs_dev_from_pred
+      0.0004422263
+      0.0003559490
+   MAX sd across all coords = 3.726e-15 | MAX range = 1.910e-14 | MAX |mean-pred(4.1)| = 1.618e-01
+
+########## N=100 T=10 unique=FALSE route=joint
+       cell unique route npar_outer npar_full iterations eval_fn eval_gr
+ N=100,T=10  FALSE joint        220       220        100     119     101
+ convergence objective max_abs_grad
+           1  1659.325     18.93989
+-- log_L_diag spread across units, per tier-coordinate --
+   tier coord      mean           sd        range  pred_4_1 abs_dev_from_pred
+ latent     1 -1.078719 2.131063e-15 1.110223e-14 -1.242601         0.1638822
+   MAX sd across all coords = 2.131e-15 | MAX range = 1.110e-14 | MAX |mean-pred(4.1)| = 1.639e-01
+
+########## N=250 T=20 unique=FALSE route=joint
+       cell unique route npar_outer npar_full iterations eval_fn eval_gr
+ N=250,T=20  FALSE joint        540       540        100     135     101
+ convergence objective max_abs_grad
+           1  8041.381     61.82679
+-- log_L_diag spread across units, per tier-coordinate --
+   tier coord       mean           sd        range  pred_4_1 abs_dev_from_pred
+ latent     1 -0.6855081 5.971692e-16 3.774758e-15 -1.246262         0.5607538
+   MAX sd across all coords = 5.972e-16 | MAX range = 3.775e-15 | MAX |mean-pred(4.1)| = 5.608e-01
+
+########## N=250 T=20 unique=TRUE route=joint
+       cell unique route npar_outer npar_full iterations eval_fn eval_gr
+ N=250,T=20   TRUE joint      10560     10560        100     125     101
+ convergence objective max_abs_grad
+           1  8087.918     87.08724
+-- log_L_diag spread across units, per tier-coordinate --
+   tier coord         mean           sd        range      pred_4_1
+ latent     1 -0.642208993 5.781364e-15 3.730349e-14 -1.2411013232
+    psi     1 -0.004521967 2.261916e-16 1.122366e-15 -0.0003948997
+    psi     2 -0.004377601 2.081572e-16 9.523632e-16 -0.0003822114
+    psi     3 -0.005284995 2.240994e-16 1.000935e-15 -0.0005833163
+ abs_dev_from_pred
+       0.598892330
+       0.004127067
+       0.003995390
+       0.004701679
+   ... (21 coords total)
+ tier coord         mean           sd        range      pred_4_1
+  psi    19 -0.004971633 5.991703e-17 3.217912e-16 -0.0004890670
+  psi    20 -0.004456904 3.830588e-17 2.064321e-16 -0.0003804522
+ abs_dev_from_pred
+       0.004482566
+       0.004076451
+   MAX sd across all coords = 5.781e-15 | MAX range = 3.730e-14 | MAX |mean-pred(4.1)| = 5.989e-01
+
+FITCOUNT_DONE

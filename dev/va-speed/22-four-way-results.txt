@@ -1,0 +1,26 @@
+cells: 8  rows: 40 
+
+=========== ACCURACY (rel_frob, median over seeds; LOWER IS BETTER) ===========
+ n_trials psi_true gllvm-LA gllvm-VA ours-AC ours-GH ours-LA
+        6      0.0   0.3026   0.2259  0.2259  0.2961  0.3169
+       20      0.0   0.2690   0.2271  0.2271  0.2690  0.2746
+        6      0.6   0.4864   0.2792  0.2807  0.5010  0.5243
+       20      0.6   0.3429   0.2790  0.2833  0.4513  0.3853
+
+=========== SPEED (seconds, median; serial + interleaved) ===========
+ n_trials gllvm-LA gllvm-VA ours-AC ours-GH ours-LA
+        6    0.350    0.218    5.65    13.2    4.92
+       20    0.429    0.246    7.53    20.3    4.69
+
+=========== psi RECOVERY (VA arms only; truth in psi_true) ===========
+ n_trials psi_true   ours-AC   ours-GH
+        6      0.0 5.174e-06 2.103e-05
+       20      0.0 5.141e-06 3.338e-04
+        6      0.6 2.227e-04 5.615e-01
+       20      0.6 5.008e-01 5.899e-01
+
+=========== WINNER per condition (best median rel_frob) ===========
+  n_trials= 6 psi=0.0  ->  gllvm-VA  0.2259   (worst ours-LA   0.3169)
+  n_trials=20 psi=0.0  ->  ours-AC   0.2271   (worst ours-LA   0.2746)
+  n_trials= 6 psi=0.6  ->  gllvm-VA  0.2792   (worst ours-LA   0.5243)
+  n_trials=20 psi=0.6  ->  gllvm-VA  0.2790   (worst ours-GH   0.4513)

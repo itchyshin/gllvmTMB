@@ -200,6 +200,62 @@ machinery must be written and verified.
 **Gate A closes at Stage 6.** At that point her model shape can be expressed and
 fitted — with an *iid* prior standing in for the phylogeny.
 
+> **CORRECTION (2026-08-03) — probit is no longer quadrature-only, and Stage 5's
+> route may be superseded. Read this before building Stage 5.**
+>
+> This document's staging rests on the premise that *"one 1-D Gauss–Hermite rule
+> covers the family surface"*, and Design 105 §1.1's closed-form test routes
+> binomial-probit to quadrature because the **direct** expectation
+> `E_q[log Φ(η)]` has no closed form. That test is correct as far as it goes, but
+> it never considered the **augmented** formulation.
+>
+> The mature-VA arc has since derived and implemented the Albert–Chib closed form
+> as a third evaluation tier, `eval_method = "ac"`, for family code 4
+> (`dev/va-speed/ALBERT-CHIB-DERIVATION.md`). Augmenting with a truncated-normal
+> auxiliary `z ~ N(η, 1)` and profiling it out analytically gives
+> `E_AC(μ, v; y, n) = y·logΦ(μ) + (n−y)·logΦ(−μ) − n·v/2` — no quadrature node is
+> touched. It is an **objective substitution**: `z` never becomes a TMB
+> parameter and the variational parameter block is unchanged.
+>
+> Three consequences for this document, only the first of which is settled:
+>
+> 1. **Stage 4's tier is no longer the only one for probit.** `default_tier`
+>    remains `"gh"` and the integration fence still refuses probit, because AC is
+>    a *strictly lower bound* on the GH objective — a different objective, which
+>    inherits none of GH's accuracy evidence. Stage 8's recovery study is
+>    therefore owed for the AC tier separately, not merely for probit.
+> 2. **Stage 5 — DECIDED by the maintainer, 2026-08-03: build Item 1 first, then
+>    Stage 5 on the Albert–Chib route.** Row 5 above specifies ordinal via
+>    `logspace_sub` of two `log Φ`s under the shared 1-D GH rule. Albert–Chib
+>    Theorem 3 gives cumulative-probit ordinal a closed form, so **building
+>    Stage 5 on Gauss–Hermite means building it twice**. The call is explicitly
+>    a *sequencing* decision, not a kill: Item 1 first makes Stage 5 far cheaper
+>    than the 1–2 d Row 5 quotes (and far cheaper than the "~7 days" figure that
+>    was in any case inflated 3–5× — see (3) and the campaign retraction).
+>    Two things Row 5's estimate must still absorb under the AC route: ordinal is
+>    **not** a branch in the `fam == 4` block — the VA template has no ordinal
+>    family at all (codes validated `0..4`), so it is a new family code either
+>    way — and the AC ordinal term *does* form a difference of two nearly equal
+>    CDFs, which §6.3 flags and which the binary tier avoids entirely via the
+>    `log Φ(−η)` symmetry. The numerical work Row 5 anticipates does not
+>    disappear on the AC route; only the duplicated GH implementation does.
+> 3. **The cost model in Rows 4–5 is optimistic about what removing quadrature
+>    buys.** GH is ~75% of single-tier fit time, so eliminating it caps the gain
+>    at ~4× by Amdahl — not the ~65× gap to the reference. The derivation locates
+>    the probable remainder elsewhere: under AC, `∂E/∂v ≡ −n/2` forces
+>    `A_i⁻¹ = Σ⁻¹ + Σ_j n_ij λ_j λ_j'`, which for complete data with constant `n`
+>    is identical across units and independent of the data — collapsing `N`
+>    variational-covariance blocks to one. This was derived from the algebra and
+>    then found verbatim in the reference implementation. It is **not** the
+>    deprioritised block-diagonal-`S` item, which restructures each `A_i`; it is
+>    a consequence of the AC objective itself. Unverified for the Stage-7
+>    structured tiers.
+>
+> A fence that follows from (3): under AC the variational covariance is
+> structurally data-independent, so per-unit variational SDs carry no per-unit
+> information. **Stage 14's `getLV(se = TRUE)` must not source SEs from an AC fit
+> without stating this** — it is a weaker object than the same SE under GH.
+
 ### Gate B — her data is fitted well
 
 | # | Stage | What it unblocks | Size | Depends on | Cheap / new |

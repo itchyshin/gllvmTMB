@@ -1214,24 +1214,34 @@
   ),
 
   ## Binomial-PROBIT (Design 108 Gate A Stage 4). E[log Phi(eta)] has no closed
-  ## form and no analogue of the Jaakkola-Jordan bound, so Gauss-Hermite is the
-  ## only tier -- asking for "jj" here is an error, not a fallback.
+  ## form, and no analogue of the Jaakkola-Jordan bound exists, so asking for
+  ## "jj" here is an error rather than a fallback.
+  ##
+  ## "ac" is the Albert-Chib closed form (dev/va-speed/ALBERT-CHIB-DERIVATION.md):
+  ## a truncated-normal augmentation whose auxiliary z profiles out analytically,
+  ## leaving y logPhi(mu) + (n-y) logPhi(-mu) - n v/2. It touches no quadrature
+  ## node, which is where ~75% of this family's fit cost currently goes.
+  ##
+  ## `default_tier` STAYS "gh". AC is a strictly lower bound on the GH objective,
+  ## i.e. a DIFFERENT objective, so it does not inherit GH's accuracy evidence and
+  ## must not become the default before it carries its own against planted truth
+  ## (MATURE-VA.md Item 1's falsifier: rel_frob must stay <= 0.298).
   ##
   ## RESEARCH SPIKE, not a capability: this entry makes the family reachable
   ## from the prototype engine only. It is deliberately NOT on the public
   ## integration fence (R/integration-fence.R), so `integration = "va"` still
   ## refuses binomial-probit from the formula API. No recovery evidence exists.
   ##
-  ## optimizer: no benchmark has been run for this family, so it inherits the
-  ## reference optimiser rather than claiming a measured choice.
+  ## optimizer: no benchmark has been run for this family, so both tiers inherit
+  ## the reference optimiser rather than claiming a measured choice.
   list(
     family = "binomial_probit",
     family_code = 4L,
     link = "probit",
-    tiers = "gh",
+    tiers = c("gh", "ac"),
     default_tier = "gh",
     expectation = "quadrature",
-    optimizer_by_tier = list(gh = "nlminb")
+    optimizer_by_tier = list(gh = "nlminb", ac = "nlminb")
   )
 )
 
@@ -1243,13 +1253,20 @@
        call. = FALSE)
 }
 
-.va_r3_resolve_eval_method <- function(eval_method = c("auto", "jj", "gh"), family) {
+.va_r3_resolve_eval_method <- function(eval_method = c("auto", "jj", "gh", "ac"), family) {
   eval_method <- match.arg(eval_method)
   codes <- unique(as.integer(family))
   ## Design 108 Stage 2: mixed-family fits always use GH; JJ is binomial-only.
+  ## Albert-Chib is likewise single-family only -- `eval_method` is one global
+  ## scalar in the template, so a mixed fit cannot ask for a probit-specific
+  ## evaluator on some rows and quadrature on others.
   if (length(codes) > 1L) {
     if (identical(eval_method, "jj")) {
       stop("eval_method = \"jj\" is only defined for pure-binomial VA fits.",
+           call. = FALSE)
+    }
+    if (identical(eval_method, "ac")) {
+      stop("eval_method = \"ac\" is only defined for pure binomial-probit VA fits.",
            call. = FALSE)
     }
     return("gh")
@@ -1265,12 +1282,100 @@
   eval_method
 }
 
-.va_r3_eval_method_code <- function(eval_method = c("auto", "jj", "gh"), family) {
-  if (identical(.va_r3_resolve_eval_method(eval_method, family), "jj")) 1L else 0L
+## The tier -> template-code map. This was a BOOLEAN collapse
+## (`if (jj) 1L else 0L`) while only two tiers existed; with a third it must be
+## an exhaustive switch. The failure mode a boolean collapse produces here is the
+## worst kind available: an unrecognised tier maps silently to 0L and the fit
+## runs Gauss-Hermite while reporting the tier that was asked for -- a wrong
+## answer with no error. `switch` without a default errors instead.
+.va_r3_eval_method_code <- function(eval_method = c("auto", "jj", "gh", "ac"), family) {
+  resolved <- .va_r3_resolve_eval_method(eval_method, family)
+  code <- switch(resolved, gh = 0L, jj = 1L, ac = 2L)
+  if (is.null(code)) {
+    stop("VA-R3 has no template code for eval_method = \"", resolved, "\".",
+         call. = FALSE)
+  }
+  code
 }
 
+## Same exhaustiveness requirement, and the same reason: mislabelling the
+## objective would license comparing values across tiers that do not compute the
+## same quantity. GH and AC differ by a strict bound gap, not by numerical noise.
 .va_r3_objective_type <- function(resolved_eval_method) {
-  if (identical(resolved_eval_method, "jj")) "ELBO_JJ" else "ELBO_GH"
+  type <- switch(resolved_eval_method,
+                 gh = "ELBO_GH", jj = "ELBO_JJ", ac = "ELBO_AC")
+  if (is.null(type)) {
+    stop("VA-R3 has no objective label for eval_method = \"",
+         resolved_eval_method, "\".", call. = FALSE)
+  }
+  type
+}
+
+## Two-stage warm-started GH fit: land cheaply on the Albert-Chib closed form, then
+## let Gauss-Hermite polish from there.
+##
+## WHY THIS EXISTS. AC and GH optimise DIFFERENT objectives -- AC is a strict lower
+## bound on GH -- and each alone is unsatisfactory for a different reason:
+##   * GH is the more accurate tier but expensive (measured ~15.5x the per-evaluation
+##     cost of AC at N=250/T=20, and ~139 outer iterations).
+##   * AC is cheap and lands close, but COLLAPSES a real diagonal-psi variance at low
+##     n_trials -- 2.2e-04 against a planted 0.6 at n_trials=6, where GH recovers
+##     0.56. That is disqualifying on its own for variance-component work.
+## Because this route ENDS on GH, it inherits GH's objective, GH's optimum and GH's
+## variance recovery. AC is used only to choose a starting point, which cannot change
+## what is being optimised.
+##
+## MEASURED (5 seeds, N=100, T=10, q=1, n_trials=6, dev/va-speed/13-warmstart-gh.R):
+##   GH cold  rel_frob 0.24412, 138.6 outer iterations
+##   GH warm  rel_frob 0.24603,  36.8 outer iterations
+## Same optimum -- per-seed objectives agree to 4-5 significant figures -- at 3.8x
+## fewer iterations; per seed the reduction ranged 2.4x to 7.1x. The implied
+## whole-fit gain (~3x) is ARITHMETIC from those two measured quantities and is NOT
+## an end-to-end timing; do not quote it as one until it is measured serially.
+##
+## Returns the GH fit, with the AC stage attached as `warm_start` for auditing.
+.va_r3_fit_warm <- function(..., H = 61L, control = NULL) {
+  dots <- list(...)
+  if (!is.null(dots$eval_method) && !identical(dots$eval_method, "gh")) {
+    stop("`.va_r3_fit_warm()` always finishes on the GH tier; ",
+         "eval_method must be \"gh\" or absent.", call. = FALSE)
+  }
+  ## Stage 1 -- the cheap landing. n_starts is forced to 1: multi-start on the AC
+  ## stage buys nothing, because only its ARGMAX is used and stage 2 re-optimises
+  ## a different objective from there anyway.
+  ac_args <- dots
+  ac_args$eval_method <- "ac"
+  ac_args$n_starts <- 1L
+  ac_args$H <- H
+  ac_args$control <- control
+  ac <- do.call(.va_r3_fit, ac_args)
+  if (is.null(ac) || is.null(ac$best$par)) return(do.call(.va_r3_fit, dots))
+
+  ## Stage 2 -- polish on GH, started from the AC optimum. Build the GH objective
+  ## directly so the AC parameter vector can be handed in as the start.
+  vd <- do.call(.va_r3_validate_data,
+                dots[intersect(names(dots), names(formals(.va_r3_validate_data)))])
+  obj <- .va_r3_make_objective(vd, H = H, eval_method = "gh")
+
+  ## A silent length/name mismatch here would optimise the wrong coordinates while
+  ## reporting success, so it fails loudly instead.
+  if (!identical(length(obj$par), length(ac$best$par)) ||
+      !identical(names(obj$par), names(ac$best$par))) {
+    stop("warm start aborted: the AC and GH parameter vectors do not match ",
+         "(lengths ", length(ac$best$par), " vs ", length(obj$par), "). ",
+         "Transplanting them would optimise the wrong coordinates.", call. = FALSE)
+  }
+  ctl <- if (is.null(control)) list(eval.max = 800L, iter.max = 400L) else control
+  fit <- stats::nlminb(start = ac$best$par, objective = obj$fn,
+                       gradient = obj$gr, control = ctl)
+  list(best = list(par = fit$par, objective = fit$objective,
+                   convergence = fit$convergence, iterations = fit$iterations,
+                   evaluations = fit$evaluations, message = fit$message),
+       objective_type = "ELBO_GH",
+       route = "ac_warm_start",
+       warm_start = list(objective = ac$best$objective,
+                         iterations = ac$best$iterations,
+                         status = ac$status))
 }
 
 ## Latent-variable posterior summary from a fitted parameter vector.
@@ -1732,7 +1837,7 @@
 .va_r3_make_objective <- function(validated, H = 61L, source = NULL,
                                   rebuild = FALSE, parameters = NULL,
                                   fixed_global = NULL, silent = TRUE,
-                                  eval_method = c("auto", "jj", "gh"),
+                                  eval_method = c("auto", "jj", "gh", "ac"),
                                   profile_variational = FALSE,
                                   inner_control = NULL) {
   if (validated$q == 0L) {
@@ -1909,7 +2014,7 @@
                        rank_source = c("fixed_fixture", "ml_bic"),
                        fixed_global = NULL, source = NULL, rebuild = FALSE,
                        control = list(eval.max = 2000L, iter.max = 2000L),
-                       silent = TRUE, eval_method = c("auto", "jj", "gh"),
+                       silent = TRUE, eval_method = c("auto", "jj", "gh", "ac"),
                        n_starts = 4L,
                        optimizer = c("auto", "nlminb", "lbfgsb"),
                        is_y_observed = NULL,

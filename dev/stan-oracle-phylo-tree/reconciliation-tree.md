@@ -25,8 +25,12 @@ arc's target as *"the largest gap"*.
 > **No normalising-constant correction was needed** (`k = 0`). **Neither density was altered.**
 >
 > At the published fixture point, `|difference| = 2.84 × 10⁻¹⁴`, relative `1.30 × 10⁻¹⁶`.
-> Over four points on dataset A the worst case is `1.82 × 10⁻¹²` absolute (on a value of
-> magnitude `1.47 × 10⁴`) and `5.14 × 10⁻¹⁶` relative — 1–8 ulp.
+>
+> Agreement holds at **seven parameter points across two trees** — including a **rank-2** model
+> on a second, larger tree with **permuted tip order** and a **ragged design with two empty
+> cells** — to a maximum absolute difference of **5.46 × 10⁻¹²** (on a value of magnitude
+> `1.05 × 10⁴`) and a maximum relative difference of **5.17 × 10⁻¹⁶**, i.e. 1–8 ulp.
+> Every dataset B point agreed on the **first run**; no tuning was performed.
 >
 > **The two implementations encode the same model on the augmented sample space.**
 
@@ -124,6 +128,50 @@ node indexing. The engine uses **internal-first**. An author who had peeked woul
 | A/P4 (fresh, large `μ`, tiny `Λ`) | `221.14796463834116` | `−221.14796463834105` | `1.14e−13` | `5.14e−16` |
 
 ---
+
+### Dataset B — a second tree, rank 2, permuted tips, ragged design
+
+`ape::rcoal(10)`, `T = 4`, **`K = 2`**, `N = 104`, tip labels permuted relative to the factor
+levels, two `(species, trait)` cells deleted entirely and several thinned to one replicate.
+`n_aug = 18` (`n_tip 10 + Nnode 9 − 1`; `2S−2 = 18`, `2S−1 = 19` ✗) — the node-count finding
+reconfirmed on a topologically unrelated tree. The transport was **frozen** before this ran.
+
+| point | TMB `fn(θ)` | Stan `log_prob` | \|diff\| | rel |
+|---|---|---|---|---|
+| B/P1 | `1777.5489537384951` | `−1777.5489537384947` | `4.55e−13` | `2.56e−16` |
+| B/P2 | `1081.5698727007041` | `−1081.5698727007045` | `4.55e−13` | `4.20e−16` |
+| B/P3 | `10549.861028879999` | `−10549.861028879994` | `5.46e−12` | `5.17e−16` |
+
+Difference-of-differences: `9.09e−13`, `−5.00e−12`. Jacobian audit holds at every point.
+**All three agreed on the first run; no tuning was performed.**
+
+Three controls that are **degenerate at `K = 1`** and only become live at rank 2:
+
+| control | shift |
+|---|---|
+| `g_phy` read axis-fastest instead of node-fastest (Kronecker order) | `+219.4338` |
+| `theta_rr_phy` packed row-major instead of column-major | `+24.2731` |
+| forced-zero `Λ[1,2]` set to `0.85` (the packing forces 0) | `−43.5092` |
+
+### A latent defect in the dataset A driver, exposed by dataset B
+
+Dataset A's driver builds its tip block from `prec$tip_node_index` — **tree-tip order**. The
+Stan model's contract (`gllvm_phylo_tree.stan:62-68`) requires the first `S` rows of `a_node` to
+be in **factor-level order**, the order that produced `ss[i]`. On dataset A those two orders
+**coincide by construction** (`tip.label` was set to `sp1..sp8` and the factor levels take the
+same order), so dataset A agrees either way and the distinction stays invisible.
+
+On dataset B's genuinely permuted tree it does not coincide, and the dataset B driver
+correctly uses `match(levs, rownames(Ainv_phy_rr))` instead, cross-checked against
+`species_aug_id`. **This is Arc 1's finding recurring on the `tree =` path**: species are indexed
+by factor-level order, not tree tip order. Arc 1 measured a 79-unit density error from confusing
+them on the dense route; here the same confusion would have silently routed every species'
+score into the wrong Stan row.
+
+It is recorded rather than patched, for the same reason as §12's cosmetic defects: the dataset A
+driver is the pre-registered artifact. Its *result* is unaffected — the two orders are equal
+there — but a reader copying it onto a permuted tree would be wrong. **That is exactly the
+user-facing hazard the documentation fix in the companion commit addresses.**
 
 ## 6. The controls — the comparison CAN fail, so it is a check
 
@@ -286,6 +334,19 @@ the driver are committed in `cd0c58cf` with **no result of the comparison in exi
 commit**, and the fence was enforced by *what the author was allowed to open*, not by
 self-restraint. The tips-first/internal-first mismatch (rule 9) is independent evidence that
 the fence held.
+
+**The pre-registration claim is checkable, and was checked.** Anyone can run:
+
+```sh
+git grep -c "219\.35321" cd0c58cf -- dev/     # -> no match: the result exists nowhere
+git grep -c "219\.35321" HEAD     -- dev/     # -> gauss-reconcile-tree.log, reconciliation-tree.md
+git log --format="%h %s" --follow -- dev/stan-oracle-phylo-tree/gauss-reconcile-tree.log
+```
+
+The headline value appears **nowhere** in `cd0c58cf` and first exists at `58d98450`. A naive
+grep for `log_prob(fit0` does hit the pre-registration commit five times — those are the
+driver's *call sites*, not its output, and the distinction is the point: the code that would
+produce the number was fixed before the number existed.
 
 What remains true, and is not dissolved by any of the above: **a fixed-parameter oracle can be
 independent about the density and cannot be fully independent about the encoding.**

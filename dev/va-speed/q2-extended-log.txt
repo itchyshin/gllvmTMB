@@ -1,0 +1,66 @@
+
+=== building cell n_tip=300 T=8 q=1 ===
+
+--- n300_joint(profile=FALSE): n_tip=300 n_aug=598 T=8 q=1 profile_variational=FALSE ---
+using C++ compiler: ‘Apple clang version 21.0.0 (clang-2100.1.1.101)’
+using SDK: ‘MacOSX26.5.sdk’
+clang++ -arch arm64 -std=gnu++20 -I"/Library/Frameworks/R.framework/Resources/include" -DNDEBUG -I"/Users/z3437171/Library/R/arm64/4.6/library/TMB/include" -I"/Users/z3437171/Library/R/arm64/4.6/library/RcppEigen/include"  -DTMB_SAFEBOUNDS -DTMB_EIGEN_DISABLE_WARNINGS -DLIB_UNLOAD=R_unload_gllvmTMB_va_r3  -DTMB_LIB_INIT=R_init_gllvmTMB_va_r3  -DCPPAD_FRAMEWORK  -I/opt/R/arm64/include    -fPIC  -O2  -c gllvmTMB_va_r3.cpp -o gllvmTMB_va_r3.o
+clang++ -arch arm64 -std=gnu++20 -dynamiclib -Wl,-headerpad_max_install_names -undefined dynamic_lookup -L/Library/Frameworks/R.framework/Resources/lib -L/opt/R/arm64/lib -o gllvmTMB_va_r3.so gllvmTMB_va_r3.o -F/Library/Frameworks/R.framework/.. -framework R
+  make_objective: 18.8680s, n_par(outer)=10200
+  priming fn+gr: 0.0010s
+  capped nlminb: 5.8250s  fn_calls=15 (0.0090s)  gr_calls=11 (0.0130s)  per_call=224.04ms
+  nlminb$iterations=10 evaluations=14/11 objective=1502865
+
+--- n300_profile(profile=TRUE): n_tip=300 n_aug=598 T=8 q=1 profile_variational=TRUE ---
+  make_objective: 0.2040s, n_par(outer)=32
+  priming fn+gr: 0.2470s
+  capped nlminb: 0.4500s  fn_calls=15 (0.2820s)  gr_calls=11 (0.1680s)  per_call=17.31ms
+  nlminb$iterations=10 evaluations=14/11 objective=5516.859
+
+=== building cell n_tip=600 T=8 q=1 ===
+
+--- n600_joint(profile=FALSE): n_tip=600 n_aug=1198 T=8 q=1 profile_variational=FALSE ---
+  make_objective: 0.0290s, n_par(outer)=20400
+  priming fn+gr: 0.0040s
+  capped nlminb: 18.4550s  fn_calls=21 (0.0190s)  gr_calls=9 (0.0190s)  per_call=615.17ms
+  nlminb$iterations=9 evaluations=20/9 objective=13130964
+
+--- n600_profile(profile=TRUE): n_tip=600 n_aug=1198 T=8 q=1 profile_variational=TRUE ---
+  make_objective: 0.0650s, n_par(outer)=32
+  priming fn+gr: 0.4150s
+  capped nlminb: 0.8720s  fn_calls=15 (0.5480s)  gr_calls=11 (0.3230s)  per_call=33.54ms
+  nlminb$iterations=10 evaluations=14/11 objective=10995.04
+
+=== building cell n_tip=1000 T=8 q=1 ===
+
+--- n1000_joint(profile=FALSE): n_tip=1000 n_aug=1998 T=8 q=1 profile_variational=FALSE ---
+  make_objective: 0.0300s, n_par(outer)=34000
+  priming fn+gr: 0.0040s
+  capped nlminb: 70.3270s  fn_calls=21 (0.0760s)  gr_calls=10 (0.0410s)  per_call=2268.61ms
+  nlminb$iterations=10 evaluations=20/10 objective=28762301
+
+--- n1000_profile(profile=TRUE): n_tip=1000 n_aug=1998 T=8 q=1 profile_variational=TRUE ---
+  make_objective: 0.2470s, n_par(outer)=32
+  priming fn+gr: 0.8790s
+  capped nlminb: 1.5070s  fn_calls=15 (0.9400s)  gr_calls=11 (0.5660s)  per_call=57.96ms
+  nlminb$iterations=10 evaluations=14/11 objective=18222.76
+
+
+=== EXTENDED SUMMARY TABLE ===
+                       label n_tip n_aug profile_variational n_par_outer
+   n300_joint(profile=FALSE)   300   598               FALSE       10200
+  n300_profile(profile=TRUE)   300   598                TRUE          32
+   n600_joint(profile=FALSE)   600  1198               FALSE       20400
+  n600_profile(profile=TRUE)   600  1198                TRUE          32
+  n1000_joint(profile=FALSE)  1000  1998               FALSE       34000
+ n1000_profile(profile=TRUE)  1000  1998                TRUE          32
+ t_makeobj  t_opt hit_wall fn_calls gr_calls per_call_ms nlminb_iterations
+    18.868  5.825    FALSE       15       11   224.03846                10
+     0.204  0.450    FALSE       15       11    17.30769                10
+     0.029 18.455    FALSE       21        9   615.16667                 9
+     0.065  0.872    FALSE       15       11    33.53846                10
+     0.030 70.327    FALSE       21       10  2268.61290                10
+     0.247  1.507    FALSE       15       11    57.96154                10
+
+Wrote /private/tmp/gllvmtmb-va-speed/dev/va-speed/q2-extended-summary.csv 
+EXIT_CODE=0

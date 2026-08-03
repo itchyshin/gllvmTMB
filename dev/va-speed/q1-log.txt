@@ -1,0 +1,43 @@
+=== Q1: single-tier binomial-probit, N=250 T=20 q=1 H=15 ===
+using C++ compiler: ‘Apple clang version 21.0.0 (clang-2100.1.1.101)’
+using SDK: ‘MacOSX26.5.sdk’
+clang++ -arch arm64 -std=gnu++20 -I"/Library/Frameworks/R.framework/Resources/include" -DNDEBUG -I"/Users/z3437171/Library/R/arm64/4.6/library/TMB/include" -I"/Users/z3437171/Library/R/arm64/4.6/library/RcppEigen/include"  -DTMB_SAFEBOUNDS -DTMB_EIGEN_DISABLE_WARNINGS -DLIB_UNLOAD=R_unload_gllvmTMB_va_r3  -DTMB_LIB_INIT=R_init_gllvmTMB_va_r3  -DCPPAD_FRAMEWORK  -I/opt/R/arm64/include    -fPIC  -O2  -c gllvmTMB_va_r3.cpp -o gllvmTMB_va_r3.o
+clang++ -arch arm64 -std=gnu++20 -dynamiclib -Wl,-headerpad_max_install_names -undefined dynamic_lookup -L/Library/Frameworks/R.framework/Resources/lib -L/opt/R/arm64/lib -o gllvmTMB_va_r3.so gllvmTMB_va_r3.o -F/Library/Frameworks/R.framework/.. -framework R
+phase0 (DLL compile + first MakeADFun, EXCLUDED from per-fit total): 22.887s
+phase1 validate_data: 0.2440s
+phase2 make_objective (dll-load[cached] + MakeADFun taping): 0.8390s
+  n_par = 540 (variational block + globals)
+resolved eval_method=gh optimizer=nlminb
+phase3 primary nlminb: 16.2530s  (fn_calls=215 fn_time=5.5110s, gr_calls=174 gr_time=10.5760s)
+  nlminb$convergence=0 objective=3188.943894 iterations=173 evaluations=214/174
+phase4 polish passes (2 nlminb re-runs): 0.4590s (block incl. gradient probe: 0.5930s)
+phase5 lbfgsb fallback triggered=TRUE: 0.2480s
+phase6 post-processing: final_grad=0.0590s report()=0.0270s latent_posterior()=0.0030s (no sdreport in VA-R3)
+
+=== TOTAL (excl. one-time DLL compile) = 18.2660s ===
+total fn_calls=227 (5.8100s), gr_calls=185 (11.2220s)
+final max|grad| = 1.184e-04, health: convergence=NA objective=3188.943894
+
+--- Rprof summaryRprof$by.self top 15 (primary nlminb phase only) ---
+                  self.time self.pct total.time total.pct
+".Call"               13.18    96.56      13.65    100.00
+"proc.time"            0.44     3.22       0.44      3.22
+"f"                    0.02     0.15      13.10     95.97
+"EvalADFunObject"      0.01     0.07      13.08     95.82
+
+Rprof: total sampled=13.650s, in .Call/.External/.Internal (native)=0.000s (0.0%)
+
+=== GH-node scaling experiment (fn/gr cost vs H, same par, same data) ===
+   H fn_ms_per_call gr_ms_per_call
+1 15       23.26667       57.13333
+2 25       46.66667      110.26667
+3 61       92.63333      226.46667
+Linear fit fn: intercept=5.4943ms slope=1.4464ms/node -> GH share at H=15: 79.8%
+Linear fit gr: intercept=11.4246ms slope=3.5603ms/node -> GH share at H=15: 82.4%
+
+=== multistart overhead: n_starts=1 vs 4 at N=250 T=20 q=1 ===
+n_starts=1: 18.5810s (status=failed_health_gate obj=3188.943894)
+n_starts=4: 72.1150s (status=failed_health_gate obj=3188.943894)
+multistart multiplier at this cell size: 3.88x
+
+Saved /private/tmp/gllvmtmb-va-speed/dev/va-speed/q1-result.rds 

@@ -316,3 +316,47 @@ accurate. On this evidence it is MORE accurate than the mature competitor and FA
 own Laplace in the base configuration. **That verdict is withdrawn.** The narrower, supported
 statement: VA's cost problem is real, now decomposed, and has named unbuilt fixes; the
 structured-tier question is gated on those, not on VA being a dead end.
+
+---
+
+## JOB 2f — EVA is NOT AVAILABLE for Ayumi's families, and both EVA records were off-target
+
+Maintainer asked for EVA alongside VA. Measured, and the answer is structural:
+
+> `gllvm::gllvm(..., method = "EVA")` -> **"Binomial distribution not yet supported with the
+> EVA method."** Both logit and probit. gllvm's EVA cannot fit binomial at all.
+
+**Consequence: neither EVA record on file applies to the north star.**
+
+- Design 108 §2: *"gllvm's already-shipped EVA beats GH-VA on BOTH the objective (+23 to +126
+  nats) and wall clock (2.5-20.5x) at every evaluable cell."* The qualifier **"evaluable"**
+  was load-bearing and easy to read past. Not binomial.
+- The 640-cell grid's **68% degenerate, all reporting converged**. Also on families EVA
+  supports. Not binomial.
+
+Both are true; neither is evidence about Ayumi's binomial columns, which are the gate. This
+is the THIRD recorded number this session that did not transfer to the cell that matters
+(after the EVA degeneracy rate, and the logit-regime "VA slower at every n"). The pattern is
+not that the records are wrong -- it is that their **scope qualifiers get dropped on recall**.
+
+Our own EVA is a Design 86 Gate-1 prototype: unexported, Codex-owned, cut from 0.6 to 0.7.
+Not reachable from this lane without a lane reassignment, so it is untested here.
+
+### Four-way result (4 seeds, identical single-tier model, identical data, planted truth)
+
+| engine | median time | median `rel_frob` |
+|---|---|---|
+| gllvm VA | **0.70 s** | 0.359 |
+| **our VA** | 45.6 s | **0.298** |
+| gllvm EVA | — | **N/A — binomial unsupported** |
+| our Laplace | 114.5 s | **0.170** |
+
+Ours beats gllvm's VA on **4/4** seeds. 65x slower, consistently ~17-21% more accurate.
+
+### A vacuous statistic I nearly reported
+
+The run printed `EVA degenerate (>10): 0/4`. That zero came from every value being `NA`, not
+from nothing degenerating -- a count over an all-NA column with no denominator check. It is
+the same shape as the vacuous control gate caught earlier today. **Any rate computed with
+`na.rm = TRUE` needs its denominator reported beside it**, or a fully-failed arm reads as a
+clean one.

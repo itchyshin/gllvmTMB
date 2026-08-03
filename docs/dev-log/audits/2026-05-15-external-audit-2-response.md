@@ -39,6 +39,15 @@ in main.
 | Audit prescription | Already in main | Reference |
 |---|---|---|
 | "Hard-code upper-triangular zero constraints + positive diagonals on loading matrices" | Inherited from `glmmTMB::rr()` reparameterisation since 0.2.0 | McGillycuddy et al. 2025 (JSS 112(1)); `R/fit-multi.R` |
+
+> **Correction, 2026-08-03 — the row above was half wrong, and it was told to an external auditor.**
+> The **upper-triangular zeros** are implemented (`src/gllvmTMB.cpp:906-907`) and do fix the rotation
+> indeterminacy. The **positive diagonals are not**: `cpp:902,909` takes the loadings diagonal as a
+> plain value with no `exp()`, no `fabs()` and no bound, so the column sign is free and the paired
+> flip `(Lambda_.k, z_.k) -> (-Lambda_.k, -z_.k)` leaves the joint density exactly invariant
+> (`dev/lambda-sign-invariance.R`). The original row is retained above unedited because it records
+> what was actually said at the time. Consequences and the opt-in remedy:
+> `docs/design/04-random-effects.md`.
 | "Treat known variance matrices as fixed (`equalto` paradigm)" | `meta_known_V(value, V = V)` + `block_V()` helper. `phylo_scalar()` maps to `propto`. | `R/meta-known-v.R`, `R/block-v.R`, `R/phylo-keywords.R` |
 | "Build CV / model selection for `d` (number of latent factors)" | `check_identifiability(fit, sim_reps = 100L)` -- Procrustes-aligned simulate-refit + Hessian eigenvalue rank check. Catches spurious extra factors directly. | PR #105 |
 | "Bias-correction / coverage module for variance components" | `coverage_study(fit, ...)` -- empirical CI coverage with audit-1's `>= 94%` exit gate | PR #122 |

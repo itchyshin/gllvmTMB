@@ -45,6 +45,16 @@ lower-triangle echelon truth).
    constraint); fit relies on the engine's positive-diagonal
    parameterisation. Verifies fit converges + item-1 loading
    stays positive.
+
+   > **Correction, 2026-08-03.** There is no engine positive-diagonal
+   > parameterisation to rely on (`src/gllvmTMB.cpp:902,909` -- plain
+   > value, no `exp()`, no bound). At `d = 1` there are no rotation pins
+   > *and* no sign constraint, so "item-1 loading stays positive" holds by
+   > optimiser initialisation rather than by construction, and the
+   > corresponding assertion in
+   > `tests/testthat/test-m2-4-suggest-lambda-constraint-binary.R:126` is
+   > latently seed-dependent. Flagged there in situ; the assertion is left
+   > unchanged pending a maintainer call. Text above retained as written.
 3. **Suggester → fit recovery cycle at d = 2, n_items = 20,
    n_resp = 500** — K(K-1)/2 = 1 pin at (1, 2). Verifies fit
    converges + upper-triangle pin holds exactly to 1e-8 +

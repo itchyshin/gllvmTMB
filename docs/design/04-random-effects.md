@@ -125,25 +125,103 @@ group level.
 
 To make $\boldsymbol\Lambda$ identifiable up to rotation:
 
-- $\boldsymbol\Lambda$ is parameterised as **lower-triangular**
-  with **positive diagonal**.
-- The $K(K-1)/2$ upper-triangular entries are zero.
-- The diagonal entries are on the log scale: $\lambda_{kk} = \exp(\tilde\lambda_{kk})$.
-- The lower-triangular off-diagonal entries are unconstrained
-  real numbers.
+- $\boldsymbol\Lambda$ is parameterised as **lower-triangular**:
+  the $K(K-1)/2$ strict-**upper**-triangular entries are zero.
+- The **diagonal entries are unconstrained**. The packed value
+  is written straight into $\lambda_{kk}$ — no $\exp(\cdot)$,
+  no absolute value, no lower bound
+  (`src/gllvmTMB.cpp:902,909`).
+- The lower-triangular off-diagonal entries are likewise
+  unconstrained real numbers.
 
 This gives $T \cdot K - K(K-1)/2$ free parameters (instead of
 $T \cdot K$), which is the standard rotation-resolution
 convention from factor analysis.
 
-### Rotation invariance
+### Rotation invariance, and the sign that is *not* fixed
+
+$\boldsymbol\Lambda$ carries two distinct indeterminacies, and
+the parameterisation above fixes only one of them:
+
+| Indeterminacy | Kind | Fixed by | In the engine? |
+|---|---|---|---|
+| Rotation | continuous, dimension $K(K-1)/2$ | strict-upper-triangular zeros | **yes** |
+| Sign / reflection | discrete, $2^K$ modes | a positive diagonal | **no** |
 
 The shared trait covariance $\boldsymbol\Lambda\boldsymbol\Lambda^\top$
 is identifiable, but $\boldsymbol\Lambda$ alone is identifiable
-only up to rotation. The triangular-with-positive-diagonal
-parameterisation fixes the rotation. For post-hoc varimax /
+only up to rotation *and sign*. The triangular zeros fix the
+rotation. Nothing fixes the sign: the **paired** flip of a
+loadings column and its latent-score row,
+
+$$
+(\boldsymbol\Lambda_{\cdot k},\ \mathbf{z}_{\cdot k}) \mapsto
+(-\boldsymbol\Lambda_{\cdot k},\ -\mathbf{z}_{\cdot k}),
+$$
+
+leaves the joint density **exactly** invariant — difference
+$0.000\mathrm{e}{+}00$, not merely small — so a fit has $2^K$
+equivalent solutions. Flipping $\boldsymbol\Lambda$ alone is
+*not* a symmetry and moves the density by a large amount; it is
+the *paired* flip that is free. At $K = 1$ the triangular
+constraint is vacuous ($K(K-1)/2 = 0$), so sign is the entire
+indeterminacy.
+
+Reproduce both with `dev/lambda-sign-invariance.R`, which prints
+the paired flip and the single-column control side by side. The
+exact zero is the claim; the control's magnitude is
+fixture-specific and is reported by the script rather than quoted
+here, because it depends on the data and the parameter point. The
+control matters — without it, a difference of zero would be
+equally consistent with an objective that ignores
+$\boldsymbol\Lambda$ altogether.
+
+**What this does and does not affect.** The quantities the
+package gates on are all sign-invariant and therefore
+unaffected: $\boldsymbol\Sigma_\text{unit}$, correlations,
+communalities, and ICC. What *is* affected is
+$\boldsymbol\Lambda$ itself — **individual loadings are
+sign-arbitrary**, settled only by optimiser initialisation.
+Do not average or pool raw loadings across fits without
+aligning their signs first.
+
+**The remedy, which is opt-in.**
+`lambda_constraint = list(B = diag(1, n_traits, d))` pins the
+leading loading of each factor to 1 (`R/lambda-constraint.R`),
+the same identification `gllvm` uses. The default is
+`lambda_constraint = NULL`, i.e. no pin. Separately, at the
+*reporting* layer, `rotate_loadings(sign_anchor = "auto")`
+anchors the signs after the fit. For post-hoc varimax /
 oblimin rotation on the loadings, see `rotate_loadings()` and
 the `lambda-constraint.Rmd` worked example.
+
+**Comparative note.** `gllvm` always pins the leading
+$d \times d$ block to *unit* lower-triangular
+($\theta_{11} = 1$, $\theta_{12} = 0$, $\theta_{22} = 1$);
+`Hmsc` imposes no hard constraint at all, relying on a
+multiplicative-gamma shrinkage prior; gllvmTMB leaves the
+diagonal free by default and offers the pin opt-in. Leaving it
+free is a deliberate choice, not an oversight — the gated
+quantities above are sign-invariant, so the free diagonal costs
+nothing where it matters, and pinning the diagonal to 1 is also
+a **scale** constraint, which would change the meaning of the
+latent scores.
+
+> **Correction — 2026-08-03.** The text above previously
+> asserted that $\boldsymbol\Lambda$ had a positive diagonal
+> held on the log scale
+> ($\lambda_{kk} = \exp(\tilde\lambda_{kk})$). The engine does
+> not implement that: the diagonal is a plain, free-signed
+> value (`src/gllvmTMB.cpp:902,909`), corroborated by
+> `R/lambda-constraint.R`, by every R-side reconstruction in
+> `R/profile-derived.R`, and by the ridge penalty applied
+> directly to `theta_rr_B` in `R/fit-multi.R:5169`, which would
+> be incoherent on a log-scale diagonal. The error was not
+> cosmetic: a specification written independently from the old
+> text was **792.25** off the true joint log-density. Note that
+> statements elsewhere in this document about a **covariance or
+> precision** Cholesky factor concern a different object and
+> keep their positive diagonal.
 
 ### C1 `lv = ~ ...` latent-score means
 
@@ -711,8 +789,8 @@ cluster taxonomy.
 | Quantity | Internal scale | Notes |
 |----------|----------------|-------|
 | Variance components ($\psi_t^2$, $\sigma_g^2$) | log | Positive definite by construction |
-| Loadings diagonal ($\lambda_{kk}$) | log | Positive by construction |
-| Loadings off-diagonal | unconstrained | Lower-triangular only |
+| Loadings diagonal ($\lambda_{kk}$) | unconstrained | Plain value — no $\exp(\cdot)$, no bound, sign free (`src/gllvmTMB.cpp:902,909`) |
+| Loadings off-diagonal | unconstrained | Lower-triangular only (strict upper triangle is zero) |
 | Correlations ($\rho$ in `indep`) | guarded atanh | $\rho = 0.99999999 \cdot \tanh(\eta_\rho)$ |
 | Phylogenetic scaling ($\sigma^2_\text{phy}$) | log | Multiplies the sparse $A^{-1}$ precision |
 | SPDE inverse-range ($\kappa$) | log | $\kappa > 0$; practical range $= \sqrt{8}/\kappa$ |
@@ -817,9 +895,10 @@ The remaining three are Phase 0B verification targets.
   random-effect keyword (when slope support expands, Gauss
   drafts the C++ before merge).
 - **Noether** audits the math-vs-implementation alignment
-  for the reduced-rank reparameterisation (triangular-with-
-  positive-diagonal $\Lambda$) and the phylogenetic /
-  spatial precision constructions.
+  for the reduced-rank reparameterisation (lower-triangular
+  $\Lambda$ with an *unconstrained* diagonal — rotation fixed,
+  sign free) and the phylogenetic / spatial precision
+  constructions.
 - **Emmy** reviews the S3 dispatch on random-effects output:
   `extract_Sigma()`, `extract_correlations()`,
   `extract_ordination()`, `extract_repeatability()`,

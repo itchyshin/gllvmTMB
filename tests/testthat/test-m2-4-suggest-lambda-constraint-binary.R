@@ -99,8 +99,9 @@ test_that("suggest_lambda_constraint() → gllvmTMB fit recovers Lambda at d=1 (
 
   ## At d = 1, the lower_triangular convention pins K(K-1)/2 = 0 entries.
   ## So the suggester returns an all-NA matrix and the fit is just
-  ## the standard d = 1 rank-1 latent factor (identified via the
-  ## TMB packed-vector convention's positive diagonal).
+  ## the standard d = 1 rank-1 latent factor. Note the loadings column
+  ## is identified only UP TO ITS OVERALL SIGN -- there is no positive-
+  ## diagonal convention in the engine; see the note on the assertion below.
   res <- suppressMessages(gllvmTMB::suggest_lambda_constraint(
     value ~ 0 + trait + latent(0 + trait | site, d = 1L),
     data = fx$data, unit = "site"
@@ -118,24 +119,38 @@ test_that("suggest_lambda_constraint() → gllvmTMB fit recovers Lambda at d=1 (
                info = "fit with suggester's d=1 constraint did not converge")
 
   ## Sanity: Lambda is identifiable and the diagonal recovery
-  ## is meaningful.
+  ## is meaningful -- asserted on the MAGNITUDE, which is what the
+  ## model actually identifies.
   ##
-  ## CAVEAT (2026-08-03): there is NO engine positive-diagonal pin.
-  ## src/gllvmTMB.cpp:902,909 takes the loadings diagonal as a plain
-  ## value -- no exp(), no bound -- so the column sign is FREE and the
-  ## paired flip (Lambda_.k, z_.k) -> (-Lambda_.k, -z_.k) leaves the
-  ## joint density exactly invariant (dev/lambda-sign-invariance.R).
-  ## The assertion below therefore holds by OPTIMISER INITIALISATION,
-  ## not by construction, and could flip under a different seed, start
-  ## value, or optimiser. Assertion left unchanged pending a maintainer
-  ## call: either assert abs(L_hat[1]) or pin explicitly with
-  ## lambda_constraint = list(B = diag(1, n_items, d)).
+  ## Why not assert the sign (resolved 2026-08-03, maintainer call):
+  ## there is NO engine positive-diagonal pin. src/gllvmTMB.cpp:902,909
+  ## takes the loadings diagonal as a plain value -- no exp(), no bound --
+  ## so the paired flip (Lambda_.k, z_.k) -> (-Lambda_.k, -z_.k) leaves the
+  ## joint density EXACTLY invariant -- diff = 0.000e+00, verified by
+  ## dev/lambda-sign-invariance.R, which also runs the control (flipping
+  ## Lambda alone is NOT a symmetry and moves the objective by a large
+  ## amount, so "diff = 0" is not merely an objective that ignores Lambda).
+  ## The control's magnitude is incidental and version-dependent -- do not
+  ## quote it. The column's overall sign is therefore
+  ## set by optimiser initialisation, not by the model, and can flip on any
+  ## seed, start value, or optimiser change. Asserting it tested luck.
+  ## Nothing downstream depends on it: everything the package gates on
+  ## (Sigma = Lambda Lambda^T, correlations) is sign-invariant.
+  ##
+  ## Threshold: truth is Lam[1, 1] = 1 by construction of the DGP, and the
+  ## fitted magnitude at this seed is 0.888, so 0.3 is a real recovery
+  ## claim (not a vacuous "non-zero" check) with ~3x headroom.
+  ##
+  ## NB the RELATIVE signs within the column ARE identified -- only the
+  ## global flip is free -- so a stronger sign-invariant check is available
+  ## if this test is ever tightened: abs(cor(L_hat, fx$Lam_true[, 1])) was
+  ## 0.80 here, with 19/20 entries matching truth's sign.
   L_hat <- suppressMessages(suppressWarnings(
     gllvmTMB::getLoadings(fit, level = "unit")[, 1L]
   ))
-  expect_true(L_hat[1L] > 0,
-              info = paste("item-1 loading positive -- NB: by optimiser initialisation,",
-                           "not by an engine constraint; see caveat above"))
+  expect_true(abs(L_hat[1L]) > 0.3,
+              info = paste("item-1 loading magnitude should recover truth = 1;",
+                           "sign is NOT asserted because the column sign is free"))
 })
 
 # ---- (3) suggester → fit recovery cycle at d = 2 -------------------

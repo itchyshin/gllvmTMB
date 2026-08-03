@@ -23,7 +23,8 @@ commit should be able to find out here whether it still stands.
 | 13 | **AC collapses a real ψ at low `n_trials`** — 0.0001 vs a planted 0.6 at n=6, where GH gives 0.6207 | `6cc84122` | **STANDS.** Same data through both tiers. AC also 29% worse on the loadings there. This is Risk R1 materialising. |
 | 14 | The ψ = unique + link **conditional** is already correctly implemented | `6102e044`, `14-tier-rule-check.R` | **STANDS.** Only `gaussian_anchor` carries `log_sigma`; the B-tier ψ is family-agnostic. |
 | 15 | **Warm-starting GH from AC** gives GH's accuracy in 36.8 vs 138.6 iterations | `17c03f4b` | **STANDS** as an ITERATION result (5 seeds, objectives agree to 4–5 s.f.). The **~3.0× whole-fit figure is ARITHMETIC**, not an end-to-end timing — confirm serially before quoting. |
-| 16 | Our Laplace beats gllvm's Laplace by ~28% at `n_trials ≥ 6`, and does not collapse ψ | `775a9fdb` | **STANDS**, with one caveat: ψ was inferred as total−shared because `extract_Sigma(part="unique"/"psi")` returns NA. The qualitative conclusion does not depend on the exact value. |
+| 16 | Our Laplace beats gllvm's Laplace by ~28% at `n_trials ≥ 6` | `775a9fdb` | **RETRACTED** by `22-four-way-results.txt`. It rested on a **single seed**. The 2×2 campaign has ours-LA worse in all four conditions. Neither run settles it — both are underpowered. The ψ-retention half of that commit **stands**. |
+| 18 | Our GH tier beats gllvm's VA (0.1974 vs 0.2259) | 6-seed run, chat | **RETRACTED.** The 2×2 campaign has ours-GH worse in all four conditions. 6 seeds vs 2 seeds, per-seed range 0.13–0.46 — **underpowered either way**. Accuracy rank is UNRESOLVED. |
 | 17 | Amdahl caps Item 1 at ~3.35× whole-fit | `fde6ca20` | **STANDS** for the GH→AC substitution in isolation, and is *why* (10) is true — but it is not the ceiling for the arc, because the warm start and the model right-sizing are separate levers. |
 
 ## Open, and honestly unresolved

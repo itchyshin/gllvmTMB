@@ -30,6 +30,30 @@
 > Full review: `dev/design108-recovery/ADVERSARIAL-REVIEW.md` on
 > `claude/d108-recovery-campaign` (commit `fdbf5e0e`).
 >
+> ## ⏳ A CORRECTED GRID IS RUNNING — COLLECT IT
+>
+> Both defects the review found are fixed and the re-run is IN FLIGHT on Totoro:
+> the VA arm now goes through `.d108_fit_va()` (binomial_probit on raw `y`, **the same model
+> the Laplace arm fits**), the DLL stash is built once and seeded per worker
+> (`harness.R:103-110`), and failure REASONS are logged instead of bare `NA`.
+> Grid: N=500, q in {1,2}, 10 seeds, 20 cells on 20 cores. Smaller than the invalid 80-cell
+> run because probit carries a measured 8.8x GH penalty — but VALID, which that one was not.
+>
+> ```sh
+> SOCK=$(ls ~/.ssh/cm-*totoro* | head -1)
+> ssh -o ControlPath="$SOCK" -o ControlMaster=no -o BatchMode=yes totoro \
+>   'tail -14 ~/gllvm_work/d108-recovery/grid_fixed.log; \
+>    ls -la ~/gllvm_work/d108-recovery/grid_fixed.*'
+> ```
+>
+> Results at `totoro:~/gllvm_work/d108-recovery/grid_fixed.{rds,csv}` — **LOCAL only (D-50)**.
+> Script: `~/gllvm_work/grid_fixed.R`. Confirmed working: the stash checksum
+> `7d55033ea0a82310591b7a9e2945081a` matches the local build, so the seeding fix is live.
+>
+> **This is the ONLY valid VA-vs-Laplace comparison in the project.** Report it with 2*MCSE
+> bands and the informativeness check, and do NOT prefer whichever result matches an earlier
+> claim. If both arms are degenerate at N=500, that is the answer and the re-run moves up.
+>
 > **The mature-VA arc is UNAFFECTED** — it rests on the profile and the literature, not on this
 > comparison. VA's value was always speed-via-closed-form, not accuracy.
 

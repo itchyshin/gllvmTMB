@@ -1,0 +1,3 @@
+# Compiled Stan model -- regenerate with stan-side-phylo.R
+*.rds
+!tmb-fixture-phylo.rds

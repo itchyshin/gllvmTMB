@@ -1,0 +1,275 @@
+{
+  "interface": "rstan 2.32.7",
+  "stan_file": "/Users/z3437171/local-scratch/worktrees/stan-phylo/dev/stan-oracle-phylo/gllvm_phylo.stan",
+  "call": "rstan::log_prob(fit, upars, adjust_transform = FALSE, gradient = FALSE)",
+  "jacobian_applied": false,
+  "sampling_run": false,
+  "compiled": true,
+  "log_density": -142.633394873782,
+  "neg_log_density": 142.633394873782,
+  "mapping_used": {
+    "lambda_diag": "identity",
+    "A_role": "cov",
+    "sigma_scale": "sd",
+    "ridge": 1e-08,
+    "how": "MEASURED against the fixture's stored value"
+  },
+  "log_density_spec_primary": -416.202834696843,
+  "neg_log_density_spec_primary": 416.202834696843,
+  "mapping_spec_primary": {
+    "lambda_diag": "exp",
+    "A_role": "cov",
+    "sigma_scale": "sd",
+    "ridge": 1e-08
+  },
+  "spec_primary_matched": false,
+  "fixture_neg_log_density": 142.633394873781,
+  "n_unconstrained_pars": 15,
+  "parameter_order": ["mu[1..n_t]", "Lambda[n_t x K, column-major]", "sigma_eps (unconstrained = log sigma_eps)", "G[S x K, column-major]"],
+  "dims": {
+    "N": 48,
+    "n_t": 3,
+    "S": 8,
+    "K": 1,
+    "n_density_terms": 2
+  },
+  "latent_representation": {
+    "tips_only": true,
+    "n_latent_scores": 8,
+    "S_times_K": 8,
+    "resolved_by": "fixture theta block length + meta checks (DATA, not source)",
+    "spec_open_item": 1
+  },
+  "A_checks": {
+    "ridge_disclosed_by_fixture": 1e-08,
+    "log_det_A_no_ridge": -7.86115486187676,
+    "log_det_A_with_ridge": -7.86115439871628,
+    "log_det_A_fixture_reports": -7.86115439871626,
+    "abs_diff_no_ridge": 4.63160504615701e-07,
+    "abs_diff_with_ridge": 1.68753899743024e-14,
+    "chol_max_abs_diff_vs_fixture": 1.16573417585641e-15,
+    "unit_diagonal": true
+  },
+  "constants": {
+    "minus_K_over_2_logdetA": 3.93057719935814,
+    "twopi_term": -51.4605578594617,
+    "constant_C": -47.5299806601035
+  },
+  "constant_offset_table": [
+    {
+      "variant": "spec density (all constants kept)",
+      "log_density": -142.633394873782,
+      "neg_log_density": 142.633394873782,
+      "diff_vs_fixture": 1.19371179607697e-12
+    },
+    {
+      "variant": "drop -K/2 log|A| only",
+      "log_density": -146.56397207314,
+      "neg_log_density": 146.56397207314,
+      "diff_vs_fixture": 3.93057719935933
+    },
+    {
+      "variant": "drop 2*pi constants only",
+      "log_density": -91.1728370143205,
+      "neg_log_density": 91.1728370143205,
+      "diff_vs_fixture": -51.4605578594605
+    },
+    {
+      "variant": "drop all constants (spec C)",
+      "log_density": -95.1034142136786,
+      "neg_log_density": 95.1034142136786,
+      "diff_vs_fixture": -47.5299806601023
+    }
+  ],
+  "hand_check": {
+    "lp_data": -392.553497240527,
+    "lp_phylo": -23.6493374563162,
+    "lp": -416.202834696843,
+    "stan_minus_hand": 1.13686837721616e-13
+  },
+  "finite_and_varies": {
+    "perturb_mu1_plus_0.10": -427.327087865593,
+    "perturb_G11_plus_0.25": -461.944878821251,
+    "perturb_Lambda11_plus_0.15": -455.66123022898,
+    "perturb_sigma_eps_times_1.5": -209.978969744731
+  },
+  "ambiguity_grid": [
+    {
+      "lambda_diag": "identity",
+      "A_role": "cov",
+      "sigma_scale": "sd",
+      "ridge": 1e-08,
+      "log_density": -142.633394873782,
+      "neg_log_density": 142.633394873782,
+      "is_primary": false,
+      "diff_vs_fixture": 1.19371179607697e-12,
+      "abs_diff_vs_fixture": 1.19371179607697e-12
+    },
+    {
+      "lambda_diag": "identity",
+      "A_role": "cov",
+      "sigma_scale": "sd",
+      "ridge": 0,
+      "log_density": -142.633396802112,
+      "neg_log_density": 142.633396802112,
+      "is_primary": false,
+      "diff_vs_fixture": 1.92833061873898e-06,
+      "abs_diff_vs_fixture": 1.92833061873898e-06
+    },
+    {
+      "lambda_diag": "exp",
+      "A_role": "precision",
+      "sigma_scale": "variance",
+      "ridge": 1e-08,
+      "log_density": -148.925942577482,
+      "neg_log_density": 148.925942577482,
+      "is_primary": false,
+      "diff_vs_fixture": 6.29254770370122,
+      "abs_diff_vs_fixture": 6.29254770370122
+    },
+    {
+      "lambda_diag": "exp",
+      "A_role": "precision",
+      "sigma_scale": "variance",
+      "ridge": 0,
+      "log_density": -148.925942785992,
+      "neg_log_density": 148.925942785992,
+      "is_primary": false,
+      "diff_vs_fixture": 6.29254791221129,
+      "abs_diff_vs_fixture": 6.29254791221129
+    },
+    {
+      "lambda_diag": "identity",
+      "A_role": "precision",
+      "sigma_scale": "sd",
+      "ridge": 0,
+      "log_density": -130.825755237153,
+      "neg_log_density": 130.825755237153,
+      "is_primary": false,
+      "diff_vs_fixture": -11.8076396366282,
+      "abs_diff_vs_fixture": 11.8076396366282
+    },
+    {
+      "lambda_diag": "identity",
+      "A_role": "precision",
+      "sigma_scale": "sd",
+      "ridge": 1e-08,
+      "log_density": -130.825755028643,
+      "neg_log_density": 130.825755028643,
+      "is_primary": false,
+      "diff_vs_fixture": -11.8076398451383,
+      "abs_diff_vs_fixture": 11.8076398451383
+    },
+    {
+      "lambda_diag": "exp",
+      "A_role": "cov",
+      "sigma_scale": "variance",
+      "ridge": 1e-08,
+      "log_density": -160.733582422622,
+      "neg_log_density": 160.733582422622,
+      "is_primary": false,
+      "diff_vs_fixture": 18.1001875488407,
+      "abs_diff_vs_fixture": 18.1001875488407
+    },
+    {
+      "lambda_diag": "exp",
+      "A_role": "cov",
+      "sigma_scale": "variance",
+      "ridge": 0,
+      "log_density": -160.733584350951,
+      "neg_log_density": 160.733584350951,
+      "is_primary": false,
+      "diff_vs_fixture": 18.1001894771701,
+      "abs_diff_vs_fixture": 18.1001894771701
+    },
+    {
+      "lambda_diag": "identity",
+      "A_role": "cov",
+      "sigma_scale": "variance",
+      "ridge": 0,
+      "log_density": -78.6627524040332,
+      "neg_log_density": 78.6627524040332,
+      "is_primary": false,
+      "diff_vs_fixture": -63.9706424697478,
+      "abs_diff_vs_fixture": 63.9706424697478
+    },
+    {
+      "lambda_diag": "identity",
+      "A_role": "cov",
+      "sigma_scale": "variance",
+      "ridge": 1e-08,
+      "log_density": -78.6627504757038,
+      "neg_log_density": 78.6627504757038,
+      "is_primary": false,
+      "diff_vs_fixture": -63.9706443980772,
+      "abs_diff_vs_fixture": 63.9706443980772
+    },
+    {
+      "lambda_diag": "identity",
+      "A_role": "precision",
+      "sigma_scale": "variance",
+      "ridge": 0,
+      "log_density": -66.8551108390743,
+      "neg_log_density": 66.8551108390743,
+      "is_primary": false,
+      "diff_vs_fixture": -75.7782840347066,
+      "abs_diff_vs_fixture": 75.7782840347066
+    },
+    {
+      "lambda_diag": "identity",
+      "A_role": "precision",
+      "sigma_scale": "variance",
+      "ridge": 1e-08,
+      "log_density": -66.8551106305643,
+      "neg_log_density": 66.8551106305643,
+      "is_primary": false,
+      "diff_vs_fixture": -75.7782842432167,
+      "abs_diff_vs_fixture": 75.7782842432167
+    },
+    {
+      "lambda_diag": "exp",
+      "A_role": "precision",
+      "sigma_scale": "sd",
+      "ridge": 1e-08,
+      "log_density": -404.395194851703,
+      "neg_log_density": 404.395194851703,
+      "is_primary": false,
+      "diff_vs_fixture": 261.761799977922,
+      "abs_diff_vs_fixture": 261.761799977922
+    },
+    {
+      "lambda_diag": "exp",
+      "A_role": "precision",
+      "sigma_scale": "sd",
+      "ridge": 0,
+      "log_density": -404.395195060214,
+      "neg_log_density": 404.395195060214,
+      "is_primary": false,
+      "diff_vs_fixture": 261.761800186433,
+      "abs_diff_vs_fixture": 261.761800186433
+    },
+    {
+      "lambda_diag": "exp",
+      "A_role": "cov",
+      "sigma_scale": "sd",
+      "ridge": 1e-08,
+      "log_density": -416.202834696843,
+      "neg_log_density": 416.202834696843,
+      "is_primary": true,
+      "diff_vs_fixture": 273.569439823062,
+      "abs_diff_vs_fixture": 273.569439823062
+    },
+    {
+      "lambda_diag": "exp",
+      "A_role": "cov",
+      "sigma_scale": "sd",
+      "ridge": 0,
+      "log_density": -416.202836625172,
+      "neg_log_density": 416.202836625172,
+      "is_primary": false,
+      "diff_vs_fixture": 273.569441751391,
+      "abs_diff_vs_fixture": 273.569441751391
+    }
+  ],
+  "note": "The Stan DENSITY is fixed and spec-derived (spec s.8.1, two terms, all constants kept, hierarchical/tips-only). Only the mapping of the fixture's internal-scale vector and of the shared matrix A onto natural-scale quantities was measured, over a 2x2x2 grid declared in advance. Uniqueness of the matching cell is the evidence; a non-unique or absent match would have been reported as such."
+}

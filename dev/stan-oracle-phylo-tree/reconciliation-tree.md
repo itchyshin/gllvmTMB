@@ -168,6 +168,22 @@ by factor-level order, not tree tip order. Arc 1 measured a 79-unit density erro
 them on the dense route; here the same confusion would have silently routed every species'
 score into the wrong Stan row.
 
+Measured directly, which makes the hazard concrete:
+
+```
+A, levels = tip.label order        identical = TRUE
+    tree-tip order  7,8,9,10,11,12,13,14
+    factor-level    7,8,9,10,11,12,13,14
+permuted tips, sorted levels       identical = FALSE
+    tree-tip order  9,10,11,12,13,14,15,16,17,18
+    factor-level   12, 9,14,10,17,15,18,11,16,13
+```
+
+`tip_node_index` is always the tips-last block *in tree order*, so it is sequential by
+construction; the factor-level map is the permutation. They agree exactly when the factor's
+levels happen to follow `tip.label`, which is what every roxygen example arranges — and never
+explains.
+
 It is recorded rather than patched, for the same reason as §12's cosmetic defects: the dataset A
 driver is the pre-registered artifact. Its *result* is unaffected — the two orders are equal
 there — but a reader copying it onto a permuted tree would be wrong. **That is exactly the

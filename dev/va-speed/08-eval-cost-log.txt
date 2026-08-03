@@ -1,0 +1,29 @@
+
+=== cell N=100 T=10 q=1  (H=15) ===
+using C++ compiler: ‘Apple clang version 21.0.0 (clang-2100.1.1.101)’
+using SDK: ‘MacOSX26.5.sdk’
+clang++ -arch arm64 -std=gnu++20 -I"/Library/Frameworks/R.framework/Resources/include" -DNDEBUG -I"/Users/z3437171/Library/R/arm64/4.6/library/TMB/include" -I"/Users/z3437171/Library/R/arm64/4.6/library/RcppEigen/include"  -DTMB_SAFEBOUNDS -DTMB_EIGEN_DISABLE_WARNINGS -DLIB_UNLOAD=R_unload_gllvmTMB_va_r3  -DTMB_LIB_INIT=R_init_gllvmTMB_va_r3  -DCPPAD_FRAMEWORK  -I/opt/R/arm64/include    -fPIC  -O2  -c gllvmTMB_va_r3.cpp -o gllvmTMB_va_r3.o
+clang++ -arch arm64 -std=gnu++20 -dynamiclib -Wl,-headerpad_max_install_names -undefined dynamic_lookup -L/Library/Frameworks/R.framework/Resources/lib -L/opt/R/arm64/lib -o gllvmTMB_va_r3.so gllvmTMB_va_r3.o -F/Library/Frameworks/R.framework/.. -framework R
+  objective at start:  GH 3006.0177   AC 3632.0280   (AC-GH = +626.0103, must be > 0)
+  fn()  median: GH     9.50 ms   AC     1.00 ms   speedup  9.50x
+  gr()  median: GH    24.00 ms   AC     1.00 ms   speedup 24.00x
+  profile-weighted (0.651*gr + 0.339*fn): speedup 19.03x
+
+=== cell N=250 T=20 q=1  (H=15) ===
+  objective at start:  GH 15888.6104   AC 19212.5526   (AC-GH = +3323.9423, must be > 0)
+  fn()  median: GH    46.50 ms   AC     3.00 ms   speedup 15.50x
+  gr()  median: GH   108.50 ms   AC     7.00 ms   speedup 15.50x
+  profile-weighted (0.651*gr + 0.339*fn): speedup 15.50x
+
+================ SUMMARY ================
+   N  T q fn_gh_ms fn_ac_ms gr_gh_ms gr_ac_ms fn_speedup gr_speedup
+ 100 10 1      9.5        1     24.0        1        9.5       24.0
+ 250 20 1     46.5        3    108.5        7       15.5       15.5
+ weighted_speedup
+            19.03
+            15.50
+
+Amdahl bound on WHOLE-FIT gain at evaluator speedup 15.50x (GH = 75%%):
+  1 / (0.25 + 0.75/15.50) = 3.35x  -- ASSUMES equal iteration counts, UNVERIFIED
+
+EVAL_COST_DONE

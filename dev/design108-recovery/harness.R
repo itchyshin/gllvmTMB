@@ -200,7 +200,14 @@ source("dev/design108-recovery/dgp.R")
   if (length(logsd_full) < off_sd + T) return(NULL)
   psi <- exp(logsd_full[(off_sd + 1L):(off_sd + T)])^2
 
-  list(Lambda = Lambda, psi = psi, Sigma_B = Lambda %*% t(Lambda) + diag(psi, T))
+  ## `Sigma_B` stays the TOTAL block (unchanged value, back-compat).
+  ## `Sigma_B_loadings` is the PROTOCOL's estimand (PROTOCOL.md:382-383, 453):
+  ## `Lambda Lambda'` alone. Both are returned so scoring can compare
+  ## loadings-to-loadings; scoring a loadings TRUTH against a total FIT
+  ## inflates rel_frob (measured 2.3x, noether-diag11.R).
+  list(Lambda = Lambda, psi = psi,
+       Sigma_B = Lambda %*% t(Lambda) + diag(psi, T),
+       Sigma_B_loadings = Lambda %*% t(Lambda))
 }
 
 ## Build the phylo tier pair (dense loadings + diagonal psi companion) for
@@ -307,12 +314,14 @@ source("dev/design108-recovery/dgp.R")
 
   if (inherits(fit, "va_cell_error")) {
     return(list(status = "ERROR", note = fit$msg, elapsed_s = secs, peak_rss_mb = peak_mb,
-                elbo = NA_real_, admitted = NA, Sigma1 = NULL, Sigma2 = NULL))
+                elbo = NA_real_, admitted = NA, Sigma1 = NULL, Sigma2 = NULL,
+                Sigma1_load = NULL, Sigma2_load = NULL))
   }
   if (identical(fit$status, "not_applicable_rank_zero")) {
     return(list(status = fit$status, note = fit$reason, elapsed_s = secs,
                 peak_rss_mb = peak_mb, elbo = NA_real_, admitted = NA,
-                Sigma1 = NULL, Sigma2 = NULL))
+                Sigma1 = NULL, Sigma2 = NULL,
+                Sigma1_load = NULL, Sigma2_load = NULL))
   }
 
   layout <- tryCatch({
@@ -330,7 +339,8 @@ source("dev/design108-recovery/dgp.R")
   list(status = fit$status, note = "", elapsed_s = secs, peak_rss_mb = peak_mb,
        elbo = if (is.list(fit$report)) fit$report$elbo %||% NA_real_ else NA_real_,
        admitted = isTRUE(fit$health$admitted),
-       Sigma1 = s1$Sigma_B, Sigma2 = s2$Sigma_B)
+       Sigma1 = s1$Sigma_B, Sigma2 = s2$Sigma_B,
+       Sigma1_load = s1$Sigma_B_loadings, Sigma2_load = s2$Sigma_B_loadings)
 }
 
 ## ------------------------------------------------------- fit: Laplace/glm ---
@@ -402,7 +412,7 @@ source("dev/design108-recovery/dgp.R")
   if (inherits(fit, "lap_cell_error")) {
     return(list(status = "ERROR", note = fit$msg, elapsed_s = secs, peak_rss_mb = peak_mb,
                 loglik = NA_real_, convergence = NA_integer_, pdHess = NA,
-                Sigma1 = NULL, Sigma2 = NULL))
+                Sigma1 = NULL, Sigma2 = NULL, Sigma1_load = NULL, Sigma2_load = NULL))
   }
   conv <- tryCatch(as.integer(fit$opt$convergence), error = function(e) NA_integer_)
   pdh  <- tryCatch(isTRUE(fit$sd_report$pdHess), error = function(e) NA)
@@ -413,8 +423,18 @@ source("dev/design108-recovery/dgp.R")
   S2 <- tryCatch(gllvmTMB::extract_Sigma(fit, level = "phy", part = "total",
                                          link_residual = "none")$Sigma,
                 error = function(e) NULL)
+  ## `part = "shared"` is `Lambda Lambda'` alone (R/extract-sigma.R:693 admits
+  ## total/shared/unique/psi; "unique"/"psi" is the diag(psi) companion). That
+  ## is the PROTOCOL estimand; `total` is kept for the back-compat columns.
+  S1L <- tryCatch(gllvmTMB::extract_Sigma(fit, level = "unit", part = "shared",
+                                          link_residual = "none")$Sigma,
+                error = function(e) NULL)
+  S2L <- tryCatch(gllvmTMB::extract_Sigma(fit, level = "phy", part = "shared",
+                                          link_residual = "none")$Sigma,
+                error = function(e) NULL)
   list(status = "OK", note = "", elapsed_s = secs, peak_rss_mb = peak_mb,
-       loglik = ll, convergence = conv, pdHess = pdh, Sigma1 = S1, Sigma2 = S2)
+       loglik = ll, convergence = conv, pdHess = pdh, Sigma1 = S1, Sigma2 = S2,
+       Sigma1_load = S1L, Sigma2_load = S2L)
 }
 
 ## Positive control (non-negotiable 3): SAME two-tier structure and the SAME
@@ -471,7 +491,8 @@ source("dev/design108-recovery/dgp.R")
   if (inherits(fit, "gc_cell_error")) {
     return(list(status = "ERROR", note = fit$msg, elapsed_s = secs, peak_rss_mb = peak_mb,
                 loglik = NA_real_, convergence = NA_integer_, pdHess = NA,
-                Sigma1 = NULL, Sigma2 = NULL))
+                Sigma1 = NULL, Sigma2 = NULL,
+                Sigma1_load = NULL, Sigma2_load = NULL))
   }
   conv <- tryCatch(as.integer(fit$opt$convergence), error = function(e) NA_integer_)
   pdh  <- tryCatch(isTRUE(fit$sd_report$pdHess), error = function(e) NA)
@@ -482,8 +503,21 @@ source("dev/design108-recovery/dgp.R")
   S2 <- tryCatch(gllvmTMB::extract_Sigma(fit, level = "phy", part = "total",
                                          link_residual = "none")$Sigma,
                 error = function(e) NULL)
+  ## The positive control MUST carry the loadings estimand too. If the other
+  ## three arms gain a `_load` column and this one does not, `score()`'s NULL
+  ## guard turns its rel_frob into a silent NA and the control gate -- the gate
+  ## that decides whether ANY other rate in the campaign is interpretable --
+  ## passes VACUOUSLY. Same `part = "shared"` / `link_residual = "none"` call
+  ## the Laplace arm uses, so the two remain comparable.
+  S1L <- tryCatch(gllvmTMB::extract_Sigma(fit, level = "unit", part = "shared",
+                                          link_residual = "none")$Sigma,
+                error = function(e) NULL)
+  S2L <- tryCatch(gllvmTMB::extract_Sigma(fit, level = "phy", part = "shared",
+                                          link_residual = "none")$Sigma,
+                error = function(e) NULL)
   list(status = "OK", note = "", elapsed_s = secs, peak_rss_mb = peak_mb,
-       loglik = ll, convergence = conv, pdHess = pdh, Sigma1 = S1, Sigma2 = S2)
+       loglik = ll, convergence = conv, pdHess = pdh, Sigma1 = S1, Sigma2 = S2,
+       Sigma1_load = S1L, Sigma2_load = S2L)
 }
 
 ## ------------------------------------------------------------- run_cell() ---
@@ -516,15 +550,30 @@ run_cell <- function(cell, source = NULL, dll_stash = NULL,
                     convergence0 = NA_integer_, pdHess = NA, bound_type = NA_character_,
                     bound_value = NA_real_, reference_loglik = NA_real_,
                     rel_frob_tier1 = NA_real_, rel_frob_tier2 = NA_real_,
-                    bias_tier1 = NA_real_, bias_tier2 = NA_real_) {
+                    bias_tier1 = NA_real_, bias_tier2 = NA_real_,
+                    rel_frob_loadings_tier1 = NA_real_, rel_frob_loadings_tier2 = NA_real_,
+                    bias_loadings_tier1 = NA_real_, bias_loadings_tier2 = NA_real_) {
     data.frame(N = N, T = T, q = q, seed = seed, phylo_scale = phylo_scale,
                n_trials = n_trials, arm = arm, status = status, note = note,
                elapsed_s = elapsed_s, peak_rss_mb = peak_rss_mb,
                convergence = as.integer(convergence0), pdHess = as.logical(pdHess),
                bound_type = bound_type, bound_value = bound_value,
                reference_loglik = reference_loglik,
+               ## `rel_frob_tier*` KEEPS meaning the TOTAL (Lambda Lambda' +
+               ## diag(psi)). It is NOT silently repointed at the loadings --
+               ## quietly changing what an existing column means is exactly how
+               ## the estimand mismatch survived a whole day of work. The
+               ## PROTOCOL estimand is the `_loadings_` pair, and the analysis
+               ## reads those; the `_total_` alias is kept beside it so any
+               ## future drift between the two is VISIBLE in the output table
+               ## rather than silent.
                rel_frob_tier1 = rel_frob_tier1, rel_frob_tier2 = rel_frob_tier2,
                bias_tier1 = bias_tier1, bias_tier2 = bias_tier2,
+               rel_frob_total_tier1 = rel_frob_tier1, rel_frob_total_tier2 = rel_frob_tier2,
+               rel_frob_loadings_tier1 = rel_frob_loadings_tier1,
+               rel_frob_loadings_tier2 = rel_frob_loadings_tier2,
+               bias_loadings_tier1 = bias_loadings_tier1,
+               bias_loadings_tier2 = bias_loadings_tier2,
                y_sum = y_sum, y_len = y_len, stringsAsFactors = FALSE)
   }
   score <- function(Sigma_hat, Sigma_true) {
@@ -536,19 +585,32 @@ run_cell <- function(cell, source = NULL, dll_stash = NULL,
 
   ## --- positive control (non-negotiable 3) ---
   gcf <- .d108_fit_gaussian_control(sim, q, gauss_sd = gauss_sd, obs_seed = seed + 900000L)
-  gc1 <- score(gcf$Sigma1, sim$truth$tier1$Sigma_B)
-  gc2 <- score(gcf$Sigma2, sim$truth$tier2$Sigma_B)
+  ## PAIRING RULE (measured, not assumed): every arm's `Sigma*` is the TOTAL, so
+  ## it pairs with `Sigma_B_total`; the `_load` extraction is `part = "shared"`
+  ## and pairs with `Sigma_B_loadings`. Crossing them is a REAL error, not a
+  ## cosmetic one -- pairing a total Sigma_hat against the loadings truth
+  ## inflates laplace tier 1 from 0.7179 to 1.6360 (2.3x). `$Sigma_B` is spelled
+  ## `$Sigma_B_total` below purely to kill the back-compat alias: identical in
+  ## value, but it can no longer silently mean something else.
+  gc1 <- score(gcf$Sigma1, sim$truth$tier1$Sigma_B_total)
+  gc2 <- score(gcf$Sigma2, sim$truth$tier2$Sigma_B_total)
+  gc1L <- score(gcf$Sigma1_load, sim$truth$tier1$Sigma_B_loadings)
+  gc2L <- score(gcf$Sigma2_load, sim$truth$tier2$Sigma_B_loadings)
   rows[[1]] <- mkrow("gaussian_control", gcf$status, gcf$note, gcf$elapsed_s, gcf$peak_rss_mb,
                      gcf$convergence, gcf$pdHess, "marginal_loglik", gcf$loglik, NA_real_,
-                     gc1$rf, gc2$rf, gc1$bias, gc2$bias)
+                     gc1$rf, gc2$rf, gc1$bias, gc2$bias,
+                     gc1L$rf, gc2L$rf, gc1L$bias, gc2L$bias)
 
   ## --- shipped Laplace engine (also the reference bound for question 2) ---
   lap <- .d108_fit_laplace(sim, q)
-  l1 <- score(lap$Sigma1, sim$truth$tier1$Sigma_B)
-  l2 <- score(lap$Sigma2, sim$truth$tier2$Sigma_B)
+  l1 <- score(lap$Sigma1, sim$truth$tier1$Sigma_B_total)
+  l2 <- score(lap$Sigma2, sim$truth$tier2$Sigma_B_total)
+  l1L <- score(lap$Sigma1_load, sim$truth$tier1$Sigma_B_loadings)
+  l2L <- score(lap$Sigma2_load, sim$truth$tier2$Sigma_B_loadings)
   rows[[2]] <- mkrow("laplace", lap$status, lap$note, lap$elapsed_s, lap$peak_rss_mb,
                      lap$convergence, lap$pdHess, "marginal_loglik", lap$loglik, lap$loglik,
-                     l1$rf, l2$rf, l1$bias, l2$bias)
+                     l1$rf, l2$rf, l1$bias, l2$bias,
+                     l1L$rf, l2L$rf, l1L$bias, l2L$bias)
 
   ## --- VA augmented (sparse, structured phylo tier) ---
   va_aug <- tryCatch(
@@ -556,12 +618,16 @@ run_cell <- function(cell, source = NULL, dll_stash = NULL,
                 profile_variational = profile_variational, n_starts = n_starts, H = H),
     error = function(e) list(status = "ERROR", note = conditionMessage(e), elapsed_s = NA_real_,
                              peak_rss_mb = NA_real_, elbo = NA_real_, admitted = NA,
-                             Sigma1 = NULL, Sigma2 = NULL))
-  a1 <- score(va_aug$Sigma1, sim$truth$tier1$Sigma_B)
-  a2 <- score(va_aug$Sigma2, sim$truth$tier2$Sigma_B)
+                             Sigma1 = NULL, Sigma2 = NULL,
+                             Sigma1_load = NULL, Sigma2_load = NULL))
+  a1 <- score(va_aug$Sigma1, sim$truth$tier1$Sigma_B_total)
+  a2 <- score(va_aug$Sigma2, sim$truth$tier2$Sigma_B_total)
+  a1L <- score(va_aug$Sigma1_load, sim$truth$tier1$Sigma_B_loadings)
+  a2L <- score(va_aug$Sigma2_load, sim$truth$tier2$Sigma_B_loadings)
   rows[[3]] <- mkrow("va_augmented", va_aug$status, va_aug$note, va_aug$elapsed_s,
                      va_aug$peak_rss_mb, ifelse(isTRUE(va_aug$admitted), 0L, 1L), NA,
-                     "elbo", va_aug$elbo, lap$loglik, a1$rf, a2$rf, a1$bias, a2$bias)
+                     "elbo", va_aug$elbo, lap$loglik, a1$rf, a2$rf, a1$bias, a2$bias,
+                     a1L$rf, a2L$rf, a1L$bias, a2L$bias)
 
   ## --- VA tips-only (dense, O(N^2) inner solve; expected to become
   ## unaffordable high on the n-ladder -- caught, not fatal) ---
@@ -571,12 +637,16 @@ run_cell <- function(cell, source = NULL, dll_stash = NULL,
                 time_budget_s = tips_only_time_budget_s),
     error = function(e) list(status = "ERROR", note = conditionMessage(e), elapsed_s = NA_real_,
                              peak_rss_mb = NA_real_, elbo = NA_real_, admitted = NA,
-                             Sigma1 = NULL, Sigma2 = NULL))
-  t1 <- score(va_tip$Sigma1, sim$truth$tier1$Sigma_B)
-  t2 <- score(va_tip$Sigma2, sim$truth$tier2$Sigma_B)
+                             Sigma1 = NULL, Sigma2 = NULL,
+                             Sigma1_load = NULL, Sigma2_load = NULL))
+  t1 <- score(va_tip$Sigma1, sim$truth$tier1$Sigma_B_total)
+  t2 <- score(va_tip$Sigma2, sim$truth$tier2$Sigma_B_total)
+  t1L <- score(va_tip$Sigma1_load, sim$truth$tier1$Sigma_B_loadings)
+  t2L <- score(va_tip$Sigma2_load, sim$truth$tier2$Sigma_B_loadings)
   rows[[4]] <- mkrow("va_tips_only", va_tip$status, va_tip$note, va_tip$elapsed_s,
                      va_tip$peak_rss_mb, ifelse(isTRUE(va_tip$admitted), 0L, 1L), NA,
-                     "elbo", va_tip$elbo, lap$loglik, t1$rf, t2$rf, t1$bias, t2$bias)
+                     "elbo", va_tip$elbo, lap$loglik, t1$rf, t2$rf, t1$bias, t2$bias,
+                     t1L$rf, t2L$rf, t1L$bias, t2L$bias)
 
   do.call(rbind, rows)
 }

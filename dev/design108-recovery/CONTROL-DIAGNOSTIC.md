@@ -435,7 +435,7 @@ on it.
 
 ## Appendix — scripts
 
-All ten are read-only against the package; they write only under
+All twelve are read-only against the package; they write only under
 `dev/design108-recovery/pilot-results/`. Run from the worktree root with `NOT_CRAN=true`.
 
 | script | what it does | invocation used |
@@ -450,6 +450,8 @@ All ten are read-only against the package; they write only under
 | `noether-diag8.R` | exchange symmetry + mirrored starts (§A11, §A12) | `D108_N=100 D108_T=10 D108_SEED=1` |
 | `noether-diag9.R` | the proposed fix (§A16) | `D108_N=100 D108_T=10 D108_SEED=1` |
 | `noether-diag10.R` | harness's own 4-start machinery (§A17) | `D108_N=100 D108_T=10 D108_SEEDS=1,2,3 D108_NSTARTS=4` |
+| `noether-diag11.R` | per-arm/per-tier: is `Sigma_hat` loadings or total? (§B2, §B3) | `D108_N=120 D108_T=8 D108_SEED=1 D108_VA=0` (VA part did not finish) |
+| `noether-diag12.R` | where the control's `gauss_sd^2` lands (§B5.4) | (no env vars) |
 
 Two caveats on my own scratch code, recorded so nobody re-derives them:
 
@@ -727,3 +729,296 @@ other.
 
 **Fix §A16 before the grid is bought.** It is a two-token change and it is the cheapest item on
 the whole remediation list.
+
+---
+---
+
+# ADDENDUM 2 (2026-08-02) — mismatch 2: what each arm's `Sigma_hat` actually contains
+
+**Context.** The DGP now exposes `Sigma_B_loadings`, `Sigma_B_total`, and `Sigma_B` as a
+back-compat alias for the total (`dgp.R:182-205`). All 8 scoring sites in `harness.R` still
+read the alias, so the harness is still scoring against the TOTAL while `PROTOCOL.md:453`
+defines `rel_frob` on the loadings-only `Sigma_B`. The coordinator's question: is the naive
+"swap `Sigma_B` → `Sigma_B_loadings`" correct, and does it differ per arm?
+
+**Short answer: the naive swap is WRONG and would create a fresh mismatch.** All four arms
+extract the TOTAL. Their current pairing against `Sigma_B` (= `Sigma_B_total`) is
+*correctly paired*; what is wrong is that the total is not the protocol's estimand. The fix is
+to make each arm also expose a loadings-only `Sigma_hat` and record both — not to repoint the
+truth alone.
+
+## B1. A correction to the brief's line numbers
+
+`.d108_fit_va` ends at **`harness.R:333`**, `.d108_fit_laplace` at **`:417`**, and
+`.d108_fit_gaussian_control` at **`:486`** (function heads at `:273`, `:382`, `:450`). The
+brief has `:417` and `:486` swapped — `:417` is Laplace, `:486` is the gaussian control. Worth
+fixing before the edit is applied, since the two need the same change but the surrounding code
+differs.
+
+## B2. Per arm, per tier: what `Sigma_hat` contains — measured
+
+`dev/design108-recovery/noether-diag11.R`, one cell, N=120, T=8, q=1, seed=1, corrected DGP.
+
+First, the DGP's own names check out and the two estimands now differ materially:
+
+```
+tier1: max|Sigma_B - Sigma_B_total| = 0.000e+00        (alias confirmed)
+       max|Sigma_B_total - Sigma_B_loadings - diag(psi)| = 1.11e-16
+       diag means: loadings 0.2839  psi 0.6401  total 0.9240
+       rel_frob(loadings, total) = 0.5689
+tier2: max|Sigma_B - Sigma_B_total| = 0.000e+00
+       max|Sigma_B_total - Sigma_B_loadings - diag(psi)| = 2.22e-16
+       diag means: loadings 1.0854  psi 0.6848  total 1.7702
+       rel_frob(loadings, total) = 0.2118
+```
+
+For the two Laplace-family arms, `part = "total"` minus `part = "shared"` is **exactly
+diagonal** (max off-diagonal difference 0.000e+00 at both levels, both arms) and equals
+`part = "unique"$s` to 1e-16. So `part = "total"` is unambiguously `Lambda Lambda' + diag(psi)`.
+
+| arm | tier | `Sigma_hat` as extracted today | contains |
+|---|---|---|---|
+| `gaussian_control` (`:486`) | 1 (`level="unit"`) | `extract_Sigma(part="total")` | **TOTAL** |
+| `gaussian_control` | 2 (`level="phy"`) | `extract_Sigma(part="total")` | **TOTAL** |
+| `laplace` (`:417`) | 1 | `extract_Sigma(part="total")` | **TOTAL** |
+| `laplace` | 2 | `extract_Sigma(part="total")` | **TOTAL** |
+| `va_augmented` / `va_tips_only` (`:333`) | 1 | `.d108_va_tier_sigma(...,1,2,T)$Sigma_B` | **TOTAL** |
+| `va_augmented` / `va_tips_only` | 2 | `.d108_va_tier_sigma(...,3,4,T)$Sigma_B` | **TOTAL** |
+
+`.d108_va_tier_sigma()` returns `Sigma_B = Lambda %*% t(Lambda) + diag(psi, T)`
+(`harness.R:203`) — the same total, built by hand rather than by `extract_Sigma()`.
+
+**No arm differs from the others on this axis. There is no fifth mismatch here.** That is a
+genuine (and welcome) null result, and it only became true today: before the phylo-Psi
+declaration fix, the VA arm's tier-2 total contained an *unstructured row-level* diagonal while
+the Laplace arm's contained a *structured* one — different objects wearing the same name. Both
+are now `Psi_phy ⊗ A`, confirmed on the live layout: `n_levels 120 | 120 | 238 | 238`,
+`structured FALSE | FALSE | TRUE | TRUE` (238 = 2N−2 augmented nodes).
+
+## B3. Why the naive swap would be a fresh mismatch — measured
+
+Pairing a TOTAL `Sigma_hat` against `Sigma_B_loadings` is exactly the error this whole
+document is about. Measured on the same cell:
+
+| arm / tier | `rel_frob(total, Sigma_B_total)` | `rel_frob(shared, Sigma_B_loadings)` | `rel_frob(total, Sigma_B_loadings)` ✗ |
+|---|---|---|---|
+| laplace, tier 1 | 0.7179 | 0.9479 | **1.6360** |
+| laplace, tier 2 | 0.6759 | 0.7912 | **0.7914** |
+| gaussian_control, tier 1 | 0.3722 | 0.4214 | **1.2945** |
+| gaussian_control, tier 2 | 0.4851 | 0.5824 | **0.5880** |
+
+The naive swap would report **1.6360 instead of 0.7179** for the Laplace tier-1 cell — a 2.3×
+inflation that is pure estimand mismatch. The coordinator was right not to guess.
+
+## B3b. What is empirical here, and what is not
+
+Being precise about the evidential status of each row of the §B2 table, because "settled by
+reading" is what let mismatch 2 survive:
+
+- **`laplace` and `gaussian_control`, both tiers — fully empirical.** `extract_Sigma()` is an
+  opaque package function, so its `part = "total"` semantics were the genuine unknown. Measured
+  on a live fit: `total − shared` has max off-diagonal 0.000e+00 at both levels in both arms,
+  and equals `part = "unique"$s` to ≤8.8e-16. `part = "total"` is the total. No ambiguity left.
+- **VA arm — construction verified in the harness's own code, layout verified empirically,
+  `rel_frob` numbers NOT obtained.** The object is not built by a package function: it is built
+  one line inside this harness, `Sigma_B = Lambda %*% t(Lambda) + diag(psi, T)`
+  (`harness.R:203`), so what it contains is not in doubt. What *was* in doubt — which tiers the
+  layout actually assigns after the phylo-Psi fix — I did verify on the live validated object
+  for this cell: `n_levels 120 | 120 | 238 | 238`, `structured FALSE | FALSE | TRUE | TRUE`,
+  with `extra 2: kind=diagonal dim=8 structured=TRUE label=phylo_psi`. So tier 4 is now the
+  structured phylo Psi, matching the Laplace arm's `Psi_phy ⊗ A`.
+  **The VA fit itself did not finish inside this slice** (the post-fix structured tier adds a
+  238×8 variational block and is markedly slower — the same slowness §A16 flagged), so I report
+  no VA `rel_frob` figure. Nothing in the edit below depends on one: the edit only needs to know
+  *which object* the arm returns, and that is settled by `harness.R:203`. If you want the belt
+  and braces, re-run `noether-diag11.R` with `D108_VA=1` at leisure and check the printed
+  `Sigma_B == Lambda Lambda' + diag(psi)` line reports ~1e-16.
+
+## B4. The exact minimal edit — record BOTH, per the coordinator's preferred shape
+
+Every arm already *has* the loadings-only object; none of them returns it. Three extraction
+sites gain it, then the 8 scoring sites gain a second comparison. No new fitting, no new
+extraction cost beyond one extra `extract_Sigma(part = "shared")` call per Laplace-family arm.
+
+### Edit 1 of 4 — `.d108_fit_va`, `harness.R:333`
+
+`.d108_va_tier_sigma()` already returns `Lambda` (`harness.R:203`); it is simply discarded.
+
+```r
+## before (harness.R:333)
+       Sigma1 = s1$Sigma_B, Sigma2 = s2$Sigma_B)
+## after
+       Sigma1 = s1$Sigma_B, Sigma2 = s2$Sigma_B,
+       Sigma1_loadings = if (is.null(s1)) NULL else s1$Lambda %*% t(s1$Lambda),
+       Sigma2_loadings = if (is.null(s2)) NULL else s2$Lambda %*% t(s2$Lambda))
+```
+
+### Edits 2 and 3 — `.d108_fit_laplace` (`harness.R:412-417`) and `.d108_fit_gaussian_control` (`harness.R:481-486`)
+
+**Identical change in both.** Insert after the existing `S1` / `S2` extraction:
+
+```r
+  S1L <- tryCatch(gllvmTMB::extract_Sigma(fit, level = "unit", part = "shared",
+                                          link_residual = "none")$Sigma,
+                 error = function(e) NULL)
+  S2L <- tryCatch(gllvmTMB::extract_Sigma(fit, level = "phy", part = "shared",
+                                          link_residual = "none")$Sigma,
+                 error = function(e) NULL)
+```
+
+and extend the return list with `Sigma1_loadings = S1L, Sigma2_loadings = S2L`.
+
+Keep `link_residual = "none"`: for `part = "shared"` it is inert (the link residual is purely
+diagonal), but making the two calls differ invites exactly the drift this exercise is about.
+The early `return()` branches on fit error need no edit — `$` on an absent name gives `NULL`,
+and `score()` already maps `NULL` to `NA_real_` (`harness.R:530-533`).
+
+### Edit 4 — `run_cell()`: the 8 scoring sites, `mkrow()`, and the gate
+
+**(a) Kill the alias at all 8 sites.** `sim$truth$tier1$Sigma_B` → `sim$truth$tier1$Sigma_B_total`
+(and `tier2`) at `harness.R:539, 540, 547, 548, 560, 561, 575, 576`. This is a no-op in value —
+the point is that a reader can no longer mistake which estimand is being scored.
+
+**(b) Add the loadings comparison.** Add one helper next to `score()`:
+
+```r
+  score_both <- function(hat_total, hat_load, tier) {
+    list(tot = score(hat_total, tier$Sigma_B_total),
+         load = score(hat_load,  tier$Sigma_B_loadings))
+  }
+```
+
+and at each of the four arms, e.g. for the control:
+
+```r
+  gc1 <- score_both(gcf$Sigma1, gcf$Sigma1_loadings, sim$truth$tier1)
+  gc2 <- score_both(gcf$Sigma2, gcf$Sigma2_loadings, sim$truth$tier2)
+```
+
+**(c) `mkrow()` (`harness.R:514-528`) gains four columns**, and — mirroring exactly what the
+DGP did with `Sigma_B` — the two existing columns keep their present meaning rather than being
+silently repointed:
+
+| column | meaning |
+|---|---|
+| `rel_frob_tier1/2` | **unchanged** = the total. Back-compat alias; `job1_floor_sweep.R:57-63` keeps working. |
+| `rel_frob_total_tier1/2` | explicit name for the same number |
+| `rel_frob_loadings_tier1/2` | **new headline** — `PROTOCOL.md:453`'s estimand |
+| `bias_loadings_tier1/2` | signed bias on the loadings estimand |
+
+Repointing `rel_frob_tier1` to mean the loadings would be a silent change of meaning in an
+existing column — the precise failure mode that let mismatch 2 survive all day. Do not do it.
+
+**(d) Point the gate at the headline.** `.d108_positive_control_gate()` (`harness.R:592-597`)
+reads `rel_frob_tier1/2`; switch those four references to `rel_frob_loadings_tier1/2`, and
+likewise `job1_floor_sweep.R:57-63`. This matters: §B5 shows the `_total` column is
+contaminated for the control arm and the `_loadings` column is not.
+
+## B5. The gaussian `log_sigma` asymmetry — recommendation
+
+**First, a scoping fact that de-fangs it.** The gaussian control arm is fit with the shipped
+**Laplace** engine only — `.d108_fit_gaussian_control()` (`harness.R:450`) calls
+`gllvmTMB::gllvmTMB(..., family = stats::gaussian())`, and the function's own comment says it
+"always uses Laplace regardless of which arms are under test". There is **no VA gaussian arm
+in the harness**, so the `log_sigma` asymmetry is currently latent, not active. It becomes a
+sixth mismatch only if someone adds a VA gaussian control — which is a natural thing to want,
+and is why it needs a written rule now rather than later.
+
+**The asymmetry, restated.** The Laplace gaussian path auto-suppresses `sigma_eps`
+(`R/fit-multi.R:4794-4808`) because the unit-tier Psi is at per-row resolution, so the row-level
+residual lands in `diag(Psi_unit)`. The VA gaussian path keeps a free per-trait `log_sigma`
+(`R/va-r3-proto.R:1816-1833`; `inst/tmb/gllvmTMB_va_r3.cpp:387`), which absorbs it instead —
+measured in §A15: `log_sigma^2` mean 1.152265 with both diagonal tiers collapsing to ~8e-09.
+Same data, same nominal model, the residual in a different parameter.
+
+**Recommendation, in order.**
+
+1. **Make the loadings estimand the headline (Edit 4d) and the problem stops mattering.** The
+   entire class of row-level-residual placement questions — `gauss_sd`, `sigma_eps`,
+   `log_sigma`, OLRE absorption — touches only the *diagonal*. `Lambda Lambda'` is invariant to
+   all of it. This is the single highest-value line in this addendum: it retires mismatch 3 and
+   the `log_sigma` asymmetry from the headline in one move, and it is what `PROTOCOL.md:453`
+   already specifies.
+
+2. **Keep the control Laplace-only, and say so in `PROTOCOL.md`.** Record it as a deliberate
+   constraint with the reason, not as an accident of how the harness happens to be written.
+
+3. **If a VA gaussian control is ever added**, suppress `log_sigma` to mirror
+   `R/fit-multi.R:4794-4808` — fix it at a small constant via `.va_r3_fit(fixed_global = ...)`
+   so the unit-tier Psi absorbs the row-level residual in *both* engines. Do not leave it free
+   and compare `_total` columns across engines.
+
+4. **Flag the `_total` column of the control arm as not directly comparable.** The control adds
+   its own `gauss_sd` noise (`harness.R:454`) that has no counterpart in `sim$truth`. Measured
+   on the same cell (`dev/design108-recovery/noether-diag12.R`):
+
+   ```
+   TIER 1 (unit) -- where the residual lands
+     psi_hat mean = 0.8562   truth psi1 = 0.6401   truth psi1 + gauss_sd^2 = 0.8001
+     rel_frob(total,  Sigma_B_total)                   = 0.3722
+     rel_frob(total,  Sigma_B_total + diag(gauss_sd^2)) = 0.2676   <- residual-aware
+     rel_frob(shared, Sigma_B_loadings)                 = 0.4214   <- immune to gauss_sd
+   TIER 2 (phy) -- the residual must NOT appear here
+     rel_frob(total,  Sigma_B_total)                   = 0.4851
+     rel_frob(total,  Sigma_B_total + diag(gauss_sd^2)) = 0.4748   <- WRONG for tier 2
+     rel_frob(shared, Sigma_B_loadings)                 = 0.5824
+   ```
+
+   `gauss_sd^2` accounts for a 28% reduction in the tier-1 total-column error (0.3722 → 0.2676)
+   and belongs to **tier 1 only**. So either add `+ diag(gauss_sd^2)` to the control arm's
+   tier-1 total-truth *and nothing to tier 2*, or simply record the control's `_total` columns
+   as diagnostic-only. Given recommendation 1, the second is cleaner and less error-prone —
+   a residual-aware truth that is right for one tier and wrong for the other is a trap of the
+   same family as the one this document opened with.
+
+## B6. Summary of the estimand state after this addendum
+
+| # | mismatch | status |
+|---|---|---|
+| 1 | DGP tier-2 Psi iid, model's is `Psi_phy ⊗ A` | **FIXED** in `dgp.R` (Z2 now a GMRF over the same `Ainv`) |
+| 2 | harness scores the TOTAL; `PROTOCOL.md:453` specifies loadings-only | **specified here** (§B4); not yet applied |
+| 3 | control's own `gauss_sd^2` has no counterpart in the truth | **retired from the headline** by §B4d + §B5.1; still contaminates the `_total` columns of the control arm's tier 1 (measured: 0.3722 → 0.2676 when accounted for) |
+| 4 | VA phylo-Psi declared unstructured → labelling symmetry | **FIXED** in `harness.R` (verified live: 238 levels, `structured = TRUE`) |
+| 5 | *(hypothesised: arms extract different objects)* | **DOES NOT EXIST.** All four arms return the TOTAL. Verified empirically for the two Laplace-family arms; established from `harness.R:203` plus the verified live layout for the VA arms. |
+| 6 | *(hypothesised: VA gaussian `log_sigma` asymmetry)* | **LATENT, not active** — there is no VA gaussian arm (`harness.R:450` fits the control with Laplace only). Rule written in §B5 for if one is added. |
+
+### What I could not settle
+
+- **No VA `rel_frob` number** (§B3b). The determination of *what* the VA arm returns does not
+  depend on it, but the numeric confirmation is outstanding.
+- **The phylo Psi is badly under-recovered at this size, even post-fix.** Measured tier-2
+  `psi_hat`: 0.0530 (laplace) and 0.1768 (gaussian control) against a truth of 0.6848. That is
+  N=120, T=8, q=1 — small enough that this may be pure finite-sample, and one cell cannot tell.
+  But it is the same tier whose loadings already refused to shrink with N (§7), so it wants
+  watching on the ladder rather than assuming away.
+- **Whether `rel_frob_loadings` behaves better than `rel_frob_total` on the ladder.** The
+  loadings estimand is immune to residual placement, which is why it should be the headline —
+  but §7's open question (does the phylo tier's error shrink with N at all?) is unaffected by
+  this addendum and remains the gating unknown before the grid is bought.
+
+## B7. LANE NOTE — a concurrent edit to `harness.R` is already in flight
+
+While this addendum was being written, `harness.R` was modified by another lane (working tree
+dirty, not committed). It has already applied edits 1–2 of §B4, under **different field names
+than my spec**:
+
+| §B4 spec | what is actually in the file now | status |
+|---|---|---|
+| `.d108_va_tier_sigma` returns `Lambda` | returns `Sigma_B_loadings` directly (`harness.R:206-210`) | **done**, better than my spec |
+| `.d108_fit_va` → `Sigma1_loadings` | `Sigma1_load` / `Sigma2_load` (`harness.R:341-342`, plus both error branches) | **done**, different name |
+| `.d108_fit_laplace` → `S1L`/`S2L` + return | `Sigma1_load` / `Sigma2_load` (`harness.R:426-437`) | **done** |
+| `.d108_fit_gaussian_control` | **NOT edited** — still returns only `Sigma1`/`Sigma2` (`harness.R:505-506`) | **OUTSTANDING** |
+| 8 scoring sites | unchanged, still the `Sigma_B` alias | **OUTSTANDING** |
+| `mkrow()` columns | unchanged | **OUTSTANDING** |
+| gate | unchanged | **OUTSTANDING** |
+
+**Use `Sigma1_load` / `Sigma2_load`, not my `Sigma1_loadings`** — the in-flight name is already
+in three functions and is fine; what matters is that all four arms use one name. **The line
+numbers in §B4 are now stale**: the concurrent edit shifted everything below `harness.R:200`.
+Current positions are given in the reply. I have not touched `harness.R`.
+
+The single most important outstanding item is the **gaussian control**, because it is the arm
+the whole §B5 recommendation turns on: if the other three arms gain a loadings column and the
+control does not, the control's `rel_frob_loadings_*` will be silently `NA` (via `score()`'s
+`NULL` guard at `harness.R:550-553`) and the positive-control gate will pass vacuously on
+missing data. That is the same failure shape as everything else in this document.

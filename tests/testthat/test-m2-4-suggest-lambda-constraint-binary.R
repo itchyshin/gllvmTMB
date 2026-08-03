@@ -118,13 +118,24 @@ test_that("suggest_lambda_constraint() → gllvmTMB fit recovers Lambda at d=1 (
                info = "fit with suggester's d=1 constraint did not converge")
 
   ## Sanity: Lambda is identifiable and the diagonal recovery
-  ## is meaningful (engine's positive-diagonal pin gives item-1
-  ## a positive loading, matching truth = 1).
+  ## is meaningful.
+  ##
+  ## CAVEAT (2026-08-03): there is NO engine positive-diagonal pin.
+  ## src/gllvmTMB.cpp:902,909 takes the loadings diagonal as a plain
+  ## value -- no exp(), no bound -- so the column sign is FREE and the
+  ## paired flip (Lambda_.k, z_.k) -> (-Lambda_.k, -z_.k) leaves the
+  ## joint density exactly invariant (dev/lambda-sign-invariance.R).
+  ## The assertion below therefore holds by OPTIMISER INITIALISATION,
+  ## not by construction, and could flip under a different seed, start
+  ## value, or optimiser. Assertion left unchanged pending a maintainer
+  ## call: either assert abs(L_hat[1]) or pin explicitly with
+  ## lambda_constraint = list(B = diag(1, n_items, d)).
   L_hat <- suppressMessages(suppressWarnings(
     gllvmTMB::getLoadings(fit, level = "unit")[, 1L]
   ))
   expect_true(L_hat[1L] > 0,
-              info = "engine positive-diagonal pin should keep item-1 loading positive")
+              info = paste("item-1 loading positive -- NB: by optimiser initialisation,",
+                           "not by an engine constraint; see caveat above"))
 })
 
 # ---- (3) suggester → fit recovery cycle at d = 2 -------------------

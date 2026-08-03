@@ -30,8 +30,14 @@ younger stage of development).
 - Residual correlations use a Fisher-z-like linear predictor and
   a guarded `0.99999999 * tanh()` response transform.
 - Phylogenetic / spatial loading matrices use the
-  `glmmTMB::rr()`-style triangular-with-positive-diagonal
-  reparameterisation (McGillycuddy et al. 2025).
+  `glmmTMB::rr()`-style reduced-rank reparameterisation
+  (McGillycuddy et al. 2025): the strict upper triangle is zero,
+  which fixes rotation. The **diagonal is unconstrained** -- a
+  plain value, no `exp()` and no bound
+  (`src/gllvmTMB.cpp:902,909`) -- so the column sign is free.
+  Corrected 2026-08-03; this bullet previously said
+  "triangular-with-positive-diagonal", which the engine does not
+  implement. See `04-random-effects.md` for the consequences.
 
 ## Variability Orientation
 

@@ -14,7 +14,23 @@
 | **Item 1(A)** | **Albert-Chib closed-form probit tier LANDED** — `eval_method = "ac"`, 21/21 verify checks pass, 245 existing VA tests green |
 | **Design 108** | **Campaign verdict REFUTED by two independent panels.** Corrected in place |
 | Fence | **untouched** — no export, no `method=`, no public claim, `default_tier` still `"gh"` |
-| 🔴 Needs Shinichi | **PR #917** · the Stage-5 supersession call · the Amdahl re-aim (below) |
+| 🔴 Needs Shinichi | **PR #925** (likelihood-touching) · the `A_i`-collapse go-ahead |
+
+> # ⚠ READ SESSION 2 FIRST — three headlines below are SUPERSEDED
+>
+> Sections 1–3 and "Measured so far" were written mid-session and the measurements
+> then moved twice. **Jump to "SESSION 2" at the end of this file**, then come back.
+> Retained verbatim because the reasoning is still sound and the corrections are only
+> legible against it. Specifically:
+>
+> | claim below | status |
+> |---|---|
+> | "accuracy `rel_frob ≤ 0.298` — **NOT MEASURED**" | **MEASURED.** AC median 0.2259, gate PASSED — but on a DGP with **ψ = 0**, which is AC's most favourable corner. On a truth *with* ψ, AC is materially worse than GH. |
+> | "**GH does not complete** at N=250 T=20" | **Artifact of `unique = TRUE`.** With the model gllvm actually fits, both complete in seconds (AC 2.9 s). |
+> | speed framed as ours-vs-gllvm | **The 264× was a model mismatch.** Like-for-like it is **3.7×**. |
+> | Item 1 framed as the win | **AC reaches PARITY with gllvm, not superiority.** Our **GH** tier is the better VA; the win is **warm-starting GH from AC**. |
+>
+> Also superseded: PR #917 (register-code guard) is now **merged to `main`**.
 
 ## What was accomplished
 

@@ -462,3 +462,66 @@ tautological setup cannot generate a finding that contradicts its own source doc
 independently and agrees to ~1 ulp. The *encoding conventions* were measured against the
 implementation, not derived, and that half is not independent. Both halves must be reported together
 wherever this result is cited.
+
+---
+
+## 11. Correction to §6.1's consequence claim (2026-08-03, after maintainer challenge)
+
+§6.1 stated that the unconstrained loadings diagonal means "any per-loading interval, profile, Wald
+SE, or recovery study that treats `lambda_tk` as an identified scalar inherits a bimodal target."
+**That is stronger than the evidence supports and is corrected here.** The doc/engine divergence
+itself stands unchanged; only its consequence is re-scoped.
+
+### 11.1 Measured, not argued
+
+Using the same fixture and joint objective:
+
+```
+baseline joint nll        : 429.588697635680
+flip BOTH Lambda and z    : 429.588697635680   diff = 0.000e+00
+flip Lambda ONLY          : 547.088294763655   diff = 1.175e+02
+```
+
+The paired sign flip `(Lambda_.k, z_.k) -> (-Lambda_.k, -z_.k)` is an **exact** invariance of the
+joint density. Flipping Lambda alone is not a symmetry, which confirms the invariance is the
+specific paired reflection rather than a general insensitivity to Lambda.
+
+### 11.2 The two indeterminacies are different objects and need different constraints
+
+`Sigma = Lambda Lambda' + Psi` is invariant under `Lambda -> Lambda Q` for orthogonal `Q`. That
+group splits:
+
+| indeterminacy | nature | dimension | constraint that fixes it | in gllvmTMB? |
+|---|---|---|---|---|
+| rotation | continuous | `K(K-1)/2` | lower-triangular zeros | **yes** (`cpp:915-916`) |
+| sign | discrete | `2^K` | positive diagonal | **no** |
+
+So the reduced-rank parameterisation **does** fix the rotation, as the upstream `rr_covstruct`
+design intends. What is absent is only the discrete sign convention.
+
+**At `K = 1` -- the rank used throughout this spike -- `K(K-1)/2 = 0`.** There is no rotation to fix
+and the triangular constraint is vacuous; the sign flip is the entire indeterminacy, and there are
+exactly two equivalent solutions.
+
+### 11.3 Why the practical consequence is small
+
+- It is a **discrete two-fold mirror, not a flat direction**: two isolated modes, not a ridge.
+  Optimisation is unaffected -- it converges into one basin and stays there.
+- A profile or Wald interval computed around that mode is a **valid local interval**. It is not
+  incorrect; it is simply not unique across the mirror.
+- Everything Design 66 actually gates -- `Sigma_unit`, correlations, communalities, ICC -- is
+  **sign-invariant** and therefore untouched. `extract_Sigma()` is safe, as §6.1 already said.
+
+**The one real exposure is aggregation across fits**: averaging `lambda_hat_tk` over simulation
+replicates whose signs differ collapses the mean toward zero. The repo already guards this twice --
+Design 66 treats loadings as rotation-variant diagnostics that are never gated, and the shipped
+`gllvm` comparator Procrustes-aligns before comparing.
+
+### 11.4 What still stands
+
+The **documentation divergence** is unaffected by this correction and remains the finding worth
+acting on: `docs/design/04-random-effects.md` asserts a positive log-scale diagonal that the engine
+does not implement, and that assertion sent an independently written specification 792.25 off the
+true value. Fixing the doc is clearly worthwhile; adding the positive-diagonal constraint to the
+engine is a separate and much weaker case, since the quantities the package actually gates are all
+sign-invariant.

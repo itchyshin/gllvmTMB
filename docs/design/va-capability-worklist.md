@@ -50,3 +50,37 @@ cannot currently reach for most random-effect types.
 
 > Related: `va-latent-uncertainty.md` · `va-interval-coverage-campaign.md` ·
 > `va-warmstart-la-recon.md` · `ai-collapse-design.md` · `20-CLAIMS-LEDGER.md`
+
+---
+
+## Campaign sequencing decision — LA-Bootstrap is DEFERRED, not cancelled (2026-08-03)
+
+**Maintainer asked: "do we need LA-bootstrap?"** Answer: not up front.
+
+Sized from today's measured per-fit costs at the 150-core budget:
+
+| tier | work | core-hours | wall-clock |
+|---|---|---|---|
+| Step-0 pilot | 30 seeds/cell | <1 | minutes |
+| Tier 1 | 1000 seeds × 3 arms × ~4 cells | ~50 | ~25 min |
+| Tier 2 | LA-Profile, 300 seeds × 2 cells | ~120 | ~50 min |
+| **Tier 3** | **LA-Bootstrap, 100 seeds × 500 refits** | **~330** | **~2.2 h** |
+
+**Tier 3 is 55% of the compute for the least informative tier.** Three reasons to defer it:
+
+1. **No oracle floor.** The campaign's own adversarial flaw list records this as an accepted
+   gap: *"No oracle floor for Profile/Bootstrap — FIXED for Profile (small n=5000 pilot
+   added); ACCEPTED as a gap for Bootstrap."* We would not know what a perfect fit scores.
+2. **Weakest power of any tier.** 100 seeds → 2·MCSE = 4.36 pp, difference band 6.16 pp. It
+   detects gross brokenness only, not the subtle miscalibration that is the actual question.
+3. **It does not bear on the primary question**, which is whether *VA's* intervals are honest.
+   LA-Wald is the necessary contrast; LA-Profile is the differentiator gllvm and galamm lack;
+   LA-Bootstrap is a third LA variant.
+
+**But it keeps real option value and must not be deleted:** bootstrap is the only route that
+assumes *neither* the ELBO's curvature nor the information-matrix equality. If Tier 1 shows
+Wald under-covering **and** the sandwich route fails to rescue it, bootstrap becomes the
+remaining candidate and is worth its 2.2 h at that point.
+
+**DECISION: run Tiers 1+2 first (~75 min), read the result, then launch Tier 3 only if the
+first two leave a question it can settle.** Conditional sequencing, not a coin-flip up front.

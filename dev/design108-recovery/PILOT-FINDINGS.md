@@ -462,3 +462,56 @@ The structured-tier question remains **OPEN and unmeasured**. What is now known 
 profiled route the gaussian structured fit takes ~11 s at N=150. The blockers are now (a) fix
 the tier-2 extraction, and (b) reach an N where tier 2 is informative — which the control curve
 puts well above 1000.
+
+---
+
+# THE CAMPAIGN'S ANSWER (2026-08-03) — VA does NOT recover the structured phylo tier
+
+Structured two-tier (198-node phylo tier), **gaussian**, **N=1000**, T=10, q=1, 3 seeds, both
+arms on the SAME data, BOTH tiers extracted, scored against PLANTED TRUTH (loadings estimand).
+
+| seed | VA tier-1 | **VA tier-2** | LAP tier-1 | **LAP tier-2** |
+|---|---|---|---|---|
+| 1 | 0.747 | **16.89** | 0.186 | 0.704 |
+| 2 | 0.783 | **48.68** | 0.087 | 0.543 |
+| 3 | 0.839 | **1.000** | 0.094 | 0.540 |
+| **median** | 0.783 | **16.89** | **0.094** | **0.543** |
+
+## Verdict
+
+**LAPLACE BETTER on both tiers.** Tier 1 by **8x**. Tier 2 — the phylogenetic tier, the
+campaign's actual target — by **31x**.
+
+And VA does not merely lose: it **FAILS on 3/3 seeds**. Two runaways (16.89, 48.68, both past
+the `rel_frob > 10` degeneracy threshold) and one at exactly **1.000**, the signature of a
+collapse to zero (`||0 - truth|| / ||truth|| = 1`). Runaway or collapse, never recovery.
+
+## Verdict on Stages 3/5
+
+The handover's own criterion: *"if VA ties or loses, ~7 days of Stages 3/5 come off the board."*
+**VA loses decisively**, on the structured tier Design 72 named as its untested Phase 2.
+**Stages 3/5 are NOT worth the 7 days on this evidence.**
+
+## Four caveats that bound the claim
+
+1. **Gaussian, not Ayumi's probit** — a DESIGNED scope limit, stated in the script, not
+   discovered afterwards. Gaussian's VA expectation is exact, isolating the structured-tier
+   question from probit's measured **8.8x** GH penalty on this same model.
+2. **Three seeds.** Sufficient for a 31x gap and a 3/3 failure pattern; NOT sufficient for a
+   rate, and no MCSE is claimed.
+3. **Informativeness is MARGINAL.** Laplace's 0.543 sits just above the stipulated 0.5
+   threshold, so this cell barely clears the precondition. That bounds fine discrimination; it
+   does not threaten a 31x separation.
+4. **This measures VA AS IT IS, not as it could be.** The degeneracy may be the same immaturity
+   the speed arc addresses -- `n_starts = 1`, unrefined starting values, and an engine still
+   missing its closed-form evaluator. **A mature VA could plausibly change this result.** That
+   is precisely why the arc remains worth running despite a negative campaign verdict, and why
+   this verdict must not be cited as "VA cannot do structured phylogenetics" -- only as "this
+   engine, in this state, does not."
+
+## What was fixed to get here
+
+The earlier N=150 run had two defects, both recorded: VA's tier-2 was never extracted, and
+N=150 sat below the informativeness threshold. Both are closed -- tier 2 now comes from the
+harness's own `.d108_va_tier_sigma(par, layout, 3L, 4L, T)`, and N=1000 is the largest rung the
+corrected control curve reached.

@@ -91,16 +91,27 @@ a likelihood-level question.
 ### The `tmbstan` trap: the same objective function is not independence
 
 `tmbstan` looks like a Stan-based oracle and is not one. It does not
-re-derive the likelihood; it wraps the *same* TMB objective function
-gllvmTMB already builds and integrates the random effects with Hamiltonian
-Monte Carlo instead of the Laplace approximation. Agreement with `tmbstan`
-therefore shows only that TMB's own objective is internally consistent
-under a different integration scheme — it cannot catch an error in the
-objective itself, because it is the same objective. `tmbstan` answers a
-different, genuinely useful question instead: is the Laplace approximation
-adequate, by checking it against an HMC integration of the same random
-effects. It is not installed on this machine, and it should not be
-presented as an external check on the likelihood.
+re-derive the likelihood; it reuses the *same* TMB objective function and
+gradient that gllvmTMB already builds, and hands them to Stan's sampler.
+Agreement with `tmbstan` therefore shows only that TMB's own objective is
+internally consistent under a different integration scheme — it cannot
+catch an error in the objective itself, because it is the same objective.
+
+`tmbstan` answers a different and genuinely useful question instead: **is
+the Laplace approximation adequate?** Its default (`laplace = FALSE`)
+samples the fixed *and* random effects jointly with the No-U-Turn sampler,
+so it does not use the Laplace approximation at all — which is precisely
+what makes it a check on Laplace: compare that posterior against the
+Laplace-based estimates gllvmTMB returns. The `laplace = TRUE` option does
+the opposite, integrating the random effects by Laplace and sampling only
+the fixed effects; the package documents it as generally not recommended,
+usually slower and less accurate, and it yields no posterior samples for
+the random effects. The option whose name suggests it is the way to test
+the Laplace approximation is the one that does not.
+
+`tmbstan` is available on CRAN (Monnahan & Kristensen 2018, *PLoS ONE*
+13(5): e0197954). Reach for it when the question is whether the Laplace
+approximation holds — not as an external check on the likelihood.
 
 ## The oracle map
 
@@ -290,8 +301,8 @@ Stated plainly, not hedged:
 ### A stronger check that has not been built: the Stan route
 
 Stan is a general-purpose probabilistic programming language, not a fixed
-catalogue of models. `rstan` and `cmdstanr` are both installed on this
-machine, and a Stan program can hand-encode the exact likelihood of any
+catalogue of models. It is reachable from R through either `rstan` or
+`cmdstanr`, and a Stan program can hand-encode the exact likelihood of any
 cell in this document, including every "None" above — nothing about "no
 third-party package implements this" limits what can be written from
 scratch.

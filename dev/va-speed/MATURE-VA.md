@@ -128,23 +128,31 @@ default hands `nlminb` a vector growing as **34xN**. The profiled route pins out
 
 **GH multiplier on the structured tier: 8.8x** (N=100/T=8: gaussian 22.8 s vs probit 199.7 s).
 
-## 5. The campaign question this unblocks — and an early warning
+## 5. The campaign question — ANSWERED 2026-08-03, and it went against VA
 
-Design 108's headline — *does structured VA recover the two-tier `Sigma_B` better than
-Laplace?* — is **still open**. First N=1000 seed (gaussian, both tiers extracted):
+Design 108's headline: *does structured VA recover the two-tier `Sigma_B` better than Laplace?*
+**Answered.** Structured two-tier, gaussian, **N=1000**, 3 seeds, both tiers extracted, planted
+truth:
 
-| | tier-1 | **tier-2 (phylo — the headline)** |
+| | tier-1 | **tier-2 (phylo — the target)** |
 |---|---|---|
-| VA | 0.747 | **16.89 — DEGENERATE** (threshold 10) |
-| Laplace | **0.186** | **0.704** |
+| VA | 0.783 | **16.89** (seeds 16.89 / 48.68 / 1.000) |
+| Laplace | **0.094** | **0.543** (seeds 0.704 / 0.543 / 0.540) |
 
-**One seed. Not a finding.** But if it holds, VA's structured phylo tier *runs away* at N=1000
-while Laplace's improves (1.18 at N=150 -> 0.704 here) — which would answer the campaign
-against VA and make the Stages 3/5 verdict follow.
+**Laplace better on both tiers — 8x on tier 1, 31x on tier 2.** VA does not merely lose: it
+**FAILS on 3/3 seeds** — two runaways past the `rel_frob > 10` degeneracy threshold, and one at
+exactly **1.000**, the signature of a collapse to zero. Runaway or collapse, never recovery.
 
-Also note the **informativeness precondition**: the corrected control curve had tier 2 still at
-0.38-0.43 at N=1000 against 0.09 for tier 1. Cells where no arm recovers tier 2 cannot
-discriminate the engines, and `d ~ 0` there is **not** evidence of equivalence.
+**Stages 3/5 verdict: NOT worth the ~7 days** on this evidence, by the handover's own criterion.
+
+**But note caveat 4, which is why THIS arc still matters:** the measurement is of VA **as it
+is** — `n_starts = 1`, unrefined starting values, and no closed-form evaluator. The degeneracy
+may be the same immaturity Items 1-4 address. **Cite this as "this engine, in this state, does
+not" — never as "VA cannot do structured phylogenetics."** A mature VA could plausibly change
+it, and re-running this exact measurement is the arc's natural acceptance test.
+
+Full detail and the four bounding caveats:
+`/private/tmp/gllvmtmb-d108-recovery/dev/design108-recovery/PILOT-FINDINGS.md` (commit `ed6f88a3`).
 
 ## 6. Four claims overturned by measurement in one day — read §0's warning again
 

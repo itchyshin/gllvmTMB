@@ -1,0 +1,166 @@
+{
+  "transport": [
+    {
+      "stan_quantity": "mu",
+      "fixture_block": "b_fix",
+      "rule": "identity; trait order = levels(df$trait)",
+      "authority": "cpp:793 eta_fix = X_fix * b_fix"
+    },
+    {
+      "stan_quantity": "sigma_eps",
+      "fixture_block": "log_sigma_eps",
+      "rule": "exp(log_sigma_eps)  -- an SD, not a variance",
+      "authority": "cpp:2103 Type sigma_eps = exp(log_sigma_eps);"
+    },
+    {
+      "stan_quantity": "Lambda",
+      "fixture_block": "theta_rr_phy",
+      "rule": "identity, NO exp() on the diagonal; packed diag-first then strict lower tri col-major, upper tri exactly 0",
+      "authority": "cpp:1144-1163 (lam_diag = theta_rr_phy.head(rank); Lambda_phy(i,j)=lam_diag(j) -- no exp)"
+    },
+    {
+      "stan_quantity": "G",
+      "fixture_block": "g_phy",
+      "rule": "G[s,k] = g_phy[s,k]; PARAMETER_MATRIX(n_aug_phy x d_phy), flatten col-major = SPECIES-fastest",
+      "authority": "cpp:694 PARAMETER_MATRIX(g_phy); cpp:2043 g_phy(species_aug_id(o), k)"
+    },
+    {
+      "stan_quantity": "A (role)",
+      "fixture_block": "Ainv_phy_rr",
+      "rule": "A is the COVARIANCE (here a correlation, unit diag) of g[,k]; engine stores its INVERSE",
+      "authority": "R/fit-multi.R:3225 Ainv_phy_rr <- solve(Aphy); cpp:1172 quad = g' Ainv g"
+    },
+    {
+      "stan_quantity": "A (ridge)",
+      "fixture_block": "Ainv_phy_rr / log_det_A_phy_rr",
+      "rule": "engine evaluates at A + 1e-8*I, not at the user's A",
+      "authority": "R/fit-multi.R:3224 Aphy <- Aphy + diag(1e-8, nrow(Aphy))"
+    },
+    {
+      "stan_quantity": "log|A|",
+      "fixture_block": "log_det_A_phy_rr",
+      "rule": "+log det(A + 1e-8 I), i.e. the covariance's log-det (NOT the precision's), added to nll",
+      "authority": "R/fit-multi.R:3226 determinant(Aphy)$modulus; cpp:1170-1171 nll += 0.5*(n log2pi + log_det_A + quad)"
+    },
+    {
+      "stan_quantity": "species index",
+      "fixture_block": "species_aug_id",
+      "rule": "species_aug_id == species_id == match(species, levels(df$species)) - 1  (dense/legacy path, no augmented nodes)",
+      "authority": "R/fit-multi.R:3227-3228 n_aug_phy <- n_species; species_aug_id <- species_id"
+    }
+  ],
+  "audit": {
+    "block_counts_ok": true,
+    "n_par": 15,
+    "phylo_blocks_live": true,
+    "no_ordinary_blocks": true,
+    "use_phylo_rr": 1,
+    "use_phylo_diag": 0,
+    "other_use_flags_zero": true,
+    "n_aug_phy": 8,
+    "n_aug_equals_n_species": true,
+    "species_aug_id_identity": true,
+    "species_id_matches_levels": true,
+    "trait_id_matches_levels": true,
+    "X_fix_is_trait_indicator": true,
+    "max_abs_Ainv_minus_solve_ridged": 8.88178419700125e-16,
+    "max_abs_Ainv_minus_A_itself": 7.68149558360645,
+    "log_det_engine": -7.86115439871626,
+    "log_det_A_ridged": -7.86115439871626,
+    "log_det_A_raw": -7.86115486187675,
+    "log_det_Ainv_ridged": 7.86115439871626,
+    "A_unit_diagonal": 0,
+    "A_symmetric": 0,
+    "A_min_eigenvalue": 0.0659086775000466,
+    "A_condition_number": 46.0751799703405
+  },
+  "results": {
+    "A/P1 (published fixture)": {
+      "tmb_nll": 142.633394873781,
+      "neg_tmb": -142.633394873781,
+      "stan_lp": -142.633394873781,
+      "abs_diff": 5.6843418860808e-14,
+      "rel_diff": 3.98528121069471e-16,
+      "jac_measured": -1.20397280432593,
+      "jac_predicted": -1.20397280432594,
+      "spec_total": -142.633394873781,
+      "spec_D": -118.984057417465,
+      "spec_G": -23.6493374563161,
+      "spec_constfree": -91.1728370143196,
+      "C": -51.4605578594617,
+      "n_const": 56,
+      "spec_vs_tmb": 5.6843418860808e-14
+    },
+    "A/P2 (fresh)": {
+      "tmb_nll": 193.491285777116,
+      "neg_tmb": -193.491285777116,
+      "stan_lp": -193.491285777116,
+      "abs_diff": 2.8421709430404e-14,
+      "rel_diff": 1.46888834379565e-16,
+      "jac_measured": -0.162518929497764,
+      "jac_predicted": -0.162518929497775,
+      "spec_total": -193.491285777116,
+      "spec_D": -161.000279302636,
+      "spec_G": -32.4910064744802,
+      "spec_constfree": -142.030727917655,
+      "C": -51.4605578594617,
+      "n_const": 56,
+      "spec_vs_tmb": 0
+    },
+    "A/P3 (fresh, near-degenerate sigma)": {
+      "tmb_nll": 3842.22895644105,
+      "neg_tmb": -3842.22895644105,
+      "stan_lp": -3842.22895644105,
+      "abs_diff": 4.54747350886464e-13,
+      "rel_diff": 1.18355089205221e-16,
+      "jac_measured": -2.99573227355404,
+      "jac_predicted": -2.99573227355399,
+      "spec_total": -3842.22895644105,
+      "spec_D": -3787.41116882608,
+      "spec_G": -54.8177876149663,
+      "spec_constfree": -3790.76839858158,
+      "C": -51.4605578594617,
+      "n_const": 56,
+      "spec_vs_tmb": 4.54747350886464e-13
+    },
+    "A/P4 (fresh, large loadings)": {
+      "tmb_nll": 216.966701404495,
+      "neg_tmb": -216.966701404495,
+      "stan_lp": -216.966701404495,
+      "abs_diff": 0,
+      "rel_diff": 0,
+      "jac_measured": 0.875468737353913,
+      "jac_predicted": 0.8754687373539,
+      "spec_total": -216.966701404495,
+      "spec_D": -173.027317728125,
+      "spec_G": -43.9393836763698,
+      "spec_constfree": -165.506143545033,
+      "C": -51.4605578594617,
+      "n_const": 56,
+      "spec_vs_tmb": 0
+    }
+  },
+  "controls": {
+    "no_ridge": -1.92832942502719e-06,
+    "A_as_precision": 11.8076398451394,
+    "exp_lambda_diag": -273.569439823059,
+    "sigma_as_log_variance": 63.9706443980776,
+    "species_permuted": -4.13851834409473,
+    "drop_logdetA_term": -3.93057719935813,
+    "logdet_sign_flip": 7.86115439871626
+  },
+  "route": {
+    "quad_via_engine_Ainv": 40.4568127800737,
+    "quad_via_cholesky": 40.4568127800737,
+    "abs_diff": 1.4210854715202e-14,
+    "half_abs_diff_in_logdensity": 7.105427357601e-15,
+    "logdet_engine": -7.86115439871626,
+    "logdet_via_cholesky": -7.86115439871626,
+    "logdet_abs_diff": 2.66453525910038e-15
+  },
+  "dod": {
+    "P2 - P1": -2.8421709430404e-14,
+    "P3 - P1": 4.54747350886464e-13,
+    "P4 - P2": -2.8421709430404e-14
+  }
+}

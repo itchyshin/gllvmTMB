@@ -159,6 +159,24 @@ Notes on each input:
 - `n_boot=25` — same as r10 rerun. Sufficient for non-degenerate
   percentile CIs; the §5 bootstrap-failure rate gate is on
   bootstrap-attempt failure, not on `n_boot` size.
+
+  > **2026-08-02 correction — the sentence above is WRONG, and it propagated.**
+  > "Sufficient for non-degenerate percentile CIs" conflates *degeneracy* (does
+  > the interval exist?) with *attainable coverage* (can it reach the gate?).
+  > A percentile interval from `B` draws cannot cover more than `(B-1)/(B+1)`
+  > whatever the data are; at `B = 25` that ceiling is **0.9231**, below the
+  > 0.94 gate this very campaign was measuring against. The interval is
+  > non-degenerate and simultaneously incapable of passing.
+  >
+  > This line is the origin of Design 66 §8's budget lever ("the M3 production
+  > default is n_boot = 25"), which has now been deleted. The floor for any
+  > claim-bearing cell is `n_boot >= 200`; `bootstrap_Sigma()` returns
+  > `$coverage_ceiling` so a campaign can assert on it
+  > (`R/bootstrap-sigma.R:227-241`).
+  >
+  > The original text is retained above, unedited, because the runs it dispatched
+  > are part of the record. Full analysis:
+  > `docs/dev-log/audits/2026-08-02-design66-staleness-audit.md` (finding S-1).
 - `seed_base=20260526` — **fresh value**, distinct from all prior
   M3 dispatches (`20260517` production, `20260524` smoke, `20260525`
   r10 rerun). Curie (2026-05-25): seed collisions create

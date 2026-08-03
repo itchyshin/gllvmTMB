@@ -1,0 +1,232 @@
+{
+  "generated": "2026-08-03 07:49:24.511899",
+  "mapping_used": {
+    "mu": "b_fix (identity)",
+    "sigma_eps": "exp(log_sigma_eps)",
+    "Lambda": "matrix(theta_rr_B, n_t, K) -- IDENTITY, no exp on the leading diagonal",
+    "psi": "exp(2 * theta_diag_B) -- exp(theta_diag_B) is an SD",
+    "z": "z[l,k] = z_B[k,l] (d_B x n_sites, column-major)",
+    "q": "q[l,t] = s_B[t,l] (n_traits x n_sites, column-major)",
+    "how": "READ OFF src/gllvmTMB.cpp; fixed before any comparison; identical for all points"
+  },
+  "audit_balanced": {
+    "n_rows": 90,
+    "theta_len": 70,
+    "block_counts": {
+      "b_fix": 3,
+      "log_sigma_eps": 1,
+      "theta_rr_B": 3,
+      "z_B": 15,
+      "theta_diag_B": 3,
+      "s_B": 45
+    },
+    "X_fix_colnames": ["traita", "traitb", "traitc"],
+    "X_fix_is_trait_indicator": true,
+    "trait_id_matches_R": true,
+    "site_id_matches_unit": true,
+    "n_sites": 15,
+    "n_traits": 3,
+    "d_B": 1,
+    "use_flags_on": ["use_rr_B", "use_diag_B"],
+    "diag_B_skip": [0, 0, 0],
+    "all_family_gaussian": true,
+    "all_link_identity": true,
+    "mapped_off_blocks": ["beta_mi", "log_sigma_mi", "u_mi_group", "log_sd_mi_group", "g_x", "log_sd_x", "alpha_lv_B", "theta_rr_B_slope", "z_B_slope", "theta_diag_B_slope", "s_B_slope", "theta_rr_W", "z_W", "theta_diag_W", "s_W", "loglambda_phy", "p_phy", "theta_diag_species", "q_sp", "theta_diag_cluster2", "r_c2", "e_eq", "log_tau_spde", "log_kappa_spde", "omega_spde", "theta_rr_spde_lv", "omega_spde_lv", "theta_rr_phy", "g_phy", "log_sd_phy_diag", "g_phy_diag", "theta_rr_kernel", "g_kernel", "log_sd_kernel_diag", "g_kernel_diag", "b_phy_slope", "log_sigma_slope", "b_phy_aug", "log_sd_b", "omega_spde_aug", "log_sd_spde_b", "theta_rr_phy_slope", "g_phy_slope", "theta_rr_spde_slope", "g_spde_slope", "theta_dep_chol", "theta_spde_dep_chol", "u_re_int", "log_sigma_re_int", "log_phi_nbinom2", "log_phi_nbinom1", "log_phi_gamma", "log_phi_tweedie", "logit_p_tweedie", "log_phi_beta", "log_phi_betabinom", "log_sigma_student", "log_df_student", "log_phi_truncnb2", "log_sigma_lognormal_delta", "log_phi_gamma_delta", "ordinal_log_increments"]
+  },
+  "audit_ragged": {
+    "n_rows": 78,
+    "theta_len": 70,
+    "block_counts": {
+      "b_fix": 3,
+      "log_sigma_eps": 1,
+      "theta_rr_B": 3,
+      "z_B": 15,
+      "theta_diag_B": 3,
+      "s_B": 45
+    },
+    "X_fix_colnames": ["traita", "traitb", "traitc"],
+    "X_fix_is_trait_indicator": true,
+    "trait_id_matches_R": true,
+    "site_id_matches_unit": true,
+    "n_sites": 15,
+    "n_traits": 3,
+    "d_B": 1,
+    "use_flags_on": ["use_rr_B", "use_diag_B"],
+    "diag_B_skip": [0, 0, 0],
+    "all_family_gaussian": true,
+    "all_link_identity": true,
+    "mapped_off_blocks": ["beta_mi", "log_sigma_mi", "u_mi_group", "log_sd_mi_group", "g_x", "log_sd_x", "alpha_lv_B", "theta_rr_B_slope", "z_B_slope", "theta_diag_B_slope", "s_B_slope", "theta_rr_W", "z_W", "theta_diag_W", "s_W", "loglambda_phy", "p_phy", "theta_diag_species", "q_sp", "theta_diag_cluster2", "r_c2", "e_eq", "log_tau_spde", "log_kappa_spde", "omega_spde", "theta_rr_spde_lv", "omega_spde_lv", "theta_rr_phy", "g_phy", "log_sd_phy_diag", "g_phy_diag", "theta_rr_kernel", "g_kernel", "log_sd_kernel_diag", "g_kernel_diag", "b_phy_slope", "log_sigma_slope", "b_phy_aug", "log_sd_b", "omega_spde_aug", "log_sd_spde_b", "theta_rr_phy_slope", "g_phy_slope", "theta_rr_spde_slope", "g_spde_slope", "theta_dep_chol", "theta_spde_dep_chol", "u_re_int", "log_sigma_re_int", "log_phi_nbinom2", "log_phi_nbinom1", "log_phi_gamma", "log_phi_tweedie", "logit_p_tweedie", "log_phi_beta", "log_phi_betabinom", "log_sigma_student", "log_df_student", "log_phi_truncnb2", "log_sigma_lognormal_delta", "log_phi_gamma_delta", "ordinal_log_increments"]
+  },
+  "points": [
+    {
+      "point": "A/P1 (published fixture theta)",
+      "tmb_nll": 429.58869763568,
+      "tmb_log_density": -429.58869763568,
+      "stan_log_density": -429.58869763568,
+      "r_spec_log_density": -429.58869763568,
+      "abs_diff_stan_vs_tmb": 2.27373675443232e-13,
+      "rel_diff_stan_vs_tmb": 5.29282256946295e-16,
+      "abs_diff_rspec_vs_tmb": 5.6843418860808e-14,
+      "terms": {
+        "D": -397.724573384857,
+        "Z": -19.6184989980701,
+        "Q": -12.2456252527525,
+        "n_density_terms": 150,
+        "constant_2pi": -137.840779980701,
+        "tmb_minus_constant_free": -137.840779980701
+      },
+      "stan_jacobian_if_enabled": -8.66647294100892,
+      "jacobian_expected": -8.6664729410089
+    },
+    {
+      "point": "A/P2 (fresh)",
+      "tmb_nll": 381.523945193974,
+      "tmb_log_density": -381.523945193974,
+      "stan_log_density": -381.523945193974,
+      "r_spec_log_density": -381.523945193974,
+      "abs_diff_stan_vs_tmb": 1.13686837721616e-13,
+      "rel_diff_stan_vs_tmb": 2.97980871590682e-16,
+      "abs_diff_rspec_vs_tmb": 1.70530256582424e-13,
+      "terms": {
+        "D": -216.299435779387,
+        "Z": -19.1714139180701,
+        "Q": -146.053095496517,
+        "n_density_terms": 150,
+        "constant_2pi": -137.840779980701,
+        "tmb_minus_constant_free": -137.840779980701
+      },
+      "stan_jacobian_if_enabled": -4.24830725971913,
+      "jacobian_expected": -4.24830725971914
+    },
+    {
+      "point": "A/P3 (fresh; Lambda[1,1] < 0)",
+      "tmb_nll": 52949.3781817949,
+      "tmb_log_density": -52949.3781817949,
+      "stan_log_density": -52949.3781817949,
+      "r_spec_log_density": -52949.3781817949,
+      "abs_diff_stan_vs_tmb": 0,
+      "rel_diff_stan_vs_tmb": 0,
+      "abs_diff_rspec_vs_tmb": 0,
+      "terms": {
+        "D": -52454.3385069238,
+        "Z": -20.4393823530701,
+        "Q": -474.600292518021,
+        "n_density_terms": 150,
+        "constant_2pi": -137.840779980701,
+        "tmb_minus_constant_free": -137.840779980703
+      },
+      "stan_jacobian_if_enabled": -8.59606325357163,
+      "jacobian_expected": -8.59606325357402
+    },
+    {
+      "point": "A/P4 (fresh)",
+      "tmb_nll": 528.17386817166,
+      "tmb_log_density": -528.17386817166,
+      "stan_log_density": -528.17386817166,
+      "r_spec_log_density": -528.17386817166,
+      "abs_diff_stan_vs_tmb": 1.13686837721616e-13,
+      "rel_diff_stan_vs_tmb": 2.15245101229936e-16,
+      "abs_diff_rspec_vs_tmb": 0,
+      "terms": {
+        "D": -439.125430827508,
+        "Z": -23.2118714130701,
+        "Q": -65.8365659310824,
+        "n_density_terms": 150,
+        "constant_2pi": -137.840779980701,
+        "tmb_minus_constant_free": -137.840779980701
+      },
+      "stan_jacobian_if_enabled": -4.37011197694892,
+      "jacobian_expected": -4.37011197694887
+    },
+    {
+      "point": "B/P1 (ragged data)",
+      "tmb_nll": 367.816158910061,
+      "tmb_log_density": -367.816158910061,
+      "stan_log_density": -367.816158910061,
+      "r_spec_log_density": -367.816158910061,
+      "abs_diff_stan_vs_tmb": 1.70530256582424e-13,
+      "rel_diff_stan_vs_tmb": 4.6362905068595e-16,
+      "abs_diff_rspec_vs_tmb": 1.13686837721616e-13,
+      "terms": {
+        "D": -335.952034659238,
+        "Z": -19.6184989980701,
+        "Q": -12.2456252527525,
+        "n_density_terms": 138,
+        "constant_2pi": -126.813517582245,
+        "tmb_minus_constant_free": -126.813517582245
+      },
+      "stan_jacobian_if_enabled": -8.66647294100892,
+      "jacobian_expected": -8.6664729410089
+    },
+    {
+      "point": "B/P5 (ragged data; fresh)",
+      "tmb_nll": 1133.99593455407,
+      "tmb_log_density": -1133.99593455407,
+      "stan_log_density": -1133.99593455407,
+      "r_spec_log_density": -1133.99593455407,
+      "abs_diff_stan_vs_tmb": 4.54747350886464e-13,
+      "rel_diff_stan_vs_tmb": 4.01013210920626e-16,
+      "abs_diff_rspec_vs_tmb": 0,
+      "terms": {
+        "D": -991.137444825324,
+        "Z": -18.7683178480701,
+        "Q": -124.090171880677,
+        "n_density_terms": 138,
+        "constant_2pi": -126.813517582245,
+        "tmb_minus_constant_free": -126.813517582245
+      },
+      "stan_jacobian_if_enabled": -6.59549931440165,
+      "jacobian_expected": -6.59549931440161
+    }
+  ],
+  "difference_of_differences": {
+    "A/P2-A/P1": -1.13686837721616e-13,
+    "A/P3-A/P1": 0,
+    "A/P4-A/P2": 0,
+    "B/P5-B/P1": -5.6843418860808e-13
+  },
+  "theta_points": {
+    "P1": {
+      "b_fix": [0.5, -0.3, 0.2],
+      "log_sigma_eps": -1.38629436111989,
+      "theta_rr_B": [0.8, 0.6, -0.4],
+      "z_B": [1.097, -0.452, 0.291, 0.506, 0.323, -0.085, 1.209, -0.076, 1.615, -0.05, 1.044, 1.829, -1.111, -0.223, -0.107],
+      "theta_diag_B": [-1.20397280432594, -1.38629436111989, -1.04982212449868],
+      "s_B": [-0.011, -0.472, -0.146, 0.14, -0.271, -0.083, 0.116, -0.018, -0.206, -0.572, 0.541, -0.29, -0.106, 0.332, 0.17, 0.619, 0.441, -0.495, 0.061, -0.216, -0.048, 0.22, -0.109, -0.003, 0.175, -0.088, -0.418, -0.026, -0.206, -0.233, 0.523, 0.137, -0.035, 0.503, -0.348, -0.012, 0.327, 0.454, 0.266, 0.094, 0.565, -0.124, -0.274, 0.165, -0.243]
+    },
+    "P2": {
+      "b_fix": [1.741, 1.4983, 0.1484],
+      "log_sigma_eps": -0.105360515657826,
+      "theta_rr_B": [1.3, -0.75, 0.42],
+      "z_B": [-0.1927, -0.8009, -0.4707, -0.771, -0.8138, -1.4421, -0.6637, 0.0991, -0.8688, -1.4912, -0.2834, -1.1565, 0.7261, -1.076, 0.081],
+      "theta_diag_B": [-0.356674943938732, -1.89711998488588, 0.182321556793955],
+      "s_B": [-0.598, 0.0483, -0.1626, 0.1275, 0.022, -0.6445, 0.6701, 0.6252, 0.4868, -0.5463, -0.0307, -0.5679, -0.1749, 1.2671, 0.5046, 1.3322, -0.5077, 0.3683, 0.5283, -0.0873, 0.2948, 0.4911, -0.2441, 0.3506, 0.2675, 1.2443, 0.3656, -0.2488, 0.0838, -0.8076, 0.5593, -0.4148, -0.6454, 1.0556, -0.9743, -0.6392, -0.0294, 0.2657, -1.0306, -0.4298, 0.2659, 0.156, 0.3817, -0.808, 0.3133]
+    },
+    "P3": {
+      "b_fix": [0.2357, -0.9931, -0.2979],
+      "log_sigma_eps": -2.99573227355399,
+      "theta_rr_B": [-1.6, 2.4, 0.05],
+      "z_B": [1.7201, 0.8007, -1.0869, 1.1511, 1.4308, 0.9693, -0.3974, -0.0315, 0.8831, -1.1502, 0.1354, -0.5371, 0.7537, -0.7685, 0.7003],
+      "theta_diag_B": [0.641853886172395, -0.916290731874155, -2.52572864430826],
+      "s_B": [0.0673, -1.1257, -0.3693, -0.1708, 0.188, -0.3238, -0.8633, -0.0656, -0.8875, 0.4615, 0.0071, 0.2697, 0.2474, -0.0208, 1.4325, 0.2329, 1.3946, 1.0273, 0.9508, -0.4926, -0.2482, 0.866, 1.0226, 0.6171, 0.7081, -0.3283, 0.1079, 0.9541, 0.3668, -0.3457, -1.6404, 0.0555, 0.5663, -0.1468, 0.7171, 0.1253, 0.4177, 0.6485, -0.4797, 0.7425, 0.6495, -0.6823, -0.0034, -0.0107, 0.0968]
+    },
+    "P4": {
+      "b_fix": [1.9308, 1.667, 0.0616],
+      "log_sigma_eps": -0.510825623765991,
+      "theta_rr_B": [0.35, 0.9, -1.15],
+      "z_B": [0.6992, -0.589, -0.4605, 0.8024, -1.3587, -0.7037, 0.5638, 0.9173, 1.1859, 2.3339, -1.0393, -0.4859, -0.0517, 1.9175, -1.3469],
+      "theta_diag_B": [-1.51412773262978, 0.0953101798043249, -0.510825623765991],
+      "s_B": [0.2306, 0.3219, 0.1498, -0.7298, -0.4163, -0.1564, 0.1771, 0.7347, -0.2668, -0.1802, -0.415, 0.6091, -0.2825, 0.3648, 0.7261, -0.2677, -0.3252, 0.0547, -0.1174, -0.2176, 0.5879, -0.3165, 0.4103, -1.286, 0.1445, -0.5364, 0.7512, 1.0955, -0.2656, 0.3538, -0.4364, 0.0758, 0.8925, 0.1211, 0.657, 0.5508, -0.2853, 0.4143, 0.3013, -0.0143, -0.8534, -1.3843, -1.3021, -0.4921, -0.1276]
+    },
+    "P5": {
+      "b_fix": [1.2019, 2.183, -0.6814],
+      "log_sigma_eps": -1.10866262452161,
+      "theta_rr_B": [-0.2, -1.4, 0.8],
+      "z_B": [1.658, 0.8861, -0.2151, -0.0825, -0.714, -0.5827, -0.6721, 0.4323, 0.4655, -1.6477, 1.3864, 0.1141, 0.0406, 0.1246, 0.0971],
+      "theta_diag_B": [-0.105360515657826, -0.59783700075562, -2.04022082852655],
+      "s_B": [-0.9707, -0.4145, 0.0783, -1.1018, -1.0176, -0.3323, 0.4408, 0.1017, -0.0842, -0.355, 0.321, 1.1259, -0.3092, -1.017, 0.0771, -0.0548, -0.7661, -0.3128, -0.5891, -0.5952, -0.0958, 0.7061, -0.5901, 0.4922, 0.6533, 0.179, 0.9273, -0.0501, 0.3331, -0.579, 0.9858, 0.091, 0.8654, 0.3139, 0.401, 0.0589, -0.3887, -0.6231, -0.2175, 0.5993, -0.1224, -0.0858, 0.8031, 0.6512, 0.2115]
+    }
+  },
+  "ragged_dropped_cells": ["3:b", "11:c"],
+  "ragged_thinned_cells": ["1:a", "2:c", "4:b", "6:a", "8:c", "9:b", "12:a", "14:b"]
+}

@@ -1,0 +1,3 @@
+# Compiled Stan model objects -- regenerate with stan-side.R
+*.rds
+!tmb-fixture.rds

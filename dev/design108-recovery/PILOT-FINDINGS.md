@@ -515,3 +515,71 @@ The earlier N=150 run had two defects, both recorded: VA's tier-2 was never extr
 N=150 sat below the informativeness threshold. Both are closed -- tier 2 now comes from the
 harness's own `.d108_va_tier_sigma(par, layout, 3L, 4L, T)`, and N=1000 is the largest rung the
 corrected control curve reached.
+
+---
+
+# TOTORO GRID (80 cells, 20 seeds) — the verdict WITH MCSE, and a correction
+
+Run on Totoro, 40 cores. Structured two-tier, **gaussian**, N in {500,1000} x q in {1,2} x 20
+seeds, T=10. Both arms same data, both tiers, planted truth, loadings estimand.
+Results LOCAL (D-50).
+
+## 1. THE PRIMARY FINDING — completion, not accuracy
+
+| arm | cells returning a number |
+|---|---|
+| **VA** | **27/80 (34%)** |
+| Laplace | **80/80 (100%)** |
+
+**VA failed to return an estimate in two-thirds of the grid.** This is the most robust result
+here — a completion rate over 80 cells, not an accuracy margin over a handful.
+
+**BUT it is also the most attackable**, and is under adversarial review: if the failures come
+from `n_starts = 1`, an iteration cap, or unrefined starting values, this measures the HARNESS,
+not the estimator. Do not cite it until that returns.
+
+## 2. Paired contrast `d = VA - Laplace`, tier 2, WITH MCSE
+
+| cell | n | mean d | MCSE | 2*MCSE band | verdict |
+|---|---:|---:|---:|---|---|
+| N=500 q=1 | 8 | 2.302 | 1.149 | [0.004, 4.600] | **Laplace better** |
+| N=500 q=2 | 7 | 10.052 | 2.792 | [4.468, 15.637] | **Laplace better** |
+| N=1000 q=1 | 6 | 10.159 | 5.347 | [-0.536, 20.853] | **INDETERMINATE** |
+| N=1000 q=2 | 6 | 23.544 | 11.820 | [-0.095, 47.184] | **INDETERMINATE** |
+
+### CORRECTION to the 3-seed verdict recorded above
+
+The earlier entry called this **"Laplace better 31x, decisive"**. **With MCSE, two of four cells
+are INDETERMINATE** — the mean differences at N=1000 are large but so is the variance, because
+VA's runaways inflate it. **The strong form is withdrawn.**
+
+Worse for the claim: **the two cells that DO exclude zero are both at N=500**, the *smaller*
+size — the opposite of what "at realistic size" requires.
+
+Medians are cleaner (VA 1.450 / 3.860 / 8.520 / 10.816 vs Laplace 0.737 / 0.561 / 0.764 /
+0.614 — Laplace better in all four), but a median is not what the 2*MCSE band was computed on.
+Which summary is right for a heavy-tailed paired contrast is under adversarial review.
+
+## 3. VA tier-2 degeneracy (`rel_frob > 10`), Wilson intervals
+
+| cell | k/n | Wilson 95% |
+|---|---|---|
+| N=500 q=1 | 1/8 | [0.02, 0.47] |
+| N=500 q=2 | 2/7 | [0.08, 0.64] |
+| N=1000 q=1 | 2/6 | [0.10, 0.70] |
+| N=1000 q=2 | 3/6 | [0.19, 0.81] |
+
+Rising with N and with q, but **the intervals are wide and overlap** — this is not a precise
+rate and must not be quoted as one.
+
+## 4. Informativeness — the cells FAIL the precondition
+
+Laplace's tier-2 medians are **0.561-0.764**, against the stipulated **0.5** threshold. So by
+the precondition recorded earlier in this file, **no arm achieves acceptable tier-2 recovery in
+any cell**. That bounds what the comparison can support and is a live question for the review:
+does it invalidate the contrast, or only limit it?
+
+## 5. Standing scope limits
+
+**Gaussian**, not Ayumi's probit (probit adds a measured 8.8x GH penalty). **T=10**, not 20-30.
+**N <= 1000**, not 5397. Whatever the verdict, it is a verdict about *this* regime.

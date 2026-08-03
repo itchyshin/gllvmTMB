@@ -504,15 +504,17 @@ test_that("R3 optimizer auto-routes per family AND per tier", {
   ##   binomial gh       0.57x  (0.35-1.02)  -> nlminb, lbfgsb is SLOWER
   ##   nbinom2  gh       0.42x  (0.26-0.63)  -> nlminb, slower AND the only
   ##                                            same-optimum disagreement
-  ## binomial_probit is the one entry NOT measured: Design 108 Stage 4 is a
-  ## numerics spike and no timing sweep was run, so it takes the reference
-  ## optimiser rather than claiming a route it has no evidence for.
+  ## binomial_probit is the one family NOT measured, on EITHER tier: Design 108
+  ## Stage 4 is a numerics spike and the mature-VA arc's Albert-Chib tier ("ac")
+  ## is a correctness slice -- no timing sweep has been run for either, so both
+  ## take the reference optimiser rather than claiming a route they have no
+  ## evidence for. Give "ac" a measured route only when a sweep exists for it.
   expected <- list(
     gaussian_anchor = c(gh = "lbfgsb"),
     binomial        = c(gh = "nlminb", jj = "lbfgsb"),
     poisson         = c(gh = "nlminb"),
     nbinom2         = c(gh = "nlminb"),
-    binomial_probit = c(gh = "nlminb")
+    binomial_probit = c(gh = "nlminb", ac = "nlminb")
   )
   for (entry in .va_r3_family_registry) {
     want <- expected[[entry$family]]

@@ -67,13 +67,30 @@ we then confirmed in **our** engine: per-unit `log_L_diag` identical to machine 
 (sd ≤ 1e-16), matching the predicted form to 2.6e-14, and converging back together from
 jittered starts.
 
-So the opportunity is real and it is **ours to take first**: profiling that block out removes
-~57% of the outer problem *and* removes the entire two-stage diag→unstructured restart
-machinery, which exists only to make those parameters tractable.
+So the opportunity is real and it is **ours to implement first** (see "Prior art on the
+closed form" below): profiling that block out removes ~57% of the outer problem *and*
+removes the entire two-stage diag→unstructured restart machinery, which exists only to
+make those parameters tractable.
+
+### Prior art on the closed form
+
+The `A_i` closed form is not new. Ranga's distilled deep-research note
+(`dr25-gllvm-variational-implementation-distilled`, `shinichi-brain/projects/deep-research/`,
+distilled 2026-08-03 from NotebookLM notebook `f329caa6` source 1) records that the published
+VA coordinate-ascent cycle for GLLVMs already gives this as step (iv): "the latent covariance
+has a direct closed-form update, `A_i = (I_d + Σ_j λ_jλ_jᵀ)⁻¹` — no GLM fit needed at all." Our
+derivation reproduces that exactly and adds the binomial `N_ij` (n_trials) weighting:
+`A_i A_iᵀ = (I_q + Σ_j N_ij λ_jλ_jᵀ)⁻¹`. What is ours is the generalisation, the implementation
+inside a live TMB engine, and the 57% measurement above — not the closed form itself. The
+distinction matters: "first to derive it" would not survive a reviewer holding the Hui/Niku VA
+papers open; "first to implement it" — in place of the numerical rediscovery gllvm's own TMB
+engine performs — is checkable.
 
 ## What this changes for us
 
-1. **The `A_i` collapse is no longer "catching up" — it is overtaking.** gllvm has not done it.
+1. **The `A_i` collapse is not novel derivation — it is unimplemented engineering.** The
+   closed form itself is already published (see "Prior art on the closed form" above);
+   what gllvm's TMB engine has not done is implement it.
 2. **Check our conditioning against (1)–(3).** Our loadings diagonal is **unconstrained**
    (established by PR #919), where gllvm pins it to 1 with a separate scale. That is exactly
    the flat direction (1) removes. Whether our LVs are whitened in gllvm's sense, and whether

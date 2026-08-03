@@ -1,0 +1,13 @@
+== smoke starting 13:58:19 in /home/snakagaw/gllvm_work/va-lane2 ==
+== load_all done 13:58:58 ==
+using C++ compiler: ‘g++ (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0’
+g++ -std=gnu++17 -I"/usr/share/R/include" -DNDEBUG -I"/home/snakagaw/R/x86_64-pc-linux-gnu-library/4.5/TMB/include" -I"/home/snakagaw/R/x86_64-pc-linux-gnu-library/4.5/RcppEigen/include"  -DTMB_SAFEBOUNDS -DTMB_EIGEN_DISABLE_WARNINGS -DLIB_UNLOAD=R_unload_gllvmTMB_va_r3  -DTMB_LIB_INIT=R_init_gllvmTMB_va_r3  -DCPPAD_FRAMEWORK      -fpic  -O2  -c gllvmTMB_va_r3.cpp -o gllvmTMB_va_r3.o
+g++ -std=gnu++17 -shared -L/usr/lib/R/lib -Wl,-Bsymbolic-functions -flto=auto -ffat-lto-objects -Wl,-z,relro -o gllvmTMB_va_r3.so gllvmTMB_va_r3.o -L/usr/lib/R/lib -lR
+  cold  obj=863.2036  rel_frob=0.43276  psi=0.5264  (84.1s, untimed)
+  warm  obj=879.1458  rel_frob=0.38538  psi=0.0007  (4.5s, untimed)
+
+finite & non-degenerate: TRUE
+same optimum (rel diff < 1e-3): NO  [rel diff 1.85e-02]
+collapse check (rel_frob==1?): cold ok  warm ok
+
+SMOKE FAIL

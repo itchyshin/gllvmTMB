@@ -1,0 +1,120 @@
+{
+  "interface": "rstan 2.32.7",
+  "stan_file": "/Users/z3437171/local-scratch/worktrees/stan-oracle/dev/stan-oracle/gllvm_ordinary.stan",
+  "call": "rstan::log_prob(fit, upars, adjust_transform = FALSE, gradient = FALSE)",
+  "jacobian_applied": false,
+  "sampling_run": false,
+  "log_density": -429.58869763568,
+  "neg_log_density": 429.58869763568,
+  "mapping_used": {
+    "lambda_diag": "identity",
+    "psi_scale": "sd",
+    "q_layout": "level_major",
+    "how": "MEASURED against the fixture's stored value"
+  },
+  "log_density_spec_primary": -1221.83564553522,
+  "neg_log_density_spec_primary": 1221.83564553522,
+  "mapping_spec_primary": {
+    "lambda_diag": "exp",
+    "psi_scale": "sd",
+    "q_layout": "level_major"
+  },
+  "spec_primary_matched": false,
+  "fixture_neg_log_density": 429.58869763568,
+  "n_unconstrained_pars": 70,
+  "dims": {
+    "N": 90,
+    "n_t": 3,
+    "n_u": 15,
+    "K": 1
+  },
+  "constant_C_2pi": -137.840779980701,
+  "finite_and_varies": {
+    "perturb_mu1_plus_0.10": -1267.75308185246,
+    "perturb_z11_plus_0.25": -1291.14711455655,
+    "perturb_psi2_times_1.5": -1220.35639117937
+  },
+  "ambiguity_grid": [
+    {
+      "lambda_diag": "exp",
+      "psi_scale": "sd",
+      "q_layout": "level_major",
+      "log_density": -1221.83564553522,
+      "neg_log_density": 1221.83564553522,
+      "is_primary": true,
+      "abs_diff_vs_fixture": 792.246947899543,
+      "rel_diff_vs_fixture": 1.84419877026518
+    },
+    {
+      "lambda_diag": "identity",
+      "psi_scale": "sd",
+      "q_layout": "level_major",
+      "log_density": -429.58869763568,
+      "neg_log_density": 429.58869763568,
+      "is_primary": false,
+      "abs_diff_vs_fixture": 1.13686837721616e-13,
+      "rel_diff_vs_fixture": 2.64641128473147e-16
+    },
+    {
+      "lambda_diag": "exp",
+      "psi_scale": "variance",
+      "q_layout": "level_major",
+      "log_density": -1230.77656779257,
+      "neg_log_density": 1230.77656779257,
+      "is_primary": false,
+      "abs_diff_vs_fixture": 801.187870156894,
+      "rel_diff_vs_fixture": 1.86501152047616
+    },
+    {
+      "lambda_diag": "identity",
+      "psi_scale": "variance",
+      "q_layout": "level_major",
+      "log_density": -438.52961989303,
+      "neg_log_density": 438.52961989303,
+      "is_primary": false,
+      "abs_diff_vs_fixture": 8.94092225735,
+      "rel_diff_vs_fixture": 0.0208127502109762
+    },
+    {
+      "lambda_diag": "exp",
+      "psi_scale": "sd",
+      "q_layout": "trait_major",
+      "log_density": -1278.98624771024,
+      "neg_log_density": 1278.98624771024,
+      "is_primary": false,
+      "abs_diff_vs_fixture": 849.39755007456,
+      "rel_diff_vs_fixture": 1.97723439827299
+    },
+    {
+      "lambda_diag": "identity",
+      "psi_scale": "sd",
+      "q_layout": "trait_major",
+      "log_density": -531.787624818421,
+      "neg_log_density": 531.787624818421,
+      "is_primary": false,
+      "abs_diff_vs_fixture": 102.198927182741,
+      "rel_diff_vs_fixture": 0.237899478606424
+    },
+    {
+      "lambda_diag": "exp",
+      "psi_scale": "variance",
+      "q_layout": "trait_major",
+      "log_density": -1289.80162801521,
+      "neg_log_density": 1289.80162801521,
+      "is_primary": false,
+      "abs_diff_vs_fixture": 860.212930379529,
+      "rel_diff_vs_fixture": 2.00241052689205
+    },
+    {
+      "lambda_diag": "identity",
+      "psi_scale": "variance",
+      "q_layout": "trait_major",
+      "log_density": -542.60300512339,
+      "neg_log_density": 542.60300512339,
+      "is_primary": false,
+      "abs_diff_vs_fixture": 113.01430748771,
+      "rel_diff_vs_fixture": 0.263075607225482
+    }
+  ],
+  "note": "The Stan DENSITY is fixed and spec-derived; only the mapping of the fixture's internal-scale vector onto natural-scale quantities was measured, over a 2x2x2 grid declared in advance. Uniqueness of the matching cell is the evidence; a non-unique or absent match would have been reported as such."
+}

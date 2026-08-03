@@ -1,0 +1,31 @@
+cell           seed  arm            secs  iters   objective  rel_frob    npar   load
+using C++ compiler: ‘g++ (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0’
+g++ -std=gnu++17 -I"/usr/share/R/include" -DNDEBUG -I"/home/snakagaw/R/x86_64-pc-linux-gnu-library/4.5/TMB/include" -I"/home/snakagaw/R/x86_64-pc-linux-gnu-library/4.5/RcppEigen/include"  -DTMB_SAFEBOUNDS -DTMB_EIGEN_DISABLE_WARNINGS -DLIB_UNLOAD=R_unload_gllvmTMB_va_r3  -DTMB_LIB_INIT=R_init_gllvmTMB_va_r3  -DCPPAD_FRAMEWORK      -fpic  -O2  -c gllvmTMB_va_r3.cpp -o gllvmTMB_va_r3.o
+g++ -std=gnu++17 -shared -L/usr/lib/R/lib -Wl,-Bsymbolic-functions -flto=auto -ffat-lto-objects -Wl,-z,relro -o gllvmTMB_va_r3.so gllvmTMB_va_r3.o -L/usr/lib/R/lib -lR
+N100_T10_q1    1     per_unit       25.3     NA    1649.569   0.24132     220    0.3
+N100_T10_q1    1     collapsed       0.3     NA    1649.569   0.24133     121    0.5
+N100_T10_q1    2     collapsed       0.2     NA    1568.027   0.21043     121    0.5
+N100_T10_q1    2     per_unit        0.3     NA    1568.027   0.21043     220    0.5
+N100_T10_q1    3     per_unit        0.3     NA    1646.206   0.40438     220    0.5
+N100_T10_q1    3     collapsed       0.2     NA    1646.206   0.40436     121    0.5
+N250_T20_q2    1     per_unit        5.8      2    7697.875   0.24941    1309    0.5
+N250_T20_q2    1     collapsed       2.6     NA    7697.875   0.24939     562    0.6
+N250_T20_q2    2     collapsed       2.5     NA    7216.185   0.18620     562    0.6
+N250_T20_q2    2     per_unit        4.0     NA    7216.185   0.18621    1309    0.6
+N250_T20_q2    3     per_unit        3.9     NA    7601.090   0.12871    1309    0.6
+N250_T20_q2    3     collapsed       2.9     NA    7601.090   0.12871     562    0.7
+
+--- medians by cell x arm ---
+        cell       arm  secs      obj        rf npar
+ N100_T10_q1 collapsed 0.232 1646.206 0.2413270  121
+ N250_T20_q2 collapsed 2.635 7601.090 0.1862031  562
+ N100_T10_q1  per_unit 0.286 1646.206 0.2413222  220
+ N250_T20_q2  per_unit 3.958 7601.090 0.1862085 1309
+
+[N100_T10_q1] speedup 1.23x | free params 220 -> 121 (45.0% removed) | obj delta 6.87e-12 | rel_frob delta +0.00000
+
+[N250_T20_q2] speedup 1.50x | free params 1309 -> 562 (57.1% removed) | obj delta 5.89e-12 | rel_frob delta -0.00001
+
+load median 0.5, spread 0.4; other R procs: 0
+
+AI_COLLAPSE_SPEED_DONE

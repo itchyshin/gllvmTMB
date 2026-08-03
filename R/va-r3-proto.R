@@ -1854,11 +1854,46 @@
 ## but the flat layout is the one TMB's inner solver indexes contiguously.
 .va_r3_variational_names <- c("m", "log_L_diag", "L_off")
 
+## Is the A_i collapse admissible for THIS fit?
+##
+## Under Albert-Chib the stationarity condition dE/dv = -n/2 makes the
+## variational covariance data-independent, so every unit's A_i is the same
+## matrix: A_i A_i' = (I_q + sum_j N_ij lambda_j lambda_j')^-1. The closed form
+## is published (see dev/va-speed/21-WHY-GLLVM-IS-FAST.md, "Prior art"); what is
+## ours is implementing it.
+##
+## THE POINT OF THIS FUNCTION IS TO REFUSE. The derivation's own scope caveat
+## (dev/va-speed/ALBERT-CHIB-DERIVATION.md, s4.1) is narrow -- complete data,
+## constant n_ij, a pure-probit trait set, and the UNSTRUCTURED SINGLE-TIER KL --
+## while `m`/`log_L_diag`/`L_off` are declared unconditionally and shared by every
+## eval_method (inst/tmb/gllvmTMB_va_r3.cpp:417-419). Collapsing them globally
+## would silently change the publicly reachable "gh"/"jj" routes, where this
+## identity has never been derived: a fit that returns, converges, and is wrong.
+## So the default is the per-unit block and every condition must be met to leave it.
+.va_r3_collapse_gate <- function(validated, layout, eval_method_code) {
+  no <- function(why) list(ok = FALSE, reason = why)
+  if (!identical(as.integer(eval_method_code), 2L))
+    return(no("eval_method is not Albert-Chib (the identity is derived for AC only)"))
+  if (!all(as.integer(validated$family) == 4L))
+    return(no("not every row is binomial-probit (family code 4)"))
+  if (!all(as.integer(validated$is_y_observed) == 1L))
+    return(no("data are incomplete; A_i is then constant only within a missingness pattern"))
+  ntr <- validated$n_trials
+  if (is.null(ntr) || length(unique(as.numeric(ntr))) != 1L)
+    return(no("n_trials varies across cells, which breaks constancy across units"))
+  if (!identical(as.integer(layout$n_tiers), 1L))
+    return(no("more than one tier; the structured/diagonal KL differs and the fixed point is UNVERIFIED there"))
+  if (!identical(as.integer(layout$kind_code[1L]), 0L))
+    return(no("the single tier is not the dense unstructured tier"))
+  list(ok = TRUE, reason = "AC, complete, constant n_trials, single dense tier")
+}
+
 .va_r3_make_objective <- function(validated, H = 61L, source = NULL,
                                   rebuild = FALSE, parameters = NULL,
                                   fixed_global = NULL, silent = TRUE,
                                   eval_method = c("auto", "jj", "gh", "ac"),
                                   profile_variational = FALSE,
+                                  collapse_variational_cov = FALSE,
                                   inner_control = NULL) {
   if (validated$q == 0L) {
     stop("q = 0 is not applicable and must not construct an R3 objective.",
@@ -1957,6 +1992,38 @@
   if (!all(sigma_free)) {
     map$log_sigma <- factor(ifelse(sigma_free, seq_along(sigma_free), NA_integer_))
   }
+
+  ## The A_i collapse, expressed as parameter SHARING rather than as a rewritten
+  ## template. Every unit's variational covariance is tied to one common value
+  ## per coordinate via TMB's `map`, so the free parameter count for the block
+  ## drops from N*q to q while the parameter VECTOR keeps its length -- which is
+  ## why none of the seven downstream consumers of `log_L_diag`/`L_off`, nor the
+  ## template's own size checks, need to change.
+  ##
+  ## This enforces the STRUCTURE the closed form proves (A_i identical across
+  ## units) and lets the optimiser find the common value, rather than hard-coding
+  ## a formula whose scope conditions are narrow. The variational MEANS `m` stay
+  ## per-unit: they carry each unit's latent position and do not collapse.
+  ##
+  ## Layout contract: entry (tier k, level g, coordinate c) sits at
+  ## offset_k + c*n_levels_k + g, so at K = 1 the vector is coordinate-major and
+  ## `rep(coord, each = n_levels)` ties all units within a coordinate.
+  collapse_variational_cov <- isTRUE(collapse_variational_cov)
+  collapse_applied <- FALSE
+  collapse_note <- if (collapse_variational_cov) "" else "not requested"
+  if (collapse_variational_cov) {
+    gate <- .va_r3_collapse_gate(validated, layout, eval_method_code)
+    collapse_note <- gate$reason
+    if (isTRUE(gate$ok)) {
+      n_lev <- as.integer(layout$n_levels[1L])
+      d1 <- as.integer(layout$dim[1L])
+      map$log_L_diag <- factor(rep(seq_len(d1), each = n_lev))
+      n_off1 <- as.integer(d1 * (d1 - 1L) / 2L)
+      if (n_off1 > 0L) map$L_off <- factor(rep(seq_len(n_off1), each = n_lev))
+      collapse_applied <- TRUE
+    }
+  }
+
   if (!is.null(fixed_global)) {
     if (!is.list(fixed_global) ||
         !identical(sort(names(fixed_global)), c("beta", "theta_rr"))) {
@@ -2014,6 +2081,11 @@
     )
   }
   attr(obj, "va_r3_profiled") <- profile_variational
+  ## Report whether the collapse actually fired and, when it did not, WHY. A
+  ## silently-refused gate would look identical to a collapse that worked, which
+  ## is exactly how an unverified speed claim gets made.
+  attr(obj, "va_r3_collapsed") <- collapse_applied
+  attr(obj, "va_r3_collapse_note") <- collapse_note
   attr(obj, "va_r3_dll") <- dll
   attr(obj, "va_r3_quadrature") <- rule
   ## Carried so downstream machinery can ASK the objective what its variational
@@ -2035,6 +2107,7 @@
                        fixed_global = NULL, source = NULL, rebuild = FALSE,
                        control = list(eval.max = 2000L, iter.max = 2000L),
                        silent = TRUE, eval_method = c("auto", "jj", "gh", "ac"),
+                       collapse_variational_cov = FALSE,
                        n_starts = 4L,
                        optimizer = c("auto", "nlminb", "lbfgsb"),
                        is_y_observed = NULL,
@@ -2172,7 +2245,9 @@
       validated, H = H, source = source, rebuild = rebuild && k == 1L,
       parameters = starts[[k]], fixed_global = fixed_global, silent = silent,
       eval_method = eval_method,
-      profile_variational = profile_variational, inner_control = inner_control
+      profile_variational = profile_variational,
+      collapse_variational_cov = collapse_variational_cov,
+      inner_control = inner_control
     )
     objects[[k]] <- obj
     opt <- tryCatch(

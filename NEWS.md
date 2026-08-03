@@ -348,6 +348,24 @@ bridge remains experimental and is not required for the main workflow.
 
 ## Fixed
 
+* Standardized loading inference now uses the model-implied total variance,
+  `rho[t,k] = Lambda[t,k] / sqrt(Sigma_total[t,t])`, rather than an entrywise
+  loading-plus-scalar approximation. `loading_ci(method = "wald_asym")`,
+  `suggest_lambda_constraint(method = "wald_retention")`, and
+  `suggest_lambda_constraint(method = "varimax_threshold")` now account for
+  every latent axis in the trait denominator; the Wald routes propagate the
+  full joint fixed-parameter covariance, including fitted variance components
+  and parameter-dependent link residuals. Loading CI, flagging, plotting,
+  bootstrap, and `confint(..., parm = "Lambda")` outputs now label their
+  `loading_scale`; raw symmetric Wald inference remains the default.
+
+  Deterministic algebra and routing are covered, but standardized interval
+  coverage is not yet calibrated. Wald retention treats the fitted varimax
+  rotation as fixed, and standardized profile/bootstrap intervals are not
+  currently available. Per-axis loading intervals therefore remain
+  rotation-conditional sensitivity summaries rather than the primary
+  rotation-invariant evidence.
+
 * **Ordination no longer collapses when the response is on a large scale.**
   Starting values for the latent structure were built as though the response had
   a standard deviation of about 1 — a hardcoded loading start, a matching
@@ -535,6 +553,11 @@ bridge remains experimental and is not required for the main workflow.
   output. The bridge remains experimental.
 
 ## Deprecated compatibility syntax
+
+* The `sigma_d2` argument to `loading_ci()`,
+  `suggest_lambda_constraint()`, and `suggest_lambda_constraints()` is
+  deprecated and ignored. Standardized loading denominators are now derived
+  from each fitted model's total trait variance.
 
 * `gllvmTMBcontrol(start_method = list(method = "res"))` is **soft-deprecated**
   and warns once per session. It still fits; prefer the default starts.

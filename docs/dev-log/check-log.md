@@ -4,6 +4,98 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-08-03 -- standardized-loading inference repair (#921)
+
+Branch: `codex/fix-loading-scale-inference` from `origin/main` at `dbd0b2d5`;
+clean worktree `/private/tmp/gllvmtmb-issue921`.
+
+Replaced the entrywise standardized-loading approximation with
+`rho[t,k] = Lambda[t,k] / sqrt(Sigma_total[t,t])` and full joint fixed-parameter
+delta propagation. Raw Wald remains the default; returned CI, bootstrap,
+flagging, plotting, and Lambda-confint tables now state `loading_scale`.
+`varimax_threshold` and `wald_retention` use the same total-variance target.
+The old `sigma_d2` argument is deprecated and ignored.
+
+Checks:
+
+```sh
+Rscript --vanilla -e 'devtools::document(quiet = TRUE)'
+# PASS; six Rd topics regenerated. Existing internal-CV link and AIC/BIC
+# export-tag diagnostics repeated; none is introduced by this diff.
+
+Rscript --vanilla -e 'devtools::test(filter = "^loading-ci$", stop_on_failure = TRUE)'
+# PASS: 48 assertions, 29 deliberate heavy-test skips, 0 failures.
+
+GLLVMTMB_HEAVY_TESTS=1 NOT_CRAN=false Rscript --vanilla -e \
+  'devtools::test(filter = "^loading-ci$", stop_on_failure = TRUE)'
+# PASS: 0 failures, four deliberate CRAN-only skips.
+
+GLLVMTMB_HEAVY_TESTS=1 NOT_CRAN=false Rscript --vanilla -e \
+  'devtools::test(filter = "^(confint-lambda|loading-ci-bootstrap)$", stop_on_failure = TRUE)'
+# FAIL 0 | WARN 0 | SKIP 6 | PASS 65
+
+Rscript --vanilla -e 'devtools::test(stop_on_failure = TRUE)'
+# FAIL 0 | WARN 2 | SKIP 799 | PASS 9030 (1623.0 s)
+# Two known gllvm-comparator rows-all-zero warnings.
+
+Rscript --vanilla -e 'pkgdown::check_pkgdown()'
+# No problems found.
+
+Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'
+# 0 errors | 0 warnings | 2 notes (12m43s)
+# Environment-only notes: remote clock verification and macOS xcrun_db detritus.
+
+git diff --check
+# PASS
+
+Rscript --vanilla -e 'devtools::test(filter = "reader-facing-no-register-codes|loading-ci", reporter = "summary", stop_on_failure = TRUE)'
+# Post-NEWS PASS: 34 deliberate heavy-test skips, 0 failures.
+
+Rscript --vanilla -e 'pkgdown::check_pkgdown()'
+# Post-NEWS: No problems found.
+
+git diff --check
+# Post-NEWS PASS.
+```
+
+Exact consistency scans:
+
+```sh
+rg -n "threshold_lambda|lambda\\^2.*sigma_d2|sigma_d2.*sqrt|sqrt\\([^)]*lambda[^)]*\\^2" \
+  R/loading-ci.R R/loading-uncertainty-helpers.R R/suggest-lambda-constraint.R \
+  tests/testthat/test-loading-ci.R man/loading_ci.Rd \
+  man/suggest_lambda_constraint.Rd docs/design/06-extractors-contract.md \
+  docs/design/75-inference-route-truth-matrix.md
+# No matches: obsolete one-axis standardization is absent from changed contracts.
+
+rg -n "\\bS_B\\b|\\bS_W\\b|\\\\bf S|meta_known_V|gllvmTMB_wide|\\bphylo\\(|\\bgr\\(|\\bmeta\\(|block_V\\(|phylo_rr\\(" \
+  R/loading-ci.R R/loading-uncertainty-helpers.R R/plot-loadings-confidence-eye.R \
+  R/suggest-lambda-constraint.R R/z-confint-gllvmTMB.R man/loading_ci.Rd \
+  man/flag_unreliable_loadings.Rd man/plot_loadings_confidence_eye.Rd \
+  man/suggest_lambda_constraint.Rd man/suggest_lambda_constraints.Rd \
+  man/confint.gllvmTMB_multi.Rd docs/design/06-extractors-contract.md \
+  docs/design/35-validation-debt-register.md \
+  docs/design/75-inference-route-truth-matrix.md docs/dev-log/known-limitations.md
+# No stale notation in changed API/help; broad status-document hits are intentional
+# compatibility/register records for meta_known_V() and gllvmTMB_wide().
+
+rg -n "loading_scale|Sigma_total|joint-delta|Fisher-z|profile.*standardized|sigma_d2" \
+  R/loading-ci.R R/loading-ci-bootstrap.R R/loading-uncertainty-helpers.R \
+  R/plot-loadings-confidence-eye.R R/suggest-lambda-constraint.R \
+  R/z-confint-gllvmTMB.R man/loading_ci.Rd man/flag_unreliable_loadings.Rd \
+  man/plot_loadings_confidence_eye.Rd man/suggest_lambda_constraint.Rd \
+  man/suggest_lambda_constraints.Rd man/confint.gllvmTMB_multi.Rd \
+  docs/design/06-extractors-contract.md docs/design/35-validation-debt-register.md \
+  docs/design/75-inference-route-truth-matrix.md docs/dev-log/known-limitations.md
+# Source, help, design, register, and limitations agree on scale and raw-profile boundary.
+```
+
+No parser/article code changed, so `pkgdown::build_articles(lazy = FALSE)` was
+not run. No empirical interval-coverage campaign was run: deterministic algebra
+and routing are covered, while calibration remains a separate Totoro/DRAC lane.
+Targeted `lintr` was unavailable because `lintr` is not installed. Full report:
+`docs/dev-log/after-task/2026-08-03-standardized-loading-inference.md`.
+
 ## 2026-08-01 -- missing-data ledger closure (#336/#337/#338)
 
 Branch: `cursor/missing-data-ledger-336-20260801` from `origin/main` @

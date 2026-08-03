@@ -63,12 +63,13 @@ test_that(".loading_ci_bootstrap() returns the expected columns + dimensions", {
 
   expect_s3_class(ci, "data.frame")
   expect_named(ci, c("trait", "axis", "estimate", "se",
-                     "lower", "upper", "method", "pinned",
+                     "lower", "upper", "method", "loading_scale", "pinned",
                      "pd_hessian", "ci_status"))
   expect_equal(nrow(ci), 9L * 2L)
   expect_equal(levels(ci$trait), bf$species)
   expect_equal(levels(ci$axis), c("LV1", "LV2"))
   expect_true(all(ci$method == "bootstrap"))
+  expect_true(all(ci$loading_scale == "raw"))
   expect_true(all(is.na(ci$se)))
 })
 
@@ -144,26 +145,13 @@ test_that(".loading_bootstrap_scale_guard() keeps a floor for weak loadings", {
 })
 
 
-## ---- Rough agreement with Wald-asym on well-identified entries ----
+## ---- Rough agreement on the same raw-loading scale -----------------
 
-test_that(".loading_ci_bootstrap() roughly agrees with Wald-asym on well-identified entries", {
+test_that(".loading_ci_bootstrap() roughly agrees with raw Wald on well-identified entries", {
   skip_if_not_heavy()
-  ## Phase B-INF A4 spec called for "max abs diff < 0.15" on the bounds.
-  ## Empirically that threshold is too tight at nsim = 40 on a binary
-  ## probit fixture: the 2.5% / 97.5% percentile sampling MCSE at n = 40
-  ## is ~0.10-0.20 on its own, and the bootstrap and Wald-asym methods
-  ## also differ by a real (not artefactual) margin because Wald-asym
-  ## uses a fixed sigma_d2 = 1 probit residual while the bootstrap
-  ## reflects sample-level variability. To meet the spec's "rough
-  ## agreement" intent without fake-passing, we use the standard
-  ## CI-agreement criterion: the bootstrap and Wald-asym intervals must
-  ## OVERLAP on every free entry. This catches the qualitative failures
-  ## the spec worries about (the bootstrap going entirely the wrong
-  ## sign, or a 10x-off magnitude) without imposing a numerical
-  ## threshold that's unstable in the nsim = 40 regime. The closer-to-
-  ## zero side of each interval is then additionally checked against
-  ## a generous 0.30 bound -- the side where Wald-asym is most reliable,
-  ## and where any genuine implementation bug would still show up.
+  ## Keep this comparator on one explicit scale. Standardized Fisher-z
+  ## intervals have their own deterministic algebra tests; comparing them to
+  ## these raw bootstrap rows would recreate issue #921's scale mismatch.
   skip_if_not_installed("TMB")
   skip_on_cran()
   bf <- build_bootstrap_fit()
@@ -171,15 +159,22 @@ test_that(".loading_ci_bootstrap() roughly agrees with Wald-asym on well-identif
   ci_b <- .loading_ci_bootstrap(bf$fit, level = "unit",
                                 nsim = 40L, seed = 20260528L,
                                 conf_level = 0.95)
-  ci_w <- loading_ci(bf$fit, level = "unit", method = "wald_asym",
-                     conf_level = 0.95)
+  ci_w <- loading_ci(
+    bf$fit,
+    level = "unit",
+    method = "wald",
+    conf_level = 0.95,
+    loading_scale = "raw"
+  )
 
   ## Same point estimates and pin pattern (no refit feeds back into
   ## the original fit's reported Lambda).
   expect_equal(ci_b$estimate, ci_w$estimate, tolerance = 1e-10)
   expect_equal(ci_b$pinned,   ci_w$pinned)
+  expect_true(all(ci_b$loading_scale == "raw"))
+  expect_true(all(ci_w$loading_scale == "raw"))
 
-  ## Qualitative agreement: bootstrap and Wald-asym intervals overlap
+  ## Qualitative agreement: bootstrap and raw-Wald intervals overlap
   ## on every free entry.
   free <- !ci_b$pinned
   overlap <- (ci_b$lower[free] <= ci_w$upper[free]) &
@@ -191,14 +186,7 @@ test_that(".loading_ci_bootstrap() roughly agrees with Wald-asym on well-identif
   expect_true(all(ci_b$lower[free] <= ci_b$estimate[free]))
   expect_true(all(ci_b$estimate[free] <= ci_b$upper[free]))
 
-  ## Numerical check on the closer-to-zero bound for well-identified
-  ## entries (|estimate| >= 0.4). For positive estimates the lower bound
-  ## sits closer to zero; for negatives the upper. This is the side
-  ## where bootstrap and Wald-asym both behave well; the opposite side
-  ## diverges because Wald-asym uses fixed-probit sigma_d2 = 1 while
-  ## the bootstrap reflects sample-level variability. Threshold 0.30 is
-  ## the working "rough agreement" budget at nsim = 40 (the spec's
-  ## tighter 0.15 needs nsim ~= 200 to be stable).
+  ## Numerical check on the closer-to-zero bound for well-identified rows.
   well_id <- free & abs(ci_b$estimate) >= 0.4 &
              is.finite(ci_b$lower) & is.finite(ci_b$upper) &
              is.finite(ci_w$lower) & is.finite(ci_w$upper)

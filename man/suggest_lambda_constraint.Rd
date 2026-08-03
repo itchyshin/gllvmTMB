@@ -46,29 +46,27 @@ rotate the fitted loadings after fitting instead.}
 defaults.}
 
 \item{threshold}{Salience threshold on the standardised loading
-\eqn{\rho = \Lambda / \sqrt{\Lambda^2 + \sigma_d^2}}. Used by
+\eqn{\rho_{tk} = \Lambda_{tk} / \sqrt{\Sigma_{total,tt}}}. Used by
 \code{"varimax_threshold"} and \code{"wald_retention"}. Comrey-Lee 1992
-convention: 0.30 = "fair" salience (default). Raise to 0.40 for
-"good" / 0.50 for "very good".}
+convention: 0.30 = "fair" salience (default). Must be a finite scalar
+in \verb{[0, 1)}. Raise to 0.40 for "good" / 0.50 for "very good".}
 
 \item{retention_prob}{Retention probability for \code{"wald_retention"}
 and \code{"profile_retention"}:
 \itemize{
 \item{\code{"wald_retention"}: pin entry if
-\verb{Pr(|Lambda| > threshold) < retention_prob}.}
+\verb{Pr(|rho| > threshold) < retention_prob}.}
 \item{\code{"profile_retention"}: pin entry if a profile LRT fails to
 reject \code{H0: Lambda = 0} at significance level
 \code{1 - retention_prob}.}
 }
-Default 0.90 follows the applied-EFA bootstrap convention; the
-stricter BSEM 0.95 often over-prunes at moderate sample sizes and
-produces non-PD refits.}
+Must be a finite scalar in \verb{(0, 1)}. Default 0.90 follows the applied-EFA
+bootstrap convention; the stricter BSEM 0.95 often over-prunes at
+moderate sample sizes and produces non-PD refits.}
 
-\item{sigma_d2}{Link-implicit residual variance on the link scale,
-used by \code{"wald_retention"} to compute \verb{Pr(|Lambda| > threshold)}
-from the standardised \eqn{\rho}. Defaults to \code{1} (probit /
-ordinal_probit). Use \eqn{\pi^2/3} for logit, \eqn{\pi^2/6} for
-cloglog, or the fitted residual variance for Gaussian.}
+\item{sigma_d2}{Deprecated compatibility argument; ignored by the
+standardised-loading conventions. Their denominators now come from the
+model-implied total variance returned by \code{\link[=extract_Sigma]{extract_Sigma()}}.}
 
 \item{site}{Deprecated alias for \code{unit}. Emits a one-shot warning and maps
 to \code{unit}.}

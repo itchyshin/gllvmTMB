@@ -35,7 +35,9 @@ for existing scripts.
 \code{\link[=loading_ci]{loading_ci()}} / \code{\link[=loading_profile]{loading_profile()}}. For these tokens the method
 choices are
 \code{c("wald", "wald_asym", "profile")} with default
-\code{"wald"}.
+\code{"wald"}. Wald and profile rows target raw \code{Lambda};
+\code{"wald_asym"} targets the standardised loading \code{rho} and
+labels rows accordingly.
 \item \code{"icc"} (all traits), \code{"icc:<trait_name>"} (one
 trait by name), \code{"icc:<t1>;<t2>"} (multiple by name), or
 \code{"icc:[1,3]"} (1-based trait indices). Routes to
@@ -87,7 +89,9 @@ term names (same as the standard \code{confint()} interface).
 \item{method}{One of \code{"profile"} (default), \code{"wald"},
 \code{"bootstrap"}. For \code{parm = "Lambda..."} the accepted
 methods are \code{c("wald", "wald_asym", "profile")} with default
-\code{"wald"} (matching the base R \code{confint()} convention).}
+\code{"wald"} (matching the base R \code{confint()} convention).
+\code{"wald_asym"} returns Fisher-z intervals for standardised
+loadings rather than raw \code{Lambda}.}
 
 \item{nsim}{Number of bootstrap replicates passed to \code{\link[=bootstrap_Sigma]{bootstrap_Sigma()}}
 when \code{method = "bootstrap"}. Default \code{500}. Use a small
@@ -109,9 +113,11 @@ zero by a diagonal-only tier). The parameter prefix follows the
 requested \code{parm}, so legacy calls still return legacy
 \code{"Sigma_B[...]"} or \code{"Sigma_W[...]"} labels.
 \item \strong{Lambda path} -- a \code{data.frame} with columns
-\code{parameter} (e.g. \code{"Lambda[trait_1,LV1]"}),
+\code{parameter} (e.g. \code{"Lambda[trait_1,LV1]"} for raw rows or
+\code{"rho[trait_1,LV1]"} for standardised rows),
 \code{estimate}, \code{lower}, \code{upper}, \code{method},
-\code{pd_hessian}, and \code{ci_status}. When \code{pdHess = FALSE}
+\code{loading_scale}, \code{pd_hessian}, and \code{ci_status}. When
+\code{pdHess = FALSE}
 on a Wald path,
 \code{lower}/\code{upper} are \code{NA} and \code{ci_status}
 flags the reason).

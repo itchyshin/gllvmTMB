@@ -79,7 +79,8 @@
 #'
 #' @return Data frame with one row per Lambda entry. Columns:
 #'   `trait`, `axis`, `estimate`, `se` (NA), `lower`, `upper`,
-#'   `method = "bootstrap"`, `pinned`, `pd_hessian` (NA),
+#'   `method = "bootstrap"`, `loading_scale = "raw"`, `pinned`,
+#'   `pd_hessian` (NA),
 #'   `ci_status`. Pinned entries: bounds = estimate.
 #'
 #' @keywords internal
@@ -273,6 +274,7 @@
     lower      = lower,
     upper      = upper,
     method     = "bootstrap",
+    loading_scale = "raw",
     pinned     = pinned,
     pd_hessian = NA,
     ci_status  = ci_status,

@@ -9,7 +9,8 @@ flag_unreliable_loadings(
   null_region = c(-0.1, 0.1),
   level = c("unit", "unit_obs"),
   method = "wald",
-  conf_level = 0.95
+  conf_level = 0.95,
+  loading_scale = NULL
 )
 }
 \arguments{
@@ -19,9 +20,10 @@ produced by \code{\link[=loading_ci]{loading_ci()}}.}
 \item{null_region}{Length-2 numeric, sorted ascending. The
 "negligible" band. Defaults to \code{c(-0.1, 0.1)}.}
 
-\item{level, method, conf_level}{Forwarded to \code{\link[=loading_ci]{loading_ci()}} when
+\item{level, method, conf_level, loading_scale}{Forwarded to \code{\link[=loading_ci]{loading_ci()}} when
 \code{fit} is a fit object. Ignored when \code{fit} is already a
-\code{loading_ci()} data frame.}
+\code{loading_ci()} data frame, except that an explicitly supplied
+\code{loading_scale} must match the frame's scale.}
 }
 \value{
 The \code{loading_ci()} data frame with one extra logical column
@@ -33,7 +35,8 @@ A simple decision aid in the spirit of Zientek & Thompson (2007,
 doi:10.3758/BF03193163): given per-entry CIs on Lambda, flag the
 entries whose \code{conf_level} confidence interval \strong{does not exclude}
 a user-supplied "null region" — a band around zero considered
-biologically negligible. Loadings flagged as \code{unreliable = TRUE}
+biologically negligible on the interval's recorded \code{loading_scale}.
+Loadings flagged as \code{unreliable = TRUE}
 are the ones for which the data do not provide evidence that the
 species responds non-trivially to the axis.
 }

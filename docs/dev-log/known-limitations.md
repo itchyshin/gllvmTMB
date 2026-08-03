@@ -56,6 +56,12 @@ delta_gamma, ordinal_probit. Mixed-family fits are accepted via
 - Fisher-z, Wald, and bootstrap intervals are also exposed via
   `extract_correlations(method = ...)` with `fisher-z` as the
   default.
+- Per-entry loading intervals require a confirmatory rotation frame. Raw
+  `Lambda` supports Wald, profile, and bootstrap routes; standardized
+  `rho[t,k] = Lambda[t,k] / sqrt(Sigma_total[t,t])` supports joint-delta
+  Wald and Fisher-z Wald routes. Standardized profile intervals are not
+  implemented, and empirical coverage of standardized-loading intervals is
+  not certified.
 
 ### Data shapes
 

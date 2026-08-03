@@ -9,7 +9,8 @@ loading_ci(
   level = c("unit", "unit_obs"),
   method = c("wald", "wald_asym", "profile"),
   conf_level = 0.95,
-  sigma_d2 = 1
+  sigma_d2 = 1,
+  loading_scale = NULL
 )
 }
 \arguments{
@@ -21,44 +22,47 @@ one-shot deprecation warning.}
 
 \item{method}{CI method:
 \describe{
-\item{\code{"wald"} (default)}{Symmetric Wald via delta method.}
+\item{\code{"wald"} (default)}{Symmetric Wald via the joint delta method
+on the requested \code{loading_scale}.}
 \item{\code{"wald_asym"}}{Asymmetric Wald via the Fisher-z transformation
-on the standardised loading
-\eqn{\rho = \Lambda / \sqrt{\Lambda^2 + \sigma_d^2}}.
-Same cost as \code{"wald"} (no refit) but captures the bounded-support
-asymmetry that symmetric Wald on \eqn{\Lambda} ignores. CIs are
-wider toward large \eqn{|\Lambda|} and narrower toward 0 — the
-qualitatively correct shape, leaving higher-order
-log-likelihood-curvature corrections to the profile path.}
+on \eqn{\rho_{tk} = \Lambda_{tk}/\sqrt{\Sigma_{total,tt}}}.
+This method is available only with
+\code{loading_scale = "standardized"}; its bounds stay in \verb{(-1, 1)}.
+It captures bounded-support asymmetry but not higher-order
+log-likelihood curvature.}
 \item{\code{"profile"}}{Profile-likelihood inversion through
 \code{\link[=loading_profile]{loading_profile()}}. This refits across a grid for each free
 loading entry and can be used when Wald inference is blocked by a
-non-positive-definite Hessian.}
+non-positive-definite Hessian. The current profile target is raw
+\code{Lambda}, so \code{loading_scale = "standardized"} is refused.}
 }}
 
 \item{conf_level}{Confidence level. Defaults to 0.95.}
 
-\item{sigma_d2}{link-implicit residual variance on the link scale.
-Only used when \code{method = "wald_asym"}. Defaults to \code{1} (binomial
-probit and ordinal_probit; the cleanest non-Gaussian case). For
-logit use \eqn{\pi^2/3}; for cloglog use \eqn{\pi^2/6}. Set to the
-fitted unique variance for Gaussian. A future version will
-auto-detect per-trait from the family.}
+\item{sigma_d2}{Deprecated compatibility argument; ignored. Standardised
+inference now derives each denominator from model-implied total variance
+via \code{\link[=extract_Sigma]{extract_Sigma()}} instead of accepting one scalar residual variance.}
+
+\item{loading_scale}{\code{NULL}, \code{"raw"}, or \code{"standardized"}. \code{NULL} uses
+\code{"raw"} for \code{"wald"} / \code{"profile"} and \code{"standardized"} for
+\code{"wald_asym"}. Estimates, SEs, bounds, and downstream null regions are
+always on this recorded scale.}
 }
 \value{
 A data frame (one row per Lambda entry) with columns
-\code{trait}, \code{axis}, \code{estimate}, \code{se}, \code{lower}, \code{upper}, \code{method}, and
-\code{pinned} (logical: \code{TRUE} for entries fixed by \code{lambda_constraint},
-whose SE is exactly 0 by construction).
+\code{trait}, \code{axis}, \code{estimate}, \code{se}, \code{lower}, \code{upper}, \code{method},
+\code{loading_scale}, and \code{pinned}. \code{pinned = TRUE} records that the raw
+loading was fixed by \code{lambda_constraint}. Its raw SE is zero, but its
+standardised SE can be nonzero because total variance can still vary.
 }
 \description{
-Return per-entry CIs on the reduced-rank loading matrix
-\verb{Lambda_<level>} of a confirmatory \code{gllvmTMB()} fit. Method v1 is the
-delta-method Wald CI: a numerical Jacobian
-\verb{J = d vec(Lambda) / d theta_rr} is combined with the TMB
-\code{sdreport()} covariance to give
-\code{cov(vec(Lambda)) = J \%*\% cov.fixed \%*\% t(J)}, from which symmetric
-Wald intervals are read.
+Return per-entry CIs on either the raw reduced-rank loading matrix
+\verb{Lambda_<level>} or the standardised loading
+\code{rho[t,k] = Lambda[t,k] / sqrt(Sigma_total[t,t])} of a confirmatory
+\code{gllvmTMB()} fit. A numerical Jacobian of the complete requested loading
+vector is combined with the TMB \code{sdreport()} covariance. On the
+standardised scale this includes covariance among axes and uncertainty in
+fitted denominator components such as \code{Psi}.
 }
 \details{
 Per-entry CIs are \strong{only well-defined for confirmatory fits} — i.e.
@@ -96,6 +100,7 @@ fit <- gllvmTMB(
   lambda_constraint = list(unit = M)
 )
 loading_ci(fit, level = "unit")
+loading_ci(fit, level = "unit", loading_scale = "standardized")
 }
 
 }

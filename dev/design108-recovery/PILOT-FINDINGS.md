@@ -194,3 +194,61 @@ requirement, not a harness defect.
 
 Note the cache is keyed on the md5 of `inst/tmb/gllvmTMB_va_r3.cpp`, so it survives changes to
 `harness.R` (as here) but correctly invalidates if the template itself changes.
+
+---
+
+## JOB 1b — the corrected control curve (supersedes Job 1, which is VOID)
+
+Job 1 was measured on a broken instrument. Four defects were corrected between them
+(`132aa79b`, `c20fb681`, `37531e09`, and the control's loadings extraction). Job 1's numbers
+must not be cited.
+
+**HEADLINE = loadings estimand.** Means over 3 seeds, T=20, tree spanned by seeds.
+
+| N | q | tier-1 loadings | tier-2 loadings | s/cell |
+|---|---|---|---|---|
+| 100 | 1 | 0.333 | 0.811 | 22 |
+| 250 | 1 | 0.171 | 0.692 | 54 |
+| 500 | 1 | 0.114 | 0.476 | 105 |
+| 1000 | 1 | **0.092** | **0.380** | 248 |
+| 100 | 2 | 0.305 | 0.584 | 32 |
+| 250 | 2 | 0.145 | 0.517 | 89 |
+| 500 | 2 | 0.093 | 0.486 | 213 |
+| 1000 | 2 | **0.105** | **0.432** | 414 |
+
+### 1. The plateau is GONE, and it was never real
+
+Tier 1 falls monotonically 0.333 -> 0.171 -> 0.114 -> 0.092 at q=1, against the broken
+curve's 0.35-0.42 which refused to move between N=500 and N=1000. The apparent "instrument
+floor" was entirely the estimand mismatch plus the DGP/model Psi-structure contradiction.
+**Nothing real remains underneath it on tier 1.**
+
+### 2. The PHYLO tier converges far more slowly -- and this is the campaign's tier
+
+Tier 2 is descending but is still **0.38-0.43 at N=1000**, roughly **4x** tier 1 at the same
+N. The control -- the arm that MUST recover, on the easiest possible family -- does not reach
+clean recovery on the phylogenetic tier at any N tested.
+
+**This is a substantive result, not a defect**, and it constrains the campaign directly:
+
+- **The floor cannot be set from tier 2 within the tested range.** At a stipulated 0.5 gate,
+  tier 2 clears only at N >= 500 (q=1) and is marginal at q=2. At any stricter gate it clears
+  nowhere below N=1000.
+- **It is consistent with, and sharpens, Design 72's warning** that the structural question
+  needs "adequate n" -- adequate is evidently well above 1000 for the phylo tier, not the
+  n >= 30 identifiability floor.
+- It is the same tier flagged in the diagnostic as possibly carrying a genuine limit, with
+  within-N spread far exceeding tier 1's. This curve does NOT settle whether the residual is
+  finite-sample or structural; it only shows it is still shrinking at N=1000.
+
+### 3. `q` matters, and not in one direction
+
+At small N, q=2 recovers tier 2 BETTER than q=1 (0.584 vs 0.811 at N=100); by N=1000 the
+order reverses (0.432 vs 0.380). Reporting a q-pooled rate would have averaged over a
+crossing interaction and shown neither. This is exactly the failure #897 was overturned for,
+and is why `q` is a grid column.
+
+### 4. Cost
+
+Control-only, roughly N^1.1 at q=1 (22/54/105/248 s) and steeper at q=2 (32/89/213/414 s).
+q=2 costs ~1.7x q=1 at N=1000. **VA cost is still unmeasured** -- Job 2b.

@@ -87,23 +87,37 @@ arms <- list(
   D_scale_ten   = list(scale = rep(10, npar))
 )
 
+## INTERLEAVED + ORDER-ROTATED. The first version of this script ran each arm's
+## reps consecutively, which confounds arm with machine drift -- the exact
+## defect that inflated a claim ~3x elsewhere in this lane and forced its
+## retraction (ledger claim 32's paired/interleaved discipline). Here the outer
+## loop is the REPLICATE and the arm order rotates within it, so drift is spread
+## across arms instead of landing on whichever ran while the box was busy.
 REPS <- 3L
-rows <- list()
-for (nm in names(arms)) {
-  secs <- numeric(REPS); st <- character(REPS); lls <- numeric(REPS)
-  for (r in seq_len(REPS)) {
+arm_names <- names(arms)
+acc <- setNames(vector("list", length(arm_names)), arm_names)
+for (r in seq_len(REPS)) {
+  ## rotate: rep 1 = A,B,C,D; rep 2 = B,C,D,A; rep 3 = C,D,A,B
+  ord <- ((seq_along(arm_names) + r - 2L) %% length(arm_names)) + 1L
+  for (i in ord) {
+    nm <- arm_names[i]
     res <- fit_arm(dat, arms[[nm]])
-    secs[r] <- res$sec; st[r] <- res$status; lls[r] <- res$ll
+    acc[[nm]] <- rbind(acc[[nm]], data.frame(
+      sec = res$sec, status = res$status, ll = res$ll, stringsAsFactors = FALSE
+    ))
   }
-  rows[[nm]] <- data.frame(
+}
+rows <- lapply(arm_names, function(nm) {
+  z <- acc[[nm]]
+  data.frame(
     arm = nm, N = N, seed = SEED, npar = npar,
-    median_sec = median(secs),
-    status = paste(unique(st), collapse = ","),
-    n_converged = sum(st == "converged"),
-    logLik = median(lls),
+    median_sec = median(z$sec),
+    status = paste(unique(z$status), collapse = ","),
+    n_converged = sum(z$status == "converged"),
+    logLik = median(z$ll),
     stringsAsFactors = FALSE
   )
-}
+})
 out <- do.call(rbind, rows)
 
 ## The null control decides whether anything else here can be believed.

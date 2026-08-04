@@ -78,3 +78,41 @@ is the actual open question.
 plumb the three unplumbed levers, cheapest first (`optimHess` polish and `multiphase` are "free by
 construction"; the `sdreport` knobs are now more interesting than before because
 `standard_errors()` makes that call user-triggerable).
+
+---
+
+## UPDATE 2026-08-04 — re-run INTERLEAVED; the caveat is discharged
+
+§3 flagged that the arms were not interleaved, so only the *direction* stood. That has now been
+fixed and re-run: the outer loop is the **replicate** and the arm order **rotates within it**
+(rep 1 = A,B,C,D; rep 2 = B,C,D,A; …), so machine drift is spread across arms instead of landing
+on whichever ran while the box was busy. 5 seeds × 2 N, Totoro, single-threaded.
+
+| N | baseline median s | `scale = 10` median s | ratio | seeds where `scale=10` wins |
+|---:|---:|---:|---:|---:|
+| 250 | 0.400 | 0.355 | **1.127×** | **5 / 5** |
+| 1000 | 1.555 | 1.407 | **1.105×** | **5 / 5** |
+
+**10 of 10 cells in the same direction**, null control (`scale = 1`) passing every time, 3/3
+converged in every arm of every cell. **The magnitude now stands at ~1.11–1.13×**, not just the
+direction. `scale = 0.1` remains consistently slower.
+
+Incidental but worth noting: `scale = 10` is also markedly more *stable* — its per-seed spread at
+N=250 is 0.350–0.361 (3%) against the baseline's 0.375–0.426 (14%).
+
+### One claim tightened, not loosened
+
+The original wrote that "every arm returns an identical log-likelihood", on the strength of the
+script's own gate — which uses `all.equal(tolerance = 1e-8)`, i.e. **mean relative** difference.
+Checking exact equality instead shows the arms are **not** bit-identical: worst absolute difference
+across all ten cells is **1.5e-07**, which is **~8e-11 relative** to a log-likelihood of order 1800.
+
+That is optimiser noise at the convergence tolerance, not a different answer — so the lever is
+still **free in the sense that matters**: it changes the path to the optimum, not the optimum. But
+it is *not* bit-exact, and it should not be described the way the `se = FALSE` bootstrap speedups
+were, which really did pass `all.equal(tol = 0)` with zero cells differing. Different strength of
+evidence, different words.
+
+**Still not promoted.** A constant `scale = 10` that helps one Gaussian cell is not a default;
+choosing a principled per-parameter scale remains the open question, and VA-R3 still has no
+`scale` pass-through at all.

@@ -130,3 +130,70 @@ cd /private/tmp/gllvmtmb-va-lane2 && ./tools/check-push-traps.sh && git log --on
 Read: this file → `dev/va-speed/67-ARC-E-RESULT.md` → `65-ARC-D-RESULT.md` →
 `dev/va-speed/20-CLAIMS-LEDGER.md` (**check status before citing anything**; rows 30 and 46 both
 carry verdicts written this session).
+
+---
+
+# UPDATE — later the same day: three decisions taken, deferred work closed
+
+**Branch now:** `claude/va-lane2` @ `6dd1914f` · **still NOT pushed**
+
+## Shinichi's three answers, and what they changed
+
+| # | question | answer | done |
+|---|---|---|---|
+| 1 | Totoro core budget | **"150 is fine"** — standing default | ✅ reconciled across the vault |
+| 2 | Does this lane precede missing-data #332? | **"not necessarily"** | ✅ recorded on the campaign design note |
+| 3 | Arc B's arm defect | **"please fix this"** | ✅ family-conditional |
+
+**1 — Totoro 150.** Updated hub `AGENTS.md` §Compute, `projects/COMPUTE-PLAYBOOK.md`,
+`tools/totoro-setup.md` (its worked example moved 96 → 144 workers — a stale example is how a
+raised cap quietly goes unused), and the **eight `projects/<repo>.md` LOAD-FIRST sources** that
+`route.py` generates the per-repo manifests from. `route.py` now emits 150 for all eight.
+⚠ **Residual drift:** seven per-repo `AGENTS.md` copies still carry ≤100. `route.py` has **no write
+mode** and those are other lanes' repos — each refreshes its own; `route.py <repo> --check` detects it.
+
+**2 — priority.** Recorded on `docs/design/va-interval-route-selection.md` beside the approval:
+the campaign is **unblocked, not prioritised**. D-113 still names #332 primary.
+
+**3 — Arc B unblocked.** The "score under both `eval_method`s" requirement was unsatisfiable
+(`gaussian_anchor` has `tiers = "gh"` only). Now **family-conditional**: Gaussian primary cells on
+`gh` alone, keeping them comparable to the 0.897/0.935 pilot; AC-vs-GH on a `binomial_probit` cell,
+reported as a **separate claim about a different family**. Moving the primary DGP was rejected — it
+would change the cell underneath the pilot numbers, the exact substitution behind this lane's
+retractions. **Arc B is now runnable**; open it with a timed pilot on health-gate-passing fits.
+
+## Deferred work, closed
+
+- **EXT-36 `partial` → `covered`.** The non-finite-SE carve-out is closed: `summary()` reports it
+  and `confint()` aborts (`gllvmTMB_confint_nonfinite_se`), with **different advice** —
+  `standard_errors()` cannot help a non-positive-definite Hessian, so it points at
+  `gllvmTMB_diagnose()`. Both surfaces done together on purpose. **Discriminator is ALL-non-finite,
+  not any** — a single `NA` is the legitimate mapped-out-coefficient case, with inverse guards.
+- **Arc D's caveat discharged.** Re-run interleaved + order-rotated: **10/10 cells**, 1.11–1.13×,
+  null control passing throughout. And one of my own claims **tightened**: "identical log-likelihood"
+  rested on a relative-tolerance gate; exact comparison shows 1.5e-07 worst difference (~8e-11
+  relative). Optimiser noise, not a different answer — but **not bit-exact**, unlike the `se = FALSE`
+  bootstrap speedups which really did pass `all.equal(tol = 0)`.
+- **`vcov` gap — bigger than flagged.** `coef()` is *also* missing for `gllvmTMB_multi`, and **no
+  method is registered on the bare `gllvmTMB` class at all**, so the roxygen's premise was wrong even
+  where its examples were right. **Documentation corrected; the methods were NOT added** — new
+  exported S3 methods are an API change and this repo's rule is to raise those. `vcov` is ~10 lines
+  (`sd_report$cov.fixed` with names) if approved.
+- **Silent-NA sweep — 0 new sites.** ⚠ **The dispatched sweep was INVALID and is recorded as such:**
+  it cited only paths in the protected Dropbox checkout (a different branch, **76 files apart**) and
+  never wrote its artefact. Redone by hand on the real tree: 21 `error = function(e) NA` sites,
+  classified, none a new defect. Scope stated on the page — one probe pattern, `R/` only.
+
+## In flight at write time — CHECK BOTH
+
+- **Arc C feasibility probe** (Totoro, 15 cells): does AC's ψ-collapse depend on information per
+  observation? Sweeping `n_trials ∈ {2,4,6,12,20}` at `psi_true = 0.6` as a **proxy**, because the
+  literal question is unmeasurable — ordinal VA is family code 5 and is not built. Early signal:
+  at `n_trials = 2`, AC ψ = **0.0000** vs truth 0.6 while GH recovers 0.4766.
+- **Final full suite** at `d80f308e`. Last clean run was `258ec3b3`: **371 files / 9257 / 0 fail**.
+
+## Still open
+
+`vcov()` / `coef()` for `gllvmTMB_multi` (approval needed) · seven per-repo `AGENTS.md` core-count
+refreshes · Arc B itself (now unblocked) · Arc C as a **build** (the probe only sizes it) ·
+**nothing pushed**.

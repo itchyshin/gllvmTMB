@@ -31,16 +31,24 @@ iterations**, both. The two harnesses agree on the same cell to the iteration.
 
 ## Results
 
-| N | H | VA (s) | LA (s) | VA/LA |
-|---:|---:|---:|---:|---:|
-| 250 | 61 (shipped default) | 173.78 | 20.09 | **8.65× slower** |
-| 250 | 61 | 171.38 | 20.21 | **8.48× slower** |
-| 250 | 61 | 183.37 | 17.92 | **10.23× slower** |
-| 250 | 15 | 53.02 | 19.97 | **2.65× slower** |
-| 1000 | 15 | 319.36 | 74.41 | **4.29× slower** |
+**The complete H = 15 ladder** — one seed per N, the arm that most favours VA:
 
-*(N = 1000 at H = 61 and all N = 2500 cells were still running; `43-vala-*.rds` carries them,
-with right-censored entries for anything that never finishes.)*
+| N | VA (s) | LA (s) | VA/LA |
+|---:|---:|---:|---:|
+| 250 | 53.02 | 19.97 | **2.65× slower** |
+| 1000 | 319.36 | 74.41 | **4.29× slower** |
+| 2500 | 1175.54 | 201.29 | **5.84× slower** |
+
+**H = 61, the shipped default** — three seeds per N:
+
+| N | VA (s) | LA (s) | VA/LA |
+|---:|---:|---:|---:|
+| 250 | 173.78 / 171.38 / 183.37 | 20.09 / 20.21 / 17.92 | **8.65× / 8.48× / 10.23×** |
+| 1000 | 1015.21 / 985.77 / 1003.43 | 74.53 / 74.45 / 61.07 | **13.62× / 13.24× / 16.43×** |
+
+*(N = 2500 at H = 61 was still running; `43-vala-N2500_s{1,2,3}.rds` will carry it, with
+right-censored entries if it never finishes. It cannot change the direction — VA is already
+5.84× behind at N = 2500 on the arm four times cheaper for VA.)*
 
 ### 1. VA is slower than Laplace at every configuration measured
 
@@ -53,18 +61,24 @@ to accelerate.
 
 ### 2. VA scales worse than Laplace — the superlinearity is real, and it is VA's
 
-Over the 4× N step at matched H = 15:
+Over the full 10× N range at matched H = 15:
 
-| engine | 250 → 1000 | fitted exponent |
+| engine | 250 → 2500 | fitted exponent |
 |---|---:|---:|
-| **VA** | 53.02 → 319.36 s (6.02×) | **N^1.29** |
-| Laplace | 19.97 → 74.41 s (3.73×) | **N^0.95** |
+| **VA** | 53.02 → 1175.54 s (22.17×) | **N^1.35** |
+| Laplace | 19.97 → 201.29 s (10.08×) | **N^1.00** |
 
-The Laplace engine is essentially linear in N — independently confirmed across the full
-`41-ladder` grid (N^1.05 at q=2, N^1.12 at q=5). VA is not. **The gap therefore widens with
-N: 2.65× at N=250 becomes 4.29× at N=1000.** This is the answer to the handover's question,
-and it is the unfavourable one: VA has no large-N regime where it overtakes Laplace on these
-cells — it falls further behind.
+Laplace is linear in N to two decimal places — independently confirmed across the whole
+`41-ladder` grid (N^1.05 at q=2, N^1.12 at q=5). VA is not, and the same exponent appears at
+H = 61 (VA N^1.27, Laplace N^0.94 over the 250→1000 step), so **the superlinearity is
+structural, not a quadrature artifact**: it survives a 4× change in GH nodes. That is what
+you expect when the variational parameters themselves grow with N.
+
+**The gap therefore widens monotonically: 2.65× → 4.29× → 5.84× across N = 250, 1000, 2500.**
+This answers the handover's question, and the answer is the unfavourable one: VA has no
+large-N regime where it overtakes Laplace on these cells. It falls further behind at every
+step, and the two harnesses that first raised the suspicion (the hybrid ladder's ~N^1.6, the
+pilot's 350 s at n=5000) were pointing at something real.
 
 ### 3. What this does and does not refute
 

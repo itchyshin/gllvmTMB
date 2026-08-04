@@ -766,7 +766,30 @@
 ## -definite Hessian), which still surfaces as bare `NaN`. That is a separate
 ## defect, recorded rather than silently folded in.
 .confint_require_sdreport <- function(object, method) {
-  if (identical(method, "profile") || !is.null(object$sd_report)) {
+  if (identical(method, "profile")) {
+    return(invisible(NULL))
+  }
+
+  ## Second way to have no usable standard errors: sd_report EXISTS but its
+  ## fixed-effect covariance is entirely non-finite -- the signature of a
+  ## Hessian that is not positive-definite. The missing-sd_report gate below
+  ## never fires for it, so without this the interval comes back all-NaN,
+  ## silently. That is the same defect one level down, and fixing `summary()`
+  ## without fixing this is exactly the half-fix that had to be corrected once
+  ## already in this file.
+  if (!is.null(object$sd_report)) {
+    cv <- tryCatch(object$sd_report$cov.fixed, error = function(e) NULL)
+    if (!is.null(cv) && length(cv) > 0L && !any(is.finite(diag(as.matrix(cv))))) {
+      cli::cli_abort(c(
+        "{.fn confint} cannot build a Wald interval: the standard errors are
+         all non-finite.",
+        "x" = "This usually means the Hessian is not positive-definite.",
+        "i" = "This is a property of the fit -- {.fn standard_errors} will not
+               help, because the numbers were already computed.",
+        ">" = "Diagnose it with {.run gllvmTMB_diagnose(fit)}, or use
+               {.code method = \"profile\"}, which does not use the Hessian."
+      ), class = "gllvmTMB_confint_nonfinite_se")
+    }
     return(invisible(NULL))
   }
   ## Plain prose, not cli markup: this string is interpolated as a VALUE, and

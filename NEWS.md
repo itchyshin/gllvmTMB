@@ -21,11 +21,17 @@ bridge remains experimental and is not required for the main workflow.
   extractor-style consumers `getREsd()`, `getLV(se = TRUE)` and
   `predict(se.fit = TRUE)` already behaved this way.
 
-  **What this does not cover.** The gate is on a *missing* `sd_report`. A fit
-  that has one but whose Hessian is not positive-definite still yields
-  non-finite standard errors, and those still surface as bare `NaN` in
-  `summary()`, `confint()`, and `extract_cutpoints()` without explanation.
-  That is a real and separate defect, recorded rather than folded in here.
+  **The other way to have no usable standard errors is also covered.** A fit
+  whose Hessian is not positive-definite *has* an `sd_report`, but its standard
+  errors come back non-finite — and those used to print as a wall of bare `NaN`.
+  `summary()` now says so, and `confint()` aborts
+  (`gllvmTMB_confint_nonfinite_se`). The advice deliberately differs: this is a
+  property of the fit, so `standard_errors()` cannot help and the message points
+  at `gllvmTMB_diagnose()` and `method = "profile"` instead.
+
+  **A single `NA` is left alone.** A coefficient fixed via `Xcoef_fixed` has no
+  standard error, and `NA` is the right answer there — only an *entirely*
+  non-finite set is treated as the pathology.
 
   **`summary()` deliberately still works.** Fitting fast and reading point
   estimates is a legitimate workflow, so `summary()` prints as before — but it

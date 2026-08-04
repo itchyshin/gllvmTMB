@@ -764,10 +764,27 @@ summary.gllvmTMB_multi <- function(object, ...) {
   ## the package's supported claim -- so this reports rather than aborts. But it
   ## must REPORT: a column of bare NAs reads as "the standard error is unknown"
   ## when the truth is "nobody computed one." (D-33.)
+  ## Two ways to have no usable standard errors, and they are different facts:
+  ## none were COMPUTED (se = FALSE / sdreport failed), or they were computed
+  ## and came back non-finite -- the signature of a Hessian that is not
+  ## positive-definite. Reporting only the first would leave the second as a
+  ## column of bare NaN, which is the same defect one level down.
   out$se_status <- if (is.null(object$sd_report)) {
     list(
       available = FALSE,
       reason = object$sdreport_error %||% "no sd_report on this fit"
+    )
+  } else if (!is.null(out$fixef) && nrow(out$fixef) > 0L &&
+             !any(is.finite(out$fixef$Std.Err))) {
+    ## Every one non-finite, not merely some: a single NA is the legitimate
+    ## mapped-out-coefficient case and must not trip this.
+    list(
+      available = FALSE,
+      reason = paste(
+        "standard errors were computed but are all non-finite,",
+        "which usually means the Hessian is not positive-definite"
+      ),
+      non_finite = TRUE
     )
   } else {
     list(available = TRUE, reason = NULL)
@@ -828,14 +845,26 @@ print.summary.gllvmTMB_multi <- function(x, digits = 3, ...) {
     print(tbl)
 
     ## Say why the column is empty, rather than leaving a wall of NAs to be
-    ## read as a computed result.
+    ## read as a computed result. The two causes need DIFFERENT advice:
+    ## standard_errors() fixes "never computed" and does nothing at all for a
+    ## non-positive-definite Hessian, where the fit itself is the problem.
     if (isFALSE(x$se_status$available)) {
-      cat(
-        "\n  Std.Err is empty: standard errors were not computed",
-        "\n  (", x$se_status$reason, ").",
-        "\n  Compute them without refitting:  fit <- standard_errors(fit)\n",
-        sep = ""
-      )
+      if (isTRUE(x$se_status$non_finite)) {
+        cat(
+          "\n  Std.Err is empty: ", x$se_status$reason, ".",
+          "\n  This is a property of the fit, not a missing step -- ",
+          "recomputing will not help.",
+          "\n  Diagnose it with:  gllvmTMB_diagnose(fit)\n",
+          sep = ""
+        )
+      } else {
+        cat(
+          "\n  Std.Err is empty: standard errors were not computed",
+          "\n  (", x$se_status$reason, ").",
+          "\n  Compute them without refitting:  fit <- standard_errors(fit)\n",
+          sep = ""
+        )
+      }
     }
   }
 

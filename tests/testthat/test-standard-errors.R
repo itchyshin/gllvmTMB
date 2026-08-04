@@ -258,3 +258,97 @@ test_that("the cutpoint note is silent where no tau_se column is shown", {
   ## quiet = TRUE is the mechanism, and it must actually silence it.
   expect_no_message(extract_cutpoints(fit, quiet = TRUE))
 })
+
+## --- non-finite standard errors: the second way to have none ---------------
+## Closes the carve-out that kept register row EXT-36 at `partial`. A fit whose
+## Hessian is not positive-definite HAS an sd_report -- so the missing-sd_report
+## gate never fires -- but its standard errors come back non-finite and used to
+## print as a wall of bare NaN with no explanation. Same defect, one level down.
+
+test_that("summary() explains all-non-finite SEs, and gives DIFFERENT advice", {
+  skip_on_cran()
+  fit <- .se_fit(.se_test_data(), se = TRUE)
+
+  ## Simulate the non-PD-Hessian signature directly: sd_report present, SEs
+  ## non-finite. Constructing a genuinely non-PD fit on demand is unreliable;
+  ## what is being tested is the reporting branch, not the optimiser.
+  fit$sd_report$cov.fixed[] <- NaN
+
+  s <- summary(fit)
+  expect_false(isTRUE(s$se_status$available))
+  expect_true(isTRUE(s$se_status$non_finite))
+
+  out <- paste(utils::capture.output(print(s)), collapse = "\n")
+  expect_match(out, "not positive-definite", fixed = TRUE)
+  expect_match(out, "gllvmTMB_diagnose", fixed = TRUE)
+  ## standard_errors() cannot help here -- advising it would be actively wrong.
+  expect_false(grepl("standard_errors(fit)", out, fixed = TRUE))
+})
+
+test_that("a single non-finite SE does NOT trip the non-finite branch", {
+  skip_on_cran()
+  ## The inverse guard. One NA is the legitimate mapped-out-coefficient case;
+  ## only ALL-non-finite is the pathology. Getting this wrong would fire the
+  ## warning on healthy fits that happen to have a fixed coefficient.
+  set.seed(11L)
+  n <- 40L
+  dat <- expand.grid(rep_idx = seq_len(n), trait_idx = 1:2)
+  dat$trait <- factor(c("a", "b")[dat$trait_idx])
+  dat$obs_id <- factor(seq_len(nrow(dat)))
+  dat$x <- rnorm(nrow(dat))
+  dat$y <- c(1, 2)[dat$trait_idx] + 0.5 * dat$x + rnorm(nrow(dat), 0, 0.3)
+
+  fit <- gllvmTMB(
+    y ~ 0 + trait + (0 + trait):x,
+    data = dat, family = gaussian(), unit = "obs_id",
+    Xcoef_fixed = c("traitb:x" = 0), silent = TRUE
+  )
+  s <- summary(fit)
+  expect_true(any(is.na(s$fixef$Std.Err)))   # the fixed coefficient
+  expect_true(isTRUE(s$se_status$available)) # but the fit is fine
+  out <- paste(utils::capture.output(print(s)), collapse = "\n")
+  expect_false(grepl("positive-definite", out, fixed = TRUE))
+})
+
+test_that("confint() also aborts when the SEs exist but are all non-finite", {
+  skip_on_cran()
+  ## The companion to the summary() branch above. Fixing one surface and not
+  ## the other is the exact half-fix that had to be corrected once already in
+  ## this workstream.
+  fit <- .se_fit(.se_test_data(), se = TRUE)
+  fit$sd_report$cov.fixed[] <- NaN
+
+  expect_error(
+    confint(fit, method = "wald"),
+    class = "gllvmTMB_confint_nonfinite_se"
+  )
+  ## And it must not send the user to standard_errors(), which cannot help
+  ## here -- the numbers were already computed.
+  ##
+  ## The first version of this assertion checked for the ABSENCE of the string
+  ## "standard_errors" and failed. The code was right and the test was wrong:
+  ## the message names the function deliberately, to say it will NOT help.
+  ## What matters is that it appears as a dead end, not as the remedy.
+  err <- tryCatch(confint(fit, method = "wald"), error = function(e) conditionMessage(e))
+  expect_match(err, "will not", fixed = TRUE)
+  expect_match(err, "gllvmTMB_diagnose", fixed = TRUE)
+})
+
+test_that("confint() is unaffected when only some SEs are non-finite", {
+  skip_on_cran()
+  ## Inverse guard: a healthy fit with one mapped-out coefficient must still
+  ## produce intervals.
+  set.seed(11L)
+  n <- 40L
+  dat <- expand.grid(rep_idx = seq_len(n), trait_idx = 1:2)
+  dat$trait <- factor(c("a", "b")[dat$trait_idx])
+  dat$obs_id <- factor(seq_len(nrow(dat)))
+  dat$x <- rnorm(nrow(dat))
+  dat$y <- c(1, 2)[dat$trait_idx] + 0.5 * dat$x + rnorm(nrow(dat), 0, 0.3)
+  fit <- gllvmTMB(
+    y ~ 0 + trait + (0 + trait):x,
+    data = dat, family = gaussian(), unit = "obs_id",
+    Xcoef_fixed = c("traitb:x" = 0), silent = TRUE
+  )
+  expect_no_error(confint(fit, method = "wald"))
+})

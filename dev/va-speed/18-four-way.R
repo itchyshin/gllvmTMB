@@ -26,7 +26,16 @@ SEED <- as.integer(args[5]); OUT <- args[6]
 REPS <- if (length(args) >= 7) as.integer(args[7]) else 2L
 q0 <- 1L; H0 <- 15L
 
-setwd("/private/tmp/gllvmtmb-mature-va")
+## Lane dir is configurable. The original hardcoded /private/tmp/gllvmtmb-mature-va,
+## a worktree that no longer exists -- and /private/tmp is periodically cleaned.
+## GLLVMTMB_LANE_DIR follows the convention already used by 24-totoro-smoke.R and
+## 40-step0-pilot.R, so this runs unmodified locally or on a remote worker.
+##
+## GOTCHA, paid for on 2026-08-03: the usage line above says `Rscript --vanilla`,
+## and --vanilla implies --no-environ, so ~/.Renviron is ignored, R_LIBS_USER is
+## unset, and `library(gllvm)` fails on Totoro. Pass R_LIBS_USER=$HOME/R/lib
+## explicitly in the invocation.
+setwd(Sys.getenv("GLLVMTMB_LANE_DIR", "/private/tmp/gllvmtmb-va-lane2"))
 suppressPackageStartupMessages({
   devtools::load_all(".", quiet = TRUE)
   library(gllvm)

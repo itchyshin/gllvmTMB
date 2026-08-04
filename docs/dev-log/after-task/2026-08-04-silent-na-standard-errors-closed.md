@@ -1,4 +1,18 @@
-# After Task: the silent all-NA standard-error path is closed
+# After Task: the silent all-NA standard-error path is closed (for a *missing* sd_report)
+
+> **🔴 CORRECTED 2026-08-04, after adversarial review. Read this first.**
+> The first version of this report — and the commit it described (`0a280205`) — **claimed a
+> closure that was false**. `.confint_wald_targets()` returns at `R/z-confint-gllvmTMB.R:1694`,
+> **nineteen lines before** the guard, and swallows a NULL `sd_report` into `NA_real_`. So
+> `confint(parm = "sigma_eps", method = "wald")` still returned a silent all-`NA` interval for
+> 7 of 7 non-`b_fix` targets while NEWS and the register said the defect was closed.
+> Fixed in `bf2226ba`: both Wald routes now share `.confint_require_sdreport()`, with a
+> regression test and its inverse guard.
+> **Two further corrections from the same review:** the gate keys on `sd_report` being *missing*,
+> not on the SEs being *usable* — a non-positive-definite Hessian still yields bare `NaN`,
+> unexplained — so EXT-36 is **`partial`**, not `covered`; and the `extract_cutpoints()` `tau_se`
+> path has **no test at all**, which the register had implied it did.
+> The sections below stand except where they describe scope or closure.
 
 **Date:** 2026-08-04 · **Platform:** Claude Code (solo) · **Branch:** `claude/va-lane2`
 **Governing decision:** shinichi-brain **D-33** — *"an error handler that converts 'cannot check'

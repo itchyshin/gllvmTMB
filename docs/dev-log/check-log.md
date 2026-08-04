@@ -48653,3 +48653,47 @@ roxygen at `R/gllvmTMB.R:295` claiming dispatch · a sweep of the other ~20 file
 `rep(NA_real_, …)` for the same class.
 
 — Silent-NA closure (Claude, 2026-08-04)
+
+---
+
+## 2026-08-04 (later) — the closure claim was FALSE; Arc D measured; Arc E running
+
+**🔴 A correction to the entry above.** The adversarial review (fresh Opus, D-81) refuted the
+closure claim in `0a280205`. `.confint_wald_targets()` returns at
+`R/z-confint-gllvmTMB.R:1694`, **nineteen lines before** the guard, and its SE lookup wraps a
+NULL `sd_report` into `NA_real_` — so `confint(parm = "sigma_eps", method = "wald")` still
+returned a **silent all-NA interval** for 7 of 7 non-`b_fix` targets while NEWS and the
+register both said the defect was closed. The guard was the right shape in the wrong place.
+
+Fixed in `bf2226ba`: both Wald routes share `.confint_require_sdreport()`; regression test on
+the target path plus its inverse guard. **Claims narrowed to the truth:** EXT-36 downgraded
+`covered` → **`partial`**, because the gate keys on `sd_report` being *missing*, not on the SEs
+being *usable* — a non-PD Hessian still yields bare `NaN` in `summary()`, `confint()` and
+`extract_cutpoints()`, unexplained. Also recorded: `extract_cutpoints()`'s `tau_se` path has
+**no test** (`grep -rn "tau_se" tests/` is empty), which EXT-36 had implied it did. And a false
+comment claiming "every sibling consumer already aborts" was removed — untrue of three
+siblings inside `confint()` itself. Narrow suite **19/19**.
+
+**The review earned the ceiling-tier slot it was given.** A self-check would not have found
+this: the guard looked right, the tests passed, and the failing call was in a routing branch
+the author had already read past.
+
+**Arc D — scope was wrong, and the one real lever is ~1.1×.** Four of the five "cheap untested
+levers" are **not reachable**: `sdreport` knobs, `multiphase`, and `optimHess` polish have zero
+presence in `R/`; gllvm's `inner.control` is a comparator's knob. Only `nlminb(scale=)` is
+plumbed (`R/fit-multi.R:5196`). Measured on Totoro (idle, single-threaded, median of 3, 3 seeds,
+N=250 and N=1000): **`scale=10` ≈ 1.10–1.13× faster**, `scale=0.1` ≈ 0.88×. **Both controls
+pass** — `scale=1` reproduces baseline logLik exactly, and every arm returns an identical
+logLik, so the lever is free. **3/3 converged in every arm at every seed.**
+⚠ **Arms were NOT interleaved** — this lane's own discipline (ledger claim 32) requires
+paired/interleaved/order-rotated, so the **direction** stands and the **magnitude is soft**.
+Nothing promoted. `9055c485`, detail in `dev/va-speed/65-ARC-D-RESULT.md`.
+
+**Arc E — launched, running.** The four-way head-to-head (`18-four-way.R`) already existed and
+already rotates arm order per replicate; the retracted claims 16/18 failed on **seed count**,
+not tooling. Re-running at **12 seeds**, N=250 T=20 n_trials=6 psi_true=0.6, serial on Totoro.
+Patched the hardcoded `setwd()` to `GLLVMTMB_LANE_DIR` (the old worktree no longer exists) and
+recorded the `--vanilla` → `--no-environ` → `library(gllvm)` gotcha in the script itself.
+Smoke green at the real cell size. **No claim until all 12 seeds land.**
+
+— Correction + arcs D/E (Claude, 2026-08-04)

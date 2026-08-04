@@ -196,6 +196,76 @@ Type va_r3_log_pnorm(const Type &x)
   return CppAD::CondExpLt(x, -z0, tail, direct);
 }
 
+// log(1 - exp(a)) for a <= 0.
+//
+// The INPUT is clamped to a <= -1.2e-16 (just past the double unit roundoff) so
+// NEITHER branch can return -inf on an UNSELECTED CondExp path -- the same
+// discipline as va_r3_log_pnorm above, and for the same measured reason: an
+// unselected non-finite branch leaves fn and gr finite AND CORRECT while killing
+// the HESSIAN.  Any check that this clamp is still needed MUST call obj$he().
+//
+// A 1e-300 floor is NOT sufficient, and that is the whole point: it rescues the
+// series branch but leaves the direct branch computing log(1 - exp(-1e-300)) =
+// log(0).  The floor has to sit at the unit roundoff.
+//
+// Why both branches are safe everywhere:
+//  (i)   the cubic u - u^2/2 + u^3/6 has derivative ((u-1)^2 + 1)/2 > 0 for all
+//        u, so it increases strictly from 0 and is strictly POSITIVE for every
+//        u > 0 -- the unselected series branch is finite at any u, large u
+//        included;
+//  (ii)  where the clamp binds, CondExp returns a constant, so the propagated
+//        partial is exactly 0 -- correct for a branch that must not contribute;
+//  (iii) it binds only when the two probabilities agree to within one unit
+//        roundoff (a degenerate / empty category).  It floors the RATIO, not the
+//        absolute probability, degrading to logPhi(a) - 36.7 rather than -inf.
+template <class Type>
+Type va_r3_log1mexp(const Type &a)
+{
+  const Type ceil_a = Type(-1.2e-16);
+  Type ac = CppAD::CondExpGt(a, ceil_a, ceil_a, a);          // min(a, -1.2e-16)
+  Type u = -ac;                                              // u >= 1.2e-16
+  Type series = log(u - u * u / Type(2.0) + u * u * u / Type(6.0));
+  Type direct = log(Type(1.0) - exp(ac));
+  return CppAD::CondExpLt(u, Type(1e-6), series, direct);
+}
+
+// log(Phi(a) - Phi(b)) for a > b -- the ordinal cell probability.
+//
+// This breaks the standing invariant stated above ("the cancellation-prone
+// difference of two nearly-equal CDFs is never formed at all").  Forming it is
+// unavoidable for a cumulative-probit ordinal likelihood, but the regime is the
+// FAVOURABLE one: under Albert-Chib it is evaluated ONCE PER CELL at eta = mu,
+// not at H quadrature nodes -- the same regime the shipped Laplace engine
+// already handles, not the harder AGHQ regime.
+//
+// Algorithm (derivation section 5.7): factor out the larger probability and pick
+// the branch by sign(a + b) so the SMALLER of the two candidate leading terms is
+// used.  Both log1mexp arguments are <= 0 by construction, since a > b implies
+// Phi(b) <= Phi(a) and Phi(-a) <= Phi(-b).
+//
+//   a + b <= 0 (left) :  logPhi(a)  + log1mexp( logPhi(b)  - logPhi(a)  )
+//   a + b >  0 (right):  logPhi(-b) + log1mexp( logPhi(-a) - logPhi(-b) )
+//
+// The branch is NOT cosmetic.  Naive log(pnorm(a) - pnorm(b)) is fine in the left
+// tail and dies in the right: at (a,b) = (+9.20, +9.00) it returns -inf where the
+// stable form gives -43.800817; at (+30.20, +30.00), -inf against -454.323660.
+//
+// This deliberately does NOT reuse the shipped engine's gll_log_pnorm_diff.  Its
+// ALGORITHM is correct and is kept verbatim, but it calls gll_log_pnorm, which
+// switches at x = -20 to a 4-term asymptotic Mills series; va_r3_log_pnorm above
+// switches at -10 to a 20-term convergent continued fraction (0 ULP over
+// z in [10,200], correct to x = -145).  The VA tier uses the better primitive it
+// already owns.
+template <class Type>
+Type va_r3_log_pnorm_diff(const Type &a, const Type &b)
+{
+  Type left = va_r3_log_pnorm(a) +
+    va_r3_log1mexp(va_r3_log_pnorm(b) - va_r3_log_pnorm(a));
+  Type right = va_r3_log_pnorm(-b) +
+    va_r3_log1mexp(va_r3_log_pnorm(-a) - va_r3_log_pnorm(-b));
+  return CppAD::CondExpLe(a + b, Type(0.0), left, right);
+}
+
 // Inverse Mills ratio lambda(x) = phi(x)/Phi(x) = d/dx log Phi(x).
 //
 // Needed only by the small-v expansion below, but it carries the same 0/0

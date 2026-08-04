@@ -5,6 +5,12 @@
 **Worktree:** `/private/tmp/gllvmtmb-va-lane2` · 60 commits off `origin/main` @ `5bf18ab3`
 
 > **Supersedes** `2026-08-04-claude-handover-arcs-f-a-done.md`.
+>
+> 🔴 **READ THE `UPDATE` SECTION AT THE BOTTOM FIRST.** Several statements below were true when
+> written and are now **superseded** by work done later the same day — in particular: Arc B is no
+> longer blocked, EXT-36 is `covered` not `partial`, Arc D's "magnitude is soft" caveat is
+> discharged, the Totoro budget question is answered, and the dead-code branch is merged. Acting on
+> this section alone would redo settled work.
 
 ## State
 

@@ -45,8 +45,13 @@ args <- commandArgs(trailingOnly = TRUE)
 TIER <- args[[1]]
 N0   <- as.integer(args[[2]])
 TAG  <- args[[3]]
+FAM  <- if (length(args) >= 4) args[[4]] else "gaussian_anchor"
+H0   <- if (length(args) >= 5) as.integer(args[[5]]) else 15L
 T0   <- 10L
 Q0   <- 2L
+NTR  <- 6L
+LINK <- switch(FAM, gaussian_anchor = "identity", binomial_probit = "probit",
+               stop("unsupported FAM: ", FAM))
 OUT  <- sprintf("dev/va-speed/51-crossover-%s.rds", TAG)
 
 loadavg <- function() {
@@ -56,18 +61,24 @@ loadavg <- function() {
   NA_real_
 }
 
-## gaussian_anchor deliberately: it has a CLOSED-FORM expectation, so there is no GH
-## quadrature cost to confound the routing question. This is the same choice PROFILE.md made.
+## The SAME latent structure under both families, so the ONLY thing that differs between the
+## two runs is per-evaluation derivative cost:
+##   gaussian_anchor  -- closed-form expectation, no quadrature. CHEAP per evaluation.
+##   binomial_probit  -- an H-node GH loop per observation row. EXPENSIVE per evaluation.
+## That contrast is the experiment.
 mk <- function(N) {
   set.seed(20260803L)
   lam <- matrix(rnorm(T0 * Q0, 0, 0.8), T0, Q0); lam[upper.tri(lam)] <- 0
   a <- matrix(rnorm(N * Q0), N, Q0)
   eta <- sweep(a %*% t(lam), 2, rnorm(T0, 0, 0.3), "+")
-  y <- eta + matrix(rnorm(N * T0, 0, 0.5), N, T0)
-  d <- data.frame(y = as.numeric(t(y)),
-                  trait = factor(rep(seq_len(T0), times = N)),
-                  unit  = factor(rep(seq_len(N),  each = T0)))
-  d
+  y <- if (identical(FAM, "gaussian_anchor")) {
+    eta + matrix(rnorm(N * T0, 0, 0.5), N, T0)
+  } else {
+    matrix(rbinom(N * T0, NTR, pnorm(as.vector(eta))), N, T0)
+  }
+  data.frame(y = as.numeric(t(y)),
+             trait = factor(rep(seq_len(T0), times = N)),
+             unit  = factor(rep(seq_len(N),  each = T0)))
 }
 
 d <- mk(N0)
@@ -76,10 +87,13 @@ X <- unname(stats::model.matrix(~ 0 + trait, data = d))
 fit_one <- function(profile) {
   t0 <- proc.time()[["elapsed"]]
   f <- try(do.call(gllvmTMB:::.va_r3_fit, list(
-    y = d$y, n_trials = rep(1L, nrow(d)), X = X,
+    y = d$y,
+    n_trials = rep(if (identical(FAM, "gaussian_anchor")) 1L else NTR, nrow(d)),
+    X = X,
     unit_id = as.integer(d$unit), trait_id = as.integer(d$trait),
-    q = Q0, family = "gaussian_anchor", link = "identity",
-    unique = FALSE, psi = FALSE, estimate_gaussian_sd = TRUE,
+    q = Q0, family = FAM, link = LINK, H = H0,
+    unique = FALSE, psi = FALSE,
+    estimate_gaussian_sd = identical(FAM, "gaussian_anchor"),
     n_starts = 1L, profile_variational = profile,
     control = list(eval.max = 2000L, iter.max = 2000L)
   )), silent = TRUE)
@@ -94,8 +108,8 @@ fit_one <- function(profile) {
        status = as.character(f$status %||% NA_character_))
 }
 
-cat(sprintf("== %s tier, N=%d, T=%d, q=%d, gaussian_anchor (no GH) — load %.2f ==\n",
-            TIER, N0, T0, Q0, loadavg())); flush.console()
+cat(sprintf("== %s tier, N=%d, T=%d, q=%d, family=%s, H=%d — load %.2f ==\n",
+            TIER, N0, T0, Q0, FAM, H0, loadavg())); flush.console()
 
 ## Untimed warm-up so the TMB compile never lands inside a timed arm.
 invisible(try(fit_one(FALSE), silent = TRUE))

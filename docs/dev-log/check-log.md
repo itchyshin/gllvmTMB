@@ -48769,3 +48769,64 @@ a test that could not fail; and a **published closure claim** that the adversari
 refuted. Nothing pushed.
 
 — Final verification (Claude, 2026-08-04)
+
+---
+
+## 2026-08-04 (deferred work) — three decisions applied; Arc C answered NEGATIVE
+
+**Shinichi's three answers.** (1) **"150 is fine"** → standing default, reconciled across hub
+`AGENTS.md`, `COMPUTE-PLAYBOOK.md`, `totoro-setup.md` (worked example 96 → 144 workers) and the
+eight `projects/<repo>.md` LOAD-FIRST sources; `route.py` now emits 150 for all eight. Seven
+per-repo `AGENTS.md` copies still stale — `route.py` has no write mode, other lanes' repos.
+(2) **"not necessarily"** on precedence → recorded on the campaign design note: the VA campaign is
+*unblocked, not prioritised*; D-113 still names #332 primary. (3) **Arc B's spec fixed** →
+family-conditional: Gaussian primary cells on `gh` alone (keeping them comparable to the
+0.897/0.935 pilot), AC-vs-GH on a `binomial_probit` cell reported as a **separate claim about a
+different family**. Moving the primary DGP was rejected — it would change the cell underneath the
+pilot numbers. **Arc B is now runnable.**
+
+**EXT-36 `partial` → `covered`.** Non-finite SEs (non-PD Hessian) now reported by `summary()` and
+aborted by `confint()` (`gllvmTMB_confint_nonfinite_se`), with **different advice** — the numbers
+were already computed, so `standard_errors()` cannot help and the message points at
+`gllvmTMB_diagnose()`. Both surfaces done together deliberately; fixing one would have repeated the
+morning's half-fix. **Discriminator is ALL-non-finite, not any** — a single `NA` is the legitimate
+mapped-out-coefficient case, with inverse guards on both surfaces.
+
+**Arc D's caveat discharged.** Re-run interleaved + order-rotated: **10/10 cells**, 1.11–1.13×,
+null control passing throughout. **And one of my own claims tightened:** "identical log-likelihood"
+rested on a *relative*-tolerance gate; exact comparison shows 1.5e-07 worst difference (~8e-11
+relative). Optimiser noise, not a different answer — but **not bit-exact**, unlike the `se = FALSE`
+bootstrap speedups which genuinely passed `all.equal(tol = 0)`. Different evidence, different words.
+
+**`vcov` gap was bigger than flagged.** `coef()` is *also* missing for `gllvmTMB_multi`, and **no
+method is registered on the bare `gllvmTMB` class at all** — so the roxygen's premise was wrong even
+where its examples were right. **Docs corrected; methods NOT added** — new exported S3 methods are an
+API change, and this repo's rule is to raise those.
+
+**Silent-NA sweep: 0 new sites — and the first attempt was INVALID.** The dispatched agent reported
+"0 defects, Pass", but cited only paths in the **protected Dropbox checkout** (different branch,
+`diff -rq` = **76 files apart**) and never wrote its artefact. Recorded rather than quietly redone:
+a matching headline from the wrong inputs is the result that gets waved through for saying what you
+hoped. Hand sweep of the real tree: 21 `error = function(e) NA` sites, classified, none new.
+
+**🔴 ARC C ANSWERED, AND IT IS NEGATIVE.** The open question — can ordinal use Albert–Chib? — is
+unmeasurable directly (ordinal VA is family code 5, not built), so the **mechanism** was measured:
+AC's ψ-collapse against information per observation, dialled by `n_trials`, at `psi_true = 0.6`.
+
+| `n_trials` | 2 | 4 | 6 | 12 | 20 |
+|---|---:|---:|---:|---:|---:|
+| **AC, % of planted ψ** | **0.0** | **0.0** | **11.9** | 77.4 | 89.3 |
+| GH, % of planted ψ | 74.5 | 88.4 | 99.7 | 99.9 | 100.4 |
+
+A dose-response, not a switch. An ordinal response is a **single categorical draw**, sitting at the
+low end where **AC recovers 0.0 %**. So `GOAL.md`'s option (a) *ship AC fenced* is **off** — it would
+pin ψ at zero while the fit reports success — and (c) *regime-gate* is **off**, there being no
+favourable regime. **(b) build an ordinal GH tier is the honest route**, which makes S5 not the last
+build slice. ⚠ The measurement is the binomial-probit curve; the step to ordinal is an **inference**
+from likelihood structure, stated as such. `dev/va-speed/69-ARC-C-FEASIBILITY.md`, and recorded in
+`lanes/mature-va-ordinal/LOOP/GOAL.md` where the next builder will look.
+
+**Recorded not claimed:** loading accuracy *inverts* at high `n_trials` (GH worse than AC at 12 and
+20), opposite to Arc E at 6. Three seeds, arms overlap. Worth understanding if it survives.
+
+— Deferred work + Arc C (Claude, 2026-08-04)

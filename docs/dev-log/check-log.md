@@ -48499,3 +48499,52 @@ uncommitted working tree. Nothing was lost and the two sessions' findings agree,
 but the overlap is surfaced for the maintainer per D-87 rather than resolved here.
 
 — VA lane 2 blockers + founding premise (Claude, 2026-08-03)
+
+## 2026-08-03 (later) — RETRACTION: the "VA is refuted" claim measured the wrong arm
+
+**What was retracted.** Claim 46 in `dev/va-speed/20-CLAIMS-LEDGER.md`, committed as
+`33805e86` and written into the handover at `36f4b5b1`: *"the arc's founding premise
+is REFUTED — VA is slower than our own Laplace at every N, scaling N^1.35 vs
+N^1.00."* **It is wrong and must not be cited.**
+
+**Mechanism.** `dev/va-speed/43-va-vs-la-ladder.R` left `eval_method` at its default
+`"auto"`, which resolves to **`gh`**, and `collapse_variational_cov` at its default
+**`FALSE`**. The claim it purported to refute (`f3df8193`) measured
+**`eval_method = "ac"` with `collapse_variational_cov = TRUE`**
+(`dev/va-speed/31-la-vs-va-timing.R:44-49`) — Albert-Chib closed form plus the A_i
+collapse, i.e. the arc itself. **Two different estimators; never like-for-like.**
+
+**The numbers reconcile rather than conflict.** N=250, T=20, q=2, n_trials=6,
+`unique=FALSE`: **4.10 s** on AC+collapse, **53.02 s** on GH/H=15, **173.78 s** on
+GH/H=61 — as "GH is 75-82% of a VA fn/gr call and linear in H" predicts, compounded
+with the collapse's own gain.
+
+**What stands, with regimes attached:** VA **5.8x faster than our own Laplace**
+(AC+collapse, the cell above, 3 seeds); **1.76x faster than gllvm's VA at N=1000** at
+indistinguishable accuracy; AC **alone** 3.7x *slower* than gllvm — the collapse flips
+the sign. The coverage-blocker half of that handover is unaffected and stands.
+
+**Two signals sat uninterrogated in the run's own output:** `va_status =
+failed_health_gate` on **12/12** cells and `va_iters = NA` on **12/12**, so no cell was
+ever shown to converge rather than reach the 2000-iteration cap.
+
+**Surfaces corrected (visible banners, not quiet edits):**
+`dev/va-speed/46-VA-VS-LA-VERDICT.md`,
+`docs/dev-log/handover/2026-08-03-claude-handover-va-lane2-blockers-closed.md`,
+`dev/va-speed/20-CLAIMS-LEDGER.md` (row 46 + process lesson 3), and this file.
+
+**Commands run:** `git log -1 --format=%B f3df8193`; `grep -nE "eval_method|collapse"
+dev/va-speed/31-la-vs-va-timing.R`; `readRDS` sweep over `dev/va-speed/43-vala-*.rds`
+reporting `va_iters`/`va_status` per cell.
+
+**Deliberately NOT done:** the ladder was **not** re-run on the AC+collapse arm in this
+sitting (the arc has since been redirected to Laplace-side speed); `f3df8193` was **not**
+retracted — it stands on its own cell; nothing was reverted or force-pushed; the branch
+was **not** pushed (maintainer's call).
+
+**Process lesson (ledger lesson 3):** an argument you did not pass is a choice you did
+not make. A comparison harness must print its **RESOLVED** configuration, not its
+requested one. `43-va-vs-la-ladder.R` is to assert its resolved route and abort on
+mismatch.
+
+— VA lane-2 retraction (Claude, 2026-08-03)

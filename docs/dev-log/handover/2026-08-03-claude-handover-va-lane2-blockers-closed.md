@@ -1,4 +1,39 @@
-# Session Handoff: VA lane 2 — both coverage blockers CLOSED, and the arc's founding premise REFUTED
+# Session Handoff: VA lane 2 — both coverage blockers CLOSED (the "premise refuted" half is RETRACTED)
+
+> # 🔴 RETRACTION 2026-08-03 — READ BEFORE ACTING ON ANYTHING BELOW
+>
+> **Critical Context 2 of this handover — *"The arc's founding premise is refuted. VA is slower
+> than our own Laplace at every configuration measured, and scales worse"* — IS WRONG.** So is
+> the title's second clause and every VA/LA table in §Critical Context 2. **Do not propagate it.**
+>
+> **Why.** The ladder left `eval_method` at `"auto"` → resolved to **`gh`**, and
+> `collapse_variational_cov` at **`FALSE`**. The claim it purported to refute (`f3df8193`)
+> measured **`eval_method = "ac"` + `collapse_variational_cov = TRUE`** — Albert–Chib closed form
+> plus the A_i collapse, which *is* the arc. **Two different estimators; the comparison was never
+> like-for-like.** At N=250 the same cell is 4.10 s on AC+collapse and 53.02 s on GH/H=15.
+>
+> **What is true, with its regime attached:**
+>
+> | claim | regime | status |
+> |---|---|---|
+> | VA **5.8× faster** than our own Laplace | AC+collapse, N=250, T=20, q=2, n_trials=6, H=15, `unique=FALSE`, 3 seeds | **STANDS** (`f3df8193`) |
+> | VA **1.76× faster** than gllvm's VA at N=1000 | AC+collapse, 12 paired seeds, indistinguishable accuracy | **STANDS** |
+> | AC **alone** is 3.7× *slower* than gllvm | AC, no collapse, like-for-like | stands — **the collapse is what flips the sign** |
+> | "VA is slower than Laplace at every N" | GH, no collapse | **RETRACTED — wrong arm** |
+>
+> **The blocker half of this handover is unaffected and stands**: coverage blockers 1 and 2 are
+> closed and verified end-to-end (VA-Wald healthy yield 0/30 → 28/30 at n=150 and 29/30 at n=400;
+> LA-Profile `V_j` 30/30 with coverage 0.925/0.929). Those results do not depend on the VA speed
+> arm at all.
+>
+> **The lesson, recorded so it does not recur:** two signals were in the run's own output and
+> neither was interrogated — `va_status = failed_health_gate` on 12/12 cells and `va_iters = NA`
+> on 12/12. `memory/AGENT_LOG.md` (2026-08-03) already carried this exact failure class from
+> earlier the same day (*"the two arms fitted different models"*; *"check whether the gate you
+> are reporting can pass under the configuration you ran"*). The harness is being hardened to
+> assert its resolved route.
+>
+> **Current lane:** `lanes/mature-va-ordinal/LOOP/` — Item 1(B), ordinal-probit Albert–Chib.
 
 **Meta:** 2026-08-03 · from Claude Code (solo) · branch `claude/va-lane2` · worktree
 `/private/tmp/gllvmtmb-va-lane2` · 24 commits off `origin/main` @ `5bf18ab3`

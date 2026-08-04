@@ -1,5 +1,39 @@
 # VA vs the shipped Laplace engine — the arc's founding premise, measured
 
+> # 🔴 RETRACTED 2026-08-03 — THIS DOCUMENT MEASURED THE WRONG ESTIMATOR
+>
+> **Everything below about "VA" describes the GH-quadrature route with the A_i collapse OFF.
+> That is not the arc's VA.** The conclusion — *"the founding premise is REFUTED, VA is slower
+> than Laplace at every N"* — **does not hold and must not be cited.**
+>
+> **The mechanism.** `43-va-vs-la-ladder.R` left `eval_method` at its default `"auto"`, which
+> resolves to **`gh`**, and left `collapse_variational_cov` at its default **`FALSE`**. Ledger
+> claim `f3df8193` measured **`eval_method = "ac"` with `collapse_variational_cov = TRUE`**
+> (`dev/va-speed/31-la-vs-va-timing.R:44-49`) — Albert–Chib closed form plus the A_i collapse,
+> *which is the entire point of this arc*.
+>
+> **The numbers reconcile; they do not conflict.** At N=250: AC+collapse **4.10 s**, GH/H=15
+> **53.02 s** (~13×), GH/H=61 **173.78 s** (~42×) — exactly what "GH is 75–82% of a VA fn/gr
+> call and linear in H" predicts, compounded with the collapse's own gain.
+>
+> **What stands unchanged:** `f3df8193`'s **5.8× faster than our own Laplace** (AC+collapse,
+> N=250, T=20, q=2, n_trials=6, H=15, unique=FALSE, 3 seeds); and **1.76× faster than gllvm's
+> VA at N=1000** at indistinguishable accuracy. AC *alone*, without the collapse, is 3.7×
+> **slower** than gllvm — the collapse is what flips the sign.
+>
+> **Two signals were in this document's own output and were not interrogated:**
+> `va_status = failed_health_gate` on **12/12** cells, and `va_iters = NA` on **12/12** — so no
+> cell was ever shown to have converged rather than run to the 2000-iteration cap.
+>
+> **What survives.** The *instrument* is sound: pairing both arms on the same dataset in one
+> process, with the LA arm cross-validating at **159 outer iterations** against
+> `41-ladder-N250_q2.rds`. The LA-side numbers and the Laplace scaling (~N^1.00) stand. Only
+> the VA arm's configuration, and every conclusion drawn from it, are withdrawn.
+>
+> **Retained verbatim, not deleted**, so the correction is legible against what it corrects.
+> The harness is being hardened to assert its resolved route (`arcs.md` A1) so a silent arm
+> mismatch cannot recur.
+
 **Scope.** OWED step 2 of `2026-08-03-claude-handover-va-lane2.md`: settle whether VA scales
 superlinearly. **Where the Laplace engine's time goes is NOT this document's question** —
 that is `docs/design/laplace-cost-profile.md` (commit `695450d2`), which supersedes anything

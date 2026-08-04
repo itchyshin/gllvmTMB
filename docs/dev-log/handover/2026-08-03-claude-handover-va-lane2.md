@@ -59,8 +59,9 @@ meant. `36-seed-ordering-check.R` is the template.
 ## Current Working State
 
 - **Working:** everything in the table above; VA suite 1027 passing, 0 failing.
-- **In progress:** the **Laplace cost-profiling fleet** (`wf_e3a1cbdf-1e6`, 4 agents) — ladder
-  `.rds` files for N∈{250,1000,2500} × q∈{2,5} are on disk; its verdict doc is NOT written.
+- **In progress:** nothing. The Laplace cost-profiling fleet COMPLETED (`695450d2`); its
+  verdict is `docs/design/laplace-cost-profile.md` and ledger claims 42-45. All 21 previously
+  carried-over `dev/va-speed/` paths are now committed; the working tree is CLEAN.
 - **Blocked:** the coverage campaign (below). Nothing else.
 
 ### The profiling finding — read this, it closes the loop
@@ -74,20 +75,45 @@ At N=2500, q=5 (total 1012 s, 674 outer iterations, 12,500 random effects):
 | `MakeADFun` (tape build) | 5.5 | 0.5 |
 | R overhead | 0.013 | ~0 |
 
-This *appears* to contradict the warm-start evidence (a seed at r≈0.999 saved only 13%), and
-the resolution is the whole point: **`nlminb`'s time includes the inner Newton solves, and TMB
-already warm-starts each inner solve from the previous outer iteration's mode.** Our seed
-therefore only ever helped **iteration 1 of 674**. We were duplicating, for free, something TMB
-does internally.
+**⚠ CORRECTED 2026-08-03 after the fleet completed (`695450d2`, ledger claims 42–45). An
+earlier draft of this section asserted that the warm start "helped iteration 1 of 674" because
+TMB already warm-starts its inner solve. THAT WAS WRONG — do not propagate it.**
 
-**So the lever is not the starting point — it is the 674 outer iterations.** That lands exactly
-on gllvm's conditioning choices (`21-WHY-GLLVM-IS-FAST.md`): they converge in far fewer
-iterations because of their parameterisation. We match two of their three; the one we do not is
-the **loadings-diagonal pinning**, and `va-conditioning-audit-vs-gllvm.md` rates it
-highest-effort/highest-risk. Separately, **`sdreport` is 22% and is plausibly optional** for
-users who only want point estimates — a free speed lever with no statistical cost.
-**⚠ These numbers are raw from the ladder `.rds`; the fleet's own adversarial verification had
-not completed. Treat as strong but unverified.**
+The verified numbers, from two independent methods (Rprof and explicit instrumentation)
+agreeing to within a percentage point, across N ∈ {250, 1000, 2500} × q ∈ {2, 5}:
+
+| phase | share |
+|---|---|
+| `nlminb` (outer optimisation + sparse Cholesky) | **58–59%**, rising to ~77% as **q** grows |
+| **`TMB::sdreport`** | **38.7% (Rprof) / 39.6% (instrumented)** |
+| `MakeADFun` tape build | ~2% |
+| R-side overhead | <1% |
+
+`nlminb` + `sdreport` are ~97–98% of cold wall time. The optimiser's share climbs with the
+**latent dimension q**, not with N at fixed q; `sdreport`'s *relative* share shrinks even as its
+absolute cost grows ~33× across the grid.
+
+**THE LEVER: `se = FALSE` saves 22–39% of wall time at ZERO statistical cost**, low effort, and
+the path is already gated. Every user who wants only point estimates is paying ~40% for
+standard errors they never use. This is the single highest-value, lowest-risk speed result of
+the arc.
+
+**The corrected hybrid reconciliation (claim 45):** the warm start **does** cut iterations by
+**~40%**. The arithmetic closes exactly — 40% of the optimiser's 58% share ≈ **23%**, precisely
+the 23–24% LA-stage saving the hybrid campaign measured. The gain was real; it was absorbed by
+`sdreport`'s 39% (which no warm start can touch) plus the VA sub-fit's own cost. Same
+conclusion about the hybrid, better reason — and the better reason is what makes `se = FALSE`
+visible as the actual lever.
+
+**Ranked levers:** (1) `se = FALSE` on demand — 22–39%, free, low effort. (2) Avoid
+`sdreport`'s internal nested tape rebuild — ~0.5–1pp, inside `TMB::sdreport` itself, high
+effort. (3) Attack the sparse-Cholesky per-iteration cost — largest payoff, but statistically
+free **only** via solver-level work, never via looser tolerances. (4) The hybrid — a curiosity;
+do not invest. (5) R-side overhead — not a lever at any size tested.
+
+Conditioning (`21-WHY-GLLVM-IS-FAST.md`, `va-conditioning-audit-vs-gllvm.md`) remains the route
+to fewer iterations, and the loadings-diagonal pinning is the one gllvm choice we do not match —
+but note it attacks the 58% phase, whereas `se = FALSE` attacks 39% for almost no work.
 
 ---
 
@@ -113,7 +139,7 @@ not completed. Treat as strong but unverified.**
 | Artifact / branch | Committed | Pushed | PR | State |
 |---|---|---|---|---|
 | `claude/va-lane2` @ `47c8549a` (17 commits) | y | **n** | none | **CARRIED-OVER** |
-| `dev/va-speed/38-*`, `39-*`, `40-profile-*`, `41-*`, `42-iter-count-check.R` (21 paths) | **n** | n | none | **CARRIED-OVER** |
+| `dev/va-speed/38-*`, `39-*`, `40-profile-*`, `41-*`, `42-iter-count-check.R` + `docs/design/laplace-cost-profile.md` | y (`695450d2`) | n | none | **LANDED** (was carried-over; fleet finished) |
 | `worktree-agent-a001dee2509c89dc2` / `-a283d56f6868709e7` / `-a6930931ce81e02da`, 1 unpushed each | y | n | none | **CARRIED-OVER** (agent scratch worktrees; inspect before reusing) |
 
 **Why not landed, and how to resume:**
@@ -131,9 +157,8 @@ not completed. Treat as strong but unverified.**
 
 ## Next Immediate Steps
 
-1. **Land the profiling fleet's output** and read its verdict doc against the raw numbers above.
-   The two candidate levers to rank: reduce outer iterations (conditioning), and make
-   `sdreport` optional (22%, statistically free).
+1. **Ship `se = FALSE` on demand** -- the profiling fleet's headline: 22-39% of wall time at
+   ZERO statistical cost, low effort, path already gated. Highest value/risk ratio in the arc.
 2. **Settle whether VA scales superlinearly.** A clean VA-vs-LA N-ladder, several seeds,
    N ∈ {250, 1000, 2500}, on a **quiet** Totoro. This is the arc's founding premise and two
    harnesses now question it. Cheap, and everything else depends on it.

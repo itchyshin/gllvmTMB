@@ -42,6 +42,9 @@ Gaussian, `value ~ 0 + trait + (1 | site_f)`, T=8, single-threaded
 - **Every arm returns an identical log-likelihood** at every seed. The lever is **free**: it
   changes the optimiser's step scaling, not the answer. (This is what makes it different from
   gllvm's `inner.control`, where `tol10` may move estimates.)
+  ⚠ **See the UPDATE below — this sentence is too strong.** "Identical" rests on the script's
+  `all.equal(tolerance = 1e-8)` gate; exact comparison shows a worst difference of 1.5e-07
+  (~8e-11 relative). Optimiser noise, not a different answer — but **not bit-exact**.
 
 **Direction:** `scale = 10` is faster, `scale = 0.1` is slower, consistently, at both N, across all
 three seeds. Ratio vs baseline ≈ **1.10–1.13×** faster, and ≈ 0.88× for `scale = 0.1`.

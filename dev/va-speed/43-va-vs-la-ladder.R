@@ -66,9 +66,24 @@ mk <- function(seed, N, Q) {
   )
 }
 
+## LA_SE=FALSE makes this an ALGORITHM-vs-ALGORITHM comparison. Shinichi, 2026-08-04:
+## "algorithm times are very similar between LA and VA (AC)" -- and he is pointing at a real
+## confound in the default arm. `gllvmTMB()` runs TMB::sdreport() and VA-R3 HAS NO sdreport
+## MACHINERY AT ALL (PROFILE.md: zero grep hits in that engine). So the default LA arm delivers
+## standard errors while the VA arm cannot produce them, and sdreport is a measured 22-39% of
+## Laplace wall-clock. Comparing them as-is charges LA for a deliverable VA never provides.
+##
+## Neither arm is "the" right one -- they answer different questions:
+##   LA_SE=TRUE  (default) -- what a USER waits for today, SEs included. The fair comparison
+##                            if the user wants intervals, which VA cannot currently give.
+##   LA_SE=FALSE           -- optimiser vs optimiser, the like-for-like ALGORITHM contrast.
+## Any quoted ratio must say which.
+LA_SE <- !identical(Sys.getenv("VALA_LA_SE", "TRUE"), "FALSE")
+
 run_la <- function(d, Q) gllvmTMB::gllvmTMB(
   cbind(succ, fail) ~ 0 + trait + latent(0 + trait | unit, d = Q, unique = FALSE),
-  data = d, family = binomial(link = "probit"), unit = "unit")
+  data = d, family = binomial(link = "probit"), unit = "unit",
+  control = gllvmTMB::gllvmTMBcontrol(se = LA_SE))
 
 ## THE ARM IS REQUESTED EXPLICITLY AND THEN VERIFIED. This is the mechanical form of the
 ## retraction of claim 46 (see 20-CLAIMS-LEDGER.md): the previous version of this script left

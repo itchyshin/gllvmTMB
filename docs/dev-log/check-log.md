@@ -48830,3 +48830,18 @@ from likelihood structure, stated as such. `dev/va-speed/69-ARC-C-FEASIBILITY.md
 20), opposite to Arc E at 6. Three seeds, arms overlap. Worth understanding if it survives.
 
 — Deferred work + Arc C (Claude, 2026-08-04)
+
+---
+
+## 2026-08-04 (close) — final suite green at `e16d4b18`
+
+**371 files, 9,269 passed, 0 failed, 0 errors.** Run on a frozen tree with no `R/` or `tests/`
+edits in flight — the discipline that the two artefact runs earlier today established the need for.
+
+Baseline this session: **366 files / 8,963 passed → 371 / 9,269.**
+
+Every arc closed: **F** push-trap guard · **A** lazy `sdreport()` · **D** cheap levers (interleaved)
+· **E** gllvm head-to-head · **C** feasibility probe · the silent-NA defect (both carve-outs) ·
+dead-code + doc-rot merged. **B** is unblocked and not yet run.
+
+— Session close (Claude, 2026-08-04)

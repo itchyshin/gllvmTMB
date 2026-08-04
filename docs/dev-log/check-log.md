@@ -48548,3 +48548,51 @@ requested one. `43-va-vs-la-ladder.R` is to assert its resolved route and abort 
 mismatch.
 
 — VA lane-2 retraction (Claude, 2026-08-03)
+
+---
+
+## 2026-08-04 — push-trap guard closed; `standard_errors()` shipped (Claude, solo)
+
+**Arc F.** A branch that *tracks* `origin/main` while ahead of it is a push trap: a bare
+`git push` puts its commits on `main`. Shinichi flagged it on `claude/va-lane2` and
+suspected it generalised. Audited **566** local branches: **43** tracked `origin/main`,
+**16 were ahead**. Fixed 2 by retargeting, 14 by unsetting the upstream. New guard
+`tools/check-push-traps.sh`. **Negative-controlled**: exit 1 on the 16 real traps, exit 0
+after the fix, exit 1 again on a manufactured trap. `9d560616`
+
+**Arc A.** `standard_errors()` — deferred TMB `sdreport()` for a fit made with
+`gllvmTMBcontrol(se = FALSE)`. Parity with the eager path verified **bit-exact**
+(`tolerance = 0`) on `par.fixed`, `cov.fixed`, and the fixed-effect summary. Register row
+**EXT-35**. Narrow suite 10/10. `29d7db7e`
+
+**A claim of my own, retracted before it shipped.** Sizing Arc B I quoted per-fit seconds
+from `43-vala-ac_N*.rds` (~13 core-hours, ~15 min on Totoro), then read the status column:
+**9/9 `failed_health_gate`, 1–2 iterations**. Those are the seconds a fit costs when it
+gives up. Estimate withdrawn; Arc B now opens with a healthy-fit timing probe. Third
+occurrence of this class in this lane.
+
+**A test of mine that could not fail, corrected.** `test-standard-errors.R` claimed to prove
+the internal-state replay was load-bearing. Measured three arms — no replay/no `par.fixed`,
+no replay/with `par.fixed`, shipped accessor — all **bit-identical**, and again with a
+30-element random-effect block. `sdreport()` reads `last.par.best`; `obj$fn()` does not move
+it. Corrupting `last.par.best` directly *does* change the answer (max abs SE diff **0.20**)
+and the replay does **not** recover from it. Comment and test rewritten to claim only what
+was measured.
+
+**Blocking Arc B, escalated not worked around:** the design note requires scoring under both
+`eval_method`s, but `gaussian_anchor` has `tiers = "gh"` only
+(`R/va-r3-proto.R:1164-1176`) — `binomial_probit` is the only family with a choice, and the
+primary cells are Gaussian. Unsatisfiable as written.
+
+**Prior art the sweep surfaced, to reuse rather than re-derive:** Qin, Mizuno, Morrison &
+Nakagawa 2026 §7.2 — sandwich and parametric-bootstrap intervals **reverse ordering** with
+specification. Tracked as CI-17. Arc B must cite it.
+
+**Recorded OPEN, not closed:** `.gllvmTMB_b_fix_se()` (`R/methods-gllvmTMB.R:209`) returns NA
+with no warning when `sd_report` is NULL; `confint(method = "wald")` propagates it to an
+all-NA interval **silently** (runtime probe, `dev/va-speed/60-se-false-consumer-probe.md`).
+
+**Deliberately NOT done:** arcs D, B, E not started; nothing promoted; the `confint`/`vcov`
+fence untouched; no PR opened; branch not pushed this sitting.
+
+— Arcs F + A (Claude, 2026-08-04)

@@ -751,6 +751,37 @@
 
 ## Internal helper: turn a confint-style level into the two column
 ## names `<lo>%` and `<hi>%` (matches the matrix shape used elsewhere).
+## Shared gate for every `confint()` route that builds an interval from
+## `sd_report`. A Wald interval is estimate +/- z * SE, so with no `sd_report`
+## every bound is NA -- and returning that matrix is worse than failing: an
+## all-NA interval is not a degraded answer, it is a NON-answer that looks like
+## one and flows onward into tables and plots with nothing marking it (D-33).
+##
+## Profile routes do not read `sd_report`, so they are deliberately NOT gated;
+## the error below advertises that alternative, and it was verified to work on
+## an `se = FALSE` fit rather than merely offered.
+##
+## Scope, stated honestly: this closes the NULL-`sd_report` case. It does NOT
+## cover a `sd_report` that exists but yields non-finite SEs (a non-positive
+## -definite Hessian), which still surfaces as bare `NaN`. That is a separate
+## defect, recorded rather than silently folded in.
+.confint_require_sdreport <- function(object, method) {
+  if (identical(method, "profile") || !is.null(object$sd_report)) {
+    return(invisible(NULL))
+  }
+  ## Plain prose, not cli markup: this string is interpolated as a VALUE, and
+  ## cli does not evaluate inline markup inside interpolated values -- the
+  ## braces would print literally.
+  reason <- object$sdreport_error %||%
+    "no standard errors were computed for this fit"
+  cli::cli_abort(c(
+    "{.fn confint} cannot compute a Wald interval without standard errors.",
+    "x" = "This fit has no {.field sd_report}: {reason}",
+    ">" = "Compute them without refitting: {.code fit <- standard_errors(fit)}",
+    "i" = "Or use {.code method = \"profile\"}, which does not need them."
+  ), class = "gllvmTMB_confint_no_sdreport")
+}
+
 .confint_colnames <- function(level) {
   c(
     sprintf("%.1f %%", 100 * (1 - level) / 2),
@@ -1691,6 +1722,14 @@ confint.gllvmTMB_multi <- function(
         ))
       }
       if (method == "wald") {
+        ## Same gate as the fixed-effects path below. This one is easy to miss:
+        ## `.confint_wald_targets()` wraps its SE lookup in a tryCatch that
+        ## turns a NULL `sd_report` into `NA_real_`, so it produced a silent
+        ## all-NA interval for every non-`b_fix` target. An adversarial review
+        ## caught it AFTER the fixed-effects guard had already been written and
+        ## the closure claimed -- the guard was in the right shape but nineteen
+        ## lines too late.
+        .confint_require_sdreport(object, method)
         return(.confint_wald_targets(object, parm = parm, level = level, ...))
       }
       ## bootstrap on direct variance/dispersion components is not
@@ -1701,29 +1740,7 @@ confint.gllvmTMB_multi <- function(
   }
 
   ## ---- Fixed-effects / variance-component path -----------------------------
-  ## A Wald interval is estimate +/- z * SE, so with no `sd_report` every bound
-  ## is NA. Returning that matrix is worse than failing: an all-NA interval is
-  ## not a degraded answer, it is a NON-answer that looks like one, and it
-  ## flows onward into tables and plots with nothing to mark it. Every sibling
-  ## consumer of `sd_report` in this package already aborts here
-  ## (`getREsd()`, `getLV(se = TRUE)`, `predict(se.fit = TRUE)`); this path was
-  ## the outlier. Profile intervals do not read `sd_report`, so they are not
-  ## gated. (Confirmed by runtime probe 2026-08-04, not by reading:
-  ## dev/va-speed/60-se-false-consumer-probe.md.)
-  if (method != "profile" && is.null(object$sd_report)) {
-    ## Plain prose, not cli markup: this string is interpolated as a VALUE
-    ## below, and cli does not evaluate inline markup inside interpolated
-    ## values -- the braces would print literally.
-    reason <- object$sdreport_error %||%
-      "no standard errors were computed for this fit"
-    cli::cli_abort(c(
-      "{.fn confint} cannot compute a Wald interval without standard errors.",
-      "x" = "This fit has no {.field sd_report}: {reason}",
-      ">" = "Compute them without refitting:
-             {.code fit <- standard_errors(fit)}",
-      "i" = "Or use {.code method = \"profile\"}, which does not need them."
-    ), class = "gllvmTMB_confint_no_sdreport")
-  }
+  .confint_require_sdreport(object, method)
 
   if (method == "wald") {
     td <- tidy(object, "fixed", conf.int = TRUE, conf.level = level)

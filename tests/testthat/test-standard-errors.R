@@ -147,3 +147,26 @@ test_that("summary() on an se = TRUE fit does NOT emit the missing-SE note", {
   ## A note that always prints is not a note.
   expect_false(grepl("standard_errors", out, fixed = TRUE))
 })
+
+test_that("confint() also aborts on the variance-component target path", {
+  skip_on_cran()
+  ## Found by adversarial review AFTER the fixed-effects guard was written and
+  ## the closure claimed: `.confint_wald_targets()` returns BEFORE that guard,
+  ## and its SE lookup swallows a NULL sd_report into NA_real_. So
+  ## `confint(parm = "sigma_eps")` still handed back a silent all-NA interval.
+  fit <- .se_fit(.se_test_data(), se = FALSE)
+
+  expect_error(
+    confint(fit, parm = "sigma_eps", method = "wald"),
+    class = "gllvmTMB_confint_no_sdreport"
+  )
+})
+
+test_that("the variance-component target path still works with standard errors", {
+  skip_on_cran()
+  ## The inverse guard: the abort must key on a missing sd_report, not on the
+  ## parm label. Without this, an over-broad gate would look like a pass above.
+  fit <- .se_fit(.se_test_data(), se = TRUE)
+  ci <- confint(fit, parm = "sigma_eps", method = "wald")
+  expect_false(all(is.na(as.numeric(ci))))
+})

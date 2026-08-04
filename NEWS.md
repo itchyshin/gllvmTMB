@@ -16,9 +16,16 @@ bridge remains experimental and is not required for the main workflow.
   `confint(method = "wald")` now **raises a typed error**
   (`gllvmTMB_confint_no_sdreport`) naming both remedies:
   `fit <- standard_errors(fit)`, or `method = "profile"`, which does not need
-  standard errors. Every other consumer of `sd_report` in the package
-  (`getREsd()`, `getLV(se = TRUE)`, `predict(se.fit = TRUE)`) already behaved
-  this way; `confint()` was the outlier.
+  standard errors. This covers both Wald routes — the fixed-effects path and
+  the variance-component target path (`parm = "sigma_eps"` and friends). The
+  extractor-style consumers `getREsd()`, `getLV(se = TRUE)` and
+  `predict(se.fit = TRUE)` already behaved this way.
+
+  **What this does not cover.** The gate is on a *missing* `sd_report`. A fit
+  that has one but whose Hessian is not positive-definite still yields
+  non-finite standard errors, and those still surface as bare `NaN` in
+  `summary()`, `confint()`, and `extract_cutpoints()` without explanation.
+  That is a real and separate defect, recorded rather than folded in here.
 
   **`summary()` deliberately still works.** Fitting fast and reading point
   estimates is a legitimate workflow, so `summary()` prints as before — but it

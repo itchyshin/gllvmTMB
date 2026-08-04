@@ -2112,6 +2112,51 @@
   obj
 }
 
+## Two gradient thresholds with DIFFERENT jobs. They were the same bare literal
+## (1e-4) in four places, which is how the health gate came to be calibrated by
+## accident.
+##
+## The HEALTH bar decides whether a start reached the optimum. Its companion
+## criterion is objective agreement to `agreement_tolerance` (1e-6) across starts,
+## so the defensible bar is the one that admits every point whose objective is
+## within 1e-6 of optimal and rejects every point that is not. Measured directly
+## (dev/va-speed/45-gradient-vs-objective-gap.R: walk away from a converged par*
+## along random directions, record max|gradient| against the objective gap):
+##
+##   n_obs   admissible max|g|        must-reject max|g|      safe window
+##     400   [8.43e-05, 1.13e-02]     [2.01e-02, 170]         (0.0113, 0.0201)
+##    1200   [9.72e-05, 9.57e-03]     [1.38e-02, 138]         (0.0096, 0.0138)
+##    3200   [2.28e-04, 7.79e-03]     [1.34e-02, 343]         (0.0078, 0.0134)
+##
+## Two things follow, and the second contradicts the obvious diagnosis. First, the
+## old 1e-4 bar was ~130-200x TOO TIGHT -- which is why the 2026-08-03 Step-0 pilot
+## got 0/30 healthy fits at n=150 and n=400 while all four starts agreed to 6+
+## significant figures. Second, the safe window BARELY MOVES with n_obs, and if
+## anything tightens (0.0201 -> 0.0134 over an 8x n range), so making the bar
+## relative or N-scaled -- the intuitive fix for "an absolute bar on an extensive
+## quantity" -- would scale it the WRONG WAY. A single looser constant is correct.
+##
+## 5e-3 is chosen to sit below the must-reject floor with margin (2.7x below the
+## smallest gradient ever seen with an objective gap >= 1e-6, which is 1.34e-02)
+## while still admitting every genuinely-converged start observed across
+## n in {50,150,400} x 3 seeds x 4 starts -- the largest of which is 4.97e-03.
+## A tighter 1e-3 was tried first and rejected: it left the primary cells at 4/4
+## but took n=50 seed 20260803 (gradients 1.99e-03..4.97e-03, all with objective
+## gaps under 1e-6, i.e. genuinely converged) from 4/4 to 0/4, losing the cell
+## entirely. Erring toward admission is the safer error here BECAUSE the gate does
+## not rest on this criterion alone: `agreement_tolerance` independently requires
+## the best three objectives to agree to 1e-6, so a start that slips past a
+## slightly loose gradient bar is still caught if it is actually at a different
+## optimum. The gradient bar's job is to exclude divergence, not to certify
+## convergence on its own.
+.VA_R3_HEALTH_GRADIENT_TOL <- 5e-3
+
+## The POLISH target is an effort knob, not a verdict: how hard to push before
+## giving up. It stays STRICTER than the health bar on purpose -- polishing past
+## the bar is cheap and produces better fits, so it must not be relaxed merely
+## because the health bar was found to be miscalibrated.
+.VA_R3_POLISH_GRADIENT_TARGET <- 1e-4
+
 .va_r3_fit <- function(y, n_trials, X, unit_id, trait_id, q,
                        N = NULL, T = NULL,
                        family = c("binomial", "poisson", "gaussian_anchor",
@@ -2283,7 +2328,7 @@
     for (polish in seq_len(2L)) {
       current_gradient <- tryCatch(obj$gr(opt$par), error = function(e) NA_real_)
       if (all(is.finite(current_gradient)) &&
-          max(abs(current_gradient)) < 1e-4) break
+          max(abs(current_gradient)) < .VA_R3_POLISH_GRADIENT_TARGET) break
       candidate <- tryCatch(
         stats::nlminb(opt$par, obj$fn, obj$gr, control = control),
         error = function(e) NULL
@@ -2296,7 +2341,7 @@
     polish_optimizer <- "nlminb_only"
     post_nlminb_gradient <- tryCatch(obj$gr(opt$par), error = function(e) NA_real_)
     if (!all(is.finite(post_nlminb_gradient)) ||
-        max(abs(post_nlminb_gradient)) >= 1e-4) {
+        max(abs(post_nlminb_gradient)) >= .VA_R3_POLISH_GRADIENT_TARGET) {
       ## L-BFGS-B, not BFGS: BFGS carries a dense inverse-Hessian over the whole
       ## parameter vector, which here includes N*(2q + q(q-1)/2) variational
       ## coordinates, so its cost grows with n while L-BFGS-B's limited memory
@@ -2324,7 +2369,7 @@
       max(abs(gradient))
     } else Inf
     healthy <- identical(opt$convergence, 0L) && is.finite(opt$objective) &&
-      finite_parameters && max_abs_gradient < 1e-4
+      finite_parameters && max_abs_gradient < .VA_R3_HEALTH_GRADIENT_TOL
     ## `par` is contractually the FULL parameter vector, variational block
     ## included -- report(), the latent read-out, and every test read it that
     ## way. Under profile_variational the outer optimiser only ever sees the
@@ -2449,7 +2494,7 @@
       all_starts_healthy = length(healthy_id) == length(starts),
       objective_agreement = agreement,
       best_three_objective_range = agreement_range,
-      gradient_tolerance = 1e-4,
+      gradient_tolerance = .VA_R3_HEALTH_GRADIENT_TOL,
       agreement_tolerance = 1e-6,
       max_projected_variance = max_projected_variance,
       projected_variance_limit = 4,

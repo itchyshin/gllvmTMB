@@ -1621,3 +1621,69 @@ test_that("R3 multi-tier path NESTS the single-tier path exactly", {
   expect_identical(r2$n_tiers, 2L)
   expect_identical(sum(names(two$par) == "log_sd_tier"), T)
 })
+
+## ---- The health gate's gradient bar is CALIBRATED, not assumed -------------
+##
+## Until 2026-08-03 the bar was a bare `1e-4` literal repeated in four places.
+## It was ~130-200x too tight: the Step-0 coverage pilot got 0/30 healthy fits at
+## BOTH primary cells (n=150, n=400) while all four starts agreed to 6+
+## significant figures. `dev/va-speed/45-gradient-vs-objective-gap.R` measured the
+## admissible/must-reject boundary directly by walking away from a converged
+## optimum and recording max|gradient| against the objective gap.
+##
+## These tests pin the two properties the calibration rests on, so the constant
+## cannot drift back without a failure. They are deliberately fit-free: the
+## measurement lives in the dev-log, the INVARIANTS live here.
+
+test_that("the health gradient bar sits inside its measured window", {
+  bar <- gllvmTMB:::.VA_R3_HEALTH_GRADIENT_TOL
+
+  ## Upper guard: the smallest max|gradient| ever observed with an objective gap
+  ## >= the gate's own agreement_tolerance was 1.34e-02 (at n_obs = 3200). The bar
+  ## must stay clear of it, or the gate starts admitting genuinely-wrong starts.
+  expect_lt(bar, 1.34e-2)
+
+  ## Lower guard: the largest max|gradient| observed on a genuinely CONVERGED
+  ## start was 4.97e-03 (n=50, seed 20260803). A bar at or below that rejects
+  ## converged fits -- the defect this replaced. A tighter 1e-3 was tried and
+  ## took that cell from 4/4 healthy to 0/4.
+  expect_gt(bar, 4.97e-3)
+})
+
+test_that("the polish target stays stricter than the health bar", {
+  ## They are different jobs: the polish target is how hard to push, the health
+  ## bar is the verdict. Polishing past the bar is cheap and yields better fits,
+  ## so relaxing the effort knob to match the verdict would silently degrade
+  ## every fit. Ordering is the invariant, not either value.
+  expect_lt(
+    gllvmTMB:::.VA_R3_POLISH_GRADIENT_TARGET,
+    gllvmTMB:::.VA_R3_HEALTH_GRADIENT_TOL
+  )
+})
+
+test_that("the reported gradient_tolerance is the one actually applied", {
+  ## The reported value and the applied value were separate literals; they could
+  ## drift apart with nothing to catch it. They are now one constant, and this
+  ## asserts the report reflects it.
+  set.seed(4242L)
+  N0 <- 40L; T0 <- 4L; Q0 <- 1L
+  lam <- matrix(stats::rnorm(T0 * Q0, 0, 0.8), T0, Q0)
+  a <- matrix(stats::rnorm(N0 * Q0), N0, Q0)
+  eta <- a %*% t(lam)
+  y <- stats::rbinom(N0 * T0, 1L, stats::plogis(as.vector(eta)))
+  d <- data.frame(
+    y = y,
+    unit = rep(seq_len(N0), times = T0),
+    trait = rep(seq_len(T0), each = N0)
+  )
+  X <- unname(stats::model.matrix(~ 0 + factor(trait), data = d))
+  fit <- gllvmTMB:::.va_r3_fit(
+    y = d$y, n_trials = rep(1L, nrow(d)), X = X,
+    unit_id = d$unit, trait_id = d$trait, q = Q0,
+    family = "binomial", link = "logit", H = 15L, n_starts = 4L
+  )
+  expect_identical(
+    fit$health$gradient_tolerance,
+    gllvmTMB:::.VA_R3_HEALTH_GRADIENT_TOL
+  )
+})

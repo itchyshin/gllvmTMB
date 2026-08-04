@@ -70,3 +70,17 @@ per-iteration cost explodes, the cause is elsewhere and conditioning work would 
 
 **That single seed is the cheapest reproducer of this lane's biggest speed problem, and it is
 already in hand.**
+
+### Head start for whoever picks this up
+
+**Our half of the instrumentation already exists.** `R/va-r3-proto.R:1408` and `:1413` both record
+`iterations` (`fit$iterations`, `ac$best$iterations`) — the number is captured at fit time, it is
+simply nested somewhere other than where I probed (`o$best$iterations` returned `NA`). Locating it
+is a grep, not a code change.
+
+**gllvm's half is the real unknown.** Its return object exposes `convergence` and `optim.method`
+but no iteration count, so that side needs either a `trace = TRUE` capture parsed from console
+output, or a wrapper around its optimiser call. Budget the effort there, not on our side.
+
+**Reproducer, exactly:** `dev/va-speed/71-split25.R`, N=120 T=10 q=1 binomial-probit,
+`n_trials` = 6, **seed 1** — 25.5 s against a 0.75 s median, `status = "healthy"`.

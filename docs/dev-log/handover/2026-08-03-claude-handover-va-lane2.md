@@ -223,8 +223,18 @@ but note it attacks the 58% phase, whereas `se = FALSE` attacks 39% for almost n
   solve, so a mode seed helps 1 iteration of 674.
 - **Do NOT re-attempt `init_strategy` as a warm-start hook** — it seeds `log_phi_*` only, a
   no-op for binomial. The real hooks are `control$start_from` and `control$vgh_warm_start`.
-- **`profile_variational = TRUE` is a clear loser** — 27.7 s vs 2.75 s at N=250, 128.5 s vs
-  29.1 s at N=1000.
+- **`profile_variational = TRUE` is REGIME-DEPENDENT, not a universal loser.** ⚠ An earlier
+  draft of this list said "a clear loser" unqualified — that would send you away from a 9.6×
+  win. Both of these are measured and both are true:
+  * **WITH the A_i collapse** (h2h, AC tier, T=20): a loser — 27.7 s vs 2.75 s at N=250,
+    128.5 s vs 29.1 s at N=1000.
+  * **WITHOUT the collapse** (`51-crossover-plain_*`, plain tier, T=10): a **9.6× WIN** at
+    N=1000 (1.16× at N=250), same optimum (`rel_gap` 4e-11).
+  **They are SUBSTITUTES, not complements.** The collapse already removes the per-unit
+  variational blocks, so profiling has nothing left to concentrate out and only adds
+  inner-solve overhead; without the collapse, profiling is what does that work. An earlier
+  check that they "compose" tested only that the objective is identical — correctness, not
+  speed. On speed they compete. **Never quote either number without its tier.**
 - **`Rscript --vanilla` implies `--no-environ`**, so `~/.Renviron` is ignored and `gllvm`
   (in `~/R/lib`) is invisible. **Always pass `R_LIBS_USER=$HOME/R/lib` explicitly on Totoro.**
   This killed one campaign launch today.

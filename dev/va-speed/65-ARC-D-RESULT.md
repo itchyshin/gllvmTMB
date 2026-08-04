@@ -119,3 +119,35 @@ evidence, different words.
 **Still not promoted.** A constant `scale = 10` that helps one Gaussian cell is not a default;
 choosing a principled per-parameter scale remains the open question, and VA-R3 still has no
 `scale` pass-through at all.
+
+---
+
+## ADDENDUM 2026-08-04 — the `se = FALSE` saving, measured rather than inherited
+
+Arc A's headline (**1.49–1.57× on the core LA fit**) was carried forward from the previous
+session's design note and had **not** been re-measured here. Measured now — Totoro, single-threaded,
+**interleaved** (arms alternate within each replicate, order rotated), median of 3, Gaussian
+`value ~ 0 + trait + (1 | site_f)`, T=8:
+
+| N | `se = TRUE` | `se = FALSE` | saving |
+|---:|---:|---:|---:|
+| 250 | 0.404 s | 0.243 s | **1.66×** |
+| 1000 | 1.604 s | 0.942 s | **1.70×** |
+| 2500 | 3.998 s | 2.373 s | **1.68×** |
+
+**Flat in N at ~1.7×**, and *higher* than the inherited 1.49–1.57× — the carried-forward figure was
+conservative. Script: `dev/va-speed/70-se-false-saving.R`.
+
+### ⚠ What this is, and what it is not
+
+This is **not the same computation made faster.** It is the cost of a computation *not performed*.
+A fit that skips `sdreport()` is 1.7× quicker because it does less work; ask for the standard errors
+afterwards and you pay the same total. `standard_errors()` does not reduce that cost — it **moves**
+it, from fit time to the point of use.
+
+So the saving is real only where **most fits never need standard errors**: model selection,
+simulation loops, a grid of candidate structures. That is exactly the workflow Arc A was built for,
+and the point of Arc A is that skipping is no longer a one-way door.
+
+**Nothing shipped this session makes the same work faster.** The only measured *like-for-like*
+speedup is `nlminb(scale = 10)` at 1.11–1.13×, and it is **not wired in**.

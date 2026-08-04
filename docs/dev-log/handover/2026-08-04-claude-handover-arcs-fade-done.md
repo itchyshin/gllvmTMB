@@ -203,3 +203,71 @@ retractions. **Arc B is now runnable**; open it with a timed pilot on health-gat
 `vcov()` / `coef()` for `gllvmTMB_multi` (approval needed) · seven per-repo `AGENTS.md` core-count
 refreshes · Arc B itself (now unblocked) · Arc C as a **build** (the probe only sizes it) ·
 **nothing pushed**.
+
+---
+
+# FINAL UPDATE — the speed answer, and the single best next move
+
+**Branch:** `claude/va-lane2` @ `96e2f408` · **PUSHED** · `origin/main` untouched at `5bf18ab3`
+
+## Does speed improve? Measured, not inherited
+
+| what | measured | caveat |
+|---|---:|---|
+| `se = FALSE` (skip `sdreport`) | **1.66–1.70×**, flat in N | **work NOT DONE**, not work sped up. `standard_errors()` *moves* the cost to point of use. Real only where most fits never need SEs |
+| `nlminb(scale = 10)` | **1.11–1.13×**, 10/10 interleaved | the only like-for-like speedup measured. **Not wired in** |
+| vs gllvm | **we lose** | see below |
+
+Arc A's inherited 1.49–1.57× was **conservative** — re-measured at ~1.7×
+(`dev/va-speed/70-se-false-saving.R`). **Nothing shipped this session makes the same work faster.**
+
+## 🔴 THE FINDING TO CARRY: the gllvm gap is VARIANCE, not a constant factor
+
+Two of our own facts contradicted each other — claim 20 (STANDS: gllvm wastes ~57 % of its outer
+parameters rediscovering the `A_i` closed form we exploit) versus Arc E (we lose 0/12 by 10–50×).
+Measured, 8 seeds, both engines, same DGP:
+
+| | min | median | max | spread |
+|---|---:|---:|---:|---:|
+| gllvm-VA | 0.086 s | **0.093 s** | 0.294 s | **3.4×** |
+| ours AC | 0.692 s | **0.753 s** | **25.508 s** | **36.9×** |
+
+Seven of eight seeds sit in 0.69–0.92 s. **One costs 25.5 s — 35× our own median — and reports
+`status = "healthy"`.** It converged; it just took 35× longer, and nothing in the fit's own status
+says so.
+
+**Typical gap is 8×, not 25×. The dominant problem is variance.** And it reads as **conditioning**:
+seed 1 is harder for both engines, but gllvm degrades **3.2×** where we degrade **34×** on the same
+data. That points at the gap claim 30 already names — *they pin the loadings diagonal with a
+separate scale; ours is unconstrained* — and at the `scale=` lever whose crude constant-vector proxy
+already bought 1.11–1.13×.
+
+⚠ **Not a refinement of Arc E's 25×** — different code path (`.va_r3_fit()` direct vs
+`18-four-way.R`), different absolutes. **Do not merge the figures.** And the conditioning reading is
+an **inference from the degradation pattern**, not from counted iterations: gllvm exposes no
+iteration count.
+
+### The single best next move
+
+**Instrument outer-iteration counts on both sides and re-run seed 1 against the other seven.**
+~35× the iterations at similar per-iteration cost ⇒ conditioning confirmed, and the loadings-diagonal
+scale is the concrete thing to try. Per-iteration cost exploding instead ⇒ cause is elsewhere and
+conditioning work would be wasted. **Seed 1 is the cheapest reproducer of this lane's biggest speed
+problem and it is already in hand** (`dev/va-speed/71-split25.R`, N=120 T=10 q=1 binomial-probit
+`n_trials`=6, seed 1).
+
+Detail: `dev/va-speed/72-THE-GAP-IS-VARIANCE.md`.
+
+## Also landed since the previous update
+
+`vcov()` / `coef()` for `gllvmTMB_multi` (**EXT-37**), on approval — docs corrected first, methods
+added second, so the repo never promised what it did not do. `vcov()` reuses `confint()`'s gate, and
+`sqrt(diag(vcov(fit)))` is asserted equal to `summary()`'s SEs so the surfaces cannot drift apart.
+
+**Full suite: 371 files, 9,286 passed, 0 failed.** Session: 366 / 8,963 → 371 / 9,286.
+
+## Open
+
+Arc B (unblocked — run the timed pilot first) · ordinal, now correctly sized to option (b) ·
+three unplumbed levers · **whether this lane is the priority at all** — D-113 names missing-data
+#332 primary and none of these arcs is one of the six 0.7 tracks.

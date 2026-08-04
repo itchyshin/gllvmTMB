@@ -94,7 +94,20 @@ Consequence for route selection: a route scored under GH does not transfer to AC
 **Not a coverage certificate — a ROUTE SELECTION.** D-112 fences coverage campaigns as a
 release blocker and directs post-0.6 effort at capabilities. This is a capability question:
 *can VA ship intervals at all, and by which route?* Framed that way it is inside D-112, not
-against it. **Confirm that framing with Shinichi before spending the compute.**
+against it. ~~**Confirm that framing with Shinichi before spending the compute.**~~
+**CONFIRMED 2026-08-04** (decision 2 of the four taken that day) — the framing is approved and
+compute may be spent.
+
+⚠ **But approval is not precedence.** Asked on 2026-08-04 whether this VA lane precedes
+**missing-data #332** — the primary post-0.6 slice named by [[DECISIONS#D-113|D-113]] — Shinichi
+answered **"not necessarily."** So this campaign is *unblocked*, not *prioritised*: none of the VA
+arcs is one of D-113's six 0.7 capability tracks, and #332 remains the named primary. Run it when
+it is the right thing to run, not because it is the thing that happens to be unblocked.
+
+⚠ **Before sizing anything here, note the retracted estimate.** An earlier attempt to budget this
+campaign derived per-fit seconds from `dev/va-speed/43-vala-ac_N*.rds` and concluded ~13
+core-hours. Those rows are **`failed_health_gate` 9/9 at 1–2 iterations** — the cost of a fit that
+gives up. **Open with a timed pilot on health-gate-passing fits**, and set the seed count from that.
 
 1. **Score the sandwich route** at the two primary cells, alongside Wald as the control. This is
    the single highest-value measurement and it has never been made.
@@ -103,8 +116,33 @@ against it. **Confirm that framing with Shinichi before spending the compute.**
    90% of fits is a different product from one that works on all of them.
 3. **Enough seeds to rank routes.** 30 seeds cannot: MCSE 0.055. Ranking two routes ~0.03 apart
    needs several hundred. Budget accordingly, on Totoro, results LOCAL (D-50).
-4. **Score under BOTH `eval_method`s.** §4 means an AC result and a GH result are different
-   claims.
+4. **Score under both `eval_method`s — WHERE THE FAMILY HAS BOTH.** §4 means an AC result and a
+   GH result are different claims, so where a choice exists it must be scored on both.
+
+   ⚠ **CORRECTED 2026-08-04. As originally written this requirement was unsatisfiable**, and it
+   would have blocked or misdirected the campaign. The family registry
+   (`R/va-r3-proto.R:1164-1176`, `:1253-1261`) gives:
+
+   | family | code | tiers |
+   |---|---:|---|
+   | `gaussian_anchor` | 0 | **`gh` only** |
+   | `binomial_probit` | 4 | `gh`, `ac` — **the only family with a choice** |
+
+   The campaign's primary cells (n=150/400) are **Gaussian**, which has **no `ac` tier at all**.
+   "Score under both arms" is therefore impossible on the very cells that produced the
+   0.897/0.935 pilot numbers.
+
+   **Resolution (Shinichi, 2026-08-04): family-conditional.** Score both arms only where the
+   family has both. Concretely: the Gaussian primary cells are scored on **`gh` alone**, which
+   keeps them directly comparable to the 0.897/0.935 pilot; the AC-vs-GH contrast is scored on a
+   **`binomial_probit`** cell, and reported as a *separate* claim about a *different* family —
+   never merged into the Gaussian result. The alternative — moving the primary DGP to
+   binomial-probit — was rejected because it would silently change the cell under the pilot
+   numbers, which is precisely the substitution that produced this lane's retractions.
+
+   **Consequence for reporting:** every route-selection statement must name its family and its
+   arm. "The sandwich route covers at 0.94" is not a claim; "the sandwich route covers at 0.94 on
+   Gaussian/`gh`" is.
 5. Only then consider profile, and only then revisit bootstrap.
 
 **Both former blockers are closed** (`f15ad1b7` health gate; `2a174fb9` + `86049310` estimand),

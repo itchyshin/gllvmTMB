@@ -46,12 +46,24 @@ for (fn in c("va_r3_mills_cf", "va_r3_log_pnorm", "va_r3_log1mexp", "va_r3_log_p
 cat(sprintf("extracted %d lines of helper block from %s (lines %d-%d)\n",
             length(block), SRC, max(1, i0 - 3), i2))
 
-## The unclamped negative control: same code, clamp ceiling pushed to 1e-300 -- the floor the
-## derivation says is NOT sufficient because it rescues the series branch and leaves the direct
-## branch at log(1 - exp(-1e-300)) = log(0).
-block_unclamped <- sub("Type\\(-1\\.2e-16\\)", "Type(-1e-300)", block, perl = TRUE)
-stopifnot(!identical(paste(block, collapse = "\n"),
-                     paste(block_unclamped, collapse = "\n")))
+## TWO negative controls, because the first did not fire and that had to be EXPLAINED rather
+## than shrugged at.
+##
+## control A -- ceiling pushed to 1e-300, the floor the derivation says is INSUFFICIENT (it
+##   rescues the series branch and leaves the direct branch at log(1-exp(-1e-300)) = log(0)).
+##   MEASURED HERE: it does NOT produce a non-finite he(). So either an -Inf on an unselected
+##   CondExp path does not poison the Hessian in this construction, or the mechanism differs
+##   from the one documented for va_r3_log_pnorm -- where the poison was a NaN from 0/0 in the
+##   unselected branch's DERIVATIVE, not an -Inf in its value.
+## control B -- the clamp REMOVED ENTIRELY (ac = a). At a = 0 exactly, BOTH branches become
+##   log(0) = -Inf, so even the SELECTED value is -Inf. This asks whether the failure mode
+##   exists at all, and separates "this clamp is load-bearing" from "any floor would do".
+block_ctrlA <- sub("Type\\(-1\\.2e-16\\)", "Type(-1e-300)", block, perl = TRUE)
+block_ctrlB <- sub("Type ac = CppAD::CondExpGt\\(a, ceil_a, ceil_a, a\\);",
+                   "Type ac = a;", block, perl = TRUE)
+stopifnot(!identical(paste(block, collapse = "\n"), paste(block_ctrlA, collapse = "\n")),
+          !identical(paste(block, collapse = "\n"), paste(block_ctrlB, collapse = "\n")))
+block_unclamped <- block_ctrlA
 
 ## TWO MODES, and the split is forced by TMB, not by preference.
 ##
@@ -114,24 +126,26 @@ probe <- function(dll, a, b = 0, mode = 1L, at = 0) {
 }
 
 cat("\n== building CLAMPED (as written) ==\n");   d1 <- build(block, "vartest_clamped")
-cat("== building UNCLAMPED (negative control) ==\n"); d2 <- build(block_unclamped, "vartest_unclamped")
+cat("== building CONTROL A (1e-300 floor) ==\n");  d2 <- build(block_ctrlA, "vartest_ctrlA")
+cat("== building CONTROL B (clamp REMOVED) ==\n"); d3 <- build(block_ctrlB, "vartest_ctrlB")
 
 ## ---- THE he() GATE, on va_r3_log1mexp where the clamp lives ----
 ## arg = 0 is the killer case: two log-probabilities bit-identical, difference exactly 0.
 ## Unclamped, log1mexp(0) takes its series branch with series_arg = 0 -> log(0) = -Inf.
 l1m_args <- c(0, -1e-18, -1e-16, -1e-12, -1e-6, -0.5, -5, -40)
 cat(sprintf("\n== he() GATE: va_r3_log1mexp (the clamp's home) ==\n"))
-cat(sprintf("%12s | %-30s | %-30s\n", "log1mexp arg",
-            "CLAMPED   fn / gr / he", "UNCLAMPED fn / gr / he"))
+cat(sprintf("%12s | %-19s | %-19s | %-19s\n", "log1mexp arg",
+            "CLAMPED   fn / he", "CTRL A 1e-300 fn/he", "CTRL B nocl. fn/he"))
 rows <- list()
 for (a in l1m_args) {
-  c1 <- probe(d1, a, mode = 0L); c2 <- probe(d2, a, mode = 0L)
-  f1 <- all(is.finite(c1)); f2 <- all(is.finite(c2))
-  cat(sprintf("%12.3g | %9.4f %8.3f %9.4g | %9.4f %8.3f %9.4g\n",
-              a, c1[1], c1[2], c1[3], c2[1], c2[2], c2[3]))
+  c1 <- probe(d1, a, mode = 0L); c2 <- probe(d2, a, mode = 0L); c3 <- probe(d3, a, mode = 0L)
+  f1 <- all(is.finite(c1)); f2 <- all(is.finite(c2)); f3 <- all(is.finite(c3))
+  cat(sprintf("%12.3g | %9.4g %9.4g | %9.4g %9.4g | %9.4g %9.4g\n",
+              a, c1[1], c1[3], c2[1], c2[3], c3[1], c3[3]))
   rows[[length(rows) + 1L]] <- data.frame(arg = a, danger = (a > -1e-15),
-                                          clamped_finite = f1, unclamped_finite = f2,
-                                          clamped_he = c1[3], unclamped_he = c2[3])
+                                          clamped_finite = f1, ctrlA_finite = f2,
+                                          ctrlB_finite = f3, clamped_he = c1[3],
+                                          ctrlA_he = c2[3], ctrlB_he = c3[3])
 }
 res <- do.call(rbind, rows)
 
@@ -161,15 +175,18 @@ print(acc, row.names = FALSE, digits = 10)
 ## ---- verdict ----
 dz <- res[res$danger, ]
 pass_clamped  <- all(res$clamped_finite)
-fired_control <- any(!dz$unclamped_finite)
+firedA <- any(!dz$ctrlA_finite); firedB <- any(!dz$ctrlB_finite)
+fired_control <- firedA || firedB
 acc_ok        <- all(is.finite(acc$abs_err)) && all(acc$abs_err < 1e-5)
 vals_ok       <- all(is.finite(vals$clamped_fn))
 
 cat("\n================ VERDICT ================\n")
 cat(sprintf("he() GATE  -- clamped finite (fn, gr AND he), all %d args : %s\n",
             nrow(res), pass_clamped))
-cat(sprintf("NEG CONTROL-- unclamped NON-finite on the killer arg      : %s  [%d/%d]\n",
-            fired_control, sum(!dz$unclamped_finite), nrow(dz)))
+cat(sprintf("CONTROL A  -- 1e-300 floor NON-finite on killer arg      : %s  [%d/%d]\n",
+            firedA, sum(!dz$ctrlA_finite), nrow(dz)))
+cat(sprintf("CONTROL B  -- clamp REMOVED  NON-finite on killer arg     : %s  [%d/%d]\n",
+            firedB, sum(!dz$ctrlB_finite), nrow(dz)))
 cat(sprintf("VALUES     -- log_pnorm_diff finite at all %d (a,b) cells  : %s\n",
             nrow(vals), vals_ok))
 cat(sprintf("ACCURACY   -- vs derivation section 5.7 (< 1e-5)          : %s\n", acc_ok))

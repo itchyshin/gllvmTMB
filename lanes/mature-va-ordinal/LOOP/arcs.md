@@ -1,41 +1,63 @@
-# ARCS — mature-VA Item 1(B) ordinal
+# ARCS — the SPEED programme (redirected 2026-08-03 by Shinichi)
+
+> **Scope change.** This lane opened as "ordinal-probit Albert–Chib (Item 1B)". Shinichi
+> redirected it to **speed**, with the reasoning: *LA is the accurate engine, so speeding LA up
+> is the prize* — and *"look at how gllvm and galamm are actually speeding things up."*
+> Ordinal Item 1(B) is **DEFERRED, not cancelled** (see below).
 
 Status: `TODO` · `WIP` · `DONE (verified: <how>)` · `BLOCKED` · `GATE`
 
 | id | arc | status | gate | dep |
 |---|---|---|---|---|
-| **A0** | **Retract the false "VA is refuted" claim** at every surface it reached: `dev/va-speed/46-VA-VS-LA-VERDICT.md`, `docs/dev-log/handover/2026-08-03-claude-handover-va-lane2-blockers-closed.md`, `dev/va-speed/20-CLAIMS-LEDGER.md`, `docs/dev-log/check-log.md`. Visible banner (the `305b6b86` pattern), never a quiet edit | TODO | — | — |
-| **A1** | **Harden `43-va-vs-la-ladder.R`** — record AND assert the resolved `eval_method`/`collapse`/`H`; abort loudly on mismatch; fix `va_iters = NA`; record a real convergence flag | TODO | — | — |
-| **A2** | **Ordinal ψ-collapse probe** — characterise where AC's known ψ collapse would bite for ordinal, using the shipped Laplace ordinal path across `n_trials` × #categories × planted ψ | TODO | **G1** | — |
-| **A3** | **`va_r3_log_pnorm_diff`** — stable `log(Φ(a) − Φ(b))` per derivation §5.7, re-pointed at `va_r3_log_pnorm`, clamp at `-1.2e-16`. **The crux** | TODO | **G2** | — |
-| **A4** | **Family code 5 wiring** — template: two `DATA_IVECTOR`s (`n_ordinal_cuts_per_trait`, `ordinal_offset_per_trait`), cutpoint `PARAMETER_VECTOR`, the AC ordinal term; R: `.va_r3_family_name_to_code`, Laplace→VA map, validation, tier guard | TODO | — | A3 |
-| **A5** | **Correctness verify** — mirror `06-ac-tier-verify.R`'s 21 checks for ordinal | TODO | — | A4 |
-| **A6** | **Recovery test** + the registry-drift test at `test-va-r3-prototype.R:510` (adding a tier WILL break it — correct, update it) | TODO | — | A4 |
-| **A7** | **Mechanical verify** — full VA suite green; fence intact asserted by test | TODO | — | A5,A6 |
-| **A8** | **Consolidate** — after-task report, check-log, validation-debt register row, handover | TODO | — | A7 |
-| **A9** | **Reconcile plan vs actual** (Melissa) | TODO | — | A8 |
+| **A0** | **Retract the false "VA is refuted" claim** — 4 surfaces, visible banners | **DONE** (verified: `56dfd5f0`; banners present in verdict doc, handover, ledger row 46 + lesson 3, check-log) | — | — |
+| **A1** | **Adaptive `profile_variational`** — resolve the validated **39× fix that exists and is not the default**. Reconcile the two contradictory measurements, find the crossover, make the default adaptive | TODO | — | — |
+| **A2** | **galamm + gllvm speed source-map** → `dev/va-speed/50-GALAMM-REFERENCE-READ.md`. What makes their sparse Cholesky cheap (reused symbolic factorisation, fixed sparsity pattern, fill-reducing ordering) | **WIP** (scout dispatched) | — | — |
+| **A3** | **Apply the borrowed technique to OUR Laplace inner solve** — our own profile calls this *"potentially the largest available"* and *"the single most promising unexplored lever"* | TODO | **G2** | A2 |
+| **A4** | **Package `se = FALSE` for LA** — 22–39% at zero statistical cost; already gated by `gllvmTMBcontrol(se = TRUE)`. Work is packaging: documented "fit now, SEs later" + a lazy `sdreport()`-on-demand accessor | TODO | — | — |
+| **A5** | **Harden `43-va-vs-la-ladder.R`** — assert the RESOLVED `eval_method`/`collapse`/`H`, abort on mismatch, fix `va_iters = NA`. The A0 lesson, made mechanical | TODO | — | — |
+| **A6** | **Consolidate** — after-task, check-log, register rows, handover | TODO | — | A1,A3,A4 |
+| **A7** | **Reconcile plan vs actual** (Melissa) | TODO | — | A6 |
 
-**PARALLEL:** {A0, A1, A2, A3} · **SEQUENTIAL:** A4←A3, A5←A4, A6←A4, A7←{A5,A6}, A8←A7, A9←A8
+**Order (Shinichi's):** A1 → A2/A3 → A4. A2 runs in parallel (read-only research, no file conflict).
+
+## A1 — the contradiction to resolve FIRST
+
+The va-speed-arc handover's own "next step 0", never done. **A validated 39× fix is in the
+codebase and is not the default**, but two measurements disagree about whether it helps:
+
+| source | tier structure | outer par | result |
+|---|---|---|---|
+| `PROFILE.md` §Q2 (structured phylo, `gaussian_anchor`) | 2N−2 levels | **34×N** → 34,000 at N=1000 | `profile=TRUE` **wins 39×**; ~N^0.9 vs ~N^2.1. At N=1000, **99.83%** of wall-clock is `nlminb`'s own bookkeeping and **0.17%** is genuine `fn()`/`gr()` |
+| lane-2 handover, Gotchas | plain latent tier | already small | `profile=TRUE` **loses**: 27.7 s vs 2.75 s at N=250; 128.5 s vs 29.1 s at N=1000 |
+| va-speed-arc handover, §red | structured, `profile=TRUE` set | — | a fit **exceeding 3600 s** — "does not sit easily beside the profile's N^0.9 result" |
+
+**Hypothesis (to test, not assume):** profiling pays exactly when the variational block is
+large relative to the global block, and costs when it is not — so the fix is an **adaptive
+default keyed on that ratio**, not a flag flip. The handover says plainly: *"Reproduce both
+before building on either."*
+
+**A1 is therefore a MEASUREMENT arc first**, an implementation arc second. Do not flip a default
+on a hypothesis.
 
 ## Gates
 
-- **G1 — after A2, the shipping shape is the maintainer's call.** AC-alone collapses a real ψ at
-  low `n_trials`; for binomial the remedy was to **end on GH**, and **there is no ordinal GH tier
-  to warm into**. A2's measurement picks between:
-  **(a)** ship ordinal AC fenced with the ψ-collapse regime measured and stated (cheapest);
-  **(b)** also build an ordinal GH tier so the warm route exists (doubles the arc);
-  **(c)** fence ordinal AC to the regime where ψ *is* recovered.
-  **(b) changes scope materially → STOP and surface.** (a)/(c) are inside the approved fence and
-  may proceed once A2's numbers are in.
-- **G2 — A3 is a hard technical STOP.** If `he()` is not finite over the `|a|,|b| > 8.2924`
-  same-side region, do not proceed to A4. That is the exact defect PR #925 fixed, and it is
-  invisible to every gradient check.
-- **G3 — pushing `claude/va-lane2`** remains the maintainer's call (standing). Do not push.
+- **G2 — before any Laplace inner-solve change lands.** A solver/parameterisation change to the
+  shipped engine is likelihood-adjacent and touches `src/gllvmTMB.cpp`; it needs the maintainer's
+  word and Gauss/Noether review (AGENTS.md Design Rule 4 + merge authority).
+- **G3 — standing:** do NOT push `claude/va-lane2`. Maintainer's call.
+- **G4 — statistically-free only.** Loosening a convergence tolerance to cut iteration count
+  changes point estimates and is **NOT** a free speedup. Any lever that moves fitted values is
+  out of scope for this arc without an explicit decision.
 
-## Carried over into this lane
+## Deferred (not cancelled)
+
+- **Ordinal Item 1(B)** — Albert–Chib Theorem 3, VA family code 5. The derivation is DONE
+  (`ALBERT-CHIB-DERIVATION.md` §5, cutpoints pinned in §5.8); only the build remains, and the
+  numerical crux (`va_r3_log_pnorm_diff`, the `-1.2e-16` clamp, `he()`-finite gate) is fully
+  specified in this lane's `ultra-plan.md`. Resume there.
+- EVA, AGHQ, the interval-coverage campaign (D-112).
+
+## Carried over
 
 - A second Claude session committed to this branch earlier today (`695450d2`, `305b6b86`,
-  `2a174fb9`), including a rewrite of a handover and a commit made from this session's working
-  tree. Nothing lost; surfaced for the maintainer, not resolved here (D-87).
-- Two orphaned `41-va-health-diag.R --args 5000` processes from a prior session may still be on
-  Totoro. Harmless (2 of 384 cores); leave them.
+  `2a174fb9`). Surfaced for the maintainer, not resolved here (D-87).

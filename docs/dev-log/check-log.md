@@ -48447,3 +48447,55 @@ no `devtools::test()` / `R CMD check` run (no R/, src/, or tests/ files were
 touched — docs-only change).
 
 — Design 66 integration (Claude, 2026-08-02)
+
+## 2026-08-03 — VA lane 2: both coverage blockers closed, founding premise refuted
+
+**Scope:** the OWED Next Immediate Steps of
+`docs/dev-log/handover/2026-08-03-claude-handover-va-lane2.md`. Steps 1–4 complete,
+step 5 partial (Step-0 re-run only), step 6 folded into step 2's harness.
+
+**Commands run (all compute on Totoro, D-50 — results LOCAL, nothing on GitHub
+Actions, nothing stored as an Actions artifact):**
+
+- `testthat::test_local(filter = "va")` → **21 files, 1335 passed, 0 failed, 0
+  errors, 1 skipped**.
+- `testthat::test_local(filter = "profile")` → **16 files, 523 passed, 0 failed, 0
+  errors, 70 skipped** (heavy tier, `GLLVMTMB_HEAVY_TESTS` unset).
+- `testthat::test_local(filter = "va-r3-prototype")` → 479 passed, 0 failed.
+- `Rscript dev/va-speed/45-gradient-vs-objective-gap.R` — the calibration that
+  replaced the guess: n_obs ∈ {400, 1200, 3200}, 12 step sizes × 4 random
+  directions, `max|gradient|` against objective gap.
+- `Rscript dev/va-speed/44-gradient-tolerance-calibration.R` before and after the
+  fix → 4/4 healthy on **all 9** cells after (n ∈ {50,150,400} × 3 seeds).
+- `Rscript dev/va-speed/40-step0-pilot.R 150 30 refix_n150 0` → VA-Wald healthy
+  yield **28/30 = 0.933** (was 0/30); LA-Profile `V_j` produced **30/30**,
+  descriptive coverage **0.925** (was collapsing 0.517 → 0.300 → 0.096); VA
+  gradient at optimum median 1.94e-04, max 5.43e-04.
+- `Rscript dev/va-speed/43-va-vs-la-ladder.R` × 12 paired cells, and
+  `47-psi-tier-probe.R` for the tier question.
+
+**rg/grep patterns used:** `grep -n "1e-4\|gradient_tolerance\|max_abs_gradient\|healthy"
+R/va-r3-proto.R` (found the four bare literals at :2286, :2299, :2327, :2452);
+`grep -rn "gradient_tolerance\|max_abs_gradient" tests/` (one pre-existing
+assertion, on an achieved gradient, unaffected); `grep -rln "total_variance"
+tests/testthat/` plus a `unique = FALSE` count per file (confirmed **no** test
+relied on the silent-zero path before making it an error).
+
+**Deliberately NOT run / NOT done:** Tiers 1+2 of the coverage campaign were NOT
+launched — both blockers are closed so it is technically unblocked, but the
+VA-vs-LA result undercuts its premise and that is the maintainer's call to make
+before ~75 min × 150 cores is spent. LA-Bootstrap stays deferred. Ledger claim
+`f3df8193` ("VA is 5.8× faster than our own Laplace") was **not retracted** — it
+was measured on a cell not reproduced here. `claude/va-lane2` was **not pushed**
+(maintainer's call). No `R CMD check`, no `pkgdown` — nothing user-facing changed:
+no NEWS, no roxygen, no article, no export, `default_tier` still `"gh"`,
+`R/integration-fence.R` untouched. N=2500 ladder cells and the n=400 Step-0 cell
+were still running when this was written.
+
+**Lane note (D-88):** a second Claude Code session committed to this same lane at
+18:50–19:01 (`695450d2`, `305b6b86`, `2a174fb9`), including a rewrite of the
+handover this session rehydrated from and a commit made from this session's
+uncommitted working tree. Nothing was lost and the two sessions' findings agree,
+but the overlap is surfaced for the maintainer per D-87 rather than resolved here.
+
+— VA lane 2 blockers + founding premise (Claude, 2026-08-03)

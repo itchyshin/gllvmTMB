@@ -1,0 +1,41 @@
+gllvmTMB package path: /home/snakagaw/R/lib/gllvmTMB
+== cell N2500_q2: N0=2500 Q0=2 T0=20 starting 18:07:29 ==
+== untimed warm-up (small N, discarded; also pays first-session TMB DLL costs) ==
+== warm-up done (3.80s, untimed for the record only) ==
+
+[1] "gllvmTMB_multi_fit"
+load avg (pre-timed run): 7.21
+load avg (post-timed run): 35.52
+
+--- raw event log ---
+             tag       t dt_from_start
+     total_enter   4.066         0.000
+       fit_enter   4.080         0.014
+ MakeADFun_enter   4.181         0.115
+  MakeADFun_exit   7.715         3.649
+    nlminb_enter   7.715         3.649
+     nlminb_exit 124.377       120.311
+  sdreport_enter 124.490       120.424
+ MakeADFun_enter 124.631       120.565
+  MakeADFun_exit 125.618       121.552
+   sdreport_exit 193.939       189.873
+        fit_exit 194.159       190.093
+      total_exit 194.159       190.093
+
+gllvmTMB() call counts -- MakeADFun: 2, nlminb: 1, sdreport: 1, gllvmTMB_multi_fit: 1
+
+--- phase attribution (explicit instrumentation) ---
+                 phase seconds pct_of_total
+            R_overhead   0.014     0.007365
+ fit_internal_untraced  -0.553    -0.290910
+             MakeADFun   4.521     2.378310
+                nlminb 116.662    61.371013
+              sdreport  69.449    36.534223
+
+Grand total (total_enter->total_exit): 190.093 s
+Sum of phases: 190.093 s (should equal grand total up to R's own dispatch overhead)
+
+opt$iterations = 185, opt$evaluations = 198,186, opt$convergence = 0
+n_fixed = 59, n_random = 5000, random blocks: z_B
+
+== cell N2500_q2 DONE 18:10:43 ==

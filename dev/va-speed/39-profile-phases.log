@@ -1,0 +1,45 @@
+gllvmTMB package path: /home/snakagaw/R/lib/gllvmTMB
+== untimed warm-up (small N, discarded; also pays first-session TMB DLL costs) ==
+== warm-up done (3.76s, untimed for the record only) ==
+
+[1] "gllvmTMB_multi_fit"
+load avg (pre-timed run): 3.45
+load avg (post-timed run): 3.61
+
+--- raw event log ---
+             tag      t dt_from_start
+     total_enter  4.026         0.000
+       fit_enter  4.030         0.004
+ MakeADFun_enter  4.042         0.016
+  MakeADFun_exit  4.386         0.360
+    nlminb_enter  4.386         0.360
+     nlminb_exit 14.304        10.278
+  sdreport_enter 14.317        10.291
+ MakeADFun_enter 14.463        10.437
+  MakeADFun_exit 14.563        10.537
+   sdreport_exit 21.063        17.037
+        fit_exit 21.085        17.059
+      total_exit 21.085        17.059
+
+gllvmTMB() call counts -- MakeADFun: 2, nlminb: 1, sdreport: 1, gllvmTMB_multi_fit: 1
+
+--- phase attribution (explicit instrumentation) ---
+                                                                                    phase
+         R-side overhead (outside gllvmTMB_multi_fit: formula/model-matrix/post-fit wrap)
+     gllvmTMB_multi_fit: pre-MakeADFun + inter-call + post-processing (untraced internal)
+                                                         MakeADFun (AD tape construction)
+ nlminb (outer optimiser: incl. all fn/gr calls + inner sparse Cholesky refactorisations)
+                                                               sdreport (standard errors)
+ seconds pct_of_total
+   0.004      0.02345
+  -0.053     -0.31069
+   0.444      2.60273
+   9.918     58.13940
+   6.746     39.54511
+
+Grand total (total_enter->total_exit): 17.059 s
+Sum of phases: 17.059 s (should equal grand total up to R's own dispatch overhead)
+
+control$se default check: se = TRUE (TRUE means sdreport ALWAYS runs unless the user overrides)
+
+DONE.

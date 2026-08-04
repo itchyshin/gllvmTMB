@@ -1,0 +1,59 @@
+gllvmTMB package path: /home/snakagaw/R/lib/gllvmTMB
+load avg (pre): 3.97
+== untimed warm-up (small N, discarded) ==
+== warm-up done (3.97s, untimed for the record only) ==
+
+load avg (pre-timed run): 3.97
+Warning message:
+In Rprof("rprof-shipped-la.out", interval = 0.005) :
+  interval too short for this platform, using '0.010000'
+load avg (post-timed run): 4.39
+
+Rprof-instrumented wall time: 16.974 s
+Uninstrumented cross-check wall time: 16.948 s (Rprof overhead: 0.2%)
+
+--- by.self (top 20) ---
+                                        self.time self.pct total.time total.pct
+".Call"                                     16.76    98.76      16.90     99.59
+"fn"                                         0.03     0.18       1.08      6.36
+"EvalADFunObject"                            0.02     0.12      15.26     89.92
+"f"                                          0.02     0.12       6.69     39.42
+"as.integer"                                 0.02     0.12       0.02      0.12
+"list"                                       0.02     0.12       0.02      0.12
+"newton"                                     0.01     0.06      11.39     67.12
+"he"                                         0.01     0.06       6.87     40.48
+"f0"                                         0.01     0.06       3.37     19.86
+"h"                                          0.01     0.06       3.26     19.21
+"updateCholesky"                             0.01     0.06       0.03      0.18
+".gllvmTMB_group_trait_residual_matrix"      0.01     0.06       0.01      0.06
+"assign"                                     0.01     0.06       0.01      0.06
+"isNullPointer"                              0.01     0.06       0.01      0.06
+"max"                                        0.01     0.06       0.01      0.06
+"utils::modifyList"                          0.01     0.06       0.01      0.06
+
+--- by.total (top 20) ---
+                     total.time total.pct self.time self.pct
+"gllvmTMB_multi_fit"      16.97    100.00      0.00     0.00
+"gllvmTMB::gllvmTMB"      16.97    100.00      0.00     0.00
+"run_la"                  16.97    100.00      0.00     0.00
+".Call"                   16.90     99.59     16.76    98.76
+"doTryCatch"              16.62     97.94      0.00     0.00
+"tryCatch"                16.62     97.94      0.00     0.00
+"tryCatchList"            16.62     97.94      0.00     0.00
+"tryCatchOne"             16.62     97.94      0.00     0.00
+"<Anonymous>"             16.29     95.99      0.00     0.00
+"ff"                      16.11     94.93      0.00     0.00
+"try"                     16.11     94.93      0.00     0.00
+"EvalADFunObject"         15.26     89.92      0.02     0.12
+"do.call"                 14.13     83.26      0.00     0.00
+"newton"                  11.39     67.12      0.01     0.06
+"run_one"                 10.02     59.05      0.00     0.00
+"iterate"                  9.58     56.45      0.00     0.00
+"gr"                       8.25     48.62      0.00     0.00
+"he"                       6.87     40.48      0.01     0.06
+"objective"                6.70     39.48      0.00     0.00
+"f"                        6.69     39.42      0.02     0.12
+
+sampling.time = 16.970 s, sample.interval = 0.0100 s
+
+DONE.

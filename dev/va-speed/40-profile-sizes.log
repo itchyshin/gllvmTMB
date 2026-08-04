@@ -1,0 +1,5 @@
+wall time: 16.868 s
+opt$iterations = 159, opt$evaluations = 170,160, opt$convergence = 0
+n_par (fixed, opt$par) = 59
+n_par (total incl. random) = 559, implied n_random = 500
+random blocks: z_B

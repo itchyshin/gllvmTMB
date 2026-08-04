@@ -1629,7 +1629,20 @@
   if (.va_r3_multi_tier(objective)) return(fail(.VA_R3_MULTI_TIER_SE_STATUS))
   nm <- names(par)
   if (is.null(nm)) return(fail("va_unnamed_par_no_fixed_se"))
-  fixed_idx <- which(nm %in% c("beta", "theta_rr"))
+  ## The fixed block is every parameter that is NOT part of the variational
+  ## family (m, log_L_diag, L_off): beta and theta_rr as before, PLUS the
+  ## variance/dispersion loadings log_sigma (Gaussian residual SD) and
+  ## log_sd_tier (diagonal-tier loading SD, R/va-r3-proto.R's tier registry
+  ## kind_code 1L) -- both are global loadings, exactly like theta_rr, not
+  ## per-unit variational coordinates, so they belong in H_ff/H_fv, not H_vv.
+  ## Before this change they sat in neither block and were silently held at
+  ## their fitted value with no correlation to beta/theta_rr captured, which
+  ## is why no VA-Wald route could produce an interval for a variance
+  ## component (campaign design doc, flaw #21). `%in%` is a no-op for a name
+  ## absent from `nm` (e.g. log_sd_tier when there is no diagonal tier, or
+  ## log_sigma when no trait is Gaussian), so this is additive: fits without
+  ## either parameter see fixed_idx unchanged.
+  fixed_idx <- which(nm %in% c("beta", "theta_rr", "log_sigma", "log_sd_tier"))
   if (!length(fixed_idx)) return(fail("va_no_fixed_block_no_fixed_se"))
 
   index_map <- tryCatch(.va_r3_variational_index_map(nm, N, q),
@@ -1774,7 +1787,11 @@
          calibrated = FALSE, status = status, route = "dense")
   }
   if (is.null(nm)) return(fail("va_unnamed_par_no_fixed_se"))
-  fixed_idx <- which(nm %in% c("beta", "theta_rr"))
+  ## See the identical extension (and its rationale) in
+  ## .va_r3_fixed_information_blocked() above: log_sigma/log_sd_tier are
+  ## global loadings, not variational coordinates, so they join beta/theta_rr
+  ## in the fixed block rather than sitting outside both blocks.
+  fixed_idx <- which(nm %in% c("beta", "theta_rr", "log_sigma", "log_sd_tier"))
   var_idx <- which(nm %in% c("m", "log_L_diag", "L_off"))
   if (!length(fixed_idx)) return(fail("va_no_fixed_block_no_fixed_se"))
 

@@ -1,0 +1,155 @@
+== warm-up (untimed) ==
+using C++ compiler: ‘g++ (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0’
+g++ -std=gnu++17 -I"/usr/share/R/include" -DNDEBUG -I"/home/snakagaw/R/lib/TMB/include" -I"/home/snakagaw/R/lib/RcppEigen/include"  -DTMB_SAFEBOUNDS -DTMB_EIGEN_DISABLE_WARNINGS -DLIB_UNLOAD=R_unload_gllvmTMB_va_r3  -DTMB_LIB_INIT=R_init_gllvmTMB_va_r3  -DCPPAD_FRAMEWORK      -fpic  -O2  -c gllvmTMB_va_r3.cpp -o gllvmTMB_va_r3.o
+g++ -std=gnu++17 -shared -L/usr/lib/R/lib -Wl,-Bsymbolic-functions -flto=auto -ffat-lto-objects -Wl,-z,relro -o gllvmTMB_va_r3.so gllvmTMB_va_r3.o -L/usr/lib/R/lib -lR
+== warm-up done ==
+
+
+########## REGIME RARE_EVENTS: Bernoulli, intercept -1.9 -> sparse (few-percent) event rate, softened from full separation ##########
+N=300 T=10 q=2 n_trials=1 icpt_mean=-1.90 lam_sd=0.50
+-- seed 1 (event_rate=0.0687) --
+  [Hybrid] 10.8s conv=TRUE(code=0) iters=191 maxgrad=1.26e-03 pdHess=TRUE obj=516.017 rel_frob=192.87980 trace_hat=717.5057 trace_true=3.5718 msg=relative convergence (4)
+  [LA] 8.6s conv=TRUE(code=0) iters=142 maxgrad=1.90e-04 pdHess=TRUE obj=537.737 rel_frob=306.86111 trace_hat=1022.9692 trace_true=3.5718 msg=relative convergence (4)
+  >> seed 1 same-optimum(LA vs Hybrid): delta_obj=-21.7204 delta_rf=-113.98131 -- DIFFERENT -- FLAG
+-- seed 2 (event_rate=0.0780) --
+  [LA] 8.2s conv=TRUE(code=0) iters=137 maxgrad=2.80e-04 pdHess=TRUE obj=599.009 rel_frob=130.39230 trace_hat=746.6817 trace_true=5.4700 msg=relative convergence (4)
+  [Hybrid] 11.0s conv=TRUE(code=0) iters=178 maxgrad=4.26e-04 pdHess=TRUE obj=553.145 rel_frob=288.59958 trace_hat=1411.7001 trace_true=5.4700 msg=relative convergence (4)
+  >> seed 2 same-optimum(LA vs Hybrid): delta_obj=-45.8646 delta_rf=+158.20729 -- DIFFERENT -- FLAG
+-- seed 3 (event_rate=0.0610) --
+  [Hybrid] 9.0s conv=TRUE(code=0) iters=139 maxgrad=8.44e-04 pdHess=TRUE obj=479.823 rel_frob=578.05652 trace_hat=1575.9381 trace_true=2.9081 msg=relative convergence (4)
+  [LA] 7.8s conv=TRUE(code=0) iters=133 maxgrad=3.46e-04 pdHess=TRUE obj=478.399 rel_frob=577.25084 trace_hat=1575.1084 trace_true=2.9081 msg=relative convergence (4)
+  >> seed 3 same-optimum(LA vs Hybrid): delta_obj=+1.4243 delta_rf=+0.80567 -- DIFFERENT -- FLAG
+
+########## REGIME HIGH_Q_LOW_N: q=7 with only N=20 units -- rank close to N, few obs per latent dim ##########
+N=20 T=25 q=7 n_trials=6 icpt_mean=0.00 lam_sd=0.80
+-- seed 1 (event_rate=0.5173) --
+  [Hybrid] ERROR after 0.0s: VA sub-fit failed: q must be one integer in 0..6.
+  [LA] 10.7s conv=TRUE(code=0) iters=337 maxgrad=1.81e-04 pdHess=TRUE obj=594.428 rel_frob=1.19530 trace_hat=141.5241 trace_true=90.0830 msg=relative convergence (4)
+  >> seed 1: LA ok=TRUE, Hybrid ok=FALSE -- one/both failed, see errors/convergence above
+-- seed 2 (event_rate=0.5410) --
+  [LA] 7.8s conv=TRUE(code=0) iters=186 maxgrad=1.09e-04 pdHess=TRUE obj=547.414 rel_frob=1.45660 trace_hat=189.4480 trace_true=116.5342 msg=relative convergence (4)
+  [Hybrid] ERROR after 0.0s: VA sub-fit failed: q must be one integer in 0..6.
+  >> seed 2: LA ok=TRUE, Hybrid ok=FALSE -- one/both failed, see errors/convergence above
+-- seed 3 (event_rate=0.4720) --
+  [Hybrid] ERROR after 0.0s: VA sub-fit failed: q must be one integer in 0..6.
+  [LA] 10.5s conv=TRUE(code=0) iters=330 maxgrad=1.70e-04 pdHess=TRUE obj=571.031 rel_frob=1.20453 trace_hat=123.3154 trace_true=85.8927 msg=relative convergence (4)
+  >> seed 3: LA ok=TRUE, Hybrid ok=FALSE -- one/both failed, see errors/convergence above
+
+########## REGIME SMALL_N_BIG_T: N=8 units, T=80 traits -- extreme aspect ratio, thin per-unit info ##########
+N=8 T=80 q=2 n_trials=6 icpt_mean=0.00 lam_sd=0.80
+-- seed 1 (event_rate=0.4997) --
+  [Hybrid] 5.3s conv=TRUE(code=0) iters=177 maxgrad=2.00e-04 pdHess=TRUE obj=785.104 rel_frob=2.00040 trace_hat=213.1784 trace_true=85.0526 msg=relative convergence (4)
+  [LA] 5.5s conv=TRUE(code=0) iters=202 maxgrad=7.09e-05 pdHess=TRUE obj=785.104 rel_frob=2.00039 trace_hat=213.1794 trace_true=85.0526 msg=relative convergence (4)
+  >> seed 1 same-optimum(LA vs Hybrid): delta_obj=+0.0000 delta_rf=+0.00002 -- SAME OPTIMUM
+-- seed 2 (event_rate=0.5049) --
+  [LA] 6.6s conv=TRUE(code=0) iters=361 maxgrad=1.59e-04 pdHess=TRUE obj=677.560 rel_frob=2.37697 trace_hat=313.4238 trace_true=123.2359 msg=relative convergence (4)
+  [Hybrid] 6.2s conv=TRUE(code=0) iters=295 maxgrad=5.95e-05 pdHess=TRUE obj=677.560 rel_frob=2.59799 trace_hat=328.9930 trace_true=123.2359 msg=relative convergence (4)
+  >> seed 2 same-optimum(LA vs Hybrid): delta_obj=-0.0000 delta_rf=+0.22101 -- DIFFERENT -- FLAG
+-- seed 3 (event_rate=0.5115) --
+  [Hybrid] 4.8s conv=TRUE(code=0) iters=147 maxgrad=6.67e-05 pdHess=TRUE obj=706.808 rel_frob=1.60637 trace_hat=185.3055 trace_true=89.1261 msg=relative convergence (4)
+  [LA] 5.1s conv=TRUE(code=0) iters=172 maxgrad=6.95e-05 pdHess=TRUE obj=706.808 rel_frob=1.60632 trace_hat=185.2942 trace_true=89.1261 msg=relative convergence (4)
+  >> seed 3 same-optimum(LA vs Hybrid): delta_obj=-0.0000 delta_rf=+0.00006 -- SAME OPTIMUM
+
+########## REGIME NEAR_BOUNDARY: loadings sd=0.01 -- Sigma_true near-singular, variance near the zero boundary ##########
+N=150 T=15 q=2 n_trials=6 icpt_mean=0.00 lam_sd=0.01
+-- seed 1 (event_rate=0.4721) --
+  [Hybrid] 10.5s conv=TRUE(code=0) iters=227 maxgrad=1.88e-03 pdHess=TRUE obj=3609.199 rel_frob=166.87287 trace_hat=0.4161 trace_true=0.0025 msg=relative convergence (4)
+  [LA] 7.8s conv=TRUE(code=0) iters=182 maxgrad=2.89e-03 pdHess=TRUE obj=3609.199 rel_frob=166.87311 trace_hat=0.4161 trace_true=0.0025 msg=relative convergence (4)
+  >> seed 1 same-optimum(LA vs Hybrid): delta_obj=+0.0000 delta_rf=-0.00024 -- SAME OPTIMUM
+-- seed 2 (event_rate=0.5415) --
+  [LA] 4.4s conv=TRUE(code=0) iters=61 maxgrad=1.56e-03 pdHess=TRUE obj=3585.132 rel_frob=104.05325 trace_hat=0.3784 trace_true=0.0036 msg=relative convergence (4)
+  [Hybrid] 7.9s conv=TRUE(code=0) iters=110 maxgrad=1.07e-03 pdHess=TRUE obj=3585.132 rel_frob=104.05321 trace_hat=0.3784 trace_true=0.0036 msg=relative convergence (4)
+  >> seed 2 same-optimum(LA vs Hybrid): delta_obj=+0.0000 delta_rf=-0.00005 -- SAME OPTIMUM
+-- seed 3 (event_rate=0.5387) --
+  [Hybrid] 6.1s conv=TRUE(code=0) iters=86 maxgrad=1.28e-03 pdHess=TRUE obj=3499.362 rel_frob=136.88366 trace_hat=0.2865 trace_true=0.0021 msg=relative convergence (4)
+  [LA] 5.0s conv=TRUE(code=0) iters=86 maxgrad=3.59e-04 pdHess=TRUE obj=3499.362 rel_frob=136.88330 trace_hat=0.2865 trace_true=0.0021 msg=relative convergence (4)
+  >> seed 3 same-optimum(LA vs Hybrid): delta_obj=+0.0000 delta_rf=+0.00036 -- SAME OPTIMUM
+
+
+================ SUMMARY ================
+        regime seed    arm   secs event_rate   ok converged conv_code
+   RARE_EVENTS    1 Hybrid 10.775 0.06866667 TRUE      TRUE         0
+   RARE_EVENTS    1     LA  8.551 0.06866667 TRUE      TRUE         0
+   RARE_EVENTS    2     LA  8.240 0.07800000 TRUE      TRUE         0
+   RARE_EVENTS    2 Hybrid 11.016 0.07800000 TRUE      TRUE         0
+   RARE_EVENTS    3 Hybrid  8.951 0.06100000 TRUE      TRUE         0
+   RARE_EVENTS    3     LA  7.821 0.06100000 TRUE      TRUE         0
+  HIGH_Q_LOW_N    1     LA 10.683 0.51733333 TRUE      TRUE         0
+  HIGH_Q_LOW_N    2     LA  7.831 0.54100000 TRUE      TRUE         0
+  HIGH_Q_LOW_N    3     LA 10.512 0.47200000 TRUE      TRUE         0
+ SMALL_N_BIG_T    1 Hybrid  5.258 0.49973958 TRUE      TRUE         0
+ SMALL_N_BIG_T    1     LA  5.451 0.49973958 TRUE      TRUE         0
+ SMALL_N_BIG_T    2     LA  6.634 0.50494792 TRUE      TRUE         0
+ SMALL_N_BIG_T    2 Hybrid  6.212 0.50494792 TRUE      TRUE         0
+ SMALL_N_BIG_T    3 Hybrid  4.823 0.51145833 TRUE      TRUE         0
+ SMALL_N_BIG_T    3     LA  5.124 0.51145833 TRUE      TRUE         0
+ NEAR_BOUNDARY    1 Hybrid 10.514 0.47207407 TRUE      TRUE         0
+ NEAR_BOUNDARY    1     LA  7.772 0.47207407 TRUE      TRUE         0
+ NEAR_BOUNDARY    2     LA  4.422 0.54148148 TRUE      TRUE         0
+ NEAR_BOUNDARY    2 Hybrid  7.883 0.54148148 TRUE      TRUE         0
+ NEAR_BOUNDARY    3 Hybrid  6.131 0.53874074 TRUE      TRUE         0
+ NEAR_BOUNDARY    3     LA  5.036 0.53874074 TRUE      TRUE         0
+ iterations     max_grad pdHess objective   rel_frob    trace_hat   trace_true
+        191 1.263498e-03   TRUE  516.0169 192.879802  717.5057423 3.571780e+00
+        142 1.899671e-04   TRUE  537.7373 306.861114 1022.9691975 3.571780e+00
+        137 2.802318e-04   TRUE  599.0092 130.392296  746.6817353 5.469975e+00
+        178 4.256958e-04   TRUE  553.1447 288.599585 1411.7000700 5.469975e+00
+        139 8.438202e-04   TRUE  479.8230 578.056517 1575.9380600 2.908054e+00
+        133 3.464268e-04   TRUE  478.3987 577.250844 1575.1083674 2.908054e+00
+        337 1.811290e-04   TRUE  594.4276   1.195301  141.5240597 9.008298e+01
+        186 1.088768e-04   TRUE  547.4139   1.456597  189.4480182 1.165342e+02
+        330 1.702992e-04   TRUE  571.0310   1.204533  123.3154212 8.589267e+01
+        177 1.997889e-04   TRUE  785.1044   2.000401  213.1784431 8.505261e+01
+        202 7.086719e-05   TRUE  785.1044   2.000385  213.1793870 8.505261e+01
+        361 1.590296e-04   TRUE  677.5604   2.376975  313.4238425 1.232359e+02
+        295 5.953187e-05   TRUE  677.5604   2.597988  328.9929910 1.232359e+02
+        147 6.673613e-05   TRUE  706.8076   1.606374  185.3055144 8.912607e+01
+        172 6.950263e-05   TRUE  706.8076   1.606318  185.2941811 8.912607e+01
+        227 1.877571e-03   TRUE 3609.1992 166.872872    0.4160995 2.496794e-03
+        182 2.886581e-03   TRUE 3609.1992 166.873108    0.4161006 2.496794e-03
+         61 1.564920e-03   TRUE 3585.1316 104.053255    0.3784435 3.617825e-03
+        110 1.074108e-03   TRUE 3585.1316 104.053206    0.3784434 3.617825e-03
+         86 1.275912e-03   TRUE 3499.3624 136.883660    0.2864537 2.058614e-03
+         86 3.589427e-04   TRUE 3499.3624 136.883298    0.2864530 2.058614e-03
+ load                  message
+ 2.82 relative convergence (4)
+ 2.92 relative convergence (4)
+ 2.94 relative convergence (4)
+ 2.94 relative convergence (4)
+ 3.18 relative convergence (4)
+ 3.24 relative convergence (4)
+ 3.21 relative convergence (4)
+ 3.17 relative convergence (4)
+ 3.15 relative convergence (4)
+ 3.12 relative convergence (4)
+ 3.11 relative convergence (4)
+ 3.10 relative convergence (4)
+ 3.10 relative convergence (4)
+ 3.09 relative convergence (4)
+ 3.08 relative convergence (4)
+ 3.07 relative convergence (4)
+ 3.06 relative convergence (4)
+ 3.21 relative convergence (4)
+ 3.19 relative convergence (4)
+ 3.16 relative convergence (4)
+ 3.23 relative convergence (4)
+
+--- RESCUE CANDIDATES (LA failed/non-converged, Hybrid converged) ---
+
+--- HYBRID-FAILED CASES (LA succeeded, Hybrid failed/non-converged) ---
+  HYBRID FAILED: regime=HIGH_Q_LOW_N seed=1 -- LA converged, Hybrid produced no row (error)
+  HYBRID FAILED: regime=HIGH_Q_LOW_N seed=2 -- LA converged, Hybrid produced no row (error)
+  HYBRID FAILED: regime=HIGH_Q_LOW_N seed=3 -- LA converged, Hybrid produced no row (error)
+
+CONVERGENCE_RESCUE_DONE
+Warning message:
+This fit shows a runaway trait loading; treat it as unusable until checked.
+• 7 prevalence=0.0467; max_loading=13.9; relative_loading=11.1;
+  saturated_fit=0.953
+ℹ near-constant binomial trait with dominant loading or saturated fitted
+  probabilities
+→ remove or re-code the near-constant binary indicator; lowering rank will not
+  resolve quasi-separation by itself
+→ Full check: `gllvmTMB_diagnose(fit)`. Silence this with
+  `gllvmTMBcontrol(warn_runaway = FALSE)`.
+This warning is displayed once per session. 

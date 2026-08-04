@@ -48742,3 +48742,30 @@ moment it was written. Marked, not deleted. The bigger find: **28 of 33 checkabl
 fabricated caller name and a function that never existed.
 
 — Arcs E + dead-code (Claude, 2026-08-04)
+
+---
+
+## 2026-08-04 (final verification) — clean suite green; dead-code branch merged
+
+**CLEAN FULL SUITE at `258ec3b3`: 371 files, 9257 passed, 0 failed, 0 errors.**
+
+This retires the two earlier runs that reported failures. Both were **artefacts, now confirmed
+as such rather than assumed**: those sessions `load_all()`-ed the pre-fix package and then read
+post-fix test files from disk, so they ran new tests against old code. The rule that follows:
+**do not edit `R/` or `tests/` while a full suite is running** — and when a suite reports a
+failure in a file you touched mid-run, check the ordering before believing it.
+
+Baseline moved 366 files / 8,963 passed (session start) → **371 / 9,257**.
+
+**Merged:** `worktree-agent-a1ea2c74dc077c425` — `.wald_block()` confirmed dead (marked, not
+deleted) and **28 of 33** stale rows corrected in `dev/aghq-scope/06-consumers.md`. Post-merge
+`profile|standard-errors`: **554 passed, 0 failed** (70 skips are the pre-existing
+`GLLVMTMB_HEAVY_TESTS` gate).
+
+**Session close — arcs F, A, D, E landed; the silent-NA defect closed; B and C still open.**
+Three claims made and retracted this session, all caught by measurement or a fresh reviewer
+rather than by re-reading my own work: a compute estimate built on health-gate-failed timings;
+a test that could not fail; and a **published closure claim** that the adversarial reviewer
+refuted. Nothing pushed.
+
+— Final verification (Claude, 2026-08-04)

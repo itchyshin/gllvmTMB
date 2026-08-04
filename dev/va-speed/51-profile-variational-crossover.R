@@ -24,7 +24,16 @@
 ##       at all and the arc stops);
 ##   (3) where the crossover in outer-parameter count actually is.
 ##
-## Usage: Rscript 51-profile-variational-crossover.R <tier: plain|structured> <N> <tag>
+## FAMILY IS AN ARGUMENT, and it is the point of the second pass. glmmTMB carries an unshipped
+## FIXME (glmmTMB/R/glmmTMB.R:1609-1613) -- "add heuristic to decide if 'profile' is
+## beneficial... (TMB tweedie derivatives currently slow)" -- i.e. the reference implementation
+## knows profiling is not always a win and has never shipped the rule. Their parenthetical points
+## at per-evaluation DERIVATIVE COST as the discriminator. `gaussian_anchor` is closed-form
+## (cheap per evaluation); `binomial_probit` runs an H-node GH quadrature loop per observation
+## row (expensive). If the hypothesis holds, profiling should WIN on the first and LOSE on the
+## second at matched N -- which would BE the missing heuristic.
+##
+## Usage: Rscript 51-profile-variational-crossover.R <tier> <N> <tag> [family] [H]
 Sys.setenv(OPENBLAS_NUM_THREADS = "1", OMP_NUM_THREADS = "1")
 
 `%||%` <- function(a, b) if (is.null(a)) b else a

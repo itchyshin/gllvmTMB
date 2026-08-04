@@ -886,8 +886,21 @@
        call. = FALSE)
 }
 
+## `framework` and `supernodal` are forwarded to TMB::compile() rather than smuggled through
+## `compile_flags`. That distinction is load-bearing: passing "-DTMBAD_FRAMEWORK" as a raw flag
+## BYPASSES TMB's own framework plumbing and fails to compile with a wall of redefinition errors
+## (`EvalADFunObjectTemplate` redefined, `start_parallel.hpp` expecting CppAD's Forward/Reverse/
+## Hessian). Measured 2026-08-03 -- the flag route is not a slower path, it is a broken one.
+##
+## Both default to NULL, which reproduces the previous behaviour exactly: TMB::compile()'s own
+## defaults are `framework = getOption("tmb.ad.framework")` and `supernodal = FALSE`. Nothing
+## changes for an existing caller; this only makes the two knobs REACHABLE, which the engine
+## knob audit (dev/va-speed/53-ENGINE-KNOB-AUDIT.md) found they were not -- the shipped Laplace
+## DLL sets its framework in `src/Makevars` while this runtime-compiled template had no way to
+## express one at all.
 .va_r3_load_dll <- function(source = NULL, rebuild = FALSE,
-                            compile_flags = "-O2") {
+                            compile_flags = "-O2",
+                            framework = NULL, supernodal = NULL) {
   if (!requireNamespace("TMB", quietly = TRUE)) {
     stop("The research prototype requires TMB.", call. = FALSE)
   }
@@ -913,7 +926,10 @@
     old <- getwd()
     on.exit(setwd(old), add = TRUE)
     setwd(build_dir)
-    status <- TMB::compile(basename(cpp), flags = compile_flags)
+    compile_args <- list(basename(cpp), flags = compile_flags)
+    if (!is.null(framework)) compile_args$framework <- framework
+    if (!is.null(supernodal)) compile_args$supernodal <- supernodal
+    status <- do.call(TMB::compile, compile_args)
     if (length(status) != 1L || is.na(status) || status != 0 ||
         !file.exists(dll)) {
       stop("Compilation of the standalone R3 TMB template failed.",

@@ -756,6 +756,20 @@ summary.gllvmTMB_multi <- function(object, ...) {
     }
   }
 
+  ## Why the `Std.Err` column is empty, if it is. Unlike `confint()`, a summary
+  ## without standard errors is still worth printing -- the point estimates are
+  ## the package's supported claim -- so this reports rather than aborts. But it
+  ## must REPORT: a column of bare NAs reads as "the standard error is unknown"
+  ## when the truth is "nobody computed one." (D-33.)
+  out$se_status <- if (is.null(object$sd_report)) {
+    list(
+      available = FALSE,
+      reason = object$sdreport_error %||% "no sd_report on this fit"
+    )
+  } else {
+    list(available = TRUE, reason = NULL)
+  }
+
   class(out) <- "summary.gllvmTMB_multi"
   out
 }
@@ -809,6 +823,17 @@ print.summary.gllvmTMB_multi <- function(x, digits = 3, ...) {
     tbl$Estimate <- round(tbl$Estimate, digits)
     tbl$Std.Err <- round(tbl$Std.Err, digits)
     print(tbl)
+
+    ## Say why the column is empty, rather than leaving a wall of NAs to be
+    ## read as a computed result.
+    if (isFALSE(x$se_status$available)) {
+      cat(
+        "\n  Std.Err is empty: standard errors were not computed",
+        "\n  (", x$se_status$reason, ").",
+        "\n  Compute them without refitting:  fit <- standard_errors(fit)\n",
+        sep = ""
+      )
+    }
   }
 
   ## Trait-correlation matrices (B / W tiers); only print if the fit has them.

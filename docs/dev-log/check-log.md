@@ -48596,3 +48596,60 @@ all-NA interval **silently** (runtime probe, `dev/va-speed/60-se-false-consumer-
 fence untouched; no PR opened; branch not pushed this sitting.
 
 — Arcs F + A (Claude, 2026-08-04)
+
+---
+
+## 2026-08-04 — the silent all-NA standard-error path is CLOSED (Claude, solo)
+
+**The defect.** A fit made with `gllvmTMBcontrol(se = FALSE)` has no `sd_report`, so a Wald
+interval has nothing to be built from — and `confint(method = "wald")` returned a matrix of
+`NA` bounds with **no error and no warning**. An all-NA interval is not a degraded answer; it
+is a non-answer that looks like one and flows onward into tables and plots unmarked.
+
+**Governed by D-33**, not re-derived: *"an error handler that converts 'cannot check' into
+'fine' is the defect itself"* · *"prefer a noisy inconclusive to a quiet pass."* The brain
+already held the principle; this arc applied it. (Found by deterministic grep over
+`memory/DECISIONS.md`. The semantic search for the same thing returned **nothing on point** —
+a clean instance of the miss the ultra-plan sweep warns about.)
+
+**The fix, split by whether the output is still useful:**
+- `confint(method = "wald")` → **aborts**, class `gllvmTMB_confint_no_sdreport`, naming
+  `fit <- standard_errors(fit)` **and** `method = "profile"`.
+- `summary()` / `print.summary()` → **still works**, and now says why `Std.Err` is empty.
+- `extract_cutpoints()` → `cli_inform` on the `tau_se` path.
+
+Deliberate immediate behaviour change, not staged: 0.6.0 is pre-1.0/EXPERIMENTAL and not on
+CRAN, so nothing released can depend on the old return.
+
+**Tests written FIRST and confirmed failing** (3 failures, with the all-NA `Std.Err` table
+quoted in the failure output), then passing: **17/17**. The fourth gate is the inverse — the
+note must NOT fire when `se = TRUE`. A note that always prints is not a note.
+
+**The error message's advice was verified, not offered:** `confint(method = "profile")` was
+run on an `se = FALSE` fit and returns non-NA bounds.
+
+**Inventory corrected by hand — both recon agents were wrong.** One reported 1 silent-NA site,
+one found 2. Reading the code found a **third live site** (`R/extract-cutpoints.R:78`) both
+missed, and established the second (`.wald_block()`, `R/profile-ci.R:487`) is **DEAD CODE** —
+zero callers in `R/`, `tests/`, `dev/` — while `dev/aghq-scope/06-consumers.md:44` still calls
+it *"the Wald CI workhorse ... called by all Wald confint routes"* at **stale line numbers**.
+Flagged, not fixed here.
+
+**Reused rather than invented:** gllvmTMB already had the right idiom at `R/extractors.R:760`
+(`list(std.error, status)`) — which is drmTMB's convention (`R/drmTMB.R:2400-2452`,
+`R/predict-parameters.R:218-299`).
+
+**Scope reduced from plan, recorded as adaptive:** the `{value, status}` refactor of
+`.gllvmTMB_b_fix_se()` was dropped — once no user-facing surface reports its NA silently, it
+would be unused machinery.
+
+**Register:** EXT-35 → **CLOSED** by new row **EXT-36**.
+
+**Preceding arcs verified:** the full suite launched for arcs F + A landed
+**371 files, 9236 passed, 0 failed, 0 errors** — previously UNKNOWN, now green.
+
+**Deliberately NOT done:** `.wald_block()` (dead) · `vcov.gllvmTMB`'s non-existence despite
+roxygen at `R/gllvmTMB.R:295` claiming dispatch · a sweep of the other ~20 files containing
+`rep(NA_real_, …)` for the same class.
+
+— Silent-NA closure (Claude, 2026-08-04)

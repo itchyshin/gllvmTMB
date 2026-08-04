@@ -96,3 +96,54 @@ test_that("standard_errors() gives a typed error when the TMB object is gone", {
     class = "gllvmTMB_standard_errors_no_tmb_obj"
   )
 })
+
+## ---------------------------------------------------------------------------
+## Silent-NA closure (D-33: "an error handler that converts 'cannot check' into
+## 'fine' is the defect itself"). A fit made with se = FALSE must not hand back
+## a confident-looking all-NA answer.
+##
+## The split is deliberate: an all-NA confidence interval is a NON-ANSWER, so
+## confint() aborts. A summary() table is still useful without its SE column,
+## so summary() keeps working and SAYS why the column is empty.
+## ---------------------------------------------------------------------------
+
+test_that("confint(method = 'wald') aborts rather than returning an all-NA interval", {
+  skip_on_cran()
+  fit <- .se_fit(.se_test_data(), se = FALSE)
+
+  expect_error(
+    confint(fit, method = "wald"),
+    class = "gllvmTMB_confint_no_sdreport"
+  )
+  ## The remedy must be named, or the error only says what went wrong.
+  expect_error(confint(fit, method = "wald"), regexp = "standard_errors")
+})
+
+test_that("confint() is unchanged on a fit that has standard errors", {
+  skip_on_cran()
+  fit <- .se_fit(.se_test_data(), se = TRUE)
+  ci <- confint(fit, method = "wald")
+  expect_true(is.data.frame(ci) || is.matrix(ci))
+  ## Regression guard: the abort must key on a NULL sd_report, never on
+  ## "some bound happens to be NA".
+  expect_false(all(is.na(unlist(ci[vapply(ci, is.numeric, logical(1))]))))
+})
+
+test_that("summary() still works on an se = FALSE fit, and says why SEs are absent", {
+  skip_on_cran()
+  fit <- .se_fit(.se_test_data(), se = FALSE)
+
+  ## The legitimate workflow -- fit fast, read point estimates -- must survive.
+  expect_no_error(s <- summary(fit))
+
+  out <- paste(utils::capture.output(print(s)), collapse = "\n")
+  expect_match(out, "standard_errors", fixed = TRUE)
+})
+
+test_that("summary() on an se = TRUE fit does NOT emit the missing-SE note", {
+  skip_on_cran()
+  fit <- .se_fit(.se_test_data(), se = TRUE)
+  out <- paste(utils::capture.output(print(summary(fit))), collapse = "\n")
+  ## A note that always prints is not a note.
+  expect_false(grepl("standard_errors", out, fixed = TRUE))
+})

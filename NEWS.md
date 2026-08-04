@@ -4,6 +4,32 @@ This release focuses on multivariate stacked-trait models fitted through the
 R/TMB engine. Models are fitted by **Laplace approximation**. The optional Julia
 bridge remains experimental and is not required for the main workflow.
 
+## Changed
+
+* **A fit without standard errors no longer returns a silent all-`NA` answer.**
+  When a model is fitted with `gllvmTMBcontrol(se = FALSE)`, there is no
+  `sd_report`, so a Wald interval has nothing to be built from. `confint()`
+  used to return a matrix of `NA` bounds with no error and no warning — a
+  non-answer that looks like an answer, and that flows onward into tables and
+  plots with nothing marking it.
+
+  `confint(method = "wald")` now **raises a typed error**
+  (`gllvmTMB_confint_no_sdreport`) naming both remedies:
+  `fit <- standard_errors(fit)`, or `method = "profile"`, which does not need
+  standard errors. Every other consumer of `sd_report` in the package
+  (`getREsd()`, `getLV(se = TRUE)`, `predict(se.fit = TRUE)`) already behaved
+  this way; `confint()` was the outlier.
+
+  **`summary()` deliberately still works.** Fitting fast and reading point
+  estimates is a legitimate workflow, so `summary()` prints as before — but it
+  now says *why* the `Std.Err` column is empty instead of leaving a column of
+  bare `NA`s to be read as a computed result. `extract_cutpoints()` reports the
+  same way for its `tau_se` column.
+
+  This is a deliberate behaviour change, made rather than staged: the package
+  is pre-1.0 and experimental, so no released code depends on the old return,
+  and anything that did would have been depending on a wrong answer.
+
 ## New
 
 * **`standard_errors()` computes standard errors after fitting.** Fitting with

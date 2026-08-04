@@ -18,8 +18,10 @@ with another R process at close — my own concurrent campaigns were on Totoro. 
 unaffected by load; **treat 1.76× as indicative until re-measured on a quiet box.**
 
 **2. The coverage campaign is NO-GO and must not be launched as designed.** The Step-0 pilot
-found two blockers that would each have produced a confident wrong answer at 1000 seeds. Both
-are fixable; **neither is fixed.** See Blockers below.
+found two blockers that would each have produced a confident wrong answer at 1000 seeds.
+**BLOCKER 2 IS NOW FIXED AND VERIFIED** (`2a174fb9`): `profile_ci_communality()` refuses rather
+than silently reporting `Sigma_tt` as `V_t` — 519 + 26 tests pass. **BLOCKER 1 IS STILL OPEN**,
+but its calibration evidence now exists and is analysed below. See Blockers.
 
 **3. The VA→LA hybrid is REFUTED. Do not resume it.** It reverses at scale (1.12× faster at
 N=200 → **0.84×, i.e. slower**, at N=1000), there was no convergence failure to rescue, and
@@ -180,10 +182,36 @@ but note it attacks the 58% phase, whereas `se = FALSE` attacks 39% for almost n
   4 starts converge with objectives agreeing to 6+ s.f. (n=150 seed 1: 1401.228740 on all
   four), but `max|gradient|` ∈ [1e-4, 7e-4] against a fixed absolute 1e-4 bar, so <3 of 4
   starts clear it. `n_starts` accepts only 1/3/4, so "more starts" is not a lever.
-- 🔴 **Coverage blocker 2 — LA-Profile computes the WRONG ESTIMAND, silently.** Returns
-  `Sigma_jj`, not `V_j = Sigma_jj + psi_j`, because `theta_diag_B` is absent from the design's
-  fit and the psi contribution silently becomes zero. Point-estimate gaps track the planted
-  `psi_j ~ U(0.3,0.5)` almost exactly. Explains the coverage collapse 0.517 → 0.300 → 0.096.
+- ✅ **Coverage blocker 2 — FIXED AND VERIFIED (`2a174fb9`).** `profile_ci_communality()` now
+  aborts when the tier carries no diagonal component, naming the contract
+  (`V_t = (ΛΛᵀ)_tt + psi_t`), why the silent answer was wrong, and both remedies. Previously it
+  returned `Sigma_jj` under the name `V_j`, producing a coverage curve that COLLAPSED as N grew
+  (0.517 → 0.300 → 0.096) because the bias stayed fixed while intervals narrowed.
+  **Verified before committing** (it changes shipped behaviour to an error): `filter="profile"`
+  519 pass / 0 fail; `filter="communality|total-variance|derived"` 26 pass / 0 fail.
+
+- 🔴 **Coverage blocker 1 — STILL OPEN, but the evidence now exists** and is the single best
+  starting point for the next lane. `dev/va-speed/44-gradient-tolerance-calibration.R` ran on
+  Totoro (log in `results-lane2/44-gradient-calibration.log`). 36 genuinely-converged starts vs
+  36 deliberately-truncated ones:
+
+  | rule | converged admitted | truncated rejected |
+  |---|---|---|
+  | **absolute 1e-4 (current)** | **6/36** | 35/36 |
+  | 1e-5 · (1+\|f\|) | 35/36 | 10/36 |
+  | 1e-6 · n_obs | 32/36 | 13/36 |
+  | 1e-4 · √(n_obs/400) | 16/36 | 32/36 |
+
+  **The current gate admits 6 of 36 genuinely converged starts** — it is a fine rejector and a
+  terrible admitter, which is exactly the 0/30 yield seen in the pilot.
+  🔴 **BUT DO NOT PICK A THRESHOLD FROM THIS TABLE YET. The negative class is contaminated.**
+  At N=150 seed 20260801 the "truncated" starts have gradients
+  [0.000152, 0.000882, 0.000475, **7.41e-05**] and reach `best_obj = 1401.228740` — *the
+  identical objective as the converged class*. Truncation frequently did not produce a bad fit,
+  so `neg_rejected` is partly counting the rejection of good fits mislabelled as bad, and no
+  rule in that table can be trusted on specificity. **First task: build a clean negative class
+  — fits that genuinely reached a WRONG optimum, not merely a truncated one — then re-run the
+  calibration.**
 - ❓ **Does VA scale superlinearly?** (step 2 above). Load-bearing for the whole arc.
 - ❓ **Push `claude/va-lane2`?** Maintainer's call.
 

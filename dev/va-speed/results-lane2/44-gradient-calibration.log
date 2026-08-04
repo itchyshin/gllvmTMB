@@ -1,0 +1,182 @@
+using C++ compiler: ‘g++ (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0’
+g++ -std=gnu++17 -I"/usr/share/R/include" -DNDEBUG -I"/home/snakagaw/R/lib/TMB/include" -I"/home/snakagaw/R/lib/RcppEigen/include"  -DTMB_SAFEBOUNDS -DTMB_EIGEN_DISABLE_WARNINGS -DLIB_UNLOAD=R_unload_gllvmTMB_va_r3  -DTMB_LIB_INIT=R_init_gllvmTMB_va_r3  -DCPPAD_FRAMEWORK      -fpic  -O2  -c gllvmTMB_va_r3.cpp -o gllvmTMB_va_r3.o
+g++ -std=gnu++17 -shared -L/usr/lib/R/lib -Wl,-Bsymbolic-functions -flto=auto -ffat-lto-objects -Wl,-z,relro -o gllvmTMB_va_r3.so gllvmTMB_va_r3.o -L/usr/lib/R/lib -lR
+N=  50 seed=20260801 converged  best_obj=437.573408  grads=[8.43e-05, 0.000109, 0.00013, 0.000181]  healthy=1/4  0.6s
+N=  50 seed=20260801 truncated  best_obj=437.573408  grads=[0.000177, 0.0013, 0.00153, 0.00118]  healthy=0/4  0.4s
+N=  50 seed=20260802 converged  best_obj=450.259627  grads=[6.06e-05, 7.48e-05, 0.000119, 0.000145]  healthy=2/4  0.3s
+N=  50 seed=20260802 truncated  best_obj=482.911955  grads=[13.2, 11.3, 23.3, 2.69]  healthy=0/4  0.2s
+N=  50 seed=20260803 converged  best_obj=448.501473  grads=[0.00298, 0.00239, 0.00199, 0.00497]  healthy=0/4  2.1s
+N=  50 seed=20260803 truncated  best_obj=485.880734  grads=[15.5, 7.62, 17, 32]  healthy=0/4  0.2s
+N= 150 seed=20260801 converged  best_obj=1401.228740  grads=[0.000186, 0.000253, 9.72e-05, 0.000153]  healthy=1/4  0.2s
+N= 150 seed=20260801 truncated  best_obj=1401.228740  grads=[0.000152, 0.000882, 0.000475, 7.41e-05]  healthy=1/4  0.3s
+N= 150 seed=20260802 converged  best_obj=1367.849277  grads=[0.000119, 0.00017, 0.000123, 0.000246]  healthy=0/4  0.7s
+N= 150 seed=20260802 truncated  best_obj=1367.849277  grads=[0.000351, 2, 0.000967, 2.96]  healthy=0/4  0.6s
+N= 150 seed=20260803 converged  best_obj=1436.130381  grads=[0.000342, 9.81e-05, 0.000296, 0.000543]  healthy=1/4  0.4s
+N= 150 seed=20260803 truncated  best_obj=1436.130381  grads=[0.000274, 0.00059, 0.000918, 0.000135]  healthy=0/4  0.4s
+N= 400 seed=20260801 converged  best_obj=3810.037061  grads=[0.000349, 0.000659, 0.000252, 0.000228]  healthy=0/4  1.8s
+N= 400 seed=20260801 truncated  best_obj=3810.037061  grads=[0.000875, 0.000329, 0.0013, 0.000275]  healthy=0/4  1.3s
+N= 400 seed=20260802 converged  best_obj=3719.676697  grads=[0.000174, 0.000266, 9.97e-05, 0.00066]  healthy=1/4  2.2s
+N= 400 seed=20260802 truncated  best_obj=3719.676697  grads=[0.000625, 0.000561, 0.000694, 0.000765]  healthy=0/4  1.3s
+N= 400 seed=20260803 converged  best_obj=3905.544703  grads=[0.000276, 0.000565, 0.000222, 0.000467]  healthy=0/4  1.8s
+N= 400 seed=20260803 truncated  best_obj=3905.544703  grads=[0.000622, 0.000563, 0.000654, 0.000287]  healthy=0/4  1.3s
+
+================ CALIBRATION ================
+positives (converged starts): n=36  max|g| range [6.06e-05, 0.00497]
+negatives (truncated starts): n=36  max|g| range [7.41e-05, 32]
+                    rule pos_admitted neg_rejected
+ absolute 1e-4 (current)         6/36        35/36
+        1e-6 * (1 + |f|)        32/36        13/36
+        1e-5 * (1 + |f|)        35/36        10/36
+            1e-7 * n_obs        10/36        33/36
+            1e-6 * n_obs        32/36        13/36
+  1e-4 * sqrt(n_obs/400)        16/36        32/36
+
+per-cell detail:
+   N     seed     class start n_obs objective max_abs_gradient
+  50 20260801 converged     1   400   437.573      8.42635e-05
+  50 20260801 converged     2   400   437.573      1.09243e-04
+  50 20260801 converged     3   400   437.573      1.30267e-04
+  50 20260801 converged     4   400   437.573      1.81023e-04
+  50 20260801 truncated     1   400   437.573      1.77335e-04
+  50 20260801 truncated     2   400   437.573      1.29616e-03
+  50 20260801 truncated     3   400   437.573      1.53456e-03
+  50 20260801 truncated     4   400   437.573      1.17757e-03
+  50 20260802 converged     1   400   450.260      6.05846e-05
+  50 20260802 converged     2   400   450.260      7.47944e-05
+  50 20260802 converged     3   400   450.260      1.19404e-04
+  50 20260802 converged     4   400   450.260      1.45309e-04
+  50 20260802 truncated     1   400   493.219      1.32016e+01
+  50 20260802 truncated     2   400   500.820      1.12948e+01
+  50 20260802 truncated     3   400   482.912      2.32687e+01
+  50 20260802 truncated     4   400   501.353      2.69462e+00
+  50 20260803 converged     1   400   448.501      2.97671e-03
+  50 20260803 converged     2   400   448.501      2.38657e-03
+  50 20260803 converged     3   400   448.501      1.99347e-03
+  50 20260803 converged     4   400   448.501      4.97199e-03
+  50 20260803 truncated     1   400   506.325      1.55494e+01
+  50 20260803 truncated     2   400   510.932      7.61749e+00
+  50 20260803 truncated     3   400   485.881      1.70491e+01
+  50 20260803 truncated     4   400   492.934      3.19534e+01
+ 150 20260801 converged     1  1200  1401.229      1.86041e-04
+ 150 20260801 converged     2  1200  1401.229      2.52808e-04
+ 150 20260801 converged     3  1200  1401.229      9.71927e-05
+ 150 20260801 converged     4  1200  1401.229      1.53427e-04
+ 150 20260801 truncated     1  1200  1401.229      1.52146e-04
+ 150 20260801 truncated     2  1200  1401.229      8.81731e-04
+ 150 20260801 truncated     3  1200  1401.229      4.74587e-04
+ 150 20260801 truncated     4  1200  1401.229      7.41275e-05
+ 150 20260802 converged     1  1200  1367.849      1.19429e-04
+ 150 20260802 converged     2  1200  1367.849      1.69716e-04
+ 150 20260802 converged     3  1200  1367.849      1.22504e-04
+ 150 20260802 converged     4  1200  1367.849      2.45971e-04
+ 150 20260802 truncated     1  1200  1367.849      3.51211e-04
+ 150 20260802 truncated     2  1200  1585.410      1.99619e+00
+ 150 20260802 truncated     3  1200  1367.849      9.67353e-04
+ 150 20260802 truncated     4  1200  1585.643      2.96490e+00
+ 150 20260803 converged     1  1200  1436.130      3.41682e-04
+ 150 20260803 converged     2  1200  1436.130      9.81127e-05
+ 150 20260803 converged     3  1200  1436.130      2.96348e-04
+ 150 20260803 converged     4  1200  1436.130      5.43313e-04
+ 150 20260803 truncated     1  1200  1436.130      2.74442e-04
+ 150 20260803 truncated     2  1200  1436.130      5.89668e-04
+ 150 20260803 truncated     3  1200  1436.130      9.17902e-04
+ 150 20260803 truncated     4  1200  1436.130      1.34918e-04
+ 400 20260801 converged     1  3200  3810.037      3.48844e-04
+ 400 20260801 converged     2  3200  3810.037      6.58978e-04
+ 400 20260801 converged     3  3200  3810.037      2.51595e-04
+ 400 20260801 converged     4  3200  3810.037      2.27907e-04
+ 400 20260801 truncated     1  3200  3810.037      8.75327e-04
+ 400 20260801 truncated     2  3200  3810.037      3.29135e-04
+ 400 20260801 truncated     3  3200  3810.037      1.29718e-03
+ 400 20260801 truncated     4  3200  3810.037      2.74780e-04
+ 400 20260802 converged     1  3200  3719.677      1.73516e-04
+ 400 20260802 converged     2  3200  3719.677      2.66344e-04
+ 400 20260802 converged     3  3200  3719.677      9.97172e-05
+ 400 20260802 converged     4  3200  3719.677      6.59725e-04
+ 400 20260802 truncated     1  3200  3719.677      6.24806e-04
+ 400 20260802 truncated     2  3200  3719.677      5.61089e-04
+ 400 20260802 truncated     3  3200  3719.677      6.94186e-04
+ 400 20260802 truncated     4  3200  3719.677      7.65086e-04
+ 400 20260803 converged     1  3200  3905.545      2.75730e-04
+ 400 20260803 converged     2  3200  3905.545      5.64829e-04
+ 400 20260803 converged     3  3200  3905.545      2.21891e-04
+ 400 20260803 converged     4  3200  3905.545      4.67123e-04
+ 400 20260803 truncated     1  3200  3905.545      6.21917e-04
+ 400 20260803 truncated     2  3200  3905.545      5.63074e-04
+ 400 20260803 truncated     3  3200  3905.545      6.53783e-04
+ 400 20260803 truncated     4  3200  3905.545      2.87399e-04
+ healthy_under_1e4
+              TRUE
+             FALSE
+             FALSE
+             FALSE
+             FALSE
+             FALSE
+             FALSE
+             FALSE
+              TRUE
+              TRUE
+             FALSE
+             FALSE
+             FALSE
+             FALSE
+             FALSE
+             FALSE
+             FALSE
+             FALSE
+             FALSE
+             FALSE
+             FALSE
+             FALSE
+             FALSE
+             FALSE
+             FALSE
+             FALSE
+              TRUE
+             FALSE
+             FALSE
+             FALSE
+             FALSE
+              TRUE
+             FALSE
+             FALSE
+             FALSE
+             FALSE
+             FALSE
+             FALSE
+             FALSE
+             FALSE
+             FALSE
+              TRUE
+             FALSE
+             FALSE
+             FALSE
+             FALSE
+             FALSE
+             FALSE
+             FALSE
+             FALSE
+             FALSE
+             FALSE
+             FALSE
+             FALSE
+             FALSE
+             FALSE
+             FALSE
+             FALSE
+              TRUE
+             FALSE
+             FALSE
+             FALSE
+             FALSE
+             FALSE
+             FALSE
+             FALSE
+             FALSE
+             FALSE
+             FALSE
+             FALSE
+             FALSE
+             FALSE
+
+== calibration DONE ==

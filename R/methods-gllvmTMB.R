@@ -684,7 +684,10 @@ print.gllvmTMB_multi <- function(x, ...) {
   ## ordinal_probit cutpoints, when at least one trait uses fid 14.
   fids_x <- x$tmb_data$family_id_vec
   if (!is.null(fids_x) && any(fids_x == 14L)) {
-    cuts <- tryCatch(extract_cutpoints(x), error = function(e) NULL)
+    ## quiet = TRUE: these callers show cutpoint ESTIMATES only, with no
+    ## `tau_se` column, so the missing-standard-error note would explain a
+    ## column the reader is not looking at.
+    cuts <- tryCatch(extract_cutpoints(x, quiet = TRUE), error = function(e) NULL)
     if (!is.null(cuts) && nrow(cuts) > 0L) {
       cat("  Cutpoints (ordinal_probit, tau_1 = 0 fixed):\n")
       cuts_show <- cuts[,
@@ -1048,7 +1051,10 @@ tidy.gllvmTMB_multi <- function(
         stringsAsFactors = FALSE
       ))
     }
-    cuts <- tryCatch(extract_cutpoints(x), error = function(e) NULL)
+    ## quiet = TRUE: these callers show cutpoint ESTIMATES only, with no
+    ## `tau_se` column, so the missing-standard-error note would explain a
+    ## column the reader is not looking at.
+    cuts <- tryCatch(extract_cutpoints(x, quiet = TRUE), error = function(e) NULL)
     if (is.null(cuts) || nrow(cuts) == 0L) {
       return(data.frame(
         term = character(0),

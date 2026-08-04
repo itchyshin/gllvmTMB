@@ -170,3 +170,91 @@ test_that("the variance-component target path still works with standard errors",
   ci <- confint(fit, parm = "sigma_eps", method = "wald")
   expect_false(all(is.na(as.numeric(ci))))
 })
+
+test_that("a mapped-out fixed coefficient still returns NA silently", {
+  skip_on_cran()
+  ## THE MAIN REGRESSION RISK of the silent-NA work. `.gllvmTMB_b_fix_se()` has
+  ## three NA exits and only ONE of them is a defect:
+  ##   - sd_report is NULL          -> a defect; now gated at confint / reported at summary
+  ##   - extraction shape unmatched -> a different defect, not addressed
+  ##   - the coefficient is FIXED   -> CORRECT. A mapped-out parameter has no
+  ##                                   standard error, and NA is the right answer.
+  ## A blanket "make missing SEs loud" would flatten the third case and start
+  ## erroring on a legitimate model. It must stay silent.
+  set.seed(11L)
+  n <- 40L
+  dat <- expand.grid(rep_idx = seq_len(n), trait_idx = 1:2)
+  dat$trait <- factor(c("a", "b")[dat$trait_idx])
+  dat$obs_id <- factor(seq_len(nrow(dat)))
+  dat$x <- rnorm(nrow(dat))
+  dat$y <- c(1, 2)[dat$trait_idx] + 0.5 * dat$x + rnorm(nrow(dat), 0, 0.3)
+
+  fit <- gllvmTMB(
+    y ~ 0 + trait + (0 + trait):x,
+    data = dat, family = gaussian(), unit = "obs_id",
+    Xcoef_fixed = c("traitb:x" = 0), silent = TRUE
+  )
+
+  ## sd_report EXISTS here, so nothing about this fit is "standard errors were
+  ## never computed".
+  expect_false(is.null(fit$sd_report))
+
+  s <- summary(fit)
+  expect_true(isTRUE(s$se_status$available))
+
+  ## The fixed coefficient's SE is NA -- and that must remain quiet.
+  idx <- match("traitb:x", fit$X_fix_names)
+  expect_true(is.na(s$fixef$Std.Err[idx]))
+
+  ## No note, no warning, no error: this fit is not missing its standard errors.
+  out <- paste(utils::capture.output(print(s)), collapse = "\n")
+  expect_false(grepl("standard_errors", out, fixed = TRUE))
+  expect_no_warning(summary(fit))
+
+  ## And confint() must NOT abort -- the gate keys on a missing sd_report, not
+  ## on some bound being NA.
+  expect_no_error(confint(fit, method = "wald"))
+})
+
+## --- extract_cutpoints(): the third silent-NA site, and its noise guard -----
+## Flagged by adversarial review as having ZERO coverage while the register
+## implied otherwise. It needs an ordinal fixture, which is why it had none.
+
+.se_ordinal_fit <- function(se) {
+  set.seed(5L)
+  d <- expand.grid(rep_idx = seq_len(60L), trait_idx = 1:2)
+  d$trait <- factor(c("a", "b")[d$trait_idx])
+  d$obs_id <- factor(seq_len(nrow(d)))
+  lat <- c(0.2, 0.8)[d$trait_idx] + rnorm(nrow(d))
+  d$value <- as.integer(cut(lat, breaks = c(-Inf, -0.6, 0.2, 0.9, Inf), labels = FALSE))
+  suppressWarnings(gllvmTMB(
+    value ~ 0 + trait, data = d, family = ordinal_probit(),
+    unit = "obs_id", control = gllvmTMBcontrol(se = se), silent = TRUE
+  ))
+}
+
+test_that("extract_cutpoints() reports, not aborts, when tau_se cannot be filled", {
+  skip_on_cran()
+  fit <- .se_ordinal_fit(se = FALSE)
+  skip_if_not(identical(fit$tmb_data$family_id_vec[1], 14L), "ordinal fixture did not build")
+
+  ## Cutpoint ESTIMATES are still useful, so this must not abort ...
+  expect_message(cp <- extract_cutpoints(fit), regexp = "standard_errors")
+  expect_gt(nrow(cp), 0L)
+  expect_true(all(is.na(cp$tau_se)))
+  ## ... and the estimates must actually be there.
+  expect_true(all(is.finite(cp$tau_estimate)))
+})
+
+test_that("the cutpoint note is silent where no tau_se column is shown", {
+  skip_on_cran()
+  fit <- .se_ordinal_fit(se = FALSE)
+  skip_if_not(identical(fit$tmb_data$family_id_vec[1], 14L), "ordinal fixture did not build")
+
+  ## print() displays cutpoint estimates only. A note about an absent
+  ## standard-error column is noise there -- caught by adversarial review.
+  expect_no_message(utils::capture.output(print(fit)))
+
+  ## quiet = TRUE is the mechanism, and it must actually silence it.
+  expect_no_message(extract_cutpoints(fit, quiet = TRUE))
+})

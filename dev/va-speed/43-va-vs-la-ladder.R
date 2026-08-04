@@ -81,6 +81,17 @@ run_la <- function(d, Q) gllvmTMB::gllvmTMB(
 ## resolved configuration from its own output must not be used to support a cross-arm claim.
 EVAL_METHOD <- Sys.getenv("VALA_EVAL_METHOD", "ac")
 COLLAPSE    <- !identical(Sys.getenv("VALA_COLLAPSE", "TRUE"), "FALSE")
+## THE EXPONENT EXPERIMENT. AC+collapse measured VA at N^1.58 against Laplace's N^0.97, so the
+## 6.72x advantage at N=250 erodes to 1.67x at N=2500. The exponent, not the constant, is what
+## limits VA -- and the mechanism is that the collapse removes the per-unit COVARIANCE blocks
+## while the per-unit MEANS still grow with N, leaving `nlminb` an O(N) outer vector and an
+## O(p^2) dense quasi-Newton approximation over it. `profile_variational` removes both.
+##
+## A parallel session measured profiling and the collapse as SUBSTITUTES -- but at N=250, where
+## there is little bookkeeping to save. The prediction here is that the ranking REVERSES with N,
+## because profiling's cost grows ~linearly while the joint route's grows ~quadratically. What is
+## being tested is therefore the EXPONENT, not any single cell's speedup.
+PROFILE_VAR <- identical(Sys.getenv("VALA_PROFILE", "FALSE"), "TRUE")
 
 run_va <- function(d, Q) {
   Xva <- unname(stats::model.matrix(~ 0 + trait, data = d))
@@ -91,6 +102,7 @@ run_va <- function(d, Q) {
     unique = FALSE, psi = FALSE, H = H_ARG,
     eval_method = EVAL_METHOD,
     collapse_variational_cov = COLLAPSE,
+    profile_variational = PROFILE_VAR,
     n_starts = 1L,
     control = list(eval.max = 2000L, iter.max = 2000L)
   ))

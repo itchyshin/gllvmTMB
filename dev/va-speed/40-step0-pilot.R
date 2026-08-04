@@ -141,7 +141,15 @@ run_seed <- function(seed_id) {
   t_la0 <- Sys.time()
   la_fit <- tryCatch(
     gllvmTMB::gllvmTMB(
-      y ~ 0 + trait + (0 + trait):x + latent(1 | unit, d = Q0, unique = FALSE),
+      ## `unique = TRUE`, not FALSE. The DGP PLANTS psi_j ~ U(PSI_LO, PSI_HI),
+      ## and the scored estimand is V_j = Sigma_jj + psi_j -- so a loadings-only
+      ## tier cannot represent the truth it is being scored against. Under the old
+      ## `unique = FALSE` the fit carried no theta_diag_B, `.total_variance_spec()`
+      ## silently took psi_j = 0, and the arm reported Sigma_jj under the name V_j:
+      ## point-estimate gaps tracked the planted psi_j almost exactly and coverage
+      ## fell 0.517 -> 0.300 -> 0.096. That silent substitution is now a hard error
+      ## (coverage blocker 2, 2a174fb9); this is the matching design fix.
+      y ~ 0 + trait + (0 + trait):x + latent(1 | unit, d = Q0, unique = TRUE),
       data = b$d, family = stats::gaussian(), unit = "unit", silent = TRUE
     ),
     error = function(e) { attr(e, "la_fit_error") <- TRUE; e }

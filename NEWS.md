@@ -6,6 +6,29 @@ bridge remains experimental and is not required for the main workflow.
 
 ## New
 
+* **`standard_errors()` computes standard errors after fitting.** Fitting with
+  `gllvmTMBcontrol(se = FALSE)` skips the TMB `sdreport()` and is meaningfully
+  faster, but it used to be a one-way door: the only route to standard errors
+  afterwards was to fit the model again. `fit <- standard_errors(fit)` now
+  computes them on demand from the fitted object.
+
+  The result is the fit-time calculation deferred, not a different one — the
+  same single `sdreport()` call on the same converged parameter vector,
+  verified bit-exact (`tolerance = 0`) against a fit made with `se = TRUE`.
+  Every existing consumer — `summary()`, `getLV()`, `getREsd()`,
+  `confint(method = "wald")` — then works on the returned object.
+
+  Note the R semantics: the fit is **returned**, not modified in place. Assign
+  the result, or the standard errors are discarded.
+
+  **Same-session only.** A TMB ADFun holds external pointers that do not
+  survive `saveRDS()` or a new R session, so this cannot revive a saved fit.
+  That limitation is shared by every part of the package that reuses the fitted
+  TMB object; what is new is that this function says so with a clear, typed
+  error instead of failing obscurely. This adds no new inference and changes no
+  likelihood, parameterisation, or honesty caveat — Wald standard errors carry
+  exactly the caveats they carried before.
+
 * **Spatial mesh, CRS, and range-plot helpers are now independently authored
   gllvmTMB code.** `make_mesh()` returns a `gllvmTMBmesh` built through
   fmesher's public mesh, finite-element, and basis APIs, while valid legacy

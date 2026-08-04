@@ -70,16 +70,47 @@ run_la <- function(d, Q) gllvmTMB::gllvmTMB(
   cbind(succ, fail) ~ 0 + trait + latent(0 + trait | unit, d = Q, unique = FALSE),
   data = d, family = binomial(link = "probit"), unit = "unit")
 
+## THE ARM IS REQUESTED EXPLICITLY AND THEN VERIFIED. This is the mechanical form of the
+## retraction of claim 46 (see 20-CLAIMS-LEDGER.md): the previous version of this script left
+## `eval_method` at its default "auto" -- which RESOLVES TO "gh" -- and `collapse_variational_cov`
+## at its default FALSE, then reported the result as a verdict on the AC+collapse route, which is
+## a different estimator. The arithmetic was fine; the arm was never named.
+##
+## An argument you did not pass is a choice you did not make. So: pass both, then ABORT if what
+## the fit actually resolved to differs from what was asked for. A harness that cannot state its
+## resolved configuration from its own output must not be used to support a cross-arm claim.
+EVAL_METHOD <- Sys.getenv("VALA_EVAL_METHOD", "ac")
+COLLAPSE    <- !identical(Sys.getenv("VALA_COLLAPSE", "TRUE"), "FALSE")
+
 run_va <- function(d, Q) {
   Xva <- unname(stats::model.matrix(~ 0 + trait, data = d))
-  do.call(gllvmTMB:::.va_r3_fit, list(
+  fit <- do.call(gllvmTMB:::.va_r3_fit, list(
     y = d$succ, n_trials = rep(NTR, nrow(d)), X = Xva,
     unit_id = as.integer(d$unit), trait_id = as.integer(d$trait),
     q = Q, family = "binomial_probit", link = "probit",
     unique = FALSE, psi = FALSE, H = H_ARG,
+    eval_method = EVAL_METHOD,
+    collapse_variational_cov = COLLAPSE,
     n_starts = 1L,
     control = list(eval.max = 2000L, iter.max = 2000L)
   ))
+  ## Verify the RESOLVED route, not the requested one.
+  got <- as.character(fit$eval_method %||% NA_character_)
+  if (!identical(got, EVAL_METHOD)) {
+    stop(sprintf(
+      "ARM MISMATCH: requested eval_method='%s' but the fit resolved to '%s'. Refusing to time a route that was not asked for.",
+      EVAL_METHOD, got), call. = FALSE)
+  }
+  ## The collapse is GATED (AC + all-probit + complete data + constant n_trials + single dense
+  ## tier); a silently refused gate looks identical to one that fired, which is exactly how an
+  ## unverified speed claim gets made. The objective carries an attribute recording what happened.
+  fired <- isTRUE(attr(fit$objective, "va_r3_collapsed"))
+  if (COLLAPSE && !fired) {
+    stop(sprintf("ARM MISMATCH: collapse_variational_cov=TRUE was requested but the gate did NOT fire. Note: %s",
+                 attr(fit$objective, "va_r3_collapse_note") %||% "(no note)"), call. = FALSE)
+  }
+  attr(fit, "arm_collapsed") <- fired
+  fit
 }
 
 res <- list(cell = CELL_TAG, N0 = N0, Q0 = Q0, T0 = T0, NTR = NTR, seed = SEED,
@@ -117,6 +148,9 @@ if (!inherits(va, "try-error")) {
   res$va_status <- as.character(va$status %||% NA_character_)
   res$va_H <- as.integer(va$quadrature$order %||% NA_integer_)
   res$va_eval_method <- as.character(va$eval_method %||% NA_character_)
+  res$va_collapsed <- isTRUE(attr(va, "arm_collapsed"))
+  res$va_requested_eval_method <- EVAL_METHOD
+  res$va_requested_collapse <- COLLAPSE
   res$va_iters <- as.integer(va$best$iterations %||% NA_integer_)
 } else {
   res$va_status <- paste("ERROR:", conditionMessage(attr(va, "condition")))

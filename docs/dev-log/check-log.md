@@ -48845,3 +48845,33 @@ Every arc closed: **F** push-trap guard · **A** lazy `sdreport()` · **D** chea
 dead-code + doc-rot merged. **B** is unblocked and not yet run.
 
 — Session close (Claude, 2026-08-04)
+
+---
+
+## 2026-08-04 (approved additions) — pushed; `vcov()`/`coef()` added
+
+**Pushed** on approval: `origin/claude/va-lane2` verified via `git ls-remote` (the actual remote,
+not the tracking ref) to hold HEAD. **`origin/main` untouched at `5bf18ab3`** — where it started.
+Pushed with an explicit refspec regardless of the upstream now being correct, since that is the
+habit the push trap taught.
+
+**`vcov.gllvmTMB_multi` / `coef.gllvmTMB_multi` added** (`R/vcov-coef.R`, register **EXT-37**), on
+maintainer approval after the EXT-36 audit found the roxygen had promised `vcov()` for releases in
+which it did not exist.
+
+**Order was deliberate:** documentation corrected first (earlier commit), methods added second — so
+the repository was never in a state where it promised something it did not do. Adding them makes
+the original promise *true* rather than retracted.
+
+- `coef()` needs no `sdreport()`; asserted to agree with the eager fit on an `se = FALSE` fit.
+- `vcov()` reuses `confint()`'s gate **verbatim** → same `gllvmTMB_confint_no_sdreport` /
+  `_nonfinite_se` conditions. Shared on purpose: a caller handling one handles the other.
+- **Cross-surface check:** `sqrt(diag(vcov(fit)))` asserted equal to `summary(fit)$fixef$Std.Err`,
+  so the two cannot silently disagree about the same fit.
+- `Xcoef_fixed` coefficients give `NA` rows/columns, tested — the legitimate-`NA` case EXT-36 exists
+  to protect.
+
+**Full suite: 371 files, 9,286 passed, 0 failed, 0 errors.** Session progression:
+366 / 8,963 → **371 / 9,286**.
+
+— Approved additions (Claude, 2026-08-04)

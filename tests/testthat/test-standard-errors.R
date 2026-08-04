@@ -352,3 +352,79 @@ test_that("confint() is unaffected when only some SEs are non-finite", {
   )
   expect_no_error(confint(fit, method = "wald"))
 })
+
+## --- vcov() / coef() for multi-trait fits -----------------------------------
+## Added 2026-08-04 to make true a promise the roxygen had been making: both
+## were registered ONLY for gllvmTMB_va (where they refuse), so an ordinary
+## multi-trait fit raised "no applicable method".
+
+test_that("coef() returns named fixed-effect estimates, with or without SEs", {
+  skip_on_cran()
+  dat <- .se_test_data()
+  eager <- .se_fit(dat, se = TRUE)
+  lazy  <- .se_fit(dat, se = FALSE)
+
+  ce <- coef(eager)
+  expect_type(ce, "double")
+  expect_named(ce, eager$X_fix_names)
+  expect_true(all(is.finite(ce)))
+
+  ## Point estimates do not depend on sdreport(), so this must work on a fit
+  ## that never computed one -- and agree with the eager fit.
+  cl <- coef(lazy)
+  expect_equal(cl, ce, tolerance = 1e-8)
+})
+
+test_that("vcov() returns the named fixed-effect covariance", {
+  skip_on_cran()
+  fit <- .se_fit(.se_test_data(), se = TRUE)
+  v <- vcov(fit)
+
+  expect_true(is.matrix(v))
+  expect_identical(dim(v), c(length(fit$X_fix_names), length(fit$X_fix_names)))
+  expect_identical(rownames(v), fit$X_fix_names)
+  expect_identical(colnames(v), fit$X_fix_names)
+  expect_equal(v, t(v), tolerance = 1e-10)          # symmetric
+  expect_true(all(diag(v) >= 0))                    # variances
+
+  ## Cross-check against the SEs the summary reports: sqrt(diag(vcov)) must be
+  ## the standard errors, or the two surfaces disagree about the same fit.
+  expect_equal(sqrt(diag(v)), summary(fit)$fixef$Std.Err,
+               tolerance = 1e-8, ignore_attr = TRUE)
+})
+
+test_that("vcov() raises the SAME typed errors as confint()", {
+  skip_on_cran()
+  ## Shared conditions on purpose: a caller handling one should handle the other.
+  no_se <- .se_fit(.se_test_data(), se = FALSE)
+  expect_error(vcov(no_se), class = "gllvmTMB_confint_no_sdreport")
+  expect_error(vcov(no_se), regexp = "standard_errors")
+
+  bad <- .se_fit(.se_test_data(), se = TRUE)
+  bad$sd_report$cov.fixed[] <- NaN
+  expect_error(vcov(bad), class = "gllvmTMB_confint_nonfinite_se")
+})
+
+test_that("vcov() gives NA rows for a coefficient held fixed", {
+  skip_on_cran()
+  ## A fixed parameter was not estimated, so it has no sampling covariance --
+  ## NA is correct, and must not be mistaken for the defect class.
+  set.seed(11L)
+  n <- 40L
+  dat <- expand.grid(rep_idx = seq_len(n), trait_idx = 1:2)
+  dat$trait <- factor(c("a", "b")[dat$trait_idx])
+  dat$obs_id <- factor(seq_len(nrow(dat)))
+  dat$x <- rnorm(nrow(dat))
+  dat$y <- c(1, 2)[dat$trait_idx] + 0.5 * dat$x + rnorm(nrow(dat), 0, 0.3)
+  fit <- gllvmTMB(
+    y ~ 0 + trait + (0 + trait):x,
+    data = dat, family = gaussian(), unit = "obs_id",
+    Xcoef_fixed = c("traitb:x" = 0), silent = TRUE
+  )
+  v <- vcov(fit)
+  i <- match("traitb:x", rownames(v))
+  expect_true(all(is.na(v[i, ])))
+  expect_true(all(is.na(v[, i])))
+  ## ...and the free block is still finite.
+  expect_true(all(is.finite(v[-i, -i, drop = FALSE])))
+})

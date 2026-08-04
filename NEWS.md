@@ -45,6 +45,20 @@ bridge remains experimental and is not required for the main workflow.
 
 ## New
 
+* **`vcov()` and `coef()` now work on multi-trait fits.** `coef(fit)` returns
+  the named fixed-effect estimates and `vcov(fit)` their covariance, taken from
+  the fit's `sdreport()`. Both were previously registered only for the
+  variational `gllvmTMB_va` class — where they deliberately refuse — so calling
+  either on an ordinary fit raised "no applicable method", *despite the
+  documentation saying otherwise*.
+
+  `coef()` works on any fit, including one made with `se = FALSE`: point
+  estimates do not depend on `sdreport()`. `vcov()` does, and raises the same
+  typed conditions `confint()` does when it is missing or non-finite, so a
+  caller that handles one handles the other. Rows and columns for coefficients
+  held fixed via `Xcoef_fixed` are `NA` — a parameter that was not estimated has
+  no sampling covariance.
+
 * **`standard_errors()` computes standard errors after fitting.** Fitting with
   `gllvmTMBcontrol(se = FALSE)` skips the TMB `sdreport()` and is meaningfully
   faster, but it used to be a one-way door: the only route to standard errors

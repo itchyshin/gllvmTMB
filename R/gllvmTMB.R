@@ -297,15 +297,16 @@
 #'   `AIC()` / `BIC()` work through `logLik()`. Trait-level extractors such
 #'   as `extract_ICC_site()` and `extract_communality()` are multi-trait only.
 #'
-#'   Two standard generics are **not** implemented for `gllvmTMB_multi`:
-#'   `vcov()` and `coef()`. Both exist only for the variational
-#'   `gllvmTMB_va` class, where they deliberately refuse; on a multi-trait
-#'   fit they raise R's usual "no applicable method" error. Use `tidy()` or
-#'   `summary()` for coefficients, and the fit's `sd_report` for the
-#'   fixed-effect covariance.
+#'   `vcov()` and `coef()` are available too — see
+#'   [gllvmTMB_multi-vcov]. `coef()` works on any fit; `vcov()` needs the
+#'   `sdreport()` and raises the same typed errors [confint()] does when it
+#'   is missing or non-finite.
 #'
-#'   *Corrected 2026-08-04:* this block previously said `vcov()` dispatched
-#'   on `gllvmTMB`, which was never true of any release.
+#'   *History, 2026-08-04:* this block used to say `vcov()` dispatched on
+#'   `gllvmTMB`, which was **never true of any release** — it and `coef()`
+#'   existed only for `gllvmTMB_va`, where they refuse. The wording was
+#'   corrected first, then the two methods were added, which is why the
+#'   promise now holds.
 #'
 #' @details
 #' `gllvmTMB()` parses the glmmTMB-style formula, converts wide

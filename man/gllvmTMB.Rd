@@ -316,15 +316,16 @@ S3 methods are registered on the \strong{subclasses}, not on bare
 \code{AIC()} / \code{BIC()} work through \code{logLik()}. Trait-level extractors such
 as \code{extract_ICC_site()} and \code{extract_communality()} are multi-trait only.
 
-Two standard generics are \strong{not} implemented for \code{gllvmTMB_multi}:
-\code{vcov()} and \code{coef()}. Both exist only for the variational
-\code{gllvmTMB_va} class, where they deliberately refuse; on a multi-trait
-fit they raise R's usual "no applicable method" error. Use \code{tidy()} or
-\code{summary()} for coefficients, and the fit's \code{sd_report} for the
-fixed-effect covariance.
+\code{vcov()} and \code{coef()} are available too — see
+\link{gllvmTMB_multi-vcov}. \code{coef()} works on any fit; \code{vcov()} needs the
+\code{sdreport()} and raises the same typed errors \code{\link[=confint]{confint()}} does when it
+is missing or non-finite.
 
-\emph{Corrected 2026-08-04:} this block previously said \code{vcov()} dispatched
-on \code{gllvmTMB}, which was never true of any release.
+\emph{History, 2026-08-04:} this block used to say \code{vcov()} dispatched on
+\code{gllvmTMB}, which was \strong{never true of any release} — it and \code{coef()}
+existed only for \code{gllvmTMB_va}, where they refuse. The wording was
+corrected first, then the two methods were added, which is why the
+promise now holds.
 }
 \description{
 Top-level entry point for models with several responses per site,

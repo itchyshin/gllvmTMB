@@ -765,7 +765,7 @@
 ## cover a `sd_report` that exists but yields non-finite SEs (a non-positive
 ## -definite Hessian), which still surfaces as bare `NaN`. That is a separate
 ## defect, recorded rather than silently folded in.
-.confint_require_sdreport <- function(object, method) {
+.confint_require_sdreport <- function(object, method, caller = "confint") {
   if (identical(method, "profile")) {
     return(invisible(NULL))
   }
@@ -781,8 +781,7 @@
     cv <- tryCatch(object$sd_report$cov.fixed, error = function(e) NULL)
     if (!is.null(cv) && length(cv) > 0L && !any(is.finite(diag(as.matrix(cv))))) {
       cli::cli_abort(c(
-        "{.fn confint} cannot build a Wald interval: the standard errors are
-         all non-finite.",
+        "{.fn {caller}} cannot proceed: the standard errors are all non-finite.",
         "x" = "This usually means the Hessian is not positive-definite.",
         "i" = "This is a property of the fit -- {.fn standard_errors} will not
                help, because the numbers were already computed.",
@@ -798,7 +797,7 @@
   reason <- object$sdreport_error %||%
     "no standard errors were computed for this fit"
   cli::cli_abort(c(
-    "{.fn confint} cannot compute a Wald interval without standard errors.",
+    "{.fn {caller}} needs standard errors, and this fit has none.",
     "x" = "This fit has no {.field sd_report}: {reason}",
     ">" = "Compute them without refitting: {.code fit <- standard_errors(fit)}",
     "i" = "Or use {.code method = \"profile\"}, which does not need them."

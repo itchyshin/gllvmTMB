@@ -291,10 +291,21 @@
 #'   the formula the result has class `"gllvmTMB"` (single-response
 #'   engine); with `latent()` or other covstruct sugar it has class
 #'   `c("gllvmTMB_multi", "gllvmTMB")` (multi-trait engine).
-#'   Either way, S3 methods such as `tidy()`, `predict()`,
-#'   `vcov()`, `logLik()` etc. dispatch on `gllvmTMB`; `gllvmTMB_multi`-
-#'   specific methods (e.g. trait-level `extract_ICC_site()`,
-#'   `extract_communality()`) are available for multi-trait fits.
+#'   S3 methods are registered on the **subclasses**, not on bare
+#'   `gllvmTMB`: for a multi-trait fit (`gllvmTMB_multi`), `tidy()`,
+#'   `predict()`, `summary()`, `confint()` and `logLik()` are available, and
+#'   `AIC()` / `BIC()` work through `logLik()`. Trait-level extractors such
+#'   as `extract_ICC_site()` and `extract_communality()` are multi-trait only.
+#'
+#'   Two standard generics are **not** implemented for `gllvmTMB_multi`:
+#'   `vcov()` and `coef()`. Both exist only for the variational
+#'   `gllvmTMB_va` class, where they deliberately refuse; on a multi-trait
+#'   fit they raise R's usual "no applicable method" error. Use `tidy()` or
+#'   `summary()` for coefficients, and the fit's `sd_report` for the
+#'   fixed-effect covariance.
+#'
+#'   *Corrected 2026-08-04:* this block previously said `vcov()` dispatched
+#'   on `gllvmTMB`, which was never true of any release.
 #'
 #' @details
 #' `gllvmTMB()` parses the glmmTMB-style formula, converts wide

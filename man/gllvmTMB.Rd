@@ -310,10 +310,21 @@ A \code{gllvmTMB} object. With no covariance-structure terms in
 the formula the result has class \code{"gllvmTMB"} (single-response
 engine); with \code{latent()} or other covstruct sugar it has class
 \code{c("gllvmTMB_multi", "gllvmTMB")} (multi-trait engine).
-Either way, S3 methods such as \code{tidy()}, \code{predict()},
-\code{vcov()}, \code{logLik()} etc. dispatch on \code{gllvmTMB}; \code{gllvmTMB_multi}-
-specific methods (e.g. trait-level \code{extract_ICC_site()},
-\code{extract_communality()}) are available for multi-trait fits.
+S3 methods are registered on the \strong{subclasses}, not on bare
+\code{gllvmTMB}: for a multi-trait fit (\code{gllvmTMB_multi}), \code{tidy()},
+\code{predict()}, \code{summary()}, \code{confint()} and \code{logLik()} are available, and
+\code{AIC()} / \code{BIC()} work through \code{logLik()}. Trait-level extractors such
+as \code{extract_ICC_site()} and \code{extract_communality()} are multi-trait only.
+
+Two standard generics are \strong{not} implemented for \code{gllvmTMB_multi}:
+\code{vcov()} and \code{coef()}. Both exist only for the variational
+\code{gllvmTMB_va} class, where they deliberately refuse; on a multi-trait
+fit they raise R's usual "no applicable method" error. Use \code{tidy()} or
+\code{summary()} for coefficients, and the fit's \code{sd_report} for the
+fixed-effect covariance.
+
+\emph{Corrected 2026-08-04:} this block previously said \code{vcov()} dispatched
+on \code{gllvmTMB}, which was never true of any release.
 }
 \description{
 Top-level entry point for models with several responses per site,

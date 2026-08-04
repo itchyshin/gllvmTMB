@@ -20,13 +20,18 @@
 ## a censored point still bounds the exponent from below, which is what the
 ## superlinear question needs.
 ##
-## Usage: Rscript 43-va-vs-la-ladder.R <N0> <SEED> <cell_tag>
+## H is an explicit argument (default 61 = the shipped formal default) so the
+## H=61-vs-H=15 confound is MEASURED rather than argued: GH cost is linear in H,
+## and the arc's own PROFILE.md profiled H=15 while a user gets H=61.
+##
+## Usage: Rscript 43-va-vs-la-ladder.R <N0> <SEED> <cell_tag> [H]
 Sys.setenv(OPENBLAS_NUM_THREADS = "1", OMP_NUM_THREADS = "1")
 
 args <- commandArgs(trailingOnly = TRUE)
 N0 <- as.integer(args[[1]])
 SEED <- as.integer(args[[2]])
 CELL_TAG <- args[[3]]
+H_ARG <- if (length(args) >= 4L) as.integer(args[[4]]) else 61L
 
 `%||%` <- function(a, b) if (is.null(a)) b else a
 
@@ -71,13 +76,14 @@ run_va <- function(d, Q) {
     y = d$succ, n_trials = rep(NTR, nrow(d)), X = Xva,
     unit_id = as.integer(d$unit), trait_id = as.integer(d$trait),
     q = Q, family = "binomial_probit", link = "probit",
-    unique = FALSE, psi = FALSE,
+    unique = FALSE, psi = FALSE, H = H_ARG,
     n_starts = 1L,
     control = list(eval.max = 2000L, iter.max = 2000L)
   ))
 }
 
 res <- list(cell = CELL_TAG, N0 = N0, Q0 = Q0, T0 = T0, NTR = NTR, seed = SEED,
+            H_requested = H_ARG,
             va_s = NA_real_, la_s = NA_real_,
             va_censored = TRUE, la_censored = TRUE,
             va_status = NA_character_, va_H = NA_integer_,

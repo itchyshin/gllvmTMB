@@ -48697,3 +48697,48 @@ recorded the `--vanilla` → `--no-environ` → `library(gllvm)` gotcha in the s
 Smoke green at the real cell size. **No claim until all 12 seeds land.**
 
 — Correction + arcs D/E (Claude, 2026-08-04)
+
+---
+
+## 2026-08-04 (close) — Arc E settles claim 30, mostly against us
+
+**The arc the ledger asked for, run at last.** Claim 30 (*"we have a better VA than gllvm"*) had
+two retracted attempts behind it — claim 16 at **1 seed**, claim 18 at **6**. This run:
+model-matched, **12 seeds**, serial, arm order rotated per replicate, N=120 T=10 q=1
+`n_trials`=6 `psi_true`=0.6, reporting speed **and** accuracy **and** ψ.
+
+**The medians would have misled.** Every arm's per-seed `rel_frob` spans ~0.15–0.49 and the
+ranges overlap almost completely — which is exactly why the underpowered versions were
+worthless. Verdict from **paired per-seed** comparisons:
+
+| | result |
+|---|---|
+| ours-GH vs gllvm-VA (accuracy) | **11 of 12** — a real, narrow, properly-powered win |
+| ours-LA vs gllvm-VA | 11 of 12 |
+| ours-LA vs gllvm-LA | 9 of 12 |
+| **ours-AC vs gllvm-VA** | **6 of 12 — a coin flip** |
+| speed, every comparison | **0 of 12**, gllvm 10–50× faster |
+| ψ (truth 0.6) | ours-AC **0.0002**; ours-GH **0.5417** |
+
+**Claim 30 STAYS not established** — and this run is the reason to stop trying. The defensible
+sentence is *"our GH tier is more accurate than gllvm's VA on this cell"*, not *"we have a better
+VA"*: the tier that wins accuracy (GH) is our **slowest** arm, and the tier this arc was built
+around (**AC**) is a coin flip that **destroys the variance component**.
+
+⚠ **Regime, because the speed line is the one most likely to be over-read:** N=120 sits far below
+the measured VA-vs-LA crossover (~N≈2500), so this does **not** settle large-N, where our VA's
+case always lay. One cell, q=1, one family.
+
+**A sizing error of mine, recorded.** First launched at N=250/T=20, where `ours-AC` alone took
+**196 s per arm** — 5–12 h for the grid. That estimate extrapolated from an N=60/T=6 smoke and
+ignored the superlinear scaling this lane had already measured. Killed and re-scoped to trade
+cell size for the **seed count** claim 30 actually requires. `dde30a61`,
+detail in `dev/va-speed/67-ARC-E-RESULT.md`.
+
+**Dead-code chip closed (separate branch, unmerged):** `.wald_block()` **confirmed dead** by five
+independent checks including `git log -S` across full history — it was never called from the
+moment it was written. Marked, not deleted. The bigger find: **28 of 33 checkable rows** in
+`dev/aghq-scope/06-consumers.md` were stale (one flagged; twenty-eight found), including a
+fabricated caller name and a function that never existed.
+
+— Arcs E + dead-code (Claude, 2026-08-04)

@@ -39,6 +39,13 @@
               is_y_observed = as.integer(observed), N = 1L, T = 1L, q = 1L,
               gh_nodes = rule$nodes, gh_weights = rule$weights,
               family = 4L, eval_method = 0L,
+              ## ac2_threshold (Design 108 Gate A Stage 5, the ac2 runaway
+              ## fix) is read UNCONDITIONALLY by the template regardless of
+              ## eval_method -- this fixture builds `dat` directly rather
+              ## than through .va_r3_make_objective(), so it must supply the
+              ## field itself. eval_method = 0L (gh) never reads it; the
+              ## value is inert here, matching R/va-r3-proto.R's own default.
+              ac2_threshold = 1.0,
               ## Design 108 Stage 6 made the tier structure DATA. This fixture
               ## builds on the template directly, so it declares the single
               ## dense ordinary latent tier explicitly: one tier, dimension

@@ -286,6 +286,26 @@ Type va_r3_inv_mills(const Type &x)
 // E[ y log Phi(eta) + (n - y) log Phi(-eta) ] for eta ~ N(mu, v), by the same
 // physicists' Gauss-Hermite rule the softplus expectation uses.
 //
+// `threshold` is a caller-supplied argument (Design 108 Gate A Stage 5 --
+// added when va_r3_probit_ac2_expectation below needed this SAME
+// expansion/quadrature hybrid at a much larger switch point). It MUST stay
+// an ordinary CondExp comparison, not a native if/else: v is a function of
+// the free parameters (an AD Type, not fixed DATA like eval_method above),
+// so a native `if (v > threshold)` would bake in whichever branch the
+// TAPE-RECORDING parameter values happened to select and silently keep
+// using it as v moves during optimisation -- exactly the failure mode the
+// "eval_method is fixed DATA" comment elsewhere in this file distinguishes
+// itself from. Both branches are therefore evaluated on every call
+// regardless of threshold -- CondExp is a differentiable SELECT, not a
+// runtime skip -- so raising `threshold` does NOT, by itself, reduce the
+// per-call cost of this function; see va_r3_probit_ac2_expectation's own
+// comment for what raising it actually buys and what it does not.
+//
+// The "gh" tier (this function's original, sole caller before ac2) passes
+// Type(1e-6): effectively "always quadrature", since GH's whole purpose is
+// exactness. That call is UNCHANGED by adding this parameter -- it now
+// passes the literal 1e-6 explicitly where it used to be a local constant.
+//
 // Small v: as for softplus, sqrt(v) has an unbounded derivative at v = 0, so
 // the GH branch receives max(v, threshold) and the outer CondExp selects a
 // heat-kernel expansion below the threshold.  Here the expansion is carried to
@@ -294,18 +314,20 @@ Type va_r3_inv_mills(const Type &x)
 // with g''(x) obtained from the standard identity
 //     d^2/dx^2 log Phi(x) = -lambda(x) (x + lambda(x)).
 // Stopping at first order (rather than the softplus branch's third) is a
-// deliberate, bounded choice: at the shared threshold v = 1e-6 the omitted term
-// is O(v^2) = 1e-12 in the value and O(v) = 1e-6 RELATIVE in dE/dv, against an
-// O(1) leading term -- while the fourth derivative of log Phi is a quartic in
-// lambda whose hand-derivation is a correctness risk with no measurable payoff.
+// deliberate, bounded choice: at the ORIGINAL threshold v = 1e-6 the omitted
+// term is O(v^2) = 1e-12 in the value and O(v) = 1e-6 RELATIVE in dE/dv,
+// against an O(1) leading term -- while the fourth derivative of log Phi is
+// a quartic in lambda whose hand-derivation is a correctness risk with no
+// measurable payoff. At ac2's much larger threshold this omitted-term
+// argument no longer applies verbatim at that scale; see that function's
+// own accuracy evidence (measured against quadrature, not re-derived here).
 template <class Type>
 Type va_r3_probit_expectation(const Type &mu, const Type &v,
                               const Type &y, const Type &n,
                               const vector<Type> &gh_nodes,
-                              const vector<Type> &gh_weights)
+                              const vector<Type> &gh_weights,
+                              const Type &threshold)
 {
-  const Type threshold = Type(1e-6);
-
   Type lam_p = va_r3_inv_mills(mu);
   Type lam_q = va_r3_inv_mills(-mu);
   // g(eta) = y logPhi(eta) + (n-y) logPhi(-eta); the second term's second
@@ -381,39 +403,82 @@ Type va_r3_probit_ac_expectation(const Type &mu, const Type &v,
 // re-derived and checked here against central finite differences of
 // pnorm(., log.p = TRUE), not transliterated from any external source.
 //
-// h and g below are exactly va_r3_inv_mills(mu) (:276) and
-// va_r3_inv_mills(-mu): the SAME primitive already used to build d2_p/d2_q
-// (:313-314) in the small-v expansion branch of va_r3_probit_expectation
-// above, so this reuses a numerically stable computation this file already
-// relies on (continued-fraction tail, finite to x = -145 by the header
-// comment at va_r3_inv_mills's definition) instead of opening a second,
-// redundant stability argument.  Grid-checked separately for mu in
-// [-40, 40]: finite and in [-1, 0] throughout (touches exactly 0 only at
-// |mu| >= 39, the correct IEEE-754 double-precision limit of the
-// opposite-tail term, not a NaN/Inf failure).
+// WHY THIS IS A HYBRID, NOT A PURE EXPANSION (measured, not theoretical).
+// An earlier version of this function used the expansion above
+// UNCONDITIONALLY for every v. That is unsound as an OPTIMISATION
+// OBJECTIVE, not merely imprecise: as |mu| grows, h(mu)(mu+h(mu)) -> 1, so
+// BOTH curvatures -> 0, and the variance penalty v*(...)/2 vanishes with
+// them. A pure-expansion "ac2" therefore has nothing stopping the
+// optimiser from inflating the loadings: bigger Lambda -> bigger |mu| in
+// the tail -> smaller curvature -> smaller penalty -> bigger Lambda again.
+// Measured (probit, n=150, p=20, q=2): the pure expansion reached
+// `convergence: 0` (nlminb reports success) with max_v ~ 1.5e10 and
+// Sigma trace ~ 2.2e9 -- ten orders of magnitude past anything physical --
+// correctly refused by the
+// `variance_domain_ok <- max_projected_variance <= 4` gate
+// (R/va-r3-proto.R). That gate is a REFEREE catching a real design flaw in
+// this function, not a bug to route around; it is unchanged by this fix.
 //
-// UNLIKE va_r3_probit_ac_expectation, THIS IS NOT A PROVEN LOWER BOUND.
-// The AC closed form is a valid ELBO because it comes from a truncated-
-// normal data-augmentation argument (profiling out an auxiliary z), which
-// holds regardless of curvature; charging the WORST-CASE curvature -1 is
-// what makes that augmentation argument go through as an inequality. This
-// function instead plugs the EXACT curvature at mu into a plain second-
-// order Taylor expansion of E_q[log p] -- a more accurate approximation for
-// the same v, but ordinary delta-method truncation error (unsigned, not a
-// one-sided bound). Do not use it where a certified ELBO lower bound is
-// required. Research/comparison tier only -- R/va-r3-proto.R's registry
+// THE FIX: give this function the SAME expansion/quadrature hybrid
+// va_r3_probit_expectation already uses for its own, much smaller reason
+// (the sqrt(v) derivative singularity at v=0), at a much larger switch
+// point, so quadrature -- whose implied curvature does NOT vanish, because
+// it evaluates log Phi at the actual GH nodes rather than trusting a local
+// derivative -- takes over before the runaway regime is reached. Reuses
+// va_r3_probit_expectation verbatim (no new quadrature code).
+//
+// THE THRESHOLD IS RUNTIME DATA (DATA_SCALAR(ac2_threshold) below, plumbed
+// from R/va-r3-proto.R's ac2_threshold argument), not a compile-time
+// constant -- deliberately, so a sweep over switch points needs no rebuild.
+// R's default is 1.0. Measured (stats::integrate() quadrature oracle,
+// independent of both this expansion and the package's own GH rule):
+// worst absolute error of the expansion vs the true E_q[log p], over mu in
+// [-2,2] and y in {0,1}, is 0.0176 at v=1.0, rising smoothly to 0.060 at
+// v=2.0 and 0.118 at v=3.0, and falling to 0.0070 at v=0.6. 1.0 sits where
+// the expansion is still a modest, bounded approximation and not yet past
+// it -- above it, quadrature takes over exactly, for ANY threshold value,
+// because the underlying call is the identical va_r3_probit_expectation.
+//
+// h and g in the expansion branch are exactly va_r3_inv_mills(mu) (:276)
+// and va_r3_inv_mills(-mu): the SAME primitive va_r3_probit_expectation's
+// own small-v branch already uses for this identical curvature -- inherited
+// automatically now that this function forwards to it, rather than
+// duplicated here.
+//
+// ELBO STATUS, revised for the hybrid. For v > threshold this function IS
+// va_r3_probit_expectation's quadrature branch -- the same value "gh"
+// would compute for that row -- which numerically approximates the exact
+// integral, so it inherits the ordinary variational-inequality argument (a
+// genuine ELBO term) there. For v <= threshold it is still the plain
+// delta-method expansion above, with unsigned truncation error, not a
+// proven bound. Because a single fit can have rows on EITHER side of the
+// threshold, the objective AS A WHOLE is not uniformly a certified ELBO --
+// R/va-r3-proto.R's .va_r3_objective_type still labels it "APPROX_AC2",
+// not "ELBO_AC2", for exactly this reason (true at every threshold value,
+// including one so small the fit is ELBO-valid almost everywhere in
+// practice, because "almost everywhere" is not "everywhere"). Do not treat
+// an ac2 fit's `elbo` as a certified lower bound on the marginal
+// likelihood. Research/comparison tier only -- R/va-r3-proto.R's registry
 // keeps "gh" as binomial_probit's default_tier; this tier is not reachable
 // from the public integration fence.
+//
+// COST. Both branches of a CondExp are evaluated on every call regardless
+// of which is selected (see va_r3_probit_expectation's own comment above)
+// -- so this hybrid does NOT skip the quadrature loop's per-call cost
+// merely by raising the threshold past it; the threshold changes which
+// VALUE is selected, not how much is computed to select it. See the
+// implementation report for the measured fit-time comparison against "ac"
+// and "gh" across a range of threshold values -- an empirical question,
+// not a theoretical guarantee of this structure.
 template <class Type>
 Type va_r3_probit_ac2_expectation(const Type &mu, const Type &v,
-                                  const Type &y, const Type &n)
+                                  const Type &y, const Type &n,
+                                  const vector<Type> &gh_nodes,
+                                  const vector<Type> &gh_weights,
+                                  const Type &threshold)
 {
-  Type h = va_r3_inv_mills(mu);
-  Type g = va_r3_inv_mills(-mu);
-  Type d2_log_p = -h * (mu + h);
-  Type d2_log_1mp = g * (mu - g);
-  return y * va_r3_log_pnorm(mu) + (n - y) * va_r3_log_pnorm(-mu)
-    + v * (y * d2_log_p + (n - y) * d2_log_1mp) / Type(2.0);
+  return va_r3_probit_expectation(mu, v, y, n, gh_nodes, gh_weights,
+                                   threshold);
 }
 
 template <class Type>
@@ -444,6 +509,12 @@ Type objective_function<Type>::operator()()
                                    // 3 = "ac2", curvature-corrected Albert-Chib
                                    //     (binomial-probit only; research/comparison
                                    //     tier, see va_r3_probit_ac2_expectation above)
+  // "ac2"'s expansion/quadrature switch point (va_r3_probit_ac2_expectation
+  // above). Runtime DATA, not a compile-time constant, so a threshold sweep
+  // needs no rebuild; read unconditionally, so it must be present (and
+  // finite and positive -- checked R-side, R/va-r3-proto.R) even when
+  // eval_method != 3, where it is simply unused.
+  DATA_SCALAR(ac2_threshold);
 
   // ---------------------------------------------------------------------
   // Design 108 Gate A Stage 6: multiple unstructured tiers (Design 106 s1).
@@ -1066,16 +1137,23 @@ Type objective_function<Type>::operator()()
       // is the Albert-Chib closed form, a DIFFERENT (strictly lower) objective
       // than the GH quadrature, not a faster route to the same one.
       // eval_method == 3 ("ac2") is the curvature-corrected sibling defined
-      // above: same closed-form family, exact mu-dependent curvature instead
-      // of the constant -1, and likewise not the GH objective (see that
-      // function's comment for why it is not even a proven lower bound).
+      // above: a HYBRID that reuses va_r3_probit_expectation's own
+      // expansion/quadrature machinery at a RUNTIME threshold
+      // (DATA_SCALAR(ac2_threshold) above; see that function's comment), so
+      // it needs gh_nodes/gh_weights too, unlike eval_method == 2. The "gh"
+      // branch below passes its OWN threshold, Type(1e-6), explicitly --
+      // unchanged from the literal value the local
+      // `const Type threshold = Type(1e-6);` used to hold, and NOT the same
+      // DATA_SCALAR ac2 reads (gh's threshold stays a fixed literal, not
+      // runtime-configurable, so its behaviour cannot move).
       Type probit_expectation;
       if (eval_method == 2) {
         probit_expectation = va_r3_probit_ac_expectation(mu, v, y(r), n);
       } else if (eval_method == 3) {
-        probit_expectation = va_r3_probit_ac2_expectation(mu, v, y(r), n);
+        probit_expectation = va_r3_probit_ac2_expectation(
+          mu, v, y(r), n, gh_nodes, gh_weights, Type(ac2_threshold));
       } else {
-        probit_expectation = va_r3_probit_expectation(mu, v, y(r), n, gh_nodes, gh_weights);
+        probit_expectation = va_r3_probit_expectation(mu, v, y(r), n, gh_nodes, gh_weights, Type(1e-6));
       }
       ell = log_choose + probit_expectation;
     }

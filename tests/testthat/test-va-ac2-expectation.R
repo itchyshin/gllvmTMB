@@ -194,6 +194,69 @@ test_that("compiled ac2 output matches its formula exactly, at real emitted (mu,
   expect_equal(rep_ac$expected_loglik_by_obs, ac_mirror, tolerance = 0)
 })
 
+test_that("above threshold, compiled ac2 is EXACTLY gh's quadrature; below, it differs", {
+  ## The regime that broke the pure-expansion version of ac2: a pure
+  ## second-order expansion has vanishing curvature as |mu| grows, so the
+  ## variance penalty vanishes with it and the optimiser can inflate the
+  ## loadings without bound (measured: max_v ~ 1.5e10, refused by
+  ## R/va-r3-proto.R's `variance_domain_ok <- max_projected_variance <= 4`
+  ## gate). The fix hybridises va_r3_probit_ac2_expectation with
+  ## va_r3_probit_expectation's own quadrature above a threshold (default
+  ## 1.0, now DATA_SCALAR(ac2_threshold), runtime-configurable). Above the
+  ## threshold ac2 IS va_r3_probit_expectation's quadrature branch -- the
+  ## identical call "gh" makes for that row -- so it should be EXACT there,
+  ## not merely within tolerance; below threshold it is still the plain
+  ## expansion and should differ from quadrature.
+  skip_on_cran()
+  a <- .ac2_sim()
+  vd <- do.call(gllvmTMB:::.va_r3_validate_data,
+                a[intersect(names(a), names(formals(gllvmTMB:::.va_r3_validate_data)))])
+  obj_ac2 <- gllvmTMB:::.va_r3_make_objective(vd, H = 61L, eval_method = "ac2")
+  obj_gh  <- gllvmTMB:::.va_r3_make_objective(vd, H = 61L, eval_method = "gh")
+
+  par_ac2 <- obj_ac2$par
+  par_gh  <- par_ac2  ## identical names/order (asserted in the block above)
+  ## Tn = 6L matches .ac2_sim()'s own default, used above via a <- .ac2_sim().
+  Lambda <- gllvmTMB:::.va_r3_unpack_theta_rr(
+    unname(par_ac2[names(par_ac2) == "theta_rr"]), 6L, a$q)
+  lam1 <- Lambda[1, 1]
+  idx_logld <- which(names(par_ac2) == "log_L_diag")
+
+  ## Force v at each of these targets by solving log_L_diag directly (mu is
+  ## left at its default-init value -- only v is targeted).
+  target_v <- c(0.4, 0.9, 2, 5, 20)
+  for (k in seq_along(target_v)) {
+    val <- log(sqrt(target_v[k]) / abs(lam1))
+    par_ac2[idx_logld[k]] <- val
+    par_gh[idx_logld[k]]  <- val
+  }
+  rep_ac2 <- obj_ac2$report(par_ac2)
+  rep_gh  <- obj_gh$report(par_gh)
+  row_of <- function(unit0) which(vd$unit_id == unit0 & vd$trait_id == 0L)
+  rows <- vapply(seq_along(target_v) - 1L, row_of, integer(1))
+
+  v_actual <- rep_ac2$v_by_obs[rows]
+  ## Self-check: confirm the forcing actually landed on the intended v.
+  expect_equal(v_actual, target_v, tolerance = 1e-8)
+
+  above <- target_v > 1.0   ## default ac2_threshold
+  below <- target_v < 1.0
+  expect_true(any(above) && any(below))  ## the test must exercise BOTH sides
+
+  ## ABOVE threshold (v in {2, 5, 20}): EXACT match, tolerance 0 -- this is
+  ## the same call, not an approximation of it.
+  expect_equal(rep_ac2$expected_loglik_by_obs[rows][above],
+               rep_gh$expected_loglik_by_obs[rows][above],
+               tolerance = 0)
+
+  ## BELOW threshold (v in {0.4, 0.9}): must NOT match gh -- if it did, the
+  ## hybrid would not actually be switching, and the runaway fix would be a
+  ## no-op.
+  diffs_below <- abs(rep_ac2$expected_loglik_by_obs[rows][below] -
+                       rep_gh$expected_loglik_by_obs[rows][below])
+  expect_true(all(diffs_below > 1e-6))
+})
+
 test_that("eval_method = \"ac2\" is wired through the registry exactly like \"ac\"", {
   ## family_code = 4L is binomial_probit's registry code (R/va-r3-proto.R),
   ## the same value .va_r3_resolve_eval_method()/.va_r3_eval_method_code()

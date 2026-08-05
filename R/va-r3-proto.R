@@ -1954,13 +1954,24 @@
                                   eval_method = c("auto", "jj", "gh", "ac", "ac2"),
                                   profile_variational = FALSE,
                                   collapse_variational_cov = FALSE,
-                                  inner_control = NULL) {
+                                  inner_control = NULL,
+                                  ac2_threshold = 1.0) {
   if (validated$q == 0L) {
     stop("q = 0 is not applicable and must not construct an R3 objective.",
          call. = FALSE)
   }
   eval_method <- match.arg(eval_method)
   eval_method_code <- .va_r3_eval_method_code(eval_method, validated$family)
+  ## Runtime dial for "ac2"'s expansion/quadrature switch point
+  ## (inst/tmb/gllvmTMB_va_r3.cpp, va_r3_probit_ac2_expectation): a
+  ## DATA_SCALAR, not a compile-time constant, so a sweep over threshold
+  ## values needs no rebuild. Read unconditionally by the template
+  ## regardless of eval_method (inert when eval_method != "ac2"), so it must
+  ## always be a single finite positive number.
+  if (!is.numeric(ac2_threshold) || length(ac2_threshold) != 1L ||
+      !is.finite(ac2_threshold) || ac2_threshold <= 0) {
+    stop("ac2_threshold must be a single finite positive number.", call. = FALSE)
+  }
   rule <- .va_r3_gh_rule(H)
   dll <- .va_r3_load_dll(source, rebuild = rebuild)
   if (is.null(parameters)) parameters <- .va_r3_default_parameters(validated, 1L)
@@ -2009,6 +2020,7 @@
   tmb_data$gh_nodes <- rule$nodes
   tmb_data$gh_weights <- rule$weights
   tmb_data$eval_method <- eval_method_code
+  tmb_data$ac2_threshold <- as.numeric(ac2_threshold)
   tmb_data$n_tiers <- layout$n_tiers
   tmb_data$tier_kind <- layout$kind_code
   tmb_data$tier_dim <- layout$dim
@@ -2220,7 +2232,8 @@
                        estimate_gaussian_sd = TRUE,
                        extra_tiers = NULL,
                        profile_variational = FALSE,
-                       inner_control = NULL) {
+                       inner_control = NULL,
+                       ac2_threshold = 1.0) {
   family_choices <- c("binomial", "poisson", "gaussian_anchor", "nbinom2",
                       "binomial_probit", "gaussian")
   if (is.null(family_codes)) {
@@ -2352,7 +2365,8 @@
       eval_method = eval_method,
       profile_variational = profile_variational,
       collapse_variational_cov = collapse_variational_cov,
-      inner_control = inner_control
+      inner_control = inner_control,
+      ac2_threshold = ac2_threshold
     )
     objects[[k]] <- obj
     opt <- tryCatch(

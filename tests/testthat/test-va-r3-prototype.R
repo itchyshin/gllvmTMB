@@ -1477,7 +1477,14 @@ test_that("R3 template refuses an inconsistent tier declaration loudly", {
       dat = list(y = 1, n_trials = 4, X = matrix(1, 1L, 1L), unit_id = 0L,
                  trait_id = 0L, is_y_observed = 1L, N = 1L, T = 1L, q = 1L,
                  gh_nodes = rule$nodes, gh_weights = rule$weights,
-                 family = 1L, eval_method = 0L, n_tiers = 1L, tier_kind = 0L,
+                 family = 1L, eval_method = 0L,
+                 ## ac2_threshold (Design 108 Gate A Stage 5) is read
+                 ## unconditionally regardless of eval_method; this probe
+                 ## builds `dat` directly rather than through
+                 ## .va_r3_make_objective(), so it must supply the field
+                 ## itself. eval_method = 0L (gh) never reads it.
+                 ac2_threshold = 1.0,
+                 n_tiers = 1L, tier_kind = 0L,
                  tier_dim = 1L, tier_n_levels = 1L,
                  level_id = matrix(0L, 1L, 1L),
                  ## Stage 7's structured-prior DATA. The base probe declares

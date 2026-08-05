@@ -86,8 +86,18 @@ sim_cell <- function(seed, family, N0) {
     x     = rep(x, each = T0)
   )
   Sigma_true <- Lambda %*% t(Lambda)
+  ## beta_true is RETURNED (added 2026-08-05) so interval COVERAGE can be scored,
+  ## which needs the planted fixed effects and not only the latent truth. Purely
+  ## additive: it consumes no RNG and changes no existing field, so every prior
+  ## measurement from this DGP remains reproducible byte-for-byte.
+  ##
+  ## The DGP is `eta <- outer(x, beta_true) + z %*% t(Lambda)` -- so under the
+  ## fitting formula `~ 0 + trait + trait:x` the T0 trait INTERCEPTS have truth
+  ## EXACTLY 0, and the T0 `trait:x` SLOPES have truth beta_true. Both are scored.
   list(d = d, Lambda_true = Lambda, z_true = z,
-       sigma_jj_true = diag(Sigma_true))
+       sigma_jj_true = diag(Sigma_true),
+       beta_true = beta_true,
+       intercept_true = rep(0, T0))
 }
 
 ## ---- orthogonal Procrustes: rotate/reflect U onto Z (Schonemann 1966) ----

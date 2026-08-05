@@ -5,10 +5,17 @@ Recorded here so it survives the session. Every item below is **evidence-backed 
 work** — each cites the finding that identified it, so nothing here is a guess about what
 might be useful.
 
-Ordering principle: the shipping engine first. gllvmTMB 0.6 ships **Laplace-only**; the VA
-route is a fenced research spike (`default_tier = "gh"`, integration fence shut). So a gap on
-the Laplace surface is worth more to a user today than a new VA capability, whatever the VA
-arc's headline is.
+Ordering principle: the shipping engine first. gllvmTMB 0.6 ships **Laplace-only as the
+DEFAULT**; the VA route is a fenced research spike. So a gap on the Laplace surface is worth
+more to a user today than a new VA capability, whatever the VA arc's headline is.
+
+> **Corrected 2026-08-05.** This paragraph previously said "integration fence shut". That was
+> factually wrong. The fence is **open inside a measured region and hard-fails outside it**:
+> `.gllvmTMB_integration_fence_limits()` (`R/integration-fence.R:46-56`) admits
+> **binomial-logit, poisson-log and gaussian-identity** at `q <= 2`, `p <= 80`, `n >= 100`,
+> `unique = FALSE`. The same sentence's `default_tier = "gh"` held for gaussian and poisson but
+> **not** for binomial, whose `default_tier` is `"jj"` (`R/va-r3-proto.R:1186-1189`).
+> The ordering principle itself is unchanged — only the description of the fence was wrong.
 
 ## Tier 1 — the shipping engine, and both are BUILD gaps not structural ones
 

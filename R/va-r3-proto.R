@@ -1238,26 +1238,36 @@
   ## leaving y logPhi(mu) + (n-y) logPhi(-mu) - n v/2. It touches no quadrature
   ## node, which is where ~75% of this family's fit cost currently goes.
   ##
-  ## `default_tier` STAYS "gh". AC is a strictly lower bound on the GH objective,
-  ## i.e. a DIFFERENT objective, so it does not inherit GH's accuracy evidence and
-  ## must not become the default before it carries its own against planted truth
-  ## (MATURE-VA.md Item 1's falsifier: rel_frob must stay <= 0.298).
+  ## "ac2" is the curvature-corrected sibling of "ac"
+  ## (inst/tmb/gllvmTMB_va_r3.cpp, va_r3_probit_ac2_expectation): the same
+  ## closed-form structure, but with the EXACT mu-dependent second derivative
+  ## of logPhi/log(1-Phi) in place of "ac"'s constant worst-case -1. It is
+  ## MORE ACCURATE on average than "ac" (diagnosis: over-charging by up to
+  ## pi/2 uniformly) but, unlike "ac", is NOT a proven ELBO lower bound -- it
+  ## is a plain delta-method expansion, not a data-augmentation identity, so
+  ## its error is unsigned. A diagnosis/comparison tier, not a replacement.
+  ##
+  ## `default_tier` STAYS "gh" for both. AC/AC2 are DIFFERENT objectives from
+  ## GH (AC strictly lower; AC2 an unsigned-error approximation), so neither
+  ## inherits GH's accuracy evidence, and neither may become the default
+  ## before it carries its own against planted truth (MATURE-VA.md Item 1's
+  ## falsifier: rel_frob must stay <= 0.298).
   ##
   ## RESEARCH SPIKE, not a capability: this entry makes the family reachable
   ## from the prototype engine only. It is deliberately NOT on the public
   ## integration fence (R/integration-fence.R), so `integration = "va"` still
   ## refuses binomial-probit from the formula API. No recovery evidence exists.
   ##
-  ## optimizer: no benchmark has been run for this family, so both tiers inherit
-  ## the reference optimiser rather than claiming a measured choice.
+  ## optimizer: no benchmark has been run for this family, so all tiers
+  ## inherit the reference optimiser rather than claiming a measured choice.
   list(
     family = "binomial_probit",
     family_code = 4L,
     link = "probit",
-    tiers = c("gh", "ac"),
+    tiers = c("gh", "ac", "ac2"),
     default_tier = "gh",
     expectation = "quadrature",
-    optimizer_by_tier = list(gh = "nlminb", ac = "nlminb")
+    optimizer_by_tier = list(gh = "nlminb", ac = "nlminb", ac2 = "nlminb")
   )
 )
 
@@ -1269,13 +1279,14 @@
        call. = FALSE)
 }
 
-.va_r3_resolve_eval_method <- function(eval_method = c("auto", "jj", "gh", "ac"), family) {
+.va_r3_resolve_eval_method <- function(eval_method = c("auto", "jj", "gh", "ac", "ac2"), family) {
   eval_method <- match.arg(eval_method)
   codes <- unique(as.integer(family))
   ## Design 108 Stage 2: mixed-family fits always use GH; JJ is binomial-only.
-  ## Albert-Chib is likewise single-family only -- `eval_method` is one global
-  ## scalar in the template, so a mixed fit cannot ask for a probit-specific
-  ## evaluator on some rows and quadrature on others.
+  ## Albert-Chib (and its "ac2" curvature-corrected sibling) is likewise
+  ## single-family only -- `eval_method` is one global scalar in the
+  ## template, so a mixed fit cannot ask for a probit-specific evaluator on
+  ## some rows and quadrature on others.
   if (length(codes) > 1L) {
     if (identical(eval_method, "jj")) {
       stop("eval_method = \"jj\" is only defined for pure-binomial VA fits.",
@@ -1283,6 +1294,10 @@
     }
     if (identical(eval_method, "ac")) {
       stop("eval_method = \"ac\" is only defined for pure binomial-probit VA fits.",
+           call. = FALSE)
+    }
+    if (identical(eval_method, "ac2")) {
+      stop("eval_method = \"ac2\" is only defined for pure binomial-probit VA fits.",
            call. = FALSE)
     }
     return("gh")
@@ -1304,9 +1319,9 @@
 ## worst kind available: an unrecognised tier maps silently to 0L and the fit
 ## runs Gauss-Hermite while reporting the tier that was asked for -- a wrong
 ## answer with no error. `switch` without a default errors instead.
-.va_r3_eval_method_code <- function(eval_method = c("auto", "jj", "gh", "ac"), family) {
+.va_r3_eval_method_code <- function(eval_method = c("auto", "jj", "gh", "ac", "ac2"), family) {
   resolved <- .va_r3_resolve_eval_method(eval_method, family)
-  code <- switch(resolved, gh = 0L, jj = 1L, ac = 2L)
+  code <- switch(resolved, gh = 0L, jj = 1L, ac = 2L, ac2 = 3L)
   if (is.null(code)) {
     stop("VA-R3 has no template code for eval_method = \"", resolved, "\".",
          call. = FALSE)
@@ -1317,9 +1332,21 @@
 ## Same exhaustiveness requirement, and the same reason: mislabelling the
 ## objective would license comparing values across tiers that do not compute the
 ## same quantity. GH and AC differ by a strict bound gap, not by numerical noise.
+##
+## "ac2" is deliberately labelled "APPROX_AC2", NOT "ELBO_AC2": gh/jj/ac all
+## produce a genuine ELBO (a certified lower bound on log p(y) -- gh and jj by
+## the standard variational-inequality argument, ac by the Albert-Chib
+## data-augmentation argument, dev/va-speed/ALBERT-CHIB-DERIVATION.md). ac2
+## plugs the exact curvature into a plain delta-method Taylor expansion
+## (inst/tmb/gllvmTMB_va_r3.cpp, va_r3_probit_ac2_expectation) with no such
+## argument behind it, so its error is unsigned -- calling it an ELBO would
+## be a false claim, not a labelling nicety. Precedent for a non-ELBO
+## objective_type in this codebase: R/eva-proto.R's unrelated Design-86
+## engine reports "EVA_TAYLOR2" for the same reason (also a Taylor
+## expansion, also not a proven bound).
 .va_r3_objective_type <- function(resolved_eval_method) {
   type <- switch(resolved_eval_method,
-                 gh = "ELBO_GH", jj = "ELBO_JJ", ac = "ELBO_AC")
+                 gh = "ELBO_GH", jj = "ELBO_JJ", ac = "ELBO_AC", ac2 = "APPROX_AC2")
   if (is.null(type)) {
     stop("VA-R3 has no objective label for eval_method = \"",
          resolved_eval_method, "\".", call. = FALSE)
@@ -1924,7 +1951,7 @@
 .va_r3_make_objective <- function(validated, H = 61L, source = NULL,
                                   rebuild = FALSE, parameters = NULL,
                                   fixed_global = NULL, silent = TRUE,
-                                  eval_method = c("auto", "jj", "gh", "ac"),
+                                  eval_method = c("auto", "jj", "gh", "ac", "ac2"),
                                   profile_variational = FALSE,
                                   collapse_variational_cov = FALSE,
                                   inner_control = NULL) {
@@ -2184,7 +2211,7 @@
                        rank_source = c("fixed_fixture", "ml_bic"),
                        fixed_global = NULL, source = NULL, rebuild = FALSE,
                        control = list(eval.max = 2000L, iter.max = 2000L),
-                       silent = TRUE, eval_method = c("auto", "jj", "gh", "ac"),
+                       silent = TRUE, eval_method = c("auto", "jj", "gh", "ac", "ac2"),
                        collapse_variational_cov = FALSE,
                        n_starts = 4L,
                        optimizer = c("auto", "nlminb", "lbfgsb"),

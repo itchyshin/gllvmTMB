@@ -365,6 +365,57 @@ Type va_r3_probit_ac_expectation(const Type &mu, const Type &v,
     - n * v / Type(2.0);
 }
 
+// Curvature-corrected alternative to va_r3_probit_ac_expectation above.
+// ADDITIVE, opt-in ("ac2"): the function above is untouched byte-for-byte.
+//
+// va_r3_probit_ac_expectation hard-codes BOTH second derivatives of the
+// probit log-likelihood to their worst-case value -1 (its "- n*v/2" term is
+// (v/2)*[y*(-1) + (n-y)*(-1)]).  The EXACT mu-dependent second derivatives
+// are
+//   (log Phi(mu))''     = -h(mu) (mu + h(mu)),  h(mu) = phi(mu)/Phi(mu)
+//   (log(1-Phi(mu)))''  =  g(mu) (mu - g(mu)),  g(mu) = phi(mu)/(1-Phi(mu))
+// both of which lie in (-1, 0) and equal -2/pi = -0.6366 at mu = 0,
+// approaching -1 only in the respective far tail (Mills-ratio inequality).
+// This is the standard second-order delta-method expansion of E_q[log p]
+// for eta ~ N(mu, v) (see e.g. Hui, Warton, Ormerod et al. 2017, JCGS) --
+// re-derived and checked here against central finite differences of
+// pnorm(., log.p = TRUE), not transliterated from any external source.
+//
+// h and g below are exactly va_r3_inv_mills(mu) (:276) and
+// va_r3_inv_mills(-mu): the SAME primitive already used to build d2_p/d2_q
+// (:313-314) in the small-v expansion branch of va_r3_probit_expectation
+// above, so this reuses a numerically stable computation this file already
+// relies on (continued-fraction tail, finite to x = -145 by the header
+// comment at va_r3_inv_mills's definition) instead of opening a second,
+// redundant stability argument.  Grid-checked separately for mu in
+// [-40, 40]: finite and in [-1, 0] throughout (touches exactly 0 only at
+// |mu| >= 39, the correct IEEE-754 double-precision limit of the
+// opposite-tail term, not a NaN/Inf failure).
+//
+// UNLIKE va_r3_probit_ac_expectation, THIS IS NOT A PROVEN LOWER BOUND.
+// The AC closed form is a valid ELBO because it comes from a truncated-
+// normal data-augmentation argument (profiling out an auxiliary z), which
+// holds regardless of curvature; charging the WORST-CASE curvature -1 is
+// what makes that augmentation argument go through as an inequality. This
+// function instead plugs the EXACT curvature at mu into a plain second-
+// order Taylor expansion of E_q[log p] -- a more accurate approximation for
+// the same v, but ordinary delta-method truncation error (unsigned, not a
+// one-sided bound). Do not use it where a certified ELBO lower bound is
+// required. Research/comparison tier only -- R/va-r3-proto.R's registry
+// keeps "gh" as binomial_probit's default_tier; this tier is not reachable
+// from the public integration fence.
+template <class Type>
+Type va_r3_probit_ac2_expectation(const Type &mu, const Type &v,
+                                  const Type &y, const Type &n)
+{
+  Type h = va_r3_inv_mills(mu);
+  Type g = va_r3_inv_mills(-mu);
+  Type d2_log_p = -h * (mu + h);
+  Type d2_log_1mp = g * (mu - g);
+  return y * va_r3_log_pnorm(mu) + (n - y) * va_r3_log_pnorm(-mu)
+    + v * (y * d2_log_p + (n - y) * d2_log_1mp) / Type(2.0);
+}
+
 template <class Type>
 Type objective_function<Type>::operator()()
 {
@@ -389,6 +440,10 @@ Type objective_function<Type>::operator()()
   DATA_IVECTOR(family);
   DATA_INTEGER(eval_method);       // 0 = Gauss-Hermite quadrature;
                                    // 1 = Jaakkola-Jordan/PG bound (binomial-only fits)
+                                   // 2 = Albert-Chib closed form (binomial-probit only)
+                                   // 3 = "ac2", curvature-corrected Albert-Chib
+                                   //     (binomial-probit only; research/comparison
+                                   //     tier, see va_r3_probit_ac2_expectation above)
 
   // ---------------------------------------------------------------------
   // Design 108 Gate A Stage 6: multiple unstructured tiers (Design 106 s1).
@@ -626,8 +681,8 @@ Type objective_function<Type>::operator()()
     error("gllvmTMB_va_r3: log_sigma must have length T");
   if (gh_nodes.size() <= 0 || gh_weights.size() != gh_nodes.size())
     error("gllvmTMB_va_r3: GH nodes and weights must have the same positive length");
-  if (eval_method != 0 && eval_method != 1 && eval_method != 2)
-    error("gllvmTMB_va_r3: eval_method must be 0 (Gauss-Hermite), 1 (Jaakkola-Jordan/PG bound), or 2 (Albert-Chib closed form)");
+  if (eval_method != 0 && eval_method != 1 && eval_method != 2 && eval_method != 3)
+    error("gllvmTMB_va_r3: eval_method must be 0 (Gauss-Hermite), 1 (Jaakkola-Jordan/PG bound), 2 (Albert-Chib closed form), or 3 (ac2, curvature-corrected Albert-Chib)");
 
   // Dense convention: each unit-trait cell is exactly one row. Family range
   // checks apply only to observed cells (Design 107); masked sentinels are
@@ -678,6 +733,11 @@ Type objective_function<Type>::operator()()
     error("gllvmTMB_va_r3: eval_method = 1 (Jaakkola-Jordan/PG bound) requires every row to be binomial-logit (family code 1)");
   if (eval_method == 2 && n_non_ac > 0)
     error("gllvmTMB_va_r3: eval_method = 2 (Albert-Chib closed form) requires every row to be binomial-probit (family code 4)");
+  // Same domain restriction as eval_method == 2 above -- "ac2" is the same
+  // closed-form family with curvature-corrected coefficients, so it reuses
+  // n_non_ac rather than widening the admitted family set.
+  if (eval_method == 3 && n_non_ac > 0)
+    error("gllvmTMB_va_r3: eval_method = 3 (ac2, curvature-corrected Albert-Chib) requires every row to be binomial-probit (family code 4)");
   for (int cell = 0; cell < N * T; ++cell) {
     if (cell_count[cell] != 1)
       error("gllvmTMB_va_r3: every unit-trait cell must occur exactly once");
@@ -1002,13 +1062,22 @@ Type objective_function<Type>::operator()()
         - lgamma(n - y(r) + Type(1.0));
       // eval_method is fixed DATA, not an AD parameter, so an ordinary
       // if/else (not CondExp) selects the tier, exactly as fam == 1 does --
-      // no AD nodes are laid down for the unused branch. eval_method == 2 is
-      // the Albert-Chib closed form, which is a DIFFERENT (strictly lower)
-      // objective than the GH quadrature, not a faster route to the same one.
-      ell = log_choose +
-        ((eval_method == 2)
-           ? va_r3_probit_ac_expectation(mu, v, y(r), n)
-           : va_r3_probit_expectation(mu, v, y(r), n, gh_nodes, gh_weights));
+      // no AD nodes are laid down for the unused branch(es). eval_method == 2
+      // is the Albert-Chib closed form, a DIFFERENT (strictly lower) objective
+      // than the GH quadrature, not a faster route to the same one.
+      // eval_method == 3 ("ac2") is the curvature-corrected sibling defined
+      // above: same closed-form family, exact mu-dependent curvature instead
+      // of the constant -1, and likewise not the GH objective (see that
+      // function's comment for why it is not even a proven lower bound).
+      Type probit_expectation;
+      if (eval_method == 2) {
+        probit_expectation = va_r3_probit_ac_expectation(mu, v, y(r), n);
+      } else if (eval_method == 3) {
+        probit_expectation = va_r3_probit_ac2_expectation(mu, v, y(r), n);
+      } else {
+        probit_expectation = va_r3_probit_expectation(mu, v, y(r), n, gh_nodes, gh_weights);
+      }
+      ell = log_choose + probit_expectation;
     }
     if (!std::isfinite(asDouble(ell)))
       Rf_error("gllvmTMB_va_r3: non-finite expected log-likelihood at unit %d trait %d", i, t);

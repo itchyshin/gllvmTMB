@@ -1319,7 +1319,8 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #'   be used for model or rank selection.
 #'
 #'   It is admitted only inside the region for which evidence exists —
-#'   `latent(..., unique = FALSE)`, binomial-logit or Poisson-log, `d` up to
+#'   `latent(..., unique = FALSE)`, binomial-logit, Poisson-log or
+#'   Gaussian-identity, `d` up to
 #'   2, up to 80 responses, at least 100 units, and the native TMB engine — and
 #'   requesting it outside that region is an **error**, not a warning. The `d`
 #'   limit is where a pre-registered recovery gate actually passed: `d = 4` was
@@ -1329,6 +1330,38 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #'   the same integral rather than an additional layer.
 #'
 #'   Offering this value advertises nothing about its accuracy.
+#'
+#'   `r lifecycle::badge("experimental")` The **ordination surface is
+#'   available** for a `"va"` fit: [extract_ordination()], [getLV()],
+#'   [getLoadings()] and [extract_loadings()] return latent scores and
+#'   loadings as POINT ESTIMATES. Uncertainty remains fenced — [confint()]
+#'   and [vcov()] still refuse — and `getLV(se = TRUE)` returns a variational
+#'   *posterior* SD, not a standard error, and only when `eval_method`
+#'   resolves to `"gh"`.
+#'
+#'   Recovery of that ordination was measured against planted truth at the
+#'   admitted cells (`d = 2`, 8 responses, n = 150 and 400, 50 seeds per cell;
+#'   `dev/va-usability/A2-ATTENUATION.md`), with the Laplace route run on the
+#'   same simulated data as a control:
+#'
+#'   * **Gaussian**: the loading-implied variance is recovered at 0.98–1.02 of
+#'     truth, and the mean paired difference in latent-score correlation
+#'     against Laplace is below `2e-07` at both `n`.
+#'   * **Poisson**: also 0.98–1.02 of truth, with a paired latent-score
+#'     difference of ~`4e-04` — negligible in magnitude but statistically
+#'     detectable, and the loading scale sits ~1% below Laplace.
+#'   * **Binomial**: latent scores recover at r ≈ 0.59. That ceiling is a limit
+#'     of **binary data** at these cells rather than of the variational route —
+#'     the Laplace default reaches r ≈ 0.56–0.59 on the same data, and a third
+#'     estimator (Gauss-Hermite) lands in the same place. The loading SCALE,
+#'     however, is biased low (0.58–0.67 of truth) and this **is** a real bias
+#'     relative to Laplace, whose median brackets 1. Read a binomial
+#'     ordination's axes and relative positions, not the absolute magnitude of
+#'     its loadings.
+#'
+#'   The comparison is not effort-matched: the variational arm ran four starts
+#'   behind an agreement-and-gradient health gate, the Laplace arm a single
+#'   start admitted on a positive-definite Hessian.
 #'
 #'   `"va"` returns an object of class `"gllvmTMB_va"` (see
 #'   [gllvmTMB_va-methods]) rather than an ordinary fit, so that every method

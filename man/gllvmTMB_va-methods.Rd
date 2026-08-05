@@ -15,6 +15,7 @@
 \alias{deviance.gllvmTMB_va}
 \alias{df.residual.gllvmTMB_va}
 \alias{weights.gllvmTMB_va}
+\alias{predict.gllvmTMB_va}
 \title{Methods for variational (\code{integration = "va"}) fits}
 \usage{
 \method{print}{gllvmTMB_va}(x, digits = 3, ...)
@@ -42,6 +43,8 @@
 \method{df.residual}{gllvmTMB_va}(object, ...)
 
 \method{weights}{gllvmTMB_va}(object, ...)
+
+\method{predict}{gllvmTMB_va}(object, ...)
 }
 \arguments{
 \item{x, object}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}} with
@@ -69,7 +72,16 @@ Methods for the object returned by
 This is an opt-in research route. Its objective is an \strong{ELBO} -- a lower
 bound on the log-likelihood -- not a log-likelihood, and its inverse
 Hessian is not calibrated frequentist uncertainty. Accordingly
-\code{\link[=logLik]{logLik()}}, \code{\link[=AIC]{AIC()}}, \code{\link[=BIC]{BIC()}}, \code{\link[=confint]{confint()}}, \code{\link[=vcov]{vcov()}}, \code{\link[=coef]{coef()}} and
-\code{\link[=residuals]{residuals()}} all raise an error rather than return a number that would
-look comparable to the Laplace route's but would not be.
+\code{\link[=logLik]{logLik()}}, \code{\link[=AIC]{AIC()}}, \code{\link[=BIC]{BIC()}}, \code{\link[=confint]{confint()}}, \code{\link[=vcov]{vcov()}}, \code{\link[=coef]{coef()}},
+\code{\link[=residuals]{residuals()}}, and \code{\link[=predict]{predict()}} all raise an error rather than return a
+number that would look comparable to the Laplace route's but would not
+be.
+
+The ordination surface is the exception: \code{\link[=extract_ordination]{extract_ordination()}},
+\code{\link[=getLV]{getLV()}}, \code{\link[=getLoadings]{getLoadings()}}, and \code{\link[=extract_loadings]{extract_loadings()}} all work for a
+variational fit and return latent scores and loadings as POINT
+ESTIMATES. \code{getLV(se = TRUE)} additionally returns a variational
+\emph{posterior} SD -- not a standard error -- and only when the fit's
+\code{eval_method} resolves to \code{"gh"}. See the \code{integration} argument of
+\code{\link[=gllvmTMB]{gllvmTMB()}} for the measured accuracy of these point estimates.
 }

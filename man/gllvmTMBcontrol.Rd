@@ -114,7 +114,8 @@ claim. A bound must not be compared across ranks or models, so it cannot
 be used for model or rank selection.
 
 It is admitted only inside the region for which evidence exists —
-\code{latent(..., unique = FALSE)}, binomial-logit or Poisson-log, \code{d} up to
+\code{latent(..., unique = FALSE)}, binomial-logit, Poisson-log or
+Gaussian-identity, \code{d} up to
 2, up to 80 responses, at least 100 units, and the native TMB engine — and
 requesting it outside that region is an \strong{error}, not a warning. The \code{d}
 limit is where a pre-registered recovery gate actually passed: \code{d = 4} was
@@ -124,6 +125,39 @@ It cannot be combined with \code{aghq}, which is an alternative evaluation of
 the same integral rather than an additional layer.
 
 Offering this value advertises nothing about its accuracy.
+
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}} The \strong{ordination surface is
+available} for a \code{"va"} fit: \code{\link[=extract_ordination]{extract_ordination()}}, \code{\link[=getLV]{getLV()}},
+\code{\link[=getLoadings]{getLoadings()}} and \code{\link[=extract_loadings]{extract_loadings()}} return latent scores and
+loadings as POINT ESTIMATES. Uncertainty remains fenced — \code{\link[=confint]{confint()}}
+and \code{\link[=vcov]{vcov()}} still refuse — and \code{getLV(se = TRUE)} returns a variational
+\emph{posterior} SD, not a standard error, and only when \code{eval_method}
+resolves to \code{"gh"}.
+
+Recovery of that ordination was measured against planted truth at the
+admitted cells (\code{d = 2}, 8 responses, n = 150 and 400, 50 seeds per cell;
+\code{dev/va-usability/A2-ATTENUATION.md}), with the Laplace route run on the
+same simulated data as a control:
+\itemize{
+\item \strong{Gaussian}: the loading-implied variance is recovered at 0.98–1.02 of
+truth, and the mean paired difference in latent-score correlation
+against Laplace is below \code{2e-07} at both \code{n}.
+\item \strong{Poisson}: also 0.98–1.02 of truth, with a paired latent-score
+difference of ~\code{4e-04} — negligible in magnitude but statistically
+detectable, and the loading scale sits ~1\% below Laplace.
+\item \strong{Binomial}: latent scores recover at r ≈ 0.59. That ceiling is a limit
+of \strong{binary data} at these cells rather than of the variational route —
+the Laplace default reaches r ≈ 0.56–0.59 on the same data, and a third
+estimator (Gauss-Hermite) lands in the same place. The loading SCALE,
+however, is biased low (0.58–0.67 of truth) and this \strong{is} a real bias
+relative to Laplace, whose median brackets 1. Read a binomial
+ordination's axes and relative positions, not the absolute magnitude of
+its loadings.
+}
+
+The comparison is not effort-matched: the variational arm ran four starts
+behind an agreement-and-gradient health gate, the Laplace arm a single
+start admitted on a positive-definite Hessian.
 
 \code{"va"} returns an object of class \code{"gllvmTMB_va"} (see
 \link{gllvmTMB_va-methods}) rather than an ordinary fit, so that every method

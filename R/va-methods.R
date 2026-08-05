@@ -42,9 +42,18 @@
 #' This is an opt-in research route. Its objective is an **ELBO** -- a lower
 #' bound on the log-likelihood -- not a log-likelihood, and its inverse
 #' Hessian is not calibrated frequentist uncertainty. Accordingly
-#' [logLik()], [AIC()], [BIC()], [confint()], [vcov()], [coef()] and
-#' [residuals()] all raise an error rather than return a number that would
-#' look comparable to the Laplace route's but would not be.
+#' [logLik()], [AIC()], [BIC()], [confint()], [vcov()], [coef()],
+#' [residuals()], and [predict()] all raise an error rather than return a
+#' number that would look comparable to the Laplace route's but would not
+#' be.
+#'
+#' The ordination surface is the exception: [extract_ordination()],
+#' [getLV()], [getLoadings()], and [extract_loadings()] all work for a
+#' variational fit and return latent scores and loadings as POINT
+#' ESTIMATES. `getLV(se = TRUE)` additionally returns a variational
+#' *posterior* SD -- not a standard error -- and only when the fit's
+#' `eval_method` resolves to `"gh"`. See the `integration` argument of
+#' [gllvmTMB()] for the measured accuracy of these point estimates.
 #'
 #' @param x,object A fit returned by [gllvmTMB()] with
 #'   `control = gllvmTMBcontrol(integration = "va")`.
@@ -265,5 +274,173 @@ weights.gllvmTMB_va <- function(object, ...) {
     "weights",
     "The variational route accepts no likelihood weights, so there are none
      to return."
+  )
+}
+
+## ------------------------------------------------------------------------
+## Ordination surface: extract_ordination() / getLV() / getLoadings() /
+## extract_loadings() all funnel through extract_ordination()
+## (R/extractors.R), whose gllvmTMB_va branch calls
+## .va_extract_ordination() below. Point estimates only -- Lambda from the
+## fitted theta_rr block, latent scores from the variational means -- the
+## calibrated = FALSE fence above (confint/vcov) is untouched.
+## getLV(se = TRUE) additionally reads .va_getLV_se(), gated on eval_method.
+## ------------------------------------------------------------------------
+
+## A VA fit's field vocabulary is deliberately disjoint from a Laplace fit's
+## (no $data, $trait_col, $unit_col -- R/va-routing.R's .va_route_build_fit()
+## doc comment), so real trait/unit labels are not recoverable here. Generic
+## names are synthesised instead, mirroring the identical gap in the Julia
+## bridge extractor (.gllvm_julia_trait_names()/.gllvm_julia_unit_names(),
+## R/julia-bridge.R): paste0("trait", seq_len(p)) / paste0("unit", seq_len(n)).
+.va_extract_ordination <- function(fit, level,
+                                   component = c("total", "innovation", "mean")) {
+  component <- match.arg(component)
+  level <- .normalise_level(level, arg_name = "level", .skip_warn = TRUE)
+  if (identical(level, "W")) {
+    ## The variational route fits no within-unit tier at all (R/va-routing.R
+    ## admits exactly one ordinary latent() term, grouped at the unit level).
+    return(NULL)
+  }
+  if (!identical(level, "B")) {
+    cli::cli_abort(c(
+      "{.fn extract_ordination} supports only {.code level = \"unit\"} for a variational fit.",
+      "i" = "The variational route fits one ordinary {.fn latent} term at the unit level; there is no within-unit tier to extract."
+    ))
+  }
+  best <- fit$engine_result$best
+  if (is.null(best) || is.null(best$par)) {
+    cli::cli_abort(
+      "This variational fit carries no fitted parameter vector to extract an ordination from."
+    )
+  }
+  ## Lambda is unpacked from the raw theta_rr block with the same helper the
+  ## engine itself uses to build it (.va_r3_unpack_theta_rr(),
+  ## R/va-r3-proto.R), so the T x q lower-triangular convention matches the
+  ## TMB template's own `Lambda` exactly.
+  theta_rr <- unname(best$par[names(best$par) == "theta_rr"])
+  Lambda <- .va_r3_unpack_theta_rr(theta_rr, fit$p, fit$q)
+  trait_names <- paste0("trait", seq_len(fit$p))
+  rownames(Lambda) <- trait_names
+  colnames(Lambda) <- paste0("LV", seq_len(ncol(Lambda)))
+
+  ## The variational posterior mean IS the score entering the linear
+  ## predictor -- the route refuses latent(..., lv = ~ x), so there is no
+  ## predictor-informed score mean and "total"/"innovation" always coincide.
+  latent <- fit$engine_result$latent
+  if (is.null(latent) || is.null(latent$scores)) {
+    cli::cli_abort(
+      "This variational fit has no latent posterior to extract ({.field engine_result$latent$scores} is missing)."
+    )
+  }
+  innovation <- latent$scores
+  mean_scores <- matrix(0, nrow = nrow(innovation), ncol = ncol(innovation))
+  scores <- switch(
+    component,
+    total = innovation + mean_scores,
+    innovation = innovation,
+    mean = mean_scores
+  )
+  unit_names <- paste0("unit", seq_len(fit$n))
+  rownames(scores) <- unit_names
+  colnames(scores) <- colnames(Lambda)
+  list(scores = scores, loadings = Lambda, row_id = unit_names)
+}
+
+## `getLV(fit, se = TRUE)` for a variational fit reads the per-unit
+## variational POSTERIOR SD that `.va_r3_latent_posterior()`
+## (R/va-r3-proto.R) already computed at the optimum -- NOT a Wald /
+## frequentist standard error (Design 85 s10; `calibrated = FALSE`).
+##
+## Gated by eval_method (docs/design/va-latent-uncertainty.md): under
+## Albert-Chib ("ac") the per-unit posterior covariance is PROVABLY the same
+## value for every unit (measured constant to machine precision --
+## `.va_r3_collapse_gate()`'s own stationarity argument), so an array that
+## LOOKS per-unit carries no per-unit information and must not be returned as
+## if it did. Under Gauss-Hermite ("gh") the same array was measured
+## genuinely per-unit informative (varies with per-unit likelihood curvature,
+## survived an adversarial health-gate recheck). "jj" (Jaakkola-Jordan -- the
+## DEFAULT tier for the common pure-binomial-logit case) has no equivalent
+## measurement either way, so it is refused too, conservatively: this
+## allow-lists "gh" rather than deny-listing "ac" alone.
+.va_getLV_se <- function(fit, scores) {
+  eval_method <- fit$eval_method
+  if (!identical(eval_method, "gh")) {
+    reason <- if (identical(eval_method, "ac")) {
+      "Under {.code eval_method = \"ac\"}, the per-unit variational posterior SD is provably the same value for every unit (to machine precision) -- the array has one row per unit but carries no per-unit information."
+    } else {
+      "{.code se = TRUE} is established as informative only under {.code eval_method = \"gh\"}; {.code eval_method = \"{eval_method}\"} has not been checked and is refused conservatively."
+    }
+    cli::cli_abort(c(
+      "{.code getLV(se = TRUE)} is not available for this variational fit.",
+      "x" = reason,
+      ">" = "Use {.code se = FALSE} for point estimates."
+    ), class = "gllvmTMB_getLV_se_va_eval_method_unsupported")
+  }
+  latent <- fit$engine_result$latent
+  if (is.null(latent) || is.null(latent$se)) {
+    cli::cli_abort(
+      "This variational fit has no latent posterior SD to extract ({.field engine_result$latent$se} is missing)."
+    )
+  }
+  se_mat <- latent$se
+  dimnames(se_mat) <- dimnames(scores)
+
+  ## DEGENERACY GATE -- checks the MECHANISM, not the tier label.
+  ##
+  ## Gating on `eval_method` alone was insufficient, and adversarial review
+  ## (2026-08-05) found the hole: the `"ac"` branch above is UNREACHABLE from
+  ## the public route -- `R/va-routing.R:350-355` keys the tier only on
+  ## binomial-ness and so emits `"jj"` or `"gh"`, never `"ac"` -- while a
+  ## public GAUSSIAN fit resolves to `"gh"` and sailed straight through into a
+  ## per-unit array CONSTANT across every unit (measured CV 1.6e-15). That is
+  ## exactly the "one row per unit, no per-unit information" defect the `"ac"`
+  ## refusal was written to prevent, arriving via a family the allow-list
+  ## admitted. The conjugate/Gaussian corner is a known instance
+  ## (docs/design/va-latent-uncertainty.md:117-120).
+  ##
+  ## So refuse on the observable property itself. Any route whose per-unit SD
+  ## carries no per-unit variation is refused, whatever tier or family
+  ## produced it -- which also covers corners nobody has enumerated yet.
+  col_cv <- apply(se_mat, 2L, function(v) {
+    v <- v[is.finite(v)]
+    m <- mean(v)
+    if (!length(v) || !is.finite(m) || m == 0) return(0)
+    stats::sd(v) / abs(m)
+  })
+  if (any(col_cv < 1e-8)) {
+    cli::cli_abort(c(
+      "{.code getLV(se = TRUE)} is not available for this variational fit.",
+      "x" = "The per-unit posterior SD is constant across units (largest
+             coefficient of variation {format(max(col_cv), digits = 3)}), so
+             the array has one row per unit but carries no per-unit
+             information.",
+      "i" = "This is a property of the fitted route, not of your data.",
+      ">" = "Use {.code se = FALSE} for point estimates."
+    ), class = "gllvmTMB_getLV_se_va_degenerate")
+  }
+
+  ## Explicit, in-band label -- not just in the docs -- that this is a
+  ## variational posterior SD, not a standard error (task requirement).
+  attr(se_mat, "uncertainty_basis") <- latent$uncertainty_basis %||%
+    "variational posterior, conditional on point estimates of beta and theta_rr"
+  attr(se_mat, "calibrated") <- FALSE
+  se_mat
+}
+
+#' @rdname gllvmTMB_va-methods
+#' @export
+predict.gllvmTMB_va <- function(object, ...) {
+  ## The sharpest instance of the coef/residuals class (see file header):
+  ## with no method at all, predict() does not fail softly -- it raises R's
+  ## own "no applicable method for 'predict'" dispatch error, which names
+  ## neither the reason nor an alternative.
+  .va_not_defined(
+    "predict",
+    "No prediction surface has been validated for the variational route.
+     {.fn getLV}/{.fn getLoadings} report the latent-variable ordination and
+     {.code summary(fit)$estimates} reports the fixed-effect point estimates,
+     but their combination into a predicted linear predictor or response has
+     not been implemented or checked."
   )
 }

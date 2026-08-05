@@ -16,7 +16,11 @@ extract_ordination(
 Gaussian bridge fits with \code{latent(..., lv = ~ x)} also expose retained
 \code{"mean"} and \code{"innovation"} score components. Within-unit,
 structured-tier, and rotated ordinations remain gated for Julia bridge
-extractors.}
+extractors. A \code{gllvmTMB_va} (\code{integration = "va"}) fit exposes
+\code{level = "unit"} loadings and scores only, with generic \code{trait}/\code{unit}
+row and column names synthesised (a variational fit carries no stored
+data or column names); \code{level = "unit_obs"} returns \code{NULL} because the
+variational route fits no within-unit tier.}
 
 \item{level}{\code{"unit"} (between-unit) or \code{"unit_obs"} (within-unit).
 Deprecated aliases \code{"B"} and \code{"W"} are still accepted with a warning.}

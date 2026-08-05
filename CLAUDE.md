@@ -11,6 +11,28 @@ This repository is shared by humans, Codex, and Claude Code. Read
 > current handover. Read it before any repository mutation. Milestone state is not in
 > either place and must be re-derived from `git`.
 
+- **2026-08-05 — VA SPEED: TWO HEADLINES RETRACTED, AND THE VA FRONT DOOR ALREADY EXISTS.**
+  Lane `claude/va-lane2` @ `52c9adee` (**committed, NOT pushed — 2 commits**). Nothing exported, no
+  NEWS/README/article claim, `R/`/`src/`/`tests/` untouched. Two negative results, adversarially
+  verified. (1) The *"gllvm gap is VARIANCE — 1 seed in 8 costs 35×"* headline is **RETRACTED**: it
+  was a TMB recompile inside the timing block (`.va_r3_load_dll()` builds into `tempdir()`,
+  `R/va-r3-proto.R:909`, so every fresh `Rscript` recompiles) — measured **cold 24.77 s vs warm
+  0.23 s** against a reported excess of 24.76 s; re-run at 8 seeds with an untimed warm-up, spread is
+  **1.12×** and seed 1 is **1.01×** the median of the rest. (2) *"We beat gllvm at large N"* is **NOT
+  ESTABLISHED**: gllvm was timed computing standard errors our arm never computes (60–63% of its
+  wall). SE-matched, 24 seeds, 72/72 cells — at our shipped `n_starts=4` we are **slower at every N
+  (3.0–7.4×)**; at matched start counts, 1.86× slower at N=250 and 1.26–1.28× faster at N≥1000.
+  **`n_starts=4` costs 3.8–4.0× and buys no accuracy** (worst-case Δrf 2.4e-5) — but `n_starts=1`
+  cannot pass the three-start agreement gate, so that is **not** licence to drop it. Ledger rows
+  47/48/49; claim 30 amended, still **NOT ESTABLISHED**.
+  🔴 **Correction to earlier statements in this lane: VA is NOT pre-integration.**
+  `gllvmTMBcontrol(integration = "va")` is wired end-to-end (dispatch `R/fit-multi.R:2270-2278`),
+  fenced (`R/integration-fence.R`), and tested; the survey `docs/design/va-integration-surface.md`
+  recommends **keeping the knob**, not adding a top-level `method=`. Next arc = **Arc B, interval
+  ROUTE SELECTION** (score the built-but-never-scored sandwich against Wald) — unblocked but **not
+  prioritised**: D-113 still names missing-data **#332** primary.
+  **START HERE:** `docs/dev-log/handover/2026-08-05-claude-handover-arc-b-intervals.md`.
+
 - **2026-08-02 — DESIGN 108 GATE A IS CLOSED; 10,000 SPECIES IS NOW REACHABLE.**
   Stages **4** ([#896](https://github.com/itchyshin/gllvmTMB/pull/896) — tail-safe `log Phi` +
   binomial-probit, **verdict AD-SAFE**, adversarially established against a 3,744-cell break grid)

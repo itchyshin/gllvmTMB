@@ -104,8 +104,9 @@ selectable `"unstructured"`.
 The method is **published** (Hui, Warton, Ormerod et al. 2017, JCGS) so it is citable and
 reimplementable; porting actual code needs provenance notes in `inst/COPYRIGHTS` per `CLAUDE.md`.
 
-**USE TOTORO.** Probit GH cells are the bottleneck (1147 s at n=1000 on 8 local cores); 384
-cores make that minutes. Deploy, **verify the remote run wrote non-empty output**, then scale.
+**USE TOTORO — but budget 50 cores, 150 MAXIMUM (maintainer, 2026-08-05).** Totoro is SHARED;
+do not size a job off its 384-core total. Probit GH cells are the bottleneck (1147 s at n=1000
+on 8 local cores); even 50 cores is a ~6x speed-up over local. Deploy, **verify the remote run wrote non-empty output**, then scale.
 Results LOCAL (D-50), never GitHub Actions.
 
 ## WHAT STANDS (do not re-measure)

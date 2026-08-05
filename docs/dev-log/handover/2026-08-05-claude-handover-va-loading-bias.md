@@ -72,8 +72,9 @@ provenance notes in `inst/COPYRIGHTS` per CLAUDE.md; reimplementing from the pap
 second. **Two mechanisms have now been proposed and refuted from plausible readings without
 checking the code — do not propose a third without a grep first.**
 
-**USE TOTORO.** The probit GH cells are the bottleneck (1147 s at n=1000 on 8 local cores);
-384 cores collapse that to minutes. Deploy, verify the remote run wrote non-empty output,
+**USE TOTORO — but budget 50 cores, 150 MAXIMUM (maintainer, 2026-08-05).** Totoro is SHARED;
+do not size a job off its 384-core total. The probit GH cells are the bottleneck (1147 s at
+n=1000 on 8 local cores); even 50 cores is a ~6x speed-up over local. Deploy, verify the remote run wrote non-empty output,
 THEN scale. Results stay LOCAL (D-50).
 
 ## RETRACTED THIS SESSION — do not cite

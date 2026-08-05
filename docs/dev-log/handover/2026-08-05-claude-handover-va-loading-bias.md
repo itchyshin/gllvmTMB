@@ -50,10 +50,31 @@ Our AC collapses to one shared matrix — claims-ledger claim 35 measured the pe
 **constant to machine zero (8.36e-17)**. A more restricted variational family = looser bound
 = bias in the parameters living in the objective's curvature, i.e. the loadings.
 
-**FIRST EXPERIMENT (one flag, machinery already exists):** refit AC with
-`collapse_variational_cov = FALSE` and see whether trace moves 0.53 → 1.
-`dev/va-speed/29-head-to-head-gllvm.R` already calls this arm `ours_AC_pu`.
-**HYPOTHESIS WITH A MECHANISM, NOT A MEASURED FINDING.** Do not write it up as fact.
+🔴 **THE COLLAPSE SUSPECT IS DEAD — corrected 2026-08-05 before any test was run.**
+`collapse_variational_cov = FALSE` is **already the DEFAULT** (`R/va-r3-proto.R:1929`).
+Our AC never collapsed. The flag experiment measures nothing; do NOT run it.
+
+The per-unit constancy claim 35 recorded (SD identical to 8.36e-17) is **structural to
+Albert–Chib, not a configuration**: `∂E/∂v ≡ −n/2` carries no data dependence, so the
+optimal variational variance is identical for every unit *by construction*. It cannot be
+switched off. That also explains why **GH is unbiased** — its expectation is evaluated by
+quadrature, so its variational variance genuinely varies per unit.
+
+**SO THE REAL QUESTION IS ALGORITHMIC, NOT A FLAG:** what does gllvm's **per-row
+fixed-point** update (`GLLVM-REFERENCE-READ.md:403-420`, gllvm lines 1125-1200, with the
+family-specific solve at 1134-1156) compute that AC's closed form does not? That is a
+genuine difference worth borrowing — and the method is PUBLISHED (Hui, Warton, Ormerod
+et al. 2017, JCGS), so it is citable and reimplementable. Porting actual code would need
+provenance notes in `inst/COPYRIGHTS` per CLAUDE.md; reimplementing from the paper would not.
+
+**START HERE:** read `gllvm:::gllvm.TMB`'s variational-covariance update against
+`inst/tmb/gllvmTMB_va_r3.cpp`'s AC branch and identify the structural difference. Measure
+second. **Two mechanisms have now been proposed and refuted from plausible readings without
+checking the code — do not propose a third without a grep first.**
+
+**USE TOTORO.** The probit GH cells are the bottleneck (1147 s at n=1000 on 8 local cores);
+384 cores collapse that to minutes. Deploy, verify the remote run wrote non-empty output,
+THEN scale. Results stay LOCAL (D-50).
 
 ## RETRACTED THIS SESSION — do not cite
 

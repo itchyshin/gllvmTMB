@@ -1,0 +1,32 @@
+== binomial n-ladder start 09:56:00 ==
+using C++ compiler: ‘Apple clang version 21.0.0 (clang-2100.1.1.101)’
+using SDK: ‘MacOSX26.5.sdk’
+clang++ -arch arm64 -std=gnu++20 -I"/Library/Frameworks/R.framework/Resources/include" -DNDEBUG -I"/Users/z3437171/Library/R/arm64/4.6/library/TMB/include" -I"/Users/z3437171/Library/R/arm64/4.6/library/RcppEigen/include"  -DTMB_SAFEBOUNDS -DTMB_EIGEN_DISABLE_WARNINGS -DLIB_UNLOAD=R_unload_gllvmTMB_va_r3  -DTMB_LIB_INIT=R_init_gllvmTMB_va_r3  -DCPPAD_FRAMEWORK  -I/opt/R/arm64/include    -fPIC  -O2  -c gllvmTMB_va_r3.cpp -o gllvmTMB_va_r3.o
+clang++ -arch arm64 -std=gnu++20 -dynamiclib -Wl,-headerpad_max_install_names -undefined dynamic_lookup -L/Library/Frameworks/R.framework/Resources/lib -L/opt/R/arm64/lib -o gllvmTMB_va_r3.so gllvmTMB_va_r3.o -F/Library/Frameworks/R.framework/.. -framework R
+-- jj n= 150 : 20/20 healthy | trace mean=0.777 median=0.791 | latent-r=0.583 |    3.7s --
+-- gh n= 150 : 17/20 healthy | trace mean=1.583 median=1.478 | latent-r=0.569 |   71.7s --
+-- jj n= 400 : 20/20 healthy | trace mean=0.600 median=0.580 | latent-r=0.578 |   10.9s --
+-- gh n= 400 : 20/20 healthy | trace mean=1.132 median=1.129 | latent-r=0.578 |  313.3s --
+-- jj n=1000 : 20/20 healthy | trace mean=0.538 median=0.538 | latent-r=0.604 |   49.5s --
+-- gh n=1000 : 20/20 healthy | trace mean=1.014 median=1.022 | latent-r=0.614 | 1147.4s --
+-- jj n=2000 : 15/20 healthy | trace mean=0.535 median=0.535 | latent-r=0.617 |  178.7s --
+
+================ BINOMIAL n-LADDER (q=2, p=8, 20 seeds/cell) ================
+ eval_method   N0 n_healthy trace_mean trace_median trace_se latent_r   wall_s
+          jj  150        20     0.7770       0.7913  0.04565   0.5834    3.712
+          gh  150        17     1.5830       1.4778  0.08834   0.5688   71.721
+          jj  400        20     0.6005       0.5795  0.02149   0.5779   10.896
+          gh  400        20     1.1323       1.1287  0.03955   0.5785  313.344
+          jj 1000        20     0.5384       0.5377  0.01615   0.6039   49.463
+          gh 1000        20     1.0144       1.0223  0.02793   0.6143 1147.424
+          jj 2000        15     0.5345       0.5353  0.01733   0.6172  178.688
+
+READ (the maintainer's criterion -- asymptotic convergence, not finite-n perfection):
+  |trace - 1| SHRINKING with n  => consistent; finite-n bias is not a defect.
+  |trace - 1| GROWING with n    => persists asymptotically; a real estimator problem,
+                                   OR the estimand is mis-declared ([[LESSONS]]:784).
+  Latent-r is NOT expected to improve with n: each unit's score is an INCIDENTAL
+  parameter (more units = more parameters, not more information per unit). It should
+  improve with p instead -- that is dev/va-usability/60-binomial-p-ladder.R.
+
+== binomial n-ladder done 10:25:58 ==

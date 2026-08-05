@@ -1,0 +1,23 @@
+== SCALE-CONVENTION CRUX start 12:39:46 ==
+using C++ compiler: ‘Apple clang version 21.0.0 (clang-2100.1.1.101)’
+using SDK: ‘MacOSX26.5.sdk’
+clang++ -arch arm64 -std=gnu++20 -I"/Library/Frameworks/R.framework/Resources/include" -DNDEBUG -I"/Users/z3437171/Library/R/arm64/4.6/library/TMB/include" -I"/Users/z3437171/Library/R/arm64/4.6/library/RcppEigen/include"  -DTMB_SAFEBOUNDS -DTMB_EIGEN_DISABLE_WARNINGS -DLIB_UNLOAD=R_unload_gllvmTMB_va_r3  -DTMB_LIB_INIT=R_init_gllvmTMB_va_r3  -DCPPAD_FRAMEWORK  -I/opt/R/arm64/include    -fPIC  -O2  -c gllvmTMB_va_r3.cpp -o gllvmTMB_va_r3.o
+clang++ -arch arm64 -std=gnu++20 -dynamiclib -Wl,-headerpad_max_install_names -undefined dynamic_lookup -L/Library/Frameworks/R.framework/Resources/lib -L/opt/R/arm64/lib -o gllvmTMB_va_r3.so gllvmTMB_va_r3.o -F/Library/Frameworks/R.framework/.. -framework R
+
+== SCALE-CONVENTION CRUX — probit n=150 p=20 q=2, 10 seeds ==
+
+arm            sd(z_hat)  trace_ratio  eta_var_ratio   recon_ratio
+               (truth 1)   (target 1)     (target 1)    (target 1)
+ac                0.895        0.528          0.441         0.423
+gh                0.883        1.157          0.922         0.902
+gllvm_scaled      0.895        0.528          0.441         0.423
+gllvm_raw         0.895        1.071          0.892         0.859
+
+gllvm mean sigma.lv = 0.710
+
+VERDICT KEY
+  sd(z_hat) ~ 1 AND trace ~ 0.5 AND eta_var ~ 0.5  -> the bias is REAL.
+  sd(z_hat) ~ 1.4 AND trace ~ 0.5 AND eta_var ~ 1  -> pure SCALE CONVENTION; nothing is wrong.
+  eta_var is the convention-free arbiter: it is what the model actually predicts.
+
+== done 12:47:40 ==

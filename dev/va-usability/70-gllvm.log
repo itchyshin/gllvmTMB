@@ -1,0 +1,39 @@
+== gllvm external benchmark start 10:10:34 ==
+gllvm version: 2.0.13 
+using C++ compiler: ‘Apple clang version 21.0.0 (clang-2100.1.1.101)’
+using SDK: ‘MacOSX26.5.sdk’
+clang++ -arch arm64 -std=gnu++20 -I"/Library/Frameworks/R.framework/Resources/include" -DNDEBUG -I"/Users/z3437171/Library/R/arm64/4.6/library/TMB/include" -I"/Users/z3437171/Library/R/arm64/4.6/library/RcppEigen/include"  -DTMB_SAFEBOUNDS -DTMB_EIGEN_DISABLE_WARNINGS -DLIB_UNLOAD=R_unload_gllvmTMB_va_r3  -DTMB_LIB_INIT=R_init_gllvmTMB_va_r3  -DCPPAD_FRAMEWORK  -I/opt/R/arm64/include    -fPIC  -O2  -c gllvmTMB_va_r3.cpp -o gllvmTMB_va_r3.o
+clang++ -arch arm64 -std=gnu++20 -dynamiclib -Wl,-headerpad_max_install_names -undefined dynamic_lookup -L/Library/Frameworks/R.framework/Resources/lib -L/opt/R/arm64/lib -o gllvmTMB_va_r3.so gllvmTMB_va_r3.o -F/Library/Frameworks/R.framework/.. -framework R
+== warm-up (untimed) ==
+== warm-up done ==
+
+-- gllvm binomial n=150 p=8 (20 seeds) --
+-- gllvm binomial n=150 p=20 (20 seeds) --
+-- gllvm binomial n=400 p=8 (20 seeds) --
+-- gllvm gaussian_anchor n=150 p=8 (20 seeds) --
+
+============ gllvm (CRAN 2.0.13) SCORED ON PLANTED TRUTH ============
+          arm          family  N0  p n_ok n_att trace_mean trace_median
+ gllvm (CRAN)        binomial 150  8   20    20     0.6940       0.6631
+ gllvm (CRAN)        binomial 150 20   20    20     0.8776       0.9093
+ gllvm (CRAN)        binomial 400  8   20    20     0.5583       0.5883
+ gllvm (CRAN) gaussian_anchor 150  8   20    20     0.9947       0.9822
+ latent_r_mean latent_r_sd fit_s_median
+        0.5783     0.08277       0.9958
+        0.7538     0.04951       1.7939
+        0.5636     0.10554       6.2171
+        0.9329     0.03943       0.8444
+
+-- our arms on the SAME DGP (A2-summary.csv, LA control, 60-pladder-summary.csv) --
+  binomial n=150 p= 8 : VA-jj r=0.587  VA-gh r=0.571  LAPLACE r=0.563 | trace VA-jj 0.670
+  binomial n=150 p=20 : VA-jj r=0.774                                  (p-ladder)
+  binomial n=400 p= 8 : VA-jj r=0.593  VA-gh r=0.587  LAPLACE r=0.590 | trace VA-jj 0.582
+  gaussian n=150 p= 8 : VA    r=0.937                 LAPLACE r=0.934 | trace VA    1.009
+
+READ (maintainer's bar, 2026-08-05: 'if we can get somewhere close or closer'):
+  gllvm CLOSE to our numbers  => we are at the industry standard; ship it.
+  gllvm materially HIGHER     => we have a real gap to close, and its size is now known.
+  gllvm materially LOWER      => our route is ahead; verify before believing it.
+  gllvm ALSO ~0.57 at p=8     => the thin-cell ceiling is confirmed OUTSIDE our codebase.
+
+== gllvm external benchmark done 10:11:58 ==

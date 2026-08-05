@@ -1,0 +1,25 @@
+== binomial p-ladder start 09:52:15 ==
+using C++ compiler: ‘Apple clang version 21.0.0 (clang-2100.1.1.101)’
+using SDK: ‘MacOSX26.5.sdk’
+clang++ -arch arm64 -std=gnu++20 -I"/Library/Frameworks/R.framework/Resources/include" -DNDEBUG -I"/Users/z3437171/Library/R/arm64/4.6/library/TMB/include" -I"/Users/z3437171/Library/R/arm64/4.6/library/RcppEigen/include"  -DTMB_SAFEBOUNDS -DTMB_EIGEN_DISABLE_WARNINGS -DLIB_UNLOAD=R_unload_gllvmTMB_va_r3  -DTMB_LIB_INIT=R_init_gllvmTMB_va_r3  -DCPPAD_FRAMEWORK  -I/opt/R/arm64/include    -fPIC  -O2  -c gllvmTMB_va_r3.cpp -o gllvmTMB_va_r3.o
+clang++ -arch arm64 -std=gnu++20 -dynamiclib -Wl,-headerpad_max_install_names -undefined dynamic_lookup -L/Library/Frameworks/R.framework/Resources/lib -L/opt/R/arm64/lib -o gllvmTMB_va_r3.so gllvmTMB_va_r3.o -F/Library/Frameworks/R.framework/.. -framework R
+-- p= 8 done in    3.3s --
+-- p=20 done in    5.2s --
+-- p=40 done in   10.3s --
+-- p=80 done in   26.4s --
+
+==================== BINOMIAL p-LADDER (n=150, q=2, 20 seeds) ====================
+  p n_healthy n_attempted latent_r_mean latent_r_sd loading_stat_median
+  8        20          20        0.5679    0.078397              0.9206
+ 20        20          20        0.7743    0.041041              0.8836
+ 40        20          20        0.8591    0.018189              1.0256
+ 80        20          20        0.9192    0.007683              1.0232
+
+Reference points from the A2 grid at p = 8:
+  binomial  VA-jj r=0.587 | VA-gh r=0.571 | LAPLACE r=0.563
+  gaussian  VA    r=0.937 | LAPLACE r=0.934   (same n/q/p, CONTINUOUS responses)
+
+READ: r rising steeply with p => INFORMATION limit (binary data is thin).
+      r flat near 0.59        => METHOD limit (the estimator is the ceiling).
+
+== binomial p-ladder done 09:53:22 ==

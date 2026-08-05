@@ -1,0 +1,48 @@
+== 110 correlation-recovery start 12:22:37 ==
+using C++ compiler: ‘Apple clang version 21.0.0 (clang-2100.1.1.101)’
+using SDK: ‘MacOSX26.5.sdk’
+clang++ -arch arm64 -std=gnu++20 -I"/Library/Frameworks/R.framework/Resources/include" -DNDEBUG -I"/Users/z3437171/Library/R/arm64/4.6/library/TMB/include" -I"/Users/z3437171/Library/R/arm64/4.6/library/RcppEigen/include"  -DTMB_SAFEBOUNDS -DTMB_EIGEN_DISABLE_WARNINGS -DLIB_UNLOAD=R_unload_gllvmTMB_va_r3  -DTMB_LIB_INIT=R_init_gllvmTMB_va_r3  -DCPPAD_FRAMEWORK  -I/opt/R/arm64/include    -fPIC  -O2  -c gllvmTMB_va_r3.cpp -o gllvmTMB_va_r3.o
+clang++ -arch arm64 -std=gnu++20 -dynamiclib -Wl,-headerpad_max_install_names -undefined dynamic_lookup -L/Library/Frameworks/R.framework/Resources/lib -L/opt/R/arm64/lib -o gllvmTMB_va_r3.so gllvmTMB_va_r3.o -F/Library/Frameworks/R.framework/.. -framework R
+
+---- SMOKE: seed 20261999, N0=150, T0=20, Q0=2 ----
+[binomial_probit/ac] healthy=TRUE status=healthy source=report$Sigma_B fit_s=6.1
+  dim(Sigma_hat)= 20x20   dim(Sigma_true)= 20x20 
+  Sigma_hat[1:3,1:3]:
+       [,1]  [,2]   [,3]
+[1,]  0.965 0.177 -0.557
+[2,]  0.177 0.620  0.415
+[3,] -0.557 0.415  0.777
+  Sigma_true[1:3,1:3]:
+       [,1]  [,2]   [,3]
+[1,]  1.475 0.274 -1.167
+[2,]  0.274 0.794  0.449
+[3,] -1.167 0.449  1.521
+  trace_ratio=0.572  corr_mae=0.135  corr_offdiag_cor=0.959  unif_slope=0.413  unif_r2=0.775
+[binomial_probit/gh] healthy=TRUE status=healthy source=report$Sigma_B fit_s=174.8
+  dim(Sigma_hat)= 20x20   dim(Sigma_true)= 20x20 
+  Sigma_hat[1:3,1:3]:
+       [,1]  [,2]   [,3]
+[1,]  3.758 0.398 -1.810
+[2,]  0.398 0.795  0.653
+[3,] -1.810 0.653  1.820
+  Sigma_true[1:3,1:3]:
+       [,1]  [,2]   [,3]
+[1,]  1.475 0.274 -1.167
+[2,]  0.274 0.794  0.449
+[3,] -1.167 0.449  1.521
+  trace_ratio=1.284  corr_mae=0.123  corr_offdiag_cor=0.965  unif_slope=1.172  unif_r2=0.835
+[binomial/auto] healthy=TRUE status=healthy source=report$Sigma_B fit_s=1.3
+  dim(Sigma_hat)= 20x20   dim(Sigma_true)= 20x20 
+  Sigma_hat[1:3,1:3]:
+       [,1]  [,2]   [,3]
+[1,]  1.630 0.306 -1.365
+[2,]  0.306 0.376  0.328
+[3,] -1.365 0.328  2.217
+  Sigma_true[1:3,1:3]:
+       [,1]  [,2]   [,3]
+[1,]  1.475 0.274 -1.167
+[2,]  0.274 0.794  0.449
+[3,] -1.167 0.449  1.521
+  trace_ratio=0.798  corr_mae=0.248  corr_offdiag_cor=0.851  unif_slope=0.574  unif_r2=0.681
+
+SMOKE_ONLY=1 -- stopping after smoke check, grid NOT run.

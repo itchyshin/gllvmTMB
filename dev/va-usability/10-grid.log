@@ -1,0 +1,63 @@
+== A2 grid start 08:13:43 ==
+using C++ compiler: ‘Apple clang version 21.0.0 (clang-2100.1.1.101)’
+using SDK: ‘MacOSX26.5.sdk’
+clang++ -arch arm64 -std=gnu++20 -I"/Library/Frameworks/R.framework/Resources/include" -DNDEBUG -I"/Users/z3437171/Library/R/arm64/4.6/library/TMB/include" -I"/Users/z3437171/Library/R/arm64/4.6/library/RcppEigen/include"  -DTMB_SAFEBOUNDS -DTMB_EIGEN_DISABLE_WARNINGS -DLIB_UNLOAD=R_unload_gllvmTMB_va_r3  -DTMB_LIB_INIT=R_init_gllvmTMB_va_r3  -DCPPAD_FRAMEWORK  -I/opt/R/arm64/include    -fPIC  -O2  -c gllvmTMB_va_r3.cpp -o gllvmTMB_va_r3.o
+clang++ -arch arm64 -std=gnu++20 -dynamiclib -Wl,-headerpad_max_install_names -undefined dynamic_lookup -L/Library/Frameworks/R.framework/Resources/lib -L/opt/R/arm64/lib -o gllvmTMB_va_r3.so gllvmTMB_va_r3.o -F/Library/Frameworks/R.framework/.. -framework R
+== VA-R3 DLL warm-loaded 08:14:04 ==
+
+-- cell family=gaussian_anchor N0=150 (50 seeds, 8 cores) start 08:14:04 --
+   done in 16.1s (16.13s/seed averaged over 8 cores)
+
+-- cell family=gaussian_anchor N0=400 (50 seeds, 8 cores) start 08:14:20 --
+   done in 28.6s (28.57s/seed averaged over 8 cores)
+
+-- cell family=binomial N0=150 (50 seeds, 8 cores) start 08:14:49 --
+   done in 7.3s (7.33s/seed averaged over 8 cores)
+
+-- cell family=binomial N0=400 (50 seeds, 8 cores) start 08:14:56 --
+   done in 21.3s (21.34s/seed averaged over 8 cores)
+
+-- cell family=poisson N0=150 (50 seeds, 8 cores) start 08:15:17 --
+   done in 15.8s (15.83s/seed averaged over 8 cores)
+
+-- cell family=poisson N0=400 (50 seeds, 8 cores) start 08:15:33 --
+   done in 163.3s (163.27s/seed averaged over 8 cores)
+
+== SUMMARY TABLE ==
+           family  N0 n_attempted n_healthy yield trace_ratio_mean
+1 gaussian_anchor 150          50        48  0.96            1.009
+2 gaussian_anchor 400          50        50  1.00            0.979
+3        binomial 150          50        50  1.00            0.670
+4        binomial 400          50        50  1.00            0.582
+5         poisson 150          50        50  1.00            1.022
+6         poisson 400          50        50  1.00            0.985
+  trace_ratio_median trace_ratio_sd trace_ratio_q25 trace_ratio_q75
+1              1.000         0.0922           0.934           1.085
+2              0.978         0.0570           0.942           1.028
+3              0.664         0.1669           0.533           0.746
+4              0.592         0.0993           0.518           0.654
+5              0.996         0.0972           0.949           1.100
+6              0.976         0.0686           0.937           1.035
+  trace_ratio_min trace_ratio_max per_trait_ratio_median per_trait_ratio_q25
+1           0.871           1.202                  0.999               0.867
+2           0.859           1.074                  0.988               0.908
+3           0.378           1.136                  0.703               0.453
+4           0.326           0.804                  0.656               0.462
+5           0.832           1.265                  1.012               0.841
+6           0.856           1.138                  0.982               0.894
+  per_trait_ratio_q75 latent_cor_mean latent_cor_median latent_cor_sd
+1               1.126           0.937             0.937        0.0200
+2               1.055           0.944             0.948        0.0163
+3               1.140           0.587             0.593        0.0776
+4               0.954           0.593             0.605        0.0713
+5               1.163           0.887             0.889        0.0292
+6               1.099           0.890             0.902        0.0379
+  cancor_mean
+1       0.937
+2       0.944
+3       0.579
+4       0.589
+5       0.886
+6       0.889
+
+== A2 grid done 08:18:17 ==

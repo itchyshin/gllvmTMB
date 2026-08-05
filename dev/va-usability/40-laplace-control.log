@@ -1,0 +1,582 @@
+== Laplace control grid start 09:03:08 ==
+== load_all done 09:03:10 ==
+
+-- LA cell family=gaussian_anchor N0=150 (50 paired seeds, 8 cores) start 09:03:10 --
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00143 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00137 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.0013 (~1/1000 of sd(y)) to keep the Gaussian density well-defined;
+  the row-level residual variance is fully captured by the per-row diagonal
+  term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00102 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00135 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00127 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00135 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00118 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00148 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00149 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00141 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.0012 (~1/1000 of sd(y)) to keep the Gaussian density well-defined;
+  the row-level residual variance is fully captured by the per-row diagonal
+  term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00145 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00127 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00135 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00124 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00124 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.0012 (~1/1000 of sd(y)) to keep the Gaussian density well-defined;
+  the row-level residual variance is fully captured by the per-row diagonal
+  term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00128 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00104 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00112 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00146 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00136 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00133 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.000965 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00115 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00145 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00116 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00116 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00131 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00123 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.0012 (~1/1000 of sd(y)) to keep the Gaussian density well-defined;
+  the row-level residual variance is fully captured by the per-row diagonal
+  term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00142 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00121 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00132 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00119 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00147 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00126 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00122 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00124 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00161 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00148 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00148 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00129 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00098 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00139 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.0012 (~1/1000 of sd(y)) to keep the Gaussian density well-defined;
+  the row-level residual variance is fully captured by the per-row diagonal
+  term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.0012 (~1/1000 of sd(y)) to keep the Gaussian density well-defined;
+  the row-level residual variance is fully captured by the per-row diagonal
+  term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00131 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00159 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+   done in 16.3s
+
+-- LA cell family=gaussian_anchor N0=400 (50 paired seeds, 8 cores) start 09:03:26 --
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00123 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.0014 (~1/1000 of sd(y)) to keep the Gaussian density well-defined;
+  the row-level residual variance is fully captured by the per-row diagonal
+  term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00126 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00176 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00136 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00129 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00117 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.0012 (~1/1000 of sd(y)) to keep the Gaussian density well-defined;
+  the row-level residual variance is fully captured by the per-row diagonal
+  term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00144 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00131 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.0012 (~1/1000 of sd(y)) to keep the Gaussian density well-defined;
+  the row-level residual variance is fully captured by the per-row diagonal
+  term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00136 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00134 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00119 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00128 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00115 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00144 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00146 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00129 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00142 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00148 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.0011 (~1/1000 of sd(y)) to keep the Gaussian density well-defined;
+  the row-level residual variance is fully captured by the per-row diagonal
+  term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00149 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00136 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00142 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00128 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00128 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00131 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00128 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00138 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00112 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00126 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00132 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00128 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00135 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00128 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00141 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00125 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00115 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00121 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00121 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00131 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00126 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00163 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00121 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.0012 (~1/1000 of sd(y)) to keep the Gaussian density well-defined;
+  the row-level residual variance is fully captured by the per-row diagonal
+  term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00133 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00129 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00106 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+ℹ Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row
+  level, so it already absorbs the observation residual.
+• Fixed at 0.00121 (~1/1000 of sd(y)) to keep the Gaussian density
+  well-defined; the row-level residual variance is fully captured by the
+  per-row diagonal term.
+   done in 38.5s
+
+-- LA cell family=binomial N0=150 (50 paired seeds, 8 cores) start 09:04:05 --
+   done in 25.9s
+
+-- LA cell family=binomial N0=400 (50 paired seeds, 8 cores) start 09:04:31 --
+   done in 49.8s
+
+-- LA cell family=poisson N0=150 (50 paired seeds, 8 cores) start 09:05:21 --
+   done in 14.1s
+
+-- LA cell family=poisson N0=400 (50 paired seeds, 8 cores) start 09:05:35 --
+   done in 35.9s
+
+
+== PAIRED LA vs VA SUMMARY ==
+
+family=gaussian_anchor  N0=150  yield VA=48/50 LA=50/50  paired n=50
+  trace ratio  VA: mean=1.009 median=1.000 sd=0.092
+  trace ratio  LA: mean=1.010 median=1.001 sd=0.091
+  latent-r     VA: mean=0.937 sd=0.020
+  latent-r     LA: mean=0.934 sd=0.025
+  paired diff (LA-VA) latent-r: mean=0.000 median=0.000 sd=0.000 [n=48]
+
+family=gaussian_anchor  N0=400  yield VA=50/50 LA=50/50  paired n=50
+  trace ratio  VA: mean=0.979 median=0.978 sd=0.057
+  trace ratio  LA: mean=0.979 median=0.978 sd=0.057
+  latent-r     VA: mean=0.944 sd=0.016
+  latent-r     LA: mean=0.944 sd=0.016
+  paired diff (LA-VA) latent-r: mean=0.000 median=-0.000 sd=0.000 [n=50]
+
+family=binomial         N0=150  yield VA=50/50 LA=50/50  paired n=50
+  trace ratio  VA: mean=0.670 median=0.664 sd=0.167
+  trace ratio  LA: mean=198.994 median=1.137 sd=576.301
+  latent-r     VA: mean=0.587 sd=0.078
+  latent-r     LA: mean=0.563 sd=0.089
+  paired diff (LA-VA) latent-r: mean=-0.023 median=-0.006 sd=0.054 [n=50]
+
+family=binomial         N0=400  yield VA=50/50 LA=50/50  paired n=50
+  trace ratio  VA: mean=0.582 median=0.592 sd=0.099
+  trace ratio  LA: mean=16.965 median=0.854 sd=106.797
+  latent-r     VA: mean=0.593 sd=0.071
+  latent-r     LA: mean=0.590 sd=0.074
+  paired diff (LA-VA) latent-r: mean=-0.003 median=0.001 sd=0.035 [n=50]
+
+family=poisson          N0=150  yield VA=50/50 LA=50/50  paired n=50
+  trace ratio  VA: mean=1.022 median=0.996 sd=0.097
+  trace ratio  LA: mean=1.035 median=1.010 sd=0.099
+  latent-r     VA: mean=0.887 sd=0.029
+  latent-r     LA: mean=0.886 sd=0.029
+  paired diff (LA-VA) latent-r: mean=-0.000 median=-0.000 sd=0.001 [n=50]
+
+family=poisson          N0=400  yield VA=50/50 LA=50/50  paired n=50
+  trace ratio  VA: mean=0.985 median=0.976 sd=0.069
+  trace ratio  LA: mean=0.997 median=0.987 sd=0.070
+  latent-r     VA: mean=0.890 sd=0.038
+  latent-r     LA: mean=0.889 sd=0.038
+  paired diff (LA-VA) latent-r: mean=-0.000 median=-0.000 sd=0.001 [n=50]
+
+           family  N0 va_trace_mean la_trace_mean va_latent_r la_latent_r
+1 gaussian_anchor 150         1.009         1.010       0.937       0.934
+2 gaussian_anchor 400         0.979         0.979       0.944       0.944
+3        binomial 150         0.670       198.994       0.587       0.563
+4        binomial 400         0.582        16.965       0.593       0.590
+5         poisson 150         1.022         1.035       0.887       0.886
+6         poisson 400         0.985         0.997       0.890       0.889
+  diff_latent_r n_paired
+1      1.79e-07       50
+2      6.74e-08       50
+3     -2.35e-02       50
+4     -3.36e-03       50
+5     -3.63e-04       50
+6     -4.13e-04       50
+
+== Laplace control grid done 09:06:11 ==

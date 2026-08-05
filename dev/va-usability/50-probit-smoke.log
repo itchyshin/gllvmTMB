@@ -1,0 +1,19 @@
+using C++ compiler: ‘Apple clang version 21.0.0 (clang-2100.1.1.101)’
+using SDK: ‘MacOSX26.5.sdk’
+clang++ -arch arm64 -std=gnu++20 -I"/Library/Frameworks/R.framework/Resources/include" -DNDEBUG -I"/Users/z3437171/Library/R/arm64/4.6/library/TMB/include" -I"/Users/z3437171/Library/R/arm64/4.6/library/RcppEigen/include"  -DTMB_SAFEBOUNDS -DTMB_EIGEN_DISABLE_WARNINGS -DLIB_UNLOAD=R_unload_gllvmTMB_va_r3  -DTMB_LIB_INIT=R_init_gllvmTMB_va_r3  -DCPPAD_FRAMEWORK  -I/opt/R/arm64/include    -fPIC  -O2  -c gllvmTMB_va_r3.cpp -o gllvmTMB_va_r3.o
+clang++ -arch arm64 -std=gnu++20 -dynamiclib -Wl,-headerpad_max_install_names -undefined dynamic_lookup -L/Library/Frameworks/R.framework/Resources/lib -L/opt/R/arm64/lib -o gllvmTMB_va_r3.so gllvmTMB_va_r3.o -F/Library/Frameworks/R.framework/.. -framework R
+resolve_eval_method("gh", family_code=4L): gh 
+resolve_eval_method("ac", family_code=4L): ac 
+resolve_eval_method("auto", family_code=4L): gh 
+
+---- binomial_probit eval_method=gh N0=150 seed=20260900 ----
+elapsed=49.72s status=healthy healthy=TRUE
+sigma_ratio: 1.216 0.909 3.977 1.01 1.619 1.458 0.916 0.815 
+latent_cor_mean: 0.7252799  cancor_mean: 0.7181921 
+SMOKE: PASS
+
+---- binomial_probit eval_method=ac N0=150 seed=20260900 ----
+elapsed=2.35s status=healthy healthy=TRUE
+sigma_ratio: 0.193 0.022 0.097 0.41 0.218 0.698 0.431 0.297 
+latent_cor_mean: 0.5783214  cancor_mean: 0.4919842 
+SMOKE: PASS

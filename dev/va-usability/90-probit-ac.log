@@ -1,0 +1,33 @@
+== probit AC p-ladder start 09:57:08 ==
+using C++ compiler: ‘Apple clang version 21.0.0 (clang-2100.1.1.101)’
+using SDK: ‘MacOSX26.5.sdk’
+clang++ -arch arm64 -std=gnu++20 -I"/Library/Frameworks/R.framework/Resources/include" -DNDEBUG -I"/Users/z3437171/Library/R/arm64/4.6/library/TMB/include" -I"/Users/z3437171/Library/R/arm64/4.6/library/RcppEigen/include"  -DTMB_SAFEBOUNDS -DTMB_EIGEN_DISABLE_WARNINGS -DLIB_UNLOAD=R_unload_gllvmTMB_va_r3  -DTMB_LIB_INIT=R_init_gllvmTMB_va_r3  -DCPPAD_FRAMEWORK  -I/opt/R/arm64/include    -fPIC  -O2  -c gllvmTMB_va_r3.cpp -o gllvmTMB_va_r3.o
+clang++ -arch arm64 -std=gnu++20 -dynamiclib -Wl,-headerpad_max_install_names -undefined dynamic_lookup -L/Library/Frameworks/R.framework/Resources/lib -L/opt/R/arm64/lib -o gllvmTMB_va_r3.so gllvmTMB_va_r3.o -F/Library/Frameworks/R.framework/.. -framework R
+-- probit ac p= 8 : 20/20 healthy | trace mean=0.151 median=0.149 | latent-r=0.508 | fit=2.8s |   11.3s --
+-- probit gh p= 8 : 20/20 healthy | trace mean=1.126 median=1.089 | latent-r=0.732 | fit=61.5s |  237.5s --
+-- probit ac p=20 : 20/20 healthy | trace mean=0.566 median=0.550 | latent-r=0.864 | fit=6.0s |   24.5s --
+Error in (function (ptr)  : 
+  promise already under evaluation: recursive default argument reference or earlier problems?
+-- probit gh p=20 : 19/20 healthy | trace mean=1.173 median=1.169 | latent-r=0.865 | fit=194.7s |  749.8s --
+-- probit ac p=40 : 20/20 healthy | trace mean=0.787 median=0.793 | latent-r=0.925 | fit=11.3s |   44.6s --
+-- probit gh p=40 : 20/20 healthy | trace mean=1.219 median=1.208 | latent-r=0.925 | fit=393.9s | 1520.1s --
+-- probit ac p=80 : 20/20 healthy | trace mean=0.912 median=0.898 | latent-r=0.958 | fit=24.1s |   95.2s --
+
+============ binomial_probit p-LADDER (n=150, q=2, 20 seeds) ============
+ eval_method  p n_healthy trace_mean trace_median latent_r fit_s_median  wall_s
+          ac  8        20     0.1511       0.1488   0.5084        2.822   11.33
+          gh  8        20     1.1258       1.0886   0.7320       61.460  237.50
+          ac 20        20     0.5656       0.5501   0.8643        6.045   24.47
+          gh 20        19     1.1734       1.1691   0.8649      194.672  749.76
+          ac 40        20     0.7869       0.7934   0.9252       11.294   44.60
+          gh 40        20     1.2192       1.2081   0.9253      393.937 1520.09
+          ac 80        20     0.9117       0.8975   0.9583       24.083   95.20
+
+-- comparison points, SAME p-ladder design, binomial-LOGIT (different family) --
+   p= 8 latent-r 0.568 | p=20 0.774 | p=40 0.859 | p=80 0.919
+
+READ: if AC tracks the logit ladder, the earlier one-seed dismissal of AC was an
+      artefact of measuring at p=8, and AC is a viable route to binary ordination.
+      If AC stays flat while GH climbs, the earlier verdict stands on better evidence.
+
+== probit AC p-ladder done 10:42:14 ==

@@ -1,0 +1,33 @@
+== PAIRED gllvm vs our VA start 10:42:46 ==
+gllvm version: 2.0.13 
+using C++ compiler: ‘Apple clang version 21.0.0 (clang-2100.1.1.101)’
+using SDK: ‘MacOSX26.5.sdk’
+clang++ -arch arm64 -std=gnu++20 -I"/Library/Frameworks/R.framework/Resources/include" -DNDEBUG -I"/Users/z3437171/Library/R/arm64/4.6/library/TMB/include" -I"/Users/z3437171/Library/R/arm64/4.6/library/RcppEigen/include"  -DTMB_SAFEBOUNDS -DTMB_EIGEN_DISABLE_WARNINGS -DLIB_UNLOAD=R_unload_gllvmTMB_va_r3  -DTMB_LIB_INIT=R_init_gllvmTMB_va_r3  -DCPPAD_FRAMEWORK  -I/opt/R/arm64/include    -fPIC  -O2  -c gllvmTMB_va_r3.cpp -o gllvmTMB_va_r3.o
+clang++ -arch arm64 -std=gnu++20 -dynamiclib -Wl,-headerpad_max_install_names -undefined dynamic_lookup -L/Library/Frameworks/R.framework/Resources/lib -L/opt/R/arm64/lib -o gllvmTMB_va_r3.so gllvmTMB_va_r3.o -F/Library/Frameworks/R.framework/.. -framework R
+== warm-up (untimed) ==
+== warm-up done ==
+
+-- binomial n=150 p= 8 : 20 pairs | ours_r=0.5984 gllvm_r=0.5650 | PAIRED d=+0.0334 +/- 0.0162 | ours wins 13/20 --
+-- binomial n=150 p=20 : 20 pairs | ours_r=0.7491 gllvm_r=0.7428 | PAIRED d=+0.0064 +/- 0.0040 | ours wins 10/20 --
+-- binomial n=400 p= 8 : 20 pairs | ours_r=0.6145 gllvm_r=0.5904 | PAIRED d=+0.0240 +/- 0.0138 | ours wins 8/20 --
+-- gaussian_anchor n=150 p= 8 : 19 pairs | ours_r=0.9420 gllvm_r=0.9420 | PAIRED d=+0.0000 +/- 0.0000 | ours wins 8/19 --
+
+======== PAIRED: gllvm (CRAN 2.0.13) vs our VA, IDENTICAL seeds ========
+          family  N0  p n_pairs ours_r gllvm_r paired_dr paired_dr_se
+        binomial 150  8      20 0.5984  0.5650 3.336e-02    1.624e-02
+        binomial 150 20      20 0.7491  0.7428 6.364e-03    4.004e-03
+        binomial 400  8      20 0.6145  0.5904 2.405e-02    1.376e-02
+ gaussian_anchor 150  8      19 0.9420  0.9420 8.231e-07    7.320e-07
+   dr_ci_lo  dr_ci_hi ours_wins ours_trace gllvm_trace paired_dtrace
+  1.520e-03 6.520e-02        13     0.6451      0.6193     2.584e-02
+ -1.484e-03 1.421e-02        10     0.8091      0.8043     4.766e-03
+ -2.922e-03 5.102e-02         8     0.5597      0.5393     2.044e-02
+ -6.115e-07 2.258e-06         8     0.9711      0.9711    -1.022e-05
+
+READ: `paired_dr` with its 95% CI is the ONLY defensible statement about the
+      difference. A CI spanning 0 means the two packages are indistinguishable
+      on that cell -- which meets the maintainer's 'close or closer' bar and is
+      NOT a claim that either is ahead. `ours_wins` out of n_pairs is the
+      per-replicate agreement count [[WHAT-WORKS]] asks for.
+
+== PAIRED head-to-head done 10:44:06 ==

@@ -1,0 +1,65 @@
+=== load average BEFORE any work ===
+24.63 21.48 10.92 26/6705 836206
+[1] "nlminb"
+[1] "optim"
+using C++ compiler: ‘g++ (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0’
+g++ -std=gnu++17 -I"/usr/share/R/include" -DNDEBUG -I"/home/snakagaw/R/lib/TMB/include" -I"/home/snakagaw/R/lib/RcppEigen/include"  -DTMB_SAFEBOUNDS -DTMB_EIGEN_DISABLE_WARNINGS -DLIB_UNLOAD=R_unload_gllvmTMB_va_r3  -DTMB_LIB_INIT=R_init_gllvmTMB_va_r3  -DCPPAD_FRAMEWORK      -fpic  -O2  -c gllvmTMB_va_r3.cpp -o gllvmTMB_va_r3.o
+g++ -std=gnu++17 -shared -L/usr/lib/R/lib -Wl,-Bsymbolic-functions -flto=auto -ffat-lto-objects -Wl,-z,relro -o gllvmTMB_va_r3.so gllvmTMB_va_r3.o -L/usr/lib/R/lib -lR
+
+=== TRACE VERIFICATION (tiny N=25 cell, discarded): n_nlminb=12 n_optim=4 fn_total=412 gr_total=282 ===
+Tracing verified non-zero. Proceeding.
+
+warm-up done (UNTIMED, both arms, N=40, seed=999, discarded)
+
+run order (seed values, in execution sequence): 1, 2, 7, 6, 5, 8, 4, 3 
+
+=== load average AT START OF TIMED LOOP ===
+24.85 21.83 11.38 25/6689 836439
+
+[pos 1] seed 1  ours 0.777s (healthy, nlminb_then_lbfgsb, nlminb=12 optim=4 iters=379 fn=585 gr=399, 1.328 ms/fn)   gllvm 0.092s
+[pos 2] seed 2  ours 0.784s (healthy, nlminb_then_lbfgsb, nlminb=12 optim=4 iters=406 fn=607 gr=429, 1.292 ms/fn)   gllvm 0.112s
+[pos 3] seed 7  ours 0.782s (healthy, nlminb_then_lbfgsb, nlminb=12 optim=4 iters=410 fn=600 gr=430, 1.303 ms/fn)   gllvm 0.103s
+[pos 4] seed 6  ours 0.825s (healthy, nlminb_then_lbfgsb, nlminb=12 optim=4 iters=415 fn=650 gr=439, 1.269 ms/fn)   gllvm 0.098s
+[pos 5] seed 5  ours 0.748s (healthy, nlminb_then_lbfgsb, nlminb=12 optim=4 iters=381 fn=584 gr=403, 1.281 ms/fn)   gllvm 0.125s
+[pos 6] seed 8  ours 0.770s (healthy, nlminb_then_lbfgsb, nlminb=12 optim=4 iters=398 fn=613 gr=421, 1.256 ms/fn)   gllvm 0.181s
+[pos 7] seed 4  ours 0.821s (healthy, nlminb_then_lbfgsb, nlminb=12 optim=4 iters=441 fn=627 gr=463, 1.309 ms/fn)   gllvm 0.108s
+[pos 8] seed 3  ours 0.775s (healthy, nlminb_then_lbfgsb, nlminb=12 optim=4 iters=383 fn=596 gr=405, 1.300 ms/fn)   gllvm 0.101s
+
+=== load average AT END OF TIMED LOOP ===
+24.94 21.90 11.46 26/6696 836587
+
+=== TASK B SUMMARY (seed-ordered, not run-ordered) -- PSI = 0, correctly specified ===
+ seed run_order_position ours_wall_s  status   polish_optimizer n_nlminb_calls
+    1                  1       0.777 healthy nlminb_then_lbfgsb             12
+    2                  2       0.784 healthy nlminb_then_lbfgsb             12
+    3                  8       0.775 healthy nlminb_then_lbfgsb             12
+    4                  7       0.821 healthy nlminb_then_lbfgsb             12
+    5                  5       0.748 healthy nlminb_then_lbfgsb             12
+    6                  4       0.825 healthy nlminb_then_lbfgsb             12
+    7                  3       0.782 healthy nlminb_then_lbfgsb             12
+    8                  6       0.770 healthy nlminb_then_lbfgsb             12
+ n_optim_calls iters_total fn_total gr_total ms_per_fn_eval gllvm_wall_s
+             4         379      585      399       1.328205        0.092
+             4         406      607      429       1.291598        0.112
+             4         383      596      405       1.300336        0.101
+             4         441      627      463       1.309410        0.108
+             4         381      584      403       1.280822        0.125
+             4         415      650      439       1.269231        0.098
+             4         410      600      430       1.303333        0.103
+             4         398      613      421       1.256117        0.181
+ gllvm_status
+ fit_returned
+ fit_returned
+ fit_returned
+ fit_returned
+ fit_returned
+ fit_returned
+ fit_returned
+ fit_returned
+
+ours wall:   median 0.779s   max 0.825s (seed 6)
+fn_total:    median 603   max 650 (seed 6)
+ms_per_fn:   median 1.2960   max 1.3282 (seed 1)
+
+Saved dev/va-speed/74-spec-discriminator.rds
+DONE

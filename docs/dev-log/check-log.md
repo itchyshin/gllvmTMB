@@ -48875,3 +48875,61 @@ the original promise *true* rather than retracted.
 366 / 8,963 → **371 / 9,286**.
 
 — Approved additions (Claude, 2026-08-04)
+
+---
+
+## 2026-08-05 — VA lane: the variance finding is retracted; the large-N gllvm result is not established
+
+Branch `claude/va-lane2` @ `728f4aa8`, worktree `/private/tmp/gllvmtmb-va-lane2`. Compute: Totoro
+(384 cores; idle/near-idle for the adversarial re-measurements, ~25-job concurrent load during
+`73`/`74`'s own timed loops, disclosed not hidden), local Mac for the gllvm-side trace (evaluation
+counts are deterministic, so the machine is irrelevant to them). **Nothing committed.** No `R/`,
+`src/`, or `tests/` file touched — this arc is measurement-only.
+
+**Scripts run:**
+- `dev/va-speed/73-split-instrumented.R` — Task A (ψ=0.6 planted, misspecified), 8 seeds, N=120 T=10
+  q=1 binomial-probit `n_trials`=6, untimed warm-up + randomised run order added (absent from the
+  original `71-split25.R`), `trace(nlminb, where = asNamespace("stats"))` /
+  `trace(optim, where = asNamespace("stats"))` instrumentation. Totoro.
+- `dev/va-speed/74-spec-discriminator.R` — Task B (ψ=0, correctly specified), identical cell and
+  instrumentation, 8 seeds. Totoro.
+- `dev/va-speed/trace-gllvm-va.R` — gllvm-side `trace(stats::optim, where = asNamespace("gllvm"))`
+  evaluation-count recovery, same N=120 cell, 8 seeds, ψ=0.6. Local Mac.
+- `dev/va-speed/75-clean-ladder.R` (+ `75-verify.R`, `75-aggregate.R`) — 72-cell grid, N ∈
+  {250, 1000, 2500} × 24 seeds, T=20 q=2 binomial-probit `n_trials`=6, no ψ, model-matched
+  (`unique=FALSE` both sides), interleaved and order-rotated, launched via `xargs -P 71` on Totoro.
+- Adversarial re-measurement scripts (`~/gllvm_work/adv77.R` → `adv77.log`/`adv77-result.rds`;
+  `~/gllvm_work/adv77b.R` → `adv77b.log`; not checked into this repo) — cold-vs-warm TMB compile
+  timing, and SE-matched / `n_starts`-matched N=1000 re-fits. Totoro, idle box.
+
+**What was measured** (consolidated in `dev/va-speed/78-VARIANCE-RETRACTION-AND-LARGE-N.md`;
+ledger rows 47–48 and the amended row 30 in `dev/va-speed/20-CLAIMS-LEDGER.md`): the 8-seed N=120
+re-run lands every seed in a 1.10–1.12× band with flat trace-based evaluation counts — no outlier
+survives. The measured cold-TMB-compile cost (**24.77 s**) matches the original "catastrophic
+seed"'s excess over its own run's median (**24.76–24.84 s**, two independent readings) to within
+0.01–0.24 s — the compile, not conditioning, was the blow-up. Separately, the 72-cell
+N=250/1000/2500 ladder's reported speed win (1.03×/2.55×/3.68× median) is **60–63% attributable at
+N=1000** to gllvm's default `sd.errors=TRUE` optimHess pass (our arm computes no SEs at all), plus
+an `n_starts=1` vs our shipped `n_starts=4` default mismatch — SE-matched at N=1000 the ratio
+collapses to 1.08×/0.98× (a tie, 2 seeds); at our own default we are 3.6–4.1× **slower**.
+
+**What was verified**, whole-grid rather than spot-checked: `ours_guard_ok` TRUE and
+`eval_method=="ac"` with the collapse gate fired on **72/72** cells (`75-verify.R`); arm order
+(`first_ours`) split **12 TRUE / 12 FALSE in every N stratum** (36/36 balanced); untimed warm-up
+present in 72/72 cells (71/72 via the literal `.log` line, the 72nd via directly-captured console
+output); accuracy matched — paired Wilcoxon on `rel_frob` p = 0.58 / 0.10 / 0.58 at
+N = 250/1000/2500, median paired difference 0.000 at all three; `gllvm` **2.0.13** confirmed loaded
+on both the local Mac and Totoro sides; HEAD **`728f4aa8`**
+(`728f4aa82b387b2b93e27009a484f40e28a3d582`) asserted before any fit and stamped into every result
+`.rds`'s metadata; contention refuted as the explanation for the ladder's win (an idle-box re-run of
+N=1000 seed 1 gave 2.70×, *larger* than the campaign's own 2.46×, i.e. contention worked against the
+claim, not for it).
+
+**What was deliberately NOT run:** N=2500 SE-matched (single-core ≈10 min/cell, not launched); any
+fix — neither the `tempdir()`-scoped DLL cache (`R/va-r3-proto.R:909`) nor the loadings-diagonal
+reparameterisation was built, both explicitly out of scope for a measurement arc and the latter now
+unmotivated by its own retracted evidence; Arc B (sandwich-scoring timed pilot), still deferred from
+the prior handover, untouched. Because no `R/`, `src/`, or `tests/` file changed, the package's
+existing 371-file / 9,286-test baseline was not re-run — nothing in the tested surface moved.
+
+— VA variance retraction + large-N adjudication (Claude, 2026-08-05)

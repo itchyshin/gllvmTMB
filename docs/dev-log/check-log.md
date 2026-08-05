@@ -48933,3 +48933,57 @@ the prior handover, untouched. Because no `R/`, `src/`, or `tests/` file changed
 existing 371-file / 9,286-test baseline was not re-run — nothing in the tested surface moved.
 
 — VA variance retraction + large-N adjudication (Claude, 2026-08-05)
+
+## 2026-08-05 (close) — VA ordination usability after-task brought current; paired-gllvm evidence folded in
+
+Branch `claude/va-lane2` @ `bf483ce4`, worktree `/private/tmp/gllvmtmb-va-lane2`. Closing/audit pass
+only: brought `docs/dev-log/after-task/2026-08-05-va-ordination-usability.md` current with evidence
+that landed after it was first written, and added the two missing closure artefacts (this entry;
+rows 55-58 in `dev/va-speed/20-CLAIMS-LEDGER.md`). **Nothing committed.** HEAD is `bf483ce4` and the
+arc's changes (`R/extractors.R`, `R/va-methods.R`, `R/output-methods.R`, `R/gllvmTMB.R`, `NAMESPACE`,
+four `.Rd` files, `tests/testthat/test-va-ordination.R`, three `docs/design/` files) remain
+uncommitted in the worktree. No `R/`, `src/`, `tests/`, or `NAMESPACE` file was touched by this pass.
+
+**Commands the after-task report's own §4 records** (re-stated here for the log, not re-run by this
+closing pass):
+```sh
+export NOT_CRAN=true
+Rscript -e 'devtools::document()'
+Rscript -e 'devtools::load_all("."); testthat::test_local(filter="va-ordination")'   # 34 assertions, 0 failures
+Rscript -e 'devtools::load_all("."); testthat::test_local(filter="va-intervals")'    # 83 assertions, 0 failures (the fence)
+Rscript -e 'devtools::load_all("."); testthat::test_local(filter="va")'              # 9 files, 0 failures
+Rscript -e 'devtools::load_all("."); testthat::test_local()'                         # full suite, 0 failures / 799 pre-existing skips
+```
+
+**Stale-wording sweep the report's §6 already ran** (re-confirmed by inspection, not re-executed):
+```sh
+grep -rniE "va (fit|route).{0,40}(cannot|no) (extract|ordination|getLV)" R/ docs/design/   # none
+grep -rn "fence shut" R/ docs/                    # only the corrective note + 2 dated handovers
+grep -n "outside the shipped" docs/design/85-*.md # retained as SUPERSEDED record, not deleted
+grep -n "gllvmTMB_va" NAMESPACE                   # 14 S3 methods incl. predict
+```
+
+**New evidence folded into the after-task report today**, all under `dev/va-usability/` (untracked,
+D-50): a PAIRED gllvm (CRAN 2.0.13) head-to-head on identical seeds (`71-paired-summary.csv` — we
+match gllvm on 3/4 cells, separated on 1 where our own per-replicate win rate is only 13/20); the
+RETRACTION of an earlier UNPAIRED gllvm comparison (`70-gllvm-external-benchmark.R`) that had claimed
+"marginally ahead on every cell" against a per-cell unpaired SE (≈0.026) that swamps the claimed
+gaps; confirmation that gllvm's own VA shows the identical binomial loading attenuation ours does
+(`71-paired-summary.csv` trace ratios, corroborating `dev/va-speed/GLLVM-REFERENCE-READ.md:92`'s
+Bohning-bound inference); a binomial n-ladder to n=2000 showing the `jj` tier's loading-scale bias is
+asymptotic, not finite-sample, while latent-score recovery is unaffected by tier choice
+(`80-nladder-summary.csv`); a binomial-logit p-ladder to p=80 showing the r~0.59 "ceiling" is a
+thin-p artefact, not a method ceiling (`60-pladder-summary.csv`); and a probit AC/GH p-ladder that
+partially rehabilitates Albert-Chib as a cheaper (median 21.8×, not the informally-floated ~17×)
+route to usable ordination, though not to usable loading magnitudes (`90-probit-ac-summary.csv`).
+Full detail, tables, and regime caveats are in the after-task report's new §5a, §8 (defect 4: the
+unpaired-comparison lesson failing to fire even though re-filed into [[WHAT-WORKS]] about an hour
+before it was broken), §9, and the updated §10.
+
+**What was deliberately NOT run, today or this arc:** no CRAN submission; no `pkgdown::build_site()`;
+no cross-OS `R CMD check`; no default changed (`integration = "laplace"` is still the default, VA is
+still a fenced research route); no fence boundary moved (`R/integration-fence.R` untouched); the
+probit Stage-8 campaign (`dev/va-usability/100-probit-stage8.R`) was still running at the time this
+entry was written, and its results are not claimed here or anywhere in the after-task report.
+
+— VA ordination closing pass: report currency + claims-ledger rows 55-58 (Claude, 2026-08-05)

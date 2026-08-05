@@ -168,17 +168,51 @@ benchmark in this lane that ran one fit per fresh `Rscript` has paid ~25 s somew
 script needs an untimed warm-up; `71-split25.R` lacked one and `57-gllvm-scaling.R:74-78` has one, so
 the lane is inconsistent. A persistent DLL cache would remove the hazard at the source.
 
-**Re-run the ladder SE-matched and at both start counts** before any statement about how we compare to
-gllvm. That is a small, well-specified job: pass `sd.errors = FALSE`, run `n_starts` ∈ {1, 4}, and
-report both. Until then the honest summary is:
+**~~Re-run the ladder SE-matched~~ — DONE, same session.** See §6 for the answer.
 
-> At N=1000, T=20, q=2, binomial-probit, model-matched and SE-matched, our VA engine is
-> **about level with `gllvm` at one start (1.08× / 0.98×, 2 seeds)** and **3.6–4.1× slower at our own
-> default of four starts**, with indistinguishable accuracy. Two seeds, one cell — indicative, not
-> settled.
+**Open and unmeasured:** anything outside this cell (one T, one q, one family, no ψ); whether the
+`n_starts=4` default is worth its ~4× cost, given it bought no accuracy here.
 
-**Open and unmeasured:** N=2500 SE-matched (heavy, not run); whether gllvm's N=2500 tail is
-optimisation or the SE pass; anything outside these two cells.
+---
+
+## 6. The SE-matched answer (added 2026-08-05, after §2 was written)
+
+The corrected experiment was run the same session: `79-se-matched-ladder.R`, three arms per cell
+(`ours_n1`, `ours_n4`, `gllvm_nose` with `sd.errors = FALSE`), N ∈ {250, 1000, 2500} × **24 seeds**,
+72/72 cells, guards TRUE on 72/72 for both of our arms, arm order rotated three ways, untimed warm-up
+covering all three configurations.
+
+**Ratio convention: `gllvm ÷ ours`. Above 1 means we are faster.**
+
+| N | ours, 1 start | ours, 4 starts (**default**) | gllvm, no SEs | vs ours@1 | vs ours@4 |
+|---:|---:|---:|---:|---:|---:|
+| 250 | 3.103 s | 12.354 s | 1.668 s | **0.54×** — gllvm 1.86× faster | **0.14×** — gllvm 7.4× faster |
+| 1000 | 22.210 s | 88.197 s | 28.006 s | **1.26×** — ours faster | **0.32×** — gllvm 3.1× faster |
+| 2500 | 118.834 s | 455.174 s | 151.806 s | **1.28×** — ours faster | **0.33×** — gllvm 3.0× faster |
+
+**The answer to "how far behind gllvm are we":**
+
+- **At the configuration users actually get** (`n_starts = 4`, our shipped default) we are **slower at
+  every N measured — 3.0× to 7.4×.**
+- **At matched start counts** (both engines at one start) the picture is mixed and narrow: gllvm is
+  **1.86× faster at N=250**, we are **1.26–1.28× faster at N=1000 and N=2500.** A real crossover, but
+  a narrow advantage — not the 2.5–3.7× that §2's defective run reported.
+- **The four extra starts buy nothing here.** They cost a consistent 3.8–4.0× and accuracy is
+  identical between 1 and 4 starts at every N (median |Δrf| ≈ 1e-6). That is the single most
+  actionable finding in this document.
+- **Accuracy is statistically indistinguishable** between our arms and gllvm at every N (medians
+  agree to three decimals: 0.185 / 0.168 / 0.158), with one replicated single-seed exception
+  (N=2500 seed 11) that also appeared in the `75` run.
+- **The heavy tail is gllvm's, not ours.** At N=2500 `gllvm_nose` ranges to 3.48× its own median
+  (2 of 24 seeds above 2×); our `ours_n1` maximum is 1.51× its median. Existence, not a rate.
+
+**Claim 30 is still not established** — for a third, independent reason on top of §3: even the
+narrow matched-start advantage does not hold at N=250, and the ψ requirement remains unmet.
+
+**What this does not cover:** one T, one q, one family, no ψ. The ψ-free cell still excludes AC's one
+documented failure mode.
+
+Full detail, IQRs, tails and verification: `79-SE-MATCHED-LADDER.md`.
 
 ---
 

@@ -94,14 +94,34 @@ Full detail and every number's regime: `dev/va-speed/78-VARIANCE-RETRACTION-AND-
 
 ## Next Immediate Steps (OWED, in order)
 
-1. **Re-run the ladder SE-matched, at both `n_starts` ∈ {1, 4}, before any gllvm speed comparison
-   is stated anywhere.** Concretely: `75-clean-ladder.R`'s `run_gllvm()` needs `sd.errors = FALSE`
-   added, and our arm needs both `n_starts=1` and `n_starts=4` reported side by side. This is the
-   single repair that changes the conclusion (per `77-ADVERSARIAL-REVIEW.md`'s own closing
-   section) — everything else about that harness (rotation, guards, warm-up, accuracy scoring, 24
-   seeds, interleaving) is sound and does not need rebuilding. N=2500 SE-matched is the one
-   completely unmeasured cell (heavy, ~10 min/cell single-core) — budget for it explicitly rather
-   than inferring from N=1000.
+1. ~~**Re-run the ladder SE-matched, at both `n_starts` ∈ {1, 4}.**~~ ✅ **DONE, same session — do
+   NOT redo it.** `79-se-matched-ladder.R`: three arms (`ours_n1`, `ours_n4`, `gllvm_nose` with
+   `sd.errors = FALSE`), N ∈ {250, 1000, 2500} × 24 seeds, **72/72 cells**, guards TRUE 72/72 on
+   both of our arms, arm order rotated exactly 24/24/24 across the grid and 8/8/8 per stratum,
+   untimed warm-up covering all three configurations, 0 failed cells. N=2500 SE-matched **was**
+   measured — it is no longer an unmeasured cell.
+
+   **The answer** (ratio = gllvm ÷ ours; above 1 = we are faster):
+
+   | N | ours@1 start | ours@4 (**default**) | gllvm, no SEs | vs ours@1 | vs ours@4 |
+   |---:|---:|---:|---:|---:|---:|
+   | 250 | 3.103 s | 12.354 s | 1.668 s | 0.54× — gllvm 1.86× faster | 0.14× — gllvm **7.4×** faster |
+   | 1000 | 22.210 s | 88.197 s | 28.006 s | 1.26× — ours faster | 0.32× — gllvm **3.1×** faster |
+   | 2500 | 118.834 s | 455.174 s | 151.806 s | 1.28× — ours faster | 0.33× — gllvm **3.0×** faster |
+
+   At the configuration users actually get we are **slower at every N, by 3.0–7.4×**. At matched
+   start counts the advantage is real but narrow and only above N=250 (1.26–1.28×). Accuracy is
+   indistinguishable between our arms and gllvm at every N, and **identical between `n_starts` 1
+   and 4** (worst-case Δrf = 2.4e-5 across all 72 cells, against rf values of O(0.1–0.4)).
+   The heavy tail is **gllvm's**: at N=2500 it reaches 3.48× its own median; ours reaches 1.51×.
+   Full detail: `dev/va-speed/79-SE-MATCHED-LADDER.md`; folded into `78-*.md` §6.
+
+   **The follow-on this creates — the most actionable finding in the arc:** `n_starts = 4` is our
+   shipped default, costs a consistent **3.8–4.0×**, and bought **no accuracy** at any N here. It
+   is the single largest lever on our wall-clock and nothing in the lane justifies it. Investigate
+   whether the default should drop, or whether it earns its cost in a regime this cell does not
+   cover (ψ present, harder likelihoods, multimodality). Do **not** change the default on this
+   evidence alone — one T, one q, one family, no ψ.
 2. **Fix the timing hazard at its source, or at minimum guard every future harness against it.**
    `.va_r3_load_dll()` builds into `tempdir()` (`R/va-r3-proto.R:909`), so **every fresh `Rscript`
    recompiles the TMB template** and bills ~25 s to whichever fit runs first. Two options, not

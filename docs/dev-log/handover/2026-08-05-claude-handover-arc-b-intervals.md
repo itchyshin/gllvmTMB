@@ -23,7 +23,7 @@ before acting. Do not trust this document over the repository.
 
 | item | state |
 |---|---|
-| `claude/va-lane2` @ `52c9adee` | ⚠ **CARRIED-OVER — committed but NOT pushed, 2 commits ahead of `origin/claude/va-lane2`.** Why: pushing is the maintainer's call and was not requested. Resume: `git -C /private/tmp/gllvmtmb-va-lane2 push origin claude/va-lane2`. **Until pushed, a Codex or cloud session reading `origin` cannot see this work at all.** |
+| `claude/va-lane2` @ `e7c9e6e7` | ✅ **LANDED — committed AND pushed.** Verified: `git ls-remote --heads origin claude/va-lane2` → `e7c9e6e7`, and `origin/claude/va-lane2..HEAD` is empty. *(An earlier draft of this table declared these commits CARRIED-OVER/unpushed; that was true when written and is now stale — the push has happened.)* |
 | `69867118` | variance retraction + large-N defect: 18 files, 2,320 insertions |
 | `52c9adee` | SE-matched ladder — the corrected answer |
 | `origin/main` | **PROTECTED** `5bf18ab3`. Do not merge; a PR is the maintainer's act |

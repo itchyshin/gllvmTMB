@@ -12,7 +12,7 @@ This repository is shared by humans, Codex, and Claude Code. Read
 > either place and must be re-derived from `git`.
 
 - **2026-08-05 — VA SPEED: TWO HEADLINES RETRACTED, AND THE VA FRONT DOOR ALREADY EXISTS.**
-  Lane `claude/va-lane2` @ `52c9adee` (**committed, NOT pushed — 2 commits**). Nothing exported, no
+  Lane `claude/va-lane2` @ `e7c9e6e7` (**committed and pushed**). Nothing exported, no
   NEWS/README/article claim, `R/`/`src/`/`tests/` untouched. Two negative results, adversarially
   verified. (1) The *"gllvm gap is VARIANCE — 1 seed in 8 costs 35×"* headline is **RETRACTED**: it
   was a TMB recompile inside the timing block (`.va_r3_load_dll()` builds into `tempdir()`,

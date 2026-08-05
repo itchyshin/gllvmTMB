@@ -35,7 +35,15 @@ source("dev/va-usability/attenuation-lib.R")
 
 T0 <<- 20L                       # before any sim_cell; lib default 8 is the degenerate width
 stopifnot(identical(T0, 20L))
+## q is the STRAIN axis for this ladder. The quadrature is 1-D in eta, but eta's
+## variance v = lambda' S lambda aggregates over q latent dimensions, so larger q
+## widens the integrand -- it is where a small H fails if it is going to. q = 2
+## (the lib default) is the LEAST demanding case, so a pass there is weak evidence
+## for lowering the default. Override to strain it.
+if (nzchar(Sys.getenv("Q0"))) Q0 <<- as.integer(Sys.getenv("Q0"))
+stopifnot(is.integer(Q0), Q0 >= 1L, T0 > Q0)
 N0     <- as.integer(Sys.getenv("N0", "150"))
+cat(sprintf("DGP: n=%d p=%d q=%d\n", N0, T0, Q0))
 N_SEED <- as.integer(Sys.getenv("N_SEED", "6"))
 CORES  <- as.integer(Sys.getenv("CORES", "6"))
 HS     <- as.integer(strsplit(Sys.getenv("HS", "7,15,25,61"), ",")[[1]])

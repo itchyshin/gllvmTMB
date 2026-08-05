@@ -148,6 +148,49 @@ GH, and wrong three ways:** degenerate under AC, covers **z only** (β/Λ/ψ are
 variational distribution), and not a differentiator. **The unsolved half is parameter uncertainty —
 that is what the sandwich is for, and that is this arc.**
 
+## ⚠ What this arc did NOT do — read before citing any of it
+
+Short list, because the gaps are the part you cannot infer from the results.
+
+**The speed numbers are narrower than they look.**
+
+- **Every speed figure is the AC tier — our *fastest* one.** GH is the `default_tier` for probit and
+  was **never timed**. So "3.0–7.4× slower at `n_starts=4`" is the *optimistic* number; the default
+  tier is slower still, by an unmeasured amount.
+- **One cell.** T=20, q=2, binomial-probit, **no ψ**, N ∈ {250, 1000, 2500}. Never with ψ present,
+  never q>2, never another family, never N>2500 or N<250. Nothing here generalises without re-running.
+- **Why we lose at N=250 (1.86× even at matched starts) is unexplained.** Fixed overhead is the
+  hypothesis; nobody measured it.
+- **The 8× median gap at the small cell is still unexplained.** The cheap levers are closed; the
+  *cause* was never found.
+- **gllvm's N=2500 tail** (3.48× its own median) was not diagnosed — optimisation or the SE pass, unknown.
+- **Ledger claim 20** ("gllvm wastes ~57% of its outer parameters") was never re-checked against the
+  corrected, SE-matched clock. It still reads STANDS.
+
+**Named as the best remaining lever, and NOT run.** The L-BFGS-B polish escalation fires on *every*
+fit, triggering at max│grad│ ≥ **1e-4** while the health gate only needs **5e-3** — 50× looser.
+Aligning them is a one-constant experiment with a clear mechanism and roughly an hour of work.
+**Nobody has tried it.** If you want one cheap speed result, this is it.
+
+**`n_starts=4`**: shown to cost 3.8–4.0× and buy no accuracy **in one easy, unimodal, ψ-free cell**.
+That is *not* evidence the default is wrong — it was never tested where multimodality actually bites.
+
+**Left documented but NOT fixed.**
+
+- The `tempdir()` recompile hazard (`R/va-r3-proto.R:909`) — every fresh `Rscript` pays ~25 s. Only
+  written down. A persistent DLL cache would remove it at source.
+- **`71-split25.R` still has no untimed warm-up** and still reads `SEEDS <- 1:3`. It is superseded by
+  `73-split-instrumented.R`, not repaired. Do not re-run `71` and believe it.
+- **`57-gllvm-scaling.R` and `29-head-to-head-gllvm.R` still carry the SE defect.** Flagged in ledger
+  row 48, not re-measured. Only `79` is SE-matched.
+- The four cheap follow-ups in `docs/design/va-integration-surface.md` §7 (guard
+  `getLV`/`extract_ordination` against a VA fit, add a refusing `predict.gllvmTMB_va`, lifecycle badge,
+  tidy leftover `$research_only`/`$engine_result`).
+
+**Not touched at all.** Zero `R/`, `src/`, `tests/` changes — no engine work of any kind. The full
+suite was therefore **not re-run**; the 9,286-test baseline is *structurally* intact, which is an
+argument, not an execution. Arc B itself: no pilot, no scoring. Totoro cleanup: not done.
+
 ## Live environment
 
 ```sh

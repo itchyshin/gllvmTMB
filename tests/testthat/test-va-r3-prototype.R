@@ -68,14 +68,43 @@ test_that("R3 accepts only the predeclared complete ordinary model cell", {
 })
 
 test_that("R3 Gauss-Hermite rules are normalized and stable", {
-  for (H in c(15L, 25L, 61L)) {
+  ## The admitted set was c(15, 25, 61) and this test asserted that H = 9 was
+  ## REFUSED. That whitelist was a typo-guard, not a numerical constraint -- the
+  ## nodes are built by Golub--Welsch at runtime, so any odd H >= 3 is valid --
+  ## and it blocked measuring GH's cost curve, which matters because GH is the
+  ## dominant term in fit time and the quadrature loop is linear in H. The rule
+  ## now admits any odd H >= 3, so the small orders are exercised HERE rather
+  ## than merely permitted.
+  for (H in c(3L, 5L, 7L, 9L, 15L, 25L, 61L)) {
     rule <- .va_r3_gh_rule(H)
     expect_equal(sum(rule$weights), sqrt(pi), tolerance = 1e-14)
     expect_equal(sum(rule$weights * rule$nodes), 0, tolerance = 1e-14)
     expect_equal(sum(rule$weights * rule$nodes^2) / sqrt(pi), 0.5,
                  tolerance = 1e-13)
   }
-  expect_error(.va_r3_gh_rule(9L), "15, H = 25, or H = 61")
+
+  ## Degree of exactness: an H-point Gauss rule integrates polynomials up to
+  ## degree 2H-1 exactly. In probabilists' terms E[z^4] = 3 needs H >= 3 and
+  ## E[z^6] = 15 needs H >= 4, so H = 3 is the LAST order that gets z^6 wrong
+  ## (it returns 9). That boundary is asserted, not assumed -- it is the reason
+  ## H = 5 is the smallest order worth using in practice.
+  moment <- function(H, p) {
+    r <- .va_r3_gh_rule(H)
+    z <- r$nodes * sqrt(2); w <- r$weights / sqrt(pi)
+    sum(w * z^p)
+  }
+  expect_equal(moment(3L, 4L), 3, tolerance = 1e-12)
+  expect_false(isTRUE(all.equal(moment(3L, 6L), 15)))   # H=3 cannot reach z^6
+  for (H in c(5L, 7L, 15L, 61L)) {
+    expect_equal(moment(H, 4L), 3, tolerance = 1e-12)
+    expect_equal(moment(H, 6L), 15, tolerance = 1e-11)
+  }
+
+  ## What IS still refused: even orders (an odd rule keeps a node at the
+  ## variational mean, where the integrand's mass is) and anything below 3.
+  expect_error(.va_r3_gh_rule(8L), "odd integer H >= 3")
+  expect_error(.va_r3_gh_rule(2L), "odd integer H >= 3")
+  expect_error(.va_r3_gh_rule(1L), "odd integer H >= 3")
 })
 
 test_that("R3 H=61 scalar expectation passes the frozen oracle grid", {

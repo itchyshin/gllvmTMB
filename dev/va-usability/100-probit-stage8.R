@@ -98,11 +98,36 @@ one_seed <- function(s, N0) {
                   error = function(e) NULL)
     el <- as.numeric(difftime(Sys.time(), t0, units = "secs"))
     if (!is.null(g)) {
+      ## SCALING CONVENTION -- SETTLED 2026-08-05 AGAINST gllvm's OWN ARITHMETIC.
+      ## This line has now flipped twice on argument alone. It is settled here by
+      ## measurement so it cannot flip a third time.
+      ##
+      ## Lambda = theta %*% diag(sigma.lv), NOT raw theta. Two independent proofs:
+      ##   1. STRUCTURAL. theta's diagonal is pinned at EXACTLY 1 (theta[1,1]=1,
+      ##      theta[2,2]=1, theta[1,2]=0 -- an identifiability constraint). A loading
+      ##      matrix with a fixed unit diagonal cannot represent loading magnitude,
+      ##      so the scale must live in sigma.lv.
+      ##   2. CONVENTION-FREE. Reconstructing gllvm's own linear predictor and
+      ##      comparing against U %*% t(Lambda):
+      ##          raw     max|diff| = 4.78e-01
+      ##          scaled  max|diff| = 4.44e-16   <- machine precision, EXACT
+      ##      Script: dev/va-usability/170-gllvm-convention-arbiter.R
+      ##
+      ## CONSEQUENCE, and it inverts this campaign's premise: gllvm's trace is ~0.53
+      ## and its eta_var ~0.42 -- i.e. gllvm SHARES our ~2x attenuation. The
+      ## 2026-08-05 handover retracted "gllvm shares the bias" on the belief that raw
+      ## theta is Lambda; that retraction was itself wrong. Our `gh` tier
+      ## (trace ~1.0) is the only unbiased arm here, and it beats gllvm.
       th <- as.matrix(g$params$theta)
       sg <- tryCatch(g$params$sigma.lv, error = function(e) NULL)
-      L  <- if (!is.null(sg)) sweep(th, 2L, sg, "*") else th
-      sc <- score_LU(L, as.matrix(g$lvs), b)
+      U  <- as.matrix(g$lvs)
+      L  <- if (!is.null(sg)) sweep(th, 2L, sg, "*") else th   # = theta %*% diag(sigma.lv)
+      sc <- score_LU(L, U, b)
       out$gllvm_trace <- sc$trace; out$gllvm_r <- sc$r; out$gllvm_s <- el
+      ## Keep the raw convention as a labelled diagnostic so the discrepancy stays
+      ## visible in the record rather than being re-litigated from memory.
+      out$gllvm_raw_trace <- score_LU(th, U, b)$trace
+      if (!is.null(sg)) out$gllvm_sigma_lv <- mean(sg)
     }
   }
   out

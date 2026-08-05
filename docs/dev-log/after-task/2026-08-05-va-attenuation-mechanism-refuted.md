@@ -65,7 +65,72 @@ advertised, so no register row moved.
   convention reproduced the shipped column to **+0.0000 at all three rungs** — an exact
   reproduction, which is the control proving the rescore harness correct.
 
-## 5. Results — four hypotheses, four refutations
+## 4b. ⚠ AMENDMENT (same day, later) — §5's headline refutation was WRONG
+
+**Written before the shared grid ran. Corrected here rather than rewritten, so the error is
+visible.** §5 row 3 says the constant-vs-exact curvature is "NOT the cause". That verdict came
+from comparing gllvm (exact curvature, attenuates) against our `ac2` — a comparison confounded
+across **at least five** simultaneous differences: pinned unit diagonal + `sigma.lv` scale, BFGS
+vs nlminb, one start vs four, a different KL formulation, and a two-stage warm start. **A
+five-way-confounded external comparison cannot overturn a one-variable internal one.**
+
+The controlled experiment is `ac` vs `ac2` **inside our engine** — identical parameterisation,
+optimiser, starts, variational family, KL, data and seed, differing *only* in the curvature:
+
+| tier | curvature | trace | eta_var |
+|---|---|---|---|
+| `ac` | pinned to −1 | 0.618 | **0.485** |
+| `ac2` | exact | 1.588 | **1.211** |
+
+**Paired difference in `eta_var`: +0.726 [+0.544, +0.909]** — separates from zero (2 seeds).
+So for **our tiers**, which is the scope the goal actually names, the curvature constant **is** a
+cause of the attenuation, and replacing it moves `eta_var` past the 0.9 target. §5 row 3 is
+**withdrawn**; rows 1, 2 and 4 stand.
+
+Why gllvm attenuates *despite* exact curvature is now a **separate open question**, not a
+refutation of ours.
+
+## 4c. THE CROSSOVER — the finding that reconciles Gate 3 with this arc
+
+Scoring bias and total error on ONE grid (`dev/va-usability/190-shared-grid-bias-vs-rmse.R`,
+probit n=150, 2 seeds) shows the two criteria **agree**, and both rank `ac` first:
+
+| arm | trace (→1) | eta_var (→1) | relfrob (→0) | latent_r | secs |
+|---|---|---|---|---|---|
+| `ac` | 0.618 | 0.485 | **0.432** | 0.856 | 5.3 |
+| `ac2` | 1.588 | 1.211 | 0.835 | 0.856 | 135.6 |
+| `gh` | 1.496 | 1.125 | 0.729 | 0.856 | 167.9 |
+| Laplace | 45.6 | 27.7 | **59.1** | 0.847 | 18.9 |
+| gllvm | 0.618 | 0.485 | 0.432 | 0.856 | 1.2 |
+
+At n=150 `gh` **overshoots** (1.496) and is noisy; the attenuated tier wins on *both* criteria.
+But `gh` trace runs **1.496 → 1.135 → 1.065 → 1.025** across n = 150…1000 (converging from above)
+while `ac` runs **0.618 → 0.508 → 0.512 → 0.508** (flat). **The error curves cross.** Gate 3
+(which chose `jj` over `gh`) and this arc were measuring opposite sides of the same crossing.
+**"Which tier is best" has no n-free answer** — that is the arc's most useful practical result.
+
+Laplace at n=150 on binary is not "biased" but **unusable** (relfrob 59.1), which is the
+strongest argument for VA existing at all.
+
+## 4d. SEVERITY — the attenuation costs 10–44% of ICC and R²
+
+Earlier framing ("safe for ordination, unsafe for variance components") understated this.
+For probit the residual variance is **fixed at 1** for identification, so `k = 0.508` does **not**
+cancel in any ratio against it:
+
+| true Σ_jj | true ICC | estimated ICC | relative error |
+|---|---|---|---|
+| 0.25 | 0.200 | 0.113 | **−44%** |
+| 0.50 | 0.333 | 0.203 | **−39%** |
+| 1.00 | 0.500 | 0.337 | **−33%** |
+| 4.00 | 0.800 | 0.670 | −16% |
+
+The same arithmetic applies to the variance-explained share, so a conditional R² of 0.50 reports
+as 0.34. Correlations *do* largely survive (a uniform factor cancels exactly), but only to the
+extent the attenuation is uniform — measured uniformity R² ≈ 0.85, and `ac`'s correlation MAE is
+0.179 against `gh`'s 0.166. **ICC / repeatability / R² / variance partitioning are NOT protected.**
+
+## 5. Results — four hypotheses, four refutations *(row 3 withdrawn — see §4b)*
 
 | # | hypothesis | verdict | disproof |
 |---|---|---|---|

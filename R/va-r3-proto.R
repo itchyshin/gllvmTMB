@@ -101,11 +101,31 @@
   ans
 }
 
+## The admitted set was c(15, 25, 61) and the default is 61. Nothing in the rule
+## itself requires that: the nodes are built by Golub--Welsch at runtime below, so
+## any odd H >= 3 is mathematically fine, and the whitelist was a typo-guard rather
+## than a numerical constraint. It was blocking the one measurement that matters for
+## GH's cost, because GH is ~75% of fit time (dev/va-speed/08-eval-cost-log.txt) and
+## the quadrature loop is LINEAR in H (a single 1-D loop over eta in the template,
+## not a tensor product over q), so H is a direct throttle on the dominant cost.
+##
+## Small orders are admitted here so the accuracy/cost curve can be MEASURED. There
+## is a prior, adjacent finding that they may suffice: dev/aghq-scope-cost.md records
+## a 7-vs-9-node difference below 1e-4 and concludes "H=7 is already converged" --
+## but that is the AGHQ arc, a different engine, so it is a lead, NOT evidence for
+## this tier. What makes it plausible here is that this rule's nodes are placed at
+## mu +/- sqrt(2v) * z, i.e. adapted to the variational mean and SD, which is the
+## regime where Gauss-Hermite converges fastest.
+##
+## Admitting an order is NOT endorsing it. The default stays 61 until a ladder on
+## shared cells shows a smaller order matches it on trace / eta_var / rel_frob.
 .va_r3_gh_rule <- function(H = 61L) {
   H <- as.integer(H)
-  if (length(H) != 1L || is.na(H) || !(H %in% c(15L, 25L, 61L))) {
-    stop("The R3 quadrature order must be H = 15, H = 25, or H = 61.",
-         call. = FALSE)
+  if (length(H) != 1L || is.na(H) || H < 3L || H %% 2L == 0L) {
+    stop("The R3 quadrature order must be a single odd integer H >= 3 ",
+         "(previously restricted to 15, 25, or 61; widened so the ",
+         "accuracy/cost curve can be measured). Odd orders keep a node at the ",
+         "variational mean.", call. = FALSE)
   }
   ## Golub--Welsch for the physicists' Hermite weight exp(-x^2).
   J <- matrix(0, H, H)

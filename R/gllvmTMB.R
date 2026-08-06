@@ -1307,6 +1307,30 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #' @param verbose If `TRUE`, prints a one-line summary per restart so
 #'   the user can see which seed led to the winning fit. Default
 #'   `FALSE`.
+#' @param va_H Gauss-Hermite quadrature order for the variational route, a
+#'   single odd integer `>= 3` (default `61`). Ignored unless
+#'   `integration = "va"`.
+#'
+#'   Quadrature dominates the cost of a variational fit and the work is linear
+#'   in `H`, so this is the main speed control on that route. On a binomial
+#'   probit cell with 20 traits, `H = 7` was indistinguishable from `H = 61` in
+#'   both the recovered loading scale and the recovered linear predictor, at
+#'   two and at five latent dimensions, while running 3.4-6.7 times faster.
+#'   `H = 5` was measurably worse at five latent dimensions. The default stays
+#'   at `61`; lower it deliberately.
+#'
+#' @param va_eval_method How the variational route evaluates the per-observation
+#'   expectation. `"auto"` (default) reproduces the built-in routing exactly and
+#'   is what you want unless you are comparing methods.
+#'
+#'   `"gh"` uses Gauss-Hermite quadrature. `"jj"` uses the Jaakkola-Jordan
+#'   bound, which is defined only for pure binomial-logit fits and is
+#'   substantially cheaper. The two differ in more than speed: on binary data
+#'   the bound's recovered loading magnitudes are biased downward and do not
+#'   improve as the sample grows, whereas quadrature's converge. Latent-variable
+#'   *scores*, and therefore ordinations, are effectively unaffected by the
+#'   choice. Ignored unless `integration = "va"`.
+#'
 #' @param integration Which method evaluates the latent-variable integral.
 #'   `"laplace"` (default) is the Laplace approximation and is the **only**
 #'   route that yields a marginal likelihood, so it is the only one for which
@@ -1518,6 +1542,28 @@ gllvmTMBcontrol <- function(
   ## uncertainty. Offering a value here does NOT advertise it: admission to any
   ## user-facing claim is Design 85 s11 Gate 3's to grant, not this argument's.
   integration = c("laplace", "va"),
+  ## VA-route knobs. Both were previously UNREACHABLE: the route hard-wired the
+  ## tier and the engine's H default, so a caller could select `integration =
+  ## "va"` and then not choose how it evaluates. Exposing them changes no
+  ## default -- `"auto"` reproduces the existing routing exactly, and 61 is the
+  ## existing quadrature order.
+  ##
+  ## `va_H` matters more than its obscurity suggests: GH is ~75% of VA fit time
+  ## and the quadrature loop is LINEAR in H, so H is a direct throttle on the
+  ## dominant cost. Measured 2026-08-05, probit p=20: H = 7 is indistinguishable
+  ## from H = 61 at q=2 (paired trace diff -2e-5) AND q=5 (+2.3e-4) while running
+  ## 6.66x / 3.43x faster. H = 5 is NOT safe -- it separates at q=5. Evidence:
+  ## dev/va-usability/200-H-ladder.R. The default stays 61 pending a maintainer
+  ## decision; this argument is what makes 7 reachable.
+  ##
+  ## `va_eval_method` admits only "auto"/"jj"/"gh" -- the internal "ac"/"ac2"
+  ## tiers stay internal. "gh" is the accurate route and was unreachable for
+  ## pure binomial-logit fits, which "auto" sends to "jj" (Gate 3, 2026-07-31).
+  ## `jj` is asymptotically biased on the loading scale (plim ~0.53); `gh`
+  ## converges. See ?gllvmTMBcontrol's `integration` note on what VA does and
+  ## does not certify.
+  va_H = 61L,
+  va_eval_method = c("auto", "jj", "gh"),
   aghq = FALSE,
   aghq_iter_cap = 1L,
   aghq_n_adapt = 400L,
@@ -1587,6 +1633,21 @@ gllvmTMBcontrol <- function(
   init_strategy <- match.arg(init_strategy)
   start_method <- .gllvmTMB_normalize_start_method(start_method)
   integration <- match.arg(integration)
+  va_eval_method <- match.arg(va_eval_method)
+  ## Validate here rather than deep in the engine, so a typo fails at the call
+  ## the user wrote. The odd-only rule is the GH rule's own contract: an odd
+  ## order keeps a node at the variational mean, where the integrand's mass is.
+  if (!is.numeric(va_H) || length(va_H) != 1L || is.na(va_H) ||
+      va_H != as.integer(va_H) || va_H < 3L || as.integer(va_H) %% 2L == 0L) {
+    cli::cli_abort(c(
+      "{.arg va_H} must be a single odd integer >= 3.",
+      "x" = "Got {.val {va_H}}.",
+      "i" = "H is the Gauss-Hermite quadrature order for {.code integration = \"va\"}.
+             It has no effect on the Laplace route.",
+      ">" = "H = 7 is measurably indistinguishable from the default 61 at q = 2
+             and q = 5, and runs 3.4-6.7x faster."
+    ))
+  }
   aghq <- .gllvmTMB_normalize_aghq(aghq)
   aghq_ridge <- .gllvmTMB_normalize_aghq_ridge(aghq_ridge)
   if (identical(aghq_ridge, "auto")) {
@@ -1635,6 +1696,8 @@ gllvmTMBcontrol <- function(
     d_W = d_W,
     spde_mode = spde_mode,
     integration = integration,
+    va_H = as.integer(va_H),
+    va_eval_method = va_eval_method,
     n_init = as.integer(n_init),
     optimizer = optimizer,
     optArgs = optArgs,

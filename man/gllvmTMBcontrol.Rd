@@ -18,6 +18,8 @@ gllvmTMBcontrol(
   se = TRUE,
   verbose = FALSE,
   integration = c("laplace", "va"),
+  va_H = 61L,
+  va_eval_method = c("auto", "jj", "gh"),
   aghq = FALSE,
   aghq_iter_cap = 1L,
   aghq_n_adapt = 400L,
@@ -177,6 +179,30 @@ capability the package does not have. Its own measurements are the reason
 it is not a candidate here: EVA delivers valid inference for the
 regression coefficients but not for \verb{Lambda Lambda'}, which is the
 between-response covariance this package exists to estimate.}
+
+\item{va_H}{Gauss-Hermite quadrature order for the variational route, a
+single odd integer \verb{>= 3} (default \code{61}). Ignored unless
+\code{integration = "va"}.
+
+Quadrature dominates the cost of a variational fit and the work is linear
+in \code{H}, so this is the main speed control on that route. On a binomial
+probit cell with 20 traits, \code{H = 7} was indistinguishable from \code{H = 61} in
+both the recovered loading scale and the recovered linear predictor, at
+two and at five latent dimensions, while running 3.4-6.7 times faster.
+\code{H = 5} was measurably worse at five latent dimensions. The default stays
+at \code{61}; lower it deliberately.}
+
+\item{va_eval_method}{How the variational route evaluates the per-observation
+expectation. \code{"auto"} (default) reproduces the built-in routing exactly and
+is what you want unless you are comparing methods.
+
+\code{"gh"} uses Gauss-Hermite quadrature. \code{"jj"} uses the Jaakkola-Jordan
+bound, which is defined only for pure binomial-logit fits and is
+substantially cheaper. The two differ in more than speed: on binary data
+the bound's recovered loading magnitudes are biased downward and do not
+improve as the sample grows, whereas quadrature's converge. Latent-variable
+\emph{scores}, and therefore ordinations, are effectively unaffected by the
+choice. Ignored unless \code{integration = "va"}.}
 
 \item{aghq}{Adaptive Gauss-Hermite quadrature for the between-unit latent
 block. \code{FALSE} (default) fits by Laplace approximation. A positive integer

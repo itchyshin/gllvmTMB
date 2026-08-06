@@ -146,7 +146,8 @@
                                is_y_observed, weights_i, mi_enabled,
                                offset_expr, REML = FALSE,
                                lambda_constraint = NULL, Xcoef_fixed = NULL,
-                               engine = "tmb", call = NULL) {
+                               engine = "tmb", call = NULL,
+                               va_H = 61L, va_eval_method = "auto") {
   covstructs <- parsed$covstructs
   rr_idx <- .va_route_ordinary_rr_idx(covstructs)
 
@@ -347,10 +348,24 @@
   ## uses GH (Design 108 Stage 2). Named explicitly — "auto" would also resolve
   ## to GH for non-binomial registry entries, but mixed has no single registry
   ## default_tier, so the route pins "gh" rather than relying on that path.
-  eval_method <- if (!isTRUE(fl$is_mixed) && all(fl$family_codes == 1L)) {
-    "jj"
+  ## The routing above is what `va_eval_method = "auto"` resolves to, and "auto"
+  ## is the default -- so this block is byte-equivalent to the previous hard-wire
+  ## for every caller who does not opt out. A caller may now name the tier
+  ## explicitly via `gllvmTMBcontrol(va_eval_method = )`; the engine
+  ## (`.approximation_engine_va_r3_fit`) validates the family/tier pairing and
+  ## refuses "jj" outside pure binomial-logit, so an impossible request errors
+  ## there with a family-specific message rather than being silently re-routed.
+  ##
+  ## WHY THE OPT-OUT EXISTS. "auto" sends pure binomial-logit to "jj" (Gate 3,
+  ## 2026-07-31, chosen on Sigma_B RMSE). But `jj`'s recovered loading scale is
+  ## asymptotically biased -- trace 0.777/0.600/0.538/0.535 at n = 150...2000,
+  ## a plateau, not a small-sample effect -- while `gh` converges (1.583 ->
+  ## 1.132 -> 1.014). A user who needs loading MAGNITUDES rather than an
+  ## ordination had no way to ask for the convergent route. Now they do.
+  eval_method <- if (identical(va_eval_method, "auto")) {
+    if (!isTRUE(fl$is_mixed) && all(fl$family_codes == 1L)) "jj" else "gh"
   } else {
-    "gh"
+    va_eval_method
   }
 
   ## KNOWN LIMITATION, recorded rather than guarded. The engine runs its own
@@ -372,6 +387,7 @@
       family = if (isTRUE(fl$is_mixed)) "binomial" else fl$family[[1L]],
       link = if (isTRUE(fl$is_mixed)) "logit" else fl$link[[1L]],
       eval_method = eval_method,
+      H = va_H,
       is_y_observed = is_y_observed,
       family_codes = fl$family_codes
     ),

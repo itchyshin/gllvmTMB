@@ -49215,3 +49215,25 @@ suggested package `tweedie` was absent. Totoro already had recommended package
 keeps the DGP fixed while avoiding a host-specific installation dependency.
 
 — Codex + Gauss + Curie + Rose, Arc 2 scaffold readiness (2026-08-06)
+
+## 2026-08-06 — Totoro preflight first-run sequencing repair
+
+The first real Totoro preflight stopped before either timed fit because the
+shell exported `VA_PREFLIGHT_RECEIPT` and the initial runtime-only verifier
+therefore tried to validate the not-yet-created receipt. The initial verifier
+now masks that environment value; the subsequent preflight creates the
+immutable receipt and the final verifier still validates the complete chain.
+
+```sh
+PREFLIGHT_CONTEXT=totoro bash dev/va-gh-h7-campaign/run-preflight.sh
+# Expected fail before repair: preflight receipt is missing; no fit ran.
+bash -n dev/va-gh-h7-campaign/run-preflight.sh
+# PASS.
+NOT_CRAN=true Rscript --vanilla -e 'devtools::test(filter="va-gh-h7-campaign", reporter="summary", stop_on_failure=TRUE)'
+# DONE; 0 failures, warnings, or skips.
+```
+
+The corrected revision must receive a new Gate-E receipt and immutable runtime
+before the Totoro preflight is retried.
+
+— Codex, Arc 2 live-gate repair (2026-08-06)

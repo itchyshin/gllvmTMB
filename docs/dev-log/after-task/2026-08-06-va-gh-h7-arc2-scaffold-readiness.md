@@ -128,13 +128,22 @@ were installed. The runner now uses `tweedie::rtweedie()` when present and the
 parameter-matched `mgcv::rTweedie(mu, p=1.5, phi=0.8)` fallback otherwise;
 runtime preparation requires either package.
 
+The rebuilt runtime then exposed a first-run ordering defect before either
+timed preflight fit: the exported target receipt path made the initial
+runtime-only verifier demand a receipt that the next command was responsible
+for creating. The initial verifier now masks that one environment value; the
+post-fit verifier continues to require and authenticate the full chain.
+
 ## 10. Known Residuals
 
-No real Gate receipt, installed runtime, timed preflight, Totoro bundle, or DRAC
-job exists yet; they must be generated from the clean commit following this
-report. The structured family/rank adjudication thresholds are predeclared, but
-the final verdict artifact will be produced only after campaign data exist.
-Cross-OS CI is not evidence for this compute campaign and was not run.
+A real Gate receipt and installed Totoro runtime were created for revision
+`98f78567`; both remain valid historical evidence but cannot authorize the
+corrected source revision. No timed preflight receipt, Totoro result bundle, or
+DRAC job exists yet. The corrected revision therefore requires a newly bound
+Gate receipt and runtime before the timed preflight is retried. The structured
+family/rank adjudication thresholds are predeclared, but the final verdict
+artifact will be produced only after campaign data exist. Cross-OS CI is not
+evidence for this compute campaign and was not run.
 
 ## 11. Team Learning
 

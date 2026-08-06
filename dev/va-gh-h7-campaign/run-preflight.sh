@@ -43,7 +43,10 @@ export OPENBLAS_NUM_THREADS=1
 export OMP_NUM_THREADS=1
 export MKL_NUM_THREADS=1
 
-Rscript --vanilla "$DRIVER" --mode=verify-runtime \
+# The receipt path is exported for the later fit, but this first check must
+# validate only Gate E + the immutable runtime.  An absent preflight receipt is
+# the expected state on a first run.
+VA_PREFLIGHT_RECEIPT= Rscript --vanilla "$DRIVER" --mode=verify-runtime \
   --gate-receipt="$GATE_E_RECEIPT" \
   --runtime-manifest="$VA_RUNTIME_MANIFEST"
 

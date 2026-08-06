@@ -216,6 +216,7 @@ test_that("shell launchers use structured receipts and derived array geometry", 
   expect_match(preflight, "fir.*nibi.*rorqual.*trillium.*narval")
   expect_match(preflight, "SLURM_JOB_ID")
   expect_match(preflight, "PREFLIGHT_CONTEXT=totoro requires a Totoro host")
+  expect_match(preflight, "VA_PREFLIGHT_RECEIPT= Rscript --vanilla")
   expect_match(prepare, "must run in a DRAC allocation")
 
   for (name in c("launch-totoro.sh", "drac-array.sbatch")) {

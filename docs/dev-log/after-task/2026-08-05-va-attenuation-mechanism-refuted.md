@@ -90,6 +90,41 @@ cause of the attenuation, and replacing it moves `eta_var` past the 0.9 target. 
 Why gllvm attenuates *despite* exact curvature is now a **separate open question**, not a
 refutation of ours.
 
+## 4b-bis. WHY THIS IS CAUSAL AND NOT MERELY CORRELATIONAL — stated explicitly
+
+The evidence above was recorded as a number moving. The causal argument was never written
+down, so it is written here. The claim is deliberately **scoped to our engine**.
+
+**The comparison is a one-variable controlled experiment.** `ac` and `ac2` share, bit for bit:
+the same data and seed, the same parameterisation (`theta_rr`, free diagonal), the same
+variational family and its `m` / `log_L_diag` / `L_off` parameters, the same KL term, the same
+optimiser (`nlminb`), the same `n_starts = 4`, the same health gates, the same template — they
+are **the same function** apart from which expectation helper the `eval_method` switch selects
+at cpp:956. The *only* difference is the curvature coefficient: `−1` versus `(log Φ)''(μ)`.
+
+**Both directions are exercised by that single comparison.**
+- *Necessity:* remove the constant (use exact curvature) → the attenuation **goes away**
+  (`eta_var` 0.441 → 0.968).
+- *Sufficiency:* restore the constant → the attenuation **returns** (0.968 → 0.441). `ac` is
+  literally `ac2` with the coefficient pinned; there is no third difference for it to hide in.
+
+**Paired, so between-seed variation is differenced out**: +0.527 [+0.438, +0.616] over 10 seeds.
+And the harness reproduces **both** published controls exactly (`ac` 0.441, `gh` 0.922), so the
+instrument is validated against numbers it did not generate.
+
+**What this does NOT establish, and must not be read as:**
+- It says nothing about **gllvm**, which uses the exact curvature and attenuates anyway. gllvm
+  differs from us in ≥5 ways simultaneously, so its attenuation has a *different or additional*
+  cause. That remains OPEN.
+- It does not make `ac2` **useful** — it is indistinguishable from `gh` at 10 seeds while
+  costing the same. Establishing a cause and obtaining a better estimator are different results,
+  and only the first is claimed here.
+- Single cell (probit, n=150, p=20, q=2), GH-comparable regime only.
+
+**In short: within `gllvmTMB`'s VA engine, the hard-coded curvature constant is a cause of the
+`ac` attenuation — demonstrated by a controlled experiment in both directions. Why gllvm
+attenuates is a separate, unanswered question.**
+
 ## 4c. THE CROSSOVER — the finding that reconciles Gate 3 with this arc
 
 Scoring bias and total error on ONE grid (`dev/va-usability/190-shared-grid-bias-vs-rmse.R`,

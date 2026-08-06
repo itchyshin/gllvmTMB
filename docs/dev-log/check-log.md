@@ -49347,4 +49347,13 @@ rejects any other out-of-plan bundle. New Totoro smoke runs use
 their VA template checksums to agree. Rose's final seam audit found no remaining
 P0/P1 defect.
 
+Totoro's checksum-bound export completed at 2026-08-06 17:47:31 UTC with
+`data_status=COMPLETE`, 5,520 result rows, and 5,520 input-manifest rows. The
+export copied locally and revalidated against the committed exporter. A
+Totoro-only H7/H61 preview yielded 16 PASS, 12 INCONCLUSIVE, 8 exact
+NOT_APPLICABLE, and 0 FAIL rows. All finite upper recovery ratios were at most
+1.0004; inconclusive rows failed the predeclared 27-pair eligibility count.
+The full table and strict non-final interpretation are recorded in
+`docs/dev-log/audits/2026-08-06-va-gh-h7-totoro-stability-preview.md`.
+
 — Codex + Gauss + Curie, Arc 2 launch/adjudicator phase (2026-08-06)

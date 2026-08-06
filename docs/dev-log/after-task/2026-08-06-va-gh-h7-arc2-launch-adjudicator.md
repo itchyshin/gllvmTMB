@@ -60,6 +60,8 @@ package's own matched Laplace route.
 - `docs/design/110-va-gh-h7-all-scalar-families.md`: factual Arc-2 launch state;
   no predeclared threshold changed.
 - `docs/dev-log/check-log.md`: exact local and remote evidence.
+- `docs/dev-log/audits/2026-08-06-va-gh-h7-totoro-stability-preview.md`:
+  checksum-bound Totoro export and explicitly non-final H7/H61 preview.
 - This after-task report.
 
 No likelihood template, exported API, generated help, package-root README,

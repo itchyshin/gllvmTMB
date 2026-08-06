@@ -49175,6 +49175,34 @@ git diff --check
 # PASS.
 ```
 
+## 2026-08-06 — DRAC alias-safe login-node fence
+
+The first live Alliance orientation showed that cluster aliases do not equal
+hostnames: Fir reported `hostname -s = login2` with `CC_CLUSTER=fir`, and Nibi
+reported `hostname -s = l5` with `CC_CLUSTER=nibi`. The compile and timed-fit
+guards now use `CC_CLUSTER`/`CLUSTER` as well as hostname, so a login alias
+cannot bypass the allocation requirement.
+
+```sh
+bash -n dev/va-gh-h7-campaign/prepare-runtime.sh dev/va-gh-h7-campaign/run-preflight.sh
+# PASS.
+NOT_CRAN=true Rscript --vanilla -e 'devtools::test(filter="va-gh-h7-campaign", reporter="summary", stop_on_failure=TRUE)'
+# DONE; 0 failures, warnings, or skips.
+env CC_CLUSTER=fir CAMPAIGN_PROJECT_ROOT=/private/tmp/unused GATE_E_RECEIPT=/private/tmp/absent bash dev/va-gh-h7-campaign/prepare-runtime.sh
+# Expected exit 2 before any receipt read: allocation required on fir:host.
+env CC_CLUSTER=nibi GATE_E_RECEIPT=/private/tmp/absent VA_RUNTIME_MANIFEST=/private/tmp/absent VA_PREFLIGHT_RECEIPT=/private/tmp/absent PREFLIGHT_CONTEXT=local bash dev/va-gh-h7-campaign/run-preflight.sh
+# Expected exit 2 before any receipt read: timed fit forbidden on nibi:host.
+git diff --check
+# PASS.
+```
+
+The obsolete Fir preparation job `53405015` began before cancellation and
+failed without compiling gllvmTMB because the shared dependency library lacked
+`fmesher`. The corrected DRAC revision will install the official dependency in
+an allocated compute job before runtime preparation.
+
+— Codex, Arc 2 DRAC live-gate repair (2026-08-06)
+
 Rose final verdict: **PASS**, no remaining Arc-1 public-surface blocker.
 Shannon end-of-session verdict: **WARN** only because `api.github.com` was
 unreachable; local branch, recent-history, ownership, after-task, and durable

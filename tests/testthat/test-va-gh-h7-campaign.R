@@ -219,10 +219,13 @@ test_that("shell launchers use structured receipts and derived array geometry", 
   preflight <- paste(text[["run-preflight.sh"]], collapse = "\n")
   prepare <- paste(text[["prepare-runtime.sh"]], collapse = "\n")
   expect_match(preflight, "fir.*nibi.*rorqual.*trillium.*narval")
+  expect_match(preflight, "CC_CLUSTER")
+  expect_match(preflight, "CLUSTER")
   expect_match(preflight, "SLURM_JOB_ID")
   expect_match(preflight, "PREFLIGHT_CONTEXT=totoro requires a Totoro host")
   expect_match(preflight, "VA_PREFLIGHT_RECEIPT= Rscript --vanilla")
   expect_match(prepare, "must run in a DRAC allocation")
+  expect_match(prepare, "CC_CLUSTER")
 
   for (name in c("launch-totoro.sh", "drac-array.sbatch")) {
     joined <- paste(text[[name]], collapse = "\n")

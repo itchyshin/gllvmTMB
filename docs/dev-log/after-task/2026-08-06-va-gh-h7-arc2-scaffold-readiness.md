@@ -139,6 +139,11 @@ Once that verifier passed, the package loader exposed a second pre-fit defect:
 as an object. Supplying `"gllvmTMB"` gives `character.only = TRUE` the input it
 requires. A dedicated regression assertion now protects this live-only path.
 
+Alliance orientation then showed that login aliases report hostnames such as
+`login2` and `l5`, not `fir` and `nibi`. Both DRAC guards now consult the
+authoritative `CC_CLUSTER`/`CLUSTER` environment signal in addition to hostname,
+so compilation and timed fits still require `SLURM_JOB_ID` on those aliases.
+
 ## 10. Known Residuals
 
 A real Gate receipt and installed Totoro runtime were created for revision

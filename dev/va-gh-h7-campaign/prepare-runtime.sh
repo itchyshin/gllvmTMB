@@ -13,10 +13,12 @@ DRIVER="$SCRIPT_DIR/run-cell.R"
 : "${GATE_E_RECEIPT:?Set GATE_E_RECEIPT to the structured Gate-E receipt}"
 
 host_short="$(hostname -s | tr '[:upper:]' '[:lower:]')"
-case "$host_short" in
-  fir*|nibi*|rorqual*|trillium*|narval*|killarney*|vulcan*|tamia*)
+cluster_short="$(printf '%s' "${CC_CLUSTER:-${CLUSTER:-}}" | tr '[:upper:]' '[:lower:]')"
+case "$cluster_short:$host_short" in
+  fir:*|nibi:*|rorqual:*|trillium:*|narval:*|killarney:*|vulcan:*|tamia:*|\
+  *:fir*|*:nibi*|*:rorqual*|*:trillium*|*:narval*|*:killarney*|*:vulcan*|*:tamia*)
     [[ -n "${SLURM_JOB_ID:-}" ]] || {
-      echo "Runtime preparation compiles code and must run in a DRAC allocation, not on $host_short." >&2
+      echo "Runtime preparation compiles code and must run in a DRAC allocation, not on ${cluster_short:-unknown}:$host_short." >&2
       exit 2
     }
     ;;

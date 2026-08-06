@@ -292,3 +292,40 @@ jointly — structurally the same as ours. An hour would have been saved by trac
   addendum §3, which is correct and worth keeping.)
 - **`n = 2000+` was never run for probit.** The plateau is established over 150–1000 only.
 - **Nothing is pushed.** Four local commits. `origin/main` untouched at `5bf18ab3`.
+
+## 13. CLOSED — gllvm's attenuation is EXPECTATION-related, not structural
+
+The one question left open all session was *why gllvm attenuates despite using the exact
+curvature*, treated as unanswerable because gllvm differs from us in ≥5 ways at once. It is
+answerable, by varying the family instead of the implementation.
+
+**Gaussian's `E_q[log p]` is EXACT** (log p is quadratic in η — no approximation at all).
+Probit's is not. Every structural feature of gllvm — pinned unit diagonal, `sigma.lv` scale, KL
+formulation, BFGS, start count — is **identical between its gaussian and probit fits**. So the
+family is the only thing that varies.
+
+| gllvm, correctly scaled (`theta %*% diag(sigma.lv)`), 6 seeds | trace | eta_var |
+|---|---|---|
+| gaussian (expectation **exact**) | **1.0233** | 0.9585 |
+| binomial-probit (expectation approximated) | **0.5868** | 0.4832 |
+
+**Unbiased where the expectation is exact; attenuated where it is not.** That eliminates every
+structural confound at once — a structural cause would attenuate both.
+
+**Independently, the start count was already ruled out**: gllvm at `n.init = 1` and `n.init = 4`
+both returned trace **0.6072**, identical, so its attenuation is not an optimisation artifact.
+
+**The unified conclusion, now demonstrated across two independent implementations:**
+`E_q[log Φ(η)]` has no closed form, and **every cheap treatment of it attenuates** — our constant
+curvature, gllvm's exact-curvature second-order expansion, and the JJ bound alike. Gaussian and
+Poisson, where the expectation *is* closed-form (`E[exp(η)] = exp(μ + v/2)`), are unbiased in both
+packages. **Only full quadrature escapes.**
+
+That makes the attenuation a **property of second-order variational treatment of binary GLLVMs**,
+not a gllvmTMB defect and not a gllvm defect — which is a materially different, and more
+publishable, claim than the one this arc started with.
+
+**Still finer-grained and NOT established:** *which* aspect of the expectation treatment. gllvm
+(exact curvature) lands at 0.587 while our `ac2` (exact curvature) lands at 1.197, so the two
+second-order routes differ in something further — plausibly the variational covariance `Au` vs our
+per-unit Cholesky. Not tested.

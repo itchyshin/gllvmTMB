@@ -45,7 +45,67 @@ must be monotone in H; an artifact need not be.
 constraint — and `R/va-routing.R` hard-wires the default, so no user could have discovered it.
 Now widened to any odd H >= 3 (`e33151b3`), with the rule's moment-exactness asserted in tests.
 
-## 2. ⚠ THE MECHANISM — supported for OUR tiers; gllvm's is a separate open question
+## 1b. ✅ THE MECHANISM, RESOLVED — it is a property of the METHOD, not of either package
+
+*(Added after §2 below was written; §2's "separate open question" is now CLOSED.)*
+
+`E_q[log Φ(η)]` **has no closed form, and every cheap treatment of it attenuates.** Shown across
+two independent implementations:
+
+| treatment | who | trace |
+|---|---|---|
+| constant curvature `−1` | our `ac` | 0.528 |
+| JJ bound | our `jj` | 0.535 |
+| exact-curvature 2nd-order | **gllvm** | 0.587 |
+| **full quadrature** | our `gh` | **1.025 at n=1000** |
+
+**The discriminator that closed it:** vary the FAMILY, not the implementation. Gaussian's
+expectation is **exact** (log p quadratic in η); probit's is not. gllvm's parameterisation, KL,
+optimiser and start count are **identical across its own gaussian and probit fits** — so a
+structural cause would attenuate both. Measured, 6 seeds, correctly scaled:
+
+| gllvm | trace | eta_var |
+|---|---|---|
+| gaussian (**exact** expectation) | **1.0233** | 0.9585 |
+| binomial-probit (approximated) | **0.5868** | 0.4832 |
+
+Unbiased where exact, attenuated where not. **Every structural confound eliminated at once.**
+(Start count independently ruled out: `n.init` 1 and 4 both gave 0.6072.)
+
+**So the attenuation is a property of second-order variational treatment of binary GLLVMs — not a
+gllvmTMB defect and not a gllvm defect.** Gaussian and Poisson, where the expectation *is*
+closed-form (`E[exp(η)] = exp(μ + v/2)`), are unbiased in both packages. **Only full quadrature
+escapes.** This is a materially different — and more publishable — claim than the one this lane
+started from, and it explains every measurement in this arc under one principle.
+
+**I spent hours treating this as unanswerable** because gllvm differs from us in ≥5 ways at once.
+That was a failure of experimental design, not a real obstacle: **when confounds cannot be removed
+from the comparison, vary something else that makes them cancel.**
+
+**NOT established:** *which* aspect of the expectation treatment. gllvm (exact curvature) lands at
+0.587 while our `ac2` (exact curvature) lands at 1.197 — both second-order, different places.
+Plausibly gllvm's `Au` vs our per-unit Cholesky. Untested.
+
+## 1c. Two more results that landed after §2–§5 were written
+
+- **ψ does NOT absorb the attenuation** (`230-psi-absorption.R`). With ψ genuinely free — verified,
+  20 free `log_sd_tier` parameters, `n_par` 829 → 6849 — both `ac` and `gh` estimate ψ̂ ≈ 0. The
+  worst case (shared structure laundered into trait-specific noise, making traits look **more
+  independent than they are**) **does not happen**. Severity unchanged. *Scope: this DGP plants
+  true ψ = 0; a DGP with ψ > 0 is the follow-up.*
+- **VA-Wald β intervals COVER** (`220-sandwich-coverage-pilot.R`, first coverage score ever run,
+  30 seeds): gaussian **0.9483**, probit **0.9575**, nominal 0.95. The predicted under-coverage did
+  not appear, and **the sandwich is not the repair** — it is *narrower* (0.995), not wider, and
+  marginally worse. Coverage succeeded exactly where the estimate is unbiased; **loading intervals
+  cannot cover while Λ is attenuated**, which makes GH the *precondition* for loading inference,
+  not merely the better option.
+- **Family risk follows closed-form-ness exactly.** Gaussian (exact) and Poisson (`E[exp(η)]` exact)
+  are safe by mathematics. Binomial and **nbinom2** are exposed by mathematics — NB2 reuses the
+  *same* softplus expectation as binomial-logit — and NB2 escapes only because its registry gives it
+  `tiers = "gh"` alone. Tweedie / beta / beta-binomial are **not in the VA engine** (codes 0–4 only).
+  **The one shipped path that takes a biased tier is `binomial-logit → jj`.**
+
+## 2. ⚠ THE MECHANISM — supported for OUR tiers *(superseded by §1b — read that first)*
 
 Controlled comparison **inside our engine** (same parameterisation, optimiser, starts, KL, data,
 seed; **only** the curvature differs), probit n=150 p=20, **10 paired seeds**:

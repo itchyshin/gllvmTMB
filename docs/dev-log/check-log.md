@@ -49399,3 +49399,46 @@ their predeclared adjudicator. At the direct Fir check, 7,514/36,000 immutable
 `COMPLETE.dcf` receipts existed and the array throttle remained active.
 
 — Codex + Gauss + Curie, prospective health repair (2026-08-06)
+
+## 2026-08-06 — VA capability surface and Mission Control reconciliation
+
+Refreshed `docs/dev-log/capability-surface.html` from the completed Arc-1
+branch evidence. The surface now uses the canonical 5 × 3 source/mode grid,
+lists VA on all 18 admitted scalar family/link cells, states H = 7 as the
+branch default, retains explicit JJ and multinomial/non-scalar fences, and
+separates fixed-effect VA-Wald from latent-score variational posterior SD.
+Both uncertainty routes remain labelled uncalibrated. The previous July VA
+research narrative is collapsed and explicitly marked superseded rather than
+presented as current capability state.
+
+Mission Control now pins the gllvmTMB capability surface to
+`codex/va-gh-all-families`; project health still reads the main checkout. Its
+curated status records Arc 1 as closed, Totoro preview as complete, 36 Fir
+arrays as active, and final family recovery/calibration verdicts as withheld.
+
+```sh
+git diff --check
+# PASS
+
+jq empty /Users/z3437171/Dropbox/Github\ Local/Shinichi/Shinichi/Dashboards/mission-control/live/{projects.json,status/gllvmTMB.json}
+# PASS
+
+python3 - <<'PY'
+# stdlib HTMLParser over docs/dev-log/capability-surface.html
+PY
+# PASS; balanced section/table/details tags
+
+rg -n '4 × 4|4×4|off-grid|H.?=.?15|only estimation route|not user-reachable|other 27|no missing-data support|five scalar|thirteen remain' docs/dev-log/capability-surface.html
+# PASS WITH EXPECTED HITS: all remaining stale VA phrases are inside the closed
+# `Superseded VA research history (July 2026)` disclosure.
+
+sh /Users/z3437171/Dropbox/Github\ Local/Shinichi/Shinichi/Dashboards/mission-control/live/start.sh --verify
+# PASS
+```
+
+No R source, likelihood, parser, generated help, article source, or estimator
+fixture changed. Package tests were therefore not rerun; the capability claims
+are inherited from the committed Arc-1 and production-health gates, not newly
+earned by this presentation-only refresh.
+
+— Codex, capability-surface closeout (2026-08-06)

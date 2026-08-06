@@ -200,33 +200,34 @@
 <div class="wrap">
 
   <div class="eyebrow">
-    <span>gllvmTMB 0.5.0</span><span class="dot">·</span>
-    <span>first CRAN release</span><span class="dot">·</span>
-    <span>building to a finished scope</span>
+    <span>gllvmTMB 0.6.0</span><span class="dot">·</span>
+    <span>live capability ledger</span><span class="dot">·</span>
+    <span>VA Arc 1 branch preview</span>
   </div>
   <h1>Capability surface</h1>
   <p class="thesis">
     What the stacked-trait GLLVM engine fits, at what evidence depth, across every
-    correlation source and covariance mode. Built from the 0.5.0 <em>NEWS</em>, the formula
-    keyword grid, and the exported family set — <em>reconciled against the code</em>. Where a
-    summary drifts from the source, the code wins.
+    correlation source and covariance mode. Built from <em>NEWS</em>, the canonical 5 × 3 formula
+    keyword grid, the exported family set, and the VA validation ledger — <em>reconciled against
+    the code</em>. This preview reads the clean <code>codex/va-gh-all-families</code> branch;
+    recovery and calibration claims remain gated on Arc 2.
   </p>
 
   <div class="chips">
-    <div class="chip"><div class="n">4 × 4</div><div class="l">sources × covariance modes</div></div>
-    <div class="chip"><div class="n">+kernel</div><div class="l">dense-K quartet, off-grid</div></div>
+    <div class="chip"><div class="n">5 × 3</div><div class="l">sources × covariance modes</div></div>
+    <div class="chip"><div class="n">18 / 18</div><div class="l">scalar VA cells light-gated</div></div>
     <div class="chip"><div class="n">30+</div><div class="l">response families</div></div>
     <div class="chip"><div class="n">18</div><div class="l">public guides</div></div>
-    <div class="chip"><div class="n">point</div><div class="l">default interval scale</div></div>
+    <div class="chip"><div class="n">H = 7</div><div class="l">public GH default</div></div>
     <div class="chip"><div class="n">Julia</div><div class="l">bridge = experimental</div></div>
   </div>
 
   <div class="legend">
     <span><span class="swatch s-taught"></span><b>Taught</b> — worked article + passing tests</span>
-    <span><span class="swatch s-tested"></span><b>Tested</b> — passing recovery/health tests; no worked article (yet)</span>
+    <span><span class="swatch s-tested"></span><b>Tested</b> — passing recovery or targeted health tests; scope stated locally</span>
     <span><span class="swatch s-avail"></span><b>Available · point-only</b> — live API, no systematic recovery test</span>
     <span><span class="swatch s-exp"></span><b>Experimental</b> — partial route, fail-loud guards</span>
-    <span><span class="swatch s-gone"></span><b>Withdrawn / deferred</b> — out of the 0.5.0 exported/public surface</span>
+    <span><span class="swatch s-gone"></span><b>Withdrawn / deferred</b> — outside the current advertised surface</span>
   </div>
 
   <!-- COVARIANCE GRID -->
@@ -274,7 +275,7 @@
             <td style="text-align:left"><span class="tag t-tested">tested</span><div class="note">recovery-tested across modes; range/scale need spatial spread</div></td>
           </tr>
           <tr>
-            <td class="src"><b>kernel</b><div class="note">dense K, off-grid</div></td>
+            <td class="src"><b>kernel</b><div class="note">dense K</div></td>
             <td><span class="cell"><span class="pip p-tested"></span><span class="k">kernel_indep()</span></span></td>
             <td><span class="cell"><span class="pip p-tested"></span><span class="k">kernel_dep()</span></span></td>
             <td><span class="cell"><span class="pip p-tested"></span><span class="k">kernel_latent()</span></span></td>
@@ -300,7 +301,10 @@
     <p class="lead">
       Fitted through the R/TMB engine. Evidence depth varies by family;
       <b>Gaussian, Poisson, and NB2</b> are the paths with fitted-response diagnostic support
-      (<code>predictive_check()</code>, residuals, <code>diagnostic_table()</code>).
+      (<code>predictive_check()</code>, residuals, <code>diagnostic_table()</code>). On the Arc 1
+      branch, VA separately admits the 18 scalar family/link cells listed below. That means
+      arithmetic, compiled derivatives, routing, and light-fit health passed; it does not mean
+      family-wise recovery or interval calibration passed.
     </p>
     <div class="scroll">
       <table>
@@ -343,111 +347,113 @@
       (see the covariance grid in §1), and non-Gaussian structured evidence is recovery-grade,
       concentrated at low rank on Gaussian. This is <b>not</b> a per-cell coverage census like
       drmTMB's. A green <span class="yes">✓</span> marks something genuinely verified (fitted
-      diagnostics); the family pip marks overall evidence: <span class="fampip fp-w"></span>worked /
+      diagnostics); the family pip marks overall Laplace/public evidence: <span class="fampip fp-w"></span>worked /
       diagnostic, <span class="fampip fp-a"></span>available (point-only). Crucially,
-      <b>every family's interval evidence is point-only</b> — no coverage certificate.
+      <b>every family's covariance-interval evidence is point-only</b>. VA fixed-effect Wald bounds
+      and latent posterior SDs are available but explicitly uncalibrated; neither is a coverage
+      certificate.
     </p>
     <div class="scroll">
       <table class="perfam">
         <thead><tr>
           <th>Family</th><th>Engine</th><th>Params</th><th>Modes</th><th>Structured</th>
-          <th>Rand. slope</th><th>Diagnostics</th><th>Interval</th><th>Missing resp.</th><th>REML</th>
+          <th>Rand. slope</th><th>Diagnostics</th><th>Cov. interval</th><th>Missing resp.</th><th>REML</th>
         </tr></thead>
         <tbody>
           <tr>
             <th><span class="fampip fp-w"></span><span class="fam">gaussian</span><div class="dom">continuous</div></th>
-            <td class="gram">LA · VA (exact, direct only) · EVA (Taylor-2)</td>
+            <td class="gram">LA · VA exact · EVA research</td>
             <td class="gram">mu, sigma</td><td class="gram">S I D L</td><td class="gram">phy spa ani ker</td>
             <td><span class="tag t-avail">partial</span> <span class="gram">s1·s2</span></td><td><span class="yes">✓</span></td>
             <td><span class="tag t-avail">point</span></td><td><span class="yes">✓</span></td><td class="gram">✓ pilot</td>
           </tr>
           <tr>
             <th><span class="fampip fp-w"></span><span class="fam">poisson</span><div class="dom">count · log</div></th>
-            <td class="gram">LA · VA (exact closed form) · EVA (Taylor-2)</td>
+            <td class="gram">LA · VA exact · EVA research</td>
             <td class="gram">mu</td><td class="gram">S I D L</td><td class="gram">phy spa ani ker</td>
             <td><span class="tag t-avail">partial</span></td><td><span class="yes">✓</span></td>
             <td><span class="tag t-avail">point</span></td><td><span class="yes">✓</span></td><td class="no">—</td>
           </tr>
           <tr>
             <th><span class="fampip fp-w"></span><span class="fam">nbinom1 · nbinom2</span><div class="dom">overdispersed count</div></th>
-            <td class="gram">LA</td>
+            <td class="gram">LA · VA GH H7</td>
             <td class="gram">mu, phi</td><td class="gram">S I D L</td><td class="gram">phy spa ani ker</td>
             <td><span class="tag t-avail">partial</span></td><td><span class="yes">✓</span> <span class="no">(NB2)</span></td>
             <td><span class="tag t-avail">point</span></td><td><span class="yes">✓</span> <span class="no">(NB2)</span></td><td class="no">—</td>
           </tr>
           <tr>
             <th><span class="fampip fp-w"></span><span class="fam">binomial</span><div class="dom">binary · logit/probit/cloglog</div></th>
-            <td class="gram">LA · VA (GH or JJ) · EVA (Taylor-2)</td>
+            <td class="gram">LA · VA GH H7 default · JJ logit explicit</td>
             <td class="gram">mu</td><td class="gram">S I D L</td><td class="gram">phy spa ani ker</td>
             <td><span class="tag t-avail">partial</span></td><td class="no">— <span style="font-size:10px">JSDM worked; single-trial diag RE off</span></td>
             <td><span class="tag t-avail">point</span></td><td><span class="yes">✓</span></td><td class="no">—</td>
           </tr>
           <tr>
             <th><span class="fampip fp-a"></span><span class="fam">betabinomial</span><div class="dom">overdispersed binomial</div></th>
-            <td class="gram">LA</td>
+            <td class="gram">LA · VA GH H7</td>
             <td class="gram">mu, phi</td><td class="gram">S I D L</td><td class="gram">phy spa ani ker</td>
             <td><span class="tag t-avail">partial</span> <span style="font-size:10px">C1 phylo_indep large-N</span></td><td class="no">—</td>
             <td><span class="tag t-avail">point</span></td><td class="no">—</td><td class="no">—</td>
           </tr>
           <tr>
             <th><span class="fampip fp-a"></span><span class="fam">beta</span><div class="dom">proportions · interior (0,1)</div></th>
-            <td class="gram">LA</td>
+            <td class="gram">LA · VA GH H7</td>
             <td class="gram">mu, phi</td><td class="gram">S I D L</td><td class="gram">phy spa ani ker</td>
             <td class="no">—</td><td class="no">—</td>
             <td><span class="tag t-avail">point</span></td><td class="no">—</td><td class="no">—</td>
           </tr>
           <tr>
             <th><span class="fampip fp-a"></span><span class="fam">Gamma</span><div class="dom">positive · log</div></th>
-            <td class="gram">LA</td>
+            <td class="gram">LA · VA exact</td>
             <td class="gram">mu, shape</td><td class="gram">S I D L</td><td class="gram">phy spa ani ker</td>
             <td class="no">—</td><td class="no">—</td>
             <td><span class="tag t-avail">point</span></td><td class="no">—</td><td class="no">—</td>
           </tr>
           <tr>
             <th><span class="fampip fp-a"></span><span class="fam">tweedie</span><div class="dom">semicontinuous</div></th>
-            <td class="gram">LA</td>
+            <td class="gram">LA · VA GH H7</td>
             <td class="gram">mu, phi, p</td><td class="gram">S I D L</td><td class="gram">phy spa ani ker</td>
             <td class="no">—</td><td class="no">—</td>
             <td><span class="tag t-avail">point</span></td><td class="no">—</td><td class="no">—</td>
           </tr>
           <tr>
             <th><span class="fampip fp-a"></span><span class="fam">student</span><div class="dom">heavy-tailed continuous</div></th>
-            <td class="gram">LA</td>
+            <td class="gram">LA · VA GH H7</td>
             <td class="gram">mu, sigma, nu</td><td class="gram">S I D L</td><td class="gram">phy spa ani ker</td>
             <td class="no">—</td><td class="no">— <span style="font-size:10px">sigma undefined if nu ≤ 2 → NA</span></td>
             <td><span class="tag t-avail">point</span></td><td class="no">—</td><td class="no">—</td>
           </tr>
           <tr>
             <th><span class="fampip fp-a"></span><span class="fam">lognormal</span><div class="dom">positive continuous · <span style="color:var(--gone)">gengamma exported, not admitted</span></div></th>
-            <td class="gram">LA</td>
+            <td class="gram">LA · VA exact</td>
             <td class="gram">mu, sigma (,Q)</td><td class="gram">S I D L</td><td class="gram">phy spa ani ker</td>
             <td class="no">—</td><td class="no">—</td>
             <td><span class="tag t-avail">point</span></td><td class="no">—</td><td class="no">—</td>
           </tr>
           <tr>
             <th><span class="fampip fp-a"></span><span class="fam">truncated_poisson · truncated_nbinom2</span><div class="dom">truncated count · <span style="color:var(--gone)">censored_poisson, truncated_nbinom1 not admitted</span></div></th>
-            <td class="gram">LA</td>
+            <td class="gram">LA · VA GH H7</td>
             <td class="gram">mu (,phi)</td><td class="gram">S I D L</td><td class="gram">phy spa ani ker</td>
             <td class="no">—</td><td class="no">—</td>
             <td><span class="tag t-avail">point</span></td><td class="no">—</td><td class="no">—</td>
           </tr>
           <tr>
             <th><span class="fampip fp-a"></span><span class="fam">ordinal_probit</span><div class="dom">ordered categorical</div></th>
-            <td class="gram">LA</td>
+            <td class="gram">LA · VA GH H7</td>
             <td class="gram">mu + cutpoints</td><td class="gram">S I D L</td><td class="gram">phy spa ani ker</td>
-            <td class="no">— <span style="font-size:10px">ordinal RE not implemented</span></td><td class="no">—</td>
+            <td class="no">— <span style="font-size:10px">not in the VA structural fence</span></td><td class="no">—</td>
             <td><span class="tag t-avail">point</span></td><td class="no">—</td><td class="no">—</td>
           </tr>
           <tr>
             <th><span class="fampip fp-a"></span><span class="fam">multinomial</span><div class="dom">unordered categorical · logit</div></th>
-            <td class="gram">LA</td>
+            <td class="gram">LA · VA fenced</td>
             <td class="gram">mu / category</td><td class="gram">limited</td><td class="gram">—</td>
             <td class="no">—</td><td class="no">—</td>
             <td><span class="tag t-gone">early</span></td><td class="no">—</td><td class="no">—</td>
           </tr>
           <tr>
-            <th><span class="fampip fp-a"></span><span class="fam">delta_* · hurdle</span><div class="dom">two-stage semicontinuous</div></th>
-            <td class="gram">LA</td>
+            <th><span class="fampip fp-a"></span><span class="fam">delta_lognormal · delta_gamma</span><div class="dom">standard-hurdle scalar cells; other two-stage families remain fenced</div></th>
+            <td class="gram">LA · VA hybrid H7</td>
             <td class="gram">presence + positive</td><td class="gram">S I D L</td><td class="gram">phy spa ani ker</td>
             <td class="no">—</td><td class="no">— <span style="font-size:10px">no latent-scale correlation</span></td>
             <td><span class="tag t-avail">point</span></td><td class="no">—</td><td class="no">—</td>
@@ -456,27 +462,26 @@
       </table>
     </div>
     <div class="gapbox">
-      <h4>Where the gaps are · 0.5.0 → 1.0</h4>
+      <h4>Current evidence gaps</h4>
       <ul>
-        <li><b>Interval coverage — the headline gap.</b> Zero families have coverage-checked intervals; every cell is point-only. Calibration is the largest 1.0 task.</li>
-        <li><b>Random slopes (≥1) are unfinished.</b> In development / diagnostic-grade even for Gaussian — not a finished 0.5.0 capability. Shown as <span class="tag t-avail">partial</span>, not ✓.</li>
+        <li><b>Arc 1 is implementation/light evidence, not family validation.</b> All 18 scalar cells pass arithmetic, compiled, routing, and light-fit gates at H = 7. Family-wise recovery and H-stability verdicts remain withheld until Arc 2 finishes.</li>
+        <li><b>VA uncertainty exists but is uncalibrated.</b> Fixed-effect <code>vcov()</code>/<code>confint()</code> use profiled Schur information; <code>getLV(se = TRUE)</code> returns variational posterior SD. Neither establishes nominal coverage, and the latter is not a frequentist random-effect SE.</li>
+        <li><b>Arc 2 is active.</b> The Totoro preview is complete and the 36-array Fir campaign is running. No family is promoted or removed from the public fence until the frozen adjudicator sees the complete retained denominator.</li>
+        <li><b>The VA structural envelope remains narrow.</b> One ordinary unit-tier <code>latent(..., unique = FALSE)</code> block, q ≤ 2, p ≤ 80, n ≥ 100, native TMB, no random slope, no structured tier, no <code>mi()</code>, and no multinomial/non-scalar architecture.</li>
+        <li><b>Random slopes (≥1) remain partial.</b> They have targeted Gaussian and structured tests but are not a finished per-family capability. Shown as <span class="tag t-avail">partial</span>, not ✓.</li>
         <li><b>Missing responses: core families now tested.</b> Gaussian + poisson/NB2/binomial masked-response is verified (sentinel-invariance, 2026-07-12); nbinom1 recovery + <code>mi()</code> predictor coverage pending.</li>
         <li><b>Fitted diagnostics reach 3 families</b> (Gaussian, Poisson, NB2). Extending residual / predictive checks to more families is the next diagnostics step.</li>
-        <li><b>Categorical needs major development</b> — nominal support is early-stage, not a usable path yet.</li>
+        <li><b>Categorical remains split by architecture.</b> Ordinal-probit is one admitted scalar VA cell; multinomial softmax and other coupled categorical routes remain fenced and must not inherit that claim.</li>
         <li><b>REML is a Gaussian-only pilot.</b> Non-Gaussian, weighted, and missing-data REML are later work.</li>
-        <li><b>Delta / hurdle latent-scale correlation</b> awaits a reporting convention (two response scales) — a design gap, not a bug.</li>
-        <li><b>Grammar symmetry:</b> the covariance grid is three modes {indep, dep, latent}; the one-shared-variance ("scalar") case folded into the <code>common = TRUE</code> modifier on any <code>indep</code> term (the <code>scalar()</code>/<code>*_scalar()</code> keywords are soft-deprecated compatibility syntax). The correlated-vs-uncorrelated (<code>|</code> / <code>||</code>) random-slope axis is now <b>built</b>: <code>mode(1 + x || g)</code> = intercept ⟂ slope (<code>indep||</code> fully diagonal, <code>dep||</code> = Σ<sub>int</sub>⊕Σ<sub>slope</sub> via a Cholesky parity pin, <code>latent||</code> the separate-Λ form) across phylo / animal / kernel / spatial + source-tier latent, recovery/target-matrix tested (Design 79 §4).</li>
       </ul>
     </div>
 
     <p class="note">
-      Reconciled against <code>NAMESPACE</code> family exports, <code>NEWS.md</code> (diagnostics scoped
-      to Gaussian/Poisson/NB2; single-trial Bernoulli diagonal RE mapped off; Student-t variance NA for
-      df ≤ 2), the keyword grid, and the README support boundary, plus maintainer-confirmed status for
-      the in-progress lanes (random slopes ≥1 unfinished; missing responses validated for Gaussian only;
-      categorical early-stage). Where per-family structured or slope support is not individually validated
-      in code, the column reflects grammar availability, not a coverage claim — firming these into
-      per-cell evidence is a 1.0 audit, not a 0.5.0 promise.
+      VA status is reconciled against validation rows VA-02/04/06/09/10/11/12/13, the independent
+      Gate-E audit, and the Arc-1 closeout. The mode and structured-source columns still describe the
+      broader family-agnostic Laplace grammar; they do not expand VA beyond its explicit structural
+      fence. The family table groups constructors for readability, but admission is tested as an exact
+      set of 18 family/link cells rather than inferred from a family name.
     </p>
   </section>
 
@@ -485,7 +490,8 @@
     <h2><span class="idx">3</span>Intervals &amp; evidence</h2>
     <p class="lead">
       The honesty boundary. A route that returns bounds is <b>not</b>, by itself, evidence of
-      nominal repeated-sampling coverage. Extraction is point-only by default.
+      nominal repeated-sampling coverage. Covariance extraction is point-first; VA now adds
+      uncalibrated fixed-effect Wald bounds and latent posterior SDs on different estimands.
     </p>
     <div class="scroll">
       <table>
@@ -494,6 +500,8 @@
           <tr><th>Point extraction</th><td><code>extract_Sigma_table()</code>, <code>extract_correlations()</code>, <code>plot_correlations()</code></td><td><span class="tag t-taught">default</span></td></tr>
           <tr><th>Direct TMB / linear-contrast profiles</th><td><code>profile_targets()</code> and parameter profiles for supported targets</td><td><span class="tag t-taught">available</span></td></tr>
           <tr><th>Wald / Fisher-z bounds</th><td>heuristic sensitivity summaries around a point</td><td><span class="tag t-avail">uncalibrated</span></td></tr>
+          <tr><th>VA fixed effects</th><td><code>vcov()</code>/<code>confint()</code> for beta from profiled Schur information; <code>calibrated = FALSE</code></td><td><span class="tag t-avail">implemented, uncalibrated</span></td></tr>
+          <tr><th>VA latent scores</th><td><code>getLV(se = TRUE)</code> returns <code>sqrt(diag(S_i))</code>, a variational posterior SD; not a frequentist RE SE</td><td><span class="tag t-avail">implemented, uncalibrated</span></td></tr>
           <tr><th>Bootstrap</th><td>target-specific; not universally calibrated</td><td><span class="tag t-avail">target-specific</span></td></tr>
           <tr><th>Nonlinear penalty-profile prototypes</th><td>communality / correlation / proportions / repeatability</td><td><span class="tag t-gone">withdrawn</span></td></tr>
         </tbody>
@@ -511,12 +519,41 @@
         <tbody>
           <tr><th>ML</th><td><span class="tag t-taught">✓ done</span> <span class="muted">default</span></td><td><span class="tag t-taught">✓ done</span> <span class="muted">default; RE&nbsp;SD biased down at small <i>n</i></span></td></tr>
           <tr><th>REML</th><td><span class="tag t-exp">Gaussian-only pilot</span> <span class="muted">exact where it applies</span></td><td class="muted">n/a — REML is a Gaussian-only tool</td></tr>
-          <tr><th>AGHQ</th><td class="muted">n/a — likelihood already exact</td><td><span class="tag t-gone">planned</span> <span class="muted">critical for the logit/binary families (binomial, ordinal, beta) → Bar&nbsp;3</span></td></tr>
-          <tr><th>VA <span class="muted">(variational)</span></th><td><span class="tag t-gone">internal research</span> <span class="muted">exact closed form; not user-reachable</span></td><td><span class="tag t-gone">internal research</span> <span class="muted">Poisson exact; binomial by quadrature or Jaakkola–Jordan. No <code>method=</code> argument exists</span></td></tr>
+          <tr><th>AGHQ</th><td class="muted">n/a — likelihood already exact</td><td><span class="tag t-exp">opt-in</span> <span class="muted">built; recovery claim remains separately withheld</span></td></tr>
+          <tr><th>VA <span class="muted">(variational)</span></th><td><span class="tag t-tested">Arc 1</span> <span class="muted">exact expectation; public branch route</span></td><td><span class="tag t-tested">Arc 1</span> <span class="muted">exact where registered, otherwise 1-D GH H = 7; explicit JJ retained for binomial-logit</span></td></tr>
           <tr><th>EVA <span class="muted">(extended VA)</span></th><td class="muted">n/a — VA is already exact here</td><td><span class="tag t-gone">internal research</span> <span class="muted">2nd-order Taylor surrogate; binomial convergence poor (20/20 seeds fail the health gate)</span></td></tr>
         </tbody>
       </table>
     </div>
+    <p class="note">
+      Laplace remains the package default. The VA branch route is opt-in through
+      <code>gllvmTMBcontrol(integration = "va")</code>. Arc 1 certifies bounded reachability and
+      numerical health; Arc 2 is the independent recovery, H-stability, and uncertainty-calibration
+      campaign. Historical VA/JJ/EVA and gllvm comparisons remain useful diagnostics but do not
+      replace the current GH estimator's own Laplace/oracle campaign.
+    </p>
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th>VA Arc 1 envelope</th><th>Implemented</th><th>Still gated</th></tr>
+        </thead>
+        <tbody>
+          <tr><th>Expectation evaluation</th><td>Gaussian, Poisson, lognormal, Gamma exact; delta-lognormal/delta-Gamma hybrid; remaining scalar cells GH H = 7</td><td>family-wise H ladder and recovery verdicts</td></tr>
+          <tr><th>Scalar family/link cells</th><td>18/18 individually enumerated and light-gated</td><td>multinomial, non-scalar mixtures, and unlisted links stay fenced</td></tr>
+          <tr><th>Alternative approximation</th><td>explicit JJ retained for pure binomial-logit</td><td>JJ is not the automatic default and does not validate GH</td></tr>
+          <tr><th>Fixed effects</th><td>profiled-Schur VA-Wald covariance and bounds</td><td>nominal coverage; <code>calibrated = FALSE</code></td></tr>
+          <tr><th>Latent scores</th><td>point scores plus variational posterior SD</td><td>frequentist RE uncertainty, global-parameter propagation, and calibration</td></tr>
+          <tr><th>Structure</th><td>one ordinary loadings-only latent tier; dense response masks supported</td><td>Ψ, structured tiers, random slopes, additional tiers, <code>mi()</code>, q ≥ 3</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">
+      The 18-cell count is a family/link count, not a Cartesian claim across the 5 × 3 covariance
+      grid. The public integration fence is the authority: if Arc 2 rejects a cell, that cell can be
+      removed without weakening the multinomial/non-scalar or structural fences.
+    </p>
+    <details class="note">
+      <summary><b>Superseded VA research history (July 2026)</b></summary>
     <p class="note">
       The ladder follows <code>docs/design/80-nongaussian-re-evidence-bars.md</code>. A large
       ML-vs-REML gap is the cheap diagnostic that flags the small-cluster regime where the
@@ -589,6 +626,7 @@
       (<code>docs/design/106</code>). Missing data is the one gap that blocks real datasets outright
       today.
     </p>
+    </details>
   </section>
 
   <!-- RANDOM SLOPES + SPECIAL -->
@@ -616,7 +654,7 @@
 
   <!-- WITHDRAWN / DEFERRED -->
   <section>
-    <h2><span class="idx">5</span>Withdrawn &amp; deferred in 0.5.0</h2>
+    <h2><span class="idx">5</span>Withdrawn &amp; deferred</h2>
     <p class="lead">Named so prose does not overpromise. Underlying code may exist — that alone is not a recommendation.</p>
     <div class="scroll">
       <table>
@@ -635,7 +673,7 @@
   <!-- ARTICLES -->
   <section>
     <h2><span class="idx">6</span>The 18 public guides</h2>
-    <p class="lead">Get Started plus 17 retained articles — the reader-facing site after the 0.5.0 estate cut (15 drafts retired). Each states its own narrower conditions.</p>
+    <p class="lead">Get Started plus 17 retained articles. Each states its own narrower conditions; the Arc 1 VA surface is documented in the validation-oracles article and is not yet a family-recovery tutorial.</p>
     <div class="arts">
       <div class="artcol">
         <h3>Get started &amp; core workflows</h3>
@@ -650,7 +688,7 @@
       </div>
       <div class="artcol">
         <h3>Concepts &amp; reference</h3>
-        <div class="art"><div class="t">Formula keyword grid</div><div class="d">the 4×4 syntax lookup</div></div>
+        <div class="art"><div class="t">Formula keyword grid</div><div class="d">the canonical 5×3 syntax lookup</div></div>
         <div class="art"><div class="t">Vocabulary</div><div class="d">LV scores vs loadings; Λ/Ψ/Σ; grouping roles</div></div>
         <div class="art"><div class="t">Covariance &amp; correlation</div><div class="d">estimands and interval boundaries</div></div>
         <div class="art"><div class="t">Response families</div><div class="d">choose a family; domain &amp; sampling routing</div></div>
@@ -669,17 +707,15 @@
 
   <footer>
     <b>Operating surface — refresh from source before treating as current evidence.</b>
-    Reconciled 2026-07-12 against <code>NEWS.md</code> (0.5.0), <code>api-keyword-grid.Rmd</code>,
-    the <code>NAMESPACE</code> exports, and the fit-verified S0 semantics census (Design 79 §7).
+    Reconciled 2026-08-06 against <code>NEWS.md</code> (0.6.0), <code>api-keyword-grid.Rmd</code>,
+    the <code>NAMESPACE</code> exports, the VA validation register, and the fit-verified S0 semantics census.
     The <b>tested</b> tier marks cells with passing recovery/health tests but no worked article;
     phylo/animal/spatial and kernel_latent flipped amber→tested from that census (the grammar was
     live, the tests already existed — the label was stale). Tiers reflect the honesty contract:
     intervals are recovery/point evidence, not coverage certificates.
-    <b>0.5.0 is being built to a finished, focused scope before CRAN</b> — core families
-    (gaussian/poisson/nbinom1/nbinom2/binomial) × ordinary/phylo/spatial, full slopes — not a thin
-    submission. Baseline <code>--as-cran</code> = 0E/0W/1N; Tier-1 bugs fixed. Live campaign status:
-    <code>docs/dev-log/2026-07-12-capability-buildup-campaign.md</code>.
-    1.0 remains the capability-maturity milestone (full surface + full story + stable API).
+    The VA 18-cell statement is branch-validated Arc 1 evidence, not release or calibration evidence.
+    Totoro preview completion and active Fir execution are process state only; final family verdicts
+    require the complete frozen Arc-2 adjudication.
   </footer>
 
 </div>

@@ -542,7 +542,7 @@ verify_runtime <- function(runtime_manifest, gate_receipt, preflight_receipt = N
 load_campaign_package <- function(runtime) {
   Sys.setenv(GLLVMTMB_VA_R3_BUILD_ROOT = runtime$build_root)
   .libPaths(c(runtime$package_lib, .libPaths()))
-  suppressPackageStartupMessages(library(gllvmTMB, character.only = TRUE))
+  suppressPackageStartupMessages(library("gllvmTMB", character.only = TRUE))
   installed_template <- system.file("tmb", "gllvmTMB_va_r3.cpp", package = "gllvmTMB")
   if (!identical(file_checksum(installed_template), runtime$template_checksum_md5)) {
     stop("loaded package template does not match the runtime manifest")

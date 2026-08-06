@@ -134,6 +134,11 @@ runtime-only verifier demand a receipt that the next command was responsible
 for creating. The initial verifier now masks that one environment value; the
 post-fit verifier continues to require and authenticate the full chain.
 
+Once that verifier passed, the package loader exposed a second pre-fit defect:
+`library(gllvmTMB, character.only = TRUE)` evaluated the unquoted package name
+as an object. Supplying `"gllvmTMB"` gives `character.only = TRUE` the input it
+requires. A dedicated regression assertion now protects this live-only path.
+
 ## 10. Known Residuals
 
 A real Gate receipt and installed Totoro runtime were created for revision

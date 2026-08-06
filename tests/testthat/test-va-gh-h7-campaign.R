@@ -95,6 +95,11 @@ test_that("campaign input rejects undersized n and unknown CLI flags", {
   expect_error(.campaign_env$make_plan(), "unknown.*typo")
 })
 
+test_that("campaign runtime loader uses a character package name", {
+  loader <- paste(deparse(body(.campaign_env$load_campaign_package)), collapse = "\n")
+  expect_match(loader, 'library\\("gllvmTMB", character.only = TRUE\\)')
+})
+
 test_that("Gate-E receipts are structured, checksum-bound, and bind all families", {
   plain <- tempfile(fileext = ".receipt")
   writeLines("PASS", plain)

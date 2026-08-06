@@ -49237,3 +49237,17 @@ The corrected revision must receive a new Gate-E receipt and immutable runtime
 before the Totoro preflight is retried.
 
 — Codex, Arc 2 live-gate repair (2026-08-06)
+
+The corrected first-run sequence reached package loading and then stopped
+before fitting because `library(gllvmTMB, character.only = TRUE)` treated the
+unquoted name as an object. The loader now supplies the required character
+package name; the dedicated campaign suite includes a regression assertion.
+
+```sh
+PREFLIGHT_CONTEXT=totoro bash dev/va-gh-h7-campaign/run-preflight.sh
+# Expected fail before repair: object 'gllvmTMB' not found; no fit ran.
+NOT_CRAN=true Rscript --vanilla -e 'devtools::test(filter="va-gh-h7-campaign", reporter="summary", stop_on_failure=TRUE)'
+# DONE; 0 failures, warnings, or skips.
+git diff --check
+# PASS.
+```

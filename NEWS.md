@@ -1,7 +1,8 @@
 # gllvmTMB 0.6.0
 
 This release focuses on multivariate stacked-trait models fitted through the
-R/TMB engine. Models are fitted by **Laplace approximation**. The optional Julia
+R/TMB engine. Models are fitted by **Laplace approximation by default**; an
+opt-in scalar variational research route is also available. The optional Julia
 bridge remains experimental and is not required for the main workflow.
 
 ## Changed
@@ -45,12 +46,15 @@ bridge remains experimental and is not required for the main workflow.
 
 ## New
 
+* **`gllvmTMBcontrol(integration = "va")` now admits all 18 scalar family/link cells and defaults to seven-node Gauss-Hermite evaluation.** Each cell passed an independent arithmetic, compiled, and light-fit gate before H = 7 and automatic GH routing were promoted; analytic cells retain exact fast paths, explicit JJ remains available only for binomial-logit comparisons, and multinomial or other non-scalar architectures remain excluded. Fixed-effect `vcov()` and `confint()` expose profiled-Schur VA-Wald uncertainty with `calibrated = FALSE`, while `getLV(se = TRUE)` returns a variational posterior SD rather than a frequentist standard error. Multi-seed recovery and uncertainty calibration remain in progress, family verdicts stay separate, and Laplace remains the package default.
+
 * **`vcov()` and `coef()` now work on multi-trait fits.** `coef(fit)` returns
   the named fixed-effect estimates and `vcov(fit)` their covariance, taken from
   the fit's `sdreport()`. Both were previously registered only for the
-  variational `gllvmTMB_va` class — where they deliberately refuse — so calling
-  either on an ordinary fit raised "no applicable method", *despite the
-  documentation saying otherwise*.
+  variational `gllvmTMB_va` class — where `coef()` deliberately refuses and
+  `vcov()` is now restricted to uncalibrated fixed-effect VA-Wald inference —
+  so calling either on an ordinary fit raised "no applicable method", *despite
+  the documentation saying otherwise*.
 
   `coef()` works on any fit, including one made with `se = FALSE`: point
   estimates do not depend on `sdreport()`. `vcov()` does, and raises the same

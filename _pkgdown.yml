@@ -263,6 +263,7 @@ reference:
     - print.summary.gllvmTMB_multi
     - gllvmTMB_va-methods
     - logLik.gllvmTMB_multi
+    - gllvmTMB_multi-vcov
     - confint.gllvmTMB_multi
     - tidy.gllvmTMB_multi
     - simulate.gllvmTMB_multi
@@ -287,6 +288,7 @@ reference:
     - gllvmTMB_diagnose
     - predictive_check
     - diagnostic_table
+    - standard_errors
     - residuals.gllvmTMB_multi
     - bootstrap_Sigma
     - confint_inspect

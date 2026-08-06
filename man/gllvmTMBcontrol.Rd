@@ -18,7 +18,7 @@ gllvmTMBcontrol(
   se = TRUE,
   verbose = FALSE,
   integration = c("laplace", "va"),
-  va_H = 61L,
+  va_H = 7L,
   va_eval_method = c("auto", "jj", "gh"),
   aghq = FALSE,
   aghq_iter_cap = 1L,
@@ -110,15 +110,17 @@ route that yields a marginal likelihood, so it is the only one for which
 \code{\link[=logLik]{logLik()}}, \code{\link[=AIC]{AIC()}}, \code{\link[=BIC]{BIC()}} and likelihood-ratio tests are defined.
 
 \code{"va"} selects an opt-in \strong{research} route whose objective is an evidence
-lower bound, not a marginal likelihood. It reports no calibrated
-uncertainty: no standard errors, no confidence intervals, and no coverage
-claim. A bound must not be compared across ranks or models, so it cannot
-be used for model or rank selection.
+lower bound, not a marginal likelihood. Fixed-effect \code{\link[=vcov]{vcov()}} and
+\code{\link[=confint]{confint()}} use profiled-Schur VA-Wald information and are labelled
+\code{calibrated = FALSE}; \code{\link[=getLV]{getLV()}} can return a variational posterior SD,
+which is not a frequentist random-effect standard error. No nominal
+coverage claim is made. A bound must not be compared across ranks or
+models, so it cannot be used for model or rank selection.
 
-It is admitted only inside the region for which evidence exists —
-\code{latent(..., unique = FALSE)}, binomial-logit, Poisson-log or
-Gaussian-identity, \code{d} up to
-2, up to 80 responses, at least 100 units, and the native TMB engine — and
+It is admitted only inside the Gate-E implementation/light-fit region —
+\code{latent(..., unique = FALSE)}, the 18 scalar family/link cells in the
+response-family registry, \code{d} up to 2, up to 80 responses, at least 100
+units, and the native TMB engine — and
 requesting it outside that region is an \strong{error}, not a warning. The \code{d}
 limit is where a pre-registered recovery gate actually passed: \code{d = 4} was
 measured and refused, because with few responses the planted axes collapse
@@ -131,10 +133,11 @@ Offering this value advertises nothing about its accuracy.
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}} The \strong{ordination surface is
 available} for a \code{"va"} fit: \code{\link[=extract_ordination]{extract_ordination()}}, \code{\link[=getLV]{getLV()}},
 \code{\link[=getLoadings]{getLoadings()}} and \code{\link[=extract_loadings]{extract_loadings()}} return latent scores and
-loadings as POINT ESTIMATES. Uncertainty remains fenced — \code{\link[=confint]{confint()}}
-and \code{\link[=vcov]{vcov()}} still refuse — and \code{getLV(se = TRUE)} returns a variational
-\emph{posterior} SD, not a standard error, and only when \code{eval_method}
-resolves to \code{"gh"}.
+loadings as POINT ESTIMATES. Fixed-effect \code{\link[=confint]{confint()}} and \code{\link[=vcov]{vcov()}} expose
+uncalibrated VA-Wald uncertainty; \code{getLV(se = TRUE)} returns a variational
+\emph{posterior} SD, not a frequentist standard error, and only when
+\code{eval_method} resolves to \code{"gh"}. Loading/covariance intervals remain
+unavailable.
 
 Recovery of that ordination was measured against planted truth at the
 admitted cells (\code{d = 2}, 8 responses, n = 150 and 400, 50 seeds per cell;
@@ -181,7 +184,7 @@ regression coefficients but not for \verb{Lambda Lambda'}, which is the
 between-response covariance this package exists to estimate.}
 
 \item{va_H}{Gauss-Hermite quadrature order for the variational route, a
-single odd integer \verb{>= 3} (default \code{61}). Ignored unless
+single odd integer \verb{>= 3} (default \code{7}). Ignored unless
 \code{integration = "va"}.
 
 Quadrature dominates the cost of a variational fit and the work is linear
@@ -189,12 +192,13 @@ in \code{H}, so this is the main speed control on that route. On a binomial
 probit cell with 20 traits, \code{H = 7} was indistinguishable from \code{H = 61} in
 both the recovered loading scale and the recovered linear predictor, at
 two and at five latent dimensions, while running 3.4-6.7 times faster.
-\code{H = 5} was measurably worse at five latent dimensions. The default stays
-at \code{61}; lower it deliberately.}
+\code{H = 5} was measurably worse at five latent dimensions. Gate E therefore
+promoted \code{H = 7}; \code{H = 61} remains available as a diagnostic.}
 
 \item{va_eval_method}{How the variational route evaluates the per-observation
-expectation. \code{"auto"} (default) reproduces the built-in routing exactly and
-is what you want unless you are comparing methods.
+expectation. \code{"auto"} (default) selects Gauss-Hermite quadrature for every
+admitted scalar family/link cell and is what you want unless you are
+comparing methods.
 
 \code{"gh"} uses Gauss-Hermite quadrature. \code{"jj"} uses the Jaakkola-Jordan
 bound, which is defined only for pure binomial-logit fits and is
@@ -331,5 +335,10 @@ gllvmTMBcontrol(optimizer = "optim", optArgs = list(method = "BFGS"))
 # Experimental, opt-in scale-aware ridge for the calibrated Bernoulli AGHQ
 # scope. The route uses the calibrated 9-node multi-start rule.
 gllvmTMBcontrol(aghq_ridge = "auto")
+
+# Experimental scalar variational route: public auto uses GH with H = 7.
+gllvmTMBcontrol(integration = "va")
+# H = 61 remains a diagnostic; JJ is explicit binomial-logit only.
+gllvmTMBcontrol(integration = "va", va_H = 61, va_eval_method = "gh")
 
 }

@@ -1308,7 +1308,7 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #'   the user can see which seed led to the winning fit. Default
 #'   `FALSE`.
 #' @param va_H Gauss-Hermite quadrature order for the variational route, a
-#'   single odd integer `>= 3` (default `61`). Ignored unless
+#'   single odd integer `>= 3` (default `7`). Ignored unless
 #'   `integration = "va"`.
 #'
 #'   Quadrature dominates the cost of a variational fit and the work is linear
@@ -1316,12 +1316,13 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #'   probit cell with 20 traits, `H = 7` was indistinguishable from `H = 61` in
 #'   both the recovered loading scale and the recovered linear predictor, at
 #'   two and at five latent dimensions, while running 3.4-6.7 times faster.
-#'   `H = 5` was measurably worse at five latent dimensions. The default stays
-#'   at `61`; lower it deliberately.
+#'   `H = 5` was measurably worse at five latent dimensions. Gate E therefore
+#'   promoted `H = 7`; `H = 61` remains available as a diagnostic.
 #'
 #' @param va_eval_method How the variational route evaluates the per-observation
-#'   expectation. `"auto"` (default) reproduces the built-in routing exactly and
-#'   is what you want unless you are comparing methods.
+#'   expectation. `"auto"` (default) selects Gauss-Hermite quadrature for every
+#'   admitted scalar family/link cell and is what you want unless you are
+#'   comparing methods.
 #'
 #'   `"gh"` uses Gauss-Hermite quadrature. `"jj"` uses the Jaakkola-Jordan
 #'   bound, which is defined only for pure binomial-logit fits and is
@@ -1337,15 +1338,17 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #'   [logLik()], [AIC()], [BIC()] and likelihood-ratio tests are defined.
 #'
 #'   `"va"` selects an opt-in **research** route whose objective is an evidence
-#'   lower bound, not a marginal likelihood. It reports no calibrated
-#'   uncertainty: no standard errors, no confidence intervals, and no coverage
-#'   claim. A bound must not be compared across ranks or models, so it cannot
-#'   be used for model or rank selection.
+#'   lower bound, not a marginal likelihood. Fixed-effect [vcov()] and
+#'   [confint()] use profiled-Schur VA-Wald information and are labelled
+#'   `calibrated = FALSE`; [getLV()] can return a variational posterior SD,
+#'   which is not a frequentist random-effect standard error. No nominal
+#'   coverage claim is made. A bound must not be compared across ranks or
+#'   models, so it cannot be used for model or rank selection.
 #'
-#'   It is admitted only inside the region for which evidence exists —
-#'   `latent(..., unique = FALSE)`, binomial-logit, Poisson-log or
-#'   Gaussian-identity, `d` up to
-#'   2, up to 80 responses, at least 100 units, and the native TMB engine — and
+#'   It is admitted only inside the Gate-E implementation/light-fit region —
+#'   `latent(..., unique = FALSE)`, the 18 scalar family/link cells in the
+#'   response-family registry, `d` up to 2, up to 80 responses, at least 100
+#'   units, and the native TMB engine — and
 #'   requesting it outside that region is an **error**, not a warning. The `d`
 #'   limit is where a pre-registered recovery gate actually passed: `d = 4` was
 #'   measured and refused, because with few responses the planted axes collapse
@@ -1358,10 +1361,11 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #'   `r lifecycle::badge("experimental")` The **ordination surface is
 #'   available** for a `"va"` fit: [extract_ordination()], [getLV()],
 #'   [getLoadings()] and [extract_loadings()] return latent scores and
-#'   loadings as POINT ESTIMATES. Uncertainty remains fenced — [confint()]
-#'   and [vcov()] still refuse — and `getLV(se = TRUE)` returns a variational
-#'   *posterior* SD, not a standard error, and only when `eval_method`
-#'   resolves to `"gh"`.
+#'   loadings as POINT ESTIMATES. Fixed-effect [confint()] and [vcov()] expose
+#'   uncalibrated VA-Wald uncertainty; `getLV(se = TRUE)` returns a variational
+#'   *posterior* SD, not a frequentist standard error, and only when
+#'   `eval_method` resolves to `"gh"`. Loading/covariance intervals remain
+#'   unavailable.
 #'
 #'   Recovery of that ordination was measured against planted truth at the
 #'   admitted cells (`d = 2`, 8 responses, n = 150 and 400, 50 seeds per cell;
@@ -1516,6 +1520,11 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #' # scope. The route uses the calibrated 9-node multi-start rule.
 #' gllvmTMBcontrol(aghq_ridge = "auto")
 #'
+#' # Experimental scalar variational route: public auto uses GH with H = 7.
+#' gllvmTMBcontrol(integration = "va")
+#' # H = 61 remains a diagnostic; JJ is explicit binomial-logit only.
+#' gllvmTMBcontrol(integration = "va", va_H = 61, va_eval_method = "gh")
+#'
 #' @export
 gllvmTMBcontrol <- function(
   d_B = NULL,
@@ -1545,24 +1554,24 @@ gllvmTMBcontrol <- function(
   ## VA-route knobs. Both were previously UNREACHABLE: the route hard-wired the
   ## tier and the engine's H default, so a caller could select `integration =
   ## "va"` and then not choose how it evaluates. Exposing them changes no
-  ## default -- `"auto"` reproduces the existing routing exactly, and 61 is the
-  ## existing quadrature order.
+  ## default -- `"auto"` selects GH for every scalar family/link cell, and H=7
+  ## is the Gate-E-approved quadrature order.
   ##
   ## `va_H` matters more than its obscurity suggests: GH is ~75% of VA fit time
   ## and the quadrature loop is LINEAR in H, so H is a direct throttle on the
   ## dominant cost. Measured 2026-08-05, probit p=20: H = 7 is indistinguishable
   ## from H = 61 at q=2 (paired trace diff -2e-5) AND q=5 (+2.3e-4) while running
   ## 6.66x / 3.43x faster. H = 5 is NOT safe -- it separates at q=5. Evidence:
-  ## dev/va-usability/200-H-ladder.R. The default stays 61 pending a maintainer
-  ## decision; this argument is what makes 7 reachable.
+  ## dev/va-usability/200-H-ladder.R. Gate E promoted H = 7; H = 61 remains a
+  ## deliberately selectable diagnostic.
   ##
   ## `va_eval_method` admits only "auto"/"jj"/"gh" -- the internal "ac"/"ac2"
-  ## tiers stay internal. "gh" is the accurate route and was unreachable for
-  ## pure binomial-logit fits, which "auto" sends to "jj" (Gate 3, 2026-07-31).
+  ## tiers stay internal. `auto` now selects GH everywhere; explicit JJ remains
+  ## available only for pure binomial-logit comparisons.
   ## `jj` is asymptotically biased on the loading scale (plim ~0.53); `gh`
   ## converges. See ?gllvmTMBcontrol's `integration` note on what VA does and
   ## does not certify.
-  va_H = 61L,
+  va_H = 7L,
   va_eval_method = c("auto", "jj", "gh"),
   aghq = FALSE,
   aghq_iter_cap = 1L,
@@ -1644,8 +1653,8 @@ gllvmTMBcontrol <- function(
       "x" = "Got {.val {va_H}}.",
       "i" = "H is the Gauss-Hermite quadrature order for {.code integration = \"va\"}.
              It has no effect on the Laplace route.",
-      ">" = "H = 7 is measurably indistinguishable from the default 61 at q = 2
-             and q = 5, and runs 3.4-6.7x faster."
+      ">" = "H = 7 matched the high-order H = 61 diagnostic at q = 2 and q = 5,
+             while running 3.4-6.7x faster."
     ))
   }
   aghq <- .gllvmTMB_normalize_aghq(aghq)

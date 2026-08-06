@@ -3,6 +3,16 @@
 **Status: SCOPING ONLY.** Fisher (statistical reviewer), design/scoping mode, no code
 written or run. Worktree `/private/tmp/gllvmtmb-va-lane2`, branch `claude/va-lane2`.
 
+> **STATUS CORRECTION (2026-08-06).** This note records the pre-Design-110
+> uncertainty boundary. The current public scalar VA route now exposes the
+> fixed-effect beta block through profiled-Schur VA-Wald `vcov()` and
+> `confint()`, always labelled `calibrated = FALSE`; `getLV(se = TRUE)` returns
+> a variational posterior SD, not a frequentist standard error. Loading and
+> covariance intervals remain unavailable, and nominal coverage remains an
+> Arc-2 obligation. Treat the blanket public-API refusals below as historical
+> evidence; use Design 110 and validation-register rows VA-04, VA-06, and
+> VA-13 for current status.
+
 **dr21 sources: UNVERIFIED LEAD.** Every claim attributed to dr21 (or to the underlying
 NotebookLM notebook `b25e6c9f`) below is quarantined per the standing rule — treated as
 an unverified literature lead, never as an established fact about our own implementation.
@@ -168,15 +178,13 @@ Evidence, layered (any one of these alone would already be sufficient):
    register records this as policy, not gap: "VA-06 ... `blocked` ... `calibrated = FALSE`
    is a decision, not a gap to be filled quietly" (`docs/design/35:729`).
 
-**A precision the task's framing blurs, worth stating exactly:** "`default_tier` is `\"gh\"`"
-is a *different*, lower-level default than the public fence. `default_tier` is which of the
-VA-R3 engine's own internal evaluators (`gh` quadrature / `jj` bound / `ac` closed form)
-`eval_method = "auto"` resolves to, **per family** (`R/va-r3-proto.R:1142-1147`). It is `"jj"`
-for binomial-logit specifically (`R/va-r3-proto.R:1174`) and `"gh"` for gaussian-anchor,
-poisson, nbinom2, and binomial-probit (`R/va-r3-proto.R:1156, 1190, 1207, 1242`). This is an
-internal numerical-method selector, orthogonal to whether VA is reachable at all — but both
-facts point the same way: nobody gets a VA fit, let alone a VA SE, without deliberately
-opting all the way in.
+**Historical routing precision:** before Design-110 Gate E, `eval_method = "auto"` resolved
+the VA-R3 evaluator per family: binomial-logit used the `jj` bound while the then-admitted GH
+cells used quadrature. Gate E superseded that routing. The current public `"auto"` route uses
+H = 7 GH for every admitted scalar family/link cell; JJ remains an explicit binomial-logit
+diagnostic only. Evaluator choice is still orthogonal to reachability: callers must explicitly
+request `integration = "va"`, and the public integration fence rejects unsupported model
+structures before fitting.
 
 **Why this changes priority, per the task's own framing:** because #1-4 above are already
 true today, there is no live user-facing breakage to fix. The urgency is entirely

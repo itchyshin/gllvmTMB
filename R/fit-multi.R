@@ -2299,7 +2299,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ## function's defaults, so a hand-built control list (or an older one from
       ## a saved object) behaves exactly as before rather than silently changing
       ## the quadrature order or the tier.
-      va_H           = control$va_H %||% 61L,
+      va_H           = control$va_H %||% 7L,
       va_eval_method = control$va_eval_method %||% "auto"
     ))
   }

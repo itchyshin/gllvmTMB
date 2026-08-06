@@ -410,19 +410,10 @@ test_that("probit resolves to GH only; the Jaakkola-Jordan bound is refused", {
 })
 
 
-test_that("integration = \"va\" still REFUSES binomial-probit at the fence", {
-  ## The template implements probit; the package does not claim it. There is no
-  ## recovery, coverage or bound-tightness evidence for probit under VA, and
-  ## Design 108 s2 is explicit that the Bernoulli-LOGIT evidence does not
-  ## transfer. The refusal must name the LINK, so a user who wrote
-  ## binomial(link = "probit") is told what to change.
-  expect_false("probit" %in% .gllvmTMB_integration_fence_limits()$links)
-  expect_error(
-    .gllvmTMB_check_integration_fence("va", family = "binomial",
-                                      link = "probit", q = 1L, p = 4L,
-                                      n = 150L),
-    "probit"
-  )
+test_that("integration = \"va\" admits binomial-probit through public GH H=7", {
+  expect_true(.gllvmTMB_check_integration_fence(
+    "va", family = "binomial", link = "probit", q = 1L, p = 4L, n = 150L
+  ))
   skip_on_cran()
   set.seed(20260802L)
   n <- 120L; p <- 4L
@@ -431,12 +422,15 @@ test_that("integration = \"va\" still REFUSES binomial-probit at the fence", {
     trait = factor(rep(seq_len(p), times = n)),
     site  = factor(rep(seq_len(n), each = p))
   )
-  expect_error(
-    gllvmTMB(y ~ 0 + trait + latent(0 + trait | site, d = 1, unique = FALSE),
-             data = df, family = stats::binomial(link = "probit"),
-             unit = "site", control = gllvmTMBcontrol(integration = "va")),
-    "probit"
+  fit <- gllvmTMB(
+    y ~ 0 + trait + latent(0 + trait | site, d = 1, unique = FALSE),
+    data = df, family = stats::binomial(link = "probit"),
+    unit = "site", control = gllvmTMBcontrol(integration = "va")
   )
+  expect_s3_class(fit, "gllvmTMB_va")
+  expect_identical(fit$status, "healthy")
+  expect_identical(fit$eval_method, "gh")
+  expect_identical(fit$engine_result$quadrature$order, 7L)
 })
 
 

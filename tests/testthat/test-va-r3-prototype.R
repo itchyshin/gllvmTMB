@@ -785,8 +785,8 @@ test_that("R3 scalar ELBO, KL sign, and autodiff match independent calculations"
     log_L_diag = matrix(log(0.8), 1L, 1L), L_off = matrix(numeric(), 1L, 0L)
   )
   ## expected_softplus below is an exact integrate() calculation, so the
-  ## objective must use quadrature; binomial "auto" resolves to the JJ bound,
-  ## which over-estimates it by construction.
+  ## objective must use quadrature; explicit JJ would instead evaluate a bound
+  ## and over-estimate the expected softplus by construction.
   obj <- .va_r3_make_objective(validated, H = 25L, parameters = parameters,
                                eval_method = "gh")
   report <- obj$report(obj$par)

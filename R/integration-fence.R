@@ -13,9 +13,11 @@
 ##   * `unique = FALSE` -- every VA measurement in this package suppresses Psi.
 ##     The DEFAULT `latent()` carries diag(psi), for which NO VA evidence
 ##     exists, so admitting it would advertise an unmeasured model class.
-##   * binomial-logit / poisson-log -- poisson-log and gaussian-identity are
-##     EXACT under the VA objective and binomial-logit uses 1-D Gauss-Hermite;
-##     no other family has an admitted evaluation (Design 104 s4).
+##   * all 18 scalar family/link cells -- Gate E independently checked the
+##     arithmetic oracle, compiled objective, and a light fit for every cell at
+##     H = 7. Exact and hybrid expectation paths remain in place where the
+##     likelihood permits them; the other scalar cells use 1-D Gauss-Hermite.
+##     Multinomial is a coupled softmax architecture and is not a scalar cell.
 ##   * `n >= 100` -- a hard error, not a caution. Recomputed from
 ##     dev/totoro-grid/results/grid.csv, the GH arm's signed scale
 ##     tr(Sigma_hat)/tr(Sigma_true) is 4.302 at n = 40: fourfold inflation.
@@ -34,21 +36,32 @@
 ##     claim, not the gap to that target.
 ##   * `engine = "julia"` -- the bridge implements no variational route at all.
 ##     R first, Julia next (maintainer, 2026-07-31).
-##   * binomial-PROBIT is DELIBERATELY ABSENT (Design 108 Gate A Stage 4). The
-##     VA template implements it (family 1, link 1; tail-safe log Phi), and the
-##     route now translates it correctly instead of silently mis-routing it onto
-##     the logit branch -- but implementing a family is not evidence about it.
-##     No recovery, coverage, or bound-tightness measurement exists for probit
-##     under VA, and Design 108 s2 is explicit that the Bernoulli-LOGIT evidence
-##     does not transfer. The single-link `links` entry below is therefore what
-##     refuses it, with the message a user who wrote binomial(link = "probit")
-##     needs. Admitting it requires Stage 8's measurement, not this code.
+##   * this is an implementation/light-fit boundary, not a recovery or coverage
+##     certificate. Arc 2 keeps each family verdict independent.
 .gllvmTMB_integration_fence_limits <- function() {
+  links <- c(
+    gaussian = "identity",
+    binomial = "logit",
+    binomial = "probit",
+    binomial = "cloglog",
+    poisson = "log",
+    lognormal = "log",
+    Gamma = "log",
+    nbinom2 = "log",
+    tweedie = "log",
+    Beta = "logit",
+    betabinomial = "logit",
+    student = "identity",
+    truncated_poisson = "log",
+    truncated_nbinom2 = "log",
+    delta_lognormal = "log",
+    delta_gamma = "log",
+    ordinal_probit = "probit",
+    nbinom1 = "log"
+  )
   list(
-    ## Design 108 Stage 2: gaussian (identity) admitted alongside binomial /
-    ## poisson so mixed-family VA and estimated residual SD are reachable.
-    families = c("binomial", "poisson", "gaussian"),
-    links = c(binomial = "logit", poisson = "log", gaussian = "identity"),
+    families = unique(names(links)),
+    links = links,
     q_max = 2L,
     p_max = 80L,
     n_min = 100L
@@ -106,10 +119,10 @@
           "Supply one link per family row, or a single shared link.")
     }
     for (i in seq_along(fams)) {
-      want <- lim$links[[fams[[i]]]]
-      if (!is.null(want) && !identical(links[[i]], want)) {
+      want <- unname(lim$links[names(lim$links) == fams[[i]]])
+      if (length(want) && !links[[i]] %in% want) {
         bad("Link {.val {links[[i]]}} is not admitted for family {.val {fams[[i]]}}.",
-            "Admitted link for {.val {fams[[i]]}}: {.val {want}}.")
+            "Admitted link(s) for {.val {fams[[i]]}}: {.val {want}}.")
       }
     }
   }

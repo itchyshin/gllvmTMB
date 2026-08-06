@@ -100,18 +100,20 @@ extract_loadings <- function(
 #' with `gllvm::getLV()`.
 #'
 #' @inheritParams getLoadings
-#' @param se Logical; if `TRUE`, also return the standard error of every
-#'   latent score, alongside the scores. Default `FALSE`, which preserves the
-#'   original behaviour (a bare matrix). See the Standard errors section.
+#' @param se Logical; if `TRUE`, also return uncertainty for every latent score:
+#'   a frequentist standard error for an ordinary Laplace fit, or a variational
+#'   posterior SD for a `gllvmTMB_va` fit. Default `FALSE`, which preserves the
+#'   original behaviour (a bare matrix). See the Score uncertainty section.
 #' @return When `se = FALSE` (default): a matrix with one row per unit
 #'   (`level = "unit"`) or one row per within-unit observation
 #'   (`level = "unit_obs"`), and one column per latent factor. When
 #'   `se = TRUE`: a list with `scores` (that same matrix) and `se` (a matrix
-#'   of identical shape and dimnames holding the standard error of every
-#'   score).
+#'   of identical shape and dimnames holding the score uncertainty described
+#'   below).
 #'
-#' @section Standard errors:
-#' `se = TRUE` reads the marginal standard error of every unit-level (or
+#' @section Score uncertainty:
+#' For an ordinary Laplace fit, `se = TRUE` reads the marginal standard error
+#' of every unit-level (or
 #' within-unit) latent-score random effect -- `z_B` at `level = "unit"`,
 #' `z_W` at `level = "unit_obs"` -- from the fit's TMB `sdreport()`
 #' (`sqrt(sd_report$diag.cov.random)`), and reshapes it with the identical
@@ -147,9 +149,9 @@ extract_loadings <- function(
 #' the object itself, not only here -- though those attributes are silently
 #' dropped by `se[i, ]`, `head(se)` and `as.data.frame(se)`).
 #'
-#' Two independent gates restrict it. **By tier**, `"jj"` (Jaakkola-Jordan,
-#' the default for a pure binomial-logit fit) is refused pending its own
-#' measurement. **By mechanism**, any fit whose per-unit SD turns out to be
+#' Two independent gates restrict it. **By tier**, an explicitly requested
+#' `"jj"` (Jaakkola-Jordan) fit is refused pending its own measurement.
+#' **By mechanism**, any fit whose per-unit SD turns out to be
 #' constant across units is refused outright: the array would carry one row
 #' per unit while containing no per-unit information. That degeneracy is
 #' provable under `"ac"` (Albert-Chib) and was *measured* on a Gaussian fit

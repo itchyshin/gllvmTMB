@@ -54,15 +54,18 @@
 
 \item{...}{Currently unused.}
 
-\item{parm, level}{Accepted for compatibility with the \code{\link[=confint]{confint()}} generic
-and never used: \code{confint()} always raises an error for a variational fit.}
+\item{parm}{Fixed-effect coefficient indices or names for \code{\link[=confint]{confint()}}. By
+default all fixed effects are returned.}
+
+\item{level}{Nominal confidence level for fixed-effect VA-Wald intervals.}
 }
 \value{
 \code{print()} and \code{print.summary()} return their argument invisibly.
 \code{summary()} returns an object of class \code{"summary.gllvmTMB_va"}.
-\code{nobs()} returns an integer count of unit-by-response cells. Every other
-method documented here raises an error and returns nothing: see the
-description above for why.
+\code{nobs()} returns an integer count of unit-by-response cells. \code{vcov()}
+returns the profiled-Schur beta covariance matrix and \code{confint()} its
+nominal Wald intervals; both carry \code{calibrated = FALSE} and
+\code{uncertainty_basis = "VA-Wald profiled Schur information"} attributes.
 }
 \description{
 Methods for the object returned by
@@ -71,11 +74,11 @@ Methods for the object returned by
 \details{
 This is an opt-in research route. Its objective is an \strong{ELBO} -- a lower
 bound on the log-likelihood -- not a log-likelihood, and its inverse
-Hessian is not calibrated frequentist uncertainty. Accordingly
-\code{\link[=logLik]{logLik()}}, \code{\link[=AIC]{AIC()}}, \code{\link[=BIC]{BIC()}}, \code{\link[=confint]{confint()}}, \code{\link[=vcov]{vcov()}}, \code{\link[=coef]{coef()}},
-\code{\link[=residuals]{residuals()}}, and \code{\link[=predict]{predict()}} all raise an error rather than return a
-number that would look comparable to the Laplace route's but would not
-be.
+Hessian is not automatically calibrated frequentist uncertainty.
+Accordingly \code{\link[=logLik]{logLik()}}, \code{\link[=AIC]{AIC()}}, and \code{\link[=BIC]{BIC()}} remain undefined. \code{\link[=vcov]{vcov()}}
+and \code{\link[=confint]{confint()}} expose only fixed-effect VA-Wald uncertainty computed from
+the profiled Schur information matrix. The returned values are explicitly
+labelled uncalibrated; raw-loading Wald intervals are not available.
 
 The ordination surface is the exception: \code{\link[=extract_ordination]{extract_ordination()}},
 \code{\link[=getLV]{getLV()}}, \code{\link[=getLoadings]{getLoadings()}}, and \code{\link[=extract_loadings]{extract_loadings()}} all work for a

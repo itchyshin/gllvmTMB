@@ -101,8 +101,8 @@
   ans
 }
 
-## The admitted set was c(15, 25, 61) and the default is 61. Nothing in the rule
-## itself requires that: the nodes are built by Golub--Welsch at runtime below, so
+## The admitted set was c(15, 25, 61) and the historical default was 61. Nothing
+## in the rule itself requires that: the nodes are built by Golub--Welsch at runtime below, so
 ## any odd H >= 3 is mathematically fine, and the whitelist was a typo-guard rather
 ## than a numerical constraint. It was blocking the one measurement that matters for
 ## GH's cost, because GH is ~75% of fit time (dev/va-speed/08-eval-cost-log.txt) and
@@ -117,8 +117,8 @@
 ## mu +/- sqrt(2v) * z, i.e. adapted to the variational mean and SD, which is the
 ## regime where Gauss-Hermite converges fastest.
 ##
-## Admitting an order is NOT endorsing it. The default stays 61 until a ladder on
-## shared cells shows a smaller order matches it on trace / eta_var / rel_frob.
+## The Design-110 ladder and Gate E subsequently promoted H = 7 as the public
+## default after matching H = 61 on the declared trace / eta_var / rel_frob gates.
 .va_r3_gh_rule <- function(H = 7L) {
   H <- as.integer(H)
   if (length(H) != 1L || is.na(H) || H < 3L || H %% 2L == 0L) {
@@ -1581,9 +1581,10 @@
 ## The primary optimiser. nlminb (PORT) is the default and remains the
 ## reference; "lbfgsb" is the measured-faster alternative. Both minimise the
 ## same objective from the same start, so this is a route choice, not a model
-## choice. Automatic use remains per-cell: Gaussian GH and binomial-JJ retain
-## their measured routes, and Design-110 Gate E adds NB2 GH after nlminb failed
-## the cross-start objective-agreement gate while L-BFGS-B passed.
+## choice. Automatic evaluation now uses GH for every admitted scalar cell;
+## explicit binomial-logit JJ remains available and retains its measured
+## optimiser route. Design-110 Gate E adds NB2 GH after nlminb failed the
+## cross-start objective-agreement gate while L-BFGS-B passed.
 ## Resolve optimizer = "auto" from the registry, per FAMILY and per TIER.
 ##
 ## Which optimiser wins is not a property of the family alone -- binomial splits

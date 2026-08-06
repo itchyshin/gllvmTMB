@@ -2,20 +2,19 @@
 ##
 ## Both were previously UNREACHABLE: `R/va-routing.R` hard-wired the tier and the
 ## engine's H default, so a caller could select `integration = "va"` and then not
-## choose how it evaluates. The accurate `"gh"` route in particular was
-## unreachable for pure binomial-logit fits, which the router sends to `"jj"`.
+## choose how it evaluates. Gate E subsequently promoted public `auto` to GH
+## with H = 7; explicit JJ remains a binomial-logit comparison tier.
 ##
 ## The load-bearing property of this exposure is that it changes NOTHING by
 ## default. Every test below that asserts a default is guarding against a silent
 ## behaviour change for existing callers, which is the real risk of adding a knob
 ## to a router.
 
-test_that("the VA knobs default to the previous hard-wired behaviour", {
+test_that("the VA knobs default to the Gate-E-promoted behaviour", {
   d <- gllvmTMBcontrol()
-  ## 61 was the engine's default quadrature order; "auto" reproduces the
-  ## router's own family-conditional choice. If either of these ever changes,
+  ## H=7 and public auto-to-GH are the promoted contract. If either ever changes,
   ## every existing VA fit changes with it -- so they are asserted, not assumed.
-  expect_identical(d$va_H, 61L)
+  expect_identical(d$va_H, 7L)
   expect_identical(d$va_eval_method, "auto")
   ## And the knobs must not have disturbed the route selector itself.
   expect_identical(d$integration, "laplace")
@@ -63,19 +62,18 @@ test_that("the knobs survive into the control list the router reads", {
   expect_identical(ctl$integration, "va")
 })
 
-test_that("the router honours va_eval_method, and 'auto' is unchanged", {
+test_that("the router honours explicit tiers, and public auto selects GH", {
   skip_if_not(exists(".gllvmTMB_va_route", asNamespace("gllvmTMB")))
   ## The routing decision itself, without paying for a fit. "auto" must
-  ## reproduce the pre-exposure hard-wire exactly: pure binomial-logit -> "jj",
-  ## everything else -> "gh".
+  ## reproduce the Gate-E-promoted route: every admitted scalar cell uses GH.
   resolve <- function(va_eval_method, codes, is_mixed = FALSE) {
     if (identical(va_eval_method, "auto")) {
-      if (!isTRUE(is_mixed) && all(codes == 1L)) "jj" else "gh"
+      "gh"
     } else {
       va_eval_method
     }
   }
-  expect_identical(resolve("auto", c(1L, 1L)), "jj")          # pure binomial-logit
+  expect_identical(resolve("auto", c(1L, 1L)), "gh")          # pure binomial-logit
   expect_identical(resolve("auto", c(0L, 0L)), "gh")          # gaussian
   expect_identical(resolve("auto", c(1L, 2L)), "gh")          # mixed codes
   expect_identical(resolve("auto", c(1L, 1L), TRUE), "gh")    # flagged mixed

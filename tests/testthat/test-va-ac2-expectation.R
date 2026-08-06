@@ -258,27 +258,26 @@ test_that("above threshold, compiled ac2 is EXACTLY gh's quadrature; below, it d
 })
 
 test_that("eval_method = \"ac2\" is wired through the registry exactly like \"ac\"", {
-  ## family_code = 4L is binomial_probit's registry code (R/va-r3-proto.R),
-  ## the same value .va_r3_resolve_eval_method()/.va_r3_eval_method_code()
-  ## expect as `family` -- a per-row integer code vector (validated$family),
-  ## not the family NAME string.
-  expect_identical(gllvmTMB:::.va_r3_resolve_eval_method("ac2", 4L), "ac2")
-  expect_identical(gllvmTMB:::.va_r3_eval_method_code("ac2", 4L), 3L)
+  ## Binomial-probit is the registry cell (family_code = 1L, link_id = 1L).
+  ## Family code 4L is Gamma; the link ID is therefore load-bearing rather than
+  ## an optional label.
+  expect_identical(gllvmTMB:::.va_r3_resolve_eval_method("ac2", 1L, 1L), "ac2")
+  expect_identical(gllvmTMB:::.va_r3_eval_method_code("ac2", 1L, 1L), 3L)
   expect_identical(gllvmTMB:::.va_r3_objective_type("ac2"), "APPROX_AC2")
 
   ## Same single-family restriction as "ac" (dev/va-speed/ALBERT-CHIB-DERIVATION.md
   ## s4.1's scope caveat applies identically -- ac2 shares the closed-form skeleton).
   expect_error(
-    gllvmTMB:::.va_r3_resolve_eval_method("ac2", c(1L, 4L)),
+    gllvmTMB:::.va_r3_resolve_eval_method("ac2", c(1L, 1L), c(1L, 0L)),
     "only defined for pure binomial-probit"
   )
 
-  entry <- gllvmTMB:::.va_r3_family_entry(4L)
+  entry <- gllvmTMB:::.va_r3_family_entry(1L, 1L)
   expect_true("ac2" %in% entry$tiers)
   expect_identical(entry$optimizer_by_tier$ac2, "nlminb")
 
   ## "ac" itself must be completely unaffected by adding "ac2".
-  expect_identical(gllvmTMB:::.va_r3_resolve_eval_method("ac", 4L), "ac")
-  expect_identical(gllvmTMB:::.va_r3_eval_method_code("ac", 4L), 2L)
+  expect_identical(gllvmTMB:::.va_r3_resolve_eval_method("ac", 1L, 1L), "ac")
+  expect_identical(gllvmTMB:::.va_r3_eval_method_code("ac", 1L, 1L), 2L)
   expect_identical(gllvmTMB:::.va_r3_objective_type("ac"), "ELBO_AC")
 })

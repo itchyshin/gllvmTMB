@@ -239,7 +239,7 @@
                                offset_expr, REML = FALSE,
                                lambda_constraint = NULL, Xcoef_fixed = NULL,
                                engine = "tmb", call = NULL,
-                               va_H = 61L, va_eval_method = "auto") {
+                               va_H = 7L, va_eval_method = "auto") {
   covstructs <- parsed$covstructs
   rr_idx <- .va_route_ordinary_rr_idx(covstructs)
 
@@ -414,6 +414,10 @@
   }
   .va_route_check_complete_design(unit_id, trait_id, n_units, n_traits)
 
+  ## CURRENT (Design 110 Gate E, 2026-08-06): public `auto` selects GH for every
+  ## admitted scalar family/link cell. Explicit JJ remains available only for
+  ## pure binomial-logit comparisons. The Gate-3 narrative immediately below
+  ## records the superseded historical reason for the old JJ default.
   ## SETTLED by Gate 3 (2026-07-31), maintainer decision the same day. This was
   ## provisionally "gh" while the campaign ran; the campaign chose "jj".
   ##
@@ -448,15 +452,15 @@
   ## refuses "jj" outside pure binomial-logit, so an impossible request errors
   ## there with a family-specific message rather than being silently re-routed.
   ##
-  ## WHY THE OPT-OUT EXISTS. "auto" sends pure binomial-logit to "jj" (Gate 3,
+  ## HISTORICAL REASON FOR THE OPT-OUT. The old "auto" sent pure
+  ## binomial-logit to "jj" (Gate 3,
   ## 2026-07-31, chosen on Sigma_B RMSE). But `jj`'s recovered loading scale is
   ## asymptotically biased -- trace 0.777/0.600/0.538/0.535 at n = 150...2000,
   ## a plateau, not a small-sample effect -- while `gh` converges (1.583 ->
   ## 1.132 -> 1.014). A user who needs loading MAGNITUDES rather than an
   ## ordination had no way to ask for the convergent route. Now they do.
   eval_method <- if (identical(va_eval_method, "auto")) {
-    if (!isTRUE(fl$is_mixed) && all(fl$family_codes == 1L) &&
-        all(fl$link_ids == 0L)) "jj" else "gh"
+    "gh"
   } else {
     va_eval_method
   }
@@ -543,8 +547,10 @@
   fit$beta_names <- beta_names
   fit$fence_limits <- .gllvmTMB_integration_fence_limits()
   ## Explicit and load-bearing: the inverse VA Hessian is NOT calibrated
-  ## frequentist uncertainty (Design 85 s10), so 0.6 ships this route with no
-  ## standard errors and no intervals.
+  ## frequentist uncertainty (Design 85 s10). The bounded public exception is
+  ## fixed-effect VA-Wald uncertainty from the profiled Schur information;
+  ## it remains labelled uncalibrated, and loading/covariance intervals remain
+  ## unavailable.
   fit$calibrated <- FALSE
   fit$package_version <- utils::packageVersion("gllvmTMB")
   class(fit) <- c("gllvmTMB_va", "gllvmTMB")

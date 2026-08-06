@@ -5,6 +5,18 @@ argument, no public capability claim, no code change. `NAMESPACE c97ae039`
 untouched. This document is a *programme*, not a promise, and its central
 contribution is an honest size.
 
+> **STATUS CORRECTION (2026-08-06).** The scalar-family and evaluator statements
+> below are a pre-Design-110 planning baseline, not the current package state.
+> Design 110 Gate E subsequently implemented and light-tested all 18 scalar
+> family/link cells, made public `auto` select GH with H = 7, admitted
+> binomial-probit and ordinal-probit, and retained JJ only as an explicit
+> binomial-logit comparator. Multinomial remains a separate coupled-softmax
+> architecture. The broader structured-prior, multiple-tier, random-slope, and
+> high-dimensional programme in this document is not superseded. Read current
+> scalar status from Design 110 and the validation-debt register; treat every
+> present-tense three-family/JJ-default/probit-refusal statement below as
+> historical evidence unless restated there.
+
 **The ask.** Shinichi, 2026-07-26: *"coverage of all distributions and all
 details — structured dependencies and random slopes — multiple random
 intercepts — cluster cluster2 unit and unit_obs."*

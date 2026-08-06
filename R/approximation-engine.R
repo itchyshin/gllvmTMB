@@ -72,7 +72,7 @@
     y, n_trials, X, unit_id, trait_id, q,
     N = NULL, T = NULL, family = "binomial", link = "logit",
     unique = FALSE, psi = FALSE, structured = FALSE, provider = NULL,
-    lv = FALSE, missing = FALSE, H = 61L,
+    lv = FALSE, missing = FALSE, H = 7L,
     rank_source = c("fixed_fixture", "ml_bic"), fixed_global = NULL,
     source = NULL, rebuild = FALSE,
     control = list(eval.max = 2000L, iter.max = 2000L), silent = TRUE,

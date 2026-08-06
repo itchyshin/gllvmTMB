@@ -49107,3 +49107,75 @@ and public VA-Wald profiles fitted nuisance parameters. Public defaults/fence an
 Arc 2 remained unchanged in this Gate E slice.
 
 — Codex + Gauss + Curie + Rose, Design 110 Gate E (2026-08-06)
+
+## 2026-08-06 — VA(GH) H = 7 Arc 1 public/light closeout
+
+Promoted the passed Design-110 Gate-E result to the public scalar VA route:
+`va_H = 7L`, public `auto -> gh`, exactly 18 enumerated family/link cells,
+explicit JJ only for binomial-logit, and fail-loud multinomial/non-scalar
+exclusion. Updated inference wording for uncalibrated fixed-effect VA-Wald and
+latent variational posterior SD, regenerated help, updated NEWS/validation
+status, and repaired two missing pkgdown reference-index topics.
+
+Exact gates and outcomes:
+
+```sh
+NOT_CRAN=true Rscript --vanilla -e 'devtools::test(filter = "(integration-fence|va-control-exposure|va-routing-oracle|va-probit-adsafety)", reporter = "summary")'
+# DONE; 0 failures
+NOT_CRAN=true Rscript --vanilla -e 'devtools::test(filter = "va-(all-family-(oracles|compiled|light-fits)|intervals|ordination|mixed-family|missing-response|r3-prototype)", reporter = "summary")'
+# DONE; 0 failures; 18/18 light cells healthy
+NOT_CRAN=true Rscript --vanilla -e 'devtools::test(reporter = "summary")'
+# One stale AC2 test used code 4 as probit; all other tests completed.
+NOT_CRAN=true Rscript --vanilla -e 'devtools::test(filter = "va-ac2-expectation", reporter = "summary")'
+# DONE after correcting probit to family ID 1 + link ID 1
+Rscript --vanilla -e 'devtools::document(quiet = TRUE)'
+# Completed; pre-existing internal CV-link warnings only
+Rscript --vanilla -e 'pkgdown::check_pkgdown()'
+# PASS
+Rscript --vanilla -e 'pkgdown::build_articles(lazy = FALSE)'
+# All configured articles rendered; sandbox cache-write warning only
+Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE, error_on = "never")'
+# 0 errors, 0 warnings, 2 environmental notes
+git diff --check
+# PASS
+```
+
+Consistency scans and verdicts:
+
+```sh
+rg -n "va_H = 61L|default.*JJ|JJ.*default|auto.*sends.*jj|confint\\(\\).*still refuse|vcov\\(\\).*still refuse|no standard errors, no confidence intervals|binomial-logit, Poisson-log or|NOT USER-REACHABLE|not user-selectable" R/gllvmTMB.R R/va-routing.R R/output-methods.R man/gllvmTMBcontrol.Rd man/gllvmTMB_va-methods.Rd man/getLV.Rd NEWS.md vignettes/articles/validation-oracles.Rmd docs/design/35-validation-debt-register.md docs/design/108-va-parity-programme.md docs/design/honest-variance-component-ses.md
+# Only explicitly historical/superseded JJ-default statements remain.
+rg -n "multinomial|non-scalar|family_id.?16|family code 4|family_code = 4L" R/integration-fence.R R/va-routing.R tests/testthat/test-integration-fence.R tests/testthat/test-va-ac2-expectation.R docs/design/35-validation-debt-register.md NEWS.md
+# Multinomial/non-scalar separation is consistent; stale AC2 code-4 claim removed.
+rg -n "VA-|variational|integration = \\"va\\"|va_H|Gauss-Hermite|H = 7|H=7" README.md ROADMAP.md NEWS.md docs/dev-log/known-limitations.md docs/design/35-validation-debt-register.md _pkgdown.yml
+# Current claim maps to validation rows VA-02/04/06/09/11/12/13; no conflict.
+```
+
+Arc 2 was deliberately not launched. Its scaffold must first repair the
+documented CLI, `n >= 100`, dynamic array sizing, structured receipt/runtime,
+Tweedie/Student comparator equality, failure denominators, and rotation-aware
+latent-score assessment.
+
+— Codex + Gauss + Curie + Rose + Grace, Arc 1 closeout (2026-08-06)
+
+Final closeout delta: Rose's last audit found one stale invalid-`va_H` hint that
+still called 61 the default. The hint now describes H = 61 as the high-order
+diagnostic; `va_eval_method = "auto"` now states directly that all admitted
+scalar cells use GH, and the generated control help agrees. Two neighbouring
+historical-routing comments were reconciled under the same Rose-principle sweep.
+
+```sh
+Rscript --vanilla -e 'devtools::document(quiet = TRUE)'
+# Completed; only the pre-existing internal CV-link/AIC/BIC roxygen warnings.
+NOT_CRAN=true Rscript --vanilla -e 'devtools::test(filter = "va-control-exposure|integration-fence", reporter = "summary")'
+# DONE; 0 failures.
+Rscript --vanilla '/Users/z3437171/Dropbox/Github Local/Shinichi/tools/check-after-task.R' docs/dev-log/after-task/2026-08-06-va-gh-h7-arc1-public-closeout.md
+# PASS.
+git diff --check
+# PASS.
+```
+
+Rose final verdict: **PASS**, no remaining Arc-1 public-surface blocker.
+Shannon end-of-session verdict: **WARN** only because `api.github.com` was
+unreachable; local branch, recent-history, ownership, after-task, and durable
+message-bus checks are consistent. Arc 2 remains deliberately unlaunched.

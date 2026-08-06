@@ -1228,7 +1228,7 @@ Type objective_function<Type>::operator()()
       Type safe_v = CppAD::CondExpGt(v, Type(1e-12), v, Type(1e-12));
       Type scale = sqrt(Type(2.0) * safe_v);
       for (int h = 0; h < gh_nodes.size(); ++h) {
-        Type eta_h = va_r3_clamp(mu + scale * gh_nodes(h), Type(-35.0), Type(35.0));
+        Type eta_h = mu + scale * gh_nodes(h);
         ell += gh_weights(h) * dtweedie(y(r), exp(eta_h), phi, power, true);
       }
       ell /= sqrt_pi;
@@ -1239,10 +1239,14 @@ Type objective_function<Type>::operator()()
       Type safe_v = CppAD::CondExpGt(v, Type(1e-12), v, Type(1e-12));
       Type scale = sqrt(Type(2.0) * safe_v);
       for (int h = 0; h < gh_nodes.size(); ++h) {
-        Type p = va_r3_clamp(va_r3_invlogit(mu + scale * gh_nodes(h)),
-                             Type(1e-12), Type(1.0) - Type(1e-12));
-        Type a = p * phi;
-        Type b = (Type(1.0) - p) * phi;
+        Type eta_h = mu + scale * gh_nodes(h);
+        // Construct both shapes from stable log probabilities. Computing
+        // 1-invlogit(eta) loses all precision in the right tail; clamping the
+        // probability avoids that NaN but changes the statistical model.
+        Type log_p = -va_r3_softplus(-eta_h);
+        Type log_1mp = -va_r3_softplus(eta_h);
+        Type a = phi * exp(log_p);
+        Type b = phi * exp(log_1mp);
         Type node = lgamma(phi) - lgamma(a) - lgamma(b)
           + (a - Type(1.0)) * log_y + (b - Type(1.0)) * log_1my;
         ell += gh_weights(h) * node;
@@ -1257,10 +1261,11 @@ Type objective_function<Type>::operator()()
       Type safe_v = CppAD::CondExpGt(v, Type(1e-12), v, Type(1e-12));
       Type scale = sqrt(Type(2.0) * safe_v);
       for (int h = 0; h < gh_nodes.size(); ++h) {
-        Type p = va_r3_clamp(va_r3_invlogit(mu + scale * gh_nodes(h)),
-                             Type(1e-12), Type(1.0) - Type(1e-12));
-        Type a = p * phi;
-        Type b = (Type(1.0) - p) * phi;
+        Type eta_h = mu + scale * gh_nodes(h);
+        Type log_p = -va_r3_softplus(-eta_h);
+        Type log_1mp = -va_r3_softplus(eta_h);
+        Type a = phi * exp(log_p);
+        Type b = phi * exp(log_1mp);
         Type node = constant + lgamma(yy + a) + lgamma(n - yy + b)
           - lgamma(a) - lgamma(b) - lgamma(n + phi);
         ell += gh_weights(h) * node;
@@ -1281,7 +1286,7 @@ Type objective_function<Type>::operator()()
       Type safe_v = CppAD::CondExpGt(v, Type(1e-12), v, Type(1e-12));
       Type scale = sqrt(Type(2.0) * safe_v);
       for (int h = 0; h < gh_nodes.size(); ++h) {
-        Type eta_h = va_r3_clamp(mu + scale * gh_nodes(h), Type(-35.0), Type(35.0));
+        Type eta_h = mu + scale * gh_nodes(h);
         Type lambda = exp(eta_h);
         Type node = y(r) * eta_h - lambda - lgamma(y(r) + Type(1.0))
           - va_r3_log1mexp(-lambda);
@@ -1294,7 +1299,7 @@ Type objective_function<Type>::operator()()
       Type safe_v = CppAD::CondExpGt(v, Type(1e-12), v, Type(1e-12));
       Type scale = sqrt(Type(2.0) * safe_v);
       for (int h = 0; h < gh_nodes.size(); ++h) {
-        Type eta_h = va_r3_clamp(mu + scale * gh_nodes(h), Type(-35.0), Type(35.0));
+        Type eta_h = mu + scale * gh_nodes(h);
         Type sp = va_r3_softplus(eta_h - log_phi);
         Type base = lgamma(y(r) + phi) - lgamma(phi) - lgamma(y(r) + Type(1.0))
           - y(r) * log_phi + y(r) * eta_h - (y(r) + phi) * sp;
@@ -1349,7 +1354,7 @@ Type objective_function<Type>::operator()()
       Type safe_v = CppAD::CondExpGt(v, Type(1e-12), v, Type(1e-12));
       Type scale = sqrt(Type(2.0) * safe_v);
       for (int h = 0; h < gh_nodes.size(); ++h) {
-        Type eta_h = va_r3_clamp(mu + scale * gh_nodes(h), Type(-35.0), Type(35.0));
+        Type eta_h = mu + scale * gh_nodes(h);
         ell += gh_weights(h) * dnbinom_robust(
           y(r), eta_h, eta_h + log_phi_nbinom1(t), true);
       }

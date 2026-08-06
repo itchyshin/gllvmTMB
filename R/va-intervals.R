@@ -329,8 +329,9 @@
 ##    the delta method, propagating the theta_rr covariance sub-block through
 ##    the (quadratic) map theta_rr -> Sigma.
 
-## Full (not diagonal-only) covariance matrix for the FIXED block (beta,
-## theta_rr), via the same block-diagonal Schur complement as
+## Full (not diagonal-only) covariance matrix for the GLOBAL MODEL block (beta,
+## theta_rr, and every fitted family/dispersion parameter), via the same
+## block-diagonal Schur complement as
 ## `.va_r3_fixed_information_blocked()` (R/va-r3-proto.R).
 ##
 ## WHY THIS DUPLICATES THAT FUNCTION'S SCHUR MATH RATHER THAN CALLING IT:
@@ -358,7 +359,11 @@
   if (.va_r3_multi_tier(objective)) return(fail(.VA_R3_MULTI_TIER_SE_STATUS))
   nm <- names(par)
   if (is.null(nm)) return(fail("va_unnamed_par_no_fixed_se"))
-  fixed_idx <- which(nm %in% c("beta", "theta_rr"))
+  ## Keep this in exact lockstep with .va_r3_fixed_information_blocked().
+  ## Omitting family parameters here conditions on their fitted values instead
+  ## of profiling them, which understates beta uncertainty whenever beta and a
+  ## residual/dispersion/cutpoint parameter are correlated.
+  fixed_idx <- which(nm %in% .va_r3_global_parameter_names)
   if (!length(fixed_idx)) return(fail("va_no_fixed_block_no_fixed_se"))
 
   index_map <- tryCatch(.va_r3_variational_index_map(nm, N, q),

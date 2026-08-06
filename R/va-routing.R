@@ -103,6 +103,45 @@
   )
 }
 
+## Preserve fixed family metadata carried by constructor objects. The Laplace
+## route pins these same per-trait coordinates; dropping them here would make
+## `integration = "va"` fit a different model without warning.
+.va_route_fixed_family_parameters <- function(family_per_row, family_codes,
+                                              trait_id, n_traits) {
+  collect <- function(code, field, label, lower, upper = Inf) {
+    out <- rep(NA_real_, n_traits)
+    for (t in seq_len(n_traits)) {
+      rows <- which(trait_id == (t - 1L) & family_codes == code)
+      if (!length(rows)) next
+      values <- vapply(family_per_row[rows], function(f) {
+        value <- f[[field]]
+        if (is.null(value)) NA_real_ else as.numeric(value)
+      }, numeric(1L))
+      supplied <- !is.na(values)
+      if (!any(supplied)) next
+      if (!all(supplied) || length(unique(values)) != 1L) {
+        .va_route_abort(
+          "The fixed {.arg {field}} metadata for {label} is inconsistent within response {t}.",
+          "Use one common family constructor for every row of a response."
+        )
+      }
+      value <- values[[1L]]
+      if (!is.finite(value) || value <= lower || value >= upper) {
+        .va_route_abort(
+          "The fixed {.arg {field}} value for {label} is outside its parameter domain.",
+          "Supply a finite value in ({lower}, {upper})."
+        )
+      }
+      out[[t]] <- value
+    }
+    out
+  }
+  list(
+    tweedie_power = collect(6L, "p", "tweedie()", 1, 2),
+    student_df = collect(9L, "df", "student()", 1)
+  )
+}
+
 .va_route_ordinal_metadata <- function(y, trait_id, family_codes,
                                        is_y_observed, n_traits) {
   n_cuts <- integer(n_traits)
@@ -301,6 +340,10 @@
     y = y, trait_id = trait_id, family_codes = fl$family_codes,
     is_y_observed = is_y_observed, n_traits = n_traits
   )
+  fixed_family <- .va_route_fixed_family_parameters(
+    family_per_row = family_per_row, family_codes = fl$family_codes,
+    trait_id = trait_id, n_traits = n_traits
+  )
 
   ## The fence, now with every value it was written to check. Until routing
   ## landed only `engine` was knowable, so `n`/`q`/`p`/family/link were
@@ -436,7 +479,9 @@
       link_ids = fl$link_ids,
       n_ordinal_cuts_per_trait = ordinal$n_ordinal_cuts_per_trait,
       ordinal_offset_per_trait = ordinal$ordinal_offset_per_trait,
-      ordinal_log_increments_start = ordinal$ordinal_log_increments_start
+      ordinal_log_increments_start = ordinal$ordinal_log_increments_start,
+      fixed_tweedie_power = fixed_family$tweedie_power,
+      fixed_student_df = fixed_family$student_df
     ),
     error = function(e) {
       cli::cli_abort(c(

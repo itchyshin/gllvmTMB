@@ -35,7 +35,7 @@
 ##   * `engine = "julia"` -- the bridge implements no variational route at all.
 ##     R first, Julia next (maintainer, 2026-07-31).
 ##   * binomial-PROBIT is DELIBERATELY ABSENT (Design 108 Gate A Stage 4). The
-##     VA template implements it (family code 4, tail-safe log Phi), and the
+##     VA template implements it (family 1, link 1; tail-safe log Phi), and the
 ##     route now translates it correctly instead of silently mis-routing it onto
 ##     the logit branch -- but implementing a family is not evidence about it.
 ##     No recovery, coverage, or bound-tightness measurement exists for probit

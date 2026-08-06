@@ -84,6 +84,8 @@
     n_ordinal_cuts_per_trait = NULL,
     ordinal_offset_per_trait = NULL,
     ordinal_log_increments_start = NULL,
+    fixed_tweedie_power = NULL,
+    fixed_student_df = NULL,
     extra_tiers = NULL) {
   eval_method <- match.arg(eval_method)
   ## Design 108 Gate A Stage 6 lifted the `unique` refusal here IN LOCKSTEP
@@ -147,6 +149,8 @@
     n_ordinal_cuts_per_trait = n_ordinal_cuts_per_trait,
     ordinal_offset_per_trait = ordinal_offset_per_trait,
     ordinal_log_increments_start = ordinal_log_increments_start,
+    fixed_tweedie_power = fixed_tweedie_power,
+    fixed_student_df = fixed_student_df,
     extra_tiers = extra_tiers
   )
   started <- proc.time()[["elapsed"]]

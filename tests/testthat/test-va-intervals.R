@@ -291,3 +291,50 @@ test_that("public fixed-effect VA-Wald methods fail closed on an unhealthy fit",
   expect_error(confint(fake_va), "healthy variational fit")
   expect_error(vcov(fake_va), "healthy variational fit")
 })
+
+test_that("public VA-Wald profiles fitted family nuisance parameters", {
+  ## A synthetic positive-definite Hessian makes the intended marginalisation
+  ## exactly observable. beta is correlated with log_sigma, so an implementation
+  ## that conditions on log_sigma returns a different (too small) variance.
+  H <- matrix(c(
+    4.0, 0.2, 1.2, 0.5, 0.1,
+    0.2, 3.0, 0.1, 0.2, 0.1,
+    1.2, 0.1, 2.5, 0.3, 0.2,
+    0.5, 0.2, 0.3, 2.0, 0.1,
+    0.1, 0.1, 0.2, 0.1, 1.8
+  ), nrow = 5L, byrow = TRUE)
+  expect_gt(min(eigen(H, symmetric = TRUE, only.values = TRUE)$values), 0)
+  par <- stats::setNames(
+    numeric(5L), c("beta", "theta_rr", "log_sigma", "m", "log_L_diag")
+  )
+  objective <- list(gr = function(x) as.numeric(H %*% x))
+  public_va <- structure(
+    list(
+      status = "healthy",
+      engine_result = list(objective = objective, best = list(par = par)),
+      beta_names = "intercept"
+    ),
+    class = c("gllvmTMB_va", "gllvmTMB")
+  )
+
+  schur <- .va_r3_schur_fixed_covariance(objective, par, N = 1L, q = 1L)
+  info <- .va_r3_fixed_information_blocked(objective, par, N = 1L, q = 1L)
+  V <- vcov(public_va)
+  expected_full_inverse <- solve(H)[1L, 1L]
+
+  ## Prove this fixture would catch the old beta/theta-only implementation.
+  old_fixed <- 1:2
+  variational <- 4:5
+  old_schur <- H[old_fixed, old_fixed] -
+    H[old_fixed, variational] %*%
+      solve(H[variational, variational], H[variational, old_fixed])
+  expect_gt(abs(solve(old_schur)[1L, 1L] - expected_full_inverse), 1e-3)
+
+  expect_identical(schur$status, "ok")
+  expect_identical(schur$names, names(par)[1:3])
+  expect_equal(unname(sqrt(diag(schur$covariance))), unname(info$se_profile),
+               tolerance = 1e-8)
+  expect_equal(unname(V[1L, 1L]), expected_full_inverse, tolerance = 1e-8)
+  expect_identical(attr(V, "route"), "va_wald_profile_schur")
+  expect_false(isTRUE(attr(V, "calibrated")))
+})

@@ -49043,3 +49043,39 @@ the single continuation action are in
 `docs/dev-log/after-task/2026-08-06-va-gh-h7-arc1-checkpoint.md`.
 
 — Codex VA-GH H7 Arc 1 preservation checkpoint (2026-08-06)
+
+## 2026-08-06 — VA(GH) H = 7 Gate E context-boundary preservation
+
+The completed independent reviews were reconciled with preservation commit `1660b8f8`. Gate E is
+**NOT PASS**: 11 scalar cells passed and seven did not (Tweedie, Beta, beta-binomial, Student,
+truncated Poisson, truncated NB2, and NB1). The failures are load-bearing: fixed Tweedie power and
+Student degrees of freedom were dropped, while clamps changed the modeled density in the other
+affected paths. Multinomial remains correctly excluded.
+
+The current scoped diff attempts those repairs and fixes public VA-Wald covariance so it profiles
+family nuisance parameters. The amended R files parse, the TMB template compiles, and targeted
+interval/prototype runs completed without emitted failures. The VA-Wald test had 109 pass and 0
+fail/warn/skip before the tail/metadata patch. Dedicated failure-before-fix tests for the seven
+cells have not yet been written, so no Gate E verdict was upgraded.
+
+Commands run at this boundary:
+
+```sh
+Rscript --vanilla -e 'files <- c("R/approximation-engine.R", "R/integration-fence.R", "R/va-intervals.R", "R/va-r3-proto.R", "R/va-routing.R", "tests/testthat/test-va-intervals.R"); invisible(lapply(files, parse))'
+Rscript --vanilla -e 'devtools::test(filter = "va-(intervals|r3-prototype)", reporter = "summary")'
+Rscript --vanilla -e 'devtools::test(filter = "va-r3-prototype", reporter = "summary")'
+git log --all --oneline --since="6 hours ago"
+gh pr list --state open
+ps -Ao pid,ppid,etime,command
+```
+
+The two R test commands compiled the amended C++ template and completed without an emitted
+failure; their captured output omitted final counters. The git-log scan found no foreign local
+lane. GitHub refresh failed because `api.github.com` was unreachable, and `ps` was denied by the
+sandbox. No full package/docs/pkgdown/check/cross-OS run and no Totoro/DRAC/Arc 2 launch occurred.
+
+Exact state, the 18-cell verdict, modified-file list, retained failures, and the single next action
+are in `docs/dev-log/recovery-checkpoints/2026-08-06-073617-codex-gate-e-checkpoint.md` and
+`docs/dev-log/after-task/2026-08-06-va-gh-h7-gate-e-boundary.md`.
+
+— Codex Gate E context-boundary preservation (2026-08-06)

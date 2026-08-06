@@ -2008,6 +2008,17 @@
   list(ok = TRUE, reason = "AC, complete, constant n_trials, single dense tier")
 }
 
+.va_r3_fixed_family_parameter <- function(x, T, name, lower, upper = Inf) {
+  if (is.null(x)) return(rep(NA_real_, T))
+  x <- as.numeric(x)
+  if (length(x) != T || any(!is.na(x) &
+      (!is.finite(x) | x <= lower | x >= upper))) {
+    stop(name, " must have length T and contain NA or finite values in (",
+         lower, ", ", upper, ").", call. = FALSE)
+  }
+  x
+}
+
 .va_r3_make_objective <- function(validated, H = 7L, source = NULL,
                                   rebuild = FALSE, parameters = NULL,
                                   fixed_global = NULL, silent = TRUE,
@@ -2016,7 +2027,9 @@
                                   profile_variational = FALSE,
                                   collapse_variational_cov = FALSE,
                                   inner_control = NULL,
-                                  ac2_threshold = 1.0) {
+                                  ac2_threshold = 1.0,
+                                  fixed_tweedie_power = NULL,
+                                  fixed_student_df = NULL) {
   if (validated$q == 0L) {
     stop("q = 0 is not applicable and must not construct an R3 objective.",
          call. = FALSE)
@@ -2067,6 +2080,16 @@
   )
   for (nm in names(family_parameter_defaults))
     if (is.null(parameters[[nm]])) parameters[[nm]] <- family_parameter_defaults[[nm]]
+  fixed_tweedie_power <- .va_r3_fixed_family_parameter(
+    fixed_tweedie_power, validated$T, "fixed_tweedie_power", 1, 2
+  )
+  fixed_student_df <- .va_r3_fixed_family_parameter(
+    fixed_student_df, validated$T, "fixed_student_df", 1
+  )
+  parameters$logit_p_tweedie[!is.na(fixed_tweedie_power)] <-
+    stats::qlogis(fixed_tweedie_power[!is.na(fixed_tweedie_power)] - 1)
+  parameters$log_df_student[!is.na(fixed_student_df)] <-
+    log(fixed_student_df[!is.na(fixed_student_df)] - 1)
   ## Stage 6 turned the three variational PARAMETER_MATRIXes into flat
   ## PARAMETER_VECTORs. as.numeric() of an N x q matrix is column-major, which
   ## is byte-for-byte the layout the matrix already had, so hand-built
@@ -2157,6 +2180,10 @@
                     log_phi_gamma_delta = 13L, log_phi_nbinom1 = 15L)
   for (nm in names(param_family)) {
     free <- family_trait(unname(param_family[[nm]]))
+    if (identical(nm, "logit_p_tweedie"))
+      free[!is.na(fixed_tweedie_power)] <- FALSE
+    if (identical(nm, "log_df_student"))
+      free[!is.na(fixed_student_df)] <- FALSE
     index <- if (match_laplace_residual_sd && identical(nm, "log_sigma_lognormal")) {
       rep.int(1L, length(free))
     } else {
@@ -2341,6 +2368,8 @@
                        n_ordinal_cuts_per_trait = NULL,
                        ordinal_offset_per_trait = NULL,
                        ordinal_log_increments_start = NULL,
+                       fixed_tweedie_power = NULL,
+                       fixed_student_df = NULL,
                        profile_variational = FALSE,
                        inner_control = NULL,
                        ac2_threshold = 1.0) {
@@ -2478,7 +2507,9 @@
       profile_variational = profile_variational,
       collapse_variational_cov = collapse_variational_cov,
       inner_control = inner_control,
-      ac2_threshold = ac2_threshold
+      ac2_threshold = ac2_threshold,
+      fixed_tweedie_power = fixed_tweedie_power,
+      fixed_student_df = fixed_student_df
     )
     objects[[k]] <- obj
     opt <- tryCatch(
@@ -2654,6 +2685,10 @@
     fixed_global = !is.null(fixed_global),
     optimizer = optimizer,
     match_laplace_residual_sd = isTRUE(match_laplace_residual_sd),
+    fixed_family_parameters = list(
+      tweedie_power = fixed_tweedie_power,
+      student_df = fixed_student_df
+    ),
     profile_variational = profile_variational,
     starts = fits,
     health = list(

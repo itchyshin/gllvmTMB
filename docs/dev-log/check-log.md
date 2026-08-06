@@ -49279,3 +49279,54 @@ NOT_CRAN=true Rscript --vanilla -e 'devtools::test(filter="va-gh-h7-campaign", r
 git diff --check
 # PASS.
 ```
+
+## 2026-08-06 — VA(GH) H=7 Arc 2 launch and adjudicator hardening
+
+The revision-bound Gate/runtime/preflight chain and one-row smoke passed on
+both compute surfaces. Totoro then launched the immutable 5,520-row H-ladder
+plan at revision `ac45e50f`; Fir launched the immutable 36,000-row confirmation
+plan at revision `e46d7977` as 36 bounded arrays (`53407355`–`53407390`). The
+broad runs are independent evidence and remain in progress. At
+2026-08-06T17:22:45Z, Totoro had 4,364/5,520 complete bundles and Fir had
+2,559/36,000, with Fir array elements running or pending and no scheduler-
+failure signal in the live queue view.
+
+The postprocessor now requires the exact frozen plan cross-products, verifies
+each immutable bundle checksum and its platform-specific Gate/runtime/preflight/
+plan provenance, materialises missing tasks, rejects duplicate task claims, and
+emits 36 independent cell-by-rank rows. The final receipt requires a clean
+committed checkout and checksum-binds the adjudicator plus the complete
+41,520-row input-bundle manifest. A known threshold
+failure takes precedence over insufficient eligibility; infinite degradation
+ratios fail rather than becoming inconclusive; absolute recovery caps use all
+finite completed VA seeds. Point-route, fixed-effect VA-Wald calibration, and
+latent posterior-SD calibration remain separate. Family-parameter recovery is
+descriptive because no threshold was predeclared, and unique-Psi recovery is
+explicitly outside the `unique = FALSE` DGP.
+
+```sh
+NOT_CRAN=true Rscript --vanilla -e 'devtools::test(filter="va-gh-h7-campaign", reporter="summary", stop_on_failure=TRUE)'
+# DONE; 0 failures.
+git diff --check
+# PASS.
+gh pr list --state open
+# No open pull requests.
+git log --all --oneline --since='6 hours ago' -- docs/design/110-va-gh-h7-all-scalar-families.md docs/dev-log/check-log.md docs/dev-log/after-task/2026-08-06-va-gh-h7-arc2-scaffold-readiness.md
+# Only this VA(GH) lane's commits touched these shared files.
+```
+
+Remote receipts and smoke evidence:
+
+- Totoro preflight: VA H=7 completed in 31.769 s; matched Laplace in 0.140 s.
+- Totoro smoke: binomial-logit, q=2, n=120, p=6; complete verified bundle.
+- Fir dependency job `53406230`, runtime job `53406489`, preflight job
+  `53406772`, and smoke job `53407088` all completed with exit 0.
+- Fir smoke: Gaussian-identity exact VA, q=2, n=120, p=8; complete verified
+  bundle.
+
+The first Fir dependency attempt (`53406185`) was cancelled after a quoting
+error targeted the shared library. Its `units` and `00LOCK-sf` artifacts were
+removed and their absence verified before the isolated campaign library was
+built. This did not alter either immutable campaign plan or estimator fixture.
+
+— Codex + Gauss + Curie, Arc 2 launch/adjudicator phase (2026-08-06)

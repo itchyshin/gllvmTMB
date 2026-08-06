@@ -29,6 +29,11 @@ normalise_cli <- function(x) {
     "mode", "plan", "output-dir", "gate-receipt", "runtime-manifest",
     "preflight-receipt", "gate-report", "package-lib", "build-root",
     "task-index", "cells", "seeds", "Hs", "qs", "estimators", "n", "p",
+    "totoro-plan", "totoro-output-dir", "drac-plan", "drac-output-dir",
+    "totoro-gate-receipt", "totoro-runtime-manifest",
+    "totoro-preflight-receipt", "drac-gate-receipt",
+    "drac-runtime-manifest", "drac-preflight-receipt",
+    "verdict-output", "bootstrap-reps",
     names(aliases)
   )
   unknown <- setdiff(names(x), allowed)
@@ -62,8 +67,9 @@ script_path <- if (length(script_flag)) {
 } else {
   "dev/va-gh-h7-campaign/run-cell.R"
 }
+driver_path <- normalizePath(script_path, mustWork = TRUE)
 repo_root <- normalizePath(
-  file.path(dirname(script_path), "..", ".."), mustWork = TRUE
+  file.path(dirname(driver_path), "..", ".."), mustWork = TRUE
 )
 
 as_int <- function(x, name, min = 1L) {
@@ -135,7 +141,12 @@ make_plan <- function() {
     c(
       "mode", "plan", "output-dir", "gate-receipt", "runtime-manifest",
       "preflight-receipt", "gate-report", "package-lib", "build-root",
-      "task-index", "cells", "seeds", "Hs", "qs", "estimators", "n", "p"
+      "task-index", "cells", "seeds", "Hs", "qs", "estimators", "n", "p",
+      "totoro-plan", "totoro-output-dir", "drac-plan", "drac-output-dir",
+      "totoro-gate-receipt", "totoro-runtime-manifest",
+      "totoro-preflight-receipt", "drac-gate-receipt",
+      "drac-runtime-manifest", "drac-preflight-receipt",
+      "verdict-output", "bootstrap-reps"
     )
   )
   if (length(unknown_cli)) {
@@ -1439,6 +1450,627 @@ summarise_results <- function(output_dir, plan) {
   message("wrote MCSE-ready summaries with stamp ", stamp)
 }
 
+historical_campaign_provenance <- function(
+    plan_path, gate_receipt, runtime_manifest, preflight_receipt) {
+  gate <- read_single_dcf(gate_receipt, "historical Gate-E receipt")
+  runtime <- read_single_dcf(runtime_manifest, "historical runtime manifest")
+  preflight <- read_single_dcf(preflight_receipt, "historical preflight receipt")
+  gate_required <- c(
+    "format_version", "gate", "status", "git_revision",
+    "template_checksum_md5", "report_checksum_md5", "report_row_count",
+    "passed_cells"
+  )
+  runtime_required <- c(
+    "format_version", "git_revision", "template_checksum_md5",
+    "gate_receipt_checksum_md5", "gate_report_checksum_md5"
+  )
+  preflight_required <- c(
+    "format_version", "status", "runtime_manifest_checksum_md5",
+    "gate_receipt_checksum_md5", "git_revision", "template_checksum_md5",
+    "cell", "seed", "H", "q", "n", "p", "va_status", "laplace_status"
+  )
+  labelled_missing <- function(prefix, required, observed) {
+    absent <- setdiff(required, observed)
+    if (length(absent)) paste0(prefix, ":", absent) else character()
+  }
+  missing <- c(
+    labelled_missing("gate", gate_required, names(gate)),
+    labelled_missing("runtime", runtime_required, names(runtime)),
+    labelled_missing("preflight", preflight_required, names(preflight))
+  )
+  if (length(missing)) {
+    stop("historical campaign receipt chain lacks: ", paste(missing, collapse = ", "))
+  }
+  passed <- strsplit(gate$passed_cells, ",", fixed = TRUE)[[1L]]
+  spec <- preflight_spec()
+  valid <-
+    identical(gate$format_version, "2") &&
+    identical(gate$gate, "Design-110-Gate-E") &&
+    identical(gate$status, "PASS") &&
+    identical(gate$report_row_count, as.character(nrow(cells))) &&
+    identical(passed, cells$cell) &&
+    identical(runtime$format_version, "2") &&
+    identical(runtime$git_revision, gate$git_revision) &&
+    identical(runtime$template_checksum_md5, gate$template_checksum_md5) &&
+    identical(runtime$gate_receipt_checksum_md5, file_checksum(gate_receipt)) &&
+    identical(runtime$gate_report_checksum_md5, gate$report_checksum_md5) &&
+    identical(preflight$format_version, "2") &&
+    identical(preflight$status, "PASS") &&
+    identical(preflight$va_status, "completed") &&
+    identical(preflight$laplace_status, "completed") &&
+    identical(preflight[names(spec)], spec) &&
+    identical(preflight$runtime_manifest_checksum_md5,
+              file_checksum(runtime_manifest)) &&
+    identical(preflight$gate_receipt_checksum_md5,
+              runtime$gate_receipt_checksum_md5) &&
+    identical(preflight$git_revision, runtime$git_revision) &&
+    identical(preflight$template_checksum_md5, runtime$template_checksum_md5)
+  if (!valid) stop("historical campaign receipt chain is inconsistent or failed")
+  list(
+    git_revision = runtime$git_revision,
+    template_checksum_md5 = runtime$template_checksum_md5,
+    runtime_manifest_checksum_md5 = file_checksum(runtime_manifest),
+    gate_receipt_checksum_md5 = file_checksum(gate_receipt),
+    preflight_receipt_checksum_md5 = file_checksum(preflight_receipt),
+    plan_checksum_md5 = file_checksum(plan_path)
+  )
+}
+
+verify_payload_provenance <- function(path, expected) {
+  payload <- readRDS(file.path(path, "payload.rds"))
+  recorded <- payload$provenance %||% list()
+  required <- names(expected)
+  if (!all(required %in% names(recorded))) {
+    stop("campaign bundle lacks runtime-chain provenance: ", basename(path))
+  }
+  agrees <- vapply(required, function(name) {
+    identical(as.character(recorded[[name]]), as.character(expected[[name]]))
+  }, logical(1L))
+  if (!all(agrees)) {
+    stop(
+      "campaign bundle disagrees with the supplied runtime chain: ",
+      basename(path), " [", paste(required[!agrees], collapse = ", "), "]"
+    )
+  }
+  invisible(TRUE)
+}
+
+read_bound_campaign_results <- function(output_dir, plan, provenance = NULL) {
+  validate_plan(plan)
+  bundles <- list.dirs(file.path(output_dir, "replicates"), recursive = FALSE)
+  bundles <- bundles[grepl("\\.bundle$", bundles)]
+  if (length(bundles) && !all(vapply(bundles, bundle_complete, logical(1L)))) {
+    stop("one or more immutable result bundles are incomplete or corrupt")
+  }
+  if (!length(bundles)) {
+    out <- scheduler_failure_rows(plan)
+    out$published_bundle <- FALSE
+    attr(out, "bundle_manifest") <- data.frame(
+      task_id = plan$task_id, published_bundle = FALSE,
+      bundle_name = "", complete_manifest_checksum_md5 = "",
+      stringsAsFactors = FALSE
+    )
+    return(out)
+  }
+  observed <- lapply(bundles, function(path) {
+    if (!is.null(provenance)) verify_payload_provenance(path, provenance)
+    value <- read.csv(file.path(path, "result.csv"), stringsAsFactors = FALSE)
+    if (nrow(value) != 1L) stop("every campaign bundle must contain one result row")
+    attr(value, "bundle_name") <- basename(path)
+    attr(value, "complete_manifest_checksum_md5") <-
+      file_checksum(file.path(path, "COMPLETE.dcf"))
+    value
+  })
+  manifest <- data.frame(
+    task_id = vapply(observed, function(x) x$task_id[[1L]], integer(1L)),
+    published_bundle = TRUE,
+    bundle_name = vapply(observed, attr, character(1L), which = "bundle_name"),
+    complete_manifest_checksum_md5 = vapply(
+      observed, attr, character(1L), which = "complete_manifest_checksum_md5"
+    ),
+    stringsAsFactors = FALSE
+  )
+  observed <- do.call(rbind, observed)
+  published <- observed$task_id
+  out <- bind_results_to_plan(observed, plan)
+  out$published_bundle <- out$task_id %in% published
+  bound_manifest <- data.frame(
+    task_id = plan$task_id,
+    published_bundle = plan$task_id %in% manifest$task_id,
+    bundle_name = "", complete_manifest_checksum_md5 = "",
+    stringsAsFactors = FALSE
+  )
+  matched <- match(bound_manifest$task_id, manifest$task_id)
+  present <- !is.na(matched)
+  bound_manifest$bundle_name[present] <- manifest$bundle_name[matched[present]]
+  bound_manifest$complete_manifest_checksum_md5[present] <-
+    manifest$complete_manifest_checksum_md5[matched[present]]
+  attr(out, "bundle_manifest") <- bound_manifest
+  out
+}
+
+validate_adjudication_plans <- function(totoro, drac) {
+  validate_plan(totoro)
+  validate_plan(drac)
+  common <- function(plan, seeds, expected_n) {
+    identical(sort(unique(plan$cell)), sort(cells$cell)) &&
+      identical(sort(unique(plan$seed)), as.integer(seeds)) &&
+      identical(sort(unique(plan$q)), c(2L, 5L)) &&
+      identical(unique(plan$n), 120L) && identical(unique(plan$p), 8L) &&
+      identical(sort(unique(plan$estimator)), c("laplace", "va")) &&
+      nrow(plan) == expected_n
+  }
+  if (!common(totoro, 1:30, 5520L)) {
+    stop("Totoro adjudication requires the frozen 5,520-row 30-seed plan")
+  }
+  if (!common(drac, 1:500, 36000L)) {
+    stop("DRAC adjudication requires the frozen 36,000-row 500-seed plan")
+  }
+  expected_keys <- function(seeds, va_orders) {
+    pieces <- lapply(seq_len(nrow(cells)), function(i) {
+      registry <- cells[i, , drop = FALSE]
+      orders <- if (identical(registry$route, "exact")) 0L else va_orders
+      va <- expand.grid(
+        cell = registry$cell, seed = seeds, q = c(2L, 5L), H = orders,
+        estimator = "va", stringsAsFactors = FALSE
+      )
+      laplace <- expand.grid(
+        cell = registry$cell, seed = seeds, q = c(2L, 5L), H = 0L,
+        estimator = "laplace", stringsAsFactors = FALSE
+      )
+      rbind(va, laplace)
+    })
+    expected <- do.call(rbind, pieces)
+    do.call(paste, c(expected[c("cell", "seed", "q", "H", "estimator")], sep = "|"))
+  }
+  plan_keys <- function(plan) {
+    do.call(paste, c(plan[c("cell", "seed", "q", "H", "estimator")], sep = "|"))
+  }
+  totoro_expected <- expected_keys(1:30, c(5L, 7L, 9L, 15L, 61L))
+  drac_expected <- expected_keys(1:500, 7L)
+  if (anyDuplicated(plan_keys(totoro)) ||
+      !identical(sort(plan_keys(totoro)), sort(totoro_expected))) {
+    stop("Totoro plan is not the exact required cell x seed x q x estimator x H cross-product")
+  }
+  if (anyDuplicated(plan_keys(drac)) ||
+      !identical(sort(plan_keys(drac)), sort(drac_expected))) {
+    stop("DRAC plan is not the exact required cell x seed x q x estimator x H cross-product")
+  }
+  totoro_ok <- with(totoro,
+    all(H[estimator == "laplace"] == 0L) &&
+    all(H[estimator == "va" & route == "exact"] == 0L) &&
+    setequal(unique(H[estimator == "va" & route != "exact"]), c(5L, 7L, 9L, 15L, 61L))
+  )
+  drac_ok <- with(drac,
+    all(H[estimator == "laplace"] == 0L) &&
+    all(H[estimator == "va" & route == "exact"] == 0L) &&
+    all(H[estimator == "va" & route != "exact"] == 7L)
+  )
+  if (!totoro_ok || !drac_ok) stop("adjudication plans violate the frozen H rules")
+  invisible(TRUE)
+}
+
+wilson_interval <- function(failures, attempted, level = 0.95) {
+  if (attempted < 1L || failures < 0L || failures > attempted) {
+    return(c(lower = NA_real_, upper = NA_real_))
+  }
+  z <- qnorm(level)
+  p <- failures / attempted
+  denominator <- 1 + z^2 / attempted
+  centre <- (p + z^2 / (2 * attempted)) / denominator
+  radius <- z * sqrt(p * (1 - p) / attempted + z^2 / (4 * attempted^2)) /
+    denominator
+  c(lower = max(0, centre - radius), upper = min(1, centre + radius))
+}
+
+reliability_diagnostics <- function(rows) {
+  failed <- rows$status != "completed"
+  interval <- wilson_interval(sum(failed), nrow(rows))
+  verdict <- if (!is.finite(interval[["upper"]])) {
+    "INCONCLUSIVE"
+  } else if (interval[["upper"]] <= 0.10) {
+    "PASS"
+  } else if (interval[["lower"]] > 0.10) {
+    "FAIL"
+  } else {
+    "INCONCLUSIVE"
+  }
+  list(
+    attempted = nrow(rows), failures = sum(failed), rate = mean(failed),
+    lower = interval[["lower"]], upper = interval[["upper"]], verdict = verdict
+  )
+}
+
+bootstrap_ratio <- function(numerator, denominator, root = FALSE, reps = 5000L) {
+  ok <- is.finite(numerator) & is.finite(denominator)
+  numerator <- numerator[ok]
+  denominator <- denominator[ok]
+  one <- function(index) {
+    top <- mean(numerator[index])
+    bottom <- mean(denominator[index])
+    if (root) {
+      top <- sqrt(top)
+      bottom <- sqrt(bottom)
+    }
+    if (bottom == 0) if (top == 0) 1 else Inf else top / bottom
+  }
+  if (!length(numerator)) {
+    return(list(n = 0L, numerator = NA_real_, denominator = NA_real_,
+                ratio = NA_real_, upper = NA_real_))
+  }
+  estimate_top <- mean(numerator)
+  estimate_bottom <- mean(denominator)
+  if (root) {
+    estimate_top <- sqrt(estimate_top)
+    estimate_bottom <- sqrt(estimate_bottom)
+  }
+  estimate <- if (estimate_bottom == 0) {
+    if (estimate_top == 0) 1 else Inf
+  } else {
+    estimate_top / estimate_bottom
+  }
+  upper <- if (length(numerator) < 2L) {
+    NA_real_
+  } else {
+    draws <- replicate(reps, one(sample.int(length(numerator), replace = TRUE)))
+    unname(quantile(draws, 0.95, na.rm = TRUE, names = FALSE, type = 8))
+  }
+  list(
+    n = length(numerator), numerator = estimate_top,
+    denominator = estimate_bottom, ratio = estimate, upper = upper
+  )
+}
+
+metric_diagnostics <- function(rows, value, root = FALSE) {
+  usable <- rows$status == "completed" & is.finite(rows[[value]])
+  estimate <- eligible_mean(rows[[value]], usable)
+  if (root && is.finite(estimate)) estimate <- sqrt(estimate)
+  list(
+    n = sum(usable), available_rate = mean(usable), estimate = estimate
+  )
+}
+
+threshold_exceeded <- function(value, threshold) {
+  length(value) == 1L && !is.na(value) && value > threshold
+}
+
+paired_diagnostics <- function(va, comparator, reps, expected_n) {
+  if (anyDuplicated(va$seed) || anyDuplicated(comparator$seed)) {
+    stop("paired adjudication requires exactly one row per seed from each estimator/order")
+  }
+  joined <- merge(
+    va[, c("seed", "status", "beta_squared_error_mean", "sigma_rel_frob")],
+    comparator[, c("seed", "status", "beta_squared_error_mean", "sigma_rel_frob")],
+    by = "seed", suffixes = c(".va", ".comparator"), all = FALSE
+  )
+  beta_ok <- joined$status.va == "completed" &
+    joined$status.comparator == "completed" &
+    is.finite(joined$beta_squared_error_mean.va) &
+    is.finite(joined$beta_squared_error_mean.comparator)
+  sigma_ok <- joined$status.va == "completed" &
+    joined$status.comparator == "completed" &
+    is.finite(joined$sigma_rel_frob.va) &
+    is.finite(joined$sigma_rel_frob.comparator)
+  beta <- bootstrap_ratio(
+    joined$beta_squared_error_mean.va[beta_ok],
+    joined$beta_squared_error_mean.comparator[beta_ok], TRUE, reps
+  )
+  sigma <- bootstrap_ratio(
+    joined$sigma_rel_frob.va[sigma_ok],
+    joined$sigma_rel_frob.comparator[sigma_ok], FALSE, reps
+  )
+  list(
+    paired_seed_n = nrow(joined),
+    beta = beta, sigma = sigma,
+    beta_eligible_rate = beta$n / expected_n,
+    sigma_eligible_rate = sigma$n / expected_n
+  )
+}
+
+calibration_diagnostics <- function(rows, value, available) {
+  usable <- rows$status == "completed" & (rows[[available]] %in% TRUE) &
+    is.finite(rows[[value]])
+  unconditional <- ifelse(usable, rows[[value]], 0)
+  estimate <- mean(unconditional)
+  half_width <- if (length(unconditional) > 1L) {
+    qt(0.975, df = length(unconditional) - 1L) *
+      sd(unconditional) / sqrt(length(unconditional))
+  } else {
+    NA_real_
+  }
+  lower <- max(0, estimate - half_width)
+  upper <- min(1, estimate + half_width)
+  verdict <- if (!is.finite(lower) || !is.finite(upper)) {
+    "INCONCLUSIVE"
+  } else if (lower >= 0.90 && upper <= 0.99) {
+    "CALIBRATED"
+  } else if (upper < 0.90 || lower > 0.99) {
+    "UNCALIBRATED"
+  } else {
+    "INCONCLUSIVE"
+  }
+  list(
+    attempted = nrow(rows), eligible_n = sum(usable),
+    available_rate = mean(usable), estimate = estimate,
+    lower = lower, upper = upper, verdict = verdict
+  )
+}
+
+family_parameter_diagnostics <- function(rows, applicable) {
+  if (!applicable) {
+    return(list(eligible_n = NA_integer_, available_rate = NA_real_, rmse = NA_real_))
+  }
+  usable <- rows$status == "completed" &
+    (rows$family_parameter_available %in% TRUE) &
+    is.finite(rows$family_parameter_rmse)
+  list(
+    eligible_n = sum(usable), available_rate = mean(usable),
+    rmse = eligible_mean(rows$family_parameter_rmse, usable)
+  )
+}
+
+adjudicate_campaigns <- function(totoro, drac, reps = 5000L) {
+  set.seed(20260806)
+  rows <- vector("list", nrow(cells) * 2L)
+  index <- 0L
+  for (cell_name in cells$cell) for (rank in c(2L, 5L)) {
+    index <- index + 1L
+    registry <- cells[cells$cell == cell_name, , drop = FALSE]
+    drac_group <- drac[drac$cell == cell_name & drac$q == rank, , drop = FALSE]
+    totoro_group <- totoro[totoro$cell == cell_name & totoro$q == rank, , drop = FALSE]
+    target_H <- if (identical(registry$route, "exact")) 0L else 7L
+    va <- drac_group[drac_group$estimator == "va" & drac_group$H == target_H, , drop = FALSE]
+    laplace <- drac_group[drac_group$estimator == "laplace" & drac_group$H == 0L, , drop = FALSE]
+    if (nrow(va) != 500L || nrow(laplace) != 500L) {
+      stop("DRAC target rows are not one VA/Laplace pair per seed for ", cell_name, " q=", rank)
+    }
+    reliability <- reliability_diagnostics(va)
+    point <- paired_diagnostics(va, laplace, reps, 500L)
+    beta_absolute <- metric_diagnostics(va, "beta_squared_error_mean", TRUE)
+    sigma_absolute <- metric_diagnostics(va, "sigma_rel_frob", FALSE)
+    point_failure <-
+      threshold_exceeded(point$beta$upper, 1.25) ||
+      threshold_exceeded(point$sigma$upper, 1.25) ||
+      threshold_exceeded(beta_absolute$estimate, 0.35) ||
+      threshold_exceeded(sigma_absolute$estimate, 0.50)
+    point_verdict <- if (identical(reliability$verdict, "FAIL") || point_failure) {
+      "FAIL"
+    } else if (point$beta_eligible_rate < 0.90 || point$sigma_eligible_rate < 0.90 ||
+               beta_absolute$available_rate < 0.90 ||
+               sigma_absolute$available_rate < 0.90 ||
+               is.na(point$beta$upper) || is.na(point$sigma$upper) ||
+               is.na(beta_absolute$estimate) || is.na(sigma_absolute$estimate)) {
+      "INCONCLUSIVE"
+    } else if (identical(reliability$verdict, "PASS")) {
+      "PASS"
+    } else {
+      "INCONCLUSIVE"
+    }
+    if (identical(registry$route, "exact")) {
+      stability <- list(
+        beta = list(n = NA_integer_, numerator = NA_real_, denominator = NA_real_,
+                    ratio = NA_real_, upper = NA_real_),
+        sigma = list(n = NA_integer_, numerator = NA_real_, denominator = NA_real_,
+                     ratio = NA_real_, upper = NA_real_),
+        verdict = "NOT_APPLICABLE"
+      )
+    } else {
+      h7 <- totoro_group[totoro_group$estimator == "va" & totoro_group$H == 7L, , drop = FALSE]
+      h61 <- totoro_group[totoro_group$estimator == "va" & totoro_group$H == 61L, , drop = FALSE]
+      compared <- paired_diagnostics(h7, h61, reps, 30L)
+      stability_failure <-
+        threshold_exceeded(compared$beta$upper, 1.10) ||
+        threshold_exceeded(compared$sigma$upper, 1.10)
+      stability_verdict <- if (stability_failure) {
+        "FAIL"
+      } else if (compared$beta$n < 27L || compared$sigma$n < 27L ||
+                 is.na(compared$beta$upper) || is.na(compared$sigma$upper)) {
+        "INCONCLUSIVE"
+      } else {
+        "PASS"
+      }
+      stability <- list(beta = compared$beta, sigma = compared$sigma,
+                        verdict = stability_verdict)
+    }
+    beta_calibration <- calibration_diagnostics(
+      va, "beta_wald_coverage", "beta_wald_available"
+    )
+    latent_calibration <- calibration_diagnostics(
+      va, "lv_posterior_sd_coverage", "lv_sd_available"
+    )
+    family_applicable <- nrow(family_truth(registry$family_id, 8L)) > 0L
+    family_va <- family_parameter_diagnostics(va, family_applicable)
+    family_laplace <- family_parameter_diagnostics(laplace, family_applicable)
+    core <- c(reliability$verdict, point_verdict)
+    if (!identical(stability$verdict, "NOT_APPLICABLE")) {
+      core <- c(core, stability$verdict)
+    }
+    missing_bundle_n <- sum(!drac_group$published_bundle) +
+      sum(!totoro_group$published_bundle)
+    completeness <- if (missing_bundle_n > 0L) "INCOMPLETE" else "PASS"
+    overall <- if (identical(completeness, "INCOMPLETE")) {
+      "INCOMPLETE"
+    } else if ("FAIL" %in% core) "FAIL" else if ("INCONCLUSIVE" %in% core) {
+      "INCONCLUSIVE"
+    } else {
+      "PASS"
+    }
+    rows[[index]] <- data.frame(
+      cell = cell_name, family_id = registry$family_id, link = registry$link,
+      route = registry$route, q = rank, n = 120L, p = 8L,
+      drac_planned_n = nrow(drac_group),
+      drac_missing_bundle_n = sum(!drac_group$published_bundle),
+      totoro_planned_n = nrow(totoro_group),
+      totoro_missing_bundle_n = sum(!totoro_group$published_bundle),
+      completeness_verdict = completeness,
+      reliability_attempted = reliability$attempted,
+      reliability_failures = reliability$failures,
+      reliability_failure_rate = reliability$rate,
+      reliability_wilson_lower = reliability$lower,
+      reliability_wilson_upper = reliability$upper,
+      reliability_verdict = reliability$verdict,
+      point_beta_eligible_n = point$beta$n,
+      point_beta_eligible_rate = point$beta_eligible_rate,
+      point_beta_absolute_eligible_n = beta_absolute$n,
+      point_beta_absolute_available_rate = beta_absolute$available_rate,
+      point_beta_rmse_va = beta_absolute$estimate,
+      point_beta_rmse_va_paired = point$beta$numerator,
+      point_beta_rmse_laplace_paired = point$beta$denominator,
+      point_beta_ratio = point$beta$ratio,
+      point_beta_ratio_upper = point$beta$upper,
+      point_sigma_eligible_n = point$sigma$n,
+      point_sigma_eligible_rate = point$sigma_eligible_rate,
+      point_sigma_absolute_eligible_n = sigma_absolute$n,
+      point_sigma_absolute_available_rate = sigma_absolute$available_rate,
+      point_sigma_error_va = sigma_absolute$estimate,
+      point_sigma_error_va_paired = point$sigma$numerator,
+      point_sigma_error_laplace_paired = point$sigma$denominator,
+      point_sigma_ratio = point$sigma$ratio,
+      point_sigma_ratio_upper = point$sigma$upper,
+      point_recovery_verdict = point_verdict,
+      stability_beta_eligible_n = stability$beta$n,
+      stability_beta_rmse_h7 = stability$beta$numerator,
+      stability_beta_rmse_h61 = stability$beta$denominator,
+      stability_beta_ratio = stability$beta$ratio,
+      stability_beta_ratio_upper = stability$beta$upper,
+      stability_sigma_eligible_n = stability$sigma$n,
+      stability_sigma_error_h7 = stability$sigma$numerator,
+      stability_sigma_error_h61 = stability$sigma$denominator,
+      stability_sigma_ratio = stability$sigma$ratio,
+      stability_sigma_ratio_upper = stability$sigma$upper,
+      h7_stability_verdict = stability$verdict,
+      beta_wald_eligible_n = beta_calibration$eligible_n,
+      beta_wald_available_rate = beta_calibration$available_rate,
+      beta_wald_coverage = beta_calibration$estimate,
+      beta_wald_mc_lower = beta_calibration$lower,
+      beta_wald_mc_upper = beta_calibration$upper,
+      beta_wald_calibration = beta_calibration$verdict,
+      latent_sd_eligible_n = latent_calibration$eligible_n,
+      latent_sd_available_rate = latent_calibration$available_rate,
+      latent_sd_coverage = latent_calibration$estimate,
+      latent_sd_mc_lower = latent_calibration$lower,
+      latent_sd_mc_upper = latent_calibration$upper,
+      latent_sd_calibration = latent_calibration$verdict,
+      family_parameter_applicable = family_applicable,
+      family_parameter_eligible_n_va = family_va$eligible_n,
+      family_parameter_available_rate_va = family_va$available_rate,
+      family_parameter_rmse_va = family_va$rmse,
+      family_parameter_eligible_n_laplace = family_laplace$eligible_n,
+      family_parameter_available_rate_laplace = family_laplace$available_rate,
+      family_parameter_rmse_laplace = family_laplace$rmse,
+      family_parameter_adjudication = if (family_applicable) {
+        "DESCRIPTIVE_ONLY_NO_PREDECLARED_THRESHOLD"
+      } else {
+        "NOT_APPLICABLE"
+      },
+      unique_psi_adjudication = "OUT_OF_SCOPE_DGP_UNIQUE_FALSE",
+      overall_point_route_verdict = overall,
+      stringsAsFactors = FALSE
+    )
+  }
+  do.call(rbind, rows)
+}
+
+write_adjudication <- function(
+    verdict, path, totoro_plan, drac_plan, reps, input_manifest,
+    campaign_provenance, require_clean = TRUE) {
+  required_input <- c(
+    "campaign", "task_id", "published_bundle", "bundle_name",
+    "complete_manifest_checksum_md5"
+  )
+  if (!all(required_input %in% names(input_manifest)) ||
+      nrow(input_manifest) != 41520L ||
+      anyDuplicated(paste(input_manifest$campaign, input_manifest$task_id)) ||
+      any(input_manifest$published_bundle &
+          !nzchar(input_manifest$complete_manifest_checksum_md5))) {
+    stop("adjudication input manifest is incomplete, duplicated, or malformed")
+  }
+  expected_input_tasks <- list(totoro = seq_len(5520L), drac = seq_len(36000L))
+  input_tasks <- split(input_manifest$task_id, input_manifest$campaign)
+  if (!setequal(names(input_tasks), names(expected_input_tasks)) ||
+      !all(vapply(names(expected_input_tasks), function(name) {
+        identical(as.integer(input_tasks[[name]]), expected_input_tasks[[name]])
+      }, logical(1L)))) {
+    stop("adjudication input manifest does not match both frozen plan task sets")
+  }
+  provenance_fields <- c(
+    "git_revision", "template_checksum_md5", "runtime_manifest_checksum_md5",
+    "gate_receipt_checksum_md5", "preflight_receipt_checksum_md5",
+    "plan_checksum_md5"
+  )
+  if (!setequal(names(campaign_provenance), c("totoro", "drac")) ||
+      !all(vapply(campaign_provenance, function(x) {
+        identical(names(x), provenance_fields) &&
+          all(vapply(x, function(value) {
+            length(value) == 1L && !is.na(value) && nzchar(as.character(value))
+          }, logical(1L)))
+      }, logical(1L)))) {
+    stop("adjudication campaign provenance is incomplete or malformed")
+  }
+  if (isTRUE(require_clean)) {
+    status <- system2(
+      "git", c("-C", repo_root, "status", "--porcelain"),
+      stdout = TRUE, stderr = TRUE
+    )
+    if (length(status)) {
+      stop("final adjudication requires a clean committed checkout")
+    }
+  }
+  input_path <- paste0(path, ".inputs.csv")
+  atomic_save(input_manifest, input_path, function(x, file) {
+    write.csv(x, file, row.names = FALSE)
+  })
+  atomic_save(verdict, path, function(x, file) write.csv(x, file, row.names = FALSE))
+  receipt_path <- paste0(path, ".dcf")
+  point_counts <- table(factor(
+    verdict$overall_point_route_verdict,
+    levels = c("PASS", "FAIL", "INCONCLUSIVE", "INCOMPLETE")
+  ))
+  receipt <- data.frame(
+    format_version = "1",
+    data_status = if (all(verdict$totoro_missing_bundle_n == 0L) &&
+                      all(verdict$drac_missing_bundle_n == 0L)) {
+      "COMPLETE"
+    } else {
+      "INCOMPLETE"
+    },
+    git_revision = git_revision(),
+    totoro_plan_checksum_md5 = file_checksum(totoro_plan),
+    drac_plan_checksum_md5 = file_checksum(drac_plan),
+    input_manifest_checksum_md5 = file_checksum(input_path),
+    verdict_checksum_md5 = file_checksum(path),
+    adjudicator_checksum_md5 = file_checksum(driver_path),
+    totoro_git_revision = campaign_provenance$totoro$git_revision,
+    totoro_template_checksum_md5 =
+      campaign_provenance$totoro$template_checksum_md5,
+    totoro_runtime_manifest_checksum_md5 =
+      campaign_provenance$totoro$runtime_manifest_checksum_md5,
+    totoro_gate_receipt_checksum_md5 =
+      campaign_provenance$totoro$gate_receipt_checksum_md5,
+    totoro_preflight_receipt_checksum_md5 =
+      campaign_provenance$totoro$preflight_receipt_checksum_md5,
+    drac_git_revision = campaign_provenance$drac$git_revision,
+    drac_template_checksum_md5 =
+      campaign_provenance$drac$template_checksum_md5,
+    drac_runtime_manifest_checksum_md5 =
+      campaign_provenance$drac$runtime_manifest_checksum_md5,
+    drac_gate_receipt_checksum_md5 =
+      campaign_provenance$drac$gate_receipt_checksum_md5,
+    drac_preflight_receipt_checksum_md5 =
+      campaign_provenance$drac$preflight_receipt_checksum_md5,
+    verdict_rows = nrow(verdict), bootstrap_reps = reps,
+    point_route_pass_n = unname(point_counts[["PASS"]]),
+    point_route_fail_n = unname(point_counts[["FAIL"]]),
+    point_route_inconclusive_n = unname(point_counts[["INCONCLUSIVE"]]),
+    point_route_incomplete_n = unname(point_counts[["INCOMPLETE"]]),
+    all_point_routes_pass = all(verdict$overall_point_route_verdict == "PASS"),
+    created_utc = format(Sys.time(), tz = "UTC", usetz = TRUE),
+    stringsAsFactors = FALSE
+  )
+  atomic_save(receipt, receipt_path, function(x, file) write.dcf(x, file = file))
+  message("wrote independent family/rank adjudication: ", path)
+}
+
 write_preflight_receipt <- function(
     runtime_manifest, gate_receipt, receipt_path, va, laplace) {
   if (!identical(va$status, "completed") || !identical(laplace$status, "completed")) {
@@ -1609,6 +2241,73 @@ if (mode == "plan") {
   }
   bundle <- verify_task_bundle(plan, output_dir, task, provenance)
   cat("verified complete task bundle:", bundle, "\n")
+} else if (mode == "adjudicate") {
+  totoro_plan_path <- normalizePath(
+    get_arg("totoro-plan", "VA_TOTORO_PLAN"), mustWork = TRUE
+  )
+  totoro_output <- normalizePath(
+    get_arg("totoro-output-dir", "VA_TOTORO_OUTPUT_DIR"), mustWork = TRUE
+  )
+  drac_plan_path <- normalizePath(
+    get_arg("drac-plan", "VA_DRAC_PLAN"), mustWork = TRUE
+  )
+  drac_output <- normalizePath(
+    get_arg("drac-output-dir", "VA_DRAC_OUTPUT_DIR"), mustWork = TRUE
+  )
+  totoro_gate <- normalizePath(
+    get_arg("totoro-gate-receipt", "VA_TOTORO_GATE_RECEIPT"), mustWork = TRUE
+  )
+  totoro_runtime <- normalizePath(
+    get_arg("totoro-runtime-manifest", "VA_TOTORO_RUNTIME_MANIFEST"),
+    mustWork = TRUE
+  )
+  totoro_preflight <- normalizePath(
+    get_arg("totoro-preflight-receipt", "VA_TOTORO_PREFLIGHT_RECEIPT"),
+    mustWork = TRUE
+  )
+  drac_gate <- normalizePath(
+    get_arg("drac-gate-receipt", "VA_DRAC_GATE_RECEIPT"), mustWork = TRUE
+  )
+  drac_runtime <- normalizePath(
+    get_arg("drac-runtime-manifest", "VA_DRAC_RUNTIME_MANIFEST"),
+    mustWork = TRUE
+  )
+  drac_preflight <- normalizePath(
+    get_arg("drac-preflight-receipt", "VA_DRAC_PREFLIGHT_RECEIPT"),
+    mustWork = TRUE
+  )
+  verdict_output <- normalizePath(
+    get_arg("verdict-output", "VA_VERDICT_OUTPUT", "va-gh-h7-adjudication.csv"),
+    mustWork = FALSE
+  )
+  reps <- as_int(
+    get_arg("bootstrap-reps", "VA_BOOTSTRAP_REPS", "5000"),
+    "bootstrap-reps", 100L
+  )
+  totoro_plan <- read.csv(totoro_plan_path, stringsAsFactors = FALSE)
+  drac_plan <- read.csv(drac_plan_path, stringsAsFactors = FALSE)
+  validate_adjudication_plans(totoro_plan, drac_plan)
+  totoro_provenance <- historical_campaign_provenance(
+    totoro_plan_path, totoro_gate, totoro_runtime, totoro_preflight
+  )
+  drac_provenance <- historical_campaign_provenance(
+    drac_plan_path, drac_gate, drac_runtime, drac_preflight
+  )
+  totoro_results <- read_bound_campaign_results(
+    totoro_output, totoro_plan, totoro_provenance
+  )
+  drac_results <- read_bound_campaign_results(
+    drac_output, drac_plan, drac_provenance
+  )
+  input_manifest <- rbind(
+    data.frame(campaign = "totoro", attr(totoro_results, "bundle_manifest")),
+    data.frame(campaign = "drac", attr(drac_results, "bundle_manifest"))
+  )
+  verdict <- adjudicate_campaigns(totoro_results, drac_results, reps)
+  write_adjudication(
+    verdict, verdict_output, totoro_plan_path, drac_plan_path, reps,
+    input_manifest, list(totoro = totoro_provenance, drac = drac_provenance)
+  )
 } else if (mode == "summarise") {
   if (!file.exists(plan_path)) stop("plan does not exist: ", plan_path)
   plan <- read.csv(plan_path, stringsAsFactors = FALSE)
@@ -1617,6 +2316,6 @@ if (mode == "plan") {
 } else {
   stop(
     "mode must be dry-run, gate-receipt, verify-gate, runtime-manifest, ",
-    "verify-runtime, preflight, plan, run, verify-task, or summarise"
+    "verify-runtime, preflight, plan, run, verify-task, adjudicate, or summarise"
   )
 }

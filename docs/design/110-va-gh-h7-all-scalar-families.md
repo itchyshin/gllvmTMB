@@ -3,8 +3,10 @@
 **Status:** Gate E PASS, 18/18 scalar cells, 2026-08-06. Arc 1 implemented and
 light-tested the scalar family surface; the public H = 7/GH promotion is now
 authorised but is recorded separately from the arithmetic verdict. Arc 2 is
-authorised after the public/light closeout but has not been launched. This
-contract does not admit multinomial or any other non-scalar
+authorised after the public/light closeout. Its Totoro and DRAC smoke gates
+passed and both frozen broad campaigns were running as of 2026-08-06; no Arc-2
+family/rank verdict has yet been issued. This contract does not admit
+multinomial or any other non-scalar
 likelihood, does not make an accuracy claim for `H = 7`, and does not make an
 ELBO usable as `logLik`, AIC, BIC, or an LRT.
 

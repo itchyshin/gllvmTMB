@@ -194,6 +194,330 @@ test_that("summary denominators retain failures and retain independent family ve
   expect_equal(logit$beta_wald_coverage, 0.5)
 })
 
+test_that("predeclared adjudication yields independent family-rank verdicts", {
+  .campaign_set_cli(
+    seeds = "1:30", Hs = "5,7,9,15,61", qs = "2,5",
+    estimators = "va,laplace", n = "120", p = "8"
+  )
+  totoro_plan <- .campaign_env$make_plan()
+  .campaign_set_cli(
+    seeds = "1:500", Hs = "7", qs = "2,5",
+    estimators = "va,laplace", n = "120", p = "8"
+  )
+  drac_plan <- .campaign_env$make_plan()
+  make_results <- function(plan) {
+    data.frame(
+      plan, status = "completed", beta_squared_error_mean = 0.01,
+      sigma_rel_frob = 0.10, beta_wald_available = TRUE,
+      beta_wald_coverage = 0.95, lv_sd_available = plan$estimator == "va",
+      lv_posterior_sd_coverage = ifelse(plan$estimator == "va", 0.95, NA_real_),
+      family_parameter_available = TRUE, family_parameter_rmse = 0.05,
+      published_bundle = TRUE, stringsAsFactors = FALSE
+    )
+  }
+  expect_invisible(.campaign_env$validate_adjudication_plans(totoro_plan, drac_plan))
+  verdict <- .campaign_env$adjudicate_campaigns(
+    make_results(totoro_plan), make_results(drac_plan), reps = 100L
+  )
+  expect_equal(nrow(verdict), 36L)
+  expect_true(all(verdict$reliability_verdict == "PASS"))
+  expect_true(all(verdict$point_recovery_verdict == "PASS"))
+  expect_true(all(verdict$overall_point_route_verdict == "PASS"))
+  expect_true(all(verdict$beta_wald_calibration == "CALIBRATED"))
+  expect_true(all(verdict$latent_sd_calibration == "CALIBRATED"))
+  expect_equal(sum(verdict$h7_stability_verdict == "NOT_APPLICABLE"), 8L)
+  expect_true(all(
+    verdict$h7_stability_verdict[verdict$route != "exact"] == "PASS"
+  ))
+  expect_true(all(
+    verdict$family_parameter_adjudication[verdict$family_parameter_applicable] ==
+      "DESCRIPTIVE_ONLY_NO_PREDECLARED_THRESHOLD"
+  ))
+  expect_true(all(verdict$unique_psi_adjudication ==
+                    "OUT_OF_SCOPE_DGP_UNIQUE_FALSE"))
+
+  verdict_path <- tempfile(fileext = ".csv")
+  totoro_path <- tempfile(fileext = ".csv")
+  drac_path <- tempfile(fileext = ".csv")
+  write.csv(totoro_plan, totoro_path, row.names = FALSE)
+  write.csv(drac_plan, drac_path, row.names = FALSE)
+  input_manifest <- rbind(
+    data.frame(
+      campaign = "totoro", task_id = totoro_plan$task_id,
+      published_bundle = TRUE,
+      bundle_name = paste0(totoro_plan$task_id, ".bundle"),
+      complete_manifest_checksum_md5 = rep("a", nrow(totoro_plan))
+    ),
+    data.frame(
+      campaign = "drac", task_id = drac_plan$task_id,
+      published_bundle = TRUE,
+      bundle_name = paste0(drac_plan$task_id, ".bundle"),
+      complete_manifest_checksum_md5 = rep("b", nrow(drac_plan))
+    )
+  )
+  provenance_fields <- c(
+    git_revision = "revision", template_checksum_md5 = "template",
+    runtime_manifest_checksum_md5 = "runtime",
+    gate_receipt_checksum_md5 = "gate",
+    preflight_receipt_checksum_md5 = "preflight",
+    plan_checksum_md5 = "plan"
+  )
+  .campaign_env$write_adjudication(
+    verdict, verdict_path, totoro_path, drac_path, reps = 100L,
+    input_manifest = input_manifest,
+    campaign_provenance = list(
+      totoro = as.list(provenance_fields), drac = as.list(provenance_fields)
+    ),
+    require_clean = FALSE
+  )
+  receipt <- read.dcf(paste0(verdict_path, ".dcf"))
+  expect_identical(receipt[[1L, "data_status"]], "COMPLETE")
+  expect_identical(receipt[[1L, "point_route_pass_n"]], "36")
+  expect_identical(receipt[[1L, "point_route_fail_n"]], "0")
+  expect_identical(receipt[[1L, "all_point_routes_pass"]], "TRUE")
+  expect_true(nzchar(receipt[[1L, "input_manifest_checksum_md5"]]))
+  expect_true(nzchar(receipt[[1L, "adjudicator_checksum_md5"]]))
+  expect_identical(receipt[[1L, "totoro_runtime_manifest_checksum_md5"]],
+                   "runtime")
+  expect_identical(receipt[[1L, "drac_preflight_receipt_checksum_md5"]],
+                   "preflight")
+
+  expect_error(
+    .campaign_env$write_adjudication(
+      verdict, tempfile(fileext = ".csv"), totoro_path, drac_path, reps = 100L,
+      input_manifest = input_manifest[-1L, ],
+      campaign_provenance = list(
+        totoro = as.list(provenance_fields), drac = as.list(provenance_fields)
+      ),
+      require_clean = FALSE
+    ),
+    "input manifest is incomplete"
+  )
+
+  had_system2 <- exists("system2", envir = .campaign_env, inherits = FALSE)
+  if (had_system2) old_system2 <- .campaign_env$system2
+  on.exit({
+    if (had_system2) {
+      .campaign_env$system2 <- old_system2
+    } else if (exists("system2", envir = .campaign_env, inherits = FALSE)) {
+      rm("system2", envir = .campaign_env)
+    }
+  }, add = TRUE)
+  .campaign_env$system2 <- function(...) " M deliberately-dirty"
+  expect_error(
+    .campaign_env$write_adjudication(
+      verdict, tempfile(fileext = ".csv"), totoro_path, drac_path, reps = 100L,
+      input_manifest = input_manifest,
+      campaign_provenance = list(
+        totoro = as.list(provenance_fields), drac = as.list(provenance_fields)
+      )
+    ),
+    "clean committed checkout"
+  )
+
+  incomplete_totoro <- make_results(totoro_plan)
+  selected <- with(
+    incomplete_totoro,
+    cell == "binomial_logit" & q == 2L & estimator == "va" &
+      H == 5L & seed == 1L
+  )
+  incomplete_totoro$published_bundle[selected] <- FALSE
+  incomplete_totoro$status[selected] <- "scheduler_failed"
+  incomplete <- .campaign_env$adjudicate_campaigns(
+    incomplete_totoro, make_results(drac_plan), reps = 100L
+  )
+  affected <- incomplete$cell == "binomial_logit" & incomplete$q == 2L
+  expect_identical(incomplete$overall_point_route_verdict[affected], "INCOMPLETE")
+  expect_true(all(incomplete$overall_point_route_verdict[!affected] == "PASS"))
+})
+
+test_that("adjudication rejects duplicate or incomplete plan cross-products", {
+  .campaign_set_cli(
+    seeds = "1:30", Hs = "5,7,9,15,61", qs = "2,5",
+    estimators = "va,laplace", n = "120", p = "8"
+  )
+  totoro_plan <- .campaign_env$make_plan()
+  .campaign_set_cli(
+    seeds = "1:500", Hs = "7", qs = "2,5",
+    estimators = "va,laplace", n = "120", p = "8"
+  )
+  drac_plan <- .campaign_env$make_plan()
+
+  corrupted <- drac_plan
+  source <- which(
+    corrupted$cell == "binomial_logit" & corrupted$seed == 1L &
+      corrupted$q == 2L & corrupted$estimator == "va"
+  )[[1L]]
+  target <- which(
+    corrupted$cell == "binomial_logit" & corrupted$seed == 2L &
+      corrupted$q == 2L & corrupted$estimator == "va"
+  )[[1L]]
+  key_columns <- c("cell", "family_id", "link", "link_id", "route", "seed",
+                   "H", "q", "n", "p", "estimator",
+                   "va_match_laplace_residual_sd")
+  corrupted[target, key_columns] <- corrupted[source, key_columns]
+  expect_error(
+    .campaign_env$validate_adjudication_plans(totoro_plan, corrupted),
+    "exact required.*cross-product"
+  )
+})
+
+test_that("adjudication bundle reader retains missing rows and rejects corruption", {
+  .campaign_set_cli(
+    cells = "binomial_logit", seeds = "1:2", Hs = "7", qs = "2",
+    estimators = "va", n = "100", p = "2"
+  )
+  plan <- .campaign_env$make_plan()
+  out <- tempfile("va-gh-h7-bound-")
+  dir.create(out)
+
+  no_bundles <- .campaign_env$read_bound_campaign_results(out, plan)
+  expect_equal(nrow(no_bundles), 2L)
+  expect_true(all(no_bundles$status == "scheduler_failed"))
+  expect_false(any(no_bundles$published_bundle))
+
+  one <- .campaign_result_row("binomial_logit", "completed", 1L)
+  one$task_id <- 1L
+  .campaign_env$publish_bundle(
+    file.path(out, "replicates", "one.bundle"), one,
+    .campaign_env$empty_beta_table(), .campaign_env$empty_family_table(), list()
+  )
+  partial <- .campaign_env$read_bound_campaign_results(out, plan)
+  expect_identical(partial$status, c("completed", "scheduler_failed"))
+  expect_identical(partial$published_bundle, c(TRUE, FALSE))
+
+  write("corrupt", file.path(out, "replicates", "one.bundle", "result.csv"))
+  expect_error(
+    .campaign_env$read_bound_campaign_results(out, plan),
+    "incomplete or corrupt"
+  )
+})
+
+test_that("adjudication bundle reader rejects duplicate task claims", {
+  .campaign_set_cli(
+    cells = "binomial_logit", seeds = "1:2", Hs = "7", qs = "2",
+    estimators = "va", n = "100", p = "2"
+  )
+  plan <- .campaign_env$make_plan()
+  out <- tempfile("va-gh-h7-duplicate-")
+  dir.create(out)
+  duplicate <- .campaign_result_row("binomial_logit", "completed", 1L)
+  duplicate$task_id <- 1L
+  for (name in c("one.bundle", "two.bundle")) {
+    .campaign_env$publish_bundle(
+      file.path(out, "replicates", name), duplicate,
+      .campaign_env$empty_beta_table(), .campaign_env$empty_family_table(), list()
+    )
+  }
+  expect_error(
+    .campaign_env$read_bound_campaign_results(out, plan),
+    "more than one result bundle claims"
+  )
+})
+
+test_that("adjudication bundle reader enforces the supplied runtime chain", {
+  .campaign_set_cli(
+    cells = "binomial_logit", seeds = "1", Hs = "7", qs = "2",
+    estimators = "va", n = "100", p = "2"
+  )
+  plan <- .campaign_env$make_plan()
+  out <- tempfile("va-gh-h7-provenance-")
+  dir.create(out)
+  expected <- list(
+    git_revision = "revision-a", template_checksum_md5 = "template-a",
+    runtime_manifest_checksum_md5 = "runtime-a",
+    gate_receipt_checksum_md5 = "gate-a",
+    preflight_receipt_checksum_md5 = "preflight-a",
+    plan_checksum_md5 = "plan-a"
+  )
+  result <- .campaign_result_row("binomial_logit", "completed", 1L)
+  .campaign_env$publish_bundle(
+    file.path(out, "replicates", "one.bundle"), result,
+    .campaign_env$empty_beta_table(), .campaign_env$empty_family_table(),
+    list(provenance = expected)
+  )
+  bound <- .campaign_env$read_bound_campaign_results(out, plan, expected)
+  expect_true(bound$published_bundle)
+  expect_identical(
+    attr(bound, "bundle_manifest")$task_id, plan$task_id
+  )
+  wrong <- expected
+  wrong$plan_checksum_md5 <- "plan-b"
+  expect_error(
+    .campaign_env$read_bound_campaign_results(out, plan, wrong),
+    "disagrees with the supplied runtime chain.*plan_checksum_md5"
+  )
+})
+
+test_that("historical receipt chains are mutually checksum-bound", {
+  plan_path <- tempfile(fileext = ".csv")
+  write.csv(data.frame(task_id = 1L), plan_path, row.names = FALSE)
+  gate_path <- tempfile(fileext = ".dcf")
+  runtime_path <- tempfile(fileext = ".dcf")
+  preflight_path <- tempfile(fileext = ".dcf")
+  write.dcf(data.frame(
+    format_version = "2", gate = "Design-110-Gate-E", status = "PASS",
+    git_revision = "revision-a", template_checksum_md5 = "template-a",
+    report_checksum_md5 = "report-a", report_row_count = "18",
+    passed_cells = paste(.campaign_env$cells$cell, collapse = ",")
+  ), gate_path)
+  write.dcf(data.frame(
+    format_version = "2", git_revision = "revision-a",
+    template_checksum_md5 = "template-a",
+    gate_receipt_checksum_md5 = .campaign_env$file_checksum(gate_path),
+    gate_report_checksum_md5 = "report-a"
+  ), runtime_path)
+  spec <- .campaign_env$preflight_spec()
+  write.dcf(data.frame(
+    format_version = "2", status = "PASS",
+    runtime_manifest_checksum_md5 = .campaign_env$file_checksum(runtime_path),
+    gate_receipt_checksum_md5 = .campaign_env$file_checksum(gate_path),
+    git_revision = "revision-a", template_checksum_md5 = "template-a",
+    cell = spec$cell, seed = spec$seed, H = spec$H, q = spec$q,
+    n = spec$n, p = spec$p, va_status = "completed",
+    laplace_status = "completed"
+  ), preflight_path)
+  provenance <- .campaign_env$historical_campaign_provenance(
+    plan_path, gate_path, runtime_path, preflight_path
+  )
+  expect_identical(provenance$git_revision, "revision-a")
+  expect_identical(
+    provenance$plan_checksum_md5, .campaign_env$file_checksum(plan_path)
+  )
+
+  broken_path <- tempfile(fileext = ".dcf")
+  broken <- read.dcf(preflight_path)
+  broken[[1L, "runtime_manifest_checksum_md5"]] <- "wrong-runtime"
+  write.dcf(as.data.frame(broken), broken_path)
+  expect_error(
+    .campaign_env$historical_campaign_provenance(
+      plan_path, gate_path, runtime_path, broken_path
+    ),
+    "receipt chain is inconsistent"
+  )
+})
+
+test_that("adjudication thresholds fail material degradation and miscalibration", {
+  reliable <- data.frame(status = rep("completed", 500L))
+  failed <- data.frame(status = c(rep("failed", 100L), rep("completed", 400L)))
+  expect_identical(.campaign_env$reliability_diagnostics(reliable)$verdict, "PASS")
+  expect_identical(.campaign_env$reliability_diagnostics(failed)$verdict, "FAIL")
+
+  degraded <- .campaign_env$bootstrap_ratio(
+    rep(0.04, 30L), rep(0.01, 30L), root = TRUE, reps = 100L
+  )
+  expect_equal(degraded$ratio, 2)
+  expect_gt(degraded$upper, 1.25)
+
+  coverage <- data.frame(
+    status = rep("completed", 500L), available = TRUE, value = 0.80
+  )
+  calibration <- .campaign_env$calibration_diagnostics(
+    coverage, "value", "available"
+  )
+  expect_identical(calibration$verdict, "UNCALIBRATED")
+})
+
 test_that("campaign shell contracts are parseable and dry-run remains one task", {
   expect_true(all(file.exists(.campaign_shell_files)))
   statuses <- vapply(.campaign_shell_files, function(path) {

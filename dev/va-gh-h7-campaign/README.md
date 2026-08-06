@@ -1,10 +1,9 @@
 # VA(GH) H=7 all-scalar-family campaign
 
-**State:** Gate E is PASS (18/18) and Arc 1 is committed. Arc 2 scaffold repair
-is active. Do not submit the broad Totoro or DRAC campaign until the dedicated
-local tests, structured receipt/runtime chain, one-row Totoro smoke, and one-row
-DRAC smoke all pass. This campaign never runs on GitHub Actions and its results
-must never be uploaded as Actions artifacts.
+**State:** Gate E is PASS (18/18) and Arc 1 is committed. The structured
+receipt/runtime chain and one-row Totoro and DRAC smoke gates passed on
+2026-08-06; both broad Arc 2 campaigns are running. This campaign never runs on
+GitHub Actions and its results must never be uploaded as Actions artifacts.
 
 This directory implements the approved Arc 2 boundary in Design 110. It covers
 the 18 scalar family/link cells, compares VA with this package's own matched
@@ -58,8 +57,8 @@ convergence/health flags, gradient diagnostic, and elapsed seconds.
 
 The two fitted estimators are `integration="va"` with explicit GH order and the
 package's own `integration="laplace"`. The latter is the primary fitted
-comparator; `gllvm` is deliberately absent. H is retained in Laplace plan rows
-only to keep paired output keys; it does not alter the Laplace fit.
+comparator; `gllvm` is deliberately absent. Laplace plan rows use `H=0`; GH
+order applies only to VA rows on quadrature routes.
 The Tweedie DGP uses `tweedie::rtweedie()` when available and the equivalent
 `mgcv::rTweedie(mu, p=1.5, phi=0.8)` fallback otherwise; runtime preparation
 requires at least one of these suggested packages.
@@ -82,7 +81,8 @@ References: Morris, White & Crowther (2019), *Statistics in Medicine* 38:
 ## Files and use
 
 - `run-cell.R`: writes/validates a plan, dry-runs one configuration, executes one
-  plan row, or summarises immutable per-seed CSV files.
+  plan row, summarises immutable per-seed CSV files, or issues the final
+  family-by-rank adjudication.
 - `prepare-runtime.sh`: installs one revision-bound runtime and writes its
   checksum-bound manifest without fitting.
 - `run-preflight.sh`: runs the timed VA/Laplace preflight on local/Totoro or an
@@ -141,6 +141,42 @@ On a DRAC login node, `submit-drac.sh` may validate and submit but never fits.
 Prepare/preflight the runtime in an allocation first. `ACTION=write` prints the
 exact plan-derived batched commands; `ACTION=smoke` submits task 1 only; broad
 `ACTION=submit` is permitted only after that smoke bundle is checked.
+
+After both plans have finished, `adjudicate` refuses any geometry other than the
+frozen 5,520-row Totoro and 36,000-row DRAC plans. It materialises missing
+bundles as explicit scheduler failures and writes 36 independent rows (18
+family/link cells times two ranks), plus a checksum-bound DCF receipt:
+
+```sh
+Rscript --vanilla dev/va-gh-h7-campaign/run-cell.R --mode=adjudicate \
+  --totoro-plan=/durable/totoro/plan.csv \
+  --totoro-output-dir=/durable/totoro/results \
+  --totoro-gate-receipt=/durable/totoro/gate-e.dcf \
+  --totoro-runtime-manifest=/durable/totoro/runtime.dcf \
+  --totoro-preflight-receipt=/durable/totoro/preflight.dcf \
+  --drac-plan=/project/.../plan.csv \
+  --drac-output-dir=/project/.../results \
+  --drac-gate-receipt=/project/.../gate-e.dcf \
+  --drac-runtime-manifest=/project/.../runtime.dcf \
+  --drac-preflight-receipt=/project/.../preflight.dcf \
+  --verdict-output=/durable/va-gh-h7-adjudication.csv \
+  --bootstrap-reps=5000
+```
+
+Every payload must match its platform's supplied Gate/runtime/preflight/plan
+checksum chain. The final receipt binds a 41,520-row input-bundle manifest, the
+adjudicator source checksum, both plans, and the verdict; final adjudication
+also requires a clean committed checkout.
+
+The point-route verdict combines DRAC operational reliability and paired
+VA/Laplace recovery with Totoro H7/H61 stability. VA-Wald and latent posterior-
+SD calibration remain separate labels and cannot silently promote a point
+route. Family-parameter recovery is retained as descriptive evidence because
+Design 110 did not predeclare a family-parameter threshold; the campaign does
+not invent one after seeing results. The DGP uses
+`Sigma = Lambda Lambda'` (`unique = FALSE`), so unique-Psi recovery remains
+explicitly outside this campaign. Thresholds are exactly those predeclared in
+Design 110 section 6.1.
 
 ## Williams et al. 11-item self-audit
 

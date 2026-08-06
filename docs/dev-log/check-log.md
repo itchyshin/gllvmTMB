@@ -48987,3 +48987,59 @@ probit Stage-8 campaign (`dev/va-usability/100-probit-stage8.R`) was still runni
 entry was written, and its results are not claimed here or anywhere in the after-task report.
 
 — VA ordination closing pass: report currency + claims-ledger rows 55-58 (Claude, 2026-08-05)
+
+## 2026-08-06 — VA(GH) H = 7 all-scalar-family Arc 1 preservation checkpoint
+
+Branch `codex/va-gh-all-families`, worktree `/private/tmp/gllvmtmb-va-gh-all-families`, based on
+`62f5809e`. The private VA R3 engine now implements exact/GH/hybrid expectations for all 18 scalar
+family/link cells (`family_id` 0:15; multinomial 16 excluded), H = 7 as a candidate, bounded
+fixed-effect VA-Wald inference, and retained latent posterior SD extraction. Public defaults and
+the integration fence were deliberately not promoted. Gate E is **NOT PASS** because the final
+independent likelihood verdict was interrupted.
+
+Targeted evidence actually run:
+
+```sh
+Rscript --vanilla -e 'devtools::test(filter = "va-all-family-(oracles|compiled)")'
+# 160 pass; 0 fail/warn/skip
+Rscript --vanilla -e 'testthat::set_max_fails(Inf); devtools::test(filter = "va-all-family-light-fits", stop_on_failure = FALSE)'
+# 174 pass; 0 fail/warn/skip; all 18 pure cells + mixed + two-tier
+Rscript --vanilla -e 'devtools::test(filter = "va-r3-prototype", stop_on_failure = TRUE)'
+# final: 624 pass; 0 fail/warn/skip
+Rscript --vanilla -e 'devtools::test(filter = "va-intervals")'
+# final: 101 pass; 0 fail/warn/skip
+# va-mixed-family: 24 pass; va-control-exposure: 33 pass before final core edits
+# R parse checks and bash -n on campaign scripts: PASS
+git diff --check
+# PASS before checkpoint records
+Rscript --vanilla /Users/z3437171/Dropbox/Github\ Local/Shinichi/tools/check-after-task.R docs/dev-log/after-task/2026-08-06-va-gh-h7-arc1-checkpoint.md
+# initial exact-heading failure repaired; final: after-task structure check passed
+```
+
+Consistency scans:
+
+```sh
+rg -n 'va_H = 61|va_H.*61|auto.*jj|pure binomial-logit.*JJ|Uncertainty remains fenced|no standard errors|families = c\(' R tests docs/design/104-va-family-coverage.md docs/design/108-va-parity-programme.md docs/design/110-va-gh-h7-all-scalar-families.md
+rg -n 'log_sigma_eps|log_sigma_lognormal|match_laplace_residual_sd' R src inst/tmb tests/testthat docs/design/110-va-gh-h7-all-scalar-families.md
+rg -n 'family code 3|code 4|family_id.?=.?16|H = 7|H=7' R inst/tmb tests/testthat docs/design/110-va-gh-h7-all-scalar-families.md
+```
+
+Verdict: the scans confirm the deliberate H = 61/JJ/three-family public hold, the private
+Laplace-scale comparator boundary, H = 7 cell coverage, and multinomial exclusion. They also expose
+one stale historical probit `family code 4` comment at `R/integration-fence.R:38`, carried to Gate E.
+
+Failures retained in the record: initial legacy schema drift (136 failures/23 warnings), an invalid
+interval DGP, several weak initial light DGPs, NB2 optimizer dispersion, the Laplace-vs-VA residual
+scale mismatch, and a NOT READY campaign audit. The DGPs and per-cell optimizer were repaired
+without weakening gates; a private pure-family scale-matching option was added. The Arc 2 scaffold
+under `dev/va-gh-h7-campaign/` remains incomplete and explicitly must not be submitted or executed.
+
+Deliberately not run: final rerun of the combined ordination/routing/probit target after its last
+label patch; full `devtools::test()`; `devtools::document()`; pkgdown/article rendering; `R CMD
+check`; cross-OS CI; Totoro/DRAC; gllvm/GLLVM.jl campaigns. `gh pr list --state open` could not reach
+GitHub; `git log --all --oneline --since="6 hours ago"` showed no foreign local lane. Full state and
+the single continuation action are in
+`docs/dev-log/recovery-checkpoints/2026-08-06-071338-codex-checkpoint.md` and
+`docs/dev-log/after-task/2026-08-06-va-gh-h7-arc1-checkpoint.md`.
+
+— Codex VA-GH H7 Arc 1 preservation checkpoint (2026-08-06)

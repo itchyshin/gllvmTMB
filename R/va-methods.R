@@ -10,10 +10,9 @@
 ## deliberate rather than accidental.
 ##
 ## Two hazards are handled separately:
-##   * `logLik` / `confint` / `vcov` -- R has no `logLik.default` and no
-##     `vcov.default`, so these already fail. They are defined anyway, because
-##     "fails with a message about a missing method" is not the same as "tells
-##     the user the objective is a bound".
+##   * `logLik` remains undefined because an ELBO is not a marginal likelihood.
+##     `confint` / `vcov` expose only the fixed-effect beta block from the
+##     profiled Schur information, labelled VA-Wald and uncalibrated.
 ##   * `coef` / `residuals` -- `coef.default` and `residuals.default` DO exist
 ##     and silently return `NULL` on a list. Without an explicit method these
 ##     are silent non-answers, which is why they are in the fail-loud set even
@@ -41,11 +40,11 @@
 #'
 #' This is an opt-in research route. Its objective is an **ELBO** -- a lower
 #' bound on the log-likelihood -- not a log-likelihood, and its inverse
-#' Hessian is not calibrated frequentist uncertainty. Accordingly
-#' [logLik()], [AIC()], [BIC()], [confint()], [vcov()], [coef()],
-#' [residuals()], and [predict()] all raise an error rather than return a
-#' number that would look comparable to the Laplace route's but would not
-#' be.
+#' Hessian is not automatically calibrated frequentist uncertainty.
+#' Accordingly [logLik()], [AIC()], and [BIC()] remain undefined. [vcov()]
+#' and [confint()] expose only fixed-effect VA-Wald uncertainty computed from
+#' the profiled Schur information matrix. The returned values are explicitly
+#' labelled uncalibrated; raw-loading Wald intervals are not available.
 #'
 #' The ordination surface is the exception: [extract_ordination()],
 #' [getLV()], [getLoadings()], and [extract_loadings()] all work for a
@@ -58,14 +57,16 @@
 #' @param x,object A fit returned by [gllvmTMB()] with
 #'   `control = gllvmTMBcontrol(integration = "va")`.
 #' @param digits Decimal digits in the printed output. Default 3.
-#' @param parm,level Accepted for compatibility with the [confint()] generic
-#'   and never used: `confint()` always raises an error for a variational fit.
+#' @param parm Fixed-effect coefficient indices or names for [confint()]. By
+#'   default all fixed effects are returned.
+#' @param level Nominal confidence level for fixed-effect VA-Wald intervals.
 #' @param ... Currently unused.
 #' @return `print()` and `print.summary()` return their argument invisibly.
 #'   `summary()` returns an object of class `"summary.gllvmTMB_va"`.
-#'   `nobs()` returns an integer count of unit-by-response cells. Every other
-#'   method documented here raises an error and returns nothing: see the
-#'   description above for why.
+#'   `nobs()` returns an integer count of unit-by-response cells. `vcov()`
+#'   returns the profiled-Schur beta covariance matrix and `confint()` its
+#'   nominal Wald intervals; both carry `calibrated = FALSE` and
+#'   `uncertainty_basis = "VA-Wald profiled Schur information"` attributes.
 #' @name gllvmTMB_va-methods
 NULL
 
@@ -98,8 +99,8 @@ print.gllvmTMB_va <- function(x, digits = 3, ...) {
                 format(x$diagnostics$max_abs_gradient, digits = 2)))
   }
   cat("\n  Research-only route (Design 85). The objective is a lower bound, so\n")
-  cat("  logLik()/AIC()/BIC() are not defined. calibrated = FALSE: no standard\n")
-  cat("  errors and no intervals are available for this route.\n")
+  cat("  logLik()/AIC()/BIC() are not defined. Fixed-effect VA-Wald intervals\n")
+  cat("  use profiled Schur information and remain calibrated = FALSE.\n")
   invisible(x)
 }
 
@@ -162,9 +163,9 @@ print.summary.gllvmTMB_va <- function(x, digits = 3, ...) {
                   n_hidden, if (n_hidden == 1L) "" else "s"))
     }
   }
-  cat("\n  calibrated = FALSE. The inverse variational Hessian is not\n")
-  cat("  calibrated frequentist uncertainty, so no standard errors or\n")
-  cat("  intervals are reported. logLik()/AIC()/BIC() are not defined:\n")
+  cat("\n  calibrated = FALSE. Fixed-effect VA-Wald uncertainty is available via\n")
+  cat("  vcov()/confint() from profiled Schur information; it is not a nominal\n")
+  cat("  coverage guarantee. logLik()/AIC()/BIC() are not defined:\n")
   cat("  the objective is a lower bound, not a log-likelihood.\n")
   invisible(x)
 }
@@ -191,22 +192,93 @@ logLik.gllvmTMB_va <- function(object, ...) {
 #' @rdname gllvmTMB_va-methods
 #' @export
 confint.gllvmTMB_va <- function(object, parm, level = 0.95, ...) {
-  .va_not_defined(
-    "confint",
-    "{.code calibrated = FALSE}: the inverse variational Hessian is not
-     calibrated frequentist uncertainty, so no interval computed from it would
-     have its nominal coverage."
-  )
+  .va_require_healthy_wald_fit(object)
+  ci <- .va_wald_beta_ci(object, level = level)
+  beta_names <- .va_beta_names(object, nrow(ci))
+  rownames(ci) <- beta_names
+  keep <- .va_resolve_beta_parm(parm, beta_names)
+  out <- as.matrix(ci[keep, c("lower", "upper"), drop = FALSE])
+  colnames(out) <- paste0(c((1 - level) / 2, 1 - (1 - level) / 2) * 100, "%")
+  attr(out, "route") <- "va_wald_profile_schur"
+  attr(out, "calibrated") <- FALSE
+  attr(out, "uncertainty_basis") <- "VA-Wald profiled Schur information"
+  out
 }
 
 #' @rdname gllvmTMB_va-methods
 #' @export
 vcov.gllvmTMB_va <- function(object, ...) {
-  .va_not_defined(
-    "vcov",
-    "{.code calibrated = FALSE}: the inverse variational Hessian is not a
-     calibrated covariance matrix (Design 85 s10)."
+  .va_require_healthy_wald_fit(object)
+  raw <- object$engine_result
+  par <- raw$best$par
+  nm <- names(par)
+  dims <- .va_r3_infer_dims(nm)
+  if (is.null(dims)) {
+    cli::cli_abort(
+      "Could not infer the single-tier variational layout; fixed-effect VA-Wald covariance is unavailable."
+    )
+  }
+  schur <- .va_r3_schur_fixed_covariance(
+    raw$objective, par, N = dims$N, q = dims$q
   )
+  if (!identical(schur$status, "ok") || is.null(schur$covariance)) {
+    cli::cli_abort(
+      "Profiled Schur information is unusable ({.val {schur$status}}); no fixed-effect VA-Wald covariance was returned."
+    )
+  }
+  beta_idx <- which(schur$names == "beta")
+  if (!length(beta_idx)) {
+    cli::cli_abort("The variational fit has no fixed-effect beta block.")
+  }
+  out <- schur$covariance[beta_idx, beta_idx, drop = FALSE]
+  beta_names <- .va_beta_names(object, length(beta_idx))
+  dimnames(out) <- list(beta_names, beta_names)
+  attr(out, "route") <- "va_wald_profile_schur"
+  attr(out, "calibrated") <- FALSE
+  attr(out, "uncertainty_basis") <- "VA-Wald profiled Schur information"
+  out
+}
+
+.va_require_healthy_wald_fit <- function(object) {
+  if (!inherits(object, "gllvmTMB_va") ||
+      !identical(object$status, "healthy") ||
+      is.null(object$engine_result$objective) ||
+      is.null(object$engine_result$best$par)) {
+    cli::cli_abort(
+      "Fixed-effect VA-Wald inference requires a healthy variational fit with its retained objective."
+    )
+  }
+  invisible(object)
+}
+
+.va_beta_names <- function(object, n_beta) {
+  candidate <- object$beta_names
+  if (is.null(candidate) || length(candidate) != n_beta || anyNA(candidate) ||
+      any(!nzchar(candidate))) {
+    candidate <- paste0("beta[", seq_len(n_beta), "]")
+  }
+  make.unique(as.character(candidate))
+}
+
+.va_resolve_beta_parm <- function(parm, beta_names) {
+  if (missing(parm) || is.null(parm)) return(seq_along(beta_names))
+  if (is.numeric(parm)) {
+    parm <- as.integer(parm)
+    if (anyNA(parm) || any(parm < 1L | parm > length(beta_names))) {
+      cli::cli_abort("Numeric {.arg parm} indices are outside the fixed-effect beta block.")
+    }
+    return(parm)
+  }
+  if (is.character(parm)) {
+    idx <- match(parm, beta_names)
+    if (anyNA(idx)) {
+      cli::cli_abort(
+        "Unknown fixed-effect {.arg parm}: {.val {parm[is.na(idx)]}}."
+      )
+    }
+    return(idx)
+  }
+  cli::cli_abort("{.arg parm} must be NULL, numeric indices, or fixed-effect names.")
 }
 
 #' @rdname gllvmTMB_va-methods

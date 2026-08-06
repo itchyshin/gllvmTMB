@@ -119,7 +119,7 @@
 ##
 ## Admitting an order is NOT endorsing it. The default stays 61 until a ladder on
 ## shared cells shows a smaller order matches it on trace / eta_var / rel_frob.
-.va_r3_gh_rule <- function(H = 61L) {
+.va_r3_gh_rule <- function(H = 7L) {
   H <- as.integer(H)
   if (length(H) != 1L || is.na(H) || H < 3L || H %% 2L == 0L) {
     stop("The R3 quadrature order must be a single odd integer H >= 3 ",
@@ -253,14 +253,20 @@
     gaussian = 0L,
     binomial = 1L,
     poisson = 2L,
-    nbinom2 = 3L,
-    binomial_probit = 4L,
-    stop("R3 family must be one of gaussian_anchor/gaussian, binomial, poisson, nbinom2, binomial_probit.",
+    lognormal = 3L, gamma = 4L, nbinom2 = 5L, tweedie = 6L,
+    beta = 7L, betabinomial = 8L, student = 9L,
+    truncated_poisson = 10L, truncated_nbinom2 = 11L,
+    delta_lognormal = 12L, delta_gamma = 13L,
+    ordinal_probit = 14L, nbinom1 = 15L,
+    binomial_probit = 1L, binomial_cloglog = 1L,
+    stop("R3 family must be one of the Laplace-aligned scalar families 0:15.",
          call. = FALSE)
   )
 }
 
-## Laplace (family_id, link_id) -> VA-R3 family code. Unsupported pairs error.
+## Laplace (family_id, link_id) -> VA-R3 family code. Design 110 deliberately
+## makes this the identity for scalar families; the function remains as a
+## validation boundary for callers that previously used the VA-only enum.
 ##
 ## LINK-AWARE, and that is load-bearing rather than tidy. Laplace encodes
 ## binomial-logit and binomial-PROBIT with the SAME family_id (1), separated
@@ -276,23 +282,20 @@
   if (length(lid) != length(fid)) {
     stop("family_id and link_id must have the same length.", call. = FALSE)
   }
-  out <- rep(NA_integer_, length(fid))
-  out[fid == 0L & lid == 0L] <- 0L  # gaussian identity
-  out[fid == 1L & lid == 0L] <- 1L  # binomial logit
-  out[fid == 2L & lid == 0L] <- 2L  # poisson log
-  out[fid == 5L & lid == 0L] <- 3L  # nbinom2 log
-  out[fid == 1L & lid == 1L] <- 4L  # binomial probit (Design 108 Stage 4)
-  if (anyNA(out)) {
-    bad <- unique(paste0("(", fid[is.na(out)], ", ", lid[is.na(out)], ")"))
+  ok <- fid %in% 0:15 & lid %in% 0:2 & (fid == 1L | lid == 0L)
+  if (any(!ok)) {
+    bad <- unique(paste0("(", fid[!ok], ", ", lid[!ok], ")"))
     stop("VA-R3 does not admit Laplace (family_id, link_id) pairs: ",
          paste(bad, collapse = ", "), ".", call. = FALSE)
   }
-  as.integer(out)
+  as.integer(fid)
 }
 
 .va_r3_code_to_name <- function(code) {
-  c("gaussian_anchor", "binomial", "poisson", "nbinom2",
-    "binomial_probit")[as.integer(code) + 1L]
+  c("gaussian_anchor", "binomial", "poisson", "lognormal", "gamma",
+    "nbinom2", "tweedie", "beta", "betabinomial", "student",
+    "truncated_poisson", "truncated_nbinom2", "delta_lognormal",
+    "delta_gamma", "ordinal_probit", "nbinom1")[as.integer(code) + 1L]
 }
 
 ## Per-tier structural contract for the VA-R3 engine (Design 108 Gate A
@@ -646,8 +649,22 @@
                                  gaussian_sd = 1,
                                  is_y_observed = NULL,
                                  family_codes = NULL,
+                                 link_ids = NULL,
                                  estimate_gaussian_sd = TRUE,
-                                 extra_tiers = NULL) {
+                                 extra_tiers = NULL,
+                                 n_ordinal_cuts_per_trait = NULL,
+                                 ordinal_offset_per_trait = NULL,
+                                 ordinal_log_increments_start = NULL) {
+  link_was_missing <- missing(link)
+  if (is.character(family) && length(family) == 1L &&
+      family %in% c("binomial_probit", "binomial_cloglog")) {
+    implied_link <- if (identical(family, "binomial_probit")) "probit" else "cloglog"
+    if (!link_was_missing && !identical(as.character(link), implied_link)) {
+      stop("family = \"", family, "\" requires link = \"", implied_link,
+           "\".", call. = FALSE)
+    }
+    link <- implied_link
+  }
   if (length(q) != 1L || !is.numeric(q) || !is.finite(q) ||
       q != as.integer(q) || q < 0L || q > 6L) {
     stop("q must be one integer in 0..6.", call. = FALSE)
@@ -743,8 +760,8 @@
   if (!is.null(family_codes)) {
     family_codes <- as.integer(family_codes)
     if (length(family_codes) != n_obs ||
-        any(!family_codes %in% c(0L, 1L, 2L, 3L, 4L))) {
-      stop("family_codes must be length nrow(X) with entries in {0,1,2,3,4}.",
+        any(!family_codes %in% 0:15)) {
+      stop("family_codes must be length nrow(X) with Laplace scalar ids 0:15.",
            call. = FALSE)
     }
   } else if (is.numeric(family) || is.integer(family)) {
@@ -753,8 +770,8 @@
       family_codes <- rep.int(family_codes, n_obs)
     }
     if (length(family_codes) != n_obs ||
-        any(!family_codes %in% c(0L, 1L, 2L, 3L, 4L))) {
-      stop("numeric family must be length 1 or nrow(X) with codes in {0,1,2,3,4}.",
+        any(!family_codes %in% 0:15)) {
+      stop("numeric family must be length 1 or nrow(X) with codes in 0:15.",
            call. = FALSE)
     }
   } else {
@@ -770,36 +787,30 @@
     }
   }
 
-  ## Per-row link: scalar recycled, or length-n_obs character. Mixed-family
-  ## fits often arrive with a placeholder scalar link from the route; derive
-  ## the dense vector from family_codes in that case (Design 108 Stage 2).
-  if (length(link) == 1L) {
-    uniq_codes <- unique(family_codes)
-    if (length(uniq_codes) > 1L) {
-      link_vec <- vapply(family_codes, function(code) {
-        switch(as.character(code),
-               "0" = "identity", "1" = "logit", "2" = "log", "3" = "log",
-               "4" = "probit",
-               "logit")
-      }, character(1L))
-    } else {
-      link_vec <- rep.int(as.character(link), n_obs)
-    }
+  ## Design 110 carries the Laplace link id explicitly. Character `link` remains
+  ## an ergonomic alias for hand-built prototype fixtures.
+  if (is.null(link_ids)) {
+    link_vec <- rep_len(as.character(link), n_obs)
+    link_ids <- match(link_vec, c("logit", "probit", "cloglog")) - 1L
+    nonbin <- family_codes != 1L
+    canonical <- ifelse(family_codes %in% c(0L, 9L), "identity",
+                        ifelse(family_codes %in% c(7L, 8L), "logit",
+                               ifelse(family_codes == 14L, "probit", "log")))
+    link_ids[nonbin] <- 0L
+    link_vec[nonbin] <- canonical[nonbin]
   } else {
-    link_vec <- as.character(link)
-    if (length(link_vec) != n_obs) {
-      stop("link must be length 1 or nrow(X).", call. = FALSE)
-    }
+    link_ids <- as.integer(link_ids)
+    if (length(link_ids) == 1L) link_ids <- rep.int(link_ids, n_obs)
+    link_vec <- ifelse(family_codes == 1L,
+                       c("logit", "probit", "cloglog")[link_ids + 1L],
+                       ifelse(family_codes %in% c(0L, 9L), "identity",
+                              ifelse(family_codes %in% c(7L, 8L), "logit",
+                                     ifelse(family_codes == 14L, "probit", "log"))))
   }
-  for (code in unique(family_codes)) {
-    rows <- which(family_codes == code)
-    want <- switch(as.character(code),
-                   "0" = "identity", "1" = "logit", "2" = "log", "3" = "log",
-                   "4" = "probit")
-    if (any(link_vec[rows] != want)) {
-      stop("R3 link for family code ", code, " must be \"", want, "\".",
-           call. = FALSE)
-    }
+  if (length(link_ids) != n_obs || anyNA(link_ids) || any(!link_ids %in% 0:2) ||
+      any(family_codes != 1L & link_ids != 0L)) {
+    stop("link_ids must be length nrow(X), use 0:2 for binomial, and 0 otherwise.",
+         call. = FALSE)
   }
 
   if (!is.numeric(y) || any(!is.finite(y)) ||
@@ -808,8 +819,7 @@
          call. = FALSE)
   }
 
-  ## Codes 1 (logit) and 4 (probit) are the same binomial response shape.
-  bin_obs <- observed & family_codes %in% c(1L, 4L)
+  bin_obs <- observed & family_codes %in% c(1L, 8L)
   if (any(bin_obs) &&
       (any(y[bin_obs] != as.integer(y[bin_obs])) ||
        any(n_trials[bin_obs] != as.integer(n_trials[bin_obs])) ||
@@ -829,19 +839,62 @@
   ## detector for probit data. If anything the refusal matters MORE there: the
   ## normal tail is thinner than the logistic one, so a separated probit
   ## likelihood flattens out faster.
-  if (any(bin_obs) && all(family_codes[observed] %in% c(1L, 4L))) {
+  if (any(bin_obs) && all(family_codes[observed] == 1L)) {
     .va_r3_check_separation(y[bin_obs], n_trials[bin_obs], X[bin_obs, , drop = FALSE])
   }
-  count_obs <- observed & family_codes %in% c(2L, 3L)
+  count_obs <- observed & family_codes %in% c(2L, 5L, 15L)
   if (any(count_obs) &&
       (any(y[count_obs] != as.integer(y[count_obs])) || any(y[count_obs] < 0L))) {
-    stop("Poisson/nbinom2 R3 data require finite non-negative integer y on observed rows.",
+    stop("Count R3 data require finite non-negative integer y on observed rows.",
          call. = FALSE)
   }
-  ## Non-binomial branches do not use n_trials; keep finite sentinels. Both
-  ## binomial codes (1 logit, 4 probit) DO use it, so neither may be reset.
+  tweedie_obs <- observed & family_codes == 6L
+  if (any(tweedie_obs) && any(y[tweedie_obs] < 0))
+    stop("Tweedie R3 data require y >= 0.", call. = FALSE)
+  delta_obs <- observed & family_codes %in% c(12L, 13L)
+  if (any(delta_obs) && any(y[delta_obs] < 0))
+    stop("Delta-family R3 data require y >= 0.", call. = FALSE)
+  beta_obs <- observed & family_codes == 7L
+  if (any(beta_obs) && any(y[beta_obs] <= 0 | y[beta_obs] >= 1))
+    stop("Beta R3 data require 0 < y < 1.", call. = FALSE)
+  positive_obs <- observed & family_codes %in% c(3L, 4L)
+  if (any(positive_obs) && any(y[positive_obs] <= 0))
+    stop("Lognormal and Gamma R3 data require y > 0.", call. = FALSE)
+  trunc_obs <- observed & family_codes %in% c(10L, 11L)
+  if (any(trunc_obs) && any(y[trunc_obs] < 1L | y[trunc_obs] != as.integer(y[trunc_obs])))
+    stop("Zero-truncated count R3 data require positive integer y.", call. = FALSE)
+
+  ## Ordinal packing follows the Laplace engine. If metadata are absent, infer K
+  ## from the observed categories of each ordinal trait and start all spacings at
+  ## one (log increment zero).
+  if (is.null(n_ordinal_cuts_per_trait)) n_ordinal_cuts_per_trait <- integer(T)
+  if (is.null(ordinal_offset_per_trait)) ordinal_offset_per_trait <- integer(T)
+  n_ordinal_cuts_per_trait <- as.integer(n_ordinal_cuts_per_trait)
+  ordinal_offset_per_trait <- as.integer(ordinal_offset_per_trait)
+  if (length(n_ordinal_cuts_per_trait) != T || length(ordinal_offset_per_trait) != T)
+    stop("ordinal metadata vectors must have length T.", call. = FALSE)
+  ordinal_traits <- which(vapply(seq_len(T) - 1L, function(t)
+    any(observed & tid == t & family_codes == 14L), logical(1L))) - 1L
+  if (length(ordinal_traits) && all(n_ordinal_cuts_per_trait[ordinal_traits + 1L] == 0L)) {
+    cursor <- 0L
+    for (t in ordinal_traits) {
+      rows <- observed & tid == t & family_codes == 14L
+      K <- max(as.integer(y[rows]))
+      if (K < 2L || any(y[rows] < 1L | y[rows] != as.integer(y[rows])))
+        stop("ordinal_probit requires integer categories 1..K with K >= 2.", call. = FALSE)
+      n_ordinal_cuts_per_trait[t + 1L] <- K - 2L
+      ordinal_offset_per_trait[t + 1L] <- cursor
+      cursor <- cursor + K - 2L
+    }
+  }
+  n_ord <- sum(n_ordinal_cuts_per_trait)
+  if (is.null(ordinal_log_increments_start)) ordinal_log_increments_start <- rep(0, n_ord)
+  if (length(ordinal_log_increments_start) != n_ord || any(!is.finite(ordinal_log_increments_start)))
+    stop("ordinal_log_increments_start must have sum(K_t - 2) finite entries.", call. = FALSE)
+
+  ## Only binomial and beta-binomial use n_trials.
   n_trials <- as.integer(n_trials)
-  n_trials[!(family_codes %in% c(1L, 4L))] <- 1L
+  n_trials[!(family_codes %in% c(1L, 8L))] <- 1L
 
   if (!is.numeric(gaussian_sd) || any(!is.finite(gaussian_sd)) ||
       any(gaussian_sd <= 0)) {
@@ -858,7 +911,10 @@
 
   uniq <- unique(family_codes)
   family_name <- if (length(uniq) == 1L) {
-    .va_r3_code_to_name(uniq)
+    if (uniq == 1L && length(unique(link_ids)) == 1L)
+      c("binomial", "binomial_probit", "binomial_cloglog")[unique(link_ids) + 1L]
+    else if (uniq == 1L) "mixed_binomial_links"
+    else .va_r3_code_to_name(uniq)
   } else {
     "mixed"
   }
@@ -878,8 +934,12 @@
     structured = structured_spec,
     unique = want_psi,
     family = as.integer(family_codes),
+    link_id = as.integer(link_ids),
     family_name = family_name,
     link = if (length(unique(link_vec)) == 1L) link_vec[1L] else link_vec,
+    n_ordinal_cuts_per_trait = n_ordinal_cuts_per_trait,
+    ordinal_offset_per_trait = ordinal_offset_per_trait,
+    ordinal_log_increments_start = as.numeric(ordinal_log_increments_start),
     log_sigma_start = as.numeric(log_sigma_start),
     ## Design 108 default is estimated per-trait SD; oracle / variance-domain
     ## fixtures may pin log_sigma at the start value (pre-Stage-2 DATA_SCALAR).
@@ -926,7 +986,18 @@
   }
   source <- .va_r3_find_source(source)
   stamp <- unname(tools::md5sum(source))
-  build_dir <- file.path(tempdir(), paste0("gllvmTMB-va-r3-", stamp))
+  ## Campaign workers may share one PRECOMPILED standalone template. Without
+  ## this opt-in path every process builds under its private tempdir, so a
+  ## 100-worker Totoro launch would compile the same source 100 times. The
+  ## default remains process-local; the environment override changes only the
+  ## build/cache location and the checksum suffix still binds it to the source.
+  shared_root <- Sys.getenv("GLLVMTMB_VA_R3_BUILD_ROOT", unset = "")
+  build_root <- if (nzchar(shared_root)) {
+    normalizePath(shared_root, mustWork = FALSE)
+  } else {
+    tempdir()
+  }
+  build_dir <- file.path(build_root, paste0("gllvmTMB-va-r3-", stamp))
   cpp <- file.path(build_dir, "gllvmTMB_va_r3.cpp")
   if (!dir.exists(build_dir)) dir.create(build_dir, recursive = TRUE)
   if (!file.exists(cpp) || isTRUE(rebuild)) {
@@ -1018,22 +1089,28 @@
 ## non-finite eigendecomposition, or a rotation that fails the lower-triangle
 ## check above.
 ## Link-scale pseudo-responses for warm starts (Design 108: per-row family).
-.va_r3_link_pseudo <- function(y, n_trials, family_codes) {
+.va_r3_link_pseudo <- function(y, n_trials, family_codes, link_ids = NULL) {
   fam <- as.integer(family_codes)
+  if (is.null(link_ids)) link_ids <- rep.int(0L, length(fam))
   out <- as.numeric(y)
   bin <- fam == 1L
   if (any(bin)) {
     prop <- pmin(pmax((y[bin] + 0.5) / (n_trials[bin] + 1), 1e-6), 1 - 1e-6)
-    out[bin] <- stats::qlogis(prop)
+    ids <- as.integer(link_ids[bin])
+    out[bin] <- ifelse(ids == 1L, stats::qnorm(prop),
+                       ifelse(ids == 2L, log(-log1p(-prop)), stats::qlogis(prop)))
   }
-  probit <- fam == 4L
-  if (any(probit)) {
-    prop <- pmin(pmax((y[probit] + 0.5) / (n_trials[probit] + 1), 1e-6),
-                 1 - 1e-6)
-    out[probit] <- stats::qnorm(prop)
+  log_link <- fam %in% c(2L, 3L, 4L, 5L, 6L, 10L, 11L, 12L, 13L, 15L)
+  if (any(log_link)) out[log_link] <- log(y[log_link] + 0.5)
+  beta_link <- fam %in% c(7L, 8L)
+  if (any(beta_link)) {
+    prop <- ifelse(fam[beta_link] == 8L,
+                   (y[beta_link] + 0.5) / (n_trials[beta_link] + 1),
+                   y[beta_link])
+    out[beta_link] <- stats::qlogis(pmin(pmax(prop, 1e-6), 1 - 1e-6))
   }
-  count <- fam %in% c(2L, 3L)
-  if (any(count)) out[count] <- log(y[count] + 0.5)
+  ord <- fam == 14L
+  if (any(ord)) out[ord] <- stats::qnorm((rank(y[ord], ties.method = "average") - 0.5) / sum(ord))
   out
 }
 
@@ -1043,7 +1120,7 @@
   q <- data$q
   if (N < 2L) return(NULL)
   eta_fixed <- as.numeric(data$X %*% beta)
-  pseudo <- .va_r3_link_pseudo(data$y, data$n_trials, data$family)
+  pseudo <- .va_r3_link_pseudo(data$y, data$n_trials, data$family, data$link_id)
   resid <- pseudo - eta_fixed
   Z <- matrix(NA_real_, nrow = N, ncol = T)
   Z[cbind(data$unit_id + 1L, data$trait_id + 1L)] <- resid
@@ -1075,7 +1152,7 @@
   p <- ncol(data$X)
   start_id <- as.integer(start_id)
   beta <- rep(0, p)
-  pseudo <- .va_r3_link_pseudo(data$y, data$n_trials, data$family)
+  pseudo <- .va_r3_link_pseudo(data$y, data$n_trials, data$family, data$link_id)
   beta_fit <- tryCatch(stats::lm.fit(data$X, pseudo)$coefficients,
                        error = function(e) rep(0, p))
   if (length(beta_fit) == p && all(is.finite(beta_fit))) beta <- unname(beta_fit)
@@ -1150,16 +1227,25 @@
     m = m,
     log_L_diag = log_L_diag,
     L_off = L_off,
-    ## Mapped off (fixed at this default) for every family except nbinom2;
-    ## log_phi = 0 means phi = 1 on the natural scale.
-    log_phi = rep(0, T),
-    ## Design 108 Stage 2: per-trait Gaussian log-SD; mapped off for
-    ## non-Gaussian traits. Start from validated log_sigma_start when present.
     log_sigma = if (!is.null(data$log_sigma_start)) {
       as.numeric(data$log_sigma_start)
     } else {
       rep(0, T)
-    }
+    },
+    log_sigma_lognormal = rep(0, T),
+    log_phi_gamma = rep(0, T),
+    log_phi_nbinom2 = rep(0, T),
+    log_phi_tweedie = rep(0, T),
+    logit_p_tweedie = rep(0, T),
+    log_phi_beta = rep(1, T),
+    log_phi_betabinom = rep(1, T),
+    log_sigma_student = rep(0, T),
+    log_df_student = rep(log(4), T),
+    log_phi_truncnb2 = rep(0, T),
+    log_sigma_lognormal_delta = rep(0, T),
+    log_phi_gamma_delta = rep(0, T),
+    ordinal_log_increments = data$ordinal_log_increments_start %||% numeric(0),
+    log_phi_nbinom1 = rep(0, T)
   )
 }
 
@@ -1181,133 +1267,76 @@
 ##   expectation  : how E[log p(y|eta)] is obtained under default_tier --
 ##                  "exact" (closed form), "quadrature" (Gauss-Hermite), or
 ##                  "bound" (a variational bound, deliberately not an equality)
+.va_r3_registry_row <- function(family, family_code, link, link_id = 0L,
+                                expectation = "quadrature", tiers = "gh",
+                                optimizer_by_tier = NULL) {
+  if (is.null(optimizer_by_tier)) {
+    optimizer_by_tier <- stats::setNames(rep(list("nlminb"), length(tiers)), tiers)
+  }
+  if (!identical(sort(names(optimizer_by_tier)), sort(tiers)) ||
+      any(!unlist(optimizer_by_tier, use.names = FALSE) %in% c("nlminb", "lbfgsb"))) {
+    stop("optimizer_by_tier must name every declared evaluation tier with nlminb or lbfgsb.",
+         call. = FALSE)
+  }
+  list(family = family, family_code = as.integer(family_code), link = link,
+       link_id = as.integer(link_id), tiers = tiers, default_tier = "gh",
+       expectation = expectation, optimizer_by_tier = optimizer_by_tier)
+}
+
 .va_r3_family_registry <- list(
-  ## Gaussian anchor -- E[(y - eta)^2] = (y - mu)^2 + v in closed form, so the
-  ## quadrature nodes are never touched and no bound is needed.
-  list(
-    family = "gaussian_anchor",
-    family_code = 0L,
-    link = "identity",
-    tiers = "gh",
-    default_tier = "gh",
-    expectation = "exact",
-    ## lbfgsb median 2.13x (range 1.76-2.50, 4 cells), all agreeing.
+  ## Preserve the measured pre-Design-110 routes, then add the one new route
+  ## earned by Gate E. These choices alter optimisation only, never the model.
+  .va_r3_registry_row(
+    "gaussian_anchor", 0L, "identity", expectation = "exact",
     optimizer_by_tier = list(gh = "lbfgsb")
   ),
-
-  ## Binomial-logit -- the only family with a genuine choice. Gauss-Hermite
-  ## evaluates E[softplus(eta)] to quadrature accuracy; the Jaakkola-Jordan/PG
-  ## bound over-estimates it in closed form, which is what keeps the ELBO a
-  ## valid lower bound. "auto" takes the bound: measured 1.9-4.0x faster
-  ## (n = 200/400/800, interleaved) with better Sigma_B recovery on 20/20
-  ## paired seeds. Ask for "gh" to force quadrature -- the controlled bound
-  ## comparisons in dev/ do exactly that.
-  list(
-    family = "binomial",
-    family_code = 1L,
-    link = "logit",
-    tiers = c("gh", "jj"),
-    default_tier = "jj",
-    expectation = "bound",
-    ## The tiers disagree sharply and in OPPOSITE directions, which is why the
-    ## optimiser has to be resolved per TIER and not per family: on jj lbfgsb is
-    ## median 2.54x FASTER (1.31-6.33, 4 cells); on gh it is median 0.57x, i.e.
-    ## 1.7x SLOWER (0.35-1.02). gh is the accurate tier, so a family-level
-    ## choice would have slowed down the arm we most want fast.
+  .va_r3_registry_row(
+    "binomial", 1L, "logit", 0L, tiers = c("gh", "jj"),
     optimizer_by_tier = list(gh = "nlminb", jj = "lbfgsb")
   ),
-
-  ## Poisson-log -- E[exp(eta)] = exp(mu + v/2) is the log-normal mean, exact.
-  list(
-    family = "poisson",
-    family_code = 2L,
-    link = "log",
-    tiers = "gh",
-    default_tier = "gh",
-    expectation = "exact",
-    ## lbfgsb median 1.25x but the range STRADDLES 1 (0.96-3.25, 6 cells), so
-    ## it is not reliably faster. nlminb stays the reference here.
-    optimizer_by_tier = list(gh = "nlminb")
-  ),
-
-  ## Negative binomial (nbinom2, log link) -- the only hard term,
-  ## E[log(phi + exp(eta))], reduces to log(phi) + E[softplus(eta - log(phi))],
-  ## which is the same Gauss-Hermite softplus-expectation helper the binomial
-  ## family already uses, evaluated at a shifted mean. No new quadrature
-  ## machinery; only a shifted call.
-  list(
-    family = "nbinom2",
-    family_code = 3L,
-    link = "log",
-    tiers = "gh",
-    default_tier = "gh",
-    expectation = "quadrature",
-    ## lbfgsb median 0.42x -- 2.4x SLOWER (0.26-0.63, 6 cells) -- and nbinom2
-    ## produced the ONLY same-optimum disagreement in the whole sweep
-    ## (max|dpar| 0.0119 at q=2 with identical objectives). Routing here to
-    ## nlminb keeps "auto" away from the one cell that disagreed.
-    optimizer_by_tier = list(gh = "nlminb")
-  ),
-
-  ## Binomial-PROBIT (Design 108 Gate A Stage 4). E[log Phi(eta)] has no closed
-  ## form, and no analogue of the Jaakkola-Jordan bound exists, so asking for
-  ## "jj" here is an error rather than a fallback.
-  ##
-  ## "ac" is the Albert-Chib closed form (dev/va-speed/ALBERT-CHIB-DERIVATION.md):
-  ## a truncated-normal augmentation whose auxiliary z profiles out analytically,
-  ## leaving y logPhi(mu) + (n-y) logPhi(-mu) - n v/2. It touches no quadrature
-  ## node, which is where ~75% of this family's fit cost currently goes.
-  ##
-  ## "ac2" is the curvature-corrected sibling of "ac"
-  ## (inst/tmb/gllvmTMB_va_r3.cpp, va_r3_probit_ac2_expectation): the same
-  ## closed-form structure, but with the EXACT mu-dependent second derivative
-  ## of logPhi/log(1-Phi) in place of "ac"'s constant worst-case -1. It is
-  ## MORE ACCURATE on average than "ac" (diagnosis: over-charging by up to
-  ## pi/2 uniformly) but, unlike "ac", is NOT a proven ELBO lower bound -- it
-  ## is a plain delta-method expansion, not a data-augmentation identity, so
-  ## its error is unsigned. A diagnosis/comparison tier, not a replacement.
-  ##
-  ## `default_tier` STAYS "gh" for both. AC/AC2 are DIFFERENT objectives from
-  ## GH (AC strictly lower; AC2 an unsigned-error approximation), so neither
-  ## inherits GH's accuracy evidence, and neither may become the default
-  ## before it carries its own against planted truth (MATURE-VA.md Item 1's
-  ## falsifier: rel_frob must stay <= 0.298).
-  ##
-  ## RESEARCH SPIKE, not a capability: this entry makes the family reachable
-  ## from the prototype engine only. It is deliberately NOT on the public
-  ## integration fence (R/integration-fence.R), so `integration = "va"` still
-  ## refuses binomial-probit from the formula API. No recovery evidence exists.
-  ##
-  ## optimizer: no benchmark has been run for this family, so all tiers
-  ## inherit the reference optimiser rather than claiming a measured choice.
-  list(
-    family = "binomial_probit",
-    family_code = 4L,
-    link = "probit",
-    tiers = c("gh", "ac", "ac2"),
-    default_tier = "gh",
-    expectation = "quadrature",
-    optimizer_by_tier = list(gh = "nlminb", ac = "nlminb", ac2 = "nlminb")
-  )
+  .va_r3_registry_row("binomial_probit", 1L, "probit", 1L,
+                      tiers = c("gh", "ac", "ac2")),
+  .va_r3_registry_row("binomial_cloglog", 1L, "cloglog", 2L),
+  .va_r3_registry_row("poisson", 2L, "log", expectation = "exact"),
+  .va_r3_registry_row("lognormal", 3L, "log", expectation = "exact"),
+  .va_r3_registry_row("gamma", 4L, "log", expectation = "exact"),
+  ## Gate-E known-DGP H7 fixture: nlminb returned three small-gradient starts
+  ## whose objectives differed by 0.002; L-BFGS-B agreed to the 1e-6 gate.
+  .va_r3_registry_row("nbinom2", 5L, "log",
+                      optimizer_by_tier = list(gh = "lbfgsb")),
+  .va_r3_registry_row("tweedie", 6L, "log"),
+  .va_r3_registry_row("beta", 7L, "logit"),
+  .va_r3_registry_row("betabinomial", 8L, "logit"),
+  .va_r3_registry_row("student", 9L, "identity"),
+  .va_r3_registry_row("truncated_poisson", 10L, "log"),
+  .va_r3_registry_row("truncated_nbinom2", 11L, "log"),
+  .va_r3_registry_row("delta_lognormal", 12L, "log", expectation = "hybrid"),
+  .va_r3_registry_row("delta_gamma", 13L, "log", expectation = "hybrid"),
+  .va_r3_registry_row("ordinal_probit", 14L, "probit"),
+  .va_r3_registry_row("nbinom1", 15L, "log")
 )
 
-.va_r3_family_entry <- function(family_code) {
+.va_r3_family_entry <- function(family_code, link_id = 0L) {
   for (entry in .va_r3_family_registry) {
-    if (identical(entry$family_code, family_code)) return(entry)
+    if (identical(entry$family_code, as.integer(family_code)) &&
+        identical(entry$link_id, as.integer(link_id))) return(entry)
   }
-  stop("VA-R3 has no registry entry for family code ", family_code, ".",
+  stop("VA-R3 has no registry entry for family/link id (", family_code, ", ",
+       link_id, ").",
        call. = FALSE)
 }
 
-.va_r3_resolve_eval_method <- function(eval_method = c("auto", "jj", "gh", "ac", "ac2"), family) {
+.va_r3_resolve_eval_method <- function(eval_method = c("auto", "jj", "gh", "ac", "ac2"),
+                                       family, link_id = NULL) {
   eval_method <- match.arg(eval_method)
-  codes <- unique(as.integer(family))
+  if (is.null(link_id)) link_id <- rep.int(0L, length(family))
+  cells <- unique(cbind(family = as.integer(family), link = as.integer(link_id)))
   ## Design 108 Stage 2: mixed-family fits always use GH; JJ is binomial-only.
   ## Albert-Chib (and its "ac2" curvature-corrected sibling) is likewise
   ## single-family only -- `eval_method` is one global scalar in the
   ## template, so a mixed fit cannot ask for a probit-specific evaluator on
   ## some rows and quadrature on others.
-  if (length(codes) > 1L) {
+  if (nrow(cells) > 1L) {
     if (identical(eval_method, "jj")) {
       stop("eval_method = \"jj\" is only defined for pure-binomial VA fits.",
            call. = FALSE)
@@ -1322,7 +1351,7 @@
     }
     return("gh")
   }
-  entry <- .va_r3_family_entry(codes)
+  entry <- .va_r3_family_entry(cells[1L, 1L], cells[1L, 2L])
   if (identical(eval_method, "auto")) return(entry$default_tier)
   if (!eval_method %in% entry$tiers) {
     stop(sprintf(
@@ -1339,8 +1368,9 @@
 ## worst kind available: an unrecognised tier maps silently to 0L and the fit
 ## runs Gauss-Hermite while reporting the tier that was asked for -- a wrong
 ## answer with no error. `switch` without a default errors instead.
-.va_r3_eval_method_code <- function(eval_method = c("auto", "jj", "gh", "ac", "ac2"), family) {
-  resolved <- .va_r3_resolve_eval_method(eval_method, family)
+.va_r3_eval_method_code <- function(eval_method = c("auto", "jj", "gh", "ac", "ac2"),
+                                    family, link_id = NULL) {
+  resolved <- .va_r3_resolve_eval_method(eval_method, family, link_id)
   code <- switch(resolved, gh = 0L, jj = 1L, ac = 2L, ac2 = 3L)
   if (is.null(code)) {
     stop("VA-R3 has no template code for eval_method = \"", resolved, "\".",
@@ -1397,7 +1427,7 @@
 ## an end-to-end timing; do not quote it as one until it is measured serially.
 ##
 ## Returns the GH fit, with the AC stage attached as `warm_start` for auditing.
-.va_r3_fit_warm <- function(..., H = 61L, control = NULL) {
+.va_r3_fit_warm <- function(..., H = 7L, control = NULL) {
   dots <- list(...)
   if (!is.null(dots$eval_method) && !identical(dots$eval_method, "gh")) {
     stop("`.va_r3_fit_warm()` always finishes on the GH tier; ",
@@ -1551,9 +1581,9 @@
 ## The primary optimiser. nlminb (PORT) is the default and remains the
 ## reference; "lbfgsb" is the measured-faster alternative. Both minimise the
 ## same objective from the same start, so this is a route choice, not a model
-## choice -- but it is opt-in rather than the default because the same-optimum
-## evidence is currently gaussian_anchor at N=1600 and binomial-jj at n<=800,
-## which is not yet the whole admitted surface.
+## choice. Automatic use remains per-cell: Gaussian GH and binomial-JJ retain
+## their measured routes, and Design-110 Gate E adds NB2 GH after nlminb failed
+## the cross-start objective-agreement gate while L-BFGS-B passed.
 ## Resolve optimizer = "auto" from the registry, per FAMILY and per TIER.
 ##
 ## Which optimiser wins is not a property of the family alone -- binomial splits
@@ -1562,21 +1592,21 @@
 ## down. Each registry row therefore carries optimizer_by_tier, and "auto" reads
 ## it after eval_method has itself been resolved.
 ##
-## The routing is deliberately conservative: lbfgsb is chosen only where it was
-## measured reliably faster AND every cell agreed on the optimum. Where the
-## speed-up straddled 1 (poisson) or lbfgsb was slower (binomial-gh, nbinom2),
-## auto keeps nlminb. That also routes auto AWAY from nbinom2, the only family
-## that produced a same-optimum disagreement in the sweep.
+## The routing is deliberately conservative: lbfgsb is chosen only where direct
+## evidence supports it. Unbenchmarked Design-110 cells, Poisson, and
+## binomial-GH keep nlminb. NB2 is the exception earned by Gate E: this is an
+## agreement repair, not a blanket speed preference.
 .va_r3_resolve_optimizer <- function(optimizer = c("auto", "nlminb", "lbfgsb"),
-                                     family, resolved_eval_method) {
+                                     family, resolved_eval_method, link_id = NULL) {
   optimizer <- match.arg(optimizer)
   if (!identical(optimizer, "auto")) return(optimizer)
-  codes <- unique(as.integer(family))
-  if (length(codes) > 1L) {
+  if (is.null(link_id)) link_id <- rep.int(0L, length(family))
+  cells <- unique(cbind(family = as.integer(family), link = as.integer(link_id)))
+  if (nrow(cells) > 1L) {
     ## Mixed-family fits use GH; keep the reference GH optimiser.
     return("nlminb")
   }
-  entry <- .va_r3_family_entry(codes)
+  entry <- .va_r3_family_entry(cells[1L, 1L], cells[1L, 2L])
   choice <- entry$optimizer_by_tier[[resolved_eval_method]]
   ## A tier with no declared route falls back to the reference optimiser rather
   ## than guessing; a new tier must opt in explicitly.
@@ -1684,6 +1714,15 @@
 ## Block-structured route: same Schur complement, without the dense Hessian.
 ## Use this whenever the variational block is large; it is O(N) in memory and
 ## uses ~2*(n_fixed + k) gradient calls regardless of N.
+.va_r3_global_parameter_names <- c(
+  "beta", "theta_rr", "log_sd_tier", "log_sigma",
+  "log_sigma_lognormal", "log_phi_gamma", "log_phi_nbinom2",
+  "log_phi_tweedie", "logit_p_tweedie", "log_phi_beta",
+  "log_phi_betabinom", "log_sigma_student", "log_df_student",
+  "log_phi_truncnb2", "log_sigma_lognormal_delta", "log_phi_gamma_delta",
+  "ordinal_log_increments", "log_phi_nbinom1"
+)
+
 .va_r3_fixed_information_blocked <- function(objective, par, N, q) {
   fail <- function(status) {
     list(se_conditional = NULL, se_profile = NULL, pd_hessian = FALSE,
@@ -1705,7 +1744,7 @@
   ## absent from `nm` (e.g. log_sd_tier when there is no diagonal tier, or
   ## log_sigma when no trait is Gaussian), so this is additive: fits without
   ## either parameter see fixed_idx unchanged.
-  fixed_idx <- which(nm %in% c("beta", "theta_rr", "log_sigma", "log_sd_tier"))
+  fixed_idx <- which(nm %in% .va_r3_global_parameter_names)
   if (!length(fixed_idx)) return(fail("va_no_fixed_block_no_fixed_se"))
 
   index_map <- tryCatch(.va_r3_variational_index_map(nm, N, q),
@@ -1854,7 +1893,7 @@
   ## .va_r3_fixed_information_blocked() above: log_sigma/log_sd_tier are
   ## global loadings, not variational coordinates, so they join beta/theta_rr
   ## in the fixed block rather than sitting outside both blocks.
-  fixed_idx <- which(nm %in% c("beta", "theta_rr", "log_sigma", "log_sd_tier"))
+  fixed_idx <- which(nm %in% .va_r3_global_parameter_names)
   var_idx <- which(nm %in% c("m", "log_L_diag", "L_off"))
   if (!length(fixed_idx)) return(fail("va_no_fixed_block_no_fixed_se"))
 
@@ -1954,8 +1993,9 @@
   no <- function(why) list(ok = FALSE, reason = why)
   if (!identical(as.integer(eval_method_code), 2L))
     return(no("eval_method is not Albert-Chib (the identity is derived for AC only)"))
-  if (!all(as.integer(validated$family) == 4L))
-    return(no("not every row is binomial-probit (family code 4)"))
+  if (!all(as.integer(validated$family) == 1L &
+           as.integer(validated$link_id) == 1L))
+    return(no("not every row is binomial-probit (family/link 1/1)"))
   if (!all(as.integer(validated$is_y_observed) == 1L))
     return(no("data are incomplete; A_i is then constant only within a missingness pattern"))
   ntr <- validated$n_trials
@@ -1968,10 +2008,11 @@
   list(ok = TRUE, reason = "AC, complete, constant n_trials, single dense tier")
 }
 
-.va_r3_make_objective <- function(validated, H = 61L, source = NULL,
+.va_r3_make_objective <- function(validated, H = 7L, source = NULL,
                                   rebuild = FALSE, parameters = NULL,
                                   fixed_global = NULL, silent = TRUE,
                                   eval_method = c("auto", "jj", "gh", "ac", "ac2"),
+                                  match_laplace_residual_sd = FALSE,
                                   profile_variational = FALSE,
                                   collapse_variational_cov = FALSE,
                                   inner_control = NULL,
@@ -1981,7 +2022,8 @@
          call. = FALSE)
   }
   eval_method <- match.arg(eval_method)
-  eval_method_code <- .va_r3_eval_method_code(eval_method, validated$family)
+  eval_method_code <- .va_r3_eval_method_code(eval_method, validated$family,
+                                               validated$link_id)
   ## Runtime dial for "ac2"'s expansion/quadrature switch point
   ## (inst/tmb/gllvmTMB_va_r3.cpp, va_r3_probit_ac2_expectation): a
   ## DATA_SCALAR, not a compile-time constant, so a sweep over threshold
@@ -1995,11 +2037,11 @@
   rule <- .va_r3_gh_rule(H)
   dll <- .va_r3_load_dll(source, rebuild = rebuild)
   if (is.null(parameters)) parameters <- .va_r3_default_parameters(validated, 1L)
-  ## Callers that hand-build a parameters list (tests exercising families 0-2
-  ## predate log_phi) never set it; every family needs a value passed to the
-  ## template regardless, so fill in the phi=1 default rather than requiring
-  ## every call site to know about a parameter that, for them, is inert.
-  if (is.null(parameters$log_phi)) parameters$log_phi <- rep(0, validated$T)
+  ## Preserve the old prototype NB2 name as an input alias only; the TMB schema
+  ## itself is Laplace-aligned from Design 110 onward.
+  if (is.null(parameters$log_phi_nbinom2) && !is.null(parameters$log_phi))
+    parameters$log_phi_nbinom2 <- parameters$log_phi
+  parameters$log_phi <- NULL
   if (is.null(parameters$log_sigma)) {
     parameters$log_sigma <- if (!is.null(validated$log_sigma_start)) {
       as.numeric(validated$log_sigma_start)
@@ -2007,6 +2049,24 @@
       rep(0, validated$T)
     }
   }
+  family_parameter_defaults <- list(
+    log_sigma_lognormal = rep(0, validated$T),
+    log_phi_gamma = rep(0, validated$T),
+    log_phi_nbinom2 = rep(0, validated$T),
+    log_phi_tweedie = rep(0, validated$T),
+    logit_p_tweedie = rep(0, validated$T),
+    log_phi_beta = rep(1, validated$T),
+    log_phi_betabinom = rep(1, validated$T),
+    log_sigma_student = rep(0, validated$T),
+    log_df_student = rep(log(4), validated$T),
+    log_phi_truncnb2 = rep(0, validated$T),
+    log_sigma_lognormal_delta = rep(0, validated$T),
+    log_phi_gamma_delta = rep(0, validated$T),
+    ordinal_log_increments = validated$ordinal_log_increments_start %||% numeric(0),
+    log_phi_nbinom1 = rep(0, validated$T)
+  )
+  for (nm in names(family_parameter_defaults))
+    if (is.null(parameters[[nm]])) parameters[[nm]] <- family_parameter_defaults[[nm]]
   ## Stage 6 turned the three variational PARAMETER_MATRIXes into flat
   ## PARAMETER_VECTORs. as.numeric() of an N x q matrix is column-major, which
   ## is byte-for-byte the layout the matrix already had, so hand-built
@@ -2035,7 +2095,8 @@
     }
   }
   tmb_data <- validated[c("y", "n_trials", "X", "unit_id", "trait_id",
-                          "is_y_observed", "family",
+                          "is_y_observed", "family", "link_id",
+                          "n_ordinal_cuts_per_trait", "ordinal_offset_per_trait",
                           "N", "T", "q")]
   tmb_data$gh_nodes <- rule$nodes
   tmb_data$gh_weights <- rule$weights
@@ -2064,26 +2125,49 @@
     tmb_data$diag_Ainv_struct <- structured$diag_Ainv
     tmb_data$log_det_A_struct <- structured$log_det_A
   }
-  ## Per-trait maps (Design 108 Stage 2): log_phi free only on nbinom2 traits;
-  ## log_sigma free only on Gaussian traits.
+  ## Every per-trait family parameter is free only for traits using that family.
   map <- list()
   fam <- as.integer(validated$family)
   tid <- as.integer(validated$trait_id)
-  phi_free <- vapply(seq_len(validated$T) - 1L, function(t) {
-    any(fam[tid == t] == 3L)
-  }, logical(1L))
-  sigma_free <- vapply(seq_len(validated$T) - 1L, function(t) {
-    any(fam[tid == t] == 0L)
-  }, logical(1L))
+  family_trait <- function(code) vapply(seq_len(validated$T) - 1L, function(t)
+    any(fam[tid == t] == code), logical(1L))
+  sigma_free <- family_trait(0L)
   if (!isTRUE(validated$estimate_gaussian_sd)) {
     sigma_free[] <- FALSE
   }
-  if (!all(phi_free)) {
-    map$log_phi <- factor(ifelse(phi_free, seq_along(phi_free), NA_integer_))
+  match_laplace_residual_sd <- isTRUE(match_laplace_residual_sd)
+  if (match_laplace_residual_sd && any(family_trait(0L)) && any(family_trait(3L))) {
+    stop("match_laplace_residual_sd cannot yet tie Gaussian and lognormal scales across separate VA parameter vectors; use a pure-family comparator.",
+         call. = FALSE)
   }
-  if (!all(sigma_free)) {
-    map$log_sigma <- factor(ifelse(sigma_free, seq_along(sigma_free), NA_integer_))
+  if (!all(sigma_free) || match_laplace_residual_sd) {
+    sigma_index <- if (match_laplace_residual_sd) {
+      rep.int(1L, length(sigma_free))
+    } else {
+      seq_along(sigma_free)
+    }
+    map$log_sigma <- factor(ifelse(sigma_free, sigma_index, NA_integer_))
   }
+  param_family <- c(log_sigma_lognormal = 3L, log_phi_gamma = 4L,
+                    log_phi_nbinom2 = 5L, log_phi_tweedie = 6L,
+                    logit_p_tweedie = 6L, log_phi_beta = 7L,
+                    log_phi_betabinom = 8L, log_sigma_student = 9L,
+                    log_df_student = 9L, log_phi_truncnb2 = 11L,
+                    log_sigma_lognormal_delta = 12L,
+                    log_phi_gamma_delta = 13L, log_phi_nbinom1 = 15L)
+  for (nm in names(param_family)) {
+    free <- family_trait(unname(param_family[[nm]]))
+    index <- if (match_laplace_residual_sd && identical(nm, "log_sigma_lognormal")) {
+      rep.int(1L, length(free))
+    } else {
+      seq_along(free)
+    }
+    if (!all(free) || (match_laplace_residual_sd && identical(nm, "log_sigma_lognormal"))) {
+      map[[nm]] <- factor(ifelse(free, index, NA_integer_))
+    }
+  }
+  if (!any(fam == 14L) && length(parameters$ordinal_log_increments))
+    map$ordinal_log_increments <- factor(rep(NA_integer_, length(parameters$ordinal_log_increments)))
 
   ## The A_i collapse, expressed as parameter SHARING rather than as a rewritten
   ## template. Every unit's variational covariance is tied to one common value
@@ -2173,6 +2257,7 @@
     )
   }
   attr(obj, "va_r3_profiled") <- profile_variational
+  attr(obj, "va_r3_match_laplace_residual_sd") <- match_laplace_residual_sd
   ## Report whether the collapse actually fired and, when it did not, WHY. A
   ## silently-refused gate would look identical to a collapse that worked, which
   ## is exactly how an unverified speed claim gets made.
@@ -2239,23 +2324,28 @@
                        link = NULL,
                        unique = FALSE, psi = FALSE, structured = FALSE,
                        provider = NULL, lv = FALSE, missing = FALSE,
-                       gaussian_sd = 1, H = 61L,
+                       gaussian_sd = 1, H = 7L,
                        rank_source = c("fixed_fixture", "ml_bic"),
                        fixed_global = NULL, source = NULL, rebuild = FALSE,
                        control = list(eval.max = 2000L, iter.max = 2000L),
                        silent = TRUE, eval_method = c("auto", "jj", "gh", "ac", "ac2"),
+                       match_laplace_residual_sd = FALSE,
                        collapse_variational_cov = FALSE,
                        n_starts = 4L,
                        optimizer = c("auto", "nlminb", "lbfgsb"),
                        is_y_observed = NULL,
                        family_codes = NULL,
+                       link_ids = NULL,
                        estimate_gaussian_sd = TRUE,
                        extra_tiers = NULL,
+                       n_ordinal_cuts_per_trait = NULL,
+                       ordinal_offset_per_trait = NULL,
+                       ordinal_log_increments_start = NULL,
                        profile_variational = FALSE,
                        inner_control = NULL,
                        ac2_threshold = 1.0) {
-  family_choices <- c("binomial", "poisson", "gaussian_anchor", "nbinom2",
-                      "binomial_probit", "gaussian")
+  family_choices <- unique(vapply(.va_r3_family_registry, `[[`, character(1L), "family"))
+  family_choices <- c(family_choices, "gaussian")
   if (is.null(family_codes)) {
     if (length(family) == 1L) {
       family <- match.arg(family, family_choices)
@@ -2277,17 +2367,14 @@
              poisson = "log",
              nbinom2 = "log",
              binomial_probit = "probit",
+             binomial_cloglog = "cloglog",
              "logit")
     }
   }
-  ## When family_codes is supplied, build matching per-row links.
-  if (!is.null(family_codes) && length(link) == 1L) {
-    codes <- as.integer(family_codes)
-    link <- vapply(codes, function(c) {
-      switch(as.character(c), "0" = "identity", "1" = "logit",
-             "2" = "log", "3" = "log", "4" = "probit", "logit")
-    }, character(1L))
-  }
+  if (is.null(link_ids) && !is.null(family_codes) && length(link) == 1L)
+    link_ids <- rep.int(if (identical(link, "probit") && all(family_codes == 1L)) 1L else
+                          if (identical(link, "cloglog") && all(family_codes == 1L)) 2L else 0L,
+                        length(family_codes))
   rank_source <- match.arg(rank_source)
   eval_method <- match.arg(eval_method)
   optimizer <- match.arg(optimizer)
@@ -2295,16 +2382,20 @@
   validated <- .va_r3_validate_data(
     y, n_trials, X, unit_id, trait_id, q, N, T, family, link,
     unique, psi, structured, provider, lv, missing, gaussian_sd,
-    is_y_observed = is_y_observed, family_codes = family_codes,
-    estimate_gaussian_sd = estimate_gaussian_sd, extra_tiers = extra_tiers
+    is_y_observed = is_y_observed, family_codes = family_codes, link_ids = link_ids,
+    estimate_gaussian_sd = estimate_gaussian_sd, extra_tiers = extra_tiers,
+    n_ordinal_cuts_per_trait = n_ordinal_cuts_per_trait,
+    ordinal_offset_per_trait = ordinal_offset_per_trait,
+    ordinal_log_increments_start = ordinal_log_increments_start
   )
   ## Validate and resolve eval_method against the family up front, before any
   ## objective is constructed, so a mismatched request fails closed for every
   ## start. Everything downstream reports the RESOLVED bound, not the request,
   ## so an "auto" fit never mislabels which bound it actually evaluated.
-  resolved_eval_method <- .va_r3_resolve_eval_method(eval_method, validated$family)
+  resolved_eval_method <- .va_r3_resolve_eval_method(eval_method, validated$family,
+                                                      validated$link_id)
   optimizer <- .va_r3_resolve_optimizer(optimizer, validated$family,
-                                        resolved_eval_method)
+                                        resolved_eval_method, validated$link_id)
   if (validated$q == 0L) {
     return(list(
       status = "not_applicable_rank_zero",
@@ -2383,6 +2474,7 @@
       validated, H = H, source = source, rebuild = rebuild && k == 1L,
       parameters = starts[[k]], fixed_global = fixed_global, silent = silent,
       eval_method = eval_method,
+      match_laplace_residual_sd = match_laplace_residual_sd,
       profile_variational = profile_variational,
       collapse_variational_cov = collapse_variational_cov,
       inner_control = inner_control,
@@ -2561,6 +2653,7 @@
     source_checksum = dll$checksum,
     fixed_global = !is.null(fixed_global),
     optimizer = optimizer,
+    match_laplace_residual_sd = isTRUE(match_laplace_residual_sd),
     profile_variational = profile_variational,
     starts = fits,
     health = list(

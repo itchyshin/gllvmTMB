@@ -42,8 +42,8 @@ test_that("mixed-family eval_method forces GH; JJ refused", {
   expect_error(.va_r3_resolve_eval_method("jj", codes), "pure-binomial")
 })
 
-test_that("single-family binomial VA still resolves to JJ (bit-compat)", {
-  expect_identical(.va_r3_resolve_eval_method("auto", rep(1L, 4L)), "jj")
+test_that("single-family binomial-logit auto uses GH; JJ remains explicit", {
+  expect_identical(.va_r3_resolve_eval_method("auto", rep(1L, 4L)), "gh")
   expect_identical(.va_r3_resolve_eval_method("jj", rep(1L, 4L)), "jj")
 })
 
@@ -123,12 +123,11 @@ test_that("integration = \"va\" admits mixed binomial+poisson under the fence", 
   expect_identical(fit$eval_method, "gh")
 })
 
-test_that("Laplace-to-VA family id map covers gaussian/binomial/poisson/nbinom2", {
-  ## Design 108 Stage 4 made the map LINK-aware; link_id 0 is the canonical link
-  ## for all four of these, so the Stage-2 mapping is unchanged.
+test_that("Laplace-to-VA family id map is the scalar identity 0:15", {
   expect_identical(
     .va_r3_laplace_id_to_code(c(0L, 1L, 2L, 5L), c(0L, 0L, 0L, 0L)),
-    c(0L, 1L, 2L, 3L)
+    c(0L, 1L, 2L, 5L)
   )
-  expect_error(.va_r3_laplace_id_to_code(14L, 0L), "does not admit")
+  expect_identical(.va_r3_laplace_id_to_code(0:15, rep(0L, 16L)), 0:15)
+  expect_error(.va_r3_laplace_id_to_code(16L, 0L), "does not admit")
 })

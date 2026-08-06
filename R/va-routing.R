@@ -47,59 +47,105 @@
 .va_route_family_link <- function(family_per_row, family_id_vec, link_id_vec) {
   family_id_vec <- as.integer(family_id_vec)
   link_id_vec <- as.integer(link_id_vec)
-  ## Laplace -> VA code; refuse unsupported families before the fence message.
-  ## LINK-AWARE by construction. Laplace gives binomial-logit and
-  ## binomial-probit the same family_id and separates them by link_id only, so
-  ## a link-blind map would send probit data to VA code 1 -- whose template
-  ## branch is the LOGISTIC softplus. That is a wrong model reported healthy,
-  ## which is precisely what this file exists to prevent, so the link travels
-  ## into the mapping rather than being checked after it.
-  va_codes <- tryCatch(
-    .va_r3_laplace_id_to_code(family_id_vec, link_id_vec),
-    error = function(e) {
-      .va_route_abort(
-        "The model uses a response family/link the variational route does not admit.",
-        conditionMessage(e)
-      )
-    }
-  )
-  ## Link checks: code 1 is binomial-LOGIT and admits link_id 0 ONLY -- widening
-  ## it to link_id 1 would re-open the wrong-model trap above. Probit has its own
-  ## code (4) with its own template branch. poisson/nbinom2 log; gaussian
-  ## identity (link_id 0 for gaussian in fit-multi).
-  for (i in seq_along(va_codes)) {
-    code <- va_codes[[i]]
-    lid <- link_id_vec[[i]]
-    ok <- (code == 1L && lid == 0L) ||
-      (code %in% c(2L, 3L) && lid == 0L) ||
-      (code == 0L && lid == 0L) ||
-      (code == 4L && lid == 1L)
-    if (!ok) {
-      .va_route_abort(
-        "A response uses a family/link pair the variational route does not admit.",
-        "Admitted: gaussian identity, binomial logit, poisson log (and research nbinom2 log / binomial probit)."
-      )
-    }
+  if (length(family_id_vec) != length(link_id_vec) ||
+      length(family_id_vec) != length(family_per_row)) {
+    .va_route_abort(
+      "The family/link vectors do not align with the response rows.",
+      "This is an internal routing error; no variational objective was built."
+    )
   }
-  ## Code 4 reports as family "binomial" with link "probit" so the FENCE, not
-  ## this translation layer, is what refuses it -- and refuses it with the
-  ## message a user who wrote binomial(link = "probit") needs to read. There is
-  ## no recovery evidence for probit under VA, so it stays outside the fence.
-  fam_names <- vapply(seq_along(va_codes), function(i) {
-    switch(as.character(va_codes[[i]]),
-           "0" = "gaussian", "1" = "binomial", "2" = "poisson",
-           "3" = "nbinom2", "4" = "binomial", "binomial")
-  }, character(1L))
-  link_names <- vapply(va_codes, function(code) {
-    switch(as.character(code),
-           "0" = "identity", "1" = "logit", "2" = "log", "3" = "log",
-           "4" = "probit", "logit")
-  }, character(1L))
+  if (anyNA(family_id_vec) || anyNA(link_id_vec) ||
+      any(!family_id_vec %in% 0:15L)) {
+    .va_route_abort(
+      "The model uses a non-scalar or unknown response family.",
+      "The scalar VA programme admits Laplace family IDs 0 through 15; multinomial (16) is a separate coupled-softmax design."
+    )
+  }
+
+  ## Design 110 uses the SAME family_id/link_id registry as the Laplace
+  ## template. This removes the old VA-only enum where 3 meant NB2 and 4 meant
+  ## binomial-probit. Link validity has already been checked by family_to_id()
+  ## in fit-multi.R, but repeat the compact fail-closed check at this boundary
+  ## because a direct internal caller can bypass that parser.
+  expected_link_id <- ifelse(family_id_vec == 1L, link_id_vec, 0L)
+  ok_link <- ifelse(family_id_vec == 1L, link_id_vec %in% 0:2L,
+                    link_id_vec == expected_link_id)
+  if (any(!ok_link)) {
+    .va_route_abort(
+      "A response uses a family/link pair the scalar variational engine does not recognise.",
+      "Binomial uses link IDs 0=logit, 1=probit, 2=cloglog; every other admitted family uses its registered link ID 0."
+    )
+  }
+
+  family_names <- c(
+    "gaussian", "binomial", "poisson", "lognormal", "Gamma", "nbinom2",
+    "tweedie", "Beta", "betabinomial", "student", "truncated_poisson",
+    "truncated_nbinom2", "delta_lognormal", "delta_gamma",
+    "ordinal_probit", "nbinom1"
+  )
+  fixed_links <- c(
+    "identity", NA_character_, "log", "log", "log", "log", "log",
+    "logit", "logit", "identity", "log", "log", "log", "log",
+    "probit", "log"
+  )
+  fam_names <- family_names[family_id_vec + 1L]
+  link_names <- fixed_links[family_id_vec + 1L]
+  is_binomial <- family_id_vec == 1L
+  link_names[is_binomial] <- c("logit", "probit", "cloglog")[
+    link_id_vec[is_binomial] + 1L
+  ]
   list(
     family = fam_names,
     link = link_names,
-    family_codes = as.integer(va_codes),
-    is_mixed = length(unique(va_codes)) > 1L
+    family_codes = family_id_vec,
+    link_ids = link_id_vec,
+    is_mixed = length(unique(paste(family_id_vec, link_id_vec, sep = ":"))) > 1L
+  )
+}
+
+.va_route_ordinal_metadata <- function(y, trait_id, family_codes,
+                                       is_y_observed, n_traits) {
+  n_cuts <- integer(n_traits)
+  offsets <- integer(n_traits)
+  starts <- numeric(0)
+  running <- 0L
+  observed <- as.logical(is_y_observed)
+  if (length(observed) != length(y)) observed <- rep(TRUE, length(y))
+
+  for (t in seq_len(n_traits)) {
+    rows <- which(trait_id == (t - 1L))
+    ordinal_rows <- rows[family_codes[rows] == 14L]
+    offsets[t] <- running
+    if (!length(ordinal_rows)) next
+    if (length(ordinal_rows) != length(rows)) {
+      .va_route_abort(
+        "An ordinal-probit trait is mixed with another family within the same response.",
+        "Ordinal cutpoints are trait-specific, so ordinal_probit must own every row of that trait."
+      )
+    }
+    values <- y[ordinal_rows[observed[ordinal_rows]]]
+    if (!length(values) || any(!is.finite(values)) ||
+        any(values != round(values)) || any(values < 1)) {
+      .va_route_abort(
+        "An ordinal-probit response has no valid observed category set.",
+        "Observed ordinal categories must be integers starting at 1."
+      )
+    }
+    K <- as.integer(max(values))
+    if (K < 2L) {
+      .va_route_abort(
+        "An ordinal-probit response has fewer than two observed categories.",
+        "At least two categories are required to define an ordinal likelihood."
+      )
+    }
+    n_cuts[t] <- K - 2L
+    if (K > 2L) starts <- c(starts, rep(log(0.5), K - 2L))
+    running <- running + K - 2L
+  }
+  list(
+    n_ordinal_cuts_per_trait = n_cuts,
+    ordinal_offset_per_trait = offsets,
+    ordinal_log_increments_start = starts
   )
 }
 
@@ -251,6 +297,10 @@
   }
 
   fl <- .va_route_family_link(family_per_row, family_id_vec, link_id_vec)
+  ordinal <- .va_route_ordinal_metadata(
+    y = y, trait_id = trait_id, family_codes = fl$family_codes,
+    is_y_observed = is_y_observed, n_traits = n_traits
+  )
 
   ## The fence, now with every value it was written to check. Until routing
   ## landed only `engine` was knowable, so `n`/`q`/`p`/family/link were
@@ -264,14 +314,6 @@
     q = q, p = n_traits, n = n_units,
     unique = unique_flag, engine = engine
   )
-  ## nbinom2 is template-admitted but not on the public VA fence.
-  if (any(fl$family_codes == 3L)) {
-    .va_route_abort(
-      "Family {.val nbinom2} has no admitted public variational evaluation.",
-      "The variational fence currently admits gaussian, binomial, and poisson."
-    )
-  }
-
   ## Design 107 Gate A Stage 1: dense response masks travel as is_y_observed
   ## into the VA template (term-skip). Predictor missingness (mi) stays refused.
   if (isTRUE(mi_enabled)) {
@@ -363,7 +405,8 @@
   ## 1.132 -> 1.014). A user who needs loading MAGNITUDES rather than an
   ## ordination had no way to ask for the convergent route. Now they do.
   eval_method <- if (identical(va_eval_method, "auto")) {
-    if (!isTRUE(fl$is_mixed) && all(fl$family_codes == 1L)) "jj" else "gh"
+    if (!isTRUE(fl$is_mixed) && all(fl$family_codes == 1L) &&
+        all(fl$link_ids == 0L)) "jj" else "gh"
   } else {
     va_eval_method
   }
@@ -389,7 +432,11 @@
       eval_method = eval_method,
       H = va_H,
       is_y_observed = is_y_observed,
-      family_codes = fl$family_codes
+      family_codes = fl$family_codes,
+      link_ids = fl$link_ids,
+      n_ordinal_cuts_per_trait = ordinal$n_ordinal_cuts_per_trait,
+      ordinal_offset_per_trait = ordinal$ordinal_offset_per_trait,
+      ordinal_log_increments_start = ordinal$ordinal_log_increments_start
     ),
     error = function(e) {
       cli::cli_abort(c(
@@ -420,7 +467,8 @@
     fit, call = call, q = q, p = n_traits, n = n_units,
     eval_method = eval_method,
     family = if (isTRUE(fl$is_mixed)) "mixed" else fl$family[[1L]],
-    link = if (isTRUE(fl$is_mixed)) "mixed" else fl$link[[1L]]
+    link = if (isTRUE(fl$is_mixed)) "mixed" else fl$link[[1L]],
+    beta_names = colnames(X)
   )
 }
 
@@ -430,7 +478,8 @@
 ## no `opt`, `report`, `sdr`, or `tmb_data`. That is a second, structural layer
 ## of the same protection the class choice gives: code written for a
 ## `gllvmTMB_multi` fit cannot accidentally find something plausible here.
-.va_route_build_fit <- function(fit, call, q, p, n, eval_method, family, link) {
+.va_route_build_fit <- function(fit, call, q, p, n, eval_method, family, link,
+                                beta_names = NULL) {
   fit$call <- call
   fit$integration <- "va"
   fit$eval_method <- eval_method
@@ -439,6 +488,7 @@
   fit$q <- q
   fit$p <- p
   fit$n <- n
+  fit$beta_names <- beta_names
   fit$fence_limits <- .gllvmTMB_integration_fence_limits()
   ## Explicit and load-bearing: the inverse VA Hessian is NOT calibrated
   ## frequentist uncertainty (Design 85 s10), so 0.6 ships this route with no

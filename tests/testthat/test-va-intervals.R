@@ -1,26 +1,25 @@
 ## Tests for the VA interval routes in R/va-intervals.R -- opt-in, unexported
 ## instruments for the coverage-measurement campaign
-## (docs/design/va-interval-coverage-campaign.md). Nothing here is wired into
-## the public confint.gllvmTMB_va()/vcov.gllvmTMB_va() fence; the last test in
-## this file exists specifically to catch a future session accidentally
-## promoting one of these routes into that fence.
+## (docs/design/va-interval-coverage-campaign.md). Design 110 promotes only the
+## fixed-effect profiled-Schur block to public confint()/vcov() as explicitly
+## uncalibrated VA-Wald output. The remaining routes stay internal.
 ##
 ## Per surviving route (wald-schur, profile, sandwich, bootstrap) this file
 ## checks: (1) intervals are finite and correctly ordered on a small healthy
 ## fit; (2) the route errors -- rather than silently returning a
 ## plausible-looking number -- on a degenerate/unhealthy input; (3) (once,
-## globally) the public fence still refuses.
+## globally) the public surface labels the promoted beta route honestly.
 
 skip_on_cran()
 
 ## ---------------------------------------------------------------------
 ## Shared fixture: one small, fast, healthy VA-R3 binomial-logit fit.
-## N=40 units, T=4 traits, q=1 -- well inside the "N <= 80, a few seconds"
+## N=50 units, T=4 traits, q=1 -- well inside the "N <= 80, a few seconds"
 ## local-compute bound, deliberately small enough to avoid a multi-seed
 ## campaign.
 ## ---------------------------------------------------------------------
 
-.va_intervals_fixture <- function(seed = 20260803L, N = 40L, Tn = 4L, q = 1L) {
+.va_intervals_fixture <- function(seed = 20260804L, N = 50L, Tn = 4L, q = 1L) {
   set.seed(seed)
   trait_names <- paste0("sp", seq_len(Tn))
   long <- data.frame(
@@ -247,14 +246,48 @@ test_that("bootstrap simulator accepts both 1-based and 0-based unit_id/trait_id
 })
 
 ## ---------------------------------------------------------------------
-## Fence regression test: confint()/vcov() on a gllvmTMB_va fit must still
-## refuse, unchanged, no matter what this file builds. This is the one test
-## that stops a future session accidentally wiring one of the above routes
-## into the public methods.
+## Public Design-110 surface: fixed-effect VA-Wald only.
 ## ---------------------------------------------------------------------
 
-test_that("confint.gllvmTMB_va() and vcov.gllvmTMB_va() still error -- the public fence is unmoved by this file", {
-  fake_va <- structure(list(), class = c("gllvmTMB_va", "gllvmTMB"))
-  expect_error(confint(fake_va), "calibrated = FALSE")
-  expect_error(vcov(fake_va), "calibrated = FALSE")
+test_that("public vcov/confint expose labelled fixed-effect profiled-Schur VA-Wald output", {
+  public_va <- structure(
+    list(
+      status = "healthy",
+      engine_result = fx$fit,
+      beta_names = colnames(fx$X)
+    ),
+    class = c("gllvmTMB_va", "gllvmTMB")
+  )
+  V <- vcov(public_va)
+  CI <- confint(public_va)
+  expect_equal(dim(V), c(fx$Tn, fx$Tn))
+  expect_equal(dim(CI), c(fx$Tn, 2L))
+  expect_identical(rownames(V), colnames(fx$X))
+  expect_identical(rownames(CI), colnames(fx$X))
+  expect_true(all(is.finite(V)))
+  expect_true(all(is.finite(CI)))
+  expect_identical(attr(V, "route"), "va_wald_profile_schur")
+  expect_identical(attr(CI, "route"), "va_wald_profile_schur")
+  expect_false(isTRUE(attr(V, "calibrated")))
+  expect_false(isTRUE(attr(CI, "calibrated")))
+  expect_match(attr(V, "uncertainty_basis"), "VA-Wald")
+  expect_match(attr(CI, "uncertainty_basis"), "VA-Wald")
+
+  CI_2 <- confint(public_va, parm = 2L)
+  CI_3 <- confint(public_va, parm = colnames(fx$X)[3L])
+  expect_equal(as.numeric(CI_2), as.numeric(CI[2L, , drop = FALSE]))
+  expect_equal(as.numeric(CI_3), as.numeric(CI[3L, , drop = FALSE]))
+  expect_identical(rownames(CI_2), colnames(fx$X)[2L])
+  expect_identical(rownames(CI_3), colnames(fx$X)[3L])
+  expect_identical(attr(CI_2, "route"), "va_wald_profile_schur")
+  expect_identical(attr(CI_3, "route"), "va_wald_profile_schur")
+})
+
+test_that("public fixed-effect VA-Wald methods fail closed on an unhealthy fit", {
+  fake_va <- structure(
+    list(status = "failed_health_gate"),
+    class = c("gllvmTMB_va", "gllvmTMB")
+  )
+  expect_error(confint(fake_va), "healthy variational fit")
+  expect_error(vcov(fake_va), "healthy variational fit")
 })

@@ -4,9 +4,8 @@
 ## refusing predict.gllvmTMB_va(). Shares the small binomial-logit fixture
 ## style of test-va-intervals.R.
 ##
-## The confint()/vcov() fence regression test at the end mirrors
-## test-va-intervals.R's own -- this file adds a second, independent copy so
-## a future session touching either file still catches a fence regression.
+## Fixed-effect VA-Wald behavior is tested in test-va-intervals.R; this file
+## retains a fail-closed check for malformed/unhealthy VA objects.
 
 skip_on_cran()
 
@@ -167,14 +166,13 @@ test_that("predict() refuses for a VA fit with a clear, VA-specific message inst
 })
 
 ## ---------------------------------------------------------------------
-## Fence regression: confint()/vcov() must still refuse, unmoved by this
-## ordination slice (mirrors the test-va-intervals.R fence test).
+## Fixed-effect VA-Wald still fails closed for an invalid object.
 ## ---------------------------------------------------------------------
 
-test_that("confint.gllvmTMB_va() and vcov.gllvmTMB_va() still error -- unmoved by the ordination slice", {
+test_that("confint.gllvmTMB_va() and vcov.gllvmTMB_va() refuse an invalid VA object", {
   fake_va <- structure(list(), class = c("gllvmTMB_va", "gllvmTMB"))
-  expect_error(confint(fake_va), "calibrated = FALSE")
-  expect_error(vcov(fake_va), "calibrated = FALSE")
+  expect_error(confint(fake_va), "healthy variational fit")
+  expect_error(vcov(fake_va), "healthy variational fit")
 })
 
 ## ---------------------------------------------------------------------

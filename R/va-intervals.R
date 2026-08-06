@@ -1,11 +1,12 @@
 ## VA interval routes -- internal, unexported, opt-in instruments for the
 ## coverage-measurement campaign (docs/design/va-interval-coverage-campaign.md).
 ##
-## Nothing in this file is wired into `confint.gllvmTMB_va()` /
-## `vcov.gllvmTMB_va()` (R/va-methods.R) and nothing here may ever be. Those
-## stay hard-refused: "calibrated = FALSE: the inverse variational Hessian is
-## not calibrated frequentist uncertainty, so no interval computed from it
-## would have its nominal coverage." Everything below is reached only via
+## Design 110 changes one narrow part of that boundary: the profiled-Schur
+## fixed-effect beta block is now wired into `confint.gllvmTMB_va()` /
+## `vcov.gllvmTMB_va()` (R/va-methods.R) as explicitly labelled **VA-Wald**
+## output with `calibrated = FALSE`. This is an inferential instrument, not a
+## nominal-coverage claim. Raw-loading intervals remain excluded; the invariant
+## Sigma delta-method route below remains internal. Everything else is reached via
 ## `gllvmTMB:::.va_profile_ci()` / `gllvmTMB:::.va_wald_beta_ci()` /
 ## `gllvmTMB:::.va_wald_loadings_ci()` / `gllvmTMB:::.va_sandwich_beta_ci()` /
 ## `gllvmTMB:::.va_sandwich_loadings_ci()` /

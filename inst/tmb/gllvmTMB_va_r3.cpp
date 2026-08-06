@@ -266,6 +266,29 @@ Type va_r3_log_pnorm_diff(const Type &a, const Type &b)
   return CppAD::CondExpLe(a + b, Type(0.0), left, right);
 }
 
+// Clamp an AD value while keeping both CondExp branches finite.  This is used
+// only inside nodewise density kernels whose natural parameters must stay in
+// an open domain (Beta shapes and positive means at extreme GH nodes).
+template <class Type>
+Type va_r3_clamp(const Type &x, const Type &lower, const Type &upper)
+{
+  Type ans = CppAD::CondExpLt(x, lower, lower, x);
+  return CppAD::CondExpGt(ans, upper, upper, ans);
+}
+
+// Stable cloglog success probability on the log scale.  Above eta = 35 the
+// probability differs from one by less than double precision, so returning
+// zero avoids exp(eta) overflowing in an unselected AD branch.  The failure
+// contribution is integrated analytically elsewhere as -E[exp(eta)].
+template <class Type>
+Type va_r3_cloglog_logp(const Type &eta)
+{
+  const Type upper = Type(35.0);
+  Type safe_eta = CppAD::CondExpGt(eta, upper, upper, eta);
+  Type ordinary = va_r3_log1mexp(-exp(safe_eta));
+  return CppAD::CondExpGt(eta, upper, Type(0.0), ordinary);
+}
+
 // Inverse Mills ratio lambda(x) = phi(x)/Phi(x) = d/dx log Phi(x).
 //
 // Needed only by the small-v expansion below, but it carries the same 0/0
@@ -355,7 +378,7 @@ Type va_r3_probit_expectation(const Type &mu, const Type &v,
 //
 // Returns E[ y log Phi(eta) + (n - y) log Phi(-eta) ] in the SAME UNITS as the
 // GH evaluator, so both plug into the identical `ell = log_choose + <evaluator>`
-// formula at the fam == 4 dispatch -- the same contract
+// formula at the family/link 1/1 dispatch -- the same contract
 // va_r3_jj_softplus_expectation() honours for fam == 1.
 //
 // DERIVATION: dev/va-speed/ALBERT-CHIB-DERIVATION.md.  Augmenting with a
@@ -498,11 +521,13 @@ Type objective_function<Type>::operator()()
   DATA_INTEGER(q);
   DATA_VECTOR(gh_nodes);
   DATA_VECTOR(gh_weights);
-  // Design 108 Stage 2: per-row family codes (dense N*T), same layout as y.
-  // 0 = Gaussian; 1 = binomial-logit; 2 = Poisson-log; 3 = nbinom2-log;
-  // 4 = binomial-probit (Design 108 Gate A Stage 4; research spike, not on the
-  // public integration fence).
+  // Design 110: the VA template uses the SAME scalar-family identifiers as the
+  // Laplace template: family 0:15 plus the same binomial link identifiers
+  // (0 logit, 1 probit, 2 cloglog).  Multinomial 16 is deliberately fenced.
   DATA_IVECTOR(family);
+  DATA_IVECTOR(link_id);
+  DATA_IVECTOR(n_ordinal_cuts_per_trait);
+  DATA_IVECTOR(ordinal_offset_per_trait);
   DATA_INTEGER(eval_method);       // 0 = Gauss-Hermite quadrature;
                                    // 1 = Jaakkola-Jordan/PG bound (binomial-only fits)
                                    // 2 = Albert-Chib closed form (binomial-probit only)
@@ -613,12 +638,21 @@ Type objective_function<Type>::operator()()
   PARAMETER_VECTOR(m);             // variational means
   PARAMETER_VECTOR(log_L_diag);    // log Cholesky diagonals (log SDs when diagonal)
   PARAMETER_VECTOR(L_off);         // strict-lower Cholesky entries, dense tiers only
-  PARAMETER_VECTOR(log_phi);       // T-vector, nbinom2 dispersion on the log
-                                   // scale; mapped off (NA) for every other
-                                   // family, so it costs nothing there
-  PARAMETER_VECTOR(log_sigma);     // T-vector, Gaussian residual SD on log
-                                   // scale (Design 108 Stage 2); mapped off
-                                   // for non-Gaussian traits
+  PARAMETER_VECTOR(log_sigma);                    // Gaussian identity, fid 0
+  PARAMETER_VECTOR(log_sigma_lognormal);          // lognormal, fid 3
+  PARAMETER_VECTOR(log_phi_gamma);                // Gamma shape, fid 4
+  PARAMETER_VECTOR(log_phi_nbinom2);              // NB2 size, fid 5
+  PARAMETER_VECTOR(log_phi_tweedie);              // Tweedie dispersion, fid 6
+  PARAMETER_VECTOR(logit_p_tweedie);              // Tweedie p = 1 + invlogit(.)
+  PARAMETER_VECTOR(log_phi_beta);                 // Beta precision, fid 7
+  PARAMETER_VECTOR(log_phi_betabinom);            // beta-binomial precision, fid 8
+  PARAMETER_VECTOR(log_sigma_student);            // Student scale, fid 9
+  PARAMETER_VECTOR(log_df_student);               // Student df = 1 + exp(.), fid 9
+  PARAMETER_VECTOR(log_phi_truncnb2);             // truncated NB2 size, fid 11
+  PARAMETER_VECTOR(log_sigma_lognormal_delta);    // delta-lognormal SD, fid 12
+  PARAMETER_VECTOR(log_phi_gamma_delta);          // delta-Gamma CV, fid 13
+  PARAMETER_VECTOR(ordinal_log_increments);        // packed ordered increments, fid 14
+  PARAMETER_VECTOR(log_phi_nbinom1);              // NB1 overdispersion, fid 15
 
   const int n_obs = y.size();
   const int n_off = q * (q - 1) / 2;
@@ -632,7 +666,7 @@ Type objective_function<Type>::operator()()
     error("gllvmTMB_va_r3: the research objective requires exactly N*T cells");
   if (n_trials.size() != n_obs || unit_id.size() != n_obs ||
       trait_id.size() != n_obs || is_y_observed.size() != n_obs ||
-      family.size() != n_obs || X.rows() != n_obs)
+      family.size() != n_obs || link_id.size() != n_obs || X.rows() != n_obs)
     error("gllvmTMB_va_r3: response-side data dimensions do not agree");
   if (X.cols() != beta.size())
     error("gllvmTMB_va_r3: ncol(X) must equal length(beta)");
@@ -746,10 +780,25 @@ Type objective_function<Type>::operator()()
     if (level_id(r, 0) != unit_id(r))
       error("gllvmTMB_va_r3: tier 0's level index must be unit_id");
   }
-  if (log_phi.size() != T)
-    error("gllvmTMB_va_r3: log_phi must have length T");
-  if (log_sigma.size() != T)
-    error("gllvmTMB_va_r3: log_sigma must have length T");
+  if (log_sigma.size() != T || log_sigma_lognormal.size() != T ||
+      log_phi_gamma.size() != T || log_phi_nbinom2.size() != T ||
+      log_phi_tweedie.size() != T || logit_p_tweedie.size() != T ||
+      log_phi_beta.size() != T || log_phi_betabinom.size() != T ||
+      log_sigma_student.size() != T || log_df_student.size() != T ||
+      log_phi_truncnb2.size() != T || log_sigma_lognormal_delta.size() != T ||
+      log_phi_gamma_delta.size() != T || log_phi_nbinom1.size() != T)
+    error("gllvmTMB_va_r3: every per-trait family parameter must have length T");
+  if (n_ordinal_cuts_per_trait.size() != T || ordinal_offset_per_trait.size() != T)
+    error("gllvmTMB_va_r3: ordinal metadata must have length T");
+  int ordinal_required = 0;
+  for (int t = 0; t < T; ++t) {
+    if (n_ordinal_cuts_per_trait(t) < 0 || ordinal_offset_per_trait(t) < 0)
+      error("gllvmTMB_va_r3: ordinal cut counts and offsets must be non-negative");
+    int end = ordinal_offset_per_trait(t) + n_ordinal_cuts_per_trait(t);
+    if (end > ordinal_required) ordinal_required = end;
+  }
+  if (ordinal_log_increments.size() != ordinal_required)
+    error("gllvmTMB_va_r3: ordinal_log_increments length disagrees with ordinal metadata");
   if (gh_nodes.size() <= 0 || gh_weights.size() != gh_nodes.size())
     error("gllvmTMB_va_r3: GH nodes and weights must have the same positive length");
   if (eval_method != 0 && eval_method != 1 && eval_method != 2 && eval_method != 3)
@@ -759,56 +808,69 @@ Type objective_function<Type>::operator()()
   // checks apply only to observed cells (Design 107); masked sentinels are
   // never fed to a density call.
   std::vector<int> cell_count(N * T, 0);
-  // The Jaakkola-Jordan bound is a bound on the LOGISTIC term specifically, so
-  // it admits family code 1 and nothing else -- binomial-PROBIT (code 4) is a
-  // binomial family for which the bound is undefined, and must be counted here.
+  // JJ is binomial-logit only. AC/AC2 are binomial-probit only.
   int n_non_jj = 0;
-  // The Albert-Chib closed form is the MIRROR IMAGE: the truncated-normal
-  // augmentation is specific to the PROBIT link, so it admits family code 4 and
-  // nothing else -- binomial-LOGIT (code 1) is a binomial family for which the
-  // augmentation does not apply. These two counters admit disjoint families and
-  // are deliberately kept as separate variables rather than one shared "non-X"
-  // count, because the condition each guards is the other's complement within
-  // the binomial pair and a shared counter would silently invert one of them.
   int n_non_ac = 0;
   for (int r = 0; r < n_obs; ++r) {
     int i = unit_id(r);
     int t = trait_id(r);
     int obs = is_y_observed(r);
     int fam = family(r);
+    int lid = link_id(r);
     if (i < 0 || i >= N || t < 0 || t >= T)
       error("gllvmTMB_va_r3: unit_id or trait_id is out of range");
     if (obs != 0 && obs != 1)
       error("gllvmTMB_va_r3: is_y_observed entries must be 0 or 1");
-    if (fam != 0 && fam != 1 && fam != 2 && fam != 3 && fam != 4)
-      error("gllvmTMB_va_r3: family entries must be 0 (Gaussian), 1 (binomial-logit), 2 (Poisson), 3 (nbinom2), or 4 (binomial-probit)");
-    if (fam != 1) n_non_jj += 1;
-    if (fam != 4) n_non_ac += 1;
+    if (fam < 0 || fam > 15)
+      error("gllvmTMB_va_r3: family entries must be Laplace-aligned scalar ids 0:15; multinomial 16 is not admitted");
+    if (lid < 0 || lid > 2 || (fam != 1 && lid != 0))
+      error("gllvmTMB_va_r3: link_id must be 0:2 for binomial and 0 for every other scalar family");
+    if (!(fam == 1 && lid == 0)) n_non_jj += 1;
+    if (!(fam == 1 && lid == 1)) n_non_ac += 1;
     cell_count[i * T + t] += 1;
     if (!std::isfinite(asDouble(y(r))) || !std::isfinite(asDouble(n_trials(r))))
       error("gllvmTMB_va_r3: y and n_trials must be finite");
-    if (obs == 1 && (fam == 1 || fam == 4)) {
+    if (obs == 1 && (fam == 1 || fam == 8)) {
       double yd = asDouble(y(r));
       double nd = asDouble(n_trials(r));
       if (nd < 1.0 || std::floor(nd) != nd || yd < 0.0 || yd > nd ||
           std::floor(yd) != yd)
         error("gllvmTMB_va_r3: binomial cells require integer n >= 1 and 0 <= y <= n");
     }
-    if (obs == 1 && (fam == 2 || fam == 3)) {
+    if (obs == 1 && (fam == 2 || fam == 5 || fam == 15)) {
       double yd = asDouble(y(r));
       if (yd < 0.0 || std::floor(yd) != yd)
-        error("gllvmTMB_va_r3: Poisson/nbinom2 cells require finite non-negative integer y");
+        error("gllvmTMB_va_r3: count cells require finite non-negative integer y");
+    }
+    if (obs == 1 && fam == 6 && asDouble(y(r)) < 0.0)
+      error("gllvmTMB_va_r3: Tweedie cells require y >= 0");
+    if (obs == 1 && (fam == 12 || fam == 13) && asDouble(y(r)) < 0.0)
+      error("gllvmTMB_va_r3: delta-family cells require y >= 0");
+    if (obs == 1 && fam == 7 && !(asDouble(y(r)) > 0.0 && asDouble(y(r)) < 1.0))
+      error("gllvmTMB_va_r3: Beta cells require 0 < y < 1");
+    if (obs == 1 && (fam == 3 || fam == 4) && !(asDouble(y(r)) > 0.0))
+      error("gllvmTMB_va_r3: lognormal and Gamma cells require y > 0");
+    if (obs == 1 && (fam == 10 || fam == 11)) {
+      double yd = asDouble(y(r));
+      if (yd < 1.0 || std::floor(yd) != yd)
+        error("gllvmTMB_va_r3: zero-truncated count cells require positive integer y");
+    }
+    if (obs == 1 && fam == 14) {
+      int K = n_ordinal_cuts_per_trait(t) + 2;
+      double yd = asDouble(y(r));
+      if (K < 2 || yd < 1.0 || yd > K || std::floor(yd) != yd)
+        error("gllvmTMB_va_r3: ordinal cells require integer categories in 1..K");
     }
   }
   if (eval_method == 1 && n_non_jj > 0)
-    error("gllvmTMB_va_r3: eval_method = 1 (Jaakkola-Jordan/PG bound) requires every row to be binomial-logit (family code 1)");
+    error("gllvmTMB_va_r3: eval_method = 1 requires pure binomial-logit data");
   if (eval_method == 2 && n_non_ac > 0)
-    error("gllvmTMB_va_r3: eval_method = 2 (Albert-Chib closed form) requires every row to be binomial-probit (family code 4)");
+    error("gllvmTMB_va_r3: eval_method = 2 requires pure binomial-probit data");
   // Same domain restriction as eval_method == 2 above -- "ac2" is the same
   // closed-form family with curvature-corrected coefficients, so it reuses
   // n_non_ac rather than widening the admitted family set.
   if (eval_method == 3 && n_non_ac > 0)
-    error("gllvmTMB_va_r3: eval_method = 3 (ac2, curvature-corrected Albert-Chib) requires every row to be binomial-probit (family code 4)");
+    error("gllvmTMB_va_r3: eval_method = 3 requires pure binomial-probit data");
   for (int cell = 0; cell < N * T; ++cell) {
     if (cell_count[cell] != 1)
       error("gllvmTMB_va_r3: every unit-trait cell must occur exactly once");
@@ -1010,11 +1072,13 @@ Type objective_function<Type>::operator()()
 
   const Type log_two_pi = log(Type(2.0) *
     Type(3.141592653589793238462643383279502884));
+  const Type sqrt_pi = sqrt(Type(3.141592653589793238462643383279502884));
 
   for (int r = 0; r < n_obs; ++r) {
     int i = unit_id(r);
     int t = trait_id(r);
     int fam = family(r);
+    int lid = link_id(r);
 
     Type mu = Type(0.0);
     for (int p = 0; p < X.cols(); ++p)
@@ -1089,19 +1153,57 @@ Type objective_function<Type>::operator()()
       Type log_choose = lgamma(n + Type(1.0))
         - lgamma(y(r) + Type(1.0))
         - lgamma(n - y(r) + Type(1.0));
-      // eval_method is fixed DATA, not an AD parameter, so an ordinary
-      // if/else (not CondExp) selects the evaluation tier, matching the
-      // family dispatch above.
-      Type softplus_expectation = (eval_method == 1)
-        ? va_r3_jj_softplus_expectation(mu, v)
-        : va_r3_softplus_expectation(mu, v, gh_nodes, gh_weights);
-      softplus_expectation_by_obs(r) = softplus_expectation;
-      ell = log_choose + y(r) * mu - n * softplus_expectation;
+      if (lid == 0) {
+        // Logistic link. JJ remains an explicit alternative; GH is the common
+        // Design-110 evaluator.
+        Type softplus_expectation = (eval_method == 1)
+          ? va_r3_jj_softplus_expectation(mu, v)
+          : va_r3_softplus_expectation(mu, v, gh_nodes, gh_weights);
+        softplus_expectation_by_obs(r) = softplus_expectation;
+        ell = log_choose + y(r) * mu - n * softplus_expectation;
+      } else if (lid == 1) {
+        Type probit_expectation;
+        if (eval_method == 2) {
+          probit_expectation = va_r3_probit_ac_expectation(mu, v, y(r), n);
+        } else if (eval_method == 3) {
+          probit_expectation = va_r3_probit_ac2_expectation(
+            mu, v, y(r), n, gh_nodes, gh_weights, Type(ac2_threshold));
+        } else {
+          probit_expectation = va_r3_probit_expectation(
+            mu, v, y(r), n, gh_nodes, gh_weights, Type(1e-6));
+        }
+        ell = log_choose + probit_expectation;
+      } else {
+        // cloglog: the failure term is exact because log(1-p)=-exp(eta);
+        // only the success log-probability needs GH.
+        Type safe_v = CppAD::CondExpGt(v, Type(1e-12), v, Type(1e-12));
+        Type scale = sqrt(Type(2.0) * safe_v);
+        Type success = Type(0.0);
+        for (int h = 0; h < gh_nodes.size(); ++h)
+          success += gh_weights(h) * va_r3_cloglog_logp(mu + scale * gh_nodes(h));
+        success /= sqrt_pi;
+        ell = log_choose + y(r) * success
+          - (n - y(r)) * exp(mu + v / Type(2.0));
+      }
     } else if (fam == 2) {
       // Poisson-log: E[exp(eta)] for eta ~ N(mu, v) is exact (log-normal
       // mean), so no quadrature is required.
       ell = y(r) * mu - exp(mu + v / Type(2.0)) - lgamma(y(r) + Type(1.0));
     } else if (fam == 3) {
+      // Lognormal-log is Gaussian on log(y), with the Jacobian retained.
+      Type sigma = exp(log_sigma_lognormal(t));
+      Type z = log(y(r)) - mu;
+      ell = -Type(0.5) * (log_two_pi + Type(2.0) * log_sigma_lognormal(t)
+        + (z * z + v) / (sigma * sigma)) - log(y(r));
+    } else if (fam == 4) {
+      // Gamma-log, mean-shape parameterisation.  Polynomial-plus-exp(-eta)
+      // gives an exact normal expectation.
+      Type log_shape = log_phi_gamma(t);
+      Type shape = exp(log_shape);
+      ell = shape * log_shape - lgamma(shape)
+        + (shape - Type(1.0)) * log(y(r)) - shape * mu
+        - shape * y(r) * exp(-mu + v / Type(2.0));
+    } else if (fam == 5) {
       // nbinom2-log: log p(y|eta) = lgamma(y+phi) - lgamma(phi) - lgamma(y+1)
       //   + phi*log(phi) - (y+phi)*log(phi + exp(eta)) + y*eta
       // The only hard term is E[log(phi + exp(eta))]. Since
@@ -1112,7 +1214,7 @@ Type objective_function<Type>::operator()()
       // (phi*log(phi) - (y+phi)*log(phi) = -y*log(phi)):
       //   E[log p] = lgamma(y+phi) - lgamma(phi) - lgamma(y+1) - y*log(phi)
       //              + y*mu - (y+phi) * E[softplus(mu - log(phi), v)]
-      Type log_phi_t = log_phi(t);
+      Type log_phi_t = log_phi_nbinom2(t);
       Type phi = exp(log_phi_t);
       Type softplus_expectation = va_r3_softplus_expectation(
         mu - log_phi_t, v, gh_nodes, gh_weights);
@@ -1120,42 +1222,138 @@ Type objective_function<Type>::operator()()
       ell = lgamma(y(r) + phi) - lgamma(phi) - lgamma(y(r) + Type(1.0))
         - y(r) * log_phi_t + y(r) * mu
         - (y(r) + phi) * softplus_expectation;
-    } else {
-      // fam == 4, Design 108 Gate A Stage 4 -- binomial-probit:
-      //   log p(y|eta) = log_choose + y log Phi(eta) + (n-y) log(1 - Phi(eta))
-      // The second term is written log Phi(-eta) by symmetry, so no difference
-      // of two nearly-equal CDFs is ever formed (Design 105 s6.3's objection)
-      // and BOTH terms go through the one tail-safe log-scale primitive.
-      // No dispersion parameter: log_phi is nbinom2's and log_sigma Gaussian's.
-      Type n = n_trials(r);
-      Type log_choose = lgamma(n + Type(1.0))
-        - lgamma(y(r) + Type(1.0))
-        - lgamma(n - y(r) + Type(1.0));
-      // eval_method is fixed DATA, not an AD parameter, so an ordinary
-      // if/else (not CondExp) selects the tier, exactly as fam == 1 does --
-      // no AD nodes are laid down for the unused branch(es). eval_method == 2
-      // is the Albert-Chib closed form, a DIFFERENT (strictly lower) objective
-      // than the GH quadrature, not a faster route to the same one.
-      // eval_method == 3 ("ac2") is the curvature-corrected sibling defined
-      // above: a HYBRID that reuses va_r3_probit_expectation's own
-      // expansion/quadrature machinery at a RUNTIME threshold
-      // (DATA_SCALAR(ac2_threshold) above; see that function's comment), so
-      // it needs gh_nodes/gh_weights too, unlike eval_method == 2. The "gh"
-      // branch below passes its OWN threshold, Type(1e-6), explicitly --
-      // unchanged from the literal value the local
-      // `const Type threshold = Type(1e-6);` used to hold, and NOT the same
-      // DATA_SCALAR ac2 reads (gh's threshold stays a fixed literal, not
-      // runtime-configurable, so its behaviour cannot move).
-      Type probit_expectation;
-      if (eval_method == 2) {
-        probit_expectation = va_r3_probit_ac_expectation(mu, v, y(r), n);
-      } else if (eval_method == 3) {
-        probit_expectation = va_r3_probit_ac2_expectation(
-          mu, v, y(r), n, gh_nodes, gh_weights, Type(ac2_threshold));
-      } else {
-        probit_expectation = va_r3_probit_expectation(mu, v, y(r), n, gh_nodes, gh_weights, Type(1e-6));
+    } else if (fam == 6) {
+      Type phi = exp(log_phi_tweedie(t));
+      Type power = Type(1.0) + va_r3_invlogit(logit_p_tweedie(t));
+      Type safe_v = CppAD::CondExpGt(v, Type(1e-12), v, Type(1e-12));
+      Type scale = sqrt(Type(2.0) * safe_v);
+      for (int h = 0; h < gh_nodes.size(); ++h) {
+        Type eta_h = va_r3_clamp(mu + scale * gh_nodes(h), Type(-35.0), Type(35.0));
+        ell += gh_weights(h) * dtweedie(y(r), exp(eta_h), phi, power, true);
       }
-      ell = log_choose + probit_expectation;
+      ell /= sqrt_pi;
+    } else if (fam == 7) {
+      Type phi = exp(log_phi_beta(t));
+      Type log_y = log(y(r));
+      Type log_1my = log(Type(1.0) - y(r));
+      Type safe_v = CppAD::CondExpGt(v, Type(1e-12), v, Type(1e-12));
+      Type scale = sqrt(Type(2.0) * safe_v);
+      for (int h = 0; h < gh_nodes.size(); ++h) {
+        Type p = va_r3_clamp(va_r3_invlogit(mu + scale * gh_nodes(h)),
+                             Type(1e-12), Type(1.0) - Type(1e-12));
+        Type a = p * phi;
+        Type b = (Type(1.0) - p) * phi;
+        Type node = lgamma(phi) - lgamma(a) - lgamma(b)
+          + (a - Type(1.0)) * log_y + (b - Type(1.0)) * log_1my;
+        ell += gh_weights(h) * node;
+      }
+      ell /= sqrt_pi;
+    } else if (fam == 8) {
+      Type phi = exp(log_phi_betabinom(t));
+      Type n = n_trials(r);
+      Type yy = y(r);
+      Type constant = lgamma(n + Type(1.0)) - lgamma(yy + Type(1.0))
+        - lgamma(n - yy + Type(1.0)) + lgamma(phi);
+      Type safe_v = CppAD::CondExpGt(v, Type(1e-12), v, Type(1e-12));
+      Type scale = sqrt(Type(2.0) * safe_v);
+      for (int h = 0; h < gh_nodes.size(); ++h) {
+        Type p = va_r3_clamp(va_r3_invlogit(mu + scale * gh_nodes(h)),
+                             Type(1e-12), Type(1.0) - Type(1e-12));
+        Type a = p * phi;
+        Type b = (Type(1.0) - p) * phi;
+        Type node = constant + lgamma(yy + a) + lgamma(n - yy + b)
+          - lgamma(a) - lgamma(b) - lgamma(n + phi);
+        ell += gh_weights(h) * node;
+      }
+      ell /= sqrt_pi;
+    } else if (fam == 9) {
+      Type sigma = exp(log_sigma_student(t));
+      Type df = Type(1.0) + exp(log_df_student(t));
+      Type safe_v = CppAD::CondExpGt(v, Type(1e-12), v, Type(1e-12));
+      Type scale = sqrt(Type(2.0) * safe_v);
+      for (int h = 0; h < gh_nodes.size(); ++h) {
+        Type eta_h = mu + scale * gh_nodes(h);
+        ell += gh_weights(h) * (dt((y(r) - eta_h) / sigma, df, true)
+                                  - log_sigma_student(t));
+      }
+      ell /= sqrt_pi;
+    } else if (fam == 10) {
+      Type safe_v = CppAD::CondExpGt(v, Type(1e-12), v, Type(1e-12));
+      Type scale = sqrt(Type(2.0) * safe_v);
+      for (int h = 0; h < gh_nodes.size(); ++h) {
+        Type eta_h = va_r3_clamp(mu + scale * gh_nodes(h), Type(-35.0), Type(35.0));
+        Type lambda = exp(eta_h);
+        Type node = y(r) * eta_h - lambda - lgamma(y(r) + Type(1.0))
+          - va_r3_log1mexp(-lambda);
+        ell += gh_weights(h) * node;
+      }
+      ell /= sqrt_pi;
+    } else if (fam == 11) {
+      Type log_phi = log_phi_truncnb2(t);
+      Type phi = exp(log_phi);
+      Type safe_v = CppAD::CondExpGt(v, Type(1e-12), v, Type(1e-12));
+      Type scale = sqrt(Type(2.0) * safe_v);
+      for (int h = 0; h < gh_nodes.size(); ++h) {
+        Type eta_h = va_r3_clamp(mu + scale * gh_nodes(h), Type(-35.0), Type(35.0));
+        Type sp = va_r3_softplus(eta_h - log_phi);
+        Type base = lgamma(y(r) + phi) - lgamma(phi) - lgamma(y(r) + Type(1.0))
+          - y(r) * log_phi + y(r) * eta_h - (y(r) + phi) * sp;
+        Type log_p0 = -phi * sp;
+        ell += gh_weights(h) * (base - va_r3_log1mexp(log_p0));
+      }
+      ell /= sqrt_pi;
+    } else if (fam == 12) {
+      Type present = CppAD::CondExpGt(y(r), Type(0.0), Type(1.0), Type(0.0));
+      Type sp = va_r3_softplus_expectation(mu, v, gh_nodes, gh_weights);
+      ell = present * mu - sp;
+      if (asDouble(y(r)) > 0.0) {
+        Type sigma = exp(log_sigma_lognormal_delta(t));
+        Type z = log(y(r)) - mu;
+        ell += -Type(0.5) * (log_two_pi + Type(2.0) * log_sigma_lognormal_delta(t)
+          + (z * z + v) / (sigma * sigma)) - log(y(r));
+      }
+    } else if (fam == 13) {
+      Type present = CppAD::CondExpGt(y(r), Type(0.0), Type(1.0), Type(0.0));
+      Type sp = va_r3_softplus_expectation(mu, v, gh_nodes, gh_weights);
+      ell = present * mu - sp;
+      if (asDouble(y(r)) > 0.0) {
+        Type phi = exp(log_phi_gamma_delta(t));
+        Type shape = Type(1.0) / (phi * phi);
+        ell += shape * log(shape) - lgamma(shape)
+          + (shape - Type(1.0)) * log(y(r)) - shape * mu
+          - shape * y(r) * exp(-mu + v / Type(2.0));
+      }
+    } else if (fam == 14) {
+      int K = n_ordinal_cuts_per_trait(t) + 2;
+      int offset = ordinal_offset_per_trait(t);
+      vector<Type> cuts(K - 1);
+      cuts(0) = Type(0.0);
+      for (int j = 1; j < K - 1; ++j)
+        cuts(j) = cuts(j - 1) + exp(ordinal_log_increments(offset + j - 1));
+      int yk = CppAD::Integer(y(r));
+      Type safe_v = CppAD::CondExpGt(v, Type(1e-12), v, Type(1e-12));
+      Type scale = sqrt(Type(2.0) * safe_v);
+      for (int h = 0; h < gh_nodes.size(); ++h) {
+        Type eta_h = mu + scale * gh_nodes(h);
+        Type node;
+        if (yk <= 1) node = va_r3_log_pnorm(cuts(0) - eta_h);
+        else if (yk >= K) node = va_r3_log_pnorm(eta_h - cuts(K - 2));
+        else node = va_r3_log_pnorm_diff(cuts(yk - 1) - eta_h,
+                                         cuts(yk - 2) - eta_h);
+        ell += gh_weights(h) * node;
+      }
+      ell /= sqrt_pi;
+    } else {
+      // fam == 15: TMB's robust NB kernel avoids the large-size cancellation
+      // in the equivalent lgamma ratio.  var-mu = phi*mu on the NB1 route.
+      Type safe_v = CppAD::CondExpGt(v, Type(1e-12), v, Type(1e-12));
+      Type scale = sqrt(Type(2.0) * safe_v);
+      for (int h = 0; h < gh_nodes.size(); ++h) {
+        Type eta_h = va_r3_clamp(mu + scale * gh_nodes(h), Type(-35.0), Type(35.0));
+        ell += gh_weights(h) * dnbinom_robust(
+          y(r), eta_h, eta_h + log_phi_nbinom1(t), true);
+      }
+      ell /= sqrt_pi;
     }
     if (!std::isfinite(asDouble(ell)))
       Rf_error("gllvmTMB_va_r3: non-finite expected log-likelihood at unit %d trait %d", i, t);
@@ -1176,6 +1374,7 @@ Type objective_function<Type>::operator()()
   REPORT(eval_method);
   REPORT(is_y_observed);
   REPORT(family);
+  REPORT(link_id);
   REPORT(log_sigma);
   REPORT(Lambda);
   REPORT(Sigma_B);

@@ -170,7 +170,7 @@ test_that("R3 nbinom2 expected log-likelihood passes a direct integrate() oracle
                                eval_method = "gh")
   beta_index <- which(names(obj$par) == "beta")
   theta_index <- which(names(obj$par) == "theta_rr")
-  phi_index <- which(names(obj$par) == "log_phi")
+  phi_index <- which(names(obj$par) == "log_phi_nbinom2")
   expect_length(phi_index, 1L)
 
   nbinom2_logdensity <- function(y, eta, phi) {
@@ -205,13 +205,13 @@ test_that("R3 nbinom2 expected log-likelihood passes a direct integrate() oracle
   }
 })
 
-test_that("R3 nbinom2 is mapped off (inert) for every other family", {
+test_that("R3 nbinom2 dispersion is mapped off (inert) for every other family", {
   # VA/EVA development is paused; these are prototype gates. Do not make
   # CRAN build a parked prototype's DLL. They still run under devtools::test().
   skip_on_cran()
-  ## log_phi must not appear in obj$par -- and must not change the objective
+  ## log_phi_nbinom2 must not appear in obj$par -- and must not change the objective
   ## or gradient -- for a family that never uses it. This is the guard against
-  ## the parameter-vector-cascade risk: adding log_phi to the template must
+  ## the parameter-vector-cascade risk: adding a family parameter must
   ## cost the pre-existing families nothing.
   validated <- .va_r3_validate_data(
     y = 1L, n_trials = 3L, X = matrix(1, 1L, 1L),
@@ -223,9 +223,9 @@ test_that("R3 nbinom2 is mapped off (inert) for every other family", {
   )
   obj <- .va_r3_make_objective(validated, H = 25L, parameters = parameters,
                                eval_method = "gh")
-  expect_false("log_phi" %in% names(obj$par))
+  expect_false("log_phi_nbinom2" %in% names(obj$par))
   ## beta, theta_rr, m, log_L_diag; L_off is empty at q=1 (0 off-diagonal
-  ## entries), and log_phi is mapped off for this (binomial) family.
+  ## entries), and all family-specific parameters are mapped off for binomial.
   expect_identical(length(obj$par), 4L)
 })
 
@@ -282,7 +282,7 @@ test_that("R3 fit returns a latent posterior of the right shape", {
 
 test_that("R3 nbinom2 fit is alive: simulate-then-fit returns a healthy status", {
   ## A recovery SMOKE test, not a recovery accuracy test: the point is to
-  ## prove the whole nbinom2 pipeline (beta, loadings, per-trait log_phi, and
+  ## prove the whole nbinom2 pipeline (beta, loadings, per-trait log_phi_nbinom2, and
   ## the variational block) is alive end to end, not to certify accuracy.
   set.seed(2026L)
   N <- 60L; T <- 4L; q <- 2L
@@ -313,7 +313,7 @@ test_that("R3 nbinom2 fit is alive: simulate-then-fit returns a healthy status",
   expect_identical(fit$status, "healthy")
   expect_true(is.finite(fit$best$objective))
   expect_gte(fit$health$healthy_starts, 3L)
-  fitted_log_phi <- unname(fit$best$par[names(fit$best$par) == "log_phi"])
+  fitted_log_phi <- unname(fit$best$par[names(fit$best$par) == "log_phi_nbinom2"])
   expect_length(fitted_log_phi, T)
   expect_true(all(is.finite(fitted_log_phi)))
 })
@@ -509,13 +509,12 @@ test_that("R3 L-BFGS-B primary reaches the same optimum as nlminb", {
   expect_lt(abs(a$best$objective - b$best$objective), 1e-5)
   expect_lt(max(abs(a$best$par - b$best$par)), 1e-2)
 
-  ## The DEFAULT is now "auto", which resolves per family AND per tier from the
-  ## registry (see the auto-routing test). For binomial the default tier is jj,
-  ## where lbfgsb was measured 2.54x faster with every cell agreeing -- so the
-  ## default fit here resolves to lbfgsb, not to nlminb.
+  ## Design 110 makes GH the internal automatic tier. Binomial-logit GH keeps
+  ## the measured reference nlminb route; L-BFGS-B remains explicitly
+  ## selectable and is checked above.
   expect_identical(.va_r3_fit(
     y, rep(1L, n * p), X, u, tr, q = 2L, family = "binomial", link = "logit",
-    H = 15L, n_starts = 1L)$optimizer, "lbfgsb")
+    H = 15L, n_starts = 1L)$optimizer, "nlminb")
 
   ## The factr constant is load-bearing: optim's DEFAULT factr terminated in
   ## ~24ms at an objective 125-151 worse in 3 of 3 replicates at N=1600 while
@@ -524,46 +523,30 @@ test_that("R3 L-BFGS-B primary reaches the same optimum as nlminb", {
   expect_equal(.VA_R3_LBFGSB_FACTR, 1e-12 / .Machine$double.eps)
 })
 
-test_that("R3 optimizer auto-routes per family AND per tier", {
-  ## The routing is measured, not chosen by taste. Medians over the sweep in
-  ## dev/lbfgsb-default-*.csv (nlminb/lbfgsb; > 1 means lbfgsb faster):
-  ##   binomial jj       2.54x  (1.31-6.33)  -> lbfgsb
-  ##   gaussian gh       2.13x  (1.76-2.50)  -> lbfgsb
-  ##   poisson  gh       1.25x  (0.96-3.25)  -> nlminb, the range straddles 1
-  ##   binomial gh       0.57x  (0.35-1.02)  -> nlminb, lbfgsb is SLOWER
-  ##   nbinom2  gh       0.42x  (0.26-0.63)  -> nlminb, slower AND the only
-  ##                                            same-optimum disagreement
-  ## binomial_probit is the one family NOT measured, on ANY tier: Design 108
-  ## Stage 4 is a numerics spike, the mature-VA arc's Albert-Chib tier ("ac")
-  ## is a correctness slice, and its curvature-corrected sibling ("ac2") is a
-  ## diagnosis/comparison tier -- no timing sweep has been run for any of the
-  ## three, so all take the reference optimiser rather than claiming a route
-  ## they have no evidence for. Give each a measured route only when a sweep
-  ## exists for it.
-  expected <- list(
-    gaussian_anchor = c(gh = "lbfgsb"),
-    binomial        = c(gh = "nlminb", jj = "lbfgsb"),
-    poisson         = c(gh = "nlminb"),
-    nbinom2         = c(gh = "nlminb"),
-    binomial_probit = c(gh = "nlminb", ac = "nlminb", ac2 = "nlminb")
+test_that("R3 optimizer auto-routes only cells with direct evidence", {
+  measured <- c(
+    `0:0:gh` = "lbfgsb",
+    `1:0:gh` = "nlminb",
+    `1:0:jj` = "lbfgsb",
+    `5:0:gh` = "lbfgsb"
   )
   for (entry in .va_r3_family_registry) {
-    want <- expected[[entry$family]]
-    expect_false(is.null(want))
     for (tier in entry$tiers) {
+      key <- paste(entry$family_code, entry$link_id, tier, sep = ":")
+      want <- if (key %in% names(measured)) unname(measured[[key]]) else "nlminb"
       expect_identical(
-        .va_r3_resolve_optimizer("auto", entry$family_code, tier),
-        unname(want[[tier]]),
+        .va_r3_resolve_optimizer("auto", entry$family_code, tier, entry$link_id),
+        want,
         info = paste(entry$family, tier)
       )
     }
   }
 
-  ## binomial is the reason routing must be per TIER, not per family: its two
-  ## tiers point in OPPOSITE directions. A family-level choice would have
-  ## slowed down gh, the accurate tier.
-  expect_identical(.va_r3_resolve_optimizer("auto", 1L, "jj"), "lbfgsb")
+  ## The resolver is tier-specific: the same binomial-logit family uses the
+  ## reference optimiser for GH and the measured faster route for JJ.
+  expect_identical(.va_r3_resolve_optimizer("auto", 1L, "jj", 0L), "lbfgsb")
   expect_identical(.va_r3_resolve_optimizer("auto", 1L, "gh"), "nlminb")
+  expect_identical(.va_r3_resolve_optimizer("auto", 5L, "gh"), "lbfgsb")
 
   ## An explicit request always wins over the routing.
   expect_identical(.va_r3_resolve_optimizer("lbfgsb", 1L, "gh"), "lbfgsb")
@@ -593,16 +576,60 @@ test_that("R3 optimizer auto-routes per family AND per tier", {
   expect_identical(fit("gh")$optimizer, "nlminb")
 })
 
+test_that("R3 can match Laplace's shared Gaussian/lognormal residual scale for comparators", {
+  skip_on_cran()
+  N <- 2L; T <- 2L
+  X <- stats::model.matrix(~ 0 + factor(rep(seq_len(T), N),
+                                      levels = seq_len(T)))
+  make <- function(fid, y) .va_r3_validate_data(
+    y = y, n_trials = rep(1L, N * T), X = X,
+    unit_id = rep(seq_len(N), each = T),
+    trait_id = rep(seq_len(T), N), q = 1L,
+    family_codes = rep(fid, N * T), link_ids = rep(0L, N * T)
+  )
+
+  for (case in list(list(fid = 0L, y = c(-0.2, 0.1, 0.3, -0.1), par = "log_sigma"),
+                    list(fid = 3L, y = c(0.8, 1.1, 1.4, 0.9), par = "log_sigma_lognormal"))) {
+    validated <- make(case$fid, case$y)
+    free <- .va_r3_make_objective(validated, H = 7L)
+    matched <- .va_r3_make_objective(
+      validated, H = 7L, match_laplace_residual_sd = TRUE
+    )
+    expect_identical(sum(names(free$par) == case$par), 2L)
+    expect_identical(sum(names(matched$par) == case$par), 1L)
+    expect_true(isTRUE(attr(matched, "va_r3_match_laplace_residual_sd")))
+  }
+
+  mixed <- .va_r3_validate_data(
+    y = c(-0.2, 0.8, 0.3, 1.1), n_trials = rep(1L, N * T), X = X,
+    unit_id = rep(seq_len(N), each = T), trait_id = rep(seq_len(T), N), q = 1L,
+    family_codes = rep(c(0L, 3L), N), link_ids = rep(0L, N * T)
+  )
+  expect_error(
+    .va_r3_make_objective(mixed, H = 7L, match_laplace_residual_sd = TRUE),
+    "pure-family comparator"
+  )
+})
+
 test_that("R3 family registry agrees with the validator and drives eval_method", {
   ## The registry is the declared per-family evaluation contract. It must not
   ## drift from .va_r3_validate_data(), which is what actually assigns the
   ## family code the template sees. Adding a family without a registry entry
   ## (or with the wrong code/link) fails here rather than silently.
-  y_for <- list(gaussian_anchor = 0.5, binomial = 1L, poisson = 2L,
-                nbinom2 = 2L, binomial_probit = 1L)
+  y_for <- list(
+    gaussian_anchor = 0.5, binomial = 1L, binomial_probit = 1L,
+    binomial_cloglog = 1L, poisson = 2L, lognormal = 1.2,
+    gamma = 1.2, nbinom2 = 2L, tweedie = 1.2, beta = 0.4,
+    betabinomial = 1L, student = 0.5, truncated_poisson = 2L,
+    truncated_nbinom2 = 2L, delta_lognormal = 0,
+    delta_gamma = 0, ordinal_probit = 2L, nbinom1 = 2L
+  )
   for (entry in .va_r3_family_registry) {
     validated <- .va_r3_validate_data(
-      y = y_for[[entry$family]], n_trials = 3L, X = matrix(1, 1L, 1L),
+      y = y_for[[entry$family]],
+      n_trials = if (entry$family %in% c("binomial", "binomial_probit",
+                                         "binomial_cloglog", "betabinomial")) 3L else 1L,
+      X = matrix(1, 1L, 1L),
       unit_id = 1L, trait_id = 1L, q = 1L,
       family = entry$family, link = entry$link
     )
@@ -610,25 +637,26 @@ test_that("R3 family registry agrees with the validator and drives eval_method",
 
     ## "auto" resolves to whatever the registry declares.
     expect_identical(
-      .va_r3_resolve_eval_method("auto", entry$family_code),
+      .va_r3_resolve_eval_method("auto", entry$family_code, entry$link_id),
       entry$default_tier
     )
     ## Every declared tier is accepted; anything else fails closed.
     for (tier in entry$tiers) {
       expect_identical(
-        .va_r3_resolve_eval_method(tier, entry$family_code), tier
+        .va_r3_resolve_eval_method(tier, entry$family_code, entry$link_id), tier
       )
     }
-    for (tier in setdiff(c("gh", "jj"), entry$tiers)) {
+    for (tier in setdiff(c("gh", "jj", "ac", "ac2"), entry$tiers)) {
       expect_error(
-        .va_r3_resolve_eval_method(tier, entry$family_code),
+        .va_r3_resolve_eval_method(tier, entry$family_code, entry$link_id),
         "not implemented for the"
       )
     }
     ## objective_type reports the resolved bound, never a hardcoded one.
     expect_identical(
-      .va_r3_objective_type(.va_r3_resolve_eval_method("auto", entry$family_code)),
-      if (identical(entry$default_tier, "jj")) "ELBO_JJ" else "ELBO_GH"
+      .va_r3_objective_type(.va_r3_resolve_eval_method(
+        "auto", entry$family_code, entry$link_id)),
+      "ELBO_GH"
     )
   }
 
@@ -1506,7 +1534,10 @@ test_that("R3 template refuses an inconsistent tier declaration loudly", {
       dat = list(y = 1, n_trials = 4, X = matrix(1, 1L, 1L), unit_id = 0L,
                  trait_id = 0L, is_y_observed = 1L, N = 1L, T = 1L, q = 1L,
                  gh_nodes = rule$nodes, gh_weights = rule$weights,
-                 family = 1L, eval_method = 0L,
+                 family = 1L, link_id = 0L,
+                 n_ordinal_cuts_per_trait = 0L,
+                 ordinal_offset_per_trait = 0L,
+                 eval_method = 0L,
                  ## ac2_threshold (Design 108 Gate A Stage 5) is read
                  ## unconditionally regardless of eval_method; this probe
                  ## builds `dat` directly rather than through
@@ -1526,8 +1557,14 @@ test_that("R3 template refuses an inconsistent tier declaration loudly", {
                                                     dims = c(1L, 1L)),
                  diag_Ainv_struct = 0, log_det_A_struct = 0),
       par = list(beta = 0, theta_rr = 1, log_sd_tier = numeric(0), m = 0,
-                 log_L_diag = 0, L_off = numeric(0), log_phi = 0,
-                 log_sigma = 0)
+                 log_L_diag = 0, L_off = numeric(0), log_sigma = 0,
+                 log_sigma_lognormal = 0, log_phi_gamma = 0,
+                 log_phi_nbinom2 = 0, log_phi_tweedie = 0,
+                 logit_p_tweedie = 0, log_phi_beta = 1,
+                 log_phi_betabinom = 1, log_sigma_student = 0,
+                 log_df_student = log(4), log_phi_truncnb2 = 0,
+                 log_sigma_lognormal_delta = 0, log_phi_gamma_delta = 0,
+                 ordinal_log_increments = numeric(0), log_phi_nbinom1 = 0)
     )
     z <- mutate(base)
     tryCatch({

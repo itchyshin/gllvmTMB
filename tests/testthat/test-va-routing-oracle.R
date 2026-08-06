@@ -111,7 +111,7 @@ test_that("integration = \"va\" routes to the same fit as calling the engine", {
   expect_true(fit_a$research_only)
 })
 
-test_that("likelihood-shaped methods fail loudly on a variational fit", {
+test_that("likelihood methods fail and fixed-effect VA-Wald fails closed without its retained objective", {
   skip_on_cran()
 
   ## No fitting: the methods are asserted against a minimal object carrying the
@@ -135,9 +135,12 @@ test_that("likelihood-shaped methods fail loudly on a variational fit", {
   expect_error(logLik(fit), "not defined for a variational fit")
   expect_error(AIC(fit),    "not defined for a variational fit")
   expect_error(BIC(fit),    "not defined for a variational fit")
-  ## calibrated = FALSE: no uncertainty from the inverse variational Hessian.
-  expect_error(confint(fit), "not defined for a variational fit")
-  expect_error(vcov(fit),    "not defined for a variational fit")
+  ## Design 110 admits fixed-effect VA-Wald only when the healthy fit retains
+  ## the objective needed for its profiled Schur information. This cheap fake
+  ## deliberately does not, so the methods fail closed rather than inventing
+  ## a covariance from the displayed parameter vector.
+  expect_error(confint(fit), "healthy variational fit")
+  expect_error(vcov(fit),    "healthy variational fit")
   ## These are in the set BECAUSE their stats defaults would otherwise succeed
   ## silently. `coef`/`residuals`/`deviance`/`df.residual`/`weights` would
   ## return NULL; `fitted` is the sharpest -- `fitted.default` reaches for

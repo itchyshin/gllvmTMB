@@ -1,8 +1,10 @@
 # Design 110 — VA(GH) H = 7 across all scalar response families
 
-**Status:** approved implementation contract, 2026-08-06. Arc 1 implements and
-light-tests the scalar family surface. Arc 2 may start on Totoro/DRAC only after
-Gate E. This contract does not admit multinomial or any other non-scalar
+**Status:** Gate E PASS, 18/18 scalar cells, 2026-08-06. Arc 1 implemented and
+light-tested the scalar family surface; the public H = 7/GH promotion is now
+authorised but is recorded separately from the arithmetic verdict. Arc 2 is
+authorised after the public/light closeout but has not been launched. This
+contract does not admit multinomial or any other non-scalar
 likelihood, does not make an accuracy claim for `H = 7`, and does not make an
 ELBO usable as `logLik`, AIC, BIC, or an LRT.
 
@@ -113,6 +115,13 @@ and is economical enough to test, but the package must earn it independently in
 every cell through Gate E and the Arc-2 H ladder.
 
 ## 4. Gate E — permission to make H = 7 the default
+
+**Verdict (2026-08-06): PASS, 18/18 cells.** The durable per-cell receipt is
+`docs/dev-log/audits/2026-08-06-va-gh-h7-gate-e.md`. It records the independent
+tail oracles, fixed-parameter map checks, compiled arithmetic, finite-gradient
+and Hessian checks, and all-family light fits. This is permission to promote the
+GH default and scalar family/link fence; it is not Arc-2 recovery or uncertainty
+coverage evidence.
 
 Each of the 18 cells receives an independent verdict. A cell passes only when:
 

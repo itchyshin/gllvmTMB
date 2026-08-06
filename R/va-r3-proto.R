@@ -2010,8 +2010,12 @@
 
 .va_r3_fixed_family_parameter <- function(x, T, name, lower, upper = Inf) {
   if (is.null(x)) return(rep(NA_real_, T))
+  if (!is.numeric(x)) {
+    stop(name, " must have length T and contain NA or finite numeric values in (",
+         lower, ", ", upper, ").", call. = FALSE)
+  }
   x <- as.numeric(x)
-  if (length(x) != T || any(!is.na(x) &
+  if (length(x) != T || any(is.nan(x)) || any(!is.na(x) &
       (!is.finite(x) | x <= lower | x >= upper))) {
     stop(name, " must have length T and contain NA or finite values in (",
          lower, ", ", upper, ").", call. = FALSE)

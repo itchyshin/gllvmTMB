@@ -34,6 +34,32 @@
   lu + .va_oracle_log1mexp(ll - lu)
 }
 
+## Independent compound-Poisson/Gamma series for the positive Tweedie density.
+## The package oracle `tweedie::dtweedie()` returns the density, not its log,
+## and therefore underflows for the adversarial right-tail fixture that caught
+## the former eta clamp. This series stays on the log scale. Gate E uses p=1.5,
+## where 200 terms are far beyond the numerically relevant range; the explicit
+## tail check makes the truncation auditable rather than assumed.
+.va_oracle_tweedie_log_density_series <- function(y, eta, phi, power,
+                                                   n_terms = 200L) {
+  stopifnot(length(y) == 1L, y > 0, phi > 0, power > 1, power < 2)
+  mu <- exp(eta)
+  lambda <- mu^(2 - power) / (phi * (2 - power))
+  alpha <- (2 - power) / (power - 1)
+  gamma_scale <- phi * (power - 1) * mu^(power - 1)
+  j <- seq_len(as.integer(n_terms))
+  log_terms <- j * log(lambda) + j * alpha * log(y) -
+    lgamma(j + 1) - lgamma(j * alpha) -
+    j * alpha * log(gamma_scale)
+  peak <- max(log_terms)
+  if (log_terms[[length(log_terms)]] > peak - 100) {
+    stop("Tweedie series truncation is not negligible for this fixture.",
+         call. = FALSE)
+  }
+  -lambda - y / gamma_scale - log(y) +
+    peak + log(sum(exp(log_terms - peak)))
+}
+
 .va_oracle_gh_rule <- function(H) {
   H <- as.integer(H)
   stopifnot(length(H) == 1L, H >= 3L, H %% 2L == 1L)
@@ -100,14 +126,14 @@
                                  power = p$power)))
   }
   if (fid == 7L) {
-    mean <- plogis(eta)
-    return(dbeta(y, shape1 = mean * p$phi,
-                 shape2 = (1 - mean) * p$phi, log = TRUE))
+    log_mean <- -.va_oracle_softplus(-eta)
+    log_one_minus_mean <- -.va_oracle_softplus(eta)
+    return(dbeta(y, shape1 = exp(log_mean) * p$phi,
+                 shape2 = exp(log_one_minus_mean) * p$phi, log = TRUE))
   }
   if (fid == 8L) {
-    mean <- plogis(eta)
-    a <- mean * p$phi
-    b <- (1 - mean) * p$phi
+    a <- exp(-.va_oracle_softplus(-eta)) * p$phi
+    b <- exp(-.va_oracle_softplus(eta)) * p$phi
     return(lchoose(n, y) + lbeta(y + a, n - y + b) - lbeta(a, b))
   }
   if (fid == 9L) {
@@ -147,7 +173,15 @@
   }
   if (fid == 15L) {
     mean <- exp(eta)
-    return(dnbinom(y, size = mean / p$phi, mu = mean, log = TRUE))
+    size <- mean / p$phi
+    ## Stable NB1 log PMF. `lgamma(y + size) - lgamma(size)` loses nearly all
+    ## precision when eta is large, while y is an integer count and the same
+    ## ratio is exactly prod_{k=0}^{y-1}(size + k).
+    log_coefficient <- if (y == 0) 0 else
+      sum(log(size + 0:(as.integer(y) - 1L))) - lgamma(y + 1)
+    log_prob <- -log1p(p$phi)
+    log_one_minus_prob <- log(p$phi) - log1p(p$phi)
+    return(log_coefficient + size * log_prob + y * log_one_minus_prob)
   }
   stop("unknown scalar family/link fixture", call. = FALSE)
 }

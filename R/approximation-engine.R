@@ -149,8 +149,6 @@
     n_ordinal_cuts_per_trait = n_ordinal_cuts_per_trait,
     ordinal_offset_per_trait = ordinal_offset_per_trait,
     ordinal_log_increments_start = ordinal_log_increments_start,
-    fixed_tweedie_power = fixed_tweedie_power,
-    fixed_student_df = fixed_student_df,
     extra_tiers = extra_tiers
   )
   started <- proc.time()[["elapsed"]]
@@ -168,6 +166,8 @@
     n_ordinal_cuts_per_trait = n_ordinal_cuts_per_trait,
     ordinal_offset_per_trait = ordinal_offset_per_trait,
     ordinal_log_increments_start = ordinal_log_increments_start,
+    fixed_tweedie_power = fixed_tweedie_power,
+    fixed_student_df = fixed_student_df,
     extra_tiers = extra_tiers
   )
   elapsed <- proc.time()[["elapsed"]] - started

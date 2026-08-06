@@ -79,10 +79,10 @@ test_that("VA-R3 rank-zero result is normalised without compiling an objective",
     "va_r3", y, trials, X, unit, trait, q = 0L
   )
   expect_identical(result$status, "not_applicable_rank_zero")
-  ## Binomial data with eval_method = "auto" resolves to the Jaakkola-Jordan
-  ## bound, and objective_type now reports the RESOLVED bound instead of a
-  ## hardcoded "ELBO_GH".
-  expect_identical(result$objective_type, "ELBO_JJ")
+  ## The private registry resolves `auto` to GH for every scalar cell. The
+  ## public formula route still explicitly selects JJ for pure binomial-logit
+  ## until Gate E authorises the H=7 promotion.
+  expect_identical(result$objective_type, "ELBO_GH")
   expect_true(isTRUE(result$research_only))
   expect_false(isTRUE(result$fitted$objective_constructed))
   expect_true(is.na(result$score$negative_elbo_gh))
@@ -92,6 +92,38 @@ test_that("VA-R3 rank-zero result is normalised without compiling an objective",
     result$admitted_regime$trials,
     "complete cells (binomial: integer n_trials >= 1; Poisson: no trials)"
   )
+})
+
+test_that("VA adapter forwards fixed Tweedie power and Student df", {
+  captured <- NULL
+  fake_fit <- function(...) {
+    captured <<- list(...)
+    list(
+      status = "healthy", objective_type = "ELBO_GH", q = 1L,
+      fixed_global = FALSE, source_commit = NA_character_,
+      source_checksum = NA_character_, rank_source = "fixed_fixture",
+      eval_method = "gh", health = list(admitted = TRUE),
+      best = list(convergence = 0L, max_abs_gradient = 0,
+                  objective = 1, par = c(beta = 0)),
+      objective = list()
+    )
+  }
+  testthat::local_mocked_bindings(.va_r3_fit = fake_fit, .package = "gllvmTMB")
+
+  result <- .approximation_engine_va_r3_fit(
+    y = c(1.2, 0.8, 1.1, 0.9), n_trials = rep(1L, 4L),
+    X = matrix(1, 4L, 1L),
+    unit_id = c(0L, 0L, 1L, 1L), trait_id = c(0L, 1L, 0L, 1L),
+    q = 1L, N = 2L, T = 2L,
+    family_codes = c(6L, 9L, 6L, 9L), link_ids = rep(0L, 4L),
+    eval_method = "gh",
+    fixed_tweedie_power = c(1.6, NA_real_),
+    fixed_student_df = c(NA_real_, 7)
+  )
+
+  expect_identical(result$status, "healthy")
+  expect_equal(captured$fixed_tweedie_power, c(1.6, NA_real_))
+  expect_equal(captured$fixed_student_df, c(NA_real_, 7))
 })
 
 test_that("EVA rejects unsupported inputs before Gate-1 objective construction", {

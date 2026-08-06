@@ -198,35 +198,37 @@ Type va_r3_log_pnorm(const Type &x)
 
 // log(1 - exp(a)) for a <= 0.
 //
-// The INPUT is clamped to a <= -1.2e-16 (just past the double unit roundoff) so
-// NEITHER branch can return -inf on an UNSELECTED CondExp path -- the same
-// discipline as va_r3_log_pnorm above, and for the same measured reason: an
-// unselected non-finite branch leaves fn and gr finite AND CORRECT while killing
-// the HESSIAN.  Any check that this clamp is still needed MUST call obj$he().
-//
-// A 1e-300 floor is NOT sufficient, and that is the whole point: it rescues the
-// series branch but leaves the direct branch computing log(1 - exp(-1e-300)) =
-// log(0).  The floor has to sit at the unit roundoff.
+// Each branch receives its OWN safe surrogate while the selected small-u branch
+// retains the true u. This matters for zero-truncated families: in the left tail
+// a = log(P0) is arbitrarily close to zero and log(1-P0) ~ log(-a). Flooring the
+// shared input at unit roundoff changes that density (eta=-40 was wrong by 3.34
+// log units). A branch-local surrogate keeps the unselected path finite without
+// changing the selected likelihood.
 //
 // Why both branches are safe everywhere:
 //  (i)   the cubic u - u^2/2 + u^3/6 has derivative ((u-1)^2 + 1)/2 > 0 for all
 //        u, so it increases strictly from 0 and is strictly POSITIVE for every
-//        u > 0 -- the unselected series branch is finite at any u, large u
-//        included;
-//  (ii)  where the clamp binds, CondExp returns a constant, so the propagated
-//        partial is exactly 0 -- correct for a branch that must not contribute;
-//  (iii) it binds only when the two probabilities agree to within one unit
-//        roundoff (a degenerate / empty category).  It floors the RATIO, not the
-//        absolute probability, degrading to logPhi(a) - 36.7 rather than -inf.
+//        u > 0; its branch-local input is also capped before evaluation;
+//  (ii)  the direct branch sees max(u, 1e-6), so 1-exp(-u) cannot round to zero
+//        on its unselected path;
+//  (iii) the series branch sees min(max(u, 1e-300), 1e-6), so it cannot return
+//        log(0) or overflow on its unselected path. The lower floor acts only
+//        beyond the representable probability range, not at ordinary tails.
 template <class Type>
 Type va_r3_log1mexp(const Type &a)
 {
-  const Type ceil_a = Type(-1.2e-16);
-  Type ac = CppAD::CondExpGt(a, ceil_a, ceil_a, a);          // min(a, -1.2e-16)
-  Type u = -ac;                                              // u >= 1.2e-16
-  Type series = log(u - u * u / Type(2.0) + u * u * u / Type(6.0));
-  Type direct = log(Type(1.0) - exp(ac));
-  return CppAD::CondExpLt(u, Type(1e-6), series, direct);
+  const Type switch_u = Type(1e-6);
+  const Type tiny_u = Type(1e-300);
+  Type u = -a;
+  Type positive_u = CppAD::CondExpGt(u, tiny_u, u, tiny_u);
+  Type series_u = CppAD::CondExpLt(positive_u, switch_u,
+                                   positive_u, switch_u);
+  Type direct_u = CppAD::CondExpGt(positive_u, switch_u,
+                                   positive_u, switch_u);
+  Type series = log(series_u - series_u * series_u / Type(2.0)
+                    + series_u * series_u * series_u / Type(6.0));
+  Type direct = log(Type(1.0) - exp(-direct_u));
+  return CppAD::CondExpLt(positive_u, switch_u, series, direct);
 }
 
 // log(Phi(a) - Phi(b)) for a > b -- the ordinal cell probability.

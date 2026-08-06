@@ -102,6 +102,126 @@ test_that("all 18 scalar TMB objectives have finite, numerically aligned gradien
   }
 })
 
+test_that("previously clamped scalar tails preserve the registered densities", {
+  ## Each mean is beyond the former clamp. The tiny positive variance makes
+  ## this a genuine H=7 compiled expectation while keeping the expected value
+  ## close to a point-density probe. These cases fail materially with the
+  ## pre-Gate-E clamp implementation.
+  cases <- list(
+    tweedie_log = modifyList(.va_oracle_cells$tweedie_log,
+                             list(mu = 40, v = 1e-12)),
+    beta_logit = modifyList(.va_oracle_cells$beta_logit,
+                            list(mu = 30, v = 1e-12)),
+    betabinomial_logit = modifyList(.va_oracle_cells$betabinomial_logit,
+                                    list(mu = 30, v = 1e-12)),
+    truncated_poisson_log = modifyList(.va_oracle_cells$truncated_poisson_log,
+                                       list(mu = 40, v = 1e-12)),
+    truncated_poisson_log_left = modifyList(
+      .va_oracle_cells$truncated_poisson_log,
+      list(mu = -40, v = 1e-12)
+    ),
+    truncated_nbinom2_log = modifyList(.va_oracle_cells$truncated_nbinom2_log,
+                                      list(mu = 40, v = 1e-12)),
+    truncated_nbinom2_log_left = modifyList(
+      .va_oracle_cells$truncated_nbinom2_log,
+      list(mu = -40, v = 1e-12)
+    ),
+    nbinom1_log = modifyList(.va_oracle_cells$nbinom1_log,
+                             list(mu = 40, v = 1e-12))
+  )
+
+  for (name in names(cases)) {
+    cell <- cases[[name]]
+    built <- .va_compiled_fixture(cell, rebuild = FALSE)
+    compiled <- unname(
+      built$objective$report(built$objective$par)$expected_loglik_by_obs[[1L]]
+    )
+    if (identical(name, "tweedie_log")) {
+      rule <- .va_oracle_gh_rule(7L)
+      eta <- cell$mu + sqrt(2 * cell$v) * rule$nodes
+      node <- vapply(eta, function(z) {
+        .va_oracle_tweedie_log_density_series(
+          cell$y, z, cell$par$phi, cell$par$power
+        )
+      }, numeric(1L))
+      expected <- sum(rule$weights * node) / sqrt(pi)
+    } else {
+      expected <- .va_oracle_gh_expectation(cell, H = 7L)
+    }
+    relative_error <- abs(compiled - expected) / max(1, abs(expected))
+    expect_true(is.finite(compiled), info = name)
+    expect_lt(relative_error, 5e-9,
+              label = paste(name, "relative tail-density discrepancy"))
+    expect_true(all(is.finite(built$objective$gr(built$objective$par))),
+                info = paste(name, "finite gradient"))
+    if (grepl("_left$", name)) {
+      expect_true(all(is.finite(built$objective$he(built$objective$par))),
+                  info = paste(name, "finite Hessian"))
+    }
+  }
+})
+
+test_that("fixed Tweedie power and Student df are pinned in the R3 map", {
+  expect_error(
+    .va_r3_fixed_family_parameter("1.7", 1L, "fixed_tweedie_power", 1, 2),
+    "finite numeric values"
+  )
+  expect_error(
+    .va_r3_fixed_family_parameter(NaN, 1L, "fixed_tweedie_power", 1, 2),
+    "must have length T"
+  )
+  tweedie_built <- .va_compiled_fixture(.va_oracle_cells$tweedie_log,
+                                        rebuild = FALSE)
+  tweedie_fixed <- .va_r3_make_objective(
+    tweedie_built$validated, H = 7L, parameters = tweedie_built$parameters,
+    eval_method = "gh", fixed_tweedie_power = 1.7
+  )
+  tweedie_free <- .va_r3_make_objective(
+    tweedie_built$validated, H = 7L, parameters = tweedie_built$parameters,
+    eval_method = "gh"
+  )
+  expect_false("logit_p_tweedie" %in% names(tweedie_fixed$par))
+  expect_true("logit_p_tweedie" %in% names(tweedie_free$par))
+  tweedie_par <- tweedie_fixed$env$parList(tweedie_fixed$par)
+  expect_equal(1 + plogis(tweedie_par$logit_p_tweedie), 1.7,
+               tolerance = 1e-12)
+  tweedie_cell <- modifyList(
+    .va_oracle_cells$tweedie_log,
+    list(par = modifyList(.va_oracle_cells$tweedie_log$par,
+                          list(power = 1.7)))
+  )
+  expect_equal(
+    unname(tweedie_fixed$report(tweedie_fixed$par)$expected_loglik_by_obs[[1L]]),
+    .va_oracle_gh_expectation(tweedie_cell, H = 7L),
+    tolerance = 1e-6
+  )
+
+  student_built <- .va_compiled_fixture(.va_oracle_cells$student_identity,
+                                        rebuild = FALSE)
+  student_fixed <- .va_r3_make_objective(
+    student_built$validated, H = 7L, parameters = student_built$parameters,
+    eval_method = "gh", fixed_student_df = 7
+  )
+  student_free <- .va_r3_make_objective(
+    student_built$validated, H = 7L, parameters = student_built$parameters,
+    eval_method = "gh"
+  )
+  expect_false("log_df_student" %in% names(student_fixed$par))
+  expect_true("log_df_student" %in% names(student_free$par))
+  student_par <- student_fixed$env$parList(student_fixed$par)
+  expect_equal(1 + exp(student_par$log_df_student), 7, tolerance = 1e-12)
+  student_cell <- modifyList(
+    .va_oracle_cells$student_identity,
+    list(par = modifyList(.va_oracle_cells$student_identity$par,
+                          list(df = 7)))
+  )
+  expect_equal(
+    unname(student_fixed$report(student_fixed$par)$expected_loglik_by_obs[[1L]]),
+    .va_oracle_gh_expectation(student_cell, H = 7L),
+    tolerance = 1e-8
+  )
+})
+
 test_that("multinomial remains outside the scalar compiled bridge", {
   expect_error(
     .va_r3_validate_data(

@@ -49079,3 +49079,31 @@ are in `docs/dev-log/recovery-checkpoints/2026-08-06-073617-codex-gate-e-checkpo
 `docs/dev-log/after-task/2026-08-06-va-gh-h7-gate-e-boundary.md`.
 
 — Codex Gate E context-boundary preservation (2026-08-06)
+
+## 2026-08-06 — VA(GH) H = 7 Gate E PASS (18/18 scalar cells)
+
+The seven initial NOT PASS cells were repaired and independently re-reviewed. The
+review used separate `statmod` H7 quadrature and separately coded densities at the
+formerly clamped tails. Tweedie, Beta, beta-binomial, Student, truncated Poisson,
+truncated NB2, and NB1 all passed; combined with the previous 11 PASS cells, Gate E
+is **PASS 18/18**. Exact per-cell values and the claim boundary are recorded in
+`docs/dev-log/audits/2026-08-06-va-gh-h7-gate-e.md`.
+
+Commands run:
+
+```sh
+Rscript --vanilla -e 'devtools::test(filter = "(va-all-family-compiled|approximation-engine|student-recovery)", reporter = "summary")'
+# DONE; relevant non-heavy tests green.
+Rscript --vanilla -e 'devtools::test(filter = "(va-(routing-oracle|r3-prototype|intervals)|va-all-family-(oracles|compiled|light-fits))", reporter = "summary")'
+# DONE; all 18 light cells healthy and every targeted suite green.
+git diff --check
+# PASS before durable records.
+```
+
+Repairs retained: no density-changing eta/probability clamps; stable Beta shapes;
+branch-local safe `log1mexp` evaluation restoring truncated-family left tails;
+fixed Tweedie/Student metadata forwarded and mapped; malformed Student df rejected;
+and public VA-Wald profiles fitted nuisance parameters. Public defaults/fence and
+Arc 2 remained unchanged in this Gate E slice.
+
+— Codex + Gauss + Curie + Rose, Design 110 Gate E (2026-08-06)

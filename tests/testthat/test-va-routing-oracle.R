@@ -31,6 +31,44 @@
 ##    proves the translation layer is correct behind a second, normally-unset
 ##    env var would mean routine CI never runs it.
 
+test_that("VA routing preserves fixed Tweedie power and Student df metadata", {
+  fam <- list(
+    tweedie(p = 1.6), tweedie(p = 1.6),
+    suppressMessages(student(df = 7)), suppressMessages(student(df = 7))
+  )
+  fixed <- .va_route_fixed_family_parameters(
+    family_per_row = fam,
+    family_codes = c(6L, 6L, 9L, 9L),
+    trait_id = c(0L, 0L, 1L, 1L),
+    n_traits = 2L
+  )
+  expect_equal(fixed$tweedie_power, c(1.6, NA_real_))
+  expect_equal(fixed$student_df, c(NA_real_, 7))
+
+  free <- .va_route_fixed_family_parameters(
+    family_per_row = list(tweedie(), tweedie()),
+    family_codes = c(6L, 6L), trait_id = c(0L, 0L), n_traits = 1L
+  )
+  expect_true(is.na(free$tweedie_power))
+  expect_true(is.na(free$student_df))
+
+  expect_error(
+    .va_route_fixed_family_parameters(
+      family_per_row = list(tweedie(p = 1.5), tweedie(p = 1.6)),
+      family_codes = c(6L, 6L), trait_id = c(0L, 0L), n_traits = 1L
+    ),
+    "inconsistent"
+  )
+  expect_error(
+    .va_route_fixed_family_parameters(
+      family_per_row = list(suppressMessages(student(df = 5)),
+                            suppressMessages(student())),
+      family_codes = c(9L, 9L), trait_id = c(0L, 0L), n_traits = 1L
+    ),
+    "inconsistent"
+  )
+})
+
 test_that("integration = \"va\" routes to the same fit as calling the engine", {
   skip_on_cran()
 

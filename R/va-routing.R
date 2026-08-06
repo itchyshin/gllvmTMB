@@ -113,13 +113,20 @@
     for (t in seq_len(n_traits)) {
       rows <- which(trait_id == (t - 1L) & family_codes == code)
       if (!length(rows)) next
-      values <- vapply(family_per_row[rows], function(f) {
-        value <- f[[field]]
-        if (is.null(value)) NA_real_ else as.numeric(value)
-      }, numeric(1L))
-      supplied <- !is.na(values)
+      raw <- lapply(family_per_row[rows], `[[`, field)
+      supplied <- !vapply(raw, is.null, logical(1L))
       if (!any(supplied)) next
-      if (!all(supplied) || length(unique(values)) != 1L) {
+      malformed <- vapply(raw, function(value) {
+        !is.null(value) && (!is.numeric(value) || length(value) != 1L)
+      }, logical(1L))
+      if (!all(supplied) || any(malformed)) {
+        .va_route_abort(
+          "The fixed {.arg {field}} metadata for {label} is inconsistent within response {t}.",
+          "Use one common family constructor for every row of a response."
+        )
+      }
+      values <- vapply(raw, as.numeric, numeric(1L))
+      if (length(unique(values)) != 1L) {
         .va_route_abort(
           "The fixed {.arg {field}} metadata for {label} is inconsistent within response {t}.",
           "Use one common family constructor for every row of a response."

@@ -284,10 +284,13 @@ a NO-GO until the source and design prose are reconciled.
    they are not replaced by an arbitrary large constant and counted as
    convergence.
 5. Quadrature nodes/weights and their normalisation are immutable data. The
-   `H = 15`, `H = 25`, and `H = 61` ladder is required. Cheap falsification
-   showed that 25 nodes misses the scalar integration oracle by `2.43e-7` at
-   `mu = 0, v = 4`; therefore `H = 61` is the production research value.
-   Evaluate all ladder orders at the **same parameter vector**. Require total
+   original `H = 15`, `H = 25`, and `H = 61` falsification ladder showed that
+   25 nodes misses the scalar integration oracle by `2.43e-7` at
+   `mu = 0, v = 4`. Design 110 subsequently admitted `H = 7` as the public
+   scalar-family default after the 18-cell Gate E arithmetic checks; Arc 2
+   retains `H = 61` as the high-order stability comparator rather than the
+   fitting default. Evaluate ladder orders at the **same parameter vector**.
+   Require total
    `|L_61 - L_25| < 1e-4`, per-observation maximum difference below `1e-8`,
    and scalar-oracle error below `1e-10` on the frozen
    `mu in {-20,-5,0,5,20}` by `v in {0,1e-8,1e-4,0.1,1,4}` grid. Failure is
@@ -295,17 +298,19 @@ a NO-GO until the source and design prose are reconciled.
    result also fails closed as `failed_variance_domain` when any reported
    projected variance exceeds `4`; widening that domain requires a new scalar
    oracle receipt before the fit can enter evidence.
-6. Optimiser convergence requires code zero, maximum absolute analytic
-   gradient below `1e-4`, finite parameters, and agreement of the best
-   objective from at least three of four predeclared deterministic starts
-   within `1e-6`. A finite
-   ELBO alone is not convergence. When `nlminb` returns a finite code-zero
-   point above the gradient threshold, permit at most two deterministic
-   polishing calls from that exact point with the same controls. If the point
-   remains above the threshold, permit one deterministic analytic-gradient
-   BFGS polish (`maxit = 500`, `reltol = 1e-12`) from the retained point.
-   Record the polishing route; require BFGS code zero and a non-increased
-   objective; never relax the gradient threshold.
+6. A start is agreement-eligible only when its objective and full parameter
+   vector are finite, its maximum absolute analytic gradient is below the
+   calibrated `5e-3` health threshold, and `nlminb` returns code 0 or 1. Code 1
+   remains visibly labelled as false convergence; it is not sufficient by
+   itself. Admission requires the three **lowest** eligible objectives to
+   agree within `1e-6`, with at least one code-zero start in that consensus.
+   When a code-zero solution is objective-equivalent within that tolerance,
+   select it in preference to a code-one solution. A finite ELBO, a code-one
+   label, or a tight but inferior three-start cluster alone is not convergence.
+   The engine may make at most two deterministic `nlminb` polishing calls and
+   one analytic-gradient L-BFGS-B polish from the retained point. It records
+   the polishing route, never admits codes other than 0 or 1, and never relaxes
+   the gradient or objective-agreement thresholds.
 
 No other positive parameter is introduced. In particular, the loading
 diagonal is not put on a log scale under this live-engine-matching contract.

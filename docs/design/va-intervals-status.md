@@ -217,8 +217,9 @@ bootstrap): none of the routes checked whether the `fit` object passed in
 had actually cleared `.va_r3_fit()`'s own multi-start health gate
 (`fit$status == "healthy"`; the alternative statuses are
 `"failed_health_gate"` and `"failed_variance_domain"`,
-R/va-r3-proto.R:2388-2394). An un-admitted fit -- one that failed to reach
-agreement across >= 3 healthy starts -- produced an interval
+in `.va_r3_fit()`). An un-admitted fit -- one that failed to reach
+agreement across the three lowest stationary starts, including at least one
+code-zero anchor -- produced an interval
 indistinguishable in shape from one built on a genuinely healthy fit.
 
 **Fix**: `.va_profile_normalize_fit()` -- the single function every route in

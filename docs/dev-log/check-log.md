@@ -49357,3 +49357,45 @@ The full table and strict non-final interpretation are recorded in
 `docs/dev-log/audits/2026-08-06-va-gh-h7-totoro-stability-preview.md`.
 
 — Codex + Gauss + Curie, Arc 2 launch/adjudicator phase (2026-08-06)
+
+## 2026-08-06 — VA multi-start false-convergence repair
+
+Arc 2 exposed a production health-gate defect without changing the frozen
+campaign verdict rules. Truncated-NB2 q=2 seed 12 returned two `nlminb` code-0
+and two code-1 starts; all four were finite, had maximum absolute gradients
+below the calibrated `5e-3` bar, and agreed in objective well inside `1e-6`.
+High-budget `nlminb` and L-BFGS-B probes from the code-1 endpoints produced no
+material objective improvement. The code-1 labels were therefore treated as
+platform-sensitive termination diagnostics, not automatic failures.
+
+`R/va-r3-proto.R` now permits finite code-0/code-1 starts to enter objective
+agreement when they pass the unchanged gradient bar. Admission requires the
+three lowest eligible objectives to agree within `1e-6` and that consensus to
+contain at least one code-zero start. The selected result prefers an
+objective-equivalent code-zero member. Codes outside 0/1, all-code-one
+consensus, and the adversarial `0,10,10,10` inferior-cluster case fail closed.
+Raw codes/messages and strict/code-one counts remain visible.
+
+```sh
+Rscript --vanilla -e 'devtools::test(filter="va-r3-prototype")'
+# PASS 645; FAIL 0; WARN 0; SKIP 0.
+
+Rscript --vanilla -e 'devtools::test(filter="(va-all-family-light-fits|va-intervals|va-routing-oracle)")'
+# PASS 320; FAIL 0; WARN 0; SKIP 0; all 18 scalar light cells healthy.
+
+Rscript --vanilla -e 'devtools::test(filter="integration-fence")'
+# PASS 57; FAIL 0; WARN 0; SKIP 0.
+
+Rscript --vanilla /private/tmp/va-health-regression-current.R
+# PASS; seed-12 status healthy, eligible/strict/code-one = 4/2/2,
+# best-three range 3.393982e-7, max projected variance 0.4268445.
+
+git diff --check
+# PASS.
+```
+
+The frozen Arc-2 Totoro and DRAC bundles remain unchanged and will be judged by
+their predeclared adjudicator. At the direct Fir check, 7,514/36,000 immutable
+`COMPLETE.dcf` receipts existed and the array throttle remained active.
+
+— Codex + Gauss + Curie, prospective health repair (2026-08-06)

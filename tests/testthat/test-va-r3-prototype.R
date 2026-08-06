@@ -17,11 +17,111 @@ test_that("R3 packing and rank-zero guards match the frozen contract", {
   expect_false(rank_zero$objective_constructed)
 })
 
-test_that("R3 objective agreement requires any three of four healthy starts", {
+test_that("R3 objective agreement uses the three lowest eligible starts", {
   objectives <- c(10, 10 + 2e-7, 10 + 4e-7, 10 + 3e-6)
   expect_lt(.va_r3_best_three_range(objectives), 1e-6)
   expect_gt(diff(range(objectives)), 1e-6)
   expect_identical(.va_r3_best_three_range(c(1, 2)), Inf)
+
+  ## A tight but inferior cluster must not hide a distinct best objective.
+  expect_identical(.va_r3_best_three_range(c(0, 10, 10, 10)), 10)
+})
+
+test_that("R3 start agreement admits only stationary nlminb codes 0 and 1", {
+  eligible <- function(code, objective = 10, finite = TRUE, gradient = 1e-4) {
+    .va_r3_start_agreement_eligible(code, objective, finite, gradient)
+  }
+
+  expect_true(eligible(0L))
+  expect_true(eligible(1L))
+  expect_false(eligible(1L, gradient = .VA_R3_HEALTH_GRADIENT_TOL))
+  expect_false(eligible(1L, objective = Inf))
+  expect_false(eligible(1L, finite = FALSE))
+  expect_false(eligible(2L))
+  expect_false(eligible(NA_integer_))
+})
+
+test_that("R3 start adjudication needs agreement and a code-zero anchor", {
+  start <- function(objective, code, eligible = TRUE) {
+    list(
+      objective = objective,
+      agreement_eligible = eligible,
+      strictly_converged = eligible && identical(code, 0L),
+      convergence = code
+    )
+  }
+
+  seed12_shape <- list(
+    start(1201.086796262889, 1L),
+    start(1201.086796485811, 0L),
+    start(1201.086796474249, 0L),
+    start(1201.086796693769, 1L)
+  )
+  gate <- .va_r3_adjudicate_starts(seed12_shape)
+  expect_true(gate$admitted)
+  expect_lt(abs(gate$agreement_range - 2.2292192625172902e-7), 1e-14)
+  expect_identical(gate$best_id, 3L) # prefer an equivalent code-0 solution
+
+  all_code_one <- lapply(seed12_shape, function(x) {
+    x$strictly_converged <- FALSE
+    x$convergence <- 1L
+    x
+  })
+  expect_false(.va_r3_adjudicate_starts(all_code_one)$admitted)
+
+  disagreement <- list(start(0, 0L), start(2e-6, 0L), start(4e-6, 1L))
+  expect_false(.va_r3_adjudicate_starts(disagreement)$admitted)
+
+  inferior_cluster <- list(
+    start(0, 0L), start(10, 0L), start(10, 1L), start(10, 1L)
+  )
+  expect_false(.va_r3_adjudicate_starts(inferior_cluster)$admitted)
+})
+
+test_that("R3 campaign truncated-NB2 seed 12 survives false convergence labels", {
+  skip_on_cran()
+  set.seed(12L)
+  n <- 120L; p <- 8L; q <- 2L
+  Lambda <- matrix(rnorm(p * q, 0, 0.25), p, q)
+  for (k in seq_len(q)) {
+    if (k > 1L) Lambda[seq_len(k - 1L), k] <- 0
+    Lambda[k, k] <- 0.55 + 0.05 * k
+  }
+  scores <- matrix(rnorm(n * q), n, q)
+  beta <- seq(-0.25, 0.25, length.out = p)
+  mu <- exp(sweep(scores %*% t(Lambda), 2L, beta, "+"))
+  draw_positive <- function() {
+    value <- rnbinom(n * p, size = 2.5, mu = mu)
+    while (any(value <= 0)) {
+      bad <- which(value <= 0)
+      fresh <- rnbinom(n * p, size = 2.5, mu = mu)
+      value[bad] <- fresh[bad]
+    }
+    value
+  }
+  dat <- data.frame(
+    unit = factor(rep(seq_len(n), each = p)),
+    trait = factor(rep(sprintf("t%02d", seq_len(p)), times = n)),
+    value = as.vector(t(matrix(draw_positive(), n, p)))
+  )
+
+  fit <- .va_r3_fit(
+    y = dat$value, n_trials = rep.int(1L, nrow(dat)),
+    X = model.matrix(~ 0 + trait, dat),
+    unit_id = as.integer(dat$unit), trait_id = as.integer(dat$trait),
+    q = q, family = "truncated_nbinom2", link = "log", H = 7L
+  )
+
+  expect_identical(fit$status, "healthy")
+  expect_identical(fit$health$healthy_starts, 4L)
+  expect_gte(fit$health$strictly_converged_starts, 1L)
+  expect_gte(fit$health$code_one_eligible_starts, 0L)
+  expect_true(isTRUE(fit$health$consensus_has_strict_convergence))
+  expect_lte(fit$health$best_three_objective_range, 1e-6)
+  expect_true(all(vapply(
+    fit$starts, function(x) x$convergence %in% c(0L, 1L) &&
+      isTRUE(x$agreement_eligible), logical(1)
+  )))
 })
 
 test_that("R3 accepts only the predeclared complete ordinary model cell", {

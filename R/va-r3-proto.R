@@ -19,9 +19,72 @@
 .va_r3_best_three_range <- function(objectives) {
   objectives <- sort(as.numeric(objectives))
   if (length(objectives) < 3L || any(!is.finite(objectives))) return(Inf)
-  min(vapply(seq_len(length(objectives) - 2L), function(i) {
-    objectives[i + 2L] - objectives[i]
-  }, numeric(1)))
+  ## Tie agreement to the best objective. A tight but inferior three-start
+  ## cluster must not hide a distinct lower solution.
+  objectives[3L] - objectives[1L]
+}
+
+.va_r3_start_agreement_eligible <- function(convergence, objective,
+                                             finite_parameters,
+                                             max_abs_gradient) {
+  length(convergence) == 1L && !is.na(convergence) &&
+    convergence %in% c(0L, 1L) &&
+    length(objective) == 1L && is.finite(objective) &&
+    isTRUE(finite_parameters) &&
+    length(max_abs_gradient) == 1L && is.finite(max_abs_gradient) &&
+    max_abs_gradient < .VA_R3_HEALTH_GRADIENT_TOL
+}
+
+.va_r3_adjudicate_starts <- function(fits, agreement_tolerance = 1e-6) {
+  ## A code-one start may contribute numerical evidence, but an all-code-one
+  ## consensus cannot admit a fit: one of the three lowest starts must carry
+  ## nlminb's ordinary code-zero termination.
+  eligible_id <- which(vapply(
+    fits, function(x) isTRUE(x$agreement_eligible), logical(1)
+  ))
+  strictly_converged_id <- which(vapply(
+    fits, function(x) isTRUE(x$strictly_converged), logical(1)
+  ))
+  strictly_converged_id <- intersect(strictly_converged_id, eligible_id)
+  objectives <- vapply(fits, `[[`, numeric(1), "objective")
+  consensus_id <- integer()
+  agreement_range <- Inf
+  if (length(eligible_id) >= 3L) {
+    consensus_id <- eligible_id[order(objectives[eligible_id])][seq_len(3L)]
+    agreement_range <- .va_r3_best_three_range(objectives[eligible_id])
+  }
+  agreement <- length(eligible_id) >= 3L &&
+    agreement_range <= agreement_tolerance
+  consensus_has_strict_convergence <- length(consensus_id) == 3L &&
+    any(consensus_id %in% strictly_converged_id)
+  admitted <- agreement && consensus_has_strict_convergence
+
+  best_id <- if (admitted) {
+    near_best <- consensus_id[
+      objectives[consensus_id] <=
+        min(objectives[consensus_id]) + agreement_tolerance
+    ]
+    strict_near_best <- intersect(near_best, strictly_converged_id)
+    candidates <- if (length(strict_near_best)) strict_near_best else near_best
+    candidates[which.min(objectives[candidates])]
+  } else if (length(eligible_id)) {
+    eligible_id[which.min(objectives[eligible_id])]
+  } else if (any(is.finite(objectives))) {
+    which.min(objectives)
+  } else {
+    NA_integer_
+  }
+
+  list(
+    admitted = admitted,
+    eligible_id = eligible_id,
+    strictly_converged_id = strictly_converged_id,
+    consensus_id = consensus_id,
+    agreement = agreement,
+    agreement_range = agreement_range,
+    consensus_has_strict_convergence = consensus_has_strict_convergence,
+    best_id = best_id
+  )
 }
 
 .va_r3_unpack_theta_rr <- function(theta_rr, T, q) {
@@ -2525,7 +2588,9 @@
     if (inherits(opt, "va_r3_optimizer_error")) {
       fits[[k]] <- list(start = k, convergence = NA_integer_,
                         objective = NA_real_, max_abs_gradient = Inf,
-                        finite_parameters = FALSE, healthy = FALSE,
+                        finite_parameters = FALSE,
+                        strictly_converged = FALSE,
+                        agreement_eligible = FALSE, healthy = FALSE,
                         message = opt$message)
       next
     }
@@ -2573,8 +2638,6 @@
     max_abs_gradient <- if (length(gradient) && all(is.finite(gradient))) {
       max(abs(gradient))
     } else Inf
-    healthy <- identical(opt$convergence, 0L) && is.finite(opt$objective) &&
-      finite_parameters && max_abs_gradient < .VA_R3_HEALTH_GRADIENT_TOL
     ## `par` is contractually the FULL parameter vector, variational block
     ## included -- report(), the latent read-out, and every test read it that
     ## way. Under profile_variational the outer optimiser only ever sees the
@@ -2590,17 +2653,23 @@
         obj$env$last.par
       }, error = function(e) rep(NA_real_, length(obj$env$par)))
       finite_parameters <- finite_parameters && all(is.finite(full_par))
-      healthy <- healthy && all(is.finite(full_par))
     } else {
       full_par <- opt$par
     }
+    agreement_eligible <- .va_r3_start_agreement_eligible(
+      opt$convergence, opt$objective, finite_parameters, max_abs_gradient
+    )
+    strictly_converged <- agreement_eligible &&
+      identical(opt$convergence, 0L)
     fits[[k]] <- list(
       start = k,
       convergence = opt$convergence,
       objective = unname(opt$objective),
       max_abs_gradient = max_abs_gradient,
       finite_parameters = finite_parameters,
-      healthy = healthy,
+      strictly_converged = strictly_converged,
+      agreement_eligible = agreement_eligible,
+      healthy = agreement_eligible,
       message = opt$message,
       par = full_par,
       evaluations = opt$evaluations,
@@ -2610,24 +2679,20 @@
     )
     if (profile_variational) fits[[k]]$outer_par <- outer_par
   }
-  healthy_id <- which(vapply(fits, `[[`, logical(1), "healthy"))
+  start_gate <- .va_r3_adjudicate_starts(fits)
+  healthy_id <- start_gate$eligible_id
+  strictly_converged_id <- start_gate$strictly_converged_id
   objectives <- vapply(fits, `[[`, numeric(1), "objective")
-  agreement_range <- Inf
-  if (length(healthy_id) >= 3L) {
-    agreement_range <- .va_r3_best_three_range(objectives[healthy_id])
-  }
+  consensus_id <- start_gate$consensus_id
+  agreement_range <- start_gate$agreement_range
   ## n_starts = 1 may reach the same optimum, but it cannot pass the
   ## three-start agreement gate — status stays failed_health_gate so the
   ## bypass is visible (see test-va-r3-prototype.R).
-  agreement <- length(healthy_id) >= 3L && agreement_range <= 1e-6
-  admitted <- length(healthy_id) >= 3L && agreement
-  best_id <- if (length(healthy_id)) {
-    healthy_id[which.min(objectives[healthy_id])]
-  } else if (any(is.finite(objectives))) {
-    which.min(objectives)
-  } else {
-    NA_integer_
-  }
+  agreement <- start_gate$agreement
+  consensus_has_strict_convergence <-
+    start_gate$consensus_has_strict_convergence
+  admitted <- start_gate$admitted
+  best_id <- start_gate$best_id
   best <- if (!is.na(best_id)) fits[[best_id]] else NULL
   best_report <- if (!is.na(best_id)) {
     tryCatch(objects[[best_id]]$report(best$par), error = function(e) {
@@ -2699,10 +2764,17 @@
     health = list(
       admitted = admitted,
       healthy_starts = length(healthy_id),
+      strictly_converged_starts = length(strictly_converged_id),
+      code_one_eligible_starts = sum(vapply(
+        fits, function(x) isTRUE(x$agreement_eligible) &&
+          identical(x$convergence, 1L), logical(1)
+      )),
       attempted_starts = length(starts),
       minimum_healthy_starts = 3L,
       all_starts_healthy = length(healthy_id) == length(starts),
       objective_agreement = agreement,
+      consensus_has_strict_convergence = consensus_has_strict_convergence,
+      consensus_start_ids = consensus_id,
       best_three_objective_range = agreement_range,
       gradient_tolerance = .VA_R3_HEALTH_GRADIENT_TOL,
       agreement_tolerance = 1e-6,

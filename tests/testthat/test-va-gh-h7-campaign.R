@@ -143,6 +143,15 @@ test_that("VA receives the same fixed Tweedie and Student metadata as Laplace", 
   }
 })
 
+test_that("Tweedie DGP has the mgcv fallback available on campaign hosts", {
+  skip_if_not_installed("mgcv")
+  set.seed(17)
+  draw <- .campaign_env$campaign_rtweedie(rep(1, 20), phi = 0.8, power = 1.5)
+  expect_length(draw, 20L)
+  expect_true(all(is.finite(draw)))
+  expect_true(all(draw >= 0))
+})
+
 test_that("summary denominators retain failures and retain independent family verdicts", {
   out <- tempfile("va-gh-h7-summary-")
   dir.create(out)

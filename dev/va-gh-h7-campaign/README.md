@@ -60,6 +60,9 @@ The two fitted estimators are `integration="va"` with explicit GH order and the
 package's own `integration="laplace"`. The latter is the primary fitted
 comparator; `gllvm` is deliberately absent. H is retained in Laplace plan rows
 only to keep paired output keys; it does not alter the Laplace fit.
+The Tweedie DGP uses `tweedie::rtweedie()` when available and the equivalent
+`mgcv::rTweedie(mu, p=1.5, phi=0.8)` fallback otherwise; runtime preparation
+requires at least one of these suggested packages.
 
 ### P — Performance measures
 

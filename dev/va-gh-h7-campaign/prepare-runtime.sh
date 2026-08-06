@@ -41,8 +41,8 @@ runtime_manifest="$runtime_root/runtime.dcf"
 mkdir -p "$runtime_root" "$build_root"
 
 Rscript --vanilla -e \
-  'if (!requireNamespace("tweedie", quietly=TRUE)) quit(status=2)' || {
-  echo "The suggested R package 'tweedie' is required before preparation." >&2
+  'if (!requireNamespace("tweedie", quietly=TRUE) && !requireNamespace("mgcv", quietly=TRUE)) quit(status=2)' || {
+  echo "The campaign requires suggested R package 'tweedie' or 'mgcv' before preparation." >&2
   exit 6
 }
 

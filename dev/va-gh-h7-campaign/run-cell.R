@@ -570,6 +570,16 @@ positive_draw <- function(draw) {
   value
 }
 
+campaign_rtweedie <- function(mu, phi = 0.8, power = 1.5) {
+  if (requireNamespace("tweedie", quietly = TRUE)) {
+    return(tweedie::rtweedie(length(mu), mu = mu, phi = phi, power = power))
+  }
+  if (requireNamespace("mgcv", quietly = TRUE)) {
+    return(mgcv::rTweedie(mu = mu, p = power, phi = phi))
+  }
+  stop("the campaign requires either suggested package tweedie or mgcv")
+}
+
 family_truth <- function(fid, p) {
   one <- function(parameter, value) {
     data.frame(
@@ -627,10 +637,7 @@ simulate_cell <- function(spec) {
   } else if (fid == 5L) {
     rnbinom(nr, size = 2.5, mu = mu)
   } else if (fid == 6L) {
-    if (!requireNamespace("tweedie", quietly = TRUE)) {
-      stop("the campaign requires the suggested package tweedie")
-    }
-    tweedie::rtweedie(nr, mu = mu, phi = 0.8, power = 1.5)
+    campaign_rtweedie(mu, phi = 0.8, power = 1.5)
   } else if (fid == 7L) {
     rbeta(nr, plogis(eta) * 8, (1 - plogis(eta)) * 8)
   } else if (fid == 8L) {

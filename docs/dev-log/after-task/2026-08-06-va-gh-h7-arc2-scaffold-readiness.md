@@ -46,7 +46,7 @@ failure cannot be hidden by a pooled package pass rate.
 ## 4. Files Touched
 
 - `dev/va-gh-h7-campaign/run-cell.R`: plan, receipt, runtime, comparator,
-  Procrustes, bundle-verification, and summary contracts.
+  Procrustes, bundle-verification, summary, and portable Tweedie-DGP contracts.
 - `dev/va-gh-h7-campaign/prepare-runtime.sh`: manifest-only preparation and
   DRAC allocation guard.
 - `dev/va-gh-h7-campaign/run-preflight.sh`: new fit-running preflight boundary.
@@ -121,6 +121,12 @@ receipts, defaulted to `n=60`, and could run timed preflight on a login node.
 The first shell repair still trusted a caller-supplied `local` context; Rose
 correctly demonstrated that this was bypassable. Host/allocation evidence now
 controls the irreversible fit boundary.
+
+The first Totoro runtime preparation then stopped because `tweedie` was absent
+although the recommended package `mgcv` and its equivalent `rTweedie()` DGP
+were installed. The runner now uses `tweedie::rtweedie()` when present and the
+parameter-matched `mgcv::rTweedie(mu, p=1.5, phi=0.8)` fallback otherwise;
+runtime preparation requires either package.
 
 ## 10. Known Residuals
 

@@ -49208,4 +49208,10 @@ Totoro-smoke progression. No receipt or remote job was fabricated before the
 clean commit. Full evidence and negative space are recorded in
 `docs/dev-log/after-task/2026-08-06-va-gh-h7-arc2-scaffold-readiness.md`.
 
+The first Totoro runtime preparation stopped before compilation because the
+suggested package `tweedie` was absent. Totoro already had recommended package
+`mgcv`; the campaign now uses its parameter-equivalent
+`mgcv::rTweedie(mu, p=1.5, phi=0.8)` fallback and requires either package. This
+keeps the DGP fixed while avoiding a host-specific installation dependency.
+
 — Codex + Gauss + Curie + Rose, Arc 2 scaffold readiness (2026-08-06)

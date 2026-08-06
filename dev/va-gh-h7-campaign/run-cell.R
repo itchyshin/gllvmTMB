@@ -13,12 +13,43 @@ parse_cli <- function(x = commandArgs(trailingOnly = TRUE)) {
       stop("arguments must use --key=value: ", item, call. = FALSE)
     }
     pair <- strsplit(sub("^--", "", item), "=", fixed = TRUE)[[1L]]
-    out[[pair[[1L]]]] <- paste(pair[-1L], collapse = "=")
+    key <- pair[[1L]]
+    if (key %in% names(out)) stop("duplicate CLI flag: --", key, call. = FALSE)
+    out[[key]] <- paste(pair[-1L], collapse = "=")
   }
   out
 }
 
-cli <- parse_cli()
+normalise_cli <- function(x) {
+  aliases <- c(
+    cell = "cells", seed = "seeds", H = "Hs", q = "qs",
+    estimator = "estimators"
+  )
+  allowed <- c(
+    "mode", "plan", "output-dir", "gate-receipt", "runtime-manifest",
+    "preflight-receipt", "gate-report", "package-lib", "build-root",
+    "task-index", "cells", "seeds", "Hs", "qs", "estimators", "n", "p",
+    names(aliases)
+  )
+  unknown <- setdiff(names(x), allowed)
+  if (length(unknown)) {
+    stop("unknown CLI flag(s): ", paste0("--", unknown, collapse = ", "),
+         call. = FALSE)
+  }
+  for (alias in names(aliases)) {
+    canonical <- unname(aliases[[alias]])
+    if (!is.null(x[[alias]])) {
+      if (!is.null(x[[canonical]])) {
+        stop("use only one of --", alias, " and --", canonical, call. = FALSE)
+      }
+      x[[canonical]] <- x[[alias]]
+      x[[alias]] <- NULL
+    }
+  }
+  x
+}
+
+cli <- normalise_cli(parse_cli())
 get_arg <- function(name, env, default = NULL) {
   value <- cli[[name]]
   if (is.null(value)) value <- Sys.getenv(env, unset = default %||% "")
@@ -36,6 +67,9 @@ repo_root <- normalizePath(
 )
 
 as_int <- function(x, name, min = 1L) {
+  if (length(x) != 1L || is.na(x) || !grepl("^-?[0-9]+$", as.character(x))) {
+    stop(name, " must be integer >= ", min, call. = FALSE)
+  }
   value <- suppressWarnings(as.integer(x))
   if (length(value) != 1L || is.na(value) || value < min) {
     stop(name, " must be integer >= ", min, call. = FALSE)
@@ -96,6 +130,18 @@ cross_conditions <- function(selected, seeds, qs, n, p) {
 }
 
 make_plan <- function() {
+  unknown_cli <- setdiff(
+    names(cli),
+    c(
+      "mode", "plan", "output-dir", "gate-receipt", "runtime-manifest",
+      "preflight-receipt", "gate-report", "package-lib", "build-root",
+      "task-index", "cells", "seeds", "Hs", "qs", "estimators", "n", "p"
+    )
+  )
+  if (length(unknown_cli)) {
+    stop("unknown CLI flag(s): ", paste0("--", unknown_cli, collapse = ", "),
+         call. = FALSE)
+  }
   selected <- get_arg("cells", "VA_CELLS", "all")
   selected <- if (identical(selected, "all")) cells$cell else split_values(selected)
   unknown <- setdiff(selected, cells$cell)
@@ -161,7 +207,63 @@ make_plan <- function() {
     "va_match_laplace_residual_sd"
   )]
   rownames(plan) <- NULL
+  validate_plan(plan)
   plan
+}
+
+validate_plan <- function(plan) {
+  required <- c(
+    "task_id", "cell", "family_id", "link", "link_id", "route",
+    "seed", "H", "q", "n", "p", "estimator",
+    "va_match_laplace_residual_sd"
+  )
+  missing <- setdiff(required, names(plan))
+  if (length(missing)) stop("plan lacks: ", paste(missing, collapse = ", "))
+  if (!nrow(plan)) stop("plan has no tasks")
+  integer_columns <- c("task_id", "family_id", "link_id", "seed", "H", "q", "n", "p")
+  non_integer <- vapply(integer_columns, function(name) {
+    value <- plan[[name]]
+    anyNA(value) || any(!is.finite(value)) || any(value != floor(value))
+  }, logical(1L))
+  if (any(non_integer)) {
+    stop("plan columns must contain integers: ",
+         paste(integer_columns[non_integer], collapse = ", "))
+  }
+  if (!identical(as.integer(plan$task_id), seq_len(nrow(plan)))) {
+    stop("plan task_id must equal row position 1..nrow(plan)")
+  }
+  if (anyNA(plan$n) || any(plan$n < 100L)) {
+    stop("every plan row must have n >= 100")
+  }
+  if (anyNA(plan$p) || any(plan$p < 2L) || anyNA(plan$q) ||
+      any(plan$q < 1L | plan$q > plan$p)) {
+    stop("every plan row must have p >= 2 and q in 1..p")
+  }
+  if (anyNA(plan$seed) || any(plan$seed < 0L)) {
+    stop("every plan seed must be a non-negative integer")
+  }
+  if (!all(plan$estimator %in% c("va", "laplace"))) {
+    stop("every plan estimator must be va or laplace")
+  }
+  reference <- cells[match(plan$cell, cells$cell), , drop = FALSE]
+  if (anyNA(reference$cell) ||
+      !identical(as.integer(plan$family_id), reference$family_id) ||
+      !identical(as.character(plan$link), reference$link) ||
+      !identical(as.integer(plan$link_id), reference$link_id) ||
+      !identical(as.character(plan$route), reference$route)) {
+    stop("plan cell metadata does not match the canonical 18-cell registry")
+  }
+  expected_residual_sd <- plan$estimator == "va" & plan$family_id %in% c(0L, 3L)
+  if (!identical(as.logical(plan$va_match_laplace_residual_sd),
+                 expected_residual_sd)) {
+    stop("plan residual-SD matching metadata is inconsistent")
+  }
+  va_quadrature <- plan$estimator == "va" & plan$route != "exact"
+  if (anyNA(plan$H) || any(plan$H[!va_quadrature] != 0L) ||
+      any(plan$H[va_quadrature] < 3L | plan$H[va_quadrature] %% 2L == 0L)) {
+    stop("plan H must be zero outside quadrature VA and odd >= 3 within it")
+  }
+  invisible(plan)
 }
 
 atomic_save <- function(object, path, writer) {
@@ -217,19 +319,43 @@ validate_gate_report <- function(path) {
   if (!all(required %in% names(report))) {
     stop("Gate-E report must contain cell and status columns")
   }
-  report <- report[report$cell %in% cells$cell, required, drop = FALSE]
-  if (anyDuplicated(report$cell) || !setequal(report$cell, cells$cell)) {
+  verdict <- report[, required, drop = FALSE]
+  if (nrow(verdict) != nrow(cells) || anyDuplicated(verdict$cell) ||
+      !setequal(verdict$cell, cells$cell)) {
     stop("Gate-E report must contain exactly one verdict for every scalar cell")
   }
-  if (!all(report$status == "PASS")) {
-    failed <- report$cell[report$status != "PASS"]
+  if (anyNA(verdict$status) || !all(verdict$status == "PASS")) {
+    failed <- verdict$cell[is.na(verdict$status) | verdict$status != "PASS"]
     stop("Gate-E has non-PASS cells: ", paste(failed, collapse = ", "))
   }
-  report[match(cells$cell, report$cell), , drop = FALSE]
+  verdict[match(cells$cell, verdict$cell), , drop = FALSE]
 }
 
 gate_template_path <- function(root = repo_root) {
   file.path(root, "inst", "tmb", "gllvmTMB_va_r3.cpp")
+}
+
+repo_relative_path <- function(path, root = repo_root) {
+  root <- normalizePath(root, mustWork = TRUE)
+  path <- normalizePath(path, mustWork = TRUE)
+  prefix <- paste0(root, .Platform$file.sep)
+  if (!startsWith(path, prefix)) {
+    stop("path must be inside the verified checkout: ", path)
+  }
+  substring(path, nchar(prefix) + 1L)
+}
+
+resolve_repo_path <- function(path, root = repo_root) {
+  if (!is.character(path) || length(path) != 1L || is.na(path) || !nzchar(path) ||
+      grepl("^(/|[A-Za-z]:[/\\\\])", path)) {
+    stop("receipt report_path must be a non-empty repo-relative path")
+  }
+  resolved <- normalizePath(file.path(root, path), mustWork = TRUE)
+  expected <- repo_relative_path(resolved, root)
+  if (!identical(expected, path)) {
+    stop("receipt report_path is not canonical within the checkout")
+  }
+  resolved
 }
 
 write_gate_receipt <- function(report_path, receipt_path) {
@@ -242,13 +368,14 @@ write_gate_receipt <- function(report_path, receipt_path) {
   }
   report <- validate_gate_report(report_path)
   record <- data.frame(
-    format_version = "1",
+    format_version = "2",
     gate = "Design-110-Gate-E",
     status = "PASS",
     git_revision = git_revision(),
     template_checksum_md5 = file_checksum(gate_template_path()),
-    report_path = normalizePath(report_path, mustWork = TRUE),
+    report_path = repo_relative_path(report_path),
     report_checksum_md5 = file_checksum(report_path),
+    report_row_count = as.character(nrow(report)),
     passed_cells = paste(report$cell, collapse = ","),
     created_utc = format(Sys.time(), tz = "UTC", usetz = TRUE),
     stringsAsFactors = FALSE
@@ -262,11 +389,13 @@ verify_gate_receipt <- function(receipt_path, root = repo_root) {
   required <- c(
     "format_version", "gate", "status", "git_revision",
     "template_checksum_md5", "report_path", "report_checksum_md5",
-    "passed_cells"
+    "report_row_count", "passed_cells"
   )
   missing <- setdiff(required, names(receipt))
-  if (length(missing)) stop("Gate-E receipt lacks: ", paste(missing, collapse = ", "))
-  if (!identical(receipt$format_version, "1") ||
+  if (length(missing)) {
+    stop("Gate-E receipt checksum contract lacks: ", paste(missing, collapse = ", "))
+  }
+  if (!identical(receipt$format_version, "2") ||
       !identical(receipt$gate, "Design-110-Gate-E") ||
       !identical(receipt$status, "PASS")) {
     stop("Gate-E receipt has the wrong format, gate, or status")
@@ -278,11 +407,14 @@ verify_gate_receipt <- function(receipt_path, root = repo_root) {
   if (!identical(receipt$template_checksum_md5, file_checksum(template))) {
     stop("Gate-E receipt template checksum does not match the checkout")
   }
-  if (!file.exists(receipt$report_path) ||
-      !identical(receipt$report_checksum_md5, file_checksum(receipt$report_path))) {
+  report_path <- resolve_repo_path(receipt$report_path, root)
+  if (!identical(receipt$report_checksum_md5, file_checksum(report_path))) {
     stop("Gate-E report is missing or its checksum has changed")
   }
-  report <- validate_gate_report(receipt$report_path)
+  report <- validate_gate_report(report_path)
+  if (!identical(receipt$report_row_count, as.character(nrow(report)))) {
+    stop("Gate-E receipt report row count has changed")
+  }
   passed <- strsplit(receipt$passed_cells, ",", fixed = TRUE)[[1L]]
   if (!identical(passed, report$cell) || !identical(passed, cells$cell)) {
     stop("Gate-E receipt does not bind the ordered 18-cell PASS set")
@@ -305,12 +437,14 @@ write_runtime_manifest <- function(
     stop("installed VA template does not match Gate E")
   }
   record <- data.frame(
-    format_version = "1",
+    format_version = "2",
     git_revision = gate$git_revision,
     template_checksum_md5 = gate$template_checksum_md5,
     package_lib = package_lib,
     build_root = build_root,
     gate_receipt = normalizePath(gate_receipt, mustWork = TRUE),
+    gate_receipt_checksum_md5 = file_checksum(gate_receipt),
+    gate_report_checksum_md5 = gate$report_checksum_md5,
     installed_template = normalizePath(installed_template, mustWork = TRUE),
     created_utc = format(Sys.time(), tz = "UTC", usetz = TRUE),
     stringsAsFactors = FALSE
@@ -329,23 +463,48 @@ write_runtime_manifest <- function(
   message("wrote immutable runtime manifest: ", manifest_path)
 }
 
+preflight_spec <- function() {
+  list(
+    cell = "binomial_logit", seed = "202608061", H = "7", q = "1",
+    n = "100", p = "4"
+  )
+}
+
 verify_runtime <- function(runtime_manifest, gate_receipt, preflight_receipt = NULL) {
   gate <- verify_gate_receipt(gate_receipt)
   runtime <- read_single_dcf(runtime_manifest, "runtime manifest")
   required <- c(
     "format_version", "git_revision", "template_checksum_md5", "package_lib",
-    "build_root", "gate_receipt", "installed_template"
+    "build_root", "gate_receipt", "gate_receipt_checksum_md5",
+    "gate_report_checksum_md5", "installed_template"
   )
   missing <- setdiff(required, names(runtime))
   if (length(missing)) stop("runtime manifest lacks: ", paste(missing, collapse = ", "))
-  if (!identical(runtime$git_revision, gate$git_revision) ||
+  supplied_gate <- normalizePath(gate_receipt, mustWork = TRUE)
+  if (!identical(runtime$format_version, "2") ||
+      !identical(normalizePath(runtime$gate_receipt, mustWork = TRUE), supplied_gate) ||
+      !identical(runtime$gate_receipt_checksum_md5, file_checksum(supplied_gate)) ||
+      !identical(runtime$gate_report_checksum_md5, gate$report_checksum_md5) ||
+      !identical(runtime$git_revision, gate$git_revision) ||
       !identical(runtime$template_checksum_md5, gate$template_checksum_md5)) {
     stop("runtime manifest is not bound to the current Gate-E receipt")
   }
   if (!dir.exists(runtime$package_lib) || !dir.exists(runtime$build_root)) {
     stop("runtime package library or shared VA build root is missing")
   }
+  expected_template_path <- file.path(
+    runtime$package_lib, "gllvmTMB", "tmb", "gllvmTMB_va_r3.cpp"
+  )
   if (!file.exists(runtime$installed_template) ||
+      !file.exists(expected_template_path)) {
+    stop("installed runtime template is missing or changed")
+  }
+  expected_template <- normalizePath(
+    expected_template_path,
+    mustWork = TRUE
+  )
+  if (!identical(normalizePath(runtime$installed_template, mustWork = TRUE),
+                 expected_template) ||
       !identical(
         file_checksum(runtime$installed_template), runtime$template_checksum_md5
       )) {
@@ -355,13 +514,21 @@ verify_runtime <- function(runtime_manifest, gate_receipt, preflight_receipt = N
     preflight <- read_single_dcf(preflight_receipt, "preflight receipt")
     required_preflight <- c(
       "format_version", "status", "runtime_manifest_checksum_md5",
-      "va_status", "laplace_status"
+      "gate_receipt_checksum_md5", "git_revision", "template_checksum_md5",
+      "cell", "seed", "H", "q", "n", "p", "va_status", "laplace_status"
     )
+    spec <- preflight_spec()
     if (!all(required_preflight %in% names(preflight)) ||
-        !identical(preflight$format_version, "1") ||
+        !identical(preflight$format_version, "2") ||
         !identical(preflight$status, "PASS") ||
         !identical(preflight$va_status, "completed") ||
         !identical(preflight$laplace_status, "completed") ||
+        !identical(preflight[names(spec)], spec) ||
+        !identical(preflight$gate_receipt_checksum_md5,
+                   runtime$gate_receipt_checksum_md5) ||
+        !identical(preflight$git_revision, runtime$git_revision) ||
+        !identical(preflight$template_checksum_md5,
+                   runtime$template_checksum_md5) ||
         !identical(
           preflight$runtime_manifest_checksum_md5,
           file_checksum(runtime_manifest)
@@ -573,6 +740,8 @@ private_va_fit <- function(spec, dgp) {
     n_ordinal_cuts_per_trait = if (ordinal) rep.int(1L, spec$p) else integer(spec$p),
     ordinal_offset_per_trait = if (ordinal) seq.int(0L, spec$p - 1L) else integer(spec$p),
     ordinal_log_increments_start = if (ordinal) rep.int(0, spec$p) else numeric(),
+    fixed_tweedie_power = if (spec$family_id == 6L) rep.int(1.5, spec$p) else NULL,
+    fixed_student_df = if (spec$family_id == 9L) rep.int(5, spec$p) else NULL,
     match_laplace_residual_sd = isTRUE(spec$va_match_laplace_residual_sd),
     silent = TRUE
   )
@@ -666,13 +835,21 @@ family_parameter_table <- function(spec, dgp, fit) {
   if (!nrow(map)) {
     return(data.frame(
       parameter = character(), trait = integer(), truth = numeric(),
-      estimate = numeric(), error = numeric(), stringsAsFactors = FALSE
+      estimate = numeric(), error = numeric(), fixed = logical(),
+      stringsAsFactors = FALSE
     ))
   }
   parameters <- parameter_vector(fit, spec$estimator)
   rows <- lapply(seq_len(nrow(map)), function(i) {
-    values <- named_parameter(parameters, map$tmb[[i]])
-    values <- transform_parameter(values, map$transform[[i]])
+    fixed <- (spec$family_id == 6L && map$parameter[[i]] == "power") ||
+      (spec$family_id == 9L && map$parameter[[i]] == "df")
+    values <- if (fixed) {
+      if (spec$family_id == 6L) rep.int(1.5, spec$p) else rep.int(5, spec$p)
+    } else {
+      transform_parameter(
+        named_parameter(parameters, map$tmb[[i]]), map$transform[[i]]
+      )
+    }
     if (length(values) == 1L) values <- rep.int(values, spec$p)
     if (length(values) != spec$p) values <- rep.int(NA_real_, spec$p)
     truth <- dgp$family[dgp$family$parameter == map$parameter[[i]], ]
@@ -680,6 +857,7 @@ family_parameter_table <- function(spec, dgp, fit) {
     data.frame(
       parameter = map$parameter[[i]], trait = seq_len(spec$p),
       truth = truth$truth, estimate = values, error = values - truth$truth,
+      fixed = rep.int(fixed, spec$p),
       stringsAsFactors = FALSE
     )
   })
@@ -794,15 +972,24 @@ fit_and_score <- function(spec, dgp) {
 
   lv_sd_mean <- lv_sd_coverage <- NA_real_
   alignment_sign <- rep.int(NA_real_, spec$q)
+  alignment_matrix <- matrix(NA_real_, spec$q, spec$q)
   latent <- components$latent
   if (identical(spec$estimator, "va") &&
       is.matrix(components$Lambda) &&
       identical(dim(components$Lambda), dim(dgp$Lambda)) &&
       is.list(latent) && is.matrix(latent$scores) && is.matrix(latent$se) &&
-      identical(dim(latent$scores), dim(dgp$scores))) {
-    alignment_sign <- sign(colSums(components$Lambda * dgp$Lambda))
-    alignment_sign[!is.finite(alignment_sign) | alignment_sign == 0] <- 1
-    aligned_truth <- sweep(dgp$scores, 2L, alignment_sign, "*")
+      identical(dim(latent$scores), dim(dgp$scores)) &&
+      identical(dim(latent$se), dim(dgp$scores))) {
+    if (spec$q == 1L) {
+      alignment_sign <- sign(sum(components$Lambda * dgp$Lambda))
+      alignment_sign[!is.finite(alignment_sign) | alignment_sign == 0] <- 1
+      alignment_matrix <- matrix(alignment_sign, 1L, 1L)
+    } else {
+      cross_loading <- crossprod(dgp$Lambda, components$Lambda)
+      decomposition <- svd(cross_loading)
+      alignment_matrix <- decomposition$u %*% t(decomposition$v)
+    }
+    aligned_truth <- dgp$scores %*% alignment_matrix
     lv_sd_mean <- mean(latent$se, na.rm = TRUE)
     lv_sd_coverage <- mean(
       abs(latent$scores - aligned_truth) <= 1.96 * latent$se,
@@ -814,7 +1001,7 @@ fit_and_score <- function(spec, dgp) {
     fit = fit, elapsed = elapsed, health = health, beta = beta, family = family,
     Sigma = components$Sigma, Lambda = components$Lambda,
     sigma_rel_frob = sigma_rel_frob, sigma_diag_rmse = sigma_diag_rmse,
-    alignment_sign = alignment_sign,
+    alignment_sign = alignment_sign, alignment_matrix = alignment_matrix,
     lv_posterior_sd_mean = lv_sd_mean,
     lv_posterior_sd_coverage = lv_sd_coverage
   )
@@ -838,7 +1025,7 @@ empty_beta_table <- function() {
 empty_family_table <- function() {
   data.frame(
     parameter = character(), trait = integer(), truth = numeric(),
-    estimate = numeric(), error = numeric()
+    estimate = numeric(), error = numeric(), fixed = logical()
   )
 }
 
@@ -933,6 +1120,7 @@ run_one <- function(spec, output_dir, provenance) {
   status <- if (!ok) "failed" else if (healthy) "completed" else "unhealthy"
   beta <- if (ok) scored$beta else empty_beta_table()
   family <- if (ok) scored$family else empty_family_table()
+  free_family <- nrow(family) > 0L && any(!family$fixed)
   result <- data.frame(
     spec,
     status = status,
@@ -949,8 +1137,13 @@ run_one <- function(spec, output_dir, provenance) {
     beta_wald_available = nrow(beta) > 0L && all(is.finite(beta$lower)),
     beta_wald_coverage = if (nrow(beta)) mean(beta$covered, na.rm = TRUE) else NA_real_,
     beta_wald_width = if (nrow(beta)) mean(beta$width, na.rm = TRUE) else NA_real_,
-    family_parameter_available = nrow(family) > 0L && all(is.finite(family$estimate)),
-    family_parameter_rmse = if (nrow(family)) sqrt(mean(family$error^2, na.rm = TRUE)) else NA_real_,
+    family_parameter_available = free_family &&
+      all(is.finite(family$estimate[!family$fixed])),
+    family_parameter_rmse = if (free_family) {
+      sqrt(mean(family$error[!family$fixed]^2, na.rm = TRUE))
+    } else {
+      NA_real_
+    },
     sigma_available = ok && is.finite(scored$sigma_rel_frob),
     sigma_rel_frob = if (ok) scored$sigma_rel_frob else NA_real_,
     sigma_diag_rmse = if (ok) scored$sigma_diag_rmse else NA_real_,
@@ -967,7 +1160,8 @@ run_one <- function(spec, output_dir, provenance) {
     truth = if (is.null(dgp)) NULL else dgp[c("beta", "Lambda", "Sigma", "scores", "family")],
     estimates = if (!ok) NULL else list(
       beta = beta, family = family, Sigma = scored$Sigma,
-      Lambda = scored$Lambda, alignment_sign = scored$alignment_sign
+      Lambda = scored$Lambda, alignment_sign = scored$alignment_sign,
+      alignment_matrix = scored$alignment_matrix
     ),
     fit_snapshot = if (!ok) NULL else list(
       class = class(scored$fit),
@@ -992,71 +1186,236 @@ mc_mean <- function(x) {
   if (n > 1L) sd(x, na.rm = TRUE) / sqrt(n) else NA_real_
 }
 
-summarise_results <- function(output_dir) {
-  bundles <- list.dirs(file.path(output_dir, "replicates"), recursive = FALSE)
-  bundles <- bundles[grepl("\\.bundle$", bundles)]
-  if (!length(bundles)) stop("no replicate bundles found")
-  if (!all(vapply(bundles, bundle_complete, logical(1L)))) {
-    stop("one or more immutable result bundles are incomplete or corrupt")
-  }
-  results <- do.call(rbind, lapply(bundles, function(path) {
-    read.csv(file.path(path, "result.csv"), stringsAsFactors = FALSE)
-  }))
-  beta <- do.call(rbind, lapply(bundles, function(path) {
-    value <- read.csv(file.path(path, "beta.csv"), stringsAsFactors = FALSE)
-    if (!nrow(value)) return(NULL)
-    spec <- read.csv(file.path(path, "result.csv"), stringsAsFactors = FALSE)
-    cbind(spec[rep(1L, nrow(value)), c(
-      "cell", "estimator", "H", "q", "n", "p", "seed", "status"
-    )], value)
-  }))
-  family <- do.call(rbind, lapply(bundles, function(path) {
-    value <- read.csv(file.path(path, "family.csv"), stringsAsFactors = FALSE)
-    if (!nrow(value)) return(NULL)
-    spec <- read.csv(file.path(path, "result.csv"), stringsAsFactors = FALSE)
-    cbind(spec[rep(1L, nrow(value)), c(
-      "cell", "estimator", "H", "q", "n", "p", "seed", "status"
-    )], value)
-  }))
+eligible_mean <- function(x, eligible) {
+  eligible <- !is.na(eligible) & eligible & is.finite(x)
+  if (!any(eligible)) return(NA_real_)
+  mean(x[eligible])
+}
 
+eligible_mcse <- function(x, eligible) {
+  eligible <- !is.na(eligible) & eligible & is.finite(x)
+  if (!any(eligible)) return(NA_real_)
+  mc_mean(x[eligible])
+}
+
+scheduler_failure_rows <- function(plan_rows) {
+  if (!nrow(plan_rows)) return(NULL)
+  data.frame(
+    plan_rows,
+    status = "scheduler_failed",
+    error = "planned task has no published immutable result bundle",
+    elapsed_seconds = NA_real_, convergence_code = NA_integer_, healthy = FALSE,
+    objective = NA_real_, pd_hessian = NA, max_gradient = NA_real_,
+    gradient_tolerance = NA_real_, beta_bias_mean = NA_real_,
+    beta_squared_error_mean = NA_real_, beta_wald_available = FALSE,
+    beta_wald_coverage = NA_real_, beta_wald_width = NA_real_,
+    family_parameter_available = FALSE, family_parameter_rmse = NA_real_,
+    sigma_available = FALSE, sigma_rel_frob = NA_real_, sigma_diag_rmse = NA_real_,
+    lv_sd_available = FALSE, lv_posterior_sd_mean = NA_real_,
+    lv_posterior_sd_coverage = NA_real_, started_utc = NA_character_,
+    finished_utc = NA_character_, stringsAsFactors = FALSE
+  )
+}
+
+bind_results_to_plan <- function(results, plan) {
+  validate_plan(plan)
+  if (anyDuplicated(results$task_id)) {
+    stop("more than one result bundle claims the same plan task_id")
+  }
+  extra <- setdiff(results$task_id, plan$task_id)
+  if (length(extra)) {
+    stop("result bundles contain task_id values absent from the immutable plan: ",
+         paste(extra, collapse = ", "))
+  }
+  spec_columns <- c(
+    "cell", "family_id", "link", "link_id", "route", "seed", "H", "q",
+    "n", "p", "estimator", "va_match_laplace_residual_sd"
+  )
+  expected <- plan[match(results$task_id, plan$task_id), spec_columns, drop = FALSE]
+  actual <- results[, spec_columns, drop = FALSE]
+  agrees <- vapply(spec_columns, function(name) {
+    identical(as.character(actual[[name]]), as.character(expected[[name]]))
+  }, logical(1L))
+  if (!all(agrees)) {
+    stop("result bundle specification disagrees with the immutable plan: ",
+         paste(spec_columns[!agrees], collapse = ", "))
+  }
+  missing <- plan[!plan$task_id %in% results$task_id, , drop = FALSE]
+  if (nrow(missing)) results <- rbind(results, scheduler_failure_rows(missing))
+  results[match(plan$task_id, results$task_id), , drop = FALSE]
+}
+
+verify_task_bundle <- function(plan, output_dir, task, provenance = NULL) {
+  validate_plan(plan)
+  if (task > nrow(plan)) stop("task-index exceeds plan")
+  spec <- plan[task, , drop = FALSE]
+  bundle <- file.path(
+    output_dir, "replicates", paste0(result_key(spec), ".bundle")
+  )
+  if (!bundle_complete(bundle)) {
+    stop("planned task does not have a complete verified bundle: ", bundle)
+  }
+  result <- read.csv(file.path(bundle, "result.csv"), stringsAsFactors = FALSE)
+  if (nrow(result) != 1L) stop("verified task bundle must contain one result row")
+  spec_columns <- c(
+    "task_id", "cell", "family_id", "link", "link_id", "route", "seed",
+    "H", "q", "n", "p", "estimator", "va_match_laplace_residual_sd"
+  )
+  agrees <- vapply(spec_columns, function(name) {
+    identical(as.character(result[[name]]), as.character(spec[[name]]))
+  }, logical(1L))
+  if (!all(agrees)) {
+    stop("verified task bundle disagrees with its immutable plan row: ",
+         paste(spec_columns[!agrees], collapse = ", "))
+  }
+  if (!is.null(provenance)) {
+    payload <- readRDS(file.path(bundle, "payload.rds"))
+    recorded <- payload$provenance %||% list()
+    required <- names(provenance)
+    if (!all(required %in% names(recorded))) {
+      stop("verified task payload lacks runtime-chain provenance: ",
+           paste(setdiff(required, names(recorded)), collapse = ", "))
+    }
+    agrees <- vapply(required, function(name) {
+      identical(as.character(recorded[[name]]), as.character(provenance[[name]]))
+    }, logical(1L))
+    if (!all(agrees)) {
+      stop("verified task payload disagrees with the current runtime chain: ",
+           paste(required[!agrees], collapse = ", "))
+    }
+  }
+  invisible(normalizePath(bundle, mustWork = TRUE))
+}
+
+summarise_result_rows <- function(results) {
+  required <- c(
+    "cell", "family_id", "estimator", "H", "q", "n", "p", "status",
+    "elapsed_seconds", "beta_bias_mean", "beta_squared_error_mean",
+    "beta_wald_available", "beta_wald_coverage",
+    "family_parameter_available", "family_parameter_rmse",
+    "sigma_available", "sigma_rel_frob", "lv_sd_available",
+    "lv_posterior_sd_coverage"
+  )
+  missing <- setdiff(required, names(results))
+  if (length(missing)) stop("result rows lack: ", paste(missing, collapse = ", "))
   group <- interaction(
     results$cell, results$estimator, results$H, results$q,
     results$n, results$p, drop = TRUE
   )
   one <- function(data) {
+    if (length(unique(data$cell)) != 1L) {
+      stop("summary groups must never pool family cells")
+    }
     completed <- data$status == "completed"
     failed <- !completed
-    coverage <- data$beta_wald_coverage[completed]
+    beta_recovery_available <- completed & is.finite(data$beta_bias_mean) &
+      is.finite(data$beta_squared_error_mean)
+    beta_interval_available <- completed &
+      (data$beta_wald_available %in% TRUE) &
+      is.finite(data$beta_wald_coverage)
+    beta_coverage <- ifelse(
+      beta_interval_available, data$beta_wald_coverage, 0
+    )
+    family_applicable <- nrow(family_truth(data$family_id[[1L]], data$p[[1L]])) > 0L
+    family_available <- completed & (data$family_parameter_available %in% TRUE) &
+      is.finite(data$family_parameter_rmse)
+    sigma_available <- completed & (data$sigma_available %in% TRUE) &
+      is.finite(data$sigma_rel_frob)
+    lv_applicable <- identical(data$estimator[[1L]], "va")
+    lv_available <- completed & (data$lv_sd_available %in% TRUE) &
+      is.finite(data$lv_posterior_sd_coverage)
+    lv_coverage <- ifelse(lv_available, data$lv_posterior_sd_coverage, 0)
     data.frame(
       data[1L, c("cell", "estimator", "H", "q", "n", "p")],
+      adjudication_unit = "family_cell",
       attempted = nrow(data),
       completed = sum(completed),
       failure_rate = mean(failed),
       failure_mcse = sqrt(mean(failed) * (1 - mean(failed)) / nrow(data)),
-      beta_bias = mean(data$beta_bias_mean[completed], na.rm = TRUE),
-      beta_bias_mcse = mc_mean(data$beta_bias_mean[completed]),
-      beta_rmse = sqrt(mean(data$beta_squared_error_mean[completed], na.rm = TRUE)),
-      beta_wald_available_rate = mean(data$beta_wald_available[completed], na.rm = TRUE),
-      beta_wald_coverage = mean(coverage, na.rm = TRUE),
-      beta_wald_coverage_mcse = mc_mean(coverage),
-      family_parameter_available_rate = mean(
-        data$family_parameter_available[completed], na.rm = TRUE
+      beta_recovery_eligible_n = sum(beta_recovery_available),
+      beta_recovery_available_rate = mean(beta_recovery_available),
+      beta_bias = eligible_mean(data$beta_bias_mean, beta_recovery_available),
+      beta_bias_mcse = eligible_mcse(
+        data$beta_bias_mean, beta_recovery_available
       ),
-      family_parameter_rmse = mean(
-        data$family_parameter_rmse[completed], na.rm = TRUE
+      beta_rmse = sqrt(eligible_mean(
+        data$beta_squared_error_mean, beta_recovery_available
+      )),
+      beta_wald_eligible_n = sum(beta_interval_available),
+      beta_wald_available_rate = mean(beta_interval_available),
+      beta_wald_coverage = mean(beta_coverage),
+      beta_wald_coverage_mcse = mc_mean(beta_coverage),
+      family_parameter_available_rate = if (family_applicable) {
+        mean(family_available)
+      } else {
+        NA_real_
+      },
+      family_parameter_rmse = if (family_applicable) {
+        eligible_mean(data$family_parameter_rmse, family_available)
+      } else {
+        NA_real_
+      },
+      family_parameter_eligible_n = if (family_applicable) {
+        sum(family_available)
+      } else {
+        NA_integer_
+      },
+      sigma_eligible_n = sum(sigma_available),
+      sigma_available_rate = mean(sigma_available),
+      sigma_rel_frob = eligible_mean(data$sigma_rel_frob, sigma_available),
+      sigma_rel_frob_mcse = eligible_mcse(
+        data$sigma_rel_frob, sigma_available
       ),
-      sigma_available_rate = mean(data$sigma_available[completed], na.rm = TRUE),
-      sigma_rel_frob = mean(data$sigma_rel_frob[completed], na.rm = TRUE),
-      sigma_rel_frob_mcse = mc_mean(data$sigma_rel_frob[completed]),
-      lv_sd_available_rate = mean(data$lv_sd_available[completed], na.rm = TRUE),
-      lv_sd_coverage = mean(data$lv_posterior_sd_coverage[completed], na.rm = TRUE),
-      lv_sd_coverage_mcse = mc_mean(data$lv_posterior_sd_coverage[completed]),
-      elapsed_seconds = mean(data$elapsed_seconds[completed], na.rm = TRUE),
-      elapsed_mcse = mc_mean(data$elapsed_seconds[completed])
+      lv_sd_eligible_n = if (lv_applicable) sum(lv_available) else NA_integer_,
+      lv_sd_available_rate = if (lv_applicable) mean(lv_available) else NA_real_,
+      lv_sd_coverage = if (lv_applicable) mean(lv_coverage) else NA_real_,
+      lv_sd_coverage_mcse = if (lv_applicable) mc_mean(lv_coverage) else NA_real_,
+      elapsed_eligible_n = sum(is.finite(data$elapsed_seconds)),
+      elapsed_seconds = eligible_mean(
+        data$elapsed_seconds, is.finite(data$elapsed_seconds)
+      ),
+      elapsed_mcse = mc_mean(data$elapsed_seconds)
     )
   }
   summary <- do.call(rbind, lapply(split(results, group), one))
-  stamp <- format(Sys.time(), "%Y%m%dT%H%M%SZ", tz = "UTC")
+  rownames(summary) <- NULL
+  summary
+}
+
+summarise_results <- function(output_dir, plan) {
+  bundles <- list.dirs(file.path(output_dir, "replicates"), recursive = FALSE)
+  bundles <- bundles[grepl("\\.bundle$", bundles)]
+  if (length(bundles) && !all(vapply(bundles, bundle_complete, logical(1L)))) {
+    stop("one or more immutable result bundles are incomplete or corrupt")
+  }
+  if (length(bundles)) {
+    results <- do.call(rbind, lapply(bundles, function(path) {
+      read.csv(file.path(path, "result.csv"), stringsAsFactors = FALSE)
+    }))
+    results <- bind_results_to_plan(results, plan)
+    beta <- do.call(rbind, lapply(bundles, function(path) {
+      value <- read.csv(file.path(path, "beta.csv"), stringsAsFactors = FALSE)
+      if (!nrow(value)) return(NULL)
+      spec <- read.csv(file.path(path, "result.csv"), stringsAsFactors = FALSE)
+      cbind(spec[rep(1L, nrow(value)), c(
+        "cell", "estimator", "H", "q", "n", "p", "seed", "status"
+      )], value)
+    }))
+    family <- do.call(rbind, lapply(bundles, function(path) {
+      value <- read.csv(file.path(path, "family.csv"), stringsAsFactors = FALSE)
+      if (!nrow(value)) return(NULL)
+      spec <- read.csv(file.path(path, "result.csv"), stringsAsFactors = FALSE)
+      cbind(spec[rep(1L, nrow(value)), c(
+        "cell", "estimator", "H", "q", "n", "p", "seed", "status"
+      )], value)
+    }))
+  } else {
+    validate_plan(plan)
+    results <- scheduler_failure_rows(plan)
+    beta <- family <- NULL
+  }
+  summary <- summarise_result_rows(results)
+  stamp <- format(Sys.time(), "%Y%m%dT%H%M%OS6Z", tz = "UTC")
   atomic_save(summary, file.path(output_dir, paste0("summary-", stamp, ".csv")), function(x, file) {
     write.csv(x, file, row.names = FALSE)
   })
@@ -1073,15 +1432,38 @@ summarise_results <- function(output_dir) {
   message("wrote MCSE-ready summaries with stamp ", stamp)
 }
 
-write_preflight_receipt <- function(runtime_manifest, receipt_path, va, laplace) {
+write_preflight_receipt <- function(
+    runtime_manifest, gate_receipt, receipt_path, va, laplace) {
   if (!identical(va$status, "completed") || !identical(laplace$status, "completed")) {
     stop("timed preflight requires healthy VA and Laplace fits")
   }
+  runtime <- read_single_dcf(runtime_manifest, "runtime manifest")
+  spec <- preflight_spec()
+  matches_spec <- function(row) {
+    all(vapply(names(spec), function(name) {
+      identical(as.character(row[[name]]), spec[[name]])
+    }, logical(1L)))
+  }
+  if (!matches_spec(va) || !matches_spec(laplace)) {
+    stop("timed preflight rows do not match the canonical preflight specification")
+  }
+  gate_checksum <- file_checksum(gate_receipt)
+  if (!identical(runtime$gate_receipt_checksum_md5, gate_checksum)) {
+    stop("timed preflight gate receipt disagrees with the runtime manifest")
+  }
   record <- data.frame(
-    format_version = "1",
+    format_version = "2",
     status = "PASS",
     runtime_manifest_checksum_md5 = file_checksum(runtime_manifest),
-    cell = va$cell,
+    gate_receipt_checksum_md5 = gate_checksum,
+    git_revision = runtime$git_revision,
+    template_checksum_md5 = runtime$template_checksum_md5,
+    cell = spec$cell,
+    seed = spec$seed,
+    H = spec$H,
+    q = spec$q,
+    n = spec$n,
+    p = spec$p,
     va_status = va$status,
     va_seconds = va$elapsed_seconds,
     laplace_status = laplace$status,
@@ -1145,13 +1527,14 @@ if (mode == "plan") {
 } else if (mode == "preflight") {
   runtime <- verify_runtime(runtime_manifest, gate_receipt)
   load_campaign_package(runtime)
+  expected_preflight <- preflight_spec()
   base <- cells[cells$cell == "binomial_logit", , drop = FALSE]
   base$task_id <- 1L
-  base$seed <- 202608061L
-  base$H <- 7L
-  base$q <- 1L
-  base$n <- 100L
-  base$p <- 4L
+  base$seed <- as.integer(expected_preflight$seed)
+  base$H <- as.integer(expected_preflight$H)
+  base$q <- as.integer(expected_preflight$q)
+  base$n <- as.integer(expected_preflight$n)
+  base$p <- as.integer(expected_preflight$p)
   rows <- lapply(c("va", "laplace"), function(estimator) {
     spec <- base
     spec$estimator <- estimator
@@ -1159,7 +1542,8 @@ if (mode == "plan") {
     started <- proc.time()[[3L]]
     scored <- fit_and_score(spec, dgp)
     data.frame(
-      cell = spec$cell,
+      cell = spec$cell, seed = spec$seed, H = spec$H, q = spec$q,
+      n = spec$n, p = spec$p,
       estimator = estimator,
       status = if (isTRUE(scored$health$healthy)) "completed" else "unhealthy",
       elapsed_seconds = proc.time()[[3L]] - started,
@@ -1171,7 +1555,7 @@ if (mode == "plan") {
   preflight <- do.call(rbind, rows)
   print(preflight)
   write_preflight_receipt(
-    runtime_manifest,
+    runtime_manifest, gate_receipt,
     normalizePath(preflight_receipt, mustWork = FALSE),
     preflight[preflight$estimator == "va", , drop = FALSE],
     preflight[preflight$estimator == "laplace", , drop = FALSE]
@@ -1181,6 +1565,7 @@ if (mode == "plan") {
   load_campaign_package(runtime)
   if (!file.exists(plan_path)) stop("plan does not exist: ", plan_path)
   plan <- read.csv(plan_path, stringsAsFactors = FALSE)
+  validate_plan(plan)
   task <- as_int(get_arg("task-index", "VA_TASK_INDEX", ""), "task-index")
   if (task > nrow(plan)) stop("task-index exceeds plan")
   provenance <- list(
@@ -1192,11 +1577,39 @@ if (mode == "plan") {
     plan_checksum_md5 = file_checksum(plan_path)
   )
   run_one(plan[task, , drop = FALSE], output_dir, provenance)
+} else if (mode == "verify-task") {
+  if (!file.exists(plan_path)) stop("plan does not exist: ", plan_path)
+  plan <- read.csv(plan_path, stringsAsFactors = FALSE)
+  task <- as_int(get_arg("task-index", "VA_TASK_INDEX", ""), "task-index")
+  runtime_args <- list(gate_receipt, runtime_manifest, preflight_receipt)
+  supplied <- vapply(runtime_args, function(value) {
+    !is.null(value) && length(value) == 1L && nzchar(value)
+  }, logical(1L))
+  if (any(supplied) && !all(supplied)) {
+    stop("verify-task requires gate, runtime, and preflight receipts together")
+  }
+  provenance <- NULL
+  if (all(supplied)) {
+    runtime <- verify_runtime(runtime_manifest, gate_receipt, preflight_receipt)
+    provenance <- list(
+      git_revision = runtime$git_revision,
+      template_checksum_md5 = runtime$template_checksum_md5,
+      runtime_manifest_checksum_md5 = file_checksum(runtime_manifest),
+      gate_receipt_checksum_md5 = file_checksum(gate_receipt),
+      preflight_receipt_checksum_md5 = file_checksum(preflight_receipt),
+      plan_checksum_md5 = file_checksum(plan_path)
+    )
+  }
+  bundle <- verify_task_bundle(plan, output_dir, task, provenance)
+  cat("verified complete task bundle:", bundle, "\n")
 } else if (mode == "summarise") {
-  summarise_results(output_dir)
+  if (!file.exists(plan_path)) stop("plan does not exist: ", plan_path)
+  plan <- read.csv(plan_path, stringsAsFactors = FALSE)
+  validate_plan(plan)
+  summarise_results(output_dir, plan)
 } else {
   stop(
     "mode must be dry-run, gate-receipt, verify-gate, runtime-manifest, ",
-    "verify-runtime, preflight, plan, run, or summarise"
+    "verify-runtime, preflight, plan, run, verify-task, or summarise"
   )
 }

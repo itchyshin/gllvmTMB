@@ -49179,3 +49179,33 @@ Rose final verdict: **PASS**, no remaining Arc-1 public-surface blocker.
 Shannon end-of-session verdict: **WARN** only because `api.github.com` was
 unreachable; local branch, recent-history, ownership, after-task, and durable
 message-bus checks are consistent. Arc 2 remains deliberately unlaunched.
+
+## 2026-08-06 — VA(GH) H=7 Arc 2 scaffold ready for Totoro smoke
+
+Repaired the frozen Design-110 campaign scaffold before remote execution.
+The runner now binds Gate/runtime/preflight/task provenance, preserves fixed
+Tweedie power and Student df across VA/Laplace, uses Procrustes alignment for
+q>1, validates `n>=100` plans, and materialises missing tasks as failures.
+Totoro has a one-row smoke gate; DRAC uses plan-derived batched arrays and
+requires its task-1 bundle before broad submission. DRAC login hosts cannot
+compile or fit outside a SLURM allocation.
+
+```sh
+NOT_CRAN=true Rscript --vanilla -e 'devtools::test(filter = "va-gh-h7-campaign", reporter = "summary", stop_on_failure = TRUE)'
+# DONE; 0 failures, warnings, or skips.
+bash -n dev/va-gh-h7-campaign/prepare-runtime.sh dev/va-gh-h7-campaign/run-preflight.sh dev/va-gh-h7-campaign/launch-totoro.sh dev/va-gh-h7-campaign/drac-array.sbatch dev/va-gh-h7-campaign/submit-drac.sh
+# PASS.
+ACTION=dry-run bash dev/va-gh-h7-campaign/launch-totoro.sh
+# PASS; exactly one n=120 H=7 q=2 VA task.
+Rscript --vanilla dev/va-gh-h7-campaign/run-cell.R --mode=dry-run
+# PASS; 5,520 tasks; no nonzero-H Laplace or exact-VA rows.
+git diff --check
+# PASS.
+```
+
+Rose final verdict: **PASS** for commit then structured-receipt/runtime/preflight/
+Totoro-smoke progression. No receipt or remote job was fabricated before the
+clean commit. Full evidence and negative space are recorded in
+`docs/dev-log/after-task/2026-08-06-va-gh-h7-arc2-scaffold-readiness.md`.
+
+— Codex + Gauss + Curie + Rose, Arc 2 scaffold readiness (2026-08-06)

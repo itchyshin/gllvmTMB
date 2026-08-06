@@ -178,6 +178,65 @@ known truth and matched Laplace, beta-Wald coverage, invariant covariance
 recovery, latent posterior-SD calibration, failure retention, and MCSE. No pooled
 success rate can conceal a failing family.
 
+### 6.1 Predeclared Arc-2 campaign and verdict rules
+
+Arc 2 uses two deliberately different evidence stages. The Totoro
+failure-finding stage runs 30 seeds, both ranks, both estimators, and the full
+H ladder. With four exact and fourteen quadrature cells this is
+`30 * 2 * ((4 + 14 * 5) + 18) = 5,520` immutable plan rows. It is not coverage
+certification: at 95% coverage its binomial MCSE is about 0.040. The DRAC
+confirmation uses 500 seeds at the promoted H = 7 route plus matched Laplace,
+both ranks, for `500 * 2 * (18 + 18) = 36,000` plan rows. At 95% coverage,
+500 independent replicate seeds give MCSE below 0.01. Each scheduler task owns
+one plan row and one seed; arrays may be split into batches without changing
+the plan or estimand.
+
+All summaries are bound to the immutable plan. A task with no complete bundle
+is a missing attempted replicate, not an absent observation. Failed and
+unhealthy fits enter the failure and availability denominators; interval
+failure contributes zero to unconditional coverage. Bias and RMSE remain
+conditional on finite estimates because an undefined estimate has no numeric
+error, but the summary must report both `attempted` and `eligible`, and no cell
+can pass recovery unless its failure gate also passes. MCSEs use independent
+replicate seeds as the sampling units, never traits or latent-score coordinates.
+
+Verdicts are issued separately for every family/link cell and rank. There is no
+pooled package verdict:
+
+1. **Completeness:** every planned task must be represented by a complete result
+   bundle or an explicit missing/failed row. Any unexplained missing task makes
+   the cell `INCOMPLETE`, not `PASS`.
+2. **Operational reliability:** the one-sided 95% Wilson upper bound for the
+   VA failed-or-unhealthy rate must be at most 0.10. A lower bound above 0.10 is
+   `FAIL`; overlap is `INCONCLUSIVE`.
+3. **Point recovery:** among eligible paired seeds, the upper 95% replicate-
+   bootstrap bound for VA/Laplace beta-RMSE and invariant-Sigma-error ratios
+   must be at most 1.25. VA must also have absolute beta RMSE at most 0.35 and
+   mean relative Frobenius Sigma error at most 0.50. Crossing a bound is
+   `FAIL`; fewer than 90% eligible pairs is `INCONCLUSIVE` unless the reliability
+   gate has already failed.
+4. **H = 7 stability:** for each non-exact cell in the 30-seed Totoro stage,
+   the upper 95% paired-bootstrap bound for the H7/H61 beta-RMSE and invariant-
+   Sigma-error ratios must be at most 1.10, with at least 27 paired seeds.
+   Exact cells are `NOT_APPLICABLE` because they ignore H.
+5. **Fixed-effect VA-Wald calibration:** unconditional replicate-level 95%
+   coverage is classified `CALIBRATED` only when its two-sided 95% Monte Carlo
+   interval lies wholly inside `[0.90, 0.99]`; wholly below or above that
+   equivalence region is `UNCALIBRATED`, otherwise `INCONCLUSIVE`. This label is
+   separate from the point-estimation verdict and never removes the public
+   `calibrated = FALSE` warning without a later explicit promotion decision.
+6. **Latent posterior-SD calibration:** use the same `[0.90, 0.99]` Monte Carlo
+   classification, after rotation-aware Procrustes alignment at q > 1. This is
+   a calibration description, not a frequentist-SE claim and not a point-route
+   pass gate.
+
+The 1.25 recovery margin allows modest approximation cost relative to the
+matched Laplace estimator while rejecting a practically material 25% loss; the
+stricter 1.10 H-ladder margin asks whether H = 7, rather than VA itself, causes
+material degradation. The absolute caps prevent two poor estimators from
+passing through a favourable ratio. These thresholds are fixed before any
+Arc-2 result is inspected.
+
 ## 7. Explicit exclusions
 
 `family_id = 16` multinomial is a coupled softmax expectation and is not scalar;

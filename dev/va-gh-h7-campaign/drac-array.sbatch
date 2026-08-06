@@ -1,28 +1,31 @@
 #!/usr/bin/env bash
 #SBATCH --job-name=va-gh-h7
-#SBATCH --array=1-10800%100
 #SBATCH --time=02:00:00
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=6G
 #SBATCH --output=va-gh-h7-%A-%a.out
 #SBATCH --error=va-gh-h7-%A-%a.err
 
-# Submit only after Gate E, from a DRAC login node. One array task is one plan
-# row and therefore one seed. Adjust --array to exactly nrow(plan), and always
-# provide --account at submission.
+# Submit only through submit-drac.sh, which derives the exact array range from
+# the immutable plan. One scheduled array task executes one plan row.
 
 set -euo pipefail
 
 : "${REPO_DIR:?Set REPO_DIR to the gllvmTMB checkout on /project}"
 : "${CAMPAIGN_PROJECT_ROOT:?Set CAMPAIGN_PROJECT_ROOT under /project}"
 : "${GATE_E_RECEIPT:?Set GATE_E_RECEIPT to a durable Gate-E receipt}"
+: "${VA_RUNTIME_MANIFEST:?Set VA_RUNTIME_MANIFEST to runtime.dcf}"
+: "${VA_PREFLIGHT_RECEIPT:?Set VA_PREFLIGHT_RECEIPT to preflight.dcf}"
 : "${SLURM_ARRAY_TASK_ID:?This template must run as a SLURM array task}"
+TASK_OFFSET="${TASK_OFFSET:-0}"
+if ! [[ "$TASK_OFFSET" =~ ^[0-9]+$ ]]; then
+  echo "TASK_OFFSET must be a non-negative integer" >&2
+  exit 2
+fi
+task_index=$((TASK_OFFSET + SLURM_ARRAY_TASK_ID))
 
 case "$REPO_DIR" in /project/*) ;; *) echo "REPO_DIR must be under /project" >&2; exit 2;; esac
 case "$CAMPAIGN_PROJECT_ROOT" in /project/*) ;; *) echo "CAMPAIGN_PROJECT_ROOT must be under /project" >&2; exit 2;; esac
-[[ -f "$GATE_E_RECEIPT" ]] && grep -qx 'PASS' "$GATE_E_RECEIPT" || {
-  echo "Gate-E receipt missing or not PASS" >&2; exit 3; }
-
 module load "${R_MODULE:-r/4.5.0}"
 
 export R_LIBS_USER="$CAMPAIGN_PROJECT_ROOT/R/library"
@@ -40,10 +43,18 @@ case "$PLAN" in /project/*) ;; *) echo "PLAN must be under /project" >&2; exit 2
 case "$OUTPUT_DIR" in /project/*) ;; *) echo "OUTPUT_DIR must be under /project" >&2; exit 2;; esac
 [[ -f "$PLAN" ]] || { echo "immutable plan missing: $PLAN" >&2; exit 4; }
 
+Rscript --vanilla "$REPO_DIR/dev/va-gh-h7-campaign/run-cell.R" \
+  --mode=verify-runtime --gate-receipt="$GATE_E_RECEIPT" \
+  --runtime-manifest="$VA_RUNTIME_MANIFEST" \
+  --preflight-receipt="$VA_PREFLIGHT_RECEIPT"
+
 mkdir -p "$R_LIBS_USER" "$R_USER_CACHE_DIR" "$RENV_PATHS_CACHE" \
   "$JULIA_DEPOT_PATH" "$OUTPUT_DIR"
 cd "$REPO_DIR"
 
 Rscript --vanilla dev/va-gh-h7-campaign/run-cell.R \
   --mode=run --plan="$PLAN" --output-dir="$OUTPUT_DIR" \
-  --task-index="$SLURM_ARRAY_TASK_ID"
+  --task-index="$task_index" \
+  --gate-receipt="$GATE_E_RECEIPT" \
+  --runtime-manifest="$VA_RUNTIME_MANIFEST" \
+  --preflight-receipt="$VA_PREFLIGHT_RECEIPT"

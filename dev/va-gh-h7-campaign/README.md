@@ -1,12 +1,10 @@
 # VA(GH) H=7 all-scalar-family campaign
 
-**State:** INCOMPLETE Arc 2 scaffold, frozen at the 2026-08-06 context boundary.
-**Do not submit or execute it.** An adversarial audit found launch, runtime,
-receipt, plan, and scoring defects; repair began but was interrupted before
-functional validation. Gate E has not been recorded as PASS. The next task must
-finish and re-audit the scaffold before any Totoro/DRAC launch. This campaign
-never runs on GitHub Actions and its results must never be uploaded as Actions
-artifacts.
+**State:** Gate E is PASS (18/18) and Arc 1 is committed. Arc 2 scaffold repair
+is active. Do not submit the broad Totoro or DRAC campaign until the dedicated
+local tests, structured receipt/runtime chain, one-row Totoro smoke, and one-row
+DRAC smoke all pass. This campaign never runs on GitHub Actions and its results
+must never be uploaded as Actions artifacts.
 
 This directory implements the approved Arc 2 boundary in Design 110. It covers
 the 18 scalar family/link cells, compares VA with this package's own matched
@@ -41,11 +39,12 @@ has 18 family/link cells, H in `{5,7,9,15,61}`, q in `{2,5}`, estimators in
 CLI arguments. Each plan row is one independent replicate; DRAC runs exactly
 one row (hence one seed) per array task.
 
-The 30-seed Totoro run is a broad failure-finding campaign, not final coverage
-evidence: at true coverage 0.95 its binomial MCSE is about 0.040. The DRAC
-confirmation should use at least 500 seeds for coverage MCSE <= 0.01, and 1000
-for <= 0.007. Family verdicts remain separate; no pooled pass rate may conceal a
-failing family.
+At `n=120`, `p=8`, the 30-seed Totoro full ladder has 5,520 plan rows.
+It is a broad failure-finding campaign, not final coverage evidence: at true
+coverage 0.95 its binomial MCSE is about 0.040. The DRAC
+confirmation uses 500 seeds, H=7 plus matched Laplace, and both ranks: 36,000
+rows and coverage MCSE below 0.01. Family/rank verdicts and calibration labels
+follow Design 110 section 6.1; no pooled pass rate may conceal a failing family.
 
 ### E — Estimands
 
@@ -69,7 +68,9 @@ For each family x estimator x H x q x n x p cell, summaries report bias
 relative Sigma Frobenius error, failure rate, and mean wall time. MCSE is
 `sd(x)/sqrt(R)` for means/bias, `sqrt(p_hat(1-p_hat)/R)` for coverage/failure
 proportions, and replicate bootstrap or the standard squared-error delta
-approximation for RMSE. Failures are never dropped from denominators.
+approximation for RMSE. Failed and missing fits enter failure, availability,
+and unconditional-coverage denominators. Bias and RMSE use finite estimates
+only and report their eligible counts explicitly.
 
 References: Morris, White & Crowther (2019), *Statistics in Medicine* 38:
 2074–2102 (ADEMP); Williams et al. (2024), *Methods in Ecology and Evolution*
@@ -79,48 +80,77 @@ References: Morris, White & Crowther (2019), *Statistics in Medicine* 38:
 
 - `run-cell.R`: writes/validates a plan, dry-runs one configuration, executes one
   plan row, or summarises immutable per-seed CSV files.
+- `prepare-runtime.sh`: installs one revision-bound runtime and writes its
+  checksum-bound manifest without fitting.
+- `run-preflight.sh`: runs the timed VA/Laplace preflight on local/Totoro or an
+  allocated DRAC compute node, never an unallocated login node.
 - `launch-totoro.sh`: local/Totoro launcher, capped at 150 processes and one
   BLAS thread per worker. Default action is `dry-run`.
-- `drac-array.sbatch`: DRAC array template. Depot, R library, plan, and results
-  must all resolve under `/project`; one array task executes one plan row.
+- `submit-drac.sh` + `drac-array.sbatch`: login-safe validation/submission and
+  compute-node execution. Array ranges are derived from the plan and split into
+  scheduler-sized batches; one array task executes one plan row.
 
 Local syntax and dry-run checks (no fits):
 
 ```sh
-Rscript --vanilla run-cell.R --mode=dry-run --cell=binomial_logit \
-  --seed=1 --H=7 --q=2 --n=30 --p=6 --estimator=va
-bash -n launch-totoro.sh
-bash -n drac-array.sbatch
-ACTION=dry-run bash launch-totoro.sh
+Rscript --vanilla dev/va-gh-h7-campaign/run-cell.R --mode=dry-run \
+  --cells=binomial_logit --seeds=1 --Hs=7 --qs=2 --n=120 --p=6 \
+  --estimators=va
+bash -n dev/va-gh-h7-campaign/*.sh dev/va-gh-h7-campaign/drac-array.sbatch
+ACTION=dry-run bash dev/va-gh-h7-campaign/launch-totoro.sh
 ```
 
-After Gate E only, create a receipt containing exactly `PASS`, then build an
-immutable plan and execute it:
+From a clean, committed checkout, create the structured Gate-E receipt. It binds
+the revision, VA template, ordered 18-cell CSV verdict, and their checksums:
 
 ```sh
-printf 'PASS\n' > /durable/path/GATE-E.receipt
-GATE_E_RECEIPT=/durable/path/GATE-E.receipt ACTION=plan \
-  OUTPUT_DIR=/durable/path/results bash launch-totoro.sh
-GATE_E_RECEIPT=/durable/path/GATE-E.receipt ACTION=run CORES=100 \
-  OUTPUT_DIR=/durable/path/results bash launch-totoro.sh
+Rscript --vanilla dev/va-gh-h7-campaign/run-cell.R --mode=gate-receipt \
+  --gate-report=docs/dev-log/audits/2026-08-06-va-gh-h7-gate-e.csv \
+  --gate-receipt=/durable/path/GATE-E.dcf
+Rscript --vanilla dev/va-gh-h7-campaign/run-cell.R --mode=verify-gate \
+  --gate-receipt=/durable/path/GATE-E.dcf
 ```
 
-Do not overwrite a plan or result. To change a condition, use a new output
-directory. Each result is written to a temporary file and renamed only after a
-complete CSV/RDS pair exists.
+Prepare and preflight the runtime on Totoro (or in a DRAC allocation), then
+exercise exactly one immutable plan row through the full bundle path:
+
+```sh
+export CAMPAIGN_PROJECT_ROOT=/durable/path/va-gh-h7
+export GATE_E_RECEIPT=$CAMPAIGN_PROJECT_ROOT/GATE-E.dcf
+bash dev/va-gh-h7-campaign/prepare-runtime.sh
+export VA_RUNTIME_MANIFEST=$CAMPAIGN_PROJECT_ROOT/runtime/$(git rev-parse HEAD)/runtime.dcf
+export VA_PREFLIGHT_RECEIPT=$CAMPAIGN_PROJECT_ROOT/runtime/$(git rev-parse HEAD)/preflight.dcf
+PREFLIGHT_CONTEXT=totoro bash dev/va-gh-h7-campaign/run-preflight.sh
+ACTION=smoke bash dev/va-gh-h7-campaign/launch-totoro.sh
+```
+
+Only after the smoke bundle verifies, create/run the 30-seed Totoro plan. Use a
+new durable output root for any changed condition; plans and bundles are
+immutable.
+
+```sh
+ACTION=plan bash dev/va-gh-h7-campaign/launch-totoro.sh
+ACTION=run CORES=100 bash dev/va-gh-h7-campaign/launch-totoro.sh
+ACTION=summarise bash dev/va-gh-h7-campaign/launch-totoro.sh
+```
+
+On a DRAC login node, `submit-drac.sh` may validate and submit but never fits.
+Prepare/preflight the runtime in an allocation first. `ACTION=write` prints the
+exact plan-derived batched commands; `ACTION=smoke` submits task 1 only; broad
+`ACTION=submit` is permitted only after that smoke bundle is checked.
 
 ## Williams et al. 11-item self-audit
 
 | Item | Scaffold coverage |
 |---|---|
 | 1 aims | Primary and secondary aims above |
-| 2 DGP | Equation, hierarchy, grid, and seed unit above |
+| 2 DGP | Equation, hierarchy, grid, seed unit, and MCSE-derived 30/500 stages above |
 | 3 estimands | Truth and fitted targets above |
 | 4 methods | VA and own Laplace only |
 | 5 performance measures | Definitions and denominators above |
 | 6 software/computing | RDS includes session info and git revision |
 | 7 code availability | All scripts are in this directory |
 | 8 reproducibility | Immutable plan plus one deterministic seed per row |
-| 9 worked case | Not applicable to this internal validation campaign |
+| 9 worked case | One-row Totoro and DRAC smoke bundles exercise the complete workflow |
 | 10 complete results | Failures retained; no family pooling |
 | 11 Monte Carlo uncertainty | MCSE columns produced by summarise mode |

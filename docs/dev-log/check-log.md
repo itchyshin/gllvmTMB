@@ -49329,4 +49329,22 @@ error targeted the shared library. Its `units` and `00LOCK-sf` artifacts were
 removed and their absence verified before the isolated campaign library was
 built. This did not alter either immutable campaign plan or estimator fixture.
 
+Post-commit operational audit found that Totoro and Fir do not share a
+filesystem. The driver now supplies a host-local `export` mode: each host
+verifies its own raw bundles and payload provenance, then writes a compact
+result table, bundle-manifest table, and checksum-bound receipt. Final
+adjudication consumes those two three-file exports from one clean checkout and
+binds their checksums in its receipt. A round-trip test retains an explicit
+missing row and rejects a tampered export.
+
+The completed Totoro directory contains 5,520 broad-plan bundles plus the
+earlier one-row smoke bundle (`p=6`) that the original launcher co-located in
+`results/replicates`. The exporter now verifies that legacy smoke bundle against
+`smoke-plan.csv` and its own plan checksum, excludes it from broad evidence, and
+rejects any other out-of-plan bundle. New Totoro smoke runs use
+`results/smoke`. The Totoro and Fir Gate receipts both bind Gate-report checksum
+`79d57f9b916a339af76ef1063777faf7`; final adjudication additionally requires
+their VA template checksums to agree. Rose's final seam audit found no remaining
+P0/P1 defect.
+
 — Codex + Gauss + Curie, Arc 2 launch/adjudicator phase (2026-08-06)

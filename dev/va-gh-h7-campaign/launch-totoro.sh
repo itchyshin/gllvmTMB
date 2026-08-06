@@ -9,6 +9,7 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 DRIVER="$SCRIPT_DIR/run-cell.R"
 ACTION="${ACTION:-dry-run}"
 OUTPUT_DIR="${OUTPUT_DIR:-${CAMPAIGN_PROJECT_ROOT:-}/results}"
+SMOKE_OUTPUT_DIR="${SMOKE_OUTPUT_DIR:-$OUTPUT_DIR/smoke}"
 PLAN="${PLAN:-$OUTPUT_DIR/plan.csv}"
 CORES="${CORES:-100}"
 SEEDS="${SEEDS:-1:30}"
@@ -59,11 +60,11 @@ case "$ACTION" in
   run)
     gate_e
     runtime_ready
-    smoke_plan="$OUTPUT_DIR/smoke-plan.csv"
+    smoke_plan="$SMOKE_OUTPUT_DIR/plan.csv"
     [[ -f "$smoke_plan" ]] || {
       echo "Totoro smoke plan is missing; run ACTION=smoke first." >&2; exit 4; }
     Rscript --vanilla "$DRIVER" --mode=verify-task --plan="$smoke_plan" \
-      --output-dir="$OUTPUT_DIR" --task-index=1 \
+      --output-dir="$SMOKE_OUTPUT_DIR" --task-index=1 \
       --gate-receipt="$GATE_E_RECEIPT" \
       --runtime-manifest="$VA_RUNTIME_MANIFEST" \
       --preflight-receipt="$VA_PREFLIGHT_RECEIPT"
@@ -82,19 +83,19 @@ case "$ACTION" in
     gate_e
     runtime_ready
     : "${CAMPAIGN_PROJECT_ROOT:?Set CAMPAIGN_PROJECT_ROOT to durable storage}"
-    smoke_plan="$OUTPUT_DIR/smoke-plan.csv"
-    mkdir -p "$OUTPUT_DIR"
+    smoke_plan="$SMOKE_OUTPUT_DIR/plan.csv"
+    mkdir -p "$SMOKE_OUTPUT_DIR"
     Rscript --vanilla "$DRIVER" --mode=plan --plan="$smoke_plan" \
-      --output-dir="$OUTPUT_DIR" --cells=binomial_logit --seeds=202608061 \
+      --output-dir="$SMOKE_OUTPUT_DIR" --cells=binomial_logit --seeds=202608061 \
       --Hs=7 --qs=2 --estimators=va --n=120 --p=6 \
       --gate-receipt="$GATE_E_RECEIPT"
     Rscript --vanilla "$DRIVER" --mode=run --plan="$smoke_plan" \
-      --output-dir="$OUTPUT_DIR" --task-index=1 \
+      --output-dir="$SMOKE_OUTPUT_DIR" --task-index=1 \
       --gate-receipt="$GATE_E_RECEIPT" \
       --runtime-manifest="$VA_RUNTIME_MANIFEST" \
       --preflight-receipt="$VA_PREFLIGHT_RECEIPT"
     Rscript --vanilla "$DRIVER" --mode=verify-task --plan="$smoke_plan" \
-      --output-dir="$OUTPUT_DIR" --task-index=1 \
+      --output-dir="$SMOKE_OUTPUT_DIR" --task-index=1 \
       --gate-receipt="$GATE_E_RECEIPT" \
       --runtime-manifest="$VA_RUNTIME_MANIFEST" \
       --preflight-receipt="$VA_PREFLIGHT_RECEIPT"

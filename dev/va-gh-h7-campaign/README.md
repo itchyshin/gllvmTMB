@@ -142,31 +142,42 @@ Prepare/preflight the runtime in an allocation first. `ACTION=write` prints the
 exact plan-derived batched commands; `ACTION=smoke` submits task 1 only; broad
 `ACTION=submit` is permitted only after that smoke bundle is checked.
 
-After both plans have finished, `adjudicate` refuses any geometry other than the
-frozen 5,520-row Totoro and 36,000-row DRAC plans. It materialises missing
-bundles as explicit scheduler failures and writes 36 independent rows (18
-family/link cells times two ranks), plus a checksum-bound DCF receipt:
+After each plan finishes, run `export` on that plan's own host. It verifies
+every raw bundle and payload against that host's Gate/runtime/preflight/plan
+chain, then writes a compact result CSV, input-manifest CSV, and DCF receipt.
+Copy those three export files and both immutable plans to the final clean
+checkout; raw fit bundles do not need to cross hosts.
 
 ```sh
+# Run once on Totoro and once on Fir, substituting that host's paths.
+Rscript --vanilla dev/va-gh-h7-campaign/run-cell.R --mode=export \
+  --plan=/host/campaign/plan.csv \
+  --output-dir=/host/campaign/results \
+  --gate-receipt=/host/campaign/gate-e.dcf \
+  --runtime-manifest=/host/campaign/runtime.dcf \
+  --preflight-receipt=/host/campaign/preflight.dcf \
+  --export-output=/host/campaign/final-export.csv
+
+# Run after copying both three-file exports and plans to one clean checkout at
+# the exact campaign-export driver revision.
 Rscript --vanilla dev/va-gh-h7-campaign/run-cell.R --mode=adjudicate \
   --totoro-plan=/durable/totoro/plan.csv \
-  --totoro-output-dir=/durable/totoro/results \
-  --totoro-gate-receipt=/durable/totoro/gate-e.dcf \
-  --totoro-runtime-manifest=/durable/totoro/runtime.dcf \
-  --totoro-preflight-receipt=/durable/totoro/preflight.dcf \
-  --drac-plan=/project/.../plan.csv \
-  --drac-output-dir=/project/.../results \
-  --drac-gate-receipt=/project/.../gate-e.dcf \
-  --drac-runtime-manifest=/project/.../runtime.dcf \
-  --drac-preflight-receipt=/project/.../preflight.dcf \
+  --totoro-export=/durable/totoro/final-export.csv \
+  --drac-plan=/durable/drac/plan.csv \
+  --drac-export=/durable/drac/final-export.csv \
   --verdict-output=/durable/va-gh-h7-adjudication.csv \
   --bootstrap-reps=5000
 ```
 
-Every payload must match its platform's supplied Gate/runtime/preflight/plan
-checksum chain. The final receipt binds a 41,520-row input-bundle manifest, the
-adjudicator source checksum, both plans, and the verdict; final adjudication
-also requires a clean committed checkout.
+`adjudicate` refuses any geometry other than the frozen 5,520-row Totoro and
+36,000-row DRAC plans. It retains missing bundles as explicit scheduler
+failures and writes 36 independent rows (18 family/link cells times two ranks),
+plus a checksum-bound DCF receipt. The receipt binds the two verified exports,
+the 41,520-row input-bundle manifest, the adjudicator source checksum, both
+plans, both historical receipt chains, and the verdict; final adjudication also
+requires a clean committed checkout. The two exports may retain different
+non-statistical git revisions, but adjudication requires the same compiled VA
+template checksum and the same Gate-E report checksum across hosts.
 
 The point-route verdict combines DRAC operational reliability and paired
 VA/Laplace recovery with Totoro H7/H61 stability. VA-Wald and latent posterior-

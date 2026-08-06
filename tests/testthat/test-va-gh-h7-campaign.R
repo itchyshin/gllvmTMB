@@ -262,11 +262,26 @@ test_that("predeclared adjudication yields independent family-rank verdicts", {
     preflight_receipt_checksum_md5 = "preflight",
     plan_checksum_md5 = "plan"
   )
+  export_fields <- c(
+    results_checksum_md5 = "results-export",
+    input_manifest_checksum_md5 = "manifest-export",
+    receipt_checksum_md5 = "receipt-export"
+  )
+  make_provenance <- function(values = provenance_fields,
+                              gate_report = "gate-report") {
+    out <- as.list(values)
+    attr(out, "gate_report_checksum_md5") <- gate_report
+    out
+  }
+  campaign_provenance <- list(
+    totoro = make_provenance(), drac = make_provenance()
+  )
   .campaign_env$write_adjudication(
     verdict, verdict_path, totoro_path, drac_path, reps = 100L,
     input_manifest = input_manifest,
-    campaign_provenance = list(
-      totoro = as.list(provenance_fields), drac = as.list(provenance_fields)
+    campaign_provenance = campaign_provenance,
+    campaign_exports = list(
+      totoro = as.list(export_fields), drac = as.list(export_fields)
     ),
     require_clean = FALSE
   )
@@ -286,12 +301,28 @@ test_that("predeclared adjudication yields independent family-rank verdicts", {
     .campaign_env$write_adjudication(
       verdict, tempfile(fileext = ".csv"), totoro_path, drac_path, reps = 100L,
       input_manifest = input_manifest[-1L, ],
-      campaign_provenance = list(
-        totoro = as.list(provenance_fields), drac = as.list(provenance_fields)
+      campaign_provenance = campaign_provenance,
+      campaign_exports = list(
+        totoro = as.list(export_fields), drac = as.list(export_fields)
       ),
       require_clean = FALSE
     ),
     "input manifest is incomplete"
+  )
+
+  mismatched_provenance <- campaign_provenance
+  mismatched_provenance$drac$template_checksum_md5 <- "other-template"
+  expect_error(
+    .campaign_env$write_adjudication(
+      verdict, tempfile(fileext = ".csv"), totoro_path, drac_path, reps = 100L,
+      input_manifest = input_manifest,
+      campaign_provenance = mismatched_provenance,
+      campaign_exports = list(
+        totoro = as.list(export_fields), drac = as.list(export_fields)
+      ),
+      require_clean = FALSE
+    ),
+    "do not share the same VA template and Gate-E evidence"
   )
 
   had_system2 <- exists("system2", envir = .campaign_env, inherits = FALSE)
@@ -308,8 +339,9 @@ test_that("predeclared adjudication yields independent family-rank verdicts", {
     .campaign_env$write_adjudication(
       verdict, tempfile(fileext = ".csv"), totoro_path, drac_path, reps = 100L,
       input_manifest = input_manifest,
-      campaign_provenance = list(
-        totoro = as.list(provenance_fields), drac = as.list(provenance_fields)
+      campaign_provenance = campaign_provenance,
+      campaign_exports = list(
+        totoro = as.list(export_fields), drac = as.list(export_fields)
       )
     ),
     "clean committed checkout"
@@ -497,6 +529,106 @@ test_that("historical receipt chains are mutually checksum-bound", {
   )
 })
 
+test_that("host-local campaign exports round-trip and reject tampering", {
+  .campaign_set_cli(
+    cells = "binomial_logit", seeds = "1:2", Hs = "7", qs = "2",
+    estimators = "va", n = "100", p = "2"
+  )
+  plan <- .campaign_env$make_plan()
+  plan_path <- tempfile(fileext = ".csv")
+  write.csv(plan, plan_path, row.names = FALSE)
+  provenance <- list(
+    git_revision = "revision-a", template_checksum_md5 = "template-a",
+    runtime_manifest_checksum_md5 = "runtime-a",
+    gate_receipt_checksum_md5 = "gate-a",
+    preflight_receipt_checksum_md5 = "preflight-a",
+    plan_checksum_md5 = .campaign_env$file_checksum(plan_path)
+  )
+  attr(provenance, "gate_report_checksum_md5") <- "gate-report-a"
+  raw <- tempfile("va-gh-h7-export-raw-")
+  dir.create(raw)
+  result <- .campaign_result_row("binomial_logit", "completed", 1L)
+  .campaign_env$publish_bundle(
+    file.path(raw, "replicates", "one.bundle"), result,
+    .campaign_env$empty_beta_table(), .campaign_env$empty_family_table(),
+    list(provenance = provenance)
+  )
+  bound <- .campaign_env$read_bound_campaign_results(raw, plan, provenance)
+  export_path <- tempfile(fileext = ".csv")
+  .campaign_env$write_campaign_export(
+    bound, export_path, plan_path, provenance
+  )
+  restored <- .campaign_env$read_campaign_export(export_path, plan_path)
+  expect_identical(restored$status, c("completed", "scheduler_failed"))
+  expect_identical(
+    attr(restored, "campaign_provenance")$git_revision, "revision-a"
+  )
+  expect_true(all(nzchar(unlist(
+    attr(restored, "campaign_export_checksums"), use.names = FALSE
+  ))))
+
+  write("tampered", export_path)
+  expect_error(
+    .campaign_env$read_campaign_export(export_path, plan_path),
+    "checksum or format validation failed"
+  )
+})
+
+test_that("broad export verifies and excludes the legacy Totoro smoke bundle", {
+  .campaign_set_cli(
+    cells = "binomial_logit", seeds = "1", Hs = "7", qs = "2",
+    estimators = "va", n = "100", p = "2"
+  )
+  plan <- .campaign_env$make_plan()
+  plan_path <- tempfile(fileext = ".csv")
+  write.csv(plan, plan_path, row.names = FALSE)
+  broad_provenance <- list(
+    git_revision = "revision-a", template_checksum_md5 = "template-a",
+    runtime_manifest_checksum_md5 = "runtime-a",
+    gate_receipt_checksum_md5 = "gate-a",
+    preflight_receipt_checksum_md5 = "preflight-a",
+    plan_checksum_md5 = .campaign_env$file_checksum(plan_path)
+  )
+  out <- tempfile("va-gh-h7-legacy-smoke-")
+  dir.create(out)
+  broad_result <- .campaign_result_row("binomial_logit", "completed", 1L)
+  .campaign_env$publish_bundle(
+    file.path(out, "replicates", "broad.bundle"), broad_result,
+    .campaign_env$empty_beta_table(), .campaign_env$empty_family_table(),
+    list(provenance = broad_provenance)
+  )
+
+  .campaign_set_cli(
+    cells = "binomial_logit", seeds = "202608061", Hs = "7", qs = "2",
+    estimators = "va", n = "120", p = "6"
+  )
+  smoke_plan <- .campaign_env$make_plan()
+  smoke_path <- file.path(out, "smoke-plan.csv")
+  write.csv(smoke_plan, smoke_path, row.names = FALSE)
+  smoke_result <- .campaign_result_row(
+    "binomial_logit", "completed", 202608061L
+  )
+  spec_columns <- names(smoke_plan)
+  smoke_result[spec_columns] <- smoke_plan[1L, spec_columns]
+  smoke_provenance <- broad_provenance
+  smoke_provenance$plan_checksum_md5 <- .campaign_env$file_checksum(smoke_path)
+  .campaign_env$publish_bundle(
+    file.path(out, "replicates", "legacy-smoke.bundle"), smoke_result,
+    .campaign_env$empty_beta_table(), .campaign_env$empty_family_table(),
+    list(provenance = smoke_provenance)
+  )
+
+  expect_message(
+    bound <- .campaign_env$read_bound_campaign_results(
+      out, plan, broad_provenance
+    ),
+    "excluded 1 auxiliary smoke bundle"
+  )
+  expect_equal(nrow(bound), 1L)
+  expect_identical(bound$seed, 1L)
+  expect_true(bound$published_bundle)
+})
+
 test_that("adjudication thresholds fail material degradation and miscalibration", {
   reliable <- data.frame(status = rep("completed", 500L))
   failed <- data.frame(status = c(rep("failed", 100L), rep("completed", 400L)))
@@ -560,6 +692,8 @@ test_that("shell launchers use structured receipts and derived array geometry", 
 
   submit <- paste(text[["submit-drac.sh"]], collapse = "\n")
   array <- paste(text[["drac-array.sbatch"]], collapse = "\n")
+  launch <- paste(text[["launch-totoro.sh"]], collapse = "\n")
+  expect_match(launch, "SMOKE_OUTPUT_DIR")
   expect_true(grepl('ACTION="${ACTION:-write}"', submit, fixed = TRUE))
   expect_match(submit, "nrow\\(x\\)")
   expect_match(submit, "MAX_ARRAY_TASKS")

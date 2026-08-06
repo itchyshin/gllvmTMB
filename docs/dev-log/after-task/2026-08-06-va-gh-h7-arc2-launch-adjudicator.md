@@ -23,6 +23,17 @@ receipt distinguishes data completeness from verdict success, records PASS,
 FAIL, INCONCLUSIVE, and INCOMPLETE counts, and checksum-binds the adjudicator
 source and complete 41,520-row input-bundle manifest.
 
+Because Totoro and Fir do not share a filesystem, each host now performs raw
+bundle verification locally through `mode=export`. The resulting three-file
+export contains the bound result rows, bundle manifest, and receipt. Final
+adjudication copies only those compact exports and plans to one clean checkout;
+its receipt also binds both export triples.
+
+The original Totoro launcher placed its one-row smoke beside broad-plan
+bundles. The exporter verifies this known legacy bundle against its separate
+`smoke-plan.csv` provenance and excludes it; every other out-of-plan bundle is
+a hard error. New smoke runs use a separate `results/smoke` directory.
+
 ## 3a. Decisions and Rejected Alternatives
 
 Known failures take precedence over low eligibility so a demonstrated
@@ -41,7 +52,7 @@ package's own matched Laplace route.
 
 - `dev/va-gh-h7-campaign/run-cell.R`: frozen-plan validation, bound bundle
   reading, reliability/recovery/stability/calibration diagnostics, 36-row
-  adjudication, and structured receipt.
+  adjudication, host-local verified export, and structured receipts.
 - `dev/va-gh-h7-campaign/README.md`: live campaign state and final adjudication
   command and scope.
 - `tests/testthat/test-va-gh-h7-campaign.R`: healthy, threshold-failure,
@@ -93,6 +104,10 @@ checksum is rejected through its payload provenance. The structured receipt
 test distinguishes COMPLETE data from 36 point-route PASS verdicts and binds
 both the input manifest and adjudicator checksum.
 
+A host-local export round trip retains one completed and one scheduler-missing
+plan row, restores the historical provenance and export checksums, and rejects
+the export after its result CSV is modified.
+
 ## 7a. Issue Ledger
 
 No duplicate issue was opened. Design 110 remains the authoritative campaign
@@ -108,9 +123,16 @@ one row per cell and rank and cannot pool a failing family into a package-wide
 average.
 
 The final command requires both platforms' Gate receipt, runtime manifest, and
-preflight receipt. Every payload must agree with the resulting expected chain;
-the input manifest records every planned task, publication state, bundle name,
-and checksum of the bundle's `COMPLETE.dcf` manifest.
+preflight receipt during host-local export. Every payload must agree with the
+resulting expected chain; the input manifest records every planned task,
+publication state, bundle name, and checksum of the bundle's `COMPLETE.dcf`
+manifest. Final adjudication accepts only exports created by the identical
+adjudicator source and checksum-binds both export triples.
+
+Cross-host adjudication requires equal VA-template and Gate-report checksums,
+while retaining each host's exact git revision and runtime/preflight checksums.
+The live Totoro and Fir Gate receipts both bind report checksum
+`79d57f9b916a339af76ef1063777faf7`.
 
 Gauss identified failure-precedence, non-finite-ratio, absolute-denominator,
 missing-bundle, and cross-product risks. Curie identified cross-product,
@@ -132,6 +154,12 @@ evidence by design and are not relabelled as infrastructure failures before
 cell-level adjudication. DRAC broad submission began after both platform smoke
 gates while the Totoro broad plan was still running; the plans and estimands
 remain independent, but their wall-clock execution overlaps.
+
+When Totoro reached the end, a raw directory count was 5,521 rather than 5,520.
+The extra item was the previously verified p=6 smoke bundle, not an extra broad
+task. No evidence was deleted or renamed. The host-local exporter now verifies
+and excludes that legacy auxiliary bundle explicitly, and the launcher keeps
+future smoke output separate.
 
 ## 10. Known Residuals
 

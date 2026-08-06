@@ -33,6 +33,7 @@ normalise_cli <- function(x) {
     "totoro-gate-receipt", "totoro-runtime-manifest",
     "totoro-preflight-receipt", "drac-gate-receipt",
     "drac-runtime-manifest", "drac-preflight-receipt",
+    "export-output", "totoro-export", "drac-export",
     "verdict-output", "bootstrap-reps",
     names(aliases)
   )
@@ -146,6 +147,7 @@ make_plan <- function() {
       "totoro-gate-receipt", "totoro-runtime-manifest",
       "totoro-preflight-receipt", "drac-gate-receipt",
       "drac-runtime-manifest", "drac-preflight-receipt",
+      "export-output", "totoro-export", "drac-export",
       "verdict-output", "bootstrap-reps"
     )
   )
@@ -1506,7 +1508,7 @@ historical_campaign_provenance <- function(
     identical(preflight$git_revision, runtime$git_revision) &&
     identical(preflight$template_checksum_md5, runtime$template_checksum_md5)
   if (!valid) stop("historical campaign receipt chain is inconsistent or failed")
-  list(
+  out <- list(
     git_revision = runtime$git_revision,
     template_checksum_md5 = runtime$template_checksum_md5,
     runtime_manifest_checksum_md5 = file_checksum(runtime_manifest),
@@ -1514,6 +1516,21 @@ historical_campaign_provenance <- function(
     preflight_receipt_checksum_md5 = file_checksum(preflight_receipt),
     plan_checksum_md5 = file_checksum(plan_path)
   )
+  attr(out, "gate_report_checksum_md5") <- gate$report_checksum_md5
+  out
+}
+
+campaign_provenance_fields <- c(
+  "git_revision", "template_checksum_md5", "runtime_manifest_checksum_md5",
+  "gate_receipt_checksum_md5", "preflight_receipt_checksum_md5",
+  "plan_checksum_md5"
+)
+
+valid_campaign_provenance <- function(x) {
+  identical(names(x), campaign_provenance_fields) &&
+    all(vapply(x, function(value) {
+      length(value) == 1L && !is.na(value) && nzchar(as.character(value))
+    }, logical(1L)))
 }
 
 verify_payload_provenance <- function(path, expected) {
@@ -1552,15 +1569,68 @@ read_bound_campaign_results <- function(output_dir, plan, provenance = NULL) {
     )
     return(out)
   }
+  spec_columns <- c(
+    "task_id", "cell", "family_id", "link", "link_id", "route", "seed",
+    "H", "q", "n", "p", "estimator", "va_match_laplace_residual_sd"
+  )
+  matches_plan <- function(value, candidate_plan) {
+    if (nrow(value) != 1L || !value$task_id %in% candidate_plan$task_id) {
+      return(FALSE)
+    }
+    expected <- candidate_plan[
+      match(value$task_id, candidate_plan$task_id), spec_columns, drop = FALSE
+    ]
+    all(vapply(spec_columns, function(name) {
+      identical(as.character(value[[name]]), as.character(expected[[name]]))
+    }, logical(1L)))
+  }
+  smoke_plan_path <- file.path(output_dir, "smoke-plan.csv")
+  smoke_plan <- if (file.exists(smoke_plan_path)) {
+    value <- read.csv(smoke_plan_path, stringsAsFactors = FALSE)
+    validate_plan(value)
+    value
+  } else {
+    NULL
+  }
   observed <- lapply(bundles, function(path) {
-    if (!is.null(provenance)) verify_payload_provenance(path, provenance)
     value <- read.csv(file.path(path, "result.csv"), stringsAsFactors = FALSE)
     if (nrow(value) != 1L) stop("every campaign bundle must contain one result row")
+    primary <- matches_plan(value, plan)
+    auxiliary_smoke <- !primary && !is.null(smoke_plan) &&
+      matches_plan(value, smoke_plan)
+    if (!primary && !auxiliary_smoke) {
+      stop("campaign output contains a bundle outside the immutable plan: ",
+           basename(path))
+    }
+    if (!is.null(provenance)) {
+      expected <- provenance
+      if (auxiliary_smoke) {
+        expected$plan_checksum_md5 <- file_checksum(smoke_plan_path)
+      }
+      verify_payload_provenance(path, expected)
+    }
     attr(value, "bundle_name") <- basename(path)
     attr(value, "complete_manifest_checksum_md5") <-
       file_checksum(file.path(path, "COMPLETE.dcf"))
+    attr(value, "primary") <- primary
     value
   })
+  auxiliary <- !vapply(observed, attr, logical(1L), which = "primary")
+  if (any(auxiliary)) {
+    message("verified and excluded ", sum(auxiliary),
+            " auxiliary smoke bundle(s) outside the broad plan")
+    observed <- observed[!auxiliary]
+  }
+  if (!length(observed)) {
+    out <- scheduler_failure_rows(plan)
+    out$published_bundle <- FALSE
+    attr(out, "bundle_manifest") <- data.frame(
+      task_id = plan$task_id, published_bundle = FALSE,
+      bundle_name = "", complete_manifest_checksum_md5 = "",
+      stringsAsFactors = FALSE
+    )
+    return(out)
+  }
   manifest <- data.frame(
     task_id = vapply(observed, function(x) x$task_id[[1L]], integer(1L)),
     published_bundle = TRUE,
@@ -1587,6 +1657,110 @@ read_bound_campaign_results <- function(output_dir, plan, provenance = NULL) {
     manifest$complete_manifest_checksum_md5[matched[present]]
   attr(out, "bundle_manifest") <- bound_manifest
   out
+}
+
+write_campaign_export <- function(results, path, plan_path, provenance) {
+  plan <- read.csv(plan_path, stringsAsFactors = FALSE)
+  validate_plan(plan)
+  manifest <- attr(results, "bundle_manifest")
+  required_manifest <- c(
+    "task_id", "published_bundle", "bundle_name",
+    "complete_manifest_checksum_md5"
+  )
+  gate_report_checksum <- attr(provenance, "gate_report_checksum_md5")
+  if (!valid_campaign_provenance(provenance) ||
+      length(gate_report_checksum) != 1L || is.na(gate_report_checksum) ||
+      !nzchar(gate_report_checksum) ||
+      !all(required_manifest %in% names(manifest)) ||
+      nrow(results) != nrow(plan) || nrow(manifest) != nrow(plan) ||
+      !identical(as.integer(results$task_id), plan$task_id) ||
+      !identical(as.integer(manifest$task_id), plan$task_id) ||
+      !identical(as.logical(results$published_bundle),
+                 as.logical(manifest$published_bundle)) ||
+      any(manifest$published_bundle &
+          !nzchar(manifest$complete_manifest_checksum_md5))) {
+    stop("campaign export inputs are incomplete, unbound, or malformed")
+  }
+  manifest_path <- paste0(path, ".inputs.csv")
+  atomic_save(manifest, manifest_path, function(x, file) {
+    write.csv(x, file, row.names = FALSE)
+  })
+  atomic_save(results, path, function(x, file) write.csv(x, file, row.names = FALSE))
+  receipt <- data.frame(
+    format_version = "1", kind = "va-gh-h7-campaign-export",
+    data_status = if (all(manifest$published_bundle)) "COMPLETE" else "INCOMPLETE",
+    plan_checksum_md5 = file_checksum(plan_path),
+    results_checksum_md5 = file_checksum(path),
+    input_manifest_checksum_md5 = file_checksum(manifest_path),
+    exporter_checksum_md5 = file_checksum(driver_path),
+    result_rows = nrow(results), input_manifest_rows = nrow(manifest),
+    git_revision = provenance$git_revision,
+    template_checksum_md5 = provenance$template_checksum_md5,
+    runtime_manifest_checksum_md5 = provenance$runtime_manifest_checksum_md5,
+    gate_receipt_checksum_md5 = provenance$gate_receipt_checksum_md5,
+    gate_report_checksum_md5 = gate_report_checksum,
+    preflight_receipt_checksum_md5 = provenance$preflight_receipt_checksum_md5,
+    created_utc = format(Sys.time(), tz = "UTC", usetz = TRUE),
+    stringsAsFactors = FALSE
+  )
+  atomic_save(receipt, paste0(path, ".dcf"), function(x, file) {
+    write.dcf(x, file = file)
+  })
+  message("wrote checksum-bound campaign export: ", path)
+}
+
+read_campaign_export <- function(path, plan_path) {
+  receipt <- read_single_dcf(paste0(path, ".dcf"), "campaign export receipt")
+  manifest_path <- paste0(path, ".inputs.csv")
+  required <- c(
+    "format_version", "kind", "data_status", "plan_checksum_md5",
+    "results_checksum_md5", "input_manifest_checksum_md5",
+    "exporter_checksum_md5", "result_rows", "input_manifest_rows",
+    "gate_report_checksum_md5", campaign_provenance_fields
+  )
+  missing <- setdiff(required, names(receipt))
+  if (length(missing)) {
+    stop("campaign export receipt lacks: ", paste(missing, collapse = ", "))
+  }
+  if (!identical(receipt$format_version, "1") ||
+      !identical(receipt$kind, "va-gh-h7-campaign-export") ||
+      !receipt$data_status %in% c("COMPLETE", "INCOMPLETE") ||
+      !identical(receipt$plan_checksum_md5, file_checksum(plan_path)) ||
+      !identical(receipt$results_checksum_md5, file_checksum(path)) ||
+      !identical(receipt$input_manifest_checksum_md5,
+                 file_checksum(manifest_path)) ||
+      !identical(receipt$exporter_checksum_md5, file_checksum(driver_path))) {
+    stop("campaign export receipt checksum or format validation failed")
+  }
+  plan <- read.csv(plan_path, stringsAsFactors = FALSE)
+  results <- read.csv(path, stringsAsFactors = FALSE)
+  manifest <- read.csv(manifest_path, stringsAsFactors = FALSE)
+  results <- bind_results_to_plan(results, plan)
+  if (!identical(receipt$result_rows, as.character(nrow(results))) ||
+      !identical(receipt$input_manifest_rows, as.character(nrow(manifest))) ||
+      nrow(manifest) != nrow(plan) ||
+      !identical(as.integer(manifest$task_id), plan$task_id) ||
+      !identical(as.logical(results$published_bundle),
+                 as.logical(manifest$published_bundle)) ||
+      !identical(receipt$data_status,
+                 if (all(manifest$published_bundle)) "COMPLETE" else "INCOMPLETE")) {
+    stop("campaign export rows or completeness disagree with the frozen plan")
+  }
+  provenance <- receipt[campaign_provenance_fields]
+  attr(provenance, "gate_report_checksum_md5") <-
+    receipt$gate_report_checksum_md5
+  if (!valid_campaign_provenance(provenance) ||
+      !identical(provenance$plan_checksum_md5, file_checksum(plan_path))) {
+    stop("campaign export provenance is incomplete or inconsistent")
+  }
+  attr(results, "bundle_manifest") <- manifest
+  attr(results, "campaign_provenance") <- provenance
+  attr(results, "campaign_export_checksums") <- list(
+    results_checksum_md5 = file_checksum(path),
+    input_manifest_checksum_md5 = file_checksum(manifest_path),
+    receipt_checksum_md5 = file_checksum(paste0(path, ".dcf"))
+  )
+  results
 }
 
 validate_adjudication_plans <- function(totoro, drac) {
@@ -1973,7 +2147,7 @@ adjudicate_campaigns <- function(totoro, drac, reps = 5000L) {
 
 write_adjudication <- function(
     verdict, path, totoro_plan, drac_plan, reps, input_manifest,
-    campaign_provenance, require_clean = TRUE) {
+    campaign_provenance, campaign_exports, require_clean = TRUE) {
   required_input <- c(
     "campaign", "task_id", "published_bundle", "bundle_name",
     "complete_manifest_checksum_md5"
@@ -1993,19 +2167,33 @@ write_adjudication <- function(
       }, logical(1L)))) {
     stop("adjudication input manifest does not match both frozen plan task sets")
   }
-  provenance_fields <- c(
-    "git_revision", "template_checksum_md5", "runtime_manifest_checksum_md5",
-    "gate_receipt_checksum_md5", "preflight_receipt_checksum_md5",
-    "plan_checksum_md5"
-  )
   if (!setequal(names(campaign_provenance), c("totoro", "drac")) ||
       !all(vapply(campaign_provenance, function(x) {
-        identical(names(x), provenance_fields) &&
+        valid_campaign_provenance(x)
+      }, logical(1L)))) {
+    stop("adjudication campaign provenance is incomplete or malformed")
+  }
+  gate_reports <- vapply(campaign_provenance, function(x) {
+    attr(x, "gate_report_checksum_md5") %||% ""
+  }, character(1L))
+  if (!identical(
+        campaign_provenance$totoro$template_checksum_md5,
+        campaign_provenance$drac$template_checksum_md5
+      ) || any(!nzchar(gate_reports)) || length(unique(gate_reports)) != 1L) {
+    stop("Totoro and DRAC exports do not share the same VA template and Gate-E evidence")
+  }
+  export_fields <- c(
+    "results_checksum_md5", "input_manifest_checksum_md5",
+    "receipt_checksum_md5"
+  )
+  if (!setequal(names(campaign_exports), c("totoro", "drac")) ||
+      !all(vapply(campaign_exports, function(x) {
+        identical(names(x), export_fields) &&
           all(vapply(x, function(value) {
             length(value) == 1L && !is.na(value) && nzchar(as.character(value))
           }, logical(1L)))
       }, logical(1L)))) {
-    stop("adjudication campaign provenance is incomplete or malformed")
+    stop("adjudication campaign export checksums are incomplete or malformed")
   }
   if (isTRUE(require_clean)) {
     status <- system2(
@@ -2047,6 +2235,7 @@ write_adjudication <- function(
       campaign_provenance$totoro$runtime_manifest_checksum_md5,
     totoro_gate_receipt_checksum_md5 =
       campaign_provenance$totoro$gate_receipt_checksum_md5,
+    totoro_gate_report_checksum_md5 = gate_reports[["totoro"]],
     totoro_preflight_receipt_checksum_md5 =
       campaign_provenance$totoro$preflight_receipt_checksum_md5,
     drac_git_revision = campaign_provenance$drac$git_revision,
@@ -2056,8 +2245,21 @@ write_adjudication <- function(
       campaign_provenance$drac$runtime_manifest_checksum_md5,
     drac_gate_receipt_checksum_md5 =
       campaign_provenance$drac$gate_receipt_checksum_md5,
+    drac_gate_report_checksum_md5 = gate_reports[["drac"]],
     drac_preflight_receipt_checksum_md5 =
       campaign_provenance$drac$preflight_receipt_checksum_md5,
+    totoro_export_results_checksum_md5 =
+      campaign_exports$totoro$results_checksum_md5,
+    totoro_export_input_manifest_checksum_md5 =
+      campaign_exports$totoro$input_manifest_checksum_md5,
+    totoro_export_receipt_checksum_md5 =
+      campaign_exports$totoro$receipt_checksum_md5,
+    drac_export_results_checksum_md5 =
+      campaign_exports$drac$results_checksum_md5,
+    drac_export_input_manifest_checksum_md5 =
+      campaign_exports$drac$input_manifest_checksum_md5,
+    drac_export_receipt_checksum_md5 =
+      campaign_exports$drac$receipt_checksum_md5,
     verdict_rows = nrow(verdict), bootstrap_reps = reps,
     point_route_pass_n = unname(point_counts[["PASS"]]),
     point_route_fail_n = unname(point_counts[["FAIL"]]),
@@ -2241,40 +2443,33 @@ if (mode == "plan") {
   }
   bundle <- verify_task_bundle(plan, output_dir, task, provenance)
   cat("verified complete task bundle:", bundle, "\n")
+} else if (mode == "export") {
+  if (!file.exists(plan_path)) stop("plan does not exist: ", plan_path)
+  plan <- read.csv(plan_path, stringsAsFactors = FALSE)
+  validate_plan(plan)
+  gate_path <- normalizePath(gate_receipt, mustWork = TRUE)
+  runtime_path <- normalizePath(runtime_manifest, mustWork = TRUE)
+  preflight_path <- normalizePath(preflight_receipt, mustWork = TRUE)
+  export_path <- normalizePath(
+    get_arg("export-output", "VA_EXPORT_OUTPUT"), mustWork = FALSE
+  )
+  provenance <- historical_campaign_provenance(
+    plan_path, gate_path, runtime_path, preflight_path
+  )
+  results <- read_bound_campaign_results(output_dir, plan, provenance)
+  write_campaign_export(results, export_path, plan_path, provenance)
 } else if (mode == "adjudicate") {
   totoro_plan_path <- normalizePath(
     get_arg("totoro-plan", "VA_TOTORO_PLAN"), mustWork = TRUE
   )
-  totoro_output <- normalizePath(
-    get_arg("totoro-output-dir", "VA_TOTORO_OUTPUT_DIR"), mustWork = TRUE
-  )
   drac_plan_path <- normalizePath(
     get_arg("drac-plan", "VA_DRAC_PLAN"), mustWork = TRUE
   )
-  drac_output <- normalizePath(
-    get_arg("drac-output-dir", "VA_DRAC_OUTPUT_DIR"), mustWork = TRUE
+  totoro_export <- normalizePath(
+    get_arg("totoro-export", "VA_TOTORO_EXPORT"), mustWork = TRUE
   )
-  totoro_gate <- normalizePath(
-    get_arg("totoro-gate-receipt", "VA_TOTORO_GATE_RECEIPT"), mustWork = TRUE
-  )
-  totoro_runtime <- normalizePath(
-    get_arg("totoro-runtime-manifest", "VA_TOTORO_RUNTIME_MANIFEST"),
-    mustWork = TRUE
-  )
-  totoro_preflight <- normalizePath(
-    get_arg("totoro-preflight-receipt", "VA_TOTORO_PREFLIGHT_RECEIPT"),
-    mustWork = TRUE
-  )
-  drac_gate <- normalizePath(
-    get_arg("drac-gate-receipt", "VA_DRAC_GATE_RECEIPT"), mustWork = TRUE
-  )
-  drac_runtime <- normalizePath(
-    get_arg("drac-runtime-manifest", "VA_DRAC_RUNTIME_MANIFEST"),
-    mustWork = TRUE
-  )
-  drac_preflight <- normalizePath(
-    get_arg("drac-preflight-receipt", "VA_DRAC_PREFLIGHT_RECEIPT"),
-    mustWork = TRUE
+  drac_export <- normalizePath(
+    get_arg("drac-export", "VA_DRAC_EXPORT"), mustWork = TRUE
   )
   verdict_output <- normalizePath(
     get_arg("verdict-output", "VA_VERDICT_OUTPUT", "va-gh-h7-adjudication.csv"),
@@ -2287,18 +2482,12 @@ if (mode == "plan") {
   totoro_plan <- read.csv(totoro_plan_path, stringsAsFactors = FALSE)
   drac_plan <- read.csv(drac_plan_path, stringsAsFactors = FALSE)
   validate_adjudication_plans(totoro_plan, drac_plan)
-  totoro_provenance <- historical_campaign_provenance(
-    totoro_plan_path, totoro_gate, totoro_runtime, totoro_preflight
-  )
-  drac_provenance <- historical_campaign_provenance(
-    drac_plan_path, drac_gate, drac_runtime, drac_preflight
-  )
-  totoro_results <- read_bound_campaign_results(
-    totoro_output, totoro_plan, totoro_provenance
-  )
-  drac_results <- read_bound_campaign_results(
-    drac_output, drac_plan, drac_provenance
-  )
+  totoro_results <- read_campaign_export(totoro_export, totoro_plan_path)
+  drac_results <- read_campaign_export(drac_export, drac_plan_path)
+  totoro_provenance <- attr(totoro_results, "campaign_provenance")
+  drac_provenance <- attr(drac_results, "campaign_provenance")
+  totoro_export_checksums <- attr(totoro_results, "campaign_export_checksums")
+  drac_export_checksums <- attr(drac_results, "campaign_export_checksums")
   input_manifest <- rbind(
     data.frame(campaign = "totoro", attr(totoro_results, "bundle_manifest")),
     data.frame(campaign = "drac", attr(drac_results, "bundle_manifest"))
@@ -2306,7 +2495,8 @@ if (mode == "plan") {
   verdict <- adjudicate_campaigns(totoro_results, drac_results, reps)
   write_adjudication(
     verdict, verdict_output, totoro_plan_path, drac_plan_path, reps,
-    input_manifest, list(totoro = totoro_provenance, drac = drac_provenance)
+    input_manifest, list(totoro = totoro_provenance, drac = drac_provenance),
+    list(totoro = totoro_export_checksums, drac = drac_export_checksums)
   )
 } else if (mode == "summarise") {
   if (!file.exists(plan_path)) stop("plan does not exist: ", plan_path)
@@ -2316,6 +2506,7 @@ if (mode == "plan") {
 } else {
   stop(
     "mode must be dry-run, gate-receipt, verify-gate, runtime-manifest, ",
-    "verify-runtime, preflight, plan, run, verify-task, adjudicate, or summarise"
+    "verify-runtime, preflight, plan, run, verify-task, export, adjudicate, ",
+    "or summarise"
   )
 }

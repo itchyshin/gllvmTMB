@@ -4,6 +4,25 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-08-07 -- logit JJ @ n=500 (β + Σ vs GH / gllvm / LA)
+
+Branch: `codex/va-gh-all-families`. Measurement-only n=500 logit cell
+(p=8 q=2 H=7 unique=FALSE seeds 10901:10912). Added
+`PROBE_GLLVM_START=default` to n-ladder script for fair package compare.
+No fence / auto change; logit GH fix PARKED.
+
+```sh
+PROBE_LINK=logit PROBE_N_GRID=500 PROBE_N_SEED=12 PILOT_CORES=8 \
+  PROBE_GLLVM_START=default PROBE_DO_GLLVM_LA=1 \
+  PROBE_OUT_ROOT=/private/tmp/va-s1-binomial-jj-n500-20260807 \
+  Rscript --vanilla lanes/va-s1-binomials/scripts/probe-binomial-gh-nladder.R
+# wall 101s: JJ β=0.090 Σrf=0.953 pass=0; GH Σrf=1.95 runaway=0.83;
+# gllvm VA collapse=1; gllvm LA Σrf=0.802
+```
+
+Audit: `docs/dev-log/audits/2026-08-07-va-jj-n500-beta-sigma.md`.  
+After-task: `docs/dev-log/after-task/2026-08-07-va-jj-n500-beta-sigma.md`.
+
 ## 2026-08-07 -- cloglog PoisG closed-form VA (opt-in; auto stays GH)
 
 Branch: `codex/va-gh-all-families`. Implemented gllvm-matched truncated-Poisson

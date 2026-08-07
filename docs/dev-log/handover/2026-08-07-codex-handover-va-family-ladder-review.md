@@ -57,17 +57,50 @@ Typical geometry: `n ∈ {120,400,1000}`, `p=8`, `q=2`, `unique=FALSE`, 8–12 s
 
 ---
 
-## 2. Locked takeaways Codex should stress-test (not accept blindly)
+## 2. Engine / algorithm decisions (stress-test these)
 
-From synthesis (challenge these):
+Canonical lock: `docs/dev-log/audits/2026-08-07-va-series-synthesis.md`.  
+Related: LA-vs-AGHQ timed binary; fairness/`n_starts`; PoisG Σ-scale; #947 (WAIC later); #948 (Hui NB2 closed VA parked).
 
-1. **LA everyday default** — VA often ≈ recovery but 3–50× slower.
-2. **NB2 exception:** VA-GH wins abs Σ at n≈1000 (~0.92 vs LA ~0.42) at ~3× cost.
-3. **Binary:** prefer probit; cloglog OK under LA; logit GH weak for abs Σ.
-4. **AGHQ:** wins old σ/ρ grids; not S1 abs winner; not “LA-GH”.
-5. **Closed-form traps:** PoisG / AC / gllvm VA Σ collapse ≠ recovery.
-6. **gllvm “losses”** often = missing arm or closed-VA collapse — name mechanisms.
-7. Fence / `calibrated=FALSE` unchanged by this battery.
+### Everyday product story
+
+| Tool | Role |
+| --- | --- |
+| **Laplace (LA)** | **Near-universal default** — abs β/Σ competitive or best on most families once n is decent; AIC/LRT valid; fast |
+| **LA + named ridge** (`aghq_ridge` with AGHQ **off**) | Mode-B **runaway** stopper; ~LA-fast; **MAP not MLE** → select structure on **unpenalised LA**, then ridge-refit winner only (#947 WAIC/CV later) |
+| **VA-GH (H=7)** | Sensitivity / research; **exception: NB2 large-n abs Σ** (~3× LA, worth it); elsewhere often ≈ LA recovery at 3–50× cost |
+| **Exact / closed VA** | Exact quartet comparator (gaussian/pois/gamma/lognormal); not a speed play at q=5 |
+| **AGHQ(+ridge)** | Opt-in for binary **latent σ/ρ** / integral; **not** S1 abs β/Σ winner; **do not call “LA-GH”** — names are Laplace / AGHQ / VA-GH |
+| **gllvm closed VA** | Fast; often **Σ collapse** — rf≈1 can be zero-estimator; always 2×2 |
+
+### Binary
+
+- Prefer **probit** (+ LA everyday; VA-GH for sensitivity).
+- **Cloglog** OK under LA (comparable to probit); PoisG **not** for Σ (collapse).
+- **Logit** weak for abs Σ under GH → **JJ** if VA logit; logit-GH dig parked.
+
+### Family carve-outs (from ladders)
+
+- **NB2:** LA small-n/cost; **VA-GH at large n for abs Σ**.
+- **Most other measured families** (betabin, beta, tweedie, student, ztpois, ordinal, delta_*, truncnb2): prefer **LA** when both clear; truncnb2 mild VA mid-n edge.
+- **Exact quartet:** prefer LA; AGHQ not needed.
+- **Multinomial VA:** later (not Design 110 scalar).
+
+### Do not advertise as Σ recovery
+
+PoisG, AC magnitudes, gllvm closed-VA collapse, unmatched `n_starts` timing as “VA≈LA speed”.
+
+### Fence / product
+
+Arc-1 fence + `calibrated=FALSE` stay; this battery does **not** licence Laplace→VA default flip or soft-PASS of Arc-2.
+
+---
+
+## 2b. Ladder takeaways Codex should also challenge
+
+1. Σ recovers with **larger n** on hard cells (NB2, binary, S3/S4) — n=120 often shared abs fail.
+2. “We beat gllvm” often = missing arm / closed-VA collapse / stuck Σ — name mechanisms.
+3. Timing only fair with matched starts, warm DLL, same SE policy.
 
 ---
 
@@ -100,5 +133,5 @@ Write a **short adversarial review** (new audit or after-task under `docs/dev-lo
 ## 5. How to Resume (paste into Codex)
 
 ```text
-Rehydrate from docs/dev-log/handover/2026-08-07-codex-handover-va-family-ladder-review.md + AGENTS.md. Read the listed 2026-08-07 VA n-ladder audits and the series synthesis. Deliver an adversarial scientific review of the all-family ladder battery (coverage, estimands, LA vs VA defaults, gaps, risks to Arc-1 NEWS). Docs-only; no fence/merge/Totoro unless asked.
+Rehydrate from docs/dev-log/handover/2026-08-07-codex-handover-va-family-ladder-review.md + AGENTS.md. Read docs/dev-log/audits/2026-08-07-va-series-synthesis.md (engine decisions: LA / LA-ridge / VA-GH / AGHQ) and the listed 2026-08-07 VA n-ladder audits. Deliver an adversarial scientific review of (1) the all-family ladder battery and (2) whether the LA-default + LA-ridge + VA-GH carve-outs hold. Docs-only; no fence/merge/Totoro unless asked.
 ```

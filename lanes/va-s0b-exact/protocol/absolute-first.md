@@ -54,8 +54,17 @@ Identical to S0a `lanes/va-s0a-gaussian/protocol/absolute-first.md`, plus the
 
 **(B) does not soft-PASS Arc-2, amend Design 110 thresholds, or move the public fence.**
 It answers “is recovery hopeless once we ignore the healthy gate?” (motivating
-case: gamma VA reliability FAIL with abs-on-completed PASS; gamma LA 0/300
-healthy under (A) but may still show finite abs recovery under (B)).
+case: gamma **VA** reliability FAIL with abs-on-completed PASS).
+
+**RETRACTED (2026-08-07):** do **not** read gamma LA “0/300 healthy” under the
+recorded Totoro export as “Laplace hopeless.” That figure was a
+`laplace_health` bug (`gr(last.par.best)` FE+RE). FE-only proxy
+`conv0∧pdHess`: ~282/300 (q=2), ~214/300 (q=5).
+`scientific_verdict_default` for gamma still reprints **SCIENTIFIC_FAIL** from
+**(A) VA reliability** (especially q=5) under the recorded gate — **re-read**
+that FAIL as VA reliability stress, not as an LA-health verdict. Do **not**
+claim re-scored `SCIENTIFIC_PASS` without an FE-|g| recompute / refit.
+After-task: `docs/dev-log/after-task/2026-08-07-va-s0b-laplace-health-fe-gradient-fix.md`.
 
 S0a Gaussian is already healthy under (A); dual columns are optional there.
 

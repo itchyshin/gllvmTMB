@@ -55,9 +55,9 @@ for decisive grids. Do not overlap two `mclapply`/`xargs -P` probes.
 | `/home/snakagaw/gllvm_work/va-gllvm-h2h-4arm-022b4eab-20260807/` | **Canonical 4-arm** Totoro run (poisson+gamma, q=2/5, 8 seeds) on confirmation `022b4eab` |
 | `/private/tmp/va-gllvm-h2h-4arm-20260807/totoro-results/` | Local D-50 copy of Totoro CSVs |
 | `lanes/va-s0b-exact/scripts/probe-gllvm-4arm.R` | Script (VA+LA × both packages) |
-| `/private/tmp/va-poisson-gllvm-probe-20260807/` | Early VA-only smoke — superseded |
-| `/private/tmp/va-s0b-gllvm-h2h-20260807/` | Aborted sibling h2h — superseded |
-| Totoro `…/va-gamma-la-nladder-022b4eab-20260807/` | Gamma LA n-ladder (n=120…1000, q=2); local `/private/tmp/va-gamma-la-nladder-evidence-20260807/` — **larger n does not rescue gtmb LA health** (0/6 every n) |
+| `/private/tmp/va-poisson-gllvm-probe-20260807/` | Local **VA×VA** 20-seed poisson/gamma probe (keep artefact; Σ often favours gllvmTMB VA) — not the full 2×2 |
+| `/private/tmp/va-s0b-gllvm-h2h-20260807/` | Aborted sibling h2h — superseded by 4-arm Totoro |
+| Totoro `…/va-gamma-la-nladder-022b4eab-20260807/` | Gamma LA n-ladder (n=120…1000, q=2); local `/private/tmp/va-gamma-la-nladder-evidence-20260807/` — recorded “0/6 healthy” used the **same FE+RE `gr()` bug**; do not cite as LA hopeless (see FE-gradient after-task) |
 
 **Audit:** `docs/dev-log/audits/2026-08-07-va-gllvm-4arm-poisson-gamma.md`
 
@@ -67,6 +67,14 @@ for decisive grids. Do not overlap two `mclapply`/`xargs -P` probes.
 - Poisson `q=5`: gllvmTMB VA strongest on Σ; gllvm VA weaker (pass_abs 0.12).
 - Gamma: **gllvm LA is not hopeless on β/Σ** (8/8; `q=5` pass_abs=1.0). Shape/φ often explodes — not a matched estimand.
 - Always report gllvm wall times (see audit table).
+
+### Related local H2H (20 seeds; VA×VA only)
+
+Artefact `/private/tmp/va-poisson-gllvm-probe-20260807/` (`paired-summary.csv`):
+on poisson + gamma at q∈{2,5}, **gllvmTMB VA often better Σ** than gllvm VA
+(paired ΔΣ negative for gllvmTMB on all four cells; pass_abs higher). Keep as
+supporting colour for the locked success bar (VA ≲ gllvm); canonical ranking
+still comes from the 4-arm Totoro table above.
 
 ## Success bar — LOCKED for now (Shinichi 2026-08-07)
 

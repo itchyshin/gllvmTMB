@@ -49822,10 +49822,11 @@ Gate-E/runtime `022b4eab`. Grid: n∈{120,250,500,1000}, q=2, p=8, 6 seeds,
 arms gtmb_la/va + gllvm_la/va. Wall 171 s @ 24 cores. D-50; no fence edits.
 Local evidence: `/private/tmp/va-gamma-la-nladder-evidence-20260807/`.
 
-**Verdict:** larger n does **not** rescue gtmb LA health (0/6 healthy at every n);
-med full \|g\| rises 68→501 while abs Σ improves 0.37→0.14. gtmb VA healthy
-(5–6/6). Caveat: health uses full `tmb_obj$gr` (same FE-vs-full issue as
-probe-laplace-health-fe-gradient); Arc-2 unchanged. Dual criterion interest noted.
+**Verdict (RETRACTED health claim):** recorded “0/6 healthy at every n” used
+the **same FE+RE `gr()` bug** as S0b gamma LA 0/300 — do **not** cite as
+“larger n fails to rescue LA health.” Med full \|g\| rises 68→501 is the
+joint-gradient artefact path; abs Σ still improves 0.37→0.14. gtmb VA
+healthy (5–6/6). Arc-2 unchanged. Dual criterion interest noted.
 
 ```sh
 ACTION=dry-run bash lanes/va-s0b-exact/scripts/launch-totoro-gamma-nladder.sh
@@ -49833,4 +49834,23 @@ ACTION=dry-run bash lanes/va-s0b-exact/scripts/launch-totoro-gamma-nladder.sh
 ```
 
 — Cursor (Totoro γ n-ladder; no public fence)
+
+
+## 2026-08-07 — Docs follow-up: S0b gamma LA-health retraction gaps
+
+Fill remaining S0b / validation-series wording after `abaf7802`:
+ledger / after-task / dual-report / protocol / plan-actual / ultraplan /
+4-arm notes / check-log n-ladder. Mark RETRACTED LA 0/300; re-read gamma
+`(A) scientific_verdict_default` as **VA reliability** FAIL (keep q=5);
+**no** SCIENTIFIC_PASS without FE-|g| recompute (proxy-only footnote).
+KEEP dual-report, poisson q=2 abs-Σ, Arc-2 labels, fence, VA q=5 stress,
+success bar VA ≲ LA and VA ≲ gllvm (HMSC later). Local H2H 20-seed
+artefact `/private/tmp/va-poisson-gllvm-probe-20260807/` retained.
+
+```sh
+git diff --stat HEAD -- R/ src/ NAMESPACE DESCRIPTION
+# empty
+```
+
+— Cursor (docs-only follow-up; no Totoro re-run)
 

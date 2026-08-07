@@ -69,7 +69,14 @@ That figure came from grading `gr(last.par.best)` (joint FE+RE). Correct FE
 β/Σ on the same DGP (dual-report B + 4-arm probe).  
 
 **KEEP:** Gamma VA reliability stress at q=5; poisson q=2 abs-Σ shared
-hardness; Arc-2 frozen labels; dual-report structure.
+hardness; Arc-2 frozen labels; dual-report structure; public fence;
+success bar VA ≲ LA and VA ≲ gllvm on 2×2 (HMSC later/paper, not S0 gate).
+
+**Do not claim:** re-scored `SCIENTIFIC_PASS` for gamma without FE-|g|
+recompute / Totoro refit. Proxy `conv0∧pdHess` is an upper-bound footnote
+only. Gamma `(A) scientific_verdict_default = SCIENTIFIC_FAIL` must be
+**re-read** as **VA reliability** FAIL under the recorded gate — not as
+“LA health FAIL.”
 
 ## 6. Checks
 
@@ -87,4 +94,5 @@ git diff --stat HEAD -- R/ src/ NAMESPACE DESCRIPTION
 ## 12. What Did NOT Happen
 
 No package `R/` mutation; no Arc-2 re-adjudication; no Totoro refit; no
-public fence change; S1 not started.
+public fence change; S1 not started; **no** gamma `SCIENTIFIC_PASS`
+re-score (proxy-only).

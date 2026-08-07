@@ -22,14 +22,25 @@ Arc-2 frozen CSV: `/private/tmp/va-gh-h7-final-evidence/totoro/adjudication/va-g
 
 ## Verdicts (A)
 
-cell | q | (A) scientific | β RMSE | Σ rel Frob | abs avail | reliability | LA healthy | frozen Arc-2
+> **Read with RETRACTION below.** `LA healthy` reprints the Totoro export as
+> run (buggy FE+RE gradient for gamma → recorded **0/300**). Gamma
+> `SCIENTIFIC_FAIL` is driven by **(A) VA reliability**, not by “LA hopeless.”
+> **Do not** flip these rows to `SCIENTIFIC_PASS` without FE-|g| recompute /
+> refit (proxy-only footnote is not a re-adjudication).
+
+cell | q | (A) scientific | β RMSE | Σ rel Frob | abs avail | reliability | LA healthy (recorded) | frozen Arc-2
 --- | --- | --- | --- | --- | --- | --- | --- | ---
 poisson_log | 2 | SCIENTIFIC_FAIL | 0.1106 | 0.6259 | 1.000 | PASS | 275/300 | FAIL
 poisson_log | 5 | SCIENTIFIC_PASS | 0.1216 | 0.4820 | 1.000 | PASS | 278/300 | PASS
 lognormal_log | 2 | SCIENTIFIC_PASS | 0.0700 | 0.3723 | 1.000 | PASS | 155/300 | INCONCLUSIVE
 lognormal_log | 5 | SCIENTIFIC_PASS | 0.0828 | 0.3475 | 1.000 | PASS | 179/300 | INCONCLUSIVE
-gamma_log | 2 | SCIENTIFIC_FAIL | 0.0796 | 0.4227 | 1.000 | FAIL | 0/300 | FAIL
-gamma_log | 5 | SCIENTIFIC_FAIL | 0.1253 | 0.4589 | 1.000 | FAIL | 0/300 | FAIL
+gamma_log | 2 | SCIENTIFIC_FAIL† | 0.0796 | 0.4227 | 1.000 | FAIL† | 0/300‡ | FAIL
+gamma_log | 5 | SCIENTIFIC_FAIL† | 0.1253 | 0.4589 | 1.000 | FAIL† | 0/300‡ | FAIL
+
+† **Re-read:** (A) FAIL = **VA** Wilson/healthy stress (q=2: 51/300 unhealthy;
+q=5: 235/300) under the recorded gate — keep as VA reliability stress,
+especially q=5. ‡ **RETRACTED as LA-hopeless claim:** FE-proxy healthy
+`conv0∧pdHess` ≈ **282/300** (q=2), **214/300** (q=5).
 
 ## Verdicts (B) abs-on-completed (secondary)
 
@@ -55,12 +66,20 @@ changing reliability FAIL under the **recorded** gate.
 ### RETRACTION — Gamma LA “0/300 healthy” (health-gate artefact)
 
 The `LA healthy` column above reprints the Totoro export as run. That export
-used buggy `laplace_health` (`gr(last.par.best)` = FE+RE). **Do not read
-Gamma 0/300 as “Laplace hopeless.”** FE-only proxy (`conv0 ∧ pdHess`, no
-refit possible from CSV alone): **282/300** (q=2), **214/300** (q=5).
-Probe: FE `|g|~5e-4` vs full `|g|~158` (gamma seed 10305). Fix landed in
-`dev/va-gh-h7-campaign/run-cell.R`; Arc-2 frozen labels unchanged.
-After-task: `docs/dev-log/after-task/2026-08-07-va-s0b-laplace-health-fe-gradient-fix.md`.
+used buggy `laplace_health` (`gr(last.par.best)` = FE+RE; false `|g|~70–158`
+on gamma). **Do not read Gamma 0/300 as “Laplace hopeless.”** FE-only proxy
+(`conv0 ∧ pdHess`, no refit possible from CSV alone): **282/300** (q=2),
+**214/300** (q=5). Probe: FE `|g|~5e-4` vs full `|g|~158` (gamma seed 10305).
+Fix landed in `dev/va-gh-h7-campaign/run-cell.R`; Arc-2 frozen labels +
+dual-report (B) + public fence unchanged.
+
+**`scientific_verdict_default` / (A) for gamma:** still shows
+`SCIENTIFIC_FAIL` because **VA reliability** fails under the recorded gate.
+Re-read that FAIL as VA reliability stress (keep q=5 stress); it is **not**
+an LA-health FAIL. Full re-adjudication of LA healthy rates needs Totoro
+refit **or** stays proxy-only. **No `SCIENTIFIC_PASS` claim without FE-|g|
+recompute.** After-task:
+`docs/dev-log/after-task/2026-08-07-va-s0b-laplace-health-fe-gradient-fix.md`.
 
 ## gllvm comparator (standing rule 2026-08-07)
 

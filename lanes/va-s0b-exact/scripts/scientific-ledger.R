@@ -342,7 +342,14 @@ md <- c(
   "## Secondary Laplace diagnostics",
   "Paired ratios are non-blocking for SCIENTIFIC_PASS. See CSV `ratio_secondary`.",
   "LA abs-on-completed columns answer 'is LA hopeless on recovery?' without",
-  "changing reliability FAIL (gamma LA: 0/300 healthy under frozen rule)."
+  "changing reliability FAIL under the **recorded** gate.",
+  "",
+  "### RETRACTION note (hand-maintain if regenerating)",
+  "Gamma recorded LA healthy 0/300 was a `laplace_health` FE+RE gradient bug —",
+  "**RETRACTED** as LA-hopeless. FE-proxy conv0∧pdHess ≈282/300 (q=2), ≈214/300 (q=5).",
+  "Gamma `scientific_verdict_default` FAIL is **VA reliability** under (A) — re-read;",
+  "do **not** claim SCIENTIFIC_PASS without FE-|g| recompute.",
+  "See `docs/dev-log/after-task/2026-08-07-va-s0b-laplace-health-fe-gradient-fix.md`."
 )
 writeLines(md, out_md)
 message("Wrote ", out_csv, " and ", out_md)

@@ -57,13 +57,15 @@ MD5 (`summary.csv`): `41bbe9f13ada77bb018a9d1152bfd954`
 
 1. **Poisson q=2:** all four arms fail the abs Σ cap together (Σ ~0.61–0.69). β is fine. This is a shared DGP/regime problem, not a gllvmTMB-only defect. Matches S0b (A) SCIENTIFIC_FAIL on Σ.
 2. **Poisson q=5:** gllvmTMB VA clears abs most often (pass 0.75, Σ 0.46). gllvm VA is weaker on Σ (0.54, pass 0.12). gllvm LA sits in between.
-3. **Gamma — is gllvm LA “hopeless”?** **No, not on β/Σ.** gllvm LA finishes 8/8 and at `q=5` passes abs on **all** seeds (Σ 0.42). gllvmTMB LA does the same. The S0b “LA healthy 0/300” for gamma is a **gllvmTMB reliability/health-gate** statement, not evidence that Laplace cannot recover planted Σ here.
+3. **Gamma — is gllvm / gllvmTMB LA “hopeless”?** **No, not on β/Σ.** gllvm LA finishes 8/8 and at `q=5` passes abs on **all** seeds (Σ 0.42). gllvmTMB LA does the same. S0b recorded gamma LA “healthy 0/300” is a **RETRACTED** `laplace_health` FE+RE gradient artefact (FE-proxy ≈282/300 & ≈214/300) — not evidence that Laplace cannot recover planted Σ. Gamma `(A) SCIENTIFIC_FAIL` remains a **VA reliability** statement under the recorded gate (re-read; no PASS without FE-|g| recompute).
 4. **Shape caveat:** gllvm `phi` at gamma `q=5` often explodes (10⁶–10⁷) even when Σ recovers; gllvmTMB VA shape also blows on several `q=5` seeds. Do **not** use shape agreement as the comparator verdict.
 5. **gllvm performance (always report):** gllvm VA is fast at `q=2` (~0.2–0.3 s) and slower at gamma `q=5` (~26 s mean, max ~70 s). gllvm LA is consistently ~1–5 s on this grid — faster than gllvmTMB VA at `q=5`, slower than gllvmTMB LA wall on Totoro for these small cells.
 
 ## Sibling coordination
 
-Aborted / incomplete local VA-only smokes under
-`/private/tmp/va-poisson-gllvm-probe-20260807/` and
-`/private/tmp/va-s0b-gllvm-h2h-20260807/` were **not** reused as evidence.
-This 4-arm Totoro run is the consolidated comparator table.
+Local VA×VA 20-seed probe under
+`/private/tmp/va-poisson-gllvm-probe-20260807/` (`paired-summary.csv`):
+**gllvmTMB VA often better Σ** than gllvm VA on poisson/gamma q∈{2,5}
+(keep artefact; supports locked VA ≲ gllvm bar). Aborted sibling
+`/private/tmp/va-s0b-gllvm-h2h-20260807/` was **not** reused.
+This 4-arm Totoro run is the consolidated **2×2** comparator table.

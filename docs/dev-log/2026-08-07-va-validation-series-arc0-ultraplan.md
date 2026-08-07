@@ -224,7 +224,7 @@ Enough **before harder distributions** (S1+). Dual-report stays; Arc-2 / fence u
 
 **Exact families first** (before binomials / GH-hard): **gamma + poisson q=2**, with the full panel including **LA+tricks**.
 
-- Motivating cells: gamma reliability stress (VA q=5; recorded LA 0/300 **retracted** as health-gate artefact — FE proxy ~71–94% healthy); poisson q=2 SCIENTIFIC_FAIL on abs Σ (shared hardness).
+- Motivating cells: gamma **VA** reliability stress at q=5 (keep); recorded LA 0/300 **RETRACTED** as `laplace_health` FE+RE artefact (FE proxy ~71–94% healthy — **not** a `SCIENTIFIC_PASS` re-score without FE-|g| recompute); poisson q=2 SCIENTIFIC_FAIL on abs Σ (shared hardness).
 - **Totoro** if scale / multi-arm parallelism needed; **local ≤10 cores**.
 - Keep gllvm rows on the same DGP/seeds where feasible (`protocol/gllvm-comparator.md`).
 - Smoke ≤ small seed count, then Totoro confirmation — no huge new 36k unless a G0 asks.

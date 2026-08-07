@@ -22,7 +22,9 @@ probe (gllvmTMB VA / LA + gllvm VA / LA) for poisson + gamma at `q∈{2,5}`.
 - Poisson `q=5`: gllvmTMB VA strongest on Σ; gllvm VA weaker.
 - Gamma: **gllvm LA is not hopeless on β/Σ** (8/8 finite; `q=5` pass_abs=1.0).
   Shape/φ for gllvm at `q=5` often explodes — not a matched estimand.
-- S0b gamma “LA healthy 0/300” ≠ “Laplace cannot recover Σ.”
+- S0b gamma “LA healthy 0/300” ≠ “Laplace cannot recover Σ” — that rate is
+  **RETRACTED** (`laplace_health` FE+RE bug; FE-proxy ≈282/300 & ≈214/300).
+  Gamma `(A) SCIENTIFIC_FAIL` = **VA reliability** under the recorded gate.
 
 ## Checks
 

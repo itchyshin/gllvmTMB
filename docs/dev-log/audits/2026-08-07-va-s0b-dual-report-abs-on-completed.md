@@ -26,18 +26,25 @@ S0a Gaussian: already healthy under (A); dual columns not re-emitted this slice.
 | poisson_log | 2 | SCIENTIFIC_FAIL | PASS | ABS_ON_COMPLETED_FAIL | 0.111 / 0.626 | FAIL 0.113 / 0.657 |
 
 Gamma: abs recovery clears caps once unhealthy finishes are included; frozen
-reliability still FAIL (51/300 and 235/300 unhealthy under the **recorded**
-gate). Gamma LA is **not** hopeless on recovery under (B).
+**(A) VA reliability** still FAIL (51/300 and 235/300 unhealthy VA under the
+**recorded** gate — keep as VA reliability stress, especially q=5). Gamma LA
+is **not** hopeless on recovery under (B).
 
 ### RETRACTION (2026-08-07, same day) — LA healthy 0/300 is a gate bug
 
 Campaign `laplace_health` graded `gr(last.par.best)` (FE+RE) instead of
 FE-only `opt$par`. That artefact produced Gamma LA **0/300 healthy** with
-med `|g|~70`. Correct FE `|g|` is ~1e-4–1e-3 on converged PD cells (probe
+med `|g|~70–158`. Correct FE `|g|` is ~1e-4–1e-3 on converged PD cells (probe
 seed 10305: FE 5.4e-4 vs full 158). Exact FE re-score needs refit (export
 CSV has no `tmb_obj`); proxy `conv0 ∧ pdHess` → **282/300** (q=2) and
-**214/300** (q=5). Dual-report (B) and Arc-2 frozen labels unchanged.
-See `docs/dev-log/after-task/2026-08-07-va-s0b-laplace-health-fe-gradient-fix.md`.
+**214/300** (q=5).
+
+**Re-read (A):** gamma `scientific_verdict_default = SCIENTIFIC_FAIL` is
+driven by **VA reliability**, not by the retracted LA 0/300. Do **not** claim
+re-scored `SCIENTIFIC_PASS` without FE-|g| recompute (proxy-only footnote ≠
+re-adjudication). Dual-report (B), Arc-2 frozen labels, public fence
+unchanged. See
+`docs/dev-log/after-task/2026-08-07-va-s0b-laplace-health-fe-gradient-fix.md`.
 
 ## Paths
 

@@ -22,14 +22,19 @@ labels or the public VA fence.
   `1e0a78c16eca8f93ca18b2981b816217`.
 - Scientific ledger under default caps β≤0.35 / Σ≤0.50:
 
-| cell | q | scientific | β RMSE | Σ rel Frob | reliability | LA healthy | frozen Arc-2 |
+| cell | q | scientific | β RMSE | Σ rel Frob | reliability | LA healthy (recorded) | frozen Arc-2 |
 | --- | ---: | --- | ---: | ---: | --- | ---: | --- |
 | poisson_log | 2 | **FAIL** | 0.111 | 0.626 | PASS | 275/300 | FAIL |
 | poisson_log | 5 | **PASS** | 0.122 | 0.482 | PASS | 278/300 | PASS |
 | lognormal_log | 2 | **PASS** | 0.070 | 0.372 | PASS | 155/300 | INCONCLUSIVE |
 | lognormal_log | 5 | **PASS** | 0.083 | 0.347 | PASS | 179/300 | INCONCLUSIVE |
-| gamma_log | 2 | **FAIL** | 0.080 | 0.423 | FAIL | 0/300 | FAIL |
-| gamma_log | 5 | **FAIL** | 0.125 | 0.459 | FAIL | 0/300 | FAIL |
+| gamma_log | 2 | **FAIL**† | 0.080 | 0.423 | FAIL† | 0/300‡ | FAIL |
+| gamma_log | 5 | **FAIL**† | 0.125 | 0.459 | FAIL† | 0/300‡ | FAIL |
+
+† Gamma (A) FAIL = **VA reliability** under the recorded gate (re-read; keep
+q=5 stress). ‡ **RETRACTED as LA-hopeless:** FE-proxy `conv0∧pdHess`
+≈282/300 (q=2), ≈214/300 (q=5). **No `SCIENTIFIC_PASS` without FE-|g|
+recompute.** See Known Residuals + FE-gradient after-task.
 
 Alternate caps **not proposed**. Frozen Arc-2 MD5
 `e57f8460fd98bd0eac43b4a6c014317d` unchanged. Fence / `calibrated=FALSE`
@@ -51,8 +56,9 @@ Local evidence (not in git): `/private/tmp/va-s0b-exact-evidence-20260807/`.
 - **Decision:** n_seeds=300, range 10301:10600. **Rationale:** same band as
   S0a; disjoint from Arc-2 and S0a. **Rejected:** reuse Arc-2 rows.
 - **Decision:** no alternate abs caps. **Rationale:** poisson q=2 fails Σ
-  clearly (0.626); gamma fails reliability; lognormal and poisson q=5 clear
-  defaults with margin.
+  clearly (0.626); gamma fails **VA** reliability (A); lognormal and poisson
+  q=5 clear defaults with margin. (Gamma LA “0/300 healthy” later
+  **RETRACTED** as health-gate artefact — does not flip abs caps.)
 - **Decision:** STOP at G0c (S1 not started).
 
 ## 4. Checks Run

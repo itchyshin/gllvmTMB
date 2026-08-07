@@ -14,7 +14,7 @@
 | ordinal | **DONE** | hardest; abs at n=1000; gllvm VA never abs |
 | delta (= delta_gamma) | **DONE** | hybrid; both arms clear by n=400 |
 | multinomial | **SKIPPED** | VA not implemented |
-| truncnb2 / delta_ln | deferred | siblings |
+| truncnb2 / delta_ln | **DONE same day** | sibling wave — see after-task `2026-08-07-va-truncnb2-delta-ln-nladder.md` |
 
 ## Artefacts
 
@@ -31,4 +31,6 @@
 
 ## Follow-up
 
-Optional: truncated_nbinom2 + delta_lognormal wave. G0 before any fence claim.
+Sibling wave (truncnb2 + delta_ln) completed under Shinichi B — audit
+`docs/dev-log/audits/2026-08-07-va-truncnb2-delta-ln-nladder.md`. Arc-1
+merge/fence still needs explicit C go.

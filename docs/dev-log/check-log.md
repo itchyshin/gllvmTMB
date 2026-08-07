@@ -4,6 +4,21 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-08-07 -- truncnb2 + delta_lognormal n-ladders (Totoro, B only)
+
+Branch: `codex/va-gh-all-families`. Shinichi B: Totoro n-ladders for
+`truncated_nbinom2` (fid 11, GH) and `delta_lognormal` (fid 12, hybrid) —
+siblings of ztpois / delta_gamma. Design match S4: n∈{120,400,1000} p=8
+q=2 12 seeds `n_starts=1` `se=FALSE` warm DLL; gtmb LA+VA; gllvm N/A.
+**Σ recovers with n on both.** truncnb2: VA mild abs/Σ edge, ≤4.2× wall;
+delta_ln: VA≈LA abs, prefer LA (~30× faster at n=1000). No fence/`auto`;
+no Arc-1 merge. Audit
+`docs/dev-log/audits/2026-08-07-va-truncnb2-delta-ln-nladder.md`;
+after-task `docs/dev-log/after-task/2026-08-07-va-truncnb2-delta-ln-nladder.md`;
+scripts `lanes/va-s4-gh-hard/scripts/`. D-50
+`/private/tmp/va-s4-truncated-nbinom2-nladder-20260807/`,
+`/private/tmp/va-s4-delta-lognormal-nladder-20260807/`.
+
 ## 2026-08-07 -- VA series synthesis G0=1 formal close (/goal)
 
 Branch: `codex/va-gh-all-families`. Shinichi **approved** completed G0=1

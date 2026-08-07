@@ -2,7 +2,8 @@
 set -euo pipefail
 
 # Totoro launcher — S4 GH-hard / hybrid family n-ladders.
-# FAMILY=tweedie|student|truncated_poisson|ordinal_probit|delta_gamma
+# FAMILY=tweedie|student|truncated_poisson|truncated_nbinom2|
+#         ordinal_probit|delta_gamma|delta_lognormal
 # n ∈ {120,400,1000}; p=8 q=2; gtmb LA+VA ± gllvm as feasible.
 # Do NOT kill unrelated Totoro jobs (incl. beta/betabinomial). D-50.
 
@@ -11,7 +12,7 @@ LANE_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 REPO_ROOT="${CHECKOUT:-$(cd "$LANE_ROOT/../.." && pwd)}"
 PROBE_SCRIPT="$SCRIPT_DIR/probe-s4-family-nladder.R"
 
-FAMILY="${FAMILY:?set FAMILY=tweedie|student|truncated_poisson|ordinal_probit|delta_gamma}"
+FAMILY="${FAMILY:?set FAMILY=tweedie|student|truncated_poisson|truncated_nbinom2|ordinal_probit|delta_gamma|delta_lognormal}"
 ACTION="${ACTION:-dry-run}"
 HOST="${TOTORO_HOST:-totoro}"
 FAM_SLUG="${FAMILY//_/-}"

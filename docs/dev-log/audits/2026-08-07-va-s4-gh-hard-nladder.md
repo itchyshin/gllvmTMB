@@ -17,8 +17,8 @@
 | **ordinal** | fid 14 `ordinal_probit` | GH | **STARTED → DONE** | gtmb VA+LA; gllvm VA all n |
 | **delta** | fid **13** `delta_gamma` | HYBRID | **STARTED → DONE** | gtmb VA+LA only |
 | multinomial | — | not implemented | **SKIPPED** | ultraplan OUT |
-| truncated_nbinom2 | fid 11 | GH | **SKIPPED this wave** | sibling of ztpois |
-| delta_lognormal | fid 12 | HYBRID | **SKIPPED this wave** | sibling of delta_gamma |
+| truncated_nbinom2 | fid 11 | GH | **DONE in sibling wave** | see `2026-08-07-va-truncnb2-delta-ln-nladder.md` |
+| delta_lognormal | fid 12 | HYBRID | **DONE in sibling wave** | see `2026-08-07-va-truncnb2-delta-ln-nladder.md` |
 
 ### “truncated” clarification
 
@@ -128,4 +128,6 @@ done
 # ordinal: mid-run kill+relaunch after NULL cut-metadata fix (other jobs untouched)
 ```
 
-Deliberately not run: fence edits, multinomial, truncated_nbinom2, delta_lognormal, package PASS claim.
+Deliberately not run (this wave): fence edits, multinomial, package PASS claim.
+Sibling wave (truncnb2 + delta_ln) landed same day — see
+`docs/dev-log/audits/2026-08-07-va-truncnb2-delta-ln-nladder.md`.

@@ -1,13 +1,16 @@
 #!/usr/bin/env Rscript
 ## S4 GH-hard / hybrid family n-ladder (Design 110).
-## PROBE_FAMILY ∈ {tweedie, student, truncated_poisson, ordinal_probit, delta_gamma}
+## PROBE_FAMILY ∈ {tweedie, student, truncated_poisson, truncated_nbinom2,
+##                  ordinal_probit, delta_gamma, delta_lognormal}
 ## Grid: n ∈ {120,400,1000} (default), p=8, q=2, unique=FALSE loadings-only.
 ## Arms: gtmb LA ± VA-GH H=7 ± gllvm as feasible per family.
 ## Matched n_starts=1, se=FALSE, warm DLL outside timers.
 ## Totoro OK. D-50: /private/tmp + Totoro only. No fence / PASS claim.
 ##
-## truncated = Design-110 family_id 10 zero-truncated Poisson (NOT Tobit /
-## truncated-Gaussian). truncated_nbinom2 is a sibling cell, not this probe.
+## truncated_poisson = Design-110 family_id 10 zero-truncated Poisson
+## (NOT Tobit / truncated-Gaussian). truncated_nbinom2 = fid 11 zero-
+## truncated NB2 sibling. delta_lognormal = fid 12 hybrid sibling of
+## delta_gamma (fid 13).
 
 REPO <- Sys.getenv(
   "PROBE_REPO",
@@ -42,6 +45,8 @@ TWEEDIE_PHI <- as.numeric(Sys.getenv("PROBE_TWEEDIE_PHI", "0.7"))
 STUDENT_DF <- as.numeric(Sys.getenv("PROBE_STUDENT_DF", "5"))
 STUDENT_SIGMA <- as.numeric(Sys.getenv("PROBE_STUDENT_SIGMA", "0.8"))
 DELTA_SHAPE <- as.numeric(Sys.getenv("PROBE_DELTA_SHAPE", "2.5"))
+DELTA_SIGMA <- as.numeric(Sys.getenv("PROBE_DELTA_SIGMA", "0.60"))
+TRUNC_PHI <- as.numeric(Sys.getenv("PROBE_TRUNC_PHI", "2.0"))
 ORDINAL_CUTS <- as.numeric(strsplit(
   Sys.getenv("PROBE_ORDINAL_CUTS", "0,0.8"), ","
 )[[1L]])
@@ -66,6 +71,12 @@ fam_spec <- switch(
     la_family = quote(truncated_poisson()),
     fixed_tweedie_power = NULL, fixed_student_df = NULL
   ),
+  truncated_nbinom2 = list(
+    family_id = 11L, link_id = 0L, label = "truncated_nbinom2_log",
+    gllvm_family = NA_character_, gllvm_la = FALSE, gllvm_va = FALSE,
+    la_family = quote(truncated_nbinom2()),
+    fixed_tweedie_power = NULL, fixed_student_df = NULL
+  ),
   ordinal_probit = list(
     family_id = 14L, link_id = 0L, label = "ordinal_probit",
     gllvm_family = "ordinal", gllvm_la = FALSE, gllvm_va = TRUE,
@@ -78,8 +89,17 @@ fam_spec <- switch(
     la_family = quote(delta_gamma()),
     fixed_tweedie_power = NULL, fixed_student_df = NULL
   ),
+  delta_lognormal = list(
+    family_id = 12L, link_id = 0L, label = "delta_lognormal_log",
+    gllvm_family = NA_character_, gllvm_la = FALSE, gllvm_va = FALSE,
+    la_family = quote(delta_lognormal()),
+    fixed_tweedie_power = NULL, fixed_student_df = NULL
+  ),
   stop(sprintf(
-    "PROBE_FAMILY must be tweedie|student|truncated_poisson|ordinal_probit|delta_gamma (got %s)",
+    paste0(
+      "PROBE_FAMILY must be tweedie|student|truncated_poisson|truncated_nbinom2|",
+      "ordinal_probit|delta_gamma|delta_lognormal (got %s)"
+    ),
     FAMILY
   ))
 )
@@ -130,6 +150,26 @@ ztpois_draw <- function(mu_vec) {
   as.integer(out)
 }
 
+## Zero-truncated NB2: reject-sample rnbinom until y >= 1 (matches
+## tests/testthat/test-truncated-recovery.R::rztnbinom2).
+ztnbinom2_draw <- function(mu_vec, phi = TRUNC_PHI) {
+  n <- length(mu_vec)
+  out <- integer(n)
+  for (i in seq_len(n)) {
+    x <- -1L
+    tries <- 0L
+    while (x < 1L || !is.finite(x)) {
+      tries <- tries + 1L
+      if (tries > 500L) {
+        stop("ztnbinom2_draw failed to clear zeros/nonfinite", call. = FALSE)
+      }
+      x <- stats::rnbinom(1L, size = phi, mu = mu_vec[[i]])
+    }
+    out[[i]] <- as.integer(x)
+  }
+  out
+}
+
 simulate_dgp <- function(seed, n, q = Q, p = P) {
   set.seed(seed)
   stopifnot(p >= q)
@@ -140,9 +180,17 @@ simulate_dgp <- function(seed, n, q = Q, p = P) {
   }
   scores <- matrix(rnorm(n * q), n, q)
   beta <- seq(-0.25, 0.25, length.out = p)
-  ## ordinal / truncated need slightly stronger signal at small n
-  if (FAMILY %in% c("ordinal_probit", "truncated_poisson", "delta_gamma")) {
+  ## ordinal / truncated / delta need slightly stronger signal at small n
+  if (FAMILY %in% c(
+    "ordinal_probit", "truncated_poisson",
+    "delta_gamma", "delta_lognormal"
+  )) {
     beta <- seq(-0.15, 0.35, length.out = p)
+  }
+  ## truncnb2: keep mean counts away from the Poisson limit so phi stays
+  ## identifiable under zero-truncation (test-truncated-recovery.R).
+  if (FAMILY == "truncated_nbinom2") {
+    beta <- seq(0.55, 1.35, length.out = p)
   }
   if (FAMILY == "student") {
     beta <- seq(-0.5, 0.5, length.out = p)
@@ -158,6 +206,8 @@ simulate_dgp <- function(seed, n, q = Q, p = P) {
     Y[] <- as.vector(eta) + STUDENT_SIGMA * stats::rt(n * p, df = STUDENT_DF)
   } else if (FAMILY == "truncated_poisson") {
     Y[] <- ztpois_draw(as.vector(mu))
+  } else if (FAMILY == "truncated_nbinom2") {
+    Y[] <- ztnbinom2_draw(as.vector(mu), phi = TRUNC_PHI)
   } else if (FAMILY == "ordinal_probit") {
     cuts <- ORDINAL_CUTS
     ystar <- as.vector(eta) + stats::rnorm(n * p)
@@ -181,6 +231,15 @@ simulate_dgp <- function(seed, n, q = Q, p = P) {
     shape <- DELTA_SHAPE
     pos <- matrix(
       stats::rgamma(n * p, shape = shape, scale = as.vector(mu) / shape),
+      n, p
+    )
+    Y <- occ * pos
+  } else if (FAMILY == "delta_lognormal") {
+    ## Sibling of delta_gamma: occupancy ~ Bernoulli(logit η); positives
+    ## ~ Lognormal(meanlog = η, sdlog = σ). Shared η (hybrid VA route).
+    occ <- matrix(stats::rbinom(n * p, 1L, stats::plogis(as.vector(eta))), n, p)
+    pos <- matrix(
+      stats::rlnorm(n * p, meanlog = as.vector(eta), sdlog = DELTA_SIGMA),
       n, p
     )
     Y <- occ * pos

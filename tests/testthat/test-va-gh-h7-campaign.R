@@ -63,7 +63,7 @@ skip_on_cran()
 .campaign_shell_files <- file.path(
   dirname(.campaign_driver),
   c("prepare-runtime.sh", "run-preflight.sh", "launch-totoro.sh",
-    "drac-array.sbatch", "submit-drac.sh")
+    "launch-totoro-confirmation.sh", "drac-array.sbatch", "submit-drac.sh")
 )
 
 test_that("campaign plans derive their task count and use canonical plural flags", {
@@ -93,6 +93,142 @@ test_that("campaign input rejects undersized n and unknown CLI flags", {
   .campaign_set_cli(cells = "binomial_logit", seeds = "1", Hs = "7", qs = "2",
                     estimators = "va", n = "100", p = "6", typo = "caught")
   expect_error(.campaign_env$make_plan(), "unknown.*typo")
+})
+
+test_that("role-named adjudication flags are canonical and historical aliases normalize", {
+  normalized <- .campaign_env$normalise_cli(list(
+    `totoro-plan` = "h.csv", `drac-export` = "c.csv"
+  ))
+  expect_identical(normalized$`h-ladder-plan`, "h.csv")
+  expect_identical(normalized$`confirmation-export`, "c.csv")
+  expect_error(
+    .campaign_env$normalise_cli(list(
+      `h-ladder-plan` = "new.csv", `totoro-plan` = "old.csv"
+    )),
+    "only one"
+  )
+})
+
+test_that("confirmation keeps the frozen 36,000 rows and sentinel is exactly 100 rows", {
+  .campaign_set_cli(
+    seeds = "1:500", Hs = "7", qs = "2,5", estimators = "va,laplace",
+    n = "120", p = "8"
+  )
+  confirmation <- .campaign_env$make_plan()
+  expect_equal(nrow(confirmation), 36000L)
+  expect_invisible(.campaign_env$validate_confirmation_plan(confirmation))
+
+  tampered_confirmation <- confirmation
+  tampered_confirmation$H[which(tampered_confirmation$estimator == "va")[1L]] <- 9L
+  expect_error(
+    .campaign_env$validate_confirmation_plan(tampered_confirmation),
+    "plan H|frozen 36,000-row"
+  )
+
+  .campaign_set_cli(
+    cells = "binomial_logit", seeds = "1:25", Hs = "7", qs = "2,5",
+    estimators = "va,laplace", n = "120", p = "8"
+  )
+  sentinel <- .campaign_env$make_plan()
+  expect_equal(nrow(sentinel), 100L)
+  expect_invisible(.campaign_env$validate_sentinel_plan(sentinel))
+})
+
+test_that("smoke verification rejects failed or unhealthy immutable bundles", {
+  .campaign_set_cli(
+    cells = "binomial_logit", seeds = "1", Hs = "7", qs = "2",
+    estimators = "va", n = "100", p = "2"
+  )
+  plan <- .campaign_env$make_plan()
+  for (status in c("completed", "failed", "unhealthy")) {
+    out <- tempfile("va-gh-h7-smoke-")
+    dir.create(out)
+    result <- .campaign_result_row("binomial_logit", status, 1L)
+    if (identical(status, "unhealthy")) {
+      result$status <- "unhealthy"
+      result$healthy <- FALSE
+    }
+    .campaign_env$publish_bundle(
+      file.path(out, "replicates", paste0(
+        .campaign_env$result_key(plan[1L, , drop = FALSE]), ".bundle"
+      )), result,
+      .campaign_env$empty_beta_table(), .campaign_env$empty_family_table(), list()
+    )
+    if (identical(status, "completed")) {
+      expect_invisible(.campaign_env$verify_healthy_task_bundle(plan, out, 1L))
+    } else {
+      expect_error(
+        .campaign_env$verify_healthy_task_bundle(plan, out, 1L),
+        "completed and healthy"
+      )
+    }
+  }
+})
+
+test_that("sentinel receipt binds the exact Totoro plan and failure threshold", {
+  .campaign_set_cli(
+    cells = "binomial_logit", seeds = "1:25", Hs = "7", qs = "2,5",
+    estimators = "va,laplace", n = "120", p = "8"
+  )
+  plan <- .campaign_env$make_plan()
+  plan_path <- tempfile(fileext = ".csv")
+  write.csv(plan, plan_path, row.names = FALSE)
+  receipt_path <- tempfile(fileext = ".dcf")
+  write.dcf(data.frame(
+    format_version = "1", kind = "va-gh-h7-sentinel", platform = "Totoro",
+    plan_checksum_md5 = .campaign_env$file_checksum(plan_path),
+    gate_receipt_checksum_md5 = "gate", runtime_manifest_checksum_md5 = "runtime",
+    preflight_receipt_checksum_md5 = "preflight", attempted = "100", failures = "10",
+    failure_rate = "0.1", failure_threshold = "0.1", status = "PASS"
+  ), receipt_path)
+  expect_invisible(.campaign_env$verify_sentinel_receipt(receipt_path, plan_path))
+
+  failed <- read.dcf(receipt_path)
+  failed[[1L, "failures"]] <- "11"
+  failed[[1L, "failure_rate"]] <- "0.11"
+  write.dcf(as.data.frame(failed), receipt_path)
+  expect_error(.campaign_env$verify_sentinel_receipt(receipt_path, plan_path), "failure")
+
+  failed[[1L, "failures"]] <- "0"
+  failed[[1L, "failure_rate"]] <- "0"
+  failed[[1L, "platform"]] <- "DRAC"
+  write.dcf(as.data.frame(failed), receipt_path)
+  expect_error(.campaign_env$verify_sentinel_receipt(receipt_path, plan_path), "Totoro")
+
+  failed[[1L, "platform"]] <- "Totoro"
+  failed[[1L, "plan_checksum_md5"]] <- "tampered"
+  write.dcf(as.data.frame(failed), receipt_path)
+  expect_error(.campaign_env$verify_sentinel_receipt(receipt_path, plan_path), "expected Totoro plan")
+})
+
+test_that("sentinel infrastructure failures write a FAIL receipt before stopping", {
+  .campaign_set_cli(
+    cells = "binomial_logit", seeds = "1:25", Hs = "7", qs = "2,5",
+    estimators = "va,laplace", n = "120", p = "8"
+  )
+  plan <- .campaign_env$make_plan()
+  plan_path <- tempfile(fileext = ".csv")
+  write.csv(plan, plan_path, row.names = FALSE)
+  chain <- tempfile(fileext = ".dcf")
+  writeLines("chain", chain)
+  output <- tempfile("sentinel-empty-")
+  dir.create(output)
+  receipt_path <- tempfile(fileext = ".dcf")
+  old_verify_runtime <- .campaign_env$verify_runtime
+  on.exit(.campaign_env$verify_runtime <- old_verify_runtime, add = TRUE)
+  .campaign_env$verify_runtime <- function(...) list(
+    git_revision = "revision", template_checksum_md5 = "template"
+  )
+  expect_error(
+    .campaign_env$write_sentinel_receipt(
+      plan_path, output, chain, chain, chain, receipt_path
+    ),
+    "receipt was written"
+  )
+  receipt <- read.dcf(receipt_path)
+  expect_identical(receipt[[1L, "status"]], "FAIL")
+  expect_identical(receipt[[1L, "attempted"]], "100")
+  expect_identical(receipt[[1L, "failures"]], "100")
 })
 
 test_that("campaign runtime loader uses a character package name", {
@@ -199,12 +335,12 @@ test_that("predeclared adjudication yields independent family-rank verdicts", {
     seeds = "1:30", Hs = "5,7,9,15,61", qs = "2,5",
     estimators = "va,laplace", n = "120", p = "8"
   )
-  totoro_plan <- .campaign_env$make_plan()
+  h_ladder_plan <- .campaign_env$make_plan()
   .campaign_set_cli(
     seeds = "1:500", Hs = "7", qs = "2,5",
     estimators = "va,laplace", n = "120", p = "8"
   )
-  drac_plan <- .campaign_env$make_plan()
+  confirmation_plan <- .campaign_env$make_plan()
   make_results <- function(plan) {
     data.frame(
       plan, status = "completed", beta_squared_error_mean = 0.01,
@@ -215,9 +351,10 @@ test_that("predeclared adjudication yields independent family-rank verdicts", {
       published_bundle = TRUE, stringsAsFactors = FALSE
     )
   }
-  expect_invisible(.campaign_env$validate_adjudication_plans(totoro_plan, drac_plan))
+  expect_invisible(.campaign_env$validate_adjudication_plans(h_ladder_plan, confirmation_plan))
   verdict <- .campaign_env$adjudicate_campaigns(
-    make_results(totoro_plan), make_results(drac_plan), reps = 100L
+    make_results(h_ladder_plan), make_results(confirmation_plan), reps = 100L,
+    h_ladder_platform = "Totoro", confirmation_platform = "Totoro"
   )
   expect_equal(nrow(verdict), 36L)
   expect_true(all(verdict$reliability_verdict == "PASS"))
@@ -235,24 +372,26 @@ test_that("predeclared adjudication yields independent family-rank verdicts", {
   ))
   expect_true(all(verdict$unique_psi_adjudication ==
                     "OUT_OF_SCOPE_DGP_UNIQUE_FALSE"))
+  expect_identical(unique(verdict$platform), "Totoro")
+  expect_identical(unique(verdict$cross_platform), FALSE)
 
   verdict_path <- tempfile(fileext = ".csv")
-  totoro_path <- tempfile(fileext = ".csv")
-  drac_path <- tempfile(fileext = ".csv")
-  write.csv(totoro_plan, totoro_path, row.names = FALSE)
-  write.csv(drac_plan, drac_path, row.names = FALSE)
+  h_ladder_path <- tempfile(fileext = ".csv")
+  confirmation_path <- tempfile(fileext = ".csv")
+  write.csv(h_ladder_plan, h_ladder_path, row.names = FALSE)
+  write.csv(confirmation_plan, confirmation_path, row.names = FALSE)
   input_manifest <- rbind(
     data.frame(
-      campaign = "totoro", task_id = totoro_plan$task_id,
+      campaign = "h_ladder", task_id = h_ladder_plan$task_id,
       published_bundle = TRUE,
-      bundle_name = paste0(totoro_plan$task_id, ".bundle"),
-      complete_manifest_checksum_md5 = rep("a", nrow(totoro_plan))
+      bundle_name = paste0(h_ladder_plan$task_id, ".bundle"),
+      complete_manifest_checksum_md5 = rep("a", nrow(h_ladder_plan))
     ),
     data.frame(
-      campaign = "drac", task_id = drac_plan$task_id,
+      campaign = "confirmation", task_id = confirmation_plan$task_id,
       published_bundle = TRUE,
-      bundle_name = paste0(drac_plan$task_id, ".bundle"),
-      complete_manifest_checksum_md5 = rep("b", nrow(drac_plan))
+      bundle_name = paste0(confirmation_plan$task_id, ".bundle"),
+      complete_manifest_checksum_md5 = rep("b", nrow(confirmation_plan))
     )
   )
   provenance_fields <- c(
@@ -274,36 +413,41 @@ test_that("predeclared adjudication yields independent family-rank verdicts", {
     out
   }
   campaign_provenance <- list(
-    totoro = make_provenance(), drac = make_provenance()
+    h_ladder = make_provenance(), confirmation = make_provenance()
   )
   .campaign_env$write_adjudication(
-    verdict, verdict_path, totoro_path, drac_path, reps = 100L,
+    verdict, verdict_path, h_ladder_path, confirmation_path, reps = 100L,
     input_manifest = input_manifest,
     campaign_provenance = campaign_provenance,
     campaign_exports = list(
-      totoro = as.list(export_fields), drac = as.list(export_fields)
+      h_ladder = as.list(export_fields), confirmation = as.list(export_fields)
     ),
+    h_ladder_platform = "Totoro",
+    confirmation_platform = "Totoro",
     require_clean = FALSE
   )
   receipt <- read.dcf(paste0(verdict_path, ".dcf"))
   expect_identical(receipt[[1L, "data_status"]], "COMPLETE")
+  expect_identical(receipt[[1L, "format_version"]], "2")
   expect_identical(receipt[[1L, "point_route_pass_n"]], "36")
   expect_identical(receipt[[1L, "point_route_fail_n"]], "0")
   expect_identical(receipt[[1L, "all_point_routes_pass"]], "TRUE")
   expect_true(nzchar(receipt[[1L, "input_manifest_checksum_md5"]]))
   expect_true(nzchar(receipt[[1L, "adjudicator_checksum_md5"]]))
-  expect_identical(receipt[[1L, "totoro_runtime_manifest_checksum_md5"]],
+  expect_identical(receipt[[1L, "h_ladder_runtime_manifest_checksum_md5"]],
                    "runtime")
-  expect_identical(receipt[[1L, "drac_preflight_receipt_checksum_md5"]],
+  expect_identical(receipt[[1L, "confirmation_preflight_receipt_checksum_md5"]],
                    "preflight")
+  expect_identical(receipt[[1L, "platform"]], "Totoro")
+  expect_identical(receipt[[1L, "cross_platform"]], "FALSE")
 
   expect_error(
     .campaign_env$write_adjudication(
-      verdict, tempfile(fileext = ".csv"), totoro_path, drac_path, reps = 100L,
+      verdict, tempfile(fileext = ".csv"), h_ladder_path, confirmation_path, reps = 100L,
       input_manifest = input_manifest[-1L, ],
       campaign_provenance = campaign_provenance,
       campaign_exports = list(
-        totoro = as.list(export_fields), drac = as.list(export_fields)
+        h_ladder = as.list(export_fields), confirmation = as.list(export_fields)
       ),
       require_clean = FALSE
     ),
@@ -311,14 +455,14 @@ test_that("predeclared adjudication yields independent family-rank verdicts", {
   )
 
   mismatched_provenance <- campaign_provenance
-  mismatched_provenance$drac$template_checksum_md5 <- "other-template"
+  mismatched_provenance$confirmation$template_checksum_md5 <- "other-template"
   expect_error(
     .campaign_env$write_adjudication(
-      verdict, tempfile(fileext = ".csv"), totoro_path, drac_path, reps = 100L,
+      verdict, tempfile(fileext = ".csv"), h_ladder_path, confirmation_path, reps = 100L,
       input_manifest = input_manifest,
       campaign_provenance = mismatched_provenance,
       campaign_exports = list(
-        totoro = as.list(export_fields), drac = as.list(export_fields)
+        h_ladder = as.list(export_fields), confirmation = as.list(export_fields)
       ),
       require_clean = FALSE
     ),
@@ -337,26 +481,26 @@ test_that("predeclared adjudication yields independent family-rank verdicts", {
   .campaign_env$system2 <- function(...) " M deliberately-dirty"
   expect_error(
     .campaign_env$write_adjudication(
-      verdict, tempfile(fileext = ".csv"), totoro_path, drac_path, reps = 100L,
+      verdict, tempfile(fileext = ".csv"), h_ladder_path, confirmation_path, reps = 100L,
       input_manifest = input_manifest,
       campaign_provenance = campaign_provenance,
       campaign_exports = list(
-        totoro = as.list(export_fields), drac = as.list(export_fields)
+        h_ladder = as.list(export_fields), confirmation = as.list(export_fields)
       )
     ),
     "clean committed checkout"
   )
 
-  incomplete_totoro <- make_results(totoro_plan)
+  incomplete_h_ladder <- make_results(h_ladder_plan)
   selected <- with(
-    incomplete_totoro,
+    incomplete_h_ladder,
     cell == "binomial_logit" & q == 2L & estimator == "va" &
       H == 5L & seed == 1L
   )
-  incomplete_totoro$published_bundle[selected] <- FALSE
-  incomplete_totoro$status[selected] <- "scheduler_failed"
+  incomplete_h_ladder$published_bundle[selected] <- FALSE
+  incomplete_h_ladder$status[selected] <- "scheduler_failed"
   incomplete <- .campaign_env$adjudicate_campaigns(
-    incomplete_totoro, make_results(drac_plan), reps = 100L
+    incomplete_h_ladder, make_results(confirmation_plan), reps = 100L
   )
   affected <- incomplete$cell == "binomial_logit" & incomplete$q == 2L
   expect_identical(incomplete$overall_point_route_verdict[affected], "INCOMPLETE")
@@ -390,7 +534,7 @@ test_that("adjudication rejects duplicate or incomplete plan cross-products", {
   corrupted[target, key_columns] <- corrupted[source, key_columns]
   expect_error(
     .campaign_env$validate_adjudication_plans(totoro_plan, corrupted),
-    "exact required.*cross-product"
+    "frozen 36,000-row.*cross-product"
   )
 })
 
@@ -661,6 +805,11 @@ test_that("campaign shell contracts are parseable and dry-run remains one task",
   output <- system2("bash", launch, stdout = TRUE, stderr = TRUE)
   expect_identical(attr(output, "status") %||% 0L, 0L)
   expect_match(paste(output, collapse = "\n"), "tasks: 1")
+
+  confirmation <- file.path(dirname(.campaign_driver), "launch-totoro-confirmation.sh")
+  confirmation_output <- system2("bash", confirmation, stdout = TRUE, stderr = TRUE)
+  expect_identical(attr(confirmation_output, "status") %||% 0L, 0L)
+  expect_match(paste(confirmation_output, collapse = "\n"), "tasks: 1")
 })
 
 test_that("shell launchers use structured receipts and derived array geometry", {
@@ -702,6 +851,32 @@ test_that("shell launchers use structured receipts and derived array geometry", 
   expect_true(grepl(
     'task_index=$((TASK_OFFSET + SLURM_ARRAY_TASK_ID))', array, fixed = TRUE
   ))
+
+  confirmation <- paste(text[["launch-totoro-confirmation.sh"]], collapse = "\n")
+  expect_match(confirmation, 'CONFIRMATION_SEEDS="1:500"')
+  expect_match(confirmation, 'CONFIRMATION_HS="7"')
+  expect_match(confirmation, 'CONFIRMATION_QS="2,5"')
+  expect_match(confirmation, 'CONFIRMATION_ESTIMATORS="va,laplace"')
+  expect_match(confirmation, 'CONFIRMATION_N="120"')
+  expect_match(confirmation, 'CONFIRMATION_P="8"')
+  expect_false(grepl('\\$\\{SEEDS:-|\\$\\{HS:-|\\$\\{QS:-|\\$\\{ESTIMATORS:-|\\$\\{N:-|\\$\\{P:-', confirmation))
+  expect_match(confirmation, "verify-confirmation-plan")
+  expect_match(confirmation, "verify-healthy-task")
+  expect_match(confirmation, "SMOKE_OUTPUT_DIR")
+  expect_match(confirmation, "SENTINEL_OUTPUT_DIR")
+  expect_match(confirmation, "CONFIRMATION_OUTPUT_DIR")
+  expect_match(confirmation, "CORES < 1 || CORES > 150")
+  expect_match(confirmation, "OPENBLAS_NUM_THREADS=1")
+  expect_match(confirmation, "sentinel worker command failures retained")
+  expect_match(confirmation, 'if ! run_plan "\\$SENTINEL_PLAN" "\\$SENTINEL_OUTPUT_DIR"; then')
+  sentinel_start <- regexpr("  sentinel\\)", confirmation)
+  plan_start <- regexpr("  plan\\)", confirmation)
+  sentinel_branch <- substr(
+    confirmation, sentinel_start[[1L]], plan_start[[1L]] - 1L
+  )
+  expect_lt(regexpr("verify_smoke", sentinel_branch)[[1L]],
+            regexpr("run_plan", sentinel_branch)[[1L]])
+  expect_false(grepl("sbatch|SLURM|module|/project", confirmation))
 })
 
 test_that("q=2 and q=5 posterior-SD calibration is rotation-aware", {

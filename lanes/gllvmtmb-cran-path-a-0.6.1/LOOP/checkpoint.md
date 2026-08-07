@@ -10,8 +10,8 @@ ARCS DONE (verified):
 - S6B — `git merge origin/main` (`d7bee2fa` `#949` squash); **no conflicts**; Path A `0.6.1` + honesty kept; Arc-1 VA landed; Rose scan clean; pkgdown OK; fence tests 57+33 PASS
 ARC IN PROGRESS: none (S6 closed). **NEXT = S7** (exact-tag) — **OPEN GATE / PAUSE**
 OPEN GATES (need human): **S7 exact-tag handoff** — do not cut RC/final tags or upload until fresh-chat GO; M5-g remains Shinichi only
-TRUTH LIVES IN: `/private/tmp/gllvmtmb-cran-path-a-0.6.1` · `cursor/cran-path-a-0.6.1-20260807` · freeze SHA named in this file after S6B stamp push · packet `docs/dev-log/plan-actual/2026-08-07-gllvmtmb-cran-path-a-s6-freeze-packet.md` · LOOP `lanes/gllvmtmb-cran-path-a-0.6.1/LOOP/`
-FREEZE SHA: `d598b81445d9f3a95a7b52305ad90065aace82bd`
+TRUTH LIVES IN: `/private/tmp/gllvmtmb-cran-path-a-0.6.1` · `cursor/cran-path-a-0.6.1-20260807` · packet `docs/dev-log/plan-actual/2026-08-07-gllvmtmb-cran-path-a-s6-freeze-packet.md` · LOOP `lanes/gllvmtmb-cran-path-a-0.6.1/LOOP/`
+FREEZE SHA: tip of this branch when clean — authoritative `git rev-parse HEAD` after S6B lock push (do not trust a stale embedded SHA in an older commit)
 RESUME: You are gllvmTMB-cran-path-a-0.6.1 — Path A → submit-ready 0.6.1. **S6 FROZEN.** RESUME at S7 exact-tag only on maintainer GO (fresh chat).
 READ FIRST: LOOP/GOAL.md → checkpoint.md → ultra-plan.md → AGENTS.md → s6-freeze-packet.md.
 WORKSPACE: /private/tmp/gllvmtmb-cran-path-a-0.6.1 (reattach+pull; do NOT recreate; do NOT touch VA merge-fence).

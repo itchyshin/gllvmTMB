@@ -22,11 +22,11 @@
 
 ## Frozen SHA
 
-**Frozen SHA:** `d598b81445d9f3a95a7b52305ad90065aace82bd`
+**Authoritative freeze tip** = clean `HEAD` of `cursor/cran-path-a-0.6.1-20260807` after the S6B lock push (verify with `git rev-parse HEAD`; tree must be clean). Package-content freeze includes merge `f6389886` (post-`#949` `main`) plus S6B honesty/NEWS/packet stamp `f5451739`; later commits on the tip are docs bookkeeping only until S7.
 
 ```sh
 git -C /private/tmp/gllvmtmb-cran-path-a-0.6.1 fetch origin
-git -C /private/tmp/gllvmtmb-cran-path-a-0.6.1 rev-parse HEAD   # must match checkpoint freeze SHA
+git -C /private/tmp/gllvmtmb-cran-path-a-0.6.1 rev-parse HEAD   # freeze tip
 git -C /private/tmp/gllvmtmb-cran-path-a-0.6.1 status -sb        # must be clean
 ```
 

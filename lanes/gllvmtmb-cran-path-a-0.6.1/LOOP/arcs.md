@@ -4,10 +4,10 @@ Source: approved ultra-plan slices S0–S12. Status updated as arcs finish.
 
 | ID | Arc | Status | Gate | Dep |
 | --- | --- | --- | --- | --- |
-| S0 | Vault: amend D-89 (+ D-66 clarifying note for 0.6.1 upload identity) | pending | — | — |
-| S1 | RECON — cleanup inventory from `origin/main` | pending | — | parallel with S0 |
-| S2 | Honesty / reader fences (D-112) | pending | — | S1 |
-| S3 | Version bump → **0.6.1** | pending | — | S1 (may land with S2) |
+| S0 | Vault: amend D-89 (+ D-66 clarifying note for 0.6.1 upload identity) | DONE | — | — |
+| S1 | RECON — cleanup inventory from `origin/main` | DONE | — | parallel with S0 |
+| S2 | Honesty / reader fences (D-112) | DONE | — | S1 |
+| S3 | Version bump → **0.6.1** | DONE | — | S1 (may land with S2) |
 | S4 | `cran-comments.md` draft skeleton for 0.6.1 | pending | — | S3 |
 | S5 | pkgdown prep | pending | — | S2–S3 |
 | S6 | Candidate freeze packet | pending | 🛑 Shinichi freeze | S2–S5 |

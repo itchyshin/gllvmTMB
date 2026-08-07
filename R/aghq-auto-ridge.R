@@ -30,7 +30,7 @@
   if (!isTRUE(fit$aghq$used)) return("pilot did not use AGHQ")
   if (!isTRUE(fit$aghq$converged)) return("pilot AGHQ did not converge")
   if (length(fit$aghq$k) != 1L || !identical(as.integer(fit$aghq$k), 9L)) {
-    return("pilot did not use the calibrated 9-node AGHQ rule")
+    return("pilot did not use the fixed 9-node AGHQ rule")
   }
   if (length(fit$aghq$n_starts) != 1L ||
       !is.finite(fit$aghq$n_starts) || fit$aghq$n_starts < 2L) {
@@ -131,7 +131,7 @@
                                           cap = 6, fallback_tau = 2) {
   cli::cli_warn(c(
     "{.code aghq_ridge = \"auto\"} is experimental and opt-in.",
-    "i" = "It is calibrated for pure single-trial Bernoulli models with one ordinary unit-tier latent block and 9-node multi-start AGHQ.",
+    "i" = "It targets pure single-trial Bernoulli models with one ordinary unit-tier latent block and the fixed 9-node multi-start AGHQ rule.",
     "i" = "The measured grid used logit, p = 6, q = 2, and n = 100, 400, or 1600; other links and dimensions are extrapolations.",
     "i" = "Evidence supports failure/runaway avoidance at that scope, not a broad loading-accuracy improvement.",
     ">" = "Read {.code fit$aghq$ridge_auto} for the pilot, selected scale, clipping, and any fallback."

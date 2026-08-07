@@ -268,8 +268,8 @@ gllvmTMBcontrol(n_init = 3, init_jitter = 0.2)
 # Switch the optimiser to optim + BFGS for finicky two-level rr fits.
 gllvmTMBcontrol(optimizer = "optim", optArgs = list(method = "BFGS"))
 
-# Experimental, opt-in scale-aware ridge for the calibrated Bernoulli AGHQ
-# scope. The route uses the calibrated 9-node multi-start rule.
+# Experimental, opt-in scale-aware ridge for the Bernoulli AGHQ scope.
+# The route uses the fixed 9-node multi-start rule.
 gllvmTMBcontrol(aghq_ridge = "auto")
 
 }

@@ -1443,8 +1443,8 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #' # Switch the optimiser to optim + BFGS for finicky two-level rr fits.
 #' gllvmTMBcontrol(optimizer = "optim", optArgs = list(method = "BFGS"))
 #'
-#' # Experimental, opt-in scale-aware ridge for the calibrated Bernoulli AGHQ
-#' # scope. The route uses the calibrated 9-node multi-start rule.
+#' # Experimental, opt-in scale-aware ridge for the Bernoulli AGHQ scope.
+#' # The route uses the fixed 9-node multi-start rule.
 #' gllvmTMBcontrol(aghq_ridge = "auto")
 #'
 #' @export
@@ -1549,12 +1549,12 @@ gllvmTMBcontrol <- function(
       cli::cli_abort(c(
         "{.code aghq_ridge = \"auto\"} cannot be combined with an explicit {.code aghq = FALSE}.",
         "i" = "The scale yardstick is an unpenalised multi-start AGHQ pilot, never a plain Laplace fit.",
-        ">" = "Omit {.arg aghq} to use the calibrated 9-node rule, or set {.code aghq = 9}."
+        ">" = "Omit {.arg aghq} to use the fixed 9-node rule, or set {.code aghq = 9}."
       ))
     }
     if (isTRUE(aghq_explicit) && !identical(aghq, 9L)) {
       cli::cli_warn(c(
-        "{.code aghq_ridge = \"auto\"} uses the calibrated {.code aghq = 9} final estimator.",
+        "{.code aghq_ridge = \"auto\"} uses the fixed {.code aghq = 9} final estimator.",
         "i" = "The requested {.arg aghq} setting has been replaced by 9 nodes."
       ))
     }

@@ -1,3 +1,21 @@
+# gllvmTMB 0.6.1
+
+First CRAN upload identity. A GitHub-only `0.6.0` already used that version
+string; this release is `0.6.1` so the first CRAN upload stays distinguishable
+from that tag. July `v0.6.0` exact-tag check receipts do **not** certify this
+tip — Path A re-runs the D-49 ceremony at the frozen `0.6.1` SHA.
+
+**Scope boundary.** Laplace remains the package default. Adaptive quadrature
+(AGHQ) and variational approximation (VA) stay opt-in, experimental, and
+fenced — they are not advertised as defaults and do not change existing fits
+unless named.
+
+* DESCRIPTION now names the narrow `profile_ci_total_variance()`
+  interval-coverage regime (gaussian unit-tier total variance under documented
+  size limits; `certified-0.94` marks regime membership). Other interval routes
+  remain recovery-oriented or uncalibrated. Point estimates stay the supported
+  claim outside that named regime.
+
 # gllvmTMB 0.6.0
 
 This release focuses on multivariate stacked-trait models fitted through the
@@ -93,7 +111,7 @@ bridge remains experimental and is not required for the main workflow.
   never used as the scale yardstick. If that pilot or the scale-aware final fit
   is unusable, the function returns an independently started `tau = 2` fit and
   records the reason in `fit$aghq$ridge_auto`; it does not silently claim that
-  auto-selection succeeded. Both pilot and returned AGHQ fits use the calibrated
+  auto-selection succeeded. Both pilot and returned AGHQ fits use the fixed
   9-node multi-start estimator; conflicting `aghq` or `aghq_multistart` controls
   are replaced with a warning.
 

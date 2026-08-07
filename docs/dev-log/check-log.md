@@ -49442,3 +49442,56 @@ are inherited from the committed Arc-1 and production-health gates, not newly
 earned by this presentation-only refresh.
 
 — Codex, capability-surface closeout (2026-08-06)
+
+## 2026-08-06 — VA(GH) H=7 Arc 2 Totoro confirmation launch
+
+Arc 0 replaced load-bearing DRAC role names in the campaign adjudicator with
+`h_ladder` and `confirmation`, while retaining the old CLI flags as explicit
+compatibility aliases. The final receipt now records both platform roles plus
+`platform` and `cross_platform`. The approved confirmation is Totoro/Totoro, so
+the eventual adjudication must pass both platform arguments explicitly and
+record `platform=Totoro`, `cross_platform=FALSE`.
+
+The new direct-process Totoro launcher freezes seeds 1:500, H=7 for non-exact
+VA rows, q={2,5}, VA plus matched Laplace, n=120, and p=8. It hard-validates the
+exact 36,000-row cross-product. Smoke, the 100-row sentinel, and confirmation
+use separate roots. A review found that checksum-only smoke verification could
+admit a failed or unhealthy bundle; the final verifier now requires a
+completed, healthy smoke and focused tests cover completed, failed, and
+unhealthy cases.
+
+```sh
+Rscript --vanilla -e 'parse("dev/va-gh-h7-campaign/run-cell.R")'
+# PASS
+
+bash -n dev/va-gh-h7-campaign/launch-totoro-confirmation.sh
+# PASS
+
+git diff --check
+# PASS
+
+NOT_CRAN=true Rscript --vanilla -e \
+  'devtools::test(filter="va-gh-h7-campaign", reporter="summary", stop_on_failure=TRUE)'
+# PASS
+```
+
+The clean Arc-0 input was committed as `022b4eab`. On Totoro, only the existing
+ControlMaster was used. Native runtime/checksum preparation, Gate E, timed
+preflight, the separate healthy one-row smoke, the separate 100-row sentinel,
+and exact-plan verification all passed sequentially. The sentinel published
+100/100 immutable bundles and recorded zero infrastructure failures. It remains
+outside the 36,000-row denominator.
+
+The frozen full confirmation launched at `2026-08-07T02:22:22Z` with launcher
+PID `1667101`, `xargs -P 150` PID `1667248`, and one BLAS/OMP/MKL thread per
+worker. Root, checksums, commands, receipts, logs, PIDs, counts, and the exact
+next monitoring action are recorded in
+`docs/dev-log/recovery-checkpoints/2026-08-06-202438-codex-arc2-totoro-confirmation-launch.md`.
+At the checkpoint snapshot 2,963 / 36,000 confirmation bundles were published;
+no completion or family/rank verdict is claimed.
+
+The TMB likelihood template, public family fences, JJ, multinomial, non-scalar
+scope, frozen estimator, fixtures, thresholds, and independent 36-cell/rank
+adjudication remained unchanged.
+
+— Codex + Gauss + Noether, Arc 2 Totoro launch phase (2026-08-06)

@@ -258,6 +258,13 @@ gllvm = **new** this session. H-ladder reuse OK (H7≈H61 PASS) — do **not** r
 vs gllvm_va 0.128). Full 3600-row S1 campaign (`launch-totoro-s1.sh`) still needs
 explicit **go**. No fence / default-H change.
 
+**Parked 2026-08-07 (Shinichi):** **logit GH recovery FAIL parked** — use
+**JJ for logit when VA**; no further H/GH-logit dig unless G0 reopens.
+**Probit → GH OK for scale**; large-N ladder **DONE** (probit β matches at
+n=1000; AC collapses; logit measurement only — audit
+`2026-08-07-va-binomial-gh-nladder.md`). Do not expand a logit-GH “fix”
+programme.
+
 ##### Non-exact GH H=7 family ladder — **LOCKED canonical order** (Shinichi 2026-08-07)
 
 **Authority:** Shinichi confirmed. This is the **canonical** non-exact VA

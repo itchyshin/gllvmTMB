@@ -4,6 +4,31 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-08-07 -- binomial GH n-ladder DONE (probit decision; logit park)
+
+Branch: `codex/va-gh-all-families`. Script
+`lanes/va-s1-binomials/scripts/probe-binomial-gh-nladder.R`. Seeds
+10901:10912, n∈{120,400,1000}, p=8 q=2 H=7 private R3. Local 8 cores.
+Audit `docs/dev-log/audits/2026-08-07-va-binomial-gh-nladder.md`.
+
+- **Probit (decision):** GH β matches AC/gllvm at n=1000 (0.038≈0.039);
+  trace→1.03; runaway dies; pass_abs 0.58. **AC stays collapsed** (Σ̂≈0).
+- **Logit (measurement only):** β/runaway improve with n; scale PARTIAL
+  (trace→1.58). **Fix programme stays PARKED** — use JJ for logit VA.
+- No fence/`auto` flip. After-task
+  `docs/dev-log/after-task/2026-08-07-va-binomial-gh-nladder.md`.
+
+## 2026-08-07 -- logit GH recovery FAIL PARKED (Shinichi)
+
+Branch: `codex/va-gh-all-families`. Shinichi: leave the logit GH issue for
+now (surprising but parked). **Use JJ for logit when VA**; do **not** dig
+more H / GH-logit unless G0 reopens. **Probit → GH OK for scale**; β gap
+vs n still measuring via large-N ladder
+(`/private/tmp/va-s1-binomial-gh-nladder-20260807`, `n∈{120,400,1000}`,
+in flight). Optional logit scale/runaway-vs-n from same ladder only — **no**
+logit-GH “fix” programme. Recorded in S1 `GOAL.md` / `arcs.md` /
+`checkpoint.md` + ultraplan S1 entry. Docs-only; no fence change.
+
 ## 2026-08-07 -- Σ rel Frob 3.7–4.9 challenge: NOT a scorer bug (A)
 
 Branch: `codex/va-gh-all-families`. Shinichi challenge on binomial logit

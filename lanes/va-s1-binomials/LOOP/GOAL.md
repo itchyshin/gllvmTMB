@@ -36,6 +36,15 @@ Canonical after exact S0 — **no reorder without G0** (ultraplan §C +
 4. later: tweedie / student / truncated / ordinal / delta
 5. multinomial OUT (VA not implemented)
 
+## Parked (Shinichi 2026-08-07) — logit GH recovery FAIL
+
+**Logit GH recovery FAIL is PARKED** (surprising but leave it). When VA on
+logit, **use JJ**; do **not** dig more H / GH-logit “fix” programmes unless
+G0 reopens. **Probit → GH OK for scale**; large-N ladder `n∈{120,400,1000}`
+**DONE** (probit β matches AC/gllvm at n=1000; AC stays collapsed — see
+`docs/dev-log/audits/2026-08-07-va-binomial-gh-nladder.md`). Logit rows are
+measurement only — not a GH-logit rescue arc.
+
 ## Invariants
 
 - One lane: `lanes/va-s1-binomials` in `/private/tmp/gllvmtmb-va-gh-all-families`

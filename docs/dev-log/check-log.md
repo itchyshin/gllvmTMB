@@ -49598,3 +49598,43 @@ likelihood, parser, R API, generated help, or user example changed.
 
 — Codex + Ada + Gauss + Noether + Curie + Fisher + Grace + Rose + Pat, Arc 2
 Totoro closeout (2026-08-07)
+
+## 2026-08-07 — VA S0a Gaussian absolute-first (fresh Totoro)
+
+Lane `codex/va-gh-all-families` / `lanes/va-s0a-gaussian`. Fresh known-truth
+campaign on Totoro for `gaussian_identity` q∈{2,5}, seeds 10001:10300 (n=300),
+n=120, p=8, estimators va+laplace, estimator revision `022b4eab`. Plan 1,200
+rows; exit receipt COMPLETE with 1,200/1,200 bundles.
+
+Scientific absolute-first ledger (default caps β≤0.35, Σ rel Frob≤0.50;
+abs-availability ≥0.90): **SCIENTIFIC_PASS** at both ranks. Alternate caps not
+proposed. Frozen Arc-2 `overall_point_route_verdict` remains INCONCLUSIVE
+(MD5 `e57f8460fd98bd0eac43b4a6c014317d` unchanged). Public fence /
+`calibrated=FALSE` untouched. No R/src mutation. No push/PR. Stopped before S0b.
+
+Evidence:
+
+- Totoro root `/home/snakagaw/gllvm_work/va-s0a-gaussian-022b4eab-20260807`
+- plan.md5 `ec5e96311aea7200f4a1b24eb7081b8c`
+- export.md5 `e2311f0744709e39fb3e66754bdba453`
+- ledger `docs/dev-log/audits/2026-08-07-va-s0a-gaussian-scientific-ledger.{csv,md}`
+- local copy `/private/tmp/va-s0a-gaussian-evidence-20260807/`
+
+```sh
+bash /Users/z3437171/Dropbox/Github\ Local/Shinichi/tools/lane_preflight.sh \
+  /private/tmp/gllvmtmb-va-gh-all-families
+# no foreign lane in last 12h
+
+ACTION=dry-run bash lanes/va-s0a-gaussian/scripts/launch-totoro-s0a.sh
+# PASS
+
+# Totoro smoke + full run + export: COMPLETE 1200/1200
+
+md5 /private/tmp/va-gh-h7-final-evidence/totoro/adjudication/va-gh-h7-adjudication-totoro-022b4eab.csv
+# e57f8460fd98bd0eac43b4a6c014317d
+
+git diff --stat HEAD -- R/ src/
+# empty
+```
+
+— Cursor `/goal` va-s0a-gaussian (2026-08-07)

@@ -66,11 +66,11 @@
 
 ### Actuals (complete at close)
 
-**Recommended / actual:** 150 / _TBD_ · **Requested / used:** N/A / _TBD_ · **Rungs completed:** _none — preparation_  
-**Under-run event:** _TBD_  
-**Calibration:** _TBD_  
-**Metric movement:** none — preparation only (this file)  
-**Result:** blocked pending G0 · **Next arc:** executable S0a after approval
+**Recommended / actual:** 150 / ~90 · **Requested / used:** N/A / fresh Totoro (G0) · **Rungs completed:** S0a  
+**Under-run event:** compute cheaper than planned (Gaussian + reused runtime); G0 overrode reuse→fresh  
+**Calibration:** S0a closed; stop at G0b before S0b  
+**Metric movement:** SCIENTIFIC_PASS q=2,5 under default 0.35/0.50; Arc-2 INCONCLUSIVE unchanged  
+**Result:** S0a DONE · **Next arc:** G0b — open S0b? (Shinichi)
 
 **HAND TO ULTRA PLAN:** Arc 0 = S0a Gaussian absolute-first scientific ledger from retained Arc-2 known-truth evidence; duration ~2.0–2.5 h; outcome = durable SCIENTIFIC_* verdicts for `gaussian_identity` q∈{2,5} without mutating frozen INCONCLUSIVE or public fence; constraints = G0-gated, Totoro/DRAC only if new fits, no soft-PASS, no pool, D-50.
 

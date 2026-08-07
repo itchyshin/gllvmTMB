@@ -4,14 +4,28 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-08-07 -- LA vs AGHQ(+ridge) timed binary (S1)
+
+Verdict for Shinichi: on **σ/ρ/runaway** AGHQ+ridge still wins
+(banked Totoro); on **S1 abs β/Σ** LA wins or ties and is far
+cheaper. Live smoke probit n=400 p=8 q=2 seeds 11101:04 (warm
+excluded): LA Σ rf 0.60 pass_abs 0.50 @ 3.1s vs AGHQ+ridge
+(`aghq=9`, τ=2) Σ rf 0.95 pass_abs 0 @ 207s (**~67×**). Banked
+shipped-4 walls ~5–23×. Keep LA baseline; AGHQ opt-in; no default
+flip. Audit
+`docs/dev-log/audits/2026-08-07-va-la-vs-aghq-timed-binary.md`;
+after-task
+`docs/dev-log/after-task/2026-08-07-va-la-vs-aghq-timed-binary.md`;
+scripts `probe-la-vs-aghq-timed.R` + Totoro launcher. No fence/`auto`.
+
 ## 2026-08-07 -- binary timing fairness + AGHQ naming
 
 Totoro 500×20 H2H `secs`: **GH vs GH (links) FAIR** (both H=7,
 `n_starts=4`); **GH vs LA NOT FAIR** (4 starts vs 1). Matched local warm
 retime (3 seeds, n=500 p=20 probit): LA 11.8s, GH ns=1 45.1s (**~3.8×**),
-GH ns=4 177s. AGHQ+ridge timed smoke still running (n=400 p=8; warm n=60
-AGHQ 84s vs LA 1.8s). Naming: do **not** call AGHQ “LA-GH” — use Laplace /
-AGHQ / VA-GH. Audit
+GH ns=4 177s. AGHQ+ridge timed smoke later completed at n=400 p=8
+(see LA-vs-AGHQ audit above). Naming: do **not** call AGHQ “LA-GH” —
+use Laplace / AGHQ / VA-GH. Audit
 `docs/dev-log/audits/2026-08-07-va-binary-timing-fairness-aghq-naming.md`.
 No fence/`auto` flip.
 

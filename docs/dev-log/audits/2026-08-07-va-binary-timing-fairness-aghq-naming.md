@@ -72,10 +72,10 @@ Local sequential probe `probe-la-vs-aghq-timed.R`, cell **n=400 p=8 q=2 probit**
 
 ---
 
-## 5. Feed into binary recommendation (draft; full table when AGHQ summary lands)
+## 5. Feed into binary recommendation
 
 1. **Link:** **probit** (cloglog loses abs Σ at 500×20: pass 5/12 vs 8/12).  
-2. **Default algorithm for users:** **Laplace** — matches/edges GH on abs Σ at 500×20 (pass 0.75 vs 0.67) and is **~3.8× faster** than GH at matched `n_starts=1`.  
-3. **AGHQ+ridge:** accuracy upgrade on latent SD / ρ (banked), especially small-n / runaway; expect **much slower** wall.  
+2. **Default algorithm for users:** **Laplace** — matches/edges GH on abs Σ at 500×20 and is **~3.8× faster** than GH at matched `n_starts=1`; also **beats AGHQ+ridge on S1 abs Σ** at n=400 and is **~67× faster** there.  
+3. **AGHQ+ridge:** still best on banked **latent SD / ρ / runaway**; opt-in only; **not** the S1 abs-Σ winner.  
 4. **VA-GH H=7:** when VA is wanted; competitive abs Σ on probit; not the speed story. Keep `n_starts=4` for the health gate in production VA.  
-5. **Do not advertise:** PoisG for Σ; logit GH for abs Σ; AC for magnitudes; GH-vs-LA secs without matched starts; “LA-GH” as a product name.
+5. **Do not advertise:** PoisG for Σ; logit GH for abs Σ; AC for magnitudes; GH-vs-LA secs without matched starts; “LA-GH” as a product name; “AGHQ best for binary” without naming σ/ρ vs abs Σ.

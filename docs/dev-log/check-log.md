@@ -4,6 +4,16 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-08-07 -- VA series synthesis G0=1 formal close (/goal)
+
+Branch: `codex/va-gh-all-families`. Shinichi **approved** completed G0=1
+(plan-actual + `/goal`). Did **not** rebuild: verified execution @ `13fc9fd1`
+(synthesis + plan-actual + after-task + check-log; MC already past G0=1).
+Scaffolded `lanes/va-series-synthesis/LOOP/`; approval note on plan-actual;
+checkpoint STATE done / NEXT park. Cite check 19/19 OK. No R/src, fence,
+Totoro, truncnb2/delta_ln, or Arc-1 merge. Deliberately not run:
+`devtools::test`, Totoro, fence edits.
+
 ## 2026-08-07 -- VA series synthesis (G0=1, docs-only)
 
 Branch: `codex/va-gh-all-families`. Shinichi G0=1: durable working-position

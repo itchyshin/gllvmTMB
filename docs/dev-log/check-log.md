@@ -49695,3 +49695,30 @@ git diff --stat HEAD -- R/ src/
 
 — Cursor (docs-only; standing gllvm comparator invariant)
 
+## 2026-08-07 — S0 dual-report: abs-on-completed (G0)
+
+Shinichi G0: keep Design 110 / Arc-2 reliability frozen; extend S0b scientific
+ledger with secondary **(B)** `ABS_ON_COMPLETED_*` on finished-even-if-unhealthy
+fits (same abs caps; no healthy / reliability gate). Does **not** soft-PASS
+Arc-2 or move the fence. `scientific_verdict_default` (A) unchanged.
+
+- script: `lanes/va-s0b-exact/scripts/scientific-ledger.R`
+- ledger re-emitted: `docs/dev-log/audits/2026-08-07-va-s0b-exact-scientific-ledger.{csv,md}`
+- audit note: `docs/dev-log/audits/2026-08-07-va-s0b-dual-report-abs-on-completed.md`
+- protocol: `lanes/va-s0b-exact/protocol/absolute-first.md`
+- ultraplan brief: `docs/dev-log/2026-08-07-va-validation-series-arc0-ultraplan.md`
+
+```sh
+Rscript lanes/va-s0b-exact/scripts/scientific-ledger.R \
+  --export=/private/tmp/va-s0b-exact-evidence-20260807/final-export-s0b.csv \
+  --out-csv=docs/dev-log/audits/2026-08-07-va-s0b-exact-scientific-ledger.csv \
+  --out-md=docs/dev-log/audits/2026-08-07-va-s0b-exact-scientific-ledger.md
+
+git diff --stat HEAD -- R/ src/
+# empty
+md5 /private/tmp/va-gh-h7-final-evidence/totoro/adjudication/va-gh-h7-adjudication-totoro-022b4eab.csv
+# e57f8460fd98bd0eac43b4a6c014317d
+```
+
+— Cursor (docs + S0b ledger script only; dual-report G0)
+

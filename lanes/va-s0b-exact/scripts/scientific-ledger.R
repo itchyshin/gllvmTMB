@@ -1,6 +1,11 @@
 #!/usr/bin/env Rscript
 # Absolute-first scientific ledger for S0b exact-route export (local evidence).
 # Does NOT call Design 110 adjudicate mode and does NOT rewrite Arc-2 labels.
+#
+# Dual-report (Shinichi G0 2026-08-07):
+#   (A) Frozen reliability + abs conjunction → scientific_verdict_default
+#   (B) Abs-on-completed-even-if-unhealthy → abs_on_completed_verdict
+#       (secondary; does NOT soft-PASS Arc-2 / fence)
 
 suppressPackageStartupMessages({
   args <- commandArgs(trailingOnly = TRUE)
@@ -58,6 +63,19 @@ score_caps <- function(beta_rmse, sigma_frob, avail, beta_cap, sigma_cap) {
   "SCIENTIFIC_FAIL"
 }
 
+# Finished fits that produced estimates: S0b export codes gradient-unhealthy
+# finishes as status="unhealthy" (healthy=FALSE), not status="completed".
+is_completed_even_if_unhealthy <- function(status) {
+  status %in% c("completed", "unhealthy")
+}
+
+score_abs_on_completed <- function(beta_rmse, sigma_frob, avail, beta_cap, sigma_cap) {
+  if (is.na(avail) || avail < avail_floor) return("ABS_ON_COMPLETED_INCONCLUSIVE")
+  if (is.na(beta_rmse) || is.na(sigma_frob)) return("ABS_ON_COMPLETED_INCONCLUSIVE")
+  if (beta_rmse <= beta_cap && sigma_frob <= sigma_cap) return("ABS_ON_COMPLETED_PASS")
+  "ABS_ON_COMPLETED_FAIL"
+}
+
 ex <- read.csv(export_path, stringsAsFactors = FALSE)
 stopifnot(all(c("cell", "q", "seed", "estimator", "status") %in% names(ex)))
 ex <- ex[ex$cell %in% wanted, , drop = FALSE]
@@ -89,16 +107,46 @@ for (cc in wanted) {
     }
 
     beta_col <- if ("beta_rmse" %in% names(va)) "beta_rmse" else "beta_squared_error_mean"
-    if (beta_col == "beta_squared_error_mean") {
-      beta_vals <- sqrt(as.numeric(va[[beta_col]]))
-    } else {
-      beta_vals <- as.numeric(va[[beta_col]])
+    extract_beta <- function(df) {
+      if (beta_col == "beta_squared_error_mean") {
+        sqrt(as.numeric(df[[beta_col]]))
+      } else {
+        as.numeric(df[[beta_col]])
+      }
     }
+    beta_vals <- extract_beta(va)
     sigma_vals <- as.numeric(va$sigma_rel_frob)
     finite_mask <- is.finite(beta_vals) & is.finite(sigma_vals)
     avail <- if (n_va) mean(finite_mask) else NA_real_
     beta_rmse <- if (any(finite_mask)) mean(beta_vals[finite_mask]) else NA_real_
     sigma_frob <- if (any(finite_mask)) mean(sigma_vals[finite_mask]) else NA_real_
+
+    # (B) completed-even-if-unhealthy: include status=="unhealthy" finishes;
+    # do NOT require healthy=TRUE; do NOT gate on reliability.
+    finished_mask <- is_completed_even_if_unhealthy(va$status)
+    n_finished <- sum(finished_mask)
+    n_finished_unhealthy <- sum(finished_mask & (
+      if ("healthy" %in% names(va)) !as.logical(va$healthy) else va$status == "unhealthy"
+    ), na.rm = TRUE)
+    fin_b <- finished_mask & finite_mask
+    avail_b <- if (n_va) mean(fin_b) else NA_real_
+    beta_rmse_b <- if (any(fin_b)) mean(beta_vals[fin_b]) else NA_real_
+    sigma_frob_b <- if (any(fin_b)) mean(sigma_vals[fin_b]) else NA_real_
+    abs_on_completed <- score_abs_on_completed(
+      beta_rmse_b, sigma_frob_b, avail_b, beta_cap_default, sigma_cap_default
+    )
+
+    # LA abs-on-completed diagnostic (secondary; motivating for gamma LA)
+    la_beta <- extract_beta(la)
+    la_sigma <- as.numeric(la$sigma_rel_frob)
+    la_finished <- is_completed_even_if_unhealthy(la$status)
+    la_fin_b <- la_finished & is.finite(la_beta) & is.finite(la_sigma)
+    la_avail_b <- if (n_la) mean(la_fin_b) else NA_real_
+    la_beta_b <- if (any(la_fin_b)) mean(la_beta[la_fin_b]) else NA_real_
+    la_sigma_b <- if (any(la_fin_b)) mean(la_sigma[la_fin_b]) else NA_real_
+    la_abs_on_completed <- score_abs_on_completed(
+      la_beta_b, la_sigma_b, la_avail_b, beta_cap_default, sigma_cap_default
+    )
 
     if (n_va && n_la) {
       keys <- intersect(va$seed, la$seed)
@@ -112,16 +160,8 @@ for (cc in wanted) {
           v_ok <- v_ok && isTRUE(as.logical(vr$healthy))
           l_ok <- l_ok && isTRUE(as.logical(lr$healthy))
         }
-        vb <- if (beta_col == "beta_squared_error_mean") {
-          sqrt(as.numeric(vr[[beta_col]]))
-        } else {
-          as.numeric(vr[[beta_col]])
-        }
-        lb <- if (beta_col == "beta_squared_error_mean") {
-          sqrt(as.numeric(lr[[beta_col]]))
-        } else {
-          as.numeric(lr[[beta_col]])
-        }
+        vb <- extract_beta(vr)
+        lb <- extract_beta(lr)
         vs <- as.numeric(vr$sigma_rel_frob)
         ls <- as.numeric(lr$sigma_rel_frob)
         if (v_ok && l_ok && is.finite(vb) && is.finite(lb) && is.finite(vs) && is.finite(ls)) {
@@ -192,6 +232,16 @@ for (cc in wanted) {
       beta_cap_default = beta_cap_default,
       sigma_cap_default = sigma_cap_default,
       scientific_verdict_default = sci_default,
+      n_completed_even_if_unhealthy_va = n_finished,
+      n_unhealthy_among_finished_va = n_finished_unhealthy,
+      abs_on_completed_availability = avail_b,
+      beta_rmse_abs_on_completed = beta_rmse_b,
+      sigma_rel_frob_abs_on_completed = sigma_frob_b,
+      abs_on_completed_verdict = abs_on_completed,
+      la_abs_on_completed_availability = la_avail_b,
+      la_beta_rmse_abs_on_completed = la_beta_b,
+      la_sigma_rel_frob_abs_on_completed = la_sigma_b,
+      la_abs_on_completed_verdict = la_abs_on_completed,
       beta_cap_alternate = beta_alt_n,
       sigma_cap_alternate = sigma_alt_n,
       scientific_verdict_alternate = sci_alt,
@@ -225,11 +275,21 @@ md <- c(
     "- Alternate: not proposed"
   },
   "",
-  "## Verdicts",
+  "## Dual report (Shinichi G0 2026-08-07)",
+  "",
+  "- **(A) Frozen reliability** — Wilson / healthy as before; drives",
+  "  `scientific_verdict_default` (reliability FAIL/INCONCLUSIVE blocks PASS).",
+  "- **(B) Abs-on-completed-even-if-unhealthy** — among finished fits",
+  "  (`status %in% {completed, unhealthy}` with finite β/Σ); same abs caps;",
+  "  **no** healthy=TRUE and **no** reliability PASS required.",
+  "  Label: `ABS_ON_COMPLETED_{PASS,FAIL,INCONCLUSIVE}`.",
+  "- **(B) does not soft-PASS Arc-2, change Design 110 thresholds, or move the fence.**",
+  "",
+  "## Verdicts (A)",
   "",
   paste(c(
-    "cell", "q", "scientific", "β RMSE", "Σ rel Frob", "abs avail",
-    "reliability", "LA done", "frozen Arc-2"
+    "cell", "q", "(A) scientific", "β RMSE", "Σ rel Frob", "abs avail",
+    "reliability", "LA healthy", "frozen Arc-2"
   ), collapse = " | "),
   paste(rep("---", 9L), collapse = " | ")
 )
@@ -247,16 +307,48 @@ for (i in seq_len(nrow(ledger))) {
 md <- c(
   md,
   "",
+  "## Verdicts (B) abs-on-completed (secondary)",
+  "",
+  paste(c(
+    "cell", "q", "(B) abs-on-completed", "β RMSE", "Σ rel Frob", "avail",
+    "finished (unhealthy)", "LA (B)", "LA β", "LA Σ"
+  ), collapse = " | "),
+  paste(rep("---", 10L), collapse = " | ")
+)
+for (i in seq_len(nrow(ledger))) {
+  md <- c(md, paste(c(
+    ledger$cell[i], ledger$q[i], ledger$abs_on_completed_verdict[i],
+    sprintf("%.4f", ledger$beta_rmse_abs_on_completed[i]),
+    sprintf("%.4f", ledger$sigma_rel_frob_abs_on_completed[i]),
+    sprintf("%.3f", ledger$abs_on_completed_availability[i]),
+    sprintf(
+      "%d (%d)",
+      ledger$n_completed_even_if_unhealthy_va[i],
+      ledger$n_unhealthy_among_finished_va[i]
+    ),
+    ledger$la_abs_on_completed_verdict[i],
+    sprintf("%.4f", ledger$la_beta_rmse_abs_on_completed[i]),
+    sprintf("%.4f", ledger$la_sigma_rel_frob_abs_on_completed[i])
+  ), collapse = " | "))
+}
+md <- c(
+  md,
+  "",
   "## Frozen Arc-2 labels",
   "Each cell×q reprints Arc-2 `overall_point_route_verdict` unchanged.",
   "This ledger does **not** soft-PASS or mutate those labels.",
+  "Column (B) is diagnostic only — not a Design 110 / fence rewrite.",
   "",
   "## Secondary Laplace diagnostics",
-  "Paired ratios are non-blocking for SCIENTIFIC_PASS. See CSV `ratio_secondary`."
+  "Paired ratios are non-blocking for SCIENTIFIC_PASS. See CSV `ratio_secondary`.",
+  "LA abs-on-completed columns answer 'is LA hopeless on recovery?' without",
+  "changing reliability FAIL (gamma LA: 0/300 healthy under frozen rule)."
 )
 writeLines(md, out_md)
 message("Wrote ", out_csv, " and ", out_md)
 print(ledger[, c(
-  "cell", "q", "scientific_verdict_default", "beta_rmse_va", "sigma_rel_frob_va",
-  "abs_availability", "reliability_verdict", "frozen_arc2_overall_point_route_verdict"
+  "cell", "q", "scientific_verdict_default", "abs_on_completed_verdict",
+  "beta_rmse_abs_on_completed", "sigma_rel_frob_abs_on_completed",
+  "reliability_verdict", "la_abs_on_completed_verdict",
+  "frozen_arc2_overall_point_route_verdict"
 )])

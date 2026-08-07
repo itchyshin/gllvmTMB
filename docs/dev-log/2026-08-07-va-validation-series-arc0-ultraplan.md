@@ -128,11 +128,36 @@ Approve **S0a reuse path** as Arc 0. Do **not** re-run Arc 2. Do **not** change 
 4. Compute default = **reuse**; Totoro only if G0 requires independence.
 5. M is out of critical path.
 
+### Dual-report reliability (Shinichi G0 2026-08-07)
+
+Do **not** relax Design 110 / Arc-2 reliability thresholds. For S0 scientific
+ledgers, report **both**:
+
+- **(A)** frozen Wilson / healthy → `scientific_verdict_default` (unchanged)
+- **(B)** abs recovery on completed-even-if-unhealthy finishes →
+  `ABS_ON_COMPLETED_*` (secondary; **not** a soft-PASS of Arc-2 / fence)
+
+Motivating case: gamma. Protocol:
+`lanes/va-s0b-exact/protocol/absolute-first.md`. Ledger:
+`docs/dev-log/audits/2026-08-07-va-s0b-exact-scientific-ledger.md`.
+
 ### Standing invariant — gllvm comparator (Shinichi 2026-08-07)
 
 **Scientific absolute-first cells should report gllvmTMB VA, gllvmTMB Laplace (secondary), and gllvm VA (and gllvm Laplace if available) vs planted truth, with model-match caveats documented.**
 
-Do not stop at gllvmTMB VA vs gllvmTMB Laplace alone. Where a matched `gllvm` fit is feasible on the same DGP / seeds, scientific ledgers and diagnosis tables must carry the external comparator row(s). Document unique/Ψ, family-string, and shape/dispersion mismatches when models are not bit-identical. Local diagnosis probes: **≤10 cores** (Shinichi 2026-08-07); consolidate into one table — do not thrash parallel gllvm jobs.
+Do not stop at gllvmTMB VA vs gllvmTMB Laplace alone. Where a matched `gllvm` fit is feasible on the same DGP / seeds, scientific ledgers and diagnosis tables must carry the external comparator row(s). Document unique/Ψ, family-string, and shape/dispersion mismatches when models are not bit-identical. Consolidate into one table — do not thrash parallel gllvm jobs.
+
+### Compute policy (Shinichi 2026-08-07) — this VA validation lane
+
+| Surface | Rule |
+| --- | --- |
+| **Local laptop** | **≤10 cores** soft cap. Soft machine — do not hammer beyond 10. |
+| **Scale-out** | Prefer **Totoro** whenever more parallelism or larger probes are needed. Totoro is always available; reuse Gate-E / runtime from confirmation `022b4eab` and S0a/S0b campaign roots. |
+| **D-50** | No GitHub Actions artifacts. Campaign outputs stay on Totoro + local copy under `/private/tmp`; **never stage raw evidence to git**. |
+| **gllvm** | Always report gllvm performance too where feasible (standing comparator above). |
+| **New campaigns** | Do **not** start a huge new campaign unless needed for open questions (gllvm compare, gamma n-ladder). Small Totoro jobs OK. |
+
+In-flight local probes: stay ≤10 cores locally **or** move remaining heavy work to Totoro.
 
 ### QUESTIONS STILL OPEN (for G0 — max 3)
 

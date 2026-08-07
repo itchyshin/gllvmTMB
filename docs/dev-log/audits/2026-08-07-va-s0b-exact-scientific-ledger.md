@@ -1,6 +1,6 @@
 # S0b exact-route absolute-first scientific ledger
 
-Generated: 2026-08-07 12:21:23 UTC
+Generated: 2026-08-07 12:42:15 UTC
 Export: `/private/tmp/va-s0b-exact-evidence-20260807/final-export-s0b.csv`
 Cells: poisson_log, lognormal_log, gamma_log
 Arc-2 frozen CSV: `/private/tmp/va-gh-h7-final-evidence/totoro/adjudication/va-gh-h7-adjudication-totoro-022b4eab.csv`
@@ -10,9 +10,19 @@ Arc-2 frozen CSV: `/private/tmp/va-gh-h7-final-evidence/totoro/adjudication/va-g
 - Abs-availability floor: 0.90
 - Alternate: not proposed
 
-## Verdicts
+## Dual report (Shinichi G0 2026-08-07)
 
-cell | q | scientific | β RMSE | Σ rel Frob | abs avail | reliability | LA done | frozen Arc-2
+- **(A) Frozen reliability** — Wilson / healthy as before; drives
+  `scientific_verdict_default` (reliability FAIL/INCONCLUSIVE blocks PASS).
+- **(B) Abs-on-completed-even-if-unhealthy** — among finished fits
+  (`status %in% {completed, unhealthy}` with finite β/Σ); same abs caps;
+  **no** healthy=TRUE and **no** reliability PASS required.
+  Label: `ABS_ON_COMPLETED_{PASS,FAIL,INCONCLUSIVE}`.
+- **(B) does not soft-PASS Arc-2, change Design 110 thresholds, or move the fence.**
+
+## Verdicts (A)
+
+cell | q | (A) scientific | β RMSE | Σ rel Frob | abs avail | reliability | LA healthy | frozen Arc-2
 --- | --- | --- | --- | --- | --- | --- | --- | ---
 poisson_log | 2 | SCIENTIFIC_FAIL | 0.1106 | 0.6259 | 1.000 | PASS | 275/300 | FAIL
 poisson_log | 5 | SCIENTIFIC_PASS | 0.1216 | 0.4820 | 1.000 | PASS | 278/300 | PASS
@@ -21,16 +31,29 @@ lognormal_log | 5 | SCIENTIFIC_PASS | 0.0828 | 0.3475 | 1.000 | PASS | 179/300 |
 gamma_log | 2 | SCIENTIFIC_FAIL | 0.0796 | 0.4227 | 1.000 | FAIL | 0/300 | FAIL
 gamma_log | 5 | SCIENTIFIC_FAIL | 0.1253 | 0.4589 | 1.000 | FAIL | 0/300 | FAIL
 
+## Verdicts (B) abs-on-completed (secondary)
+
+cell | q | (B) abs-on-completed | β RMSE | Σ rel Frob | avail | finished (unhealthy) | LA (B) | LA β | LA Σ
+--- | --- | --- | --- | --- | --- | --- | --- | --- | ---
+poisson_log | 2 | ABS_ON_COMPLETED_FAIL | 0.1106 | 0.6259 | 1.000 | 300 (0) | ABS_ON_COMPLETED_FAIL | 0.1133 | 0.6573
+poisson_log | 5 | ABS_ON_COMPLETED_PASS | 0.1216 | 0.4820 | 1.000 | 300 (2) | ABS_ON_COMPLETED_FAIL | 0.1265 | 0.5012
+lognormal_log | 2 | ABS_ON_COMPLETED_PASS | 0.0700 | 0.3723 | 1.000 | 300 (0) | ABS_ON_COMPLETED_PASS | 0.0700 | 0.3723
+lognormal_log | 5 | ABS_ON_COMPLETED_PASS | 0.0828 | 0.3475 | 1.000 | 300 (0) | ABS_ON_COMPLETED_PASS | 0.0828 | 0.3475
+gamma_log | 2 | ABS_ON_COMPLETED_PASS | 0.0796 | 0.4227 | 1.000 | 300 (51) | ABS_ON_COMPLETED_PASS | 0.0766 | 0.4025
+gamma_log | 5 | ABS_ON_COMPLETED_PASS | 0.1253 | 0.4589 | 1.000 | 300 (235) | ABS_ON_COMPLETED_PASS | 0.1030 | 0.4009
+
 ## Frozen Arc-2 labels
 Each cell×q reprints Arc-2 `overall_point_route_verdict` unchanged.
 This ledger does **not** soft-PASS or mutate those labels.
+Column (B) is diagnostic only — not a Design 110 / fence rewrite.
 
 ## Secondary Laplace diagnostics
 Paired ratios are non-blocking for SCIENTIFIC_PASS. See CSV `ratio_secondary`.
+LA abs-on-completed columns answer 'is LA hopeless on recovery?' without
+changing reliability FAIL (gamma LA: 0/300 healthy under frozen rule).
 
 ## gllvm comparator (standing rule 2026-08-07)
 
 This Totoro ledger is gllvmTMB-only. Matched **gllvm VA** (and Laplace if
 available) vs planted truth is owed on diagnosis probes — see
-`lanes/va-s0b-exact/protocol/gllvm-comparator.md`. Local probe in flight:
-`/private/tmp/va-poisson-gllvm-probe-20260807/` (poisson + gamma).
+`lanes/va-s0b-exact/protocol/gllvm-comparator.md`.

@@ -197,13 +197,28 @@ Every scientific absolute-first / diagnosis cell reports:
 3. **Optional diagnostic split (budget-gated):** `aghq = 9` with `aghq_ridge = Inf` (unpenalised AGHQ) to separate integration gain from ridge — only when Totoro budget allows; not required for the minimum panel.
 4. **Do not** replace default LA with LA+tricks in Arc-2 lineage tables; both arms stay.
 
-**Scoring / success-ish bar (scientific; not a fence rewrite):**
+**Scoring / success bar — LOCKED for now (Shinichi 2026-08-07; scientific; not a fence rewrite):**
 
-- **Dual-report reliability** remains: (A) frozen Wilson/healthy → `scientific_verdict_default`; (B) abs-on-completed → `ABS_ON_COMPLETED_*` (secondary; not soft-PASS).
-- **Success-ish:** VA abs recovery **≲ LA** (default or LA+tricks, report both) or better, among completed / abs-available seeds — Shinichi bar: "somewhere close or closer."
-- **Speed:** secondary (report wall; never the pass rule).
-- **H:** N/A on exact-route cells; H ladder only for GH cells (S1+ / S4).
-- **Paired ratios:** still secondary / non-blocking for SCIENTIFIC_PASS when LA eligibility starves.
+Enough **before harder distributions** (S1+). Dual-report stays; Arc-2 / fence unchanged.
+
+| Bar | Rule | Scope |
+| --- | --- | --- |
+| **VA ≲ LA (or better)** | gllvmTMB **VA** abs recovery (β, Σ) reaches **LA equivalence or better** vs planted truth among completed / abs-available seeds — compare to gllvmTMB **default LA** and, when exploring, **LA+tricks** | Primary internal engine bar |
+| **VA ≲ gllvm (or better)** | Same abs metrics: our VA reaches **gllvm equivalence or better** on the matched DGP/seeds | External frequentist bar; **always 2×2** (our VA ≠ gllvm VA) |
+| **Dual-report** | (A) Wilson/healthy → `scientific_verdict_default`; (B) abs-on-completed → `ABS_ON_COMPLETED_*` (secondary; **not** soft-PASS) | Reliability honesty |
+| **Speed** | Report wall; never the pass rule | Secondary |
+| **H** | N/A on exact-route; H ladder only for GH cells (S1+ / S4) | Exact vs GH |
+| **Paired ratios** | Secondary / non-blocking for SCIENTIFIC_PASS when LA eligibility starves | Arc-2 lineage |
+| **HMSC** | **Not** a 5th arm on S0/S1 standards — future/menu (paper / phylo+spatial capstone); see §E | Deferred |
+
+#### E — HMSC (Ovaskainen / `Hmsc`) — menu item, not near-term arm
+
+**Recommendation: later paper / bounded capstone comparator — not a drop-in 5th arm for S0–S1.**
+
+- Brain + Jason scout (`docs/dev-log/audits/2026-07-29-jason-hmsc-cross-package-scout.md` §5b; vault note *HMSC scout (2026-07-29)*; Design 87 §“Not worth building”): **do not build a validation *programme* on `Hmsc`**. Posterior mean under MGP shrinkage ≠ MLE — disagreement is not diagnostic; agreement does not certify coverage.
+- Different estimand class: **Bayesian JSDM / latent-factor Gibbs**, 4 families vs our ~32; phylo structures `Beta` not `Lambda`.
+- Where it *is* worth ~1 day later: `phylo_latent + spatial_unique` capstone (`docs/design/05-testing-strategy.md` Phase 5.5) — Design 54 falsification / paper comparator, not S0 abs-first gating.
+- Transferable now without installing HMSC: evidence-layer ideas already absorbed (held-out CV, known-truth fixture, block-conditional recovery — #900 etc.).
 
 #### C — Recommended next exploration arc
 

@@ -32,15 +32,18 @@ Identical to S0a `lanes/va-s0a-gaussian/protocol/absolute-first.md`, plus the
    Reliability FAIL/INCONCLUSIVE still blocks `scientific_verdict_default` PASS
    (**ledger column A**).
 4. Paired Laplace ratios SECONDARY / non-blocking.
-5. **gllvm comparator (STANDING):** report gllvm VA (and gllvm Laplace if
-   available) vs planted truth where feasible — see `gllvm-comparator.md`.
-6. **Forward standard (Shinichi 2026-08-07, before S1):** scientific panels
-   should include **default LA** and **LA+tricks** (`aghq=9`, `aghq_ridge=2`)
-   in addition to VA — see ultraplan § “Standard comparator panel + LA
-   validation”. S0b Totoro export remains default LA only (Arc-2 lineage);
-   LA+tricks is the next exploration arm, not a rewrite of frozen Arc-2.
-6. Do not set `calibrated=TRUE`.
-7. Reprint frozen Arc-2 `overall_point_route_verdict` per cell×q unchanged.
+5. **gllvm comparator (STANDING):** always 2×2 — gllvmTMB VA/LA × gllvm VA/LA
+   vs planted truth — see `gllvm-comparator.md`.
+6. **Success bar LOCKED for now (Shinichi 2026-08-07):** VA ≲ LA (or better)
+   on abs recovery **and** VA ≲ gllvm (or better) on the same 2×2 — enough
+   before harder dists. **HMSC is not a 5th arm** for S0/S1 (later paper /
+   phylo+spatial capstone only).
+7. **Forward standard (before S1):** scientific panels should include
+   **default LA** and **LA+tricks** (`aghq=9`, `aghq_ridge=2`) in addition to
+   VA — ultraplan § “Standard comparator panel”. S0b Totoro export remains
+   default LA only (Arc-2 lineage); LA+tricks is exploration, not Arc-2 rewrite.
+8. Do not set `calibrated=TRUE`.
+9. Reprint frozen Arc-2 `overall_point_route_verdict` per cell×q unchanged.
 
 ### Dual report (A) + (B) — G0 2026-08-07
 

@@ -67,3 +67,15 @@ for decisive grids. Do not overlap two `mclapply`/`xargs -P` probes.
 - Poisson `q=5`: gllvmTMB VA strongest on Σ; gllvm VA weaker (pass_abs 0.12).
 - Gamma: **gllvm LA is not hopeless on β/Σ** (8/8; `q=5` pass_abs=1.0). Shape/φ often explodes — not a matched estimand.
 - Always report gllvm wall times (see audit table).
+
+## Success bar — LOCKED for now (Shinichi 2026-08-07)
+
+Enough **before harder distributions**. Scientific / dual-report only — does **not** rewrite Arc-2 or the public fence.
+
+1. **VA ≲ LA (or better):** gllvmTMB VA abs recovery (β, Σ vs planted truth) reaches **LA equivalence or better** (default LA; report LA+tricks when exploring).
+2. **VA ≲ gllvm (or better):** same abs metrics vs **gllvm** on the matched 2×2 (our VA ≠ gllvm VA).
+3. Dual-report reliability stays: Wilson/healthy vs abs-on-completed (secondary; not soft-PASS).
+
+### HMSC — not a 5th arm yet
+
+**`Hmsc` / Ovaskainen** = Bayesian JSDM (posterior mean ≠ MLE). Jason scout §5b + Design 87: **no HMSC validation programme** for S0/S1; later **paper / `phylo_latent + spatial_unique` capstone** only (`docs/design/05-testing-strategy.md` Phase 5.5). Do not add HMSC as a mandatory panel arm before harder dists.

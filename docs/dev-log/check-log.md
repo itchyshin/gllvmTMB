@@ -4,6 +4,19 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-08-07 -- VA success bar lock + HMSC deferral
+
+Branch: `codex/va-gh-all-families` @ worktree `/private/tmp/gllvmtmb-va-gh-all-families`.
+Docs-only. Shinichi affirmed near-term bar: **VA ≲ LA** and **VA ≲ gllvm** (or
+better) on abs recovery + dual-report; always 2×2. Brain + Jason scout + Design 87:
+**HMSC is later paper/capstone**, not a drop-in 5th S0/S1 arm.
+
+Touched: ultraplan §B/§E; `protocol/gllvm-comparator.md`; S0a/S0b
+`absolute-first.md`; after-task `2026-08-07-va-success-bar-hmsc-defer.md`; MC
+`capability.note` / `decision_receipt`.
+
+Checks: none (prose lock). No `R/`/`src/`/fence.
+
 ## 2026-08-03 -- standardized-loading inference repair (#921)
 
 Branch: `codex/fix-loading-scale-inference` from `origin/main` at `dbd0b2d5`;

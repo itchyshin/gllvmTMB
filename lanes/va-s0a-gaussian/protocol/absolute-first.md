@@ -36,16 +36,16 @@ For each rank q separately:
 4. **Paired Laplace ratios (SECONDARY, non-blocking)** — report when paired
    eligibility ≥ 0.90; otherwise `RATIO_NOT_ELIGIBLE` with LA fail/completion
    rates. Ratio ineligibility alone does **not** force SCIENTIFIC_FAIL.
-5. **gllvm comparator (STANDING, where feasible)** — scientific absolute-first
-   cells should also report **gllvm VA** (and **gllvm Laplace** if available)
-   vs planted truth, with model-match caveats. Forward detail:
-   `lanes/va-s0b-exact/protocol/gllvm-comparator.md` (series-wide note).
-6. **Forward standard (Shinichi 2026-08-07):** before harder dists, panels should
-   include **default LA** and **LA+tricks** (`aghq=9`, `aghq_ridge=2`) — see
-   ultraplan § “Standard comparator panel + LA validation”. S0a Totoro export
-   remains Arc-2-lineage default LA only.
-7. **Calibration** — report Arc-2 labels only; do **not** set `calibrated=TRUE`.
-8. **Frozen overall** — every ledger row reprints Arc-2
+5. **gllvm comparator (STANDING)** — always 2×2: gllvmTMB VA/LA × gllvm VA/LA
+   vs planted truth (`lanes/va-s0b-exact/protocol/gllvm-comparator.md`).
+6. **Success bar LOCKED for now (Shinichi 2026-08-07):** VA ≲ LA (or better)
+   **and** VA ≲ gllvm (or better) on abs recovery + dual-report — enough before
+   harder dists. **HMSC ≠ 5th arm** for S0/S1 (later paper / phylo+spatial only).
+7. **Forward standard:** before harder dists, panels should include **default LA**
+   and **LA+tricks** (`aghq=9`, `aghq_ridge=2`) — ultraplan § panel. S0a Totoro
+   export remains Arc-2-lineage default LA only.
+8. **Calibration** — report Arc-2 labels only; do **not** set `calibrated=TRUE`.
+9. **Frozen overall** — every ledger row reprints Arc-2
    `overall_point_route_verdict = INCONCLUSIVE` for Gaussian q=2 and q=5.
 
 ### Caps recorded

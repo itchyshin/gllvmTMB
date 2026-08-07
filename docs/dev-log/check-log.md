@@ -4,6 +4,16 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-08-07 -- 500×20 cloglog vs probit GH H2H (abs Σ)
+
+Totoro 12 seeds (11001:11012), n=500 p=20 q=2 H=7 unique=FALSE:
+cloglog GH pass_abs **5/12** (Σ rf mean 0.518) vs probit GH **8/12**
+(0.468); paired dΣ=+0.050. **Stick with probit GH for users.** Scripts
+`probe-binomial-500x20-cloglog-probit-h2h.R` + Totoro launcher; audit
+`docs/dev-log/audits/2026-08-07-va-binomial-500x20-cloglog-vs-probit.md`.
+No fence/`auto` change. Raw under Totoro
+`va-s1-binomial-500x20-cloglog-probit-h2h-20260807/results/`.
+
 ## 2026-08-07 -- PoisG cloglog Σ scale ladder (n + wide p)
 
 Question: does PoisG Σ̂ collapse die with n or p? Script

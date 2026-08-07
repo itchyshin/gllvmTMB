@@ -30,9 +30,18 @@ Run binomial **probit** n=500 p=20 q=2 H=7 smoke on Totoro in parallel with the 
 - `lanes/va-s1-binomials/scripts/probe-binomial-500x20-probit-smoke.R`
 - `lanes/va-s1-binomials/scripts/launch-totoro-s1-500x20-probit.sh`
 
+## Completed (Totoro summary landed)
+
+| arm | n_seed | β RMSE | Σ rf | pass_abs | secs |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| **gtmb_va_gh** | 12 | 0.065 | **0.468** | **0.67 (8/12)** | 140 |
+| gtmb_va_ac | 12 | 0.062 | 0.770 | 0 | 36 |
+| gtmb_la | 12 | 0.065 | 0.444 | 0.75 | 1.3 |
+| gllvm_va | 12 | 0.062 | 0.783 | 0 | 1.8 |
+
+Scientific H2H vs cloglog: `docs/dev-log/audits/2026-08-07-va-binomial-500x20-cloglog-vs-probit.md`.
+
 ## Not done here
 
 - No fence change
-- Local 500×20 job left running
 - Raw CSV not committed (D-50)
-- Scientific summary deferred until Totoro `summary.csv` lands

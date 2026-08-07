@@ -4,14 +4,35 @@
 **Authority:** Shinichi standing rule for VA validation / diagnosis arcs.  
 **Applies to:** S0a (forward), S0b, and later S1–S4 / diagnosis probes.
 
-## Invariant
+## Invariant — always 2×2 (not optional)
 
-Scientific absolute-first cells should report **gllvmTMB VA**, **gllvmTMB
-Laplace (secondary)**, and **gllvm VA (and gllvm Laplace if available)** vs
-planted truth, with model-match caveats documented.
+Every scientific absolute-first / diagnosis cell **must** report the full
+**package × method** panel vs planted truth (where the DGP is known):
 
-Do **not** publish diagnosis tables that only show gllvmTMB VA vs gllvmTMB
-Laplace when a matched `gllvm` fit is feasible.
+|  | **VA** | **LA** |
+| --- | --- | --- |
+| **gllvmTMB** | Our algorithm (R3 / GH / exact ELBO routes — **not** gllvm’s VA) | Package default Laplace; add **LA+tricks** as a separate arm when exploring engines |
+| **gllvm** | `method = "VA"` (gllvm’s default) | `method = "LA"` |
+
+**Always vs planted truth** when truth is available. Do **not** publish
+tables that only show gllvmTMB VA vs gllvmTMB LA, or that omit either
+package’s VA or LA arm when a matched fit is feasible.
+
+### Our VA ≠ gllvm VA
+
+Document this every time:
+
+- **gllvmTMB VA** = this package’s variational route (`integration = "va"`):
+  Design-110 GH (public H=7), exact closed forms (gaussian / poisson /
+  lognormal / gamma), or hybrid — **R3 / GH / exact**, not gllvm’s
+  closed-form / EVA stack.
+- **gllvm VA** = Niku et al. `gllvm::gllvm(..., method = "VA")` (their
+  ELBO / closed-form / hybrid-EVA path). Same *label*, different
+  objective and implementation. Agreement is **not** identity.
+
+If an arm cannot run for a family/API reason, still reserve the cell and
+mark it **`N/A` with the reason** — do not silently drop the arm from the
+2×2.
 
 ## Feasibility / match caveats (document every time)
 
@@ -20,7 +41,8 @@ Laplace when a matched `gllvm` fit is feasible.
 | Covariance | Design 110 exact cells are loadings-only (`Σ = ΛΛ'`); gllvm `num.lv` VA is also loadings-only — matched on Ψ absence. |
 | Family API | gllvm often wants string families (`"poisson"`, `"gamma"`); `Gamma(link="log")` is **rejected** (`Selected family: Gamma not permitted`). Confirmed 2026-08-07: `family="gamma"` works for both `method="VA"` and `method="LA"`. |
 | Gamma shape / φ | Parameterisation may differ across packages; primary scored estimands remain β and Σ vs planted truth. |
-| Laplace | Include gllvm Laplace **when** the API exposes it for that family (`method="LA"` with `family="gamma"` works). Else mark `gllvm_LA = N/A` explicitly. |
+| Laplace | **Always attempt** gllvm Laplace (`method="LA"`). If the API refuses that family, mark `gllvm_LA = N/A` with the error — do not treat “if available” as permission to skip the attempt. |
+| LA+tricks (gllvmTMB only) | When exploring: `aghq = 9`, `aghq_ridge = 2` (series lock) as a **fifth** arm — does not replace default LA in Arc-2 lineage tables. |
 | Seeds / DGP | Prefer identical planted draws; local probes **≤10 cores** (Shinichi 2026-08-07; was 20 — `PILOT_CORES`/`mc.cores`/`xargs -P` ≤10); one probe at a time; consolidate — do not thrash parallel jobs. |
 
 ## Active probes (2026-08-07) — coordinate, do not thrash
@@ -35,6 +57,7 @@ for decisive grids. Do not overlap two `mclapply`/`xargs -P` probes.
 | `lanes/va-s0b-exact/scripts/probe-gllvm-4arm.R` | Script (VA+LA × both packages) |
 | `/private/tmp/va-poisson-gllvm-probe-20260807/` | Early VA-only smoke — superseded |
 | `/private/tmp/va-s0b-gllvm-h2h-20260807/` | Aborted sibling h2h — superseded |
+| Totoro `…/va-gamma-la-nladder-022b4eab-20260807/` | Gamma LA n-ladder (n=120…1000, q=2); local `/private/tmp/va-gamma-la-nladder-evidence-20260807/` — **larger n does not rescue gtmb LA health** (0/6 every n) |
 
 **Audit:** `docs/dev-log/audits/2026-08-07-va-gllvm-4arm-poisson-gamma.md`
 

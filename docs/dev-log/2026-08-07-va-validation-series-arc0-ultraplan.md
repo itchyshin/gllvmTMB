@@ -143,9 +143,9 @@ Motivating case: gamma. Protocol:
 
 ### Standing invariant — gllvm comparator (Shinichi 2026-08-07)
 
-**Scientific absolute-first cells should report gllvmTMB VA, gllvmTMB Laplace (secondary), and gllvm VA (and gllvm Laplace if available) vs planted truth, with model-match caveats documented.**
+**Always 2×2 (mandatory, not optional):** gllvmTMB **VA** × gllvmTMB **LA** × gllvm **VA** × gllvm **LA**, vs planted truth where possible. Document model-match caveats. **Our VA ≠ gllvm VA** (gllvmTMB = R3/GH/exact; gllvm = their `method="VA"` stack). Mark an arm `N/A` with reason only after attempting it — never silently omit.
 
-Do not stop at gllvmTMB VA vs gllvmTMB Laplace alone. Where a matched `gllvm` fit is feasible on the same DGP / seeds, scientific ledgers and diagnosis tables must carry the external comparator row(s). Document unique/Ψ, family-string, and shape/dispersion mismatches when models are not bit-identical. Consolidate into one table — do not thrash parallel gllvm jobs.
+Do not stop at gllvmTMB VA vs gllvmTMB Laplace alone. Where a matched `gllvm` fit is feasible on the same DGP / seeds, scientific ledgers and diagnosis tables must carry **both** gllvm arms. Document unique/Ψ, family-string, and shape/dispersion mismatches when models are not bit-identical. Consolidate into one table — do not thrash parallel gllvm jobs. Protocol: `lanes/va-s0b-exact/protocol/gllvm-comparator.md`.
 
 ### Compute policy (Shinichi 2026-08-07) — this VA validation lane
 
@@ -170,7 +170,7 @@ In-flight local probes: stay ≤10 cores locally **or** move remaining heavy wor
 | Layer | Status | Cite |
 | --- | --- | --- |
 | Ordinary family recovery under **default Laplace** (package default) | Often register `covered` (e.g. FAM-06 poisson, FAM-09 gamma) | `docs/design/35-validation-debt-register.md` FAM-* |
-| Deep multi-seed absolute-first LA as a **GLLVM latent comparator** (Design 110 fixture: n=120, p=8, q∈{2,5}, loadings-only) | **Thin / failing on health for some cells** | Arc-2 + S0b: gamma LA **0/300 healthy**; Gaussian LA unhealthy ~48–58%; diagnosis `LAPLACE_COMPARATOR_ELIGIBILITY_ONLY` |
+| Deep multi-seed absolute-first LA as a **GLLVM latent comparator** (Design 110 fixture: n=120, p=8, q∈{2,5}, loadings-only) | **Thin / partial** — Gamma “0/300 healthy” **RETRACTED** as `laplace_health` FE+RE gradient bug (proxy conv∧pd ~282/300 & 214/300); Gaussian LA unhealthy ~48–58% still real under recorded gate | Arc-2 + S0b; fix `dev/va-gh-h7-campaign/run-cell.R`; after-task `2026-08-07-va-s0b-laplace-health-fe-gradient-fix.md` |
 | What Arc-2 / S0 actually fitted as LA | **Default LA only** — `gllvmTMBcontrol(integration = "laplace", se = TRUE)`; **no** `aghq`, **no** `aghq_ridge`, no custom multi-start | `dev/va-gh-h7-campaign/run-cell.R` `laplace_fit()` |
 | AGHQ / `aghq_ridge` as LA rescue | Measured mainly on **binomial runaway / flat-direction** regimes; MIS-36 is opt-in / partial | brain AGHQ notes; register MIS-36; **not** a multi-family Design-110 LA+AGHQ certificate |
 | Unstructured VA≈LA when identifiable | **Answered and PARKED** (Design 72) — does **not** certify default-LA reliability on Design 110 fixtures | brain `gllvmTMB-va-vs-laplace-what-is-settled` |
@@ -187,8 +187,8 @@ Every scientific absolute-first / diagnosis cell reports:
 | **gllvmTMB VA** | `integration = "va"` at admitted H (exact cells: H N/A; GH cells: H ladder separately) | Primary research route |
 | **gllvmTMB default LA** | `integration = "laplace"` — **same knobs as Arc-2** (no silent AGHQ) | What users get today; frozen comparator lineage |
 | **gllvmTMB LA+tricks** | **(ii)** — see knobs below | Best honest LA/AGHQ effort; validates LA, not only VA |
-| **gllvm VA** | Matched seeds/DGP where feasible | External comparator (standing rule) |
-| **gllvm LA** | When API exposes it for that family; else `gllvm_LA = N/A` | External LA |
+| **gllvm VA** | Matched seeds/DGP — **always attempt** | External VA (≠ our VA) |
+| **gllvm LA** | Matched seeds/DGP — **always attempt**; else `gllvm_LA = N/A` with reason | External LA |
 
 **LA+tricks knobs (locked for this series unless G0 renames):**
 
@@ -209,7 +209,7 @@ Every scientific absolute-first / diagnosis cell reports:
 
 **Exact families first** (before binomials / GH-hard): **gamma + poisson q=2**, with the full panel including **LA+tricks**.
 
-- Motivating cells: gamma reliability FAIL + LA 0/300 healthy; poisson q=2 SCIENTIFIC_FAIL on abs Σ (shared hardness).
+- Motivating cells: gamma reliability stress (VA q=5; recorded LA 0/300 **retracted** as health-gate artefact — FE proxy ~71–94% healthy); poisson q=2 SCIENTIFIC_FAIL on abs Σ (shared hardness).
 - **Totoro** if scale / multi-arm parallelism needed; **local ≤10 cores**.
 - Keep gllvm rows on the same DGP/seeds where feasible (`protocol/gllvm-comparator.md`).
 - Smoke ≤ small seed count, then Totoro confirmation — no huge new 36k unless a G0 asks.
@@ -248,7 +248,7 @@ For each family×rank cell under S0:
 2. **Reliability** — unchanged (Wilson upper ≤0.10 → PASS).
 3. **Absolute recovery (PRIMARY)** — among seeds with finite VA estimates (absolute availability ≥0.90): abs β RMSE ≤0.35 and mean Σ rel Frob ≤0.50. Else FAIL if availability OK and bound crossed; INCONCLUSIVE if availability <0.90.
 4. **Paired Laplace ratios (SECONDARY, non-blocking for SCIENTIFIC_PASS)** — report when paired eligibility ≥0.90; otherwise report `RATIO_NOT_ELIGIBLE` with LA fail rate — **do not** force overall SCIENTIFIC_FAIL solely from ratio ineligibility.
-5. **gllvm comparator (STANDING, where feasible)** — report **gllvm VA** (and **gllvm Laplace** if available) vs the same planted truth on matched seeds/DGP; document model-match caveats. See `lanes/va-s0b-exact/protocol/gllvm-comparator.md`.
+5. **gllvm comparator (STANDING, always 2×2)** — report **gllvmTMB VA, gllvmTMB LA, gllvm VA, gllvm LA** vs the same planted truth on matched seeds/DGP; document model-match caveats and that our VA ≠ gllvm VA. See `lanes/va-s0b-exact/protocol/gllvm-comparator.md`.
 6. **Calibration** — report Arc-2 labels; do not promote `calibrated=TRUE` on the package.
 7. **Frozen overall** — always reprint Design 110 Arc-2 overall verdict beside the scientific one.
 

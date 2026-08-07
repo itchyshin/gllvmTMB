@@ -21,9 +21,13 @@
 
 ## Proposed freeze SHA
 
-Fill after S4 commit lands; then:
+**Candidate tip before this packet name-stamp:** `b3048ddf8eefd40d104786db83a8d272081c07b8`  
+(S0–S5 reversible work + S4 cran-comments + this packet draft; tree was clean.)
+
+After the name-stamp commit lands, **freeze at that newer HEAD** (packet will match tip):
 
 ```sh
+git -C /private/tmp/gllvmtmb-cran-path-a-0.6.1 fetch origin
 git -C /private/tmp/gllvmtmb-cran-path-a-0.6.1 rev-parse HEAD
 git -C /private/tmp/gllvmtmb-cran-path-a-0.6.1 status -sb   # must be clean
 ```

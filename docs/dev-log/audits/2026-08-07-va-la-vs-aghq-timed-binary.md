@@ -44,6 +44,17 @@ Warm-up at n=60 **untimed** (excluded from ratios). No cold TMB inside the clock
 
 S1 nladder context (same scorer family, n=1000 probit, 12 seeds): LA already strong — β≈0.038, Σ rf≈0.416, pass_abs≈0.75 at ~14 s; VA-GH ~190 s.
 
+### Totoro confirm — n=1000 p=8 q=2 probit (8 seeds, 2026-08-07)
+
+Same script on Totoro (`va-s1-la-vs-aghq-timed-20260807/results/`), warm excluded, `aghq=9` τ=2:
+
+| arm | β RMSE | Σ rf | pass_abs | secs (mean) | vs LA |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| **gtmb_la** | **0.044** | **0.415** | **0.875** | **1.24** | 1× |
+| gtmb_aghq_ridge | 0.055 | 0.866 | 0.500 | 87.4 | **~71×** |
+
+Same story as n=400: LA better on abs β/Σ and ~70× faster. No runaway/collapse on either arm.
+
 ## Verdict
 
 1. **Accuracy “best” depends on estimand.** AGHQ+ridge remains best on the **σ / ρ / runaway** binomial grid that justified it. On **S1 abs β / Σ rf / pass_abs** at n=400–1000, **LA is competitive or better** and already clears abs more often.

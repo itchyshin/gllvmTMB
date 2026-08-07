@@ -4,6 +4,13 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-08-07 -- remember: Totoro for heavy VA/binary; local continues
+
+Shinichi chat preference: Totoro may be faster CPU — prefer Totoro for
+heavy VA/binary sims (e.g. 500×20 probit); local ≤10 cores for smokes;
+do not stop local when launching Totoro. Vault primary:
+`shinichi-brain/projects/compute-playbook` (+ dedicated memory note).
+
 ## 2026-08-07 -- logit JJ @ n=500 (β + Σ vs GH / gllvm / LA)
 
 Branch: `codex/va-gh-all-families`. Measurement-only n=500 logit cell
@@ -50029,3 +50036,10 @@ git diff --stat HEAD -- R/ src/ NAMESPACE DESCRIPTION
 
 — Cursor (docs-only follow-up; no Totoro re-run)
 
+
+## 2026-08-07 — Totoro probit 500×20 smoke launched
+
+- ACTION=sync+full via `lanes/va-s1-binomials/scripts/launch-totoro-s1-500x20-probit.sh`
+- Remote: `/home/snakagaw/gllvm_work/va-s1-binomial-500x20-probit-smoke-20260807` pid 2753035 RUNNING at launch
+- Local Mac smoke untouched; D-50 raw off-git; fence unchanged
+- Audit: `docs/dev-log/audits/2026-08-07-va-binomial-500x20-probit-totoro.md`

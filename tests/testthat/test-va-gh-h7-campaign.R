@@ -879,6 +879,49 @@ test_that("shell launchers use structured receipts and derived array geometry", 
   expect_false(grepl("sbatch|SLURM|module|/project", confirmation))
 })
 
+test_that("laplace_health grades FE-only gradient, not last.par.best", {
+  ## Regression for the S0b Gamma "0/300 healthy, med |g|~70" artefact:
+  ## `obj$gr()` expects FE (`opt$par` / `lfixed()`); `last.par.best` is FE+RE.
+  fe <- c(b1 = 0.1, b2 = -0.2, log_phi = 0.0)
+  full <- c(fe, u = rnorm(24))
+  seen_len <- integer()
+  fit <- list(
+    opt = list(convergence = 0L, objective = 12.3, par = fe),
+    sd_report = list(pdHess = TRUE),
+    tmb_obj = list(
+      par = fe,
+      env = list(last.par.best = full),
+      gr = function(par) {
+        seen_len <<- c(seen_len, length(par))
+        if (!identical(length(par), length(fe))) {
+          ## Stand-in for the buggy joint-par path (Gamma med |g| ~70).
+          return(rep(70, length(par)))
+        }
+        rep(1e-4, length(par))
+      }
+    )
+  )
+  health <- .campaign_env$laplace_health(fit)
+  expect_true(health$healthy)
+  expect_equal(health$max_gradient, 1e-4, tolerance = 1e-12)
+  expect_identical(seen_len, length(fe))
+
+  ## If the gate still fed last.par.best, healthy would flip FALSE.
+  buggy_gr <- function(par) {
+    if (identical(length(par), length(full))) rep(70, length(par)) else rep(1e-4, length(par))
+  }
+  fit_buggy_call <- fit
+  fit_buggy_call$tmb_obj$gr <- buggy_gr
+  ## Force the pre-fix code path once: gr(last.par.best) must fail the gate.
+  buggy_max <- max(abs(fit_buggy_call$tmb_obj$gr(full)))
+  expect_gt(buggy_max, 1)
+  expect_false(
+    identical(0L, fit$opt$convergence) &&
+      isTRUE(fit$sd_report$pdHess) &&
+      buggy_max < 1e-3
+  )
+})
+
 test_that("q=2 and q=5 posterior-SD calibration is rotation-aware", {
   saved <- mget(c("private_va_fit", "beta_table", "family_parameter_table",
                   "extract_fit_components"), envir = .campaign_env, inherits = FALSE)

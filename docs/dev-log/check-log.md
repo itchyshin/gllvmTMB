@@ -49778,3 +49778,46 @@ git diff --stat HEAD -- R/ src/
 
 — Cursor (docs + probe script; Totoro evidence)
 
+## 2026-08-07 — RETRACT Gamma LA 0/300 healthy (`laplace_health` FE bug)
+
+Campaign `laplace_health` called `gr(last.par.best)` (FE+RE); TMB `gr()`
+expects FE-only `opt$par` (same as `R/diagnose.R`). Fixed in
+`dev/va-gh-h7-campaign/run-cell.R` + `lanes/va-s0b-exact/scripts/gamma-la-nladder.R`.
+Regression in `tests/testthat/test-va-gh-h7-campaign.R`; probe
+`dev/va-gh-h7-campaign/probe-laplace-health-fe-gradient.R`.
+
+S0b export cannot recompute FE `|g|` (no `tmb_obj`). Proxy `conv0∧pdHess`:
+gamma q=2 **282/300**, q=5 **214/300** (was 0/300). Probe gamma seed 10305:
+FE max\|g\|=5.4e-4 vs full 158. Arc-2 frozen labels + fence unchanged.
+
+```sh
+Rscript --vanilla dev/va-gh-h7-campaign/probe-laplace-health-fe-gradient.R gamma 10305 2
+# FE max|g|=0.0005412 ; full max|g|=158.2 ; healthy_if_FE_gr=TRUE
+
+git diff --stat HEAD -- R/ src/ NAMESPACE DESCRIPTION
+# empty
+```
+
+— Cursor (campaign driver + docs; no public fence)
+
+
+### 2026-08-07 — Gamma LA n-ladder on Totoro (not local)
+
+Local γ n-ladder stopped (core cap). Totoro campaign
+`/home/snakagaw/gllvm_work/va-gamma-la-nladder-022b4eab-20260807` reused
+Gate-E/runtime `022b4eab`. Grid: n∈{120,250,500,1000}, q=2, p=8, 6 seeds,
+arms gtmb_la/va + gllvm_la/va. Wall 171 s @ 24 cores. D-50; no fence edits.
+Local evidence: `/private/tmp/va-gamma-la-nladder-evidence-20260807/`.
+
+**Verdict:** larger n does **not** rescue gtmb LA health (0/6 healthy at every n);
+med full \|g\| rises 68→501 while abs Σ improves 0.37→0.14. gtmb VA healthy
+(5–6/6). Caveat: health uses full `tmb_obj$gr` (same FE-vs-full issue as
+probe-laplace-health-fe-gradient); Arc-2 unchanged. Dual criterion interest noted.
+
+```sh
+ACTION=dry-run bash lanes/va-s0b-exact/scripts/launch-totoro-gamma-nladder.sh
+# Totoro full: CORES=24 N_SEED=6 … gamma-la-nladder.R → ladder-summary.csv
+```
+
+— Cursor (Totoro γ n-ladder; no public fence)
+

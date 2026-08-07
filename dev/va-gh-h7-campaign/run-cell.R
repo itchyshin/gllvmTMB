@@ -962,8 +962,13 @@ laplace_health <- function(fit, gradient_tolerance = 1e-3) {
   convergence <- as.integer(fit$opt$convergence %||% NA_integer_)
   objective <- as.numeric(fit$opt$objective %||% NA_real_)
   pd_hessian <- isTRUE(fit$sd_report$pdHess)
+  ## TMB `obj$gr()` expects the fixed-effect vector (`opt$par` /
+  ## `obj$par` / `lfixed()`), matching `R/diagnose.R` and
+  ## `R/methods-gllvmTMB.R`. `env$last.par.best` is the joint FE+RE
+  ## vector; passing it here inflated |g| (Gamma med ~70) and zeroed
+  ## healthy rates despite FE |g| ~1e-4.
   gradient <- tryCatch({
-    par <- fit$tmb_obj$env$last.par.best %||% fit$tmb_obj$par
+    par <- fit$opt$par %||% fit$tmb_obj$par
     max(abs(fit$tmb_obj$gr(par)))
   }, error = function(e) Inf)
   healthy <- identical(convergence, 0L) && is.finite(objective) &&

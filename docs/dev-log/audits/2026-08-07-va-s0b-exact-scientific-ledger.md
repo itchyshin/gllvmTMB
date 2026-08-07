@@ -50,7 +50,17 @@ Column (B) is diagnostic only — not a Design 110 / fence rewrite.
 ## Secondary Laplace diagnostics
 Paired ratios are non-blocking for SCIENTIFIC_PASS. See CSV `ratio_secondary`.
 LA abs-on-completed columns answer 'is LA hopeless on recovery?' without
-changing reliability FAIL (gamma LA: 0/300 healthy under frozen rule).
+changing reliability FAIL under the **recorded** gate.
+
+### RETRACTION — Gamma LA “0/300 healthy” (health-gate artefact)
+
+The `LA healthy` column above reprints the Totoro export as run. That export
+used buggy `laplace_health` (`gr(last.par.best)` = FE+RE). **Do not read
+Gamma 0/300 as “Laplace hopeless.”** FE-only proxy (`conv0 ∧ pdHess`, no
+refit possible from CSV alone): **282/300** (q=2), **214/300** (q=5).
+Probe: FE `|g|~5e-4` vs full `|g|~158` (gamma seed 10305). Fix landed in
+`dev/va-gh-h7-campaign/run-cell.R`; Arc-2 frozen labels unchanged.
+After-task: `docs/dev-log/after-task/2026-08-07-va-s0b-laplace-health-fe-gradient-fix.md`.
 
 ## gllvm comparator (standing rule 2026-08-07)
 
@@ -63,6 +73,7 @@ This Totoro ledger remains gllvmTMB-only. Matched 4-arm probe delivered
 
 Headlines: poisson q=2 fails abs Σ on **all four** arms together; poisson q=5
 favours gllvmTMB VA on Σ; **gllvm LA is not hopeless on β/Σ for gamma**
-(contrast: this ledger's gamma LA healthy 0/300 under frozen reliability).
+(the ledger's recorded gamma LA healthy 0/300 is a retracted health-gate
+artefact — see RETRACTION above).
 Shape/φ is unmatched and often explodes in gllvm at gamma q=5.
 Protocol: `lanes/va-s0b-exact/protocol/gllvm-comparator.md`.

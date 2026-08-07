@@ -75,8 +75,12 @@ edit. No issue opened/closed.
 
 ## 10. Known Residuals
 
-- Gamma VA healthy rates were 249/300 (q=2) and 65/300 (q=5); Laplace completed
-  **0/300** at both ranks — shared reliability stress, not a soft scientific pass.
+- Gamma VA healthy rates were 249/300 (q=2) and 65/300 (q=5).
+- **RETRACTED (same day):** Laplace “0/300 healthy” at both ranks was a
+  `laplace_health` bug (`gr(last.par.best)` FE+RE). FE-only proxy
+  `conv0∧pdHess`: **282/300** (q=2), **214/300** (q=5). See
+  `docs/dev-log/after-task/2026-08-07-va-s0b-laplace-health-fe-gradient-fix.md`.
+  Dual-report (B) and Arc-2 frozen labels unchanged.
 - Poisson q=2 abs cov failure replicates Arc-2 (shared hardness vs Laplace).
 - Lognormal clears absolute-first while Arc-2 overall remains INCONCLUSIVE
   (Laplace pairing shortfall) — same pattern as Gaussian S0a.

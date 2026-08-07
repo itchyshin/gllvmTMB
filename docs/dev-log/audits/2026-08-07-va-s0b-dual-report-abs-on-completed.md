@@ -26,8 +26,18 @@ S0a Gaussian: already healthy under (A); dual columns not re-emitted this slice.
 | poisson_log | 2 | SCIENTIFIC_FAIL | PASS | ABS_ON_COMPLETED_FAIL | 0.111 / 0.626 | FAIL 0.113 / 0.657 |
 
 Gamma: abs recovery clears caps once unhealthy finishes are included; frozen
-reliability still FAIL (51/300 and 235/300 unhealthy). Gamma LA is **not**
-hopeless on recovery under (B) despite 0/300 healthy under (A).
+reliability still FAIL (51/300 and 235/300 unhealthy under the **recorded**
+gate). Gamma LA is **not** hopeless on recovery under (B).
+
+### RETRACTION (2026-08-07, same day) — LA healthy 0/300 is a gate bug
+
+Campaign `laplace_health` graded `gr(last.par.best)` (FE+RE) instead of
+FE-only `opt$par`. That artefact produced Gamma LA **0/300 healthy** with
+med `|g|~70`. Correct FE `|g|` is ~1e-4–1e-3 on converged PD cells (probe
+seed 10305: FE 5.4e-4 vs full 158). Exact FE re-score needs refit (export
+CSV has no `tmb_obj`); proxy `conv0 ∧ pdHess` → **282/300** (q=2) and
+**214/300** (q=5). Dual-report (B) and Arc-2 frozen labels unchanged.
+See `docs/dev-log/after-task/2026-08-07-va-s0b-laplace-health-fe-gradient-fix.md`.
 
 ## Paths
 

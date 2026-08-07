@@ -63,6 +63,6 @@ Same story as n=400: LA better on abs β/Σ and ~70× faster. No runaway/collaps
 
 ## Not done
 
-- n=1000 / 500×20 AGHQ timed panel (Totoro busy on 500×20 probit + cloglog h2h — do not kill).
+- n=500×20 AGHQ timed panel (optional; not required — n=400 and n=1000 already agree).
 - AGHQ `aghq_ridge=Inf` split on S1 scorers.
 - Coverage / SE claims.

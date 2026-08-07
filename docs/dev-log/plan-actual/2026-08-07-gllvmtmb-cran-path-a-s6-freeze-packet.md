@@ -22,7 +22,7 @@
 
 ## Frozen SHA
 
-**Freeze tip** = tip of `cursor/cran-path-a-0.6.1-20260807` after the S6B stamp commit (recorded in `lanes/gllvmtmb-cran-path-a-0.6.1/LOOP/checkpoint.md`).
+**Frozen SHA:** `f5451739971284897d7b74cdef32845d52ebe6f5`
 
 ```sh
 git -C /private/tmp/gllvmtmb-cran-path-a-0.6.1 fetch origin

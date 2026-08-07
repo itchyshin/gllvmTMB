@@ -21,9 +21,12 @@ Laplace when a matched `gllvm` fit is feasible.
 | Family API | gllvm often wants string families (`"poisson"`, `"gamma"`); `Gamma(link="log")` is **rejected** (`Selected family: Gamma not permitted`). Confirmed 2026-08-07: `family="gamma"` works for both `method="VA"` and `method="LA"`. |
 | Gamma shape / φ | Parameterisation may differ across packages; primary scored estimands remain β and Σ vs planted truth. |
 | Laplace | Include gllvm Laplace **when** the API exposes it for that family (`method="LA"` with `family="gamma"` works). Else mark `gllvm_LA = N/A` explicitly. |
-| Seeds / DGP | Prefer identical planted draws; local probes **≤10 cores** (Shinichi 2026-08-07); consolidate — do not thrash parallel jobs. |
+| Seeds / DGP | Prefer identical planted draws; local probes **≤10 cores** (Shinichi 2026-08-07; was 20 — `PILOT_CORES`/`mc.cores`/`xargs -P` ≤10); one probe at a time; consolidate — do not thrash parallel jobs. |
 
 ## Active local probes (2026-08-07) — coordinate, do not thrash
+
+**Local parallelism cap: ≤10 cores** (Shinichi 2026-08-07). Do not overlap two `mclapply`/`xargs -P` probes; prefer sequential after the essential compare finishes.
+
 
 | Dir | Role |
 | --- | --- |

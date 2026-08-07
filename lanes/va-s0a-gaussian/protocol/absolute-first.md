@@ -40,8 +40,12 @@ For each rank q separately:
    cells should also report **gllvm VA** (and **gllvm Laplace** if available)
    vs planted truth, with model-match caveats. Forward detail:
    `lanes/va-s0b-exact/protocol/gllvm-comparator.md` (series-wide note).
-6. **Calibration** — report Arc-2 labels only; do **not** set `calibrated=TRUE`.
-7. **Frozen overall** — every ledger row reprints Arc-2
+6. **Forward standard (Shinichi 2026-08-07):** before harder dists, panels should
+   include **default LA** and **LA+tricks** (`aghq=9`, `aghq_ridge=2`) — see
+   ultraplan § “Standard comparator panel + LA validation”. S0a Totoro export
+   remains Arc-2-lineage default LA only.
+7. **Calibration** — report Arc-2 labels only; do **not** set `calibrated=TRUE`.
+8. **Frozen overall** — every ledger row reprints Arc-2
    `overall_point_route_verdict = INCONCLUSIVE` for Gaussian q=2 and q=5.
 
 ### Caps recorded
@@ -58,3 +62,7 @@ For each rank q separately:
 - Pooling ranks or families
 - Reusing Arc-2 confirmation seed rows as primary verdict
 - Opening S0b without Shinichi G0b
+
+## Local compute (Shinichi 2026-08-07)
+
+Local diagnosis / gllvm-compare probes: **≤10 cores** (`CORES` / `mc.cores` / `xargs -P`). Prefer sequential probes; do not stack parallel campaigns on this machine.

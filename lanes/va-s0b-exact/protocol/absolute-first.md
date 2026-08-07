@@ -34,6 +34,11 @@ Identical to S0a `lanes/va-s0a-gaussian/protocol/absolute-first.md`, plus the
 4. Paired Laplace ratios SECONDARY / non-blocking.
 5. **gllvm comparator (STANDING):** report gllvm VA (and gllvm Laplace if
    available) vs planted truth where feasible — see `gllvm-comparator.md`.
+6. **Forward standard (Shinichi 2026-08-07, before S1):** scientific panels
+   should include **default LA** and **LA+tricks** (`aghq=9`, `aghq_ridge=2`)
+   in addition to VA — see ultraplan § “Standard comparator panel + LA
+   validation”. S0b Totoro export remains default LA only (Arc-2 lineage);
+   LA+tricks is the next exploration arm, not a rewrite of frozen Arc-2.
 6. Do not set `calibrated=TRUE`.
 7. Reprint frozen Arc-2 `overall_point_route_verdict` per cell×q unchanged.
 

@@ -49722,3 +49722,27 @@ md5 /private/tmp/va-gh-h7-final-evidence/totoro/adjudication/va-gh-h7-adjudicati
 
 — Cursor (docs + S0b ledger script only; dual-report G0)
 
+## 2026-08-07 — Standard comparator panel (default LA + LA+tricks)
+
+Shinichi: set standards before harder dists; try (ii) LA+tricks as well as
+default LA; validate LA as well as VA on less-used non-Gaussian.
+
+- brain: MCP `search_notes` / vault notes (VA-vs-LA settled; gllvm comparator;
+  AGHQ ridge); new note `memory/VA series standard comparator panel…`
+- register: FAM-* `covered` ≠ Design-110 deep LA campaigns; Arc-2 LA =
+  `integration="laplace"` only (`run-cell.R` `laplace_fit`)
+- ultraplan section: `docs/dev-log/2026-08-07-va-validation-series-arc0-ultraplan.md`
+- protocol pointer: `lanes/va-s0b-exact/protocol/absolute-first.md`
+- fence / Arc-2 labels: unchanged; no `R/`/`src/` edits
+
+```sh
+rg -n "Standard comparator panel|LA\\+tricks|aghq = 9" \
+  docs/dev-log/2026-08-07-va-validation-series-arc0-ultraplan.md \
+  lanes/va-s0b-exact/protocol/absolute-first.md
+git diff --stat HEAD -- R/ src/
+# empty
+```
+
+— Cursor (docs only; ask-brain + register reconcile)
+
+

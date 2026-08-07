@@ -159,6 +159,67 @@ Do not stop at gllvmTMB VA vs gllvmTMB Laplace alone. Where a matched `gllvm` fi
 
 In-flight local probes: stay ≤10 cores locally **or** move remaining heavy work to Totoro.
 
+### Standard comparator panel + LA validation (Shinichi 2026-08-07)
+
+**Set these standards now**, before S1 binomials / GH-hard cells. Do **not** wait for harder dists to invent the panel.
+
+#### A — Is LA validation thin for less-used non-Gaussian?
+
+**Yes — thin / partial at GLLVM latent campaign scale; not missing at family wiring.**
+
+| Layer | Status | Cite |
+| --- | --- | --- |
+| Ordinary family recovery under **default Laplace** (package default) | Often register `covered` (e.g. FAM-06 poisson, FAM-09 gamma) | `docs/design/35-validation-debt-register.md` FAM-* |
+| Deep multi-seed absolute-first LA as a **GLLVM latent comparator** (Design 110 fixture: n=120, p=8, q∈{2,5}, loadings-only) | **Thin / failing on health for some cells** | Arc-2 + S0b: gamma LA **0/300 healthy**; Gaussian LA unhealthy ~48–58%; diagnosis `LAPLACE_COMPARATOR_ELIGIBILITY_ONLY` |
+| What Arc-2 / S0 actually fitted as LA | **Default LA only** — `gllvmTMBcontrol(integration = "laplace", se = TRUE)`; **no** `aghq`, **no** `aghq_ridge`, no custom multi-start | `dev/va-gh-h7-campaign/run-cell.R` `laplace_fit()` |
+| AGHQ / `aghq_ridge` as LA rescue | Measured mainly on **binomial runaway / flat-direction** regimes; MIS-36 is opt-in / partial | brain AGHQ notes; register MIS-36; **not** a multi-family Design-110 LA+AGHQ certificate |
+| Unstructured VA≈LA when identifiable | **Answered and PARKED** (Design 72) — does **not** certify default-LA reliability on Design 110 fixtures | brain `gllvmTMB-va-vs-laplace-what-is-settled` |
+
+Shinichi's insight is correct: validating VA against a **fragile default-LA comparator** without also validating (and, where needed, **rescuing**) LA leaves less-used non-Gaussian families under-tested as engines, even when FAM rows are `covered`.
+
+#### B — Proposed standard comparator panel (pre-harder dists)
+
+Every scientific absolute-first / diagnosis cell reports:
+
+| Arm | Spec | Role |
+| --- | --- | --- |
+| **Planted truth** | Design 110 / S0 DGP | Primary oracle |
+| **gllvmTMB VA** | `integration = "va"` at admitted H (exact cells: H N/A; GH cells: H ladder separately) | Primary research route |
+| **gllvmTMB default LA** | `integration = "laplace"` — **same knobs as Arc-2** (no silent AGHQ) | What users get today; frozen comparator lineage |
+| **gllvmTMB LA+tricks** | **(ii)** — see knobs below | Best honest LA/AGHQ effort; validates LA, not only VA |
+| **gllvm VA** | Matched seeds/DGP where feasible | External comparator (standing rule) |
+| **gllvm LA** | When API exposes it for that family; else `gllvm_LA = N/A` | External LA |
+
+**LA+tricks knobs (locked for this series unless G0 renames):**
+
+1. **Primary tricks arm:** `gllvmTMBcontrol(aghq = 9, aghq_ridge = 2, se = TRUE)` — shipped AGHQ node count + opt-in ridge (ridge fires only when AGHQ is named; never silently penalises default Laplace).
+2. **Starts:** use the package's AGHQ/Laplace multi-start behaviour as shipped when the control path exposes it; do **not** invent a new start policy mid-series. If a cell still starves on health, record start/health diagnostics — do not retune thresholds.
+3. **Optional diagnostic split (budget-gated):** `aghq = 9` with `aghq_ridge = Inf` (unpenalised AGHQ) to separate integration gain from ridge — only when Totoro budget allows; not required for the minimum panel.
+4. **Do not** replace default LA with LA+tricks in Arc-2 lineage tables; both arms stay.
+
+**Scoring / success-ish bar (scientific; not a fence rewrite):**
+
+- **Dual-report reliability** remains: (A) frozen Wilson/healthy → `scientific_verdict_default`; (B) abs-on-completed → `ABS_ON_COMPLETED_*` (secondary; not soft-PASS).
+- **Success-ish:** VA abs recovery **≲ LA** (default or LA+tricks, report both) or better, among completed / abs-available seeds — Shinichi bar: "somewhere close or closer."
+- **Speed:** secondary (report wall; never the pass rule).
+- **H:** N/A on exact-route cells; H ladder only for GH cells (S1+ / S4).
+- **Paired ratios:** still secondary / non-blocking for SCIENTIFIC_PASS when LA eligibility starves.
+
+#### C — Recommended next exploration arc
+
+**Exact families first** (before binomials / GH-hard): **gamma + poisson q=2**, with the full panel including **LA+tricks**.
+
+- Motivating cells: gamma reliability FAIL + LA 0/300 healthy; poisson q=2 SCIENTIFIC_FAIL on abs Σ (shared hardness).
+- **Totoro** if scale / multi-arm parallelism needed; **local ≤10 cores**.
+- Keep gllvm rows on the same DGP/seeds where feasible (`protocol/gllvm-comparator.md`).
+- Smoke ≤ small seed count, then Totoro confirmation — no huge new 36k unless a G0 asks.
+
+#### D — Explicit freeze (unchanged)
+
+- **Arc-2 frozen labels** (`overall_point_route_verdict`, cell PASS/FAIL/INCONCLUSIVE) **unchanged**.
+- **Public fence + `calibrated=FALSE`** unchanged until a separate **promotion G0**.
+- Dual-report (B) and LA+tricks do **not** rewrite Design 110 thresholds or soft-PASS INCONCLUSIVE.
+
 ### QUESTIONS STILL OPEN (for G0 — max 3)
 
 **QUESTION 1** · Approve S0a reuse path (no new fits) as Arc 0?  

@@ -18,18 +18,16 @@ prefer LA; gllvm VA/LA N/A. Beta: gtmb pass_abs=1.0 at n≥400; gllvm LA Σ flat
 `docs/dev-log/after-task/2026-08-07-va-betabinomial-beta-nladder.md`; lanes
 `va-s3-betabinomial`, `va-s4-beta`.
 
-## 2026-08-07 -- S4 GH-hard n-ladders launched (Totoro)
+## 2026-08-07 -- S4 GH-hard n-ladders DONE (Totoro)
 
-Branch: `codex/va-gh-all-families`. Shinichi “why not” — start tweedie /
-student / truncated_poisson / ordinal_probit / delta_gamma n-ladders now
-(locked order had them later). All five Design-110 VA-admitted; multinomial
-OUT; truncated clarified as zero-truncated Poisson (not Tobit). Grid
-n∈{120,400,1000} p=8 q=2 12 seeds 10 cores each; five parallel Totoro jobs
-RUNNING at launch (pids 2779852/2779866/2779881/2779896/2779911). Local
-student smoke EXIT 0. Audit
-`docs/dev-log/audits/2026-08-07-va-s4-gh-hard-nladder.md`; after-task
+Branch: `codex/va-gh-all-families`. Shinichi “why not” — tweedie /
+student / truncated_poisson / ordinal_probit / delta_gamma n-ladders
+n∈{120,400,1000} p=8 q=2 12 seeds. All five Design-110 VA-admitted;
+multinomial OUT; truncated = zero-truncated Poisson (not Tobit). Σ recovers
+with n for gtmb on all five (ordinal hardest; abs at n=1000). No fence/`auto`.
+Audit `docs/dev-log/audits/2026-08-07-va-s4-gh-hard-nladder.md`; after-task
 `docs/dev-log/after-task/2026-08-07-va-s4-gh-hard-nladder-launch.md`; scripts
-`lanes/va-s4-gh-hard/scripts/`. No fence/`auto`. Tables pending pull.
+`lanes/va-s4-gh-hard/scripts/`. Summary MD5s in audit.
 
 ## 2026-08-07 -- NB2 n-ladder Σ vs n (Totoro)
 

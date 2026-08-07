@@ -4,12 +4,36 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-08-07 -- PoisG cloglog Σ scale ladder (n + wide p)
+
+Question: does PoisG Σ̂ collapse die with n or p? Script
+`lanes/va-s1-binomials/scripts/probe-cloglog-poisg-nladder.R`.
+n∈{120,400,1000} p=8 q=2, 10 seeds, 8 cores, arms poisg/gllvm_va + GH/LA
+ref; then wide n=500 p=20, 8 seeds. **Verdict NO:** collapse frac=1.0 for
+poisg and gllvm at every cell (tr(Σ̂)~1e−10); β improves and matches gllvm;
+GH/LA pass_abs 0.8–0.9 at n=1000. Audit
+`docs/dev-log/audits/2026-08-07-va-poisg-sigma-scale.md`; after-task
+`docs/dev-log/after-task/2026-08-07-va-poisg-sigma-scale.md`. No fence/`auto`
+flip. Results under `lanes/va-s1-binomials/results/poisg-*`.
+
+## 2026-08-07 -- remember: sim compares apples-to-apples (matched starts)
+
+Shinichi preference: simulation/arm comparisons must be really comparable,
+including starting settings (`n_starts`, start method, H, SE on/off, warm
+DLL outside timer, same machine/cores; label mean-per-seed vs sum vs wall).
+Vault: `memory/Simulation comparisons must be apples-to-apples (2026-08-07).md`
+(+ append on `projects/COMPUTE-PLAYBOOK.md`). Apply to open GH-vs-LA timing
+probe (500×20 probit): H=7 OK, but GH default `n_starts=4` vs LA single-start
+/ AC `n_starts=1` — unequal starts; any re-time must match; don’t kill Totoro
+or duplicate campaign (coord agent `99e91024`).
+
 ## 2026-08-07 -- remember: Totoro for heavy VA/binary; local continues
 
 Shinichi chat preference: Totoro may be faster CPU — prefer Totoro for
 heavy VA/binary sims (e.g. 500×20 probit); local ≤10 cores for smokes;
 do not stop local when launching Totoro. Vault primary:
-`shinichi-brain/projects/compute-playbook` (+ dedicated memory note).
+`shinichi-brain/projects/compute-playbook` + memory note
+`memory/Totoro preferred for heavy VA-binary sims (2026-08-07).md`.
 
 ## 2026-08-07 -- logit JJ @ n=500 (β + Σ vs GH / gllvm / LA)
 

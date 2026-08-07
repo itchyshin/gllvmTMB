@@ -4,6 +4,17 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-08-07 -- binary timing fairness + AGHQ naming
+
+Totoro 500×20 H2H `secs`: **GH vs GH (links) FAIR** (both H=7,
+`n_starts=4`); **GH vs LA NOT FAIR** (4 starts vs 1). Matched local warm
+retime (3 seeds, n=500 p=20 probit): LA 11.8s, GH ns=1 45.1s (**~3.8×**),
+GH ns=4 177s. AGHQ+ridge timed smoke still running (n=400 p=8; warm n=60
+AGHQ 84s vs LA 1.8s). Naming: do **not** call AGHQ “LA-GH” — use Laplace /
+AGHQ / VA-GH. Audit
+`docs/dev-log/audits/2026-08-07-va-binary-timing-fairness-aghq-naming.md`.
+No fence/`auto` flip.
+
 ## 2026-08-07 -- 500×20 cloglog vs probit GH H2H (abs Σ)
 
 Totoro 12 seeds (11001:11012), n=500 p=20 q=2 H=7 unique=FALSE:

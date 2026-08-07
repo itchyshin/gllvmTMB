@@ -4,6 +4,14 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-08-07 -- Arc-1 merge/fence (C) plan only · G0 STOP
+
+Branch: `codex/va-gh-all-families` @ `98839853`. Shinichi B done → C
+planning: Arc Card + ultra-plan sketch + new-lane recommendation at
+`docs/dev-log/plan-actual/2026-08-07-va-arc1-merge-fence-arc.md`. No
+scaffold, merge, PR, or fence/`calibrated` edit. Deliberately not run:
+`devtools::test`, Totoro, `gh pr create`.
+
 ## 2026-08-07 -- truncnb2 + delta_lognormal n-ladders (Totoro, B only)
 
 Branch: `codex/va-gh-all-families`. Shinichi B: Totoro n-ladders for
@@ -50190,3 +50198,9 @@ git diff --stat HEAD -- R/ src/ NAMESPACE DESCRIPTION
 - Remote: `/home/snakagaw/gllvm_work/va-s1-binomial-500x20-probit-smoke-20260807` pid 2753035 RUNNING at launch
 - Local Mac smoke untouched; D-50 raw off-git; fence unchanged
 - Audit: `docs/dev-log/audits/2026-08-07-va-binomial-500x20-probit-totoro.md`
+
+## 2026-08-07 — C G0 approved + Cursor handover
+
+- Shinichi approved C (Arc-1 merge/fence new lane). B confirmed DONE (`98839853`).
+- Handover: `docs/dev-log/handover/2026-08-07-cursor-handover-va-arc1-merge-fence.md`
+- Plan status → G0 APPROVED; active-lane-split refresh. No merge/PR/fence edit in this commit.

@@ -3,6 +3,13 @@
 This coordination note prevents a new session from treating this repository as
 a single writable lane.  It is a map, not a release/capability claim.
 
+**Refresh 2026-08-07 (Cursor): VA Arc-1 merge/fence (C) — G0 APPROVED.**  
+B (truncnb2 + delta_lognormal n-ladders) **DONE** on evidence tip `codex/va-gh-all-families` @ `98839853`.  
+Series synthesis G0=1 locked. **Next writable programme:** new lane  
+`cursor/va-arc1-merge-fence-20260807` @ `/private/tmp/gllvmtmb-va-arc1-merge-fence` (from `origin/main`), path-transplant Arc-1 code PR — **no merge until merge G0**.  
+**START HERE:** `docs/dev-log/handover/2026-08-07-cursor-handover-va-arc1-merge-fence.md` · plan `docs/dev-log/plan-actual/2026-08-07-va-arc1-merge-fence-arc.md`.  
+Evidence tip `/private/tmp/gllvmtmb-va-gh-all-families` is **donor / archive** (do not fat-tip PR).
+
 **Refresh 2026-08-02 #2 (Claude, end of session): Design 108 GATE A IS CLOSED.**
 Stages **4** (#896, probit + tail-safe log-Phi, AD-SAFE), **6** (#907, multi-tier — closes Gate A)
 and **R3** (#907, the opt-in `profile=` route) are on `main`; **Stage 7** (structured phylo KL) is

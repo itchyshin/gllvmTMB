@@ -4,6 +4,21 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-08-07 -- binomial GH n-ladder +cloglog (3-link complete)
+
+Branch: `codex/va-gh-all-families`. Extended
+`lanes/va-s1-binomials/scripts/probe-binomial-gh-nladder.R` for cloglog
+(`PROBE_APPEND=1`). Same seeds `10901:10912`, n∈{120,400,1000}, p=8 q=2 H=7.
+Local `/private/tmp/va-s1-binomial-gh-nladder-20260807/` now 504 rows
+(logit+probit+cloglog). Audit rewritten
+`docs/dev-log/audits/2026-08-07-va-binomial-gh-nladder.md`; after-task
+`docs/dev-log/after-task/2026-08-07-va-binomial-gh-nladder-3link.md`.
+
+- **GH @ n=1000:** logit 0.058/1.13/pass=0; probit 0.038/0.44/0.58;
+  cloglog 0.046/0.47/0.67. Large N clears abs Σ for probit+cloglog; logit GH
+  park stands (use JJ).
+- No fence/`auto` flip. No Totoro needed.
+
 ## 2026-08-07 -- binomial GH n-ladder DONE (probit decision; logit park)
 
 Branch: `codex/va-gh-all-families`. Script

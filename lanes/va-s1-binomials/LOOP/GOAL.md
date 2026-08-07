@@ -40,10 +40,11 @@ Canonical after exact S0 — **no reorder without G0** (ultraplan §C +
 
 **Logit GH recovery FAIL is PARKED** (surprising but leave it). When VA on
 logit, **use JJ**; do **not** dig more H / GH-logit “fix” programmes unless
-G0 reopens. **Probit → GH OK for scale**; large-N ladder `n∈{120,400,1000}`
-**DONE** (probit β matches AC/gllvm at n=1000; AC stays collapsed — see
-`docs/dev-log/audits/2026-08-07-va-binomial-gh-nladder.md`). Logit rows are
-measurement only — not a GH-logit rescue arc.
+G0 reopens. **Large-N ladder DONE** for **logit × probit × cloglog**
+(`n∈{120,400,1000}`; audit
+`docs/dev-log/audits/2026-08-07-va-binomial-gh-nladder.md`): probit+cloglog GH
+clear abs Σ at n=1000 (pass_abs 0.58 / 0.67); AC/gllvm VA stay collapsed; logit
+GH still fails abs (pass_abs 0) — measurement only, not a GH-logit rescue arc.
 
 ## Invariants
 

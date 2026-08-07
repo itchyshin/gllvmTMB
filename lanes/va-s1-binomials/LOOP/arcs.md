@@ -10,7 +10,7 @@ Status legend: `PENDING` | `IN_PROGRESS` | `DONE` | `BLOCKED` | `SKIPPED`
 | C0totoro2x2 | Totoro binomial gllvm 2×2 q∈{2,5} private VA | compute | **DONE** | MD5 summary `4cf32255…`; VA ≲ gllvm FAIL both q |
 | C0linksys | Systematic logit JJ/GH + probit GH/AC vs gllvm | no | **DONE** | FAIL=logit; probit GH loses, AC≈gllvm; audit systematic |
 | C0park | Logit GH FAIL parked — use JJ for logit VA | no | **DONE** | no more H/GH-logit dig unless G0; probit GH OK (scale) |
-| C0nladder | Large-N ladder probit β-vs-n (+ logit measurement) | compute | **DONE** | probit YES β/scale/runaway; AC collapses; logit park; audit nladder |
+| C0nladder | Large-N ladder 3 links × n∈{120,400,1000} | compute | **DONE** | logit+probit+cloglog; audit nladder; cloglog GH pass_abs 0.67 @ n=1000 |
 | C1 | Totoro preflight + smoke (3600-row campaign) | compute | **PENDING** | needs Shinichi go |
 | C2 | Totoro full S1 plan (3 cells × q∈{2,5}) | compute | **PENDING** | after C1 |
 | C3 | Export + absolute-first scientific ledger | no | **PENDING** | |

@@ -36,6 +36,10 @@ Q <- as.integer(Sys.getenv("PROBE_Q", "2"))
 P <- as.integer(Sys.getenv("PROBE_P", "8"))
 VA_H <- as.integer(Sys.getenv("PROBE_VA_H", "7"))
 DO_GLLVM_LA <- identical(Sys.getenv("PROBE_DO_GLLVM_LA", "1"), "1")
+## zero = historical ladder (often collapses gllvm VA on logit);
+## default = gllvm package starts (fair JJ↔gllvm same-family compare).
+GLLVM_START <- Sys.getenv("PROBE_GLLVM_START", "zero")
+stopifnot(GLLVM_START %in% c("zero", "default"))
 GRAD_TOL <- as.numeric(Sys.getenv("GRAD_TOL", "1e-3"))
 CAP_BETA <- 0.35
 CAP_SIG <- 0.50
@@ -362,9 +366,11 @@ fit_gllvm <- function(dgp, method) {
     method = method,
     seed = as.integer(dgp$seed),
     trace = FALSE,
-    sd.errors = FALSE,
-    control.start = list(starting.val = "zero", n.init = 1)
+    sd.errors = FALSE
   )
+  if (identical(GLLVM_START, "zero")) {
+    args$control.start <- list(starting.val = "zero", n.init = 1)
+  }
   if (!identical(dgp$link, "logit")) args$link <- dgp$link
   f <- tryCatch(do.call(gllvm::gllvm, args), error = function(e) e)
   secs <- proc.time()[[3L]] - t0
@@ -534,11 +540,11 @@ cat("=== CELL CARD (n-ladder) ===\n")
 cat(sprintf(
   paste0(
     " family=binomial links=%s | n=%s p=%d q=%d trials=1 unique=FALSE\n",
-    " seeds=%d..%d H=%d private .va_r3_fit | gllvm LA=%s | append=%s\n",
+    " seeds=%d..%d H=%d private .va_r3_fit | gllvm LA=%s | gllvm_start=%s | append=%s\n",
     " arms logit: GH+JJ+LA+gllvm; probit: GH+AC+LA+gllvm; cloglog: GH+LA+gllvm\n"
   ),
   paste(LINKS, collapse = ","), paste(N_GRID, collapse = ","), P, Q,
-  SEEDS[[1L]], SEEDS[[length(SEEDS)]], VA_H, DO_GLLVM_LA, APPEND
+  SEEDS[[1L]], SEEDS[[length(SEEDS)]], VA_H, DO_GLLVM_LA, GLLVM_START, APPEND
 ))
 cat("gllvm:", as.character(packageVersion("gllvm")),
     " cores:", CORES, " out:", OUT_ROOT, "\n")
@@ -626,12 +632,12 @@ if (!is.null(paired)) {
 }
 
 cat("\n======== N-LADDER SUMMARY ========\n")
-cat("β RMSE / Σ rf / trace_ratio / eta_var / frac_runaway / pass_abs / secs\n")
-print(summ[, c(
+cat("beta RMSE / Sigma rf / trace_ratio / eta_var / frac_runaway / pass_abs / secs\n")
+print(as.data.frame(summ[, c(
   "link", "n", "arm", "n_ok", "beta_rmse", "sigma_rel_frob",
   "trace_ratio", "eta_var", "frac_runaway", "frac_collapse",
   "pass_abs", "healthy_fe", "secs_mean"
-)], row.names = FALSE, digits = 4)
+)]), row.names = FALSE, digits = 4)
 
 if (!is.null(paired)) {
   cat("\nPaired mean Δ vs gllvm_va (positive = we worse):\n")

@@ -28,5 +28,5 @@ See `docs/dev-log/check-log.md` entry `2026-08-07 -- VA Arc-1 merge/fence (C)`.
 
 ## Follow-up
 
-- Open code PR against `main`; **STOP for merge G0**.
+- Code PR open: https://github.com/itchyshin/gllvmTMB/pull/949 — **STOP for merge G0**.
 - DEFER: docs-evidence PR; `calibrated=TRUE`; PoisG; multinomial VA; #947/#948.

@@ -150,5 +150,5 @@ testthat::test_file("tests/testthat/test-va-all-family-light-fits.R")
 | Path transplant | **DONE** (incl. `inst/tmb/gllvmTMB_va_r3.cpp` @ `4435cd1e`) |
 | Focused tests | **DONE** — fence / routing / control / oracles / compiled / light-fits all green (18/18 healthy) |
 | Rose claim-fence | **DONE** — `calibrated=FALSE`, Laplace default, Arc-2 mixed honesty, no soft-PASS, PoisG out, no register codes on NEWS/man |
-| Open code PR (no merge) | **OWED** |
+| Open code PR (no merge) | **DONE** — [#949](https://github.com/itchyshin/gllvmTMB/pull/949) @ `c35f5449` |
 | Docs-evidence PR / merge G0 / calibrated=TRUE / PoisG / #947/#948 | **DEFER** |

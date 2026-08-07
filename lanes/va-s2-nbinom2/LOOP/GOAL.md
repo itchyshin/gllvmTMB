@@ -18,6 +18,14 @@ vs each other and vs gllvm — and is VA ever preferred for NB2?
 
 ## Smoke status (2026-08-07 Totoro)
 
-16-seed 2×2 done. Prefer **LA** for default; VA not a default win.
-Audit: `docs/dev-log/audits/2026-08-07-va-nbinom2-2x2-smoke.md`.
-No PASS claim from smoke. No fence flip.
+16-seed 2×2 done at n=120: Prefer **LA** for small-n default (cost); all
+arms fail abs Σ together. Audit:
+`docs/dev-log/audits/2026-08-07-va-nbinom2-2x2-smoke.md`.
+
+## n-ladder status (2026-08-07 Totoro)
+
+12 seeds × n∈{120,250,400,1000}. **Larger n helps.** At n=1000 gtmb VA
+`pass_abs` 0.92 (Σ rf≈0.37) vs gtmb LA 0.42 (≈0.55) — VA-GH can win abs Σ
+at large n; LA still cheaper. Audit:
+`docs/dev-log/audits/2026-08-07-va-nbinom2-nladder.md`.
+No package PASS claim; no fence flip.

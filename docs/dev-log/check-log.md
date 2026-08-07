@@ -4,6 +4,18 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-08-07 -- NB2 n-ladder Σ vs n (Totoro)
+
+Branch: `codex/va-gh-all-families`. Same Design-110 DGP as 2×2 smoke;
+n∈{120,250,400,1000}, p=8 q=2, 12 seeds, matched `n_starts=1`, `se=FALSE`,
+warm DLL. Arms: gtmb LA / gtmb VA-GH H=7 / gllvm LA; gllvm VA only at n=120.
+**Yes, larger n helps:** at n=1000 gtmb VA pass_abs 0.92 (Σ rf≈0.37) vs
+gtmb LA 0.42 (≈0.55). Shared hardness at n=120; VA wins abs Σ at large n
+(~3× wall). No fence/`auto`. Audit
+`docs/dev-log/audits/2026-08-07-va-nbinom2-nladder.md`; after-task
+`docs/dev-log/after-task/2026-08-07-va-nbinom2-nladder.md`; scripts under
+`lanes/va-s2-nbinom2/scripts/`. Summary MD5 `f1e9a03f3c7f262ae3c85b901ea29134`.
+
 ## 2026-08-07 -- NB2 2×2 LA/VA × gllvm smoke (Totoro)
 
 Branch: `codex/va-gh-all-families`. Locked family **nbinom2** (GH H=7; no

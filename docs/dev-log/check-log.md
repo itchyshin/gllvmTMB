@@ -4,6 +4,33 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-08-07 -- betabinomial + beta n-ladders (Totoro)
+
+Branch: `codex/va-gh-all-families`. Locked order after NB2: **betabinomial**
+then **beta**. Design-110 DGP p=8 q=2 unique=FALSE; n∈{120,400,1000}; 12 seeds;
+matched `n_starts=1`, `se=FALSE`. Betabinomial **trials=10**, φ=3; beta φ=5.
+Both full Totoro jobs DONE (~10:14 / ~10:15) in parallel with other S4 GH-hard
+jobs (not killed). **Σ recovers with n for both gtmb families.** Betabinomial:
+prefer LA; gllvm VA/LA N/A. Beta: gtmb pass_abs=1.0 at n≥400; gllvm LA Σ flat
+~0.70 (no n-recovery); gllvm VA N/A. No fence/`auto`. Audits
+`docs/dev-log/audits/2026-08-07-va-betabinomial-nladder.md`,
+`docs/dev-log/audits/2026-08-07-va-beta-nladder.md`; after-task
+`docs/dev-log/after-task/2026-08-07-va-betabinomial-beta-nladder.md`; lanes
+`va-s3-betabinomial`, `va-s4-beta`.
+
+## 2026-08-07 -- S4 GH-hard n-ladders launched (Totoro)
+
+Branch: `codex/va-gh-all-families`. Shinichi “why not” — start tweedie /
+student / truncated_poisson / ordinal_probit / delta_gamma n-ladders now
+(locked order had them later). All five Design-110 VA-admitted; multinomial
+OUT; truncated clarified as zero-truncated Poisson (not Tobit). Grid
+n∈{120,400,1000} p=8 q=2 12 seeds 10 cores each; five parallel Totoro jobs
+RUNNING at launch (pids 2779852/2779866/2779881/2779896/2779911). Local
+student smoke EXIT 0. Audit
+`docs/dev-log/audits/2026-08-07-va-s4-gh-hard-nladder.md`; after-task
+`docs/dev-log/after-task/2026-08-07-va-s4-gh-hard-nladder-launch.md`; scripts
+`lanes/va-s4-gh-hard/scripts/`. No fence/`auto`. Tables pending pull.
+
 ## 2026-08-07 -- NB2 n-ladder Σ vs n (Totoro)
 
 Branch: `codex/va-gh-all-families`. Same Design-110 DGP as 2×2 smoke;

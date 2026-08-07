@@ -22,7 +22,10 @@ default; AGHQ and VA stay opt-in / experimental / fenced.
 ## Test environments
 
 **TBD at exact tag** (fill at S7/S8 after candidate freeze). Candidate identity
-will be Version `0.6.1` at the frozen SHA (not yet frozen — see Path A S6).
+is Version `0.6.1` at the **S6 option B freeze tip** on
+`cursor/cran-path-a-0.6.1-20260807` (post-`#949` `main` integrated; see
+`docs/dev-log/plan-actual/2026-08-07-gllvmtmb-cran-path-a-s6-freeze-packet.md`).
+Platform rows stay empty until exact-tag D-49 evidence.
 
 Planned rows (do not invent results):
 

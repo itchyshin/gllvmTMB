@@ -8,7 +8,9 @@ tip — Path A re-runs the D-49 ceremony at the frozen `0.6.1` SHA.
 **Scope boundary.** Laplace remains the package default. Adaptive quadrature
 (AGHQ) and variational approximation (VA) stay opt-in, experimental, and
 fenced — they are not advertised as defaults and do not change existing fits
-unless named.
+unless named. The Arc-1 scalar VA fence from `#949` is included in this tip as
+that research route: `vcov()` / `confint()` stay labelled `calibrated = FALSE`,
+and no soft-PASS or Arc-2 claim is made.
 
 * DESCRIPTION now names the narrow `profile_ci_total_variance()`
   interval-coverage regime (gaussian unit-tier total variance under documented

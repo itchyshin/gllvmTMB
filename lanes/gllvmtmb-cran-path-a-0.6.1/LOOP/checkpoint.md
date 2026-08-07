@@ -9,7 +9,7 @@ ARCS DONE (verified):
 ARC IN PROGRESS: S6 — freeze packet at `docs/dev-log/plan-actual/2026-08-07-gllvmtmb-cran-path-a-s6-freeze-packet.md` — **NOT FROZEN**
 NEXT: Shinichi 🛑 freeze on clean HEAD SHA after S4 commit; then S7 only on GO (RC tag still gated)
 OPEN GATES (need human): **S6 candidate freeze** — confirm freeze SHA / Version 0.6.1 / no further source edits; or request more cleanup first
-TRUTH LIVES IN: `/private/tmp/gllvmtmb-cran-path-a-0.6.1` · `cursor/cran-path-a-0.6.1-20260807` · post-S4 HEAD (see git after push) · LOOP `lanes/gllvmtmb-cran-path-a-0.6.1/LOOP/` · vault D-89/D-66 amended · freeze packet path above
+TRUTH LIVES IN: `/private/tmp/gllvmtmb-cran-path-a-0.6.1` · `cursor/cran-path-a-0.6.1-20260807` ·  · LOOP `lanes/gllvmtmb-cran-path-a-0.6.1/LOOP/` · vault D-89/D-66 amended · freeze packet path above
 RESUME: You are gllvmTMB-cran-path-a-0.6.1 — Path A → submit-ready 0.6.1. RESUME after S6 freeze GO.
 READ FIRST: LOOP/GOAL.md → checkpoint.md → ultra-plan.md → AGENTS.md → s6-freeze-packet.md.
 WORKSPACE: /private/tmp/gllvmtmb-cran-path-a-0.6.1 (reattach+pull; do NOT recreate; do NOT touch VA merge-fence).

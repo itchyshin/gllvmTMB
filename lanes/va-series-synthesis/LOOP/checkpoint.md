@@ -12,7 +12,7 @@ TRUTH LIVES IN:
   plan-actual `docs/dev-log/plan-actual/2026-08-07-va-series-synthesis.md`
   after-task `docs/dev-log/after-task/2026-08-07-va-series-synthesis.md`
   MC `~/shinichi-brain/Shinichi/Dashboards/mission-control/live/status/gllvmTMB.json`
-  execution commit `13fc9fd1`; LOOP closeout commit on this branch after scaffold
+  execution commit `13fc9fd1`; LOOP closeout `ed751d68`
 RESUME:
   You are va-series-synthesis — COLD START / status only. READ FIRST: LOOP/GOAL.md -> LOOP/checkpoint.md -> LOOP/ultra-plan.md.
   WORKSPACE: /private/tmp/gllvmtmb-va-gh-all-families · codex/va-gh-all-families (pull; do NOT recreate; do NOT rebuild synthesis).

@@ -156,8 +156,9 @@ Do not stop at gllvmTMB VA vs gllvmTMB Laplace alone. Where a matched `gllvm` fi
 | **D-50** | No GitHub Actions artifacts. Campaign outputs stay on Totoro + local copy under `/private/tmp`; **never stage raw evidence to git**. |
 | **gllvm** | Always report gllvm performance too where feasible (standing comparator above). |
 | **New campaigns** | Do **not** start a huge new campaign unless needed for open questions (gllvm compare, gamma n-ladder). Small Totoro jobs OK. |
+| **Comparable arms** | Match starts / H / SE / warm-compile / machine when citing secs or recovery (Shinichi 2026-08-07; vault `memory/Simulation comparisons must be apples-to-apples (2026-08-07).md`). |
 
-In-flight local probes: stay ≤10 cores locally **or** move remaining heavy work to Totoro.
+In-flight local probes: stay ≤10 cores locally **or** move remaining heavy work to Totoro. **Do not stop local** when also launching Totoro (Shinichi 2026-08-07 chat preference; vault [[COMPUTE-PLAYBOOK]] / Totoro VA preference note).
 
 ### Standard comparator panel + LA validation (Shinichi 2026-08-07)
 
@@ -400,11 +401,21 @@ Stop: G0b before S0b.
 Order **LOCKED:** binomial → nbinom2 → betabinomial → beta → (later tweedie /
 student / truncated / ordinal / delta) · multinomial OUT. No reorder without G0.
 
-🔴 **Needs you (next rung only):**
+### G0=1 DONE — series synthesis (2026-08-07)
 
-1. **After binomial VA≲gllvm FAIL dig** — say go for **nbinom2 local→Totoro**
-   (S1b). Do **not** launch nbinom Totoro until this go (do not conflict with
-   in-flight binomial dig).
-2. Full 3600-row S1 campaign (`launch-totoro-s1.sh`) still optional / separate go.
+Shinichi approved **G0=1** (docs-only). Working position locked in
+`docs/dev-log/audits/2026-08-07-va-series-synthesis.md`. Arc Card + ultra-plan +
+Melissa: `docs/dev-log/plan-actual/2026-08-07-va-series-synthesis.md`. After-task:
+`docs/dev-log/after-task/2026-08-07-va-series-synthesis.md`.
 
-Until then: **no** nbinom Totoro, **no** full GH-family blast, **no** fence change.
+Measurement ladder (S0–S4 banked) + synthesis = **series scientific close for
+this G0**. Still **no** fence flip, **no** Arc-1 merge, **no** auto Totoro.
+
+🔴 **Needs you (next G0 only — pick one):**
+
+1. **Stop / park** the validation series (default if silent).
+2. **Optional truncnb2 + delta_lognormal** wave — only with explicit go.
+3. **Separate Arc-1 promotion/merge G0** — not implied by ladders or synthesis.
+4. Keep #947/#948 parked; multinomial VA later.
+
+Until a new G0: **no** new Totoro campaign, **no** fence change, **no** soft-PASS.

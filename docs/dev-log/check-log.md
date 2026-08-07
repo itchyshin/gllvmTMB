@@ -4,6 +4,17 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-08-07 -- VA series synthesis (G0=1, docs-only)
+
+Branch: `codex/va-gh-all-families`. Shinichi G0=1: durable working-position
+lock from banked S0–S4 audits. No R/src, fence, Totoro, or Arc-1 merge.
+Synthesis `docs/dev-log/audits/2026-08-07-va-series-synthesis.md`; plan-actual
+`docs/dev-log/plan-actual/2026-08-07-va-series-synthesis.md`; after-task
+`docs/dev-log/after-task/2026-08-07-va-series-synthesis.md`; ultraplan G0=1
+close note; Mission Control `gllvmTMB.json` next_safe_action past G0=1.
+Verify: cited audit paths resolve; commit docs-only. Deliberately not run:
+`devtools::test`, Totoro, fence edits.
+
 ## 2026-08-07 -- betabinomial + beta n-ladders (Totoro)
 
 Branch: `codex/va-gh-all-families`. Locked order after NB2: **betabinomial**

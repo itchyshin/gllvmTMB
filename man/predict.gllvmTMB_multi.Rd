@@ -9,6 +9,7 @@
   newdata = NULL,
   type = c("link", "response"),
   re_form = ~.,
+  se.fit = FALSE,
   ...
 )
 }
@@ -29,11 +30,29 @@ sites/species not present in the training data the random
 effects cannot be drawn, so the prediction is fixed-effects-only
 regardless of \code{re_form}.}
 
+\item{se.fit}{Logical, default \code{FALSE}. If \code{TRUE}, add an \code{se.fit}
+column: a \strong{conditional, fixed-effect-only, delta-method (Wald)}
+standard error of \code{est}. "Conditional" means the random-effect
+contributions to the linear predictor are held fixed at their
+predicted (conditional-mode) values -- their own uncertainty is
+\strong{not} propagated, only the fixed-effect coefficients' \code{sdreport()}
+covariance is. This is a smaller quantity than a full marginal SE
+would be; it is also not a claim about coverage, which has not been
+measured for this quantity. \code{type = "link"} returns the SE of the
+linear predictor directly; \code{type = "response"} multiplies it by the
+local derivative of the per-row inverse link (the standard
+delta-method transform), so it approximates the SE of the
+inverse-link fitted value, not an exact one. Currently only
+supported for \code{newdata = NULL} (training rows), non-\code{multinomial()}
+fits, and fits without an active \code{mi()} missing-covariate model.}
+
 \item{...}{Unused.}
 }
 \value{
 A data frame with the original row identifiers plus an \code{est}
-column on the requested link or response scale.
+column on the requested link or response scale, and (if
+\code{se.fit = TRUE}) an \code{se.fit} column carrying the conditional
+delta-method standard error described above.
 }
 \description{
 Returns the linear predictor or inverse-link response at each observation

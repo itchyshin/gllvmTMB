@@ -18,26 +18,28 @@ Deprecated aliases \code{"B"} and \code{"W"} are still accepted with a warning.}
 Default \code{"none"} returns the engine's native lower-triangular Lambda.
 For Julia bridge fits only \code{"none"} is currently routed.}
 
-\item{se}{Logical; if \code{TRUE}, also return the standard error of every
-latent score, alongside the scores. Default \code{FALSE}, which preserves the
-original behaviour (a bare matrix). See the Standard errors section.}
+\item{se}{Logical; if \code{TRUE}, also return uncertainty for every latent score:
+a frequentist standard error for an ordinary Laplace fit, or a variational
+posterior SD for a \code{gllvmTMB_va} fit. Default \code{FALSE}, which preserves the
+original behaviour (a bare matrix). See the Score uncertainty section.}
 }
 \value{
 When \code{se = FALSE} (default): a matrix with one row per unit
 (\code{level = "unit"}) or one row per within-unit observation
 (\code{level = "unit_obs"}), and one column per latent factor. When
 \code{se = TRUE}: a list with \code{scores} (that same matrix) and \code{se} (a matrix
-of identical shape and dimnames holding the standard error of every
-score).
+of identical shape and dimnames holding the score uncertainty described
+below).
 }
 \description{
 Returns latent scores from a fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}. This is a small
 compatibility wrapper around \code{\link[=extract_ordination]{extract_ordination()}} for readers familiar
 with \code{gllvm::getLV()}.
 }
-\section{Standard errors}{
+\section{Score uncertainty}{
 
-\code{se = TRUE} reads the marginal standard error of every unit-level (or
+For an ordinary Laplace fit, \code{se = TRUE} reads the marginal standard error
+of every unit-level (or
 within-unit) latent-score random effect -- \code{z_B} at \code{level = "unit"},
 \code{z_W} at \code{level = "unit_obs"} -- from the fit's TMB \code{sdreport()}
 (\code{sqrt(sd_report$diag.cov.random)}), and reshapes it with the identical
@@ -63,6 +65,23 @@ not yet propagated) and raise an error.
 \item \code{engine = "julia"} bridge fits are not yet supported and raise an
 error.
 }
+
+For a \code{gllvmTMB_va} (variational) fit, \code{se} is instead the per-unit
+\strong{variational posterior SD} read from the fit's own variational
+distribution at its optimum -- not a Wald standard error, and not
+calibrated (Design 85 s10; the returned matrix carries a
+\code{"uncertainty_basis"} and \code{"calibrated"} attribute making this explicit in
+the object itself, not only here -- though those attributes are silently
+dropped by \code{se[i, ]}, \code{head(se)} and \code{as.data.frame(se)}).
+
+Two independent gates restrict it. \strong{By tier}, an explicitly requested
+\code{"jj"} (Jaakkola-Jordan) fit is refused pending its own measurement.
+\strong{By mechanism}, any fit whose per-unit SD turns out to be
+constant across units is refused outright: the array would carry one row
+per unit while containing no per-unit information. That degeneracy is
+provable under \code{"ac"} (Albert-Chib) and was \emph{measured} on a Gaussian fit
+(coefficient of variation 1.6e-15) which the tier gate alone did not
+catch. See \code{docs/design/va-latent-uncertainty.md}.
 }
 
 \examples{

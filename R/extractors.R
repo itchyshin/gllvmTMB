@@ -431,7 +431,11 @@ extract_communality <- function(
 #'   Gaussian bridge fits with `latent(..., lv = ~ x)` also expose retained
 #'   `"mean"` and `"innovation"` score components. Within-unit,
 #'   structured-tier, and rotated ordinations remain gated for Julia bridge
-#'   extractors.
+#'   extractors. A `gllvmTMB_va` (`integration = "va"`) fit exposes
+#'   `level = "unit"` loadings and scores only, with generic `trait`/`unit`
+#'   row and column names synthesised (a variational fit carries no stored
+#'   data or column names); `level = "unit_obs"` returns `NULL` because the
+#'   variational route fits no within-unit tier.
 #' @param level `"unit"` (between-unit) or `"unit_obs"` (within-unit).
 #'   Deprecated aliases `"B"` and `"W"` are still accepted with a warning.
 #' @param component Score component to return. `"total"` returns the latent
@@ -470,6 +474,13 @@ extract_ordination <- function(
   level <- .normalise_level(level, arg_name = "level")
   if (inherits(fit, "gllvmTMB_julia")) {
     return(.gllvm_julia_extract_ordination(
+      fit = fit,
+      level = .canonical_level_name(level),
+      component = component
+    ))
+  }
+  if (inherits(fit, "gllvmTMB_va")) {
+    return(.va_extract_ordination(
       fit = fit,
       level = .canonical_level_name(level),
       component = component

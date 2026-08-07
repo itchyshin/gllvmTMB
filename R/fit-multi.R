@@ -2294,7 +2294,13 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       offset_expr    = parsed$offset_expr,
       REML           = REML,
       lambda_constraint = lambda_constraint,
-      Xcoef_fixed    = Xcoef_fixed
+      Xcoef_fixed    = Xcoef_fixed,
+      ## VA knobs from gllvmTMBcontrol(). The `%||%` fallbacks MUST equal that
+      ## function's defaults, so a hand-built control list (or an older one from
+      ## a saved object) behaves exactly as before rather than silently changing
+      ## the quadrature order or the tier.
+      va_H           = control$va_H %||% 7L,
+      va_eval_method = control$va_eval_method %||% "auto"
     ))
   }
 

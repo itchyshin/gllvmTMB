@@ -3,6 +3,11 @@
 This coordination note prevents a new session from treating this repository as
 a single writable lane.  It is a map, not a release/capability claim.
 
+**Refresh 2026-08-07 (Cursor): VA Arc-1 merge/fence (C) is the active ship lane.**
+G0 approved: new worktree from `origin/main`, path-scoped Arc-1 transplant, code PR,
+**stop before merge**. Fat evidence tip `codex/va-gh-all-families` stays donor archive.
+**START HERE:** `2026-08-07-cursor-handover-va-arc1-merge-fence.md`.
+
 **Refresh 2026-08-02 #2 (Claude, end of session): Design 108 GATE A IS CLOSED.**
 Stages **4** (#896, probit + tail-safe log-Phi, AD-SAFE), **6** (#907, multi-tier — closes Gate A)
 and **R3** (#907, the opt-in `profile=` route) are on `main`; **Stage 7** (structured phylo KL) is
@@ -21,6 +26,8 @@ missing-data ledger remains open and separately owned unless reassigned.
 
 | Lane | Owner | State | Start here | Boundary |
 | --- | --- | --- | --- | --- |
+| **VA Arc-1 merge/fence (C)** | Cursor | **G0 APPROVED.** Worktree `/private/tmp/gllvmtmb-va-arc1-merge-fence` · `cursor/va-arc1-merge-fence-20260807` from `origin/main`. Path transplant of Arc-1 surface; PoisG out; open code PR; **no merge without merge G0** | `2026-08-07-cursor-handover-va-arc1-merge-fence.md`; inventory `docs/dev-log/plan-actual/2026-08-07-va-arc1-merge-fence-inventory.md` | Keep `calibrated=FALSE` + Laplace default; no fat-tip PR; no soft-PASS Arc-2; docs-evidence PR deferred |
+| **VA GH all-families evidence tip** | Codex → archive | Donor-only @ `codex/va-gh-all-families` `/private/tmp/gllvmtmb-va-gh-all-families` (B truncnb2/delta_ln done). Not the merge vehicle | tip audits under `docs/dev-log/audits/2026-08-07-va-*` | Do not open PR from this tip; dirty probes/results stay local |
 | **Design 108 Gate A (VA parity)** | Cursor → Claude | **Stage 1 + Stage 2 MERGED** (#891, #893). Stage 3/4 **not started** — waiting Shinichi pick | `2026-08-02-claude-handover.md`; design `docs/design/108-va-parity-programme.md` | VA stays hard-fenced; no public mixed-family claim; no VA `mi()`; do not auto-start Stage 4; fresh WT per stage |
 | 0.6 release / M5 | Claude | separate committed/pushed release worktree | `2026-07-23-codex-handover.md` | reword/RC ceremony only; no CRAN submission or final tag without Shinichi |
 | Profile / Tier-2a | Claude | dirty primary checkout on `claude/profile-coverage-remeasure-20260718` | `2026-07-25-claude-handover.md` | do not overwrite its uncommitted files from another checkout |

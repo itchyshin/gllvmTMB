@@ -4,6 +4,43 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-08-07 -- VA Arc-1 merge/fence (C) path transplant
+
+Branch: `cursor/va-arc1-merge-fence-20260807` from `origin/main` @ `5bf18ab3`;
+worktree `/private/tmp/gllvmtmb-va-arc1-merge-fence`.
+
+Path-scoped transplant from donor `codex/va-gh-all-families`:
+closeout `537e6da4` + pre-PoisG `4435cd1e` (`R/va-r3-proto.R`,
+`test-va-r3-prototype.R`, `inst/tmb/gllvmTMB_va_r3.cpp`) + NEWS honesty
+`98839853`. PoisG `b53be434` and `lanes/*/results` left out.
+
+Rose claim-fence (local `rg`):
+- `calibrated = FALSE` retained; Laplace remains package default
+- NEWS states Arc-2 mixed results (1/36 overall point PASS; 24 FAIL / 11
+  INCONCLUSIVE) without soft-PASS or VA-default flip
+- stale JJ-default / `va_H = 61L` default / NOT USER-REACHABLE scans clean
+- multinomial remains fence-rejected; no PoisG closed-form in this PR
+- no register-code IDs on NEWS / `gllvmTMBcontrol` / `gllvmTMB_va-methods` man
+
+Checks:
+
+```sh
+export NOT_CRAN=true
+Rscript --vanilla -e 'devtools::load_all(compile = TRUE);   files <- c(
+    "tests/testthat/test-integration-fence.R",
+    "tests/testthat/test-va-routing-oracle.R",
+    "tests/testthat/test-va-control-exposure.R",
+    "tests/testthat/test-va-all-family-oracles.R",
+    "tests/testthat/test-va-all-family-compiled.R",
+    "tests/testthat/test-va-all-family-light-fits.R");   for (f in files) testthat::test_file(f, reporter = "summary")'
+# PASS: all six focused files fail=0; light-fits 18/18 healthy (~26 s wall
+# including first-use VA R3 DLL build). Log: /tmp/va-arc1-focused-tests2.log
+
+# Deliberately not run: full devtools::test(); --as-cran; Totoro; merge.
+```
+
+Inventory: `docs/dev-log/plan-actual/2026-08-07-va-arc1-merge-fence-inventory.md`.
+
 ## 2026-08-03 -- standardized-loading inference repair (#921)
 
 Branch: `codex/fix-loading-scale-inference` from `origin/main` at `dbd0b2d5`;

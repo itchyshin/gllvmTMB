@@ -22,7 +22,7 @@
 
 ## Frozen SHA
 
-**Frozen SHA:** `f5451739971284897d7b74cdef32845d52ebe6f5`
+**Frozen SHA:** `d598b81445d9f3a95a7b52305ad90065aace82bd`
 
 ```sh
 git -C /private/tmp/gllvmtmb-cran-path-a-0.6.1 fetch origin

@@ -88,6 +88,22 @@ Enough **before harder distributions**. Scientific / dual-report only — does *
 2. **VA ≲ gllvm (or better):** same abs metrics vs **gllvm** on the matched 2×2 (our VA ≠ gllvm VA).
 3. Dual-report reliability stays: Wilson/healthy vs abs-on-completed (secondary; not soft-PASS).
 
+## Non-exact GH family order — **LOCKED** (Shinichi 2026-08-07)
+
+Canonical sequence for the VA validation series after exact S0. **Do not
+reorder without explicit G0.** Full ladder + gates:
+`docs/dev-log/2026-08-07-va-validation-series-arc0-ultraplan.md` §C
+(non-exact GH H=7 family ladder).
+
+1. **binomial** (now — SDM / evidence-synthesis flagship with gaussian)
+2. **nbinom2**
+3. **betabinomial → beta**
+4. **later:** tweedie / student / truncated / ordinal / delta
+5. **multinomial OUT** (VA not implemented)
+
+**Do not** start nbinom Totoro while binomial VA≲gllvm FAIL dig is in flight.
+No parallel-blast; no fence change.
+
 ### HMSC — not a 5th arm yet
 
 **`Hmsc` / Ovaskainen** = Bayesian JSDM (posterior mean ≠ MLE). Jason scout §5b + Design 87: **no HMSC validation programme** for S0/S1; later **paper / `phylo_latent + spatial_unique` capstone** only (`docs/design/05-testing-strategy.md` Phase 5.5). Do not add HMSC as a mandatory panel arm before harder dists.

@@ -25,6 +25,17 @@ Do binomials clear absolute-vs-truth under the secondary scientific protocol,
 with VA ≲ LA and VA ≲ gllvm (or better) on the locked success bar — at the
 same narrative weight as Gaussian S0a?
 
+## Locked non-exact series order (Shinichi 2026-08-07)
+
+Canonical after exact S0 — **no reorder without G0** (ultraplan §C +
+`lanes/va-s0b-exact/protocol/gllvm-comparator.md`):
+
+1. **binomial** ← this lane (now)
+2. **nbinom2** (no Totoro until Shinichi go)
+3. **betabinomial → beta**
+4. later: tweedie / student / truncated / ordinal / delta
+5. multinomial OUT (VA not implemented)
+
 ## Invariants
 
 - One lane: `lanes/va-s1-binomials` in `/private/tmp/gllvmtmb-va-gh-all-families`
@@ -36,7 +47,7 @@ same narrative weight as Gaussian S0a?
 - Do **not** change public VA fence or `calibrated=FALSE`
 - No R/TMB/fence/threshold mutations without new G0
 - D-50: Totoro for campaigns; raw evidence local-only; no GHA artifacts
-- No pooling; no multinomial; no S2 / later GH ladder without G0 after S1 close
+- No pooling; no multinomial; no nbinom / later GH ladder without G0 after S1 close
 
 ## Authoritative WHAT
 

@@ -244,27 +244,61 @@ https://github.com/Ayumi-495/urbanisation_map/issues/13.
 
 Lane: `lanes/va-s1-binomials/` — logit / probit / cloglog; abs-first + dual-report +
 always 2×2; local ≤10 cores then Totoro.  
-Local: public-route VA smoke `healthy`; 2×2 plumbing smoke
-`scripts/probe-binomial-2x2-smoke.R` (all four arms finish; abs Σ scoring for
-binomial is Totoro-ledger work — do not soft-PASS from 2-seed smoke).  
-**Do not** blast nbinom/beta/tweedie/… before binomial has a real Totoro/local 2×2 vs truth (+ gllvm).  
-**gllvm inventory:** Arc-2/Codex Totoro had **no** gllvm (`dev/va-gh-h7-campaign/README.md` — deliberately absent). Cursor session filled poisson/gamma only. Binomial gllvm 2×2 = **new** (`scripts/probe-binomial-gllvm-2x2.R`). Audit: `docs/dev-log/audits/2026-08-07-va-gllvm-inventory-arc2.md`.  
-**H-gate:** reuse Totoro H-ladder (binomial H∈{5,7,9,15,61}; H7≈H61 PASS) — **do not** re-run H-ladder; gaps H=6,8 only, not worth a campaign.  
-**STOP:** say **go for Totoro S1** before full 3600-row plan. No fence / default-H change.
+Local: public-route VA smoke `healthy`; **scientific** binomial logit 2×2 at q=2
+(24 seeds, private R3 GH, campaign-aligned β/Σ) — audit
+`docs/dev-log/audits/2026-08-07-va-s1-binomial-gllvm-2x2.md`.  
+**q=2 headline (aligned):** gllvmTMB VA β RMSE **0.233** vs gllvm VA **0.137**
+(Δ≈+0.10 **real**, not plumbing); Σ worse still (~4.9 vs ~1.0); all four arms
+fail abs Σ; **VA ≲ gllvm FAIL** on this cell. q=5 needs private engine / Totoro
+(public fence unchanged).  
+**gllvm inventory:** Arc-2/Codex Totoro had **no** gllvm (by design). Binomial
+gllvm = **new** this session. H-ladder reuse OK (H7≈H61 PASS) — do **not** re-run H.  
+**Totoro gllvm 2×2 (q∈{2,5}):** `scripts/launch-totoro-s1-gllvm-2x2.sh` —
+**DONE** 2026-08-07 (summary MD5 `4cf32255…`). Same β gap at q=5 (gtmb_va 0.264
+vs gllvm_va 0.128). Full 3600-row S1 campaign (`launch-totoro-s1.sh`) still needs
+explicit **go**. No fence / default-H change.
 
-##### Short ladder after binomial (secondary — G0 pick; do not launch all)
+##### Non-exact GH H=7 family ladder — **LOCKED canonical order** (Shinichi 2026-08-07)
 
-| Order | Family | Why next |
-| ---: | --- | --- |
-| **S1** | **binomial** (logit → probit → cloglog) | **Flagship** with gaussian (SDM / evidence-synthesis); Ayumi #13; Arc-2 INCONCLUSIVE; JJ logit explicit |
-| **S1b** | **nbinom2** | Workhorse overdispersed count; Arc-2 FAIL×2; closest non-exact after binomial for ecology |
-| **S1c** | **beta** *or* **betabinomial** | Continuous [0,1] vs trials-binomial; pick one per G0 (default lean **beta** then betabinomial) |
-| **S1d** | **student** | Heavy-tail GH stress; Arc-2 FAIL |
-| **S1e** | **tweedie** | Power-parameter hardness; q=2 FAIL / q=5 INCONCLUSIVE in Arc-2 |
-| later | truncated_*, ordinal_probit, delta_* | Harder DGP / hybrid; after core ladder |
-| never here | multinomial | VA not implemented |
+**Authority:** Shinichi confirmed. This is the **canonical** non-exact VA
+validation sequence for gllvmTMB. **Do not reorder without explicit G0.**
+Do **not** parallel-blast families. Mirror: `lanes/va-s0b-exact/protocol/gllvm-comparator.md`
+§Non-exact family order; S1 entry also in `lanes/va-s1-binomials/LOOP/GOAL.md`.
 
-Poisson q=2 shared-Σ dig remains **S2** (shared hardness), not a non-exact family rung.
+Same protocol every rung: **2×2** gllvmTMB×gllvm × VA×LA vs planted truth;
+H=7 default (reuse Arc-2 H-ladder evidence where the family already has H∈{5,7,9,15,61};
+new H only if missing); local smoke ≤10 cores → Totoro. Private R3 VA for q=5;
+**no public fence change.**
+
+| # | Order | Family | Why (one line) | Gate |
+| ---: | ---: | --- | --- | --- |
+| **1** | **S1** | **binomial** logit → probit → cloglog | SDM / evidence-synthesis **flagship** with gaussian; Ayumi #13 | **NOW** (q=2 scientific done; Totoro q∈{2,5} 2×2 DONE; VA≲gllvm FAIL dig may be in flight) |
+| **2** | **S1b** | **nbinom2** | Workhorse overdispersed counts in ecology / SDM; Arc-2 FAIL×2 | **STOP — no Totoro** until Shinichi go after binomial harden |
+| **3a** | **S1c** | **betabinomial** | Overdispersed binary / trials; natural next after binomial | G0 after S1b |
+| **3b** | **S1d** | **beta** | Continuous proportions on (0,1); after trials-binomial (`betabinomial → beta`) | G0 after S1c |
+| **4** | later | **tweedie** / **student** / **truncated_*** / **ordinal_probit** / **delta_*** | Secondary GH-hard / hybrid cluster — only after 1–3 | G0 after core ladder |
+| **5** | **OUT** | **multinomial** | VA **not implemented** | design-only / M; never on this ladder |
+
+**Locked sequence (one line):**  
+`binomial → nbinom2 → betabinomial → beta → (later: tweedie / student / truncated / ordinal / delta)` · `multinomial OUT`
+
+##### Process choice (G0 2026-08-07) — **C Hybrid**
+
+**Decision: C — Hybrid.** One short ladder spec lives in this ultraplan (order,
+protocol, kill rules, compute); **execution stays continuous** on
+`codex/va-gh-all-families` (thin `lanes/va-s1-*` stubs + probe → audit → Totoro).
+Do **not** ultra-initialize a new “non-exact family sweep” arc before each family.
+
+Why C (not A alone, not B):
+1. **Ultra pace** — bounded slices; a full LOOP/GOAL ceremony per family (B) is
+   over-arc for probe work that already has a series frame.
+2. **Durable order without ceremony** — A’s “just keep typing” drifts; the
+   **LOCKED** table above is the short arc doc (goals / order / STOP gates).
+3. **Proper arc only when the product changes** — fence, default-H, API, or
+   `calibrated=TRUE` promotion still get a real ultra-plan + G0; family probes do not.
+
+Kill rules (unchanged): no parallel-blast; **no nbinom Totoro** until go after
+binomial harden / FAIL dig; no fence edit; multinomial OUT; **no reorder without G0**.
 
 #### D — Explicit freeze (unchanged)
 
@@ -355,11 +389,15 @@ Stop: G0b before S0b.
 
 ~~G0 / G0b / G0c answered. Exact S0 left OK.~~
 
-🔴 **Needs you (flagship S1):**
+~~Process C Hybrid + non-exact family order confirmed (Shinichi 2026-08-07).~~
+Order **LOCKED:** binomial → nbinom2 → betabinomial → beta → (later tweedie /
+student / truncated / ordinal / delta) · multinomial OUT. No reorder without G0.
 
-1. **Say go for Totoro S1 binomials** (logit/probit/cloglog; smoke → full on
-   `lanes/va-s1-binomials/scripts/launch-totoro-s1.sh`)? — **primary ask.**
-2. After binomial closes, confirm later ladder
-   (nbinom2 → beta → …) or reorder — secondary; do not start until S1 ledger exists.
+🔴 **Needs you (next rung only):**
 
-Until then: **no** full GH-family blast, **no** fence change.
+1. **After binomial VA≲gllvm FAIL dig** — say go for **nbinom2 local→Totoro**
+   (S1b). Do **not** launch nbinom Totoro until this go (do not conflict with
+   in-flight binomial dig).
+2. Full 3600-row S1 campaign (`launch-totoro-s1.sh`) still optional / separate go.
+
+Until then: **no** nbinom Totoro, **no** full GH-family blast, **no** fence change.

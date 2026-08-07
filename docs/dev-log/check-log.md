@@ -4,18 +4,31 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-08-07 -- non-exact GH family order LOCKED
+
+Branch: `codex/va-gh-all-families`. Shinichi confirmed canonical sequence:
+**binomial → nbinom2 → betabinomial → beta → (later: tweedie / student /
+truncated / ordinal / delta)** · **multinomial OUT**. Locked in ultraplan §C,
+`lanes/va-s0b-exact/protocol/gllvm-comparator.md`, S1 `GOAL.md`. No reorder
+without G0. **No nbinom Totoro** (binomial FAIL dig may still be in flight).
+Docs-only; no compute / fence.
+
+## 2026-08-07 -- binomial scientific 2×2 + process C Hybrid G0
+
+Branch: `codex/va-gh-all-families`. Hardened
+`probe-binomial-gllvm-2x2.R` (private R3 VA, coef/Σ_B scorers). Local q=2
+scientific + Totoro q∈{2,5} via `launch-totoro-s1-gllvm-2x2.sh` — DONE
+(summary MD5 `4cf322551cbc0139cb0770a349c59c3a`). VA ≲ gllvm **FAIL** both q
+(β Δ≈+0.10 / +0.14). Ultraplan: non-exact ladder + **process C Hybrid**.
+**STOP:** no nbinom Totoro until Shinichi go. No fence change.
+
 ## 2026-08-07 -- gllvm inventory: Arc-2 N; start binomial 2×2
 
 Branch: `codex/va-gh-all-families`. Confirmed Arc-2 H-ladder + confirmation
 exports are **gllvmTMB-only** (`estimators=va,laplace`; campaign README:
 gllvm deliberately absent). Cursor session already has poisson/gamma 4-arm +
-gamma LA H2H. **Binomial gllvm missing** → started local probe:
-
-```sh
-PILOT_CORES=8 PROBE_N_SEED=24 PROBE_QS=2,5 PROBE_LINK=logit PROBE_VA_H=7 \
-  PROBE_OUT=/private/tmp/va-s1-binomial-gllvm-2x2-20260807 \
-  Rscript --vanilla lanes/va-s1-binomials/scripts/probe-binomial-gllvm-2x2.R
-```
+gamma LA H2H. **Binomial gllvm missing** → started local probe (later
+superseded by scientific aligned run — see entry above).
 
 Audit inventory: `docs/dev-log/audits/2026-08-07-va-gllvm-inventory-arc2.md`.
 No H-ladder re-run. No fence change.

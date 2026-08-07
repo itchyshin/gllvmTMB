@@ -1,10 +1,90 @@
 # gllvmTMB 0.6.0
 
 This release focuses on multivariate stacked-trait models fitted through the
-R/TMB engine. Models are fitted by **Laplace approximation**. The optional Julia
+R/TMB engine. Models are fitted by **Laplace approximation by default**; an
+opt-in scalar variational research route is also available. The optional Julia
 bridge remains experimental and is not required for the main workflow.
 
+## Changed
+
+* **A fit without standard errors no longer returns a silent all-`NA` answer.**
+  When a model is fitted with `gllvmTMBcontrol(se = FALSE)`, there is no
+  `sd_report`, so a Wald interval has nothing to be built from. `confint()`
+  used to return a matrix of `NA` bounds with no error and no warning — a
+  non-answer that looks like an answer, and that flows onward into tables and
+  plots with nothing marking it.
+
+  `confint(method = "wald")` now **raises a typed error**
+  (`gllvmTMB_confint_no_sdreport`) naming both remedies:
+  `fit <- standard_errors(fit)`, or `method = "profile"`, which does not need
+  standard errors. This covers both Wald routes — the fixed-effects path and
+  the variance-component target path (`parm = "sigma_eps"` and friends). The
+  extractor-style consumers `getREsd()`, `getLV(se = TRUE)` and
+  `predict(se.fit = TRUE)` already behaved this way.
+
+  **The other way to have no usable standard errors is also covered.** A fit
+  whose Hessian is not positive-definite *has* an `sd_report`, but its standard
+  errors come back non-finite — and those used to print as a wall of bare `NaN`.
+  `summary()` now says so, and `confint()` aborts
+  (`gllvmTMB_confint_nonfinite_se`). The advice deliberately differs: this is a
+  property of the fit, so `standard_errors()` cannot help and the message points
+  at `gllvmTMB_diagnose()` and `method = "profile"` instead.
+
+  **A single `NA` is left alone.** A coefficient fixed via `Xcoef_fixed` has no
+  standard error, and `NA` is the right answer there — only an *entirely*
+  non-finite set is treated as the pathology.
+
+  **`summary()` deliberately still works.** Fitting fast and reading point
+  estimates is a legitimate workflow, so `summary()` prints as before — but it
+  now says *why* the `Std.Err` column is empty instead of leaving a column of
+  bare `NA`s to be read as a computed result. `extract_cutpoints()` reports the
+  same way for its `tau_se` column.
+
+  This is a deliberate behaviour change, made rather than staged: the package
+  is pre-1.0 and experimental, so no released code depends on the old return,
+  and anything that did would have been depending on a wrong answer.
+
 ## New
+
+* **`gllvmTMBcontrol(integration = "va")` now admits all 18 scalar family/link cells and defaults to seven-node Gauss-Hermite evaluation.** Each cell passed an independent arithmetic, compiled, and light-fit gate before H = 7 and automatic GH routing were promoted; analytic cells retain exact fast paths, explicit JJ remains available only for binomial-logit comparisons, and multinomial or other non-scalar architectures remain excluded. The preregistered 36,000-fit confirmation is complete: only the Poisson-log q = 5 cell passed the overall point route, while 24 of 36 family-by-rank cells failed and 11 were inconclusive. Fixed-effect VA-Wald calibration was 20 calibrated / 16 uncalibrated; latent posterior-SD calibration was 15 calibrated / 20 uncalibrated / 1 inconclusive. These mixed results do not alter the public fence automatically: `vcov()` and `confint()` remain labelled `calibrated = FALSE`, `getLV(se = TRUE)` remains a variational posterior SD rather than a frequentist standard error, and Laplace remains the package default. Both campaign stages ran on Totoro, so this is not cross-platform confirmation.
+
+* **`vcov()` and `coef()` now work on multi-trait fits.** `coef(fit)` returns
+  the named fixed-effect estimates and `vcov(fit)` their covariance, taken from
+  the fit's `sdreport()`. Both were previously registered only for the
+  variational `gllvmTMB_va` class — where `coef()` deliberately refuses and
+  `vcov()` is now restricted to uncalibrated fixed-effect VA-Wald inference —
+  so calling either on an ordinary fit raised "no applicable method", *despite
+  the documentation saying otherwise*.
+
+  `coef()` works on any fit, including one made with `se = FALSE`: point
+  estimates do not depend on `sdreport()`. `vcov()` does, and raises the same
+  typed conditions `confint()` does when it is missing or non-finite, so a
+  caller that handles one handles the other. Rows and columns for coefficients
+  held fixed via `Xcoef_fixed` are `NA` — a parameter that was not estimated has
+  no sampling covariance.
+
+* **`standard_errors()` computes standard errors after fitting.** Fitting with
+  `gllvmTMBcontrol(se = FALSE)` skips the TMB `sdreport()` and is meaningfully
+  faster, but it used to be a one-way door: the only route to standard errors
+  afterwards was to fit the model again. `fit <- standard_errors(fit)` now
+  computes them on demand from the fitted object.
+
+  The result is the fit-time calculation deferred, not a different one — the
+  same single `sdreport()` call on the same converged parameter vector,
+  verified bit-exact (`tolerance = 0`) against a fit made with `se = TRUE`.
+  Every existing consumer — `summary()`, `getLV()`, `getREsd()`,
+  `confint(method = "wald")` — then works on the returned object.
+
+  Note the R semantics: the fit is **returned**, not modified in place. Assign
+  the result, or the standard errors are discarded.
+
+  **Same-session only.** A TMB ADFun holds external pointers that do not
+  survive `saveRDS()` or a new R session, so this cannot revive a saved fit.
+  That limitation is shared by every part of the package that reuses the fitted
+  TMB object; what is new is that this function says so with a clear, typed
+  error instead of failing obscurely. This adds no new inference and changes no
+  likelihood, parameterisation, or honesty caveat — Wald standard errors carry
+  exactly the caveats they carried before.
 
 * **Spatial mesh, CRS, and range-plot helpers are now independently authored
   gllvmTMB code.** `make_mesh()` returns a `gllvmTMBmesh` built through

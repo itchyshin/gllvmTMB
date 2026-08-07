@@ -1,5 +1,5 @@
 ## Design 108 Gate A Stage 4 — AD-safety of the tail-safe `log Phi` primitive
-## and the binomial-probit branch (VA family code 4) UNDER QUADRATURE.
+## and the binomial-probit branch (family_id 1, link_id 1) UNDER QUADRATURE.
 ##
 ## This file is the deliverable of the stage; the template change is only what
 ## makes it runnable. Design 105 s1.3 is the hazard being tested: every probit
@@ -38,7 +38,17 @@
               X = matrix(1, 1L, 1L), unit_id = 0L, trait_id = 0L,
               is_y_observed = as.integer(observed), N = 1L, T = 1L, q = 1L,
               gh_nodes = rule$nodes, gh_weights = rule$weights,
-              family = 4L, eval_method = 0L,
+              family = 1L, link_id = 1L,
+              n_ordinal_cuts_per_trait = 0L,
+              ordinal_offset_per_trait = 0L,
+              eval_method = 0L,
+              ## ac2_threshold (Design 108 Gate A Stage 5, the ac2 runaway
+              ## fix) is read UNCONDITIONALLY by the template regardless of
+              ## eval_method -- this fixture builds `dat` directly rather
+              ## than through .va_r3_make_objective(), so it must supply the
+              ## field itself. eval_method = 0L (gh) never reads it; the
+              ## value is inert here, matching R/va-r3-proto.R's own default.
+              ac2_threshold = 1.0,
               ## Design 108 Stage 6 made the tier structure DATA. This fixture
               ## builds on the template directly, so it declares the single
               ## dense ordinary latent tier explicitly: one tier, dimension
@@ -58,12 +68,21 @@
                                                  x = numeric(0),
                                                  dims = c(1L, 1L)),
               diag_Ainv_struct = 0, log_det_A_struct = 0)
-  par <- list(beta = mu, theta_rr = 1, log_sd_tier = numeric(0),
-              m = 0, log_L_diag = 0.5 * log(v),
-              L_off = numeric(0), log_phi = 0, log_sigma = 0)
+  par <- list(
+    beta = mu, theta_rr = 1, log_sd_tier = numeric(0),
+    m = 0, log_L_diag = 0.5 * log(v), L_off = numeric(0),
+    log_sigma = 0, log_sigma_lognormal = 0, log_phi_gamma = 0,
+    log_phi_nbinom2 = 0, log_phi_tweedie = 0, logit_p_tweedie = 0,
+    log_phi_beta = 0, log_phi_betabinom = 0,
+    log_sigma_student = 0, log_df_student = log(4),
+    log_phi_truncnb2 = 0, log_sigma_lognormal_delta = 0,
+    log_phi_gamma_delta = 0, ordinal_log_increments = numeric(0),
+    log_phi_nbinom1 = 0
+  )
+  inactive <- setdiff(names(par), c("beta", "log_L_diag"))
+  map <- lapply(par[inactive], function(x) factor(rep(NA_integer_, length(x))))
   TMB::MakeADFun(dat, par,
-                 map = list(theta_rr = factor(NA), m = factor(NA),
-                            log_phi = factor(NA), log_sigma = factor(NA)),
+                 map = map,
                  DLL = dll$DLL, silent = TRUE)
 }
 
@@ -328,17 +347,15 @@ test_that("branches meet across the v = 1e-6 switch at the tested mu (see scope 
 })
 
 
-test_that("HARD GUARD: Laplace (family_id 1, link_id 1) maps to code 4, never 1", {
+test_that("HARD GUARD: the shared family id retains the distinct binomial link id", {
   ## The trap this closes: Laplace gives binomial-logit and binomial-probit the
   ## SAME family_id (1) and separates them by link_id only. A link-blind map
-  ## sends probit data to VA code 1, whose template branch is the LOGISTIC
-  ## softplus -- a logit model fitted to probit data, reported healthy.
-  expect_identical(.va_r3_laplace_id_to_code(1L, 1L), 4L)
+  ## Design 110 removes the divergent enum: both cells remain family 1 and the
+  ## template dispatches on link_id. The pair, not family alone, is the guard.
+  expect_identical(.va_r3_laplace_id_to_code(1L, 1L), 1L)
   expect_identical(.va_r3_laplace_id_to_code(1L, 0L), 1L)
-  expect_identical(.va_r3_laplace_id_to_code(c(1L, 1L), c(0L, 1L)), c(1L, 4L))
-  ## cloglog (link_id 2) has no VA branch at all and must be refused, not
-  ## silently folded into either binomial code.
-  expect_error(.va_r3_laplace_id_to_code(1L, 2L), "does not admit")
+  expect_identical(.va_r3_laplace_id_to_code(c(1L, 1L), c(0L, 1L)), c(1L, 1L))
+  expect_identical(.va_r3_laplace_id_to_code(1L, 2L), 1L)
   ## A non-canonical link on a family that has only one must not map either.
   expect_error(.va_r3_laplace_id_to_code(2L, 1L), "does not admit")
   ## `lid` is required: a default would let the trap back in by omission.
@@ -346,14 +363,15 @@ test_that("HARD GUARD: Laplace (family_id 1, link_id 1) maps to code 4, never 1"
 })
 
 
-test_that("the adapter carries family code 4 with its own link and trial counts", {
+test_that("the adapter carries family_id 1 with probit link_id and trial counts", {
   v <- .va_r3_validate_data(
     y = c(1L, 0L, 1L, 0L), n_trials = c(3L, 4L, 5L, 6L),
     X = matrix(1, nrow = 4L, ncol = 1L),
     unit_id = rep(1:2, each = 2L), trait_id = rep(1:2, 2L), q = 1L,
     family = "binomial_probit", link = "probit"
   )
-  expect_identical(v$family, rep(4L, 4L))
+  expect_identical(v$family, rep(1L, 4L))
+  expect_identical(v$link_id, rep(1L, 4L))
   expect_identical(v$family_name, "binomial_probit")
   expect_identical(v$link, "probit")
   ## Regression: n_trials must NOT be reset to 1 on probit rows (it is only a
@@ -366,44 +384,36 @@ test_that("the adapter carries family code 4 with its own link and trial counts"
                          X = matrix(1, 4L, 1L), unit_id = rep(1:2, each = 2L),
                          trait_id = rep(1:2, 2L), q = 1L,
                          family = "binomial_probit", link = "logit"),
-    "must be \"probit\""
+    "requires link = \"probit\""
   )
   ## Mixed logit + probit derives a per-row link vector from the codes.
   vm <- .va_r3_validate_data(
     y = c(1L, 0L, 1L, 0L), n_trials = rep(1L, 4L),
     X = matrix(1, nrow = 4L, ncol = 1L),
     unit_id = rep(1:2, each = 2L), trait_id = rep(1:2, 2L), q = 1L,
-    family_codes = c(1L, 4L, 1L, 4L), link = "logit"
+    family_codes = rep(1L, 4L), link_ids = c(0L, 1L, 0L, 1L)
   )
   expect_identical(vm$link, c("logit", "probit", "logit", "probit"))
-  expect_identical(vm$family_name, "mixed")
+  expect_identical(vm$family_name, "mixed_binomial_links")
 })
 
 
 test_that("probit resolves to GH only; the Jaakkola-Jordan bound is refused", {
   ## JJ bounds the LOGISTIC term specifically. There is no probit analogue, so
   ## asking for it must error rather than silently fall back to quadrature.
-  expect_identical(.va_r3_resolve_eval_method("auto", 4L), "gh")
-  expect_identical(.va_r3_resolve_eval_method("gh", 4L), "gh")
-  expect_error(.va_r3_resolve_eval_method("jj", 4L), "not implemented")
-  expect_error(.va_r3_resolve_eval_method("jj", c(1L, 4L)), "pure-binomial")
-  expect_identical(.va_r3_family_entry(4L)$link, "probit")
+  expect_identical(.va_r3_resolve_eval_method("auto", 1L, 1L), "gh")
+  expect_identical(.va_r3_resolve_eval_method("gh", 1L, 1L), "gh")
+  expect_error(.va_r3_resolve_eval_method("jj", 1L, 1L), "not implemented")
+  expect_error(.va_r3_resolve_eval_method("jj", c(1L, 1L), c(0L, 1L)),
+               "pure-binomial")
+  expect_identical(.va_r3_family_entry(1L, 1L)$link, "probit")
 })
 
 
-test_that("integration = \"va\" still REFUSES binomial-probit at the fence", {
-  ## The template implements probit; the package does not claim it. There is no
-  ## recovery, coverage or bound-tightness evidence for probit under VA, and
-  ## Design 108 s2 is explicit that the Bernoulli-LOGIT evidence does not
-  ## transfer. The refusal must name the LINK, so a user who wrote
-  ## binomial(link = "probit") is told what to change.
-  expect_false("probit" %in% .gllvmTMB_integration_fence_limits()$links)
-  expect_error(
-    .gllvmTMB_check_integration_fence("va", family = "binomial",
-                                      link = "probit", q = 1L, p = 4L,
-                                      n = 150L),
-    "probit"
-  )
+test_that("integration = \"va\" admits binomial-probit through public GH H=7", {
+  expect_true(.gllvmTMB_check_integration_fence(
+    "va", family = "binomial", link = "probit", q = 1L, p = 4L, n = 150L
+  ))
   skip_on_cran()
   set.seed(20260802L)
   n <- 120L; p <- 4L
@@ -412,12 +422,15 @@ test_that("integration = \"va\" still REFUSES binomial-probit at the fence", {
     trait = factor(rep(seq_len(p), times = n)),
     site  = factor(rep(seq_len(n), each = p))
   )
-  expect_error(
-    gllvmTMB(y ~ 0 + trait + latent(0 + trait | site, d = 1, unique = FALSE),
-             data = df, family = stats::binomial(link = "probit"),
-             unit = "site", control = gllvmTMBcontrol(integration = "va")),
-    "probit"
+  fit <- gllvmTMB(
+    y ~ 0 + trait + latent(0 + trait | site, d = 1, unique = FALSE),
+    data = df, family = stats::binomial(link = "probit"),
+    unit = "site", control = gllvmTMBcontrol(integration = "va")
   )
+  expect_s3_class(fit, "gllvmTMB_va")
+  expect_identical(fit$status, "healthy")
+  expect_identical(fit$eval_method, "gh")
+  expect_identical(fit$engine_result$quadrature$order, 7L)
 })
 
 

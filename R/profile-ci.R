@@ -477,7 +477,21 @@ tmbprofile_wrapper <- function(
   )
 }
 
-## ---- Wald CI helper (used by method = "wald") -----------------------------
+## ---- Wald CI helper (UNREFERENCED as of 2026-08-04) -----------------------
+## Verified dead code: zero callers anywhere in R/, tests/, dev/, vignettes/,
+## inst/, or man/ (repo-wide grep; `git log -S'.wald_block('` across full
+## history returns only two commits, both markdown edits, never a call site;
+## `git grep` at the introducing commit 7bb8a446 already shows no caller).
+## This helper was never "used by method = \"wald\"" -- the live Wald CI
+## routes for confint.gllvmTMB_multi(method = "wald") are
+## .confint_wald_targets() and .confint_sigma_wald() (R/z-confint-gllvmTMB.R).
+## dev/aghq-scope/06-consumers.md:44 repeated the same false call-graph claim
+## with stale line numbers; corrected there too (2026-08-04). Left in place,
+## not deleted, per the repo's surface-don't-delete convention. Also carries
+## the EXT-36 silent-NA pattern (~line 504 below) deliberately left unfixed
+## because fixing dead code is wasted work -- see
+## docs/design/35-validation-debt-register.md EXT-36.
+##
 ## Uses sd_report; falls back to NA when the SE is missing or the parameter
 ## is not in the standard error report. Mirrors the layout of the profile
 ## tidy frame so confint() can return a uniform shape regardless of method.

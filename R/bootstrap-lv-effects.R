@@ -99,7 +99,24 @@ bootstrap_ci_lv_effects <- function(fit,
     call_args <- c(
       list(
         formula = formula, data = dat, trait = trait, site = site,
-        species = species, family = family, REML = reml, silent = TRUE
+        species = species, family = family, REML = reml, silent = TRUE,
+        ## Same discard as bootstrap_Sigma(): this replicate's own standard
+        ## errors are never read. All that is taken from the refit is the REPORT
+        ## quantity `B_lv_unit` (a few lines below), and the intervals are
+        ## percentile CIs across the draws array -- no `confint`, `vcov`, or
+        ## `sd_report` appears anywhere in this file. So a full TMB::sdreport()
+        ## was being computed and thrown away on every one of `n_boot`
+        ## replicates, at a measured 22-39% of Laplace wall-clock
+        ## (docs/design/laplace-cost-profile.md).
+        ##
+        ## The caller's own fit keeps its sdreport(); only the throwaway refits
+        ## skip it, so no reported SE or CI changes.
+        ##
+        ## This is NOT a blanket rule for refit loops. `coverage_study()` calls
+        ## `stats::confint(refit, ...)` on every replicate and therefore genuinely
+        ## NEEDS its per-replicate SEs; it was checked and deliberately left
+        ## alone. Each refit path must be checked on its own evidence.
+        control = gllvmTMBcontrol(se = FALSE)
       ),
       aux
     )

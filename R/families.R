@@ -420,6 +420,13 @@ student <- function(link = "identity", df = NULL) {
     linktemp <- link
   }
 
+  if (!is.null(df) &&
+      (!is.numeric(df) || length(df) != 1L || !is.finite(df) || df <= 1)) {
+    cli::cli_abort(
+      "student(): {.code df} must be one finite number greater than 1 (got {df})."
+    )
+  }
+
   # Inform user about df parameter
   if (is.null(df)) {
     cli::cli_inform("Student-t degrees of freedom parameter will be estimated. This used to be fixed at 3 by default. To fix it, supply a value to `df` (e.g., `df = 3`).")

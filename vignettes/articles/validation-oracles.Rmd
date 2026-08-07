@@ -58,8 +58,10 @@ All three apply throughout the map below.
 
 ### The estimator trap: variational approximation is not Laplace
 
-gllvmTMB fits every model by the TMB Laplace approximation; it has no other
-estimator. `gllvm` defaults to a **variational approximation** (`method =
+gllvmTMB fits by the TMB Laplace approximation by default. Its opt-in scalar
+VA route is a separately fenced research estimator and must be compared to the
+same target rather than treated as Laplace. `gllvm` defaults to a
+**variational approximation** (`method =
 "VA"`, falling back to `"EVA"` for families without a VA implementation) and
 only switches to Laplace (`method = "LA"`) on request, for the subset of
 families that support it. A VA fit optimises a lower bound on the

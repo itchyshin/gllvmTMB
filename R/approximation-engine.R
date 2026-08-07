@@ -72,13 +72,20 @@
     y, n_trials, X, unit_id, trait_id, q,
     N = NULL, T = NULL, family = "binomial", link = "logit",
     unique = FALSE, psi = FALSE, structured = FALSE, provider = NULL,
-    lv = FALSE, missing = FALSE, H = 61L,
+    lv = FALSE, missing = FALSE, H = 7L,
     rank_source = c("fixed_fixture", "ml_bic"), fixed_global = NULL,
     source = NULL, rebuild = FALSE,
     control = list(eval.max = 2000L, iter.max = 2000L), silent = TRUE,
     eval_method = c("auto", "jj", "gh"),
+    match_laplace_residual_sd = FALSE,
     is_y_observed = NULL,
     family_codes = NULL,
+    link_ids = NULL,
+    n_ordinal_cuts_per_trait = NULL,
+    ordinal_offset_per_trait = NULL,
+    ordinal_log_increments_start = NULL,
+    fixed_tweedie_power = NULL,
+    fixed_student_df = NULL,
     extra_tiers = NULL) {
   eval_method <- match.arg(eval_method)
   ## Design 108 Gate A Stage 6 lifted the `unique` refusal here IN LOCKSTEP
@@ -118,9 +125,14 @@
     }
   } else {
     family_codes <- as.integer(family_codes)
-    if (identical(eval_method, "jj") && !all(family_codes == 1L)) {
+    link_ids <- as.integer(link_ids %||% rep.int(0L, length(family_codes)))
+    if (length(link_ids) != length(family_codes)) {
+      stop("link_ids must have the same length as family_codes.", call. = FALSE)
+    }
+    if (identical(eval_method, "jj") &&
+        !(all(family_codes == 1L) && all(link_ids == 0L))) {
       stop(
-        "eval_method = \"jj\" (Jaakkola-Jordan/PG bound) is only defined for pure-binomial VA fits.",
+        "eval_method = \"jj\" (Jaakkola-Jordan/PG bound) is only defined for pure binomial-logit VA fits.",
         call. = FALSE
       )
     }
@@ -133,7 +145,11 @@
     family = family, link = link, unique = unique,
     psi = psi, structured = structured, provider = provider, lv = lv,
     missing = missing, is_y_observed = is_y_observed,
-    family_codes = family_codes, extra_tiers = extra_tiers
+    family_codes = family_codes, link_ids = link_ids,
+    n_ordinal_cuts_per_trait = n_ordinal_cuts_per_trait,
+    ordinal_offset_per_trait = ordinal_offset_per_trait,
+    ordinal_log_increments_start = ordinal_log_increments_start,
+    extra_tiers = extra_tiers
   )
   started <- proc.time()[["elapsed"]]
   raw <- .va_r3_fit(
@@ -144,7 +160,14 @@
     missing = missing, H = H, rank_source = rank_source,
     fixed_global = fixed_global, source = source, rebuild = rebuild,
     control = control, silent = silent, eval_method = eval_method,
+    match_laplace_residual_sd = match_laplace_residual_sd,
     is_y_observed = is_y_observed, family_codes = family_codes,
+    link_ids = link_ids,
+    n_ordinal_cuts_per_trait = n_ordinal_cuts_per_trait,
+    ordinal_offset_per_trait = ordinal_offset_per_trait,
+    ordinal_log_increments_start = ordinal_log_increments_start,
+    fixed_tweedie_power = fixed_tweedie_power,
+    fixed_student_df = fixed_student_df,
     extra_tiers = extra_tiers
   )
   elapsed <- proc.time()[["elapsed"]] - started

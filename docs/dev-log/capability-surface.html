@@ -202,15 +202,16 @@
   <div class="eyebrow">
     <span>gllvmTMB 0.6.0</span><span class="dot">·</span>
     <span>live capability ledger</span><span class="dot">·</span>
-    <span>VA Arc 1 branch preview</span>
+    <span>VA Arc 2 adjudicated branch</span>
   </div>
   <h1>Capability surface</h1>
   <p class="thesis">
     What the stacked-trait GLLVM engine fits, at what evidence depth, across every
     correlation source and covariance mode. Built from <em>NEWS</em>, the canonical 5 × 3 formula
     keyword grid, the exported family set, and the VA validation ledger — <em>reconciled against
-    the code</em>. This preview reads the clean <code>codex/va-gh-all-families</code> branch;
-    recovery and calibration claims remain gated on Arc 2.
+    the code</em>. This preview reads the clean <code>codex/va-gh-all-families</code> branch.
+    Arc 2 is complete and mixed: one of 36 family-by-rank point routes passed, 24 failed,
+    and 11 were inconclusive; implementation support is therefore not a broad accuracy claim.
   </p>
 
   <div class="chips">
@@ -219,6 +220,7 @@
     <div class="chip"><div class="n">30+</div><div class="l">response families</div></div>
     <div class="chip"><div class="n">18</div><div class="l">public guides</div></div>
     <div class="chip"><div class="n">H = 7</div><div class="l">public GH default</div></div>
+    <div class="chip"><div class="n">1 / 36</div><div class="l">Arc 2 point routes passed</div></div>
     <div class="chip"><div class="n">Julia</div><div class="l">bridge = experimental</div></div>
   </div>
 
@@ -303,8 +305,9 @@
       <b>Gaussian, Poisson, and NB2</b> are the paths with fitted-response diagnostic support
       (<code>predictive_check()</code>, residuals, <code>diagnostic_table()</code>). On the Arc 1
       branch, VA separately admits the 18 scalar family/link cells listed below. That means
-      arithmetic, compiled derivatives, routing, and light-fit health passed; it does not mean
-      family-wise recovery or interval calibration passed.
+      arithmetic, compiled derivatives, routing, and light-fit health passed. Arc 2 subsequently
+      completed all 36,000 confirmation fits, but only Poisson-log at q = 5 passed the complete
+      point-route gate; the other 35 cells failed or were inconclusive.
     </p>
     <div class="scroll">
       <table>
@@ -350,8 +353,8 @@
       diagnostics); the family pip marks overall Laplace/public evidence: <span class="fampip fp-w"></span>worked /
       diagnostic, <span class="fampip fp-a"></span>available (point-only). Crucially,
       <b>every family's covariance-interval evidence is point-only</b>. VA fixed-effect Wald bounds
-      and latent posterior SDs are available but explicitly uncalibrated; neither is a coverage
-      certificate.
+      and latent posterior SDs remain labelled <code>calibrated = FALSE</code>. Arc 2 found mixed
+      family-by-rank calibration rather than a general coverage certificate.
     </p>
     <div class="scroll">
       <table class="perfam">
@@ -446,7 +449,7 @@
           </tr>
           <tr>
             <th><span class="fampip fp-a"></span><span class="fam">multinomial</span><div class="dom">unordered categorical · logit</div></th>
-            <td class="gram">LA · VA fenced</td>
+            <td class="gram">LA supported · VA not implemented (coupled softmax)</td>
             <td class="gram">mu / category</td><td class="gram">limited</td><td class="gram">—</td>
             <td class="no">—</td><td class="no">—</td>
             <td><span class="tag t-gone">early</span></td><td class="no">—</td><td class="no">—</td>
@@ -464,9 +467,10 @@
     <div class="gapbox">
       <h4>Current evidence gaps</h4>
       <ul>
-        <li><b>Arc 1 is implementation/light evidence, not family validation.</b> All 18 scalar cells pass arithmetic, compiled, routing, and light-fit gates at H = 7. Family-wise recovery and H-stability verdicts remain withheld until Arc 2 finishes.</li>
-        <li><b>VA uncertainty exists but is uncalibrated.</b> Fixed-effect <code>vcov()</code>/<code>confint()</code> use profiled Schur information; <code>getLV(se = TRUE)</code> returns variational posterior SD. Neither establishes nominal coverage, and the latter is not a frequentist random-effect SE.</li>
-        <li><b>Arc 2 is active.</b> The Totoro preview is complete and the 36-array Fir campaign is running. No family is promoted or removed from the public fence until the frozen adjudicator sees the complete retained denominator.</li>
+        <li><b>Arc 1 remains implementation/light evidence.</b> All 18 scalar cells pass arithmetic, compiled, routing, and light-fit gates at H = 7; that reachability result is distinct from Arc-2 accuracy.</li>
+        <li><b>Arc 2 is complete and mixed.</b> The frozen 36,000-row confirmation produced 1 PASS, 24 FAIL, and 11 INCONCLUSIVE point-route verdicts. The sole PASS was Poisson-log at q = 5. No threshold was changed and no public cell was automatically promoted or removed.</li>
+        <li><b>VA uncertainty remains explicitly uncalibrated as a general interface.</b> Beta-Wald was CALIBRATED in 20/36 cells and UNCALIBRATED in 16/36; latent posterior SD was CALIBRATED in 15/36, UNCALIBRATED in 20/36, and INCONCLUSIVE in 1/36. <code>calibrated = FALSE</code> remains correct.</li>
+        <li><b>The confirmation is same-host evidence.</b> Both the 5,520-row H ladder and 36,000-row confirmation ran on Totoro; the final receipt records <code>cross_platform = FALSE</code>.</li>
         <li><b>The VA structural envelope remains narrow.</b> One ordinary unit-tier <code>latent(..., unique = FALSE)</code> block, q ≤ 2, p ≤ 80, n ≥ 100, native TMB, no random slope, no structured tier, no <code>mi()</code>, and no multinomial/non-scalar architecture.</li>
         <li><b>Random slopes (≥1) remain partial.</b> They have targeted Gaussian and structured tests but are not a finished per-family capability. Shown as <span class="tag t-avail">partial</span>, not ✓.</li>
         <li><b>Missing responses: core families now tested.</b> Gaussian + poisson/NB2/binomial masked-response is verified (sentinel-invariance, 2026-07-12); nbinom1 recovery + <code>mi()</code> predictor coverage pending.</li>
@@ -520,7 +524,7 @@
           <tr><th>ML</th><td><span class="tag t-taught">✓ done</span> <span class="muted">default</span></td><td><span class="tag t-taught">✓ done</span> <span class="muted">default; RE&nbsp;SD biased down at small <i>n</i></span></td></tr>
           <tr><th>REML</th><td><span class="tag t-exp">Gaussian-only pilot</span> <span class="muted">exact where it applies</span></td><td class="muted">n/a — REML is a Gaussian-only tool</td></tr>
           <tr><th>AGHQ</th><td class="muted">n/a — likelihood already exact</td><td><span class="tag t-exp">opt-in</span> <span class="muted">built; recovery claim remains separately withheld</span></td></tr>
-          <tr><th>VA <span class="muted">(variational)</span></th><td><span class="tag t-tested">Arc 1</span> <span class="muted">exact expectation; public branch route</span></td><td><span class="tag t-tested">Arc 1</span> <span class="muted">exact where registered, otherwise 1-D GH H = 7; explicit JJ retained for binomial-logit</span></td></tr>
+          <tr><th>VA <span class="muted">(variational)</span></th><td><span class="tag t-tested">implemented</span> <span class="muted">exact expectation; public branch route</span></td><td><span class="tag t-avail">Arc 2 mixed</span> <span class="muted">exact where registered, otherwise 1-D GH H = 7; 1/36 complete point routes passed</span></td></tr>
           <tr><th>EVA <span class="muted">(extended VA)</span></th><td class="muted">n/a — VA is already exact here</td><td><span class="tag t-gone">internal research</span> <span class="muted">2nd-order Taylor surrogate; binomial convergence poor (20/20 seeds fail the health gate)</span></td></tr>
         </tbody>
       </table>
@@ -528,29 +532,30 @@
     <p class="note">
       Laplace remains the package default. The VA branch route is opt-in through
       <code>gllvmTMBcontrol(integration = "va")</code>. Arc 1 certifies bounded reachability and
-      numerical health; Arc 2 is the independent recovery, H-stability, and uncertainty-calibration
-      campaign. Historical VA/JJ/EVA and gllvm comparisons remain useful diagnostics but do not
+      numerical health. Arc 2 completed the independent recovery, H-stability, and uncertainty-calibration
+      campaign and returned a mixed verdict. Historical VA/JJ/EVA and gllvm comparisons remain useful diagnostics but do not
       replace the current GH estimator's own Laplace/oracle campaign.
     </p>
     <div class="tablewrap">
       <table>
         <thead>
-          <tr><th>VA Arc 1 envelope</th><th>Implemented</th><th>Still gated</th></tr>
+          <tr><th>VA evidence envelope</th><th>Implemented</th><th>Arc-2 boundary</th></tr>
         </thead>
         <tbody>
-          <tr><th>Expectation evaluation</th><td>Gaussian, Poisson, lognormal, Gamma exact; delta-lognormal/delta-Gamma hybrid; remaining scalar cells GH H = 7</td><td>family-wise H ladder and recovery verdicts</td></tr>
+          <tr><th>Expectation evaluation</th><td>Gaussian, Poisson, lognormal, Gamma exact; delta-lognormal/delta-Gamma hybrid; remaining scalar cells GH H = 7</td><td>36 independent point verdicts: 1 PASS, 24 FAIL, 11 INCONCLUSIVE</td></tr>
           <tr><th>Scalar family/link cells</th><td>18/18 individually enumerated and light-gated</td><td>multinomial, non-scalar mixtures, and unlisted links stay fenced</td></tr>
           <tr><th>Alternative approximation</th><td>explicit JJ retained for pure binomial-logit</td><td>JJ is not the automatic default and does not validate GH</td></tr>
-          <tr><th>Fixed effects</th><td>profiled-Schur VA-Wald covariance and bounds</td><td>nominal coverage; <code>calibrated = FALSE</code></td></tr>
-          <tr><th>Latent scores</th><td>point scores plus variational posterior SD</td><td>frequentist RE uncertainty, global-parameter propagation, and calibration</td></tr>
+          <tr><th>Fixed effects</th><td>profiled-Schur VA-Wald covariance and bounds</td><td>20/36 calibrated, 16/36 uncalibrated; <code>calibrated = FALSE</code> retained</td></tr>
+          <tr><th>Latent scores</th><td>point scores plus variational posterior SD</td><td>15/36 calibrated, 20/36 uncalibrated, 1/36 inconclusive; not frequentist RE uncertainty</td></tr>
           <tr><th>Structure</th><td>one ordinary loadings-only latent tier; dense response masks supported</td><td>Ψ, structured tiers, random slopes, additional tiers, <code>mi()</code>, q ≥ 3</td></tr>
         </tbody>
       </table>
     </div>
     <p class="note">
       The 18-cell count is a family/link count, not a Cartesian claim across the 5 × 3 covariance
-      grid. The public integration fence is the authority: if Arc 2 rejects a cell, that cell can be
-      removed without weakening the multinomial/non-scalar or structural fences.
+      grid. The public integration fence remains the authority. Arc-2 FAIL and INCONCLUSIVE verdicts
+      are retained evidence for a separate maintainer decision; this closeout does not silently change
+      that fence or weaken the multinomial/non-scalar and structural exclusions.
     </p>
     <details class="note">
       <summary><b>Superseded VA research history (July 2026)</b></summary>
@@ -707,15 +712,16 @@
 
   <footer>
     <b>Operating surface — refresh from source before treating as current evidence.</b>
-    Reconciled 2026-08-06 against <code>NEWS.md</code> (0.6.0), <code>api-keyword-grid.Rmd</code>,
+    Reconciled 2026-08-07 against <code>NEWS.md</code> (0.6.0), <code>api-keyword-grid.Rmd</code>,
     the <code>NAMESPACE</code> exports, the VA validation register, and the fit-verified S0 semantics census.
     The <b>tested</b> tier marks cells with passing recovery/health tests but no worked article;
     phylo/animal/spatial and kernel_latent flipped amber→tested from that census (the grammar was
     live, the tests already existed — the label was stale). Tiers reflect the honesty contract:
     intervals are recovery/point evidence, not coverage certificates.
-    The VA 18-cell statement is branch-validated Arc 1 evidence, not release or calibration evidence.
-    Totoro preview completion and active Fir execution are process state only; final family verdicts
-    require the complete frozen Arc-2 adjudication.
+    The VA 18-cell statement is branch-validated Arc-1 implementation evidence, not release or broad
+    calibration evidence. Arc 2 is complete on Totoro with all 36,000 bundles retained and independently
+    adjudicated; its 1 PASS / 24 FAIL / 11 INCONCLUSIVE point result is same-host evidence
+    (<code>cross_platform = FALSE</code>).
   </footer>
 
 </div>

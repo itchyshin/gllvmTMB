@@ -49495,3 +49495,106 @@ scope, frozen estimator, fixtures, thresholds, and independent 36-cell/rank
 adjudication remained unchanged.
 
 — Codex + Gauss + Noether, Arc 2 Totoro launch phase (2026-08-06)
+
+## 2026-08-07 — VA(GH) H=7 Arc 2 Totoro final adjudication
+
+The approved Totoro replacement confirmation finished at
+`2026-08-07T05:15:58Z` with exit receipt `COMPLETE`, exit code 0, and exactly
+36,000 verified immutable bundles for 36,000 planned rows. The preserved
+5,520-row H ladder and the confirmation were exported separately from clean
+checkout `022b4eabf36bb442ed7b76aacadffeeebdc3cff2` with the committed
+role-neutral driver. The adjudicator used 5,000 paired-bootstrap replicates and
+wrote all 36 independent family-by-rank verdicts.
+
+The point-route result is 1 PASS (`poisson_log`, q = 5), 24 FAIL, and 11
+INCONCLUSIVE. Completeness is 36 PASS. Reliability is 20 PASS / 15 FAIL / 1
+INCONCLUSIVE; H=7 stability is 16 PASS / 12 INCONCLUSIVE / 8 exact-cell
+`NOT_APPLICABLE`; fixed-effect VA-Wald calibration is 20 CALIBRATED / 16
+UNCALIBRATED; latent posterior-SD calibration is 15 CALIBRATED / 20
+UNCALIBRATED / 1 INCONCLUSIVE. Both roles are Totoro and the receipt records
+`cross_platform=FALSE`; the partial Fir and failed Narval lanes are not mixed
+into this denominator.
+
+The durable compact evidence is:
+
+- `docs/dev-log/audits/2026-08-07-va-gh-h7-arc2-totoro-adjudication.csv`
+- `docs/dev-log/audits/2026-08-07-va-gh-h7-arc2-totoro-adjudication.dcf`
+- `docs/dev-log/audits/2026-08-07-va-gh-h7-arc2-totoro-adjudication.md`
+
+The full verdict MD5 is `e57f8460fd98bd0eac43b4a6c014317d`. The H-ladder
+export MD5 triple is `895bea568af0e582e8b104f9bf991d72`,
+`915194270a3ccb09d46d555265cc9e05`, and
+`b1add5f806255d7da75e415650efe14c`. The confirmation triple is
+`2cf5a852e7282290a5de77dc82f62bc9`,
+`bc1b579d1ad16298b76ae8783883574b`, and
+`cce123b5fc2b16984c004639a93c6619`. The host-local evidence copy is retained
+under `/private/tmp/va-gh-h7-final-evidence/totoro/`.
+
+```sh
+python3 /Users/z3437171/Dropbox/Github\ Local/Shinichi/tools/automation_owner_check.py \
+  va-gh-h7-totoro-arc-2-monitor
+# PASS
+
+NOT_CRAN=true Rscript --vanilla -e \
+  'devtools::test(filter="va-gh-h7-campaign", reporter="summary", stop_on_failure=TRUE)'
+# PASS; 0 failures
+
+Rscript --vanilla -e 'pkgdown::check_pkgdown()'
+# PASS; no problems found
+
+git diff --check
+# PASS
+
+python3 - <<'PY'
+# stdlib HTMLParser over docs/dev-log/capability-surface.html
+PY
+# PASS
+
+jq empty /Users/z3437171/Dropbox/Github\ Local/Shinichi/Shinichi/Dashboards/mission-control/live/status/gllvmTMB.json
+# PASS
+
+sh /Users/z3437171/Dropbox/Github\ Local/Shinichi/Shinichi/Dashboards/mission-control/live/start.sh --verify
+# PASS
+
+curl -fsS http://127.0.0.1:8823/p/gllvmTMB/status.json
+# PASS; final counts and multinomial boundary served live
+
+rg -n 'Arc 2 is active|Arc 2.*running|Fir campaign is running|final family.*withheld|remain.*Arc 2|pending.*Arc 2|no final|VA fenced|active Fir|Arc 2.*finish|family-wise recovery.*withheld' \
+  NEWS.md docs/design/110-va-gh-h7-all-scalar-families.md \
+  docs/design/35-validation-debt-register.md docs/dev-log/capability-surface.html
+# PASS; only intended final-status mentions
+
+rg -n '1 PASS|24 FAIL|11 INCONCLUSIVE|1 / 36|1/36|20/36|15/36' \
+  NEWS.md docs/design/110-va-gh-h7-all-scalar-families.md \
+  docs/design/35-validation-debt-register.md docs/dev-log/capability-surface.html
+# PASS; counts agree
+
+rg -n 'multinomial|coupled softmax|coupled-softmax|VA not implemented' \
+  NEWS.md docs/design/110-va-gh-h7-all-scalar-families.md \
+  docs/design/35-validation-debt-register.md docs/dev-log/capability-surface.html
+# PASS; multinomial remains outside VA scope
+
+rg -l '\bS_B\b|\bS_W\b|\\bf S' README.md NEWS.md docs/design docs/dev-log/capability-surface.html
+# PASS; only Design 10's historical scan instruction matched
+
+rg -n 'gllvmTMB\(' R vignettes README.md NEWS.md docs/design | wc -l
+# 654 existing call sites; no example changed
+
+rg -l 'in prep|in preparation' docs vignettes
+# No new foundational in-prep citation in this closeout
+
+rg -l '\bphylo\(|\bgr\(|\bmeta\(|block_V\(|phylo_rr\(' vignettes
+# One intentional compatibility-route discussion
+
+rg -l 'meta_known_V' README.md NEWS.md docs vignettes
+rg -l 'gllvmTMB_wide' README.md NEWS.md docs vignettes
+# Existing historical/compatibility references; no new use
+```
+
+Two initial prose-scan commands had over-escaped regular expressions and
+failed syntactically. The corrected scans above passed. No threshold, fixture,
+denominator, public family fence, JJ route, multinomial/non-scalar scope,
+likelihood, parser, R API, generated help, or user example changed.
+
+— Codex + Ada + Gauss + Noether + Curie + Fisher + Grace + Rose + Pat, Arc 2
+Totoro closeout (2026-08-07)

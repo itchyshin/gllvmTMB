@@ -1,14 +1,16 @@
 # Design 110 — VA(GH) H = 7 across all scalar response families
 
-**Status:** Gate E PASS, 18/18 scalar cells, 2026-08-06. Arc 1 implemented and
-light-tested the scalar family surface; the public H = 7/GH promotion is now
-authorised but is recorded separately from the arithmetic verdict. Arc 2 is
-authorised after the public/light closeout. Its Totoro and DRAC smoke gates
-passed and both frozen broad campaigns were running as of 2026-08-06; no Arc-2
-family/rank verdict has yet been issued. This contract does not admit
-multinomial or any other non-scalar
-likelihood, does not make an accuracy claim for `H = 7`, and does not make an
-ELBO usable as `logLik`, AIC, BIC, or an LRT.
+**Status:** Gate E PASS, 18/18 scalar cells, 2026-08-06; Arc 2 adjudicated,
+2026-08-07. Arc 1 implemented and light-tested the scalar family surface and
+made H = 7/GH the public branch default. Arc 2 retained the separate 5,520-row
+H ladder and completed an exact 36,000-row, 500-seed confirmation on Totoro.
+The frozen adjudicator returned one point-route PASS, 24 FAIL, and 11
+INCONCLUSIVE verdicts across the 36 family-by-rank cells. This mixed result does
+not automatically change the public admission fence, and it supplies no
+cross-platform confirmation because both evidence stages ran on Totoro. This
+contract does not admit multinomial or any other non-scalar likelihood, does
+not make a broad accuracy claim for `H = 7`, and does not make an ELBO usable
+as `logLik`, AIC, BIC, or an LRT.
 
 **Supersession boundary.** Designs 104–105 provide the density derivations and
 Design 108 provides the wider parity programme. This document fixes the narrower
@@ -172,9 +174,13 @@ log likelihood.
 ## 6. Arc 2 boundary
 
 Only a recorded Gate-E pass may launch Arc 2. Totoro runs the broad all-family
-campaign first (up to 150 cores, one BLAS thread per worker). DRAC supplies an
-independent SLURM-array confirmation, one seed per task, with keepers copied to
-`/project`. Campaign outputs remain local and are never GitHub Actions artifacts.
+campaign first (up to 150 cores, one BLAS thread per worker). The original plan
+assigned independent confirmation to DRAC, one seed per SLURM task, with
+keepers copied to `/project`. Fir stopped at 10,549 bundles because of project
+file quota, and Narval's transferred dependency runtime failed before producing
+any bundle. The approved replacement therefore ran the unchanged 36,000-row
+confirmation on Totoro with 150 workers and one BLAS thread per worker. Campaign
+outputs remain local and are never GitHub Actions artifacts.
 The campaign reports family-specific H-ladder stability, recovery relative to
 known truth and matched Laplace, beta-Wald coverage, invariant covariance
 recovery, latent posterior-SD calibration, failure retention, and MCSE. No pooled
@@ -189,9 +195,11 @@ H ladder. With four exact and fourteen quadrature cells this is
 certification: at 95% coverage its binomial MCSE is about 0.040. The DRAC
 confirmation uses 500 seeds at the promoted H = 7 route plus matched Laplace,
 both ranks, for `500 * 2 * (18 + 18) = 36,000` plan rows. At 95% coverage,
-500 independent replicate seeds give MCSE below 0.01. Each scheduler task owns
-one plan row and one seed; arrays may be split into batches without changing
-the plan or estimand.
+500 independent replicate seeds give MCSE below 0.01. Each confirmation task
+owns one plan row and one seed; execution may be split into batches without
+changing the plan or estimand. The final run used the same frozen geometry on
+Totoro, so its receipt records `h_ladder_platform=Totoro`,
+`confirmation_platform=Totoro`, and `cross_platform=FALSE`.
 
 All summaries are bound to the immutable plan. A task with no complete bundle
 is a missing attempted replicate, not an absent observation. Failed and
@@ -238,6 +246,32 @@ stricter 1.10 H-ladder margin asks whether H = 7, rather than VA itself, causes
 material degradation. The absolute caps prevent two poor estimators from
 passing through a favourable ratio. These thresholds are fixed before any
 Arc-2 result is inspected.
+
+### 6.2 Final Arc-2 result (2026-08-07)
+
+The Totoro confirmation exit receipt is `COMPLETE`: all 36,000 planned rows
+produced verified immutable bundles. The role-neutral exporter re-verified the
+unchanged 5,520-row H ladder and the full confirmation against their own plan,
+Gate-E, runtime, and preflight chains. The clean committed adjudicator then
+issued all 36 family-by-rank verdicts without pooling or threshold changes.
+
+- Overall point route: 1 PASS (`poisson_log`, q = 5), 24 FAIL, and 11
+  INCONCLUSIVE.
+- Completeness: 36 PASS.
+- Operational reliability: 20 PASS, 15 FAIL, and 1 INCONCLUSIVE.
+- H = 7 stability: 16 PASS, 12 INCONCLUSIVE, and 8 exact-cell
+  `NOT_APPLICABLE` verdicts.
+- Fixed-effect VA-Wald calibration: 20 CALIBRATED and 16 UNCALIBRATED.
+- Latent posterior-SD calibration: 15 CALIBRATED, 20 UNCALIBRATED, and 1
+  INCONCLUSIVE.
+
+These labels describe this ordinary loadings-only fixture at n = 120, p = 8,
+q in {2, 5}. They do not promote the beta-Wald or latent-SD interfaces:
+`calibrated = FALSE` remains the public contract. They also do not validate
+structured tiers, random slopes, `unique = TRUE`, mixed families, or
+multinomial VA. The 36-row evidence table and checksum receipt are recorded in
+`docs/dev-log/audits/2026-08-07-va-gh-h7-arc2-totoro-adjudication.csv` and
+`.dcf`.
 
 ## 7. Explicit exclusions
 

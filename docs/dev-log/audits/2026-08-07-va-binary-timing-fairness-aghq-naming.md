@@ -47,16 +47,17 @@ Raw: `/private/tmp/va-s1-binomial-500x20-probit-smoke-20260807/matched-retime-3s
 
 Totoro **954 fits**, binomial p=6 q=2, 30 seeds/cell (`R/fit-multi.R` MEASURED table; handover 2026-07-28): **AGHQ + ridge (`τ=2`) beats shipped Laplace on sigma and rho at every n**; runaway 50%→0% at n=100. Opt-in: `gllvmTMBcontrol(aghq = 9)` (default ridge on AGHQ path).
 
-### Live timed smoke (agent `7fa92352`, ongoing — do not kill)
+### Live timed smoke — **DONE**
 
-Local sequential probe `probe-la-vs-aghq-timed.R`, cell **n=400 p=8 q=2 probit**, arms LA vs `aghq=9` (+ default ridge):
+Local sequential `probe-la-vs-aghq-timed.R`, **n=400 p=8 q=2 probit**, seeds 11101:04, `aghq=9` + default ridge τ=2, warm excluded:
 
-| stage | LA secs | AGHQ+ridge secs | note |
-| --- | ---: | ---: | --- |
-| warm n=60 (untimed) | 1.8 | **83.7** | ~47× LA; warn_runaway still fired once on warm DGP |
-| timed seeds 11101… | LA done fast | **still running** (~3–5+ min/seed) | summary not written yet |
+| arm | β RMSE | Σ rf | pass_abs | mean secs | vs LA |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Laplace | 0.065 | **0.60** | **0.50** | **3.1** | 1× |
+| AGHQ+ridge | 0.067 | 0.95 | 0.00 | 207 | **~67×** |
 
-**500×20 AGHQ wall:** not finished this sitting. ETA: minutes per seed (multistart + `aghq_n_adapt` up to 400). Cost story already clear vs LA/GH-ns1: **AGHQ is the slow arm**.
+Full write-up: `docs/dev-log/audits/2026-08-07-va-la-vs-aghq-timed-binary.md`.  
+**500×20 AGHQ** not required for the verdict (cost already clear).
 
 ---
 

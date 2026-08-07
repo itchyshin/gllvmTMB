@@ -1,16 +1,19 @@
-GOAL: see GOAL.md.   STATE: S1 SCAFFOLDED + local smoke — STOPPED awaiting Totoro go.
+GOAL: see GOAL.md.   STATE: systematic logit+probit dig DONE; STOP G0 (next dig vs nbinom).
 ARCS DONE (verified):
-  C0 ✓ LOOP + protocol stubs + launch wrapper (binomial = flagship w/ gaussian)
-  C0smoke ✓ public VA binomial_logit healthy; 2×2 plumbing smoke 2 seeds (all arms ok/healthy)
-ARC IN PROGRESS: none
-NEXT: say go for Totoro S1 (flagship binomial 2×2 vs truth)
-OPEN GATES (need human): **Totoro S1 launch**
+  C0 ✓ scaffold
+  C0smoke ✓ public VA smoke
+  C0gllvm ✓ scientific q=2 aligned (β gap real)
+  C0totoro2x2 ✓ Totoro q∈{2,5} private VA 2×2 complete (MD5 4cf32255…)
+  C0linksys ✓ logit JJ vs GH + probit GH vs AC vs gllvm (systematic audit)
+ARC IN PROGRESS: none (awaiting G0)
+NEXT: Shinichi pick — more binomial dig (e.g. mature-VA cell) OR S1b nbinom2
+OPEN GATES (need human): **next dig vs nbinom** · process C Hybrid confirm · nbinom2 Totoro go
 TRUTH LIVES IN:
   worktree /private/tmp/gllvmtmb-va-gh-all-families · codex/va-gh-all-families
-  ultraplan docs/dev-log/2026-08-07-va-validation-series-arc0-ultraplan.md §C
-  Ayumi applied anchor https://github.com/Ayumi-495/urbanisation_map/issues/13
-  smoke D-50 /private/tmp/va-s1-binomial-2x2-smoke-20260807/
-  Arc-2 frozen MD5 e57f8460fd98bd0eac43b4a6c014317d UNCHANGED
-RESUME (only after Totoro go):
+  audit docs/dev-log/audits/2026-08-07-va-binomial-logit-probit-systematic.md
+  prior 2×2 docs/dev-log/audits/2026-08-07-va-s1-binomial-gllvm-2x2.md
+  /private/tmp/va-s1-binomial-logit-systematic-20260807/
+  /private/tmp/va-s1-binomial-probit-systematic-20260807/
+RESUME:
   You are va-s1-binomials — RESUME. READ FIRST: GOAL.md -> checkpoint.md -> arcs.md.
-  CONTINUE FROM: Totoro smoke then full S1; do not start later GH ladder.
+  CONTINUE FROM: after Shinichi picks next dig vs nbinom; do not start nbinom Totoro before go.

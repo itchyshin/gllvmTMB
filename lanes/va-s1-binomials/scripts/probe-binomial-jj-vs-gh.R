@@ -1,13 +1,17 @@
 #!/usr/bin/env Rscript
-## Binomial 2×2 H2H — campaign-aligned (S0b / Design-110 / 4-arm metrics).
-## Arms: gllvmTMB VA (private R3 GH) / gllvmTMB LA / gllvm VA / gllvm LA
-## vs planted truth: β RMSE, Σ rel Frobenius, abs pass 0.35/0.50, FE health,
-## paired Δ (ours − gllvm).
+## Binomial logit JJ vs GH dig — same Design-110 seeds as scientific 2×2.
+## Arms on identical data:
+##   gtmb_va_gh  — private R3 eval_method="gh" H=7
+##   gtmb_va_jj  — private R3 eval_method="jj" (binomial-logit JJ/PG bound)
+##   gtmb_la / gllvm_va / gllvm_la
+## Scorers: β RMSE vs planted; Σ rel Frob via Sigma_B (not extract_Sigma).
+## Abs caps: β≤0.35, Σ≤0.50. Local ≤10 cores. No public fence / H change.
 ##
-## VA = private `.approximation_engine_va_r3_fit` (Arc-2 path) — NOT the public
-## `integration="va"` fence (q≤2 only). Do not change the public fence.
-## H fixed at 7 (Totoro H-ladder: H7≈H61 PASS). Do not re-run H-ladder.
-## Local ≤10 cores. D-50: /private/tmp only.
+## Metrics glossary (chat + audit):
+##   β RMSE  = sqrt(mean((β̂ − β_true)²)) vs Design-110 planted FE
+##   Σ rf    = ‖Σ̂−Σ_true‖_F / ‖Σ_true‖_F ; Σ=ΛΛ′ (loadings-only)
+##   pass_abs = β≤0.35 AND Σ rf≤0.50
+##   Δ        = ours − gllvm_va (positive = we are worse)
 
 REPO <- Sys.getenv(
   "PROBE_REPO",
@@ -15,14 +19,14 @@ REPO <- Sys.getenv(
 )
 OUT <- Sys.getenv(
   "PROBE_OUT",
-  unset = "/private/tmp/va-s1-binomial-gllvm-2x2-20260807"
+  unset = "/private/tmp/va-s1-binomial-jj-vs-gh-20260807"
 )
 CORES <- as.integer(Sys.getenv("PILOT_CORES", "8"))
 CORES <- max(1L, min(CORES, as.integer(Sys.getenv("PROBE_CORE_CAP", "10"))))
 N_SEED <- as.integer(Sys.getenv("PROBE_N_SEED", "24"))
 SEEDS <- as.integer(Sys.getenv("PROBE_SEED0", "10801")) + seq_len(N_SEED) - 1L
-LINK <- Sys.getenv("PROBE_LINK", "logit")
-QS <- as.integer(strsplit(Sys.getenv("PROBE_QS", "2,5"), ",", fixed = TRUE)[[1L]])
+LINK <- "logit"
+QS <- as.integer(strsplit(Sys.getenv("PROBE_QS", "2"), ",", fixed = TRUE)[[1L]])
 VA_H <- as.integer(Sys.getenv("PROBE_VA_H", "7"))
 N <- 120L
 P <- 8L
@@ -51,18 +55,11 @@ cat("repo:", REPO, " out:", OUT, " cores:", CORES,
 
 `%||%` <- function(x, y) if (is.null(x) || !length(x)) y else x
 
-link_fun <- switch(
-  LINK,
-  logit = plogis,
-  probit = pnorm,
-  cloglog = function(z) 1 - exp(-exp(z)),
-  stop("bad PROBE_LINK: ", LINK)
-)
-link_id <- switch(LINK, logit = 0L, probit = 1L, cloglog = 2L, stop("bad link"))
-fam_gtmb <- binomial(link = LINK)
+link_fun <- plogis
+link_id <- 0L
+fam_gtmb <- binomial(link = "logit")
 
 simulate_dgp <- function(seed, q, n = N, p = P) {
-  ## Design-110 DGP (same as run-cell.R / probe-gllvm-4arm.R)
   set.seed(seed)
   stopifnot(p >= q)
   Lambda <- matrix(rnorm(p * q, 0, 0.25), p, q)
@@ -136,8 +133,9 @@ score_arm <- function(arm, beta_hat, Sigma_hat, dgp, healthy, secs,
   )
 }
 
-## ---- gllvmTMB VA — private Design-110 GH engine (bypasses public q≤2 fence) --
-fit_gtmb_va <- function(dgp) {
+## Private R3 VA — eval_method in {"gh","jj"}; H inert for JJ but kept for logs
+fit_gtmb_va <- function(dgp, eval_method) {
+  arm <- paste0("gtmb_va_", eval_method)
   t0 <- proc.time()[[3L]]
   ns <- asNamespace("gllvmTMB")
   engine <- get(".approximation_engine_va_r3_fit", envir = ns)
@@ -156,7 +154,7 @@ fit_gtmb_va <- function(dgp) {
       N = dgp$n,
       T = dgp$p,
       H = VA_H,
-      eval_method = "gh",
+      eval_method = eval_method,
       family_codes = rep.int(1L, n_obs),
       link_ids = rep.int(link_id, n_obs),
       n_ordinal_cuts_per_trait = integer(dgp$p),
@@ -171,14 +169,14 @@ fit_gtmb_va <- function(dgp) {
   )
   secs <- proc.time()[[3L]] - t0
   if (inherits(result, "error")) {
-    return(fail_arm("gtmb_va", conditionMessage(result), secs))
+    return(fail_arm(arm, conditionMessage(result), secs))
   }
   fit <- wrap(
     result,
     call = match.call(),
     q = dgp$q, p = dgp$p, n = dgp$n,
-    eval_method = "gh",
-    family = paste0("binomial_", LINK),
+    eval_method = eval_method,
+    family = "binomial_logit",
     link = LINK,
     beta_names = colnames(X)
   )
@@ -189,14 +187,13 @@ fit_gtmb_va <- function(dgp) {
     result$report$Sigma_B %||% NULL
   healthy <- identical(fit$status, "healthy")
   out <- score_arm(
-    "gtmb_va", beta_hat, Sigma_hat, dgp, healthy, secs,
+    arm, beta_hat, Sigma_hat, dgp, healthy, secs,
     err = if (healthy) NA_character_ else paste0("status=", fit$status %||% "NULL")
   )
   if (!healthy) out$ok <- FALSE
   out
 }
 
-## ---- gllvmTMB Laplace — public formula API; FE |g| health ------------------
 fit_gtmb_la <- function(dgp) {
   t0 <- proc.time()[[3L]]
   form <- as.formula(sprintf(
@@ -219,8 +216,6 @@ fit_gtmb_la <- function(dgp) {
     return(fail_arm("gtmb_la", conditionMessage(fit), secs))
   }
   h <- gtmb_health(fit)
-  ## Campaign-aligned β. TMB may truncate names to "b_fix" (not "b_fixed");
-  ## coef(fit) is the durable FE vector for trait intercepts.
   beta_hat <- tryCatch({
     ns <- asNamespace("gllvmTMB")
     if (exists(".gllvmTMB_b_fixed_values", envir = ns, inherits = FALSE)) {
@@ -236,8 +231,6 @@ fit_gtmb_la <- function(dgp) {
       as.numeric(par[startsWith(nm, "b_fix") | nm == "b_fixed"])[seq_len(dgp$p)]
     }, error = function(e) NA_real_)
   }
-  ## Loadings-only Σ_B vs planted ΛΛ' (Design-110). Do NOT use extract_Sigma
-  ## here: for binomial it adds link-implicit diag (π²/3) and breaks abs scoring.
   Sigma_hat <- tryCatch({
     S <- fit$report$Sigma_B %||% NULL
     if (is.null(S)) {
@@ -253,7 +246,6 @@ fit_gtmb_la <- function(dgp) {
   )
 }
 
-## ---- gllvm CRAN VA / LA ---------------------------------------------------
 fit_gllvm <- function(dgp, method) {
   arm <- paste0("gllvm_", tolower(method))
   t0 <- proc.time()[[3L]]
@@ -267,7 +259,6 @@ fit_gllvm <- function(dgp, method) {
     sd.errors = FALSE,
     control.start = list(starting.val = "zero", n.init = 1)
   )
-  if (!identical(LINK, "logit")) args$link <- LINK
   f <- tryCatch(do.call(gllvm::gllvm, args), error = function(e) e)
   secs <- proc.time()[[3L]] - t0
   if (inherits(f, "error")) {
@@ -300,8 +291,11 @@ fit_gllvm <- function(dgp, method) {
 one_job <- function(seed, q) {
   dgp <- simulate_dgp(seed, q)
   arms <- list(
-    gtmb_va = tryCatch(fit_gtmb_va(dgp), error = function(e) {
-      fail_arm("gtmb_va", conditionMessage(e))
+    gtmb_va_gh = tryCatch(fit_gtmb_va(dgp, "gh"), error = function(e) {
+      fail_arm("gtmb_va_gh", conditionMessage(e))
+    }),
+    gtmb_va_jj = tryCatch(fit_gtmb_va(dgp, "jj"), error = function(e) {
+      fail_arm("gtmb_va_jj", conditionMessage(e))
     }),
     gtmb_la = tryCatch(fit_gtmb_la(dgp), error = function(e) {
       fail_arm("gtmb_la", conditionMessage(e))
@@ -346,8 +340,8 @@ if (!is.null(wu)) {
 
 jobs <- expand.grid(seed = SEEDS, q = QS, KEEP.OUT.ATTRS = FALSE)
 cat(sprintf(
-  "== binomial gllvm 2x2 start link=%s H=%d seeds=%d qs=%s jobs=%d cores=%d ==\n",
-  LINK, VA_H, N_SEED, paste(QS, collapse = ","), nrow(jobs), CORES
+  "== binomial JJ vs GH start H=%d seeds=%d qs=%s jobs=%d cores=%d ==\n",
+  VA_H, N_SEED, paste(QS, collapse = ","), nrow(jobs), CORES
 ))
 
 run_i <- function(i) {
@@ -395,7 +389,6 @@ summ <- do.call(rbind, lapply(split(raw, list(raw$q, raw$arm), drop = TRUE), fun
 summ <- summ[order(summ$q, summ$arm), ]
 write.csv(summ, file.path(OUT, "summary.csv"), row.names = FALSE)
 
-## Wide + paired Δ (gtmb_va − comparator)
 wide_arm <- function(arm) {
   sub <- raw[raw$arm == arm, c(
     "seed", "q", "beta_rmse", "sigma_rel_frob", "healthy_fe", "pass_abs", "secs"
@@ -403,40 +396,40 @@ wide_arm <- function(arm) {
   names(sub)[-(1:2)] <- paste0(names(sub)[-(1:2)], "_", arm)
   sub
 }
-arm_names <- c("gtmb_va", "gtmb_la", "gllvm_va", "gllvm_la")
+arm_names <- c("gtmb_va_gh", "gtmb_va_jj", "gtmb_la", "gllvm_va", "gllvm_la")
 paired <- Reduce(
   function(a, b) merge(a, b, by = c("seed", "q")),
   lapply(arm_names, wide_arm)
 )
-paired$d_beta_vs_gllvm_va <- paired$beta_rmse_gtmb_va - paired$beta_rmse_gllvm_va
-paired$d_sigma_vs_gllvm_va <- paired$sigma_rel_frob_gtmb_va - paired$sigma_rel_frob_gllvm_va
-paired$d_beta_vs_gtmb_la <- paired$beta_rmse_gtmb_va - paired$beta_rmse_gtmb_la
-paired$d_sigma_vs_gtmb_la <- paired$sigma_rel_frob_gtmb_va - paired$sigma_rel_frob_gtmb_la
-paired$d_beta_vs_gllvm_la <- paired$beta_rmse_gtmb_va - paired$beta_rmse_gllvm_la
-paired$d_sigma_vs_gllvm_la <- paired$sigma_rel_frob_gtmb_va - paired$sigma_rel_frob_gllvm_la
+paired$d_beta_gh_vs_gllvm_va <- paired$beta_rmse_gtmb_va_gh - paired$beta_rmse_gllvm_va
+paired$d_sigma_gh_vs_gllvm_va <- paired$sigma_rel_frob_gtmb_va_gh - paired$sigma_rel_frob_gllvm_va
+paired$d_beta_jj_vs_gllvm_va <- paired$beta_rmse_gtmb_va_jj - paired$beta_rmse_gllvm_va
+paired$d_sigma_jj_vs_gllvm_va <- paired$sigma_rel_frob_gtmb_va_jj - paired$sigma_rel_frob_gllvm_va
+paired$d_beta_jj_vs_gh <- paired$beta_rmse_gtmb_va_jj - paired$beta_rmse_gtmb_va_gh
+paired$d_sigma_jj_vs_gh <- paired$sigma_rel_frob_gtmb_va_jj - paired$sigma_rel_frob_gtmb_va_gh
 write.csv(paired, file.path(OUT, "paired.csv"), row.names = FALSE)
 
-cat("\n======== BINOMIAL gllvm 2x2 SCIENTIFIC SUMMARY ========\n")
+cat("\n======== BINOMIAL JJ vs GH SCIENTIFIC SUMMARY ========\n")
 cat("Abs caps: β RMSE ≤ 0.35 ; Σ rel Frob ≤ 0.50\n")
-cat("VA = private R3 GH (Arc-2); our VA ≠ gllvm VA\n")
+cat("β = RMSE vs planted Design-110 truth; Σ = ‖Σ̂−Σ‖_F/‖Σ‖_F loadings-only\n")
 print(summ, row.names = FALSE, digits = 4)
 
-cat("\nPaired mean Δ (gtmb_va − comparator):\n")
+cat("\nPaired mean Δ vs gllvm_va (positive = we worse):\n")
 for (qq in sort(unique(paired$q))) {
   sub <- paired[paired$q == qq, ]
   cat(sprintf(
     paste0(
-      " q=%d  vs gllvm_va: dβ=%+.4f dΣ=%+.4f |",
-      " vs gtmb_la: dβ=%+.4f dΣ=%+.4f |",
-      " vs gllvm_la: dβ=%+.4f dΣ=%+.4f | n=%d\n"
+      " q=%d  GH−gllvm_va: dβ=%+.4f dΣ=%+.4f |",
+      " JJ−gllvm_va: dβ=%+.4f dΣ=%+.4f |",
+      " JJ−GH: dβ=%+.4f dΣ=%+.4f | n=%d\n"
     ),
     qq,
-    mean(sub$d_beta_vs_gllvm_va, na.rm = TRUE),
-    mean(sub$d_sigma_vs_gllvm_va, na.rm = TRUE),
-    mean(sub$d_beta_vs_gtmb_la, na.rm = TRUE),
-    mean(sub$d_sigma_vs_gtmb_la, na.rm = TRUE),
-    mean(sub$d_beta_vs_gllvm_la, na.rm = TRUE),
-    mean(sub$d_sigma_vs_gllvm_la, na.rm = TRUE),
+    mean(sub$d_beta_gh_vs_gllvm_va, na.rm = TRUE),
+    mean(sub$d_sigma_gh_vs_gllvm_va, na.rm = TRUE),
+    mean(sub$d_beta_jj_vs_gllvm_va, na.rm = TRUE),
+    mean(sub$d_sigma_jj_vs_gllvm_va, na.rm = TRUE),
+    mean(sub$d_beta_jj_vs_gh, na.rm = TRUE),
+    mean(sub$d_sigma_jj_vs_gh, na.rm = TRUE),
     nrow(sub)
   ))
 }

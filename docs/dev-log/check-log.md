@@ -4,6 +4,21 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-08-07 -- binomial logit/probit systematic (JJ/GH/AC)
+
+Branch: `codex/va-gh-all-families`. Script
+`lanes/va-s1-binomials/scripts/probe-binomial-logit-probit-systematic.R`.
+Same Design-110 cell (n=120 p=8 q=2 trials=1 unique=FALSE seeds
+10801:10824 H=7 private `.va_r3_fit`). Local 8 cores.
+
+- **Logit:** GH β/Σ 0.233/4.86; JJ 0.201/2.10; gllvm_VA 0.137/0.997.
+  JJ narrows gap; neither beats gllvm. FAIL was **logit**, not binary-in-general.
+- **Probit:** GH 0.138/1.74; AC 0.119/0.968 ≈ gllvm_VA 0.119/0.975.
+  **GH does not beat gllvm**; AC ties. Thesis GH>gllvm≈AC **not supported** on this cell.
+
+Audit: `docs/dev-log/audits/2026-08-07-va-binomial-logit-probit-systematic.md`.
+**STOP G0:** next dig vs nbinom. No fence / H change.
+
 ## 2026-08-07 -- non-exact GH family order LOCKED
 
 Branch: `codex/va-gh-all-families`. Shinichi confirmed canonical sequence:

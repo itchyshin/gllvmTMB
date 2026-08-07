@@ -1,36 +1,44 @@
-# Binomial gllvm 2×2 — first local H2H (fills Arc-2 gap)
+# Binomial gllvm 2×2 — scientific (aligned scorers)
 
 **Date:** 2026-08-07  
-**Why:** Arc-2/Codex Totoro had **no** gllvm (`docs/dev-log/audits/2026-08-07-va-gllvm-inventory-arc2.md`).  
+**Supersedes plumbing table** (β/Σ extractors were not campaign-aligned; q=5
+public-fence blocked).  
 **Script:** `lanes/va-s1-binomials/scripts/probe-binomial-gllvm-2x2.R`  
-**D-50:** `/private/tmp/va-s1-binomial-gllvm-2x2-20260807/`  
-**MD5:** summary `a2a3bd5e2d701af3f01e7b17412a48c1` · rows `22640a4541a09fa80f0b128ac478bec5`
+**Launcher:** `lanes/va-s1-binomials/scripts/launch-totoro-s1-gllvm-2x2.sh`  
+**D-50 local:** `/private/tmp/va-s1-binomial-gllvm-2x2-20260807/`  
+**Totoro:** `/home/snakagaw/gllvm_work/va-s1-binomial-gllvm-2x2-20260807/results/`  
+**MD5 (Totoro summary):** `4cf322551cbc0139cb0770a349c59c3a`
 
-## Design
+## Design (campaign-aligned)
 
-- n=120, p=8, unique=FALSE, binomial **logit**, seeds `10801:10824` (24), q∈{2,5}
-- Arms: gllvmTMB VA (public `va_H=7`) / LA × gllvm VA / LA
-- H not re-laddered (Totoro H7≈H61 already PASS)
+- Design-110 DGP: n=120, p=8, `Σ=ΛΛ'` (`unique=FALSE`), β ∈ [−0.25, 0.25]
+- binomial **logit**; seeds `10801:10824` (24); q∈{2,5}
+- Arms: **gllvmTMB VA = private R3 GH H=7** (Arc-2 path) / gllvmTMB LA /
+  gllvm VA / gllvm LA — our VA ≠ gllvm VA
+- Metrics: β RMSE, Σ rel Frobenius vs planted, abs caps **0.35 / 0.50**, FE health,
+  paired Δ (ours − comparator)
+- LA β via `coef(fit)`; LA Σ via `report$Sigma_B` (not `extract_Sigma` link-implicit)
+- H not re-laddered (H7≈H61 PASS). **No public fence change.**
 
-## Summary (mean over finite)
+## Scientific summary (Totoro; n_ok=24/24 all arms)
 
-| q | arm | ok | healthy | β RMSE | Σ rel Frob | pass_abs | secs |
-| ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| 2 | gtmb_va | 1.00 | 1.00 | 0.232 | 4.94 | 0 | 3.10 |
-| 2 | gtmb_laplace | 1.00 | 1.00 | NA† | NA† | 0 | 1.80 |
-| 2 | gllvm_VA | 1.00 | 1.00 | 0.170 | 1.00‡ | 0 | 0.06 |
-| 2 | gllvm_LA | 1.00 | 1.00 | 0.311 | 15.8‡ | 0 | 0.73 |
-| 5 | gtmb_va | **0** | 0 | — | — | 0 | 0.06 |
-| 5 | gtmb_laplace | 1.00 | 0.96 | NA† | NA† | 0 | 4.21 |
-| 5 | gllvm_VA | 1.00 | 1.00 | 0.178 | 1.00‡ | 0 | 0.34 |
-| 5 | gllvm_LA | 1.00 | 1.00 | 0.172 | 0.95‡ | 0 | 0.88 |
+| q | arm | β RMSE | Σ rel Frob | pass_abs | secs |
+| ---: | --- | ---: | ---: | ---: | ---: |
+| 2 | **gtmb_va** | **0.233** | **4.86** | 0 | 1.50 |
+| 2 | gtmb_la | 0.221 | 2.81 | 0 | 0.23 |
+| 2 | **gllvm_va** | **0.137** | **0.997** | 0 | 0.05 |
+| 2 | gllvm_la | 0.148 | 1.44 | 0 | 0.46 |
+| 5 | **gtmb_va** | **0.264** | **3.70** | 0 | 12.3 |
+| 5 | gtmb_la | 0.223 | 1.60 | 0 | 0.47 |
+| 5 | **gllvm_va** | **0.128** | **1.00** | 0 | 0.20 |
+| 5 | gllvm_la | 0.146 | 0.93 | 0 | 0.80 |
 
-† Laplace β/Σ extractor still broken in this script (fits healthy; scoring bug — fix before claiming LA bar).  
-‡ gllvm Σ scale not yet matched to Design-110 / Arc-2 scorer (gllvm_VA Σ≈1.00 looks standardised); **do not** treat pass_abs from this table as scientific.  
-**q=5 gtmb_va:** public fence rejects `q>2` (`integration="va"` admission). Arc-2 used the **private** GH engine — Totoro S1 / private-route probe required for q=5 VA×gllvm.
+Paired mean Δ (gtmb_va − gllvm_va): q=2 dβ=+0.096 dΣ=+3.86; q=5 dβ=+0.137 dΣ=+2.70.
 
-## Verdict for Shinichi
+## Verdict
 
-1. **Codex/Arc-2 gllvm?** **N** — confirmed absent by design.  
-2. **Binomial gllvm status:** **new local 2×2 started and finished** (q=2 all four arms run; q=5 public VA blocked).  
-3. **Next:** fix LA β extractor + campaign-aligned Σ; for q=5 use private VA engine (or Totoro S1). No H-ladder re-run. No fence change.
+1. **β ~0.23 vs ~0.14 is REAL** after alignment (not plumbing). Holds at q=5.
+2. **Σ worse** for gllvmTMB VA on both q; all arms fail abs Σ (pass_abs=0).
+3. **VA ≲ gllvm: FAIL** on this binomial logit cell (β and Σ). VA ≈ LA on β.
+4. Process for later families: **C Hybrid** (ultraplan ladder + continuous probes).
+   **STOP** — no nbinom Totoro until Shinichi go.

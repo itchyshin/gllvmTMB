@@ -16,7 +16,7 @@
 | Term | Meaning |
 | --- | --- |
 | **β RMSE** | Root-mean-square error of fixed-effect coefficients β̂ vs **planted Design-110 truth**. Not SE width. Not distance to gllvm’s β̂. |
-| **Σ rel Frob** | ‖Σ̂ − Σ_true‖_F / ‖Σ_true‖_F for loadings-only Σ = ΛΛ′ (no link-implicit residual). |
+| **Σ rel Frob** | ‖Σ̂ − Σ_true‖_F / ‖Σ_true‖_F for loadings-only Σ = ΛΛ′ (no link-implicit residual). **Unbounded above; >1 allowed.** Σ̂→0 ⇒ rel≈1 (zero estimator / collapse — not “good”). |
 | **pass_abs** | Seed passes iff β RMSE ≤ **0.35** and Σ rel Frob ≤ **0.50**. |
 | **Our VA ≠ gllvm VA** | gllvmTMB private R3 ELBO tiers vs `gllvm::gllvm(method="VA")`. Same estimand (planted truth), different engines. |
 | **GH** | Gauss–Hermite quadrature tier (`eval_method="gh"`, H=7 here). |
@@ -25,6 +25,8 @@
 | **Truth** | Planted DGP β and Σ. Never “how close to gllvm.” |
 
 **Misread risk this dig closes:** today’s scientific FAIL was **binomial logit**, not “binary / Bernoulli in general.” Probit is a separate cell.
+
+**Misread risk (Σ challenge 2026-08-07):** gtmb logit Σ rel 3.7–4.9 is **real runaway**, not a scorer bug. gllvm VA’s ~1.0 on logit is **Σ̂≈0 collapse** (`sigma.lv`~1e−6), not a recovery we are “4× worse than.” See `2026-08-07-va-s1-binomial-gllvm-2x2.md` Shinichi-challenge section.
 
 ---
 
@@ -55,18 +57,22 @@
 | **gtmb_va_gh** | **0.233** | **4.86** | 0 | 1 | 3.02 |
 | **gtmb_va_jj** | **0.201** | **2.10** | 0 | 1 | 0.72 |
 | gtmb_la | 0.221 | 2.81 | 0 | 1 | 1.62 |
-| **gllvm_va** | **0.137** | **0.997** | 0 | 1 | 0.06 |
+| **gllvm_va** | **0.137** | **0.997**† | 0 | 1 | 0.06 |
 | gllvm_la | 0.148 | 1.44 | 0 | 1 | 0.44 |
 
-Paired mean Δ (ours − gllvm_va): **GH** dβ=+0.096 dΣ=+3.86; **JJ** dβ=+0.065 dΣ=+1.11.
+† **gllvm VA Σ̂≈0** on logit (collapse / zero-estimator baseline, rel≈1). Not a successful Σ recovery. gtmb 4.86 is **runaway** (hand-checked ‖Σ̂‖_F ≫ ‖Σ‖_F). Both fail abs Σ≤0.50.
+
+Paired mean Δ (ours − gllvm_va): **GH** dβ=+0.096 dΣ=+3.86; **JJ** dβ=+0.065 dΣ=+1.11.  
+ΔΣ vs collapsed gllvm VA overstates “how much worse we are at recovery.”
 
 Matches Totoro scientific GH row (β≈0.233 / Σ≈4.86 vs gllvm ≈0.137 / 0.997).
 
 ### Logit verdict
 
 1. FAIL was **binomial logit**, not “binary in general.”
-2. **JJ narrows the gap** vs GH (β 0.20 vs 0.23; Σ 2.1 vs 4.9) but **does not close it** to gllvm.
-3. **GH still loses** on logit. Thesis “GH should beat gllvm≈AC” is **not restored by JJ** on this cell — and AC is not a logit tier.
+2. **JJ narrows the gap** vs GH (β 0.20 vs 0.23; Σ 2.1 vs 4.9) but **does not close** abs recovery.
+3. **GH still loses** on logit β; Σ failure mode is **runaway** (ours) vs **collapse** (gllvm VA). Thesis “GH should beat gllvm≈AC” is **not restored by JJ** on this cell — and AC is not a logit tier.
+4. **Σ rel 3.7–4.9 is not impossible / not a scorer bug** (verdict A). Rel Frob >1 is allowed.
 
 ---
 
@@ -118,7 +124,8 @@ Beat rate GH vs gllvm_va: β better **2/24**, Σ better **0/24**. AC β matches 
 
 ## One-line chat returns
 
-- **Glossary:** β RMSE & Σ rf are vs **planted** Design-110 truth; pass_abs 0.35/0.50; our VA ≠ gllvm; AC≈gllvm on probit; JJ=logit bound; GH=quadrature.
-- **Logit:** FAIL stands; JJ helps but does not reach gllvm; GH still loses.
+- **Glossary:** β RMSE & Σ rf are vs **planted** Design-110 truth; pass_abs 0.35/0.50; our VA ≠ gllvm; AC≈gllvm on probit; JJ=logit bound; GH=quadrature. Rel Frob >1 allowed; ≈1 can mean Σ̂→0.
+- **Logit:** FAIL stands; JJ helps but does not reach abs recovery; GH Σ is **runaway** (real); gllvm VA Σ is **collapse** (rel≈1).
 - **Probit:** GH does **not** beat gllvm; AC **ties** gllvm.
-- **Misunderstand risk:** calling the flagship FAIL “binary” without saying **logit**.
+- **Misunderstand risk:** calling the flagship FAIL “binary” without saying **logit**; reading gllvm VA Σ≈1 as “good.”
+- **Σ challenge:** (A) 3.7–4.9 possible = near-total Σ failure; not scorer bug.

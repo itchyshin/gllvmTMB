@@ -4,6 +4,18 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-08-07 -- Σ rel Frob 3.7–4.9 challenge: NOT a scorer bug (A)
+
+Branch: `codex/va-gh-all-families`. Shinichi challenge on binomial logit
+gtmb_VA Σ relative Frobenius 3.7–4.9. Hand recomputed seeds 10801/10804/10814:
+‖Σ̂‖_F / ‖Σ‖_F / ‖diff‖_F match table (e.g. 10801: 4.13/1.73/3.63 → rel=2.097).
+Estimand = loadings-only `Sigma_B`/`ΛΛ′` vs planted `ΛΛ′` (no ψ, not cor,
+not `extract_Sigma` π²/3). **Verdict (A):** numbers real = runaway Σ failure.
+Rel Frob **unbounded**; >1 allowed (= worse than zero estimator). **gllvm VA
+~1.0 is Σ̂≈0 collapse** (`sigma.lv`~1e−6), not a good comparator recovery.
+Probes enriched with `frob_Shat` / `sigma_collapse`. Audits amended. No
+number re-fit needed; no fence change.
+
 ## 2026-08-07 -- binomial logit/probit systematic (JJ/GH/AC)
 
 Branch: `codex/va-gh-all-families`. Script
@@ -13,6 +25,7 @@ Same Design-110 cell (n=120 p=8 q=2 trials=1 unique=FALSE seeds
 
 - **Logit:** GH β/Σ 0.233/4.86; JJ 0.201/2.10; gllvm_VA 0.137/0.997.
   JJ narrows gap; neither beats gllvm. FAIL was **logit**, not binary-in-general.
+  (Σ follow-up: ours=runaway; gllvm VA=collapse — see entry above.)
 - **Probit:** GH 0.138/1.74; AC 0.119/0.968 ≈ gllvm_VA 0.119/0.975.
   **GH does not beat gllvm**; AC ties. Thesis GH>gllvm≈AC **not supported** on this cell.
 

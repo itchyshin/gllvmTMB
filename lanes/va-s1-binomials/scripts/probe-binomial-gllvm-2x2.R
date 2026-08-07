@@ -86,9 +86,26 @@ simulate_dgp <- function(seed, q, n = N, p = P) {
   )
 }
 
+frob_norm <- function(A) {
+  if (!is.matrix(A)) return(NA_real_)
+  sqrt(sum(A^2))
+}
+
 rel_frob <- function(Shat, Strue) {
   if (!is.matrix(Shat) || !identical(dim(Shat), dim(Strue))) return(NA_real_)
-  sqrt(sum((Shat - Strue)^2)) / sqrt(sum(Strue^2))
+  den <- frob_norm(Strue)
+  if (!is.finite(den) || den <= 0) return(NA_real_)
+  frob_norm(Shat - Strue) / den
+}
+
+## Rel Frob is unbounded above; >1 is allowed and means ‖Σ̂−Σ‖_F > ‖Σ‖_F
+## (worse than the zero estimator in Frobenius distance). Collapse of Σ̂→0
+## yields rel≈1 — do not read that as "good recovery."
+sigma_collapsed <- function(Shat, Strue, tol = 1e-8) {
+  if (!is.matrix(Shat) || !identical(dim(Shat), dim(Strue))) return(NA)
+  den <- frob_norm(Strue)
+  if (!is.finite(den) || den <= 0) return(NA)
+  isTRUE(frob_norm(Shat) < tol * den)
 }
 
 beta_rmse <- function(bhat, btrue) {
@@ -115,7 +132,8 @@ fail_arm <- function(arm, err, secs = NA_real_) {
   list(
     arm = arm, ok = FALSE, healthy = FALSE, healthy_fe = FALSE,
     secs = secs, beta_rmse = NA_real_, sigma_rel_frob = NA_real_,
-    max_g_fe = NA_real_, err = err
+    frob_Shat = NA_real_, frob_Strue = NA_real_,
+    sigma_collapse = NA, max_g_fe = NA_real_, err = err
   )
 }
 
@@ -123,6 +141,8 @@ score_arm <- function(arm, beta_hat, Sigma_hat, dgp, healthy, secs,
                       max_g_fe = NA_real_, err = NA_character_) {
   br <- beta_rmse(beta_hat, dgp$beta)
   sr <- rel_frob(Sigma_hat, dgp$Sigma)
+  fS <- if (is.matrix(Sigma_hat)) frob_norm(Sigma_hat) else NA_real_
+  fT <- frob_norm(dgp$Sigma)
   list(
     arm = arm,
     ok = is.finite(br) && is.finite(sr),
@@ -131,6 +151,9 @@ score_arm <- function(arm, beta_hat, Sigma_hat, dgp, healthy, secs,
     secs = secs,
     beta_rmse = br,
     sigma_rel_frob = sr,
+    frob_Shat = fS,
+    frob_Strue = fT,
+    sigma_collapse = sigma_collapsed(Sigma_hat, dgp$Sigma),
     max_g_fe = max_g_fe,
     err = err
   )
@@ -322,6 +345,9 @@ one_job <- function(seed, q) {
       healthy_fe = isTRUE(a$healthy_fe),
       beta_rmse = as.numeric(a$beta_rmse %||% NA_real_),
       sigma_rel_frob = as.numeric(a$sigma_rel_frob %||% NA_real_),
+      frob_Shat = as.numeric(a$frob_Shat %||% NA_real_),
+      frob_Strue = as.numeric(a$frob_Strue %||% NA_real_),
+      sigma_collapse = isTRUE(a$sigma_collapse),
       secs = as.numeric(a$secs %||% NA_real_),
       max_g_fe = as.numeric(a$max_g_fe %||% NA_real_),
       pass_abs = isTRUE(a$ok) &&
@@ -357,6 +383,7 @@ run_i <- function(i) {
       seed = jobs$seed[[i]], q = jobs$q[[i]], link = LINK, va_H = VA_H,
       n = N, p = P, arm = "ERROR", ok = FALSE, healthy = FALSE,
       healthy_fe = FALSE, beta_rmse = NA_real_, sigma_rel_frob = NA_real_,
+      frob_Shat = NA_real_, frob_Strue = NA_real_, sigma_collapse = FALSE,
       secs = NA_real_, max_g_fe = NA_real_, pass_abs = FALSE,
       err = conditionMessage(e), stringsAsFactors = FALSE
     )
@@ -382,6 +409,9 @@ summ <- do.call(rbind, lapply(split(raw, list(raw$q, raw$arm), drop = TRUE), fun
     healthy_fe = mean(sub$healthy_fe),
     beta_rmse = if (any(fin)) mean(sub$beta_rmse[fin]) else NA_real_,
     sigma_rel_frob = if (any(fin)) mean(sub$sigma_rel_frob[fin]) else NA_real_,
+    frob_Shat = if (any(fin)) mean(sub$frob_Shat[fin], na.rm = TRUE) else NA_real_,
+    frob_Strue = if (any(fin)) mean(sub$frob_Strue[fin], na.rm = TRUE) else NA_real_,
+    frac_sigma_collapse = mean(sub$sigma_collapse),
     frac_sigma_gt_0.5 = if (any(fin)) mean(sub$sigma_rel_frob[fin] > CAP_SIG) else NA_real_,
     pass_abs = if (any(fin)) {
       mean(sub$beta_rmse[fin] <= CAP_BETA & sub$sigma_rel_frob[fin] <= CAP_SIG)
@@ -419,6 +449,7 @@ write.csv(paired, file.path(OUT, "paired.csv"), row.names = FALSE)
 cat("\n======== BINOMIAL gllvm 2x2 SCIENTIFIC SUMMARY ========\n")
 cat("Abs caps: β RMSE ≤ 0.35 ; Σ rel Frob ≤ 0.50\n")
 cat("VA = private R3 GH (Arc-2); our VA ≠ gllvm VA\n")
+cat("Rel Frob >1 is allowed (unbounded); Σ̂→0 yields rel≈1 (collapse, not recovery).\n")
 print(summ, row.names = FALSE, digits = 4)
 
 cat("\nPaired mean Δ (gtmb_va − comparator):\n")

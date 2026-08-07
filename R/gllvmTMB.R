@@ -1565,9 +1565,9 @@ gllvmTMBcontrol <- function(
   ## dev/va-usability/200-H-ladder.R. Gate E promoted H = 7; H = 61 remains a
   ## deliberately selectable diagnostic.
   ##
-  ## `va_eval_method` admits only "auto"/"jj"/"gh" -- the internal "ac"/"ac2"
-  ## tiers stay internal. `auto` now selects GH everywhere; explicit JJ remains
-  ## available only for pure binomial-logit comparisons.
+  ## `va_eval_method` admits only "auto"/"jj"/"gh" -- the internal "ac"/"ac2"/
+  ## "poisg" tiers stay internal. `auto` now selects GH everywhere; explicit JJ
+  ## remains available only for pure binomial-logit comparisons.
   ## `jj` is asymptotically biased on the loading scale (plim ~0.53); `gh`
   ## converges. See ?gllvmTMBcontrol's `integration` note on what VA does and
   ## does not certify.

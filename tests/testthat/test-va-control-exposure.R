@@ -41,11 +41,12 @@ test_that("va_eval_method admits only the PUBLIC tiers", {
   expect_identical(gllvmTMBcontrol(va_eval_method = "auto")$va_eval_method, "auto")
   expect_identical(gllvmTMBcontrol(va_eval_method = "gh")$va_eval_method, "gh")
   expect_identical(gllvmTMBcontrol(va_eval_method = "jj")$va_eval_method, "jj")
-  ## "ac" and "ac2" are internal research tiers reachable only through the
-  ## prototype API. Offering them here would advertise a capability the package
-  ## does not certify, so match.arg must refuse them.
+  ## "ac", "ac2", and "poisg" are internal research tiers reachable only through
+  ## the prototype API. Offering them here would advertise a capability the
+  ## package does not certify, so match.arg must refuse them.
   expect_error(gllvmTMBcontrol(va_eval_method = "ac"))
   expect_error(gllvmTMBcontrol(va_eval_method = "ac2"))
+  expect_error(gllvmTMBcontrol(va_eval_method = "poisg"))
   expect_error(gllvmTMBcontrol(va_eval_method = "nonsense"))
 })
 

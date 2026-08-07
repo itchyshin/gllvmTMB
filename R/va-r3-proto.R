@@ -1359,7 +1359,10 @@
   ),
   .va_r3_registry_row("binomial_probit", 1L, "probit", 1L,
                       tiers = c("gh", "ac", "ac2")),
-  .va_r3_registry_row("binomial_cloglog", 1L, "cloglog", 2L),
+  .va_r3_registry_row(
+    "binomial_cloglog", 1L, "cloglog", 2L,
+    tiers = c("gh", "poisg")
+  ),
   .va_r3_registry_row("poisson", 2L, "log", expectation = "exact"),
   .va_r3_registry_row("lognormal", 3L, "log", expectation = "exact"),
   .va_r3_registry_row("gamma", 4L, "log", expectation = "exact"),
@@ -1389,7 +1392,7 @@
        call. = FALSE)
 }
 
-.va_r3_resolve_eval_method <- function(eval_method = c("auto", "jj", "gh", "ac", "ac2"),
+.va_r3_resolve_eval_method <- function(eval_method = c("auto", "jj", "gh", "ac", "ac2", "poisg"),
                                        family, link_id = NULL) {
   eval_method <- match.arg(eval_method)
   if (is.null(link_id)) link_id <- rep.int(0L, length(family))
@@ -1398,7 +1401,7 @@
   ## Albert-Chib (and its "ac2" curvature-corrected sibling) is likewise
   ## single-family only -- `eval_method` is one global scalar in the
   ## template, so a mixed fit cannot ask for a probit-specific evaluator on
-  ## some rows and quadrature on others.
+  ## some rows and quadrature on others. Same for cloglog PoisG.
   if (nrow(cells) > 1L) {
     if (identical(eval_method, "jj")) {
       stop("eval_method = \"jj\" is only defined for pure-binomial VA fits.",
@@ -1410,6 +1413,10 @@
     }
     if (identical(eval_method, "ac2")) {
       stop("eval_method = \"ac2\" is only defined for pure binomial-probit VA fits.",
+           call. = FALSE)
+    }
+    if (identical(eval_method, "poisg")) {
+      stop("eval_method = \"poisg\" is only defined for pure binomial-cloglog VA fits.",
            call. = FALSE)
     }
     return("gh")
@@ -1431,10 +1438,10 @@
 ## worst kind available: an unrecognised tier maps silently to 0L and the fit
 ## runs Gauss-Hermite while reporting the tier that was asked for -- a wrong
 ## answer with no error. `switch` without a default errors instead.
-.va_r3_eval_method_code <- function(eval_method = c("auto", "jj", "gh", "ac", "ac2"),
+.va_r3_eval_method_code <- function(eval_method = c("auto", "jj", "gh", "ac", "ac2", "poisg"),
                                     family, link_id = NULL) {
   resolved <- .va_r3_resolve_eval_method(eval_method, family, link_id)
-  code <- switch(resolved, gh = 0L, jj = 1L, ac = 2L, ac2 = 3L)
+  code <- switch(resolved, gh = 0L, jj = 1L, ac = 2L, ac2 = 3L, poisg = 4L)
   if (is.null(code)) {
     stop("VA-R3 has no template code for eval_method = \"", resolved, "\".",
          call. = FALSE)
@@ -1457,9 +1464,15 @@
 ## objective_type in this codebase: R/eva-proto.R's unrelated Design-86
 ## engine reports "EVA_TAYLOR2" for the same reason (also a Taylor
 ## expansion, also not a proven bound).
+##
+## "poisg" is labelled "ELBO_POISG": it is gllvm's truncated-Poisson / PoisG
+## cloglog VA construction (gllvm 2.0.13 src/gllvm.cpp ~3303-3311), a
+## data-augmentation ELBO like JJ/AC, not a quadrature approximation to
+## E[log p]. It is NOT the same objective as cloglog GH.
 .va_r3_objective_type <- function(resolved_eval_method) {
   type <- switch(resolved_eval_method,
-                 gh = "ELBO_GH", jj = "ELBO_JJ", ac = "ELBO_AC", ac2 = "APPROX_AC2")
+                 gh = "ELBO_GH", jj = "ELBO_JJ", ac = "ELBO_AC",
+                 ac2 = "APPROX_AC2", poisg = "ELBO_POISG")
   if (is.null(type)) {
     stop("VA-R3 has no objective label for eval_method = \"",
          resolved_eval_method, "\".", call. = FALSE)
@@ -2090,7 +2103,7 @@
 .va_r3_make_objective <- function(validated, H = 7L, source = NULL,
                                   rebuild = FALSE, parameters = NULL,
                                   fixed_global = NULL, silent = TRUE,
-                                  eval_method = c("auto", "jj", "gh", "ac", "ac2"),
+                                  eval_method = c("auto", "jj", "gh", "ac", "ac2", "poisg"),
                                   match_laplace_residual_sd = FALSE,
                                   profile_variational = FALSE,
                                   collapse_variational_cov = FALSE,
@@ -2423,7 +2436,7 @@
                        rank_source = c("fixed_fixture", "ml_bic"),
                        fixed_global = NULL, source = NULL, rebuild = FALSE,
                        control = list(eval.max = 2000L, iter.max = 2000L),
-                       silent = TRUE, eval_method = c("auto", "jj", "gh", "ac", "ac2"),
+                       silent = TRUE, eval_method = c("auto", "jj", "gh", "ac", "ac2", "poisg"),
                        match_laplace_residual_sd = FALSE,
                        collapse_variational_cov = FALSE,
                        n_starts = 4L,

@@ -291,6 +291,31 @@ Type va_r3_cloglog_logp(const Type &eta)
   return CppAD::CondExpGt(eta, upper, Type(0.0), ordinary);
 }
 
+// Truncated-Poisson / PoisG closed-form cloglog VA expectation
+// (gllvm 2.0.13 src/gllvm.cpp ~3303-3311, method="VA", extra==2).
+//
+// gllvm stores cQ = v/2 and writes, with mu_pois = exp(eta + cQ):
+//   y*log1p(-exp(-mu_pois*exp(-cQ))) - (N-y)*mu_pois
+//     + mu_pois*(exp(-cQ)-1)
+// which algebraically equals (our mu = E_q[eta], v = Var_q[eta]):
+//   y * cloglog_logp(mu) + exp(mu) - (n - y + 1) * exp(mu + v/2).
+//
+// THIS IS A DIFFERENT OBJECTIVE from the GH cloglog branch below (which
+// quadratures E[cloglog_logp(eta)] and uses the exact failure mean
+// E[exp(eta)]). It is the construction gllvm ships as cloglog VA -- NOT
+// JJ, NOT AC, NOT EVA/GH. Research/comparator tier: registry default for
+// binomial_cloglog remains "gh"; callers opt in with eval_method = "poisg".
+// Returns the same units as the GH cloglog evaluator so both plug into
+// ell = log_choose + <evaluator>.
+template <class Type>
+Type va_r3_cloglog_poisg_expectation(const Type &mu, const Type &v,
+                                     const Type &y, const Type &n)
+{
+  Type e_mu = exp(mu);
+  Type e_mean = exp(mu + v / Type(2.0));
+  return y * va_r3_cloglog_logp(mu) + e_mu - (n - y + Type(1.0)) * e_mean;
+}
+
 // Inverse Mills ratio lambda(x) = phi(x)/Phi(x) = d/dx log Phi(x).
 //
 // Needed only by the small-v expansion below, but it carries the same 0/0
@@ -536,6 +561,9 @@ Type objective_function<Type>::operator()()
                                    // 3 = "ac2", curvature-corrected Albert-Chib
                                    //     (binomial-probit only; research/comparison
                                    //     tier, see va_r3_probit_ac2_expectation above)
+                                   // 4 = "poisg", truncated-Poisson closed form
+                                   //     (binomial-cloglog only; research/comparison
+                                   //     tier, see va_r3_cloglog_poisg_expectation)
   // "ac2"'s expansion/quadrature switch point (va_r3_probit_ac2_expectation
   // above). Runtime DATA, not a compile-time constant, so a threshold sweep
   // needs no rebuild; read unconditionally, so it must be present (and
@@ -803,16 +831,19 @@ Type objective_function<Type>::operator()()
     error("gllvmTMB_va_r3: ordinal_log_increments length disagrees with ordinal metadata");
   if (gh_nodes.size() <= 0 || gh_weights.size() != gh_nodes.size())
     error("gllvmTMB_va_r3: GH nodes and weights must have the same positive length");
-  if (eval_method != 0 && eval_method != 1 && eval_method != 2 && eval_method != 3)
-    error("gllvmTMB_va_r3: eval_method must be 0 (Gauss-Hermite), 1 (Jaakkola-Jordan/PG bound), 2 (Albert-Chib closed form), or 3 (ac2, curvature-corrected Albert-Chib)");
+  if (eval_method != 0 && eval_method != 1 && eval_method != 2 &&
+      eval_method != 3 && eval_method != 4)
+    error("gllvmTMB_va_r3: eval_method must be 0 (Gauss-Hermite), 1 (Jaakkola-Jordan/PG bound), 2 (Albert-Chib closed form), 3 (ac2, curvature-corrected Albert-Chib), or 4 (poisg, truncated-Poisson cloglog)");
 
   // Dense convention: each unit-trait cell is exactly one row. Family range
   // checks apply only to observed cells (Design 107); masked sentinels are
   // never fed to a density call.
   std::vector<int> cell_count(N * T, 0);
   // JJ is binomial-logit only. AC/AC2 are binomial-probit only.
+  // PoisG is binomial-cloglog only.
   int n_non_jj = 0;
   int n_non_ac = 0;
+  int n_non_poisg = 0;
   for (int r = 0; r < n_obs; ++r) {
     int i = unit_id(r);
     int t = trait_id(r);
@@ -829,6 +860,7 @@ Type objective_function<Type>::operator()()
       error("gllvmTMB_va_r3: link_id must be 0:2 for binomial and 0 for every other scalar family");
     if (!(fam == 1 && lid == 0)) n_non_jj += 1;
     if (!(fam == 1 && lid == 1)) n_non_ac += 1;
+    if (!(fam == 1 && lid == 2)) n_non_poisg += 1;
     cell_count[i * T + t] += 1;
     if (!std::isfinite(asDouble(y(r))) || !std::isfinite(asDouble(n_trials(r))))
       error("gllvmTMB_va_r3: y and n_trials must be finite");
@@ -873,6 +905,8 @@ Type objective_function<Type>::operator()()
   // n_non_ac rather than widening the admitted family set.
   if (eval_method == 3 && n_non_ac > 0)
     error("gllvmTMB_va_r3: eval_method = 3 requires pure binomial-probit data");
+  if (eval_method == 4 && n_non_poisg > 0)
+    error("gllvmTMB_va_r3: eval_method = 4 requires pure binomial-cloglog data");
   for (int cell = 0; cell < N * T; ++cell) {
     if (cell_count[cell] != 1)
       error("gllvmTMB_va_r3: every unit-trait cell must occur exactly once");
@@ -1176,16 +1210,23 @@ Type objective_function<Type>::operator()()
         }
         ell = log_choose + probit_expectation;
       } else {
-        // cloglog: the failure term is exact because log(1-p)=-exp(eta);
-        // only the success log-probability needs GH.
-        Type safe_v = CppAD::CondExpGt(v, Type(1e-12), v, Type(1e-12));
-        Type scale = sqrt(Type(2.0) * safe_v);
-        Type success = Type(0.0);
-        for (int h = 0; h < gh_nodes.size(); ++h)
-          success += gh_weights(h) * va_r3_cloglog_logp(mu + scale * gh_nodes(h));
-        success /= sqrt_pi;
-        ell = log_choose + y(r) * success
-          - (n - y(r)) * exp(mu + v / Type(2.0));
+        // cloglog: default GH; PoisG (eval_method == 4) is the gllvm-matched
+        // truncated-Poisson closed form (opt-in; auto stays GH).
+        if (eval_method == 4) {
+          ell = log_choose +
+            va_r3_cloglog_poisg_expectation(mu, v, y(r), n);
+        } else {
+          // Failure term is exact because log(1-p)=-exp(eta);
+          // only the success log-probability needs GH.
+          Type safe_v = CppAD::CondExpGt(v, Type(1e-12), v, Type(1e-12));
+          Type scale = sqrt(Type(2.0) * safe_v);
+          Type success = Type(0.0);
+          for (int h = 0; h < gh_nodes.size(); ++h)
+            success += gh_weights(h) * va_r3_cloglog_logp(mu + scale * gh_nodes(h));
+          success /= sqrt_pi;
+          ell = log_choose + y(r) * success
+            - (n - y(r)) * exp(mu + v / Type(2.0));
+        }
       }
     } else if (fam == 2) {
       // Poisson-log: E[exp(eta)] for eta ~ N(mu, v) is exact (log-normal

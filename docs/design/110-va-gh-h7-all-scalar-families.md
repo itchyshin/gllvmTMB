@@ -57,7 +57,7 @@ to the matching conditional Laplace density at `eta = mu`.
 | 0 | Gaussian / identity | EXACT | `log_sigma[t]` | `-log(sigma)-log(2pi)/2-{(y-mu)^2+v}/(2 sigma^2)` |
 | 1 | binomial / logit | GH; JJ explicit alternative | none | `lchoose(n,y)+y eta-n softplus(eta)` |
 | 1 | binomial / probit | GH; AC/AC2 explicit alternatives | none | `lchoose(n,y)+y logPhi(eta)+(n-y)logPhi(-eta)` |
-| 1 | binomial / cloglog | GH | none | `lchoose(n,y)+y log{1-exp[-exp(eta)]}-(n-y)exp(eta)` |
+| 1 | binomial / cloglog | GH; PoisG explicit alternative | none | `lchoose(n,y)+y log{1-exp[-exp(eta)]}-(n-y)exp(eta)` |
 | 2 | Poisson / log | EXACT | none | `y mu-exp(mu+v/2)-lgamma(y+1)` |
 | 3 | lognormal / log | EXACT | `log_sigma_lognormal[t]` | Gaussian expectation on `log(y)` plus `-log(y)` |
 | 4 | Gamma / log | EXACT | `log_phi_gamma[t]` | with shape `a`: `a log(a)-lgamma(a)+(a-1)log(y)-a mu-a y exp(-mu+v/2)` |
@@ -76,6 +76,11 @@ to the matching conditional Laplace density at `eta = mu`.
 The delta cells use the same linear predictor for occurrence and positive-part
 components because that is the model currently implemented by the Laplace
 engine. The positive component is not evaluated when `y = 0`.
+
+**Cloglog PoisG (2026-08-07).** `eval_method = "poisg"` is an opt-in internal
+tier matching gllvm 2.0.13 cloglog `method="VA"` (truncated-Poisson closed ELBO).
+`auto` / Design-110 default for `binomial_cloglog` remains GH. PoisG is not on
+the public `gllvmTMBcontrol(va_eval_method=)` surface (same class as AC/AC2).
 
 ## 3. Parameter and support alignment
 

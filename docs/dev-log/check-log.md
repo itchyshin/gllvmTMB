@@ -4,6 +4,28 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-08-07 -- cloglog PoisG closed-form VA (opt-in; auto stays GH)
+
+Branch: `codex/va-gh-all-families`. Implemented gllvm-matched truncated-Poisson
+PoisG for binomial-cloglog (`eval_method="poisg"`, template code 4,
+`ELBO_POISG`). Design 110 / `auto` default remains GH. Public
+`va_eval_method` unchanged (poisg internal like ac/ac2). No NEWS/fence claim.
+
+Commands:
+
+```sh
+NOT_CRAN=true Rscript -e 'devtools::load_all(".", quiet=TRUE); testthat::test_file("tests/testthat/test-va-poisg-expectation.R")'
+# PASS 29
+NOT_CRAN=true Rscript -e 'devtools::load_all(".", quiet=TRUE); testthat::test_file("tests/testthat/test-va-control-exposure.R")'
+# PASS 34
+NOT_CRAN=true PROBE_N_SEED=8 PILOT_CORES=8 Rscript --vanilla \
+  lanes/va-s1-binomials/scripts/probe-cloglog-poisg-h2h.R
+# medians: PoisG β RMSE 0.141 (= gllvm to ~1e-7); Σ̂≈0 (relFrob 1);
+#          GH β 0.169, Σ trace ~3.9
+```
+
+After-task: `docs/dev-log/after-task/2026-08-07-va-cloglog-poisg.md`.
+
 ## 2026-08-07 -- binomial GH n-ladder +cloglog (3-link complete)
 
 Branch: `codex/va-gh-all-families`. Extended

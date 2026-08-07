@@ -21,16 +21,15 @@
 
 ## Proposed freeze SHA
 
-**Candidate tip before this packet name-stamp:** `b3048ddf8eefd40d104786db83a8d272081c07b8`  
-(S0–S5 reversible work + S4 cran-comments + this packet draft; tree was clean.)
-
-After the name-stamp commit lands, **freeze at that newer HEAD** (packet will match tip):
+**Freeze the tip of `cursor/cran-path-a-0.6.1-20260807` after the final LOOP/packet stamp commit** (Version `0.6.1`, tree clean, #949 not merged).
 
 ```sh
 git -C /private/tmp/gllvmtmb-cran-path-a-0.6.1 fetch origin
-git -C /private/tmp/gllvmtmb-cran-path-a-0.6.1 rev-parse HEAD
-git -C /private/tmp/gllvmtmb-cran-path-a-0.6.1 status -sb   # must be clean
+git -C /private/tmp/gllvmtmb-cran-path-a-0.6.1 rev-parse HEAD   # proposed freeze
+git -C /private/tmp/gllvmtmb-cran-path-a-0.6.1 status -sb        # must be clean
 ```
+
+Parent content tip for review: `a7a4c60b` (S2+S3), `b3048ddf` (S4 cran-comments + packet), then docs stamps only.
 
 **Freeze means:** no further source edits on this identity. Any edit remints the package and voids D-49 receipts (M4→M5 runbook).
 

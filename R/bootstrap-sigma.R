@@ -369,7 +369,22 @@ bootstrap_Sigma <- function(
         site = site,
         species = species,
         family = family,
-        silent = TRUE
+        silent = TRUE,
+        ## A bootstrap replicate's OWN standard errors are never read: the
+        ## intervals this routine returns are PERCENTILE CIs across the replicate
+        ## spread, and `.extract_summaries()` -- the only thing applied to each
+        ## refit -- contains zero references to `sd_report`. So every replicate
+        ## was running a full `TMB::sdreport()` and throwing the result away.
+        ##
+        ## Measured cost of that discard: `sdreport` is 22-39% of Laplace
+        ## wall-clock across N in {250,1000,2500} x q in {2,5}
+        ## (docs/design/laplace-cost-profile.md), paid `nsim` times over.
+        ##
+        ## This does NOT reduce what the caller gets. The returned intervals are
+        ## unchanged, because they never depended on per-replicate SEs; the
+        ## user's ORIGINAL fit keeps its own `sdreport()`. Only the throwaway
+        ## refits skip it.
+        control = gllvmTMBcontrol(se = FALSE)
       ),
       aux
     )

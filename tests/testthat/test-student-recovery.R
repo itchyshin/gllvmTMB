@@ -9,6 +9,16 @@
 ## models; Pinheiro, Liu & Wu 2001, Comput. Stat. Data Anal. 38:367-386,
 ## Student-t random-effects models).
 
+test_that("student(df = ...) validates fixed degrees of freedom", {
+  expect_error(student(df = 1), "greater than 1")
+  expect_error(student(df = Inf), "finite")
+  expect_error(student(df = NaN), "finite")
+  expect_error(student(df = c(3, 5)), "one finite number")
+  expect_error(student(df = "3"), "one finite number")
+  expect_message(student(df = 3), "fixed at 3")
+  expect_message(student(), "will be estimated")
+})
+
 test_that("student() family converges and recovers trait intercepts + sigma + df", {
   skip_if_not_heavy()
   skip_on_cran()

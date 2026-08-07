@@ -4,11 +4,16 @@
 \alias{extract_cutpoints}
 \title{Extract ordinal-probit cutpoints from a fitted gllvmTMB model}
 \usage{
-extract_cutpoints(fit)
+extract_cutpoints(fit, quiet = FALSE)
 }
 \arguments{
 \item{fit}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}} with at least one
 \code{\link[=ordinal_probit]{ordinal_probit()}} trait.}
+
+\item{quiet}{Suppress the note emitted when \code{tau_se} cannot be filled in
+because the fit has no \code{sd_report}. Internal callers that display only the
+cutpoint \emph{estimates} (\code{print()}, \code{tidy()}) pass \code{TRUE}: a note explaining
+an absent standard-error column is noise when no such column is shown.}
 }
 \value{
 A data frame with columns

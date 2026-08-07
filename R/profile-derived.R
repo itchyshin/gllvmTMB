@@ -726,6 +726,20 @@ profile_ci_communality <- function(
       "Total-variance intervals at tier {.val {tier}} need a latent and/or diagonal component in the fit."
     )
   }
+  ## V_t is CONTRACTUALLY (Lambda Lambda^T)_tt + psi_t. When the tier carries
+  ## loadings but no diagonal component there is no psi_t to add, and every psi
+  ## term below silently evaluates to zero -- so both routes keep reporting, but
+  ## they report Sigma_tt under the name V_t. That silent substitution produced a
+  ## confidently wrong coverage curve (0.517 -> 0.300 -> 0.096) whose
+  ## point-estimate gaps tracked the planted psi_t almost exactly. Refuse the fit
+  ## rather than quietly change the estimand.
+  if (length(ix_diag) == 0L) {
+    cli::cli_abort(c(
+      "Total-variance intervals at tier {.val {tier}} need the diagonal component {.val {diag_name}}, which this fit does not carry.",
+      "x" = "V_t = (Lambda Lambda^T)_tt + psi_t; without {.val {diag_name}} the psi_t term is identically zero, so V_t would silently reduce to Sigma_tt.",
+      "i" = "Fit the tier with {.code unique = TRUE} so psi_t is estimated, or target Sigma_tt directly if that is the intended estimand."
+    ))
+  }
 
   trait_names <- levels(fit$data[[fit$trait_col]])
   n_traits <- length(trait_names)

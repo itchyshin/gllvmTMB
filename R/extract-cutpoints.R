@@ -54,8 +54,12 @@
 #' extract_cutpoints(fit)
 #' }
 #'
+#' @param quiet Suppress the note emitted when `tau_se` cannot be filled in
+#'   because the fit has no `sd_report`. Internal callers that display only the
+#'   cutpoint *estimates* (`print()`, `tidy()`) pass `TRUE`: a note explaining
+#'   an absent standard-error column is noise when no such column is shown.
 #' @export
-extract_cutpoints <- function(fit) {
+extract_cutpoints <- function(fit, quiet = FALSE) {
   out_empty <- data.frame(
     trait = character(0),
     cutpoint_index = integer(0),
@@ -76,7 +80,18 @@ extract_cutpoints <- function(fit) {
   trait_lab <- levels(fit$data[[fit$trait_col]])
   taus <- as.numeric(fit$report$ordinal_cutpoints %||% numeric(0))
   ## Try to pull SEs from the sdreport (ADREPORT(ordinal_cutpoints)).
+  ## The cutpoint ESTIMATES remain useful without standard errors, so this
+  ## reports rather than aborting -- but it must report, or an all-NA `tau_se`
+  ## column reads as "the standard error is unknown" when the truth is "nobody
+  ## computed one" (D-33).
   ses <- rep(NA_real_, length(taus))
+  if (is.null(fit$sd_report) && length(taus) > 0L && !isTRUE(quiet)) {
+    cli::cli_inform(c(
+      "i" = "{.field tau_se} is {.code NA}: this fit has no {.field sd_report}.",
+      ">" = "Compute standard errors without refitting:
+             {.code fit <- standard_errors(fit)}"
+    ))
+  }
   if (!is.null(fit$sd_report)) {
     adr <- summary(fit$sd_report, "report")
     rows <- grep("^ordinal_cutpoints$", rownames(adr))

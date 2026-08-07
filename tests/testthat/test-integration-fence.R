@@ -9,6 +9,22 @@
              site  = factor(rep(seq_len(n), each = p)))
 }
 
+.va_public_cells <- data.frame(
+  family = c(
+    "gaussian", "binomial", "binomial", "binomial", "poisson",
+    "lognormal", "Gamma", "nbinom2", "tweedie", "Beta",
+    "betabinomial", "student", "truncated_poisson",
+    "truncated_nbinom2", "delta_lognormal", "delta_gamma",
+    "ordinal_probit", "nbinom1"
+  ),
+  link = c(
+    "identity", "logit", "probit", "cloglog", "log", "log", "log",
+    "log", "log", "logit", "logit", "identity", "log", "log", "log",
+    "log", "probit", "log"
+  ),
+  stringsAsFactors = FALSE
+)
+
 test_that("gllvmTMBcontrol gains integration, defaulting to laplace", {
   expect_identical(gllvmTMBcontrol()$integration, "laplace")
   expect_identical(gllvmTMBcontrol(integration = "va")$integration, "va")
@@ -57,13 +73,25 @@ test_that("the fence is a no-op for laplace", {
   ))
 })
 
-test_that("the fence admits an in-region variational fit", {
-  expect_true(.gllvmTMB_check_integration_fence(
-    "va", family = "binomial", link = "logit", q = 2L, p = 20L, n = 100L
-  ))
-  expect_true(.gllvmTMB_check_integration_fence(
-    "va", family = "poisson", link = "log", q = 2L, p = 80L, n = 400L
-  ))
+test_that("the fence individually admits exactly the 18 scalar Gate-E cells", {
+  lim <- .gllvmTMB_integration_fence_limits()
+  actual <- data.frame(
+    family = names(lim$links), link = unname(lim$links),
+    stringsAsFactors = FALSE
+  )
+  expect_equal(actual, .va_public_cells)
+  for (i in seq_len(nrow(.va_public_cells))) {
+    expect_true(.gllvmTMB_check_integration_fence(
+      "va", family = .va_public_cells$family[[i]],
+      link = .va_public_cells$link[[i]], q = 2L, p = 20L, n = 100L
+    ))
+  }
+  expect_error(
+    .gllvmTMB_check_integration_fence(
+      "va", family = "multinomial", link = "logit", q = 1L, p = 3L, n = 100L
+    ),
+    "no admitted variational evaluation"
+  )
 })
 
 test_that("the fence stops at q = 2, where the recovery gate actually passed", {
@@ -92,13 +120,12 @@ test_that("the fence errors, rather than warns, outside every boundary", {
   expect_error(bad(q = 6L), "exceeds the evidenced maximum")
   expect_error(bad(p = 200L), "exceeds the evidenced maximum")
   expect_error(bad(unique = TRUE), "Psi")
-  ## Design 108 Stage 2 admits gaussian identity; Gamma remains outside the fence.
-  expect_error(bad(family = "Gamma"), "no admitted variational evaluation")
+  expect_error(bad(family = "multinomial"), "no admitted variational evaluation")
   expect_no_error(do.call(
     .gllvmTMB_check_integration_fence,
     utils::modifyList(ok, list(family = "gaussian", link = "identity"))
   ))
-  expect_error(bad(link = "probit"), "not admitted for family")
+  expect_error(bad(link = "identity"), "not admitted for family")
   expect_error(bad(engine = "julia"), "no variational route")
 })
 
@@ -163,14 +190,19 @@ test_that("the data-aware fence limits are reachable from gllvmTMB()", {
              control = gllvmTMBcontrol(integration = "va")),
     "exceeds the evidenced maximum"
   )
-  ## A family with no admitted public variational evaluation. Gaussian identity
-  ## is admitted under Design 108 Stage 2; nbinom2 is template-only and hits
-  ## the fence before the dedicated public-route refusal.
+  ## Multinomial is a coupled K-1 softmax architecture, not one of the 18
+  ## scalar family/link cells.
+  set.seed(12L)
+  multi <- data.frame(
+    value = factor(sample(1:3, 120L, replace = TRUE)),
+    trait = factor("morph"), site = factor(seq_len(120L))
+  )
   expect_error(
-    gllvmTMB(fml2, data = .fence_fixture(n = 120L, p = 6L),
-             family = nbinom2(), unit = "site",
+    gllvmTMB(value ~ 0 + trait + latent(0 + trait | site, d = 1L,
+                                        unique = FALSE),
+             data = multi, family = multinomial(), trait = "trait", unit = "site",
              control = gllvmTMBcontrol(integration = "va")),
-    "no admitted variational evaluation"
+    "non-scalar"
   )
 })
 

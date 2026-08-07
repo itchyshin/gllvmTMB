@@ -146,3 +146,60 @@ test_that("the exported route labels a real out-of-regime fit route-only", {
   expect_equal(out$lower, internal$lower, tolerance = 1e-12)
   expect_equal(out$upper, internal$upper, tolerance = 1e-12)
 })
+
+## ---- The estimand may not change silently ---------------------------------
+##
+## `.total_variance_spec()` is the single source of truth for
+## V_t = (Lambda Lambda^T)_tt + psi_t. When a tier carries loadings but no
+## diagonal component there is no psi_t to add, and every psi term below it
+## evaluates to zero -- so both routes keep reporting, but they report Sigma_tt
+## under the name V_t. That silent substitution is what produced the coverage
+## collapse 0.517 -> 0.300 -> 0.096 in the 2026-08-03 Step-0 pilot, with
+## point-estimate gaps tracking the planted psi_t almost exactly. These tests pin
+## the refusal so the estimand cannot drift again without a test failing.
+
+## A stub carrying only the fields `.total_variance_spec()` reads.
+spec_stub <- function(par_names, n_traits = 2L) {
+  par <- rep(0.5, length(par_names))
+  names(par) <- par_names
+  structure(
+    list(
+      opt = list(par = par),
+      data = data.frame(
+        trait = factor(paste0("t", seq_len(n_traits)))
+      ),
+      trait_col = "trait",
+      tmb_map = list(),
+      d_B = 1L, d_W = 1L, d_phy = 1L
+    ),
+    class = "gllvmTMB_multi"
+  )
+}
+
+test_that("a loadings-only tier is refused rather than silently scoring Sigma_tt", {
+  ## theta_rr_B present, theta_diag_B absent: psi_t does not exist in this fit.
+  loadings_only <- spec_stub(c("theta_rr_B", "theta_rr_B"))
+  expect_error(
+    gllvmTMB:::.total_variance_spec(loadings_only, tier = "unit"),
+    regexp = "theta_diag_B"
+  )
+  ## The message must name the estimand, not just the missing parameter, so the
+  ## reader learns V_t would have collapsed to Sigma_tt.
+  expect_error(
+    gllvmTMB:::.total_variance_spec(loadings_only, tier = "unit"),
+    regexp = "Sigma_tt"
+  )
+})
+
+test_that("a tier carrying psi still builds, and the empty tier keeps its own error", {
+  with_psi <- spec_stub(c("theta_rr_B", "theta_rr_B", "theta_diag_B", "theta_diag_B"))
+  expect_no_error(gllvmTMB:::.total_variance_spec(with_psi, tier = "unit"))
+
+  ## A tier with neither component keeps the pre-existing message -- the new
+  ## guard must not swallow it.
+  neither <- spec_stub(c("beta"))
+  expect_error(
+    gllvmTMB:::.total_variance_spec(neither, tier = "unit"),
+    regexp = "latent and/or diagonal"
+  )
+})

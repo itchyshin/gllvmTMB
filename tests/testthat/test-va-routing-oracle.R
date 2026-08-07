@@ -31,6 +31,44 @@
 ##    proves the translation layer is correct behind a second, normally-unset
 ##    env var would mean routine CI never runs it.
 
+test_that("VA routing preserves fixed Tweedie power and Student df metadata", {
+  fam <- list(
+    tweedie(p = 1.6), tweedie(p = 1.6),
+    suppressMessages(student(df = 7)), suppressMessages(student(df = 7))
+  )
+  fixed <- .va_route_fixed_family_parameters(
+    family_per_row = fam,
+    family_codes = c(6L, 6L, 9L, 9L),
+    trait_id = c(0L, 0L, 1L, 1L),
+    n_traits = 2L
+  )
+  expect_equal(fixed$tweedie_power, c(1.6, NA_real_))
+  expect_equal(fixed$student_df, c(NA_real_, 7))
+
+  free <- .va_route_fixed_family_parameters(
+    family_per_row = list(tweedie(), tweedie()),
+    family_codes = c(6L, 6L), trait_id = c(0L, 0L), n_traits = 1L
+  )
+  expect_true(is.na(free$tweedie_power))
+  expect_true(is.na(free$student_df))
+
+  expect_error(
+    .va_route_fixed_family_parameters(
+      family_per_row = list(tweedie(p = 1.5), tweedie(p = 1.6)),
+      family_codes = c(6L, 6L), trait_id = c(0L, 0L), n_traits = 1L
+    ),
+    "inconsistent"
+  )
+  expect_error(
+    .va_route_fixed_family_parameters(
+      family_per_row = list(suppressMessages(student(df = 5)),
+                            suppressMessages(student())),
+      family_codes = c(9L, 9L), trait_id = c(0L, 0L), n_traits = 1L
+    ),
+    "inconsistent"
+  )
+})
+
 test_that("integration = \"va\" routes to the same fit as calling the engine", {
   skip_on_cran()
 
@@ -52,8 +90,8 @@ test_that("integration = \"va\" routes to the same fit as calling the engine", {
                     control = gllvmTMBcontrol(integration = "va"))
 
   ## Route B -- the engine directly, reconstructing exactly what the
-  ## translation layer derives (R/va-routing.R). `eval_method = "jj"` must
-  ## match the route's choice (settled by Gate 3) or this compares two
+  ## translation layer derives (R/va-routing.R). `eval_method = "gh"` and H=7
+  ## must match the Gate-E-promoted route or this compares two
   ## different estimators rather than two paths to one.
   X <- stats::model.matrix(~ 0 + trait, data = df)
   ## Derive the grouping from the formula rather than hardcoding `df$site`, so
@@ -78,7 +116,7 @@ test_that("integration = \"va\" routes to the same fit as calling the engine", {
     trait_id = as.integer(df$trait) - 1L,
     q = q, N = n, T = p,
     family = "binomial", link = "logit",
-    eval_method = "jj"
+    eval_method = "gh", H = 7L
   )
 
   expect_identical(fit_a$status, "healthy")
@@ -103,7 +141,7 @@ test_that("integration = \"va\" routes to the same fit as calling the engine", {
   expect_s3_class(fit_a, "gllvmTMB_va")
   expect_false(inherits(fit_a, "gllvmTMB_multi"))
   expect_identical(fit_a$integration, "va")
-  expect_identical(fit_a$eval_method, "jj")
+  expect_identical(fit_a$eval_method, "gh")
   expect_identical(fit_a$q, q)
   expect_identical(fit_a$p, p)
   expect_identical(fit_a$n, n)
@@ -111,20 +149,20 @@ test_that("integration = \"va\" routes to the same fit as calling the engine", {
   expect_true(fit_a$research_only)
 })
 
-test_that("likelihood-shaped methods fail loudly on a variational fit", {
+test_that("likelihood methods fail and fixed-effect VA-Wald fails closed without its retained objective", {
   skip_on_cran()
 
   ## No fitting: the methods are asserted against a minimal object carrying the
   ## real class, so this stays cheap and runs on routine CI. What is being
   ## tested is DISPATCH plus the message, not the numbers.
   fit <- structure(
-    list(integration = "va", eval_method = "jj", family = "binomial",
+    list(integration = "va", eval_method = "gh", family = "binomial",
          link = "logit", q = 2L, p = 6L, n = 120L, calibrated = FALSE,
          status = "healthy", objective_type = "ELBO_GH",
          score = list(negative_elbo_gh = 123.45),
          diagnostics = list(max_abs_gradient = 1e-6),
          fitted = list(parameters = c(beta = 0.1, theta_rr = 0.2)),
-         engine_result = list(quadrature = list(order = 61L),
+         engine_result = list(quadrature = list(order = 7L),
                               health = list(healthy_starts = 4L,
                                             attempted_starts = 4L))),
     class = c("gllvmTMB_va", "gllvmTMB")
@@ -135,9 +173,12 @@ test_that("likelihood-shaped methods fail loudly on a variational fit", {
   expect_error(logLik(fit), "not defined for a variational fit")
   expect_error(AIC(fit),    "not defined for a variational fit")
   expect_error(BIC(fit),    "not defined for a variational fit")
-  ## calibrated = FALSE: no uncertainty from the inverse variational Hessian.
-  expect_error(confint(fit), "not defined for a variational fit")
-  expect_error(vcov(fit),    "not defined for a variational fit")
+  ## Design 110 admits fixed-effect VA-Wald only when the healthy fit retains
+  ## the objective needed for its profiled Schur information. This cheap fake
+  ## deliberately does not, so the methods fail closed rather than inventing
+  ## a covariance from the displayed parameter vector.
+  expect_error(confint(fit), "healthy variational fit")
+  expect_error(vcov(fit),    "healthy variational fit")
   ## These are in the set BECAUSE their stats defaults would otherwise succeed
   ## silently. `coef`/`residuals`/`deviance`/`df.residual`/`weights` would
   ## return NULL; `fitted` is the sharpest -- `fitted.default` reaches for

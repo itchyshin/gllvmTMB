@@ -18,6 +18,8 @@ gllvmTMBcontrol(
   se = TRUE,
   verbose = FALSE,
   integration = c("laplace", "va"),
+  va_H = 7L,
+  va_eval_method = c("auto", "jj", "gh"),
   aghq = FALSE,
   aghq_iter_cap = 1L,
   aghq_n_adapt = 400L,
@@ -108,14 +110,17 @@ route that yields a marginal likelihood, so it is the only one for which
 \code{\link[=logLik]{logLik()}}, \code{\link[=AIC]{AIC()}}, \code{\link[=BIC]{BIC()}} and likelihood-ratio tests are defined.
 
 \code{"va"} selects an opt-in \strong{research} route whose objective is an evidence
-lower bound, not a marginal likelihood. It reports no calibrated
-uncertainty: no standard errors, no confidence intervals, and no coverage
-claim. A bound must not be compared across ranks or models, so it cannot
-be used for model or rank selection.
+lower bound, not a marginal likelihood. Fixed-effect \code{\link[=vcov]{vcov()}} and
+\code{\link[=confint]{confint()}} use profiled-Schur VA-Wald information and are labelled
+\code{calibrated = FALSE}; \code{\link[=getLV]{getLV()}} can return a variational posterior SD,
+which is not a frequentist random-effect standard error. No nominal
+coverage claim is made. A bound must not be compared across ranks or
+models, so it cannot be used for model or rank selection.
 
-It is admitted only inside the region for which evidence exists —
-\code{latent(..., unique = FALSE)}, binomial-logit or Poisson-log, \code{d} up to
-2, up to 80 responses, at least 100 units, and the native TMB engine — and
+It is admitted only inside the Gate-E implementation/light-fit region —
+\code{latent(..., unique = FALSE)}, the 18 scalar family/link cells in the
+response-family registry, \code{d} up to 2, up to 80 responses, at least 100
+units, and the native TMB engine — and
 requesting it outside that region is an \strong{error}, not a warning. The \code{d}
 limit is where a pre-registered recovery gate actually passed: \code{d = 4} was
 measured and refused, because with few responses the planted axes collapse
@@ -124,6 +129,40 @@ It cannot be combined with \code{aghq}, which is an alternative evaluation of
 the same integral rather than an additional layer.
 
 Offering this value advertises nothing about its accuracy.
+
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}} The \strong{ordination surface is
+available} for a \code{"va"} fit: \code{\link[=extract_ordination]{extract_ordination()}}, \code{\link[=getLV]{getLV()}},
+\code{\link[=getLoadings]{getLoadings()}} and \code{\link[=extract_loadings]{extract_loadings()}} return latent scores and
+loadings as POINT ESTIMATES. Fixed-effect \code{\link[=confint]{confint()}} and \code{\link[=vcov]{vcov()}} expose
+uncalibrated VA-Wald uncertainty; \code{getLV(se = TRUE)} returns a variational
+\emph{posterior} SD, not a frequentist standard error, and only when
+\code{eval_method} resolves to \code{"gh"}. Loading/covariance intervals remain
+unavailable.
+
+Recovery of that ordination was measured against planted truth at the
+admitted cells (\code{d = 2}, 8 responses, n = 150 and 400, 50 seeds per cell;
+\code{dev/va-usability/A2-ATTENUATION.md}), with the Laplace route run on the
+same simulated data as a control:
+\itemize{
+\item \strong{Gaussian}: the loading-implied variance is recovered at 0.98–1.02 of
+truth, and the mean paired difference in latent-score correlation
+against Laplace is below \code{2e-07} at both \code{n}.
+\item \strong{Poisson}: also 0.98–1.02 of truth, with a paired latent-score
+difference of ~\code{4e-04} — negligible in magnitude but statistically
+detectable, and the loading scale sits ~1\% below Laplace.
+\item \strong{Binomial}: latent scores recover at r ≈ 0.59. That ceiling is a limit
+of \strong{binary data} at these cells rather than of the variational route —
+the Laplace default reaches r ≈ 0.56–0.59 on the same data, and a third
+estimator (Gauss-Hermite) lands in the same place. The loading SCALE,
+however, is biased low (0.58–0.67 of truth) and this \strong{is} a real bias
+relative to Laplace, whose median brackets 1. Read a binomial
+ordination's axes and relative positions, not the absolute magnitude of
+its loadings.
+}
+
+The comparison is not effort-matched: the variational arm ran four starts
+behind an agreement-and-gradient health gate, the Laplace arm a single
+start admitted on a positive-definite Hessian.
 
 \code{"va"} returns an object of class \code{"gllvmTMB_va"} (see
 \link{gllvmTMB_va-methods}) rather than an ordinary fit, so that every method
@@ -143,6 +182,31 @@ capability the package does not have. Its own measurements are the reason
 it is not a candidate here: EVA delivers valid inference for the
 regression coefficients but not for \verb{Lambda Lambda'}, which is the
 between-response covariance this package exists to estimate.}
+
+\item{va_H}{Gauss-Hermite quadrature order for the variational route, a
+single odd integer \verb{>= 3} (default \code{7}). Ignored unless
+\code{integration = "va"}.
+
+Quadrature dominates the cost of a variational fit and the work is linear
+in \code{H}, so this is the main speed control on that route. On a binomial
+probit cell with 20 traits, \code{H = 7} was indistinguishable from \code{H = 61} in
+both the recovered loading scale and the recovered linear predictor, at
+two and at five latent dimensions, while running 3.4-6.7 times faster.
+\code{H = 5} was measurably worse at five latent dimensions. Gate E therefore
+promoted \code{H = 7}; \code{H = 61} remains available as a diagnostic.}
+
+\item{va_eval_method}{How the variational route evaluates the per-observation
+expectation. \code{"auto"} (default) selects Gauss-Hermite quadrature for every
+admitted scalar family/link cell and is what you want unless you are
+comparing methods.
+
+\code{"gh"} uses Gauss-Hermite quadrature. \code{"jj"} uses the Jaakkola-Jordan
+bound, which is defined only for pure binomial-logit fits and is
+substantially cheaper. The two differ in more than speed: on binary data
+the bound's recovered loading magnitudes are biased downward and do not
+improve as the sample grows, whereas quadrature's converge. Latent-variable
+\emph{scores}, and therefore ordinations, are effectively unaffected by the
+choice. Ignored unless \code{integration = "va"}.}
 
 \item{aghq}{Adaptive Gauss-Hermite quadrature for the between-unit latent
 block. \code{FALSE} (default) fits by Laplace approximation. A positive integer
@@ -271,5 +335,10 @@ gllvmTMBcontrol(optimizer = "optim", optArgs = list(method = "BFGS"))
 # Experimental, opt-in scale-aware ridge for the Bernoulli AGHQ scope.
 # The route uses the fixed 9-node multi-start rule.
 gllvmTMBcontrol(aghq_ridge = "auto")
+
+# Experimental scalar variational route: public auto uses GH with H = 7.
+gllvmTMBcontrol(integration = "va")
+# H = 61 remains a diagnostic; JJ is explicit binomial-logit only.
+gllvmTMBcontrol(integration = "va", va_H = 61, va_eval_method = "gh")
 
 }

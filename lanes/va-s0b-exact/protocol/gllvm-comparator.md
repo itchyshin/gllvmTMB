@@ -60,9 +60,12 @@ for decisive grids. Do not overlap two `mclapply`/`xargs -P` probes.
 | Totoro `…/va-gamma-la-nladder-022b4eab-20260807/` | Gamma LA n-ladder (n=120…1000, q=2); local `/private/tmp/va-gamma-la-nladder-evidence-20260807/` — recorded “0/6 healthy” used the **same FE+RE `gr()` bug**; do not cite as LA hopeless (see FE-gradient after-task) |
 | `/private/tmp/va-gamma-la-h2h-20260807/` | **Gamma LA×2 H2H** (24 seeds, q=2/5, FE health post-`abaf7802`) — gllvmTMB LA **better** than gllvm LA on abs β/Σ |
 | `lanes/va-s0b-exact/scripts/probe-gamma-la-h2h.R` | Gamma LA head-to-head script (FE + buggy `|g|`, paired Δ) |
+| Totoro `…/va-s2-nbinom2-2x2-20260807/` | **NB2 2×2 smoke** (16 seeds, q=2); local `/private/tmp/va-s2-nbinom2-2x2-smoke-20260807/` — prefer gtmb LA; gllvm VA collapses Σ |
+| `lanes/va-s2-nbinom2/scripts/probe-nbinom2-2x2-smoke.R` | NB2 4-arm smoke (+ Totoro launcher) |
 
 **Audits:** `docs/dev-log/audits/2026-08-07-va-gllvm-4arm-poisson-gamma.md`;  
-`docs/dev-log/audits/2026-08-07-va-gamma-la-h2h.md`.
+`docs/dev-log/audits/2026-08-07-va-gamma-la-h2h.md`;  
+`docs/dev-log/audits/2026-08-07-va-nbinom2-2x2-smoke.md`.
 
 ### Headlines from canonical 4-arm (do not re-derive from smoke)
 

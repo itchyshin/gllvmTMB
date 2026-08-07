@@ -4,6 +4,21 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-08-07 -- NB2 2×2 LA/VA × gllvm smoke (Totoro)
+
+Branch: `codex/va-gh-all-families`. Locked family **nbinom2** (GH H=7; no
+exact ELBO). Totoro 16 seeds, n=120 p=8 q=2, matched `n_starts=1`,
+`se=FALSE`, warm DLL. All four arms score; all fail abs Σ together (~1.0).
+gtmb VA edges β/Σ vs LA but **2.45×** cost; gllvm VA **87.5% Σ collapse**.
+**Prefer LA** for NB2 default on this smoke. No PASS claim; no fence/`auto`.
+Audit `docs/dev-log/audits/2026-08-07-va-nbinom2-2x2-smoke.md`; after-task
+`docs/dev-log/after-task/2026-08-07-va-nbinom2-2x2-smoke.md`; scripts under
+`lanes/va-s2-nbinom2/scripts/`. Summary MD5 `07264299454492a90c4a7bd87b2d059a`.
+
+## 2026-08-07 -- remember: standing Totoro permission (speed-up)
+
+Shinichi grants standing permission to use Totoro to speed sims/comparisons/campaigns without per-job “Totoro go”; still D-50; don’t kill other jobs; local ≤10-core smokes OK. Vault: `shinichi-brain/projects/compute-playbook` + `memory/Totoro preferred for heavy VA-binary sims (2026-08-07).md`.
+
 ## 2026-08-07 -- LA vs AGHQ(+ridge) timed binary (S1)
 
 Verdict for Shinichi: on **σ/ρ/runaway** AGHQ+ridge still wins

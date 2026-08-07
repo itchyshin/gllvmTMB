@@ -49746,3 +49746,35 @@ git diff --stat HEAD -- R/ src/
 — Cursor (docs only; ask-brain + register reconcile)
 
 
+
+## 2026-08-07 — gllvm 4-arm poisson/gamma comparator (Totoro)
+
+Resumed aborted gllvm compare under current compute policy (local ≤10 cores
+smoke; decisive grid on Totoro confirmation `022b4eab`). Arms: gllvmTMB VA /
+gllvmTMB LA / gllvm VA / gllvm LA vs planted Design-110 truth (β RMSE, Σ rel
+Frob). Cells: poisson+gamma; q=2,5; 8 seeds.
+
+- Totoro: `/home/snakagaw/gllvm_work/va-gllvm-h2h-4arm-022b4eab-20260807/`
+- Local D-50: `/private/tmp/va-gllvm-h2h-4arm-20260807/totoro-results/`
+- Script: `lanes/va-s0b-exact/scripts/probe-gllvm-4arm.R`
+- Audit: `docs/dev-log/audits/2026-08-07-va-gllvm-4arm-poisson-gamma.md`
+- After-task: `docs/dev-log/after-task/2026-08-07-va-gllvm-4arm-poisson-gamma.md`
+- Protocol + S0b ledger footnote updated; no fence / R / src edits
+- Raw CSVs not staged (D-50)
+
+```sh
+# Local smoke
+PROBE_N_SEED=1 PILOT_CORES=1 PROBE_QS=2 \
+  Rscript --vanilla /private/tmp/va-gllvm-h2h-4arm-20260807/probe-4arm.R
+# EXIT 0
+
+# Totoro full (24 cores, 8 seeds) EXIT 0
+md5 /private/tmp/va-gllvm-h2h-4arm-20260807/totoro-results/summary.csv
+# 41bbe9f13ada77bb018a9d1152bfd954
+
+git diff --stat HEAD -- R/ src/
+# empty
+```
+
+— Cursor (docs + probe script; Totoro evidence)
+

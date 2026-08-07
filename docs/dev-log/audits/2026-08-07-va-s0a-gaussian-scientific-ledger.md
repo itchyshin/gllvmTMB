@@ -47,6 +47,8 @@ remain descriptive only — this package does not promote `calibrated=TRUE`.
 
 ## gllvm comparator (standing rule 2026-08-07)
 
-S0a Totoro export is gllvmTMB-only. Forward: scientific absolute-first cells
-should also report matched **gllvm VA** (and Laplace if available) vs planted
-truth — see `lanes/va-s0b-exact/protocol/gllvm-comparator.md`.
+S0a Totoro export is gllvmTMB-only. Matched gllvm 4-arm probe for **poisson +
+gamma** delivered 2026-08-07 (see
+`docs/dev-log/audits/2026-08-07-va-gllvm-4arm-poisson-gamma.md`). Gaussian
+gllvm compare remains optional forward work under
+`lanes/va-s0b-exact/protocol/gllvm-comparator.md`.

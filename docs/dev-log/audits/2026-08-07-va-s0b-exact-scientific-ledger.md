@@ -54,6 +54,15 @@ changing reliability FAIL (gamma LA: 0/300 healthy under frozen rule).
 
 ## gllvm comparator (standing rule 2026-08-07)
 
-This Totoro ledger is gllvmTMB-only. Matched **gllvm VA** (and Laplace if
-available) vs planted truth is owed on diagnosis probes — see
-`lanes/va-s0b-exact/protocol/gllvm-comparator.md`.
+This Totoro ledger remains gllvmTMB-only. Matched 4-arm probe delivered
+2026-08-07 on confirmation `022b4eab` (8 seeds; poisson+gamma; q=2,5):
+
+- Audit: `docs/dev-log/audits/2026-08-07-va-gllvm-4arm-poisson-gamma.md`
+- Totoro: `/home/snakagaw/gllvm_work/va-gllvm-h2h-4arm-022b4eab-20260807/`
+- Local: `/private/tmp/va-gllvm-h2h-4arm-20260807/totoro-results/`
+
+Headlines: poisson q=2 fails abs Σ on **all four** arms together; poisson q=5
+favours gllvmTMB VA on Σ; **gllvm LA is not hopeless on β/Σ for gamma**
+(contrast: this ledger's gamma LA healthy 0/300 under frozen reliability).
+Shape/φ is unmatched and often explodes in gllvm at gamma q=5.
+Protocol: `lanes/va-s0b-exact/protocol/gllvm-comparator.md`.

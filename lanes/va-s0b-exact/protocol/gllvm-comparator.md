@@ -23,14 +23,24 @@ Laplace when a matched `gllvm` fit is feasible.
 | Laplace | Include gllvm Laplace **when** the API exposes it for that family (`method="LA"` with `family="gamma"` works). Else mark `gllvm_LA = N/A` explicitly. |
 | Seeds / DGP | Prefer identical planted draws; local probes **≤10 cores** (Shinichi 2026-08-07; was 20 — `PILOT_CORES`/`mc.cores`/`xargs -P` ≤10); one probe at a time; consolidate — do not thrash parallel jobs. |
 
-## Active local probes (2026-08-07) — coordinate, do not thrash
+## Active probes (2026-08-07) — coordinate, do not thrash
 
-**Local parallelism cap: ≤10 cores** (Shinichi 2026-08-07). Do not overlap two `mclapply`/`xargs -P` probes; prefer sequential after the essential compare finishes.
-
+**Local parallelism cap: ≤10 cores** (Shinichi 2026-08-07). Prefer **Totoro**
+for decisive grids. Do not overlap two `mclapply`/`xargs -P` probes.
 
 | Dir | Role |
 | --- | --- |
-| `/private/tmp/va-poisson-gllvm-probe-20260807/` | Primary VA paired script (`probe-poisson-gamma-paired.R`); early smoke only so far |
-| `/private/tmp/va-s0b-gllvm-h2h-20260807/` | Sibling h2h / Laplace-extended compare — consolidate into one table |
+| `/home/snakagaw/gllvm_work/va-gllvm-h2h-4arm-022b4eab-20260807/` | **Canonical 4-arm** Totoro run (poisson+gamma, q=2/5, 8 seeds) on confirmation `022b4eab` |
+| `/private/tmp/va-gllvm-h2h-4arm-20260807/totoro-results/` | Local D-50 copy of Totoro CSVs |
+| `lanes/va-s0b-exact/scripts/probe-gllvm-4arm.R` | Script (VA+LA × both packages) |
+| `/private/tmp/va-poisson-gllvm-probe-20260807/` | Early VA-only smoke — superseded |
+| `/private/tmp/va-s0b-gllvm-h2h-20260807/` | Aborted sibling h2h — superseded |
 
-Outputs expected: `paired-summary.csv`, `paired-seed-rows.csv`, optional `s0b-known-truth-reference.csv`.
+**Audit:** `docs/dev-log/audits/2026-08-07-va-gllvm-4arm-poisson-gamma.md`
+
+### Headlines from canonical 4-arm (do not re-derive from smoke)
+
+- Poisson `q=2`: all four arms fail abs Σ together (~0.61–0.69).
+- Poisson `q=5`: gllvmTMB VA strongest on Σ; gllvm VA weaker (pass_abs 0.12).
+- Gamma: **gllvm LA is not hopeless on β/Σ** (8/8; `q=5` pass_abs=1.0). Shape/φ often explodes — not a matched estimand.
+- Always report gllvm wall times (see audit table).

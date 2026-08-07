@@ -4,6 +4,23 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-08-07 -- Gamma LA H2H (gllvmTMB vs gllvm; FE health)
+
+Branch: `codex/va-gh-all-families`. Local probe after `abaf7802` FE-gradient fix.
+
+```sh
+PILOT_CORES=8 PROBE_N_SEED=24 PROBE_QS=2,5 DO_VA=0 \
+  PROBE_OUT=/private/tmp/va-gamma-la-h2h-20260807 \
+  Rscript --vanilla lanes/va-s0b-exact/scripts/probe-gamma-la-h2h.R
+# wall ~50s; 48 jobs; EXIT 0
+```
+
+Verdict: gllvmTMB gamma LA **better** than gllvm LA on abs β/Σ (Δβ −0.011/−0.020;
+ΔΣ −0.110/−0.053 at q=2/5; pass_abs 0.875/1.00 vs 0.542/0.917). FE healthy
+0.79/0.71; buggy full-g healthy 0/48. Audit:
+`docs/dev-log/audits/2026-08-07-va-gamma-la-h2h.md`. Raw D-50 under
+`/private/tmp/va-gamma-la-h2h-20260807/`. No Totoro needed. No `R/`/`src/`/fence.
+
 ## 2026-08-07 -- VA success bar lock + HMSC deferral
 
 Branch: `codex/va-gh-all-families` @ worktree `/private/tmp/gllvmtmb-va-gh-all-families`.

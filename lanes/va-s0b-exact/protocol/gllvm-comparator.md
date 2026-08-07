@@ -58,14 +58,18 @@ for decisive grids. Do not overlap two `mclapply`/`xargs -P` probes.
 | `/private/tmp/va-poisson-gllvm-probe-20260807/` | Local **VA×VA** 20-seed poisson/gamma probe (keep artefact; Σ often favours gllvmTMB VA) — not the full 2×2 |
 | `/private/tmp/va-s0b-gllvm-h2h-20260807/` | Aborted sibling h2h — superseded by 4-arm Totoro |
 | Totoro `…/va-gamma-la-nladder-022b4eab-20260807/` | Gamma LA n-ladder (n=120…1000, q=2); local `/private/tmp/va-gamma-la-nladder-evidence-20260807/` — recorded “0/6 healthy” used the **same FE+RE `gr()` bug**; do not cite as LA hopeless (see FE-gradient after-task) |
+| `/private/tmp/va-gamma-la-h2h-20260807/` | **Gamma LA×2 H2H** (24 seeds, q=2/5, FE health post-`abaf7802`) — gllvmTMB LA **better** than gllvm LA on abs β/Σ |
+| `lanes/va-s0b-exact/scripts/probe-gamma-la-h2h.R` | Gamma LA head-to-head script (FE + buggy `|g|`, paired Δ) |
 
-**Audit:** `docs/dev-log/audits/2026-08-07-va-gllvm-4arm-poisson-gamma.md`
+**Audits:** `docs/dev-log/audits/2026-08-07-va-gllvm-4arm-poisson-gamma.md`;  
+`docs/dev-log/audits/2026-08-07-va-gamma-la-h2h.md`.
 
 ### Headlines from canonical 4-arm (do not re-derive from smoke)
 
 - Poisson `q=2`: all four arms fail abs Σ together (~0.61–0.69).
 - Poisson `q=5`: gllvmTMB VA strongest on Σ; gllvm VA weaker (pass_abs 0.12).
 - Gamma: **gllvm LA is not hopeless on β/Σ** (8/8; `q=5` pass_abs=1.0). Shape/φ often explodes — not a matched estimand.
+- **Gamma LA×2 (24 seeds, FE health):** gllvmTMB LA **beats** gllvm LA on mean β/Σ and abs pass (q=2 pass 0.875 vs 0.542; q=5 1.00 vs 0.917). FE healthy ~0.7–0.8; buggy full-g healthy 0.
 - Always report gllvm wall times (see audit table).
 
 ### Related local H2H (20 seeds; VA×VA only)

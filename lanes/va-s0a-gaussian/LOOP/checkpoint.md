@@ -1,4 +1,4 @@
-GOAL: see GOAL.md.   STATE: S0a COMPLETE — STOPPED at G0b (open S0b?).
+GOAL: see GOAL.md.   STATE: S0a COMPLETE — G0b YES; S0b owned by lanes/va-s0b-exact.
 ARCS DONE (verified):
   A0 ✓ LOOP @ 5c381f13
   A1 ✓ Totoro Gate/runtime + Gaussian smoke healthy
@@ -6,8 +6,8 @@ ARCS DONE (verified):
   A3 ✓ scientific ledger SCIENTIFIC_PASS q=2 and q=5; export.md5 e2311f0744709e39fb3e66754bdba453
   A4 ✓ after-task + check-log + plan-actual
 ARC IN PROGRESS: none
-NEXT: G0b — Shinichi yes/no on S0b (poisson/lognormal/gamma)
-OPEN GATES (need human): **G0b open S0b?**; push/PR still gated
+NEXT: S0b running in lanes/va-s0b-exact (G0b YES 2026-08-07)
+OPEN GATES (need human): push/PR; S1 after S0b
 TRUTH LIVES IN:
   worktree /private/tmp/gllvmtmb-va-gh-all-families · codex/va-gh-all-families
   Totoro /home/snakagaw/gllvm_work/va-s0a-gaussian-022b4eab-20260807

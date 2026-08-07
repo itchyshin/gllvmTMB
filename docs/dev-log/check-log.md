@@ -49638,3 +49638,37 @@ git diff --stat HEAD -- R/ src/
 ```
 
 — Cursor `/goal` va-s0a-gaussian (2026-08-07)
+
+## 2026-08-07 — VA S0b exact-route absolute-first (fresh Totoro)
+
+Lane `codex/va-gh-all-families` / `lanes/va-s0b-exact`. G0b yes after S0a.
+Fresh known-truth campaign on Totoro for `poisson_log`, `lognormal_log`,
+`gamma_log` at q∈{2,5}, seeds 10301:10600 (n=300), n=120, p=8, estimators
+va+laplace, estimator revision `022b4eab`. Plan 3,600 rows; exit COMPLETE with
+3,600/3,600 bundles. Export MD5 `1e0a78c16eca8f93ca18b2981b816217`.
+
+Scientific absolute-first (default caps β≤0.35, Σ≤0.50): poisson q=5 PASS;
+lognormal q=2 and q=5 PASS; poisson q=2 FAIL (Σ 0.626); gamma both FAIL
+(reliability; Laplace 0/300). Alternate caps not proposed. Frozen Arc-2 MD5
+`e57f8460fd98bd0eac43b4a6c014317d` unchanged. Fence / `calibrated=FALSE`
+untouched. No R/src mutation. Stopped before S1.
+
+Evidence:
+
+- Totoro root `/home/snakagaw/gllvm_work/va-s0b-exact-022b4eab-20260807`
+- plan.md5 `c9f6711a1ecea5ecbdb628b91566feba`
+- export.md5 `1e0a78c16eca8f93ca18b2981b816217`
+- ledger `docs/dev-log/audits/2026-08-07-va-s0b-exact-scientific-ledger.{csv,md}`
+- local copy `/private/tmp/va-s0b-exact-evidence-20260807/`
+
+```sh
+# Totoro smoke + full run + export: COMPLETE 3600/3600 EXIT:0
+
+md5 /private/tmp/va-gh-h7-final-evidence/totoro/adjudication/va-gh-h7-adjudication-totoro-022b4eab.csv
+# e57f8460fd98bd0eac43b4a6c014317d
+
+git diff --stat HEAD -- R/ src/
+# empty
+```
+
+— Cursor va-s0b-exact (2026-08-07)

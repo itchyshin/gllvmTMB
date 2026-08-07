@@ -4,7 +4,43 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-08-07 -- gllvm inventory: Arc-2 N; start binomial 2×2
+
+Branch: `codex/va-gh-all-families`. Confirmed Arc-2 H-ladder + confirmation
+exports are **gllvmTMB-only** (`estimators=va,laplace`; campaign README:
+gllvm deliberately absent). Cursor session already has poisson/gamma 4-arm +
+gamma LA H2H. **Binomial gllvm missing** → started local probe:
+
+```sh
+PILOT_CORES=8 PROBE_N_SEED=24 PROBE_QS=2,5 PROBE_LINK=logit PROBE_VA_H=7 \
+  PROBE_OUT=/private/tmp/va-s1-binomial-gllvm-2x2-20260807 \
+  Rscript --vanilla lanes/va-s1-binomials/scripts/probe-binomial-gllvm-2x2.R
+```
+
+Audit inventory: `docs/dev-log/audits/2026-08-07-va-gllvm-inventory-arc2.md`.
+No H-ladder re-run. No fence change.
+
+## 2026-08-07 -- S1 binomial flagship scaffold + 2×2 smoke
+
+Branch: `codex/va-gh-all-families`. Docs + lane stub. Binomial elevated to
+**flagship with gaussian** (SDM / evidence-synthesis; Ayumi
+https://github.com/Ayumi-495/urbanisation_map/issues/13). Exact S0 left OK;
+gamma LA residual = hygiene only.
+
+```sh
+# Public-route VA smoke (earlier): binomial_logit n=120 q=2 → healthy ~4s
+PILOT_CORES=4 PROBE_N_SEED=2 PROBE_LINK=logit PROBE_Q=2 \
+  PROBE_OUT=/private/tmp/va-s1-binomial-2x2-smoke-20260807 \
+  Rscript --vanilla lanes/va-s1-binomials/scripts/probe-binomial-2x2-smoke.R
+# EXIT 0; 4 arms ok/healthy; abs not claimed from 2-seed smoke
+```
+
+Audit: `docs/dev-log/audits/2026-08-07-va-s1-binomial-2x2-smoke.md`.
+Ultraplan NEXT = non-exact series starting S1 binomials. **Needs Shinichi:**
+go for Totoro S1. No `R/`/`src/`/fence.
+
 ## 2026-08-07 -- Gamma LA H2H (gllvmTMB vs gllvm; FE health)
+
 
 Branch: `codex/va-gh-all-families`. Local probe after `abaf7802` FE-gradient fix.
 

@@ -222,12 +222,49 @@ Enough **before harder distributions** (S1+). Dual-report stays; Arc-2 / fence u
 
 #### C — Recommended next exploration arc
 
-**Exact families first** (before binomials / GH-hard): **gamma + poisson q=2**, with the full panel including **LA+tricks**.
+**NEXT = non-exact VA series, starting S1 binomials** (Shinichi 2026-08-07 family-registry direction).
 
-- Motivating cells: gamma **VA** reliability stress at q=5 (keep); recorded LA 0/300 **RETRACTED** as `laplace_health` FE+RE artefact (FE proxy ~71–94% healthy — **not** a `SCIENTIFIC_PASS` re-score without FE-|g| recompute); poisson q=2 SCIENTIFIC_FAIL on abs Σ (shared hardness).
-- **Totoro** if scale / multi-arm parallelism needed; **local ≤10 cores**.
-- Keep gllvm rows on the same DGP/seeds where feasible (`protocol/gllvm-comparator.md`).
-- Smoke ≤ small seed count, then Totoro confirmation — no huge new 36k unless a G0 asks.
+##### Exact vs non-exact split
+
+| Bucket | Families | VA path | Series status |
+| --- | --- | --- | --- |
+| **Exact VA (S0)** | gaussian, poisson, Gamma, lognormal | analytic expectation | **DONE / OK to leave** — poisson/gamma OK; gamma LA beats gllvm LA; FE-health ~71–79% hygiene (`docs/dev-log/audits/2026-08-07-va-gamma-la-confidence-close.md`) |
+| **Non-exact VA (GH H=7)** | binomial×3, nbinom1/2, betabinomial, beta, tweedie, student, truncated_*, ordinal_probit, delta_* (hybrid) | 1-D GH (hybrids: exact×GH) | **NEXT** — enter at binomial |
+| **Out of scope** | multinomial | VA **not implemented** | design-only / M later; no VA comparisons |
+
+Success bar unchanged: **VA ≲ LA** and **VA ≲ gllvm** (our VA ≠ gllvm VA); always 2×2; dual-report; no fence change.
+
+##### S1 entry (binomial) — **flagship, same narrative tier as Gaussian S0a**
+
+**Binomial (binary) is the primary applied priority alongside gaussian** for SDM /
+evidence-synthesis GLLVM work (presence–absence and binary indicator maps).
+Applied anchor: Ayumi urbanisation evidence map — Stage 1 probit-GLLVM +
+three-package robustness (`gllvm` / `glmmTMB` / `gllvmTMB`) —
+https://github.com/Ayumi-495/urbanisation_map/issues/13.
+
+Lane: `lanes/va-s1-binomials/` — logit / probit / cloglog; abs-first + dual-report +
+always 2×2; local ≤10 cores then Totoro.  
+Local: public-route VA smoke `healthy`; 2×2 plumbing smoke
+`scripts/probe-binomial-2x2-smoke.R` (all four arms finish; abs Σ scoring for
+binomial is Totoro-ledger work — do not soft-PASS from 2-seed smoke).  
+**Do not** blast nbinom/beta/tweedie/… before binomial has a real Totoro/local 2×2 vs truth (+ gllvm).  
+**gllvm inventory:** Arc-2/Codex Totoro had **no** gllvm (`dev/va-gh-h7-campaign/README.md` — deliberately absent). Cursor session filled poisson/gamma only. Binomial gllvm 2×2 = **new** (`scripts/probe-binomial-gllvm-2x2.R`). Audit: `docs/dev-log/audits/2026-08-07-va-gllvm-inventory-arc2.md`.  
+**H-gate:** reuse Totoro H-ladder (binomial H∈{5,7,9,15,61}; H7≈H61 PASS) — **do not** re-run H-ladder; gaps H=6,8 only, not worth a campaign.  
+**STOP:** say **go for Totoro S1** before full 3600-row plan. No fence / default-H change.
+
+##### Short ladder after binomial (secondary — G0 pick; do not launch all)
+
+| Order | Family | Why next |
+| ---: | --- | --- |
+| **S1** | **binomial** (logit → probit → cloglog) | **Flagship** with gaussian (SDM / evidence-synthesis); Ayumi #13; Arc-2 INCONCLUSIVE; JJ logit explicit |
+| **S1b** | **nbinom2** | Workhorse overdispersed count; Arc-2 FAIL×2; closest non-exact after binomial for ecology |
+| **S1c** | **beta** *or* **betabinomial** | Continuous [0,1] vs trials-binomial; pick one per G0 (default lean **beta** then betabinomial) |
+| **S1d** | **student** | Heavy-tail GH stress; Arc-2 FAIL |
+| **S1e** | **tweedie** | Power-parameter hardness; q=2 FAIL / q=5 INCONCLUSIVE in Arc-2 |
+| later | truncated_*, ordinal_probit, delta_* | Harder DGP / hybrid; after core ladder |
+| never here | multinomial | VA not implemented |
+
+Poisson q=2 shared-Σ dig remains **S2** (shared hardness), not a non-exact family rung.
 
 #### D — Explicit freeze (unchanged)
 
@@ -316,10 +353,13 @@ Stop: G0b before S0b.
 
 ## Needs Shinichi G0
 
-🔴 **Needs you:** approve Arc 0 (S0a) before any executable campaign or code:
+~~G0 / G0b / G0c answered. Exact S0 left OK.~~
 
-1. **Reuse path?** Yes (recommended) / require fresh Totoro Gaussian seeds.  
-2. **Abs caps?** Keep 0.35 / 0.50 with abs-availability eligibility (recommended) / propose other.  
-3. **Checkpoint after S0a before S0b?** Yes (recommended) / continue automatically.
+🔴 **Needs you (flagship S1):**
 
-Until then: **no** rescore productisation, **no** Totoro job, **no** fence/threshold/default change, **no** push/PR.
+1. **Say go for Totoro S1 binomials** (logit/probit/cloglog; smoke → full on
+   `lanes/va-s1-binomials/scripts/launch-totoro-s1.sh`)? — **primary ask.**
+2. After binomial closes, confirm later ladder
+   (nbinom2 → beta → …) or reorder — secondary; do not start until S1 ledger exists.
+
+Until then: **no** full GH-family blast, **no** fence change.

@@ -36,8 +36,12 @@ For each rank q separately:
 4. **Paired Laplace ratios (SECONDARY, non-blocking)** — report when paired
    eligibility ≥ 0.90; otherwise `RATIO_NOT_ELIGIBLE` with LA fail/completion
    rates. Ratio ineligibility alone does **not** force SCIENTIFIC_FAIL.
-5. **Calibration** — report Arc-2 labels only; do **not** set `calibrated=TRUE`.
-6. **Frozen overall** — every ledger row reprints Arc-2
+5. **gllvm comparator (STANDING, where feasible)** — scientific absolute-first
+   cells should also report **gllvm VA** (and **gllvm Laplace** if available)
+   vs planted truth, with model-match caveats. Forward detail:
+   `lanes/va-s0b-exact/protocol/gllvm-comparator.md` (series-wide note).
+6. **Calibration** — report Arc-2 labels only; do **not** set `calibrated=TRUE`.
+7. **Frozen overall** — every ledger row reprints Arc-2
    `overall_point_route_verdict = INCONCLUSIVE` for Gaussian q=2 and q=5.
 
 ### Caps recorded

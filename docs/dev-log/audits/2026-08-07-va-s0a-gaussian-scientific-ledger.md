@@ -44,3 +44,9 @@ This ledger does **not** soft-PASS or mutate those labels. Public fence and
 
 Arc-2 reported CALIBRATED beta-Wald and latent-SD labels for Gaussian; those
 remain descriptive only — this package does not promote `calibrated=TRUE`.
+
+## gllvm comparator (standing rule 2026-08-07)
+
+S0a Totoro export is gllvmTMB-only. Forward: scientific absolute-first cells
+should also report matched **gllvm VA** (and Laplace if available) vs planted
+truth — see `lanes/va-s0b-exact/protocol/gllvm-comparator.md`.

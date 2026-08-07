@@ -49672,3 +49672,26 @@ git diff --stat HEAD -- R/ src/
 ```
 
 — Cursor va-s0b-exact (2026-08-07)
+
+## 2026-08-07 — Standing rule: always report gllvm on VA absolute-first
+
+Shinichi: scientific absolute-first cells report gllvmTMB VA, gllvmTMB Laplace
+(secondary), and **gllvm VA (and gllvm Laplace if available)** vs planted truth,
+with model-match caveats. Written into:
+
+- `docs/dev-log/2026-08-07-va-validation-series-arc0-ultraplan.md`
+- `lanes/va-s0{a,b}-*/protocol/absolute-first.md`
+- `lanes/va-s0b-exact/protocol/gllvm-comparator.md` (series note)
+- LOOP `GOAL.md` one-liners; ledger footnotes on S0a/S0b audits
+
+In-flight local probe (do not thrash): 
+`/private/tmp/va-poisson-gllvm-probe-20260807/probe-poisson-gamma-paired.R`
+(poisson_log + gamma_log; going forward local probes ≤10 cores). No R/src mutation.
+
+```sh
+git diff --stat HEAD -- R/ src/
+# empty
+```
+
+— Cursor (docs-only; standing gllvm comparator invariant)
+

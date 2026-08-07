@@ -128,6 +128,12 @@ Approve **S0a reuse path** as Arc 0. Do **not** re-run Arc 2. Do **not** change 
 4. Compute default = **reuse**; Totoro only if G0 requires independence.
 5. M is out of critical path.
 
+### Standing invariant — gllvm comparator (Shinichi 2026-08-07)
+
+**Scientific absolute-first cells should report gllvmTMB VA, gllvmTMB Laplace (secondary), and gllvm VA (and gllvm Laplace if available) vs planted truth, with model-match caveats documented.**
+
+Do not stop at gllvmTMB VA vs gllvmTMB Laplace alone. Where a matched `gllvm` fit is feasible on the same DGP / seeds, scientific ledgers and diagnosis tables must carry the external comparator row(s). Document unique/Ψ, family-string, and shape/dispersion mismatches when models are not bit-identical. Local diagnosis probes: **≤10 cores** (Shinichi 2026-08-07); consolidate into one table — do not thrash parallel gllvm jobs.
+
 ### QUESTIONS STILL OPEN (for G0 — max 3)
 
 **QUESTION 1** · Approve S0a reuse path (no new fits) as Arc 0?  
@@ -156,8 +162,9 @@ For each family×rank cell under S0:
 2. **Reliability** — unchanged (Wilson upper ≤0.10 → PASS).
 3. **Absolute recovery (PRIMARY)** — among seeds with finite VA estimates (absolute availability ≥0.90): abs β RMSE ≤0.35 and mean Σ rel Frob ≤0.50. Else FAIL if availability OK and bound crossed; INCONCLUSIVE if availability <0.90.
 4. **Paired Laplace ratios (SECONDARY, non-blocking for SCIENTIFIC_PASS)** — report when paired eligibility ≥0.90; otherwise report `RATIO_NOT_ELIGIBLE` with LA fail rate — **do not** force overall SCIENTIFIC_FAIL solely from ratio ineligibility.
-5. **Calibration** — report Arc-2 labels; do not promote `calibrated=TRUE` on the package.
-6. **Frozen overall** — always reprint Design 110 Arc-2 overall verdict beside the scientific one.
+5. **gllvm comparator (STANDING, where feasible)** — report **gllvm VA** (and **gllvm Laplace** if available) vs the same planted truth on matched seeds/DGP; document model-match caveats. See `lanes/va-s0b-exact/protocol/gllvm-comparator.md`.
+6. **Calibration** — report Arc-2 labels; do not promote `calibrated=TRUE` on the package.
+7. **Frozen overall** — always reprint Design 110 Arc-2 overall verdict beside the scientific one.
 
 **Gaussian expectation (measured from retained evidence):** SCIENTIFIC_PASS at both ranks; frozen overall remains INCONCLUSIVE.
 

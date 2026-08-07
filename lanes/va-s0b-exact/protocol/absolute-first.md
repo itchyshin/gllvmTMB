@@ -28,8 +28,10 @@ Identical to S0a `lanes/va-s0a-gaussian/protocol/absolute-first.md`:
 3. Absolute recovery PRIMARY: abs-availability ≥ 0.90 and mean β RMSE ≤ 0.35
    and mean Σ rel Frob ≤ 0.50 → `SCIENTIFIC_PASS` (else FAIL / INCONCLUSIVE).
 4. Paired Laplace ratios SECONDARY / non-blocking.
-5. Do not set `calibrated=TRUE`.
-6. Reprint frozen Arc-2 `overall_point_route_verdict` per cell×q unchanged.
+5. **gllvm comparator (STANDING):** report gllvm VA (and gllvm Laplace if
+   available) vs planted truth where feasible — see `gllvm-comparator.md`.
+6. Do not set `calibrated=TRUE`.
+7. Reprint frozen Arc-2 `overall_point_route_verdict` per cell×q unchanged.
 
 ## Explicit non-goals
 
@@ -38,3 +40,4 @@ Identical to S0a `lanes/va-s0a-gaussian/protocol/absolute-first.md`:
 - Pooling ranks or families
 - Reusing Arc-2 or S0a seed rows as primary verdict
 - Opening S1 without Shinichi G0c
+- Stopping at gllvmTMB-only tables when a matched gllvm compare is feasible

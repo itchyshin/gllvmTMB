@@ -27,3 +27,10 @@ This ledger does **not** soft-PASS or mutate those labels.
 
 ## Secondary Laplace diagnostics
 Paired ratios are non-blocking for SCIENTIFIC_PASS. See CSV `ratio_secondary`.
+
+## gllvm comparator (standing rule 2026-08-07)
+
+This Totoro ledger is gllvmTMB-only. Matched **gllvm VA** (and Laplace if
+available) vs planted truth is owed on diagnosis probes — see
+`lanes/va-s0b-exact/protocol/gllvm-comparator.md`. Local probe in flight:
+`/private/tmp/va-poisson-gllvm-probe-20260807/` (poisson + gamma).

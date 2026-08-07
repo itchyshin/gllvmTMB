@@ -17,6 +17,7 @@ absolute-vs-truth under the same secondary scientific protocol?
 - Branch `codex/va-gh-all-families`; do not push/PR unless Shinichi says
 - Fresh seeds only (disjoint from Arc-2 `1:500` and S0a `10001:10300`)
 - Absolute-first primary; paired Laplace secondary / non-blocking
+- Always report matched **gllvm** VA (and Laplace if available) vs truth where feasible — see `protocol/gllvm-comparator.md`
 - Do **not** soft-PASS or mutate frozen Arc-2 `overall_point_route` labels
 - Do **not** change public VA fence or `calibrated=FALSE`
 - No R/TMB/fence/threshold package mutations without new G0

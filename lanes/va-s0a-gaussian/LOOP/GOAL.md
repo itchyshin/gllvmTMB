@@ -35,7 +35,9 @@ INCONCLUSIVE`, and without touching the public VA fence or `calibrated=FALSE`.
 10. Eligibility for SCIENTIFIC_PASS prefers **abs-availability ≥ 0.90** (finite VA
     metrics), **not** paired Laplace. Report LA completion and paired ratios as
     secondary diagnostics only.
-11. **STOP after S0a** — do not open S0b without Shinichi yes.
+11. Always report matched **gllvm** VA (and Laplace if available) vs truth where
+    feasible (series invariant — `lanes/va-s0b-exact/protocol/gllvm-comparator.md`).
+12. **STOP after S0a** — do not open S0b without Shinichi yes.
 
 ## Authoritative WHAT
 

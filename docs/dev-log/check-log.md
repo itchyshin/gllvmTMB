@@ -48447,3 +48447,68 @@ no `devtools::test()` / `R CMD check` run (no R/, src/, or tests/ files were
 touched — docs-only change).
 
 — Design 66 integration (Claude, 2026-08-02)
+
+---
+
+## 2026-08-08 — Integrated SDM Phase A gate (Claude, lane `claude/experiment-integrated-sdm`)
+
+**Scope:** measurement only. **No package source touched** — `R/`, `src/`, `tests/`, `man/`,
+`NAMESPACE`, `DESCRIPTION`, `docs/design/` all unmodified, verified by `git status --short` in both
+the lane worktree and the shared Dropbox checkout (the latter clean throughout).
+
+**Pre-edit lane check** (AGENTS.md, run before appending to this file):
+`gh pr list --state open` → empty. `git log --all --oneline --since="6 hours ago"` → only this lane's
+own `50f578b9`. No collision. `bash ~/shinichi-brain/tools/lane_preflight.sh` → "no codex lane
+detected in the last 12h"; per D-87 treated as weak evidence, foreign lanes (codex VA/GH, cursor
+CRAN 0.7) assumed ACTIVE.
+
+**Commands run:**
+- `library(gllvmTMB)` — version **0.6.0** installed, R 4.6.0. Deliberately measured against the
+  installed reference, not a dirty checkout.
+- Probe (`dev/isdm-probe.R`): toy 1-species and 3-species fits with
+  `attr(family_list, "family_var") <- "source"`; read back `fit$tmb_data$family_id_vec` and
+  `link_id_vec` and cross-tabulated against `source`.
+- Plumbing (`dev/isdm-plumbing.R`): `fit$obj$fn(par)` on a **fixed-effects-only** fit (verified
+  `fit$random` empty, so the objective is the exact NLL) compared against an independently coded
+  joint NLL at **three** parameter vectors; then 20-seed β recovery; then a permutation arm and
+  PO-only / PA-only arms.
+- Smoke (`dev/isdm-gate-smoke.R`): 6 configurations + one n=1600 timing fit, all inspected with
+  `str()` past their guards.
+- Campaign (`dev/isdm-gate-campaign.R`): 3 cells × 5 n × 4 prevalences × 2 arms × 200 seeds =
+  **24,000 fits**, `mclapply` on 18 cores, 6.43 core-hours, ~28 min wall.
+- Analysis (`dev/isdm-gate-analyse.R`): instruments D1–D7 + boundary rate.
+- Independent verification by a fresh agent **recomputing from `dev/isdm-gate-results.rds`** rather
+  than reading the prose: grid balance (every cell exactly 200 seeds), PB/PP RMSE ratio
+  (**1.028–1.169**), and the D1 slope for PB at p=0.3 (**−0.4871**, R² 0.9994). Both reproduce the
+  reported values.
+
+**Grep / inspection patterns used:**
+- `grep -n "offset" R/gllvmTMB.R R/fit-multi.R` and a full read of `R/offset.R` — established that
+  the count-family offset gate at `R/offset.R:148` fires only on **nonzero** offsets, which is what
+  makes the `a = 1` sidestep legal without a code change.
+- `grep -rn "family_per_trait" R/*.R` → only `R/fit-multi.R:4837-4842`, used solely for an OLRE
+  warning, returning `NA` for a trait spanning >1 family.
+- `grep -rn "extract_Sigma_B" R/ NAMESPACE`, `grep -rn "cloglog" R/*.R src/*.cpp` — confirmed the
+  cloglog "reserved" statements are scoped to *augmented-slope* routes, not ordinary `latent()`.
+- `grep -ril "presence-only\|integrated sdm\|isdm\|scampr\|point process\|thinned"` over
+  `{GLLVM.jl,drmTMB,DRM.jl}/{R,src,docs,vignettes}` → only `node_modules` noise; nothing to reuse
+  from a sister repo.
+- `grep -in "integrated sdm\|presence-only\|isdm\|scampr\|Dovers" memory/AGENT_LOG.md` → hits at
+  1221, 1238, 1247, 1253, 1259, carrying the #942 Gate-0 measurement and the dr30 close-out.
+
+**Outcome:** **PASS above prevalence 0.3.** PB's sign-aligned Λ RMSE is 1.03–1.17× PP's across all 20
+(n, prevalence) cells against a pre-stated tolerance of 2.0. D1 slope −0.487 (SE 0.0069) at p=0.3.
+D2: 14 dispersed starts → one optimum, max gap 4.5e-05 vs a pre-registered 0.05 — so where recovery
+is imperfect it is **weak estimability, not non-identifiability**. D6 placebo: the Bernoulli arm is
+not inert (23–58× MCSE). The p=0.1 miss reproduces in the PP control (−0.454), so it is **not**
+attributable to mixed curvature.
+
+**Deliberately NOT run / NOT done:** no `devtools::test()`, `devtools::document()`, `R CMD check`, or
+`pkgdown` build — no package source was touched, so they would test nothing about this slice. No
+GitHub Actions (D-50). No Totoro/DRAC: the smoke measured the grid at ~2.9 core-hours, so remote
+deploy plus a TMB compile would have cost more than the run; deviation from the compute default
+recorded rather than silent. No push, no PR, no merge, no export, no NEWS, no article, no
+validation-debt-register promotion. `#946` was **not** implemented — a passing gate does not license
+it, because `a = 1` means a varying PA offset was never exercised.
+
+— Integrated SDM Phase A gate (Claude, 2026-08-08)

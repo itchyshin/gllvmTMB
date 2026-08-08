@@ -1,0 +1,219 @@
+# Session Handoff: integrated SDM — Claude → **Codex**
+
+Meta: 2026-08-08 · from **Claude Code** · to **Codex** · repo `gllvmTMB` · **EXPERIMENTAL LANE**
+Branch **`claude/experiment-integrated-sdm`** · worktree `~/local-scratch/worktrees/gllvmtmb-isdm`
+Predecessor handover: `docs/dev-log/handover/2026-08-08-claude-handover-integrated-sdm.md` (Claude→Claude).
+
+**STATE THIS LINE when you start:**
+`PLATFORM: codex | LANE: integrated-SDM experiment | FOREIGN LANE: cursor (CRAN 0.7)`
+
+---
+
+## 0. LANE SEPARATION — read before anything
+
+- **Stay in the worktree.** Never work in `~/Dropbox/Github Local/gllvmTMB` — shared checkout.
+- **Never touch `main`.** A CRAN 0.7 release is in flight on the Cursor lane
+  (`cursor/cran-0.7-20260807`, `cursor/cran-path-a-0.6.1-20260807`).
+- **Never touch VA/GH estimator internals** (`codex/va-gh-all-families` is a *different* Codex lane —
+  do not conflate it with this one). This lane uses **Laplace**; the reference method does too.
+- **Never `git add -A`.** Scoped staging by explicit path.
+- **No PR, no merge.** This lane proves or dies in the worktree; Shinichi decides after.
+- Run `bash ~/shinichi-brain/tools/lane_preflight.sh .` at orient **and again before claiming a lane**.
+  Silence is weak evidence, never proof of sole ownership (D-87).
+
+---
+
+## 1. LANDING STATE LEDGER
+
+| item | committed | pushed | state |
+|---|---|---|---|
+| `50f578b9` original handover | y | n | lane entry point |
+| `68b45223` Phase A gate evidence (24k fits + harness) | y | n | **LANDED for this lane** |
+| `725b6e94` after-task report + check-log entry | y | n | **LANDED** |
+| `d684cf02` #946 offset admission + `link_residual` fix + tests | y | n | **LANDED, verified** |
+| `76eb5e7c` wide-format probe + Phase C reuse map | y | n | **LANDED** |
+| **Phase C workflow `we7vixcy2`** | — | — | 🔴 **CARRIED-OVER — RUNNING AT HANDOVER.** See §4. |
+| 285 unpushed commits on `agent/*` branches | y | n | **PRE-EXISTING, NOT THIS LANE'S.** Do not land, rebase, or delete. Predates this work; provenance unknown. `handoff_gate.sh` fails on them for this reason. |
+| stale `.git/index.lock` in the shared checkout | — | — | ⚠️ **REPORT to Shinichi, do NOT `rm`** (harness blocks `.git` deletions). |
+
+Nothing is pushed. **Codex reads `origin`; to Codex this lane does not exist until the branch is
+pushed.** Push it (`git push -u origin claude/experiment-integrated-sdm`) or work from the local
+worktree directly — but decide deliberately, do not assume.
+
+The shared Dropbox checkout is **2 commits behind `origin/main`** — pull before resuming anything there.
+
+---
+
+## 2. THE SCIENCE — settled, do not re-derive
+
+One ecological intensity: `log μ_i = β₀ + x_i β + ξ_i`.
+
+- **Presence-only** is a thinned point pattern; bias adds on the log scale:
+  `log λ_i = log A_i + β₀ + x_i β + ξ_i + α₀ + w_i α`, observed as Poisson counts.
+- **Presence/absence** is *derived*, not assumed: under a Poisson process a site of area `a_i` is
+  occupied with probability `1 − exp(−a_i μ_i)`, hence `cloglog(p_i) = log a_i + β₀ + x_i β + ξ_i`.
+
+So `β₀` and `β` are **the same parameters** in both arms. **cloglog is compulsory** — it *is* the
+change-of-support; logit or probit breaks the derivation and the parameters stop being shared.
+
+Textbook: Fithian 2015; Fletcher 2019; **Dovers, Popović & Warton 2024** *MEE* 15:191–203 (pkg
+`scampr`). **Claim none of it.** The possibly-new part is **multispecies latent factors on top**, and
+`dr30` (31-source sweep) confirms the gap: every integrated method treats species as independent;
+every latent-factor JSDM is single-source; **none does both**.
+
+**Poisson, not NB2, for the PO arm — and mind the reason.** Under NB2, `P(Y=0) = (1 + aμ/k)^(−k)`, so
+`cloglog(p) = log k + log log(1 + aμ/k)` — not affine in `log μ`. But the *criterion* "the marginal
+isn't cloglog" is **wrong**, because it equally condemns the recommended fix (a lognormal-Poisson also
+has a non-cloglog marginal). The correct argument: gamma mixing is **arm-local**, so exactly one arm
+is always misspecified; a *declared shared latent* `ξ` keeps `cloglog(p | ξ)` exact **conditionally**
+in both arms. **Corollary: NB2 is incompatible with cloglog, not with integration** — a matched link
+`p = 1 − (1 + e^η/k)^(−k)` exists. Rejecting NB2 is pragmatic, not a theorem.
+
+---
+
+## 3. WHAT IS DONE — measured, not assumed. Do NOT rebuild any of it.
+
+**Phase A — THE GATE: PASSED above prevalence 0.3.** 24,000 fits, 6.43 core-hours.
+Full report: `docs/dev-log/after-task/2026-08-08-isdm-gate-phase-a.md`; detail `dev/isdm-gate-findings.md`.
+
+- `Λ` RMSE in the mixed Poisson/Bernoulli-cloglog cell is **1.03–1.17×** the all-Poisson control's
+  across all 20 (n, prevalence) cells, against a **pre-registered** tolerance of 2.0.
+- Where recovery is imperfect it is **weak estimability, not non-identifiability** — separated by
+  instrument: n-ladder log-log slope **−0.487 (SE 0.0069)** at p=0.3 (an MLE gives −½; a
+  non-identified model gives ≈0), and 14 dispersed starts land on **one** optimum (max gap 4.5e-05
+  vs a 0.05 threshold).
+- The soft direction is the **loading/unique-variance split**, not the loading (`λ² + ψ = const`).
+- **The p=0.1 miss is NOT mixed curvature** — the all-Poisson control fails identically (−0.454).
+- Permutation placebo: the Bernoulli arm moves `Λ̂` by 23–58× its MCSE, so the pass is not vacuous.
+
+**Phase B — landed and verified.**
+- **#946**: the offset gate is now keyed on **family × link**. `binomial(cloglog)` admitted;
+  logit/probit/gaussian/Gamma-lognormal-Tweedie-on-log still refused. Four touch points (the issue's
+  "a few lines" was wrong): a `link_id_vec` param on `gll_prepare_offset()`, the call site at
+  `R/fit-multi.R:2159`, the gate at `R/offset.R:148`, and `fam_name()` so the error names the link.
+  `docs/design/01-formula-grammar.md` needed a **rewrite** — it argued explicitly *against* a link gate.
+- **`link_residual = "auto"` no-op fixed**: it warned that no residual is defined for a mixed-family
+  trait, set `NA`, then discarded the `NA` via `na.rm = TRUE` and returned the `"none"` answer. NA now
+  propagates into `diag(Σ)` and its row/column of `R`.
+- All new tests **proven to fail before their fix**. Verified with `NOT_CRAN=true` — the first run
+  silently **skipped** two of them on `skip_on_cran()` and reported a pass that never executed.
+
+**Settled facts you can build on:**
+- **#945 is WRONG.** A mixed-family-within-species fit **runs today**. `family_var` is a *join key*,
+  not a trait mapping: point it at a non-trait column (`source`) and `family_id_vec` comes back
+  length `nrow(data)`. It was **untested, not unsupported**. *Please correct the issue.*
+- **Wide format WORKS too** (`76eb5e7c`) — the `traits()` expander carries `source` through, the wide
+  `offset(e1,e2,…)` stacks in lockstep, and `getLV()` returns one score per **cell**. Plumbing only:
+  `d=1`, `n=5`, no recovery check, NA-masking untested.
+- The joint likelihood is **analytically correct**: TMB's objective matches a hand-built joint NLL to
+  **1e-10 … 1e-13** at three parameter vectors.
+
+---
+
+## 4. 🔴 CARRIED-OVER: the Phase C workflow was RUNNING at handover
+
+**Workflow `we7vixcy2`** (run id `wf_b705e82c-2c8`), 7 phases, 9 agents:
+`Scout → Design → Build → Smoke → Run → Analyse → Verify`.
+Script: `~/.claude/projects/.../workflows/scripts/isdm-phase-c-misspecification-wf_b705e82c-2c8.js`
+Transcript + `journal.jsonl`: `~/.claude/projects/.../subagents/workflows/wf_b705e82c-2c8`
+
+**Scout phase COMPLETED and its output is committed** (`76eb5e7c`): `dev/isdm-wide-format-probe.md`,
+`dev/isdm-phase-c-reuse-map.md`.
+
+**FIRST ACTION ON RESUME: establish what actually finished.** Do not assume, and do not re-run blind.
+```sh
+ls -la ~/local-scratch/worktrees/gllvmtmb-isdm/dev/isdm-phase-c-design.md \
+       ~/local-scratch/worktrees/gllvmtmb-isdm/dev/isdm-bias-*.{R,md,rds}
+```
+Then read the workflow's `journal.jsonl` — it records each agent's **actual return value**, and a
+cached result may itself be empty. Commit whatever landed before doing anything else; the worktree is
+**outside Dropbox and not backed up**.
+
+**What Phase C is asking, and why it matters more than Phase A.** Phase A's arms were all fitted to
+data generated from *exactly* the model they assume — so "integration beats pooling" is true **by
+construction**. It measures recovery, never benefit. Phase C is the honest arm: **spatially structured
+recording bias correlated with the environmental predictors**, which the fitted model's per-source
+constant `γ[d,j]` **structurally cannot represent**.
+
+The headline is about the **latent factors, not the slopes**: `u_i` is site-level and so is unmodelled
+recording bias, so **the factors are the natural sink for it**. Two species over-recorded in the same
+places load on a common factor and get reported as positively associated — a *sampling* correlation
+reported as a residual *ecological* one. Since the correlation matrix is a GLLVM's headline output,
+this measurement decides how the method may be described. Tobler et al. 2019 show this **by
+simulation for presence-absence**, and the driver is **species-specific** bias — so a shared bias
+surface would understate it. **The presence-only case is absent from the corpus**, which is what makes
+this a new result rather than due diligence.
+
+**Two hard constraints on the design** (both cost Phase A real time):
+1. `R/fit-multi.R:4976` maps `theta_diag_B` **off** — not merely floors it — when every row of a trait
+   is single-trial Bernoulli. An all-binary cell can only estimate `Σ = ΛΛ'`.
+2. Under a rank-1 `Σ = ΛΛ'` with `d = 1`, **every off-diagonal correlation is exactly ±1**. So the
+   correlation metric is **vacuous** unless `d ≥ 2` or `ψ` is genuinely estimable. The design slice
+   was told to choose `d` accordingly and justify it — **check that it did.**
+
+---
+
+## 5. NEXT STEPS, in order
+
+1. **Recover and commit Phase C's partial output** (§4). Establish what ran from the journal, not from memory.
+2. **Finish Phase C** — smoke must show the distortion metric *moves* between low and high bias, or
+   the ladder does nothing and the campaign is pointless (that was a pre-declared NO-GO).
+3. **Correct issue #945** — it records as impossible something now measured as working.
+4. **Document the `family_var` contract.** This is the biggest latent API risk in the lane: pointing
+   `family_var` at a non-trait column works but is **undocumented and arguably accidental**. The docs
+   say "per-trait family assignments"; every pre-existing test keys it to `trait`. A maintainer could
+   add a per-trait validation and silently break the integrated model. Make it a documented, tested
+   contract before anything depends on it.
+5. **Only then** consider real data. GBIF remains fenced.
+
+---
+
+## 6. MEASUREMENT DISCIPLINE — non-negotiable, and it has already caught things
+
+- **Recovery against planted truth is the criterion. NEVER score on optimiser flags.** In Phase A,
+  `convergence == 0` in **99.9%** of 24,000 fits *including* cells where recovery was demonstrably
+  poor. (Sister-package figure: 83.2% of degenerate fits reported clean flags.)
+- **Report MCSE with every mean.** A difference smaller than its MCSE is not a difference.
+- **Paired per-seed differences**, never medians of two clouds.
+- **State what is identified before scoring it.** Fithian *et al.* prove absolute intensity is not
+  identified from PO alone (only `α₀ + β₀`), so score relative-up-to-a-species-constant unless a PA
+  arm is present. `a = 1` is an **identifying assumption, not a convenience** — and because `β₀` is
+  shared, the PO offset must be in units where the PA site area equals 1, or the mismatch is silently
+  absorbed by `α₀` with no error.
+- **`NOT_CRAN=true` when running tests**, or `skip_on_cran()` will report a pass that never ran.
+- **Smoke first**: read the first cell's output early and abort on empty/NA.
+- Score with `extract_Sigma(..., link_residual = "none")` — planted `Λ`/`ψ` live on the **ecological**
+  linear predictor.
+
+---
+
+## 7. Environment
+
+- **Working dir:** `~/local-scratch/worktrees/gllvmtmb-isdm`. ⚠️ **outside Dropbox, NOT backed up** — commit early.
+- **Toolchain:** R 4.6.0 + TMB. Use `devtools::load_all()` — the branch carries a `#946` fix that
+  **installed 0.6.0 does not have**, so `library(gllvmTMB)` would silently test the wrong code.
+- **Compute:** Phase A ran locally (18 cores, 6.43 core-hours, ~28 min). Totoro (384 cores, R 4.5.3,
+  socket verified live 2026-08-08) is available and needs no Duo, but for a grid this size remote
+  deploy + TMB compile costs more than the run. **Never GitHub Actions (D-50).**
+- **Do not stage:** anything under `src/`, anything VA/GH, anything on the CRAN path, `.Rproj.user`.
+
+## 8. Open questions
+
+- Phase C's `d` choice and whether the correlation metric is non-vacuous (§4 constraint 2).
+- The Laplace attribution is **UNCERTAIN** for the package's real estimand: AGHQ is *structurally
+  ineligible* under `unique = TRUE`, so Phase A's D7 speaks only to the `unique = FALSE` arm.
+- Nothing here covers `d ≥ 2`, real data, imperfect detection `δ`, or disjoint PO/PA units.
+
+**Collaborator note, not a blocker:** the reference paper's authors are UNSW — **Gordana Popović and
+David Warton** — and Gordana is already on Shinichi's advisory-board invite list. If this lane
+produces anything, that conversation happens **before any public claim**.
+
+---
+
+## Resume prompt
+
+```text
+Read AGENTS.md and docs/dev-log/handover/2026-08-08-claude-to-codex-isdm.md. Run the lane preflight,
+then §5 step 1: establish from the workflow journal what Phase C actually produced, commit it, and
+continue Phase C from there. Do not rebuild Phase A or Phase B.
+```

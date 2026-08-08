@@ -3,10 +3,18 @@
 This coordination note prevents a new session from treating this repository as
 a single writable lane.  It is a map, not a release/capability claim.
 
-**Refresh 2026-08-07 (Cursor): VA Arc-1 merge/fence (C) is the active ship lane.**
-G0 approved: new worktree from `origin/main`, path-scoped Arc-1 transplant, code PR,
-**stop before merge**. Fat evidence tip `codex/va-gh-all-families` stays donor archive.
-**START HERE:** `2026-08-07-cursor-handover-va-arc1-merge-fence.md`.
+**Refresh 2026-08-07 evening (Cursor): first CRAN upload identity is `0.7.0`.**
+G0 locked: Path A `0.6.1` / `v0.6.1-rc.1` @ `6a58683c` is **PARKED/superseded for upload**
+(history retained; do not force-retag). New lane
+`/private/tmp/gllvmtmb-cran-0.7-20260807` · `cursor/cran-0.7-20260807` from
+`origin/main` @ `d7bee2fa` (VA Arc-1 #949 **already merged**). **STOP for track pick**
+before DESCRIPTION bump or D-113 implementation. Upload Shinichi-only, **not before
+19 Aug 2026**. **START HERE:** `docs/dev-log/plan-actual/2026-08-07-gllvmtmb-cran-0.7-g0.md`.
+
+**Refresh 2026-08-07 (Cursor): VA Arc-1 merge/fence (C) shipped to main as #949.**
+Worktree `/private/tmp/gllvmtmb-va-arc1-merge-fence` is **not** the 0.7 CRAN programme.
+Fat evidence tip `codex/va-gh-all-families` stays donor archive.
+**START HERE (VA leftover only):** `2026-08-07-cursor-handover-va-arc1-merge-fence.md`.
 
 **Refresh 2026-08-02 #2 (Claude, end of session): Design 108 GATE A IS CLOSED.**
 Stages **4** (#896, probit + tail-safe log-Phi, AD-SAFE), **6** (#907, multi-tier — closes Gate A)
@@ -26,7 +34,9 @@ missing-data ledger remains open and separately owned unless reassigned.
 
 | Lane | Owner | State | Start here | Boundary |
 | --- | --- | --- | --- | --- |
-| **VA Arc-1 merge/fence (C)** | Cursor | **G0 APPROVED.** Worktree `/private/tmp/gllvmtmb-va-arc1-merge-fence` · `cursor/va-arc1-merge-fence-20260807` from `origin/main`. Path transplant of Arc-1 surface; PoisG out; open code PR; **no merge without merge G0** | `2026-08-07-cursor-handover-va-arc1-merge-fence.md`; inventory `docs/dev-log/plan-actual/2026-08-07-va-arc1-merge-fence-inventory.md` | Keep `calibrated=FALSE` + Laplace default; no fat-tip PR; no soft-PASS Arc-2; docs-evidence PR deferred |
+| **CRAN 0.7 G0** | Cursor | **G0 LOCKED** (upload identity `0.7.0`). Worktree `/private/tmp/gllvmtmb-cran-0.7-20260807` · `cursor/cran-0.7-20260807` from `origin/main` @ `d7bee2fa`. `DESCRIPTION` still `0.6.0`. **STOP for track pick** | `docs/dev-log/plan-actual/2026-08-07-gllvmtmb-cran-0.7-g0.md`; LOOP `lanes/gllvmtmb-cran-0.7/LOOP/` | No DESCRIPTION bump yet; no D-113 impl until pick; no upload; Laplace default; D-112 holds; portal offline 5–19 Aug |
+| **CRAN Path A 0.6.1** | Cursor | **PARKED / superseded for upload.** Freeze `v0.6.1-rc.1` @ `6a58683c` retained. S7 STOPPED (PDF ≈ ERROR + galamm 404). Do not remint as CRAN 0.6.1; do not retag as 0.7 | Path A LOOP + `docs/dev-log/plan-actual/2026-08-07-gllvmtmb-cran-path-a-s7-progress.md` | Historical only; carry hygiene into 0.7 lane |
+| **VA Arc-1 merge/fence (C)** | Cursor | **MERGED to main** as [#949](https://github.com/itchyshin/gllvmTMB/pull/949) @ `d7bee2fa`. Worktree `/private/tmp/gllvmtmb-va-arc1-merge-fence` is leftover — **do not use for 0.7 CRAN** | `2026-08-07-cursor-handover-va-arc1-merge-fence.md` | Keep `calibrated=FALSE` + Laplace default; no fat-tip; no soft-PASS Arc-2 |
 | **VA GH all-families evidence tip** | Codex → archive | Donor-only @ `codex/va-gh-all-families` `/private/tmp/gllvmtmb-va-gh-all-families` (B truncnb2/delta_ln done). Not the merge vehicle | tip audits under `docs/dev-log/audits/2026-08-07-va-*` | Do not open PR from this tip; dirty probes/results stay local |
 | **Design 108 Gate A (VA parity)** | Cursor → Claude | **Stage 1 + Stage 2 MERGED** (#891, #893). Stage 3/4 **not started** — waiting Shinichi pick | `2026-08-02-claude-handover.md`; design `docs/design/108-va-parity-programme.md` | VA stays hard-fenced; no public mixed-family claim; no VA `mi()`; do not auto-start Stage 4; fresh WT per stage |
 | 0.6 release / M5 | Claude | separate committed/pushed release worktree | `2026-07-23-codex-handover.md` | reword/RC ceremony only; no CRAN submission or final tag without Shinichi |

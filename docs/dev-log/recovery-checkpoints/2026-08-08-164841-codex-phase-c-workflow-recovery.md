@@ -34,15 +34,21 @@ It contains seven events: four `started` events and three `result` events.
    already committed in `76eb5e7c`.
 3. Design returned `dev/isdm-phase-c-design.md`; it is already committed in
    `aa28376f`.
-4. Build started as agent `ae0b0a4ab785e2f53` but has no journal result. Its
-   transcript contains read and shell probes only: no `Write` or `Edit` tool call,
-   no final return, and no `dev/isdm-bias-*` artifact. The clean worktree confirms
-   that no uncommitted build output survived.
+4. Build started as agent `ae0b0a4ab785e2f53` but has no journal result. During
+   recovery its transcript and worktree continued changing asynchronously: it
+   wrote `dev/isdm-bias-harness.R` at 16:47:58 MDT and
+   `dev/isdm-bias-campaign.R` at 16:49:59 MDT. It then measured the bias-control
+   ladder, ran all six arms on one `n = 100`, `T = 6` dataset, checked the `k = 1`
+   versus `k = 3` diagonal-Psi gate, and verified the exact 21,300-fit grid count.
+   Its final preflight launcher failed before execution because macOS has no
+   `timeout` command. The agent emitted no final return and the workflow journal
+   did not append a Build `result` event.
 5. Smoke, Run, Analyse, and Verify never started.
 
-Therefore there is no uncommitted Phase C implementation to salvage. The design
-commit `aa28376f` is the last completed workflow output. Phase A and Phase B are
-landed predecessors and must not be rebuilt.
+Therefore the journal alone understates the recovered state: two uncommitted Build
+artifacts survived and must be verified and committed before Phase C continues.
+The design commit `aa28376f` remains the last completed workflow event. Phase A
+and Phase B are landed predecessors and must not be rebuilt.
 
 ## Commands run
 
@@ -50,31 +56,32 @@ landed predecessors and must not be rebuilt.
 git status --short --branch
 git log --oneline -12
 jq -c . <workflow>/journal.jsonl
-jq ... agent-ae0b0a4ab785e2f53.jsonl  # compact tool-use inventory
+jq ... agent-ae0b0a4ab785e2f53.jsonl  # compact tool-use and return inventory
 ls -la dev/isdm-phase-c-design.md dev/isdm-bias-*.{R,md,rds}
 bash ~/shinichi-brain/tools/lane_preflight.sh .
 ```
 
-Results: Lane C clean; the Phase C design exists; no `isdm-bias-*` file exists;
-GitHub PR census was unavailable because `api.github.com` could not be reached.
-The lane handover already identifies Cursor CRAN 0.7 as the foreign lane, so the
-network failure does not widen ownership.
+Results: Lane C began clean, then the inherited Build agent deposited the two
+untracked scripts above while recovery was in progress. GitHub PR census was
+unavailable because `api.github.com` could not be reached. The lane handover
+already identifies Cursor CRAN 0.7 as the foreign lane, so the network failure
+does not widen ownership.
 
 ## Commands still required
 
-1. Implement `dev/isdm-bias-harness.R` and `dev/isdm-bias-campaign.R` from the
-   frozen Phase C design.
-2. Run parse/static checks and the DGP bias-correlation control.
-3. Run the preregistered toy smoke and inspect the first returned fit.
+1. Independently parse and inspect `dev/isdm-bias-harness.R` and
+   `dev/isdm-bias-campaign.R` against the frozen design.
+2. Re-run the DGP bias-correlation control and exact grid-count check.
+3. Run the preregistered toy smoke and inspect its first returned fit.
 4. Continue only if the low-to-high bias distortion metric moves; otherwise record
    the preregistered NO-GO.
 5. Commit each verified Lane C slice with explicit paths only.
 
 ## Next safest action
 
-Implement the two Phase C dev scripts without editing package code, `src/`, the
-VA/GH estimator, CRAN files, or any other worktree. Use `devtools::load_all()` and
-`NOT_CRAN=true`; do not use the installed package.
+Verify and commit the two recovered Phase C dev scripts without editing package
+code, `src/`, the VA/GH estimator, CRAN files, or any other worktree. Use
+`devtools::load_all()` and `NOT_CRAN=true`; do not use the installed package.
 
 ## Blocking question
 

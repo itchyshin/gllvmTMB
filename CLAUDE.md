@@ -11,6 +11,29 @@ This repository is shared by humans, Codex, and Claude Code. Read
 > current handover. Read it before any repository mutation. Milestone state is not in
 > either place and must be re-derived from `git`.
 
+- **2026-08-08 — INTEGRATED SDM: THE GATE PASSES, AND #946 IS IN.** Experimental lane
+  `claude/experiment-integrated-sdm` (worktree-only, **nothing pushed**, no PR, no merge).
+  A GLLVM latent factor **survives two likelihood curvatures**: with one species' rows carried
+  under Poisson-log (presence-only) and Bernoulli-cloglog (presence/absence), planted `Λ` recovers
+  with RMSE **1.03–1.17×** the all-Poisson control's across all 20 (n, prevalence) cells — a
+  **PASS above prevalence 0.3**, from 24,000 fits against a *pre-registered* criterion. Where
+  recovery is imperfect it is **weak estimability, not non-identifiability**, and the two were
+  separated **by instrument**: n-ladder log-log slope **−0.487 (SE 0.0069)** where an MLE gives −½
+  and a non-identified model gives ≈0, plus 14 dispersed starts landing on one optimum. The
+  p=0.1 miss **reproduces in the all-Poisson control**, so it is not mixed curvature.
+  Also landed: **#946** — the offset gate is re-keyed on **family × link**, admitting
+  `binomial(cloglog)` (the offset there is the *change-of-support*, not a nuisance shift) while
+  logit/probit/gaussian stay refused; and a **`link_residual = "auto"`** defect that warned a
+  quantity was undefined and then returned it as zero. All new tests **proven to fail before their
+  fix**. 🔴 **Two standing corrections:** issue **#945's "cannot be run today" is measured WRONG** —
+  `family_var` is a *join key*, not a trait mapping, so pointing it at a non-trait column gives a
+  per-row family; and the model **works in WIDE format too**, so it must not be documented as
+  long-format-only. **Fenced:** no export, no NEWS, no article, no register promotion, `main`
+  untouched. **Phase C (#943 misspecification) was RUNNING at handover — recover it from the
+  workflow journal, do not re-run blind.**
+  **START HERE:** `docs/dev-log/handover/2026-07-25-active-lane-split.md` (the authoritative lane
+  map), then `docs/dev-log/handover/2026-08-08-codex-handover.md` for this lane.
+
 - **2026-08-02 — DESIGN 108 GATE A IS CLOSED; 10,000 SPECIES IS NOW REACHABLE.**
   Stages **4** ([#896](https://github.com/itchyshin/gllvmTMB/pull/896) — tail-safe `log Phi` +
   binomial-probit, **verdict AD-SAFE**, adversarially established against a 3,744-cell break grid)

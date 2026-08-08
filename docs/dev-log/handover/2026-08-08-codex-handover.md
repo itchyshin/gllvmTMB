@@ -400,3 +400,34 @@ where it is the likeliest source of any convergence trouble.
   nothing in Phase A speaks to `d >= 2`, where the triangular constraint must be imposed before the
   eigen-spectrum means anything. Phase C's design uses `d = 2` and does **not** inherit Phase A's
   gate result -- it is a different regime.
+
+---
+
+## 14. GITHUB ISSUE LEDGER — read before touching any of these
+
+**Nothing in this lane is on `main`.** Every code change lives on an unmerged branch. That makes the
+issue states counter-intuitive, so they are spelled out:
+
+| issue | what this lane did | what to do with it |
+|---|---|---|
+| **#945** | **REFUTED by measurement.** Its claim that a mixed-family-within-species fit "cannot be run today" is wrong; `family_var` is a join key, not a trait mapping. | **Correct the issue** with the evidence (`dev/isdm-probe-findings.md`). Do NOT close it silently -- its *second* wrinkle (the `weights`/n_trials collision, section 12b) is still live and gates #944. |
+| **#946** | **IMPLEMENTED, tests green -- but worktree-only, NEVER merged to `main`.** | **DO NOT CLOSE.** An issue closed against unmerged work reads as shipped and is invisible to every user. Close only if and when this lands on `main`. |
+| **#943** | Designed and pre-registered (`dev/isdm-phase-c-design.md`); harness built; **NOT smoked, NOT run**. | Continue. The NO-GO gate stands. |
+| **#944** | Untouched. Section 12b explains why it is still blocked. | Open. |
+| **#941** | Umbrella. Phase A + B evidence now exists but no capability is advertised. | Open. |
+| **#942** | Already closed and correct. | Leave it. |
+
+**A new issue should be filed** for the warm-start defect in section 12a. It is not covered by any
+existing issue.
+
+## 15. ARTIFACTS OUTSIDE THIS REPO
+
+- **Brain note** (durable finding, committed to the vault):
+  `~/shinichi-brain/memory/gllvm-latent-factor-survives-two-likelihood-curvatures.md` -- carries the
+  five generalisable lessons, including that cross-seed spread cannot separate a flat ridge from a
+  shallow one, and the corrected NB2-vs-cloglog argument.
+- **The plan that produced this arc**: `~/.claude/plans/bright-honking-brook.md` -- includes the
+  three-lens plan review (Fisher/Gauss/Rose) that caught the rev-1 gate design before any compute was
+  spent, and the full D1-D7 instrument specifications. Outside the repo, so **Codex will not see it
+  unless told**; its conclusions are reproduced in the Phase A after-task report, but the instrument
+  specs are only there.

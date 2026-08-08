@@ -148,44 +148,171 @@ expected_fit_counts <- function() {
 }
 
 ## =========================================================================
-## Pre-flight gates (P0-1 .. P0-6). Each is a single small, fast check.
-## Call run_preflight_gates() explicitly; not run on source().
+## Pre-flight gates (P0-1 .. P0-6), followed by the handover's paired
+## low/high-bias smoke. Call these explicitly; neither runs on source().
 ## =========================================================================
 `%||%` <- function(a, b) if (is.null(a)) b else a
 
+.detect_cores_c <- function(cap = 18L) {
+  detected <- suppressWarnings(parallel::detectCores())
+  if (length(detected) != 1L || !is.finite(detected)) return(1L)
+  max(1L, min(as.integer(cap), as.integer(detected) - 2L))
+}
+
 run_preflight_gates <- function(n_cores = 1L) {
+  if (length(n_cores) != 1L || !is.finite(n_cores) || n_cores < 1L) n_cores <- 1L
+  n_cores <- as.integer(n_cores)
   hr <- function(x) cat("\n", strrep("=", 12), " ", x, " ", strrep("=", 12), "\n", sep = "")
   truth <- species_truth(8)
 
-  hr("P0-1/P0-2/P0-6: one REF dataset, all six arms")
+  hr("P0-1/P0-2/P0-3/P0-6: one REF dataset, all six arms")
   df <- sim_phase_c(seed = 1, n = REF$n, T_sp = REF$T_sp, phi = REF$phi,
                      kappa = REF$kappa, rho = REF$rho, omega = REF$omega, k = REF$k, truth = truth)
   stopifnot(nrow(df) == REF$n * REF$T_sp * 2)
   cat("P0-1 nrow OK:", nrow(df), "\n")
 
   cfg <- as.list(REF); cfg$seed <- 1; cfg$block <- "preflight"
+  fits <- setNames(vector("list", length(ARMS)), ARMS)
+  scores <- setNames(vector("list", length(ARMS)), ARMS)
   for (a in ARMS) {
     fit <- tryCatch(fit_arm(df, arm = a, d_fit = REF$d_fit), error = function(e) e)
     if (inherits(fit, "condition")) {
-      cat(sprintf("P0-6 FAIL [%s]: %s\n", a, conditionMessage(fit))); next
+      stop(sprintf("P0-6 FAIL [%s]: %s", a, conditionMessage(fit)), call. = FALSE)
     }
-    if (a == "A5") {
-      dbs <- sum(fit$tmb_data$diag_B_skip %||% 0)
-      cat("P0-1 diag_B_skip (A5, expect 0):", dbs, "\n")
-    }
-    if (a == "A6") {
-      nb <- sum(grepl(":bstar$", fit$X_fix_names))
-      cat("P0-6 A6 trait:bstar columns (expect T=8):", nb, "\n")
-    }
-    Sres <- tryCatch(extract_Sigma(fit, level = "unit", part = "total", link_residual = "none"),
-                      error = function(e) e)
-    if (!inherits(Sres, "condition")) {
-      R <- Sres$R
-      cat(sprintf("P0-2 [%s] max|off-diag R|=%.4f any NA=%s\n",
-                  a, max(abs(R[upper.tri(R)])), anyNA(R)))
-    }
+    fits[[a]] <- fit
+    scores[[a]] <- score_phase_c(
+      fit, a, cfg, truth,
+      realised_prevalence = attr(df, "realised_prevalence"),
+      bias_sharing = attr(df, "bias_sharing")
+    )
   }
-  invisible(NULL)
+
+  a5 <- fits$A5
+  source_chr <- as.character(a5$data$source)
+  family_by_source <- split(a5$tmb_data$family_id_vec, source_chr)
+  clean_family_map <- length(family_by_source) == 2L &&
+    all(vapply(family_by_source, function(x) length(unique(x)) == 1L, logical(1))) &&
+    length(unique(vapply(family_by_source, function(x) unique(x)[1], integer(1)))) == 2L
+  if (!clean_family_map) stop("P0-1 FAIL: family_id_vec does not map cleanly to source", call. = FALSE)
+  cat("P0-1 family_id_vec x source:\n")
+  print(table(a5$tmb_data$family_id_vec, source_chr))
+
+  dbs <- sum(a5$tmb_data$diag_B_skip %||% 0)
+  cat("P0-1 diag_B_skip (A5, expect 0):", dbs, "\n")
+  if (dbs != 0L) stop("P0-1 FAIL: A5 diag_B_skip is non-zero", call. = FALSE)
+
+  Sres <- tryCatch(
+    extract_Sigma(a5, level = "unit", part = "total", link_residual = "none"),
+    error = function(e) e
+  )
+  if (inherits(Sres, "condition")) {
+    stop("P0-2 FAIL: ", conditionMessage(Sres), call. = FALSE)
+  }
+  R <- Sres$R
+  max_off <- max(abs(R[upper.tri(R)]))
+  cat(sprintf("P0-2 A5 R: dim=%s max|off-diag|=%.4f any NA=%s\n",
+              paste(dim(R), collapse = "x"), max_off, anyNA(R)))
+  if (!all(dim(R) == c(REF$T_sp, REF$T_sp)) || anyNA(R) || max_off >= 0.999) {
+    stop("P0-2 FAIL: A5 returned a missing or degenerate correlation matrix", call. = FALSE)
+  }
+
+  trials_by_source <- split(a5$tmb_data$n_trials, source_chr)
+  expected_trials <- c(po = 1, pa = REF$k)
+  clean_trials <- all(names(expected_trials) %in% names(trials_by_source)) &&
+    all(vapply(names(expected_trials), function(src) {
+      identical(unique(as.numeric(trials_by_source[[src]])), expected_trials[[src]])
+    }, logical(1)))
+  cat("P0-3 n_trials x source:\n")
+  print(table(a5$tmb_data$n_trials, source_chr))
+  if (!clean_trials) {
+    stop("P0-3 FAIL: multi-trial binomial counts did not survive family_var dispatch", call. = FALSE)
+  }
+
+  nb <- sum(grepl(":bstar$", fits$A6$X_fix_names))
+  cat("P0-6 A6 trait:bstar columns (expect T=8):", nb, "\n")
+  if (nb != REF$T_sp) stop("P0-6 FAIL: A6 bias columns do not match T", call. = FALSE)
+
+  hr("P0-4/P0-5: 10-seed A5 null recovery and timing")
+  run_null_seed <- function(seed) {
+    null_cfg <- as.list(REF)
+    null_cfg$kappa <- 0
+    null_cfg$seed <- seed
+    null_cfg$block <- "preflight-null"
+    null_df <- sim_phase_c(
+      seed = seed, n = null_cfg$n, T_sp = null_cfg$T_sp, phi = null_cfg$phi,
+      kappa = 0, rho = null_cfg$rho, omega = null_cfg$omega, k = null_cfg$k,
+      truth = truth
+    )
+    t0 <- Sys.time()
+    fit <- tryCatch(fit_arm(null_df, arm = "A5", d_fit = null_cfg$d_fit), error = function(e) e)
+    elapsed <- as.numeric(Sys.time() - t0, units = "secs")
+    score_phase_c(
+      fit, "A5", null_cfg, truth, elapsed_sec = elapsed,
+      realised_prevalence = attr(null_df, "realised_prevalence"),
+      bias_sharing = attr(null_df, "bias_sharing")
+    )
+  }
+  seeds <- 1:10
+  null_rows <- if (n_cores > 1L && .Platform$OS.type != "windows") {
+    parallel::mclapply(seeds, run_null_seed, mc.cores = min(as.integer(n_cores), length(seeds)))
+  } else {
+    lapply(seeds, run_null_seed)
+  }
+  null_res <- do.call(rbind, null_rows)
+  if (any(!is.na(null_res$fit_error))) {
+    stop("P0-4 FAIL: null recovery fit error: ",
+         paste(unique(stats::na.omit(null_res$fit_error)), collapse = "; "), call. = FALSE)
+  }
+  required <- c("D_rmse", "D_bias", "realised_prevalence", "elapsed_sec")
+  if (any(!vapply(null_res[required], function(x) all(is.finite(x)), logical(1)))) {
+    stop("P0-4 FAIL: null recovery returned a non-finite required metric", call. = FALSE)
+  }
+  mean_rmse <- mean(null_res$D_rmse)
+  mean_bias <- mean(null_res$D_bias)
+  bias_mcse <- .mcse_mean(null_res$D_bias)
+  pooled_prev <- mean(null_res$realised_prevalence)
+  mean_sec <- mean(null_res$elapsed_sec)
+  cat(sprintf(
+    "P0-4 A5 null: mean D_rmse=%.4f; mean D_bias=%.4f (MCSE=%.4f; 3 MCSE=%.4f); pooled prevalence=%.4f\n",
+    mean_rmse, mean_bias, bias_mcse, 3 * bias_mcse, pooled_prev
+  ))
+  if (mean_rmse >= 0.15 || abs(mean_bias) > 3 * bias_mcse ||
+      pooled_prev < 0.25 || pooled_prev > 0.50) {
+    stop("P0-4 FAIL: correctly specified A5 null did not clear frozen recovery bounds", call. = FALSE)
+  }
+  route <- if (mean_sec > 10) "totoro" else "local"
+  cat(sprintf("P0-5 timing: mean %.3f s/fit -> route %s\n", mean_sec, route))
+
+  list(
+    ref_scores = do.call(rbind, scores),
+    null_scores = null_res,
+    timing_route = route
+  )
+}
+
+run_low_high_smoke <- function(seed = 42L, n = 100L, T_sp = 6L) {
+  rows <- list(
+    modifyList(REF, list(kappa = 0, rho = 0, omega = 1, n = n, T_sp = T_sp, seed = seed)),
+    modifyList(REF, list(kappa = 2, rho = 0, omega = 1, n = n, T_sp = T_sp, seed = seed))
+  )
+  cfg <- .mk_config(rows, "smoke-low-high")
+  res <- run_grid_c(cfg, n_cores = 1L, backend = "serial")
+  if (nrow(res) != 2L * length(ARMS) || any(!is.na(res$fit_error)) ||
+      any(!is.finite(res$D_bias)) || any(!is.finite(res$D_rmse))) {
+    stop("SMOKE FAIL: empty, errored, or non-finite result", call. = FALSE)
+  }
+  paired <- reshape(
+    res[, c("kappa", "seed", "arm", "D_bias")],
+    idvar = c("seed", "arm"), timevar = "kappa", direction = "wide"
+  )
+  paired$dD_bias <- paired$D_bias.2 - paired$D_bias.0
+  primary_delta <- paired$dD_bias[paired$arm == "A1"]
+  if (length(primary_delta) != 1L || !is.finite(primary_delta) || abs(primary_delta) < 0.05) {
+    stop("SMOKE NO-GO: A1 high-minus-low D_bias did not move by 0.05", call. = FALSE)
+  }
+  cat("Paired high-minus-low D_bias (diagnostic only; one seed):\n")
+  print(paired[, c("seed", "arm", "D_bias.0", "D_bias.2", "dD_bias")], row.names = FALSE)
+  list(results = res, paired = paired)
 }
 
 ## =========================================================================
@@ -195,12 +322,19 @@ if (sys.nframe() == 0L) {
   ARGS <- commandArgs(trailingOnly = TRUE)
   if (length(ARGS) == 0L) {
     cat("dev/isdm-bias-campaign.R: no stage given, nothing executed.\n")
-    cat("Available stages: preflight, pilot, g1, g2, g3, g4, g5, g6, counts\n")
+    cat("Available stages: preflight, smoke, pilot, g1, g2, g3, g4, g5, g6, counts\n")
     cat("Usage: Rscript dev/isdm-bias-campaign.R <stage> [<stage> ...]\n")
   } else {
-    N_CORES <- max(1L, min(18L, parallel::detectCores() - 2L))
+    N_CORES <- .detect_cores_c()
     if ("counts" %in% ARGS) print(expected_fit_counts())
-    if ("preflight" %in% ARGS) run_preflight_gates()
+    if ("preflight" %in% ARGS) {
+      preflight <- run_preflight_gates(n_cores = min(4L, N_CORES))
+      saveRDS(preflight, "dev/isdm-bias-preflight-results.rds")
+    }
+    if ("smoke" %in% ARGS) {
+      smoke <- run_low_high_smoke()
+      saveRDS(smoke, "dev/isdm-bias-smoke-results.rds")
+    }
     if ("pilot" %in% ARGS) {
       cfg <- build_config_pilot()
       cat(sprintf("pilot: %d dataset rows x %d arms = %d fits\n",

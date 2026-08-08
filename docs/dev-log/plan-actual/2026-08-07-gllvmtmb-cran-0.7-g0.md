@@ -5,8 +5,22 @@
 **Worktree:** `/private/tmp/gllvmtmb-cran-0.7-20260807` · branch `cursor/cran-0.7-20260807` from `origin/main` @ `d7bee2fa`  
 **Orthogonal / do not use:** VA merge-fence `/private/tmp/gllvmtmb-va-arc1-merge-fence`  
 **Historical Path A (do not abandon; do not retag as 0.7):** `/private/tmp/gllvmtmb-cran-path-a-0.6.1` · `cursor/cran-path-a-0.6.1-20260807` · freeze/tag **`v0.6.1-rc.1` @ `6a58683c`**  
-**Status:** **G0 LOCKED for upload identity.** Track *menu* inventoried. **STOP for Shinichi track pick** before DESCRIPTION bump, remint, or D-113 implementation.  
+**Status:** **G0 LOCKED for upload identity.** Track pick **answered 2026-08-08 morning** (below). DESCRIPTION bump still withheld.  
 **D-49 rung:** still **NOT READY**. No tarball-clean 0.7 candidate exists.
+
+---
+
+## 2026-08-08 morning — Shinichi answers (locked)
+
+Handoff to Codex: `docs/dev-log/handover/2026-08-08-codex-handover.md`.
+
+| Q | Answer |
+| --- | --- |
+| 1. Ada default tarball? | **YES.** Leave-M5 hygiene + Rose fence + later `0.7.0` bump; **keep #949** VA Arc-1 on main (fenced, `calibrated=FALSE`, Laplace default). **Do not revert VA.** |
+| 2. Any D-113 INCLUDE? | **YES / more work — not Ada’s “(a) none”.** He believes gllvmTMB still has a lot to do — **more testing**. First CRAN `0.7.0` is **not imminent**. Codex inventories remaining testing/validation debt from the **repo** (register + tests + issues + this file’s honesty notes) and **proposes** a concrete INCLUDE + test programme. Do **not** assume #750 / #332 / one-slope unless those sources still say they are the right next tests. |
+| 3. Upload timing after 19 Aug? | **RECONSIDER.** Portal offline until **19 Aug 2026**. Even after that, **do not aim for first portal day**. More testing first. Upload remains Shinichi-only. |
+
+Do **not** bump `DESCRIPTION` to `0.7.0` until the proposed test programme is authorised. Do **not** remint Path A as 0.7. Do **not** upload.
 
 ---
 

@@ -11,6 +11,11 @@ Model Builder.
 > GitHub Actions here is for **package checks + docs only**, with **short artifact retention**. (Hub
 > `AGENTS.md` Compute section · shinichi-brain `DECISIONS.md` D-50.)
 
+> **Rehydrate (2026-08-08).** This is a **multi-lane** repo. Ownership map:
+> `docs/dev-log/handover/2026-07-25-active-lane-split.md` (read **every** lane row). CRAN 0.7
+> Codex baton: `docs/dev-log/handover/2026-08-08-codex-handover.md`. Do not treat a single
+> snapshot bullet as the whole project. Milestone state is re-derived from `git`.
+
 ## Core Scope
 
 - The package fits multi-response models on long-format data: one row

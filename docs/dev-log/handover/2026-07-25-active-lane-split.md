@@ -3,13 +3,20 @@
 This coordination note prevents a new session from treating this repository as
 a single writable lane.  It is a map, not a release/capability claim.
 
+**Refresh 2026-08-08 morning (Cursor→Codex): CRAN 0.7 track pick LOCKED.**
+Shinichi: keep Ada hygiene+Rose+later `0.7.0` bump; **keep #949** VA; **more testing**
+(not Ada “(a) none”); first CRAN **not imminent**; portal ≥19 Aug is a floor **not** a
+deadline (do not aim for first portal day). Codex owns the live toolchain.
+**START HERE:** `2026-08-08-codex-handover.md`. G0 identity file remains
+`docs/dev-log/plan-actual/2026-08-07-gllvmtmb-cran-0.7-g0.md`.
+
 **Refresh 2026-08-07 evening (Cursor): first CRAN upload identity is `0.7.0`.**
 G0 locked: Path A `0.6.1` / `v0.6.1-rc.1` @ `6a58683c` is **PARKED/superseded for upload**
 (history retained; do not force-retag). New lane
 `/private/tmp/gllvmtmb-cran-0.7-20260807` · `cursor/cran-0.7-20260807` from
-`origin/main` @ `d7bee2fa` (VA Arc-1 #949 **already merged**). **STOP for track pick**
-before DESCRIPTION bump or D-113 implementation. Upload Shinichi-only, **not before
-19 Aug 2026**. **START HERE:** `docs/dev-log/plan-actual/2026-08-07-gllvmtmb-cran-0.7-g0.md`.
+`origin/main` @ `d7bee2fa` (VA Arc-1 #949 **already merged**). Track pick was still
+open that evening (now answered 2026-08-08). Upload Shinichi-only, **not before
+19 Aug 2026**. **START HERE (historical G0):** `docs/dev-log/plan-actual/2026-08-07-gllvmtmb-cran-0.7-g0.md`.
 
 **Refresh 2026-08-07 (Cursor): VA Arc-1 merge/fence (C) shipped to main as #949.**
 Worktree `/private/tmp/gllvmtmb-va-arc1-merge-fence` is **not** the 0.7 CRAN programme.
@@ -34,8 +41,8 @@ missing-data ledger remains open and separately owned unless reassigned.
 
 | Lane | Owner | State | Start here | Boundary |
 | --- | --- | --- | --- | --- |
-| **CRAN 0.7 G0** | Cursor | **G0 LOCKED** (upload identity `0.7.0`). Worktree `/private/tmp/gllvmtmb-cran-0.7-20260807` · `cursor/cran-0.7-20260807` from `origin/main` @ `d7bee2fa`. `DESCRIPTION` still `0.6.0`. **STOP for track pick** | `docs/dev-log/plan-actual/2026-08-07-gllvmtmb-cran-0.7-g0.md`; LOOP `lanes/gllvmtmb-cran-0.7/LOOP/` | No DESCRIPTION bump yet; no D-113 impl until pick; no upload; Laplace default; D-112 holds; portal offline 5–19 Aug |
-| **CRAN Path A 0.6.1** | Cursor | **PARKED / superseded for upload.** Freeze `v0.6.1-rc.1` @ `6a58683c` retained. S7 STOPPED (PDF ≈ ERROR + galamm 404). Do not remint as CRAN 0.6.1; do not retag as 0.7 | Path A LOOP + `docs/dev-log/plan-actual/2026-08-07-gllvmtmb-cran-path-a-s7-progress.md` | Historical only; carry hygiene into 0.7 lane |
+| **CRAN 0.7** | Cursor → **Codex** | **Track pick LOCKED 2026-08-08.** Worktree `/private/tmp/gllvmtmb-cran-0.7-20260807` · `cursor/cran-0.7-20260807` from `origin/main` @ `d7bee2fa`. `DESCRIPTION` still `0.6.0`. First CRAN **not imminent** — more testing first | `2026-08-08-codex-handover.md`; G0 `docs/dev-log/plan-actual/2026-08-07-gllvmtmb-cran-0.7-g0.md`; LOOP `lanes/gllvmtmb-cran-0.7/LOOP/` | Leave-M5 + Rose + testing-debt inventory OWED; **no bump yet**; no upload; keep #949 fenced; Laplace default; D-112 holds; portal ≥19 Aug is not a deadline |
+| **CRAN Path A 0.6.1** | Cursor | **PARKED / superseded for upload.** Freeze `v0.6.1-rc.1` @ `6a58683c` retained as **failure archive**. S7 STOPPED (PDF ≈ ERROR + galamm 404). Do not remint as CRAN 0.6.1; do not retag as 0.7 | Path A LOOP + `docs/dev-log/plan-actual/2026-08-07-gllvmtmb-cran-path-a-s7-progress.md` | Historical only; carry hygiene into 0.7 lane |
 | **VA Arc-1 merge/fence (C)** | Cursor | **MERGED to main** as [#949](https://github.com/itchyshin/gllvmTMB/pull/949) @ `d7bee2fa`. Worktree `/private/tmp/gllvmtmb-va-arc1-merge-fence` is leftover — **do not use for 0.7 CRAN** | `2026-08-07-cursor-handover-va-arc1-merge-fence.md` | Keep `calibrated=FALSE` + Laplace default; no fat-tip; no soft-PASS Arc-2 |
 | **VA GH all-families evidence tip** | Codex → archive | Donor-only @ `codex/va-gh-all-families` `/private/tmp/gllvmtmb-va-gh-all-families` (B truncnb2/delta_ln done). Not the merge vehicle | tip audits under `docs/dev-log/audits/2026-08-07-va-*` | Do not open PR from this tip; dirty probes/results stay local |
 | **Design 108 Gate A (VA parity)** | Cursor → Claude | **Stage 1 + Stage 2 MERGED** (#891, #893). Stage 3/4 **not started** — waiting Shinichi pick | `2026-08-02-claude-handover.md`; design `docs/design/108-va-parity-programme.md` | VA stays hard-fenced; no public mixed-family claim; no VA `mi()`; do not auto-start Stage 4; fresh WT per stage |

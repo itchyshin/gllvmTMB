@@ -4,6 +4,78 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-08-08 — Codex handover (CRAN 0.7 track pick locked; no R CMD check)
+
+Worktree `/private/tmp/gllvmtmb-cran-0.7-20260807`, branch
+`cursor/cran-0.7-20260807` @ `51480001` then this handover commit.
+Author: Cursor acting as Claude-side `handover-to-codex` (TARGET=codex).
+
+```sh
+/Users/z3437171/shinichi-brain/tools/handoff_gate.sh \
+  /private/tmp/gllvmtmb-cran-0.7-20260807 \
+  /private/tmp/gllvmtmb-cran-path-a-0.6.1 \
+  /private/tmp/gllvmtmb-va-arc1-merge-fence \
+  /Users/z3437171/shinichi-brain
+# FAIL (declared): 0.7 G0 commit unpushed; Path A park ahead-1; VA untracked
+# plan-actual Path A files; hundreds of historical local unpushed branches;
+# vault dirty (AGENT_LOG + unrelated). Not invisible.
+
+git -C /private/tmp/gllvmtmb-cran-0.7-20260807 fetch origin
+git -C /private/tmp/gllvmtmb-cran-0.7-20260807 rev-parse origin/main HEAD
+# origin/main d7bee2fa  (#949 MERGED)
+# HEAD       51480001  (G0 lock, before this commit)
+
+gh pr list --repo itchyshin/gllvmTMB --state open
+# []  (none)
+
+git -C /private/tmp/gllvmtmb-cran-0.7-20260807 log --all --oneline --since="6 hours ago"
+# (empty at pre-edit check)
+
+rg -n "0\\.7\\.0|not imminent|keep #949|first portal day" \
+  docs/dev-log/handover/2026-08-08-codex-handover.md \
+  docs/dev-log/plan-actual/2026-08-07-gllvmtmb-cran-0.7-g0.md
+# morning lock present
+
+rg -n "Version:" DESCRIPTION
+# Version: 0.6.0  — bump deliberately still withheld
+```
+
+Vault: D-66/D-89 evening @ `1994a8e`; morning D-89/D-113 clarifying note added.
+**Deliberately not done:** DESCRIPTION 0.7 bump; remint; `R CMD check`; CRAN upload;
+merge; Codex thread auto-start (`list_projects` / `create_thread` MCP absent).
+
+Handover: `docs/dev-log/handover/2026-08-08-codex-handover.md`.
+
+## 2026-08-07 — CRAN 0.7 G0 lock (planning only; no R CMD check)
+
+Worktree `/private/tmp/gllvmtmb-cran-0.7-20260807`, branch
+`cursor/cran-0.7-20260807` from `origin/main` @ `d7bee2fa`
+(`DESCRIPTION` still `Version: 0.6.0`; VA Arc-1 #949 already on main).
+
+```sh
+git fetch origin
+git rev-parse origin/main
+# d7bee2fac876e736e8eb2f13864bbc47ce300214
+git show origin/main:DESCRIPTION | sed -n '1,8p'
+# Version: 0.6.0
+gh pr view 949 --json state,title
+# MERGED · feat(va): Arc-1 scalar VA fence
+gh issue view 332 --json state,title
+# OPEN · Missing-data layer — shared contract
+gh issue view 750 --json state,title
+# OPEN · Unconditional RE redraw for phylo/spatial tiers
+git worktree add -b cursor/cran-0.7-20260807 \
+  /private/tmp/gllvmtmb-cran-0.7-20260807 origin/main
+```
+
+Vault read: D-66, D-89, D-112, D-113. Register VA-08 / VA-10..12 / MIS-21..32 /
+MIS-36. Slope ledger 2026-08-01. Path A S7: `v0.6.1-rc.1` @ `6a58683c` =
+1E/1W/2N (PDF ≈ + galamm 404). **Deliberately not done:** DESCRIPTION bump to
+0.7.0; remint/retag of rc.1; D-113 implementation; CRAN upload; `R CMD check`.
+
+G0 artefact:
+`docs/dev-log/plan-actual/2026-08-07-gllvmtmb-cran-0.7-g0.md`.
+
 ## 2026-08-07 -- VA Arc-1 merge/fence (C) path transplant
 
 Branch: `cursor/va-arc1-merge-fence-20260807` from `origin/main` @ `5bf18ab3`;

@@ -3,13 +3,25 @@
 This repository is shared by humans, Codex, and Claude Code. Read
 `AGENTS.md` first; it is the source of truth for project rules.
 
-## Live Phase Snapshot — 2026-08-02
+## Live Phase Snapshot — 2026-08-08
 
 > **🔴 MULTI-LANE REPO — this snapshot is NOT a single lane's status.** No one bullet
 > represents the project. **The lane map is authoritative for ownership:**
 > `docs/dev-log/handover/2026-07-25-active-lane-split.md`, which names EACH lane's own
 > current handover. Read it before any repository mutation. Milestone state is not in
 > either place and must be re-derived from `git`.
+
+- **2026-08-08 — CRAN 0.7 TRACK PICK LOCKED; HANDOFF TO CODEX (LIVE TOOLCHAIN).**
+  Shinichi G0 answers: **(1)** Ada default tarball — leave-M5 hygiene + Rose fence + later
+  `0.7.0` bump; **keep #949** VA Arc-1 on main (fenced, `calibrated=FALSE`, Laplace default);
+  do not revert VA. **(2)** INCLUDE / more testing — **not** Ada’s “(a) none”; first CRAN
+  **not imminent**; Codex inventories validation-debt from the repo and proposes a concrete
+  INCLUDE + test programme (do not assume #750/#332/one-slope). **(3)** Portal offline until
+  **19 Aug 2026**; even after that **do not aim for first portal day**; upload Shinichi-only.
+  Path A `v0.6.1-rc.1` @ `6a58683c` retained as failure archive. `DESCRIPTION` still `0.6.0`.
+  Worktree `/private/tmp/gllvmtmb-cran-0.7-20260807` · `cursor/cran-0.7-20260807`.
+  **START HERE:** `docs/dev-log/handover/2026-07-25-active-lane-split.md`, then
+  `docs/dev-log/handover/2026-08-08-codex-handover.md` for this lane.
 
 - **2026-08-02 — DESIGN 108 GATE A IS CLOSED; 10,000 SPECIES IS NOW REACHABLE.**
   Stages **4** ([#896](https://github.com/itchyshin/gllvmTMB/pull/896) — tail-safe `log Phi` +

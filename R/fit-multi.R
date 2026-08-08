@@ -2161,6 +2161,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     data           = data,
     formula_env    = environment(parsed$fixed),
     family_id_vec  = family_id_vec,
+    link_id_vec    = link_id_vec,
     family_per_row = family_per_row,
     trait_vec      = data[[trait]]
   )

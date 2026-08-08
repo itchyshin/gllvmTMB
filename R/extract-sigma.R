@@ -135,7 +135,15 @@ link_residual_per_trait <- function(fit) {
     if (length(fids_uniq) > 1L) {
       warning(
         sprintf(
-          "Trait '%s' has rows from multiple families (%s); no single link-residual variance is defined.",
+          paste0(
+            "Trait '%s' has rows from multiple families (%s); no single ",
+            "link-residual variance is defined. This trait's entry is ",
+            "NA_real_, which propagates into the corresponding diag(Sigma) ",
+            "(and its row/column of R) as NA rather than 0 -- pass ",
+            "`link_residual = \"none\"` to deliberately return the ",
+            "ecological-linear-predictor Sigma (no link-residual addition) ",
+            "for the whole fit instead."
+          ),
           trait_names[t],
           paste(fids_uniq, collapse = ", ")
         ),
@@ -1460,7 +1468,7 @@ extract_Sigma <- function(
   if (link_residual == "auto") {
     link_resid_per_trait <- link_residual_per_trait(fit)
     nonzero <- link_resid_per_trait != 0
-    if (any(nonzero, na.rm = TRUE)) {
+    if (any(nonzero, na.rm = TRUE) || anyNA(link_resid_per_trait)) {
       ## Map family_id back to a label for the report.
       fam_lookup <- function(fid) {
         switch(
@@ -1545,7 +1553,12 @@ extract_Sigma <- function(
   } else {
     ## "total": LLt + diag(Psi) + (optional) per-trait link-implicit residual
     Sigma <- LLt + diag(Sd, nrow = T)
-    if (any(link_resid_per_trait != 0, na.rm = TRUE)) {
+    if (any(is.na(link_resid_per_trait) | link_resid_per_trait != 0)) {
+      ## NA entries (a trait spanning multiple families -- see
+      ## link_residual_per_trait()) propagate here on purpose: an undefined
+      ## link residual must make the corresponding diagonal of Sigma (and,
+      ## via .safe_cov2cor() below, its row/column of R) visibly NA rather
+      ## than silently identical to the link_residual = "none" result.
       diag(Sigma) <- diag(Sigma) + link_resid_per_trait
     }
     ## Multinomial off-diagonal coupling: the per-trait path above adds the

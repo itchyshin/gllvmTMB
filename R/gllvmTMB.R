@@ -47,22 +47,26 @@
 #'   Fixed effects and any of the three-mode grid covstructs above are
 #'   supported (plus [phylo_slope()], [animal_slope()], and [meta_V()]).
 #'
-#'   An `offset()` term is supported for **count responses only** — `poisson()`,
+#'   An `offset()` term is supported for the count responses — `poisson()`,
 #'   `nbinom1()`, `nbinom2()`, `truncated_poisson()`, and
 #'   `truncated_nbinom2()` — where it is the usual exposure or effort
-#'   adjustment. Supply it already on the link scale, e.g.
-#'   `offset(log(trap_nights))`. It must be its own additive term; it is not
-#'   interacted with `trait`.
+#'   adjustment, and for `binomial(link = "cloglog")`, where it is the
+#'   change-of-support term (`log(area)`) that lets a presence/absence arm
+#'   and a count arm share one Poisson-process intensity, as in an
+#'   integrated species distribution model. `binomial(link = "logit")` and
+#'   `binomial(link = "probit")` do not support an offset. Supply it already
+#'   on the link scale, e.g. `offset(log(trap_nights))`. It must be its own
+#'   additive term; it is not interacted with `trait`.
 #'
 #'   In long format the offset column carries one value per `(unit, trait)`
 #'   row, so it can differ by trait. In wide format, `offset(w)` names one
 #'   unit-level column and applies it to every trait, while
 #'   `offset(e1, e2, ...)` names one column per trait, in [traits()] order.
 #'
-#'   A **nonzero** offset on a non-count trait is an error naming that trait.
-#'   Zero is always allowed and does nothing (on the log scale it is a
-#'   multiplier of one), which is how a mixed-family model gives an offset to
-#'   its count traits and not the rest.
+#'   A **nonzero** offset on a trait whose family/link is not admitted is an
+#'   error naming that trait. Zero is always allowed and does nothing (on the
+#'   log scale it is a multiplier of one), which is how a mixed-family model
+#'   gives an offset to its admitted traits and not the rest.
 #' @param data A data frame. With an ordinary response LHS such as
 #'   `value ~ ...`, `data` is long: one row per `(unit, trait)`
 #'   observation, with the trait column named by `trait`. With a

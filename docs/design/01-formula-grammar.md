@@ -677,31 +677,51 @@ argument when using the additive form. For block-diagonal
 within-study correlation, build `V` via
 `block_V(study_id, sampling_var, rho_within)`.
 
-## Offsets (count families only)
+## Offsets (count families, plus `binomial(cloglog)`)
 
 An `offset()` term adds a **known** quantity to the linear predictor,
 carrying no coefficient: `eta = offset + X b`. On a log link that is the
 exposure / effort idiom — sampling effort, trap-nights, area surveyed — and
 it is the reason the term exists.
 
-**The term is gated to count families**: `poisson`, `nbinom1`, `nbinom2`,
-`truncated_poisson`, `truncated_nbinom2` (family ids 2, 15, 5, 10, 11).
-These are every count family the engine supports; `truncated_nbinom1` has no
-engine row, so it is not a candidate.
+**The gate is on family x link, not family alone.** `poisson`, `nbinom1`,
+`nbinom2`, `truncated_poisson`, `truncated_nbinom2` (family ids 2, 15, 5, 10,
+11 — every count family the engine supports; `truncated_nbinom1` has no
+engine row, so it is not a candidate) admit an offset on their canonical log
+link, unconditionally. `binomial` admits an offset only under
+`link = "cloglog"` (family id 1, link id 2); `binomial(logit)` and
+`binomial(probit)` still refuse one (issue #946).
 
-The gate is on **family, not link**. A link gate would admit Gamma,
-lognormal and Tweedie on log links, each needing its own semantics decision;
-the family set is small, enumerable, and matches the use case. Under
-`gaussian` an offset would be an unexplained mean shift and under `binomial`
-a fixed shift in log-odds — neither is what a user asking for an offset
-wants.
+The refusal for `gaussian` and for `binomial(logit)` / `binomial(probit)` is
+unchanged from the original reasoning: under `gaussian` an offset would be
+an unexplained mean shift, and under a logit or probit link a fixed shift in
+log-odds — neither is what a user asking for an offset wants.
 
-Because `family_id_vec` is already per-row, the gate is per-row too, and the
-error names the offending trait:
+`binomial(cloglog)` is the one link exception, because there the offset is
+not a nuisance shift but a **change of support**. The complementary
+log-log link gives
+`cloglog(p_i) = log(-log(1 - p_i)) = eta_i + log(area_i)`, equivalently
+`p_i = 1 - exp(-area_i * mu_i)` — the standard construction (Dovers,
+Popovic & Warton 2024 *MEE* 15:191–203; Fithian et al. 2015; Fletcher et al.
+2019) that lets a Bernoulli presence/absence observation and a Poisson-count
+observation both be read off one shared spatial intensity `mu_i`, as in an
+integrated species distribution model. Without the offset there, the two
+response types are two unrelated regressions rather than one integrated
+model.
+
+Gamma, lognormal and Tweedie on log links raise the same kind of "does this
+link give the offset a real, non-nuisance meaning" question, and remain
+**unaddressed and refused** — admitting `binomial(cloglog)` does not open
+that door; each family still needs its own semantics decision before it is
+considered.
+
+Because `family_id_vec` and `link_id_vec` are already per-row, the gate is
+per-row too, and the error names the offending trait together with its link
+when the family is only partially refused:
 
 ```
-offsets are supported for count families (poisson, nbinom) only;
-trait `t2` uses `gaussian`.
+offsets are supported for count families (poisson, nbinom) and
+binomial(link = "cloglog") only; trait `t2` uses `binomial(logit)`.
 ```
 
 This is a capability the single-family comparators cannot offer cleanly.

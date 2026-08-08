@@ -204,3 +204,162 @@ test_that("link_residual = 'auto' adds the link-specific implicit residual to di
   expect_equal(unname(diag(out_auto$Sigma) - diag(out_none$Sigma)),
                rep(1, Tn), tolerance = 1e-10)
 })
+
+## ---------------------------------------------------------------------------
+## link_residual NA-propagation contract (isdm lane, 2026-08-08).
+##
+## `link_residual_per_trait()` returns NA_real_ (with a warning) for a trait
+## whose rows span more than one family/link -- no single link-residual
+## variance is defined for it. The consumer inside extract_Sigma() used to
+## gate the addition with `any(link_resid_per_trait != 0, na.rm = TRUE)`,
+## which discards NA via `na.rm = TRUE` and silently falls through to the
+## `link_residual = "none"` result: the warning said "undefined" while the
+## return value behaved as though the residual were exactly 0. The fix
+## propagates NA into the affected diag(Sigma) entry (and, via
+## .safe_cov2cor(), into that trait's row/column of R) instead.
+
+make_within_trait_mixed_family_fit <- function(seed = 2026L) {
+  set.seed(seed)
+  sim <- gllvmTMB::simulate_site_trait(
+    n_sites = 80, n_species = 1, n_traits = 2,
+    mean_species_per_site = 1,
+    Lambda_B = matrix(c(1.0, 0.6,
+                        0.3, -0.5), nrow = 2, ncol = 2, byrow = TRUE),
+    psi_B    = c(0.3, 0.3),
+    seed     = seed
+  )
+  df <- sim$data
+  ## trait_1 stays a single family (Gaussian) throughout.
+  ## trait_2 is split WITHIN the trait by site parity: odd sites -> Poisson
+  ## counts, even sites -> binomial-cloglog binary -- the SAME trait, two
+  ## families, dispatched via a `source` column that is deliberately NOT the
+  ## trait column (confirmed-working configuration for this defect).
+  df$source <- ifelse(
+    df$trait == "trait_1", "gauss",
+    ifelse(as.integer(df$site) %% 2L == 1L, "t2_pois", "t2_bin")
+  )
+  df$source <- factor(df$source, levels = c("gauss", "t2_pois", "t2_bin"))
+
+  is_pois <- df$source == "t2_pois"
+  is_bin  <- df$source == "t2_bin"
+  df$value[is_pois] <- pmax(0L, as.integer(round(df$value[is_pois] + 2)))
+  df$value[is_bin]  <- as.integer(df$value[is_bin] > 0)
+
+  family_list <- list(
+    gauss   = gaussian(),
+    t2_pois = poisson(),
+    t2_bin  = binomial(link = "cloglog")
+  )
+  attr(family_list, "family_var") <- "source"
+
+  suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+    value ~ 0 + trait + latent(0 + trait | site, d = 1),
+    data   = df,
+    family = family_list
+  )))
+}
+
+test_that("extract_Sigma(link_residual = 'auto') propagates NA for a trait spanning multiple families", {
+  skip_on_cran()
+  fit <- make_within_trait_mixed_family_fit()
+  trait_names <- levels(fit$data[[fit$trait_col]])
+  mixed_idx <- which(trait_names == "trait_2")
+  gauss_idx <- which(trait_names == "trait_1")
+
+  expect_warning(
+    out_auto <- suppressMessages(extract_Sigma(
+      fit, level = "unit", part = "total", link_residual = "auto"
+    )),
+    regexp = "multiple families"
+  )
+  out_none <- suppressMessages(extract_Sigma(
+    fit, level = "unit", part = "total", link_residual = "none"
+  ))
+
+  ## The whole point of the fix: an "auto" Sigma with an undefined per-trait
+  ## residual must NOT be identical() / all.equal() to the "none" Sigma.
+  expect_false(isTRUE(all.equal(out_auto$Sigma, out_none$Sigma)))
+
+  ## The affected trait's diagonal (and its row/column of R) is visibly NA.
+  expect_true(is.na(out_auto$Sigma[mixed_idx, mixed_idx]))
+  expect_true(all(is.na(out_auto$R[mixed_idx, ])))
+  expect_true(all(is.na(out_auto$R[, mixed_idx])))
+
+  ## The unaffected single-family trait is untouched by the NA.
+  expect_false(is.na(out_auto$Sigma[gauss_idx, gauss_idx]))
+  expect_false(is.na(out_auto$R[gauss_idx, gauss_idx]))
+})
+
+test_that("link_residual = 'auto' matches per-link formulas and stays NA-free on single-family traits (boundary)", {
+  set.seed(2025)
+  n <- 150; Tn <- 3
+  Lambda <- matrix(c(0.6, 0.4, -0.3, 0.0, 0.5, 0.3), Tn, 2)
+  u <- matrix(rnorm(n * 2), n, 2)
+  eta <- u %*% t(Lambda)
+  ## pi^2/3 (logit), 1 (probit), pi^2/6 (cloglog) -- Nakagawa & Schielzeth
+  ## 2010, Table 2.
+  expected <- c(logit = pi^2 / 3, probit = 1, cloglog = pi^2 / 6)
+  for (link_name in names(expected)) {
+    p <- switch(link_name,
+                logit   = plogis(eta),
+                probit  = pnorm(eta),
+                cloglog = 1 - exp(-exp(eta)))
+    y_bin <- matrix(rbinom(n * Tn, 1, p), n, Tn)
+    df <- data.frame(
+      individual = factor(rep(seq_len(n), each = Tn)),
+      trait      = factor(rep(c("a", "b", "c"), n), levels = c("a", "b", "c")),
+      value      = as.integer(t(y_bin))
+    )
+    fit <- suppressMessages(suppressWarnings(gllvmTMB(
+      value ~ 0 + trait + latent(0 + trait | individual, d = 2),
+      data = df, site = "individual",
+      family = binomial(link = link_name)
+    )))
+    out_none <- suppressMessages(extract_Sigma(fit, level = "unit", part = "total",
+                                                link_residual = "none"))
+    out_auto <- suppressMessages(extract_Sigma(fit, level = "unit", part = "total",
+                                                link_residual = "auto"))
+    diff <- unname(diag(out_auto$Sigma) - diag(out_none$Sigma))
+    expect_equal(diff, rep(unname(expected[[link_name]]), Tn), tolerance = 1e-8,
+                 label = paste("link =", link_name))
+    ## Guard against over-broad NA propagation: a single-family-per-trait fit
+    ## must stay entirely finite under the fix, exactly as before it.
+    expect_false(anyNA(out_auto$Sigma))
+    expect_false(anyNA(out_auto$R))
+  }
+})
+
+test_that("link_residual = 'auto' matches the Poisson-log formula and stays NA-free (boundary)", {
+  skip_on_cran()
+  set.seed(2026)
+  n <- 120; Tn <- 3
+  Lambda <- matrix(c(0.5, 0.3, -0.2, 0.0, 0.4, 0.2), Tn, 2)
+  u <- matrix(rnorm(n * 2), n, 2)
+  eta <- 1.0 + u %*% t(Lambda)
+  mu  <- exp(eta)
+  y   <- matrix(rpois(n * Tn, mu), n, Tn)
+  df <- data.frame(
+    individual = factor(rep(seq_len(n), each = Tn)),
+    trait      = factor(rep(c("a", "b", "c"), n), levels = c("a", "b", "c")),
+    value      = as.integer(t(y))
+  )
+  fit <- suppressMessages(suppressWarnings(gllvmTMB(
+    value ~ 0 + trait + latent(0 + trait | individual, d = 2),
+    data = df, site = "individual",
+    family = poisson()
+  )))
+  out_none <- suppressMessages(extract_Sigma(fit, level = "unit", part = "total",
+                                              link_residual = "none"))
+  out_auto <- suppressMessages(extract_Sigma(fit, level = "unit", part = "total",
+                                              link_residual = "auto"))
+  ## sigma2_d = log(1 + 1 / mu_t) (lognormal-Poisson approximation,
+  ## Nakagawa & Schielzeth 2010 Table 2; R/extract-sigma.R's poisson branch
+  ## of link_residual_per_trait()).
+  expected <- gllvmTMB:::link_residual_per_trait(fit)
+  expect_false(anyNA(expected))
+  expect_true(all(expected > 0))
+  expect_equal(unname(diag(out_auto$Sigma) - diag(out_none$Sigma)),
+               unname(expected), tolerance = 1e-8)
+  expect_false(anyNA(out_auto$Sigma))
+  expect_false(anyNA(out_auto$R))
+})

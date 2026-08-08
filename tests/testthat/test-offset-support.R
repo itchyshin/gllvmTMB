@@ -250,6 +250,148 @@ test_that("a zero offset on a non-count trait is a legal no-op", {
                tolerance = 1e-8)
 })
 
+# ---- (5b) binomial(cloglog): a family x link exception, not a family --
+#
+# Issue #946: `offset()` is gated on family AND link, not family alone.
+# `binomial(cloglog)` is admitted -- `cloglog(p) = eta + log(area)` is the
+# change-of-support term that lets a presence/absence arm and a count arm
+# share one Poisson-process intensity (an integrated SDM). `binomial(logit)`
+# and `binomial(probit)` stay refused, so the boundary sits at the LINK, not
+# at whether the trait is "binomial".
+
+## Two binomial(cloglog) traits, so `offset(log_area)` engages on both.
+## `log_area` is correlated with `z` on purpose (mirrors `.ofs_pois_long`):
+## if it were independent, omitting the offset would only shift the
+## intercept, and the recovery test below could not distinguish "offset
+## applied" from "offset absorbed by the intercept".
+.ofs_cloglog_long <- function(n = 400, seed = 91) {
+  set.seed(seed)
+  nn <- 2L * n
+  z <- stats::rnorm(nn)
+  log_area <- 0.4 * z + stats::rnorm(nn, 0, 0.3)
+  area <- exp(log_area)
+  trait <- factor(rep(c("t1", "t2"), each = n))
+  b0 <- c(t1 = -0.2, t2 = -0.5)[as.character(trait)]
+  b1 <- c(t1 = 0.5, t2 = -0.4)[as.character(trait)]
+  mu <- exp(b0 + b1 * z)
+  p <- 1 - exp(-area * mu)
+  data.frame(
+    site     = factor(rep(seq_len(n), times = 2L)),
+    trait    = trait,
+    z        = z,
+    log_area = log_area,
+    value    = stats::rbinom(nn, 1, p)
+  )
+}
+
+## FAILURE-BEFORE-FIX: before this change, `binomial` was refused outright
+## regardless of link, so this fit aborted with the count-family message.
+## Not merely "does not error" -- checks genuine recovery of the planted
+## intensity slope against a truth that is NOT what omitting the offset
+## would recover (the offset's own z-coefficient biases the no-offset fit
+## toward a different value, same mechanism as the poisson recovery test).
+test_that("a binomial(cloglog) offset is accepted and recovers the planted intensity slope", {
+  d <- .ofs_cloglog_long()
+
+  fit_off <- .ofs_fit(value ~ 0 + trait + (0 + trait):z + offset(log_area),
+                      data = d, trait = "trait", unit = "site",
+                      family = stats::binomial(link = "cloglog"))
+  fit_no  <- .ofs_fit(value ~ 0 + trait + (0 + trait):z,
+                      data = d, trait = "trait", unit = "site",
+                      family = stats::binomial(link = "cloglog"))
+
+  slope <- function(fit, term) {
+    td <- suppressMessages(tidy(fit, "fixed", conf.int = FALSE))
+    td$estimate[td$term == term]
+  }
+
+  ## Truth for the t1 z-slope is 0.5; log_area carries +0.4*z, so omitting
+  ## the offset should pull the estimate up toward roughly 0.9.
+  b1_off <- slope(fit_off, "traitt1:z")
+  b1_no  <- slope(fit_no,  "traitt1:z")
+
+  expect_equal(fit_off$opt$convergence, 0L)
+  expect_lt(abs(b1_off - 0.5), 0.15,
+            label = sprintf("t1 z-slope with offset = %.4f (truth 0.5)", b1_off))
+  expect_gt(b1_no - b1_off, 0.2,
+            label = sprintf("t1 z-slope without offset = %.4f, with = %.4f",
+                            b1_no, b1_off))
+})
+
+## BOUNDARY: the gate sits at the link, not at "is this family binomial".
+## Nothing guarded this refusal before #946 -- the old gate refused every
+## binomial row unconditionally, so a test could not tell "binomial is
+## refused" from "binomial(logit) is refused for the right reason".
+test_that("binomial(logit) and binomial(probit) offsets still abort, naming the link", {
+  set.seed(201)
+  n <- 60L
+  nn <- 2L * n
+  d <- data.frame(
+    site  = factor(rep(seq_len(n), times = 2L)),
+    trait = factor(rep(c("t1", "t2"), each = n)),
+    z     = stats::rnorm(nn),
+    off   = stats::rnorm(nn),
+    value = stats::rbinom(nn, 1, 0.5)
+  )
+
+  for (link in c("logit", "probit")) {
+    msg <- .ofs_msg(.ofs_fit(
+      value ~ 0 + trait + (0 + trait):z + offset(off),
+      data = d, trait = "trait", unit = "site",
+      family = stats::binomial(link = link)
+    ))
+    expect_false(is.na(msg),
+                 label = sprintf("binomial(%s) with a nonzero offset must error", link))
+    expect_match(msg, "count", ignore.case = TRUE)
+    expect_match(msg, "binomial", ignore.case = TRUE)
+    expect_match(msg, link, fixed = TRUE)
+  }
+})
+
+## FEATURE-COMBINATION: poisson rows (log-link exposure offset) and
+## binomial-cloglog rows (change-of-support area offset) in one mixed-family
+## fit, both nonzero -- the integrated-SDM use case issue #946 exists for.
+test_that("poisson exposure offsets and binomial(cloglog) area offsets combine in one mixed-family fit", {
+  set.seed(101)
+  n <- 150L
+  nn <- 2L * n
+  z <- stats::rnorm(nn)
+  trait <- factor(rep(c("t1", "t2"), each = n))
+  is_t1 <- trait == "t1"
+
+  log_eff  <- 0.8 * z + stats::rnorm(nn, 0, 0.4)   # t1: poisson exposure
+  log_area <- 0.4 * z + stats::rnorm(nn, 0, 0.3)   # t2: binomial(cloglog) area
+  area <- exp(log_area)
+
+  y <- numeric(nn)
+  y[is_t1]  <- stats::rpois(sum(is_t1),
+                            exp(0.4 + 0.5 * z[is_t1] + log_eff[is_t1]))
+  mu_b <- exp(-0.3 - 0.4 * z[!is_t1])
+  p_b  <- 1 - exp(-area[!is_t1] * mu_b)
+  y[!is_t1] <- stats::rbinom(sum(!is_t1), 1, p_b)
+
+  d <- data.frame(
+    site  = factor(rep(seq_len(n), times = 2L)),
+    trait = trait,
+    z     = z,
+    off   = ifelse(is_t1, log_eff, log_area),
+    value = y
+  )
+  fams <- list(t1 = poisson(), t2 = stats::binomial(link = "cloglog"))
+  attr(fams, "family_var") <- "trait"
+
+  fit_off <- .ofs_fit(value ~ 0 + trait + (0 + trait):z + offset(off),
+                      data = d, trait = "trait", unit = "site", family = fams)
+  fit_zero <- .ofs_fit(value ~ 0 + trait + (0 + trait):z + offset(off * 0),
+                       data = d, trait = "trait", unit = "site", family = fams)
+
+  expect_equal(fit_off$opt$convergence, 0L)
+  ## Both offsets are nonzero and neither trait's family/link is refused, so
+  ## the whole fit must be accepted and the offsets must engage.
+  expect_gt(abs(as.numeric(stats::logLik(fit_off)) -
+                as.numeric(stats::logLik(fit_zero))), 1)
+})
+
 # ---- (6) Wide per-trait offset(e1, e2) --------------------------------
 
 test_that("wide offset(e1, e2) gives one offset column per trait", {

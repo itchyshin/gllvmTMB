@@ -1,7 +1,7 @@
 # Handover: integrated-SDM Phase C complete, qualified result
 
-Worktree: `/Users/z3437171/local-scratch/worktrees/gllvmtmb-isdm`  
-Branch: `claude/experiment-integrated-sdm`  
+Worktree: `/Users/z3437171/local-scratch/worktrees/gllvmtmb-isdm`
+Branch: `claude/experiment-integrated-sdm`
 Main and issues #943--#946: untouched.
 
 ## Completed evidence

@@ -29,6 +29,30 @@ bibentry(
 
 bibentry(
   bibtype  = "Article",
+  key      = "MSPL",
+  title    = "Maximum Softly-Penalized Likelihood for Mixed Effects Logistic Regression",
+  author   = c(
+    person("Philipp", "Sterzinger"),
+    person("Ioannis", "Kosmidis")
+  ),
+  journal  = "Statistics and Computing",
+  year     = "2023",
+  volume   = "33",
+  pages    = "53",
+  doi      = "10.1007/s11222-023-10217-3",
+  textVersion = paste(
+    "Sterzinger P, Kosmidis I (2023).",
+    "Maximum Softly-Penalized Likelihood for Mixed Effects Logistic Regression.",
+    "Statistics and Computing, 33, 53.",
+    "doi:10.1007/s11222-023-10217-3"
+  ),
+  header   = paste(
+    "When using estimator = \"mspl\", also cite the logistic mixed-effects antecedent for its fixed-effect Jeffreys construction; gllvmTMB's probit, cloglog, reduced-rank, and spatial extensions are separate:"
+  )
+)
+
+bibentry(
+  bibtype  = "Article",
   key      = "TMB",
   title    = "TMB: Automatic Differentiation and Laplace Approximation",
   author   = c(

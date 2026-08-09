@@ -48960,3 +48960,28 @@ no active recent `origin/main` work, the after-task report passed its structural
 validator, and the check log carries the handoff. The warning is the large
 high-risk dirty tree itself. Smallest safe next action: one scoped commit and
 one draft PR; do not self-merge, version-bump, or release.
+
+---
+
+## 2026-08-09 — Lane B local reconciliation candidate (Codex)
+
+Merged the local experimental binary LA-MSPL commit into the active 0.7 draft
+source in a disposable local branch. The combination preserves the draft's
+weighted-objective/VA behavior and places MSPL's point-only inference fence
+before the weighted-objective fence. The MSPL `nlminb` stationary-rescue path
+now uses the draft's shared optimizer helper. This is a local reconciliation
+candidate only: no PR, branch push, remote campaign, or release action was
+performed.
+
+Verification:
+
+```sh
+Rscript --vanilla -e 'devtools::document(quiet = TRUE)'
+# PASS: fresh TMB compile
+Rscript --vanilla -e 'devtools::test(filter = "mspl-api|mspl-simulation-contract", reporter = "summary", stop_on_failure = TRUE)'
+# PASS
+Rscript --vanilla -e 'devtools::test(filter = "screen-separation", reporter = "summary", stop_on_failure = TRUE)'
+# PASS
+git diff --check
+# PASS
+```

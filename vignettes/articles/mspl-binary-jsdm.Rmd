@@ -1,0 +1,308 @@
+---
+title: "Keep rare binary items in Paper x Items evidence synthesis with LA-MSPL"
+description: "Detect fixed-effect separation in paper-by-item evidence, fit the opt-in softly penalised Laplace estimator, and distinguish it from loading ridge and likelihood inference."
+tier: 1
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{Keep rare binary items in Paper x Items evidence synthesis with LA-MSPL}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  message = FALSE,
+  warning = FALSE,
+  cache = FALSE
+)
+```
+
+A rare outcome may be reported only by papers at the high end of a design or
+exposure gradient. Do we silently remove that item, accept a runaway
+maximum-likelihood coefficient, or keep it with an estimator whose boundary
+behaviour is explicit?
+
+This page uses two separate opt-in tools. `screen_gllvmTMB()` checks whether
+the fixed-effect design proves complete or quasi-complete separation.
+`estimator = "mspl"` then fits a softly penalised Laplace point estimator. The
+screen never chooses the estimator, and MSPL never deletes an item.
+
+The current experimental estimator admits **complete Bernoulli Paper × Item**
+data: every item is assessed for every paper and each cell contains one 0/1
+trial. A recorded zero means that the item was assessed and absent; an
+unreported or unassessed item is missing data and remains outside this release.
+MSPL supports logit, probit, and complementary log-log (`cloglog`) links. This
+worked example uses `cloglog`, which is often natural when an item records at
+least one event over an unequal underlying opportunity. It fits
+`latent(..., unique = FALSE)`, so residual dependence between items is
+\(\Sigma = \Lambda\Lambda^\top\), with no free diagonal \(\Psi\). A free
+single-trial Bernoulli \(\Psi\) is not identifiable and is not admitted here.
+
+The resolved fixed-effect design must have full column rank, and offsets must
+be exactly zero. If either condition fails, the fit stops before optimisation;
+MSPL does not silently drop columns or reinterpret exposure adjustments.
+
+Missing paper-by-item cells require the later FIML-MSPL extension. Grouped binomial
+data--multiple trials in one row, supplied through `cbind(successes, failures)`
+or binomial trial weights--also remain deferred because the present
+construction and validation campaign cover complete single-trial cells.
+Mixed families, rank above two, additional random-effect tiers, and general
+inference remain outside this surface. These extensions are deferred, not
+claimed to be impossible. `estimator = "ml"` is unchanged and remains the
+default.
+
+## A small Paper × Items data set
+
+```{r setup}
+library(gllvmTMB)
+
+set.seed(70808)
+n_paper <- 36
+papers <- data.frame(
+  paper = factor(seq_len(n_paper)),
+  design_score = seq(-2, 2, length.out = n_paper)
+)
+papers$item_supports <- rbinom(n_paper, 1, plogis(-0.2 - 0.8 * papers$design_score))
+papers$item_harm <- rbinom(n_paper, 1, plogis(0.1 + 0.7 * papers$design_score))
+papers$rare_escalation <- as.integer(seq_len(n_paper) %in% c(n_paper - 1L, n_paper))
+
+long <- data.frame(
+  paper = rep(papers$paper, times = 3L),
+  item = factor(rep(c("item_supports", "item_harm", "rare_escalation"), each = n_paper)),
+  design_score = rep(papers$design_score, times = 3L),
+  value = c(papers$item_supports, papers$item_harm, papers$rare_escalation)
+)
+```
+
+Two reported presences do not automatically imply separation. Here their
+position on `design_score` is what matters: a linear boundary can isolate both
+from every absence. That is a fixed-design property, not a prevalence rule.
+
+## Certify fixed-design separation
+
+The formal detector is optional because it adds the `detectseparation`
+dependency only when requested.
+
+```{r separation-screen, eval = requireNamespace("detectseparation", quietly = TRUE)}
+screen <- screen_gllvmTMB(
+  traits(item_supports, item_harm, rare_escalation) ~ 1 + design_score,
+  data = papers,
+  unit = "paper",
+  family = binomial("cloglog"),
+  control = screen_control(separation = "fixed")
+)
+
+screen_table(screen, "separation")
+```
+
+```{r separation-screen-missing, eval = !requireNamespace("detectseparation", quietly = TRUE), echo = FALSE}
+cat("Install the optional detectseparation package to run the fixed-design certificate.\n")
+```
+
+The certificate is deliberately conservative about scope. It sees the fixed
+design after coefficient maps and structural zeros, but it does not inspect
+latent-loading or spatial-covariance divergence. `overlap` therefore means
+"this fixed block has a finite GLM estimate," not "every GLLVM parameter is
+identified."
+
+Use the result as a decision rule. After fixed-design `overlap`, retain ML
+unless another scientific reason calls for regularisation. When complete or
+quasi-complete separation affects a scientifically necessary item and the
+model lies inside the admitted surface, consider opt-in MSPL. Do not use MSPL
+to rescue a constant response: it contains no response variation to estimate.
+For missing, grouped, mixed-family, or otherwise unsupported structures,
+redesign or filter the analysis transparently, or wait for the corresponding
+extension.
+
+## Fit ML and LA-MSPL explicitly
+
+The model asks whether residual item co-occurrence remains after the paper-level
+design responses are fitted. Both fits integrate the latent variables with Laplace
+approximation. ML optimises the resulting unpenalised approximate likelihood;
+MSPL optimises that same approximation plus its explicit soft penalties.
+
+```{r paired-fits}
+form_long <- value ~ 0 + item + item:design_score +
+  latent(1 | paper, d = 1, unique = FALSE)
+
+ctrl <- gllvmTMBcontrol(
+  n_init = 1,
+  se = FALSE,
+  warn_runaway = FALSE
+)
+
+fit_ml_result <- tryCatch(
+  suppressWarnings(gllvmTMB(
+    form_long,
+    data = long,
+    unit = "paper",
+    trait = "item",
+    family = binomial("cloglog"),
+    estimator = "ml",
+    control = ctrl
+  )),
+  error = identity
+)
+
+fit_ml <- if (inherits(fit_ml_result, "error")) NULL else fit_ml_result
+if (is.null(fit_ml)) {
+  cat("ML did not return a fitted point:", conditionMessage(fit_ml_result), "\n")
+}
+
+fit_mspl <- suppressWarnings(gllvmTMB(
+  form_long,
+  data = long,
+  unit = "paper",
+  trait = "item",
+  family = binomial("cloglog"),
+  estimator = "mspl",
+  control = ctrl
+))
+
+fit_mspl
+```
+
+The finite MSPL coefficient is not evidence that the original ML separation
+disappeared. The unpenalised likelihood still has the same boundary direction;
+MSPL selects a finite point by adding a sample-size-dependent fixed-effect
+Jeffreys term and smooth radial penalties for the latent structure.
+
+```{r coefficient-comparison}
+comparison <- data.frame(
+  term = names(coef(fit_mspl)),
+  ML = if (is.null(fit_ml)) NA_real_ else unname(coef(fit_ml)),
+  MSPL = unname(coef(fit_mspl))
+)
+comparison
+```
+
+For the rare item, the fitted point describes reporting increasing sharply
+towards the high end of `design_score`. The supported `predict()` route can
+display that curve on the response scale while excluding the fitted paper-level latent
+scores:
+
+```{r rare-item-prediction}
+pred_mspl <- predict(fit_mspl, type = "response", re_form = ~ 0)
+rare_curve <- data.frame(
+  design_score = long$design_score,
+  item = long$item,
+  item_probability = pred_mspl$est
+)
+rare_curve <- rare_curve[rare_curve$item == "rare_escalation", ]
+rare_curve[c(1, 9, 18, 27, 36), c("design_score", "item_probability")]
+```
+
+This finite curve is the biological interpretation of the penalised point
+estimate; it is not evidence that ordinary ML became identifiable, and it does
+not carry calibrated uncertainty.
+
+Do not compare these fits with AIC, BIC, a likelihood-ratio test, or
+`logLik()`. The MSPL optimum is not the unpenalised maximum-likelihood optimum,
+and those methods fail with a typed error. Standard errors and confidence
+intervals are also withheld while repeated-sampling calibration is in
+progress. Point estimates and predictions are implemented, but the release
+ordinary release claim remains experimental until the frozen ordinary promotion
+gates complete. Spatial evidence has a separate, explicitly experimental gate.
+
+## The same fit from wide data
+
+Evidence-synthesis teams may begin with a paper-by-item table rather than a
+stacked table. The wide `traits(...)` call uses the same `gllvmTMB()` entry point.
+
+```{r wide-fit}
+fit_mspl_wide <- suppressWarnings(gllvmTMB(
+  traits(item_supports, item_harm, rare_escalation) ~ 1 + design_score +
+    latent(1 | paper, d = 1, unique = FALSE),
+  data = papers,
+  unit = "paper",
+  family = binomial("cloglog"),
+  estimator = "mspl",
+  control = ctrl
+))
+
+c(long = fit_mspl$opt$objective, wide = fit_mspl_wide$opt$objective)
+```
+
+Long data are canonical when items have item-specific predictors or observation
+metadata. Wide data are often the cleanest starting point for an evidence table.
+The two calls describe the same scientific model.
+
+## MSPL is not loading ridge
+
+`gllvmTMBcontrol(loading_ridge = 2)` requests the existing Gaussian-prior MAP
+penalty on loadings. `aghq_ridge` remains its compatibility spelling; the
+penalty does not depend on whether the latent integral is evaluated by Laplace
+or AGHQ. Ridge may have lower prediction or estimation risk in some regimes,
+so it remains an empirical comparator.
+
+LA-MSPL has a different construction and purpose. It combines the fixed-design
+Jeffreys term with radial loading or spatial-covariance penalties, scaled by
+`2 * sqrt(p_free / N_eff)`. Supplying a loading ridge together with
+`estimator = "mspl"` is a public error because that hybrid has no promoted
+theory. The planned simulation campaign includes that hybrid as an internal
+ablation.
+
+## Spatial extension
+
+Paper × Items synthesis usually needs the ordinary model above: papers are the
+independent sampling units and `latent()` captures residual dependence between
+items. MSPL also has an explicitly experimental spatial implementation, but
+spatial promotion needs separate mesh, range, marginal-scale, rank, and
+prediction evidence. It is not required for, and is not implied by, this
+ordinary evidence-synthesis workflow.
+
+## What to report
+
+Report the response support, the fixed-design certificate, the link, the
+latent/spatial structure and rank, the estimator label, the penalty scale
+`c_n`, convergence and gradient diagnostics, and whether any item was
+filtered before analysis. A promotable result is not simply "the optimizer
+returned a finite number." It requires a finite stationary point inside a
+prespecified regime, retained failures, and a separate assessment of latent
+rank collapse.
+
+The fit stores those diagnostics rather than asking users to reconstruct them:
+
+```{r mspl-diagnostics}
+mspl_summary <- summary(fit_mspl)
+mspl_summary$estimation[c("c_n", "p_free", "N_eff", "scope")]
+fit_mspl$fit_health[c(
+  "convergence", "max_gradient", "scaled_gradient", "boundary_flags"
+)]
+```
+
+In this deliberately small example, `near_zero_B_loading` means that MSPL found
+a finite point estimate but the latent covariance is still close to a rank
+boundary. Use `gllvmTMB_diagnose(fit_mspl)` and simplify, refit, or collect more
+information before interpreting that covariance as clean residual
+co-occurrence evidence. The example demonstrates boundary-stabilised point
+estimation for the separated item; it does not demonstrate a well-resolved
+latent rank.
+
+## References
+
+- Kosmidis I, Firth D (2021). Jeffreys-prior penalty, finiteness and shrinkage
+  in binomial-response generalized linear models. *Biometrika* 108:71--82.
+  <https://doi.org/10.1093/biomet/asaa052>.
+- Sterzinger P, Kosmidis I (2023). Maximum softly-penalized likelihood for
+  mixed effects logistic regression. *Statistics and Computing* 33:53.
+  <https://doi.org/10.1007/s11222-023-10217-3>.
+- Sterzinger P, Kosmidis I, Moustaki I (2026). Maximum Softly Penalized
+  Likelihood in Factor Analysis. *Psychometrika* 91:494--507.
+  <https://doi.org/10.1017/psy.2026.10092>. The paper identifies logistic
+  factor analysis as future work; it is adjacent theory, not proof for this
+  implementation.
+- Sterzinger P, Kosmidis I (2026). Diaconis-Ylvisaker prior penalized
+  likelihood for \(p/n \to \kappa \in (0,1)\) logistic regression.
+  arXiv:2311.07419v3. <https://doi.org/10.48550/arXiv.2311.07419>. This is a
+  high-dimensional logistic-regression result, not GLMM or GLLVM evidence; it
+  motivates retaining ridge as an empirical comparator.
+- van der Veen B, Hui FKC, Hovstad KA, O'Hara RB (2023). Concurrent
+  ordination: Simultaneous unconstrained and constrained latent variable
+  modelling. *Methods in Ecology and Evolution* 14:683--695.
+  <https://doi.org/10.1111/2041-210X.14035>.

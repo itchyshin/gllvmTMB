@@ -221,6 +221,7 @@ extract_communality <- function(
     )
   }
   if (isTRUE(ci)) {
+    .gllvmTMB_mspl_assert_inference(fit, "extract_communality(ci = TRUE)")
     .gllvmTMB_require_unweighted_inference(fit, "extract_communality(ci = TRUE)")
   }
   rr_used <- switch(
@@ -651,6 +652,7 @@ extract_lv_effects <- function(
   if (!inherits(fit, "gllvmTMB_multi")) {
     cli::cli_abort("Provide a fit returned by {.fun gllvmTMB}.")
   }
+  .gllvmTMB_mspl_assert_inference(fit, "extract_lv_effects")
   .gllvmTMB_require_unweighted_inference(fit, "extract_lv_effects")
   if (!identical(level, "B")) {
     cli::cli_abort(c(

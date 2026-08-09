@@ -137,6 +137,7 @@ gllvmTMB_check_consistency <- function(
   if (!inherits(fit, "gllvmTMB_multi")) {
     cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
   }
+  .gllvmTMB_mspl_assert_inference(fit, "gllvmTMB_check_consistency")
   n_sim <- as.integer(n_sim)
   if (length(n_sim) != 1L || is.na(n_sim) || n_sim < 2L) {
     cli::cli_abort("{.arg n_sim} must be an integer >= 2.")

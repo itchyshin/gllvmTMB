@@ -100,6 +100,7 @@ standard_errors <- function(fit) {
       class = "gllvmTMB_standard_errors_bad_fit"
     )
   }
+  .gllvmTMB_mspl_assert_inference(fit, "standard_errors")
 
   .gllvmTMB_require_unweighted_inference(fit, "standard_errors()")
 

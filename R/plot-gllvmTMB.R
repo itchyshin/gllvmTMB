@@ -129,6 +129,9 @@ plot.gllvmTMB_multi <- function(
   standardize_loadings = FALSE,
   ...
 ) {
+  if (!is.null(boot)) {
+    .gllvmTMB_mspl_assert_inference(x, "plot(boot = ...)")
+  }
   if (!requireNamespace("ggplot2", quietly = TRUE)) {
     cli::cli_abort("Install ggplot2: {.code install.packages(\"ggplot2\")}.")
   }

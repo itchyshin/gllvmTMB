@@ -1614,6 +1614,7 @@ confint.gllvmTMB_multi <- function(
   seed = NULL,
   ...
 ) {
+  .gllvmTMB_mspl_assert_inference(object, "confint")
   .gllvmTMB_require_unweighted_inference(object, "confint")
   ## ---- Lambda entry path (Stage 2, 2026-05-27) -----------------------------
   ## `parm = "Lambda"` (all free entries) or `"Lambda:i,j"` /

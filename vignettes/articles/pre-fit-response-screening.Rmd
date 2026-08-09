@@ -48,8 +48,25 @@ The screen has three separate jobs:
 Formal complete or quasi-complete separation depends on the response–predictor
 design. Rare or constant outcomes can motivate a formal separation check, but
 duplicate or complementary response columns are redundancy conditions, not
-classical separation. A clean `screen_gllvmTMB()` result therefore does not
-prove that separation cannot occur.
+classical separation. A clean result from the default heuristic screen
+therefore does not prove that separation cannot occur; request the formal
+certificate when the fixed-design question matters.
+
+Set `screen_control(separation = "fixed")` to run the optional formal
+fixed-design certificate. It classifies coefficient-connected blocks as
+`overlap`, `complete`, or `quasi_complete` for logit, probit, and
+complementary-log-log links after fixed-effect maps, ties, finite offsets, and
+structural-zero constraints are resolved. It requires the optional
+`detectseparation` package and never changes the fitted estimator. The
+certificate does not inspect latent loadings or covariance parameters. Finite
+known offsets are accepted for this diagnostic certificate, but `gllvmTMB()`
+currently rejects nonzero offsets for binomial fits; diagnostic support does
+not imply fitting support.
+
+When a scientifically necessary binary trait is separated, the related
+[LA-MSPL worked example](mspl-binary-jsdm.html) shows the opt-in finite point
+estimator. Filtering remains a scientific/data-quality decision, not the
+screen's automatic response.
 
 ## Setup
 
@@ -284,18 +301,28 @@ scr_candidate <- screen_gllvmTMB(
   data = candidate,
   unit = "review",
   family = binomial("probit"),
-  control = ctl
+  control = screen_control(separation = "fixed")
 )
 
 screen_table(scr_candidate, "recommendations")[, c(
   "scope", "status", "action", "trait", "evidence"
 )]
+
+screen_table(scr_candidate, "separation")[, c(
+  "traits", "status", "severity", "n_columns_active", "action"
+)]
 ```
 
-This rerun contains only the deliberately retained rarity warning. If the rare
-response is not scientifically essential, keep it descriptive or fit a
-sensitivity model without it. The screen supports that decision; it does not
-make the decision.
+This rerun contains only the deliberately retained rarity warning from the
+heuristic checks and now also applies the formal fixed-design certificate to
+the final candidate formula. After fixed-design overlap, use ML unless another
+scientific reason calls for regularisation. When complete or quasi-complete
+separation affects a scientifically necessary trait and the model lies inside
+the admitted complete-Bernoulli surface, consider opt-in MSPL. Do not use MSPL
+to rescue a constant response. If the model instead contains missing response
+cells, grouped binomial trials, mixed families, or another unsupported
+structure, redesign or filter transparently or await the corresponding
+extension. The screen supports that decision; it does not make the decision.
 
 ## What to do with warnings
 
@@ -330,8 +357,9 @@ failure mode (Albert and Anderson 1984; Mansournia et al. 2018), but its presenc
 depends on the response–predictor design. Minority-count rules such as “10
 events per variable” are context-dependent heuristics rather than hard laws
 (Peduzzi et al. 1996; Vittinghoff and McCulloch 2007). This screen reports
-conditions that deserve inspection; it does not replace a formal separation
-analysis.
+conditions that deserve inspection. The default heuristic screen does not
+replace a formal separation analysis; request `separation = "fixed"` when that
+formal fixed-design certificate is needed.
 
 Rare species are not automatically discarded in JSDMs. Shared community
 structure can make sparse responses scientifically valuable, while very sparse
@@ -372,6 +400,12 @@ species-specific effect rather than forcing it into the model.
 - Mansournia MA, Geroldinger A, Greenland S, Heinze G (2018). Separation in
   logistic regression: causes, consequences, and control. *American Journal of
   Epidemiology* 187:864--870.
+- Kosmidis I, Firth D (2021). Jeffreys-prior penalty, finiteness and shrinkage
+  in binomial-response generalized linear models. *Biometrika* 108:71--82.
+  <https://doi.org/10.1093/biomet/asaa052>.
+- Sterzinger P, Kosmidis I (2023). Maximum softly-penalized likelihood for
+  mixed effects logistic regression. *Statistics and Computing* 33:53.
+  <https://doi.org/10.1007/s11222-023-10217-3>.
 - Chalmers RP (2012). mirt: A multidimensional item response theory package for
   the R environment. *Journal of Statistical Software* 48(6):1--29.
 - Chalmers RP. `mirt::itemstats()` documentation: generic item summary

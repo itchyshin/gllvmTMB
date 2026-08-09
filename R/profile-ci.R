@@ -381,6 +381,7 @@ tmbprofile_wrapper <- function(
   if (!inherits(fit, "gllvmTMB_multi")) {
     cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
   }
+  .gllvmTMB_mspl_assert_inference(fit, "tmbprofile_wrapper")
   .gllvmTMB_require_unweighted_inference(fit, "tmbprofile_wrapper")
   profile_checkpoint <- .gllvmTMB_profile_tmb_checkpoint(fit$tmb_obj)
   on.exit(

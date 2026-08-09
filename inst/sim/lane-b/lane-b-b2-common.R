@@ -1292,14 +1292,7 @@ lane_b_spatial_promotion_metrics <- function(attempts) {
 
 lane_b_sha256_file <- function(path) {
   if (!file.exists(path)) stop("Cannot hash missing file: ", path)
-  shasum <- Sys.which("shasum")
-  sha256sum <- Sys.which("sha256sum")
-  if (nzchar(shasum)) {
-    out <- system2(shasum, c("-a", "256", shQuote(path)), stdout = TRUE)
-  } else if (nzchar(sha256sum)) {
-    out <- system2(sha256sum, shQuote(path), stdout = TRUE)
-  } else stop("A SHA-256 utility (shasum or sha256sum) is required.")
-  strsplit(out[[1L]], "[[:space:]]+")[[1L]][[1L]]
+  unname(tools::sha256sum(path))
 }
 
 lane_b_verify_shard_receipts <- function(queue, raw_dir, complete_dir,
@@ -1362,7 +1355,7 @@ lane_b_atomic_save_rds <- function(object, path) {
 lane_b_validate_campaign_root <- function(root, repo_root = getwd()) {
   root <- normalizePath(root, mustWork = FALSE)
   repo <- normalizePath(repo_root, mustWork = TRUE)
-  if (identical(root, repo) || startsWith(paste0(root, "/"), paste0(repo, "/")))
+  if (identical(root, repo) || startsWith(root, paste0(repo, .Platform$file.sep)))
     stop("Campaign outputs must be outside the git checkout.", call. = FALSE)
   root
 }

@@ -48985,3 +48985,33 @@ Rscript --vanilla -e 'devtools::test(filter = "screen-separation", reporter = "s
 git diff --check
 # PASS
 ```
+
+---
+
+## 2026-08-09 — Lane B Windows receipt portability repair (Codex)
+
+The required PR #952 three-OS run passed on macOS and Ubuntu but failed on
+Windows. The failure was specific to the Lane B receipt contract:
+`lane_b_sha256_file()` selected Strawberry Perl's `shasum`, which exited with
+status 29 and produced no digest. This made three receipt/provenance tests error.
+The campaign-root containment predicate also used a literal `/`, which does not
+recognise a descendant path after Windows normalisation.
+
+The repair uses `tools::sha256sum()` (R's portable SHA-256 implementation) and
+uses `.Platform$file.sep` in the containment predicate. The active FIR B2 array
+is intentionally unchanged: it runs the separately frozen offline checkout.
+
+Verification:
+
+```sh
+git diff --check
+# PASS
+
+TMPDIR=<writable directory outside the checkout> Rscript --vanilla -e \
+  'devtools::test(filter = "mspl-simulation-contract")'
+# PASS: the three previously failing receipt/root assertions pass.
+# Local devtools staging still yields one pre-existing environmental failure in
+# `ordinary-only corrected campaign scope is explicit and resumable`: its staged
+# directory has no resolvable git HEAD. The required GitHub run has a checkout
+# ancestor and Ubuntu already passed that test; rerun three-OS CI is required.
+```

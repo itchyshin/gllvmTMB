@@ -431,6 +431,24 @@ names.
 
 ## Cross-references
 
+### Binary LA-MSPL evidence allocation
+
+Fast package tests cover API fences, ML no-op parity, map/tie-aware fixed
+designs, positive Cauchy-Binet determinant checks, objective decomposition,
+and light ordinary/spatial construction for all three binary links. The full
+ADEMP campaign is under `inst/sim/lane-b/`: 96 ordinary cells, 24 column-
+permutation cells, and 72 spatial cells, with every failed attempt and alternate
+start retained. It runs on Totoro or DRAC with one BLAS thread per worker, not
+on CRAN or GitHub Actions. Its frozen gates, seed registry, shard format,
+four-arm ML/ridge/MSPL/private-hybrid comparison, and aggregation rules are
+documented in that directory's README and symbolic-alignment note.
+
+No result is promoted merely because an optimizer returns finite coordinates.
+Stationarity, absence of numerical tail contact, multistart objective and
+rotation-invariant covariance agreement, rank-collapse accounting, whole-unit
+prediction, and cellwise uncertainty on comparator differences are separate
+requirements.
+
 - `docs/design/00-vision.md` — package vision; the
   unparalleled-capability claim (mixed-family latent-scale
   correlations) drives the mixed-family test requirements.

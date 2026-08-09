@@ -186,6 +186,9 @@ getLV <- function(
       "i" = "Bridge fits do not carry a native TMB {.fn sdreport}; use {.code se = FALSE} for point estimates."
     ), class = "gllvmTMB_getLV_se_julia_unsupported")
   }
+  if (isTRUE(se)) {
+    .gllvmTMB_mspl_assert_inference(fit, "getLV(se = TRUE)")
+  }
   if (isTRUE(se) && rotate != "none") {
     cli::cli_abort(c(
       "{.code se = TRUE} is not supported together with {.code rotate != \"none\"}.",

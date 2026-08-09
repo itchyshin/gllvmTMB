@@ -1,3 +1,47 @@
+# gllvmTMB 0.7.0 (development)
+
+This development release adds an opt-in separation-screening and LA-MSPL lane
+for complete single-trial Bernoulli GLLVMs. Ordinary ML remains unchanged and
+is still the default.
+
+## New
+
+* **Complete-Bernoulli GLLVMs can opt in to LA-MSPL point estimation.** Set
+  `estimator = "mspl"` to fit the experimental maximum softly penalised
+  Laplace objective for one ordinary `latent(d = 1:2)` block with no free Psi,
+  standalone `spatial_indep()`, or standalone `spatial_latent(d = 1:2)`, with
+  a common logit, probit, or complementary-log-log link. `estimator = "ml"`
+  remains the unchanged default, and a separation warning never switches
+  estimators automatically. The admitted surface also requires a full-rank
+  resolved fixed-effect design and all-zero offsets. The implementation follows
+  the construction of Sterzinger and Kosmidis (2023,
+  doi:10.1007/s11222-023-10217-3) for its fixed-effect
+  Jeffreys component and extends it with rotation-invariant radial penalties
+  for estimated GLLVM loadings and reference-scale spatial coordinates.
+  At this development checkpoint, the compiled objective and point-estimation
+  API are implemented, while frozen ordinary and spatial simulation promotion
+  remains in progress. Likelihood
+  comparison, standard errors, confidence intervals, profiles, and hypothesis
+  tests fail closed. Missing responses, grouped binomial data, mixed families,
+  rank above two, extra covariance tiers, VA/AGHQ/Julia MSPL, and general
+  inference remain planned rather than advertised.
+
+* **The loading MAP penalty now has the integration-neutral spelling
+  `loading_ridge`.** It is an alias for `aghq_ridge`, not a new penalty, and
+  preserves unpenalised Laplace fits unless named explicitly. Loading ridge and
+  LA-MSPL are distinct estimators; supplying both is an error.
+
+* **`screen_gllvmTMB()` can opt in to fixed-design separation certificates.**
+  Use `screen_control(separation = "fixed")` to classify maximal
+  coefficient-connected Bernoulli fixed-effect blocks as overlap, complete
+  separation, or quasi-complete separation. The detector supports the logit,
+  probit, and complementary log-log links, finite known offsets, shared
+  coefficients, and structural-zero `Xcoef_fixed` constraints. It requires the
+  optional `detectseparation` package. The default remains
+  `separation = "none"` and does not load that package. This is a fixed-design
+  diagnostic only: it does not certify finite latent loadings or covariance
+  parameters, and it never selects a penalized estimator automatically.
+
 # gllvmTMB 0.6.0
 
 This release focuses on multivariate stacked-trait models fitted through the

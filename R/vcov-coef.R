@@ -65,6 +65,7 @@ coef.gllvmTMB_multi <- function(object, ...) {
 #' @rdname gllvmTMB_multi-vcov
 #' @export
 vcov.gllvmTMB_multi <- function(object, ...) {
+  .gllvmTMB_mspl_assert_inference(object, "vcov")
   nm <- object$X_fix_names %||% character(0)
   if (length(nm) == 0L) {
     return(matrix(numeric(0), 0L, 0L))

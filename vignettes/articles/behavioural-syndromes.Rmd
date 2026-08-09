@@ -224,7 +224,10 @@ Both use the same `gllvmTMB()` entry point.
 fit_control <- gllvmTMBcontrol(
   start_method = list(method = "indep"),
   optimizer = "optim",
-  optArgs = list(method = "BFGS")
+  optArgs = list(
+    method = "BFGS",
+    control = list(maxit = 1000, reltol = 1e-12)
+  )
 )
 
 fit_long <- gllvmTMB(

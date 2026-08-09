@@ -95,6 +95,7 @@ standard_errors <- function(fit) {
       class = "gllvmTMB_standard_errors_bad_fit"
     )
   }
+  .gllvmTMB_mspl_assert_inference(fit, "standard_errors")
 
   ## Already computed at fitting time (or by an earlier call) -- nothing to do.
   if (!is.null(fit$sd_report)) {

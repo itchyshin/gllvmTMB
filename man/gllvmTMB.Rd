@@ -31,7 +31,8 @@ gllvmTMB(
   ci_nboot = 200L,
   ci_seed = 0L,
   site = NULL,
-  species = NULL
+  species = NULL,
+  estimator = c("ml", "mspl")
 )
 }
 \arguments{
@@ -304,6 +305,19 @@ compatibility. Use \code{unit = ...} in new code.}
 
 \item{species}{(deprecated) alias for \code{cluster}. Kept for
 backward compatibility. Use \code{cluster = ...} in new code.}
+
+\item{estimator}{Estimation criterion. \code{"ml"} (the default) preserves the
+ordinary maximum Laplace-likelihood route. \code{"mspl"} opts into the
+experimental maximum softly penalised Laplace-likelihood point estimator
+for the currently admitted complete-Bernoulli surface. This means exactly
+one ordinary \code{latent()} block with no free Psi and \code{d = 1} or \code{2}, standalone
+\code{spatial_indep()}, or standalone \code{spatial_latent()} with \code{d = 1} or \code{2};
+one common logit, probit, or complementary-log-log link; complete
+single-trial responses; a full-rank resolved fixed-effect design;
+all-zero offsets; and the native Laplace engine. Unsupported
+structures fail before optimisation.
+MSPL does not activate automatically after a separation warning and never
+changes the default ML fit.}
 }
 \value{
 A \code{gllvmTMB} object. With no covariance-structure terms in
@@ -313,7 +327,10 @@ engine); with \code{latent()} or other covstruct sugar it has class
 S3 methods are registered on the \strong{subclasses}, not on bare
 \code{gllvmTMB}: for a multi-trait fit (\code{gllvmTMB_multi}), \code{tidy()},
 \code{predict()}, \code{summary()}, \code{confint()} and \code{logLik()} are available, and
-\code{AIC()} / \code{BIC()} work through \code{logLik()}. Trait-level extractors such
+\code{AIC()} / \code{BIC()} work through \code{logLik()} for ML fits. An MSPL result has
+the leading class \code{"gllvmTMB_mspl"}; likelihood comparison, standard
+errors, intervals, profiles, and hypothesis-test methods fail closed in
+the current release because this surface is point-estimation only. Trait-level extractors such
 as \code{extract_ICC_site()} and \code{extract_communality()} are multi-trait only.
 
 \code{vcov()} and \code{coef()} are available too — see
@@ -519,8 +536,19 @@ fit <- gllvmTMB(
 summary(fit)
 }
 }
+\references{
+Sterzinger, P. and Kosmidis, I. (2023). Maximum softly-penalized
+likelihood for mixed effects logistic regression. \emph{Statistics and
+Computing}, 33, 53. \doi{10.1007/s11222-023-10217-3}.
+This paper is the logistic mixed-effects antecedent for the fixed-effect
+Jeffreys component. The probit, complementary-log-log, reduced-rank GLLVM,
+and spatial penalties implemented here are gllvmTMB-specific extensions;
+that paper does not validate those extensions.
+}
 \seealso{
-\code{\link[=traits]{traits()}} for wide data-frame formula input;
+\code{\link[=screen_gllvmTMB]{screen_gllvmTMB()}} for the opt-in fixed-design separation
+certificate; \code{vignette("mspl-binary-jsdm", package = "gllvmTMB")}
+for the screen-first LA-MSPL workflow; \code{\link[=traits]{traits()}} for wide data-frame formula input;
 \code{\link[=gllvmTMB_wide]{gllvmTMB_wide()}} for wide matrix/data-frame input;
 \code{\link[=simulate_site_trait]{simulate_site_trait()}} for
 generating recovery test data;

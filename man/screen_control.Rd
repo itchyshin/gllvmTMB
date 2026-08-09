@@ -14,7 +14,9 @@ screen_control(
   phi_strong = 0.95,
   discordant_warn_n = 10,
   discordant_strong_n = 5,
-  hamming_rate_warn = 0.01
+  hamming_rate_warn = 0.01,
+  separation = c("none", "fixed"),
+  separation_tolerance = 1e-04
 )
 }
 \arguments{
@@ -33,6 +35,13 @@ lower and upper prevalence values for advisory imbalance notes.}
 thresholds for near-duplicate binary traits.}
 
 \item{hamming_rate_warn}{Pairwise normalized Hamming-distance threshold.}
+
+\item{separation}{Optional fixed-design separation screen. The default
+\code{"none"} preserves the existing advisory screen and does not require
+\code{detectseparation}; \code{"fixed"} returns one certificate per maximal
+coefficient-connected fixed-effect block.}
+
+\item{separation_tolerance}{Solver tolerance passed to \code{detectseparation}.}
 }
 \value{
 A \code{gllvmTMB_screen_control} object.

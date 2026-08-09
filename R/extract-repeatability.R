@@ -88,6 +88,9 @@ extract_repeatability <- function(
   seed = NULL
 ) {
   method <- match.arg(method)
+  if (.gllvmTMB_is_mspl(fit)) {
+    .gllvmTMB_mspl_assert_inference(fit, "extract_repeatability")
+  }
   if (method == "profile") {
     cli::cli_abort(c(
       "A profile interval for canonical full-covariance repeatability is not currently available.",
@@ -103,6 +106,7 @@ extract_repeatability <- function(
       "Provide a fit returned by {.fun gllvmTMB} or a {.cls bootstrap_Sigma} object."
     )
   }
+  .gllvmTMB_mspl_assert_inference(fit, "extract_repeatability")
   trait_names <- levels(fit$data[[fit$trait_col]])
   T <- length(trait_names)
 

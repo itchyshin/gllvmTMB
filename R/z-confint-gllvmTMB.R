@@ -1610,6 +1610,7 @@ confint.gllvmTMB_multi <- function(
   seed = NULL,
   ...
 ) {
+  .gllvmTMB_mspl_assert_inference(object, "confint")
   ## ---- Lambda entry path (Stage 2, 2026-05-27) -----------------------------
   ## `parm = "Lambda"` (all free entries) or `"Lambda:i,j"` /
   ## `"Lambda:i,j;k,l"` (specific entries) route to Stage 1 machinery in

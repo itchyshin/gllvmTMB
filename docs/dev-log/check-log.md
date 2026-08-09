@@ -48556,3 +48556,240 @@ no `devtools::test()` / `R CMD check` run (no R/, src/, or tests/ files were
 touched — docs-only change).
 
 — Design 66 integration (Claude, 2026-08-02)
+
+---
+
+## 2026-08-09 — Lane B binary screening and LA-MSPL, pre-B2 closeout (Codex, branch `codex/lane-b-mspl-20260808`)
+
+Implemented the opt-in Lane B surface for complete single-trial Bernoulli
+GLLVMs: B0 fixed-design screening and B1 `estimator = "mspl"` point
+estimation, with `estimator = "ml"` unchanged. The admitted links are logit,
+probit, and complementary log-log. Ordinary and spatial cells are promoted
+only if the frozen B2 evidence passes their cellwise gates; this entry is an
+interim command ledger, not the final promotion verdict.
+
+**Local checks run:**
+
+- `Rscript --vanilla -e 'devtools::test(reporter = "summary", stop_on_failure = TRUE)'`
+  — PASS; two pre-existing gllvm-comparator warnings only.
+- `Rscript --vanilla -e 'devtools::test(filter="profile-ci|mspl-api", reporter="summary", stop_on_failure=TRUE)'`
+  — PASS.
+- `Rscript --vanilla -e 'devtools::test(filter="mspl-simulation-contract", reporter="summary", stop_on_failure=TRUE)'`
+  — PASS after adding explicit, idempotent targeted-quasi lock cleanup; one
+  obsolete missing-MSPL preflight case skipped because the public estimator is
+  now present.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'` — completed; only
+  existing cv-internal-link and AIC/BIC/anova roxygen warnings.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'` — PASS.
+- `Rscript --vanilla -e 'pkgdown::build_article("articles/mspl-binary-jsdm")'`
+  and the corresponding pre-fit-screening article render — PASS.
+- `Rscript --vanilla -e 'devtools::check(args = "--no-manual")'` — 0 errors,
+  0 warnings, 1 environment NOTE for `xcrun_db` temporary detritus. A first
+  source-tarball run found a git-bound smoke-preparation test; the repaired
+  test now skips outside a source checkout, and the fresh check passed.
+- `Rscript --vanilla '/Users/z3437171/Dropbox/Github Local/Shinichi/tools/check-after-task.R' docs/dev-log/after-task/2026-08-08-lane-b-binary-mspl.md`
+  — initially failed because the report used the repository's obsolete
+  10-section template; after aligning it to the current 12-section global
+  protocol, PASS (`after-task structure check passed`).
+- `git diff --check` — PASS after the current implementation, documentation,
+  lock-cleanup, checkpoint, and after-task edits.
+
+**Numerical and mathematical evidence already green:** the guarded
+weighted-information determinant matched positive Cauchy-Binet oracles on the
+stored-double adversarial designs; the corrected 180-fit nested-Laplace oracle
+had 180/180 successful attempts and maximum Jeffreys discrepancy
+`3.49245965480804e-10`; the penalty-off tape decomposition, random-block
+dimensions, separated ML rays, MSPL interior rays, and three-link ordinary and
+spatial smoke grids passed. Public wording now limits the a-posteriori
+certificate to inverse/exchange decisions and does not claim an interval
+enclosure for every returned value or derivative.
+
+**Remote B2 state at this entry:** exact B0 is complete (2,880/2,880 shards;
+72,000 datasets; 39,493 overlap, 11,173 complete, 21,329 constant, five
+quasi-complete, zero `NOT_CHECKED`). The main Totoro campaign has 640/8,472
+shards complete, 120 running, and zero failed. The targeted Fir quasi campaign
+has 214/600 complete, 30 running, and zero failed; jobs `53828777` and
+`53828788` remain dependency-pending. Frozen worker sources are not being
+modified mid-campaign.
+
+**Consistency scans still required after B2:** the exact `rg` patterns and
+classified verdicts for estimator qualification, all three links, separation
+versus penalisation, long-format `trait =` calls, deprecated syntax, citation
+scope, generated Rd, and scope boundaries will be recorded only after the
+cellwise verdict drives the final prose. Final full tests/check/pkgdown, Rose
+and Grace closure, scoped commit/push/PR, and green 3-OS CI also remain pending.
+
+**Pre-B2 prose and consistency pass (project `prose-style-review` skill):**
+
+```sh
+rg -n "certified|bias[- ]?reduc|resolv(e|es|ed|ing) separation|solv(e|es|ed|ing) separation|always finite" NEWS.md R/mspl.R R/gllvmTMB.R R/methods-gllvmTMB.R docs/design/88-binary-mspl-estimator.md vignettes/articles/mspl-binary-jsdm.Rmd vignettes/articles/pre-fit-response-screening.Rmd man/gllvmTMB.Rd man/gllvmTMB_multi-methods.Rd
+```
+
+Verdict: no Lane B public overclaim. The two Design 88 matches explicitly say
+the estimator is not bias reduction and does not establish bias reduction. The
+remaining matches belong to older, unrelated NEWS sections and make no Lane B
+claim. The current Lane B text consistently distinguishes fixed-design
+separation, finite penalised points, identifiability, rank, and inference.
+
+```sh
+rg -n "\\bS_B\\b|\\bS_W\\b|diag\\((U|S|s)\\)|\\\\bf S|meta_known_V|\\bphylo\\(|\\bgr\\(|\\bmeta\\(|block_V\\(|phylo_rr\\(" vignettes/articles/mspl-binary-jsdm.Rmd vignettes/articles/pre-fit-response-screening.Rmd docs/design/88-binary-mspl-estimator.md
+```
+
+Verdict: no matches. The Lane B reader path uses the canonical
+`Sigma`/`Lambda`/`Psi` notation and does not teach deprecated formula syntax.
+
+```sh
+rg -n "in prep|in preparation" NEWS.md vignettes/articles/mspl-binary-jsdm.Rmd vignettes/articles/pre-fit-response-screening.Rmd docs/design/88-binary-mspl-estimator.md R/gllvmTMB.R
+```
+
+Verdict: no matches. Foundational claims use published papers or explicitly
+labelled new gllvmTMB arguments rather than an in-preparation citation.
+
+```sh
+rg -n "gllvmTMB\\(" vignettes/articles/mspl-binary-jsdm.Rmd vignettes/articles/pre-fit-response-screening.Rmd R/gllvmTMB.R NEWS.md
+```
+
+Verdict: manually checked the Lane B article calls. Every long-format fit passes
+`trait = "trait"`; the wide examples use a `traits(...)` left-hand side and do
+not pass `trait =`; the pre-fit screening examples are correctly routed through
+`screen_gllvmTMB()` rather than the fitted-model entry point.
+
+Rendered-Rd spot check over `man/gllvmTMB.Rd`,
+`man/gllvmTMB_multi-methods.Rd`, `man/gllvmTMBcontrol.Rd`,
+`man/screen_control.Rd`, `man/screen_gllvmTMB.Rd`, and
+`man/screen_table.Rd`: each `tail -5` closed normally and each
+`grep -c '^\\keyword'` returned zero, so no prose was tokenised into malformed
+keyword tags.
+
+**B0 detector-result audit:** direct inspection of the installed
+`detectseparation` 0.4.0 return contract found a fail-open edge in the wrapper:
+an `NA` top-level `outcome` could be interpreted as overlap, and an `NA`
+`complete` subtype could be interpreted as quasi-complete. Both are now
+validated as scalar, non-missing logical certificates; otherwise the screen
+returns `NOT_CHECKED / solver_failure`.
+
+```sh
+Rscript --vanilla -e 'devtools::test(filter="screen-separation", reporter="summary", stop_on_failure=TRUE)'
+```
+
+Verdict: PASS. The focused suite covers all three supported links plus explicit
+indeterminate-outcome and indeterminate-subtype regression cases.
+
+**B2 manifest-to-claim audit:** inspection of
+`lane_b_spatial_promotion_metrics()` found that the immutable v1 spatial table
+used only primary MSPL rows and exposed cellwise recovery, despite the approved
+claim requiring healthy alternate starts and independent link-by-structure
+promotion. The frozen runner already retains every primary and alternate fit,
+so no campaign restart is needed. Added a one-way post-launch spatial
+adjudicator that validates the exact manifest × four arms × two starts ledger,
+requires stationary/boundary-free agreeing MSPL starts, conjoins the immutable
+v1 result, and requires all eight design cells in each of the nine
+link-by-structure families. It cannot relax a v1 failure. Updated the symbolic
+alignment table and harness README before treating the gate as evidence.
+
+```sh
+Rscript --vanilla -e 'parse("inst/sim/lane-b/lane-b-b2-adjudication.R"); parse("inst/sim/lane-b/4_adjudicate_lane_b_b2.R"); devtools::test(filter="mspl-simulation-contract", reporter="summary", stop_on_failure=TRUE)'
+```
+
+Verdict: PASS. The new tests exercise the all-eight-cell acceptance path and
+reject an unhealthy alternate start, an immutable v1 failure, and an incomplete
+spatial attempt ledger. One obsolete missing-MSPL test remains skipped because
+the estimator is now available.
+
+The audit then found that the immutable raw ledger's covariance comparison was
+the maximum elementwise difference, whereas the approved contract is
+`||Sigma_alt - Sigma_primary||_F / max(1, ||Sigma_primary||_F) <= 1e-4`.
+Because primary and alternate scientific-order covariance vectors are already
+retained, the post-launch adjudicator now recomputes the approved statistic for
+ordinary, spatial, and targeted quasi cells. A regression fixture deliberately
+uses elementwise differences below `1e-4` whose combined Frobenius gap exceeds
+`1e-4`; strict promotion correctly withholds that cell. Conversely, an actual
+completed ordinary shard had maximum elementwise gap `4.514714e-4` but approved
+relative-Frobenius gap `7.304250e-5`. The immutable summary remains archived,
+but its pass/fail is recomputed with the approved statistic; this exact metric
+repair is the only way post-launch adjudication may reverse a v1 verdict.
+
+The same pass found an archival-provenance defect: the targeted quasi summary
+validator compared the frozen Fir source and DLL receipt with the machine
+running the later combined adjudication. That would reject authentic evidence
+after the shipping-only lock cleanup or on Totoro/local macOS. Validation now
+compares the summary to its frozen state and the frozen runtime to the signed
+prepare receipt. It does not require the adjudication machine to reproduce the
+archived Fir DLL hash. A synthetic archived-source/runtime test proves the
+portable validation path and still recomputes the summary tables from every
+retained attempt.
+
+```sh
+Rscript --vanilla -e 'devtools::test(filter="mspl-simulation-contract", reporter="summary", stop_on_failure=TRUE)'
+```
+
+Verdict after both repairs: PASS; the focused contract suite remains green with
+the single obsolete missing-MSPL skip.
+
+**Final B2 adjudicator audit (Curie):** BLOCK before repair. Two retained
+evidence surfaces were not yet load-bearing: permutation-invariance metrics
+were stored but not conjoined to the promotion labels, and completion receipts
+recorded raw SHA-256 values that aggregation did not verify. The repair adds an
+exact permutation ledger (`24 cells x 200 replicates x 3 orders x 4 arms x 2
+starts`), requires every reverse/random comparison for ordinary, spatial, and
+overall promotion, and verifies each raw shard's frozen ID, completion status,
+row count, and SHA-256 receipt. The final post-launch adjudicator independently
+reconstructs the immutable summary from those verified shards, so the frozen
+remote aggregators need not be modified mid-campaign. The symbolic threshold
+was also aligned from `< 1e-4` to the implemented and approved `<= 1e-4`.
+
+```sh
+Rscript --vanilla -e 'devtools::test(filter="mspl-simulation-contract", reporter="summary", stop_on_failure=TRUE)'
+```
+
+Verdict: PASS after the receipt and permutation-gate repairs, with one obsolete
+missing-MSPL capability skip. Acceptance/rejection tests cover byte tampering,
+receipt row-count mismatch, unexpected shard IDs, incomplete permutation
+ledgers, and a failed permutation comparison that withholds all headlines. A
+follow-up adversarial case also alters only the stored spatial v1 `pass` while
+leaving authenticated attempts unchanged; recomputation rejects that derived
+table before strict spatial adjudication.
+
+**Exact-B0 provenance decoupling:** a continuation audit found that
+`lane_b_read_exact_b0_registry()` compared the immutable v3 B0 launch receipt
+with hashes of the *current* harness. Legitimate post-launch receipt and
+permutation repairs therefore would have rejected the authentic 2,880-shard B0
+registry. The adjudicator now holds the four immutable v3 launch hashes as a
+versioned receipt and validates the archived receipt against that identity;
+the current-source helper remains only for future launches. No classifier,
+fixture, fit, frozen registry file, or B0 status changed.
+
+```sh
+Rscript --vanilla -e 'devtools::test(filter="mspl-simulation-contract", reporter="summary", stop_on_failure=TRUE)'
+```
+
+Verdict: PASS with the one obsolete missing-MSPL skip. The new pure-logic test
+accepts the exact v3 receipt, rejects a changed launch hash, and rejects an
+unregistered receipt version. `git diff --check` remains a required final gate.
+
+**Pre-adjudication whole-package and reader-estate gate:**
+
+```sh
+Rscript --vanilla -e 'devtools::test(reporter="summary", stop_on_failure=TRUE)'
+Rscript --vanilla -e 'devtools::document(quiet = TRUE)'
+Rscript --vanilla -e 'pkgdown::check_pkgdown()'
+R CMD INSTALL --library=/private/tmp/gllvmtmb-lane-b-r-lib .
+Rscript --vanilla -e 'Sys.setenv(R_LIBS_USER="/private/tmp/gllvmtmb-lane-b-r-lib"); .libPaths(c("/private/tmp/gllvmtmb-lane-b-r-lib", .libPaths())); pkgdown::build_articles(lazy = FALSE)'
+```
+
+Verdict: the full test suite passed with only the repository's declared
+heavy/optional skips and two pre-existing `gllvm` comparator warnings;
+`pkgdown::check_pkgdown()` found no problems; source installation succeeded;
+and the entire article estate rebuilt from that isolated current-source
+library. The first full rebuild exposed an unrelated deterministic weakness in
+`behavioural-syndromes.Rmd`: BFGS returned convergence code zero after its
+default 100 iterations but the raw maximum gradient was `0.03161177`, failing
+the article's `0.01` gate. The article now gives this fit 1,000 iterations with
+`reltol = 1e-12`; the objective remained `5750.598`, raw maximum gradient fell
+to `0.0001606655`, and `sdreport()` plus the Hessian stayed green. This is an
+article-only iteration-budget repair; no optimizer default or ML objective
+changed. The source-package check log also reached `Status: OK`. These are
+interim gates and must be rerun after B2-driven wording and register changes.
+
+Full report:
+`docs/dev-log/after-task/2026-08-08-lane-b-binary-mspl.md`.

@@ -12,7 +12,8 @@ screen_gllvmTMB(
   trait = "trait",
   weights = NULL,
   missing = miss_control(),
-  control = screen_control()
+  control = screen_control(),
+  Xcoef_fixed = NULL
 )
 }
 \arguments{
@@ -37,6 +38,10 @@ semantics as \code{\link[=gllvmTMB]{gllvmTMB()}} for long-format binomial fits.}
 \item{missing}{Missing-data control; defaults to \code{\link[=miss_control]{miss_control()}}.}
 
 \item{control}{A \code{\link[=screen_control]{screen_control()}} object.}
+
+\item{Xcoef_fixed}{Optional named structural-zero fixed-effect constraints,
+normalized against the expanded fixed-effect columns as in \code{\link[=gllvmTMB]{gllvmTMB()}}.
+This argument is used by the opt-in fixed-design separation screen.}
 }
 \value{
 A \code{gllvmTMB_screen} object. Use \code{\link[=screen_table]{screen_table()}} to extract
@@ -61,6 +66,18 @@ interpretation. In systematic maps, a \code{trait} may be a content item or
 indicator. In a binary JSDM, a \code{trait} may be a species presence-absence
 response. Rare or constant species are flagged for inspection and possible
 sensitivity analysis, not automatically removed.
+
+With \code{screen_control(separation = "fixed")}, the screen uses the optional
+\code{detectseparation} package to classify the observed fixed design. This
+includes finite known offsets, whose presence is recorded in the returned
+separation table. The offset does not change the fixed-design recession
+directions used by the certificate. This is diagnostic support only:
+\code{\link[=gllvmTMB]{gllvmTMB()}} currently rejects nonzero offsets for binomial responses.
+
+This
+certificate covers fixed-effect geometry only. It does not establish
+finiteness of latent loadings or covariance parameters, validate the full
+marginal GLLVM likelihood, or select a penalized estimator.
 }
 \examples{
 df <- data.frame(
@@ -97,4 +114,8 @@ Epidemiology} 165:710--718. doi:10.1093/aje/kwk052.
 Chalmers RP (2012). mirt: A multidimensional item response theory package
 for the R environment. \emph{Journal of Statistical Software} 48(6):1--29.
 doi:10.18637/jss.v048.i06.
+
+Kosmidis I, Schumacher D, Schwendinger F (2026). detectseparation:
+Detect and Check for Separation and Infinite Maximum Likelihood Estimates.
+R package version 0.4.0. doi:10.32614/CRAN.package.detectseparation.
 }

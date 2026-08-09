@@ -366,6 +366,7 @@ tmbprofile_wrapper <- function(
   if (!inherits(fit, "gllvmTMB_multi")) {
     cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
   }
+  .gllvmTMB_mspl_assert_inference(fit, "tmbprofile_wrapper")
   crit <- .qchisq_threshold(level)
   ## NULL means "size the budget for this level"; an explicit value still wins.
   if (is.null(ytol)) ytol <- .profile_ytol(level)

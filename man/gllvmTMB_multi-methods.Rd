@@ -31,20 +31,27 @@ Standard model-object accessors for a multivariate fit returned by
 \code{\link[=gllvmTMB]{gllvmTMB()}}, whether the call started from wide \code{traits(...)} data
 or already-stacked long data. Internally the fit has class
 \code{gllvmTMB_multi}, which is what these S3 methods dispatch on, but
-you just call \code{print(fit)}, \code{summary(fit)}, \code{logLik(fit)} etc. as
-usual.
+you call \code{print(fit)} and \code{summary(fit)} as usual. Likelihood and inference
+accessors depend on the estimator, as described below.
 }
 \details{
 \itemize{
-\item \code{print()} shows the active covstructs, the number of fixed effects,
-and the converged log-likelihood.
-\item \code{summary()} adds a fixed-effects table with SEs, the global and
+\item For ML fits, \code{print()} shows the active covstructs, the number of fixed
+effects, and the converged log-likelihood.
+\item For ML fits, \code{summary()} adds a fixed-effects table with SEs, the global and
 local trait correlation matrices, per-trait ICCs,
 and global / local communalities.
-\item \code{logLik()} returns the converged maximum log-likelihood with
+\item For ML fits, \code{logLik()} returns the converged maximum log-likelihood with
 \code{df = length(opt$par)} and \code{nobs} equal to the number of
 likelihood-contributing observed response cells, so \code{AIC()} and
 \code{BIC()} all work directly.
+\item For \code{estimator = "mspl"}, \code{print()} and \code{summary()} instead identify the
+experimental softly penalised Laplace point estimator and show the
+unpenalised Laplace value evaluated at that point as provenance.
+\code{logLik()}, AIC, BIC, likelihood-ratio tests, standard errors, intervals,
+and profiles fail closed because the MSPL point is not the ordinary
+maximum-likelihood point and repeated-sampling inference is not calibrated
+for this experimental point-estimation surface.
 }
 
 \code{nobs()} returns the number of \strong{likelihood-contributing} observations --

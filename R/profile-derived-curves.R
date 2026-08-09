@@ -473,6 +473,7 @@ profile_phylo_signal <- function(
   if (!inherits(fit, "gllvmTMB_multi")) {
     cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
   }
+  .gllvmTMB_mspl_assert_inference(fit, "profile_phylo_signal")
   has_phy <- isTRUE(fit$use$phylo_rr) || isTRUE(fit$use$phylo_diag)
   if (!has_phy) {
     cli::cli_abort(c(

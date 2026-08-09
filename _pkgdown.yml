@@ -57,6 +57,8 @@ navbar:
         href: articles/lambda-constraint-suggest.html
       - text: Joint species distribution model
         href: articles/joint-sdm.html
+      - text: Keep rare species with LA-MSPL
+        href: articles/mspl-binary-jsdm.html
       - text: Multivariate spatial models
         href: articles/spatial-models.html
       - text: Phylogenetic covariance among traits
@@ -106,6 +108,7 @@ articles:
     - articles/model-selection-latent-rank
     - articles/lambda-constraint-suggest
     - articles/joint-sdm
+    - articles/mspl-binary-jsdm
     - articles/spatial-models
     - articles/phylogenetic-gllvm
     - articles/missing-data

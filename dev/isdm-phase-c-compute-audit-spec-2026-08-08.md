@@ -25,7 +25,7 @@ The verifier proceeds in this order:
 1. Confirm every named input exists and no result or receipt path was assigned twice.
 2. Parse receipts only. Require exact receipt type, `PASS`, Lane C branch, a clean recorded source, a real Git source commit, and one instrument ID matching both that commit and the current frozen instrument files.
 3. Verify predecessor hashes from preflight through pilot decision and from that decision into every campaign block. Require G6 to name the exact G1 receipt hash.
-4. Verify each result path, SHA-256, byte count, expected/actual rows, independently reconstructed configuration hash, seed manifest, `phi_x`, `phi_bias`, frozen `beta0_shift`, S100 decision, arm manifest, part directory, part count, and every part hash.
+4. Verify each result path, SHA-256, byte count, expected/actual rows, seed manifest, `phi_x`, `phi_bias`, frozen `beta0_shift`, S100 decision, arm manifest, part directory, part count, and every part hash. The runner's raw `saveRDS()` configuration hash is reproduced from the frozen source builder, while the independently reconstructed grid must be `identical()` to that builder and receives a separate canonical value hash.
 5. Only after steps 1--4 pass, open the raw campaign result and part RDS files.
 6. Verify the exact preregistered full keys, six arms per dataset, no duplicates, expected block counts, retained fit-error rows, zero unlabelled non-finite completed results, exact one-null mapping on `stage + seed + arm + n + T_sp + d_fit + k`, A6-null collapse and A5/A6 completed-field identity, G6's isolated `phi_bias` axis with `phi_x=0.15`, and G5/A2 rank-`d` separation from total-`Sigma` results.
 7. Verify the union and contents of the immutable part files reproduce the final block RDS exactly.
@@ -84,6 +84,34 @@ The self-test creates a complete synthetic 19,800-row campaign under `/private/t
 - `phase-c-compute-audit.md`: human-readable PASS summary, supplied metadata, and explicit limits.
 
 Large raw RDS files and part files remain external. No campaign artifact is copied into Git or GitHub Actions.
+
+## Configuration-hash amendment found before outcomes opened
+
+The first live audit attempt stopped before any campaign RDS was opened because a logically
+identical independently reconstructed G1 table did not reproduce the receipt's raw RDS hash.
+On Totoro, the two tables were `identical()` value-for-value, attribute-for-attribute, and
+class-for-class, but their serialized bytes differed because their construction histories used
+different internal R representations. A `saveRDS()` byte hash is therefore a provenance hash for
+the exact source-built object, not a canonical hash of a logical table.
+
+The corrected audit authenticates all predecessor and G1--G6 receipt source commits plus the
+current five-file instrument identity before it evaluates any campaign source. It then keeps both
+configuration checks without weakening either:
+
+- the receipt's raw configuration hash must reproduce from the immutable campaign source builder,
+  loaded with nested `source()` calls redirected into a closed evaluation environment;
+- the independently reconstructed table must be exactly `identical()` to that source table; and
+- a length-prefixed UTF-8/LF binary encoding of names, classes, missingness, and 17-digit values is SHA-256 hashed and recorded
+  separately as `independent_config_sha256`.
+
+The synthetic gate asserts that source loading creates no global bindings, tampers a raw receipt
+hash, perturbs an independently reconstructed grid, mutates both a value and a column class, and
+checks that the canonical hashes emitted to the audit CSV and receipt equal the independently
+calculated hashes. An injected-loader test also supplies an unauthenticated campaign receipt and
+proves the source builder is never invoked.
+
+This amendment was made after all compute completed but before any scientific campaign outcome
+was opened. It changes no configuration, fit, threshold, row, or result artifact.
 
 ## Limits
 

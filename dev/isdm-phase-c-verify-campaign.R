@@ -2,10 +2,13 @@
 
 ## Independent structural verifier for the Phase C G1--G6 campaign.
 ##
-## This file deliberately does not source the campaign runner or the official
-## analysis.  It opens no campaign RDS until all six result files exist and all
-## six compute receipts have independently cleared their PASS/provenance/hash
-## checks.  It calculates no scientific trend or treatment contrast.
+## This file deliberately does not source the official analysis.  It opens no
+## campaign RDS until all six result files exist and all six compute receipts
+## have cleared their PASS/provenance/hash checks.  The campaign source is
+## loaded once into an isolated environment solely to reproduce the runner's
+## non-canonical saveRDS() config hash; the expected grid below remains an
+## independent reconstruction and must be identical to that source table.
+## The verifier calculates no scientific trend or treatment contrast.
 
 .stopf <- function(fmt, ...) stop(sprintf(fmt, ...), call. = FALSE)
 .near <- function(x, y, tolerance = 1e-12) is.finite(x) & abs(x - y) <= tolerance
@@ -25,6 +28,34 @@
   path <- tempfile("phase-c-config-", fileext = ".rds")
   on.exit(unlink(path), add = TRUE)
   saveRDS(x, path, version = 3)
+  .sha256(path)
+}
+
+.canonical_config_sha256 <- function(x) {
+  piece <- function(value) {
+    if (is.integer(value)) out <- sprintf("%d", value)
+    else if (is.numeric(value)) out <- formatC(value, digits = 17, format = "g", decimal.mark = ".")
+    else if (is.logical(value)) out <- ifelse(value, "TRUE", "FALSE")
+    else out <- enc2utf8(as.character(value))
+    ifelse(is.na(value), "N", paste0("V", out))
+  }
+  encode_record <- function(value) {
+    value <- enc2utf8(value)
+    paste0(nchar(value, type = "bytes"), ":", value, collapse = "")
+  }
+  types <- vapply(x, function(value) paste(class(value), collapse = "/"), character(1))
+  records <- c(
+    encode_record(paste0("name=", enc2utf8(names(x)))),
+    encode_record(paste0("class=", enc2utf8(types))),
+    vapply(seq_len(nrow(x)), function(i) {
+      encode_record(vapply(x, function(value) piece(value[[i]]), character(1)))
+    }, character(1))
+  )
+  payload <- charToRaw(paste0(records, collapse = "\n"))
+  path <- tempfile("phase-c-canonical-config-", fileext = ".bin")
+  on.exit(unlink(path), add = TRUE)
+  con <- file(path, open = "wb")
+  tryCatch(writeBin(payload, con, useBytes = TRUE), finally = close(con))
   .sha256(path)
 }
 
@@ -109,9 +140,7 @@
 .dataset_key <- setdiff(.full_key, "arm")
 .null_key <- c("stage", "seed", "arm", "n", "T_sp", "d_fit", "k")
 
-## Independent reconstruction of the preregistered configuration grid.  The
-## row and column construction mirrors the frozen serialization contract, but
-## no campaign source is loaded at runtime.
+## Independent reconstruction of the preregistered configuration grid.
 .ref <- list(kappa = 1, rho = 0.6, omega = 0.5, phi_x = 0.15,
              phi_bias = 0.15, n = 400, T_sp = 8, d_fit = 2, k = 3,
              beta0_shift = 0)
@@ -161,6 +190,25 @@
     }
   } else .stopf("Unknown block: %s", block)
   .mk_config(rows, block, beta0_shift)
+}
+
+.source_builder_configs <- function(beta0_shift, g1_seeds = 100L) {
+  env <- new.env(parent = baseenv())
+  env$modifyList <- utils::modifyList
+  env$source <- local({
+    target <- env
+    function(file, local = FALSE, ...) sys.source(file, envir = target)
+  })
+  sys.source("dev/isdm-bias-campaign.R", envir = env)
+  blocks <- paste0("G", 1:6)
+  out <- setNames(vector("list", length(blocks)), blocks)
+  out$G1 <- get("build_config_g1", envir = env)(seq_len(g1_seeds), beta0_shift = beta0_shift)
+  for (block in blocks[-1L]) {
+    out[[block]] <- get(paste0("build_config_", tolower(block)), envir = env)(
+      seeds = 1:50, beta0_shift = beta0_shift
+    )
+  }
+  out
 }
 
 .expand_arms <- function(config) {
@@ -298,7 +346,7 @@
   stats::setNames(paths, names_seen)
 }
 
-.verify_receipt_bundle <- function(opt, configs) {
+.authenticate_receipt_sources <- function(opt) {
   current_id <- .current_instrument_id()
   preflight <- .read_receipt(opt$preflight_receipt)
   pilot_compute <- .read_receipt(opt$pilot_compute_receipt)
@@ -308,6 +356,27 @@
   .verify_common_receipt(decision, "pilot_decision", "pilot decision receipt", current_id)
   early_shas <- unique(c(preflight$source_sha, pilot_compute$source_sha, decision$source_sha))
   if (length(early_shas) != 1L) .stopf("Preflight, pilot compute, and pilot decision source SHAs differ")
+  blocks <- paste0("G", 1:6)
+  campaign <- stats::setNames(lapply(blocks, function(block) {
+    label <- paste(block, "compute receipt")
+    receipt <- .read_receipt(opt$receipts[[block]])
+    .verify_common_receipt(receipt, paste0(tolower(block), "_compute"), label, current_id)
+    receipt
+  }), blocks)
+  campaign_shas <- unique(vapply(campaign, `[[`, character(1), "source_sha"))
+  instruments <- unique(vapply(campaign, `[[`, character(1), "instrument_id"))
+  if (length(campaign_shas) != 1L || length(instruments) != 1L) {
+    .stopf("G1--G6 source SHA or instrument ID differs")
+  }
+  list(current_id = current_id, preflight = preflight, pilot_compute = pilot_compute,
+       decision = decision, campaign = campaign, campaign_source_sha = campaign_shas,
+       instrument_id = instruments)
+}
+
+.verify_receipt_bundle <- function(opt, configs, builder_configs, authentication) {
+  preflight <- authentication$preflight
+  pilot_compute <- authentication$pilot_compute
+  decision <- authentication$decision
   preflight_hash <- .sha256(opt$preflight_receipt)
   pilot_compute_hash <- .sha256(opt$pilot_compute_receipt)
   decision_hash <- .sha256(opt$pilot_decision_receipt)
@@ -333,13 +402,15 @@
   if (!is.null(opt$calibration_receipt)) .stopf("A calibration receipt is incompatible with the frozen zero shift")
 
   blocks <- paste0("G", 1:6)
-  campaign <- setNames(vector("list", 6L), blocks)
+  campaign <- authentication$campaign
   part_paths <- setNames(vector("list", 6L), blocks)
   rows <- vector("list", 6L)
   for (i in seq_along(blocks)) {
     block <- blocks[[i]]; label <- paste(block, "compute receipt")
-    receipt <- .read_receipt(opt$receipts[[block]])
-    .verify_common_receipt(receipt, paste0(tolower(block), "_compute"), label, current_id)
+    if (!identical(configs[[block]], builder_configs[[block]])) {
+      .stopf("%s independent grid differs from the frozen source builder", label)
+    }
+    receipt <- campaign[[block]]
     .need_fields(receipt, c("stage", "expected_rows", "actual_rows", "expected_logical_rows",
                             "expected_optimizer_calls", "config_sha256", "seed_min", "seed_max",
                             "seed_count", "phi_x", "phi_bias", "beta0_shift", "arms",
@@ -353,7 +424,9 @@
     for (field in c("expected_rows", "actual_rows", "expected_logical_rows", "expected_optimizer_calls")) {
       if (.receipt_int(receipt, field, label) != expected_rows) .stopf("%s %s mismatch", label, field)
     }
-    if (!identical(receipt$config_sha256, .object_sha256(configs[[block]]))) .stopf("%s independent config hash mismatch", label)
+    if (!identical(receipt$config_sha256, .object_sha256(builder_configs[[block]]))) {
+      .stopf("%s source-builder serialization hash mismatch", label)
+    }
     if (!identical(receipt$unique_key_verdict, "PASS")) .stopf("%s unique-key verdict is not PASS", label)
     if (.receipt_int(receipt, "unlabelled_nonfinite_rows", label) != 0L) .stopf("%s reports unlabelled non-finite rows", label)
     if (!identical(receipt$arms, paste(.arms, collapse = ","))) .stopf("%s arm manifest mismatch", label)
@@ -377,7 +450,6 @@
     }
     .verify_file_binding(receipt, opt$results[[block]], label)
     part_paths[[block]] <- .parse_part_manifest(receipt, opt$results[[block]], label)
-    campaign[[block]] <- receipt
     rows[[i]] <- data.frame(
       block = block, expected_rows = expected_rows,
       receipt_actual_rows = .receipt_int(receipt, "actual_rows", label),
@@ -386,6 +458,7 @@
       receipt_bytes = as.numeric(file.info(opt$receipts[[block]])$size),
       receipt_sha256 = .sha256(opt$receipts[[block]]),
       config_sha256 = receipt$config_sha256,
+      independent_config_sha256 = .canonical_config_sha256(configs[[block]]),
       part_count = length(part_paths[[block]]),
       part_bytes = sum(file.info(part_paths[[block]])$size),
       part_sha256 = paste(sprintf("%s:%s", basename(part_paths[[block]]),
@@ -394,9 +467,6 @@
       stringsAsFactors = FALSE
     )
   }
-  campaign_shas <- unique(vapply(campaign, `[[`, character(1), "source_sha"))
-  instruments <- unique(vapply(campaign, `[[`, character(1), "instrument_id"))
-  if (length(campaign_shas) != 1L || length(instruments) != 1L) .stopf("G1--G6 source SHA or instrument ID differs")
   if (.receipt_int(campaign$G1, "seed_count", "G1 compute receipt") != 100L ||
       .receipt_int(campaign$G1, "g1_seeds", "G1 compute receipt") != 100L) .stopf("G1 is not bound to frozen S100")
   g1_hash <- .sha256(opt$receipts[["G1"]])
@@ -405,8 +475,9 @@
   }
   list(preflight = preflight, pilot_compute = pilot_compute, decision = decision,
        campaign = campaign, part_paths = part_paths, block_audit = do.call(rbind, rows),
-       beta0_shift = beta0, g1_seeds = g1_seeds, campaign_source_sha = campaign_shas,
-       instrument_id = instruments, preflight_hash = preflight_hash,
+       beta0_shift = beta0, g1_seeds = g1_seeds,
+       campaign_source_sha = authentication$campaign_source_sha,
+       instrument_id = authentication$instrument_id, preflight_hash = preflight_hash,
        pilot_compute_hash = pilot_compute_hash, decision_hash = decision_hash)
 }
 
@@ -549,6 +620,8 @@
     "",
     "The original per-block compute receipts do not enumerate every preregistered treatment axis, exact cross-block null-pair count, full six-arm key set, A5/A6-null field identity, G5/A2 separation, or part-to-final content identity. This audit reconstructs those contracts independently and records them without rewriting or rerunning any fit.",
     "",
+    "The runner's raw saveRDS configuration hash is checked against the immutable source builder. Because that byte hash preserves non-canonical R object representation, the independently reconstructed value-identical grid is also recorded under a canonical length-prefixed UTF-8/LF SHA-256.",
+    "",
     "## Limits",
     "",
     "This is a structural and provenance audit, not a scientific analysis. It does not inspect treatment trends, estimate Monte Carlo uncertainty, validate ecological interpretation, prove optimiser adequacy, or show that a thrown fit would have failed identically under a new retry. Exact scheduled rows and part manifests rule out unexplained missing or duplicated configurations in the audited artifacts; they do not preserve the files beyond the recorded hashes.",
@@ -585,6 +658,10 @@
     pilot_decision_receipt_sha256 = bundle$decision_hash,
     campaign_receipt_sha256 = paste(sprintf("%s:%s", block_audit$block, block_audit$receipt_sha256), collapse = ";"),
     campaign_result_sha256 = paste(sprintf("%s:%s", block_audit$block, block_audit$result_sha256), collapse = ";"),
+    campaign_independent_config_sha256 = paste(
+      sprintf("%s:%s", block_audit$block, block_audit$independent_config_sha256),
+      collapse = ";"
+    ),
     block_csv_sha256 = .sha256(targets[[1L]]), markdown_sha256 = .sha256(targets[[2L]])
   )
   .write_receipt(targets[[3L]], fields)
@@ -593,17 +670,20 @@
 
 `%||%` <- function(a, b) if (is.null(a)) b else a
 
-.audit_campaign <- function(opt) {
+.audit_campaign <- function(opt, builder_loader = .source_builder_configs) {
   out_dir <- .absolute_path(opt$out_dir)
   targets <- file.path(out_dir, c("phase-c-compute-audit-blocks.csv", "phase-c-compute-audit.md", "phase-c-compute-audit.receipt"))
   if (any(file.exists(targets))) .stopf("Refusing to overwrite existing audit output(s): %s", paste(basename(targets[file.exists(targets)]), collapse = ", "))
   started <- Sys.time()
   .assert_all_inputs_exist(opt)
-  ## Receipt/provenance/config/file/part hashes are all cleared here, before
-  ## the first readRDS() call on a campaign result or part.
-  beta0 <- .receipt_num(.read_receipt(opt$pilot_decision_receipt), "beta0_shift", "pilot decision receipt")
+  ## Authenticate every source commit and current instrument file before the
+  ## source builder is evaluated. All remaining provenance/config/file/part
+  ## checks are then cleared before the first campaign readRDS() call.
+  authentication <- .authenticate_receipt_sources(opt)
+  beta0 <- .receipt_num(authentication$decision, "beta0_shift", "pilot decision receipt")
   configs <- setNames(lapply(paste0("G", 1:6), .expected_config, beta0_shift = beta0, g1_seeds = 100L), paste0("G", 1:6))
-  bundle <- .verify_receipt_bundle(opt, configs)
+  builder_configs <- builder_loader(beta0_shift = beta0, g1_seeds = 100L)
+  bundle <- .verify_receipt_bundle(opt, configs, builder_configs, authentication)
 
   blocks <- paste0("G", 1:6)
   validated <- setNames(vector("list", 6L), blocks)
@@ -694,13 +774,34 @@
     list(preflight_receipt_sha256 = .sha256(preflight_receipt), pilot_compute_receipt_sha256 = .sha256(pilot_compute),
          pilot_sha256 = .sha256(pilot), g1_seeds = 100, beta0_shift = 0, projected_3mcse_s100 = 0.01)))
   configs <- setNames(lapply(paste0("G", 1:6), .expected_config, beta0_shift = 0, g1_seeds = 100L), paste0("G", 1:6))
+  global_before_builder <- ls(.GlobalEnv, all.names = TRUE)
+  builder_configs <- .source_builder_configs(beta0_shift = 0, g1_seeds = 100L)
+  global_added_by_builder <- setdiff(ls(.GlobalEnv, all.names = TRUE), global_before_builder)
+  if (length(global_added_by_builder)) {
+    .stopf("Synthetic self-test source-builder isolation leaked global binding(s): %s",
+           paste(global_added_by_builder, collapse = ", "))
+  }
+  canonical_hashes <- vapply(configs, .canonical_config_sha256, character(1))
+  builder_canonical_hashes <- vapply(builder_configs, .canonical_config_sha256, character(1))
+  if (!identical(canonical_hashes, builder_canonical_hashes)) {
+    .stopf("Synthetic self-test canonical hashes differ for identical grids")
+  }
+  value_mutation <- configs$G1
+  value_mutation$rho[[1L]] <- value_mutation$rho[[1L]] + 0.01
+  type_mutation <- configs$G1
+  type_mutation$stage <- factor(type_mutation$stage)
+  if (identical(.canonical_config_sha256(value_mutation), canonical_hashes[["G1"]]) ||
+      identical(.canonical_config_sha256(type_mutation), canonical_hashes[["G1"]])) {
+    .stopf("Synthetic self-test canonical hash did not detect a value/type mutation")
+  }
   results <- receipts <- character()
   for (block in paste0("G", 1:6)) {
     result <- file.path(root, paste0(tolower(block), ".rds"))
     x <- .synthetic_results(configs[[block]], block)
     parts_dir <- paste0(result, ".parts"); dir.create(parts_dir)
     part <- file.path(parts_dir, "part-00001.rds")
-    saveRDS(list(instrument_id = instrument_id, config_sha256 = .object_sha256(configs[[block]]),
+    builder_hash <- .object_sha256(builder_configs[[block]])
+    saveRDS(list(instrument_id = instrument_id, config_sha256 = builder_hash,
                  created_utc = "synthetic", results = x), part)
     saveRDS(x, result)
     receipt <- file.path(root, paste0(tolower(block), "-compute.receipt"))
@@ -714,7 +815,7 @@
            output_path = normalizePath(result), output_bytes = file.info(result)$size, output_sha256 = .sha256(result),
            resume_parts_dir = normalizePath(parts_dir), resume_part_count = 1,
            resume_part_hashes = paste0(basename(part), ":", .sha256(part)), predecessor_receipt_hashes = predecessors,
-           g1_seeds = if (block == "G1") 100 else "", config_sha256 = .object_sha256(configs[[block]]),
+           g1_seeds = if (block == "G1") 100 else "", config_sha256 = builder_hash,
            seed_min = min(configs[[block]]$seed), seed_max = max(configs[[block]]$seed), seed_count = length(unique(configs[[block]]$seed)),
            phi_x = paste(sort(unique(configs[[block]]$phi_x)), collapse = ","),
            phi_bias = paste(sort(unique(configs[[block]]$phi_bias)), collapse = ","), beta0_shift = 0,
@@ -729,11 +830,68 @@
               out_dir = file.path(root, "audit"))
   out <- .audit_campaign(opt)
   if (!all(file.exists(out$paths))) .stopf("Synthetic self-test did not write every audit artifact")
+  audit_csv <- utils::read.csv(out$paths[[1L]], stringsAsFactors = FALSE)
+  csv_hashes <- stats::setNames(audit_csv$independent_config_sha256, audit_csv$block)
+  if (!identical(csv_hashes[names(canonical_hashes)], canonical_hashes)) {
+    .stopf("Synthetic self-test audit CSV did not emit the canonical configuration hashes")
+  }
+  audit_receipt <- .read_receipt(out$paths[[3L]])
+  receipt_specs <- strsplit(audit_receipt$campaign_independent_config_sha256, ";", fixed = TRUE)[[1L]]
+  receipt_hashes <- stats::setNames(
+    sub("^[^:]+:", "", receipt_specs), sub(":.*$", "", receipt_specs)
+  )
+  if (!identical(receipt_hashes[names(canonical_hashes)], canonical_hashes)) {
+    .stopf("Synthetic self-test audit receipt did not emit the canonical configuration hashes")
+  }
   overwrite_refused <- inherits(try(.audit_campaign(opt), silent = TRUE), "try-error")
   if (!overwrite_refused) .stopf("Synthetic self-test did not refuse overwrite")
   missing_opt <- opt; missing_opt$out_dir <- file.path(root, "missing-audit"); missing_opt$receipts[["G6"]] <- file.path(root, "absent-g6.receipt")
   missing_refused <- inherits(try(.audit_campaign(missing_opt), silent = TRUE), "try-error")
   if (!missing_refused) .stopf("Synthetic self-test opened an incomplete six-receipt bundle")
+  tampered_receipt <- file.path(root, "g2-tampered-compute.receipt")
+  tampered_lines <- readLines(receipts[["G2"]], warn = FALSE)
+  tampered_lines[startsWith(tampered_lines, "config_sha256=")] <- paste0(
+    "config_sha256=", paste(rep("0", 64L), collapse = "")
+  )
+  writeLines(tampered_lines, tampered_receipt, useBytes = TRUE)
+  tampered_opt <- opt
+  tampered_opt$out_dir <- file.path(root, "tampered-audit")
+  tampered_opt$receipts[["G2"]] <- tampered_receipt
+  tampered_error <- try(.audit_campaign(tampered_opt), silent = TRUE)
+  if (!inherits(tampered_error, "try-error") ||
+      !grepl("source-builder serialization hash mismatch", as.character(tampered_error), fixed = TRUE)) {
+    .stopf("Synthetic self-test did not reject a tampered raw configuration hash")
+  }
+  divergent_configs <- configs
+  divergent_configs$G3$rho[[1L]] <- divergent_configs$G3$rho[[1L]] + 0.01
+  divergent_error <- try(.verify_receipt_bundle(
+    opt, divergent_configs, builder_configs, .authenticate_receipt_sources(opt)
+  ), silent = TRUE)
+  if (!inherits(divergent_error, "try-error") ||
+      !grepl("independent grid differs from the frozen source builder", as.character(divergent_error), fixed = TRUE)) {
+    .stopf("Synthetic self-test did not reject an independently reconstructed grid mutation")
+  }
+  unauthenticated_receipt <- file.path(root, "g4-unauthenticated-compute.receipt")
+  unauthenticated_lines <- readLines(receipts[["G4"]], warn = FALSE)
+  unauthenticated_lines[startsWith(unauthenticated_lines, "instrument_id=")] <- paste0(
+    "instrument_id=", paste(rep("0", 40L * length(.instrument_files)), collapse = "")
+  )
+  writeLines(unauthenticated_lines, unauthenticated_receipt, useBytes = TRUE)
+  unauthenticated_opt <- opt
+  unauthenticated_opt$out_dir <- file.path(root, "unauthenticated-audit")
+  unauthenticated_opt$receipts[["G4"]] <- unauthenticated_receipt
+  loader_called <- FALSE
+  injected_loader <- function(...) {
+    loader_called <<- TRUE
+    .stopf("Synthetic injected builder loader was called")
+  }
+  unauthenticated_error <- try(
+    .audit_campaign(unauthenticated_opt, builder_loader = injected_loader), silent = TRUE
+  )
+  if (!inherits(unauthenticated_error, "try-error") || loader_called ||
+      !grepl("instrument ID does not match", as.character(unauthenticated_error), fixed = TRUE)) {
+    .stopf("Synthetic self-test did not authenticate sources before invoking the builder loader")
+  }
   cat("Phase C independent campaign verifier synthetic self-test: PASS\n")
   cat("Fixture:", root, "\n")
   invisible(out)

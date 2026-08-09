@@ -224,7 +224,8 @@
   "dev/isdm-phase-c-pilot-decision.R",
   "dev/isdm-phase-c-amendment-2026-08-08.md",
   "dev/isdm-phase-c-amendment-2-2026-08-09.md",
-  "dev/isdm-phase-c-amendment-3-2026-08-09.md"
+  "dev/isdm-phase-c-amendment-3-2026-08-09.md",
+  "dev/isdm-phase-c-amendment-4-2026-08-09.md"
 )
 
 .instrument_id_at <- function(sha) {

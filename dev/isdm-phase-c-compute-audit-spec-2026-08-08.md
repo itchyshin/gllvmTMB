@@ -23,7 +23,7 @@ The caller supplies:
 The verifier proceeds in this order:
 
 1. Confirm every named input exists and no result or receipt path was assigned twice.
-2. Parse receipts only. Require exact receipt type, `PASS`, `phase_c_compute_v2` for compute receipts, Lane C branch, a clean recorded source, a real Git source commit, and one seven-file instrument ID matching both that commit and the current frozen files, including `dev/isdm-phase-c-amendment-2-2026-08-09.md` and `dev/isdm-phase-c-amendment-3-2026-08-09.md`.
+2. Parse receipts only. Require exact receipt type, `PASS`, `phase_c_compute_v2` for compute receipts, Lane C branch, a clean recorded source, a real Git source commit, and one eight-file instrument ID matching both that commit and the current frozen files, including `dev/isdm-phase-c-amendment-2-2026-08-09.md`, `dev/isdm-phase-c-amendment-3-2026-08-09.md`, and `dev/isdm-phase-c-amendment-4-2026-08-09.md`.
 3. Require canonical `preflight/preflight`, `pilot_v2/G1`, and `campaign/G1` through `campaign/G6` stage/block pairs. Verify exact predecessor paths and hashes from preflight through pilot decision and into every campaign block; G6 must name the supplied G1 receipt exactly.
 4. Verify result paths, SHA-256, byte counts, full seed lists, `phi_x`, `phi_bias`, frozen `beta0_shift`, S100 decision, arm manifest, explicit optimiser/session fields, logical and model-fit accounting, and every exact resume-part path/hash. Reproduce the portable canonical-object hashes for the preflight contract, pilot, and G1--G6 configurations from the authenticated source builders. Independently reconstructed contracts must be `identical()` to those builders and yield the same canonical hashes. Require `config_rds_sha256` and `input_config_rds_sha256` to be valid, identical SHA-256 values and to agree with each receipt's parts, but do not reconstruct that serialization-dependent hash on another R build or host.
 5. Only after steps 1--4 pass, open the raw campaign result and part RDS files.
@@ -95,7 +95,7 @@ different internal R representations. A `saveRDS()` byte hash is therefore a pro
 the exact source-built object, not a canonical hash of a logical table.
 
 The corrected audit authenticates all predecessor and G1--G6 receipt source commits plus the
-current seven-file instrument identity before it evaluates any campaign source. It then separates
+current eight-file instrument identity before it evaluates any campaign source. It then separates
 portable identity from byte-level provenance:
 
 - `config_sha256` and `input_config_sha256` are the same portable canonical-object hash. The

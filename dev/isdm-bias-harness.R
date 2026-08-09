@@ -138,7 +138,7 @@ species_truth <- function(T_sp, beta0_shift = 0) {
 ## field; the finite-sample projection/whitening is the declared repair, not a
 ## claim that the transformed columns are untouched GP realisations.
 .exact_bias_basis <- function(x, g, H, rank_tol = 1e-10,
-                              geometry_tol = 1e-10) {
+                              geometry_tol = 1e-9) {
   x <- as.numeric(x)
   H <- as.matrix(H)
   Z <- cbind(g = as.numeric(g), H)

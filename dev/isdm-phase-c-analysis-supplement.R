@@ -32,6 +32,32 @@
   c(n = n, mean = mean(x), sd = sx, mcse = if (n > 1L) sx / sqrt(n) else NA)
 }
 
+.reportable_positive <- function(estimate, uncertainty) {
+  is.finite(estimate) & estimate > 0 & is.finite(uncertainty) & uncertainty > 0 &
+    estimate >= 3 * uncertainty
+}
+
+.cluster_cr1_se <- function(fit, cluster, coefficient = "kappa") {
+  X <- stats::model.matrix(fit)
+  u <- stats::residuals(fit)
+  cluster <- as.character(cluster)
+  if (length(cluster) != nrow(X) || anyNA(cluster)) {
+    .stopf("Cluster labels must be complete and align with model rows")
+  }
+  G <- length(unique(cluster)); N <- nrow(X); K <- ncol(X)
+  if (G <= 1L || N <= K || fit$rank != K || !coefficient %in% colnames(X)) {
+    .stopf("CR1 requires G > 1, N > K, a full-rank model, and coefficient %s", coefficient)
+  }
+  bread <- tryCatch(solve(crossprod(X)), error = function(e) NULL)
+  if (is.null(bread)) .stopf("CR1 bread matrix is singular")
+  scores <- rowsum(X * u, group = cluster, reorder = FALSE)
+  correction <- (G / (G - 1)) * ((N - 1) / (N - K))
+  V <- correction * bread %*% crossprod(scores) %*% bread
+  variance <- V[coefficient, coefficient]
+  if (!is.finite(variance) || variance < 0) .stopf("CR1 slope variance is invalid")
+  sqrt(variance)
+}
+
 .rbind_rows <- function(xs) {
   xs <- Filter(function(x) !is.null(x) && nrow(x), xs)
   if (!length(xs)) return(data.frame())
@@ -51,7 +77,8 @@
   ladders = "06-g2-g6-ladder-vs-ref.csv",
   status = "09-fit-status-by-cell.csv",
   paired = "10-paired-fit-level.rds",
-  manifest = "11-input-manifest.csv"
+  manifest = "11-input-manifest.csv",
+  refutation_aggregate = "12-refutation-aggregate.csv"
 )
 
 .output_files <- c(
@@ -66,7 +93,8 @@
   "08-official-input-manifest-copy.csv",
   "figure-ddbias-curves.pdf", "figure-ddbias-curves.png",
   "figure-beta-separation.pdf", "figure-beta-separation.png",
-  "figure-ladders-rank.pdf", "figure-ladders-rank.png"
+  "figure-ladders-rank.pdf", "figure-ladders-rank.png",
+  "09-refutation-aggregate-copy.csv"
 )
 
 .parse_cli <- function(args) {
@@ -147,6 +175,8 @@
     a5a6 = utils::read.csv(paths[["a5a6"]], stringsAsFactors = FALSE),
     ladders = utils::read.csv(paths[["ladders"]], stringsAsFactors = FALSE),
     status = utils::read.csv(paths[["status"]], stringsAsFactors = FALSE),
+    refutation_aggregate = utils::read.csv(paths[["refutation_aggregate"]],
+                                            stringsAsFactors = FALSE),
     paired = readRDS(paths[["paired"]]), manifest = manifest, paths = paths
   )
   if (!is.data.frame(out$paired)) .stopf("10-paired-fit-level.rds is not a data.frame")
@@ -157,6 +187,18 @@
   .validate_stage_blocks(out$ladders, paste0("G", 2:6), "ladder table")
   .validate_stage_blocks(out$status, paste0("G", 1:6), "fit-status table")
   .validate_stage_blocks(out$paired, paste0("G", 1:6), "paired fit-level data")
+  .require_cols(out$refutation_aggregate,
+                c("condition", "aggregate_verdict", "trigger_rows",
+                  "evaluated_rows", "rule", "overall_h_sink_verdict"),
+                "refutation aggregate")
+  expected_refutations <- c("R1_flat_curve", "R2_unattributable",
+                            "R3_wrong_mechanism", "R4_diagonal_only",
+                            "R5_wrong_sign")
+  if (!identical(sort(as.character(out$refutation_aggregate$condition)),
+                 sort(expected_refutations)) ||
+      length(unique(out$refutation_aggregate$overall_h_sink_verdict)) != 1L) {
+    .stopf("Refutation aggregate must contain exactly R1-R5 and one overall H_sink verdict")
+  }
 
   req_paired <- c(
     "stage", "block", "seed", "arm", "kappa", "rho", "omega", "phi_x",
@@ -226,21 +268,40 @@
         return(list(n = 0L, slope = NA_real_, se = NA_real_, positive = NA,
                     mean_seed_slope = NA_real_, mcse_seed_slope = NA_real_,
                     mean_seed_spearman = NA_real_, n_spearman_positive = 0L,
+                    n_spearman_defined = 0L,
+                    n_spearman_undefined_zero_variance = 0L,
+                    spearman_status = "NO_COMPLETE_SEEDS",
                     all_spearman_positive = NA))
       }
       zz <- do.call(rbind, by_seed)
-      fit <- stats::lm(zz[[value]] ~ zz$kappa + factor(zz$seed))
-      co <- summary(fit)$coefficients
-      slope <- unname(co[2L, 1L]); se <- unname(co[2L, 2L])
+      model_data <- data.frame(outcome = zz[[value]], kappa = zz$kappa, seed = zz$seed)
+      fit <- stats::lm(outcome ~ kappa + factor(seed), data = model_data)
+      slope <- unname(stats::coef(fit)[["kappa"]])
+      se <- .cluster_cr1_se(fit, model_data$seed, "kappa")
       seed_slopes <- vapply(by_seed, function(s) coef(stats::lm(s[[value]] ~ s$kappa))[2], numeric(1))
-      seed_rho <- vapply(by_seed, function(s) stats::cor(s$kappa, s[[value]], method = "spearman"), numeric(1))
+      seed_rho_status <- vapply(by_seed, function(s) {
+        if (length(unique(s$kappa)) < 2L || length(unique(s[[value]])) < 2L) {
+          "UNDEFINED_ZERO_VARIANCE"
+        } else "DEFINED"
+      }, character(1))
+      seed_rho <- vapply(seq_along(by_seed), function(i) {
+        if (seed_rho_status[[i]] == "UNDEFINED_ZERO_VARIANCE") NA_real_ else
+          stats::cor(by_seed[[i]]$kappa, by_seed[[i]][[value]], method = "spearman")
+      }, numeric(1))
+      n_undefined <- sum(seed_rho_status == "UNDEFINED_ZERO_VARIANCE")
+      defined_rho <- seed_rho[seed_rho_status == "DEFINED"]
       list(n = length(by_seed), slope = slope, se = se,
-           positive = is.finite(se) && slope >= 3 * se,
+           positive = .reportable_positive(slope, se),
            mean_seed_slope = mean(seed_slopes),
            mcse_seed_slope = .stats(seed_slopes)[["mcse"]],
-           mean_seed_spearman = mean(seed_rho),
-           n_spearman_positive = sum(seed_rho > 0),
-           all_spearman_positive = all(seed_rho > 0))
+           mean_seed_spearman = if (length(defined_rho)) mean(defined_rho) else NA_real_,
+           n_spearman_positive = sum(defined_rho > 0),
+           n_spearman_defined = length(defined_rho),
+           n_spearman_undefined_zero_variance = n_undefined,
+           spearman_status = if (n_undefined > 0L) "UNDEFINED_ZERO_VARIANCE" else
+             if (all(defined_rho > 0)) "ALL_DEFINED_POSITIVE" else "DEFINED_NONPOSITIVE_PRESENT",
+           all_spearman_positive = n_undefined == 0L &&
+             length(defined_rho) == length(by_seed) && all(defined_rho > 0))
     }
     ## Use stable row identifiers because split() preserves the source row names.
     rownames(z) <- sprintf("r%d", seq_len(nrow(z)))
@@ -256,6 +317,10 @@
       row[[paste0("mcse_seed_slope_", population)]] <- fit$mcse_seed_slope
       row[[paste0("mean_seed_spearman_", population)]] <- fit$mean_seed_spearman
       row[[paste0("n_seed_spearman_positive_", population)]] <- fit$n_spearman_positive
+      row[[paste0("n_seed_spearman_defined_", population)]] <- fit$n_spearman_defined
+      row[[paste0("n_seed_spearman_undefined_zero_variance_", population)]] <-
+        fit$n_spearman_undefined_zero_variance
+      row[[paste0("seed_spearman_status_", population)]] <- fit$spearman_status
       row[[paste0("all_seed_spearman_positive_", population)]] <- fit$all_spearman_positive
     }
     row$pdHess_slope_diff_gt_1_all_se <-
@@ -270,7 +335,12 @@
     row$mcse_seed_slope <- row$mcse_seed_slope_all
     row$mean_seed_spearman <- row$mean_seed_spearman_all
     row$n_seed_spearman_positive <- row$n_seed_spearman_positive_all
+    row$n_seed_spearman_defined <- row$n_seed_spearman_defined_all
+    row$n_seed_spearman_undefined_zero_variance <-
+      row$n_seed_spearman_undefined_zero_variance_all
+    row$seed_spearman_status <- row$seed_spearman_status_all
     row$all_seed_spearman_positive <- row$all_seed_spearman_positive_all
+    row$seed_fixed_se_type <- "CR1_ONE_WAY_SEED_CLUSTER"
     row
   })
   out <- do.call(rbind, rows); rownames(out) <- NULL; out
@@ -294,7 +364,9 @@
   led[[length(led) + 1L]] <- .ledger_row(
     "P-primary", "A1 frozen endpoint", "FROZEN_PASS_FAIL",
     "mean dD_bias >= 0.10 and >= 3 MCSE",
-    ifelse(primary$primary_clears_all, "PASS", "FAIL"),
+    ifelse(primary$primary_clears_all &
+             .reportable_positive(primary$dD_bias_mean_all, primary$dD_bias_mcse_all),
+           "PASS", "FAIL"),
     primary$dD_bias_mean_all, primary$dD_bias_mcse_all, "01-primary-endpoint.csv")
 
   ## P-dose.
@@ -318,8 +390,9 @@
     "P-dose", paste(dose$arm[i], "rho", dose$rho[i], "omega", dose$omega[i]),
     "FROZEN_PASS_FAIL", dose$rule[i], dose$verdict[i], dose$seed_fixed_ols_slope[i],
     dose$seed_fixed_ols_se[i], "01-p-dose-evidence.csv",
-    sprintf("%d/%d seed Spearman correlations positive", dose$n_seed_spearman_positive[i],
-            dose$n_complete_seeds[i]))
+    sprintf("%d/%d seed Spearman correlations positive; %d undefined zero variance; status=%s",
+            dose$n_seed_spearman_positive[i], dose$n_complete_seeds[i],
+            dose$n_seed_spearman_undefined_zero_variance[i], dose$seed_spearman_status[i]))
 
   ## P-structure: exact same-seed omega gaps; omega=0 diagonal response stays descriptive.
   match_omega <- c("stage", "block", "seed", "arm", "kappa", "rho", "phi_x",
@@ -342,7 +415,7 @@
                                  "FROZEN_PASS_FAIL", "DESCRIPTIVE_UNRESOLVED")
   structure$verdict <- ifelse(
     structure$rule_class == "FROZEN_PASS_FAIL",
-    ifelse(structure$estimate_all >= 3 * structure$mcse_all, "PASS", "FAIL"),
+    ifelse(.reportable_positive(structure$estimate_all, structure$mcse_all), "PASS", "FAIL"),
     "NO_FROZEN_DIAGONAL_THRESHOLD")
   for (i in seq_len(nrow(structure))) led[[length(led) + 1L]] <- .ledger_row(
     "P-structure", structure$metric[i], structure$rule_class[i],
@@ -368,11 +441,14 @@
                         component = "A5_C1_at_kappa2", C1_all = c1a5$C1_all)
   for (i in seq_len(nrow(integration))) led[[length(led) + 1L]] <- .ledger_row(
     "P-integration", "A1 minus A5", "FROZEN_PASS_FAIL", "matched gap >= 3 MCSE",
-    ifelse(integration$estimate_all[i] >= 3 * integration$mcse_all[i], "PASS", "FAIL"),
+    ifelse(.reportable_positive(integration$estimate_all[i], integration$mcse_all[i]),
+           "PASS", "FAIL"),
     integration$estimate_all[i], integration$mcse_all[i], "03-p-integration-evidence.csv")
   for (i in seq_len(nrow(c1extra))) led[[length(led) + 1L]] <- .ledger_row(
     "P-integration", "A5 corrupted at kappa=2", "FROZEN_PASS_FAIL", "A5 satisfies C1",
-    ifelse(c1extra$C1_all[i], "PASS", "FAIL"), c1extra$estimate_all[i],
+    ifelse(c1extra$C1_all[i] &
+             .reportable_positive(c1extra$estimate_all[i], c1extra$mcse_all[i]),
+           "PASS", "FAIL"), c1extra$estimate_all[i],
     c1extra$mcse_all[i], "03-p-integration-evidence.csv")
   integration <- .rbind_rows(list(integration, c1extra))
 
@@ -393,7 +469,8 @@
   for (i in seq_len(nrow(sep_trend))) led[[length(led) + 1L]] <- .ledger_row(
     "P-separation", "rho=.6 kappa trend", "FROZEN_DIRECTION_AND_REPORTABILITY",
     "positive slope predicted; support is reportable only when slope >= 3 SE",
-    ifelse(sep_trend$seed_fixed_ols_slope[i] <= 0, "DIRECTION_FAIL",
+    ifelse(!is.finite(sep_trend$seed_fixed_ols_slope[i]) ||
+             sep_trend$seed_fixed_ols_slope[i] <= 0, "DIRECTION_FAIL",
            ifelse(sep_trend$positive_at_3se[i], "SUPPORT_REPORTABLE", "POSITIVE_NOT_REPORTABLE")),
     sep_trend$seed_fixed_ols_slope[i], sep_trend$seed_fixed_ols_se[i],
     "04-p-separation-evidence.csv",
@@ -409,11 +486,11 @@
                        match_phi, "dD_bias", "phi_0_4_minus_0")
   rank <- .summarise(rank_raw, c("stage", "block", "arm"), "phi_0_4_minus_0",
                      "contrast_complete", "contrast_both_pdHess")
-  rank$reportable_at_3mcse <- rank$estimate_all >= 3 * rank$mcse_all
+  rank$reportable_at_3mcse <- .reportable_positive(rank$estimate_all, rank$mcse_all)
   for (i in seq_len(nrow(rank))) led[[length(led) + 1L]] <- .ledger_row(
     "P-rank", paste("G6", rank$arm[i]), "FROZEN_DIRECTION_AND_REPORTABILITY",
     "matched phi_bias .4 minus 0 is positive; support is reportable only at >= 3 MCSE",
-    ifelse(rank$estimate_all[i] <= 0, "DIRECTION_FAIL",
+    ifelse(!is.finite(rank$estimate_all[i]) || rank$estimate_all[i] <= 0, "DIRECTION_FAIL",
            ifelse(rank$reportable_at_3mcse[i], "SUPPORT_REPORTABLE", "POSITIVE_NOT_REPORTABLE")),
     rank$estimate_all[i], rank$mcse_all[i], "05-p-rank-evidence.csv",
     "No separate magnitude margin was added.")
@@ -524,6 +601,7 @@ run_supplement <- function(official_dir, out_dir) {
   .write_figure_pair(targets[10], targets[11], function() .draw_ddbias(o$paired))
   .write_figure_pair(targets[12], targets[13], function() .draw_beta(o$paired))
   .write_figure_pair(targets[14], targets[15], function() .draw_ladders(o$ladders))
+  .write_csv(o$refutation_aggregate, targets[16])
   if (any(!file.exists(targets)) || any(file.info(targets)$size <= 0)) .stopf("Supplement output verification failed")
   invisible(targets)
 }
@@ -540,7 +618,7 @@ run_supplement <- function(official_dir, out_dir) {
     ai <- match(z$arm, arms)
     z$dD_bias <- .03 * z$kappa + .02 * z$omega + .01 * z$rho +
       .004 * ai + .002 * z$seed + .001 * sin(3 * z$seed * z$kappa) +
-      ifelse(block=="G6", .05*z$phi_bias, 0)
+      ifelse(block=="G6" & z$arm != "A6", .05*z$phi_bias, 0)
     z$dsignflip <- pmax(0, z$dD_bias/4); z$ddiag_rmse <- .02*z$kappa
     z$dpsi_rmse <- .015*z$kappa
     z$dbeta_bias <- z$rho*.04*z$kappa + .001*z$seed + .0005*cos(2*z$seed*z$kappa)
@@ -551,6 +629,8 @@ run_supplement <- function(official_dir, out_dir) {
   g1grid <- expand.grid(kappa=c(.25,.5,1,2),rho=c(0,.6),omega=c(1,.5,0),phi_bias=.15,
                         n=NA,T_sp=NA,d_fit=NA,k=NA)
   paired <- make_rows("G1", g1grid)
+  zero_spearman <- paired$arm == "A3" & .near(paired$rho, 0) & .near(paired$omega, 0)
+  paired$dD_bias[zero_spearman] <- .012 + .002 * paired$seed[zero_spearman]
   paired <- rbind(paired,
     make_rows("G2", data.frame(kappa=1,rho=.6,omega=.5,phi_bias=.15,n=c(100,1600),T_sp=NA,d_fit=NA,k=NA)),
     make_rows("G3", data.frame(kappa=1,rho=.6,omega=.5,phi_bias=.15,n=NA,T_sp=c(6,12),d_fit=NA,k=NA)),
@@ -582,6 +662,20 @@ run_supplement <- function(official_dir, out_dir) {
   manifest <- data.frame(stage=c("pilot_v2",rep("campaign",6)),block=c("G1",paste0("G",1:6)),
                          input=file.path("/synthetic/official",c("pilot-v2.rds",paste0("g",1:6,".rds"))),rows=1)
   utils::write.csv(manifest, file.path(dir,.required_files[["manifest"]]), row.names=FALSE)
+  refutation_aggregate <- data.frame(
+    condition = c("R1_flat_curve", "R2_unattributable", "R3_wrong_mechanism",
+                  "R4_diagonal_only", "R5_wrong_sign"),
+    aggregate_verdict = c("NOT_TRIGGERED", "NOT_TRIGGERED",
+                          "UNRESOLVED_NO_FROZEN_EQUIVALENCE_MARGIN",
+                          "UNRESOLVED_NO_FROZEN_DIAGONAL_THRESHOLD", "NOT_TRIGGERED"),
+    trigger_rows = 0L, evaluated_rows = 1L,
+    rule = c("all cells", "any cell", "review only", "review only", "any cell"),
+    overall_h_sink_verdict = "H_SINK_NOT_REFUTED_WITH_UNRESOLVED_CONDITIONS",
+    stringsAsFactors = FALSE
+  )
+  utils::write.csv(refutation_aggregate,
+                   file.path(dir, .required_files[["refutation_aggregate"]]),
+                   row.names = FALSE)
 }
 
 self_test <- function() {
@@ -595,6 +689,8 @@ self_test <- function() {
                           stringsAsFactors = FALSE)
   separation <- utils::read.csv(file.path(output, "04-p-separation-evidence.csv"),
                                 stringsAsFactors = FALSE)
+  rank <- utils::read.csv(file.path(output, "05-p-rank-evidence.csv"),
+                          stringsAsFactors = FALSE)
   receipt <- utils::read.csv(file.path(output, "07-supplement-input-receipt.csv"),
                              stringsAsFactors = FALSE)
   trend_columns <- c(
@@ -602,14 +698,58 @@ self_test <- function() {
     "seed_fixed_ols_se_all", "positive_at_3se_all",
     "n_complete_seeds_both_pdHess", "seed_fixed_ols_slope_both_pdHess",
     "seed_fixed_ols_se_both_pdHess", "positive_at_3se_both_pdHess",
-    "pdHess_slope_diff_gt_1_all_se"
+    "pdHess_slope_diff_gt_1_all_se", "seed_fixed_se_type",
+    "n_seed_spearman_undefined_zero_variance_all", "seed_spearman_status_all"
   )
+  oracle <- expand.grid(seed = 1:4, kappa = c(.25, .5, 1, 2),
+                        KEEP.OUT.ATTRS = FALSE, stringsAsFactors = FALSE)
+  oracle$group <- "manual_cr1_oracle"
+  oracle$completed_pair <- TRUE; oracle$both_pdHess <- TRUE
+  cluster_slope <- c(-.12, .03, .07, .02)
+  oracle$outcome <- 1 + .4 * oracle$kappa + .2 * oracle$seed +
+    cluster_slope[oracle$seed] * (oracle$kappa - mean(unique(oracle$kappa)))
+  oracle_trend <- .seed_fixed_trend(oracle, "group", "outcome")
+  oracle_fit <- stats::lm(outcome ~ kappa + factor(seed), data = oracle)
+  oracle_X <- stats::model.matrix(oracle_fit); oracle_u <- stats::residuals(oracle_fit)
+  oracle_scores <- rowsum(oracle_X * oracle_u, group = oracle$seed, reorder = FALSE)
+  oracle_G <- length(unique(oracle$seed)); oracle_N <- nrow(oracle_X); oracle_K <- ncol(oracle_X)
+  oracle_bread <- solve(crossprod(oracle_X))
+  oracle_V <- (oracle_G / (oracle_G - 1)) * ((oracle_N - 1) / (oracle_N - oracle_K)) *
+    oracle_bread %*% crossprod(oracle_scores) %*% oracle_bread
+  oracle_se <- sqrt(oracle_V["kappa", "kappa"])
+  zero_dose <- dose$arm == "A3" & .near(dose$rho, 0) & .near(dose$omega, 0)
+  zero_dose_component <- paste("A3", "rho", 0, "omega", 0)
+  zero_dose_ledger <- ledger$prediction == "P-dose" & ledger$component == zero_dose_component
+  zero_rank <- rank$arm == "A6"
+  zero_rank_ledger <- ledger$prediction == "P-rank" & ledger$component == "G6 A6"
+  one_sided_support <- ledger$verdict %in% c("PASS", "SUPPORT_REPORTABLE")
   stopifnot(length(paths) == length(.output_files), all(file.exists(paths)),
             all(file.info(paths)$size > 0),
             all(trend_columns %in% names(dose)),
             all(trend_columns %in% names(separation)),
             all(dose$n_complete_seeds_all == 8L),
             all(dose$n_complete_seeds_both_pdHess == 7L),
+            isTRUE(all.equal(oracle_trend$seed_fixed_ols_se_all, oracle_se,
+                             tolerance = 1e-12)),
+            identical(oracle_trend$seed_fixed_se_type, "CR1_ONE_WAY_SEED_CLUSTER"),
+            !.reportable_positive(0, 0),
+            sum(zero_dose) == 1L,
+            dose$n_seed_spearman_undefined_zero_variance_all[zero_dose] == 8L,
+            dose$seed_spearman_status_all[zero_dose] == "UNDEFINED_ZERO_VARIANCE",
+            !dose$all_seed_spearman_positive_all[zero_dose],
+            dose$verdict[zero_dose] == "FAIL",
+            sum(zero_dose_ledger) == 1L,
+            ledger$verdict[zero_dose_ledger] == dose$verdict[zero_dose],
+            sum(zero_rank) == 1L, rank$estimate_all[zero_rank] == 0,
+            rank$mcse_all[zero_rank] == 0,
+            !rank$reportable_at_3mcse[zero_rank],
+            sum(zero_rank_ledger) == 1L,
+            ledger$verdict[zero_rank_ledger] == "DIRECTION_FAIL",
+            any(one_sided_support),
+            all(is.finite(ledger$estimate[one_sided_support]) &
+                  ledger$estimate[one_sided_support] > 0 &
+                  is.finite(ledger$mcse[one_sided_support]) &
+                  ledger$mcse[one_sided_support] > 0),
             identical(names(receipt), c("file", "bytes", "sha256")),
             nrow(receipt) == length(.required_files),
             all(grepl("^[[:xdigit:]]{64}$", receipt$sha256)),

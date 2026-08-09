@@ -19,6 +19,39 @@ source("dev/isdm-bias-campaign.R")
   sub(paste0("^--", name, "="), "", hit)
 }
 
+.verify_compute_v2_c <- function(receipt, expected_stage, expected_block, label) {
+  required <- c(
+    "schema_version", "stage", "block", "source_sha", "source_branch",
+    "source_dirty", "config_sha256", "input_config_sha256", "seed_list",
+    "expected_logical_rows",
+    "actual_logical_rows", "expected_model_fit_attempts",
+    "actual_model_fit_attempts", "optimizer_control_mode", "optimizer_control",
+    "package_versions", "session_platform", "unique_key_verdict",
+    "unlabelled_nonfinite_rows"
+  )
+  missing <- setdiff(required, names(receipt))
+  if (length(missing)) {
+    stop(label, " lacks phase_c_compute_v2 field(s): ", paste(missing, collapse = ", "))
+  }
+  if (!identical(receipt$schema_version, "phase_c_compute_v2") ||
+      !identical(receipt$stage, expected_stage) ||
+      !identical(receipt$block, expected_block)) {
+    stop(label, " has noncanonical phase_c_compute_v2 stage/block")
+  }
+  if (!nzchar(receipt$config_sha256) || !nzchar(receipt$seed_list) ||
+      !nzchar(receipt$optimizer_control) || !nzchar(receipt$session_platform)) {
+    stop(label, " has an empty configuration/seed/control/session field")
+  }
+  if (as.integer(receipt$expected_logical_rows) != as.integer(receipt$actual_logical_rows) ||
+      as.integer(receipt$expected_model_fit_attempts) != as.integer(receipt$actual_model_fit_attempts) ||
+      !identical(receipt$unique_key_verdict, "PASS") ||
+      as.integer(receipt$unlabelled_nonfinite_rows) != 0L ||
+      isTRUE(as.logical(receipt$source_dirty))) {
+    stop(label, " fails the frozen structural/accounting contract")
+  }
+  invisible(TRUE)
+}
+
 .pilot_decision_c <- function(pilot_path, pilot_compute_receipt,
                               preflight_receipt, decision_receipt,
                               calibration_receipt = NULL) {
@@ -28,6 +61,31 @@ source("dev/isdm-bias-campaign.R")
   }
   preflight <- .require_receipt_c(preflight_receipt, "preflight_compute")
   compute <- .require_receipt_c(pilot_compute_receipt, "pilot_compute")
+  .verify_compute_v2_c(preflight, "preflight", "preflight", "Preflight receipt")
+  .verify_compute_v2_c(compute, "pilot_v2", "G1", "Pilot compute receipt")
+  preflight_contract <- build_preflight_contract_c()
+  if (!identical(preflight$config_sha256, .object_sha256_c(preflight_contract)) ||
+      !identical(preflight$input_config_sha256, preflight$config_sha256) ||
+      !identical(preflight$seed_list,
+                 paste(preflight_contract$seed_inventory, collapse = ",")) ||
+      !identical(preflight$seed_inventory_roles,
+                 preflight_contract$seed_inventory_roles)) {
+    stop("Preflight receipt does not match the frozen structural contract and seed inventory")
+  }
+  pilot_beta0 <- suppressWarnings(as.numeric(compute$beta0_shift))
+  if (length(pilot_beta0) != 1L || !is.finite(pilot_beta0) ||
+      !identical(compute$config_sha256,
+                 .object_sha256_c(build_config_pilot(1:10, pilot_beta0))) ||
+      !identical(compute$input_config_sha256, compute$config_sha256)) {
+    stop("Pilot compute receipt does not match the frozen pilot configuration")
+  }
+  if (!identical(preflight$source_sha, compute$source_sha) ||
+      !identical(preflight$source_branch, "claude/experiment-integrated-sdm") ||
+      !identical(compute$source_branch, "claude/experiment-integrated-sdm") ||
+      !grepl(paste0("preflight:", .sha256_c(preflight_receipt)),
+             compute$predecessor_receipt_hashes, fixed = TRUE)) {
+    stop("Pilot compute is not bound to the clean Lane C preflight source/receipt")
+  }
   pilot_path <- normalizePath(pilot_path, mustWork = TRUE)
   if (!identical(normalizePath(compute$output_path, mustWork = TRUE), pilot_path) ||
       !identical(compute$output_sha256, .sha256_c(pilot_path))) {
@@ -38,7 +96,11 @@ source("dev/isdm-bias-campaign.R")
     "stage", "block", "kappa", "rho", "omega", "phi_x", "phi_bias",
     "n", "T_sp", "d_fit", "k", "beta0_shift", "seed", "arm",
     "elapsed_sec", "realised_prevalence", "fit_error", "pdHess",
-    "estimand", "D_bias", "D_rmse", "oracle_collapsed"
+    "estimand", "D_bias", "D_rmse", "oracle_collapsed", "fit_attempted",
+    "theoretical_bias_rho", "theoretical_bias_sharing",
+    "theoretical_bias_variance", "realised_bias_rho_max_abs_error",
+    "realised_bias_sharing_max_abs_error",
+    "realised_bias_variance_max_abs_error"
   )
   if (!is.data.frame(x) || !all(required %in% names(x))) stop("Pilot schema is incomplete")
   if (nrow(x) != 1500L || !identical(unique(x$stage), "pilot_v2") ||
@@ -48,6 +110,36 @@ source("dev/isdm-bias-campaign.R")
   key <- c("stage", "block", "kappa", "rho", "omega", "phi_x", "phi_bias",
            "n", "T_sp", "d_fit", "k", "beta0_shift", "seed", "arm")
   if (anyDuplicated(x[key])) stop("Pilot contains duplicate full keys")
+  if (!is.logical(x$fit_attempted) || any(is.na(x$fit_attempted) | !x$fit_attempted)) {
+    stop("Pilot contains a DGP/pre-fit failure; only model-level fit errors may be retained")
+  }
+  target_sharing <- x$rho^2 + (1 - x$rho^2) * x$omega
+  near <- function(a, b, tolerance = 1e-10) {
+    isTRUE(all.equal(as.numeric(a), as.numeric(b), tolerance = tolerance,
+                     check.attributes = FALSE))
+  }
+  if (!near(x$theoretical_bias_rho, x$rho) ||
+      !near(x$theoretical_bias_sharing, target_sharing) ||
+      !near(x$theoretical_bias_variance, x$kappa^2)) {
+    stop("Pilot theoretical bias geometry differs from the frozen treatments")
+  }
+  biased_geometry <- x$kappa > 0
+  geometry_errors <- c(
+    "realised_bias_rho_max_abs_error",
+    "realised_bias_sharing_max_abs_error",
+    "realised_bias_variance_max_abs_error"
+  )
+  for (nm in geometry_errors) {
+    if (any(biased_geometry & (!is.finite(x[[nm]]) | x[[nm]] > 1e-9))) {
+      stop("Pilot violates exact finite-sample geometry in ", nm)
+    }
+  }
+  if (any(!biased_geometry &
+          (x$realised_bias_variance_max_abs_error != 0 |
+           !is.na(x$realised_bias_rho_max_abs_error) |
+           !is.na(x$realised_bias_sharing_max_abs_error)))) {
+    stop("Pilot null rows have invalid realised geometry diagnostics")
+  }
   dataset_key <- setdiff(key, "arm")
   arms <- split(as.character(x$arm), do.call(paste, c(x[dataset_key], sep = "|")))
   if (any(vapply(arms, function(a) !identical(sort(a), ARMS), logical(1)))) {

@@ -80,13 +80,13 @@ source("dev/isdm-bias-campaign.R")
 .flag_3mcse <- function(estimate, mcse, direction = c("absolute", "positive", "negative"),
                         magnitude = 0) {
   direction <- match.arg(direction)
-  if (!is.finite(estimate) || !is.finite(mcse)) return(NA)
+  if (!is.finite(estimate) || !is.finite(mcse) || mcse <= 0) return(FALSE)
   if (direction == "absolute") {
-    abs(estimate) >= magnitude && abs(estimate) >= 3 * mcse
+    abs(estimate) > 0 && abs(estimate) >= magnitude && abs(estimate) >= 3 * mcse
   } else if (direction == "positive") {
-    estimate >= magnitude && estimate >= 3 * mcse
+    estimate > 0 && estimate >= magnitude && estimate >= 3 * mcse
   } else {
-    estimate <= -magnitude && -estimate >= 3 * mcse
+    estimate < 0 && estimate <= -magnitude && -estimate >= 3 * mcse
   }
 }
 
@@ -238,7 +238,12 @@ source("dev/isdm-bias-campaign.R")
     "D_rmse", "D_max", "D_z", "rank_d_D_bias", "rank_d_D_rmse",
     "signflip", "diag_rmse", "psi_rmse",
     "lambda_proc_rmse", "beta_bias", "beta_rmse", "n_heywood_psi",
-    "n_heywood_loading"
+    "n_heywood_loading", "theoretical_bias_rho",
+    "theoretical_bias_sharing", "theoretical_bias_variance",
+    "realised_bias_rho_mean", "realised_bias_rho_max_abs_error",
+    "realised_bias_sharing_mean", "realised_bias_sharing_max_abs_error",
+    "realised_bias_variance_mean", "realised_bias_variance_max_abs_error",
+    "fit_attempted"
   )
   missing <- setdiff(required, names(x))
   if (length(missing)) {
@@ -278,13 +283,54 @@ source("dev/isdm-bias-campaign.R")
     .stopf("%s violates the prospective phi_x = 0.15 freeze", block_label)
   }
 
+  fit_attempted <- x$fit_attempted
+  if (!is.logical(fit_attempted)) {
+    if ((is.numeric(fit_attempted) || is.integer(fit_attempted)) &&
+        all(is.na(fit_attempted) | fit_attempted %in% c(0, 1))) {
+      fit_attempted <- as.logical(fit_attempted)
+    } else {
+      .stopf("%s fit_attempted must be logical or 0/1", block_label)
+    }
+  }
+  if (any(is.na(fit_attempted) | !fit_attempted)) {
+    .stopf("%s contains a DGP/pre-fit failure rather than a model-level fit error", block_label)
+  }
+  x$fit_attempted <- fit_attempted
+  target_sharing <- x$rho^2 + (1 - x$rho^2) * x$omega
+  if (any(!.near(x$theoretical_bias_rho, x$rho)) ||
+      any(!.near(x$theoretical_bias_sharing, target_sharing)) ||
+      any(!.near(x$theoretical_bias_variance, x$kappa^2))) {
+    .stopf("%s theoretical bias-geometry columns differ from the frozen treatments", block_label)
+  }
+  biased_geometry <- x$kappa > 0
+  geometry_error_fields <- c(
+    "realised_bias_rho_max_abs_error",
+    "realised_bias_sharing_max_abs_error",
+    "realised_bias_variance_max_abs_error"
+  )
+  for (nm in geometry_error_fields) {
+    if (any(biased_geometry & (!is.finite(x[[nm]]) | x[[nm]] > 1e-9))) {
+      .stopf("%s violates exact finite-sample geometry in %s", block_label, nm)
+    }
+  }
+  if (any(!biased_geometry &
+          (!.near(x$realised_bias_variance_max_abs_error, 0) |
+           !is.na(x$realised_bias_rho_max_abs_error) |
+           !is.na(x$realised_bias_sharing_max_abs_error)))) {
+    .stopf("%s null rows have invalid realised geometry diagnostics", block_label)
+  }
+
   completed <- .blank_error(x$fit_error)
   always_numeric <- c(
     "elapsed_sec", "realised_prevalence", "bias_sharing", "convergence",
     "diag_B_skip", "D_bias", "D_rmse", "D_max", "D_z", "rank_d_D_bias",
     "rank_d_D_rmse", "signflip", "diag_rmse", "psi_rmse",
     "lambda_proc_rmse", "beta_bias", "beta_rmse", "n_heywood_psi",
-    "n_heywood_loading"
+    "n_heywood_loading", "theoretical_bias_rho",
+    "theoretical_bias_sharing", "theoretical_bias_variance",
+    "realised_bias_rho_mean", "realised_bias_rho_max_abs_error",
+    "realised_bias_sharing_mean", "realised_bias_sharing_max_abs_error",
+    "realised_bias_variance_mean", "realised_bias_variance_max_abs_error"
   )
   for (nm in always_numeric) {
     if (!is.numeric(x[[nm]]) && !is.integer(x[[nm]])) {
@@ -835,9 +881,134 @@ source("dev/isdm-bias-campaign.R")
   do.call(rbind, good)
 }
 
+.refutation_aggregate <- function(refutations) {
+  required <- c("condition", "status")
+  if (!is.data.frame(refutations) || !all(required %in% names(refutations))) {
+    .stopf("Refutation evidence lacks condition/status columns")
+  }
+  count_status <- function(condition, status) {
+    sum(refutations$condition == condition & refutations$status == status, na.rm = TRUE)
+  }
+  n_condition <- function(condition) sum(refutations$condition == condition, na.rm = TRUE)
+
+  r1_n <- n_condition("R1_flat_curve")
+  rows <- list(
+    data.frame(
+      condition = "R1_flat_curve",
+      aggregate_verdict = if (r1_n > 0L &&
+        count_status("R1_flat_curve", "CELL_SUPPORTS_R1") == r1_n) "TRIGGERED" else "NOT_TRIGGERED",
+      trigger_rows = count_status("R1_flat_curve", "CELL_SUPPORTS_R1"),
+      evaluated_rows = r1_n,
+      rule = "trigger only when every frozen A1 omega=1 kappa cell supports R1",
+      stringsAsFactors = FALSE
+    ),
+    data.frame(
+      condition = "R2_unattributable",
+      aggregate_verdict = if (count_status("R2_unattributable", "TRIGGERED") > 0L)
+        "TRIGGERED" else "NOT_TRIGGERED",
+      trigger_rows = count_status("R2_unattributable", "TRIGGERED"),
+      evaluated_rows = n_condition("R2_unattributable"),
+      rule = "trigger when any frozen kappa=2 A5-A6 attribution cell is within 3 MCSE",
+      stringsAsFactors = FALSE
+    ),
+    data.frame(
+      condition = "R3_wrong_mechanism",
+      aggregate_verdict = "UNRESOLVED_NO_FROZEN_EQUIVALENCE_MARGIN",
+      trigger_rows = count_status("R3_wrong_mechanism", "TRIGGER_REVIEW_NOT_SEPARATED"),
+      evaluated_rows = n_condition("R3_wrong_mechanism"),
+      rule = "report review flags only; no adaptive equivalence threshold",
+      stringsAsFactors = FALSE
+    ),
+    data.frame(
+      condition = "R4_diagonal_only",
+      aggregate_verdict = "UNRESOLVED_NO_FROZEN_DIAGONAL_THRESHOLD",
+      trigger_rows = count_status("R4_diagonal_only", "UNRESOLVED_REVIEW_DIAGONAL_METRICS"),
+      evaluated_rows = n_condition("R4_diagonal_only"),
+      rule = "report unresolved cells only; no adaptive diagonal threshold",
+      stringsAsFactors = FALSE
+    ),
+    data.frame(
+      condition = "R5_wrong_sign",
+      aggregate_verdict = if (count_status("R5_wrong_sign", "TRIGGERED") > 0L)
+        "TRIGGERED" else "NOT_TRIGGERED",
+      trigger_rows = count_status("R5_wrong_sign", "TRIGGERED"),
+      evaluated_rows = n_condition("R5_wrong_sign"),
+      rule = "trigger when any strictly negative dD_bias clears 3 MCSE",
+      stringsAsFactors = FALSE
+    )
+  )
+  out <- do.call(rbind, rows)
+  decisive <- out$condition %in% c("R1_flat_curve", "R2_unattributable", "R5_wrong_sign")
+  overall <- if (any(out$aggregate_verdict[decisive] == "TRIGGERED")) {
+    "H_SINK_REFUTED"
+  } else if (any(startsWith(out$aggregate_verdict, "UNRESOLVED"))) {
+    "H_SINK_NOT_REFUTED_WITH_UNRESOLVED_CONDITIONS"
+  } else {
+    "H_SINK_NOT_REFUTED"
+  }
+  out$overall_h_sink_verdict <- overall
+  out
+}
+
+.self_test_refutation_rules <- function() {
+  stopifnot(
+    !.flag_3mcse(0, 0, "positive"),
+    !.flag_3mcse(0, 0, "negative"),
+    !.flag_3mcse(0, 0, "absolute"),
+    .flag_3mcse(0.10, 0.01, "positive", 0.10),
+    .flag_3mcse(-0.10, 0.01, "negative", 0.10)
+  )
+  fixture <- data.frame(
+    condition = c(
+      "R1_flat_curve", "R1_flat_curve", "R2_unattributable",
+      "R3_wrong_mechanism", "R4_diagonal_only", "R5_wrong_sign",
+      "R5_wrong_sign"
+    ),
+    status = c(
+      "CELL_SUPPORTS_R1", "CELL_DOES_NOT_SUPPORT_R1", "NOT_TRIGGERED",
+      "TRIGGER_REVIEW_NOT_SEPARATED", "UNRESOLVED_REVIEW_DIAGONAL_METRICS",
+      "NOT_TRIGGERED", "TRIGGERED"
+    ),
+    stringsAsFactors = FALSE
+  )
+  aggregate <- .refutation_aggregate(fixture)
+  stopifnot(
+    identical(unique(aggregate$overall_h_sink_verdict), "H_SINK_REFUTED"),
+    aggregate$aggregate_verdict[aggregate$condition == "R1_flat_curve"] == "NOT_TRIGGERED",
+    aggregate$trigger_rows[aggregate$condition == "R5_wrong_sign"] == 1L
+  )
+  cat("SELF_TEST_REFUTATION_RULES_PASS\n")
+  invisible(TRUE)
+}
+
 .write_csv <- function(x, path) {
   utils::write.csv(x, path, row.names = FALSE, na = "NA")
   if (!file.exists(path) || file.info(path)$size <= 0) .stopf("Failed to write non-empty output: %s", path)
+}
+
+.verify_compute_v2_identity <- function(receipt, expected_stage, expected_block, label) {
+  required <- c(
+    "schema_version", "stage", "block", "seed_list", "config_sha256",
+    "expected_logical_rows", "actual_logical_rows",
+    "expected_model_fit_attempts", "actual_model_fit_attempts",
+    "optimizer_control_mode", "optimizer_control", "package_versions",
+    "session_platform", "input_predecessor_paths", "input_predecessor_sha256"
+  )
+  missing <- setdiff(required, names(receipt))
+  if (length(missing)) {
+    .stopf("%s lacks phase_c_compute_v2 field(s): %s", label,
+           paste(missing, collapse = ", "))
+  }
+  if (!identical(receipt$schema_version, "phase_c_compute_v2") ||
+      !identical(receipt$stage, expected_stage) ||
+      !identical(receipt$block, expected_block)) {
+    .stopf("%s has noncanonical v2 stage/block/schema", label)
+  }
+  if (!nzchar(receipt$seed_list) || !nzchar(receipt$optimizer_control) ||
+      !nzchar(receipt$session_platform)) {
+    .stopf("%s has an empty v2 seed/control/session field", label)
+  }
+  invisible(TRUE)
 }
 
 .verify_official_receipts <- function(pilot_path, paths, receipt_paths,
@@ -846,6 +1017,17 @@ source("dev/isdm-bias-campaign.R")
   preflight <- .require_receipt_c(preflight_path, "preflight_compute")
   pilot_compute <- .require_receipt_c(pilot_compute_path, "pilot_compute")
   decision <- .require_receipt_c(decision_path, "pilot_decision")
+  .verify_compute_v2_identity(preflight, "preflight", "preflight", "preflight receipt")
+  .verify_compute_v2_identity(pilot_compute, "pilot_v2", "G1", "pilot compute receipt")
+  preflight_contract <- build_preflight_contract_c()
+  if (!identical(preflight$config_sha256, .object_sha256_c(preflight_contract)) ||
+      !identical(preflight$input_config_sha256, preflight$config_sha256) ||
+      !identical(preflight$seed_list,
+                 paste(preflight_contract$seed_inventory, collapse = ",")) ||
+      !identical(preflight$seed_inventory_roles,
+                 preflight_contract$seed_inventory_roles)) {
+    .stopf("Preflight receipt does not match the frozen structural contract and seed inventory")
+  }
   preflight_hash <- .sha256_c(preflight_path)
   pilot_compute_hash <- .sha256_c(pilot_compute_path)
   decision_hash <- .sha256_c(decision_path)
@@ -869,6 +1051,13 @@ source("dev/isdm-bias-campaign.R")
     .stopf("Corrected pilot does not match its compute and decision receipts")
   }
   beta0_shift <- as.numeric(decision$beta0_shift)
+  if (!is.finite(beta0_shift) ||
+      !identical(pilot_compute$config_sha256,
+                 .object_sha256_c(build_config_pilot(1:10, beta0_shift))) ||
+      !identical(pilot_compute$input_config_sha256,
+                 pilot_compute$config_sha256)) {
+    .stopf("Pilot compute receipt does not match the frozen pilot configuration")
+  }
   if (beta0_shift != 0) {
     calibration <- .require_receipt_c(calibration_path, "pilot_calibration")
     if (!isTRUE(all.equal(as.numeric(calibration$beta0_shift), beta0_shift, tolerance = 0)) ||
@@ -879,11 +1068,13 @@ source("dev/isdm-bias-campaign.R")
   receipts <- vector("list", length(paths)); names(receipts) <- names(paths)
   for (block in names(paths)) {
     r <- .require_receipt_c(receipt_paths[[block]], paste0(tolower(block), "_compute"))
+    .verify_compute_v2_identity(r, "campaign", block, paste(block, "compute receipt"))
     path <- normalizePath(paths[[block]], mustWork = TRUE)
-    if (!identical(tolower(r$stage), tolower(block)) ||
-        !identical(normalizePath(r$output_path, mustWork = TRUE), path) ||
+    if (!identical(normalizePath(r$output_path, mustWork = TRUE), path) ||
         !identical(r$output_sha256, .sha256_c(path)) ||
         as.integer(r$expected_rows) != as.integer(r$actual_rows) ||
+        as.integer(r$expected_logical_rows) != as.integer(r$actual_logical_rows) ||
+        as.integer(r$expected_model_fit_attempts) != as.integer(r$actual_model_fit_attempts) ||
         !identical(r$unique_key_verdict, "PASS") ||
         as.integer(r$unlabelled_nonfinite_rows) != 0L ||
         isTRUE(as.logical(r$source_dirty))) {
@@ -891,6 +1082,14 @@ source("dev/isdm-bias-campaign.R")
     }
     if (!isTRUE(all.equal(as.numeric(r$beta0_shift), beta0_shift, tolerance = 0))) {
       .stopf("%s receipt does not use the frozen beta0_shift", block)
+    }
+    seeds <- if (identical(block, "G1")) seq_len(as.integer(decision$g1_seeds)) else 1:50
+    expected_config <- get(paste0("build_config_", tolower(block)))(
+      seeds, beta0_shift = beta0_shift
+    )
+    if (!identical(r$config_sha256, .object_sha256_c(expected_config)) ||
+        !identical(r$input_config_sha256, r$config_sha256)) {
+      .stopf("%s receipt does not match the frozen source-built configuration", block)
     }
     required_predecessors <- c(
       paste0("preflight:", preflight_hash),
@@ -988,6 +1187,7 @@ source("dev/isdm-bias-campaign.R")
   status <- .fit_status(all)
   omega <- .omega_contrast(paired)
   refutations <- .refutation_evidence(headline, c1c2, a56$summary, omega)
+  refutation_aggregate <- .refutation_aggregate(refutations)
 
   files <- c(
     "00-a1-ref-precision.csv", "01-primary-endpoint.csv",
@@ -995,7 +1195,8 @@ source("dev/isdm-bias-campaign.R")
     "04-c3-a5-a6-summary.csv", "05-a5-a6-fit-level.csv",
     "06-g2-g6-ladder-vs-ref.csv", "07-g5-a2-rank-d-sensitivity.csv",
     "08-refutation-evidence.csv", "09-fit-status-by-cell.csv",
-    "10-paired-fit-level.rds", "11-input-manifest.csv"
+    "10-paired-fit-level.rds", "11-input-manifest.csv",
+    "12-refutation-aggregate.csv"
   )
   if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
   if (!dir.exists(out_dir)) .stopf("Could not create output directory: %s", out_dir)
@@ -1039,17 +1240,23 @@ source("dev/isdm-bias-campaign.R")
     stringsAsFactors = FALSE
   )
   .write_csv(manifest, targets[[12]])
+  .write_csv(refutation_aggregate, targets[[13]])
   invisible(targets)
 }
 
 if (sys.nframe() == 0L) {
-  cli <- .parse_cli(commandArgs(trailingOnly = TRUE))
-  if (!isTRUE(cli$help)) {
+  args <- commandArgs(trailingOnly = TRUE)
+  if (identical(args, "--self-test-refutations")) {
+    .self_test_refutation_rules()
+  } else {
+    cli <- .parse_cli(args)
+    if (!isTRUE(cli$help)) {
     written <- .analyse_official(
       cli$pilot, cli$results, cli$out_dir, cli$receipts,
       cli$preflight_receipt, cli$pilot_compute_receipt,
       cli$pilot_decision_receipt, cli$calibration_receipt
     )
     cat("Official Phase C analysis wrote:\n", paste0("  ", written, collapse = "\n"), "\n", sep = "")
+    }
   }
 }

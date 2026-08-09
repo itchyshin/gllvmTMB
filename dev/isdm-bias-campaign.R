@@ -179,11 +179,123 @@ expected_fit_counts <- function() {
   max(1L, min(as.integer(cap), as.integer(detected) - 2L))
 }
 
+## Pure structural contract: no fitting.  This is deliberately run before
+## any preflight optimiser call so a rank or numerical failure is fail-closed.
+preflight_exact_geometry_c <- function(tolerance = 1e-9) {
+  cases <- expand.grid(
+    phi_bias = c(0, 0.15, 0.4),
+    rho = c(-1, -0.8, 0, 0.6, 0.8, 1),
+    omega = c(0, 0.5, 1),
+    KEEP.OUT.ATTRS = FALSE, stringsAsFactors = FALSE
+  )
+  checked <- lapply(seq_len(nrow(cases)), function(i) {
+    z <- cases[i, ]
+    df <- sim_phase_c(
+      seed = 7300L + i, n = 100, T_sp = 12,
+      phi_x = REF$phi_x, phi_bias = z$phi_bias,
+      kappa = 1, rho = z$rho, omega = z$omega, k = REF$k,
+      retain_streams = TRUE
+    )
+    geom <- attr(df, "bias_geometry")
+    gram_error <- max(abs(attr(df, "bias_component_gram") - diag(14L)))
+    errors <- c(gram_error = gram_error,
+                variance_error = geom$max_variance_error,
+                rho_error = geom$max_rho_error,
+                sharing_error = geom$max_sharing_error)
+    if (any(!is.finite(errors)) || max(errors) > tolerance) {
+      stop(sprintf(
+        "EXACT-GEOMETRY FAIL [phi_bias=%g rho=%g omega=%g]: max error %.3e",
+        z$phi_bias, z$rho, z$omega, max(errors)
+      ), call. = FALSE)
+    }
+    c(z, as.list(errors))
+  })
+
+  ## CRN and separated-range contract: changing kappa/rho/omega changes only
+  ## arithmetic; changing phi_bias leaves the complete design stream exact.
+  common <- list(seed = 991L, n = 100, T_sp = 12, phi_x = REF$phi_x,
+                 phi_bias = 0.15, kappa = 1, rho = 0.6, omega = 0.5,
+                 k = REF$k, retain_streams = TRUE)
+  a <- do.call(sim_phase_c, common)
+  b <- do.call(sim_phase_c, modifyList(common, list(kappa = 2, rho = -0.8, omega = 0)))
+  if (!identical(attr(a, "design_streams"), attr(b, "design_streams")) ||
+      !identical(attr(a, "bias_streams"), attr(b, "bias_streams"))) {
+    stop("EXACT-GEOMETRY FAIL: kappa/rho/omega changed an RNG stream", call. = FALSE)
+  }
+  p0 <- do.call(sim_phase_c, modifyList(common, list(phi_bias = 0)))
+  p4 <- do.call(sim_phase_c, modifyList(common, list(phi_bias = 0.4)))
+  if (!identical(attr(p0, "design_streams"), attr(p4, "design_streams"))) {
+    stop("EXACT-GEOMETRY FAIL: phi_bias changed a design RNG stream", call. = FALSE)
+  }
+
+  ## Paired acceptance/rejection checks for the rank guard.
+  accepted <- .exact_bias_basis(seq_len(16), seq_len(16)^2,
+                                cbind(seq_len(16)^3, seq_len(16)^4))
+  rejected <- tryCatch(
+    .exact_bias_basis(seq_len(5), seq_len(5)^2,
+                      cbind(seq_len(5)^3, seq_len(5)^4, seq_len(5)^5)),
+    error = identity
+  )
+  if (!is.list(accepted) || !inherits(rejected, "error") ||
+      !grepl("rank-impossible|rank check", conditionMessage(rejected))) {
+    stop("EXACT-GEOMETRY FAIL: rank guard acceptance/rejection pair failed", call. = FALSE)
+  }
+  invisible(do.call(rbind.data.frame, checked))
+}
+
+## Immutable structural input to the preflight receipt. This represents every
+## prospective pure-logic and fitting probe, including tolerances and the rank
+## acceptance/rejection pair; it is hashed before any outcome is interpreted.
+build_preflight_contract_c <- function() {
+  geometry_cases <- expand.grid(
+    phi_bias = c(0, 0.15, 0.4),
+    rho = c(-1, -0.8, 0, 0.6, 0.8, 1),
+    omega = c(0, 0.5, 1),
+    KEEP.OUT.ATTRS = FALSE, stringsAsFactors = FALSE
+  )
+  geometry_cases$seed <- 7300L + seq_len(nrow(geometry_cases))
+  list(
+    schema_version = "phase_c_preflight_contract_v1",
+    geometry_cases = geometry_cases,
+    geometry_n = 100L, geometry_T_sp = 12L, geometry_phi_x = REF$phi_x,
+    geometry_kappa = 1, geometry_k = REF$k, geometry_tolerance = 1e-9,
+    crn_probe = list(seed = 991L, n = 100L, T_sp = 12L,
+                     base = c(phi_bias = 0.15, kappa = 1, rho = 0.6, omega = 0.5),
+                     treatment = c(phi_bias = 0.15, kappa = 2, rho = -0.8, omega = 0),
+                     phi_bias_pair = c(0, 0.4)),
+    rank_probe = list(accepted_n = 16L, accepted_H_columns = 2L,
+                      rejected_n = 5L, rejected_H_columns = 3L),
+    ref_fit = c(as.list(REF), list(seed = 1L, stage = "preflight", block = "preflight")),
+    phi_stream_probe = list(seed = 7L, n = 100L, T_sp = 8L,
+                            phi_x = 0.15, phi_bias = c(0, 0.4),
+                            kappa = 1, rho = 0.6, omega = 0.5, k = 3L),
+    null_collapse_probe = list(seed = 11L, fit_seed = 500011L,
+                               n = 100L, T_sp = 8L,
+                               phi_x = 0.15, phi_bias = 0.15,
+                               kappa = 0, rho = 0.6, omega = 0.5, k = 3L),
+    null_recovery_seeds = 1:10,
+    smoke = list(seed = 42L, n = 100L, T_sp = 6L,
+                 kappa = c(0, 2), rho = 0, omega = 1,
+                 phi_x = REF$phi_x, phi_bias = REF$phi_bias, k = REF$k),
+    seed_inventory = sort(unique(c(1:10, 11L, 42L, 991L, 7301:7354, 500011L))),
+    seed_inventory_roles = paste(
+      "result=1:10,42;phi_stream=7;null_collapse_data=11;",
+      "crn=991;geometry=7301:7354;null_collapse_fit=500011", sep = ""
+    ),
+    expected_result_rows = 28L,
+    expected_model_fit_attempts = 30L
+  )
+}
+
 run_preflight_gates <- function(n_cores = 1L) {
   if (length(n_cores) != 1L || !is.finite(n_cores) || n_cores < 1L) n_cores <- 1L
   n_cores <- as.integer(n_cores)
   hr <- function(x) cat("\n", strrep("=", 12), " ", x, " ", strrep("=", 12), "\n", sep = "")
   truth <- species_truth(8, REF$beta0_shift)
+
+  hr("Phase C amendment 2: exact finite-sample geometry (no fitting)")
+  geometry_contract <- preflight_exact_geometry_c()
+  cat("Exact geometry cases passed:", nrow(geometry_contract), "\n")
 
   hr("P0-1/P0-2/P0-3/P0-6: one REF dataset, all six arms")
   df <- sim_phase_c(
@@ -207,7 +319,8 @@ run_preflight_gates <- function(n_cores = 1L) {
     scores[[a]] <- score_phase_c(
       fit, a, cfg, truth,
       realised_prevalence = attr(df, "realised_prevalence"),
-      bias_sharing = attr(df, "bias_sharing")
+      bias_sharing = attr(df, "bias_sharing"),
+      bias_geometry = attr(df, "bias_geometry"), fit_attempted = TRUE
     )
   }
 
@@ -310,7 +423,8 @@ run_preflight_gates <- function(n_cores = 1L) {
     score_phase_c(
       fit, "A5", null_cfg, truth, elapsed_sec = elapsed,
       realised_prevalence = attr(null_df, "realised_prevalence"),
-      bias_sharing = attr(null_df, "bias_sharing")
+      bias_sharing = attr(null_df, "bias_sharing"),
+      bias_geometry = attr(null_df, "bias_geometry"), fit_attempted = TRUE
     )
   }
   seeds <- 1:10
@@ -345,9 +459,12 @@ run_preflight_gates <- function(n_cores = 1L) {
   cat(sprintf("P0-5 timing: mean %.3f s/fit -> route %s\n", mean_sec, route))
 
   list(
+    geometry_contract = geometry_contract,
     ref_scores = do.call(rbind, scores),
     null_scores = null_res,
-    timing_route = route
+    timing_route = route,
+    logical_rows = length(scores) + nrow(null_res),
+    fit_attempts = length(ARMS) + 2L + length(seeds)
   )
 }
 
@@ -373,7 +490,8 @@ run_low_high_smoke <- function(seed = 42L, n = 100L, T_sp = 6L) {
   }
   cat("Paired high-minus-low D_bias (diagnostic only; one seed):\n")
   print(paired[, c("seed", "arm", "D_bias.0", "D_bias.2", "dD_bias")], row.names = FALSE)
-  list(results = res, paired = paired)
+  list(results = res, paired = paired,
+       logical_rows = nrow(res), fit_attempts = sum(res$fit_attempted))
 }
 
 ## =========================================================================
@@ -384,7 +502,8 @@ run_low_high_smoke <- function(seed = 42L, n = 100L, T_sp = 6L) {
   "dev/isdm-bias-campaign.R",
   "dev/isdm-phase-c-analyse-official.R",
   "dev/isdm-phase-c-pilot-decision.R",
-  "dev/isdm-phase-c-amendment-2026-08-08.md"
+  "dev/isdm-phase-c-amendment-2026-08-08.md",
+  "dev/isdm-phase-c-amendment-2-2026-08-09.md"
 )
 
 .instrument_id_c <- function(files = .phase_c_files) {
@@ -425,6 +544,23 @@ run_low_high_smoke <- function(seed = 42L, n = 100L, T_sp = 6L) {
   on.exit(unlink(path), add = TRUE)
   saveRDS(object, path, version = 3)
   .sha256_c(path)
+}
+
+.package_versions_c <- function() {
+  si <- utils::sessionInfo()
+  pkgs <- c(si$otherPkgs, si$loadedOnly)
+  versions <- vapply(pkgs, function(x) as.character(x$Version), character(1))
+  versions <- versions[!duplicated(names(versions))]
+  paste(sprintf("%s=%s", sort(names(versions)), versions[sort(names(versions))]),
+        collapse = ";")
+}
+
+.control_receipt_c <- function(control) {
+  if (is.null(control)) {
+    return(list(mode = "default", value = "gllvmTMBcontrol() package defaults"))
+  }
+  value <- paste(capture.output(dput(control)), collapse = " ")
+  list(mode = "explicit", value = value)
 }
 
 .write_receipt_c <- function(path, fields) {
@@ -475,6 +611,9 @@ run_low_high_smoke <- function(seed = 42L, n = 100L, T_sp = 6L) {
            "n", "T_sp", "d_fit", "k", "beta0_shift", "seed", "arm")
   if (!all(key %in% names(res))) stop(stage, " missing result key columns")
   if (anyDuplicated(res[key])) stop(stage, " contains duplicate result keys")
+  if (!"fit_attempted" %in% names(res) || any(res$fit_attempted %in% FALSE | is.na(res$fit_attempted))) {
+    stop(stage, " contains a DGP/pre-fit failure; only model-level fit errors may be retained")
+  }
   completed <- is.na(res$fit_error)
   total_rows <- completed & res$estimand == "total_sigma"
   rank_rows <- completed & res$estimand == "loadings_only_rank_d"
@@ -541,52 +680,129 @@ run_grid_c_resumable <- function(config_df, output, n_cores, chunk_size = n_core
 
 .write_compute_receipt_c <- function(path, stage, output, expected_rows, actual_rows,
                                      cores, started, ended, status = "PASS",
-                                     config = NULL, results = NULL,
-                                     predecessor_hashes = "", g1_seeds = "") {
+                                     config = NULL, config_metadata = config, results = NULL,
+                                     predecessor_hashes = "", predecessor_paths = "",
+                                     g1_seeds = "", control = NULL,
+                                     expected_fit_attempts = expected_rows,
+                                     actual_fit_attempts = NULL) {
   info <- file.info(output)
   parts_dir <- paste0(output, ".parts")
   part_paths <- sort(list.files(parts_dir, pattern = "[.]rds$", full.names = TRUE))
   part_hashes <- if (length(part_paths)) {
     paste(sprintf("%s:%s", basename(part_paths), vapply(part_paths, .sha256_c, character(1))), collapse = ";")
   } else ""
+  control_record <- .control_receipt_c(control)
+  is_campaign <- grepl("^g[1-6]$", stage)
+  receipt_stage <- if (is_campaign) "campaign" else if (identical(stage, "pilot")) "pilot_v2" else stage
+  receipt_block <- if (is_campaign) toupper(stage) else if (identical(stage, "preflight")) {
+    "preflight"
+  } else if (!is.null(config_metadata)) {
+    paste(unique(config_metadata$block), collapse = ",")
+  } else stage
+  if (is.null(actual_fit_attempts)) {
+    actual_fit_attempts <- if (!is.null(results) && "fit_attempted" %in% names(results)) {
+      sum(results$fit_attempted %in% TRUE, na.rm = TRUE)
+    } else NA_integer_
+  }
   fields <- list(
     receipt_type = paste0(stage, "_compute"), status = status,
-    stage = stage, source_sha = .git_sha_c(), source_branch = .git_branch_c(),
+    schema_version = "phase_c_compute_v2",
+    stage = receipt_stage, block = receipt_block,
+    source_sha = .git_sha_c(), source_branch = .git_branch_c(),
     source_dirty = .git_dirty_c(), instrument_id = .instrument_id_c(),
+    instrument_file_paths = paste(normalizePath(.phase_c_files), collapse = ";"),
+    instrument_file_sha256 = paste(sprintf(
+      "%s:%s", basename(.phase_c_files),
+      vapply(.phase_c_files, .sha256_c, character(1))
+    ), collapse = ";"),
     command = paste(commandArgs(), collapse = " "), host = Sys.info()[["nodename"]],
-    r_version = R.version.string, cores = cores,
+    r_version = R.version.string, session_platform = R.version$platform,
+    package_versions = .package_versions_c(),
+    optimizer_control_mode = control_record$mode,
+    optimizer_control = control_record$value,
+    cores = cores,
     backend = if (.Platform$OS.type == "windows" || cores == 1L) "serial" else "mclapply",
     started_utc = format(started, tz = "UTC", usetz = TRUE),
     ended_utc = format(ended, tz = "UTC", usetz = TRUE),
     expected_rows = expected_rows, actual_rows = actual_rows,
-    expected_logical_rows = expected_rows, expected_optimizer_calls = expected_rows,
+    expected_logical_rows = expected_rows, actual_logical_rows = actual_rows,
+    expected_optimizer_calls = expected_fit_attempts,
+    actual_optimizer_calls = "NOT_INSTRUMENTED_MODEL_FRONTEND_ATTEMPTS_RECORDED_SEPARATELY",
+    expected_model_fit_attempts = expected_fit_attempts,
+    actual_model_fit_attempts = actual_fit_attempts,
+    input_config_sha256 = if (is.null(config)) "" else .object_sha256_c(config),
+    input_predecessor_paths = predecessor_paths,
+    input_predecessor_sha256 = predecessor_hashes,
     output_path = normalizePath(output), output_bytes = info$size,
     output_sha256 = .sha256_c(output),
     resume_parts_dir = if (dir.exists(parts_dir)) normalizePath(parts_dir) else "",
-    resume_part_count = length(part_paths), resume_part_hashes = part_hashes,
+    resume_part_count = length(part_paths),
+    resume_part_paths = if (length(part_paths)) paste(normalizePath(part_paths), collapse = ";") else "",
+    resume_part_hashes = part_hashes,
+    predecessor_receipt_paths = predecessor_paths,
     predecessor_receipt_hashes = predecessor_hashes, g1_seeds = g1_seeds
   )
   if (!is.null(config)) {
     fields$config_sha256 <- .object_sha256_c(config)
-    fields$seed_min <- min(config$seed); fields$seed_max <- max(config$seed)
-    fields$seed_count <- length(unique(config$seed))
-    fields$phi_x <- paste(sort(unique(config$phi_x)), collapse = ",")
-    fields$phi_bias <- paste(sort(unique(config$phi_bias)), collapse = ",")
-    fields$beta0_shift <- paste(unique(config$beta0_shift), collapse = ",")
-    fields$arms <- paste(ARMS, collapse = ",")
-    fields$null_dataset_rows <- sum(config$kappa == 0)
+    if (!is.null(config_metadata)) {
+      fields$seed_min <- min(config_metadata$seed)
+      fields$seed_max <- max(config_metadata$seed)
+      fields$seed_count <- length(unique(config_metadata$seed))
+      fields$seed_list <- paste(sort(unique(config_metadata$seed)), collapse = ",")
+      fields$phi_x <- paste(sort(unique(config_metadata$phi_x)), collapse = ",")
+      fields$phi_bias <- paste(sort(unique(config_metadata$phi_bias)), collapse = ",")
+      fields$beta0_shift <- paste(unique(config_metadata$beta0_shift), collapse = ",")
+      fields$arms <- paste(ARMS, collapse = ",")
+      fields$null_dataset_rows <- sum(config_metadata$kappa == 0)
+    }
+    if (is.list(config) && !is.data.frame(config) && !is.null(config$seed_inventory)) {
+      fields$seed_min <- min(config$seed_inventory)
+      fields$seed_max <- max(config$seed_inventory)
+      fields$seed_count <- length(unique(config$seed_inventory))
+      fields$seed_list <- paste(sort(unique(config$seed_inventory)), collapse = ",")
+      fields$seed_inventory_roles <- config$seed_inventory_roles
+    }
   }
   if (!is.null(results)) {
-    fields$unique_key_verdict <- if (anyDuplicated(results[c(
+    if (is.null(config) && "seed" %in% names(results)) {
+      fields$seed_count <- length(unique(results$seed))
+      fields$seed_list <- paste(sort(unique(results$seed)), collapse = ",")
+    }
+    result_key <- c(
       "stage", "block", "kappa", "rho", "omega", "phi_x", "phi_bias",
       "n", "T_sp", "d_fit", "k", "beta0_shift", "seed", "arm"
-    )])) "FAIL" else "PASS"
+    )
+    fields$unique_key_verdict <- if (anyDuplicated(results[result_key])) "FAIL" else "PASS"
+    fields$unique_logical_rows <- nrow(unique(results[result_key]))
+    null <- results[results$kappa == 0, , drop = FALSE]
+    null_key <- c("stage", "seed", "arm", "n", "T_sp", "d_fit", "k")
+    fields$null_logical_rows <- nrow(null)
+    fields$null_key_unique_rows <- nrow(unique(null[null_key]))
+    fields$null_key_duplicate_rows <- nrow(null) - nrow(unique(null[null_key]))
+    null_ids <- if (nrow(null)) do.call(paste, c(null[null_key], sep = "|")) else character()
+    biased <- results$kappa > 0
+    biased_ids <- if (any(biased)) do.call(paste, c(results[biased, null_key], sep = "|")) else character()
+    within_output_pairs <- sum(biased_ids %in% null_ids)
+    external_g1_pairs <- is_campaign && identical(toupper(stage), "G6") &&
+      grepl("(^|;)g1:", predecessor_hashes)
+    fields$paired_biased_logical_rows_in_output <- within_output_pairs
+    fields$paired_biased_logical_rows <- if (external_g1_pairs) sum(biased) else within_output_pairs
+    fields$unpaired_biased_logical_rows <- if (external_g1_pairs) 0L else
+      sum(!biased_ids %in% null_ids)
+    fields$pair_source <- if (external_g1_pairs) "G1 predecessor null" else "same output"
+    fields$a6_logical_rows <- sum(results$arm == "A6")
     fields$a6_null_collapsed_rows <- sum(results$kappa == 0 & results$arm == "A6" & results$oracle_collapsed, na.rm = TRUE)
     fields$fit_error_rows <- sum(!is.na(results$fit_error))
-    fields$unlabelled_nonfinite_rows <- sum(
+    fields$nonfinite_total_sigma_rows <- sum(
       is.na(results$fit_error) & results$estimand == "total_sigma" &
         (!is.finite(results$D_bias) | !is.finite(results$D_rmse))
     )
+    fields$nonfinite_rank_d_rows <- sum(
+      is.na(results$fit_error) & results$estimand == "loadings_only_rank_d" &
+        (!is.finite(results$rank_d_D_bias) | !is.finite(results$rank_d_D_rmse))
+    )
+    fields$unlabelled_nonfinite_rows <- fields$nonfinite_total_sigma_rows +
+      fields$nonfinite_rank_d_rows
   }
   .write_receipt_c(path, fields)
 }
@@ -654,7 +870,9 @@ if (sys.nframe() == 0L) {
   dir.create(dirname(output), recursive = TRUE, showWarnings = FALSE)
   beta0_shift <- 0
   predecessor_hashes <- ""
+  predecessor_paths <- ""
   chosen_g1_seeds <- ""
+  fit_control <- NULL
 
   if (stage == "preflight") {
     started <- Sys.time()
@@ -663,19 +881,38 @@ if (sys.nframe() == 0L) {
     payload <- list(gates = gates, smoke = smoke)
     saveRDS(payload, output)
     ended <- Sys.time()
-    .write_compute_receipt_c(receipt, "preflight", output, 1L, 1L, cores, started, ended)
+    preflight_results <- rbind(gates$ref_scores, gates$null_scores, smoke$results)
+    preflight_config <- unique(preflight_results[c(
+      "stage", "block", "seed", "kappa", "rho", "omega", "phi_x",
+      "phi_bias", "n", "T_sp", "d_fit", "k", "beta0_shift"
+    )])
+    .write_compute_receipt_c(
+      receipt, "preflight", output,
+      expected_rows = gates$logical_rows + smoke$logical_rows,
+      actual_rows = nrow(preflight_results), cores = cores,
+      started = started, ended = ended,
+      config = build_preflight_contract_c(), config_metadata = preflight_config,
+      results = preflight_results, control = fit_control,
+      expected_fit_attempts = gates$fit_attempts + smoke$fit_attempts,
+      actual_fit_attempts = gates$fit_attempts + smoke$fit_attempts
+    )
     quit(status = 0)
   }
 
   .require_receipt_c(opt$preflight_receipt, "preflight_compute")
   if (stage == "pilot") {
     predecessor_hashes <- paste0("preflight:", .sha256_c(opt$preflight_receipt))
+    predecessor_paths <- paste0("preflight:", normalizePath(opt$preflight_receipt))
     if (!is.null(opt$calibration_receipt)) {
       calibration <- .require_receipt_c(opt$calibration_receipt, "pilot_calibration")
       beta0_shift <- as.numeric(calibration$beta0_shift)
       predecessor_hashes <- paste(
         predecessor_hashes,
         paste0("calibration:", .sha256_c(opt$calibration_receipt)), sep = ";"
+      )
+      predecessor_paths <- paste(
+        predecessor_paths,
+        paste0("calibration:", normalizePath(opt$calibration_receipt)), sep = ";"
       )
     } else if (!is.null(opt$beta0_shift) && as.numeric(opt$beta0_shift) != 0) {
       stop("A non-zero pilot beta0 shift requires --calibration-receipt=")
@@ -692,6 +929,10 @@ if (sys.nframe() == 0L) {
       "preflight:", .sha256_c(opt$preflight_receipt),
       ";pilot_decision:", .sha256_c(opt$pilot_receipt)
     )
+    predecessor_paths <- paste0(
+      "preflight:", normalizePath(opt$preflight_receipt),
+      ";pilot_decision:", normalizePath(opt$pilot_receipt)
+    )
     if (stage == "g1") {
       g1_seeds <- as.integer(opt$g1_seeds %||% stop("--g1-seeds= is required"))
       if (!g1_seeds %in% c(100L, 200L) || g1_seeds != as.integer(decision$g1_seeds)) {
@@ -705,6 +946,9 @@ if (sys.nframe() == 0L) {
         predecessor_hashes <- paste(
           predecessor_hashes, paste0("g1:", .sha256_c(opt$g1_receipt)), sep = ";"
         )
+        predecessor_paths <- paste(
+          predecessor_paths, paste0("g1:", normalizePath(opt$g1_receipt)), sep = ";"
+        )
       }
       cfg <- get(paste0("build_config_", stage))(1:50, beta0_shift = beta0_shift)
     }
@@ -715,13 +959,16 @@ if (sys.nframe() == 0L) {
               stage, nrow(cfg), length(ARMS), expected_rows))
   started <- Sys.time()
   res <- run_grid_c_resumable(cfg, output = output, n_cores = cores,
-                              chunk_size = as.integer(opt$chunk_size %||% cores))
+                              chunk_size = as.integer(opt$chunk_size %||% cores),
+                              control = fit_control)
   .assert_unique_results_c(res, expected_rows, stage)
   saveRDS(res, output)
   ended <- Sys.time()
   .write_compute_receipt_c(
     receipt, stage, output, expected_rows, nrow(res), cores, started, ended,
     config = cfg, results = res, predecessor_hashes = predecessor_hashes,
-    g1_seeds = chosen_g1_seeds
+    predecessor_paths = predecessor_paths, g1_seeds = chosen_g1_seeds,
+    control = fit_control, expected_fit_attempts = expected_rows,
+    actual_fit_attempts = sum(res$fit_attempted %in% TRUE, na.rm = TRUE)
   )
 }

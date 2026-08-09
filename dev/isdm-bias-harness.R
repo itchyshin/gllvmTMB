@@ -121,6 +121,96 @@ species_truth <- function(T_sp, beta0_shift = 0) {
   as.numeric(scale(raw))
 }
 
+## Exact finite-sample geometry repair (Phase C amendment 2).
+##
+## Symbolic -> implementation alignment:
+##   x_i       environmental component       unchanged standardised GP x
+##   g_i       shared bias component          first whitened column
+##   h_ij      species-specific component     remaining whitened columns
+##   B_ij      kappa[rho*x + sqrt(1-rho^2){sqrt(omega)g+
+##                    sqrt(1-omega)h_j}]       Bmat below
+##   truth     Var(B_j)=kappa^2, cor(B_j,x)=rho,
+##             cor(B_j,B_k)=rho^2+(1-rho^2)omega
+##
+## The projection and symmetric whitening are deterministic arithmetic after
+## the original draws.  They therefore preserve RNG seed streams and draw
+## counts.  phi_bias remains the sole kernel parameter for every raw bias
+## field; the finite-sample projection/whitening is the declared repair, not a
+## claim that the transformed columns are untouched GP realisations.
+.exact_bias_basis <- function(x, g, H, rank_tol = 1e-10,
+                              geometry_tol = 1e-10) {
+  x <- as.numeric(x)
+  H <- as.matrix(H)
+  Z <- cbind(g = as.numeric(g), H)
+  n <- length(x)
+  if (nrow(Z) != n || n < 3L || any(!is.finite(c(x, Z)))) {
+    stop("Exact bias geometry requires finite, conformable fields and n >= 3", call. = FALSE)
+  }
+  if (n - 1L < ncol(Z) + 1L) {
+    stop("Exact bias geometry is rank-impossible: n - 1 must be at least T_sp + 2", call. = FALSE)
+  }
+
+  x <- x - mean(x)
+  sx <- stats::sd(x)
+  if (!is.finite(sx) || sx <= sqrt(.Machine$double.eps)) {
+    stop("Exact bias geometry failed: x has zero or non-finite sample variance", call. = FALSE)
+  }
+  x <- x / sx
+  Z <- sweep(Z, 2L, colMeans(Z), `-`)
+  ## x'x = n-1 because x has sample variance one.
+  Z <- Z - tcrossprod(x, as.numeric(crossprod(x, Z)) / (n - 1))
+  gram <- crossprod(Z) / (n - 1)
+  ee <- tryCatch(eigen(gram, symmetric = TRUE), error = function(e) e)
+  if (inherits(ee, "condition") || any(!is.finite(ee$values))) {
+    stop("Exact bias geometry failed: non-finite eigendecomposition", call. = FALSE)
+  }
+  cutoff <- rank_tol * max(1, max(ee$values))
+  if (min(ee$values) <= cutoff) {
+    stop(sprintf("Exact bias geometry failed rank check: min eigenvalue %.3e <= %.3e",
+                 min(ee$values), cutoff), call. = FALSE)
+  }
+  inv_root <- ee$vectors %*% diag(1 / sqrt(ee$values), nrow = length(ee$values)) %*%
+    t(ee$vectors)
+  Q <- Z %*% inv_root
+  colnames(Q) <- colnames(Z)
+  realised_gram <- crossprod(cbind(x = x, Q)) / (n - 1)
+  max_error <- max(abs(realised_gram - diag(ncol(realised_gram))))
+  if (!is.finite(max_error) || max_error > geometry_tol) {
+    stop(sprintf("Exact bias geometry failed numerical check: max Gram error %.3e > %.3e",
+                 max_error, geometry_tol), call. = FALSE)
+  }
+  list(x = x, g = Q[, 1L], H = Q[, -1L, drop = FALSE],
+       component_gram = realised_gram, max_gram_error = max_error,
+       min_residual_eigenvalue = min(ee$values))
+}
+
+.bias_geometry_diagnostics <- function(Bmat, x, kappa, rho, omega) {
+  target_sharing <- rho^2 + (1 - rho^2) * omega
+  if (kappa == 0) {
+    realised_rho <- rep(NA_real_, ncol(Bmat))
+    realised_var <- rep(0, ncol(Bmat))
+    realised_sharing <- matrix(NA_real_, ncol(Bmat), ncol(Bmat))
+  } else {
+    realised_rho <- as.numeric(cor(Bmat, x))
+    realised_var <- apply(Bmat, 2L, stats::var)
+    realised_sharing <- stats::cor(Bmat)
+  }
+  off <- realised_sharing[upper.tri(realised_sharing)]
+  list(
+    theoretical_variance = kappa^2,
+    realised_variance = realised_var,
+    theoretical_rho = rho,
+    realised_rho = realised_rho,
+    theoretical_sharing = target_sharing,
+    realised_sharing = realised_sharing,
+    realised_sharing_offdiag = off,
+    max_variance_error = if (kappa == 0) 0 else max(abs(realised_var - kappa^2)),
+    max_rho_error = if (kappa == 0) NA_real_ else max(abs(realised_rho - rho)),
+    max_sharing_error = if (kappa == 0 || !length(off)) NA_real_ else
+      max(abs(off - target_sharing))
+  )
+}
+
 ## =========================================================================
 ## D1-D9 -- sim_phase_c(): the data-generating mechanism
 ## =========================================================================
@@ -150,7 +240,10 @@ sim_phase_c <- function(seed, n = 400, T_sp = 8, d_true = 2,
                          kappa = 1, rho = 0.6, omega = 0.5, k = 3,
                          beta0_shift = 0, retain_streams = FALSE,
                          truth = species_truth(T_sp, beta0_shift)) {
-  stopifnot(k >= 1, n > 0, T_sp == truth$T_sp)
+  stopifnot(k >= 1, n > 0, T_sp == truth$T_sp,
+            is.finite(kappa), kappa >= 0,
+            is.finite(rho), abs(rho) <= 1,
+            is.finite(omega), omega >= 0, omega <= 1)
   Lambda <- truth$Lambda; psi <- truth$psi; beta <- truth$beta
   beta0 <- truth$beta0; a0 <- truth$a0
   sp_names <- sprintf("sp%d", seq_len(T_sp))
@@ -158,6 +251,7 @@ sim_phase_c <- function(seed, n = 400, T_sp = 8, d_true = 2,
   ## ---- D8 design stream: x; u; eps; A; U_po; U_pa, in this fixed order ----
   set.seed(seed)
   x <- .gp_field(n, phi_x)                        # x field (first draw)
+  x_raw <- x
   u <- matrix(stats::rnorm(n * d_true), n, d_true) # u (n x d)
   eps <- matrix(stats::rnorm(n * T_sp), n, T_sp)   # eps (n x T)
   eps <- sweep(eps, 2, sqrt(psi), `*`)
@@ -170,6 +264,12 @@ sim_phase_c <- function(seed, n = 400, T_sp = 8, d_true = 2,
   g <- .gp_field(n, phi_bias)
   H <- matrix(NA_real_, n, T_sp)
   for (j in seq_len(T_sp)) H[, j] <- .gp_field(n, phi_bias)
+  g_raw <- g; H_raw <- H
+
+  ## Deterministic finite-sample repair: x, g, and every h_j are mean-zero,
+  ## sample-variance one and mutually sample-orthogonal.  No RNG calls occur.
+  bias_basis <- .exact_bias_basis(x, g, H)
+  x <- bias_basis$x; g <- bias_basis$g; H <- bias_basis$H
 
   ## ---- D4 bias field: kappa, rho, omega applied as pure arithmetic -------
   ## (this is the ONLY place kappa/rho/omega enter -- changing them never
@@ -177,6 +277,7 @@ sim_phase_c <- function(seed, n = 400, T_sp = 8, d_true = 2,
   ## kappa = 0 pairing exact, D8 point 3)
   Bmat <- kappa * (rho * x + sqrt(1 - rho^2) *
                      (sqrt(omega) * g + sqrt(1 - omega) * H))
+  bias_geometry <- .bias_geometry_diagnostics(Bmat, x, kappa, rho, omega)
 
   ## ---- D2 ecological process ----------------------------------------------
   xi <- u %*% t(Lambda) + eps                                # n x T
@@ -218,12 +319,21 @@ sim_phase_c <- function(seed, n = 400, T_sp = 8, d_true = 2,
   attr(df, "beta0_shift") <- beta0_shift
   attr(df, "truth") <- truth
   attr(df, "realised_prevalence") <- mean(p_pa)
-  attr(df, "bias_sharing") <- rho^2 + (1 - rho^2) * omega
+  ## bias_sharing is retained as the legacy theoretical field.  New code uses
+  ## the explicitly named theoretical and realised diagnostics below.
+  attr(df, "bias_sharing") <- bias_geometry$theoretical_sharing
+  attr(df, "bias_sharing_theoretical") <- bias_geometry$theoretical_sharing
+  attr(df, "bias_rho_theoretical") <- bias_geometry$theoretical_rho
+  attr(df, "bias_variance_theoretical") <- bias_geometry$theoretical_variance
+  attr(df, "bias_geometry") <- bias_geometry
+  attr(df, "bias_component_gram") <- bias_basis$component_gram
   if (isTRUE(retain_streams)) {
     attr(df, "design_streams") <- list(
-      x = x, u = u, eps = eps, A = A, U_po = U_po, U_pa = U_pa
+      x = x_raw, u = u, eps = eps, A = A, U_po = U_po, U_pa = U_pa
     )
-    attr(df, "bias_streams") <- list(g = g, H = H)
+    ## Preserve the exact pre-repair draws under the historical attribute.
+    attr(df, "bias_streams") <- list(g = g_raw, H = H_raw)
+    attr(df, "bias_basis") <- list(g = g, H = H)
   }
   df
 }
@@ -317,7 +427,8 @@ fit_arm <- function(df, arm = c("A1", "A2", "A3", "A4", "A5", "A6"),
 #' @param elapsed_sec fit wall time in seconds (caller times it)
 #' @param realised_prevalence,bias_sharing pulled from sim_phase_c()'s df attrs
 score_phase_c <- function(fit, arm, cfg, truth, elapsed_sec = NA_real_,
-                           realised_prevalence = NA_real_, bias_sharing = NA_real_) {
+                           realised_prevalence = NA_real_, bias_sharing = NA_real_,
+                           bias_geometry = NULL, fit_attempted = TRUE) {
   Lambda_true <- truth$Lambda; psi_true <- truth$psi; beta_true <- truth$beta
   Tn <- nrow(Lambda_true)
   Sigma_true <- Lambda_true %*% t(Lambda_true) + diag(psi_true, Tn)
@@ -331,7 +442,18 @@ score_phase_c <- function(fit, arm, cfg, truth, elapsed_sec = NA_real_,
     n = cfg$n, T_sp = cfg$T_sp, d_fit = cfg$d_fit, k = cfg$k,
     beta0_shift = cfg$beta0_shift,
     seed = cfg$seed, arm = arm, elapsed_sec = elapsed_sec,
-    realised_prevalence = realised_prevalence, bias_sharing = bias_sharing,
+    realised_prevalence = realised_prevalence,
+    bias_sharing = bias_sharing,
+    theoretical_bias_rho = if (is.null(bias_geometry)) cfg$rho else bias_geometry$theoretical_rho,
+    theoretical_bias_sharing = if (is.null(bias_geometry)) bias_sharing else bias_geometry$theoretical_sharing,
+    theoretical_bias_variance = if (is.null(bias_geometry)) cfg$kappa^2 else bias_geometry$theoretical_variance,
+    realised_bias_rho_mean = if (is.null(bias_geometry)) NA_real_ else mean(bias_geometry$realised_rho),
+    realised_bias_rho_max_abs_error = if (is.null(bias_geometry)) NA_real_ else bias_geometry$max_rho_error,
+    realised_bias_sharing_mean = if (is.null(bias_geometry)) NA_real_ else mean(bias_geometry$realised_sharing_offdiag),
+    realised_bias_sharing_max_abs_error = if (is.null(bias_geometry)) NA_real_ else bias_geometry$max_sharing_error,
+    realised_bias_variance_mean = if (is.null(bias_geometry)) NA_real_ else mean(bias_geometry$realised_variance),
+    realised_bias_variance_max_abs_error = if (is.null(bias_geometry)) NA_real_ else bias_geometry$max_variance_error,
+    fit_attempted = isTRUE(fit_attempted),
     fit_error = NA_character_,
     convergence = NA_integer_, pdHess = NA, diag_B_skip = NA_integer_,
     oracle_collapsed = NA, estimand = "total_sigma",
@@ -469,10 +591,13 @@ run_dataset_c <- function(cfg, control = NULL) {
     error = function(e) e
   )
   if (inherits(df, "condition")) {
-    rows <- lapply(ARMS, function(a) score_phase_c(df, a, cfg, truth))
+    rows <- lapply(ARMS, function(a) score_phase_c(
+      df, a, cfg, truth, fit_attempted = FALSE
+    ))
     return(do.call(rbind, rows))
   }
   rp <- attr(df, "realised_prevalence"); bs <- attr(df, "bias_sharing")
+  bg <- attr(df, "bias_geometry")
   rows <- lapply(ARMS, function(a) {
     fit_seed <- cfg$seed + match(a, ARMS) * 100000L
     if (cfg$kappa == 0 && a == "A6") fit_seed <- cfg$seed + match("A5", ARMS) * 100000L
@@ -483,10 +608,12 @@ run_dataset_c <- function(cfg, control = NULL) {
     el <- as.numeric(Sys.time() - t0, units = "secs")
     tryCatch(
       score_phase_c(fit, a, cfg, truth, elapsed_sec = el,
-                    realised_prevalence = rp, bias_sharing = bs),
+                    realised_prevalence = rp, bias_sharing = bs,
+                    bias_geometry = bg, fit_attempted = TRUE),
       error = function(e) score_phase_c(
         e, a, cfg, truth, elapsed_sec = el,
-        realised_prevalence = rp, bias_sharing = bs
+        realised_prevalence = rp, bias_sharing = bs,
+        bias_geometry = bg, fit_attempted = TRUE
       )
     )
   })
@@ -513,9 +640,8 @@ run_grid_c <- function(config_df, control = NULL, n_cores = 1L,
 ## Bias-correlation control check (required by the task brief -- PRINT it)
 ## =========================================================================
 
-#' Verifies, by direct measurement on simulated data (no fitting), that:
-##   (a) cor(b_ij, x_i) ~= rho for every species, at rho = 0 and rho = 0.6;
-##   (b) mean pairwise cor(b_ij, b_ik) ~= rho^2 + (1-rho^2)*omega (D4 table).
+#' Verifies, by direct measurement on simulated data (no fitting), the exact
+## finite-sample variance, x-correlation, and sharing identities.
 verify_bias_control <- function(seed = 1, n = 400, T_sp = 8,
                                 phi_x = 0.15, phi_bias = 0.15,
                                 kappa = 1, k = 3) {
@@ -540,9 +666,11 @@ verify_bias_control <- function(seed = 1, n = 400, T_sp = 8,
       expected_sharing <- rho^2 + (1 - rho^2) * omega
       cat(sprintf("%-6.2f %-7.2f %18.4f %18.2f %20.4f %20.4f\n",
                   rho, omega, mean(cs), rho, mean(offpairs), expected_sharing))
-      out[[sprintf("rho%.2f_omega%.2f", rho, omega)]] <- list(
-        rho = rho, omega = omega, mean_cor_bx = mean(cs),
-        mean_cor_bb = mean(offpairs), expected_sharing = expected_sharing
+      geom <- attr(df, "bias_geometry")
+      out[[sprintf("rho%.2f_omega%.2f", rho, omega)]] <- c(
+        list(rho = rho, omega = omega, mean_cor_bx = mean(cs),
+             mean_cor_bb = mean(offpairs), expected_sharing = expected_sharing),
+        geom[c("max_variance_error", "max_rho_error", "max_sharing_error")]
       )
     }
   }

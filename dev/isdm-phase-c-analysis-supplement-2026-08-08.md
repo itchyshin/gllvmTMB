@@ -22,6 +22,7 @@ the fixed official outputs and opens only these basenames:
 - `09-fit-status-by-cell.csv`
 - `10-paired-fit-level.rds`
 - `11-input-manifest.csv`
+- `12-refutation-aggregate.csv`
 
 It never follows the raw paths recorded inside the manifest. Paths or manifests marked C-lite,
 old, smoke, or preflight are rejected. The manifest must contain exactly corrected `pilot_v2/G1`
@@ -32,6 +33,9 @@ headline set.
 All supplement outputs go to a separately supplied external directory. Existing target files are
 never overwritten. A content receipt records the size and SHA-256 of every consumed official-analysis
 artifact, and the official input manifest is copied unchanged for provenance.
+The official R1-R5 aggregate is also copied unchanged as
+`09-refutation-aggregate-copy.csv`, keeping the five refutation verdicts and the overall
+`H_sink` verdict explicit beside the prediction ledger rather than inferring them from figures.
 
 ## Frozen rules versus diagnostics
 
@@ -45,6 +49,10 @@ The claim ledger uses four distinct labels:
 - `FROZEN_DIAGNOSTIC_NOT_EQUIVALENCE` or `DESCRIPTIVE_UNRESOLVED`: being within 3 MCSE of zero is not
   an equivalence test, and “diagonal metrics rise sharply” has no frozen numerical boundary. These
   conditions remain visibly unresolved rather than receiving an invented pass.
+
+Every reportability comparison is strict about its inputs: the estimate and its SE or MCSE must
+both be finite and strictly positive before `estimate >= 3 * uncertainty` can be true. In
+particular, zero divided by zero is never reportable support.
 
 The evidence calculations are:
 
@@ -60,6 +68,19 @@ The evidence calculations are:
    result as a zero diagnostic, not equivalence; at rho 0.6, report a seed-fixed kappa slope.
 6. **P-rank:** form the same-seed G6 `phi_bias = 0.4` minus `phi_bias = 0` contrast. Direction remains
    the scientific magnitude criterion, while support is labeled reportable only at `>= 3 MCSE`.
+
+For each dose or separation trend, the kappa point estimate is the ordinary least-squares
+coefficient from `y ~ kappa + factor(seed)`, but its uncertainty is a one-way seed-cluster-robust
+CR1 sandwich SE. With model matrix `X`, OLS residual vector `u`, `G` seed clusters, `N` rows, and
+`K` fitted coefficients, define the cluster score `s_g = X_g' u_g`. The covariance is
+
+`V_CR1 = [G/(G-1)] [(N-1)/(N-K)] (X'X)^(-1) [sum_g s_g s_g'] (X'X)^(-1)`.
+
+The reported SE is the square root of the kappa diagonal of `V_CR1`. The calculation fails closed
+unless `G > 1`, `N > K`, the model matrix is full rank, and the variance is finite and nonnegative.
+Before a per-seed Spearman correlation is calculated, both kappa and the outcome must vary within
+that seed. Invariant inputs receive status `UNDEFINED_ZERO_VARIANCE`, contribute to the explicit
+undefined count, and are never treated as positive correlations.
 
 Every numerical table retains all-completed and both-`pdHess` summaries where the underlying
 official paired rows permit them. The dose and separation trend tables likewise report the
@@ -83,5 +104,8 @@ is written to README, NEWS, pkgdown, the validation-debt register, or any public
 
 `--self-test` constructs a wholly synthetic official-output bundle under `/private/tmp`, runs the
 complete supplement, and requires every CSV, PDF, PNG, receipt, and copied manifest to exist and be
-non-empty. It uses no package fit and no scientific result. Synthetic artifacts are retained under
+non-empty. It independently reconstructs the CR1 matrix as a manual oracle, checks that zero/zero
+cannot be reportable, forces an invariant-outcome Spearman case, and checks that rank and dose
+evidence agree with their ledger verdicts. It uses no package fit and no scientific result.
+Synthetic artifacts are retained under
 the printed `/private/tmp` directory so the test does not silently delete evidence.

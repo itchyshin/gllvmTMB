@@ -97,6 +97,35 @@
   invisible(TRUE)
 }
 
+.receipt_true <- function(value, label) {
+  if (length(value) != 1L || !tolower(value) %in% c("true", "1")) .stopf("%s must be true", label)
+  invisible(TRUE)
+}
+
+.manifest <- function(value, label, allow_empty = FALSE) {
+  if (length(value) != 1L || is.na(value)) .stopf("%s is malformed", label)
+  if (!nzchar(value)) {
+    if (allow_empty) return(character())
+    .stopf("%s is empty", label)
+  }
+  specs <- strsplit(value, ";", fixed = TRUE)[[1L]]
+  parsed <- lapply(specs, function(spec) {
+    at <- regexpr(":", spec, fixed = TRUE)
+    if (at < 2L || at == nchar(spec)) .stopf("Malformed entry in %s", label)
+    c(name = substring(spec, 1L, at - 1L), value = substring(spec, at + 1L))
+  })
+  keys <- vapply(parsed, `[[`, character(1), "name")
+  values <- vapply(parsed, `[[`, character(1), "value")
+  if (anyDuplicated(keys)) .stopf("%s has duplicate names", label)
+  stats::setNames(values, keys)
+}
+
+.exact_manifest <- function(value, expected, label, allow_empty = FALSE) {
+  actual <- .manifest(value, label, allow_empty = allow_empty)
+  if (!identical(actual, expected)) .stopf("%s mismatch", label)
+  invisible(TRUE)
+}
+
 .git_value <- function(args, label) {
   out <- suppressWarnings(system2("git", args, stdout = TRUE, stderr = TRUE))
   status <- attr(out, "status")
@@ -110,7 +139,8 @@
   "dev/isdm-bias-campaign.R",
   "dev/isdm-phase-c-analyse-official.R",
   "dev/isdm-phase-c-pilot-decision.R",
-  "dev/isdm-phase-c-amendment-2026-08-08.md"
+  "dev/isdm-phase-c-amendment-2026-08-08.md",
+  "dev/isdm-phase-c-amendment-2-2026-08-09.md"
 )
 
 .instrument_id_at <- function(sha) {
@@ -129,6 +159,22 @@
   out <- system2("git", c("hash-object", .instrument_files), stdout = TRUE, stderr = TRUE)
   if (length(out) != length(.instrument_files)) .stopf("Could not hash current instrument files")
   paste(out, collapse = ":")
+}
+
+.verify_instrument_manifest <- function(receipt, label) {
+  .need_fields(receipt, c("instrument_file_paths", "instrument_file_sha256"), label)
+  paths <- strsplit(receipt$instrument_file_paths, ";", fixed = TRUE)[[1L]]
+  if (length(paths) != length(.instrument_files) ||
+      any(!startsWith(paths, "/")) || anyDuplicated(paths) ||
+      !identical(basename(paths), basename(.instrument_files))) {
+    .stopf("%s instrument-file path manifest mismatch", label)
+  }
+  expected_hashes <- stats::setNames(
+    vapply(.instrument_files, .sha256, character(1)), basename(.instrument_files)
+  )
+  .exact_manifest(receipt$instrument_file_sha256, expected_hashes,
+                  paste(label, "instrument-file SHA-256 manifest"))
+  invisible(TRUE)
 }
 
 .make_key <- function(x, cols) do.call(paste, c(x[cols], sep = "|"))
@@ -208,7 +254,60 @@
       seeds = 1:50, beta0_shift = beta0_shift
     )
   }
+  attr(out, "pilot") <- get("build_config_pilot", envir = env)(
+    seeds = 1:10, beta0_shift = beta0_shift
+  )
+  attr(out, "preflight") <- get("build_preflight_contract_c", envir = env)()
   out
+}
+
+.expected_pilot_config <- function(beta0_shift) {
+  out <- .expected_config("G1", beta0_shift = beta0_shift, g1_seeds = 10L)
+  out$stage <- "pilot_v2"
+  out
+}
+
+.expected_preflight_contract <- function() {
+  geometry_cases <- expand.grid(
+    phi_bias = c(0, 0.15, 0.4),
+    rho = c(-1, -0.8, 0, 0.6, 0.8, 1),
+    omega = c(0, 0.5, 1),
+    KEEP.OUT.ATTRS = FALSE, stringsAsFactors = FALSE
+  )
+  geometry_cases$seed <- 7300L + seq_len(nrow(geometry_cases))
+  list(
+    schema_version = "phase_c_preflight_contract_v1",
+    geometry_cases = geometry_cases,
+    geometry_n = 100L, geometry_T_sp = 12L, geometry_phi_x = .ref$phi_x,
+    geometry_kappa = 1, geometry_k = .ref$k, geometry_tolerance = 1e-9,
+    crn_probe = list(
+      seed = 991L, n = 100L, T_sp = 12L,
+      base = c(phi_bias = 0.15, kappa = 1, rho = 0.6, omega = 0.5),
+      treatment = c(phi_bias = 0.15, kappa = 2, rho = -0.8, omega = 0),
+      phi_bias_pair = c(0, 0.4)
+    ),
+    rank_probe = list(accepted_n = 16L, accepted_H_columns = 2L,
+                      rejected_n = 5L, rejected_H_columns = 3L),
+    ref_fit = c(as.list(.ref), list(seed = 1L, stage = "preflight", block = "preflight")),
+    phi_stream_probe = list(seed = 7L, n = 100L, T_sp = 8L,
+                            phi_x = 0.15, phi_bias = c(0, 0.4),
+                            kappa = 1, rho = 0.6, omega = 0.5, k = 3L),
+    null_collapse_probe = list(seed = 11L, fit_seed = 500011L,
+                               n = 100L, T_sp = 8L,
+                               phi_x = 0.15, phi_bias = 0.15,
+                               kappa = 0, rho = 0.6, omega = 0.5, k = 3L),
+    null_recovery_seeds = 1:10,
+    smoke = list(seed = 42L, n = 100L, T_sp = 6L,
+                 kappa = c(0, 2), rho = 0, omega = 1,
+                 phi_x = .ref$phi_x, phi_bias = .ref$phi_bias, k = .ref$k),
+    seed_inventory = sort(unique(c(1:10, 11L, 42L, 991L, 7301:7354, 500011L))),
+    seed_inventory_roles = paste(
+      "result=1:10,42;phi_stream=7;null_collapse_data=11;",
+      "crn=991;geometry=7301:7354;null_collapse_fit=500011", sep = ""
+    ),
+    expected_result_rows = 28L,
+    expected_model_fit_attempts = 30L
+  )
 }
 
 .expand_arms <- function(config) {
@@ -300,16 +399,96 @@
   invisible(TRUE)
 }
 
-.verify_common_receipt <- function(x, type, label, current_id) {
+.verify_common_receipt <- function(x, type, label, current_id,
+                                   source_id_resolver = .instrument_id_at,
+                                   compute = FALSE) {
   .need_fields(x, c("receipt_type", "status", "source_sha", "source_branch",
                     "source_dirty", "instrument_id"), label)
   if (!identical(x$receipt_type, type) || !identical(x$status, "PASS")) .stopf("%s is not a PASS %s", label, type)
   if (!identical(x$source_branch, .branch)) .stopf("%s does not identify Lane C", label)
   .receipt_false(x$source_dirty, paste0(label, " source_dirty"))
-  source_id <- .instrument_id_at(x$source_sha)
+  source_id <- source_id_resolver(x$source_sha)
   if (!identical(x$instrument_id, source_id) || !identical(x$instrument_id, current_id)) {
     .stopf("%s instrument ID does not match its source commit and current frozen files", label)
   }
+  if (compute) {
+    .need_fields(x, "schema_version", label)
+    if (!identical(x$schema_version, "phase_c_compute_v2")) {
+      .stopf("%s schema_version is not phase_c_compute_v2", label)
+    }
+    .verify_instrument_manifest(x, label)
+  }
+  invisible(TRUE)
+}
+
+.verify_compute_envelope <- function(x, stage, block, label,
+                                     expected_logical_rows,
+                                     expected_fit_attempts,
+                                     expected_predecessor_paths,
+                                     expected_predecessor_hashes,
+                                     expected_config_sha256 = "") {
+  fields <- c(
+    "schema_version", "stage", "block", "command", "host", "r_version",
+    "session_platform", "package_versions", "optimizer_control_mode",
+    "optimizer_control", "cores", "backend", "started_utc", "ended_utc",
+    "expected_rows", "actual_rows", "expected_logical_rows",
+    "actual_logical_rows", "expected_optimizer_calls",
+    "actual_optimizer_calls", "expected_model_fit_attempts",
+    "actual_model_fit_attempts", "input_config_sha256",
+    "input_predecessor_paths", "input_predecessor_sha256",
+    "predecessor_receipt_paths", "predecessor_receipt_hashes"
+  )
+  .need_fields(x, fields, label)
+  if (!identical(x$stage, stage) || !identical(x$block, block)) {
+    .stopf("%s stage/block mismatch; expected %s/%s", label, stage, block)
+  }
+  nonblank <- c("command", "host", "r_version", "session_platform",
+                "package_versions", "optimizer_control", "started_utc", "ended_utc")
+  if (any(!nzchar(trimws(vapply(x[nonblank], as.character, character(1)))))) {
+    .stopf("%s has blank command/session/optimizer fields", label)
+  }
+  if (!x$optimizer_control_mode %in% c("default", "explicit")) {
+    .stopf("%s optimizer_control_mode is invalid", label)
+  }
+  if (identical(x$optimizer_control_mode, "default") &&
+      !identical(x$optimizer_control, "gllvmTMBcontrol() package defaults")) {
+    .stopf("%s default optimizer control is not explicit", label)
+  }
+  if (!x$backend %in% c("serial", "mclapply")) .stopf("%s backend is invalid", label)
+  if (.receipt_int(x, "cores", label) < 1L || .receipt_int(x, "cores", label) > 150L) {
+    .stopf("%s violates the Totoro core cap", label)
+  }
+  logical_fields <- c("expected_rows", "actual_rows", "expected_logical_rows",
+                      "actual_logical_rows")
+  for (field in logical_fields) {
+    if (.receipt_int(x, field, label) != expected_logical_rows) {
+      .stopf("%s %s mismatch", label, field)
+    }
+  }
+  fit_fields <- c("expected_optimizer_calls", "expected_model_fit_attempts",
+                  "actual_model_fit_attempts")
+  for (field in fit_fields) {
+    if (.receipt_int(x, field, label) != expected_fit_attempts) {
+      .stopf("%s %s mismatch", label, field)
+    }
+  }
+  if (!identical(
+    x$actual_optimizer_calls,
+    "NOT_INSTRUMENTED_MODEL_FRONTEND_ATTEMPTS_RECORDED_SEPARATELY"
+  )) {
+    .stopf("%s actual_optimizer_calls must carry the frozen non-instrumented sentinel", label)
+  }
+  if (!identical(x$input_config_sha256, expected_config_sha256)) {
+    .stopf("%s input configuration hash mismatch", label)
+  }
+  if (!identical(x$input_predecessor_paths, x$predecessor_receipt_paths) ||
+      !identical(x$input_predecessor_sha256, x$predecessor_receipt_hashes)) {
+    .stopf("%s duplicated predecessor fields disagree", label)
+  }
+  .exact_manifest(x$predecessor_receipt_paths, expected_predecessor_paths,
+                  paste(label, "predecessor path manifest"), allow_empty = TRUE)
+  .exact_manifest(x$predecessor_receipt_hashes, expected_predecessor_hashes,
+                  paste(label, "predecessor hash manifest"), allow_empty = TRUE)
   invisible(TRUE)
 }
 
@@ -324,7 +503,8 @@
 }
 
 .parse_part_manifest <- function(receipt, result_path, label) {
-  .need_fields(receipt, c("resume_parts_dir", "resume_part_count", "resume_part_hashes"), label)
+  .need_fields(receipt, c("resume_parts_dir", "resume_part_count",
+                          "resume_part_paths", "resume_part_hashes"), label)
   parts_dir <- normalizePath(receipt$resume_parts_dir, mustWork = TRUE)
   expected_dir <- normalizePath(paste0(result_path, ".parts"), mustWork = TRUE)
   if (!identical(parts_dir, expected_dir)) .stopf("%s resume-parts directory mismatch", label)
@@ -341,26 +521,98 @@
   actual <- sort(list.files(parts_dir, pattern = "[.]rds$", full.names = FALSE))
   if (!identical(sort(names_seen), actual)) .stopf("%s part manifest does not match directory contents", label)
   paths <- file.path(parts_dir, names_seen)
+  receipt_paths <- if (nzchar(receipt$resume_part_paths)) {
+    strsplit(receipt$resume_part_paths, ";", fixed = TRUE)[[1L]]
+  } else character()
+  if (!identical(receipt_paths, normalizePath(paths, mustWork = TRUE))) {
+    .stopf("%s exact resume-part path manifest mismatch", label)
+  }
   actual_hashes <- vapply(paths, .sha256, character(1))
   if (!identical(unname(actual_hashes), unname(hashes))) .stopf("%s part hash mismatch", label)
   stats::setNames(paths, names_seen)
 }
 
-.authenticate_receipt_sources <- function(opt) {
+.verify_seed_manifest <- function(receipt, seeds, label) {
+  .need_fields(receipt, c("seed_min", "seed_max", "seed_count", "seed_list"), label)
+  seeds <- sort(unique(as.integer(seeds)))
+  if (.receipt_int(receipt, "seed_min", label) != min(seeds) ||
+      .receipt_int(receipt, "seed_max", label) != max(seeds) ||
+      .receipt_int(receipt, "seed_count", label) != length(seeds) ||
+      !identical(receipt$seed_list, paste(seeds, collapse = ","))) {
+    .stopf("%s full seed manifest mismatch", label)
+  }
+  invisible(TRUE)
+}
+
+.verify_grid_accounting <- function(receipt, config, label,
+                                    external_null = FALSE) {
+  fields <- c(
+    "unique_key_verdict", "unique_logical_rows", "null_dataset_rows",
+    "null_logical_rows", "null_key_unique_rows",
+    "null_key_duplicate_rows", "paired_biased_logical_rows_in_output",
+    "paired_biased_logical_rows", "unpaired_biased_logical_rows",
+    "pair_source", "a6_logical_rows", "a6_null_collapsed_rows",
+    "fit_error_rows", "nonfinite_total_sigma_rows",
+    "nonfinite_rank_d_rows", "unlabelled_nonfinite_rows"
+  )
+  .need_fields(receipt, fields, label)
+  rows <- nrow(config) * length(.arms)
+  null_datasets <- sum(config$kappa == 0)
+  null_rows <- null_datasets * length(.arms)
+  biased_rows <- rows - null_rows
+  if (!identical(receipt$unique_key_verdict, "PASS") ||
+      .receipt_int(receipt, "unique_logical_rows", label) != rows ||
+      .receipt_int(receipt, "null_dataset_rows", label) != null_datasets ||
+      .receipt_int(receipt, "null_logical_rows", label) != null_rows ||
+      .receipt_int(receipt, "null_key_unique_rows", label) != null_rows ||
+      .receipt_int(receipt, "null_key_duplicate_rows", label) != 0L ||
+      .receipt_int(receipt, "paired_biased_logical_rows_in_output", label) !=
+        (if (external_null) 0L else biased_rows) ||
+      .receipt_int(receipt, "paired_biased_logical_rows", label) != biased_rows ||
+      .receipt_int(receipt, "unpaired_biased_logical_rows", label) != 0L ||
+      !identical(receipt$pair_source,
+                 if (external_null) "G1 predecessor null" else "same output") ||
+      .receipt_int(receipt, "a6_logical_rows", label) != nrow(config) ||
+      .receipt_int(receipt, "a6_null_collapsed_rows", label) != null_datasets ||
+      .receipt_int(receipt, "nonfinite_total_sigma_rows", label) != 0L ||
+      .receipt_int(receipt, "nonfinite_rank_d_rows", label) != 0L ||
+      .receipt_int(receipt, "unlabelled_nonfinite_rows", label) != 0L) {
+    .stopf("%s logical/null/model-fit accounting mismatch", label)
+  }
+  invisible(TRUE)
+}
+
+.authenticate_receipt_sources <- function(opt,
+                                          source_id_resolver = .instrument_id_at) {
   current_id <- .current_instrument_id()
   preflight <- .read_receipt(opt$preflight_receipt)
   pilot_compute <- .read_receipt(opt$pilot_compute_receipt)
   decision <- .read_receipt(opt$pilot_decision_receipt)
-  .verify_common_receipt(preflight, "preflight_compute", "preflight receipt", current_id)
-  .verify_common_receipt(pilot_compute, "pilot_compute", "pilot compute receipt", current_id)
-  .verify_common_receipt(decision, "pilot_decision", "pilot decision receipt", current_id)
+  .verify_common_receipt(preflight, "preflight_compute", "preflight receipt", current_id,
+                         source_id_resolver = source_id_resolver, compute = TRUE)
+  .verify_common_receipt(pilot_compute, "pilot_compute", "pilot compute receipt", current_id,
+                         source_id_resolver = source_id_resolver, compute = TRUE)
+  .verify_common_receipt(decision, "pilot_decision", "pilot decision receipt", current_id,
+                         source_id_resolver = source_id_resolver)
+  if (!identical(preflight$stage, "preflight") ||
+      !identical(preflight$block, "preflight")) {
+    .stopf("preflight receipt stage/block mismatch; expected preflight/preflight")
+  }
+  if (!identical(pilot_compute$stage, "pilot_v2") ||
+      !identical(pilot_compute$block, "G1")) {
+    .stopf("pilot compute receipt stage/block mismatch; expected pilot_v2/G1")
+  }
   early_shas <- unique(c(preflight$source_sha, pilot_compute$source_sha, decision$source_sha))
   if (length(early_shas) != 1L) .stopf("Preflight, pilot compute, and pilot decision source SHAs differ")
   blocks <- paste0("G", 1:6)
   campaign <- stats::setNames(lapply(blocks, function(block) {
     label <- paste(block, "compute receipt")
     receipt <- .read_receipt(opt$receipts[[block]])
-    .verify_common_receipt(receipt, paste0(tolower(block), "_compute"), label, current_id)
+    .verify_common_receipt(receipt, paste0(tolower(block), "_compute"), label, current_id,
+                           source_id_resolver = source_id_resolver, compute = TRUE)
+    if (!identical(receipt$stage, "campaign") || !identical(receipt$block, block)) {
+      .stopf("%s stage/block mismatch; expected campaign/%s", label, block)
+    }
     receipt
   }), blocks)
   campaign_shas <- unique(vapply(campaign, `[[`, character(1), "source_sha"))
@@ -380,18 +632,51 @@
   preflight_hash <- .sha256(opt$preflight_receipt)
   pilot_compute_hash <- .sha256(opt$pilot_compute_receipt)
   decision_hash <- .sha256(opt$pilot_decision_receipt)
-  .need_fields(pilot_compute, "predecessor_receipt_hashes", "pilot compute receipt")
-  if (!grepl(paste0("preflight:", preflight_hash), pilot_compute$predecessor_receipt_hashes, fixed = TRUE)) {
-    .stopf("Pilot compute receipt is not bound to the supplied preflight receipt")
+  preflight_contract <- .expected_preflight_contract()
+  builder_preflight <- attr(builder_configs, "preflight", exact = TRUE)
+  if (!is.list(builder_preflight) || !identical(preflight_contract, builder_preflight)) {
+    .stopf("Preflight independent contract differs from the frozen source builder")
   }
+  preflight_config_hash <- .object_sha256(builder_preflight)
+  .verify_compute_envelope(
+    preflight, "preflight", "preflight", "preflight receipt",
+    expected_logical_rows = 28L, expected_fit_attempts = 30L,
+    expected_predecessor_paths = character(),
+    expected_predecessor_hashes = character(),
+    expected_config_sha256 = preflight_config_hash
+  )
+  .need_fields(preflight, c("config_sha256", "unique_key_verdict",
+                            "unique_logical_rows"), "preflight receipt")
+  if (!identical(preflight$config_sha256, preflight_config_hash) ||
+      !identical(preflight$unique_key_verdict, "PASS") ||
+      .receipt_int(preflight, "unique_logical_rows", "preflight receipt") != 28L) {
+    .stopf("preflight receipt configuration/logical manifest mismatch")
+  }
+  .verify_seed_manifest(preflight, preflight_contract$seed_inventory,
+                        "preflight receipt")
+  .need_fields(preflight, "seed_inventory_roles", "preflight receipt")
+  if (!identical(preflight$seed_inventory_roles,
+                 preflight_contract$seed_inventory_roles)) {
+    .stopf("preflight receipt seed inventory roles mismatch")
+  }
+  if (.receipt_int(preflight, "resume_part_count", "preflight receipt") != 0L ||
+      nzchar(preflight$resume_parts_dir) || nzchar(preflight$resume_part_paths) ||
+      nzchar(preflight$resume_part_hashes)) {
+    .stopf("preflight receipt unexpectedly names resume parts")
+  }
+  .verify_file_binding(preflight, preflight$output_path, "preflight receipt")
+
   .need_fields(decision, c("preflight_receipt_sha256", "pilot_compute_receipt_sha256",
-                           "pilot_sha256", "g1_seeds", "beta0_shift",
+                           "pilot_path", "pilot_sha256", "g1_seeds", "beta0_shift",
                            "projected_3mcse_s100"), "pilot decision receipt")
   if (!identical(decision$preflight_receipt_sha256, preflight_hash) ||
       !identical(decision$pilot_compute_receipt_sha256, pilot_compute_hash)) {
     .stopf("Pilot decision predecessor hashes do not match")
   }
-  .verify_file_binding(pilot_compute, opt$pilot, "pilot compute receipt")
+  if (!identical(normalizePath(decision$pilot_path, mustWork = TRUE),
+                 normalizePath(opt$pilot, mustWork = TRUE))) {
+    .stopf("Pilot decision exact pilot path mismatch")
+  }
   if (!identical(decision$pilot_sha256, .sha256(opt$pilot))) .stopf("Pilot decision result hash mismatch")
   g1_seeds <- .receipt_int(decision, "g1_seeds", "pilot decision receipt")
   if (g1_seeds != 100L || .receipt_num(decision, "projected_3mcse_s100", "pilot decision receipt") > 0.05) {
@@ -400,6 +685,38 @@
   beta0 <- .receipt_num(decision, "beta0_shift", "pilot decision receipt")
   if (!.near(beta0, 0)) .stopf("This campaign was frozen at beta0_shift = 0; got %s", beta0)
   if (!is.null(opt$calibration_receipt)) .stopf("A calibration receipt is incompatible with the frozen zero shift")
+
+  pilot_config <- .expected_pilot_config(beta0)
+  builder_pilot <- attr(builder_configs, "pilot", exact = TRUE)
+  if (!is.data.frame(builder_pilot) || !identical(pilot_config, builder_pilot)) {
+    .stopf("Pilot independent grid differs from the frozen source builder")
+  }
+  pilot_config_hash <- .object_sha256(builder_pilot)
+  pilot_paths <- c(preflight = normalizePath(opt$preflight_receipt, mustWork = TRUE))
+  pilot_hashes <- c(preflight = preflight_hash)
+  .verify_compute_envelope(
+    pilot_compute, "pilot_v2", "G1", "pilot compute receipt",
+    expected_logical_rows = nrow(pilot_config) * length(.arms),
+    expected_fit_attempts = nrow(pilot_config) * length(.arms),
+    expected_predecessor_paths = pilot_paths,
+    expected_predecessor_hashes = pilot_hashes,
+    expected_config_sha256 = pilot_config_hash
+  )
+  .need_fields(pilot_compute, c("config_sha256", "phi_x", "phi_bias",
+                                "beta0_shift", "arms"), "pilot compute receipt")
+  if (!identical(pilot_compute$config_sha256, pilot_config_hash) ||
+      !identical(pilot_compute$arms, paste(.arms, collapse = ",")) ||
+      !.near(.receipt_num(pilot_compute, "phi_x", "pilot compute receipt"), 0.15) ||
+      !identical(pilot_compute$phi_bias,
+                 paste(sort(unique(pilot_config$phi_bias)), collapse = ",")) ||
+      !.near(.receipt_num(pilot_compute, "beta0_shift", "pilot compute receipt"), beta0)) {
+    .stopf("Pilot compute receipt configuration manifest mismatch")
+  }
+  .verify_seed_manifest(pilot_compute, pilot_config$seed, "pilot compute receipt")
+  .verify_grid_accounting(pilot_compute, pilot_config, "pilot compute receipt")
+  .verify_file_binding(pilot_compute, opt$pilot, "pilot compute receipt")
+  pilot_part_paths <- .parse_part_manifest(pilot_compute, opt$pilot,
+                                           "pilot compute receipt")
 
   blocks <- paste0("G", 1:6)
   campaign <- authentication$campaign
@@ -411,43 +728,41 @@
       .stopf("%s independent grid differs from the frozen source builder", label)
     }
     receipt <- campaign[[block]]
-    .need_fields(receipt, c("stage", "expected_rows", "actual_rows", "expected_logical_rows",
-                            "expected_optimizer_calls", "config_sha256", "seed_min", "seed_max",
-                            "seed_count", "phi_x", "phi_bias", "beta0_shift", "arms",
-                            "null_dataset_rows", "unique_key_verdict", "a6_null_collapsed_rows",
-                            "fit_error_rows", "unlabelled_nonfinite_rows",
-                            "predecessor_receipt_hashes", "cores", "started_utc", "ended_utc",
-                            "host", "r_version"), label)
-    if (!identical(tolower(receipt$stage), tolower(block))) .stopf("%s stage mismatch", label)
-    if (.receipt_int(receipt, "cores", label) < 1L || .receipt_int(receipt, "cores", label) > 150L) .stopf("%s violates the Totoro core cap", label)
     expected_rows <- nrow(configs[[block]]) * 6L
-    for (field in c("expected_rows", "actual_rows", "expected_logical_rows", "expected_optimizer_calls")) {
-      if (.receipt_int(receipt, field, label) != expected_rows) .stopf("%s %s mismatch", label, field)
+    predecessors_paths <- c(
+      preflight = normalizePath(opt$preflight_receipt, mustWork = TRUE),
+      pilot_decision = normalizePath(opt$pilot_decision_receipt, mustWork = TRUE)
+    )
+    predecessors_hashes <- c(preflight = preflight_hash,
+                             pilot_decision = decision_hash)
+    if (block == "G6") {
+      predecessors_paths <- c(predecessors_paths,
+                              g1 = normalizePath(opt$receipts[["G1"]], mustWork = TRUE))
+      predecessors_hashes <- c(predecessors_hashes,
+                               g1 = .sha256(opt$receipts[["G1"]]))
     }
+    builder_hash <- .object_sha256(builder_configs[[block]])
+    .verify_compute_envelope(
+      receipt, "campaign", block, label,
+      expected_logical_rows = expected_rows,
+      expected_fit_attempts = expected_rows,
+      expected_predecessor_paths = predecessors_paths,
+      expected_predecessor_hashes = predecessors_hashes,
+      expected_config_sha256 = builder_hash
+    )
+    .need_fields(receipt, c("config_sha256", "phi_x", "phi_bias",
+                            "beta0_shift", "arms", "g1_seeds"), label)
     if (!identical(receipt$config_sha256, .object_sha256(builder_configs[[block]]))) {
       .stopf("%s source-builder serialization hash mismatch", label)
     }
-    if (!identical(receipt$unique_key_verdict, "PASS")) .stopf("%s unique-key verdict is not PASS", label)
-    if (.receipt_int(receipt, "unlabelled_nonfinite_rows", label) != 0L) .stopf("%s reports unlabelled non-finite rows", label)
     if (!identical(receipt$arms, paste(.arms, collapse = ","))) .stopf("%s arm manifest mismatch", label)
     if (!.near(.receipt_num(receipt, "phi_x", label), 0.15)) .stopf("%s phi_x is not frozen at 0.15", label)
     expected_phi_bias <- paste(sort(unique(configs[[block]]$phi_bias)), collapse = ",")
     if (!identical(receipt$phi_bias, expected_phi_bias)) .stopf("%s phi_bias manifest mismatch", label)
     if (!.near(.receipt_num(receipt, "beta0_shift", label), beta0)) .stopf("%s beta0 shift mismatch", label)
-    if (.receipt_int(receipt, "seed_min", label) != min(configs[[block]]$seed) ||
-        .receipt_int(receipt, "seed_max", label) != max(configs[[block]]$seed) ||
-        .receipt_int(receipt, "seed_count", label) != length(unique(configs[[block]]$seed))) {
-      .stopf("%s seed manifest mismatch", label)
-    }
-    null_rows <- sum(.near(configs[[block]]$kappa, 0))
-    if (.receipt_int(receipt, "null_dataset_rows", label) != null_rows ||
-        .receipt_int(receipt, "a6_null_collapsed_rows", label) != null_rows) {
-      .stopf("%s null/A6-collapse manifest mismatch", label)
-    }
-    required_predecessors <- c(paste0("preflight:", preflight_hash), paste0("pilot_decision:", decision_hash))
-    if (!all(vapply(required_predecessors, grepl, logical(1), x = receipt$predecessor_receipt_hashes, fixed = TRUE))) {
-      .stopf("%s predecessor receipt hash mismatch", label)
-    }
+    .verify_seed_manifest(receipt, configs[[block]]$seed, label)
+    .verify_grid_accounting(receipt, configs[[block]], label,
+                            external_null = identical(block, "G6"))
     .verify_file_binding(receipt, opt$results[[block]], label)
     part_paths[[block]] <- .parse_part_manifest(receipt, opt$results[[block]], label)
     rows[[i]] <- data.frame(
@@ -469,12 +784,9 @@
   }
   if (.receipt_int(campaign$G1, "seed_count", "G1 compute receipt") != 100L ||
       .receipt_int(campaign$G1, "g1_seeds", "G1 compute receipt") != 100L) .stopf("G1 is not bound to frozen S100")
-  g1_hash <- .sha256(opt$receipts[["G1"]])
-  if (!grepl(paste0("g1:", g1_hash), campaign$G6$predecessor_receipt_hashes, fixed = TRUE)) {
-    .stopf("G6 is not bound to the supplied G1 receipt")
-  }
   list(preflight = preflight, pilot_compute = pilot_compute, decision = decision,
-       campaign = campaign, part_paths = part_paths, block_audit = do.call(rbind, rows),
+       campaign = campaign, pilot_part_paths = pilot_part_paths,
+       part_paths = part_paths, block_audit = do.call(rbind, rows),
        beta0_shift = beta0, g1_seeds = g1_seeds,
        campaign_source_sha = authentication$campaign_source_sha,
        instrument_id = authentication$instrument_id, preflight_hash = preflight_hash,
@@ -496,10 +808,73 @@
   if (!isTRUE(all.equal(a, b, tolerance = 0, check.attributes = FALSE))) .stopf("%s result contents differ", label)
 }
 
+.validate_bias_geometry <- function(x, label, tolerance = 1e-9) {
+  fields <- c(
+    "bias_sharing", "theoretical_bias_rho", "theoretical_bias_sharing",
+    "theoretical_bias_variance", "realised_bias_rho_mean",
+    "realised_bias_rho_max_abs_error", "realised_bias_sharing_mean",
+    "realised_bias_sharing_max_abs_error", "realised_bias_variance_mean",
+    "realised_bias_variance_max_abs_error"
+  )
+  for (field in fields) {
+    if (!is.numeric(x[[field]])) .stopf("%s has non-numeric geometry column %s", label, field)
+  }
+  target_rho <- x$rho
+  target_sharing <- x$rho^2 + (1 - x$rho^2) * x$omega
+  target_variance <- x$kappa^2
+  exact <- function(actual, expected) {
+    length(actual) == length(expected) && !anyNA(actual) &&
+      all(is.finite(actual)) && all(actual == expected)
+  }
+  if (!exact(x$theoretical_bias_rho, target_rho) ||
+      !exact(x$theoretical_bias_sharing, target_sharing) ||
+      !exact(x$bias_sharing, target_sharing) ||
+      !exact(x$theoretical_bias_variance, target_variance)) {
+    .stopf("%s theoretical bias geometry does not exactly match its configuration", label)
+  }
+
+  positive <- x$kappa > 0
+  positive_means <- c(
+    rho = max(abs(x$realised_bias_rho_mean[positive] - target_rho[positive])),
+    sharing = max(abs(x$realised_bias_sharing_mean[positive] - target_sharing[positive])),
+    variance = max(abs(x$realised_bias_variance_mean[positive] - target_variance[positive]))
+  )
+  positive_errors <- c(
+    x$realised_bias_rho_max_abs_error[positive],
+    x$realised_bias_sharing_max_abs_error[positive],
+    x$realised_bias_variance_max_abs_error[positive]
+  )
+  if (any(positive) &&
+      (any(!is.finite(positive_means)) || any(positive_means > tolerance) ||
+       any(!is.finite(positive_errors)) || any(positive_errors < 0) ||
+       any(positive_errors > tolerance))) {
+    .stopf("%s realised positive-kappa geometry exceeds %.1e", label, tolerance)
+  }
+
+  null <- !positive
+  if (any(null) &&
+      (any(!is.na(x$realised_bias_rho_mean[null])) ||
+       any(!is.na(x$realised_bias_rho_max_abs_error[null])) ||
+       any(!is.na(x$realised_bias_sharing_mean[null])) ||
+       any(!is.na(x$realised_bias_sharing_max_abs_error[null])) ||
+       any(is.na(x$realised_bias_variance_mean[null])) ||
+       any(is.na(x$realised_bias_variance_max_abs_error[null])) ||
+       any(x$realised_bias_variance_mean[null] != 0) ||
+       any(x$realised_bias_variance_max_abs_error[null] != 0))) {
+    .stopf("%s null geometry violates the undefined-correlation/zero-variance contract", label)
+  }
+  invisible(TRUE)
+}
+
 .validate_block_results <- function(x, block, expected, receipt, parts, instrument_id) {
   label <- paste(block, "result")
   if (!is.data.frame(x)) .stopf("%s is not a data.frame", label)
   required <- c(.full_key, "elapsed_sec", "realised_prevalence", "bias_sharing",
+                "theoretical_bias_rho", "theoretical_bias_sharing",
+                "theoretical_bias_variance", "realised_bias_rho_mean",
+                "realised_bias_rho_max_abs_error", "realised_bias_sharing_mean",
+                "realised_bias_sharing_max_abs_error", "realised_bias_variance_mean",
+                "realised_bias_variance_max_abs_error", "fit_attempted",
                 "fit_error", "convergence", "pdHess", "diag_B_skip",
                 "oracle_collapsed", "estimand", "D_bias", "D_rmse", "D_max",
                 "D_z", "rank_d_D_bias", "rank_d_D_rmse", "signflip", "diag_rmse",
@@ -518,6 +893,11 @@
   if (anyDuplicated(actual_key) || !setequal(actual_key, expected_key)) .stopf("%s does not equal the preregistered full grid", label)
   by_dataset <- split(as.character(x$arm), .make_key(x, .dataset_key))
   if (any(vapply(by_dataset, function(a) !identical(sort(a), .arms), logical(1)))) .stopf("%s violates exact six-arm coverage", label)
+  x$fit_attempted <- .coerce_flag(x$fit_attempted, paste(label, "fit_attempted"))
+  if (anyNA(x$fit_attempted) || any(!x$fit_attempted)) {
+    .stopf("%s contains a DGP/pre-fit failure; only attempted model-fit errors may be retained", label)
+  }
+  .validate_bias_geometry(x, label)
   completed <- .blank_error(x$fit_error)
   x$pdHess <- .coerce_flag(x$pdHess, paste(label, "pdHess"))
   x$oracle_collapsed <- .coerce_flag(x$oracle_collapsed, paste(label, "oracle_collapsed"))
@@ -538,7 +918,7 @@
   if (any(rank & (x$diag_B_skip <= 0 | is.finite(x$D_bias) | is.finite(x$D_rmse)))) .stopf("%s leaks G5/A2 into total-Sigma metrics", label)
   nonrank <- completed & !rank
   if (any(nonrank & (is.finite(x$rank_d_D_bias) | is.finite(x$rank_d_D_rmse)))) .stopf("%s leaks rank-d metrics outside G5/A2", label)
-  fit_errors <- sum(!completed)
+  fit_errors <- sum(!is.na(x$fit_error))
   if (fit_errors != .receipt_int(receipt, "fit_error_rows", paste(block, "receipt"))) .stopf("%s fit-error count differs from receipt", label)
   a6_null <- .near(x$kappa, 0) & x$arm == "A6"
   if (any(!x$oracle_collapsed[a6_null]) || any(x$oracle_collapsed[completed & !a6_null])) .stopf("%s A6 null-collapse labels are wrong", label)
@@ -670,7 +1050,8 @@
 
 `%||%` <- function(a, b) if (is.null(a)) b else a
 
-.audit_campaign <- function(opt, builder_loader = .source_builder_configs) {
+.audit_campaign <- function(opt, builder_loader = .source_builder_configs,
+                            source_id_resolver = .instrument_id_at) {
   out_dir <- .absolute_path(opt$out_dir)
   targets <- file.path(out_dir, c("phase-c-compute-audit-blocks.csv", "phase-c-compute-audit.md", "phase-c-compute-audit.receipt"))
   if (any(file.exists(targets))) .stopf("Refusing to overwrite existing audit output(s): %s", paste(basename(targets[file.exists(targets)]), collapse = ", "))
@@ -679,7 +1060,9 @@
   ## Authenticate every source commit and current instrument file before the
   ## source builder is evaluated. All remaining provenance/config/file/part
   ## checks are then cleared before the first campaign readRDS() call.
-  authentication <- .authenticate_receipt_sources(opt)
+  authentication <- .authenticate_receipt_sources(
+    opt, source_id_resolver = source_id_resolver
+  )
   beta0 <- .receipt_num(authentication$decision, "beta0_shift", "pilot decision receipt")
   configs <- setNames(lapply(paste0("G", 1:6), .expected_config, beta0_shift = beta0, g1_seeds = 100L), paste0("G", 1:6))
   builder_configs <- builder_loader(beta0_shift = beta0, g1_seeds = 100L)
@@ -726,7 +1109,18 @@
   n <- nrow(x)
   x$elapsed_sec <- 1
   x$realised_prevalence <- 0.33
-  x$bias_sharing <- 0.5
+  x$bias_sharing <- x$rho^2 + (1 - x$rho^2) * x$omega
+  x$theoretical_bias_rho <- x$rho
+  x$theoretical_bias_sharing <- x$bias_sharing
+  x$theoretical_bias_variance <- x$kappa^2
+  null <- .near(x$kappa, 0)
+  x$realised_bias_rho_mean <- ifelse(null, NA_real_, x$rho)
+  x$realised_bias_rho_max_abs_error <- ifelse(null, NA_real_, 5e-12)
+  x$realised_bias_sharing_mean <- ifelse(null, NA_real_, x$bias_sharing)
+  x$realised_bias_sharing_max_abs_error <- ifelse(null, NA_real_, 6e-12)
+  x$realised_bias_variance_mean <- ifelse(null, 0, x$kappa^2)
+  x$realised_bias_variance_max_abs_error <- ifelse(null, 0, 4e-12)
+  x$fit_attempted <- TRUE
   x$fit_error <- NA_character_
   x$convergence <- 0
   x$pdHess <- TRUE
@@ -754,25 +1148,100 @@
 
 .write_fixture_receipt <- function(path, fields) .write_receipt(path, fields)
 
+.fixture_instrument_fields <- function(source_sha, instrument_id) {
+  list(
+    source_sha = source_sha, source_branch = .branch, source_dirty = FALSE,
+    instrument_id = instrument_id,
+    instrument_file_paths = paste(normalizePath(.instrument_files), collapse = ";"),
+    instrument_file_sha256 = paste(sprintf(
+      "%s:%s", basename(.instrument_files),
+      vapply(.instrument_files, .sha256, character(1))
+    ), collapse = ";")
+  )
+}
+
+.fixture_compute_fields <- function(type, stage, block, output, config, results,
+                                    part_paths = character(), predecessor_paths = character(),
+                                    predecessor_hashes = character(),
+                                    expected_fit_attempts = nrow(results),
+                                    g1_seeds = "") {
+  config_hash <- if (is.null(config)) "" else .object_sha256(config)
+  part_hashes <- if (length(part_paths)) paste(sprintf(
+    "%s:%s", basename(part_paths), vapply(part_paths, .sha256, character(1))
+  ), collapse = ";") else ""
+  fields <- list(
+    receipt_type = type, status = "PASS", schema_version = "phase_c_compute_v2",
+    stage = stage, block = block,
+    command = "Rscript --vanilla synthetic", host = "synthetic",
+    r_version = R.version.string, session_platform = R.version$platform,
+    package_versions = "gllvmTMB=synthetic", optimizer_control_mode = "default",
+    optimizer_control = "gllvmTMBcontrol() package defaults", cores = 2,
+    backend = "mclapply", started_utc = "synthetic", ended_utc = "synthetic",
+    expected_rows = nrow(results), actual_rows = nrow(results),
+    expected_logical_rows = nrow(results), actual_logical_rows = nrow(results),
+    expected_optimizer_calls = expected_fit_attempts,
+    actual_optimizer_calls =
+      "NOT_INSTRUMENTED_MODEL_FRONTEND_ATTEMPTS_RECORDED_SEPARATELY",
+    expected_model_fit_attempts = expected_fit_attempts,
+    actual_model_fit_attempts = expected_fit_attempts,
+    input_config_sha256 = config_hash,
+    input_predecessor_paths = paste(sprintf("%s:%s", names(predecessor_paths),
+                                            predecessor_paths), collapse = ";"),
+    input_predecessor_sha256 = paste(sprintf("%s:%s", names(predecessor_hashes),
+                                             predecessor_hashes), collapse = ";"),
+    output_path = normalizePath(output), output_bytes = file.info(output)$size,
+    output_sha256 = .sha256(output),
+    resume_parts_dir = if (length(part_paths)) normalizePath(dirname(part_paths[[1L]])) else "",
+    resume_part_count = length(part_paths),
+    resume_part_paths = if (length(part_paths)) paste(normalizePath(part_paths), collapse = ";") else "",
+    resume_part_hashes = part_hashes,
+    predecessor_receipt_paths = paste(sprintf("%s:%s", names(predecessor_paths),
+                                              predecessor_paths), collapse = ";"),
+    predecessor_receipt_hashes = paste(sprintf("%s:%s", names(predecessor_hashes),
+                                               predecessor_hashes), collapse = ";"),
+    g1_seeds = g1_seeds
+  )
+  if (!is.null(config)) {
+    null_datasets <- sum(config$kappa == 0)
+    null_rows <- null_datasets * length(.arms)
+    biased_rows <- nrow(results) - null_rows
+    external_null <- identical(block, "G6") && identical(stage, "campaign")
+    fields <- c(fields, list(
+      config_sha256 = config_hash,
+      seed_min = min(config$seed), seed_max = max(config$seed),
+      seed_count = length(unique(config$seed)),
+      seed_list = paste(sort(unique(config$seed)), collapse = ","),
+      phi_x = paste(sort(unique(config$phi_x)), collapse = ","),
+      phi_bias = paste(sort(unique(config$phi_bias)), collapse = ","),
+      beta0_shift = paste(unique(config$beta0_shift), collapse = ","),
+      arms = paste(.arms, collapse = ","), null_dataset_rows = null_datasets,
+      unique_key_verdict = "PASS", unique_logical_rows = nrow(results),
+      null_logical_rows = null_rows, null_key_unique_rows = null_rows,
+      null_key_duplicate_rows = 0,
+      paired_biased_logical_rows_in_output = if (external_null) 0 else biased_rows,
+      paired_biased_logical_rows = biased_rows, unpaired_biased_logical_rows = 0,
+      pair_source = if (external_null) "G1 predecessor null" else "same output",
+      a6_logical_rows = nrow(config), a6_null_collapsed_rows = null_datasets,
+      fit_error_rows = sum(!is.na(results$fit_error)),
+      nonfinite_total_sigma_rows = 0, nonfinite_rank_d_rows = 0,
+      unlabelled_nonfinite_rows = 0
+    ))
+  }
+  fields
+}
+
 .self_test <- function() {
   root <- tempfile("phase-c-audit-self-test-", tmpdir = "/private/tmp")
   dir.create(root, recursive = TRUE)
   source_sha <- .git_value(c("rev-parse", "HEAD"), "self-test source SHA")
-  instrument_id <- .instrument_id_at(source_sha)
-  preflight_out <- file.path(root, "preflight.rds"); saveRDS(list(structural = TRUE), preflight_out)
-  preflight_receipt <- file.path(root, "preflight.receipt")
-  common <- list(source_sha = source_sha, source_branch = .branch, source_dirty = FALSE, instrument_id = instrument_id)
-  .write_fixture_receipt(preflight_receipt, c(list(receipt_type = "preflight_compute", status = "PASS"), common,
-    list(output_path = normalizePath(preflight_out), output_bytes = file.info(preflight_out)$size, output_sha256 = .sha256(preflight_out))))
-  pilot <- file.path(root, "pilot-v2-results.rds"); saveRDS(data.frame(synthetic = TRUE), pilot)
-  pilot_compute <- file.path(root, "pilot-v2-compute.receipt")
-  .write_fixture_receipt(pilot_compute, c(list(receipt_type = "pilot_compute", status = "PASS"), common,
-    list(output_path = normalizePath(pilot), output_bytes = file.info(pilot)$size, output_sha256 = .sha256(pilot),
-         predecessor_receipt_hashes = paste0("preflight:", .sha256(preflight_receipt)))))
-  decision <- file.path(root, "pilot-decision.receipt")
-  .write_fixture_receipt(decision, c(list(receipt_type = "pilot_decision", status = "PASS"), common,
-    list(preflight_receipt_sha256 = .sha256(preflight_receipt), pilot_compute_receipt_sha256 = .sha256(pilot_compute),
-         pilot_sha256 = .sha256(pilot), g1_seeds = 100, beta0_shift = 0, projected_3mcse_s100 = 0.01)))
+  instrument_id <- .current_instrument_id()
+  source_id_resolver <- function(sha) {
+    if (!identical(sha, source_sha)) .stopf("Synthetic source SHA mismatch")
+    instrument_id
+  }
+  compute_common <- .fixture_instrument_fields(source_sha, instrument_id)
+  decision_common <- compute_common[c("source_sha", "source_branch", "source_dirty",
+                                      "instrument_id")]
   configs <- setNames(lapply(paste0("G", 1:6), .expected_config, beta0_shift = 0, g1_seeds = 100L), paste0("G", 1:6))
   global_before_builder <- ls(.GlobalEnv, all.names = TRUE)
   builder_configs <- .source_builder_configs(beta0_shift = 0, g1_seeds = 100L)
@@ -781,6 +1250,65 @@
     .stopf("Synthetic self-test source-builder isolation leaked global binding(s): %s",
            paste(global_added_by_builder, collapse = ", "))
   }
+  if (!identical(.expected_preflight_contract(),
+                 attr(builder_configs, "preflight", exact = TRUE)) ||
+      !identical(.expected_pilot_config(0),
+                 attr(builder_configs, "pilot", exact = TRUE))) {
+    .stopf("Synthetic self-test independent preflight/pilot contracts differ from source")
+  }
+
+  preflight_out <- file.path(root, "preflight.rds")
+  saveRDS(list(structural = TRUE), preflight_out)
+  preflight_receipt <- file.path(root, "preflight.receipt")
+  preflight_contract <- attr(builder_configs, "preflight", exact = TRUE)
+  preflight_rows <- data.frame(row = seq_len(28L))
+  preflight_fields <- .fixture_compute_fields(
+    "preflight_compute", "preflight", "preflight", preflight_out,
+    config = NULL, results = preflight_rows, expected_fit_attempts = 30L
+  )
+  preflight_fields$input_config_sha256 <- .object_sha256(preflight_contract)
+  preflight_fields$config_sha256 <- .object_sha256(preflight_contract)
+  preflight_fields$seed_min <- min(preflight_contract$seed_inventory)
+  preflight_fields$seed_max <- max(preflight_contract$seed_inventory)
+  preflight_fields$seed_count <- length(preflight_contract$seed_inventory)
+  preflight_fields$seed_list <- paste(preflight_contract$seed_inventory, collapse = ",")
+  preflight_fields$seed_inventory_roles <- preflight_contract$seed_inventory_roles
+  preflight_fields$unique_key_verdict <- "PASS"
+  preflight_fields$unique_logical_rows <- 28
+  .write_fixture_receipt(preflight_receipt, c(preflight_fields, compute_common))
+
+  pilot_config <- attr(builder_configs, "pilot", exact = TRUE)
+  pilot_x <- .synthetic_results(pilot_config, "G1")
+  pilot <- file.path(root, "pilot-v2-results.rds")
+  pilot_parts_dir <- paste0(pilot, ".parts")
+  dir.create(pilot_parts_dir)
+  pilot_part <- file.path(pilot_parts_dir, "part-00001.rds")
+  pilot_hash <- .object_sha256(pilot_config)
+  saveRDS(list(instrument_id = instrument_id, config_sha256 = pilot_hash,
+               created_utc = "synthetic", results = pilot_x), pilot_part)
+  saveRDS(pilot_x, pilot)
+  pilot_compute <- file.path(root, "pilot-v2-compute.receipt")
+  pilot_predecessor_paths <- c(
+    preflight = normalizePath(preflight_receipt, mustWork = TRUE)
+  )
+  pilot_predecessor_hashes <- c(preflight = .sha256(preflight_receipt))
+  .write_fixture_receipt(pilot_compute, c(.fixture_compute_fields(
+    "pilot_compute", "pilot_v2", "G1", pilot, pilot_config, pilot_x,
+    part_paths = pilot_part, predecessor_paths = pilot_predecessor_paths,
+    predecessor_hashes = pilot_predecessor_hashes
+  ), compute_common))
+
+  decision <- file.path(root, "pilot-decision.receipt")
+  .write_fixture_receipt(decision, c(
+    list(receipt_type = "pilot_decision", status = "PASS"), decision_common,
+    list(
+      preflight_receipt_sha256 = .sha256(preflight_receipt),
+      pilot_compute_receipt_sha256 = .sha256(pilot_compute),
+      pilot_path = normalizePath(pilot), pilot_sha256 = .sha256(pilot),
+      g1_seeds = 100, beta0_shift = 0, projected_3mcse_s100 = 0.01
+    )
+  ))
+
   canonical_hashes <- vapply(configs, .canonical_config_sha256, character(1))
   builder_canonical_hashes <- vapply(builder_configs, .canonical_config_sha256, character(1))
   if (!identical(canonical_hashes, builder_canonical_hashes)) {
@@ -805,30 +1333,33 @@
                  created_utc = "synthetic", results = x), part)
     saveRDS(x, result)
     receipt <- file.path(root, paste0(tolower(block), "-compute.receipt"))
-    predecessors <- paste0("preflight:", .sha256(preflight_receipt), ";pilot_decision:", .sha256(decision))
-    if (block == "G6") predecessors <- paste0(predecessors, ";g1:", .sha256(receipts[["G1"]]))
-    null_rows <- sum(.near(configs[[block]]$kappa, 0))
-    fit_errors <- sum(!.blank_error(x$fit_error))
-    .write_fixture_receipt(receipt, c(list(receipt_type = paste0(tolower(block), "_compute"), status = "PASS", stage = tolower(block)), common,
-      list(cores = 2, host = "synthetic", r_version = R.version.string, started_utc = "synthetic", ended_utc = "synthetic",
-           expected_rows = nrow(x), actual_rows = nrow(x), expected_logical_rows = nrow(x), expected_optimizer_calls = nrow(x),
-           output_path = normalizePath(result), output_bytes = file.info(result)$size, output_sha256 = .sha256(result),
-           resume_parts_dir = normalizePath(parts_dir), resume_part_count = 1,
-           resume_part_hashes = paste0(basename(part), ":", .sha256(part)), predecessor_receipt_hashes = predecessors,
-           g1_seeds = if (block == "G1") 100 else "", config_sha256 = builder_hash,
-           seed_min = min(configs[[block]]$seed), seed_max = max(configs[[block]]$seed), seed_count = length(unique(configs[[block]]$seed)),
-           phi_x = paste(sort(unique(configs[[block]]$phi_x)), collapse = ","),
-           phi_bias = paste(sort(unique(configs[[block]]$phi_bias)), collapse = ","), beta0_shift = 0,
-           arms = paste(.arms, collapse = ","), null_dataset_rows = null_rows,
-           unique_key_verdict = "PASS", a6_null_collapsed_rows = null_rows,
-           fit_error_rows = fit_errors, unlabelled_nonfinite_rows = 0)))
+    predecessor_paths <- c(
+      preflight = normalizePath(preflight_receipt, mustWork = TRUE),
+      pilot_decision = normalizePath(decision, mustWork = TRUE)
+    )
+    predecessor_hashes <- c(
+      preflight = .sha256(preflight_receipt), pilot_decision = .sha256(decision)
+    )
+    if (block == "G6") {
+      predecessor_paths <- c(
+        predecessor_paths, g1 = normalizePath(receipts[["G1"]], mustWork = TRUE)
+      )
+      predecessor_hashes <- c(predecessor_hashes, g1 = .sha256(receipts[["G1"]]))
+    }
+    .write_fixture_receipt(receipt, c(.fixture_compute_fields(
+      paste0(tolower(block), "_compute"), "campaign", block,
+      result, configs[[block]], x, part_paths = part,
+      predecessor_paths = predecessor_paths,
+      predecessor_hashes = predecessor_hashes,
+      g1_seeds = if (block == "G1") 100 else ""
+    ), compute_common))
     results[[block]] <- result; receipts[[block]] <- receipt
   }
   opt <- list(results = results, receipts = receipts, preflight_receipt = preflight_receipt,
               pilot = pilot, pilot_compute_receipt = pilot_compute,
               pilot_decision_receipt = decision, calibration_receipt = NULL,
               out_dir = file.path(root, "audit"))
-  out <- .audit_campaign(opt)
+  out <- .audit_campaign(opt, source_id_resolver = source_id_resolver)
   if (!all(file.exists(out$paths))) .stopf("Synthetic self-test did not write every audit artifact")
   audit_csv <- utils::read.csv(out$paths[[1L]], stringsAsFactors = FALSE)
   csv_hashes <- stats::setNames(audit_csv$independent_config_sha256, audit_csv$block)
@@ -843,32 +1374,38 @@
   if (!identical(receipt_hashes[names(canonical_hashes)], canonical_hashes)) {
     .stopf("Synthetic self-test audit receipt did not emit the canonical configuration hashes")
   }
-  overwrite_refused <- inherits(try(.audit_campaign(opt), silent = TRUE), "try-error")
+  overwrite_refused <- inherits(try(.audit_campaign(
+    opt, source_id_resolver = source_id_resolver
+  ), silent = TRUE), "try-error")
   if (!overwrite_refused) .stopf("Synthetic self-test did not refuse overwrite")
   missing_opt <- opt; missing_opt$out_dir <- file.path(root, "missing-audit"); missing_opt$receipts[["G6"]] <- file.path(root, "absent-g6.receipt")
-  missing_refused <- inherits(try(.audit_campaign(missing_opt), silent = TRUE), "try-error")
+  missing_refused <- inherits(try(.audit_campaign(
+    missing_opt, source_id_resolver = source_id_resolver
+  ), silent = TRUE), "try-error")
   if (!missing_refused) .stopf("Synthetic self-test opened an incomplete six-receipt bundle")
   tampered_receipt <- file.path(root, "g2-tampered-compute.receipt")
   tampered_lines <- readLines(receipts[["G2"]], warn = FALSE)
-  tampered_lines[startsWith(tampered_lines, "config_sha256=")] <- paste0(
-    "config_sha256=", paste(rep("0", 64L), collapse = "")
+  tampered_lines[startsWith(tampered_lines, "input_config_sha256=")] <- paste0(
+    "input_config_sha256=", paste(rep("0", 64L), collapse = "")
   )
   writeLines(tampered_lines, tampered_receipt, useBytes = TRUE)
   tampered_opt <- opt
   tampered_opt$out_dir <- file.path(root, "tampered-audit")
   tampered_opt$receipts[["G2"]] <- tampered_receipt
-  tampered_error <- try(.audit_campaign(tampered_opt), silent = TRUE)
+  tampered_error <- try(.audit_campaign(
+    tampered_opt, source_id_resolver = source_id_resolver
+  ), silent = TRUE)
   if (!inherits(tampered_error, "try-error") ||
-      !grepl("source-builder serialization hash mismatch", as.character(tampered_error), fixed = TRUE)) {
+      !grepl("input configuration hash mismatch", as.character(tampered_error), fixed = TRUE)) {
     .stopf("Synthetic self-test did not reject a tampered raw configuration hash")
   }
   divergent_configs <- configs
   divergent_configs$G3$rho[[1L]] <- divergent_configs$G3$rho[[1L]] + 0.01
   divergent_error <- try(.verify_receipt_bundle(
-    opt, divergent_configs, builder_configs, .authenticate_receipt_sources(opt)
+    opt, divergent_configs, builder_configs,
+    .authenticate_receipt_sources(opt, source_id_resolver = source_id_resolver)
   ), silent = TRUE)
-  if (!inherits(divergent_error, "try-error") ||
-      !grepl("independent grid differs from the frozen source builder", as.character(divergent_error), fixed = TRUE)) {
+  if (!inherits(divergent_error, "try-error")) {
     .stopf("Synthetic self-test did not reject an independently reconstructed grid mutation")
   }
   unauthenticated_receipt <- file.path(root, "g4-unauthenticated-compute.receipt")
@@ -886,12 +1423,78 @@
     .stopf("Synthetic injected builder loader was called")
   }
   unauthenticated_error <- try(
-    .audit_campaign(unauthenticated_opt, builder_loader = injected_loader), silent = TRUE
+    .audit_campaign(unauthenticated_opt, builder_loader = injected_loader,
+                    source_id_resolver = source_id_resolver), silent = TRUE
   )
   if (!inherits(unauthenticated_error, "try-error") || loader_called ||
       !grepl("instrument ID does not match", as.character(unauthenticated_error), fixed = TRUE)) {
     .stopf("Synthetic self-test did not authenticate sources before invoking the builder loader")
   }
+
+  receipt_negative <- function(block, field, value, needle) {
+    path <- file.path(root, sprintf("%s-%s-negative.receipt", tolower(block), field))
+    lines <- readLines(receipts[[block]], warn = FALSE)
+    hit <- startsWith(lines, paste0(field, "="))
+    if (sum(hit) != 1L) .stopf("Synthetic negative fixture cannot find %s", field)
+    lines[hit] <- paste0(field, "=", value)
+    writeLines(lines, path, useBytes = TRUE)
+    bad <- opt
+    bad$receipts[[block]] <- path
+    bad$out_dir <- file.path(root, paste0("negative-", field))
+    loader_called <- FALSE
+    loader <- function(...) {
+      loader_called <<- TRUE
+      builder_configs
+    }
+    err <- try(.audit_campaign(
+      bad, builder_loader = loader, source_id_resolver = source_id_resolver
+    ), silent = TRUE)
+    if (!inherits(err, "try-error") || loader_called ||
+        !grepl(needle, as.character(err), fixed = TRUE)) {
+      .stopf("Synthetic self-test did not reject %s tampering before source loading", field)
+    }
+  }
+  receipt_negative("G2", "schema_version", "phase_c_compute_v1", "schema_version")
+  receipt_negative("G3", "stage", "pilot_v2", "stage/block mismatch")
+  receipt_negative("G4", "block", "G1", "stage/block mismatch")
+
+  validate_negative <- function(name, mutate, needle) {
+    x <- .synthetic_results(configs$G1, "G1")
+    x <- mutate(x)
+    err <- try(.validate_block_results(
+      x, "G1", .expand_arms(configs$G1), .read_receipt(receipts[["G1"]]),
+      c(part = file.path(paste0(results[["G1"]], ".parts"), "part-00001.rds")),
+      instrument_id
+    ), silent = TRUE)
+    if (!inherits(err, "try-error") ||
+        !grepl(needle, as.character(err), fixed = TRUE)) {
+      .stopf("Synthetic self-test did not reject %s", name)
+    }
+  }
+  validate_negative("theoretical geometry tampering", function(x) {
+    x$theoretical_bias_rho[[1L]] <- x$theoretical_bias_rho[[1L]] + 0.01
+    x
+  }, "theoretical bias geometry")
+  validate_negative("positive-kappa geometry error", function(x) {
+    i <- which(x$kappa > 0)[[1L]]
+    x$realised_bias_rho_max_abs_error[[i]] <- 1e-6
+    x
+  }, "realised positive-kappa geometry")
+  validate_negative("null correlation defined as zero", function(x) {
+    i <- which(x$kappa == 0)[[1L]]
+    x$realised_bias_rho_mean[[i]] <- 0
+    x
+  }, "undefined-correlation/zero-variance")
+  validate_negative("null variance recorded as NA", function(x) {
+    i <- which(x$kappa == 0)[[1L]]
+    x$realised_bias_variance_mean[[i]] <- NA_real_
+    x
+  }, "undefined-correlation/zero-variance")
+  validate_negative("pre-fit failure retention", function(x) {
+    x$fit_attempted[[1L]] <- FALSE
+    x$fit_error[[1L]] <- "synthetic DGP failure"
+    x
+  }, "DGP/pre-fit failure")
   cat("Phase C independent campaign verifier synthetic self-test: PASS\n")
   cat("Fixture:", root, "\n")
   invisible(out)

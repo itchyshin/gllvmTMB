@@ -2,13 +2,13 @@
 
 ## Purpose
 
-This audit is a post-campaign structural gate for the corrected Phase C G1--G6 run. It is independent of `dev/isdm-phase-c-analyse-official.R`: the verifier neither sources that file nor calculates scientific trends. Its first responsibility is the outcome firewall. It refuses to open any campaign RDS unless all six named result files and all six `PASS` compute receipts exist and the receipts clear provenance, predecessor, output-hash, byte-count, configuration-hash, and part-hash checks.
+This audit is a post-campaign structural gate for the prospective exact-geometry Phase C G1--G6 rerun under amendment 2. It is independent of `dev/isdm-phase-c-analyse-official.R`: the verifier neither sources that file nor calculates scientific trends. Its first responsibility is the outcome firewall. It refuses to open any campaign RDS unless the preflight, `pilot_v2`, and all six campaign compute receipts use `schema_version=phase_c_compute_v2` and clear source, instrument, stage/block, predecessor path/hash, output, configuration, session, optimiser-control, logical-row, model-fit-attempt, and resume-part checks.
 
 The audit does not change the statistical method, thresholds, grids, campaign files, receipts, or raw results. It writes a new content-addressed receipt, block CSV, and Markdown report into a caller-supplied directory outside the repository and refuses to overwrite those outputs.
 
 ## Why the additional receipt is needed
 
-The current compute receipts are valid runner receipts, but they do not themselves enumerate every preregistered treatment axis or certify every cross-block contract. In particular, a per-block receipt does not contain the complete expected full-key set, exact six-arm membership per dataset, the combined one-null pairing count, exact A5/A6-null metric identity, G5/A2 rank-`d` isolation, or part-to-final content identity. This audit supplies those missing structural facts prospectively, after compute and before scientific analysis, without rewriting a receipt or rerunning a fit.
+The v2 runner receipts record the full seed inventory, canonical `stage`/`block`, source-instrument file paths and SHA-256 values, configuration provenance, explicit default or supplied optimiser control, session/package versions, logical-row counts, model-front-end fit attempts, structural counts, and exact predecessor/output/resume-part paths and hashes. `actual_optimizer_calls` deliberately records `NOT_INSTRUMENTED_MODEL_FRONTEND_ATTEMPTS_RECORDED_SEPARATELY`; the exact numeric execution count is `actual_model_fit_attempts`. The independent audit additionally reconstructs the complete expected keys and checks cross-block contracts, exact bias geometry, and part-to-final content identity without rewriting a receipt or rerunning a fit.
 
 ## Inputs and opening order
 
@@ -23,11 +23,11 @@ The caller supplies:
 The verifier proceeds in this order:
 
 1. Confirm every named input exists and no result or receipt path was assigned twice.
-2. Parse receipts only. Require exact receipt type, `PASS`, Lane C branch, a clean recorded source, a real Git source commit, and one instrument ID matching both that commit and the current frozen instrument files.
-3. Verify predecessor hashes from preflight through pilot decision and from that decision into every campaign block. Require G6 to name the exact G1 receipt hash.
-4. Verify each result path, SHA-256, byte count, expected/actual rows, seed manifest, `phi_x`, `phi_bias`, frozen `beta0_shift`, S100 decision, arm manifest, part directory, part count, and every part hash. The runner's raw `saveRDS()` configuration hash is reproduced from the frozen source builder, while the independently reconstructed grid must be `identical()` to that builder and receives a separate canonical value hash.
+2. Parse receipts only. Require exact receipt type, `PASS`, `phase_c_compute_v2` for compute receipts, Lane C branch, a clean recorded source, a real Git source commit, and one six-file instrument ID matching both that commit and the current frozen files, including `dev/isdm-phase-c-amendment-2-2026-08-09.md`.
+3. Require canonical `preflight/preflight`, `pilot_v2/G1`, and `campaign/G1` through `campaign/G6` stage/block pairs. Verify exact predecessor paths and hashes from preflight through pilot decision and into every campaign block; G6 must name the supplied G1 receipt exactly.
+4. Verify result paths, SHA-256, byte counts, full seed lists, `phi_x`, `phi_bias`, frozen `beta0_shift`, S100 decision, arm manifest, explicit optimiser/session fields, logical and model-fit accounting, and every exact resume-part path/hash. Reproduce the raw preflight-contract, pilot, and G1--G6 configuration hashes from the authenticated source builders. Independently reconstructed contracts must be `identical()` to those builders; campaign grids also receive separate canonical value hashes.
 5. Only after steps 1--4 pass, open the raw campaign result and part RDS files.
-6. Verify the exact preregistered full keys, six arms per dataset, no duplicates, expected block counts, retained fit-error rows, zero unlabelled non-finite completed results, exact one-null mapping on `stage + seed + arm + n + T_sp + d_fit + k`, A6-null collapse and A5/A6 completed-field identity, G6's isolated `phi_bias` axis with `phi_x=0.15`, and G5/A2 rank-`d` separation from total-`Sigma` results.
+6. Verify `fit_attempted=TRUE` on every raw row, retaining model-level fit-error rows but rejecting DGP/pre-fit failures. Require theoretical bias rho, sharing, and variance to equal the configuration exactly. For `kappa>0`, require finite realised rho/sharing/variance means and maximum absolute errors no larger than `1e-9`; at the null, correlations and their errors must be `NA` while realised variance and its error are exactly zero. Then verify the exact preregistered keys, six arms per dataset, no duplicates, expected block counts, zero unlabelled non-finite completed results, one-null mapping, A6 collapse/A5 identity, isolated G6 `phi_bias`, and G5/A2 rank-`d` separation.
 7. Verify the union and contents of the immutable part files reproduce the final block RDS exactly.
 8. Write the new audit artifacts without overwriting any existing audit output.
 
@@ -75,7 +75,7 @@ Run the pure structural self-test without campaign artifacts:
 Rscript --vanilla dev/isdm-phase-c-verify-campaign.R --self-test
 ```
 
-The self-test creates a complete synthetic 19,800-row campaign under `/private/tmp`, includes one retained model error, verifies the PASS path, verifies immutable-output refusal, and verifies the six-receipt opening gate. It neither connects to Totoro nor reads live Phase C artifacts.
+The self-test creates a complete synthetic 19,800-row campaign under `/private/tmp`, includes one retained model error, and verifies the PASS path, immutable-output refusal, and six-receipt opening gate. Negative fixtures tamper schema, stage, block, raw/canonical configuration identity, source authentication, positive-`kappa` geometry, theoretical geometry, null zero/`NA` contracts, and `fit_attempted`. It neither connects to Totoro nor reads live Phase C artifacts or runs a fit.
 
 ## Outputs
 
@@ -95,7 +95,7 @@ different internal R representations. A `saveRDS()` byte hash is therefore a pro
 the exact source-built object, not a canonical hash of a logical table.
 
 The corrected audit authenticates all predecessor and G1--G6 receipt source commits plus the
-current five-file instrument identity before it evaluates any campaign source. It then keeps both
+current six-file instrument identity before it evaluates any campaign source. It then keeps both
 configuration checks without weakening either:
 
 - the receipt's raw configuration hash must reproduce from the immutable campaign source builder,

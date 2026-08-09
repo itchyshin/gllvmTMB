@@ -62,8 +62,11 @@ The evidence calculations are:
    the scientific magnitude criterion, while support is labeled reportable only at `>= 3 MCSE`.
 
 Every numerical table retains all-completed and both-`pdHess` summaries where the underlying
-official paired rows permit them. Neither convergence flags, Hessian flags, nor Heywood outcomes
-are used to discard a completed fit.
+official paired rows permit them. The dose and separation trend tables likewise report the
+seed-fixed slope, regression SE, complete-seed count, and per-seed Spearman summaries for both
+populations. Each table flags an all-completed versus both-`pdHess` difference larger than one
+all-completed MCSE (or one all-completed regression SE for a slope). Neither convergence flags,
+Hessian flags, nor Heywood outcomes are used to discard a completed fit.
 
 ## Figures and audience
 

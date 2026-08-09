@@ -188,7 +188,12 @@
     sa <- .stats(z[[value]][z[[complete]]]); sp <- .stats(z[[value]][z[[pd]]])
     row$n_all <- sa[["n"]]; row$estimate_all <- sa[["mean"]]; row$mcse_all <- sa[["mcse"]]
     row$n_both_pdHess <- sp[["n"]]; row$estimate_both_pdHess <- sp[["mean"]]
-    row$mcse_both_pdHess <- sp[["mcse"]]; row$metric <- value; row
+    row$mcse_both_pdHess <- sp[["mcse"]]
+    row$pdHess_diff_gt_1_all_mcse <-
+      is.finite(row$estimate_all) && is.finite(row$estimate_both_pdHess) &&
+      is.finite(row$mcse_all) &&
+      abs(row$estimate_all - row$estimate_both_pdHess) > row$mcse_all
+    row$metric <- value; row
   })
   out <- do.call(rbind, rows); rownames(out) <- NULL; out
 }
@@ -212,22 +217,60 @@
   rows <- lapply(groups, function(ii) {
     z <- x[ii, , drop = FALSE]; row <- z[1L, group_cols, drop = FALSE]
     levels_k <- sort(unique(z$kappa))
-    by_seed <- split(z, z$seed)
-    by_seed <- Filter(function(s) all(levels_k %in% s$kappa) && all(s$completed_pair), by_seed)
-    if (!length(by_seed)) .stopf("Trend group lacks complete same-seed kappa ladders")
-    zz <- do.call(rbind, by_seed)
-    fit <- stats::lm(zz[[value]] ~ zz$kappa + factor(zz$seed))
-    co <- summary(fit)$coefficients
-    slope <- unname(co[2L, 1L]); se <- unname(co[2L, 2L])
-    seed_slopes <- vapply(by_seed, function(s) coef(stats::lm(s[[value]] ~ s$kappa))[2], numeric(1))
-    seed_rho <- vapply(by_seed, function(s) stats::cor(s$kappa, s[[value]], method = "spearman"), numeric(1))
-    row$n_complete_seeds <- length(by_seed)
-    row$seed_fixed_ols_slope <- slope; row$seed_fixed_ols_se <- se
-    row$positive_at_3se <- is.finite(se) && slope >= 3 * se
-    row$mean_seed_slope <- mean(seed_slopes); row$mcse_seed_slope <- .stats(seed_slopes)[["mcse"]]
-    row$mean_seed_spearman <- mean(seed_rho)
-    row$n_seed_spearman_positive <- sum(seed_rho > 0)
-    row$all_seed_spearman_positive <- all(seed_rho > 0)
+    calculate <- function(mask, label, required = FALSE) {
+      by_seed <- split(z, z$seed)
+      by_seed <- Filter(function(s) all(levels_k %in% s$kappa) && all(mask[match(rownames(s), rownames(z))]),
+                        by_seed)
+      if (!length(by_seed)) {
+        if (required) .stopf("Trend group lacks complete same-seed kappa ladders")
+        return(list(n = 0L, slope = NA_real_, se = NA_real_, positive = NA,
+                    mean_seed_slope = NA_real_, mcse_seed_slope = NA_real_,
+                    mean_seed_spearman = NA_real_, n_spearman_positive = 0L,
+                    all_spearman_positive = NA))
+      }
+      zz <- do.call(rbind, by_seed)
+      fit <- stats::lm(zz[[value]] ~ zz$kappa + factor(zz$seed))
+      co <- summary(fit)$coefficients
+      slope <- unname(co[2L, 1L]); se <- unname(co[2L, 2L])
+      seed_slopes <- vapply(by_seed, function(s) coef(stats::lm(s[[value]] ~ s$kappa))[2], numeric(1))
+      seed_rho <- vapply(by_seed, function(s) stats::cor(s$kappa, s[[value]], method = "spearman"), numeric(1))
+      list(n = length(by_seed), slope = slope, se = se,
+           positive = is.finite(se) && slope >= 3 * se,
+           mean_seed_slope = mean(seed_slopes),
+           mcse_seed_slope = .stats(seed_slopes)[["mcse"]],
+           mean_seed_spearman = mean(seed_rho),
+           n_spearman_positive = sum(seed_rho > 0),
+           all_spearman_positive = all(seed_rho > 0))
+    }
+    ## Use stable row identifiers because split() preserves the source row names.
+    rownames(z) <- sprintf("r%d", seq_len(nrow(z)))
+    all_fit <- calculate(z$completed_pair, "all", required = TRUE)
+    pd_fit <- calculate(z$both_pdHess, "both_pdHess", required = FALSE)
+    for (population in c("all", "both_pdHess")) {
+      fit <- if (population == "all") all_fit else pd_fit
+      row[[paste0("n_complete_seeds_", population)]] <- fit$n
+      row[[paste0("seed_fixed_ols_slope_", population)]] <- fit$slope
+      row[[paste0("seed_fixed_ols_se_", population)]] <- fit$se
+      row[[paste0("positive_at_3se_", population)]] <- fit$positive
+      row[[paste0("mean_seed_slope_", population)]] <- fit$mean_seed_slope
+      row[[paste0("mcse_seed_slope_", population)]] <- fit$mcse_seed_slope
+      row[[paste0("mean_seed_spearman_", population)]] <- fit$mean_seed_spearman
+      row[[paste0("n_seed_spearman_positive_", population)]] <- fit$n_spearman_positive
+      row[[paste0("all_seed_spearman_positive_", population)]] <- fit$all_spearman_positive
+    }
+    row$pdHess_slope_diff_gt_1_all_se <-
+      is.finite(all_fit$slope) && is.finite(pd_fit$slope) && is.finite(all_fit$se) &&
+      abs(all_fit$slope - pd_fit$slope) > all_fit$se
+    ## Backward-compatible aliases name the preregistered all-completed population.
+    row$n_complete_seeds <- row$n_complete_seeds_all
+    row$seed_fixed_ols_slope <- row$seed_fixed_ols_slope_all
+    row$seed_fixed_ols_se <- row$seed_fixed_ols_se_all
+    row$positive_at_3se <- row$positive_at_3se_all
+    row$mean_seed_slope <- row$mean_seed_slope_all
+    row$mcse_seed_slope <- row$mcse_seed_slope_all
+    row$mean_seed_spearman <- row$mean_seed_spearman_all
+    row$n_seed_spearman_positive <- row$n_seed_spearman_positive_all
+    row$all_seed_spearman_positive <- row$all_seed_spearman_positive_all
     row
   })
   out <- do.call(rbind, rows); rownames(out) <- NULL; out
@@ -548,10 +591,25 @@ self_test <- function() {
   paths <- run_supplement(official, output)
   ledger <- utils::read.csv(file.path(output, "06-claim-verdict-ledger.csv"),
                             stringsAsFactors = FALSE)
+  dose <- utils::read.csv(file.path(output, "01-p-dose-evidence.csv"),
+                          stringsAsFactors = FALSE)
+  separation <- utils::read.csv(file.path(output, "04-p-separation-evidence.csv"),
+                                stringsAsFactors = FALSE)
   receipt <- utils::read.csv(file.path(output, "07-supplement-input-receipt.csv"),
                              stringsAsFactors = FALSE)
+  trend_columns <- c(
+    "n_complete_seeds_all", "seed_fixed_ols_slope_all",
+    "seed_fixed_ols_se_all", "positive_at_3se_all",
+    "n_complete_seeds_both_pdHess", "seed_fixed_ols_slope_both_pdHess",
+    "seed_fixed_ols_se_both_pdHess", "positive_at_3se_both_pdHess",
+    "pdHess_slope_diff_gt_1_all_se"
+  )
   stopifnot(length(paths) == length(.output_files), all(file.exists(paths)),
             all(file.info(paths)$size > 0),
+            all(trend_columns %in% names(dose)),
+            all(trend_columns %in% names(separation)),
+            all(dose$n_complete_seeds_all == 8L),
+            all(dose$n_complete_seeds_both_pdHess == 7L),
             identical(names(receipt), c("file", "bytes", "sha256")),
             nrow(receipt) == length(.required_files),
             all(grepl("^[[:xdigit:]]{64}$", receipt$sha256)),

@@ -48512,3 +48512,23 @@ validation-debt-register promotion. `#946` was **not** implemented — a passing
 it, because `a = 1` means a varying PA offset was never exercised.
 
 — Integrated SDM Phase A gate (Claude, 2026-08-08)
+
+## 2026-08-09 — Integrated-SDM Phase C misspecification campaign (#943)
+
+Branch: `claude/experiment-integrated-sdm`; developer-only evidence lane; main, package source, public docs, and issue state untouched.
+
+Frozen source `7e26e1bdb9d0f99fd67ec3a4850bcf2e28d7229b` produced corrected `pilot_v2` and 19,800 G1--G6 Totoro fits (never GitHub Actions). Independent audit PASS receipt SHA-256: `4a1df5570a4231366c6ec9a7925a7d97fc1f81363c2d0a0c5ce865d60e268f91`.
+
+A1 shared-bias (`kappa=1`, `rho=0`, `omega=1`) has `dD_bias=0.45218`, MCSE `0.00220`, 100/100 complete/both-pdHess pairs; C1/C2 pass and A5--A6 attribution is `0.31360`, MCSE `0.00230` (C3 pass). Seven fit errors, 1,342 nonzero-convergence rows, and 21 `pdHess=FALSE` completed rows were retained.
+
+The first D-43 panel found all 32 negative R5 triggers were `omega=0` controls, making the immutable aggregate's global `H_SINK_REFUTED` wording overbroad. `dev/isdm-phase-c-d43-interpretation.R` hashes/copies immutable R1--R5 evidence and records only the post-analysis scope conclusion `H_SINK_UNRESOLVED_PREREGISTRATION_SCOPE_CONFLICT`. Curie, Fisher, and Noether unanimously returned DONE on the repair.
+
+```sh
+Rscript --vanilla dev/isdm-phase-c-d43-interpretation.R --self-test
+# PASS: omega=0 scope conflict, omega>0 refutation, malformed-schema reject, overwrite reject.
+
+git diff --check
+# PASS.
+```
+
+No package checks were run because no package-facing file changed. A local repeat of the independent audit correctly could not bind Totoro absolute paths from the mirror; the original remote audit receipt remains authoritative. Full result: `dev/isdm-phase-c-findings.md`; closure report: `docs/dev-log/after-task/2026-08-09-isdm-phase-c.md`.

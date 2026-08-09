@@ -6,26 +6,44 @@ support. The `after-task-audit` skill greps this file for terms like
 this file in the same PR that changes the supported surface, so the
 durable record never lags the code.
 
-Last refreshed 2026-05-18 (Codex drmTMB-parity hygiene pass).
+Last refreshed 2026-08-09 (exact-aa production reconciliation; package remains
+0.6.0).
+
+## Exact-aa production boundary
+
+The frozen v4 study completed 44,800/44,800 production fits across 28
+pilot-admitted cells under source archive SHA-256
+`ca6c3feb474d9cbfb44cec3c08e380e8d5810bef8e226cb5b426a6ade9b5f630`.
+The aggregate closeout was HOLD. The full eligible cell set was incomplete,
+every campaign contained failed admitted cells, and the observable
+terminal-status detector identified 19 of 80 catastrophic truth errors
+(sensitivity 0.2375; specificity 0.9627236).
+
+The implemented two-sample-size point-estimation pair gates passed for
+Gaussian `indep()`, Gaussian `dep()`, Poisson-log rank-1
+`latent(unique = TRUE)`, and Binomial(10)-logit rank-1
+`latent(unique = TRUE)`. Independent review treats these as narrow
+tested-regime evidence, not as a package-wide dependable core. Gaussian
+`latent(unique = TRUE)` and NB2-log `latent(unique = TRUE)` remain
+characterization-only. The campaign does not certify intervals, raw loading
+orientation, structured sources, slopes, mixed families, ordinal routes, or
+alternative integration engines. Exact receipts and cell verdicts are in
+`docs/dev-log/simulation-artifacts/2026-08-09-cran07-v4-exact-aa-production/`.
 
 ## Implemented
 
 ### Covariance grammar
 
-- The 4 x 5 covariance keyword grid (correlation source x mode):
-  - none: `unique`, `indep`, `dep`, `latent`;
-  - animal: `animal_scalar`, `animal_unique`, `animal_indep`,
-    `animal_dep`, `animal_latent`;
-  - phylogenetic: `phylo_scalar`, `phylo_unique`, `phylo_indep`,
-    `phylo_dep`, `phylo_latent`, `phylo_slope`;
-  - spatial: `spatial_scalar`, `spatial_unique`, `spatial_indep`,
-    `spatial_dep`, `spatial_latent`.
-- The decomposition mode `latent + unique` paired:
-  `Sigma = Lambda Lambda^T + Psi`, where `Psi = diag(psi^2)`.
-  Standalone `latent()` is the no-residual reduced-rank subset;
-  standalone `unique()` is the marginal independent mode and is
-  equivalent to `indep()`; `dep()` estimates a full unstructured
-  Sigma.
+- The 5 x 3 covariance keyword grid has sources `none`, `animal`, `phylo`,
+  `spatial`, and `kernel`, crossed with modes `indep`, `dep`, and `latent`.
+  `common = TRUE` on `*_indep()` and `unique = TRUE` on `*_latent()` are
+  modifiers, not modes. Named `scalar()` and `unique()` families remain
+  soft-deprecated compatibility syntax.
+- The ordinary decomposition is
+  `Sigma = Lambda Lambda^T + Psi`, where `Psi = diag(psi)`, and ordinary
+  `latent()` includes this companion by default. Source-specific and kernel
+  latent terms are loadings-only by default; request `unique = TRUE` for the
+  decomposition. `dep()` estimates a full unstructured Sigma.
 
 ### Response families
 
@@ -33,16 +51,26 @@ Per-trait families supported through the engine `family_to_id()` map:
 gaussian, binomial (with multi-trial via `cbind(succ, fail)` or
 weights), betabinomial, poisson, lognormal, Gamma, nbinom2, tweedie,
 Beta, student, truncated_poisson, truncated_nbinom2, delta_lognormal,
-delta_gamma, ordinal_probit. Mixed-family fits are accepted via
-`family = list(...)` keyed by trait.
+delta_gamma, ordinal_probit, and nbinom1. Mixed-family fits are accepted
+via `family = list(...)` keyed by trait.
+
+The live map also includes baseline-category-logit `multinomial()` for an
+unordered response with three or more categories. Its fixed-effect route is
+covered. One multinomial trait may use the separately evidenced
+`phylo_latent()` route or share an ordinary `latent()` ordination with other
+families, but those routes remain partial. Multiple multinomial traits,
+explicit multinomial `unique()` / `indep()` terms, augmented slopes, and other
+structured tiers are not admitted.
 
 ### Structured-effect representations
 
 - Phylogenetic covariance via sparse `A^-1` (Hadfield & Nakagawa 2010)
   plus optional `phylo_vcv = Cphy` direct VCV input.
-- Spatial covariance via the SPDE/GMRF approximation inherited from
-  `sdmTMB`; supports isotropic and anisotropic mesh choices.
-- Known sampling covariance via `meta_V(value, V = V)` for
+- Spatial covariance via SPDE/GMRF helpers substantially rewritten for
+  gllvmTMB against the public `fmesher` API after an earlier GPL-3 sdmTMB-derived
+  implementation. The current engine estimates an isotropic spatial range;
+  it does not estimate directional anisotropy.
+- Known sampling covariance via `meta_V(V = V)` for
   multivariate meta-analytic models. `meta_known_V()` is retained
   as a deprecated alias.
 
@@ -50,12 +78,18 @@ delta_gamma, ordinal_probit. Mixed-family fits are accepted via
 
 - ML point estimates by default, plus the guarded Gaussian-only
   `gllvmTMB(REML = TRUE)` pilot, with Laplace approximation under TMB.
-- Profile-likelihood confidence intervals for derived quantities
-  (repeatability, communality, phylogenetic signal, pairwise
-  correlations).
-- Fisher-z, Wald, and bootstrap intervals are also exposed via
-  `extract_correlations(method = ...)` with `fisher-z` as the
-  default.
+- Direct or target-specific profile machinery remains available for fixed
+  effects, direct scale parameters, `Lambda` entries, the supported
+  phylogenetic-signal cases, and `profile_ci_total_variance()`. The last route
+  has a narrow unpenalised native-Laplace Gaussian `certified-0.94` regime; it
+  is not a package-wide interval certificate.
+- The former nonlinear profile routes for canonical repeatability,
+  communality, correlations, and variance proportions are withdrawn. Explicit
+  requests stop with a typed explanation rather than returning bounds.
+- `extract_correlations()` defaults to `method = "none"` and returns point
+  estimates only. Fisher-z is an opt-in heuristic sensitivity interval,
+  `wald` is its compatibility alias, and bootstrap support remains
+  route-specific and uncalibrated.
 - Per-entry loading intervals require a confirmatory rotation frame. Raw
   `Lambda` supports Wald, profile, and bootstrap routes; standardized
   `rho[t,k] = Lambda[t,k] / sqrt(Sigma_total[t,t])` supports joint-delta
@@ -67,7 +101,7 @@ delta_gamma, ordinal_probit. Mixed-family fits are accepted via
 
 One user-facing entry point, two data shapes:
 
-- `gllvmTMB(value ~ ..., data = df_long, unit = "...")` -- the
+- `gllvmTMB(value ~ ..., data = df_long, unit = "...", trait = "...")` -- the
   canonical long-format path.
 - `gllvmTMB(traits(t1, t2, ...) ~ <compact RHS>, data = df_wide,
   unit = "...")` -- the wide data-frame path. `traits()` captures a
@@ -136,18 +170,19 @@ These are intentional design boundaries of the sugar layer, not bugs:
 
 ## Not yet implemented
 
-- **Random slopes** via the bar syntax `(1 + x | g)`. Currently only
-  intercept-only random terms are supported on the structured-effect
-  paths (`latent`, `unique`, `indep`, `dep`, and their phylogenetic
-  / spatial variants). Random slopes via ordinary `(1 + x | g)` for
-  non-structured random effects are accepted in the formula but flow
-  through to the long-format engine without trait-stacking. A
-  first-class trait-stacked random-slope API is planned.
+- **Random slopes outside the structured keyword contract.** One structured
+  slope (`s = 1`) is implemented for the named RE-02 routes and core-family
+  cells; lognormal, Student-t, and betabinomial additions remain C1-partial
+  under RE-14. For `s = 2`, only Gaussian
+  `phylo_dep(1 + x1 + x2 | species)` has recovery evidence. Non-Gaussian
+  `s >= 2` is rejected, and `s >= 3` is mechanically available on the same
+  dimension-general path but has no gating test. Bare `(1 + x | g)` does not
+  provide a first-class trait-stacked slope API.
 - **Zero-inflated families** (ZINB / ZIP). Cut from the 0.2.0 family
   list; planned for a later phase.
-- **SPDE barrier path** (`add_barrier_mesh`) for coastal data.
-  Planned; the upstream `sdmTMB` code path is GPL-3-compatible and
-  re-import is straightforward.
+- **SPDE barrier path** (`add_barrier_mesh`) for coastal data. A future barrier
+  implementation requires its own design, independently authored code, and
+  validation against the native spatial contract.
 - **First-class two-level phylogeny + non-phylogeny decomposition**
   (the legacy audit's "two-U" path). The decomposition is currently
   exposed only via the diagnostic cross-checks

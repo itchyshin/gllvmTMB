@@ -164,6 +164,10 @@ bootstrap because those entries are nonlinear functions of rotation-equivalent
 loadings and diagonal \eqn{\Psi}. Non-Gaussian bootstrap and broader
 derived-target coverage are not universally calibrated; inspect the returned
 method and the target-specific article before reporting bounds.
+Fits using non-unit likelihood weights target a weighted estimating
+objective, not the ordinary likelihood used by these interval routes.
+\code{confint()} therefore refuses them; no sandwich interval is currently
+certified.
 
 Main parm-class dispatch paths:
 

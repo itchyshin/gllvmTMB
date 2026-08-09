@@ -1,0 +1,9 @@
+"cell_id","n_expected","n_attempts","n_terminal","n_optimizer_converged","n_stationary","n_stationary_usable","n_pd_hessian","n_usable","optimizer_rate","stationary_rate","stationary_usable_rate","pd_hessian_rate","complete"
+"rb_g_missing",20,20,20,20,20,19,20,19,1,1,0.95,1,TRUE
+"rb_g_rare",20,20,20,20,20,20,20,20,1,1,1,1,TRUE
+"rb_p_missing",20,20,20,20,20,20,20,20,1,1,1,1,TRUE
+"rb_p_rare",20,20,20,20,20,20,20,20,1,1,1,1,TRUE
+"rb_nb2_missing",20,20,20,20,20,18,19,18,1,1,0.9,0.95,TRUE
+"rb_nb2_rare",20,20,20,20,20,19,20,19,1,1,0.95,1,TRUE
+"rb_b_missing",20,20,20,20,20,20,20,20,1,1,1,1,TRUE
+"rb_b_rare",20,20,20,20,20,20,20,20,1,1,1,1,TRUE

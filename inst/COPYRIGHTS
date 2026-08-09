@@ -2,24 +2,78 @@
 ##
 ## gllvmTMB is a standalone Template Model Builder (TMB) package for
 ## stacked-trait, long-format multivariate generalised linear latent
-## variable models (GLLVMs). The gllvmTMB-specific code -- the
-## multi-trait engine in src/gllvmTMB.cpp, the formula
-## parser, the 4 x 5 covariance keyword grid, the per-trait response
-## families (including ordinal_probit), the diagnostic and extractor
-## machinery -- is licensed GPL-3 by Shinichi Nakagawa.
+## variable models (GLLVMs). Except for the components and source lineages
+## recorded below, the gllvmTMB-specific code -- including the multi-trait
+## engine, formula parser, 5 x 3 covariance keyword grid, response-family
+## extensions, diagnostics, and extractors -- is licensed GPL-3 by Shinichi
+## Nakagawa.
 ##
-## The R-side spatial helpers in R/mesh.R, R/crs.R, and R/plot.R are
-## independently authored gllvmTMB GPL-3 code. They use the public fmesher
-## API and the published SPDE/GMRF construction; no sdmTMB source code is
-## included or adapted.
+## Family constructors (R/families.R)
+##
+## The 0.7 family-constructor layer is an independently implemented,
+## data-driven gllvmTMB design by Shinichi Nakagawa. It is built from the public
+## R family-object contract and `stats::make.link()` semantics. The earlier
+## development implementation derived from sdmTMB/glmmTMB family code was
+## replaced before the CRAN source freeze; that earlier source is not included
+## in the 0.7 tarball. Compatibility is guarded by formals, object-field,
+## inverse-link, validation, delta, mixed-family, and compiled-engine tests.
+##
+## Spatial helper lineage (R/mesh.R, R/crs.R, and R/plot.R)
+##
+## The original gllvmTMB spatial helper layer was derived from sdmTMB's GPL-3
+## implementation. The current helpers were substantially rewritten in place
+## against the public fmesher/sf APIs and the published SPDE/GMRF construction.
+## gllvmTMB therefore retains conservative sdmTMB attribution rather than
+## claiming clean-room authorship. The source baseline is sdmTMB commit
+## 8bc452cb743a9efa7b3212653a0f5f2bda3c5ffc (version 0.7.4.9024):
+## https://github.com/sdmTMB/sdmTMB/tree/8bc452cb743a9efa7b3212653a0f5f2bda3c5ffc
+##
+## sdmTMB is GPL-3. Its named authors at that revision include Sean C.
+## Anderson, Eric J. Ward, Philina A. English, Lewis A. K. Barnett, and James
+## T. Thorson; its complete contributor and copyright-holder roster is retained
+## in the pinned DESCRIPTION above. No sdmTMB runtime or build dependency is
+## required by gllvmTMB.
 ##
 ## TMB engine (src/gllvmTMB.cpp)
 ##
-## The C++ template under src/gllvmTMB.cpp is original gllvmTMB-
-## native code by Shinichi Nakagawa, written against the TMB API
-## (Kristensen et al. 2016, https://github.com/kaskr/adcomp). TMB is
-## a runtime dependency (Imports + LinkingTo in DESCRIPTION) rather
-## than included source.
+## Except for the same-author drmTMB helpers recorded below, the C++ template
+## under src/gllvmTMB.cpp is original gllvmTMB-native code by Shinichi
+## Nakagawa, written against the TMB API (Kristensen et al. 2016,
+## https://github.com/kaskr/adcomp). TMB is a runtime dependency (Imports +
+## LinkingTo in DESCRIPTION) rather than included source.
+##
+## The reduced-rank covariance interface and its standard identified
+## factor-loading parameterisation were informed by glmmTMB's `rr()` model.
+## The current cursor-based lower-triangular unpacker is independently written
+## for gllvmTMB; no glmmTMB C++ source is included in this engine.
+##
+## The stable cumulative-logit helpers `gll_log_inv_logit()`,
+## `gll_log1m_inv_logit()`, `gll_log1mexp()`, and
+## `gll_log_inv_logit_diff()` are copied verbatim from the sister package
+## drmTMB (`src/drm_numeric.h`). Both packages are GPL-3 and both are authored
+## by Shinichi Nakagawa; this is same-author GPL-3 reuse.
+##
+## The broader missing-predictor implementation is also same-author GPL-3
+## reuse from drmTMB. It includes the R-side grammar and validators in
+## R/missing-predictor.R, the Gaussian/binary/ordered/categorical and grouped
+## missing-predictor blocks in src/gllvmTMB.cpp, and their focused tests under
+## tests/testthat/test-missing-predictor-*.R. The gllvmTMB code adapts those
+## pieces to stacked traits and the package's multi-tier parameter map.
+##
+## Standalone VA research template (inst/tmb/gllvmTMB_va_r3.cpp)
+##
+## The standalone variational research template is original gllvmTMB GPL-3
+## code by Shinichi Nakagawa. Its dense-tier factor loadings use an
+## independently written cursor-based implementation of the same standard
+## identified lower-triangular parameterisation; no glmmTMB C++ source is
+## included in this template.
+##
+## Standalone EVA research template (inst/tmb/gllvmTMB_eva.cpp)
+##
+## The separate extended-variational research template is also original
+## gllvmTMB GPL-3 code by Shinichi Nakagawa. Its identified factor loadings are
+## unpacked by an independently written cursor traversal; no glmmTMB C++
+## source is included in this template.
 ##
 ## Upstream copyright holder of TMB:
 ##
@@ -63,3 +117,50 @@
 ## a pedigree into A^{-1}. Both gllvmTMB and drmTMB are GPL-3 by Shinichi
 ## Nakagawa (same-author reuse). The result is validated to reproduce
 ## `MCMCglmm::inverseA()` (Hadfield 2010) exactly, including inbreeding.
+##
+## Other same-author and conceptual lineage
+##
+## The loading-profile plotting design in R/loading-profile.R follows the
+## sister drmTMB profile-plot pattern; both packages are GPL-3 by Shinichi
+## Nakagawa. R/plot-gllvmTMB.R acknowledges the gllvm2lev plotting interface as
+## conceptual inspiration and is independently implemented. The production
+## logo at man/figures/logo.png was restored from Shinichi Nakagawa's legacy
+## gllvmTMB repository. On 2026-08-08 the maintainer explicitly confirmed that
+## gllvmTMB has the right to redistribute this logo. This records the package's
+## redistribution basis and does not assert a creator identity that is absent
+## from the repository record.
+##
+## lifecycle documentation badges (MIT)
+##
+## The files man/figures/lifecycle-deprecated.svg,
+## man/figures/lifecycle-superseded.svg, and
+## man/figures/lifecycle-experimental.svg are exact documentation assets from
+## lifecycle 1.0.5. Copyright (c) 2023 lifecycle authors; Posit Software, PBC
+## is the upstream copyright holder. They are distributed under the MIT
+## licence:
+##
+## Permission is hereby granted, free of charge, to any person obtaining a copy
+## of this software and associated documentation files (the "Software"), to
+## deal in the Software without restriction, including without limitation the
+## rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+## sell copies of the Software, and to permit persons to whom the Software is
+## furnished to do so, subject to the following conditions:
+##
+## The above copyright notice and this permission notice shall be included in
+## all copies or substantial portions of the Software.
+##
+## THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+## IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+## FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+## AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+## LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+## OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+## THE SOFTWARE.
+##
+## Generated package fixtures and visual snapshots
+##
+## The RDS/JSON files under inst/extdata are synthetic or package-generated
+## gllvmTMB fixtures produced by the corresponding data-raw scripts and package
+## validation records. The SVG files under tests/testthat/_snaps are generated
+## visual regression snapshots of gllvmTMB-owned plots. They are distributed
+## with the package under GPL-3 by Shinichi Nakagawa.

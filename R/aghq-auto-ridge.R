@@ -1,7 +1,7 @@
 ## Experimental scale-aware AGHQ ridge selection (#847).
 ##
 ## The scale yardstick is deliberately an UNPENALISED, MULTI-START AGHQ fit.
-## A plain Laplace fit is not an admissible pilot: the calibration campaign
+## A plain Laplace fit is not an admissible pilot: the failure/runaway campaign
 ## found it in the intended basin in only 0--1% of fits.  The public wrapper
 ## below is kept separate from gllvmTMB_multi_fit() so numeric and Inf ridge
 ## requests still take the established single-fit path unchanged.
@@ -30,7 +30,7 @@
   if (!isTRUE(fit$aghq$used)) return("pilot did not use AGHQ")
   if (!isTRUE(fit$aghq$converged)) return("pilot AGHQ did not converge")
   if (length(fit$aghq$k) != 1L || !identical(as.integer(fit$aghq$k), 9L)) {
-    return("pilot did not use the calibrated 9-node AGHQ rule")
+    return("pilot did not use the fixed 9-node AGHQ rule evaluated for this scope")
   }
   if (length(fit$aghq$n_starts) != 1L ||
       !is.finite(fit$aghq$n_starts) || fit$aghq$n_starts < 2L) {
@@ -51,7 +51,7 @@
     isTRUE(all(td$diag_B_skip == 1L))
   if (!calibrated_scope) {
     return(paste(
-      "model is outside the calibrated pure single-trial Bernoulli",
+      "model is outside the evaluated pure single-trial Bernoulli",
       "ordinary-latent scope"
     ))
   }
@@ -61,7 +61,7 @@
   L <- fit$report$Lambda_B
   if (!is.matrix(L) || p < 1L || q < 1L ||
       nrow(L) < p || ncol(L) < q) {
-    return("pilot did not report the calibrated loading block")
+    return("pilot did not report the evaluated loading block")
   }
   L <- L[seq_len(p), seq_len(q), drop = FALSE]
   if (any(!is.finite(L))) return("pilot loading scale is non-finite")
@@ -131,7 +131,7 @@
                                           cap = 6, fallback_tau = 2) {
   cli::cli_warn(c(
     "{.code aghq_ridge = \"auto\"} is experimental and opt-in.",
-    "i" = "It is calibrated for pure single-trial Bernoulli models with one ordinary unit-tier latent block and 9-node multi-start AGHQ.",
+    "i" = "It was evaluated for failure/runaway avoidance in pure single-trial Bernoulli models with one ordinary unit-tier latent block and 9-node multi-start AGHQ; this is not general estimator or interval calibration.",
     "i" = "The measured grid used logit, p = 6, q = 2, and n = 100, 400, or 1600; other links and dimensions are extrapolations.",
     "i" = "Evidence supports failure/runaway avoidance at that scope, not a broad loading-accuracy improvement.",
     ">" = "Read {.code fit$aghq$ridge_auto} for the pilot, selected scale, clipping, and any fallback."

@@ -156,8 +156,10 @@ test_that(".loading_ci_bootstrap() roughly agrees with raw Wald on well-identifi
   skip_on_cran()
   bf <- build_bootstrap_fit()
 
+  ## With this fixed seed, 40 draws leave 30 accepted refits and a 0.3299
+  ## discrepancy; 60 leave 46 and reduce it to 0.2759 without relaxing 0.30.
   ci_b <- .loading_ci_bootstrap(bf$fit, level = "unit",
-                                nsim = 40L, seed = 20260528L,
+                                nsim = 60L, seed = 20260528L,
                                 conf_level = 0.95)
   ci_w <- loading_ci(
     bf$fit,

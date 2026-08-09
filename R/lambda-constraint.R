@@ -6,9 +6,8 @@
 ##    theta_rr_B[rank : rank + nl - 1]  = lam_lower (strict lower triangle,
 ##                                                   filled column-wise)
 ## with `nl = rank * n_traits - rank * (rank + 1) / 2` lower-triangle
-## entries. The C++ kernel then writes the upper triangle as zero, the
-## diagonal as `lam_diag(j)`, and the strict lower triangle as
-## `lam_lower(j*p - (j+1)*j/2 + i - 1 - j)` (column-major fill).
+## entries. The C++ kernel writes the upper triangle as zero, reads the
+## diagonal first, and then reads the strict lower triangle column-by-column.
 ##
 ## To "pin" a Lambda entry to a user-specified value v, we set the
 ## corresponding theta_rr_B entry to v and mark it via a TMB `map` so
@@ -32,11 +31,15 @@
 lambda_packed_index <- function(i, j, p, rank) {
   if (j > i) return(NA_integer_)
   if (i == j) return(j + 1L)         # 1-based for R
-  ## Lower triangle: theta_rr[rank + j*p - (j+1)*j/2 + i - 1 - j]
-  ## NB: R parses `(j + 1L) * j %/% 2L` as `(j + 1L) * (j %/% 2L)` because
-  ## %/% binds tighter than *. Use explicit parens or split via a tmp.
-  triangular <- ((j + 1L) * j) %/% 2L
-  rank + (j * p - triangular + i - 1L - j) + 1L
+  cursor <- rank + 1L                # first strict-lower coordinate in R
+  for (column in 0:(rank - 1L)) {
+    if (column >= p - 1L) next
+    for (row in seq.int(column + 1L, p - 1L)) {
+      if (row == i && column == j) return(cursor)
+      cursor <- cursor + 1L
+    }
+  }
+  cli::cli_abort("Internal loading coordinate is outside the packed triangle.")
 }
 
 #' Build a TMB map + init pair from a Lambda constraint matrix

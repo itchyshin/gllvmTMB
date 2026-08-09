@@ -110,6 +110,7 @@ getREsd <- function(
       class = "gllvmTMB_getREsd_bad_fit"
     )
   }
+  .gllvmTMB_require_unweighted_inference(fit, "getREsd")
   sd_rep <- fit$sd_report
   if (is.null(sd_rep)) {
     cli::cli_abort(c(

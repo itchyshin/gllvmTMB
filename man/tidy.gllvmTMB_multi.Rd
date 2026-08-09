@@ -32,7 +32,10 @@ the cutpoints into \code{"ran_pars"} as a categorisation hack — see
 A data.frame. \code{effect = "fixed"} rows include a \code{link} column
 reporting each trait's link function (\code{"identity"}, \code{"probit"},
 \code{"log"}, \code{"logit"}, …). \code{effect = "cutpoint"} rows carry the
-ordinal-probit thresholds.
+ordinal-probit thresholds. For a non-unit weighted objective, fixed-effect
+point estimates remain available but \code{std.error} is \code{NA}, an
+\code{inference_status} column explains the boundary, and \code{conf.int = TRUE}
+fails because no sandwich interval is certified.
 }
 \description{
 Returns a tibble (or data.frame) of either the fixed-effect coefficient

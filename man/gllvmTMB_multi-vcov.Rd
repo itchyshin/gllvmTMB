@@ -44,7 +44,9 @@ handles one should handle the other.
 The fixed-effect block of the single TMB \code{sdreport()} the fit already
 carries -- a Wald covariance, with exactly the caveats any Wald quantity
 from this package carries. It is not a resampled or profiled quantity, and
-no interval built from it has certified coverage.
+no interval built from it has certified coverage. \code{vcov()} refuses a fit
+with non-unit likelihood weights: that fit targets a weighted estimating
+objective and has no certified sandwich covariance.
 }
 
 \examples{

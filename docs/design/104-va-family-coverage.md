@@ -1,7 +1,10 @@
 # Design 104 — VA/EVA family coverage: one quadrature, many families
 
-**Status:** design, internal-research only. Authorises no export, no `method=`
-argument, no public capability claim. `NAMESPACE c97ae039` untouched.
+**Status:** historical architecture amended by Designs 108 and 110. The package
+now exposes an opt-in, experimental `integration = "va"` route, while Laplace
+remains the default. Design 110 and its Gate-E receipt are canonical for the
+current scalar-family registry and H = 7 default. This document authorises no
+accuracy, interval-calibration, or general-inference claim.
 
 **Context.** Shinichi, 2026-07-26: *"match Laplace capabilities … I am flexible
 about our VA families — as long as it is well documented and make the default
@@ -43,15 +46,13 @@ rather than ~20 bespoke variational derivations.
 | **GH** | it does not | 1-D quadrature | tight, tunable |
 | **EVA** | quadrature is unattractive, or as a fast path | closed form | 2nd-order Taylor surrogate |
 
-**EXACT so far.** Poisson-log: `E[exp(eta)] = exp(mu + v/2)` (log-normal mean).
-Gaussian-identity: `-(1/2)[log 2*pi*sigma^2 + ((y-mu)^2 + v)/sigma^2]`.
-Both are implemented and Poisson is **verified against `gllvm` at 0.000000%**
-relative difference (ELBO −530.5412 vs logL −530.5412, Procrustes 1.0000/1.0000)
-— which also confirms `gllvm`'s Poisson VA is the same exact estimator.
-
-**GH.** Binomial-logit uses it today, because `E[log(1+e^eta)]` has no closed
-form. Extends unchanged to nbinom1/2, Beta, betabinomial, censored_poisson,
-ordinal/cumulative_logit, and the `delta_*` families.
+**Exact and GH registry (superseded by measurement).** Design 110 and its
+Gate-E receipt now replace the speculative family lists in this document. All
+18 scalar family/link cells were attempted. Gaussian, Poisson, lognormal, and
+Gamma use exact expectations; delta-lognormal and delta-Gamma use hybrid
+exact/GH expectations; the remaining scalar cells use ordinary one-dimensional
+GH with H = 7. This establishes arithmetic, compiled reachability, and light-fit
+admission only—not broad recovery or interval calibration.
 
 **EVA.** Second-order Taylor about `mu`:
 `E[log p] ~= log p(y|mu) + (v/2) * d2/deta2 log p(y|eta)|_mu`. Cheap, and the
@@ -88,22 +89,28 @@ same method, and looser than what we already have.
 
 1. **Laplace stays the package default.** ~~0.6 ships Laplace-only. VA/EVA are
    internal research with no user-facing route.~~
-   **⚠ AMENDED 2026-07-30.** Laplace remains the **default** — that half stands. But 0.6 is no
-   longer Laplace-*only*: it ships an opt-in, hard-fenced `engine = "va"`
-   (`latent(unique = FALSE)`; binomial-logit + poisson-log; `q <= 4`, `p <= 80`, `n >= 100`),
-   admitted by Design 85 §11 Gate 3 and shipping with **no intervals** (`calibrated = FALSE`).
-   See `LOOP/GOAL.md` Amendment 4 and `docs/dev-log/2026-07-30-va-ships-in-06-reversal.md`.
+   **AMENDED AGAIN BY DESIGN 110.** Laplace remains the **default**, while 0.6
+   exposes an opt-in, hard-fenced `integration = "va"` route for the 18 scalar
+   family/link cells in the Gate-E registry. The public route is restricted to
+   the documented ordinary loadings-only grammar with `d <= 2`, `p <= 80`, and
+   `n >= 100`. Gate E establishes compiled reachability and light-fit admission,
+   not broad accuracy; intervals remain unavailable and
+   `calibrated = FALSE`. The earlier `engine = "va"`, two-family, `q <= 4`
+   paragraph was a superseded staging state, not current API truth.
 2. **Within VA: EXACT where it exists, GH otherwise.** Poisson and Gaussian take
    the closed form — accuracy is free there, so there is no tradeoff to expose.
-3. **GH order: `H = 15`.** Measured 2026-07-26 (n=60, T=12, q=2, Bernoulli),
-   interleaved replicates: `H=15` and `H=61` agree to **8.85e-07**, and `H=15` is
-   **~3.4x faster** (2.86-2.99 s vs 9.74 s) in **fewer** objective evaluations
-   (19 vs 28). Permitted orders are 15/25/61. `H=61` buys nine-decimal agreement
-   for 3x the time — it is a diagnostic setting, not a default.
-4. **EVA is opt-in, never the default for a family that has EXACT or GH.** It is
-   a surrogate; where VA is tractable, VA is better. EVA earns its place on
-   families VA cannot reach (Tweedie, beta, ordinal, betaH — `gllvm`'s own docs
-   say use `method="EVA"` *when VA is not applicable*).
+3. **GH order: `H = 7` in the current public route.** Design 110 supersedes the
+   earlier H = 15 proposal: its H ladder and Gate E admitted H = 7 as the
+   automatic scalar-family GH order, while H = 61 remains a diagnostic. The
+   earlier interleaved H = 15 versus H = 61 Bernoulli benchmark remains useful
+   historical timing evidence, but it is not the current default or a list of
+   the only permitted orders. Gate E establishes compiled reachability and
+   light-fit admission, not general VA accuracy or calibration.
+4. **EVA is research-only and has no public estimator route.** Gate E found no
+   EVA-only cell among the 18 scalar family/link cells: even Tweedie, Beta, and
+   ordinal-probit reached the ordinary one-dimensional GH evaluator. This does
+   not prove EVA has no future use, but it removes the old claim that those
+   families require it. See Design 110 for the per-cell table and evidence.
 
 ### Measurement lesson recorded
 
@@ -175,14 +182,13 @@ absent one.
 
 | Stage | Families | Route |
 |---|---|---|
-| **done** | Poisson, Gaussian | EXACT |
-| **done** | binomial/Bernoulli (n>=1) | GH + EVA |
-| next | nbinom1, nbinom2 | GH (one dispersion parameter each) |
-| next | Beta, betabinomial | GH |
-| later | ordinal / cumulative_logit | GH over cutpoints |
-| later | `delta_*` family group | GH per component |
+| **Gate E passed** | Gaussian, Poisson, lognormal, Gamma | EXACT |
+| **Gate E passed** | delta-lognormal, delta-Gamma | HYBRID exact + GH |
+| **Gate E passed** | remaining 12 scalar family/link cells | GH, H = 7 |
+| **blocked** | multinomial and other coupled/non-scalar likelihoods | separate design required |
 
-Each stage is internal-only until a separate maintainer decision.
+Design 110 is the canonical registry. Gate-E passage is implementation and
+light-fit evidence, not a general accuracy or calibration certificate.
 
 ## 7. Open, not settled here
 

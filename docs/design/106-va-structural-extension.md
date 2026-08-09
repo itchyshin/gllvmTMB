@@ -509,9 +509,9 @@ against `nrow(Ainv)` for the actual tree):
 
 ```
 ordinary : 5397  * 5 = 26,985
-phylo    : 10793 * 5 = 53,965
+phylo    : 10792 * 5 = 53,960
                        ------
-TOTAL                  80,950
+TOTAL                  80,945
 ```
 
 The phylo tier costs **twice** what the species count suggests. This is a direct
@@ -573,7 +573,7 @@ optimiser must carry `P ~ 5.4 x 10^4` (or `8.1 x 10^4` augmented) coordinates
 | `P` | dense quasi-Newton memory | L-BFGS (`m = 5`) |
 |---|---|---|
 | 53,970 | `~23 GB` | `~4 MB` |
-| 80,950 | `~52 GB` | `~6 MB` |
+| 80,945 | `~52 GB` | `~6 MB` |
 
 *(`P^2 * 8` bytes versus `2mP * 8` bytes. This is arithmetic over standard
 optimiser implementations — an **inference**, cheap to verify by inspecting what
@@ -774,13 +774,13 @@ not. Both readings are defensible; they answer different questions, and Design
    with polytomies. The old `2N - 1 = 10,793` figure assumed rooted
    and fully bifurcating. Read `nrow(Ainv)` for the real tree; polytomies reduce
    it.
-5. **Whether the augmented route is worth its cost at all** (§3.6). The
-   tips-only dense route costs `O(N^2)` per quadratic form (`~2.9 x 10^7` flops
-   at `N = 5397`, tolerable) plus a one-off `O(N^3)` factorisation, and it needs
-   only `diag(A^{-1})` for the trace. It may be the better VA route even though
-   it is the worse Laplace route. **This is a genuine open question, not a
-   recommendation** — it needs measurement, and it inverts an assumption the
-   package has held since Design 47.
+5. **Augmented versus tips-only phylogenetic VA** (§3.6). The computational
+   comparison is settled for the implemented `profile=` route:
+   `test-va-r3-structured-phylo.R` measures linear sparse storage for the
+   augmented precision and densification for the tips-only precision. The
+   remaining open question is statistical, not computational: whether the
+   tips-only factorisation produces a sufficiently tighter ELBO to justify its
+   dense cost. No preference is claimed without that comparison.
 6. **Direction of the mean-field bias on the variance partition** (§1.3, §4.4).
    That mean-field understates posterior *variance* is well established. That it
    biases the phylo-versus-residual *point* partition in a specific direction is

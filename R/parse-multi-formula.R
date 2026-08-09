@@ -2,6 +2,37 @@
 ## covariance-structure (rr / diag / propto / equalto / spde) terms. Stages
 ## 2-4 of gllvmTMB use this to assemble TMB inputs.
 
+.gllvmTMB_formula_function_heads <- function(expr) {
+  if (!is.call(expr)) return(character())
+  head <- as.character(expr[[1L]])
+  nested <- unlist(
+    lapply(as.list(expr)[-1L], .gllvmTMB_formula_function_heads),
+    use.names = FALSE
+  )
+  unique(c(head, nested))
+}
+
+.gllvmTMB_reject_unsupported_formula_helpers <- function(expr) {
+  heads <- .gllvmTMB_formula_function_heads(expr)
+  unsupported <- intersect(c("s", "te", "strata", "cluster", "weights"), heads)
+  if (length(unsupported) == 0L) return(invisible(TRUE))
+
+  helper <- unsupported[[1L]]
+  guidance <- switch(
+    helper,
+    s = "Smooth terms are not part of the gllvmTMB formula grammar. Precompute the intended basis columns and include those columns as fixed effects, or use a package that supports smooth terms directly.",
+    te = "Tensor-product smooths are not part of the gllvmTMB formula grammar. Precompute the intended basis columns and include those columns as fixed effects, or use a package that supports tensor smooths directly.",
+    strata = "strata() is a survival-model helper, not a gllvmTMB covariance term. Use the documented grouping and covariance keywords instead.",
+    cluster = "cluster() is a survival or robust-SE helper, not a gllvmTMB covariance term. Use the documented grouping and covariance keywords instead.",
+    weights = "Formula-level weights() is not supported. Supply observation weights through the top-level weights = argument."
+  )
+  cli::cli_abort(c(
+    "Unsupported formula helper {.fn {helper}}.",
+    "x" = "Found it inside {.code {deparse(expr)}}.",
+    ">" = guidance
+  ), class = "gllvmTMB_unsupported_formula_helper")
+}
+
 #' Parse a multivariate gllvmTMB formula
 #'
 #' Walks the RHS of a glmmTMB-style formula, splits it into fixed-effect
@@ -169,6 +200,7 @@ parse_multi_formula <- function(formula) {
     if (length(nested_mi) > 0L) {
       mi_calls[[length(mi_calls) + 1L]] <<- nested_mi[[1L]]
     }
+    .gllvmTMB_reject_unsupported_formula_helpers(e)
     fixed_terms[[length(fixed_terms) + 1L]] <<- list(expr = e, sign = sign)
   }
   walk(rhs)

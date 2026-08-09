@@ -83,7 +83,7 @@
 #' function aborts, naming the offending trait.
 #'
 #' @param fit A fit returned by [gllvmTMB()]. Callers should have already
-#'   passed `fit` through [.cv_check_cv_supported()].
+#'   passed `fit` through `.cv_check_cv_supported()`.
 #' @param n_folds Integer; number of folds. Default 5.
 #' @param seed Optional integer RNG seed for reproducible fold assignment.
 #' @return A list of length `n_folds`; each element is an integer vector of
@@ -433,7 +433,7 @@
 #' Score reference (null) models on the same cross-validation folds
 #'
 #' A held-out score is uninterpretable without a reference. This fits and
-#' scores two nulls on the SAME folds / held-out cells [.cv_run()] uses for
+#' scores two nulls on the SAME folds / held-out cells `.cv_run()` uses for
 #' `fit`: `null_trait` (`value ~ 0 + trait`, trait means only, no latent
 #' structure -- isolates what the latent layer buys) and `null_env` (`value
 #' ~ 0 + trait + (0 + trait):env_1 + (0 + trait):env_2`, trait means plus
@@ -447,23 +447,23 @@
 #' Each null is refit with `fit`'s grouping arguments (`trait`, `unit`,
 #' `unit_obs`, `cluster`, `cluster2`, family) but WITHOUT the
 #' phylogenetic / spatial / lambda-constraint auxiliary arguments, since
-#' neither null formula references such a term (see [.cv_do_refit()]). A
+#' neither null formula references such a term (see `.cv_do_refit()`). A
 #' fold that errors or fails to converge for a given null contributes no
-#' row for that fold in the returned tables; [.cv_run()] reports `NA` for
+#' row for that fold in the returned tables; `.cv_run()` reports `NA` for
 #' the corresponding delta rather than fabricating a comparison.
 #'
 #' @param fit A fit returned by [gllvmTMB()].
-#' @param data The same long-format data frame [.cv_run()] was called
+#' @param data The same long-format data frame `.cv_run()` was called
 #'   with.
-#' @param response_col As for [.cv_run()] / [.cv_mask_response()].
-#' @param folds The fold list from [.cv_make_folds()] -- the SAME folds
-#'   [.cv_run()] uses for `fit`, so the comparison is apples to apples.
+#' @param response_col As for `.cv_run()` / `.cv_mask_response()`.
+#' @param folds The fold list from `.cv_make_folds()` -- the SAME folds
+#'   `.cv_run()` uses for `fit`, so the comparison is apples to apples.
 #' @param seed Optional integer RNG seed; `set.seed()`'d once here so the
 #'   null refits are reproducible independent of whatever RNG state
 #'   preceded this call.
 #'
 #' @return A named list with elements `null_trait` and `null_env`, each a
-#'   list with `by_trait`, `pooled` (data frames shaped like [.cv_score()]'s
+#'   list with `by_trait`, `pooled` (data frames shaped like `.cv_score()`'s
 #'   return, plus a `fold` column; a zero-row template when no fold
 #'   produced a usable score), `skipped` (logical), and `reason` (`NULL`
 #'   unless `skipped`).
@@ -562,25 +562,25 @@
 
 #' Run k-fold cross-validation for a fitted gllvmTMB model
 #'
-#' Drives cross-validation end to end. Builds folds via [.cv_make_folds()];
-#' for each fold, masks the held-out cells ([.cv_mask_response()]), refits
+#' Drives cross-validation end to end. Builds folds via `.cv_make_folds()`;
+#' for each fold, masks the held-out cells (`.cv_mask_response()`), refits
 #' on the masked data with `missing = miss_control(response = "include")`
 #' (mirroring `refit_one()` in `R/bootstrap-sigma.R:293-322`: the formula is
-#' rebuilt via [.reconstruct_multi_formula()] and the grouping / auxiliary
-#' fit arguments are forwarded from `fit` -- see [.cv_do_refit()]), predicts
+#' rebuilt via `.reconstruct_multi_formula()` and the grouping / auxiliary
+#' fit arguments are forwarded from `fit` -- see `.cv_do_refit()`), predicts
 #' the held-out cells with [predict_missing()], and scores them against the
-#' pre-mask truth via [.cv_join_truth()] / [.cv_score()] / [.cv_logscore()].
+#' pre-mask truth via `.cv_join_truth()` / `.cv_score()` / `.cv_logscore()`.
 #'
 #' A fold that errors, or whose refit does not converge
 #' (`opt$convergence != 0`), is recorded with `status = "failed"` and
 #' excluded from every score table -- a denominator, never a silent drop.
 #' A fold that converges but whose refit `sdreport` is not
 #' positive-definite, or carries any non-finite fixed-effect standard
-#' error ([.cv_fit_degenerate()]), is recorded with
+#' error (`.cv_fit_degenerate()`), is recorded with
 #' `status = "degenerate"`: its scores are still computed and reported in
 #' `per_fold`, but excluded from `per_trait` / `pooled`.
 #'
-#' When `baselines = TRUE` (default), [.cv_baselines()] scores two null
+#' When `baselines = TRUE` (default), `.cv_baselines()` scores two null
 #' models -- `null_trait` and `null_env` -- on the same folds, and
 #' `per_trait` / `pooled` each gain `dLogScore_vs_null_trait` and
 #' `dLogScore_vs_null_env` columns (the held-out LogScore delta against
@@ -590,24 +590,24 @@
 #' The reported `LogScore` is the summed **conditional plug-in log
 #' predictive density** -- latent effects at their conditional modes, no
 #' parameter uncertainty. It is NOT lppd and NOT a marginal predictive
-#' density (see [.cv_logscore()]).
+#' density (see `.cv_logscore()`).
 #'
 #' @param fit A fit returned by [gllvmTMB()]. Passed through
-#'   [.cv_check_cv_supported()] here.
+#'   `.cv_check_cv_supported()` here.
 #' @param data The SAME long-format data frame (same row order) used to
-#'   fit `fit` -- fold row indices from [.cv_make_folds()] index into it
+#'   fit `fit` -- fold row indices from `.cv_make_folds()` index into it
 #'   directly, and it supplies the pre-mask truth.
 #' @param response_col Character vector of response column name(s), as for
-#'   [.cv_mask_response()]. Only `response_col[[1]]` feeds
-#'   [.cv_join_truth()], scoring, and the null-model formulas; a length-2
+#'   `.cv_mask_response()`. Only `response_col[[1]]` feeds
+#'   `.cv_join_truth()`, scoring, and the null-model formulas; a length-2
 #'   `cbind(successes, failures)` response is masked in full but scored
 #'   only against its first column -- full binomial-trials scoring is out
 #'   of scope for this driver.
 #' @param n_folds Integer; number of folds. Default 5.
-#' @param seed Optional integer RNG seed, forwarded to [.cv_make_folds()]
-#'   and [.cv_baselines()].
+#' @param seed Optional integer RNG seed, forwarded to `.cv_make_folds()`
+#'   and `.cv_baselines()`.
 #' @param baselines Logical; also fit and score the `null_trait` /
-#'   `null_env` references via [.cv_baselines()]. Default `TRUE`.
+#'   `null_env` references via `.cv_baselines()`. Default `TRUE`.
 #'
 #' @return A list with:
 #'   \describe{
@@ -616,10 +616,10 @@
 #'       `elapsed_sec`, plus the fold's pooled score columns
 #'       (`family_id`, `n_scored`, `RMSE`, ..., `LogScore`) when exactly
 #'       one family was scored for it, else `NA`.}
-#'     \item{`per_trait`}{[.cv_score()]'s `by_trait` rows, rbind'd across
+#'     \item{`per_trait`}{`.cv_score()`'s `by_trait` rows, rbind'd across
 #'       non-degenerate, non-failed folds, with `fold`,
 #'       `dLogScore_vs_null_trait`, `dLogScore_vs_null_env` added.}
-#'     \item{`pooled`}{[.cv_score()]'s `pooled` rows, same treatment.}
+#'     \item{`pooled`}{`.cv_score()`'s `pooled` rows, same treatment.}
 #'     \item{`meta`}{`list(status, message, n_folds, n_failed,
 #'       n_degenerate, seed, quantity)`; `quantity` is always the literal
 #'       string `"conditional plug-in log predictive density"`.}

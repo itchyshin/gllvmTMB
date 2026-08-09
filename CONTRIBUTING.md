@@ -56,14 +56,20 @@ user-facing prose except in migration notes.
 Single-response models belong in `glmmTMB`; spatial single-response
 models belong in `sdmTMB`.
 
-The covariance dispatch is the 4 x 5 keyword grid:
+The covariance dispatch is the 5 x 3 keyword grid:
 
-| correlation \ mode | scalar | unique | indep | dep | latent |
-|---|---|---|---|---|---|
-| none    | (omit)             | `unique()`         | `indep()`         | `dep()`         | `latent()`         |
-| animal  | `animal_scalar()`  | `animal_unique()`  | `animal_indep()`  | `animal_dep()`  | `animal_latent()`  |
-| phylo   | `phylo_scalar()`   | `phylo_unique()`   | `phylo_indep()`   | `phylo_dep()`   | `phylo_latent()`   |
-| spatial | `spatial_scalar()` | `spatial_unique()` | `spatial_indep()` | `spatial_dep()` | `spatial_latent()` |
+| source \ mode | indep | dep | latent |
+|---|---|---|---|
+| none    | `indep()`         | `dep()`         | `latent()`         |
+| animal  | `animal_indep()`  | `animal_dep()`  | `animal_latent()`  |
+| phylo   | `phylo_indep()`   | `phylo_dep()`   | `phylo_latent()`   |
+| spatial | `spatial_indep()` | `spatial_dep()` | `spatial_latent()` |
+| kernel  | `kernel_indep()`  | `kernel_dep()`  | `kernel_latent()`  |
+
+`common = TRUE` on `*_indep()` and `unique = TRUE` on `*_latent()`
+are modifiers, not additional covariance modes. The named `scalar()` and
+`unique()` families remain compatibility syntax; use the canonical forms in
+new examples.
 
 The folded decomposition mode is `latent()`:
 Sigma = Lambda Lambda^T + diag(psi) (the Greek letter
@@ -128,7 +134,7 @@ by the slice.
 | TMB likelihood, formula grammar, exported API, generated Rd, package metadata | targeted tests plus relevant docs; run full local or CI check when practical | required on every PR before merge |
 | Tests, simulation helpers, gallery renderers | targeted `devtools::test()` plus artifact smoke render when relevant | required before merge, but later slices can be planned while it runs |
 | README, NEWS, pkgdown, vignettes, articles, generated Rd, package-facing examples | render or check the affected surface; run `pkgdown::check_pkgdown()` when pkgdown or reference navigation is touched | required before merge, usually batched at a checkpoint |
-| Ignored-source docs and planning files (`docs/`, `dev/`, `ROADMAP.md`, `AGENTS.md`, `CLAUDE.md`, `.github/pull_request_template.md`, `CONTRIBUTING.md`) | `git diff --check` plus Shannon/Rose review as relevant; changed ignored `dev/*.R` scripts also get an R parse check in CI | fast-passed by CI unless bundled with package-affecting files |
+| Developer-only design, planning, agent, and process files excluded from the package | `git diff --check` plus Shannon/Rose review as relevant; changed ignored simulation scripts also get an R parse check in CI | fast-passed by CI unless bundled with package-affecting files |
 | Long simulation and power-analysis experiments | manifest-driven local/cluster run with saved artifacts and summary checks | not inside ordinary R-CMD-check |
 
 The `R-CMD-check` workflow keeps the same OS-named checks on every
@@ -147,7 +153,7 @@ do not use pkgdown as a parallel substitute for the full check.
 Any PR touching public prose or reference navigation should run the
 Rose pre-publish audit before merge. The audit is deliberately narrow:
 method lists, default-value claims, exported function names, the
-4 x 5 keyword grid, argument names, family lists, and stale
+5 x 3 keyword grid, argument names, family lists, and stale
 terminology. It is a consistency gate, not a general rewrite pass.
 
 ## Cross-Team Coordination Audit

@@ -48556,3 +48556,407 @@ no `devtools::test()` / `R CMD check` run (no R/, src/, or tests/ files were
 touched — docs-only change).
 
 — Design 66 integration (Claude, 2026-08-02)
+## 2026-08-08 — G1 integrated ordinary and heavy source gate (Codex)
+
+The integrated ordinary suite passed with
+`Rscript --vanilla -e 'devtools::test(reporter = "fail", stop_on_failure = TRUE)'`.
+The monolithic heavy command
+`NOT_CRAN=true GLLVMTMB_HEAVY_TESTS=1 Rscript --vanilla -e 'devtools::test(reporter = "fail", stop_on_failure = TRUE)'`
+ran for approximately 2.25 hours and exposed one sandbox-only localhost
+socket denial plus two brittle comparisons among withdrawn internal nonlinear
+profile prototypes. The parallel bootstrap file passed in full when allowed
+to open its local two-worker socket. The four prototype cross-path checks are
+now opt-in through `GLLVMTMB_INTERNAL_PROFILE_DIAGNOSTICS=true`, consistent
+with their existing non-release status; active profile curve, inversion,
+plotting, public-withdrawal, and total-variance certification tests remain on.
+All 161 heavy files then passed across disjoint summary-reporter shards.
+Exact results and shard accounting are in
+`docs/dev-log/release/2026-08-08-g1-heavy-suite-receipt.md`.
+
+## 2026-08-08 — G1 reader surface, provenance, and pkgdown gate (Codex)
+
+`devtools::document(quiet = TRUE)` regenerated the corrected
+`gllvmTMBcontrol.Rd`. A complete local pkgdown build then rendered the home,
+news, reference, and article surfaces. `pkgdown::check_pkgdown()` returned
+`No problems found`. The canonical Current limitations and boundaries article
+is second in both Getting Started navigation paths, uses only the three public
+status labels, contains the ordinary latent decomposition
+`Sigma = Lambda Lambda^T + Psi`, and explicitly says the VA ELBO does not
+define ordinary logLik/AIC/BIC/LRT comparisons. Pat classified all four
+reader scenarios correctly (4/4); Rose's final source/rendered audit was PASS.
+
+Exact stale/leakage scans covered `Release-core candidate`, false
+`independently authored` provenance, the obsolete AGHQ method statement,
+`diag(Psi)`, and public `AGENTS`/`CLAUDE`/`ROADMAP` names across home, news,
+reference, article, search, sitemap, and contributing pages. The search index
+was explicitly rebuilt with `pkgdown::build_search()`. Three accidentally
+generated internal HTML pages from a failed sandboxed render were removed;
+they were generated, ignored site output and are reproducible by a deliberately
+unfiltered pkgdown build. No source document was removed.
+
+## 2026-08-08 — S8 local two-attempt smoke (Codex)
+
+The v2 core, silent-failure, and robustness runners were executed with
+`--load-all --stage smoke --reps 2` and exact full manifests, writing only to
+`/tmp/gllvmtmb-cran07-s8-v2-20260808`. All 68/68 attempts were terminal,
+finite, classified, and correctly keyed; no manifest key was missing and all
+binomial trial/diagnostic assertions passed. Statuses were core 31 usable, 1
+boundary, 4 non-positive-Hessian; silent 15 usable, 1 boundary; robustness
+16 usable. Both extreme-Psi challenge cells were 0/2 stationary-usable, which
+was retained as evidence rather than repaired or deleted. The pure self-test
+and all three frozen SHA256 manifests passed before fitting.
+
+## 2026-08-08 — G2 v2 Totoro pilot: valid evidence, production HOLD (Codex + independent reviewer)
+
+The exact metadata-free source snapshot SHA-256 was
+`585c8329448e0d29acbf36988b940823a43e835846b564d3b3067b46d07fba0a`.
+Totoro ran 680/680 attempts with 32 workers and one BLAS/OMP thread per worker
+in 71 seconds. Independent manifest reconciliation found zero missing, extra,
+or duplicate keys, zero unclassified outcomes, and 20,280/20,280 applicable
+estimands finite. Provisional pilot admission was 30/34 cells; four core cells
+held: NB2 n=100, rho=0.98, Psi=0.01, and Psi=100.
+
+G2 is nevertheless HOLD and no v2 production was launched. The pilot exposed
+that per-cell detector sensitivity is undefined for every admitted healthy
+cell, while the frozen gate fails zero positive denominators; it also exposed
+that the production adjudicator omits the frozen Sigma, Psi, correlation, and
+RMSE gates and that the standalone summarizer is not manifest-aware. The
+independent reviewer confirmed 400, not 200, is the only implemented
+production replicate count. Full receipts and compact summaries are under
+`docs/dev-log/simulation-artifacts/2026-08-08-cran07-v2-pilot/`. A corrected
+gate must receive a new campaign ID and new seeds before any production run.
+
+## 2026-08-08 — G2 v3 gate correction and Totoro pilot PASS (Codex + independent reviewer)
+
+V3 received disjoint campaign IDs and seed offsets while retaining the frozen
+v2 registries and DGPs. Two adversarial reviews found and closed fail-open
+paths involving subset admission, unknown statuses, incomplete manifests,
+missing 400-replicate estimand components, absent Psi, unexecuted RMSE gates,
+and a closeout that initially omitted the silent-failure and robustness
+campaigns. The final pure self-test passed with
+`canonical_component_schema=OK`, `missing_beta_both_sides=HOLD`,
+`three_campaign_closeout=OK`, `absent_silent_robust=HOLD`, and `fits_run=0`.
+All eleven frozen SHA-256 entries passed. Independent review returned PASS for
+pilot admission.
+
+Totoro then ran the exact v3 pilot from source archive
+`c0372f037738a902c0c6d7ecd60f4170fcfc9d1d163709456eb0cd9f91615996`
+with 32 workers and one BLAS/OMP thread per worker. All 680/680 attempts
+completed in 107 seconds with zero unclassified and zero nonfinite core
+estimands. The global detector gate passed: sensitivity 19/20 = 0.95 and
+specificity 621/660 = 0.9409. Thirty-one cells were admitted. The only holds
+were the preregistered Gaussian latent challenges at correlation 0.98,
+`Psi = 0.01`, and `Psi = 100`; all six ordinary small/large family pairs and
+all silent-failure and robustness cells were admitted. Exact receipts are in
+`docs/dev-log/simulation-artifacts/2026-08-08-cran07-v3-pilot/`.
+
+The independently reviewed production launcher dry-run produced 31 cells and
+12,400 attempts, revalidates each full frozen manifest before partitioning,
+and retains hashes even when the scientific verdict is HOLD. Production was
+launched on Totoro with 31 workers from the same source hash and pilot-gate
+hash `350de2efe1304102f18fd184e4156508ca3b61c3418beda8669af8109fba3f2b`.
+
+## 2026-08-08 — G1 family-provenance record reconciled (Codex)
+
+The stale G1 provenance receipt was reconciled with the independently
+authorised family-constructor rewrite. The new 27-constructor layer had already
+passed its 102-expectation black-box contract, focused and compiled family
+regressions, the ordinary suite, and all 161 heavy files. A fresh targeted scan
+of `R/families.R`, `man/families.Rd`, and
+`tests/testthat/test-family-constructor-contract.R` found no `modified from`,
+`derived from`, `sdmTMB`, `glmmTMB`, `linktemp`, `okLinks`, `add_to_family`,
+`logspace_add`, or `logspace_sub` occurrence; `git diff --check` passed.
+
+The component inventory now marks the independent family layer as shipping and
+records the generated root-vignette PNGs as build-excluded. `.Rbuildignore`
+now excludes `vignettes/*-[0-9]+.png`; exact absence remains an S13 tarball
+check. Exact-tarball presence and hashes remain S15.
+
+On 2026-08-08 Shinichi explicitly authorised a future 0.7.0 release under
+GPL-3, consented to the DESCRIPTION `aut`/`cre`/`cph` roles, and confirmed
+redistribution rights for `man/figures/logo.png`. He also authorised the narrow
+warm-`nlminb` repair exactly as preregistered. He then clarified that further
+work continues under the 0.6 identity: online 0.6 documentation/releases are
+permitted, but 0.7 is not released yet and CRAN submission remains embargoed
+until the explicit 19 August decision. The exact statements and operational
+boundary are preserved in
+`docs/dev-log/release/2026-08-08-maintainer-release-rights-authorization.md`.
+
+## 2026-08-08 — S10 v3 production complete; broad core HOLD (Codex + independent adjudication)
+
+Totoro completed 12,400/12,400 attempts from source archive
+`c0372f037738a902c0c6d7ecd60f4170fcfc9d1d163709456eb0cd9f91615996`
+in 32 minutes 31 seconds with 31 workers and one BLAS/OpenMP thread each. The
+6,000 core, 3,200 silent-failure, and 3,200 robustness attempts formed exact
+manifest bijections. Remote and copied-local SHA-256 checks passed for all 15
+compact results and full manifests. Raw attempt RDS files remain on Totoro and
+were not committed.
+
+The original fail-closed closeout returned HOLD. Independent adjudication found
+two mechanical defects: structurally zero off-diagonal Psi ledger rows were
+marked applicable even though the scientific schema correctly contains only
+diagonal Psi, and three rank-one shared-correlation RMSE comparisons differed
+only at about `1e-16`. A new hash-frozen, zero-fit adjudication overlay corrects
+only those cases, separates input identity from scientific failure, and leaves
+every substantive threshold unchanged. It also explicitly holds NB2 because
+the registry preregistered dispersion but the production ledger omitted it.
+
+The corrected result remains broad HOLD: core 7/15, silent-failure 4/8, and
+robustness 3/8 admitted cells pass; Poisson-log ordinary latent is the only
+complete small/large family pair that passes. Exact production and adjudication
+receipts are under `docs/dev-log/simulation-artifacts/2026-08-08-cran07-v3-*`.
+G3 has not frozen a dependable core, and no version bump or candidate freeze is
+authorized.
+
+## 2026-08-08 — S11 numerical failure diagnosis (Gauss, read-only)
+
+The v3 production failures were separated by mechanism. The 32/400 binomial
+`n = 300` nonstationary labels are code-zero, PD-Hessian fits whose raw
+gradients stop just above `0.01`; a single default warm `nlminb` pass on seed
+`372000004` reduced max gradient from `0.017336` to `0.002287` while moving
+parameters by at most `1.83e-5` and total Sigma by at most `9.34e-6`.
+Gaussian latent `n = 60` failures are genuine near-zero-Psi boundaries, and NB2
+`n = 100` failures are a flat latent-versus-unique ridge with boundary and
+non-PD outcomes. The recommended repair is therefore a narrowly triggered,
+fail-closed warm `nlminb` pass; the absolute gradient gate stays unchanged and
+the two weak-identification regimes remain fenced. No optimizer code was
+changed pending explicit maintainer authorization. Full evidence is in
+`docs/dev-log/release/2026-08-08-s11-optimizer-diagnosis.md`.
+
+## 2026-08-08 — Draft v4 post-repair confirmation design (Codex + Curie)
+
+The v4 confirmation design was written before any optimizer edit or new fit.
+It requires a full post-repair rerun of the 34-cell smoke/pilot surface and the
+31-cell v3 production surface, rather than selecting only the binomial cell
+that motivated the repair. Campaign IDs and smoke/pilot/production seed ranges
+are disjoint from v2/v3. Production is provisionally sized at 1,600 attempts
+per admitted cell because the component-wise standardized-bias gate would have
+an unacceptably high family-wise Monte Carlo false-HOLD rate at 400 attempts.
+
+The draft preserves all substantive v3 thresholds, adds the preregistered NB2
+dispersion estimand that was absent from the v3 ledger, retains Gaussian latent
+`n = 60` and NB2 latent `n = 100` as fenced characterization cells, and caps
+the campaign at 50,348 fits including smoke and pilot. Status remains DRAFT and
+fits run remain zero. The maintainer authorised the default warm-`nlminb`
+behavior on 2026-08-08; v4 still cannot be frozen or launched until the
+implementation and pre-compute verification pass. See
+`docs/dev-log/release/2026-08-08-cran07-v4-confirmation-design.md`.
+
+## 2026-08-08 — Provisional source-tarball CRAN preflight (Codex)
+
+Three source builds were used as a diagnostic ladder. The first exposed an
+installed-test dependency on build-excluded `inst/sim`; the second exposed an
+unconditional repository-source scan in the loading-unpack contract. Both were
+repaired without changing package runtime behavior. The third tarball had SHA
+`e096f07e05cf79a8151da728dfec2afa75c9ebcc756a08d39e071666144f85f3`,
+size 3,780,031 bytes, and 696 entries. Its inventory contained none of the
+excluded simulation, dev-log, internal planning, generated vignette-figure, or
+compiled-object paths.
+
+`R CMD check --as-cran gllvmTMB_0.6.0.tar.gz` on macOS Tahoe 26.6 with R 4.6.0
+completed in 0 errors, 0 warnings, and 1 NOTE. Installed tests, examples,
+donttest examples, vignettes, PDF manual, and HTML manual passed. The NOTE is
+the expected new-submission note plus the current-limits pkgdown URL returning
+404 before deployment. This is a provisional dirty-lane 0.6.0 artifact, not an
+exact 0.7.0 candidate; all evidence is invalidated by later installed-byte
+changes. Full receipt:
+`docs/dev-log/release/2026-08-08-provisional-source-preflight.md`.
+
+## 2026-08-08 — CRAN extra checks and comparator recertification design (Codex + Jason)
+
+`urlchecker::url_check(".")` fetched 31 URLs and found only the new
+current-limits page unresolved, at four source locations. The page is locally
+rendered and tested but has not reached the main-only pkgdown deployment. The
+README now contains both the future CRAN `install.packages("gllvmTMB")` command
+and the current GitHub-development command. It has no relative Markdown links.
+DESCRIPTION's title is 47 characters and title case; `Authors@R` has `cph`;
+SPDE/GMRF is expanded on first use. All 156 exports have an Rd alias. The only
+export without a local value section is the imported `generics::tidy()`
+re-export; the genuine `ordiplot()` omission was fixed in source and regenerated
+Rd. Exact details and the focused example-improvement backlog are in
+`docs/dev-log/release/2026-08-08-cran-extra-checks.md`.
+
+A read-only source map found that existing comparators do not support the
+claim matrix's unqualified “same parameterisation” wording for every core cell:
+the `gllvm` Poisson/binary rows validate a loadings-only skeleton, Gaussian
+`dep()` lacks its exact `glmmTMB::us()` row, and the current NB2 comparator is a
+shared random intercept rather than latent-plus-Psi. The new strict design
+therefore requires six exact `glmmTMB` core rows, retains two `gllvm` skeleton
+rows with their boundary explicit, and reruns the nine-point Gaussian Stan
+density oracle after a path-only repair. No fits ran under this design yet. See
+`docs/dev-log/release/2026-08-08-cran07-comparator-recertification.md`.
+
+## 2026-08-08 — Required post-validation issue sweep recorded (Codex)
+
+The live GitHub inventory contained 49 open issues. Shinichi directed that a
+complete issue sweep run after the warm-restart/v4 validation arc and before
+the 0.7 identity/source freeze. The required 49-row ledger will classify every
+issue as evidenced completion, duplicate/superseded, fix before 0.7, fence
+before 0.7, defer after 0.7, or park/research. Large deferred methods do not
+enter the release through this sweep; bounded correctness, silent-failure,
+documentation, CRAN, and engineering blockers do. The durable contract is
+`docs/dev-log/release/2026-08-08-post-validation-issue-sweep.md`.
+
+## 2026-08-08 — Narrow default warm-`nlminb` repair (Gauss)
+
+The explicitly authorized native-Laplace repair now performs one fail-closed
+warm PORT pass only for code-zero, finite, positive-definite, non-boundary
+default-`nlminb` fits whose AD-exact raw maximum gradient remains at or above
+the unchanged `0.01` gate. Eligibility requires AGHQ to be exactly unused and
+all boundary diagnostics to be present and well typed. Acceptance requires a
+strictly improved raw gradient, unchanged health conditions, and objective no
+worse than `64 * eps * max(1, abs(objective_before))`. Rejected candidates
+restore the original optimizer, report, `sdreport`, fit health, restart history,
+and TMB `last.par` state.
+
+Focused pure and compiled-heavy tests passed. Relevant fit-health,
+multi-start/report consistency, binomial, NB2, release-sentinel, and Stage-39
+regressions passed in ordinary and heavy modes; the heavy matrix retained four
+pre-existing honest profile-CI skips. Deterministic seed `372000004` is repaired,
+Gaussian boundary seed `371300010` remains a boundary, and NB2 seed
+`371700001` remains non-PD and unpromoted. `git diff --check` passed.
+
+Two full ordinary-suite attempts were intentionally superseded rather than
+adjudicated: independent review invalidated the first implementation, and the
+post-fix run encountered seven failures from concurrently edited, non-frozen
+comparator-harness source. No warm-restart failure appeared; the release
+orchestrator owns a clean full-suite rerun after stable-source integration.
+No v4 fit, remote compute, commit, or push was performed. Full receipt:
+`docs/dev-log/release/2026-08-08-warm-nlminb-repair.md`.
+
+### Cross-layer v4 provenance correction
+
+A pure v4 adapter probe then found that the package emitted only six provenance
+fields while the frozen campaign schema requires 13. The fit now emits the
+exact ordered 13-field contract, including before/after convergence, Hessian
+and boundary scalars plus the frozen trigger reason. Unattempted paths have
+typed-`NA` after-fields. Candidate errors restore the original fit but retain
+typed-`NA` after-fields so v4 fails closed. The rejection checkpoint now also
+restores TMB `value.best`.
+
+Focused pure and heavy tests passed again, including a package-local mirror of
+the build-excluded v4 adapter applied to actual accepted, rejected, stationary,
+boundary and non-PD fits. An external integration probe then loaded the actual
+v4 schema and `cran07_v4_restart_record_from_fit()` accepted both the
+deterministic accepted and stationary package records. Relevant ordinary and
+heavy matrices also passed; the heavy matrix retained the same four honest
+profile-CI skips. No full suite was requested for this correction, and no v4
+fit or remote compute ran.
+
+## 2026-08-08 — Stable-source ordinary-suite and v4 integrity closeout (Codex)
+
+After the warm-`nlminb`, comparator, Stan-oracle, and v4 harness sources stopped
+changing, the complete ordinary package suite was rerun from the shared release
+lane:
+
+```sh
+Rscript --vanilla -e 'devtools::test(reporter = "summary", stop_on_failure = FALSE)'
+```
+
+The command exited 0 with no failures or errors. It reported 806 declared skips
+and two warnings from the existing `gllvm` binary-ordination comparators because
+their response matrices contain all-zero rows. The repaired six-row CRAN-core
+comparator file passed inside the suite; only its deliberately environment-gated
+release execution row skipped. The warm-restart file passed its 64 ordinary
+expectations, with its six declared heavy tests skipped.
+
+The frozen v4 zero-fit integrity checks were then rerun:
+
+```sh
+Rscript --vanilla inst/sim/cran07-v4/self-test.R
+shasum -a 256 -c docs/dev-log/simulation-artifacts/2026-08-08-cran07-v4-preregistration/SHA256SUMS
+git diff --check
+```
+
+All three commands passed. The self-test retained `fits_run=0`, rejected forged
+truth labels and non-canonical source bindings, and ended with
+`launch=HOLD_PENDING_SOURCE_ARCHIVE`. All 18 frozen SHA-256 entries verified.
+The package identity remains 0.6.0. No source archive was bound, no v4 smoke or
+campaign fit ran, and no Totoro, DRAC, GitHub Actions, commit, push, 0.7 release,
+or CRAN action occurred.
+
+## 2026-08-09 — Pre-0.7 issue sweep, final fences, and frozen-source suite
+
+The live issue sweep classified all 49 open issues into one exact disposition:
+10 close-completed, 2 close-duplicate/superseded, 9 fix-before-0.7, 5
+fence-before-0.7, 16 defer-after-0.7, and 7 park/research. The durable ledger is
+`docs/dev-log/release/2026-08-09-pre-0.7-issue-disposition-ledger.md`.
+
+The final adversarial pass found and closed six residual blockers:
+
+- the Lambda sign-invariance developer check now exits non-zero when either its
+  paired symmetry or non-invariant control fails;
+- Design 108 and the AGHQ restart script no longer transfer route-specific
+  conclusions into global ridge/cold-start claims;
+- native Laplace-ridge fits now retain unpenalised likelihood NLL, ridge
+  penalty, and penalised optimisation NLL separately; `logLik()` uses the
+  unpenalised value at the MAP point and warns against ordinary AIC/BIC/LRT;
+- `standard_errors()` and `extract_cutpoints()` joined the complete
+  weighted-objective inference fence;
+- live issue #345 now keeps version 0.6.0, calls 19 August a decision point,
+  records the broad scientific HOLD, separates the paper/power programme, and
+  grants no release or CRAN authority; the obsolete combined milestone was
+  removed;
+- Design 66 now carries the same capstone-versus-first-CRAN boundary.
+
+Exact focused commands and outcomes:
+
+```sh
+Rscript --vanilla dev/lambda-sign-invariance.R
+# PASS: paired difference 0; Lambda-only difference 2.327e+07
+
+NOT_CRAN=true Rscript --vanilla -e 'devtools::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-standard-errors.R", reporter = "summary", stop_on_failure = TRUE); testthat::test_file("tests/testthat/test-loading-ridge-disclosure.R", reporter = "summary", stop_on_failure = TRUE); testthat::test_file("tests/testthat/test-lme4-style-weights.R", reporter = "summary", stop_on_failure = TRUE)'
+# PASS: 60 + 19 + weighted-inventory expectations; no failures/errors/skips
+
+Rscript --vanilla -e 'devtools::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-profile-bounds-zeta.R", reporter = "summary", stop_on_failure = TRUE); testthat::test_file("tests/testthat/test-profile-derived-curves.R", reporter = "summary", stop_on_failure = TRUE)'
+# PASS: pure/ordinary checks; declared heavy cases skipped
+
+NOT_CRAN=true GLLVMTMB_HEAVY_TESTS=1 Rscript --vanilla -e 'devtools::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-profile-derived-curves.R", reporter = "summary", stop_on_failure = TRUE)'
+# PASS: all heavy derived-profile checks
+
+Rscript --vanilla -e 'devtools::document(quiet = TRUE)'
+# PASS; regenerated extract_cutpoints.Rd and standard_errors.Rd; retained the
+# known runtime-registered AIC/BIC roxygen notices
+
+Rscript --vanilla -e 'pkgdown::build_reference()'
+# PASS
+
+Rscript --vanilla -e 'pkgdown::check_pkgdown()'
+# PASS: No problems found
+
+Rscript --vanilla -e 'devtools::test(reporter = "summary", stop_on_failure = FALSE)'
+# PASS: exit 0, no failures/errors; 806 declared skips; eight expected warnings
+# (six ridge/MAP disclosures, two existing gllvm zero-row warnings)
+
+Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'
+# PASS: gllvmTMB 0.6.0; 0 errors, 0 warnings, 2 environmental notes; duration
+# 14m 41.2s. Notes: unable to verify system clock, and Apple toolchain
+# `xcrun_db` detritus in the temporary directory.
+```
+
+Exact stale-surface scans:
+
+```sh
+rg -n "where the ridge remedy fails|AGHQ cold-start|starting AGHQ from a COLD|H-warm|H-flat|CRAN descoped|CRAN submission is not planned|Gated on the power-study" dev docs README.md NEWS.md R tests
+# Verdict: no live source/design claim remains; matches are historical records
+# only, followed by Design 66 reconciliation.
+
+rg -n "CRAN submission is not planned|CRAN was abandoned|Gated on the power-study|methods paper's evidence chapter, not a release gate|capstone's sole audience" docs/design docs/dev-log/release vignettes README.md NEWS.md
+# Verdict: clean after Design 66 and live issue #345 reconciliation.
+
+rg -n "objective_components|unpenalised likelihood|weighted_inference_unsupported|standard_errors\\(\\)|extract_cutpoints\\(\\)" R tests/testthat/test-loading-ridge-disclosure.R tests/testthat/test-lme4-style-weights.R
+# Verdict: objective decomposition and the final two weighted-inference guards
+# are visible in implementation and tests.
+
+git diff --check
+# PASS
+```
+
+The package remains version 0.6.0. No 0.7 version change, source freeze,
+release, publication, GitHub release, upload, or CRAN submission was performed.
+
+Final Shannon coordination audit: **WARN**, not FAIL. There were no open PRs,
+no active recent `origin/main` work, the after-task report passed its structural
+validator, and the check log carries the handoff. The warning is the large
+high-risk dirty tree itself. Smallest safe next action: one scoped commit and
+one draft PR; do not self-merge, version-bump, or release.

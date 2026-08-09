@@ -103,15 +103,14 @@ Type objective_function<Type>::operator()() {
 
   matrix<Type> Lambda(T, q);
   Lambda.setZero();
-  for (int j = 0; j < q; ++j) {
-    for (int t = j; t < T; ++t) {
-      if (t == j) Lambda(t, j) = theta_rr(j);
-      else {
-        int pos = j * T - (j + 1) * j / 2 + t - 1 - j;
-        Lambda(t, j) = theta_rr(q + pos);
-      }
-    }
-  }
+  int loading_cursor = 0;
+  for (int column = 0; column < q; ++column)
+    Lambda(column, column) = theta_rr(loading_cursor++);
+  for (int column = 0; column < q; ++column)
+    for (int row = column + 1; row < T; ++row)
+      Lambda(row, column) = theta_rr(loading_cursor++);
+  if (loading_cursor != theta_rr.size())
+    error("gllvmTMB_eva: loading vector was not exhausted exactly");
 
   vector<Type> kl_by_unit(N); kl_by_unit.setZero();
   vector<Type> mu_by_obs(n_obs); mu_by_obs.setZero();

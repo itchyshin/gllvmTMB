@@ -178,6 +178,11 @@ contribution is multiplied by \code{weights[i]}. This matches the
 heteroscedastic Gaussian fits), or to down-weight outliers.
 Must be non-negative and finite; \code{weights[i] = 0} zeroes that
 row's contribution to the joint NLL.
+Non-unit likelihood weights define a weighted estimating objective,
+not an ordinary maximum-likelihood fit. The package retains point
+estimates but refuses likelihood-based model-selection methods;
+Hessian/Wald uncertainty is not sandwich-corrected and must not be
+interpreted as calibrated inference for the weighted objective.
 \item For \strong{binomial} families fit without a \code{cbind(succ, fail)} LHS,
 \code{weights} continues to be interpreted as the per-row trial count
 (binomial size; alternative API to \code{cbind(succ, fail)}). This
@@ -313,8 +318,13 @@ engine); with \code{latent()} or other covstruct sugar it has class
 S3 methods are registered on the \strong{subclasses}, not on bare
 \code{gllvmTMB}: for a multi-trait fit (\code{gllvmTMB_multi}), \code{tidy()},
 \code{predict()}, \code{summary()}, \code{confint()} and \code{logLik()} are available, and
-\code{AIC()} / \code{BIC()} work through \code{logLik()}. Trait-level extractors such
-as \code{extract_ICC_site()} and \code{extract_communality()} are multi-trait only.
+\code{AIC()} / \code{BIC()} dispatch through \code{logLik()}. They have their ordinary ML
+interpretation only for unpenalised native-Laplace fits. AGHQ uses a
+different integration objective, and a loading ridge returns a penalised
+MAP point rather than the likelihood maximum; do not use ordinary AIC,
+BIC, or likelihood-ratio interpretations for those fits. Trait-level
+extractors such as \code{extract_ICC_site()} and \code{extract_communality()} are
+multi-trait only.
 
 \code{vcov()} and \code{coef()} are available too — see
 \link{gllvmTMB_multi-vcov}. \code{coef()} works on any fit; \code{vcov()} needs the
@@ -409,6 +419,9 @@ before validation. Ordinary missing predictors, grouping variables, or
 fixed-effect design values still error because the model cannot construct a
 design row; explicitly modelled missing predictors use \code{mi(x)},
 \code{miss_control(predictor = "model")}, and \code{impute = list(...)}.
+The modelled-\code{mi()} route is native Laplace only; the variational route
+refuses \code{mi()} predictors. Dense missing-response masks have their own
+narrower VA fence and do not imply predictor-model support.
 These contracts are covered by the package's missing-data validation tests,
 both for responses and for predictors.
 

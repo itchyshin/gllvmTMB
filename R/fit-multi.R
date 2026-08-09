@@ -130,6 +130,79 @@
   out
 }
 
+.gllvmTMB_validate_family_scale_by_trait <- function(family_id_vec,
+                                                      link_id_vec,
+                                                      trait_labels) {
+  stopifnot(
+    length(family_id_vec) == length(link_id_vec),
+    length(family_id_vec) == length(trait_labels)
+  )
+  row_key <- paste(as.integer(family_id_vec), as.integer(link_id_vec), sep = ":")
+  keys_by_trait <- split(row_key, as.character(trait_labels), drop = TRUE)
+  bad <- names(keys_by_trait)[vapply(
+    keys_by_trait,
+    function(x) length(unique(x)) > 1L,
+    logical(1L)
+  )]
+  if (length(bad) > 0L) {
+    cli::cli_abort(c(
+      "Response family/link cannot currently vary across rows within a trait.",
+      "x" = "Multiple family/link scales were requested within: {paste(bad, collapse = ', ')}.",
+      "i" = "Use one family/link per trait. Per-row family mixing needs a separately validated common-scale contract; Poisson-log with binomial-logit/probit is not coherent merely because it converges.",
+      ">" = "The planned integrated Poisson-log / binomial-cloglog route remains experimental and is not admitted here."
+    ), class = "gllvmTMB_family_within_trait_unsupported")
+  }
+  invisible(TRUE)
+}
+
+.gllvmTMB_loading_ridge_applies <- function(ridge_tau, parameter_names) {
+  is.numeric(ridge_tau) && length(ridge_tau) == 1L && !is.na(ridge_tau) &&
+    is.finite(ridge_tau) && ridge_tau > 0 &&
+    any(parameter_names == "theta_rr_B")
+}
+
+.gllvmTMB_objective_components <- function(obj, opt, aghq) {
+  likelihood_nll <- tryCatch(
+    as.numeric(obj$fn(opt$par)),
+    error = function(e) NA_real_
+  )
+  if (length(likelihood_nll) != 1L || !is.finite(likelihood_nll)) {
+    cli::cli_abort(
+      "Could not evaluate the unpenalised likelihood objective at the selected fit.",
+      class = "gllvmTMB_objective_components_unavailable"
+    )
+  }
+
+  ridge_tau <- aghq$ridge_tau %||% Inf
+  penalised <- isTRUE(aghq$penalised) ||
+    (is.numeric(ridge_tau) && length(ridge_tau) == 1L &&
+       is.finite(ridge_tau) && ridge_tau > 0)
+  ridge_penalty <- 0
+  if (penalised) {
+    loading_index <- which(names(opt$par) == "theta_rr_B")
+    if (length(loading_index)) {
+      ridge_penalty <- 0.5 * sum(opt$par[loading_index]^2) / (ridge_tau^2)
+    }
+  }
+
+  list(
+    likelihood_nll = likelihood_nll,
+    ridge_penalty = ridge_penalty,
+    optimization_nll = likelihood_nll + ridge_penalty,
+    optimizer_reported = as.numeric(opt$objective %||% NA_real_)
+  )
+}
+
+.gllvmTMB_require_unweighted_inference <- function(object, caller) {
+  if (!isTRUE(object$likelihood_weights$active)) return(invisible(TRUE))
+  cli::cli_abort(c(
+    "{.fn {caller}} is not available for a non-unit weighted objective.",
+    "x" = "The fitted curvature is not a certified sampling covariance for likelihood-weighted estimation.",
+    "i" = "Point estimates remain available, but ordinary Wald standard errors, confidence intervals, and prediction standard errors are not validated.",
+    ">" = "Refit with unit likelihood weights for ordinary likelihood inference; no sandwich certificate is currently available."
+  ), class = "gllvmTMB_weighted_inference_unsupported")
+}
+
 .augmented_slope_family_contract <- function() {
   data.frame(
     family_id = c(0L, 1L, 2L, 3L, 4L, 5L, 7L, 8L, 9L, 14L, 15L),
@@ -538,6 +611,11 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     for (i in seq_along(family_per_row)) family_per_row[[i]] <- family
     family_input <- family    # M1.8: single-family path; family_input == family
   }
+  .gllvmTMB_validate_family_scale_by_trait(
+    family_id_vec = family_id_vec,
+    link_id_vec = link_id_vec,
+    trait_labels = data[[trait]]
+  )
 
   ## ---- Identify which RE terms are present and on which grouping --------
   groupings <- vapply(parsed$covstructs, function(cs) deparse(cs$group), character(1))
@@ -2254,6 +2332,18 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     weights_i[family_id_vec %in% c(1L, 8L)] <- 1.0
   } else {
     weights_i <- rep(1.0, n_obs)
+  }
+  weighted_objective <- any(
+    !(family_id_vec %in% c(1L, 8L)) &
+      !masked_response &
+      abs(weights_i - 1) > sqrt(.Machine$double.eps)
+  )
+  if (weighted_objective) {
+    cli::cli_warn(c(
+      "Non-unit likelihood weights create a weighted objective, not an ordinary maximum-likelihood fit.",
+      "i" = "Point estimates remain available, but ordinary Hessian/Wald uncertainty, logLik(), AIC(), BIC(), and likelihood-ratio interpretations are not validated for this fit.",
+      ">" = "Use unit weights for likelihood-based inference. A sandwich-variance route has not yet been certified."
+    ))
   }
   trait_id        <- as.integer(data[[trait]]) - 1L
   site_id         <- as.integer(data[[site]]) - 1L
@@ -5206,17 +5296,13 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
           paste(names(nlminb_args)[!keep], collapse = ", ")
         ))
       }
-      nlminb_args <- nlminb_args[keep]
-      nlminb_args$control <- utils::modifyList(
-        if (is.null(.iter_cap))
-          list(eval.max = 2000, iter.max = 1500)
-        else
-          list(eval.max = 4L * as.integer(.iter_cap), iter.max = as.integer(.iter_cap)),
-        nlminb_args$control %||% list()
+      nlminb_args <- .gllvmTMB_nlminb_call_args(
+        par_init = par_init,
+        obj = obj,
+        opt_args = nlminb_args[keep],
+        iter_cap = .iter_cap
       )
-      do.call(stats::nlminb,
-              c(list(start = par_init, objective = obj$fn,
-                     gradient = obj$gr), nlminb_args))
+      .gllvmTMB_run_nlminb(nlminb_args)
     }
   }
 
@@ -5246,6 +5332,14 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         is.finite(tau_req) && tau_req > 0) {
       laplace_ridge_tau <- tau_req
     }
+  }
+  if (!is.null(laplace_ridge_tau) &&
+      !.gllvmTMB_loading_ridge_applies(laplace_ridge_tau, names(obj$par))) {
+    cli::cli_warn(c(
+      "{.arg aghq_ridge} did not match an ordinary {.code theta_rr_B} loading block, so no loading penalty was applied.",
+      "i" = "W-tier, phylogenetic, spatial, and diagonal-only terms are not silently penalised by the ordinary loading-ridge control."
+    ))
+    laplace_ridge_tau <- NULL
   }
 
   ## Multi-start: run n_init fits with jittered starting parameter
@@ -6136,6 +6230,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ## refit_one — can pass the correct family list back to `gllvmTMB()`.
       ## For single-family fits, `family_input == family`.
       family_input = family_input,
+      likelihood_weights = list(
+        active = weighted_objective,
+        interpretation = if (weighted_objective) "weighted_objective" else "likelihood"
+      ),
       data         = data,
       ## Phase 1 missing-data layer (design 59 sec.4b). `missing_data` is the
       ## shared-contract fit slot; `data_original` is the pre-drop / pre-mask
@@ -6324,6 +6422,164 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     ),
     class = c("gllvmTMB_multi", "gllvmTMB")
   )
+
+  ## One fail-closed PORT restart for the narrow native-Laplace case where
+  ## nlminb reports code zero but stops just above the package's unchanged raw
+  ## gradient gate.  Eligibility deliberately requires the FIRST solution to
+  ## have a positive-definite Hessian and no boundary flag: this is a stopping
+  ## repair, not a mechanism for laundering weakly identified fits.  The second
+  ## pass receives the same objective, AD gradient, bounds, scale and controls
+  ## through run_one().  A candidate that fails any acceptance condition is
+  ## discarded and the TMB state is restored to the original optimum.
+  fit$fit_health <- .gllvmTMB_build_fit_health(fit)
+  initial_gradient <- tryCatch(obj$gr(opt$par), error = function(e) NA_real_)
+  initial_boundary <- .gllvmTMB_warm_restart_boundary_scalar(
+    fit$fit_health$boundary_flags
+  )
+  initial_trigger_reason <- .gllvmTMB_warm_restart_trigger_reason(
+    convergence = opt$convergence,
+    max_gradient = fit$fit_health$max_gradient,
+    pd_hessian = fit$fit_health$pd_hessian,
+    boundary = initial_boundary
+  )
+  fit$warm_restart_provenance <- .gllvmTMB_warm_restart_record(
+    objective_before = fit$fit_health$objective,
+    max_gradient_before = fit$fit_health$max_gradient,
+    convergence_before = opt$convergence,
+    pd_hessian_before = fit$fit_health$pd_hessian,
+    boundary_before = initial_boundary,
+    trigger_reason = initial_trigger_reason
+  )
+  warm_eligible <- .gllvmTMB_warm_restart_eligible(
+    optimizer = control$optimizer,
+    aghq_used = aghq_info$used,
+    ridge_tau = laplace_ridge_tau,
+    convergence = opt$convergence,
+    objective = fit$fit_health$objective,
+    gradient = initial_gradient,
+    pd_hessian = fit$fit_health$pd_hessian,
+    boundary_flags = fit$fit_health$boundary_flags
+  )
+  if (isTRUE(warm_eligible)) {
+    warm_checkpoint <- .gllvmTMB_warm_restart_checkpoint(fit, obj)
+    warm_started <- proc.time()[["elapsed"]]
+    warm_opt <- tryCatch(
+      run_one(opt$par, .ridge_tau = laplace_ridge_tau),
+      error = function(e) e
+    )
+    warm_elapsed <- proc.time()[["elapsed"]] - warm_started
+    warm_objective <- NA_real_
+    warm_gradient <- NA_real_
+    warm_fit <- NULL
+    warm_health <- NULL
+    if (!inherits(warm_opt, "error") && !is.null(warm_opt$par)) {
+      warm_objective <- tryCatch(obj$fn(warm_opt$par),
+                                 error = function(e) NA_real_)
+      warm_gradient <- tryCatch(obj$gr(warm_opt$par),
+                                error = function(e) NA_real_)
+      warm_opt$objective <- warm_objective
+      if (length(warm_objective) == 1L && is.finite(warm_objective) &&
+          length(warm_gradient) > 0L && all(is.finite(warm_gradient))) {
+        obj$env$last.par.best <- obj$env$last.par
+        warm_report <- obj$report()
+        warm_sdreport_error <- NULL
+        warm_sd_report <- tryCatch(
+          TMB::sdreport(obj, par.fixed = warm_opt$par,
+                        getJointPrecision = FALSE),
+          error = function(e) {
+            warm_sdreport_error <<- conditionMessage(e)
+            NULL
+          }
+        )
+        warm_fit <- fit
+        warm_fit$opt <- warm_opt
+        warm_fit$report <- warm_report
+        warm_fit$sd_report <- warm_sd_report
+        warm_fit$sdreport_error <- warm_sdreport_error
+        warm_health <- .gllvmTMB_build_fit_health(warm_fit)
+      }
+    }
+    before_diagnostics <- list(
+      convergence = opt$convergence,
+      objective = fit$fit_health$objective,
+      gradient = initial_gradient,
+      pd_hessian = fit$fit_health$pd_hessian,
+      boundary_flags = fit$fit_health$boundary_flags
+    )
+    after_diagnostics <- if (is.null(warm_health)) {
+      list(convergence = if (inherits(warm_opt, "error")) NA_integer_ else
+             warm_opt$convergence %||% NA_integer_,
+           objective = warm_objective, gradient = warm_gradient,
+           pd_hessian = NA, boundary_flags = NULL)
+    } else {
+      list(convergence = warm_opt$convergence,
+           objective = warm_health$objective,
+           gradient = warm_gradient,
+           pd_hessian = warm_health$pd_hessian,
+           boundary_flags = warm_health$boundary_flags)
+    }
+    warm_accepted <- .gllvmTMB_warm_restart_accept(
+      before_diagnostics, after_diagnostics
+    )
+    fit$warm_restart_provenance <- .gllvmTMB_warm_restart_record(
+      attempted = TRUE,
+      accepted = warm_accepted,
+      objective_before = fit$fit_health$objective,
+      objective_after = warm_objective,
+      max_gradient_before = fit$fit_health$max_gradient,
+      max_gradient_after = if (length(warm_gradient) &&
+          all(is.finite(warm_gradient))) max(abs(warm_gradient)) else NA_real_,
+      convergence_before = opt$convergence,
+      convergence_after = after_diagnostics$convergence,
+      pd_hessian_before = fit$fit_health$pd_hessian,
+      pd_hessian_after = after_diagnostics$pd_hessian,
+      boundary_before = initial_boundary,
+      boundary_after = .gllvmTMB_warm_restart_boundary_scalar(
+        after_diagnostics$boundary_flags
+      ),
+      trigger_reason = initial_trigger_reason
+    )
+    if (isTRUE(warm_accepted)) {
+      opt <- warm_opt
+      rep <- warm_fit$report
+      sd_rep <- warm_fit$sd_report
+      sdreport_error <- warm_fit$sdreport_error
+      fit$opt <- opt
+      fit$report <- rep
+      fit$sd_report <- sd_rep
+      fit$sdreport_error <- sdreport_error
+      fit$fit_health <- warm_health
+      selected <- which(fit$restart_history$selected)
+      if (length(selected) == 1L) {
+        fit$restart_history$objective[selected] <- opt$objective
+        fit$restart_history$convergence[selected] <- opt$convergence
+        fit$restart_history$message[selected] <- paste(
+          fit$restart_history$message[selected],
+          paste0("warm restart accepted: ", opt$message %||% ""),
+          sep = "; "
+        )
+        if (is.finite(fit$restart_history$elapsed_s[selected])) {
+          fit$restart_history$elapsed_s[selected] <-
+            fit$restart_history$elapsed_s[selected] + warm_elapsed
+        }
+        if (is.finite(fit$restart_history$iterations[selected]) &&
+            length(opt$iterations) && all(is.finite(opt$iterations))) {
+          fit$restart_history$iterations[selected] <-
+            fit$restart_history$iterations[selected] + sum(opt$iterations)
+        }
+        if (is.finite(fit$restart_history$evaluations[selected]) &&
+            length(opt$evaluations) && all(is.finite(opt$evaluations))) {
+          fit$restart_history$evaluations[selected] <-
+            fit$restart_history$evaluations[selected] + sum(opt$evaluations)
+        }
+      }
+    } else {
+      fit <- .gllvmTMB_restore_warm_restart_checkpoint(
+        fit, obj, warm_checkpoint
+      )
+    }
+  }
+
   ## Phase 2a: fill the missing-predictor conditional mode (x_mis EBLUP) from
   ## the fitted parameter list into the registry (+ the full unit-level x).
   if (use_mi_predictor) {
@@ -6335,6 +6591,14 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       fit$missing_data, par_list, mi_model, sdr = sd_rep, report = mi_report
     )
   }
+  ## Preserve both quantities for ridged fits. `opt$objective` is route-specific:
+  ## native Laplace reports the penalised criterion, whereas the AGHQ finaliser
+  ## stores the unpenalised objective at the MAP point. Downstream likelihood
+  ## methods must therefore use this explicit decomposition rather than infer
+  ## semantics from `opt$objective`.
+  fit$objective_components <- .gllvmTMB_objective_components(
+    fit$tmb_obj, fit$opt, fit$aghq
+  )
   fit$fit_health <- .gllvmTMB_build_fit_health(fit)
   fit
 }
@@ -6453,6 +6717,168 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     par[phi] <- pmax(pmin(par[phi], log(100.0)), log(0.01))
   }
   par
+}
+
+.gllvmTMB_nlminb_call_args <- function(par_init, obj, opt_args = list(),
+                                        iter_cap = NULL) {
+  keep <- names(opt_args) %in% c("control", "lower", "upper", "scale")
+  opt_args <- opt_args[keep]
+  opt_args$control <- utils::modifyList(
+    if (is.null(iter_cap)) {
+      list(eval.max = 2000, iter.max = 1500)
+    } else {
+      list(eval.max = 4L * as.integer(iter_cap),
+           iter.max = as.integer(iter_cap))
+    },
+    opt_args$control %||% list()
+  )
+  c(
+    list(start = par_init, objective = obj$fn, gradient = obj$gr),
+    opt_args
+  )
+}
+
+.gllvmTMB_run_nlminb <- function(args) {
+  do.call(stats::nlminb, args)
+}
+
+.gllvmTMB_warm_restart_checkpoint <- function(fit, obj) {
+  list(
+    opt = fit$opt,
+    report = fit$report,
+    sd_report = fit$sd_report,
+    sdreport_error = fit$sdreport_error,
+    fit_health = fit$fit_health,
+    restart_history = fit$restart_history,
+    last_par = obj$env$last.par,
+    last_par_best = obj$env$last.par.best,
+    value_best = obj$env$value.best
+  )
+}
+
+.gllvmTMB_restore_warm_restart_checkpoint <- function(fit, obj, checkpoint) {
+  fit$opt <- checkpoint$opt
+  fit$report <- checkpoint$report
+  fit$sd_report <- checkpoint$sd_report
+  fit$sdreport_error <- checkpoint$sdreport_error
+  fit$fit_health <- checkpoint$fit_health
+  fit$restart_history <- checkpoint$restart_history
+  obj$env$last.par <- checkpoint$last_par
+  obj$env$last.par.best <- checkpoint$last_par_best
+  obj$env$value.best <- checkpoint$value_best
+  fit
+}
+
+.gllvmTMB_warm_restart_record <- function(
+  attempted = FALSE,
+  accepted = FALSE,
+  objective_before = NA_real_,
+  objective_after = NA_real_,
+  max_gradient_before = NA_real_,
+  max_gradient_after = NA_real_,
+  convergence_before = NA_integer_,
+  convergence_after = NA_integer_,
+  pd_hessian_before = NA,
+  pd_hessian_after = NA,
+  boundary_before = NA,
+  boundary_after = NA,
+  trigger_reason = "diagnostics_unavailable"
+) {
+  list(
+    warm_restart_attempted = isTRUE(attempted),
+    warm_restart_accepted = isTRUE(accepted),
+    objective_before_restart = as.numeric(objective_before)[1L],
+    objective_after_restart = as.numeric(objective_after)[1L],
+    max_gradient_before_restart = as.numeric(max_gradient_before)[1L],
+    max_gradient_after_restart = as.numeric(max_gradient_after)[1L],
+    convergence_code_before_restart = as.integer(convergence_before)[1L],
+    convergence_code_after_restart = as.integer(convergence_after)[1L],
+    pd_hessian_before_restart = as.logical(pd_hessian_before)[1L],
+    pd_hessian_after_restart = as.logical(pd_hessian_after)[1L],
+    boundary_before_restart = as.logical(boundary_before)[1L],
+    boundary_after_restart = as.logical(boundary_after)[1L],
+    warm_restart_trigger_reason = as.character(trigger_reason)[1L]
+  )
+}
+
+.gllvmTMB_warm_restart_boundary_scalar <- function(boundary_flags) {
+  if (!is.character(boundary_flags)) return(NA)
+  length(boundary_flags) > 0L
+}
+
+.gllvmTMB_warm_restart_trigger_reason <- function(
+  convergence, max_gradient, pd_hessian, boundary
+) {
+  typed <- is.numeric(convergence) && length(convergence) == 1L &&
+    is.finite(convergence) &&
+    is.numeric(max_gradient) && length(max_gradient) == 1L &&
+    is.finite(max_gradient) && max_gradient >= 0 &&
+    is.logical(pd_hessian) && length(pd_hessian) == 1L &&
+    !is.na(pd_hessian) &&
+    is.logical(boundary) && length(boundary) == 1L && !is.na(boundary)
+  if (!typed) return("diagnostics_unavailable")
+  if (convergence != 0L) return("optimizer_code_nonzero")
+  if (!pd_hessian) return("non_pd_hessian")
+  if (boundary) return("boundary")
+  if (max_gradient < .gllvmTMB_converged_gtol) {
+    return("raw_gradient_below_0.01")
+  }
+  "eligible_raw_gradient_at_or_above_0.01"
+}
+
+.gllvmTMB_warm_restart_eligible <- function(
+  optimizer,
+  aghq_used,
+  ridge_tau,
+  convergence,
+  objective,
+  gradient,
+  pd_hessian,
+  boundary_flags,
+  gradient_threshold = .gllvmTMB_converged_gtol
+) {
+  identical(optimizer, "nlminb") &&
+    identical(aghq_used, FALSE) &&
+    is.null(ridge_tau) &&
+    is.numeric(convergence) && length(convergence) == 1L &&
+    is.finite(convergence) && convergence == 0L &&
+    is.numeric(objective) && length(objective) == 1L &&
+    is.finite(objective) &&
+    is.numeric(gradient) && length(gradient) > 0L &&
+    all(is.finite(gradient)) &&
+    identical(pd_hessian, TRUE) &&
+    is.character(boundary_flags) && length(boundary_flags) == 0L &&
+    is.numeric(gradient_threshold) && length(gradient_threshold) == 1L &&
+    is.finite(gradient_threshold) && gradient_threshold > 0 &&
+    max(abs(gradient)) >= gradient_threshold
+}
+
+.gllvmTMB_warm_restart_diagnostics_valid <- function(x) {
+  required <- c("convergence", "objective", "gradient", "pd_hessian",
+                "boundary_flags")
+  is.list(x) &&
+    all(required %in% names(x)) &&
+    is.numeric(x$convergence) && length(x$convergence) == 1L &&
+    is.finite(x$convergence) && x$convergence == 0L &&
+    is.numeric(x$objective) && length(x$objective) == 1L &&
+    is.finite(x$objective) &&
+    is.numeric(x$gradient) && length(x$gradient) > 0L &&
+    all(is.finite(x$gradient)) &&
+    identical(x$pd_hessian, TRUE) &&
+    is.character(x$boundary_flags) && length(x$boundary_flags) == 0L
+}
+
+.gllvmTMB_warm_restart_accept <- function(before, after) {
+  if (!.gllvmTMB_warm_restart_diagnostics_valid(before) ||
+      !.gllvmTMB_warm_restart_diagnostics_valid(after)) {
+    return(FALSE)
+  }
+  before_gradient <- before$gradient
+  after_gradient <- after$gradient
+  tolerance <- 64 * .Machine$double.eps *
+    max(1, abs(before$objective))
+  isTRUE(max(abs(after_gradient)) < max(abs(before_gradient))) &&
+    isTRUE(after$objective <= before$objective + tolerance)
 }
 
 .gllvmTMB_restart_history_row <- function(restart, start_label, start_method,

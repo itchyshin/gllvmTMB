@@ -237,9 +237,10 @@ sister packages have separate scopes:
   with three or more responses belongs in `gllvmTMB`.
 - **`sdmTMB`** (sister) -- single-response spatial / spatiotemporal
   models with SPDE random fields. sdmTMB inspired gllvmTMB's original
-  spatial interface, but gllvmTMB's current R-side mesh, CRS, and range
-  helpers are independently authored against the public fmesher/sf APIs;
-  no sdmTMB source code is included or adapted.
+  spatial interface and helper layer. gllvmTMB's current R-side mesh, CRS, and
+  range helpers were substantially rewritten against the public fmesher/sf APIs
+  after that GPL-3-derived implementation; `inst/COPYRIGHTS` retains the
+  source lineage.
 - **`glmmTMB`** -- single-response mixed models. `gllvmTMB`'s
   reduced-rank `latent()` and diagonal `unique()` keywords share
   the `glmmTMB::rr()` / `diag()` machinery (McGillycuddy et al.
@@ -250,7 +251,7 @@ sister packages have separate scopes:
   variational, extended-variational, and Laplace approximation
   paths. `gllvm` 2.0 also covers advanced ordination and joint
   species-distribution workflows. `gllvmTMB` differs by centering
-  the stacked-trait long-format grammar, the explicit 4 x 5
+  the stacked-trait long-format grammar, the explicit 5 x 3
   covariance keyword grid, mixed-family per-row data, and
   validation-debt rows for its phylogenetic / spatial covariance
   paths.

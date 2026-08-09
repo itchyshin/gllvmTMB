@@ -29,10 +29,13 @@ This reference answers one practical question: when you request a profile
 interval, does `gllvmTMB` actually compute one for your target?
 
 Direct parameters and simple linear contrasts can use likelihood profiles.
-Nonlinear derived quantities do not currently have profile intervals because
-the constrained fits cannot yet be checked reliably in every case. Empirical
-coverage has also not been established across all supported models, so this
-page does not call any interval method universally best or publication-ready.
+Most nonlinear derived quantities do not currently have profile intervals
+because the constrained fits cannot yet be checked reliably in every case.
+The narrow exception is per-trait total variance through
+`profile_ci_total_variance()`, whose returned status distinguishes one
+`certified-0.94` regime from computed `route-only` intervals. Empirical
+coverage has not been established across all supported models, so this page
+does not call any interval method universally best or publication-ready.
 
 The key rule is simple: **choose a route that is actually available for the
 target, then inspect the returned bounds and any method or status columns.** A
@@ -52,6 +55,7 @@ request now; it is not a claim about empirical coverage.
 | Target | Start here | Current behavior |
 |:-------|:-----------|:-----------------|
 | Direct fixed effect, dispersion, or variance component | `profile_targets(fit)` followed by `confint(fit, parm = ..., method = "profile")` | Direct likelihood profile when the target is marked ready. |
+| Per-trait total variance | `profile_ci_total_variance()` | Genuine fix-and-refit profile. Unpenalised native-Laplace, two-sided ordinary Gaussian unit-tier fits with `n_units >= 150`, `d <= 2`, and `level = 0.95` receive `interval_status = "certified-0.94"`; AGHQ and loading-ridge fits do not. This is a 0.94 floor, not nominal 95% or an individual-interval guarantee. Other admitted calls are labelled `route-only`. |
 | Repeatability | `extract_repeatability()` | Wald is the default; requesting profile stops with a typed withdrawal because no full-covariance profile route is available. |
 | Trait correlation | `extract_correlations()` | Point-only is the default. Fisher-z and bootstrap bounds are opt-in; a profile interval is not currently available. |
 | Communality | `extract_communality()` | Point estimates are the default; Wald and bootstrap bounds are opt-in; a profile interval is not currently available. |

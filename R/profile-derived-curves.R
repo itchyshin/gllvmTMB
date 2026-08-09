@@ -161,6 +161,11 @@
   ystep = 0.5,
   ytol = 2
 ) {
+  profile_checkpoint <- .gllvmTMB_profile_tmb_checkpoint(fit$tmb_obj)
+  on.exit(
+    .gllvmTMB_restore_profile_tmb_checkpoint(fit$tmb_obj, profile_checkpoint),
+    add = TRUE
+  )
   prof <- tryCatch(
     TMB::tmbprofile(
       fit$tmb_obj,
@@ -178,12 +183,23 @@
   prof <- prof[order(prof[[1L]]), , drop = FALSE]
   prof <- prof[!duplicated(prof[[1L]]), , drop = FALSE]
   lc_grid <- transform(grid)
-  stats::approx(
+  ## Preserve the interpolation scale used by tmbprofile_wrapper().
+  ## Interpolating objective values here and then interpolating zeta again in
+  ## .invert_profile_derived() is not equivalent: the first interpolation
+  ## bends an otherwise linear signed-root profile and caused #837's
+  ## asymmetric bounds. Project the raw TMB profile onto the requested grid on
+  ## zeta, then reconstruct the objective solely for the tidy curve contract.
+  mle_val <- as.numeric(fit$opt$objective)
+  mle_lc <- as.numeric(crossprod(fit$opt$par, lincomb))
+  prof_zeta <- sign(prof[[1L]] - mle_lc) *
+    sqrt(pmax(2 * (prof[[2L]] - mle_val), 0))
+  grid_zeta <- stats::approx(
     x = prof[[1L]],
-    y = prof[[2L]],
+    y = prof_zeta,
     xout = lc_grid,
     rule = 2L
   )$y
+  mle_val + 0.5 * grid_zeta^2
 }
 
 ## ---- Grid builder for proportion-like quantities -------------------------
@@ -254,14 +270,13 @@
   }
   splits <- split(x, x$target)
   ## For each curve, find the chi-square crossing on each side of the
-  ## grid's MLE point. If the side's deviance is monotone (the well-behaved
-  ## case for tmbprofile()-driven curves and most Lagrange-refit curves),
-  ## use linear-interpolation root-finding via approxfun() + uniroot(). If
-  ## the side is non-monotone -- the boundary-case signature of a noisy
-  ## Lagrange refit at a near-degenerate ridge (communality with c^2_hat
-  ## near 1, for example) -- a smoothing spline averages out the
-  ## near-MLE alternation noise so the chi-square root matches the one
-  ## .profile_ci_via_refit()'s uniroot navigates in profile_ci_*().
+  ## grid's MLE point. Interpolate on the signed-root-deviance (zeta) scale,
+  ## matching .profile_bounds(): zeta is linear for a quadratic likelihood,
+  ## whereas direct interpolation of deviance is curved and biases a bound on
+  ## a coarse grid. If zeta is non-monotone -- the boundary-case signature of
+  ## a noisy Lagrange refit at a near-degenerate ridge -- smooth zeta before
+  ## finding the crossing. This remains a plot/diagnostic inversion; stored
+  ## refit_bounds above remain authoritative where the producer supplies them.
   out <- lapply(splits, function(d) {
     d <- d[order(d$profile_value), ]
     est <- d$estimate[1L]
@@ -296,26 +311,28 @@
       sub_pv <- sub_pv[finite]
       sub_dv <- sub_dv[finite]
       if (length(sub_pv) < 2L) return(NA_real_)
-      d_dv <- diff(sub_dv)
-      monotone <- all(d_dv <= 1e-10) || all(d_dv >= -1e-10)
+      sub_zeta <- sign(sub_pv - profile_mle) * sqrt(pmax(sub_dv, 0))
+      target_zeta <- if (side == "lower") -sqrt(cutoff) else sqrt(cutoff)
+      d_zeta <- diff(sub_zeta)
+      monotone <- all(d_zeta >= -1e-10)
       val_fn <- if (monotone) {
-        af <- stats::approxfun(sub_pv, sub_dv, rule = 2L)
+        af <- stats::approxfun(sub_pv, sub_zeta, rule = 2L)
         function(p) af(p)
       } else {
         sp <- tryCatch(
-          stats::smooth.spline(sub_pv, sub_dv, spar = 0.6),
+          stats::smooth.spline(sub_pv, sub_zeta, spar = 0.6),
           error = function(e) NULL
         )
         if (is.null(sp)) return(NA_real_)
         function(p) stats::predict(sp, p)$y
       }
-      e_lo <- val_fn(min(sub_pv)) - cutoff
-      e_hi <- val_fn(max(sub_pv)) - cutoff
+      e_lo <- val_fn(min(sub_pv)) - target_zeta
+      e_hi <- val_fn(max(sub_pv)) - target_zeta
       if (!is.finite(e_lo) || !is.finite(e_hi)) return(NA_real_)
       if (sign(e_lo) == sign(e_hi)) return(NA_real_)
       res <- tryCatch(
         stats::uniroot(
-          function(p) val_fn(p) - cutoff,
+          function(p) val_fn(p) - target_zeta,
           interval = range(sub_pv),
           tol = 1e-5
         ),
@@ -400,6 +417,7 @@ profile_repeatability <- function(
   }
 
   out_list <- vector("list", length(trait_idx))
+  bounds_list <- vector("list", length(trait_idx))
   for (k in seq_along(trait_idx)) {
     t <- trait_idx[k]
     R_hat <- stats::plogis(2 * (fit$opt$par[ix_B[t]] - fit$opt$par[ix_W[t]]))
@@ -427,11 +445,24 @@ profile_repeatability <- function(
       stringsAsFactors = FALSE,
       row.names = NULL
     )
+    ci <- tmbprofile_wrapper(
+      fit,
+      lincomb = lc,
+      level = conf_level,
+      transform = stats::plogis
+    )
+    bounds_list[[k]] <- data.frame(
+      target = target_lab,
+      lower = unname(ci["lower"]),
+      upper = unname(ci["upper"]),
+      stringsAsFactors = FALSE
+    )
   }
   out <- do.call(rbind, out_list)
   attr(out, "n_grid") <- n_grid
   attr(out, "conf_level") <- conf_level
   attr(out, "quantity") <- "R (repeatability)"
+  attr(out, "refit_bounds") <- do.call(rbind, bounds_list)
   class(out) <- c("profile_repeatability", "profile_derived", class(out))
   out
 }
@@ -473,6 +504,7 @@ profile_phylo_signal <- function(
   if (!inherits(fit, "gllvmTMB_multi")) {
     cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
   }
+  .gllvmTMB_require_unweighted_inference(fit, "profile_phylo_signal")
   has_phy <- isTRUE(fit$use$phylo_rr) || isTRUE(fit$use$phylo_diag)
   if (!has_phy) {
     cli::cli_abort(c(
@@ -508,6 +540,7 @@ profile_phylo_signal <- function(
   }
 
   out_list <- vector("list", length(trait_idx))
+  bounds_list <- vector("list", length(trait_idx))
   for (k in seq_along(trait_idx)) {
     t <- trait_idx[k]
     H2_hat <- stats::plogis(2 * (fit$opt$par[ix_phy[t]] - fit$opt$par[ix_non[t]]))
@@ -533,11 +566,24 @@ profile_phylo_signal <- function(
       stringsAsFactors = FALSE,
       row.names = NULL
     )
+    ci <- tmbprofile_wrapper(
+      fit,
+      lincomb = lc,
+      level = conf_level,
+      transform = stats::plogis
+    )
+    bounds_list[[k]] <- data.frame(
+      target = target_lab,
+      lower = unname(ci["lower"]),
+      upper = unname(ci["upper"]),
+      stringsAsFactors = FALSE
+    )
   }
   out <- do.call(rbind, out_list)
   attr(out, "n_grid") <- n_grid
   attr(out, "conf_level") <- conf_level
   attr(out, "quantity") <- "H^2 (phylogenetic signal)"
+  attr(out, "refit_bounds") <- do.call(rbind, bounds_list)
   class(out) <- c("profile_phylo_signal", "profile_derived", class(out))
   out
 }

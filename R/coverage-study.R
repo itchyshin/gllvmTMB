@@ -2,8 +2,10 @@
 ##
 ## This retained developer helper is not exported, does not retain all
 ## attempted refits in its denominator, and must not be used as evidence that
-## any interval route is coverage-calibrated or publication-ready. Design 75
-## records that no current matrix cell has empirical-coverage calibration.
+## broad package-wide interval coverage or publication readiness. The separate
+## `profile_ci_total_variance()` route has one narrowly scoped two-sided
+## ordinary-Gaussian regime labelled `certified-0.94`; this withdrawn helper is
+## not its evidence source and cannot extend that certificate.
 
 #' @keywords internal
 #' @noRd

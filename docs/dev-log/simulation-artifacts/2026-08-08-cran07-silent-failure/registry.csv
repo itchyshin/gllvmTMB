@@ -1,0 +1,10 @@
+cell_number,cell_id,family,link,mode,n_unit,n_traits,rank,truth_profile,loading_sd,missing_rate,fraction_sign,smoke_reps,production_reps,primary_estimands
+1,sf_g_n60_l05_m0,gaussian,identity,latent,60,3,1,base_latent,0.5,0,+,20,400,beta;Sigma_shared;Psi;Sigma_total;correlation_total;health
+2,sf_g_n60_l3_m30,gaussian,identity,latent,60,3,1,base_latent,3,0.3,+,20,400,beta;Sigma_shared;Psi;Sigma_total;correlation_total;health
+3,sf_g_n150_l05_m30,gaussian,identity,latent,150,3,1,base_latent,0.5,0.3,+,20,400,beta;Sigma_shared;Psi;Sigma_total;correlation_total;health
+4,sf_g_n150_l3_m0,gaussian,identity,latent,150,3,1,base_latent,3,0,+,20,400,beta;Sigma_shared;Psi;Sigma_total;correlation_total;health
+5,sf_b_n60_l05_m30,binomial,logit,latent,60,3,1,base_latent,0.5,0.3,+,20,400,beta;Sigma_shared;Psi;Sigma_total;correlation_total;health
+6,sf_b_n60_l3_m0,binomial,logit,latent,60,3,1,base_latent,3,0,+,20,400,beta;Sigma_shared;Psi;Sigma_total;correlation_total;health
+7,sf_b_n150_l05_m0,binomial,logit,latent,150,3,1,base_latent,0.5,0,+,20,400,beta;Sigma_shared;Psi;Sigma_total;correlation_total;health
+8,sf_b_n150_l3_m30,binomial,logit,latent,150,3,1,base_latent,3,0.3,+,20,400,beta;Sigma_shared;Psi;Sigma_total;correlation_total;health
+

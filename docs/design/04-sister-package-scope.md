@@ -53,10 +53,10 @@ The five things that distinguish `gllvmTMB` from sister packages:
    `Sigma_non = Lambda_non Lambda_non^T + diag(psi_non)`, summing
    to `Omega`. Most sister packages give you only one of these
    layers at a time.
-3. **4 x 5 keyword grid** as the canonical formula surface:
-   `latent / unique / indep / dep / scalar` cross
-   `none / animal_ / phylo_ / spatial_`. Memorable, parseable,
-   and internally consistent.
+3. **5 x 3 keyword grid** as the canonical formula surface:
+   `indep / dep / latent` modes cross
+   `none / animal_ / phylo_ / spatial_ / kernel_` sources.
+   `common` and `unique` are modifiers rather than extra modes.
 4. **Two data shapes, one engine.** Long format
    (`gllvmTMB(value ~ ..., data = df_long)`) and wide format
    (`gllvmTMB(traits(...) ~ ..., data = df_wide)`) are
@@ -81,8 +81,8 @@ real (`unit`, `trait`) row layout from the start.
 
 ### `gllvmTMB` vs `sdmTMB`
 
-Overlap: spatial random fields via SPDE. `gllvmTMB` has an
-independently implemented SPDE / mesh helper layer and uses
+Overlap: spatial random fields via SPDE. `gllvmTMB` has a substantially
+rewritten SPDE / mesh helper layer with retained GPL-3 sdmTMB provenance and uses
 it for the multivariate spatial layer (`spatial_latent +
 spatial_unique`) rather than for univariate species distribution
 modelling.
@@ -101,14 +101,14 @@ Its approximation toolkit includes variational approximation,
 extended variational approximation (Korhonen et al. 2023), and
 Laplace options. `gllvmTMB` should not claim novelty for
 reduced-rank GLLVMs, ordination, or VA/EVA estimation; its local
-surface is the TMB-Laplace stacked-trait formula grammar, the 4 x 5
+surface is the TMB-Laplace stacked-trait formula grammar, the 5 x 3
 keyword grid, and validation-debt-led phylogenetic / spatial
 covariance paths.
 
 Rule: **use `gllvm` when the primary workflow is matrix-in
 ordination / JSDM with `gllvm`'s VA/EVA/Laplace approximation
 choices.** Use `gllvmTMB` when you want long-format formula-grammar
-control, the 4 x 5 covariance keyword grid, mixed-family per-trait
+control, the 5 x 3 covariance keyword grid, mixed-family per-trait
 data, validation-debt-tracked phylogenetic / spatial covariance
 paths, or profile / bootstrap inference under the `gllvmTMB`
 object model.
@@ -169,8 +169,9 @@ cover:
 
 ## Code provenance and citation
 
-Spatial helpers are independently implemented in gllvmTMB using the
-Lindgren-Rue-Lindström SPDE/GMRF construction. Cite TMB (Kristensen et
+The current spatial helpers were substantially rewritten in gllvmTMB using the
+Lindgren-Rue-Lindström SPDE/GMRF construction after an earlier GPL-3
+sdmTMB-derived implementation. Cite TMB (Kristensen et
 al. 2016, JSS) for every gllvmTMB fit; spatial method references belong
 in the relevant methods documentation rather than package-code provenance.
 

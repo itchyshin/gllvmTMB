@@ -439,6 +439,12 @@ extract_correlations <- function(
   if (!inherits(fit, "gllvmTMB_multi")) {
     cli::cli_abort("Provide a fit returned by {.fun gllvmTMB}.")
   }
+  if (!identical(method, "none")) {
+    .gllvmTMB_require_unweighted_inference(
+      fit,
+      paste0("extract_correlations(method = '", method, "')")
+    )
+  }
   ## Tier-1 fence (Design 83 / FAM-20): an unordered categorical (multinomial)
   ## trait spans K-1 latent liability dimensions, so it has no single
   ## latent-residual scale on which a trait x trait correlation is defined. The
@@ -870,6 +876,12 @@ extract_cross_correlations <- function(fit, level = "unit", contrasts = FALSE,
                                        method = c("point", "bootstrap", "profile", "wald"),
                                        conf = 0.95, nsim = 500L, seed = NULL) {
   method <- match.arg(method)
+  if (!identical(method, "point")) {
+    .gllvmTMB_require_unweighted_inference(
+      fit,
+      paste0("extract_cross_correlations(method = '", method, "')")
+    )
+  }
   if (identical(method, "profile")) {
     cli::cli_abort(c(
       "Nonlinear profile intervals for cross-family correlations are not currently available.",

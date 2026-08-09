@@ -2,8 +2,8 @@
 ##
 ## `profile_ci_total_variance()` accepts five tiers, any family and any level,
 ## but the D-43 certificate (docs/dev-log/2026-07-29-certificate-disposition.md)
-## covers exactly one regime: Gaussian, tier "unit", d in {1,2}, n_units >= 150,
-## level 0.95, converged. The `interval_status` column is what keeps the
+## covers exactly one regime: unpenalised native Laplace, Gaussian, tier "unit",
+## d in {1,2}, n_units >= 150, level 0.95, converged. The `interval_status` column is what keeps the
 ## difference machine-visible, so it is what these tests pin.
 ##
 ## Deliberately fit-free: the labelling is a pure function of a handful of fit
@@ -17,7 +17,8 @@ certified_stub <- function(...) {
     use = list(rr_B = TRUE),
     d_B = 2L,
     n_sites = 150L,
-    fit_health = list(converged = TRUE)
+    fit_health = list(converged = TRUE),
+    aghq = list(used = FALSE, penalised = FALSE, ridge_tau = Inf)
   )
   utils::modifyList(base, list(...))
 }
@@ -41,6 +42,33 @@ test_that("the certified regime is labelled certified-0.94", {
 })
 
 test_that("each uncertified axis on its own flips the row to route-only", {
+  ## Integration/estimand: AGHQ and either kind of loading ridge were not in
+  ## the certificate campaign, even when every structural field matches.
+  expect_identical(
+    status_of(certified_stub(
+      aghq = list(used = TRUE, penalised = FALSE, ridge_tau = Inf)
+    )),
+    "route-only"
+  )
+  expect_identical(
+    status_of(certified_stub(
+      aghq = list(used = FALSE, penalised = TRUE, ridge_tau = 2)
+    )),
+    "route-only"
+  )
+  ## The numeric tau also fails closed if a malformed object contradicts its
+  ## own `penalised` flag.
+  expect_identical(
+    status_of(certified_stub(
+      aghq = list(used = FALSE, penalised = FALSE, ridge_tau = 2)
+    )),
+    "route-only"
+  )
+  ## Missing engine metadata is uncertainty, not permission to certify an old
+  ## or synthetic fit object.
+  missing_engine <- certified_stub()
+  missing_engine$aghq <- NULL
+  expect_identical(status_of(missing_engine), "route-only")
   ## Family: any non-Gaussian observation.
   expect_identical(
     status_of(certified_stub(

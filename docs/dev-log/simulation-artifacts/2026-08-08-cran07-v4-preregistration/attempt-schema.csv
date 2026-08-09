@@ -1,0 +1,20 @@
+field,type,rule
+campaign_id,character,exact v4 campaign identity
+registry_sha256,character,canonical frozen registry SHA-256
+source_archive_sha256,character,authorized source archive SHA-256
+cell_id,character,canonical registry cell ID
+replicate,integer,complete stage-specific sequence
+seed,integer,stage offset plus 100000 times cell number plus replicate
+warm_restart_attempted,logical,nonmissing scalar
+warm_restart_accepted,logical,nonmissing scalar and implies attempted
+objective_before_restart,numeric,finite when attempted
+objective_after_restart,numeric,NA when unattempted and finite when accepted
+max_gradient_before_restart,numeric,finite when attempted
+max_gradient_after_restart,numeric,NA when unattempted and finite strictly smaller when accepted
+convergence_code_before_restart,integer,nonmissing for every fitted attempt and zero required to trigger
+convergence_code_after_restart,integer,NA when unattempted and zero required for acceptance
+pd_hessian_before_restart,logical,nonmissing for every fitted attempt and TRUE required to trigger
+pd_hessian_after_restart,logical,NA when unattempted and TRUE required for acceptance
+boundary_before_restart,logical,nonmissing for every fitted attempt and FALSE required to trigger
+boundary_after_restart,logical,NA when unattempted and FALSE required for acceptance
+warm_restart_trigger_reason,character,exact reason re-derived from the frozen trigger predicate

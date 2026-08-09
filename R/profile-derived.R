@@ -174,6 +174,7 @@ profile_ci_phylo_signal <- function(fit, trait_idx = NULL, level = 0.95) {
   if (!inherits(fit, "gllvmTMB_multi")) {
     cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
   }
+  .gllvmTMB_require_unweighted_inference(fit, "profile_ci_phylo_signal")
   has_phy <- isTRUE(fit$use$phylo_rr) || isTRUE(fit$use$phylo_diag)
   if (!has_phy) {
     cli::cli_abort(c(
@@ -292,6 +293,11 @@ profile_ci_phylo_signal <- function(fit, trait_idx = NULL, level = 0.95) {
     )
   }
   obj <- fit$tmb_obj
+  profile_checkpoint <- .gllvmTMB_profile_tmb_checkpoint(obj)
+  on.exit(
+    .gllvmTMB_restore_profile_tmb_checkpoint(obj, profile_checkpoint),
+    add = TRUE
+  )
   par0 <- fit$opt$par
   ## Penalised NLL
   fn_pen <- function(par) {
@@ -922,7 +928,8 @@ profile_ci_communality <- function(
 ## Is this (fit, tier, level) inside the ONE regime the D-43 panel certified?
 ##
 ## The certificate (2026-07-29; docs/dev-log/2026-07-29-certificate-disposition.md)
-## covers simulation from a known Gaussian DGP, tier "unit", the diagonal
+## covers an unpenalised native-Laplace fit simulated from a known Gaussian DGP,
+## tier "unit", the diagonal
 ## V_t = (Lambda Lambda')[t,t] + psi[t], d in {1,2}, n_units >= 150, two-sided,
 ## nominal-95% input, among converged fits. Everything else the signature admits
 ## -- every other family, tier, rank, sample size and level -- was NOT measured.
@@ -930,6 +937,20 @@ profile_ci_communality <- function(
 ## n between 50 and 150 are unmeasured, so they are uncertified, not "close
 ## enough".
 .total_variance_in_certified_regime <- function(fit, tier, level) {
+  ## Engine/estimand: the campaign fitted the ordinary unpenalised native
+  ## Laplace likelihood. AGHQ changes the integration objective, while an
+  ## explicit loading ridge targets a penalised MAP point. Neither route
+  ## inherits the certificate. Require all three machine fields so an older or
+  ## incomplete fit object fails closed to "route-only".
+  ridge_tau <- fit$aghq$ridge_tau
+  if (
+    !identical(fit$aghq$used, FALSE) ||
+      !identical(fit$aghq$penalised, FALSE) ||
+      !is.numeric(ridge_tau) || length(ridge_tau) != 1L ||
+      !is.infinite(ridge_tau) || ridge_tau < 0
+  ) {
+    return(FALSE)
+  }
   ## Family: every observation Gaussian (family id 0).
   if (any((fit$tmb_data$family_id_vec %||% 0L) != 0L)) {
     return(FALSE)
@@ -982,8 +1003,9 @@ profile_ci_communality <- function(
 #'
 #' @section What the coverage evidence does and does not cover:
 #' One regime of this function has measured frequentist coverage. Under
-#' simulation from a known Gaussian data-generating process with `n_units >= 150`
-#' and `d <= 2`, the two-sided intervals met a **pre-registered `>= 0.94` gate**
+#' simulation from a known Gaussian data-generating process, using an
+#' unpenalised native-Laplace fit with `n_units >= 150` and `d <= 2`, the
+#' two-sided intervals met a **pre-registered `>= 0.94` gate**
 #' (0.9467 in both cells, 20,000 replicates each, computed among converged fits
 #' only). **That gate is 0.94, not nominal 95%** -- both cells sit roughly 3.3
 #' cluster standard errors below 0.95, so do not describe these as 95%
@@ -993,9 +1015,10 @@ profile_ci_communality <- function(
 #' The evidence is one simulated DGP, not a claim about any real dataset.
 #'
 #' Everything else the arguments admit is an uncertified computed route: every
-#' non-Gaussian family, every tier other than `"unit"`, `d > 2`, `d = 0`,
-#' `n_units < 150`, any `level` other than 0.95, and the off-diagonal and
-#' `psi` targets (the `psi` target was measured on the same run and **failed**).
+#' AGHQ fit, any loading-ridge fit, every non-Gaussian family, every tier other
+#' than `"unit"`, `d > 2`, `d = 0`, `n_units < 150`, any `level` other than
+#' 0.95, and the off-diagonal and `psi` targets (the `psi` target was measured
+#' on the same run and **failed**).
 #' Rather than refuse those calls -- they are legitimately useful for
 #' exploration -- the returned `interval_status` column marks each row.
 #'
@@ -1027,6 +1050,7 @@ profile_ci_total_variance <- function(
   trait_idx = NULL,
   level = 0.95
 ) {
+  .gllvmTMB_require_unweighted_inference(fit, "profile_ci_total_variance")
   tier <- match.arg(tier)
   out <- .profile_ci_total_variance(
     fit,

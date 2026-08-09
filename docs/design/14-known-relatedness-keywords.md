@@ -6,7 +6,7 @@
 **Reviewers**: Fisher (statistical inference), Pat (reader UX),
 Darwin (audience), Jason (sister-package landscape), Ada (orchestration).
 **Cross-refs**:
-[`01-formula-grammar.md`](01-formula-grammar.md) (4×3 grid plus modifiers contract);
+[`01-formula-grammar.md`](01-formula-grammar.md) (5×3 grid plus modifiers contract);
 [`04-random-effects.md`](04-random-effects.md);
 [`00-vision.md`](00-vision.md) item 2 (phylogenetic + animal GLLVM
 unification);
@@ -95,9 +95,9 @@ through v0.3.0. A `lifecycle::deprecate_soft()` note suggests
 animal_* + spatial_* convention. This is **a separate small PR**
 (deferred from M2.8 to keep this slice focused on the new family).
 
-## 4. The 4×3 covariance keyword grid
+## 4. The 5×3 covariance keyword grid
 
-The current grid is **4 sources × 3 modes**. `common = TRUE` is the
+The current grid is **5 sources × 3 modes**. `common = TRUE` is the
 one-shared-variance modifier of `*_indep()`, while `unique = TRUE` is the
 diagonal-Psi modifier of `*_latent()`:
 
@@ -107,6 +107,7 @@ diagonal-Psi modifier of `*_latent()`:
 | **animal** | `animal_indep()` | `animal_dep()` | `animal_latent()` |
 | phylo   | `phylo_indep()` | `phylo_dep()` | `phylo_latent()` |
 | spatial | `spatial_indep()` | `spatial_dep()` | `spatial_latent()` |
+| kernel  | `kernel_indep()` | `kernel_dep()` | `kernel_latent()` |
 
 Per pedagogical zoom-out: **individual** (animal pedigree) →
 **species** (phylogeny) → **geography** (spatial). Animal sits at

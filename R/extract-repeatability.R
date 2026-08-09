@@ -103,6 +103,7 @@ extract_repeatability <- function(
       "Provide a fit returned by {.fun gllvmTMB} or a {.cls bootstrap_Sigma} object."
     )
   }
+  .gllvmTMB_require_unweighted_inference(fit, "extract_repeatability")
   trait_names <- levels(fit$data[[fit$trait_col]])
   T <- length(trait_names)
 

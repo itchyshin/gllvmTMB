@@ -161,17 +161,20 @@ test_that("independent analytic joint-density cross-check matches TMB (< 1e-9)",
   Lam <- array(0, c(n_tr, dps, nlc))
   for (kc in seq_len(nlc)) {
     tk <- theta[((kc - 1) * len_per_col + 1):(kc * len_per_col)]
-    lam_diag <- tk[seq_len(dps)]
-    lam_lower <- tk[-seq_len(dps)]
-    for (j in seq_len(dps)) for (i in seq_len(n_tr)) {
-      if (j > i) {
-        Lam[i, j, kc] <- 0
-      } else if (i == j) {
-        Lam[i, j, kc] <- lam_diag[j]
-      } else {
-        Lam[i, j, kc] <- lam_lower[(j - 1) * n_tr - j * (j - 1) / 2 + (i - 1) - (j - 1)]
+    cursor <- 1L
+    for (column in seq_len(dps)) {
+      Lam[column, column, kc] <- tk[cursor]
+      cursor <- cursor + 1L
+    }
+    for (column in seq_len(dps)) {
+      if (column < n_tr) {
+        for (row in seq.int(column + 1L, n_tr)) {
+          Lam[row, column, kc] <- tk[cursor]
+          cursor <- cursor + 1L
+        }
       }
     }
+    testthat::expect_identical(cursor, length(tk) + 1L)
   }
   g <- p$g_phy_slope
 

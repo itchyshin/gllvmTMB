@@ -1,4 +1,15 @@
 {
+  "provenance": {
+    "run_token": "cran07-20260809T015214Z-codex",
+    "source_hashes": {
+      "k1_driver": "909b4b5e683dcd0c409a2d8b3e676c4a",
+      "k2_driver": "cca084bc19d2eec88ea31c91e54ff1a6",
+      "stan_density": "b5b0e2ada7d785a62166e3ec08bca95b",
+      "tmb_source": "64e928d6c914e0478733f56c5368eec8"
+    },
+    "k1_output": "gauss-reconcile.json",
+    "k1_output_hash": "b636f20b72c574d0f4012de8c2b93fa8"
+  },
   "dims": {
     "N": 96,
     "n_t": 4,

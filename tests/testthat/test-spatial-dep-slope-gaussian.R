@@ -32,7 +32,9 @@ skip_if_not_spatial <- function() {
 ## Build an intercept-only spatial scaffold fit to inherit the full TMB
 ## data/parameter contract + a real mesh, then reconfigure to the dep path.
 .spde_dep_scaffold <- function(seed = 7, n_sites = 30, n_traits = 2,
-                               cutoff = 0.15) {
+                               cutoff = 0.12) {
+  ## Keep every simulated site inside the mesh support under fmesher 0.8.0;
+  ## cutoff = 0.15 merges away the seed-7 fixture's most extreme location.
   set.seed(seed)
   sim <- gllvmTMB::simulate_site_trait(
     n_sites = n_sites, n_species = 1, n_traits = n_traits,

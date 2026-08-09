@@ -40,6 +40,10 @@ Convention: \code{gllvmTMB} follows Hadfield (2015) — \eqn{\tau_1 = 0} is
 fixed for identifiability and the K - 2 free cutpoints are reported
 as \code{cutpoint_2}, \code{cutpoint_3}, etc. This differs from \code{brms}, which
 reports K - 1 cutpoints as \verb{Intercept[1..K-1]}.
+
+This extractor includes Wald standard errors, so it refuses fits made with
+non-unit likelihood weights. The fitted cutpoint parameters remain point
+estimates, but weighted-objective uncertainty is not calibrated.
 }
 \examples{
 \dontrun{

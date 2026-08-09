@@ -1,68 +1,119 @@
-# modified from glmmTMB
-# extra stuff for Effects package, class, etc.
-add_to_family <- function(x) {
-  # x <- c(x, list(link = link), make.link(link))
-  # Effect.default/glm.fit
-  if (is.null(x$aic)) {
-    x <- c(x, list(aic = function(...) NA_real_))
+# gllvmTMB family constructors are deliberately small data objects. Likelihood
+# behaviour belongs to the TMB engine; this file records names, links, and the
+# few constructor-specific controls that the engine consumes.
+
+.gllvm_link <- function(expr, value, unquoted, caller) {
+  if (is.character(expr)) {
+    candidate <- expr
+  } else {
+    written <- deparse1(expr)
+    candidate <- if (written %in% unquoted) written else value
   }
-  if (is.null(x$initialize)) {
-    x <- c(x, list(initialize = expression({
-      mustart <- y + 0.1
-    })))
+  if (!is.character(candidate) || length(candidate) != 1L || is.na(candidate) ||
+      !nzchar(candidate)) {
+    cli::cli_abort("{.fn {caller}} requires one link name.")
   }
-  if (is.null(x$dev.resids)) {
-    # can't return NA, glm.fit is unhappy
-    x <- c(x, list(dev.resids = function(y, mu, wt) {
-      rep(0, length(y))
-    }))
-  }
-  class(x) <- "family"
-  x
+  tryCatch(
+    stats::make.link(candidate),
+    error = function(e) {
+      cli::cli_abort(c(
+        "{.fn {caller}} does not recognise link {.val {candidate}}.",
+        "i" = conditionMessage(e)
+      ))
+    }
+  )
 }
 
-#' Additional families
+.gllvm_family <- function(family, expr, value, unquoted, extra = list(),
+                          full = TRUE, class = "family") {
+  link <- .gllvm_link(expr, value, unquoted, paste0(family, "()"))
+  out <- c(list(family = family, link = link$name), extra,
+           link[c("linkfun", "linkinv")])
+  if (full) {
+    out <- c(out, link[c("mu.eta", "valideta", "name")], list(
+      aic = function(...) NA_real_,
+      initialize = expression({
+        mustart <- 0.1 + y
+      }),
+      dev.resids = function(y, mu, wt) rep.int(0, length(y))
+    ))
+  }
+  structure(out, class = class)
+}
+
+.gllvm_probability <- function(x, argument, caller) {
+  if (is.null(x)) return(NULL)
+  if (!is.numeric(x) || length(x) != 1L || !is.finite(x) || x <= 0 || x >= 1) {
+    cli::cli_abort(
+      "{.fn {caller}} requires {.arg {argument}} to be NULL or one number strictly between 0 and 1."
+    )
+  }
+  as.numeric(x)
+}
+
+.gllvm_delta <- function(caller, first, second, family, link, type = NULL,
+                         p_extreme = NULL, include_p = FALSE) {
+  suffix <- if (identical(type, "poisson_link_delta"))
+    ", type = 'poisson-link'" else ""
+  out <- list(first, second, delta = TRUE, link = link, family = family)
+  if (!is.null(type)) out$type <- type
+  if (include_p) out["p_extreme"] <- list(p_extreme)
+  out$clean_name <- sprintf(
+    "%s(link1 = '%s', link2 = '%s'%s)", caller, link[[1L]], link[[2L]], suffix
+  )
+  structure(out, class = "family")
+}
+
+#' Response-family constructors used by gllvmTMB
 #'
-#' Additional families compatible with [gllvmTMB()].
+#' Build family descriptors for likelihoods that are not supplied directly by
+#' [stats::family()]. The descriptor records the family name, link functions,
+#' and any fixed shape control consumed by [gllvmTMB()].
 #'
-#' @param link Link.
+#' @param link A single link name. The fitting engine applies the narrower
+#'   family-specific link restrictions documented in [gllvmTMB()].
+#' @param p_extreme `NULL` to estimate the mixture probability, or one finite
+#'   number strictly between zero and one to fix it.
+#' @param df `NULL` to estimate Student-t degrees of freedom, or one finite
+#'   number greater than one to fix it.
+#' @param p `NULL` to estimate the Tweedie power, or one finite number strictly
+#'   between one and two to fix it.
+#' @param link1 Link for the occurrence component of a delta model.
+#' @param link2 Link for the positive component of a delta model.
+#' @param type Delta construction: `"standard"` uses a binary occurrence
+#'   component, while `"poisson-link"` requests the alternative Poisson-link
+#'   parameterisation.
 #' @export
 #' @rdname families
 #' @name Families
 #'
 #' @return
-#' A list with elements common to standard R family objects including `family`,
-#' `link`, `linkfun`, and `linkinv`. Delta/hurdle model families also have
-#' elements `delta` (logical) and `type` (standard vs. Poisson-link).
+#' A `family` object. One-part descriptors contain `family`, `link`, `linkfun`,
+#' and `linkinv`, plus constructor-specific metadata where applicable. Delta
+#' descriptors contain their two component families and `delta = TRUE`.
 #'
 #' @details
-#' Most models use standard R family objects such as `gaussian()`,
-#' `binomial()`, `poisson()`, or `Gamma(link = "log")`. This help topic
-#' documents additional family constructors shipped by **gllvmTMB** (for
-#' example `Beta()`, `betabinomial()`, `nbinom1()`, `nbinom2()`,
-#' `student()`, `tweedie()`, `lognormal()`, delta/hurdle families, and
-#' truncated count families).
+#' These functions construct descriptors; successful construction does not by
+#' itself mean that a route is in the dependable release core. Ordinary
+#' Gaussian, Poisson, NB2, and binomial Laplace routes have the strongest
+#' first-release evidence. Other families and delta, mixture, truncated,
+#' ordinal, or mixed-family routes have narrower evidence. Read
+#' `vignette("current-limits", package = "gllvmTMB")` before relying on one of
+#' those routes.
 #'
-#' ## Mixed-family fits (one model, multiple response families)
+#' ## Mixed-family input
 #'
-#' You can fit different response families within one multivariate model
-#' by passing `family` as a list of family objects and adding a selector
-#' column to `data` that chooses which family applies to each row.
+#' Supply a list of descriptors when response traits use different families.
+#' The data column `family` selects an element for each row. Set
+#' `attr(families, "family_var")` to select a differently named column. Names on
+#' the list are matched to selector levels; an unnamed list is matched by order.
 #'
-#' By default the selector column is named `"family"`. To use a different
-#' column name, set `attr(family, "family_var") <- "colname"`. Named family
-#' lists are aligned by name to the selector levels. Unnamed lists keep the
-#' legacy convention that list order must match the selector levels. The length
-#' of `family` must match the number of distinct selector levels.
+#' ## Delta defaults and compatibility wrappers
 #'
-#' ## Delta-family defaults
-#'
-#' The default `link1` for delta models of `type = "standard"` is `"logit"`.
-#' The default `link1` for delta models of `type = "poisson-link"` is `"log"`.
-#'
-#' `delta_poisson_link_gamma()` and `delta_poisson_link_lognormal()` have been
-#' deprecated in favour of `delta_gamma(type = "poisson-link")` and
-#' `delta_lognormal(type = "poisson-link")`.
+#' When `link1` is omitted, standard delta constructors use `"logit"` and
+#' Poisson-link constructors use `"log"`. The older
+#' `delta_poisson_link_gamma()` and `delta_poisson_link_lognormal()` names remain
+#' as deprecated wrappers.
 #'
 #' @examples
 #' Beta(link = "logit")
@@ -84,18 +135,7 @@ add_to_family <- function(x) {
 #' )
 #' }
 Beta <- function(link = "logit") {
-  linktemp <- substitute(link)
-  if (!is.character(linktemp))
-    linktemp <- deparse(linktemp)
-  okLinks <- c("logit")
-  if (linktemp %in% okLinks)
-    stats <- stats::make.link(linktemp)
-  else if (is.character(link)) {
-    stats <- stats::make.link(link)
-    linktemp <- link
-  }
-  x <- c(list(family = "Beta", link = linktemp), stats)
-  add_to_family(x)
+  .gllvm_family("Beta", substitute(link), link, "logit")
 }
 
 #' @export
@@ -103,174 +143,75 @@ Beta <- function(link = "logit") {
 #' @examples
 #' lognormal(link = "log")
 lognormal <- function(link = "log") {
-  linktemp <- substitute(link)
-  if (!is.character(linktemp))
-    linktemp <- deparse(linktemp)
-  okLinks <- c("identity", "log", "inverse")
-  if (linktemp %in% okLinks)
-    stats <- stats::make.link(linktemp)
-  else if (is.character(link)) {
-    stats <- stats::make.link(link)
-    linktemp <- link
-  }
-  x <- c(list(family = "lognormal", link = linktemp), stats)
-  add_to_family(x)
+  .gllvm_family("lognormal", substitute(link), link,
+                c("identity", "log", "inverse"))
 }
 
 #' @keywords internal
 #' @export
 #' @rdname families
 #' @details
-#' The `gengamma()` family was implemented by J.T. Thorson and uses the Prentice
-#' (1974) parameterization such that the lognormal occurs as the internal
-#' parameter `gengamma_Q` (reported in `print()` or `summary()` as
-#' "Generalized gamma Q") approaches 0. If Q matches `phi` the distribution
-#' should be the gamma.
+#' `gengamma()` uses the Prentice parameterisation. Its fitted `gengamma_Q`
+#' value controls shape; the limiting case at zero is lognormal.
 #'
 #' @references
-#'
-#' *Generalized gamma family*:
 #'
 #' Prentice, R.L. 1974. A log gamma model and its maximum likelihood estimation.
 #' Biometrika 61(3): 539–544. \doi{10.1093/biomet/61.3.539}
 #'
-#' Stacy, E.W. 1962. A Generalization of the Gamma Distribution. The Annals of
-#' Mathematical Statistics 33(3): 1187–1192. Institute of Mathematical
-#' Statistics.
-#'
-#' Dunic, J.C., Conner, J., Anderson, S.C., and Thorson, J.T. 2025. The
-#' generalized gamma is a flexible distribution that outperforms alternatives
-#' when modelling catch rate data. ICES Journal of Marine Science 82(4):
-#' fsaf040. \doi{10.1093/icesjms/fsaf040}.
-#'
-#' @details `gengamma()`, the one-part families ending in `_mix()`,
-#'   `truncated_nbinom1()`, `censored_poisson()`, and delta constructors other
-#'   than the standard `delta_lognormal()` / `delta_gamma()` pair are exported
-#'   for API continuity, but are not admitted by the current multivariate
-#'   `gllvmTMB()` engine. This includes delta mixtures, `delta_gengamma()`,
-#'   `delta_beta()`, and delta-truncated negative-binomial constructors. Fits
-#'   with those families fail loudly as unsupported until likelihood wiring and
-#'   recovery tests land.
+#' @details Several constructors remain exported for compatibility although the
+#' current multivariate fitter rejects them. In particular, this applies to
+#' generalized-gamma, mixture, censored Poisson, truncated NB1, and most delta
+#' variants. A rejected constructor is not silently mapped to another family.
 
 gengamma <- function(link = "log") {
-  linktemp <- substitute(link)
-  if (!is.character(linktemp))
-    linktemp <- deparse(linktemp)
-  okLinks <- c("identity", "log", "inverse")
-  if (linktemp %in% okLinks)
-    stats <- stats::make.link(linktemp)
-  else if (is.character(link)) {
-    stats <- stats::make.link(link)
-    linktemp <- link
-  }
-  x <- c(list(family = "gengamma", link = linktemp), stats)
-  add_to_family(x)
+  .gllvm_family("gengamma", substitute(link), link,
+                c("identity", "log", "inverse"))
 }
 
-#' @details The families ending in `_mix()` are 2-component mixtures where each
-#'   distribution has its own mean but a shared scale parameter.
-#'   (Thorson et al. 2011). See the model-description vignette for details.
-#'   The parameter `p_extreme = plogis(logit_p_extreme)` is the probability of the extreme (larger)
-#'   mean and `exp(log_ratio_mix) + 1` is the ratio of the larger extreme
-#'   mean to the "regular" mean. You can see these parameters in
-#'   `model$sd_report`. The parameter `p_extreme` can be fixed a priori and passed
-#'   in as a proportion for these families.
+#' @details Names ending in `_mix()` describe two mean components that share a
+#' scale parameter. `p_extreme` is the probability assigned to the component
+#' with the larger mean; leave it `NULL` to estimate that probability.
 #' @references
-#'
-#' *Families ending in `_mix()`*:
 #'
 #' Thorson, J.T., Stewart, I.J., and Punt, A.E. 2011. Accounting for fish shoals
 #' in single- and multi-species survey data using mixture distribution models.
 #' Can. J. Fish. Aquat. Sci. 68(9): 1681–1693. \doi{10.1139/f2011-086}.
 
-#' @param p_extreme Optional fixed probability for the extreme component. If NULL (default),
-#'   this is estimated. If specified, must be a proportion between 0 and 1.
 #' @export
 #' @rdname families
 #' @examples
 #' gamma_mix(link = "log")
 gamma_mix <- function(link = "log", p_extreme = NULL) {
-  linktemp <- substitute(link)
-  if (!is.character(linktemp))
-    linktemp <- deparse(linktemp)
-  okLinks <- c("identity", "log", "inverse")
-  if (linktemp %in% okLinks)
-    stats <- stats::make.link(linktemp)
-  else if (is.character(link)) {
-    stats <- stats::make.link(link)
-    linktemp <- link
-  }
-
-  if (!is.null(p_extreme)) {
-    if (!is.numeric(p_extreme) || p_extreme <= 0 || p_extreme >= 1) {
-      stop("p_extreme must be NULL or a proportion between 0 and 1")
-    }
-  }
-
-  x <- c(list(family = "gamma_mix", link = linktemp, p_extreme = p_extreme), stats)
-  add_to_family(x)
+  p_extreme <- .gllvm_probability(p_extreme, "p_extreme", "gamma_mix()")
+  .gllvm_family("gamma_mix", substitute(link), link,
+                c("identity", "log", "inverse"), list(p_extreme = p_extreme))
 }
 
-#' @param p_extreme Optional fixed probability for the extreme component. If NULL (default),
-#'   this is estimated. If specified, must be a proportion between 0 and 1.
 #' @export
 #' @rdname families
 #' @examples
 #' lognormal_mix(link = "log")
 lognormal_mix <- function(link = "log", p_extreme = NULL) {
-  linktemp <- substitute(link)
-  if (!is.character(linktemp))
-    linktemp <- deparse(linktemp)
-  okLinks <- c("identity", "log", "inverse")
-  if (linktemp %in% okLinks)
-    stats <- stats::make.link(linktemp)
-  else if (is.character(link)) {
-    stats <- stats::make.link(link)
-    linktemp <- link
-  }
-
-  if (!is.null(p_extreme)) {
-    if (!is.numeric(p_extreme) || p_extreme <= 0 || p_extreme >= 1) {
-      stop("p_extreme must be NULL or a proportion between 0 and 1")
-    }
-  }
-  x <- c(list(family = "lognormal_mix", link = linktemp, p_extreme = p_extreme), stats)
-  add_to_family(x)
+  p_extreme <- .gllvm_probability(p_extreme, "p_extreme", "lognormal_mix()")
+  .gllvm_family("lognormal_mix", substitute(link), link,
+                c("identity", "log", "inverse"), list(p_extreme = p_extreme))
 }
 
-#' @param p_extreme Optional fixed probability for the extreme component. If NULL (default),
-#'   this is estimated. If specified, must be a proportion between 0 and 1.
 #' @export
 #' @rdname families
 #' @examples
 #' nbinom2_mix(link = "log")
 nbinom2_mix <- function(link = "log", p_extreme = NULL) {
-  linktemp <- substitute(link)
-  if (!is.character(linktemp))
-    linktemp <- deparse(linktemp)
-  okLinks <- c("identity", "log", "inverse")
-  if (linktemp %in% okLinks)
-    stats <- stats::make.link(linktemp)
-  else if (is.character(link)) {
-    stats <- stats::make.link(link)
-    linktemp <- link
-  }
-
-  if (!is.null(p_extreme)) {
-    if (!is.numeric(p_extreme) || p_extreme <= 0 || p_extreme >= 1) {
-      stop("p_extreme must be NULL or a proportion between 0 and 1")
-    }
-  }
-  x <- c(list(family = "nbinom2_mix", link = linktemp, p_extreme = p_extreme), stats)
-  add_to_family(x)
+  p_extreme <- .gllvm_probability(p_extreme, "p_extreme", "nbinom2_mix()")
+  .gllvm_family("nbinom2_mix", substitute(link), link,
+                c("identity", "log", "inverse"), list(p_extreme = p_extreme))
 }
 
 #' @details
-#' The `nbinom2` negative binomial parameterization is the NB2 where the
-#' variance grows quadratically with the mean (Hilbe 2011).
+#' NB2 has variance \eqn{\mu + \mu^2 / \phi}; its extra variance therefore grows
+#' quadratically with the mean.
 #' @references
-#'
-#' *Negative binomial families*:
 #'
 #' Hilbe, J. M. 2011. Negative binomial regression. Cambridge University Press.
 #' @export
@@ -278,41 +219,18 @@ nbinom2_mix <- function(link = "log", p_extreme = NULL) {
 #' nbinom2(link = "log")
 #' @rdname families
 nbinom2 <- function(link = "log") {
-  linktemp <- substitute(link)
-  if (!is.character(linktemp))
-    linktemp <- deparse(linktemp)
-  okLinks <- c("log")
-  if (linktemp %in% okLinks)
-    stats <- stats::make.link(linktemp)
-  else if (is.character(link)) {
-    stats <- stats::make.link(link)
-    linktemp <- link
-  }
-
-  x <- c(list(family = "nbinom2", link = linktemp), stats)
-  add_to_family(x)
+  .gllvm_family("nbinom2", substitute(link), link, "log")
 }
 
 #' @details
-#' The `nbinom1` negative binomial parameterization lets the variance grow
-#' linearly with the mean (Hilbe 2011).
+#' NB1 has variance \eqn{\mu(1 + \phi)}, so its extra variance grows linearly
+#' with the mean.
 #' @export
 #' @examples
 #' nbinom1(link = "log")
 #' @rdname families
 nbinom1 <- function(link = "log") {
-  linktemp <- substitute(link)
-  if (!is.character(linktemp))
-    linktemp <- deparse(linktemp)
-  okLinks <- c("log")
-  if (linktemp %in% okLinks)
-    stats <- stats::make.link(linktemp)
-  else if (is.character(link)) {
-    stats <- stats::make.link(link)
-    linktemp <- link
-  }
-  x <- c(list(family = "nbinom1", link = linktemp), stats)
-  add_to_family(x)
+  .gllvm_family("nbinom1", substitute(link), link, "log")
 }
 
 utils::globalVariables(".phi") ## avoid R CMD check NOTE
@@ -322,24 +240,13 @@ utils::globalVariables(".phi") ## avoid R CMD check NOTE
 #' truncated_poisson(link = "log")
 #' @rdname families
 truncated_poisson <- function(link = "log") {
-  linktemp <- substitute(link)
-  if (!is.character(linktemp))
-    linktemp <- deparse(linktemp)
-  okLinks <- c("log")
-  if (linktemp %in% okLinks)
-    stats <- stats::make.link(linktemp)
-  else if (is.character(link)) {
-    stats <- stats::make.link(link)
-    linktemp <- link
+  out <- .gllvm_family("truncated_poisson", substitute(link), link, "log",
+                       full = FALSE)
+  out$linkinv <- function(eta) {
+    mu <- exp(eta)
+    mu / (-expm1(-mu))
   }
-  linkinv <- function(eta) {
-    lambda <- exp(eta)
-    log_nzprob <- logspace_sub(0, -lambda)  # log(1 - exp(-lambda))
-    lambda / exp(log_nzprob)
-  }
-  structure(list(family = "truncated_poisson", link = linktemp,
-                 linkfun = stats$linkfun, linkinv = linkinv),
-            class = "family")
+  out
 }
 
 #' @export
@@ -347,79 +254,41 @@ truncated_poisson <- function(link = "log") {
 #' truncated_nbinom2(link = "log")
 #' @rdname families
 truncated_nbinom2 <- function(link = "log") {
-  linktemp <- substitute(link)
-  if (!is.character(linktemp))
-    linktemp <- deparse(linktemp)
-  okLinks <- c("log")
-  if (linktemp %in% okLinks)
-    stats <- stats::make.link(linktemp)
-  else if (is.character(link)) {
-    stats <- stats::make.link(link)
-    linktemp <- link
-  }
-  linkinv <- function(eta, phi = NULL) {
-    s1 <- eta
+  out <- .gllvm_family("truncated_nbinom2", substitute(link), link, "log",
+                       full = FALSE)
+  out$linkinv <- function(eta, phi = NULL) {
     if (is.null(phi)) phi <- .phi
-    s2 <- logspace_add(0, s1 - log(phi)) # log(1 + mu/phi)
-    log_nzprob <- logspace_sub(0, -phi * s2)
-    exp(eta) / exp(log_nzprob)
+    mu <- exp(eta)
+    log_p_zero <- -phi * log1p(mu / phi)
+    mu / (-expm1(log_p_zero))
   }
-  structure(list(family = "truncated_nbinom2", link = linktemp, linkfun = stats$linkfun,
-    linkinv = linkinv), class = "family")
+  out
 }
-
-logspace_sub <- function (lx, ly) lx + log1mexp(lx - ly)
-logspace_add <- function (lx, ly) pmax(lx, ly) + log1p(exp(-abs(lx - ly)))
-log1mexp <- function(x) ifelse(x <= log(2), log(-expm1(-x)), log1p(-exp(-x)))
 
 #' @export
 #' @examples
 #' truncated_nbinom1(link = "log")
 #' @rdname families
 truncated_nbinom1 <- function(link = "log") {
-  linktemp <- substitute(link)
-  if (!is.character(linktemp))
-    linktemp <- deparse(linktemp)
-  okLinks <- c("log")
-  if (linktemp %in% okLinks)
-    stats <- stats::make.link(linktemp)
-  else if (is.character(link)) {
-    stats <- stats::make.link(link)
-    linktemp <- link
-  }
-  linkinv <- function(eta, phi = NULL) {
-    mu <- exp(eta)
+  out <- .gllvm_family("truncated_nbinom1", substitute(link), link, "log",
+                       full = FALSE)
+  out$linkinv <- function(eta, phi = NULL) {
     if (is.null(phi)) phi <- .phi
-    s2 <- logspace_add(0, log(phi)) # log(1 + phi)
-    log_nzprob <- logspace_sub(0, -mu / phi * s2) # 1 - prob(0)
-    mu / exp(log_nzprob)
+    mu <- exp(eta)
+    log_p_zero <- -(mu / phi) * log1p(phi)
+    mu / (-expm1(log_p_zero))
   }
-  structure(list(family = "truncated_nbinom1", link = linktemp, linkfun = stats$linkfun,
-    linkinv = linkinv), class = "family")
+  out
 }
 
-#' @param df Student-t degrees of freedom parameter. Can be `NULL` to estimate (default)
-#'   or a numeric value > 1 to fix at a specific value.
 #' @export
 #' @details
-#' For `student()`, the degrees of freedom parameter is estimated by default (`df = NULL`).
-#' You can fix it at a specific value by providing a number > 1 (e.g., `df = 3`).
+#' `student()` estimates degrees of freedom unless `df` is supplied.
 #' @rdname families
 #' @examples
 #' student(link = "identity") # estimate df
 #' student(link = "identity", df = 3) # fix df at 3
 student <- function(link = "identity", df = NULL) {
-  linktemp <- substitute(link)
-  if (!is.character(linktemp))
-    linktemp <- deparse(linktemp)
-  okLinks <- c("identity", "log", "inverse")
-  if (linktemp %in% okLinks)
-    stats <- stats::make.link(linktemp)
-  else if (is.character(link)) {
-    stats <- stats::make.link(link)
-    linktemp <- link
-  }
-
   if (!is.null(df) &&
       (!is.numeric(df) || length(df) != 1L || !is.finite(df) || df <= 1)) {
     cli::cli_abort(
@@ -427,15 +296,14 @@ student <- function(link = "identity", df = NULL) {
     )
   }
 
-  # Inform user about df parameter
   if (is.null(df)) {
     cli::cli_inform("Student-t degrees of freedom parameter will be estimated. This used to be fixed at 3 by default. To fix it, supply a value to `df` (e.g., `df = 3`).")
   } else {
     cli::cli_inform("Student-t degrees of freedom parameter fixed at {df}. To estimate it, set `df = NULL`.")
   }
 
-  x <- c(list(family = "student", link = linktemp, df = df), stats)
-  add_to_family(x)
+  .gllvm_family("student", substitute(link), link,
+                c("identity", "log", "inverse"), list(df = df))
 }
 
 #' @export
@@ -443,28 +311,14 @@ student <- function(link = "identity", df = NULL) {
 #' tweedie(link = "log")
 #' @rdname families
 tweedie <- function(link = "log", p = NULL) {
-  linktemp <- substitute(link)
-  if (!is.character(linktemp))
-    linktemp <- deparse(linktemp)
-  okLinks <- c("log", "identity")
-  if (linktemp %in% okLinks)
-    stats <- stats::make.link(linktemp)
-  else if (is.character(link)) {
-    stats <- stats::make.link(link)
-    linktemp <- link
-  }
-
-  ## Optional fixed power `p` (1 < p < 2). The power, dispersion phi, and any
-  ## random-effect variance sit on a shared ridge, so fixing p is the standard
-  ## way to stabilise variance-component recovery (esp. for random slopes).
   if (!is.null(p) &&
-        (!is.numeric(p) || length(p) != 1L || is.na(p) || p <= 1 || p >= 2)) {
+      (!is.numeric(p) || length(p) != 1L || !is.finite(p) || p <= 1 || p >= 2)) {
     cli::cli_abort(
       "tweedie(): {.code p} (the power) must be a single number strictly between 1 and 2 (got {p})."
     )
   }
-  x <- c(list(family = "tweedie", link = linktemp, p = p), stats)
-  add_to_family(x)
+  .gllvm_family("tweedie", substitute(link), link, c("log", "identity"),
+                list(p = p))
 }
 
 #' @export
@@ -472,34 +326,15 @@ tweedie <- function(link = "log", p = NULL) {
 #' censored_poisson(link = "log")
 #' @rdname families
 censored_poisson <- function(link = "log") {
-  linktemp <- substitute(link)
-  if (!is.character(linktemp))
-    linktemp <- deparse(linktemp)
-  okLinks <- c("log")
-  if (linktemp %in% okLinks)
-    stats <- stats::make.link(linktemp)
-  else if (is.character(link)) {
-    stats <- stats::make.link(link)
-    linktemp <- link
-  }
-
-  structure(list(family = "censored_poisson", link = linktemp, linkfun = stats$linkfun,
-    linkinv = stats$linkinv), class = "family")
+  .gllvm_family("censored_poisson", substitute(link), link, "log", full = FALSE)
 }
 
-#' @param link1 Link for first part of delta/hurdle model. Defaults to `"logit"`
-#'  for `type = "standard"` and `"log"` for `type = "poisson-link"`.
-#' @param link2 Link for second part of delta/hurdle model.
-#' @param type Delta/hurdle family type. `"standard"` for a classic hurdle
-#'   model. `"poisson-link"` for a Poisson-link delta model (Thorson 2018).
 #' @export
 #' @importFrom stats Gamma binomial
 #' @examples
 #' delta_gamma()
 #' @rdname families
 #' @references
-#' *Poisson-link delta families*:
-#'
 #' Thorson, J.T. 2018. Three problems with the conventional delta-model for
 #' biomass sampling data, and a computationally efficient alternative. Canadian
 #' Journal of Fisheries and Aquatic Sciences, 75(9), 1369-1382.
@@ -508,39 +343,36 @@ censored_poisson <- function(link = "log") {
 delta_gamma <- function(link1,
   link2 = "log", type = c("standard", "poisson-link")) {
   type <- match.arg(type)
-  if (missing(link1)) link1 <- if (type == "standard") "logit" else "log"
-  l1 <- substitute(link1)
-  if (!is.character(l1)) l1 <- deparse(l1)
-  l2 <- substitute(link2)
-  if (!is.character(l2)) l2 <- deparse(l2)
-  f1 <- binomial(link = l1)
-  f2 <- Gamma(link = l2)
-  if (type == "poisson-link") {
-    .type <- "poisson_link_delta"
-    clean_name <- paste0("delta_gamma(link1 = '", l1, "', link2 = '", l2, "', type = 'poisson-link')")
-  } else {
-    .type <- "standard"
-    clean_name <- paste0("delta_gamma(link1 = '", l1, "', link2 = '", l2, "')")
-  }
-  structure(list(f1, f2, delta = TRUE, link = c(l1, l2),
-    type = .type, family = c("binomial", "Gamma"),
-    clean_name = clean_name), class = "family")
+  l1 <- if (missing(link1)) if (type == "standard") "logit" else "log" else
+    .gllvm_link(substitute(link1), link1,
+                c("logit", "probit", "cloglog", "cauchit", "log"),
+                "delta_gamma()")$name
+  l2 <- .gllvm_link(substitute(link2), link2,
+                    c("identity", "log", "inverse"), "delta_gamma()")$name
+  .gllvm_delta(
+    "delta_gamma", stats::binomial(link = l1), stats::Gamma(link = l2),
+    c("binomial", "Gamma"), c(l1, l2),
+    if (type == "standard") "standard" else "poisson_link_delta"
+  )
 }
 
-#' @param p_extreme Optional fixed probability for the extreme component. If NULL (default),
-#'   this is estimated. If specified, must be a proportion between 0 and 1.
 #' @export
 #' @examples
 #' delta_gamma_mix()
 #' @rdname families
 delta_gamma_mix <- function(link1 = "logit", link2 = "log", p_extreme = NULL) {
-  f1 <- binomial(link = link1)
-  f2 <- gamma_mix(link = link2)
-  structure(list(f1, f2, delta = TRUE, link = c(link1, link2),
-       family = c("binomial", "gamma_mix"),
-       p_extreme = p_extreme,
-       clean_name = sprintf("delta_gamma_mix(link1 = '%s', link2 = '%s')",
-                            link1, link2)), class = "family")
+  l1 <- .gllvm_link(substitute(link1), link1,
+                    c("logit", "probit", "cloglog", "cauchit"),
+                    "delta_gamma_mix()")$name
+  l2 <- .gllvm_link(substitute(link2), link2,
+                    c("identity", "log", "inverse"),
+                    "delta_gamma_mix()")$name
+  p_extreme <- .gllvm_probability(p_extreme, "p_extreme", "delta_gamma_mix()")
+  .gllvm_delta(
+    "delta_gamma_mix", stats::binomial(link = l1),
+    gamma_mix(link = l2), c("binomial", "gamma_mix"), c(l1, l2),
+    p_extreme = p_extreme, include_p = TRUE
+  )
 }
 
 #' @export
@@ -550,23 +382,17 @@ delta_gamma_mix <- function(link1 = "logit", link2 = "log", p_extreme = NULL) {
 delta_gengamma <- function(link1,
   link2 = "log", type = c("standard", "poisson-link")) {
   type <- match.arg(type)
-  if (missing(link1)) link1 <- if (type == "standard") "logit" else "log"
-  l1 <- substitute(link1)
-  if (!is.character(l1)) l1 <- deparse(l1)
-  l2 <- substitute(link2)
-  if (!is.character(l2)) l2 <- deparse(l2)
-  f1 <- binomial(link = l1)
-  f2 <- gengamma(link = l2)
-  if (type == "poisson-link") {
-    .type <- "poisson_link_delta"
-    clean_name <- paste0("delta_gengamma(link1 = '", l1, "', link2 = '", l2, "', type = 'poisson-link')")
-  } else {
-    .type <- "standard"
-    clean_name <- paste0("delta_gengamma(link1 = '", l1, "', link2 = '", l2, "')")
-  }
-  structure(list(f1, f2, delta = TRUE, link = c(l1, l2),
-    type = .type, family = c("binomial", "gengamma"),
-    clean_name = clean_name), class = "family")
+  l1 <- if (missing(link1)) if (type == "standard") "logit" else "log" else
+    .gllvm_link(substitute(link1), link1,
+                c("logit", "probit", "cloglog", "cauchit", "log"),
+                "delta_gengamma()")$name
+  l2 <- .gllvm_link(substitute(link2), link2,
+                    c("identity", "log", "inverse"), "delta_gengamma()")$name
+  .gllvm_delta(
+    "delta_gengamma", stats::binomial(link = l1), gengamma(link = l2),
+    c("binomial", "gengamma"), c(l1, l2),
+    if (type == "standard") "standard" else "poisson_link_delta"
+  )
 }
 
 #' @export
@@ -576,51 +402,41 @@ delta_gengamma <- function(link1,
 delta_lognormal <- function(link1,
   link2 = "log", type = c("standard", "poisson-link")) {
   type <- match.arg(type)
-  if (missing(link1)) link1 <- if (type == "standard") "logit" else "log"
-  l1 <- substitute(link1)
-  if (!is.character(l1)) l1 <- deparse(l1)
-  l2 <- substitute(link2)
-  if (!is.character(l2)) l2 <- deparse(l2)
-  f1 <- binomial(link = l1)
-  f2 <- lognormal(link = l2)
-  if (type == "poisson-link") {
-    .type <- "poisson_link_delta"
-    clean_name <- paste0("delta_lognormal(link1 = '", l1, "', link2 = '", l2, "', type = 'poisson-link')")
-  } else {
-    .type <- "standard"
-    clean_name <- paste0("delta_lognormal(link1 = '", l1, "', link2 = '", l2, "')")
-  }
-  structure(list(f1, f2, delta = TRUE, link = c(l1, l2),
-    family = c("binomial", "lognormal"), type = .type,
-    clean_name = clean_name), class = "family")
+  l1 <- if (missing(link1)) if (type == "standard") "logit" else "log" else
+    .gllvm_link(substitute(link1), link1,
+                c("logit", "probit", "cloglog", "cauchit", "log"),
+                "delta_lognormal()")$name
+  l2 <- .gllvm_link(substitute(link2), link2,
+                    c("identity", "log", "inverse"), "delta_lognormal()")$name
+  .gllvm_delta(
+    "delta_lognormal", stats::binomial(link = l1), lognormal(link = l2),
+    c("binomial", "lognormal"), c(l1, l2),
+    if (type == "standard") "standard" else "poisson_link_delta"
+  )
 }
 
-#' @param p_extreme Optional fixed probability for the extreme component. If NULL (default),
-#'   this is estimated. If specified, must be a proportion between 0 and 1.
 #' @export
 #' @examples
 #' delta_lognormal_mix()
 #' @rdname families
 delta_lognormal_mix <- function(link1, link2 = "log", type = c("standard", "poisson-link"), p_extreme = NULL) {
   type <- match.arg(type)
-  if (missing(link1)) link1 <- if (type == "standard") "logit" else "log"
-  l1 <- substitute(link1)
-  if (!is.character(l1)) l1 <- deparse(l1)
-  l2 <- substitute(link2)
-  if (!is.character(l2)) l2 <- deparse(l2)
-  f1 <- binomial(link = l1)
-  f2 <- lognormal(link = l2)
-  if (type == "poisson-link") {
-    .type <- "poisson_link_delta"
-    clean_name <- paste0("delta_lognormal_mix(link1 = '", l1, "', link2 = '", l2, "', type = 'poisson-link')")
-  } else {
-    .type <- "standard"
-    clean_name <- paste0("delta_lognormal_mix(link1 = '", l1, "', link2 = '", l2, "')")
-  }
-  structure(list(f1, f2, delta = TRUE, link = c(l1, l2),
-       family = c("binomial", "lognormal_mix"), type = .type,
-       p_extreme = p_extreme,
-       clean_name = clean_name), class = "family")
+  l1 <- if (missing(link1)) if (type == "standard") "logit" else "log" else
+    .gllvm_link(substitute(link1), link1,
+                c("logit", "probit", "cloglog", "cauchit", "log"),
+                "delta_lognormal_mix()")$name
+  l2 <- .gllvm_link(substitute(link2), link2,
+                    c("identity", "log", "inverse"),
+                    "delta_lognormal_mix()")$name
+  p_extreme <- .gllvm_probability(
+    p_extreme, "p_extreme", "delta_lognormal_mix()"
+  )
+  .gllvm_delta(
+    "delta_lognormal_mix", stats::binomial(link = l1), lognormal(link = l2),
+    c("binomial", "lognormal_mix"), c(l1, l2),
+    if (type == "standard") "standard" else "poisson_link_delta",
+    p_extreme, TRUE
+  )
 }
 
 #' @export
@@ -628,12 +444,16 @@ delta_lognormal_mix <- function(link1, link2 = "log", type = c("standard", "pois
 #' delta_truncated_nbinom2()
 #' @rdname families
 delta_truncated_nbinom2 <- function(link1 = "logit", link2 = "log") {
-  f1 <- binomial(link = link1)
-  f2 <- truncated_nbinom2(link = link2)
-  structure(list(f1, f2, delta = TRUE, link = c(link1, link2),
-    family = c("binomial", "truncated_nbinom2"),
-    clean_name = sprintf("delta_truncated_nbinom2(link1 = '%s', link2 = '%s')",
-                         link1, link2)), class = "family")
+  l1 <- .gllvm_link(substitute(link1), link1,
+                    c("logit", "probit", "cloglog", "cauchit"),
+                    "delta_truncated_nbinom2()")$name
+  l2 <- .gllvm_link(substitute(link2), link2, "log",
+                    "delta_truncated_nbinom2()")$name
+  .gllvm_delta(
+    "delta_truncated_nbinom2", stats::binomial(link = l1),
+    truncated_nbinom2(link = l2), c("binomial", "truncated_nbinom2"),
+    c(l1, l2)
+  )
 }
 
 #' @export
@@ -641,20 +461,25 @@ delta_truncated_nbinom2 <- function(link1 = "logit", link2 = "log") {
 #' delta_truncated_nbinom1()
 #' @rdname families
 delta_truncated_nbinom1 <- function(link1 = "logit", link2 = "log") {
-  f1 <- binomial(link = link1)
-  f2 <- truncated_nbinom1(link = link2)
-  structure(list(f1, f2, delta = TRUE, link = c(link1, link2),
-    family = c("binomial", "truncated_nbinom1"),
-    clean_name = sprintf("delta_truncated_nbinom1(link1 = '%s', link2 = '%s')",
-                         link1, link2)), class = "family")
+  l1 <- .gllvm_link(substitute(link1), link1,
+                    c("logit", "probit", "cloglog", "cauchit"),
+                    "delta_truncated_nbinom1()")$name
+  l2 <- .gllvm_link(substitute(link2), link2, "log",
+                    "delta_truncated_nbinom1()")$name
+  .gllvm_delta(
+    "delta_truncated_nbinom1", stats::binomial(link = l1),
+    truncated_nbinom1(link = l2), c("binomial", "truncated_nbinom1"),
+    c(l1, l2)
+  )
 }
 
 #' @rdname families
 #' @export
 #' @keywords internal
 delta_poisson_link_gamma <- function(link1 = "log", link2 = "log") {
-  assert_that(link1 == "log")
-  assert_that(link2 == "log")
+  if (!identical(link1, "log") || !identical(link2, "log")) {
+    cli::cli_abort("The deprecated Poisson-link wrapper accepts only log links.")
+  }
   lifecycle::deprecate_warn("0.4.2.9000", "delta_poisson_link_gamma()", "delta_gamma(type)")
   delta_gamma(link1 = "logit", link2 = "log", type = "poisson-link")
 }
@@ -663,8 +488,9 @@ delta_poisson_link_gamma <- function(link1 = "log", link2 = "log") {
 #' @export
 #' @keywords internal
 delta_poisson_link_lognormal <- function(link1 = "log", link2 = "log") {
-  assert_that(link1 == "log")
-  assert_that(link2 == "log")
+  if (!identical(link1, "log") || !identical(link2, "log")) {
+    cli::cli_abort("The deprecated Poisson-link wrapper accepts only log links.")
+  }
   lifecycle::deprecate_warn("0.4.2.9000", "delta_poisson_link_lognormal()", "delta_lognormal(type)")
   delta_lognormal(link1 = "logit", link2 = "log", type = "poisson-link")
 }
@@ -674,24 +500,16 @@ delta_poisson_link_lognormal <- function(link1 = "log", link2 = "log") {
 #' betabinomial(link = "logit")
 #' @rdname families
 betabinomial <- function(link = "logit") {
-  linktemp <- substitute(link)
-  if (!is.character(linktemp))
-    linktemp <- deparse(linktemp)
-  okLinks <- c("logit", "cloglog")
-  if (linktemp %in% okLinks)
-    stats <- stats::make.link(linktemp)
-  else if (is.character(link)) {
-    if (link %in% okLinks) {
-      stats <- stats::make.link(link)
-      linktemp <- link
-    } else {
-      stop(paste("link", link, "not available for betabinomial family; available links are", paste(okLinks, collapse = ", ")))
-    }
-  } else {
-    stop(paste("link", linktemp, "not available for betabinomial family; available links are", paste(okLinks, collapse = ", ")))
+  link_name <- .gllvm_link(substitute(link), link, c("logit", "cloglog"),
+                           "betabinomial()")$name
+  if (!link_name %in% c("logit", "cloglog")) {
+    cli::cli_abort(c(
+      "{.fn betabinomial} supports only logit and cloglog links.",
+      "i" = "Received {.val {link_name}}."
+    ))
   }
-  x <- c(list(family = "betabinomial", link = linktemp), stats)
-  add_to_family(x)
+  .gllvm_family("betabinomial", link_name, link_name,
+                c("logit", "cloglog"))
 }
 
 
@@ -700,12 +518,14 @@ betabinomial <- function(link = "logit") {
 #' delta_beta()
 #' @rdname families
 delta_beta <- function(link1 = "logit", link2 = "logit") {
-  f1 <- binomial(link = link1)
-  f2 <- Beta(link = link2)
-  structure(list(f1, f2, delta = TRUE, link = c(link1, link2),
-       family = c("binomial", "Beta"),
-       clean_name = sprintf("delta_beta(link1 = '%s', link2 = '%s')",
-                            link1, link2)), class = "family")
+  l1 <- .gllvm_link(substitute(link1), link1,
+                    c("logit", "probit", "cloglog", "cauchit"),
+                    "delta_beta()")$name
+  l2 <- .gllvm_link(substitute(link2), link2, "logit", "delta_beta()")$name
+  .gllvm_delta(
+    "delta_beta", stats::binomial(link = l1), Beta(link = l2),
+    c("binomial", "Beta"), c(l1, l2)
+  )
 }
 
 #' Ordinal-probit threshold family for the multivariate engine
@@ -784,13 +604,13 @@ delta_beta <- function(link1 = "logit", link2 = "logit") {
 #' @examples
 #' ordinal_probit()
 ordinal_probit <- function(link = "probit") {
-  if (!identical(link, "probit"))
-    stop("ordinal_probit() supports only the probit link.")
-  stats <- stats::make.link("probit")
-  x <- list(family = "ordinal_probit", link = "probit",
-            linkfun = stats$linkfun, linkinv = stats$linkinv)
-  class(x) <- c("ordinal_probit", "family")
-  x
+  link_name <- .gllvm_link(substitute(link), link, "probit",
+                           "ordinal_probit()")$name
+  if (!identical(link_name, "probit")) {
+    cli::cli_abort("{.fn ordinal_probit} supports only the probit link.")
+  }
+  .gllvm_family("ordinal_probit", "probit", "probit", "probit",
+                full = FALSE, class = c("ordinal_probit", "family"))
 }
 
 #' Multinomial (baseline-category logit) family
@@ -829,12 +649,17 @@ ordinal_probit <- function(link = "probit") {
 #' @examples
 #' multinomial()
 multinomial <- function(link = "logit", baseline = NULL) {
-  if (!identical(link, "logit"))
-    cli::cli_abort("multinomial() supports only the baseline-category logit link.")
-  stats <- stats::make.link("logit")
-  x <- list(family = "multinomial", link = "logit",
-            linkfun = stats$linkfun, linkinv = stats$linkinv,
-            baseline = baseline)
-  class(x) <- c("multinomial", "family")
-  x
+  link_name <- .gllvm_link(substitute(link), link, "logit", "multinomial()")$name
+  if (!identical(link_name, "logit")) {
+    cli::cli_abort("{.fn multinomial} supports only the baseline-category logit link.")
+  }
+  if (!is.null(baseline) && (length(baseline) != 1L || is.na(baseline))) {
+    cli::cli_abort("{.fn multinomial} requires {.arg baseline} to be NULL or one category value.")
+  }
+  out <- .gllvm_family(
+    "multinomial", "logit", "logit", "logit", full = FALSE,
+    class = c("multinomial", "family")
+  )
+  out["baseline"] <- list(baseline)
+  out
 }

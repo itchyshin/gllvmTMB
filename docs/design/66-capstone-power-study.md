@@ -59,10 +59,11 @@ is retired under D-50 and remains only in Git history.
 
 The capstone is the **paper's evidence chapter**: the large, pre-registered
 power/accuracy/coverage study that converts the package's per-capability
-recovery tests into one defensible, paper-ready evidence surface. CRAN
-submission is not planned -- the maintainer ruled it out 2026-08-02 -- so the
-capstone answers to the paper alone, not to a release gate. Issue #349 is
-currently a one-line stub. This doc turns that stub into an ADEMP
+recovery tests into one defensible, paper-ready evidence surface. The
+maintainer restored an eventual, bounded first-CRAN objective on 2026-08-08,
+but this capstone remains separate from that release gate: it answers to the
+methods paper and post-release validation programme. Issue #349 is currently a
+one-line stub. This doc turns that stub into an ADEMP
 pre-specification (Morris, White & Crowther 2019) so the headline claims are
 falsifiable, the grid is sized by Monte Carlo arithmetic rather than
 convenience, and the compute budget is costed before any cluster time is
@@ -124,10 +125,10 @@ the capstone inherits both conventions.
 
 ## 2. Aims -- the headline claims (falsifiable targets)
 
-The capstone exists to support, or refute, the claims the paper will make.
-CRAN submission is not planned (maintainer ruling, 2026-08-02); the
-capstone's sole audience is the methods paper (section 0). Each claim below
-is still stated as a falsifiable target with a pass/fail rule, but a failing
+The capstone exists to support, or refute, the claims the paper will make. It
+is not a prerequisite for the bounded first CRAN submission restored on
+2026-08-08 (section 0). Each claim below is still stated as a falsifiable
+target with a pass/fail rule, but a failing
 cell is now read as a finding to characterise, not only a blocker to
 eliminate -- see section 0's release-gate-versus-evidence-chapter
 distinction. The maintainer must confirm the exact claim set (section 12,
@@ -404,9 +405,9 @@ A naive product is well over 10^4 cells before n_sim and bootstrap are
 applied; at the per-fit cost in section 8 this is not affordable. The
 study is therefore **tiered**: a small core confirmatory grid that carries
 the paper's claims, plus extension grids that are nice-to-have and can be
-staged or dropped under budget pressure. (CRAN submission is not planned --
-see section 0 -- so "must pass" here means the grid the paper's evidence
-chapter rests on, not a release gate.)
+staged or dropped under budget pressure. "Must pass" here means the grid the
+paper's evidence chapter rests on, not the bounded first-CRAN gate (section
+0).
 
 ### 4.2 Tier 0 -- Core confirmatory grid (MUST pass)
 
@@ -1023,16 +1024,15 @@ The capstone is DONE when:
    exercised FAM-*/RE-*/ANI-* rows cite the capstone artefact.
 6. A paper-ready report (tables + power curves) is produced.
 
-**2026-08-02 reframing.** CRAN submission is not planned, so the earlier
-"CRAN + paper (milestone #3)" gate is retired; the paper alone gates on this
-being DONE (section 0). This changes how item 3 above is read: with no
-release binary to clear, a core cell that fails H1's 94% gate is not by
-itself grounds to withhold DONE -- it is reported as a finding (the regime
-where calibration degrades), consistent with H3 already being specified as a
-curve rather than a pass/fail. DONE still requires every hypothesis to be
-honestly adjudicated -- supported, or reported as partial with the reason --
-not that every cell pass. The capstone itself still gates on all other
-tracks being done (issue #349: "Gated on all other tracks").
+**2026-08-08 reconciliation.** The earlier combined "CRAN + paper (milestone
+#3)" gate remains retired even though an eventual first-CRAN objective has
+been restored. This capstone gates the paper, not the bounded release. A core
+cell that fails H1's 94% gate is reported as a finding (the regime where
+calibration degrades), consistent with H3 already being specified as a curve
+rather than a pass/fail. DONE still requires every hypothesis to be honestly
+adjudicated -- supported, or reported as partial with the reason -- not that
+every cell pass. The capstone itself still gates on all other paper tracks
+being done (issue #349: "Gated on all other tracks").
 
 ---
 

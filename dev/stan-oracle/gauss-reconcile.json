@@ -1,5 +1,14 @@
 {
-  "generated": "2026-08-03 07:49:24.511899",
+  "generated": "2026-08-08 19:52:30.222135",
+  "provenance": {
+    "run_token": "cran07-20260809T015214Z-codex",
+    "source_hashes": {
+      "k1_driver": "909b4b5e683dcd0c409a2d8b3e676c4a",
+      "k2_driver": "cca084bc19d2eec88ea31c91e54ff1a6",
+      "stan_density": "b5b0e2ada7d785a62166e3ec08bca95b",
+      "tmb_source": "64e928d6c914e0478733f56c5368eec8"
+    }
+  },
   "mapping_used": {
     "mu": "b_fix (identity)",
     "sigma_eps": "exp(log_sigma_eps)",

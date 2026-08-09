@@ -14,11 +14,10 @@
 // Each of the four covstruct terms can be toggled on/off independently via
 // the use_* flags.
 //
-// The reduced-rank block is a direct port from glmmTMB src/glmmTMB.cpp
-// (case rr_covstruct, lines ~698-762; Brooks et al. 2017, GPL-3). Lambda
-// is lower-triangular: theta = [lam_diag (rank entries), lam_lower (rest)],
-// filled column-by-column with strict upper triangle zeroed for
-// identifiability.
+// Reduced-rank covariance terms use the standard identified factor-loading
+// layout: theta stores the rank diagonal entries first, followed by the
+// strict lower triangle column-by-column.  The unpacking implementation below
+// is independently written for gllvmTMB and shared by every covariance tier.
 //
 // Stages 3-5 will add propto/equalto and the spde() term inside this same
 // template; the layout of DATA / PARAMETER macros is designed to be
@@ -26,6 +25,38 @@
 
 #define TMB_LIB_INIT R_init_gllvmTMB
 #include <TMB.hpp>
+
+// Independently implemented standard lower-triangular factor-loading unpack.
+// Keeping one cursor-based implementation prevents the packing convention
+// from drifting across ordinary, phylogenetic, kernel, and spatial tiers.
+template <class Type>
+matrix<Type> gll_unpack_rr_loadings(const vector<Type>& theta,
+                                    int n_rows,
+                                    int rank)
+{
+  if (n_rows < 1)
+    error("gllvmTMB_multi: loading matrix must have at least one row");
+  if (rank < 1 || rank > n_rows)
+    error("gllvmTMB_multi: loading rank must be between 1 and the number of rows");
+
+  const int expected = n_rows * rank - rank * (rank - 1) / 2;
+  if (theta.size() != expected)
+    error("gllvmTMB_multi: packed loading vector has wrong length");
+
+  matrix<Type> loading(n_rows, rank);
+  loading.setZero();
+
+  int cursor = 0;
+  for (int column = 0; column < rank; ++column)
+    loading(column, column) = theta(cursor++);
+  for (int column = 0; column < rank; ++column)
+    for (int row = column + 1; row < n_rows; ++row)
+      loading(row, column) = theta(cursor++);
+
+  if (cursor != theta.size())
+    error("gllvmTMB_multi: packed loading vector was not exhausted exactly");
+  return loading;
+}
 
 // Stable log helpers for the cumulative-logit ordered missing-PREDICTOR prior
 // (Phase 5b, design 68 sec.1.2). Ported verbatim from drmTMB src/drm_numeric.h
@@ -942,30 +973,12 @@ Type objective_function<Type>::operator()()
   }
 
   // -------- Construct Lambda_B (n_traits x d_B), lower-triangular -------
-  // Ported from glmmTMB src/glmmTMB.cpp case rr_covstruct (Brooks et al.,
-  // GPL-3). theta layout: head(d_B) = lam_diag, tail = lam_lower (column-
-  // major fill of the strict lower triangle).
   matrix<Type> Lambda_B(n_traits, std::max(d_B, 1));
   Lambda_B.setZero();
   if (use_rr_B == 1) {
     int p = n_traits;
     int rank = d_B;
-    int nt = theta_rr_B.size();
-    int expected_nt = p * rank - rank * (rank - 1) / 2;
-    if (nt != expected_nt)
-      error("gllvmTMB_multi: theta_rr_B has wrong length");
-    vector<Type> lam_diag = theta_rr_B.head(rank);
-    vector<Type> lam_lower = theta_rr_B.tail(nt - rank);
-    for (int j = 0; j < rank; j++) {
-      for (int i = 0; i < p; i++) {
-        if (j > i)
-          Lambda_B(i, j) = 0;
-        else if (i == j)
-          Lambda_B(i, j) = lam_diag(j);
-        else
-          Lambda_B(i, j) = lam_lower(j * p - (j + 1) * j / 2 + i - 1 - j);
-      }
-    }
+    Lambda_B = gll_unpack_rr_loadings(theta_rr_B, p, rank);
     // Spherical prior on z_B.
     // Under AGHQ the z_B block is NOT a random effect: R maps the parameter
     // off and the N(0, I) prior is evaluated INSIDE the quadrature (at each
@@ -1028,24 +1041,9 @@ Type objective_function<Type>::operator()()
       error("gllvmTMB_multi: Z_B_lat must be n_obs x n_lhs_cols_B_lat");
     int p = n_lhs_cols_B_lat;
     int rank = d_B_slope;
-    int nt = theta_rr_B_slope.size();
-    int expected_nt = p * rank - rank * (rank - 1) / 2;
-    if (nt != expected_nt)
-      error("gllvmTMB_multi: theta_rr_B_slope has wrong length");
     if (z_B_slope.rows() != d_B_slope || z_B_slope.cols() != n_sites)
       error("gllvmTMB_multi: z_B_slope must be d_B_slope x n_sites");
-    vector<Type> lam_diag = theta_rr_B_slope.head(rank);
-    vector<Type> lam_lower = theta_rr_B_slope.tail(nt - rank);
-    for (int j = 0; j < rank; j++) {
-      for (int i = 0; i < p; i++) {
-        if (j > i)
-          Lambda_B_slope(i, j) = 0;
-        else if (i == j)
-          Lambda_B_slope(i, j) = lam_diag(j);
-        else
-          Lambda_B_slope(i, j) = lam_lower(j * p - (j + 1) * j / 2 + i - 1 - j);
-      }
-    }
+    Lambda_B_slope = gll_unpack_rr_loadings(theta_rr_B_slope, p, rank);
     for (int s = 0; s < n_sites; s++) {
       vector<Type> col_s = z_B_slope.col(s);
       nll -= dnorm(col_s, Type(0), Type(1), true).sum();
@@ -1106,22 +1104,7 @@ Type objective_function<Type>::operator()()
   if (use_rr_W == 1) {
     int p = n_traits;
     int rank = d_W;
-    int nt = theta_rr_W.size();
-    int expected_nt = p * rank - rank * (rank - 1) / 2;
-    if (nt != expected_nt)
-      error("gllvmTMB_multi: theta_rr_W has wrong length");
-    vector<Type> lam_diag = theta_rr_W.head(rank);
-    vector<Type> lam_lower = theta_rr_W.tail(nt - rank);
-    for (int j = 0; j < rank; j++) {
-      for (int i = 0; i < p; i++) {
-        if (j > i)
-          Lambda_W(i, j) = 0;
-        else if (i == j)
-          Lambda_W(i, j) = lam_diag(j);
-        else
-          Lambda_W(i, j) = lam_lower(j * p - (j + 1) * j / 2 + i - 1 - j);
-      }
-    }
+    Lambda_W = gll_unpack_rr_loadings(theta_rr_W, p, rank);
     for (int ss = 0; ss < n_site_species; ss++) {
       vector<Type> col_ss = z_W.col(ss);
       nll -= dnorm(col_ss, Type(0), Type(1), true).sum();
@@ -1202,22 +1185,7 @@ Type objective_function<Type>::operator()()
   if (use_phylo_rr == 1) {
     int p = n_traits;
     int rank = d_phy;
-    int nt = theta_rr_phy.size();
-    int expected_nt = p * rank - rank * (rank - 1) / 2;
-    if (nt != expected_nt)
-      error("gllvmTMB_multi: theta_rr_phy has wrong length");
-    vector<Type> lam_diag = theta_rr_phy.head(rank);
-    vector<Type> lam_lower = theta_rr_phy.tail(nt - rank);
-    for (int j = 0; j < rank; j++) {
-      for (int i = 0; i < p; i++) {
-        if (j > i)
-          Lambda_phy(i, j) = 0;
-        else if (i == j)
-          Lambda_phy(i, j) = lam_diag(j);
-        else
-          Lambda_phy(i, j) = lam_lower(j * p - (j + 1) * j / 2 + i - 1 - j);
-      }
-    }
+    Lambda_phy = gll_unpack_rr_loadings(theta_rr_phy, p, rank);
     // Prior: each column of g_phy is N(0, A), evaluated through the sparse Ainv.
     // -log p(g_k) = 0.5 * (n_aug_phy * log(2pi) + log_det_A + g_k' Ainv g_k)
     // In the Stage-40 sparse-$A^{-1}$ path n_aug_phy = n_tip + Nnode - 1, i.e.
@@ -1310,17 +1278,11 @@ Type objective_function<Type>::operator()()
       vector<Type> theta_r = theta_rr_kernel.segment(theta_pos, len_theta);
       theta_pos += len_theta;
       expected_g += n_kernel_levels * rank;
-      vector<Type> lam_diag = theta_r.head(rank);
-      vector<Type> lam_lower = theta_r.tail(len_theta - rank);
+      matrix<Type> loading_r =
+        gll_unpack_rr_loadings(theta_r, n_traits, rank);
       for (int j = 0; j < rank; j++) {
         for (int i = 0; i < n_traits; i++) {
-          if (j > i)
-            Lambda_kernel(i, j, r) = Type(0);
-          else if (i == j)
-            Lambda_kernel(i, j, r) = lam_diag(j);
-          else
-            Lambda_kernel(i, j, r) =
-              lam_lower(j * n_traits - (j + 1) * j / 2 + i - 1 - j);
+          Lambda_kernel(i, j, r) = loading_r(i, j);
         }
       }
       for (int i = 0; i < n_traits; i++) {
@@ -1577,17 +1539,10 @@ Type objective_function<Type>::operator()()
     for (int kcol = 0; kcol < n_lhs_cols_lat; kcol++) {
       vector<Type> theta_k =
         theta_rr_phy_slope.segment(kcol * len_per_col, len_per_col);
-      vector<Type> lam_diag = theta_k.head(rank);
-      vector<Type> lam_lower = theta_k.tail(len_per_col - rank);
+      matrix<Type> loading_k = gll_unpack_rr_loadings(theta_k, p, rank);
       for (int j = 0; j < rank; j++) {
         for (int i = 0; i < p; i++) {
-          if (j > i)
-            Lambda_phy_slope(i, j, kcol) = 0;
-          else if (i == j)
-            Lambda_phy_slope(i, j, kcol) = lam_diag(j);
-          else
-            Lambda_phy_slope(i, j, kcol) =
-              lam_lower(j * p - (j + 1) * j / 2 + i - 1 - j);
+          Lambda_phy_slope(i, j, kcol) = loading_k(i, j);
         }
       }
     }
@@ -1652,22 +1607,7 @@ Type objective_function<Type>::operator()()
       // theta_rr_spde_lv (same layout as theta_rr_B/W/phy).
       int p = n_traits;
       int rank = spde_lv_k;
-      int nt = theta_rr_spde_lv.size();
-      int expected_nt = p * rank - rank * (rank - 1) / 2;
-      if (nt != expected_nt)
-        error("gllvmTMB_multi: theta_rr_spde_lv has wrong length");
-      vector<Type> lam_diag = theta_rr_spde_lv.head(rank);
-      vector<Type> lam_lower = theta_rr_spde_lv.tail(nt - rank);
-      for (int j = 0; j < rank; j++) {
-        for (int i = 0; i < p; i++) {
-          if (j > i)
-            Lambda_spde(i, j) = 0;
-          else if (i == j)
-            Lambda_spde(i, j) = lam_diag(j);
-          else
-            Lambda_spde(i, j) = lam_lower(j * p - (j + 1) * j / 2 + i - 1 - j);
-        }
-      }
+      Lambda_spde = gll_unpack_rr_loadings(theta_rr_spde_lv, p, rank);
       // Prior on each column of omega_spde_lv: GMRF(Q_base) (no tau scale --
       // absorbed into Lambda_spde).
       for (int k = 0; k < spde_lv_k; k++) {
@@ -1890,17 +1830,10 @@ Type objective_function<Type>::operator()()
     for (int kcol = 0; kcol < n_lhs_cols_spde_lat; kcol++) {
       vector<Type> theta_k =
         theta_rr_spde_slope.segment(kcol * len_per_col, len_per_col);
-      vector<Type> lam_diag = theta_k.head(rank);
-      vector<Type> lam_lower = theta_k.tail(len_per_col - rank);
+      matrix<Type> loading_k = gll_unpack_rr_loadings(theta_k, p, rank);
       for (int j = 0; j < rank; j++) {
         for (int i = 0; i < p; i++) {
-          if (j > i)
-            Lambda_spde_slope(i, j, kcol) = 0;
-          else if (i == j)
-            Lambda_spde_slope(i, j, kcol) = lam_diag(j);
-          else
-            Lambda_spde_slope(i, j, kcol) =
-              lam_lower(j * p - (j + 1) * j / 2 + i - 1 - j);
+          Lambda_spde_slope(i, j, kcol) = loading_k(i, j);
         }
       }
     }

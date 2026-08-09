@@ -224,7 +224,10 @@ Both use the same `gllvmTMB()` entry point.
 fit_control <- gllvmTMBcontrol(
   start_method = list(method = "indep"),
   optimizer = "optim",
-  optArgs = list(method = "BFGS")
+  optArgs = list(
+    method = "BFGS",
+    control = list(maxit = 3000, reltol = 1e-12)
+  )
 )
 
 fit_long <- gllvmTMB(
@@ -303,7 +306,8 @@ health[
 ]
 ```
 
-The rendered BFGS fixture passes the optimiser and raw-gradient checks, so its
+The rendered BFGS fixture uses a tight relative tolerance and passes the
+optimiser and raw-gradient checks, so its
 point covariance is numerically usable. The `sdreport()` and Hessian rows also
 pass, which supports local Wald calculations. Keep those decisions separate:
 an optimiser failure or raw maximum gradient above `0.01` challenges the point

@@ -93,6 +93,75 @@ test_that("Uniform weight scaling: objective changes; b_fix invariant", {
                tolerance = 1e-3)
 })
 
+test_that("non-unit likelihood weights are fenced from likelihood inference", {
+  df <- make_gauss(seed = 22L)
+  fit <- NULL
+  expect_warning(
+    fit <- suppressMessages(gllvmTMB::gllvmTMB(
+      value ~ 0 + trait + latent(0 + trait | site, d = 1, unique = FALSE),
+      data = df,
+      weights = rep(2, nrow(df)),
+      silent = TRUE
+    )),
+    "weighted objective"
+  )
+
+  expect_true(isTRUE(fit$likelihood_weights$active))
+  expect_error(logLik(fit), "undefined.*weighted objective")
+  expect_error(AIC(fit), "undefined.*weighted objective")
+  expect_error(BIC(fit), "undefined.*weighted objective")
+  smry <- summary(fit)
+  expect_true(isTRUE(smry$header$weighted_objective))
+  expect_true(all(is.na(smry$fixef$Std.Err)))
+  td <- tidy(fit)
+  expect_true(all(is.na(td$std.error)))
+  expect_true(all(td$inference_status ==
+                    "point_estimate_only_weighted_objective"))
+  expect_error(vcov(fit), class = "gllvmTMB_weighted_inference_unsupported")
+  expect_error(confint(fit), class = "gllvmTMB_weighted_inference_unsupported")
+  expect_error(
+    predict(fit, se.fit = TRUE),
+    class = "gllvmTMB_weighted_inference_unsupported"
+  )
+  expect_error(
+    tidy(fit, conf.int = TRUE),
+    class = "gllvmTMB_weighted_inference_unsupported"
+  )
+  direct_interval_calls <- list(
+    loading_ci = function() loading_ci(fit),
+    loading_profile = function() loading_profile(fit),
+    correlations = function() extract_correlations(fit, method = "wald"),
+    cross_correlations = function() {
+      extract_cross_correlations(fit, method = "wald")
+    },
+    communality = function() extract_communality(fit, ci = TRUE),
+    repeatability = function() extract_repeatability(fit),
+    bootstrap = function() bootstrap_Sigma(fit, n_boot = 2),
+    inspect = function() confint_inspect(fit, parm = "sigma_eps"),
+    phylo_ci = function() profile_ci_phylo_signal(fit),
+    total_variance = function() profile_ci_total_variance(fit),
+    phylo_curve = function() profile_phylo_signal(fit),
+    tmbprofile = function() tmbprofile_wrapper(fit, name = "b_fix"),
+    latent_scores = function() getLV(fit, se = TRUE),
+    random_effect_sd = function() getREsd(fit),
+    lv_effects = function() extract_lv_effects(fit),
+    phylo_signal = function() extract_phylo_signal(fit, ci = TRUE),
+    standard_errors = function() standard_errors(fit),
+    cutpoints = function() extract_cutpoints(fit),
+    proportions_wald = function() .proportions_wald_ci(fit),
+    proportions_bootstrap = function() .proportions_bootstrap_ci(fit, nsim = 2)
+  )
+  for (nm in names(direct_interval_calls)) {
+    expect_error(
+      direct_interval_calls[[nm]](),
+      class = "gllvmTMB_weighted_inference_unsupported",
+      info = nm
+    )
+  }
+  expect_match(paste(capture.output(print(fit)), collapse = "\n"),
+               "Weighted objective")
+})
+
 # ----------------------------------------------------------------------
 # Test 3: SE scaling under uniform weight scaling
 # When the loglik is multiplied by c, the (marginal) Fisher information

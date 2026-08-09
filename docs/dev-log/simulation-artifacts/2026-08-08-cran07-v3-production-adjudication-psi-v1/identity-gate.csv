@@ -1,0 +1,5 @@
+"role","sha256_pass","campaign_identity_pass","registry_identity_pass","manifest_identity_pass","completeness_pass","scientific_component_schema_pass"
+"core",TRUE,TRUE,TRUE,TRUE,TRUE,TRUE
+"silent",TRUE,TRUE,TRUE,TRUE,TRUE,TRUE
+"robustness",TRUE,TRUE,TRUE,TRUE,TRUE,TRUE
+"pilot",TRUE,TRUE,NA,NA,TRUE,NA

@@ -1,0 +1,10 @@
+#!/usr/bin/env Rscript
+args <- commandArgs(trailingOnly = TRUE)
+if (length(args) != 2L) stop("Usage: summarize-batch.R OUTPUT_DIR SUMMARY_RDS", call. = FALSE)
+script_arg <- sub("^--file=", "", grep("^--file=", commandArgs(FALSE), value = TRUE)[1L])
+script_dir <- dirname(normalizePath(script_arg, mustWork = TRUE))
+source(file.path(script_dir, "schema.R"), local = .GlobalEnv)
+source(file.path(script_dir, "batch.R"), local = .GlobalEnv)
+summary <- cran07_summarize(args[[1L]])
+saveRDS(summary, args[[2L]], version = 3)
+print(table(summary$attempts$cell_id, summary$attempts$status))

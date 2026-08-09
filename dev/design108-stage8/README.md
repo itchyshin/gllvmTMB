@@ -26,28 +26,20 @@ prices whether the 26-42 day Gate-A programme (presumably: VA-engine
 robustness work) is worth running at all, versus the cheaper Laplace-path
 remedy already available.
 
-## The #847 finding that changed this design (added after first review)
+## The corrected #847 boundary
 
-The maintainer caught, by reading `R/gllvmTMB.R:909-911` directly, that the
-ridge remedy has a documented failure regime of its own:
+An earlier revision treated "67% runaway at n = 1600" as a general property
+of the loading ridge. That was wrong in two ways. The number belonged to the
+`laplace_ridge` arm, not `aghq_ridge`, and only to the binomial-logit,
+`p = 6`, `sigma_lambda = 3` cell. The 2026-08-02 reproduction recorded in
+`R/gllvmTMB.R` shows the interaction clearly: the corresponding `p = 12`
+cells had zero runaways at every n, and probit/ordinal-probit had zero at the
+large-n hard-loading cell. The ridge was strongly protective elsewhere.
 
-> "It WARNS and does not fix. The remedy has a measured failure regime of its
-> own (`aghq_ridge = 2` still runs away in 67% of fits at n = 1600, sigma_lambda
-> = 3; see #847), and a fix users trust that silently fails is worse than no
-> fix."
-
-The first version of this design used only the mild `homog` loading SD of
-0.7. **A "ridge fixes silent divergence" conclusion drawn from that grid
-alone would have been invalid** -- it never visited the regime (`sigma_lambda
-= 3`, `n = 1600`) where the ridge is already measured, per issue #847, to
-fail 67% of the time. The design below now spans BOTH a mild regime
-(`sigma_lambda = 0.7`, the original DGP) and the known-hard #847 regime
-(`sigma_lambda = 3.0`), crossed with `arm` throughout, so the campaign can
-report whether the ridge's efficacy is regime-dependent rather than reporting
-a single pooled rate that would silently average over that dependence. (I
-have not independently re-derived the #847 67% figure or traced its source
-script/replicate count -- it is taken as a verified code comment, per the
-maintainer's own direct read of the file, not re-run.)
+The design therefore still spans `sigma_lambda = 0.7` and `3.0`, but for the
+right reason: to measure regime dependence rather than to confirm a presumed
+general 67% failure rate. No pooled statement about ridge safety or failure is
+licensed by one family/shape cell.
 
 ## The Totoro n=1600 probe that resolved the affordability uncertainty
 
@@ -210,15 +202,11 @@ factor at two levels:
 
 - `sigma_lambda = 0.7` -- an unremarkable, moderate ordination signal
   strength, not a constructed edge case.
-- `sigma_lambda = 3.0` -- large, but **not adversarially chosen by this
-  campaign**: it is lifted directly from `R/gllvmTMB.R:909-911`'s own
-  documented measurement of where the ridge remedy fails (issue #847). Using
-  the package's own recorded hard case, rather than inventing a new one, is
-  the more defensible choice for a "does the remedy actually work" question
-  -- and it is why `sigma_lambda = 3.0` belongs in this design even though
-  the brief's original DGP guidance was about avoiding *adversarial*
-  regimes: this one is not adversarial, it is the regime the remedy is
-  already known to be evaluated against.
+- `sigma_lambda = 3.0` -- the evaluated hard-loading regime. The earlier 67%
+  failure result applied only to the Laplace-ridge, binomial-logit, `p = 6`
+  cell; it is not a general statement that the ridge remedy fails throughout
+  this design. The level is retained so that this programme measures the same
+  demanding loading scale without transferring that route-specific verdict.
 
 Trait-level intercepts are drawn `N(0, 0.3)` at both `sigma_lambda` levels,
 matching `link-coverage.R`'s and `missing-and-spatial-coverage.R`'s own
@@ -246,9 +234,8 @@ Two parts, both crossed with `sigma_lambda in {0.7, 3.0}`:
   small-to-moderate community-ecology sizes; `p = 27` matches Ayumi's trait
   count exactly, and is now present at every `n` in Part A, not only at
   Part B's single large-n rung.
-- **Part B** (large-cell probe): `n = 1600` (moved from 1500 -- sits EXACTLY
-  on the #847 measurement, "runs away in 67% of fits at n = 1600,
-  sigma_lambda = 3", rather than merely near it), `p = 27` (Ayumi's trait
+- **Part B** (large-cell probe): `n = 1600` (moved from 1500 so the design
+  measures the same large-n boundary examined in #847), `p = 27` (Ayumi's trait
   count), `seed in 1:30` (raised from 1:3 -- see "What was traded" below).
   This reaches *toward* Ayumi's `n = 5397` (about 30% of the way) without
   matching it -- no Laplace fit time at anywhere near n = 5397 was measured
@@ -280,8 +267,8 @@ cuts are reversed and go further:
    divergence may concentrate at small n), this is also where replication
    is most valuable.
 3. **Part B's `seed` raised from 3 to 30** -- 3 seeds can only return
-   0/33/67/100%, which is not a usable rate estimate against #847's 67%
-   figure; 30 is affordable at the measured ~37s/fit cost for
+   0/33/67/100%, which is not a usable rate estimate for a regime-dependent
+   failure probability; 30 is affordable at the measured ~37s/fit cost for
    binomial-probit, but see the wall-clock section below for the important
    caveat that this is NOT affordable at the same confidence for
    `ordinal_probit`, whose cost at n=1600 was never measured.
@@ -341,16 +328,11 @@ binomial_probit 0 ridge2  3.0 60 12 2 1 0.818 OK 0  TRUE -260.70   0.7915    0.2
 
 **Read this carefully, and do not over-read it.** At this one seed, at the
 SMALLEST n (60), the ridge recovered even at `sigma_lambda = 3`. That is
-NOT evidence against the #847 finding -- #847's 67% failure rate is measured
-specifically at `n = 1600`, and this smoke deliberately used `n = 60` to
-stay fast, per the maintainer's own instruction ("at the SMALLEST n so it
-stays fast"). A single small-n seed recovering tells us the harness
-correctly distinguishes the two `sigma_lambda` regimes and produces valid
-output at both; it says nothing about whether the ridge holds up at
-`n = 1600`, which is exactly what Part B of the full grid (unrun, Totoro
-only) is designed to measure. Do not read this smoke as "the ridge appears
-to work even in the hard regime" -- it was never run in the regime where it
-is documented to fail.
+NOT a general ridge result: this smoke deliberately used `n = 60` to stay
+fast. A single small-n seed recovering tells us only that the harness
+distinguishes the two `sigma_lambda` regimes and produces valid output at
+both. It says nothing about the large-n, link, or trait-count interactions
+that the full grid was designed to measure.
 
 An additional, non-shipped ad hoc check from the first review round (not
 part of `GRID_SMOKE`, not re-run this round) fit one `ordinal_probit` and

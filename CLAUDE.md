@@ -513,13 +513,12 @@ applies to every session.
 
 ## Spatial-helper provenance and sister-package reuse
 
-The R-side mesh and CRS helpers (`R/mesh.R`, `R/crs.R`) are
-independently authored against the public `fmesher` and `sf` APIs.
-They preserve the established `A_proj` and FEM (`M0/M1/M2`) interface
-consumed by the native TMB likelihood. `inst/COPYRIGHTS` records that
-no sdmTMB source is included or adapted. sdmTMB may be used only as an
-isolated post-implementation behavioural comparator, never as a
-runtime dependency or implementation source. The retained
+The R-side mesh and CRS helpers (`R/mesh.R`, `R/crs.R`) were substantially
+rewritten against the public `fmesher` and `sf` APIs, but retain lineage from
+the earlier GPL-3 `sdmTMB`-derived implementation. They preserve the
+established `A_proj` and FEM (`M0/M1/M2`) interface consumed by the native TMB
+likelihood. `inst/COPYRIGHTS` records the conservative attribution and pinned
+source baseline. sdmTMB is not a runtime dependency. The retained
 `plot_anisotropy*()` entry points now show the fitted isotropic practical
 range (`sqrt(8) / kappa`) for native gllvmTMB spatial fits. Their equal axes
 are labelled as the model assumption `H = I`, never as estimated anisotropy;

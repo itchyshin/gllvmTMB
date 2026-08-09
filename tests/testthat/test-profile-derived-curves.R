@@ -340,9 +340,28 @@ test_that("profile-derived inverter drops failed edge refits before bracketing",
 
   out <- invert_curve(x)
   cutoff <- stats::qchisq(0.95, df = 1L)
-  expected_offset <- 1 + (cutoff - 2) / 3
+  expected_offset <- 1 +
+    (sqrt(cutoff) - sqrt(2)) / (sqrt(5) - sqrt(2))
   expect_equal(out$lower, -expected_offset, tolerance = 1e-8)
   expect_equal(out$upper, expected_offset, tolerance = 1e-8)
+})
+
+test_that("profile-derived inverter uses zeta interpolation", {
+  grid <- seq(-4, 4, by = 0.8)
+  x <- data.frame(
+    target = "repeatability:trait1",
+    profile_value = grid,
+    objective = 100 + 0.5 * 2 * grid^2,
+    delta_deviance = 2 * grid^2,
+    estimate = 0,
+    conf_level = 0.95
+  )
+  class(x) <- c("profile_repeatability", "profile_derived", class(x))
+
+  out <- invert_curve(x)
+  exact <- sqrt(stats::qchisq(0.95, df = 1L) / 2)
+  expect_equal(out$lower, -exact, tolerance = 1e-6)
+  expect_equal(out$upper, exact, tolerance = 1e-6)
 })
 
 test_that("profile_repeatability(): grid-inverted bounds agree with profile_ci_repeatability() to 1e-2", {

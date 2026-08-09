@@ -905,18 +905,14 @@ Type objective_function<Type>::operator()()
     Lk.setZero();
     const int len = T * d - d * (d - 1) / 2;
     vector<Type> theta_k = theta_rr.segment(theta_offset[k], len);
-    vector<Type> lam_diag = theta_k.head(d);
-    vector<Type> lam_lower = theta_k.tail(len - d);
-    for (int j = 0; j < d; ++j) {
-      for (int t = j; t < T; ++t) {
-        if (t == j) {
-          Lk(t, j) = lam_diag(j);
-        } else {
-          int pos = j * T - (j + 1) * j / 2 + t - 1 - j;
-          Lk(t, j) = lam_lower(pos);
-        }
-      }
-    }
+    int theta_cursor = 0;
+    for (int column = 0; column < d; ++column)
+      Lk(column, column) = theta_k(theta_cursor++);
+    for (int column = 0; column < d; ++column)
+      for (int row = column + 1; row < T; ++row)
+        Lk(row, column) = theta_k(theta_cursor++);
+    if (theta_cursor != len)
+      error("gllvmTMB_va_r3: dense-tier loading vector was not exhausted exactly");
     Lambda_tier[k] = Lk;
   }
   // Reported for back-compatibility: tier 0 IS the ordinary latent tier, so

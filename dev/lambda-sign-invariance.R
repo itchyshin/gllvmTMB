@@ -6,12 +6,14 @@
 ##
 ##     Rscript --vanilla dev/lambda-sign-invariance.R
 ##
-## Expected (2026-08-03, gllvmTMB @ 19e9cedd, TMB 1.9.21):
+## Expected:
 ##     flip BOTH Lambda and z : diff = 0.000e+00   <- exact invariance
-##     flip Lambda ONLY       : diff = 1.175e+02   <- not a symmetry
+##     flip Lambda ONLY       : a non-zero, usually large fixture-specific diff
 ##
-## The second line is the control. Without it, "diff = 0" would be equally
-## consistent with an objective that simply ignores Lambda.
+## The second line is the control. Its magnitude depends on the simulated data
+## and fitted start; only a non-zero change is required. Without that control,
+## "diff = 0" would be equally consistent with an objective that ignores
+## Lambda.
 
 suppressMessages(devtools::load_all(".", quiet = TRUE))
 
@@ -72,10 +74,13 @@ cat(sprintf("  flip BOTH Lambda & z : %.12f   diff = %.3e\n", f_both, f_both - b
 cat(sprintf("  flip Lambda ONLY     : %.12f   diff = %.3e\n", f_lam,  f_lam  - base))
 
 if (!isTRUE(all.equal(f_both, base, tolerance = 0))) {
-  cat("\n  UNEXPECTED: the paired flip is not an exact invariance.\n")
+  stop("The paired Lambda/score sign flip is not an exact invariance.",
+       call. = FALSE)
 } else if (isTRUE(all.equal(f_lam, base, tolerance = 1e-6))) {
-  cat("\n  UNEXPECTED: flipping Lambda alone changed nothing -- the control failed,\n",
-      " so the invariance above is not evidence of a sign symmetry.\n")
+  stop(paste(
+    "Flipping Lambda alone changed nothing;",
+    "the non-invariant control failed."
+  ), call. = FALSE)
 } else {
   cat("\n  As documented: the PAIRED flip is exact; flipping Lambda alone is not.\n")
 }

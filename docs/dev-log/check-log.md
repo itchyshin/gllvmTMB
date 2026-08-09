@@ -49015,3 +49015,26 @@ TMPDIR=<writable directory outside the checkout> Rscript --vanilla -e \
 # directory has no resolvable git HEAD. The required GitHub run has a checkout
 # ancestor and Ubuntu already passed that test; rerun three-OS CI is required.
 ```
+
+---
+
+## 2026-08-09 — Lane B Windows campaign-root containment follow-up (Codex)
+
+The repaired three-OS run then exposed one remaining Windows-only failure in
+`campaign roots inside the checkout are rejected`. `normalizePath()` returned
+backslash-separated paths on Windows, so comparing with a slash suffix did not
+recognise a checkout descendant. The guard now canonicalises both comparison
+paths to `/` and folds case on Windows before testing identity or ancestry.
+This changes only local receipt/output-root validation; no FIR job, frozen
+checkout, or submitted B2 shard was modified.
+
+Verification:
+
+```sh
+TMPDIR=<writable worktree directory> Rscript --vanilla -e \
+  'source("inst/sim/lane-b/lane-b-b2-common.R"); ...'
+# PASS: checkout descendant rejected; /tmp outside path accepted.
+
+git diff --check
+# PASS; required three-OS CI rerun follows push.
+```

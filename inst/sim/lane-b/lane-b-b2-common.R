@@ -1355,7 +1355,14 @@ lane_b_atomic_save_rds <- function(object, path) {
 lane_b_validate_campaign_root <- function(root, repo_root = getwd()) {
   root <- normalizePath(root, mustWork = FALSE)
   repo <- normalizePath(repo_root, mustWork = TRUE)
-  if (identical(root, repo) || startsWith(root, paste0(repo, .Platform$file.sep)))
+  root_compare <- gsub("\\\\", "/", root)
+  repo_compare <- gsub("\\\\", "/", repo)
+  if (.Platform$OS.type == "windows") {
+    root_compare <- tolower(root_compare)
+    repo_compare <- tolower(repo_compare)
+  }
+  if (identical(root_compare, repo_compare) ||
+      startsWith(root_compare, paste0(repo_compare, "/")))
     stop("Campaign outputs must be outside the git checkout.", call. = FALSE)
   root
 }

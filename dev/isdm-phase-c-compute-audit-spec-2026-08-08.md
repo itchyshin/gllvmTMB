@@ -8,7 +8,7 @@ The audit does not change the statistical method, thresholds, grids, campaign fi
 
 ## Why the additional receipt is needed
 
-The v2 runner receipts record the full seed inventory, canonical `stage`/`block`, source-instrument file paths and SHA-256 values, configuration provenance, explicit default or supplied optimiser control, session/package versions, logical-row counts, model-front-end fit attempts, structural counts, and exact predecessor/output/resume-part paths and hashes. `actual_optimizer_calls` deliberately records `NOT_INSTRUMENTED_MODEL_FRONTEND_ATTEMPTS_RECORDED_SEPARATELY`; the exact numeric execution count is `actual_model_fit_attempts`. The independent audit additionally reconstructs the complete expected keys and checks cross-block contracts, exact bias geometry, and part-to-final content identity without rewriting a receipt or rerunning a fit.
+The v2 runner receipts record the full seed inventory, canonical `stage`/`block`, source-instrument file paths and SHA-256 values, portable canonical-object configuration identity, same-run raw-RDS configuration provenance, explicit default or supplied optimiser control, session/package versions, logical-row counts, model-front-end fit attempts, structural counts, and exact predecessor/output/resume-part paths and hashes. `actual_optimizer_calls` deliberately records `NOT_INSTRUMENTED_MODEL_FRONTEND_ATTEMPTS_RECORDED_SEPARATELY`; the exact numeric execution count is `actual_model_fit_attempts`. The independent audit additionally reconstructs the complete expected keys and checks cross-block contracts, exact bias geometry, and part-to-final content identity without rewriting a receipt or rerunning a fit.
 
 ## Inputs and opening order
 
@@ -23,9 +23,9 @@ The caller supplies:
 The verifier proceeds in this order:
 
 1. Confirm every named input exists and no result or receipt path was assigned twice.
-2. Parse receipts only. Require exact receipt type, `PASS`, `phase_c_compute_v2` for compute receipts, Lane C branch, a clean recorded source, a real Git source commit, and one six-file instrument ID matching both that commit and the current frozen files, including `dev/isdm-phase-c-amendment-2-2026-08-09.md`.
+2. Parse receipts only. Require exact receipt type, `PASS`, `phase_c_compute_v2` for compute receipts, Lane C branch, a clean recorded source, a real Git source commit, and one seven-file instrument ID matching both that commit and the current frozen files, including `dev/isdm-phase-c-amendment-2-2026-08-09.md` and `dev/isdm-phase-c-amendment-3-2026-08-09.md`.
 3. Require canonical `preflight/preflight`, `pilot_v2/G1`, and `campaign/G1` through `campaign/G6` stage/block pairs. Verify exact predecessor paths and hashes from preflight through pilot decision and into every campaign block; G6 must name the supplied G1 receipt exactly.
-4. Verify result paths, SHA-256, byte counts, full seed lists, `phi_x`, `phi_bias`, frozen `beta0_shift`, S100 decision, arm manifest, explicit optimiser/session fields, logical and model-fit accounting, and every exact resume-part path/hash. Reproduce the raw preflight-contract, pilot, and G1--G6 configuration hashes from the authenticated source builders. Independently reconstructed contracts must be `identical()` to those builders; campaign grids also receive separate canonical value hashes.
+4. Verify result paths, SHA-256, byte counts, full seed lists, `phi_x`, `phi_bias`, frozen `beta0_shift`, S100 decision, arm manifest, explicit optimiser/session fields, logical and model-fit accounting, and every exact resume-part path/hash. Reproduce the portable canonical-object hashes for the preflight contract, pilot, and G1--G6 configurations from the authenticated source builders. Independently reconstructed contracts must be `identical()` to those builders and yield the same canonical hashes. Require `config_rds_sha256` and `input_config_rds_sha256` to be valid, identical SHA-256 values and to agree with each receipt's parts, but do not reconstruct that serialization-dependent hash on another R build or host.
 5. Only after steps 1--4 pass, open the raw campaign result and part RDS files.
 6. Verify `fit_attempted=TRUE` on every raw row, retaining model-level fit-error rows but rejecting DGP/pre-fit failures. Require theoretical bias rho, sharing, and variance to equal the configuration exactly. For `kappa>0`, require finite realised rho/sharing/variance means and maximum absolute errors no larger than `1e-9`; at the null, correlations and their errors must be `NA` while realised variance and its error are exactly zero. Then verify the exact preregistered keys, six arms per dataset, no duplicates, expected block counts, zero unlabelled non-finite completed results, one-null mapping, A6 collapse/A5 identity, isolated G6 `phi_bias`, and G5/A2 rank-`d` separation.
 7. Verify the union and contents of the immutable part files reproduce the final block RDS exactly.
@@ -75,7 +75,7 @@ Run the pure structural self-test without campaign artifacts:
 Rscript --vanilla dev/isdm-phase-c-verify-campaign.R --self-test
 ```
 
-The self-test creates a complete synthetic 19,800-row campaign under `/private/tmp`, includes one retained model error, and verifies the PASS path, immutable-output refusal, and six-receipt opening gate. Negative fixtures tamper schema, stage, block, raw/canonical configuration identity, source authentication, positive-`kappa` geometry, theoretical geometry, null zero/`NA` contracts, and `fit_attempted`. It neither connects to Totoro nor reads live Phase C artifacts or runs a fit.
+The self-test creates a complete synthetic 19,800-row campaign under `/private/tmp`, includes one retained model error, and verifies the PASS path, immutable-output refusal, and six-receipt opening gate. Canonical-object fixtures cover independently constructed data frames and nested lists plus value, atomic-type, column-name, nested-name, unsupported-class, canonical-receipt, and malformed raw-RDS-hash mutations. Further negative fixtures tamper schema, stage, block, source authentication, positive-`kappa` geometry, theoretical geometry, null zero/`NA` contracts, and `fit_attempted`. It neither connects to Totoro nor reads live Phase C artifacts or runs a fit.
 
 ## Outputs
 
@@ -95,20 +95,29 @@ different internal R representations. A `saveRDS()` byte hash is therefore a pro
 the exact source-built object, not a canonical hash of a logical table.
 
 The corrected audit authenticates all predecessor and G1--G6 receipt source commits plus the
-current six-file instrument identity before it evaluates any campaign source. It then keeps both
-configuration checks without weakening either:
+current seven-file instrument identity before it evaluates any campaign source. It then separates
+portable identity from byte-level provenance:
 
-- the receipt's raw configuration hash must reproduce from the immutable campaign source builder,
-  loaded with nested `source()` calls redirected into a closed evaluation environment;
-- the independently reconstructed table must be exactly `identical()` to that source table; and
-- a length-prefixed UTF-8/LF binary encoding of names, classes, missingness, and 17-digit values is SHA-256 hashed and recorded
-  separately as `independent_config_sha256`.
+- `config_sha256` and `input_config_sha256` are the same portable canonical-object hash. The
+  verifier reproduces that hash from the immutable campaign source builder, loaded with nested
+  `source()` calls redirected into a closed evaluation environment;
+- the independently reconstructed object must be exactly `identical()` to the source-built object
+  and must yield the same canonical hash, recorded again as `independent_config_sha256`; and
+- `config_rds_sha256` and `input_config_rds_sha256` are the raw
+  `saveRDS(version = 3)` byte hash made on the compute host. They must agree
+  with each other and with every resume part, but are never reconstructed as a
+  cross-host identity check.
 
-The synthetic gate asserts that source loading creates no global bindings, tampers a raw receipt
-hash, perturbs an independently reconstructed grid, mutates both a value and a column class, and
-checks that the canonical hashes emitted to the audit CSV and receipt equal the independently
-calculated hashes. An injected-loader test also supplies an unauthenticated campaign receipt and
-proves the source builder is never invoked.
+The canonical encoder is recursive and fail-closed. It uses length-prefixed UTF-8 records, stable
+type tags, ordered names, normalized data-frame row names, explicit missing/non-finite markers, and
+hexadecimal finite-double values. It accepts base data frames, unclassed lists, and logical,
+integer, double, character, or raw atomic vectors; unsupported classes and attributes are errors.
+
+The synthetic gate asserts that source loading creates no global bindings, tampers canonical and
+raw-provenance receipt fields, perturbs an independently reconstructed grid, mutates a value,
+atomic type, column name, and nested-list name, and checks that the canonical hashes emitted to the
+audit CSV and receipt equal the independently calculated hashes. An injected-loader test also
+supplies an unauthenticated campaign receipt and proves the source builder is never invoked.
 
 This amendment was made after all compute completed but before any scientific campaign outcome
 was opened. It changes no configuration, fit, threshold, row, or result artifact.

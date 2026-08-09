@@ -5,9 +5,10 @@
 ## This file deliberately does not source the official analysis.  It opens no
 ## campaign RDS until all six result files exist and all six compute receipts
 ## have cleared their PASS/provenance/hash checks.  The campaign source is
-## loaded once into an isolated environment solely to reproduce the runner's
-## non-canonical saveRDS() config hash; the expected grid below remains an
-## independent reconstruction and must be identical to that source table.
+## loaded once into an isolated environment to reproduce the runner's portable
+## canonical-object config hash; the expected grid below remains an independent
+## reconstruction and must be identical to that source table.  The runner's raw
+## saveRDS() hash is retained as provenance but is not compared across R builds.
 ## The verifier calculates no scientific trend or treatment contrast.
 
 .stopf <- function(fmt, ...) stop(sprintf(fmt, ...), call. = FALSE)
@@ -24,34 +25,108 @@
   strsplit(out[[1L]], "[[:space:]]+")[[1L]][1L]
 }
 
-.object_sha256 <- function(x) {
+.config_rds_sha256 <- function(x) {
   path <- tempfile("phase-c-config-", fileext = ".rds")
   on.exit(unlink(path), add = TRUE)
   saveRDS(x, path, version = 3)
   .sha256(path)
 }
 
-.canonical_config_sha256 <- function(x) {
-  piece <- function(value) {
-    if (is.integer(value)) out <- sprintf("%d", value)
-    else if (is.numeric(value)) out <- formatC(value, digits = 17, format = "g", decimal.mark = ".")
-    else if (is.logical(value)) out <- ifelse(value, "TRUE", "FALSE")
-    else out <- enc2utf8(as.character(value))
-    ifelse(is.na(value), "N", paste0("V", out))
-  }
-  encode_record <- function(value) {
+.canonical_config_payload <- function(x) {
+  token <- function(tag, value = "") {
     value <- enc2utf8(value)
-    paste0(nchar(value, type = "bytes"), ":", value, collapse = "")
+    paste0(tag, nchar(value, type = "bytes"), ":", value)
   }
-  types <- vapply(x, function(value) paste(class(value), collapse = "/"), character(1))
-  records <- c(
-    encode_record(paste0("name=", enc2utf8(names(x)))),
-    encode_record(paste0("class=", enc2utf8(types))),
-    vapply(seq_len(nrow(x)), function(i) {
-      encode_record(vapply(x, function(value) piece(value[[i]]), character(1)))
+  encode_names <- function(value, path) {
+    nm <- names(value)
+    if (is.null(nm)) return(token("names-null:"))
+    if (length(nm) != length(value) || anyNA(nm)) {
+      .stopf("Canonical configuration has malformed names at %s", path)
+    }
+    paste0(token("names:", as.character(length(nm))),
+           paste0(vapply(nm, function(z) token("name:", z), character(1)),
+                  collapse = ""))
+  }
+  encode_atomic <- function(value, path) {
+    attrs <- attributes(value)
+    if (length(setdiff(names(attrs), "names"))) {
+      .stopf("Canonical configuration has unsupported atomic attributes at %s", path)
+    }
+    type <- typeof(value)
+    if (!type %in% c("logical", "integer", "double", "character", "raw")) {
+      .stopf("Canonical configuration has unsupported atomic type %s at %s", type, path)
+    }
+    element <- switch(type,
+      logical = function(z) {
+        if (is.na(z)) "NA" else if (z) "TRUE" else "FALSE"
+      },
+      integer = function(z) if (is.na(z)) "NA" else sprintf("%d", z),
+      double = function(z) {
+        if (is.na(z) && !is.nan(z)) return("NA")
+        if (is.nan(z)) return("NaN")
+        if (is.infinite(z)) return(if (z > 0) "+Inf" else "-Inf")
+        sprintf("%a", z)
+      },
+      character = function(z) {
+        if (is.na(z)) return("NA")
+        if (identical(Encoding(z), "bytes")) {
+          .stopf("Canonical configuration has bytes-encoded text at %s", path)
+        }
+        paste0("UTF8:", token("text:", z))
+      },
+      raw = function(z) paste0(format(z), collapse = "")
+    )
+    values <- vapply(seq_along(value), function(i) {
+      token("element:", element(value[[i]]))
     }, character(1))
-  )
-  payload <- charToRaw(paste0(records, collapse = "\n"))
+    paste0(token("atomic-type:", type), token("length:", as.character(length(value))),
+           encode_names(value, path), paste0(values, collapse = ""))
+  }
+  encode <- function(value, path = "$") {
+    if (is.null(value)) return(token("null:"))
+    if (is.data.frame(value)) {
+      attrs <- attributes(value)
+      if (!identical(class(value), "data.frame") ||
+          length(setdiff(names(attrs), c("names", "row.names", "class")))) {
+        .stopf("Canonical configuration has unsupported data-frame class/attributes at %s", path)
+      }
+      nm <- names(value)
+      if (is.null(nm) || length(nm) != ncol(value) || anyNA(nm)) {
+        .stopf("Canonical configuration has malformed column names at %s", path)
+      }
+      rows <- row.names(value)
+      header <- paste0(token("data-frame:"),
+                       token("nrow:", as.character(nrow(value))),
+                       token("ncol:", as.character(ncol(value))),
+                       token("row-names-count:", as.character(length(rows))),
+                       paste0(vapply(rows, function(z) token("row-name:", z), character(1)),
+                              collapse = ""))
+      columns <- vapply(seq_along(value), function(i) {
+        paste0(token("column-name:", nm[[i]]),
+               token("column-value:", encode(value[[i]], paste0(path, "[[", i, "]]"))))
+      }, character(1))
+      return(paste0(header, paste0(columns, collapse = "")))
+    }
+    if (is.list(value)) {
+      attrs <- attributes(value)
+      if (length(setdiff(names(attrs), "names"))) {
+        .stopf("Canonical configuration has unsupported list attributes at %s", path)
+      }
+      items <- vapply(seq_along(value), function(i) {
+        token("item:", encode(value[[i]], paste0(path, "[[", i, "]]")))
+      }, character(1))
+      return(paste0(token("list:"), token("length:", as.character(length(value))),
+                    encode_names(value, path), paste0(items, collapse = "")))
+    }
+    if (is.atomic(value)) return(encode_atomic(value, path))
+    .stopf("Canonical configuration has unsupported object type %s at %s",
+           typeof(value), path)
+  }
+  enc2utf8(paste0("phase-c-canonical-object-v1:", encode(x)))
+}
+
+.canonical_config_sha256 <- function(x) {
+  payload <- charToRaw(.canonical_config_payload(x))
   path <- tempfile("phase-c-canonical-config-", fileext = ".bin")
   on.exit(unlink(path), add = TRUE)
   con <- file(path, open = "wb")
@@ -102,6 +177,14 @@
   invisible(TRUE)
 }
 
+.require_sha256 <- function(value, label) {
+  if (length(value) != 1L || is.na(value) ||
+      !grepl("^[0-9a-f]{64}$", value)) {
+    .stopf("%s is not a lowercase SHA-256 value", label)
+  }
+  invisible(TRUE)
+}
+
 .manifest <- function(value, label, allow_empty = FALSE) {
   if (length(value) != 1L || is.na(value)) .stopf("%s is malformed", label)
   if (!nzchar(value)) {
@@ -140,7 +223,8 @@
   "dev/isdm-phase-c-analyse-official.R",
   "dev/isdm-phase-c-pilot-decision.R",
   "dev/isdm-phase-c-amendment-2026-08-08.md",
-  "dev/isdm-phase-c-amendment-2-2026-08-09.md"
+  "dev/isdm-phase-c-amendment-2-2026-08-09.md",
+  "dev/isdm-phase-c-amendment-3-2026-08-09.md"
 )
 
 .instrument_id_at <- function(sha) {
@@ -435,6 +519,7 @@
     "actual_logical_rows", "expected_optimizer_calls",
     "actual_optimizer_calls", "expected_model_fit_attempts",
     "actual_model_fit_attempts", "input_config_sha256",
+    "config_rds_sha256", "input_config_rds_sha256",
     "input_predecessor_paths", "input_predecessor_sha256",
     "predecessor_receipt_paths", "predecessor_receipt_hashes"
   )
@@ -480,6 +565,13 @@
   }
   if (!identical(x$input_config_sha256, expected_config_sha256)) {
     .stopf("%s input configuration hash mismatch", label)
+  }
+  .require_sha256(x$config_rds_sha256,
+                  paste(label, "raw configuration RDS hash"))
+  .require_sha256(x$input_config_rds_sha256,
+                  paste(label, "input raw configuration RDS hash"))
+  if (!identical(x$input_config_rds_sha256, x$config_rds_sha256)) {
+    .stopf("%s duplicated raw configuration RDS hashes disagree", label)
   }
   if (!identical(x$input_predecessor_paths, x$predecessor_receipt_paths) ||
       !identical(x$input_predecessor_sha256, x$predecessor_receipt_hashes)) {
@@ -637,7 +729,7 @@
   if (!is.list(builder_preflight) || !identical(preflight_contract, builder_preflight)) {
     .stopf("Preflight independent contract differs from the frozen source builder")
   }
-  preflight_config_hash <- .object_sha256(builder_preflight)
+  preflight_config_hash <- .canonical_config_sha256(builder_preflight)
   .verify_compute_envelope(
     preflight, "preflight", "preflight", "preflight receipt",
     expected_logical_rows = 28L, expected_fit_attempts = 30L,
@@ -645,7 +737,7 @@
     expected_predecessor_hashes = character(),
     expected_config_sha256 = preflight_config_hash
   )
-  .need_fields(preflight, c("config_sha256", "unique_key_verdict",
+  .need_fields(preflight, c("config_sha256", "config_rds_sha256", "unique_key_verdict",
                             "unique_logical_rows"), "preflight receipt")
   if (!identical(preflight$config_sha256, preflight_config_hash) ||
       !identical(preflight$unique_key_verdict, "PASS") ||
@@ -691,7 +783,7 @@
   if (!is.data.frame(builder_pilot) || !identical(pilot_config, builder_pilot)) {
     .stopf("Pilot independent grid differs from the frozen source builder")
   }
-  pilot_config_hash <- .object_sha256(builder_pilot)
+  pilot_config_hash <- .canonical_config_sha256(builder_pilot)
   pilot_paths <- c(preflight = normalizePath(opt$preflight_receipt, mustWork = TRUE))
   pilot_hashes <- c(preflight = preflight_hash)
   .verify_compute_envelope(
@@ -702,7 +794,7 @@
     expected_predecessor_hashes = pilot_hashes,
     expected_config_sha256 = pilot_config_hash
   )
-  .need_fields(pilot_compute, c("config_sha256", "phi_x", "phi_bias",
+  .need_fields(pilot_compute, c("config_sha256", "config_rds_sha256", "phi_x", "phi_bias",
                                 "beta0_shift", "arms"), "pilot compute receipt")
   if (!identical(pilot_compute$config_sha256, pilot_config_hash) ||
       !identical(pilot_compute$arms, paste(.arms, collapse = ",")) ||
@@ -741,7 +833,7 @@
       predecessors_hashes <- c(predecessors_hashes,
                                g1 = .sha256(opt$receipts[["G1"]]))
     }
-    builder_hash <- .object_sha256(builder_configs[[block]])
+    builder_hash <- .canonical_config_sha256(builder_configs[[block]])
     .verify_compute_envelope(
       receipt, "campaign", block, label,
       expected_logical_rows = expected_rows,
@@ -750,10 +842,10 @@
       expected_predecessor_hashes = predecessors_hashes,
       expected_config_sha256 = builder_hash
     )
-    .need_fields(receipt, c("config_sha256", "phi_x", "phi_bias",
+    .need_fields(receipt, c("config_sha256", "config_rds_sha256", "phi_x", "phi_bias",
                             "beta0_shift", "arms", "g1_seeds"), label)
-    if (!identical(receipt$config_sha256, .object_sha256(builder_configs[[block]]))) {
-      .stopf("%s source-builder serialization hash mismatch", label)
+    if (!identical(receipt$config_sha256, builder_hash)) {
+      .stopf("%s source-builder canonical hash mismatch", label)
     }
     if (!identical(receipt$arms, paste(.arms, collapse = ","))) .stopf("%s arm manifest mismatch", label)
     if (!.near(.receipt_num(receipt, "phi_x", label), 0.15)) .stopf("%s phi_x is not frozen at 0.15", label)
@@ -773,6 +865,7 @@
       receipt_bytes = as.numeric(file.info(opt$receipts[[block]])$size),
       receipt_sha256 = .sha256(opt$receipts[[block]]),
       config_sha256 = receipt$config_sha256,
+      config_rds_sha256 = receipt$config_rds_sha256,
       independent_config_sha256 = .canonical_config_sha256(configs[[block]]),
       part_count = length(part_paths[[block]]),
       part_bytes = sum(file.info(part_paths[[block]])$size),
@@ -928,7 +1021,10 @@
     part <- readRDS(parts[[i]])
     if (!is.list(part) || !is.data.frame(part$results) ||
         !identical(part$instrument_id, instrument_id) ||
-        !identical(part$config_sha256, receipt$config_sha256)) .stopf("%s has malformed/incompatible part %s", label, basename(parts[[i]]))
+        !identical(part$config_sha256, receipt$config_sha256) ||
+        !identical(part$config_rds_sha256, receipt$config_rds_sha256)) {
+      .stopf("%s has malformed/incompatible part %s", label, basename(parts[[i]]))
+    }
     if (nrow(part$results) %% 6L != 0L) .stopf("%s contains a partial six-arm dataset", basename(parts[[i]]))
     part_results[[i]] <- part$results
   }
@@ -1000,7 +1096,7 @@
     "",
     "The original per-block compute receipts do not enumerate every preregistered treatment axis, exact cross-block null-pair count, full six-arm key set, A5/A6-null field identity, G5/A2 separation, or part-to-final content identity. This audit reconstructs those contracts independently and records them without rewriting or rerunning any fit.",
     "",
-    "The runner's raw saveRDS configuration hash is checked against the immutable source builder. Because that byte hash preserves non-canonical R object representation, the independently reconstructed value-identical grid is also recorded under a canonical length-prefixed UTF-8/LF SHA-256.",
+    "The runner's portable canonical-object configuration hash is checked against the immutable source builder and an independent reconstruction. The raw saveRDS configuration hash is retained separately as same-run provenance and is not reconstructed across R versions or hosts.",
     "",
     "## Limits",
     "",
@@ -1038,6 +1134,10 @@
     pilot_decision_receipt_sha256 = bundle$decision_hash,
     campaign_receipt_sha256 = paste(sprintf("%s:%s", block_audit$block, block_audit$receipt_sha256), collapse = ";"),
     campaign_result_sha256 = paste(sprintf("%s:%s", block_audit$block, block_audit$result_sha256), collapse = ";"),
+    campaign_config_rds_sha256 = paste(
+      sprintf("%s:%s", block_audit$block, block_audit$config_rds_sha256),
+      collapse = ";"
+    ),
     campaign_independent_config_sha256 = paste(
       sprintf("%s:%s", block_audit$block, block_audit$independent_config_sha256),
       collapse = ";"
@@ -1165,7 +1265,8 @@
                                     predecessor_hashes = character(),
                                     expected_fit_attempts = nrow(results),
                                     g1_seeds = "") {
-  config_hash <- if (is.null(config)) "" else .object_sha256(config)
+  config_hash <- if (is.null(config)) "" else .canonical_config_sha256(config)
+  config_rds_hash <- if (is.null(config)) "" else .config_rds_sha256(config)
   part_hashes <- if (length(part_paths)) paste(sprintf(
     "%s:%s", basename(part_paths), vapply(part_paths, .sha256, character(1))
   ), collapse = ";") else ""
@@ -1185,6 +1286,8 @@
     expected_model_fit_attempts = expected_fit_attempts,
     actual_model_fit_attempts = expected_fit_attempts,
     input_config_sha256 = config_hash,
+    input_config_rds_sha256 = config_rds_hash,
+    config_rds_sha256 = config_rds_hash,
     input_predecessor_paths = paste(sprintf("%s:%s", names(predecessor_paths),
                                             predecessor_paths), collapse = ";"),
     input_predecessor_sha256 = paste(sprintf("%s:%s", names(predecessor_hashes),
@@ -1266,8 +1369,10 @@
     "preflight_compute", "preflight", "preflight", preflight_out,
     config = NULL, results = preflight_rows, expected_fit_attempts = 30L
   )
-  preflight_fields$input_config_sha256 <- .object_sha256(preflight_contract)
-  preflight_fields$config_sha256 <- .object_sha256(preflight_contract)
+  preflight_fields$input_config_sha256 <- .canonical_config_sha256(preflight_contract)
+  preflight_fields$config_sha256 <- .canonical_config_sha256(preflight_contract)
+  preflight_fields$input_config_rds_sha256 <- .config_rds_sha256(preflight_contract)
+  preflight_fields$config_rds_sha256 <- .config_rds_sha256(preflight_contract)
   preflight_fields$seed_min <- min(preflight_contract$seed_inventory)
   preflight_fields$seed_max <- max(preflight_contract$seed_inventory)
   preflight_fields$seed_count <- length(preflight_contract$seed_inventory)
@@ -1283,8 +1388,10 @@
   pilot_parts_dir <- paste0(pilot, ".parts")
   dir.create(pilot_parts_dir)
   pilot_part <- file.path(pilot_parts_dir, "part-00001.rds")
-  pilot_hash <- .object_sha256(pilot_config)
+  pilot_hash <- .canonical_config_sha256(pilot_config)
+  pilot_rds_hash <- .config_rds_sha256(pilot_config)
   saveRDS(list(instrument_id = instrument_id, config_sha256 = pilot_hash,
+               config_rds_sha256 = pilot_rds_hash,
                created_utc = "synthetic", results = pilot_x), pilot_part)
   saveRDS(pilot_x, pilot)
   pilot_compute <- file.path(root, "pilot-v2-compute.receipt")
@@ -1314,13 +1421,33 @@
   if (!identical(canonical_hashes, builder_canonical_hashes)) {
     .stopf("Synthetic self-test canonical hashes differ for identical grids")
   }
+  if (!identical(
+    .canonical_config_sha256(.expected_preflight_contract()),
+    .canonical_config_sha256(attr(builder_configs, "preflight", exact = TRUE))
+  )) {
+    .stopf("Synthetic self-test canonical hashes differ for nested preflight objects")
+  }
   value_mutation <- configs$G1
   value_mutation$rho[[1L]] <- value_mutation$rho[[1L]] + 0.01
   type_mutation <- configs$G1
-  type_mutation$stage <- factor(type_mutation$stage)
+  type_mutation$seed <- as.numeric(type_mutation$seed)
+  name_mutation <- configs$G1
+  names(name_mutation)[names(name_mutation) == "rho"] <- "rho_changed"
+  nested_name_mutation <- .expected_preflight_contract()
+  names(nested_name_mutation$crn_probe)[[1L]] <- "seed_changed"
   if (identical(.canonical_config_sha256(value_mutation), canonical_hashes[["G1"]]) ||
-      identical(.canonical_config_sha256(type_mutation), canonical_hashes[["G1"]])) {
-    .stopf("Synthetic self-test canonical hash did not detect a value/type mutation")
+      identical(.canonical_config_sha256(type_mutation), canonical_hashes[["G1"]]) ||
+      identical(.canonical_config_sha256(name_mutation), canonical_hashes[["G1"]]) ||
+      identical(
+        .canonical_config_sha256(nested_name_mutation),
+        .canonical_config_sha256(.expected_preflight_contract())
+      )) {
+    .stopf("Synthetic self-test canonical hash did not detect a value/type/name mutation")
+  }
+  unsupported <- configs$G1
+  unsupported$stage <- factor(unsupported$stage)
+  if (!inherits(try(.canonical_config_sha256(unsupported), silent = TRUE), "try-error")) {
+    .stopf("Synthetic self-test canonical encoder did not fail closed on a factor")
   }
   results <- receipts <- character()
   for (block in paste0("G", 1:6)) {
@@ -1328,8 +1455,10 @@
     x <- .synthetic_results(configs[[block]], block)
     parts_dir <- paste0(result, ".parts"); dir.create(parts_dir)
     part <- file.path(parts_dir, "part-00001.rds")
-    builder_hash <- .object_sha256(builder_configs[[block]])
+    builder_hash <- .canonical_config_sha256(builder_configs[[block]])
+    builder_rds_hash <- .config_rds_sha256(builder_configs[[block]])
     saveRDS(list(instrument_id = instrument_id, config_sha256 = builder_hash,
+                 config_rds_sha256 = builder_rds_hash,
                  created_utc = "synthetic", results = x), part)
     saveRDS(x, result)
     receipt <- file.path(root, paste0(tolower(block), "-compute.receipt"))
@@ -1397,7 +1526,40 @@
   ), silent = TRUE)
   if (!inherits(tampered_error, "try-error") ||
       !grepl("input configuration hash mismatch", as.character(tampered_error), fixed = TRUE)) {
-    .stopf("Synthetic self-test did not reject a tampered raw configuration hash")
+    .stopf("Synthetic self-test did not reject a tampered canonical configuration hash")
+  }
+  tampered_rds_receipt <- file.path(root, "g2-tampered-rds-compute.receipt")
+  tampered_rds_lines <- readLines(receipts[["G2"]], warn = FALSE)
+  tampered_rds_lines[startsWith(tampered_rds_lines, "config_rds_sha256=")] <-
+    "config_rds_sha256=not-a-sha256"
+  writeLines(tampered_rds_lines, tampered_rds_receipt, useBytes = TRUE)
+  tampered_rds_opt <- opt
+  tampered_rds_opt$out_dir <- file.path(root, "tampered-rds-audit")
+  tampered_rds_opt$receipts[["G2"]] <- tampered_rds_receipt
+  tampered_rds_error <- try(.audit_campaign(
+    tampered_rds_opt, source_id_resolver = source_id_resolver
+  ), silent = TRUE)
+  if (!inherits(tampered_rds_error, "try-error") ||
+      !grepl("raw configuration RDS hash", as.character(tampered_rds_error),
+             fixed = TRUE)) {
+    .stopf("Synthetic self-test did not reject a malformed raw RDS provenance hash: %s",
+           paste(as.character(tampered_rds_error), collapse = " | "))
+  }
+  divergent_rds_receipt <- file.path(root, "g2-divergent-rds-compute.receipt")
+  divergent_rds_lines <- readLines(receipts[["G2"]], warn = FALSE)
+  divergent_rds_lines[startsWith(divergent_rds_lines, "input_config_rds_sha256=")] <-
+    paste0("input_config_rds_sha256=", paste(rep("0", 64L), collapse = ""))
+  writeLines(divergent_rds_lines, divergent_rds_receipt, useBytes = TRUE)
+  divergent_rds_opt <- opt
+  divergent_rds_opt$out_dir <- file.path(root, "divergent-rds-audit")
+  divergent_rds_opt$receipts[["G2"]] <- divergent_rds_receipt
+  divergent_rds_error <- try(.audit_campaign(
+    divergent_rds_opt, source_id_resolver = source_id_resolver
+  ), silent = TRUE)
+  if (!inherits(divergent_rds_error, "try-error") ||
+      !grepl("duplicated raw configuration RDS hashes disagree",
+             as.character(divergent_rds_error), fixed = TRUE)) {
+    .stopf("Synthetic self-test did not reject divergent raw RDS provenance hashes")
   }
   divergent_configs <- configs
   divergent_configs$G3$rho[[1L]] <- divergent_configs$G3$rho[[1L]] + 0.01
@@ -1495,6 +1657,23 @@
     x$fit_error[[1L]] <- "synthetic DGP failure"
     x
   }, "DGP/pre-fit failure")
+  part_negative <- function(field, value) {
+    original <- file.path(paste0(results[["G1"]], ".parts"), "part-00001.rds")
+    part <- readRDS(original)
+    part[[field]] <- value
+    path <- file.path(root, paste0("part-negative-", field, ".rds"))
+    saveRDS(part, path)
+    err <- try(.validate_block_results(
+      .synthetic_results(configs$G1, "G1"), "G1", .expand_arms(configs$G1),
+      .read_receipt(receipts[["G1"]]), c(part = path), instrument_id
+    ), silent = TRUE)
+    if (!inherits(err, "try-error") ||
+        !grepl("malformed/incompatible part", as.character(err), fixed = TRUE)) {
+      .stopf("Synthetic self-test did not reject part %s mismatch", field)
+    }
+  }
+  part_negative("config_sha256", paste(rep("0", 64L), collapse = ""))
+  part_negative("config_rds_sha256", paste(rep("0", 64L), collapse = ""))
   cat("Phase C independent campaign verifier synthetic self-test: PASS\n")
   cat("Fixture:", root, "\n")
   invisible(out)

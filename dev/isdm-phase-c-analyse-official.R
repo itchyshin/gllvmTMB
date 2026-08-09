@@ -989,6 +989,7 @@ source("dev/isdm-bias-campaign.R")
 .verify_compute_v2_identity <- function(receipt, expected_stage, expected_block, label) {
   required <- c(
     "schema_version", "stage", "block", "seed_list", "config_sha256",
+    "config_rds_sha256", "input_config_rds_sha256",
     "expected_logical_rows", "actual_logical_rows",
     "expected_model_fit_attempts", "actual_model_fit_attempts",
     "optimizer_control_mode", "optimizer_control", "package_versions",
@@ -1004,9 +1005,18 @@ source("dev/isdm-bias-campaign.R")
       !identical(receipt$block, expected_block)) {
     .stopf("%s has noncanonical v2 stage/block/schema", label)
   }
-  if (!nzchar(receipt$seed_list) || !nzchar(receipt$optimizer_control) ||
+  sha256_value <- function(x) {
+    length(x) == 1L && !is.na(x) && grepl("^[0-9a-f]{64}$", x)
+  }
+  if (!sha256_value(receipt$config_sha256) ||
+      !sha256_value(receipt$config_rds_sha256) ||
+      !sha256_value(receipt$input_config_sha256) ||
+      !sha256_value(receipt$input_config_rds_sha256) ||
+      !identical(receipt$input_config_sha256, receipt$config_sha256) ||
+      !identical(receipt$input_config_rds_sha256, receipt$config_rds_sha256) ||
+      !nzchar(receipt$seed_list) || !nzchar(receipt$optimizer_control) ||
       !nzchar(receipt$session_platform)) {
-    .stopf("%s has an empty v2 seed/control/session field", label)
+    .stopf("%s has an invalid v2 config/seed/control/session field", label)
   }
   invisible(TRUE)
 }
@@ -1020,7 +1030,8 @@ source("dev/isdm-bias-campaign.R")
   .verify_compute_v2_identity(preflight, "preflight", "preflight", "preflight receipt")
   .verify_compute_v2_identity(pilot_compute, "pilot_v2", "G1", "pilot compute receipt")
   preflight_contract <- build_preflight_contract_c()
-  if (!identical(preflight$config_sha256, .object_sha256_c(preflight_contract)) ||
+  if (!identical(preflight$config_sha256,
+                 .canonical_object_sha256_c(preflight_contract)) ||
       !identical(preflight$input_config_sha256, preflight$config_sha256) ||
       !identical(preflight$seed_list,
                  paste(preflight_contract$seed_inventory, collapse = ",")) ||
@@ -1053,7 +1064,7 @@ source("dev/isdm-bias-campaign.R")
   beta0_shift <- as.numeric(decision$beta0_shift)
   if (!is.finite(beta0_shift) ||
       !identical(pilot_compute$config_sha256,
-                 .object_sha256_c(build_config_pilot(1:10, beta0_shift))) ||
+                 .canonical_object_sha256_c(build_config_pilot(1:10, beta0_shift))) ||
       !identical(pilot_compute$input_config_sha256,
                  pilot_compute$config_sha256)) {
     .stopf("Pilot compute receipt does not match the frozen pilot configuration")
@@ -1087,7 +1098,7 @@ source("dev/isdm-bias-campaign.R")
     expected_config <- get(paste0("build_config_", tolower(block)))(
       seeds, beta0_shift = beta0_shift
     )
-    if (!identical(r$config_sha256, .object_sha256_c(expected_config)) ||
+    if (!identical(r$config_sha256, .canonical_object_sha256_c(expected_config)) ||
         !identical(r$input_config_sha256, r$config_sha256)) {
       .stopf("%s receipt does not match the frozen source-built configuration", block)
     }

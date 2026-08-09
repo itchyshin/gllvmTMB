@@ -503,7 +503,8 @@ run_low_high_smoke <- function(seed = 42L, n = 100L, T_sp = 6L) {
   "dev/isdm-phase-c-analyse-official.R",
   "dev/isdm-phase-c-pilot-decision.R",
   "dev/isdm-phase-c-amendment-2026-08-08.md",
-  "dev/isdm-phase-c-amendment-2-2026-08-09.md"
+  "dev/isdm-phase-c-amendment-2-2026-08-09.md",
+  "dev/isdm-phase-c-amendment-3-2026-08-09.md"
 )
 
 .instrument_id_c <- function(files = .phase_c_files) {
@@ -543,6 +544,111 @@ run_low_high_smoke <- function(seed = 42L, n = 100L, T_sp = 6L) {
   path <- tempfile("phase-c-hash-", fileext = ".rds")
   on.exit(unlink(path), add = TRUE)
   saveRDS(object, path, version = 3)
+  .sha256_c(path)
+}
+
+## Portable, canonical content hash for nested receipt inputs. Raw saveRDS()
+## bytes are retained separately because they can differ across R versions and
+## platforms even when the represented object is identical.
+.canonical_config_payload_c <- function(object) {
+  fail <- function(fmt, ...) stop(sprintf(fmt, ...), call. = FALSE)
+  token <- function(tag, value = "") {
+    value <- enc2utf8(value)
+    paste0(tag, nchar(value, type = "bytes"), ":", value)
+  }
+  encode_names <- function(value, path) {
+    nm <- names(value)
+    if (is.null(nm)) return(token("names-null:"))
+    if (length(nm) != length(value) || anyNA(nm)) {
+      fail("Canonical configuration has malformed names at %s", path)
+    }
+    paste0(token("names:", as.character(length(nm))),
+           paste0(vapply(nm, function(z) token("name:", z), character(1)),
+                  collapse = ""))
+  }
+  encode_atomic <- function(value, path) {
+    attrs <- attributes(value)
+    if (length(setdiff(names(attrs), "names"))) {
+      fail("Canonical configuration has unsupported atomic attributes at %s", path)
+    }
+    type <- typeof(value)
+    if (!type %in% c("logical", "integer", "double", "character", "raw")) {
+      fail("Canonical configuration has unsupported atomic type %s at %s", type, path)
+    }
+    element <- switch(type,
+      logical = function(z) {
+        if (is.na(z)) "NA" else if (z) "TRUE" else "FALSE"
+      },
+      integer = function(z) if (is.na(z)) "NA" else sprintf("%d", z),
+      double = function(z) {
+        if (is.na(z) && !is.nan(z)) return("NA")
+        if (is.nan(z)) return("NaN")
+        if (is.infinite(z)) return(if (z > 0) "+Inf" else "-Inf")
+        sprintf("%a", z)
+      },
+      character = function(z) {
+        if (is.na(z)) return("NA")
+        if (identical(Encoding(z), "bytes")) {
+          fail("Canonical configuration has bytes-encoded text at %s", path)
+        }
+        paste0("UTF8:", token("text:", z))
+      },
+      raw = function(z) paste0(format(z), collapse = "")
+    )
+    values <- vapply(seq_along(value), function(i) {
+      token("element:", element(value[[i]]))
+    }, character(1))
+    paste0(token("atomic-type:", type), token("length:", as.character(length(value))),
+           encode_names(value, path), paste0(values, collapse = ""))
+  }
+  encode <- function(value, path = "$") {
+    if (is.null(value)) return(token("null:"))
+    if (is.data.frame(value)) {
+      attrs <- attributes(value)
+      if (!identical(class(value), "data.frame") ||
+          length(setdiff(names(attrs), c("names", "row.names", "class")))) {
+        fail("Canonical configuration has unsupported data-frame class/attributes at %s", path)
+      }
+      nm <- names(value)
+      if (is.null(nm) || length(nm) != ncol(value) || anyNA(nm)) {
+        fail("Canonical configuration has malformed column names at %s", path)
+      }
+      rows <- row.names(value)
+      header <- paste0(token("data-frame:"),
+                       token("nrow:", as.character(nrow(value))),
+                       token("ncol:", as.character(ncol(value))),
+                       token("row-names-count:", as.character(length(rows))),
+                       paste0(vapply(rows, function(z) token("row-name:", z), character(1)),
+                              collapse = ""))
+      columns <- vapply(seq_along(value), function(i) {
+        paste0(token("column-name:", nm[[i]]),
+               token("column-value:", encode(value[[i]], paste0(path, "[[", i, "]]"))))
+      }, character(1))
+      return(paste0(header, paste0(columns, collapse = "")))
+    }
+    if (is.list(value)) {
+      attrs <- attributes(value)
+      if (length(setdiff(names(attrs), "names"))) {
+        fail("Canonical configuration has unsupported list attributes at %s", path)
+      }
+      items <- vapply(seq_along(value), function(i) {
+        token("item:", encode(value[[i]], paste0(path, "[[", i, "]]")))
+      }, character(1))
+      return(paste0(token("list:"), token("length:", as.character(length(value))),
+                    encode_names(value, path), paste0(items, collapse = "")))
+    }
+    if (is.atomic(value)) return(encode_atomic(value, path))
+    fail("Canonical configuration has unsupported object type %s at %s", typeof(value), path)
+  }
+  enc2utf8(paste0("phase-c-canonical-object-v1:", encode(object)))
+}
+
+.canonical_object_sha256_c <- function(object) {
+  payload <- charToRaw(.canonical_config_payload_c(object))
+  path <- tempfile("phase-c-canonical-object-", fileext = ".bin")
+  on.exit(unlink(path), add = TRUE)
+  con <- file(path, open = "wb")
+  tryCatch(writeBin(payload, con, useBytes = TRUE), finally = close(con))
   .sha256_c(path)
 }
 
@@ -637,12 +743,15 @@ run_grid_c_resumable <- function(config_df, output, n_cores, chunk_size = n_core
   parts_dir <- paste0(output, ".parts")
   dir.create(parts_dir, recursive = TRUE, showWarnings = FALSE)
   instrument_id <- .instrument_id_c()
-  config_sha256 <- .object_sha256_c(config_df)
+  config_sha256 <- .canonical_object_sha256_c(config_df)
+  config_rds_sha256 <- .object_sha256_c(config_df)
   part_paths <- sort(list.files(parts_dir, pattern = "[.]rds$", full.names = TRUE))
   parts <- lapply(part_paths, function(path) {
     x <- readRDS(path)
     if (!is.list(x) || !identical(x$instrument_id, instrument_id) ||
-        !identical(x$config_sha256, config_sha256) || !is.data.frame(x$results)) {
+        !identical(x$config_sha256, config_sha256) ||
+        !identical(x$config_rds_sha256, config_rds_sha256) ||
+        !is.data.frame(x$results)) {
       stop("Incompatible or malformed resume part: ", path)
     }
     if (nrow(x$results) %% length(ARMS) != 0L) stop("Partial dataset in resume part: ", path)
@@ -667,6 +776,7 @@ run_grid_c_resumable <- function(config_df, output, n_cores, chunk_size = n_core
       if (file.exists(part_path)) stop("Refusing to overwrite resume part: ", part_path)
       saveRDS(list(
         instrument_id = instrument_id, config_sha256 = config_sha256,
+        config_rds_sha256 = config_rds_sha256,
         created_utc = format(Sys.time(), tz = "UTC", usetz = TRUE), results = results
       ), part_path)
       parts[[length(parts) + 1L]] <- results
@@ -730,7 +840,8 @@ run_grid_c_resumable <- function(config_df, output, n_cores, chunk_size = n_core
     actual_optimizer_calls = "NOT_INSTRUMENTED_MODEL_FRONTEND_ATTEMPTS_RECORDED_SEPARATELY",
     expected_model_fit_attempts = expected_fit_attempts,
     actual_model_fit_attempts = actual_fit_attempts,
-    input_config_sha256 = if (is.null(config)) "" else .object_sha256_c(config),
+    input_config_sha256 = if (is.null(config)) "" else .canonical_object_sha256_c(config),
+    input_config_rds_sha256 = if (is.null(config)) "" else .object_sha256_c(config),
     input_predecessor_paths = predecessor_paths,
     input_predecessor_sha256 = predecessor_hashes,
     output_path = normalizePath(output), output_bytes = info$size,
@@ -743,7 +854,8 @@ run_grid_c_resumable <- function(config_df, output, n_cores, chunk_size = n_core
     predecessor_receipt_hashes = predecessor_hashes, g1_seeds = g1_seeds
   )
   if (!is.null(config)) {
-    fields$config_sha256 <- .object_sha256_c(config)
+    fields$config_sha256 <- .canonical_object_sha256_c(config)
+    fields$config_rds_sha256 <- .object_sha256_c(config)
     if (!is.null(config_metadata)) {
       fields$seed_min <- min(config_metadata$seed)
       fields$seed_max <- max(config_metadata$seed)

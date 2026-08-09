@@ -333,14 +333,16 @@ One variance parameter per trait. It cannot be paired with
 already chooses the diagonal-only model.
 
 **`dep(0 + trait | g)`** estimates the full $T \times T$
-unstructured trait covariance via Cholesky factorisation:
+unstructured trait covariance through a lower-triangular factor:
 
 $$
 \boldsymbol\Sigma_\text{dep} = L L^\top
 $$
 
-where $L$ is the lower-triangular Cholesky factor with positive
-diagonal. $T(T+1)/2$ free parameters.
+where $L$ has an unconstrained diagonal and strict upper-triangular zeros.
+It is a covariance factor because $L L^\top$ is positive semidefinite, but it
+is not the canonical positive-diagonal Cholesky factor. Paired column-sign
+changes leave the same covariance. There are $T(T+1)/2$ free parameters.
 
 **Use case distinction**:
 - `unique` alone → trait-independent (no off-diagonal).

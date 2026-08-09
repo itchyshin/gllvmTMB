@@ -47,8 +47,9 @@ diagonal of the requested covariance tier. This is the same functional
 \section{What the coverage evidence does and does not cover}{
 
 One regime of this function has measured frequentist coverage. Under
-simulation from a known Gaussian data-generating process with \code{n_units >= 150}
-and \code{d <= 2}, the two-sided intervals met a \strong{pre-registered \verb{>= 0.94} gate}
+simulation from a known Gaussian data-generating process, using an
+unpenalised native-Laplace fit with \code{n_units >= 150} and \code{d <= 2}, the
+two-sided intervals met a \strong{pre-registered \verb{>= 0.94} gate}
 (0.9467 in both cells, 20,000 replicates each, computed among converged fits
 only). \strong{That gate is 0.94, not nominal 95\%} -- both cells sit roughly 3.3
 cluster standard errors below 0.95, so do not describe these as 95\%
@@ -58,9 +59,10 @@ distribution and does \strong{not} hold in the smallest-\code{V_t} ventile (0.92
 The evidence is one simulated DGP, not a claim about any real dataset.
 
 Everything else the arguments admit is an uncertified computed route: every
-non-Gaussian family, every tier other than \code{"unit"}, \code{d > 2}, \code{d = 0},
-\code{n_units < 150}, any \code{level} other than 0.95, and the off-diagonal and
-\code{psi} targets (the \code{psi} target was measured on the same run and \strong{failed}).
+AGHQ fit, any loading-ridge fit, every non-Gaussian family, every tier other
+than \code{"unit"}, \code{d > 2}, \code{d = 0}, \code{n_units < 150}, any \code{level} other than
+0.95, and the off-diagonal and \code{psi} targets (the \code{psi} target was measured
+on the same run and \strong{failed}).
 Rather than refuse those calls -- they are legitimately useful for
 exploration -- the returned \code{interval_status} column marks each row.
 }

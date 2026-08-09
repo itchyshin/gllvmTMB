@@ -1,0 +1,37 @@
+scope,gate,threshold,denominator_or_rule
+smoke,complete,TRUE,all 34 cells exactly 2 terminal attempts and six-field identity bijection
+smoke,finite_output,TRUE,each cell has nonempty finite applicable estimand output
+smoke,restart_history,TRUE,all rows satisfy typed state-dependent restart invariants
+smoke,binomial_trials,TRUE,successful binomial attempts prove weights 10 and diag_B_skip 0;0;0
+pilot_cell,complete,TRUE,exactly 20 terminal attempts
+pilot_cell,unusable,<=3,all statuses other than usable including unclassified
+pilot_cell,unclassified,0,all 20 attempts
+pilot_cell,nonfinite_core,0,all 20 attempts
+pilot_global,detector_sensitivity,>=0.95,all catastrophic positives across exactly 680 attempts with nonzero denominator
+pilot_global,detector_specificity,>=0.90,all negatives across exactly 680 attempts with nonzero denominator
+production_cell,complete,TRUE,exactly 1600 terminal attempts with replicates 1:1600
+production_cell,stationary_usable,>=0.95,all 1600 attempts
+production_cell,positive_hessian,>=0.90,all 1600 attempts
+production_cell,unclassified,0,all 1600 attempts
+production_cell,detector_specificity,>=0.90,required when negatives exist
+production_cell,catastrophic_but_healthy_upper_95,<0.02,exact one-sided Clopper-Pearson bound over all 1600 attempts
+production_pre_gate,truth_metric_integrity,exact,"recompute catastrophic_truth_error, relative_covariance_error, max_eigen_ratio per six-field attempt from retained estimands and rederive detector_flagged"
+production_cell,standardized_beta_bias,<=0.10,each frozen coefficient has exactly 1600 finite applicable rows
+production_cell,Sigma_shared_relative_Frobenius_bias,<=0.15,all applicable lower-triangle components complete
+production_cell,Sigma_total_relative_Frobenius_bias,<=0.15,all lower-triangle components complete
+production_cell,Psi_diagonal_bias,<=0.20 relative,each diagonal complete; psi_small uses <=0.01 absolute; off-diagonal truth and active estimates exact zero; already-inactive estimates may be NA but never nonzero
+production_cell,correlation_absolute_bias,<=0.10,each applicable correlation complete; rho_boundary98 uses <=0.15 but remains pilot-only
+production_cell,phi_nbinom2_relative_absolute_bias,<=0.20,three named positive finite traits with truth 5 and exactly 1600 rows each
+production_cell,phi_nbinom2_catastrophic,truth ratio outside [0.1;10],missing nonfinite and nonpositive estimates fail extraction
+production_cell,component_identity,exact match,registry-derived beta Sigma Psi correlation and NB2 phi_nbinom2 schema
+production_global,detector_sensitivity,>=0.95,all production catastrophic positives with nonzero denominator
+production_global,detector_specificity,>=0.90,all production negatives with nonzero denominator
+production_pair,large_vs_small_RMSE,large <= small + bootstrap_SE,exactly 1600 errors per component per side; B=2000; seed=670830001; NB2 includes phi_nbinom2
+production_pair,rank1_numerical_zero,<=64*.Machine$double.eps,only fixed shared correlations with absolute truth one
+broad_closeout,three_campaign_evidence,PASS,all summaries match pilot-admitted subsets source archive and manifests
+broad_closeout,six_core_pairs,PASS,both cells admitted and every required cell and RMSE component gate passes
+broad_closeout,production_eligible_complete,TRUE,all 31 immutable campaign-qualified cells admitted and present
+public_fence,gaussian_latent_n60,CHARACTERIZATION_ONLY,never publicly promotable from replicate-level evidence
+public_fence,nb2_latent_n100,CHARACTERIZATION_ONLY,never publicly promotable from replicate-level evidence
+public_closeout,release_verdict,HOLD,claim-level adjudication is separate and no subset produces public PASS
+source_identity,bound_archive_manifest_launcher_and_loaded_namespace,exact match,detached launcher verifies archive and exact payload manifest; runner rechecks fresh live tree and isolated installed namespace; caller source identity and load-all forbidden

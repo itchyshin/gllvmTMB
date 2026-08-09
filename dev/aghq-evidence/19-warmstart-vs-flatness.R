@@ -18,17 +18,14 @@
 ## 13.3 / 45.5 / 119.3 / 38.6. A MORE ACCURATE OBJECTIVE ON A FLAT DIRECTION BUYS NOTHING
 ## AND COSTS OPTIMISER STABILITY.
 ##
-## THE DISCRIMINATING TEST. If (b) is warm-start, then starting AGHQ from a COLD, sane point
-## should rescue it. If (b) is flatness, AGHQ degrades from a cold start too.
-##
-## PRE-REGISTERED, before the run:
-##   H-warm : AGHQ cold-start lands near 1.0 on seeds 2001/2005/2006 -> the warm start is
-##            the whole story, and the fix is start selection.
-##   H-flat : AGHQ cold-start still degrades / fails to converge -> the warm start is NOT
-##            the whole story, the surface is flat, and no start or node count fixes it.
-##            The ridge (which curves the flat direction) is then the ONLY lever that can.
-## These are exclusive and the run decides between them. Recording both first so the result
-## is read against a stated expectation rather than an adjustable one.
+## WHAT THIS SCRIPT CAN TEST. The restart arms below vary the upstream Laplace
+## multi-start route that supplies AGHQ's adaptation point. They do not start
+## AGHQ itself from an independent cold point. A change between these arms can
+## therefore show that Laplace restart selection propagates into AGHQ, but an
+## unchanged or degraded result cannot distinguish cold-start AGHQ behaviour
+## from a flat likelihood surface. The historical warm-start-versus-flatness
+## interpretation is retracted; settling that question needs a genuinely
+## independent AGHQ start construction.
 ##
 ## The 4th arm -- LAPLACE + RIDGE -- is included because it became reachable only at
 ## 4dc351ed. It is the fair control: if the ridge alone matches AGHQ + ridge, the credit for
@@ -61,7 +58,8 @@ corr_of <- function(S) { d <- sqrt(diag(S)); d[d <= 0] <- NA; S / outer(d, d) }
 ## Six seeds: the three DEGRADED (2001, 2005, 2006) and the two INHERITED (2003, 2004),
 ## plus 2002 (Laplace already runaway) so both regimes are represented.
 SEEDS <- c(2001L, 2002L, 2003L, 2004L, 2005L, 2006L)
-ARMS <- c("laplace", "laplace_ridge", "aghq", "aghq_ridge", "aghq_cold", "aghq_ridge_cold")
+ARMS <- c("laplace", "laplace_ridge", "aghq", "aghq_ridge",
+          "aghq_laplace_restart", "aghq_ridge_laplace_restart")
 ctl_for <- function(arm) switch(arm,
   laplace         = gllvmTMBcontrol(n_init = 1, init_jitter = 0, se = FALSE),
   ## reachable only since 4dc351ed -- naming aghq_ridge is what arms it on the Laplace path
@@ -69,12 +67,16 @@ ctl_for <- function(arm) switch(arm,
   aghq            = gllvmTMBcontrol(n_init = 1, init_jitter = 0, se = FALSE,
                                     aghq = 9, aghq_ridge = Inf),
   aghq_ridge      = gllvmTMBcontrol(n_init = 1, init_jitter = 0, se = FALSE, aghq = 9),
-  ## COLD: multistart on, so AGHQ is not handed the single Laplace optimum. This is the
-  ## discriminating arm.
-  aghq_cold       = gllvmTMBcontrol(n_init = 5, init_jitter = 0.5, se = FALSE,
-                                    aghq = 9, aghq_ridge = Inf, aghq_multistart = TRUE),
-  aghq_ridge_cold = gllvmTMBcontrol(n_init = 5, init_jitter = 0.5, se = FALSE,
-                                    aghq = 9, aghq_multistart = TRUE))
+  ## These arms vary the Laplace multi-start/restart route that supplies AGHQ.
+  ## They are not cold-start AGHQ fits and must not be interpreted that way.
+  aghq_laplace_restart = gllvmTMBcontrol(
+    n_init = 5, init_jitter = 0.5, se = FALSE,
+    aghq = 9, aghq_ridge = Inf, aghq_multistart = TRUE
+  ),
+  aghq_ridge_laplace_restart = gllvmTMBcontrol(
+    n_init = 5, init_jitter = 0.5, se = FALSE,
+    aghq = 9, aghq_multistart = TRUE
+  ))
 
 P <- 6L; Q <- 2L; N <- 100L
 jobs <- expand.grid(seed = SEEDS, arm = ARMS, stringsAsFactors = FALSE)

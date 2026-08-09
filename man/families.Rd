@@ -27,7 +27,7 @@
 \alias{delta_poisson_link_lognormal}
 \alias{betabinomial}
 \alias{delta_beta}
-\title{Additional families}
+\title{Response-family constructors used by gllvmTMB}
 \usage{
 Beta(link = "logit")
 
@@ -85,92 +85,79 @@ betabinomial(link = "logit")
 delta_beta(link1 = "logit", link2 = "logit")
 }
 \arguments{
-\item{link}{Link.}
+\item{link}{A single link name. The fitting engine applies the narrower
+family-specific link restrictions documented in \code{\link[=gllvmTMB]{gllvmTMB()}}.}
 
-\item{p_extreme}{Optional fixed probability for the extreme component. If NULL (default),
-this is estimated. If specified, must be a proportion between 0 and 1.}
+\item{p_extreme}{\code{NULL} to estimate the mixture probability, or one finite
+number strictly between zero and one to fix it.}
 
-\item{df}{Student-t degrees of freedom parameter. Can be \code{NULL} to estimate (default)
-or a numeric value > 1 to fix at a specific value.}
+\item{df}{\code{NULL} to estimate Student-t degrees of freedom, or one finite
+number greater than one to fix it.}
 
-\item{link1}{Link for first part of delta/hurdle model. Defaults to \code{"logit"}
-for \code{type = "standard"} and \code{"log"} for \code{type = "poisson-link"}.}
+\item{p}{\code{NULL} to estimate the Tweedie power, or one finite number strictly
+between one and two to fix it.}
 
-\item{link2}{Link for second part of delta/hurdle model.}
+\item{link1}{Link for the occurrence component of a delta model.}
 
-\item{type}{Delta/hurdle family type. \code{"standard"} for a classic hurdle
-model. \code{"poisson-link"} for a Poisson-link delta model (Thorson 2018).}
+\item{link2}{Link for the positive component of a delta model.}
+
+\item{type}{Delta construction: \code{"standard"} uses a binary occurrence
+component, while \code{"poisson-link"} requests the alternative Poisson-link
+parameterisation.}
 }
 \value{
-A list with elements common to standard R family objects including \code{family},
-\code{link}, \code{linkfun}, and \code{linkinv}. Delta/hurdle model families also have
-elements \code{delta} (logical) and \code{type} (standard vs. Poisson-link).
+A \code{family} object. One-part descriptors contain \code{family}, \code{link}, \code{linkfun},
+and \code{linkinv}, plus constructor-specific metadata where applicable. Delta
+descriptors contain their two component families and \code{delta = TRUE}.
 }
 \description{
-Additional families compatible with \code{\link[=gllvmTMB]{gllvmTMB()}}.
+Build family descriptors for likelihoods that are not supplied directly by
+\code{\link[stats:family]{stats::family()}}. The descriptor records the family name, link functions,
+and any fixed shape control consumed by \code{\link[=gllvmTMB]{gllvmTMB()}}.
 }
 \details{
-Most models use standard R family objects such as \code{gaussian()},
-\code{binomial()}, \code{poisson()}, or \code{Gamma(link = "log")}. This help topic
-documents additional family constructors shipped by \strong{gllvmTMB} (for
-example \code{Beta()}, \code{betabinomial()}, \code{nbinom1()}, \code{nbinom2()},
-\code{student()}, \code{tweedie()}, \code{lognormal()}, delta/hurdle families, and
-truncated count families).
-\subsection{Mixed-family fits (one model, multiple response families)}{
+These functions construct descriptors; successful construction does not by
+itself mean that a route is in the dependable release core. Ordinary
+Gaussian, Poisson, NB2, and binomial Laplace routes have the strongest
+first-release evidence. Other families and delta, mixture, truncated,
+ordinal, or mixed-family routes have narrower evidence. Read
+\code{vignette("current-limits", package = "gllvmTMB")} before relying on one of
+those routes.
+\subsection{Mixed-family input}{
 
-You can fit different response families within one multivariate model
-by passing \code{family} as a list of family objects and adding a selector
-column to \code{data} that chooses which family applies to each row.
-
-By default the selector column is named \code{"family"}. To use a different
-column name, set \code{attr(family, "family_var") <- "colname"}. Named family
-lists are aligned by name to the selector levels. Unnamed lists keep the
-legacy convention that list order must match the selector levels. The length
-of \code{family} must match the number of distinct selector levels.
+Supply a list of descriptors when response traits use different families.
+The data column \code{family} selects an element for each row. Set
+\code{attr(families, "family_var")} to select a differently named column. Names on
+the list are matched to selector levels; an unnamed list is matched by order.
 }
 
-\subsection{Delta-family defaults}{
+\subsection{Delta defaults and compatibility wrappers}{
 
-The default \code{link1} for delta models of \code{type = "standard"} is \code{"logit"}.
-The default \code{link1} for delta models of \code{type = "poisson-link"} is \code{"log"}.
-
-\code{delta_poisson_link_gamma()} and \code{delta_poisson_link_lognormal()} have been
-deprecated in favour of \code{delta_gamma(type = "poisson-link")} and
-\code{delta_lognormal(type = "poisson-link")}.
+When \code{link1} is omitted, standard delta constructors use \code{"logit"} and
+Poisson-link constructors use \code{"log"}. The older
+\code{delta_poisson_link_gamma()} and \code{delta_poisson_link_lognormal()} names remain
+as deprecated wrappers.
 }
 
-The \code{gengamma()} family was implemented by J.T. Thorson and uses the Prentice
-(1974) parameterization such that the lognormal occurs as the internal
-parameter \code{gengamma_Q} (reported in \code{print()} or \code{summary()} as
-"Generalized gamma Q") approaches 0. If Q matches \code{phi} the distribution
-should be the gamma.
+\code{gengamma()} uses the Prentice parameterisation. Its fitted \code{gengamma_Q}
+value controls shape; the limiting case at zero is lognormal.
 
-\code{gengamma()}, the one-part families ending in \verb{_mix()},
-\code{truncated_nbinom1()}, \code{censored_poisson()}, and delta constructors other
-than the standard \code{delta_lognormal()} / \code{delta_gamma()} pair are exported
-for API continuity, but are not admitted by the current multivariate
-\code{gllvmTMB()} engine. This includes delta mixtures, \code{delta_gengamma()},
-\code{delta_beta()}, and delta-truncated negative-binomial constructors. Fits
-with those families fail loudly as unsupported until likelihood wiring and
-recovery tests land.
+Several constructors remain exported for compatibility although the
+current multivariate fitter rejects them. In particular, this applies to
+generalized-gamma, mixture, censored Poisson, truncated NB1, and most delta
+variants. A rejected constructor is not silently mapped to another family.
 
-The families ending in \verb{_mix()} are 2-component mixtures where each
-distribution has its own mean but a shared scale parameter.
-(Thorson et al. 2011). See the model-description vignette for details.
-The parameter \code{p_extreme = plogis(logit_p_extreme)} is the probability of the extreme (larger)
-mean and \code{exp(log_ratio_mix) + 1} is the ratio of the larger extreme
-mean to the "regular" mean. You can see these parameters in
-\code{model$sd_report}. The parameter \code{p_extreme} can be fixed a priori and passed
-in as a proportion for these families.
+Names ending in \verb{_mix()} describe two mean components that share a
+scale parameter. \code{p_extreme} is the probability assigned to the component
+with the larger mean; leave it \code{NULL} to estimate that probability.
 
-The \code{nbinom2} negative binomial parameterization is the NB2 where the
-variance grows quadratically with the mean (Hilbe 2011).
+NB2 has variance \eqn{\mu + \mu^2 / \phi}; its extra variance therefore grows
+quadratically with the mean.
 
-The \code{nbinom1} negative binomial parameterization lets the variance grow
-linearly with the mean (Hilbe 2011).
+NB1 has variance \eqn{\mu(1 + \phi)}, so its extra variance grows linearly
+with the mean.
 
-For \code{student()}, the degrees of freedom parameter is estimated by default (\code{df = NULL}).
-You can fix it at a specific value by providing a number > 1 (e.g., \code{df = 3}).
+\code{student()} estimates degrees of freedom unless \code{df} is supplied.
 }
 \examples{
 Beta(link = "logit")
@@ -215,31 +202,14 @@ betabinomial(link = "logit")
 delta_beta()
 }
 \references{
-\emph{Generalized gamma family}:
-
 Prentice, R.L. 1974. A log gamma model and its maximum likelihood estimation.
 Biometrika 61(3): 539–544. \doi{10.1093/biomet/61.3.539}
-
-Stacy, E.W. 1962. A Generalization of the Gamma Distribution. The Annals of
-Mathematical Statistics 33(3): 1187–1192. Institute of Mathematical
-Statistics.
-
-Dunic, J.C., Conner, J., Anderson, S.C., and Thorson, J.T. 2025. The
-generalized gamma is a flexible distribution that outperforms alternatives
-when modelling catch rate data. ICES Journal of Marine Science 82(4):
-fsaf040. \doi{10.1093/icesjms/fsaf040}.
-
-\emph{Families ending in \verb{_mix()}}:
 
 Thorson, J.T., Stewart, I.J., and Punt, A.E. 2011. Accounting for fish shoals
 in single- and multi-species survey data using mixture distribution models.
 Can. J. Fish. Aquat. Sci. 68(9): 1681–1693. \doi{10.1139/f2011-086}.
 
-\emph{Negative binomial families}:
-
 Hilbe, J. M. 2011. Negative binomial regression. Cambridge University Press.
-
-\emph{Poisson-link delta families}:
 
 Thorson, J.T. 2018. Three problems with the conventional delta-model for
 biomass sampling data, and a computationally efficient alternative. Canadian

@@ -3,14 +3,18 @@
 ## The package exposes a layer of plain-English formula keywords that
 ## desugar to the underlying glmmTMB-style covstruct calls. The new
 ## canonical names match the unit x trait framework directly. The full
-## 4 x 5 keyword grid (correlation source x mode) is:
+## 5 x 3 keyword grid (correlation source x covariance mode) is:
 ##
-##                    | scalar           | unique           | latent
-##   -----------------+------------------+------------------+-------------------
-##   none             | (no keyword)     | unique()         | latent()
-##   animal           | animal_scalar()  | animal_unique()  | animal_latent()
-##   phylo            | phylo_scalar()   | phylo_unique()   | phylo_latent()
-##   spatial          | spatial_scalar() | spatial_unique() | spatial_latent()
+##                    | indep             | dep             | latent
+##   -----------------+-------------------+-----------------+-------------------
+##   none             | indep()           | dep()           | latent()
+##   animal           | animal_indep()    | animal_dep()    | animal_latent()
+##   phylo            | phylo_indep()     | phylo_dep()     | phylo_latent()
+##   spatial          | spatial_indep()   | spatial_dep()   | spatial_latent()
+##   kernel           | kernel_indep()    | kernel_dep()    | kernel_latent()
+##
+## `scalar` is `indep(..., common = TRUE)` and `unique` is the diagonal-Psi
+## modifier on `latent`; neither is an additional covariance mode.
 ##
 ## The "clean quartet" for explicit covstruct intent:
 ##

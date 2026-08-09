@@ -220,6 +220,9 @@ extract_communality <- function(
       "Provide a fit returned by {.fun gllvmTMB} or a {.cls bootstrap_Sigma} object."
     )
   }
+  if (isTRUE(ci)) {
+    .gllvmTMB_require_unweighted_inference(fit, "extract_communality(ci = TRUE)")
+  }
   rr_used <- switch(
     level,
     B = isTRUE(fit$use$rr_B),
@@ -648,6 +651,7 @@ extract_lv_effects <- function(
   if (!inherits(fit, "gllvmTMB_multi")) {
     cli::cli_abort("Provide a fit returned by {.fun gllvmTMB}.")
   }
+  .gllvmTMB_require_unweighted_inference(fit, "extract_lv_effects")
   if (!identical(level, "B")) {
     cli::cli_abort(c(
       "{.fn extract_lv_effects} currently supports only {.code level = \"unit\"}.",

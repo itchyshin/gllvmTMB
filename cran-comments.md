@@ -17,8 +17,11 @@ This is a **new submission** — `gllvmTMB` is not yet on CRAN.
 
 `gllvmTMB` is released as **experimental** (lifecycle: experimental). This is a
 deliberate honesty label, not a defect report: the package is early, point
-estimates are the supported inferential claim, no cell's interval coverage is
-certified, and covariance routes have focused-test evidence only. The label
+estimates are its primary inferential output, and their evidence is route- and
+regime-specific. Broad package-wide interval coverage is not certified. One
+narrowly scoped two-sided Gaussian
+total-variance profile regime has a documented 0.94 coverage floor; it is not
+nominal 95% certification or an individual-interval guarantee. The label
 appears on the startup message, the README/pkgdown, and this DESCRIPTION.
 
 ## Test environments

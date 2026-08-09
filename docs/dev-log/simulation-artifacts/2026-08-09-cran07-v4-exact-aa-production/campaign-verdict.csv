@@ -1,0 +1,5 @@
+campaign_id,admitted_cells,attempts,all_attempts_complete,all_admitted_cells_pass,verdict
+cran07-core-recovery-v4,14,22400,TRUE,FALSE,HOLD
+cran07-silent-failure-v4,7,11200,TRUE,FALSE,HOLD
+cran07-robustness-v4,7,11200,TRUE,FALSE,HOLD
+

@@ -7,6 +7,20 @@ bridge remains experimental and is not required for the main workflow.
 
 ## Changed
 
+* **The exact-aa confirmation completed 44,800 production fits and returned
+  aggregate HOLD.** Gaussian `indep()`, Gaussian `dep()`,
+  Poisson-log rank-1 `latent(unique = TRUE)`, and Binomial(10)-logit rank-1
+  `latent(unique = TRUE)` passed their prespecified small/large core
+  point-estimation gates. Gaussian latent and NB2 latent remained
+  characterization-only. This does not establish a package-wide dependable
+  core: the full eligible cell set was incomplete, every campaign contained
+  failed cells, and the observable terminal-status detector identified only
+  19 of 80 catastrophic truth errors. The result supports narrow tested-regime
+  point-estimation statements only; it does not certify intervals, structured
+  sources, slopes, mixed families, alternative integration engines, or
+  reliable silent-failure detection. The package remains version 0.6.0 while
+  this evidence and the remaining pre-0.7 issue backlog are reconciled.
+
 * **A fit without standard errors no longer returns a silent all-`NA` answer.**
   When a model is fitted with `gllvmTMBcontrol(se = FALSE)`, there is no
   `sd_report`, so a Wald interval has nothing to be built from. `confint()`
@@ -46,7 +60,7 @@ bridge remains experimental and is not required for the main workflow.
 
 ## New
 
-* **`gllvmTMBcontrol(integration = "va")` now admits all 18 scalar family/link cells and defaults to seven-node Gauss-Hermite evaluation.** Each cell passed an independent arithmetic, compiled, and light-fit gate before H = 7 and automatic GH routing were promoted; analytic cells retain exact fast paths, explicit JJ remains available only for binomial-logit comparisons, and multinomial or other non-scalar architectures remain excluded. The preregistered 36,000-fit confirmation is complete: only the Poisson-log q = 5 cell passed the overall point route, while 24 of 36 family-by-rank cells failed and 11 were inconclusive. Fixed-effect VA-Wald calibration was 20 calibrated / 16 uncalibrated; latent posterior-SD calibration was 15 calibrated / 20 uncalibrated / 1 inconclusive. These mixed results do not alter the public fence automatically: `vcov()` and `confint()` remain labelled `calibrated = FALSE`, `getLV(se = TRUE)` remains a variational posterior SD rather than a frequentist standard error, and Laplace remains the package default. Both campaign stages ran on Totoro, so this is not cross-platform confirmation.
+* **`gllvmTMBcontrol(integration = "va")` now admits all 18 scalar family/link cells and defaults to seven-node Gauss-Hermite evaluation.** Each cell passed an independent arithmetic, compiled, and light-fit gate before H = 7 and automatic GH routing were promoted; analytic cells retain exact fast paths, explicit JJ remains available only for binomial-logit comparisons, and multinomial or other non-scalar architectures remain excluded. The preregistered 36,000-fit confirmation is complete: only the Poisson-log q = 5 cell passed the overall point route, while 24 of 36 family-by-rank cells failed and 11 were inconclusive. Against the campaign's cell-specific criteria, fixed-effect VA-Wald outcomes were 20 pass / 16 fail, while latent posterior-SD outcomes were 15 pass / 20 fail / 1 inconclusive. These are campaign outcomes, not public calibration certificates: `vcov()` and `confint()` remain labelled `calibrated = FALSE`, `getLV(se = TRUE)` remains a variational posterior SD rather than a frequentist standard error, and Laplace remains the package default. Both campaign stages ran on Totoro, so this is not cross-platform confirmation.
 
 * **`vcov()` and `coef()` now work on multi-trait fits.** `coef(fit)` returns
   the named fixed-effect estimates and `vcov(fit)` their covariance, taken from
@@ -86,8 +100,10 @@ bridge remains experimental and is not required for the main workflow.
   likelihood, parameterisation, or honesty caveat — Wald standard errors carry
   exactly the caveats they carried before.
 
-* **Spatial mesh, CRS, and range-plot helpers are now independently authored
-  gllvmTMB code.** `make_mesh()` returns a `gllvmTMBmesh` built through
+* **Spatial mesh, CRS, and range-plot helpers were substantially rewritten
+  within gllvmTMB.** The retained implementation descends from earlier
+  GPL-3 `sdmTMB` helpers and keeps that attribution in `inst/COPYRIGHTS`.
+  `make_mesh()` returns a `gllvmTMBmesh` built through
   fmesher's public mesh, finite-element, and basis APIs, while valid legacy
   `sdmTMBmesh` objects receive a temporary lifecycle warning and conversion.
   `plot_anisotropy()` and `plot_anisotropy2()` now show the fitted isotropic
@@ -149,8 +165,11 @@ bridge remains experimental and is not required for the main workflow.
   fits down to 0%** at n = 100, and on one reproduction fit it takes the largest
   implied loading norm from 979.1 to 3.35.
 
-  The penalty is **opt-in and never applied unless you name it**, so no existing
-  fit changes. `tau` is the prior standard deviation on each free loading, and
+  On the default Laplace route the penalty is **opt-in and never applied unless
+  you name it**, so no existing Laplace fit changes. AGHQ is itself opt-in; once
+  AGHQ is enabled, its default is the penalised `tau = 2` MAP route unless
+  `aghq_ridge = Inf` requests an unpenalised fit. `tau` is the prior standard
+  deviation on each free loading, and
   its scale is set by the model rather than tuned: the latent scores are
   standard normal by identification, so a loading is the trait's latent standard
   deviation in link units, making `tau = 2` weakly informative. Its influence
@@ -173,12 +192,14 @@ bridge remains experimental and is not required for the main workflow.
   never used as the scale yardstick. If that pilot or the scale-aware final fit
   is unusable, the function returns an independently started `tau = 2` fit and
   records the reason in `fit$aghq$ridge_auto`; it does not silently claim that
-  auto-selection succeeded. Both pilot and returned AGHQ fits use the calibrated
-  9-node multi-start estimator; conflicting `aghq` or `aghq_multistart` controls
+  auto-selection succeeded. Both pilot and returned AGHQ fits use the fixed
+  9-node multi-start rule evaluated for failure/runaway avoidance in this
+  Bernoulli grid; this is not interval calibration or general estimator
+  certification. Conflicting `aghq` or `aghq_multistart` controls
   are replaced with a warning.
 
   This scope is supported as a **runaway/failure-avoidance** capability, not as
-  a general accuracy improvement. In the 600-replicate calibration,
+  a general accuracy improvement. In the 600-replicate evaluation,
   the auto fit was usable in 135 replicates. A transparent auto-when-usable,
   otherwise-`tau = 2` policy did not increase per-cell failure or runaway rates
   and stayed within the preregistered +0.02 loading-error non-inferiority margin,
@@ -674,10 +695,18 @@ bridge remains experimental and is not required for the main workflow.
 
 ## Known limitations
 
-* **Variance components: what is and is not claimed.** For all families,
-  **point estimates** of variance components are the supported claim. No cell's
-  interval coverage is certified; the available covariance routes have focused-test
-  evidence only. Intervals are route output, not a coverage guarantee.
+* **Variance components: what is and is not claimed.** Point estimates are the
+  package's primary inferential output, but their evidence is route- and
+  regime-specific.
+  Broad package-wide interval coverage is not certified. The only current
+  exception is the narrowly scoped unpenalised native-Laplace, two-sided
+  ordinary-Gaussian total-variance regime returned by
+  `profile_ci_total_variance()` with
+  `interval_status = "certified-0.94"`. That label marks a documented 0.94
+  coverage floor under its preregistered conditions, not nominal 95% coverage
+  or a guarantee for an individual interval. Other covariance routes have
+  cell-specific evidence only. Intervals are route output, not a coverage
+  guarantee.
 * Interval support is target-specific. A route that returns bounds is not, by
   itself, evidence of nominal repeated-sampling coverage.
 * The previous public `check_identifiability()` and `coverage_study()` prototypes

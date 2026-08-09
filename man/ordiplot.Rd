@@ -33,6 +33,11 @@ arrows (default \code{TRUE}).}
 \item{rotate}{Rotation after fitting: \code{"none"} (default), \code{"varimax"}, or
 \code{"promax"}.}
 }
+\value{
+Invisibly, a list with the plotted \code{scores} matrix and the
+corresponding \code{loadings} matrix. The function is primarily called for its
+plotting side effect.
+}
 \description{
 Draws a simple base-R biplot of latent scores, with optional trait loadings
 overlaid, for a fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}. This method is a compatibility

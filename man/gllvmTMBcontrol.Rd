@@ -105,9 +105,13 @@ the user can see which seed led to the winning fit. Default
 \code{FALSE}.}
 
 \item{integration}{Which method evaluates the latent-variable integral.
-\code{"laplace"} (default) is the Laplace approximation and is the \strong{only}
-route that yields a marginal likelihood, so it is the only one for which
-\code{\link[=logLik]{logLik()}}, \code{\link[=AIC]{AIC()}}, \code{\link[=BIC]{BIC()}} and likelihood-ratio tests are defined.
+\code{"laplace"} (default) is the Laplace approximation. For an unpenalised
+native-Laplace fit, \code{\link[=logLik]{logLik()}}, \code{\link[=AIC]{AIC()}}, \code{\link[=BIC]{BIC()}} and likelihood-ratio tests
+have their ordinary maximum-likelihood interpretation. AGHQ-refined fits
+also expose these methods, but use a different integration objective and
+must not be compared across engines; with a loading ridge, the fitted
+point is penalised MAP and ordinary likelihood-comparison interpretations
+do not apply.
 
 \code{"va"} selects an opt-in \strong{research} route whose objective is an evidence
 lower bound, not a marginal likelihood. Fixed-effect \code{\link[=vcov]{vcov()}} and
@@ -122,9 +126,14 @@ It is admitted only inside the Gate-E implementation/light-fit region —
 response-family registry, \code{d} up to 2, up to 80 responses, at least 100
 units, and the native TMB engine — and
 requesting it outside that region is an \strong{error}, not a warning. The \code{d}
-limit is where a pre-registered recovery gate actually passed: \code{d = 4} was
-measured and refused, because with few responses the planted axes collapse
-far more often than the gate's tolerance allows.
+limit is retained from the historical explicit-JJ preregistered recovery
+gate: \code{d = 4} was measured and refused because, with few responses, the
+planted axes collapsed more often than that gate allowed. This is an
+implementation admission fence, not recovery evidence for the current
+automatic GH-H7 route. In the current 36-cell family-by-rank campaign only
+the Poisson-log \code{q = 5} cell passed the overall point route, and that rank
+lies outside the public \code{d <= 2} fence; VA therefore remains experimental
+and \code{calibrated = FALSE}.
 It cannot be combined with \code{aghq}, which is an alternative evaluation of
 the same integral rather than an additional layer.
 
@@ -139,10 +148,13 @@ uncalibrated VA-Wald uncertainty; \code{getLV(se = TRUE)} returns a variational
 \code{eval_method} resolves to \code{"gh"}. Loading/covariance intervals remain
 unavailable.
 
-Recovery of that ordination was measured against planted truth at the
+\strong{Historical explicit-JJ evidence.} Recovery of the ordination below was
+measured with the earlier JJ evaluator against planted truth at the
 admitted cells (\code{d = 2}, 8 responses, n = 150 and 400, 50 seeds per cell;
 \code{dev/va-usability/A2-ATTENUATION.md}), with the Laplace route run on the
-same simulated data as a control:
+same simulated data as a control. This campaign predates the current
+automatic Gauss-Hermite default and must not be used as evidence for the
+accuracy of the current GH-default route:
 \itemize{
 \item \strong{Gaussian}: the loading-implied variance is recovered at 0.98–1.02 of
 truth, and the mean paired difference in latent-score correlation
@@ -150,9 +162,9 @@ against Laplace is below \code{2e-07} at both \code{n}.
 \item \strong{Poisson}: also 0.98–1.02 of truth, with a paired latent-score
 difference of ~\code{4e-04} — negligible in magnitude but statistically
 detectable, and the loading scale sits ~1\% below Laplace.
-\item \strong{Binomial}: latent scores recover at r ≈ 0.59. That ceiling is a limit
-of \strong{binary data} at these cells rather than of the variational route —
-the Laplace default reaches r ≈ 0.56–0.59 on the same data, and a third
+\item \strong{Binomial}: latent scores recover at about r = 0.59. That ceiling is a limit
+of \strong{binary data} at these cells rather than of the historical JJ route —
+the Laplace default reaches about r = 0.56–0.59 on the same data, and a third
 estimator (Gauss-Hermite) lands in the same place. The loading SCALE,
 however, is biased low (0.58–0.67 of truth) and this \strong{is} a real bias
 relative to Laplace, whose median brackets 1. Read a binomial
@@ -160,7 +172,7 @@ ordination's axes and relative positions, not the absolute magnitude of
 its loadings.
 }
 
-The comparison is not effort-matched: the variational arm ran four starts
+The comparison is not effort-matched: the historical JJ arm ran four starts
 behind an agreement-and-gradient health gate, the Laplace arm a single
 start admitted on a positive-definite Hessian.
 
@@ -178,10 +190,9 @@ effect) is an \strong{error}, never a silent omission.
 There is no \code{"eva"} value. The EVA engine exists in this package and is
 reachable as a research route, but it is not wired to \code{\link[=gllvmTMB]{gllvmTMB()}}, and an
 argument value that could only ever raise an error would advertise a
-capability the package does not have. Its own measurements are the reason
-it is not a candidate here: EVA delivers valid inference for the
-regression coefficients but not for \verb{Lambda Lambda'}, which is the
-between-response covariance this package exists to estimate.}
+capability the package does not have. No general coefficient, covariance,
+interval, or calibration claim is made for EVA. Existing measurements are
+research diagnostics only and do not establish a public estimator route.}
 
 \item{va_H}{Gauss-Hermite quadrature order for the variational route, a
 single odd integer \verb{>= 3} (default \code{7}). Ignored unless
@@ -224,6 +235,9 @@ pass. Default \code{1L}. Later passes escalate when continuation is enabled.}
 \item{aghq_ridge}{Ridge penalty on the loadings, as the scale \code{tau};
 \code{Inf} disables it. Default \code{2}. Naming a numeric value explicitly also
 makes the \code{Laplace + ridge} control reachable without quadrature.
+The default does not penalise an ordinary Laplace fit unless the caller
+explicitly names \code{aghq_ridge}. AGHQ itself is opt-in, but once enabled it
+uses the default \code{tau = 2} penalised MAP route unless \code{Inf} is requested.
 \code{"auto"} is an \strong{opt-in experimental} route for pure single-trial
 Bernoulli models with one ordinary unit-tier \code{latent()} block. It uses an
 unpenalised 9-node multi-start AGHQ pilot, then
@@ -332,8 +346,9 @@ gllvmTMBcontrol(n_init = 3, init_jitter = 0.2)
 # Switch the optimiser to optim + BFGS for finicky two-level rr fits.
 gllvmTMBcontrol(optimizer = "optim", optArgs = list(method = "BFGS"))
 
-# Experimental, opt-in scale-aware ridge for the calibrated Bernoulli AGHQ
-# scope. The route uses the calibrated 9-node multi-start rule.
+# Experimental, opt-in scale-aware ridge for the evaluated Bernoulli AGHQ
+# scope. The route uses a fixed 9-node multi-start rule; this is not an
+# interval-calibration certificate.
 gllvmTMBcontrol(aghq_ridge = "auto")
 
 # Experimental scalar variational route: public auto uses GH with H = 7.

@@ -1,0 +1,9 @@
+"cell_id","n_expected","n_attempts","n_terminal","n_optimizer_converged","n_stationary","n_stationary_usable","n_pd_hessian","n_usable","optimizer_rate","stationary_rate","stationary_usable_rate","pd_hessian_rate","complete"
+"sf_g_n60_l05_m0",20,20,20,20,20,19,20,19,1,1,0.95,1,TRUE
+"sf_g_n60_l3_m30",20,20,20,20,20,17,20,17,1,1,0.85,1,TRUE
+"sf_g_n150_l05_m30",20,20,20,20,20,20,20,20,1,1,1,1,TRUE
+"sf_g_n150_l3_m0",20,20,20,20,20,20,20,20,1,1,1,1,TRUE
+"sf_b_n60_l05_m30",20,20,20,20,20,18,20,18,1,1,0.9,1,TRUE
+"sf_b_n60_l3_m0",20,20,20,20,20,17,20,17,1,1,0.85,1,TRUE
+"sf_b_n150_l05_m0",20,20,20,20,20,20,20,20,1,1,1,1,TRUE
+"sf_b_n150_l3_m30",20,20,20,20,20,20,20,20,1,1,1,1,TRUE

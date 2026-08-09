@@ -1,0 +1,9 @@
+"cell_id","true_positive","false_negative","false_positive","true_negative","sensitivity_denominator","specificity_denominator","false_negative_rate_denominator","sensitivity","specificity","catastrophic_but_healthy_rate","catastrophic_but_healthy_upper_95"
+"rb_b_missing",0,0,0,20,0,20,20,NA,1,0,0.139108340668265
+"rb_b_rare",0,0,0,20,0,20,20,NA,1,0,0.139108340668265
+"rb_g_missing",0,0,1,19,0,20,20,NA,0.95,0,0.139108340668265
+"rb_g_rare",0,0,0,20,0,20,20,NA,1,0,0.139108340668265
+"rb_nb2_missing",0,0,2,18,0,20,20,NA,0.9,0,0.139108340668265
+"rb_nb2_rare",0,0,1,19,0,20,20,NA,0.95,0,0.139108340668265
+"rb_p_missing",0,0,0,20,0,20,20,NA,1,0,0.139108340668265
+"rb_p_rare",0,0,0,20,0,20,20,NA,1,0,0.139108340668265

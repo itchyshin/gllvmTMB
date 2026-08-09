@@ -181,6 +181,11 @@
 #'     heteroscedastic Gaussian fits), or to down-weight outliers.
 #'     Must be non-negative and finite; `weights[i] = 0` zeroes that
 #'     row's contribution to the joint NLL.
+#'     Non-unit likelihood weights define a weighted estimating objective,
+#'     not an ordinary maximum-likelihood fit. The package retains point
+#'     estimates but refuses likelihood-based model-selection methods;
+#'     Hessian/Wald uncertainty is not sandwich-corrected and must not be
+#'     interpreted as calibrated inference for the weighted objective.
 #'   * For **binomial** families fit without a `cbind(succ, fail)` LHS,
 #'     `weights` continues to be interpreted as the per-row trial count
 #'     (binomial size; alternative API to `cbind(succ, fail)`). This
@@ -294,8 +299,13 @@
 #'   S3 methods are registered on the **subclasses**, not on bare
 #'   `gllvmTMB`: for a multi-trait fit (`gllvmTMB_multi`), `tidy()`,
 #'   `predict()`, `summary()`, `confint()` and `logLik()` are available, and
-#'   `AIC()` / `BIC()` work through `logLik()`. Trait-level extractors such
-#'   as `extract_ICC_site()` and `extract_communality()` are multi-trait only.
+#'   `AIC()` / `BIC()` dispatch through `logLik()`. They have their ordinary ML
+#'   interpretation only for unpenalised native-Laplace fits. AGHQ uses a
+#'   different integration objective, and a loading ridge returns a penalised
+#'   MAP point rather than the likelihood maximum; do not use ordinary AIC,
+#'   BIC, or likelihood-ratio interpretations for those fits. Trait-level
+#'   extractors such as `extract_ICC_site()` and `extract_communality()` are
+#'   multi-trait only.
 #'
 #'   `vcov()` and `coef()` are available too — see
 #'   [gllvmTMB_multi-vcov]. `coef()` works on any fit; `vcov()` needs the
@@ -346,6 +356,9 @@
 #' fixed-effect design values still error because the model cannot construct a
 #' design row; explicitly modelled missing predictors use `mi(x)`,
 #' `miss_control(predictor = "model")`, and `impute = list(...)`.
+#' The modelled-`mi()` route is native Laplace only; the variational route
+#' refuses `mi()` predictors. Dense missing-response masks have their own
+#' narrower VA fence and do not imply predictor-model support.
 #' These contracts are covered by the package's missing-data validation tests,
 #' both for responses and for predictors.
 #'
@@ -1333,9 +1346,13 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #'   choice. Ignored unless `integration = "va"`.
 #'
 #' @param integration Which method evaluates the latent-variable integral.
-#'   `"laplace"` (default) is the Laplace approximation and is the **only**
-#'   route that yields a marginal likelihood, so it is the only one for which
-#'   [logLik()], [AIC()], [BIC()] and likelihood-ratio tests are defined.
+#'   `"laplace"` (default) is the Laplace approximation. For an unpenalised
+#'   native-Laplace fit, [logLik()], [AIC()], [BIC()] and likelihood-ratio tests
+#'   have their ordinary maximum-likelihood interpretation. AGHQ-refined fits
+#'   also expose these methods, but use a different integration objective and
+#'   must not be compared across engines; with a loading ridge, the fitted
+#'   point is penalised MAP and ordinary likelihood-comparison interpretations
+#'   do not apply.
 #'
 #'   `"va"` selects an opt-in **research** route whose objective is an evidence
 #'   lower bound, not a marginal likelihood. Fixed-effect [vcov()] and
@@ -1350,9 +1367,14 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #'   response-family registry, `d` up to 2, up to 80 responses, at least 100
 #'   units, and the native TMB engine — and
 #'   requesting it outside that region is an **error**, not a warning. The `d`
-#'   limit is where a pre-registered recovery gate actually passed: `d = 4` was
-#'   measured and refused, because with few responses the planted axes collapse
-#'   far more often than the gate's tolerance allows.
+#'   limit is retained from the historical explicit-JJ preregistered recovery
+#'   gate: `d = 4` was measured and refused because, with few responses, the
+#'   planted axes collapsed more often than that gate allowed. This is an
+#'   implementation admission fence, not recovery evidence for the current
+#'   automatic GH-H7 route. In the current 36-cell family-by-rank campaign only
+#'   the Poisson-log `q = 5` cell passed the overall point route, and that rank
+#'   lies outside the public `d <= 2` fence; VA therefore remains experimental
+#'   and `calibrated = FALSE`.
 #'   It cannot be combined with `aghq`, which is an alternative evaluation of
 #'   the same integral rather than an additional layer.
 #'
@@ -1367,10 +1389,13 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #'   `eval_method` resolves to `"gh"`. Loading/covariance intervals remain
 #'   unavailable.
 #'
-#'   Recovery of that ordination was measured against planted truth at the
+#'   **Historical explicit-JJ evidence.** Recovery of the ordination below was
+#'   measured with the earlier JJ evaluator against planted truth at the
 #'   admitted cells (`d = 2`, 8 responses, n = 150 and 400, 50 seeds per cell;
 #'   `dev/va-usability/A2-ATTENUATION.md`), with the Laplace route run on the
-#'   same simulated data as a control:
+#'   same simulated data as a control. This campaign predates the current
+#'   automatic Gauss-Hermite default and must not be used as evidence for the
+#'   accuracy of the current GH-default route:
 #'
 #'   * **Gaussian**: the loading-implied variance is recovered at 0.98–1.02 of
 #'     truth, and the mean paired difference in latent-score correlation
@@ -1378,16 +1403,16 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #'   * **Poisson**: also 0.98–1.02 of truth, with a paired latent-score
 #'     difference of ~`4e-04` — negligible in magnitude but statistically
 #'     detectable, and the loading scale sits ~1% below Laplace.
-#'   * **Binomial**: latent scores recover at r ≈ 0.59. That ceiling is a limit
-#'     of **binary data** at these cells rather than of the variational route —
-#'     the Laplace default reaches r ≈ 0.56–0.59 on the same data, and a third
+#'   * **Binomial**: latent scores recover at about r = 0.59. That ceiling is a limit
+#'     of **binary data** at these cells rather than of the historical JJ route —
+#'     the Laplace default reaches about r = 0.56–0.59 on the same data, and a third
 #'     estimator (Gauss-Hermite) lands in the same place. The loading SCALE,
 #'     however, is biased low (0.58–0.67 of truth) and this **is** a real bias
 #'     relative to Laplace, whose median brackets 1. Read a binomial
 #'     ordination's axes and relative positions, not the absolute magnitude of
 #'     its loadings.
 #'
-#'   The comparison is not effort-matched: the variational arm ran four starts
+#'   The comparison is not effort-matched: the historical JJ arm ran four starts
 #'   behind an agreement-and-gradient health gate, the Laplace arm a single
 #'   start admitted on a positive-definite Hessian.
 #'
@@ -1405,10 +1430,9 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #'   There is no `"eva"` value. The EVA engine exists in this package and is
 #'   reachable as a research route, but it is not wired to [gllvmTMB()], and an
 #'   argument value that could only ever raise an error would advertise a
-#'   capability the package does not have. Its own measurements are the reason
-#'   it is not a candidate here: EVA delivers valid inference for the
-#'   regression coefficients but not for `Lambda Lambda'`, which is the
-#'   between-response covariance this package exists to estimate.
+#'   capability the package does not have. No general coefficient, covariance,
+#'   interval, or calibration claim is made for EVA. Existing measurements are
+#'   research diagnostics only and do not establish a public estimator route.
 #' @param aghq Adaptive Gauss-Hermite quadrature for the between-unit latent
 #'   block. `FALSE` (default) fits by Laplace approximation. A positive integer
 #'   requests that many quadrature nodes. `"auto"` lets the package decide, and
@@ -1422,6 +1446,9 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #' @param aghq_ridge Ridge penalty on the loadings, as the scale `tau`;
 #'   `Inf` disables it. Default `2`. Naming a numeric value explicitly also
 #'   makes the `Laplace + ridge` control reachable without quadrature.
+#'   The default does not penalise an ordinary Laplace fit unless the caller
+#'   explicitly names `aghq_ridge`. AGHQ itself is opt-in, but once enabled it
+#'   uses the default `tau = 2` penalised MAP route unless `Inf` is requested.
 #'   `"auto"` is an **opt-in experimental** route for pure single-trial
 #'   Bernoulli models with one ordinary unit-tier `latent()` block. It uses an
 #'   unpenalised 9-node multi-start AGHQ pilot, then
@@ -1516,8 +1543,9 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #' # Switch the optimiser to optim + BFGS for finicky two-level rr fits.
 #' gllvmTMBcontrol(optimizer = "optim", optArgs = list(method = "BFGS"))
 #'
-#' # Experimental, opt-in scale-aware ridge for the calibrated Bernoulli AGHQ
-#' # scope. The route uses the calibrated 9-node multi-start rule.
+#' # Experimental, opt-in scale-aware ridge for the evaluated Bernoulli AGHQ
+#' # scope. The route uses a fixed 9-node multi-start rule; this is not an
+#' # interval-calibration certificate.
 #' gllvmTMBcontrol(aghq_ridge = "auto")
 #'
 #' # Experimental scalar variational route: public auto uses GH with H = 7.
@@ -1544,12 +1572,13 @@ gllvmTMBcontrol <- function(
   ## route, but it is not wired to gllvmTMB(), and offering an argument value
   ## that can only ever error would advertise a capability the package does not
   ## have. See the note on the `integration` parameter.
-  ## "laplace" is the default and the only route carrying a marginal
-  ## likelihood, so it is the only one for which logLik()/AIC()/BIC()/LRT are
-  ## defined. "va" and "eva" are OPT-IN research routes whose objective is an
-  ## ELBO -- not a marginal likelihood (Design 85 s10) -- with no calibrated
-  ## uncertainty. Offering a value here does NOT advertise it: admission to any
-  ## user-facing claim is Design 85 s11 Gate 3's to grant, not this argument's.
+  ## "laplace" is the default. Its unpenalised native fit carries the ordinary
+  ## ML interpretation; AGHQ and loading-ridge qualifications are documented
+  ## on the control and logLik methods. "va" and "eva" are OPT-IN research
+  ## routes whose objective is an ELBO -- not a marginal likelihood (Design 85
+  ## s10) -- with no calibrated uncertainty. Offering a value here does NOT
+  ## advertise it: admission to any user-facing claim is Design 85 s11 Gate 3's
+  ## to grant, not this argument's.
   integration = c("laplace", "va"),
   ## VA-route knobs. Both were previously UNREACHABLE: the route hard-wired the
   ## tier and the engine's H default, so a caller could select `integration =
@@ -1664,12 +1693,12 @@ gllvmTMBcontrol <- function(
       cli::cli_abort(c(
         "{.code aghq_ridge = \"auto\"} cannot be combined with an explicit {.code aghq = FALSE}.",
         "i" = "The scale yardstick is an unpenalised multi-start AGHQ pilot, never a plain Laplace fit.",
-        ">" = "Omit {.arg aghq} to use the calibrated 9-node rule, or set {.code aghq = 9}."
+        ">" = "Omit {.arg aghq} to use the fixed 9-node rule evaluated for this scope, or set {.code aghq = 9}."
       ))
     }
     if (isTRUE(aghq_explicit) && !identical(aghq, 9L)) {
       cli::cli_warn(c(
-        "{.code aghq_ridge = \"auto\"} uses the calibrated {.code aghq = 9} final estimator.",
+        "{.code aghq_ridge = \"auto\"} uses the fixed {.code aghq = 9} final estimator evaluated for this scope.",
         "i" = "The requested {.arg aghq} setting has been replaced by 9 nodes."
       ))
     }

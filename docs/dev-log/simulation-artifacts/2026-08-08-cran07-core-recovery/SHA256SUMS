@@ -1,0 +1,10 @@
+eb1b1b943de93038b38e47bcdee434c1bd16a355fe273bae4e9fa1a156d0e9ea  README.md
+7182e91afa9f4c580add932f10bae753709c0525e259994cd7eacefdff7d9c5e  registry.csv
+f97fc512301f9e1e1058413dbdc17505452d91879699ec01ff95801c3b5e0c57  attempt-schema.csv
+5b5d5535130b5ee3da82db42c0743d7a585f80fe9beccc5ac7d4646ebee0bff2  ../../../../inst/sim/cran07-core/schema.R
+c09f421a74ef861983a11f36609373fad6f745726aef5a95576b3e820acd5261  ../../../../inst/sim/cran07-core/campaign.R
+a82f61c4c6cabc3782c99683082cba0f82f9f26c2069b52fe45a421b08c637de  ../../../../inst/sim/cran07-core/attempt-runner.R
+0303e11f1961125ef9c5fecb7883a0c700b73012e0b181204c033fb4f99fb9f6  ../../../../inst/sim/cran07-core/batch.R
+84c6d779bae0edf531ddecec4dd3fc18c8da44edc81d97034f063005c7ae7559  ../../../../inst/sim/cran07-core/run-batch.R
+ab98ae3dbfdc45825985923b8475feebfda579858a8991f6753742360466d06b  ../../../../inst/sim/cran07-core/summarize-batch.R
+2a308a86ca7c2dbcec6af1e2a5068ad69a09c46cfc2b7f6e83793da7d972d2a2  ../../../../inst/sim/cran07-core/self-test.R

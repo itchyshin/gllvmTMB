@@ -402,6 +402,7 @@
 ## function can currently answer. Kept separate from the SE computation
 ## itself so the guard runs (and fails fast) before any prediction work.
 .gllvmTMB_predict_se_guard <- function(object, newdata) {
+  .gllvmTMB_require_unweighted_inference(object, "predict(se.fit = TRUE)")
   if (!is.null(newdata)) {
     cli::cli_abort(c(
       "{.code se.fit = TRUE} is not yet supported together with {.arg newdata}.",
@@ -600,10 +601,18 @@
 #' * `summary()` adds a fixed-effects table with SEs, the global and
 #'   local trait correlation matrices, per-trait ICCs,
 #'   and global / local communalities.
-#' * `logLik()` returns the converged maximum log-likelihood with
-#'   `df = length(opt$par)` and `nobs` equal to the number of
-#'   likelihood-contributing observed response cells, so `AIC()` and
-#'   `BIC()` all work directly.
+#' * `logLik()` returns the unpenalised log-likelihood evaluated at the fitted
+#'   point, with `df = length(opt$par)` and `nobs` equal to the number of
+#'   likelihood-contributing observed response cells. For an unpenalised native
+#'   Laplace fit this is the converged maximum and `AIC()` / `BIC()` have their
+#'   ordinary ML interpretation. AGHQ uses a different integration objective,
+#'   so models must not be compared across engines. With a loading ridge, the
+#'   fitted point is penalised MAP rather than the likelihood maximum; ordinary
+#'   AIC, BIC, and likelihood-ratio interpretations do not apply. The methods
+#'   warn rather than silently relabelling those quantities.
+#'   Fits with non-unit likelihood weights are a separate boundary: their
+#'   objective is a weighted estimating criterion rather than an ordinary
+#'   log-likelihood, so `logLik()`, `AIC()`, and `BIC()` fail loudly.
 #'
 #' @param x,object A fit returned by [gllvmTMB()].
 #' @param digits Decimal digits in the printed summary. Default 3.
@@ -663,13 +672,27 @@ print.gllvmTMB_multi <- function(x, ...) {
   }
   if (!is.null(x$opt)) {
     estimator <- x$estimator %||% if (isTRUE(x$REML)) "REML" else "ML"
+    weighted <- isTRUE(x$likelihood_weights$active)
+    penalised <- isTRUE(x$aghq$penalised)
+    objective_label <- if (weighted) {
+      "Weighted objective (-value)"
+    } else if (penalised) {
+      paste(estimator, "log L at MAP point")
+    } else {
+      paste(estimator, "log L")
+    }
     cat(sprintf(
-      "  %s log L = %.3f   convergence = %d   engine = %s\n",
-      estimator,
+      "  %s = %.3f   convergence = %d   engine = %s\n",
+      objective_label,
       -x$opt$objective,
       x$opt$convergence,
       .aghq_engine_label(x)
     ))
+    if (weighted) {
+      cat("  Note: ordinary Wald and likelihood-based inference is not validated for non-unit likelihood weights.\n")
+    } else if (penalised) {
+      cat("  Note: parameters are a penalised MAP point; ordinary AIC, BIC, and likelihood-ratio interpretations do not apply.\n")
+    }
   }
   ## Rotation advisory note (only if any of B / W / phy is unconstrained
   ## with rank > 1)
@@ -719,6 +742,16 @@ summary.gllvmTMB_multi <- function(object, ...) {
     cluster_col = object$cluster_col %||% object$species_col,
     estimator = object$estimator %||% if (isTRUE(object$REML)) "REML" else "ML",
     logLik = -object$opt$objective,
+    objective_label = if (isTRUE(object$likelihood_weights$active)) {
+      "Weighted objective (-value)"
+    } else if (isTRUE(object$aghq$penalised)) {
+      paste(object$estimator %||% if (isTRUE(object$REML)) "REML" else "ML",
+            "log L at MAP point")
+    } else {
+      paste(object$estimator %||% if (isTRUE(object$REML)) "REML" else "ML", "log L")
+    },
+    weighted_objective = isTRUE(object$likelihood_weights$active),
+    penalised = isTRUE(object$aghq$penalised),
     convergence = object$opt$convergence,
     engine = .aghq_engine_label(object)
   )
@@ -732,6 +765,9 @@ summary.gllvmTMB_multi <- function(object, ...) {
     fids_obj <- object$tmb_data$family_id_vec
     if (!is.null(fids_obj) && length(unique(fids_obj)) > 1L) {
       df$link <- .per_fixef_link(object)[seq_len(nrow(df))]
+    }
+    if (isTRUE(object$likelihood_weights$active)) {
+      df$Std.Err[] <- NA_real_
     }
     out$fixef <- df
   }
@@ -769,7 +805,13 @@ summary.gllvmTMB_multi <- function(object, ...) {
   ## and came back non-finite -- the signature of a Hessian that is not
   ## positive-definite. Reporting only the first would leave the second as a
   ## column of bare NaN, which is the same defect one level down.
-  out$se_status <- if (is.null(object$sd_report)) {
+  out$se_status <- if (isTRUE(object$likelihood_weights$active)) {
+    list(
+      available = FALSE,
+      reason = "ordinary Wald uncertainty is not validated for non-unit likelihood weights",
+      weighted_objective = TRUE
+    )
+  } else if (is.null(object$sd_report)) {
     list(
       available = FALSE,
       reason = object$sdreport_error %||% "no sd_report on this fit"
@@ -816,12 +858,17 @@ print.summary.gllvmTMB_multi <- function(x, digits = 3, ...) {
       cat("  Covstructs:", paste(used_labels, collapse = ", "), "\n")
     }
     cat(sprintf(
-      "  %s log L = %.3f   convergence = %d   engine = %s\n",
-      estimator,
+      "  %s = %.3f   convergence = %d   engine = %s\n",
+      objective_label,
       logLik,
       convergence,
       engine
     ))
+    if (weighted_objective) {
+      cat("  Note: ordinary Wald and likelihood-based inference is not validated for non-unit likelihood weights.\n")
+    } else if (penalised) {
+      cat("  Note: parameters are a penalised MAP point; ordinary AIC, BIC, and likelihood-ratio interpretations do not apply.\n")
+    }
   })
 
   ## Fixed-effects table — one row per term, named. For mixed-family
@@ -929,7 +976,36 @@ print.summary.gllvmTMB_multi <- function(x, digits = 3, ...) {
 #' @rdname gllvmTMB_multi-methods
 #' @export
 logLik.gllvmTMB_multi <- function(object, ...) {
-  ll <- -object$opt$objective
+  if (isTRUE(object$likelihood_weights$active)) {
+    cli::cli_abort(c(
+      "{.fn logLik} is undefined for this non-unit weighted objective.",
+      "i" = "The fitted point minimizes a weighted estimating criterion; it is not an ordinary maximum-likelihood estimate.",
+      ">" = "Inspect {.code fit$opt$objective} for optimization diagnostics, or refit with unit likelihood weights for likelihood-based comparison."
+    ), class = "gllvmTMB_weighted_objective_no_logLik")
+  }
+  ridge_tau <- object$aghq$ridge_tau %||% Inf
+  pen <- isTRUE(object$aghq$penalised) ||
+    (is.numeric(ridge_tau) && length(ridge_tau) == 1L &&
+       is.finite(ridge_tau) && ridge_tau > 0)
+  likelihood_nll <- object$objective_components$likelihood_nll %||% NA_real_
+  if (length(likelihood_nll) != 1L || !is.finite(likelihood_nll)) {
+    if (pen) {
+      likelihood_nll <- tryCatch(
+        as.numeric(object$tmb_obj$fn(object$opt$par)),
+        error = function(e) NA_real_
+      )
+      if (length(likelihood_nll) != 1L || !is.finite(likelihood_nll)) {
+        cli::cli_abort(c(
+          "The unpenalised likelihood at this stored MAP point is unavailable.",
+          "i" = "Older penalised fit objects did not retain separate likelihood and ridge-criterion values.",
+          ">" = "Refit in the current package version before using {.fn logLik}."
+        ), class = "gllvmTMB_penalised_logLik_unavailable")
+      }
+    } else {
+      likelihood_nll <- object$opt$objective
+    }
+  }
+  ll <- -likelihood_nll
   attr(ll, "df") <- length(object$opt$par) +
     if (isTRUE(object$REML)) length(object$X_fix_names %||% character(0)) else 0L
   attr(ll, "estimator") <- object$estimator %||%
@@ -945,11 +1021,13 @@ logLik.gllvmTMB_multi <- function(object, ...) {
   ##
   ## With a loading ridge active the optimiser minimises
   ## F + 0.5*||lambda||^2/tau^2, so `opt$par` is a MAP point -- while
-  ## `opt$objective` is the UNPENALISED objective evaluated there (the AGHQ
-  ## finaliser sets it from `obj_try$fn(par_best)`). The number returned is
-  ## therefore a genuine log-likelihood sitting OFF ITS OWN MAXIMUM by an amount
-  ## nobody has measured. Left undisclosed that is an ML quantity computed at a
-  ## MAP point -- the defect the D-43 method lens named.
+  ## `opt$objective` is route-specific: native Laplace retains the penalised
+  ## criterion, whereas the AGHQ finaliser stores the unpenalised objective.
+  ## `objective_components$likelihood_nll` is the explicit common source used
+  ## here. The returned value is therefore a genuine log-likelihood sitting OFF
+  ## ITS OWN MAXIMUM by an amount nobody has measured. Left undisclosed that is
+  ## an ML quantity computed at a MAP point -- the defect the D-43 method lens
+  ## named.
   ##
   ## It is deliberately NOT rewritten to the penalised value. In a nested LRT the
   ## penalty pull scales with the NUMBER OF LOADINGS, so it does not cancel
@@ -957,10 +1035,6 @@ logLik.gllvmTMB_multi <- function(object, ...) {
   ## bias every comparison against the larger model by an unquantified amount.
   ## Returning the honest likelihood and labelling where it was evaluated is the
   ## lesser evil; AIC()/BIC() warn on top (R/aghq-report.R).
-  ridge_tau <- object$aghq$ridge_tau %||% Inf
-  pen <- isTRUE(object$aghq$penalised) ||
-    (is.numeric(ridge_tau) && length(ridge_tau) == 1L &&
-       is.finite(ridge_tau) && ridge_tau > 0)
   attr(ll, "penalised") <- pen
   attr(ll, "ridge_tau") <- ridge_tau
   if (pen) {
@@ -969,6 +1043,11 @@ logLik.gllvmTMB_multi <- function(object, ...) {
       format(ridge_tau, digits = 4),
       "; this is the unpenalised log-likelihood AT that point, not its maximum"
     )
+    cli::cli_warn(c(
+      "{.fn logLik} is the unpenalised likelihood evaluated at a penalised MAP point, not at its maximum.",
+      "i" = "The loading ridge used {.arg tau} = {format(ridge_tau, digits = 4)}.",
+      ">" = "Do not use this value for ordinary AIC, BIC, or likelihood-ratio inference; refit with {.code aghq_ridge = Inf} for likelihood-based comparison."
+    ))
   }
   ## nobs = likelihood-contributing rows. Under the default response="drop"
   ## every fitted row is observed, so this equals length(y) (unchanged). Under
@@ -1034,7 +1113,10 @@ nobs.gllvmTMB_multi <- function(object, ...) {
 #' @return A data.frame. `effect = "fixed"` rows include a `link` column
 #'   reporting each trait's link function (`"identity"`, `"probit"`,
 #'   `"log"`, `"logit"`, …). `effect = "cutpoint"` rows carry the
-#'   ordinal-probit thresholds.
+#'   ordinal-probit thresholds. For a non-unit weighted objective, fixed-effect
+#'   point estimates remain available but `std.error` is `NA`, an
+#'   `inference_status` column explains the boundary, and `conf.int = TRUE`
+#'   fails because no sandwich interval is certified.
 #' @export
 tidy.gllvmTMB_multi <- function(
   x,
@@ -1045,14 +1127,21 @@ tidy.gllvmTMB_multi <- function(
 ) {
   effects <- match.arg(effects)
   if (effects == "fixed") {
+    weighted <- isTRUE(x$likelihood_weights$active)
+    if (weighted && isTRUE(conf.int)) {
+      .gllvmTMB_require_unweighted_inference(x, "tidy(conf.int = TRUE)")
+    }
     bfix <- .gllvmTMB_b_fix_table(x)
     out <- data.frame(
       term = bfix$term,
       estimate = bfix$Estimate,
-      std.error = bfix$Std.Err,
+      std.error = if (weighted) rep(NA_real_, nrow(bfix)) else bfix$Std.Err,
       stringsAsFactors = FALSE,
       row.names = NULL
     )
+    if (weighted) {
+      out$inference_status <- "point_estimate_only_weighted_objective"
+    }
     ## Per-trait link column. For single-family fits this is a single
     ## value repeated; for mixed-family fits each row carries the link
     ## that applies to its trait. Useful for downstream reporting code
@@ -1800,7 +1889,9 @@ sanity_multi <- function(object, gradient_thresh = 1e-2, se_thresh = 100) {
 #'   delta-method transform), so it approximates the SE of the
 #'   inverse-link fitted value, not an exact one. Currently only
 #'   supported for `newdata = NULL` (training rows), non-`multinomial()`
-#'   fits, and fits without an active `mi()` missing-covariate model.
+#'   fits, fits without an active `mi()` missing-covariate model, and fits with
+#'   unit likelihood weights. A non-unit weighted objective has no certified
+#'   prediction-standard-error route.
 #' @param ... Unused.
 #'
 #' @return A data frame with the original row identifiers plus an `est`

@@ -211,7 +211,7 @@ The older Phase 1c-viz checklist is no longer 0/7. The current ledger is:
   slice).
 - A new theme package (not needed; the publication-ggplot-engineer
   skill defines the package-level theme directly).
-- Estimating directional anisotropy. The independently authored
+- Estimating directional anisotropy. The substantially rewritten
   `plot_anisotropy*()` helpers now draw the fitted isotropic practical-range
   circle for native gllvmTMB spatial fits and label `H = I` as a model
   assumption. Ellipses with unequal axes remain out of scope until the TMB

@@ -1,0 +1,22 @@
+scope,gate,threshold,denominator_or_rule
+pilot_cell,complete,TRUE,exactly 20 saved attempts
+pilot_cell,unusable,<=3,all attempts whose status is not usable including unclassified
+pilot_cell,unclassified,<=1,all 20 attempts
+pilot_cell,nonfinite_core,0,all 20 attempts
+pilot_global,detector_sensitivity,>=0.95,all catastrophic positives across exactly 680 attempts; nonzero denominator
+pilot_global,detector_specificity,>=0.90,all negatives across exactly 680 attempts; nonzero denominator
+production_cell,complete,TRUE,exactly 400 terminal attempts
+production_cell,stationary_usable,>=0.95,all 400 attempts
+production_cell,positive_hessian,>=0.90,all 400 attempts
+production_cell,unclassified,0,all 400 attempts
+production_cell,detector_specificity,>=0.90,required when negatives exist
+production_cell,catastrophic_but_healthy_upper_95,<0.02,exact one-sided Clopper-Pearson bound over all 400 attempts
+production_cell,standardized_beta_bias,<=0.10,each component has exactly 400 finite applicable contributions and replicates 1:400
+production_cell,Sigma_shared_relative_Frobenius_bias,<=0.15,each applicable matrix component has exactly 400 finite contributions and replicates 1:400
+production_cell,Sigma_total_relative_Frobenius_bias,<=0.15,each matrix component has exactly 400 finite contributions and replicates 1:400
+production_cell,Psi_diagonal_bias,<=0.20 relative,each applicable diagonal has exactly 400 finite contributions and replicates 1:400; psi_small uses <=0.01 absolute; absence allowed only for dep
+production_cell,correlation_absolute_bias,<=0.10,each applicable correlation has exactly 400 finite contributions and replicates 1:400; rho_boundary98 uses <=0.15
+production_cell,component_identity,exact match,frozen base-R beta names plus algebraic Sigma/Psi/correlation schema; missing and unexpected applicable keys fail
+production_pair,large_vs_small_RMSE,large <= small + bootstrap_SE,both cells admitted and exactly 400 finite errors per component per side with replicates 1:400; B=2000; base seed=370830001; absent side is HOLD
+broad_closeout,three_campaign_evidence,PASS,core silent-failure and robustness summaries exactly match admitted subsets and every admitted cell passes
+broad_closeout,six_core_pairs,PASS,all six frozen small/large pairs are admitted and every frozen expected component passes RMSE gate

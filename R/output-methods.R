@@ -175,6 +175,9 @@ getLV <- function(
   level <- match.arg(level, c("unit", "unit_obs", "B", "W"))
   level <- .normalise_level(level, arg_name = "level")
   rotate <- match.arg(rotate)
+  if (isTRUE(se) && inherits(fit, "gllvmTMB_multi")) {
+    .gllvmTMB_require_unweighted_inference(fit, "getLV(se = TRUE)")
+  }
   if (inherits(fit, "gllvmTMB_julia") && rotate != "none") {
     cli::cli_abort(
       "engine = 'julia': rotated latent scores are not routed yet; use {.code rotate = \"none\"} or engine = 'tmb'."
@@ -355,6 +358,9 @@ extract_residual_cor <- function(fit, level = "unit") {
 #' @param rotate Rotation after fitting: `"none"` (default), `"varimax"`, or
 #'   `"promax"`.
 #' @param ... Passed to `plot()`.
+#' @return Invisibly, a list with the plotted `scores` matrix and the
+#'   corresponding `loadings` matrix. The function is primarily called for its
+#'   plotting side effect.
 #' @seealso [plot.gllvmTMB_multi()] for the available `type` choices.
 #' @keywords internal
 #' @export

@@ -1410,6 +1410,10 @@
 #' loadings and diagonal \eqn{\Psi}. Non-Gaussian bootstrap and broader
 #' derived-target coverage are not universally calibrated; inspect the returned
 #' method and the target-specific article before reporting bounds.
+#' Fits using non-unit likelihood weights target a weighted estimating
+#' objective, not the ordinary likelihood used by these interval routes.
+#' `confint()` therefore refuses them; no sandwich interval is currently
+#' certified.
 #'
 #' Main parm-class dispatch paths:
 #'
@@ -1610,6 +1614,7 @@ confint.gllvmTMB_multi <- function(
   seed = NULL,
   ...
 ) {
+  .gllvmTMB_require_unweighted_inference(object, "confint")
   ## ---- Lambda entry path (Stage 2, 2026-05-27) -----------------------------
   ## `parm = "Lambda"` (all free entries) or `"Lambda:i,j"` /
   ## `"Lambda:i,j;k,l"` (specific entries) route to Stage 1 machinery in

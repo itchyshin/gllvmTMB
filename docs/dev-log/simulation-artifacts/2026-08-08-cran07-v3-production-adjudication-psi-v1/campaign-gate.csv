@@ -1,0 +1,4 @@
+"campaign_id","admitted_n","held_pilot_n","valid","all_admitted_cells_pass","reason"
+"cran07-core-recovery-v3",15,3,TRUE,FALSE,"one_or_more_admitted_cells_failed"
+"cran07-silent-failure-v3",8,0,TRUE,FALSE,"one_or_more_admitted_cells_failed"
+"cran07-robustness-v3",8,0,TRUE,FALSE,"one_or_more_admitted_cells_failed"

@@ -430,6 +430,12 @@ extract_phylo_signal <- function(
     cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
   }
   method <- match.arg(method)
+  if (isTRUE(ci)) {
+    .gllvmTMB_require_unweighted_inference(
+      fit,
+      paste0("extract_phylo_signal(ci = TRUE, method = '", method, "')")
+    )
+  }
   has_phy <- isTRUE(fit$use$phylo_rr) || isTRUE(fit$use$phylo_diag)
   if (!has_phy) {
     cli::cli_abort(c(

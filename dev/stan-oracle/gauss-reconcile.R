@@ -28,9 +28,32 @@ suppressPackageStartupMessages({
 })
 rstan_options(auto_write = TRUE)
 
-pkg_root <- "/Users/z3437171/local-scratch/worktrees/stan-oracle"
+script_arg <- grep("^--file=", commandArgs(trailingOnly = FALSE), value = TRUE)
+if (length(script_arg) != 1L) {
+  stop("Run this driver with Rscript so its repository root can be resolved.",
+       call. = FALSE)
+}
+script_file <- normalizePath(sub("^--file=", "", script_arg), mustWork = TRUE)
+pkg_root <- normalizePath(file.path(dirname(script_file), "..", ".."),
+                          mustWork = TRUE)
 here     <- file.path(pkg_root, "dev", "stan-oracle")
 stopifnot(file.exists(file.path(pkg_root, "DESCRIPTION")))
+run_token <- Sys.getenv("GLLVMTMB_STAN_ORACLE_RUN_TOKEN")
+if (!grepl("^[A-Za-z0-9._-]{8,128}$", run_token)) {
+  stop(
+    "Set GLLVMTMB_STAN_ORACLE_RUN_TOKEN to one shared 8-128 character token for K1 and K2.",
+    call. = FALSE
+  )
+}
+provenance_files <- c(
+  k1_driver = file.path(here, "gauss-reconcile.R"),
+  k2_driver = file.path(here, "gauss-reconcile-k2.R"),
+  stan_density = file.path(here, "gllvm_ordinary.stan"),
+  tmb_source = file.path(pkg_root, "src", "gllvmTMB.cpp")
+)
+stopifnot(all(file.exists(provenance_files)))
+source_hashes <- as.list(unname(tools::md5sum(provenance_files)))
+names(source_hashes) <- names(provenance_files)
 devtools::load_all(pkg_root, quiet = TRUE)
 
 n_traits <- 3L; n_unit <- 15L; K <- 1L
@@ -84,7 +107,9 @@ stopifnot(nrow(df_B) == 90L - 4L - 8L)
 ## ---------------------------------------------------------------------------
 build_tmb <- function(df) {
   fit <- suppressWarnings(suppressMessages(gllvmTMB(
-    value ~ 0 + trait + latent(0 + trait | unit, d = 1) + unique(0 + trait | unit),
+    value ~ 0 + trait +
+      latent(0 + trait | unit, d = 1, unique = FALSE) +
+      unique(0 + trait | unit),
     data = df, unit = "unit", family = gaussian(),
     control = gllvmTMBcontrol(optArgs = list(control = list(iter.max = 30, eval.max = 40)))
   )))
@@ -126,6 +151,29 @@ tm_A <- build_tmb(df_A)
 tm_B <- build_tmb(df_B)
 aud_A <- audit(tm_A); aud_B <- audit(tm_B)
 stopifnot("log_sigma_eps" %in% tm_A$nm, "log_sigma_eps" %in% tm_B$nm)
+validate_audit <- function(x, expected_rows) {
+  expected_blocks <- c("b_fix", "log_sigma_eps", "theta_rr_B", "z_B",
+                       "theta_diag_B", "s_B")
+  stopifnot(
+    identical(x$n_rows, expected_rows),
+    isTRUE(x$X_fix_is_trait_indicator),
+    isTRUE(x$trait_id_matches_R),
+    isTRUE(x$site_id_matches_unit),
+    identical(x$n_sites, n_unit),
+    identical(x$n_traits, n_traits),
+    identical(x$d_B, K),
+    setequal(x$use_flags_on, c("use_rr_B", "use_diag_B")),
+    identical(x$diag_B_skip, rep.int(0L, n_traits)),
+    isTRUE(x$all_family_gaussian),
+    isTRUE(x$all_link_identity),
+    setequal(names(x$block_counts), expected_blocks),
+    identical(as.integer(unlist(x$block_counts)),
+              c(n_traits, 1L, n_traits, n_unit, n_traits,
+                n_unit * n_traits))
+  )
+}
+validate_audit(aud_A, nrow(df_A))
+validate_audit(aud_B, nrow(df_B))
 
 ## ---------------------------------------------------------------------------
 ## 2. Parameter points.  P1 is the published fixture's theta (the ONLY point
@@ -167,6 +215,10 @@ theta_P5 <- rand_theta(rr = c(-0.2, -1.4, 0.8), lse = log(0.33),
                        dg = log(c(0.9, 0.55, 0.13)))
 
 flatten_theta <- function(blocks, nm) {
+  stopifnot(setequal(unique(nm), names(blocks)))
+  observed_counts <- as.integer(table(nm)[names(blocks)])
+  expected_counts <- unname(vapply(blocks, length, integer(1L)))
+  stopifnot(identical(observed_counts, expected_counts))
   th <- numeric(length(nm))
   for (b in names(blocks)) th[nm == b] <- blocks[[b]]
   stopifnot(all(is.finite(th)))
@@ -177,7 +229,7 @@ flatten_theta <- function(blocks, nm) {
 ## 3. Transport: internal -> natural.  FIXED from src/, never re-selected.
 ## ---------------------------------------------------------------------------
 transport <- function(blocks) {
-  list(
+  out <- list(
     mu        = as.numeric(blocks$b_fix),
     Lambda    = matrix(as.numeric(blocks$theta_rr_B), nrow = n_traits, ncol = K),
     psi       = exp(2 * as.numeric(blocks$theta_diag_B)),
@@ -186,6 +238,15 @@ transport <- function(blocks) {
     q         = matrix(as.numeric(blocks$s_B), nrow = n_unit, ncol = n_traits,
                        byrow = TRUE)
   )
+  stopifnot(
+    identical(dim(out$Lambda), c(n_traits, K)),
+    identical(dim(out$z), c(n_unit, K)),
+    identical(dim(out$q), c(n_unit, n_traits)),
+    all(is.finite(unlist(out))),
+    all(out$psi > 0),
+    out$sigma_eps > 0
+  )
+  out
 }
 
 ## ---------------------------------------------------------------------------
@@ -270,6 +331,18 @@ tab <- data.frame(
   rel_diff = vapply(res, `[[`, 0, "rel_diff_stan_vs_tmb"),
   stringsAsFactors = FALSE
 )
+stopifnot(
+  length(res) == 6L,
+  nrow(tab) == 6L,
+  !anyDuplicated(tab$point),
+  all(vapply(tab[-1L], function(x) all(is.finite(x)), logical(1L))),
+  max(tab$rel_diff) <= 1e-12,
+  max(vapply(res, `[[`, 0, "abs_diff_rspec_vs_tmb")) <= 1e-12,
+  all(vapply(res, function(x) {
+    isTRUE(all.equal(x$stan_jacobian_if_enabled, x$jacobian_expected,
+                     tolerance = 1e-10))
+  }, logical(1L)))
+)
 cat("\n=== TMB vs Stan, fixed mapping, several points ===\n")
 print(tab, row.names = FALSE, digits = 15)
 
@@ -303,6 +376,10 @@ for (r in res) cat(sprintf("  %-32s %.12f  vs  %.12f\n", r$point,
 
 out <- list(
   generated = as.character(Sys.time()),
+  provenance = list(
+    run_token = run_token,
+    source_hashes = source_hashes
+  ),
   mapping_used = list(
     mu = "b_fix (identity)",
     sigma_eps = "exp(log_sigma_eps)",

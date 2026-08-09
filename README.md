@@ -10,9 +10,12 @@
 > **`gllvmTMB` is experimental — use at your own risk.** It is not complete, is
 > not fully human-verified, and needs extensive further validation. CRAN
 > availability is not a statement of scientific maturity. Point estimates are the
-> supported claim; no cell's interval coverage is certified, and covariance routes
-> have focused-test evidence only. Treat everything else as provisional until the
-> package is declared mature.
+> primary inferential output, but their evidence is route- and regime-specific.
+> Broad package-wide interval coverage is not certified;
+> one narrowly scoped two-sided Gaussian total-variance profile regime has a
+> documented 0.94 coverage floor. This is not nominal 95% certification or a
+> guarantee for an individual fit. Covariance routes otherwise have cell-specific
+> evidence only.
 
 `gllvmTMB` fits multivariate models for data where each site,
 individual, species, or study has several responses: body traits,
@@ -33,21 +36,24 @@ calibration remains incomplete.
 | If you want to... | Read this |
 |---|---|
 | fit your first model | [Get started with gllvmTMB](https://itchyshin.github.io/gllvmTMB/articles/gllvmTMB.html) |
+| decide whether your model and intended result are inside the current evidence boundary | [Current limitations and boundaries](https://itchyshin.github.io/gllvmTMB/articles/current-limits.html) |
 | choose the guide matching your data and question | [Browse all articles](https://itchyshin.github.io/gllvmTMB/articles/) |
 | check whether a fit is interpretable | [Can I trust this fit?](https://itchyshin.github.io/gllvmTMB/articles/fit-diagnostics.html) |
 | look up formulas, covariance terms, or families | [Reference index](https://itchyshin.github.io/gllvmTMB/reference/) |
 
 `gllvmTMB` is under active development and has lifecycle **experimental**: the
 formula grammar, defaults, and extractor output may still change as the API
-matures. The public path above is deliberately bounded — fit one
-ordinary Gaussian model, then interpret `Sigma`, correlations, loadings, and
-communality, then branch to diagnostics or keyword lookup. Bare-bar
+matures. The public path above is deliberately bounded. For Gaussian models,
+the narrow tested-regime point evidence starts with `indep()` or `dep()`; inspect
+the covariance point estimate. The latent model below remains the clearest way
+to teach `Sigma = Lambda Lambda^T + Psi`, but its production pair is
+characterization-only rather than a dependable-core claim. Bare-bar
 `(1 + x | g)` slopes remain reserved.
 
 ## What the model does
 
-Start with one ordinary Gaussian `latent()` model. It splits the
-trait covariance matrix into shared axes plus trait-specific variance:
+The teaching example uses one ordinary Gaussian `latent()` model. It splits
+the trait covariance matrix into shared axes plus trait-specific variance:
 
 $$
 \boldsymbol{\Sigma}
@@ -90,8 +96,13 @@ interface lets you supply the stacked table yourself.
 
 ## Install
 
-`gllvmTMB` is not on CRAN yet. Install the development build from
-GitHub with `pak`:
+After the first CRAN release is accepted, install the released package with:
+
+```r
+install.packages("gllvmTMB")
+```
+
+Until then, install the development build from GitHub with `pak`:
 
 ```r
 install.packages("pak")
@@ -171,57 +182,34 @@ other observed traits for that unit stay in the likelihood, and
 `missing = miss_control(response = "include")` is used. Missing predictors
 default to fail-loud, but one explicitly modelled `mi()` predictor is
 supported through `missing = miss_control(predictor = "model")` and
-`impute = list(...)` for the covered Gaussian, grouped, phylogenetic,
-binary, ordered, and unordered fixed-effect routes. Ordinary missing
+`impute = list(...)` for the covered native-Laplace Gaussian, grouped,
+phylogenetic, binary, ordered, and unordered fixed-effect routes. VA refuses
+modelled `mi()` predictors. **Do not treat parser support as an NB2 reliability
+claim:** the frozen NB2 latent missing-response cell produced catastrophic
+dispersion failures that ordinary fit diagnostics often missed; that route is
+not recommended for dependable inference. Ordinary missing
 grouping variables, offsets, weights, or design-matrix values still error
 because the model cannot build that row.
 
 ## Current support boundary
 
-The public site is deliberately focused on workflows with usable examples and
-an explicit evidence boundary. Use the table below as the current reader-facing
-boundary; each linked guide states the narrower conditions under which its
-examples and interpretations apply.
+The canonical reader-facing boundary is
+[Current limitations and boundaries](https://itchyshin.github.io/gllvmTMB/articles/current-limits.html).
+Read it before choosing a family, covariance source, estimator, or interval
+method. In brief:
 
-| Surface | Current message |
-|---|---|
-| Long and wide data | Both are supported through `gllvmTMB()`: long data use `value ~ ...` with `trait = "trait"`; wide data use `traits(...) ~ ...`. |
-| Missing response cells | `NA` responses are treated as unobserved unit-trait cells (gated out of the likelihood) for long response rows and wide `traits(...)` cells, with `predict_missing()` for the reconstruction route. The masking is family-agnostic; the validated worked example is Gaussian, with other families covered by the same route but lighter recovery evidence so far. |
-| Missing predictors | Supported for one explicitly modelled `mi()` predictor: Gaussian fixed, grouped, phylogenetic, binary, ordered, and unordered fixed-effect routes. Multiple `mi()` terms, non-Gaussian bounded/count predictors, and structured discrete predictor models are planned. |
-| First worked model | Gaussian `latent()` with its default `Psi` companion is the safest public decomposition example and is shown in [Morphometrics](https://itchyshin.github.io/gllvmTMB/articles/morphometrics.html). |
-| Latent-rank choice | [How many latent dimensions should I fit?](https://itchyshin.github.io/gllvmTMB/articles/model-selection-latent-rank.html) compares Gaussian ordinary `latent()` candidate ranks with `logLik()`, AIC, BIC, and `check_gllvmTMB()` rows. These criteria help route model choice within a fixed candidate set; they do not prove the biological rank or replace diagnostics. |
-| Formula keywords | The three covariance modes—Independent, Dependent, and Latent—are documented across ordinary, animal, phylogenetic, and spatial sources in [Formula keyword grid](https://itchyshin.github.io/gllvmTMB/articles/api-keyword-grid.html). `common = TRUE` on `*_indep()` is the one-shared-variance modifier; `unique = TRUE` on `*_latent()` adds the diagonal Psi companion. |
-| Multivariate spatial models | [Multivariate spatial models with an SPDE mesh](https://itchyshin.github.io/gllvmTMB/articles/spatial-models.html) shows mesh construction, equivalent long- and wide-format Gaussian fits, practical-range interpretation, current limitations, and the independent-authorship/licensing boundary. |
-| Response families | Families are listed in [Response families](https://itchyshin.github.io/gllvmTMB/articles/response-families.html); evidence depth and supported covariance regimes vary by family. |
-| Fitted diagnostics | [Can I trust this fit?](https://itchyshin.github.io/gllvmTMB/articles/fit-diagnostics.html) shows the first post-fit triage. `check_gllvmTMB()` reports numerical fit health; `predictive_check()`, `residuals()`, and `diagnostic_table()` provide fitted-model response diagnostics for the scoped Gaussian, Poisson, and NB2 paths. These are diagnostic displays, not posterior predictive checks or interval calibration. |
-| Deferred guides | Quantitative-genetic heritability, confirmatory loading constraints, applied mixed-response and ordinal workflows, broad interval calibration, and cross-package agreement do not yet have public worked guides. [`suggest_lambda_constraint()`](https://itchyshin.github.io/gllvmTMB/articles/lambda-constraint-suggest.html) has a narrow public guide for a reproducible exploratory loading orientation; it does not establish confirmatory loading claims. Their underlying functions may exist, but that alone is not a recommendation to use them for those scientific claims. |
+- start from an ordinary native-Laplace model and inspect fit health;
+- interpret rotation-invariant `Sigma`, correlations, and communality before
+  raw loading columns;
+- treat structured sources, slopes, alternative integration engines, and most
+  non-Gaussian combinations as experimental or partial unless their guide names
+  the evidence regime;
+- do not infer interval calibration from the availability of Wald, bootstrap,
+  or profile bounds.
 
-## Current boundaries
-
-`gllvmTMB` is for stacked-trait multivariate models. Single-response
-models belong in `glmmTMB`; spatial single-response models belong
-in `sdmTMB`; one- or two-response distributional regression
-belongs in `drmTMB`.
-
-**Not yet in this release** (named here so user-facing prose does not
-overpromise):
-
-- **Mixed-family latent-scale correlations for delta / hurdle families.**
-  Designed but not advertised: the cross-family correlation is route-only
-  and its coverage is uncalibrated.
-- **Plain bare-bar random slopes `(1 + x | g)`.** Reserved. The keyworded
-  Gaussian reaction-norm decomposition `latent(1 + x | unit, d = K)` (and its
-  long-form equivalent) is available and extracts with
-  `extract_Sigma(level = "unit_slope", ...)`.
-- **Known-variance meta-analysis with `meta_V()`.** The function remains under
-  development and has no public worked guide yet. Do not infer a complete
-  applied workflow from the export alone.
-- **SPDE barrier meshes and broader REML.** A narrow Gaussian-only `REML = TRUE`
-  pilot ships; non-Gaussian, weighted, and missing-data REML remain later work.
-- **Zero-inflated / hurdle / two-stage delta families with latent-scale
-  correlations.** Two-sub-model families have two latent scales, so a single
-  latent-scale correlation is ambiguous; deferred until a clean reporting
-  convention is agreed.
+`gllvmTMB` is for stacked-trait multivariate models. Use `glmmTMB` for a
+single-response GLMM, `sdmTMB` for a single-response spatial model, and
+`drmTMB` for one- or two-response distributional regression.
 
 ## Citation and acknowledgements
 
@@ -235,16 +223,17 @@ Run `citation("gllvmTMB")` for formatted entries:
   Bell BM (2016). *TMB: Automatic Differentiation and Laplace
   Approximation.* Journal of Statistical Software, 70(5), 1-21.
   <https://doi.org/10.18637/jss.v070.i05>
-The spatial helpers are independently implemented in gllvmTMB using the
-published SPDE/GMRF construction and the public `fmesher` API. We thank the
-sdmTMB authors for the inspiration its spatial interface provided; no sdmTMB
-source code is included or adapted (the helper implementation itself is
-covered by focused tests; the broader spatial family remains partial). TMB
-itself is a runtime dependency rather than included code; the gllvmTMB C++
-engine in `src/gllvmTMB.cpp` is original work by the package author, written
-against the TMB API.
-See the [spatial-model guide](https://itchyshin.github.io/gllvmTMB/articles/spatial-models.html#independence-acknowledgement-and-licensing)
-for the public independence, acknowledgement, and GPL-3 explanation.
+The current spatial helpers were substantially rewritten in gllvmTMB against
+the published SPDE/GMRF construction and public `fmesher` API after an earlier
+implementation derived from the GPL-3 `sdmTMB` helpers. We retain sdmTMB
+attribution in `inst/COPYRIGHTS`; the current implementation is covered by
+focused tests, while the broader spatial family remains partial. TMB
+itself is a runtime dependency rather than included code. Most of the
+gllvmTMB C++ engine in `src/gllvmTMB.cpp` is original package code written
+against the TMB API; `inst/COPYRIGHTS` separately records the same-author
+GPL-3 numerical and missing-predictor code reused from `drmTMB`.
+See the [spatial-model guide](https://itchyshin.github.io/gllvmTMB/articles/spatial-models.html#provenance-acknowledgement-and-licensing)
+for the public provenance, acknowledgement, and GPL-3 explanation.
 
 ## Sister packages
 

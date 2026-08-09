@@ -1,0 +1,6 @@
+started_utc=2026-08-08T22:12:06Z
+source_sha256=c0372f037738a902c0c6d7ecd60f4170fcfc9d1d163709456eb0cd9f91615996
+pilot_gate_sha256=350de2efe1304102f18fd184e4156508ca3b61c3418beda8669af8109fba3f2b
+workers=32
+R_version=R version 4.5.3 (2026-03-11)
+finished_utc=2026-08-08T22:13:53Z

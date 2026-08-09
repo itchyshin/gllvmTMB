@@ -40,7 +40,9 @@
 #' The fixed-effect block of the single TMB `sdreport()` the fit already
 #' carries -- a Wald covariance, with exactly the caveats any Wald quantity
 #' from this package carries. It is not a resampled or profiled quantity, and
-#' no interval built from it has certified coverage.
+#' no interval built from it has certified coverage. `vcov()` refuses a fit
+#' with non-unit likelihood weights: that fit targets a weighted estimating
+#' objective and has no certified sandwich covariance.
 #'
 #' @seealso [standard_errors()] to compute the `sdreport()` after fitting;
 #'   [confint()] for intervals; [summary()] for a coefficient table.
@@ -65,6 +67,7 @@ coef.gllvmTMB_multi <- function(object, ...) {
 #' @rdname gllvmTMB_multi-vcov
 #' @export
 vcov.gllvmTMB_multi <- function(object, ...) {
+  .gllvmTMB_require_unweighted_inference(object, "vcov")
   nm <- object$X_fix_names %||% character(0)
   if (length(nm) == 0L) {
     return(matrix(numeric(0), 0L, 0L))

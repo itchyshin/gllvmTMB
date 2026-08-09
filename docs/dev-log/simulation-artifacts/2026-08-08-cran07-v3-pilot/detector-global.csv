@@ -1,0 +1,2 @@
+true_positive,false_negative,false_positive,true_negative,sensitivity_denominator,specificity_denominator,sensitivity,specificity,pass
+19,1,39,621,20,660,0.95,0.940909090909091,TRUE

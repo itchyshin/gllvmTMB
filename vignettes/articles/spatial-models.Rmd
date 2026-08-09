@@ -267,6 +267,11 @@ The fitted value is one point estimate from one simulated dataset. Agreement
 with the generating value is a teaching check, not evidence of unbiased range
 estimation or calibrated uncertainty across designs.
 
+Absolute spatial field scale is also not validated. Treat fitted `tau`, field
+SD, and projected marginal SD as exploratory model-based point estimates; do
+not present them as recovered absolute scale or calibrated uncertainty. Those
+estimands require a separate fixed-range and estimated-range recovery study.
+
 Run the ordinary fit diagnostics before interpreting spatial parameters:
 
 ```{r diagnostics}
@@ -344,23 +349,23 @@ family and this paired latent/unique total-covariance route lack full
 recovery evidence — so treat current estimates as model-based point
 estimates rather than calibrated spatial-correlation inference.
 
-## Independence, acknowledgement, and licensing
+## Provenance, acknowledgement, and licensing
 
 `gllvmTMB` does not import, link to, or include `sdmTMB`; `sdmTMB` is not a
-runtime or build dependency. We thank the sdmTMB authors because their
-user-facing spatial interface inspired the original gllvmTMB interface. That
-is a courtesy acknowledgement, not a statement that gllvmTMB contains or
-adapts sdmTMB source code.
+runtime or build dependency. The original gllvmTMB spatial interface and helper
+layer were derived from sdmTMB's GPL-3 implementation. Repository history and
+`inst/COPYRIGHTS` retain that attribution.
 
-The current helpers in `R/mesh.R`, `R/crs.R`, and `R/plot.R` were independently
-authored for gllvmTMB from the published SPDE/GMRF construction and the public
-`fmesher` API. They are gllvmTMB code distributed under
-[GPL-3](../LICENSE.html). The repository records the detailed code-provenance
-boundary in [`inst/COPYRIGHTS`](https://github.com/itchyshin/gllvmTMB/blob/main/inst/COPYRIGHTS).
+The current helpers in `R/mesh.R`, `R/crs.R`, and `R/plot.R` were substantially
+rewritten for gllvmTMB from the published SPDE/GMRF construction and the public
+`fmesher` API. They remain distributed under
+[GPL-3](../LICENSE.html), which is compatible with their sdmTMB source lineage.
+The repository records the detailed code-provenance boundary in
+[`inst/COPYRIGHTS`](https://github.com/itchyshin/gllvmTMB/blob/main/inst/COPYRIGHTS).
 
 Users should cite gllvmTMB and TMB through `citation("gllvmTMB")`. The sdmTMB
 acknowledgement does not create a separate required citation for using these
-independently implemented helpers.
+substantially rewritten helpers.
 
 ## What to do next
 

@@ -15,9 +15,12 @@ home:
         text: >-
           **Experimental — use at your own risk.** Not complete, not fully
           human-verified, needs extensive further validation. CRAN availability
-          is not scientific maturity. Point estimates are the supported claim;
-          no cell's interval coverage is certified, and covariance routes have
-          focused-test evidence only.
+          is not scientific maturity. Point estimates are the primary
+          inferential output, but their evidence is route- and regime-specific.
+          Broad package-wide interval coverage is not certified; one
+          narrow two-sided Gaussian total-variance profile regime has a
+          documented 0.94 coverage floor. Read [Current limitations and
+          boundaries](articles/current-limits.html) before choosing a model.
 template:
   bootstrap: 5
   bootswatch: flatly
@@ -40,6 +43,8 @@ navbar:
       menu:
       - text: Get started with gllvmTMB
         href: articles/gllvmTMB.html
+      - text: Current limitations and boundaries
+        href: articles/current-limits.html
       - text: Function map and cheat sheet
         href: articles/function-map-cheatsheet.html
     model_guides:
@@ -97,9 +102,14 @@ navbar:
         href: articles/validation-oracles.html
 
 articles:
+  - title: Getting started
+    contents:
+    - gllvmTMB
+    - articles/current-limits
+    - articles/function-map-cheatsheet
+
   - title: Model Guides
     contents:
-    - articles/function-map-cheatsheet
     - articles/morphometrics
     - articles/behavioural-syndromes
     - articles/random-regression-reaction-norms

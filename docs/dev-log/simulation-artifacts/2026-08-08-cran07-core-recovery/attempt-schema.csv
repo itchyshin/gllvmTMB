@@ -1,0 +1,26 @@
+column,type,required,meaning
+campaign_id,character,yes,Immutable campaign identifier
+registry_sha256,character,yes,SHA-256 of frozen registry.csv
+cell_id,character,yes,Frozen registry cell identifier
+replicate,integer,yes,One-based replicate within cell
+seed,integer,yes,Deterministic attempt seed
+status,character,yes,Exclusive terminal status derived only from observable diagnostics
+constructed,logical,yes,Model object reached construction
+optimizer_converged,logical,yes,Raw optimizer code equals zero
+stationary,logical,yes,Raw-gradient stationarity criterion passed
+pd_hessian,logical,yes,Positive-definite Hessian diagnostic
+finite_estimands,logical,yes,All extracted fitted estimands are finite
+boundary,logical,yes,Observable fitted variance or correlation boundary fired
+geometry_flag,logical,yes,Observable fitted total-covariance geometry diagnostic fired
+detector_flagged,logical,yes,Terminal observable status is not usable
+catastrophic_truth_error,logical,yes,Independent planted-truth catastrophic outcome label
+relative_covariance_error,double,yes,Maximum truth-relative covariance Frobenius error
+max_eigen_ratio,double,yes,Maximum fitted-to-truth leading covariance eigenvalue ratio
+family,character,yes,Frozen response family
+n_trials_min,integer,yes,Minimum observed-row binomial trial count or NA
+n_trials_max,integer,yes,Maximum observed-row binomial trial count or NA
+diag_B_skip,character,yes,Semicolon-separated fitted unit-Psi skip mask
+diag_B_all_free,logical,yes,All fitted unit-Psi diagonal coordinates remain free or NA
+error_class,character,yes,Condition class or empty string
+error_message,character,yes,Condition message or empty string
+elapsed_seconds,double,yes,Elapsed fit time in seconds

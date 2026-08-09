@@ -34,6 +34,11 @@
 #' removes that door by computing the same `sdreport()` on demand from the
 #' fitted object.
 #'
+#' Fits made with non-unit likelihood weights use a weighted objective rather
+#' than an ordinary likelihood. `standard_errors()` refuses those fits because
+#' the package does not yet provide sandwich-calibrated uncertainty for them;
+#' point estimates remain available from the fitted model.
+#'
 #' @param fit A fitted multivariate model returned by [gllvmTMB()].
 #'
 #' @return The same fit, with its `sd_report` field populated (and
@@ -95,6 +100,8 @@ standard_errors <- function(fit) {
       class = "gllvmTMB_standard_errors_bad_fit"
     )
   }
+
+  .gllvmTMB_require_unweighted_inference(fit, "standard_errors()")
 
   ## Already computed at fitting time (or by an earlier call) -- nothing to do.
   if (!is.null(fit$sd_report)) {

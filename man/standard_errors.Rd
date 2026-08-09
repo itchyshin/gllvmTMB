@@ -30,6 +30,12 @@ standard errors afterwards was to fit the model again. \code{standard_errors()}
 removes that door by computing the same \code{sdreport()} on demand from the
 fitted object.
 }
+\details{
+Fits made with non-unit likelihood weights use a weighted objective rather
+than an ordinary likelihood. \code{standard_errors()} refuses those fits because
+the package does not yet provide sandwich-calibrated uncertainty for them;
+point estimates remain available from the fitted model.
+}
 \section{When this helps}{
 
 The saving is real but bounded: it is worth using when a workflow fits many

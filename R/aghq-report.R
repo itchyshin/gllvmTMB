@@ -64,7 +64,7 @@
   invisible(NULL)
 }
 
-## Warn ONCE when AIC()/BIC() is taken on a PENALISED (ridged) fit.
+## Warn whenever AIC()/BIC() is taken on a PENALISED (ridged) fit.
 ##
 ## With a loading ridge the optimiser minimises F + 0.5*||lambda||^2/tau^2, so the
 ## reported parameters are a MAP point while `opt$objective` -- and hence
@@ -95,8 +95,22 @@
     "i" = "The ridge makes the reported estimate a penalised (MAP) point, while {.fn logLik} is the unpenalised log-likelihood AT that point -- not at its maximum.",
     "i" = "The parameter count also overstates a penalised fit's effective flexibility, so both halves of {fn_label} = -2*logLik + k*df are violated.",
     ">" = "For likelihood-based model comparison set {.code aghq_ridge = Inf} and refit every model being compared."
-  ), .frequency = "once",
-     .frequency_id = paste0("gllvmTMB-aghq-penalised-", fn_label))
+  ))
+  invisible(NULL)
+}
+
+.gllvmTMB_check_weighted_objective <- function(objs, fn_label) {
+  is_fit <- vapply(objs, inherits, logical(1L), what = "gllvmTMB_multi")
+  weighted <- vapply(objs[is_fit], function(f) {
+    isTRUE(f$likelihood_weights$active)
+  }, logical(1L))
+  if (any(weighted)) {
+    cli::cli_abort(c(
+      "{fn_label}() is undefined for a non-unit weighted objective.",
+      "i" = "Ordinary information criteria require a maximized likelihood; this fit uses a weighted estimating criterion.",
+      ">" = "Refit with unit likelihood weights before likelihood-based model comparison."
+    ), class = "gllvmTMB_weighted_objective_no_information_criterion")
+  }
   invisible(NULL)
 }
 
@@ -162,12 +176,14 @@
 ## "unexported function of the right name" is NOT sufficient on its own).
 ## `registerS3method()` is not a NAMESPACE edit and not an export.
 AIC.gllvmTMB_multi <- function(object, ..., k = 2) {
+  .gllvmTMB_check_weighted_objective(c(list(object), list(...)), "AIC")
   .aghq_check_engine_consistency(c(list(object), list(...)))
   .aghq_check_penalised(c(list(object), list(...)), "AIC")
   NextMethod()
 }
 
 BIC.gllvmTMB_multi <- function(object, ...) {
+  .gllvmTMB_check_weighted_objective(c(list(object), list(...)), "BIC")
   .aghq_check_engine_consistency(c(list(object), list(...)))
   .aghq_check_penalised(c(list(object), list(...)), "BIC")
   NextMethod()

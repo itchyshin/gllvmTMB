@@ -23,11 +23,11 @@
 #' [predict_missing()]'s row accounting, and the true response in
 #' `response_col`.
 #'
-#' Dispersion parameters needed by [.cv_score()] / [.cv_logscore()] for
+#' Dispersion parameters needed by `.cv_score()` / `.cv_logscore()` for
 #' count families (nbinom2's `phi_nbinom2`, nbinom1's `phi_nbinom1`) are
 #' looked up from `fit$report` (fitted parameters, not data) and attached
 #' as a per-row `disp` column, keyed on the 1-based `trait_id` from
-#' [.gllvmTMB_diagnostic_row_metadata()].
+#' `.gllvmTMB_diagnostic_row_metadata()`.
 #'
 #' `n_trials` is not read from `fit$tmb_data` (sentinel-corrupted for masked
 #' rows); it defaults to 1 (Bernoulli) for every row. Reconstructing a true
@@ -303,7 +303,7 @@
 #' Per-trait and pooled cross-validation metrics
 #'
 #' Computes family-aware held-out scoring metrics from the output of
-#' [.cv_join_truth()]. Branches by `family_id`: gaussian (0) gets RMSE and a
+#' `.cv_join_truth()`. Branches by `family_id`: gaussian (0) gets RMSE and a
 #' signed Pearson R2; binomial (1) gets RMSE, Tjur R2, a closed-form AUC, and
 #' Brier score; poisson (2) and nbinom2 (5) get RMSE, a signed Spearman R2,
 #' and an occurrence/conditional split (`O.AUC`, `O.TjurR2` on `1*(y>0)`
@@ -316,12 +316,12 @@
 #' trait contributes the most held-out cells, so the per-trait distribution
 #' is the honest primary read.
 #'
-#' The `LogScore` column (summed [.cv_logscore()] plug-in log predictive
+#' The `LogScore` column (summed `.cv_logscore()` plug-in log predictive
 #' density) is populated only if `joined` already carries a `logscore`
 #' column, e.g. `joined$logscore <- .cv_logscore(joined, fit)` called before
 #' `.cv_score(joined)`; otherwise it is `NA`.
 #'
-#' @param joined A data frame as returned by [.cv_join_truth()] (columns
+#' @param joined A data frame as returned by `.cv_join_truth()` (columns
 #'   `trait`, `family_id`, `est`, `y_true`, `n_trials`, `disp`; optionally
 #'   `logscore`).
 #' @return A list with `by_trait` and `pooled`, each a data frame with one
@@ -370,16 +370,16 @@
 #' families) its fitted dispersion, without integrating over parameter or
 #' latent-variable uncertainty.
 #'
-#' Supports the same family set as [.cv_score()] -- gaussian (0), binomial
+#' Supports the same family set as `.cv_score()` -- gaussian (0), binomial
 #' (1), poisson (2), nbinom2 (5) -- via the same per-row parameterisation
 #' used by `.gllvmTMB_exact_rq_residuals()` (`R/predictive-diagnostics.R`):
-#' `sigma_eps` from [.gllvmTMB_sigma_eps()] for gaussian, and per-trait
-#' `phi_nbinom2` (as the `disp` column attached by [.cv_join_truth()]) for
+#' `sigma_eps` from `.gllvmTMB_sigma_eps()` for gaussian, and per-trait
+#' `phi_nbinom2` (as the `disp` column attached by `.cv_join_truth()`) for
 #' nbinom2. Binomial is not covered by that residual helper, so its
 #' Bernoulli/binomial density is evaluated directly from `est` (`p`) and
 #' `n_trials`. Any other `family_id` returns `NA_real_`.
 #'
-#' @param joined A data frame as returned by [.cv_join_truth()] (columns
+#' @param joined A data frame as returned by `.cv_join_truth()` (columns
 #'   `family_id`, `est`, `y_true`, `n_trials`, `disp`).
 #' @param fit The `gllvmTMB_multi` fit `joined` was derived from (used only
 #'   for fitted dispersion parameters via `fit$report`, never for

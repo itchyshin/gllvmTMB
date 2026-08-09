@@ -41,10 +41,18 @@ and the converged log-likelihood.
 \item \code{summary()} adds a fixed-effects table with SEs, the global and
 local trait correlation matrices, per-trait ICCs,
 and global / local communalities.
-\item \code{logLik()} returns the converged maximum log-likelihood with
-\code{df = length(opt$par)} and \code{nobs} equal to the number of
-likelihood-contributing observed response cells, so \code{AIC()} and
-\code{BIC()} all work directly.
+\item \code{logLik()} returns the unpenalised log-likelihood evaluated at the fitted
+point, with \code{df = length(opt$par)} and \code{nobs} equal to the number of
+likelihood-contributing observed response cells. For an unpenalised native
+Laplace fit this is the converged maximum and \code{AIC()} / \code{BIC()} have their
+ordinary ML interpretation. AGHQ uses a different integration objective,
+so models must not be compared across engines. With a loading ridge, the
+fitted point is penalised MAP rather than the likelihood maximum; ordinary
+AIC, BIC, and likelihood-ratio interpretations do not apply. The methods
+warn rather than silently relabelling those quantities.
+Fits with non-unit likelihood weights are a separate boundary: their
+objective is a weighted estimating criterion rather than an ordinary
+log-likelihood, so \code{logLik()}, \code{AIC()}, and \code{BIC()} fail loudly.
 }
 
 \code{nobs()} returns the number of \strong{likelihood-contributing} observations --

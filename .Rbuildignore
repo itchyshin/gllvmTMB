@@ -26,7 +26,12 @@
 ^\.Rproj\.user$
 ^src/.*\.(o|so|dll|dylib)$
 ^inst/tmb/.*\.(o|so|dll|dylib)$
+^inst/sim$
+^inst/extdata/m3-coverage-(grid|summary)-smoke\.rds$
 ^vignettes/articles$
+^vignettes/mee\.csl$
+^vignettes/refs\.bib$
+^vignettes/.*-[0-9]+\.png$
 ^revdep$
 ^LICENSE$
 ^\.DS_Store$

@@ -136,6 +136,7 @@ confint_inspect <- function(
   if (!inherits(fit, "gllvmTMB_multi")) {
     cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
   }
+  .gllvmTMB_require_unweighted_inference(fit, "confint_inspect")
   if (is.null(ytol)) ytol <- .profile_ytol(level)
   if (missing(parm) || !is.character(parm) || length(parm) != 1L) {
     cli::cli_abort(

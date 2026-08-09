@@ -1,0 +1,17 @@
+stage,campaign_id,cell_id,reason
+pilot,cran07-core-recovery-v4,g_latent_rho_boundary98,predeclared_challenge_not_admitted
+pilot,cran07-core-recovery-v4,g_latent_psi_small,predeclared_challenge_not_admitted
+pilot,cran07-core-recovery-v4,g_latent_psi_large,predeclared_challenge_not_admitted
+pilot,cran07-core-recovery-v4,g_latent_n60,unusable_rate_above_pilot_limit
+pilot,cran07-silent-failure-v4,sf_b_n60_l3_m0,unusable_rate_above_pilot_limit
+pilot,cran07-robustness-v4,rb_nb2_rare,unusable_rate_above_pilot_limit
+production,cran07-core-recovery-v4,nb2_latent_n100,stationarity_specificity_catastrophic_bound_Psi_phi
+production,cran07-core-recovery-v4,g_latent_rho0,stationarity_Sigma_shared_Psi
+production,cran07-core-recovery-v4,g_latent_rho_pos08,stationarity
+production,cran07-core-recovery-v4,g_latent_rho_neg08,stationarity_Psi
+production,cran07-silent-failure-v4,sf_g_n60_l05_m0,stationarity_specificity
+production,cran07-silent-failure-v4,sf_g_n60_l3_m30,stationarity_specificity
+production,cran07-silent-failure-v4,sf_g_n150_l05_m30,stationarity
+production,cran07-silent-failure-v4,sf_b_n60_l05_m30,stationarity_Psi
+production,cran07-robustness-v4,rb_p_rare,fixed_effect_bias
+production,cran07-robustness-v4,rb_nb2_missing,stationarity_specificity_catastrophic_bound_phi

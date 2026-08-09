@@ -1,0 +1,9 @@
+cell_number,cell_id,family,link,mode,n_unit,n_traits,rank,truth_profile,scenario,missing_rate,rare_level_fraction,smoke_reps,production_reps,primary_estimands
+1,rb_g_missing,gaussian,identity,latent,150,3,1,base_latent,missing_response,0.2,0,20,400,beta;Sigma_shared;Psi;Sigma_total;correlation_total;health
+2,rb_g_rare,gaussian,identity,latent,150,3,1,base_latent,rare_level,0,0.05,20,400,beta;Sigma_shared;Psi;Sigma_total;correlation_total;health
+3,rb_p_missing,poisson,log,latent,150,3,1,base_latent,missing_response,0.2,0,20,400,beta;Sigma_shared;Psi;Sigma_total;correlation_total;health
+4,rb_p_rare,poisson,log,latent,150,3,1,base_latent,rare_level,0,0.05,20,400,beta;Sigma_shared;Psi;Sigma_total;correlation_total;health
+5,rb_nb2_missing,nbinom2,log,latent,150,3,1,base_latent,missing_response,0.2,0,20,400,beta;Sigma_shared;Psi;Sigma_total;correlation_total;health
+6,rb_nb2_rare,nbinom2,log,latent,150,3,1,base_latent,rare_level,0,0.05,20,400,beta;Sigma_shared;Psi;Sigma_total;correlation_total;health
+7,rb_b_missing,binomial,logit,latent,150,3,1,base_latent,missing_response,0.2,0,20,400,beta;Sigma_shared;Psi;Sigma_total;correlation_total;health
+8,rb_b_rare,binomial,logit,latent,150,3,1,base_latent,rare_level,0,0.05,20,400,beta;Sigma_shared;Psi;Sigma_total;correlation_total;health

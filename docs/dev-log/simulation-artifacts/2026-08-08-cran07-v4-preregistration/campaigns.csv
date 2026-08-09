@@ -1,0 +1,4 @@
+campaign_id,registry_relpath,registry_sha256,smoke_offset,pilot_offset,production_offset,smoke_reps,pilot_reps,production_reps
+cran07-core-recovery-v4,docs/dev-log/simulation-artifacts/2026-08-08-cran07-core-recovery/registry.csv,7182e91afa9f4c580add932f10bae753709c0525e259994cd7eacefdff7d9c5e,470800000,570800000,670800000,2,20,1600
+cran07-silent-failure-v4,docs/dev-log/simulation-artifacts/2026-08-08-cran07-silent-failure/registry.csv,c571e804b1041e6e79a553d7a17bf7ae1f6fd9d2d6e6e667788a25693f2d6ebc,470810000,570810000,670810000,2,20,1600
+cran07-robustness-v4,docs/dev-log/simulation-artifacts/2026-08-08-cran07-robustness/registry.csv,679c043ea53a9ee47ee8ac951ed941482ad9d77448ef329a4c4b1337bc74663d,470820000,570820000,670820000,2,20,1600

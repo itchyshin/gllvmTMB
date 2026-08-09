@@ -21,6 +21,21 @@
 ##     Conceptual prior: fix-the-target-and-refit, then root-find on the
 ##     deviance crossing.
 
+.gllvmTMB_profile_tmb_checkpoint <- function(obj) {
+  list(
+    last_par = obj$env$last.par,
+    last_par_best = obj$env$last.par.best,
+    value_best = obj$env$value.best
+  )
+}
+
+.gllvmTMB_restore_profile_tmb_checkpoint <- function(obj, checkpoint) {
+  obj$env$last.par <- checkpoint$last_par
+  obj$env$last.par.best <- checkpoint$last_par_best
+  obj$env$value.best <- checkpoint$value_best
+  invisible(NULL)
+}
+
 #' @keywords internal
 #' @noRd
 .qchisq_threshold <- function(level) {
@@ -366,6 +381,12 @@ tmbprofile_wrapper <- function(
   if (!inherits(fit, "gllvmTMB_multi")) {
     cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
   }
+  .gllvmTMB_require_unweighted_inference(fit, "tmbprofile_wrapper")
+  profile_checkpoint <- .gllvmTMB_profile_tmb_checkpoint(fit$tmb_obj)
+  on.exit(
+    .gllvmTMB_restore_profile_tmb_checkpoint(fit$tmb_obj, profile_checkpoint),
+    add = TRUE
+  )
   crit <- .qchisq_threshold(level)
   ## NULL means "size the budget for this level"; an explicit value still wins.
   if (is.null(ytol)) ytol <- .profile_ytol(level)

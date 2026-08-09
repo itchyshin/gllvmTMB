@@ -1,0 +1,13 @@
+f430d9c67a60dea58c23abfeab7c79a1c7e8ffaacdad6f70692ef2d5b4d5c41c  inst/sim/cran07-adjudication-psi-v1/README.md
+c32033f48b9fa4048e339598c6c72a14ef987171a2dc954f9a389ae17cce64ab  inst/sim/cran07-adjudication-psi-v1/adjudication.R
+f9e6560c75c08d640debfb6736c531c309008ab2e6f053b2e2fcad614be5e356  inst/sim/cran07-adjudication-psi-v1/run-adjudication.R
+41e80cd6956ac1f91a8a6857c6117b0bd6dcecb1ce2167dd14ca58b5eaf8f895  inst/sim/cran07-adjudication-psi-v1/self-test.R
+2fe304b26ede35795cc07f2c72bd1837360967d363a510aae687547740e339dc  docs/dev-log/simulation-artifacts/2026-08-08-cran07-v3-production-adjudication-psi-v1/README.md
+fc6360ce643ad10345cf495cfd4480414b004888df60506d523cd201c22dccf5  docs/dev-log/simulation-artifacts/2026-08-08-cran07-v3-production-adjudication-psi-v1/campaign-gate.csv
+63ab58b78ee1e795da6091dfb7088ea8f3efb60c755fea636a2cc1cef2e1973d  docs/dev-log/simulation-artifacts/2026-08-08-cran07-v3-production-adjudication-psi-v1/failed-cell-gates.csv
+e8a4920267963c8109f6bb9f238e341f03c6ff80db51e0ad7b7162e2c0f5af06  docs/dev-log/simulation-artifacts/2026-08-08-cran07-v3-production-adjudication-psi-v1/family-pair-gate.csv
+f709ef3bbbbf6355b0ee593e1c7b08a459e59116d81ef2c0ef9cb8c047c19b11  docs/dev-log/simulation-artifacts/2026-08-08-cran07-v3-production-adjudication-psi-v1/identity-gate.csv
+1dc6fdfbefb5217c6792a4077d3db22bf28f385bd88cdfcd0bfe7c5890131722  docs/dev-log/simulation-artifacts/2026-08-08-cran07-v3-production-adjudication-psi-v1/input-hashes.csv
+5cf5dfb8b001e49b438477b3860c26835cba78e51098dc604d553c6705eee766  docs/dev-log/simulation-artifacts/2026-08-08-cran07-v3-production-adjudication-psi-v1/normalization-counts.csv
+ec8cb7509e1e30b3e04481b5b2f48b11ee0ac54d16f1a7e3c0b7cde0f855362b  docs/dev-log/simulation-artifacts/2026-08-08-cran07-v3-production-adjudication-psi-v1/output-hashes.csv
+d42d44aace0781e98379126e18f8b6f448c69c66259891f3446e32a3903f1195  docs/dev-log/simulation-artifacts/2026-08-08-cran07-v3-production-adjudication-psi-v1/rmse-failures.csv

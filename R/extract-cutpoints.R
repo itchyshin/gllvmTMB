@@ -15,6 +15,10 @@
 #' as `cutpoint_2`, `cutpoint_3`, etc. This differs from `brms`, which
 #' reports K - 1 cutpoints as `Intercept[1..K-1]`.
 #'
+#' This extractor includes Wald standard errors, so it refuses fits made with
+#' non-unit likelihood weights. The fitted cutpoint parameters remain point
+#' estimates, but weighted-objective uncertainty is not calibrated.
+#'
 #' @param fit A fit returned by [gllvmTMB()] with at least one
 #'   [ordinal_probit()] trait.
 #'
@@ -71,6 +75,7 @@ extract_cutpoints <- function(fit, quiet = FALSE) {
   if (!inherits(fit, "gllvmTMB_multi")) {
     cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
   }
+  .gllvmTMB_require_unweighted_inference(fit, "extract_cutpoints()")
   fids <- fit$tmb_data$family_id_vec
   if (!any(fids == 14L)) {
     return(out_empty)

@@ -166,7 +166,7 @@ test_that("invalid auto final transparently triggers a third independent fit", {
   expect_true(any(grepl("fallback", observed$warnings)))
 })
 
-test_that("models outside the calibrated scope fall back without blocking", {
+test_that("models outside the evaluated scope fall back without blocking", {
   calls <- list()
   fit_once <- function(control) {
     calls[[length(calls) + 1L]] <<- control
@@ -182,11 +182,11 @@ test_that("models outside the calibrated scope fall back without blocking", {
     gllvmTMB:::.gllvmTMB_fit_aghq_auto_ridge(fit_once, control)
   )
   fit <- observed$value
-  expect_true(any(grepl("outside the calibrated", observed$warnings)))
+  expect_true(any(grepl("outside the evaluated", observed$warnings)))
 
   expect_true(fit$aghq$ridge_auto$fallback)
   expect_match(fit$aghq$ridge_auto$fallback_reason,
-               "outside the calibrated")
+               "outside the evaluated")
 })
 
 test_that("public default Bernoulli grammar returns auto-ridge provenance", {

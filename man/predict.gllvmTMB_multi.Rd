@@ -44,7 +44,9 @@ local derivative of the per-row inverse link (the standard
 delta-method transform), so it approximates the SE of the
 inverse-link fitted value, not an exact one. Currently only
 supported for \code{newdata = NULL} (training rows), non-\code{multinomial()}
-fits, and fits without an active \code{mi()} missing-covariate model.}
+fits, fits without an active \code{mi()} missing-covariate model, and fits with
+unit likelihood weights. A non-unit weighted objective has no certified
+prediction-standard-error route.}
 
 \item{...}{Unused.}
 }

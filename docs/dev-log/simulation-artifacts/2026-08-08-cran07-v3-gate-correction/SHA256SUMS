@@ -1,0 +1,11 @@
+444efc0a465376a2f3391cebaf87f1ddbafd07e6fd24c36bf8439f74535664eb  inst/sim/cran07-v3/README.md
+d2b0ee3204baab48ac2690f85d60e8843dfd5236e22bbdaa7fbf6021dfc46c52  inst/sim/cran07-v3/campaign-v3.R
+8b104640bb04b2264d2d552dd6f075eac4dde560172a72dc28b33810e08d5d8c  inst/sim/cran07-v3/gates-v3.R
+5ef0d1f51a9f9aa4c6d1e8800622a5b798b2562231c4975253baff7d1ca240ba  inst/sim/cran07-v3/pilot-global-gate.R
+ac44cb8074334c395b2d45d4d367d347f71eec5971bf8490be34be98c898cc93  inst/sim/cran07-v3/production-closeout.R
+c2f36bacd037ccaced2b0f2e36b2cb923728b734b22662485bd4734f9f714b48  inst/sim/cran07-v3/run-batch.R
+6dc7194e44b0652506e0a384d6e94b15063b450cfe683052bd9bdd84d0539b40  inst/sim/cran07-v3/self-test.R
+d1e4afba534db3ed10f68de4cff2f75efee694131659cf6f7cf7b4b6ca6daede  inst/sim/cran07-v3/summarize-batch.R
+342c81407c85e8581af3d2f8d5ceeaf21f15b5cb216a24a882791600830426e7  docs/dev-log/simulation-artifacts/2026-08-08-cran07-v3-gate-correction/campaigns.csv
+4f357a661b5f33f3ac6e7a8af4ccfdf3de665d9c60a980ed23dc7c9c89aefe10  docs/dev-log/simulation-artifacts/2026-08-08-cran07-v3-gate-correction/gates.csv
+dd8f8e458ab302e7afeda9f5223c99c0a5a28292b7e402a269d4d1e5c0f885d8  docs/dev-log/simulation-artifacts/2026-08-08-cran07-v3-gate-correction/README.md

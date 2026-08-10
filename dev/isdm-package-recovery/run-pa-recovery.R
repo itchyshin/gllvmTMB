@@ -14,13 +14,21 @@ scenario <- arg_value("scenario", "ordinary")
 replicate <- as.integer(arg_value("replicate", "1"))
 root <- arg_value("output", NULL)
 pkg <- normalizePath(arg_value("pkg", getwd()), mustWork = TRUE)
+load_mode <- arg_value("load", "source")
 if (!mode %in% c("fixture", "summarize", "validate")) stop("mode must be fixture, summarize, or validate", call. = FALSE)
 if (!scenario %in% c("ordinary", "disconnected", "weak_overlap")) stop("unknown scenario", call. = FALSE)
 if (is.na(replicate) || replicate < 1L) stop("replicate must be positive", call. = FALSE)
 if (is.null(root)) stop("--output=<result-root> is required", call. = FALSE)
 root <- normalizePath(root, mustWork = FALSE)
 
-suppressMessages(devtools::load_all(pkg, quiet = TRUE))
+if (!load_mode %in% c("source", "installed")) stop("load must be source or installed", call. = FALSE)
+if (identical(load_mode, "source")) {
+  suppressMessages(devtools::load_all(pkg, quiet = TRUE))
+} else {
+  suppressMessages(library(gllvmTMB))
+  .gll_isdm_fit <- getFromNamespace(".gll_isdm_fit", "gllvmTMB")
+  .gllvmTMB_b_fix_values <- getFromNamespace(".gllvmTMB_b_fix_values", "gllvmTMB")
+}
 
 `%||%` <- function(x, y) if (is.null(x)) y else x
 truth_constants <- list(

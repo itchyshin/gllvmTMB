@@ -124,6 +124,9 @@ dev/STOP-LOCAL-PILOT
 dev/va-gate3/results/cells/
 dev/va-gate3/results/campaign*.log
 
+# Developer-only two-source iSDM known-truth recovery artifacts (local/Totoro).
+dev/isdm-package-recovery/results/
+
 # mature-VA arc: measurement outputs stay LOCAL (D-50)
 dev/va-speed/0[6-9]-*.rds
 dev/va-speed/0[6-9]-*log*.txt

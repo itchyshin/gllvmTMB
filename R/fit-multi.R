@@ -132,7 +132,8 @@
 
 .gllvmTMB_validate_family_scale_by_trait <- function(family_id_vec,
                                                       link_id_vec,
-                                                      trait_labels) {
+                                                      trait_labels,
+                                                      allow_isdm_mixed = FALSE) {
   stopifnot(
     length(family_id_vec) == length(link_id_vec),
     length(family_id_vec) == length(trait_labels)
@@ -144,7 +145,7 @@
     function(x) length(unique(x)) > 1L,
     logical(1L)
   )]
-  if (length(bad) > 0L) {
+  if (length(bad) > 0L && !isTRUE(allow_isdm_mixed)) {
     cli::cli_abort(c(
       "Response family/link cannot currently vary across rows within a trait.",
       "x" = "Multiple family/link scales were requested within: {paste(bad, collapse = ', ')}.",
@@ -579,6 +580,14 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       family
     )
   }
+  ## Developer-only iSDM routing is deliberately opt-in through an unexported
+  ## family-list marker constructed by .gll_isdm_fit().  The public mixed-family
+  ## contract remains one family/link per trait.
+  isdm_internal <- isTRUE(
+    attr(family, "gllvmTMB_internal_isdm", exact = TRUE)
+  )
+  isdm_report <- isdm_internal ||
+    isTRUE(attr(family, "gllvmTMB_internal_isdm_report", exact = TRUE))
   if (is.list(family) && !inherits(family, "family")) {
     fam_var <- attr(family, "family_var") %||% "family"
     if (!fam_var %in% names(data))
@@ -611,10 +620,34 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     for (i in seq_along(family_per_row)) family_per_row[[i]] <- family
     family_input <- family    # M1.8: single-family path; family_input == family
   }
+  ## The marker is not itself an admission rule. It merely selects this
+  ## private validator; only its exact two-source family/source contract can
+  ## relax the otherwise public one-family-per-trait boundary.
+  if (isdm_internal) {
+    isdm_ok <- is.list(family_input) &&
+      identical(attr(family_input, "family_var"), "isdm_family") &&
+      identical(names(family_input), c("gbif", "survey_pa")) &&
+      "source" %in% names(data) &&
+      all(data$source %in% c("gbif", "survey")) &&
+      all(c("gbif", "survey") %in% data$source) &&
+      identical(
+        as.character(data$isdm_family),
+        ifelse(data$source == "gbif", "gbif", "survey_pa")
+      ) &&
+      identical(unname(family_id_vec), ifelse(data$source == "gbif", 2L, 1L)) &&
+      identical(unname(link_id_vec), ifelse(data$source == "survey", 2L, 0L))
+    if (!isdm_ok) {
+      cli::cli_abort(c(
+        "The internal iSDM marker has an invalid observation contract.",
+        "i" = "It admits only GBIF Poisson-log rows and survey Bernoulli-cloglog rows selected by {.var isdm_family}."
+      ))
+    }
+  }
   .gllvmTMB_validate_family_scale_by_trait(
     family_id_vec = family_id_vec,
     link_id_vec = link_id_vec,
-    trait_labels = data[[trait]]
+    trait_labels = data[[trait]],
+    allow_isdm_mixed = isdm_internal
   )
 
   ## ---- Identify which RE terms are present and on which grouping --------
@@ -1457,6 +1490,11 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## the printed label and triggers the spatial_indep+spatial_latent guard.
   spde_is_indep_flag <- spde_flag(".spatial_indep")
   is_spatial_indep <- length(spde_idx) > 0L && any(spde_is_indep_flag)
+  ## Both spatial_indep() spellings are marginal spatial models. The common
+  ## spelling is marked `.spatial_scalar`, so exclusion checks must not look
+  ## only for the explicit `.spatial_indep` marker.
+  spde_is_marginal_flag <- spde_is_indep_flag | spde_is_scalar_flag
+  is_spatial_marginal <- length(spde_idx) > 0L && any(spde_is_marginal_flag)
   ## spatial_dep(): rewrites to spde(form, .spatial_latent = TRUE,
   ## d = n_traits, .dep = TRUE). Same engine path as
   ## spatial_latent(d = n_traits) standalone (full-rank packed-triangular
@@ -1467,6 +1505,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ##   * spatial_dep + spatial_indep:  redundant
   spde_idx_for_dep <- spde_idx
   spde_is_dep_flag <- spde_flag(".dep")
+  spde_is_plain <- !spde_is_dep_flag & !spde_is_latent_flag &
+    !spde_is_marginal_flag
   is_spatial_dep <- any(spde_is_dep_flag)
   if (is_spatial_dep) {
     ## spatial_dep + spatial_latent: over-parameterised. Detect by counting
@@ -1482,9 +1522,6 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     }
     ## spatial_dep + spatial_unique: redundant. spatial_unique = spde with
     ## no markers; detect any spde term with no dep/indep/latent/scalar flag.
-    spde_is_plain <- !spde_is_dep_flag & !spde_is_latent &
-      !spde_is_indep_flag &
-      !spde_is_scalar_flag
     if (any(spde_is_plain)) {
       cli::cli_abort(c(
         "{.fn spatial_dep} and {.fn spatial_unique} are redundant together.",
@@ -1492,28 +1529,27 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         ">" = "{.fn spatial_dep} standalone already includes the per-trait spatial diagonal -- pick one."
       ))
     }
-    ## spatial_dep + spatial_indep: redundant.
-    if (any(spde_is_indep_flag)) {
+    ## spatial_dep + either marginal spelling: redundant.
+    if (any(spde_is_marginal_flag)) {
       cli::cli_abort(c(
-        "{.fn spatial_dep} and {.fn spatial_indep} are redundant together.",
-        "i" = "Both {.code spatial_dep(0 + trait | coords)} and {.code spatial_indep(0 + trait | coords)} appear in the formula.",
+        "{.fn spatial_dep} and a marginal spatial term are redundant together.",
+        "i" = "Both {.code spatial_dep(0 + trait | coords)} and {.code spatial_indep(0 + trait | coords, common = TRUE)} appear in the formula.",
         ">" = "{.fn spatial_dep} standalone already includes the per-trait spatial diagonal -- pick one."
       ))
     }
   }
-  if (is_spatial_indep && is_spatial_latent && !is_spatial_dep) {
+  if (is_spatial_marginal && is_spatial_latent && !is_spatial_dep) {
     cli::cli_abort(c(
-      "{.fn spatial_indep} and {.fn spatial_latent} are over-parameterised together.",
-      "i" = "Both {.code spatial_indep(0 + trait | coords)} and {.code spatial_latent(0 + trait | coords, d = K)} appear in the formula.",
-      ">" = "Use {.fn spatial_indep} alone for the marginal-only spatial fit, or use {.fn spatial_latent} (with optional {.code unique = TRUE} for unshared per-trait residual) for the decomposition. They cannot coexist."
+      "A marginal spatial term and {.fn spatial_latent} are over-parameterised together.",
+      "i" = "This includes {.code spatial_indep(..., common = TRUE)} plus {.code spatial_latent(0 + trait | coords, d = K)}.",
+      ">" = "Use the marginal term alone for per-trait smoothing, or {.fn spatial_latent} for a shared spatial decomposition. They cannot coexist."
     ))
   }
-  if (is_spatial_indep && !is_spatial_dep) {
+  if (is_spatial_marginal && !is_spatial_dep) {
     ## spatial_indep + spatial_unique: redundant (both produce per-trait
     ## independent fields with the SPDE precision). Detect by counting
     ## spde terms with vs. without the .spatial_indep marker.
-    spde_indep_flags <- spde_is_indep_flag
-    if (any(!spde_indep_flags) && any(spde_indep_flags)) {
+    if (any(spde_is_plain) && any(spde_is_marginal_flag)) {
       cli::cli_abort(c(
         "{.fn spatial_indep} and {.fn spatial_unique} are redundant together.",
         "i" = "Both appear in the formula.",
@@ -2239,8 +2275,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     data           = data,
     formula_env    = environment(parsed$fixed),
     family_id_vec  = family_id_vec,
+    link_id_vec    = link_id_vec,
     family_per_row = family_per_row,
-    trait_vec      = data[[trait]]
+    trait_vec      = data[[trait]],
+    allow_isdm_cloglog = isdm_internal
   )
 
   y_raw <- stats::model.response(mf)
@@ -3823,6 +3861,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     ## All zeros when the formula carries no offset(), so a fit without one is
     ## unchanged.
     offset_vec       = as.numeric(offset_vec),
+    ## Developer-only diagnostic receipt. This is zero for every public fit;
+    ## the private iSDM route alone requests the native observation-NLL vector
+    ## used to compare the fixed predictor against an independent oracle.
+    report_obs_nll   = as.integer(isdm_report),
     n_ordinal_cuts_per_trait = as.integer(n_ordinal_cuts_per_trait),
     ordinal_offset_per_trait = as.integer(ordinal_offset_per_trait),
     multinom_group_id    = as.integer(multinom_group_id),

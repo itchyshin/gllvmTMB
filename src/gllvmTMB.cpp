@@ -416,13 +416,16 @@ Type objective_function<Type>::operator()()
   // rate adjustment. Zeros when the user supplied no offset(), so a fit
   // without one is unchanged.
   //
-  // The R side gates this to count families (fids 2, 5, 10, 11, 15) and
-  // rejects a NONZERO entry on any other row, so the template applies it
-  // unconditionally: a permitted row carries the offset, a non-count row
-  // carries an exact zero. Gating here as well would silently discard a
-  // value the R side had already accepted, which is the failure mode
-  // (#807) this feature exists to avoid repeating.
+  // The R side gates this to count families (fids 2, 5, 10, 11, 15), plus
+  // the private iSDM Bernoulli-cloglog route with known sampled-area support.
+  // All other rows have exact zero. The template applies the prepared offset
+  // unconditionally so it cannot discard a value the R side has admitted.
   DATA_VECTOR(offset_vec);
+
+  // Developer-only diagnostic: when enabled by the private iSDM R route,
+  // report the unintegrated, weighted observation contribution for each row.
+  // Public fits leave this exactly zero and receive no additional report field.
+  DATA_INTEGER(report_obs_nll);
 
   // ordinal_probit (fid 14): per-trait cutpoint metadata.
   // n_ordinal_cuts_per_trait(t)  = K_t - 2, the number of FREE cutpoints
@@ -1943,6 +1946,8 @@ Type objective_function<Type>::operator()()
   }
 
   // -------- Add RE contributions to eta ---------------------------------
+  vector<Type> observation_nll(y.size());
+  observation_nll.setZero();
   for (int o = 0; o < y.size(); o++) {
     int t  = trait_id(o);
     int s  = site_id(o);
@@ -2655,7 +2660,10 @@ Type objective_function<Type>::operator()()
     // is a no-op too.
     Type row_nll = nll - nll_before_row;
     nll = nll_before_row + row_nll * weights_i(o);
+    if (report_obs_nll == 1 && use_aghq == 0)
+      observation_nll(o) = row_nll * weights_i(o);
   }
+  if (report_obs_nll == 1 && use_aghq == 0) REPORT(observation_nll);
 
   // -------- AGHQ collapse: log-sum-exp over the quadrature nodes ---------
   // log L_i = logdet_i + log sum_j exp( logw_j + inner_ll(i, j) ).

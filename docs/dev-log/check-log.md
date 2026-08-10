@@ -49007,3 +49007,39 @@ passing the workflow's GitHub-Actions compute-boundary guard:
 This is platform evidence for the current 0.6 hardening source only. It did
 not merge PR #951, deploy pkgdown, change the package version, publish a
 release, run a scientific simulation campaign, or authorize CRAN submission.
+
+## 2026-08-10 — private two-source iSDM core and spatial-control ladder
+
+On `codex/isdm-package-core`, added a developer-only GBIF Poisson/log plus
+branch-pure survey (PA cloglog or count Poisson/log) route, a fixed-vector
+native objective/oracle test, and a synthetic spatial-control ladder. No
+empirical source, spatial two-field implementation, public API, documentation
+surface, or recovery campaign was run.
+
+```sh
+NOT_CRAN=true GLLVMTMB_HEAVY_TESTS=1 Rscript --vanilla -e 'devtools::load_all(quiet=TRUE); ... test-isdm-contract.R ... test-isdm-spatial-control-ladder.R ...'
+# PASS: focused private contract, PA/count routing/oracle, spatial ladder,
+# parser, offset, family-boundary, scalar, and spatial-mode tests.
+
+NOT_CRAN=true Rscript --vanilla -e 'devtools::load_all(quiet=TRUE); testthat::test_file("tests/testthat/test-isdm-developer-fit.R")'
+# PASS: 35 assertions; frozen zero-random-effect PA/count objective differences
+# equal independent likelihood differences, with GBIF-only nonzero mutation.
+
+git diff --check
+# PASS.
+```
+
+Exact closeout scans:
+
+```sh
+rg -n "gllvmTMB_internal_isdm|report_obs_nll|observation_nll|spatial_indep\\(|spatial_latent\\(" R src tests/testthat docs/design/111-isdm-nonspatial-recovery-protocol.md
+# Verdict: the private implementation, TMB receipt, and structural ladder are
+# all paired with tests; no public surface advertises the developer route.
+
+rg -n "GBIF|Artportalen|empirical|absolute intensity|spatial bias" README.md ROADMAP.md NEWS.md docs/dev-log/known-limitations.md docs/design/111-isdm-nonspatial-recovery-protocol.md
+# Verdict: the private protocol retains explicit empirical/absolute/two-field
+# exclusions; no public scope is widened.
+```
+
+The full `devtools::test()` run was started but its terminal stream ended before
+a final exit receipt; it is deliberately not recorded as a full-suite pass.

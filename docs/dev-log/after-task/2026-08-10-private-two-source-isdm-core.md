@@ -83,8 +83,8 @@ NOT_CRAN=true Rscript --vanilla -e 'devtools::load_all(quiet=TRUE); testthat::te
 # for both PA and count branches.
 
 Rscript --vanilla -e 'devtools::test(reporter = "summary", stop_on_failure = FALSE)'
-# Started and entered the ordinary suite; the terminal stream ended before a
-# final exit receipt, so this is NOT recorded as a full-suite pass.
+# PASS: exit code 0. The ordinary suite completed with its declared gated
+# skips and eight existing warnings; no failures were reported.
 
 git diff --check
 # PASS.

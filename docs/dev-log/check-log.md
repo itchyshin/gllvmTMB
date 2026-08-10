@@ -49041,5 +49041,8 @@ rg -n "GBIF|Artportalen|empirical|absolute intensity|spatial bias" README.md ROA
 # exclusions; no public scope is widened.
 ```
 
-The full `devtools::test()` run was started but its terminal stream ended before
-a final exit receipt; it is deliberately not recorded as a full-suite pass.
+The full `devtools::test(reporter = "summary", stop_on_failure = FALSE)` run
+later completed with exit code 0. It reported its declared gated skips and eight
+existing warnings, with no failures. This is broad package-regression evidence;
+it does not promote the private iSDM route to recovery, empirical, or two-field
+spatial capability.

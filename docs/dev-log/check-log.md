@@ -49123,3 +49123,7 @@ The private decision memo
 `dev/isdm-package-recovery/2026-08-10-g2c-smoke-decision.md` records the
 evidence and recommends a fresh larger-community G2d design rather than a
 threshold relaxation or a repeated G2c launch.
+
+The read-only comparator-readiness record
+`dev/isdm-package-recovery/2026-08-10-g2c-comparator-readiness.md` reuses the
+existing map without installing, fitting, or benchmarking any comparator.

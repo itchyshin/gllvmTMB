@@ -69,6 +69,10 @@ failure or materially degraded recovery; it is never counted as an ordinary
 success.  The weak-overlap attack retains only 25% shared support and uses
 aligned ecological and bias covariates (correlation approximately 0.9).  Its
 expected verdict is retained degradation or warning, not ordinary success.
+For a complete attack panel to meet its diagnostic expectation, every fixture
+must fail the ordinary joint target; otherwise the root records
+`ATTACK_NOT_DEGRADING_HOLD` and cannot pass.  This is a falsification check,
+not a reason to discard an inconvenient attack outcome.
 
 ## Fitting and retention
 
@@ -122,8 +126,11 @@ done before dispatch; workers use `OPENBLAS_NUM_THREADS=1` and
 The result root is immutable below
 `dev/isdm-package-recovery/results/`.  A root records this protocol hash, the
 runner hash, package commit, R/TMB/platform versions, seed grid, all file
-hashes, and its complete/incomplete status.  Re-summarisation is read-only;
-rerunning a completed fixture is rejected.
+hashes, and its complete/incomplete status.  All fixture manifests must agree
+on this provenance and exactly match the frozen 30-row scenario/seed grid.
+After a root summary is written, no fixture can be added and re-summarisation
+is rejected.  The root reports each recovery metric for all 20 ordinary rows
+and separately for eligible rows; the latter is descriptive only.
 
 ## Claim fence
 

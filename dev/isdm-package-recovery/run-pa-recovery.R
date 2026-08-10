@@ -46,6 +46,13 @@ seed_for <- function(scenario, replicate) {
 }
 
 hash_file <- function(path) unname(tools::md5sum(path))[[1L]]
+package_commit <- function() {
+  out <- suppressWarnings(system2("git", c("-C", pkg, "rev-parse", "HEAD"), stdout = TRUE, stderr = FALSE))
+  if (length(out) != 1L || !grepl("^[0-9a-f]{40}$", out)) {
+    stop("cannot record the package commit for --pkg", call. = FALSE)
+  }
+  out
+}
 script_arg <- grep("^--file=", commandArgs(trailingOnly = FALSE), value = TRUE)
 runner_file <- if (length(script_arg)) {
   normalizePath(sub("^--file=", "", script_arg[[1L]]), mustWork = TRUE)
@@ -131,6 +138,13 @@ validate_fixture <- function(fixture) {
   }
   if (anyDuplicated(rows[rows$source == "survey", c("cell_id", "trait", "survey_event_id")])) {
     stop("survey event XOR drift")
+  }
+  if (identical(fixture$truth$scenario, "disconnected")) {
+    shared_cells <- intersect(
+      unique(rows$cell_id[rows$source == "gbif"]),
+      unique(rows$cell_id[rows$source == "survey"])
+    )
+    if (length(shared_cells)) stop("disconnected attack retains shared source cells")
   }
   invisible(TRUE)
 }
@@ -220,7 +234,10 @@ fixture_result <- function(seed, scenario, replicate) {
                 warnings = fit_result$warnings, elapsed_s = fit_result$elapsed_s,
                 restart_history = fit$restart_history))
   }
-  target_pass <- eligible && metric$max_abs_beta_error <= 0.30 &&
+  target_pass <- isTRUE(eligible) && all(is.finite(unlist(metric[c(
+    "max_abs_beta_error", "max_abs_gamma_error", "min_map_correlation",
+    "shared_relative_frobenius", "max_abs_psi_variance_error"
+  )], use.names = FALSE))) && metric$max_abs_beta_error <= 0.30 &&
     metric$max_abs_gamma_error <= 0.30 && metric$min_map_correlation >= 0.70 &&
     metric$shared_relative_frobenius <= 0.50 && metric$max_abs_psi_variance_error <= 0.20
   list(status = if (eligible) "eligible" else "ineligible", detail = NA_character_,
@@ -230,11 +247,19 @@ fixture_result <- function(seed, scenario, replicate) {
 }
 
 write_fixture <- function(out, result, seed, scenario, replicate) {
+  result_root <- normalizePath(dirname(dirname(out)), mustWork = FALSE)
+  final_files <- file.path(result_root, c(
+    "summary.csv", "summary.rds", "attack-verdicts.csv", "metric-aggregates.csv",
+    "file-manifest.csv"
+  ))
+  if (any(file.exists(final_files))) {
+    stop("refusing to add a fixture to a finalised result root", call. = FALSE)
+  }
   dir.create(dirname(out), recursive = TRUE, showWarnings = FALSE)
   if (file.exists(out)) stop("refusing to overwrite retained fixture: ", out, call. = FALSE)
   result$manifest <- list(
     seed = seed, scenario = scenario, replicate = replicate,
-    package_commit = tryCatch(system2("git", c("rev-parse", "HEAD"), stdout = TRUE), error = function(e) NA_character_),
+    package_commit = package_commit(),
     runner_md5 = hash_file(runner_file), protocol_md5 = hash_file(protocol_file),
     r_version = R.version.string, tmb_version = as.character(utils::packageVersion("TMB")),
     platform = R.version$platform, completed_at_utc = format(Sys.time(), tz = "UTC", usetz = TRUE)
@@ -242,17 +267,116 @@ write_fixture <- function(out, result, seed, scenario, replicate) {
   saveRDS(result, out)
 }
 
+expected_fixture_grid <- function() {
+  panel <- list(ordinary = 1:20, disconnected = 1:5, weak_overlap = 1:5)
+  do.call(rbind, Map(function(scenario, replicates) {
+    data.frame(scenario = scenario, replicate = as.integer(replicates),
+               seed = vapply(replicates, function(r) seed_for(scenario, r), integer(1)),
+               stringsAsFactors = FALSE)
+  }, names(panel), unname(panel)))
+}
+
+validate_manifest_bundle <- function(res, files) {
+  expected <- expected_fixture_grid()
+  if (length(res) != nrow(expected) || length(files) != nrow(expected)) {
+    stop("result root does not retain the frozen 30-fixture panel", call. = FALSE)
+  }
+  required <- c("seed", "scenario", "replicate", "package_commit", "runner_md5",
+                "protocol_md5", "r_version", "tmb_version", "platform")
+  manifests <- lapply(res, function(x) {
+    if (is.null(x$manifest) || !all(required %in% names(x$manifest))) {
+      stop("fixture manifest is incomplete", call. = FALSE)
+    }
+    x$manifest
+  })
+  tab <- do.call(rbind, lapply(manifests, function(m) data.frame(
+    scenario = as.character(m$scenario), replicate = as.integer(m$replicate),
+    seed = as.integer(m$seed), package_commit = as.character(m$package_commit),
+    runner_md5 = as.character(m$runner_md5), protocol_md5 = as.character(m$protocol_md5),
+    r_version = as.character(m$r_version), tmb_version = as.character(m$tmb_version),
+    platform = as.character(m$platform), stringsAsFactors = FALSE
+  )))
+  tab <- tab[order(tab$scenario, tab$replicate), , drop = FALSE]
+  expected <- expected[order(expected$scenario, expected$replicate), , drop = FALSE]
+  rownames(tab) <- NULL
+  rownames(expected) <- NULL
+  if (!identical(tab[c("scenario", "replicate", "seed")], expected)) {
+    stop("fixture manifests do not match the frozen scenario/replicate/seed grid", call. = FALSE)
+  }
+  provenance <- c("package_commit", "runner_md5", "protocol_md5", "r_version", "tmb_version", "platform")
+  if (any(vapply(tab[provenance], function(x) length(unique(x)) != 1L, logical(1)))) {
+    stop("fixture manifests have mixed provenance", call. = FALSE)
+  }
+  if (!identical(unname(tab$runner_md5[[1L]]), hash_file(runner_file)) ||
+      !identical(unname(tab$protocol_md5[[1L]]), hash_file(protocol_file))) {
+    stop("fixture manifests do not match the current frozen runner/protocol", call. = FALSE)
+  }
+  tab
+}
+
+validate_summary_contract <- function() {
+  expected <- expected_fixture_grid()
+  make_result <- function(row) list(
+    manifest = list(seed = row$seed, scenario = row$scenario, replicate = row$replicate,
+                    package_commit = "self-check", runner_md5 = hash_file(runner_file),
+                    protocol_md5 = hash_file(protocol_file), r_version = R.version.string,
+                    tmb_version = as.character(utils::packageVersion("TMB")),
+                    platform = R.version$platform),
+    status = "eligible", target_pass = FALSE, warnings = character()
+  )
+  res <- lapply(seq_len(nrow(expected)), function(i) make_result(expected[i, , drop = FALSE]))
+  files <- file.path("fixtures", sprintf("fixture-%02d.rds", seq_along(res)))
+  validate_manifest_bundle(res, files)
+  bad <- res
+  bad[[1L]]$manifest$seed <- 99999L
+  rejected <- inherits(try(validate_manifest_bundle(bad, files), silent = TRUE), "try-error")
+  if (!rejected) stop("summary self-check did not reject a cross-manifest collision", call. = FALSE)
+  aggregate_check <- metric_aggregates(data.frame(
+    status = c("eligible", "ineligible"), max_abs_beta_error = c(0.1, 0.3),
+    max_abs_gamma_error = c(0.1, 0.3), min_map_correlation = c(0.9, 0.5),
+    shared_relative_frobenius = c(0.2, 0.6), max_abs_psi_variance_error = c(0.1, 0.4)
+  ))
+  if (nrow(aggregate_check) != 10L || !setequal(as.character(aggregate_check$denominator),
+                                                c("all_20", "eligible_only"))) {
+    stop("summary self-check did not retain both metric denominators", call. = FALSE)
+  }
+  invisible(TRUE)
+}
+
+metric_aggregates <- function(ordinary) {
+  metrics <- c("max_abs_beta_error", "max_abs_gamma_error", "min_map_correlation",
+               "shared_relative_frobenius", "max_abs_psi_variance_error")
+  describe <- function(x, denominator) {
+    finite <- x[is.finite(x)]
+    data.frame(denominator = denominator, n_rows = length(x), n_finite = length(finite),
+               mean = if (length(finite)) mean(finite) else NA_real_,
+               median = if (length(finite)) stats::median(finite) else NA_real_,
+               p10 = if (length(finite)) stats::quantile(finite, .10, type = 7, names = FALSE) else NA_real_,
+               p90 = if (length(finite)) stats::quantile(finite, .90, type = 7, names = FALSE) else NA_real_)
+  }
+  do.call(rbind, lapply(metrics, function(metric) {
+    all_rows <- describe(ordinary[[metric]], "all_20")
+    eligible <- describe(ordinary[[metric]][ordinary$status == "eligible"], "eligible_only")
+    out <- rbind(all_rows, eligible)
+    out$metric <- metric
+    out
+  }))
+}
+
 summarize_root <- function(root) {
-  protected <- file.path(root, c("summary.csv", "summary.rds", "attack-verdicts.csv", "file-manifest.csv"))
+  protected <- file.path(root, c("summary.csv", "summary.rds", "attack-verdicts.csv",
+                                 "metric-aggregates.csv", "file-manifest.csv"))
   if (any(file.exists(protected))) stop("refusing to overwrite an immutable root summary", call. = FALSE)
   files <- sort(list.files(file.path(root, "fixtures"), pattern = "\\.rds$", full.names = TRUE))
   if (!length(files)) stop("no fixture RDS files found", call. = FALSE)
   res <- lapply(files, readRDS)
+  provenance <- validate_manifest_bundle(res, files)
   rows <- lapply(res, function(x) {
     m <- x$metrics %||% list()
     data.frame(seed = x$manifest$seed, scenario = x$manifest$scenario,
                replicate = x$manifest$replicate, status = x$status,
-               target_pass = x$target_pass %||% FALSE,
+               target_pass = isTRUE(x$target_pass),
+               warning_count = length(x$warnings %||% character()),
                max_abs_beta_error = m$max_abs_beta_error %||% NA_real_,
                max_abs_gamma_error = m$max_abs_gamma_error %||% NA_real_,
                min_map_correlation = m$min_map_correlation %||% NA_real_,
@@ -260,32 +384,43 @@ summarize_root <- function(root) {
                max_abs_psi_variance_error = m$max_abs_psi_variance_error %||% NA_real_)
   })
   tab <- do.call(rbind, rows)
-  expected <- list(ordinary = 71001:71020, disconnected = 72001:72005,
-                   weak_overlap = 73001:73005)
+  expected <- split(expected_fixture_grid()$seed, expected_fixture_grid()$scenario)
   complete_panel <- vapply(names(expected), function(s) {
     got <- tab$seed[tab$scenario == s]
     identical(sort(got), expected[[s]]) && length(got) == length(expected[[s]])
   }, logical(1))
   ordinary <- tab[tab$scenario == "ordinary", , drop = FALSE]
   ordinary_complete <- complete_panel[["ordinary"]]
+  attack_names <- c("disconnected", "weak_overlap")
+  attack_degraded <- vapply(attack_names, function(s) {
+    attack <- tab[tab$scenario == s, , drop = FALSE]
+    isTRUE(complete_panel[[s]]) && all(!attack$target_pass)
+  }, logical(1))
   complete <- all(complete_panel)
-  pass <- complete && sum(ordinary$target_pass) >= 18L
+  pass <- complete && all(attack_degraded) && sum(ordinary$target_pass) >= 18L
   verdict <- if (pass) "G2_PACKAGE_PA_PASS" else "G2_PACKAGE_PA_HOLD"
   attack_verdicts <- data.frame(
-    scenario = c("disconnected", "weak_overlap"),
-    complete = unname(complete_panel[c("disconnected", "weak_overlap")]),
-    outcome = ifelse(unname(complete_panel[c("disconnected", "weak_overlap")]),
-                     "RETAINED_ATTACK_DIAGNOSTIC", "ATTACK_PANEL_INCOMPLETE"),
-    ordinary_successes = NA_integer_, stringsAsFactors = FALSE
+    scenario = attack_names,
+    complete = unname(complete_panel[attack_names]),
+    all_fixture_target_fail = unname(attack_degraded),
+    outcome = ifelse(!unname(complete_panel[attack_names]), "ATTACK_PANEL_INCOMPLETE",
+                     ifelse(unname(attack_degraded), "ATTACK_DEGRADATION_RETAINED",
+                            "ATTACK_NOT_DEGRADING_HOLD")),
+    stringsAsFactors = FALSE
   )
+  aggregates <- metric_aggregates(ordinary)
   dir.create(root, recursive = TRUE, showWarnings = FALSE)
   utils::write.csv(tab, file.path(root, "summary.csv"), row.names = FALSE)
   utils::write.csv(attack_verdicts, file.path(root, "attack-verdicts.csv"), row.names = FALSE)
+  utils::write.csv(aggregates, file.path(root, "metric-aggregates.csv"), row.names = FALSE)
   saveRDS(list(complete = complete, ordinary_complete = ordinary_complete,
                attack_complete = complete_panel[names(complete_panel) != "ordinary"], verdict = verdict,
-               all_rows = tab, ordinary_passes = sum(ordinary$target_pass), ordinary_required = 20L),
+               attack_degraded = attack_degraded, provenance = provenance,
+               all_rows = tab, metric_aggregates = aggregates,
+               ordinary_passes = sum(ordinary$target_pass), ordinary_required = 20L),
           file.path(root, "summary.rds"))
-  retained <- sort(c(files, file.path(root, "summary.csv", "summary.rds", "attack-verdicts.csv")))
+  retained <- sort(c(files, file.path(root, "summary.csv", "summary.rds", "attack-verdicts.csv",
+                                      "metric-aggregates.csv")))
   utils::write.csv(data.frame(path = basename(retained), md5 = vapply(retained, hash_file, character(1))),
                    file.path(root, "file-manifest.csv"), row.names = FALSE)
   cat(sprintf("%s | ordinary pass %d/%d | ordinary retained %d/%d\\n",
@@ -296,7 +431,8 @@ if (identical(mode, "summarize")) {
   summarize_root(root)
 } else if (identical(mode, "validate")) {
   validate_fixture(make_fixture(seed_for(scenario, replicate), scenario))
-  cat("fixture validation PASS\n")
+  validate_summary_contract()
+  cat("fixture and summary-contract validation PASS\n")
 } else {
   seed <- seed_for(scenario, replicate)
   out <- file.path(root, "fixtures", sprintf("%s-replicate-%02d.rds", scenario, replicate))

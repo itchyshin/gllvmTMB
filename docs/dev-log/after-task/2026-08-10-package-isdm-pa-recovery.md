@@ -19,6 +19,11 @@ and fixture provenance.  The post-campaign review repaired future-run controls:
 the disconnected attack is truly source-disjoint, root summaries reject
 overwrites, all three panels are required for completeness, and the launcher
 rejects an existing result root.
+The final D-43 hardening made those controls load-bearing: a finalised root
+rejects additional fixtures; the retained panel must exactly match the frozen
+scenario/replicate/seed grid with one package/runner/protocol provenance; the
+package SHA is resolved from `--pkg`; non-finite metrics deterministically
+fail; and a complete attack must show retained joint-target degradation.
 
 ### Mathematical Contract
 
@@ -77,6 +82,10 @@ inventory file changed because this remains a private developer gate.
   `OPENBLAS_NUM_THREADS=1`, `OMP_NUM_THREADS=1`, at most 30 workers.
 - `Rscript --vanilla ...run-pa-recovery.R --mode=validate
   --scenario=disconnected` — PASS after the attack correction; no fit run.
+- `Rscript --vanilla ...run-pa-recovery.R --mode=validate
+  --scenario=ordinary|disconnected` — PASS after final root-provenance,
+  seed-tamper, non-finite-metric, and all-20/eligible-summary hardening; no
+  fit run.
 - `bash -n dev/isdm-package-recovery/run-pa-totoro.sh` — PASS.
 - `git diff --check` — PASS after each repair.
 
@@ -128,6 +137,8 @@ they also found the source-support attack did not match its own definition.
 attack/root receipts.  **Rose** required the failed smoke/deployment roots and
 the invalid attack to remain visible rather than becoming a silent retry.
 **Curie**'s retained-fixture discipline made the ordinary result auditable.
+The final Gauss/Noether, Fisher, and Rose re-review approved the prospective
+harness only; it did not convert the retained old campaign into a pass.
 
 ## 7. Roadmap Tick
 

@@ -49063,3 +49063,30 @@ was incomplete/mutable.  The affected evidence remains retained and is labelled
 invalid; the runner/launcher now correct those controls for a future separately
 approved campaign.  See
 `docs/dev-log/after-task/2026-08-10-package-isdm-pa-recovery.md`.
+
+## 2026-08-10 — package-native iSDM PA harness provenance hardening
+
+No model fit, local smoke, Totoro dispatch, or empirical operation was run.
+The private future-campaign harness now rejects a non-disjoint disconnected
+fixture, any fixture added after root finalisation, a bundle that does not
+exactly equal the frozen 30-row scenario/seed grid, mixed/stale
+runner/protocol/package provenance, and an attack panel that does not actually
+degrade relative to the ordinary target. It records package identity from the
+specified `--pkg` checkout, not the caller's directory, and writes each metric
+for all 20 ordinary rows plus eligible-only rows.
+
+```sh
+Rscript --vanilla dev/isdm-package-recovery/run-pa-recovery.R --mode=validate \
+  --scenario=ordinary --replicate=1 --output=... --pkg="$PWD" --load=source
+Rscript --vanilla dev/isdm-package-recovery/run-pa-recovery.R --mode=validate \
+  --scenario=disconnected --replicate=1 --output=... --pkg="$PWD" --load=source
+# PASS: fixture and summary-contract validation; includes a seed-tamper rejection.
+
+bash -n dev/isdm-package-recovery/run-pa-totoro.sh
+git diff --check
+# PASS.
+```
+
+Fresh D-43 static review (Gauss/Noether, Fisher, Rose) approved this repair.
+It does not rehabilitate the old attack panel or alter its ordinary-panel
+`G2_PACKAGE_PA_HOLD`; any new campaign still requires explicit approval.

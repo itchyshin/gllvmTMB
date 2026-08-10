@@ -21,8 +21,9 @@ article claims.
   adversarial review.  It agreed on the ordinary HOLD and found a false
   disconnected attack plus incomplete/mutable root receipt.
 - **Repair:** the future harness now makes the disconnected support truly
-  disjoint, requires complete attack panels, writes a file manifest, rejects
-  summary overwrite, and rejects an existing Totoro result root.  No rerun was
+  disjoint, requires an exact frozen 30-row manifest/provenance bundle, makes
+  summaries and fixtures mutually immutable, requires actual attack
+  degradation, and reports all-20 plus eligible-only metrics.  No rerun was
   authorised or performed.
 - **Routing:** the campaign used Totoro with 30 one-core workers, below the
   150-core limit, with BLAS/OpenMP pinned to one thread.

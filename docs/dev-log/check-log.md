@@ -49118,3 +49118,8 @@ The smoke's fits and gradients were finite, but all three native
 at least one coordinate.  This is a named admission HOLD, not a recovery
 result.  Per the approved plan, no Totoro campaign, public update, empirical
 fit, count, comparator, or spatial work followed.
+
+The private decision memo
+`dev/isdm-package-recovery/2026-08-10-g2c-smoke-decision.md` records the
+evidence and recommends a fresh larger-community G2d design rather than a
+threshold relaxation or a repeated G2c launch.

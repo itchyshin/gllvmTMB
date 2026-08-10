@@ -49090,3 +49090,31 @@ git diff --check
 Fresh D-43 static review (Gauss/Noether, Fisher, Rose) approved this repair.
 It does not rehabilitate the old attack panel or alter its ordinary-panel
 `G2_PACKAGE_PA_HOLD`; any new campaign still requires explicit approval.
+
+## 2026-08-10 — G2c replicated-PA local-smoke admission
+
+Added a separate private G2c runner, frozen protocol, decision note, dormant
+Totoro launcher, and no-fit fixture-contract test.  This is a new three-visit
+synthetic design; it does not alter or reinterpret the one-visit evidence.
+
+```sh
+Rscript --vanilla dev/isdm-package-recovery/run-g2c-replicated-pa-recovery.R \
+  --mode=validate --output=... --pkg="$PWD"
+# PASS: three PA visits, shared cell latent state, unchanged GBIF/visit-1 rows,
+# and structural-zero GBIF bias on all survey rows.
+
+Rscript --vanilla -e 'devtools::test(filter = "g2c-replicated-pa-harness")'
+# PASS: 3 assertions.
+
+Rscript --vanilla dev/isdm-package-recovery/run-g2c-replicated-pa-recovery.R \
+  --mode=smoke --scenario=ordinary --replicate=1 \
+  --output=dev/isdm-package-recovery/results/g2c-smoke-20260810-retry1 \
+  --pkg="$PWD" --campaign-sha=2041684f044303c0fe26d5dde2b83f38d882f05d
+# SMOKE_HOLD, retained locally and ignored by Git.
+```
+
+The smoke's fits and gradients were finite, but all three native
+`theta_diag_B` (log-SD) profiles failed the frozen two-sided endpoint rule for
+at least one coordinate.  This is a named admission HOLD, not a recovery
+result.  Per the approved plan, no Totoro campaign, public update, empirical
+fit, count, comparator, or spatial work followed.

@@ -97,10 +97,15 @@ make_fixture <- function(seed, scenario, n_cell = 120L) {
   if (!all(survey_keep)) {
     survey <- survey[survey$cell_id %in% cells[survey_keep], , drop = FALSE]
   }
+  if (identical(scenario, "disconnected")) {
+    ## No cell contributes both source likelihoods: GBIF is x > 0 while
+    ## survey is x <= 0.  This is deliberately an attack, not an ordinary fit.
+    gbif <- gbif[gbif$cell_id %in% cells[!survey_keep], , drop = FALSE]
+  }
   rows <- rbind(gbif, survey)
-  x_rows <- c(x_vec, x_vec[match(paste(survey$cell_id, survey$trait),
-                                  paste(grid$cell_id, grid$trait))])
-  b_rows <- c(b_vec, rep(NA_real_, nrow(survey)))
+  row_index <- match(paste(rows$cell_id, rows$trait), paste(grid$cell_id, grid$trait))
+  x_rows <- x_vec[row_index]
+  b_rows <- ifelse(rows$source == "gbif", b_vec[row_index], NA_real_)
   X <- matrix(x_rows, ncol = 1L, dimnames = list(NULL, "env"))
   B <- matrix(b_rows, ncol = 1L, dimnames = list(NULL, "bias"))
   list(
@@ -238,6 +243,8 @@ write_fixture <- function(out, result, seed, scenario, replicate) {
 }
 
 summarize_root <- function(root) {
+  protected <- file.path(root, c("summary.csv", "summary.rds", "attack-verdicts.csv", "file-manifest.csv"))
+  if (any(file.exists(protected))) stop("refusing to overwrite an immutable root summary", call. = FALSE)
   files <- sort(list.files(file.path(root, "fixtures"), pattern = "\\.rds$", full.names = TRUE))
   if (!length(files)) stop("no fixture RDS files found", call. = FALSE)
   res <- lapply(files, readRDS)
@@ -253,18 +260,36 @@ summarize_root <- function(root) {
                max_abs_psi_variance_error = m$max_abs_psi_variance_error %||% NA_real_)
   })
   tab <- do.call(rbind, rows)
+  expected <- list(ordinary = 71001:71020, disconnected = 72001:72005,
+                   weak_overlap = 73001:73005)
+  complete_panel <- vapply(names(expected), function(s) {
+    got <- tab$seed[tab$scenario == s]
+    identical(sort(got), expected[[s]]) && length(got) == length(expected[[s]])
+  }, logical(1))
   ordinary <- tab[tab$scenario == "ordinary", , drop = FALSE]
-  required <- 20L
-  complete <- nrow(ordinary) == required && identical(sort(ordinary$seed), 71001:71020)
+  ordinary_complete <- complete_panel[["ordinary"]]
+  complete <- all(complete_panel)
   pass <- complete && sum(ordinary$target_pass) >= 18L
   verdict <- if (pass) "G2_PACKAGE_PA_PASS" else "G2_PACKAGE_PA_HOLD"
+  attack_verdicts <- data.frame(
+    scenario = c("disconnected", "weak_overlap"),
+    complete = unname(complete_panel[c("disconnected", "weak_overlap")]),
+    outcome = ifelse(unname(complete_panel[c("disconnected", "weak_overlap")]),
+                     "RETAINED_ATTACK_DIAGNOSTIC", "ATTACK_PANEL_INCOMPLETE"),
+    ordinary_successes = NA_integer_, stringsAsFactors = FALSE
+  )
   dir.create(root, recursive = TRUE, showWarnings = FALSE)
   utils::write.csv(tab, file.path(root, "summary.csv"), row.names = FALSE)
-  saveRDS(list(complete = complete, verdict = verdict, all_rows = tab,
-               ordinary_passes = sum(ordinary$target_pass), ordinary_required = required),
+  utils::write.csv(attack_verdicts, file.path(root, "attack-verdicts.csv"), row.names = FALSE)
+  saveRDS(list(complete = complete, ordinary_complete = ordinary_complete,
+               attack_complete = complete_panel[names(complete_panel) != "ordinary"], verdict = verdict,
+               all_rows = tab, ordinary_passes = sum(ordinary$target_pass), ordinary_required = 20L),
           file.path(root, "summary.rds"))
+  retained <- sort(c(files, file.path(root, "summary.csv", "summary.rds", "attack-verdicts.csv")))
+  utils::write.csv(data.frame(path = basename(retained), md5 = vapply(retained, hash_file, character(1))),
+                   file.path(root, "file-manifest.csv"), row.names = FALSE)
   cat(sprintf("%s | ordinary pass %d/%d | ordinary retained %d/%d\\n",
-              verdict, sum(ordinary$target_pass), required, nrow(ordinary), required))
+              verdict, sum(ordinary$target_pass), 20L, nrow(ordinary), 20L))
 }
 
 if (identical(mode, "summarize")) {

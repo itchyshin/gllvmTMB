@@ -49046,3 +49046,20 @@ later completed with exit code 0. It reported its declared gated skips and eight
 existing warnings, with no failures. This is broad package-regression evidence;
 it does not promote the private iSDM route to recovery, empirical, or two-field
 spatial capability.
+
+## 2026-08-10 — package-native iSDM PA recovery campaign
+
+Developer-only PA recovery runner/protocol added under
+`dev/isdm-package-recovery/`; no public API, empirical data, spatial field,
+count branch, comparator, or public documentation was touched.  A local
+synthetic smoke and a Totoro retry at commit `43bc9c63` retained 30 fixture RDS
+files.  All 20 ordinary fixtures were eligible but 0/20 passed the frozen joint
+target rule (required 18/20), so the ordinary panel is
+`G2_PACKAGE_PA_HOLD`.
+
+The original campaign is not a full protocol-complete promotion: D-43 found
+that its disconnected panel was not actually disjoint and that its root receipt
+was incomplete/mutable.  The affected evidence remains retained and is labelled
+invalid; the runner/launcher now correct those controls for a future separately
+approved campaign.  See
+`docs/dev-log/after-task/2026-08-10-package-isdm-pa-recovery.md`.

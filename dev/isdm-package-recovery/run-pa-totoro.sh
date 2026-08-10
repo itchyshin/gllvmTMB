@@ -20,6 +20,10 @@ export OPENBLAS_NUM_THREADS=1
 export OMP_NUM_THREADS=1
 private_lib="$repo_root/.isdm-r-library"
 export R_LIBS_USER="$private_lib:$HOME/R/lib"
+if [[ -e "$result_root" ]]; then
+  echo "refusing to reuse an immutable result root: $result_root" >&2
+  exit 2
+fi
 mkdir -p "$private_lib" "$result_root"
 R CMD INSTALL --library="$private_lib" "$repo_root" >/dev/null
 

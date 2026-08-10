@@ -18,9 +18,10 @@ fi
 
 export OPENBLAS_NUM_THREADS=1
 export OMP_NUM_THREADS=1
-export R_LIBS_USER="$repo_root/.isdm-r-library"
-mkdir -p "$R_LIBS_USER" "$result_root"
-R CMD INSTALL --library="$R_LIBS_USER" "$repo_root" >/dev/null
+private_lib="$repo_root/.isdm-r-library"
+export R_LIBS_USER="$private_lib:$HOME/R/lib"
+mkdir -p "$private_lib" "$result_root"
+R CMD INSTALL --library="$private_lib" "$repo_root" >/dev/null
 
 launch() {
   local scenario=$1

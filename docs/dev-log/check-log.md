@@ -49312,3 +49312,30 @@ terminal receipt exists. It is `G2D_SMOKE_HOLD_INCOMPLETE_ARTIFACTS`, not a
 numerical result and not a reason to retry. G2c, Totoro/campaign, public,
 and Issue #953 boundaries are unchanged. Exact scans and retained hashes are in
 `docs/dev-log/after-task/2026-08-11-g2d-cloglog-tail-s3-hold.md`.
+
+## 2026-08-11 — G2d root-only termination diagnostic
+
+The original root-only smoke cannot be assigned a specific failure cause: it
+retains neither exit status nor an artifact after its root receipt. Static
+inspection found the silent interval from fixture preparation through the first
+fit call. The private runner now has shared `prepare_fixture()`, a no-fit
+`smoke_boundary` mode, and stage-ledger entries before/after each arm.
+
+```sh
+Rscript --vanilla -e 'testthat::test_file("tests/testthat/test-g2d-six-species-harness.R", reporter = "summary", stop_on_failure = TRUE)'
+# PASS.
+
+Rscript --vanilla dev/isdm-package-recovery/run-g2d-six-species-recovery.R \
+  --mode=smoke_boundary --scenario=ordinary --replicate=1 \
+  --output=dev/isdm-package-recovery/results/g2d-tail-boundary-20260811-002 \
+  --pkg=/private/tmp/gllvmtmb-isdm-g2d-six-species \
+  --campaign-sha=d04cb53e47df8553ccd4ebc7e281130cc01fe0c3
+# PASS: G2D_SMOKE_BOUNDARY_PASS (no fit).
+```
+
+The manifest-bound root records `root_receipt_written`, `fixture_constructed`,
+`fixture_validated`, and `optimizer_not_entered`. Verdict:
+`G2D_ROOT_ONLY_CAUSE_UNATTRIBUTED` and
+`RUNNER_OBSERVABILITY_DEFECT_REPAIRED`. No replacement smoke ran or is
+authorised; G2c, Totoro/campaign, public, and Issue #953 boundaries are
+unchanged.

@@ -49274,3 +49274,41 @@ spatial/detection/zero-inflation extension, benchmark, public API/docs,
 pkgdown, or Issue #953 action ran. G2c remains
 `G2C_SMOKE_ADMISSION_HOLD`; G2d remains diagnostic assembly PASS only and
 smoke HOLD.
+
+## 2026-08-11 — G2d cloglog tail repair and S3 root-only HOLD
+
+At frozen commit `55be39ba`, the binomial cloglog engine changed from a
+probability-level `1e-12` clip to an AD-safe direct log-scale general-binomial
+helper. Targeted C++/R tail and iJSDM oracle tests passed, as did no-fit G2d
+validation, fresh preflight, and independent receipt read-back.
+
+```sh
+Rscript --vanilla -e 'devtools::test(filter = "tmb-ad-safe-clamps|isdm-developer-fit", reporter = "summary", stop_on_failure = TRUE)'
+# PASS.
+
+Rscript --vanilla dev/isdm-package-recovery/run-g2d-six-species-recovery.R --mode=validate \
+  --output=dev/isdm-package-recovery/results/g2d-tail-preflight-20260811-001 \
+  --pkg=/private/tmp/gllvmtmb-isdm-g2d-six-species \
+  --campaign-sha=55be39babfa128e7c7691690fbdf05acbcdd56f7
+# PASS: no-fit fixture/support/profile contract validation.
+
+Rscript --vanilla dev/isdm-package-recovery/run-g2d-six-species-recovery.R --mode=preflight \
+  --output=dev/isdm-package-recovery/results/g2d-tail-preflight-20260811-001 \
+  --pkg=/private/tmp/gllvmtmb-isdm-g2d-six-species \
+  --campaign-sha=55be39babfa128e7c7691690fbdf05acbcdd56f7
+# PASS: G2D_PREFLIGHT_PASS (no fit).
+
+Rscript --vanilla dev/isdm-package-recovery/run-g2d-six-species-recovery.R --mode=smoke \
+  --scenario=ordinary --replicate=1 \
+  --output=dev/isdm-package-recovery/results/g2d-tail-smoke-20260811-001 \
+  --pkg=/private/tmp/gllvmtmb-isdm-g2d-six-species \
+  --campaign-sha=55be39babfa128e7c7691690fbdf05acbcdd56f7
+# One authorised attempt; only root receipts emitted.
+```
+
+The retained ignored smoke root contains only `root-receipt.rds` and
+`root-receipt.md`, bound to `55be39ba`; no fixture, fit, profile, manifest, or
+terminal receipt exists. It is `G2D_SMOKE_HOLD_INCOMPLETE_ARTIFACTS`, not a
+numerical result and not a reason to retry. G2c, Totoro/campaign, public,
+and Issue #953 boundaries are unchanged. Exact scans and retained hashes are in
+`docs/dev-log/after-task/2026-08-11-g2d-cloglog-tail-s3-hold.md`.

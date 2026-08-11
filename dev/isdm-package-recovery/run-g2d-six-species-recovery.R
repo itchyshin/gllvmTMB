@@ -151,7 +151,7 @@ profile_theta_diag <- function(fit) {
   species <- paste0("sp", 1:6)
   offsets <- c(-2, -1, 0, 1, 2)
   if (length(base) != length(species)) stop("expected exactly six theta_diag_B coordinates")
-  original_map <- fit$tmb_map$theta_diag_B
+  original_map <- fit$tmb_map[["theta_diag_B", exact = TRUE]]
   if (!is.null(original_map) && (length(original_map) != length(base) || anyNA(original_map) || anyDuplicated(as.integer(original_map)))) stop("theta_diag_B coordinates are tied or skipped")
   out <- lapply(seq_along(base), function(k) {
     grid <- base[[k]] + offsets

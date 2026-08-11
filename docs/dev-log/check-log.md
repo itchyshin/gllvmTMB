@@ -49172,3 +49172,16 @@ Rscript --vanilla dev/isdm-package-recovery/run-g2d-six-species-recovery.R --mod
 The retained ignored root has verified receipt, sentinel, and manifest files.
 P2 remains a separately authorised fresh local smoke; no Totoro or campaign
 work followed. See `docs/dev-log/after-task/2026-08-10-g2d-root-preflight.md`.
+
+## 2026-08-10 — G2d replacement local smoke HOLD
+
+```sh
+Rscript --vanilla dev/isdm-package-recovery/run-g2d-six-species-recovery.R --mode=smoke --scenario=ordinary --replicate=1 --output=dev/isdm-package-recovery/results/g2d-smoke-20260810-210000 --pkg="$PWD" --campaign-sha=621eb94c8a2a3dc631a620926736af1be9eb3f72
+# HOLD: G2D_SMOKE_HOLD; all receipts retained.
+```
+
+Both arms stopped because partial `$` matching selected `theta_diag_B_slope`
+when no exact free `theta_diag_B` map existed. Exact indexing is repaired and
+tested without a retry. This is a harness HOLD, not recovery evidence, and
+Totoro/panel/Paper-2 promotion remain closed. See
+`docs/dev-log/after-task/2026-08-10-g2d-replacement-smoke-hold.md`.

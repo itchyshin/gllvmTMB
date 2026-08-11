@@ -49398,3 +49398,33 @@ partition, explicit conditional cloglog Fisher oracle, and written seed/support
 provenance. Those corrections were incorporated and re-reviewed PASS. The
 frozen decision and local-smoke boundary are recorded in
 `dev/isdm-package-recovery/2026-08-11-g2f-pa-replication-decision.md`.
+
+## 2026-08-11 — G2f one authorized six-visit local smoke HOLD
+
+The private committed smoke wrapper passed no-fit validation and targeted tests,
+then ran exactly once against the frozen six-visit G2f fixture. The retained root
+is `dev/isdm-package-recovery/results/g2f-smoke-20260811-001`.
+
+```sh
+TMPDIR=/private/tmp/gllvmtmb-isdm-g2f-pa-replication/.tmp-g2f \
+  Rscript --vanilla dev/isdm-package-recovery/run-g2f-pa-replication-smoke.R \
+  --mode=validate --output=dev/isdm-package-recovery/results/g2f-smoke-validate-unused \
+  --pkg="$PWD"
+# PASS: G2F smoke-launcher validation PASS (no fit).
+
+TMPDIR=/private/tmp/gllvmtmb-isdm-g2f-pa-replication/.tmp-g2f \
+  Rscript --vanilla -e 'devtools::test(filter = "g2f-pa-replication", reporter = "summary")'
+# PASS.
+
+TMPDIR=/private/tmp/gllvmtmb-isdm-g2f-pa-replication/.tmp-g2f \
+  Rscript --vanilla dev/isdm-package-recovery/run-g2f-pa-replication-smoke.R \
+  --mode=smoke --output=dev/isdm-package-recovery/results/g2f-smoke-20260811-001 \
+  --pkg="$PWD" --campaign-sha=128d2d60d3df9b9f3bb49e1fd267796607c7bf0b
+# One run only. Frozen classification: NONRESPONSIVE; admission: G2F_SMOKE_HOLD.
+```
+
+All six profiles are valid, but neither frozen response rule passes:
+`gamma_error=0.3972994` is above the G2d comparison 0.371326 and fewer than
+four lower profile values improve by one. The fit's maximum gradient is
+0.001056337, narrowly above the 0.001 eligibility threshold. No retry,
+campaign, Totoro/DRAC, public/package, or Issue #953 action ran.

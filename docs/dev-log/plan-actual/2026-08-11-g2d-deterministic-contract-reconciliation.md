@@ -9,6 +9,7 @@
 | Ordinary pairing | GBIF and survey visit 1 align exactly in the ordinary fixture | Exact-pair validator applies only to `ordinary`; disconnected and weak-overlap attacks remain valid | pass | adversarial support tests remain meaningful |
 | Fitting | No new fit, smoke, retry, profile, or campaign without a separate decision | None run | pass | retained `G2D_SMOKE_HOLD` is unchanged |
 | Claims | No recovery or Paper-2 efficacy claim | No numerical recovery output produced | pass | no claim boundary moves |
+| Count boundary | GBIF remains a Poisson count component; survey-count outcomes stay deferred | Ambiguous "count data" wording was corrected after independent review | pass | the claim fence no longer contradicts the locked likelihood |
 
 **Rose reconciliation verdict**: the deterministic contract is strengthened and
 its no-fit evidence is complete for this phase. It is not a fitted

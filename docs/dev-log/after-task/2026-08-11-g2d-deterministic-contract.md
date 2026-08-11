@@ -64,7 +64,7 @@ git diff --check
 
 The full `test-isdm-developer-fit.R` file was deliberately not run because its
 pre-existing tests fit models. No smoke, Totoro, campaign, empirical,
-comparator, count, spatial, source-admission, public-doc/API, or Issue #953
+comparator, survey-count outcome, spatial, source-admission, public-doc/API, or Issue #953
 operation ran.
 
 ## 6. Tests of the Tests
@@ -101,6 +101,11 @@ attack and made no-fit validation fail. Independent review identified the
 scenario mismatch; the revised routing makes ordinary pairing explicit without
 weakening the attack fixture.
 
+The independent method/claim-fence review also found that the phrase "excludes
+count data" was ambiguous because GBIF is intentionally a Poisson count
+component. The private protocol and this report now say "survey-count
+branch/outcomes"; the model and its evidence did not change.
+
 ## 10. Known Residuals
 
 No actual six-coordinate `theta_diag_B` TMB-map/extractor alignment has been
@@ -117,6 +122,6 @@ between deterministic contract evidence and a fitted admission result.
 ## 12. Cross-Product Coverage
 
 This phase does NOT cover fitted TMB-map/extractor identity, profile success,
-eligibility, recovery, a 30-fixture campaign, Totoro, empirical data, counts,
+eligibility, recovery, a 30-fixture campaign, Totoro, empirical data, survey-count outcomes,
 comparators, spatial/two-bias-field work, detection, absolute intensity, public
 API/docs, Issue #953, or a Paper-2 claim.

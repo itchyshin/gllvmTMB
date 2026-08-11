@@ -10,7 +10,7 @@ improves recovery for the same package-native two-source, relative-intensity
 estimand.  Its only terminal verdicts are `G2D_SIX_SPECIES_PASS` and a named
 `G2D_SIX_SPECIES_HOLD`.
 
-G2d excludes count data, a comparator, spatial fields, source admission,
+G2d excludes the survey-count branch/outcomes, a comparator, spatial fields, source admission,
 empirical data, public functions or syntax, Issue #953 work, absolute
 intensity, and detection modelling.  Repeated PA visits are conditionally
 independent observations of the same cell/species ecological state; they do
@@ -127,5 +127,5 @@ separate explicit authorisation follows an inspected `G2D_SMOKE_PASS`.
 
 Even a PASS is evidence only for this fixed, private, six-species, nonspatial,
 synthetic package-native DGP.  It does not establish detection estimation,
-calibration, counts, spatial source separation, absolute intensity, empirical
+calibration, survey-count outcomes, spatial source separation, absolute intensity, empirical
 validity, public capability, or article readiness.

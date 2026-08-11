@@ -49234,3 +49234,14 @@ No fitted model, smoke, Totoro, campaign, empirical, public API/docs, or Issue
 #953 action ran. The next unresolved check is actual six-coordinate
 `theta_diag_B` map/extractor alignment, which remains behind a separate fit
 approval.
+
+## 2026-08-11 — G2d independent method and claim-fence review
+
+An independent read-only review found static symbolic-to-engine alignment for
+the private six-species route, but correctly retained promotion HOLD until an
+explicitly approved diagnostic fit can inspect the actual six-coordinate map
+and extractor. It also found ambiguous "excludes count data" wording: GBIF is
+intentionally a Poisson count component, while only the survey-count branch is
+deferred. The private protocol and deterministic after-task report now say
+"survey-count branch/outcomes". No fit, smoke, campaign, Totoro, empirical,
+public-surface, or Issue #953 operation ran.

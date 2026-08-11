@@ -1,8 +1,8 @@
 # After Task: G2d repaired local-smoke ineligible HOLD
 
-**Branch**: `codex/isdm-g2d-six-species`  
-**Frozen commit**: `45ff9943356b4038234885055bf412262421cc97`  
-**Date**: `2026-08-10`  
+**Branch**: `codex/isdm-g2d-six-species`
+**Frozen commit**: `45ff9943356b4038234885055bf412262421cc97`
+**Date**: `2026-08-10`
 **Roles (engaged)**: Ada, Rose
 
 ## 1. Goal

@@ -49186,13 +49186,13 @@ tested without a retry. This is a harness HOLD, not recovery evidence, and
 Totoro/panel/Paper-2 promotion remain closed. See
 `docs/dev-log/after-task/2026-08-10-g2d-replacement-smoke-hold.md`.
 
-## 2026-08-10 — G2d repaired local-smoke incomplete-artifact HOLD
+## 2026-08-10 — G2d repaired local-smoke ineligible HOLD
 
 At frozen commit `45ff9943`, a new no-fit preflight root passed and the
 independent receipt/sentinel audit passed. The one newly authorised ordinary
-seed-86101 smoke created only its root receipt and did not retain a fixture,
-fit receipt, profiles, metrics, restart ledger, paired map, event ledger,
-manifest, or smoke receipt.
+seed-86101 smoke retained its complete root, fixture, fit, profile, metric,
+restart, paired-map, event, manifest, and smoke receipts, then returned
+`G2D_SMOKE_HOLD` because the three-visit fit was ineligible.
 
 ```sh
 Rscript --vanilla dev/isdm-package-recovery/run-g2d-six-species-recovery.R \
@@ -49204,11 +49204,13 @@ Rscript --vanilla dev/isdm-package-recovery/run-g2d-six-species-recovery.R \
   --mode=smoke --scenario=ordinary --replicate=1 \
   --output=dev/isdm-package-recovery/results/g2d-smoke-20260810-220000 \
   --pkg="$PWD" --campaign-sha=45ff9943356b4038234885055bf412262421cc97
-# No printed G2D verdict; only root-receipt.md/rds retained.
+# HOLD: G2D_SMOKE_HOLD; three_visit_status: ineligible;
+# three_visit_max_abs_gradient: 7.384789e-04.
 ```
 
-The independent artifact audit returned `G2D_SMOKE_ARTIFACT_AUDIT_HOLD` with
-fit-start evidence absent. This is not estimator evidence, not a repaired
+The independent manifest audit passed for every retained artifact/hash,
+frozen provenance, and paired-state invariant, and confirmed the ineligible
+three-visit verdict. This is not estimator recovery evidence, not a repaired
 smoke PASS, and not authority for Totoro, the panel, Paper-2 numerical claims,
 or a retry. See
 `docs/dev-log/after-task/2026-08-10-g2d-repaired-smoke-incomplete-hold.md` and

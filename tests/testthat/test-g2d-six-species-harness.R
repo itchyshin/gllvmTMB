@@ -43,6 +43,7 @@ test_that("G2d private artifacts freeze the six-species contract", {
   expect_match(runner, "G2D_PREFLIGHT_PASS", fixed = TRUE)
   expect_match(runner, "G2D_DIAGNOSTIC_MAP_PASS", fixed = TRUE)
   expect_match(runner, "G2D_DIAGNOSTIC_AUDIT_PASS", fixed = TRUE)
+  expect_match(runner, "theta_diag_matches_report", fixed = TRUE)
   expect_match(runner, "single-fit-tmb-map-extractor-diagnostic", fixed = TRUE)
   expect_match(runner, "G2D_SMOKE_PASS", fixed = TRUE)
   expect_match(runner, 'fit$tmb_map[["theta_diag_B", exact = TRUE]]', fixed = TRUE)

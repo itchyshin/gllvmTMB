@@ -203,6 +203,9 @@ audit_diagnostic_fit <- function(fit) {
     theta_rr_matches_report = isTRUE(all.equal(
       .gllvmTMB_pack_rr_theta(lambda), as.numeric(theta_rr), tolerance = 1e-8
     )),
+    theta_diag_matches_report = isTRUE(all.equal(
+      exp(as.numeric(theta_diag)), sd, tolerance = 1e-8
+    )),
     six_free_rr_map = map_is_six_free(map_rr),
     six_free_diag_map = map_is_six_free(map_diag),
     positive_six_psi_sd = length(sd) == 6L && all(is.finite(sd)) && all(sd > 0),

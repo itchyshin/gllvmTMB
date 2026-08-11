@@ -1,0 +1,48 @@
+test_that("G2f adds only PA visits while retaining original supports and the source gate", {
+  pkg <- normalizePath(file.path(testthat::test_path(), "..", ".."), mustWork = TRUE)
+  e <- new.env(parent = globalenv())
+  source(file.path(pkg, "dev", "isdm-package-recovery", "g2f-pa-replication-fixture.R"), local = e)
+  fx <- e$g2f_make_fixture()
+  expect_silent(e$g2f_validate_fixture(fx))
+  expect_identical(fx$truth$n_visit, 6L)
+  expect_equal(fx$truth$support_g, exp(seq(log(.8), log(2), length.out = 120L)), tolerance = 0)
+  expect_equal(fx$truth$support_s, exp(seq(log(.6), log(1.4), length.out = 120L)), tolerance = 0)
+  survey <- fx$six_visit$rows$source == "survey"
+  expect_true(all(is.na(fx$six_visit$B[survey, 1L])))
+  expect_true(all(is.finite(fx$six_visit$B[!survey, 1L])))
+})
+
+test_that("G2f oracle doubles conditional PA information and retains GBIF information", {
+  pkg <- normalizePath(file.path(testthat::test_path(), "..", ".."), mustWork = TRUE)
+  e <- new.env(parent = globalenv())
+  source(file.path(pkg, "dev", "isdm-package-recovery", "g2f-pa-replication-fixture.R"), local = e)
+  o <- e$g2f_information_oracle(e$g2f_make_fixture())
+  expect_identical(o$pa_event_opportunity_ratio, 2)
+  expect_identical(o$pa_information_ratio, 2)
+  expect_equal(o$pa_six_visit_information_eta, 2 * o$pa_three_visit_information_eta, tolerance = 0)
+  expect_true(all(is.finite(o$gbif_information_eta)))
+  expect_true(all(o$survey_probability > 0 & o$survey_probability < 1))
+})
+
+test_that("G2f preflight retains a readable, self-contained no-fit contract", {
+  pkg <- normalizePath(file.path(testthat::test_path(), "..", ".."), mustWork = TRUE)
+  script <- file.path(pkg, "dev", "isdm-package-recovery", "run-g2f-pa-replication.R")
+  root <- file.path(pkg, "dev", "isdm-package-recovery", "results", paste0("g2f-test-preflight-", as.integer(Sys.time())))
+  on.exit(unlink(root, recursive = TRUE), add = TRUE)
+  result <- system2(file.path(R.home("bin"), "Rscript"), c("--vanilla", script, "--mode=preflight", paste0("--output=", root), paste0("--pkg=", pkg)), stdout = TRUE, stderr = TRUE)
+  expect_true(is.null(attr(result, "status")) || identical(attr(result, "status"), 0L))
+  expect_true(any(grepl("G2F_PREFLIGHT_PASS", result, fixed = TRUE)))
+  receipt <- readRDS(file.path(root, "root-receipt.rds"))
+  expect_identical(receipt$kind, "G2F_PREFLIGHT")
+  expect_true(all(c("protocol_md5", "decision_md5", "fixture_md5", "runner_md5") %in% names(receipt)))
+  expect_true(file.exists(file.path(root, "preflight-file-manifest.csv")))
+})
+
+test_that("G2f runner validates without a fit", {
+  pkg <- normalizePath(file.path(testthat::test_path(), "..", ".."), mustWork = TRUE)
+  script <- file.path(pkg, "dev", "isdm-package-recovery", "run-g2f-pa-replication.R")
+  out <- tempfile("g2f-validate-")
+  result <- system2(file.path(R.home("bin"), "Rscript"), c("--vanilla", script, "--mode=validate", paste0("--output=", out), paste0("--pkg=", pkg)), stdout = TRUE, stderr = TRUE)
+  expect_true(is.null(attr(result, "status")) || identical(attr(result, "status"), 0L))
+  expect_true(any(grepl("G2F six-visit fixture/source-gate/oracle validation PASS", result, fixed = TRUE)))
+})

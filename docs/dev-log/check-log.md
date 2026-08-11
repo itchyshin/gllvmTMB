@@ -49367,3 +49367,34 @@ all six profiles HOLD and GBIF-bias maximum error is `0.371326 > 0.30`.
 The original apparently root-only result later finished as a complete
 `G2D_SMOKE_HOLD`, superseding its earlier termination explanation. No retry,
 Totoro/campaign, public, or Issue #953 action ran; G2c remains held.
+
+## 2026-08-11 — G2f PA-replication pre-fit preparation
+
+Prepared the private seed-86101, six-species, 120-cell G2f fixture from the
+closed G2e commit. It retains the original G2d supports and changes only PA
+replication from three to six visits. No fitter, optimizer, profile, compilation,
+smoke, campaign, Totoro/DRAC, public surface, or Issue #953 action ran.
+
+```sh
+TMPDIR=/private/tmp/gllvmtmb-isdm-g2f-pa-replication/.tmp-g2f \
+  Rscript --vanilla dev/isdm-package-recovery/run-g2f-pa-replication.R \
+  --mode=validate --output=dev/isdm-package-recovery/results/g2f-validate-unused \
+  --pkg="$PWD"
+# PASS: G2F six-visit fixture/source-gate/oracle validation PASS (no fit).
+
+TMPDIR=/private/tmp/gllvmtmb-isdm-g2f-pa-replication/.tmp-g2f \
+  Rscript --vanilla -e 'devtools::test(filter = "g2f-pa-replication", reporter = "summary")'
+# PASS: 18 assertions.
+
+TMPDIR=/private/tmp/gllvmtmb-isdm-g2f-pa-replication/.tmp-g2f \
+  Rscript --vanilla dev/isdm-package-recovery/run-g2f-pa-replication.R \
+  --mode=preflight --output=dev/isdm-package-recovery/results/g2f-preflight-20260811-143000 \
+  --pkg="$PWD"
+# PASS: G2F_PREFLIGHT_PASS (no fit); receipt/truth/oracle read back.
+```
+
+Independent method review initially held the protocol for a missing decision
+partition, explicit conditional cloglog Fisher oracle, and written seed/support
+provenance. Those corrections were incorporated and re-reviewed PASS. The
+frozen decision and local-smoke boundary are recorded in
+`dev/isdm-package-recovery/2026-08-11-g2f-pa-replication-decision.md`.

@@ -49245,3 +49245,16 @@ intentionally a Poisson count component, while only the survey-count branch is
 deferred. The private protocol and deterministic after-task report now say
 "survey-count branch/outcomes". No fit, smoke, campaign, Totoro, empirical,
 public-surface, or Issue #953 operation ran.
++
+## 2026-08-11 — G2d retained diagnostic map audit
+
+One separately approved ordinary three-visit diagnostic fit ran at `b45bbfab`
+with `n_init = 1` and no profile. Its original retained root is
+`G2D_DIAGNOSTIC_MAP_HOLD` solely because labelled extractor matrices differed
+in attributes from unnamed reconstructions; it was not rerun. Two fresh,
+manifest-bound no-fit audit roots re-read that exact fit object. The final audit
+at `ef3d1325` passed all 12 checks, including
+`theta_diag_B -> exp(theta_diag_B) -> sd_B`, rank-one loading packing, and
+shared/unique/total Sigma identities. Independent review passed the correction.
+This is diagnostic-only assembly evidence: `G2D_SMOKE_HOLD`, recovery/campaign
+holds, Totoro hold, and Paper-2 claim fence remain unchanged.

@@ -49127,3 +49127,30 @@ threshold relaxation or a repeated G2c launch.
 The read-only comparator-readiness record
 `dev/isdm-package-recovery/2026-08-10-g2c-comparator-readiness.md` reuses the
 existing map without installing, fitting, or benchmarking any comparator.
+
+## 2026-08-10 — G2d private six-species harness and local smoke HOLD
+
+Private G2d freezes the six-species extension, `86101:86120` seed map,
+three-visit PA pairing, six free `theta_diag_B` profile coordinates, direct
+attack-map checks, and all-20 denominator. No public/package source or docs
+changed; G2c remains `G2C_SMOKE_ADMISSION_HOLD`.
+
+```sh
+Rscript --vanilla dev/isdm-package-recovery/run-g2d-six-species-recovery.R --mode=validate --output=/private/tmp/gllvmtmb-isdm-g2d-six-species/dev/isdm-package-recovery/results/g2d-validate-probe --pkg=/private/tmp/gllvmtmb-isdm-g2d-six-species
+# PASS: G2D fixture/support/profile contract validation PASS (no fit)
+
+Rscript --vanilla -e 'testthat::test_file("tests/testthat/test-g2d-six-species-harness.R", reporter = "summary")'
+# PASS: 10 expectations.
+
+rg -n 'G2D|G2c|isdm' README.md ROADMAP.md NEWS.md docs/dev-log/known-limitations.md docs/design
+# PASS: no public-surface G2d claim; G2c remains a protected historical HOLD.
+```
+
+The single authorised local smoke for ordinary seed `86101` reached the
+post-fit write stage then failed because the ignored `results/` parent had not
+been created before `normalizePath(..., mustWork = TRUE)`. No numerical output
+was serialised; this is `G2D_SMOKE_HOLD`, not recovery evidence. The runner
+now creates its root before fitting, but no retry, panel, Totoro, public update,
+or Issue #953 action is authorised. See
+`docs/dev-log/after-task/2026-08-10-g2d-six-species-local-smoke.md` and
+`docs/dev-log/recovery-checkpoints/2026-08-10-194411-codex-g2d-six-species-smoke-hold.md`.

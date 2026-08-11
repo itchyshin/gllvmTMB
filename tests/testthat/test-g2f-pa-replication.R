@@ -46,3 +46,13 @@ test_that("G2f runner validates without a fit", {
   expect_true(is.null(attr(result, "status")) || identical(attr(result, "status"), 0L))
   expect_true(any(grepl("G2F six-visit fixture/source-gate/oracle validation PASS", result, fixed = TRUE)))
 })
+
+test_that("G2f smoke launcher validates without loading the package or fitting", {
+  pkg <- normalizePath(file.path(testthat::test_path(), "..", ".."), mustWork = TRUE)
+  script <- file.path(pkg, "dev", "isdm-package-recovery", "run-g2f-pa-replication-smoke.R")
+  out <- tempfile("g2f-smoke-validate-")
+  result <- system2(file.path(R.home("bin"), "Rscript"), c("--vanilla", script, "--mode=validate", paste0("--output=", out), paste0("--pkg=", pkg)), stdout = TRUE, stderr = TRUE)
+  expect_true(is.null(attr(result, "status")) || identical(attr(result, "status"), 0L))
+  expect_true(any(grepl("G2F smoke-launcher validation PASS", result, fixed = TRUE)))
+  expect_false(dir.exists(out))
+})

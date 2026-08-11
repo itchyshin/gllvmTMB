@@ -1,63 +1,89 @@
 # After Task: G2e observation-support diagnostic
 
+**Branch**: `codex/isdm-g2e-information-diagnostic`
+**Date**: `2026-08-11`
+**Roles (engaged)**: Ada, Noether, Rose
+
 ## 1. Goal
 
-Test, privately and locally, whether doubling only GBIF and PA observation
-support changes the held G2d information pattern. No recovery campaign was in
+Privately test whether doubling only GBIF and PA support changes the held G2d
+information pattern, without a recovery campaign or public capability claim.
+
+## 2. Implemented
+
+G2e adds a support-only fixture, no-fit preflight, dormant smoke launcher,
+private protocol/decision records, and tests. The sole completed smoke is
+classified `PROFILE_LIMITED`.
+
+## 3a. Decisions and Rejected Alternatives
+
+G2e is a separate DGP, rather than an amended G2d run, because G2d's frozen
+design changed only species dimension. More species, new visits, spatial terms,
+zero inflation, and campaign scaling were rejected as confounding extensions.
+
+## 4. Files Touched
+
+- `dev/isdm-package-recovery/g2e-support-fixture.R`
+- `dev/isdm-package-recovery/run-g2e-information-diagnostic.R`
+- `dev/isdm-package-recovery/run-g2e-information-smoke.R`
+- `dev/isdm-package-recovery/2026-08-11-g2e-*.md`
+- `tests/testthat/test-g2e-information-diagnostic.R`
+- this report and the paired plan-actual reconciliation.
+
+No public API, Rd, README, NEWS, ROADMAP, vignette, pkgdown, likelihood, or
+formula grammar file changed.
+
+## 5. Checks Run
+
+- G2e fixture and smoke-launcher `--mode=validate`: PASS, no fit.
+- `devtools::test(filter = "g2e-information-diagnostic")`: PASS.
+- Final no-fit preflight receipt/read-back: PASS.
+- Replacement-root manifest, stages, classification, and retained profiles:
+  `G2E_REPLACEMENT_AUDIT_PASS`.
+
+## 6. Tests of the Tests
+
+The tests assert exact 2x supports, the GBIF-only `B` gate, one/three-visit
+pairing, finite analytic oracle values, no-fit launcher validation, and
+serialized preflight provenance. Noether's review additionally caught the
+previous non-exhaustive decision partition and invalid-profile closure risk.
+
+## 7a. Issue Ledger
+
+No relevant open issue was available to inspect because GitHub access was
+offline; no issue was created or changed. Issue #953 was explicitly out of
 scope.
 
-## 2. Mathematical contract
+## 8. Consistency Audit
 
-G2e preserved the six-species, 120-cell, nonspatial relative-intensity model:
-GBIF Poisson quadrature plus three PA-cloglog events sharing one cell/species
-state, rank-one `Lambda`, free diagonal `Psi`, and GBIF-only bias. It changed
-only `aG <- 2*aG` and `aS <- 2*aS`.
+`rg -n 'G2C_SMOKE_ADMISSION_HOLD|G2D_SMOKE_HOLD|Totoro|DRAC|Issue #953'
+dev/isdm-package-recovery docs/dev-log` found only the intended fences.
+Verdict: G2c/G2d holds and the no-campaign boundary remain explicit.
 
-## 3. Protected state
+## 9. What Did Not Go Smoothly
 
-G2c remains `G2C_SMOKE_ADMISSION_HOLD`; G2d remains `G2D_SMOKE_HOLD`. Neither
-was rerun, overwritten, pooled, or reclassified.
+The first root was retained incomplete after the local tool session returned
+before profile closure. The replacement smoke was explicitly authorized, then
+completed. The incomplete root is excluded from interpretation.
 
-## 4. No-fit checks
+## 10. Known Residuals
 
-`run-g2e-information-diagnostic.R --mode=validate`, the dormant smoke-launcher
-validation, and `devtools::test(filter = "g2e-information-diagnostic")` passed.
-The final preflight root `g2e-preflight-20260811-005` serialized and re-read
-the truth, root receipt, and manifest without fitting.
+`PROFILE_LIMITED` means stronger support improved the GBIF-bias error but did
+not meet the lower-profile response rule. It is one-fixture local evidence, not
+recovery evidence and not authority for a campaign. A future within-cell
+PA-replication design is a separate decision.
 
-## 5. Local smoke
+## 11. Team Learning
 
-The first root `g2e-smoke-20260811-001` was retained incomplete and is not
-interpreted. After explicit replacement authorization, the fresh root
-`g2e-replacement-smoke-20260811-001` completed from commit `d90b0df8`.
-It retained the three-restart fit, all six five-point profiles, stage ledger,
-decision ledger, and manifest. No retry followed that replacement.
+Ada kept G2d frozen and retained the failed root rather than overwrite it.
+Noether required exhaustive classifications and prevented failed profiles from
+being mistaken for a result. Rose's provenance standard made the final manifest
+and the incomplete-root distinction load-bearing.
 
-## 6. Result
+## 12. Cross-Product Coverage
 
-`G2E_SMOKE_COMPLETE` with classification `PROFILE_LIMITED`:
-
-- maximum GBIF-bias absolute error: `0.3325081`, improved from G2d's `0.371326`;
-- lower profile delta-NLL: `3.6659, 0.0000, 0.8397, 0.6753, 1.3051, 0.0267`;
-- all profile ledgers were finite, centered, and converged, but fewer than four
-  exceeded the predeclared one-NLL improvement over G2d.
-
-This is a one-fixture local information result, not synthetic recovery evidence,
-not a public capability, and not authorization for Totoro, DRAC, or a campaign.
-
-## 7. Independent review
-
-Noether reviewed the support-only DGP, GBIF gate, no-fit contract, decision
-partition, and smoke closure guards. Review-directed fixes prevented invalid
-profiles or a fit error from being classified scientifically.
-
-## 8. Scope audit
-
-No empirical data, spatial model, detection parameter, count-survey outcome,
-comparator, structural-zero component, public API, public documentation,
-pkgdown, Issue #953, Totoro, DRAC, or campaign was run or changed.
-
-## 9. Next decision
-
-The evidence points to a separately designed within-cell PA-replication
-diagnostic if the project continues. It does not justify a recovery campaign.
+Not applicable: the private fixture has no public cross-product surface. The
+covered combinations are GBIF Poisson and three PA-cloglog events with the
+GBIF-only bias gate and support multiplier. It does NOT cover spatial fields,
+detection estimation, count-survey outcomes, arbitrary sources, structural-zero
+models, empirical inference, public APIs, or any recovery campaign provider.

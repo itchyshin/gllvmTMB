@@ -27,7 +27,7 @@ if (is.na(replicate) || replicate < 1L ||
   stop("replicate is outside the frozen G2d panel", call. = FALSE)
 }
 if (is.null(root)) stop("--output=<result-root> is required", call. = FALSE)
-root <- normalizePath(root, mustWork = FALSE)
+root <- normalizePath(if (grepl("^/", root)) root else file.path(getwd(), root), mustWork = FALSE)
 
 suppressMessages(devtools::load_all(pkg, quiet = TRUE))
 `%||%` <- function(x, y) if (is.null(x)) y else x

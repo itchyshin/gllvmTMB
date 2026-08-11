@@ -49185,3 +49185,31 @@ when no exact free `theta_diag_B` map existed. Exact indexing is repaired and
 tested without a retry. This is a harness HOLD, not recovery evidence, and
 Totoro/panel/Paper-2 promotion remain closed. See
 `docs/dev-log/after-task/2026-08-10-g2d-replacement-smoke-hold.md`.
+
+## 2026-08-10 — G2d repaired local-smoke incomplete-artifact HOLD
+
+At frozen commit `45ff9943`, a new no-fit preflight root passed and the
+independent receipt/sentinel audit passed. The one newly authorised ordinary
+seed-86101 smoke created only its root receipt and did not retain a fixture,
+fit receipt, profiles, metrics, restart ledger, paired map, event ledger,
+manifest, or smoke receipt.
+
+```sh
+Rscript --vanilla dev/isdm-package-recovery/run-g2d-six-species-recovery.R \
+  --mode=preflight --output=dev/isdm-package-recovery/results/g2d-preflight-20260810-220000 \
+  --pkg="$PWD" --campaign-sha=45ff9943356b4038234885055bf412262421cc97
+# PASS: G2D_PREFLIGHT_PASS (no fit).
+
+Rscript --vanilla dev/isdm-package-recovery/run-g2d-six-species-recovery.R \
+  --mode=smoke --scenario=ordinary --replicate=1 \
+  --output=dev/isdm-package-recovery/results/g2d-smoke-20260810-220000 \
+  --pkg="$PWD" --campaign-sha=45ff9943356b4038234885055bf412262421cc97
+# No printed G2D verdict; only root-receipt.md/rds retained.
+```
+
+The independent artifact audit returned `G2D_SMOKE_ARTIFACT_AUDIT_HOLD` with
+fit-start evidence absent. This is not estimator evidence, not a repaired
+smoke PASS, and not authority for Totoro, the panel, Paper-2 numerical claims,
+or a retry. See
+`docs/dev-log/after-task/2026-08-10-g2d-repaired-smoke-incomplete-hold.md` and
+`docs/dev-log/plan-actual/2026-08-10-g2d-repaired-smoke-reconciliation.md`.

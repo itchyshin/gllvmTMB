@@ -26,6 +26,21 @@ test_that("G2d preflight seals a writable root without fitting", {
   expect_identical(readRDS(file.path(out_abs, "preflight-sentinel.rds"))$kind, "G2D_PREFLIGHT_SENTINEL")
 })
 
+test_that("G2d smoke-boundary diagnostic proves the shared pre-fit path", {
+  pkg_root <- normalizePath(file.path(testthat::test_path(), "..", ".."), mustWork = TRUE)
+  script <- file.path(pkg_root, "dev", "isdm-package-recovery", "run-g2d-six-species-recovery.R")
+  out_abs <- file.path(pkg_root, "dev", "isdm-package-recovery", "results", paste0("testthat-g2d-smoke-boundary-", Sys.getpid()))
+  on.exit(unlink(out_abs, recursive = TRUE, force = TRUE), add = TRUE)
+  sha <- system2("git", c("-C", pkg_root, "rev-parse", "HEAD"), stdout = TRUE)
+  result <- system2(file.path(R.home("bin"), "Rscript"), c("--vanilla", script, "--mode=smoke_boundary", "--scenario=ordinary", "--replicate=1", paste0("--output=", out_abs), paste0("--pkg=", pkg_root), paste0("--campaign-sha=", sha)), stdout = TRUE, stderr = TRUE)
+  expect_true(is.null(attr(result, "status")) || identical(attr(result, "status"), 0L))
+  expect_true(any(grepl("G2D_SMOKE_BOUNDARY_PASS (no fit)", result, fixed = TRUE)))
+  expect_true(all(file.exists(file.path(out_abs, c("root-receipt.rds", "truth.rds", "paired-map.rds", "smoke-boundary.rds", "smoke-boundary-receipt.md", "file-manifest.csv")))))
+  boundary <- readRDS(file.path(out_abs, "smoke-boundary.rds"))
+  expect_identical(boundary$stages, c(root_receipt = TRUE, fixture_constructed = TRUE, fixture_validated = TRUE, optimizer_entered = FALSE))
+  expect_false(file.exists(file.path(out_abs, "smoke-receipt.md")))
+})
+
 test_that("G2d private artifacts freeze the six-species contract", {
   pkg_root <- normalizePath(file.path(testthat::test_path(), "..", ".."), mustWork = TRUE)
   artifact <- function(name) {
@@ -46,6 +61,7 @@ test_that("G2d private artifacts freeze the six-species contract", {
   expect_match(runner, "theta_diag_matches_report", fixed = TRUE)
   expect_match(runner, "single-fit-tmb-map-extractor-diagnostic", fixed = TRUE)
   expect_match(runner, "G2D_SMOKE_PASS", fixed = TRUE)
+  expect_match(runner, "G2D_SMOKE_BOUNDARY_PASS", fixed = TRUE)
   expect_match(runner, 'fit$tmb_map[["theta_diag_B", exact = TRUE]]', fixed = TRUE)
   expect_match(protocol, "GBIF-only", fixed = TRUE)
   expect_match(protocol, "18 of all 20", fixed = TRUE)

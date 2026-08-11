@@ -16,8 +16,8 @@ root <- arg_value("output", NULL)
 pkg <- normalizePath(arg_value("pkg", getwd()), mustWork = TRUE)
 campaign_sha <- arg_value("campaign-sha", NULL)
 diagnostic_input <- arg_value("diagnostic-input", NULL)
-if (!mode %in% c("fixture", "smoke", "diagnostic", "diagnostic_audit", "validate", "init", "preflight", "summarize")) {
-  stop("mode must be fixture, smoke, diagnostic, diagnostic_audit, validate, init, preflight, or summarize", call. = FALSE)
+if (!mode %in% c("fixture", "smoke", "smoke_boundary", "diagnostic", "diagnostic_audit", "validate", "init", "preflight", "summarize")) {
+  stop("mode must be fixture, smoke, smoke_boundary, diagnostic, diagnostic_audit, validate, init, preflight, or summarize", call. = FALSE)
 }
 if (!scenario %in% c("ordinary", "disconnected", "weak_overlap")) {
   stop("unknown scenario", call. = FALSE)
@@ -285,15 +285,27 @@ run_arm <- function(dat, truth, seed, profile = TRUE) {
   list(status = if (eligibility$eligible) "eligible" else "ineligible", fit = fit, profiles = profiles, eligibility = eligibility, metrics = metric,
        target_pass = isTRUE(eligibility$eligible) && targets, warnings = fit_res$warnings, elapsed_s = fit_res$elapsed_s)
 }
-run_fixture <- function(seed, scenario, replicate, profile = TRUE) {
+prepare_fixture <- function(seed, scenario, replicate) {
   assert_campaign_sha()
   ensure_result_root()
   require_root_receipt()
   fx <- make_fixture(seed, scenario); validate_paired_fixture(fx)
+  list(
+    fixture = fx,
+    paired_identity = list(
+      gbif_and_first_visit_identical = TRUE,
+      added_events = 2L,
+      shared_cell_latent = TRUE,
+      survey_bias_structural_zero = TRUE
+    )
+  )
+}
+run_fixture <- function(seed, scenario, replicate, profile = TRUE) {
+  prepared <- prepare_fixture(seed, scenario, replicate)
+  fx <- prepared$fixture
   one <- run_arm(fx$one_visit, fx$truth, seed, profile = profile)
   three <- run_arm(fx$three_visit, fx$truth, seed, profile = profile)
-  list(fixture = fx, one_visit = one, three_visit = three,
-       paired_identity = list(gbif_and_first_visit_identical = TRUE, added_events = 2L, shared_cell_latent = TRUE, survey_bias_structural_zero = TRUE))
+  c(prepared, list(one_visit = one, three_visit = three))
 }
 manifest <- function(seed, scenario, replicate) list(seed = seed, scenario = scenario, replicate = replicate, package_commit = assert_campaign_sha(),
   runner_md5 = hash_file(runner_file), protocol_md5 = hash_file(protocol_file), decision_md5 = hash_file(decision_file), r_version = R.version.string,
@@ -437,6 +449,31 @@ if (mode == "validate") {
   write_preflight()
 } else if (mode == "init") {
   initialize_campaign_root()
+} else if (mode == "smoke_boundary") {
+  if (scenario != "ordinary" || replicate != 1L) stop("the smoke-boundary diagnostic is ordinary replicate 1", call. = FALSE)
+  ensure_result_root()
+  if (length(list.files(root, all.files = TRUE, no.. = TRUE))) stop("smoke-boundary root must be new and empty", call. = FALSE)
+  write_root_receipt("no-fit-local-smoke-boundary-diagnostic")
+  prepared <- prepare_fixture(seed_for(scenario, replicate), scenario, replicate)
+  boundary <- list(
+    verdict = "G2D_SMOKE_BOUNDARY_PASS",
+    stages = c(root_receipt = TRUE, fixture_constructed = TRUE, fixture_validated = TRUE, optimizer_entered = FALSE),
+    seed = seed_for(scenario, replicate), scenario = scenario, replicate = replicate,
+    paired_identity = prepared$paired_identity
+  )
+  saveRDS(prepared$fixture$truth, file.path(root, "truth.rds"))
+  saveRDS(prepared$paired_identity, file.path(root, "paired-map.rds"))
+  saveRDS(boundary, file.path(root, "smoke-boundary.rds"))
+  writeLines(c(
+    "# G2D_SMOKE_BOUNDARY_PASS", "",
+    "No optimiser, profile, smoke, or recovery calculation ran.",
+    "The shared smoke preparation path wrote and validated the deterministic fixture.",
+    "The next operation in smoke mode would be run_arm(), whose first action is fit_one()."
+  ), file.path(root, "smoke-boundary-receipt.md"))
+  retained <- sort(list.files(root, recursive = TRUE, full.names = TRUE, include.dirs = FALSE))
+  retained <- retained[!grepl("file-manifest\\.csv$", retained)]
+  utils::write.csv(data.frame(path = sub(paste0("^", root, "/"), "", retained), md5 = vapply(retained, hash_file, character(1))), file.path(root, "file-manifest.csv"), row.names = FALSE)
+  cat("G2D_SMOKE_BOUNDARY_PASS (no fit)\n")
 } else if (mode == "summarize") {
   summarize_root()
 } else if (mode == "diagnostic") {

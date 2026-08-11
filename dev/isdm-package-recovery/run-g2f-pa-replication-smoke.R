@@ -11,7 +11,7 @@ mode <- arg_value("mode", "validate")
 root_arg <- arg_value("output", NULL)
 pkg <- normalizePath(arg_value("pkg", getwd()), mustWork = TRUE)
 campaign_sha <- arg_value("campaign-sha", NULL)
-if (!mode %in% c("validate", "smoke")) stop("mode must be validate or smoke", call. = FALSE)
+if (!mode %in% c("validate", "smoke", "reconcile")) stop("mode must be validate, smoke, or reconcile", call. = FALSE)
 if (is.null(root_arg)) stop("--output=<result-root> is required", call. = FALSE)
 root <- normalizePath(if (grepl("^/", root_arg)) root_arg else file.path(getwd(), root_arg), mustWork = FALSE)
 script_arg <- grep("^--file=", commandArgs(trailingOnly = FALSE), value = TRUE)
@@ -41,6 +41,39 @@ validate_smoke_contract <- function() {
 }
 if (mode == "validate") {
   validate_smoke_contract()
+  quit(save = "no", status = 0L)
+}
+
+## This no-fit route closes an interrupted post-fit root without fabricating a
+## profile result. It is deliberately narrower than a retry: it may only add
+## failure placeholders to a root that retained the exact fit but no ledgers.
+if (mode == "reconcile") {
+  parent <- normalizePath(file.path(pkg, "dev", "isdm-package-recovery", "results"), mustWork = FALSE)
+  if (!startsWith(root, paste0(parent, "/")) || !grepl("^g2f", basename(root), ignore.case = TRUE)) {
+    stop("G2f reconciliation root must be a G2f private result child", call. = FALSE)
+  }
+  required <- file.path(root, c("root-receipt.rds", "truth.rds", "fit.rds", "smoke-stage-ledger.csv"))
+  if (!all(file.exists(required)) || file.exists(file.path(root, "decision-ledger.rds")) || file.exists(file.path(root, "profile-ledger.rds"))) {
+    stop("reconcile requires a retained unclosed post-fit root", call. = FALSE)
+  }
+  original_receipt <- readRDS(file.path(root, "root-receipt.rds"))
+  if (!identical(original_receipt$purpose, "one-approved-local-g2f-pa-replication-smoke") ||
+      !identical(original_receipt$seed, 86101L) || !identical(original_receipt$n_visit, 6L)) {
+    stop("root receipt is not the frozen G2f smoke contract", call. = FALSE)
+  }
+  detail <- "process terminated after fit_retained and before profile/decision/manifest closure; retained fit is not classified"
+  saveRDS(list(status = "not_computed", reason = "unclosed_post_fit_termination", detail = detail), file.path(root, "profile-ledger.rds"))
+  saveRDS(list(classification = NA_character_, diagnostic_state = "INVALID_UNCLOSED_POST_FIT", detail = detail), file.path(root, "decision-ledger.rds"))
+  reconciliation <- list(kind = "G2F_POST_FIT_RECONCILIATION", original_runner_md5 = original_receipt$runner_md5,
+    reconciliation_runner_md5 = hash_file(runner_file), reconciled_at_utc = format(Sys.time(), tz = "UTC", usetz = TRUE), detail = detail)
+  saveRDS(reconciliation, file.path(root, "post-fit-reconciliation.rds"))
+  utils::write.table(data.frame(stage = "reconciled_invalid_post_fit", recorded_at_utc = format(Sys.time(), tz = "UTC", usetz = TRUE)),
+    file.path(root, "smoke-stage-ledger.csv"), sep = ",", row.names = FALSE, col.names = FALSE, append = TRUE, quote = TRUE)
+  writeLines(c("# G2F_SMOKE_HOLD", "", "No scientific classification was made.", "diagnostic_state: INVALID_UNCLOSED_POST_FIT", detail), file.path(root, "smoke-receipt.md"))
+  files <- sort(list.files(root, recursive = TRUE, full.names = TRUE, include.dirs = FALSE))
+  files <- files[!grepl("file-manifest\\.csv$", files)]
+  utils::write.csv(data.frame(path = sub(paste0("^", root, "/"), "", files), md5 = vapply(files, hash_file, character(1))), file.path(root, "file-manifest.csv"), row.names = FALSE)
+  cat("G2F_SMOKE_HOLD\n")
   quit(save = "no", status = 0L)
 }
 

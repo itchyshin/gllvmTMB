@@ -49258,3 +49258,19 @@ at `ef3d1325` passed all 12 checks, including
 shared/unique/total Sigma identities. Independent review passed the correction.
 This is diagnostic-only assembly evidence: `G2D_SMOKE_HOLD`, recovery/campaign
 holds, Totoro hold, and Paper-2 claim fence remain unchanged.
+
+## 2026-08-11 — Paper 2 iJSDM S0–S2 reconciliation and source map
+
+Recorded the exact retained G2d disposition, a symbolic-to-TMB certificate, and
+a cited conceptual comparator source map. The certificate identifies a pending
+numerical-alignment issue: the compiled cloglog calculation uses direct
+one-minus-exp-of-minus-exp plus a probability clip, while the R oracle uses a
+stable expm1 formulation. No fix or fit was made; the next smoke remains
+blocked until that discrepancy is either removed or bounded and tested.
+
+The branch was clean before these records at `7c277d41`; `git diff --check`
+passed after them. No fit, smoke, campaign, Totoro/DRAC work, empirical data,
+spatial/detection/zero-inflation extension, benchmark, public API/docs,
+pkgdown, or Issue #953 action ran. G2c remains
+`G2C_SMOKE_ADMISSION_HOLD`; G2d remains diagnostic assembly PASS only and
+smoke HOLD.

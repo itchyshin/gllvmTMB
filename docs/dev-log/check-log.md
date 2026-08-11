@@ -49154,3 +49154,21 @@ now creates its root before fitting, but no retry, panel, Totoro, public update,
 or Issue #953 action is authorised. See
 `docs/dev-log/after-task/2026-08-10-g2d-six-species-local-smoke.md` and
 `docs/dev-log/recovery-checkpoints/2026-08-10-194411-codex-g2d-six-species-smoke-hold.md`.
+
+## 2026-08-10 — G2d P1 root preflight PASS (no fit)
+
+P1 adds a sealed no-fit `preflight` root, an `init` root receipt for future
+panels, pre-fit receipt provenance checks, protocol-aligned G2D smoke labels,
+and campaign completeness checks. It is not a replacement smoke.
+
+```sh
+Rscript --vanilla -e 'testthat::test_file("tests/testthat/test-g2d-six-species-harness.R", reporter = "summary")'
+# PASS: 16 expectations; no fit.
+
+Rscript --vanilla dev/isdm-package-recovery/run-g2d-six-species-recovery.R --mode=preflight --output=dev/isdm-package-recovery/results/g2d-preflight-20260810-204000 --pkg="$PWD" --campaign-sha=27e75758a585839cc91c2edd255ae0a1169b24ed
+# PASS: G2D_PREFLIGHT_PASS (no fit).
+```
+
+The retained ignored root has verified receipt, sentinel, and manifest files.
+P2 remains a separately authorised fresh local smoke; no Totoro or campaign
+work followed. See `docs/dev-log/after-task/2026-08-10-g2d-root-preflight.md`.

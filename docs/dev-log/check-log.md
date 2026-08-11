@@ -49428,3 +49428,21 @@ All six profiles are valid, but neither frozen response rule passes:
 four lower profile values improve by one. The fit's maximum gradient is
 0.001056337, narrowly above the 0.001 eligibility threshold. No retry,
 campaign, Totoro/DRAC, public/package, or Issue #953 action ran.
+
+## 2026-08-11 — G2g retained G2d--G2f identifiability diagnosis
+
+Created a fresh private G2g lane from closed G2f and read the retained G2d, G2e, and G2f artifacts only. No package load, likelihood evaluation, optimizer, profile, simulation, fit, retry, campaign, Totoro/DRAC, public/package, or Issue #953 action occurred.
+
+```sh
+TMPDIR=/private/tmp/gllvmtmb-isdm-g2g-identifiability-diagnostic/.tmp-g2g \
+  Rscript --vanilla dev/isdm-package-recovery/run-g2g-retained-artifact-audit.R \
+  --mode=validate --output=dev/isdm-package-recovery/results/g2g-validate-unused
+# PASS: G2G retained-artifact audit validation PASS (no fit).
+
+TMPDIR=/private/tmp/gllvmtmb-isdm-g2g-identifiability-diagnostic/.tmp-g2g \
+  Rscript --vanilla dev/isdm-package-recovery/run-g2g-retained-artifact-audit.R \
+  --mode=audit --output=dev/isdm-package-recovery/results/g2g-retained-audit-20260811-005
+# PASS: G2G_RETAINED_ARTIFACT_AUDIT_PASS (no fit).
+```
+
+The final reader verifies source-manifest integrity; full-rank 24/24 fixed design; structural GBIF-only bias gate; rank-one Lambda plus six free diagonal Psi coordinates; `Sigma_B = Lambda Lambda'` with separately extracted `sd_B`; and retained local Hessian/profile/gradient diagnostics. G2f is diagnosed `COVARIANCE_INFORMATION_LIMITED`; its gradient threshold miss is an ancillary admission note. The only recommended next design is 360 independent cells with three PA visits, six species, \(|cor(x,b)|\le0.10\), and a minimum conditional GBIF-bias information of 130. This recommendation is not a fit authorization.

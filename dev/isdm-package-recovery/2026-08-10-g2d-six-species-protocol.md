@@ -122,6 +122,10 @@ parameter map before any replacement smoke. It uses only ordinary replicate
 the truth, fit object, map/Sigma audit, receipt, and file manifest. Its sole
 verdicts are `G2D_DIAGNOSTIC_MAP_PASS` and `G2D_DIAGNOSTIC_MAP_HOLD`; either
 verdict is neither a smoke result nor recovery or campaign admission.
+If a diagnostic checker defect is identified, a new fresh audit root may
+re-audit only the immutable retained fit object after verifying its file
+manifest. The audit runs no optimiser and never replaces the original
+diagnostic receipt.
 
 The local smoke is ordinary replicate 1 (`86101`).  It may be called a
 `G2D_SMOKE_PASS` only after non-empty truth, support, paired-map, root, fit,

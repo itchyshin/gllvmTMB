@@ -15,8 +15,9 @@ replicate <- as.integer(arg_value("replicate", "1"))
 root <- arg_value("output", NULL)
 pkg <- normalizePath(arg_value("pkg", getwd()), mustWork = TRUE)
 campaign_sha <- arg_value("campaign-sha", NULL)
-if (!mode %in% c("fixture", "smoke", "diagnostic", "validate", "init", "preflight", "summarize")) {
-  stop("mode must be fixture, smoke, diagnostic, validate, init, preflight, or summarize", call. = FALSE)
+diagnostic_input <- arg_value("diagnostic-input", NULL)
+if (!mode %in% c("fixture", "smoke", "diagnostic", "diagnostic_audit", "validate", "init", "preflight", "summarize")) {
+  stop("mode must be fixture, smoke, diagnostic, diagnostic_audit, validate, init, preflight, or summarize", call. = FALSE)
 }
 if (!scenario %in% c("ordinary", "disconnected", "weak_overlap")) {
   stop("unknown scenario", call. = FALSE)
@@ -171,6 +172,10 @@ map_is_six_free <- function(map, n = 6L) {
   length(map) == n && !anyNA(map) && !anyDuplicated(as.integer(map)) &&
     identical(sort(as.integer(map)), seq_len(n))
 }
+same_numeric_matrix <- function(observed, expected, tolerance = 1e-8) {
+  is.matrix(observed) && is.matrix(expected) && identical(dim(observed), dim(expected)) &&
+    isTRUE(all.equal(unname(observed), unname(expected), tolerance = tolerance))
+}
 audit_diagnostic_fit <- function(fit) {
   pars <- fit$tmb_obj$env$parList(fit$opt$par)
   theta_rr <- pars$theta_rr_B
@@ -201,9 +206,9 @@ audit_diagnostic_fit <- function(fit) {
     six_free_rr_map = map_is_six_free(map_rr),
     six_free_diag_map = map_is_six_free(map_diag),
     positive_six_psi_sd = length(sd) == 6L && all(is.finite(sd)) && all(sd > 0),
-    shared_extractor_identity = isTRUE(all.equal(shared, expected_shared, tolerance = 1e-8)),
+    shared_extractor_identity = same_numeric_matrix(shared, expected_shared),
     unique_extractor_identity = isTRUE(all.equal(as.numeric(unique), sd^2, tolerance = 1e-8)),
-    total_extractor_identity = isTRUE(all.equal(total, expected_total, tolerance = 1e-8))
+    total_extractor_identity = same_numeric_matrix(total, expected_total)
   )
   list(pass = all(checks), checks = checks, theta_rr_B = theta_rr,
        theta_diag_B = theta_diag, Lambda_B = lambda, sd_B = sd,
@@ -329,6 +334,25 @@ require_root_receipt <- function() {
   if (!identical(receipt$package_commit, assert_campaign_sha()) || !identical(receipt$runner_md5, hash_file(runner_file)) || !identical(receipt$protocol_md5, hash_file(protocol_file)) || !identical(receipt$decision_md5, hash_file(decision_file))) stop("root receipt provenance drift", call. = FALSE)
   invisible(receipt)
 }
+verify_diagnostic_input <- function(path) {
+  if (is.null(path)) stop("--diagnostic-input=<retained diagnostic root> is required", call. = FALSE)
+  allowed_parent <- normalizePath(file.path(pkg, "dev", "isdm-package-recovery", "results"), mustWork = FALSE)
+  path <- normalizePath(path, mustWork = TRUE)
+  if (!startsWith(path, paste0(allowed_parent, "/")) || grepl("g2c", basename(path), ignore.case = TRUE)) {
+    stop("diagnostic input must be a retained non-G2c G2d result root", call. = FALSE)
+  }
+  required <- c("root-receipt.rds", "diagnostic-fit.rds", "diagnostic-map-sigma.rds", "diagnostic-receipt.md", "file-manifest.csv")
+  files <- file.path(path, required)
+  if (!all(file.exists(files) & file.info(files)$size > 0L)) stop("retained diagnostic input is incomplete", call. = FALSE)
+  receipt <- readRDS(file.path(path, "root-receipt.rds"))
+  if (!identical(receipt$purpose, "single-fit-tmb-map-extractor-diagnostic")) stop("diagnostic input has the wrong root purpose", call. = FALSE)
+  manifest <- utils::read.csv(file.path(path, "file-manifest.csv"), stringsAsFactors = FALSE)
+  if (!identical(names(manifest), c("path", "md5")) || anyDuplicated(manifest$path) || any(!file.exists(file.path(path, manifest$path))) ||
+      !all(vapply(seq_len(nrow(manifest)), function(i) identical(hash_file(file.path(path, manifest$path[[i]])), manifest$md5[[i]]), logical(1)))) {
+    stop("retained diagnostic file manifest does not verify", call. = FALSE)
+  }
+  list(path = path, receipt = receipt, fit = readRDS(file.path(path, "diagnostic-fit.rds")))
+}
 initialize_campaign_root <- function() {
   ensure_result_root()
   if (length(list.files(root, all.files = TRUE, no.. = TRUE))) stop("campaign root must be new and empty", call. = FALSE)
@@ -443,6 +467,38 @@ if (mode == "validate") {
     paste0("checks: ", paste(names(audit$checks)[audit$checks], collapse = ", ")),
     if (!is.null(audit$detail)) paste0("detail: ", audit$detail) else NULL
   ), file.path(root, "diagnostic-receipt.md"))
+  retained <- sort(list.files(root, recursive = TRUE, full.names = TRUE, include.dirs = FALSE))
+  retained <- retained[!grepl("file-manifest\\.csv$", retained)]
+  utils::write.csv(data.frame(
+    path = sub(paste0("^", root, "/"), "", retained),
+    md5 = vapply(retained, hash_file, character(1))
+  ), file.path(root, "file-manifest.csv"), row.names = FALSE)
+  cat(verdict, "\n")
+} else if (mode == "diagnostic_audit") {
+  ensure_result_root()
+  if (length(list.files(root, all.files = TRUE, no.. = TRUE))) {
+    stop("diagnostic audit root must be new and empty", call. = FALSE)
+  }
+  input <- verify_diagnostic_input(diagnostic_input)
+  write_root_receipt("no-fit-audit-of-retained-diagnostic")
+  audit <- if (inherits(input$fit$value, "isdm_fit_error")) {
+    list(pass = FALSE, checks = c(fit_constructed = FALSE), detail = input$fit$value$message)
+  } else {
+    tryCatch(audit_diagnostic_fit(input$fit$value), error = function(e) {
+      list(pass = FALSE, checks = c(audit_completed = FALSE), detail = conditionMessage(e))
+    })
+  }
+  saveRDS(list(input_root = input$path, input_receipt = input$receipt), file.path(root, "input-provenance.rds"))
+  saveRDS(audit, file.path(root, "audit-map-sigma.rds"))
+  verdict <- if (isTRUE(audit$pass)) "G2D_DIAGNOSTIC_AUDIT_PASS" else "G2D_DIAGNOSTIC_AUDIT_HOLD"
+  writeLines(c(
+    paste0("# ", verdict), "",
+    paste0("input_root: ", input$path),
+    "No optimiser or fit ran: this is a no-fit re-audit of the immutable diagnostic fit object.",
+    "It does not replace the original diagnostic receipt or admit a smoke, recovery, or campaign.",
+    paste0("checks: ", paste(names(audit$checks)[audit$checks], collapse = ", ")),
+    if (!is.null(audit$detail)) paste0("detail: ", audit$detail) else NULL
+  ), file.path(root, "audit-receipt.md"))
   retained <- sort(list.files(root, recursive = TRUE, full.names = TRUE, include.dirs = FALSE))
   retained <- retained[!grepl("file-manifest\\.csv$", retained)]
   utils::write.csv(data.frame(

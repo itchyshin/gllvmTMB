@@ -82,6 +82,10 @@ if (inherits(fit_res, "g2e_fit_error")) {
   verdict <- "G2E_SMOKE_HOLD"
   writeLines(c("# G2E_SMOKE_HOLD", "", "The approved fit errored; no scientific classification was made.", "diagnostic_state: INVALID_FIT_ERROR", fit_res$message), file.path(root, "smoke-receipt.md"))
 } else {
+  saveRDS(fx$truth, file.path(root, "truth.rds"))
+  saveRDS(fit_res, file.path(root, "fit.rds"))
+  stage("fit_retained")
+  tryCatch({
   profiles <- lapply(seq_len(6L), function(k) {
     base <- fit_res$tmb_obj$env$parList(fit_res$opt$par)$theta_diag_B
     offsets <- c(-2, -1, 0, 1, 2)
@@ -125,11 +129,21 @@ if (inherits(fit_res, "g2e_fit_error")) {
     pdHess = isTRUE(fit_res$sd_report$pdHess), finite_gradient = all(is.finite(gradient)), max_abs_gradient = max(abs(gradient)),
     profiles_retained = length(profiles) == 6L, profiles_valid = profile_data_valid
   )
-  saveRDS(fx$truth, file.path(root, "truth.rds")); saveRDS(fit_res, file.path(root, "fit.rds")); saveRDS(profiles, file.path(root, "profile-ledger.rds"))
+  saveRDS(profiles, file.path(root, "profile-ledger.rds"))
   diagnostic_state <- if (profile_data_valid && is.finite(gamma_error)) "CLASSIFIABLE" else "INVALID_PROFILE_OR_GAMMA"
   saveRDS(list(lower_delta_nll = lower, profile_valid = profile_valid, gamma_hat = gamma_hat, gamma_error = gamma_error, profile_rule = profile_rule, gamma_rule = gamma_rule, classification = classification, diagnostic_state = diagnostic_state, eligibility = eligibility), file.path(root, "decision-ledger.rds"))
   smoke_status <- if (all(unlist(eligibility[c("three_restarts", "one_selected_restart", "finite_objective", "convergence_zero", "pdHess", "finite_gradient", "profiles_retained", "profiles_valid")])) && eligibility$max_abs_gradient <= 1e-3) "G2E_SMOKE_COMPLETE" else "G2E_SMOKE_HOLD"
   writeLines(c(paste0("# ", smoke_status), "", if (is.na(classification)) paste0("diagnostic_state: ", diagnostic_state) else paste0("classification: ", classification), paste0("gamma_error: ", gamma_error), paste0("lower_delta_nll: ", paste(format(lower, digits = 8), collapse = ", ")), "This is one local diagnostic, not recovery evidence or campaign admission."), file.path(root, "smoke-receipt.md"))
+  TRUE
+  }, error = function(e) {
+    detail <- conditionMessage(e)
+    saveRDS(list(status = "not_computed", reason = "post_fit_error", detail = detail), file.path(root, "profile-ledger.rds"))
+    saveRDS(list(classification = NA_character_, diagnostic_state = "INVALID_POST_FIT_ERROR", detail = detail), file.path(root, "decision-ledger.rds"))
+    smoke_status <<- "G2E_SMOKE_HOLD"
+    verdict <<- "G2E_SMOKE_HOLD"
+    writeLines(c("# G2E_SMOKE_HOLD", "", "No scientific classification was made.", "diagnostic_state: INVALID_POST_FIT_ERROR", detail), file.path(root, "smoke-receipt.md"))
+    FALSE
+  })
 }
 stage("artifacts_written")
 files <- sort(list.files(root, recursive = TRUE, full.names = TRUE, include.dirs = FALSE)); files <- files[!grepl("file-manifest\\.csv$", files)]

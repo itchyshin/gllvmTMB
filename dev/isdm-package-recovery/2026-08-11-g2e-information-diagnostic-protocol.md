@@ -37,10 +37,11 @@ re-read a fresh root receipt, truth, analytic information oracle, and manifest.
 ## Future smoke boundary
 
 No fit is authorised by this protocol alone. Following review and explicit
-maintainer approval, one ordinary G2e local smoke may use the private
-package-native fit route with exactly three retained restarts and all six
-`theta_diag_B` profile ledgers. It retains every artifact and makes no Totoro,
-campaign, recovery, or Paper 2 claim.
+maintainer approval, the dormant `run-g2e-information-smoke.R` launcher may
+run one ordinary G2e local smoke using the private package-native fit route
+with exactly three retained restarts and all six `theta_diag_B` profile ledgers.
+It retains every artifact and makes no Totoro, campaign, recovery, or Paper 2
+claim.
 
 ## Interpretation
 

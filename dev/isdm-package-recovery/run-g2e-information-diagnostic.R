@@ -18,6 +18,7 @@ runner_file <- normalizePath(sub("^--file=", "", script_arg[[1L]]), mustWork = T
 source(file.path(dirname(runner_file), "g2e-support-fixture.R"), local = TRUE)
 protocol_file <- file.path(dirname(runner_file), "2026-08-11-g2e-information-diagnostic-protocol.md")
 decision_file <- file.path(dirname(runner_file), "2026-08-11-g2e-information-diagnostic-decision.md")
+smoke_runner_file <- file.path(dirname(runner_file), "run-g2e-information-smoke.R")
 hash_file <- function(path) unname(tools::md5sum(path))[[1L]]
 package_commit <- function() system2("git", c("-C", pkg, "rev-parse", "HEAD"), stdout = TRUE, stderr = FALSE)[[1L]]
 validate <- function() {
@@ -39,7 +40,7 @@ if (mode == "validate") {
   checked <- validate()
   receipt <- list(kind = "G2E_PREFLIGHT_SENTINEL", package_commit = package_commit(), support_multiplier = 2, seed = g2e_seed,
                   runner_md5 = hash_file(runner_file), fixture_md5 = hash_file(file.path(dirname(runner_file), "g2e-support-fixture.R")),
-                  protocol_md5 = hash_file(protocol_file), decision_md5 = hash_file(decision_file))
+                  smoke_runner_md5 = hash_file(smoke_runner_file), protocol_md5 = hash_file(protocol_file), decision_md5 = hash_file(decision_file))
   saveRDS(receipt, file.path(root, "root-receipt.rds"))
   if (!identical(readRDS(file.path(root, "root-receipt.rds")), receipt)) stop("root receipt serialization failed", call. = FALSE)
   saveRDS(receipt, file.path(root, "preflight-sentinel.rds"))

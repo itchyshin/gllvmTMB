@@ -47,6 +47,15 @@ test_that("G2e dormant smoke launcher validates without entering an optimizer", 
   expect_false(dir.exists(out))
 })
 
+test_that("G2e profile continuation validates without constructing a fit", {
+  pkg_root <- normalizePath(file.path(testthat::test_path(), "..", ".."), mustWork = TRUE)
+  script <- file.path(pkg_root, "dev", "isdm-package-recovery", "run-g2e-profile-continuation.R")
+  out <- tempfile("g2e-profile-validate-")
+  result <- system2(file.path(R.home("bin"), "Rscript"), c("--vanilla", script, "--mode=validate", paste0("--output=", out), paste0("--pkg=", pkg_root)), stdout = TRUE, stderr = TRUE)
+  expect_true(is.null(attr(result, "status")) || identical(attr(result, "status"), 0L))
+  expect_true(any(grepl("G2E profile-continuation validation PASS", result, fixed = TRUE)))
+})
+
 test_that("G2e preflight retains a re-readable provenance root without fitting", {
   pkg_root <- normalizePath(file.path(testthat::test_path(), "..", ".."), mustWork = TRUE)
   script <- file.path(pkg_root, "dev", "isdm-package-recovery", "run-g2e-information-diagnostic.R")

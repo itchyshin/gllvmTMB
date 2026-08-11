@@ -49339,3 +49339,31 @@ The manifest-bound root records `root_receipt_written`, `fixture_constructed`,
 `RUNNER_OBSERVABILITY_DEFECT_REPAIRED`. No replacement smoke ran or is
 authorised; G2c, Totoro/campaign, public, and Issue #953 boundaries are
 unchanged.
+
+## 2026-08-11 — G2d instrumented replacement smoke HOLD
+
+Fresh no-fit preflight and independent receipt/sentinel/manifest read-back
+passed at `a8b3f80a`. The one authorised ordinary replacement smoke exited 0,
+retained all stage and terminal artifacts, and returned `G2D_SMOKE_HOLD`.
+
+```sh
+Rscript --vanilla dev/isdm-package-recovery/run-g2d-six-species-recovery.R \
+  --mode=preflight --output=dev/isdm-package-recovery/results/g2d-replacement-preflight-20260811-001 \
+  --pkg=/private/tmp/gllvmtmb-isdm-g2d-six-species \
+  --campaign-sha=a8b3f80a5c9afcb2ec4f43172e0819dd92d5af0b
+# PASS: G2D_PREFLIGHT_PASS (no fit).
+
+Rscript --vanilla dev/isdm-package-recovery/run-g2d-six-species-recovery.R \
+  --mode=smoke --scenario=ordinary --replicate=1 \
+  --output=dev/isdm-package-recovery/results/g2d-replacement-smoke-20260811-001 \
+  --pkg=/private/tmp/gllvmtmb-isdm-g2d-six-species \
+  --campaign-sha=a8b3f80a5c9afcb2ec4f43172e0819dd92d5af0b
+# exit 0; G2D_SMOKE_HOLD.
+```
+
+The stage ledger retained the complete root/fixture/two-arm sequence. All
+artifacts and 12 manifest rows verified. The three-visit arm is ineligible:
+all six profiles HOLD and GBIF-bias maximum error is `0.371326 > 0.30`.
+The original apparently root-only result later finished as a complete
+`G2D_SMOKE_HOLD`, superseding its earlier termination explanation. No retry,
+Totoro/campaign, public, or Issue #953 action ran; G2c remains held.

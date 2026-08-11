@@ -140,6 +140,8 @@ Type gll_clamp(Type x, Type lower, Type upper)
   return x;
 }
 
+#include "gllvmTMB_cloglog.h"
+
 template <class Type>
 Type gll_log_pnorm(Type x)
 {
@@ -2127,7 +2129,8 @@ Type objective_function<Type>::operator()()
       } else if (lid == 1) {
         p = pnorm(eta_o);
       } else if (lid == 2) {
-        p = Type(1.0) - exp(-exp(eta_o));
+        ll += gll_dbinom_cloglog(y(o), n_trials(o), eta_o);
+        return ll;
       } else {
         error("gllvmTMB_multi: unknown link_id for binomial family");
       }

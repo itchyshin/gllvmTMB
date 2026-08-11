@@ -234,6 +234,78 @@ test_that("G2d rowwise oracle is Poisson-log or Bernoulli-cloglog with known sup
   expect_false(isTRUE(all.equal(got$log_lik[!survey], zero_bias$log_lik[!survey])))
 })
 
+test_that("binomial cloglog keeps the likelihood on a stable log scale", {
+  ## This is the analytic contract for the shared engine branch.  In
+  ## particular, a success at eta = -40 must remain near log(p) = -40 rather
+  ## than being replaced by the old log(1e-12) probability floor.
+  eta <- c(-100, -40, -20, -10, -1, 0, 1, 10, 20)
+  log_p <- log(-expm1(-exp(eta)))
+  log_q <- -exp(eta)
+  expect_true(all(is.finite(log_p)))
+  expect_true(all(is.finite(log_q)))
+  expect_equal(log_p[eta == -40], -40, tolerance = 1e-12)
+  expect_lt(log_p[eta == -40], log(1e-12))
+
+  n <- 5L
+  y <- 2L
+  expected <- lchoose(n, y) + y * log_p + (n - y) * log_q
+  reference <- stats::dbinom(y, n, -expm1(-exp(eta)), log = TRUE)
+  ## Above this range the ordinary-scale R probability can round to exactly
+  ## one, so `dbinom()` is not a valid log-tail reference.
+  ordinary <- eta >= -10 & eta <= 1
+  expect_equal(expected[ordinary], reference[ordinary], tolerance = 1e-12)
+  expect_true(all(is.finite(.dlinkinv_per_row(
+    c(-40, 0, 40), family_id = rep(1L, 3L), link_id = rep(2L, 3L)
+  ))))
+  ## The engine's overflow guard is intentionally remote from ordinary use,
+  ## but its threshold and constant continuation are explicit rather than
+  ## hidden behind the former 1e-12 probability floor.
+  expect_equal(-exp(pmin(c(700, 701), 700)), rep(-exp(700), 2L))
+})
+
+test_that("compiled cloglog objective, gradient, and Hessian stay finite in both tails", {
+  ## Compile a tiny TMB template against the exact production header.  This is
+  ## deliberately MakeADFun-only: it never invokes gllvmTMB(), nlminb(), or a
+  ## G2d diagnostic fit before the single authorised S3 smoke.
+  scratch <- tempfile("gllvmtmb-cloglog-tail-")
+  dir.create(scratch)
+  on.exit(unlink(scratch, recursive = TRUE), add = TRUE)
+  fixture_dir <- testthat::test_path("fixtures")
+  header_candidates <- c(
+    testthat::test_path("..", "..", "src", "gllvmTMB_cloglog.h"),
+    testthat::test_path("..", "..", "..", "00_pkg_src", "gllvmTMB",
+                        "src", "gllvmTMB_cloglog.h")
+  )
+  header <- header_candidates[file.exists(header_candidates)][[1L]]
+  files <- c("gllvmTMB_cloglog_tail.cpp", "gllvmTMB_cloglog.h")
+  file.copy(c(file.path(fixture_dir, files[[1L]]),
+              header), scratch)
+  cpp <- file.path(scratch, files[[1L]])
+  expect_equal(TMB::compile(cpp), 0L)
+  dll <- TMB::dynlib(file.path(scratch, "gllvmTMB_cloglog_tail"))
+  dyn.load(dll)
+  on.exit(dyn.unload(dll), add = TRUE)
+
+  eta <- c(-40, -10, 0, 10, 40, 701)
+  y <- c(1, 2, 1, 2, 2, 2)
+  n_trials <- rep(3, length(eta))
+  obj <- TMB::MakeADFun(
+    data = list(y = y, n_trials = n_trials), parameters = list(eta = eta),
+    DLL = "gllvmTMB_cloglog_tail", silent = TRUE
+  )
+  log_p <- log(-expm1(-exp(eta)))
+  log_q <- -exp(pmin(eta, 700))
+  expected <- lchoose(n_trials, y) + y * log_p + (n_trials - y) * log_q
+
+  expect_equal(-obj$fn(obj$par), sum(expected), tolerance = 1e-8)
+  gradient <- obj$gr(obj$par)
+  expect_true(all(is.finite(gradient)))
+  expect_equal(gradient[eta == 701], 0, tolerance = 0)
+  expect_true(all(is.finite(obj$he(obj$par))))
+  expect_equal(expected[eta == 40], lchoose(3, 2) - exp(40), tolerance = 1e-8)
+  expect_equal(expected[eta == 701], lchoose(3, 2) - exp(700), tolerance = 1e-8)
+})
+
 test_that("G2d rank-one six-trait shared state preserves Lambda plus Psi", {
   ## The engine packs rank-one theta_rr_B as the loading vector itself.
   lambda <- c(1.1, -0.3, 0.4, 0.6, -0.7, 0.2)

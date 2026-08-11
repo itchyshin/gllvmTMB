@@ -285,11 +285,14 @@ run_arm <- function(dat, truth, seed, profile = TRUE) {
   list(status = if (eligibility$eligible) "eligible" else "ineligible", fit = fit, profiles = profiles, eligibility = eligibility, metrics = metric,
        target_pass = isTRUE(eligibility$eligible) && targets, warnings = fit_res$warnings, elapsed_s = fit_res$elapsed_s)
 }
-prepare_fixture <- function(seed, scenario, replicate) {
+prepare_fixture <- function(seed, scenario, replicate, checkpoint = function(stage) invisible(NULL)) {
   assert_campaign_sha()
   ensure_result_root()
   require_root_receipt()
-  fx <- make_fixture(seed, scenario); validate_paired_fixture(fx)
+  fx <- make_fixture(seed, scenario)
+  checkpoint("fixture_constructed")
+  validate_paired_fixture(fx)
+  checkpoint("fixture_validated")
   list(
     fixture = fx,
     paired_identity = list(
@@ -300,11 +303,15 @@ prepare_fixture <- function(seed, scenario, replicate) {
     )
   )
 }
-run_fixture <- function(seed, scenario, replicate, profile = TRUE) {
-  prepared <- prepare_fixture(seed, scenario, replicate)
+run_fixture <- function(seed, scenario, replicate, profile = TRUE, checkpoint = function(stage) invisible(NULL)) {
+  prepared <- prepare_fixture(seed, scenario, replicate, checkpoint = checkpoint)
   fx <- prepared$fixture
+  checkpoint("one_visit_fit_entered")
   one <- run_arm(fx$one_visit, fx$truth, seed, profile = profile)
+  checkpoint("one_visit_fit_returned")
+  checkpoint("three_visit_fit_entered")
   three <- run_arm(fx$three_visit, fx$truth, seed, profile = profile)
+  checkpoint("three_visit_fit_returned")
   c(prepared, list(one_visit = one, three_visit = three))
 }
 manifest <- function(seed, scenario, replicate) list(seed = seed, scenario = scenario, replicate = replicate, package_commit = assert_campaign_sha(),
@@ -341,6 +348,17 @@ write_root_receipt <- function(purpose) {
     paste0("runner_md5: ", receipt$runner_md5), paste0("protocol_md5: ", receipt$protocol_md5),
     paste0("decision_md5: ", receipt$decision_md5), paste0("platform: ", receipt$platform)), receipt_md)
   receipt
+}
+write_smoke_stage <- function(stage) {
+  stage_file <- file.path(root, "smoke-stage-ledger.csv")
+  event <- data.frame(
+    stage = stage,
+    recorded_at_utc = format(Sys.time(), tz = "UTC", usetz = TRUE),
+    stringsAsFactors = FALSE
+  )
+  utils::write.table(event, stage_file, sep = ",", row.names = FALSE,
+    col.names = !file.exists(stage_file), append = file.exists(stage_file), quote = TRUE)
+  invisible(event)
 }
 require_root_receipt <- function() {
   receipt_file <- file.path(root, "root-receipt.rds")
@@ -454,7 +472,9 @@ if (mode == "validate") {
   ensure_result_root()
   if (length(list.files(root, all.files = TRUE, no.. = TRUE))) stop("smoke-boundary root must be new and empty", call. = FALSE)
   write_root_receipt("no-fit-local-smoke-boundary-diagnostic")
-  prepared <- prepare_fixture(seed_for(scenario, replicate), scenario, replicate)
+  write_smoke_stage("root_receipt_written")
+  prepared <- prepare_fixture(seed_for(scenario, replicate), scenario, replicate, checkpoint = write_smoke_stage)
+  write_smoke_stage("optimizer_not_entered")
   boundary <- list(
     verdict = "G2D_SMOKE_BOUNDARY_PASS",
     stages = c(root_receipt = TRUE, fixture_constructed = TRUE, fixture_validated = TRUE, optimizer_entered = FALSE),
@@ -551,8 +571,9 @@ if (mode == "validate") {
   ensure_result_root()
   if (length(list.files(root, all.files = TRUE, no.. = TRUE))) stop("smoke root must be new and empty", call. = FALSE)
   write_root_receipt("local-smoke")
+  write_smoke_stage("root_receipt_written")
   out <- file.path(root, "fixtures", paste0(fixture_id(scenario, replicate), ".rds"))
-  result <- run_fixture(seed_for(scenario, replicate), scenario, replicate, profile = TRUE)
+  result <- run_fixture(seed_for(scenario, replicate), scenario, replicate, profile = TRUE, checkpoint = write_smoke_stage)
   write_fixture(out, result, seed_for(scenario, replicate), scenario, replicate)
   ledger <- result$fixture$three_visit$rows[result$fixture$three_visit$rows$source == "survey", c("cell_id", "trait", "survey_event_id", "support", "value")]
   utils::write.csv(ledger, file.path(root, "event-ledger.csv"), row.names = FALSE)

@@ -35,9 +35,11 @@ test_that("G2d smoke-boundary diagnostic proves the shared pre-fit path", {
   result <- system2(file.path(R.home("bin"), "Rscript"), c("--vanilla", script, "--mode=smoke_boundary", "--scenario=ordinary", "--replicate=1", paste0("--output=", out_abs), paste0("--pkg=", pkg_root), paste0("--campaign-sha=", sha)), stdout = TRUE, stderr = TRUE)
   expect_true(is.null(attr(result, "status")) || identical(attr(result, "status"), 0L))
   expect_true(any(grepl("G2D_SMOKE_BOUNDARY_PASS (no fit)", result, fixed = TRUE)))
-  expect_true(all(file.exists(file.path(out_abs, c("root-receipt.rds", "truth.rds", "paired-map.rds", "smoke-boundary.rds", "smoke-boundary-receipt.md", "file-manifest.csv")))))
+  expect_true(all(file.exists(file.path(out_abs, c("root-receipt.rds", "truth.rds", "paired-map.rds", "smoke-boundary.rds", "smoke-boundary-receipt.md", "smoke-stage-ledger.csv", "file-manifest.csv")))))
   boundary <- readRDS(file.path(out_abs, "smoke-boundary.rds"))
   expect_identical(boundary$stages, c(root_receipt = TRUE, fixture_constructed = TRUE, fixture_validated = TRUE, optimizer_entered = FALSE))
+  stages <- utils::read.csv(file.path(out_abs, "smoke-stage-ledger.csv"), stringsAsFactors = FALSE)$stage
+  expect_identical(stages, c("root_receipt_written", "fixture_constructed", "fixture_validated", "optimizer_not_entered"))
   expect_false(file.exists(file.path(out_abs, "smoke-receipt.md")))
 })
 

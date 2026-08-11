@@ -202,6 +202,40 @@
   )
 }
 
+#' Assert the G2d GBIF/first-visit pairing invariant without fitting
+#' @keywords internal
+#' @noRd
+.isdm_assert_gbif_first_visit_pairs <- function(rows, visit) {
+  required <- c("cell_id", "trait", "source")
+  if (!is.data.frame(rows) || !all(required %in% names(rows)) ||
+      length(visit) != nrow(rows)) {
+    .isdm_abort("rows and visit must define one source-labelled visit per observation.")
+  }
+  gbif <- rows$source == "gbif"
+  first_visit <- rows$source == "survey" & visit == 1L
+  if (!any(gbif) || !any(first_visit)) {
+    .isdm_abort("G2d requires both GBIF and first-visit survey rows.")
+  }
+  key <- function(i) paste(rows$cell_id[i], rows$trait[i], sep = "\r")
+  gbif_key <- key(gbif)
+  first_key <- key(first_visit)
+  if (anyDuplicated(gbif_key) || anyDuplicated(first_key) ||
+      !identical(sort(gbif_key), sort(first_key))) {
+    .isdm_abort("GBIF and first-visit survey rows must pair exactly by cell_id and trait.")
+  }
+  invisible(TRUE)
+}
+
+#' Whether a G2d scenario must retain exact GBIF/first-visit pairing
+#' @keywords internal
+#' @noRd
+.isdm_requires_exact_first_visit_pairing <- function(scenario) {
+  if (!is.character(scenario) || length(scenario) != 1L || is.na(scenario)) {
+    .isdm_abort("scenario must be one non-missing character value.")
+  }
+  identical(scenario, "ordinary")
+}
+
 #' Independent fixed-predictor observation NLL for the private iSDM contract
 #' @keywords internal
 #' @noRd

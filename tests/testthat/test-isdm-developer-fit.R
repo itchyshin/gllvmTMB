@@ -195,3 +195,130 @@ test_that("a forged private marker cannot relax the public family boundary", {
     "invalid observation contract"
   )
 })
+
+test_that("G2d rowwise oracle is Poisson-log or Bernoulli-cloglog with known support", {
+  ## Analytic kernel check: no TMB object or optimiser is constructed.
+  rows <- data.frame(
+    cell_id = c("c1", "c2", "c3", "c4"),
+    trait = c("sp1", "sp2", "sp3", "sp4"),
+    source = c("gbif", "survey", "gbif", "survey"),
+    survey_event_id = c(NA, "visit_1", NA, "visit_1"),
+    branch = c("count", "pa", "count", "pa"),
+    value = c(2, 0, 1, 1),
+    support = c(2.5, 0.4, 3, 1.6),
+    stringsAsFactors = FALSE
+  )
+  X <- matrix(seq(-0.3, 0.3, length.out = 4L), ncol = 1L,
+              dimnames = list(NULL, "elevation"))
+  B <- matrix(c(-0.8, NA, 0.35, NA), ncol = 1L,
+              dimnames = list(NULL, "road_bias"))
+  rows <- .prepare_isdm_contract(rows, X, B)$rows
+  eta_ecological <- c(-0.4, 0.2, 0.1, -0.3)
+  eta_gbif_bias <- c(0.7, -9, -0.25, 11)
+
+  got <- .isdm_observation_nll(rows, eta_ecological, eta_gbif_bias)
+  log_mu <- log(rows$support) + eta_ecological +
+    ifelse(rows$source == "gbif", eta_gbif_bias, 0)
+  expected <- c(
+    stats::dpois(rows$value[1L], exp(log_mu[1L]), log = TRUE),
+    stats::dbinom(rows$value[2L], 1L, -expm1(-exp(log_mu[2L])), log = TRUE),
+    stats::dpois(rows$value[3L], exp(log_mu[3L]), log = TRUE),
+    stats::dbinom(rows$value[4L], 1L, -expm1(-exp(log_mu[4L])), log = TRUE)
+  )
+  zero_bias <- .isdm_observation_nll(rows, eta_ecological, 0)
+  survey <- rows$source == "survey"
+
+  expect_equal(got$log_lik, expected, tolerance = 1e-14)
+  expect_equal(got$nll, -sum(expected), tolerance = 1e-14)
+  expect_identical(got$log_lik[survey], zero_bias$log_lik[survey])
+  expect_false(isTRUE(all.equal(got$log_lik[!survey], zero_bias$log_lik[!survey])))
+})
+
+test_that("G2d rank-one six-trait shared state preserves Lambda plus Psi", {
+  ## The engine packs rank-one theta_rr_B as the loading vector itself.
+  lambda <- c(1.1, -0.3, 0.4, 0.6, -0.7, 0.2)
+  theta_rr <- .gllvmTMB_pack_rr_theta(matrix(lambda, ncol = 1L))
+  theta_diag <- log(c(0.35, 0.5, 0.65, 0.8, 0.45, 0.7))
+  unpacked_lambda <- as.numeric(matrix(theta_rr, ncol = 1L))
+  Psi <- diag(exp(2 * theta_diag), length(unpacked_lambda))
+  z_cell_1 <- 0.45
+  unique_cell_1 <- c(-0.2, 0.3, -0.4, 0.5, -0.6, 0.7)
+  shared_state <- unpacked_lambda * z_cell_1
+  total_state <- shared_state + sqrt(diag(Psi)) * unique_cell_1
+  Sigma <- tcrossprod(unpacked_lambda) + Psi
+  perturbed_theta <- theta_diag
+  perturbed_theta[[3L]] <- perturbed_theta[[3L]] + log(2)
+  perturbed_Psi <- diag(exp(2 * perturbed_theta), length(unpacked_lambda))
+
+  expect_identical(theta_rr, lambda)
+  expect_identical(unpacked_lambda, lambda)
+  expect_length(theta_diag, 6L)
+  expect_true(all(shared_state != 0))
+  expect_true(all(total_state != shared_state))
+  expect_equal(Sigma, tcrossprod(lambda) + Psi, tolerance = 0)
+  expect_equal(diag(Sigma), lambda^2 + diag(Psi), tolerance = 0)
+  expect_identical(perturbed_Psi[-3L, -3L], Psi[-3L, -3L])
+  expect_gt(perturbed_Psi[3L, 3L], Psi[3L, 3L])
+  expect_true(any(Sigma[row(Sigma) != col(Sigma)] != 0))
+})
+
+test_that("G2d source gate keeps survey eta bias-free and preserves GBIF visit-1 pairs", {
+  fixture <- .isdm_fit_fixture("pa")
+  paired <- fixture$rows
+  paired$survey_event_id[paired$source == "survey"] <- "visit_1"
+  prepared <- .isdm_developer_data(paired, fixture$X, fixture$B)
+  dat <- prepared$data
+  gbif <- dat$source == "gbif"
+  survey <- !gbif
+  bias_column <- prepared$b_names[[1L]]
+  beta_ecological <- 0.6
+  eta_a <- beta_ecological * dat[[prepared$x_names[[1L]]]] + 1.25 * dat[[bias_column]]
+  eta_b <- beta_ecological * dat[[prepared$x_names[[1L]]]] - 3.5 * dat[[bias_column]]
+
+  pair_key <- paste(dat$cell_id, dat$trait, sep = "\r")
+  expect_identical(dat$isdm_gbif, as.integer(gbif))
+  expect_true(all(dat[[bias_column]][survey] == 0))
+  expect_identical(eta_a[survey], eta_b[survey])
+  expect_false(isTRUE(all.equal(eta_a[gbif], eta_b[gbif])))
+  expect_true(all(table(pair_key[gbif]) == 1L))
+  expect_true(all(table(pair_key[survey]) == 1L))
+  expect_identical(sort(pair_key[gbif]), sort(pair_key[survey]))
+  expect_true(all(dat$survey_event_id[survey] == "visit_1"))
+
+  adversarial <- paired
+  adversarial$survey_event_id[adversarial$source == "gbif"] <- "visit_1"
+  expect_error(
+    .isdm_developer_data(adversarial, fixture$X, fixture$B),
+    "gbif rows must not carry a survey_event_id"
+  )
+})
+
+test_that("G2d pairing validator binds six traits and rejects missing first visits", {
+  traits <- paste0("sp", seq_len(6L))
+  grid <- expand.grid(
+    cell_id = c("c1", "c2"), trait = traits,
+    KEEP.OUT.ATTRS = FALSE, stringsAsFactors = FALSE
+  )
+  gbif <- transform(grid, source = "gbif", visit = NA_integer_)
+  survey <- transform(grid, source = "survey", visit = 1L)
+  paired <- rbind(gbif, survey)
+
+  expect_identical(sort(unique(paired$trait)), traits)
+  expect_silent(.isdm_assert_gbif_first_visit_pairs(paired, paired$visit))
+  expect_error(
+    .isdm_assert_gbif_first_visit_pairs(
+      paired[-which(paired$source == "survey")[1L], , drop = FALSE],
+      paired$visit[-which(paired$source == "survey")[1L]]
+    ),
+    "pair exactly"
+  )
+  no_first_visit <- paired
+  no_first_visit$visit[no_first_visit$source == "survey"] <- 2L
+  expect_error(
+    .isdm_assert_gbif_first_visit_pairs(no_first_visit, no_first_visit$visit),
+    "requires both GBIF and first-visit"
+  )
+  expect_true(.isdm_requires_exact_first_visit_pairing("ordinary"))
+  expect_false(.isdm_requires_exact_first_visit_pairing("disconnected"))
+  expect_false(.isdm_requires_exact_first_visit_pairing("weak_overlap"))
+})

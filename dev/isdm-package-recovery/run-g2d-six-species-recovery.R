@@ -109,6 +109,11 @@ make_fixture <- function(seed, scenario, n_cell = 120L) {
 
 validate_paired_fixture <- function(fx) {
   one <- fx$one_visit; three <- fx$three_visit
+  ## Exact GBIF/visit-1 pairing is the ordinary-fixture invariant. The
+  ## disconnected attack deliberately breaks spatial support overlap.
+  if (.isdm_requires_exact_first_visit_pairing(fx$truth$scenario)) {
+    .isdm_assert_gbif_first_visit_pairs(three$rows, three$rows$visit)
+  }
   same_rows <- function(left, right) { row.names(left) <- row.names(right) <- NULL; identical(left, right) }
   species <- names(fx$truth$constants$alpha)
   if (length(species) != 6L || !identical(species, paste0("sp", 1:6))) stop("six-species truth contract drift")

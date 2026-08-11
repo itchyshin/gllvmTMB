@@ -49215,3 +49215,22 @@ smoke PASS, and not authority for Totoro, the panel, Paper-2 numerical claims,
 or a retry. See
 `docs/dev-log/after-task/2026-08-10-g2d-repaired-smoke-incomplete-hold.md` and
 `docs/dev-log/plan-actual/2026-08-10-g2d-repaired-smoke-reconciliation.md`.
+
+## 2026-08-11 — G2d deterministic implementation-contract phase
+
+Added no-fit source-kernel, rank-one loading/Psi, and ordinary-pairing tests.
+The exact GBIF/first-visit validator applies only to ordinary fixtures;
+disconnected and weak-overlap attacks retain their intended support structure.
+
+```sh
+Rscript --vanilla -e '<source pure helpers and exercise G2d pack/pair contracts>'
+# PASS: G2D_PURE_CONTRACT_PASS.
+
+Rscript --vanilla -e 'testthat::test_file("tests/testthat/test-g2d-six-species-harness.R", reporter = "summary")'
+# PASS: no-fit ordinary/disconnected/weak-overlap validation.
+```
+
+No fitted model, smoke, Totoro, campaign, empirical, public API/docs, or Issue
+#953 action ran. The next unresolved check is actual six-coordinate
+`theta_diag_B` map/extractor alignment, which remains behind a separate fit
+approval.

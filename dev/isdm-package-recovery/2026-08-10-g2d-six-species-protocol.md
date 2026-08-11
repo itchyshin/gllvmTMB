@@ -116,6 +116,13 @@ the no-fit `init` mode creates the campaign root receipt; fixture mode rejects
 any root whose receipt is absent or drifts from its command-line commit and
 artifact hashes.
 
+One separately approved **diagnostic fit** may inspect the assembled TMB
+parameter map before any replacement smoke. It uses only ordinary replicate
+`86101`'s three-visit arm, `n_init = 1`, and no profile. Its fresh root retains
+the truth, fit object, map/Sigma audit, receipt, and file manifest. Its sole
+verdicts are `G2D_DIAGNOSTIC_MAP_PASS` and `G2D_DIAGNOSTIC_MAP_HOLD`; either
+verdict is neither a smoke result nor recovery or campaign admission.
+
 The local smoke is ordinary replicate 1 (`86101`).  It may be called a
 `G2D_SMOKE_PASS` only after non-empty truth, support, paired-map, root, fit,
 restart, profile, metric, and file-manifest receipts all exist and pass their

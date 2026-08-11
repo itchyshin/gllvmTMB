@@ -15,8 +15,8 @@ replicate <- as.integer(arg_value("replicate", "1"))
 root <- arg_value("output", NULL)
 pkg <- normalizePath(arg_value("pkg", getwd()), mustWork = TRUE)
 campaign_sha <- arg_value("campaign-sha", NULL)
-if (!mode %in% c("fixture", "smoke", "validate", "init", "preflight", "summarize")) {
-  stop("mode must be fixture, smoke, validate, init, preflight, or summarize", call. = FALSE)
+if (!mode %in% c("fixture", "smoke", "diagnostic", "validate", "init", "preflight", "summarize")) {
+  stop("mode must be fixture, smoke, diagnostic, validate, init, preflight, or summarize", call. = FALSE)
 }
 if (!scenario %in% c("ordinary", "disconnected", "weak_overlap")) {
   stop("unknown scenario", call. = FALSE)
@@ -149,6 +149,66 @@ fit_one <- function(dat, seed) {
     warning = function(w) { warnings <<- c(warnings, conditionMessage(w)); invokeRestart("muffleWarning") }),
     error = function(e) structure(list(message = conditionMessage(e)), class = "isdm_fit_error"))
   list(value = ans, warnings = unique(warnings), elapsed_s = as.numeric(Sys.time() - started, units = "secs"))
+}
+fit_diagnostic <- function(dat, seed) {
+  ## This is intentionally one optimisation only.  It proves the assembled
+  ## TMB-map/extractor route, not convergence robustness or recovery.
+  warnings <- character(); set.seed(seed + 200000L); started <- Sys.time()
+  ans <- tryCatch(withCallingHandlers(.gll_isdm_fit(
+    dat$rows, dat$X, dat$B, d = 1L,
+    control = gllvmTMBcontrol(
+      n_init = 1L, init_jitter = 0, se = FALSE, aghq = FALSE,
+      warn_runaway = TRUE
+    ),
+    silent = TRUE
+  ), warning = function(w) {
+    warnings <<- c(warnings, conditionMessage(w)); invokeRestart("muffleWarning")
+  }), error = function(e) structure(list(message = conditionMessage(e)), class = "isdm_fit_error"))
+  list(value = ans, warnings = unique(warnings), elapsed_s = as.numeric(Sys.time() - started, units = "secs"))
+}
+map_is_six_free <- function(map, n = 6L) {
+  if (is.null(map)) return(TRUE)
+  length(map) == n && !anyNA(map) && !anyDuplicated(as.integer(map)) &&
+    identical(sort(as.integer(map)), seq_len(n))
+}
+audit_diagnostic_fit <- function(fit) {
+  pars <- fit$tmb_obj$env$parList(fit$opt$par)
+  theta_rr <- pars$theta_rr_B
+  theta_diag <- pars$theta_diag_B
+  lambda <- fit$report$Lambda_B
+  sd <- as.numeric(fit$report$sd_B)
+  shared <- suppressMessages(extract_Sigma(
+    fit, level = "unit", part = "shared", link_residual = "none"
+  ))$Sigma
+  unique <- suppressMessages(extract_Sigma(
+    fit, level = "unit", part = "unique", link_residual = "none"
+  ))$s
+  total <- suppressMessages(extract_Sigma(
+    fit, level = "unit", part = "total", link_residual = "none"
+  ))$Sigma
+  expected_shared <- tcrossprod(lambda)
+  expected_total <- expected_shared + diag(sd^2, nrow(lambda))
+  map_rr <- fit$tmb_map[["theta_rr_B", exact = TRUE]]
+  map_diag <- fit$tmb_map[["theta_diag_B", exact = TRUE]]
+  checks <- c(
+    theta_rr_length = length(theta_rr) == 6L,
+    theta_diag_length = length(theta_diag) == 6L,
+    theta_diag_finite = all(is.finite(theta_diag)),
+    rank_one_lambda = identical(dim(lambda), c(6L, 1L)) && all(is.finite(lambda)),
+    theta_rr_matches_report = isTRUE(all.equal(
+      .gllvmTMB_pack_rr_theta(lambda), as.numeric(theta_rr), tolerance = 1e-8
+    )),
+    six_free_rr_map = map_is_six_free(map_rr),
+    six_free_diag_map = map_is_six_free(map_diag),
+    positive_six_psi_sd = length(sd) == 6L && all(is.finite(sd)) && all(sd > 0),
+    shared_extractor_identity = isTRUE(all.equal(shared, expected_shared, tolerance = 1e-8)),
+    unique_extractor_identity = isTRUE(all.equal(as.numeric(unique), sd^2, tolerance = 1e-8)),
+    total_extractor_identity = isTRUE(all.equal(total, expected_total, tolerance = 1e-8))
+  )
+  list(pass = all(checks), checks = checks, theta_rr_B = theta_rr,
+       theta_diag_B = theta_diag, Lambda_B = lambda, sd_B = sd,
+       shared = shared, unique = unique, total = total,
+       map_theta_rr_B = map_rr, map_theta_diag_B = map_diag)
 }
 profile_theta_diag <- function(fit) {
   ## theta_diag_B is the package's log-SD coordinate; this is the protocol's log_psi ledger.
@@ -352,6 +412,44 @@ if (mode == "validate") {
   initialize_campaign_root()
 } else if (mode == "summarize") {
   summarize_root()
+} else if (mode == "diagnostic") {
+  if (scenario != "ordinary" || replicate != 1L) {
+    stop("the approved diagnostic is ordinary replicate 1", call. = FALSE)
+  }
+  ensure_result_root()
+  if (length(list.files(root, all.files = TRUE, no.. = TRUE))) {
+    stop("diagnostic root must be new and empty", call. = FALSE)
+  }
+  write_root_receipt("single-fit-tmb-map-extractor-diagnostic")
+  fx <- make_fixture(seed_for(scenario, replicate), scenario)
+  validate_paired_fixture(fx)
+  fit_res <- fit_diagnostic(fx$three_visit, seed_for(scenario, replicate))
+  audit <- if (inherits(fit_res$value, "isdm_fit_error")) {
+    list(pass = FALSE, checks = c(fit_constructed = FALSE), detail = fit_res$value$message)
+  } else {
+    tryCatch(audit_diagnostic_fit(fit_res$value), error = function(e) {
+      list(pass = FALSE, checks = c(audit_completed = FALSE), detail = conditionMessage(e))
+    })
+  }
+  saveRDS(fx$truth, file.path(root, "truth.rds"))
+  saveRDS(fit_res, file.path(root, "diagnostic-fit.rds"))
+  saveRDS(audit, file.path(root, "diagnostic-map-sigma.rds"))
+  verdict <- if (isTRUE(audit$pass)) "G2D_DIAGNOSTIC_MAP_PASS" else "G2D_DIAGNOSTIC_MAP_HOLD"
+  writeLines(c(
+    paste0("# ", verdict), "",
+    "Exactly one ordinary three-visit fit was run with n_init = 1 and no profile.",
+    "This verifies TMB-map/extractor assembly only; it is not a smoke, recovery result, or campaign admission.",
+    paste0("elapsed_s: ", format(fit_res$elapsed_s, scientific = FALSE)),
+    paste0("checks: ", paste(names(audit$checks)[audit$checks], collapse = ", ")),
+    if (!is.null(audit$detail)) paste0("detail: ", audit$detail) else NULL
+  ), file.path(root, "diagnostic-receipt.md"))
+  retained <- sort(list.files(root, recursive = TRUE, full.names = TRUE, include.dirs = FALSE))
+  retained <- retained[!grepl("file-manifest\\.csv$", retained)]
+  utils::write.csv(data.frame(
+    path = sub(paste0("^", root, "/"), "", retained),
+    md5 = vapply(retained, hash_file, character(1))
+  ), file.path(root, "file-manifest.csv"), row.names = FALSE)
+  cat(verdict, "\n")
 } else if (mode == "smoke") {
   if (scenario != "ordinary" || replicate != 1L) stop("the frozen local smoke is ordinary replicate 1", call. = FALSE)
   ensure_result_root()

@@ -108,6 +108,14 @@ new root.  Every fixture retains truth, support, paired-map receipt, both arm
 fit objects or errors, all warnings, all restart attempts, all profile grids,
 metrics, and hashes before any summary.
 
+Before a replacement smoke, run the no-fit `preflight` mode in a distinct,
+fresh root.  It must write and re-read the root receipt and a sentinel RDS,
+then retain their hashes in a preflight manifest.  A failed preflight is a
+`G2D_PREFLIGHT_HOLD` and consumes no smoke allowance.  Before a future panel,
+the no-fit `init` mode creates the campaign root receipt; fixture mode rejects
+any root whose receipt is absent or drifts from its command-line commit and
+artifact hashes.
+
 The local smoke is ordinary replicate 1 (`86101`).  It may be called a
 `G2D_SMOKE_PASS` only after non-empty truth, support, paired-map, root, fit,
 restart, profile, metric, and file-manifest receipts all exist and pass their

@@ -19,3 +19,8 @@ authorised.  Launching Totoro, changing package code or public surfaces, and
 widening to count, spatial, comparator, source-admission, empirical, or Issue
 #953 work are not authorised by this decision.  A healthy smoke requires a
 separate Totoro approval.
+
+The original local smoke was consumed by a post-fit write-path HOLD.  Any
+replacement smoke requires a separately approved fresh-root retry after a
+retained no-fit writable-root/serialisation preflight; it does not reuse or
+reinterpret the failed smoke.

@@ -15,8 +15,8 @@ replicate <- as.integer(arg_value("replicate", "1"))
 root <- arg_value("output", NULL)
 pkg <- normalizePath(arg_value("pkg", getwd()), mustWork = TRUE)
 campaign_sha <- arg_value("campaign-sha", NULL)
-if (!mode %in% c("fixture", "smoke", "validate", "summarize")) {
-  stop("mode must be fixture, smoke, validate, or summarize", call. = FALSE)
+if (!mode %in% c("fixture", "smoke", "validate", "init", "preflight", "summarize")) {
+  stop("mode must be fixture, smoke, validate, init, preflight, or summarize", call. = FALSE)
 }
 if (!scenario %in% c("ordinary", "disconnected", "weak_overlap")) {
   stop("unknown scenario", call. = FALSE)
@@ -215,6 +215,7 @@ run_arm <- function(dat, truth, seed, profile = TRUE) {
 run_fixture <- function(seed, scenario, replicate, profile = TRUE) {
   assert_campaign_sha()
   ensure_result_root()
+  require_root_receipt()
   fx <- make_fixture(seed, scenario); validate_paired_fixture(fx)
   one <- run_arm(fx$one_visit, fx$truth, seed, profile = profile)
   three <- run_arm(fx$three_visit, fx$truth, seed, profile = profile)
@@ -232,6 +233,57 @@ ensure_result_root <- function() {
   dir.create(root, recursive = TRUE, showWarnings = FALSE)
   invisible(root)
 }
+write_root_receipt <- function(purpose) {
+  ensure_result_root()
+  receipt_rds <- file.path(root, "root-receipt.rds")
+  receipt_md <- file.path(root, "root-receipt.md")
+  if (file.exists(receipt_rds) || file.exists(receipt_md)) stop("immutable root receipt already exists", call. = FALSE)
+  receipt <- list(
+    purpose = purpose,
+    package_commit = assert_campaign_sha(),
+    runner_md5 = hash_file(runner_file),
+    protocol_md5 = hash_file(protocol_file),
+    decision_md5 = hash_file(decision_file),
+    seed_grid = expected_grid(),
+    r_version = R.version.string,
+    tmb_version = as.character(utils::packageVersion("TMB")),
+    platform = R.version$platform,
+    created_at_utc = format(Sys.time(), tz = "UTC", usetz = TRUE)
+  )
+  saveRDS(receipt, receipt_rds)
+  if (!identical(readRDS(receipt_rds), receipt)) stop("root receipt serialization check failed", call. = FALSE)
+  writeLines(c("# G2D root receipt", "", paste0("purpose: ", purpose), paste0("package_commit: ", receipt$package_commit),
+    paste0("runner_md5: ", receipt$runner_md5), paste0("protocol_md5: ", receipt$protocol_md5),
+    paste0("decision_md5: ", receipt$decision_md5), paste0("platform: ", receipt$platform)), receipt_md)
+  receipt
+}
+require_root_receipt <- function() {
+  receipt_file <- file.path(root, "root-receipt.rds")
+  if (!file.exists(receipt_file) || file.info(receipt_file)$size <= 0L) stop("pre-fit root receipt is missing", call. = FALSE)
+  receipt <- readRDS(receipt_file)
+  if (!identical(receipt$package_commit, assert_campaign_sha()) || !identical(receipt$runner_md5, hash_file(runner_file)) || !identical(receipt$protocol_md5, hash_file(protocol_file)) || !identical(receipt$decision_md5, hash_file(decision_file))) stop("root receipt provenance drift", call. = FALSE)
+  invisible(receipt)
+}
+initialize_campaign_root <- function() {
+  ensure_result_root()
+  if (length(list.files(root, all.files = TRUE, no.. = TRUE))) stop("campaign root must be new and empty", call. = FALSE)
+  write_root_receipt("campaign")
+  writeLines(c("# G2D campaign root initialized", "", "No fit was run.", "This root is now bound to its frozen receipt before fixture jobs may start."), file.path(root, "root-init.md"))
+  cat("G2D_ROOT_INIT_PASS (no fit)\n")
+}
+write_preflight <- function() {
+  ensure_result_root()
+  if (length(list.files(root, all.files = TRUE, no.. = TRUE))) stop("preflight root must be new and empty", call. = FALSE)
+  receipt <- write_root_receipt("no-fit-writable-root-serialization-preflight")
+  probe <- list(kind = "G2D_PREFLIGHT_SENTINEL", receipt = receipt, written_at_utc = format(Sys.time(), tz = "UTC", usetz = TRUE))
+  probe_file <- file.path(root, "preflight-sentinel.rds")
+  saveRDS(probe, probe_file)
+  if (!identical(readRDS(probe_file), probe)) stop("preflight sentinel serialization check failed", call. = FALSE)
+  retained <- c(file.path(root, "root-receipt.rds"), file.path(root, "root-receipt.md"), probe_file)
+  utils::write.csv(data.frame(path = basename(retained), md5 = vapply(retained, hash_file, character(1))), file.path(root, "preflight-file-manifest.csv"), row.names = FALSE)
+  writeLines(c("# G2D_PREFLIGHT_PASS", "", "No fit was run.", "Fresh root creation, receipt serialization, sentinel read-back, and manifest hashing passed."), file.path(root, "preflight-receipt.md"))
+  cat("G2D_PREFLIGHT_PASS (no fit)\n")
+}
 write_fixture <- function(out, result, seed, scenario, replicate) {
   ensure_result_root()
   final <- file.path(root, c("summary.rds", "receipt.md", "smoke-receipt.md", "file-manifest.csv")); if (any(file.exists(final)) || file.exists(out)) stop("immutable result root already contains final or fixture output", call. = FALSE)
@@ -246,16 +298,33 @@ attack_degradation <- function(arm) {
   if (isTRUE(arm$eligibility$eligible)) return("G2D_ATTACK_TARGET_DEGRADATION")
   "G2D_ATTACK_ELIGIBILITY_DEGRADATION"
 }
+fixture_artifacts_complete <- function(result) {
+  top_ok <- all(c("fixture", "one_visit", "three_visit", "paired_identity", "manifest") %in% names(result))
+  truth_ok <- is.list(result$fixture) && is.list(result$fixture$truth) && all(c("constants", "eta", "shared_Sigma", "psi_variance", "survey_cells", "gbif_cells") %in% names(result$fixture$truth))
+  arm_ok <- function(arm) {
+    base_ok <- is.list(arm) && all(c("status", "warnings", "elapsed_s") %in% names(arm))
+    if (!base_ok) return(FALSE)
+    if (arm$status %in% c("fit_error", "profile_error", "metric_error")) return(is.character(arm$detail) && length(arm$detail) == 1L && nzchar(arm$detail))
+    if (!arm$status %in% c("eligible", "ineligible")) return(FALSE)
+    metric_names <- c("max_abs_beta_error", "max_abs_gamma_error", "min_map_correlation", "shared_relative_frobenius", "max_abs_psi_variance_error")
+    is.list(arm$fit) && is.list(arm$profiles) && length(arm$profiles) == 6L && is.list(arm$eligibility) && is.finite(arm$eligibility$objective %||% NA_real_) && is.list(arm$metrics) && all(metric_names %in% names(arm$metrics)) && all(is.finite(unlist(arm$metrics[metric_names], use.names = FALSE)))
+  }
+  paired_ok <- is.list(result$paired_identity) && all(vapply(c("gbif_and_first_visit_identical", "shared_cell_latent", "survey_bias_structural_zero"), function(name) isTRUE(result$paired_identity[[name]]), logical(1))) && identical(result$paired_identity$added_events, 2L)
+  manifest_ok <- is.list(result$manifest) && all(c("seed", "scenario", "replicate", "package_commit", "runner_md5", "protocol_md5", "decision_md5", "r_version", "tmb_version", "platform") %in% names(result$manifest))
+  isTRUE(top_ok && truth_ok && arm_ok(result$one_visit) && arm_ok(result$three_visit) && paired_ok && manifest_ok)
+}
 summarize_root <- function() {
+  assert_campaign_sha(); ensure_result_root(); require_root_receipt()
   final <- file.path(root, c("summary.rds", "receipt.md", "file-manifest.csv")); if (any(file.exists(final))) stop("immutable root already summarised", call. = FALSE)
   files <- sort(list.files(file.path(root, "fixtures"), pattern = "\\.rds$", full.names = TRUE)); grid <- expected_grid(); if (length(files) != nrow(grid)) stop("incomplete frozen G2d panel", call. = FALSE)
   rs <- lapply(files, readRDS); man <- do.call(rbind, lapply(rs, function(x) as.data.frame(x$manifest[1:3], stringsAsFactors = FALSE))); if (!identical(man[order(man$scenario, man$replicate), ], grid[order(grid$scenario, grid$replicate), ])) stop("fixture grid mismatch", call. = FALSE)
   prov <- lapply(rs, function(x) unlist(x$manifest[c("package_commit", "runner_md5", "protocol_md5", "decision_md5", "r_version", "tmb_version", "platform")])); if (length(unique(vapply(prov, paste, character(1), collapse = "|"))) != 1L) stop("mixed provenance", call. = FALSE)
   tab <- do.call(rbind, lapply(rs, function(x) data.frame(seed = x$manifest$seed, scenario = x$manifest$scenario, replicate = x$manifest$replicate, target_pass = isTRUE(x$three_visit$target_pass), eligible = isTRUE(x$three_visit$eligibility$eligible), attack_verdict = if (x$manifest$scenario == "ordinary") NA_character_ else attack_degradation(x$three_visit), stringsAsFactors = FALSE)))
+  artifacts_complete <- all(vapply(rs, fixture_artifacts_complete, logical(1)))
   ordinary <- tab[tab$scenario == "ordinary", ]; attacks <- tab[tab$scenario != "ordinary", ]
   attacks_complete <- nrow(attacks) == 10L && all(attacks$attack_verdict %in% c("G2D_ATTACK_TARGET_DEGRADATION", "G2D_ATTACK_ELIGIBILITY_DEGRADATION"))
-  pass <- sum(ordinary$target_pass) >= 18L && attacks_complete
-  verdict <- if (pass) "G2D_SIX_SPECIES_PASS" else "G2D_SIX_SPECIES_HOLD"; saveRDS(list(verdict = verdict, rows = tab, ordinary_passes = sum(ordinary$target_pass), ordinary_required = 20L, attacks_complete = attacks_complete), file.path(root, "summary.rds"))
+  pass <- artifacts_complete && sum(ordinary$target_pass) >= 18L && attacks_complete
+  verdict <- if (pass) "G2D_SIX_SPECIES_PASS" else "G2D_SIX_SPECIES_HOLD"; saveRDS(list(verdict = verdict, rows = tab, ordinary_passes = sum(ordinary$target_pass), ordinary_required = 20L, attacks_complete = attacks_complete, artifacts_complete = artifacts_complete), file.path(root, "summary.rds"))
   retained <- c(files, file.path(root, "summary.rds")); utils::write.csv(data.frame(path = basename(retained), md5 = vapply(retained, hash_file, character(1))), file.path(root, "file-manifest.csv"), row.names = FALSE)
   writeLines(c(paste0("# ", verdict), "", sprintf("Ordinary three-visit target passes: %d / 20.", sum(ordinary$target_pass)), "This is private synthetic recovery evidence only."), file.path(root, "receipt.md"))
   cat(verdict, "\n")
@@ -272,12 +341,17 @@ validate_no_write <- function() {
 }
 if (mode == "validate") {
   validate_no_write()
+} else if (mode == "preflight") {
+  write_preflight()
+} else if (mode == "init") {
+  initialize_campaign_root()
 } else if (mode == "summarize") {
   summarize_root()
 } else if (mode == "smoke") {
   if (scenario != "ordinary" || replicate != 1L) stop("the frozen local smoke is ordinary replicate 1", call. = FALSE)
   ensure_result_root()
   if (length(list.files(root, all.files = TRUE, no.. = TRUE))) stop("smoke root must be new and empty", call. = FALSE)
+  write_root_receipt("local-smoke")
   out <- file.path(root, "fixtures", paste0(fixture_id(scenario, replicate), ".rds"))
   result <- run_fixture(seed_for(scenario, replicate), scenario, replicate, profile = TRUE)
   write_fixture(out, result, seed_for(scenario, replicate), scenario, replicate)
@@ -289,10 +363,10 @@ if (mode == "validate") {
   saveRDS(list(one_visit = result$one_visit$profiles %||% NULL, three_visit = result$three_visit$profiles %||% NULL), file.path(root, "profile-ledger.rds"))
   saveRDS(list(one_visit = result$one_visit$eligibility %||% NULL, three_visit = result$three_visit$eligibility %||% NULL), file.path(root, "restart-ledger.rds"))
   saveRDS(list(one_visit = result$one_visit$metrics %||% NULL, three_visit = result$three_visit$metrics %||% NULL), file.path(root, "metric-ledger.rds"))
-  required <- file.path(root, c("truth.rds", "paired-map.rds", "fit-receipt.rds", "profile-ledger.rds", "restart-ledger.rds", "metric-ledger.rds", "event-ledger.csv"))
+  required <- file.path(root, c("root-receipt.rds", "root-receipt.md", "truth.rds", "paired-map.rds", "fit-receipt.rds", "profile-ledger.rds", "restart-ledger.rds", "metric-ledger.rds", "event-ledger.csv"))
   receipts_ready <- all(file.exists(required) & file.info(required)$size > 0L)
   smoke_pass <- receipts_ready && isTRUE(result$three_visit$eligibility$eligible) && isTRUE(result$paired_identity$gbif_and_first_visit_identical) && isTRUE(result$paired_identity$shared_cell_latent) && isTRUE(result$paired_identity$survey_bias_structural_zero)
-  smoke_status <- if (smoke_pass) "SMOKE_PASS" else "SMOKE_HOLD"
+  smoke_status <- if (smoke_pass) "G2D_SMOKE_PASS" else "G2D_SMOKE_HOLD"
   writeLines(c(paste0("# ", smoke_status), "", "G2d ordinary replicate 1; private, synthetic, developer-only.",
     paste0("three_visit_status: ", result$three_visit$status),
     paste0("three_visit_max_abs_gradient: ", format(result$three_visit$eligibility$max_abs_gradient %||% NA_real_, scientific = TRUE)),

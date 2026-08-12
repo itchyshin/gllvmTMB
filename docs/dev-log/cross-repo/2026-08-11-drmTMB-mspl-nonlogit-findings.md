@@ -200,15 +200,20 @@ non-finite:
 | cloglog-standard | `q2`, `η_d = −7`, `G = 30` | **74.2%** |
 | probit | `q2`, `η_d = −4.2`, `G = 30` | **64.5%** |
 
-Every one is a **random-slope cell in the separated regime**, and it appears in **all four**
-conditions — this is **link-general**, and it affects the logit route both packages already ship.
-The user sees `convergence = 0`, a point estimate, and `NA` for the SE, with nothing distinguishing
-"unavailable" from "large".
+All are in the **separated regime** (12 `q2`, 3 `q1`), and it appears in **all four** conditions —
+this is **link-general**, and it affects the logit route both packages already ship.
 
-Read together with 8a, this suggests the ship-or-block question is not binary: the standard errors
-are calibrated where the model is identified, and where they are unavailable the package should
-*say so* rather than return `NA` behind a success flag. Your stricter line and our shipped SEs may
-both be answering the wrong question.
+> **Correction, same day.** We first wrote that the `NA` is *silent*. **It is not, in drmTMB.**
+> `vcov()` raises a typed condition (`drmTMB_mspl_wald_unavailable`) naming the gate that failed, and
+> `summary()` carries a per-coefficient `std_error.status`. Our campaign runner called
+> `suppressWarnings(sqrt(diag(vcov(f))))` and suppressed the very signal it then reported as absent —
+> **worth checking your own harness for the same pattern before drawing this conclusion.** The
+> measured rates above stand; only the word "silent" was wrong.
+
+Read together with 8a, this suggests the ship-or-block question is not binary. The standard errors
+are calibrated where the model is identified, and where they are unavailable drmTMB already says so.
+What neither package has yet decided is whether a regime where inference is unavailable in **up to
+98% of converged fits** deserves a *documented boundary* rather than a per-fit warning.
 
 ---
 

@@ -248,6 +248,36 @@
   allowed
 }
 
+.isdm_spatial_augmented_slope_allowed <- function(isdm_spatial_token,
+                                                   family_id_vec, link_id_vec) {
+  if (!identical(isdm_spatial_token, .isdm_spatial_admission_token()) ||
+      length(family_id_vec) != length(link_id_vec)) {
+    return(FALSE)
+  }
+  family_id_vec <- as.integer(family_id_vec)
+  link_id_vec <- as.integer(link_id_vec)
+  gbif <- family_id_vec == 2L & link_id_vec == 0L
+  survey <- family_id_vec == 1L & link_id_vec == 2L
+  all(gbif | survey) && any(gbif) && any(survey)
+}
+
+## Exact prepared-input constructor for augmented spatial_latent slopes.
+## Keeping this pure makes the source gate test the same Z matrix supplied to
+## TMB, rather than a parallel hand-written oracle.
+.spde_latent_slope_design <- function(data, slope_column) {
+  if (!is.character(slope_column) || length(slope_column) != 1L ||
+      is.na(slope_column) || !slope_column %in% names(data)) {
+    stop("Internal: augmented spatial_latent slope column is absent from data.",
+         call. = FALSE)
+  }
+  slope <- as.numeric(data[[slope_column]])
+  if (any(!is.finite(slope))) {
+    stop("Internal: augmented spatial_latent slope column must be finite.",
+         call. = FALSE)
+  }
+  cbind(`(Intercept)` = rep.int(1.0, nrow(data)), slope = slope)
+}
+
 .augmented_slope_family_scope_text <- function() {
   paste(
     "Augmented structured random slopes are permitted for gaussian(),",
@@ -586,6 +616,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   isdm_internal <- isTRUE(
     attr(family, "gllvmTMB_internal_isdm", exact = TRUE)
   )
+  isdm_spatial_token <- if (isdm_internal) {
+    attr(family, "gllvmTMB_internal_isdm_spatial_token", exact = TRUE)
+  } else NULL
   isdm_report <- isdm_internal ||
     isTRUE(attr(family, "gllvmTMB_internal_isdm_report", exact = TRUE))
   if (is.list(family) && !inherits(family, "family")) {
@@ -1135,7 +1168,11 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     ## LHS column gets its own Lambda_k Lambda_k^T and there is no
     ## intercept-slope correlation block. SPA-09 records direct route evidence;
     ## RE-14's ID 3/9 admission remains C1 partial and non-route-specific.
-    if (any(!.augmented_slope_family_allowed(family_id_vec, link_id_vec))) {
+    isdm_spatial_slope_ok <- .isdm_spatial_augmented_slope_allowed(
+      isdm_spatial_token, family_id_vec, link_id_vec
+    )
+    if (any(!.augmented_slope_family_allowed(family_id_vec, link_id_vec)) &&
+        !isdm_spatial_slope_ok) {
       cli::cli_abort(c(
         "Augmented {.fn spatial_latent} random slopes are not admitted for this family/link combination.",
         "i" = .augmented_slope_family_scope_text(),
@@ -3580,8 +3617,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         "i" = "Add the covariate column to the data frame."
       ))
     }
-    Z_spde_lat[, 1L] <- 1.0
-    Z_spde_lat[, 2L] <- as.numeric(data[[spde_latent_slope_xcol]])
+    Z_spde_lat <- .spde_latent_slope_design(data, spde_latent_slope_xcol)
   }
 
   ## ---- equalto (known V) preparation ------------------------------------

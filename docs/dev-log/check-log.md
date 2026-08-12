@@ -49857,3 +49857,26 @@ the expected weak lower endpoints.
 No additional S=6/S=20/S=60 work, scale measurement, Case-C repair, threshold
 change, public/article/package change, or capability claim occurred. The three
 protected HOLDs remain unchanged. Any future work is a fresh approved lane.
+
+## 2026-08-12 — Private shared-range spatial iSDM Gate-A implementation
+
+Implemented only the approved unexported two-field spatial iSDM route:
+`spatial_latent(1 + isdm_gbif | cell_id, d = K)` is paired with
+`indep(0 + trait | cell_id)` to retain the declared nonspatial diagonal Psi
+residual. An identity token constrains the private Poisson/log plus
+PA-cloglog augmented-SPDE exception, and deterministic tests exercise the
+same prepared SPDE design matrix used by the engine.
+
+```sh
+Rscript --vanilla -e 'devtools::load_all(quiet=TRUE); testthat::test_file("tests/testthat/test-isdm-spatial-private-contract.R", reporter="summary"); testthat::test_file("tests/testthat/test-isdm-contract.R", reporter="summary"); testthat::test_file("tests/testthat/test-augmented-slope-family-policy.R", reporter="summary")'
+# PASS; existing isdm-contract reported three expected CRAN skips.
+
+git diff --check
+# PASS.
+```
+
+No model fit, objective build, profile, simulation, timing probe, Totoro/DRAC
+compute, public API/docs/pkgdown/article change, or empirical claim occurred.
+`G2N_LOCAL_PRERUN_HOLD`, `G2K_CALIBRATION_HOLD`,
+`G2C_SMOKE_ADMISSION_HOLD`, and `PAPER2_PRIVATE_STOP_HOLD` are unchanged.
+Return for explicit Gate B approval before any smoke fit.

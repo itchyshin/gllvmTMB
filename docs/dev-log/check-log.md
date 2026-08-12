@@ -49574,3 +49574,38 @@ map correlation `0.7324197`, and shared-covariance relative Frobenius error
 Totoro/DRAC, public/package, empirical, spatial, detection, count-survey,
 source-admission, comparator, zero-inflation, or Issue #953 action.  G2c and
 G2h holds remain unchanged.
+
+## 2026-08-11 — G2k screened 150-attempt FIR calibration HOLD
+
+The earlier G2k root remains a design-admission HOLD: 22 candidate fixtures
+were invalid before fitting, so its 128 fitting attempts cannot be presented
+as a 150-attempt recovery rate.  The replacement deterministically screened
+`86201L:87000L`, recorded rejected candidates, and fitted the first 150
+admissible fixtures on FIR job array `54323628` at no more than 50 concurrent,
+single-threaded tasks.  The remote representative pre-run passed before the
+array.  All 150 array tasks completed with exit code `0:0`; every decision
+ledger and the immutable campaign receipt were copied into the private G2k
+result root.
+
+```sh
+Rscript --vanilla -e 'devtools::test(filter="g2k-calibration", reporter="summary")'
+# PASS: targeted private campaign contract suite.
+
+Rscript --vanilla dev/isdm-package-recovery/run-g2k-calibration.R --mode=validate
+# PASS: G2K calibration coordinator validation PASS (no fit).
+
+bash -n dev/isdm-package-recovery/run-g2k-calibration-fir.sbatch
+# PASS.
+```
+
+The frozen coordinator records `n_requested=150`, `n_started=150`,
+`n_missing=0`, `n_joint_pass=22`, and `n_recovery_metric_pass=106`.
+Thus 22/150 strict numerical-plus-recovery classifications pass (MCSE
+0.0289), while 106/150 pass the five known-truth metrics (MCSE 0.0372).
+All 150 ledgers have valid structural diagnostics.  The specification did not
+define a promotion-frequency cutoff, so the correct result is
+`G2K_CALIBRATION_HOLD`: it provides a reproducible numerical diagnosis, not a
+recovery-validated integrated-JSDM capability claim.  No public API/docs,
+empirical data, spatial field, count outcome, arbitrary source, generic
+zero-inflation term, package ranking, manuscript work, or Issue #953 changed.
+G2c remains `G2C_SMOKE_ADMISSION_HOLD`.

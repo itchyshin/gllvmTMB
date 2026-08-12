@@ -49754,3 +49754,35 @@ env TMPDIR=/private/tmp Rscript --vanilla dev/isdm-package-recovery/run-g2o-post
 env TMPDIR=/private/tmp Rscript --vanilla dev/isdm-package-recovery/run-g2o-postmortem.R --mode=report ...
 # PASS: retained-artifact report; no fit.
 ```
+
+## 2026-08-12 — Paper 2 iJSDM evidence-to-reader A0–A2: specification closed
+
+Fresh private Codex lane `codex/isdm-paper2-evidence-reader-a0` began exactly
+at G2o closure `0f668c46`.  It created a lane-local loop/checkpoint, a cited
+non-ranking source map for `gllvm`, Hmsc, `spOccupancy`, `glmmTMB`, and
+`sdmTMB`, and a preregistered Case-C estimator/Psi information specification.
+The specification freezes the G2d/G2n likelihood, DGP, map, transform,
+thresholds, and all-attempt metrics; proposes recovery cells only at S=6/20/60;
+and defines S=250/1,000 as measured implementation gates, with S=10,000 held
+for a later architecture decision.
+
+```sh
+git diff --check
+# PASS.
+
+rg -n -i 'G2N_LOCAL_PRERUN_HOLD|G2K_CALIBRATION_HOLD|G2C_SMOKE_ADMISSION_HOLD|Case C|NO_CANDIDATE|S = 10,000|architecture HOLD|spatial|count-survey|empirical|absolute-abundance|generic-zero-inflation|arbitrary-source|10,000' \
+  lanes/isdm-paper2-evidence-reader dev/isdm-package-recovery/2026-08-12-paper2-* \
+  docs/dev-log/{plan-actual,audits,recovery-checkpoints,after-task}/2026-08-12-*paper2*
+# PASS: protected HOLDs, scope fences, scale contract, and 10k HOLD explicit.
+
+rg -n 'MakeADFun|nlminb|\.gll_isdm_fit|profile_theta' \
+  lanes/isdm-paper2-evidence-reader dev/isdm-package-recovery/2026-08-12-paper2-* \
+  docs/dev-log/{plan-actual,audits,recovery-checkpoints,after-task}/2026-08-12-*paper2*
+# Expected documentation-only references: estimator/stage names; no invocation.
+```
+
+The separate Gate-A method checklist passed.  No fit, implementation, repair,
+simulation, profile, local/DRAC/Totoro compute, public API/docs/pkgdown/article
+work, or likelihood/DGP/map/threshold alteration occurred.  `G2N_LOCAL_PRERUN_HOLD`,
+`G2K_CALIBRATION_HOLD`, and `G2C_SMOKE_ADMISSION_HOLD` remain unchanged.  Return
+for explicit approval before A3 or any fit.

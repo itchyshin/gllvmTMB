@@ -9,6 +9,7 @@ mode <- value("mode", "validate")
 root <- value("output")
 pkg <- normalizePath(value("pkg", getwd()), mustWork = TRUE)
 campaign_sha <- value("campaign-sha")
+seed <- as.integer(value("seed", "86122"))
 if (!mode %in% c("validate", "prerun") || is.null(root)) {
   stop("require --mode=validate|prerun and --output=PATH", call. = FALSE)
 }
@@ -21,7 +22,7 @@ base <- dirname(script)
 source(file.path(base, "g2h-360cell-fixture.R"), local = TRUE)
 hash <- function(path) unname(tools::md5sum(path))[[1L]]
 commit <- function() system2("git", c("-C", pkg, "rev-parse", "HEAD"), stdout = TRUE)[[1L]]
-seed <- 86122L
+if (length(seed) != 1L || is.na(seed) || seed < 1L) stop("--seed must be one positive integer", call. = FALSE)
 check_fixture <- function() {
   fixture <- g2h_make_fixture(seed = seed)
   g2h_validate_fixture(fixture)

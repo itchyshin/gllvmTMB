@@ -33,9 +33,10 @@ dir.create(archive_dir)
 dir.create(source_dir)
 dir.create(library_dir)
 
+old_wd <- setwd(archive_dir)
+on.exit(setwd(old_wd), add = TRUE)
 status <- system2("R", c("CMD", "build", "--no-build-vignettes", "--no-manual",
-                          shQuote(repo)), stdout = TRUE, stderr = TRUE,
-                  wd = archive_dir)
+                          shQuote(repo)), stdout = TRUE, stderr = TRUE)
 archives <- list.files(archive_dir, pattern = "^gllvmTMB_[0-9][^/]*\\.tar\\.gz$",
                        full.names = TRUE)
 if (!identical(attr(status, "status"), NULL) || length(archives) != 1L) {

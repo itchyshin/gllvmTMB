@@ -49509,3 +49509,37 @@ artifact reviews both PASS.  `rg -n 'G2H|G2I|isdm.*polish|polish.*isdm' README.m
 found G2i only on private development surfaces; no public claim was added.
 No retry, recovery pre-run, Totoro/DRAC campaign, public/package work, or Issue
 #953 action ran.  G2h and G2c holds remain unchanged.
+
+## 2026-08-11 — G2i one-replicate recovery pre-run HOLD
+
+Commit `0d0d5772cfa77d6d84af7731f3f8d01c8596305c` added a private,
+SHA-bound G2i recovery-pre-run wrapper.  Its targeted no-fit contract suite
+and validate-only route passed before the exactly one local run below.
+
+```sh
+Rscript --vanilla -e 'invisible(parse(file="dev/isdm-package-recovery/run-g2i-recovery-prerun.R")); devtools::test(filter="g2i-recovery-prerun", reporter="summary")'
+# PASS: 17 targeted no-fit assertions.
+
+Rscript --vanilla dev/isdm-package-recovery/run-g2i-recovery-prerun.R \
+  --mode=validate --output=dev/isdm-package-recovery/results/g2i-validation-unused \
+  --pkg=/private/tmp/gllvmtmb-isdm-g2i-polish-recovery
+# PASS: validation exits before fitting.
+
+Rscript --vanilla dev/isdm-package-recovery/run-g2i-recovery-prerun.R \
+  --mode=prerun --output=dev/isdm-package-recovery/results/g2i-recovery-prerun-20260811-001 \
+  --pkg=/private/tmp/gllvmtmb-isdm-g2i-polish-recovery \
+  --campaign-sha=0d0d5772cfa77d6d84af7731f3f8d01c8596305c
+# Exactly one run: PRE_RUN_RECOVERY_HOLD.
+```
+
+The root records valid structural diagnostics (three restarts, six
+finite/converged five-offset profiles, valid GBIF-only source gate), but final
+gradient `0.002726537 > 0.001` fails the full frozen admission rule.  It
+measured `45.987` seconds fitting plus `382.373` seconds profiling.  Four frozen recovery
+criteria pass: beta error `0.1597133`, GBIF-bias error `0.1043863`, minimum
+map correlation `0.7324197`, and shared-covariance relative Frobenius error
+`0.2403427`.  The fifth does not: maximum diagonal-Psi variance error
+`0.2156398 > 0.20`; it is retained as a HOLD without retry, campaign,
+Totoro/DRAC, public/package, empirical, spatial, detection, count-survey,
+source-admission, comparator, zero-inflation, or Issue #953 action.  G2c and
+G2h holds remain unchanged.

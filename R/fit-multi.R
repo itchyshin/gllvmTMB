@@ -6522,6 +6522,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     fit$isdm_polish_provenance <- .gllvmTMB_isdm_polish_record(
       eligible = isdm_polish_eligible,
       raw_parameter_vector = opt$par,
+      raw_convergence = opt$convergence,
       raw_objective = fit$fit_health$objective,
       raw_gradient = initial_gradient,
       raw_pd_hessian = fit$fit_health$pd_hessian,
@@ -6588,6 +6589,17 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
            pd_hessian = warm_health$pd_hessian,
            boundary_flags = warm_health$boundary_flags)
     }
+    ## Retain each named candidate separately.  This is private provenance,
+    ## not a candidate generator for any otherwise ineligible fit.
+    isdm_candidate_attempts <- list(
+      nlminb_retry = list(
+        method = "nlminb_retry", objective = warm_objective,
+        gradient = warm_gradient, convergence = after_diagnostics$convergence,
+        pd_hessian = after_diagnostics$pd_hessian,
+        boundary_flags = after_diagnostics$boundary_flags,
+        accepted = FALSE
+      )
+    )
     warm_accepted <- if (isTRUE(isdm_polish_eligible)) {
       .gllvmTMB_isdm_polish_accept(
         before_diagnostics,
@@ -6600,6 +6612,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       )
     } else {
       .gllvmTMB_warm_restart_accept(before_diagnostics, after_diagnostics)
+    }
+    if (isTRUE(isdm_polish_eligible)) {
+      isdm_candidate_attempts$nlminb_retry$accepted <- isTRUE(warm_accepted)
     }
     ## A single covariance-Newton correction is available only to the private
     ## iJSDM route after its same-objective nlminb retry has failed.  The fixed
@@ -6614,8 +6629,36 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       )
       if (!is.null(newton_par)) {
         newton_started <- proc.time()[["elapsed"]]
-        newton_objective <- tryCatch(obj$fn(newton_par), error = function(e) NA_real_)
-        newton_gradient <- tryCatch(obj$gr(newton_par), error = function(e) NA_real_)
+        newton_objective_error <- NULL
+        newton_gradient_error <- NULL
+        newton_objective <- tryCatch(
+          obj$fn(newton_par),
+          error = function(e) {
+            newton_objective_error <<- conditionMessage(e)
+            NA_real_
+          }
+        )
+        newton_gradient <- tryCatch(
+          obj$gr(newton_par),
+          error = function(e) {
+            newton_gradient_error <<- conditionMessage(e)
+            NA_real_
+          }
+        )
+        ## An invoked candidate is always recorded, including a failed direct
+        ## objective/gradient evaluation.  This prevents a numerical error
+        ## from disappearing behind the retained nlminb retry.
+        isdm_candidate_attempts$covariance_newton <- list(
+          method = "covariance_newton", parameter_vector = newton_par,
+          objective = newton_objective, gradient = newton_gradient,
+          convergence = NA_integer_, pd_hessian = NA,
+          boundary_flags = character(), accepted = FALSE,
+          reason = if (!is.null(newton_objective_error) ||
+              !is.null(newton_gradient_error)) "evaluation_error" else
+            "invalid_objective_or_gradient",
+          objective_error = newton_objective_error,
+          gradient_error = newton_gradient_error
+        )
         if (length(newton_objective) == 1L && is.finite(newton_objective) &&
             length(newton_gradient) == length(opt$par) &&
             all(is.finite(newton_gradient))) {
@@ -6654,6 +6697,16 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
               .gllvmTMB_isdm_near_zero_sd_B_indices(newton_fit),
             map_identical = identical(fit$tmb_map, newton_fit$tmb_map)
           )
+          isdm_candidate_attempts$covariance_newton <- list(
+            method = "covariance_newton", objective = newton_objective,
+            parameter_vector = newton_par, gradient = newton_gradient,
+            convergence = newton_diagnostics$convergence,
+            pd_hessian = newton_diagnostics$pd_hessian,
+            boundary_flags = newton_diagnostics$boundary_flags,
+            accepted = isTRUE(newton_accepted),
+            reason = if (isTRUE(newton_accepted)) "accepted" else "rejected",
+            objective_error = NULL, gradient_error = NULL
+          )
           if (isTRUE(newton_accepted)) {
             warm_opt <- newton_opt
             warm_objective <- newton_objective
@@ -6688,7 +6741,22 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
           .gllvmTMB_isdm_near_zero_sd_B_indices(warm_fit),
         parameter_names = names(opt$par),
         map_identical = !is.null(warm_fit) &&
-          identical(fit$tmb_map, warm_fit$tmb_map)
+          identical(fit$tmb_map, warm_fit$tmb_map),
+        candidate_method = if (!inherits(warm_opt, "error") &&
+          identical(warm_opt$message, "private iJSDM covariance-Newton correction"))
+          "covariance_newton" else "nlminb_retry",
+        candidate_attempts = list(
+          attempts = isdm_candidate_attempts,
+          selected = list(
+            method = if (!inherits(warm_opt, "error") &&
+              identical(warm_opt$message, "private iJSDM covariance-Newton correction"))
+              "covariance_newton" else "nlminb_retry",
+            objective = warm_objective, gradient = warm_gradient,
+            convergence = after_diagnostics$convergence,
+            pd_hessian = after_diagnostics$pd_hessian,
+            boundary_flags = after_diagnostics$boundary_flags
+          )
+        )
       )
     } else {
       fit$warm_restart_provenance <- .gllvmTMB_warm_restart_record(
@@ -6749,6 +6817,34 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         fit, obj, warm_checkpoint
       )
     }
+  }
+
+  ## Store one prospective admission record after any named-boundary attempt.
+  ## The raw state is retained in the private polish ledger even if a candidate
+  ## was selected, so the classification cannot launder a repair into Case A.
+  if (isTRUE(isdm_internal)) {
+    polish <- fit$isdm_polish_provenance
+    raw_gradient <- if (is.list(polish) && is.list(polish$raw)) polish$raw$gradient else
+      tryCatch(obj$gr(fit$opt$par), error = function(e) NA_real_)
+    raw_objective <- if (is.list(polish) && is.list(polish$raw)) polish$raw$objective else
+      fit$fit_health$objective
+    raw_pd_hessian <- if (is.list(polish) && is.list(polish$raw)) polish$raw$pd_hessian else
+      fit$fit_health$pd_hessian
+    raw_boundary <- if (is.list(polish) && is.list(polish$raw)) polish$raw$boundary_flags else
+      fit$fit_health$boundary_flags
+    fit$isdm_numerical_admission <- .gllvmTMB_isdm_numerical_admission(
+      isdm_internal = TRUE, optimizer = control$optimizer,
+      aghq_used = aghq_info$used, ridge_tau = laplace_ridge_tau,
+      convergence = if (is.list(polish) && is.list(polish$raw))
+        polish$raw$convergence else fit$opt$convergence,
+      objective = raw_objective, gradient = raw_gradient,
+      parameter_names = names(if (is.list(polish) && is.list(polish$raw))
+        polish$raw$parameter_vector else fit$opt$par), pd_hessian = raw_pd_hessian,
+      boundary_flags = raw_boundary,
+      boundary_diag_indices = if (is.list(polish) && is.list(polish$boundary))
+        polish$boundary$diagonal_indices else .gllvmTMB_isdm_near_zero_sd_B_indices(fit),
+      polish = polish
+    )
   }
 
   ## Phase 2a: fill the missing-predictor conditional mode (x_mis EBLUP) from
@@ -7107,6 +7203,56 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     !any(parameter_names[max_indices] == "theta_diag_B")
 }
 
+## G2n classifies the frozen numerical-admission evidence prospectively.  It
+## never creates a Case-C optimizer route: `b_fix`/`theta_rr_B` residuals are a
+## retained NO_CANDIDATE/HOLD state until a distinct estimator is approved.
+.gllvmTMB_isdm_numerical_admission <- function(
+  isdm_internal, optimizer, aghq_used, ridge_tau, convergence, objective,
+  gradient, parameter_names, pd_hessian, boundary_flags, boundary_diag_indices,
+  polish = NULL, raw_gradient_gate = 1e-3,
+  health_gradient_gate = .gllvmTMB_converged_gtol
+) {
+  typed <- isTRUE(isdm_internal) && identical(optimizer, "nlminb") &&
+    identical(aghq_used, FALSE) && is.null(ridge_tau) &&
+    is.numeric(convergence) && length(convergence) == 1L &&
+    is.finite(convergence) && convergence == 0L &&
+    is.numeric(objective) && length(objective) == 1L && is.finite(objective) &&
+    is.numeric(gradient) && length(gradient) > 0L && all(is.finite(gradient)) &&
+    is.character(parameter_names) && length(parameter_names) == length(gradient) &&
+    identical(pd_hessian, TRUE) && is.character(boundary_flags) &&
+    is.integer(boundary_diag_indices) && is.finite(raw_gradient_gate) &&
+    raw_gradient_gate > 0 && is.finite(health_gradient_gate) &&
+    health_gradient_gate > raw_gradient_gate
+  if (!typed) return(list(case = "D", polish_status = "INVALID_RULE_STATE",
+                           numerical_admission = FALSE, reason = "invalid_prerequisites"))
+  max_gradient <- max(abs(gradient))
+  max_indices <- which(abs(gradient) == max_gradient)
+  if (max_gradient <= raw_gradient_gate) {
+    return(list(case = "A", polish_status = "NOT_REQUIRED",
+                numerical_admission = TRUE, reason = "raw_gradient_pass"))
+  }
+  eligible <- .gllvmTMB_isdm_polish_eligible(
+    isdm_internal, optimizer, aghq_used, ridge_tau, convergence, objective,
+    gradient, parameter_names, pd_hessian, boundary_flags, boundary_diag_indices,
+    raw_gradient_gate, health_gradient_gate
+  )
+  if (isTRUE(eligible)) {
+    accepted <- is.list(polish) && isTRUE(polish$eligible) &&
+      isTRUE(polish$attempted) && isTRUE(polish$accepted)
+    return(list(case = "B", polish_status = if (accepted) "ACCEPTED" else
+      if (is.null(polish)) "ELIGIBLE" else "REJECTED",
+      numerical_admission = accepted, reason = "named_boundary_candidate"))
+  }
+  unique_block <- if (length(max_indices) == 1L) parameter_names[[max_indices]] else NA_character_
+  if (max_gradient < health_gradient_gate && !length(boundary_flags) &&
+      length(max_indices) == 1L && unique_block %in% c("b_fix", "theta_rr_B")) {
+    return(list(case = "C", polish_status = "NO_CANDIDATE",
+                numerical_admission = FALSE, reason = paste0("nonboundary_", unique_block)))
+  }
+  list(case = "D", polish_status = "INVALID_RULE_STATE",
+       numerical_admission = FALSE, reason = "unsupported_raw_gradient_state")
+}
+
 .gllvmTMB_isdm_polish_accept <- function(
   before,
   after,
@@ -7164,6 +7310,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   accepted = FALSE,
   raw_parameter_vector = numeric(),
   candidate_parameter_vector = numeric(),
+  raw_convergence = NA_integer_,
   raw_objective = NA_real_,
   candidate_objective = NA_real_,
   raw_gradient = numeric(),
@@ -7175,8 +7322,17 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   boundary_diag_indices = integer(),
   candidate_boundary_diag_indices = integer(),
   parameter_names = character(),
-  map_identical = NA
+  map_identical = NA,
+  candidate_method = "none",
+  candidate_attempts = list()
 ) {
+  candidate_method <- match.arg(
+    as.character(candidate_method)[1L],
+    c("none", "nlminb_retry", "covariance_newton")
+  )
+  if (!is.list(candidate_attempts)) {
+    stop("candidate_attempts must be a list", call. = FALSE)
+  }
   parameter_names <- as.character(parameter_names)
   raw_parameter_vector <- as.numeric(raw_parameter_vector)
   candidate_parameter_vector <- as.numeric(candidate_parameter_vector)
@@ -7204,8 +7360,11 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     eligible = isTRUE(eligible),
     attempted = isTRUE(attempted),
     accepted = isTRUE(accepted),
+    candidate_method = candidate_method,
+    candidate_attempts = candidate_attempts,
     raw = list(
       parameter_vector = raw_parameter_vector,
+      convergence = as.integer(raw_convergence)[1L],
       objective = as.numeric(raw_objective)[1L],
       gradient = raw_gradient,
       max_gradient = if (length(raw_gradient) && all(is.finite(raw_gradient)))

@@ -49666,3 +49666,32 @@ recovery-validated integrated-JSDM capability claim.  No public API/docs,
 empirical data, spatial field, count outcome, arbitrary source, generic
 zero-inflation term, package ranking, manuscript work, or Issue #953 changed.
 G2c remains `G2C_SMOKE_ADMISSION_HOLD`.
+
+## 2026-08-12 — G2n prospective numerical-admission implementation PASS
+
+At base `3110075d`, G2n implemented only the private G2m prospective decision
+table and immutable raw/candidate provenance.  Raw `max(abs(gradient)) <=
+1e-3` is `NOT_REQUIRED`; only the pre-existing one-diagonal `near_zero_sd_B`
+geometry can use the conditional polish; unique non-boundary `b_fix` or
+`theta_rr_B` residuals in `(1e-3, 1e-2)` are `NO_CANDIDATE`/HOLD.  Raw
+convergence is retained, and all invoked covariance-Newton candidates retain
+their method, reason, diagnostics, and evaluation errors where applicable.
+
+```sh
+Rscript --vanilla -e 'devtools::test(filter = "g2n-numerical-admission", reporter = "summary")'
+# PASS: 29 pure-logic expectations.
+
+Rscript --vanilla -e 'devtools::test(filter = "g2n-compiled-cloglog-unit", reporter = "summary")'
+# PASS: 9 compiled no-optimizer expectations; three upstream Eigen warnings.
+
+Rscript --vanilla -e 'devtools::test(filter = "warm-nlminb-restart", reporter = "summary")'
+# PASS: six explicitly guarded heavy tests skipped.
+```
+
+Independent numerical review passed after it required raw-convergence
+retention, all-attempt Newton provenance, and use of the production
+covariance-Newton helper in the compiled unit.  No full iJSDM fit, profile,
+simulation, campaign, Totoro/FIR/DRAC job, public/package documentation,
+empirical data, detection extension, or Issue #953 action ran.  G2k remains
+`G2K_CALIBRATION_HOLD`; G2c remains `G2C_SMOKE_ADMISSION_HOLD`.  A separately
+approved fresh local pre-run is required before any fit execution.

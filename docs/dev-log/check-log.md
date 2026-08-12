@@ -51806,6 +51806,8 @@ the affected surface; the Totoro R CMD check covers the suite at the PR); no art
 decision recorded in the after-task, not silently skipped).
 
 After-task: `docs/dev-log/after-task/2026-08-16-model2-multisource.md`.
+
+>>>>>>> 251e9b9b (docs(release): record post-deployment 0.6 artifact)
 ## 2026-08-12 — post-deployment exact 0.6 artifact
 
 At merged `origin/main` commit `cb3126893883ff9fb0c6114129c158fe0e649be8`,
@@ -51818,6 +51820,7 @@ Current limitations page returned HTTP 200, so the earlier undeployed URL NOTE
 did not recur. See
 `docs/dev-log/release/2026-08-12-0.6-post-deployment-artifact-receipt.md` for
 the exact command, artifact, byte-identity comparison, and exclusions.
+<<<<<<< HEAD
 
 ## 2026-08-12 — 0.7 integration intake decision packet
 
@@ -52883,3 +52886,4 @@ No package source, public documentation, validation-register status, NEWS,
 version, CI, artifact, tag, or GitHub issue state changed. The results retain
 the no-remedy fence: no warning, convergence criterion, optimizer-control
 change, or release claim is admitted.
+=======

@@ -14,7 +14,10 @@ spatial_isdm_gate_b_constants <- function() {
     gbif_fixed_bias = c(sp1 = 0.30, sp2 = -0.20, sp3 = 0.15),
     field_range = 0.22,
     field_sd = 0.55,
-    field_correlation = 0.25,
+    ## The augmented spatial_latent engine has independent intercept and
+    ## isdm_gbif field columns; their DGP must match that zero cross-field
+    ## correlation for any future recovery claim.
+    field_correlation = 0,
     mesh_cutoff = 0.085
   )
 }
@@ -100,7 +103,7 @@ spatial_isdm_gate_b_validate_fixture <- function(fixture, mesh) {
     all(table(rows$cell_id[survey], rows$trait[survey]) == 3L),
     nrow(mesh$A_st) == nrow(rows), ncol(mesh$A_st) > 2L,
     isTRUE(all.equal(truth$constants$field_range, 0.22)),
-    isTRUE(all.equal(truth$constants$field_correlation, 0.25))
+    isTRUE(all.equal(truth$constants$field_correlation, 0))
   )
   invisible(TRUE)
 }

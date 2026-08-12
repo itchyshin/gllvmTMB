@@ -30,9 +30,17 @@ make <- function() {
 }
 manifest <- function(root) {
   files <- list.files(root, full.names = TRUE, recursive = TRUE)
+  files <- setdiff(files, file.path(root, "file-manifest.csv"))
   utils::write.csv(data.frame(path = sub(paste0("^", root, "/"), "", files),
                               md5 = vapply(files, hash, character(1L))),
                    file.path(root, "file-manifest.csv"), row.names = FALSE)
+}
+peak_rss_kb <- function() {
+  status <- "/proc/self/status"
+  if (!file.exists(status)) return(NA_real_)
+  line <- grep("VmHWM", readLines(status, warn = FALSE), value = TRUE)
+  if (!length(line)) return(NA_real_)
+  suppressWarnings(as.numeric(sub(".*:\\s*([0-9]+).*", "\\1", line[[1L]])))
 }
 if (identical(mode, "validate")) {
   make(); cat("SPATIAL_ISDM_GATE_B_FIXTURE_VALIDATION_PASS (no fit)\n"); quit(save = "no")
@@ -62,19 +70,40 @@ expected <- c("root-receipt.rds", "truth.rds", "mesh.rds", "file-manifest.csv", 
 if (!dir.exists(root) || !all(file.exists(file.path(root, expected)))) {
   stop("smoke requires its immutable preflight receipt and time estimate", call. = FALSE)
 }
+if (file.exists(file.path(root, "attempt-started.rds")) ||
+    file.exists(file.path(root, "all-attempt-ledger.rds")) ||
+    file.exists(file.path(root, "fit.rds"))) {
+  stop("this immutable root has already consumed its one Gate-B smoke attempt", call. = FALSE)
+}
 receipt <- readRDS(file.path(root, "root-receipt.rds"))
 if (!identical(receipt$commit, commit()) || !identical(receipt$fixture_md5, hash(fixture_file)) ||
     !identical(receipt$runner_md5, hash(script))) {
   stop("smoke receipt does not match the current committed fixture/runner", call. = FALSE)
 }
-z <- make()
+manifest_table <- utils::read.csv(file.path(root, "file-manifest.csv"), stringsAsFactors = FALSE)
+manifest_hash <- function(name) manifest_table$md5[match(name, manifest_table$path)]
+if (anyNA(vapply(c("mesh.rds", "truth.rds", "root-receipt.rds"), manifest_hash, character(1L))) ||
+    !identical(unname(tools::md5sum(file.path(root, "mesh.rds"))), manifest_hash("mesh.rds")) ||
+    !identical(unname(tools::md5sum(file.path(root, "truth.rds"))), manifest_hash("truth.rds")) ||
+    !identical(unname(tools::md5sum(file.path(root, "root-receipt.rds"))), manifest_hash("root-receipt.rds"))) {
+  stop("saved immutable preflight artifacts do not match their manifest", call. = FALSE)
+}
+z <- list(fixture = list(truth = readRDS(file.path(root, "truth.rds"))), mesh = readRDS(file.path(root, "mesh.rds")))
+fixture_current <- make()
+if (!identical(z$fixture$truth, fixture_current$fixture$truth) ||
+    !identical(z$mesh, fixture_current$mesh)) {
+  stop("rebuilt fixture or mesh differs from the immutable receipt", call. = FALSE)
+}
+z <- fixture_current
+saveRDS(list(status = "OPTIMIZER_ENTERED", started_at = as.character(Sys.time())),
+        file.path(root, "attempt-started.rds"))
 started <- proc.time()[["elapsed"]]
 fit <- tryCatch(.gll_isdm_fit(z$fixture$rows, z$fixture$X, z$fixture$B, d = 1L,
   mesh = z$mesh, spatial = TRUE,
   control = gllvmTMBcontrol(n_init = 1L, init_jitter = 0, se = TRUE, aghq = FALSE,
                              warn_runaway = TRUE), silent = TRUE), error = function(e) e)
 elapsed_s <- proc.time()[["elapsed"]] - started
-rss_kb <- suppressWarnings(as.numeric(sub(".*:\\s*([0-9]+).*", "\\1", grep("VmHWM", readLines("/proc/self/status"), value = TRUE))))
+rss_kb <- peak_rss_kb()
 if (inherits(fit, "error")) {
   ledger <- list(status = "FIT_ERROR", message = conditionMessage(fit), elapsed_s = elapsed_s, peak_rss_kb = rss_kb)
 } else {

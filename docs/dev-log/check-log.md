@@ -49880,3 +49880,28 @@ compute, public API/docs/pkgdown/article change, or empirical claim occurred.
 `G2N_LOCAL_PRERUN_HOLD`, `G2K_CALIBRATION_HOLD`,
 `G2C_SMOKE_ADMISSION_HOLD`, and `PAPER2_PRIVATE_STOP_HOLD` are unchanged.
 Return for explicit Gate B approval before any smoke fit.
+
+## 2026-08-12 — Private spatial iSDM Gate B: one-smoke observability HOLD
+
+The committed Paper-1 `S=3`, `C=360`, `r=3` spatial fixture preflight passed:
+4,320 rows, 118 mesh nodes, seed 86201, and the shared intercept/
+`isdm_gbif` slope source map were retained in an immutable root. A 12–20 minute
+estimate permitted exactly one local smoke. The command exited after 16.313
+seconds because the runner read Linux-only `/proc/self/status` before it
+persisted the fit and all-attempt ledger. Independent review additionally found
+that its original DGP correlated the two fields despite the fitted engine's
+independent field columns. The outcome is `PRIVATE_SPATIAL_SMOKE_HOLD`.
+
+```sh
+Rscript --vanilla dev/isdm-package-recovery/run-spatial-isdm-gate-b-smoke.R --mode=validate --output=dev/isdm-package-recovery/results/unused --pkg=/private/tmp/gllvmtmb-isdm-spatial-information-design
+# SPATIAL_ISDM_GATE_B_FIXTURE_VALIDATION_PASS (no fit)
+
+Rscript --vanilla -e '... verify retained preflight/failure receipt exists and fit.rds/all-attempt-ledger.rds do not ...'
+# HOLD_RECEIPT_INTEGRITY_PASS
+```
+
+No retry, profile, campaign, Totoro/DRAC, public/package/article action, or
+claim occurred. The preventative runner repair enforces a consumed-root stop,
+portable RSS handling, manifest comparison, and zero cross-field DGP
+correlation for a future separately approved fixture. G2/Paper 2 HOLDs remain
+unchanged.

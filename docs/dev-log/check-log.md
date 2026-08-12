@@ -49472,3 +49472,40 @@ All six profiles were finite and converged, three lower-tail deltas exceeded 2, 
 Read only the retained G2h smoke root. Two direct AD-gradient reads reproduced `max(abs(gradient)) = 0.001290534` at the second rank-one loading (`theta_rr_B[2] = lambda_sp2`), not the near-zero first diagonal SD coordinate. The saved `sd_report` has `pdHess = TRUE`; covariance-derived local loading curvature is `261.7304`, whereas the `theta_diag_B[1]` boundary creates the large condition number and has gradient only `5.239760e-7`.
 
 The original private warm-restart guard was not attempted because it vetoes *any* boundary flag. This fit's sole flag is `near_zero_sd_B`, although its largest gradient is a high-curvature loading coordinate. The predeclared recommendation is a narrowly conditional same-objective polish guard, with no threshold relaxation and only after pure no-fit acceptance/rejection tests. No model evaluation beyond saved-gradient reads, fit, profile, retry, campaign, Totoro/DRAC, public/package, empirical, spatial, detection, count, comparator, zero-inflation, or Issue #953 action ran.
+
+## 2026-08-11 — G2i deterministic-polish replacement smoke COMPLETE
+
+Fresh private branch `codex/isdm-g2i-polish-recovery` started at retained G2h
+closure `88e32955`; reviewed candidate commit `a45411a7` adds an
+internal-iSDM-only, one-call same-objective `nlminb` polish.  The ordinary
+warm-restart route and public fit object remain unchanged.  The private path
+requires raw code-zero/finite/PD state, `1e-3 < max|g| < 1e-2`, exactly one
+`near_zero_sd_B` coordinate, and no tied or diagonal maximum.  Acceptance
+requires the same map/boundary coordinate, non-worse objective, and final
+gradient at most `1e-3`.
+
+```sh
+Rscript --vanilla -e 'devtools::test(filter="warm-nlminb-restart", reporter="summary")'
+# PASS (six pre-existing heavy tests skipped by policy).
+
+Rscript --vanilla dev/isdm-package-recovery/run-g2i-polish-smoke.R \
+  --mode=validate --output=dev/isdm-package-recovery/results/g2i-validation-unused \
+  --pkg=/private/tmp/gllvmtmb-isdm-g2i-polish-recovery
+# PASS: G2I smoke wrapper validation PASS (no fit).
+
+Rscript --vanilla dev/isdm-package-recovery/run-g2i-polish-smoke.R \
+  --mode=smoke --output=dev/isdm-package-recovery/results/g2i-smoke-20260811-001 \
+  --pkg=/private/tmp/gllvmtmb-isdm-g2i-polish-recovery \
+  --campaign-sha=a45411a785973cab2dab05223c062589ef40d86c
+# One full-SHA run only: G2I_SMOKE_COMPLETE; GEOMETRY_RESPONSIVE.
+```
+
+The retained root has three starts, six finite/converged profiles, a valid
+GBIF-only gate, raw gradient `0.0012905340` at `theta_rr_B[2]`, and accepted
+candidate gradient `0.0005347812`; the sole `theta_diag_B[1]` boundary is
+retained unchanged.  The final closure receipt hashes every terminal artifact,
+including the one-pass manifest and smoke receipt.  Independent numerical and
+artifact reviews both PASS.  `rg -n 'G2H|G2I|isdm.*polish|polish.*isdm' README.md ROADMAP.md NEWS.md docs/design docs/dev-log/known-limitations.md _pkgdown.yml dev/isdm-package-recovery`
+found G2i only on private development surfaces; no public claim was added.
+No retry, recovery pre-run, Totoro/DRAC campaign, public/package work, or Issue
+#953 action ran.  G2h and G2c holds remain unchanged.

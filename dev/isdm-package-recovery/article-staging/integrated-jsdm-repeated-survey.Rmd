@@ -1,0 +1,123 @@
+---
+title: "Integrating opportunistic records with repeated surveys in a joint species model"
+output: html_document
+vignette: >
+  %\VignetteIndexEntry{Integrating opportunistic records with repeated surveys in a joint species model}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+<!-- LOCAL-ONLY STAGING DRAFT.  This is a mathematical and teaching design,
+not an implemented or validated public capability. -->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(eval = FALSE)
+```
+
+# The additional question repeated visits can answer
+
+The GBIF-only model asks where ecological intensity is relatively high after
+accounting for a named recording-bias covariate.  A designed survey adds a
+different kind of information: repeated visits at the same cell can distinguish
+failure to observe a species from low ecological occurrence opportunity.  That
+is the reason to add replicated surveys.  It is not a reason to add a generic
+zero-inflation component to every rare-species model.
+
+This article specifies the planned integrated joint species distribution model
+(iJSDM).  It is local-only staging material.  The repeated-visit detection
+likelihood, its synthetic generator, and its known-truth recovery campaign are
+not yet implemented; readers must not treat the equations below as an
+available package workflow.
+
+# Shared ecology, source-specific observation
+
+The ecological state stays exactly the same as in the first article:
+
+\[
+  \eta_{cs}=\alpha_s+x_c^\top\beta_s+\lambda_s z_c+e_{cs},\qquad
+  \operatorname{Var}(\eta_c\mid x_c)=\Lambda\Lambda^\top+\Psi.
+\]
+
+Opportunistic records retain their source-specific Poisson observation law:
+
+\[
+  N^G_{cs}\sim\operatorname{Poisson}\left[
+  a^G_c\exp\{\eta_{cs}+b_c\gamma_s\}\right].
+\]
+
+For a scheduled survey at visit \(v\), define the ecological occurrence
+probability induced by intensity and known survey support,
+
+\[
+  q_{csv}=1-\exp\left[-a^S_{cv}\exp(\eta_{cs})\right].
+\]
+
+Let the conditional detection probability be
+
+\[
+  p_{csv}=\operatorname{logit}^{-1}(w_{cv}^\top\delta_s),
+\]
+
+where \(w_{cv}\) contains visit conditions such as observer effort, date, or
+weather.  The planned observed detection model is
+
+\[
+  Y_{csv}\sim\operatorname{Bernoulli}\{p_{csv}q_{csv}\}.
+\]
+
+The three channels are conditionally independent given \(\eta_{cs}\) and the
+source/visit covariates.  Each channel therefore informs the same ecology but
+has its own observation mechanism.
+
+# Why this is not ordinary zero inflation
+
+The product \(p_{csv}q_{csv}\) has a scientific interpretation.  A zero can
+occur because the ecological event did not occur over the survey support
+(\(q_{csv}\)), or because the event occurred but the survey missed it
+(\(p_{csv}\)).  Repeated visits with changing detection covariates provide the
+replication that can separate those explanations.  An unconstrained extra-zero
+mixture would not automatically have that interpretation and can be confounded
+with low \(\eta_{cs}\), especially for rare species.
+
+The planned identification design has three non-negotiable parts.  First,
+there are repeated visits at the same cells.  Second, at least one detection
+covariate varies by visit rather than only by cell.  Third, ecological and
+detection covariates are not aliases of each other in the synthetic design.
+The known-truth campaign must demonstrate recovery of \(\beta_s\),
+\(\gamma_s\), \(\delta_s\), the ecological maps, and the covariance
+decomposition before this becomes a public workflow.
+
+# What the eventual synthetic workflow will show
+
+The final worked example will use a restoration-monitoring landscape with six
+wetland species, a GBIF-like opportunistic-record channel, and three planned
+survey visits.  It will show the data in long form and the corresponding wide
+form through `gllvmTMB()` only after the public interface exists.  It will
+report relative ecological intensity—not abundance—and will visibly separate
+ecological covariates, GBIF-bias covariates, and visit-level detection
+covariates.
+
+The core simulation will deliberately include rare species and many zeros.
+Its diagnostic question is not whether a penalty forces a nonzero estimate.  It
+is whether the repeated-visit design recovers detection and ecology separately
+when the truth is known.  Failure would be useful evidence: it would narrow
+the identifiable regime instead of being hidden by a generic zero-inflation
+term.
+
+# Boundaries before spatial structure
+
+Neither article currently includes spatial autocorrelation.  Adding a spatial
+ecological field and a separate GBIF-bias field raises a new confounding
+problem: both can explain geographical clustering in opportunistic records.
+That is a dedicated later arc.  First, the nonspatial ecological-plus-detection
+model must recover known truth.  Only then should spatial controls such as a
+shared `latent()` term plus `spatial_indep(common = TRUE)`, and a compact
+`spatial_latent(..., unique = TRUE)` alternative, be compared against known
+two-field truths.
+
+# References to verify before promotion
+
+Before public promotion, add verified citations for repeated-visit occupancy
+and detection models, integrated species-distribution models, and multivariate
+latent-factor JSDMs.  The article must also link to a successful private
+known-truth recovery record and a runnable synthetic public API example.

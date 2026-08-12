@@ -49667,6 +49667,40 @@ empirical data, spatial field, count outcome, arbitrary source, generic
 zero-inflation term, package ranking, manuscript work, or Issue #953 changed.
 G2c remains `G2C_SMOKE_ADMISSION_HOLD`.
 
+## 2026-08-12 — G2n one fresh local pre-run HOLD
+
+One and only one actual private six-species G2n local fit was run from commit
+`7a819639` with seed `86122`, after a no-fit wrapper validation.  Its fresh
+root is `dev/isdm-package-recovery/results/g2n-local-prerun-20260812-0630`.
+The fit took `48.254` seconds; its frozen 30 profile optimizations took
+`393.251` seconds; wrapper elapsed time was `444.587` seconds.  Source gate,
+three restarts, all six five-offset profiles, and four recovery metrics pass,
+but G2n admission is Case C / `NO_CANDIDATE`: raw gradient `0.002726537`,
+unique maximum `b_fix`, no named boundary.  The diagonal-Psi variance error
+also fails: `0.2156398 > 0.20`.
+
+```sh
+Rscript --vanilla -e 'devtools::test(filter = "g2n-local-prerun", reporter = "summary")'
+# PASS: private no-fit wrapper validation.
+
+Rscript --vanilla dev/isdm-package-recovery/run-g2n-local-prerun.R \
+  --mode=validate --output=dev/isdm-package-recovery/results/g2n-validate-only \
+  --pkg="$PWD"
+# PASS: frozen fixture/contracts, no fit.
+```
+
+Independent closure review required a no-fit provenance addendum. It
+recomputed source-gate evidence and bound map/data/random/bounds/scale/control
+signatures, ordered parameters, gradient, covariance diagnostics, and
+DLL/TMB/R versions. A self-referential manifest review finding was corrected:
+manifest V3 excludes itself while final closure V3 binds it; V3 verified 20
+artifact hashes. No second fit, recovery
+campaign, Totoro/FIR/DRAC use, repair/new estimator, likelihood/DGP/map/source
+gate/metric/seed change, G2k reclassification, detection/spatial/empirical
+work, public/package/docs/pkgdown activity, Article promotion, or Issue #953
+action occurred. G2k remains `G2K_CALIBRATION_HOLD`; G2c remains
+`G2C_SMOKE_ADMISSION_HOLD`.
+
 ## 2026-08-12 — G2n prospective numerical-admission implementation PASS
 
 At base `3110075d`, G2n implemented only the private G2m prospective decision

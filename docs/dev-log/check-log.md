@@ -4,6 +4,37 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-08-12 — G2k all-attempt gradient diagnostic (private, no fit)
+
+Worktree `/private/tmp/gllvmtmb-isdm-g2k-gradient-diagnostic`, branch
+`codex/isdm-g2k-gradient-diagnostic`, from G2k closure `9c9ca277`.
+
+```sh
+Rscript --vanilla dev/isdm-package-recovery/run-g2k-gradient-diagnostic.R --mode=validate
+# PASS: exact retained campaign identity, 150 ledgers, and 150 retained
+# fit/profile/truth paths; no objective or fit constructed.
+
+Rscript --vanilla dev/isdm-package-recovery/run-g2k-gradient-diagnostic.R \
+  --mode=audit --output=dev/isdm-package-recovery/results/g2k-gradient-diagnostic-20260812-007
+# PASS: fresh private read-only diagnostic root, 150 attempts.
+
+Rscript --vanilla -e 'devtools::test(filter = "g2k-gradient-diagnostic", reporter = "summary")'
+# PASS: 9 assertions.
+
+rg "G2K_CALIBRATION_HOLD|NO_REPAIR|OPTIMIZER_REPAIR_CANDIDATE|NEW_DESIGN_REQUIRED" dev/isdm-package-recovery docs/dev-log
+# PASS: private NO_REPAIR decision is additive; historical G2k HOLD remains.
+
+rg "integrated_jsdm\\(|iJSDM|repeated-visit" README.md NEWS.md ROADMAP.md _pkgdown.yml vignettes
+# PASS: no public iJSDM/repeated-visit capability claim.
+
+rg -n "gllvmTMB\\(" R vignettes README.md NEWS.md docs/design
+# PASS: only pre-existing reader-facing calls; this lane adds none.
+```
+
+**Deliberately not run:** any fit, optimizer call, profile, simulator,
+campaign, Totoro/FIR/DRAC action, `R CMD check`, pkgdown render, or public-doc
+check.  The decision remains `NO_REPAIR`; G2k stays held.
+
 ## 2026-08-08 — Codex handover (CRAN 0.7 track pick locked; no R CMD check)
 
 Worktree `/private/tmp/gllvmtmb-cran-0.7-20260807`, branch

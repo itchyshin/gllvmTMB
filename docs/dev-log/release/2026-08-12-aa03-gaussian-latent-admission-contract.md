@@ -1,6 +1,7 @@
 # AA-03 Gaussian latent admission contract
 
-**Status:** Arc 0 contract; no promotion and no production evidence yet.
+**Status:** Completed single-cell production evidence; conditional claim review
+pending. This is not a release, API, or broad capability promotion.
 
 ## Purpose
 
@@ -54,9 +55,10 @@ production batch it must:
    environment receipt; and
 4. report the measured estimate for a full all-attempt batch to Shinichi.
 
-The production batch is not authorised by this document. If separately
-approved, it will use a predeclared seed schedule and count every attempt.
-Its evidence packet must include the matched
+The production batch required separate approval. The approved batch used the
+predeclared seed schedule and counted every attempt; its retained receipt is
+`docs/dev-log/simulation-artifacts/2026-08-12-aa03-production/`. Its evidence
+packet includes the matched
 `glmmTMB::rr() + diag()` comparator at the same rank, diagonal-Psi residual
 model, trait order, fixed effects, objective, and covariance extractor.
 
@@ -64,9 +66,10 @@ model, trait order, fixed effects, objective, and covariance extractor.
 
 The strongest possible post-review wording is:
 
-> In the tested three-trait complete-data Gaussian regime with 240 units, the
-> native-Laplace rank-1 `latent(unique = TRUE)` fit has retained point-estimation
-> evidence for the rotation-invariant covariance and diagonal-Psi targets.
+> For the exact ordinary native-Laplace, three-trait complete-data Gaussian
+> rank-1 `latent(unique = TRUE)` design at 240 units, retained production
+> evidence supports point estimation of fixed effects and rotation-invariant
+> shared and total covariance, including diagonal Psi targets.
 
 This sentence is permitted only if all retained production attempts and the
 matched comparator meet the frozen gates, and Curie/Fisher, Gauss/Noether, and

@@ -1,0 +1,2 @@
+"source_archive","source_archive_sha256","package_path","package_version","cell_id","attempts","workers","all_attempts_retained","cell_pass"
+"gllvmTMB-aa03-smoke.tar","0c862fa607622c11645aa5cf42d40020abe2a563c20256814745f4b34ea13430","/home/snakagaw/hsq_work/gllvmtmb-aa03-20260812/production-r3/library/gllvmTMB","0.6.0","g_latent_n240",1600,150,TRUE,TRUE

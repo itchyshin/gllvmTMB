@@ -29,15 +29,21 @@ repair, recovery campaign, public article, or package change.
   design, limited-memory optimisation, sparse/block-Schur Laplace strategy, and
   selected/low-rank rather than dense S-by-S output and inference.
 
-## Approved A0–A2 deliverables
+## Completed A0–A3 / Arc 0–3 deliverables
 
 1. A reconciliation/handover record rooted at the exact G2o commit.
 2. A non-ranking source map locating this private estimand among `gllvm`, Hmsc,
    `spOccupancy`, `glmmTMB`, and `sdmTMB`.
 3. A frozen Case-C estimator/Psi information protocol with recovery cells at
    S = 6, 20, 60 and measured implementation gates at S = 250, 1,000.
+4. A third-party numerical/identifiability source synthesis, a `NO_CANDIDATE`
+   Case-C decision packet, a Psi-information design, and an A4 no-fit test
+   contract. These design artefacts do not constitute a test implementation or
+   a numerical result.
 
 ## Stop condition
 
-After Gate A method review, reconciliation, checkpoint, and after-task record,
-return to Shinichi for explicit approval.  A3 or any fit needs a new approval.
+**Gate B — implementation approval.** Return to Shinichi for an explicit
+choice: implement only the A4 no-fit contract, stop, or return to design. No
+model execution, fitter/profile call, simulation, benchmark, or public reader
+surface follows from this record.

@@ -49786,3 +49786,29 @@ simulation, profile, local/DRAC/Totoro compute, public API/docs/pkgdown/article
 work, or likelihood/DGP/map/threshold alteration occurred.  `G2N_LOCAL_PRERUN_HOLD`,
 `G2K_CALIBRATION_HOLD`, and `G2C_SMOKE_ADMISSION_HOLD` remain unchanged.  Return
 for explicit approval before A3 or any fit.
+
+## 2026-08-12 — Paper 2 iJSDM Arc 0–3: Gate-B-ready no-fit design
+
+The approved private Arc 0–3 scope is complete. A scoped third-party
+NotebookLM record informed a bounded numerical/latent-identifiability source
+synthesis; its automated discovery import yielded no usable added sources.
+Independent design packets retain Case C as `NO_CANDIDATE`/HOLD and
+pre-register S=6/20/60 all-attempt Psi-information summaries. The A4 contract
+specifies only future deterministic no-fit logic/provenance tests. It does not
+implement or run them.
+
+```sh
+git diff --check
+# PASS.
+
+rg -n -i 'G2N_LOCAL_PRERUN_HOLD|G2K_CALIBRATION_HOLD|G2C_SMOKE_ADMISSION_HOLD|NO_CANDIDATE|S = 10,000|architecture HOLD' \
+  lanes/isdm-paper2-evidence-reader dev/isdm-package-recovery/2026-08-12-paper2-* \
+  docs/dev-log/{plan-actual,audits,recovery-checkpoints,after-task}/2026-08-12-*paper2*
+# PASS: protected HOLDs and private scope fences remain explicit.
+```
+
+No fit, objective construction, optimizer/profile call, simulation, benchmark,
+local/DRAC/Totoro compute, estimator repair, public/package/article change, or
+capability claim occurred. `G2N_LOCAL_PRERUN_HOLD`, `G2K_CALIBRATION_HOLD`,
+and `G2C_SMOKE_ADMISSION_HOLD` remain unchanged. Stop at Gate B for explicit
+direction: implement only the A4 no-fit contract, stop, or return to design.

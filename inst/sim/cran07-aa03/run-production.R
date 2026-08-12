@@ -24,7 +24,8 @@ if (!grepl("^[0-9a-f]{64}$", archive_sha) || startsWith(output, paste0(repo, .Pl
 }
 workers_raw <- trimws(Sys.getenv("NWORKERS", "150"))
 workers <- suppressWarnings(as.integer(workers_raw))
-available_raw <- trimws(system2("nproc", stdout = TRUE, stderr = TRUE)[1L])
+available_raw <- trimws(Sys.getenv("TOTORO_NPROC", ""))
+if (!nzchar(available_raw)) available_raw <- trimws(system2("nproc", stdout = TRUE)[1L])
 available <- suppressWarnings(as.integer(available_raw))
 if (is.na(workers) || workers < 1L || workers > 150L || is.na(available) || workers > available - 4L) {
   stop("NWORKERS must be in 1..150 and leave four host cores free (workers=",

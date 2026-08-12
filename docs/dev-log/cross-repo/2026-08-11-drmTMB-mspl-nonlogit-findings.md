@@ -110,8 +110,24 @@ not. Anchoring on the supremum gives 1.2426 instead of the correct **1.3108**. I
 tabulate `sup ω` for the Cauchy–Binet argument (ours does), that is not the constant the delta-method
 calibration wants.
 
-Neither package varies `c_n` by link today. We have **not** run the sensitivity study (our G2); if you
-do, we would like to see it.
+Neither package varies `c_n` by link today. **We have now measured whether that matters, and it does
+not.** 108,000 fits, three arms per replicate (shipped `c_n`, per-link `c_n`, unpenalized ML), an
+`n_eff` ladder of 120 / 300 / 600 / 1200, with logit as a null control whose two arms are the same
+estimator and returned **bit-identical** results:
+
+| link | max materiality | verdict |
+|---|---|---|
+| probit | 0.0124 | **IMMATERIAL** |
+| cloglog | 0.0118 | **IMMATERIAL** |
+
+`materiality = |bias_shipped − bias_per-link| / sd(β̂)` at `n_eff ≥ 300` — i.e. the wrong constant
+moves the estimate by about **1% of one standard error**. The shipped constant is the *stronger*
+penalty for both links and produced slightly *less* bias in every cell, so the over-softness is real
+in magnitude and benign in effect. The gap also closes 32–125× from `n_eff` 120 to 1200, against the
+~3.16× the shared `√(p/n)` rate predicts.
+
+**So the `c_n` objection to admitting probit and cloglog is answerable on evidence** — worth knowing
+before you spend a campaign on it.
 
 ## 6. Kosmidis & Firth (2021) settles the link condition — don't re-derive it
 

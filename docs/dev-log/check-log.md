@@ -49729,3 +49729,28 @@ simulation, campaign, Totoro/FIR/DRAC job, public/package documentation,
 empirical data, detection extension, or Issue #953 action ran.  G2k remains
 `G2K_CALIBRATION_HOLD`; G2c remains `G2C_SMOKE_ADMISSION_HOLD`.  A separately
 approved fresh local pre-run is required before any fit execution.
+
+## 2026-08-12 — G2o retained-artifact postmortem: design-only GO
+
+G2o began at the closed G2n commit `a0f0b8a8` and read only its retained
+six-species local-pre-run root plus the completed 150/150 FIR campaign as
+summarized by the G2k diagnostic root. It computed parameter-block scores,
+covariance-scaled scores, marginal block conditioning, Psi truth--estimate
+geometry, and retained lower-profile summaries; it did not fit, optimize,
+profile, simulate, or use remote compute. The Case-C `b_fix` residual remains
+a confirmed raw-gradient admission failure, but neither it nor the Psi miss
+identifies a safe repair or a model/estimand cause. `G2O_NO_FIT_DESIGN_ONLY_GO`
+permits only a new pre-registered estimator/Psi-calibration *design* task.
+`G2N_LOCAL_PRERUN_HOLD`, `G2K_CALIBRATION_HOLD`, and
+`G2C_SMOKE_ADMISSION_HOLD` remain unchanged.
+
+```sh
+env TMPDIR=/private/tmp Rscript --vanilla -e 'devtools::test(filter = "g2o-postmortem", reporter = "summary")'
+# PASS: 5 expectations.
+
+env TMPDIR=/private/tmp Rscript --vanilla dev/isdm-package-recovery/run-g2o-postmortem.R --mode=validate ...
+# PASS: retained-root validation; no fit.
+
+env TMPDIR=/private/tmp Rscript --vanilla dev/isdm-package-recovery/run-g2o-postmortem.R --mode=report ...
+# PASS: retained-artifact report; no fit.
+```

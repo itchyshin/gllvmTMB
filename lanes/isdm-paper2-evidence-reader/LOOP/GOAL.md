@@ -41,9 +41,10 @@ repair, recovery campaign, public article, or package change.
    contract. These design artefacts do not constitute a test implementation or
    a numerical result.
 
-## Stop condition
+## Terminal disposition
 
-**Gate B — implementation approval.** Return to Shinichi for an explicit
-choice: implement only the A4 no-fit contract, stop, or return to design. No
-model execution, fitter/profile call, simulation, benchmark, or public reader
-surface follows from this record.
+`PAPER2_PRIVATE_STOP_HOLD` was selected after the completed single S=6
+all-attempt receipt: Case C has `NO_CANDIDATE`, diagonal-Psi recovery fails its
+frozen threshold, and three lower profile endpoints are weak. No reader packet
+or public/package claim is admitted. A later project requires a fresh goal and
+explicit approval; it cannot treat this closure as retry authority.

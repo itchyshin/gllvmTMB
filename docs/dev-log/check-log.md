@@ -49839,3 +49839,21 @@ No retry, replacement seed/root, model change, recovery/scale campaign,
 public/article change, or capability claim occurred. All protected HOLDs remain
 unchanged. Any continuation requires separate approval for the next evidence
 decision; it cannot reclassify Case C or relax a frozen threshold.
+
+## 2026-08-12 — Paper 2 iJSDM Gate D: private STOP/HOLD closeout
+
+Maintainer selected the recommended private STOP/HOLD route after the verified
+single S=6 receipt. The Gate-D reconciliation retains the finite objective,
+three code-0 starts, PD Hessian, and finite profiles alongside the decisive
+facts: Case C / `NO_CANDIDATE` from raw `b_fix` gradient 0.002726537,
+diagonal-Psi error 0.2156398 > 0.20, and weak lower profile endpoints for
+sp2/sp5/sp6. Four passing known-truth metrics do not override either failed
+gate. No reader packet is admitted.
+
+The final no-fit evidence audit printed `PAPER2_S6_FINAL_AUDIT_PASS` after
+verifying both closures, Case C / `NO_CANDIDATE`, `PRE_RUN_RECOVERY_HOLD`, and
+the expected weak lower endpoints.
+
+No additional S=6/S=20/S=60 work, scale measurement, Case-C repair, threshold
+change, public/article/package change, or capability claim occurred. The three
+protected HOLDs remain unchanged. Any future work is a fresh approved lane.

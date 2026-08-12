@@ -1,4 +1,4 @@
-# Checkpoint — A4 safeguards closed; S = 6 local pre-run is HOLD
+# Checkpoint — Paper 2 private STOP/HOLD closed
 
 **Branch:** `codex/isdm-paper2-evidence-reader-a0`
 **Base commit:** `0f668c469228f1799a989e112176fd931f2f88a8`
@@ -24,13 +24,12 @@
   the frozen 0.20 threshold, with weak lower profiles for sp2/sp5/sp6. It is
   a one-attempt private HOLD, not eligible for rerun or reader promotion.
 
-## Do not resume by running
+## Terminal no-resume fence
 
-No additional fit, implementation, simulation, profile, or local/remote
-compute is authorized. The next safe action is explicit approval for the next
-evidence decision; it must not rerun this seed, reclassify Case C, or alter the
-model. Any later new run still needs a time estimate and, if expected to exceed
-30 minutes, a pre-run test followed by renewed approval.
+No additional fit, implementation, simulation, profile, local/remote compute,
+or reader work is authorized in this programme. Any later project must be a
+fresh approved lane; it must not rerun this seed, reclassify Case C, relax a
+threshold, or alter the model while representing itself as a continuation.
 
 ## Held evidence
 

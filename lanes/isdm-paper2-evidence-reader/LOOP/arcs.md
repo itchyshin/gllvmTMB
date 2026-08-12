@@ -2,7 +2,7 @@
 
 **Lane:** `codex/isdm-paper2-evidence-reader-a0`
 **Base:** `0f668c469228f1799a989e112176fd931f2f88a8`
-**Current state:** Arc 0–3 closed; awaiting explicit Gate B.
+**Current state:** `PAPER2_PRIVATE_STOP_HOLD` closed.
 
 | Arc | State | Durable receipt | Boundary preserved |
 | --- | --- | --- | --- |
@@ -12,9 +12,9 @@
 | 3. Freeze A4 contract | closed | `2026-08-12-paper2-a4-no-fit-test-contract.md` | No code, fit, profile, simulation, or estimator/DGP/map/threshold change. |
 | A4 safeguards | closed | `c7aa1f2c`; focused pure-logic tests | Case C cannot enter the candidate route. |
 | Local S = 6 pre-run | HOLD | `2026-08-12-paper2-s6-local-prerun-adjudication.md` | Case C / `NO_CANDIDATE`; Psi threshold fails; no rerun or reader claim is implied. |
-| Next gate | awaiting Shinichi | numerical/recovery adjudication | Decide whether to stop privately or authorise a separately designed next evidence wave. |
+| Gate D private adjudication | closed | `2026-08-12-paper2-gate-d-private-stop-review.md` | Private STOP/HOLD; no reader packet or capability claim. |
 
 **Do not redo:** G2 retained-artifact diagnosis; A0–A2 reconciliation and
 scale specification; the Case-C candidate search. A later lane must begin by
 reading this ledger, `checkpoint.md`, the Gate-B readiness review, and the two
-A3 packets. It must not infer approval for any model execution.
+A3 packets. It must not infer approval for any model execution or reader work.

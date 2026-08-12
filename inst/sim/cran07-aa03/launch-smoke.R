@@ -58,8 +58,9 @@ if (!grepl("^[0-9a-f]{64}$", archive_sha)) {
 
 status <- system2("tar", c("-xf", shQuote(archive), "-C", shQuote(source_dir)))
 source_root <- normalizePath(file.path(source_dir, "gllvmTMB"), mustWork = TRUE)
-status <- system2("R", c("CMD", "INSTALL", "--library", shQuote(library_dir),
+status <- system2("R", c("CMD", "INSTALL", paste0("--library=", shQuote(library_dir)),
                           shQuote(source_root)), stdout = TRUE, stderr = TRUE)
+writeLines(status, file.path(output, "install.log"))
 if (!identical(attr(status, "status"), NULL)) {
   stop("AA-03 smoke could not install its source archive.", call. = FALSE)
 }

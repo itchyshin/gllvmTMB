@@ -6502,7 +6502,35 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     pd_hessian = fit$fit_health$pd_hessian,
     boundary_flags = fit$fit_health$boundary_flags
   )
-  if (isTRUE(warm_eligible)) {
+  isdm_boundary_indices <- integer()
+  isdm_polish_eligible <- FALSE
+  if (isTRUE(isdm_internal)) {
+    isdm_boundary_indices <- .gllvmTMB_isdm_near_zero_sd_B_indices(fit)
+    isdm_polish_eligible <- .gllvmTMB_isdm_polish_eligible(
+      isdm_internal = TRUE,
+      optimizer = control$optimizer,
+      aghq_used = aghq_info$used,
+      ridge_tau = laplace_ridge_tau,
+      convergence = opt$convergence,
+      objective = fit$fit_health$objective,
+      gradient = initial_gradient,
+      parameter_names = names(opt$par),
+      pd_hessian = fit$fit_health$pd_hessian,
+      boundary_flags = fit$fit_health$boundary_flags,
+      boundary_diag_indices = isdm_boundary_indices
+    )
+    fit$isdm_polish_provenance <- .gllvmTMB_isdm_polish_record(
+      eligible = isdm_polish_eligible,
+      raw_parameter_vector = opt$par,
+      raw_objective = fit$fit_health$objective,
+      raw_gradient = initial_gradient,
+      raw_pd_hessian = fit$fit_health$pd_hessian,
+      raw_boundary_flags = fit$fit_health$boundary_flags,
+      boundary_diag_indices = isdm_boundary_indices,
+      parameter_names = names(opt$par)
+    )
+  }
+  if (isTRUE(warm_eligible) || isTRUE(isdm_polish_eligible)) {
     warm_checkpoint <- .gllvmTMB_warm_restart_checkpoint(fit, obj)
     warm_started <- proc.time()[["elapsed"]]
     warm_opt <- tryCatch(
@@ -6560,27 +6588,62 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
            pd_hessian = warm_health$pd_hessian,
            boundary_flags = warm_health$boundary_flags)
     }
-    warm_accepted <- .gllvmTMB_warm_restart_accept(
-      before_diagnostics, after_diagnostics
-    )
-    fit$warm_restart_provenance <- .gllvmTMB_warm_restart_record(
-      attempted = TRUE,
-      accepted = warm_accepted,
-      objective_before = fit$fit_health$objective,
-      objective_after = warm_objective,
-      max_gradient_before = fit$fit_health$max_gradient,
-      max_gradient_after = if (length(warm_gradient) &&
-          all(is.finite(warm_gradient))) max(abs(warm_gradient)) else NA_real_,
-      convergence_before = opt$convergence,
-      convergence_after = after_diagnostics$convergence,
-      pd_hessian_before = fit$fit_health$pd_hessian,
-      pd_hessian_after = after_diagnostics$pd_hessian,
-      boundary_before = initial_boundary,
-      boundary_after = .gllvmTMB_warm_restart_boundary_scalar(
-        after_diagnostics$boundary_flags
-      ),
-      trigger_reason = initial_trigger_reason
-    )
+    warm_accepted <- if (isTRUE(isdm_polish_eligible)) {
+      .gllvmTMB_isdm_polish_accept(
+        before_diagnostics,
+        after_diagnostics,
+        boundary_diag_indices_before = isdm_boundary_indices,
+        boundary_diag_indices_after = if (is.null(warm_fit)) integer() else
+          .gllvmTMB_isdm_near_zero_sd_B_indices(warm_fit),
+        map_identical = !is.null(warm_fit) &&
+          identical(fit$tmb_map, warm_fit$tmb_map)
+      )
+    } else {
+      .gllvmTMB_warm_restart_accept(before_diagnostics, after_diagnostics)
+    }
+    if (isTRUE(isdm_polish_eligible)) {
+      fit$isdm_polish_provenance <- .gllvmTMB_isdm_polish_record(
+        eligible = TRUE,
+        attempted = TRUE,
+        accepted = warm_accepted,
+        raw_parameter_vector = opt$par,
+        candidate_parameter_vector = if (inherits(warm_opt, "error"))
+          numeric() else warm_opt$par %||% numeric(),
+        raw_objective = fit$fit_health$objective,
+        candidate_objective = warm_objective,
+        raw_gradient = initial_gradient,
+        candidate_gradient = warm_gradient,
+        raw_pd_hessian = fit$fit_health$pd_hessian,
+        candidate_pd_hessian = after_diagnostics$pd_hessian,
+        raw_boundary_flags = fit$fit_health$boundary_flags,
+        candidate_boundary_flags = after_diagnostics$boundary_flags,
+        boundary_diag_indices = isdm_boundary_indices,
+        candidate_boundary_diag_indices = if (is.null(warm_fit)) integer() else
+          .gllvmTMB_isdm_near_zero_sd_B_indices(warm_fit),
+        parameter_names = names(opt$par),
+        map_identical = !is.null(warm_fit) &&
+          identical(fit$tmb_map, warm_fit$tmb_map)
+      )
+    } else {
+      fit$warm_restart_provenance <- .gllvmTMB_warm_restart_record(
+        attempted = TRUE,
+        accepted = warm_accepted,
+        objective_before = fit$fit_health$objective,
+        objective_after = warm_objective,
+        max_gradient_before = fit$fit_health$max_gradient,
+        max_gradient_after = if (length(warm_gradient) &&
+            all(is.finite(warm_gradient))) max(abs(warm_gradient)) else NA_real_,
+        convergence_before = opt$convergence,
+        convergence_after = after_diagnostics$convergence,
+        pd_hessian_before = fit$fit_health$pd_hessian,
+        pd_hessian_after = after_diagnostics$pd_hessian,
+        boundary_before = initial_boundary,
+        boundary_after = .gllvmTMB_warm_restart_boundary_scalar(
+          after_diagnostics$boundary_flags
+        ),
+        trigger_reason = initial_trigger_reason
+      )
+    }
     if (isTRUE(warm_accepted)) {
       opt <- warm_opt
       rep <- warm_fit$report
@@ -6921,6 +6984,174 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     max(1, abs(before$objective))
   isTRUE(max(abs(after_gradient)) < max(abs(before_gradient))) &&
     isTRUE(after$objective <= before$objective + tolerance)
+}
+
+## G2i's deterministic polish is private to the internal two-source iSDM
+## route.  It deliberately does not broaden the ordinary warm-restart policy:
+## one named near-zero B-tier SD may coexist with a residual gradient in a
+## different parameter block, but the raw and candidate states remain visible.
+.gllvmTMB_isdm_near_zero_sd_B_indices <- function(
+  fit,
+  sd_thresh = 1e-4,
+  sd_rel_thresh = 1e-3
+) {
+  sd_B <- fit$report$sd_B %||% numeric()
+  sd_B <- as.numeric(sd_B)
+  if (!length(sd_B) || any(!is.finite(sd_B))) return(integer())
+  absolute <- which(sd_B < sd_thresh)
+  if (length(absolute)) return(as.integer(absolute))
+  max_sd <- max(sd_B)
+  if (!is.finite(max_sd) || max_sd <= 0) return(integer())
+  relative <- which(sd_B / max_sd < sd_rel_thresh)
+  as.integer(relative)
+}
+
+.gllvmTMB_isdm_polish_eligible <- function(
+  isdm_internal,
+  optimizer,
+  aghq_used,
+  ridge_tau,
+  convergence,
+  objective,
+  gradient,
+  parameter_names,
+  pd_hessian,
+  boundary_flags,
+  boundary_diag_indices,
+  raw_gradient_gate = 1e-3,
+  health_gradient_gate = .gllvmTMB_converged_gtol
+) {
+  typed <- isTRUE(isdm_internal) && identical(optimizer, "nlminb") &&
+    identical(aghq_used, FALSE) && is.null(ridge_tau) &&
+    is.numeric(convergence) && length(convergence) == 1L &&
+    is.finite(convergence) && convergence == 0L &&
+    is.numeric(objective) && length(objective) == 1L && is.finite(objective) &&
+    is.numeric(gradient) && length(gradient) > 0L && all(is.finite(gradient)) &&
+    is.character(parameter_names) && length(parameter_names) == length(gradient) &&
+    identical(pd_hessian, TRUE) &&
+    identical(boundary_flags, "near_zero_sd_B") &&
+    is.integer(boundary_diag_indices) && length(boundary_diag_indices) == 1L &&
+    is.finite(raw_gradient_gate) && raw_gradient_gate > 0 &&
+    is.finite(health_gradient_gate) && health_gradient_gate > raw_gradient_gate
+  if (!typed) return(FALSE)
+  max_gradient <- max(abs(gradient))
+  max_indices <- which(abs(gradient) == max_gradient)
+  isTRUE(max_gradient > raw_gradient_gate) &&
+    isTRUE(max_gradient < health_gradient_gate) &&
+    !any(parameter_names[max_indices] == "theta_diag_B")
+}
+
+.gllvmTMB_isdm_polish_accept <- function(
+  before,
+  after,
+  boundary_diag_indices_before,
+  boundary_diag_indices_after,
+  map_identical,
+  raw_gradient_gate = 1e-3
+) {
+  required <- c("convergence", "objective", "gradient", "pd_hessian",
+                "boundary_flags")
+  valid <- function(x) {
+    is.list(x) && all(required %in% names(x)) &&
+      is.numeric(x$convergence) && length(x$convergence) == 1L &&
+      is.finite(x$convergence) && x$convergence == 0L &&
+      is.numeric(x$objective) && length(x$objective) == 1L &&
+      is.finite(x$objective) &&
+      is.numeric(x$gradient) && length(x$gradient) > 0L &&
+      all(is.finite(x$gradient)) && identical(x$pd_hessian, TRUE) &&
+      identical(x$boundary_flags, "near_zero_sd_B")
+  }
+  if (!valid(before) || !valid(after) || !isTRUE(map_identical) ||
+      !is.integer(boundary_diag_indices_before) ||
+      !is.integer(boundary_diag_indices_after) ||
+      length(boundary_diag_indices_before) != 1L ||
+      !identical(boundary_diag_indices_before, boundary_diag_indices_after) ||
+      !is.numeric(raw_gradient_gate) || length(raw_gradient_gate) != 1L ||
+      !is.finite(raw_gradient_gate) || raw_gradient_gate <= 0) {
+    return(FALSE)
+  }
+  tolerance <- 64 * .Machine$double.eps * max(1, abs(before$objective))
+  isTRUE(after$objective <= before$objective + tolerance) &&
+    isTRUE(max(abs(after$gradient)) <= raw_gradient_gate)
+}
+
+.gllvmTMB_isdm_polish_record <- function(
+  eligible = FALSE,
+  attempted = FALSE,
+  accepted = FALSE,
+  raw_parameter_vector = numeric(),
+  candidate_parameter_vector = numeric(),
+  raw_objective = NA_real_,
+  candidate_objective = NA_real_,
+  raw_gradient = numeric(),
+  candidate_gradient = numeric(),
+  raw_pd_hessian = NA,
+  candidate_pd_hessian = NA,
+  raw_boundary_flags = character(),
+  candidate_boundary_flags = character(),
+  boundary_diag_indices = integer(),
+  candidate_boundary_diag_indices = integer(),
+  parameter_names = character(),
+  map_identical = NA
+) {
+  parameter_names <- as.character(parameter_names)
+  raw_parameter_vector <- as.numeric(raw_parameter_vector)
+  candidate_parameter_vector <- as.numeric(candidate_parameter_vector)
+  raw_gradient <- as.numeric(raw_gradient)
+  candidate_gradient <- as.numeric(candidate_gradient)
+  names(raw_parameter_vector) <- parameter_names
+  if (length(candidate_parameter_vector) == length(parameter_names)) {
+    names(candidate_parameter_vector) <- parameter_names
+  }
+  max_index <- if (length(raw_gradient) == length(parameter_names) &&
+      length(raw_gradient) && all(is.finite(raw_gradient))) {
+    which.max(abs(raw_gradient))
+  } else NA_integer_
+  max_block <- if (is.finite(max_index)) parameter_names[[max_index]] else NA_character_
+  max_block_index <- if (is.finite(max_index)) {
+    sum(parameter_names[seq_len(max_index)] == max_block)
+  } else NA_integer_
+  diag_outer <- which(parameter_names == "theta_diag_B")
+  boundary_outer <- if (is.integer(boundary_diag_indices) &&
+      all(boundary_diag_indices %in% seq_along(diag_outer))) {
+    diag_outer[boundary_diag_indices]
+  } else integer()
+  list(
+    schema = "G2I_INTERNAL_ISDM_POLISH_V1",
+    eligible = isTRUE(eligible),
+    attempted = isTRUE(attempted),
+    accepted = isTRUE(accepted),
+    raw = list(
+      parameter_vector = raw_parameter_vector,
+      objective = as.numeric(raw_objective)[1L],
+      gradient = raw_gradient,
+      max_gradient = if (length(raw_gradient) && all(is.finite(raw_gradient)))
+        max(abs(raw_gradient)) else NA_real_,
+      pd_hessian = as.logical(raw_pd_hessian)[1L],
+      boundary_flags = as.character(raw_boundary_flags),
+      max_gradient_parameter_block = max_block,
+      max_gradient_parameter_index = as.integer(max_block_index)
+    ),
+    candidate = list(
+      parameter_vector = candidate_parameter_vector,
+      objective = as.numeric(candidate_objective)[1L],
+      gradient = candidate_gradient,
+      max_gradient = if (length(candidate_gradient) &&
+          all(is.finite(candidate_gradient))) max(abs(candidate_gradient)) else NA_real_,
+      pd_hessian = as.logical(candidate_pd_hessian)[1L],
+      boundary_flags = as.character(candidate_boundary_flags)
+    ),
+    boundary = list(
+      diagonal_indices = as.integer(boundary_diag_indices),
+      candidate_diagonal_indices = as.integer(candidate_boundary_diag_indices),
+      outer_parameter_indices = as.integer(boundary_outer),
+      raw_theta_diag_values = raw_parameter_vector[boundary_outer],
+      candidate_theta_diag_values = if (
+        length(candidate_parameter_vector) == length(parameter_names)
+      ) candidate_parameter_vector[boundary_outer] else numeric()
+    ),
+    map_identical = isTRUE(map_identical)
+  )
 }
 
 .gllvmTMB_restart_history_row <- function(restart, start_label, start_method,

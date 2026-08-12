@@ -239,6 +239,162 @@ test_that("warm-restart acceptance preserves every preregistered guard", {
   }
 })
 
+test_that("G2i iSDM polish admits only the unrelated diagonal-boundary case", {
+  eligible <- list(
+    isdm_internal = TRUE, optimizer = "nlminb", aghq_used = FALSE,
+    ridge_tau = NULL, convergence = 0L, objective = 100,
+    gradient = c(0.0002, -0.00129, 0.0003),
+    parameter_names = c("b_fix", "theta_rr_B", "theta_diag_B"),
+    pd_hessian = TRUE, boundary_flags = "near_zero_sd_B",
+    boundary_diag_indices = 1L
+  )
+  expect_true(do.call(gllvmTMB:::.gllvmTMB_isdm_polish_eligible, eligible))
+
+  mutations <- list(
+    list(isdm_internal = FALSE), list(optimizer = "optim"),
+    list(aghq_used = TRUE), list(ridge_tau = 1), list(convergence = 1L),
+    list(objective = Inf), list(gradient = c(NA_real_, 0, 0)),
+    list(gradient = c(0.0002, -0.001, 0.0003)),
+    list(gradient = c(0.0002, -0.01, 0.0003)),
+    list(parameter_names = c("b_fix", "theta_diag_B", "theta_rr_B")),
+    list(gradient = c(0.0002, -0.00129, 0.00129)),
+    list(pd_hessian = FALSE), list(boundary_flags = character()),
+    list(boundary_flags = c("near_zero_sd_B", "near_zero_B_loading")),
+    list(boundary_flags = "near_zero_sd_W"),
+    list(boundary_diag_indices = integer()), list(boundary_diag_indices = 1:2)
+  )
+  for (change in mutations) {
+    candidate <- utils::modifyList(eligible, change, keep.null = TRUE)
+    expect_false(do.call(
+      gllvmTMB:::.gllvmTMB_isdm_polish_eligible, candidate
+    ))
+  }
+})
+
+test_that("G2i iSDM polish acceptance preserves map and named boundary", {
+  before <- list(
+    convergence = 0L, objective = 100,
+    gradient = c(0.0002, -0.00129, 0.0003), pd_hessian = TRUE,
+    boundary_flags = "near_zero_sd_B"
+  )
+  tolerance <- 64 * .Machine$double.eps * 100
+  after <- list(
+    convergence = 0L, objective = 100 + tolerance,
+    gradient = c(0.0001, -0.0009, 0.0003), pd_hessian = TRUE,
+    boundary_flags = "near_zero_sd_B"
+  )
+  accept <- gllvmTMB:::.gllvmTMB_isdm_polish_accept
+  expect_true(accept(before, after, 1L, 1L, TRUE))
+
+  failures <- list(
+    list(convergence = 1L), list(objective = 100 + 2 * tolerance),
+    list(gradient = c(0.0001, -0.00101, 0.0003)),
+    list(gradient = c(NA_real_, 0, 0)), list(pd_hessian = FALSE),
+    list(boundary_flags = "near_zero_sd_W")
+  )
+  for (change in failures) {
+    candidate <- utils::modifyList(after, change)
+    expect_false(accept(before, candidate, 1L, 1L, TRUE))
+  }
+  expect_false(accept(before, after, 1L, 2L, TRUE))
+  expect_false(accept(before, after, 1L, 1L, FALSE))
+})
+
+test_that("G2i iSDM polish provenance retains raw and candidate coordinates", {
+  record <- gllvmTMB:::.gllvmTMB_isdm_polish_record(
+    eligible = TRUE, attempted = TRUE, accepted = TRUE,
+    raw_parameter_vector = c(0.1, -0.6, -8.8),
+    candidate_parameter_vector = c(0.1, -0.60001, -8.8),
+    raw_objective = 100, candidate_objective = 100,
+    raw_gradient = c(0.0002, -0.00129, 0.0000005),
+    candidate_gradient = c(0.0001, -0.0009, 0.0000004),
+    raw_pd_hessian = TRUE, candidate_pd_hessian = TRUE,
+    raw_boundary_flags = "near_zero_sd_B",
+    candidate_boundary_flags = "near_zero_sd_B",
+    boundary_diag_indices = 1L, candidate_boundary_diag_indices = 1L,
+    parameter_names = c("b_fix", "theta_rr_B", "theta_diag_B"),
+    map_identical = TRUE
+  )
+  expect_identical(record$schema, "G2I_INTERNAL_ISDM_POLISH_V1")
+  expect_true(record$accepted)
+  expect_identical(record$raw$max_gradient_parameter_block, "theta_rr_B")
+  expect_identical(record$raw$max_gradient_parameter_index, 1L)
+  expect_identical(record$boundary$outer_parameter_indices, 3L)
+  expect_equal(unname(record$boundary$raw_theta_diag_values), -8.8)
+  expect_equal(unname(record$boundary$candidate_theta_diag_values), -8.8)
+  expect_true(record$map_identical)
+})
+
+test_that("G2i rejected polish keeps its attempted ledger through restoration", {
+  raw <- gllvmTMB:::.gllvmTMB_isdm_polish_record(
+    eligible = TRUE, raw_parameter_vector = c(0.1, -0.6, -8.8),
+    raw_objective = 100, raw_gradient = c(0.0002, -0.00129, 0.0000005),
+    raw_pd_hessian = TRUE, raw_boundary_flags = "near_zero_sd_B",
+    boundary_diag_indices = 1L,
+    parameter_names = c("b_fix", "theta_rr_B", "theta_diag_B")
+  )
+  attempted <- gllvmTMB:::.gllvmTMB_isdm_polish_record(
+    eligible = TRUE, attempted = TRUE, accepted = FALSE,
+    raw_parameter_vector = raw$raw$parameter_vector,
+    candidate_parameter_vector = c(0.1, -0.60001, -8.8),
+    raw_objective = 100, candidate_objective = 100,
+    raw_gradient = raw$raw$gradient,
+    candidate_gradient = c(0.0002, -0.00101, 0.0000005),
+    raw_pd_hessian = TRUE, candidate_pd_hessian = TRUE,
+    raw_boundary_flags = "near_zero_sd_B",
+    candidate_boundary_flags = "near_zero_sd_B",
+    boundary_diag_indices = 1L, candidate_boundary_diag_indices = 1L,
+    parameter_names = c("b_fix", "theta_rr_B", "theta_diag_B"),
+    map_identical = TRUE
+  )
+  obj <- list(env = new.env(parent = emptyenv()))
+  obj$env$last.par <- 1
+  obj$env$last.par.best <- 2
+  obj$env$value.best <- 3
+  fit <- list(
+    opt = list(par = 1), report = list(), sd_report = list(),
+    sdreport_error = NULL, fit_health = list(), restart_history = data.frame(),
+    isdm_polish_provenance = attempted
+  )
+  checkpoint <- gllvmTMB:::.gllvmTMB_warm_restart_checkpoint(fit, obj)
+  fit$opt <- list(par = 99)
+  restored <- gllvmTMB:::.gllvmTMB_restore_warm_restart_checkpoint(
+    fit, obj, checkpoint
+  )
+  expect_identical(restored$opt, checkpoint$opt)
+  expect_identical(restored$isdm_polish_provenance, attempted)
+  expect_true(restored$isdm_polish_provenance$attempted)
+  expect_false(restored$isdm_polish_provenance$accepted)
+  expect_equal(restored$isdm_polish_provenance$raw$parameter_vector,
+               raw$raw$parameter_vector)
+  expect_equal(restored$isdm_polish_provenance$candidate$parameter_vector,
+               attempted$candidate$parameter_vector)
+})
+
+test_that("G2i B-tier diagonal mapper is exact and fail-closed", {
+  mapper <- gllvmTMB:::.gllvmTMB_isdm_near_zero_sd_B_indices
+  expect_identical(mapper(list(report = list(sd_B = c(1.4e-4, 1, 0.5)))), 1L)
+  expect_identical(mapper(list(report = list(sd_B = c(1e-5, 1, 0.5)))), 1L)
+  expect_identical(mapper(list(report = list(sd_B = c(0.2, 1, 0.5)))), integer())
+  expect_identical(mapper(list(report = list(sd_B = c(NA_real_, 1, 0.5)))),
+                   integer())
+})
+
+test_that("ordinary multivariate fits do not receive the private G2i ledger", {
+  dat <- expand.grid(
+    unit = factor(seq_len(8L)), trait = factor(c("sp1", "sp2")),
+    KEEP.OUT.ATTRS = FALSE
+  )
+  dat$value <- rep(c(-0.4, 0.3), each = 8L) + seq_len(nrow(dat)) / 100
+  fit <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+    value ~ 0 + trait, data = dat, trait = "trait", unit = "unit",
+    family = stats::gaussian(), control = gllvmTMB::gllvmTMBcontrol(
+      n_init = 1L, init_jitter = 0, se = FALSE
+    ), silent = TRUE
+  )))
+  expect_false("isdm_polish_provenance" %in% names(fit))
+})
+
 test_that("warm-restart provenance has exact frozen v4 names and semantics", {
   unattempted <- gllvmTMB:::.gllvmTMB_warm_restart_record(
     objective_before = 100, max_gradient_before = 0.009,

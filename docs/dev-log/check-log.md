@@ -49105,3 +49105,16 @@ passing the workflow's GitHub-Actions compute-boundary guard:
 This is platform evidence for the current 0.6 hardening source only. It did
 not merge PR #951, deploy pkgdown, change the package version, publish a
 release, run a scientific simulation campaign, or authorize CRAN submission.
+
+## 2026-08-12 — post-deployment exact 0.6 artifact
+
+At merged `origin/main` commit `cb3126893883ff9fb0c6114129c158fe0e649be8`,
+the normal-vignette source artifact `gllvmTMB_0.6.0.tar.gz` had SHA-256
+`9706809b9e2f52b130c21843a0396cafcfea602db74bb676eaa232f667f2e05a`.
+`R CMD check --as-cran --run-donttest --no-manual` passed installed docs,
+vignettes, examples, and the full installed-package suite (`[244s/275s]`).
+Its only result was the expected CRAN `New submission` NOTE. The deployed
+Current limitations page returned HTTP 200, so the earlier undeployed URL NOTE
+did not recur. See
+`docs/dev-log/release/2026-08-12-0.6-post-deployment-artifact-receipt.md` for
+the exact command, artifact, byte-identity comparison, and exclusions.

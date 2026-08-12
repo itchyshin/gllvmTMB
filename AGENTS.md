@@ -15,6 +15,10 @@ Model Builder.
 > `docs/dev-log/handover/2026-07-25-active-lane-split.md` (read **every** lane row). CRAN 0.7
 > Codex baton: `docs/dev-log/handover/2026-08-08-codex-handover.md`. Do not treat a single
 > snapshot bullet as the whole project. Milestone state is re-derived from `git`.
+> **0.6 hardening completion / next Codex intake (2026-08-12):**
+> `docs/dev-log/handover/2026-08-12-codex-handover.md`. It succeeds the 0.6
+> artifact evidence phase and starts a read-first 0.7 integration intake; it
+> does not supersede the multi-lane map or authorise a version bump/release.
 
 ## Core Scope
 

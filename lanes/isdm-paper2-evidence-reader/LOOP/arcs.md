@@ -10,7 +10,9 @@
 | 1. Ground landscape | closed | `2026-08-12-paper2-method-landscape-synthesis.md` | Third-party, non-ranking source map; no novelty or performance conclusion. |
 | 2. Design unresolved questions | closed | Case-C and Psi packets | Case C is `NO_CANDIDATE`; S = 6/20/60 are design cells only. |
 | 3. Freeze A4 contract | closed | `2026-08-12-paper2-a4-no-fit-test-contract.md` | No code, fit, profile, simulation, or estimator/DGP/map/threshold change. |
-| Gate B | awaiting Shinichi | readiness review and checkpoint | Choose no-fit implementation only, stop, or return to design. |
+| A4 safeguards | closed | `c7aa1f2c`; focused pure-logic tests | Case C cannot enter the candidate route. |
+| Local S = 6 pre-run | HOLD | `2026-08-12-paper2-s6-local-prerun-adjudication.md` | Case C / `NO_CANDIDATE`; Psi threshold fails; no rerun or reader claim is implied. |
+| Next gate | awaiting Shinichi | numerical/recovery adjudication | Decide whether to stop privately or authorise a separately designed next evidence wave. |
 
 **Do not redo:** G2 retained-artifact diagnosis; A0–A2 reconciliation and
 scale specification; the Case-C candidate search. A later lane must begin by

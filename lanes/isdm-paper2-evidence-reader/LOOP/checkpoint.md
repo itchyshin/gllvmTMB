@@ -1,4 +1,4 @@
-# Checkpoint — A0–A3 / Arc 0–3 closed; Gate B approval required
+# Checkpoint — A4 safeguards closed; S = 6 local pre-run is HOLD
 
 **Branch:** `codex/isdm-paper2-evidence-reader-a0`
 **Base commit:** `0f668c469228f1799a989e112176fd931f2f88a8`
@@ -16,14 +16,21 @@
   the S = 6, 20, 60 Psi-information design.
 - Arc 3: froze the A4 no-fit acceptance matrix; it specifies future tests but
   does not create or run them.
+- A4 safeguards: committed pure-logic Case-C non-entry/Case-B isolation tests
+  at `c7aa1f2c`; focused A4, G2n, and G2m tests passed.
+- One authorised S = 6 seed `86122` attempt at `57613984` completed in
+  448.155 seconds with verified closure. It is Case C / `NO_CANDIDATE` due to
+  raw `b_fix` gradient 0.002726537; Psi variance error 0.2156398 also exceeds
+  the frozen 0.20 threshold, with weak lower profiles for sp2/sp5/sp6. It is
+  a one-attempt private HOLD, not eligible for rerun or reader promotion.
 
 ## Do not resume by running
 
-No fit, implementation, simulation, profile, or local/remote compute is
-authorized. The next safe action is Gate B: obtain explicit approval to
-implement only the no-fit A4 contract, stop, or return to design. Any later
-run still needs a time estimate and, if expected to exceed 30 minutes, a
-pre-run test followed by renewed approval.
+No additional fit, implementation, simulation, profile, or local/remote
+compute is authorized. The next safe action is explicit approval for the next
+evidence decision; it must not rerun this seed, reclassify Case C, or alter the
+model. Any later new run still needs a time estimate and, if expected to exceed
+30 minutes, a pre-run test followed by renewed approval.
 
 ## Held evidence
 

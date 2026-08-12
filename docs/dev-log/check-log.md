@@ -49812,3 +49812,30 @@ local/DRAC/Totoro compute, estimator repair, public/package/article change, or
 capability claim occurred. `G2N_LOCAL_PRERUN_HOLD`, `G2K_CALIBRATION_HOLD`,
 and `G2C_SMOKE_ADMISSION_HOLD` remain unchanged. Stop at Gate B for explicit
 direction: implement only the A4 no-fit contract, stop, or return to design.
+
+## 2026-08-12 — Paper 2 A4 safeguards and one S=6 local attempt: private HOLD
+
+The approved transition added a deterministic pure-logic A4 suite: Case-C
+non-entry for `b_fix`/`theta_rr_B`, Case-B isolation, adversarial Case-D
+rejections, diagonal-Psi transform, and static no-execution fencing. It passed
+alongside the existing G2n/G2m no-fit suites. One seed-pinned S=6 local attempt
+was then launched with an 8–12 minute estimate and 20-minute stop threshold.
+It completed in 448.155 seconds with verified delegated and outer provenance
+closures. All three starts had code 0 and profiles were finite/converged, but
+raw gradient 0.002726537 in non-boundary `b_fix` is Case C /
+`NO_CANDIDATE`; diagonal-Psi variance error 0.2156398 also exceeds 0.20 and
+sp2/sp5/sp6 lower profile endpoint deltas are <2. It is
+`PRIVATE_NUMERICAL_AND_RECOVERY_HOLD`, not a recovery rate or capability claim.
+
+```sh
+env TMPDIR=/private/tmp Rscript --vanilla -e 'devtools::test(filter = "paper2-a4-no-fit-contract", reporter = "summary")'
+# PASS: 40 expectations; pure logic only.
+
+env TMPDIR=/private/tmp Rscript --vanilla -e 'devtools::test(filter = "g2n-numerical-admission", reporter = "summary"); devtools::test(filter = "g2m-numerical-admission-protocol", reporter = "summary")'
+# PASS: existing independent no-fit cross-checks.
+```
+
+No retry, replacement seed/root, model change, recovery/scale campaign,
+public/article change, or capability claim occurred. All protected HOLDs remain
+unchanged. Any continuation requires separate approval for the next evidence
+decision; it cannot reclassify Case C or relax a frozen threshold.

@@ -4,6 +4,32 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-08-12 — G2m numerical-admission design (private, no fit)
+
+Worktree `/private/tmp/gllvmtmb-isdm-g2m-numerical-admission`, branch
+`codex/isdm-g2m-numerical-admission`, from G2k diagnostic `5c15da39`.
+
+```sh
+Rscript --vanilla dev/isdm-package-recovery/run-g2m-numerical-admission-validation.R --mode=validate
+# PASS: text-only prospective decision-table validator; no model call.
+
+Rscript --vanilla -e 'devtools::test(filter = "g2m-numerical-admission-protocol", reporter = "summary")'
+# PASS: 6 assertions; no fit.
+
+rg "NOT_REQUIRED|NO_CANDIDATE|conditional repair evidence|candidate_method" dev/isdm-package-recovery
+# PASS: intended private prospective decision/provenance states retained.
+
+rg "integrated_jsdm\\(|iJSDM|repeated-visit" README.md NEWS.md ROADMAP.md _pkgdown.yml vignettes
+# PASS: no public iJSDM/repeated-visit capability claim.
+
+rg -n "gllvmTMB\\(" R vignettes README.md NEWS.md docs/design
+# PASS: only pre-existing reader-facing calls; this lane adds none.
+```
+
+**Deliberately not run:** any fit, optimizer/objective/profile call, simulator,
+campaign, Totoro/FIR/DRAC job, public-doc render, or `R CMD check`. G2k and
+G2c HOLD states are unchanged.
+
 ## 2026-08-12 — G2k all-attempt gradient diagnostic (private, no fit)
 
 Worktree `/private/tmp/gllvmtmb-isdm-g2k-gradient-diagnostic`, branch

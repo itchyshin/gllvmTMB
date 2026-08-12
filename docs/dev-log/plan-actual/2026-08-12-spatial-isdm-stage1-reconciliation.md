@@ -16,6 +16,7 @@ deferred.
 | Grounded research | NotebookLM token check failed due DNS; primary-source fallback map retained | adaptive deviation, recorded |
 | Two-field architecture review | Gauss feasibility audit retained | met |
 | ADEMP information review | Curie information audit retained | met |
+| Scope/claim review | Rose required S=6 boundary clarification; correction retained | met |
 | Implementation / compute | none | correctly deferred |
 
 ## Material decision

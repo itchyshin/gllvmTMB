@@ -11,9 +11,11 @@ field from a GBIF-only spatial bias field.  It is not a repair, rerun, or
 reinterpretation of `G2N_LOCAL_PRERUN_HOLD`, `G2K_CALIBRATION_HOLD`,
 `G2C_SMOKE_ADMISSION_HOLD`, or `PAPER2_PRIVATE_STOP_HOLD`.
 
-Paper 1 means the three-species family; Paper 2 means the six-species family.
-They receive separate seed panels, all-attempt denominators, summaries, and
-verdicts.
+Paper 1 means the three-species family.  `S=6` is a separate spatial design
+family; it does not reopen or continue the terminal nonspatial
+`PAPER2_PRIVATE_STOP_HOLD` evidence-to-reader programme.  The two spatial
+families receive separate seed panels, all-attempt denominators, summaries,
+and verdicts.
 
 ## 2. Candidate estimand and source map
 

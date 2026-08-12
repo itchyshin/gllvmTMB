@@ -27,5 +27,6 @@ attempt was discarded or rerun selectively.
 
 The achieved outcome is narrower than a capability or release promotion and
 matches the bounded plan: conditional point-estimation evidence for the one
-exact `n = 240` regime. `CRAN07-AA-03` remains `partial`; no code, public API,
-version, artifact/platform ladder, or release state was changed.
+exact `n = 240` regime. `CRAN07-AA-03` remains `partial`; no package runtime
+code, public API, version, artifact/platform ladder, or release state was
+changed.

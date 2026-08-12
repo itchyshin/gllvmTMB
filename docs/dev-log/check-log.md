@@ -51820,7 +51820,6 @@ Current limitations page returned HTTP 200, so the earlier undeployed URL NOTE
 did not recur. See
 `docs/dev-log/release/2026-08-12-0.6-post-deployment-artifact-receipt.md` for
 the exact command, artifact, byte-identity comparison, and exclusions.
-<<<<<<< HEAD
 
 ## 2026-08-12 — 0.7 integration intake decision packet
 
@@ -52837,6 +52836,25 @@ trait would require `sigma_eps / s_t` for every trait.  The predecessor #856
 vector-residual proposal is explicitly marked halted as a false premise.  The
 full decision packet is `docs/dev-log/audits/2026-08-12-855-response-unit-scale-gate0.md`.
 
+## 2026-08-12 — AA-03 Gaussian latent n=240 conditional evidence
+
+On `codex/aa03-gaussian-latent-admission`, the approved Totoro batch used a
+fresh archive with SHA-256
+`0c862fa607622c11645aa5cf42d40020abe2a563c20256814745f4b34ea13430`.
+For the exact ordinary native-Laplace, three-trait complete-data Gaussian
+rank-1 `latent(unique = TRUE)` design at 240 units, 1,600 expected, attempted,
+and terminal fits were retained (1,598 usable; two retained unusable false
+positives; 1,600 positive-definite Hessians). The exact current
+`glmmTMB::rr() + diag()` comparator also passed. The retained packet is
+`docs/dev-log/simulation-artifacts/2026-08-12-aa03-production/`.
+
+This earns only the conditional point-estimation statement for fixed effects
+and rotation-invariant shared/total covariance including diagonal Psi targets.
+`CRAN07-AA-03` remains `partial`: this is not evidence for raw loading
+orientation, intervals, fit-health detection, n=60, correlation-stress or
+boundary/Psi regimes, other ranks/families, alternative estimators, or release
+readiness. No package API, version, release, or artifact/platform ladder changed.
+
 Checks:
 
 ```sh
@@ -52878,12 +52896,18 @@ rg "#872|two-tier|flatness|park/research" \
   docs/dev-log/after-task/2026-08-13-872-two-tier-flatness-admission.md
 # PASS: MIS-35 remains single-tier #851 evidence; #872 remains park/research.
 
+TMPDIR=/tmp Rscript --vanilla -e 'Sys.setenv(GLLVMTMB_CRAN07_RECERTIFY = "true"); testthat::test_file("tests/testthat/test-cran07-core-comparators.R", reporter = "summary")'
+# PASS: comparator suite completed; six individual exact rows intentionally
+# skip because the fail-closed recertification ledger owns those executions.
+
 git diff --check
 # PASS
 ```
+<<<<<<< HEAD
 
 No package source, public documentation, validation-register status, NEWS,
 version, CI, artifact, tag, or GitHub issue state changed. The results retain
 the no-remedy fence: no warning, convergence criterion, optimizer-control
 change, or release claim is admitted.
+
 =======

@@ -34,6 +34,9 @@ covariance plus diagonal `Psi`); raw loading orientation is excluded.
 - `docs/dev-log/simulation-artifacts/2026-08-12-aa03-production/` retains the
   manifest, production gate/receipt, comparator receipt, 1,600-file checksum
   inventory, and reader-facing internal audit note.
+- `docs/dev-log/check-log.md` carries the concise AA-03 receipt after the
+  remote #956 head; AA-03 was rebased onto that branch to avoid a competing
+  append.
 - This after-task report and the paired plan-versus-actual note complete the
   dev-log closure.
 
@@ -113,4 +116,5 @@ after source-byte changes needs a new normal-vignette artifact and platform
 ladder; any new numerical regime needs its own approved compute plan.
 
 **GitHub issue ledger:** inspected open PRs #952, #955, and #956 for collision
-only; none is an AA-03 issue and no issue was created, commented on, or closed.
+only; AA-03 was rebased onto #956's remote head before its separate receipt was
+appended. No issue was created, commented on, or closed.

@@ -13,4 +13,6 @@ test_that("G2k calibration contract freezes a pre-screened 150-seed all-attempt 
   expect_match(profile_text, "optimized_initial")
   expect_match(profile_text, "retry_convergence")
   expect_match(profile_text, "selected_attempt")
+  expect_match(profile_text, "G2I_PRIVATE_R_LIB")
+  expect_match(profile_text, "loadNamespace\\(\"gllvmTMB\"")
 })

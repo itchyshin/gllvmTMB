@@ -28,6 +28,24 @@ check_fixture <- function() {
   g2h_validate_fixture(fixture)
   fixture
 }
+load_private_isdm_namespace <- function() {
+  private_library <- Sys.getenv("G2I_PRIVATE_R_LIB", unset = "")
+  if (!nzchar(private_library)) {
+    suppressMessages(devtools::load_all(pkg, quiet = TRUE))
+  } else {
+    if (!dir.exists(private_library)) {
+      stop("G2I_PRIVATE_R_LIB must name an existing private R library", call. = FALSE)
+    }
+    loadNamespace("gllvmTMB", lib.loc = private_library)
+  }
+  namespace <- asNamespace("gllvmTMB")
+  list(
+    fit = get(".gll_isdm_fit", envir = namespace),
+    b_fix_values = get(".gllvmTMB_b_fix_values", envir = namespace),
+    extract_sigma = get("extract_Sigma", envir = namespace),
+    control = get("gllvmTMBcontrol", envir = namespace)
+  )
+}
 profile_theta_diag <- function(fit) {
   base_theta <- fit$tmb_obj$env$parList(fit$opt$par)$theta_diag_B
   species <- paste0("sp", seq_len(6L)); offsets <- c(-2, -1, 0, 1, 2)
@@ -87,8 +105,8 @@ profile_theta_diag <- function(fit) {
   names(profiles) <- species
   profiles
 }
-coefficient_by_trait <- function(fit, fragment, species) {
-  values <- .gllvmTMB_b_fix_values(fit); names_x <- fit$X_fix_names
+coefficient_by_trait <- function(fit, fragment, species, b_fix_values) {
+  values <- b_fix_values(fit); names_x <- fit$X_fix_names
   out <- stats::setNames(rep(NA_real_, length(species)), species)
   for (sp in species) {
     index <- grep(paste0("trait", sp, ".*", fragment), names_x)
@@ -96,14 +114,14 @@ coefficient_by_trait <- function(fit, fragment, species) {
   }
   out
 }
-metrics_from_fit <- function(fit, fixture) {
+metrics_from_fit <- function(fit, fixture, api) {
   truth <- fixture$truth; constants <- truth$constants; species <- names(constants$alpha)
-  beta_hat <- coefficient_by_trait(fit, "isdm_x_env", species)
-  gamma_hat <- coefficient_by_trait(fit, "isdm_gbif_b_bias", species)
-  shared <- suppressMessages(extract_Sigma(
+  beta_hat <- coefficient_by_trait(fit, "isdm_x_env", species, api$b_fix_values)
+  gamma_hat <- coefficient_by_trait(fit, "isdm_gbif_b_bias", species, api$b_fix_values)
+  shared <- suppressMessages(api$extract_sigma(
     fit, level = "unit", part = "shared", link_residual = "none"
   ))$Sigma
-  psi <- suppressMessages(extract_Sigma(
+  psi <- suppressMessages(api$extract_sigma(
     fit, level = "unit", part = "unique", link_residual = "none"
   ))$s
   eta_hat <- as.numeric(fit$report$eta) - log(fixture$rows$support)
@@ -183,13 +201,13 @@ saveRDS(receipt, file.path(root, "root-receipt.rds"))
 saveRDS(fixture$truth, file.path(root, "truth.rds"))
 stage <- function(x) write(x, file = file.path(root, "stage.txt"), append = TRUE)
 stage("fixture_validated")
-suppressMessages(devtools::load_all(pkg, quiet = TRUE))
+api <- load_private_isdm_namespace()
 stage("fit_entered")
 set.seed(seed + 100000L)
 fit_started <- proc.time()[["elapsed"]]
-fit <- tryCatch(.gll_isdm_fit(
+fit <- tryCatch(api$fit(
   fixture$rows, fixture$X, fixture$B, d = 1L,
-  control = gllvmTMBcontrol(
+  control = api$control(
     n_init = 3L, init_jitter = .25, se = TRUE, aghq = FALSE,
     warn_runaway = TRUE
   ), silent = TRUE
@@ -212,7 +230,7 @@ if (inherits(fit, "error")) {
   profiles <- tryCatch(profile_theta_diag(fit), error = function(e) e)
   profile_elapsed_s <- proc.time()[["elapsed"]] - profile_started
   profile_ok <- !inherits(profiles, "error") && valid_profiles(profiles)
-  metrics <- if (profile_ok) tryCatch(metrics_from_fit(fit, fixture),
+  metrics <- if (profile_ok) tryCatch(metrics_from_fit(fit, fixture, api),
                                       error = function(e) e) else NULL
   metrics_ok <- !inherits(metrics, "error") && recovery_pass(metrics)
   polish <- fit$isdm_polish_provenance

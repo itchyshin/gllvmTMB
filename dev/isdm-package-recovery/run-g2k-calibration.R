@@ -11,14 +11,20 @@ sha <- arg("campaign-sha")
 seeds <- 86201L:86350L
 script <- normalizePath(sub("^--file=", "", grep("^--file=", commandArgs(FALSE), value = TRUE)[[1L]]), mustWork = TRUE)
 base <- dirname(script)
+source(file.path(base, "g2l-eligible-seeds.R"), local = TRUE)
 hash <- function(x) unname(tools::md5sum(x))[[1L]]
 commit <- function() system2("git", c("-C", pkg, "rev-parse", "HEAD"), stdout = TRUE)[[1L]]
 if (!mode %in% c("validate", "init", "summarize") || (mode != "validate" && is.null(root))) stop("require --mode=validate|init|summarize and --output for non-validation", call. = FALSE)
 if (identical(mode, "validate")) {
-  stopifnot(identical(seeds, 86201L:86350L), length(seeds) == 150L, !any(seeds %in% c(86121L, 86122L)))
+  screen <- g2l_screen_eligible_seeds()
+  seeds <- screen$eligible_seeds
+  stopifnot(length(seeds) == 150L, !any(seeds %in% c(86121L, 86122L)),
+            identical(seeds, g2l_screen_eligible_seeds()$eligible_seeds))
   stopifnot(file.exists(file.path(base, "run-g2i-recovery-prerun.R")), file.exists(file.path(base, "2026-08-11-g2j-calibration-campaign-specification.md")))
   cat("G2K calibration coordinator validation PASS (no fit)\n"); quit(save = "no")
 }
+screen <- g2l_screen_eligible_seeds()
+seeds <- screen$eligible_seeds
 root <- normalizePath(if (grepl("^/", root)) root else file.path(getwd(), root), mustWork = FALSE)
 parent <- normalizePath(file.path(pkg, "dev", "isdm-package-recovery", "results"), mustWork = FALSE)
 if (!startsWith(root, paste0(parent, "/")) || !identical(sha, commit())) stop("fresh private root and exact --campaign-sha are required", call. = FALSE)
@@ -27,7 +33,9 @@ if (identical(mode, "init")) {
   dir.create(file.path(root, "seeds"), recursive = TRUE)
   saveRDS(list(kind = "G2K_CALIBRATION_CAMPAIGN", commit = commit(), seeds = seeds,
                runner_md5 = hash(script), worker_md5 = hash(file.path(base, "run-g2i-recovery-prerun.R")),
-               specification_md5 = hash(file.path(base, "2026-08-11-g2j-calibration-campaign-specification.md"))), file.path(root, "campaign-receipt.rds"))
+               specification_md5 = hash(file.path(base, "2026-08-11-g2j-calibration-campaign-specification.md")),
+               candidate_seeds = screen$candidate_seeds, rejected_seeds = screen$rejected_seeds,
+               screening_rule = "g2h_validate_fixture before fitting"), file.path(root, "campaign-receipt.rds"))
   utils::write.csv(data.frame(seed = seeds, attempt = 1L, stringsAsFactors = FALSE), file.path(root, "seed-grid.csv"), row.names = FALSE)
   writeLines("# G2K_CAMPAIGN_INITIALIZED\nNo fit was run.", file.path(root, "receipt.md")); cat("G2K_CAMPAIGN_INITIALIZED\n"); quit(save = "no")
 }

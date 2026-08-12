@@ -300,6 +300,20 @@ test_that("G2i iSDM polish acceptance preserves map and named boundary", {
   expect_false(accept(before, after, 1L, 1L, FALSE))
 })
 
+test_that("G2i covariance-Newton candidate is typed and fail-closed", {
+  candidate <- gllvmTMB:::.gllvmTMB_isdm_covariance_newton_candidate(
+    par = c(a = 1, b = -2), gradient = c(a = 0.1, b = -0.2),
+    covariance = diag(c(2, 3))
+  )
+  expect_equal(candidate, c(a = 0.8, b = -1.4))
+  expect_null(gllvmTMB:::.gllvmTMB_isdm_covariance_newton_candidate(
+    par = c(1, 2), gradient = c(0.1, 0.2), covariance = matrix(1, 2, 3)
+  ))
+  expect_null(gllvmTMB:::.gllvmTMB_isdm_covariance_newton_candidate(
+    par = c(1, 2), gradient = c(0.1, NA_real_), covariance = diag(2)
+  ))
+})
+
 test_that("G2i iSDM polish provenance retains raw and candidate coordinates", {
   record <- gllvmTMB:::.gllvmTMB_isdm_polish_record(
     eligible = TRUE, attempted = TRUE, accepted = TRUE,

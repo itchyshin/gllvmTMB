@@ -6601,6 +6601,72 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     } else {
       .gllvmTMB_warm_restart_accept(before_diagnostics, after_diagnostics)
     }
+    ## A single covariance-Newton correction is available only to the private
+    ## iJSDM route after its same-objective nlminb retry has failed.  The fixed
+    ## covariance from sdreport is the local inverse-Hessian approximation.
+    ## Acceptance below remains fail-closed: it requires the original map and
+    ## named boundary, non-increasing objective, fresh PD Hessian, and the
+    ## unchanged 1e-3 raw-gradient bound.
+    if (isTRUE(isdm_polish_eligible) && !isTRUE(warm_accepted)) {
+      newton_par <- .gllvmTMB_isdm_covariance_newton_candidate(
+        par = opt$par, gradient = initial_gradient,
+        covariance = sd_rep$cov.fixed %||% NULL
+      )
+      if (!is.null(newton_par)) {
+        newton_started <- proc.time()[["elapsed"]]
+        newton_objective <- tryCatch(obj$fn(newton_par), error = function(e) NA_real_)
+        newton_gradient <- tryCatch(obj$gr(newton_par), error = function(e) NA_real_)
+        if (length(newton_objective) == 1L && is.finite(newton_objective) &&
+            length(newton_gradient) == length(opt$par) &&
+            all(is.finite(newton_gradient))) {
+          obj$env$last.par.best <- obj$env$last.par
+          newton_sdreport_error <- NULL
+          newton_sd_report <- tryCatch(
+            TMB::sdreport(obj, par.fixed = newton_par,
+                          getJointPrecision = FALSE),
+            error = function(e) {
+              newton_sdreport_error <<- conditionMessage(e)
+              NULL
+            }
+          )
+          newton_opt <- list(
+            par = newton_par, objective = newton_objective, convergence = 0L,
+            message = "private iJSDM covariance-Newton correction",
+            iterations = NA_integer_, evaluations = integer()
+          )
+          newton_fit <- fit
+          newton_fit$opt <- newton_opt
+          newton_fit$report <- obj$report()
+          newton_fit$sd_report <- newton_sd_report
+          newton_fit$sdreport_error <- newton_sdreport_error
+          newton_health <- .gllvmTMB_build_fit_health(newton_fit)
+          newton_diagnostics <- list(
+            convergence = newton_opt$convergence,
+            objective = newton_health$objective,
+            gradient = newton_gradient,
+            pd_hessian = newton_health$pd_hessian,
+            boundary_flags = newton_health$boundary_flags
+          )
+          newton_accepted <- .gllvmTMB_isdm_polish_accept(
+            before_diagnostics, newton_diagnostics,
+            boundary_diag_indices_before = isdm_boundary_indices,
+            boundary_diag_indices_after =
+              .gllvmTMB_isdm_near_zero_sd_B_indices(newton_fit),
+            map_identical = identical(fit$tmb_map, newton_fit$tmb_map)
+          )
+          if (isTRUE(newton_accepted)) {
+            warm_opt <- newton_opt
+            warm_objective <- newton_objective
+            warm_gradient <- newton_gradient
+            warm_fit <- newton_fit
+            warm_health <- newton_health
+            after_diagnostics <- newton_diagnostics
+            warm_accepted <- TRUE
+          }
+        }
+        warm_elapsed <- warm_elapsed + (proc.time()[["elapsed"]] - newton_started)
+      }
+    }
     if (isTRUE(isdm_polish_eligible)) {
       fit$isdm_polish_provenance <- .gllvmTMB_isdm_polish_record(
         eligible = TRUE,
@@ -7073,6 +7139,23 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   tolerance <- 64 * .Machine$double.eps * max(1, abs(before$objective))
   isTRUE(after$objective <= before$objective + tolerance) &&
     isTRUE(max(abs(after$gradient)) <= raw_gradient_gate)
+}
+
+.gllvmTMB_isdm_covariance_newton_candidate <- function(par, gradient, covariance) {
+  typed <- is.numeric(par) && length(par) > 0L && all(is.finite(par)) &&
+    is.numeric(gradient) && length(gradient) == length(par) &&
+    all(is.finite(gradient)) && is.matrix(covariance) &&
+    identical(dim(covariance), c(length(par), length(par))) &&
+    all(is.finite(covariance))
+  if (!typed) return(NULL)
+  step <- tryCatch(as.numeric(covariance %*% gradient), error = function(e) NULL)
+  if (is.null(step) || length(step) != length(par) || any(!is.finite(step))) {
+    return(NULL)
+  }
+  candidate <- par - step
+  if (any(!is.finite(candidate))) return(NULL)
+  names(candidate) <- names(par)
+  candidate
 }
 
 .gllvmTMB_isdm_polish_record <- function(

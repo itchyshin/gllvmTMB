@@ -1,0 +1,11 @@
+test_that("G2j retained-Psi diagnostic has a no-fit validator", {
+  runner <- test_path("..", "..", "dev", "isdm-package-recovery", "run-g2j-psi-diagnostic.R")
+  expect_true(file.exists(runner))
+  text <- paste(readLines(runner, warn = FALSE), collapse = "\n")
+  expect_match(text, "G2J retained-Psi diagnostic validation PASS")
+  expect_match(text, "extractor_scale_verified")
+  expect_match(text, "held_psi_metric")
+  expect_match(text, "weak_lower_profiles")
+  expect_match(text, "material_component_correlation")
+  expect_false(grepl("MakeADFun|gll_isdm_fit|load_all", text))
+})

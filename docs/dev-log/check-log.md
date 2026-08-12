@@ -49510,6 +49510,37 @@ found G2i only on private development surfaces; no public claim was added.
 No retry, recovery pre-run, Totoro/DRAC campaign, public/package work, or Issue
 #953 action ran.  G2h and G2c holds remain unchanged.
 
+## 2026-08-11 — G2j retained diagonal-Psi diagnosis
+
+Fresh private branch `codex/isdm-g2j-psi-diagnostic` read only the committed
+G2i seed-86122 pre-run artifacts.  The reader verifies the retained closure
+and proves the exact scale contract `unique extractor = sd_B^2 =
+exp(2*theta_diag_B)` and the separate shared contract `Sigma_shared = Lambda
+Lambda'`.  It does not load the package, construct an objective, or fit.
+
+```sh
+Rscript --vanilla dev/isdm-package-recovery/run-g2j-psi-diagnostic.R --mode=validate
+# PASS: G2J retained-Psi diagnostic validation PASS (no fit).
+
+Rscript --vanilla dev/isdm-package-recovery/run-g2j-psi-diagnostic.R \
+  --mode=audit --output=dev/isdm-package-recovery/results/g2j-retained-psi-audit-20260811-002
+# PASS: G2J_RETAINED_PSI_DIAGNOSTIC_COMPLETE.
+
+Rscript --vanilla -e 'testthat::test_file("tests/testthat/test-g2j-psi-diagnostic.R", reporter="summary")'
+# PASS: 7 expectations.
+```
+
+The final classification is
+`COMPONENT_INFORMATION_LIMITED_NOT_EXTRACTION_MISMATCH`: the held Psi error is
+`0.2156398 > 0.20`, three lower profile deltas are below 2, and the maximum
+local loading--diagonal correlation is `0.415`.  Independent review first
+held a hard-coded verdict; the repaired reader makes all three predicates
+executable and then passed re-review.  The G2k proposal specifies at most 150
+single-threaded Totoro cores (`17.85` core-hours, 20-minute allocation), but
+no campaign, retry, Totoro/DRAC, public/package, empirical, spatial,
+detection, count-survey, comparator, zero-inflation, or Issue #953 action ran.
+G2c and G2h holds remain unchanged.
+
 ## 2026-08-11 — G2i one-replicate recovery pre-run HOLD
 
 Commit `0d0d5772cfa77d6d84af7731f3f8d01c8596305c` added a private,

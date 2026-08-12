@@ -23,8 +23,8 @@ export R_LIBS_USER="${G2I_PRIVATE_R_LIB}"
 export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 VECLIB_MAXIMUM_THREADS=1
 
 mkdir -p "${G2K_ROOT}/logs"
-seed="$(sed -n "${SLURM_ARRAY_TASK_ID}p" "${G2K_ROOT}/seed-grid.csv" | cut -d, -f1)"
-if [[ -z "${seed}" || "${seed}" == "seed" ]]; then
+seed="$(sed -n "$((SLURM_ARRAY_TASK_ID + 1))p" "${G2K_ROOT}/seed-grid.csv" | cut -d, -f1)"
+if [[ ! "${seed}" =~ ^[1-9][0-9]*$ ]]; then
   echo "No seed for array task ${SLURM_ARRAY_TASK_ID}" >&2
   exit 2
 fi

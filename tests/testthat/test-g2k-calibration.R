@@ -15,4 +15,8 @@ test_that("G2k calibration contract freezes a pre-screened 150-seed all-attempt 
   expect_match(profile_text, "selected_attempt")
   expect_match(profile_text, "G2I_PRIVATE_R_LIB")
   expect_match(profile_text, "loadNamespace\\(\"gllvmTMB\"")
+  fir_wrapper <- test_path("..", "..", "dev", "isdm-package-recovery", "run-g2k-calibration-fir.sbatch")
+  fir_text <- paste(readLines(fir_wrapper, warn = FALSE), collapse = "\n")
+  expect_match(fir_text, "SLURM_ARRAY_TASK_ID \\+ 1")
+  expect_match(fir_text, "\\^\\[1-9\\]\\[0-9\\]\\*\\$")
 })

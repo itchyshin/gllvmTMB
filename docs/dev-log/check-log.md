@@ -49446,3 +49446,23 @@ TMPDIR=/private/tmp/gllvmtmb-isdm-g2g-identifiability-diagnostic/.tmp-g2g \
 ```
 
 The final reader verifies source-manifest integrity; full-rank 24/24 fixed design; structural GBIF-only bias gate; rank-one Lambda plus six free diagonal Psi coordinates; `Sigma_B = Lambda Lambda'` with separately extracted `sd_B`; and retained local Hessian/profile/gradient diagnostics. G2f is diagnosed `COVARIANCE_INFORMATION_LIMITED`; its gradient threshold miss is an ancillary admission note. The only recommended next design is 360 independent cells with three PA visits, six species, \(|cor(x,b)|\le0.10\), and a minimum conditional GBIF-bias information of 130. This recommendation is not a fit authorization.
+
+## 2026-08-11 — G2h one authorised 360-cell local smoke HOLD
+
+The private `bdc3da6a` wrapper passed its no-fit validation and ran exactly once at `dev/isdm-package-recovery/results/g2h-smoke-20260811-001`. It retained the fit, all three restarts, six five-offset `theta_diag_B` profiles, truth, root receipt, decision ledger, stage ledger, and core-file manifest.
+
+```sh
+TMPDIR=/private/tmp/gllvmtmb-isdm-g2h-360cell-prep/.tmp \
+  Rscript --vanilla dev/isdm-package-recovery/run-g2h-360cell-smoke.R \
+  --mode=validate --output=dev/isdm-package-recovery/results/g2h-validation-unused \
+  --pkg="$PWD"
+# PASS: G2H smoke wrapper validation PASS (no fit).
+
+TMPDIR=/private/tmp/gllvmtmb-isdm-g2h-360cell-prep/.tmp \
+  Rscript --vanilla dev/isdm-package-recovery/run-g2h-360cell-smoke.R \
+  --mode=smoke --output=dev/isdm-package-recovery/results/g2h-smoke-20260811-001 \
+  --pkg="$PWD" --campaign-sha=bdc3da6a36da407d22b9162afcdef38dfda42eea
+# One run only; receipt: G2H_SMOKE_HOLD; scientific classification: GEOMETRY_RESPONSIVE.
+```
+
+All six profiles were finite and converged, three lower-tail deltas exceeded 2, and GBIF-bias maximum error was `0.1149462 < 0.30`. Admission nevertheless holds because the retained maximum gradient is `0.001290534 > 0.001`. No retry, campaign, Totoro/DRAC, public/package, empirical, spatial, detection, count, comparator, zero-inflation, or Issue #953 action ran. G2c remains `G2C_SMOKE_ADMISSION_HOLD`.

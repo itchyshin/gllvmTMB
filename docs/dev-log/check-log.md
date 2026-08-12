@@ -49118,3 +49118,24 @@ Current limitations page returned HTTP 200, so the earlier undeployed URL NOTE
 did not recur. See
 `docs/dev-log/release/2026-08-12-0.6-post-deployment-artifact-receipt.md` for
 the exact command, artifact, byte-identity comparison, and exclusions.
+
+## 2026-08-12 — 0.7 integration intake decision packet
+
+On `codex/mainline-06-issue-closeout` at `148623f4`, the intake branch was
+verified documentation-only relative to `origin/main` `cb312689` across
+`DESCRIPTION`, `NAMESPACE`, `R`, `src`, `inst`, `man`, `vignettes`, `tests`,
+and `.Rbuildignore`. The resulting matrix is
+`docs/dev-log/release/2026-08-12-0.7-integration-intake.md`; its companion
+plan-versus-actual and after-task records are under `docs/dev-log/plan-actual/`
+and `docs/dev-log/after-task/` with the same date.
+
+The packet keeps the ordinary-Laplace route as the only eligible 0.7 intake,
+retains existing fences, and classifies LA-MSPL/separation, integrated-SDM, and
+estimator research as experimental-only. It makes no package, public-claim,
+release, CI, artifact, tag, or compute change. The first `gh` query hit a
+transport error, then Shannon's independent live review verified #956 as this
+clean documentation-only intake, #955 as a clean cross-repo note, #952 as an
+unchecked dirty old-base experimental PR, and #953 as an open planning issue.
+The historical 49-issue count is not represented as current external state.
+Any future installed-package diff from `cb312689` invalidates the exact
+artifact/platform receipt and needs a new ladder.

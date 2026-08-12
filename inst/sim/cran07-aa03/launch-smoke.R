@@ -33,16 +33,19 @@ dir.create(archive_dir)
 dir.create(source_dir)
 dir.create(library_dir)
 
-old_wd <- setwd(archive_dir)
-on.exit(setwd(old_wd), add = TRUE)
-status <- system2("R", c("CMD", "build", "--no-build-vignettes", "--no-manual",
-                          shQuote(repo)), stdout = TRUE, stderr = TRUE)
-archives <- list.files(archive_dir, pattern = "^gllvmTMB_[0-9][^/]*\\.tar\\.gz$",
-                       full.names = TRUE)
-if (!identical(attr(status, "status"), NULL) || length(archives) != 1L) {
+archive <- file.path(archive_dir, "gllvmTMB-aa03-smoke.tar")
+manifest <- file.path(archive_dir, "source-payload-manifest.csv")
+builder <- file.path(repo, "inst", "sim", "cran07-v4", "build-source-archive.R")
+status <- system2("Rscript", c("--vanilla", shQuote(builder),
+                                "--output", shQuote(archive),
+                                "--manifest-output", shQuote(manifest)),
+                  stdout = TRUE, stderr = TRUE)
+writeLines(status, file.path(output, "source-builder.log"))
+if (!identical(attr(status, "status"), NULL) || !file.exists(archive) ||
+    !file.exists(manifest)) {
   stop("AA-03 smoke could not build its source archive.", call. = FALSE)
 }
-archive <- normalizePath(archives[[1L]], mustWork = TRUE)
+archive <- normalizePath(archive, mustWork = TRUE)
 hash_command <- if (nzchar(Sys.which("sha256sum"))) "sha256sum" else
   if (nzchar(Sys.which("shasum"))) "shasum" else ""
 if (!nzchar(hash_command)) stop("No SHA-256 command is available.", call. = FALSE)

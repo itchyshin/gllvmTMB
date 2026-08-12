@@ -109,9 +109,12 @@ term.
 Neither article currently includes spatial autocorrelation.  Adding a spatial
 ecological field and a separate GBIF-bias field raises a new confounding
 problem: both can explain geographical clustering in opportunistic records.
-That is a dedicated later arc.  First, the nonspatial ecological-plus-detection
-model must recover known truth.  Only then should spatial controls such as a
-shared `latent()` term plus `spatial_indep(common = TRUE)`, and a compact
+That is a dedicated later arc.  It will use the package's mesh-based SPDE/GMRF
+representation—sparse mesh basis weights and a sparse precision matrix—not a
+dense coordinate covariance matrix.  First, the nonspatial
+ecological-plus-detection model must recover known truth.  Only then should
+mesh-based controls such as a shared `latent()` term plus
+`spatial_indep(common = TRUE)`, and a compact
 `spatial_latent(..., unique = TRUE)` alternative, be compared against known
 two-field truths.
 

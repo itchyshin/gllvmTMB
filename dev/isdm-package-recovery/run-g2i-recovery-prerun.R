@@ -44,12 +44,38 @@ profile_theta_diag <- function(fit) {
         random = fit$random, DLL = fit$tmb_obj$env$DLL, silent = TRUE
       )
       started <- proc.time()[["elapsed"]]
-      optimized <- tryCatch(nlminb(objective$par, objective$fn, objective$gr),
-                            error = function(e) e)
+      optimized_initial <- tryCatch(
+        nlminb(objective$par, objective$fn, objective$gr),
+        error = function(e) e
+      )
+      ## Retain one same-objective retry only when the first fixed-coordinate
+      ## profile optimizer reports a nonzero convergence code.  The selected
+      ## result and the initial/retry diagnostics are both written below.
+      optimized_retry <- if (!inherits(optimized_initial, "error") &&
+          !identical(optimized_initial$convergence, 0L)) {
+        tryCatch(nlminb(optimized_initial$par, objective$fn, objective$gr),
+                 error = function(e) e)
+      } else NULL
+      optimized <- if (!is.null(optimized_retry) &&
+          !inherits(optimized_retry, "error") &&
+          identical(optimized_retry$convergence, 0L)) {
+        optimized_retry
+      } else optimized_initial
       data.frame(
         coordinate = k, species = species[[k]], offset = offset,
         nll = if (inherits(optimized, "error")) NA_real_ else objective$fn(optimized$par),
         convergence = if (inherits(optimized, "error")) NA_integer_ else optimized$convergence,
+        initial_nll = if (inherits(optimized_initial, "error")) NA_real_ else
+          objective$fn(optimized_initial$par),
+        initial_convergence = if (inherits(optimized_initial, "error")) NA_integer_ else
+          optimized_initial$convergence,
+        retry_nll = if (is.null(optimized_retry) || inherits(optimized_retry, "error"))
+          NA_real_ else objective$fn(optimized_retry$par),
+        retry_convergence = if (is.null(optimized_retry) || inherits(optimized_retry, "error"))
+          NA_integer_ else optimized_retry$convergence,
+        selected_attempt = if (!is.null(optimized_retry) &&
+            !inherits(optimized_retry, "error") &&
+            identical(optimized_retry$convergence, 0L)) 2L else 1L,
         elapsed_s = proc.time()[["elapsed"]] - started,
         stringsAsFactors = FALSE
       )

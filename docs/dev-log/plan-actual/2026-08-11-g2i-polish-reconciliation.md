@@ -19,4 +19,5 @@ continued and eventually wrote a complete receipt.  This is recorded rather
 than treated as a second attempt.
 
 The smoke earned `G2I_SMOKE_COMPLETE`, not recovery evidence.  S7 remains a
-separate approval gate.
+separate approval gate; its measured packet is
+`dev/isdm-package-recovery/2026-08-11-g2i-recovery-prerun-packet.md`.

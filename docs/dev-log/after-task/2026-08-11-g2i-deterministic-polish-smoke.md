@@ -150,4 +150,5 @@ S7 requires separate approval for one local recovery pre-run.  Its pre-run
 packet should use the measured smoke time of about six minutes to declare a
 representative seed/attempt, inspect non-empty recovery output, and estimate
 the subsequently separate Totoro campaign.  No Totoro/DRAC action is approved
-by this report.
+by this report.  The packet is
+`dev/isdm-package-recovery/2026-08-11-g2i-recovery-prerun-packet.md`.

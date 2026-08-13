@@ -2,7 +2,9 @@
 ## Paper 1: S = 3, C = 360, r = 3.  It is not a recovery panel or a
 ## scalability experiment.
 
-spatial_isdm_gate_b_seed <- 86201L
+## Fresh replacement attempt identifier. This differs from the consumed 86201
+## root but keeps the approved Paper-1 DGP constants unchanged.
+spatial_isdm_gate_b_seed <- 86202L
 
 spatial_isdm_gate_b_constants <- function() {
   list(
@@ -85,7 +87,9 @@ spatial_isdm_gate_b_make_fixture <- function(seed = spatial_isdm_gate_b_seed) {
       ecological_field = u, gbif_bias_field = h, eta_ecological = eta_ecological,
       eta_gbif_field = eta_gbif_field, psi_variance = tr$psi_sd^2,
       shared_Sigma = tcrossprod(tr$lambda_ecological),
-      bias_Sigma = tcrossprod(tr$gamma_bias_field), constants = tr
+      bias_Sigma = tcrossprod(tr$gamma_bias_field),
+      field_draw_seeds = c(ecological = seed + 1L, gbif_bias = seed + 2L),
+      constants = tr
     )
   )
 }
@@ -105,5 +109,38 @@ spatial_isdm_gate_b_validate_fixture <- function(fixture, mesh) {
     isTRUE(all.equal(truth$constants$field_range, 0.22)),
     isTRUE(all.equal(truth$constants$field_correlation, 0))
   )
+  invisible(TRUE)
+}
+
+spatial_isdm_gate_b_required_ledger_fields <- function() c(
+  "schema", "attempt_id", "status", "terminal", "started_at", "finished_at",
+  "raw_starts", "selected_fit", "fit_error", "objective", "optimizer_code",
+  "gradient", "gradient_by_block", "pd_hessian", "boundary_flags", "warnings",
+  "source_map", "field_outputs", "versions", "timing", "peak_rss_kb"
+)
+
+spatial_isdm_gate_b_new_ledger <- function(attempt_id, source_map, versions) {
+  list(
+    schema = "SPATIAL_ISDM_GATE_B2_ALL_ATTEMPT_V1",
+    attempt_id = attempt_id, status = "ATTEMPT_STARTED", terminal = FALSE,
+    started_at = as.character(Sys.time()), finished_at = NA_character_,
+    raw_starts = list(n_init = 1L, init_jitter = 0), selected_fit = NA_integer_,
+    fit_error = NA_character_, objective = NA_real_, optimizer_code = NA_integer_,
+    gradient = numeric(), gradient_by_block = list(), pd_hessian = NA,
+    boundary_flags = character(), warnings = character(), source_map = source_map,
+    field_outputs = list(ecological = NULL, gbif_bias = NULL, kappa = NA_real_),
+    versions = versions, timing = list(fit_elapsed_s = NA_real_), peak_rss_kb = NA_real_
+  )
+}
+
+spatial_isdm_gate_b_validate_terminal_ledger <- function(ledger) {
+  required <- spatial_isdm_gate_b_required_ledger_fields()
+  if (!is.list(ledger) || !identical(names(ledger), required) || !isTRUE(ledger$terminal) ||
+      !ledger$status %in% c("FIT_RETURNED", "FIT_ERROR", "RUNNER_ERROR", "INTERRUPTED") ||
+      !is.character(ledger$attempt_id) || length(ledger$attempt_id) != 1L ||
+      !is.list(ledger$raw_starts) || !is.list(ledger$source_map) ||
+      !is.list(ledger$field_outputs) || !is.list(ledger$versions) || !is.list(ledger$timing)) {
+    stop("invalid terminal spatial iSDM all-attempt ledger", call. = FALSE)
+  }
   invisible(TRUE)
 }

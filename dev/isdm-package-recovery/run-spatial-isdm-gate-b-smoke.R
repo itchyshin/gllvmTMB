@@ -59,7 +59,10 @@ if (identical(mode, "preflight")) {
   receipt <- list(kind = "SPATIAL_ISDM_GATE_B_SMOKE", commit = commit(),
     seed = spatial_isdm_gate_b_seed, fixture_md5 = hash(fixture_file), runner_md5 = hash(script),
     source_map = list(shared_ecological = "spatial_latent intercept", gbif_only = "isdm_gbif slope",
-                      psi = "indep(0 + trait | cell_id)", shared_mesh_range_rank = TRUE),
+                      psi = "indep(0 + trait | cell_id)", shared_mesh_range_rank = TRUE,
+                      extractor_truth_map = list(
+                        ecological = c(truth = "shared_Sigma", output = "Sigma_spde_slope_intercept"),
+                        gbif_bias = c(truth = "bias_Sigma", output = "Sigma_spde_slope_slope"))),
     n_rows = nrow(z$fixture$rows), n_mesh = ncol(z$mesh$A_st))
   saveRDS(receipt, file.path(root, "root-receipt.rds"))
   saveRDS(z$fixture$truth, file.path(root, "truth.rds"))
@@ -95,33 +98,74 @@ if (!identical(z$fixture$truth, fixture_current$fixture$truth) ||
   stop("rebuilt fixture or mesh differs from the immutable receipt", call. = FALSE)
 }
 z <- fixture_current
-saveRDS(list(status = "OPTIMIZER_ENTERED", started_at = as.character(Sys.time())),
-        file.path(root, "attempt-started.rds"))
-started <- proc.time()[["elapsed"]]
-fit <- tryCatch(.gll_isdm_fit(z$fixture$rows, z$fixture$X, z$fixture$B, d = 1L,
-  mesh = z$mesh, spatial = TRUE,
-  control = gllvmTMBcontrol(n_init = 1L, init_jitter = 0, se = TRUE, aghq = FALSE,
-                             warn_runaway = TRUE), silent = TRUE), error = function(e) e)
-elapsed_s <- proc.time()[["elapsed"]] - started
-rss_kb <- peak_rss_kb()
-if (inherits(fit, "error")) {
-  ledger <- list(status = "FIT_ERROR", message = conditionMessage(fit), elapsed_s = elapsed_s, peak_rss_kb = rss_kb)
-} else {
-  saveRDS(fit, file.path(root, "fit.rds"))
-  health <- fit$fit_health %||% list()
-  ledger <- list(status = "FIT_RETURNED", elapsed_s = elapsed_s, peak_rss_kb = rss_kb,
-    objective = fit$objective$likelihood_nll, optimizer_code = fit$opt$convergence,
-    max_gradient = max(abs(fit$tmb_obj$gr(fit$opt$par))), pd_hessian = fit$sd_report$pdHess,
-    boundary_flags = health$boundary_flags %||% character(), warnings = fit$warnings %||% character(),
-    source_map = fit$isdm_developer$spatial_source_map,
-    field_outputs = list(Lambda_spde_slope = fit$report$Lambda_spde_slope,
-      Sigma_ecological = fit$report$Sigma_spde_slope_intercept,
-      Sigma_gbif_bias = fit$report$Sigma_spde_slope_slope,
-      kappa = fit$report$kappa %||% NA_real_))
+source_map <- receipt$source_map
+versions <- list(R = R.version.string, package = as.character(utils::packageVersion("gllvmTMB")),
+                 commit = commit())
+execute_smoke <- function() {
+  ledger <- spatial_isdm_gate_b_new_ledger(
+    attempt_id = paste0("paper1-spatial-b2-", spatial_isdm_gate_b_seed),
+    source_map = source_map, versions = versions
+  )
+  finalise <- function() {
+    if (!isTRUE(ledger$terminal)) {
+      ledger$status <<- "RUNNER_ERROR"
+      ledger$fit_error <<- "runner exited before a terminal fit classification"
+      ledger$terminal <<- TRUE
+      ledger$finished_at <<- as.character(Sys.time())
+    }
+    spatial_isdm_gate_b_validate_terminal_ledger(ledger)
+    saveRDS(ledger, file.path(root, "all-attempt-ledger.rds"))
+    manifest(root)
+    writeLines(c("# SPATIAL_ISDM_GATE_B2_SMOKE", paste("status:", ledger$status),
+      paste("fit_elapsed_s:", format(ledger$timing$fit_elapsed_s, scientific = FALSE))),
+      file.path(root, "smoke-receipt.md"))
+  }
+  on.exit(finalise(), add = TRUE)
+  saveRDS(list(status = "OPTIMIZER_ENTERED", attempt_id = ledger$attempt_id,
+    started_at = ledger$started_at), file.path(root, "attempt-started.rds"))
+  warnings <- character()
+  started <- proc.time()[["elapsed"]]
+  fit <- tryCatch(withCallingHandlers(
+    .gll_isdm_fit(z$fixture$rows, z$fixture$X, z$fixture$B, d = 1L,
+      mesh = z$mesh, spatial = TRUE,
+      control = gllvmTMBcontrol(n_init = 1L, init_jitter = 0, se = TRUE, aghq = FALSE,
+        warn_runaway = TRUE), silent = TRUE),
+    warning = function(w) {
+      warnings <<- c(warnings, conditionMessage(w)); invokeRestart("muffleWarning")
+    }), error = function(e) e)
+  ledger$timing$fit_elapsed_s <- proc.time()[["elapsed"]] - started
+  ledger$warnings <- unique(warnings)
+  if (inherits(fit, "error")) {
+    ledger$status <- "FIT_ERROR"
+    ledger$fit_error <- conditionMessage(fit)
+  } else {
+    saveRDS(fit, file.path(root, "fit.rds"))
+    health <- fit$fit_health %||% list()
+    gradient <- fit$tmb_obj$gr(fit$opt$par)
+    ledger$status <- "FIT_RETURNED"
+    ledger$selected_fit <- 1L
+    ledger$objective <- fit$objective$likelihood_nll
+    ledger$optimizer_code <- fit$opt$convergence
+    ledger$gradient <- gradient
+    ledger$gradient_by_block <- list(outer = setNames(as.numeric(gradient), names(fit$opt$par)))
+    ledger$pd_hessian <- fit$sd_report$pdHess
+    ledger$boundary_flags <- health$boundary_flags %||% character()
+    ledger$source_map <- fit$isdm_developer$spatial_source_map
+    ledger$field_outputs <- list(ecological = fit$report$Sigma_spde_slope_intercept,
+      gbif_bias = fit$report$Sigma_spde_slope_slope, kappa = fit$report$kappa %||% NA_real_)
+  }
+  ledger$terminal <- TRUE
+  ledger$finished_at <- as.character(Sys.time())
+  invisible(ledger)
 }
-saveRDS(ledger, file.path(root, "all-attempt-ledger.rds"))
+ledger <- execute_smoke()
+## Telemetry is deliberately downstream of the terminal ledger.  Failure here
+## cannot erase the all-attempt evidence.
+telemetry <- tryCatch(list(peak_rss_kb = peak_rss_kb()), error = function(e) list(error = conditionMessage(e)))
+saveRDS(telemetry, file.path(root, "telemetry.rds"))
+if (is.finite(telemetry$peak_rss_kb)) {
+  ledger$peak_rss_kb <- telemetry$peak_rss_kb
+  saveRDS(ledger, file.path(root, "all-attempt-ledger.rds"))
+}
 manifest(root)
-writeLines(c("# SPATIAL_ISDM_GATE_B_SMOKE", paste("status:", ledger$status),
-             paste("elapsed_s:", format(ledger$elapsed_s, scientific = FALSE))),
-           file.path(root, "smoke-receipt.md"))
 cat(ledger$status, "\n")

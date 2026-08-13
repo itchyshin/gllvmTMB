@@ -1,5 +1,65 @@
 # #872 two-tier flatness admission — no remedy admitted
 
+## 1. Goal
+
+Decide whether #872 supports a bounded release remedy or a durable fence.
+
+## 2. Implemented
+
+Added a private mapped-point admission harness, a capped Totoro campaign runner,
+and immutable local/remote receipts. No package behavior changed.
+
+## 3a. Decisions and Rejected Alternatives
+
+Rejected a convergence warning, criterion, optimizer-control change, and public
+claim: this grid did not validate a diagnostic threshold or remedy.
+
+## 4. Files Touched
+
+`dev/872-two-tier-flatness-admission.R`,
+`dev/872-two-tier-flatness-campaign.R`, and the retained smoke/campaign
+artifacts plus this report and plan-actual reconciliation.
+
+## 5. Checks Run
+
+Mapped value/gradient identities, local smoke, Totoro one-cell smoke, 120-cell
+campaign, Gauss mapping review, Rose boundary review, and `git diff --check`.
+
+## 6. Tests of the Tests
+
+The harness initially exposed unnamed TMB gradients; assigning the authoritative
+outer names made the nonstationary chain-rule probe pass. This specifically
+tested the mapping check rather than weakening its threshold.
+
+## 7a. Issue Ledger
+
+#872 remains open and `park/research`; #851 remains separate and untouched.
+
+## 8. Consistency Audit
+
+Rose required—and this report now states—that the grid did not measure
+multi-seed mapped objective gaps or parameter distances.
+
+## 9. What Did Not Go Smoothly
+
+Three high-scale small-n cells errored; all remain retained. NotebookLM imported
+sources but did not return a citable answer, so it was quarantined.
+
+## 10. Known Residuals
+
+The one-fixture mapped gap remains open research; no multi-seed mapped-point
+study, recovery study, or diagnostic threshold exists.
+
+## 11. Team Learning
+
+Objective equality needs named-block gradient pullbacks and a nonstationary
+probe; an `OK` campaign row is not automatically a healthy fit.
+
+## 12. Cross-Product Coverage
+
+Covered Gaussian native Laplace only: single/nested structure × n 150/400 ×
+k 1/100/5000 × ten seeds. All other families and tiers remain fenced.
+
 ## Decision
 
 Retain #872 as **park/research**.  This arc does not admit a package warning,

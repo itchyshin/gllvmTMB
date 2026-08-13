@@ -49905,3 +49905,32 @@ claim occurred. The preventative runner repair enforces a consumed-root stop,
 portable RSS handling, manifest comparison, and zero cross-field DGP
 correlation for a future separately approved fixture. G2/Paper 2 HOLDs remain
 unchanged.
+
+## 2026-08-13 — Paper 1 spatial Gate-B2 replacement smoke: private PASS
+
+A fresh Paper 1-only replacement root tied to commit `d5c1481c` was preflighted
+and given a 5–15 minute estimate. The sole seed-86202 fit returned in 12.324
+seconds with code 0, finite objective 2467.705970, maximum gradient 0.003392914,
+PD Hessian TRUE, and no boundary flags or warnings. Its complete all-attempt
+ledger was persisted before optional telemetry; macOS RSS is retained as `NA`.
+The consumed-root guard rejected a second smoke before a model call.
+
+```sh
+Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-spatial-isdm-gate-b2-receipt-contract.R", reporter = "summary"); testthat::test_file("tests/testthat/test-isdm-spatial-private-contract.R", reporter = "summary")'
+# PASS.
+
+Rscript --vanilla dev/isdm-package-recovery/run-spatial-isdm-gate-b-smoke.R --mode=preflight --pkg=/private/tmp/gllvmtmb-isdm-paper1-spatial-gate-b2 --campaign-sha=d5c1481c8ffba7cec5a68ebb8de778426e88e0b5 --output=dev/isdm-package-recovery/results/paper1-spatial-gate-b2-d5c1481c
+# SPATIAL_ISDM_GATE_B_PREFLIGHT_PASS (no fit)
+
+Rscript --vanilla dev/isdm-package-recovery/run-spatial-isdm-gate-b-smoke.R --mode=smoke --pkg=/private/tmp/gllvmtmb-isdm-paper1-spatial-gate-b2 --campaign-sha=d5c1481c8ffba7cec5a68ebb8de778426e88e0b5 --output=dev/isdm-package-recovery/results/paper1-spatial-gate-b2-d5c1481c
+# FIT_RETURNED
+
+rg -n 'SPATIAL_ISDM_GATE_B2|paper1-spatial-b2|PRIVATE_SPATIAL_SMOKE' README.md ROADMAP.md NEWS.md docs vignettes R tests
+# Found the intended private receipt identifiers and historical HOLD only; no public/Paper-2 claim added.
+```
+
+This is private numerical-admission evidence for exactly one fixture, not a
+recovery or spatial-separation claim. No retry, profile, campaign, C=1,000,
+Paper 2, Totoro/DRAC, public/package/article action, or threshold change
+occurred. The historical G2 and Paper 2 HOLDs are unchanged. See the after-task
+report and checkpoint dated 2026-08-13 before any new approval request.

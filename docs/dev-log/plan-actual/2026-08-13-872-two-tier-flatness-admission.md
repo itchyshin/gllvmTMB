@@ -1,7 +1,9 @@
 # #872 plan versus actual
 
 The smoke-first and Totoro authorization gates were followed.  The planned
-120-cell grid ran at 12 workers and retained 117 successes plus 3 failures.
+120-cell grid ran at 12 workers and retained 117 executable `OK` rows plus 3
+failures; `OK` does not itself establish that every fit met every health
+diagnostic.
 The planned conditional remedy was not entered: failures were not exclusive to
 the nested target and retained paired cells did not provide a stable,
 estimand-relevant diagnostic threshold.  This is an adaptive no-remedy result,

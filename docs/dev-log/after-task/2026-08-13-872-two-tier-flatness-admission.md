@@ -21,7 +21,8 @@ receipt is under `2026-08-13-872-smoke/`.
 ## Results
 
 Totoro used 12 single-threaded workers (below the 150-core ceiling) and
-returned 117/120 `OK` cells.  All three errors occurred at `n=150, k=5000`:
+returned 117/120 executable, retained `OK` cells (not all health diagnostics
+were necessarily green).  All three errors occurred at `n=150, k=5000`:
 one single-tier and two nested-tier cells.  Therefore failure is not confined
 to the #872 nested target.
 
@@ -29,8 +30,10 @@ Among retained nested paired `k=1`/`k=5000` cells, B-tier covariance-norm
 scale-law relative error was median 0.0066 (max 0.0102, n=8) at `n=150` and
 median 0.0062 (max 0.0119, n=10) at `n=400`; W-tier errors were smaller.
 These descriptive results neither establish parameter recovery nor validate a
-diagnostic threshold.  They do not reproduce a multi-seed, two-tier-specific
-material parameter-space error that could justify a remedy.
+diagnostic threshold. The grid did not test or establish a multi-seed
+parameter-distance or mapped-objective-gap claim; among successfully paired
+cells, covariance-norm scale-law error was small, which is insufficient to
+justify a remedy.
 
 ## Boundary and next action
 

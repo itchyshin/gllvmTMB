@@ -49059,6 +49059,37 @@ frozen harness, protected FIR job, or remote artifact was modified.
 
 ---
 
+## 2026-08-13 — Lane B LA-MSPL interval-feasibility Arc 0 (Codex)
+
+Added the private `.gllvmTMB_mspl_profile_feasibility()` instrument. It holds
+one resolved ordinary-logit-q1 `b_fix` coordinate on a finite local grid and
+reoptimises the remaining **penalised** LA-MSPL outer coordinates. The helper
+requires the active `fit$tmb_obj` (`estimator_id = 1`) and rejects the
+penalty-off provenance tape (`estimator_id = 2`). It returns a trace plus
+`crossed`, `truncated`, `nonfinite`, or `optimizer_failed` side statuses; it
+does not return a confidence interval or alter any public inference fence.
+
+Checks:
+
+```sh
+Rscript --vanilla -e 'devtools::test(filter="mspl-api", stop_on_failure=TRUE)'
+# PASS: 238 expectations, 0 failures, 0 warnings, 0 skips.
+
+git diff --check
+# PASS
+
+rg -n 'mspl|profile|confint|vcov|interval|nuisance' \
+  R/mspl.R R/profile-ci.R R/profile-targets.R R/z-confint-gllvmTMB.R \
+  tests/testthat/test-mspl-api.R
+# PASS: private helper only; public MSPL guards remain present.
+```
+
+Deliberately not run: package-wide tests, R CMD check, pkgdown, coverage or
+SE-calibration work, bootstrap, remote compute, CI, and any public API/docs
+promotion. See `docs/dev-log/after-task/2026-08-13-lane-b-mspl-interval-feasibility.md`.
+
+---
+
 ## 2026-08-09 — integrated 0.6 normal-vignette source artifact
 
 On `cursor/cran-0.7-20260807` at `ae340bdd50c5eee5cbe0b093b5ebf14930bf855f`,

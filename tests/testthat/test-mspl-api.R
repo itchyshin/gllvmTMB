@@ -372,6 +372,54 @@ test_that("MSPL inference and likelihood-comparison methods fail closed", {
   expect_false(grepl("prefer profile|prefer bootstrap|standard_errors", advice))
 })
 
+test_that("internal MSPL profile feasibility traces the penalised objective only", {
+  fit <- .mspl_fit("logit", q = 1L)
+  checkpoint <- gllvmTMB:::.gllvmTMB_profile_tmb_checkpoint(fit$tmb_obj)
+  penalty_off <- fit$mspl$unpenalized_tmb_obj
+  penalty_off$fn <- function(...) {
+    stop("penalty-off objective must not be profiled")
+  }
+  fit$mspl$unpenalized_tmb_obj <- penalty_off
+
+  probe <- gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
+    fit,
+    which = 1L,
+    step = 0.5,
+    max_steps = 3L
+  )
+
+  expect_identical(probe$objective_source, "fit$tmb_obj (penalised LA-MSPL)")
+  expect_identical(probe$target_name, "b_fix")
+  expect_equal(probe$target_index, 1L)
+  expect_true(all(probe$trace$finite))
+  expect_true(all(probe$trace$convergence == 0L))
+  expect_true(all(is.finite(probe$trace$objective)))
+  expect_true(all(is.finite(probe$trace$objective_delta)))
+  expect_identical(probe$centre_status, "matched")
+  expect_identical(probe$lower_status, "crossed")
+  expect_identical(probe$upper_status, "crossed")
+  expect_true(probe$finite_stable)
+  expect_identical(
+    gllvmTMB:::.gllvmTMB_profile_tmb_checkpoint(fit$tmb_obj),
+    checkpoint
+  )
+
+  displaced <- probe$trace[probe$trace$target > probe$mle, , drop = FALSE][1L, ]
+  fixed_nuisance <- as.numeric(fit$opt$par)
+  fixed_nuisance[[probe$target_index]] <- displaced$target
+  fixed_nuisance_objective <- fit$tmb_obj$fn(fixed_nuisance)
+  expect_lte(displaced$objective, fixed_nuisance_objective + 1e-8)
+  expect_lt(displaced$objective, fixed_nuisance_objective - 1e-6)
+  gllvmTMB:::.gllvmTMB_restore_profile_tmb_checkpoint(fit$tmb_obj, checkpoint)
+
+  truncated <- gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
+    fit, which = 1L, step = 0.5, max_steps = 1L
+  )
+  expect_identical(truncated$lower_status, "truncated")
+  expect_identical(truncated$upper_status, "truncated")
+  expect_false(truncated$finite_stable)
+})
+
 test_that("unsupported MSPL surfaces stop before optimisation", {
   dat <- .mspl_fixture("logit", 1L)
   dat$known_offset <- 0.25

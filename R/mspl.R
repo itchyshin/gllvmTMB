@@ -30,6 +30,184 @@
   invisible(x)
 }
 
+## Internal feasibility instrument only. This is intentionally separate from
+## the public profile/confint dispatch: a finite trace establishes neither
+## calibrated standard errors nor confidence-interval coverage.
+.gllvmTMB_mspl_profile_feasibility <- function(
+  fit,
+  which = 1L,
+  step = 0.5,
+  max_steps = 6L,
+  level = 0.95,
+  control = list(eval.max = 100L, iter.max = 100L)
+) {
+  if (!.gllvmTMB_is_mspl(fit)) {
+    .gllvmTMB_mspl_abort(
+      "The internal MSPL profile probe requires an {.code estimator = \"mspl\"} fit.",
+      class = "gllvmTMB_mspl_profile_input"
+    )
+  }
+  if (
+    !is.numeric(which) ||
+      length(which) != 1L ||
+      which %% 1 != 0 ||
+      which < 1L ||
+      which > length(fit$opt$par) ||
+      names(fit$opt$par)[which] != "b_fix"
+  ) {
+    .gllvmTMB_mspl_abort(
+      "The internal MSPL profile probe requires one resolved {.field b_fix} coordinate.",
+      class = "gllvmTMB_mspl_profile_target"
+    )
+  }
+  if (
+    !is.numeric(step) ||
+      length(step) != 1L ||
+      !is.finite(step) ||
+      step <= 0 ||
+      !is.numeric(max_steps) ||
+      length(max_steps) != 1L ||
+      max_steps < 1L ||
+      max_steps %% 1 != 0 ||
+      !is.numeric(level) ||
+      length(level) != 1L ||
+      !is.finite(level) ||
+      level <= 0 ||
+      level >= 1
+  ) {
+    .gllvmTMB_mspl_abort(
+      "The internal MSPL profile grid requires finite positive {.arg step}, positive {.arg max_steps}, and {.arg level} in (0, 1).",
+      class = "gllvmTMB_mspl_profile_grid"
+    )
+  }
+
+  obj <- fit$tmb_obj
+  penalty_off <- fit$mspl$unpenalized_tmb_obj
+  if (
+    is.null(obj) ||
+      identical(obj, penalty_off) ||
+      !identical(as.integer(obj$env$data$estimator_id), 1L)
+  ) {
+    .gllvmTMB_mspl_abort(
+      "The internal MSPL profile probe could not verify the active penalised TMB objective.",
+      class = "gllvmTMB_mspl_profile_objective"
+    )
+  }
+  checkpoint <- .gllvmTMB_profile_tmb_checkpoint(obj)
+  on.exit(.gllvmTMB_restore_profile_tmb_checkpoint(obj, checkpoint), add = TRUE)
+
+  mle_par <- as.numeric(fit$opt$par)
+  mle_objective <- as.numeric(fit$opt$objective)
+  nuisance_index <- setdiff(seq_along(mle_par), as.integer(which))
+  target_values <- mle_par[which] +
+    step * seq.int(-as.integer(max_steps), as.integer(max_steps))
+
+  evaluate_side <- function(values) {
+    start <- mle_par[nuisance_index]
+    lapply(values, function(target) {
+      objective <- function(nuisance) {
+        par <- mle_par
+        par[nuisance_index] <- nuisance
+        par[which] <- target
+        obj$fn(par)
+      }
+      gradient <- function(nuisance) {
+        par <- mle_par
+        par[nuisance_index] <- nuisance
+        par[which] <- target
+        obj$gr(par)[nuisance_index]
+      }
+      ans <- tryCatch(
+        nlminb(
+          start,
+          objective = objective,
+          gradient = gradient,
+          control = control
+        ),
+        error = identity
+      )
+      if (inherits(ans, "error")) {
+        return(data.frame(
+          target = target,
+          objective = NA_real_,
+          objective_delta = NA_real_,
+          convergence = NA_integer_,
+          message = conditionMessage(ans),
+          finite = FALSE,
+          stringsAsFactors = FALSE
+        ))
+      }
+      start <<- ans$par
+      finite <- is.finite(ans$objective)
+      data.frame(
+        target = target,
+        objective = if (finite) as.numeric(ans$objective) else NA_real_,
+        objective_delta = if (finite) {
+          as.numeric(ans$objective) - mle_objective
+        } else {
+          NA_real_
+        },
+        convergence = as.integer(ans$convergence),
+        message = ans$message %||% "",
+        finite = finite,
+        stringsAsFactors = FALSE
+      )
+    })
+  }
+
+  centre <- evaluate_side(mle_par[which])[[1L]]
+  lower <- do.call(
+    rbind,
+    rev(evaluate_side(rev(target_values[target_values < mle_par[which]])))
+  )
+  upper <- do.call(
+    rbind,
+    evaluate_side(target_values[target_values > mle_par[which]])
+  )
+  trace <- rbind(lower, centre, upper)
+  threshold <- stats::qchisq(level, df = 1L) / 2
+  centre_tolerance <- 1e-7 * (1 + abs(mle_objective))
+  centre_status <- if (!centre$finite) {
+    "nonfinite"
+  } else if (centre$convergence != 0L) {
+    "optimizer_failed"
+  } else if (abs(centre$objective_delta) > centre_tolerance) {
+    "centre_mismatch"
+  } else {
+    "matched"
+  }
+  side_status <- function(side) {
+    if (any(!side$finite)) {
+      return("nonfinite")
+    }
+    if (any(side$convergence != 0L)) {
+      return("optimizer_failed")
+    }
+    if (any(side$objective_delta >= threshold)) {
+      return("crossed")
+    }
+    "truncated"
+  }
+  lower_status <- side_status(lower)
+  upper_status <- side_status(upper)
+
+  list(
+    trace = trace,
+    target_index = as.integer(which),
+    target_name = names(fit$opt$par)[which],
+    mle = mle_par[which],
+    mle_objective = mle_objective,
+    threshold = threshold,
+    centre_status = centre_status,
+    lower_status = lower_status,
+    upper_status = upper_status,
+    finite_stable = identical(centre_status, "matched") &&
+      identical(lower_status, "crossed") &&
+      identical(upper_status, "crossed"),
+    objective_source = "fit$tmb_obj (penalised LA-MSPL)"
+  )
+}
+
 ## Resolve b_fix = b_fixed + K gamma and return X_* = X_fix K.  TMB maps use
 ## factor levels to represent shared free parameters and NA to represent pinned
 ## coordinates.  The present public Xcoef_fixed surface only pins zeros, but

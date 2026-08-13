@@ -70,6 +70,22 @@ trace but no crossing in the fixed six-step budget, so its terminal status is
 non-crossing geometry without widening the grid or promoting a confidence
 interval claim.
 
+## Arc 2 continuation actuals
+
+**Recommended / actual:** 90 / under 60 minutes of observed local work · **Mode:** size ·
+**Metric movement:** 11/12 -> 12/12 finite-stable q = 1 fixture cells.
+
+The separately approved continuation changed the fixed profile budget only for
+the base-probit third resolved `b_fix` coordinate: `step = 0.5` and
+`max_steps = 12L`. Every other matrix cell retained `max_steps = 6L`. The
+first added upper point crossed the existing internal objective-delta threshold
+(`2.620057 > 1.920729`) with convergence code zero and a finite objective.
+
+**Result:** PASS. The focused MSPL suite had 307 expectations with zero
+failures, warnings, or skips (38.4 seconds). A read-only scope review found no
+P0/P1/P2 issue; a separate mechanical fence audit confirmed that `R/mspl.R`,
+the unexported helper, and all public MSPL refusals were unchanged.
+
 ## Handoff condition
 
 This is a multi-file, TMB-adjacent, inference-boundary task with a consequential approval gate. It requires an Ultra Plan before implementation. The plan must preserve the fail-closed public interface unless a later, separately evidenced promotion decision is made.

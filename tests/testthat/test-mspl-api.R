@@ -446,13 +446,10 @@ test_that("internal MSPL profile feasibility records the q=1 link matrix", {
     stringsAsFactors = FALSE
   )
   expected <- data.frame(
+    max_steps = c(rep(6L, 5L), 12L, rep(6L, 6L)),
     centre_status = rep("matched", 12L),
     lower_status = rep("crossed", 12L),
-    upper_status = c(
-      rep("crossed", 5L),
-      "truncated",
-      rep("crossed", 6L)
-    ),
+    upper_status = rep("crossed", 12L),
     stringsAsFactors = FALSE
   )
   expected$finite_stable <-
@@ -470,11 +467,16 @@ test_that("internal MSPL profile feasibility records the q=1 link matrix", {
     expect_length(target_index, 3L)
     expect_identical(as.integer(fit$tmb_data$estimator_id), 1L)
     lapply(target_index, function(which) {
+      max_steps <- if (case == 2L && which == target_index[[3L]]) {
+        12L
+      } else {
+        6L
+      }
       probe <- gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
         fit,
         which = which,
         step = 0.5,
-        max_steps = 6L
+        max_steps = max_steps
       )
       expect_identical(
         probe$objective_source,
@@ -483,7 +485,7 @@ test_that("internal MSPL profile feasibility records the q=1 link matrix", {
       expect_true(all(probe$trace$finite))
       expect_true(all(probe$trace$convergence == 0L))
       expect_true(all(is.finite(probe$trace$objective_delta)))
-      probe
+      list(probe = probe, max_steps = max_steps)
     })
   })
   observed <- do.call(
@@ -491,8 +493,11 @@ test_that("internal MSPL profile feasibility records the q=1 link matrix", {
     lapply(traces, function(link_traces) {
       do.call(
         rbind,
-        lapply(link_traces, function(probe) {
+        lapply(link_traces, function(result) {
+          probe <- result$probe
+          expect_equal(nrow(probe$trace), 2L * result$max_steps + 1L)
           data.frame(
+            max_steps = result$max_steps,
             centre_status = probe$centre_status,
             lower_status = probe$lower_status,
             upper_status = probe$upper_status,

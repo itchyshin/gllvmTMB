@@ -49119,6 +49119,43 @@ promotion. See
 
 ---
 
+## 2026-08-13 — Lane B LA-MSPL interval-feasibility Arc 2 (Codex)
+
+Completed the selected deterministic ordinary q = 1 link matrix. The only
+widened profile is the base-probit third resolved `b_fix` coordinate, fixed in
+the regression at `step = 0.5`, `max_steps = 12L`; all other cells retain the
+six-step budget. Its first added upper point crossed the existing internal
+objective-delta threshold (`2.620057 > 1.920729`) with a finite objective and
+convergence code zero. This is a finite penalised-objective feasibility result,
+not a calibrated confidence interval.
+
+Checks:
+
+```sh
+Rscript --vanilla -e 'devtools::test(filter = "mspl-api", stop_on_failure = TRUE)'
+# PASS: 307 expectations, 0 failures, 0 warnings, 0 skips (38.4 seconds).
+
+git diff --check
+# PASS
+
+rg -n 'mspl|profile|confint|vcov|interval|nuisance' \
+  R/mspl.R R/profile-ci.R R/profile-targets.R R/z-confint-gllvmTMB.R \
+  tests/testthat/test-mspl-api.R
+# PASS: private helper/test support only; public MSPL guards remain present.
+```
+
+Independent review: no P0/P1/P2 scope issue. Mechanical audit confirmed that
+`R/mspl.R` is unchanged, the helper remains unexported, and the public MSPL
+guards in `confint()`, `tmbprofile_wrapper()`, and `profile_targets()` remain
+present.
+
+Deliberately not run: package-wide tests, R CMD check, pkgdown, coverage or
+SE-calibration work, bootstrap, remote compute, CI, or public API/docs
+promotion. See
+`docs/dev-log/after-task/2026-08-13-lane-b-mspl-interval-feasibility-arc2.md`.
+
+---
+
 ## 2026-08-09 — integrated 0.6 normal-vignette source artifact
 
 On `cursor/cran-0.7-20260807` at `ae340bdd50c5eee5cbe0b093b5ebf14930bf855f`,

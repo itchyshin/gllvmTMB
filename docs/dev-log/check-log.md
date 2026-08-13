@@ -49906,14 +49906,17 @@ portable RSS handling, manifest comparison, and zero cross-field DGP
 correlation for a future separately approved fixture. G2/Paper 2 HOLDs remain
 unchanged.
 
-## 2026-08-13 — Paper 1 spatial Gate-B2 replacement smoke: private PASS
+## 2026-08-13 — Paper 1 spatial Gate-B2 replacement smoke: numerical-admission HOLD
 
 A fresh Paper 1-only replacement root tied to commit `d5c1481c` was preflighted
 and given a 5–15 minute estimate. The sole seed-86202 fit returned in 12.324
 seconds with code 0, finite objective 2467.705970, maximum gradient 0.003392914,
-PD Hessian TRUE, and no boundary flags or warnings. Its complete all-attempt
-ledger was persisted before optional telemetry; macOS RSS is retained as `NA`.
-The consumed-root guard rejected a second smoke before a model call.
+PD Hessian TRUE, and no boundary flags or warnings. Its retained package
+classification is Case D / `numerical_admission = FALSE`
+(`unsupported_raw_gradient_state`), so the numerical result is HOLD, not PASS.
+Its complete all-attempt ledger was persisted before optional telemetry; macOS
+RSS is retained as `NA`. The consumed-root guard rejected a second smoke before
+a model call.
 
 ```sh
 Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-spatial-isdm-gate-b2-receipt-contract.R", reporter = "summary"); testthat::test_file("tests/testthat/test-isdm-spatial-private-contract.R", reporter = "summary")'
@@ -49929,8 +49932,8 @@ rg -n 'SPATIAL_ISDM_GATE_B2|paper1-spatial-b2|PRIVATE_SPATIAL_SMOKE' README.md R
 # Found the intended private receipt identifiers and historical HOLD only; no public/Paper-2 claim added.
 ```
 
-This is private numerical-admission evidence for exactly one fixture, not a
-recovery or spatial-separation claim. No retry, profile, campaign, C=1,000,
-Paper 2, Totoro/DRAC, public/package/article action, or threshold change
-occurred. The historical G2 and Paper 2 HOLDs are unchanged. See the after-task
-report and checkpoint dated 2026-08-13 before any new approval request.
+This is an observable but non-admitted one-fixture result, not a recovery or
+spatial-separation claim. No retry, repair, profile, campaign, C=1,000, Paper 2,
+Totoro/DRAC, public/package/article action, or threshold change occurred. The
+historical G2 and Paper 2 HOLDs are unchanged. See the after-task report and
+checkpoint dated 2026-08-13 before any new approval request.

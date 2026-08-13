@@ -1,8 +1,9 @@
 # After-task — Paper 1 spatial Gate-B2 replacement smoke
 
-**Status:** `PRIVATE_SPATIAL_SMOKE_PASS` for one named synthetic fixture only.
-This supersedes neither the historical `PRIVATE_SPATIAL_SMOKE_HOLD` nor any
-Paper 2 hold: it records a distinct, fresh, one-attempt Paper 1 receipt.
+**Status:** `PRIVATE_NUMERICAL_ADMISSION_HOLD` for one named synthetic fixture.
+The fit returned and is fully observable, but its retained numerical-admission
+classification is Case D / non-admitted. This supersedes neither the historical
+`PRIVATE_SPATIAL_SMOKE_HOLD` nor any Paper 2 hold.
 
 ## 1. Task goal
 
@@ -50,7 +51,9 @@ capability change.
 - The pre-run estimate was 5–15 minutes. The one local fit returned in 12.324
   seconds: finite objective 2467.705970; optimizer code 0; maximum absolute
   gradient 0.003392914; PD Hessian TRUE; zero boundary flags and warnings.
-  Both recorded 3 x 3 field outputs were finite and symmetric.
+  Both recorded 3 x 3 field outputs were finite and symmetric. The retained
+  `isdm_numerical_admission` is Case D / FALSE:
+  `unsupported_raw_gradient_state`; it is therefore not numerically admitted.
 - A second `--mode=smoke` invocation rejected the consumed root before a model
   call: `this immutable root has already consumed its one Gate-B smoke attempt`.
 
@@ -87,9 +90,9 @@ match the truth map. They caught loss of the extractor map during ledger update.
 `HEAD` alone did not protect against uncommitted loaded estimator source. The
 runner now requires a clean tracked tree.
 
-**Fisher:** the adjudication separates numerical admission from recovery: a
-single successful fixture cannot identify a recovery rate or establish spatial
-separation generally.
+**Fisher:** the independent adjudication caught that `FIT_RETURNED` was not
+numerical admission: the retained Case D classifier rules out PASS. A single
+fixture cannot identify a recovery rate or establish spatial separation.
 
 ## 9. Design/docs and roadmap
 
@@ -104,11 +107,10 @@ or closed: this bounded evidence record has no public tracker action.
 
 ## 11. Limitations and next action
 
-This is one successful numerical-admission smoke for `C = 360`, `S = 3`, three
-PA visits, one seed, and one start. It provides no recovery, coverage,
+This is one fully observable but non-admitted smoke for `C = 360`, `S = 3`,
+three PA visits, one seed, and one start. It provides no recovery, coverage,
 identifiability, empirical, occupancy/detection, absolute-abundance,
 generic-zero-inflation, arbitrary-source, Paper 2, C=1,000, or 10,000-species
-claim. The next action requires explicit approval: independently adjudicate
-whether this private smoke warrants a Paper 1 `C = 360` recovery campaign, with
-the all-attempt metrics, machine, seed panel, budget, and compute estimate fixed
-before any campaign starts.
+claim. The next action requires explicit approval: retain this HOLD or approve
+a separately specified numerical-admission redesign. A recovery campaign is not
+authorised from this smoke.

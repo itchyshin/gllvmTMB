@@ -1,5 +1,38 @@
 # Check log
 
++## 2026-08-13 — private two-paper narrative and figure staging (no fit)
+
+Worktree `/private/tmp/gllvmtmb-two-paper-global-analysis`, branch
+`codex/two-paper-global-analysis`.
+
+```sh
+Rscript --vanilla dev/isdm-package-recovery/two-paper-staging/render-prototype-figures.R
+# PASS: deterministic P1-F1/P2-F1 design figures; no fit, optimiser, profile,
+# simulation, campaign, empirical record, or package compilation.
+
+Rscript --vanilla -e 'stopifnot(file.info("dev/isdm-package-recovery/results/two-paper-prototypes/P1-F1-synthetic-two-field-design.png")$size > 0, file.info("dev/isdm-package-recovery/results/two-paper-prototypes/P2-F1-frozen-numerical-psi-design.png")$size > 0); cat("private prototype receipt PASS\n")'
+# PASS: both ignored prototype files were non-empty.
+
+rg -n 'gllvmTMB\(|MakeADFun\(|nlminb\(|optim\(|profile\(|run.*campaign' dev/isdm-package-recovery/two-paper-staging
+# PASS: no model-execution path in private staging source.
+
+rg -n 'recovery result|fitted|empirical claim|NO_CANDIDATE|not a rate' dev/isdm-package-recovery/two-paper-staging
+# PASS: scope fences remain visible.
+
+rg -n 'integrated_jsdm\(|iJSDM|repeated-visit' README.md NEWS.md ROADMAP.md _pkgdown.yml vignettes
+# PASS: no public iJSDM/repeated-visit capability claim added.
+
+git diff --check
+# PASS.
+```
+
+**Deliberately not run:** a fit, compiled objective, optimiser, profile,
+simulation, recovery campaign, Totoro/DRAC action, empirical download,
+`devtools::test()`, `R CMD check`, pkgdown check/render, or public-document
+render. The protected Paper 1 and Paper 2 HOLD records remain unchanged.
+
+
+
 Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.

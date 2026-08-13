@@ -49056,3 +49056,52 @@ conditional log loss, and beta MSE in all six strata.
 This is not frozen B2 adjudication, a full-queue authentication, a release
 claim, or evidence for MSPL standard errors or intervals. No estimator code,
 frozen harness, protected FIR job, or remote artifact was modified.
+
+---
+
+## 2026-08-09 — integrated 0.6 normal-vignette source artifact
+
+On `cursor/cran-0.7-20260807` at `ae340bdd50c5eee5cbe0b093b5ebf14930bf855f`,
+the normal source build produced:
+
+```text
+/tmp/gllvmtmb-06-vignette-artifact.QFyQOK/gllvmTMB_0.6.0.tar.gz
+SHA-256 5a2008cc586f1c9c778ce6329687a1fee00587ccce7c521b05ffab6f027f6c9a
+```
+
+```sh
+R CMD build .
+R CMD check --as-cran --run-donttest \
+  /tmp/gllvmtmb-06-vignette-artifact.QFyQOK/gllvmTMB_0.6.0.tar.gz \
+  --no-manual --output=/tmp/gllvmtmb-06-vignette-artifact.QFyQOK
+```
+
+Result: installed-document and vignette checks passed, vignettes rebuilt, and
+the full installed-package test suite passed (`[245s/264s]`). The final result
+was `Status: 1 NOTE`: CRAN's URL check received a 404 for the Current
+limitations page because PR #951 is still an unmerged draft and pkgdown has not
+deployed that page. This is a visible pre-deployment boundary, not a reason to
+alter the reader-facing link, merge, publish, bump the version, or submit to
+CRAN. The separate `--no-build-vignettes` diagnostic passed tests in 13–14
+minutes but is not artifact-clean evidence because its vignette warnings were
+intentional.
+
+## 2026-08-09 — integrated 0.6 three-OS package CI
+
+The documented release-only full matrix was manually dispatched on the existing
+draft branch with `full_matrix = true`:
+
+```text
+https://github.com/itchyshin/gllvmTMB/actions/runs/31321069365
+```
+
+All three `r-lib/actions/check-r-package@v2` jobs completed successfully after
+passing the workflow's GitHub-Actions compute-boundary guard:
+
+- macOS: success, 2026-08-09 15:25:31--15:47:30 UTC;
+- Ubuntu: success, 2026-08-09 15:25:35--15:58:31 UTC;
+- Windows: success, 2026-08-09 15:25:27--16:08:01 UTC.
+
+This is platform evidence for the current 0.6 hardening source only. It did
+not merge PR #951, deploy pkgdown, change the package version, publish a
+release, run a scientific simulation campaign, or authorize CRAN submission.

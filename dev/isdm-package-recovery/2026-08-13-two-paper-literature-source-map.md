@@ -15,11 +15,16 @@ comparative evidence.
 | --- | --- | --- | --- |
 | Transparent SDM reporting | Zurell et al. (2020), *A standard protocol for reporting species distribution models*, doi:10.1111/ecog.04960 | Retaining data, model, prediction, validation and uncertainty provenance alongside every figure | A specific iSDM likelihood, source-bias correction, or empirical performance claim |
 | Integrating observation processes | Miller et al. (2019), *The recent past and promising future for data integration methods to estimate species' distributions*, doi:10.1111/2041-210X.13110 | Treating each observation process and its support explicitly rather than pooling records mechanically | Proof that a particular GBIF-plus-survey design separates ecology and sampling bias |
+| Preferential-sampling risk | Pennino et al. (2019), *Accounting for preferential sampling in species distribution models*, doi:10.1002/ece3.4789 | Non-random sampling locations can be associated with the response and bias estimates/predictions; source-location processes therefore need an explicit role in the analysis | That a separate spatial-bias field is identifiable in this programme, that a source-specific field removes bias causally, or that the Paper 1 estimator is admitted/recovered |
 
-Both sources were spot-checked in the notebook and contained substantive text
-(102,103 and 95,813 characters, respectively).  The retrieved PMC preferential
-sampling page was a reCAPTCHA block and is explicitly **not** evidence until a
-readable primary version is added.
+Zurell and Miller were spot-checked in the notebook and contained substantive
+text (102,103 and 95,813 characters, respectively).  Pennino's readable
+open-access primary article was independently inspected at PMC on 2026-08-13.
+It gives an especially relevant warning for this programme: its richer
+preferential-sampling formulation encountered a spatial/covariate competition
+that restricted model comparison.  We use that as a reason to predeclare
+confounding attacks and retain non-admission, not as evidence that the present
+two-field likelihood can resolve them.
 
 ## Programme implications
 
@@ -35,6 +40,10 @@ readable primary version is added.
 4. The notebook's remaining sources are a lead list, not a citation list.  A
    later manuscript bibliography must be verified from original, readable
    sources and include the exact data/licence sources used by the case study.
+5. Paper 1's two-field schematic is a design assumption with a source-purity
+    guard, not an observational answer to preferential sampling.  Paper 2 has
+    no spatial or empirical claim: its all-attempt numerical and Psi outcomes
+    cannot be supported by this landscape literature.
 
 ## Questions this source map does not answer
 
@@ -43,6 +52,8 @@ readable primary version is added.
 - Which empirical observation law is appropriate for a selected survey system.
 - Whether a GBIF-plus-survey empirical case supports ecological inference,
   prediction, or field separation.
+- Whether different observation sources, more cells, or a fitted spatial field
+  solve spatial confounding in general.
 
 Those are evidence gates in the companion case-admission and figure-claims
 contracts, not literature questions.

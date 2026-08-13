@@ -1,6 +1,6 @@
 # Paper 2 Gate C2 — numerical-admission and Psi-information separation
 
-**Status:** proposed private no-fit design.  It preserves
+**Status:** implemented as a private no-fit contract.  It preserves
 `PAPER2_PRIVATE_STOP_HOLD` and authorises no candidate, repair, threshold
 change, fit, profile, simulation, campaign, empirical case, reader packet or
 public claim.
@@ -43,3 +43,13 @@ language, causal interpretation of S, or a claim that Paper 1 evidence promotes
 Paper 2 is an immediate C2 HOLD.  Only after independent review of these four
 no-fit deliverables may a fresh, separately approved campaign proposal request
 timing evidence and compute approval.
+
+## 2026-08-13 C2 receipt outcome
+
+The receipt fixes the independent `S = 6, 20, 60`, `C = 360`, `r = 3`,
+`b = d = 1`, `R = 20` cells and validates the retained S=6 record without
+constructing a model.  That single historic attempt has `A = FALSE`,
+`P = FALSE`, and fails the diagonal-Psi variance threshold (`0.2156398 >
+0.20`).  It supplies a one-row ledger, not a co-occurrence rate or causal
+Psi-information explanation.  `PAPER2_PRIVATE_STOP_HOLD` and `NO_CANDIDATE`
+therefore remain in force; no campaign has been authorised.

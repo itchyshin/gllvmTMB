@@ -4,6 +4,14 @@
 nor empirical fitting.  It does not alter the retained Paper 1 spatial HOLD or
 the terminal Paper 2 private STOP/HOLD.
 
+## 2026-08-13 metadata-only receipt outcome
+
+The Gate-A contract has a deterministic private metadata receipt.  Its BBS +
+GBIF candidate can proceed only as source/provenance QA: BBS's annual,
+route-start protocol does not establish the frozen repeated-PA observation law.
+The returned state is `HOLD_FOR_FIT_AND_DOWNLOAD`; it authorises neither a
+download nor an empirical fit.
+
 ## Provisional candidate
 
 The leading candidate is **North American Breeding Bird Survey (BBS) plus

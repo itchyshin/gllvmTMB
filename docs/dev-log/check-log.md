@@ -1,5 +1,30 @@
 # Check log
 
+## 2026-08-13 — two-paper C1/C2/Gate-A private receipt implementation (no fit)
+
+Worktree `/private/tmp/gllvmtmb-two-paper-global-analysis`, branch
+`codex/two-paper-global-analysis`.
+
+```sh
+Rscript --vanilla dev/isdm-package-recovery/run-paper1-spatial-c1-receipt.R --mode=validate --ledger=<immutable-B2-ledger>
+# PASS: retained B2 remains Case D / NO_CANDIDATE; no fit.
+
+Rscript --vanilla dev/isdm-package-recovery/run-paper2-c2-no-fit-contract.R --mode=validate
+Rscript --vanilla dev/isdm-package-recovery/run-empirical-gate-a-metadata.R --mode=validate
+# PASS: frozen C2 and metadata-only Gate A contracts; no fit or download.
+
+Rscript --vanilla -e 'devtools::test(filter = "paper1-spatial-c1-topology|paper2-c2-all-attempt-contract|empirical-gate-a-metadata-contract", reporter = "summary")'
+# PASS: 31 targeted assertions.
+
+git diff --check
+# PASS.
+```
+
+**Deliberately not run:** compilation, objective construction, optimiser,
+profile, fit, simulation, recovery campaign, Totoro/DRAC action, data download,
+empirical analysis, `R CMD check`, pkgdown, public-doc render, or GitHub CI.
+The Paper 1/Paper 2 historical HOLDs are unchanged.
+
 +## 2026-08-13 — private two-paper narrative and figure staging (no fit)
 
 Worktree `/private/tmp/gllvmtmb-two-paper-global-analysis`, branch

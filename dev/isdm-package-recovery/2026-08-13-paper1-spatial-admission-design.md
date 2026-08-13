@@ -1,6 +1,6 @@
 # Paper 1 spatial Gate C1 — numerical-admission design
 
-**Status:** design only.  It does not modify the estimator, likelihood, DGP,
+**Status:** implemented as a private no-fit receipt only.  It does not modify the estimator, likelihood, DGP,
 maps, thresholds or the one consumed B2 root; it authorises no fit, profile,
 simulation, retry, campaign or empirical analysis.
 
@@ -58,3 +58,14 @@ an attempt to call the old returned fit a recovered spatial result terminates
 the branch at HOLD.  Even a later numerical pass must still earn all-attempt
 known-truth field recovery and uncertainty evidence before Paper 1 maps can be
 used as results.
+
+## 2026-08-13 C1 receipt outcome
+
+The approved no-fit topology reader has now replayed the immutable B2 ledger.
+The sole maximum is `theta_rr_spde_slope`, the GBIF-only spatial SPDE slope
+loading, with absolute raw gradient `0.003392914`, no boundary flag, and a PD
+Hessian.  It remains `Case D / unsupported_raw_gradient_state`, not the named
+`b_fix` or `theta_rr_B` Case-C domain and not the named Case-B boundary.
+The only admissible C1 decision is therefore **`NO_CANDIDATE`**.  This receipt
+does not repair, reclassify, or refit B2; Paper 1 remains on
+`PRIVATE_NUMERICAL_ADMISSION_HOLD`.

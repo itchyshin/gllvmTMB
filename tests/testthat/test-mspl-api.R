@@ -1,5 +1,16 @@
-.mspl_fixture <- function(link = "logit", q = 1L, n_site = 24L) {
-  set.seed(8808 + match(link, c("logit", "probit", "cloglog")) + q)
+.mspl_fixture <- function(
+  link = "logit",
+  q = 1L,
+  n_site = 24L,
+  direction = c("base", "reflected")
+) {
+  direction <- match.arg(direction)
+  set.seed(
+    8808 +
+      match(link, c("logit", "probit", "cloglog")) +
+      q +
+      if (direction == "reflected") 100L else 0L
+  )
   n_trait <- 3L
   site <- factor(rep(sprintf("s%02d", seq_len(n_site)), each = n_trait))
   trait <- factor(
@@ -16,6 +27,7 @@
   eta <- beta[as.integer(trait)] + rowSums(
     z[as.integer(site), , drop = FALSE] * Lambda[as.integer(trait), , drop = FALSE]
   )
+  if (direction == "reflected") eta <- -eta
   mu <- switch(
     link,
     logit = stats::plogis(eta),
@@ -25,8 +37,15 @@
   data.frame(site = site, trait = trait, y = stats::rbinom(length(mu), 1L, mu))
 }
 
-.mspl_fit <- function(link = "logit", q = 1L, unique = FALSE, ...) {
-  dat <- .mspl_fixture(link, q)
+.mspl_fit <- function(
+  link = "logit",
+  q = 1L,
+  unique = FALSE,
+  direction = c("base", "reflected"),
+  ...
+) {
+  direction <- match.arg(direction)
+  dat <- .mspl_fixture(link, q, direction = direction)
   form <- stats::as.formula(sprintf(
     "y ~ 0 + trait + latent(0 + trait | site, d = %d, unique = %s)",
     q, if (unique) "TRUE" else "FALSE"
@@ -418,6 +437,74 @@ test_that("internal MSPL profile feasibility traces the penalised objective only
   expect_identical(truncated$lower_status, "truncated")
   expect_identical(truncated$upper_status, "truncated")
   expect_false(truncated$finite_stable)
+})
+
+test_that("internal MSPL profile feasibility records the q=1 link matrix", {
+  cases <- data.frame(
+    link = c("logit", "probit", "cloglog", "cloglog"),
+    direction = c("base", "base", "base", "reflected"),
+    stringsAsFactors = FALSE
+  )
+  expected <- data.frame(
+    centre_status = rep("matched", 12L),
+    lower_status = rep("crossed", 12L),
+    upper_status = c(
+      rep("crossed", 5L),
+      "truncated",
+      rep("crossed", 6L)
+    ),
+    stringsAsFactors = FALSE
+  )
+  expected$finite_stable <-
+    expected$centre_status == "matched" &
+    expected$lower_status == "crossed" &
+    expected$upper_status == "crossed"
+
+  traces <- lapply(seq_len(nrow(cases)), function(case) {
+    fit <- .mspl_fit(
+      cases$link[[case]],
+      q = 1L,
+      direction = cases$direction[[case]]
+    )
+    target_index <- which(names(fit$opt$par) == "b_fix")
+    expect_length(target_index, 3L)
+    expect_identical(as.integer(fit$tmb_data$estimator_id), 1L)
+    lapply(target_index, function(which) {
+      probe <- gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
+        fit,
+        which = which,
+        step = 0.5,
+        max_steps = 6L
+      )
+      expect_identical(
+        probe$objective_source,
+        "fit$tmb_obj (penalised LA-MSPL)"
+      )
+      expect_true(all(probe$trace$finite))
+      expect_true(all(probe$trace$convergence == 0L))
+      expect_true(all(is.finite(probe$trace$objective_delta)))
+      probe
+    })
+  })
+  observed <- do.call(
+    rbind,
+    lapply(traces, function(link_traces) {
+      do.call(
+        rbind,
+        lapply(link_traces, function(probe) {
+          data.frame(
+            centre_status = probe$centre_status,
+            lower_status = probe$lower_status,
+            upper_status = probe$upper_status,
+            finite_stable = probe$finite_stable,
+            stringsAsFactors = FALSE
+          )
+        })
+      )
+    })
+  )
+
+  expect_identical(observed, expected)
 })
 
 test_that("unsupported MSPL surfaces stop before optimisation", {

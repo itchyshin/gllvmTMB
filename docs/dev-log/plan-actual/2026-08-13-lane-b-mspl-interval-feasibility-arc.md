@@ -46,11 +46,29 @@
 
 ## Actuals (complete at close)
 
-**Recommended / actual:** 170 / pending minutes · **Requested / used:** N/A / pending minutes · **Rungs/cohorts completed:** pending  
-**Under-run event:** pending  
-**Calibration:** pending  
-**Metric movement:** point-only -> pending  
-**Result:** pending · **Next arc:** pending
+**Recommended / actual:** 170 / under 90 minutes of observed local work ·
+**Requested / used:** N/A / local only · **Rungs/cohorts completed:** Arc 0,
+link check, fence regression, and closeout.
+
+**Under-run event:** the admitted q = 1 test fixture and Arc 0 internal seam
+made the cross-link extension a deterministic test-harness change rather than a
+new profiling implementation.
+
+**Calibration:** the focused MSPL suite increased from 238 to 276 expectations
+and remained below one minute; individual profile probes completed below the
+30-minute local compute gate.
+
+**Metric movement:** point-only -> private finite-feasibility matrix with one
+typed blocker.
+
+**Result:** 11 of 12 q = 1 cells had a matched centre and two finite crossed
+sides. The base-probit third fixed-effect target had a finite, converged upper
+trace but no crossing in the fixed six-step budget, so its terminal status is
+`truncated`. No public inference surface changed.
+
+**Next arc:** only if separately approved, diagnose the finite probit
+non-crossing geometry without widening the grid or promoting a confidence
+interval claim.
 
 ## Handoff condition
 

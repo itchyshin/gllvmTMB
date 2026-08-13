@@ -49090,6 +49090,35 @@ promotion. See `docs/dev-log/after-task/2026-08-13-lane-b-mspl-interval-feasibil
 
 ---
 
+## 2026-08-13 — Lane B LA-MSPL interval-feasibility Arc 1 (Codex)
+
+Extended the private q = 1 feasibility regression across base logit, probit,
+and cloglog fixtures plus a reflected-predictor standard-cloglog fixture. All
+three resolved `b_fix` coordinates use the existing nuisance-reoptimised
+penalised-objective helper. Eleven cells are finite and two-sided crossed; the
+third base-probit coordinate is finite and converged but has an upper-side
+`truncated` status inside the fixed six-step grid. This is a typed feasibility
+blocker, not a confidence interval or a reason to alter the grid.
+
+Checks:
+
+```sh
+Rscript --vanilla -e 'devtools::test(filter = "mspl-api", stop_on_failure = TRUE)'
+# PASS: 295 expectations, 0 failures, 0 warnings, 0 skips (39.1 seconds).
+
+rg -n 'mspl|profile|confint|vcov|interval|nuisance' \
+  R/mspl.R R/profile-ci.R R/profile-targets.R R/z-confint-gllvmTMB.R \
+  tests/testthat/test-mspl-api.R
+# PASS: private helper and test support only; public MSPL guards remain present.
+```
+
+Deliberately not run: package-wide tests, R CMD check, pkgdown, coverage or
+SE-calibration work, bootstrap, remote compute, CI, or public API/docs
+promotion. See
+`docs/dev-log/after-task/2026-08-13-lane-b-mspl-interval-feasibility-arc1.md`.
+
+---
+
 ## 2026-08-09 — integrated 0.6 normal-vignette source artifact
 
 On `cursor/cran-0.7-20260807` at `ae340bdd50c5eee5cbe0b093b5ebf14930bf855f`,

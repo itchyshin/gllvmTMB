@@ -1,7 +1,7 @@
 # After Task: Lane B LA-MSPL interval feasibility Arc 0
 
-**Branch:** `codex/lane-b-mspl-interval-feasibility`  
-**Date:** 2026-08-13  
+**Branch:** `codex/lane-b-mspl-interval-feasibility`
+**Date:** 2026-08-13
 **Audience:** gllvmTMB maintainers and statistical-method developers.
 
 ## 1. Goal

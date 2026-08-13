@@ -21,7 +21,8 @@ This is a case-selection lead, not an accepted data asset.  BBS locations are
 route starts rather than exact stops, and annual revisits are not automatically
 within-season replicated visits.  Therefore it may support source-only,
 route-scale descriptive maps but cannot yet be assumed to match the current PA
-cloglog observation law.
+cloglog observation law.  The evidence and resulting screening decision are
+recorded in `2026-08-13-bbs-gbif-empirical-screening-dossier.md`.
 
 ## Gate A — required receipt before download or use
 

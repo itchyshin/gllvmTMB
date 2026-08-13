@@ -49038,3 +49038,21 @@ TMPDIR=<writable worktree directory> Rscript --vanilla -e \
 git diff --check
 # PASS; required three-OS CI rerun follows push.
 ```
+
+---
+
+## 2026-08-12 — Lane B B2 partial ordinary-evidence closeout (Codex)
+
+The maintainer accepted the completed portion of the experimental B2 campaign
+as sufficient for the present exploratory point-estimation decision. The
+fenced report is `docs/dev-log/after-task/2026-08-12-lane-b-b2-partial-evidence.md`.
+It records 2,586 / 2,880 completed ordinary shards (64,650 / 72,000
+replicates), retains the 294 timed-out ordinary shards and 88 timed-out
+permutation-audit shards in the limitation statement, and reports conditional
+paired diagnostics separately for logit, probit, and complementary log-log at
+q = 1 and q = 2. The completed subset favours MSPL on usable-fit rate,
+conditional log loss, and beta MSE in all six strata.
+
+This is not frozen B2 adjudication, a full-queue authentication, a release
+claim, or evidence for MSPL standard errors or intervals. No estimator code,
+frozen harness, protected FIR job, or remote artifact was modified.

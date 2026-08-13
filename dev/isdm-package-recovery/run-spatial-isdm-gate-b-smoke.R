@@ -21,6 +21,10 @@ fixture_file <- file.path(base, "spatial-isdm-gate-b-smoke-fixture.R")
 source(fixture_file, local = TRUE)
 hash <- function(path) unname(tools::md5sum(path))[[1L]]
 commit <- function() system2("git", c("-C", pkg, "rev-parse", "HEAD"), stdout = TRUE)[[1L]]
+assert_clean_estimator_tree <- function() {
+  dirty <- system2("git", c("-C", pkg, "status", "--porcelain", "--untracked-files=no"), stdout = TRUE)
+  if (length(dirty)) stop("preflight and smoke require a clean committed estimator tree", call. = FALSE)
+}
 make <- function() {
   suppressMessages(devtools::load_all(pkg, quiet = TRUE))
   fixture <- spatial_isdm_gate_b_make_fixture()
@@ -50,6 +54,7 @@ parent <- normalizePath(file.path(pkg, "dev", "isdm-package-recovery", "results"
 if (!startsWith(root, paste0(parent, "/")) || !identical(sha, commit())) {
   stop("private result root and exact current campaign-sha required", call. = FALSE)
 }
+assert_clean_estimator_tree()
 if (identical(mode, "preflight")) {
   if (dir.exists(root) && length(list.files(root, all.files = TRUE, no.. = TRUE))) {
     stop("preflight root must be fresh", call. = FALSE)
@@ -150,7 +155,8 @@ execute_smoke <- function() {
     ledger$gradient_by_block <- list(outer = setNames(as.numeric(gradient), names(fit$opt$par)))
     ledger$pd_hessian <- fit$sd_report$pdHess
     ledger$boundary_flags <- health$boundary_flags %||% character()
-    ledger$source_map <- fit$isdm_developer$spatial_source_map
+    ledger$source_map <- utils::modifyList(fit$isdm_developer$spatial_source_map,
+      list(extractor_truth_map = source_map$extractor_truth_map))
     ledger$field_outputs <- list(ecological = fit$report$Sigma_spde_slope_intercept,
       gbif_bias = fit$report$Sigma_spde_slope_slope, kappa = fit$report$kappa %||% NA_real_)
   }

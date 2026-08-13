@@ -26,6 +26,8 @@ test_that("receipt maps both spatial truths to their distinct fit outputs", {
   expect_match(runner, 'truth = "shared_Sigma", output = "Sigma_spde_slope_intercept"')
   expect_match(runner, 'truth = "bias_Sigma", output = "Sigma_spde_slope_slope"')
   expect_match(runner, 'field_outputs <- list\\(ecological = fit\\$report\\$Sigma_spde_slope_intercept')
+  expect_match(runner, "extractor_truth_map = source_map\\$extractor_truth_map")
+  expect_match(runner, "preflight and smoke require a clean committed estimator tree")
 })
 
 test_that("terminal all-attempt ledger has every required field even on a fit error", {

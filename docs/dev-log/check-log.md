@@ -48961,6 +48961,104 @@ validator, and the check log carries the handoff. The warning is the large
 high-risk dirty tree itself. Smallest safe next action: one scoped commit and
 one draft PR; do not self-merge, version-bump, or release.
 
+---
+
+## 2026-08-09 — Lane B local reconciliation candidate (Codex)
+
+Merged the local experimental binary LA-MSPL commit into the active 0.7 draft
+source in a disposable local branch. The combination preserves the draft's
+weighted-objective/VA behavior and places MSPL's point-only inference fence
+before the weighted-objective fence. The MSPL `nlminb` stationary-rescue path
+now uses the draft's shared optimizer helper. This is a local reconciliation
+candidate only: no PR, branch push, remote campaign, or release action was
+performed.
+
+Verification:
+
+```sh
+Rscript --vanilla -e 'devtools::document(quiet = TRUE)'
+# PASS: fresh TMB compile
+Rscript --vanilla -e 'devtools::test(filter = "mspl-api|mspl-simulation-contract", reporter = "summary", stop_on_failure = TRUE)'
+# PASS
+Rscript --vanilla -e 'devtools::test(filter = "screen-separation", reporter = "summary", stop_on_failure = TRUE)'
+# PASS
+git diff --check
+# PASS
+```
+
+---
+
+## 2026-08-09 — Lane B Windows receipt portability repair (Codex)
+
+The required PR #952 three-OS run passed on macOS and Ubuntu but failed on
+Windows. The failure was specific to the Lane B receipt contract:
+`lane_b_sha256_file()` selected Strawberry Perl's `shasum`, which exited with
+status 29 and produced no digest. This made three receipt/provenance tests error.
+The campaign-root containment predicate also used a literal `/`, which does not
+recognise a descendant path after Windows normalisation.
+
+The repair uses `tools::sha256sum()` (R's portable SHA-256 implementation) and
+uses `.Platform$file.sep` in the containment predicate. The active FIR B2 array
+is intentionally unchanged: it runs the separately frozen offline checkout.
+
+Verification:
+
+```sh
+git diff --check
+# PASS
+
+TMPDIR=<writable directory outside the checkout> Rscript --vanilla -e \
+  'devtools::test(filter = "mspl-simulation-contract")'
+# PASS: the three previously failing receipt/root assertions pass.
+# Local devtools staging still yields one pre-existing environmental failure in
+# `ordinary-only corrected campaign scope is explicit and resumable`: its staged
+# directory has no resolvable git HEAD. The required GitHub run has a checkout
+# ancestor and Ubuntu already passed that test; rerun three-OS CI is required.
+```
+
+---
+
+## 2026-08-09 — Lane B Windows campaign-root containment follow-up (Codex)
+
+The repaired three-OS run then exposed one remaining Windows-only failure in
+`campaign roots inside the checkout are rejected`. `normalizePath()` returned
+backslash-separated paths on Windows, so comparing with a slash suffix did not
+recognise a checkout descendant. The guard now canonicalises both comparison
+paths to `/` and folds case on Windows before testing identity or ancestry.
+This changes only local receipt/output-root validation; no FIR job, frozen
+checkout, or submitted B2 shard was modified.
+
+Verification:
+
+```sh
+TMPDIR=<writable worktree directory> Rscript --vanilla -e \
+  'source("inst/sim/lane-b/lane-b-b2-common.R"); ...'
+# PASS: checkout descendant rejected; /tmp outside path accepted.
+
+git diff --check
+# PASS; required three-OS CI rerun follows push.
+```
+
+---
+
+## 2026-08-12 — Lane B B2 partial ordinary-evidence closeout (Codex)
+
+The maintainer accepted the completed portion of the experimental B2 campaign
+as sufficient for the present exploratory point-estimation decision. The
+fenced report is `docs/dev-log/after-task/2026-08-12-lane-b-b2-partial-evidence.md`.
+It records 2,586 / 2,880 completed ordinary shards (64,650 / 72,000
+replicates), retains the 294 timed-out ordinary shards and 88 timed-out
+permutation-audit shards in the limitation statement, and reports conditional
+paired diagnostics separately for logit, probit, and complementary log-log at
+q = 1 and q = 2. The completed subset favours MSPL on usable-fit rate,
+conditional log loss, and beta MSE in all six strata.
+
+This is not frozen B2 adjudication, a full-queue authentication, a release
+claim, or evidence for MSPL standard errors or intervals. No estimator code,
+frozen harness, protected FIR job, or remote artifact was modified.
+
+---
+
 ## 2026-08-09 — integrated 0.6 normal-vignette source artifact
 
 On `cursor/cran-0.7-20260807` at `ae340bdd50c5eee5cbe0b093b5ebf14930bf855f`,

@@ -24,7 +24,7 @@
 // extensible.
 
 #define TMB_LIB_INIT R_init_gllvmTMB
-#include <TMB.hpp>
+#include "lane_b_jeffreys_maxvol_atomic_v8.h"
 
 // Independently implemented standard lower-triangular factor-loading unpack.
 // Keeping one cursor-based implementation prevents the packing convention
@@ -192,6 +192,148 @@ Type gll_log_pnorm_diff(Type a, Type b)
   Type left  = la  + gll_log1mexp(lb  - la);
   Type right = lnb + gll_log1mexp(lna - lnb);
   return CppAD::CondExpLe(a + b, Type(0.0), left, right);
+}
+
+// Expected-information log weights for the fixed-only Bernoulli Jeffreys
+// component.  These are evaluated at X_fix * b_fix + offset, before any
+// latent-score contribution.  No probability or information floor is used.
+template <class Type>
+Type gll_mspl_log_weight(Type eta, int link_id)
+{
+  if (link_id == 0) {
+    Type log_p1 = -logspace_add(Type(0.0), -eta);
+    Type log_p0 = -logspace_add(Type(0.0),  eta);
+    return log_p1 + log_p0;
+  }
+  if (link_id == 1) {
+    Type log_p1 = gll_log_pnorm( eta);
+    Type log_p0 = gll_log_pnorm(-eta);
+    return Type(2.0) * (-Type(0.5) * eta * eta -
+      Type(0.5) * log(Type(2.0) * M_PI)) - log_p1 - log_p0;
+  }
+  if (link_id == 2) {
+    // w(eta) = exp(2 eta) / expm1(exp(eta)).  The small-a series retains
+    // eta when exp(eta) is close to underflow; the direct branch never forms
+    // exp(exp(eta)).  CppAD evaluates both branches, so each receives a safe
+    // eta. Beyond eta=690 the real exp(eta) term approaches the representable
+    // double boundary. Continue with a finite, strictly decreasing C1-matched
+    // logarithmic tail; a separate report counts every row that touches it.
+    Type cut = Type(log(1e-4));
+    Type eta_small = CppAD::CondExpGt(eta, cut, cut, eta);
+    Type a_small = exp(eta_small);
+    Type a2 = a_small * a_small;
+    Type small_ratio = Type(1.0) + a_small / Type(2.0) +
+      a2 / Type(6.0) + a2 * a_small / Type(24.0) +
+      a2 * a2 / Type(120.0);
+    Type small_log_denom = eta + log(small_ratio);
+
+    Type hi = Type(690.0);
+    Type eta_direct = CppAD::CondExpLt(eta, cut, cut, eta);
+    eta_direct = CppAD::CondExpGt(eta_direct, hi, hi, eta_direct);
+    Type a_direct = exp(eta_direct);
+    Type direct_log_denom = a_direct + log(Type(1.0) - exp(-a_direct));
+    Type log_denom = CppAD::CondExpLt(eta, cut,
+                                      small_log_denom, direct_log_denom);
+    Type regular = Type(2.0) * eta - log_denom;
+
+    Type a_hi = exp(hi);
+    Type regular_hi = Type(2.0) * hi - a_hi -
+      log(Type(1.0) - exp(-a_hi));
+    Type delta = CppAD::CondExpGt(eta, hi, eta - hi, Type(0.0));
+    Type tail = regular_hi - (a_hi - Type(2.0)) *
+      log(Type(1.0) + delta);
+    return CppAD::CondExpGt(eta, hi, tail, regular);
+  }
+  error("gllvmTMB_multi: MSPL supports only logit, probit, and cloglog links");
+  return Type(0.0);
+}
+
+template <class Type>
+Type gll_mspl_bernoulli_loglik(Type y, Type eta, int link_id)
+{
+  Type log_p1;
+  Type log_p0;
+  if (link_id == 0) {
+    log_p1 = -logspace_add(Type(0.0), -eta);
+    log_p0 = -logspace_add(Type(0.0),  eta);
+  } else if (link_id == 1) {
+    log_p1 = gll_log_pnorm( eta);
+    log_p0 = gll_log_pnorm(-eta);
+  } else if (link_id == 2) {
+    Type cut = Type(log(1e-4));
+    Type eta_small = CppAD::CondExpGt(eta, cut, cut, eta);
+    Type a_small = exp(eta_small);
+    Type a2 = a_small * a_small;
+    Type p1_ratio = Type(1.0) - a_small / Type(2.0) +
+      a2 / Type(6.0) - a2 * a_small / Type(24.0) +
+      a2 * a2 / Type(120.0);
+    Type p1_small = eta + log(p1_ratio);
+
+    Type hi = Type(690.0);
+    Type eta_direct = CppAD::CondExpLt(eta, cut, cut, eta);
+    eta_direct = CppAD::CondExpGt(eta_direct, hi, hi, eta_direct);
+    Type a_direct = exp(eta_direct);
+    Type p1_direct = log(Type(1.0) - exp(-a_direct));
+    Type p1_regular = CppAD::CondExpLt(eta, cut, p1_small, p1_direct);
+    log_p1 = CppAD::CondExpGt(eta, hi, Type(0.0), p1_regular);
+
+    Type a_hi = exp(hi);
+    Type delta = CppAD::CondExpGt(eta, hi, eta - hi, Type(0.0));
+    Type p0_tail = -a_hi - a_hi * log(Type(1.0) + delta);
+    Type p0_regular = -exp(eta_direct);
+    log_p0 = CppAD::CondExpGt(eta, hi, p0_tail, p0_regular);
+  } else {
+    error("gllvmTMB_multi: MSPL supports only logit, probit, and cloglog links");
+    return Type(0.0);
+  }
+  return y * log_p1 + (Type(1.0) - y) * log_p0;
+}
+
+template <class Type>
+Type gll_mspl_row_radial_penalty(const matrix<Type> &Lambda, int rank)
+{
+  Type ans = Type(0.0);
+  for (int t = 0; t < Lambda.rows(); ++t) {
+    Type max_abs = Type(0.0);
+    for (int k = 0; k < rank; ++k) {
+      Type a = CppAD::CondExpGe(Lambda(t, k), Type(0.0),
+                                Lambda(t, k), -Lambda(t, k));
+      max_abs = CppAD::CondExpGt(a, max_abs, a, max_abs);
+    }
+    Type scale = CppAD::CondExpLt(max_abs, Type(1.0), Type(1.0), max_abs);
+    scale = CppAD::CondExpGt(scale, Type(1e300), Type(1e300), scale);
+    Type scaled_norm2 = Type(0.0);
+    Type small_norm2 = Type(0.0);
+    for (int k = 0; k < rank; ++k) {
+      Type z = Lambda(t, k) / scale;
+      scaled_norm2 += z * z;
+      Type z_small = gll_clamp(Lambda(t, k), Type(-1.0), Type(1.0));
+      small_norm2 += z_small * z_small;
+    }
+    Type small = small_norm2 /
+      (sqrt(Type(1.0) + small_norm2) + Type(1.0));
+    Type radius = scale * sqrt(scaled_norm2);
+    Type radius_large = CppAD::CondExpLt(radius, Type(1.0), Type(1.0), radius);
+    Type large = radius_large *
+      sqrt(Type(1.0) + Type(1.0) / (radius_large * radius_large)) -
+      Type(1.0);
+    ans += CppAD::CondExpLe(max_abs, Type(1.0), small, large);
+  }
+  return ans;
+}
+
+template <class Type>
+Type gll_mspl_pseudohuber(Type x)
+{
+  Type ax = CppAD::CondExpGe(x, Type(0.0), x, -x);
+  Type x_small = gll_clamp(x, Type(-1.0), Type(1.0));
+  Type x2 = x_small * x_small;
+  Type small = x2 / (sqrt(Type(1.0) + x2) + Type(1.0));
+  Type ax_large = CppAD::CondExpLt(ax, Type(1.0), Type(1.0), ax);
+  ax_large = CppAD::CondExpGt(ax_large, Type(1e300), Type(1e300), ax_large);
+  Type large = ax_large *
+    sqrt(Type(1.0) + Type(1.0) / (ax_large * ax_large)) - Type(1.0);
+  return CppAD::CondExpLe(ax, Type(1.0), small, large);
 }
 
 template <class Type>
@@ -423,6 +565,15 @@ Type objective_function<Type>::operator()()
   // value the R side had already accepted, which is the failure mode
   // (#807) this feature exists to avoid repeating.
   DATA_VECTOR(offset_vec);
+
+  // Lane B opt-in estimator contract. ML callers supply inert stubs and the
+  // data-constant branch below never tapes the guarded Jeffreys atom.
+  DATA_INTEGER(estimator_id);      // 0 = ML, 1 = LA-MSPL, 2 = internal penalty-off LA-MSPL kernel
+  DATA_MATRIX(X_mspl);             // resolved free fixed design; N_eff x p_beta
+  DATA_INTEGER(N_eff);             // complete contributing Bernoulli rows
+  DATA_INTEGER(p_free);            // independent penalized outer coordinates
+  DATA_SCALAR(spde_r0);            // positive spatial reference distance; 1 for ML
+  DATA_IVECTOR(mspl_tau_representative); // 0-based free tau representatives
 
   // ordinal_probit (fid 14): per-trait cutpoint metadata.
   // n_ordinal_cuts_per_trait(t)  = K_t - 2, the number of FREE cutpoints
@@ -874,6 +1025,94 @@ Type objective_function<Type>::operator()()
   PARAMETER_VECTOR(ordinal_log_increments);
 
   Type nll = 0;
+  Type mspl_cloglog_likelihood_tail_extension_count = Type(0.0);
+  Type mspl_cloglog_weight_tail_extension_count = Type(0.0);
+  int mspl_structure_id_int = 0; // 1 ordinary, 2 spatial_indep, 3 spatial_latent
+  if (estimator_id != 0 && estimator_id != 1 && estimator_id != 2)
+    error("gllvmTMB_multi: estimator_id must be 0 (ML), 1 (MSPL), or 2 (internal penalty-off MSPL)");
+
+  // Fail closed for direct template callers. The R fence repeats these checks
+  // before MakeADFun(), but unsupported structures must not acquire an MSPL
+  // objective merely by bypassing that public fence.
+  if (estimator_id != 0) {
+    bool mspl_ordinary = (use_rr_B == 1 && use_spde == 0);
+    bool mspl_spatial_indep = (use_rr_B == 0 && use_spde == 1 &&
+                               spde_lv_k == 0 && spde_lv_unique == 0);
+    bool mspl_spatial_latent = (use_rr_B == 0 && use_spde == 1 &&
+                                spde_lv_k >= 1 && spde_lv_k <= 2 &&
+                                spde_lv_k <= n_traits && spde_lv_unique == 0);
+    int n_admitted = int(mspl_ordinary) + int(mspl_spatial_indep) +
+                     int(mspl_spatial_latent);
+    if (n_admitted != 1)
+      error("gllvmTMB_multi: MSPL requires exactly one ordinary latent, spatial_indep, or spatial_latent(q=1:2) block");
+    if (mspl_ordinary && (d_B < 1 || d_B > 2 || d_B > n_traits))
+      error("gllvmTMB_multi: ordinary MSPL latent rank q must be 1 or 2");
+    mspl_structure_id_int = mspl_ordinary ? 1 :
+      (mspl_spatial_indep ? 2 : 3);
+    if (use_lv_B == 1 || use_rr_B_slope == 1 || use_diag_B_slope == 1 ||
+        use_rr_W == 1 || use_diag_W == 1 || use_propto == 1 ||
+        use_diag_species == 1 || use_diag_cluster2 == 1 || use_equalto == 1 ||
+        use_spde_slope == 1 || use_spde_dep_slope == 1 ||
+        use_spde_latent_slope == 1 || use_phylo_rr == 1 ||
+        use_phylo_diag == 1 || use_phylo_slope == 1 ||
+        use_phylo_slope_correlated == 1 || use_phylo_dep_slope == 1 ||
+        use_phylo_latent_slope == 1 || n_kernel_tiers != 0 ||
+        use_re_int == 1 || has_mi == 1 || use_aghq != 0)
+      error("gllvmTMB_multi: MSPL admits no additional random or structured block");
+    if (!mspl_ordinary && use_diag_B == 1)
+      error("gllvmTMB_multi: spatial MSPL does not admit an ordinary Psi block");
+    if (mspl_ordinary && use_diag_B == 1) {
+      if (diag_B_skip.size() != n_traits)
+        error("gllvmTMB_multi: MSPL diag_B_skip has wrong length");
+      for (int t = 0; t < n_traits; ++t)
+        if (diag_B_skip(t) != 1)
+          error("gllvmTMB_multi: MSPL does not admit free Bernoulli Psi coordinates");
+    }
+    if (!mspl_ordinary) {
+      double r0 = asDouble(spde_r0);
+      if (!R_FINITE(r0) || !(r0 > 0.0))
+        error("gllvmTMB_multi: spatial MSPL requires finite spde_r0 > 0");
+    }
+    if (mspl_spatial_indep) {
+      if (log_tau_spde.size() != n_traits ||
+          mspl_tau_representative.size() < 1)
+        error("gllvmTMB_multi: spatial_indep MSPL requires tau representatives");
+      std::vector<int> seen_tau(n_traits, 0);
+      for (int j = 0; j < mspl_tau_representative.size(); ++j) {
+        int t = mspl_tau_representative(j);
+        if (t < 0 || t >= n_traits || seen_tau[t] == 1)
+          error("gllvmTMB_multi: invalid spatial_indep MSPL tau representative");
+        seen_tau[t] = 1;
+      }
+    }
+    int expected_p_free = X_mspl.cols();
+    if (mspl_ordinary)
+      expected_p_free += theta_rr_B.size();
+    else if (mspl_spatial_indep)
+      expected_p_free += mspl_tau_representative.size() + 1;
+    else
+      expected_p_free += theta_rr_spde_lv.size() + 1;
+    if (N_eff != y.size() || N_eff <= 0 || X_mspl.rows() != N_eff ||
+        X_mspl.cols() < 1 || p_free != expected_p_free)
+      error("gllvmTMB_multi: invalid MSPL N_eff, p_free, or resolved fixed design");
+    int common_link = link_id_vec(0);
+    if (common_link < 0 || common_link > 2)
+      error("gllvmTMB_multi: MSPL link must be logit, probit, or cloglog");
+    for (int o = 0; o < y.size(); ++o) {
+      double yo = asDouble(y(o));
+      double no = asDouble(n_trials(o));
+      double wo = asDouble(weights_i(o));
+      double oo = asDouble(offset_vec(o));
+      if (is_y_observed(o) != 1 || family_id_vec(o) != 1 ||
+          link_id_vec(o) != common_link || no != 1.0 ||
+          (yo != 0.0 && yo != 1.0) || wo != 1.0 ||
+          !R_FINITE(oo) || oo != 0.0)
+        error("gllvmTMB_multi: MSPL requires complete unweighted single-trial Bernoulli rows with one common link and all-zero offsets");
+      for (int j = 0; j < X_mspl.cols(); ++j)
+        if (!R_FINITE(asDouble(X_mspl(o, j))))
+          error("gllvmTMB_multi: MSPL resolved fixed design must be finite");
+    }
+  }
 
   // -------- Fixed-effects part of the linear predictor ------------------
   vector<Type> eta_fix = X_fix * b_fix;
@@ -2116,20 +2355,28 @@ Type objective_function<Type>::operator()()
       // `cbind(successes, failures)` on the LHS of the formula. `y(o)` is
       // the success count; the parser ensures 0 <= y(o) <= n_trials(o).
       int lid = link_id_vec(o);
-      Type p;
-      if (lid == 0) {
-        p = Type(1.0) / (Type(1.0) + exp(-eta_o));
-      } else if (lid == 1) {
-        p = pnorm(eta_o);
-      } else if (lid == 2) {
-        p = Type(1.0) - exp(-exp(eta_o));
+      if (estimator_id != 0) {
+        ll += gll_mspl_bernoulli_loglik(y(o), eta_o, lid);
+        if (lid == 2) {
+          mspl_cloglog_likelihood_tail_extension_count += CppAD::CondExpGt(
+            eta_o, Type(690.0), Type(1.0), Type(0.0));
+        }
       } else {
-        error("gllvmTMB_multi: unknown link_id for binomial family");
+        Type p;
+        if (lid == 0) {
+          p = Type(1.0) / (Type(1.0) + exp(-eta_o));
+        } else if (lid == 1) {
+          p = pnorm(eta_o);
+        } else if (lid == 2) {
+          p = Type(1.0) - exp(-exp(eta_o));
+        } else {
+          error("gllvmTMB_multi: unknown link_id for binomial family");
+        }
+        // Numerical safety: clip away from 0/1 to prevent log(0).
+        Type tiny = Type(1e-12);
+        p = gll_clamp(p, tiny, Type(1.0) - tiny);
+        ll += dbinom(y(o), n_trials(o), p, true);
       }
-      // Numerical safety: clip away from 0/1 to prevent log(0).
-      Type tiny = Type(1e-12);
-      p = gll_clamp(p, tiny, Type(1.0) - tiny);
-      ll += dbinom(y(o), n_trials(o), p, true);
     } else if (fid == 2) {
       // Poisson, log link
       ll += dpois(y(o), exp(eta_o), true);
@@ -2781,6 +3028,103 @@ Type objective_function<Type>::operator()()
     REPORT(beta_mi);
     ADREPORT(beta_mi);
   }
+
+  // -------- Lane B Bernoulli LA-MSPL outer objective --------------------
+  // TMB adds the Laplace log determinant outside this joint template. These
+  // penalties contain outer parameters only, so adding them here leaves the
+  // conditional z_B mode and its random Hessian unchanged.
+  Type joint_nll_unpenalized = nll;
+  Type mspl_c_n = Type(0.0);
+  Type mspl_logdet_information = Type(0.0);
+  Type mspl_V_loading = Type(0.0);
+  Type mspl_V_covariance = Type(0.0);
+  Type mspl_jeffreys_nll = Type(0.0);
+  Type mspl_loading_nll = Type(0.0);
+  Type mspl_covariance_nll = Type(0.0);
+  Type mspl_private_ridge_nll = Type(0.0);
+  Type mspl_status = Type(0.0);       // 0 = ML/not requested, 1 = MSPL active
+  Type mspl_atom_status = Type(-1.0); // frozen V8Status; -1 = not requested
+  Type mspl_structure_id = Type(0.0); // 1 ordinary, 2 spatial_indep, 3 spatial_latent
+  Type mspl_log_range_ratio = Type(0.0);
+  vector<Type> mspl_log_sigma_spde_reference(n_traits);
+  mspl_log_sigma_spde_reference.setZero();
+  matrix<Type> mspl_Lambda_spde_reference(n_traits, std::max(spde_lv_k, 1));
+  mspl_Lambda_spde_reference.setZero();
+
+  if (estimator_id == 1) {
+    mspl_status = Type(1.0);
+    mspl_c_n = Type(2.0) * sqrt(Type(p_free) / Type(N_eff));
+    vector<Type> mspl_logw(N_eff);
+    int link_id = link_id_vec(0);
+    for (int o = 0; o < N_eff; ++o) {
+      Type eta_fixed_offset = eta_fix(o) + offset_vec(o);
+      mspl_logw(o) = gll_mspl_log_weight(eta_fixed_offset, link_id);
+      if (link_id == 2) {
+        mspl_cloglog_weight_tail_extension_count += CppAD::CondExpGt(
+          eta_fixed_offset, Type(690.0), Type(1.0), Type(0.0));
+      }
+    }
+    vector<Type> atom = gll_mspl_atomic_half_logdet(mspl_logw, X_mspl);
+    Type mspl_half_logdet_information = atom(0);
+    mspl_atom_status = atom(1);
+    mspl_logdet_information = Type(2.0) * mspl_half_logdet_information;
+    mspl_structure_id = Type(mspl_structure_id_int);
+    if (mspl_structure_id_int == 1) {
+      mspl_V_loading = gll_mspl_row_radial_penalty(Lambda_B, d_B);
+    } else {
+      Type half_log_4pi = Type(0.5) * log(Type(4.0) * M_PI);
+      mspl_log_range_ratio = Type(0.5) * log(Type(8.0)) -
+        log_kappa_spde - log(spde_r0);
+      mspl_V_covariance = gll_mspl_pseudohuber(mspl_log_range_ratio);
+      if (mspl_structure_id_int == 2) {
+        for (int t = 0; t < n_traits; ++t) {
+          mspl_log_sigma_spde_reference(t) = -half_log_4pi -
+            log_kappa_spde - log_tau_spde(t);
+        }
+        for (int j = 0; j < mspl_tau_representative.size(); ++j) {
+          int t = mspl_tau_representative(j);
+          mspl_V_covariance += gll_mspl_pseudohuber(
+            mspl_log_sigma_spde_reference(t));
+        }
+      } else {
+        Type loading_scale = exp(-half_log_4pi - log_kappa_spde);
+        for (int t = 0; t < n_traits; ++t)
+          for (int k = 0; k < spde_lv_k; ++k)
+            mspl_Lambda_spde_reference(t, k) =
+              loading_scale * Lambda_spde(t, k);
+        mspl_V_loading = gll_mspl_row_radial_penalty(
+          mspl_Lambda_spde_reference, spde_lv_k);
+      }
+    }
+    mspl_jeffreys_nll = -mspl_c_n * mspl_half_logdet_information;
+    mspl_loading_nll = mspl_c_n * mspl_V_loading;
+    mspl_covariance_nll = mspl_c_n * mspl_V_covariance;
+    nll += mspl_jeffreys_nll + mspl_loading_nll + mspl_covariance_nll;
+  }
+  Type joint_nll_penalized = nll;
+  Type mspl_cloglog_tail_extension_count =
+    mspl_cloglog_likelihood_tail_extension_count +
+    mspl_cloglog_weight_tail_extension_count;
+
+  REPORT(joint_nll_unpenalized);
+  REPORT(joint_nll_penalized);
+  REPORT(mspl_c_n);
+  REPORT(mspl_logdet_information);
+  REPORT(mspl_V_loading);
+  REPORT(mspl_V_covariance);
+  REPORT(mspl_jeffreys_nll);
+  REPORT(mspl_loading_nll);
+  REPORT(mspl_covariance_nll);
+  REPORT(mspl_private_ridge_nll);
+  REPORT(mspl_cloglog_tail_extension_count);
+  REPORT(mspl_cloglog_likelihood_tail_extension_count);
+  REPORT(mspl_cloglog_weight_tail_extension_count);
+  REPORT(mspl_status);
+  REPORT(mspl_atom_status);
+  REPORT(mspl_structure_id);
+  REPORT(mspl_log_range_ratio);
+  REPORT(mspl_log_sigma_spde_reference);
+  REPORT(mspl_Lambda_spde_reference);
 
   ADREPORT(b_fix);
   REPORT(eta);

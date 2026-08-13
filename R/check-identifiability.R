@@ -113,6 +113,7 @@ check_identifiability <- function(
   if (!inherits(fit, "gllvmTMB_multi")) {
     cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
   }
+  .gllvmTMB_mspl_assert_inference(fit, "check_identifiability")
   sim_reps <- as.integer(sim_reps)
   if (length(sim_reps) != 1L || is.na(sim_reps) || sim_reps < 2L) {
     cli::cli_abort("{.arg sim_reps} must be an integer >= 2.")

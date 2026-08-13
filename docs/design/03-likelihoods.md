@@ -658,6 +658,21 @@ the multi-trait case):
 
 ## Cross-references
 
+### Opt-in binary LA-MSPL objective
+
+`estimator = "mspl"` changes the outer objective, not the response family or
+the default estimator. On the admitted complete-Bernoulli Laplace surface, the
+template evaluates stable unclipped logit/probit/cloglog log-pmfs and adds the
+fixed-design Jeffreys, radial loading, and structure-specific covariance
+penalties defined in `docs/design/88-binary-mspl-estimator.md`. The ordinary ML
+branch remains on its historical arithmetic and never calls the guarded
+information atom. The template reports penalised and unpenalised components
+separately; R verifies them against a second penalty-off Laplace tape at the
+selected MSPL point.
+
+This is point estimation only. The penalty-off value is not `logLik()`, and no
+AIC/BIC/LRT or interval route is licensed by a finite penalised Hessian.
+
 - `docs/design/00-vision.md` — package vision; item 5 names
   latent-scale correlations across non-delta families.
 - `docs/design/01-formula-grammar.md` — formula contract +

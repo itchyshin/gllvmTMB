@@ -82,6 +82,13 @@
   if (!any(is_fit)) {
     return(invisible(NULL))
   }
+  if (any(vapply(objs[is_fit], .gllvmTMB_is_mspl, logical(1L)))) {
+    cli::cli_abort(c(
+      "{fn_label}() is not defined for an {.code estimator = \"mspl\"} fit.",
+      "i" = "The stored log-likelihood is evaluated at a softly penalised point, not at its own maximum, and an effective degrees-of-freedom correction has not been derived.",
+      ">" = "Use the same estimator's prespecified point-estimation and predictive validation metrics instead."
+    ), class = "gllvmTMB_mspl_model_comparison_unsupported")
+  }
   pen <- vapply(objs[is_fit], function(f) {
     tau <- f$aghq$ridge_tau
     isTRUE(f$aghq$penalised) ||
@@ -189,6 +196,18 @@ BIC.gllvmTMB_multi <- function(object, ...) {
   NextMethod()
 }
 
+anova.gllvmTMB_multi <- function(object, ...) {
+  objs <- c(list(object), list(...))
+  is_fit <- vapply(objs, inherits, logical(1L), what = "gllvmTMB_multi")
+  if (any(is_fit) && any(vapply(objs[is_fit], .gllvmTMB_is_mspl, logical(1L)))) {
+    cli::cli_abort(c(
+      "{.fn anova} and likelihood-ratio tests are not defined for LA-MSPL fits.",
+      "i" = "LA-MSPL is a softly penalised point estimator, not a maximised ordinary likelihood."
+    ), class = "gllvmTMB_mspl_model_comparison_unsupported")
+  }
+  NextMethod()
+}
+
 ## VERIFIED (see this slice's report): an unexported `AIC.gllvmTMB_multi` is
 ## NOT enough for `AIC(fit)` to reach it. `AIC`/`BIC` are generics owned by
 ## `stats`, not `gllvmTMB`; `UseMethod("AIC")` inside `stats::AIC` resolves
@@ -228,6 +247,10 @@ BIC.gllvmTMB_multi <- function(object, ...) {
   )
   registerS3method(
     "BIC", "gllvmTMB_multi", BIC.gllvmTMB_multi,
+    envir = asNamespace("stats")
+  )
+  registerS3method(
+    "anova", "gllvmTMB_multi", anova.gllvmTMB_multi,
     envir = asNamespace("stats")
   )
 }

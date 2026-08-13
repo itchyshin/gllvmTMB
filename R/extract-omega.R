@@ -429,6 +429,9 @@ extract_phylo_signal <- function(
   if (!inherits(fit, "gllvmTMB_multi")) {
     cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
   }
+  if (isTRUE(ci)) {
+    .gllvmTMB_mspl_assert_inference(fit, "extract_phylo_signal(ci = TRUE)")
+  }
   method <- match.arg(method)
   if (isTRUE(ci)) {
     .gllvmTMB_require_unweighted_inference(

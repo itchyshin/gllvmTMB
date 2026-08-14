@@ -113,3 +113,10 @@ Numerical admission alone does not authorise
 recovery, maps, empirical data, or public claims. A clean BFGS non-admission
 opens the separately designed trust-region Newton lane; it does not authorise
 control tuning.
+
+The first Paper 2 provenance packet, `BFGS_P2_S6_C360_R3_V1`, was consumed as
+`INVALID_PROVENANCE` before fitting because it retained pkgload's
+process-temporary DLL path. The single permitted infrastructure repair uses
+the V2 source-gate roots and retains the stable package-source DLL path only
+after proving its content hash equals the DLL actually loaded in that process.
+V1 remains immutable and is not algorithm evidence.

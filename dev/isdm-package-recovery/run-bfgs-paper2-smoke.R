@@ -16,9 +16,9 @@ if (!paper %in% c("paper1", "paper2")) {
   stop("invalid private BFGS paper route", call. = FALSE)
 }
 source_gate <- if (identical(paper, "paper1")) {
-  "BFGS_P1_S3_C360_R3_V1"
+  "BFGS_P1_S3_C360_R3_V2"
 } else {
-  "BFGS_P2_S6_C360_R3_V1"
+  "BFGS_P2_S6_C360_R3_V2"
 }
 if (!mode %in% c("validate", "preflight", "smoke") || is.null(root_arg)) {
   stop("require --mode=validate|preflight|smoke and --output=PATH", call. = FALSE)
@@ -89,7 +89,14 @@ loaded_dll <- function() {
   ))
   paths <- paths[file.exists(paths)]
   if (length(paths) != 1L) stop("require exactly one loaded gllvmTMB DLL", call. = FALSE)
-  list(path = paths[[1L]], md5 = hash_file(paths[[1L]]))
+  source_path <- normalizePath(file.path(pkg, "src", "gllvmTMB.so"),
+    mustWork = TRUE)
+  loaded_md5 <- hash_file(paths[[1L]])
+  source_md5 <- hash_file(source_path)
+  if (!identical(loaded_md5, source_md5)) {
+    stop("loaded DLL content does not match the sealed source DLL", call. = FALSE)
+  }
+  list(path = source_path, loaded_path = paths[[1L]], md5 = source_md5)
 }
 make <- function() {
   suppressMessages(devtools::load_all(pkg, quiet = TRUE))
@@ -310,7 +317,7 @@ parent <- normalizePath(
   file.path(pkg, "dev", "isdm-package-recovery", "results"), mustWork = FALSE
 )
 paper2_ledger_path <- file.path(
-  parent, "BFGS_P2_S6_C360_R3_V1", "all-attempt-ledger.rds"
+  parent, "BFGS_P2_S6_C360_R3_V2", "all-attempt-ledger.rds"
 )
 expected_root <- normalizePath(file.path(parent, source_gate), mustWork = FALSE)
 if (!identical(root, expected_root)) {

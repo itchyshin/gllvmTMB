@@ -185,7 +185,7 @@ bfgs_smoke_validate_paper2_prerequisite <- function(path, commit, expected) {
   ledger <- tryCatch(readRDS(path), error = function(e) NULL)
   md5 <- unname(tools::md5sum(path))[[1L]]
   verdict <- bfgs_smoke_validate_terminal_ledger(
-    ledger, "BFGS_P2_S6_C360_R3_V1", commit
+    ledger, "BFGS_P2_S6_C360_R3_V2", commit
   )
   if (!verdict$valid) {
     return(list(
@@ -197,8 +197,8 @@ bfgs_smoke_validate_paper2_prerequisite <- function(path, commit, expected) {
   receipt <- tryCatch(readRDS(receipt_path), error = function(e) NULL)
   receipt_verdict <- bfgs_smoke_validate_receipt(receipt, receipt)
   receipt_constants <- is.list(receipt) &&
-    identical(receipt$schema, "BFGS_P2_S6_C360_R3_V1_PREFLIGHT_V1") &&
-    identical(receipt$source_gate, "BFGS_P2_S6_C360_R3_V1") &&
+    identical(receipt$schema, "BFGS_P2_S6_C360_R3_V2_PREFLIGHT_V1") &&
+    identical(receipt$source_gate, "BFGS_P2_S6_C360_R3_V2") &&
     identical(receipt$root, root) &&
     identical(receipt$commit, commit) && identical(receipt$seed, 86302L) &&
     identical(receipt$dimensions, c(S = 6L, C = 360L, r = 3L, b = 1L, d = 1L)) &&

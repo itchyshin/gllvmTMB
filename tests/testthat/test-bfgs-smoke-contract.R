@@ -9,9 +9,9 @@ bfgs_contract_env <- function() {
 bfgs_receipt_fixture <- function(paper1 = FALSE) {
   hash <- function(letter) paste(rep(letter, 32L), collapse = "")
   ans <- list(
-    schema = "BFGS_P2_S6_C360_R3_V1_PREFLIGHT_V1",
-    source_gate = "BFGS_P2_S6_C360_R3_V1",
-    root = "/sealed/results/BFGS_P2_S6_C360_R3_V1",
+    schema = "BFGS_P2_S6_C360_R3_V2_PREFLIGHT_V1",
+    source_gate = "BFGS_P2_S6_C360_R3_V2",
+    root = "/sealed/results/BFGS_P2_S6_C360_R3_V2",
     commit = paste(rep("a", 40L), collapse = ""), seed = 86302L,
     dimensions = c(S = 6L, C = 360L, r = 3L, b = 1L, d = 1L),
     n_rows = 8640L,
@@ -26,9 +26,9 @@ bfgs_receipt_fixture <- function(paper1 = FALSE) {
     paper2_terminal_status = NA_character_, paper2_terminal_md5 = NA_character_
   )
   if (paper1) {
-    ans$schema <- "BFGS_P1_S3_C360_R3_V1_PREFLIGHT_V1"
-    ans$source_gate <- "BFGS_P1_S3_C360_R3_V1"
-    ans$root <- "/sealed/results/BFGS_P1_S3_C360_R3_V1"
+    ans$schema <- "BFGS_P1_S3_C360_R3_V2_PREFLIGHT_V1"
+    ans$source_gate <- "BFGS_P1_S3_C360_R3_V2"
+    ans$root <- "/sealed/results/BFGS_P1_S3_C360_R3_V2"
     ans$seed <- 86301L
     ans$dimensions <- c(S = 3L, C = 360L, r = 3L, b = 1L, d = 1L)
     ans$n_rows <- 4320L
@@ -40,7 +40,7 @@ bfgs_receipt_fixture <- function(paper1 = FALSE) {
 
 bfgs_terminal_ledger_fixture <- function(
     status = "BFGS_NUMERICAL_ADMISSION",
-    source_gate = "BFGS_P2_S6_C360_R3_V1",
+    source_gate = "BFGS_P2_S6_C360_R3_V2",
     commit = paste(rep("a", 40L), collapse = "")) {
   list(
     schema = paste0(source_gate, "_ALL_ATTEMPT_V1"), status = status,
@@ -167,23 +167,23 @@ test_that("terminal ledger taxonomy is exact and infrastructure is not optimizer
   for (status in statuses) {
     verdict <- contract$bfgs_smoke_validate_terminal_ledger(
       bfgs_terminal_ledger_fixture(status = status),
-      "BFGS_P2_S6_C360_R3_V1", commit
+      "BFGS_P2_S6_C360_R3_V2", commit
     )
     expect_true(verdict$valid, info = status)
   }
   expect_false(contract$bfgs_smoke_validate_terminal_ledger(
     bfgs_terminal_ledger_fixture(status = "ATTEMPT_STARTED"),
-    "BFGS_P2_S6_C360_R3_V1", commit
+    "BFGS_P2_S6_C360_R3_V2", commit
   )$valid)
   nonterminal <- bfgs_terminal_ledger_fixture()
   nonterminal$terminal <- FALSE
   expect_false(contract$bfgs_smoke_validate_terminal_ledger(
-    nonterminal, "BFGS_P2_S6_C360_R3_V1", commit
+    nonterminal, "BFGS_P2_S6_C360_R3_V2", commit
   )$valid)
   wrong_commit <- bfgs_terminal_ledger_fixture()
   wrong_commit$receipt$commit <- strrep("b", 40L)
   expect_false(contract$bfgs_smoke_validate_terminal_ledger(
-    wrong_commit, "BFGS_P2_S6_C360_R3_V1", commit
+    wrong_commit, "BFGS_P2_S6_C360_R3_V2", commit
   )$valid)
 })
 
@@ -220,7 +220,7 @@ test_that("Paper 1 accepts only a full manifested Paper 2 algorithm attempt", {
   par <- c(beta = 0)
   labels <- names(par)
   ids <- paste0(labels, "[", seq_along(par), "]")
-  signature <- list(source_gate = "BFGS_P2_S6_C360_R3_V1")
+  signature <- list(source_gate = "BFGS_P2_S6_C360_R3_V2")
   continuation <- list(
     warm_restart_provenance = list(attempted = FALSE),
     isdm_polish_provenance = list(attempted = FALSE),
@@ -247,7 +247,7 @@ test_that("Paper 1 accepts only a full manifested Paper 2 algorithm attempt", {
   )
   covariance <- matrix(1)
   ledger <- list(
-    schema = "BFGS_P2_S6_C360_R3_V1_ALL_ATTEMPT_V1",
+    schema = "BFGS_P2_S6_C360_R3_V2_ALL_ATTEMPT_V1",
     status = "BFGS_NUMERICAL_ADMISSION", terminal = TRUE,
     receipt = receipt, signature = signature,
     raw = list(parameter_vector = par), continuation_source = continuation,
@@ -327,11 +327,11 @@ test_that("Paper BFGS runners execute their validation modes without a fit", {
     stdout = TRUE)[[1L]]
   cases <- list(
     paper2 = list(
-      runner = "run-bfgs-paper2-smoke.R", gate = "BFGS_P2_S6_C360_R3_V1",
+      runner = "run-bfgs-paper2-smoke.R", gate = "BFGS_P2_S6_C360_R3_V2",
       marker = "BFGS_P2_RUNNER_VALIDATION_PASS (no fit)"
     ),
     paper1 = list(
-      runner = "run-bfgs-paper1-smoke.R", gate = "BFGS_P1_S3_C360_R3_V1",
+      runner = "run-bfgs-paper1-smoke.R", gate = "BFGS_P1_S3_C360_R3_V2",
       marker = "BFGS_P1_RUNNER_VALIDATION_PASS (no fit)"
     )
   )

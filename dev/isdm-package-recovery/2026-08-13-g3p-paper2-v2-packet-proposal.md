@@ -14,8 +14,9 @@ runner mode.
 
 The V2 invocation must bind its own packet MD5 (the supplied packet path is
 diagnostic), source-gate label,
-all-attempt schema, `--root-id G3P_P2_S6_C360_R3_V2`, root name, and time
-estimate. It must not accept V1's packet or root. The runner implementation and focused no-fit tests are built
+all-attempt schema, `--root-id G3P_P2_S6_C360_R3_V2`, root name, and explicit
+time-estimate/time-limit arguments. It must not accept V1's packet or root.
+The runner implementation and focused no-fit tests are built
 and independently reviewed before a V2 packet binds their exact commit SHA.
 The V1 historical root remains terminal `INVALID_PROVENANCE` and immutable.
 

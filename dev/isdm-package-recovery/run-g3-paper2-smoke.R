@@ -7,6 +7,7 @@ value <- function(name, default = NULL) {
   hit <- grep(paste0("^--", name, "="), args, value = TRUE)
   if (!length(hit)) default else sub(paste0("^--", name, "="), "", hit[[1L]])
 }
+supplied <- function(name) any(grepl(paste0("^--", name, "="), args))
 mode <- value("mode", "validate")
 root_arg <- value("output")
 pkg <- normalizePath(value("pkg", getwd()), mustWork = TRUE)
@@ -36,11 +37,11 @@ if (!identical(source_gate, "G3_P2_S6_C360_R3_V1") &&
     (is.null(packet_arg) ||
       identical(basename(packet_file), basename(packet_default)) ||
       identical(root_id, "G3_P2_S6_C360_R3_V1") ||
-      identical(attempt_id, "paper2-g3-smoke-86302") ||
-      identical(time_estimate, "15-25 minutes") ||
-      identical(time_limit_arg, "1500"))) {
+      !supplied("attempt-id") ||
+      !supplied("time-estimate") ||
+      !supplied("time-limit-s"))) {
   stop(
-    "A non-V1 source gate requires explicit packet, root, attempt, and time values distinct from V1.",
+    "A non-V1 source gate requires an explicit packet, root, attempt, and time values.",
     call. = FALSE
   )
 }

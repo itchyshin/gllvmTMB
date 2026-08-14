@@ -49139,3 +49139,38 @@ unchecked dirty old-base experimental PR, and #953 as an open planning issue.
 The historical 49-issue count is not represented as current external state.
 Any future installed-package diff from `cb312689` invalidates the exact
 artifact/platform receipt and needs a new ladder.
+
+---
+
+## 2026-08-13 — refreshed 0.7 integration intake (Codex)
+
+The original #956 intake was rebased from its historical `cb312689` base onto
+live `origin/main` `2942b6547ecdda7b6993cdcc49a35d6a4db27db2`.  Direct
+installed-path comparison showed that the exact 0.6 artifact receipt does not
+apply to this source: current main differs in `DESCRIPTION`, `R`, `src`,
+`inst`, `man`, `tests`, `vignettes`, and `.Rbuildignore`, including the
+installed LA-MSPL integration commit `14650312`.
+
+The refreshed decision packet therefore records **HOLD — no current 0.7 source
+candidate is eligible**.  It retains ordinary native-Laplace Gaussian
+`indep()`/`dep()` point estimation as the covered scientific core, keeps AA-03,
+#872, #855, #897, #946, #945, #941/#943, VA, AGHQ, EVA, structured tiers, and
+intervals fenced at their earned scope, and requests a maintainer decision to
+prepare an ordinary native-Laplace-only source line that quarantines LA-MSPL.
+No package code, public prose, release identity, artifact, CI, issue state, or
+compute changed.
+
+Commands/evidence included `git fetch origin --prune`, `git rebase origin/main`,
+live `gh issue view 345`, open-PR inspection (#955--#960),
+`git diff --name-only cb312689..origin/main -- DESCRIPTION NAMESPACE R src inst man vignettes tests .Rbuildignore`,
+and reads of the 0.6 receipt, release ledger, validation register, and #872
+after-task receipt.  No package tests were run because no package-bearing path
+changed; `git diff --check` is required before commit.
+
+Rose's independent boundary review passed the HOLD and established that a
+hypothetical LA-MSPL quarantine would need a pre-LA-MSPL source or removal of
+its installed runtime/compiled contract; default-off would not suffice.  The
+maintainer selected the alternative: retain LA-MSPL as a strategically important
+opt-in, separately adjudicated lane.  The packet now keeps the fixed-design
+separation screen as its own bounded diagnostic and separates both routes from
+the ordinary native-Laplace release claim.

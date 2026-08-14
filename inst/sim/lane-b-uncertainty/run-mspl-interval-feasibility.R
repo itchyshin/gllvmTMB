@@ -332,9 +332,10 @@ if (identical(command, "prepare")) {
     file.path(root, "manifest.csv"), stringsAsFactors = FALSE
   )
   cluster <- arg_value("--cluster", "local")
-  if (any(manifest$n_bootstrap != 1L) || any(manifest$n_shards != 1L) ||
-      any(manifest$assigned_cluster != cluster)) {
-    stop("smoke requires a 12-case, one-replicate manifest assigned to one cluster.")
+  manifest <- manifest[manifest$assigned_cluster == cluster, , drop = FALSE]
+  if (!nrow(manifest) || any(manifest$n_bootstrap != 1L) ||
+      any(manifest$n_shards != 1L)) {
+    stop("smoke requires one-replicate cases assigned to the requested cluster.")
   }
   fingerprint <- runtime_fingerprint()
   for (i in seq_len(nrow(manifest))) {

@@ -65,3 +65,14 @@ test_that("G3P runner applies the receipt contract before optimizer entry", {
   expect_match(text, "provenance <- g3p_compare_identity\\(receipt, observed_identity\\)")
   expect_match(text, "ledger\\$provenance <- provenance")
 })
+
+test_that("G3P runner requires explicit packet and source-gate binding for V2", {
+  path <- testthat::test_path("..", "..", "dev", "isdm-package-recovery", "run-g3-paper2-smoke.R")
+  text <- paste(readLines(path, warn = FALSE), collapse = "\n")
+  expect_match(text, 'packet_arg <- value\\("packet"\\)')
+  expect_match(text, 'source_gate <- value\\("source-gate"')
+  expect_match(text, 'root_id <- value\\("root-id"')
+  expect_match(text, 'schema = paste0\\(source_gate')
+  expect_match(text, 'source_gate = source_gate')
+  expect_match(text, "A non-V1 source gate requires explicit --packet and --root-id")
+})

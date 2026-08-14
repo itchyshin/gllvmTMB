@@ -11,6 +11,10 @@ mode <- value("mode", "validate")
 root_arg <- value("output")
 pkg <- normalizePath(value("pkg", getwd()), mustWork = TRUE)
 campaign_sha <- value("campaign-sha")
+packet_arg <- value("packet")
+source_gate <- value("source-gate", "G3_P2_S6_C360_R3_V1")
+attempt_id <- value("attempt-id", "paper2-g3-smoke-86302")
+root_id <- value("root-id", "G3_P2_S6_C360_R3_V1")
 if (!mode %in% c("validate", "preflight", "smoke") || is.null(root_arg)) {
   stop("require --mode=validate|preflight|smoke and --output=PATH", call. = FALSE)
 }
@@ -21,7 +25,20 @@ script <- normalizePath(
 )
 base <- dirname(script)
 fixture_file <- file.path(base, "g2h-360cell-fixture.R")
-packet_file <- file.path(base, "2026-08-13-g3-paper2-smallest-smoke-packet.md")
+packet_default <- file.path(base, "2026-08-13-g3-paper2-smallest-smoke-packet.md")
+packet_file <- normalizePath(
+  if (is.null(packet_arg)) packet_default else packet_arg,
+  mustWork = TRUE
+)
+if (!identical(source_gate, "G3_P2_S6_C360_R3_V1") &&
+    (is.null(packet_arg) ||
+      identical(basename(packet_file), basename(packet_default)) ||
+      identical(root_id, "G3_P2_S6_C360_R3_V1"))) {
+  stop(
+    "A non-V1 source gate requires explicit --packet and --root-id values distinct from V1.",
+    call. = FALSE
+  )
+}
 provenance_contract <- file.path(base, "g3p-provenance-contract.R")
 source(fixture_file, local = TRUE)
 source(provenance_contract, local = TRUE)
@@ -80,6 +97,9 @@ coordinate_ids <- function(par) {
   paste0(labels, "[", seq_along(par), "]")
 }
 root <- normalizePath(if (grepl("^/", root_arg)) root_arg else file.path(getwd(), root_arg), mustWork = FALSE)
+if (!identical(basename(root), root_id)) {
+  stop("The output root basename must match --root-id.", call. = FALSE)
+}
 parent <- normalizePath(file.path(pkg, "dev", "isdm-package-recovery", "results"), mustWork = FALSE)
 if (!startsWith(root, paste0(parent, "/")) || !identical(campaign_sha, commit())) {
   stop("private result root and exact --campaign-sha are required", call. = FALSE)
@@ -98,7 +118,7 @@ if (identical(mode, "preflight")) {
   dir.create(root, recursive = TRUE, showWarnings = FALSE)
   z <- make()
   receipt <- list(
-    schema = "G3_P2_SMOKE_PREFLIGHT_V1", packet = basename(packet_file), commit = commit(),
+    schema = paste0(source_gate, "_PREFLIGHT_V1"), packet = basename(packet_file), commit = commit(),
     seed = 86302L, dimensions = c(S = 6L, C = 360L, r = 3L, b = 1L, d = 1L),
     runner_md5 = hash_file(script), fixture_md5 = hash_file(fixture_file), packet_md5 = hash_file(packet_file),
     source_md5 = c(fit_multi = hash_file(file.path(pkg, "R", "fit-multi.R")),
@@ -125,7 +145,7 @@ if (!dir.exists(root) || !all(file.exists(file.path(root, needed))) || file.exis
 
 main <- function() {
   ledger <- list(
-    schema = "G3_P2_SMOKE_ALL_ATTEMPT_V1", attempt_id = "paper2-g3-smoke-86302",
+    schema = paste0(source_gate, "_ALL_ATTEMPT_V1"), attempt_id = attempt_id,
     status = "ATTEMPT_STARTED", terminal = FALSE, receipt = NULL, signature = NULL,
     raw_starts = list(n_init = 1L, init_jitter = 0), selected = NA_integer_, raw = NULL,
     g3 = NULL, warnings = character(), error = NA_character_,
@@ -220,7 +240,7 @@ main <- function() {
       map = hash_object(fit$tmb_map), data = hash_object(fit$tmb_data), random = hash_object(fit$random),
       bounds = hash_object(list(lower = rep(-Inf, length(par)), upper = rep(Inf, length(par)))), scale = "frozen_P2",
       controls = "nlminb_ninit1_aghqFALSE", starts = "n_init1_init_jitter0", selection = "only_start",
-      source_gate = "G3_P2_S6_C360_R3_V1"
+      source_gate = source_gate
     )
     ledger$signature <- signature
     raw <- list(
@@ -250,7 +270,7 @@ main <- function() {
     raw_state <- list(
       optimizer = "nlminb", convergence = raw$convergence, pd_hessian = raw$pd_hessian,
       boundary_flags = raw$boundary_flags, tie_count = raw$tie_count, is_isdm = TRUE, aghq = FALSE,
-      ridge = FALSE, retry_enabled = FALSE, profile_enabled = FALSE, source_gate = "G3_P2_S6_C360_R3_V1"
+      ridge = FALSE, retry_enabled = FALSE, profile_enabled = FALSE, source_gate = source_gate
     )
     ledger$g3 <- .gllvmTMB_isdm_g3_full_vector_trials(fit$tmb_obj, par, raw$lower, raw$upper, signature, raw_state)
     ledger$status <- if (identical(ledger$g3$status, "TRIALS_EVALUATED") &&

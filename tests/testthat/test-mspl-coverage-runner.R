@@ -33,9 +33,10 @@ write_synthetic_shards <- function(root, manifest, retained_failure = FALSE) {
     boot$objective <- 1
     boot$estimator_id <- 1L
     boot$unconditional_redraw <- TRUE
-    boot$b_fix_1 <- -0.5 + case$beta_shift + ifelse(boot$attempt_id == 1L, -0.5, 0.5)
-    boot$b_fix_2 <- 0.1 + case$beta_shift + ifelse(boot$attempt_id == 1L, -0.5, 0.5)
-    boot$b_fix_3 <- 0.55 + case$beta_shift + ifelse(boot$attempt_id == 1L, -0.5, 0.5)
+    lower_half <- boot$attempt_id <= floor(case$bootstrap_reps / 2L)
+    boot$b_fix_1 <- -0.5 + case$beta_shift + ifelse(lower_half, -0.5, 0.5)
+    boot$b_fix_2 <- 0.1 + case$beta_shift + ifelse(lower_half, -0.5, 0.5)
+    boot$b_fix_3 <- 0.55 + case$beta_shift + ifelse(lower_half, -0.5, 0.5)
     boot$elapsed_seconds <- 0.01
     boot$message <- ""
     boot$objective_role <- "penalised_bootstrap_refit_estimator_id_1"
@@ -167,6 +168,23 @@ test_that("Gate 0 coverage runner freezes the approved private contract", {
   expect_false(grepl("confint\\(", runner))
 })
 
+test_that("Manifest identities use the shell-safe label grammar", {
+  runner_env <- new.env(parent = globalenv())
+  withr::local_envvar(MSPL_COVERAGE_SOURCE_ONLY = "true")
+  sys.source(runner_path, envir = runner_env)
+  expect_silent(runner_env$manifest_table(campaign_id = "campaign-1_safe.v2", source_sha = "abc123"))
+  for (invalid in c("comma,value", "quoted\"value", "line\nvalue")) {
+    expect_error(
+      runner_env$manifest_table(campaign_id = invalid, source_sha = "abc123"),
+      "safe label"
+    )
+    expect_error(
+      runner_env$manifest_table(campaign_id = "campaign", source_sha = invalid),
+      "safe label"
+    )
+  }
+})
+
 test_that("Gate 0 seeds are disjoint at frozen boundary keys", {
   runner_env <- new.env(parent = globalenv())
   withr::local_envvar(MSPL_COVERAGE_SOURCE_ONLY = "true")
@@ -250,13 +268,28 @@ test_that("Gate 0 keeps production manifest settings frozen", {
     "--source-sha", "sha"
   )))
   production <- utils::read.csv(file.path(root, "manifest.csv"), stringsAsFactors = FALSE)
+  full <- utils::read.delim(file.path(root, "array-map.tsv"), check.names = FALSE)
   pre_run <- utils::read.delim(file.path(root, "pre-run-array-map.tsv"), check.names = FALSE)
+  remaining <- utils::read.delim(
+    file.path(root, "remaining-production-array-map.tsv"), check.names = FALSE
+  )
   expect_true(all(production$n_outer == 1000L & production$bootstrap_reps == 500L &
     production$outer_per_shard == 10L & production$minimum_usable_bootstrap == 475L))
+  expect_identical(names(full), c("array_index", "case_id", "shard_id"))
+  expect_identical(full$array_index, seq_len(1200L))
+  expect_equal(nrow(full), 1200L)
   expect_identical(names(pre_run), c("array_index", "case_id", "shard_id"))
   expect_identical(pre_run$array_index, 1:12)
   expect_identical(pre_run$case_id, production$case_id)
   expect_identical(pre_run$shard_id, rep(1L, 12L))
+  expect_identical(names(remaining), c("array_index", "case_id", "shard_id"))
+  expect_identical(remaining$array_index, seq_len(1188L))
+  expect_equal(nrow(remaining), 1188L)
+  expect_identical(remaining$case_id, rep(production$case_id, each = 99L))
+  expect_identical(remaining$shard_id, rep(2:100, times = 12L))
+  map_key <- function(x) paste(x$case_id, x$shard_id, sep = "\r")
+  expect_length(intersect(map_key(pre_run), map_key(remaining)), 0L)
+  expect_setequal(c(map_key(pre_run), map_key(remaining)), map_key(full))
 
   runner_env <- new.env(parent = globalenv())
   withr::local_envvar(MSPL_COVERAGE_SOURCE_ONLY = "true")
@@ -267,6 +300,116 @@ test_that("Gate 0 keeps production manifest settings frozen", {
     runner_env$write_manifest(tempfile("tampered-production-"), tampered),
     "Production manifest cardinalities"
   )
+  collision <- remaining
+  collision[1L, c("case_id", "shard_id")] <- pre_run[1L, c("case_id", "shard_id")]
+  expect_error(
+    runner_env$validate_campaign_array_maps(production, full, pre_run, collision),
+    "unique and disjoint"
+  )
+  wrong_order <- remaining[c(2L, 1L, seq.int(3L, nrow(remaining))), , drop = FALSE]
+  expect_error(
+    runner_env$validate_campaign_array_maps(production, full, pre_run, wrong_order),
+    "exact frozen keys, order, and cardinality"
+  )
+})
+
+test_that("Gate4 pre-run aggregation accepts only the exact production pre-run receipt", {
+  root <- tempfile("mspl-coverage-gate4-prerun-")
+  on.exit(unlink(root, recursive = TRUE, force = TRUE), add = TRUE)
+  run_coverage_cli(c(
+    "manifest", "--root", root, "--campaign-id", "gate4-prerun",
+    "--source-sha", "gate4-source-sha"
+  ))
+  manifest_path <- file.path(root, "manifest.csv")
+  manifest <- utils::read.csv(manifest_path, stringsAsFactors = FALSE)
+  gate4_manifest <- manifest
+  gate4_manifest$n_outer <- 10L
+  gate4_manifest$n_shards <- 1L
+  write_synthetic_shards(root, gate4_manifest)
+
+  expect_silent(run_coverage_cli(c("aggregate-prerun", "--root", root)))
+  receipt_path <- file.path(root, "gate4-prerun-receipt.txt")
+  receipt <- readLines(receipt_path, warn = FALSE)
+  expect_false(file.exists(file.path(root, "receipt.txt")))
+  expect_true(any(receipt == "manifest_mode: prerun"))
+  expect_true(any(receipt == "receipt_type: gate4-production-prerun-v1"))
+  expect_true(any(receipt == "gate4_contract: exact"))
+  expect_true(any(receipt == "campaign_id: gate4-prerun"))
+  expect_true(any(receipt == "source_sha: gate4-source-sha"))
+  expect_true(any(receipt == paste(
+    "manifest_version:", "lane-b-mspl-coverage-gate0-v1-2026-08-14"
+  )))
+  expect_true(any(receipt == paste("manifest_md5:", unname(tools::md5sum(manifest_path)))))
+  expect_true(any(receipt == "launcher_unlock_eligible: FALSE"))
+  expect_true(any(receipt == "case_count: 12"))
+  expect_true(any(receipt == "shard_count: 12"))
+  expect_true(any(receipt == "outer_per_case: 10"))
+  expect_true(any(receipt == "bootstrap_reps: 500"))
+  expect_true(any(receipt == "calibration_gate_eligible: FALSE"))
+  expect_true(any(receipt == "outer_fit_rows: 120"))
+  expect_true(any(receipt == "bootstrap_attempt_rows: 60000"))
+  expect_true(any(receipt == "endpoint_rows: 1080"))
+  expect_silent(run_coverage_cli(c("aggregate-prerun", "--root", root)))
+  expect_identical(readLines(receipt_path, warn = FALSE), receipt)
+
+  output <- run_coverage_cli(c("aggregate", "--root", root), error_on_status = FALSE)
+  expect_identical(attr(output, "status"), 1L)
+  expect_match(paste(output, collapse = "\n"), "Compressed shard set")
+  expect_identical(readLines(receipt_path, warn = FALSE), receipt)
+
+  shard_path <- file.path(root, "shards", "C001-shard-001.rds")
+  pristine_shard <- readRDS(shard_path)
+  duplicate <- pristine_shard
+  duplicate$bootstrap_attempts <- rbind(
+    duplicate$bootstrap_attempts,
+    duplicate$bootstrap_attempts[1L, , drop = FALSE]
+  )
+  saveRDS(duplicate, shard_path, compress = "gzip")
+  output <- run_coverage_cli(c("aggregate-prerun", "--root", root), error_on_status = FALSE)
+  expect_identical(attr(output, "status"), 1L)
+  expect_match(paste(output, collapse = "\n"), "Bootstrap attempt keys")
+
+  saveRDS(pristine_shard, shard_path, compress = "gzip")
+  unlink(shard_path)
+  output <- run_coverage_cli(c("aggregate-prerun", "--root", root), error_on_status = FALSE)
+  expect_identical(attr(output, "status"), 1L)
+  expect_match(paste(output, collapse = "\n"), "Compressed shard set")
+
+  saveRDS(pristine_shard, shard_path, compress = "gzip")
+  wrong_sha <- pristine_shard
+  wrong_sha$endpoints$source_sha[[1L]] <- "wrong-source-sha"
+  saveRDS(wrong_sha, shard_path, compress = "gzip")
+  output <- run_coverage_cli(c("aggregate-prerun", "--root", root), error_on_status = FALSE)
+  expect_identical(attr(output, "status"), 1L)
+  expect_match(paste(output, collapse = "\n"), "source SHA")
+  expect_identical(readLines(receipt_path, warn = FALSE), receipt)
+
+  saveRDS(pristine_shard, shard_path, compress = "gzip")
+  wrong_campaign <- pristine_shard
+  wrong_campaign$outer_fits$campaign_id[[1L]] <- "wrong-campaign"
+  saveRDS(wrong_campaign, shard_path, compress = "gzip")
+  output <- run_coverage_cli(c("aggregate-prerun", "--root", root), error_on_status = FALSE)
+  expect_identical(attr(output, "status"), 1L)
+  expect_match(paste(output, collapse = "\n"), "Receipt provenance")
+  expect_identical(readLines(receipt_path, warn = FALSE), receipt)
+
+  saveRDS(pristine_shard, shard_path, compress = "gzip")
+  invalid_manifests <- list(
+    production_subset = manifest[-12L, , drop = FALSE],
+    smoke = transform(manifest, manifest_version =
+      "lane-b-mspl-coverage-gate0-smoke-v1-2026-08-14"),
+    mini = transform(manifest, manifest_version =
+      "lane-b-mspl-coverage-gate0-mini-v1-2026-08-14"),
+    downgraded = transform(manifest, manifest_version = "unknown-version")
+  )
+  mixed <- manifest
+  mixed$manifest_version[[1L]] <- "lane-b-mspl-coverage-gate0-smoke-v1-2026-08-14"
+  invalid_manifests$mixed <- mixed
+  for (invalid in invalid_manifests) {
+    utils::write.csv(invalid, manifest_path, row.names = FALSE)
+    output <- run_coverage_cli(c("aggregate-prerun", "--root", root), error_on_status = FALSE)
+    expect_identical(attr(output, "status"), 1L)
+  }
 })
 
 test_that("Gate 0 aggregator accepts exact synthetic keys and retains failures", {

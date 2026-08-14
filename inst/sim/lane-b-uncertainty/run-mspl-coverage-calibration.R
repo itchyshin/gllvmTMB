@@ -41,6 +41,30 @@ atomic_write_tsv <- function(x, path) {
   invisible(path)
 }
 
+atomic_write_lines <- function(x, path, immutable = FALSE) {
+  dir.create(dirname(path), recursive = TRUE, showWarnings = FALSE)
+  if (immutable && file.exists(path)) {
+    if (identical(readLines(path, warn = FALSE), x)) return(invisible(path))
+    stop("An immutable Gate4 pre-run receipt already exists with different contents.", call. = FALSE)
+  }
+  tmp <- tempfile(".mspl-coverage-", dirname(path), fileext = ".txt")
+  on.exit(unlink(tmp), add = TRUE)
+  writeLines(x, tmp, useBytes = TRUE)
+  if (!file.rename(tmp, path)) stop("Could not atomically publish ", path)
+  invisible(path)
+}
+
+validate_safe_label <- function(x, field) {
+  ok <- length(x) == 1L && !is.na(x) && nzchar(x) &&
+    grepl("^[A-Za-z0-9][A-Za-z0-9._-]*$", x)
+  if (!ok) {
+    stop(field, " must be one safe label using only ASCII letters, digits, dot, underscore, or hyphen.",
+      call. = FALSE
+    )
+  }
+  as.character(x)
+}
+
 manifest_table <- function(
   n_outer = 1000L,
   bootstrap_reps = 500L,
@@ -54,6 +78,8 @@ manifest_table <- function(
   coverage_equivalence_upper = 0.98,
   wald_min_available = 500L
 ) {
+  campaign_id <- validate_safe_label(campaign_id, "campaign_id")
+  source_sha <- validate_safe_label(source_sha, "source_sha")
   regimes <- data.frame(
     regime = c("baseline", "low_prevalence", "high_prevalence", "strong_signal"),
     beta_shift = c(0, -1.5, 1.5, 0), lambda_scale = c(1, 1, 1, 1.75),
@@ -104,15 +130,83 @@ manifest_table <- function(
   )]
 }
 
+campaign_array_maps <- function(manifest) {
+  full_keys <- do.call(rbind, lapply(seq_len(nrow(manifest)), function(i) {
+    data.frame(
+      case_id = manifest$case_id[[i]],
+      shard_id = seq_len(manifest$n_shards[[i]]),
+      stringsAsFactors = FALSE
+    )
+  }))
+  index_map <- function(keys) data.frame(
+    array_index = seq_len(nrow(keys)), keys,
+    row.names = NULL, check.names = FALSE
+  )
+  maps <- list(
+    full = index_map(full_keys),
+    prerun = index_map(full_keys[full_keys$shard_id == 1L, , drop = FALSE]),
+    remaining = index_map(full_keys[full_keys$shard_id != 1L, , drop = FALSE])
+  )
+  validate_campaign_array_maps(manifest, maps$full, maps$prerun, maps$remaining)
+  maps
+}
+
+validate_campaign_array_maps <- function(manifest, full, prerun, remaining) {
+  required <- c("array_index", "case_id", "shard_id")
+  if (!identical(names(full), required) || !identical(names(prerun), required) ||
+      !identical(names(remaining), required)) {
+    stop("Campaign array-map schemas are frozen.", call. = FALSE)
+  }
+  map_key <- function(x) key(x$case_id, x$shard_id)
+  if (anyDuplicated(map_key(full)) || anyDuplicated(map_key(prerun)) ||
+      anyDuplicated(map_key(remaining)) ||
+      length(intersect(map_key(prerun), map_key(remaining)))) {
+    stop("Pre-run and remaining-production shard keys must be unique and disjoint.", call. = FALSE)
+  }
+  expected_keys <- do.call(rbind, lapply(seq_len(nrow(manifest)), function(i) {
+    data.frame(
+      case_id = manifest$case_id[[i]],
+      shard_id = seq_len(manifest$n_shards[[i]]),
+      stringsAsFactors = FALSE
+    )
+  }))
+  expected_full <- data.frame(
+    array_index = seq_len(nrow(expected_keys)), expected_keys,
+    row.names = NULL, check.names = FALSE
+  )
+  expected_prerun_keys <- expected_keys[expected_keys$shard_id == 1L, , drop = FALSE]
+  expected_prerun <- data.frame(
+    array_index = seq_len(nrow(expected_prerun_keys)), expected_prerun_keys,
+    row.names = NULL, check.names = FALSE
+  )
+  expected_remaining_keys <- expected_keys[expected_keys$shard_id != 1L, , drop = FALSE]
+  expected_remaining <- data.frame(
+    array_index = seq_len(nrow(expected_remaining_keys)), expected_remaining_keys,
+    row.names = NULL, check.names = FALSE
+  )
+  if (!identical(full, expected_full) || !identical(prerun, expected_prerun) ||
+      !identical(remaining, expected_remaining) ||
+      !setequal(c(map_key(prerun), map_key(remaining)), map_key(full))) {
+    stop("Campaign array maps do not have the exact frozen keys, order, and cardinality.", call. = FALSE)
+  }
+  invisible(TRUE)
+}
+
 validate_manifest_contract <- function(manifest) {
   production_version <- "lane-b-mspl-coverage-gate0-v1-2026-08-14"
   if (!all(manifest$manifest_version == production_version)) return(invisible(TRUE))
+  identity_ok <- nrow(manifest) > 0L &&
+    length(unique(as.character(manifest$campaign_id))) == 1L &&
+    length(unique(as.character(manifest$source_sha))) == 1L &&
+    !is.na(manifest$campaign_id[[1L]]) && nzchar(manifest$campaign_id[[1L]]) &&
+    !is.na(manifest$source_sha[[1L]]) && nzchar(manifest$source_sha[[1L]])
   expected <- manifest_table(
     campaign_id = manifest$campaign_id[[1L]],
     source_sha = manifest$source_sha[[1L]]
   )
   fixed <- setdiff(names(expected), c("campaign_id", "source_sha"))
-  if (nrow(manifest) != nrow(expected) || !identical(names(manifest), names(expected)) ||
+  if (!identity_ok || nrow(manifest) != nrow(expected) ||
+      !identical(names(manifest), names(expected)) ||
       any(manifest$campaign_id != manifest$campaign_id[[1L]]) ||
       any(manifest$source_sha != manifest$source_sha[[1L]]) ||
       !identical(manifest[fixed], expected[fixed])) {
@@ -128,22 +222,10 @@ write_manifest <- function(root, manifest) {
   validate_manifest_contract(manifest)
   dir.create(file.path(root, "shards"), recursive = TRUE, showWarnings = FALSE)
   atomic_write_csv(manifest, file.path(root, "manifest.csv"))
-  array_map <- do.call(rbind, lapply(seq_len(nrow(manifest)), function(i) {
-    data.frame(
-      case_id = manifest$case_id[[i]],
-      shard_id = seq_len(manifest$n_shards[[i]]),
-      stringsAsFactors = FALSE
-    )
-  }))
-  array_map <- data.frame(array_index = seq_len(nrow(array_map)), array_map,
-    row.names = NULL, check.names = FALSE
-  )
-  atomic_write_tsv(array_map, file.path(root, "array-map.tsv"))
-  pre_run_map <- data.frame(
-    array_index = seq_len(nrow(manifest)), case_id = manifest$case_id,
-    shard_id = rep.int(1L, nrow(manifest)), row.names = NULL, check.names = FALSE
-  )
-  atomic_write_tsv(pre_run_map, file.path(root, "pre-run-array-map.tsv"))
+  maps <- campaign_array_maps(manifest)
+  atomic_write_tsv(maps$full, file.path(root, "array-map.tsv"))
+  atomic_write_tsv(maps$prerun, file.path(root, "pre-run-array-map.tsv"))
+  atomic_write_tsv(maps$remaining, file.path(root, "remaining-production-array-map.tsv"))
   writeLines(c(
     "Private LA-MSPL Gate 0 repeated-sampling coverage-calibration campaign.",
     "Each completed outer dataset retains every requested unconditional bootstrap attempt.",
@@ -180,6 +262,7 @@ test_manifest_table <- function(n_outer, bootstrap_reps, outer_per_shard,
 
 manifest_versions <- c(
   production = "lane-b-mspl-coverage-gate0-v1-2026-08-14",
+  prerun = "lane-b-mspl-coverage-gate0-v1-2026-08-14",
   smoke = "lane-b-mspl-coverage-gate0-smoke-v1-2026-08-14",
   test = "lane-b-mspl-coverage-gate0-test-v1-2026-08-14",
   mini = "lane-b-mspl-coverage-gate0-mini-v1-2026-08-14"
@@ -190,7 +273,7 @@ validate_manifest_mode <- function(manifest, mode) {
       !identical(unique(as.character(manifest$manifest_version)), manifest_versions[[mode]])) {
     stop("Manifest version is unknown, mixed, or not valid for this aggregation mode.", call. = FALSE)
   }
-  if (identical(mode, "production")) {
+  if (mode %in% c("production", "prerun")) {
     clusters <- c(rep("nibi", 6L), rep("narval", 4L), rep("rorqual", 2L))
     production_ok <- nrow(manifest) == 12L &&
       identical(as.character(manifest$case_id), sprintf("C%03d", seq_len(12L))) &&
@@ -218,6 +301,36 @@ validate_manifest_mode <- function(manifest, mode) {
         !all(manifest$assigned_cluster == "local")) {
       stop("Mini manifest semantics are invalid.", call. = FALSE)
     }
+  }
+  invisible(TRUE)
+}
+
+gate4_receipt_manifest <- function(manifest) {
+  validate_manifest_contract(manifest)
+  validate_manifest_mode(manifest, "prerun")
+  out <- manifest
+  out$n_outer <- 10L
+  out$n_shards <- 1L
+  out
+}
+
+validate_gate4_receipt_manifest <- function(manifest) {
+  expected <- manifest_table(
+    n_outer = 10L, bootstrap_reps = 500L, outer_per_shard = 10L,
+    campaign_id = manifest$campaign_id[[1L]],
+    source_sha = manifest$source_sha[[1L]]
+  )
+  if (!identical(manifest, expected)) {
+    stop("Gate4 receipt cardinalities, settings, identity, and case order are frozen.", call. = FALSE)
+  }
+  invisible(TRUE)
+}
+
+validate_gate4_shard_files <- function(root, manifest) {
+  expected <- sprintf("%s-shard-001.rds", manifest$case_id)
+  observed <- list.files(file.path(root, "shards"), pattern = "\\.rds$")
+  if (!identical(sort(observed), sort(expected))) {
+    stop("Compressed shard set does not exactly match the 12-file Gate4 pre-run contract.", call. = FALSE)
   }
   invisible(TRUE)
 }
@@ -659,8 +772,14 @@ read_shards <- function(root) {
   )
 }
 
-validate_receipts <- function(receipts, manifest) {
-  validate_manifest_contract(manifest)
+validate_receipts <- function(receipts, manifest, receipt_mode = "campaign") {
+  if (identical(receipt_mode, "gate4-prerun")) {
+    validate_gate4_receipt_manifest(manifest)
+  } else if (identical(receipt_mode, "campaign")) {
+    validate_manifest_contract(manifest)
+  } else {
+    stop("Receipt validation mode is unknown.", call. = FALSE)
+  }
   outer <- receipts$outer_fits
   boot <- receipts$bootstrap_attempts
   endpoints <- receipts$endpoints
@@ -902,8 +1021,8 @@ rmse_mcse <- function(errors) {
   stats::sd(errors^2) / sqrt(length(errors)) / (2 * rmse)
 }
 
-summarise_receipts <- function(receipts, manifest) {
-  validate_receipts(receipts, manifest)
+summarise_receipts <- function(receipts, manifest, receipt_mode = "campaign") {
+  validate_receipts(receipts, manifest, receipt_mode = receipt_mode)
   outer <- receipts$outer_fits
   endpoints <- receipts$endpoints
   key_group <- interaction(endpoints$case_id, endpoints$method, endpoints$target, drop = TRUE)
@@ -978,17 +1097,36 @@ summarise_receipts <- function(receipts, manifest) {
 }
 
 aggregate_campaign <- function(root, mode) {
-  manifest <- utils::read.csv(file.path(root, "manifest.csv"), stringsAsFactors = FALSE)
+  manifest_path <- file.path(root, "manifest.csv")
+  manifest <- utils::read.csv(manifest_path, stringsAsFactors = FALSE)
   validate_manifest_mode(manifest, mode)
+  receipt_mode <- if (identical(mode, "prerun")) "gate4-prerun" else "campaign"
+  receipt_manifest <- if (identical(mode, "prerun")) gate4_receipt_manifest(manifest) else manifest
+  if (identical(mode, "prerun")) validate_gate4_shard_files(root, receipt_manifest)
   receipts <- read_shards(root)
-  summary <- summarise_receipts(receipts, manifest)
+  summary <- summarise_receipts(receipts, receipt_manifest, receipt_mode = receipt_mode)
   atomic_write_csv(summary, file.path(root, "summary.csv"))
   atomic_write_csv(receipts$outer_fits, file.path(root, "outer-fit-rows.csv"))
   atomic_write_csv(receipts$endpoints, file.path(root, "endpoint-rows.csv"))
   atomic_write_csv(receipts$bootstrap_attempts, file.path(root, "bootstrap-attempts-wide.csv"))
   atomic_write_csv(receipts$profile_traces, file.path(root, "profile-traces.csv"))
-  writeLines(c(
-    paste("manifest_mode:", mode),
+  receipt_header <- paste("manifest_mode:", mode)
+  if (identical(mode, "prerun")) receipt_header <- c(
+    receipt_header,
+    "receipt_type: gate4-production-prerun-v1",
+    "gate4_contract: exact",
+    paste("campaign_id:", manifest$campaign_id[[1L]]),
+    paste("source_sha:", manifest$source_sha[[1L]]),
+    paste("manifest_version:", manifest$manifest_version[[1L]]),
+    paste("manifest_md5:", unname(tools::md5sum(manifest_path))),
+    "launcher_unlock_eligible: FALSE",
+    paste("case_count:", nrow(receipt_manifest)),
+    paste("shard_count:", length(list.files(file.path(root, "shards"), pattern = "\\.rds$"))),
+    paste("outer_per_case:", unique(receipt_manifest$n_outer)),
+    paste("bootstrap_reps:", unique(receipt_manifest$bootstrap_reps))
+  )
+  receipt <- c(
+    receipt_header,
     paste("calibration_gate_eligible:", identical(mode, "production")),
     paste("outer_fit_rows:", nrow(receipts$outer_fits)),
     paste("bootstrap_attempt_rows:", nrow(receipts$bootstrap_attempts)),
@@ -997,7 +1135,13 @@ aggregate_campaign <- function(root, mode) {
     paste("availability_gates_pass:", sum(summary$availability_gate)),
     paste("coverage_gates_pass:", sum(summary$coverage_gate)),
     "public_fence: unchanged"
-  ), file.path(root, "receipt.txt"))
+  )
+  receipt_path <- file.path(root, if (identical(mode, "prerun")) {
+    "gate4-prerun-receipt.txt"
+  } else {
+    "receipt.txt"
+  })
+  atomic_write_lines(receipt, receipt_path, immutable = identical(mode, "prerun"))
 }
 
 run_cli <- function() {
@@ -1064,6 +1208,8 @@ run_cli <- function() {
       file.path(root, "shards", sprintf("%s-shard-001.rds", manifest$case_id[[i]])))
   } else if (identical(command, "aggregate")) {
     aggregate_campaign(root, "production")
+  } else if (identical(command, "aggregate-prerun")) {
+    aggregate_campaign(root, "prerun")
   } else if (identical(command, "aggregate-smoke")) {
     aggregate_campaign(root, "smoke")
   } else if (identical(command, "aggregate-test")) {
@@ -1071,7 +1217,7 @@ run_cli <- function() {
   } else if (identical(command, "aggregate-mini")) {
     aggregate_campaign(root, "mini")
   } else {
-    stop("Use manifest, test-manifest, smoke-manifest, mini, run-shard, aggregate, aggregate-smoke, aggregate-test, or aggregate-mini.", call. = FALSE)
+    stop("Use manifest, test-manifest, smoke-manifest, mini, run-shard, aggregate, aggregate-prerun, aggregate-smoke, aggregate-test, or aggregate-mini.", call. = FALSE)
   }
 }
 

@@ -29,9 +29,11 @@ mspl_load_modules() {
   module load "${MSPL_COVERAGE_STDENV_MODULE:-StdEnv/2023}"
   module load "${MSPL_COVERAGE_COMPILER_MODULE:-gcc/12.3}"
   if [[ -n "${MSPL_COVERAGE_EXTRA_MODULES:-}" ]]; then
-    # A maintainer-supplied whitespace-delimited module list is intentional.
-    # shellcheck disable=SC2206
-    local extra=( ${MSPL_COVERAGE_EXTRA_MODULES} )
+    local module_name
+    IFS=, read -r -a extra <<< "$MSPL_COVERAGE_EXTRA_MODULES"
+    for module_name in "${extra[@]}"; do
+      [[ "$module_name" =~ ^[A-Za-z0-9._/+:-]+$ ]] || mspl_die "Invalid extra module name: $module_name"
+    done
     module load "${extra[@]}"
   fi
   module load "${MSPL_COVERAGE_R_MODULE:-r/4.5.0}"
@@ -91,7 +93,55 @@ mspl_stage_source_bundle() {
 }
 
 mspl_dependency_packages() {
-  printf '%s\n' "${MSPL_COVERAGE_DEPENDENCY_PACKAGES:-BH,RcppEigen,TMB,assertthat,cli,fmesher,generics,lifecycle,rlang,tidyselect}"
+  printf '%s\n' "${MSPL_COVERAGE_DEPENDENCY_PACKAGES-BH,RcppEigen,TMB,assertthat,cli,fmesher,generics,lifecycle,rlang,tidyselect}"
+}
+
+mspl_materialize_dependency_packages() {
+  local package package_csv seen="|"
+  package_csv="$(mspl_dependency_packages)"
+  [[ -n "$package_csv" && "$package_csv" != ,* && "$package_csv" != *, && "$package_csv" != *,,* ]] ||
+    mspl_die "Dependency package list contains an empty item."
+  IFS=, read -r -a _MSPL_DEPENDENCY_PACKAGES <<< "$package_csv"
+  ((${#_MSPL_DEPENDENCY_PACKAGES[@]})) || mspl_die "Dependency package list is empty."
+  for package in "${_MSPL_DEPENDENCY_PACKAGES[@]}"; do
+    [[ "$package" =~ ^[A-Za-z][A-Za-z0-9.]*$ ]] || mspl_die "Invalid dependency package name: $package"
+    [[ "$seen" != *"|${package}|"* ]] || mspl_die "Duplicate dependency package name: $package"
+    seen="${seen}${package}|"
+  done
+}
+
+mspl_dependency_package_lines() {
+  local package
+  mspl_materialize_dependency_packages
+  for package in "${_MSPL_DEPENDENCY_PACKAGES[@]}"; do
+    printf '%s\n' "$package"
+  done
+}
+
+mspl_bootstrap_packages_csv() {
+  local package has_bh=false has_rcppeigen=false has_tmb=false
+  mspl_materialize_dependency_packages
+  for package in "${_MSPL_DEPENDENCY_PACKAGES[@]}"; do
+    case "$package" in
+      BH) has_bh=true ;;
+      RcppEigen) has_rcppeigen=true ;;
+      TMB) has_tmb=true ;;
+    esac
+  done
+  [[ "$has_bh" == true && "$has_rcppeigen" == true && "$has_tmb" == true ]] ||
+    mspl_die "Dependency list must include BH, RcppEigen, and TMB."
+  printf 'BH,RcppEigen,TMB\n'
+}
+
+mspl_remaining_packages_csv() {
+  local package separator=""
+  mspl_materialize_dependency_packages
+  for package in "${_MSPL_DEPENDENCY_PACKAGES[@]}"; do
+    case "$package" in BH|RcppEigen|TMB) continue ;; esac
+    printf '%s%s' "$separator" "$package"
+    separator=,
+  done
+  printf '\n'
 }
 
 mspl_source_package_record() {
@@ -103,11 +153,26 @@ mspl_source_package_record() {
   printf 'source_dependency=%s version=%s sha256=%s\n' "$package" "$version" "$(mspl_sha256 "$tarball")"
 }
 
+mspl_source_dependency_inventory() {
+  local package
+  mspl_materialize_dependency_packages
+  for package in "${_MSPL_DEPENDENCY_PACKAGES[@]}"; do
+    mspl_source_package_record "$package"
+  done
+}
+
+mspl_job_env_record() {
+  local key="$1" value="$2"
+  [[ "$key" =~ ^MSPL_COVERAGE_[A-Z0-9_]+$ ]] || mspl_die "Unsafe runtime-environment key: $key"
+  [[ "$value" =~ ^[A-Za-z0-9._/@:+,-]*$ ]] || mspl_die "Unsafe runtime-environment value for $key."
+  [[ -n "$value" || "$key" == "MSPL_COVERAGE_EXTRA_MODULES" ]] || mspl_die "Empty runtime-environment value for $key."
+  printf '%s=%s\n' "$key" "$value"
+}
+
 mspl_install_native_runtime() {
-  local package_csv bootstrap_csv rest_csv
-  package_csv="$(mspl_dependency_packages)"
-  bootstrap_csv="BH,RcppEigen,TMB"
-  rest_csv="$(printf '%s' "$package_csv" | awk -F, '{for (i = 1; i <= NF; i++) if ($i != "BH" && $i != "RcppEigen" && $i != "TMB") printf "%s%s", sep, $i; sep = ","}')"
+  local bootstrap_csv rest_csv
+  bootstrap_csv="$(mspl_bootstrap_packages_csv)"
+  rest_csv="$(mspl_remaining_packages_csv)"
   mkdir -p "$MSPL_COVERAGE_R_LIB"
   mkdir -p "${MSPL_COVERAGE_WORK}/tmp"
   export R_LIBS_USER="$MSPL_COVERAGE_R_LIB" R_LIBS="$MSPL_COVERAGE_R_LIB"
@@ -170,6 +235,7 @@ mspl_archive_native_runtime() {
     printf 'source_sha=%s\n' "$MSPL_COVERAGE_SOURCE_SHA"
     printf 'source_archive_sha256=%s\n' "$MSPL_COVERAGE_SOURCE_ARCHIVE_SHA256"
     printf 'source_bundle_sha256=%s\n' "$MSPL_COVERAGE_SOURCE_BUNDLE_SHA256"
+    printf 'launcher_helper_sha256=%s\n' "$MSPL_COVERAGE_HELPER_SHA256"
     printf 'architecture=%s\n' "$(uname -m)"
     printf 'modules=%s\n' "$modules"
   } > "$contract"
@@ -179,12 +245,20 @@ mspl_archive_native_runtime() {
   cp "$archive_tmp" "${archive}.tmp-${SLURM_JOB_ID:-manual}"
   mv "${archive}.tmp-${SLURM_JOB_ID:-manual}" "$archive"
   {
-    printf 'MSPL_COVERAGE_RUNTIME_ARCHIVE=%s\n' "$archive"
-    printf 'MSPL_COVERAGE_RUNTIME_ARCHIVE_SHA256=%s\n' "$archive_hash"
-    printf 'MSPL_COVERAGE_CLUSTER=%s\n' "$MSPL_COVERAGE_CLUSTER"
-    printf 'MSPL_COVERAGE_SOURCE_SHA=%s\n' "$MSPL_COVERAGE_SOURCE_SHA"
-    printf 'MSPL_COVERAGE_SOURCE_ARCHIVE_SHA256=%s\n' "$MSPL_COVERAGE_SOURCE_ARCHIVE_SHA256"
-    printf 'MSPL_COVERAGE_SOURCE_BUNDLE_SHA256=%s\n' "$MSPL_COVERAGE_SOURCE_BUNDLE_SHA256"
+    mspl_job_env_record MSPL_COVERAGE_ROOT "$MSPL_COVERAGE_ROOT"
+    mspl_job_env_record MSPL_COVERAGE_LAUNCHER_DIR "$MSPL_COVERAGE_LAUNCHER_DIR"
+    mspl_job_env_record MSPL_COVERAGE_HELPER_SHA256 "$MSPL_COVERAGE_HELPER_SHA256"
+    mspl_job_env_record MSPL_COVERAGE_RUNTIME_ARCHIVE "$archive"
+    mspl_job_env_record MSPL_COVERAGE_RUNTIME_ARCHIVE_SHA256 "$archive_hash"
+    mspl_job_env_record MSPL_COVERAGE_CLUSTER "$MSPL_COVERAGE_CLUSTER"
+    mspl_job_env_record MSPL_COVERAGE_SOURCE_SHA "$MSPL_COVERAGE_SOURCE_SHA"
+    mspl_job_env_record MSPL_COVERAGE_SOURCE_ARCHIVE "$MSPL_COVERAGE_SOURCE_ARCHIVE"
+    mspl_job_env_record MSPL_COVERAGE_SOURCE_ARCHIVE_SHA256 "$MSPL_COVERAGE_SOURCE_ARCHIVE_SHA256"
+    mspl_job_env_record MSPL_COVERAGE_SOURCE_BUNDLE_SHA256 "$MSPL_COVERAGE_SOURCE_BUNDLE_SHA256"
+    mspl_job_env_record MSPL_COVERAGE_STDENV_MODULE "${MSPL_COVERAGE_STDENV_MODULE:-StdEnv/2023}"
+    mspl_job_env_record MSPL_COVERAGE_COMPILER_MODULE "${MSPL_COVERAGE_COMPILER_MODULE:-gcc/12.3}"
+    mspl_job_env_record MSPL_COVERAGE_R_MODULE "${MSPL_COVERAGE_R_MODULE:-r/4.5.0}"
+    mspl_job_env_record MSPL_COVERAGE_EXTRA_MODULES "${MSPL_COVERAGE_EXTRA_MODULES:-}"
   } > "$env_tmp"
   mv "$env_tmp" "$env_file"
   export MSPL_COVERAGE_RUNTIME_ARCHIVE="$archive" MSPL_COVERAGE_RUNTIME_ARCHIVE_SHA256="$archive_hash"
@@ -201,10 +275,10 @@ mspl_write_setup_receipt() {
     printf 'receipt_type=cluster_native_setup\ncluster=%s\nsource_sha=%s\n' "$MSPL_COVERAGE_CLUSTER" "$MSPL_COVERAGE_SOURCE_SHA"
     printf 'source_archive_sha256=%s\nsource_bundle_sha256=%s\n' "$MSPL_COVERAGE_SOURCE_ARCHIVE_SHA256" "$MSPL_COVERAGE_SOURCE_BUNDLE_SHA256"
     printf 'runtime_archive=%s\nruntime_archive_sha256=%s\n' "$MSPL_COVERAGE_RUNTIME_ARCHIVE" "$MSPL_COVERAGE_RUNTIME_ARCHIVE_SHA256"
+    printf 'launcher_helper_sha256=%s\n' "$MSPL_COVERAGE_HELPER_SHA256"
     printf 'r_module=%s\ncompiler_module=%s\narchitecture=%s\nmodules=%s\n' "${MSPL_COVERAGE_R_MODULE:-r/4.5.0}" "${MSPL_COVERAGE_COMPILER_MODULE:-gcc/12.3}" "$(uname -m)" "$modules"
-    IFS=, read -r -a _mspl_packages <<< "$(mspl_dependency_packages)"
-    for package in "${_mspl_packages[@]}"; do mspl_source_package_record "$package"; done
-    Rscript --vanilla -e 'pkgs <- c("gllvmTMB", strsplit(Sys.getenv("MSPL_COVERAGE_DEPENDENCY_PACKAGES", "BH,RcppEigen,TMB,assertthat,cli,fmesher,generics,lifecycle,rlang,tidyselect"), ",", fixed = TRUE)[[1]]); for (p in pkgs) cat("installed_dependency=", p, " version=", as.character(utils::packageVersion(p)), "\\n", sep = "")'
+    mspl_source_dependency_inventory
+    MSPL_COVERAGE_DEPENDENCY_PACKAGES="$(mspl_dependency_packages)" Rscript --vanilla -e 'pkgs <- c("gllvmTMB", strsplit(Sys.getenv("MSPL_COVERAGE_DEPENDENCY_PACKAGES"), ",", fixed = TRUE)[[1]]); for (p in pkgs) cat("installed_dependency=", p, " version=", as.character(utils::packageVersion(p)), "\\n", sep = "")'
     printf '%s\n' "$objective"
     printf 'session_info_begin\n'
     Rscript --vanilla -e 'sessionInfo()'
@@ -228,6 +302,7 @@ mspl_verify_runtime_contract() {
   grep -Fxq "source_sha=$MSPL_COVERAGE_SOURCE_SHA" "$contract" || mspl_die "Runtime archive source SHA disagrees."
   grep -Fxq "source_archive_sha256=$MSPL_COVERAGE_SOURCE_ARCHIVE_SHA256" "$contract" || mspl_die "Runtime archive was compiled from a different source archive."
   grep -Fxq "source_bundle_sha256=$MSPL_COVERAGE_SOURCE_BUNDLE_SHA256" "$contract" || mspl_die "Runtime archive was compiled from a different source dependency bundle."
+  grep -Fxq "launcher_helper_sha256=$MSPL_COVERAGE_HELPER_SHA256" "$contract" || mspl_die "Runtime archive was built with a different launcher helper."
   grep -Fxq "architecture=$(uname -m)" "$contract" || mspl_die "Runtime archive architecture disagrees."
 }
 
@@ -244,8 +319,58 @@ mspl_stage_runtime() {
   cp "$MSPL_COVERAGE_ROOT/manifest.csv" "$MSPL_COVERAGE_LOCAL_ROOT/manifest.csv"
 }
 
+mspl_manifest_first_field() {
+  local manifest="$1" wanted_field="$2"
+  awk -F, -v wanted_field="$wanted_field" '
+    function clean(value) { gsub(/^"|"$/, "", value); return value }
+    NR == 1 {
+      header_count = NF
+      for (i = 1; i <= NF; i++) {
+        name = clean($i)
+        if (name !~ /^[A-Za-z][A-Za-z0-9_]*$/) invalid = 1
+        if (name == wanted_field) { column = i; columns += 1 }
+      }
+      next
+    }
+    {
+      if (NF != header_count) invalid = 1
+      for (i = 1; i <= NF; i++) if (clean($i) !~ /^[A-Za-z0-9._-]+$/) invalid = 1
+      if (NR == 2 && columns == 1) { value = clean($column); found = 1 }
+    }
+    END { if (invalid || columns != 1 || !found) exit 2; print value }
+  ' "$manifest"
+}
+
+mspl_manifest_case_field() {
+  local manifest="$1" wanted_case="$2" wanted_field="$3"
+  awk -F, -v wanted_case="$wanted_case" -v wanted_field="$wanted_field" '
+    function clean(value) { gsub(/^"|"$/, "", value); return value }
+    NR == 1 {
+      header_count = NF
+      for (i = 1; i <= NF; i++) {
+        name = clean($i)
+        if (name !~ /^[A-Za-z][A-Za-z0-9_]*$/) invalid = 1
+        if (name == "case_id") { case_column = i; case_columns += 1 }
+        if (name == wanted_field) { value_column = i; value_columns += 1 }
+      }
+      next
+    }
+    {
+      if (NF != header_count) invalid = 1
+      for (i = 1; i <= NF; i++) if (clean($i) !~ /^[A-Za-z0-9._-]+$/) invalid = 1
+      if (case_columns == 1 && value_columns == 1 && clean($case_column) == wanted_case) {
+        value = clean($value_column); matches += 1
+      }
+    }
+    END {
+      if (invalid || case_columns != 1 || value_columns != 1 || matches != 1) exit 2
+      print value
+    }
+  ' "$manifest"
+}
+
 mspl_campaign_id() {
-  awk -F, 'NR == 1 { for (i = 1; i <= NF; i++) if ($i == "campaign_id") column = i; next } NR == 2 && column { value = $column; gsub(/^"|"$/, "", value); print value; exit }' "$MSPL_COVERAGE_ROOT/manifest.csv"
+  mspl_manifest_first_field "$MSPL_COVERAGE_ROOT/manifest.csv" campaign_id
 }
 
 mspl_require_gate_receipt() {
@@ -274,6 +399,7 @@ mspl_validate_production_manifest() {
       header_count = split($0, field, ",")
       for (i = 1; i <= header_count; i++) {
         name = clean(field[i]); column[name] = i; header_seen[name] += 1
+        if (name !~ /^[A-Za-z][A-Za-z0-9_]*$/) invalid = 1
       }
       required = "case_id case_number regime link beta_shift lambda_scale seed_base n_outer bootstrap_reps minimum_usable_bootstrap outer_per_shard n_shards assigned_cluster availability_min coverage_wilson_level coverage_equivalence_lower coverage_equivalence_upper wald_min_available manifest_version campaign_id source_sha"
       required_count = split(required, required_name, " ")
@@ -284,7 +410,10 @@ mspl_validate_production_manifest() {
       n = split($0, field, ",")
       row = NR - 1
       if (n != header_count || row > 12) invalid = 1
-      for (i = 1; i <= n; i++) field[i] = clean(field[i])
+      for (i = 1; i <= n; i++) {
+        field[i] = clean(field[i])
+        if (field[i] !~ /^[A-Za-z0-9._-]+$/) invalid = 1
+      }
       expected_case = sprintf("C%03d", row)
       regime_index = ((row - 1) % 4) + 1
       expected_regime = (regime_index == 1 ? "baseline" : (regime_index == 2 ? "low_prevalence" : (regime_index == 3 ? "high_prevalence" : "strong_signal")))
@@ -353,6 +482,23 @@ mspl_validate_prerun_map() {
   ' "$MSPL_COVERAGE_ROOT/manifest.csv" "$map" || mspl_die "Gate 4 pre-run map must be exactly 12 unique manifest cases, shard_id=1, indices 1:12, with outer_per_shard=10."
 }
 
+mspl_validate_remaining_production_map() {
+  local map="$1"
+  awk -F '\t' '
+    NR == 1 {
+      if (NF != 3 || $1 != "array_index" || $2 != "case_id" || $3 != "shard_id") invalid = 1
+      next
+    }
+    {
+      row = NR - 1
+      expected_case = sprintf("C%03d", int((row - 1) / 99) + 1)
+      expected_shard = ((row - 1) % 99) + 2
+      if (NF != 3 || $1 != row || $2 != expected_case || $3 != expected_shard) invalid = 1
+    }
+    END { if (NR != 1189) invalid = 1; exit invalid ? 2 : 0 }
+  ' "$map" || mspl_die "Production map must be exactly 1,188 ordered remaining keys: C001..C012, shards 002..100, indices 1:1188."
+}
+
 mspl_array_task() {
   local stage="${MSPL_COVERAGE_STAGE:-production}" map row index case_id shard_id cluster
   case "$stage" in
@@ -360,21 +506,23 @@ mspl_array_task() {
     smoke) ;;
     *) mspl_die "MSPL_COVERAGE_STAGE must be smoke, pre-run, or production." ;;
   esac
-  if [[ "$stage" == "pre-run" ]]; then
-    map="${MSPL_COVERAGE_ARRAY_MAP:-$MSPL_COVERAGE_ROOT/pre-run-array-map.tsv}"
-  else
-    map="${MSPL_COVERAGE_ARRAY_MAP:-$MSPL_COVERAGE_ROOT/array-map.tsv}"
-  fi
+  case "$stage" in
+    smoke) map="${MSPL_COVERAGE_ARRAY_MAP:-$MSPL_COVERAGE_ROOT/array-map.tsv}" ;;
+    pre-run) map="${MSPL_COVERAGE_ARRAY_MAP:-$MSPL_COVERAGE_ROOT/pre-run-array-map.tsv}" ;;
+    production) map="${MSPL_COVERAGE_ARRAY_MAP:-$MSPL_COVERAGE_ROOT/remaining-production-array-map.tsv}" ;;
+  esac
   [[ -f "$map" ]] || mspl_die "Missing runner-produced frozen array map: $map"
   if [[ "$stage" == "pre-run" ]]; then mspl_validate_prerun_map "$map"; fi
-  IFS=$'\t' read -r -a _mspl_header < <(head -n 1 "$map")
+  if [[ "$stage" == "production" ]]; then mspl_validate_remaining_production_map "$map"; fi
+  IFS=$'\t' read -r -a _mspl_header < "$map"
   [[ "${_mspl_header[*]}" == "array_index case_id shard_id" ]] || mspl_die "array-map.tsv header must be array_index<TAB>case_id<TAB>shard_id."
   index="${SLURM_ARRAY_TASK_ID:-}"
   [[ "$index" =~ ^[1-9][0-9]*$ ]] || mspl_die "SLURM_ARRAY_TASK_ID must be a positive integer."
   row="$(awk -F '\t' -v wanted="$index" '$1 == wanted {print $0; found = 1; exit} END {if (!found) exit 2}' "$map")" || mspl_die "No manifest row for array task $index."
   IFS=$'\t' read -r index case_id shard_id <<< "$row"
   [[ "$case_id" =~ ^C[0-9]{3}$ && "$shard_id" =~ ^[1-9][0-9]*$ ]] || mspl_die "Malformed mapping row: $row"
-  cluster="$(awk -F, -v wanted="$case_id" 'NR == 1 { for (i = 1; i <= NF; i++) { if ($i == "case_id") c = i; if ($i == "assigned_cluster") a = i }; next } c && a && $c == wanted { print $a; exit }' "$MSPL_COVERAGE_ROOT/manifest.csv")"
+  cluster="$(mspl_manifest_case_field "$MSPL_COVERAGE_ROOT/manifest.csv" "$case_id" assigned_cluster)" ||
+    mspl_die "Could not read the unique assigned_cluster for case $case_id from manifest.csv."
   [[ "$cluster" == "$MSPL_COVERAGE_CLUSTER" ]] || mspl_die "Runner task assignment rejects case $case_id on $MSPL_COVERAGE_CLUSTER (manifest assigns ${cluster:-none})."
   printf '%s\t%s\n' "$case_id" "$shard_id"
 }

@@ -49751,3 +49751,42 @@ package-wide tests, `R CMD check`, pkgdown, three-OS CI, q = 2, structured,
 weighted or missing-data MSPL, GitHub Actions simulation, or remote compute.
 Public inference remains fail-closed. The next action is to freeze the exact
 source commit, then execute DRAC Gates 1--4 and stop for maintainer approval.
+
+---
+
+## 2026-08-14 — LA-MSPL coverage calibration Gates 1--4
+
+Executed the approved readiness ladder locally and on Nibi, Narval, and Rorqual against source `112931db32088b5ff8c460ff9e89a7ef81d10c96`. Gate 1 accepted all nine scheduler dry-runs and matched staged hashes. Gate 2 produced three cluster-native runtimes with finite-objective receipts. Gate 3 produced nine exact three-link scheduled smokes. Gate 4 produced exactly 12 first shards: 120 outer fits, 60,000 retained bootstrap attempts, 1,080 method-target endpoints, and 11,576 profile traces, with no missing or duplicate keys.
+
+Operational endpoint availability was bootstrap 360/360, profile 358/360, and Wald 279/360. All outer fits and bootstrap attempts succeeded; every outer dataset had 500 usable bootstrap refits. The two profile failures and 81 Wald non-PD endpoints remain retained. At ten outer datasets per case, all coverage-promotion gates remain false by design. This receipt is not calibrated coverage evidence and does not activate public inference.
+
+Launcher failures were retained and repaired at their mechanism: Slurm spool-relative lookup, dependency-name serialization, runtime environment export, and quoted CSV parsing. The permanent regressions cover all of those mechanisms plus missing final newlines. The final launcher parses runtime environment records as whitelisted data, never executable shell; validation failures propagate before every consumer. The runner emits an exact 1,188-key remaining-production map that excludes the 12 immutable Gate 4 shard-1 keys. The real Gate 4 retrieval was re-aggregated through explicit `aggregate-prerun` in 2.33 seconds: 120 outer, 60,000 bootstrap, 1,080 endpoint, 11,576 trace, and 108 summary rows; typed `calibration_gate_eligible: FALSE`; receipt SHA-256 `25da8a0b5fb76e93bd8cc13c33c920573637e48c4cf290425dbdd86e521a0d1e`.
+
+Verification after permanent repairs:
+
+```sh
+Rscript --vanilla -e \
+  'testthat::test_file("tests/testthat/test-mspl-coverage-runner.R")'
+# PASS: 143 expectations, 0 failures, 0 warnings, 0 skips.
+
+bash inst/sim/lane-b-uncertainty/mspl-coverage/contract-self-test.sh
+# PASS: launcher-contract-self-test=PASS.
+
+for f in inst/sim/lane-b-uncertainty/mspl-coverage/*.sh \
+         inst/sim/lane-b-uncertainty/mspl-coverage/*.sbatch; do
+  bash -n "$f"
+done
+# PASS.
+
+git diff --check
+# PASS.
+
+Rscript --vanilla -e \
+  'devtools::test(filter = "mspl", stop_on_failure = TRUE)'
+# PASS: 1,382 expectations, 0 failures, 0 warnings, 1 pre-existing skip;
+# 162.1 seconds.
+```
+
+Coordination pre-edit: lane preflight reported this named Codex lane plus unrelated same-platform iSDM lanes; no foreign platform lane. `gh pr list --state open` could not reach GitHub, so open-PR evidence is limited to the lane-preflight/local-ref view. The six-hour all-ref log was inspected before shared dev-log edits.
+
+Deliberately not run: full 1,200-shard coverage production, public method activation, package-wide tests, `R CMD check`, pkgdown, three-OS CI, q = 2, structured/weighted/missing-data regimes, or GitHub Actions simulation. The full campaign remains locked pending the maintainer's explicit post-Gate-4 approval. Public MSPL inference remains fail-closed.

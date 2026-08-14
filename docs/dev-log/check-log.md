@@ -49453,3 +49453,24 @@ After-task:
 Decision:
 `docs/dev-log/research/2026-08-15-mspl-gaussian-psi-uniqueness-map.md`.
 
+## 2026-08-13 — LA-MSPL private uncertainty-method admission
+
+Implemented private candidates only: a numerical outer Hessian and finite
+profile-threshold brackets, both sourced exclusively from penalised
+`fit$tmb_obj` after `estimator_id = 1` verification. The active TMB object does
+not implement an analytic Hessian for random-effects models; this is retained
+as a typed seam fact. The deterministic logit q = 1 fixture admits a finite,
+positive-definite `stats::optimHess()` result and finite nuisance-reoptimised
+profile brackets. The focused receipt was:
+
+```sh
+Rscript --vanilla -e 'devtools::test(filter = "mspl-api", stop_on_failure = TRUE)'
+git diff --check
+```
+
+Result: 268 expectations, zero failures/warnings/skips, and a clean diff.
+Tests poison `fit$mspl$unpenalized_tmb_obj$fn`; neither candidate may use the
+penalty-off provenance objective. No public `vcov()`, profile, `confint()`,
+`profile_targets()`, or `tmbprofile_wrapper()` path changed. These diagnostics
+are not calibrated standard errors or confidence intervals; repeated-sampling
+calibration remains required.

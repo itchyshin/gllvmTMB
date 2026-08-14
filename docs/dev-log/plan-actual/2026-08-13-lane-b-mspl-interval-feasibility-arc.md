@@ -116,3 +116,20 @@ substitute a Wald interval, or claim calibrated uncertainty.
 failures, warnings, or skips in 161.6 seconds. Public MSPL inference remained
 fail-closed; no export, profile/confint/vcov dispatch, user documentation, or
 remote-compute surface changed.
+
+## Private uncertainty-method admission actuals
+
+**Recommended / actual:** a short local admission stage / under one hour of
+local implementation and deterministic verification. **Mode:** method
+admission, not calibration. The active TMB tape does not provide an analytic
+Hessian for models with random effects, so this stage records that exact
+limitation and uses `stats::optimHess()` only on the active penalised outer
+objective as a private numerical-curvature candidate.
+
+**Result:** the deterministic ordinary q = 1 logit fixture has a finite,
+positive-definite numerical outer Hessian and finite nuisance-reoptimised
+penalised-profile threshold brackets for `b_fix[1]`. Both candidates are
+private diagnostics. They establish neither calibrated standard errors nor
+confidence intervals. The penalty-off provenance tape is poisoned in the test
+and cannot be called. Public MSPL `vcov()`, profile, `confint()`,
+`profile_targets()`, and `tmbprofile_wrapper()` refusals remain unchanged.

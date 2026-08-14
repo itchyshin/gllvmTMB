@@ -208,6 +208,184 @@
   )
 }
 
+## Private uncertainty candidate only.  This is a numerical outer Hessian of
+## the active penalised LA-MSPL objective. TMB's analytic Hessian is not
+## available for these models with random effects. This is not an sdreport(),
+## sandwich covariance, or a calibrated standard error.
+.gllvmTMB_mspl_penalized_hessian_diagnostic <- function(
+  fit,
+  which = 1L,
+  level = 0.95
+) {
+  if (!.gllvmTMB_is_mspl(fit)) {
+    .gllvmTMB_mspl_abort(
+      "The internal MSPL Hessian diagnostic requires an {.code estimator = \"mspl\"} fit.",
+      class = "gllvmTMB_mspl_hessian_input"
+    )
+  }
+  if (
+    !is.numeric(which) || length(which) != 1L || which %% 1 != 0 ||
+      which < 1L || which > length(fit$opt$par) ||
+      names(fit$opt$par)[which] != "b_fix"
+  ) {
+    .gllvmTMB_mspl_abort(
+      "The internal MSPL Hessian diagnostic requires one resolved {.field b_fix} coordinate.",
+      class = "gllvmTMB_mspl_hessian_target"
+    )
+  }
+  if (!is.numeric(level) || length(level) != 1L || !is.finite(level) ||
+      level <= 0 || level >= 1) {
+    .gllvmTMB_mspl_abort(
+      "The internal MSPL Hessian diagnostic requires {.arg level} in (0, 1).",
+      class = "gllvmTMB_mspl_hessian_level"
+    )
+  }
+
+  obj <- fit$tmb_obj
+  penalty_off <- fit$mspl$unpenalized_tmb_obj
+  if (is.null(obj) || identical(obj, penalty_off) ||
+      !identical(as.integer(obj$env$data$estimator_id), 1L)) {
+    .gllvmTMB_mspl_abort(
+      "The internal MSPL Hessian diagnostic could not verify the active penalised TMB objective.",
+      class = "gllvmTMB_mspl_hessian_objective"
+    )
+  }
+  checkpoint <- .gllvmTMB_profile_tmb_checkpoint(obj)
+  on.exit(.gllvmTMB_restore_profile_tmb_checkpoint(obj, checkpoint), add = TRUE)
+
+  par <- as.numeric(fit$opt$par)
+  hessian <- tryCatch(stats::optimHess(par, obj$fn, obj$gr), error = identity)
+  base <- list(
+    target_index = as.integer(which),
+    target_name = names(fit$opt$par)[which],
+    estimate = par[which],
+    level = level,
+    objective_source = "fit$tmb_obj (penalised LA-MSPL)",
+    status = "hessian_error",
+    hessian_method = "stats::optimHess(fit$tmb_obj)",
+    se = NA_real_,
+    diagnostic_lower = NA_real_,
+    diagnostic_upper = NA_real_,
+    hessian_rank = NA_integer_,
+    minimum_eigenvalue = NA_real_
+  )
+  if (inherits(hessian, "error")) {
+    base$message <- conditionMessage(hessian)
+    return(base)
+  }
+  hessian <- as.matrix(hessian)
+  if (length(dim(hessian)) != 2L ||
+      !all(dim(hessian) == rep.int(length(par), 2L)) ||
+      any(!is.finite(hessian))) {
+    base$status <- "hessian_nonfinite"
+    return(base)
+  }
+  hessian <- (hessian + t(hessian)) / 2
+  eig <- tryCatch(eigen(hessian, symmetric = TRUE, only.values = TRUE)$values,
+                  error = identity)
+  if (inherits(eig, "error") || any(!is.finite(eig))) {
+    base$status <- "hessian_eigen_error"
+    return(base)
+  }
+  eigen_tolerance <- sqrt(.Machine$double.eps) * max(1, max(abs(eig)))
+  base$hessian_rank <- as.integer(sum(eig > eigen_tolerance))
+  base$minimum_eigenvalue <- min(eig)
+  if (base$hessian_rank != length(par) || base$minimum_eigenvalue <= 0) {
+    base$status <- "hessian_non_pd"
+    return(base)
+  }
+  chol_hessian <- tryCatch(chol(hessian), error = identity)
+  if (inherits(chol_hessian, "error")) {
+    base$status <- "hessian_solve_error"
+    base$message <- conditionMessage(chol_hessian)
+    return(base)
+  }
+  covariance <- chol2inv(chol_hessian)
+  variance <- covariance[which, which]
+  if (!is.finite(variance) || variance <= 0) {
+    base$status <- "hessian_variance_invalid"
+    return(base)
+  }
+  base$se <- sqrt(variance)
+  z_value <- stats::qnorm((1 + level) / 2)
+  base$diagnostic_lower <- base$estimate - z_value * base$se
+  base$diagnostic_upper <- base$estimate + z_value * base$se
+  base$status <- "ok"
+  base
+}
+
+## Private profile candidate only.  The returned endpoints linearly interpolate
+## a finite, converged bracket of the penalised objective threshold; they are
+## not confidence-interval endpoints unless a later calibration study earns
+## that interpretation.
+.gllvmTMB_mspl_profile_threshold_diagnostic <- function(probe) {
+  if (!is.list(probe) || !identical(
+    probe$objective_source, "fit$tmb_obj (penalised LA-MSPL)"
+  )) {
+    .gllvmTMB_mspl_abort(
+      "The internal MSPL profile-threshold diagnostic requires a penalised profile probe.",
+      class = "gllvmTMB_mspl_profile_threshold_input"
+    )
+  }
+  required <- c("trace", "mle", "threshold", "centre_status",
+                "lower_status", "upper_status")
+  if (!all(required %in% names(probe)) || !is.data.frame(probe$trace)) {
+    .gllvmTMB_mspl_abort(
+      "The internal MSPL profile-threshold diagnostic received an incomplete probe.",
+      class = "gllvmTMB_mspl_profile_threshold_input"
+    )
+  }
+
+  endpoint <- function(side, direction, status) {
+    out <- list(status = status, endpoint = NA_real_, bracket = c(NA_real_, NA_real_))
+    if (!identical(status, "crossed")) return(out)
+    side <- side[order(side$target, decreasing = identical(direction, "lower")), , drop = FALSE]
+    crossed <- which(side$objective_delta >= probe$threshold)[1L]
+    if (is.na(crossed) || crossed == 1L) {
+      out$status <- "bracket_missing"
+      return(out)
+    }
+    inside <- side[crossed - 1L, , drop = FALSE]
+    outside <- side[crossed, , drop = FALSE]
+    if (!all(inside$finite, outside$finite) ||
+        any(c(inside$convergence, outside$convergence) != 0L) ||
+        !is.finite(inside$objective_delta) || !is.finite(outside$objective_delta) ||
+        outside$objective_delta <= inside$objective_delta) {
+      out$status <- "bracket_invalid"
+      return(out)
+    }
+    out$endpoint <- inside$target +
+      (probe$threshold - inside$objective_delta) *
+      (outside$target - inside$target) /
+      (outside$objective_delta - inside$objective_delta)
+    out$bracket <- c(inside$target, outside$target)
+    out
+  }
+
+  lower <- endpoint(
+    probe$trace[probe$trace$target < probe$mle, , drop = FALSE],
+    "lower", probe$lower_status
+  )
+  upper <- endpoint(
+    probe$trace[probe$trace$target > probe$mle, , drop = FALSE],
+    "upper", probe$upper_status
+  )
+  list(
+    target_index = probe$target_index,
+    target_name = probe$target_name,
+    estimate = probe$mle,
+    threshold = probe$threshold,
+    centre_status = probe$centre_status,
+    lower_status = lower$status,
+    upper_status = upper$status,
+    diagnostic_lower = lower$endpoint,
+    diagnostic_upper = upper$endpoint,
+    lower_bracket = lower$bracket,
+    upper_bracket = upper$bracket,
+    objective_source = "fit$tmb_obj (penalised LA-MSPL)"
+  )
+}
+
 ## Resolve b_fix = b_fixed + K gamma and return X_* = X_fix K.  TMB maps use
 ## factor levels to represent shared free parameters and NA to represent pinned
 ## coordinates.  The present public Xcoef_fixed surface only pins zeros, but

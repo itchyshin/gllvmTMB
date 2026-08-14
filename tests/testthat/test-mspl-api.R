@@ -455,6 +455,57 @@ test_that("internal MSPL profile feasibility traces the penalised objective only
   expect_false(truncated$finite_stable)
 })
 
+test_that("internal MSPL uncertainty candidates retain the penalised objective fence", {
+  fit <- .mspl_fit("logit", q = 1L)
+  checkpoint <- gllvmTMB:::.gllvmTMB_profile_tmb_checkpoint(fit$tmb_obj)
+  penalty_off <- fit$mspl$unpenalized_tmb_obj
+  penalty_off$fn <- function(...) {
+    stop("penalty-off objective must not enter uncertainty candidates")
+  }
+  fit$mspl$unpenalized_tmb_obj <- penalty_off
+
+  hessian <- gllvmTMB:::.gllvmTMB_mspl_penalized_hessian_diagnostic(
+    fit, which = 1L
+  )
+  expect_identical(hessian$objective_source, "fit$tmb_obj (penalised LA-MSPL)")
+  expect_identical(hessian$target_name, "b_fix")
+  expect_identical(hessian$status, "ok")
+  expect_true(is.finite(hessian$se))
+  expect_lt(hessian$diagnostic_lower, hessian$estimate)
+  expect_gt(hessian$diagnostic_upper, hessian$estimate)
+  expect_identical(
+    gllvmTMB:::.gllvmTMB_profile_tmb_checkpoint(fit$tmb_obj),
+    checkpoint
+  )
+
+  probe <- gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
+    fit, which = 1L, step = 0.5, max_steps = 3L
+  )
+  profile <- gllvmTMB:::.gllvmTMB_mspl_profile_threshold_diagnostic(probe)
+  expect_identical(profile$objective_source, "fit$tmb_obj (penalised LA-MSPL)")
+  expect_identical(profile$centre_status, "matched")
+  expect_identical(profile$lower_status, "crossed")
+  expect_identical(profile$upper_status, "crossed")
+  expect_true(all(is.finite(c(profile$diagnostic_lower, profile$diagnostic_upper))))
+  expect_lt(profile$diagnostic_lower, profile$estimate)
+  expect_gt(profile$diagnostic_upper, profile$estimate)
+  expect_true(all(profile$diagnostic_lower >= min(profile$lower_bracket)))
+  expect_true(all(profile$diagnostic_lower <= max(profile$lower_bracket)))
+  expect_true(all(profile$diagnostic_upper >= min(profile$upper_bracket)))
+  expect_true(all(profile$diagnostic_upper <= max(profile$upper_bracket)))
+
+  truncated <- gllvmTMB:::.gllvmTMB_mspl_profile_threshold_diagnostic(
+    gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
+      fit, which = 1L, step = 0.5, max_steps = 1L
+    )
+  )
+  expect_identical(truncated$lower_status, "truncated")
+  expect_identical(truncated$upper_status, "truncated")
+  expect_true(all(is.na(c(
+    truncated$diagnostic_lower, truncated$diagnostic_upper
+  ))))
+})
+
 test_that("internal MSPL profile feasibility records the q=1 link matrix", {
   cases <- data.frame(
     link = c("logit", "probit", "cloglog", "cloglog"),

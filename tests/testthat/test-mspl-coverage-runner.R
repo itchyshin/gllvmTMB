@@ -170,9 +170,7 @@ test_that("Gate 0 coverage runner freezes the approved private contract", {
   expect_match(runner, "coverage_equivalence_upper = 0.98")
   expect_match(runner, "wald_min_available = 500L")
   expect_match(runner, "outer_per_shard = 10L")
-  expect_match(runner, "rep\\(\\\"nibi\\\", 6L\\)")
-  expect_match(runner, "rep\\(\\\"narval\\\", 4L\\)")
-  expect_match(runner, "rep\\(\\\"rorqual\\\", 2L\\)")
+  expect_match(runner, "production_cluster_assignment")
   expect_match(runner, "condition_on_RE = FALSE")
   expect_match(runner, "wilson_interval")
   expect_match(runner, "penalty_off_likelihood_curvature_at_penalised_mspl_estimate")
@@ -188,7 +186,11 @@ test_that("Manifest identities use the shell-safe label grammar", {
   runner_env <- new.env(parent = globalenv())
   withr::local_envvar(MSPL_COVERAGE_SOURCE_ONLY = "true")
   sys.source(runner_path, envir = runner_env)
-  expect_silent(runner_env$manifest_table(campaign_id = "campaign-1_safe.v2", source_sha = "abc123"))
+  manifest <- runner_env$manifest_table(campaign_id = "campaign-1_safe.v2", source_sha = "abc123")
+  expect_identical(
+    manifest$assigned_cluster,
+    c(rep("nibi", 6L), rep("narval", 4L), "nibi", "narval")
+  )
   for (invalid in c("comma,value", "quoted\"value", "line\nvalue")) {
     expect_error(
       runner_env$manifest_table(campaign_id = invalid, source_sha = "abc123"),
@@ -525,6 +527,9 @@ test_that("Gate4 pre-run aggregation accepts only the exact production pre-run r
       "lane-b-mspl-coverage-gate0-mini-v1-2026-08-14"),
     downgraded = transform(manifest, manifest_version = "unknown-version")
   )
+  legacy_three_cluster <- manifest
+  legacy_three_cluster$assigned_cluster[11:12] <- "rorqual"
+  invalid_manifests$legacy_three_cluster <- legacy_three_cluster
   mixed <- manifest
   mixed$manifest_version[[1L]] <- "lane-b-mspl-coverage-gate0-smoke-v1-2026-08-14"
   invalid_manifests$mixed <- mixed

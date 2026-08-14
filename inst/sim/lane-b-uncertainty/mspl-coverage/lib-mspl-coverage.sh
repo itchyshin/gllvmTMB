@@ -471,8 +471,7 @@ mspl_validate_gate4_ready_receipt() {
   case "$MSPL_COVERAGE_CLUSTER" in
     nibi) runtime_field=nibi_runtime_archive_sha256 ;;
     narval) runtime_field=narval_runtime_archive_sha256 ;;
-    rorqual) runtime_field=rorqual_runtime_archive_sha256 ;;
-    *) mspl_die "Production unlock is defined only for nibi, narval, or rorqual." ;;
+    *) mspl_die "Production unlock is defined only for nibi or narval." ;;
   esac
   awk -F= \
     -v campaign="$MSPL_COVERAGE_CAMPAIGN_ID" -v source="$MSPL_COVERAGE_SOURCE_SHA" \
@@ -489,7 +488,6 @@ mspl_validate_gate4_ready_receipt() {
       expected["gate4_prerun_receipt_sha256"] = aggregate; expected["gate4_shard_ledger_sha256"] = shard_ledger
       expected["nibi_runtime_archive_sha256"] = "__sha256__"
       expected["narval_runtime_archive_sha256"] = "__sha256__"
-      expected["rorqual_runtime_archive_sha256"] = "__sha256__"
       expected[runtime_field] = runtime_hash
       expected["case_count"] = "12"; expected["shard_count"] = "12"; expected["outer_fit_rows"] = "120"
       expected["bootstrap_attempt_rows"] = "60000"; expected["endpoint_rows"] = "1080"
@@ -503,7 +501,7 @@ mspl_validate_gate4_ready_receipt() {
       else if (expected[key] == "__utc__" && value !~ /^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]Z$/) invalid = 1
       else if (expected[key] != "__sha256__" && expected[key] != "__utc__" && value != expected[key]) invalid = 1
     }
-    END { for (key in expected) if (seen[key] != 1) invalid = 1; if (NR != 23) invalid = 1; exit invalid ? 2 : 0 }
+    END { for (key in expected) if (seen[key] != 1) invalid = 1; if (NR != 22) invalid = 1; exit invalid ? 2 : 0 }
   ' "$receipt" || mspl_die "Production blocked: Gate 4 ready receipt has missing, duplicate, unknown, unsafe, stale, or mismatched provenance fields."
 }
 
@@ -553,7 +551,7 @@ mspl_validate_production_manifest() {
       expected_link = (row <= 4 ? "logit" : (row <= 8 ? "probit" : "cloglog"))
       expected_beta = (regime_index == 2 ? -1.5 : (regime_index == 3 ? 1.5 : 0))
       expected_lambda = (regime_index == 4 ? 1.75 : 1)
-      expected_cluster = (row <= 6 ? "nibi" : (row <= 10 ? "narval" : "rorqual"))
+      expected_cluster = (row <= 6 || row == 11 ? "nibi" : "narval")
       if (field[column["case_id"]] != expected_case || field[column["case_number"]] + 0 != row ||
           field[column["regime"]] != expected_regime || field[column["link"]] != expected_link ||
           field[column["beta_shift"]] + 0 != expected_beta || field[column["lambda_scale"]] + 0 != expected_lambda ||
@@ -634,10 +632,9 @@ mspl_validate_remaining_production_map() {
 
 mspl_remaining_cluster_contract() {
   case "$1" in
-    nibi) printf '1\t6\t594\n' ;;
-    narval) printf '7\t10\t396\n' ;;
-    rorqual) printf '11\t12\t198\n' ;;
-    *) mspl_die "Remaining-production contract supports nibi, narval, or rorqual only." ;;
+    nibi) printf 'C001,C002,C003,C004,C005,C006,C011\t693\n' ;;
+    narval) printf 'C007,C008,C009,C010,C012\t495\n' ;;
+    *) mspl_die "Remaining-production contract supports nibi or narval only." ;;
   esac
 }
 

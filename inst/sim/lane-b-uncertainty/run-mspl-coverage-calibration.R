@@ -93,13 +93,17 @@ validate_safe_label <- function(x, field) {
   as.character(x)
 }
 
+production_cluster_assignment <- c(
+  rep("nibi", 6L), rep("narval", 4L), "nibi", "narval"
+)
+
 manifest_table <- function(
   n_outer = 1000L,
   bootstrap_reps = 500L,
   outer_per_shard = 10L,
   campaign_id,
   source_sha,
-  clusters = c(rep("nibi", 6L), rep("narval", 4L), rep("rorqual", 2L)),
+  clusters = production_cluster_assignment,
   availability_min = 0.95,
   coverage_wilson_level = 0.90,
   coverage_equivalence_lower = 0.92,
@@ -302,7 +306,6 @@ validate_manifest_mode <- function(manifest, mode) {
     stop("Manifest version is unknown, mixed, or not valid for this aggregation mode.", call. = FALSE)
   }
   if (mode %in% c("production", "prerun")) {
-    clusters <- c(rep("nibi", 6L), rep("narval", 4L), rep("rorqual", 2L))
     production_ok <- nrow(manifest) == 12L &&
       identical(as.character(manifest$case_id), sprintf("C%03d", seq_len(12L))) &&
       all(manifest$n_outer == 1000L & manifest$bootstrap_reps == 500L &
@@ -310,7 +313,7 @@ validate_manifest_mode <- function(manifest, mode) {
         manifest$n_shards == 100L & manifest$availability_min == .95 &
         manifest$coverage_wilson_level == .90 & manifest$coverage_equivalence_lower == .92 &
         manifest$coverage_equivalence_upper == .98 & manifest$wald_min_available == 500L) &&
-      identical(as.character(manifest$assigned_cluster), clusters)
+      identical(as.character(manifest$assigned_cluster), production_cluster_assignment)
     if (!production_ok) stop("Production manifest semantics are not the frozen Gate 0 contract.", call. = FALSE)
   } else if (identical(mode, "smoke")) {
     smoke_ok <- nrow(manifest) == 3L && all(manifest$regime == "baseline") &&

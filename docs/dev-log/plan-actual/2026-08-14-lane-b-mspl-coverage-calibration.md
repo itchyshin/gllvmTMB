@@ -258,3 +258,29 @@ job, runtime, shard, or unlock was created during hardening. The next step is a
 new immutable source commit, followed by fresh Gates 1--4 under that exact
 identity. Only a newly audited ready receipt can release the 1,188 remaining
 production shards. Public MSPL inference remains fail-closed.
+
+## Rorqual quota failover actual — 2026-08-14
+
+Fresh execution under `aee65e7901396c7dc13d144b02d28f6f1c775cb9`
+stopped before staging when creation of the Rorqual campaign root returned
+`Disk quota exceeded`. The immediately preceding Lustre report showed 497,536
+of 500,000 project files, so nominal headroom was not treated as operational
+writeability. Nibi and Narval held only empty `r1` roots and uploaded-but-
+unextracted archives; no source bytes were staged into a campaign root, no
+scheduler job was submitted, and no statistical key was attempted.
+
+The reviewed source contract correctly rejected an external manifest reroute:
+R, shell validation, monitor counts, and the Gate 4 ready-receipt schema all
+froze 6/4/2. The route was therefore revised in source rather than bypassed.
+The replacement contract assigns `C001`--`C006` plus `C011` to Nibi and
+`C007`--`C010` plus `C012` to Narval. All case IDs, outer/bootstrap seeds,
+method settings, 12 Gate 4 keys, and 1,188 remaining keys are byte-identical to
+the prior route. Only `assigned_cluster` changes.
+
+The shell monitor now expects 693 remaining Nibi shards and 495 Narval shards.
+The Gate 4 ready receipt is a closed 22-key schema with exactly the two
+cluster-native runtime hashes. Legacy 6/4/2 manifests and Rorqual production
+tasks fail before compute. The launcher self-test, all shell syntax checks,
+191 focused runner expectations, and `git diff --check` passed. An independent
+read-only audit returned strict GO with no P0/P1/P2 findings. Fresh two-cluster
+Gates 1--4 still require a new immutable source commit before any remote resume.

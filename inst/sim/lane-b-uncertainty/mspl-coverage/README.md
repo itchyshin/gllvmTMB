@@ -12,9 +12,10 @@ that exact byte stream atomically from node-local `shards/` to durable
 All scripts require `MSPL_COVERAGE_ROOT` (an explicit `/project/...` root),
 explicit `MSPL_COVERAGE_CAMPAIGN_ID`, `MSPL_COVERAGE_SOURCE_SHA`, and
 `MSPL_COVERAGE_MANIFEST_SHA256` bindings, source archive plus SHA (`MSPL_COVERAGE_SOURCE_ARCHIVE`
-and `MSPL_COVERAGE_SOURCE_ARCHIVE_SHA256`), and `MSPL_COVERAGE_CLUSTER`
-(`nibi`, `narval`, `rorqual`, or reserve `fir`). The source SHA is the frozen
-campaign identity, not an inferred checkout revision.
+and `MSPL_COVERAGE_SOURCE_ARCHIVE_SHA256`), and `MSPL_COVERAGE_CLUSTER`. The
+frozen production route admits `nibi` or `narval`; `rorqual` and reserve `fir`
+require a newly reviewed manifest/launcher identity. The source SHA is the
+frozen campaign identity, not an inferred checkout revision.
 
 Slurm executes a spooled copy of each SBATCH script, so no job resolves the
 helper relative to `${BASH_SOURCE[0]}`. Before test-only or live scheduling,
@@ -119,7 +120,8 @@ looking up a map row. Admission requires the exact production version on all
 values, 1,000 outer datasets, `B=500`, 475 minimum usable bootstrap refits,
 10 outer datasets per shard, 100 shards per case, availability 0.95, 90%
 Wilson intervals, equivalence bounds [0.92, 0.98], Wald minimum 500, and the
-6 Nibi / 4 Narval / 2 Rorqual assignment. A smoke, mini, test, mixed-version,
+7 Nibi / 5 Narval assignment (`C001`--`C006` plus `C011` on Nibi;
+`C007`--`C010` plus `C012` on Narval). A smoke, mini, test, mixed-version,
 reordered, or numerically downgraded manifest fails before runner execution.
 
 For Gate 3, each admitted cluster has exactly **three** production-path map
@@ -142,10 +144,10 @@ fails before the runner starts. With `MSPL_COVERAGE_STAGE=production`
 newly indexed rows ordered as C001 through C012, shards 002 through 100 within
 each case. The full `array-map.tsv` is never accepted as a post-Gate-4 map, so
 the 12 pre-run shards cannot be rerun under reused indices. Production remains
-inaccessible until a matching, closed 23-key
+inaccessible until a matching, closed 22-key
 `gates/gate4-prerun-ready.receipt` exists. Gate 3 binds the live production and
 smoke manifests, three-shard ledger, smoke aggregate, source/runtime, cluster,
-and launcher hashes. Gate 4 additionally binds all three runtime hashes, the
+and launcher hashes. Gate 4 additionally binds both runtime hashes, the
 live 12-shard ledger, staged statistical aggregate, exact row counts, and
 maintainer approval. Duplicate, unknown, missing, unsafe, or stale fields fail;
 independent matching lines elsewhere cannot satisfy either receipt. Setup and Gate 3 smoke do
@@ -187,7 +189,7 @@ smoke/array tasks request 1 CPU, 4 GB, and 30 minutes. Modules are
 `StdEnv/2023`, `gcc/12.3`, and `r/4.5.0`, plus an explicit
 `MSPL_COVERAGE_EXTRA_MODULES` list when the frozen bundle needs geospatial
 system libraries. `drac-monitor.sh` is read-only and always reports
-cluster-local `expected` counts (Nibi 594, Narval 396, Rorqual 198),
+cluster-local `expected` counts (Nibi 693, Narval 495),
 `completed`, `running`, `pending`, `failed`, `newest_valid_shard_timestamp`,
 and `newest_receipt`; it first authenticates the launcher, manifest identity,
 manifest hash, and exact remaining map.

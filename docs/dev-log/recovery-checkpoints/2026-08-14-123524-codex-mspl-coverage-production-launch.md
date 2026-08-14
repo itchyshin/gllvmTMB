@@ -3,7 +3,7 @@
 Date: 2026-08-14 12:35 MDT
 Platform: Codex
 Branch: `codex/lane-b-mspl-interval-feasibility`
-Current committed HEAD: `9a5e131f64cb5d77eefc2719bde412ffe7d7ed5c`
+Current committed HEAD: `aee65e7901396c7dc13d144b02d28f6f1c775cb9`
 
 ## Current state
 
@@ -13,9 +13,9 @@ GO. No new remote campaign root, source archive, runtime, job, shard, or unlock
 has been created since that approval. Public MSPL inference is still
 fail-closed.
 
-The current working tree contains the source/launcher/test hardening plus the
-plan actual, check-log, this checkpoint, and a phase after-task report. A new
-immutable commit is the next action.
+The current working tree contains the reviewed Nibi/Narval failover contract
+plus its plan actual, check-log, checkpoint update, and phase after-task report.
+A new immutable commit is the next action.
 
 ## Evidence completed
 
@@ -36,6 +36,14 @@ immutable commit is the next action.
 - Launcher contract self-test, all shell syntax checks, and `git diff --check`
   passed.
 - Independent final production-launch audit: strict GO, no P0/P1/P2.
+- First fresh Rorqual root creation failed `Disk quota exceeded` before staging
+  or scheduling. No statistical task was attempted.
+- The replacement route preserves all keys/seeds and changes only
+  `assigned_cluster`: Nibi owns `C001`--`C006`,`C011` (693 remaining shards);
+  Narval owns `C007`--`C010`,`C012` (495 remaining shards).
+- Legacy 6/4/2 manifests and Rorqual production tasks are rejected. The
+  failover contract self-test and 191 focused runner expectations passed; an
+  independent read-only audit returned strict GO with no P0/P1/P2.
 
 ## Historical evidence retained
 
@@ -50,8 +58,8 @@ immutable commit is the next action.
 1. Commit the exact scoped local files and record the new immutable SHA.
 2. Materialise a fresh source archive, manifest, launcher ledger, and campaign
    root under that SHA.
-3. Repeat scheduler dry runs and cluster-native builds on Nibi, Narval, and
-   Rorqual; do not reuse compiled libraries across clusters.
+3. Repeat scheduler dry runs and cluster-native builds on Nibi and Narval;
+   Rorqual is a typed quota blocker and is excluded from this immutable route.
 4. Run and aggregate fresh Gate 3 and exact 12-shard Gate 4 evidence.
 5. Audit and materialise the new ready receipt, then submit only the 1,188
    remaining keys.

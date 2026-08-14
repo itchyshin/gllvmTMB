@@ -51,7 +51,7 @@ MAP="${MSPL_COVERAGE_ARRAY_MAP:-$ROOT/remaining-production-array-map.tsv}"
 [[ -f "$MAP" ]] || die "Missing runner-produced remaining production map: $MAP"
 mspl_validate_remaining_production_map "$MAP"
 CLUSTER_CONTRACT="$(mspl_remaining_cluster_contract "$MSPL_COVERAGE_CLUSTER")" || die "Invalid monitor cluster contract."
-IFS=$'\t' read -r FIRST_CASE LAST_CASE EXPECTED <<< "$CLUSTER_CONTRACT"
+IFS=$'\t' read -r CASE_CSV EXPECTED <<< "$CLUSTER_CONTRACT"
 
 command -v Rscript >/dev/null 2>&1 || die "Rscript is required to validate completed shards."
 SNAPSHOT="$(Rscript --vanilla - \
@@ -59,17 +59,19 @@ SNAPSHOT="$(Rscript --vanilla - \
   "$MSPL_COVERAGE_SOURCE_SHA" "$MSPL_COVERAGE_SOURCE_ARCHIVE_SHA256" \
   "$MSPL_COVERAGE_SOURCE_BUNDLE_SHA256" "$MSPL_COVERAGE_LAUNCHER_BUNDLE_SHA256" \
   "$MSPL_COVERAGE_HELPER_SHA256" "$MSPL_COVERAGE_RUNTIME_ARCHIVE_SHA256" \
-  "$FIRST_CASE" "$LAST_CASE" "$EXPECTED" <<'RS'
+  "$CASE_CSV" "$EXPECTED" <<'RS'
 args <- commandArgs(trailingOnly = TRUE)
 root <- args[[1L]]; cluster <- args[[2L]]; campaign <- args[[3L]]; source_sha <- args[[4L]]
 expected_hashes <- setNames(args[5:9], c(
   "source_archive_sha256", "source_bundle_sha256", "launcher_bundle_sha256",
   "launcher_helper_sha256", "runtime_archive_sha256"
 ))
-first_case <- as.integer(args[[10L]]); last_case <- as.integer(args[[11L]])
-expected_count <- as.integer(args[[12L]])
+case_ids <- strsplit(args[[10L]], ",", fixed = TRUE)[[1L]]
+expected_count <- as.integer(args[[11L]])
 manifest <- utils::read.csv(file.path(root, "manifest.csv"), stringsAsFactors = FALSE)
-case_ids <- sprintf("C%03d", first_case:last_case)
+if (!length(case_ids) || any(!grepl("^C[0-9]{3}$", case_ids)) || anyDuplicated(case_ids)) {
+  stop("Cluster-local case contract is malformed.")
+}
 expected_names <- unlist(lapply(case_ids, function(case_id) {
   sprintf("%s-shard-%03d.rds", case_id, 2:100)
 }), use.names = FALSE)

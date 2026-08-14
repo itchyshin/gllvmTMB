@@ -49847,3 +49847,48 @@ the remaining 1,188 production shards, production aggregation/adjudication,
 public method activation, package-wide tests, `R CMD check`, pkgdown, or CI.
 The previous schema-v1 Gate 4 evidence remains historical and cannot unlock
 schema-v2 production. Public MSPL inference remains fail-closed.
+
+---
+
+## 2026-08-14 — LA-MSPL Rorqual quota failover
+
+The first post-hardening remote mutation stopped at `mkdir` on Rorqual with
+`Disk quota exceeded`; no campaign bytes or scheduler jobs followed. The
+nominal 2,464-file project headroom was therefore not accepted as writeability.
+Nibi and Narval retained empty `r1` roots and uploaded-but-unextracted staging
+archives as infrastructure evidence.
+
+An external 7/5 manifest rewrite was rejected because immutable source
+`aee65e79` independently froze 6/4/2 in the R runner, R aggregator, shell
+validator, monitor contract, and 23-key ready receipt. The replacement source
+instead freezes Nibi cases `C001`--`C006`,`C011` and Narval cases
+`C007`--`C010`,`C012`, while retaining exactly the same statistical cases,
+seeds, 12 Gate 4 keys, and 1,188 remaining keys. The monitor expects 693/495
+owned shards; the ready receipt binds exactly two runtime hashes and rejects
+Rorqual or legacy 6/4/2.
+
+Verification:
+
+```sh
+inst/sim/lane-b-uncertainty/mspl-coverage/contract-self-test.sh
+# PASS: launcher-contract-self-test=PASS.
+
+for file in inst/sim/lane-b-uncertainty/mspl-coverage/*.sh \
+            inst/sim/lane-b-uncertainty/mspl-coverage/*.sbatch; do
+  bash -n "$file"
+done
+# PASS.
+
+Rscript --vanilla -e \
+  'x <- testthat::test_file("tests/testthat/test-mspl-coverage-runner.R", reporter=testthat::SilentReporter$new(), stop_on_failure=TRUE); d <- as.data.frame(x); cat(sum(d$nb), sum(d$failed), sum(d$warning), sum(d$skipped), "\n")'
+# PASS: 191 expectations, 0 failures, 0 warnings, 0 skips.
+
+git diff --check
+# PASS.
+```
+
+The independent failover audit compared old/new manifests and maps: only the
+`assigned_cluster` values changed; pre-run and remaining maps were byte-
+identical. It returned strict GO with no P0/P1/P2 findings. Remote execution
+remained paused pending the new commit. Public MSPL inference remains
+fail-closed.

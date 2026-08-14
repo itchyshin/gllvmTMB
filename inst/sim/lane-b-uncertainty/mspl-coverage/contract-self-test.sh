@@ -65,7 +65,7 @@ for i in $(seq 1 12); do
     4) regime=strong_signal; beta_shift=0; lambda_scale=1.75 ;;
   esac
   if [[ "$i" -le 4 ]]; then link=logit; elif [[ "$i" -le 8 ]]; then link=probit; else link=cloglog; fi
-  if [[ "$i" -le 6 ]]; then cluster=nibi; elif [[ "$i" -le 10 ]]; then cluster=narval; else cluster=rorqual; fi
+  if [[ "$i" -le 6 || "$i" -eq 11 ]]; then cluster=nibi; else cluster=narval; fi
   seed_base=$((1900000000 + i * 10000000))
   printf '%s,%d,%s,%s,%s,%s,%d,1000,500,475,10,100,%s,0.95,0.90,0.92,0.98,500,lane-b-mspl-coverage-gate0-v1-2026-08-14,test-campaign,test-source\n' \
     "$case_id" "$i" "$regime" "$link" "$beta_shift" "$lambda_scale" "$seed_base" "$cluster" >> "$MANIFEST"
@@ -99,9 +99,8 @@ Rscript --vanilla "$RUNNER" manifest --root "$QUOTED_PRODUCTION_ROOT" \
 Rscript --vanilla "$RUNNER" smoke-manifest --root "$QUOTED_SMOKE_ROOT" \
   --campaign-id quoted-smoke --source-sha quoted-source --cluster nibi
 mspl_validate_remaining_production_map "$QUOTED_PRODUCTION_ROOT/remaining-production-array-map.tsv"
-[[ "$(mspl_remaining_cluster_contract nibi)" == $'1\t6\t594' && \
-   "$(mspl_remaining_cluster_contract narval)" == $'7\t10\t396' && \
-   "$(mspl_remaining_cluster_contract rorqual)" == $'11\t12\t198' ]] ||
+[[ "$(mspl_remaining_cluster_contract nibi)" == $'C001,C002,C003,C004,C005,C006,C011\t693' && \
+   "$(mspl_remaining_cluster_contract narval)" == $'C007,C008,C009,C010,C012\t495' ]] ||
   mspl_die "Self-test failure: cluster-local remaining-map monitor counts changed."
 awk -F '\t' 'BEGIN { OFS = "\t" } NR == 2 { $3 = 1 } { print }' \
   "$QUOTED_PRODUCTION_ROOT/remaining-production-array-map.tsv" > "$BAD_REMAINING_MAP"
@@ -138,8 +137,15 @@ done
   MSPL_COVERAGE_CLUSTER=nibi SLURM_ARRAY_TASK_ID=1 mspl_array_task)" == C001$'\t'2 ]] ||
   mspl_die "Self-test failure: production task 1 did not select C001 shard 002 from the remaining map."
 [[ "$(MSPL_COVERAGE_ROOT="$QUOTED_PRODUCTION_ROOT" MSPL_COVERAGE_CAMPAIGN_ID=quoted-production MSPL_COVERAGE_SOURCE_SHA=quoted-source MSPL_COVERAGE_STAGE=production \
-  MSPL_COVERAGE_CLUSTER=rorqual SLURM_ARRAY_TASK_ID=1188 mspl_array_task)" == C012$'\t'100 ]] ||
+  MSPL_COVERAGE_CLUSTER=nibi SLURM_ARRAY_TASK_ID=991 mspl_array_task)" == C011$'\t'2 ]] ||
+  mspl_die "Self-test failure: production task 991 did not select rerouted C011 shard 002 on Nibi."
+[[ "$(MSPL_COVERAGE_ROOT="$QUOTED_PRODUCTION_ROOT" MSPL_COVERAGE_CAMPAIGN_ID=quoted-production MSPL_COVERAGE_SOURCE_SHA=quoted-source MSPL_COVERAGE_STAGE=production \
+  MSPL_COVERAGE_CLUSTER=narval SLURM_ARRAY_TASK_ID=1188 mspl_array_task)" == C012$'\t'100 ]] ||
   mspl_die "Self-test failure: production task 1188 did not select C012 shard 100 from the remaining map."
+if (MSPL_COVERAGE_ROOT="$QUOTED_PRODUCTION_ROOT" MSPL_COVERAGE_CAMPAIGN_ID=quoted-production MSPL_COVERAGE_SOURCE_SHA=quoted-source MSPL_COVERAGE_STAGE=production \
+  MSPL_COVERAGE_CLUSTER=rorqual SLURM_ARRAY_TASK_ID=991 mspl_array_task) >/dev/null 2>&1; then
+  mspl_die "Self-test failure: retired Rorqual production route accepted C011."
+fi
 
 # Re-serialize without a terminal newline and verify every frozen production assignment.
 awk 'NR > 1 { printf "\n" } { printf "%s", $0 }' \
@@ -147,12 +153,10 @@ awk 'NR > 1 { printf "\n" } { printf "%s", $0 }' \
 [[ -s "$QUOTED_NO_FINAL_NEWLINE" ]] || mspl_die "Self-test failure: no-final-newline manifest was not created."
 for i in $(seq 1 12); do
   case_id="$(printf 'C%03d' "$i")"
-  if [[ "$i" -le 6 ]]; then
+  if [[ "$i" -le 6 || "$i" -eq 11 ]]; then
     expected_cluster=nibi
-  elif [[ "$i" -le 10 ]]; then
-    expected_cluster=narval
   else
-    expected_cluster=rorqual
+    expected_cluster=narval
   fi
   [[ "$(mspl_manifest_case_field "$QUOTED_PRODUCTION_ROOT/manifest.csv" "$case_id" assigned_cluster)" == "$expected_cluster" ]] ||
     mspl_die "Self-test failure: quoted production manifest assignment disagrees for $case_id."
@@ -243,7 +247,6 @@ SOURCE_ARCHIVE_HASH="$(printf 'a%.0s' $(seq 1 64))"
 SOURCE_BUNDLE_HASH="$(printf 'b%.0s' $(seq 1 64))"
 NIBI_RUNTIME_HASH="$(printf 'c%.0s' $(seq 1 64))"
 NARVAL_RUNTIME_HASH="$(printf 'd%.0s' $(seq 1 64))"
-RORQUAL_RUNTIME_HASH="$(printf 'e%.0s' $(seq 1 64))"
 PRODUCTION_MANIFEST_HASH="$(mspl_sha256 "$QUOTED_PRODUCTION_ROOT/manifest.csv")"
 cp "$QUOTED_SMOKE_ROOT/manifest.csv" "$GATES/gate3-smoke-manifest.csv"
 printf 'receipt_type: gate3-smoke-statistical\nlauncher_unlock_eligible: FALSE\n' > "$GATES/gate3-smoke-receipt.txt"
@@ -295,7 +298,6 @@ gate4_prerun_receipt_sha256=$GATE4_AGGREGATE_HASH
 gate4_shard_ledger_sha256=$GATE4_LEDGER_HASH
 nibi_runtime_archive_sha256=$NIBI_RUNTIME_HASH
 narval_runtime_archive_sha256=$NARVAL_RUNTIME_HASH
-rorqual_runtime_archive_sha256=$RORQUAL_RUNTIME_HASH
 case_count=12
 shard_count=12
 outer_fit_rows=120

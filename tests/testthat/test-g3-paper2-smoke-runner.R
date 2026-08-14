@@ -1,0 +1,13 @@
+test_that("Paper 2 G3 smoke runner seals provenance and failure receipts", {
+  path <- testthat::test_path("..", "..", "dev", "isdm-package-recovery", "run-g3-paper2-smoke.R")
+  text <- paste(readLines(path, warn = FALSE), collapse = "\n")
+  expect_match(text, "86302L", fixed = TRUE)
+  expect_match(text, "elapsed = 1500", fixed = TRUE)
+  expect_match(text, "G3_P2_S6_C360_R3_V1", fixed = TRUE)
+  expect_match(text, "G3_HESSIAN_UNAVAILABLE", fixed = TRUE)
+  expect_match(text, "INVALID_PROVENANCE", fixed = TRUE)
+  expect_match(text, "coordinate_ids", fixed = TRUE)
+  expect_match(text, "all-attempt-ledger.rds", fixed = TRUE)
+  expect_false(grepl("profile_theta\\(|nlminb\\(|TMB::MakeADFun\\(|Totoro|DRAC", text))
+  expect_true(is.expression(parse(path)))
+})

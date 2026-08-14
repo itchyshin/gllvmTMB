@@ -173,3 +173,25 @@ fixture has mean-SE / empirical-SD ratios of 1.07--1.35, including 1.35 for
 its first fixed effect. These are private diagnostic bands from the active
 penalised objective, not calibrated standard errors or confidence intervals.
 The profile candidate remains separately blocked; no public MSPL refusal changed.
+
+## Private Godambe/sandwich feasibility actuals
+
+**Mode:** mathematical/TMB admission, not a covariance implementation.
+The active LA-MSPL criterion is TMB's Laplace marginal objective. Its C++
+`joint_nll_penalized` report deliberately excludes the outer Laplace
+log-determinant, while its Jeffreys and loading/covariance penalties depend on
+global `N_eff` and the full `X_mspl` design. The fitted object provides only
+the total outer gradient and exposes no validated per-site or per-row
+active-objective score decomposition.
+
+**Verdict:** `score_decomposition_unavailable`. A conventional
+Godambe/sandwich covariance would need additive scores from exactly the active
+penalised Laplace criterion. Neither the reported joint NLL nor a penalty-off
+provenance tape meets that requirement. A delete-one-site refit would define a
+new jackknife-type candidate and is outside this arc.
+
+**Four-fixture contract:** logit, probit, standard cloglog, and
+low-prevalence standard cloglog all return the same typed blocker after
+verifying `fit$tmb_obj`, `estimator_id = 1`, and no reported per-unit score
+field. No covariance, interval, simulation, remote compute, or public method
+was activated.

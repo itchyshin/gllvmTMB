@@ -30,6 +30,57 @@
   invisible(x)
 }
 
+## Internal feasibility diagnostic only.  A Godambe covariance needs additive
+## score contributions from the *active* estimating criterion.  The admitted
+## LA-MSPL tape is a TMB Laplace marginal objective with global penalties, and
+## no validated additive site-score decomposition is exposed. This helper
+## records that typed blocker; it does not compute a covariance or an interval.
+.gllvmTMB_mspl_sandwich_feasibility <- function(fit) {
+  if (!.gllvmTMB_is_mspl(fit)) {
+    .gllvmTMB_mspl_abort(
+      "The internal MSPL sandwich feasibility diagnostic requires an {.code estimator = \"mspl\"} fit.",
+      class = "gllvmTMB_mspl_sandwich_input"
+    )
+  }
+
+  obj <- fit$tmb_obj
+  penalty_off <- fit$mspl$unpenalized_tmb_obj
+  if (
+    is.null(obj) ||
+      identical(obj, penalty_off) ||
+      !identical(as.integer(obj$env$data$estimator_id), 1L)
+  ) {
+    .gllvmTMB_mspl_abort(
+      "The internal MSPL sandwich feasibility diagnostic could not verify the active penalised TMB objective.",
+      class = "gllvmTMB_mspl_sandwich_objective"
+    )
+  }
+
+  report_names <- names(fit$report %||% list())
+  score_fields <- report_names[grepl(
+    "(^|_)(score|gradient|estimating)(_|$)",
+    report_names
+  )]
+
+  list(
+    status = "score_decomposition_unavailable",
+    objective_source = "fit$tmb_obj (penalised LA-MSPL)",
+    estimator_id = 1L,
+    outer_gradient = "total_only",
+    random_effect_route = "TMB Laplace marginal objective",
+    global_penalties = c(
+      "N_eff-scaled Jeffreys log-determinant",
+      "loading/covariance penalties"
+    ),
+    reported_per_unit_score_fields = score_fields,
+    reason = c(
+      "The active TMB outer gradient is total-only; no additive site-score decomposition is exposed.",
+      "The Laplace log determinant is added outside the C++ joint objective.",
+      "The active MSPL penalties use global design and effective-sample quantities."
+    )
+  )
+}
+
 ## Internal feasibility instrument only. This is intentionally separate from
 ## the public profile/confint dispatch: a finite trace establishes neither
 ## calibrated standard errors nor confidence-interval coverage.

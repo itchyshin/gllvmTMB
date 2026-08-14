@@ -49531,3 +49531,33 @@ Focused MSPL tests had no failures, warnings, or skips; the runner contract had
 five passing expectations. Deliberately not run: package-wide tests, R CMD
 check, pkgdown, bootstrap, q = 2, structured/missing-data regimes, CI, or any
 public API work.
+
+## 2026-08-13 — LA-MSPL private Godambe/sandwich feasibility blocker
+
+The active LA-MSPL TMB tape cannot supply the additive site/row scores needed
+for a conventional Godambe covariance. `fit$tmb_obj` is the active penalised
+Laplace marginal criterion, but `joint_nll_penalized` excludes TMB's outer
+Laplace log determinant and the MSPL penalties use global `N_eff` and
+`X_mspl`. The fitted object exposes a total outer gradient only and no
+validated, exposed per-unit score decomposition. The new
+unexported diagnostic therefore returns the typed
+`score_decomposition_unavailable` blocker rather than a covariance or an
+interval.
+
+The deterministic contract evaluates logit, probit, standard cloglog, and
+low-prevalence standard cloglog fixtures. It verifies `estimator_id = 1`,
+poisons the penalty-off provenance `fn`, records no per-unit score report, and
+retains the blocker in every fixture. Existing public MSPL refusal assertions
+run in the same focused suite unchanged.
+
+```sh
+Rscript --vanilla -e 'devtools::test(filter = "mspl-api", stop_on_failure = TRUE)'
+git diff --check
+rg -n 'mspl_sandwich_feasibility|score_decomposition_unavailable' NAMESPACE R tests/testthat
+```
+
+Deliberately not run: a covariance calculation, simulation/coverage campaign,
+Totoro or DRAC compute, q = 2, spatial/structured or missing-data fixtures,
+bootstrap, package-wide tests, R CMD check, pkgdown, or public API work. A
+delete-one-site refit would be a separately designed jackknife candidate, not
+a Godambe score decomposition.

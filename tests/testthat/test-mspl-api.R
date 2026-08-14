@@ -407,6 +407,30 @@ test_that("MSPL inference and likelihood-comparison methods fail closed", {
   expect_false(grepl("prefer profile|prefer bootstrap|standard_errors", advice))
 })
 
+test_that("MSPL sandwich feasibility records the active-score blocker", {
+  fixtures <- list(
+    logit = list(link = "logit", beta = c(-0.5, 0.1, 0.55)),
+    probit = list(link = "probit", beta = c(-0.5, 0.1, 0.55)),
+    cloglog = list(link = "cloglog", beta = c(-0.5, 0.1, 0.55)),
+    cloglog_low_prevalence = list(link = "cloglog", beta = c(-2, -1.4, -0.9))
+  )
+  for (spec in fixtures) {
+    fit <- .mspl_fit(spec$link, beta = spec$beta)
+    penalty_off <- fit$mspl$unpenalized_tmb_obj
+    penalty_off$fn <- function(...) stop("penalty-off objective must not run")
+    fit$mspl$unpenalized_tmb_obj <- penalty_off
+
+    diagnostic <- .gllvmTMB_mspl_sandwich_feasibility(fit)
+    expect_identical(diagnostic$status, "score_decomposition_unavailable")
+    expect_identical(diagnostic$objective_source,
+                     "fit$tmb_obj (penalised LA-MSPL)")
+    expect_identical(diagnostic$estimator_id, 1L)
+    expect_identical(diagnostic$outer_gradient, "total_only")
+    expect_length(diagnostic$reported_per_unit_score_fields, 0L)
+    expect_match(diagnostic$reason[[2L]], "Laplace log determinant")
+  }
+})
+
 test_that("internal MSPL profile feasibility traces the penalised objective only", {
   fit <- .mspl_fit("logit", q = 1L)
   checkpoint <- gllvmTMB:::.gllvmTMB_profile_tmb_checkpoint(fit$tmb_obj)

@@ -11,6 +11,11 @@ readonly REMOTE_FALLBACK_LIB='~/R/x86_64-pc-linux-gnu-library/4.5'
 readonly PHASE="${GLLVM897_PHASE:-development}"
 readonly SEEDS="${GLLVM897_SEEDS:-1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20}"
 readonly RUN_MODE="${GLLVM897_MODE:---campaign}"
+if [[ "$RUN_MODE" == "--sentinel-calibration" ]]; then
+  readonly ARTIFACT_TAG="sentinel-$PHASE"
+else
+  readonly ARTIFACT_TAG="campaign-$PHASE"
+fi
 
 if [[ "${GLLVM897_CONFIRM:-}" != "YES" ]]; then
   echo 'Refusing #897 campaign: set GLLVM897_CONFIRM=YES after approval.' >&2
@@ -34,9 +39,9 @@ OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 \\
   /usr/bin/time -v Rscript --vanilla dev/897-ordinal-detector-admission.R $RUN_MODE \\
   > $REMOTE_ROOT/campaign-$PHASE-run.log 2>&1
 sha256sum $REMOTE_ROOT/campaign-$PHASE-install.log $REMOTE_ROOT/campaign-$PHASE-run.log \\
-  ~/gllvm_work/results/897-ordinal-detector/campaign-$PHASE-{cells,provenance,manifest}.csv \\
-  ~/gllvm_work/results/897-ordinal-detector/campaign-$PHASE-receipt.rds \\
-  > ~/gllvm_work/results/897-ordinal-detector/campaign-$PHASE-sha256.txt"
+  ~/gllvm_work/results/897-ordinal-detector/$ARTIFACT_TAG-{cells,provenance,manifest}.csv \\
+  ~/gllvm_work/results/897-ordinal-detector/$ARTIFACT_TAG-receipt.rds \\
+  > ~/gllvm_work/results/897-ordinal-detector/$ARTIFACT_TAG-sha256.txt"
 
 echo "#897 Totoro $PHASE campaign: commit=$commit workers=$NWORKERS cap=$TOTORO_CORE_CAP seeds=$SEEDS"
 rsync -az --exclude='.git' --exclude='.Rproj.user' "$repo_root/" "totoro:$REMOTE_ROOT/"

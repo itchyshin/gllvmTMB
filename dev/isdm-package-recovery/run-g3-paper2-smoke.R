@@ -16,7 +16,7 @@ source_gate <- value("source-gate", "G3_P2_S6_C360_R3_V1")
 attempt_id <- value("attempt-id", "paper2-g3-smoke-86302")
 root_id <- value("root-id", "G3_P2_S6_C360_R3_V1")
 time_estimate <- value("time-estimate", "15-25 minutes")
-time_limit_s <- value("time-limit-s", "1500")
+time_limit_arg <- value("time-limit-s", "1500")
 if (!mode %in% c("validate", "preflight", "smoke") || is.null(root_arg)) {
   stop("require --mode=validate|preflight|smoke and --output=PATH", call. = FALSE)
 }
@@ -38,13 +38,13 @@ if (!identical(source_gate, "G3_P2_S6_C360_R3_V1") &&
       identical(root_id, "G3_P2_S6_C360_R3_V1") ||
       identical(attempt_id, "paper2-g3-smoke-86302") ||
       identical(time_estimate, "15-25 minutes") ||
-      identical(time_limit_s, "1500"))) {
+      identical(time_limit_arg, "1500"))) {
   stop(
     "A non-V1 source gate requires explicit packet, root, attempt, and time values distinct from V1.",
     call. = FALSE
   )
 }
-time_limit_s <- suppressWarnings(as.numeric(time_limit_s))
+time_limit_s <- suppressWarnings(as.numeric(time_limit_arg))
 if (length(time_limit_s) != 1L || !is.finite(time_limit_s) || time_limit_s <= 0 || !nzchar(time_estimate)) {
   stop("--time-estimate must be non-empty and --time-limit-s must be a positive number.", call. = FALSE)
 }
@@ -129,6 +129,7 @@ if (identical(mode, "preflight")) {
   receipt <- list(
     schema = paste0(source_gate, "_PREFLIGHT_V1"), packet = basename(packet_file), commit = commit(),
     source_gate = source_gate, root_id = root_id, attempt_id = attempt_id,
+    time_estimate = time_estimate, time_limit_s = time_limit_arg,
     seed = 86302L, dimensions = c(S = 6L, C = 360L, r = 3L, b = 1L, d = 1L),
     runner_md5 = hash_file(script), fixture_md5 = hash_file(fixture_file), packet_md5 = hash_file(packet_file),
     source_md5 = c(fit_multi = hash_file(file.path(pkg, "R", "fit-multi.R")),
@@ -193,7 +194,8 @@ main <- function() {
     ledger$receipt <- receipt
     observed_context <- list(
       schema = paste0(source_gate, "_PREFLIGHT_V1"), source_gate = source_gate,
-      root_id = root_id, attempt_id = attempt_id
+      root_id = root_id, attempt_id = attempt_id,
+      time_estimate = time_estimate, time_limit_s = time_limit_arg
     )
     execution_context <- g3p_compare_execution_context(receipt, observed_context)
     ledger$execution_context <- execution_context

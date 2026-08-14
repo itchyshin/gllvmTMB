@@ -61,15 +61,16 @@ test_that("G3P rejects non-MD5 receipt values", {
 test_that("G3P binds the preflight execution context before a smoke", {
   expected <- list(
     schema = "G3P_P2_SMOKE_V2_PREFLIGHT_V1", source_gate = "G3P_P2_SMOKE_V2",
-    root_id = "G3P_P2_S6_C360_R3_V2", attempt_id = "paper2-g3-smoke-v2-86302"
+    root_id = "G3P_P2_S6_C360_R3_V2", attempt_id = "paper2-g3-smoke-v2-86302",
+    time_estimate = "15 minutes", time_limit_s = "900"
   )
   observed <- expected
-  observed$source_gate <- "G3P_P2_OTHER_V2"
+  observed$time_limit_s <- "1200"
   out <- g3p_compare_execution_context(expected, observed)
   expect_identical(out$status, "INVALID_PROVENANCE")
   expect_identical(out$reason, "execution_context_mismatch")
   expect_true(out$terminal)
-  expect_identical(nrow(out$fields), 4L)
+  expect_identical(nrow(out$fields), 6L)
 })
 
 test_that("G3P runner applies the receipt contract before optimizer entry", {

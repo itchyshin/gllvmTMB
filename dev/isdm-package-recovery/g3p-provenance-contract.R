@@ -86,7 +86,7 @@ g3p_compare_identity <- function(expected, observed) {
 }
 
 g3p_required_execution_names <- function() c(
-  "schema", "source_gate", "root_id", "attempt_id"
+  "schema", "source_gate", "root_id", "attempt_id", "time_estimate", "time_limit_s"
 )
 
 g3p_compare_execution_context <- function(expected, observed) {

@@ -152,7 +152,7 @@ pilot is operational evidence, not a calibrated-coverage decision.
 ## Private numerical-Hessian calibration actuals
 
 **Recommended / actual:** up to ten hours including a 500-replicate gate and
-conditional 1,000-replicate confirmation / approximately 35 minutes, dominated
+conditional 1,000-replicate confirmation / approximately 18 minutes, dominated
 by the exact-source Totoro build. **Mode:** private candidate adjudication.
 The runner was hardened before compute: it has a `hessian_only` route which
 does not invoke profile code, atomic three-target receipts, retained fit errors,

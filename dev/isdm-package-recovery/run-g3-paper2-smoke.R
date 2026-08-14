@@ -22,7 +22,9 @@ script <- normalizePath(
 base <- dirname(script)
 fixture_file <- file.path(base, "g2h-360cell-fixture.R")
 packet_file <- file.path(base, "2026-08-13-g3-paper2-smallest-smoke-packet.md")
+provenance_contract <- file.path(base, "g3p-provenance-contract.R")
 source(fixture_file, local = TRUE)
+source(provenance_contract, local = TRUE)
 
 hash_file <- function(path) unname(tools::md5sum(path))[[1L]]
 hash_object <- function(x) {
@@ -58,6 +60,12 @@ loaded_dll <- function() {
   if (length(paths) != 1L) stop("require exactly one loaded gllvmTMB DLL", call. = FALSE)
   list(path = paths[[1L]], md5 = hash_file(paths[[1L]]))
 }
+runtime_identity <- function() list(
+  architecture = R.version$arch,
+  r_version = as.character(getRversion()),
+  tmb_version = as.character(utils::packageVersion("TMB")),
+  package_version = as.character(utils::packageVersion("gllvmTMB"))
+)
 make <- function() {
   suppressMessages(devtools::load_all(pkg, quiet = TRUE))
   fixture <- g2h_make_fixture(seed = 86302L)
@@ -96,6 +104,7 @@ if (identical(mode, "preflight")) {
     source_md5 = c(fit_multi = hash_file(file.path(pkg, "R", "fit-multi.R")),
       isdm_fit = hash_file(file.path(pkg, "R", "isdm-developer-fit.R")),
       tmb = hash_file(file.path(pkg, "src", "gllvmTMB.cpp")), dll = z$dll$md5),
+    runtime = runtime_identity(),
     dll_path = z$dll$path, n_rows = nrow(z$fixture$rows),
     source_map = list(ecological = "rank-one unit latent ecological state", gbif_bias = "GBIF-only fixed bias covariate",
       pa_gbif_bias_structural_zero = TRUE, extractor_truth_map = c(shared = "shared_Sigma", psi = "psi_variance"))
@@ -154,11 +163,16 @@ main <- function() {
       isdm_fit = hash_file(file.path(pkg, "R", "isdm-developer-fit.R")),
       tmb = hash_file(file.path(pkg, "src", "gllvmTMB.cpp")), dll = z$dll$md5
     )
-    if (!identical(receipt$commit, commit()) || !identical(receipt$runner_md5, hash_file(script)) ||
-        !identical(receipt$fixture_md5, hash_file(fixture_file)) || !identical(receipt$packet_md5, hash_file(packet_file)) ||
-        !identical(receipt$source_md5, current_source_md5) || !identical(receipt$dll_path, z$dll$path)) {
+    observed_identity <- list(
+      commit = commit(), runner_md5 = hash_file(script), fixture_md5 = hash_file(fixture_file),
+      packet_md5 = hash_file(packet_file), source_md5 = current_source_md5,
+      runtime = runtime_identity(), dll_path = z$dll$path
+    )
+    provenance <- g3p_compare_identity(receipt, observed_identity)
+    ledger$provenance <- provenance
+    if (isTRUE(provenance$terminal)) {
       ledger$status <- "INVALID_PROVENANCE"
-      ledger$error <- "preflight receipt drift"
+      ledger$error <- provenance$reason
       ledger$terminal <- TRUE
       return(invisible(NULL))
     }

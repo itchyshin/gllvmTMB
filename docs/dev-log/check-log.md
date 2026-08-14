@@ -50076,3 +50076,17 @@ spatial-separation claim. No retry, repair, profile, campaign, C=1,000, Paper 2,
 Totoro/DRAC, public/package/article action, or threshold change occurred. The
 historical G2 and Paper 2 HOLDs are unchanged. See the after-task report and
 checkpoint dated 2026-08-13 before any new approval request.
+
+## 2026-08-13 — G3P provenance amendment landed (no fit)
+
+The future G3P runner now applies the stable-content/runtime receipt comparator
+before optimizer entry. MD5 fields are structurally validated, DLL paths remain
+diagnostic, and malformed records retain the full comparison table.
+
+```sh
+Rscript --vanilla -e 'testthat::test_file("tests/testthat/test-g3p-provenance-contract.R", reporter = "summary"); testthat::test_file("tests/testthat/test-g3p-paper2-smoke-packet.R", reporter = "summary"); invisible(parse("dev/isdm-package-recovery/g3p-provenance-contract.R")); invisible(parse("dev/isdm-package-recovery/run-g3-paper2-smoke.R"))'
+# PASS: focused no-fit contract and packet tests; both files parse.
+```
+
+No runner mode, preflight, smoke, fit, profile, simulation, remote compute,
+model/DGP/map/threshold change, or public/article change occurred.

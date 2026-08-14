@@ -1,11 +1,20 @@
 source(testthat::test_path("..", "..", "dev", "isdm-package-recovery", "g3p-provenance-contract.R"))
 
 g3p_identity_fixture <- function() list(
-  commit = "commit", runner_md5 = "runner", fixture_md5 = "fixture", packet_md5 = "packet",
-  source_md5 = c(fit_multi = "fit", isdm_fit = "isdm", tmb = "tmb", dll = "dll"),
+  commit = "commit", runner_md5 = strrep("a", 32L), fixture_md5 = strrep("b", 32L), packet_md5 = strrep("c", 32L),
+  source_md5 = c(fit_multi = strrep("d", 32L), isdm_fit = strrep("e", 32L), tmb = strrep("f", 32L), dll = strrep("1", 32L)),
   runtime = list(architecture = "arm64-apple-darwin", r_version = "4.5.0", tmb_version = "1.9.17", package_version = "0.6.0"),
   dll_path = "/tmp/first/gllvmTMB.so"
 )
+
+test_that("G3P accepts an exact stable identity match", {
+  expected <- g3p_identity_fixture()
+  out <- g3p_compare_identity(expected, expected)
+  expect_identical(out$status, "MATCH")
+  expect_identical(out$terminal, FALSE)
+  expect_identical(out$reason, "exact_identity_match")
+  expect_true(all(out$fields$equal))
+})
 
 test_that("G3P accepts equal stable identity across temporary DLL paths", {
   expected <- g3p_identity_fixture()
@@ -21,7 +30,7 @@ test_that("G3P accepts equal stable identity across temporary DLL paths", {
 test_that("G3P rejects content or ABI identity drift", {
   expected <- g3p_identity_fixture()
   changed_dll <- expected
-  changed_dll$source_md5[["dll"]] <- "different-dll"
+  changed_dll$source_md5[["dll"]] <- strrep("2", 32L)
   changed_abi <- expected
   changed_abi$runtime$architecture <- "x86_64-apple-darwin"
   for (observed in list(changed_dll, changed_abi)) {
@@ -39,5 +48,20 @@ test_that("G3P rejects malformed identity before a smoke", {
   out <- g3p_compare_identity(expected, observed)
   expect_identical(out$status, "INVALID_PROVENANCE")
   expect_identical(out$reason, "malformed_or_incomplete_identity")
-  expect_identical(out$fields$field, "identity")
+  expect_identical(nrow(out$fields), 13L)
+})
+
+test_that("G3P rejects non-MD5 receipt values", {
+  expected <- g3p_identity_fixture()
+  observed <- expected
+  observed$runner_md5 <- "not-an-md5"
+  expect_identical(g3p_compare_identity(expected, observed)$status, "INVALID_PROVENANCE")
+})
+
+test_that("G3P runner applies the receipt contract before optimizer entry", {
+  path <- testthat::test_path("..", "..", "dev", "isdm-package-recovery", "run-g3-paper2-smoke.R")
+  text <- paste(readLines(path, warn = FALSE), collapse = "\n")
+  expect_match(text, "source\\(provenance_contract, local = TRUE\\)")
+  expect_match(text, "provenance <- g3p_compare_identity\\(receipt, observed_identity\\)")
+  expect_match(text, "ledger\\$provenance <- provenance")
 })

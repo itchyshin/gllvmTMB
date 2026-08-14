@@ -11,59 +11,74 @@ g3p_scalar_character <- function(x) {
   is.character(x) && length(x) == 1L && !is.na(x) && nzchar(x)
 }
 
+g3p_md5 <- function(x) {
+  g3p_scalar_character(x) && grepl("^[0-9A-Fa-f]{32}$", x, perl = TRUE)
+}
+
 g3p_valid_identity <- function(x) {
   is.list(x) &&
     g3p_scalar_character(x$commit) &&
-    g3p_scalar_character(x$runner_md5) &&
-    g3p_scalar_character(x$fixture_md5) &&
-    g3p_scalar_character(x$packet_md5) &&
+    g3p_md5(x$runner_md5) &&
+    g3p_md5(x$fixture_md5) &&
+    g3p_md5(x$packet_md5) &&
     is.character(x$source_md5) &&
     identical(names(x$source_md5), g3p_required_source_names()) &&
-    all(vapply(unname(x$source_md5), g3p_scalar_character, logical(1L))) &&
+    all(vapply(unname(x$source_md5), g3p_md5, logical(1L))) &&
     is.list(x$runtime) &&
     identical(names(x$runtime), g3p_required_runtime_names()) &&
     all(vapply(x$runtime, g3p_scalar_character, logical(1L))) &&
     g3p_scalar_character(x$dll_path)
 }
 
-g3p_compare_identity <- function(expected, observed) {
-  if (!g3p_valid_identity(expected) || !g3p_valid_identity(observed)) {
-    return(list(
-      status = "INVALID_PROVENANCE", terminal = TRUE,
-      reason = "malformed_or_incomplete_identity",
-      fields = data.frame(field = "identity", expected = NA_character_, observed = NA_character_,
-        equal = FALSE, binding = TRUE, stringsAsFactors = FALSE)
-    ))
-  }
+g3p_field_value <- function(x) {
+  if (g3p_scalar_character(x)) x else NA_character_
+}
 
+g3p_list_field <- function(x, name) {
+  if (is.list(x)) x[[name]] else NULL
+}
+
+g3p_identity_values <- function(x) {
+  source_md5 <- g3p_list_field(x, "source_md5")
+  runtime <- g3p_list_field(x, "runtime")
+  c(
+    commit = g3p_field_value(g3p_list_field(x, "commit")),
+    runner_md5 = g3p_field_value(g3p_list_field(x, "runner_md5")),
+    fixture_md5 = g3p_field_value(g3p_list_field(x, "fixture_md5")),
+    packet_md5 = g3p_field_value(g3p_list_field(x, "packet_md5")),
+    stats::setNames(vapply(g3p_required_source_names(), function(name) {
+      g3p_field_value(source_md5[[name]])
+    }, character(1L)), paste0("source_md5.", g3p_required_source_names())),
+    stats::setNames(vapply(g3p_required_runtime_names(), function(name) {
+      g3p_field_value(runtime[[name]])
+    }, character(1L)), paste0("runtime.", g3p_required_runtime_names())),
+    dll_path = g3p_field_value(g3p_list_field(x, "dll_path"))
+  )
+}
+
+g3p_compare_identity <- function(expected, observed) {
   binding <- c("commit", "runner_md5", "fixture_md5", "packet_md5",
     paste0("source_md5.", g3p_required_source_names()),
     paste0("runtime.", g3p_required_runtime_names()))
-  expected_values <- c(
-    commit = expected$commit, runner_md5 = expected$runner_md5,
-    fixture_md5 = expected$fixture_md5, packet_md5 = expected$packet_md5,
-    stats::setNames(expected$source_md5, paste0("source_md5.", names(expected$source_md5))),
-    stats::setNames(unlist(expected$runtime, use.names = FALSE), paste0("runtime.", names(expected$runtime)))
-  )
-  observed_values <- c(
-    commit = observed$commit, runner_md5 = observed$runner_md5,
-    fixture_md5 = observed$fixture_md5, packet_md5 = observed$packet_md5,
-    stats::setNames(observed$source_md5, paste0("source_md5.", names(observed$source_md5))),
-    stats::setNames(unlist(observed$runtime, use.names = FALSE), paste0("runtime.", names(observed$runtime)))
-  )
-  stopifnot(identical(names(expected_values), binding), identical(names(observed_values), binding))
+  expected_values <- g3p_identity_values(expected)
+  observed_values <- g3p_identity_values(observed)
+  stopifnot(identical(names(expected_values), c(binding, "dll_path")),
+    identical(names(observed_values), c(binding, "dll_path")))
   fields <- data.frame(
-    field = c(binding, "dll_path"), expected = c(expected_values, expected$dll_path),
-    observed = c(observed_values, observed$dll_path),
-    equal = c(expected_values == observed_values, identical(expected$dll_path, observed$dll_path)),
+    field = c(binding, "dll_path"), expected = expected_values,
+    observed = observed_values,
+    equal = !is.na(expected_values) & !is.na(observed_values) & expected_values == observed_values,
     binding = c(rep(TRUE, length(binding)), FALSE), stringsAsFactors = FALSE
   )
   binding_mismatch <- fields$binding & !fields$equal
   path_only_difference <- !any(binding_mismatch) && !fields$equal[[nrow(fields)]]
+  malformed <- !g3p_valid_identity(expected) || !g3p_valid_identity(observed)
   list(
-    status = if (any(binding_mismatch)) "INVALID_PROVENANCE" else "MATCH",
-    terminal = any(binding_mismatch),
-    reason = if (any(binding_mismatch)) "binding_identity_mismatch" else if (path_only_difference) {
+    status = if (malformed || any(binding_mismatch)) "INVALID_PROVENANCE" else "MATCH",
+    terminal = malformed || any(binding_mismatch),
+    reason = if (malformed) "malformed_or_incomplete_identity" else if (any(binding_mismatch)) {
+      "binding_identity_mismatch"
+    } else if (path_only_difference) {
       "path_only_difference"
     } else "exact_identity_match",
     fields = fields

@@ -29,7 +29,8 @@ printf '%s\\n' '$commit' > $REMOTE_ROOT/COMMIT
 cd $REMOTE_ROOT
 R_LIBS_USER=$REMOTE_LIB R CMD INSTALL --no-multiarch --with-keep.source .
 OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 \\
-  R_LIBS_USER=$REMOTE_LIB GLLVM897_OUT=~/gllvm_work/results/897-ordinal-detector \\
+  R_LIBS_USER=$REMOTE_LIB GLLVM897_COMMIT=$commit \\
+  GLLVM897_OUT=~/gllvm_work/results/897-ordinal-detector \\
   Rscript --vanilla dev/897-ordinal-detector-admission.R --totoro-preflight"
 
 echo "#897 Totoro preflight: commit=$commit workers=$NWORKERS cap=$TOTORO_CORE_CAP"

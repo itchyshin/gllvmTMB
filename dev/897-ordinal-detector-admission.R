@@ -260,7 +260,10 @@ rows <- lapply(split(grid, seq_len(nrow(grid))), fit_cell)
 out <- do.call(rbind, rows)
 elapsed <- as.numeric(difftime(Sys.time(), started, units = "secs"))
 provenance <- data.frame(
-  commit = system("git rev-parse HEAD", intern = TRUE),
+  commit = Sys.getenv(
+    "GLLVM897_COMMIT",
+    system("git rev-parse HEAD 2>/dev/null", intern = TRUE)
+  ),
   script_md5 = if (!is.na(script_file) && file.exists(script_file)) {
     unname(tools::md5sum(script_file))
   } else {

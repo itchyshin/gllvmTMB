@@ -20,7 +20,7 @@ if (!procedure %in% c("both", "hessian_only")) {
   stop("Use --procedure both or hessian_only.", call. = FALSE)
 }
 
-manifest <- function(n_rep = 100L) {
+manifest <- function(n_rep = 100L, seed_offset = 0L) {
   out <- data.frame(
     cell_id = c("U001", "U002", "U003", "U004"),
     link = c("logit", "probit", "cloglog", "cloglog"),
@@ -30,14 +30,16 @@ manifest <- function(n_rep = 100L) {
     stringsAsFactors = FALSE
   )
   out$manifest_version <- "lane-b-mspl-uncertainty-v2-2026-08-13"
-  out$seed_base <- 1813000000L + seq_len(nrow(out)) * 10000L
+  out$seed_base <- 1813000000L + seq_len(nrow(out)) * 10000L +
+    as.integer(seed_offset)
   out
 }
 
-write_manifest <- function(root, n_rep, procedure, campaign_id, source_sha) {
+write_manifest <- function(root, n_rep, procedure, campaign_id, source_sha,
+                           seed_offset) {
   dir.create(root, recursive = TRUE, showWarnings = FALSE)
   dir.create(file.path(root, "raw"), showWarnings = FALSE)
-  m <- manifest(n_rep)
+  m <- manifest(n_rep, seed_offset)
   m$procedure <- procedure
   m$campaign_id <- campaign_id
   m$source_sha <- source_sha
@@ -157,7 +159,8 @@ if (identical(command, "prepare")) {
     stop("prepare requires --campaign-id and --source-sha.", call. = FALSE)
   }
   write_manifest(root, as.integer(arg_value("--n-rep", "100")), procedure,
-                 campaign_id, source_sha)
+                 campaign_id, source_sha,
+                 as.integer(arg_value("--seed-offset", "0")))
 } else if (identical(command, "run")) {
   if (identical(Sys.getenv("GLLVM_TMB_PILOT_SOURCE"), "true")) {
     devtools::load_all(quiet = TRUE)

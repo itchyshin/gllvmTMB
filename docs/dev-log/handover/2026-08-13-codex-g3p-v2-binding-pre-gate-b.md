@@ -1,7 +1,8 @@
 # Session Handoff: G3P V2 binding, pre-Gate B
 
-`e233a58d` is the current exact generic-runner baseline. It binds the
-preflight receipt's schema, source gate, root ID, and attempt ID before a
+`e3609d55` is the current exact generic-runner baseline. It binds the
+preflight receipt's schema, source gate, root ID, attempt ID, time estimate,
+and hard stop before a
 future smoke can load the compiled package or enter the optimizer. The V2
 proposal names the intended V2 identifiers but creates neither packet nor
 root.

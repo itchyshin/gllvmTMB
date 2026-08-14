@@ -50091,6 +50091,21 @@ Rscript --vanilla -e 'testthat::test_file("tests/testthat/test-g3p-provenance-co
 No runner mode, preflight, smoke, fit, profile, simulation, remote compute,
 model/DGP/map/threshold change, or public/article change occurred.
 
+## 2026-08-13 — G3P receipt-bound time budget (no runner)
+
+The preflight receipt and pre-optimizer execution-context comparator now bind
+the time estimate and hard limit alongside the gate, root, attempt, and schema.
+A later smoke cannot change its approved runtime budget without a terminal
+`INVALID_PROVENANCE` result.
+
+```sh
+Rscript --vanilla -e 'testthat::test_file("tests/testthat/test-g3p-provenance-contract.R", reporter = "summary"); testthat::test_file("tests/testthat/test-g3p-paper2-smoke-packet.R", reporter = "summary"); invisible(parse("dev/isdm-package-recovery/g3p-provenance-contract.R")); invisible(parse("dev/isdm-package-recovery/run-g3-paper2-smoke.R"))'
+# PASS: focused no-fit contract and packet tests; both files parse.
+```
+
+No runner mode, preflight, smoke, fit, profile, simulation, remote compute,
+model/DGP/map/threshold change, or public/article change occurred.
+
 ## 2026-08-13 — G3P execution-context receipt binding (no runner)
 
 The preflight receipt now binds `schema`, `source_gate`, `root_id`, and

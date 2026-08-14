@@ -45,17 +45,19 @@ remote-compute output changed.
 
 ## 5. Checks Run
 
-`devtools::test(filter = "mspl-api", stop_on_failure = TRUE)` completed with
-no reported failures after the test repair. A loaded-package
-`testthat::test_local(..., filter = "mspl-api", reporter = StopReporter)` also
-completed without an error. `git diff --check` passed.
+`devtools::test(filter = "mspl-api", stop_on_failure = TRUE)` completed in
+162.3 seconds with 679 passing expectations and no failures, warnings, or
+skips. A direct four-fixture smoke took 18.6 seconds: logit, probit, cloglog,
+and low-prevalence cloglog each admitted all 24 deletion refits with a finite
+private covariance. `git diff --check` passed.
 
 ## 6. Tests of the Tests
 
 The test checks deletion count, estimator ID, rebuilt `N_eff`/`X_mspl`
 alignment, named fixed-effect targets, covariance symmetry, and finite private
 SE candidates. It also verifies that fits with dropped responses or
-`Xcoef_fixed` constraints fail closed before any deletion refit.
+`Xcoef_fixed` constraints fail closed before any deletion refit; an invalid
+deletion input returns `delete_site_refit_failure` with no covariance.
 
 ## 7a. Issue Ledger
 
@@ -72,8 +74,7 @@ inference refusals remain the controlling contract.
 
 The first new assertion used an invalid `vapply()` signature. The focused suite
 exposed it before any commit; replacing it with a proper per-deletion predicate
-made the test pass. A verbose terminal reporter truncated its final summary, so
-a second stop-on-failure loaded-package run confirmed the result.
+made the test pass.
 
 ## 10. Known Residuals
 

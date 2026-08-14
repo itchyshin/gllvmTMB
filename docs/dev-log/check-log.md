@@ -49579,3 +49579,10 @@ stop-on-failure run confirmed it. No public inference, validation-register,
 NEWS, or release claim changed. This record exercises one deterministic logit
 fixture only. Repeated-sampling calibration remains unapproved and must return
 with a measured smoke/estimate before any Totoro run.
+
+The final focused receipt after the failed-deletion hardening had 679 passing
+expectations in 162.3 seconds, with no failures, warnings, or skips. A direct
+18.6-second four-fixture smoke admitted base logit, base probit, base cloglog,
+and low-prevalence cloglog: every fixture retained 24 successful site deletions
+and a finite private covariance. The helper remains private and its successful
+deletion trace is feasibility evidence only, not calibrated uncertainty.

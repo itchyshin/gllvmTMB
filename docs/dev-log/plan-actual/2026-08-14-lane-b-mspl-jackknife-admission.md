@@ -26,11 +26,17 @@ only planned remote target; no GitHub Actions campaign is permitted.
 
 ## Actual
 
-The focused local `mspl-api` suite completed without a failure after a
-mechanical assertion repair. The private helper uses the active penalised
+The focused local `mspl-api` suite completed in 162.3 seconds with 679 passing
+expectations, no failures, warnings, or skips. A direct four-fixture smoke then
+completed in 18.6 seconds: base logit, base probit, base cloglog, and
+low-prevalence cloglog each admitted all 24 delete-one-site refits and produced
+a finite private covariance. The forced invalid-deletion regression returned
+`delete_site_refit_failure` with `covariance = NULL`.
+
+The private helper uses the active penalised
 objective as its covariance target, rebuilds each deletion through `gllvmTMB()`
 (which also constructs a penalty-off provenance tape), and retains the
 `N_eff`/`X_mspl` alignment contract. It now rejects fits with dropped responses
 or `Xcoef_fixed` constraints and aligns deletion targets by `X_fix_names`.
-This is a one-logit-fixture smoke/feasibility PASS only; the repeated-sampling
+This is deterministic feasibility/admission evidence only; the repeated-sampling
 pilot remains unapproved and unlaunched.

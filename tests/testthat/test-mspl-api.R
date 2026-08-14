@@ -475,6 +475,18 @@ test_that("MSPL jackknife rejects dropped responses and fixed coefficients", {
   )
 })
 
+test_that("MSPL jackknife fails closed when a deletion cannot be rebuilt", {
+  fit <- .mspl_fit("logit", q = 1L)
+  fit$lambda_constraint <- matrix(Inf, 1L, 1L)
+  result <- .gllvmTMB_mspl_jackknife_feasibility(fit)
+
+  expect_identical(result$status, "delete_site_refit_failure")
+  expect_null(result$covariance)
+  expect_true(any(vapply(
+    result$deletions, `[[`, character(1L), "status"
+  ) == "delete_site_refit_failure"))
+})
+
 test_that("MSPL jackknife covariance uses the delete-one normalization", {
   beta_delete <- rbind(c(1, 2), c(3, 4), c(5, 6))
   expected <- (2 / 3) * crossprod(sweep(

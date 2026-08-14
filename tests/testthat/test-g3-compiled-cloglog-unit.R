@@ -1,4 +1,15 @@
 test_that("G3 compiled unit evaluates a sealed Newton grid without optimisation", {
+  fd_gradient_jacobian <- function(object, theta, multiplier) {
+    p <- length(theta)
+    out <- matrix(NA_real_, p, p)
+    for (j in seq_len(p)) {
+      h <- multiplier * .Machine$double.eps^(1 / 3) * max(1, abs(theta[[j]]))
+      delta <- rep(0, p)
+      delta[[j]] <- h
+      out[, j] <- (object$gr(theta + delta) - object$gr(theta - delta)) / (2 * h)
+    }
+    out
+  }
   skip_if_not_installed("TMB")
   scratch <- tempfile("g3-cloglog-unit-")
   dir.create(scratch)
@@ -22,7 +33,11 @@ test_that("G3 compiled unit evaluates a sealed Newton grid without optimisation"
     DLL = "gllvmTMB_cloglog_tail", silent = TRUE
   )
   raw_par <- obj$par
-  names(raw_par) <- c("b_fix", "theta_rr_B", "theta_diag_B")
+  names(raw_par) <- c("b_fix[1]", "theta_rr_B[2]", "theta_diag_B[3]")
+  g3_obj <- list(
+    fn = function(theta) obj$fn(theta),
+    gr = function(theta) unname(obj$gr(theta))
+  )
   lower <- stats::setNames(rep(-Inf, length(raw_par)), names(raw_par))
   upper <- stats::setNames(rep(Inf, length(raw_par)), names(raw_par))
   signature_names <- gllvmTMB:::.gllvmTMB_isdm_g3_signature_names
@@ -31,44 +46,71 @@ test_that("G3 compiled unit evaluates a sealed Newton grid without optimisation"
     boundary_flags = character(), tie_count = 1L, is_isdm = TRUE, aghq = FALSE,
     ridge = FALSE, retry_enabled = FALSE, profile_enabled = FALSE,
     source_gate = "G3_COMPILED_UNIT")
+  signature$source_gate <- raw_state$source_gate
   raw_fn <- obj$fn(raw_par)
   raw_gr <- obj$gr(raw_par)
+  raw_he <- obj$he(raw_par)
+  raw_sd <- TMB::sdreport(obj, par.fixed = unname(raw_par))
+  expect_equal(solve(raw_sd$cov.fixed), raw_he, tolerance = 1e-6)
+  for (multiplier in c(0.5, 1, 2)) {
+    fd_he <- fd_gradient_jacobian(obj, raw_par, multiplier)
+    expect_equal(raw_he, fd_he, tolerance = 1e-6)
+  }
+  curvature_fn <- function(theta, positional_ids) {
+    report <- tryCatch(TMB::sdreport(obj, par.fixed = unname(theta)), error = identity)
+    if (inherits(report, "error")) {
+      return(list(available = FALSE, reason = "sdreport_error", par.fixed = NULL,
+        cov.fixed = NULL, pdHess = NA, positional_ids = positional_ids,
+        error = conditionMessage(report)))
+    }
+    covariance <- report$cov.fixed
+    dimnames(covariance) <- list(positional_ids, positional_ids)
+    list(available = TRUE, reason = "available", par.fixed = theta,
+      cov.fixed = covariance, pdHess = report$pdHess,
+      positional_ids = positional_ids, error = NA_character_)
+  }
   trials <- gllvmTMB:::.gllvmTMB_isdm_g3_full_vector_trials(
-    obj, raw_par, lower, upper, signature, raw_state,
+    g3_obj, raw_par, lower, upper, signature, raw_state,
+    curvature_fn = curvature_fn,
     raw_gradient_gate = 1e-3, health_gradient_gate = 1e-2
   )
 
-  expect_identical(trials$status, "TRIALS_EVALUATED")
+  expect_identical(trials$status, "G3_NUMERICAL_ADMISSION")
   expect_equal(trials$raw$objective, raw_fn)
   expect_equal(trials$raw$gradient, stats::setNames(as.numeric(raw_gr), names(raw_par)))
   expect_identical(trials$signature, signature)
   expect_identical(vapply(trials$trials, `[[`, numeric(1L), "alpha"), 2^-(0:8))
   expect_length(trials$trials, 9L)
   expect_true(all(vapply(trials$trials, function(x) x$status %in%
-    c("ACCEPTED", "REJECTED", "INFEASIBLE", "ERROR"), logical(1L))))
+    c("ACCEPTED", "REJECTED", "ERROR"), logical(1L))))
   expect_true(all(vapply(trials$trials, function(x)
     identical(names(x$parameter_vector), names(raw_par)), logical(1L))))
   expect_true(all(vapply(trials$trials, function(x)
     isTRUE(all.equal(x$objective, obj$fn(x$parameter_vector))), logical(1L))))
-  expect_true(all(vapply(trials$trials, function(x)
-    is.matrix(x$hessian) && is.finite(x$condition), logical(1L))))
+  guarded <- Filter(function(x) is.list(x$curvature), trials$trials)
+  expect_length(guarded, 1L)
+  expect_true(all(vapply(guarded, function(x)
+    is.matrix(x$curvature$covariance) && is.finite(x$condition), logical(1L))))
 
-  ## A sealed but deliberately zero-width bound box makes every candidate
-  ## infeasible.  The runner must retain the entire grid rather than stop after
-  ## its first rejection.
+  ## Bounds wide enough for every frozen FD point but narrower than the full
+  ## Newton step reject the only gradient-passing candidate. The helper must
+  ## still retain the entire grid rather than stop after that rejection.
+  fd_margin <- 4 * .Machine$double.eps^(1 / 3) * pmax(1, abs(raw_par))
   locked <- gllvmTMB:::.gllvmTMB_isdm_g3_full_vector_trials(
-    obj, raw_par, raw_par, raw_par, signature, raw_state,
+    g3_obj, raw_par, raw_par - fd_margin, raw_par + fd_margin, signature, raw_state,
+    curvature_fn = curvature_fn,
     raw_gradient_gate = 1e-3, health_gradient_gate = 1e-2
   )
-  expect_identical(locked$status, "TRIALS_EVALUATED")
+  expect_identical(locked$status, "G3_NO_ACCEPTED_TRIAL")
   expect_identical(vapply(locked$trials, `[[`, numeric(1L), "alpha"), 2^-(0:8))
-  expect_true(all(vapply(locked$trials, function(x)
-    identical(x$status, "INFEASIBLE") && identical(x$reason, "candidate_outside_bounds"), logical(1L))))
+  expect_true(any(vapply(locked$trials, function(x)
+    identical(x$status, "REJECTED") && identical(x$reason, "candidate_bounds_gate"), logical(1L))))
 
   bad_signature <- signature[-1L]
   invalid <- gllvmTMB:::.gllvmTMB_isdm_g3_full_vector_trials(
-    obj, raw_par, lower, upper, bad_signature, raw_state,
+    g3_obj, raw_par, lower, upper, bad_signature, raw_state,
+    curvature_fn = curvature_fn,
     raw_gradient_gate = 1e-3, health_gradient_gate = 1e-2
   )
-  expect_identical(invalid$status, "INVALID_INPUT")
+  expect_identical(invalid$status, "G3_RAW_INELIGIBLE")
 })

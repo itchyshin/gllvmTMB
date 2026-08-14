@@ -7229,7 +7229,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     identical(pd_hessian, TRUE) &&
     identical(boundary_flags, "near_zero_sd_B") &&
     is.integer(boundary_diag_indices) && length(boundary_diag_indices) == 1L &&
-    is.finite(raw_gradient_gate) && raw_gradient_gate > 0 &&
+    is.finite(raw_gradient_gate) && identical(raw_gradient_gate, 1e-3) &&
     is.finite(health_gradient_gate) && health_gradient_gate > raw_gradient_gate
   if (!typed) return(FALSE)
   max_gradient <- max(abs(gradient))
@@ -7371,13 +7371,45 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
 }
 
 .gllvmTMB_isdm_g3_full_vector_trials <- function(
-  obj, par, lower, upper, signature, raw_state, alpha_grid = 2^-(0:8),
+  obj, par, lower, upper, signature, raw_state, curvature_fn,
+  metric_source = "sdreport_cov_fixed", alpha_grid = 2^-(0:8),
   raw_gradient_gate = 1e-3, health_gradient_gate = 1e-2,
-  condition_limit = 1e8
+  condition_limit = 1e8, direction_tolerance = 0.01
 ) {
-  typed <- is.list(obj) && is.function(obj$fn) && is.function(obj$gr) &&
-    is.function(obj$he) && is.numeric(par) && length(par) > 0L &&
-    all(is.finite(par)) && !is.null(names(par)) && !anyDuplicated(names(par)) &&
+  unavailable <- function(reason, raw = NULL, trials = list(),
+                          direction_check = NULL) {
+    list(
+      status = "G3_CURVATURE_UNAVAILABLE", reason = reason,
+      metric_source = metric_source, signature = signature,
+      raw_state = raw_state, raw = raw, direction_check = direction_check,
+      curvature_validation = direction_check,
+      trials = trials, selected = NA_integer_, selected_alpha = NA_real_
+    )
+  }
+  ineligible <- function(reason, raw = NULL, direction_check = NULL) {
+    list(
+      status = "G3_RAW_INELIGIBLE", reason = reason,
+      metric_source = metric_source, signature = signature,
+      raw_state = raw_state, raw = raw, direction_check = direction_check,
+      curvature_validation = direction_check,
+      trials = list(), selected = NA_integer_, selected_alpha = NA_real_
+    )
+  }
+  invalid_curvature <- function(reason, raw = NULL, direction_check = NULL) {
+    list(
+      status = "G3_CURVATURE_INVALID", reason = reason,
+      metric_source = metric_source, signature = signature,
+      raw_state = raw_state, raw = raw, direction_check = direction_check,
+      curvature_validation = direction_check,
+      trials = list(), selected = NA_integer_, selected_alpha = NA_real_
+    )
+  }
+  if (!is.list(obj) || !is.function(obj$fn) || !is.function(obj$gr) ||
+      !is.function(curvature_fn) || !identical(metric_source, "sdreport_cov_fixed")) {
+    return(unavailable("objective_or_curvature_interface_unavailable"))
+  }
+  typed <- is.numeric(par) && length(par) > 0L &&
+    all(is.finite(par)) && !is.null(names(par)) &&
     is.numeric(lower) && is.numeric(upper) && length(lower) == length(par) &&
     length(upper) == length(par) && identical(names(lower), names(par)) &&
     identical(names(upper), names(par)) && !anyNA(lower) && !anyNA(upper) &&
@@ -7386,105 +7418,537 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     .gllvmTMB_isdm_g3_valid_raw_state(raw_state) &&
     is.numeric(alpha_grid) && length(alpha_grid) && identical(alpha_grid, 2^-(0:8)) &&
     is.numeric(raw_gradient_gate) && length(raw_gradient_gate) == 1L &&
-    is.finite(raw_gradient_gate) && raw_gradient_gate > 0 &&
+    is.finite(raw_gradient_gate) && identical(raw_gradient_gate, 1e-3) &&
     is.numeric(health_gradient_gate) && length(health_gradient_gate) == 1L &&
-    is.finite(health_gradient_gate) && health_gradient_gate > raw_gradient_gate &&
+    is.finite(health_gradient_gate) && identical(health_gradient_gate, 1e-2) &&
     is.numeric(condition_limit) && length(condition_limit) == 1L &&
-    is.finite(condition_limit) && condition_limit > 1
-  if (!typed) return(list(status = "INVALID_INPUT", signature = signature, trials = list()))
-  raw_objective <- tryCatch(obj$fn(par), error = function(e) NA_real_)
-  raw_gradient <- tryCatch(obj$gr(par), error = function(e) numeric())
-  raw_hessian <- tryCatch(obj$he(par), error = function(e) NULL)
-  if (!is.numeric(raw_objective) || length(raw_objective) != 1L || !is.finite(raw_objective) ||
-      !is.numeric(raw_gradient) || length(raw_gradient) != length(par) || any(!is.finite(raw_gradient)) ||
-      !is.matrix(raw_hessian) || !identical(dim(raw_hessian), c(length(par), length(par)))) {
-    return(list(status = "INVALID_RAW_OBJECTIVE", signature = signature, trials = list()))
+    is.finite(condition_limit) && identical(condition_limit, 1e8) &&
+    is.numeric(direction_tolerance) && length(direction_tolerance) == 1L &&
+    is.finite(direction_tolerance) && identical(direction_tolerance, 0.01)
+  if (!typed) return(ineligible("invalid_raw_inputs"))
+
+  input_labels <- names(par)
+  suffixes <- paste0("[", seq_along(input_labels), "]")
+  already_positional <- !anyDuplicated(input_labels) &&
+    all(nchar(input_labels) > nchar(suffixes)) &&
+    all(endsWith(input_labels, suffixes))
+  block_labels <- if (already_positional) {
+    substring(input_labels, 1L, nchar(input_labels) - nchar(suffixes))
+  } else {
+    input_labels
   }
-  raw_gradient <- stats::setNames(as.numeric(raw_gradient), names(par))
-  dimnames(raw_hessian) <- list(names(par), names(par))
-  symmetric <- isTRUE(all.equal(raw_hessian, t(raw_hessian), tolerance = 1e-10))
-  chol_h <- if (symmetric) tryCatch(chol(raw_hessian), error = function(e) NULL) else NULL
-  condition <- if (!is.null(chol_h)) tryCatch(kappa(raw_hessian, exact = TRUE), error = function(e) Inf) else Inf
-  if (is.null(chol_h) || !is.finite(condition) || condition > condition_limit) {
-    return(list(status = "INVALID_RAW_HESSIAN", signature = signature, raw = list(objective = raw_objective,
-      gradient = raw_gradient, hessian = raw_hessian, condition = condition), trials = list()))
+  positional_ids <- paste0(block_labels, suffixes)
+  if (anyNA(block_labels) || any(!nzchar(block_labels)) ||
+      anyDuplicated(positional_ids) ||
+      !identical(raw_state$source_gate, signature$source_gate)) {
+    return(ineligible("invalid_positional_identity_or_source_gate"))
   }
+  names(par) <- positional_ids
+  names(lower) <- positional_ids
+  names(upper) <- positional_ids
+  if (any(par < lower) || any(par > upper)) {
+    return(ineligible("raw_parameter_outside_bounds"))
+  }
+
+  evaluate_objective <- function(theta) {
+    tryCatch(
+      {
+        value <- obj$fn(unname(theta))
+        if (!is.numeric(value) || length(value) != 1L || !is.finite(value)) {
+          stop("objective returned a non-finite scalar", call. = FALSE)
+        }
+        list(available = TRUE, value = as.numeric(value), error = NA_character_)
+      },
+      error = function(e) list(
+        available = FALSE, value = NA_real_, error = conditionMessage(e)
+      )
+    )
+  }
+  evaluate_gradient <- function(theta) {
+    tryCatch(
+      {
+        value <- obj$gr(unname(theta))
+        value_names <- names(value)
+        ordered <- is.null(value_names) || identical(value_names, block_labels) ||
+          identical(value_names, positional_ids)
+        if (!is.numeric(value) || length(value) != length(theta) ||
+            any(!is.finite(value)) || !ordered) {
+          stop("gradient returned an invalid positional vector", call. = FALSE)
+        }
+        list(
+          available = TRUE,
+          value = stats::setNames(as.numeric(value), positional_ids),
+          original_labels = value_names,
+          error = NA_character_
+        )
+      },
+      error = function(e) list(
+        available = FALSE,
+        value = stats::setNames(rep(NA_real_, length(theta)), positional_ids),
+        original_labels = NULL,
+        error = conditionMessage(e)
+      )
+    )
+  }
+  call_curvature <- function(theta) {
+    tryCatch(
+      curvature_fn(stats::setNames(as.numeric(theta), positional_ids), positional_ids),
+      error = function(e) list(
+        available = FALSE, reason = "curvature_callback_error",
+        par.fixed = NULL, cov.fixed = NULL, pdHess = NA,
+        positional_ids = positional_ids, error = conditionMessage(e)
+      )
+    )
+  }
+  assess_curvature <- function(record, theta) {
+    required <- c(
+      "available", "reason", "par.fixed", "cov.fixed", "pdHess",
+      "positional_ids", "error"
+    )
+    typed_record <- is.list(record) && length(record) == length(required) &&
+      setequal(names(record), required) && is.logical(record$available) &&
+      length(record$available) == 1L && !is.na(record$available) &&
+      is.character(record$reason) && length(record$reason) == 1L &&
+      !is.na(record$reason) && nzchar(record$reason) &&
+      is.character(record$positional_ids) &&
+      identical(record$positional_ids, positional_ids) &&
+      is.logical(record$pdHess) && length(record$pdHess) == 1L &&
+      is.character(record$error) && length(record$error) == 1L
+    if (!typed_record) {
+      return(list(
+        state = "unavailable", reason = "invalid_curvature_callback_record",
+        callback = record, covariance = NULL, eigenvalues = numeric(),
+        condition = NA_real_, metric_source = metric_source
+      ))
+    }
+    if (!isTRUE(record$available)) {
+      return(list(
+        state = "unavailable", reason = record$reason,
+        callback = record, covariance = record$cov.fixed,
+        eigenvalues = numeric(), condition = NA_real_,
+        metric_source = metric_source
+      ))
+    }
+    replay_tolerance <- 64 * .Machine$double.eps *
+      max(1, max(abs(theta)))
+    par_aligned <- is.numeric(record$par.fixed) &&
+      length(record$par.fixed) == length(theta) &&
+      all(is.finite(record$par.fixed)) &&
+      identical(names(record$par.fixed), positional_ids) &&
+      max(abs(as.numeric(record$par.fixed) - as.numeric(theta))) <= replay_tolerance
+    covariance_aligned <- is.matrix(record$cov.fixed) &&
+      identical(dim(record$cov.fixed), c(length(theta), length(theta))) &&
+      identical(rownames(record$cov.fixed), positional_ids) &&
+      identical(colnames(record$cov.fixed), positional_ids)
+    if (!par_aligned || !covariance_aligned) {
+      return(list(
+        state = "unavailable", reason = "curvature_positional_identity_failure",
+        callback = record, covariance = record$cov.fixed,
+        eigenvalues = numeric(), condition = NA_real_,
+        metric_source = metric_source
+      ))
+    }
+    covariance <- record$cov.fixed
+    finite <- all(is.finite(covariance))
+    symmetric <- finite && max(abs(covariance - t(covariance))) <= 1e-10
+    chol_covariance <- if (symmetric) {
+      tryCatch(chol(covariance), error = function(e) NULL)
+    } else {
+      NULL
+    }
+    eigenvalues <- if (symmetric) {
+      tryCatch(
+        eigen(covariance, symmetric = TRUE, only.values = TRUE)$values,
+        error = function(e) rep(NA_real_, length(theta))
+      )
+    } else {
+      rep(NA_real_, length(theta))
+    }
+    condition <- if (!is.null(chol_covariance)) {
+      tryCatch(kappa(covariance, exact = TRUE), error = function(e) Inf)
+    } else {
+      Inf
+    }
+    valid <- identical(record$pdHess, TRUE) && finite && symmetric &&
+      !is.null(chol_covariance) && all(is.finite(eigenvalues)) &&
+      is.finite(condition) && condition <= condition_limit
+    list(
+      state = if (valid) "valid" else "invalid",
+      reason = if (valid) "curvature_valid" else
+        "curvature_nonfinite_nonsymmetric_nonpd_or_ill_conditioned",
+      callback = record, covariance = covariance,
+      eigenvalues = eigenvalues, condition = condition,
+      metric_source = metric_source, finite = finite, symmetric = symmetric,
+      positive_definite = !is.null(chol_covariance),
+      pdHess = record$pdHess
+    )
+  }
+
+  raw_objective_record <- evaluate_objective(par)
+  raw_gradient_record <- evaluate_gradient(par)
+  if (!raw_objective_record$available || !raw_gradient_record$available) {
+    return(unavailable(
+      "raw_objective_or_exact_gradient_unavailable",
+      raw = list(
+        parameter_vector = par, objective_record = raw_objective_record,
+        gradient_record = raw_gradient_record,
+        positional_ids = positional_ids, block_labels = block_labels
+      )
+    ))
+  }
+  raw_objective <- raw_objective_record$value
+  raw_gradient <- raw_gradient_record$value
   raw_max_gradient <- max(abs(raw_gradient))
   if (!(raw_max_gradient > raw_gradient_gate && raw_max_gradient < health_gradient_gate)) {
-    return(list(status = "INELIGIBLE_RAW_GRADIENT", signature = signature,
-      raw = list(parameter_vector = par, objective = raw_objective, gradient = raw_gradient,
-        hessian = raw_hessian, condition = condition), trials = list()))
+    return(ineligible(
+      "raw_gradient_gate",
+      raw = list(
+        parameter_vector = par, objective = raw_objective,
+        gradient = raw_gradient, max_gradient = raw_max_gradient,
+        positional_ids = positional_ids, block_labels = block_labels
+      )
+    ))
   }
   if (raw_state$tie_count != sum(abs(raw_gradient) == raw_max_gradient)) {
-    return(list(status = "INELIGIBLE_RAW_TIE", signature = signature,
-      raw = list(parameter_vector = par, objective = raw_objective, gradient = raw_gradient,
-        hessian = raw_hessian, condition = condition), trials = list()))
+    return(ineligible(
+      "raw_gradient_tie_identity",
+      raw = list(
+        parameter_vector = par, objective = raw_objective,
+        gradient = raw_gradient, max_gradient = raw_max_gradient,
+        positional_ids = positional_ids, block_labels = block_labels
+      )
+    ))
   }
-  direction <- tryCatch(as.numeric(solve(raw_hessian, raw_gradient)), error = function(e) NULL)
-  if (is.null(direction) || any(!is.finite(direction))) {
-    return(list(status = "HESSIAN_SOLVE_FAILURE", signature = signature,
-      raw = list(parameter_vector = par, objective = raw_objective, gradient = raw_gradient,
-        hessian = raw_hessian, condition = condition), trials = list()))
+
+  raw_curvature <- assess_curvature(call_curvature(par), par)
+  raw_base <- list(
+    parameter_vector = par, objective = raw_objective,
+    gradient = raw_gradient, max_gradient = raw_max_gradient,
+    positional_ids = positional_ids, block_labels = block_labels,
+    curvature = raw_curvature, covariance = raw_curvature$covariance,
+    eigenvalues = raw_curvature$eigenvalues,
+    condition = raw_curvature$condition, metric_source = metric_source
+  )
+  if (identical(raw_curvature$state, "unavailable")) {
+    return(unavailable(raw_curvature$reason, raw = raw_base))
   }
-  names(direction) <- names(par)
+  if (identical(raw_curvature$state, "invalid")) {
+    return(invalid_curvature(raw_curvature$reason, raw = raw_base))
+  }
+  direction <- tryCatch(
+    as.numeric(raw_curvature$covariance %*% raw_gradient),
+    error = function(e) NULL
+  )
+  if (is.null(direction) || length(direction) != length(par) ||
+      any(!is.finite(direction))) {
+    return(invalid_curvature("covariance_direction_failure", raw = raw_base))
+  }
+  direction <- stats::setNames(direction, positional_ids)
+  direction_norm <- sqrt(sum(direction^2))
+  gradient_dot_direction <- sum(raw_gradient * direction)
+  direction_diagnostics <- list(
+    direction = direction, descent_direction = -direction,
+    direction_norm = direction_norm,
+    gradient_dot_direction = gradient_dot_direction,
+    locally_descending = is.finite(gradient_dot_direction) &&
+      gradient_dot_direction > 0,
+    metric_source = metric_source
+  )
+  raw_base$direction <- direction
+  raw_base$direction_diagnostics <- direction_diagnostics
+  if (!is.finite(direction_norm) || direction_norm <= 0 ||
+      !is.finite(gradient_dot_direction) || gradient_dot_direction <= 0) {
+    return(invalid_curvature(
+      "non_descent_covariance_direction", raw = raw_base
+    ))
+  }
+
+  eps <- .Machine$double.eps
+  fd_multipliers <- c(half = 0.5, default = 1, double = 2)
+  base_steps <- eps^(1 / 3) * pmax(1, abs(par))
+  fd_records <- vector("list", length(fd_multipliers))
+  names(fd_records) <- names(fd_multipliers)
+  fd_directions <- vector("list", length(fd_multipliers))
+  names(fd_directions) <- names(fd_multipliers)
+  for (scale_name in names(fd_multipliers)) {
+    multiplier <- fd_multipliers[[scale_name]]
+    steps <- multiplier * base_steps
+    hessian_fd <- matrix(
+      NA_real_, nrow = length(par), ncol = length(par),
+      dimnames = list(positional_ids, positional_ids)
+    )
+    evaluations <- vector("list", length(par))
+    scale_failure <- NULL
+    for (j in seq_along(par)) {
+      plus <- par
+      minus <- par
+      plus[[j]] <- plus[[j]] + steps[[j]]
+      minus[[j]] <- minus[[j]] - steps[[j]]
+      in_bounds <- plus[[j]] <= upper[[j]] && minus[[j]] >= lower[[j]]
+      if (!in_bounds) {
+        evaluations[[j]] <- list(
+          coordinate = positional_ids[[j]], step = steps[[j]],
+          plus = plus, minus = minus, in_bounds = FALSE,
+          plus_gradient = NULL, minus_gradient = NULL,
+          error = "finite_difference_point_outside_bounds"
+        )
+        scale_failure <- "finite_difference_point_outside_bounds"
+        break
+      }
+      plus_gradient <- evaluate_gradient(plus)
+      minus_gradient <- evaluate_gradient(minus)
+      evaluations[[j]] <- list(
+        coordinate = positional_ids[[j]], step = steps[[j]],
+        plus = plus, minus = minus, in_bounds = TRUE,
+        plus_gradient = plus_gradient, minus_gradient = minus_gradient,
+        error = if (!plus_gradient$available) plus_gradient$error else
+          if (!minus_gradient$available) minus_gradient$error else NA_character_
+      )
+      if (!plus_gradient$available || !minus_gradient$available) {
+        scale_failure <- "finite_difference_exact_gradient_unavailable"
+        break
+      }
+      hessian_fd[, j] <-
+        (plus_gradient$value - minus_gradient$value) / (2 * steps[[j]])
+    }
+    fd_records[[scale_name]] <- list(
+      multiplier = multiplier, steps = stats::setNames(steps, positional_ids),
+      evaluations = evaluations, hessian = hessian_fd,
+      hessian_checked = NULL, finite = NA, relative_antisymmetry = NA_real_,
+      symmetric = NA, positive_definite = NA, eigenvalues = numeric(),
+      condition = NA_real_,
+      direction = NULL, discrepancy = NA_real_, error = scale_failure
+    )
+    if (!is.null(scale_failure)) {
+      direction_check <- list(
+        tolerance = direction_tolerance, base_steps = base_steps,
+        multipliers = fd_multipliers, finite_difference = fd_records,
+        covariance_direction = direction, discrepancies = numeric(),
+        step_sensitivity = NA_real_, passed = FALSE
+      )
+      raw_base$direction_check <- direction_check
+      if (identical(scale_failure, "finite_difference_point_outside_bounds")) {
+        return(ineligible(scale_failure, raw_base, direction_check))
+      }
+      return(unavailable(scale_failure, raw_base, list(), direction_check))
+    }
+    finite_hessian <- all(is.finite(hessian_fd))
+    hessian_norm <- if (finite_hessian) norm(hessian_fd, type = "F") else NA_real_
+    relative_antisymmetry <- if (finite_hessian) {
+      norm(hessian_fd - t(hessian_fd), type = "F") /
+        max(hessian_norm, sqrt(eps))
+    } else {
+      Inf
+    }
+    symmetric_hessian <- if (finite_hessian &&
+        relative_antisymmetry <= 1e-10) {
+      (hessian_fd + t(hessian_fd)) / 2
+    } else {
+      NULL
+    }
+    chol_hessian <- if (!is.null(symmetric_hessian)) {
+      tryCatch(chol(symmetric_hessian), error = function(e) NULL)
+    } else {
+      NULL
+    }
+    eigenvalues <- if (!is.null(symmetric_hessian)) {
+      tryCatch(
+        eigen(symmetric_hessian, symmetric = TRUE, only.values = TRUE)$values,
+        error = function(e) rep(NA_real_, length(par))
+      )
+    } else {
+      rep(NA_real_, length(par))
+    }
+    fd_condition <- if (!is.null(chol_hessian)) {
+      tryCatch(kappa(symmetric_hessian, exact = TRUE), error = function(e) Inf)
+    } else {
+      Inf
+    }
+    valid_fd_curvature <- finite_hessian &&
+      is.finite(relative_antisymmetry) &&
+      relative_antisymmetry <= 1e-10 &&
+      !is.null(chol_hessian) && all(is.finite(eigenvalues)) &&
+      is.finite(fd_condition) && fd_condition <= condition_limit
+    fd_records[[scale_name]]$hessian_checked <- symmetric_hessian
+    fd_records[[scale_name]]$finite <- finite_hessian
+    fd_records[[scale_name]]$relative_antisymmetry <- relative_antisymmetry
+    fd_records[[scale_name]]$symmetric <- finite_hessian &&
+      relative_antisymmetry <= 1e-10
+    fd_records[[scale_name]]$positive_definite <- !is.null(chol_hessian)
+    fd_records[[scale_name]]$eigenvalues <- eigenvalues
+    fd_records[[scale_name]]$condition <- fd_condition
+    if (!valid_fd_curvature) {
+      fd_records[[scale_name]]$error <-
+        "finite_difference_curvature_invalid"
+      direction_check <- list(
+        tolerance = direction_tolerance, base_steps = base_steps,
+        multipliers = fd_multipliers, finite_difference = fd_records,
+        covariance_direction = direction, discrepancies = numeric(),
+        step_sensitivity = NA_real_, passed = FALSE
+      )
+      raw_base$direction_check <- direction_check
+      raw_base$curvature_validation <- direction_check
+      return(invalid_curvature(
+        "finite_difference_curvature_invalid", raw_base, direction_check
+      ))
+    }
+    fd_direction <- tryCatch(
+      as.numeric(solve(symmetric_hessian, raw_gradient)),
+      error = function(e) NULL
+    )
+    if (is.null(fd_direction) || length(fd_direction) != length(par) ||
+        any(!is.finite(fd_direction))) {
+      fd_records[[scale_name]]$error <- "finite_difference_system_unsolved"
+      direction_check <- list(
+        tolerance = direction_tolerance, base_steps = base_steps,
+        multipliers = fd_multipliers, finite_difference = fd_records,
+        covariance_direction = direction, discrepancies = numeric(),
+        step_sensitivity = NA_real_, passed = FALSE
+      )
+      raw_base$direction_check <- direction_check
+      raw_base$curvature_validation <- direction_check
+      return(invalid_curvature(
+        "finite_difference_system_unsolved", raw_base, direction_check
+      ))
+    }
+    fd_direction <- stats::setNames(fd_direction, positional_ids)
+    discrepancy <- sqrt(sum((direction - fd_direction)^2)) /
+      max(direction_norm, sqrt(sum(fd_direction^2)), sqrt(eps))
+    fd_directions[[scale_name]] <- fd_direction
+    fd_records[[scale_name]]$direction <- fd_direction
+    fd_records[[scale_name]]$discrepancy <- discrepancy
+  }
+  direction_discrepancies <- vapply(
+    fd_records, function(x) x$discrepancy, numeric(1L)
+  )
+  step_pairs <- utils::combn(names(fd_directions), 2L, simplify = FALSE)
+  pairwise_step_discrepancies <- vapply(step_pairs, function(pair) {
+    left <- fd_directions[[pair[[1L]]]]
+    right <- fd_directions[[pair[[2L]]]]
+    sqrt(sum((left - right)^2)) /
+      max(sqrt(sum(left^2)), sqrt(sum(right^2)), sqrt(eps))
+  }, numeric(1L))
+  names(pairwise_step_discrepancies) <- vapply(
+    step_pairs, paste, collapse = "_vs_", character(1L)
+  )
+  step_sensitivity <- max(pairwise_step_discrepancies)
+  direction_check_passed <- all(is.finite(direction_discrepancies)) &&
+    max(direction_discrepancies) <= direction_tolerance &&
+    is.finite(step_sensitivity) && step_sensitivity <= direction_tolerance
+  direction_check <- list(
+    tolerance = direction_tolerance, base_steps = base_steps,
+    multipliers = fd_multipliers, finite_difference = fd_records,
+    covariance_direction = direction,
+    discrepancies = direction_discrepancies,
+    pairwise_step_discrepancies = pairwise_step_discrepancies,
+    step_sensitivity = step_sensitivity, passed = direction_check_passed
+  )
+  raw_base$direction_check <- direction_check
+  raw_base$curvature_validation <- direction_check
+  if (!direction_check_passed) {
+    return(invalid_curvature(
+      "finite_difference_direction_disagreement", raw_base, direction_check
+    ))
+  }
+
+  objective_tolerance <- 64 * eps * max(1, abs(raw_objective))
   trials <- lapply(alpha_grid, function(alpha) {
     candidate <- par - alpha * direction
-    names(candidate) <- names(par)
-    if (any(candidate < lower) || any(candidate > upper)) {
-      return(list(alpha = alpha, status = "INFEASIBLE", reason = "candidate_outside_bounds",
-        parameter_vector = candidate, objective = NA_real_,
-        gradient = stats::setNames(rep(NA_real_, length(par)), names(par)),
-        hessian = NULL, condition = NA_real_, signature = signature))
-    }
-    objective <- tryCatch(obj$fn(candidate), error = function(e) NA_real_)
-    gradient <- tryCatch(obj$gr(candidate), error = function(e) numeric())
-    if (!is.numeric(objective) || length(objective) != 1L || !is.finite(objective) ||
-        !is.numeric(gradient) || length(gradient) != length(par) || any(!is.finite(gradient))) {
-      return(list(alpha = alpha, status = "ERROR", reason = "candidate_objective_or_gradient_failure",
-        parameter_vector = candidate, objective = objective,
-        gradient = stats::setNames(rep(NA_real_, length(par)), names(par)),
-        hessian = NULL, condition = NA_real_, signature = signature))
-    }
-    gradient <- stats::setNames(as.numeric(gradient), names(par))
-    hessian <- tryCatch(obj$he(candidate), error = function(e) NULL)
-    if (!is.matrix(hessian) || !identical(dim(hessian), c(length(par), length(par)))) {
-      return(list(alpha = alpha, status = "ERROR", reason = "candidate_hessian_failure",
-        parameter_vector = candidate, objective = objective, gradient = gradient,
-        hessian = NULL, condition = NA_real_, signature = signature))
-    }
-    dimnames(hessian) <- list(names(par), names(par))
-    candidate_symmetric <- isTRUE(all.equal(hessian, t(hessian), tolerance = 1e-10))
-    candidate_chol <- if (candidate_symmetric) tryCatch(chol(hessian), error = function(e) NULL) else NULL
-    candidate_condition <- if (!is.null(candidate_chol)) {
-      tryCatch(kappa(hessian, exact = TRUE), error = function(e) Inf)
-    } else Inf
-    if (is.null(candidate_chol) || !is.finite(candidate_condition) || candidate_condition > condition_limit) {
-      return(list(alpha = alpha, status = "REJECTED", reason = "candidate_hessian_not_pd_or_ill_conditioned",
-        parameter_vector = candidate, objective = objective, gradient = gradient,
-        hessian = hessian, condition = candidate_condition, signature = signature))
-    }
-    tolerance <- 64 * .Machine$double.eps * max(1, abs(raw_objective))
-    objective_pass <- objective <= raw_objective + tolerance
-    gradient_pass <- max(abs(gradient)) <= raw_gradient_gate
-    accepted <- objective_pass && gradient_pass
-    list(alpha = alpha, status = if (accepted) "ACCEPTED" else "REJECTED",
-         reason = if (accepted) "raw_gradient_gate" else if (!objective_pass && !gradient_pass) {
-           "objective_and_gradient_gate"
-         } else if (!objective_pass) "objective_nonincrease_gate" else "raw_gradient_gate",
-         parameter_vector = candidate, objective = objective, gradient = gradient,
-         hessian = hessian, condition = candidate_condition, signature = signature)
+    candidate <- stats::setNames(as.numeric(candidate), positional_ids)
+    objective_record <- evaluate_objective(candidate)
+    gradient_record <- evaluate_gradient(candidate)
+    objective <- objective_record$value
+    gradient <- gradient_record$value
+    bounds_pass <- all(candidate >= lower) && all(candidate <= upper)
+    objective_pass <- objective_record$available &&
+      objective <= raw_objective + objective_tolerance
+    gradient_pass <- gradient_record$available &&
+      max(abs(gradient)) <= raw_gradient_gate
+    evaluation_available <- objective_record$available && gradient_record$available
+    list(
+      alpha = alpha,
+      status = if (evaluation_available) "PENDING_CURVATURE" else "ERROR",
+      reason = if (evaluation_available) "candidate_evaluated" else
+        "candidate_objective_or_gradient_unavailable",
+      parameter_vector = candidate, objective = objective,
+      gradient = gradient, objective_record = objective_record,
+      gradient_record = gradient_record, bounds_pass = bounds_pass,
+      objective_pass = objective_pass, gradient_pass = gradient_pass,
+      curvature_requested = FALSE, curvature = NULL, covariance = NULL,
+      eigenvalues = numeric(), condition = NA_real_,
+      metric_source = metric_source, signature = signature
+    )
   })
-  accepted <- which(vapply(trials, function(x) identical(x$status, "ACCEPTED"), logical(1L)))
-  if (length(accepted) > 1L) {
-    for (idx in accepted[-1L]) {
-      trials[[idx]]$status <- "REJECTED"
-      trials[[idx]]$reason <- "later_acceptable_trial_not_selected"
+
+  for (idx in seq_along(trials)) {
+    trial <- trials[[idx]]
+    if (identical(trial$status, "ERROR")) next
+    deterministic_pass <- trial$bounds_pass && trial$objective_pass &&
+      trial$gradient_pass
+    if (!deterministic_pass) {
+      failed <- c(
+        if (!trial$bounds_pass) "bounds",
+        if (!trial$objective_pass) "objective",
+        if (!trial$gradient_pass) "gradient"
+      )
+      trial$status <- "REJECTED"
+      trial$reason <- paste0("candidate_", paste(failed, collapse = "_and_"), "_gate")
+      trials[[idx]] <- trial
+      next
     }
+    trial$curvature_requested <- TRUE
+    curvature <- assess_curvature(
+      call_curvature(trial$parameter_vector), trial$parameter_vector
+    )
+    trial$curvature <- curvature
+    trial$covariance <- curvature$covariance
+    trial$eigenvalues <- curvature$eigenvalues
+    trial$condition <- curvature$condition
+    if (identical(curvature$state, "unavailable")) {
+      trial$status <- "ERROR"
+      trial$reason <- curvature$reason
+    } else if (identical(curvature$state, "invalid")) {
+      trial$status <- "REJECTED"
+      trial$reason <- curvature$reason
+    } else {
+      trial$status <- "ACCEPTED"
+      trial$reason <- "all_candidate_gates_passed"
+    }
+    trials[[idx]] <- trial
   }
-  list(status = "TRIALS_EVALUATED", signature = signature,
-    raw_state = raw_state, raw = list(parameter_vector = par, objective = raw_objective,
-    gradient = raw_gradient, hessian = raw_hessian, condition = condition),
-    trials = trials, selected = if (length(accepted)) accepted[[1L]] else NA_integer_)
+  accepted <- which(vapply(
+    trials, function(x) identical(x$status, "ACCEPTED"), logical(1L)
+  ))
+  unresolved <- which(vapply(
+    trials, function(x) identical(x$status, "ERROR"), logical(1L)
+  ))
+  selected <- if (length(accepted)) accepted[[1L]] else NA_integer_
+  if (length(unresolved)) {
+    return(unavailable(
+      "candidate_adjudication_unavailable", raw_base, trials, direction_check
+    ))
+  }
+  terminal_status <- if (is.na(selected)) {
+    "G3_NO_ACCEPTED_TRIAL"
+  } else {
+    "G3_NUMERICAL_ADMISSION"
+  }
+  list(
+    status = terminal_status,
+    reason = if (is.na(selected)) "no_candidate_passed_all_gates" else
+      "first_full_pass_selected",
+    metric_source = metric_source, signature = signature,
+    raw_state = raw_state, raw = raw_base,
+    direction_check = direction_check,
+    curvature_validation = direction_check, trials = trials,
+    selected = selected,
+    selected_alpha = if (is.na(selected)) NA_real_ else alpha_grid[[selected]],
+    later_infrastructure_errors = if (!is.na(selected) && length(unresolved)) {
+      unresolved[unresolved > selected]
+    } else {
+      integer()
+    }
+  )
 }
 
 .gllvmTMB_isdm_polish_record <- function(

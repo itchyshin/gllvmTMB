@@ -106,6 +106,69 @@ coordinate_ids <- function(par) {
   }
   paste0(labels, "[", seq_along(par), "]")
 }
+curvature_callback <- function(fit, expected_block_labels) {
+  force(fit)
+  force(expected_block_labels)
+  function(theta, positional_ids) {
+    unavailable <- function(reason, error = NA_character_, par.fixed = NULL,
+                            cov.fixed = NULL, pdHess = NA) {
+      list(
+        available = FALSE, reason = reason, par.fixed = par.fixed,
+        cov.fixed = cov.fixed, pdHess = as.logical(pdHess)[1L],
+        positional_ids = positional_ids, error = as.character(error)[1L]
+      )
+    }
+    if (!is.numeric(theta) || length(theta) != length(expected_block_labels) ||
+        !identical(names(theta), positional_ids) ||
+        length(positional_ids) != length(expected_block_labels) ||
+        anyNA(expected_block_labels) || any(!nzchar(expected_block_labels))) {
+      return(unavailable("callback_input_positional_identity_failure"))
+    }
+    report <- tryCatch(
+      TMB::sdreport(
+        fit$tmb_obj, par.fixed = unname(theta),
+        getReportCovariance = FALSE
+      ),
+      error = function(e) e
+    )
+    if (inherits(report, "error")) {
+      return(unavailable("sdreport_unavailable", conditionMessage(report)))
+    }
+    par_fixed <- report$par.fixed
+    covariance <- report$cov.fixed
+    pd_hess <- if (is.logical(report$pdHess) && length(report$pdHess) == 1L) {
+      report$pdHess
+    } else {
+      NA
+    }
+    par_ordered <- is.numeric(par_fixed) &&
+      length(par_fixed) == length(theta) &&
+      identical(names(par_fixed), expected_block_labels)
+    covariance_shaped <- is.matrix(covariance) &&
+      identical(dim(covariance), c(length(theta), length(theta)))
+    row_ordered <- covariance_shaped &&
+      (is.null(rownames(covariance)) ||
+        identical(rownames(covariance), expected_block_labels) ||
+        identical(rownames(covariance), positional_ids))
+    column_ordered <- covariance_shaped &&
+      (is.null(colnames(covariance)) ||
+        identical(colnames(covariance), expected_block_labels) ||
+        identical(colnames(covariance), positional_ids))
+    if (!par_ordered || !covariance_shaped || !row_ordered || !column_ordered) {
+      return(unavailable(
+        "sdreport_positional_identity_failure", par.fixed = par_fixed,
+        cov.fixed = covariance, pdHess = pd_hess
+      ))
+    }
+    names(par_fixed) <- positional_ids
+    dimnames(covariance) <- list(positional_ids, positional_ids)
+    list(
+      available = TRUE, reason = "sdreport_cov_fixed_available",
+      par.fixed = par_fixed, cov.fixed = covariance, pdHess = pd_hess,
+      positional_ids = positional_ids, error = NA_character_
+    )
+  }
+}
 root <- normalizePath(if (grepl("^/", root_arg)) root_arg else file.path(getwd(), root_arg), mustWork = FALSE)
 if (!identical(basename(root), root_id)) {
   stop("The output root basename must match --root-id.", call. = FALSE)
@@ -257,7 +320,7 @@ main <- function() {
     if (inherits(raw_objective, "error") || !is.numeric(raw_objective) ||
         length(raw_objective) != 1L || !is.finite(raw_objective) ||
         abs(raw_objective - fit$objective$likelihood_nll) > objective_tolerance) {
-      ledger$status <- "G3_OBJECTIVE_MISMATCH"
+      ledger$status <- "INVALID_PROVENANCE"
       ledger$error <- if (inherits(raw_objective, "error")) conditionMessage(raw_objective) else
         "selected likelihood_nll does not match the G3 objective"
       ledger$terminal <- TRUE
@@ -277,22 +340,8 @@ main <- function() {
       raw_block_labels = names(raw_par), coordinate_ids = ids, lower = stats::setNames(rep(-Inf, length(par)), ids),
       upper = stats::setNames(rep(Inf, length(par)), ids), optimizer = "nlminb", convergence = as.integer(fit$opt$convergence),
       pd_hessian = isTRUE(fit$sd_report$pdHess), boundary_flags = health$boundary_flags %||% character(),
-      hessian = NULL, hessian_available = NA, condition = NA_real_
+      metric_source = "sdreport_cov_fixed"
     )
-    raw_hessian <- tryCatch(fit$tmb_obj$he(raw_par), error = function(e) e)
-    if (inherits(raw_hessian, "error")) {
-      raw$hessian_available <- FALSE
-      raw$hessian_error <- conditionMessage(raw_hessian)
-      ledger$raw <- raw
-      ledger$status <- "G3_HESSIAN_UNAVAILABLE"
-      ledger$error <- conditionMessage(raw_hessian)
-      ledger$terminal <- TRUE
-      return(invisible(NULL))
-    }
-    dimnames(raw_hessian) <- list(ids, ids)
-    raw$hessian <- raw_hessian
-    raw$hessian_available <- TRUE
-    raw$condition <- tryCatch(kappa(raw_hessian, exact = TRUE), error = function(e) Inf)
     raw$tie_count <- as.integer(sum(abs(gradient) == max(abs(gradient))))
     raw$feasible <- TRUE
     ledger$raw <- raw
@@ -301,11 +350,39 @@ main <- function() {
       boundary_flags = raw$boundary_flags, tie_count = raw$tie_count, is_isdm = TRUE, aghq = FALSE,
       ridge = FALSE, retry_enabled = FALSE, profile_enabled = FALSE, source_gate = source_gate
     )
-    ledger$g3 <- .gllvmTMB_isdm_g3_full_vector_trials(fit$tmb_obj, par, raw$lower, raw$upper, signature, raw_state)
-    ledger$status <- if (identical(ledger$g3$status, "TRIALS_EVALUATED") &&
-        any(vapply(ledger$g3$trials, function(x) identical(x$status, "ACCEPTED"), logical(1L)))) {
-      "G3_ACCEPTED"
-    } else "G3_NOT_ADMITTED"
+    ledger$g3 <- .gllvmTMB_isdm_g3_full_vector_trials(
+      fit$tmb_obj, par, raw$lower, raw$upper, signature, raw_state,
+      curvature_fn = curvature_callback(fit, raw$raw_block_labels),
+      metric_source = "sdreport_cov_fixed"
+    )
+    requested <- which(vapply(
+      ledger$g3$trials,
+      function(x) isTRUE(x$curvature_requested), logical(1L)
+    ))
+    ledger$curvature_provenance <- list(
+      metric_source = "sdreport_cov_fixed",
+      positional_order_md5 = hash_object(list(
+        raw_block_labels = raw$raw_block_labels,
+        positional_ids = raw$coordinate_ids
+      )),
+      raw_covariance_md5 = hash_object(ledger$g3$raw$covariance),
+      requested_candidate_indices = requested,
+      requested_candidate_covariance_md5 = stats::setNames(
+        vapply(
+          requested,
+          function(i) hash_object(ledger$g3$trials[[i]]$covariance),
+          character(1L)
+        ),
+        as.character(requested)
+      )
+    )
+    ledger$status <- ledger$g3$status
+    ledger$selected <- ledger$g3$selected
+    ledger$error <- if (identical(ledger$g3$status, "G3_CURVATURE_UNAVAILABLE")) {
+      ledger$g3$reason
+    } else {
+      NA_character_
+    }
     ledger$terminal <- TRUE
   }, error = function(e) {
     ledger$status <<- "RUNNER_ERROR"

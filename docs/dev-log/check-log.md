@@ -49474,3 +49474,16 @@ penalty-off provenance objective. No public `vcov()`, profile, `confint()`,
 `profile_targets()`, or `tmbprofile_wrapper()` path changed. These diagnostics
 are not calibrated standard errors or confidence intervals; repeated-sampling
 calibration remains required.
+
+## 2026-08-13 — LA-MSPL private repeated-sampling pilot
+
+Ran a completed, failure-retaining 4-cell x 100-replicate ordinary q = 1
+complete-Bernoulli pilot on Totoro (1,200 target-level records). The frozen
+cells were baseline logit, probit, and standard cloglog, plus low-prevalence
+standard cloglog; each fit used the active penalised objective only. The
+private summary reported all 12 cell-target outcomes. Hessian availability was
+1.00 in baseline and 0.98 in low-prevalence cloglog. Profile availability was
+0.93--1.00 in baseline but 0.73--0.88 in low-prevalence cloglog; its
+unconditional coverage was 0.73--0.85 there. This withholds any public SE or
+CI promotion. No `vcov()`, profile, `confint()`, bootstrap, or release surface
+changed.

@@ -133,3 +133,18 @@ private diagnostics. They establish neither calibrated standard errors nor
 confidence intervals. The penalty-off provenance tape is poisoned in the test
 and cannot be called. Public MSPL `vcov()`, profile, `confint()`,
 `profile_targets()`, and `tmbprofile_wrapper()` refusals remain unchanged.
+
+## Private repeated-sampling pilot actuals
+
+**Campaign:** four predeclared complete-Bernoulli q = 1 cells, 100 seeded data
+sets per cell and all three fixed-effect coordinates (1,200 candidate records).
+The active penalised objective supplied both candidates. The campaign retained
+every fit/Hessian/profile outcome and used no substitution or adaptive grid.
+
+**Result:** numerical-Hessian availability was 1.00 in the three baseline
+cells and 0.98 for every low-prevalence cloglog target. Profile availability
+was 0.93--1.00 in the baseline cells but only 0.73, 0.86, and 0.88 for the
+three low-prevalence cloglog targets. Corresponding profile unconditional
+coverage was 0.73, 0.85, and 0.85. This is a private typed-blocker result for
+public profile intervals, not a confidence-interval claim. The 100-replicate
+pilot is operational evidence, not a calibrated-coverage decision.

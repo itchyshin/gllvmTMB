@@ -49684,3 +49684,70 @@ Actions, public documentation, q = 2, structured or missing-data regimes,
 coverage, calibrated-SE assessment, or public inference activation. Public
 MSPL `vcov()`, `confint()`, `profile_targets()`, `tmbprofile_wrapper()`,
 `bootstrap_Sigma()`, and standard-error paths remain fail-closed.
+
+---
+
+## 2026-08-14 — LA-MSPL coverage calibration Gate 0
+
+Implemented the local contract and DRAC readiness bundle for the frozen
+ordinary `q = 1` coverage campaign. The private runner fixes four regimes by
+logit/probit/cloglog, three `b_fix` targets, 1,000 outer attempts, 500
+unconditional bootstrap attempts per outer dataset, 10 outers per shard, and
+Nibi 6 / Narval 4 / Rorqual 2 routing. It retains every outer fit, bootstrap
+attempt, endpoint, profile trace, status, seed, objective role, and source
+identity. Production aggregation is mode-specific and fail-closed: smoke,
+test, mini, mixed, reduced, or relaxed manifests cannot become
+calibration-eligible.
+
+The first Sol review found four P1 receipt/launcher gaps; the second found two
+semantic downgrade gaps. All six were repaired. The final review returned
+PASS with no P0/P1/P2 findings. The final Luna mechanical audit also returned
+PASS. Bootstrap endpoints are independently recomputed from retained type-7
+attempts and the 475-usable rule. Successful profile endpoints require linked
+finite, converged, nuisance-reoptimised trace brackets at exactly
+`qchisq(.95, 1) / 2`. Array execution independently checks the full production
+manifest, the exact 12-shard Gate 4 pre-run map, prior-gate receipts, and
+cluster/source/archive/bundle identity.
+
+Verification:
+
+```sh
+Rscript --vanilla -e \
+  'testthat::test_file("tests/testthat/test-mspl-coverage-runner.R")'
+# PASS: 86 expectations, 0 failures, 0 warnings, 0 skips.
+
+Rscript --vanilla -e \
+  'devtools::test(filter = "mspl", stop_on_failure = TRUE)'
+# PASS: 1,301 expectations, 0 failures, 0 warnings, 1 pre-existing skip;
+# 152.4 seconds.
+
+Rscript --vanilla inst/sim/lane-b-uncertainty/run-mspl-coverage-calibration.R \
+  aggregate-smoke \
+  --root /private/tmp/gllvmtmb-mspl-cov-gate0-recheck-20260814
+# PASS: manifest_mode smoke; calibration_gate_eligible FALSE;
+# 3 outer rows, 6 bootstrap rows, 27 endpoint rows, 295 profile-trace rows.
+
+bash inst/sim/lane-b-uncertainty/mspl-coverage/contract-self-test.sh
+# PASS: launcher-contract-self-test=PASS.
+
+git diff --check
+# PASS.
+
+git diff -- NAMESPACE
+# PASS: no public-surface change.
+
+rg -n 'gllvmTMB_mspl_assert_inference' \
+  R/vcov-coef.R R/z-confint-gllvmTMB.R R/profile-targets.R \
+  R/profile-ci.R R/bootstrap-sigma.R R/standard-errors.R
+# PASS: all existing public MSPL refusal gates remain present.
+```
+
+The local smoke took about 50 seconds. Its first bootstrap refit for each link
+paid a 4.5--4.7-second load/compile cost; warmed refits took 0.09--0.22 seconds.
+This supports, but does not replace, Gate 4's exact DRAC timing receipt.
+
+Deliberately not run: production coverage, public method activation,
+package-wide tests, `R CMD check`, pkgdown, three-OS CI, q = 2, structured,
+weighted or missing-data MSPL, GitHub Actions simulation, or remote compute.
+Public inference remains fail-closed. The next action is to freeze the exact
+source commit, then execute DRAC Gates 1--4 and stop for maintainer approval.

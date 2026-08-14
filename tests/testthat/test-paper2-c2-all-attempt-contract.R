@@ -36,12 +36,17 @@ test_that("C2 receipt is immutable and points to the frozen design", {
   receipt <- list(
     schema = "PAPER2_C2_NO_FIT_RECEIPT_V1", frozen_cells = env$paper2_c2_cells(),
     retained_s6 = retained, retained_s6_summary = env$paper2_c2_summarise(list(retained), 1L),
-    historical_provenance = list(seed = 86122L), current_contract_md5 = rep("test", 3L),
+    historical_provenance = list(seed = 86122L, S = 6L, C = 360L, r = 3L, b = 1L, d = 1L,
+      retained_commit = "57613984ddf844194326c3829ae97aab28ba3a35",
+      historical_fixture_sha256 = "701ba79e88a354c7285ac4786d9464b3b8b31edf8789e5fb71ed1f887bee9969"), current_contract_md5 = rep("test", 3L),
     scope = "private_no_fit_contract_only"
   )
   expect_silent(env$paper2_c2_validate_receipt(receipt))
   receipt$scope <- "fit"
   expect_error(env$paper2_c2_validate_receipt(receipt), "scope")
+  receipt$scope <- "private_no_fit_contract_only"
+  receipt$historical_provenance$historical_fixture_sha256 <- strrep("a", 64L)
+  expect_error(env$paper2_c2_validate_receipt(receipt), "provenance")
 })
 test_that("C2 helpers have no model-execution path", {
   path <- testthat::test_path("..", "..", "dev", "isdm-package-recovery", "paper2-c2-all-attempt-contract.R")

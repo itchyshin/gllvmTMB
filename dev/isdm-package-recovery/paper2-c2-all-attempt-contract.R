@@ -71,7 +71,19 @@ paper2_c2_validate_receipt <- function(x) {
   }
   paper2_c2_validate_retained_s6(x$retained_s6)
   expected <- paper2_c2_summarise(list(x$retained_s6), expected_R = 1L)
+  provenance_required <- c("seed", "S", "C", "r", "b", "d", "retained_commit",
+                           "historical_fixture_sha256")
   if (!identical(x$retained_s6_summary, expected) ||
+      !is.list(x$historical_provenance) ||
+      !identical(names(x$historical_provenance), provenance_required) ||
+      !identical(x$historical_provenance$seed, 86122L) ||
+      !identical(x$historical_provenance$S, 6L) ||
+      !identical(x$historical_provenance$C, 360L) ||
+      !identical(x$historical_provenance$r, 3L) ||
+      !identical(x$historical_provenance$b, 1L) ||
+      !identical(x$historical_provenance$d, 1L) ||
+      !identical(x$historical_provenance$retained_commit, "57613984ddf844194326c3829ae97aab28ba3a35") ||
+      !identical(x$historical_provenance$historical_fixture_sha256, "701ba79e88a354c7285ac4786d9464b3b8b31edf8789e5fb71ed1f887bee9969") ||
       !is.character(x$current_contract_md5) || length(x$current_contract_md5) != 3L ||
       any(!nzchar(x$current_contract_md5))) {
     stop("Paper 2 C2 receipt summary or provenance drift", call. = FALSE)

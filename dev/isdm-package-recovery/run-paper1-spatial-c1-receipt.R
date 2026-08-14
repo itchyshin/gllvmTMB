@@ -19,7 +19,9 @@ script <- normalizePath(sub("^--file=", "", grep("^--file=", commandArgs(FALSE),
 source(file.path(dirname(script), "paper1-spatial-c1-topology.R"), local = TRUE)
 ledger_path <- normalizePath(ledger_path, mustWork = TRUE)
 ledger <- readRDS(ledger_path)
-receipt <- paper1_c1_receipt(ledger)
+sha_line <- system2("shasum", c("-a", "256", ledger_path), stdout = TRUE, stderr = TRUE)
+ledger_sha256 <- sub("[[:space:]].*$", "", sha_line[[1L]])
+receipt <- paper1_c1_receipt(ledger, source_ledger = list(path = ledger_path, sha256 = ledger_sha256))
 paper1_c1_validate_receipt(receipt)
 if (identical(mode, "receipt")) {
   if (!grepl("^/", out)) out <- file.path(getwd(), out)

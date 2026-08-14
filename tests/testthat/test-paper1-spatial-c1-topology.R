@@ -18,12 +18,14 @@ test_that("C1 retains the spatial-only B2 maximum as Case D and NO_CANDIDATE", {
                                                 output = "Sigma_spde_slope_slope"))),
     field_outputs = list(), versions = list(commit = "d5c1481c")
   )
-  receipt <- env$paper1_c1_receipt(ledger)
+  receipt <- env$paper1_c1_receipt(ledger, list(path = "test-ledger.rds", sha256 = "deade4fe9dae9f6da191e78139baba86d8658d625a3547cd8f1a5c1bd036ec5f"))
   expect_silent(env$paper1_c1_validate_receipt(receipt))
   expect_identical(receipt$maximum$index, 20L)
   expect_identical(receipt$maximum$block, "theta_rr_spde_slope")
   expect_identical(receipt$classifier$case, "D")
   expect_identical(receipt$decision$candidate, "NO_CANDIDATE")
+  expect_error(env$paper1_c1_receipt(ledger), "source-ledger")
+  expect_error(env$paper1_c1_receipt(ledger, list(path = "test-ledger.rds", sha256 = strrep("a", 64L))), "source-ledger")
 })
 
 test_that("C1 adversarial topology partitions Case A/C/D without a fitter", {

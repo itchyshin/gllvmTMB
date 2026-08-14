@@ -1,5 +1,19 @@
 # Check log
 
+## 2026-08-13 — G3 full-vector numerical-admission design (no fit)
+
+```sh
+Rscript --vanilla dev/isdm-package-recovery/run-g3-full-vector-no-fit-validation.R
+# PASS: symbolic G3 contract; no model construction.
+
+Rscript --vanilla -e 'devtools::test(filter = "g3-full-vector-polish-contract|paper1-spatial-c1-topology|paper2-c2-all-attempt-contract", reporter = "summary")'
+# PASS: targeted pure no-fit contract tests.
+```
+
+**Deliberately not run:** objective construction, compilation, optimisation,
+fit, profile, simulation, data download, local/remote compute, public render,
+or CI. Historical holds remain immutable.
+
 ## 2026-08-13 — two-paper C1/C2/Gate-A private receipt implementation (no fit)
 
 Worktree `/private/tmp/gllvmtmb-two-paper-global-analysis`, branch

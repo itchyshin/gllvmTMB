@@ -35,7 +35,14 @@ paper1_c1_classify_topology <- function(gradient, parameter_names, pd_hessian,
        max_indices = indices, max_blocks = blocks)
 }
 
-paper1_c1_receipt <- function(ledger) {
+paper1_c1_validate_source_ledger <- function(x) {
+  is.list(x) && identical(names(x), c("path", "sha256")) &&
+    is.character(x$path) && length(x$path) == 1L && nzchar(x$path) &&
+    is.character(x$sha256) && length(x$sha256) == 1L &&
+    identical(x$sha256, "deade4fe9dae9f6da191e78139baba86d8658d625a3547cd8f1a5c1bd036ec5f")
+}
+
+paper1_c1_receipt <- function(ledger, source_ledger = NULL) {
   if (!is.list(ledger) || !all(paper1_c1_required_ledger %in% names(ledger))) {
     stop("C1 requires the complete retained B2 ledger.", call. = FALSE)
   }
@@ -59,10 +66,14 @@ paper1_c1_receipt <- function(ledger) {
     stop("B2 maximum must be one GBIF-only spatial-slope loading coordinate.",
          call. = FALSE)
   }
+  if (is.null(source_ledger) || !paper1_c1_validate_source_ledger(source_ledger)) {
+    stop("C1 source-ledger provenance is invalid.", call. = FALSE)
+  }
   list(
     schema = "PAPER1_C1_B2_GRADIENT_TOPOLOGY_V1",
     retained_attempt_id = ledger$attempt_id,
     retained_commit = ledger$versions$commit,
+    source_ledger = source_ledger,
     status = "PRIVATE_NUMERICAL_ADMISSION_HOLD",
     maximum = list(index = as.integer(idx), block = block,
       signed_gradient = unname(gradient[idx]), absolute_gradient = abs(unname(gradient[idx])),
@@ -86,11 +97,12 @@ paper1_c1_receipt <- function(ledger) {
 }
 
 paper1_c1_validate_receipt <- function(x) {
-  required <- c("schema", "retained_attempt_id", "retained_commit", "status",
+  required <- c("schema", "retained_attempt_id", "retained_commit", "source_ledger", "status",
     "maximum", "classifier", "parameter_map", "immutable_state", "decision")
   if (!is.list(x) || !identical(names(x), required) ||
       !identical(x$schema, "PAPER1_C1_B2_GRADIENT_TOPOLOGY_V1") ||
       !identical(x$status, "PRIVATE_NUMERICAL_ADMISSION_HOLD") ||
+      !paper1_c1_validate_source_ledger(x$source_ledger) ||
       !identical(x$maximum$block, "theta_rr_spde_slope") ||
       !is.numeric(x$maximum$absolute_gradient) || length(x$maximum$absolute_gradient) != 1L ||
       abs(x$maximum$absolute_gradient - 0.003392914) > 1e-8 ||

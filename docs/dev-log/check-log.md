@@ -50091,6 +50091,31 @@ Rscript --vanilla -e 'testthat::test_file("tests/testthat/test-g3p-provenance-co
 No runner mode, preflight, smoke, fit, profile, simulation, remote compute,
 model/DGP/map/threshold change, or public/article change occurred.
 
+## 2026-08-14 — G3P V2 one-smoke terminal HOLD
+
+The separately approved local V2 smoke used the receipt-bound clean commit
+`0f5c27969e5baab96162be92aae056e377fddc9c`, V2 gate/root/attempt identity,
+and 1,500-second hard stop. It returned terminal
+`G3_HESSIAN_UNAVAILABLE` after a 16.525-second fit (19.106 seconds total):
+`Hessian not yet implemented for models with random effects.` Provenance was
+`MATCH` (only the non-binding temporary DLL path differed) and execution
+context was an exact match. No G3 trial, retry, profile, recovery, campaign,
+or public action ran.
+
+```sh
+Rscript --vanilla -e 'root <- "dev/isdm-package-recovery/results/G3P_P2_S6_C360_R3_V2"; x <- readRDS(file.path(root, "all-attempt-ledger.rds")); y <- readRDS(file.path(root, "root-receipt.rds")); m <- utils::read.csv(file.path(root, "file-manifest.csv"), stringsAsFactors = FALSE); stopifnot(identical(x$status, "G3_HESSIAN_UNAVAILABLE"), isTRUE(x$terminal), identical(x$provenance$status, "MATCH"), identical(x$execution_context$status, "MATCH"), !file.exists(file.path(root, "retry-ledger.rds")), !file.exists(file.path(root, "profile.rds"))); cat(y$commit, x$timing$fit_elapsed_s, x$timing$total_elapsed_s, nrow(m), "\n")'
+# 0f5c27969e5baab96162be92aae056e377fddc9c 16.525 19.106 7
+
+rg -n 'G3P_P2_SMOKE_V2|G3_HESSIAN_UNAVAILABLE|G3_P2_S6_C360_R3_V2' README.md ROADMAP.md NEWS.md vignettes R
+# No public-surface matches.
+```
+
+This terminal result supports only the statement that one receipt-bound V2
+attempt stopped before G3 evaluation because the requested Hessian was
+unavailable. It is not a numerical-admission, rejection, convergence,
+likelihood, recovery/Psi, spatial, empirical, scale, or public-capability
+result.
+
 ## 2026-08-13 — G3P Gate B materialised (no runner)
 
 With explicit maintainer approval, the V2 packet

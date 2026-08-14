@@ -6528,7 +6528,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     boundary_before = initial_boundary,
     trigger_reason = initial_trigger_reason
   )
-  warm_eligible <- .gllvmTMB_warm_restart_eligible(
+  internal_continuation <- isTRUE(control$.internal_continuation %||% TRUE)
+  warm_eligible <- internal_continuation && .gllvmTMB_warm_restart_eligible(
     optimizer = control$optimizer,
     aghq_used = aghq_info$used,
     ridge_tau = laplace_ridge_tau,
@@ -6542,19 +6543,20 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   isdm_polish_eligible <- FALSE
   if (isTRUE(isdm_internal)) {
     isdm_boundary_indices <- .gllvmTMB_isdm_near_zero_sd_B_indices(fit)
-    isdm_polish_eligible <- .gllvmTMB_isdm_polish_eligible(
-      isdm_internal = TRUE,
-      optimizer = control$optimizer,
-      aghq_used = aghq_info$used,
-      ridge_tau = laplace_ridge_tau,
-      convergence = opt$convergence,
-      objective = fit$fit_health$objective,
-      gradient = initial_gradient,
-      parameter_names = names(opt$par),
-      pd_hessian = fit$fit_health$pd_hessian,
-      boundary_flags = fit$fit_health$boundary_flags,
-      boundary_diag_indices = isdm_boundary_indices
-    )
+    isdm_polish_eligible <- internal_continuation &&
+      .gllvmTMB_isdm_polish_eligible(
+        isdm_internal = TRUE,
+        optimizer = control$optimizer,
+        aghq_used = aghq_info$used,
+        ridge_tau = laplace_ridge_tau,
+        convergence = opt$convergence,
+        objective = fit$fit_health$objective,
+        gradient = initial_gradient,
+        parameter_names = names(opt$par),
+        pd_hessian = fit$fit_health$pd_hessian,
+        boundary_flags = fit$fit_health$boundary_flags,
+        boundary_diag_indices = isdm_boundary_indices
+      )
     fit$isdm_polish_provenance <- .gllvmTMB_isdm_polish_record(
       eligible = isdm_polish_eligible,
       raw_parameter_vector = opt$par,
@@ -7948,6 +7950,288 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     } else {
       integer()
     }
+  )
+}
+
+## One private, exact-gradient BFGS continuation from a retained nlminb fit.
+## This is not a retry route: the method and controls are sealed, optim() is
+## called exactly once, and the returned point is adjudicated without tuning.
+.gllvmTMB_isdm_bfgs_exact_gradient_continuation <- function(
+  obj, par, expected_objective, signature, raw_state, curvature_fn,
+  method = "BFGS",
+  control = list(maxit = 500L, reltol = 1e-12, trace = 0L, REPORT = 1L),
+  raw_gradient_gate = 1e-3, health_gradient_gate = 1e-2,
+  condition_limit = 1e8
+) {
+  frozen_control <- list(
+    maxit = 500L, reltol = 1e-12, trace = 0L, REPORT = 1L
+  )
+  result <- function(status, reason, raw = NULL, optimizer = NULL,
+                     candidate = NULL, curvature = NULL) {
+    list(
+      estimator = "BFGS_EXACT_GRADIENT_CONTINUATION_V1",
+      status = status, reason = reason, method = method, control = control,
+      signature = signature, raw_state = raw_state, raw = raw,
+      optimizer = optimizer, candidate = candidate, curvature = curvature
+    )
+  }
+  if (!is.list(obj) || !is.function(obj$fn) || !is.function(obj$gr) ||
+      !is.function(curvature_fn)) {
+    return(result(
+      "BFGS_INFRASTRUCTURE_HOLD",
+      "objective_or_curvature_interface_unavailable"
+    ))
+  }
+  required_raw <- c(
+    "optimizer", "convergence", "pd_hessian", "boundary_flags", "is_isdm",
+    "aghq", "ridge", "retry_enabled", "profile_enabled", "source_gate"
+  )
+  valid_raw_state <- is.list(raw_state) && identical(names(raw_state), required_raw) &&
+    identical(raw_state$optimizer, "nlminb") &&
+    identical(raw_state$convergence, 0L) &&
+    is.logical(raw_state$pd_hessian) && length(raw_state$pd_hessian) == 1L &&
+    !is.na(raw_state$pd_hessian) && is.character(raw_state$boundary_flags) &&
+    !length(raw_state$boundary_flags) && identical(raw_state$is_isdm, TRUE) &&
+    identical(raw_state$aghq, FALSE) && identical(raw_state$ridge, FALSE) &&
+    identical(raw_state$retry_enabled, FALSE) &&
+    identical(raw_state$profile_enabled, FALSE) &&
+    is.character(raw_state$source_gate) && length(raw_state$source_gate) == 1L &&
+    nzchar(raw_state$source_gate)
+  typed <- is.numeric(par) && length(par) > 0L && all(is.finite(par)) &&
+    !is.null(names(par)) && length(names(par)) == length(par) &&
+    !anyNA(names(par)) && all(nzchar(names(par))) &&
+    is.numeric(expected_objective) && length(expected_objective) == 1L &&
+    is.finite(expected_objective) &&
+    .gllvmTMB_isdm_g3_valid_signature(signature) && valid_raw_state &&
+    identical(raw_state$source_gate, signature$source_gate) &&
+    identical(method, "BFGS") && identical(control, frozen_control) &&
+    is.numeric(raw_gradient_gate) && length(raw_gradient_gate) == 1L &&
+    identical(raw_gradient_gate, 1e-3) &&
+    is.numeric(health_gradient_gate) && length(health_gradient_gate) == 1L &&
+    identical(health_gradient_gate, 1e-2) &&
+    is.numeric(condition_limit) && length(condition_limit) == 1L &&
+    identical(condition_limit, 1e8)
+  if (!typed) return(result("BFGS_RAW_INELIGIBLE", "invalid_or_unlocked_raw_inputs"))
+
+  input_labels <- names(par)
+  suffixes <- paste0("[", seq_along(par), "]")
+  already_positional <- !anyDuplicated(input_labels) &&
+    all(nchar(input_labels) > nchar(suffixes)) &&
+    all(endsWith(input_labels, suffixes))
+  block_labels <- if (already_positional) {
+    substring(input_labels, 1L, nchar(input_labels) - nchar(suffixes))
+  } else {
+    input_labels
+  }
+  positional_ids <- paste0(block_labels, suffixes)
+  if (anyDuplicated(positional_ids)) {
+    return(result("BFGS_RAW_INELIGIBLE", "nonunique_positional_ids"))
+  }
+  par <- stats::setNames(as.numeric(par), positional_ids)
+  evaluate_objective <- function(theta) {
+    tryCatch(obj$fn(unname(theta)), error = function(e) e)
+  }
+  evaluate_gradient <- function(theta) {
+    tryCatch(obj$gr(unname(theta)), error = function(e) e)
+  }
+  raw_objective <- evaluate_objective(par)
+  raw_gradient <- evaluate_gradient(par)
+  replay_tolerance <- 64 * .Machine$double.eps *
+    max(1, abs(expected_objective))
+  raw_available <- is.numeric(raw_objective) && length(raw_objective) == 1L &&
+    is.finite(raw_objective) &&
+    is.numeric(raw_gradient) && length(raw_gradient) == length(par) &&
+    all(is.finite(raw_gradient))
+  raw <- list(
+    parameter_vector = par, block_labels = block_labels,
+    positional_ids = positional_ids,
+    objective = if (is.numeric(raw_objective)) as.numeric(raw_objective)[1L] else NA_real_,
+    expected_objective = expected_objective,
+    gradient = if (is.numeric(raw_gradient) && length(raw_gradient) == length(par)) {
+      stats::setNames(as.numeric(raw_gradient), positional_ids)
+    } else {
+      stats::setNames(rep(NA_real_, length(par)), positional_ids)
+    }
+  )
+  if (!raw_available) {
+    return(result(
+      "BFGS_INFRASTRUCTURE_HOLD",
+      "raw_objective_or_gradient_unavailable", raw
+    ))
+  }
+  raw$objective <- as.numeric(raw_objective)
+  raw$gradient <- stats::setNames(as.numeric(raw_gradient), positional_ids)
+  raw$max_gradient <- max(abs(raw$gradient))
+  raw$objective_replay_error <- abs(raw$objective - expected_objective)
+  if (raw$objective_replay_error > replay_tolerance) {
+    return(result("BFGS_RAW_INELIGIBLE", "raw_objective_replay_mismatch", raw))
+  }
+  if (!(raw$max_gradient > raw_gradient_gate &&
+      raw$max_gradient < health_gradient_gate)) {
+    return(result("BFGS_RAW_INELIGIBLE", "raw_gradient_gate", raw))
+  }
+
+  started <- proc.time()[["elapsed"]]
+  optimizer <- tryCatch(
+    stats::optim(
+      par = par, fn = obj$fn, gr = obj$gr, method = method,
+      control = control
+    ),
+    error = function(e) e
+  )
+  elapsed <- proc.time()[["elapsed"]] - started
+  if (inherits(optimizer, "error")) {
+    return(result(
+      "BFGS_OPTIMIZER_ERROR", conditionMessage(optimizer), raw,
+      optimizer = list(error = conditionMessage(optimizer), elapsed_s = elapsed)
+    ))
+  }
+  optimizer$elapsed_s <- elapsed
+  optimizer_valid <- is.list(optimizer) && is.numeric(optimizer$par) &&
+    length(optimizer$par) == length(par) && all(is.finite(optimizer$par)) &&
+    (is.null(names(optimizer$par)) ||
+      identical(names(optimizer$par), positional_ids)) &&
+    is.numeric(optimizer$value) && length(optimizer$value) == 1L &&
+    is.finite(optimizer$value) && is.numeric(optimizer$convergence) &&
+    length(optimizer$convergence) == 1L && is.finite(optimizer$convergence)
+  if (!optimizer_valid) {
+    return(result("BFGS_OPTIMIZER_ERROR", "malformed_optimizer_result", raw, optimizer))
+  }
+  candidate_par <- stats::setNames(as.numeric(optimizer$par), positional_ids)
+  candidate_objective <- evaluate_objective(candidate_par)
+  candidate_gradient <- evaluate_gradient(candidate_par)
+  candidate_available <- is.numeric(candidate_objective) &&
+    length(candidate_objective) == 1L && is.finite(candidate_objective) &&
+    is.numeric(candidate_gradient) && length(candidate_gradient) == length(par) &&
+    all(is.finite(candidate_gradient))
+  if (!candidate_available) {
+    return(result(
+      "BFGS_INFRASTRUCTURE_HOLD", "candidate_exact_replay_unavailable",
+      raw, optimizer
+    ))
+  }
+  candidate <- list(
+    parameter_vector = candidate_par,
+    objective = as.numeric(candidate_objective),
+    optimizer_objective = as.numeric(optimizer$value),
+    gradient = stats::setNames(as.numeric(candidate_gradient), positional_ids),
+    convergence = as.integer(optimizer$convergence), counts = optimizer$counts,
+    message = optimizer$message %||% NA_character_
+  )
+  candidate$max_gradient <- max(abs(candidate$gradient))
+  candidate$objective_replay_error <-
+    abs(candidate$objective - candidate$optimizer_objective)
+  candidate_replay_tolerance <- 64 * .Machine$double.eps *
+    max(1, abs(candidate$optimizer_objective))
+  if (candidate$objective_replay_error > candidate_replay_tolerance) {
+    return(result(
+      "BFGS_INFRASTRUCTURE_HOLD", "candidate_objective_replay_mismatch",
+      raw, optimizer, candidate
+    ))
+  }
+  objective_pass <- candidate$objective <= raw$objective +
+    64 * .Machine$double.eps * max(1, abs(raw$objective))
+  gradient_pass <- candidate$max_gradient <= raw_gradient_gate
+  convergence_pass <- identical(candidate$convergence, 0L)
+  candidate$gates <- list(
+    convergence = convergence_pass, objective = objective_pass,
+    gradient = gradient_pass, curvature = NA
+  )
+  if (!convergence_pass || !objective_pass || !gradient_pass) {
+    return(result(
+      "BFGS_NO_NUMERICAL_ADMISSION",
+      "optimizer_convergence_objective_or_gradient_gate_failed",
+      raw, optimizer, candidate, curvature = NULL
+    ))
+  }
+
+  curvature_record <- tryCatch(
+    curvature_fn(candidate_par, positional_ids),
+    error = function(e) list(
+      available = FALSE, reason = "curvature_callback_error",
+      par.fixed = NULL, cov.fixed = NULL, pdHess = NA,
+      positional_ids = positional_ids, error = conditionMessage(e)
+    )
+  )
+  required_curvature <- c(
+    "available", "reason", "par.fixed", "cov.fixed", "pdHess",
+    "positional_ids", "error"
+  )
+  curvature_typed <- is.list(curvature_record) &&
+    length(curvature_record) == length(required_curvature) &&
+    setequal(names(curvature_record), required_curvature) &&
+    is.logical(curvature_record$available) &&
+    length(curvature_record$available) == 1L &&
+    !is.na(curvature_record$available) &&
+    is.character(curvature_record$reason) &&
+    length(curvature_record$reason) == 1L && nzchar(curvature_record$reason) &&
+    identical(curvature_record$positional_ids, positional_ids)
+  if (!curvature_typed || !isTRUE(curvature_record$available)) {
+    reason <- if (curvature_typed) curvature_record$reason else
+      "invalid_curvature_callback_record"
+    return(result(
+      "BFGS_CURVATURE_UNAVAILABLE", reason, raw, optimizer, candidate,
+      curvature_record
+    ))
+  }
+  par_aligned <- is.numeric(curvature_record$par.fixed) &&
+    length(curvature_record$par.fixed) == length(par) &&
+    all(is.finite(curvature_record$par.fixed)) &&
+    identical(names(curvature_record$par.fixed), positional_ids) &&
+    max(abs(curvature_record$par.fixed - candidate_par)) <=
+      64 * .Machine$double.eps * max(1, max(abs(candidate_par)))
+  covariance <- curvature_record$cov.fixed
+  covariance_aligned <- is.matrix(covariance) &&
+    identical(dim(covariance), c(length(par), length(par))) &&
+    identical(rownames(covariance), positional_ids) &&
+    identical(colnames(covariance), positional_ids)
+  if (!par_aligned || !covariance_aligned) {
+    return(result(
+      "BFGS_CURVATURE_UNAVAILABLE", "curvature_positional_identity_failure",
+      raw, optimizer, candidate, curvature_record
+    ))
+  }
+  finite <- all(is.finite(covariance))
+  symmetric <- finite && max(abs(covariance - t(covariance))) <= 1e-10
+  chol_covariance <- if (symmetric) {
+    tryCatch(chol(covariance), error = function(e) NULL)
+  } else {
+    NULL
+  }
+  eigenvalues <- if (symmetric) {
+    tryCatch(
+      eigen(covariance, symmetric = TRUE, only.values = TRUE)$values,
+      error = function(e) rep(NA_real_, length(par))
+    )
+  } else {
+    rep(NA_real_, length(par))
+  }
+  condition <- if (!is.null(chol_covariance)) {
+    tryCatch(kappa(covariance, exact = TRUE), error = function(e) Inf)
+  } else {
+    Inf
+  }
+  curvature <- list(
+    callback = curvature_record, covariance = covariance,
+    eigenvalues = eigenvalues, condition = condition,
+    finite = finite, symmetric = symmetric,
+    positive_definite = !is.null(chol_covariance),
+    pdHess = curvature_record$pdHess,
+    metric_source = "sdreport_cov_fixed"
+  )
+  curvature_valid <- identical(curvature_record$pdHess, TRUE) && finite &&
+    symmetric && !is.null(chol_covariance) && all(is.finite(eigenvalues)) &&
+    is.finite(condition) && condition <= condition_limit
+  if (!curvature_valid) {
+    return(result(
+      "BFGS_CURVATURE_INVALID", "candidate_curvature_invalid",
+      raw, optimizer, candidate, curvature
+    ))
+  }
+  candidate$gates$curvature <- TRUE
+  result(
+    "BFGS_NUMERICAL_ADMISSION", "all_admission_gates_passed",
+    raw, optimizer, candidate, curvature
   )
 }
 

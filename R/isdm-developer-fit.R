@@ -95,7 +95,8 @@
 #' @keywords internal
 #' @noRd
 .gll_isdm_fit <- function(rows, X, B, d = 1L, control = gllvmTMBcontrol(),
-                          silent = TRUE, mesh = NULL, spatial = FALSE) {
+                          silent = TRUE, mesh = NULL, spatial = FALSE,
+                          .internal_continuation = TRUE) {
   if (!is.numeric(d) || length(d) != 1L || !is.finite(d) || d < 1L ||
       d != as.integer(d)) {
     .isdm_abort("d must be one positive integer ecological latent rank.")
@@ -105,6 +106,12 @@
       "the private iSDM route currently uses the Laplace objective only; AGHQ is not admitted."
     )
   }
+  if (!is.logical(.internal_continuation) ||
+      length(.internal_continuation) != 1L ||
+      is.na(.internal_continuation)) {
+    .isdm_abort(".internal_continuation must be one non-missing logical value.")
+  }
+  control$.internal_continuation <- .internal_continuation
   prepared <- .isdm_developer_data(rows = rows, X = X, B = B)
   dat <- prepared$data
   if (!is.logical(spatial) || length(spatial) != 1L || is.na(spatial)) {

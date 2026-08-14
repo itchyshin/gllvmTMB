@@ -99,11 +99,12 @@
   expect_gt(abs(changed$fn(changed$par) - base$fn(base$par)), 1e-8)
 }
 
-test_that("developer-only helper routes the PA branch through mixed family rows", {
+test_that("developer-only PA fit can retain raw state with continuations sealed", {
   fixture <- .isdm_fit_fixture("pa")
   fit <- .gll_isdm_fit(
     fixture$rows, fixture$X, fixture$B,
-    d = 1L, control = .isdm_test_control(), silent = TRUE
+    d = 1L, control = .isdm_test_control(), silent = TRUE,
+    .internal_continuation = FALSE
   )
 
   expect_s3_class(fit, "gllvmTMB")
@@ -114,6 +115,25 @@ test_that("developer-only helper routes the PA branch through mixed family rows"
   expect_true(any(fit$tmb_data$family_id_vec == 1L))
   expect_true(any(fit$tmb_data$family_id_vec == 2L))
   expect_true(any(fit$tmb_data$link_id_vec == 2L))
+  expect_false(fit$warm_restart_provenance$warm_restart_attempted)
+  expect_false(fit$warm_restart_provenance$warm_restart_accepted)
+  expect_identical(fit$isdm_polish_provenance$schema,
+    "G2I_INTERNAL_ISDM_POLISH_V1")
+  expect_false(fit$isdm_polish_provenance$eligible)
+  expect_false(fit$isdm_polish_provenance$attempted)
+  expect_false(fit$isdm_polish_provenance$accepted)
+  expect_identical(
+    fit$isdm_polish_provenance$raw$parameter_vector,
+    fit$opt$par
+  )
+  expect_equal(
+    fit$isdm_polish_provenance$raw$objective,
+    as.numeric(fit$tmb_obj$fn(fit$opt$par)), tolerance = 1e-12
+  )
+  expect_equal(
+    unname(fit$isdm_polish_provenance$raw$gradient),
+    unname(fit$tmb_obj$gr(fit$opt$par)), tolerance = 1e-12
+  )
   expect_equal(fit$tmb_data$offset_vec, log(fixture$rows$support))
   native_eta <- as.numeric(fit$report$eta)
   oracle <- .isdm_observation_nll(
@@ -128,6 +148,20 @@ test_that("developer-only helper routes the PA branch through mixed family rows"
   expect_identical(unname(fit$X_fix[survey, bias_cols, drop = FALSE]),
                    matrix(0, sum(survey), length(bias_cols)))
   .expect_isdm_frozen_objective_gate(fit, fixture, bias_cols)
+})
+
+test_that("private continuation switch rejects malformed values before a fit", {
+  fixture <- .isdm_fit_fixture("pa")
+  for (value in list(NA, 0, c(TRUE, FALSE), NULL)) {
+    expect_error(
+      .gll_isdm_fit(
+        fixture$rows, fixture$X, fixture$B,
+        d = 1L, control = .isdm_test_control(), silent = TRUE,
+        .internal_continuation = value
+      ),
+      "\\.internal_continuation must be one non-missing logical value"
+    )
+  }
 })
 
 test_that("the count branch stays Poisson/log and keeps GBIF bias gated", {

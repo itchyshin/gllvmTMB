@@ -13,6 +13,7 @@ failure_smoke <- "--failure-smoke" %in% args
 timing_smoke <- "--timing-smoke" %in% args
 totoro_preflight <- "--totoro-preflight" %in% args
 campaign <- "--campaign" %in% args
+sentinel_calibration <- "--sentinel-calibration" %in% args
 campaign_phase <- Sys.getenv("GLLVM897_PHASE", "development")
 campaign_seeds <- as.integer(strsplit(Sys.getenv("GLLVM897_SEEDS", "1,2,3"), ",", fixed = TRUE)[[1L]])
 workers <- as.integer(Sys.getenv("GLLVM897_WORKERS", "1"))
@@ -255,6 +256,18 @@ if (totoro_preflight) {
     loading_shape = c("homogeneous", "sparse_identifiable"),
     seed = campaign_seeds, stringsAsFactors = FALSE
   )
+} else if (sentinel_calibration) {
+  ## Deliberately small calibration bridge after the full grid proved too
+  ## expensive.  It spans the known low-n degenerate endpoint and the
+  ## high-n healthy endpoint, across both loading shapes, but cannot widen a
+  ## prospective public claim beyond this diagnostic study.
+  grid <- expand.grid(
+    n = c(60L, 1600L), p = c(12L, 27L), q = 2L, categories = 4L,
+    missing = c(0, 0.3), loading_shape = c("homogeneous", "sparse_identifiable"),
+    seed = campaign_seeds, stringsAsFactors = FALSE
+  )
+  grid <- grid[(grid$n == 60L & grid$p == 12L & grid$missing == 0) |
+               (grid$n == 1600L & grid$p == 27L & grid$missing == 0.3), , drop = FALSE]
 } else if (timing_smoke) {
   ## Seed 4 was a retained truth-labelled silent-degeneracy row in the first
   ## bounded probe.  This one-cell mode exists solely to price the exact
@@ -277,6 +290,8 @@ if (totoro_preflight) {
 
 tag <- if (totoro_preflight) "totoro-preflight" else if (campaign) {
   paste0("campaign-", campaign_phase)
+} else if (sentinel_calibration) {
+  paste0("sentinel-", campaign_phase)
 } else if (timing_smoke) {
   "timing-smoke"
 } else if (failure_smoke) {
@@ -328,6 +343,7 @@ provenance <- data.frame(
   command = paste(commandArgs(), collapse = " "),
   smoke = smoke, failure_smoke = failure_smoke, timing_smoke = timing_smoke,
   totoro_preflight = totoro_preflight, campaign = campaign,
+  sentinel_calibration = sentinel_calibration,
   campaign_phase = campaign_phase, workers = workers,
   elapsed_seconds = elapsed,
   stringsAsFactors = FALSE

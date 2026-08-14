@@ -49586,3 +49586,18 @@ expectations in 162.3 seconds, with no failures, warnings, or skips. A direct
 and low-prevalence cloglog: every fixture retained 24 successful site deletions
 and a finite private covariance. The helper remains private and its successful
 deletion trace is feasibility evidence only, not calibrated uncertainty.
+
+## 2026-08-14 — private LA-MSPL jackknife repeated-sampling pre-run
+
+Added a private `jackknife_only` option to the failure-retaining uncertainty
+runner. It evaluates only the active-objective delete-one-site jackknife helper,
+retains fit/jackknife statuses and candidate SEs on all target rows, and reports
+unconditional diagnostic-band coverage separately from availability. The local
+four-cell x four-replicate pre-run produced the exact 48 target-level receipts:
+all 16 full fits and 384 deletion refits succeeded, every candidate was finite,
+and all retained objective identities were `fit$tmb_obj` with `estimator_id = 1`.
+
+The runner contract test passed. The pre-run took about 83 seconds, projecting
+a 500-replicate four-cell campaign to about 45 minutes on four workers, so it
+is above the approval gate. No remote campaign, public MSPL inference method,
+or calibrated uncertainty claim has been made.

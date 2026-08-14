@@ -50091,6 +50091,20 @@ Rscript --vanilla -e 'testthat::test_file("tests/testthat/test-g3p-provenance-co
 No runner mode, preflight, smoke, fit, profile, simulation, remote compute,
 model/DGP/map/threshold change, or public/article change occurred.
 
+## 2026-08-13 — G3P V2 binding review complete (Gate-B request ready)
+
+Independent Gauss/Noether, Fisher, and Rose re-reviews passed on the pinned
+`fdcb05cd` runner baseline. The generic runner preserves V1 defaults while a
+non-V1 invocation must explicitly supply its packet, root, attempt, and time
+arguments. Receipt MD5/content, execution context, and time budget are binding
+before package loading or optimizer entry.
+
+The branch is ready to request only Gate B: creation of the V2 packet and its
+ignored root. It does not authorise that creation, a preflight, or a smoke.
+
+No runner mode, preflight, smoke, fit, profile, simulation, remote compute,
+model/DGP/map/threshold change, or public/article change occurred.
+
 ## 2026-08-13 — G3P receipt-bound time budget (no runner)
 
 The preflight receipt and pre-optimizer execution-context comparator now bind

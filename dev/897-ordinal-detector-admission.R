@@ -275,12 +275,42 @@ if (totoro_preflight) {
   )
 }
 
+tag <- if (totoro_preflight) "totoro-preflight" else if (campaign) {
+  paste0("campaign-", campaign_phase)
+} else if (timing_smoke) {
+  "timing-smoke"
+} else if (failure_smoke) {
+  "failure-smoke"
+} else if (smoke) {
+  "smoke"
+} else {
+  "grid"
+}
+cell_dir <- file.path(out_dir, paste0(tag, "-cell-receipts"))
+dir.create(cell_dir, recursive = TRUE, showWarnings = FALSE)
+cell_key <- function(cell) {
+  paste(
+    paste0("n", cell$n), paste0("p", cell$p), paste0("q", cell$q),
+    paste0("K", cell$categories), paste0("miss", cell$missing),
+    cell$loading_shape, paste0("seed", cell$seed), sep = "-"
+  )
+}
+record_cell <- function(cell) {
+  receipt <- file.path(cell_dir, paste0(cell_key(cell), ".rds"))
+  if (file.exists(receipt)) return(readRDS(receipt))
+  row <- fit_cell(cell)
+  temporary <- tempfile("write-", tmpdir = cell_dir, fileext = ".rds")
+  saveRDS(row, temporary, version = 2)
+  stop_if(!file.rename(temporary, receipt), paste("Cannot retain", receipt))
+  row
+}
+
 started <- Sys.time()
 cells <- split(grid, seq_len(nrow(grid)))
 rows <- if (workers == 1L) {
-  lapply(cells, fit_cell)
+  lapply(cells, record_cell)
 } else {
-  parallel::mclapply(cells, fit_cell, mc.cores = workers, mc.preschedule = FALSE)
+  parallel::mclapply(cells, record_cell, mc.cores = workers, mc.preschedule = FALSE)
 }
 out <- do.call(rbind, rows)
 elapsed <- as.numeric(difftime(Sys.time(), started, units = "secs"))
@@ -302,17 +332,6 @@ provenance <- data.frame(
   elapsed_seconds = elapsed,
   stringsAsFactors = FALSE
 )
-tag <- if (totoro_preflight) "totoro-preflight" else if (campaign) {
-  paste0("campaign-", campaign_phase)
-} else if (timing_smoke) {
-  "timing-smoke"
-} else if (failure_smoke) {
-  "failure-smoke"
-} else if (smoke) {
-  "smoke"
-} else {
-  "grid"
-}
 utils::write.csv(out, file.path(out_dir, paste0(tag, "-cells.csv")), row.names = FALSE)
 utils::write.csv(provenance, file.path(out_dir, paste0(tag, "-provenance.csv")), row.names = FALSE)
 receipt_path <- file.path(out_dir, paste0(tag, "-receipt.rds"))

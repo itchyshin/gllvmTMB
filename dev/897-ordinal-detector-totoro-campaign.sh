@@ -4,12 +4,12 @@
 set -euo pipefail
 
 readonly TOTORO_CORE_CAP=150
-readonly NWORKERS=40
+readonly NWORKERS="${GLLVM897_WORKERS:-40}"
 readonly REMOTE_ROOT='~/gllvm_work/897-ordinal-detector-admission'
 readonly REMOTE_LIB='~/gllvm_work/R-897-lib'
 readonly REMOTE_FALLBACK_LIB='~/R/x86_64-pc-linux-gnu-library/4.5'
-readonly PHASE='development'
-readonly SEEDS='1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20'
+readonly PHASE="${GLLVM897_PHASE:-development}"
+readonly SEEDS="${GLLVM897_SEEDS:-1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20}"
 
 if [[ "${GLLVM897_CONFIRM:-}" != "YES" ]]; then
   echo 'Refusing #897 campaign: set GLLVM897_CONFIRM=YES after approval.' >&2

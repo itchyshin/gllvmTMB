@@ -52846,3 +52846,40 @@ The first command yielded the high-risk public consumers (`predict`, `simulate`,
 residuals, diagnostics, covariance extractors, bootstrap).  The latter two
 confirmed no public claim required correction and preserved MIS-35's deliberately
 narrow common-scale/single-tier evidence boundary.
+
+---
+
+## 2026-08-13 — #872-B mapped-point prevalence receipt (Codex)
+
+On `codex/872-mapped-point-prevalence`, a private Totoro receipt measured the
+exact ordinary Gaussian native-ML/Laplace two-tier #872 fixture at response
+scale `k = 5000`: ten seeds each for `n_sites = 150` and `400`. The run used
+12 single-threaded workers and retained all 20 attempted pairs: 19 executable
+rows, one objective-evaluation error, and 16 strictly healthy endpoints.
+
+```sh
+OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 GRID_WORKERS=12 \
+  Rscript --vanilla dev/872-mapped-point-prevalence.R \
+  docs/dev-log/simulation-artifacts/2026-08-13-872-mapped-point-prevalence
+```
+
+Every executable pair passed the Laplace-marginal mapped identity (maximum
+absolute residual `3.58e-08`, gate `1e-06`) and had a positive
+reached-minus-mapped objective gap. This establishes the narrow phenomenon's
+prevalence, not parameter recovery or a user-facing diagnostic threshold.
+
+```sh
+rg "#872|two-tier|flatness|park/research" \
+  docs/design/35-validation-debt-register.md \
+  docs/dev-log/release/2026-08-09-pre-0.7-issue-disposition-ledger.md \
+  docs/dev-log/after-task/2026-08-13-872-two-tier-flatness-admission.md
+# PASS: MIS-35 remains single-tier #851 evidence; #872 remains park/research.
+
+git diff --check
+# PASS
+```
+
+No package source, public documentation, validation-register status, NEWS,
+version, CI, artifact, tag, or GitHub issue state changed. The results retain
+the no-remedy fence: no warning, convergence criterion, optimizer-control
+change, or release claim is admitted.

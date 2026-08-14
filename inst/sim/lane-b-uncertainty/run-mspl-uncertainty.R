@@ -187,8 +187,11 @@ if (identical(command, "prepare")) {
     stop("Receipt identity is missing or duplicated.", call. = FALSE)
   }
   expected <- do.call(rbind, lapply(seq_len(nrow(manifest_data)), function(i) {
-    data.frame(cell_id = manifest_data$cell_id[[i]],
-               replicate_id = seq_len(manifest_data$n_rep[[i]]), target = 1:3)
+    out <- expand.grid(
+      replicate_id = seq_len(manifest_data$n_rep[[i]]), target = 1:3
+    )
+    out$cell_id <- manifest_data$cell_id[[i]]
+    out[, c("cell_id", "replicate_id", "target")]
   }))
   observed_key <- paste(d$cell_id, d$replicate_id, d$target, sep = "\r")
   expected_key <- paste(expected$cell_id, expected$replicate_id, expected$target, sep = "\r")

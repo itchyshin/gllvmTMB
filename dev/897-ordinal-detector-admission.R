@@ -26,6 +26,31 @@ rel_frob <- function(x, truth) {
   norm(x - truth, "F") / norm(truth, "F")
 }
 
+hash_rds <- function(x) {
+  path <- tempfile("gllvm897-hash-", fileext = ".rds")
+  on.exit(unlink(path), add = TRUE)
+  saveRDS(x, path, version = 2)
+  unname(tools::md5sum(path))
+}
+
+fit_contract <- function(fit) {
+  map <- fit$tmb_obj$env$map
+  par_names <- names(fit$tmb_obj$env$par)
+  random_names <- par_names[fit$tmb_obj$env$random]
+  data.frame(
+    rr_B = isTRUE(fit$use$rr_B),
+    diag_B = isTRUE(fit$use$diag_B),
+    family_id_14 = identical(unique(as.integer(fit$tmb_data$family_id_vec)), 14L),
+    unique_false = !isTRUE(fit$use$diag_B),
+    theta_diag_B_mapped = isTRUE(all(is.na(as.vector(map$theta_diag_B)))),
+    s_B_mapped = isTRUE(all(is.na(as.vector(map$s_B)))),
+    random_blocks = paste(unique(random_names), collapse = ";"),
+    formula = paste(deparse(fit$call$formula), collapse = " "),
+    control = "gllvmTMBcontrol(); aghq_ridge omitted",
+    stringsAsFactors = FALSE
+  )
+}
+
 ordinal_probabilities <- function(fit) {
   eta <- as.numeric(fit$report$eta)
   trait_id <- as.integer(fit$tmb_data$trait_id) + 1L
@@ -72,28 +97,78 @@ make_fixture <- function(n, p, q, categories, missing, loading_shape, seed) {
     trait = factor(rep(seq_len(p), times = n)),
     value = value
   )
-  list(data = data, Sigma_B = tcrossprod(Lambda), Lambda_B = Lambda, tau = tau)
+  list(
+    data = data, Sigma_B = tcrossprod(Lambda), Lambda_B = Lambda, scores = scores,
+    latent = latent, tau = tau
+  )
 }
 
 fit_cell <- function(cell) {
+  cell_id <- paste(
+    paste0("n", cell$n), paste0("p", cell$p), paste0("q", cell$q),
+    paste0("K", cell$categories), paste0("miss", cell$missing),
+    cell$loading_shape, paste0("seed", cell$seed), sep = "-"
+  )
+  base <- data.frame(
+    cell_id = cell_id, seed = cell$seed, n = cell$n, p = cell$p, q = cell$q,
+    categories = cell$categories, missing = cell$missing,
+    loading_shape = cell$loading_shape, rng_kind = paste(RNGkind(), collapse = "/"),
+    start_utc = format(Sys.time(), tz = "UTC", usetz = TRUE),
+    stringsAsFactors = FALSE
+  )
   fixture <- make_fixture(
     cell$n, cell$p, cell$q, cell$categories, cell$missing,
     cell$loading_shape, cell$seed
   )
+  observed_counts <- vapply(seq_len(cell$p), function(trait) {
+    tabulate(
+      fixture$data$value[fixture$data$trait == trait & !is.na(fixture$data$value)],
+      nbins = cell$categories
+    )
+  }, integer(cell$categories))
+  singular_values <- svd(fixture$Lambda_B, nu = 0L, nv = 0L)$d
+  if (any(observed_counts == 0L) ||
+      length(singular_values) < cell$q ||
+      any(singular_values[seq_len(cell$q)] <= sqrt(.Machine$double.eps))) {
+    return(cbind(
+      base, status = "INVALID_DGP", observed_n = sum(observed_counts),
+      min_category_count = min(observed_counts),
+      lambda_rank = sum(singular_values > sqrt(.Machine$double.eps)),
+      lambda_condition = max(singular_values) / min(singular_values),
+      Lambda_hash = hash_rds(fixture$Lambda_B), Z_hash = hash_rds(fixture$scores),
+      latent_hash = hash_rds(fixture$latent), missing_hash = hash_rds(is.na(fixture$data$value)),
+      note = "intended category absent or true Lambda rank deficient"
+    ))
+  }
+  cpu_started <- proc.time()
+  warnings <- character(0)
   fit <- tryCatch(
-    suppressWarnings(gllvmTMB(
-      value ~ 0 + trait + latent(0 + trait | site, d = cell$q, unique = FALSE),
-      data = fixture$data, trait = "trait", unit = "site", family = ordinal_probit()
-    )),
+    withCallingHandlers(
+      gllvmTMB(
+        value ~ 0 + trait + latent(0 + trait | site, d = cell$q, unique = FALSE),
+        data = fixture$data, trait = "trait", unit = "site", family = ordinal_probit()
+      ),
+      warning = function(w) {
+        warnings <<- c(warnings, conditionMessage(w))
+        invokeRestart("muffleWarning")
+      }
+    ),
     error = function(e) e
   )
-  base <- data.frame(
-    seed = cell$seed, n = cell$n, p = cell$p, q = cell$q,
-    categories = cell$categories, missing = cell$missing,
-    loading_shape = cell$loading_shape, stringsAsFactors = FALSE
-  )
+  cpu_elapsed <- proc.time() - cpu_started
   if (inherits(fit, "error")) {
-    return(cbind(base, status = "ERROR", note = conditionMessage(fit)))
+    return(cbind(
+      base, status = "ERROR", user_cpu = cpu_elapsed[["user.self"]],
+      system_cpu = cpu_elapsed[["sys.self"]], observed_n = sum(observed_counts),
+      min_category_count = min(observed_counts),
+      lambda_rank = length(singular_values),
+      lambda_condition = max(singular_values) / min(singular_values),
+      Lambda_hash = hash_rds(fixture$Lambda_B),
+      Z_hash = hash_rds(fixture$scores), latent_hash = hash_rds(fixture$latent),
+      missing_hash = hash_rds(is.na(fixture$data$value)),
+      true_cutpoints = paste(fixture$tau, collapse = ";"),
+      warnings = paste(warnings, collapse = " | "), note = conditionMessage(fit)
+    ))
   }
   Lambda <- fit$report$Lambda_B
   if (!is.matrix(Lambda) || !all(is.finite(Lambda))) {
@@ -112,11 +187,26 @@ fit_cell <- function(cell) {
   spacing <- unlist(lapply(split(cuts$tau_estimate, cuts$trait), diff), use.names = FALSE)
   convergence <- as.integer(fit$opt$convergence)
   pd_hess <- isTRUE(fit$sd_report$pdHess)
+  raw_gradient <- tryCatch(fit$tmb_obj$gr(fit$opt$par), error = function(e) NA_real_)
+  contract <- fit_contract(fit)
   cbind(
     base,
     status = "OK",
+    end_utc = format(Sys.time(), tz = "UTC", usetz = TRUE),
+    user_cpu = cpu_elapsed[["user.self"]],
+    system_cpu = cpu_elapsed[["sys.self"]],
+    observed_n = sum(observed_counts),
+    min_category_count = min(observed_counts),
+    lambda_rank = length(singular_values),
+    lambda_condition = max(singular_values) / min(singular_values),
+    Lambda_hash = hash_rds(fixture$Lambda_B),
+    Z_hash = hash_rds(fixture$scores), latent_hash = hash_rds(fixture$latent),
+    missing_hash = hash_rds(is.na(fixture$data$value)),
+    true_cutpoints = paste(fixture$tau, collapse = ";"),
+    warnings = paste(warnings, collapse = " | "),
     convergence = convergence,
     pd_hess = pd_hess,
+    max_gradient_raw = max(abs(raw_gradient), na.rm = TRUE),
     objective = as.numeric(stats::logLik(fit)),
     rel_frob = rel_frob(Sigma, fixture$Sigma_B),
     silent_degenerate = rel_frob(Sigma, fixture$Sigma_B) > 10 &&
@@ -126,6 +216,7 @@ fit_cell <- function(cell) {
     min_observed_category_share = min(category_share),
     saturation_share = mean(max_category_prob >= 0.99),
     min_cutpoint_spacing = if (length(spacing)) min(spacing) else NA_real_,
+    contract,
     note = ""
   )
 }

@@ -27,11 +27,15 @@ remote_shell="set -euo pipefail
 mkdir -p $REMOTE_ROOT $REMOTE_LIB
 printf '%s\\n' '$commit' > $REMOTE_ROOT/COMMIT
 cd $REMOTE_ROOT
-R_LIBS_USER=$REMOTE_LIB R CMD INSTALL --no-multiarch --with-keep.source .
+R_LIBS_USER=$REMOTE_LIB R CMD INSTALL -l $REMOTE_LIB --no-multiarch --with-keep.source . > $REMOTE_ROOT/preflight-install.log 2>&1
 OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 \\
   R_LIBS_USER=$REMOTE_LIB GLLVM897_COMMIT=$commit \\
   GLLVM897_OUT=~/gllvm_work/results/897-ordinal-detector \\
-  Rscript --vanilla dev/897-ordinal-detector-admission.R --totoro-preflight"
+  /usr/bin/time -v Rscript --vanilla dev/897-ordinal-detector-admission.R --totoro-preflight > $REMOTE_ROOT/preflight-run.log 2>&1
+sha256sum $REMOTE_ROOT/preflight-install.log $REMOTE_ROOT/preflight-run.log \\
+  ~/gllvm_work/results/897-ordinal-detector/totoro-preflight-{cells,provenance,manifest}.csv \\
+  ~/gllvm_work/results/897-ordinal-detector/totoro-preflight-receipt.rds \\
+  > ~/gllvm_work/results/897-ordinal-detector/totoro-preflight-sha256.txt"
 
 echo "#897 Totoro preflight: commit=$commit workers=$NWORKERS cap=$TOTORO_CORE_CAP"
 rsync -az --exclude='.git' --exclude='.Rproj.user' "$repo_root/" "totoro:$REMOTE_ROOT/"

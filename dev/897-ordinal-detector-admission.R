@@ -288,6 +288,22 @@ tag <- if (totoro_preflight) "totoro-preflight" else if (timing_smoke) {
 }
 utils::write.csv(out, file.path(out_dir, paste0(tag, "-cells.csv")), row.names = FALSE)
 utils::write.csv(provenance, file.path(out_dir, paste0(tag, "-provenance.csv")), row.names = FALSE)
+receipt_path <- file.path(out_dir, paste0(tag, "-receipt.rds"))
+saveRDS(
+  list(cells = out, provenance = provenance, tag = tag, created_at = Sys.time()),
+  receipt_path,
+  version = 2
+)
+artifact_paths <- c(
+  file.path(out_dir, paste0(tag, "-cells.csv")),
+  file.path(out_dir, paste0(tag, "-provenance.csv")),
+  receipt_path
+)
+utils::write.csv(
+  data.frame(file = basename(artifact_paths), md5 = unname(tools::md5sum(artifact_paths))),
+  file.path(out_dir, paste0(tag, "-manifest.csv")),
+  row.names = FALSE
+)
 cat(sprintf("#897 %s: %d rows in %.2f s\n", tag, nrow(out), elapsed))
 cat("status counts:\n")
 print(table(out$status, useNA = "ifany"))

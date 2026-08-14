@@ -1,5 +1,9 @@
 # Private LA-MSPL jackknife calibration pre-run
 
+> **WITHDRAWN — exploratory route (2026-08-14).** Do not execute the campaign
+> described below. Arc 3 removed the jackknife procedure from the private
+> runner; the text remains only as a reproducible record of the abandoned path.
+
 ## Scope
 
 This is a private repeated-sampling pre-run for the admitted ordinary,

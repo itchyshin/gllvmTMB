@@ -1,5 +1,10 @@
 # After Task: private LA-MSPL delete-one-site jackknife feasibility
 
+> **WITHDRAWN — exploratory route (2026-08-14).** The original MSPL paper did
+> not propose jackknife inference. Arc 3 removed the active helper and tests;
+> this report is retained only as historical evidence and must not be used as
+> a current method recommendation.
+
 ## 1. Goal
 
 Determine whether an ordinary complete-Bernoulli LA-MSPL fit can be rebuilt

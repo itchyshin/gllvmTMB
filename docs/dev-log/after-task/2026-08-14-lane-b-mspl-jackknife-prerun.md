@@ -1,5 +1,9 @@
 # After Task: private LA-MSPL jackknife repeated-sampling pre-run
 
+> **WITHDRAWN — exploratory route (2026-08-14).** The original MSPL paper did
+> not propose jackknife inference. Arc 3 removed this runner route and its
+> summaries; this report is retained only as historical evidence.
+
 ## 1. Goal
 
 Turn the admitted private delete-one-site jackknife covariance into a

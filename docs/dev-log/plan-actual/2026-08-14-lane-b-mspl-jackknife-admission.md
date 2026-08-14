@@ -1,5 +1,10 @@
 # LA-MSPL private delete-one-site jackknife admission
 
+> **WITHDRAWN — exploratory route (2026-08-14).** This admission is historical,
+> not current. Arc 3 removed the active jackknife implementation and tests
+> because the route was not paper-backed and was outside the retained
+> Wald/profile/bootstrap trio.
+
 ## Symbolic-to-implementation alignment
 
 | Symbol | Private implementation | Fixture construction | Retained output | Truth / contract |

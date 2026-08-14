@@ -16,8 +16,8 @@ command <- if (length(args)) args[[1L]] else ""
 root <- arg_value("--root")
 if (!nzchar(root %||% "")) stop("Use --root <outside-repository-campaign-root>.")
 procedure <- arg_value("--procedure", "both")
-if (!procedure %in% c("both", "hessian_only", "jackknife_only")) {
-  stop("Use --procedure both, hessian_only, or jackknife_only.", call. = FALSE)
+if (!procedure %in% c("both", "hessian_only")) {
+  stop("Use --procedure both or hessian_only.", call. = FALSE)
 }
 
 manifest <- function(n_rep = 100L, seed_offset = 0L) {
@@ -83,36 +83,19 @@ run_one <- function(cell, replicate_id, procedure) {
   if (inherits(fit, "error")) return(data.frame(
     cell_id = cell$cell_id, replicate_id = replicate_id, target = seq_along(sim$beta),
     truth = sim$beta, estimate = NA_real_, fit_status = "fit_error",
-    hessian_status = "not_run_fit_error", jackknife_status = "not_run_fit_error",
+    hessian_status = "not_run_fit_error",
     objective_source = NA_character_,
     hessian_method = NA_character_, hessian_rank = NA_integer_,
     minimum_eigenvalue = NA_real_, profile_lower_status = "not_run",
-    profile_upper_status = "not_run", hessian_se = NA_real_, jackknife_se = NA_real_,
-    hessian_covers = FALSE, profile_covers = FALSE, jackknife_covers = FALSE,
+    profile_upper_status = "not_run", hessian_se = NA_real_,
+    hessian_covers = FALSE, profile_covers = FALSE,
     procedure = procedure,
     campaign_id = cell$campaign_id, source_sha = cell$source_sha,
     message = conditionMessage(fit), stringsAsFactors = FALSE
   ))
   idx <- which(names(fit$opt$par) == "b_fix")
-  jackknife <- if (identical(procedure, "jackknife_only")) {
-    tryCatch(
-      gllvmTMB:::.gllvmTMB_mspl_jackknife_feasibility(fit),
-      error = function(e) list(status = "jackknife_call_error", se = NULL,
-                               message = conditionMessage(e))
-    )
-  } else {
-    list(status = "not_run", se = NULL, message = NA_character_)
-  }
   do.call(rbind, lapply(seq_along(idx), function(j) {
-    h <- if (identical(procedure, "jackknife_only")) {
-      list(
-        status = "not_run", estimate = fit$opt$par[idx[[j]]], se = NA_real_,
-        diagnostic_lower = NA_real_, diagnostic_upper = NA_real_,
-        objective_source = "fit$tmb_obj (penalised LA-MSPL)",
-        hessian_method = NA_character_, hessian_rank = NA_integer_,
-        minimum_eigenvalue = NA_real_, message = NA_character_
-      )
-    } else tryCatch(
+    h <- tryCatch(
       gllvmTMB:::.gllvmTMB_mspl_penalized_hessian_diagnostic(fit, idx[[j]]),
       error = function(e) list(
         status = "hessian_call_error", estimate = fit$opt$par[idx[[j]]],
@@ -133,28 +116,20 @@ run_one <- function(cell, replicate_id, procedure) {
            diagnostic_lower = NA_real_, diagnostic_upper = NA_real_)
     }
     truth <- sim$beta[[j]]
-    jackknife_se <- if (identical(jackknife$status, "admitted")) {
-      as.numeric(jackknife$se[[j]])
-    } else NA_real_
     data.frame(
       cell_id = cell$cell_id, replicate_id = replicate_id, target = j,
       truth = truth, estimate = h$estimate, fit_status = "ok",
-      hessian_status = h$status, jackknife_status = jackknife$status,
+      hessian_status = h$status,
       objective_source = h$objective_source,
       hessian_method = h$hessian_method, hessian_rank = h$hessian_rank,
       minimum_eigenvalue = h$minimum_eigenvalue,
       profile_lower_status = q$lower_status,
       profile_upper_status = q$upper_status, hessian_se = h$se,
-      jackknife_se = jackknife_se,
       hessian_covers = identical(h$status, "ok") &&
         truth >= h$diagnostic_lower && truth <= h$diagnostic_upper,
       profile_covers = identical(q$lower_status, "crossed") &&
         identical(q$upper_status, "crossed") && truth >= q$diagnostic_lower &&
         truth <= q$diagnostic_upper,
-      jackknife_covers = identical(jackknife$status, "admitted") &&
-        is.finite(jackknife_se) &&
-        truth >= fit$opt$par[idx[[j]]] - stats::qnorm(.975) * jackknife_se &&
-        truth <= fit$opt$par[idx[[j]]] + stats::qnorm(.975) * jackknife_se,
       procedure = procedure,
       campaign_id = cell$campaign_id, source_sha = cell$source_sha,
       message = h$message %||% NA_character_, stringsAsFactors = FALSE
@@ -165,9 +140,8 @@ run_one <- function(cell, replicate_id, procedure) {
 write_receipt <- function(result, out) {
   required <- c(
     "cell_id", "replicate_id", "target", "truth", "estimate", "fit_status",
-    "hessian_status", "jackknife_status", "objective_source", "hessian_method", "hessian_rank",
-    "minimum_eigenvalue", "hessian_se", "jackknife_se", "hessian_covers",
-    "jackknife_covers", "procedure",
+    "hessian_status", "objective_source", "hessian_method", "hessian_rank",
+    "minimum_eigenvalue", "hessian_se", "hessian_covers", "procedure",
     "campaign_id", "source_sha", "message"
   )
   if (!identical(nrow(result), 3L) || !all(required %in% names(result)) ||
@@ -243,17 +217,14 @@ if (identical(command, "prepare")) {
   key <- interaction(d$cell_id, d$target, drop = TRUE)
   ans <- do.call(rbind, lapply(split(d, key), function(x) {
     hessian_ok <- x$hessian_status == "ok"
-    jackknife_ok <- x$jackknife_status == "admitted"
     hessian_coverage <- mean(x$hessian_covers %in% TRUE)
     usable_estimates <- x$estimate[is.finite(x$estimate)]
     usable_se <- x$hessian_se[hessian_ok & is.finite(x$hessian_se)]
-    usable_jackknife_se <- x$jackknife_se[jackknife_ok & is.finite(x$jackknife_se)]
     empirical_sd <- if (length(usable_estimates) > 1L) stats::sd(usable_estimates) else NA_real_
     data.frame(
     cell_id = x$cell_id[[1]], target = x$target[[1]], procedure = x$procedure[[1]],
     attempted = nrow(x), fit_available = mean(x$fit_status == "ok"),
     hessian_available = mean(hessian_ok),
-    jackknife_available = mean(jackknife_ok),
     profile_available = mean(x$profile_lower_status == "crossed" &
                                x$profile_upper_status == "crossed", na.rm = TRUE),
     hessian_coverage_unconditional = hessian_coverage,
@@ -264,14 +235,7 @@ if (identical(command, "prepare")) {
     empirical_sd = empirical_sd, hessian_mean_se = if (length(usable_se)) mean(usable_se) else NA_real_,
     hessian_se_to_empirical_sd = if (is.finite(empirical_sd) && empirical_sd > 0 && length(usable_se)) mean(usable_se) / empirical_sd else NA_real_,
     hessian_mean_width = if (length(usable_se)) 2 * stats::qnorm(.975) * mean(usable_se) else NA_real_,
-    profile_coverage_unconditional = mean(x$profile_covers %in% TRUE),
-    jackknife_coverage_unconditional = mean(x$jackknife_covers %in% TRUE),
-    jackknife_coverage_conditional = if (any(jackknife_ok)) mean(x$jackknife_covers[jackknife_ok] %in% TRUE) else NA_real_,
-    jackknife_coverage_mcse = sqrt(mean(x$jackknife_covers %in% TRUE) *
-      (1 - mean(x$jackknife_covers %in% TRUE)) / nrow(x)),
-    jackknife_mean_se = if (length(usable_jackknife_se)) mean(usable_jackknife_se) else NA_real_,
-    jackknife_se_to_empirical_sd = if (is.finite(empirical_sd) && empirical_sd > 0 && length(usable_jackknife_se)) mean(usable_jackknife_se) / empirical_sd else NA_real_,
-    jackknife_mean_width = if (length(usable_jackknife_se)) 2 * stats::qnorm(.975) * mean(usable_jackknife_se) else NA_real_
+    profile_coverage_unconditional = mean(x$profile_covers %in% TRUE)
     )
   }))
   utils::write.csv(ans, file.path(root, "summary.csv"), row.names = FALSE)

@@ -68,7 +68,9 @@ clean_tree <- function() {
   }
 }
 peak_rss_kb <- function() {
-  x <- suppressWarnings(system2("ps", c("-o", "rss=", "-p", as.character(Sys.getpid())), stdout = TRUE))
+  x <- tryCatch(suppressWarnings(system2("ps", c("-o", "rss=", "-p", as.character(Sys.getpid())),
+    stdout = TRUE, stderr = FALSE)), error = function(e) character())
+  if (!length(x)) return(NA_real_)
   ans <- suppressWarnings(as.numeric(trimws(x[[1L]])))
   if (is.finite(ans)) ans else NA_real_
 }

@@ -77,8 +77,9 @@ Read, in order:
 
 1. `docs/dev-log/recovery-checkpoints/2026-08-13-codex-g3-paper2-invalid-provenance.md`
 2. `docs/dev-log/after-task/2026-08-13-g3-paper2-smoke-invalid-provenance.md`
-3. `dev/isdm-package-recovery/2026-08-13-g3-paper2-smallest-smoke-packet.md`
-4. `dev/isdm-package-recovery/run-g3-paper2-smoke.R`
+3. `docs/dev-log/plan-actual/2026-08-13-g3-two-paper-final-reconciliation.md`
+4. `dev/isdm-package-recovery/2026-08-13-g3-paper2-smallest-smoke-packet.md`
+5. `dev/isdm-package-recovery/run-g3-paper2-smoke.R`
 
 Then run the lane preflight and inspect current Git state before proposing any
 mutation.

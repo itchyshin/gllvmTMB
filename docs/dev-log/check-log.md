@@ -1,5 +1,15 @@
 # Check log
 
+## 2026-08-13 — final two-paper G3 reconciliation
+
+Independent Gauss/Noether, Fisher, and Rose review of the two ignored result
+roots selected `PRIVATE_TWO_PAPER_G3_STOP_HOLD`. Paper 1 is
+`PRIVATE_PROVENANCE_INCOMPLETE_HOLD`; Paper 2 is
+`PRIVATE_INVALID_PROVENANCE_HOLD_PREOPTIMIZER`. Neither root is numerical,
+recovery, field-separation, Psi, empirical, scale, reader, or public evidence.
+The historical Paper 1 Case D / `PRIVATE_NUMERICAL_ADMISSION_HOLD`, Paper 2
+Case C / `PAPER2_PRIVATE_STOP_HOLD`, and G2N/G2K/G2C holds are unchanged.
+
 ## 2026-08-13 — Paper 2 G3 smoke: terminal invalid provenance
 
 Worktree `/private/tmp/gllvmtmb-two-paper-global-analysis`, branch

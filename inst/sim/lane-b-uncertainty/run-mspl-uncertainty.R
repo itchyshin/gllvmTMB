@@ -104,18 +104,22 @@ run_one <- function(cell, replicate_id) {
 if (identical(command, "prepare")) {
   write_manifest(root, as.integer(arg_value("--n-rep", "100")))
 } else if (identical(command, "run")) {
-  library(gllvmTMB)
+  if (identical(Sys.getenv("GLLVM_TMB_PILOT_SOURCE"), "true")) {
+    devtools::load_all(quiet = TRUE)
+  } else {
+    library(gllvmTMB)
+  }
   m <- utils::read.csv(file.path(root, "manifest.csv"), stringsAsFactors = FALSE)
   cell <- m[m$cell_id == arg_value("--cell-id"), , drop = FALSE]
   if (nrow(cell) != 1L) stop("Unknown --cell-id.")
   reps <- seq.int(as.integer(arg_value("--start", "1")),
                   as.integer(arg_value("--end", as.character(cell$n_rep))))
-  rows <- do.call(rbind, lapply(reps, function(replicate_id) {
-    run_one(cell, replicate_id)
-  }))
-  out <- file.path(root, "raw", sprintf("%s-%04d-%04d.csv", cell$cell_id,
-                                         min(reps), max(reps)))
-  utils::write.csv(rows, out, row.names = FALSE)
+  for (replicate_id in reps) {
+    out <- file.path(root, "raw", sprintf("%s-%04d.csv", cell$cell_id,
+                                           replicate_id))
+    if (file.exists(out)) next
+    utils::write.csv(run_one(cell, replicate_id), out, row.names = FALSE)
+  }
 } else if (identical(command, "summarise")) {
   files <- list.files(file.path(root, "raw"), full.names = TRUE, pattern = "\\.csv$")
   if (!length(files)) stop("No raw shards.")

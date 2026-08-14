@@ -48,15 +48,19 @@ mspl_assert_cluster() {
 }
 
 mspl_validate_common_inputs() {
-  mspl_require_env MSPL_COVERAGE_ROOT MSPL_COVERAGE_SOURCE_SHA \
+  mspl_require_env MSPL_COVERAGE_ROOT MSPL_COVERAGE_CAMPAIGN_ID MSPL_COVERAGE_SOURCE_SHA \
     MSPL_COVERAGE_SOURCE_ARCHIVE MSPL_COVERAGE_SOURCE_ARCHIVE_SHA256 \
-    MSPL_COVERAGE_CLUSTER
+    MSPL_COVERAGE_CLUSTER MSPL_COVERAGE_MANIFEST_SHA256 \
+    MSPL_COVERAGE_LAUNCHER_BUNDLE_SHA256 MSPL_COVERAGE_HELPER_SHA256
   [[ -n "${SLURM_TMPDIR:-}" && -d "$SLURM_TMPDIR" ]] || mspl_die "SLURM_TMPDIR must be an existing job-local directory."
   [[ "$MSPL_COVERAGE_ROOT" == /project/* ]] || mspl_die "MSPL_COVERAGE_ROOT must be an explicit /project path."
+  [[ "$MSPL_COVERAGE_CAMPAIGN_ID" =~ ^[0-9A-Za-z._-]+$ ]] || mspl_die "Campaign ID may contain only safe label characters."
   [[ "$MSPL_COVERAGE_SOURCE_SHA" =~ ^[0-9A-Za-z._-]+$ ]] || mspl_die "Source SHA may contain only safe label characters."
   mspl_assert_cluster
   mspl_verify_hash "$MSPL_COVERAGE_SOURCE_ARCHIVE" "$MSPL_COVERAGE_SOURCE_ARCHIVE_SHA256"
   [[ -f "$MSPL_COVERAGE_ROOT/manifest.csv" ]] || mspl_die "Missing frozen manifest.csv at campaign root."
+  mspl_verify_hash "$MSPL_COVERAGE_ROOT/manifest.csv" "$MSPL_COVERAGE_MANIFEST_SHA256"
+  mspl_validate_manifest_binding
 }
 
 mspl_prepare_workdir() {
@@ -232,9 +236,12 @@ mspl_archive_native_runtime() {
   modules="$(module -t list 2>&1 | tr '\n' ';')"
   {
     printf 'cluster=%s\n' "$MSPL_COVERAGE_CLUSTER"
+    printf 'campaign_id=%s\n' "$MSPL_COVERAGE_CAMPAIGN_ID"
     printf 'source_sha=%s\n' "$MSPL_COVERAGE_SOURCE_SHA"
+    printf 'manifest_sha256=%s\n' "$MSPL_COVERAGE_MANIFEST_SHA256"
     printf 'source_archive_sha256=%s\n' "$MSPL_COVERAGE_SOURCE_ARCHIVE_SHA256"
     printf 'source_bundle_sha256=%s\n' "$MSPL_COVERAGE_SOURCE_BUNDLE_SHA256"
+    printf 'launcher_bundle_sha256=%s\n' "$MSPL_COVERAGE_LAUNCHER_BUNDLE_SHA256"
     printf 'launcher_helper_sha256=%s\n' "$MSPL_COVERAGE_HELPER_SHA256"
     printf 'architecture=%s\n' "$(uname -m)"
     printf 'modules=%s\n' "$modules"
@@ -251,10 +258,13 @@ mspl_archive_native_runtime() {
     mspl_job_env_record MSPL_COVERAGE_RUNTIME_ARCHIVE "$archive"
     mspl_job_env_record MSPL_COVERAGE_RUNTIME_ARCHIVE_SHA256 "$archive_hash"
     mspl_job_env_record MSPL_COVERAGE_CLUSTER "$MSPL_COVERAGE_CLUSTER"
+    mspl_job_env_record MSPL_COVERAGE_CAMPAIGN_ID "$MSPL_COVERAGE_CAMPAIGN_ID"
     mspl_job_env_record MSPL_COVERAGE_SOURCE_SHA "$MSPL_COVERAGE_SOURCE_SHA"
+    mspl_job_env_record MSPL_COVERAGE_MANIFEST_SHA256 "$MSPL_COVERAGE_MANIFEST_SHA256"
     mspl_job_env_record MSPL_COVERAGE_SOURCE_ARCHIVE "$MSPL_COVERAGE_SOURCE_ARCHIVE"
     mspl_job_env_record MSPL_COVERAGE_SOURCE_ARCHIVE_SHA256 "$MSPL_COVERAGE_SOURCE_ARCHIVE_SHA256"
     mspl_job_env_record MSPL_COVERAGE_SOURCE_BUNDLE_SHA256 "$MSPL_COVERAGE_SOURCE_BUNDLE_SHA256"
+    mspl_job_env_record MSPL_COVERAGE_LAUNCHER_BUNDLE_SHA256 "$MSPL_COVERAGE_LAUNCHER_BUNDLE_SHA256"
     mspl_job_env_record MSPL_COVERAGE_STDENV_MODULE "${MSPL_COVERAGE_STDENV_MODULE:-StdEnv/2023}"
     mspl_job_env_record MSPL_COVERAGE_COMPILER_MODULE "${MSPL_COVERAGE_COMPILER_MODULE:-gcc/12.3}"
     mspl_job_env_record MSPL_COVERAGE_R_MODULE "${MSPL_COVERAGE_R_MODULE:-r/4.5.0}"
@@ -272,10 +282,10 @@ mspl_write_setup_receipt() {
   modules="$(module -t list 2>&1 | tr '\n' ';')"
   objective="$(mspl_objective_evaluation)"
   {
-    printf 'receipt_type=cluster_native_setup\ncluster=%s\nsource_sha=%s\n' "$MSPL_COVERAGE_CLUSTER" "$MSPL_COVERAGE_SOURCE_SHA"
-    printf 'source_archive_sha256=%s\nsource_bundle_sha256=%s\n' "$MSPL_COVERAGE_SOURCE_ARCHIVE_SHA256" "$MSPL_COVERAGE_SOURCE_BUNDLE_SHA256"
+    printf 'receipt_type=cluster_native_setup\ncluster=%s\ncampaign_id=%s\nsource_sha=%s\n' "$MSPL_COVERAGE_CLUSTER" "$MSPL_COVERAGE_CAMPAIGN_ID" "$MSPL_COVERAGE_SOURCE_SHA"
+    printf 'manifest_sha256=%s\nsource_archive_sha256=%s\nsource_bundle_sha256=%s\n' "$MSPL_COVERAGE_MANIFEST_SHA256" "$MSPL_COVERAGE_SOURCE_ARCHIVE_SHA256" "$MSPL_COVERAGE_SOURCE_BUNDLE_SHA256"
     printf 'runtime_archive=%s\nruntime_archive_sha256=%s\n' "$MSPL_COVERAGE_RUNTIME_ARCHIVE" "$MSPL_COVERAGE_RUNTIME_ARCHIVE_SHA256"
-    printf 'launcher_helper_sha256=%s\n' "$MSPL_COVERAGE_HELPER_SHA256"
+    printf 'launcher_bundle_sha256=%s\nlauncher_helper_sha256=%s\n' "$MSPL_COVERAGE_LAUNCHER_BUNDLE_SHA256" "$MSPL_COVERAGE_HELPER_SHA256"
     printf 'r_module=%s\ncompiler_module=%s\narchitecture=%s\nmodules=%s\n' "${MSPL_COVERAGE_R_MODULE:-r/4.5.0}" "${MSPL_COVERAGE_COMPILER_MODULE:-gcc/12.3}" "$(uname -m)" "$modules"
     mspl_source_dependency_inventory
     MSPL_COVERAGE_DEPENDENCY_PACKAGES="$(mspl_dependency_packages)" Rscript --vanilla -e 'pkgs <- c("gllvmTMB", strsplit(Sys.getenv("MSPL_COVERAGE_DEPENDENCY_PACKAGES"), ",", fixed = TRUE)[[1]]); for (p in pkgs) cat("installed_dependency=", p, " version=", as.character(utils::packageVersion(p)), "\\n", sep = "")'
@@ -299,9 +309,12 @@ mspl_verify_runtime_contract() {
   local contract="$1"
   [[ -s "$contract" ]] || mspl_die "Runtime archive lacks runtime-library.contract."
   grep -Fxq "cluster=$MSPL_COVERAGE_CLUSTER" "$contract" || mspl_die "Runtime archive is labelled for another cluster; cross-cluster compiled libraries are forbidden."
+  grep -Fxq "campaign_id=$MSPL_COVERAGE_CAMPAIGN_ID" "$contract" || mspl_die "Runtime archive campaign ID disagrees."
   grep -Fxq "source_sha=$MSPL_COVERAGE_SOURCE_SHA" "$contract" || mspl_die "Runtime archive source SHA disagrees."
+  grep -Fxq "manifest_sha256=$MSPL_COVERAGE_MANIFEST_SHA256" "$contract" || mspl_die "Runtime archive manifest SHA-256 disagrees."
   grep -Fxq "source_archive_sha256=$MSPL_COVERAGE_SOURCE_ARCHIVE_SHA256" "$contract" || mspl_die "Runtime archive was compiled from a different source archive."
   grep -Fxq "source_bundle_sha256=$MSPL_COVERAGE_SOURCE_BUNDLE_SHA256" "$contract" || mspl_die "Runtime archive was compiled from a different source dependency bundle."
+  grep -Fxq "launcher_bundle_sha256=$MSPL_COVERAGE_LAUNCHER_BUNDLE_SHA256" "$contract" || mspl_die "Runtime archive was built with a different launcher bundle."
   grep -Fxq "launcher_helper_sha256=$MSPL_COVERAGE_HELPER_SHA256" "$contract" || mspl_die "Runtime archive was built with a different launcher helper."
   grep -Fxq "architecture=$(uname -m)" "$contract" || mspl_die "Runtime archive architecture disagrees."
 }
@@ -373,21 +386,141 @@ mspl_campaign_id() {
   mspl_manifest_first_field "$MSPL_COVERAGE_ROOT/manifest.csv" campaign_id
 }
 
+mspl_manifest_source_sha() {
+  mspl_manifest_first_field "$MSPL_COVERAGE_ROOT/manifest.csv" source_sha
+}
+
+mspl_validate_manifest_binding() {
+  local campaign_id source_sha
+  mspl_require_env MSPL_COVERAGE_CAMPAIGN_ID MSPL_COVERAGE_SOURCE_SHA
+  campaign_id="$(mspl_campaign_id)" || mspl_die "Could not read the unique safe campaign_id from manifest.csv."
+  source_sha="$(mspl_manifest_source_sha)" || mspl_die "Could not read the unique safe source_sha from manifest.csv."
+  [[ "$campaign_id" == "$MSPL_COVERAGE_CAMPAIGN_ID" ]] ||
+    mspl_die "Manifest campaign ID disagrees with the explicit runtime campaign binding."
+  [[ "$source_sha" == "$MSPL_COVERAGE_SOURCE_SHA" ]] ||
+    mspl_die "Manifest source SHA disagrees with the explicit runtime source binding."
+}
+
+mspl_validate_gate4_shard_hash_ledger() {
+  local ledger="$1"
+  [[ -s "$ledger" ]] || mspl_die "Missing immutable Gate 4 shard hash ledger: $ledger"
+  awk '
+    {
+      expected = sprintf("C%03d-shard-001.rds", NR)
+      hash = substr($0, 1, 64); separator = substr($0, 65, 2); filename = substr($0, 67)
+      if (length(hash) != 64 || hash !~ /^[0-9a-f]+$/ || separator != "  " || filename != expected) invalid = 1
+    }
+    END { if (NR != 12) invalid = 1; exit invalid ? 2 : 0 }
+  ' "$ledger" || mspl_die "Gate 4 shard hash ledger must be 12 sorted shard-001 hashes, one per C001..C012, with no paths or duplicates."
+}
+
+mspl_validate_gate3_ready_receipt() {
+  local receipt="$1" manifest_hash smoke_manifest smoke_manifest_hash aggregate ledger aggregate_hash ledger_hash
+  [[ -s "$receipt" ]] || mspl_die "Pre-run blocked: Gate 3 ready receipt is absent or empty: $receipt"
+  mspl_require_env MSPL_COVERAGE_SOURCE_ARCHIVE_SHA256 MSPL_COVERAGE_SOURCE_BUNDLE_SHA256 \
+    MSPL_COVERAGE_LAUNCHER_BUNDLE_SHA256 MSPL_COVERAGE_HELPER_SHA256 MSPL_COVERAGE_RUNTIME_ARCHIVE_SHA256
+  smoke_manifest="$MSPL_COVERAGE_ROOT/gates/gate3-smoke-manifest.csv"
+  aggregate="$MSPL_COVERAGE_ROOT/gates/gate3-smoke-receipt.txt"
+  ledger="$MSPL_COVERAGE_ROOT/gates/gate3-smoke-shard-hashes.sha256"
+  [[ -s "$smoke_manifest" && -s "$aggregate" && -s "$ledger" ]] || mspl_die "Pre-run blocked: staged Gate 3 smoke evidence is incomplete."
+  awk '$0 == "launcher_unlock_eligible: FALSE" { found += 1 } END { exit found == 1 ? 0 : 2 }' "$aggregate" ||
+    mspl_die "Gate 3 statistical aggregate must be explicitly launcher-unlock-ineligible."
+  awk '{ expected = (NR == 1 ? "C001-shard-001.rds" : (NR == 2 ? "C005-shard-001.rds" : "C009-shard-001.rds")); hash=substr($0,1,64); sep=substr($0,65,2); file=substr($0,67); if (length(hash)!=64 || hash !~ /^[0-9a-f]+$/ || sep!="  " || file!=expected) invalid=1 }
+    END { if (NR!=3) invalid=1; exit invalid ? 2 : 0 }' "$ledger" || mspl_die "Gate 3 shard ledger must contain exactly sorted C001/C005/C009 shard-001 hashes."
+  manifest_hash="$(mspl_sha256 "$MSPL_COVERAGE_ROOT/manifest.csv")"
+  smoke_manifest_hash="$(mspl_sha256 "$smoke_manifest")"; aggregate_hash="$(mspl_sha256 "$aggregate")"; ledger_hash="$(mspl_sha256 "$ledger")"
+  awk -F= -v campaign="$MSPL_COVERAGE_CAMPAIGN_ID" -v source="$MSPL_COVERAGE_SOURCE_SHA" -v manifest="$manifest_hash" \
+    -v smoke_manifest="$smoke_manifest_hash" -v source_archive="$MSPL_COVERAGE_SOURCE_ARCHIVE_SHA256" \
+    -v source_bundle="$MSPL_COVERAGE_SOURCE_BUNDLE_SHA256" -v launcher_bundle="$MSPL_COVERAGE_LAUNCHER_BUNDLE_SHA256" \
+    -v helper="$MSPL_COVERAGE_HELPER_SHA256" -v cluster="$MSPL_COVERAGE_CLUSTER" -v runtime="$MSPL_COVERAGE_RUNTIME_ARCHIVE_SHA256" \
+    -v aggregate="$aggregate_hash" -v ledger="$ledger_hash" '
+    BEGIN {
+      expected["receipt_type"]="gate3-smoke-ready-v1"; expected["gate_status"]="PASS"
+      expected["campaign_id"]=campaign; expected["source_sha"]=source; expected["manifest_sha256"]=manifest
+      expected["smoke_manifest_sha256"]=smoke_manifest; expected["source_archive_sha256"]=source_archive
+      expected["source_bundle_sha256"]=source_bundle; expected["launcher_bundle_sha256"]=launcher_bundle
+      expected["launcher_helper_sha256"]=helper; expected["cluster"]=cluster; expected["runtime_archive_sha256"]=runtime
+      expected["gate3_smoke_receipt_sha256"]=aggregate; expected["gate3_shard_ledger_sha256"]=ledger
+      expected["shard_count"]="3"; expected["outer_fit_rows"]="3"; expected["bootstrap_attempt_rows"]="6"
+      expected["endpoint_rows"]="27"; expected["calibration_gate_eligible"]="FALSE"
+    }
+    {
+      if (NF != 2 || $1 !~ /^[a-z][a-z0-9_]*$/ || $2 !~ /^[A-Za-z0-9._-]+$/ || !($1 in expected) || seen[$1]++) invalid = 1
+      else if ($2 != expected[$1]) invalid = 1
+    }
+    END { for (key in expected) if (seen[key] != 1) invalid = 1; if (NR != 19) invalid = 1; exit invalid ? 2 : 0 }
+  ' "$receipt" || mspl_die "Pre-run blocked: Gate 3 ready receipt schema or provenance disagrees."
+}
+
+mspl_validate_gate4_ready_receipt() {
+  local receipt="$1" aggregate ledger manifest_hash aggregate_hash shard_ledger_hash runtime_field
+  mspl_require_env MSPL_COVERAGE_SOURCE_ARCHIVE_SHA256 MSPL_COVERAGE_SOURCE_BUNDLE_SHA256 \
+    MSPL_COVERAGE_LAUNCHER_BUNDLE_SHA256 MSPL_COVERAGE_HELPER_SHA256 \
+    MSPL_COVERAGE_RUNTIME_ARCHIVE_SHA256 MSPL_COVERAGE_MANIFEST_SHA256
+  aggregate="$MSPL_COVERAGE_ROOT/gates/gate4-prerun-receipt.txt"
+  ledger="$MSPL_COVERAGE_ROOT/gates/gate4-shard-hashes.sha256"
+  [[ -s "$receipt" ]] || mspl_die "Production blocked: Gate 4 ready receipt is absent or empty: $receipt"
+  [[ -s "$aggregate" ]] || mspl_die "Production blocked: staged Gate 4 aggregate receipt is absent: $aggregate"
+  awk '$0 == "launcher_unlock_eligible: FALSE" { found += 1 } END { exit found == 1 ? 0 : 2 }' "$aggregate" ||
+    mspl_die "Gate 4 statistical aggregate must be explicitly launcher-unlock-ineligible."
+  mspl_validate_gate4_shard_hash_ledger "$ledger"
+  manifest_hash="$(mspl_sha256 "$MSPL_COVERAGE_ROOT/manifest.csv")"
+  aggregate_hash="$(mspl_sha256 "$aggregate")"
+  shard_ledger_hash="$(mspl_sha256 "$ledger")"
+  [[ "$manifest_hash" == "$MSPL_COVERAGE_MANIFEST_SHA256" ]] || mspl_die "Production blocked: live manifest hash disagrees with runtime binding."
+  case "$MSPL_COVERAGE_CLUSTER" in
+    nibi) runtime_field=nibi_runtime_archive_sha256 ;;
+    narval) runtime_field=narval_runtime_archive_sha256 ;;
+    rorqual) runtime_field=rorqual_runtime_archive_sha256 ;;
+    *) mspl_die "Production unlock is defined only for nibi, narval, or rorqual." ;;
+  esac
+  awk -F= \
+    -v campaign="$MSPL_COVERAGE_CAMPAIGN_ID" -v source="$MSPL_COVERAGE_SOURCE_SHA" \
+    -v manifest="$manifest_hash" -v source_archive="$MSPL_COVERAGE_SOURCE_ARCHIVE_SHA256" \
+    -v source_bundle="$MSPL_COVERAGE_SOURCE_BUNDLE_SHA256" -v launcher_bundle="$MSPL_COVERAGE_LAUNCHER_BUNDLE_SHA256" \
+    -v helper="$MSPL_COVERAGE_HELPER_SHA256" -v cluster="$MSPL_COVERAGE_CLUSTER" \
+    -v aggregate="$aggregate_hash" -v shard_ledger="$shard_ledger_hash" \
+    -v runtime_field="$runtime_field" -v runtime_hash="$MSPL_COVERAGE_RUNTIME_ARCHIVE_SHA256" '
+    BEGIN {
+      expected["receipt_type"] = "gate4-prerun-ready-v1"; expected["gate_status"] = "PASS"
+      expected["campaign_id"] = campaign; expected["source_sha"] = source; expected["manifest_sha256"] = manifest
+      expected["source_archive_sha256"] = source_archive; expected["source_bundle_sha256"] = source_bundle
+      expected["launcher_bundle_sha256"] = launcher_bundle; expected["launcher_helper_sha256"] = helper
+      expected["gate4_prerun_receipt_sha256"] = aggregate; expected["gate4_shard_ledger_sha256"] = shard_ledger
+      expected["nibi_runtime_archive_sha256"] = "__sha256__"
+      expected["narval_runtime_archive_sha256"] = "__sha256__"
+      expected["rorqual_runtime_archive_sha256"] = "__sha256__"
+      expected[runtime_field] = runtime_hash
+      expected["case_count"] = "12"; expected["shard_count"] = "12"; expected["outer_fit_rows"] = "120"
+      expected["bootstrap_attempt_rows"] = "60000"; expected["endpoint_rows"] = "1080"
+      expected["calibration_gate_eligible"] = "FALSE"; expected["launcher_unlock_eligible"] = "TRUE"
+      expected["approved_by"] = "maintainer"; expected["approved_at_utc"] = "__utc__"
+    }
+    {
+      key = $1; value = $2
+      if (NF != 2 || key !~ /^[a-z][a-z0-9_]*$/ || value !~ /^[A-Za-z0-9._:+-]+$/ || !(key in expected) || seen[key]++) invalid = 1
+      else if (expected[key] == "__sha256__" && (length(value) != 64 || value !~ /^[0-9a-f]+$/)) invalid = 1
+      else if (expected[key] == "__utc__" && value !~ /^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]Z$/) invalid = 1
+      else if (expected[key] != "__sha256__" && expected[key] != "__utc__" && value != expected[key]) invalid = 1
+    }
+    END { for (key in expected) if (seen[key] != 1) invalid = 1; if (NR != 23) invalid = 1; exit invalid ? 2 : 0 }
+  ' "$receipt" || mspl_die "Production blocked: Gate 4 ready receipt has missing, duplicate, unknown, unsafe, stale, or mismatched provenance fields."
+}
+
 mspl_require_gate_receipt() {
-  local stage="${MSPL_COVERAGE_STAGE:-production}" receipt manifest_hash campaign_id
+  local stage="${MSPL_COVERAGE_STAGE:-production}" receipt
+  mspl_validate_manifest_binding
   case "$stage" in
-    pre-run) receipt="$MSPL_COVERAGE_ROOT/gates/gate3-smoke-ready.receipt" ;;
-    production) receipt="$MSPL_COVERAGE_ROOT/gates/gate4-prerun-ready.receipt" ;;
+    pre-run)
+      receipt="$MSPL_COVERAGE_ROOT/gates/gate3-ready.receipt"
+      mspl_validate_gate3_ready_receipt "$receipt"
+      ;;
+    production)
+      receipt="$MSPL_COVERAGE_ROOT/gates/gate4-prerun-ready.receipt"
+      mspl_validate_gate4_ready_receipt "$receipt"
+      ;;
     *) mspl_die "MSPL_COVERAGE_STAGE must be pre-run or production." ;;
   esac
-  [[ -s "$receipt" ]] || mspl_die "Production blocked: required prior-gate receipt is absent or empty: $receipt"
-  manifest_hash="$(mspl_sha256 "$MSPL_COVERAGE_ROOT/manifest.csv")"
-  campaign_id="$(mspl_campaign_id)"
-  [[ -n "$campaign_id" ]] || mspl_die "Could not read campaign_id from manifest.csv."
-  grep -Fxq 'gate_status=PASS' "$receipt" || mspl_die "Production blocked: prior gate is not PASS."
-  grep -Fxq "campaign_id=$campaign_id" "$receipt" || mspl_die "Production blocked: receipt campaign ID disagrees."
-  grep -Fxq "source_sha=$MSPL_COVERAGE_SOURCE_SHA" "$receipt" || mspl_die "Production blocked: receipt source SHA disagrees."
-  grep -Fxq "manifest_sha256=$manifest_hash" "$receipt" || mspl_die "Production blocked: receipt manifest hash disagrees."
 }
 
 mspl_validate_production_manifest() {
@@ -499,8 +632,18 @@ mspl_validate_remaining_production_map() {
   ' "$map" || mspl_die "Production map must be exactly 1,188 ordered remaining keys: C001..C012, shards 002..100, indices 1:1188."
 }
 
+mspl_remaining_cluster_contract() {
+  case "$1" in
+    nibi) printf '1\t6\t594\n' ;;
+    narval) printf '7\t10\t396\n' ;;
+    rorqual) printf '11\t12\t198\n' ;;
+    *) mspl_die "Remaining-production contract supports nibi, narval, or rorqual only." ;;
+  esac
+}
+
 mspl_array_task() {
   local stage="${MSPL_COVERAGE_STAGE:-production}" map row index case_id shard_id cluster
+  mspl_validate_manifest_binding
   case "$stage" in
     pre-run|production) mspl_validate_production_manifest ;;
     smoke) ;;

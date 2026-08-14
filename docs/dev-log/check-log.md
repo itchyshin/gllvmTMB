@@ -49790,3 +49790,60 @@ Rscript --vanilla -e \
 Coordination pre-edit: lane preflight reported this named Codex lane plus unrelated same-platform iSDM lanes; no foreign platform lane. `gh pr list --state open` could not reach GitHub, so open-PR evidence is limited to the lane-preflight/local-ref view. The six-hour all-ref log was inspected before shared dev-log edits.
 
 Deliberately not run: full 1,200-shard coverage production, public method activation, package-wide tests, `R CMD check`, pkgdown, three-OS CI, q = 2, structured/weighted/missing-data regimes, or GitHub Actions simulation. The full campaign remains locked pending the maintainer's explicit post-Gate-4 approval. Public MSPL inference remains fail-closed.
+
+---
+
+## 2026-08-14 — LA-MSPL production-launch provenance and monitor hardening
+
+After maintainer approval to continue the coverage-calibration goal, a
+read-only pre-launch audit returned two P0 blockers: runtime/source identity was
+not externally bound to the manifest label, and the production unlock was not
+cryptographically bound to the exact Gate 4 aggregate and 12-shard set. The
+campaign was paused before staging or submission. The repair adds schema-v2
+shard provenance, explicit expected-source checks, immutable SHA-256 shard
+ledgers, closed-schema Gate 3/Gate 4 ready receipts, staged/spooled launcher
+bundle authentication, and exact remaining-map enforcement.
+
+The monitor now validates RDS contents and provenance before counting a shard.
+It exercises invalid-shard, scheduler-failure, twice-median, 30-minute,
+60-minute no-first-shard, 45-minute no-start, and two-hour pending stops. Two
+review-discovered edge cases are permanent regressions: `sacct` retains the
+start time of a completed task that wrote no shard, and only pending rows
+contribute to pending age. The final independent audit returned strict GO with
+no P0/P1/P2 findings.
+
+Verification:
+
+```sh
+Rscript --vanilla -e \
+  'testthat::test_file("tests/testthat/test-mspl-coverage-runner.R", reporter="summary", stop_on_failure=TRUE)'
+# PASS: 192 expectations, 0 failures, 0 warnings, 0 skips.
+
+bash inst/sim/lane-b-uncertainty/mspl-coverage/contract-self-test.sh
+# PASS: launcher-contract-self-test=PASS.
+
+for file in inst/sim/lane-b-uncertainty/mspl-coverage/*.sh \
+            inst/sim/lane-b-uncertainty/mspl-coverage/*.sbatch; do
+  bash -n "$file"
+done
+# PASS.
+
+Rscript --vanilla -e 'devtools::test(filter = "mspl", stop_on_failure = TRUE)'
+# PASS: 1,431 expectations, 0 failures, 0 warnings, 1 intentional skip;
+# 175.5 seconds.
+
+git diff --check
+# PASS.
+```
+
+Coordination pre-edit: lane preflight reported this named Codex lane plus
+unrelated same-platform iSDM lanes and no foreign platform lane. `gh pr list`
+could not reach GitHub; `gh issue list` succeeded and showed only roadmap issue
+#345 as potentially adjacent. The six-hour all-ref log was inspected. No
+shared-file collision was identified.
+
+Deliberately not run: remote staging or compute under the repaired identity,
+the remaining 1,188 production shards, production aggregation/adjudication,
+public method activation, package-wide tests, `R CMD check`, pkgdown, or CI.
+The previous schema-v1 Gate 4 evidence remains historical and cannot unlock
+schema-v2 production. Public MSPL inference remains fail-closed.

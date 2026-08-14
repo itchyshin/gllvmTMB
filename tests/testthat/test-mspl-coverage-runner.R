@@ -13,6 +13,10 @@ run_coverage_cli <- function(arguments, error_on_status = TRUE) {
 }
 
 write_synthetic_shards <- function(root, manifest, retained_failure = FALSE) {
+  hash64 <- function(x) paste(rep(x, 64L), collapse = "")
+  runtime_hash <- c(nibi = hash64("e"), narval = hash64("f"), rorqual = hash64("1"),
+    fir = hash64("2"), local = hash64("3")
+  )
   for (i in seq_len(nrow(manifest))) {
     case <- manifest[i, , drop = FALSE]
     boot <- expand.grid(outer_id = seq_len(case$n_outer), attempt_id = seq_len(case$bootstrap_reps),
@@ -138,7 +142,17 @@ write_synthetic_shards <- function(root, manifest, retained_failure = FALSE) {
         stringsAsFactors = FALSE
       )
     }))
-    saveRDS(list(schema_version = "gate0-shard-v1", outer_fits = outer, bootstrap_attempts = boot,
+    provenance <- data.frame(
+      manifest_version = case$manifest_version, campaign_id = case$campaign_id,
+      source_sha = case$source_sha, cluster = case$assigned_cluster,
+      case_id = case$case_id, shard_id = 1L, runtime_fingerprint = "test",
+      source_archive_sha256 = hash64("a"), source_bundle_sha256 = hash64("b"),
+      launcher_bundle_sha256 = hash64("c"), launcher_helper_sha256 = hash64("d"),
+      runtime_archive_sha256 = unname(runtime_hash[[case$assigned_cluster]]),
+      stringsAsFactors = FALSE
+    )
+    saveRDS(list(schema_version = "gate0-shard-v2", provenance = provenance,
+      outer_fits = outer, bootstrap_attempts = boot,
       endpoints = endpoints, profile_traces = profile_traces),
       file.path(root, "shards", sprintf("%s-shard-001.rds", case$case_id)), compress = "gzip"
     )
@@ -164,6 +178,8 @@ test_that("Gate 0 coverage runner freezes the approved private contract", {
   expect_match(runner, "penalty_off_likelihood_curvature_at_penalised_mspl_estimate")
   expect_false(grepl("objective_role = wald$objective_role", runner, fixed = TRUE))
   expect_match(runner, "array-map.tsv")
+  expect_match(runner, "production-receipt.txt")
+  expect_match(runner, "production-shard-hashes.sha256")
   expect_match(runner, "estimate = outer_estimates\\[\\[target\\]\\]")
   expect_false(grepl("confint\\(", runner))
 })
@@ -183,6 +199,17 @@ test_that("Manifest identities use the shell-safe label grammar", {
       "safe label"
     )
   }
+})
+
+test_that("only exact production aggregation is calibration-adjudication eligible", {
+  runner_env <- new.env(parent = globalenv())
+  withr::local_envvar(MSPL_COVERAGE_SOURCE_ONLY = "true")
+  sys.source(runner_path, envir = runner_env)
+  expect_true(runner_env$calibration_gate_eligibility("production"))
+  expect_false(runner_env$calibration_gate_eligibility("prerun"))
+  expect_false(runner_env$calibration_gate_eligibility("smoke"))
+  expect_false(runner_env$calibration_gate_eligibility("test"))
+  expect_false(runner_env$calibration_gate_eligibility("mini"))
 })
 
 test_that("Gate 0 seeds are disjoint at frozen boundary keys", {
@@ -239,11 +266,30 @@ test_that("Gate 0 smoke manifest freezes one case per link for one cluster", {
   expect_identical(array_map$array_index, 1:3)
   expect_equal(nrow(array_map), 3L)
   write_synthetic_shards(root, manifest)
-  expect_silent(run_coverage_cli(c("aggregate-smoke", "--root", root)))
+  expect_silent(run_coverage_cli(c(
+    "aggregate-smoke", "--root", root, "--expected-source-sha", "sha"
+  )))
   expect_equal(nrow(utils::read.csv(file.path(root, "outer-fit-rows.csv"))), 3L)
   expect_equal(nrow(utils::read.csv(file.path(root, "endpoint-rows.csv"))), 27L)
   expect_equal(nrow(utils::read.csv(file.path(root, "bootstrap-attempts-wide.csv"))), 6L)
-  expect_true(any(grepl("calibration_gate_eligible: FALSE", readLines(file.path(root, "receipt.txt"), warn = FALSE), fixed = TRUE)))
+  smoke_receipt <- readLines(file.path(root, "gate3-smoke-receipt.txt"), warn = FALSE)
+  smoke_ledger <- readLines(file.path(root, "gate3-smoke-shard-hashes.sha256"), warn = FALSE)
+  expect_false(file.exists(file.path(root, "receipt.txt")))
+  expect_true(any(smoke_receipt == "receipt_type: gate3-smoke-aggregation-v2"))
+  expect_true(any(smoke_receipt == "campaign_id: smoke"))
+  expect_true(any(smoke_receipt == "source_sha: sha"))
+  expect_true(any(smoke_receipt == "expected_source_sha: sha"))
+  expect_true(any(smoke_receipt == "case_count: 3"))
+  expect_true(any(smoke_receipt == "shard_count: 3"))
+  expect_true(any(smoke_receipt == "outer_fit_rows: 3"))
+  expect_true(any(smoke_receipt == "bootstrap_attempt_rows: 6"))
+  expect_true(any(smoke_receipt == "endpoint_rows: 27"))
+  expect_true(any(smoke_receipt == "calibration_gate_eligible: FALSE"))
+  expect_true(any(smoke_receipt == "launcher_unlock_eligible: FALSE"))
+  expect_length(smoke_ledger, 3L)
+  expect_match(smoke_ledger[[1L]], "^[0-9a-f]{64}  C001-shard-001\\.rds$")
+  expect_match(smoke_ledger[[2L]], "^[0-9a-f]{64}  C005-shard-001\\.rds$")
+  expect_match(smoke_ledger[[3L]], "^[0-9a-f]{64}  C009-shard-001\\.rds$")
 })
 
 test_that("Gate 0 keeps production manifest settings frozen", {
@@ -326,20 +372,48 @@ test_that("Gate4 pre-run aggregation accepts only the exact production pre-run r
   gate4_manifest$n_outer <- 10L
   gate4_manifest$n_shards <- 1L
   write_synthetic_shards(root, gate4_manifest)
+  manifest_bytes <- readBin(manifest_path, "raw", n = file.info(manifest_path)$size)
 
-  expect_silent(run_coverage_cli(c("aggregate-prerun", "--root", root)))
+  aggregate_prerun <- c(
+    "aggregate-prerun", "--root", root,
+    "--expected-source-sha", "gate4-source-sha"
+  )
+  output <- run_coverage_cli(c("aggregate-prerun", "--root", root), error_on_status = FALSE)
+  expect_identical(attr(output, "status"), 1L)
+  expect_match(paste(output, collapse = "\n"), "expected_source_sha")
+  wrong_expected <- aggregate_prerun
+  wrong_expected[[length(wrong_expected)]] <- "wrong-source-sha"
+  output <- run_coverage_cli(wrong_expected, error_on_status = FALSE)
+  expect_identical(attr(output, "status"), 1L)
+  expect_match(paste(output, collapse = "\n"), "does not match --expected-source-sha")
+  stale_manifest <- manifest
+  stale_manifest$source_sha <- "stale-source-sha"
+  utils::write.csv(stale_manifest, manifest_path, row.names = FALSE)
+  output <- run_coverage_cli(aggregate_prerun, error_on_status = FALSE)
+  expect_identical(attr(output, "status"), 1L)
+  expect_match(paste(output, collapse = "\n"), "does not match --expected-source-sha")
+  writeBin(manifest_bytes, manifest_path)
+  expect_silent(run_coverage_cli(aggregate_prerun))
   receipt_path <- file.path(root, "gate4-prerun-receipt.txt")
+  ledger_path <- file.path(root, "gate4-shard-hashes.sha256")
   receipt <- readLines(receipt_path, warn = FALSE)
+  ledger <- readLines(ledger_path, warn = FALSE)
   expect_false(file.exists(file.path(root, "receipt.txt")))
   expect_true(any(receipt == "manifest_mode: prerun"))
-  expect_true(any(receipt == "receipt_type: gate4-production-prerun-v1"))
+  expect_true(any(receipt == "receipt_type: gate4-production-aggregation-v2"))
   expect_true(any(receipt == "gate4_contract: exact"))
   expect_true(any(receipt == "campaign_id: gate4-prerun"))
   expect_true(any(receipt == "source_sha: gate4-source-sha"))
+  expect_true(any(receipt == "expected_source_sha: gate4-source-sha"))
   expect_true(any(receipt == paste(
     "manifest_version:", "lane-b-mspl-coverage-gate0-v1-2026-08-14"
   )))
-  expect_true(any(receipt == paste("manifest_md5:", unname(tools::md5sum(manifest_path)))))
+  expect_true(any(grepl("^manifest_sha256: [0-9a-f]{64}$", receipt)))
+  expect_true(any(grepl("^gate4_shard_ledger_sha256: [0-9a-f]{64}$", receipt)))
+  expect_true(any(receipt == paste("source_archive_sha256:", paste(rep("a", 64L), collapse = ""))))
+  expect_true(any(receipt == paste("source_bundle_sha256:", paste(rep("b", 64L), collapse = ""))))
+  expect_true(any(receipt == paste("launcher_bundle_sha256:", paste(rep("c", 64L), collapse = ""))))
+  expect_true(any(receipt == paste("launcher_helper_sha256:", paste(rep("d", 64L), collapse = ""))))
   expect_true(any(receipt == "launcher_unlock_eligible: FALSE"))
   expect_true(any(receipt == "case_count: 12"))
   expect_true(any(receipt == "shard_count: 12"))
@@ -349,29 +423,78 @@ test_that("Gate4 pre-run aggregation accepts only the exact production pre-run r
   expect_true(any(receipt == "outer_fit_rows: 120"))
   expect_true(any(receipt == "bootstrap_attempt_rows: 60000"))
   expect_true(any(receipt == "endpoint_rows: 1080"))
-  expect_silent(run_coverage_cli(c("aggregate-prerun", "--root", root)))
+  expect_length(ledger, 12L)
+  expect_identical(
+    sub("^[0-9a-f]{64}  ", "", ledger),
+    sprintf("C%03d-shard-001.rds", seq_len(12L))
+  )
+  ledger_raw <- readBin(ledger_path, "raw", n = file.info(ledger_path)$size)
+  expect_false(any(ledger_raw == as.raw(13L)))
+  expect_identical(tail(ledger_raw, 1L), as.raw(10L))
+  expect_silent(run_coverage_cli(aggregate_prerun))
   expect_identical(readLines(receipt_path, warn = FALSE), receipt)
 
-  output <- run_coverage_cli(c("aggregate", "--root", root), error_on_status = FALSE)
+  output <- run_coverage_cli(c(
+    "aggregate", "--root", root, "--expected-source-sha", "gate4-source-sha"
+  ), error_on_status = FALSE)
   expect_identical(attr(output, "status"), 1L)
-  expect_match(paste(output, collapse = "\n"), "Compressed shard set")
+  expect_match(paste(output, collapse = "\n"), "Shard provenance keys/files")
   expect_identical(readLines(receipt_path, warn = FALSE), receipt)
 
   shard_path <- file.path(root, "shards", "C001-shard-001.rds")
   pristine_shard <- readRDS(shard_path)
+  saveRDS(pristine_shard, shard_path, compress = FALSE)
+  output <- run_coverage_cli(aggregate_prerun, error_on_status = FALSE)
+  expect_identical(attr(output, "status"), 1L)
+  expect_match(paste(output, collapse = "\n"), "immutable")
+  expect_identical(readLines(receipt_path, warn = FALSE), receipt)
+
+  saveRDS(pristine_shard, shard_path, compress = "gzip")
+  legacy <- pristine_shard
+  legacy$schema_version <- "gate0-shard-v1"
+  saveRDS(legacy, shard_path, compress = "gzip")
+  output <- run_coverage_cli(aggregate_prerun, error_on_status = FALSE)
+  expect_identical(attr(output, "status"), 1L)
+  expect_match(paste(output, collapse = "\n"), "legacy schema/provenance")
+
+  saveRDS(pristine_shard, shard_path, compress = "gzip")
+  missing_provenance <- pristine_shard
+  missing_provenance$provenance <- NULL
+  saveRDS(missing_provenance, shard_path, compress = "gzip")
+  output <- run_coverage_cli(aggregate_prerun, error_on_status = FALSE)
+  expect_identical(attr(output, "status"), 1L)
+  expect_match(paste(output, collapse = "\n"), "legacy schema/provenance")
+
+  saveRDS(pristine_shard, shard_path, compress = "gzip")
+  runtime_drift <- pristine_shard
+  runtime_drift$provenance$runtime_archive_sha256 <- paste(rep("4", 64L), collapse = "")
+  saveRDS(runtime_drift, shard_path, compress = "gzip")
+  output <- run_coverage_cli(aggregate_prerun, error_on_status = FALSE)
+  expect_identical(attr(output, "status"), 1L)
+  expect_match(paste(output, collapse = "\n"), "constant within each assigned cluster")
+
+  saveRDS(pristine_shard, shard_path, compress = "gzip")
+  cluster_drift <- pristine_shard
+  cluster_drift$provenance$cluster <- "narval"
+  saveRDS(cluster_drift, shard_path, compress = "gzip")
+  output <- run_coverage_cli(aggregate_prerun, error_on_status = FALSE)
+  expect_identical(attr(output, "status"), 1L)
+  expect_match(paste(output, collapse = "\n"), "identity/cluster")
+
+  saveRDS(pristine_shard, shard_path, compress = "gzip")
   duplicate <- pristine_shard
   duplicate$bootstrap_attempts <- rbind(
     duplicate$bootstrap_attempts,
     duplicate$bootstrap_attempts[1L, , drop = FALSE]
   )
   saveRDS(duplicate, shard_path, compress = "gzip")
-  output <- run_coverage_cli(c("aggregate-prerun", "--root", root), error_on_status = FALSE)
+  output <- run_coverage_cli(aggregate_prerun, error_on_status = FALSE)
   expect_identical(attr(output, "status"), 1L)
   expect_match(paste(output, collapse = "\n"), "Bootstrap attempt keys")
 
   saveRDS(pristine_shard, shard_path, compress = "gzip")
   unlink(shard_path)
-  output <- run_coverage_cli(c("aggregate-prerun", "--root", root), error_on_status = FALSE)
+  output <- run_coverage_cli(aggregate_prerun, error_on_status = FALSE)
   expect_identical(attr(output, "status"), 1L)
   expect_match(paste(output, collapse = "\n"), "Compressed shard set")
 
@@ -379,18 +502,18 @@ test_that("Gate4 pre-run aggregation accepts only the exact production pre-run r
   wrong_sha <- pristine_shard
   wrong_sha$endpoints$source_sha[[1L]] <- "wrong-source-sha"
   saveRDS(wrong_sha, shard_path, compress = "gzip")
-  output <- run_coverage_cli(c("aggregate-prerun", "--root", root), error_on_status = FALSE)
+  output <- run_coverage_cli(aggregate_prerun, error_on_status = FALSE)
   expect_identical(attr(output, "status"), 1L)
-  expect_match(paste(output, collapse = "\n"), "source SHA")
+  expect_match(paste(output, collapse = "\n"), "shard-level provenance")
   expect_identical(readLines(receipt_path, warn = FALSE), receipt)
 
   saveRDS(pristine_shard, shard_path, compress = "gzip")
   wrong_campaign <- pristine_shard
   wrong_campaign$outer_fits$campaign_id[[1L]] <- "wrong-campaign"
   saveRDS(wrong_campaign, shard_path, compress = "gzip")
-  output <- run_coverage_cli(c("aggregate-prerun", "--root", root), error_on_status = FALSE)
+  output <- run_coverage_cli(aggregate_prerun, error_on_status = FALSE)
   expect_identical(attr(output, "status"), 1L)
-  expect_match(paste(output, collapse = "\n"), "Receipt provenance")
+  expect_match(paste(output, collapse = "\n"), "shard-level provenance")
   expect_identical(readLines(receipt_path, warn = FALSE), receipt)
 
   saveRDS(pristine_shard, shard_path, compress = "gzip")
@@ -407,7 +530,7 @@ test_that("Gate4 pre-run aggregation accepts only the exact production pre-run r
   invalid_manifests$mixed <- mixed
   for (invalid in invalid_manifests) {
     utils::write.csv(invalid, manifest_path, row.names = FALSE)
-    output <- run_coverage_cli(c("aggregate-prerun", "--root", root), error_on_status = FALSE)
+    output <- run_coverage_cli(aggregate_prerun, error_on_status = FALSE)
     expect_identical(attr(output, "status"), 1L)
   }
 })
@@ -462,7 +585,7 @@ test_that("Gate 0 aggregator rejects duplicate keys, missing shards, and stale S
   unlink(path)
   output <- run_coverage_cli(c("aggregate-test", "--root", root), error_on_status = FALSE)
   expect_identical(attr(output, "status"), 1L)
-  expect_match(paste(output, collapse = "\n"), "Compressed shard set")
+  expect_match(paste(output, collapse = "\n"), "Shard provenance keys/files")
 
   write_synthetic_shards(root, manifest)
   shard <- readRDS(path)
@@ -470,7 +593,7 @@ test_that("Gate 0 aggregator rejects duplicate keys, missing shards, and stale S
   saveRDS(shard, path, compress = "gzip")
   output <- run_coverage_cli(c("aggregate-test", "--root", root), error_on_status = FALSE)
   expect_identical(attr(output, "status"), 1L)
-  expect_match(paste(output, collapse = "\n"), "source SHA")
+  expect_match(paste(output, collapse = "\n"), "shard-level provenance")
 
   write_synthetic_shards(root, manifest)
   shard <- readRDS(path)

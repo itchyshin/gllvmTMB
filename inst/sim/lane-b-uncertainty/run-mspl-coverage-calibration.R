@@ -45,13 +45,41 @@ atomic_write_lines <- function(x, path, immutable = FALSE) {
   dir.create(dirname(path), recursive = TRUE, showWarnings = FALSE)
   if (immutable && file.exists(path)) {
     if (identical(readLines(path, warn = FALSE), x)) return(invisible(path))
-    stop("An immutable Gate4 pre-run receipt already exists with different contents.", call. = FALSE)
+    stop("An immutable aggregation artifact already exists with different contents.", call. = FALSE)
   }
   tmp <- tempfile(".mspl-coverage-", dirname(path), fileext = ".txt")
   on.exit(unlink(tmp), add = TRUE)
-  writeLines(x, tmp, useBytes = TRUE)
+  writeBin(charToRaw(paste0(paste(x, collapse = "\n"), "\n")), tmp)
   if (!file.rename(tmp, path)) stop("Could not atomically publish ", path)
   invisible(path)
+}
+
+sha256_file <- function(path) {
+  path <- normalizePath(path, mustWork = TRUE)
+  commands <- list(
+    sha256sum = c(shQuote(path)),
+    shasum = c("-a", "256", shQuote(path))
+  )
+  for (command in names(commands)) {
+    executable <- Sys.which(command)[[1L]]
+    if (!nzchar(executable)) next
+    output <- suppressWarnings(system2(
+      executable, commands[[command]], stdout = TRUE, stderr = TRUE
+    ))
+    if (is.null(attr(output, "status")) && length(output)) {
+      hash <- tolower(strsplit(trimws(output[[1L]]), "[[:space:]]+")[[1L]][[1L]])
+      if (grepl("^[0-9a-f]{64}$", hash)) return(hash)
+    }
+  }
+  stop("SHA-256 requires sha256sum or shasum -a 256, and neither produced a valid digest.",
+    call. = FALSE
+  )
+}
+
+sha256_label <- function(x, field) {
+  ok <- length(x) == 1L && !is.na(x) && grepl("^[0-9a-f]{64}$", x)
+  if (!ok) stop(field, " must be one lowercase 64-hex SHA-256 digest.", call. = FALSE)
+  as.character(x)
 }
 
 validate_safe_label <- function(x, field) {
@@ -386,6 +414,35 @@ runtime_fingerprint <- function() {
     paste0("gllvmTMB=", as.character(utils::packageVersion("gllvmTMB"))),
     R.version$platform,
     sep = " | "
+  )
+}
+
+shard_provenance <- function(case, cluster, shard_id, fingerprint) {
+  hash_env <- c(
+    source_archive_sha256 = "MSPL_COVERAGE_SOURCE_ARCHIVE_SHA256",
+    source_bundle_sha256 = "MSPL_COVERAGE_SOURCE_BUNDLE_SHA256",
+    launcher_bundle_sha256 = "MSPL_COVERAGE_LAUNCHER_BUNDLE_SHA256",
+    launcher_helper_sha256 = "MSPL_COVERAGE_HELPER_SHA256",
+    runtime_archive_sha256 = "MSPL_COVERAGE_RUNTIME_ARCHIVE_SHA256"
+  )
+  hashes <- vapply(hash_env, function(name) Sys.getenv(name, unset = NA_character_), character(1L))
+  production <- identical(
+    case$manifest_version[[1L]], "lane-b-mspl-coverage-gate0-v1-2026-08-14"
+  )
+  if (production) {
+    for (field in names(hashes)) hashes[[field]] <- sha256_label(hashes[[field]], field)
+  }
+  data.frame(
+    manifest_version = case$manifest_version[[1L]],
+    campaign_id = case$campaign_id[[1L]], source_sha = case$source_sha[[1L]],
+    cluster = cluster, case_id = case$case_id[[1L]], shard_id = as.integer(shard_id),
+    runtime_fingerprint = fingerprint,
+    source_archive_sha256 = hashes[["source_archive_sha256"]],
+    source_bundle_sha256 = hashes[["source_bundle_sha256"]],
+    launcher_bundle_sha256 = hashes[["launcher_bundle_sha256"]],
+    launcher_helper_sha256 = hashes[["launcher_helper_sha256"]],
+    runtime_archive_sha256 = hashes[["runtime_archive_sha256"]],
+    stringsAsFactors = FALSE
   )
 }
 
@@ -738,7 +795,8 @@ run_shard <- function(case, shard_id, cluster) {
     run_outer(case, cluster, outer_id, shard_id, fingerprint)
   })
   list(
-    schema_version = "gate0-shard-v1",
+    schema_version = "gate0-shard-v2",
+    provenance = shard_provenance(case, cluster, shard_id, fingerprint),
     outer_fits = do.call(rbind, lapply(outer, `[[`, "outer_fits")),
     bootstrap_attempts = do.call(rbind, lapply(outer, `[[`, "bootstrap_attempts")),
     endpoints = do.call(rbind, lapply(outer, `[[`, "endpoints")),
@@ -755,16 +813,25 @@ rbind_nonempty <- function(rows) {
 }
 
 read_shards <- function(root) {
-  files <- list.files(file.path(root, "shards"), pattern = "\\.rds$", full.names = TRUE)
+  files <- sort(list.files(file.path(root, "shards"), pattern = "\\.rds$", full.names = TRUE))
   if (!length(files)) stop("No compressed shards found.", call. = FALSE)
   shards <- lapply(files, readRDS)
-  required <- c("schema_version", "outer_fits", "bootstrap_attempts", "endpoints", "profile_traces")
+  required <- c(
+    "schema_version", "provenance", "outer_fits", "bootstrap_attempts",
+    "endpoints", "profile_traces"
+  )
   if (any(!vapply(shards, function(x) {
-    is.list(x) && all(required %in% names(x)) && identical(x$schema_version, "gate0-shard-v1")
+    is.list(x) && all(required %in% names(x)) && identical(x$schema_version, "gate0-shard-v2") &&
+      is.data.frame(x$provenance) && nrow(x$provenance) == 1L
   }, logical(1L)))) {
-    stop("A compressed shard has the wrong schema.", call. = FALSE)
+    stop("A compressed shard has the wrong or legacy schema/provenance.", call. = FALSE)
   }
+  provenance <- do.call(rbind, lapply(shards, `[[`, "provenance"))
+  provenance$shard_file <- basename(files)
+  rownames(provenance) <- NULL
   list(
+    provenance = provenance,
+    shard_files = files,
     outer_fits = do.call(rbind, lapply(shards, `[[`, "outer_fits")),
     bootstrap_attempts = do.call(rbind, lapply(shards, `[[`, "bootstrap_attempts")),
     endpoints = do.call(rbind, lapply(shards, `[[`, "endpoints")),
@@ -772,33 +839,131 @@ read_shards <- function(root) {
   )
 }
 
-validate_receipts <- function(receipts, manifest, receipt_mode = "campaign") {
+validate_shard_provenance <- function(receipts, manifest, strict = FALSE,
+                                      expected_source_sha = NULL) {
+  provenance <- receipts$provenance
+  required <- c(
+    "manifest_version", "campaign_id", "source_sha", "cluster", "case_id",
+    "shard_id", "runtime_fingerprint", "source_archive_sha256",
+    "source_bundle_sha256", "launcher_bundle_sha256", "launcher_helper_sha256",
+    "runtime_archive_sha256", "shard_file"
+  )
+  if (!identical(names(provenance), required)) {
+    stop("Shard provenance fields are missing, extra, or out of order.", call. = FALSE)
+  }
+  expected <- do.call(rbind, lapply(seq_len(nrow(manifest)), function(i) {
+    data.frame(
+      case_id = manifest$case_id[[i]], shard_id = seq_len(manifest$n_shards[[i]]),
+      stringsAsFactors = FALSE
+    )
+  }))
+  provenance_key <- key(provenance$case_id, provenance$shard_id)
+  expected_key <- key(expected$case_id, expected$shard_id)
+  expected_file <- sprintf("%s-shard-%03d.rds", provenance$case_id, provenance$shard_id)
+  if (anyDuplicated(provenance_key) || !identical(provenance_key, expected_key) ||
+      !identical(as.character(provenance$shard_file), expected_file)) {
+    stop("Shard provenance keys/files do not exactly match the frozen manifest order.", call. = FALSE)
+  }
+  manifest_index <- match(provenance$case_id, manifest$case_id)
+  identity_fields <- c("manifest_version", "campaign_id", "source_sha")
+  identity_bad <- anyNA(manifest_index) || any(vapply(identity_fields, function(field) {
+    any(as.character(provenance[[field]]) != as.character(manifest[[field]][manifest_index]))
+  }, logical(1L)))
+  if (identity_bad || any(as.character(provenance$cluster) !=
+      as.character(manifest$assigned_cluster[manifest_index]))) {
+    stop("Shard provenance identity/cluster does not match the frozen manifest.", call. = FALSE)
+  }
+  if (strict) {
+    expected_source_sha <- validate_safe_label(expected_source_sha, "expected_source_sha")
+    if (!identical(unique(as.character(provenance$source_sha)), expected_source_sha)) {
+      stop("Shard source SHA does not match the externally expected source SHA.", call. = FALSE)
+    }
+    hash_fields <- c(
+      "source_archive_sha256", "source_bundle_sha256", "launcher_bundle_sha256",
+      "launcher_helper_sha256", "runtime_archive_sha256"
+    )
+    for (field in hash_fields) {
+      if (any(!grepl("^[0-9a-f]{64}$", as.character(provenance[[field]])))) {
+        stop("Shard provenance SHA-256 fields are missing or malformed.", call. = FALSE)
+      }
+    }
+    global_fields <- setdiff(hash_fields, "runtime_archive_sha256")
+    if (any(vapply(global_fields, function(field) {
+      length(unique(as.character(provenance[[field]]))) != 1L
+    }, logical(1L)))) {
+      stop("Source/archive/launcher provenance is mixed across shards.", call. = FALSE)
+    }
+    clusters <- unique(as.character(provenance$cluster))
+    if (any(vapply(clusters, function(cluster) {
+      length(unique(as.character(provenance$runtime_archive_sha256[
+        provenance$cluster == cluster
+      ]))) != 1L
+    }, logical(1L)))) {
+      stop("Runtime archive SHA-256 must be constant within each assigned cluster.", call. = FALSE)
+    }
+  }
+  row_tables <- Filter(function(x) is.data.frame(x) && nrow(x), list(
+    receipts$outer_fits, receipts$bootstrap_attempts, receipts$endpoints,
+    receipts$profile_traces
+  ))
+  for (rows in row_tables) {
+    row_index <- match(key(rows$case_id, rows$shard_id), provenance_key)
+    row_fields <- c(
+      "manifest_version", "campaign_id", "source_sha", "cluster", "runtime_fingerprint"
+    )
+    if (anyNA(row_index) || any(vapply(row_fields, function(field) {
+      any(as.character(rows[[field]]) != as.character(provenance[[field]][row_index]))
+    }, logical(1L)))) {
+      stop("Receipt rows do not match their shard-level provenance.", call. = FALSE)
+    }
+  }
+  list(
+    global = provenance[1L, c(
+      "source_archive_sha256", "source_bundle_sha256", "launcher_bundle_sha256",
+      "launcher_helper_sha256"
+    ), drop = FALSE],
+    runtime_by_cluster = stats::setNames(vapply(
+      unique(as.character(provenance$cluster)),
+      function(cluster) unique(as.character(provenance$runtime_archive_sha256[
+        provenance$cluster == cluster
+      ]))[[1L]], character(1L)
+    ), unique(as.character(provenance$cluster)))
+  )
+}
+
+validate_receipts <- function(receipts, manifest, receipt_mode = "campaign",
+                              expected_source_sha = NULL) {
   if (identical(receipt_mode, "gate4-prerun")) {
     validate_gate4_receipt_manifest(manifest)
-  } else if (identical(receipt_mode, "campaign")) {
+  } else if (receipt_mode %in% c("campaign", "production", "gate3-smoke")) {
     validate_manifest_contract(manifest)
   } else {
     stop("Receipt validation mode is unknown.", call. = FALSE)
   }
+  strict_provenance <- receipt_mode %in% c("gate4-prerun", "gate3-smoke", "production")
+  provenance_contract <- validate_shard_provenance(
+    receipts, manifest, strict = strict_provenance,
+    expected_source_sha = expected_source_sha
+  )
   outer <- receipts$outer_fits
   boot <- receipts$bootstrap_attempts
   endpoints <- receipts$endpoints
   traces <- receipts$profile_traces
   required_outer <- c(
     "manifest_version", "campaign_id", "source_sha", "cluster", "case_id",
-    "outer_id", "shard_id", "seed", "status", "convergence", "objective",
+    "outer_id", "shard_id", "runtime_fingerprint", "seed", "status", "convergence", "objective",
     "estimator_id", "b_fix_1", "b_fix_2", "b_fix_3", "elapsed_seconds",
     "message", "objective_role"
   )
   required_boot <- c(
     "manifest_version", "campaign_id", "source_sha", "cluster", "case_id",
-    "outer_id", "shard_id", "attempt_id", "seed", "status", "convergence",
+    "outer_id", "shard_id", "runtime_fingerprint", "attempt_id", "seed", "status", "convergence",
     "estimator_id", "unconditional_redraw", "b_fix_1", "b_fix_2", "b_fix_3",
     "objective_role"
   )
   required_end <- c(
     "manifest_version", "campaign_id", "source_sha", "cluster", "case_id",
-    "outer_id", "shard_id", "method", "target", "truth", "estimate", "lower",
+    "outer_id", "shard_id", "runtime_fingerprint", "method", "target", "truth", "estimate", "lower",
     "upper", "status", "available", "covers", "message", "objective_role"
   )
   if (!all(required_outer %in% names(outer)) || !all(required_boot %in% names(boot)) ||
@@ -841,7 +1006,7 @@ validate_receipts <- function(receipts, manifest, receipt_mode = "campaign") {
   if (nrow(traces)) {
     trace_required <- c(
       "manifest_version", "campaign_id", "source_sha", "cluster", "case_id",
-      "outer_id", "shard_id", "method", "target", "target_value", "threshold",
+      "outer_id", "shard_id", "runtime_fingerprint", "method", "target", "target_value", "threshold",
       "lower_bracket_1", "lower_bracket_2", "upper_bracket_1", "upper_bracket_2",
       "bracket_tolerance", "finite", "convergence", "nuisance_reoptimized",
       "objective_delta", "side", "stage", "objective_role"
@@ -994,7 +1159,7 @@ validate_receipts <- function(receipts, manifest, receipt_mode = "campaign") {
       stop("Successful profile endpoint lacks matched/crossed finite converged trace evidence.", call. = FALSE)
     }
   }
-  invisible(TRUE)
+  invisible(provenance_contract)
 }
 
 wilson_interval <- function(success, total, level = 0.90) {
@@ -1021,8 +1186,12 @@ rmse_mcse <- function(errors) {
   stats::sd(errors^2) / sqrt(length(errors)) / (2 * rmse)
 }
 
-summarise_receipts <- function(receipts, manifest, receipt_mode = "campaign") {
-  validate_receipts(receipts, manifest, receipt_mode = receipt_mode)
+summarise_receipts <- function(receipts, manifest, receipt_mode = "campaign",
+                               expected_source_sha = NULL) {
+  provenance_contract <- validate_receipts(
+    receipts, manifest, receipt_mode = receipt_mode,
+    expected_source_sha = expected_source_sha
+  )
   outer <- receipts$outer_fits
   endpoints <- receipts$endpoints
   key_group <- interaction(endpoints$case_id, endpoints$method, endpoints$target, drop = TRUE)
@@ -1093,41 +1262,110 @@ summarise_receipts <- function(receipts, manifest, receipt_mode = "campaign") {
     )
   }))
   rownames(out) <- NULL
+  attr(out, "provenance_contract") <- provenance_contract
   out
 }
 
-aggregate_campaign <- function(root, mode) {
+write_shard_hash_ledger <- function(root, mode, files) {
+  ledger_name <- switch(mode,
+    prerun = "gate4-shard-hashes.sha256",
+    smoke = "gate3-smoke-shard-hashes.sha256",
+    production = "production-shard-hashes.sha256",
+    stop("No immutable shard-ledger contract exists for this mode.", call. = FALSE)
+  )
+  ledger_path <- file.path(root, ledger_name)
+  files <- files[order(basename(files))]
+  lines <- sprintf("%s  %s", vapply(files, sha256_file, character(1L)), basename(files))
+  if (any(!grepl("^[0-9a-f]{64}  [A-Za-z0-9._-]+$", lines)) ||
+      anyDuplicated(sub("^[0-9a-f]{64}  ", "", lines))) {
+    stop("Canonical shard SHA-256 ledger construction failed.", call. = FALSE)
+  }
+  atomic_write_lines(lines, ledger_path, immutable = TRUE)
+  list(path = ledger_path, lines = lines, sha256 = sha256_file(ledger_path))
+}
+
+calibration_gate_eligibility <- function(mode) {
+  identical(mode, "production")
+}
+
+aggregate_campaign <- function(root, mode, expected_source_sha = NULL) {
   manifest_path <- file.path(root, "manifest.csv")
   manifest <- utils::read.csv(manifest_path, stringsAsFactors = FALSE)
   validate_manifest_mode(manifest, mode)
-  receipt_mode <- if (identical(mode, "prerun")) "gate4-prerun" else "campaign"
+  strict <- mode %in% c("production", "prerun", "smoke")
+  if (strict) {
+    expected_source_sha <- validate_safe_label(expected_source_sha, "expected_source_sha")
+    if (!identical(unique(as.character(manifest$source_sha)), expected_source_sha)) {
+      stop("Manifest source SHA does not match --expected-source-sha.", call. = FALSE)
+    }
+  }
+  receipt_mode <- if (identical(mode, "prerun")) {
+    "gate4-prerun"
+  } else if (identical(mode, "smoke")) {
+    "gate3-smoke"
+  } else if (identical(mode, "production")) {
+    "production"
+  } else {
+    "campaign"
+  }
   receipt_manifest <- if (identical(mode, "prerun")) gate4_receipt_manifest(manifest) else manifest
   if (identical(mode, "prerun")) validate_gate4_shard_files(root, receipt_manifest)
   receipts <- read_shards(root)
-  summary <- summarise_receipts(receipts, receipt_manifest, receipt_mode = receipt_mode)
+  summary <- summarise_receipts(
+    receipts, receipt_manifest, receipt_mode = receipt_mode,
+    expected_source_sha = expected_source_sha
+  )
+  provenance_contract <- attr(summary, "provenance_contract")
+  ledger <- if (strict) write_shard_hash_ledger(root, mode, receipts$shard_files) else NULL
   atomic_write_csv(summary, file.path(root, "summary.csv"))
   atomic_write_csv(receipts$outer_fits, file.path(root, "outer-fit-rows.csv"))
   atomic_write_csv(receipts$endpoints, file.path(root, "endpoint-rows.csv"))
   atomic_write_csv(receipts$bootstrap_attempts, file.path(root, "bootstrap-attempts-wide.csv"))
   atomic_write_csv(receipts$profile_traces, file.path(root, "profile-traces.csv"))
   receipt_header <- paste("manifest_mode:", mode)
-  if (identical(mode, "prerun")) receipt_header <- c(
-    receipt_header,
-    "receipt_type: gate4-production-prerun-v1",
-    "gate4_contract: exact",
-    paste("campaign_id:", manifest$campaign_id[[1L]]),
-    paste("source_sha:", manifest$source_sha[[1L]]),
-    paste("manifest_version:", manifest$manifest_version[[1L]]),
-    paste("manifest_md5:", unname(tools::md5sum(manifest_path))),
-    "launcher_unlock_eligible: FALSE",
-    paste("case_count:", nrow(receipt_manifest)),
-    paste("shard_count:", length(list.files(file.path(root, "shards"), pattern = "\\.rds$"))),
-    paste("outer_per_case:", unique(receipt_manifest$n_outer)),
-    paste("bootstrap_reps:", unique(receipt_manifest$bootstrap_reps))
-  )
+  if (strict) {
+    receipt_prefix <- switch(mode,
+      prerun = "gate4",
+      smoke = "gate3_smoke",
+      production = "production"
+    )
+    receipt_type <- switch(mode,
+      prerun = "gate4-production-aggregation-v2",
+      smoke = "gate3-smoke-aggregation-v2",
+      production = "production-aggregation-v2"
+    )
+    global <- provenance_contract$global[1L, , drop = FALSE]
+    runtime_lines <- paste0(
+      "runtime_archive_sha256_", names(provenance_contract$runtime_by_cluster), ": ",
+      unname(provenance_contract$runtime_by_cluster)
+    )
+    receipt_header <- c(
+      receipt_header,
+      paste("receipt_type:", receipt_type),
+      paste0(receipt_prefix, "_contract: exact"),
+      paste("campaign_id:", manifest$campaign_id[[1L]]),
+      paste("source_sha:", manifest$source_sha[[1L]]),
+      paste("expected_source_sha:", expected_source_sha),
+      paste("manifest_version:", manifest$manifest_version[[1L]]),
+      paste("manifest_sha256:", sha256_file(manifest_path)),
+      paste0(receipt_prefix, "_shard_ledger_sha256: ", ledger$sha256),
+      paste("source_archive_sha256:", global$source_archive_sha256[[1L]]),
+      paste("source_bundle_sha256:", global$source_bundle_sha256[[1L]]),
+      paste("launcher_bundle_sha256:", global$launcher_bundle_sha256[[1L]]),
+      paste("launcher_helper_sha256:", global$launcher_helper_sha256[[1L]]),
+      runtime_lines,
+      "launcher_unlock_eligible: FALSE",
+      paste("case_count:", nrow(receipt_manifest)),
+      paste("shard_count:", length(list.files(
+        file.path(root, "shards"), pattern = "\\.rds$"
+      ))),
+      paste("outer_per_case:", unique(receipt_manifest$n_outer)),
+      paste("bootstrap_reps:", unique(receipt_manifest$bootstrap_reps))
+    )
+  }
   receipt <- c(
     receipt_header,
-    paste("calibration_gate_eligible:", identical(mode, "production")),
+    paste("calibration_gate_eligible:", calibration_gate_eligibility(mode)),
     paste("outer_fit_rows:", nrow(receipts$outer_fits)),
     paste("bootstrap_attempt_rows:", nrow(receipts$bootstrap_attempts)),
     paste("endpoint_rows:", nrow(receipts$endpoints)),
@@ -1136,12 +1374,16 @@ aggregate_campaign <- function(root, mode) {
     paste("coverage_gates_pass:", sum(summary$coverage_gate)),
     "public_fence: unchanged"
   )
-  receipt_path <- file.path(root, if (identical(mode, "prerun")) {
-    "gate4-prerun-receipt.txt"
+  receipt_path <- file.path(root, if (strict) {
+    switch(mode,
+      prerun = "gate4-prerun-receipt.txt",
+      smoke = "gate3-smoke-receipt.txt",
+      production = "production-receipt.txt"
+    )
   } else {
     "receipt.txt"
   })
-  atomic_write_lines(receipt, receipt_path, immutable = identical(mode, "prerun"))
+  atomic_write_lines(receipt, receipt_path, immutable = strict)
 }
 
 run_cli <- function() {
@@ -1207,11 +1449,11 @@ run_cli <- function() {
     for (i in seq_len(nrow(manifest))) atomic_write_rds(run_shard(manifest[i, , drop = FALSE], 1L, "local"),
       file.path(root, "shards", sprintf("%s-shard-001.rds", manifest$case_id[[i]])))
   } else if (identical(command, "aggregate")) {
-    aggregate_campaign(root, "production")
+    aggregate_campaign(root, "production", arg_value("--expected-source-sha"))
   } else if (identical(command, "aggregate-prerun")) {
-    aggregate_campaign(root, "prerun")
+    aggregate_campaign(root, "prerun", arg_value("--expected-source-sha"))
   } else if (identical(command, "aggregate-smoke")) {
-    aggregate_campaign(root, "smoke")
+    aggregate_campaign(root, "smoke", arg_value("--expected-source-sha"))
   } else if (identical(command, "aggregate-test")) {
     aggregate_campaign(root, "test")
   } else if (identical(command, "aggregate-mini")) {

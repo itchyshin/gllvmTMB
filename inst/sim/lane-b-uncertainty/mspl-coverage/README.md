@@ -10,7 +10,8 @@ that exact byte stream atomically from node-local `shards/` to durable
 ## Inputs and source bundle
 
 All scripts require `MSPL_COVERAGE_ROOT` (an explicit `/project/...` root),
-`MSPL_COVERAGE_SOURCE_SHA`, source archive plus SHA (`MSPL_COVERAGE_SOURCE_ARCHIVE`
+explicit `MSPL_COVERAGE_CAMPAIGN_ID`, `MSPL_COVERAGE_SOURCE_SHA`, and
+`MSPL_COVERAGE_MANIFEST_SHA256` bindings, source archive plus SHA (`MSPL_COVERAGE_SOURCE_ARCHIVE`
 and `MSPL_COVERAGE_SOURCE_ARCHIVE_SHA256`), and `MSPL_COVERAGE_CLUSTER`
 (`nibi`, `narval`, `rorqual`, or reserve `fir`). The source SHA is the frozen
 campaign identity, not an inferred checkout revision.
@@ -18,18 +19,24 @@ campaign identity, not an inferred checkout revision.
 Slurm executes a spooled copy of each SBATCH script, so no job resolves the
 helper relative to `${BASH_SOURCE[0]}`. Before test-only or live scheduling,
 stage this launcher bundle at the campaign-owned immutable path
-`$MSPL_COVERAGE_ROOT/launcher`, then export:
+`$MSPL_COVERAGE_ROOT/launcher`. After copying exactly the seven launcher files
+there and before submission, create `LAUNCHER-SHA256SUMS` (the ledger excludes
+itself), then export:
 
 ```sh
 MSPL_COVERAGE_LAUNCHER_DIR="$MSPL_COVERAGE_ROOT/launcher"
+(cd "$MSPL_COVERAGE_LAUNCHER_DIR" && sha256sum \
+  README.md contract-self-test.sh drac-array.sbatch drac-monitor.sh \
+  drac-setup.sbatch drac-smoke.sbatch lib-mspl-coverage.sh > LAUNCHER-SHA256SUMS)
+MSPL_COVERAGE_LAUNCHER_BUNDLE_SHA256="$(sha256sum "$MSPL_COVERAGE_LAUNCHER_DIR/LAUNCHER-SHA256SUMS" | awk '{print $1}')"
 MSPL_COVERAGE_HELPER_SHA256="$(sha256sum "$MSPL_COVERAGE_LAUNCHER_DIR/lib-mspl-coverage.sh" | awk '{print $1}')"
-export MSPL_COVERAGE_LAUNCHER_DIR MSPL_COVERAGE_HELPER_SHA256
+export MSPL_COVERAGE_LAUNCHER_DIR MSPL_COVERAGE_LAUNCHER_BUNDLE_SHA256 MSPL_COVERAGE_HELPER_SHA256
 ```
 
-Setup, smoke, and array scripts require that exact directory and authenticate
-the staged helper before sourcing it. The hash is also bound into the native
-runtime archive and setup receipt, so later tasks cannot silently change the
-launcher implementation.
+Setup, smoke, array, and monitor scripts require that exact directory, validate
+the closed ledger, run `sha256sum -c`, and authenticate their own executed bytes
+plus the helper before sourcing it. Bundle/helper hashes are bound into the
+native runtime archive and setup receipt.
 
 Every template can import and export an explicit job environment itself. Pass
 only its absolute path across the scheduler boundary. The file is strict data,
@@ -49,7 +56,8 @@ sbatch --export=ALL,MSPL_COVERAGE_JOB_ENV="$MSPL_COVERAGE_JOB_ENV" \
 
 The setup-generated runtime `.env` is directly suitable as
 `MSPL_COVERAGE_JOB_ENV`. It contains data records for the campaign root, staged
-launcher/helper hash, runtime archive/hash, cluster, source SHA/archive/hash,
+launcher bundle/helper hashes, runtime archive/hash, cluster, campaign/source
+identity, manifest/archive hashes,
 dependency-bundle hash, and exact module choices. The parser explicitly exports
 these records into Slurm child processes. Never source this file. Older shell
 `.env` files containing `export`, quoting, or escaped values are rejected and
@@ -124,7 +132,7 @@ template and is submitted once for each of the three runner-produced rows.
 
 `drac-array.sbatch` is for Gate 4 pre-run or final production. With
 `MSPL_COVERAGE_STAGE=pre-run`, it requires a matching
-`gates/gate3-smoke-ready.receipt` and defaults to the dedicated immutable
+closed 19-key `gates/gate3-ready.receipt` and defaults to the dedicated immutable
 `pre-run-array-map.tsv`. That map is mechanically accepted only when it has
 indices 1--12, each of the manifest's 12 cases exactly once, `shard_id=1` for
 every case, and a manifest `outer_per_shard=10`: exactly 12 shards and 120
@@ -134,12 +142,15 @@ fails before the runner starts. With `MSPL_COVERAGE_STAGE=production`
 newly indexed rows ordered as C001 through C012, shards 002 through 100 within
 each case. The full `array-map.tsv` is never accepted as a post-Gate-4 map, so
 the 12 pre-run shards cannot be rerun under reused indices. Production remains
-inaccessible until a matching `gates/gate4-prerun-ready.receipt` exists. In
-either case the
-receipt must exactly contain `gate_status=PASS`, `campaign_id`, `source_sha`,
-and `manifest_sha256` matching the immutable root. Setup and Gate 3 smoke do
+inaccessible until a matching, closed 23-key
+`gates/gate4-prerun-ready.receipt` exists. Gate 3 binds the live production and
+smoke manifests, three-shard ledger, smoke aggregate, source/runtime, cluster,
+and launcher hashes. Gate 4 additionally binds all three runtime hashes, the
+live 12-shard ledger, staged statistical aggregate, exact row counts, and
+maintainer approval. Duplicate, unknown, missing, unsafe, or stale fields fail;
+independent matching lines elsewhere cannot satisfy either receipt. Setup and Gate 3 smoke do
 not require either receipt. The runner's local statistical
-`gate4-prerun-receipt.txt` records `launcher_unlock_eligible: FALSE` and can
+`gates/gate4-prerun-receipt.txt` records `launcher_unlock_eligible: FALSE` and can
 never substitute for the separate, maintainer-approved
 `gates/gate4-prerun-ready.receipt` launcher unlock.
 
@@ -176,4 +187,7 @@ smoke/array tasks request 1 CPU, 4 GB, and 30 minutes. Modules are
 `StdEnv/2023`, `gcc/12.3`, and `r/4.5.0`, plus an explicit
 `MSPL_COVERAGE_EXTRA_MODULES` list when the frozen bundle needs geospatial
 system libraries. `drac-monitor.sh` is read-only and always reports
-`expected`, `completed`, `running`, `pending`, `failed`, and `newest_receipt`.
+cluster-local `expected` counts (Nibi 594, Narval 396, Rorqual 198),
+`completed`, `running`, `pending`, `failed`, `newest_valid_shard_timestamp`,
+and `newest_receipt`; it first authenticates the launcher, manifest identity,
+manifest hash, and exact remaining map.

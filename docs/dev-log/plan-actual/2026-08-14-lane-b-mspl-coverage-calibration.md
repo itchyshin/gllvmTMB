@@ -215,3 +215,46 @@ The gates retained, rather than hid, several pre-compute launcher failures: Slur
 The production promotion gates are deliberately not adjudicated at ten outer datasets per case. Bootstrap had 360/360 operational endpoints, profile 358/360, and Wald 279/360, but all 108 Wilson coverage gates remain false at this pre-run size. These are operational data only, not calibrated interval evidence. Public MSPL `vcov()`, `confint()`, `profile_targets()`, `tmbprofile_wrapper()`, `bootstrap_Sigma()`, and standard-error routes remain fail-closed.
 
 The completion receipt SHA-256 is `33ad3b6a8c9b2156299067be6fc705b1cd1c532d80dfac5ac7b985e8f8e844b3`; the final explicit, self-identifying `aggregate-prerun` receipt SHA-256 is `25da8a0b5fb76e93bd8cc13c33c920573637e48c4cf290425dbdd86e521a0d1e`. The preserved local retrieval is `/tmp/mspl-coverage-retrieval-112931db/gate4`, and the checksum-verified execution bundle is `/tmp/mspl-coverage-retrieval-112931db/gates1-4-execution-bundle.tar.gz` (SHA-256 `7869083e6c705cebb3eadba167fc3dd5a2a08eb749a0c09c8a4a9e37ecacfc05`). No full production job was submitted; the unlocking receipt remains absent on all clusters. The next irreversible step is maintainer approval of the full 1,200-shard campaign, followed by a new immutable source commit and repeat identity/dry-run gates for the permanent launcher repairs.
+
+## Post-Gate-4 approval and launch hardening actual — 2026-08-14
+
+The maintainer approved continuation through the full goal. Before creating a
+production unlock, an independent launch audit found that the first permanent
+launcher candidate did not externally bind the manifest source label to the
+runtime source and did not cryptographically bind the unlock to the exact Gate
+4 aggregate and 12-shard set. Both were treated as P0 launch blockers. The
+runner now writes schema-v2 shards whose provenance binds campaign, source,
+manifest version, cluster, case, shard, runtime fingerprint, source archive,
+source bundle, launcher bundle, launcher helper, and cluster-native runtime.
+Production, Gate 4, and Gate 3 aggregation require an explicit expected source
+SHA and write immutable canonical SHA-256 shard ledgers and named receipts.
+
+The launcher now authenticates its seven-file staged bundle, the spooled
+script bytes, the manifest identity, the cluster runtime, and closed-schema
+Gate 3/Gate 4 ready receipts. Only the exact runner-emitted 1,188-row remaining
+map (`C001`--`C012`, shards 002--100) can enter production. A Gate 4 statistical
+receipt remains ineligible to unlock production by itself. The full production
+receipt is `calibration_gate_eligible: TRUE` only because it is eligible for
+statistical adjudication; it does not activate any public method.
+
+The read-only monitor now opens every expected RDS and counts it only after
+schema-v2 provenance, identity, exact row counts, and key uniqueness pass. It
+also applies the declared operational stops: invalid shard, failed scheduler
+task, task above twice the Gate 4 median, 30-minute hard limit, no valid shard
+within 60 minutes of the first recorded start, no start within 45 minutes, and
+pending work older than two hours. Terminal task start times come from `sacct`;
+pending age is computed only from `PENDING`/`CONFIGURING` rows. Executable
+fixtures cover every stop and both scheduler edge cases found in final review.
+
+Local verification passed: 192 focused runner expectations; the launcher
+contract self-test; syntax checks for every shell/Slurm file; `git diff
+--check`; and the focused MSPL suite with 1,431 passes, zero failures/warnings,
+and one intentional pre-existing skip in 175.5 seconds. The final independent
+production-launch review returned strict GO with no P0/P1/P2 findings.
+
+The old `112931db` Gate 4 shards are retained as historical operational
+evidence but intentionally fail the new schema-v2 contract. No new remote root,
+job, runtime, shard, or unlock was created during hardening. The next step is a
+new immutable source commit, followed by fresh Gates 1--4 under that exact
+identity. Only a newly audited ready receipt can release the 1,188 remaining
+production shards. Public MSPL inference remains fail-closed.

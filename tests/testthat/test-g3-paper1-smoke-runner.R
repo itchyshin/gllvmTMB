@@ -37,6 +37,7 @@ test_that("Paper 1 G3 runner seals marginal-curvature provenance fail closed", {
   expect_match(text, "smoke requires one untouched immutable preflight", fixed = TRUE)
   expect_match(text, 'saveRDS(ledger, file.path(root, "all-attempt-ledger.rds"))',
     fixed = TRUE)
+  expect_false(grepl('ledger$status <<- "RUNNER_ERROR"', text, fixed = TRUE))
   expect_false(grepl("\\$he\\(", text))
 })
 

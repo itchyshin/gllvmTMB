@@ -180,9 +180,9 @@ ledger <- list(schema = paste0(source_gate, "_ALL_ATTEMPT_V1"), attempt_id = att
   warnings = character(), error = NA_character_, timing = list(fit_elapsed_s = NA_real_, total_elapsed_s = NA_real_), peak_rss_kb = NA_real_)
 warnings <- character(); started <- proc.time()[["elapsed"]]
 on.exit({
-  if (!isTRUE(ledger$terminal)) { ledger$status <<- "RUNNER_ERROR"; ledger$error <<- "runner ended before terminal record"; ledger$terminal <<- TRUE }
-  ledger$warnings <<- unique(warnings); ledger$timing$total_elapsed_s <<- proc.time()[["elapsed"]] - started
-  ledger$peak_rss_kb <<- peak_rss_kb(); saveRDS(ledger, file.path(root, "all-attempt-ledger.rds")); manifest(root)
+  if (!isTRUE(ledger$terminal)) { ledger$status <- "RUNNER_ERROR"; ledger$error <- "runner ended before terminal record"; ledger$terminal <- TRUE }
+  ledger$warnings <- unique(warnings); ledger$timing$total_elapsed_s <- proc.time()[["elapsed"]] - started
+  ledger$peak_rss_kb <- peak_rss_kb(); saveRDS(ledger, file.path(root, "all-attempt-ledger.rds")); manifest(root)
 }, add = TRUE)
 setTimeLimit(elapsed = time_limit_s, transient = TRUE); on.exit(setTimeLimit(elapsed = Inf, transient = FALSE), add = TRUE)
 tryCatch({

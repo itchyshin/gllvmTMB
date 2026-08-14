@@ -195,3 +195,44 @@ low-prevalence standard cloglog all return the same typed blocker after
 verifying `fit$tmb_obj`, `estimator_id = 1`, and no reported per-unit score
 field. No covariance, interval, simulation, remote compute, or public method
 was activated.
+
+## Arc 3 Wald/profile/bootstrap trio actuals
+
+**Mode:** endpoint-feasibility restoration, not calibration. **Source:**
+`5598f9e44d758f764a9239adb7e0066d5671538e`. **Metric movement:** profile
+32/36 -> 36/36 finite-stable; bootstrap not active -> 36/36 finite-stable;
+paper-style Wald not mapped -> 21/36 finite target diagnostics plus 15/36
+typed non-PD blockers.
+
+The profile now stops at the first adjacent finite, converged threshold bracket
+and refines it for at most 12 bisections. Every deterministic matrix cell has a
+matched centre and two refined endpoints from the active penalised
+`fit$tmb_obj` (`estimator_id = 1`). The paper-style Wald diagnostic evaluates
+the penalty-off approximate Laplace NLL Hessian (`estimator_id = 2`) only at
+the penalised MSPL estimate. Seven of 12 fit-level Hessians were positive
+definite and step-stable; five were non-PD. No Hessian was repaired or
+substituted.
+
+The exact unconditional parametric-bootstrap campaign attempted 1,000 refits
+in each of 12 fixtures. All 12,000 refits were usable, producing exactly
+36,000 target rows. All 36 type-7 percentile endpoint cells were finite,
+ordered, and below the fixed endpoint-MCSE/width limit; the maximum ratio was
+`0.080120592`. The raw archive and summary SHA-256 values are
+`5070f86e9f17e43bc1e9fa5b68cee6f24ea1f8e0c072a18b9f41ef8b548cd357`
+and `fbca5b3ee66d6ab8c25cdd5ce766b46bf16afae46110220ba2699652cd7e9a1b`.
+Durable artifacts are under
+`/project/def-snakagaw/snakagaw/gllvmtmb-mspl-arc3-5598f9e4` on Rorqual.
+
+Fir/Rorqual project-library quota, an unresponsive Nibi control route, and a
+Narval CPU-instruction mismatch forced the final campaign onto Rorqual with
+node-local libraries. The fixture IDs and seed formula never changed. A first
+array attempt failed before any fit because a Bash `read` lacked a trailing
+newline; the same missing shard keys ran after that shell-only repair, with no
+replacement statistical draws.
+
+The focused MSPL suite passed 1,239 expectations with zero failures or warnings
+and one pre-existing skip in 142.7 seconds. Mechanical review confirmed no
+active jackknife route, no export, and unchanged public MSPL refusals. The
+completed claim remains restricted to private endpoint construction in the
+selected deterministic ordinary `q = 1` regimes. It establishes neither
+calibrated standard errors nor confidence-interval coverage.

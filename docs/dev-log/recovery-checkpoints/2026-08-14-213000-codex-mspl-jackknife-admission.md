@@ -1,5 +1,10 @@
 # Recovery checkpoint — private LA-MSPL jackknife admission
 
+> **WITHDRAWN — exploratory route (2026-08-14).** The original MSPL paper did
+> not propose jackknife inference. Arc 3 removed the active helper, tests, and
+> runner route. This checkpoint is retained only as historical evidence and
+> does not describe the current private method map.
+
 ## Repository state
 
 - Worktree: `/Users/z3437171/.codex/worktrees/8e9d/gllvmTMB`

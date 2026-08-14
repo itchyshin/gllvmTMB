@@ -49612,3 +49612,75 @@ intervals; the numerical-Hessian diagnostic remains private and scale-blocked;
 the sandwich route remains `score_decomposition_unavailable`; and the
 jackknife route is admitted but awaits its approval-gated repeated-sampling
 calibration. Public MSPL inference remains fail-closed.
+
+---
+
+## 2026-08-14 — LA-MSPL private Wald/profile/bootstrap interval feasibility
+
+This entry supersedes the immediately preceding private method reconciliation:
+Arc 3 withdrew the exploratory jackknife route and restored the intended
+private trio. The active penalised profile (`estimator_id = 1`) now has finite,
+converged, refined two-sided threshold brackets in all 36 deterministic
+ordinary `q = 1` cells. The unconditional parametric bootstrap attempted
+exactly 1,000 refits in each of 12 fixtures and retained exactly 36,000 target
+rows; every refit was usable and all 36 endpoint cells passed the fixed
+MCSE/width rule. Paper-style penalty-off likelihood curvature
+(`estimator_id = 2`, evaluated only at the penalised estimate) was feasible in
+seven of 12 fit-level Hessians, supplying 21 target diagnostics; five non-PD
+fit-level Hessians remain typed blockers for 15 targets.
+
+Focused verification:
+
+```sh
+Rscript --vanilla -e 'devtools::test(filter = "mspl", stop_on_failure = TRUE)'
+# PASS: 1,239 expectations, 0 failures, 0 warnings, 1 pre-existing skip;
+# 142.7 seconds.
+
+Rscript --vanilla inst/sim/lane-b-uncertainty/run-mspl-interval-feasibility.R \
+  summarise --root /private/tmp/gllvmtmb-mspl-arc3-5598f9e4-consolidated
+# PASS: raw_rows 36,000; summary_rows 36; finite_stable 36;
+# public_fence unchanged.
+
+git diff --check
+# PASS at closeout.
+```
+
+Static fence audit:
+
+```sh
+rg -n -i 'jackknife|jack-knife' R tests/testthat inst/sim
+# PASS: zero active-code matches.
+
+git diff -- NAMESPACE
+# PASS: no NAMESPACE change.
+
+rg -n 'gllvmTMB_mspl_inference_abort|gllvmTMB_mspl_assert_inference|estimator = "mspl"|profile_targets|tmbprofile_wrapper|bootstrap_Sigma' \
+  R/vcov-coef.R R/z-confint-gllvmTMB.R R/profile-targets.R R/profile-ci.R \
+  R/bootstrap-sigma.R
+# PASS: public vcov/confint/profile/bootstrap refusal gates remain present.
+
+rg -n 'gllvmTMB_mspl_(profile_feasibility|profile_threshold_diagnostic|likelihood_hessian_diagnostic)|unconditional_redraw|36,000' \
+  NAMESPACE R/mspl.R \
+  inst/sim/lane-b-uncertainty/run-mspl-interval-feasibility.R \
+  tests/testthat/test-mspl-interval-runner.R
+# PASS: private helpers, unconditional-redraw guard, negative test, and exact
+# production-cardinality guard remain present; no export was found.
+```
+
+Campaign source was
+`5598f9e44d758f764a9239adb7e0066d5671538e`. Durable artifacts are under
+`/project/def-snakagaw/snakagaw/gllvmtmb-mspl-arc3-5598f9e4` on Rorqual.
+Manifest, raw archive, summary, failure-table, and receipt SHA-256 values are
+recorded in the Arc 3 plan-versus-actual and after-task report.
+
+Infrastructure actuals were retained rather than hidden: project file-count
+quota on Fir/Rorqual, an unresponsive Nibi command path, a Narval CPU
+instruction mismatch, and a pre-fit Bash newline failure. The final Rorqual
+route used node-local libraries and reran only the same missing shard keys; no
+statistical draw was replaced.
+
+Deliberately not run: package-wide tests, `R CMD check`, pkgdown, CI, GitHub
+Actions, public documentation, q = 2, structured or missing-data regimes,
+coverage, calibrated-SE assessment, or public inference activation. Public
+MSPL `vcov()`, `confint()`, `profile_targets()`, `tmbprofile_wrapper()`,
+`bootstrap_Sigma()`, and standard-error paths remain fail-closed.

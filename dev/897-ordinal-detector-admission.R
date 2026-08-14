@@ -11,6 +11,7 @@ args <- commandArgs(trailingOnly = TRUE)
 smoke <- "--smoke" %in% args
 failure_smoke <- "--failure-smoke" %in% args
 timing_smoke <- "--timing-smoke" %in% args
+totoro_preflight <- "--totoro-preflight" %in% args
 script_arg <- grep("^--file=", commandArgs(), value = TRUE)
 script_file <- if (length(script_arg)) sub("^--file=", "", script_arg[[1L]]) else NA_character_
 out_dir <- Sys.getenv(
@@ -135,7 +136,15 @@ grid <- expand.grid(
   loading_shape = c("homogeneous", "sparse_identifiable"),
   seed = c(1L, 2L, 3L), stringsAsFactors = FALSE
 )
-if (timing_smoke) {
+if (totoro_preflight) {
+  ## Expensive-edge timing receipt only: this is deliberately not a calibration
+  ## grid and must be approved before it is run on Totoro.
+  grid <- expand.grid(
+    n = 1600L, p = 27L, q = 2L, categories = c(3L, 6L), missing = 0.3,
+    loading_shape = c("homogeneous", "sparse_identifiable"), seed = 4L,
+    stringsAsFactors = FALSE
+  )
+} else if (timing_smoke) {
   ## Seed 4 was a retained truth-labelled silent-degeneracy row in the first
   ## bounded probe.  This one-cell mode exists solely to price the exact
   ## pathological fit before any remote campaign is proposed.
@@ -170,10 +179,13 @@ provenance <- data.frame(
   package_version = as.character(utils::packageVersion("gllvmTMB")),
   command = paste(commandArgs(), collapse = " "),
   smoke = smoke, failure_smoke = failure_smoke, timing_smoke = timing_smoke,
+  totoro_preflight = totoro_preflight,
   elapsed_seconds = elapsed,
   stringsAsFactors = FALSE
 )
-tag <- if (timing_smoke) "timing-smoke" else if (failure_smoke) {
+tag <- if (totoro_preflight) "totoro-preflight" else if (timing_smoke) {
+  "timing-smoke"
+} else if (failure_smoke) {
   "failure-smoke"
 } else if (smoke) {
   "smoke"

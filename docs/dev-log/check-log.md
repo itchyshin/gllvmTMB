@@ -49105,3 +49105,17 @@ passing the workflow's GitHub-Actions compute-boundary guard:
 This is platform evidence for the current 0.6 hardening source only. It did
 not merge PR #951, deploy pkgdown, change the package version, publish a
 release, run a scientific simulation campaign, or authorize CRAN submission.
+
+## 2026-08-14 — #897 ordinal-probit detector no-ship receipt
+
+Private Totoro evidence for `codex/897-ordinal-detector-admission` retained the exact native-Laplace ordinary ordinal-probit pre-run and sentinel receipts described in `docs/dev-log/after-task/2026-08-14-ordinal-probit-detector-no-ship.md`. No package code, public diagnostic, NEWS, README, roxygen, Rd, vignette, pkgdown, CI, or version changed. The development rule was not treated as validation; the independent hold-out was stopped after a runtime overrun, so #897 remains an open release fence.
+
+Stale-wording checks run:
+
+```sh
+rg -n "#897|ordinal.*diagn|ordinal.*probit" docs/dev-log/release docs/dev-log/known-limitations.md docs/design/35-validation-debt-register.md NEWS.md R/diagnose.R
+rg "Sigma_B|Sigma_W|Lambda_B|Lambda_W|latent\\(|unique\\(|indep\\(|dep\\(" README.md ROADMAP.md docs vignettes R tests
+rg "full.*rejected|only diagonal|planned.*implemented|deprecated.*0\\.1" README.md ROADMAP.md NEWS.md docs vignettes
+```
+
+Verdict: current reader-facing material does not advertise an ordinal detector; the internal ledger records the retained no-ship boundary. No package tests were run because package behaviour was deliberately unchanged.

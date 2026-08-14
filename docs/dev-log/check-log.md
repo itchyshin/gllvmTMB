@@ -50091,6 +50091,22 @@ Rscript --vanilla -e 'testthat::test_file("tests/testthat/test-g3p-provenance-co
 No runner mode, preflight, smoke, fit, profile, simulation, remote compute,
 model/DGP/map/threshold change, or public/article change occurred.
 
+## 2026-08-13 — G3P execution-context receipt binding (no runner)
+
+The preflight receipt now binds `schema`, `source_gate`, `root_id`, and
+`attempt_id`; smoke compares that complete field table before loading the
+compiled package or entering the optimizer. Non-V1 invocations also require
+their own attempt and time metadata rather than inheriting V1 defaults. Packet
+content MD5 remains binding; the supplied path/name is diagnostic.
+
+```sh
+Rscript --vanilla -e 'testthat::test_file("tests/testthat/test-g3p-provenance-contract.R", reporter = "summary"); testthat::test_file("tests/testthat/test-g3p-paper2-smoke-packet.R", reporter = "summary"); invisible(parse("dev/isdm-package-recovery/g3p-provenance-contract.R")); invisible(parse("dev/isdm-package-recovery/run-g3-paper2-smoke.R"))'
+# PASS: focused no-fit contract and packet tests; both files parse.
+```
+
+No runner mode, preflight, smoke, fit, profile, simulation, remote compute,
+model/DGP/map/threshold change, or public/article change occurred.
+
 ## 2026-08-13 — G3P V2 identity binding preparation (no runner)
 
 The generic G3P runner now carries explicit `--packet`, `--source-gate`, and

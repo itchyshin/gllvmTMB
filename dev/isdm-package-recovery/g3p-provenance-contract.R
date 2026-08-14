@@ -84,3 +84,28 @@ g3p_compare_identity <- function(expected, observed) {
     fields = fields
   )
 }
+
+g3p_required_execution_names <- function() c(
+  "schema", "source_gate", "root_id", "attempt_id"
+)
+
+g3p_compare_execution_context <- function(expected, observed) {
+  fields <- g3p_required_execution_names()
+  expected_values <- vapply(fields, function(field) g3p_field_value(expected[[field]]), character(1L))
+  observed_values <- vapply(fields, function(field) g3p_field_value(observed[[field]]), character(1L))
+  equal <- !is.na(expected_values) & !is.na(observed_values) & expected_values == observed_values
+  table <- data.frame(
+    field = fields, expected = expected_values, observed = observed_values,
+    equal = equal, binding = TRUE, stringsAsFactors = FALSE
+  )
+  malformed <- anyNA(expected_values) || anyNA(observed_values)
+  mismatch <- any(!equal)
+  list(
+    status = if (malformed || mismatch) "INVALID_PROVENANCE" else "MATCH",
+    terminal = malformed || mismatch,
+    reason = if (malformed) "malformed_or_incomplete_execution_context" else if (mismatch) {
+      "execution_context_mismatch"
+    } else "exact_execution_context_match",
+    fields = table
+  )
+}

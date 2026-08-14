@@ -58,6 +58,20 @@ test_that("G3P rejects non-MD5 receipt values", {
   expect_identical(g3p_compare_identity(expected, observed)$status, "INVALID_PROVENANCE")
 })
 
+test_that("G3P binds the preflight execution context before a smoke", {
+  expected <- list(
+    schema = "G3P_P2_SMOKE_V2_PREFLIGHT_V1", source_gate = "G3P_P2_SMOKE_V2",
+    root_id = "G3P_P2_S6_C360_R3_V2", attempt_id = "paper2-g3-smoke-v2-86302"
+  )
+  observed <- expected
+  observed$source_gate <- "G3P_P2_OTHER_V2"
+  out <- g3p_compare_execution_context(expected, observed)
+  expect_identical(out$status, "INVALID_PROVENANCE")
+  expect_identical(out$reason, "execution_context_mismatch")
+  expect_true(out$terminal)
+  expect_identical(nrow(out$fields), 4L)
+})
+
 test_that("G3P runner applies the receipt contract before optimizer entry", {
   path <- testthat::test_path("..", "..", "dev", "isdm-package-recovery", "run-g3-paper2-smoke.R")
   text <- paste(readLines(path, warn = FALSE), collapse = "\n")
@@ -72,7 +86,10 @@ test_that("G3P runner requires explicit packet and source-gate binding for V2", 
   expect_match(text, 'packet_arg <- value\\("packet"\\)')
   expect_match(text, 'source_gate <- value\\("source-gate"')
   expect_match(text, 'root_id <- value\\("root-id"')
+  expect_match(text, 'attempt_id <- value\\("attempt-id"')
+  expect_match(text, 'time_estimate <- value\\("time-estimate"')
   expect_match(text, 'schema = paste0\\(source_gate')
   expect_match(text, 'source_gate = source_gate')
-  expect_match(text, "A non-V1 source gate requires explicit --packet and --root-id")
+  expect_match(text, "g3p_compare_execution_context\\(receipt, observed_context\\)")
+  expect_match(text, "A non-V1 source gate requires explicit packet, root, attempt, and time values")
 })

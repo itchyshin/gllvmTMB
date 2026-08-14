@@ -15,6 +15,8 @@ packet_arg <- value("packet")
 source_gate <- value("source-gate", "G3_P2_S6_C360_R3_V1")
 attempt_id <- value("attempt-id", "paper2-g3-smoke-86302")
 root_id <- value("root-id", "G3_P2_S6_C360_R3_V1")
+time_estimate <- value("time-estimate", "15-25 minutes")
+time_limit_s <- value("time-limit-s", "1500")
 if (!mode %in% c("validate", "preflight", "smoke") || is.null(root_arg)) {
   stop("require --mode=validate|preflight|smoke and --output=PATH", call. = FALSE)
 }
@@ -33,11 +35,18 @@ packet_file <- normalizePath(
 if (!identical(source_gate, "G3_P2_S6_C360_R3_V1") &&
     (is.null(packet_arg) ||
       identical(basename(packet_file), basename(packet_default)) ||
-      identical(root_id, "G3_P2_S6_C360_R3_V1"))) {
+      identical(root_id, "G3_P2_S6_C360_R3_V1") ||
+      identical(attempt_id, "paper2-g3-smoke-86302") ||
+      identical(time_estimate, "15-25 minutes") ||
+      identical(time_limit_s, "1500"))) {
   stop(
-    "A non-V1 source gate requires explicit --packet and --root-id values distinct from V1.",
+    "A non-V1 source gate requires explicit packet, root, attempt, and time values distinct from V1.",
     call. = FALSE
   )
+}
+time_limit_s <- suppressWarnings(as.numeric(time_limit_s))
+if (length(time_limit_s) != 1L || !is.finite(time_limit_s) || time_limit_s <= 0 || !nzchar(time_estimate)) {
+  stop("--time-estimate must be non-empty and --time-limit-s must be a positive number.", call. = FALSE)
 }
 provenance_contract <- file.path(base, "g3p-provenance-contract.R")
 source(fixture_file, local = TRUE)
@@ -119,6 +128,7 @@ if (identical(mode, "preflight")) {
   z <- make()
   receipt <- list(
     schema = paste0(source_gate, "_PREFLIGHT_V1"), packet = basename(packet_file), commit = commit(),
+    source_gate = source_gate, root_id = root_id, attempt_id = attempt_id,
     seed = 86302L, dimensions = c(S = 6L, C = 360L, r = 3L, b = 1L, d = 1L),
     runner_md5 = hash_file(script), fixture_md5 = hash_file(fixture_file), packet_md5 = hash_file(packet_file),
     source_md5 = c(fit_multi = hash_file(file.path(pkg, "R", "fit-multi.R")),
@@ -132,7 +142,11 @@ if (identical(mode, "preflight")) {
   saveRDS(receipt, file.path(root, "root-receipt.rds"))
   saveRDS(z$fixture, file.path(root, "fixture.rds"))
   saveRDS(sessionInfo(), file.path(root, "session-info.rds"))
-  writeLines(c("# G3_P2 time estimate", "Expected wall clock: 15–25 minutes.", "Hard elapsed-time limit: 1500 seconds."), file.path(root, "time-estimate.md"))
+  writeLines(c(
+    paste0("# ", source_gate, " time estimate"),
+    paste0("Expected wall clock: ", time_estimate, "."),
+    paste0("Hard elapsed-time limit: ", time_limit_s, " seconds.")
+  ), file.path(root, "time-estimate.md"))
   manifest(root)
   cat("G3_P2_PREFLIGHT_PASS (no fit)\n")
   quit(save = "no")
@@ -166,7 +180,7 @@ main <- function() {
     manifest(root)
   }
   on.exit(finalise(), add = TRUE)
-  setTimeLimit(elapsed = 1500, transient = TRUE)
+  setTimeLimit(elapsed = time_limit_s, transient = TRUE)
   on.exit(setTimeLimit(elapsed = Inf, transient = FALSE), add = TRUE)
   tryCatch({
     if (length(system2("git", c("-C", pkg, "status", "--porcelain", "--untracked-files=no"), stdout = TRUE))) {
@@ -177,6 +191,18 @@ main <- function() {
     }
     receipt <- readRDS(file.path(root, "root-receipt.rds"))
     ledger$receipt <- receipt
+    observed_context <- list(
+      schema = paste0(source_gate, "_PREFLIGHT_V1"), source_gate = source_gate,
+      root_id = root_id, attempt_id = attempt_id
+    )
+    execution_context <- g3p_compare_execution_context(receipt, observed_context)
+    ledger$execution_context <- execution_context
+    if (isTRUE(execution_context$terminal)) {
+      ledger$status <- "INVALID_PROVENANCE"
+      ledger$error <- execution_context$reason
+      ledger$terminal <- TRUE
+      return(invisible(NULL))
+    }
     z <- make()
     current_source_md5 <- c(
       fit_multi = hash_file(file.path(pkg, "R", "fit-multi.R")),

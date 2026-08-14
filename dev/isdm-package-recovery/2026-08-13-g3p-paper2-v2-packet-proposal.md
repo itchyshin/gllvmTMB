@@ -9,9 +9,11 @@ runner mode.
 - fresh root: `dev/isdm-package-recovery/results/G3P_P2_S6_C360_R3_V2/`;
 - committed generic runner: `run-g3-paper2-smoke.R` with explicit `--packet`,
   `--source-gate`, and `--root-id` values;
-- source baseline: the exact post-parameterisation commit, recorded below.
+- source baseline: `495d53ed` (to be replaced only by a later independently
+  reviewed runner commit, which the eventual V2 packet must name exactly).
 
-The V2 invocation must bind its own packet path/MD5, source-gate label,
+The V2 invocation must bind its own packet MD5 (the supplied packet path is
+diagnostic), source-gate label,
 all-attempt schema, `--root-id G3P_P2_S6_C360_R3_V2`, root name, and time
 estimate. It must not accept V1's packet or root. The runner implementation and focused no-fit tests are built
 and independently reviewed before a V2 packet binds their exact commit SHA.

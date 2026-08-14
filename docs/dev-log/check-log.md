@@ -1,5 +1,37 @@
 # Check log
 
+## 2026-08-13 — Paper 2 G3 smoke: terminal invalid provenance
+
+Worktree `/private/tmp/gllvmtmb-two-paper-global-analysis`, branch
+`codex/two-paper-global-analysis`, commits `494749aa` and `a2accfaf`.
+
+```sh
+Rscript --vanilla -e 'devtools::test(filter = "g3-(paper2-smoke-runner|full-vector-polish-contract|smallest-smoke-packets)", reporter = "summary")'
+# PASS: focused private runner and G3 no-fit contracts.
+
+Rscript --vanilla dev/isdm-package-recovery/run-g3-paper2-smoke.R --mode=validate ...
+# PASS: G3_P2_SMOKE_RUNNER_VALIDATION_PASS (no fit).
+
+Rscript --vanilla dev/isdm-package-recovery/run-g3-paper2-smoke.R --mode=preflight ...
+# PASS: G3_P2_PREFLIGHT_PASS (no fit).
+
+Rscript --vanilla dev/isdm-package-recovery/run-g3-paper2-smoke.R --mode=smoke ...
+# TERMINAL: INVALID_PROVENANCE before optimizer entry; no fit artifact.
+
+Rscript --vanilla -e 'x <- readRDS("dev/isdm-package-recovery/results/G3_P2_S6_C360_R3_V1/all-attempt-ledger.rds"); stopifnot(identical(x$status,"INVALID_PROVENANCE"), isTRUE(x$terminal), is.na(x$timing$fit_elapsed_s), is.null(x$raw), is.null(x$g3), !file.exists("dev/isdm-package-recovery/results/G3_P2_S6_C360_R3_V1/fit.rds")); cat("P2_INVALID_PROVENANCE_RECEIPT_VALID\\n")'
+# PASS: valid terminal root with no numerical result.
+
+rg -n 'PAPER2_PRIVATE_STOP_HOLD|G2N_LOCAL_PRERUN_HOLD|G2K_CALIBRATION_HOLD|G2C_SMOKE_ADMISSION_HOLD' docs/dev-log dev/isdm-package-recovery
+# PASS: historical holds remain explicit and unchanged.
+```
+
+The source and DLL MD5s matched the preflight receipt. The only mismatch was
+the transient `devtools::load_all()` DLL path, which the sealed runner compared
+and therefore recorded as `INVALID_PROVENANCE`. This is not a failed fit,
+admission failure, recovery result, or basis for a new attempt. No profile,
+retry, recovery metric, simulation, Totoro/DRAC work, public rendering, or
+public/package claim occurred.
+
 ## 2026-08-13 — private G3 Gate-B implementation and no-run smoke packets
 
 Worktree `/private/tmp/gllvmtmb-two-paper-global-analysis`, branch

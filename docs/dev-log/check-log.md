@@ -50091,6 +50091,23 @@ Rscript --vanilla -e 'testthat::test_file("tests/testthat/test-g3p-provenance-co
 No runner mode, preflight, smoke, fit, profile, simulation, remote compute,
 model/DGP/map/threshold change, or public/article change occurred.
 
+## 2026-08-13 — G3P Gate B materialised (no runner)
+
+With explicit maintainer approval, the V2 packet
+`G3P_P2_SMOKE_V2` and its empty ignored root
+`results/G3P_P2_S6_C360_R3_V2/` were created. The root is covered by the
+repository ignore rule and contains no files. The packet fixes V2 gate/root
+identity, packet-MD5 receipt binding, a V2 attempt ID, and the explicitly
+supplied 15–25 minute / 1,500-second time budget.
+
+```sh
+Rscript --vanilla -e 'testthat::test_file("tests/testthat/test-g3p-provenance-contract.R", reporter = "summary"); testthat::test_file("tests/testthat/test-g3p-paper2-smoke-packet.R", reporter = "summary"); invisible(parse("dev/isdm-package-recovery/g3p-provenance-contract.R")); invisible(parse("dev/isdm-package-recovery/run-g3-paper2-smoke.R"))'
+# PASS: 35 provenance-contract and 9 packet expectations; both files parse.
+```
+
+No runner mode, preflight, smoke, fit, profile, simulation, remote compute,
+model/DGP/map/threshold change, or public/article change occurred.
+
 ## 2026-08-13 — G3P V2 binding review complete (Gate-B request ready)
 
 Independent Gauss/Noether, Fisher, and Rose re-reviews passed on the pinned

@@ -49105,3 +49105,72 @@ passing the workflow's GitHub-Actions compute-boundary guard:
 This is platform evidence for the current 0.6 hardening source only. It did
 not merge PR #951, deploy pkgdown, change the package version, publish a
 release, run a scientific simulation campaign, or authorize CRAN submission.
+
+## 2026-08-12 — post-deployment exact 0.6 artifact
+
+At merged `origin/main` commit `cb3126893883ff9fb0c6114129c158fe0e649be8`,
+the normal-vignette source artifact `gllvmTMB_0.6.0.tar.gz` had SHA-256
+`9706809b9e2f52b130c21843a0396cafcfea602db74bb676eaa232f667f2e05a`.
+`R CMD check --as-cran --run-donttest --no-manual` passed installed docs,
+vignettes, examples, and the full installed-package suite (`[244s/275s]`).
+Its only result was the expected CRAN `New submission` NOTE. The deployed
+Current limitations page returned HTTP 200, so the earlier undeployed URL NOTE
+did not recur. See
+`docs/dev-log/release/2026-08-12-0.6-post-deployment-artifact-receipt.md` for
+the exact command, artifact, byte-identity comparison, and exclusions.
+
+## 2026-08-12 — 0.7 integration intake decision packet
+
+On `codex/mainline-06-issue-closeout` at `148623f4`, the intake branch was
+verified documentation-only relative to `origin/main` `cb312689` across
+`DESCRIPTION`, `NAMESPACE`, `R`, `src`, `inst`, `man`, `vignettes`, `tests`,
+and `.Rbuildignore`. The resulting matrix is
+`docs/dev-log/release/2026-08-12-0.7-integration-intake.md`; its companion
+plan-versus-actual and after-task records are under `docs/dev-log/plan-actual/`
+and `docs/dev-log/after-task/` with the same date.
+
+The packet keeps the ordinary-Laplace route as the only eligible 0.7 intake,
+retains existing fences, and classifies LA-MSPL/separation, integrated-SDM, and
+estimator research as experimental-only. It makes no package, public-claim,
+release, CI, artifact, tag, or compute change. The first `gh` query hit a
+transport error, then Shannon's independent live review verified #956 as this
+clean documentation-only intake, #955 as a clean cross-repo note, #952 as an
+unchecked dirty old-base experimental PR, and #953 as an open planning issue.
+The historical 49-issue count is not represented as current external state.
+Any future installed-package diff from `cb312689` invalidates the exact
+artifact/platform receipt and needs a new ladder.
+
+---
+
+## 2026-08-13 — refreshed 0.7 integration intake (Codex)
+
+The original #956 intake was rebased from its historical `cb312689` base onto
+live `origin/main` `2942b6547ecdda7b6993cdcc49a35d6a4db27db2`.  Direct
+installed-path comparison showed that the exact 0.6 artifact receipt does not
+apply to this source: current main differs in `DESCRIPTION`, `R`, `src`,
+`inst`, `man`, `tests`, `vignettes`, and `.Rbuildignore`, including the
+installed LA-MSPL integration commit `14650312`.
+
+The refreshed decision packet therefore records **HOLD — no current 0.7 source
+candidate is eligible**.  It retains ordinary native-Laplace Gaussian
+`indep()`/`dep()` point estimation as the covered scientific core, keeps AA-03,
+#872, #855, #897, #946, #945, #941/#943, VA, AGHQ, EVA, structured tiers, and
+intervals fenced at their earned scope, and requests a maintainer decision to
+prepare an ordinary native-Laplace-only source line that quarantines LA-MSPL.
+No package code, public prose, release identity, artifact, CI, issue state, or
+compute changed.
+
+Commands/evidence included `git fetch origin --prune`, `git rebase origin/main`,
+live `gh issue view 345`, open-PR inspection (#955--#960),
+`git diff --name-only cb312689..origin/main -- DESCRIPTION NAMESPACE R src inst man vignettes tests .Rbuildignore`,
+and reads of the 0.6 receipt, release ledger, validation register, and #872
+after-task receipt.  No package tests were run because no package-bearing path
+changed; `git diff --check` is required before commit.
+
+Rose's independent boundary review passed the HOLD and established that a
+hypothetical LA-MSPL quarantine would need a pre-LA-MSPL source or removal of
+its installed runtime/compiled contract; default-off would not suffice.  The
+maintainer selected the alternative: retain LA-MSPL as a strategically important
+opt-in, separately adjudicated lane.  The packet now keeps the fixed-design
+separation screen as its own bounded diagnostic and separates both routes from
+the ordinary native-Laplace release claim.

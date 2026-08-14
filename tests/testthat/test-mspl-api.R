@@ -431,6 +431,66 @@ test_that("MSPL sandwich feasibility records the active-score blocker", {
   }
 })
 
+test_that("MSPL delete-one-site jackknife stays on the active objective", {
+  fit <- .mspl_fit("logit", q = 1L)
+  result <- .gllvmTMB_mspl_jackknife_feasibility(fit)
+  expect_identical(result$status, "admitted")
+  expect_identical(result$objective_source,
+                   "fit$tmb_obj (penalised LA-MSPL)")
+  expect_identical(result$target_names, fit$X_fix_names)
+  expect_equal(length(result$deletions), nlevels(fit$data$site))
+  expect_true(all(vapply(result$deletions, `[[`, character(1L), "status") == "ok"))
+  expect_true(all(vapply(result$deletions, `[[`, integer(1L), "estimator_id") == 1L))
+  expect_true(all(vapply(result$deletions, function(x) {
+    identical(x$N_eff, x$X_mspl_rows)
+  }, logical(1L))))
+  expect_equal(result$covariance, t(result$covariance), tolerance = 1e-12)
+  expect_true(all(is.finite(result$se)))
+})
+
+test_that("MSPL jackknife rejects dropped responses and fixed coefficients", {
+  missing_dat <- .mspl_fixture("logit", 1L)
+  missing_dat$y[1L] <- NA_integer_
+  missing_fit <- gllvmTMB(
+    y ~ 0 + trait + latent(0 + trait | site, d = 1, unique = FALSE),
+    data = missing_dat,
+    family = binomial(link = "logit"),
+    estimator = "mspl",
+    control = gllvmTMBcontrol(
+      n_init = 1L, init_jitter = 0, se = FALSE, warn_runaway = FALSE
+    )
+  )
+  expect_error(
+    .gllvmTMB_mspl_jackknife_feasibility(missing_fit),
+    class = "gllvmTMB_mspl_jackknife_unsupported"
+  )
+
+  fixed_fit <- .mspl_fit(
+    "logit", q = 1L, Xcoef_fixed = c("traitt1" = 0)
+  )
+  expect_true(isTRUE(fixed_fit$Xcoef_fixed$has_fixed))
+  expect_error(
+    .gllvmTMB_mspl_jackknife_feasibility(fixed_fit),
+    class = "gllvmTMB_mspl_jackknife_unsupported"
+  )
+})
+
+test_that("MSPL jackknife covariance uses the delete-one normalization", {
+  beta_delete <- rbind(c(1, 2), c(3, 4), c(5, 6))
+  expected <- (2 / 3) * crossprod(sweep(
+    beta_delete, 2L, colMeans(beta_delete), FUN = "-"
+  ))
+  expect_equal(
+    .gllvmTMB_mspl_jackknife_covariance(beta_delete),
+    expected,
+    tolerance = 1e-14
+  )
+  expect_error(
+    .gllvmTMB_mspl_jackknife_covariance(beta_delete[1L, , drop = FALSE]),
+    class = "gllvmTMB_mspl_jackknife_covariance_input"
+  )
+})
+
 test_that("internal MSPL profile feasibility traces the penalised objective only", {
   fit <- .mspl_fit("logit", q = 1L)
   checkpoint <- gllvmTMB:::.gllvmTMB_profile_tmb_checkpoint(fit$tmb_obj)

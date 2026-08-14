@@ -49561,3 +49561,21 @@ Totoro or DRAC compute, q = 2, spatial/structured or missing-data fixtures,
 bootstrap, package-wide tests, R CMD check, pkgdown, or public API work. A
 delete-one-site refit would be a separately designed jackknife candidate, not
 a Godambe score decomposition.
+
+---
+
+## 2026-08-14 — private LA-MSPL delete-one-site jackknife feasibility
+
+The active MSPL lane added an unexported ordinary complete, unfixed Bernoulli
+q = 1 delete-one-site refit instrument. It rebuilds every subset through
+`gllvmTMB(..., estimator = "mspl")`, uses the active penalised objective as
+the covariance target (while each refit also builds a penalty-off provenance
+tape), refuses dropped-response and fixed-coefficient fits before refitting,
+and forms the private covariance only when all deletions preserve named
+`X_fix_names` targets and the rebuilt `N_eff`/`X_mspl` contract. The focused command
+`devtools::test(filter = "mspl-api", stop_on_failure = TRUE)` completed without
+failure after a mechanical `vapply()` assertion repair; a loaded-package
+stop-on-failure run confirmed it. No public inference, validation-register,
+NEWS, or release claim changed. This record exercises one deterministic logit
+fixture only. Repeated-sampling calibration remains unapproved and must return
+with a measured smoke/estimate before any Totoro run.

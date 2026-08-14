@@ -49156,6 +49156,46 @@ promotion. See
 
 ---
 
+## 2026-08-13 — Lane B LA-MSPL q = 1 regime feasibility matrix (Codex)
+
+Extended the private ordinary complete-Bernoulli q = 1 feasibility harness by
+varying only fixed-effect prevalence (`beta`) or latent signal (`Lambda`) across
+four deterministic regimes. The 36 fixed-grid profiles cover baseline,
+low-prevalence, high-prevalence, and strong-signal fixtures; each has logit,
+probit, and standard cloglog fits and three resolved `b_fix` targets. Every
+trace uses the active penalised `fit$tmb_obj` with nuisance reoptimisation,
+`step = 0.5`, `max_steps = 12L`, `level = 0.95`, and `100/100` optimiser
+controls.
+
+The retained map has 32 finite-stable `matched/crossed/crossed` cells. Four
+cloglog lower walks terminate `optimizer_failed` despite finite traces:
+baseline `b_fix[2]`; low-prevalence `b_fix[1]` and `b_fix[3]`; strong-signal
+`b_fix[2]`. They are explicit finite-grid feasibility blockers, not confidence
+intervals and not authority to widen the grid, use Wald uncertainty, or change
+the public MSPL inference fence.
+
+Checks:
+
+```sh
+Rscript --vanilla -e 'devtools::test(filter = "mspl-api", stop_on_failure = TRUE)'
+# PASS: 617 expectations, 0 failures, 0 warnings, 0 skips (161.6 seconds).
+
+git diff --check
+# PASS
+
+rg -n 'unpenalized_tmb_obj|estimator_id|mspl_profile_feasibility|confint\\(|profile_targets\\(|tmbprofile_wrapper\\(|vcov\\(' \
+  R/mspl.R R/profile-ci.R R/profile-targets.R R/z-confint-gllvmTMB.R \
+  R/vcov-coef.R tests/testthat/test-mspl-api.R
+# PASS: test-only regime addition, private penalised helper, and public MSPL
+# inference rejections remain present.
+```
+
+Deliberately not run: package-wide tests, `R CMD check`, pkgdown, simulation or
+coverage calibration, bootstrap, remote compute, CI, or public API/docs work.
+See `docs/dev-log/after-task/2026-08-13-lane-b-mspl-interval-feasibility-regimes.md`.
+
+---
+
 ## 2026-08-09 — integrated 0.6 normal-vignette source artifact
 
 On `cursor/cran-0.7-20260807` at `ae340bdd50c5eee5cbe0b093b5ebf14930bf855f`,

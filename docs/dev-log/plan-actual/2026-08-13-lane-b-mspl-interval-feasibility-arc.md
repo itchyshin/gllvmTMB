@@ -89,3 +89,30 @@ the unexported helper, and all public MSPL refusals were unchanged.
 ## Handoff condition
 
 This is a multi-file, TMB-adjacent, inference-boundary task with a consequential approval gate. It requires an Ultra Plan before implementation. The plan must preserve the fail-closed public interface unless a later, separately evidenced promotion decision is made.
+
+## Regime-matrix continuation actuals
+
+**Recommended / actual:** 5.5--6 hours / approximately 3 hours of local
+implementation, profile execution, and review receipt collection. **Mode:**
+size. **Metric movement:** one selected 12-cell q = 1 link matrix -> one
+predeclared 36-cell q = 1 regime map.
+
+The continuation held the complete-Bernoulli, ordinary `latent(..., d = 1,
+unique = FALSE)` fixture class fixed. It varied one DGP feature at a time:
+baseline; all three fixed-effect intercepts shifted by -1.5 or +1.5; or the
+q = 1 loading vector multiplied by 1.75. Each regime used logit, probit, and
+standard cloglog generation/fitting and all three resolved `b_fix` coordinates.
+Every profile used the active penalised `fit$tmb_obj`, `step = 0.5`,
+`max_steps = 12L`, `level = 0.95`, and the fixed `100/100` optimisation budget.
+
+**Result:** 32 of 36 cells are `matched/crossed/crossed` with finite traces and
+zero convergence codes. Four standard-cloglog cells retain finite traces and a
+matched centre but terminate at a lower-side `optimizer_failed` status:
+baseline `b_fix[2]`; low-prevalence `b_fix[1]` and `b_fix[3]`; and strong-signal
+`b_fix[2]`. These are typed finite-grid blockers, not a reason to widen a grid,
+substitute a Wald interval, or claim calibrated uncertainty.
+
+**Verification:** the focused `mspl-api` suite passed 617 expectations with no
+failures, warnings, or skips in 161.6 seconds. Public MSPL inference remained
+fail-closed; no export, profile/confint/vcov dispatch, user documentation, or
+remote-compute surface changed.

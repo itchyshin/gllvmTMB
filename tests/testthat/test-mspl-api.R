@@ -2,7 +2,9 @@
   link = "logit",
   q = 1L,
   n_site = 24L,
-  direction = c("base", "reflected")
+  direction = c("base", "reflected"),
+  beta = c(-0.5, 0.1, 0.55),
+  Lambda = NULL
 ) {
   direction <- match.arg(direction)
   set.seed(
@@ -18,12 +20,22 @@
     levels = sprintf("t%d", seq_len(n_trait))
   )
   z <- matrix(stats::rnorm(n_site * q), n_site, q)
-  Lambda <- if (q == 1L) {
+  default_Lambda <- if (q == 1L) {
     matrix(c(0.8, -0.55, 0.35), n_trait, 1L)
   } else {
     matrix(c(0.8, -0.55, 0.35, 0, 0.45, -0.3), n_trait, 2L)
   }
-  beta <- c(-0.5, 0.1, 0.55)
+  Lambda <- Lambda %||% default_Lambda
+  if (!is.numeric(beta) || length(beta) != n_trait || any(!is.finite(beta))) {
+    stop("`beta` must be a finite vector with one value per trait.", call. = FALSE)
+  }
+  if (
+    !is.matrix(Lambda) ||
+      !identical(dim(Lambda), c(n_trait, q)) ||
+      any(!is.finite(Lambda))
+  ) {
+    stop("`Lambda` must be a finite n_trait by q matrix.", call. = FALSE)
+  }
   eta <- beta[as.integer(trait)] + rowSums(
     z[as.integer(site), , drop = FALSE] * Lambda[as.integer(trait), , drop = FALSE]
   )
@@ -42,10 +54,14 @@
   q = 1L,
   unique = FALSE,
   direction = c("base", "reflected"),
+  beta = c(-0.5, 0.1, 0.55),
+  Lambda = NULL,
   ...
 ) {
   direction <- match.arg(direction)
-  dat <- .mspl_fixture(link, q, direction = direction)
+  dat <- .mspl_fixture(
+    link, q, direction = direction, beta = beta, Lambda = Lambda
+  )
   form <- stats::as.formula(sprintf(
     "y ~ 0 + trait + latent(0 + trait | site, d = %d, unique = %s)",
     q, if (unique) "TRUE" else "FALSE"
@@ -508,6 +524,95 @@ test_that("internal MSPL profile feasibility records the q=1 link matrix", {
       )
     })
   )
+
+  expect_identical(observed, expected)
+})
+
+test_that("internal MSPL profile feasibility records the q=1 regime matrix", {
+  beta_base <- c(-0.5, 0.1, 0.55)
+  Lambda_base <- matrix(c(0.8, -0.55, 0.35), 3L, 1L)
+  regimes <- list(
+    baseline = list(beta = beta_base, Lambda = Lambda_base),
+    low_prevalence = list(beta = beta_base - 1.5, Lambda = Lambda_base),
+    high_prevalence = list(beta = beta_base + 1.5, Lambda = Lambda_base),
+    strong_signal = list(beta = beta_base, Lambda = 1.75 * Lambda_base)
+  )
+  cases <- expand.grid(
+    regime = names(regimes),
+    link = c("logit", "probit", "cloglog"),
+    stringsAsFactors = FALSE
+  )
+  cases$regime <- as.character(cases$regime)
+  cases$link <- as.character(cases$link)
+  expected <- data.frame(
+    regime = cases$regime[rep(seq_len(nrow(cases)), each = 3L)],
+    link = cases$link[rep(seq_len(nrow(cases)), each = 3L)],
+    target = rep(sprintf("b_fix[%d]", 1:3), nrow(cases)),
+    centre_status = "matched",
+    lower_status = "crossed",
+    upper_status = "crossed",
+    finite_stable = TRUE,
+    stringsAsFactors = FALSE
+  )
+  blockers <- data.frame(
+    regime = c(
+      "baseline", "low_prevalence", "low_prevalence", "strong_signal"
+    ),
+    link = "cloglog",
+    target = c("b_fix[2]", "b_fix[1]", "b_fix[3]", "b_fix[2]"),
+    lower_status = "optimizer_failed",
+    stringsAsFactors = FALSE
+  )
+  blocker_rows <- match(
+    do.call(paste, c(blockers[c("regime", "link", "target")], sep = "\r")),
+    do.call(paste, c(expected[c("regime", "link", "target")], sep = "\r"))
+  )
+  expect_false(anyNA(blocker_rows))
+  expected$lower_status[blocker_rows] <- blockers$lower_status
+  expected$finite_stable <-
+    expected$centre_status == "matched" &
+    expected$lower_status == "crossed" &
+    expected$upper_status == "crossed"
+
+  observed <- do.call(rbind, lapply(seq_len(nrow(cases)), function(case) {
+    regime <- regimes[[cases$regime[[case]]]]
+    fit <- .mspl_fit(
+      link = cases$link[[case]], q = 1L,
+      beta = regime$beta, Lambda = regime$Lambda
+    )
+    target_index <- which(names(fit$opt$par) == "b_fix")
+    expect_identical(target_index, seq_len(3L))
+    expect_identical(as.integer(fit$tmb_data$estimator_id), 1L)
+    do.call(rbind, lapply(target_index, function(which) {
+      probe <- gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
+        fit, which = which, step = 0.5, max_steps = 12L,
+        level = 0.95, control = list(eval.max = 100L, iter.max = 100L)
+      )
+      expect_identical(probe$objective_source, "fit$tmb_obj (penalised LA-MSPL)")
+      expect_true(all(probe$trace$finite))
+      expect_true(all(is.finite(probe$trace$objective_delta)))
+      expect_equal(nrow(probe$trace), 25L)
+      centre <- probe$trace[probe$trace$target == fit$opt$par[[which]], ]
+      expect_equal(nrow(centre), 1L)
+      expect_identical(centre$convergence, 0L)
+      expect_true(all(c(
+        probe$centre_status, probe$lower_status, probe$upper_status
+      ) %in% c("matched", "crossed", "truncated", "nonfinite", "optimizer_failed")))
+      if (isTRUE(probe$finite_stable)) {
+        expect_true(all(probe$trace$convergence == 0L))
+      }
+      data.frame(
+        regime = cases$regime[[case]],
+        link = cases$link[[case]],
+        target = sprintf("b_fix[%d]", match(which, target_index)),
+        centre_status = probe$centre_status,
+        lower_status = probe$lower_status,
+        upper_status = probe$upper_status,
+        finite_stable = probe$finite_stable,
+        stringsAsFactors = FALSE
+      )
+    }))
+  }))
 
   expect_identical(observed, expected)
 })

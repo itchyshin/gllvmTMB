@@ -1,5 +1,30 @@
 # Check log
 
+## 2026-08-13 — private G3 Gate-B implementation and no-run smoke packets
+
+Worktree `/private/tmp/gllvmtmb-two-paper-global-analysis`, branch
+`codex/two-paper-global-analysis`.
+
+```sh
+Rscript --vanilla -e 'devtools::test(filter = "g3-(full-vector-polish-contract|compiled-cloglog-unit|smallest-smoke-packets)", reporter = "summary")'
+# PASS: pure G3 receipt contract, immutable no-run packets, and a temporary
+# compiled three-coordinate cloglog unit; no iSDM fit or simulation.
+
+Rscript --vanilla dev/isdm-package-recovery/run-g3-full-vector-no-fit-validation.R
+# PASS: G3_FULL_VECTOR_NO_FIT_CONTRACT_PASS.
+
+git diff --check
+# PASS.
+
+rg -n 'g3|G3|full-vector|MakeADFun\(|\.gll_isdm_fit\(|nlminb\(|optim\(|profile\(|download\s*\(' R/fit-multi.R dev/isdm-package-recovery/g3-full-vector-polish-contract.R dev/isdm-package-recovery/run-g3-full-vector-no-fit-validation.R tests/testthat/test-g3-compiled-cloglog-unit.R tests/testthat/test-g3-smallest-smoke-packets.R
+# PASS: only the explicit temporary compiled-unit fixture constructs an object;
+# no G3 execution path fits, profiles, optimises, or downloads.
+```
+
+**Deliberately not run:** Paper 1 or Paper 2 smoke, fit, profile, simulator,
+campaign, Totoro/DRAC work, empirical data, public rendering, `R CMD check`,
+pkgdown, or CI. Gate B permits only a later explicit request to run a packet.
+
 ## 2026-08-13 — G3 full-vector numerical-admission design (no fit)
 
 ```sh

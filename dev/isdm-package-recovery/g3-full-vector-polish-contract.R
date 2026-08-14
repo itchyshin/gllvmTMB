@@ -107,7 +107,8 @@ g3_accept <- function(raw, candidate, raw_signature, candidate_signature,
     identical(names(x$parameter_vector), x$parameter_names) &&
     identical(names(x$gradient), x$parameter_names) &&
     is.numeric(x$lower) && is.numeric(x$upper) && length(x$lower) == length(x$gradient) &&
-    length(x$upper) == length(x$gradient) && all(is.finite(x$lower)) && all(is.finite(x$upper)) &&
+    length(x$upper) == length(x$gradient) && !anyNA(x$lower) && !anyNA(x$upper) &&
+    !any(is.nan(x$lower)) && !any(is.nan(x$upper)) &&
     all(x$lower <= x$upper) && all(x$parameter_vector >= x$lower) && all(x$parameter_vector <= x$upper) &&
     identical(x$pd_hessian, TRUE) && identical(x$feasible, TRUE)
   if (!valid(raw) || !valid(candidate) || !is.numeric(candidate$alpha) ||
@@ -145,17 +146,60 @@ g3_attempt_record <- function(attempt_id, family, raw, eligibility, candidate = 
       !nzchar(candidate$rejection_reason) || !is.list(candidate$trials)) {
     stop("invalid G3 candidate provenance", call. = FALSE)
   }
-  trial_valid <- function(x) is.list(x) && identical(names(x), c("alpha", "status", "reason")) &&
-    is.numeric(x$alpha) && length(x$alpha) == 1L && x$alpha %in% g3_trial_alphas &&
-    x$status %in% c("INFEASIBLE", "REJECTED", "ACCEPTED", "ERROR") &&
-    is.character(x$reason) && length(x$reason) == 1L && nzchar(x$reason)
+  trial_valid <- function(x) {
+    required <- c("alpha", "status", "reason", "parameter_vector", "objective",
+      "gradient", "hessian", "condition", "signature")
+    common <- is.list(x) && identical(names(x), required) &&
+      is.numeric(x$alpha) && length(x$alpha) == 1L && x$alpha %in% g3_trial_alphas &&
+      x$status %in% c("INFEASIBLE", "REJECTED", "ACCEPTED", "ERROR") &&
+      is.character(x$reason) && length(x$reason) == 1L && nzchar(x$reason) &&
+      is.numeric(x$parameter_vector) && length(x$parameter_vector) == length(raw$gradient) &&
+      identical(names(x$parameter_vector), raw$parameter_names) &&
+      g3_validate_signature(x$signature) && identical(x$signature, raw_signature)
+    if (!common) return(FALSE)
+    if (x$status == "ACCEPTED") {
+      is.numeric(x$objective) && length(x$objective) == 1L && is.finite(x$objective) &&
+        is.numeric(x$gradient) && length(x$gradient) == length(raw$gradient) &&
+        all(is.finite(x$gradient)) && identical(names(x$gradient), raw$parameter_names) &&
+        isTRUE(g3_validate_hessian(x$hessian, raw$parameter_names)$valid) &&
+        is.numeric(x$condition) && length(x$condition) == 1L && is.finite(x$condition)
+    } else if (x$status == "REJECTED" && identical(x$reason, "candidate_hessian_not_pd_or_ill_conditioned")) {
+      is.numeric(x$objective) && length(x$objective) == 1L && is.finite(x$objective) &&
+        is.numeric(x$gradient) && length(x$gradient) == length(raw$gradient) &&
+        all(is.finite(x$gradient)) && identical(names(x$gradient), raw$parameter_names) &&
+        is.matrix(x$hessian) && identical(dim(x$hessian), c(length(raw$gradient), length(raw$gradient))) &&
+        is.numeric(x$condition) && length(x$condition) == 1L
+    } else if (x$status == "REJECTED") {
+      is.numeric(x$objective) && length(x$objective) == 1L && is.finite(x$objective) &&
+        is.numeric(x$gradient) && length(x$gradient) == length(raw$gradient) &&
+        all(is.finite(x$gradient)) && identical(names(x$gradient), raw$parameter_names) &&
+        isTRUE(g3_validate_hessian(x$hessian, raw$parameter_names)$valid) &&
+        is.numeric(x$condition) && length(x$condition) == 1L && is.finite(x$condition)
+    } else {
+      is.numeric(x$objective) && length(x$objective) == 1L &&
+        is.numeric(x$gradient) && length(x$gradient) == length(raw$gradient) &&
+        length(x$condition) == 1L && (is.null(x$hessian) || is.matrix(x$hessian))
+    }
+  }
   if (!all(vapply(candidate$trials, trial_valid, logical(1L)))) stop("invalid G3 trial receipt", call. = FALSE)
   alphas <- vapply(candidate$trials, `[[`, numeric(1L), "alpha")
-  if (length(alphas) && !identical(alphas, g3_trial_alphas[seq_along(alphas)])) {
-    stop("G3 trials must be an ordered alpha prefix", call. = FALSE)
+  if (isTRUE(eligibility$eligible) && length(alphas) != length(g3_trial_alphas)) {
+    stop("eligible G3 records must retain all nine trials", call. = FALSE)
   }
+  if (length(alphas) && !identical(alphas, g3_trial_alphas)) {
+    stop("G3 trials must retain the complete ordered alpha grid", call. = FALSE)
+  }
+  accepted_indices <- which(vapply(candidate$trials, function(x) identical(x$status, "ACCEPTED"), logical(1L)))
+  accepted_trial <- if (length(accepted_indices) == 1L) candidate$trials[[accepted_indices]] else NULL
   accepted <- identical(candidate$status, "ACCEPTED") && isTRUE(eligibility$eligible) &&
-    length(candidate$trials) > 0L && identical(tail(candidate$trials, 1L)[[1L]]$status, "ACCEPTED") &&
+    length(candidate$trials) == length(g3_trial_alphas) && length(accepted_indices) == 1L &&
+    identical(candidate$alpha, accepted_trial$alpha) &&
+    isTRUE(all.equal(candidate$parameter_vector, accepted_trial$parameter_vector, tolerance = 0)) &&
+    isTRUE(all.equal(candidate$objective, accepted_trial$objective, tolerance = 0)) &&
+    isTRUE(all.equal(candidate$gradient, accepted_trial$gradient, tolerance = 0)) &&
+    isTRUE(all.equal(candidate$hessian, accepted_trial$hessian, tolerance = 0)) &&
+    identical(candidate$condition, accepted_trial$condition) &&
+    identical(candidate_signature, accepted_trial$signature) &&
     g3_accept(raw, candidate, raw_signature, candidate_signature)
   list(schema = "G3_FULL_VECTOR_ALL_ATTEMPT_V1", attempt_id = attempt_id, family = family,
        raw = raw, eligibility = eligibility, candidate = candidate, accepted = accepted,

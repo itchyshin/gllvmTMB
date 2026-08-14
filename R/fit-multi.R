@@ -7340,6 +7340,153 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   candidate
 }
 
+## G3 is a private prospective numerical-admission candidate.  Unlike the
+## G2i boundary-only route it never calls an optimiser: it evaluates a sealed,
+## deterministic Newton trial grid against the already-constructed TMB
+## objective.  The caller owns eligibility, invariant signatures and all-attempt
+## provenance; this helper fails closed and returns every attempted alpha.
+.gllvmTMB_isdm_g3_signature_names <- c(
+  "objective", "gradient", "parameter_order", "map", "data", "random",
+  "bounds", "scale", "controls", "starts", "selection", "source_gate"
+)
+
+.gllvmTMB_isdm_g3_valid_signature <- function(signature) {
+  is.list(signature) && identical(names(signature), .gllvmTMB_isdm_g3_signature_names) &&
+    all(vapply(signature, function(x) is.character(x) && length(x) == 1L && nzchar(x), logical(1L)))
+}
+
+.gllvmTMB_isdm_g3_valid_raw_state <- function(raw_state) {
+  required <- c("optimizer", "convergence", "pd_hessian", "boundary_flags", "tie_count",
+    "is_isdm", "aghq", "ridge", "retry_enabled", "profile_enabled", "source_gate")
+  is.list(raw_state) && identical(names(raw_state), required) &&
+    identical(raw_state$optimizer, "nlminb") && identical(raw_state$convergence, 0L) &&
+    identical(raw_state$pd_hessian, TRUE) && is.character(raw_state$boundary_flags) &&
+    !length(raw_state$boundary_flags) && is.integer(raw_state$tie_count) &&
+    length(raw_state$tie_count) == 1L && raw_state$tie_count == 1L &&
+    identical(raw_state$is_isdm, TRUE) && identical(raw_state$aghq, FALSE) &&
+    identical(raw_state$ridge, FALSE) && identical(raw_state$retry_enabled, FALSE) &&
+    identical(raw_state$profile_enabled, FALSE) &&
+    is.character(raw_state$source_gate) && length(raw_state$source_gate) == 1L &&
+    nzchar(raw_state$source_gate)
+}
+
+.gllvmTMB_isdm_g3_full_vector_trials <- function(
+  obj, par, lower, upper, signature, raw_state, alpha_grid = 2^-(0:8),
+  raw_gradient_gate = 1e-3, health_gradient_gate = 1e-2,
+  condition_limit = 1e8
+) {
+  typed <- is.list(obj) && is.function(obj$fn) && is.function(obj$gr) &&
+    is.function(obj$he) && is.numeric(par) && length(par) > 0L &&
+    all(is.finite(par)) && !is.null(names(par)) && !anyDuplicated(names(par)) &&
+    is.numeric(lower) && is.numeric(upper) && length(lower) == length(par) &&
+    length(upper) == length(par) && identical(names(lower), names(par)) &&
+    identical(names(upper), names(par)) && !anyNA(lower) && !anyNA(upper) &&
+    !any(is.nan(lower)) && !any(is.nan(upper)) && all(lower <= upper) &&
+    .gllvmTMB_isdm_g3_valid_signature(signature) &&
+    .gllvmTMB_isdm_g3_valid_raw_state(raw_state) &&
+    is.numeric(alpha_grid) && length(alpha_grid) && identical(alpha_grid, 2^-(0:8)) &&
+    is.numeric(raw_gradient_gate) && length(raw_gradient_gate) == 1L &&
+    is.finite(raw_gradient_gate) && raw_gradient_gate > 0 &&
+    is.numeric(health_gradient_gate) && length(health_gradient_gate) == 1L &&
+    is.finite(health_gradient_gate) && health_gradient_gate > raw_gradient_gate &&
+    is.numeric(condition_limit) && length(condition_limit) == 1L &&
+    is.finite(condition_limit) && condition_limit > 1
+  if (!typed) return(list(status = "INVALID_INPUT", signature = signature, trials = list()))
+  raw_objective <- tryCatch(obj$fn(par), error = function(e) NA_real_)
+  raw_gradient <- tryCatch(obj$gr(par), error = function(e) numeric())
+  raw_hessian <- tryCatch(obj$he(par), error = function(e) NULL)
+  if (!is.numeric(raw_objective) || length(raw_objective) != 1L || !is.finite(raw_objective) ||
+      !is.numeric(raw_gradient) || length(raw_gradient) != length(par) || any(!is.finite(raw_gradient)) ||
+      !is.matrix(raw_hessian) || !identical(dim(raw_hessian), c(length(par), length(par)))) {
+    return(list(status = "INVALID_RAW_OBJECTIVE", signature = signature, trials = list()))
+  }
+  raw_gradient <- stats::setNames(as.numeric(raw_gradient), names(par))
+  dimnames(raw_hessian) <- list(names(par), names(par))
+  symmetric <- isTRUE(all.equal(raw_hessian, t(raw_hessian), tolerance = 1e-10))
+  chol_h <- if (symmetric) tryCatch(chol(raw_hessian), error = function(e) NULL) else NULL
+  condition <- if (!is.null(chol_h)) tryCatch(kappa(raw_hessian, exact = TRUE), error = function(e) Inf) else Inf
+  if (is.null(chol_h) || !is.finite(condition) || condition > condition_limit) {
+    return(list(status = "INVALID_RAW_HESSIAN", signature = signature, raw = list(objective = raw_objective,
+      gradient = raw_gradient, hessian = raw_hessian, condition = condition), trials = list()))
+  }
+  raw_max_gradient <- max(abs(raw_gradient))
+  if (!(raw_max_gradient > raw_gradient_gate && raw_max_gradient < health_gradient_gate)) {
+    return(list(status = "INELIGIBLE_RAW_GRADIENT", signature = signature,
+      raw = list(parameter_vector = par, objective = raw_objective, gradient = raw_gradient,
+        hessian = raw_hessian, condition = condition), trials = list()))
+  }
+  if (raw_state$tie_count != sum(abs(raw_gradient) == raw_max_gradient)) {
+    return(list(status = "INELIGIBLE_RAW_TIE", signature = signature,
+      raw = list(parameter_vector = par, objective = raw_objective, gradient = raw_gradient,
+        hessian = raw_hessian, condition = condition), trials = list()))
+  }
+  direction <- tryCatch(as.numeric(solve(raw_hessian, raw_gradient)), error = function(e) NULL)
+  if (is.null(direction) || any(!is.finite(direction))) {
+    return(list(status = "HESSIAN_SOLVE_FAILURE", signature = signature,
+      raw = list(parameter_vector = par, objective = raw_objective, gradient = raw_gradient,
+        hessian = raw_hessian, condition = condition), trials = list()))
+  }
+  names(direction) <- names(par)
+  trials <- lapply(alpha_grid, function(alpha) {
+    candidate <- par - alpha * direction
+    names(candidate) <- names(par)
+    if (any(candidate < lower) || any(candidate > upper)) {
+      return(list(alpha = alpha, status = "INFEASIBLE", reason = "candidate_outside_bounds",
+        parameter_vector = candidate, objective = NA_real_,
+        gradient = stats::setNames(rep(NA_real_, length(par)), names(par)),
+        hessian = NULL, condition = NA_real_, signature = signature))
+    }
+    objective <- tryCatch(obj$fn(candidate), error = function(e) NA_real_)
+    gradient <- tryCatch(obj$gr(candidate), error = function(e) numeric())
+    if (!is.numeric(objective) || length(objective) != 1L || !is.finite(objective) ||
+        !is.numeric(gradient) || length(gradient) != length(par) || any(!is.finite(gradient))) {
+      return(list(alpha = alpha, status = "ERROR", reason = "candidate_objective_or_gradient_failure",
+        parameter_vector = candidate, objective = objective,
+        gradient = stats::setNames(rep(NA_real_, length(par)), names(par)),
+        hessian = NULL, condition = NA_real_, signature = signature))
+    }
+    gradient <- stats::setNames(as.numeric(gradient), names(par))
+    hessian <- tryCatch(obj$he(candidate), error = function(e) NULL)
+    if (!is.matrix(hessian) || !identical(dim(hessian), c(length(par), length(par)))) {
+      return(list(alpha = alpha, status = "ERROR", reason = "candidate_hessian_failure",
+        parameter_vector = candidate, objective = objective, gradient = gradient,
+        hessian = NULL, condition = NA_real_, signature = signature))
+    }
+    dimnames(hessian) <- list(names(par), names(par))
+    candidate_symmetric <- isTRUE(all.equal(hessian, t(hessian), tolerance = 1e-10))
+    candidate_chol <- if (candidate_symmetric) tryCatch(chol(hessian), error = function(e) NULL) else NULL
+    candidate_condition <- if (!is.null(candidate_chol)) {
+      tryCatch(kappa(hessian, exact = TRUE), error = function(e) Inf)
+    } else Inf
+    if (is.null(candidate_chol) || !is.finite(candidate_condition) || candidate_condition > condition_limit) {
+      return(list(alpha = alpha, status = "REJECTED", reason = "candidate_hessian_not_pd_or_ill_conditioned",
+        parameter_vector = candidate, objective = objective, gradient = gradient,
+        hessian = hessian, condition = candidate_condition, signature = signature))
+    }
+    tolerance <- 64 * .Machine$double.eps * max(1, abs(raw_objective))
+    objective_pass <- objective <= raw_objective + tolerance
+    gradient_pass <- max(abs(gradient)) <= raw_gradient_gate
+    accepted <- objective_pass && gradient_pass
+    list(alpha = alpha, status = if (accepted) "ACCEPTED" else "REJECTED",
+         reason = if (accepted) "raw_gradient_gate" else if (!objective_pass && !gradient_pass) {
+           "objective_and_gradient_gate"
+         } else if (!objective_pass) "objective_nonincrease_gate" else "raw_gradient_gate",
+         parameter_vector = candidate, objective = objective, gradient = gradient,
+         hessian = hessian, condition = candidate_condition, signature = signature)
+  })
+  accepted <- which(vapply(trials, function(x) identical(x$status, "ACCEPTED"), logical(1L)))
+  if (length(accepted) > 1L) {
+    for (idx in accepted[-1L]) {
+      trials[[idx]]$status <- "REJECTED"
+      trials[[idx]]$reason <- "later_acceptable_trial_not_selected"
+    }
+  }
+  list(status = "TRIALS_EVALUATED", signature = signature,
+    raw_state = raw_state, raw = list(parameter_vector = par, objective = raw_objective,
+    gradient = raw_gradient, hessian = raw_hessian, condition = condition),
+    trials = trials, selected = if (length(accepted)) accepted[[1L]] else NA_integer_)
+}
+
 .gllvmTMB_isdm_polish_record <- function(
   eligible = FALSE,
   attempted = FALSE,

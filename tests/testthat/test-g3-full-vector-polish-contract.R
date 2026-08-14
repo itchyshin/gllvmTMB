@@ -81,10 +81,17 @@ test_that("G3 all-attempt records cannot accept ineligible or unordered candidat
     parameter_names = c("a", "b"), hessian = h, lower = lower, upper = upper, pd_hessian = TRUE, feasible = TRUE)
   trial <- env$g3_newton_trial(raw$parameter_vector, raw$gradient, h, 1, lower, upper)
   candidate <- c(list(status = "ACCEPTED", rejection_reason = "accepted", trials = list(list(alpha = 1, status = "ACCEPTED", reason = "raw_gate"))),
-    raw, list(parameter_vector = trial$candidate, alpha = 1))
+    raw, list(parameter_vector = trial$candidate, alpha = 1, condition = 1))
+  candidate$trials <- lapply(env$g3_trial_alphas, function(alpha) {
+    list(alpha = alpha, status = if (identical(alpha, 1)) "ACCEPTED" else "REJECTED",
+      reason = if (identical(alpha, 1)) "raw_gate" else "not_selected",
+      parameter_vector = trial$candidate, objective = 9.99,
+      gradient = c(a = 2e-4, b = 1e-4), hessian = named_diag(c(2, 2), c("a", "b")),
+      condition = 1, signature = sig)
+  })
   expect_false(env$g3_attempt_record("x", "paper1_spatial", raw, list(eligible = FALSE), candidate,
     sig, sig, env$g3_historical_comparators$paper1_spatial)$accepted)
   candidate$trials <- list(list(alpha = 0.5, status = "ACCEPTED", reason = "raw_gate"))
   expect_error(env$g3_attempt_record("x", "paper1_spatial", raw, list(eligible = TRUE), candidate,
-    sig, sig, env$g3_historical_comparators$paper1_spatial), "ordered")
+    sig, sig, env$g3_historical_comparators$paper1_spatial), "trial receipt")
 })

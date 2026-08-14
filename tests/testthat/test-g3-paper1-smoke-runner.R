@@ -5,6 +5,6 @@ test_that("Paper 1 G3 smoke runner is fresh-seed, bounded, and one-shot", {
   expect_match(text, "elapsed = 900", fixed = TRUE)
   expect_match(text, "G3_P1_S3_C360_R3_V1", fixed = TRUE)
   expect_match(text, "all-attempt-ledger.rds", fixed = TRUE)
-  expect_false(grepl("profile\\(|n_init = [2-9]|remote|Totoro|DRAC", text))
+  expect_false(grepl("profile_theta\\(|nlminb\\(|TMB::MakeADFun\\(|Totoro|DRAC", text))
   expect_true(is.expression(parse(path)))
 })

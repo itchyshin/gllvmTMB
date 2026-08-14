@@ -10,6 +10,7 @@ suppressPackageStartupMessages(library(gllvmTMB))
 args <- commandArgs(trailingOnly = TRUE)
 smoke <- "--smoke" %in% args
 failure_smoke <- "--failure-smoke" %in% args
+timing_smoke <- "--timing-smoke" %in% args
 script_arg <- grep("^--file=", commandArgs(), value = TRUE)
 script_file <- if (length(script_arg)) sub("^--file=", "", script_arg[[1L]]) else NA_character_
 out_dir <- Sys.getenv(
@@ -134,7 +135,15 @@ grid <- expand.grid(
   loading_shape = c("homogeneous", "sparse_identifiable"),
   seed = c(1L, 2L, 3L), stringsAsFactors = FALSE
 )
-if (failure_smoke) {
+if (timing_smoke) {
+  ## Seed 4 was a retained truth-labelled silent-degeneracy row in the first
+  ## bounded probe.  This one-cell mode exists solely to price the exact
+  ## pathological fit before any remote campaign is proposed.
+  grid <- data.frame(
+    n = 60L, p = 12L, q = 2L, categories = 4L, missing = 0,
+    loading_shape = "homogeneous", seed = 4L, stringsAsFactors = FALSE
+  )
+} else if (failure_smoke) {
   grid <- data.frame(
     n = 60L, p = 12L, q = 2L, categories = 4L, missing = 0,
     loading_shape = "homogeneous", seed = seq_len(12L), stringsAsFactors = FALSE
@@ -160,10 +169,17 @@ provenance <- data.frame(
   r_version = R.version.string,
   package_version = as.character(utils::packageVersion("gllvmTMB")),
   command = paste(commandArgs(), collapse = " "),
-  smoke = smoke, failure_smoke = failure_smoke, elapsed_seconds = elapsed,
+  smoke = smoke, failure_smoke = failure_smoke, timing_smoke = timing_smoke,
+  elapsed_seconds = elapsed,
   stringsAsFactors = FALSE
 )
-tag <- if (failure_smoke) "failure-smoke" else if (smoke) "smoke" else "grid"
+tag <- if (timing_smoke) "timing-smoke" else if (failure_smoke) {
+  "failure-smoke"
+} else if (smoke) {
+  "smoke"
+} else {
+  "grid"
+}
 utils::write.csv(out, file.path(out_dir, paste0(tag, "-cells.csv")), row.names = FALSE)
 utils::write.csv(provenance, file.path(out_dir, paste0(tag, "-provenance.csv")), row.names = FALSE)
 cat(sprintf("#897 %s: %d rows in %.2f s\n", tag, nrow(out), elapsed))

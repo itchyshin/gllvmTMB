@@ -23,6 +23,7 @@ test_that("Paper 1 G3 runner seals marginal-curvature provenance fail closed", {
   expect_gt(fit_start, receipt_read)
   expect_match(text, "curvature_callback", fixed = TRUE)
   expect_match(text, "sdreport_cov_fixed", fixed = TRUE)
+  expect_match(text, "is.null(names(par_fixed))", fixed = TRUE)
   expect_match(text, "current_source_md5", fixed = TRUE)
   expect_match(text, "estimator source or DLL identity drift", fixed = TRUE)
   expect_match(text, "clean_tree()", fixed = TRUE)

@@ -145,7 +145,8 @@ curvature_callback <- function(fit, expected_block_labels) {
     }
     par_ordered <- is.numeric(par_fixed) &&
       length(par_fixed) == length(theta) &&
-      identical(names(par_fixed), expected_block_labels)
+      (is.null(names(par_fixed)) ||
+        identical(names(par_fixed), expected_block_labels))
     covariance_shaped <- is.matrix(covariance) &&
       identical(dim(covariance), c(length(theta), length(theta)))
     row_ordered <- covariance_shaped &&

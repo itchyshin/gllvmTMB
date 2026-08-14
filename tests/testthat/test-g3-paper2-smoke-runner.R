@@ -9,6 +9,7 @@ test_that("Paper 2 G3 smoke runner seals provenance and failure receipts", {
   expect_match(text, "selected likelihood_nll does not match the G3 objective", fixed = TRUE)
   expect_match(text, "INVALID_PROVENANCE", fixed = TRUE)
   expect_match(text, "coordinate_ids", fixed = TRUE)
+  expect_match(text, "is.null(names(par_fixed))", fixed = TRUE)
   expect_match(text, "current_source_md5", fixed = TRUE)
   expect_match(text, "all-attempt-ledger.rds", fixed = TRUE)
   expect_false(grepl("profile_theta\\(|nlminb\\(|TMB::MakeADFun\\(|Totoro|DRAC", text))

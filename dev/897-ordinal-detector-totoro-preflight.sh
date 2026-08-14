@@ -7,6 +7,7 @@ readonly TOTORO_CORE_CAP=150
 readonly NWORKERS=1
 readonly REMOTE_ROOT='~/gllvm_work/897-ordinal-detector-admission'
 readonly REMOTE_LIB='~/gllvm_work/R-897-lib'
+readonly REMOTE_FALLBACK_LIB='~/R/x86_64-pc-linux-gnu-library/4.5'
 
 if [[ "${GLLVM897_CONFIRM:-}" != "YES" ]]; then
   cat >&2 <<'EOF'
@@ -27,9 +28,9 @@ remote_shell="set -euo pipefail
 mkdir -p $REMOTE_ROOT $REMOTE_LIB
 printf '%s\\n' '$commit' > $REMOTE_ROOT/COMMIT
 cd $REMOTE_ROOT
-R_LIBS_USER=$REMOTE_LIB R CMD INSTALL -l $REMOTE_LIB --no-multiarch --with-keep.source . > $REMOTE_ROOT/preflight-install.log 2>&1
+R_LIBS_USER=$REMOTE_LIB:$REMOTE_FALLBACK_LIB R CMD INSTALL -l $REMOTE_LIB --no-multiarch --with-keep.source . > $REMOTE_ROOT/preflight-install.log 2>&1
 OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 \\
-  R_LIBS_USER=$REMOTE_LIB GLLVM897_COMMIT=$commit \\
+  R_LIBS_USER=$REMOTE_LIB:$REMOTE_FALLBACK_LIB GLLVM897_COMMIT=$commit \\
   GLLVM897_OUT=~/gllvm_work/results/897-ordinal-detector \\
   /usr/bin/time -v Rscript --vanilla dev/897-ordinal-detector-admission.R --totoro-preflight > $REMOTE_ROOT/preflight-run.log 2>&1
 sha256sum $REMOTE_ROOT/preflight-install.log $REMOTE_ROOT/preflight-run.log \\

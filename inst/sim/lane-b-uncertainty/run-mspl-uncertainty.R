@@ -104,7 +104,7 @@ run_one <- function(cell, replicate_id) {
 if (identical(command, "prepare")) {
   write_manifest(root, as.integer(arg_value("--n-rep", "100")))
 } else if (identical(command, "run")) {
-  devtools::load_all(quiet = TRUE)
+  library(gllvmTMB)
   m <- utils::read.csv(file.path(root, "manifest.csv"), stringsAsFactors = FALSE)
   cell <- m[m$cell_id == arg_value("--cell-id"), , drop = FALSE]
   if (nrow(cell) != 1L) stop("Unknown --cell-id.")

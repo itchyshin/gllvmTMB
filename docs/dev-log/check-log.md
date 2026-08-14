@@ -49601,3 +49601,14 @@ The runner contract test passed. The pre-run took about 83 seconds, projecting
 a 500-replicate four-cell campaign to about 45 minutes on four workers, so it
 is above the approval gate. No remote campaign, public MSPL inference method,
 or calibrated uncertainty claim has been made.
+
+## 2026-08-14 — LA-MSPL private uncertainty-method reconciliation
+
+Reconciled the active-objective profile, numerical-Hessian, Godambe/sandwich,
+and delete-one-site jackknife routes in
+`docs/dev-log/plan-actual/2026-08-14-lane-b-mspl-private-uncertainty-method-map.md`.
+The profile route remains a typed finite-grid/optimizer blocker for calibrated
+intervals; the numerical-Hessian diagnostic remains private and scale-blocked;
+the sandwich route remains `score_decomposition_unavailable`; and the
+jackknife route is admitted but awaits its approval-gated repeated-sampling
+calibration. Public MSPL inference remains fail-closed.

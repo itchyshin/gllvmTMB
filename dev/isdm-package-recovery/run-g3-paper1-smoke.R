@@ -11,13 +11,21 @@ mode <- value("mode", "validate")
 root_arg <- value("output")
 pkg <- normalizePath(value("pkg", getwd()), mustWork = TRUE)
 campaign_sha <- value("campaign-sha")
+packet_arg <- value("packet")
+source_gate <- value("source-gate", "G3_P1_S3_C360_R3_V2")
+attempt_id <- value("attempt-id", "paper1-g3-marginal-curvature-v2-86301")
+root_id <- value("root-id", "G3_P1_S3_C360_R3_V2")
+time_estimate <- value("time-estimate", "5-20 minutes")
+time_limit_s <- suppressWarnings(as.numeric(value("time-limit-s", "1800")))
 if (!mode %in% c("validate", "preflight", "smoke") || is.null(root_arg)) {
   stop("require --mode=validate|preflight|smoke and --output=PATH", call. = FALSE)
 }
 script <- normalizePath(sub("^--file=", "", grep("^--file=", commandArgs(FALSE), value = TRUE)[[1L]]), mustWork = TRUE)
 base <- dirname(script)
 fixture_file <- file.path(base, "spatial-isdm-gate-b-smoke-fixture.R")
-packet_file <- file.path(base, "2026-08-13-g3-paper1-smallest-smoke-packet.md")
+packet_file <- normalizePath(if (is.null(packet_arg))
+  file.path(base, "2026-08-14-g3-paper1-v2-smoke-packet.md") else packet_arg,
+  mustWork = TRUE)
 source(fixture_file, local = TRUE)
 ## Deliberately do not edit or reuse the historical B2 fixture: the same frozen
 ## DGP function is evaluated once with the newly packet-pinned seed.
@@ -129,6 +137,8 @@ curvature_callback <- function(fit, expected_block_labels) {
   }
 }
 root <- normalizePath(if (grepl("^/", root_arg)) root_arg else file.path(getwd(), root_arg), mustWork = FALSE)
+if (!identical(basename(root), root_id) || !is.finite(time_limit_s) ||
+    time_limit_s <= 0 || !nzchar(time_estimate)) stop("invalid root or time contract", call. = FALSE)
 parent <- normalizePath(file.path(pkg, "dev", "isdm-package-recovery", "results"), mustWork = FALSE)
 if (!startsWith(root, paste0(parent, "/")) || !identical(campaign_sha, commit())) {
   stop("private result root and exact --campaign-sha are required", call. = FALSE)
@@ -147,7 +157,9 @@ if (identical(mode, "preflight")) {
   z <- make()
   loaded <- getLoadedDLLs()[["gllvmTMB"]]
   dll_md5 <- if (!is.null(loaded) && file.exists(loaded[["path"]])) hash_file(loaded[["path"]]) else NA_character_
-  receipt <- list(schema = "G3_P1_SMOKE_PREFLIGHT_V1", packet = basename(packet_file),
+  receipt <- list(schema = paste0(source_gate, "_PREFLIGHT_V1"), packet = basename(packet_file),
+    source_gate = source_gate, root_id = root_id, attempt_id = attempt_id,
+    time_estimate = time_estimate, time_limit_s = time_limit_s,
     commit = commit(), seed = 86301L, dimensions = c(S = 3L, C = 360L, r = 3L, b = 1L, d = 1L),
     runner_md5 = hash_file(script), fixture_md5 = hash_file(fixture_file), packet_md5 = hash_file(packet_file),
     source_md5 = c(fit_multi = hash_file(file.path(pkg, "R", "fit-multi.R")),
@@ -156,13 +168,14 @@ if (identical(mode, "preflight")) {
     source_map = list(ecological = "spatial_latent intercept", gbif_bias = "isdm_gbif slope",
       pa_gbif_bias_structural_zero = TRUE, truth_outputs = c(ecological = "shared_Sigma", gbif_bias = "bias_Sigma")))
   saveRDS(receipt, file.path(root, "root-receipt.rds")); saveRDS(z$fixture, file.path(root, "fixture.rds")); saveRDS(z$mesh, file.path(root, "mesh.rds")); saveRDS(sessionInfo(), file.path(root, "session-info.rds"))
-  writeLines(c("# G3_P1 time estimate", "Expected wall clock: 10–15 minutes.", "Hard elapsed-time limit: 900 seconds."), file.path(root, "time-estimate.md"))
+  writeLines(c("# G3_P1 time estimate", paste0("Expected wall clock: ", time_estimate, "."),
+    paste0("Hard elapsed-time limit: ", time_limit_s, " seconds.")), file.path(root, "time-estimate.md"))
   manifest(root); cat("G3_P1_PREFLIGHT_PASS (no fit)\n"); quit(save = "no")
 }
 needed <- c("root-receipt.rds", "fixture.rds", "mesh.rds", "session-info.rds", "file-manifest.csv", "time-estimate.md")
 if (!dir.exists(root) || !all(file.exists(file.path(root, needed))) || file.exists(file.path(root, "all-attempt-ledger.rds"))) stop("smoke requires one untouched immutable preflight", call. = FALSE)
 main <- function() {
-ledger <- list(schema = "G3_P1_SMOKE_ALL_ATTEMPT_V1", attempt_id = "paper1-g3-smoke-86301", status = "ATTEMPT_STARTED", terminal = FALSE,
+ledger <- list(schema = paste0(source_gate, "_ALL_ATTEMPT_V1"), attempt_id = attempt_id, status = "ATTEMPT_STARTED", terminal = FALSE,
   receipt = NULL, signature = NULL, raw_starts = list(n_init = 1L, init_jitter = 0), selected = NA_integer_, raw = NULL, g3 = NULL,
   warnings = character(), error = NA_character_, timing = list(fit_elapsed_s = NA_real_, total_elapsed_s = NA_real_), peak_rss_kb = NA_real_)
 warnings <- character(); started <- proc.time()[["elapsed"]]
@@ -171,12 +184,14 @@ on.exit({
   ledger$warnings <<- unique(warnings); ledger$timing$total_elapsed_s <<- proc.time()[["elapsed"]] - started
   ledger$peak_rss_kb <<- peak_rss_kb(); saveRDS(ledger, file.path(root, "all-attempt-ledger.rds")); manifest(root)
 }, add = TRUE)
-setTimeLimit(elapsed = 900, transient = TRUE); on.exit(setTimeLimit(elapsed = Inf, transient = FALSE), add = TRUE)
+setTimeLimit(elapsed = time_limit_s, transient = TRUE); on.exit(setTimeLimit(elapsed = Inf, transient = FALSE), add = TRUE)
 tryCatch({
 clean_tree()
 receipt <- readRDS(file.path(root, "root-receipt.rds"))
 ledger$receipt <- receipt
-if (!identical(receipt$commit, commit()) || !identical(receipt$runner_md5, hash_file(script)) || !identical(receipt$fixture_md5, hash_file(fixture_file)) || !identical(receipt$packet_md5, hash_file(packet_file))) stop("preflight receipt drift", call. = FALSE)
+if (!identical(receipt$commit, commit()) || !identical(receipt$runner_md5, hash_file(script)) || !identical(receipt$fixture_md5, hash_file(fixture_file)) || !identical(receipt$packet_md5, hash_file(packet_file)) ||
+    !identical(receipt$source_gate, source_gate) || !identical(receipt$root_id, root_id) ||
+    !identical(receipt$attempt_id, attempt_id) || !identical(receipt$time_limit_s, time_limit_s)) stop("preflight receipt drift", call. = FALSE)
 z <- make()
 if (!identical(z$fixture, readRDS(file.path(root, "fixture.rds"))) || !identical(z$mesh, readRDS(file.path(root, "mesh.rds")))) stop("fixture/mesh rebuild differs from receipt", call. = FALSE)
 loaded <- getLoadedDLLs()[["gllvmTMB"]]
@@ -191,7 +206,7 @@ signature <- list(objective = hash_object(list(commit = commit(), dll = receipt$
   gradient = hash_object(list(functions = c("fn", "gr", "he"))), parameter_order = "deferred_from_selected_fit",
   map = "deferred_from_selected_fit", data = hash_object(z$fixture$rows), random = "spatial_latent",
   bounds = "unbounded_outer_parameters", scale = "frozen_P1", controls = "nlminb_ninit1_aghqFALSE",
-  starts = "n_init1_init_jitter0", selection = "only_start", source_gate = "G3_P1_S3_C360_R3_V1")
+  starts = "n_init1_init_jitter0", selection = "only_start", source_gate = source_gate)
 saveRDS(list(status = "OPTIMIZER_ENTERED", started_at = as.character(Sys.time())), file.path(root, "attempt-started.rds"))
 fit <- tryCatch(withCallingHandlers(.gll_isdm_fit(z$fixture$rows, z$fixture$X, z$fixture$B, d = 1L, mesh = z$mesh, spatial = TRUE,
   control = gllvmTMBcontrol(n_init = 1L, init_jitter = 0, se = TRUE, aghq = FALSE, warn_runaway = TRUE), silent = TRUE),
@@ -211,7 +226,7 @@ if (inherits(fit, "error")) { ledger$status <- "FIT_ERROR"; ledger$error <- cond
     raw_block_labels = names(raw_par), coordinate_ids = ids, lower = stats::setNames(rep(-Inf, length(par)), ids), upper = stats::setNames(rep(Inf, length(par)), ids),
     optimizer = "nlminb", convergence = as.integer(fit$opt$convergence), pd_hessian = isTRUE(fit$sd_report$pdHess), boundary_flags = health$boundary_flags %||% character(), tie_count = as.integer(sum(abs(gradient) == max(abs(gradient)))), feasible = TRUE, metric_source = "sdreport_cov_fixed")
   raw_state <- list(optimizer = "nlminb", convergence = as.integer(fit$opt$convergence), pd_hessian = isTRUE(fit$sd_report$pdHess), boundary_flags = health$boundary_flags %||% character(), tie_count = ledger$raw$tie_count,
-    is_isdm = TRUE, aghq = FALSE, ridge = FALSE, retry_enabled = FALSE, profile_enabled = FALSE, source_gate = "G3_P1_S3_C360_R3_V1")
+    is_isdm = TRUE, aghq = FALSE, ridge = FALSE, retry_enabled = FALSE, profile_enabled = FALSE, source_gate = source_gate)
   ledger$g3 <- .gllvmTMB_isdm_g3_full_vector_trials(fit$tmb_obj, par, ledger$raw$lower, ledger$raw$upper, signature, raw_state,
     curvature_fn = curvature_callback(fit, ledger$raw$raw_block_labels), metric_source = "sdreport_cov_fixed")
   requested <- which(vapply(ledger$g3$trials, function(x) isTRUE(x$curvature_requested), logical(1L)))

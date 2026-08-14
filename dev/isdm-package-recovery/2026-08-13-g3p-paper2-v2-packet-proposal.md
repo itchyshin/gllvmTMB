@@ -9,7 +9,7 @@ runner mode.
 - fresh root: `dev/isdm-package-recovery/results/G3P_P2_S6_C360_R3_V2/`;
 - committed generic runner: `run-g3-paper2-smoke.R` with explicit `--packet`,
   `--source-gate`, and `--root-id` values;
-- source baseline: `e3609d55`; the eventual V2 packet must name this exact
+- source baseline: `fdcb05cd`; the eventual V2 packet must name this exact
   commit (or a later independently reviewed replacement commit) explicitly.
 
 The V2 invocation must bind its own packet MD5 (the supplied packet path is

@@ -76,7 +76,6 @@ parent <- normalizePath(file.path(pkg, "dev", "isdm-package-recovery", "results"
 if (!startsWith(root, paste0(parent, "/")) || !identical(campaign_sha, commit())) {
   stop("private result root and exact --campaign-sha are required", call. = FALSE)
 }
-clean_tree()
 if (identical(mode, "validate")) {
   z <- make()
   stopifnot(identical(z$fixture$truth$seed, 86302L), nrow(z$fixture$rows) == 8640L)
@@ -84,6 +83,7 @@ if (identical(mode, "validate")) {
   quit(save = "no")
 }
 if (identical(mode, "preflight")) {
+  clean_tree()
   if (dir.exists(root) && length(list.files(root, all.files = TRUE, no.. = TRUE))) {
     stop("preflight root must be empty", call. = FALSE)
   }
@@ -115,11 +115,9 @@ if (!dir.exists(root) || !all(file.exists(file.path(root, needed))) || file.exis
 }
 
 main <- function() {
-  receipt <- readRDS(file.path(root, "root-receipt.rds"))
-  z <- make()
   ledger <- list(
     schema = "G3_P2_SMOKE_ALL_ATTEMPT_V1", attempt_id = "paper2-g3-smoke-86302",
-    status = "ATTEMPT_STARTED", terminal = FALSE, receipt = receipt, signature = NULL,
+    status = "ATTEMPT_STARTED", terminal = FALSE, receipt = NULL, signature = NULL,
     raw_starts = list(n_init = 1L, init_jitter = 0), selected = NA_integer_, raw = NULL,
     g3 = NULL, warnings = character(), error = NA_character_,
     timing = list(fit_elapsed_s = NA_real_, total_elapsed_s = NA_real_), peak_rss_kb = NA_real_
@@ -142,9 +140,23 @@ main <- function() {
   setTimeLimit(elapsed = 1500, transient = TRUE)
   on.exit(setTimeLimit(elapsed = Inf, transient = FALSE), add = TRUE)
   tryCatch({
+    if (length(system2("git", c("-C", pkg, "status", "--porcelain", "--untracked-files=no"), stdout = TRUE))) {
+      ledger$status <- "INVALID_PROVENANCE"
+      ledger$error <- "G3 smoke requires a clean committed estimator tree"
+      ledger$terminal <- TRUE
+      return(invisible(NULL))
+    }
+    receipt <- readRDS(file.path(root, "root-receipt.rds"))
+    ledger$receipt <- receipt
+    z <- make()
+    current_source_md5 <- c(
+      fit_multi = hash_file(file.path(pkg, "R", "fit-multi.R")),
+      isdm_fit = hash_file(file.path(pkg, "R", "isdm-developer-fit.R")),
+      tmb = hash_file(file.path(pkg, "src", "gllvmTMB.cpp")), dll = z$dll$md5
+    )
     if (!identical(receipt$commit, commit()) || !identical(receipt$runner_md5, hash_file(script)) ||
         !identical(receipt$fixture_md5, hash_file(fixture_file)) || !identical(receipt$packet_md5, hash_file(packet_file)) ||
-        !identical(receipt$source_md5[["dll"]], z$dll$md5) || !identical(receipt$dll_path, z$dll$path)) {
+        !identical(receipt$source_md5, current_source_md5) || !identical(receipt$dll_path, z$dll$path)) {
       ledger$status <- "INVALID_PROVENANCE"
       ledger$error <- "preflight receipt drift"
       ledger$terminal <- TRUE
@@ -177,8 +189,19 @@ main <- function() {
     ids <- coordinate_ids(raw_par)
     par <- stats::setNames(as.numeric(raw_par), ids)
     gradient <- stats::setNames(as.numeric(fit$tmb_obj$gr(raw_par)), ids)
+    raw_objective <- tryCatch(fit$tmb_obj$fn(raw_par), error = function(e) e)
+    objective_tolerance <- 64 * .Machine$double.eps * max(1, abs(fit$objective$likelihood_nll))
+    if (inherits(raw_objective, "error") || !is.numeric(raw_objective) ||
+        length(raw_objective) != 1L || !is.finite(raw_objective) ||
+        abs(raw_objective - fit$objective$likelihood_nll) > objective_tolerance) {
+      ledger$status <- "G3_OBJECTIVE_MISMATCH"
+      ledger$error <- if (inherits(raw_objective, "error")) conditionMessage(raw_objective) else
+        "selected likelihood_nll does not match the G3 objective"
+      ledger$terminal <- TRUE
+      return(invisible(NULL))
+    }
     signature <- list(
-      objective = hash_object(list(value = fit$objective$likelihood_nll, dll = z$dll$md5)),
+      objective = hash_object(list(value = raw_objective, dll = z$dll$md5)),
       gradient = hash_object(gradient), parameter_order = hash_object(list(block_labels = names(raw_par), coordinate_ids = ids)),
       map = hash_object(fit$tmb_map), data = hash_object(fit$tmb_data), random = hash_object(fit$random),
       bounds = hash_object(list(lower = rep(-Inf, length(par)), upper = rep(Inf, length(par)))), scale = "frozen_P2",
@@ -187,7 +210,7 @@ main <- function() {
     )
     ledger$signature <- signature
     raw <- list(
-      objective = fit$objective$likelihood_nll, gradient = gradient, parameter_vector = par,
+      objective = raw_objective, gradient = gradient, parameter_vector = par,
       raw_block_labels = names(raw_par), coordinate_ids = ids, lower = stats::setNames(rep(-Inf, length(par)), ids),
       upper = stats::setNames(rep(Inf, length(par)), ids), optimizer = "nlminb", convergence = as.integer(fit$opt$convergence),
       pd_hessian = isTRUE(fit$sd_report$pdHess), boundary_flags = health$boundary_flags %||% character(),

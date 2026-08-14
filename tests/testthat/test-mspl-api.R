@@ -479,29 +479,54 @@ test_that("internal MSPL profile feasibility traces the penalised objective only
   expect_false(truncated$finite_stable)
 })
 
-test_that("internal MSPL uncertainty candidates retain the penalised objective fence", {
+test_that("private MSPL Wald curvature uses the penalty-off likelihood tape only", {
   fit <- .mspl_fit("logit", q = 1L)
-  checkpoint <- gllvmTMB:::.gllvmTMB_profile_tmb_checkpoint(fit$tmb_obj)
-  penalty_off <- fit$mspl$unpenalized_tmb_obj
-  penalty_off$fn <- function(...) {
-    stop("penalty-off objective must not enter uncertainty candidates")
+  checkpoint <- gllvmTMB:::.gllvmTMB_profile_tmb_checkpoint(
+    fit$mspl$unpenalized_tmb_obj
+  )
+  active <- fit$tmb_obj
+  active$fn <- function(...) {
+    stop("active penalised objective must not enter Wald curvature")
   }
-  fit$mspl$unpenalized_tmb_obj <- penalty_off
+  fit$tmb_obj <- active
 
-  hessian <- gllvmTMB:::.gllvmTMB_mspl_penalized_hessian_diagnostic(
+  hessian <- gllvmTMB:::.gllvmTMB_mspl_likelihood_hessian_diagnostic(
     fit, which = 1L
   )
-  expect_identical(hessian$objective_source, "fit$tmb_obj (penalised LA-MSPL)")
+  expect_identical(
+    hessian$objective_source,
+    paste0(
+      "fit$mspl$unpenalized_tmb_obj ",
+      "(penalty-off approximate Laplace NLL)"
+    )
+  )
+  expect_identical(
+    hessian$objective_role,
+    "curvature_only_at_penalised_mspl_estimate"
+  )
+  expect_identical(hessian$estimator_id, 2L)
   expect_identical(hessian$target_name, "b_fix")
   expect_identical(hessian$status, "ok")
   expect_true(is.finite(hessian$se))
+  expect_true(is.finite(hessian$observed_gradient_max))
+  expect_lte(hessian$hessian_relative_difference, 0.1)
   expect_lt(hessian$diagnostic_lower, hessian$estimate)
   expect_gt(hessian$diagnostic_upper, hessian$estimate)
   expect_identical(
-    gllvmTMB:::.gllvmTMB_profile_tmb_checkpoint(fit$tmb_obj),
+    gllvmTMB:::.gllvmTMB_profile_tmb_checkpoint(
+      fit$mspl$unpenalized_tmb_obj
+    ),
     checkpoint
   )
+})
 
+test_that("private MSPL profile endpoints retain the penalised objective fence", {
+  fit <- .mspl_fit("logit", q = 1L)
+  penalty_off <- fit$mspl$unpenalized_tmb_obj
+  penalty_off$fn <- function(...) {
+    stop("penalty-off objective must not enter profile endpoints")
+  }
+  fit$mspl$unpenalized_tmb_obj <- penalty_off
   probe <- gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
     fit, which = 1L, step = 0.5, max_steps = 3L
   )
@@ -517,6 +542,8 @@ test_that("internal MSPL uncertainty candidates retain the penalised objective f
   expect_true(all(profile$diagnostic_lower <= max(profile$lower_bracket)))
   expect_true(all(profile$diagnostic_upper >= min(profile$upper_bracket)))
   expect_true(all(profile$diagnostic_upper <= max(profile$upper_bracket)))
+  expect_lte(diff(range(profile$lower_bracket)), probe$bracket_tolerance)
+  expect_lte(diff(range(profile$upper_bracket)), probe$bracket_tolerance)
 
   truncated <- gllvmTMB:::.gllvmTMB_mspl_profile_threshold_diagnostic(
     gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
@@ -586,7 +613,16 @@ test_that("internal MSPL profile feasibility records the q=1 link matrix", {
         rbind,
         lapply(link_traces, function(result) {
           probe <- result$probe
-          expect_equal(nrow(probe$trace), 2L * result$max_steps + 1L)
+          expect_lte(
+            sum(probe$trace$stage == "grid"),
+            2L * result$max_steps
+          )
+          expect_equal(sum(probe$trace$stage == "refinement"), 24L)
+          expect_true(all(is.finite(c(
+            probe$lower_endpoint, probe$upper_endpoint
+          ))))
+          expect_lte(diff(range(probe$lower_bracket)), probe$bracket_tolerance)
+          expect_lte(diff(range(probe$upper_bracket)), probe$bracket_tolerance)
           data.frame(
             max_steps = result$max_steps,
             centre_status = probe$centre_status,
@@ -629,26 +665,7 @@ test_that("internal MSPL profile feasibility records the q=1 regime matrix", {
     finite_stable = TRUE,
     stringsAsFactors = FALSE
   )
-  blockers <- data.frame(
-    regime = c(
-      "baseline", "low_prevalence", "low_prevalence", "strong_signal"
-    ),
-    link = "cloglog",
-    target = c("b_fix[2]", "b_fix[1]", "b_fix[3]", "b_fix[2]"),
-    lower_status = "optimizer_failed",
-    stringsAsFactors = FALSE
-  )
-  blocker_rows <- match(
-    do.call(paste, c(blockers[c("regime", "link", "target")], sep = "\r")),
-    do.call(paste, c(expected[c("regime", "link", "target")], sep = "\r"))
-  )
-  expect_false(anyNA(blocker_rows))
-  expected$lower_status[blocker_rows] <- blockers$lower_status
-  expected$finite_stable <-
-    expected$centre_status == "matched" &
-    expected$lower_status == "crossed" &
-    expected$upper_status == "crossed"
-
+  retained_failures <- 0L
   observed <- do.call(rbind, lapply(seq_len(nrow(cases)), function(case) {
     regime <- regimes[[cases$regime[[case]]]]
     fit <- .mspl_fit(
@@ -664,17 +681,27 @@ test_that("internal MSPL profile feasibility records the q=1 regime matrix", {
         level = 0.95, control = list(eval.max = 100L, iter.max = 100L)
       )
       expect_identical(probe$objective_source, "fit$tmb_obj (penalised LA-MSPL)")
-      expect_true(all(probe$trace$finite))
-      expect_true(all(is.finite(probe$trace$objective_delta)))
-      expect_equal(nrow(probe$trace), 25L)
+      usable <- probe$trace$finite & probe$trace$convergence == 0L
+      retained_failures <<- retained_failures + sum(!usable)
+      expect_true(all(is.finite(probe$trace$objective[usable])))
+      expect_true(all(is.finite(probe$trace$objective_delta[usable])))
       centre <- probe$trace[probe$trace$target == fit$opt$par[[which]], ]
       expect_equal(nrow(centre), 1L)
       expect_identical(centre$convergence, 0L)
       expect_true(all(c(
         probe$centre_status, probe$lower_status, probe$upper_status
-      ) %in% c("matched", "crossed", "truncated", "nonfinite", "optimizer_failed")))
+      ) %in% c(
+        "matched", "crossed", "truncated", "nonfinite", "optimizer_failed",
+        "refinement_failed", "refinement_truncated"
+      )))
       if (isTRUE(probe$finite_stable)) {
-        expect_true(all(probe$trace$convergence == 0L))
+        expect_true(all(is.finite(c(
+          probe$lower_endpoint, probe$upper_endpoint
+        ))))
+        expect_lt(probe$lower_endpoint, probe$mle)
+        expect_gt(probe$upper_endpoint, probe$mle)
+        expect_lte(diff(range(probe$lower_bracket)), probe$bracket_tolerance)
+        expect_lte(diff(range(probe$upper_bracket)), probe$bracket_tolerance)
       }
       data.frame(
         regime = cases$regime[[case]],
@@ -690,6 +717,83 @@ test_that("internal MSPL profile feasibility records the q=1 regime matrix", {
   }))
 
   expect_identical(observed, expected)
+  expect_gt(retained_failures, 0L)
+})
+
+test_that("paper-style MSPL Wald curvature records the 12-fit typed map", {
+  beta_base <- c(-0.5, 0.1, 0.55)
+  Lambda_base <- matrix(c(0.8, -0.55, 0.35), 3L, 1L)
+  regimes <- list(
+    baseline = list(beta = beta_base, Lambda = Lambda_base),
+    low_prevalence = list(beta = beta_base - 1.5, Lambda = Lambda_base),
+    high_prevalence = list(beta = beta_base + 1.5, Lambda = Lambda_base),
+    strong_signal = list(beta = beta_base, Lambda = 1.75 * Lambda_base)
+  )
+  cases <- expand.grid(
+    regime = names(regimes), link = c("logit", "probit", "cloglog"),
+    stringsAsFactors = FALSE
+  )
+  expected_fit_status <- c(
+    "baseline\rlogit" = "ok",
+    "low_prevalence\rlogit" = "likelihood_hessian_non_pd",
+    "high_prevalence\rlogit" = "ok",
+    "strong_signal\rlogit" = "ok",
+    "baseline\rprobit" = "ok",
+    "low_prevalence\rprobit" = "likelihood_hessian_non_pd",
+    "high_prevalence\rprobit" = "likelihood_hessian_non_pd",
+    "strong_signal\rprobit" = "ok",
+    "baseline\rcloglog" = "ok",
+    "low_prevalence\rcloglog" = "likelihood_hessian_non_pd",
+    "high_prevalence\rcloglog" = "likelihood_hessian_non_pd",
+    "strong_signal\rcloglog" = "ok"
+  )
+
+  observed <- do.call(rbind, lapply(seq_len(nrow(cases)), function(case) {
+    regime <- regimes[[cases$regime[[case]]]]
+    fit <- .mspl_fit(
+      link = cases$link[[case]], q = 1L,
+      beta = regime$beta, Lambda = regime$Lambda
+    )
+    target_index <- which(names(fit$opt$par) == "b_fix")
+    do.call(rbind, lapply(target_index, function(which) {
+      diagnostic <- gllvmTMB:::.gllvmTMB_mspl_likelihood_hessian_diagnostic(
+        fit, which = which
+      )
+      expect_identical(diagnostic$estimator_id, 2L)
+      expect_identical(
+        diagnostic$objective_role,
+        "curvature_only_at_penalised_mspl_estimate"
+      )
+      if (identical(diagnostic$status, "ok")) {
+        expect_true(all(is.finite(c(
+          diagnostic$se, diagnostic$diagnostic_lower,
+          diagnostic$diagnostic_upper
+        ))))
+        expect_lt(diagnostic$diagnostic_lower, diagnostic$diagnostic_upper)
+      } else {
+        expect_match(diagnostic$status, "^likelihood_hessian_")
+        expect_true(all(is.na(c(
+          diagnostic$se, diagnostic$diagnostic_lower,
+          diagnostic$diagnostic_upper
+        ))))
+      }
+      data.frame(
+        fit_key = paste(cases$regime[[case]], cases$link[[case]], sep = "\r"),
+        target = match(which, target_index), status = diagnostic$status,
+        stringsAsFactors = FALSE
+      )
+    }))
+  }))
+  per_fit <- vapply(split(observed$status, observed$fit_key), function(x) {
+    expect_length(unique(x), 1L)
+    x[[1L]]
+  }, character(1L))
+  expect_identical(
+    unname(per_fit[names(expected_fit_status)]),
+    unname(expected_fit_status)
+  )
+  expect_equal(sum(observed$status == "ok"), 21L)
+  expect_equal(sum(observed$status == "likelihood_hessian_non_pd"), 15L)
 })
 
 test_that("unsupported MSPL surfaces stop before optimisation", {

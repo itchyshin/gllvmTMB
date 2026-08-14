@@ -90,7 +90,9 @@
   step = 0.5,
   max_steps = 6L,
   level = 0.95,
-  control = list(eval.max = 100L, iter.max = 100L)
+  control = list(eval.max = 100L, iter.max = 100L),
+  refinement_steps = 12L,
+  bracket_tolerance = 1.25e-4
 ) {
   if (!.gllvmTMB_is_mspl(fit)) {
     .gllvmTMB_mspl_abort(
@@ -124,10 +126,18 @@
       length(level) != 1L ||
       !is.finite(level) ||
       level <= 0 ||
-      level >= 1
+      level >= 1 ||
+      !is.numeric(refinement_steps) ||
+      length(refinement_steps) != 1L ||
+      refinement_steps < 0L ||
+      refinement_steps %% 1 != 0 ||
+      !is.numeric(bracket_tolerance) ||
+      length(bracket_tolerance) != 1L ||
+      !is.finite(bracket_tolerance) ||
+      bracket_tolerance <= 0
   ) {
     .gllvmTMB_mspl_abort(
-      "The internal MSPL profile grid requires finite positive {.arg step}, positive {.arg max_steps}, and {.arg level} in (0, 1).",
+      "The internal MSPL profile grid requires positive finite grid and refinement controls, with {.arg level} in (0, 1).",
       class = "gllvmTMB_mspl_profile_grid"
     )
   }
@@ -150,73 +160,62 @@
   mle_par <- as.numeric(fit$opt$par)
   mle_objective <- as.numeric(fit$opt$objective)
   nuisance_index <- setdiff(seq_along(mle_par), as.integer(which))
-  target_values <- mle_par[which] +
-    step * seq.int(-as.integer(max_steps), as.integer(max_steps))
+  threshold <- stats::qchisq(level, df = 1L) / 2
 
-  evaluate_side <- function(values) {
-    start <- mle_par[nuisance_index]
-    lapply(values, function(target) {
-      objective <- function(nuisance) {
-        par <- mle_par
-        par[nuisance_index] <- nuisance
-        par[which] <- target
-        obj$fn(par)
-      }
-      gradient <- function(nuisance) {
-        par <- mle_par
-        par[nuisance_index] <- nuisance
-        par[which] <- target
-        obj$gr(par)[nuisance_index]
-      }
-      ans <- tryCatch(
-        nlminb(
-          start,
-          objective = objective,
-          gradient = gradient,
-          control = control
+  evaluate_point <- function(target, start, side, stage) {
+    objective <- function(nuisance) {
+      par <- mle_par
+      par[nuisance_index] <- nuisance
+      par[which] <- target
+      obj$fn(par)
+    }
+    gradient <- function(nuisance) {
+      par <- mle_par
+      par[nuisance_index] <- nuisance
+      par[which] <- target
+      obj$gr(par)[nuisance_index]
+    }
+    ans <- tryCatch(
+      nlminb(start, objective = objective, gradient = gradient, control = control),
+      error = identity
+    )
+    if (inherits(ans, "error")) {
+      return(list(
+        row = data.frame(
+          target = target, objective = NA_real_, objective_delta = NA_real_,
+          convergence = NA_integer_, message = conditionMessage(ans),
+          finite = FALSE, nuisance_reoptimized = FALSE, side = side,
+          stage = stage, stringsAsFactors = FALSE
         ),
-        error = identity
-      )
-      if (inherits(ans, "error")) {
-        return(data.frame(
-          target = target,
-          objective = NA_real_,
-          objective_delta = NA_real_,
-          convergence = NA_integer_,
-          message = conditionMessage(ans),
-          finite = FALSE,
-          stringsAsFactors = FALSE
-        ))
-      }
-      start <<- ans$par
-      finite <- is.finite(ans$objective)
-      data.frame(
+        nuisance = start
+      ))
+    }
+    finite <- is.finite(ans$objective)
+    list(
+      row = data.frame(
         target = target,
         objective = if (finite) as.numeric(ans$objective) else NA_real_,
-        objective_delta = if (finite) {
-          as.numeric(ans$objective) - mle_objective
-        } else {
-          NA_real_
-        },
+        objective_delta = if (finite) as.numeric(ans$objective) - mle_objective else NA_real_,
         convergence = as.integer(ans$convergence),
-        message = ans$message %||% "",
-        finite = finite,
-        stringsAsFactors = FALSE
-      )
-    })
+        message = ans$message %||% "", finite = finite,
+        nuisance_reoptimized = identical(as.integer(ans$convergence), 0L),
+        side = side, stage = stage, stringsAsFactors = FALSE
+      ),
+      nuisance = as.numeric(ans$par)
+    )
   }
 
-  centre <- evaluate_side(mle_par[which])[[1L]]
-  lower <- do.call(
-    rbind,
-    rev(evaluate_side(rev(target_values[target_values < mle_par[which]])))
+  successful <- function(point) {
+    is.list(point) && is.data.frame(point$row) &&
+      isTRUE(point$row$finite[[1L]]) &&
+      identical(point$row$convergence[[1L]], 0L) &&
+      is.finite(point$row$objective_delta[[1L]])
+  }
+
+  centre_point <- evaluate_point(
+    mle_par[which], mle_par[nuisance_index], "centre", "centre"
   )
-  upper <- do.call(
-    rbind,
-    evaluate_side(target_values[target_values > mle_par[which]])
-  )
-  trace <- rbind(lower, centre, upper)
-  threshold <- stats::qchisq(level, df = 1L) / 2
+  centre <- centre_point$row
   centre_tolerance <- 1e-7 * (1 + abs(mle_objective))
   centre_status <- if (!centre$finite) {
     "nonfinite"
@@ -227,20 +226,101 @@
   } else {
     "matched"
   }
-  side_status <- function(side) {
-    if (any(!side$finite)) {
-      return("nonfinite")
+
+  walk_side <- function(direction) {
+    values <- mle_par[which] + direction * step * seq_len(as.integer(max_steps))
+    points <- list()
+    previous_success <- centre_point
+    start <- centre_point$nuisance
+    bracket <- NULL
+    for (target in values) {
+      point <- evaluate_point(
+        target, start, if (direction < 0) "lower" else "upper", "grid"
+      )
+      points[[length(points) + 1L]] <- point
+      if (successful(point)) {
+        start <- point$nuisance
+        if (successful(previous_success) &&
+            previous_success$row$objective_delta[[1L]] < threshold &&
+            point$row$objective_delta[[1L]] >= threshold) {
+          bracket <- list(inside = previous_success, outside = point)
+          break
+        }
+        previous_success <- point
+      } else {
+        previous_success <- NULL
+      }
     }
-    if (any(side$convergence != 0L)) {
-      return("optimizer_failed")
+
+    if (is.null(bracket)) {
+      rows <- do.call(rbind, lapply(points, `[[`, "row"))
+      status <- if (any(!rows$finite)) {
+        "nonfinite"
+      } else if (any(rows$convergence != 0L)) {
+        "optimizer_failed"
+      } else {
+        "truncated"
+      }
+      return(list(
+        status = status, points = points, endpoint = NA_real_,
+        bracket = c(NA_real_, NA_real_), refinement_iterations = 0L
+      ))
     }
-    if (any(side$objective_delta >= threshold)) {
-      return("crossed")
+
+    iterations <- 0L
+    while (abs(bracket$outside$row$target - bracket$inside$row$target) >
+           bracket_tolerance && iterations < as.integer(refinement_steps)) {
+      iterations <- iterations + 1L
+      target <- mean(c(
+        bracket$inside$row$target[[1L]], bracket$outside$row$target[[1L]]
+      ))
+      point <- evaluate_point(
+        target, bracket$inside$nuisance,
+        if (direction < 0) "lower" else "upper", "refinement"
+      )
+      points[[length(points) + 1L]] <- point
+      if (!successful(point)) {
+        return(list(
+          status = "refinement_failed", points = points, endpoint = NA_real_,
+          bracket = c(
+            bracket$inside$row$target[[1L]], bracket$outside$row$target[[1L]]
+          ), refinement_iterations = iterations
+        ))
+      }
+      if (point$row$objective_delta[[1L]] >= threshold) {
+        bracket$outside <- point
+      } else {
+        bracket$inside <- point
+      }
     }
-    "truncated"
+
+    width <- abs(bracket$outside$row$target - bracket$inside$row$target)
+    if (width > bracket_tolerance) {
+      return(list(
+        status = "refinement_truncated", points = points, endpoint = NA_real_,
+        bracket = c(
+          bracket$inside$row$target[[1L]], bracket$outside$row$target[[1L]]
+        ), refinement_iterations = iterations
+      ))
+    }
+    endpoint <- mean(c(
+      bracket$inside$row$target[[1L]], bracket$outside$row$target[[1L]]
+    ))
+    list(
+      status = "crossed", points = points, endpoint = endpoint,
+      bracket = c(
+        bracket$inside$row$target[[1L]], bracket$outside$row$target[[1L]]
+      ), refinement_iterations = iterations
+    )
   }
-  lower_status <- side_status(lower)
-  upper_status <- side_status(upper)
+
+  lower <- walk_side(-1)
+  upper <- walk_side(1)
+  trace <- rbind(
+    do.call(rbind, lapply(lower$points, `[[`, "row")),
+    centre,
+    do.call(rbind, lapply(upper$points, `[[`, "row"))
+  )
 
   list(
     trace = trace,
@@ -250,13 +330,177 @@
     mle_objective = mle_objective,
     threshold = threshold,
     centre_status = centre_status,
-    lower_status = lower_status,
-    upper_status = upper_status,
+    lower_status = lower$status,
+    upper_status = upper$status,
+    lower_endpoint = lower$endpoint,
+    upper_endpoint = upper$endpoint,
+    lower_bracket = lower$bracket,
+    upper_bracket = upper$bracket,
+    lower_refinement_iterations = lower$refinement_iterations,
+    upper_refinement_iterations = upper$refinement_iterations,
+    bracket_tolerance = bracket_tolerance,
     finite_stable = identical(centre_status, "matched") &&
-      identical(lower_status, "crossed") &&
-      identical(upper_status, "crossed"),
+      identical(lower$status, "crossed") &&
+      identical(upper$status, "crossed"),
     objective_source = "fit$tmb_obj (penalised LA-MSPL)"
   )
+}
+
+## Private paper-style curvature diagnostic. The penalty-off approximate
+## Laplace likelihood is evaluated only at the penalised MSPL estimate; it is
+## never optimised here and does not turn that estimate into an ML estimate.
+.gllvmTMB_mspl_likelihood_hessian_diagnostic <- function(
+  fit,
+  which = 1L,
+  level = 0.95,
+  ndeps = c(1e-4, 5e-4),
+  relative_tolerance = 0.1
+) {
+  if (!.gllvmTMB_is_mspl(fit)) {
+    .gllvmTMB_mspl_abort(
+      "The internal MSPL likelihood-curvature diagnostic requires an {.code estimator = \"mspl\"} fit.",
+      class = "gllvmTMB_mspl_likelihood_hessian_input"
+    )
+  }
+  if (!is.numeric(which) || length(which) != 1L || which %% 1 != 0 ||
+      which < 1L || which > length(fit$opt$par) ||
+      names(fit$opt$par)[which] != "b_fix") {
+    .gllvmTMB_mspl_abort(
+      "The internal MSPL likelihood-curvature diagnostic requires one resolved {.field b_fix} coordinate.",
+      class = "gllvmTMB_mspl_likelihood_hessian_target"
+    )
+  }
+  if (!is.numeric(level) || length(level) != 1L || !is.finite(level) ||
+      level <= 0 || level >= 1 || !is.numeric(ndeps) || length(ndeps) != 2L ||
+      any(!is.finite(ndeps)) || any(ndeps <= 0) ||
+      !is.numeric(relative_tolerance) || length(relative_tolerance) != 1L ||
+      !is.finite(relative_tolerance) || relative_tolerance < 0) {
+    .gllvmTMB_mspl_abort(
+      "The internal MSPL likelihood-curvature diagnostic received invalid numerical controls.",
+      class = "gllvmTMB_mspl_likelihood_hessian_control"
+    )
+  }
+
+  obj <- fit$mspl$unpenalized_tmb_obj
+  if (is.null(obj) || identical(obj, fit$tmb_obj) ||
+      !identical(as.integer(obj$env$data$estimator_id), 2L)) {
+    .gllvmTMB_mspl_abort(
+      "The internal MSPL likelihood-curvature diagnostic could not verify the penalty-off likelihood tape.",
+      class = "gllvmTMB_mspl_likelihood_hessian_objective"
+    )
+  }
+  checkpoint <- .gllvmTMB_profile_tmb_checkpoint(obj)
+  on.exit(.gllvmTMB_restore_profile_tmb_checkpoint(obj, checkpoint), add = TRUE)
+
+  par <- as.numeric(fit$opt$par)
+  base <- list(
+    target_index = as.integer(which), target_name = names(fit$opt$par)[which],
+    estimate = par[which], level = level,
+    objective_source = paste0(
+      "fit$mspl$unpenalized_tmb_obj ",
+      "(penalty-off approximate Laplace NLL)"
+    ),
+    objective_role = "curvature_only_at_penalised_mspl_estimate",
+    estimator_id = 2L, status = "likelihood_hessian_error",
+    hessian_method = "stats::optimHess(penalty-off tape at MSPL estimate)",
+    se = NA_real_, diagnostic_lower = NA_real_, diagnostic_upper = NA_real_,
+    hessian_rank = NA_integer_, minimum_eigenvalue = NA_real_,
+    observed_gradient_max = NA_real_, hessian_relative_difference = NA_real_,
+    message = NA_character_
+  )
+  value <- tryCatch(obj$fn(par), error = identity)
+  gradient <- tryCatch(obj$gr(par), error = identity)
+  if (inherits(value, "error") || inherits(gradient, "error") ||
+      length(value) != 1L || !is.finite(value) ||
+      length(gradient) != length(par) || any(!is.finite(gradient))) {
+    base$status <- "likelihood_hessian_nonfinite"
+    base$message <- if (inherits(value, "error")) conditionMessage(value) else if (
+      inherits(gradient, "error")
+    ) conditionMessage(gradient) else "Non-finite objective or gradient at the MSPL estimate."
+    return(base)
+  }
+  base$objective_at_estimate <- as.numeric(value)
+  base$observed_gradient_max <- max(abs(gradient))
+
+  assess <- function(step) {
+    hessian <- tryCatch(
+      stats::optimHess(
+        par, obj$fn, obj$gr, control = list(ndeps = rep(step, length(par)))
+      ),
+      error = identity
+    )
+    if (inherits(hessian, "error")) {
+      return(list(status = "likelihood_hessian_error", message = conditionMessage(hessian)))
+    }
+    hessian <- as.matrix(hessian)
+    if (!identical(dim(hessian), rep.int(length(par), 2L)) ||
+        any(!is.finite(hessian))) {
+      return(list(status = "likelihood_hessian_nonfinite", message = NA_character_))
+    }
+    hessian <- (hessian + t(hessian)) / 2
+    eig <- tryCatch(
+      eigen(hessian, symmetric = TRUE, only.values = TRUE)$values,
+      error = identity
+    )
+    if (inherits(eig, "error") || any(!is.finite(eig))) {
+      return(list(status = "likelihood_hessian_eigen_error", message = NA_character_))
+    }
+    tolerance <- sqrt(.Machine$double.eps) * max(1, max(abs(eig)))
+    rank <- as.integer(sum(eig > tolerance))
+    minimum <- min(eig)
+    if (rank != length(par) || minimum <= 0) {
+      return(list(
+        status = "likelihood_hessian_non_pd", rank = rank,
+        minimum = minimum, message = NA_character_
+      ))
+    }
+    chol_hessian <- tryCatch(chol(hessian), error = identity)
+    if (inherits(chol_hessian, "error")) {
+      return(list(
+        status = "likelihood_hessian_solve_error", rank = rank,
+        minimum = minimum, message = conditionMessage(chol_hessian)
+      ))
+    }
+    covariance <- chol2inv(chol_hessian)
+    variance <- covariance[which, which]
+    if (!is.finite(variance) || variance <= 0) {
+      return(list(
+        status = "likelihood_hessian_variance_invalid", rank = rank,
+        minimum = minimum, message = NA_character_
+      ))
+    }
+    list(
+      status = "ok", rank = rank, minimum = minimum,
+      se = sqrt(variance), hessian = hessian, message = NA_character_
+    )
+  }
+
+  primary <- assess(ndeps[[1L]])
+  base$hessian_rank <- primary$rank %||% NA_integer_
+  base$minimum_eigenvalue <- primary$minimum %||% NA_real_
+  base$message <- primary$message %||% NA_character_
+  if (!identical(primary$status, "ok")) {
+    base$status <- primary$status
+    return(base)
+  }
+  sensitivity <- assess(ndeps[[2L]])
+  if (!identical(sensitivity$status, "ok")) {
+    base$status <- "likelihood_hessian_step_sensitive"
+    base$message <- paste("Secondary Hessian check:", sensitivity$status)
+    return(base)
+  }
+  base$hessian_relative_difference <- abs(primary$se - sensitivity$se) /
+    max(primary$se, sensitivity$se)
+  if (base$hessian_relative_difference > relative_tolerance) {
+    base$status <- "likelihood_hessian_step_sensitive"
+    return(base)
+  }
+  base$se <- primary$se
+  z_value <- stats::qnorm((1 + level) / 2)
+  base$diagnostic_lower <- base$estimate - z_value * base$se
+  base$diagnostic_upper <- base$estimate + z_value * base$se
+  base$status <- "ok"
+  base
 }
 
 ## Private uncertainty candidate only.  This is a numerical outer Hessian of
@@ -365,10 +609,9 @@
   base
 }
 
-## Private profile candidate only.  The returned endpoints linearly interpolate
-## a finite, converged bracket of the penalised objective threshold; they are
-## not confidence-interval endpoints unless a later calibration study earns
-## that interpretation.
+## Private profile candidate only. The feasibility helper supplies endpoints
+## from a bounded bisection of a finite, converged penalised-objective bracket.
+## These are not confidence-interval endpoints.
 .gllvmTMB_mspl_profile_threshold_diagnostic <- function(probe) {
   if (!is.list(probe) || !identical(
     probe$objective_source, "fit$tmb_obj (penalised LA-MSPL)"
@@ -378,8 +621,11 @@
       class = "gllvmTMB_mspl_profile_threshold_input"
     )
   }
-  required <- c("trace", "mle", "threshold", "centre_status",
-                "lower_status", "upper_status")
+  required <- c(
+    "trace", "mle", "threshold", "centre_status", "lower_status",
+    "upper_status", "lower_endpoint", "upper_endpoint", "lower_bracket",
+    "upper_bracket"
+  )
   if (!all(required %in% names(probe)) || !is.data.frame(probe$trace)) {
     .gllvmTMB_mspl_abort(
       "The internal MSPL profile-threshold diagnostic received an incomplete probe.",
@@ -387,52 +633,18 @@
     )
   }
 
-  endpoint <- function(side, direction, status) {
-    out <- list(status = status, endpoint = NA_real_, bracket = c(NA_real_, NA_real_))
-    if (!identical(status, "crossed")) return(out)
-    side <- side[order(side$target, decreasing = identical(direction, "lower")), , drop = FALSE]
-    crossed <- which(side$objective_delta >= probe$threshold)[1L]
-    if (is.na(crossed) || crossed == 1L) {
-      out$status <- "bracket_missing"
-      return(out)
-    }
-    inside <- side[crossed - 1L, , drop = FALSE]
-    outside <- side[crossed, , drop = FALSE]
-    if (!all(inside$finite, outside$finite) ||
-        any(c(inside$convergence, outside$convergence) != 0L) ||
-        !is.finite(inside$objective_delta) || !is.finite(outside$objective_delta) ||
-        outside$objective_delta <= inside$objective_delta) {
-      out$status <- "bracket_invalid"
-      return(out)
-    }
-    out$endpoint <- inside$target +
-      (probe$threshold - inside$objective_delta) *
-      (outside$target - inside$target) /
-      (outside$objective_delta - inside$objective_delta)
-    out$bracket <- c(inside$target, outside$target)
-    out
-  }
-
-  lower <- endpoint(
-    probe$trace[probe$trace$target < probe$mle, , drop = FALSE],
-    "lower", probe$lower_status
-  )
-  upper <- endpoint(
-    probe$trace[probe$trace$target > probe$mle, , drop = FALSE],
-    "upper", probe$upper_status
-  )
   list(
     target_index = probe$target_index,
     target_name = probe$target_name,
     estimate = probe$mle,
     threshold = probe$threshold,
     centre_status = probe$centre_status,
-    lower_status = lower$status,
-    upper_status = upper$status,
-    diagnostic_lower = lower$endpoint,
-    diagnostic_upper = upper$endpoint,
-    lower_bracket = lower$bracket,
-    upper_bracket = upper$bracket,
+    lower_status = probe$lower_status,
+    upper_status = probe$upper_status,
+    diagnostic_lower = probe$lower_endpoint,
+    diagnostic_upper = probe$upper_endpoint,
+    lower_bracket = probe$lower_bracket,
+    upper_bracket = probe$upper_bracket,
     objective_source = "fit$tmb_obj (penalised LA-MSPL)"
   )
 }

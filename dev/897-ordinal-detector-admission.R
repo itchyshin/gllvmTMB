@@ -327,6 +327,12 @@ rows <- if (workers == 1L) {
 } else {
   parallel::mclapply(cells, record_cell, mc.cores = workers, mc.preschedule = FALSE)
 }
+all_columns <- unique(unlist(lapply(rows, names), use.names = FALSE))
+rows <- lapply(rows, function(row) {
+  absent <- setdiff(all_columns, names(row))
+  for (column in absent) row[[column]] <- NA
+  row[all_columns]
+})
 out <- do.call(rbind, rows)
 elapsed <- as.numeric(difftime(Sys.time(), started, units = "secs"))
 commit <- Sys.getenv("GLLVM897_COMMIT", unset = NA_character_)

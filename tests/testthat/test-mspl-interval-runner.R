@@ -137,4 +137,15 @@ test_that("private MSPL interval aggregation enforces exact keys and provenance"
   )
   expect_identical(attr(output, "status"), 1L)
   expect_match(paste(output, collapse = "\n"), "provenance")
+
+  receipt$source_sha <- "test-source"
+  receipt$unconditional_redraw[[1L]] <- FALSE
+  utils::write.csv(
+    receipt, file.path(root, "raw", "synthetic.csv"), row.names = FALSE
+  )
+  output <- run_interval_cli(
+    c("summarise", "--root", root), error_on_status = FALSE
+  )
+  expect_identical(attr(output, "status"), 1L)
+  expect_match(paste(output, collapse = "\n"), "unconditional redraw")
 })

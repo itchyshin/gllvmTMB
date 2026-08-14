@@ -213,6 +213,12 @@ validate_receipts <- function(data, manifest) {
       nrow(data) != nrow(expected)) {
     stop("Raw receipt keys do not exactly match the frozen manifest.", call. = FALSE)
   }
+  if (any(data$status == "ok" & !data$unconditional_redraw)) {
+    stop(
+      "An ok bootstrap receipt did not confirm unconditional redraw.",
+      call. = FALSE
+    )
+  }
   m <- match(data$case_id, manifest$case_id)
   fields <- c(
     "manifest_version", "campaign_id", "source_sha", "assigned_cluster"
@@ -244,7 +250,8 @@ summarise_receipts <- function(data, manifest) {
   key <- interaction(data$case_id, data$target, drop = TRUE)
   out <- do.call(rbind, lapply(split(data, key), function(x) {
     case <- manifest[match(x$case_id[[1L]], manifest$case_id), , drop = FALSE]
-    usable <- x$status == "ok" & x$convergence == 0L &
+    usable <- x$status == "ok" & x$unconditional_redraw &
+      x$convergence == 0L &
       x$estimator_id == 1L & is.finite(x$estimate)
     estimates <- x$estimate[usable]
     endpoints <- if (length(estimates)) stats::quantile(

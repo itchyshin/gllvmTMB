@@ -49487,3 +49487,47 @@ private summary reported all 12 cell-target outcomes. Hessian availability was
 unconditional coverage was 0.73--0.85 there. This withholds any public SE or
 CI promotion. No `vcov()`, profile, `confint()`, bootstrap, or release surface
 changed.
+
+## 2026-08-13 — LA-MSPL private numerical-Hessian calibration gate
+
+The private runner at `inst/sim/lane-b-uncertainty/run-mspl-uncertainty.R`
+now has a distinct `hessian_only` path. It avoids every profile call, retains
+one row per target after a fit failure, writes receipts through a same-directory
+temporary file plus rename, validates the complete manifest target grid, and
+uses a separately offset confirmation seed stream. A focused runner-contract
+test guards those properties.
+
+The local and exact-source Totoro one-replicate smokes produced all four cells
+and 12 target rows with `profile_lower_status = "not_run"`. Totoro then ran a
+four-worker 500-replicate gate (2,000 receipts) and, because every cell met the
+predeclared availability >= 0.98 and unconditional coverage >= 0.92 rule, a
+disjoint four-worker 1,000-replicate confirmation (4,000 receipts). Both
+summaries enforced an exact receipt-manifest bijection. The 500 manifest and
+summary SHA-256 values are respectively
+`a1093f5d2e3143472f55e6df16004e70c59c317029934cb934e2dc7ee81a9bd0` and
+`d334fbe6ff44f0a2722bd0873eae85e4ca7fc764c1b92a776322157c58f90a1a`; the
+1,000 confirmation values are respectively
+`a5a7ce6e086ec75541b1d8028ceb045f9b7f32ba562c944c03b17b12944b12a8` and
+`cb2eeb856b6e8572af215632081c5e6f9ad37cd8e2d5af654d3cc9a65f7cedc8`.
+
+At confirmation, Hessian availability was 0.991--0.999 and unconditional
+diagnostic-band coverage was 0.950--0.979. Low-prevalence cloglog showed
+mean-SE / empirical-SD ratios of 1.07--1.35. This therefore remains a private
+candidate blocked from public calibrated-SE or confidence-interval promotion.
+The profile candidate was not evaluated. Public `vcov()`, `confint()`,
+`profile_targets()`, `tmbprofile_wrapper()`, and standard-error refusals
+remain fail-closed.
+
+Checks:
+
+```sh
+Rscript --vanilla -e 'devtools::test(filter = "mspl", stop_on_failure = TRUE)'
+Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-mspl-uncertainty-runner.R", reporter = "summary")'
+git diff --check
+rg -n 'gllvmTMB_mspl_penalized_hessian_diagnostic|gllvmTMB_mspl_profile_threshold_diagnostic' NAMESPACE R tests/testthat
+```
+
+Focused MSPL tests had no failures, warnings, or skips; the runner contract had
+five passing expectations. Deliberately not run: package-wide tests, R CMD
+check, pkgdown, bootstrap, q = 2, structured/missing-data regimes, CI, or any
+public API work.

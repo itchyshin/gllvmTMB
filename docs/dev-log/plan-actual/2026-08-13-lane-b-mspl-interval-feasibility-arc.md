@@ -148,3 +148,28 @@ three low-prevalence cloglog targets. Corresponding profile unconditional
 coverage was 0.73, 0.85, and 0.85. This is a private typed-blocker result for
 public profile intervals, not a confidence-interval claim. The 100-replicate
 pilot is operational evidence, not a calibrated-coverage decision.
+
+## Private numerical-Hessian calibration actuals
+
+**Recommended / actual:** up to ten hours including a 500-replicate gate and
+conditional 1,000-replicate confirmation / approximately 35 minutes, dominated
+by the exact-source Totoro build. **Mode:** private candidate adjudication.
+The runner was hardened before compute: it has a `hessian_only` route which
+does not invoke profile code, atomic three-target receipts, retained fit errors,
+an exact manifest-bijection check, and a disjoint confirmation seed stream.
+
+The initial four-cell x 500-replicate campaign returned all 2,000 receipts.
+Every target cleared the declared continuation gate (availability >= 0.98 and
+unconditional diagnostic-band coverage >= 0.92), so a disjoint four-cell x
+1,000-replicate confirmation ran to completion (4,000 receipts). The active
+penalised package source was `3a905b4f`; the confirmation runner source was
+`a0f26cb1`; manifest/summary SHA-256 receipts remain on Totoro.
+
+**Verdict:** the numerical outer-Hessian route is operationally available in
+these four fixtures (0.991--0.999 at confirmation) and its unconditional
+diagnostic-band coverage is 0.950--0.979. It is nevertheless **blocked from
+public SE or confidence-interval promotion**: the low-prevalence cloglog
+fixture has mean-SE / empirical-SD ratios of 1.07--1.35, including 1.35 for
+its first fixed effect. These are private diagnostic bands from the active
+penalised objective, not calibrated standard errors or confidence intervals.
+The profile candidate remains separately blocked; no public MSPL refusal changed.

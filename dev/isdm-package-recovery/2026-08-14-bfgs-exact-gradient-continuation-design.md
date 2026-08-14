@@ -120,3 +120,12 @@ process-temporary DLL path. The single permitted infrastructure repair uses
 the V2 source-gate roots and retains the stable package-source DLL path only
 after proving its content hash equals the DLL actually loaded in that process.
 V1 remains immutable and is not algorithm evidence.
+
+The V2 packet then passed DLL provenance and completed the ordinary fit, but
+stopped before BFGS because the runner required the exact TMB gradient to carry
+the parameter-vector names. Its retained and replayed gradients were both
+unnamed, as TMB returns them positionally; objective replay error was zero and
+relative gradient disagreement was `3.213207e-11`, below the frozen `1e-8`
+tolerance. V3 accepts an unnamed exact gradient only after parameter order and
+length have been proved; any supplied gradient names must still match exactly.
+V2 remains immutable and is not BFGS algorithm evidence.

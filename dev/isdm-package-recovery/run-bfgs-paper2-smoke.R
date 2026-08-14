@@ -16,9 +16,9 @@ if (!paper %in% c("paper1", "paper2")) {
   stop("invalid private BFGS paper route", call. = FALSE)
 }
 source_gate <- if (identical(paper, "paper1")) {
-  "BFGS_P1_S3_C360_R3_V2"
+  "BFGS_P1_S3_C360_R3_V3"
 } else {
-  "BFGS_P2_S6_C360_R3_V2"
+  "BFGS_P2_S6_C360_R3_V3"
 }
 if (!mode %in% c("validate", "preflight", "smoke") || is.null(root_arg)) {
   stop("require --mode=validate|preflight|smoke and --output=PATH", call. = FALSE)
@@ -269,7 +269,7 @@ select_initial_nlminb <- function(fit) {
     is.numeric(replay_gradient) &&
     length(replay_gradient) == length(parameter_vector) &&
     all(is.finite(replay_gradient)) &&
-    identical(names(replay_gradient), names(parameter_vector)) &&
+    bfgs_smoke_gradient_order_ok(replay_gradient, parameter_vector) &&
     is.finite(gradient_replay_relative_error) &&
     gradient_replay_relative_error <= gradient_replay_relative_tolerance
   if (!replay_ok) {
@@ -317,7 +317,7 @@ parent <- normalizePath(
   file.path(pkg, "dev", "isdm-package-recovery", "results"), mustWork = FALSE
 )
 paper2_ledger_path <- file.path(
-  parent, "BFGS_P2_S6_C360_R3_V2", "all-attempt-ledger.rds"
+  parent, "BFGS_P2_S6_C360_R3_V3", "all-attempt-ledger.rds"
 )
 expected_root <- normalizePath(file.path(parent, source_gate), mustWork = FALSE)
 if (!identical(root, expected_root)) {

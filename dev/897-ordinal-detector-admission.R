@@ -12,6 +12,10 @@ smoke <- "--smoke" %in% args
 failure_smoke <- "--failure-smoke" %in% args
 timing_smoke <- "--timing-smoke" %in% args
 totoro_preflight <- "--totoro-preflight" %in% args
+campaign <- "--campaign" %in% args
+campaign_phase <- Sys.getenv("GLLVM897_PHASE", "development")
+campaign_seeds <- as.integer(strsplit(Sys.getenv("GLLVM897_SEEDS", "1,2,3"), ",", fixed = TRUE)[[1L]])
+workers <- as.integer(Sys.getenv("GLLVM897_WORKERS", "1"))
 script_arg <- grep("^--file=", commandArgs(), value = TRUE)
 script_file <- if (length(script_arg)) sub("^--file=", "", script_arg[[1L]]) else NA_character_
 out_dir <- Sys.getenv(
@@ -21,6 +25,8 @@ out_dir <- Sys.getenv(
 dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
 
 stop_if <- function(x, message) if (isTRUE(x)) stop(message, call. = FALSE)
+stop_if(!is.finite(workers) || workers < 1L || workers > 150L,
+        "GLLVM897_WORKERS must be an integer from 1 through 150")
 
 rel_frob <- function(x, truth) {
   norm(x - truth, "F") / norm(truth, "F")
@@ -33,7 +39,7 @@ hash_rds <- function(x) {
   unname(tools::md5sum(path))
 }
 
-fit_contract <- function(fit) {
+fit_contract <- function(fit, categories) {
   map <- fit$tmb_obj$env$map
   par_names <- names(fit$tmb_obj$env$par)
   random_names <- par_names[fit$tmb_obj$env$random]
@@ -44,6 +50,10 @@ fit_contract <- function(fit) {
     unique_false = !isTRUE(fit$use$diag_B),
     theta_diag_B_mapped = isTRUE(all(is.na(as.vector(map$theta_diag_B)))),
     s_B_mapped = isTRUE(all(is.na(as.vector(map$s_B)))),
+    categories_match = identical(
+      unique(as.integer(fit$tmb_data$n_ordinal_cuts_per_trait)),
+      as.integer(categories - 2L)
+    ),
     random_blocks = paste(unique(random_names), collapse = ";"),
     formula = paste(deparse(fit$call$formula), collapse = " "),
     control = "gllvmTMBcontrol(); aghq_ridge omitted",
@@ -188,7 +198,7 @@ fit_cell <- function(cell) {
   convergence <- as.integer(fit$opt$convergence)
   pd_hess <- isTRUE(fit$sd_report$pdHess)
   raw_gradient <- tryCatch(fit$tmb_obj$gr(fit$opt$par), error = function(e) NA_real_)
-  contract <- fit_contract(fit)
+  contract <- fit_contract(fit, cell$categories)
   cbind(
     base,
     status = "OK",
@@ -235,6 +245,16 @@ if (totoro_preflight) {
     loading_shape = c("homogeneous", "sparse_identifiable"), seed = 4L,
     stringsAsFactors = FALSE
   )
+} else if (campaign) {
+  ## The target surface is deliberately ordinary ordinal-probit only.  The
+  ## phase-specific seeds are disjoint so threshold selection cannot consume
+  ## held-out evidence.
+  grid <- expand.grid(
+    n = c(60L, 150L, 400L, 1600L), p = c(12L, 27L), q = c(1L, 2L),
+    categories = c(3L, 4L, 6L), missing = c(0, 0.3),
+    loading_shape = c("homogeneous", "sparse_identifiable"),
+    seed = campaign_seeds, stringsAsFactors = FALSE
+  )
 } else if (timing_smoke) {
   ## Seed 4 was a retained truth-labelled silent-degeneracy row in the first
   ## bounded probe.  This one-cell mode exists solely to price the exact
@@ -256,14 +276,18 @@ if (totoro_preflight) {
 }
 
 started <- Sys.time()
-rows <- lapply(split(grid, seq_len(nrow(grid))), fit_cell)
+cells <- split(grid, seq_len(nrow(grid)))
+rows <- if (workers == 1L) {
+  lapply(cells, fit_cell)
+} else {
+  parallel::mclapply(cells, fit_cell, mc.cores = workers, mc.preschedule = FALSE)
+}
 out <- do.call(rbind, rows)
 elapsed <- as.numeric(difftime(Sys.time(), started, units = "secs"))
+commit <- Sys.getenv("GLLVM897_COMMIT", unset = NA_character_)
+if (is.na(commit) || !nzchar(commit)) commit <- system("git rev-parse HEAD 2>/dev/null", intern = TRUE)
 provenance <- data.frame(
-  commit = Sys.getenv(
-    "GLLVM897_COMMIT",
-    system("git rev-parse HEAD 2>/dev/null", intern = TRUE)
-  ),
+  commit = commit,
   script_md5 = if (!is.na(script_file) && file.exists(script_file)) {
     unname(tools::md5sum(script_file))
   } else {
@@ -273,11 +297,14 @@ provenance <- data.frame(
   package_version = as.character(utils::packageVersion("gllvmTMB")),
   command = paste(commandArgs(), collapse = " "),
   smoke = smoke, failure_smoke = failure_smoke, timing_smoke = timing_smoke,
-  totoro_preflight = totoro_preflight,
+  totoro_preflight = totoro_preflight, campaign = campaign,
+  campaign_phase = campaign_phase, workers = workers,
   elapsed_seconds = elapsed,
   stringsAsFactors = FALSE
 )
-tag <- if (totoro_preflight) "totoro-preflight" else if (timing_smoke) {
+tag <- if (totoro_preflight) "totoro-preflight" else if (campaign) {
+  paste0("campaign-", campaign_phase)
+} else if (timing_smoke) {
   "timing-smoke"
 } else if (failure_smoke) {
   "failure-smoke"

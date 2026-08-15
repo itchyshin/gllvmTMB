@@ -173,10 +173,16 @@ V2 remains immutable and is not BFGS algorithm evidence.
 
 The historical V3 roots are also immutable. Their terminal records predate the
 V2 terminal-evidence contract above and therefore cannot support numerical
-admission, Paper 1 ordering, or recovery. The sole successor is the fresh V4
-source-gate pair, `BFGS_P2_S6_C360_R3_V4` followed conditionally by
-`BFGS_P1_S3_C360_R3_V4`. V4 is a provenance-and-lifecycle repair only: it
-repeats the exact frozen estimator once from the immutable selected state, with
-no changed scientific controls, objective, parameterization, thresholds,
-fixture, seed, or candidate selection. It does not make V3 evidence valid, and
-there is no V5 retry after a V4 terminal of any kind.
+admission, Paper 1 ordering, or recovery. The V4 Paper 2 root is likewise
+immutable and unsealed: a post-entry runner error deleted required typed-NULL
+fields from the in-memory fallback ledger, so no terminal ledger or BFGS result
+was retained. It is a consumed infrastructure record, not a BFGS outcome.
+
+The sole successor is the fresh V5 source-gate pair,
+`BFGS_P2_S6_C360_R3_V5` followed conditionally by
+`BFGS_P1_S3_C360_R3_V5`. V5 repairs only that R-list lifecycle error by
+preserving required slots as typed `NULL`s. It repeats the exact frozen
+estimator once from the immutable selected state, with no changed scientific
+controls, objective, parameterization, thresholds, fixture, seed, or candidate
+selection. It does not make V3 or V4 evidence valid, and there is no V6 BFGS
+retry after a V5 terminal of any kind.

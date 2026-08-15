@@ -16,9 +16,9 @@ if (!paper %in% c("paper1", "paper2")) {
   stop("invalid private BFGS paper route", call. = FALSE)
 }
 source_gate <- if (identical(paper, "paper1")) {
-  "BFGS_P1_S3_C360_R3_V4"
+  "BFGS_P1_S3_C360_R3_V5"
 } else {
-  "BFGS_P2_S6_C360_R3_V4"
+  "BFGS_P2_S6_C360_R3_V5"
 }
 if (!mode %in% c("validate", "preflight", "smoke") || is.null(root_arg)) {
   stop("require --mode=validate|preflight|smoke and --output=PATH", call. = FALSE)
@@ -330,7 +330,7 @@ parent <- normalizePath(
   file.path(pkg, "dev", "isdm-package-recovery", "results"), mustWork = FALSE
 )
 paper2_ledger_path <- file.path(
-  parent, "BFGS_P2_S6_C360_R3_V4", "all-attempt-ledger.rds"
+  parent, "BFGS_P2_S6_C360_R3_V5", "all-attempt-ledger.rds"
 )
 expected_root <- normalizePath(file.path(parent, source_gate), mustWork = FALSE)
 if (!identical(root, expected_root)) {
@@ -526,30 +526,11 @@ main <- function() {
   claimed <- FALSE
   sealed <- FALSE
   normalise_fallback <- function(error) {
-    if (!file.exists(file.path(root, "fit.rds")))
-      ledger$timing$fit_elapsed_s <<- NA_real_
-    if (!file.exists(entry_path)) ledger$bfgs_entry <<- NULL
-    entered <- !is.null(ledger$bfgs_entry)
-    ledger$status <<- if (inherits(error, "bfgs_provenance_error"))
-      "INVALID_PROVENANCE" else "BFGS_INFRASTRUCTURE_HOLD"
-    ledger$reason <<- if (inherits(error, "bfgs_provenance_error"))
-      "provenance_failure" else "runner_unwind"
-    ledger$error <<- conditionMessage(error)
-    ledger$bfgs <<- NULL
-    ledger$covariance_hash <<- NA_character_
-    if (!entered) {
-      ledger$signature <<- NULL
-      ledger$raw <<- NULL
-      ledger$continuation_source <<- NULL
-      ledger$order_hash <<- NA_character_
-    }
-    ledger$checks <<- list(
-      provenance = identical(ledger$status, "BFGS_INFRASTRUCTURE_HOLD"),
-      preflight = TRUE, attempt_claimed = TRUE,
-      fit_available = !is.na(ledger$timing$fit_elapsed_s),
-      bfgs_entered = entered, terminal_evidence = FALSE
+    ledger <<- .bfgs_smoke_normalise_fallback(
+      ledger, error,
+      fit_available = file.exists(file.path(root, "fit.rds")),
+      entry_available = file.exists(entry_path)
     )
-    ledger$terminal <<- TRUE
     invisible(ledger)
   }
   terminal_paths <- function() {

@@ -61,14 +61,14 @@ bfgs_smoke_gradient_order_ok <- function(gradient, parameter_vector) {
       !identical(basename(dirname(dirname(dirname(root)))), "dev")) return(FALSE)
   pkg <- dirname(dirname(dirname(dirname(root))))
   source_gate <- receipt$source_gate
-  fixture <- if (identical(source_gate, "BFGS_P1_S3_C360_R3_V4")) {
+  fixture <- if (identical(source_gate, "BFGS_P1_S3_C360_R3_V5")) {
     "spatial-isdm-gate-b-smoke-fixture.R"
-  } else if (identical(source_gate, "BFGS_P2_S6_C360_R3_V4")) {
+  } else if (identical(source_gate, "BFGS_P2_S6_C360_R3_V5")) {
     "g2h-360cell-fixture.R"
   } else {
     return(FALSE)
   }
-  runner <- if (identical(source_gate, "BFGS_P1_S3_C360_R3_V4")) {
+  runner <- if (identical(source_gate, "BFGS_P1_S3_C360_R3_V5")) {
     "run-bfgs-paper1-smoke.R"
   } else {
     "run-bfgs-paper2-smoke.R"
@@ -135,6 +135,42 @@ bfgs_smoke_gradient_order_ok <- function(gradient, parameter_vector) {
   "provenance", "preflight", "attempt_claimed", "fit_available",
   "bfgs_entered", "terminal_evidence"
 )
+
+# Pure runner fallback normalisation.  Use `[name] <- list(NULL)`, rather than
+# `$name <- NULL`, so every required terminal-ledger slot remains materialized.
+.bfgs_smoke_normalise_fallback <- function(ledger, error, fit_available,
+                                           entry_available) {
+  if (!isTRUE(fit_available)) ledger$timing$fit_elapsed_s <- NA_real_
+  if (!isTRUE(entry_available)) ledger["bfgs_entry"] <- list(NULL)
+  entered <- !is.null(ledger$bfgs_entry)
+  ledger$status <- if (inherits(error, "bfgs_provenance_error")) {
+    "INVALID_PROVENANCE"
+  } else {
+    "BFGS_INFRASTRUCTURE_HOLD"
+  }
+  ledger$reason <- if (inherits(error, "bfgs_provenance_error")) {
+    "provenance_failure"
+  } else {
+    "runner_unwind"
+  }
+  ledger$error <- conditionMessage(error)
+  ledger["bfgs"] <- list(NULL)
+  ledger$covariance_hash <- NA_character_
+  if (!entered) {
+    ledger["signature"] <- list(NULL)
+    ledger["raw"] <- list(NULL)
+    ledger["continuation_source"] <- list(NULL)
+    ledger$order_hash <- NA_character_
+  }
+  ledger$checks <- list(
+    provenance = identical(ledger$status, "BFGS_INFRASTRUCTURE_HOLD"),
+    preflight = TRUE, attempt_claimed = TRUE,
+    fit_available = !is.na(ledger$timing$fit_elapsed_s),
+    bfgs_entered = entered, terminal_evidence = FALSE
+  )
+  ledger$terminal <- TRUE
+  ledger
+}
 
 bfgs_smoke_validate_attempt_marker <- function(marker, receipt, receipt_md5) {
   ok <- .bfgs_smoke_exact_names(marker, .bfgs_smoke_attempt_marker_names) &&
@@ -857,7 +893,7 @@ bfgs_smoke_validate_terminal_ledger <- function(ledger, source_gate, commit,
     }
     preflight <- c("fixture.rds", "root-receipt.rds", "session-info.rds",
       "time-estimate.md")
-    if (identical(source_gate, "BFGS_P1_S3_C360_R3_V4"))
+    if (identical(source_gate, "BFGS_P1_S3_C360_R3_V5"))
       preflight <- c(preflight, "mesh.rds")
     expected <- c(preflight, "attempt-started.rds", "all-attempt-ledger.rds")
     if (file.exists(file.path(root, "fit.rds"))) expected <- c(expected, "fit.rds")
@@ -933,7 +969,7 @@ bfgs_smoke_validate_paper2_prerequisite <- function(path, commit, expected) {
   ledger <- tryCatch(readRDS(path), error = function(e) NULL)
   md5 <- unname(tools::md5sum(path))[[1L]]
   verdict <- bfgs_smoke_validate_terminal_ledger(
-    ledger, "BFGS_P2_S6_C360_R3_V4", commit, root
+    ledger, "BFGS_P2_S6_C360_R3_V5", commit, root
   )
   if (!verdict$valid) {
     return(list(
@@ -945,8 +981,8 @@ bfgs_smoke_validate_paper2_prerequisite <- function(path, commit, expected) {
   receipt <- tryCatch(readRDS(receipt_path), error = function(e) NULL)
   receipt_verdict <- bfgs_smoke_validate_receipt(receipt, receipt)
   receipt_constants <- is.list(receipt) &&
-    identical(receipt$schema, "BFGS_P2_S6_C360_R3_V4_PREFLIGHT_V1") &&
-    identical(receipt$source_gate, "BFGS_P2_S6_C360_R3_V4") &&
+    identical(receipt$schema, "BFGS_P2_S6_C360_R3_V5_PREFLIGHT_V1") &&
+    identical(receipt$source_gate, "BFGS_P2_S6_C360_R3_V5") &&
     identical(receipt$root, root) &&
     identical(receipt$commit, commit) && identical(receipt$seed, 86302L) &&
     identical(receipt$dimensions, c(S = 6L, C = 360L, r = 3L, b = 1L, d = 1L)) &&

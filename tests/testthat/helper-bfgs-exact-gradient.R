@@ -47,8 +47,8 @@ bfgs_v2_receipt <- function(contract, root, control = list(n_init = 1L,
     .internal_continuation = FALSE), commit = strrep("a", 40L)) {
   hash <- function(letter) strrep(letter, 32L)
   list(
-    schema = "BFGS_P2_S6_C360_R3_V4_PREFLIGHT_V1",
-    source_gate = "BFGS_P2_S6_C360_R3_V4", root = normalizePath(root,
+    schema = "BFGS_P2_S6_C360_R3_V5_PREFLIGHT_V1",
+    source_gate = "BFGS_P2_S6_C360_R3_V5", root = normalizePath(root,
       mustWork = TRUE), commit = commit, seed = 86302L,
     dimensions = c(S = 6L, C = 360L, r = 3L, b = 1L, d = 1L),
     n_rows = 8640L, runner_md5 = hash("1"), core_runner_md5 = hash("2"),

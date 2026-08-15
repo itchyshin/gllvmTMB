@@ -10,9 +10,9 @@ bfgs_contract_env <- function() {
 bfgs_receipt_fixture <- function(paper1 = FALSE) {
   hash <- function(letter) paste(rep(letter, 32L), collapse = "")
   ans <- list(
-    schema = "BFGS_P2_S6_C360_R3_V4_PREFLIGHT_V1",
-    source_gate = "BFGS_P2_S6_C360_R3_V4",
-    root = "/sealed/results/BFGS_P2_S6_C360_R3_V4",
+    schema = "BFGS_P2_S6_C360_R3_V5_PREFLIGHT_V1",
+    source_gate = "BFGS_P2_S6_C360_R3_V5",
+    root = "/sealed/results/BFGS_P2_S6_C360_R3_V5",
     commit = paste(rep("a", 40L), collapse = ""), seed = 86302L,
     dimensions = c(S = 6L, C = 360L, r = 3L, b = 1L, d = 1L),
     n_rows = 8640L,
@@ -27,9 +27,9 @@ bfgs_receipt_fixture <- function(paper1 = FALSE) {
     paper2_terminal_status = NA_character_, paper2_terminal_md5 = NA_character_
   )
   if (paper1) {
-    ans$schema <- "BFGS_P1_S3_C360_R3_V4_PREFLIGHT_V1"
-    ans$source_gate <- "BFGS_P1_S3_C360_R3_V4"
-    ans$root <- "/sealed/results/BFGS_P1_S3_C360_R3_V4"
+    ans$schema <- "BFGS_P1_S3_C360_R3_V5_PREFLIGHT_V1"
+    ans$source_gate <- "BFGS_P1_S3_C360_R3_V5"
+    ans$root <- "/sealed/results/BFGS_P1_S3_C360_R3_V5"
     ans$seed <- 86301L
     ans$dimensions <- c(S = 3L, C = 360L, r = 3L, b = 1L, d = 1L)
     ans$n_rows <- 4320L
@@ -41,7 +41,7 @@ bfgs_receipt_fixture <- function(paper1 = FALSE) {
 
 bfgs_terminal_ledger_fixture <- function(
     status = "BFGS_NUMERICAL_ADMISSION",
-    source_gate = "BFGS_P2_S6_C360_R3_V4",
+    source_gate = "BFGS_P2_S6_C360_R3_V5",
     commit = paste(rep("a", 40L), collapse = "")) {
   list(
     schema = paste0(source_gate, "_ALL_ATTEMPT_V1"), status = status,
@@ -252,6 +252,57 @@ test_that("V2 terminal ledgers distinguish early and fallback terminal shapes", 
   }
 })
 
+test_that("post-entry fallback preserves every typed NULL ledger slot", {
+  contract <- bfgs_contract_env()
+  root <- withr::local_tempdir()
+  ledger <- bfgs_v2_normal_ledger(contract, root)
+  fit <- attr(ledger, "bfgs_fixture_fit", exact = TRUE)
+  attr(ledger, "bfgs_fixture_fit") <- NULL
+
+  prefix <- ledger$continuation_source
+  ledger$raw <- list(
+    parameter_vector = prefix$parameter_vector,
+    gradient = prefix$gradient,
+    objective = prefix$objective,
+    raw_state = list(
+      optimizer = "nlminb", convergence = prefix$convergence,
+      pd_hessian = prefix$pd_hessian,
+      boundary_flags = prefix$boundary_flags, is_isdm = TRUE,
+      aghq = FALSE, ridge = FALSE,
+      retry_enabled = !isTRUE(prefix$internal_continuation_disabled),
+      profile_enabled = FALSE, source_gate = ledger$receipt$source_gate
+    ),
+    selection_source = prefix$selection_source
+  )
+  ledger <- contract$.bfgs_smoke_normalise_fallback(
+    ledger, simpleError("synthetic post-entry runner error"),
+    fit_available = TRUE, entry_available = TRUE
+  )
+  ledger <- bfgs_v2_materialize(contract, ledger, fit)
+
+  accepted <- contract$bfgs_smoke_validate_terminal_ledger(
+    ledger, ledger$receipt$source_gate, ledger$receipt$commit
+  )
+  expect_true(accepted$valid, info = accepted$reason)
+
+  deleted <- ledger
+  deleted$bfgs <- NULL
+  expect_false(contract$bfgs_smoke_validate_terminal_ledger(
+    deleted, deleted$receipt$source_gate, deleted$receipt$commit
+  )$valid)
+
+  early <- bfgs_v2_fallback_ledger(contract, withr::local_tempdir())
+  early <- contract$.bfgs_smoke_normalise_fallback(
+    early, simpleError("synthetic pre-entry runner error"),
+    fit_available = FALSE, entry_available = FALSE
+  )
+  expect_identical(names(early), contract$.bfgs_smoke_ledger_names)
+  expect_null(early$bfgs_entry)
+  expect_null(early$signature)
+  expect_null(early$raw)
+  expect_null(early$continuation_source)
+})
+
 test_that("BFGS entry evidence requires a claimed marker and immutable order hash", {
   contract <- bfgs_contract_env()
   root <- withr::local_tempdir()
@@ -404,7 +455,7 @@ if (FALSE) { # superseded V1 packet retained only as a parse-time reference
   par <- c(beta = 0)
   labels <- names(par)
   ids <- paste0(labels, "[", seq_along(par), "]")
-  signature <- list(source_gate = "BFGS_P2_S6_C360_R3_V4")
+  signature <- list(source_gate = "BFGS_P2_S6_C360_R3_V5")
   continuation <- list(
     warm_restart_provenance = list(attempted = FALSE),
     isdm_polish_provenance = list(attempted = FALSE),
@@ -511,11 +562,11 @@ test_that("Paper BFGS runners execute their validation modes without a fit", {
     stdout = TRUE)[[1L]]
   cases <- list(
     paper2 = list(
-      runner = "run-bfgs-paper2-smoke.R", gate = "BFGS_P2_S6_C360_R3_V4",
+      runner = "run-bfgs-paper2-smoke.R", gate = "BFGS_P2_S6_C360_R3_V5",
       marker = "BFGS_P2_RUNNER_VALIDATION_PASS (no fit)"
     ),
     paper1 = list(
-      runner = "run-bfgs-paper1-smoke.R", gate = "BFGS_P1_S3_C360_R3_V4",
+      runner = "run-bfgs-paper1-smoke.R", gate = "BFGS_P1_S3_C360_R3_V5",
       marker = "BFGS_P1_RUNNER_VALIDATION_PASS (no fit)"
     )
   )

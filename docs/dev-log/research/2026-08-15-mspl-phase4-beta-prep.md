@@ -140,6 +140,14 @@ Existence / coercivity sketch used as the oracle contract
 - **B7** Latent loading coercivity under Laplace is **OPEN**.
   Bernoulli \(V_{\mathrm{loading}}\) is listed only as a
   forbidden transplant (oracle E8).
+- **B8** The mean-model atom in this note is **fixed-only /
+  conditional** GLM information, evaluated at
+  \(\eta=X_{\mathrm{fix}}b_{\mathrm{fix}}+\mathrm{offset}\) before
+  any latent-score contribution — the same convention the live
+  tape records at `src/gllvmTMB.cpp` ("before any latent-score
+  contribution"). Laplace-marginal information for \(\beta\) is a
+  different object and remains **OPEN**. These oracles do not
+  compute it.
 
 ## 2. Boundary mechanisms (three objects, not one)
 
@@ -318,8 +326,8 @@ row as a test dependency.
 Preferred later-admission *candidate* is **not** a transplanted
 Bernoulli Jeffreys role. The mean-model \(P^*_{\mathrm{J}}\) is
 the correct *information* atom and is **not** a mean-boundary
-repair. Precision / shape atoms and a loading atom under Laplace
-remain OPEN. Not a theorem transfer.
+repair. Precision / shape atoms, a loading atom under Laplace, and
+Laplace-marginal \(I(\beta)\) remain OPEN. Not a theorem transfer.
 
 ## 7. Non-claims
 
@@ -334,7 +342,8 @@ This note does **not** claim:
 - `betabinomial` / `delta_beta` / mixed-family MSPL;
 - structured tiers (`phylo_*`, `spatial_*`, `animal_*`, `kernel_*`);
 - that EVA/VA is involved (it is not);
-- that a `beta:*` registry row exists or should exist.
+- that a `beta:*` registry row exists or should exist;
+- that this atom is the Laplace-marginal information for \(\beta\).
 
 ## 8. What must exist before admission (unchanged programme gate)
 

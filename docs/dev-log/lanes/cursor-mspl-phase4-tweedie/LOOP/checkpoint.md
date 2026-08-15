@@ -1,4 +1,4 @@
-GOAL: see GOAL.md.   STATE: **GOAL LANDED** — planned Tweedie prep on disk; PR next / awaiting human merge.
+GOAL: see GOAL.md.   STATE: **GOAL LANDED** — planned Tweedie prep on [#973](https://github.com/itchyshin/gllvmTMB/pull/973); awaiting human merge.
 
 ARCS DONE (verified):
 - A0 — LOOP kit under `docs/dev-log/lanes/cursor-mspl-phase4-tweedie/LOOP/`.
@@ -16,7 +16,7 @@ NEXT: Shinichi review/merge of this lane's PR. HARD STOP = admit / prepare widen
 
 OPEN GATES (need human): merge PR; do not admit Tweedie; do not widen prepare.
 
-TRUTH LIVES IN: `cursor/mspl-phase4-tweedie` · worktree `/private/tmp/gllvmtmb-mspl-phase4-tweedie` · this LOOP kit.
+TRUTH LIVES IN: `cursor/mspl-phase4-tweedie` · PR https://github.com/itchyshin/gllvmTMB/pull/973 · worktree `/private/tmp/gllvmtmb-mspl-phase4-tweedie` · this LOOP kit.
 
 RESUME (post-merge / new work):
 ```text

@@ -479,6 +479,32 @@ test_that("a complete no-fit gate root is independently bound to retained child 
   expect_identical(verdict$child, fixture$child)
 })
 
+test_that("the V2 child requires both the complete V1 closeout and V3 receipt projection", {
+  contract <- spde_slope_gauge_nofit_contract_env()
+  fixture <- spde_slope_gauge_nofit_gate_fixture(contract)
+  v1 <- spde_slope_gauge_nofit_v1_forensic_fixture()
+  on.exit(unlink(c(fixture$root, fixture$predecessor$root, fixture$source_dir, v1$root),
+    recursive = TRUE), add = TRUE)
+  on.exit(unlink(fixture$dll), add = TRUE)
+  v1_verdict <- contract$spde_slope_gauge_nofit_v2_validate_v1_forensic(v1$root, v1$locked)
+  v3_verdict <- contract$spde_slope_gauge_nofit_validate_predecessor_bytes(
+    fixture$predecessor$root, fixture$predecessor$locked
+  )
+  child <- fixture$child
+  child$schema <- "PAPER1_SPDE_SLOPE_GAUGE_NOFIT_GATE_V2_CHILD_V1"
+  child$predecessor <- c(v3_verdict[c("root", "commit", "receipt", "state_md5")], list(
+    v1_forensic = v1_verdict[c("root", "commit", "receipt", "files", "status", "terminal_reason")],
+    historical_reason = "closeout_recomputed", post_replay_gc = TRUE
+  ))
+  expect_true(contract$.spde_slope_gauge_nofit_v2_child_ok(
+    child, v1_verdict, v3_verdict, child$dll
+  ))
+  child$predecessor$receipt <- list(forged = TRUE)
+  expect_false(contract$.spde_slope_gauge_nofit_v2_child_ok(
+    child, v1_verdict, v3_verdict, child$dll
+  ))
+})
+
 test_that("the gate root rejects a forged process launch, source commit, or evidence-HOLD relabel", {
   contract <- spde_slope_gauge_nofit_contract_env()
   fixture <- spde_slope_gauge_nofit_gate_fixture(contract)

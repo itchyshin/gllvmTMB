@@ -219,6 +219,30 @@ spde_slope_gauge_nofit_v2_validate_v1_forensic <- function(
     identical(predecessor$state_md5, v3_verdict$state_md5)
 }
 
+.spde_slope_gauge_nofit_v2_child_ok <- function(child, v1_verdict, v3_verdict, expected_dll) {
+  fields <- c(
+    "schema", "parent_pid", "child_pid", "started_at", "deadline_s", "status", "reason",
+    "predecessor", "dll", "object", "nofit", "callback_audit", "error", "ended_at", "elapsed_s"
+  )
+  predecessor_fields <- c(
+    "root", "commit", "receipt", "state_md5", "v1_forensic", "historical_reason", "post_replay_gc"
+  )
+  if (!.spde_slope_gauge_nofit_exact_names(child, fields) ||
+      !identical(child$schema, "PAPER1_SPDE_SLOPE_GAUGE_NOFIT_GATE_V2_CHILD_V1") ||
+      !isTRUE(v1_verdict$valid) || !identical(v1_verdict$reason, "v1_forensic_terminal_valid") ||
+      !.spde_slope_gauge_nofit_exact_names(child$predecessor, predecessor_fields) ||
+      !.spde_slope_gauge_nofit_v2_v3_projection_ok(
+        child$predecessor[c("root", "commit", "receipt", "state_md5")], v3_verdict
+      ) ||
+      !identical(child$predecessor$v1_forensic, v1_verdict[c(
+        "root", "commit", "receipt", "files", "status", "terminal_reason"
+      )])) return(FALSE)
+  legacy <- child
+  legacy$schema <- "PAPER1_SPDE_SLOPE_GAUGE_NOFIT_GATE_V1_CHILD_V1"
+  legacy$predecessor <- child$predecessor[c("root", "commit", "state_md5", "historical_reason", "post_replay_gc")]
+  .spde_slope_gauge_nofit_child_ok(legacy, v3_verdict, expected_dll, state = v3_verdict$state)
+}
+
 ## Bridge an already-created object to the strict generic callback contract.
 ## The runner alone must prove the live DLL/object lifecycle; this local helper
 ## checks the supplied bridge evidence and retains its callback records.  It

@@ -1,0 +1,4 @@
+method	cells	availability_pass	availability_fail	coverage_pass	coverage_fail	joint_pass	joint_fail	availability_min	availability_max	unconditional_coverage_min	unconditional_coverage_max	conditional_coverage_min	conditional_coverage_max
+profile	36	34	2	25	11	24	12	0.928	1	0.923	1	0.932865731462926	1
+wald	36	36	0	9	27	9	27	0.533	0.995	0.52	0.985	0.92879746835443	0.995714285714286
+bootstrap	36	36	0	20	16	20	16	1	1	0.01	1	0.01	1

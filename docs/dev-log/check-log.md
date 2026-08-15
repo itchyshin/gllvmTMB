@@ -49892,3 +49892,100 @@ The independent failover audit compared old/new manifests and maps: only the
 identical. It returned strict GO with no P0/P1/P2 findings. Remote execution
 remained paused pending the new commit. Public MSPL inference remains
 fail-closed.
+
+---
+
+## 2026-08-14/15 UTC — LA-MSPL coverage calibration production
+
+The frozen two-cluster campaign completed under source
+`8b23cfd2078bbac409f229a4d9f87df8b35ab147`: 1,200/1,200 immutable
+schema-v2 shards, 12,000/12,000 successful outer fits, 6,000,000 retained
+bootstrap attempts, 108,000 method-target endpoints, 1,159,993 profile-trace
+rows, and 108 summary cells. The canonical shard ledger and every retained
+RDS hash passed. Five bootstrap attempts retained `refit_optimizer_failed`;
+all 36,000 bootstrap endpoints still met the 475-of-500 usable floor.
+
+The monitored two-hour pending rule fired twice. Each continuation preserved
+valid immutable shards and resubmitted only exact absent non-contiguous keys
+with unchanged seeds. Final production counts were Nibi 693/693 and Narval
+495/495, with zero invalid shards and zero failed outer fits. The definitive
+strict aggregate ran on Nibi job `19845890` for 1:25:43 with 5.76 GiB maximum
+RSS and exit 0.
+
+Frozen promotion verdict:
+
+- profile: availability 34/36, coverage 25/36, joint 24/36;
+- bootstrap: availability 36/36, coverage 20/36, joint 20/36;
+- Wald: availability 36/36, conditional coverage 9/36, joint 9/36;
+- total: availability 106/108, coverage 54/108, joint 53/108.
+
+Independent statistical reconstruction and independent provenance review
+both passed the evidence and returned strict no-promotion. Public MSPL
+`vcov()`, `confint()`, `profile_targets()`, `tmbprofile_wrapper()`,
+`bootstrap_Sigma()`, `standard_errors()`, derived-target, and likelihood-
+comparison routes remain fail-closed. `MSPL-04` remains blocked.
+
+Receipt hashes:
+
+- production receipt:
+  `8232f1a847e6bfeb4626e6b55d033496743aa0e373284ad30a6432aeac277ea1`;
+- full summary:
+  `64b2776010b0f5af4b41d0f764d412853bd43a918fd758c4727ea854af991564`;
+- 1,200-shard ledger:
+  `1cb6c667f9018784545646dcdda2183766758272e265848e80d1e27691f15fd1`.
+
+Verification:
+
+```sh
+Rscript --vanilla -e \
+  'devtools::test(filter = "mspl", stop_on_failure = TRUE)'
+# PASS: exit 0; public MSPL refusal assertions unchanged.
+
+bash inst/sim/lane-b-uncertainty/mspl-coverage/contract-self-test.sh
+# PASS: launcher-contract-self-test=PASS.
+
+for file in inst/sim/lane-b-uncertainty/mspl-coverage/*.sh \
+            inst/sim/lane-b-uncertainty/mspl-coverage/*.sbatch; do
+  bash -n "$file" || exit 1
+done
+# PASS.
+
+(cd docs/dev-log/simulation-artifacts/2026-08-14-mspl-coverage-calibration-production && \
+  shasum -a 256 -c SHA256SUMS)
+# PASS: all six compact retained evidence files.
+
+git diff --check
+# PASS.
+```
+
+Exact audit searches and verdicts:
+
+```sh
+rg -n 'calibrat|coverage|promotion|public|confidence interval|95%' \
+  docs/dev-log/plan-actual/2026-08-14-lane-b-mspl-coverage-calibration.md \
+  docs/dev-log/simulation-artifacts/2026-08-14-mspl-coverage-calibration-production/README.md
+# All new calibration prose ends in blocked/no-promotion scope.
+
+rg -n 'vcov\(\)|confint\(\)|profile_targets\(\)|tmbprofile_wrapper\(\)|bootstrap_Sigma\(\)|standard_errors\(\)' \
+  R/mspl.R R/z-confint-gllvmTMB.R R/vcov-coef.R R/profile-targets.R \
+  R/profile-ci.R R/bootstrap-sigma.R R/standard-errors.R
+# All six public routes still call the MSPL inference guard.
+
+rg -n 'MSPL-04' docs/design/35-validation-debt-register.md
+# MSPL-04 remains blocked.
+```
+
+Deliberately not run: `devtools::test()` package-wide,
+`devtools::document()`, `pkgdown::check_pkgdown()`, article rendering,
+`R CMD check`, or three-OS CI. No implementation, public documentation,
+roxygen, generated Rd, vignette, NEWS, ROADMAP, NAMESPACE, or pkgdown surface
+changed because no method earned promotion. No confirmation seed was used to
+tune a failed method. Raw campaign outputs remain outside Git on DRAC project
+storage; compact evidence is under
+`docs/dev-log/simulation-artifacts/2026-08-14-mspl-coverage-calibration-production/`.
+
+Coordination: lane preflight identified this named Codex coverage lane plus a
+separate active Cursor MSPL provenance lane. GitHub PR listing was unavailable;
+local all-ref history showed the adjacent Cursor `check-log.md` change. This
+branch changed only its named coverage artifacts and records the integration
+collision explicitly for later reconciliation.

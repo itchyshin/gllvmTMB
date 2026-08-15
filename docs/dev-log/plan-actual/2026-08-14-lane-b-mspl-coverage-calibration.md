@@ -284,3 +284,84 @@ tasks fail before compute. The launcher self-test, all shell syntax checks,
 191 focused runner expectations, and `git diff --check` passed. An independent
 read-only audit returned strict GO with no P0/P1/P2 findings. Fresh two-cluster
 Gates 1--4 still require a new immutable source commit before any remote resume.
+
+## Production and promotion actual — 2026-08-14/15 UTC
+
+Fresh Gates 1--4 and production completed against exact source
+`8b23cfd2078bbac409f229a4d9f87df8b35ab147`. Nibi owned cases
+`C001`--`C006`,`C011`; Narval owned `C007`--`C010`,`C012`. Separate
+cluster-native runtimes, the closed 22-key ready receipt, the exact 12-key
+Gate 4 map, and the exact 1,188-key remaining map all passed independent
+pre-launch audit. The production arrays used one CPU, 4 GB, a 30-minute hard
+limit, and a throttle of 20 tasks per cluster.
+
+The two-hour pending rule fired twice. Each time the read-only monitor reported
+`pending_over_2h`; the operator cancelled the still-pending remainder, preserved
+every immutable valid shard, derived the non-contiguous missing indices from the
+frozen map, rejected collisions, and resubmitted only those exact keys with
+unchanged seeds. The first wave retained
+494/1,188 production shards; the first continuation retained 1,017/1,188; the
+second continuation completed 1,188/1,188. No completed key was rerun. The
+final inventory contained 693 Nibi and 495 Narval production shards with zero
+invalid shards and zero failed outer fits.
+
+The strict aggregate contains exactly 1,200 shards, 12,000 outer fits,
+6,000,000 bootstrap attempts, 108,000 method-target endpoints, 1,159,993
+profile-trace rows, and 108 summary cells. Five bootstrap attempts retained
+`refit_optimizer_failed`, but all 36,000 bootstrap endpoints met the
+475-of-500 usable-refit floor. Profile retained 205 unavailable endpoints;
+Wald retained 6,948 unavailable endpoints, all typed
+`likelihood_hessian_non_pd`. The aggregate is claim-bearing
+(`calibration_gate_eligible: TRUE`) but explicitly cannot unlock launchers and
+does not change the public fence.
+
+The frozen gate verdict is:
+
+| Method | Availability | Coverage | Joint | Promotion |
+|---|---:|---:|---:|---|
+| Penalised nuisance-reoptimised profile | 34/36 | 25/36 | 24/36 | blocked |
+| Unconditional parametric percentile bootstrap | 36/36 | 20/36 | 20/36 | blocked |
+| Paper-style likelihood-curvature Wald | 36/36 | 9/36 | 9/36 | blocked |
+
+The two profile availability failures were `C003/b_fix[3]` at 0.945 and
+`C010/b_fix[1]` at 0.928. Profile failures otherwise included undercoverage,
+overcoverage, lower-side truncation/refinement/optimizer failures, and two
+upper-side failures. Bootstrap was available in every cell but failed
+coverage in 16/36 cells: 13 undercoverage and three overcoverage. Wald met its
+minimum available-count gate in all cells but failed conditional coverage in
+27/36; it also retained the non-positive-definite Hessian map rather than
+repairing it.
+
+Independent statistical reconstruction reproduced all 108 gates, including
+the separate conditional-Wald rule. Independent provenance review verified
+every shard hash, source/runtime identity, exact row count, retained failure,
+and the 53/108 joint total. Both reviews returned a strict no-promotion
+verdict. The 53 passing cells are not an approved public subset. No
+seed-specific tuning or gate relaxation follows from this campaign.
+
+Public MSPL `vcov()`, `confint()`, `profile_targets()`,
+`tmbprofile_wrapper()`, `bootstrap_Sigma()`, `standard_errors()`, derived
+targets, likelihood comparison, q = 2, structured, weighted, and missing-data
+routes therefore remain fail-closed. Validation row `MSPL-04` remains
+`blocked`; no public API, NAMESPACE, roxygen, Rd, vignette, NEWS, ROADMAP, or
+pkgdown surface changed.
+
+The production receipt SHA-256 is
+`8232f1a847e6bfeb4626e6b55d033496743aa0e373284ad30a6432aeac277ea1`;
+the summary SHA-256 is
+`64b2776010b0f5af4b41d0f764d412853bd43a918fd758c4727ea854af991564`;
+and the canonical 1,200-shard ledger SHA-256 is
+`1cb6c667f9018784545646dcdda2183766758272e265848e80d1e27691f15fd1`.
+Compact retained evidence is under
+`docs/dev-log/simulation-artifacts/2026-08-14-mspl-coverage-calibration-production/`.
+Raw shards and row-level outputs remain outside Git on DRAC project storage and
+at `/tmp/mspl-coverage-production-8b23cfd2-eqLdNa` for the current local
+session.
+
+The definitive aggregate needed 1:25:43 on one Nibi CPU with 5.76 GiB maximum
+RSS. Three bounded local attempts correctly stopped at their 8-, 20-, and
+40-minute estimates. Read-only diagnosis found a superlinear validator loop
+that repeatedly filtered six million bootstrap rows for 36,000 endpoints,
+about 216 billion comparisons. This is internal aggregation-performance debt,
+not a statistical failure; any confirmation campaign should repair and
+benchmark the validator before another six-million-row closeout.

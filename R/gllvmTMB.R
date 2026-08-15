@@ -976,6 +976,14 @@ gllvmTMB <- function(
   if (inherits(.fit, "gllvmTMB_va")) {
     .fit$call <- match.call()
   }
+  ## Arc 1A: record resolved integration / criterion / kernel / penalty-eval.
+  ## `estimator = "ml"` + `integration = "va"` stays accepted; this only labels
+  ## the public ML tag as coarse. Do not reject.
+  .fit <- .gllvmTMB_attach_estimator_provenance(
+    .fit,
+    estimator = estimator,
+    reml = REML
+  )
   ## WARN ON AN IMPLAUSIBLE LOADING SCALE -- because the failure is COMMON and SILENT.
   ##
   ## Measured, 12,000 fits, binomial p=6 q=2 (docs/dev-log/audits/

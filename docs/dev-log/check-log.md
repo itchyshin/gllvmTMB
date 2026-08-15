@@ -49174,3 +49174,98 @@ maintainer selected the alternative: retain LA-MSPL as a strategically important
 opt-in, separately adjudicated lane.  The packet now keeps the fixed-design
 separation screen as its own bounded diagnostic and separates both routes from
 the ordinary native-Laplace release claim.
+
+---
+
+## 2026-08-14 — MSPL Arc 1A internal provenance parity (Cursor)
+
+Stacked branch `cursor/mspl-arc-1a-provenance` from `829a6832` in
+`/private/tmp/gllvmtmb-mspl-estimator-programme-roadmap`. G0-approved
+`/goal` run. TMB `estimator_id` stays 0/1/2; R resolver derives the
+integer; `fit$estimator_provenance` is unadvertised. VA+ml remains
+accepted and is recorded as coarse ML.
+
+Commands (OMP_NUM_THREADS=1, NOT_CRAN=true, `pkgload::load_all` on this
+checkout):
+
+```r
+testthat::test_file("tests/testthat/test-estimator-provenance.R")
+# [ FAIL 0 | WARN 0 | SKIP 0 | PASS 75 ]  26.1 s
+
+testthat::test_file("tests/testthat/test-mspl-api.R")
+# [ FAIL 0 | WARN 0 | SKIP 0 | PASS 223 ]  16.9 s
+```
+
+rg / grep:
+
+- `estimator_id <- [012]L` in `R/` and `src/` — expected-absent after
+  the adapter (assignments now go through
+  `.gllvmTMB_estimator_id_for_tape()`).
+- `git diff -- src/` — empty.
+- NEWS / validation-register / Design 117 / interval-feasibility /
+  iSDM / G3P / #872 / #855 / AA-03 — not in this diff.
+
+Not run: `devtools::test()`, `R CMD check`, `pkgdown`, campaigns.
+Deliberate: plan said targeted MSPL + new provenance file only.
+
+After-task:
+`docs/dev-log/after-task/2026-08-14-mspl-arc-1a-provenance-parity.md`.
+Plan-actual: `docs/dev-log/plan-actual/2026-08-14-mspl-arc-1a.md`.
+Do not merge. Leave #961 as the docs vehicle.
+
+---
+
+## 2026-08-15 — MSPL Arc 1A LOOP unclobber (Cursor)
+
+Shinichi: clean up, then continue MSPL. The stacked PR would have
+replaced `main`'s 0.6 `LOOP/` kit (377 insertions / 1006 deletions on
+those four files).
+
+Moved the Arc 1A kit to
+`docs/dev-log/lanes/cursor-mspl-arc-1a/LOOP/` and restored repo-root
+`LOOP/` from `origin/main`. `git diff origin/main -- LOOP/` is empty.
+
+Not run: tests (docs-only restore). Not merged. Arc 1B not started.
+
+---
+
+## 2026-08-15 — MSPL catch-up Phase 2 + Phase 3 prep (Cursor)
+
+Lane `cursor/mspl-catchup-ml-laplace` in
+`/private/tmp/gllvmtmb-mspl-estimator-programme-roadmap`.
+Pre-edit: `gh pr list --state open` showed #962 (1A sibling),
+#961 (programme docs), #960/#958/#957/#955 (foreign). Append only.
+Phase 2 already at `5f306119`. This closeout adds the Heywood
+derivation, E1–E7 oracles, and stacked-PR docs. Not EVA. Do not
+merge #962 or #961 from here.
+
+Commands (OMP_NUM_THREADS=1, NOT_CRAN=true, `pkgload::load_all`
+compile=FALSE):
+
+```r
+testthat::test_file("tests/testthat/test-mspl-gaussian-heywood-oracles.R")
+# [ FAIL 0 | WARN 0 | SKIP 0 | PASS 68 ]
+
+testthat::test_file("tests/testthat/test-mspl-registry.R")
+# [ FAIL 0 | WARN 0 | SKIP 0 | PASS 13 ]
+
+testthat::test_file("tests/testthat/test-mspl-api.R")
+# [ FAIL 0 | WARN 0 | SKIP 0 | PASS 241 ]
+```
+
+rg / grep:
+
+- `estimator = "mspl"` in the new oracle file — comment only;
+  no Gaussian MSPL fit.
+- Gaussian registry `status = "planned"` — present; no
+  `admitted` flip.
+- `git diff -- src/` — empty.
+- NEWS / validation-register / repo-root `LOOP/` / Design 117 /
+  interval-feasibility / iSDM / G3P / #872 / #855 / AA-03 — not
+  in this closeout diff.
+
+Not run: `devtools::test()`, `R CMD check`, `pkgdown`, campaigns.
+After-task:
+`docs/dev-log/after-task/2026-08-15-mspl-catchup-phase2-phase3prep.md`.
+Plan-actual: `docs/dev-log/plan-actual/2026-08-15-mspl-catchup.md`.
+Gaussian remains `planned`. No C++. No NEWS.

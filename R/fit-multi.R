@@ -5195,7 +5195,15 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## The template reads these DATA slots for every fit, but estimator_id = 0
   ## is a hard no-op and must bypass both penalties.  Resolve the MSPL design
   ## only after every parameter map and Bernoulli auto-Psi decision is final.
+  ## Arc 1A: the TMB integer is *derived* from the R resolver. Do not assign
+  ## 0/1/2 except through `.gllvmTMB_estimator_id_for_tape()`.
   mspl_info <- NULL
+  estimator_prov <- .gllvmTMB_resolve_estimator_provenance(
+    estimator = estimator,
+    reml = REML,
+    integration = "laplace",
+    tape_role = "primary"
+  )
   ## These DATA slots are part of the compiled estimator contract for every
   ## fit. ML never inspects their values; inert stubs preserve the historical
   ## objective while keeping one stable TMB signature.
@@ -5239,14 +5247,14 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       REML = REML,
       ridge_explicit = control$aghq_ridge_explicit
     )
-    tmb_data$estimator_id <- 1L
+    tmb_data$estimator_id <- .gllvmTMB_estimator_id_for_tape(estimator_prov)
     tmb_data$X_mspl <- mspl_info$X_mspl
     tmb_data$N_eff <- as.integer(mspl_info$N_eff)
     tmb_data$p_free <- mspl_info$p_free
     tmb_data$spde_r0 <- mspl_info$spde_r0
     tmb_data$mspl_tau_representative <- mspl_info$tau_representative
   } else {
-    tmb_data$estimator_id <- 0L
+    tmb_data$estimator_id <- .gllvmTMB_estimator_id_for_tape(estimator_prov)
     tmb_data$X_mspl <- matrix(0, nrow = 1L, ncol = 1L)
     tmb_data$N_eff <- 0L
     tmb_data$p_free <- 0L
@@ -6343,7 +6351,15 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     ## Keep the stable MSPL likelihood kernels (especially cloglog) while
     ## removing only the soft penalties.  `estimator_id = 0` is public ML and
     ## intentionally retains its historical probability-clamp path.
-    tmb_data_unpenalized$estimator_id <- 2L
+    ## Arc 1A: id 2 is adapter output `penalty_eval = provenance_off`.
+    tmb_data_unpenalized$estimator_id <- .gllvmTMB_estimator_id_for_tape(
+      .gllvmTMB_resolve_estimator_provenance(
+        estimator = estimator,
+        reml = REML,
+        integration = "laplace",
+        tape_role = "penalty_off_provenance"
+      )
+    )
     mspl_unpenalized_obj <- TMB::MakeADFun(
       data = tmb_data_unpenalized,
       parameters = tmb_params,
@@ -6437,6 +6453,12 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       } else {
         "ML"
       },
+      estimator_provenance = .gllvmTMB_resolve_estimator_provenance(
+        estimator = estimator,
+        reml = REML,
+        integration = if (isTRUE(aghq_info$used)) "aghq" else "laplace",
+        tape_role = "primary"
+      ),
       opt          = opt,
       sd_report    = sd_rep,
       report       = rep,
@@ -6459,6 +6481,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
           X_rank_tolerance = mspl_info$fixed_design$rank_tolerance,
           link_id = unique(link_id_vec),
           scope = mspl_info$scope,
+          registry_cell = mspl_info$registry_cell,
+          registry_status = mspl_info$registry_status,
+          registry_evidence = mspl_info$registry_evidence,
           structure = mspl_info$structure,
           spde_r0 = mspl_info$spde_r0,
           tau_representative = mspl_info$tau_representative,

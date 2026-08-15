@@ -304,6 +304,27 @@
     .gllvmTMB_mspl_abort("LA-MSPL requires a positive effective Bernoulli sample size.")
   }
 
+  link_name <- .gllvmTMB_mspl_link_name(unique(link_id_vec))
+  q_cell <- if (identical(structure, "ordinary")) {
+    as.integer(d_B)
+  } else if (identical(structure, "spatial_latent")) {
+    as.integer(d_spde_lv)
+  } else {
+    NA_integer_
+  }
+  registry_row <- .gllvmTMB_mspl_registry_lookup(
+    family = "binomial",
+    link = link_name,
+    structure = structure,
+    q = q_cell
+  )
+  if (is.null(registry_row) || !identical(registry_row$status, "admitted")) {
+    .gllvmTMB_mspl_abort(c(
+      "LA-MSPL resolved a surface that is not an admitted registry cell.",
+      "x" = "family binomial, link {.val {link_name}}, structure {.val {structure}}, q {.val {q_cell}}."
+    ), class = "gllvmTMB_mspl_registry_miss")
+  }
+
   list(
     estimator_id = 1L,
     X_mspl = fixed$X,
@@ -319,6 +340,9 @@
     expected_random = expected_random,
     spde_r0 = spde_r0,
     tau_representative = tau_representative,
+    registry_cell = registry_row$cell_id,
+    registry_status = registry_row$status,
+    registry_evidence = registry_row$evidence,
     scope = paste0(
       "complete Bernoulli; ", structure,
       if (structure == "spatial_latent") paste0("(q=", d_spde_lv, ")") else

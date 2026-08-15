@@ -4,6 +4,44 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-08-15 — MSPL Phase-4 tapes CI fix for #978 (Cursor)
+
+Lane `cursor/mspl-phase4-tapes-planned`. PR
+https://github.com/itchyshin/gllvmTMB/pull/978 run
+31903637769 failed: `[ FAIL 2 | WARN 11 | SKIP 825 | PASS 11452 ]`.
+No `src/` edit. Science unchanged.
+
+```sh
+gh pr checks 978
+# ubuntu-latest (release) fail 35m4s
+# Failure: test-estimator-provenance.R:187 — poisson()+mspl no longer
+#   throws gllvmTMB_mspl_unsupported (public Poisson door).
+# Error: test-mspl-nb1-fenced-tape.R:89 — .mspl_nb1_read_cpp()
+#   readLines() without skip_if when src/ is absent under R CMD check.
+```
+
+Fixes: pin the abort-class test on `nbinom2()`; give the NB1 source
+pin the same candidate-list + `skip_if` as NB2 / fenced-family.
+
+```sh
+export OMP_NUM_THREADS=1 NOT_CRAN=true
+Rscript --vanilla -e 'pkgload::load_all(".", compile = FALSE, quiet = TRUE);
+  testthat::test_file("tests/testthat/test-estimator-provenance.R");
+  testthat::test_file("tests/testthat/test-mspl-nb1-fenced-tape.R");
+  testthat::test_file("tests/testthat/test-mspl-prepare-fence.R");
+  testthat::test_file("tests/testthat/test-mspl-poisson-public-door.R");
+  testthat::test_file("tests/testthat/test-mspl-fenced-family-tapes.R");
+  testthat::test_file("tests/testthat/test-mspl-nb2-fenced-tape.R");
+  testthat::test_file("tests/testthat/test-mspl-api.R");
+  testthat::test_file("tests/testthat/test-mspl-registry.R")'
+# provenance PASS 75; nb1 PASS 12; prepare-fence PASS 4;
+# public-door PASS 6; fenced-family PASS 23; nb2 PASS 17;
+# api PASS 241; registry PASS 26
+```
+
+Not run: `devtools::test()`, `R CMD check`, pkgdown, Totoro.
+Do not merge #972–#976. Do not flip planned → admitted.
+
 ## 2026-08-15 — MSPL Phase-4 tapes Wave 5 closeout (Cursor)
 
 Lane `cursor/mspl-phase4-tapes-planned` in

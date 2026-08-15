@@ -16,17 +16,28 @@
 }
 
 .mspl_nb1_read_cpp <- function() {
-  cpp <- paste(
-    readLines(system.file("..", "src", "gllvmTMB.cpp", package = "gllvmTMB")),
-    collapse = "\n"
+  candidates <- c(
+    testthat::test_path("..", "..", "src", "gllvmTMB.cpp"),
+    testthat::test_path(
+      "..", "..", "00_pkg_src", "gllvmTMB", "src", "gllvmTMB.cpp"
+    ),
+    testthat::test_path(
+      "..", "..", "..", "00_pkg_src", "gllvmTMB", "src", "gllvmTMB.cpp"
+    ),
+    file.path("src", "gllvmTMB.cpp"),
+    file.path("..", "src", "gllvmTMB.cpp"),
+    file.path("..", "..", "src", "gllvmTMB.cpp")
   )
-  if (!nzchar(cpp) || identical(cpp, "\n")) {
-    cpp <- paste(
-      readLines(testthat::test_path("../../src/gllvmTMB.cpp")),
-      collapse = "\n"
-    )
+  installed <- system.file("..", "src", "gllvmTMB.cpp", package = "gllvmTMB")
+  if (nzchar(installed)) {
+    candidates <- c(installed, candidates)
   }
-  cpp
+  cpp_path <- candidates[file.exists(candidates)][1L]
+  testthat::skip_if(
+    is.na(cpp_path),
+    "gllvmTMB.cpp source file is not available in this test context."
+  )
+  paste(readLines(cpp_path, warn = FALSE), collapse = "\n")
 }
 
 ## Pure-R pin from the Phase-4 NB1 prep note. Not a C++ call.

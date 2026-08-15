@@ -206,11 +206,27 @@ HARD STOP hit.
 - NB1/NB2/beta/Tweedie tapes exist only for later Phase 5 / later
   G0. Public calls still error.
 - SE/intervals remain PROTECTED on Codex Lane B.
-- Next: human review / merge of
-  https://github.com/itchyshin/gllvmTMB/pull/978 when CI green.
-  New G0 required for Poisson admit, NEWS covered, or any public
-  door beyond the three families. Do not merge #972–#976 from this
-  lane.
+- Next: squash-merge
+  https://github.com/itchyshin/gllvmTMB/pull/978 when the CI-fix
+  push is green. New G0 required for Poisson admit, NEWS covered,
+  or any public door beyond the three families. Do not merge
+  #972–#976 from this lane.
+
+## 12. CI fix (2026-08-15; science not rebuilt)
+
+Ubuntu `R CMD check` on tip `f658fb96` (run 31903637769) failed
+with two test defects, not a tape or registry change:
+
+1. `test-estimator-provenance.R` still expected
+   `poisson() + estimator="mspl"` to throw
+   `gllvmTMB_mspl_unsupported`. The public Poisson door makes that
+   call legal. The abort-class pin now uses `nbinom2()`.
+2. `test-mspl-nb1-fenced-tape.R` read `src/gllvmTMB.cpp` without
+   `skip_if`. Under `R CMD check` that path is absent, so the test
+   ERRORed. It now uses the same candidate-list + skip as NB2.
+
+No `src/` edit. No admit. No NEWS. Targeted MSPL tests PASS at
+`OMP_NUM_THREADS=1`.
 
 ## 11. Wave 5 closeout (2026-08-15; science not rebuilt)
 

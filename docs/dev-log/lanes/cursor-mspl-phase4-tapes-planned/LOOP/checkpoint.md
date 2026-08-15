@@ -1,12 +1,12 @@
 # checkpoint — cursor-mspl-phase4-tapes-planned
 
-GOAL: see GOAL.md.   STATE: **LANDED** on `cursor/mspl-phase4-tapes-planned` · [PR #978](https://github.com/itchyshin/gllvmTMB/pull/978). Still **not admitted**.
+GOAL: see GOAL.md.   STATE: **LANDED** on `cursor/mspl-phase4-tapes-planned` · [PR #978](https://github.com/itchyshin/gllvmTMB/pull/978). Still **not admitted**. CI fix for run 31903637769 in flight (provenance + NB1 source-pin skip).
 
-ARCS DONE (verified): A0–A5 (Wave 1–5).
+ARCS DONE (verified): A0–A5 (Wave 1–5). CI-fix wave after Ubuntu red.
 
 ARC IN PROGRESS: none. Finish line was fenced planned tapes + Poisson public door.
 
-NEXT: human review / merge #978 when CI green. Do **not** merge #972–#976 from this lane. Do **not** flip `planned` → `admitted`.
+NEXT: push CI-fix, wait for Ubuntu green, squash-merge #978. Do **not** merge #972–#976 from this lane. Do **not** flip `planned` → `admitted`.
 
 OPEN GATES (need human): merge of #978; Poisson admission remains a later G0. Codex interval lane stays PROTECTED.
 

@@ -23,6 +23,11 @@ test_that("private MSPL constrained-inversion calibration contract is frozen", {
   expect_identical(pre_run_map$array_index, seq_len(12L))
   expect_identical(pre_run_map$case_id, manifest$case_id)
   expect_true(all(pre_run_map$shard_id == 1L))
+  prerun_wrapper <- testthat::test_path(
+    "..", "..", "inst", "sim", "lane-b-uncertainty",
+    "mspl-constrained-inversion", "drac-prerun.sbatch"
+  )
+  expect_true(any(grepl('mkdir -p "\\$MSPL_COVERAGE_ROOT/shards"', readLines(prerun_wrapper))))
 
   for (i in seq_len(nrow(manifest))) {
     endpoint <- expand.grid(target = seq_len(3L), grid_id = seq_len(5L))

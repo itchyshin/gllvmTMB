@@ -52,6 +52,7 @@ IFS=$'\t' read -r INDEX CASE_ID SHARD_ID <<< "$ROW"
 [[ "$INDEX" == "$TASK_ID" && "$SHARD_ID" == 1 && "$CASE_ID" =~ ^C[0-9]{3}$ ]] || die "Malformed pre-run map row."
 ASSIGNED="$(mspl_manifest_case_field "$MSPL_COVERAGE_ROOT/manifest.csv" "$CASE_ID" assigned_cluster)" || die "Could not resolve case cluster."
 [[ "$ASSIGNED" == "$MSPL_COVERAGE_CLUSTER" ]] || die "Case $CASE_ID is assigned to $ASSIGNED, not $MSPL_COVERAGE_CLUSTER."
+mkdir -p "$MSPL_COVERAGE_ROOT/shards"
 
 RUNNER="inst/sim/lane-b-uncertainty/run-mspl-constrained-inversion-calibration.R"
 cd "$MSPL_COVERAGE_PACKAGE_DIR"

@@ -4,6 +4,68 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-08-15 — MSPL Phase-4 tapes Wave 5 closeout (Cursor)
+
+Lane `cursor/mspl-phase4-tapes-planned` in
+`/private/tmp/gllvmtmb-mspl-estimator-programme-roadmap`.
+PR https://github.com/itchyshin/gllvmTMB/pull/978. Science already
+on tip `57ae6983`. Wave 5 did not edit `src/gllvmTMB.cpp`.
+
+Pre-edit lane check (before shared-doc writes):
+
+```sh
+gh pr list --state open
+# 978 tapes-planned (this lane)
+# 972–976 Phase-4 prep PRs on cursor/mspl-point-programme-continue
+# 960 / 958 / 957 / 955 other lanes
+git log --all --oneline --since="6 hours ago"
+# includes 57ae6983 feat(mspl): add five GLM-outer tapes...
+# plus ISDM / Codex interval / Phase-4 prep sibling commits
+```
+
+```sh
+export OMP_NUM_THREADS=1 NOT_CRAN=true
+Rscript --vanilla -e 'pkgload::load_all(".", compile = FALSE, quiet = TRUE);
+  testthat::test_file("tests/testthat/test-mspl-prepare-fence.R");
+  testthat::test_file("tests/testthat/test-mspl-poisson-public-door.R");
+  testthat::test_file("tests/testthat/test-mspl-fenced-family-tapes.R");
+  testthat::test_file("tests/testthat/test-mspl-nb1-fenced-tape.R");
+  testthat::test_file("tests/testthat/test-mspl-nb2-fenced-tape.R");
+  testthat::test_file("tests/testthat/test-mspl-api.R");
+  testthat::test_file("tests/testthat/test-mspl-registry.R");
+  testthat::test_file("tests/testthat/test-mspl-poisson-phase4-oracles.R")'
+# prepare-fence PASS; public-door PASS; fenced-family PASS;
+# nb1-fenced PASS; nb2-fenced PASS; api PASS; registry PASS;
+# poisson-phase4-oracles PASS
+
+rg -n 'fam_ids %in% c\\(' R/mspl.R
+# R/mspl.R:182  c(0L, 1L, 2L)
+
+rg -n 'binomial or gaussian only' R/mspl.R tests
+# no matches in R/mspl.R or tests (docs only)
+
+rg -n 'status = "planned"|status = "admitted"|status = "excluded"' R/mspl-registry.R
+# gaussian admitted; poisson planned; nbinom2 excluded
+
+rg -n 'I_LA|Laplace-marginal I\\(beta\\)' src/gllvmTMB.cpp
+# comments only: "NOT Laplace-marginal I(beta)"
+
+rg -n 'not coercive|rewards|NOT quasi' src/gllvmTMB.cpp
+# beta not coercive; Tweedie rewards phi->0; NB1 NOT quasi
+
+git diff origin/main...HEAD --stat -- NEWS.md
+# empty (NEWS untouched)
+```
+
+Rose: **PASS** — public door = gaussian+bernoulli+Poisson; Poisson
+`planned` not `admitted`; no NEWS covered; hostile comments present;
+prepare message names gaussian, bernoulli, or Poisson only.
+Shannon: **WARN** — #972–#976 still open; #974 overlaps
+`check-log.md`; Codex `lane-b-mspl-interval-feasibility` PROTECTED
+and not absorbed. After-task + Melissa + checkpoint name #978.
+Not run: `devtools::test()`, `R CMD check`, pkgdown, Totoro, admit,
+merge.
+
 ## 2026-08-15 — MSPL Phase-4 Poisson prep (planned only; Cursor B1)
 
 Worktree `/private/tmp/gllvmtmb-mspl-estimator-programme-roadmap`,

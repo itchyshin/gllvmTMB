@@ -3,14 +3,15 @@
 This coordination note prevents a new session from treating this repository as
 a single writable lane.  It is a map, not a release/capability claim.
 
-**Refresh 2026-08-15 #4 (Cursor): LA-MSPL Phase-4 tapes GOAL LANDED (not admitted).**
+**Refresh 2026-08-15 #5 (Cursor): LA-MSPL Phase-4 tapes Wave 5 closeout.**
 Lane **`cursor/mspl-phase4-tapes-planned`** · WT
 `/private/tmp/gllvmtmb-mspl-estimator-programme-roadmap` · LOOP
-`docs/dev-log/lanes/cursor-mspl-phase4-tapes-planned/LOOP/`.
+`docs/dev-log/lanes/cursor-mspl-phase4-tapes-planned/LOOP/` · PR
+[#978](https://github.com/itchyshin/gllvmTMB/pull/978) (open; not admitted).
 Five C++ GLM-outer tapes; public `estimator="mspl"` is gaussian +
 bernoulli + Poisson only; Poisson stays `planned`. Do **not** merge
-#972–#976 from this lane. **PROTECTED:** binary SE Codex lane.
-**START HERE:** `2026-08-15-cursor-handover-phase4-tapes.md`.
+#972–#976 from this lane. **PROTECTED:** `codex/lane-b-mspl-interval-feasibility`
+(binary SE). **START HERE:** `2026-08-15-cursor-handover-phase4-tapes.md`.
 
 **Refresh 2026-08-15 #3 (Cursor): LA-MSPL point-continue GOAL A+B+C LANDED.**
 Lane **`cursor/mspl-point-programme-continue`** · WT
@@ -67,7 +68,7 @@ missing-data ledger remains open and separately owned unless reassigned.
 
 | Lane | Owner | State | Start here | Boundary |
 | --- | --- | --- | --- | --- |
-| **LA-MSPL Phase-4 tapes** | Cursor | **GOAL LANDED on `cursor/mspl-phase4-tapes-planned`** (not admitted). Five C++ tapes; public `mspl` = gaussian + bernoulli + Poisson. #971 on main. Do not merge #972–#976 from this lane | `2026-08-15-cursor-handover-phase4-tapes.md`; LOOP `docs/dev-log/lanes/cursor-mspl-phase4-tapes-planned/LOOP/` | LA-MSPL only; never root `LOOP/`; **no SE**; Binary SE **PROTECTED**; Poisson planned only; no NEWS covered; no public `mspl` on NB1/NB2/beta/Tweedie |
+| **LA-MSPL Phase-4 tapes** | Cursor | **GOAL LANDED** [#978](https://github.com/itchyshin/gllvmTMB/pull/978) (not admitted; CI pending). Five C++ tapes; public `mspl` = gaussian + bernoulli + Poisson. #971 on main. Do not merge #972–#976 from this lane | `2026-08-15-cursor-handover-phase4-tapes.md`; LOOP `docs/dev-log/lanes/cursor-mspl-phase4-tapes-planned/LOOP/` | LA-MSPL only; never root `LOOP/`; **no SE**; Binary SE **PROTECTED** (`codex/lane-b-mspl-interval-feasibility`); Poisson planned only; no NEWS covered; no public `mspl` on NB1/NB2/beta/Tweedie |
 | **LA-MSPL point-continue** | Cursor | **CLOSED** — GOAL A+B+C MERGED [#971](https://github.com/itchyshin/gllvmTMB/pull/971) `cb126576`. Do not reopen | `2026-08-15-cursor-handover.md` (historical); LOOP `docs/dev-log/lanes/cursor-mspl-point-continue/LOOP/` | Historical; successor is Phase-4 tapes |
 | **LA-MSPL binary SE / intervals** | Codex | **PROTECTED** private branch `codex/lane-b-mspl-interval-feasibility` @ `/Users/z3437171/.codex/worktrees/8e9d/gllvmTMB` | classify-only; do not mutate from Cursor MSPL | No absorb/rebase/merge into point-evidence lane |
 | **CRAN 0.7** | Cursor → **Codex** | **Track pick LOCKED 2026-08-08.** Worktree `/private/tmp/gllvmtmb-cran-0.7-20260807` · `cursor/cran-0.7-20260807` from `origin/main` @ `d7bee2fa`. `DESCRIPTION` still `0.6.0`. First CRAN **not imminent** — more testing first | `2026-08-08-codex-handover.md`; G0 `docs/dev-log/plan-actual/2026-08-07-gllvmtmb-cran-0.7-g0.md`; LOOP `lanes/gllvmtmb-cran-0.7/LOOP/` | Leave-M5 + Rose + testing-debt inventory OWED; **no bump yet**; no upload; keep #949 fenced; Laplace default; D-112 holds; portal ≥19 Aug is not a deadline |

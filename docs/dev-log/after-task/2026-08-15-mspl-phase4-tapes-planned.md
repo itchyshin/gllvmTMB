@@ -2,6 +2,7 @@
 
 **Branch**: `cursor/mspl-phase4-tapes-planned`
 **Date**: `2026-08-15`
+**PR**: https://github.com/itchyshin/gllvmTMB/pull/978
 **Roles (engaged)**: Ada / Gauss / Noether / Curie / Rose / Shannon / Melissa
 **Lane LOOP**: `docs/dev-log/lanes/cursor-mspl-phase4-tapes-planned/LOOP/`
 
@@ -205,6 +206,30 @@ HARD STOP hit.
 - NB1/NB2/beta/Tweedie tapes exist only for later Phase 5 / later
   G0. Public calls still error.
 - SE/intervals remain PROTECTED on Codex Lane B.
-- Next: human review of this PR. New G0 required for Poisson
-  admit, NEWS covered, or any public door beyond the three
-  families.
+- Next: human review / merge of
+  https://github.com/itchyshin/gllvmTMB/pull/978 when CI green.
+  New G0 required for Poisson admit, NEWS covered, or any public
+  door beyond the three families. Do not merge #972–#976 from this
+  lane.
+
+## 11. Wave 5 closeout (2026-08-15; science not rebuilt)
+
+Gauss re-ran targeted MSPL tests at `OMP_NUM_THREADS=1` with
+`pkgload::load_all(".", compile = FALSE)` against tip `57ae6983`.
+Prepare-fence, Poisson public-door, fenced-family tapes, NB1/NB2
+fenced tapes, API, registry, and Poisson Phase-4 oracles: **all
+PASS**. Off-CRAN Gaussian smoke / Heywood oracles were not re-run
+(already claimed on #978; Wave 5 did not edit `src/`).
+
+Noether-align: the five-row table in
+`docs/dev-log/research/2026-08-15-mspl-glm-outer-five-atoms.md`
+matches `gll_mspl_log_weight_glm` (Poisson `log w = η`; NB2
+`η+logφ-logspace_add`; NB1 PMF-summed exact `I_η` not quasi;
+beta Ferrari–Cribari-Neto; Tweedie `(2-p)η-logφ`). Comments deny
+`I_LA(β)`. Atom is GLM-outer, not Laplace-marginal information.
+
+Rose **PASS** (see Consistency Audit). Poisson remains `planned`.
+Shannon **WARN**: #972–#976 still open on the old point-continue
+base; #974 also touches `check-log.md`; Codex interval lane
+PROTECTED and not absorbed. Melissa plan-actual overwritten.
+Checkpoint now names #978 and carries this receipt.

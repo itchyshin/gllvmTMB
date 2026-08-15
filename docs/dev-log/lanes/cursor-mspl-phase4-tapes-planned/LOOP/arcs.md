@@ -7,7 +7,9 @@
 | A2 | **DONE** | Wave 2: shared weight hook | `gll_mspl_log_weight_glm`; 2-arg Bernoulli `gll_mspl_log_weight` unchanged |
 | A3 | **DONE** | Wave 3: Poisson tape + prepare widen | public `mspl` for Poisson; still `planned` |
 | A4 | **DONE** | Wave 4: NB1, NB2, beta, Tweedie tapes | public still errors; NB2 stays `excluded` |
-| A5 | **DONE** | Wave 5: Gauss, Noether, Rose, Shannon, Melissa | still no admit |
+| A5 | **DONE** | Wave 5: Gauss, Noether, Rose, Shannon, Melissa | PR [#978](https://github.com/itchyshin/gllvmTMB/pull/978); still no admit |
+
+Finish line: **fenced planned tapes + Poisson public door**, not admission.
 
 ## HARD STOP flags
 

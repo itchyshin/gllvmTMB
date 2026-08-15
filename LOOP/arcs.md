@@ -6,15 +6,15 @@ G0 APPROVED 2026-08-14. Do not re-plan. Do not implement Arc 1B or Arcs 2–8.
 
 | ID | Status | Purpose | Exit evidence | Human gate |
 |---|---|---|---|---|
-| S0 | PENDING | Recon / baseline freeze of `estimator_id` 0/1/2 sites + existing MSPL tests | Site inventory + fixture list written into checkpoint | none |
-| S1 | PENDING | Compatibility table + resolver (no behavior yet) in NEW `R/estimator-provenance.R` | File exists; functions do not change fits | none |
-| S2 | PENDING | Wire adapter in `R/fit-multi.R` / VA path; attach `fit$estimator_provenance` | Provenance attached; `estimator_id` still derived 0/1/2 | C++ tape change = STOP |
-| S3 | PENDING | Parity tests | Tests can FAIL on drift / missing provenance | accepted-call change = STOP |
-| S4 | PENDING | Targeted test run + no-change receipt | LOG shows exact parity; STOP if numeric drift | none (fail-closed) |
-| S5 | PENDING | Gauss/Noether/Rose review (written if Opus unavailable) | PASS or HOLD with named defect | none |
-| S6 | PENDING | After-task + check-log + stacked PR | PR URL; do NOT merge | merge / NEWS = STOP |
-| V | PENDING | Mechanical verify | Files exist; no foreign-lane paths; no NEWS/register | none |
-| R | PENDING | Melissa plan-actual | `docs/dev-log/plan-actual/2026-08-14-mspl-arc-1a.md` | none |
+| S0 | DONE | Recon / baseline freeze of `estimator_id` 0/1/2 sites + existing MSPL tests | Site inventory in checkpoint / after-task | none |
+| S1 | DONE | Compatibility table + resolver in NEW `R/estimator-provenance.R` | File exists | none |
+| S2 | DONE | Wire adapter in `R/fit-multi.R` / VA path; attach `fit$estimator_provenance` | Provenance attached; `estimator_id` derived 0/1/2 | C++ tape change = STOP |
+| S3 | DONE | Parity tests | Tests can FAIL on drift / missing provenance | accepted-call change = STOP |
+| S4 | DONE | Targeted test run + no-change receipt | LOG 75 + 223 PASS; no drift | none (fail-closed) |
+| S5 | DONE | Gauss/Noether/Rose written review | PASS in after-task | none |
+| S6 | IN PROGRESS | After-task + check-log + stacked PR | PR URL; do NOT merge | merge / NEWS = STOP |
+| V | DONE | Mechanical verify | no C++ / NEWS / register / foreign-lane paths | none |
+| R | DONE | Melissa plan-actual | `docs/dev-log/plan-actual/2026-08-14-mspl-arc-1a.md` | none |
 
 ## Adapter contract (locked)
 

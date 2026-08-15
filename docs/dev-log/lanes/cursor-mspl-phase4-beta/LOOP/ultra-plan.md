@@ -47,7 +47,7 @@ not admit Beta and does not jump the Poisson admission gate.
 |---|---|---|
 | B0 | LOOP kit on this isolated worktree | none |
 | B1 | Beta derivation note (logit μ→0/1 + precision) | none for planned |
-| B2 | Pure-R oracles E1–E8 + structured counts | none; HARD STOP on admit |
+| B2 | Pure-R oracles E1–E9 + fence (65/65) | none; HARD STOP on admit |
 | B3 | After-task + PR | merge is human; no self-merge of high-risk |
 
 ## Locked decisions

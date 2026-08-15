@@ -59,7 +59,8 @@ Poisson \(W=\operatorname{diag}(\mu)\), or Gaussian Hirose \(\Psi\).
 
 1. Research note pins logit \(\mu\to 0/1\) and precision \(\phi\)
    information, with a kill list for transplanted atoms.
-2. Pure-R oracles E1–E8 pass; structured test counts recorded;
-   no live Beta `estimator = "mspl"`.
-3. LOOP kit + after-task + PR. Registry rows stay unlanded here
-   (parallel-lane collision). Status remains **planned**, not admitted.
+2. Pure-R oracles E1–E9 + no-live-fit fence pass (65/65);
+   structured test counts recorded; no live Beta
+   `estimator = "mspl"`.
+3. LOOP kit + after-task + PR. Paper-planned only: no `beta:*`
+   registry row (do not add one). Not admitted.

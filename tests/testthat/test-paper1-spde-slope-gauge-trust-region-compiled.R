@@ -1,5 +1,5 @@
 spde_slope_gauge_tr_compiled_env <- function() {
-  root <- testthat::test_path("..", "..", "dev", "isdm-package-recovery")
+  root <- isdm_dev_path()
   env <- new.env(parent = baseenv())
   for (name in c(
     "spde-slope-gauge-contract.R",

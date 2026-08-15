@@ -1,17 +1,11 @@
 spde_slope_gauge_nofit_materializer_env <- function() {
-  path <- testthat::test_path(
-    "..", "..", "dev", "isdm-package-recovery", "materialize-paper1-spde-slope-gauge-nofit-gate.R"
-  )
+  path <- isdm_dev_path("materialize-paper1-spde-slope-gauge-nofit-gate.R")
   lines <- readLines(path, warn = FALSE)
   start <- grep("^\\.spde_slope_gauge_nofit_materializer_atomic_rds <-", lines)[[1L]]
   end <- grep("^if \\(length\\(args\\)", lines)[[1L]] - 1L
   env <- new.env(parent = baseenv())
-  source(testthat::test_path(
-    "..", "..", "dev", "isdm-package-recovery", "spde-slope-gauge-contract.R"
-  ), local = env)
-  source(testthat::test_path(
-    "..", "..", "dev", "isdm-package-recovery", "spde-slope-gauge-nofit-contract.R"
-  ), local = env)
+  source(isdm_dev_path("spde-slope-gauge-contract.R"), local = env)
+  source(isdm_dev_path("spde-slope-gauge-nofit-contract.R"), local = env)
   env$script_dir <- tempfile("spde-slope-gauge-materializer-script-")
   dir.create(env$script_dir)
   env$script_path <- file.path(env$script_dir, "materializer.R")
@@ -20,9 +14,7 @@ spde_slope_gauge_nofit_materializer_env <- function() {
 }
 
 test_that("the no-fit materializer is a parent-side lifecycle adapter, not an estimator", {
-  path <- testthat::test_path(
-    "..", "..", "dev", "isdm-package-recovery", "materialize-paper1-spde-slope-gauge-nofit-gate.R"
-  )
+  path <- isdm_dev_path("materialize-paper1-spde-slope-gauge-nofit-gate.R")
   text <- paste(readLines(path, warn = FALSE), collapse = "\n")
   expect_silent(parse(path))
   expect_match(text, "run-paper1-spde-slope-gauge-nofit.R", fixed = TRUE)

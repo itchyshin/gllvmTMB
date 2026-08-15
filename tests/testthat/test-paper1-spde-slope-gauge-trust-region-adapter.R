@@ -5,7 +5,7 @@ spde_slope_gauge_tr_adapter_env <- function() {
     "spde-slope-gauge-trust-region-contract.R",
     "spde-slope-gauge-trust-region-adapter.R"
   )) {
-    source(testthat::test_path("..", "..", "dev", "isdm-package-recovery", path), local = env)
+    source(isdm_dev_path(path), local = env)
   }
   env
 }

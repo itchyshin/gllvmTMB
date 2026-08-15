@@ -1,8 +1,6 @@
 bfgs_contract_env <- function() {
   env <- new.env(parent = baseenv())
-  sys.source(testthat::test_path(
-    "..", "..", "dev", "isdm-package-recovery", "bfgs-smoke-contract.R"
-  ), envir = env)
+  sys.source(isdm_dev_path("bfgs-smoke-contract.R"), envir = env)
   env$gllvmTMBcontrol <- gllvmTMB::gllvmTMBcontrol
   env
 }

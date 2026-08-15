@@ -1,5 +1,5 @@
 test_that("G2j retained-Psi diagnostic has a no-fit validator", {
-  runner <- test_path("..", "..", "dev", "isdm-package-recovery", "run-g2j-psi-diagnostic.R")
+  runner <- isdm_dev_path("run-g2j-psi-diagnostic.R")
   expect_true(file.exists(runner))
   text <- paste(readLines(runner, warn = FALSE), collapse = "\n")
   expect_match(text, "G2J retained-Psi diagnostic validation PASS")

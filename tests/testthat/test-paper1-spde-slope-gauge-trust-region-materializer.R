@@ -1,8 +1,5 @@
 spde_slope_gauge_tr_materializer_env <- function() {
-  materializer <- testthat::test_path(
-    "..", "..", "dev", "isdm-package-recovery",
-    "materialize-paper1-spde-slope-gauge-trust-region.R"
-  )
+  materializer <- isdm_dev_path("materialize-paper1-spde-slope-gauge-trust-region.R")
   env <- new.env(parent = baseenv())
   old_source_only <- Sys.getenv("SPDE_SLOPE_GAUGE_TR_MATERIALIZER_SOURCE_ONLY", unset = NA_character_)
   old_path <- Sys.getenv("SPDE_SLOPE_GAUGE_TR_MATERIALIZER_PATH", unset = NA_character_)
@@ -32,10 +29,7 @@ spde_slope_gauge_tr_materializer_predecessor <- function(env) {
   root <- tempfile("spde-slope-gauge-tr-materializer-predecessor-")
   dir.create(root)
   root <- normalizePath(root, mustWork = TRUE)
-  materializer <- testthat::test_path(
-    "..", "..", "dev", "isdm-package-recovery",
-    "materialize-paper1-spde-slope-gauge-trust-region.R"
-  )
+  materializer <- isdm_dev_path("materialize-paper1-spde-slope-gauge-trust-region.R")
   fixture_dll <- list(
     path = normalizePath(materializer, mustWork = TRUE),
     md5 = unname(tools::md5sum(materializer))[[1L]]
@@ -184,9 +178,7 @@ spde_slope_gauge_tr_materializer_process <- function(child, runner, mode, output
 }
 
 spde_slope_gauge_tr_materializer_complete_worker <- function(env, receipt, state, dll, parent_pid) {
-  adapter_path <- testthat::test_path(
-    "..", "..", "dev", "isdm-package-recovery", "spde-slope-gauge-trust-region-adapter.R"
-  )
+  adapter_path <- isdm_dev_path("spde-slope-gauge-trust-region-adapter.R")
   source(adapter_path, local = env)
   raw_order <- env$spde_slope_gauge_raw_order()
   object <- list(

@@ -1,11 +1,5 @@
 spde_slope_gauge_nofit_v2_materializer_env <- function() {
-  path <- testthat::test_path(
-    "..",
-    "..",
-    "dev",
-    "isdm-package-recovery",
-    "materialize-paper1-spde-slope-gauge-nofit-v2-gate.R"
-  )
+  path <- isdm_dev_path("materialize-paper1-spde-slope-gauge-nofit-v2-gate.R")
   old_source <- Sys.getenv(
     "SPDE_SLOPE_GAUGE_NOFIT_V2_MATERIALIZER_SOURCE_ONLY",
     unset = NA_character_
@@ -139,13 +133,7 @@ test_that("V2 materializer treats an absent root or child output as non-symlink"
   expect_true(is.na(Sys.readlink(absent)))
   source_text <- paste(
     readLines(
-      testthat::test_path(
-        "..",
-        "..",
-        "dev",
-        "isdm-package-recovery",
-        "materialize-paper1-spde-slope-gauge-nofit-v2-gate.R"
-      ),
+      isdm_dev_path("materialize-paper1-spde-slope-gauge-nofit-v2-gate.R"),
       warn = FALSE
     ),
     collapse = "\n"

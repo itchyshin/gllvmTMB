@@ -7,13 +7,7 @@ spde_slope_gauge_nofit_v2_runner_env <- function() {
     "SPDE_SLOPE_GAUGE_NOFIT_V2_RUNNER_PATH",
     unset = NA_character_
   )
-  path <- testthat::test_path(
-    "..",
-    "..",
-    "dev",
-    "isdm-package-recovery",
-    "run-paper1-spde-slope-gauge-nofit-v2.R"
-  )
+  path <- isdm_dev_path("run-paper1-spde-slope-gauge-nofit-v2.R")
   Sys.setenv(SPDE_SLOPE_GAUGE_NOFIT_V2_SOURCE_ONLY = "1")
   Sys.setenv(SPDE_SLOPE_GAUGE_NOFIT_V2_RUNNER_PATH = path)
   on.exit(

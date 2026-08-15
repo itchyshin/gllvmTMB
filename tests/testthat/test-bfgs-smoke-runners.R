@@ -1,8 +1,6 @@
 test_that("BFGS paper runners are bounded, immutable, and provenance-first", {
-  p1 <- testthat::test_path("..", "..", "dev", "isdm-package-recovery",
-    "run-bfgs-paper1-smoke.R")
-  p2 <- testthat::test_path("..", "..", "dev", "isdm-package-recovery",
-    "run-bfgs-paper2-smoke.R")
+  p1 <- isdm_dev_path("run-bfgs-paper1-smoke.R")
+  p2 <- isdm_dev_path("run-bfgs-paper2-smoke.R")
   p1_text <- paste(readLines(p1, warn = FALSE), collapse = "\n")
   p2_text <- paste(readLines(p2, warn = FALSE), collapse = "\n")
 
@@ -36,8 +34,7 @@ test_that("BFGS paper runners are bounded, immutable, and provenance-first", {
 })
 
 test_that("BFGS runner records terminal provenance before optimizer entry", {
-  path <- testthat::test_path("..", "..", "dev", "isdm-package-recovery",
-    "run-bfgs-paper2-smoke.R")
+  path <- isdm_dev_path("run-bfgs-paper2-smoke.R")
   text <- paste(readLines(path, warn = FALSE), collapse = "\n")
   main_at <- regexpr("main <- function()", text, fixed = TRUE)[[1L]]
   expect_gt(main_at, 0L)
@@ -93,8 +90,7 @@ test_that("BFGS runner records terminal provenance before optimizer entry", {
 })
 
 test_that("BFGS runner uses an atomic preflight, claim, marker, and terminal lifecycle", {
-  path <- testthat::test_path("..", "..", "dev", "isdm-package-recovery",
-    "run-bfgs-paper2-smoke.R")
+  path <- isdm_dev_path("run-bfgs-paper2-smoke.R")
   text <- paste(readLines(path, warn = FALSE), collapse = "\n")
   required <- c("atomic_rds <- function", "atomic_lines <- function",
     "atomic manifest rename failed", "atomic preflight root rename failed",
@@ -145,10 +141,8 @@ test_that("BFGS runner uses an atomic preflight, claim, marker, and terminal lif
 
 test_that("BFGS runners expose no retry, profile, G3, remote, or relaxed path", {
   paths <- c(
-    testthat::test_path("..", "..", "dev", "isdm-package-recovery",
-      "run-bfgs-paper1-smoke.R"),
-    testthat::test_path("..", "..", "dev", "isdm-package-recovery",
-      "run-bfgs-paper2-smoke.R")
+    isdm_dev_path("run-bfgs-paper1-smoke.R"),
+    isdm_dev_path("run-bfgs-paper2-smoke.R")
   )
   text <- paste(unlist(lapply(paths, readLines, warn = FALSE)), collapse = "\n")
   forbidden <- c(

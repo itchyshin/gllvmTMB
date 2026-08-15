@@ -1,5 +1,5 @@
 test_that("G3 smallest-smoke packets remain immutable no-run proposals", {
-  root <- testthat::test_path("..", "..", "dev", "isdm-package-recovery")
+  root <- isdm_dev_path()
   packet <- function(name) paste(readLines(file.path(root, name), warn = FALSE), collapse = "\n")
   p1 <- packet("2026-08-13-g3-paper1-smallest-smoke-packet.md")
   p2 <- packet("2026-08-13-g3-paper2-smallest-smoke-packet.md")

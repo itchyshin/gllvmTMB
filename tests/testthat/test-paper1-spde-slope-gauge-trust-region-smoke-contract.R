@@ -1,17 +1,9 @@
 spde_slope_gauge_tr_smoke_contract_env <- function() {
   env <- new.env(parent = baseenv())
-  source(testthat::test_path(
-    "..", "..", "dev", "isdm-package-recovery", "spde-slope-gauge-contract.R"
-  ), local = env)
-  source(testthat::test_path(
-    "..", "..", "dev", "isdm-package-recovery", "spde-slope-gauge-trust-region-contract.R"
-  ), local = env)
-  source(testthat::test_path(
-    "..", "..", "dev", "isdm-package-recovery", "spde-slope-gauge-trust-region-adapter.R"
-  ), local = env)
-  source(testthat::test_path(
-    "..", "..", "dev", "isdm-package-recovery", "spde-slope-gauge-trust-region-smoke-contract.R"
-  ), local = env)
+  source(isdm_dev_path("spde-slope-gauge-contract.R"), local = env)
+  source(isdm_dev_path("spde-slope-gauge-trust-region-contract.R"), local = env)
+  source(isdm_dev_path("spde-slope-gauge-trust-region-adapter.R"), local = env)
+  source(isdm_dev_path("spde-slope-gauge-trust-region-smoke-contract.R"), local = env)
   env
 }
 
@@ -127,9 +119,9 @@ spde_slope_gauge_tr_smoke_predecessor_packet <- function(contract) {
   root <- tempfile("spde-slope-gauge-tr-predecessor-")
   dir.create(root)
   root <- normalizePath(root, mustWork = TRUE)
-  fixture_dll_path <- normalizePath(testthat::test_path(
-    "..", "..", "dev", "isdm-package-recovery", "spde-slope-gauge-trust-region-smoke-contract.R"
-  ), mustWork = TRUE)
+  fixture_dll_path <- normalizePath(
+    isdm_dev_path("spde-slope-gauge-trust-region-smoke-contract.R"), mustWork = TRUE
+  )
   fixture_dll <- list(
     path = fixture_dll_path,
     md5 = unname(tools::md5sum(fixture_dll_path))[[1L]]

@@ -1,7 +1,5 @@
 test_that("the gauge no-fit runner has a byte-only validation mode and no optimizer path", {
-  path <- testthat::test_path(
-    "..", "..", "dev", "isdm-package-recovery", "run-paper1-spde-slope-gauge-nofit.R"
-  )
+  path <- isdm_dev_path("run-paper1-spde-slope-gauge-nofit.R")
   text <- paste(readLines(path, warn = FALSE), collapse = "\n")
   expect_silent(parse(path))
   expect_match(text, "SPDE_SLOPE_GAUGE_NOFIT_PREDECESSOR_BYTES_PASS", fixed = TRUE)
@@ -11,9 +9,7 @@ test_that("the gauge no-fit runner has a byte-only validation mode and no optimi
 })
 
 test_that("the isolated child validates MSPDE V3 before its one fresh object", {
-  path <- testthat::test_path(
-    "..", "..", "dev", "isdm-package-recovery", "run-paper1-spde-slope-gauge-nofit.R"
-  )
+  path <- isdm_dev_path("run-paper1-spde-slope-gauge-nofit.R")
   text <- paste(readLines(path, warn = FALSE), collapse = "\n")
   historical <- regexpr("mspde_smoke_validate_closeout_ledger", text, fixed = TRUE)[[1L]]
   factory <- regexpr("TMB::MakeADFun", text, fixed = TRUE)[[1L]]
@@ -25,19 +21,13 @@ test_that("the isolated child validates MSPDE V3 before its one fresh object", {
 })
 
 spde_slope_gauge_nofit_runner_env <- function() {
-  path <- testthat::test_path(
-    "..", "..", "dev", "isdm-package-recovery", "run-paper1-spde-slope-gauge-nofit.R"
-  )
+  path <- isdm_dev_path("run-paper1-spde-slope-gauge-nofit.R")
   lines <- readLines(path, warn = FALSE)
   start <- grep("^\\.spde_slope_gauge_nofit_gate_base <-", lines)[[1L]]
   end <- grep("^if \\(length\\(args\\)", lines)[[1L]] - 1L
   env <- new.env(parent = baseenv())
-  source(testthat::test_path(
-    "..", "..", "dev", "isdm-package-recovery", "spde-slope-gauge-contract.R"
-  ), local = env)
-  source(testthat::test_path(
-    "..", "..", "dev", "isdm-package-recovery", "spde-slope-gauge-nofit-contract.R"
-  ), local = env)
+  source(isdm_dev_path("spde-slope-gauge-contract.R"), local = env)
+  source(isdm_dev_path("spde-slope-gauge-nofit-contract.R"), local = env)
   eval(parse(text = lines[start:end]), envir = env)
   env
 }

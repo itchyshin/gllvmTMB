@@ -2,8 +2,7 @@
 
 test_that("C1 retains the spatial-only B2 maximum as Case D and NO_CANDIDATE", {
   env <- new.env(parent = globalenv())
-  source(testthat::test_path("..", "..", "dev", "isdm-package-recovery",
-                             "paper1-spatial-c1-topology.R"), local = env)
+  source(isdm_dev_path("paper1-spatial-c1-topology.R"), local = env)
   gradient <- c(rep(0, 19), -0.003392914, 0, 0)
   names <- c(rep("b_fix", 12), rep("theta_diag_B", 3), "log_kappa_spde",
              rep("theta_rr_spde_slope", 6))
@@ -30,8 +29,7 @@ test_that("C1 retains the spatial-only B2 maximum as Case D and NO_CANDIDATE", {
 
 test_that("C1 adversarial topology partitions Case A/C/D without a fitter", {
   env <- new.env(parent = globalenv())
-  source(testthat::test_path("..", "..", "dev", "isdm-package-recovery",
-                             "paper1-spatial-c1-topology.R"), local = env)
+  source(isdm_dev_path("paper1-spatial-c1-topology.R"), local = env)
   a <- env$paper1_c1_classify_topology(c(2e-4, -3e-4), c("b_fix", "theta_rr_B"),
                                         TRUE, character())
   c_case <- env$paper1_c1_classify_topology(c(2e-4, -1.5e-3), c("b_fix", "theta_rr_B"),
@@ -46,7 +44,6 @@ test_that("C1 adversarial topology partitions Case A/C/D without a fitter", {
   expect_identical(c_case$case, "C")
   expect_identical(spatial$case, "D")
   expect_identical(tied$case, "D")
-  text <- paste(readLines(testthat::test_path("..", "..", "dev", "isdm-package-recovery",
-    "paper1-spatial-c1-topology.R"), warn = FALSE), collapse = "\n")
+  text <- paste(readLines(isdm_dev_path("paper1-spatial-c1-topology.R"), warn = FALSE), collapse = "\n")
   expect_false(grepl("MakeADFun\\(|\\.gll_isdm_fit\\(|nlminb\\(|optim\\(|profile\\(", text))
 })

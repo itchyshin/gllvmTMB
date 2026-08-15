@@ -6,8 +6,7 @@ named_diag <- function(values, names) {
 }
 test_that("G3 accepts only a curvature-guarded same-objective candidate", {
   env <- new.env(parent = globalenv())
-  source(testthat::test_path("..", "..", "dev", "isdm-package-recovery",
-    "g3-full-vector-polish-contract.R"), local = env)
+  source(isdm_dev_path("g3-full-vector-polish-contract.R"), local = env)
   sig <- as.list(stats::setNames(paste0("h", seq_along(env$g3_signature_names)), env$g3_signature_names))
   raw <- list(optimizer = "nlminb", convergence = 0L, objective = 10, gradient = c(a = 0.002, b = 0.001),
     parameter_names = c("a", "b"), pd_hessian = TRUE,
@@ -32,8 +31,7 @@ test_that("G3 accepts only a curvature-guarded same-objective candidate", {
 
 test_that("G3 fails closed on curvature, bounds, ties, signatures, and candidate gradient", {
   env <- new.env(parent = globalenv())
-  source(testthat::test_path("..", "..", "dev", "isdm-package-recovery",
-    "g3-full-vector-polish-contract.R"), local = env)
+  source(isdm_dev_path("g3-full-vector-polish-contract.R"), local = env)
   sig <- as.list(stats::setNames(paste0("h", seq_along(env$g3_signature_names)), env$g3_signature_names))
   raw <- list(optimizer = "nlminb", convergence = 0L, objective = 10, gradient = c(b_fix = 0.002, theta_rr_spde_slope = 0.001),
     parameter_names = c("b_fix", "theta_rr_spde_slope"), pd_hessian = TRUE,
@@ -65,7 +63,7 @@ test_that("G3 fails closed on curvature, bounds, ties, signatures, and candidate
 })
 
 test_that("G3 implementation has no execution path", {
-  root <- testthat::test_path("..", "..", "dev", "isdm-package-recovery")
+  root <- isdm_dev_path()
   paths <- file.path(root, c("g3-full-vector-polish-contract.R", "run-g3-full-vector-no-fit-validation.R"))
   text <- paste(unlist(lapply(paths, readLines, warn = FALSE)), collapse = "\n")
   expect_false(grepl("MakeADFun\\(|\\.gll_isdm_fit\\(|nlminb\\(|optim\\(|profile\\(|download\\s*\\(", text))
@@ -73,8 +71,7 @@ test_that("G3 implementation has no execution path", {
 
 test_that("G3 all-attempt records cannot accept ineligible or unordered candidates", {
   env <- new.env(parent = globalenv())
-  source(testthat::test_path("..", "..", "dev", "isdm-package-recovery",
-    "g3-full-vector-polish-contract.R"), local = env)
+  source(isdm_dev_path("g3-full-vector-polish-contract.R"), local = env)
   sig <- as.list(stats::setNames(paste0("h", seq_along(env$g3_signature_names)), env$g3_signature_names))
   h <- named_diag(c(2, 2), c("a", "b")); lower <- c(a = -10, b = -10); upper <- c(a = 10, b = 10)
   raw <- list(objective = 10, gradient = c(a = 0.002, b = 0.001), parameter_vector = c(a = 1, b = 2),

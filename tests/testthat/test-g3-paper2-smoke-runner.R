@@ -1,5 +1,5 @@
 test_that("Paper 2 G3 smoke runner seals provenance and failure receipts", {
-  path <- testthat::test_path("..", "..", "dev", "isdm-package-recovery", "run-g3-paper2-smoke.R")
+  path <- isdm_dev_path("run-g3-paper2-smoke.R")
   text <- paste(readLines(path, warn = FALSE), collapse = "\n")
   expect_match(text, "86302L", fixed = TRUE)
   expect_match(text, 'time-limit-s", "1500"', fixed = TRUE)
@@ -17,8 +17,7 @@ test_that("Paper 2 G3 smoke runner seals provenance and failure receipts", {
 })
 
 test_that("Paper 2 G3 runner fails closed before fitting or reusing a root", {
-  path <- testthat::test_path("..", "..", "dev", "isdm-package-recovery",
-    "run-g3-paper2-smoke.R")
+  path <- isdm_dev_path("run-g3-paper2-smoke.R")
   text <- paste(readLines(path, warn = FALSE), collapse = "\n")
 
   ledger_start <- regexpr("ledger <- list\\(", text)[[1L]]
@@ -43,8 +42,7 @@ test_that("Paper 2 G3 runner fails closed before fitting or reusing a root", {
 })
 
 test_that("Paper 2 G3 runner has no retry, profile, campaign, remote, or relaxed gate", {
-  path <- testthat::test_path("..", "..", "dev", "isdm-package-recovery",
-    "run-g3-paper2-smoke.R")
+  path <- isdm_dev_path("run-g3-paper2-smoke.R")
   text <- paste(readLines(path, warn = FALSE), collapse = "\n")
 
   forbidden <- c(

@@ -1,4 +1,14 @@
-source(testthat::test_path("..", "..", "dev", "isdm-package-recovery", "g3p-provenance-contract.R"))
+## This source() runs at file top level, before any test_that() block, so it
+## cannot use isdm_dev_path()'s skip() -- skip() only works from inside a
+## test_that() runner. Resolve the path and source conditionally here; each
+## dependent test_that() below then gates on skip_if_not(file.exists(...))
+## as its first line instead.
+.g3p_provenance_contract_path <- testthat::test_path(
+  "..", "..", "dev", "isdm-package-recovery", "g3p-provenance-contract.R"
+)
+if (file.exists(.g3p_provenance_contract_path)) {
+  source(.g3p_provenance_contract_path)
+}
 
 g3p_identity_fixture <- function() list(
   commit = "commit", runner_md5 = strrep("a", 32L), fixture_md5 = strrep("b", 32L), packet_md5 = strrep("c", 32L),
@@ -8,6 +18,8 @@ g3p_identity_fixture <- function() list(
 )
 
 test_that("G3P accepts an exact stable identity match", {
+  testthat::skip_if_not(file.exists(.g3p_provenance_contract_path),
+    "dev/isdm-package-recovery is absent from the built package")
   expected <- g3p_identity_fixture()
   out <- g3p_compare_identity(expected, expected)
   expect_identical(out$status, "MATCH")
@@ -17,6 +29,8 @@ test_that("G3P accepts an exact stable identity match", {
 })
 
 test_that("G3P accepts equal stable identity across temporary DLL paths", {
+  testthat::skip_if_not(file.exists(.g3p_provenance_contract_path),
+    "dev/isdm-package-recovery is absent from the built package")
   expected <- g3p_identity_fixture()
   observed <- expected
   observed$dll_path <- "/tmp/second/gllvmTMB.so"
@@ -28,6 +42,8 @@ test_that("G3P accepts equal stable identity across temporary DLL paths", {
 })
 
 test_that("G3P rejects content or ABI identity drift", {
+  testthat::skip_if_not(file.exists(.g3p_provenance_contract_path),
+    "dev/isdm-package-recovery is absent from the built package")
   expected <- g3p_identity_fixture()
   changed_dll <- expected
   changed_dll$source_md5[["dll"]] <- strrep("2", 32L)
@@ -42,6 +58,8 @@ test_that("G3P rejects content or ABI identity drift", {
 })
 
 test_that("G3P rejects malformed identity before a smoke", {
+  testthat::skip_if_not(file.exists(.g3p_provenance_contract_path),
+    "dev/isdm-package-recovery is absent from the built package")
   expected <- g3p_identity_fixture()
   observed <- expected
   observed$runtime$tmb_version <- NA_character_
@@ -52,6 +70,8 @@ test_that("G3P rejects malformed identity before a smoke", {
 })
 
 test_that("G3P rejects non-MD5 receipt values", {
+  testthat::skip_if_not(file.exists(.g3p_provenance_contract_path),
+    "dev/isdm-package-recovery is absent from the built package")
   expected <- g3p_identity_fixture()
   observed <- expected
   observed$runner_md5 <- "not-an-md5"
@@ -59,6 +79,8 @@ test_that("G3P rejects non-MD5 receipt values", {
 })
 
 test_that("G3P binds the preflight execution context before a smoke", {
+  testthat::skip_if_not(file.exists(.g3p_provenance_contract_path),
+    "dev/isdm-package-recovery is absent from the built package")
   expected <- list(
     schema = "G3P_P2_SMOKE_V2_PREFLIGHT_V1", source_gate = "G3P_P2_SMOKE_V2",
     root_id = "G3P_P2_S6_C360_R3_V2", attempt_id = "paper2-g3-smoke-v2-86302",
@@ -74,7 +96,7 @@ test_that("G3P binds the preflight execution context before a smoke", {
 })
 
 test_that("G3P runner applies the receipt contract before optimizer entry", {
-  path <- testthat::test_path("..", "..", "dev", "isdm-package-recovery", "run-g3-paper2-smoke.R")
+  path <- isdm_dev_path("run-g3-paper2-smoke.R")
   text <- paste(readLines(path, warn = FALSE), collapse = "\n")
   expect_match(text, "source\\(provenance_contract, local = TRUE\\)")
   expect_match(text, "provenance <- g3p_compare_identity\\(receipt, observed_identity\\)")
@@ -82,7 +104,7 @@ test_that("G3P runner applies the receipt contract before optimizer entry", {
 })
 
 test_that("G3P runner requires explicit packet and source-gate binding for V2", {
-  path <- testthat::test_path("..", "..", "dev", "isdm-package-recovery", "run-g3-paper2-smoke.R")
+  path <- isdm_dev_path("run-g3-paper2-smoke.R")
   text <- paste(readLines(path, warn = FALSE), collapse = "\n")
   expect_match(text, 'packet_arg <- value\\("packet"\\)')
   expect_match(text, 'source_gate <- value\\("source-gate"')

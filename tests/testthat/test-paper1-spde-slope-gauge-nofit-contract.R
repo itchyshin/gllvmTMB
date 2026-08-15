@@ -1,25 +1,7 @@
 spde_slope_gauge_nofit_contract_env <- function() {
   env <- new.env(parent = baseenv())
-  source(
-    testthat::test_path(
-      "..",
-      "..",
-      "dev",
-      "isdm-package-recovery",
-      "spde-slope-gauge-contract.R"
-    ),
-    local = env
-  )
-  source(
-    testthat::test_path(
-      "..",
-      "..",
-      "dev",
-      "isdm-package-recovery",
-      "spde-slope-gauge-nofit-contract.R"
-    ),
-    local = env
-  )
+  source(isdm_dev_path("spde-slope-gauge-contract.R"), local = env)
+  source(isdm_dev_path("spde-slope-gauge-nofit-contract.R"), local = env)
   env
 }
 
@@ -1461,7 +1443,7 @@ spde_slope_gauge_nofit_v2_gate_fixture <- function(contract) {
   )
   dir.create(root)
   root <- normalizePath(root, mustWork = TRUE)
-  source_dir <- testthat::test_path("..", "..", "dev", "isdm-package-recovery")
+  source_dir <- isdm_dev_path()
   source_paths <- c(
     child_runner = file.path(
       source_dir,
@@ -1648,13 +1630,7 @@ spde_slope_gauge_nofit_v2_refresh_manifest <- function(contract, root) {
 }
 
 spde_slope_gauge_nofit_v2_contract_materializer_env <- function() {
-  path <- testthat::test_path(
-    "..",
-    "..",
-    "dev",
-    "isdm-package-recovery",
-    "materialize-paper1-spde-slope-gauge-nofit-v2-gate.R"
-  )
+  path <- isdm_dev_path("materialize-paper1-spde-slope-gauge-nofit-v2-gate.R")
   old_source <- Sys.getenv(
     "SPDE_SLOPE_GAUGE_NOFIT_V2_MATERIALIZER_SOURCE_ONLY",
     unset = NA_character_

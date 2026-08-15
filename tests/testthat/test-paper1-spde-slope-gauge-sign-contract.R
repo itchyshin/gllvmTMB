@@ -1,11 +1,7 @@
 spde_slope_gauge_sign_contract_env <- function() {
   env <- new.env(parent = baseenv())
-  source(testthat::test_path(
-    "..", "..", "dev", "isdm-package-recovery", "spde-slope-gauge-contract.R"
-  ), local = env)
-  source(testthat::test_path(
-    "..", "..", "dev", "isdm-package-recovery", "spde-slope-gauge-sign-contract.R"
-  ), local = env)
+  source(isdm_dev_path("spde-slope-gauge-contract.R"), local = env)
+  source(isdm_dev_path("spde-slope-gauge-sign-contract.R"), local = env)
   env
 }
 

@@ -1,6 +1,5 @@
 test_that("G2k gradient diagnostic remains a read-only all-attempt extractor", {
-  path <- test_path("..", "..", "dev", "isdm-package-recovery",
-                    "run-g2k-gradient-diagnostic.R")
+  path <- isdm_dev_path("run-g2k-gradient-diagnostic.R")
   code <- paste(readLines(path, warn = FALSE), collapse = "\n")
 
   expect_match(code, "G2K_GRADIENT_DIAGNOSTIC_V1", fixed = TRUE)

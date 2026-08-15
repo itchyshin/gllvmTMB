@@ -1,7 +1,5 @@
 spde_slope_gauge_tr_runner_env <- function() {
-  runner <- testthat::test_path(
-    "..", "..", "dev", "isdm-package-recovery", "run-paper1-spde-slope-gauge-trust-region.R"
-  )
+  runner <- isdm_dev_path("run-paper1-spde-slope-gauge-trust-region.R")
   env <- new.env(parent = baseenv())
   old_source_only <- Sys.getenv("SPDE_SLOPE_GAUGE_TR_SOURCE_ONLY", unset = NA_character_)
   old_runner <- Sys.getenv("SPDE_SLOPE_GAUGE_TR_RUNNER_PATH", unset = NA_character_)
@@ -86,9 +84,7 @@ test_that("the worker writer requires the retained V3 receipt before it writes",
 test_that("the worker has one factory seam and no outer-optimizer or DLL-unload path", {
   runner_env <- spde_slope_gauge_tr_runner_env()
   expect_true(exists("spde_slope_gauge_validate_sign_orbit", envir = runner_env, inherits = FALSE))
-  runner <- paste(readLines(testthat::test_path(
-    "..", "..", "dev", "isdm-package-recovery", "run-paper1-spde-slope-gauge-trust-region.R"
-  ), warn = FALSE), collapse = "\n")
+  runner <- paste(readLines(isdm_dev_path("run-paper1-spde-slope-gauge-trust-region.R"), warn = FALSE), collapse = "\n")
   expect_equal(sum(gregexpr("TMB::MakeADFun", runner, fixed = TRUE)[[1L]] > 0L), 1L)
   expect_false(grepl("dyn.unload", runner, fixed = TRUE))
   expect_false(grepl("stats::optim", runner, fixed = TRUE))

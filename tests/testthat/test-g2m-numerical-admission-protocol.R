@@ -1,6 +1,5 @@
 test_that("G2m protocol validator is a design-only no-fit gate", {
-  path <- test_path("..", "..", "dev", "isdm-package-recovery",
-                    "run-g2m-numerical-admission-validation.R")
+  path <- isdm_dev_path("run-g2m-numerical-admission-validation.R")
   lines <- readLines(path, warn = FALSE)
   code <- paste(lines, collapse = "\n")
 

@@ -1,5 +1,5 @@
 test_that("Paper 1 G3 smoke runner is fresh-seed, bounded, and one-shot", {
-  path <- testthat::test_path("..", "..", "dev", "isdm-package-recovery", "run-g3-paper1-smoke.R")
+  path <- isdm_dev_path("run-g3-paper1-smoke.R")
   text <- paste(readLines(path, warn = FALSE), collapse = "\n")
   expect_match(text, "86301L", fixed = TRUE)
   expect_match(text, 'time-limit-s", "1800"', fixed = TRUE)
@@ -10,8 +10,7 @@ test_that("Paper 1 G3 smoke runner is fresh-seed, bounded, and one-shot", {
 })
 
 test_that("Paper 1 G3 runner seals marginal-curvature provenance fail closed", {
-  path <- testthat::test_path("..", "..", "dev", "isdm-package-recovery",
-    "run-g3-paper1-smoke.R")
+  path <- isdm_dev_path("run-g3-paper1-smoke.R")
   text <- paste(readLines(path, warn = FALSE), collapse = "\n")
 
   ledger_start <- regexpr("ledger <- list\\(", text)[[1L]]
@@ -42,8 +41,7 @@ test_that("Paper 1 G3 runner seals marginal-curvature provenance fail closed", {
 })
 
 test_that("Paper 1 G3 runner has no retry, profile, remote, or relaxed gate", {
-  path <- testthat::test_path("..", "..", "dev", "isdm-package-recovery",
-    "run-g3-paper1-smoke.R")
+  path <- isdm_dev_path("run-g3-paper1-smoke.R")
   text <- paste(readLines(path, warn = FALSE), collapse = "\n")
   forbidden <- c(
     "profile_theta\\(", "nlminb\\(", "optim\\(", "retry_enabled[[:space:]]*=[[:space:]]*TRUE",

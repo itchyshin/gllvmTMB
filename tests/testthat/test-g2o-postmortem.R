@@ -15,7 +15,7 @@ test_that("G2o postmortem validates retained roots without fitting", {
 })
 
 test_that("G2o postmortem contains no fit, profile, or optimizer call", {
-  script <- test_path("..", "..", "dev", "isdm-package-recovery", "run-g2o-postmortem.R")
+  script <- isdm_dev_path("run-g2o-postmortem.R")
   text <- paste(readLines(script, warn = FALSE), collapse = "\n")
   expect_false(grepl("\\.gll_isdm_fit|nlminb\\(|MakeADFun\\(|gllvmTMB\\(|profile_theta", text))
   expect_true(grepl("covariance-scaled scores are not optimizer candidates", text,

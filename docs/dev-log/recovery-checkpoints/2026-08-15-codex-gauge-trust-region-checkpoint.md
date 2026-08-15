@@ -93,8 +93,10 @@ slice at `9d9ef568cfbd3f360b2e688abc1703dd9cc8ef52`; they are not current source
 state.  The initial source gate was committed as
 `91dc35eec4654bc0dcd68be997f36e5a670ef7db`.  Its post-commit independent review
 found a Frobenius-norm implementation drift and two missing worker bindings:
-the sealed object-order map and the retained live no-fit replay.  The current
-uncommitted amendment corrects those source-gate issues and must be retested,
-reviewed, and committed before any no-build preflight.  No V3 live child,
-scientific preflight packet, worker, fit, recovery calculation, or empirical
-run has occurred.
+the sealed object-order map and the retained live no-fit replay.  This source
+gate correction applies the declared Frobenius metric, validates/retains the
+full no-fit receipt and its sealed-state binding, and is accompanied by the
+focused seven-file green suite.  The next safe action is an independent
+re-review of the committed correction; only then may a no-build preflight be
+considered.  No V3 live child, scientific preflight packet, worker, fit,
+recovery calculation, or empirical run has occurred.

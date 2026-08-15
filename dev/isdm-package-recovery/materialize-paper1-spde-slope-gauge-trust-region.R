@@ -348,7 +348,8 @@ spde_slope_gauge_trust_region_terminal_from_worker <- function(
     ), checks),
     status = worker_status, reason = worker_reason, error = worker_error, timing = timing
   )
-  evidence <- spde_slope_gauge_trust_region_validate_terminal_evidence(ledger)
+  state <- tryCatch(readRDS(file.path(normal_root, "v2-materialized-state.rds")), error = function(e) NULL)
+  evidence <- spde_slope_gauge_trust_region_validate_terminal_evidence(ledger, state = state)
   if (isTRUE(evidence$valid)) return(ledger)
   ledger["checks"] <- list(stats::setNames(c(TRUE, FALSE, FALSE, FALSE), checks))
   ledger["status"] <- list(spde_slope_gauge_trust_region_terminal_evidence_hold())

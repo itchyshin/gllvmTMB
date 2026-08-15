@@ -260,7 +260,7 @@ spde_slope_gauge_trust_region_worker_ok <- function(worker, predecessor) {
       identical(worker$predecessor, predecessor) && .spde_slope_gauge_tr_smoke_md5(worker$state_md5) &&
         .spde_slope_gauge_tr_smoke_worker_dll(worker$dll) &&
         .spde_slope_gauge_tr_smoke_worker_object(worker$object, 1L, 1L) &&
-        is.list(worker$nofit) && isTRUE(worker$nofit$valid) &&
+        isTRUE(spde_slope_gauge_no_fit_evidence_ok(worker$nofit)) &&
         is.list(worker$sign_orbit) && isTRUE(worker$sign_orbit$valid) &&
         is.list(worker$trust_region) && identical(worker$trust_region$status, worker$status) &&
         identical(worker$trust_region$reason, worker$reason) && is.list(worker$audit) &&
@@ -281,16 +281,16 @@ spde_slope_gauge_trust_region_worker_ok <- function(worker, predecessor) {
         is.null(worker$trust_region) && is.null(worker$audit),
       no_fit = is.list(worker$nofit) && identical(worker$nofit$valid, FALSE) &&
         is.null(worker$sign_orbit) && is.null(worker$trust_region) && is.null(worker$audit),
-      sign = is.list(worker$nofit) && isTRUE(worker$nofit$valid) &&
+      sign = isTRUE(spde_slope_gauge_no_fit_evidence_ok(worker$nofit)) &&
         is.list(worker$sign_orbit) && isTRUE(worker$sign_orbit$valid) &&
         is.null(worker$trust_region) && is.null(worker$audit),
-      callback_adapter = is.list(worker$nofit) && isTRUE(worker$nofit$valid) &&
+      callback_adapter = isTRUE(spde_slope_gauge_no_fit_evidence_ok(worker$nofit)) &&
         is.list(worker$sign_orbit) && isTRUE(worker$sign_orbit$valid) &&
         is.null(worker$trust_region) && is.null(worker$audit),
-      trust_region = is.list(worker$nofit) && isTRUE(worker$nofit$valid) &&
+      trust_region = isTRUE(spde_slope_gauge_no_fit_evidence_ok(worker$nofit)) &&
         is.list(worker$sign_orbit) && isTRUE(worker$sign_orbit$valid) &&
         is.list(worker$trust_region) && is.null(worker$audit),
-      audit = is.list(worker$nofit) && isTRUE(worker$nofit$valid) &&
+      audit = isTRUE(spde_slope_gauge_no_fit_evidence_ok(worker$nofit)) &&
         is.list(worker$sign_orbit) && isTRUE(worker$sign_orbit$valid) &&
         is.list(worker$trust_region) && is.list(worker$audit),
       FALSE
@@ -313,7 +313,7 @@ spde_slope_gauge_trust_region_worker_ok <- function(worker, predecessor) {
     factory = prefix_ok("factory", 1L) && identical(worker$completed_stage, "factory"),
     no_fit = prefix_ok("no_fit", 1L) && identical(worker$completed_stage, "factory"),
     sign = identical(worker$completed_stage, "no_fit") &&
-      is.list(worker$nofit) && isTRUE(worker$nofit$valid) &&
+      isTRUE(spde_slope_gauge_no_fit_evidence_ok(worker$nofit)) &&
       (is.null(worker$sign_orbit) || (is.list(worker$sign_orbit) && identical(worker$sign_orbit$valid, FALSE))) &&
       identical(worker$predecessor, predecessor) && .spde_slope_gauge_tr_smoke_md5(worker$state_md5) &&
       .spde_slope_gauge_tr_smoke_worker_dll(worker$dll) &&
@@ -441,7 +441,8 @@ spde_slope_gauge_trust_region_validate_terminal_evidence <- function(
   phi0 = NULL,
   evaluate_fn = NULL,
   covariance_fn = NULL,
-  controls = spde_slope_gauge_trust_region_controls()
+  controls = spde_slope_gauge_trust_region_controls(),
+  state = NULL
 ) {
   shape <- spde_slope_gauge_trust_region_validate_terminal_ledger(ledger)
   if (!isTRUE(shape$valid)) return(shape)
@@ -475,7 +476,7 @@ spde_slope_gauge_trust_region_validate_terminal_evidence <- function(
       identical(worker_status, "GAUGE_TRUST_REGION_NUMERICAL_ADMISSION"), FALSE
     ), spde_slope_gauge_trust_region_checks()))
     recomputed <- spde_slope_gauge_trust_region_validate_terminal_evidence(
-      probe, phi0, evaluate_fn, covariance_fn, controls
+      probe, phi0, evaluate_fn, covariance_fn, controls, state
     )
     return(if (isTRUE(recomputed$valid)) {
       list(valid = FALSE, reason = "terminal_evidence_hold_not_forced_by_evidence")
@@ -497,6 +498,23 @@ spde_slope_gauge_trust_region_validate_terminal_evidence <- function(
   }
   if (!spde_slope_gauge_trust_region_worker_ok(ledger$worker, ledger$predecessor)) {
     return(list(valid = FALSE, reason = "terminal_worker_evidence_invalid"))
+  }
+  if (!is.null(state)) {
+    theta <- tryCatch(.spde_slope_gauge_full_vector(
+      state$theta, spde_slope_gauge_raw_order(), "terminal state theta"
+    ), error = function(e) NULL)
+    gradient <- tryCatch(.spde_slope_gauge_full_vector(
+      state$gradient, spde_slope_gauge_raw_order(), "terminal state gradient"
+    ), error = function(e) NULL)
+    objective <- tryCatch(.spde_slope_gauge_scalar_double(state$objective, "terminal state objective"),
+      error = function(e) NULL)
+    nofit <- ledger$worker$nofit
+    if (is.null(theta) || is.null(gradient) || is.null(objective) ||
+        .spde_slope_gauge_relative_error(nofit$raw_theta, theta) > nofit$controls$theta ||
+        abs(nofit$objective - objective) / max(1, abs(nofit$objective), abs(objective)) > nofit$controls$objective ||
+        .spde_slope_gauge_relative_error(nofit$raw_gradient, gradient) > nofit$controls$gradient) {
+      return(list(valid = FALSE, reason = "terminal_no_fit_state_binding_invalid"))
+    }
   }
   replay_from_audit <- is.null(phi0) && is.null(evaluate_fn) && is.null(covariance_fn)
   if (replay_from_audit) {

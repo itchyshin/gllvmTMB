@@ -244,3 +244,86 @@ spde_slope_gauge_validate_no_fit_state <- function(state, objective_fn, gradient
     controls = controls, errors = errors
   )
 }
+
+spde_slope_gauge_no_fit_evidence_ok <- function(evidence) {
+  raw_order <- spde_slope_gauge_raw_order()
+  phi_order <- spde_slope_gauge_phi_order()
+  fields <- c(
+    "valid", "reason", "phi", "raw_theta", "objective", "raw_gradient",
+    "transformed_gradient", "transformed_gradient_fd", "finite_difference",
+    "controls", "errors", "gradient_callback"
+  )
+  if (!is.list(evidence) || !identical(names(evidence), fields) ||
+      !isTRUE(evidence$valid) || !identical(evidence$reason, "no_fit_state_valid") ||
+      !.spde_slope_gauge_no_fit_controls_ok(evidence$controls)) return(FALSE)
+  phi <- tryCatch(.spde_slope_gauge_full_vector(evidence$phi, phi_order, "no-fit phi"),
+    error = function(e) NULL)
+  raw_theta <- tryCatch(.spde_slope_gauge_full_vector(evidence$raw_theta, raw_order, "no-fit raw theta"),
+    error = function(e) NULL)
+  raw_gradient <- tryCatch(.spde_slope_gauge_full_vector(evidence$raw_gradient, raw_order, "no-fit raw gradient"),
+    error = function(e) NULL)
+  transformed_gradient <- tryCatch(.spde_slope_gauge_full_vector(
+    evidence$transformed_gradient, phi_order, "no-fit transformed gradient"
+  ), error = function(e) NULL)
+  transformed_fd <- tryCatch(.spde_slope_gauge_full_vector(
+    evidence$transformed_gradient_fd, phi_order, "no-fit finite-difference gradient"
+  ), error = function(e) NULL)
+  objective <- tryCatch(.spde_slope_gauge_scalar_double(evidence$objective, "no-fit objective"),
+    error = function(e) NULL)
+  if (is.null(phi) || is.null(raw_theta) || is.null(raw_gradient) ||
+      is.null(transformed_gradient) || is.null(transformed_fd) || is.null(objective) ||
+      !identical(raw_theta, spde_slope_gauge_theta_from_phi(phi)) ||
+      !identical(transformed_gradient, spde_slope_gauge_full_chain_gradient(phi, raw_gradient))) return(FALSE)
+  expected_h <- .Machine$double.eps^(1 / 3) * pmax(1, abs(phi))
+  records <- evidence$finite_difference
+  if (!is.list(records) || length(records) != 22L) return(FALSE)
+  valid_records <- vapply(seq_len(22L), function(index) {
+    record <- records[[index]]
+    expected_fields <- c(
+      "index", "phi_id", "h", "phi_plus", "phi_minus", "theta_plus", "theta_minus",
+      "objective_plus", "objective_minus"
+    )
+    displacement <- rep(0, 22L)
+    displacement[[index]] <- expected_h[[index]]
+    names(displacement) <- phi_order
+    is.list(record) && identical(names(record), expected_fields) &&
+      identical(record$index, as.integer(index)) && identical(record$phi_id, phi_order[[index]]) &&
+      is.double(record$h) && length(record$h) == 1L && identical(record$h, as.double(expected_h[[index]])) &&
+      identical(record$phi_plus, phi + displacement) && identical(record$phi_minus, phi - displacement) &&
+      identical(record$theta_plus, spde_slope_gauge_theta_from_phi(phi + displacement)) &&
+      identical(record$theta_minus, spde_slope_gauge_theta_from_phi(phi - displacement)) &&
+      !is.null(tryCatch(.spde_slope_gauge_scalar_double(record$objective_plus, "no-fit plus objective"), error = function(e) NULL)) &&
+      !is.null(tryCatch(.spde_slope_gauge_scalar_double(record$objective_minus, "no-fit minus objective"), error = function(e) NULL))
+  }, logical(1L))
+  if (!all(valid_records)) return(FALSE)
+  fd_gradient <- vapply(records, function(record) {
+    (record$objective_plus - record$objective_minus) / (2 * record$h)
+  }, numeric(1L))
+  names(fd_gradient) <- phi_order
+  errors <- evidence$errors
+  callback <- evidence$gradient_callback
+  mapping_fields <- c("supplied_names", "object_order", "parameter_order", "block_labels", "raw_order")
+  block_labels <- c(rep("b_fix", 12L), rep("theta_diag_B", 3L), "log_kappa_spde",
+    rep("theta_rr_spde_slope", 6L))
+  callback_ok <- is.list(callback) && identical(names(callback), c(
+    "supplied_names", "raw_values", "named_gradient", "mapping"
+  )) && (is.null(callback$supplied_names) || identical(callback$supplied_names, raw_order)) &&
+    is.double(callback$raw_values) && length(callback$raw_values) == 22L &&
+    identical(callback$named_gradient, raw_gradient) &&
+    identical(callback$raw_values, as.double(unname(raw_gradient))) &&
+    is.list(callback$mapping) && identical(names(callback$mapping), mapping_fields) &&
+    identical(callback$mapping$object_order, block_labels) &&
+    identical(callback$mapping$parameter_order, raw_order) &&
+    identical(callback$mapping$block_labels, block_labels) &&
+    identical(callback$mapping$raw_order, raw_order) &&
+    (is.null(callback$mapping$supplied_names) || identical(callback$mapping$supplied_names, raw_order) ||
+      identical(callback$mapping$supplied_names, block_labels))
+  errors_ok <- is.list(errors) && identical(names(errors), c(
+    "theta", "objective", "gradient", "transformed_gradient"
+  )) && all(vapply(errors, function(x) is.double(x) && length(x) == 1L && is.finite(x), logical(1L))) &&
+    errors$theta <= evidence$controls$theta && errors$objective <= evidence$controls$objective &&
+    errors$gradient <= evidence$controls$gradient &&
+    errors$transformed_gradient <= evidence$controls$transformed_gradient &&
+    .spde_slope_gauge_relative_error(transformed_fd, fd_gradient) <= 64 * .Machine$double.eps
+  isTRUE(callback_ok) && isTRUE(errors_ok)
+}

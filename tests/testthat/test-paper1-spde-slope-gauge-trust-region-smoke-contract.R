@@ -72,6 +72,37 @@ spde_slope_gauge_tr_smoke_callbacks <- function(contract) {
   list(phi0 = phi0, evaluate = evaluate, covariance = covariance)
 }
 
+spde_slope_gauge_tr_smoke_nofit <- function(contract) {
+  raw_order <- contract$spde_slope_gauge_raw_order()
+  theta <- stats::setNames(seq(-0.8, 0.8, length.out = 22L), raw_order)
+  theta[20:22] <- c(0.2, -0.1, 0.3)
+  state <- list(
+    theta = theta,
+    objective = as.double(0.5 * sum(theta^2)),
+    gradient = theta
+  )
+  evidence <- contract$spde_slope_gauge_validate_no_fit_state(
+    state,
+    objective_fn = function(x) as.double(0.5 * sum(x^2)),
+    gradient_fn = function(x) stats::setNames(as.double(x), raw_order)
+  )
+  evidence["gradient_callback"] <- list(list(
+    supplied_names = raw_order,
+    raw_values = as.double(theta),
+    named_gradient = theta,
+    mapping = list(
+      supplied_names = NULL,
+      object_order = c(rep("b_fix", 12L), rep("theta_diag_B", 3L), "log_kappa_spde",
+        rep("theta_rr_spde_slope", 6L)),
+      parameter_order = raw_order,
+      block_labels = c(rep("b_fix", 12L), rep("theta_diag_B", 3L), "log_kappa_spde",
+        rep("theta_rr_spde_slope", 6L)),
+      raw_order = raw_order
+    )
+  ))
+  evidence
+}
+
 spde_slope_gauge_tr_smoke_process <- function() {
   list(
     schema = "PAPER1_SPDE_SLOPE_GAUGE_TRUST_REGION_V1_PROCESS_V1",
@@ -152,7 +183,7 @@ spde_slope_gauge_tr_smoke_predecessor_packet <- function(contract) {
   list(root = root, locked = locked, state = state)
 }
 
-spde_slope_gauge_tr_smoke_worker <- function(result, predecessor = list(root = "/sealed/v3")) {
+spde_slope_gauge_tr_smoke_worker <- function(contract, result, predecessor = list(root = "/sealed/v3")) {
   list(
     schema = "PAPER1_SPDE_SLOPE_GAUGE_TRUST_REGION_V1_CHILD_V1",
     parent_pid = 101L,
@@ -164,7 +195,7 @@ spde_slope_gauge_tr_smoke_worker <- function(result, predecessor = list(root = "
     state_md5 = "0123456789abcdef0123456789abcdef",
     dll = list(path = "/sealed/gllvmTMB.so", md5 = "fedcba9876543210fedcba9876543210"),
     object = list(created = 1L, released = 1L),
-    nofit = list(valid = TRUE),
+    nofit = spde_slope_gauge_tr_smoke_nofit(contract),
     sign_orbit = list(valid = TRUE),
     trust_region = result,
     audit = list(),
@@ -280,7 +311,7 @@ test_that("normal terminal evidence must reproduce the embedded trust-region res
   )
   ledger <- spde_slope_gauge_tr_smoke_ledger(contract)
   ledger$trust_region <- result
-  ledger$worker <- spde_slope_gauge_tr_smoke_worker(result, ledger$predecessor)
+  ledger$worker <- spde_slope_gauge_tr_smoke_worker(contract, result, ledger$predecessor)
   tampered <- ledger
   tampered$trust_region$selected$evaluation$raw_gradient[[1L]] <-
     tampered$trust_region$selected$evaluation$raw_gradient[[1L]] + 1e-4
@@ -317,7 +348,7 @@ test_that("a complete no-candidate trace seals as a recomputed numerical non-adm
   ))
   ledger["status"] <- list("GAUGE_TRUST_REGION_NO_ADMISSIBLE_CANDIDATE")
   ledger["reason"] <- list(result$reason)
-  ledger["worker"] <- list(spde_slope_gauge_tr_smoke_worker(result, ledger$predecessor))
+  ledger["worker"] <- list(spde_slope_gauge_tr_smoke_worker(contract, result, ledger$predecessor))
 
   verdict <- contract$spde_slope_gauge_trust_region_validate_terminal_evidence(
     ledger, callbacks$phi0, callbacks$evaluate, no_candidate_covariance
@@ -334,7 +365,7 @@ test_that("worker receipts retain only the evidence completed at their declared 
     callbacks$phi0, callbacks$evaluate, callbacks$covariance
   )
   predecessor <- list(root = "/sealed/v3")
-  complete <- spde_slope_gauge_tr_smoke_worker(result, predecessor)
+  complete <- spde_slope_gauge_tr_smoke_worker(contract, result, predecessor)
   expect_true(contract$spde_slope_gauge_trust_region_worker_ok(complete, predecessor))
 
   release_failure <- complete
@@ -363,6 +394,10 @@ test_that("worker receipts retain only the evidence completed at their declared 
   forged_count <- complete
   forged_count$object$released <- 0L
   expect_false(contract$spde_slope_gauge_trust_region_worker_ok(forged_count, predecessor))
+  forged_nofit <- complete
+  forged_nofit$nofit$gradient_callback$named_gradient[[1L]] <-
+    forged_nofit$nofit$gradient_callback$named_gradient[[1L]] + 1e-4
+  expect_false(contract$spde_slope_gauge_trust_region_worker_ok(forged_nofit, predecessor))
 
   callback_failure <- complete
   callback_failure$status <- "GAUGE_TRUST_REGION_INFRASTRUCTURE_HOLD"
@@ -400,7 +435,7 @@ test_that("terminal evidence replays the retained callback audit without constru
   phi0 <- contract$spde_slope_gauge_phi_from_theta(theta)
   result <- contract$spde_slope_gauge_trust_region(phi0, adapter$evaluate, adapter$covariance)
   predecessor <- list(root = "/sealed/v3")
-  worker <- spde_slope_gauge_tr_smoke_worker(result, predecessor)
+  worker <- spde_slope_gauge_tr_smoke_worker(contract, result, predecessor)
   worker$dll <- list(path = "/sealed/gllvmTMB.so", md5 = "7797c4674e4758fca2da27151e5c2508")
   worker$audit <- adapter$audit()
   ledger <- spde_slope_gauge_tr_smoke_ledger(contract, result$status)

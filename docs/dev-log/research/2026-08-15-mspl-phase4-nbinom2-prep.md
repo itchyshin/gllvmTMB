@@ -188,7 +188,14 @@ Existence / coercivity sketch used as the oracle contract
 
 Latent loading coercivity under Laplace is **OPEN**. The Bernoulli
 radial atom and the Poisson mean atom are listed only as forbidden
-transplants, not as candidates.
+transplants, not as candidates. The mean-model atom in this note is
+**fixed-only / conditional** GLM information, evaluated at
+\(\eta=X_{\mathrm{fix}}b_{\mathrm{fix}}+\mathrm{offset}\) before any
+latent-score contribution — the same convention the live tape
+records at `src/gllvmTMB.cpp` ("before any latent-score
+contribution"). Laplace-marginal information for \(\beta\) is a
+different object and remains **OPEN**. These oracles do not compute
+it.
 
 ## 2. Low-mean and dispersion boundary mechanisms
 
@@ -438,7 +445,7 @@ still OPEN and not a theorem transfer:
 - a *separately argued* size atom, or none, because Jeffreys-on-\(\phi\)
   fights the Poisson limit.
 
-Rate and loading atoms remain OPEN.
+Rate, loading, and Laplace-marginal \(I(\beta)\) remain OPEN.
 
 ## 10. Non-claims
 
@@ -454,7 +461,8 @@ This note does **not** claim:
 - structured tiers (`phylo_*`, `spatial_*`, `animal_*`, `kernel_*`);
 - that nonzero offsets are admitted;
 - that planned registry rows exist for nbinom2 (they do not);
-- that EVA/VA is involved (it is not).
+- that EVA/VA is involved (it is not);
+- that this atom is the Laplace-marginal information for \(\beta\).
 
 ## 11. What must exist before admission (unchanged programme gate)
 

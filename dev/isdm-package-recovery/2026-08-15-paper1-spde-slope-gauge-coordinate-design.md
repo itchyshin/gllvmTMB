@@ -327,6 +327,53 @@ non-reporting child is
 `SPDE_SLOPE_GAUGE_NOFIT_INFRASTRUCTURE_HOLD / child_process_no_result` and has
 no inferred DLL, factory, callback, or finite-difference evidence.
 
+### V1 forensic closeout and V2 successor boundary
+
+`PAPER1_SPDE_SLOPE_GAUGE_NOFIT_GATE_V1` is consumed and immutable at canonical
+root `dev/isdm-package-recovery/results/PAPER1_SPDE_SLOPE_GAUGE_NOFIT_GATE_V1`.
+At source commit `4eb710ed12cc5346d4ed4bcae0e8182d8ba3fbc3`, its complete
+top-level inventory is six regular, non-symlink files, one ordered manifest,
+and one real empty non-symlink `.attempt-started.claim` directory:
+
+| path | MD5 |
+| --- | --- |
+| `child-receipt.rds` | `e5481430c170b8f3fa5c1eb1da33e27e` |
+| `no-fit-result.rds` | `0af4bc98742861950896c1e79dadb2e0` |
+| `materializer.R` | `38548a8e8c18f4e8f89c3e465ace8ad4` |
+| `root-receipt.rds` | `1d9b1b0b31a993dc88427ce6989dea85` |
+| `session-info.rds` | `e5a10dc9cb603476373cbea8ac84c8ba` |
+| `time-estimate.md` | `b3167b86ae6660cd9422ef0b7e151312` |
+| `file-manifest.csv` | `fd83183495b88a37c677682b9f9e6015` |
+
+V2 must reread the V1 receipt, ordered manifest, and every listed byte from
+that root; require the inventory and empty claim directory exactly; and bind
+the receipt's V1 commit, terminal status
+`SPDE_SLOPE_GAUGE_NOFIT_INFRASTRUCTURE_HOLD`, and reason
+`child_evidence_invalid`.  This packet is not numerical, curvature, recovery,
+or ecological evidence.
+
+The sufficient source cause is narrow: V1's parent supplied only the retained
+receipt and state MD5 to a complete-child predicate that also requires the
+locked predecessor root and commit.  It is not a claim that the V1 child result
+can be promoted or reused.  A successor is permitted only as the separately
+named `PAPER1_SPDE_SLOPE_GAUGE_NOFIT_GATE_V2`, with a fresh root, stage prefix,
+root/process/child schemas, receipt, manifest, and one child launch.  Its
+receipt must consume the complete V1 forensic packet above and reject a
+missing, substituted, rehashed, non-regular, or non-empty-claim packet.  It
+must also retain the same MSPDE V3
+root/commit/state/DLL/control/FD-order/tolerance bindings.  The sole execution
+change is propagation of the full locked predecessor verdict
+`root,commit,receipt,state_md5` into the already fixed child predicate.
+
+V2 must not inspect or use V1's retained objective, gradient, FD values,
+transformed values, or child status to select a chart, tolerance, callback
+count, or later trust-region control.  The literal V1 subset
+`predecessor[c("receipt", "state_md5")]` must fail V2 validation; the complete
+V2 projection must pass a
+production-shaped acceptance test.  V2 is still a non-scientific no-fit gate.
+Its failure ends this no-fit adapter line; it authorises neither a V3 no-fit
+retry nor a trust-region/numerical attempt.
+
 ## Future estimator boundary
 
 If the pure map and full sign-orbit checks pass, a later, separately reviewed

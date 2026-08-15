@@ -455,6 +455,23 @@ test_that("terminal evidence replays the retained callback audit without constru
   expect_true(verdict$valid)
   expect_match(verdict$reason, "recomputed$")
 
+  state <- list(
+    theta = worker$nofit$raw_theta,
+    objective = worker$nofit$objective,
+    gradient = worker$nofit$raw_gradient
+  )
+  expect_true(contract$spde_slope_gauge_trust_region_validate_terminal_evidence(
+    ledger, state = state
+  )$valid)
+  state$gradient[[1L]] <- state$gradient[[1L]] + 1e-4
+  expect_identical(contract$spde_slope_gauge_trust_region_validate_terminal_evidence(
+    ledger, state = state
+  )$reason, "terminal_no_fit_state_binding_invalid")
+  state$gradient <- worker$nofit$raw_gradient
+  nofit_tamper <- worker$nofit
+  nofit_tamper$errors$transformed_gradient <- 0
+  expect_false(contract$spde_slope_gauge_no_fit_evidence_ok(nofit_tamper))
+
   ledger$worker$audit$gradient[[1L]]$raw_values[[1L]] <-
     ledger$worker$audit$gradient[[1L]]$raw_values[[1L]] + 1e-4
   tampered <- contract$spde_slope_gauge_trust_region_validate_terminal_evidence(ledger)

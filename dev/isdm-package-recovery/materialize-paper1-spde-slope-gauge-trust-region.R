@@ -348,7 +348,10 @@ spde_slope_gauge_trust_region_terminal_from_worker <- function(
     ), checks),
     status = worker_status, reason = worker_reason, error = worker_error, timing = timing
   )
-  state <- tryCatch(readRDS(file.path(normal_root, "v2-materialized-state.rds")), error = function(e) NULL)
+  normal_root <- tryCatch(normalizePath(root, mustWork = TRUE), error = function(e) NA_character_)
+  state <- if (is.na(normal_root)) NULL else tryCatch(
+    readRDS(file.path(normal_root, "v3-materialized-state.rds")), error = function(e) NULL
+  )
   evidence <- spde_slope_gauge_trust_region_validate_terminal_evidence(ledger, state = state)
   if (isTRUE(evidence$valid)) return(ledger)
   ledger["checks"] <- list(stats::setNames(c(TRUE, FALSE, FALSE, FALSE), checks))
@@ -599,7 +602,8 @@ spde_slope_gauge_trust_region_validate_terminal_packet <- function(
       return(list(valid = FALSE, reason = "terminal_worker_projection_invalid"))
     }
   }
-  evidence <- spde_slope_gauge_trust_region_validate_terminal_evidence(ledger)
+  state <- tryCatch(readRDS(file.path(normal_root, "v3-materialized-state.rds")), error = function(e) NULL)
+  evidence <- spde_slope_gauge_trust_region_validate_terminal_evidence(ledger, state = state)
   if (!isTRUE(evidence$valid)) {
     return(list(valid = FALSE, reason = evidence$reason))
   }

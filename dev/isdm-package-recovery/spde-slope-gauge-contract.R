@@ -300,6 +300,7 @@ spde_slope_gauge_no_fit_evidence_ok <- function(evidence) {
     (record$objective_plus - record$objective_minus) / (2 * record$h)
   }, numeric(1L))
   names(fd_gradient) <- phi_order
+  transformed_gradient_error <- .spde_slope_gauge_relative_error(transformed_gradient, fd_gradient)
   errors <- evidence$errors
   callback <- evidence$gradient_callback
   mapping_fields <- c("supplied_names", "object_order", "parameter_order", "block_labels", "raw_order")
@@ -324,6 +325,8 @@ spde_slope_gauge_no_fit_evidence_ok <- function(evidence) {
     errors$theta <= evidence$controls$theta && errors$objective <= evidence$controls$objective &&
     errors$gradient <= evidence$controls$gradient &&
     errors$transformed_gradient <= evidence$controls$transformed_gradient &&
+    abs(errors$transformed_gradient - transformed_gradient_error) <=
+      64 * .Machine$double.eps * max(1, abs(errors$transformed_gradient), abs(transformed_gradient_error)) &&
     .spde_slope_gauge_relative_error(transformed_fd, fd_gradient) <= 64 * .Machine$double.eps
   isTRUE(callback_ok) && isTRUE(errors_ok)
 }

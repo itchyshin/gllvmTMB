@@ -149,7 +149,14 @@ Latent loading coercivity under Laplace is **OPEN**. Fisher
 information for \((\phi,p)\) in the CPG series density is **OPEN**
 (not faked from \(1/\phi\) or from Hirose). The Bernoulli radial
 atom and the Gaussian Hirose atom are listed only as forbidden
-transplants.
+transplants. The mean-model atom in this note is **fixed-only /
+conditional** GLM information, evaluated at
+\(\eta=X_{\mathrm{fix}}b_{\mathrm{fix}}+\mathrm{offset}\) before any
+latent-score contribution — the same convention the live tape
+records at `src/gllvmTMB.cpp` ("before any latent-score
+contribution"). Laplace-marginal information for \(\beta\) is a
+different object and remains **OPEN**. These oracles do not compute
+it.
 
 ## 2. Power and dispersion boundaries (named, separately)
 
@@ -349,7 +356,8 @@ Phase 3 targets Heywood \(\psi_j\to 0\) with Hirose
 Preferred later-admission *candidate* for the fixed-effect slice:
 Tweedie Jeffreys-shaped
 \(\tfrac12\log\det(X_*^\top\operatorname{diag}(\mu^{2-p}/\phi)X_*)\),
-with rate, \(\phi\)-atom, \(p\)-atom, and loading atoms still OPEN.
+with rate, \(\phi\)-atom, \(p\)-atom, loading atom, and
+Laplace-marginal \(I(\beta)\) still OPEN.
 Not a theorem transfer. Not a Poisson transfer.
 
 ## 9. Non-claims
@@ -366,7 +374,8 @@ This note does **not** claim:
 - structured tiers (`phylo_*`, `spatial_*`, `animal_*`, `kernel_*`);
 - that a `planned` registry row exists or should exist;
 - that EVA/VA is involved (it is not);
-- that this prep authorises jumping Phase 4 Poisson/NB.
+- that this prep authorises jumping Phase 4 Poisson/NB;
+- that this atom is the Laplace-marginal information for \(\beta\).
 
 ## 10. What must exist before admission (unchanged programme gate)
 

@@ -100,3 +100,30 @@ focused seven-file green suite.  The next safe action is an independent
 re-review of the committed correction; only then may a no-build preflight be
 considered.  No V3 live child, scientific preflight packet, worker, fit,
 recovery calculation, or empirical run has occurred.
+
+## 2026-08-15 sealed-preflight and unsealed-smoke forensic update
+
+The source gate was subsequently committed through
+`99644e4e705f8b042cd43a44cc3358889e89a034`. Its final correction binds the
+exact retained V3 replay DLL path and MD5 (`7797c4674e4758fca2da27151e5c2508`)
+to the locked V3 ledger before no-build preflight. The first generated packet
+from `ace72ec1` was unconsumed and is preserved at
+`/private/tmp/PAPER1_SPDE_SLOPE_GAUGE_TRUST_REGION_V1_SUPERSEDED_ace72ec1`;
+it was superseded because its receipt did not bind the DLL.
+
+The fresh `99644e4` preflight passed with no TMB construction and both
+independent reviewers verified its exact ten-file inventory, immutable V3
+state/DLL/control/source bindings, and unconsumed status. The single
+predeclared smoke was then launched (3--10 minute estimate, 1800-second hard
+deadline). The canonical root is now **consumed and unsealed**: it retains the
+empty claim directory, valid receipt-bound marker (parent PID 96103), and
+valid V3 live-child receipt (PID 96237,
+`GAUGE_TRUST_REGION_V3_LIVE_VALID / closeout_recomputed`), but no worker
+receipt, worker process receipt, terminal ledger, or terminal manifest.
+
+This is a post-claim infrastructure/provenance failure, not a numerical,
+curvature, candidate, trust-region, recovery, or ecological-model outcome. The
+retained bytes cannot establish whether the worker began. Do not rerun, repair,
+reseal, or backfill this root. Any next action requires a separately named
+successor design and explicit review; it must not portray this attempt as
+numerical non-admission.

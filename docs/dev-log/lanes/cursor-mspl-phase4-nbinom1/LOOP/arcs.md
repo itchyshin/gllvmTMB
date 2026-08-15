@@ -5,7 +5,7 @@
 | A0 | **DONE** | LOOP kit on isolated worktree | no root `LOOP/` |
 | A1 | **DONE** | Copy sibling note + oracles (byte-identical) | no rewrite; no registry row |
 | A2 | **DONE** | Re-run oracles; structured counts | **68/68 PASS** (14 blocks) |
-| A3 | in progress | Explicit-path commit + push + stacked PR on #971 | no merge |
+| A3 | **DONE** | Explicit-path commit + push + stacked PR on #971 | [#976](https://github.com/itchyshin/gllvmTMB/pull/976); no merge |
 
 ## Structured counts (A2 log)
 

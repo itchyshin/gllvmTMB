@@ -45,7 +45,85 @@ fixture was 0.1999). The aliasing the certificate worried about was removed.
 The information-limitation hypothesis, as operationalised by G2g's own bar, does
 not explain the continued failures.**
 
-## 2. What the measurement surfaced instead -- a structural flat direction
+## 1a. AMENDMENT (same day, live objective) -- the falsifier ran, and §2 below is REFUTED
+
+§4 named the falsifier: *"recompute \(I\) at the fitted Laplace modes with a live
+objective."*  It has now been run, in this session, with the maintainer
+reassigning execution from Codex to Claude.
+
+**Provenance.**  The live objective replays the sealed state using the DLL whose
+MD5 matches the recorded V3 replay DLL
+(`7797c4674e4758fca2da27151e5c2508`): objective `2549.0400257186` against sealed
+`2549.0400257186`, difference \(1.5\times10^{-11}\); gradient max abs difference
+\(1.5\times10^{-11}\); `parameter_order` matches positionally.
+
+**Falsifier result -- it does NOT fire.**
+
+| species | \(I\) at the fitted modes |
+| --- | --- |
+| 1 | 149.22 |
+| 2 | 191.72 |
+| 3 | **135.84** |
+
+Minimum **135.84 \(\ge\) 130 -> MEETS**, sitting between the two earlier
+estimates exactly as it should (125.30 at RE \(=0\); 142.06 prior-corrected).
+**§1 stands, now measured on the faithful quantity** -- G2g's "conditional on
+\(\eta\)", at the fitted state.
+
+**But §2's mechanism is REFUTED by direct measurement of the marginal Hessian**
+(22x22, central differences of the exact gradient; the negative eigenvalue below
+is stable to seven significant figures across steps \(10^{-3}\) to \(10^{-6}\),
+so it is not finite-difference noise):
+
+| claim in §2 | measurement | verdict |
+| --- | --- | --- |
+| \(u=(q+\eta)/\sqrt2\) is the flat direction | \(u\)-axis curvature \(76.4955\); \(v\)-axis \(76.4962\); ratio \(1.00\) | **refuted** -- \(u\) is not flat |
+| the degeneracy is a \(\kappa\)--amplitude ridge | near-null eigenvector weight on `log_kappa` = **0.0000** | **refuted** |
+| caused by `log_tau_spde` being fixed | `src/gllvmTMB.cpp:1674-1679` -- the slope block calls `GMRF(Q_slope)` with **no** `SCALE(...,1/tau)`; tau is absent from this block by design | **refuted** |
+
+**What the null direction actually is.**  Its weight lies **entirely** in the
+GBIF slope loading block: coords 20--22 carry \(1.0000\) of it, coord 16 and
+coords 17--19 carry \(0.0000\).  The spectrum there is
+\(-2.591\times10^{-4},\;+3.616\times10^{-3},\;+4.488\times10^{-3}\) against a
+leading eigenvalue of \(508.01\) -- four to six orders of magnitude smaller.  And
+\(\lVert\lambda_{\rm slope}\rVert=0.1032\) against
+\(\lVert\lambda_{\rm intercept}\rVert=33.5224\).
+
+**So the diagnosis is neither hypothesis.  The GBIF-only spatial slope field is
+essentially unidentified: its loading block is flat to numerical precision and
+carries one genuinely negative eigenvalue, so the frozen point is a very shallow
+saddle rather than a minimum.**  This is what `pdHess = false` records, and it is
+why the sibling lane's covariance was unavailable
+(`FSB_COVARIANCE_UNAVAILABLE`).
+
+**This also reconciles the sealed SAR result.**
+`SAR_P1_S3_C360_R3_V1` (2026-08-14) recorded
+`SAR_RETAINED_RANGE_NUMERICALLY_FLAT` while asking whether the shared range is
+informative *"when the two retained spatial amplitudes are almost zero."*  That
+is the same phenomenon seen from the other side: **the range is uninformative
+because the field amplitude is ~0**, not the reverse.  The flat range is a
+consequence, not a cause.  SAR has precedence over §2 by a day; §2 re-derived a
+sealed finding and then mis-attributed its cause.
+
+**Consequence for the science.**  Paper 1 asks whether the model can keep the
+ecological and GBIF-only fields distinct without collapsing them.  At this
+design the answer the data gives is that **the GBIF-only field collapses to
+approximately zero and is not identified**.  That is a result, and it is the
+STOP/HOLD outcome Paper 1's own staging document pre-declares -- not a numerical
+defect to be engineered around.
+
+**Consequence for method.**  No reparameterisation can help: a chart cannot
+create information for a field the data does not support.  §3's candidate list
+below is superseded -- items 1--3 (range/SD reparameterisation, freeing tau,
+prior on kappa) address a \(\kappa\)--\(\lambda\) ridge that the measurement
+shows does not exist.  **Only item 4, spatial replication, and more generally
+the design/data, bear on what was actually measured.**
+
+## 2. SUPERSEDED -- what the earlier pass inferred (retained for the record)
+
+> The following section was written before the live objective was available. Its
+> mechanism is refuted by §1a. It is retained because the reasoning is on record
+> and the correction should be visible, not silently overwritten.
 
 `log_tau_spde` is **mapped out and fixed at \(\tau=1\)** (confirmed in the sealed
 `map`). With \(\kappa=14.697\), the Matern (\(\nu=1\), \(d=2\)) marginal variance

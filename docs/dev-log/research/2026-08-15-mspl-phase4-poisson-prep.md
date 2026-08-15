@@ -104,7 +104,14 @@ slice first; latent loadings deferred to a separate proof):
 
 Latent loading coercivity under Laplace is **OPEN**. The Bernoulli
 radial atom is listed only as a forbidden transplant, not as a
-candidate.
+candidate. The mean-model atom in this note is **fixed-only /
+conditional** GLM information, evaluated at
+\(\eta=X_{\mathrm{fix}}b_{\mathrm{fix}}+\mathrm{offset}\) before any
+latent-score contribution — the same convention the live tape
+records at `src/gllvmTMB.cpp` ("before any latent-score
+contribution"). Laplace-marginal information for \(\beta\) is a
+different object and remains **OPEN**. These oracles do not compute
+it.
 
 ## 2. All-zero and near-zero count boundary mechanisms
 
@@ -271,7 +278,8 @@ Oracle E6 refuses Hirose-on-Poisson as a type error: there is no
 
 Preferred later-admission *candidate* for the fixed-effect slice:
 Poisson Jeffreys-shaped \(\tfrac12\log\det(X_*^\top\operatorname{diag}(\mu)X_*)\),
-with rate and loading atoms still OPEN. Not a theorem transfer.
+with rate, loading atom, and Laplace-marginal \(I(\beta)\) still
+OPEN. Not a theorem transfer.
 
 ## 7. Non-claims
 
@@ -284,7 +292,8 @@ This note does **not** claim:
 - NB1 / NB2 / truncated Poisson / mixed-family MSPL;
 - structured tiers (`phylo_*`, `spatial_*`, `animal_*`, `kernel_*`);
 - that nonzero offsets are admitted;
-- that EVA/VA is involved (it is not).
+- that EVA/VA is involved (it is not);
+- that this atom is the Laplace-marginal information for \(\beta\).
 
 ## 8. What must exist before admission (unchanged programme gate)
 
@@ -336,5 +345,5 @@ prep pass only sketched:
 - A read-only source pin records that prepare still admits only
   `family_id %in% {0,1}` while Poisson remains `2`.
 
-Loading-atom coercivity under Laplace, and the Poisson rate \(c\),
-remain **OPEN**.
+Loading-atom coercivity under Laplace, the Poisson rate \(c\), and
+Laplace-marginal information for \(\beta\), remain **OPEN**.

@@ -19,6 +19,12 @@ spde_slope_gauge_tr_materializer_env <- function() {
     }
   }, add = TRUE)
   source(materializer, local = env)
+  env$.spde_slope_gauge_tr_materializer_expected_dll <- function(locked) {
+    list(
+      path = normalizePath(materializer, mustWork = TRUE),
+      md5 = unname(tools::md5sum(materializer))[[1L]]
+    )
+  }
   env
 }
 
@@ -122,6 +128,7 @@ spde_slope_gauge_tr_materializer_packet <- function(env, predecessor) {
     commit = commit,
     sources = stats::setNames(unname(tools::md5sum(sources)), names(sources)),
     predecessor = proof[c("root", "commit", "receipt", "state_md5")],
+    dll = env$.spde_slope_gauge_tr_materializer_expected_dll(predecessor$locked),
     control_md5 = unname(tools::md5sum(file.path(root, "control.rds")))[[1L]],
     state_md5 = predecessor$locked$files[["v2-materialized-state.rds"]],
     session_info_md5 = unname(tools::md5sum(file.path(root, "session-info.rds")))[[1L]],
@@ -132,6 +139,18 @@ spde_slope_gauge_tr_materializer_packet <- function(env, predecessor) {
     root, env$.spde_slope_gauge_tr_materializer_files()
   )
   list(root = root, source_dir = source_dir, sources = sources, commit = commit)
+}
+
+spde_slope_gauge_tr_materializer_rebind_packet_dll <- function(env, packet, dll) {
+  receipt_path <- file.path(packet$root, "root-receipt.rds")
+  receipt <- readRDS(receipt_path)
+  receipt$dll <- dll
+  saveRDS(receipt, receipt_path)
+  unlink(file.path(packet$root, "file-manifest.csv"))
+  env$.spde_slope_gauge_tr_materializer_manifest(
+    packet$root, env$.spde_slope_gauge_tr_materializer_files()
+  )
+  invisible(receipt)
 }
 
 spde_slope_gauge_tr_materializer_process <- function(child, runner, mode, output, parent_pid = 101L) {
@@ -217,6 +236,19 @@ test_that("the materializer preflight validator accepts only the complete copied
     locked = predecessor$locked
   )
   expect_identical(accepted, list(valid = TRUE, reason = "trust_region_preflight_valid"))
+
+  receipt <- readRDS(file.path(packet$root, "root-receipt.rds"))
+  receipt$dll$md5 <- paste(rep("0", 32L), collapse = "")
+  saveRDS(receipt, file.path(packet$root, "root-receipt.rds"))
+  unlink(file.path(packet$root, "file-manifest.csv"))
+  env$.spde_slope_gauge_tr_materializer_manifest(
+    packet$root, env$.spde_slope_gauge_tr_materializer_files()
+  )
+  dll_tamper <- env$spde_slope_gauge_trust_region_validate_preflight_packet(
+    packet$root, packet$sources, packet$commit, expected_root = packet$root,
+    locked = predecessor$locked
+  )
+  expect_identical(dll_tamper$reason, "preflight_receipt_or_predecessor_invalid")
 
   receipt <- readRDS(file.path(packet$root, "root-receipt.rds"))
   receipt$sources[["runner"]] <- paste(rep("0", 32L), collapse = "")
@@ -512,6 +544,7 @@ test_that("the production parent seals a no-result worker fallback without start
   env$spde_slope_gauge_trust_region_locked_predecessor <- function() predecessor$locked
   env$.spde_slope_gauge_tr_materializer_expected_dll <- function(locked) expected_dll
   env$spde_slope_gauge_trust_region_validate_preflight_packet <- function(...) {
+    spde_slope_gauge_tr_materializer_rebind_packet_dll(env, packet, expected_dll)
     original_preflight(
       packet$root, packet$sources, packet$commit, expected_root = packet$root,
       locked = predecessor$locked
@@ -591,6 +624,7 @@ test_that("the production parent retains a valid partial worker prefix without s
   env$spde_slope_gauge_trust_region_locked_predecessor <- function() predecessor$locked
   env$.spde_slope_gauge_tr_materializer_expected_dll <- function(locked) expected_dll
   env$spde_slope_gauge_trust_region_validate_preflight_packet <- function(...) {
+    spde_slope_gauge_tr_materializer_rebind_packet_dll(env, packet, expected_dll)
     original_preflight(
       packet$root, packet$sources, packet$commit, expected_root = packet$root,
       locked = predecessor$locked
@@ -672,6 +706,7 @@ test_that("the disk terminal validator rejects a complete no-fit trace that is n
   env$spde_slope_gauge_trust_region_locked_predecessor <- function() predecessor$locked
   env$.spde_slope_gauge_tr_materializer_expected_dll <- function(locked) expected_dll
   env$spde_slope_gauge_trust_region_validate_preflight_packet <- function(...) {
+    spde_slope_gauge_tr_materializer_rebind_packet_dll(env, packet, expected_dll)
     original_preflight(packet$root, packet$sources, packet$commit,
       expected_root = packet$root, locked = predecessor$locked)
   }

@@ -460,10 +460,11 @@ spde_slope_gauge_trust_region_terminal_from_worker <- function(
     return(list(valid = FALSE, reason = "preflight_receipt_or_predecessor_invalid"))
   }
   predecessor <- spde_slope_gauge_trust_region_validate_predecessor_bytes(locked$root, locked)
+  expected_dll <- .spde_slope_gauge_tr_materializer_expected_dll(locked)
   receipt <- tryCatch(readRDS(file.path(normal_root, "root-receipt.rds")), error = function(e) NULL)
   controls <- tryCatch(readRDS(file.path(normal_root, "control.rds")), error = function(e) NULL)
   expected_sources <- stats::setNames(unname(tools::md5sum(source_paths)), names(source_paths))
-  fields <- c("schema", "gate", "root", "commit", "sources", "predecessor", "control_md5", "state_md5",
+  fields <- c("schema", "gate", "root", "commit", "sources", "predecessor", "dll", "control_md5", "state_md5",
     "session_info_md5", "time_estimate_md5")
   copies <- c(
     "predecessor-v3-ledger.rds" = "all-attempt-ledger.rds",
@@ -474,12 +475,13 @@ spde_slope_gauge_trust_region_terminal_from_worker <- function(
   copies_ok <- all(vapply(names(copies), function(name) identical(
     unname(tools::md5sum(file.path(normal_root, name)))[[1L]], locked$files[[copies[[name]]]]
   ), logical(1L)))
-  receipt_ok <- .spde_slope_gauge_tr_smoke_exact_names(receipt, fields) &&
+  receipt_ok <- !is.null(expected_dll) && .spde_slope_gauge_tr_smoke_exact_names(receipt, fields) &&
     identical(receipt$schema, "PAPER1_SPDE_SLOPE_GAUGE_TRUST_REGION_V1_PREFLIGHT_V1") &&
     identical(receipt$gate, "PAPER1_SPDE_SLOPE_GAUGE_TRUST_REGION_V1") &&
     identical(receipt$root, canonical_root) && identical(receipt$commit, commit) &&
     identical(receipt$sources, expected_sources) &&
     identical(receipt$predecessor, predecessor[c("root", "commit", "receipt", "state_md5")]) &&
+    identical(receipt$dll, expected_dll) &&
     identical(receipt$control_md5, unname(tools::md5sum(file.path(normal_root, "control.rds")))[[1L]]) &&
     identical(receipt$state_md5, locked$files[["v2-materialized-state.rds"]]) &&
     identical(receipt$session_info_md5, unname(tools::md5sum(file.path(normal_root, "session-info.rds")))[[1L]]) &&
@@ -669,7 +671,12 @@ spde_slope_gauge_trust_region_preflight <- function() {
   sources <- .spde_slope_gauge_tr_materializer_sources()
   locked <- spde_slope_gauge_trust_region_locked_predecessor()
   predecessor <- spde_slope_gauge_trust_region_validate_predecessor_bytes(locked$root, locked)
-  if (!isTRUE(predecessor$valid)) .spde_slope_gauge_tr_materializer_fail(predecessor$reason)
+  expected_dll <- .spde_slope_gauge_tr_materializer_expected_dll(locked)
+  if (!isTRUE(predecessor$valid) || is.null(expected_dll)) {
+    .spde_slope_gauge_tr_materializer_fail(if (isTRUE(predecessor$valid)) {
+      "the retained DLL is unavailable for preflight binding"
+    } else predecessor$reason)
+  }
   stage <- tempfile(".PAPER1_SPDE_SLOPE_GAUGE_TRUST_REGION_V1-", tmpdir = base)
   if (!dir.create(stage)) .spde_slope_gauge_tr_materializer_fail("could not create preflight stage")
   on.exit(if (dir.exists(stage)) unlink(stage, recursive = TRUE), add = TRUE)
@@ -701,6 +708,7 @@ spde_slope_gauge_trust_region_preflight <- function() {
     commit = commit,
     sources = stats::setNames(unname(tools::md5sum(sources)), names(sources)),
     predecessor = predecessor[c("root", "commit", "receipt", "state_md5")],
+    dll = expected_dll,
     control_md5 = unname(tools::md5sum(file.path(stage, "control.rds")))[[1L]],
     state_md5 = locked$files[["v2-materialized-state.rds"]],
     session_info_md5 = unname(tools::md5sum(file.path(stage, "session-info.rds")))[[1L]],

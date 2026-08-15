@@ -12,7 +12,7 @@ G0 APPROVED 2026-08-14. Do not re-plan. Do not implement Arc 1B or Arcs 2–8.
 | S3 | DONE | Parity tests | Tests can FAIL on drift / missing provenance | accepted-call change = STOP |
 | S4 | DONE | Targeted test run + no-change receipt | LOG 75 + 223 PASS; no drift | none (fail-closed) |
 | S5 | DONE | Gauss/Noether/Rose written review | PASS in after-task | none |
-| S6 | IN PROGRESS | After-task + check-log + stacked PR | PR URL; do NOT merge | merge / NEWS = STOP |
+| S6 | DONE | After-task + check-log + stacked PR | https://github.com/itchyshin/gllvmTMB/pull/962 — do NOT merge | merge / NEWS = STOP |
 | V | DONE | Mechanical verify | no C++ / NEWS / register / foreign-lane paths | none |
 | R | DONE | Melissa plan-actual | `docs/dev-log/plan-actual/2026-08-14-mspl-arc-1a.md` | none |
 

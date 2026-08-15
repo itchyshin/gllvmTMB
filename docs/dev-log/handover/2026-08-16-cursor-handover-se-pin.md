@@ -37,10 +37,9 @@ Poisson registry stays `planned`.
 
 ## RED leftover
 
-- #978 CI was red, then a provenance/NB1 source-pin fix was pushed
-  (`0df6ab30`). Re-run must be green before squash-merge.
-- This SE branch is stacked on that tapes tip. After #978
-  squash-merges, rebase onto `origin/main` before merging the SE PR.
+- #978 squash-merged at `78f6d6b6` after CI green. Poisson still
+  `planned`.
+- #979 retargeted to `main` and rebased. Waiting on CI.
 - No all-zero / large-μ Poisson cell was run.
 - No coverage numbers. Do not call this covered.
 - #972–#976 still open. **Do not merge them.**

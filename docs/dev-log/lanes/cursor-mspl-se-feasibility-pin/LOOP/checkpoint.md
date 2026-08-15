@@ -13,10 +13,10 @@ ARCS DONE (verified):
 - A7 Rose PASS closeout
 - A11 morning brief written
 
-ARC IN PROGRESS: A8 **#979 opened** · A9 merge #978 · A10 merge #979
+ARC IN PROGRESS: A10 wait for #979 CI then squash-merge.
 
-NEXT: squash-merge #978 when CI green; rebase/retarget #979 onto
-`main`; squash-merge #979 when CI green.
+NEXT: squash-merge https://github.com/itchyshin/gllvmTMB/pull/979
+when CI green. #978 already squash-merged `78f6d6b6`.
 
 OPEN GATES (need human at 05:00 only if CI still red): none for
 reversible work. Do not merge #972–#976. Do not admit.

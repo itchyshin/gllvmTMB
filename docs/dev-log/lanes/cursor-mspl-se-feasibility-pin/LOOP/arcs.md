@@ -13,7 +13,7 @@ Overwrite `checkpoint.md` after every status change.
 | A5 | done | — | A4 | `R/mspl-curvature-pin.R`. No `src/`. |
 | A6 | done | — | A5 | Bernoulli 24 / Poisson 29 GREEN. |
 | A7 | done | — | A6 | Rose PASS closeout. No admit. |
-| A8 | in_progress | open PR | A7 | Open SE-pin PR. |
-| A9 | in_progress | merge | — | Squash-merge #978 when CI green. |
-| A10 | pending | merge | A8, A9 | Squash-merge SE-pin PR when CI green. |
+| A8 | done | open PR | A7 | #979 opened. |
+| A9 | done | merge | — | #978 squash-merged `78f6d6b6`. |
+| A10 | in_progress | merge | A8, A9 | Squash-merge #979 when CI green. |
 | A11 | done | — | A7 | Morning brief written. |

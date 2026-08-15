@@ -28,6 +28,15 @@ test_that("private MSPL constrained-inversion calibration contract is frozen", {
     "mspl-constrained-inversion", "drac-prerun.sbatch"
   )
   expect_true(any(grepl('mkdir -p "\\$MSPL_COVERAGE_ROOT/shards"', readLines(prerun_wrapper))))
+  production_wrapper <- testthat::test_path(
+    "..", "..", "inst", "sim", "lane-b-uncertainty",
+    "mspl-constrained-inversion", "drac-production.sbatch"
+  )
+  production_lines <- readLines(production_wrapper)
+  expect_true(any(grepl('MAP="\\$MSPL_COVERAGE_ROOT/array-map.tsv"', production_lines)))
+  expect_true(any(grepl('MSPL_CONSTRAINED_INVERSION_ARRAY_MAP_SHA256', production_lines)))
+  expect_true(any(grepl('--shard-id "$SHARD_ID"', production_lines, fixed = TRUE)))
+  expect_true(any(grepl('Refusing absent or replacement shard publication.', production_lines, fixed = TRUE)))
 
   for (i in seq_len(nrow(manifest))) {
     endpoint <- expand.grid(target = seq_len(3L), grid_id = seq_len(5L))

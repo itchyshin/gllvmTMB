@@ -333,6 +333,50 @@ test_that("E5: live sd_B + sigma_eps split is a flat ridge; oracles stay on text
   )))
 })
 
+## E5b — uniqueness map pin (docs/dev-log/research/2026-08-15-mspl-gaussian-psi-uniqueness-map.md).
+## Pick C: pinned sigma_eps => paper Psi = diag(sd_B^2). Pick A free-eps rejected.
+## Still pure R; no Gaussian estimator="mspl" fit.
+test_that("E5b: pinned-eps FA map equates paper psi with sd_B^2; free-eps A fails", {
+  fx <- .heywood_fixture()
+  sd_B2 <- c(0.30, 0.45, 0.20, 0.15)
+  ## Pick C — sigma_eps pinned at 0 (exact FA / Q7 numerical floor limit).
+  Sigma_C <- tcrossprod(fx$Lambda) + diag(sd_B2, 4L)
+  expect_equal(Sigma_C, .heywood_Sigma(fx$Lambda, sd_B2), tolerance = 1e-15)
+  expect_equal(
+    .heywood_hirose_atom(diag(fx$S), sd_B2),
+    .heywood_std_trace(diag(diag(fx$S)), sd_B2),
+    tolerance = 1e-12
+  )
+  expect_equal(
+    .heywood_akaike_atom(fx$Lambda, sd_B2),
+    .heywood_std_trace(tcrossprod(fx$Lambda), sd_B2),
+    tolerance = 1e-12
+  )
+  ## Pick A with free eps: bare sd_B atom moves on a Sigma-flat ridge.
+  sigma_eps2 <- 0.10
+  c_shift <- 0.05
+  psi_A0 <- sd_B2
+  psi_A1 <- sd_B2 - c_shift
+  Sigma_flat0 <- tcrossprod(fx$Lambda) + diag(sd_B2 + sigma_eps2, 4L)
+  Sigma_flat1 <- tcrossprod(fx$Lambda) +
+    diag((sd_B2 - c_shift) + (sigma_eps2 + c_shift), 4L)
+  expect_equal(Sigma_flat0, Sigma_flat1, tolerance = 1e-15)
+  expect_false(isTRUE(all.equal(
+    .heywood_hirose_atom(diag(fx$S), psi_A0),
+    .heywood_hirose_atom(diag(fx$S), psi_A1),
+    tolerance = 1e-8
+  )))
+  ## Pick B: total is ridge-invariant (Heywood object when eps free).
+  expect_equal(
+    .heywood_hirose_atom(diag(fx$S), sd_B2 + sigma_eps2),
+    .heywood_hirose_atom(
+      diag(fx$S),
+      (sd_B2 - c_shift) + (sigma_eps2 + c_shift)
+    ),
+    tolerance = 1e-15
+  )
+})
+
 test_that("E6: paper c_N shift is o(n^{-1/2}); Bernoulli c_n is not used", {
   Sjj <- 1.1
   ns <- c(50, 200, 800, 2000, 5000)

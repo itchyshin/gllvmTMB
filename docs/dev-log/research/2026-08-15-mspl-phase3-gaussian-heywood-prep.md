@@ -202,7 +202,7 @@ That is a covert dispersion prior with zero separation-repair
 content. This derivation **drops** it. Oracle E1 records the
 identity. Do not keep the term “for symmetry with Bernoulli.”
 
-## 5c. \(\Psi\) split and the flat ridge (Opus B0) — OPEN GATE
+## 5c. \(\Psi\) split and the flat ridge (Opus B0) — MAP CLOSED for pick C
 
 In live `gllvmTMB` the Gaussian trait-diagonal is **not** the
 paper’s single \(\Psi\). It is split (#856):
@@ -212,7 +212,7 @@ paper’s single \(\Psi\). It is split (#856):
 - residual `sigma_eps² = exp(2·log_sigma_eps)`, **one scalar
   shared across every Gaussian and lognormal row**.
 
-**AGENT-INFERRED:** with one row per `(unit, trait)`, only the sum
+**AGENT-INFERRED:** when \(\sigma_\varepsilon\) is free, only the sum
 \(\psi_t^{\mathrm{total}}=sd_B(t)^2+\sigma_\varepsilon^2\) is
 identified. The direction
 \(\sigma_\varepsilon^2\leftarrow\sigma_\varepsilon^2+c\),
@@ -220,12 +220,16 @@ identified. The direction
 terminates at \(\min_t sd_B(t)^2=0\). A penalty on `sd_B` alone
 would be 100% penalty-determined (Hao falsifier row 4).
 
-**This run does not resolve that gate.** Local oracles stay on the
-textbook triple \((\Lambda,\psi,S)\). Oracle E5 only *exhibits* the
-flat ridge so a later admission cannot pretend \(\Psi\) was
-undefined. Choosing whether Phase 3 targets `diag(sd_B²)`,
-\(\psi^{\mathrm{total}}\), or a pinned-\(\sigma_\varepsilon\)
-exact-FA cell is a Shinichi / later-derivation OPEN GATE.
+Local oracles stay on the textbook triple \((\Lambda,\psi,S)\).
+Oracle E5 *exhibits* the flat ridge; E5b pins the map. **Resolved
+for the first matched cell** in
+`docs/dev-log/research/2026-08-15-mspl-gaussian-psi-uniqueness-map.md`:
+**pick C** (pinned-\(\sigma_\varepsilon\) exact-FA;
+\(\psi_j\equiv sd_B(j)^2\)), matching live Q7 auto-suppress on
+ordinary per-row `latent(..., unique = TRUE)`. Option A with free
+\(\sigma_\varepsilon\) is rejected. Option B
+(\(\psi^{\mathrm{total}}\)) is deferred to a later free-ε cell.
+C++ / `planned`→`admitted` remain STOP.
 
 ## 5d. \(V_{\mathrm{loading}}\) is inert on \(\psi\) (Opus A1 / E7)
 
@@ -249,7 +253,8 @@ transplant” is a theorem, not a taste.
 4. Bernoulli \(c_n=2\sqrt{p_{\mathrm{free}}/N_{\mathrm{eff}}}\) reused
    without the B4 rate comparison against \((N/2)\log(1/\psi)\).
 5. \(\Psi\) left undefined in implemented coordinates (`sd_B²` vs
-   \(\sigma_\varepsilon^2 I\) vs the sum; #856).
+   \(\sigma_\varepsilon^2 I\) vs the sum; #856) — **first-cell
+   map is pick C**; reopening A-with-free-ε fails this kill.
 6. Claiming a per-trait \(\psi_t\to 0\) boundary on
    `latent(unique = FALSE)`, which has no per-trait \(\Psi\).
 7. Penalty acting along the likelihood-flat ridge (5c) without
@@ -285,7 +290,7 @@ E8 (two-face diagnostic consistency) is **not** in this run.
 | Surface | Verdict | Why |
 |---|---|---|
 | Local R oracles / this writeup (E1–E7, kill list recorded) | **PASS** | Paper atoms, rate tension, Jeffreys drop, and \(V_{\mathrm{loading}}\) inertness are testable without a Gaussian `estimator = "mspl"` fit. |
-| C++ tape / live Gaussian MSPL / flipping `planned` → `admitted` | **FAIL** | No tape, no fence change, no Shinichi admission gate. Flat-ridge / #856 mapping remains an OPEN GATE. |
+| C++ tape / live Gaussian MSPL / flipping `planned` → `admitted` | **FAIL** | No tape, no fence change, no Shinichi admission gate. Uniqueness map for the first cell is CLOSED (pick C); C++ still STOP. |
 
 Preferred later-admission default: **Hirose**, because E3 is
 immediate and the \(1/\psi\) rate wins B4. Akaike is a sibling

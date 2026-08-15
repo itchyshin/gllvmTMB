@@ -3,14 +3,20 @@
 This coordination note prevents a new session from treating this repository as
 a single writable lane.  It is a map, not a release/capability claim.
 
+**Refresh 2026-08-15 #3 (Cursor): LA-MSPL point-continue GOAL A+B+C LANDED.**
+Lane **`cursor/mspl-point-programme-continue`** · WT
+`/private/tmp/gllvmtmb-mspl-estimator-programme-roadmap` · LOOP
+`docs/dev-log/lanes/cursor-mspl-point-continue/LOOP/` · PR
+[#971](https://github.com/itchyshin/gllvmTMB/pull/971) (awaiting human merge).
+Gaussian multi-seed point evidence + Poisson Phase-4 `planned` rows on the
+PR tip. Handover opener [#970](https://github.com/itchyshin/gllvmTMB/pull/970)
+already on `main`. **PROTECTED:** binary SE Codex lane.
+
 **Refresh 2026-08-15 (Cursor→Cursor): LA-MSPL catch-up + Gaussian ordinary closed on `main`.**
 PRs **#963–#969** landed (Phase 2 registry, uniqueness pick C, Hirose Gaussian
 `admitted`/`oracle_local`, LOOP closeouts). Closed kits:
 `lanes/cursor-mspl-catchup/`, `lanes/cursor-mspl-gaussian/` — do not reopen.
-**PROTECTED:** `codex/lane-b-mspl-interval-feasibility` (binary SE). **NEXT lane:**
-`cursor/mspl-gaussian-point-evidence` — multi-seed Gaussian point evidence +
-Poisson Phase-4 planned only; ≥5 h parallel until GOAL done; no Gaussian SE;
-no campaign without G0+receipt. Worktree
+**PROTECTED:** `codex/lane-b-mspl-interval-feasibility` (binary SE). Worktree
 `/private/tmp/gllvmtmb-mspl-estimator-programme-roadmap` only (not Dropbox).
 **START HERE:** `2026-08-15-cursor-handover.md`.
 
@@ -52,7 +58,7 @@ missing-data ledger remains open and separately owned unless reassigned.
 
 | Lane | Owner | State | Start here | Boundary |
 | --- | --- | --- | --- | --- |
-| **LA-MSPL estimator programme** | Cursor | **#963–#969 on `main`.** Catch-up + Gaussian LOOP kits **CLOSED**. Next: `cursor/mspl-gaussian-point-evidence` (≥5 h parallel until GOAL). Worktree `/private/tmp/gllvmtmb-mspl-estimator-programme-roadmap` | `2026-08-15-cursor-handover.md`; programme `docs/dev-log/after-task/2026-08-14-laplace-mspl-estimator-programme.md` | LA-MSPL only (not EVA/VA/AGHQ-MSPL); no Dropbox checkout; never root `LOOP/`; **no Gaussian SE**; Binary SE = Codex **PROTECTED**; no campaign without G0+receipt |
+| **LA-MSPL point-continue** | Cursor | **GOAL A+B+C LANDED on [#971](https://github.com/itchyshin/gllvmTMB/pull/971)** (awaiting merge). Gaussian multi-seed point + Poisson Phase-4 planned. Catch-up/gaussian kits CLOSED. #970 on main | `2026-08-15-cursor-handover.md`; LOOP `docs/dev-log/lanes/cursor-mspl-point-continue/LOOP/` | LA-MSPL only; never root `LOOP/`; **no Gaussian SE**; Binary SE **PROTECTED**; Poisson planned only (not admitted); no NEWS covered; no campaign without G0+receipt |
 | **LA-MSPL binary SE / intervals** | Codex | **PROTECTED** private branch `codex/lane-b-mspl-interval-feasibility` @ `/Users/z3437171/.codex/worktrees/8e9d/gllvmTMB` | classify-only; do not mutate from Cursor MSPL | No absorb/rebase/merge into point-evidence lane |
 | **CRAN 0.7** | Cursor → **Codex** | **Track pick LOCKED 2026-08-08.** Worktree `/private/tmp/gllvmtmb-cran-0.7-20260807` · `cursor/cran-0.7-20260807` from `origin/main` @ `d7bee2fa`. `DESCRIPTION` still `0.6.0`. First CRAN **not imminent** — more testing first | `2026-08-08-codex-handover.md`; G0 `docs/dev-log/plan-actual/2026-08-07-gllvmtmb-cran-0.7-g0.md`; LOOP `lanes/gllvmtmb-cran-0.7/LOOP/` | Leave-M5 + Rose + testing-debt inventory OWED; **no bump yet**; no upload; keep #949 fenced; Laplace default; D-112 holds; portal ≥19 Aug is not a deadline |
 | **CRAN Path A 0.6.1** | Cursor | **PARKED / superseded for upload.** Freeze `v0.6.1-rc.1` @ `6a58683c` retained as **failure archive**. S7 STOPPED (PDF ≈ ERROR + galamm 404). Do not remint as CRAN 0.6.1; do not retag as 0.7 | Path A LOOP + `docs/dev-log/plan-actual/2026-08-07-gllvmtmb-cran-path-a-s7-progress.md` | Historical only; carry hygiene into 0.7 lane |

@@ -22,15 +22,27 @@ test_that("Registry lists Bernoulli + Gaussian ordinary admitted (point only)", 
   expect_true(all(gauss$evidence == "oracle_local"))
   expect_identical(sort(gauss$q), c(1L, 2L))
 
-  expect_identical(nrow(planned), 0L)
+  expect_identical(nrow(planned), 2L)
+  expect_true(all(planned$family == "poisson"))
+  expect_true(all(planned$link == "log"))
+  expect_true(all(planned$structure == "ordinary"))
+  expect_identical(sort(planned$q), c(1L, 2L))
+  expect_true(all(planned$evidence == "phase4_prep"))
   expect_false(any(duplicated(tbl$cell_id)))
-  expect_true(any(excluded$notes == "count families wait for Phase 4"))
+  expect_true(any(grepl("NB2 waits for Phase 4", excluded$notes)))
+  expect_false(any(excluded$family == "poisson"))
 
   hit <- .gllvmTMB_mspl_registry_lookup(
     "gaussian", "identity", "ordinary", 1L
   )
   expect_identical(hit$status, "admitted")
   expect_identical(hit$evidence, "oracle_local")
+
+  pois <- .gllvmTMB_mspl_registry_lookup(
+    "poisson", "log", "ordinary", 1L
+  )
+  expect_identical(pois$status, "planned")
+  expect_identical(pois$evidence, "phase4_prep")
 })
 
 test_that("Phase 2 lookup of an admitted Bernoulli cell is unique", {

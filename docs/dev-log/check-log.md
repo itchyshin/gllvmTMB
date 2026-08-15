@@ -4,6 +4,28 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-08-15 — MSPL Phase-4 Poisson prep (planned only; Cursor B1)
+
+Worktree `/private/tmp/gllvmtmb-mspl-estimator-programme-roadmap`,
+branch `cursor/mspl-point-programme-continue`.
+
+```sh
+export OMP_NUM_THREADS=1 NOT_CRAN=true
+Rscript --vanilla -e 'pkgload::load_all(".", compile = FALSE, quiet = TRUE);
+  testthat::test_file("tests/testthat/test-mspl-registry.R");
+  testthat::test_file("tests/testthat/test-mspl-poisson-phase4-oracles.R");
+  testthat::test_file("tests/testthat/test-mspl-gaussian-heywood-oracles.R")'
+# registry: PASS 26
+# poisson oracles: PASS 40
+# gaussian heywood oracles: PASS 75
+git diff --stat -- src/ R/mspl.R
+# empty (no C++; prepare fence untouched)
+```
+
+Registry: `poisson:log:ordinary:q1/q2` → `planned` / `phase4_prep`.
+Note: `docs/dev-log/research/2026-08-15-mspl-phase4-poisson-prep.md`.
+Not run: `devtools::test()`, `R CMD check`, Poisson MSPL fits, campaigns.
+
 ## 2026-08-15 — Gaussian LA-MSPL Hirose implement (point only; SE PROTECTED)
 
 Worktree `/private/tmp/gllvmtmb-mspl-estimator-programme-roadmap`,

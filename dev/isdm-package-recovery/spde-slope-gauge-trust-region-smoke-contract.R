@@ -45,7 +45,11 @@ spde_slope_gauge_trust_region_locked_predecessor <- function() {
       "/private/tmp/gllvmtmb-isdm-paper1-qfixed-matched-spde/",
       "dev/isdm-package-recovery/matched-spde-smoke-contract.R"
     ),
-    historical_contract_md5 = "8b1b58aa72406ed5a2de74f93239a1d0"
+    historical_contract_md5 = "8b1b58aa72406ed5a2de74f93239a1d0",
+    dll = list(
+      path = "/private/tmp/gllvmtmb-isdm-paper1-qfixed-matched-spde/src/gllvmTMB.so",
+      md5 = "7797c4674e4758fca2da27151e5c2508"
+    )
   )
 }
 
@@ -105,6 +109,7 @@ spde_slope_gauge_trust_region_validate_predecessor_bytes <- function(
   if (!packet_ok) return(list(valid = FALSE, reason = "predecessor_packet_bytes_invalid"))
   receipt <- tryCatch(readRDS(file.path(normal_root, "root-receipt.rds")), error = function(e) NULL)
   state <- tryCatch(readRDS(file.path(normal_root, "v2-materialized-state.rds")), error = function(e) NULL)
+  ledger <- tryCatch(readRDS(file.path(normal_root, "all-attempt-ledger.rds")), error = function(e) NULL)
   receipt_ok <- is.list(receipt) && identical(
     names(receipt),
     c("schema", "source_gate", "root", "commit", "consumed_v2", "runner_md5", "contract_md5", "design_md5")
@@ -113,14 +118,20 @@ spde_slope_gauge_trust_region_validate_predecessor_bytes <- function(
     all(vapply(receipt[c("runner_md5", "contract_md5", "design_md5")],
       .spde_slope_gauge_tr_smoke_md5, logical(1L)))
   state_ok <- .spde_slope_gauge_tr_state_ok(state, locked$state_schema)
+  dll_ok <- is.list(locked$dll) && identical(names(locked$dll), c("path", "md5")) &&
+    is.character(locked$dll$path) && length(locked$dll$path) == 1L &&
+    .spde_slope_gauge_tr_smoke_md5(locked$dll$md5) && is.list(ledger) &&
+    is.list(ledger$replay) && identical(ledger$replay$dll_path, locked$dll$path) &&
+    identical(ledger$replay$dll_md5, locked$dll$md5)
   list(
-    valid = receipt_ok && state_ok,
-    reason = if (receipt_ok && state_ok) "predecessor_bytes_valid" else "predecessor_receipt_or_state_invalid",
+    valid = receipt_ok && state_ok && dll_ok,
+    reason = if (receipt_ok && state_ok && dll_ok) "predecessor_bytes_valid" else "predecessor_receipt_or_state_invalid",
     root = normal_root,
     commit = locked$commit,
     receipt = receipt,
     state = state,
-    state_md5 = unname(locked$files[["v2-materialized-state.rds"]])
+    state_md5 = unname(locked$files[["v2-materialized-state.rds"]]),
+    dll = locked$dll
   )
 }
 

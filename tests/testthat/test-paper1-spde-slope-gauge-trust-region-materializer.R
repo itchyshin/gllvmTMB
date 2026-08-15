@@ -32,6 +32,14 @@ spde_slope_gauge_tr_materializer_predecessor <- function(env) {
   root <- tempfile("spde-slope-gauge-tr-materializer-predecessor-")
   dir.create(root)
   root <- normalizePath(root, mustWork = TRUE)
+  materializer <- testthat::test_path(
+    "..", "..", "dev", "isdm-package-recovery",
+    "materialize-paper1-spde-slope-gauge-trust-region.R"
+  )
+  fixture_dll <- list(
+    path = normalizePath(materializer, mustWork = TRUE),
+    md5 = unname(tools::md5sum(materializer))[[1L]]
+  )
   files <- c(
     "all-attempt-ledger.rds", "attempt-started.rds", "file-manifest.csv",
     "root-receipt.rds", "session-info.rds", "time-estimate.md", "v2-materialized-state.rds"
@@ -68,7 +76,8 @@ spde_slope_gauge_tr_materializer_predecessor <- function(env) {
     contract_md5 = paste(rep("2", 32L), collapse = ""),
     design_md5 = paste(rep("3", 32L), collapse = "")
   )
-  saveRDS(list(), file.path(root, "all-attempt-ledger.rds"))
+  saveRDS(list(replay = list(dll_path = fixture_dll$path, dll_md5 = fixture_dll$md5)),
+    file.path(root, "all-attempt-ledger.rds"))
   saveRDS(list(), file.path(root, "attempt-started.rds"))
   saveRDS(receipt, file.path(root, "root-receipt.rds"))
   saveRDS(list(), file.path(root, "session-info.rds"))
@@ -87,7 +96,8 @@ spde_slope_gauge_tr_materializer_predecessor <- function(env) {
     files = stats::setNames(tools::md5sum(file.path(root, files)), files),
     directory = ".attempt-started.claim",
     receipt_schema = receipt$schema,
-    state_schema = state$schema
+    state_schema = state$schema,
+    dll = fixture_dll
   )
   list(root = root, locked = locked)
 }

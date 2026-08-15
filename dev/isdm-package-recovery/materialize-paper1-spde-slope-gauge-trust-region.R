@@ -62,9 +62,11 @@ source(file.path(script_dir, "spde-slope-gauge-trust-region-smoke-contract.R"), 
 }
 
 .spde_slope_gauge_tr_materializer_expected_dll <- function(locked) {
-  path <- file.path(dirname(dirname(dirname(dirname(locked$root)))), "src", "gllvmTMB.so")
-  if (!.spde_slope_gauge_tr_smoke_regular_file(path)) return(NULL)
-  list(path = normalizePath(path, mustWork = TRUE), md5 = unname(tools::md5sum(path))[[1L]])
+  expected <- locked$dll
+  if (!is.list(expected) || !identical(names(expected), c("path", "md5")) ||
+      !.spde_slope_gauge_tr_smoke_regular_file(expected$path) ||
+      !identical(unname(tools::md5sum(expected$path))[[1L]], expected$md5)) return(NULL)
+  list(path = normalizePath(expected$path, mustWork = TRUE), md5 = expected$md5)
 }
 
 .spde_slope_gauge_tr_materializer_process_for_child_ok <- function(

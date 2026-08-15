@@ -127,6 +127,13 @@ spde_slope_gauge_tr_smoke_predecessor_packet <- function(contract) {
   root <- tempfile("spde-slope-gauge-tr-predecessor-")
   dir.create(root)
   root <- normalizePath(root, mustWork = TRUE)
+  fixture_dll_path <- normalizePath(testthat::test_path(
+    "..", "..", "dev", "isdm-package-recovery", "spde-slope-gauge-trust-region-smoke-contract.R"
+  ), mustWork = TRUE)
+  fixture_dll <- list(
+    path = fixture_dll_path,
+    md5 = unname(tools::md5sum(fixture_dll_path))[[1L]]
+  )
   files <- c(
     "all-attempt-ledger.rds", "attempt-started.rds", "file-manifest.csv",
     "root-receipt.rds", "session-info.rds", "time-estimate.md", "v2-materialized-state.rds"
@@ -158,7 +165,8 @@ spde_slope_gauge_tr_smoke_predecessor_packet <- function(contract) {
     contract_md5 = paste(rep("2", 32L), collapse = ""),
     design_md5 = paste(rep("3", 32L), collapse = "")
   )
-  saveRDS(list(), file.path(root, "all-attempt-ledger.rds"))
+  saveRDS(list(replay = list(dll_path = fixture_dll$path, dll_md5 = fixture_dll$md5)),
+    file.path(root, "all-attempt-ledger.rds"))
   saveRDS(list(), file.path(root, "attempt-started.rds"))
   saveRDS(receipt, file.path(root, "root-receipt.rds"))
   saveRDS(list(), file.path(root, "session-info.rds"))
@@ -177,7 +185,8 @@ spde_slope_gauge_tr_smoke_predecessor_packet <- function(contract) {
     files = tools::md5sum(file.path(root, files)),
     directory = ".attempt-started.claim",
     receipt_schema = receipt$schema,
-    state_schema = state$schema
+    state_schema = state$schema,
+    dll = fixture_dll
   )
   names(locked$files) <- files
   list(root = root, locked = locked, state = state)
@@ -549,6 +558,25 @@ test_that("the complete predecessor packet is byte- and state-schema-bound", {
   )
   expect_true(accepted$valid)
   expect_identical(accepted$reason, "predecessor_bytes_valid")
+
+  ledger <- readRDS(file.path(fixture$root, "all-attempt-ledger.rds"))
+  ledger$replay$dll_md5 <- paste(rep("0", 32L), collapse = "")
+  saveRDS(ledger, file.path(fixture$root, "all-attempt-ledger.rds"))
+  fixture$locked$files[["all-attempt-ledger.rds"]] <-
+    unname(tools::md5sum(file.path(fixture$root, "all-attempt-ledger.rds")))[[1L]]
+  declared <- setdiff(names(fixture$locked$files), "file-manifest.csv")
+  utils::write.csv(data.frame(
+    path = declared,
+    md5 = unname(fixture$locked$files[declared]),
+    stringsAsFactors = FALSE
+  ), file.path(fixture$root, "file-manifest.csv"), row.names = FALSE, quote = TRUE)
+  fixture$locked$files[["file-manifest.csv"]] <-
+    unname(tools::md5sum(file.path(fixture$root, "file-manifest.csv")))[[1L]]
+  dll_tamper <- contract$spde_slope_gauge_trust_region_validate_predecessor_bytes(
+    fixture$root, fixture$locked
+  )
+  expect_false(dll_tamper$valid)
+  expect_identical(dll_tamper$reason, "predecessor_receipt_or_state_invalid")
 
   state <- fixture$state
   names(state$theta) <- rev(names(state$theta))

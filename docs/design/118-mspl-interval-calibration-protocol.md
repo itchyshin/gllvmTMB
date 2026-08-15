@@ -99,14 +99,20 @@ The verdict is INTRINSIC, so:
 
 ### 0.3 🔴 Decisions required from Shinichi before any compute
 
-| # | Decision | Recommendation | Default if undecided |
+**RESOLVED — signed 2026-08-15** (Shinichi: *"D1 signed, D2 reduced - go with your
+recommendations for the rest"*). Recorded as vault decision **D-148** (shinichi-brain
+`memory/DECISIONS.md`, commit `e6537f3`), which also promotes the jackknife rejection
+into the ledger — closing the "owed at close" item the 2026-08-15 plan-actual
+reconciliation (`8c61a169`) recorded as outstanding at its write time.
+
+| # | Decision | Recommendation | **Outcome (2026-08-15)** |
 |---|---|---|---|
-| D1 | Sign this pre-registration (thresholds, gates, grid, stopping rule become binding) | Sign after reading §§1–5 | Phase B does not launch |
-| D2 | Compute budget: full ≈45.6 M fit-equivalents vs reduced ≈26 M (bootstrap on 1/3 of datasets; §6.2) | **Reduced (≈26 M)** — the bootstrap is fallback-only and Wilson ±0.025 on its own calibration is acceptable if documented | No run (D-139) |
-| D3 | Totoro/DRAC split (§6.4): B0 on Totoro now; B1/B2 as DRAC job arrays | Approve as proposed | B0 only, on Totoro |
-| D4 | Saturated-coordinate semantics: refuse the interval outright vs flagged-conservative profile (§1.4) | **Refuse in the shipped default**; measure profile coverage on saturated cells as a Phase-B secondary outcome and revisit promotion after B2 | Refuse (fail-closed) |
-| D5 | BCa ablation arm (1.44 M fits, behind its literature gate; §5.5) | Keep — it self-drops if the gate fails | Keep as registered |
-| D6 | Owner of the two B0 code prerequisites (§7): `src/gllvmTMB.cpp` is touched by live cursor/codex MSPL lanes (preflight 2026-08-15) | Assign to one lane explicitly (D-87) | Not implemented; B0 blocked |
+| D1 | Sign this pre-registration (thresholds, gates, grid, stopping rule become binding) | Sign after reading §§1–5 | **SIGNED** — this document is now binding; changes are recorded deviations (§8) |
+| D2 | Compute budget: full ≈45.6 M fit-equivalents vs reduced ≈26 M (bootstrap on 1/3 of datasets; §6.2) | **Reduced (≈26 M)** — the bootstrap is fallback-only and Wilson ±0.025 on its own calibration is acceptable if documented | **REDUCED ≈26 M** |
+| D3 | Totoro/DRAC split (§6.4): B0 on Totoro now; B1/B2 as DRAC job arrays | Approve as proposed | **APPROVED** (B1/B2 launch still gated on B0's D-139 report) |
+| D4 | Saturated-coordinate semantics: refuse the interval outright vs flagged-conservative profile (§1.4) | **Refuse in the shipped default**; measure profile coverage on saturated cells as a Phase-B secondary outcome and revisit promotion after B2 | **REFUSE** (secondary outcome measured as recommended) |
+| D5 | BCa ablation arm (1.44 M fits, behind its literature gate; §5.5) | Keep — it self-drops if the gate fails | **KEEP** |
+| D6 | Owner of the two B0 code prerequisites (§7): `src/gllvmTMB.cpp` is touched by live cursor/codex MSPL lanes (preflight 2026-08-15) | Assign to one lane explicitly (D-87) | **ASSIGNED to the Claude interval lane** — implementation branch `claude/mspl-b0-prereqs` off `origin/main` @ `2a99af3a` (the live cursor/codex MSPL lanes are docs/test-only in `src/`) |
 
 ---
 

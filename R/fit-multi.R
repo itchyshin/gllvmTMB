@@ -5209,6 +5209,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## objective while keeping one stable TMB signature.
   tmb_data$spde_r0 <- 1
   tmb_data$mspl_tau_representative <- as.integer(-1L)
+  tmb_data$mspl_S_diag <- 0
+  tmb_data$mspl_N_units <- 0L
   if (identical(estimator, "mspl")) {
     mspl_info <- .gllvmTMB_mspl_prepare(
       X_fix = X_fix,
@@ -5227,6 +5229,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       diag_B_all_skipped = diag_B_all_skipped,
       d_B = d_B,
       theta_rr_B = tmb_params$theta_rr_B,
+      theta_diag_B = tmb_params$theta_diag_B,
       lambda_constraint = lambda_constraint,
       use_spde = use_spde,
       is_spatial_indep = is_spatial_indep,
@@ -5245,7 +5248,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       integration = control$integration %||% "laplace",
       engine = engine,
       REML = REML,
-      ridge_explicit = control$aghq_ridge_explicit
+      ridge_explicit = control$aghq_ridge_explicit,
+      unit_id = site_id,
+      trait_id = trait_id,
+      sigma_eps_mapped = !is.null(tmb_map$log_sigma_eps)
     )
     tmb_data$estimator_id <- .gllvmTMB_estimator_id_for_tape(estimator_prov)
     tmb_data$X_mspl <- mspl_info$X_mspl
@@ -5253,6 +5259,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     tmb_data$p_free <- mspl_info$p_free
     tmb_data$spde_r0 <- mspl_info$spde_r0
     tmb_data$mspl_tau_representative <- mspl_info$tau_representative
+    tmb_data$mspl_S_diag <- mspl_info$mspl_S_diag
+    tmb_data$mspl_N_units <- as.integer(mspl_info$mspl_N_units)
   } else {
     tmb_data$estimator_id <- .gllvmTMB_estimator_id_for_tape(estimator_prov)
     tmb_data$X_mspl <- matrix(0, nrow = 1L, ncol = 1L)
@@ -6321,7 +6329,16 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   rep <- obj$report()
   if (identical(estimator, "mspl")) {
     atom_status <- as.integer(rep$mspl_atom_status %||% NA_integer_)
-    if (length(atom_status) != 1L || is.na(atom_status) || atom_status != 0L) {
+    family_mode <- as.integer(rep$mspl_family_mode_rep %||% NA_integer_)
+    if (identical(family_mode, 2L)) {
+      ## Gaussian Hirose route: atom_status 0 means Hirose evaluated.
+      if (length(atom_status) != 1L || is.na(atom_status) || atom_status != 0L) {
+        .gllvmTMB_mspl_abort(c(
+          "The Gaussian Hirose atom did not return a valid result.",
+          "x" = "Atomic status code: {atom_status}."
+        ), class = "gllvmTMB_mspl_atom_failure")
+      }
+    } else if (length(atom_status) != 1L || is.na(atom_status) || atom_status != 0L) {
       .gllvmTMB_mspl_abort(c(
         "The guarded Jeffreys information atom did not return a valid result.",
         "x" = "Atomic status code: {atom_status}.",
@@ -6387,6 +6404,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       rep$mspl_jeffreys_nll %||% 0,
       rep$mspl_loading_nll %||% 0,
       rep$mspl_covariance_nll %||% 0,
+      rep$mspl_hirose_nll %||% 0,
       rep$mspl_private_ridge_nll %||% 0
     ))
     decomposition_residual <- as.numeric(opt$objective) -
@@ -6475,8 +6493,12 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
           p_beta = mspl_info$p_beta,
           p_loading = mspl_info$p_loading,
           p_covariance = mspl_info$p_covariance,
+          p_psi = mspl_info$p_psi %||% 0L,
           p_free = mspl_info$p_free,
           N_eff = mspl_info$N_eff,
+          N_units = mspl_info$mspl_N_units %||% NA_integer_,
+          S_diag = mspl_info$mspl_S_diag,
+          family = mspl_info$family %||% "binomial",
           X_rank = mspl_info$fixed_design$rank,
           X_rank_tolerance = mspl_info$fixed_design$rank_tolerance,
           link_id = unique(link_id_vec),
@@ -6491,10 +6513,12 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
             jeffreys_nll = as.numeric(rep$mspl_jeffreys_nll %||% NA_real_),
             loading_nll = as.numeric(rep$mspl_loading_nll %||% NA_real_),
             covariance_nll = as.numeric(rep$mspl_covariance_nll %||% 0),
+            hirose_nll = as.numeric(rep$mspl_hirose_nll %||% 0),
             private_ridge_nll = as.numeric(rep$mspl_private_ridge_nll %||% 0),
             information_logdet = as.numeric(rep$mspl_logdet_information %||% NA_real_),
             loading_V = as.numeric(rep$mspl_V_loading %||% NA_real_),
             covariance_V = as.numeric(rep$mspl_V_covariance %||% NA_real_),
+            hirose_V = as.numeric(rep$mspl_V_hirose %||% NA_real_),
             log_range_ratio = as.numeric(rep$mspl_log_range_ratio %||% 0),
             log_sigma_spde_reference = as.numeric(
               rep$mspl_log_sigma_spde_reference %||% numeric(0)
@@ -6503,6 +6527,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
           ),
           atom_status = as.integer(rep$mspl_atom_status %||% NA_integer_),
           status = as.integer(rep$mspl_status %||% NA_integer_),
+          family_mode = as.integer(rep$mspl_family_mode_rep %||% NA_integer_),
           cloglog_tail_extension = list(
             total = as.integer(rep$mspl_cloglog_tail_extension_count %||% 0L),
             likelihood = as.integer(rep$mspl_cloglog_likelihood_tail_extension_count %||% 0L),

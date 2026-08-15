@@ -153,12 +153,14 @@
 .gllvmTMB_mspl_prepare <- function(
   X_fix, b_map, y, n_trials, is_y_observed, family_id_vec, link_id_vec,
   offset_vec, random, use_rr_B, use_lv_B, use_rr_B_slope, use_diag_B,
-  diag_B_all_skipped, d_B, theta_rr_B, lambda_constraint,
+  diag_B_all_skipped, d_B, theta_rr_B, theta_diag_B = NULL,
+  lambda_constraint,
   use_spde, is_spatial_indep, is_spatial_scalar, is_spatial_latent,
   is_spatial_dep, use_spde_latent_diag, use_spde_slope,
   use_spde_latent_slope, d_spde_lv, theta_rr_spde_lv, log_tau_spde,
   log_tau_spde_map, mesh, use_mi_predictor, integration, engine, REML,
-  ridge_explicit
+  ridge_explicit,
+  unit_id = NULL, trait_id = NULL, sigma_eps_mapped = FALSE
 ) {
   if (isTRUE(REML)) {
     .gllvmTMB_mspl_abort("{.code estimator = \"mspl\"} cannot be combined with {.code REML = TRUE}.")
@@ -175,25 +177,45 @@
       "i" = "MSPL and {.arg loading_ridge} (or its compatibility spelling {.arg aghq_ridge}) are different penalties; combining them would define an unvalidated hybrid estimator."
     ))
   }
-  if (length(unique(family_id_vec)) != 1L || !all(family_id_vec == 1L)) {
-    .gllvmTMB_mspl_abort("LA-MSPL supports a single binomial response family only.")
-  }
-  if (length(unique(link_id_vec)) != 1L || !all(link_id_vec %in% 0:2)) {
+
+  fam_ids <- unique(as.integer(family_id_vec))
+  if (length(fam_ids) != 1L || !fam_ids %in% c(0L, 1L)) {
     .gllvmTMB_mspl_abort(c(
-      "LA-MSPL requires one common supported binary link.",
-      "i" = "Use {.code binomial(link = \"logit\")}, {.code \"probit\"}, or {.code \"cloglog\"}."
+      "LA-MSPL supports a single binomial or gaussian response family only.",
+      "i" = "Count and mixed-family MSPL remain deferred."
     ))
+  }
+  is_gaussian <- identical(fam_ids, 0L)
+  is_bernoulli <- identical(fam_ids, 1L)
+
+  if (is_bernoulli) {
+    if (length(unique(link_id_vec)) != 1L || !all(link_id_vec %in% 0:2)) {
+      .gllvmTMB_mspl_abort(c(
+        "LA-MSPL requires one common supported binary link.",
+        "i" = "Use {.code binomial(link = \"logit\")}, {.code \"probit\"}, or {.code \"cloglog\"}."
+      ))
+    }
+    if (!all(n_trials == 1) || !all(y %in% c(0, 1))) {
+      .gllvmTMB_mspl_abort(c(
+        "LA-MSPL requires single-trial Bernoulli observations.",
+        "i" = "Grouped and weighted binomial MSPL is deferred."
+      ))
+    }
+  } else {
+    if (length(unique(link_id_vec)) != 1L || !all(link_id_vec == 0L)) {
+      .gllvmTMB_mspl_abort(c(
+        "Gaussian LA-MSPL requires the identity link.",
+        "i" = "Use {.code gaussian(link = \"identity\")}."
+      ))
+    }
+    if (any(!is.finite(y))) {
+      .gllvmTMB_mspl_abort("Gaussian LA-MSPL requires finite responses.")
+    }
   }
   if (!all(is_y_observed == 1L)) {
     .gllvmTMB_mspl_abort(c(
       "LA-MSPL requires complete responses.",
       "i" = "FIML-MSPL and retained response masks are deferred."
-    ))
-  }
-  if (!all(n_trials == 1) || !all(y %in% c(0, 1))) {
-    .gllvmTMB_mspl_abort(c(
-      "LA-MSPL requires single-trial Bernoulli observations.",
-      "i" = "Grouped and weighted binomial MSPL is deferred."
     ))
   }
   if (any(!is.finite(offset_vec))) {
@@ -202,7 +224,7 @@
   if (any(offset_vec != 0)) {
     .gllvmTMB_mspl_abort(c(
       "LA-MSPL requires an all-zero offset vector.",
-      "i" = "Nonzero binary offsets are mathematically plausible but remain outside the frozen validation campaign."
+      "i" = "Nonzero offsets remain outside the frozen validation campaign."
     ))
   }
   ordinary <- isTRUE(use_rr_B) && !isTRUE(use_spde)
@@ -211,7 +233,15 @@
     !isTRUE(is_spatial_latent) && !isTRUE(is_spatial_dep)
   spatial_latent <- !isTRUE(use_rr_B) && isTRUE(use_spde) &&
     isTRUE(is_spatial_latent) && !isTRUE(is_spatial_dep)
-  if (sum(c(ordinary, spatial_indep, spatial_latent)) != 1L) {
+
+  if (is_gaussian) {
+    if (!isTRUE(ordinary) || isTRUE(spatial_indep) || isTRUE(spatial_latent)) {
+      .gllvmTMB_mspl_abort(c(
+        "Gaussian LA-MSPL admits only ordinary {.fn latent} with {.arg unique = TRUE}.",
+        "i" = "Spatial and other structures are deferred."
+      ))
+    }
+  } else if (sum(c(ordinary, spatial_indep, spatial_latent)) != 1L) {
     .gllvmTMB_mspl_abort(c(
       "LA-MSPL requires exactly one admitted covariance structure.",
       "i" = "Use ordinary {.fn latent}, standalone {.fn spatial_indep}, or standalone {.fn spatial_latent} with rank 1 or 2."
@@ -242,20 +272,37 @@
       "Spatial random slopes are outside the current LA-MSPL contract."
     )
   }
-  if (ordinary && isTRUE(use_diag_B) && !isTRUE(diag_B_all_skipped)) {
+  if (is_bernoulli && ordinary && isTRUE(use_diag_B) &&
+      !isTRUE(diag_B_all_skipped)) {
     .gllvmTMB_mspl_abort(c(
       "LA-MSPL does not estimate a Bernoulli Psi companion.",
       "i" = "The automatic Bernoulli Psi may remain in the parsed formula only when every coordinate is mapped off."
     ))
   }
-  expected_random <- if (ordinary) {
+  if (is_gaussian) {
+    if (!isTRUE(use_diag_B) || isTRUE(diag_B_all_skipped)) {
+      .gllvmTMB_mspl_abort(c(
+        "Gaussian LA-MSPL requires free unique Psi.",
+        "i" = "Use {.code latent(..., unique = TRUE)} on ordinary complete data so Q7 pins {.code sigma_eps}."
+      ))
+    }
+    if (!isTRUE(sigma_eps_mapped)) {
+      .gllvmTMB_mspl_abort(c(
+        "Gaussian LA-MSPL requires {.code sigma_eps} mapped off (pick C / Q7).",
+        "i" = "The Hirose atom targets {.code sd_B^2} only when residual SD is not a free share."
+      ))
+    }
+  }
+  expected_random <- if (is_gaussian) {
+    c("z_B", "s_B")
+  } else if (ordinary) {
     "z_B"
   } else if (spatial_indep) {
     "omega_spde"
   } else {
     "omega_spde_lv"
   }
-  if (!identical(random, expected_random)) {
+  if (!identical(as.character(random), expected_random)) {
     .gllvmTMB_mspl_abort(c(
       "LA-MSPL admits exactly one structure-specific Laplace-random block.",
       "x" = "Expected {.val {expected_random}}; resolved {.val {random}}.",
@@ -280,10 +327,29 @@
   }
   tau_representative <- as.integer(-1L)
   spde_r0 <- 1
+  p_psi <- 0L
+  mspl_S_diag <- 0
+  mspl_N_units <- 0L
   if (ordinary) {
     p_loading <- length(theta_rr_B)
     p_covariance <- 0L
     expected_outer <- c("b_fix", "theta_rr_B")
+    if (is_gaussian) {
+      p_psi <- length(theta_diag_B)
+      if (!is.finite(p_psi) || p_psi < 1L) {
+        .gllvmTMB_mspl_abort(
+          "Gaussian LA-MSPL requires a free {.code theta_diag_B} Psi block."
+        )
+      }
+      expected_outer <- c(expected_outer, "theta_diag_B")
+      if (is.null(unit_id) || is.null(trait_id)) {
+        .gllvmTMB_mspl_abort(
+          "Internal Gaussian LA-MSPL missing unit/trait ids for S."
+        )
+      }
+      mspl_S_diag <- .gllvmTMB_mspl_S_diag(y, trait_id, unit_id)
+      mspl_N_units <- length(unique(as.integer(unit_id)))
+    }
   } else if (spatial_indep) {
     tau_representative <- .gllvmTMB_mspl_tau_representatives(
       log_tau_spde, log_tau_spde_map
@@ -298,13 +364,21 @@
     expected_outer <- c("b_fix", "theta_rr_spde_lv", "log_kappa_spde")
     spde_r0 <- .gllvmTMB_mspl_spde_r0(mesh)
   }
-  p_free <- fixed$p_beta + p_loading + p_covariance
-  N_eff <- sum(n_trials)
+  p_free <- fixed$p_beta + p_loading + p_covariance + p_psi
+  N_eff <- if (is_bernoulli) {
+    sum(n_trials)
+  } else {
+    length(y)
+  }
   if (!is.finite(N_eff) || N_eff <= 0) {
-    .gllvmTMB_mspl_abort("LA-MSPL requires a positive effective Bernoulli sample size.")
+    .gllvmTMB_mspl_abort("LA-MSPL requires a positive effective sample size.")
   }
 
-  link_name <- .gllvmTMB_mspl_link_name(unique(link_id_vec))
+  family_name <- if (is_gaussian) "gaussian" else "binomial"
+  link_name <- .gllvmTMB_mspl_family_link_name(fam_ids, unique(link_id_vec))
+  if (is.na(link_name)) {
+    .gllvmTMB_mspl_abort("LA-MSPL could not resolve the family/link cell.")
+  }
   q_cell <- if (identical(structure, "ordinary")) {
     as.integer(d_B)
   } else if (identical(structure, "spatial_latent")) {
@@ -313,27 +387,51 @@
     NA_integer_
   }
   registry_row <- .gllvmTMB_mspl_registry_lookup(
-    family = "binomial",
+    family = family_name,
     link = link_name,
     structure = structure,
     q = q_cell
   )
-  if (is.null(registry_row) || !identical(registry_row$status, "admitted")) {
+  if (is.null(registry_row)) {
+    .gllvmTMB_mspl_abort(c(
+      "LA-MSPL resolved a surface that is not a registry cell.",
+      "x" = "family {.val {family_name}}, link {.val {link_name}}, structure {.val {structure}}, q {.val {q_cell}}."
+    ), class = "gllvmTMB_mspl_registry_miss")
+  }
+  ## Bernoulli: admitted only. Gaussian ordinary: planned allowed during
+  ## implement smoke; flip to admitted after se=FALSE smoke (point only —
+  ## SE/intervals remain PROTECTED on codex/lane-b-mspl-interval-feasibility).
+  ok_status <- if (is_gaussian) {
+    registry_row$status %in% c("admitted", "planned")
+  } else {
+    identical(registry_row$status, "admitted")
+  }
+  if (!isTRUE(ok_status)) {
     .gllvmTMB_mspl_abort(c(
       "LA-MSPL resolved a surface that is not an admitted registry cell.",
-      "x" = "family binomial, link {.val {link_name}}, structure {.val {structure}}, q {.val {q_cell}}."
+      "x" = "family {.val {family_name}}, link {.val {link_name}}, structure {.val {structure}}, q {.val {q_cell}}, status {.val {registry_row$status}}."
     ), class = "gllvmTMB_mspl_registry_miss")
+  }
+
+  rate <- if (is_gaussian) {
+    sqrt(2 / mspl_N_units)
+  } else {
+    2 * sqrt(p_free / N_eff)
   }
 
   list(
     estimator_id = 1L,
+    family = family_name,
     X_mspl = fixed$X,
     N_eff = as.numeric(N_eff),
     p_beta = fixed$p_beta,
     p_loading = as.integer(p_loading),
     p_covariance = as.integer(p_covariance),
+    p_psi = as.integer(p_psi),
     p_free = as.integer(p_free),
-    rate = 2 * sqrt(p_free / N_eff),
+    rate = rate,
+    mspl_S_diag = as.numeric(mspl_S_diag),
+    mspl_N_units = as.integer(mspl_N_units),
     fixed_design = fixed,
     structure = structure,
     expected_outer = expected_outer,
@@ -343,11 +441,18 @@
     registry_cell = registry_row$cell_id,
     registry_status = registry_row$status,
     registry_evidence = registry_row$evidence,
-    scope = paste0(
-      "complete Bernoulli; ", structure,
-      if (structure == "spatial_latent") paste0("(q=", d_spde_lv, ")") else
-        if (structure == "ordinary") paste0("(q=", d_B, ")") else "",
-      "; Laplace; one common logit/probit/cloglog link"
-    )
+    scope = if (is_gaussian) {
+      paste0(
+        "complete gaussian identity; ordinary latent(unique=TRUE) q=",
+        d_B, "; Hirose pick C; Laplace"
+      )
+    } else {
+      paste0(
+        "complete Bernoulli; ", structure,
+        if (structure == "spatial_latent") paste0("(q=", d_spde_lv, ")") else
+          if (structure == "ordinary") paste0("(q=", d_B, ")") else "",
+        "; Laplace; one common logit/probit/cloglog link"
+      )
+    }
   )
 }

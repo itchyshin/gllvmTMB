@@ -4,6 +4,27 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-08-15 — Gaussian LA-MSPL Hirose implement (point only; SE PROTECTED)
+
+Worktree `/private/tmp/gllvmtmb-mspl-estimator-programme-roadmap`,
+branch `cursor/mspl-gaussian-heywood-atom`.
+
+```sh
+export OMP_NUM_THREADS=1 NOT_CRAN=true
+Rscript -e 'pkgbuild::compile_dll()'
+# OK (clang++)
+Rscript -e 'devtools::load_all(); testthat::test_file("tests/testthat/test-mspl-registry.R")'
+# PASS 18
+Rscript -e 'devtools::load_all(); testthat::test_file("tests/testthat/test-mspl-gaussian-fit-smoke.R")'
+# PASS 19 (healthy + near-Heywood; se=FALSE)
+# Bernoulli .mspl_fit("logit") still finite (point regression)
+git diff --stat -- src/ | head
+# src/gllvmTMB.cpp only on this lane (Hirose + family fence)
+```
+
+claim_guard: no SE/interval/sandwich/profile edits; Codex Lane B PROTECTED.
+Uniqueness pick C. Registry gaussian ordinary q1/q2 admitted / oracle_local.
+
 ## 2026-08-08 — Codex handover (CRAN 0.7 track pick locked; no R CMD check)
 
 Worktree `/private/tmp/gllvmtmb-cran-0.7-20260807`, branch

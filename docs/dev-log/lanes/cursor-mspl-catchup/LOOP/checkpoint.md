@@ -1,10 +1,15 @@
-GOAL: see GOAL.md (original catch-up DoD DONE). Shinichi 2026-08-15 extended KEEP GOING inside fences toward finishing LA-MSPL.
+GOAL: see GOAL.md. Shinichi 2026-08-15: implement Gaussian LA-MSPL (point).
 
-STATE: Arc U uniqueness map written; E5b oracle pin added. #964 + #965 merged. No C++. Gaussian still planned.
+STATE: Pick **C**. Local se=FALSE smoke PASS; gaussian ordinary q1/q2 flipped to
+`admitted` / `oracle_local`. Hirose tape live on this branch. #964+#965 merged.
+#966 uniqueness open (CI). **No SE/interval work.**
 
-ARCS DONE (verified): catch-up GOAL (#963 `fb6f9dae`); LOOP closeout (#964 `d61929f8`); local binary pair smoke (#965 `66b2810c`); Arc U decision note + E5b (this branch).
-ARC IN PROGRESS: Arc U PR https://github.com/itchyshin/gllvmTMB/pull/966 — uniqueness map + E5b; wait CI then merge.
-NEXT: `gh pr merge 966 --merge` when green; then STOP before C++ / registry flip. Optional: Arc B-complete (cheap only), Arc compare-local (≤30 min, admitted Bernoulli only). Do not take SE lane.
-OPEN GATES (need Shinichi yes): C++ Gaussian MSPL tape; flip `planned`→`admitted`; NEWS / public claim; Totoro/DRAC campaign; 1B API redesign expansion; interval/SE (PROTECTED Codex Lane B).
-TRUTH LIVES IN: worktree `/private/tmp/gllvmtmb-mspl-estimator-programme-roadmap` · branch `cursor/mspl-gaussian-uniqueness-map` · uniqueness `docs/dev-log/research/2026-08-15-mspl-gaussian-psi-uniqueness-map.md` · Heywood prep (updated §5c) · lane LOOP `docs/dev-log/lanes/cursor-mspl-catchup/LOOP/` · NOT repo-root `LOOP/`
-RESUME: Re-read this kit. Pick C = pinned-σ_ε FA; Ψ = diag(sd_B²). Do not start C++ without new Shinichi yes.
+**PROTECTED:** `codex/lane-b-mspl-interval-feasibility` owns binary MSPL SE /
+sandwich / profile / coverage. This lane: point estimates only (`se=FALSE`).
+Binary admitted cells unchanged for point estimation; no binary SE claim.
+
+ARCS DONE: #963–#965; Arc U uniqueness (pick C); G-impl smoke green + registry flip (this branch).
+NEXT: push stacked implement PR; merge #966 then implement; update Mission Control MSPL column.
+OPEN GATES: Totoro campaign; NEWS/covered claim; poisson/NB; **SE (PROTECTED)**; free-ε cell.
+TRUTH LIVES IN: worktree `/private/tmp/gllvmtmb-mspl-estimator-programme-roadmap` · `cursor/mspl-gaussian-heywood-atom` · LOOP `docs/dev-log/lanes/cursor-mspl-catchup/LOOP/` · NOT repo-root `LOOP/`
+RESUME: Point-only Gaussian MSPL. Never touch the Codex interval-feasibility lane.

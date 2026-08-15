@@ -234,6 +234,22 @@ test_that("the no-fit callback gate independently validates a transformed state"
   }, logical(1L))))
 })
 
+test_that("the no-fit callback gate normalizes scalar callback attributes", {
+  contract <- spde_slope_gauge_contract_env()
+  fixture <- spde_slope_gauge_quadratic_state(contract)
+  attributed_objective <- function(raw_theta) {
+    structure(fixture$objective_fn(raw_theta), logarithm = TRUE)
+  }
+
+  verdict <- contract$spde_slope_gauge_validate_no_fit_state(
+    fixture$state, attributed_objective, fixture$gradient_fn
+  )
+
+  expect_true(verdict$valid)
+  expect_identical(verdict$reason, "no_fit_state_valid")
+  expect_null(attributes(verdict$errors$objective))
+})
+
 test_that("the no-fit callback gate rejects named gradient permutations and replay drift", {
   contract <- spde_slope_gauge_contract_env()
   fixture <- spde_slope_gauge_quadratic_state(contract)

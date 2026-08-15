@@ -142,7 +142,7 @@ spde_slope_gauge_full_chain_gradient <- function(phi, raw_gradient) {
   if (!is.double(x) || length(x) != 1L || !is.finite(x)) {
     .spde_slope_gauge_fail(sprintf("%s must be one finite double", what))
   }
-  unname(x)
+  as.double(unname(x))
 }
 
 .spde_slope_gauge_callback_gradient <- function(x) {

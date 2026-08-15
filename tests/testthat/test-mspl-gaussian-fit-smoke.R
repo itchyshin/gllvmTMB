@@ -92,3 +92,26 @@ test_that("Gaussian LA-MSPL near-Heywood cell still returns a finite point", {
   expect_true(is.finite(fit$opt$objective))
   expect_gt(as.numeric(fit$report$mspl_V_hirose), 0)
 })
+
+## Cheap q=2 structure pin (1 seed). Finite points / registry only —
+## does NOT assert LA-MSPL superiority over LA-ML (see research note).
+test_that("Gaussian LA-ML vs LA-MSPL q=2 pair: finite shared Sigma structure", {
+  skip_on_cran()
+  dat <- .mspl_gauss_fixture(q = 2L, seed = 160801L)
+  fit_ml <- .mspl_gauss_fit(dat, q = 2L, estimator = "ml")
+  fit_mspl <- .mspl_gauss_fit(dat, q = 2L, estimator = "mspl")
+  expect_true(is.finite(fit_ml$opt$objective))
+  expect_true(is.finite(fit_mspl$opt$objective))
+  expect_identical(fit_mspl$mspl$registry_status, "admitted")
+  expect_identical(fit_mspl$mspl$registry_evidence, "oracle_local")
+  S_ml <- extract_Sigma(
+    fit_ml, level = "unit", part = "shared", link_residual = "none"
+  )$Sigma
+  S_mspl <- extract_Sigma(
+    fit_mspl, level = "unit", part = "shared", link_residual = "none"
+  )$Sigma
+  expect_equal(dim(S_ml), c(3L, 3L))
+  expect_equal(dim(S_mspl), c(3L, 3L))
+  expect_true(all(is.finite(S_ml)))
+  expect_true(all(is.finite(S_mspl)))
+})

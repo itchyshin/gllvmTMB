@@ -3,7 +3,7 @@
 | ID | Status | Arc | Notes |
 |---|---|---|---|
 | A0 | **DONE** | LOOP kit + branch `cursor/mspl-point-programme-continue` from `origin/main` | lane path only |
-| A1 | **IN PROGRESS** | Gaussian multi-seed failure-inclusive LA-ML vs LA-MSPL point evidence | healthy + near-Heywood; q=1,2; several seeds; research note |
+| A1 | **DONE** | Gaussian multi-seed failure-inclusive LA-ML vs LA-MSPL point evidence | 8 seeds × 4 cells; 64/64 finite; note+TSV; no covered/SE |
 | B1 | **PENDING** | Poisson Phase-4 prep: derivation + oracles + planned registry | NOT admitted |
 | C1 | **PENDING** | Rose fences + Mission Control MSPL column/strip | curated status only |
 | C2 | **PENDING** | After-task + Melissa + handover freeze + stacked PRs | merge docs/low-risk when green |

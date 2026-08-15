@@ -1,15 +1,20 @@
 # checkpoint — cursor-mspl-point-continue
 
-GOAL: see GOAL.md.   STATE: **RUNNING** — A0 done; A1+B1 launching in parallel.
+GOAL: see GOAL.md.   STATE: **RUNNING** — A0+A1 done; B1+C* remain.
 
 ARCS DONE (verified):
 - A0 — branch `cursor/mspl-point-programme-continue` @ `origin/main` tip; LOOP kit written under `docs/dev-log/lanes/cursor-mspl-point-continue/LOOP/`.
+- A1 — multi-seed Gaussian LA-ML vs LA-MSPL point grid + research note.
+  Script `dev/mspl-gaussian-multiseed-point-grid.R`; TSV
+  `docs/dev-log/research/2026-08-15-mspl-gaussian-multiseed-point-grid.tsv`;
+  note `docs/dev-log/research/2026-08-15-mspl-gaussian-multiseed-point-evidence.md`.
+  Grid: 64/64 finite conv0 in 14.5 s; near-Heywood q=1 ML uniqueness
+  collapse 4/8 vs MSPL 0/8; no registry flip; no SE.
 
 ARC IN PROGRESS:
-- A1 — Gaussian multi-seed point grid + research note.
 - B1 — Poisson derivation + oracles + planned registry (parallel).
 
-NEXT: land A1 and B1 artefacts; then C1 Mission Control + Rose; then C2 closeout.
+NEXT: land B1 artefacts; then C1 Mission Control + Rose; then C2 closeout.
 
 OPEN GATES (need human): none yet. HARD STOPs listed in GOAL.md.
 

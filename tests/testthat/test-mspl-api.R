@@ -576,3 +576,145 @@ test_that("mspl_c_n_multiplier moves the count-attractor root under saturation",
   expect_lt(root_high, root_mid)
   expect_lt(root_mid, root_low)
 })
+
+## ---- Design 118 s7.2 prerequisite: profile bracket-search --------------
+##
+## `.gllvmTMB_mspl_profile_feasibility()`/`.gllvmTMB_mspl_profile_threshold_
+## diagnostic()` are ported from codex/lane-b-mspl-interval-feasibility
+## (commit e2055c7b) with two fixes -- see the provenance comment in
+## R/mspl.R for the diagnosed defects. A mocked `.gllvmTMB_mspl_nlminb()`
+## simulates a transient optimizer non-convergence at one specific profile
+## point without touching the real optimizer everywhere else.
+
+test_that("internal MSPL profile feasibility traces the penalised objective only", {
+  fit <- .mspl_fit("logit", q = 1L)
+  checkpoint <- gllvmTMB:::.gllvmTMB_profile_tmb_checkpoint(fit$tmb_obj)
+  penalty_off <- fit$mspl$unpenalized_tmb_obj
+  penalty_off$fn <- function(...) {
+    stop("penalty-off objective must not be profiled")
+  }
+  fit$mspl$unpenalized_tmb_obj <- penalty_off
+
+  probe <- gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
+    fit, which = 1L, step = 0.5, max_steps = 6L
+  )
+
+  expect_identical(probe$objective_source, "fit$tmb_obj (penalised LA-MSPL)")
+  expect_identical(probe$target_name, "b_fix")
+  expect_true(all(probe$trace$finite))
+  expect_true(all(probe$trace$convergence == 0L))
+  expect_identical(probe$centre_status, "matched")
+  expect_identical(probe$lower_status, "crossed")
+  expect_identical(probe$upper_status, "crossed")
+  expect_true(probe$finite_stable)
+  expect_identical(
+    gllvmTMB:::.gllvmTMB_profile_tmb_checkpoint(fit$tmb_obj), checkpoint
+  )
+
+  diagnostic <- gllvmTMB:::.gllvmTMB_mspl_profile_threshold_diagnostic(probe)
+  expect_lt(diagnostic$diagnostic_lower, diagnostic$estimate)
+  expect_gt(diagnostic$diagnostic_upper, diagnostic$estimate)
+
+  truncated <- gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
+    fit, which = 1L, step = 0.5, max_steps = 1L
+  )
+  expect_identical(truncated$lower_status, "truncated")
+  expect_identical(truncated$upper_status, "truncated")
+  expect_false(truncated$finite_stable)
+})
+
+test_that("MSPL profile bracket search retries a transient nlminb failure before giving up", {
+  ## Defect (2), A1 Q6: C010's `lower=optimizer_failed`/`refinement_failed`.
+  ## A single non-converging nlminb call used to be immediately fatal to the
+  ## point it evaluated. Force the FIRST attempt at one specific grid target
+  ## to report non-convergence and confirm the retry (from the joint-MLE
+  ## nuisance start) rescues it.
+  fit <- .mspl_fit("logit", q = 1L)
+  baseline <- gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
+    fit, which = 1L, step = 0.5, max_steps = 6L
+  )
+  expect_identical(baseline$upper_status, "crossed")
+  bad_target <- baseline$trace[
+    baseline$trace$stage == "grid" & baseline$trace$side == "upper", "target"
+  ][[1L]]
+
+  seen <- new.env()
+  flaky_once <- function(start, objective, gradient, control) {
+    target <- get("target", envir = environment(objective))
+    if (isTRUE(abs(target - bad_target) < 1e-9)) {
+      key <- "hit"
+      count <- if (is.null(seen[[key]])) 0L else seen[[key]]
+      seen[[key]] <- count + 1L
+      if (count == 0L) {
+        return(list(
+          par = start, objective = 9999, convergence = 1L, iterations = 0L,
+          evaluations = c(0L, 0L), message = "forced test failure (attempt 1)"
+        ))
+      }
+    }
+    stats::nlminb(start, objective = objective, gradient = gradient,
+                   control = control)
+  }
+  testthat::local_mocked_bindings(
+    .gllvmTMB_mspl_nlminb = flaky_once, .package = "gllvmTMB"
+  )
+
+  probe <- gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
+    fit, which = 1L, step = 0.5, max_steps = 6L
+  )
+  expect_identical(probe$upper_status, "crossed")
+  expect_gte(seen[["hit"]], 1L)
+  expect_equal(probe$upper_endpoint, baseline$upper_endpoint, tolerance = 1e-3)
+})
+
+test_that("MSPL profile bracket search retains the last known-good point across a stuck grid step", {
+  ## Defect (1), A1 Q6: C003's `upper=truncated` (paired with `lower=crossed`
+  ## on the same replicate). The OLD code reset `previous_success` to NULL on
+  ## any grid-point failure, so a permanently non-converging point (both the
+  ## primary AND retry attempts fail) erased the reference needed to detect
+  ## a real crossing at the very next grid point. Force one grid target to
+  ## fail unconditionally and confirm the walk still finds the crossing,
+  ## bracketed against the last point that DID succeed (here, the centre).
+  fit <- .mspl_fit("logit", q = 1L)
+  baseline <- gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
+    fit, which = 1L, step = 0.5, max_steps = 6L
+  )
+  expect_identical(baseline$upper_status, "crossed")
+  bad_target <- baseline$trace[
+    baseline$trace$stage == "grid" & baseline$trace$side == "upper", "target"
+  ][[1L]]
+
+  flaky_always <- function(start, objective, gradient, control) {
+    ## Only the coarse GRID evaluation at bad_target is forced to fail --
+    ## bad_target is (by construction of this fixture) exactly the first
+    ## bisection midpoint too, and this test is about the grid walk's
+    ## memory, not the refinement loop (that is the other test's job).
+    target <- get("target", envir = environment(objective))
+    stage <- get("stage", envir = environment(objective))
+    if (identical(stage, "grid") && isTRUE(abs(target - bad_target) < 1e-9)) {
+      return(list(
+        par = start, objective = 9999, convergence = 1L, iterations = 0L,
+        evaluations = c(0L, 0L), message = "forced test failure (always)"
+      ))
+    }
+    stats::nlminb(start, objective = objective, gradient = gradient,
+                   control = control)
+  }
+  testthat::local_mocked_bindings(
+    .gllvmTMB_mspl_nlminb = flaky_always, .package = "gllvmTMB"
+  )
+
+  probe <- gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
+    fit, which = 1L, step = 0.5, max_steps = 6L, refinement_steps = 20L
+  )
+  expect_identical(probe$upper_status, "crossed")
+  ## The first refinement step's bisection midpoint from a [centre, point2]
+  ## bracket lands exactly on bad_target too (by construction of this
+  ## fixture) and still succeeds, because the mock only targets the "grid"
+  ## stage -- refinement is real. The walk still converges to the SAME
+  ## endpoint the unperturbed baseline found, despite starting refinement
+  ## from a wider [centre, point2] bracket instead of baseline's narrower
+  ## [point1, point2].
+  expect_lte(diff(range(probe$upper_bracket)), probe$bracket_tolerance)
+  expect_equal(probe$upper_endpoint, baseline$upper_endpoint, tolerance = 1e-4)
+})

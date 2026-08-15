@@ -30,6 +30,377 @@
   invisible(x)
 }
 
+## ---- Design 118 s7.2 prerequisite: profile bracket-search --------------
+##
+## Ported from branch codex/lane-b-mspl-interval-feasibility, commit
+## e2055c7b ("feat: complete private MSPL profile and Wald feasibility"),
+## which is not on origin/main. Only the two functions Phase B0 needs are
+## ported (the profile threshold diagnostic and the bracket search it
+## wraps) -- not the sandwich/Wald/constrained-simulation instruments that
+## live alongside them on that branch. Both fixes below are NEW on this
+## branch; the source commit does not have them.
+##
+## Fixes to the ported bracket search (A1 Q6: 205/108000 profile-unavailable
+## rows in the 2026-08-14 production campaign all report centre=matched with
+## a one-sided bracket-search failure -- C003 55/55 lower=crossed/
+## upper=truncated; C010 a mix of lower=refinement_failed/optimizer_failed/
+## truncated, all upper=crossed):
+##
+## (1) A single nlminb non-convergence at ANY grid point used to reset
+##     `previous_success` to NULL, permanently discarding the last known
+##     sub-threshold reference point. If the very next grid point already
+##     crossed the deviance threshold, the crossing was silently missed
+##     (nothing to compare it against), and the walk then ran to the end of
+##     its budget reporting "truncated" -- or, if that intervening point's
+##     own non-convergence survived into the final row set, "optimizer_
+##     failed" -- even though a valid bracket existed. Fix: retain the last
+##     successful sub-threshold point across a failed grid step instead of
+##     discarding it.
+## (2) Both the grid walk and the bisection refinement call nlminb exactly
+##     once per point and treat any non-convergence as fatal to that side of
+##     the profile ("optimizer_failed" / "refinement_failed"), even though
+##     the joint MLE's own nuisance solution is a well-converged point
+##     available as an alternate start. Fix: on a failed nlminb call, retry
+##     once from the joint-MLE nuisance vector before recording the point as
+##     failed.
+##
+## Private feasibility instrument only. This is intentionally separate from
+## the public profile/confint dispatch: a finite trace establishes neither
+## calibrated standard errors nor confidence-interval coverage.
+
+## Thin, mockable wrapper around stats::nlminb() -- exists so tests can
+## simulate a transient optimizer failure at one specific profile point
+## without touching the stats namespace (repo convention: mock private
+## gllvmTMB helpers, see e.g. test-confint-lambda.R).
+.gllvmTMB_mspl_nlminb <- function(start, objective, gradient, control) {
+  stats::nlminb(start, objective = objective, gradient = gradient,
+                control = control)
+}
+
+.gllvmTMB_mspl_profile_feasibility <- function(
+  fit,
+  which = 1L,
+  step = 0.5,
+  max_steps = 6L,
+  level = 0.95,
+  control = list(eval.max = 100L, iter.max = 100L),
+  refinement_steps = 12L,
+  bracket_tolerance = 1.25e-4
+) {
+  if (!.gllvmTMB_is_mspl(fit)) {
+    .gllvmTMB_mspl_abort(
+      "The internal MSPL profile probe requires an {.code estimator = \"mspl\"} fit.",
+      class = "gllvmTMB_mspl_profile_input"
+    )
+  }
+  if (
+    !is.numeric(which) ||
+      length(which) != 1L ||
+      which %% 1 != 0 ||
+      which < 1L ||
+      which > length(fit$opt$par) ||
+      names(fit$opt$par)[which] != "b_fix"
+  ) {
+    .gllvmTMB_mspl_abort(
+      "The internal MSPL profile probe requires one resolved {.field b_fix} coordinate.",
+      class = "gllvmTMB_mspl_profile_target"
+    )
+  }
+  if (
+    !is.numeric(step) ||
+      length(step) != 1L ||
+      !is.finite(step) ||
+      step <= 0 ||
+      !is.numeric(max_steps) ||
+      length(max_steps) != 1L ||
+      max_steps < 1L ||
+      max_steps %% 1 != 0 ||
+      !is.numeric(level) ||
+      length(level) != 1L ||
+      !is.finite(level) ||
+      level <= 0 ||
+      level >= 1 ||
+      !is.numeric(refinement_steps) ||
+      length(refinement_steps) != 1L ||
+      refinement_steps < 0L ||
+      refinement_steps %% 1 != 0 ||
+      !is.numeric(bracket_tolerance) ||
+      length(bracket_tolerance) != 1L ||
+      !is.finite(bracket_tolerance) ||
+      bracket_tolerance <= 0
+  ) {
+    .gllvmTMB_mspl_abort(
+      "The internal MSPL profile grid requires positive finite grid and refinement controls, with {.arg level} in (0, 1).",
+      class = "gllvmTMB_mspl_profile_grid"
+    )
+  }
+
+  obj <- fit$tmb_obj
+  penalty_off <- fit$mspl$unpenalized_tmb_obj
+  if (
+    is.null(obj) ||
+      identical(obj, penalty_off) ||
+      !identical(as.integer(obj$env$data$estimator_id), 1L)
+  ) {
+    .gllvmTMB_mspl_abort(
+      "The internal MSPL profile probe could not verify the active penalised TMB objective.",
+      class = "gllvmTMB_mspl_profile_objective"
+    )
+  }
+  checkpoint <- .gllvmTMB_profile_tmb_checkpoint(obj)
+  on.exit(.gllvmTMB_restore_profile_tmb_checkpoint(obj, checkpoint), add = TRUE)
+
+  mle_par <- as.numeric(fit$opt$par)
+  mle_objective <- as.numeric(fit$opt$objective)
+  nuisance_index <- setdiff(seq_along(mle_par), as.integer(which))
+  threshold <- stats::qchisq(level, df = 1L) / 2
+
+  evaluate_point <- function(target, start, side, stage) {
+    objective <- function(nuisance) {
+      par <- mle_par
+      par[nuisance_index] <- nuisance
+      par[which] <- target
+      obj$fn(par)
+    }
+    gradient <- function(nuisance) {
+      par <- mle_par
+      par[nuisance_index] <- nuisance
+      par[which] <- target
+      obj$gr(par)[nuisance_index]
+    }
+    run_nlminb <- function(start_par) {
+      tryCatch(
+        .gllvmTMB_mspl_nlminb(start_par, objective = objective,
+                               gradient = gradient, control = control),
+        error = identity
+      )
+    }
+    converged <- function(ans) {
+      !inherits(ans, "error") && is.finite(ans$objective) &&
+        identical(as.integer(ans$convergence), 0L)
+    }
+    ans <- run_nlminb(start)
+    ## Fix (2): a single nlminb non-convergence is not fatal -- retry once
+    ## from the joint-MLE nuisance start, a point already known to be a
+    ## well-converged optimum, before recording this point as a failure.
+    if (!converged(ans)) {
+      retry <- run_nlminb(mle_par[nuisance_index])
+      if (converged(retry)) ans <- retry
+    }
+    if (inherits(ans, "error")) {
+      return(list(
+        row = data.frame(
+          target = target, objective = NA_real_, objective_delta = NA_real_,
+          convergence = NA_integer_, message = conditionMessage(ans),
+          finite = FALSE, nuisance_reoptimized = FALSE, side = side,
+          stage = stage, stringsAsFactors = FALSE
+        ),
+        nuisance = start
+      ))
+    }
+    finite <- is.finite(ans$objective)
+    list(
+      row = data.frame(
+        target = target,
+        objective = if (finite) as.numeric(ans$objective) else NA_real_,
+        objective_delta = if (finite) as.numeric(ans$objective) - mle_objective else NA_real_,
+        convergence = as.integer(ans$convergence),
+        message = ans$message %||% "", finite = finite,
+        nuisance_reoptimized = identical(as.integer(ans$convergence), 0L),
+        side = side, stage = stage, stringsAsFactors = FALSE
+      ),
+      nuisance = as.numeric(ans$par)
+    )
+  }
+
+  successful <- function(point) {
+    is.list(point) && is.data.frame(point$row) &&
+      isTRUE(point$row$finite[[1L]]) &&
+      identical(point$row$convergence[[1L]], 0L) &&
+      is.finite(point$row$objective_delta[[1L]])
+  }
+
+  centre_point <- evaluate_point(
+    mle_par[which], mle_par[nuisance_index], "centre", "centre"
+  )
+  centre <- centre_point$row
+  centre_tolerance <- 1e-7 * (1 + abs(mle_objective))
+  centre_status <- if (!centre$finite) {
+    "nonfinite"
+  } else if (centre$convergence != 0L) {
+    "optimizer_failed"
+  } else if (abs(centre$objective_delta) > centre_tolerance) {
+    "centre_mismatch"
+  } else {
+    "matched"
+  }
+
+  walk_side <- function(direction) {
+    values <- mle_par[which] + direction * step * seq_len(as.integer(max_steps))
+    points <- list()
+    previous_success <- centre_point
+    start <- centre_point$nuisance
+    bracket <- NULL
+    for (target in values) {
+      point <- evaluate_point(
+        target, start, if (direction < 0) "lower" else "upper", "grid"
+      )
+      points[[length(points) + 1L]] <- point
+      if (successful(point)) {
+        start <- point$nuisance
+        if (successful(previous_success) &&
+            previous_success$row$objective_delta[[1L]] < threshold &&
+            point$row$objective_delta[[1L]] >= threshold) {
+          bracket <- list(inside = previous_success, outside = point)
+          break
+        }
+        previous_success <- point
+      }
+      ## Fix (1): do NOT discard `previous_success` on a failed grid point.
+      ## The old code set it to NULL here, so a single transient
+      ## non-convergence permanently erased the last known sub-threshold
+      ## reference -- if the very next point already crossed the threshold,
+      ## the bracket was silently missed and the walk ran out its budget
+      ## reporting "truncated"/"optimizer_failed" instead of "crossed".
+      ## Leaving `previous_success` unchanged means a later successful
+      ## point is still correctly bracketed against it (over a wider, but
+      ## still valid, interval).
+    }
+
+    if (is.null(bracket)) {
+      rows <- do.call(rbind, lapply(points, `[[`, "row"))
+      status <- if (any(!rows$finite)) {
+        "nonfinite"
+      } else if (any(rows$convergence != 0L)) {
+        "optimizer_failed"
+      } else {
+        "truncated"
+      }
+      return(list(
+        status = status, points = points, endpoint = NA_real_,
+        bracket = c(NA_real_, NA_real_), refinement_iterations = 0L
+      ))
+    }
+
+    iterations <- 0L
+    while (abs(bracket$outside$row$target - bracket$inside$row$target) >
+           bracket_tolerance && iterations < as.integer(refinement_steps)) {
+      iterations <- iterations + 1L
+      target <- mean(c(
+        bracket$inside$row$target[[1L]], bracket$outside$row$target[[1L]]
+      ))
+      point <- evaluate_point(
+        target, bracket$inside$nuisance,
+        if (direction < 0) "lower" else "upper", "refinement"
+      )
+      points[[length(points) + 1L]] <- point
+      if (!successful(point)) {
+        return(list(
+          status = "refinement_failed", points = points, endpoint = NA_real_,
+          bracket = c(
+            bracket$inside$row$target[[1L]], bracket$outside$row$target[[1L]]
+          ), refinement_iterations = iterations
+        ))
+      }
+      if (point$row$objective_delta[[1L]] >= threshold) {
+        bracket$outside <- point
+      } else {
+        bracket$inside <- point
+      }
+    }
+
+    width <- abs(bracket$outside$row$target - bracket$inside$row$target)
+    if (width > bracket_tolerance) {
+      return(list(
+        status = "refinement_truncated", points = points, endpoint = NA_real_,
+        bracket = c(
+          bracket$inside$row$target[[1L]], bracket$outside$row$target[[1L]]
+        ), refinement_iterations = iterations
+      ))
+    }
+    endpoint <- mean(c(
+      bracket$inside$row$target[[1L]], bracket$outside$row$target[[1L]]
+    ))
+    list(
+      status = "crossed", points = points, endpoint = endpoint,
+      bracket = c(
+        bracket$inside$row$target[[1L]], bracket$outside$row$target[[1L]]
+      ), refinement_iterations = iterations
+    )
+  }
+
+  lower <- walk_side(-1)
+  upper <- walk_side(1)
+  trace <- rbind(
+    do.call(rbind, lapply(lower$points, `[[`, "row")),
+    centre,
+    do.call(rbind, lapply(upper$points, `[[`, "row"))
+  )
+
+  list(
+    trace = trace,
+    target_index = as.integer(which),
+    target_name = names(fit$opt$par)[which],
+    mle = mle_par[which],
+    mle_objective = mle_objective,
+    threshold = threshold,
+    centre_status = centre_status,
+    lower_status = lower$status,
+    upper_status = upper$status,
+    lower_endpoint = lower$endpoint,
+    upper_endpoint = upper$endpoint,
+    lower_bracket = lower$bracket,
+    upper_bracket = upper$bracket,
+    lower_refinement_iterations = lower$refinement_iterations,
+    upper_refinement_iterations = upper$refinement_iterations,
+    bracket_tolerance = bracket_tolerance,
+    finite_stable = identical(centre_status, "matched") &&
+      identical(lower$status, "crossed") &&
+      identical(upper$status, "crossed"),
+    objective_source = "fit$tmb_obj (penalised LA-MSPL)"
+  )
+}
+
+## Private profile candidate only. The feasibility helper supplies endpoints
+## from a bounded bisection of a finite, converged penalised-objective bracket.
+## These are not confidence-interval endpoints.
+.gllvmTMB_mspl_profile_threshold_diagnostic <- function(probe) {
+  if (!is.list(probe) || !identical(
+    probe$objective_source, "fit$tmb_obj (penalised LA-MSPL)"
+  )) {
+    .gllvmTMB_mspl_abort(
+      "The internal MSPL profile-threshold diagnostic requires a penalised profile probe.",
+      class = "gllvmTMB_mspl_profile_threshold_input"
+    )
+  }
+  required <- c(
+    "trace", "mle", "threshold", "centre_status", "lower_status",
+    "upper_status", "lower_endpoint", "upper_endpoint", "lower_bracket",
+    "upper_bracket"
+  )
+  if (!all(required %in% names(probe)) || !is.data.frame(probe$trace)) {
+    .gllvmTMB_mspl_abort(
+      "The internal MSPL profile-threshold diagnostic received an incomplete probe.",
+      class = "gllvmTMB_mspl_profile_threshold_input"
+    )
+  }
+
+  list(
+    target_index = probe$target_index,
+    target_name = probe$target_name,
+    estimate = probe$mle,
+    threshold = probe$threshold,
+    centre_status = probe$centre_status,
+    lower_status = probe$lower_status,
+    upper_status = probe$upper_status,
+    diagnostic_lower = probe$lower_endpoint,
+    diagnostic_upper = probe$upper_endpoint,
+    lower_bracket = probe$lower_bracket,
+    upper_bracket = probe$upper_bracket,
+    objective_source = "fit$tmb_obj (penalised LA-MSPL)"
+  )
+}
+
 ## Resolve b_fix = b_fixed + K gamma and return X_* = X_fix K.  TMB maps use
 ## factor levels to represent shared free parameters and NA to represent pinned
 ## coordinates.  The present public Xcoef_fixed surface only pins zeros, but

@@ -24,6 +24,32 @@
   max(abs(x - y)) / max(1, abs(x), abs(y))
 }
 
+spde_slope_gauge_raw_order <- function() {
+  c(
+    paste0("b_fix[", 1:12, "]"),
+    paste0("theta_diag_B[", 13:15, "]"),
+    "log_kappa_spde[16]",
+    paste0("theta_rr_spde_slope[", 17:22, "]")
+  )
+}
+
+spde_slope_gauge_phi_order <- function() {
+  c(
+    spde_slope_gauge_raw_order()[seq_len(19L)],
+    "spde_slope_gauge_log_norm[20]",
+    "spde_slope_gauge_stereo_2[21]",
+    "spde_slope_gauge_stereo_3[22]"
+  )
+}
+
+.spde_slope_gauge_full_vector <- function(x, order, what) {
+  if (!is.double(x) || length(x) != length(order) || any(!is.finite(x)) ||
+      !identical(names(x), order)) {
+    .spde_slope_gauge_fail(sprintf("%s must be a finite vector with the exact gauge coordinate order", what))
+  }
+  x
+}
+
 spde_slope_gauge_map <- function(phi) {
   phi <- .spde_slope_gauge_double3(phi, "phi")
   eta <- phi[[1L]]
@@ -77,4 +103,37 @@ spde_slope_gauge_covariance <- function(phi) {
 spde_slope_gauge_chain_gradient <- function(phi, raw_gradient) {
   raw_gradient <- .spde_slope_gauge_double3(raw_gradient, "raw_gradient")
   drop(crossprod(spde_slope_gauge_jacobian(phi), raw_gradient))
+}
+
+spde_slope_gauge_phi_from_theta <- function(theta) {
+  raw_order <- spde_slope_gauge_raw_order()
+  theta <- .spde_slope_gauge_full_vector(theta, raw_order, "theta")
+  phi <- c(theta[seq_len(19L)], spde_slope_gauge_inverse(unname(theta[20:22])))
+  stats::setNames(as.double(phi), spde_slope_gauge_phi_order())
+}
+
+spde_slope_gauge_theta_from_phi <- function(phi) {
+  phi_order <- spde_slope_gauge_phi_order()
+  phi <- .spde_slope_gauge_full_vector(phi, phi_order, "phi")
+  theta <- c(phi[seq_len(19L)], spde_slope_gauge_map(unname(phi[20:22])))
+  stats::setNames(as.double(theta), spde_slope_gauge_raw_order())
+}
+
+spde_slope_gauge_full_jacobian <- function(phi) {
+  phi <- .spde_slope_gauge_full_vector(phi, spde_slope_gauge_phi_order(), "phi")
+  jacobian <- diag(22L)
+  jacobian[20:22, 20:22] <- spde_slope_gauge_jacobian(unname(phi[20:22]))
+  dimnames(jacobian) <- list(spde_slope_gauge_raw_order(), spde_slope_gauge_phi_order())
+  jacobian
+}
+
+spde_slope_gauge_full_chain_gradient <- function(phi, raw_gradient) {
+  phi <- .spde_slope_gauge_full_vector(phi, spde_slope_gauge_phi_order(), "phi")
+  raw_gradient <- .spde_slope_gauge_full_vector(
+    raw_gradient, spde_slope_gauge_raw_order(), "raw_gradient"
+  )
+  stats::setNames(
+    drop(crossprod(spde_slope_gauge_full_jacobian(phi), raw_gradient)),
+    spde_slope_gauge_phi_order()
+  )
 }

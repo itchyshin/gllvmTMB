@@ -99,3 +99,91 @@ test_that("the chain-rule gradient matches an independent quadratic finite diffe
     expect_lte(contract$.spde_slope_gauge_relative_error(analytic, finite_difference), 1e-5)
   }
 })
+
+test_that("the full 22-coordinate transform preserves a synthetic exact-order vector", {
+  contract <- spde_slope_gauge_contract_env()
+  theta <- c(
+    -1.262290617, -1.304981027, -1.574027140, -0.564006099,
+    0.368601106, 0.519498993, -0.116297433, 0.209393346,
+    0.133570593, 0.364582652, -0.138192688, 0.183240509,
+    -1.086430093, -1.550160288, -0.877284144, 2.687653160,
+    21.617935157, -21.081066816, 14.560272537,
+    0.06615484034380216, -0.005920383591143399, -0.07900112916196837
+  )
+  names(theta) <- contract$spde_slope_gauge_raw_order()
+
+  phi <- contract$spde_slope_gauge_phi_from_theta(theta)
+  expect_identical(names(phi), contract$spde_slope_gauge_phi_order())
+  expect_equal(
+    contract$spde_slope_gauge_theta_from_phi(phi), theta,
+    tolerance = 64 * .Machine$double.eps
+  )
+  expect_error(
+    contract$spde_slope_gauge_phi_from_theta(stats::setNames(theta, rev(names(theta)))),
+    "exact gauge coordinate order"
+  )
+  expect_error(
+    contract$spde_slope_gauge_phi_from_theta(unname(theta)),
+    "exact gauge coordinate order"
+  )
+  expect_error(
+    contract$spde_slope_gauge_theta_from_phi(stats::setNames(phi, rev(names(phi)))),
+    "exact gauge coordinate order"
+  )
+  expect_error(
+    contract$spde_slope_gauge_full_chain_gradient(phi, unname(theta)),
+    "exact gauge coordinate order"
+  )
+})
+
+test_that("the full Jacobian retains the raw-by-gauge positional axes", {
+  contract <- spde_slope_gauge_contract_env()
+  theta <- stats::setNames(seq(-1.1, 1.0, length.out = 22L),
+    contract$spde_slope_gauge_raw_order())
+  theta[20:22] <- c(0.2, -0.1, 0.3)
+  phi <- contract$spde_slope_gauge_phi_from_theta(theta)
+  full_jacobian <- contract$spde_slope_gauge_full_jacobian(phi)
+
+  expect_identical(dim(full_jacobian), c(22L, 22L))
+  expect_identical(rownames(full_jacobian), contract$spde_slope_gauge_raw_order())
+  expect_identical(colnames(full_jacobian), contract$spde_slope_gauge_phi_order())
+  expect_equal(unname(full_jacobian[1:19, 1:19]), diag(19L), tolerance = 0)
+  expect_equal(unname(full_jacobian[1:19, 20:22]), matrix(0, 19L, 3L), tolerance = 0)
+  expect_equal(unname(full_jacobian[20:22, 1:19]), matrix(0, 3L, 19L), tolerance = 0)
+  expect_equal(unname(full_jacobian[20:22, 20:22]),
+    contract$spde_slope_gauge_jacobian(unname(phi[20:22])), tolerance = 0)
+})
+
+test_that("the full transformed gradient matches a 22-dimensional quadratic harness", {
+  contract <- spde_slope_gauge_contract_env()
+  theta <- stats::setNames(seq(-1.1, 1.0, length.out = 22L),
+    contract$spde_slope_gauge_raw_order())
+  theta[20:22] <- c(0.2, -0.1, 0.3)
+  phi <- contract$spde_slope_gauge_phi_from_theta(theta)
+  precision <- diag(seq(1.1, 3.2, length.out = 22L))
+  precision[1L, 2L] <- precision[2L, 1L] <- 0.1
+  linear <- seq(-0.3, 0.3, length.out = 22L)
+  raw_objective <- function(raw_theta) {
+    0.5 * drop(crossprod(raw_theta, precision %*% raw_theta)) + sum(linear * raw_theta)
+  }
+  raw_gradient <- function(raw_theta) {
+    stats::setNames(drop(precision %*% raw_theta + linear), contract$spde_slope_gauge_raw_order())
+  }
+  transformed_objective <- function(gauge_phi) {
+    raw_objective(contract$spde_slope_gauge_theta_from_phi(gauge_phi))
+  }
+  analytic <- contract$spde_slope_gauge_full_chain_gradient(
+    phi, raw_gradient(contract$spde_slope_gauge_theta_from_phi(phi))
+  )
+  h <- .Machine$double.eps^(1 / 3) * pmax(1, abs(phi))
+  finite_difference <- vapply(seq_len(22L), function(j) {
+    displacement <- rep(0, 22L)
+    displacement[[j]] <- h[[j]]
+    names(displacement) <- names(phi)
+    (transformed_objective(phi + displacement) - transformed_objective(phi - displacement)) /
+      (2 * h[[j]])
+  }, numeric(1L))
+  names(finite_difference) <- names(phi)
+
+  expect_lte(contract$.spde_slope_gauge_relative_error(analytic, finite_difference), 1e-5)
+})

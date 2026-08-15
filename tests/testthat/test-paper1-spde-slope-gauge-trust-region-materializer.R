@@ -33,9 +33,9 @@ spde_slope_gauge_tr_materializer_predecessor <- function(env) {
   order <- env$spde_slope_gauge_raw_order()
   state <- list(
     schema = "MSPDE_P1_S3_C360_R3_V3_MATERIALIZED_V2_STATE_V1",
-    objective = 1.0,
+    objective = as.double(0.5 * sum(stats::setNames(seq(-0.8, 0.8, length.out = 22L), order)^2)),
     theta = stats::setNames(seq(-0.8, 0.8, length.out = 22L), order),
-    gradient = stats::setNames(rep(0, 22L), order),
+    gradient = stats::setNames(seq(-0.8, 0.8, length.out = 22L), order),
     convergence = 0L,
     covariance = list(),
     start_provenance = list(),
@@ -46,7 +46,10 @@ spde_slope_gauge_tr_materializer_predecessor <- function(env) {
     map = list(),
     data = list(),
     random = c("s_B", "g_spde_slope"),
-    block_labels = order,
+    block_labels = c(
+      rep("b_fix", 12L), rep("theta_diag_B", 3L), "log_kappa_spde",
+      rep("theta_rr_spde_slope", 6L)
+    ),
     parameter_order = order
   )
   receipt <- list(
@@ -148,6 +151,58 @@ spde_slope_gauge_tr_materializer_process <- function(child, runner, mode, output
     stdout_md5 = NA_character_,
     stderr_md5 = NA_character_,
     child_result_md5 = unname(tools::md5sum(output))[[1L]]
+  )
+}
+
+spde_slope_gauge_tr_materializer_complete_worker <- function(env, receipt, state, dll, parent_pid) {
+  adapter_path <- testthat::test_path(
+    "..", "..", "dev", "isdm-package-recovery", "spde-slope-gauge-trust-region-adapter.R"
+  )
+  source(adapter_path, local = env)
+  raw_order <- env$spde_slope_gauge_raw_order()
+  object <- list(
+    par = state$theta,
+    fn = function(x) as.double(0.5 * sum(x * x)),
+    gr = function(x) stats::setNames(as.double(x), raw_order)
+  )
+  nofit <- env$spde_slope_gauge_validate_no_fit_state(
+    state[c("theta", "objective", "gradient")],
+    objective_fn = object$fn,
+    gradient_fn = object$gr
+  )
+  nofit["gradient_callback"] <- list(list(
+    supplied_names = raw_order,
+    raw_values = as.double(nofit$raw_gradient),
+    named_gradient = nofit$raw_gradient,
+    mapping = list(
+      supplied_names = NULL,
+      object_order = state$block_labels,
+      parameter_order = raw_order,
+      block_labels = state$block_labels,
+      raw_order = raw_order
+    )
+  ))
+  adapter <- env$spde_slope_gauge_trust_region_callback_adapter(
+    object, 1L, dll$path, dll$md5,
+    function(object, raw_theta) {
+      covariance <- diag(22L)
+      dimnames(covariance) <- list(raw_order, raw_order)
+      list(par.fixed = raw_theta, cov.fixed = covariance, pdHess = TRUE)
+    }
+  )
+  trust_region <- env$spde_slope_gauge_trust_region(
+    env$spde_slope_gauge_phi_from_theta(state$theta), adapter$evaluate, adapter$covariance
+  )
+  list(
+    schema = "PAPER1_SPDE_SLOPE_GAUGE_TRUST_REGION_V1_CHILD_V1",
+    parent_pid = parent_pid, child_pid = 103L,
+    started_at = "2026-08-15 12:00:02 UTC", ended_at = "2026-08-15 12:00:03 UTC",
+    elapsed_s = 1, predecessor = receipt$predecessor,
+    state_md5 = receipt$state_md5, dll = dll,
+    object = list(created = 1L, released = 1L), nofit = nofit,
+    sign_orbit = list(valid = TRUE), trust_region = trust_region, audit = adapter$audit(),
+    status = trust_region$status, reason = trust_region$reason,
+    stage = "complete", completed_stage = "complete", error = NA_character_
   )
 }
 
@@ -594,6 +649,99 @@ test_that("the production parent retains a valid partial worker prefix without s
     locked = predecessor$locked, expected_dll = expected_dll
   )
   expect_identical(terminal, list(valid = TRUE, reason = "terminal_partial_worker_evidence_valid"))
+})
+
+test_that("the disk terminal validator rejects a complete no-fit trace that is not the copied V3 state", {
+  env <- spde_slope_gauge_tr_materializer_env()
+  predecessor <- spde_slope_gauge_tr_materializer_predecessor(env)
+  packet <- spde_slope_gauge_tr_materializer_packet(env, predecessor)
+  on.exit(unlink(c(predecessor$root, packet$root, packet$source_dir), recursive = TRUE), add = TRUE)
+  dll_path <- tempfile("spde-slope-gauge-tr-state-binding-dll-")
+  writeLines("fixture DLL", dll_path)
+  on.exit(unlink(dll_path), add = TRUE)
+  expected_dll <- list(
+    path = normalizePath(dll_path, mustWork = TRUE),
+    md5 = unname(tools::md5sum(dll_path))[[1L]]
+  )
+  receipt <- readRDS(file.path(packet$root, "root-receipt.rds"))
+  state <- readRDS(file.path(packet$root, "v3-materialized-state.rds"))
+  original_preflight <- env$spde_slope_gauge_trust_region_validate_preflight_packet
+  env$.spde_slope_gauge_tr_materializer_root <- function() packet$root
+  env$.spde_slope_gauge_tr_materializer_sources <- function() packet$sources
+  env$.spde_slope_gauge_tr_materializer_commit <- function() packet$commit
+  env$spde_slope_gauge_trust_region_locked_predecessor <- function() predecessor$locked
+  env$.spde_slope_gauge_tr_materializer_expected_dll <- function(locked) expected_dll
+  env$spde_slope_gauge_trust_region_validate_preflight_packet <- function(...) {
+    original_preflight(packet$root, packet$sources, packet$commit,
+      expected_root = packet$root, locked = predecessor$locked)
+  }
+  fake_launch <- function(command, arguments, deadline_s) {
+    parent_pid <- as.integer(arguments[[5L]])
+    if (identical(arguments[[3L]], "v3-live-child")) {
+      child <- list(
+        schema = "PAPER1_SPDE_SLOPE_GAUGE_TRUST_REGION_V1_V3_LIVE_CHILD_V1",
+        parent_pid = parent_pid, child_pid = 102L,
+        started_at = "2026-08-15 12:00:00 UTC", ended_at = "2026-08-15 12:00:01 UTC",
+        elapsed_s = 1, status = "GAUGE_TRUST_REGION_V3_LIVE_VALID",
+        reason = "closeout_recomputed", predecessor = receipt$predecessor,
+        dll = expected_dll, error = NA_character_
+      )
+      saveRDS(child, arguments[[4L]])
+      return(list(exit_status = 0L, child_pid = 102L, timed_out = FALSE,
+        stdout = "", stderr = "", error = NA_character_,
+        started_at = "2026-08-15 12:00:00 UTC", ended_at = "2026-08-15 12:00:01 UTC", elapsed_s = 1))
+    }
+    worker <- spde_slope_gauge_tr_materializer_complete_worker(
+      env, receipt, state, expected_dll, parent_pid
+    )
+    saveRDS(worker, arguments[[4L]])
+    list(exit_status = 0L, child_pid = 103L, timed_out = FALSE,
+      stdout = "", stderr = "", error = NA_character_,
+      started_at = "2026-08-15 12:00:02 UTC", ended_at = "2026-08-15 12:00:03 UTC", elapsed_s = 1)
+  }
+  sealed <- env$spde_slope_gauge_trust_region_smoke(fake_launch)
+  expect_identical(sealed, list(valid = TRUE, reason = "trust_region_terminal_sealed"))
+  expect_true(env$spde_slope_gauge_trust_region_validate_terminal_packet(
+    packet$root, packet$sources, packet$commit, expected_root = packet$root,
+    locked = predecessor$locked, expected_dll = expected_dll
+  )$valid)
+
+  altered_state <- state
+  altered_state$theta[[1L]] <- altered_state$theta[[1L]] + 0.2
+  altered_state$gradient <- altered_state$theta
+  altered_state$objective <- as.double(0.5 * sum(altered_state$theta * altered_state$theta))
+  marker <- readRDS(file.path(packet$root, "attempt-started.rds"))
+  child <- readRDS(file.path(packet$root, "v3-live-child.rds"))
+  altered_worker <- spde_slope_gauge_tr_materializer_complete_worker(
+    env, receipt, altered_state, expected_dll, marker$parent_pid
+  )
+  worker_path <- file.path(packet$root, "worker-result.rds")
+  saveRDS(altered_worker, worker_path)
+  ledger <- readRDS(file.path(packet$root, "all-attempt-ledger.rds"))
+  ledger$worker <- altered_worker
+  ledger$trust_region <- altered_worker$trust_region
+  ledger$status <- altered_worker$status
+  ledger$reason <- altered_worker$reason
+  ledger$error <- NA_character_
+  ledger$checks <- stats::setNames(c(TRUE, TRUE,
+    identical(altered_worker$status, "GAUGE_TRUST_REGION_NUMERICAL_ADMISSION"), FALSE),
+    env$spde_slope_gauge_trust_region_checks())
+  ledger$processes$worker$child_result_md5 <- unname(tools::md5sum(worker_path))[[1L]]
+  saveRDS(ledger, file.path(packet$root, "all-attempt-ledger.rds"))
+  expect_true(env$spde_slope_gauge_no_fit_evidence_ok(altered_worker$nofit))
+  expect_true(env$spde_slope_gauge_trust_region_worker_ok(altered_worker, receipt$predecessor))
+  expect_true(env$.spde_slope_gauge_tr_materializer_process_for_child_ok(
+    ledger$processes$worker, altered_worker, packet$sources[["runner"]], "worker-child",
+    worker_path, marker$parent_pid
+  ))
+  env$.spde_slope_gauge_tr_materializer_replace_manifest(
+    packet$root, env$.spde_slope_gauge_tr_materializer_terminal_files(ledger)
+  )
+  rejected <- env$spde_slope_gauge_trust_region_validate_terminal_packet(
+    packet$root, packet$sources, packet$commit, expected_root = packet$root,
+    locked = predecessor$locked, expected_dll = expected_dll
+  )
+  expect_identical(rejected, list(valid = FALSE, reason = "terminal_no_fit_state_binding_invalid"))
 })
 
 test_that("the production sealer replaces the preflight manifest only after the terminal ledger is atomic", {

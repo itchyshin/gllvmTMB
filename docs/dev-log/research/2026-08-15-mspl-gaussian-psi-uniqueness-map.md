@@ -18,9 +18,12 @@ This is **LA-MSPL**, not EVA, not AGHQ-MSPL.
 ## 1. Three candidate maps (the gate)
 
 Live Gaussian / lognormal observation noise is one shared scalar
-(`log_sigma_eps` → \(\sigma_\varepsilon^2\)). The unit-tier unique
-companion under `latent(..., unique = TRUE)` is per-trait
-`sd_B(t)^2=\exp(2\cdot\theta_{\mathrm{diag},B}(t))`. Paper \(\Psi\)
+(`log_sigma_eps` → \(\sigma_\varepsilon^2\); `src/gllvmTMB.cpp:819`,
+`:2332–2347`). The unit-tier unique companion under
+`latent(..., unique = TRUE)` is per-trait
+`sd_B(t)^2=\exp(2\cdot\theta_{\mathrm{diag},B}(t))`
+(`PARAMETER_VECTOR(theta_diag_B)` at `:859`;
+`sd_B = exp(theta_diag_B)` at `:1301–1310`). Paper \(\Psi\)
 is a single diagonal. The three named options:
 
 | ID | Map | Claim |
@@ -130,13 +133,15 @@ matched Gaussian cell would actually fit.
 
 ## 3. Recommended pick (binding for later derivation)
 
-**Primary (Phase 3 first Gaussian cell):** option **C —
-pinned-σ_ε exact-FA route.**
+**AGENT-INFERRED — Primary (Phase 3 first Gaussian cell):** option
+**C — pinned-σ_ε exact-FA route.**
 
 - Grammar: ordinary `latent(..., unique = TRUE)` on complete
   Gaussian identity data where Q7 maps `log_sigma_eps` off (or an
   explicit map that sets \(\sigma_\varepsilon=0\) / tiny floor).
-- Paper coordinates: \(\psi_j \equiv sd_B(j)^2\).
+- Paper coordinates: \(\psi_j \equiv sd_B(j)^2\) (matches
+  `theta_diag_B` / `sd_B` in `src/gllvmTMB.cpp:859,1301–1310` once
+  `log_sigma_eps` is mapped off).
 - Soft atom: Hirose[\(N^{-1/2}\)] primary; Akaike sibling; Jeffreys
   dropped (prep note §5b).
 - Rate: \(c_N=\sqrt{2/N}\) with \(N=\) number of units
@@ -145,7 +150,7 @@ pinned-σ_ε exact-FA route.**
   C, \(\psi\) is literally `sd_B^2`.
 
 **Rejected as first-cell target:** option **A with free
-\(\sigma_\varepsilon\)** — fails §2.2.
+\(\sigma_\varepsilon\)** — fails §2.2 (flat ridge).
 
 **Deferred (not rejected):** option **B** for a later free-ε /
 repeated-measure Gaussian MSPL cell. Requires an explicit
@@ -187,8 +192,12 @@ plan. This note only clears the uniqueness map.
 
 - Prep + kill list:
   `docs/dev-log/research/2026-08-15-mspl-phase3-gaussian-heywood-prep.md`
-- Oracles: `tests/testthat/test-mspl-gaussian-heywood-oracles.R` (E5)
-- Q7 pin: `R/fit-multi.R` (~4884–4906)
+- Oracles: `tests/testthat/test-mspl-gaussian-heywood-oracles.R` (E5, E5b)
+- Q7 pin: `R/fit-multi.R:4884–4906` (`per_row_diag_B` / `per_row_diag_W`
+  → map `log_sigma_eps`)
+- Tape params / Gaussian density: `src/gllvmTMB.cpp:819` (`log_sigma_eps`),
+  `:859` / `:1301–1310` (`theta_diag_B` → `sd_B`), `:2332–2347`
+  (`sigma_eps` on family 0)
 - Programme:
   `docs/dev-log/after-task/2026-08-14-laplace-mspl-estimator-programme.md`
 - Protected SE lane: `codex/lane-b-mspl-interval-feasibility`

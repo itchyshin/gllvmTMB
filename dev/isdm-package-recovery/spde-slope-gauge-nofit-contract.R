@@ -125,6 +125,100 @@ spde_slope_gauge_nofit_validate_predecessor_bytes <- function(
   )
 }
 
+## V2 begins from the V1 forensic terminal, but never consumes its numerical
+## payload.  These are deliberately V2-named predicates: the V1 byte/root
+## validators above remain the historical implementation used to classify V1.
+.spde_slope_gauge_nofit_v2_v1_root <- function() {
+  "/private/tmp/gllvmtmb-isdm-bfgs-exact-gradient/dev/isdm-package-recovery/results/PAPER1_SPDE_SLOPE_GAUGE_NOFIT_GATE_V1"
+}
+
+.spde_slope_gauge_nofit_v2_locked_v1 <- function() {
+  list(
+    root = .spde_slope_gauge_nofit_v2_v1_root(),
+    commit = "4eb710ed12cc5346d4ed4bcae0e8182d8ba3fbc3",
+    gate = "PAPER1_SPDE_SLOPE_GAUGE_NOFIT_GATE_V1",
+    receipt_schema = "PAPER1_SPDE_SLOPE_GAUGE_NOFIT_GATE_V1_ROOT_V1",
+    status = "SPDE_SLOPE_GAUGE_NOFIT_INFRASTRUCTURE_HOLD",
+    reason = "child_evidence_invalid",
+    files = c(
+      "child-receipt.rds" = "e5481430c170b8f3fa5c1eb1da33e27e",
+      "no-fit-result.rds" = "0af4bc98742861950896c1e79dadb2e0",
+      "materializer.R" = "38548a8e8c18f4e8f89c3e465ace8ad4",
+      "root-receipt.rds" = "1d9b1b0b31a993dc88427ce6989dea85",
+      "session-info.rds" = "e5a10dc9cb603476373cbea8ac84c8ba",
+      "time-estimate.md" = "b3167b86ae6660cd9422ef0b7e151312",
+      "file-manifest.csv" = "fd83183495b88a37c677682b9f9e6015"
+    ),
+    directories = ".attempt-started.claim"
+  )
+}
+
+.spde_slope_gauge_nofit_v2_manifest_ok <- function(root, locked) {
+  path <- file.path(root, "file-manifest.csv")
+  manifest <- if (.spde_slope_gauge_nofit_regular_file(path)) {
+    tryCatch(utils::read.csv(path, stringsAsFactors = FALSE), error = function(e) NULL)
+  } else NULL
+  declared <- setdiff(names(locked$files), "file-manifest.csv")
+  is.data.frame(manifest) && identical(names(manifest), c("path", "md5")) &&
+    identical(as.character(manifest$path), declared) &&
+    identical(as.character(manifest$md5), unname(locked$files[declared]))
+}
+
+spde_slope_gauge_nofit_v2_validate_v1_forensic <- function(
+    root = .spde_slope_gauge_nofit_v2_locked_v1()$root,
+    locked = .spde_slope_gauge_nofit_v2_locked_v1()) {
+  normal_root <- tryCatch(normalizePath(root, mustWork = TRUE), error = function(e) NA_character_)
+  expected_root <- tryCatch(normalizePath(locked$root, mustWork = TRUE), error = function(e) NA_character_)
+  if (!.spde_slope_gauge_nofit_scalar_character(normal_root) || is.na(expected_root) ||
+      !identical(normal_root, expected_root)) {
+    return(.spde_slope_gauge_nofit_verdict(FALSE, "v1_forensic_root_invalid"))
+  }
+  inventory <- list.files(normal_root, all.files = TRUE, no.. = TRUE, recursive = FALSE)
+  files <- names(locked$files)
+  claim <- file.path(normal_root, locked$directories)
+  paths <- file.path(normal_root, files)
+  bytes_ok <- identical(sort(inventory), sort(c(files, locked$directories))) &&
+    all(vapply(paths, .spde_slope_gauge_nofit_regular_file, logical(1L))) &&
+    identical(unname(tools::md5sum(paths)), unname(locked$files)) &&
+    isTRUE(file.info(claim)$isdir[[1L]]) && identical(Sys.readlink(claim), "") &&
+    identical(list.files(claim, all.files = TRUE, no.. = TRUE), character()) &&
+    .spde_slope_gauge_nofit_v2_manifest_ok(normal_root, locked)
+  if (!bytes_ok) return(.spde_slope_gauge_nofit_verdict(FALSE, "v1_forensic_packet_bytes_invalid"))
+  receipt <- tryCatch(readRDS(file.path(normal_root, "root-receipt.rds")), error = function(e) NULL)
+  receipt_root <- if (is.list(receipt) && .spde_slope_gauge_nofit_scalar_character(receipt$root)) {
+    tryCatch(normalizePath(receipt$root, mustWork = TRUE), error = function(e) NA_character_)
+  } else NA_character_
+  fields <- c(
+    "schema", "gate", "root", "commit", "status", "reason", "predecessor", "sources", "dll",
+    "controls", "parent_stage", "process", "child_result_md5", "time_estimate_md5"
+  )
+  receipt_ok <- .spde_slope_gauge_nofit_exact_names(receipt, fields) &&
+    identical(receipt$schema, locked$receipt_schema) && identical(receipt$gate, locked$gate) &&
+    identical(receipt_root, normal_root) && identical(receipt$commit, locked$commit) &&
+    identical(receipt$status, locked$status) && identical(receipt$reason, locked$reason) &&
+    .spde_slope_gauge_nofit_md5(receipt$child_result_md5) &&
+    identical(receipt$child_result_md5, locked$files[["no-fit-result.rds"]]) &&
+    .spde_slope_gauge_nofit_md5(receipt$time_estimate_md5) &&
+    identical(receipt$time_estimate_md5, locked$files[["time-estimate.md"]])
+  .spde_slope_gauge_nofit_verdict(
+    receipt_ok,
+    if (receipt_ok) "v1_forensic_terminal_valid" else "v1_forensic_receipt_invalid",
+    root = normal_root, commit = locked$commit, receipt = receipt,
+    files = locked$files, status = locked$status, terminal_reason = locked$reason
+  )
+}
+
+.spde_slope_gauge_nofit_v2_v3_projection_ok <- function(predecessor, v3_verdict) {
+  fields <- c("root", "commit", "receipt", "state_md5")
+  .spde_slope_gauge_nofit_exact_names(predecessor, fields) &&
+    is.list(v3_verdict) && isTRUE(v3_verdict$valid) &&
+    identical(v3_verdict$reason, "predecessor_bytes_valid") &&
+    identical(predecessor$root, v3_verdict$root) &&
+    identical(predecessor$commit, v3_verdict$commit) &&
+    identical(predecessor$receipt, v3_verdict$receipt) &&
+    identical(predecessor$state_md5, v3_verdict$state_md5)
+}
+
 ## Bridge an already-created object to the strict generic callback contract.
 ## The runner alone must prove the live DLL/object lifecycle; this local helper
 ## checks the supplied bridge evidence and retains its callback records.  It

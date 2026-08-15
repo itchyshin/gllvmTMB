@@ -67,6 +67,53 @@ spde_slope_gauge_nofit_refresh_manifest <- function(fixture) {
   fixture
 }
 
+spde_slope_gauge_nofit_v1_forensic_fixture <- function() {
+  root <- normalizePath(tempfile("spde-slope-gauge-v1-forensic-"), mustWork = FALSE)
+  dir.create(root)
+  dir.create(file.path(root, ".attempt-started.claim"))
+  saveRDS(list(child = TRUE), file.path(root, "child-receipt.rds"))
+  saveRDS(list(nofit = "retained-but-inadmissible"), file.path(root, "no-fit-result.rds"))
+  writeLines("retained V1 materializer", file.path(root, "materializer.R"))
+  saveRDS(list(session = TRUE), file.path(root, "session-info.rds"))
+  writeLines("retained V1 time estimate", file.path(root, "time-estimate.md"))
+  declared <- c(
+    "child-receipt.rds", "no-fit-result.rds", "materializer.R", "root-receipt.rds",
+    "session-info.rds", "time-estimate.md"
+  )
+  receipt <- list(
+    schema = "PAPER1_SPDE_SLOPE_GAUGE_NOFIT_GATE_V1_ROOT_V1",
+    gate = "PAPER1_SPDE_SLOPE_GAUGE_NOFIT_GATE_V1", root = root,
+    commit = "v1-forensic-commit", status = "SPDE_SLOPE_GAUGE_NOFIT_INFRASTRUCTURE_HOLD",
+    reason = "child_evidence_invalid", predecessor = list(), sources = character(),
+    dll = list(path = NA_character_, md5 = NA_character_), controls = list(), parent_stage = list(),
+    process = list(), child_result_md5 = unname(tools::md5sum(file.path(root, "no-fit-result.rds"))[[1L]]),
+    time_estimate_md5 = unname(tools::md5sum(file.path(root, "time-estimate.md"))[[1L]])
+  )
+  saveRDS(receipt, file.path(root, "root-receipt.rds"))
+  hashes <- unname(tools::md5sum(file.path(root, declared)))
+  utils::write.csv(data.frame(path = declared, md5 = hashes), file.path(root, "file-manifest.csv"),
+    row.names = FALSE, quote = TRUE)
+  files <- c(stats::setNames(hashes, declared),
+    "file-manifest.csv" = unname(tools::md5sum(file.path(root, "file-manifest.csv"))[[1L]]))
+  locked <- list(
+    root = root, commit = "v1-forensic-commit", gate = "PAPER1_SPDE_SLOPE_GAUGE_NOFIT_GATE_V1",
+    receipt_schema = "PAPER1_SPDE_SLOPE_GAUGE_NOFIT_GATE_V1_ROOT_V1",
+    status = "SPDE_SLOPE_GAUGE_NOFIT_INFRASTRUCTURE_HOLD", reason = "child_evidence_invalid",
+    files = files, directories = ".attempt-started.claim"
+  )
+  list(root = root, locked = locked)
+}
+
+spde_slope_gauge_nofit_refresh_v1_forensic_lock <- function(fixture) {
+  declared <- setdiff(names(fixture$locked$files), "file-manifest.csv")
+  utils::write.csv(data.frame(
+    path = declared, md5 = unname(tools::md5sum(file.path(fixture$root, declared)))
+  ), file.path(fixture$root, "file-manifest.csv"), row.names = FALSE, quote = TRUE)
+  fixture$locked$files <- unname(tools::md5sum(file.path(fixture$root, names(fixture$locked$files))))
+  names(fixture$locked$files) <- c(declared, "file-manifest.csv")
+  fixture
+}
+
 test_that("the no-fit predecessor byte gate accepts a complete regular synthetic packet", {
   contract <- spde_slope_gauge_nofit_contract_env()
   fixture <- spde_slope_gauge_nofit_fixture(contract)
@@ -80,6 +127,104 @@ test_that("the no-fit predecessor byte gate accepts a complete regular synthetic
   expect_identical(verdict$commit, fixture$locked$commit)
   expect_identical(verdict$state, fixture$state)
   expect_identical(verdict$state_md5, fixture$locked$files[["v2-materialized-state.rds"]])
+})
+
+test_that("V2 locks the complete V1 forensic packet without reusing its values", {
+  contract <- spde_slope_gauge_nofit_contract_env()
+  v1 <- spde_slope_gauge_nofit_v1_forensic_fixture()
+  on.exit(unlink(v1$root, recursive = TRUE), add = TRUE)
+  verdict <- contract$spde_slope_gauge_nofit_v2_validate_v1_forensic(v1$root, v1$locked)
+  expect_true(verdict$valid)
+  expect_identical(verdict$reason, "v1_forensic_terminal_valid")
+  expect_identical(verdict$files, v1$locked$files)
+  expect_false("nofit" %in% names(verdict))
+
+  writeLines("extra", file.path(v1$root, ".attempt-started.claim", "extra.txt"))
+  expect_identical(contract$spde_slope_gauge_nofit_v2_validate_v1_forensic(
+    v1$root, v1$locked
+  )$reason, "v1_forensic_packet_bytes_invalid")
+})
+
+test_that("V2 rejects missing, substituted, symlinked, and wrong-root V1 packets", {
+  contract <- spde_slope_gauge_nofit_contract_env()
+  fixture <- spde_slope_gauge_nofit_v1_forensic_fixture()
+  on.exit(unlink(fixture$root, recursive = TRUE), add = TRUE)
+  validate <- function() contract$spde_slope_gauge_nofit_v2_validate_v1_forensic(
+    fixture$root, fixture$locked
+  )
+  unlink(file.path(fixture$root, "session-info.rds"))
+  expect_identical(validate()$reason, "v1_forensic_packet_bytes_invalid")
+
+  replacement <- spde_slope_gauge_nofit_v1_forensic_fixture()
+  on.exit(unlink(replacement$root, recursive = TRUE), add = TRUE)
+  writeLines("substituted", file.path(replacement$root, "materializer.R"))
+  expect_identical(contract$spde_slope_gauge_nofit_v2_validate_v1_forensic(
+    replacement$root, replacement$locked
+  )$reason, "v1_forensic_packet_bytes_invalid")
+
+  link_packet <- spde_slope_gauge_nofit_v1_forensic_fixture()
+  on.exit(unlink(link_packet$root, recursive = TRUE), add = TRUE)
+  target <- tempfile("spde-slope-gauge-v1-link-")
+  on.exit(unlink(target), add = TRUE)
+  writeLines("retained V1 time estimate", target)
+  path <- file.path(link_packet$root, "time-estimate.md")
+  unlink(path)
+  if (file.symlink(target, path)) {
+    expect_identical(contract$spde_slope_gauge_nofit_v2_validate_v1_forensic(
+      link_packet$root, link_packet$locked
+    )$reason, "v1_forensic_packet_bytes_invalid")
+  } else skip("symlinks unavailable on this platform")
+
+  wrong <- fixture$locked
+  wrong$root <- tempfile("wrong-v1-forensic-root-")
+  expect_identical(contract$spde_slope_gauge_nofit_v2_validate_v1_forensic(
+    fixture$root, wrong
+  )$reason, "v1_forensic_root_invalid")
+})
+
+test_that("V2 reaches V1 receipt semantics after coherent synthetic rehashing", {
+  contract <- spde_slope_gauge_nofit_contract_env()
+  fixture <- spde_slope_gauge_nofit_v1_forensic_fixture()
+  on.exit(unlink(fixture$root, recursive = TRUE), add = TRUE)
+  receipt <- readRDS(file.path(fixture$root, "root-receipt.rds"))
+  receipt$reason <- "forged_terminal_reason"
+  saveRDS(receipt, file.path(fixture$root, "root-receipt.rds"))
+  fixture <- spde_slope_gauge_nofit_refresh_v1_forensic_lock(fixture)
+  expect_identical(contract$spde_slope_gauge_nofit_v2_validate_v1_forensic(
+    fixture$root, fixture$locked
+  )$reason, "v1_forensic_receipt_invalid")
+})
+
+test_that("V2 rejects a symlinked V1 claim directory", {
+  contract <- spde_slope_gauge_nofit_contract_env()
+  fixture <- spde_slope_gauge_nofit_v1_forensic_fixture()
+  on.exit(unlink(fixture$root, recursive = TRUE), add = TRUE)
+  target <- tempfile("spde-slope-gauge-v1-claim-link-")
+  dir.create(target)
+  on.exit(unlink(target, recursive = TRUE), add = TRUE)
+  claim <- file.path(fixture$root, ".attempt-started.claim")
+  unlink(claim, recursive = TRUE)
+  if (!file.symlink(target, claim)) skip("directory symlinks unavailable on this platform")
+  expect_identical(contract$spde_slope_gauge_nofit_v2_validate_v1_forensic(
+    fixture$root, fixture$locked
+  )$reason, "v1_forensic_packet_bytes_invalid")
+})
+
+test_that("V2 rejects the literal V1 two-field V3 projection", {
+  contract <- spde_slope_gauge_nofit_contract_env()
+  fixture <- spde_slope_gauge_nofit_fixture(contract)
+  on.exit(unlink(fixture$root, recursive = TRUE), add = TRUE)
+  predecessor <- contract$spde_slope_gauge_nofit_validate_predecessor_bytes(
+    fixture$root, fixture$locked
+  )
+  full <- predecessor[c("root", "commit", "receipt", "state_md5")]
+  expect_true(contract$.spde_slope_gauge_nofit_v2_v3_projection_ok(full, predecessor))
+  expect_false(contract$.spde_slope_gauge_nofit_v2_v3_projection_ok(
+    predecessor[c("receipt", "state_md5")], predecessor
+  ))
+  forged <- predecessor
+  forged$receipt <- list(forged = TRUE)
+  expect_false(contract$.spde_slope_gauge_nofit_v2_v3_projection_ok(full, forged))
 })
 
 test_that("the no-fit predecessor gate rejects stale manifests, extra files, and state order drift", {

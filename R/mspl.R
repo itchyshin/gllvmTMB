@@ -346,6 +346,122 @@
   )
 }
 
+## Internal constrained-state instrument for a future bootstrap-test inversion
+## study. The target is held exactly while every remaining active outer
+## parameter is reoptimised against the penalised LA-MSPL objective. The
+## returned fit clone is suitable only for unconditional parametric simulation;
+## it deliberately does not expose a confidence interval or public method.
+.gllvmTMB_mspl_constrained_simulation_state <- function(
+  fit,
+  which = 1L,
+  target,
+  control = list(eval.max = 100L, iter.max = 100L)
+) {
+  if (!.gllvmTMB_is_mspl(fit)) {
+    .gllvmTMB_mspl_abort(
+      "The internal MSPL constrained-state instrument requires an {.code estimator = \"mspl\"} fit.",
+      class = "gllvmTMB_mspl_constrained_state_input"
+    )
+  }
+  if (
+    !is.numeric(which) || length(which) != 1L || which %% 1 != 0 ||
+      which < 1L || which > length(fit$opt$par) ||
+      names(fit$opt$par)[which] != "b_fix"
+  ) {
+    .gllvmTMB_mspl_abort(
+      "The internal MSPL constrained-state instrument requires one resolved {.field b_fix} coordinate.",
+      class = "gllvmTMB_mspl_constrained_state_target"
+    )
+  }
+  if (!is.numeric(target) || length(target) != 1L || !is.finite(target)) {
+    .gllvmTMB_mspl_abort(
+      "The internal MSPL constrained-state instrument requires one finite target value.",
+      class = "gllvmTMB_mspl_constrained_state_target"
+    )
+  }
+
+  obj <- fit$tmb_obj
+  penalty_off <- fit$mspl$unpenalized_tmb_obj
+  if (
+    is.null(obj) || identical(obj, penalty_off) ||
+      !identical(as.integer(obj$env$data$estimator_id), 1L)
+  ) {
+    .gllvmTMB_mspl_abort(
+      "The internal MSPL constrained-state instrument could not verify the active penalised TMB objective.",
+      class = "gllvmTMB_mspl_constrained_state_objective"
+    )
+  }
+  checkpoint <- .gllvmTMB_profile_tmb_checkpoint(obj)
+  on.exit(.gllvmTMB_restore_profile_tmb_checkpoint(obj, checkpoint), add = TRUE)
+
+  mle_par <- as.numeric(fit$opt$par)
+  nuisance_index <- setdiff(seq_along(mle_par), as.integer(which))
+  objective <- function(nuisance) {
+    par <- mle_par
+    par[nuisance_index] <- nuisance
+    par[which] <- target
+    obj$fn(par)
+  }
+  gradient <- function(nuisance) {
+    par <- mle_par
+    par[nuisance_index] <- nuisance
+    par[which] <- target
+    obj$gr(par)[nuisance_index]
+  }
+  ans <- tryCatch(
+    nlminb(mle_par[nuisance_index], objective = objective, gradient = gradient,
+      control = control),
+    error = identity
+  )
+  if (inherits(ans, "error")) {
+    return(list(
+      status = "optimizer_failed", message = conditionMessage(ans),
+      target_index = as.integer(which), target_name = names(fit$opt$par)[which],
+      target = target, objective_source = "fit$tmb_obj (penalised LA-MSPL)",
+      estimator_id = 1L
+    ))
+  }
+  if (!identical(as.integer(ans$convergence), 0L) || !is.finite(ans$objective)) {
+    return(list(
+      status = if (is.finite(ans$objective)) "optimizer_failed" else "nonfinite",
+      message = ans$message %||% "", target_index = as.integer(which),
+      target_name = names(fit$opt$par)[which], target = target,
+      objective_source = "fit$tmb_obj (penalised LA-MSPL)", estimator_id = 1L
+    ))
+  }
+
+  par <- mle_par
+  par[nuisance_index] <- as.numeric(ans$par)
+  par[which] <- target
+  objective_value <- obj$fn(par)
+  full_par <- obj$env$last.par
+  report <- tryCatch(obj$report(full_par), error = identity)
+  if (!is.finite(objective_value) || inherits(report, "error") ||
+      is.null(report$eta) || any(!is.finite(report$eta))) {
+    return(list(
+      status = "state_construction_failed",
+      message = if (inherits(report, "error")) conditionMessage(report) else "",
+      target_index = as.integer(which), target_name = names(fit$opt$par)[which],
+      target = target, objective_source = "fit$tmb_obj (penalised LA-MSPL)",
+      estimator_id = 1L
+    ))
+  }
+
+  simulation_fit <- fit
+  simulation_fit$opt <- fit$opt
+  simulation_fit$opt$par <- par
+  simulation_fit$opt$objective <- as.numeric(objective_value)
+  simulation_fit$report <- report
+  list(
+    status = "ok", message = ans$message %||% "",
+    target_index = as.integer(which), target_name = names(fit$opt$par)[which],
+    target = target, objective = as.numeric(objective_value),
+    nuisance_reoptimized = TRUE,
+    objective_source = "fit$tmb_obj (penalised LA-MSPL)", estimator_id = 1L,
+    simulation_fit = simulation_fit
+  )
+}
+
 ## Private paper-style curvature diagnostic. The penalty-off approximate
 ## Laplace likelihood is evaluated only at the penalised MSPL estimate; it is
 ## never optimised here and does not turn that estimate into an ML estimate.

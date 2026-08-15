@@ -132,6 +132,37 @@ test_that("V2 materializer identifies retained post-launch staging evidence", {
   )
 })
 
+test_that("V2 materializer treats an absent root or child output as non-symlink", {
+  materializer <- spde_slope_gauge_nofit_v2_materializer_env()
+  absent <- tempfile("spde-slope-gauge-v2-absent-")
+  expect_false(file.exists(absent))
+  expect_true(is.na(Sys.readlink(absent)))
+  source_text <- paste(
+    readLines(
+      testthat::test_path(
+        "..",
+        "..",
+        "dev",
+        "isdm-package-recovery",
+        "materialize-paper1-spde-slope-gauge-nofit-v2-gate.R"
+      ),
+      warn = FALSE
+    ),
+    collapse = "\n"
+  )
+  expect_match(
+    source_text,
+    r"{!is\.na\(Sys\.readlink\(root\)\) && nzchar\(Sys\.readlink\(root\)\)}"
+  )
+  expect_match(
+    source_text,
+    r"{!is\.na\(Sys\.readlink\(output\)\) && nzchar\(Sys\.readlink\(output\)\)}"
+  )
+  expect_true(is.function(
+    materializer$spde_slope_gauge_nofit_v2_materialize_gate
+  ))
+})
+
 test_that("V2 forensic sealing promotes retained child bytes without relaunch", {
   materializer <- spde_slope_gauge_nofit_v2_materializer_env()
   base <- tempfile("spde-slope-gauge-v2-forensic-")

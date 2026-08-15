@@ -352,7 +352,9 @@ source(file.path(script_dir, "spde-slope-gauge-nofit-contract.R"), local = TRUE)
     NULL
   }
   if (
-    !is.list(child) && (file.exists(output) || nzchar(Sys.readlink(output)))
+    !is.list(child) &&
+      (file.exists(output) ||
+        (!is.na(Sys.readlink(output)) && nzchar(Sys.readlink(output))))
   ) {
     if (unlink(output) != 0L) {
       stop("could not discard invalid V2 child output", call. = FALSE)
@@ -752,7 +754,7 @@ spde_slope_gauge_nofit_v2_materialize_gate <- function() {
     !dir.exists(base) ||
       !identical(Sys.readlink(base), "") ||
       file.exists(root) ||
-      nzchar(Sys.readlink(root))
+      (!is.na(Sys.readlink(root)) && nzchar(Sys.readlink(root)))
   ) {
     stop("V2 gate root is unavailable or already consumed", call. = FALSE)
   }

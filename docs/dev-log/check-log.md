@@ -4,6 +4,14 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-08-15 — MSPL SE pin CI: VA delta_lognormal order (Cursor)
+
+#979 failed twice on `test-va-all-family-light-fits.R`
+`delta_lognormal_log` (`failed_health_gate`, healthy_starts 2 < 3).
+MSPL SE files were 24+29 green. Renamed to
+`test-zz-mspl-*-se-feasibility.R` so they run after the VA suite.
+Did not edit the VA test. Local rename re-run: 24 + 29 PASS.
+
 ## 2026-08-15 — MSPL SE feasibility pin (Cursor)
 
 Lane `cursor/mspl-se-feasibility-pin`. Internal both-Hessian pin.

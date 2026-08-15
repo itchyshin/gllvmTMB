@@ -4,6 +4,40 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-08-15 — MSPL SE feasibility pin (Cursor)
+
+Lane `cursor/mspl-se-feasibility-pin`. Internal both-Hessian pin.
+No `src/`. No `fit-multi.R` edit. Poisson stays `planned`.
+
+```sh
+export OMP_NUM_THREADS=1 NOT_CRAN=true
+# RED (before R/mspl-curvature-pin.R):
+#   test-mspl-bernoulli-se-feasibility.R  9 pass / 1 error
+#     object '.gllvmTMB_mspl_curvature_pin' not found
+#   test-mspl-poisson-se-feasibility.R    14 pass / 1 error
+# GREEN (after):
+#   test-mspl-bernoulli-se-feasibility.R  PASS 24
+#   test-mspl-poisson-se-feasibility.R    PASS 29
+#   test-mspl-poisson-public-door.R       PASS 6
+#   test-mspl-registry.R                  PASS 26
+```
+
+Pin receipt (one cell each; not a campaign):
+
+| Family | Q_P | Q_0 |
+|---|---|---|
+| Bernoulli logit | available, min_ev 0.226 | non_pd, min_ev −0.774 (retained) |
+| Poisson log | available, min_ev 3.300 | available, min_ev 2.473 |
+
+```sh
+rg -n 'sd_rep <- if \\(identical\\(estimator, "mspl"\\)\\)' R/fit-multi.R
+# R/fit-multi.R:6423 unchanged
+rg -n 'gllvmTMB_mspl_curvature_pin' NAMESPACE
+# no matches (unexported)
+```
+
+Not run: `devtools::test()`, `R CMD check`, pkgdown, Totoro.
+
 ## 2026-08-15 — MSPL Phase-4 tapes CI fix for #978 (Cursor)
 
 Lane `cursor/mspl-phase4-tapes-planned`. PR

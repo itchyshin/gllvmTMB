@@ -2,19 +2,20 @@
 
 | ID | Status | Arc | Notes |
 |---|---|---|---|
-| A0 | **IN PROGRESS** | LOOP kit on `cursor/mspl-phase4-prep-goal` from point-continue tip | do not clobber closed GOAL text except a pointer |
-| A1 | pending | Verify #971 closeout | structured tests; TSV 64/64; empty `src/`/`R/mspl.R`; PR body matches; do not merge |
-| A2 | pending | Verify Poisson #972 | files + oracles on `/private/tmp/gllvmtmb-mspl-phase4-poisson` |
-| A3 | pending | Verify Tweedie #973 | re-derive 62 vs 51 from test file + reporter |
-| A4 | pending | Verify NB2 #974 | claimed 72/72 |
-| A5 | pending | Verify beta #975 | claimed 65/65 |
-| A6 | pending | Verify NB1 #976 | claimed 68/68 |
-| A7 | pending | Rose fence sweep | no NEWS covered; no planned→admitted; prepare `{0,1}` |
-| A8 | pending | After-task + Melissa + checkpoint | STOP at merge (human) |
+| A0 | **DONE** | LOOP kit on `cursor/mspl-phase4-prep-goal` | `77b37a7a`; pointer only on closed point-continue GOAL |
+| A1 | **DONE** | Verify #971 closeout | MERGED `cb126576`; 29/29 PASS (168 expects); TSV 64/64; `src/`/`R/mspl.R` empty; Ubuntu CI pending at verify |
+| A2 | **DONE** | Verify Poisson #972 | 102/102 PASS; planned/phase4_prep; no defect |
+| A3 | **DONE** | Verify Tweedie #973 | 62/62 (not 51); wording fix `90a156cf` |
+| A4 | **DONE** | Verify NB2 #974 | 72/72; stays excluded |
+| A5 | **DONE** | Verify beta #975 | 65/65; wording `daa76352` |
+| A6 | **DONE** | Verify NB1 #976 | 68/68; no nbinom1 row |
+| A7 | **DONE** | Rose fence sweep | no NEWS covered; no planned→admitted; prepare `{0,1}` |
+| A8 | **DONE** | After-task + Melissa + checkpoint | STOP at merge (human) |
 
 ## HARD STOP flags
 
-- Merge #971–#976 from this lane
+- Merge #972–#976 from this lane (human only)
 - Admit any family / NEWS covered / prepare widen
 - SE / Codex interval lane / Totoro>30min
 - Repo-root `LOOP/` / Dropbox / `git add -A`
+- Force-push `main` / rebase unless CLEAN and asked

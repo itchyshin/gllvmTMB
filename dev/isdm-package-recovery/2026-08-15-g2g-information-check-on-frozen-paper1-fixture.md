@@ -96,14 +96,35 @@ saddle rather than a minimum.**  This is what `pdHess = false` records, and it i
 why the sibling lane's covariance was unavailable
 (`FSB_COVARIANCE_UNAVAILABLE`).
 
-**This also reconciles the sealed SAR result.**
-`SAR_P1_S3_C360_R3_V1` (2026-08-14) recorded
-`SAR_RETAINED_RANGE_NUMERICALLY_FLAT` while asking whether the shared range is
-informative *"when the two retained spatial amplitudes are almost zero."*  That
-is the same phenomenon seen from the other side: **the range is uninformative
-because the field amplitude is ~0**, not the reverse.  The flat range is a
-consequence, not a cause.  SAR has precedence over §2 by a day; §2 re-derived a
-sealed finding and then mis-attributed its cause.
+**This also reconciles the sealed SAR result -- and the reconciliation is not
+the obvious one.**  `SAR_P1_S3_C360_R3_V1` (2026-08-14) recorded
+`SAR_RETAINED_RANGE_NUMERICALLY_FLAT`, asking whether the shared range is
+informative *"when the two retained spatial amplitudes are almost zero."*  Its
+retained ledger holds the actual evidence: across its nine-point range grid the
+objective moved by a **relative \(8.86\times10^{-12}\)** with
+`retained_max_abs_score` \(4.71\times10^{-8}\), classified `NUMERICALLY_FLAT`.
+
+At first reading that **contradicts** the measurement above, which finds
+substantial curvature along the range direction (\(76.4955\)) and zero
+null-weight on `log_kappa`.  It does not, because the two are measured on
+**different states**:
+
+| state | \(\lVert\lambda_{\rm intercept}\rVert\) | \(\lVert\lambda_{\rm slope}\rVert\) | what is flat |
+| --- | --- | --- | --- |
+| `FSB_P1_S3_C360_R3_V2` (SAR's predecessor) | ~0 | ~0 | the **range** -- no field for it to describe |
+| `MSPDE_P1_S3_C360_R3_V3` (here) | 33.52 | 0.1032 | the **GBIF slope loading block** |
+
+The unifying statement is simpler than either lane's framing: **a spatial field
+whose loading amplitude is approximately zero is unidentified, and so is
+anything that reaches the likelihood only through it.**  At FSB both amplitudes
+had collapsed, so \(\kappa\) itself went flat.  At V3 the intercept amplitude is
+large -- so \(\kappa\) is well determined -- and only the GBIF slope amplitude
+has collapsed, so the flatness has **moved** from \(\kappa\) into the slope
+loading block.
+
+SAR therefore has precedence over §2 by a day for the *phenomenon*, and §2
+mis-attributed its cause.  But SAR's flat range does **not** transfer to V3, and
+neither lane had stated the amplitude-collapse rule that covers both.
 
 **Consequence for the science.**  Paper 1 asks whether the model can keep the
 ecological and GBIF-only fields distinct without collapsing them.  At this

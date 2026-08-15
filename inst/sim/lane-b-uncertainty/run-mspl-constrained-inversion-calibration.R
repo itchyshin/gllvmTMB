@@ -160,14 +160,14 @@ fit_status <- function(fit) {
   list(status = "ok", message = "")
 }
 
-run_null <- function(case, data, fit, target_index, target_value, outer_id, target, grid_id) {
+run_null <- function(case, data, fit, target_index, centre_estimate, target_value, outer_id, target, grid_id) {
   settings <- inversion_settings()
   state <- gllvmTMB:::.gllvmTMB_mspl_constrained_simulation_state(
     fit, which = target_index, target = target_value
   )
   endpoint <- data.frame(
     case_id = case$case_id[[1L]], outer_id = as.integer(outer_id), target = as.integer(target),
-    grid_id = as.integer(grid_id), target_value = target_value,
+    grid_id = as.integer(grid_id), centre_estimate = centre_estimate, target_value = target_value,
     truth = case_truth(case)[[target]], constrained_status = state$status,
     constrained_message = state$message %||% "", estimator_id = state$estimator_id %||% NA_integer_,
     objective_source = state$objective_source %||% NA_character_, observed_statistic = NA_real_,
@@ -217,7 +217,7 @@ run_outer <- function(case, outer_id) {
     rows <- do.call(rbind, lapply(seq_len(3L), function(target) do.call(rbind,
       lapply(seq_len(5L), function(grid_id) data.frame(
         case_id = case$case_id[[1L]], outer_id = as.integer(outer_id), target = target,
-        grid_id = grid_id, target_value = NA_real_, truth = case_truth(case)[[target]],
+        grid_id = grid_id, centre_estimate = NA_real_, target_value = NA_real_, truth = case_truth(case)[[target]],
         constrained_status = status$status, constrained_message = status$message,
         estimator_id = NA_integer_, objective_source = NA_character_, observed_statistic = NA_real_,
         usable_refits = 0L, p_value = NA_real_, test_status = "outer_fit_failed"
@@ -225,10 +225,25 @@ run_outer <- function(case, outer_id) {
     return(list(endpoints = rows, attempts = data.frame()))
   }
   indices <- which(names(fit$opt$par) == "b_fix")
+  estimates <- as.numeric(fit$opt$par[indices])
+  if (length(indices) != 3L || any(!is.finite(estimates))) {
+    rows <- do.call(rbind, lapply(seq_len(3L), function(target) do.call(rbind,
+      lapply(seq_len(5L), function(grid_id) data.frame(
+        case_id = case$case_id[[1L]], outer_id = as.integer(outer_id), target = target,
+        grid_id = grid_id, centre_estimate = NA_real_, target_value = NA_real_, truth = case_truth(case)[[target]],
+        constrained_status = "outer_target_alignment_failed", constrained_message = "resolved b_fix coordinates are not finite",
+        estimator_id = 1L, objective_source = "fit$tmb_obj (penalised LA-MSPL)", observed_statistic = NA_real_,
+        usable_refits = 0L, p_value = NA_real_, test_status = "outer_target_alignment_failed"
+      )))))
+    return(list(endpoints = rows, attempts = data.frame()))
+  }
   results <- unlist(lapply(seq_len(3L), function(target) {
-    truth <- case_truth(case)[[target]]
+    ## The constrained-null grid is centred on the observed MSPL estimate.
+    ## Simulation truth is retained only for later coverage adjudication.
+    centre_estimate <- estimates[[target]]
     lapply(seq_along(inversion_settings()$grid_offsets), function(grid_id) run_null(
-      case, data, fit, indices[[target]], truth + inversion_settings()$grid_offsets[[grid_id]],
+      case, data, fit, indices[[target]], centre_estimate,
+      centre_estimate + inversion_settings()$grid_offsets[[grid_id]],
       outer_id, target, grid_id
     ))
   }), recursive = FALSE)
@@ -282,6 +297,13 @@ validate_prerun_shards <- function(root, manifest) {
   per_endpoint <- table(paste(attempts$case_id, attempts$outer_id, attempts$target, attempts$grid_id, sep = "\r"))
   if (length(per_endpoint) != nrow(endpoints) || any(per_endpoint != settings$bootstrap_reps)) {
     stop("Each constrained null must retain exactly 499 bootstrap attempts.", call. = FALSE)
+  }
+  present <- is.finite(endpoints$centre_estimate)
+  expected_target <- endpoints$centre_estimate + settings$grid_offsets[endpoints$grid_id]
+  if (any(!is.finite(endpoints$target_value[present])) ||
+      any(abs(endpoints$target_value[present] - expected_target[present]) > sqrt(.Machine$double.eps)) ||
+      any(endpoints$grid_id == 3L & present & abs(endpoints$target_value - endpoints$centre_estimate) > sqrt(.Machine$double.eps))) {
+    stop("Pre-run constrained-null targets are not centred on the observed MSPL estimate.", call. = FALSE)
   }
   list(endpoints = endpoints, attempts = attempts)
 }
@@ -354,10 +376,16 @@ validate_full_shards <- function(root, manifest) {
     expected_outer <- shard_id
     endpoint_key <- paste(endpoints$target, endpoints$grid_id, sep = "\r")
     expected_endpoint_key <- as.vector(outer(seq_len(3L), seq_len(5L), paste, sep = "\r"))
-    if (!is.data.frame(endpoints) || nrow(endpoints) != 15L || anyDuplicated(endpoint_key) ||
+    present <- is.finite(endpoints$centre_estimate)
+    expected_target <- endpoints$centre_estimate + settings$grid_offsets[endpoints$grid_id]
+    if (!is.data.frame(endpoints) || !all(c("centre_estimate", "target_value") %in% names(endpoints)) ||
+        nrow(endpoints) != 15L || anyDuplicated(endpoint_key) ||
         !identical(sort(endpoint_key), sort(expected_endpoint_key)) ||
         any(endpoints$case_id != case_id) || any(endpoints$outer_id != expected_outer) ||
-        any(endpoints$truth != rep(case_truth(case), each = 5L))) {
+        any(endpoints$truth != rep(case_truth(case), each = 5L)) ||
+        any(!is.finite(endpoints$target_value[present])) ||
+        any(abs(endpoints$target_value[present] - expected_target[present]) > sqrt(.Machine$double.eps)) ||
+        any(endpoints$grid_id == 3L & present & abs(endpoints$target_value - endpoints$centre_estimate) > sqrt(.Machine$double.eps))) {
       stop("A full constrained-inversion endpoint block has invalid keys or truth.", call. = FALSE)
     }
     attempt_key <- paste(attempts$target, attempts$grid_id, attempts$replicate, sep = "\r")
@@ -385,29 +413,37 @@ inversion_interval_rows <- function(endpoints) {
       x$usable_refits == settings$bootstrap_reps & x$estimator_id == 1L &
       x$objective_source == "fit$tmb_obj (penalised LA-MSPL)"
     accepted <- valid & x$p_value > settings$alpha
-    accepted_id <- which(accepted)
-    contiguous <- length(accepted_id) > 0L && identical(accepted_id, seq.int(min(accepted_id), max(accepted_id)))
-    lower_rejected <- any(valid[seq_len(2L)] & !accepted[seq_len(2L)])
-    upper_rejected <- any(valid[4:5] & !accepted[4:5])
+    centre_matches <- is.finite(x$centre_estimate[[3L]]) &&
+      abs(x$target_value[[3L]] - x$centre_estimate[[3L]]) <= sqrt(.Machine$double.eps)
+    lower_id <- NA_integer_
+    upper_id <- NA_integer_
     status <- if (!all(valid)) {
       "endpoint_test_failed"
-    } else if (!accepted[[3L]]) {
-      "truth_null_rejected"
-    } else if (!contiguous) {
-      "nonmonotone_acceptance"
-    } else if (!lower_rejected) {
-      "lower_truncated"
-    } else if (!upper_rejected) {
-      "upper_truncated"
     } else {
-      "finite_grid_interval"
+      if (!centre_matches) {
+        "centre_alignment_failed"
+      } else if (!accepted[[3L]]) {
+        "centre_null_rejected"
+      } else {
+        lower_id <- 3L
+        while (lower_id > 1L && accepted[[lower_id - 1L]]) lower_id <- lower_id - 1L
+        upper_id <- 3L
+        while (upper_id < nrow(x) && accepted[[upper_id + 1L]]) upper_id <- upper_id + 1L
+        lower_rejected <- lower_id > 1L && valid[[lower_id - 1L]] && !accepted[[lower_id - 1L]]
+        upper_rejected <- upper_id < nrow(x) && valid[[upper_id + 1L]] && !accepted[[upper_id + 1L]]
+        if (!lower_rejected) "lower_truncated" else if (!upper_rejected) "upper_truncated" else "finite_grid_interval"
+      }
     }
     available <- identical(status, "finite_grid_interval")
     data.frame(
       case_id = x$case_id[[1L]], outer_id = x$outer_id[[1L]], target = x$target[[1L]],
-      truth = x$truth[[1L]], lower = if (available) min(x$target_value[accepted]) else NA_real_,
-      upper = if (available) max(x$target_value[accepted]) else NA_real_,
-      available = available, covers = available && accepted[[3L]], status = status,
+      truth = x$truth[[1L]], centre_estimate = x$centre_estimate[[3L]],
+      lower = if (available) x$target_value[[lower_id]] else NA_real_,
+      upper = if (available) x$target_value[[upper_id]] else NA_real_,
+      available = available,
+      covers = available && x$truth[[1L]] >= x$target_value[[lower_id]] - sqrt(.Machine$double.eps) &&
+        x$truth[[1L]] <= x$target_value[[upper_id]] + sqrt(.Machine$double.eps),
+      status = status,
       stringsAsFactors = FALSE
     )
   })

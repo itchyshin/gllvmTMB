@@ -46,9 +46,11 @@ test_that("private MSPL constrained-inversion calibration contract is frozen", {
   for (i in seq_len(nrow(manifest))) {
     endpoint <- expand.grid(target = seq_len(3L), grid_id = seq_len(5L))
     endpoint <- endpoint[order(endpoint$target, endpoint$grid_id), , drop = FALSE]
+    centres <- c(0.2, -0.4, 1.1)
     endpoint <- data.frame(
       case_id = manifest$case_id[[i]], outer_id = 1L, target = endpoint$target,
-      grid_id = endpoint$grid_id, target_value = 0, truth = 0,
+      grid_id = endpoint$grid_id, centre_estimate = rep(centres, each = 5L),
+      target_value = rep(centres, each = 5L) + rep(c(-1, -0.5, 0, 0.5, 1), 3L), truth = 0,
       constrained_status = "ok", constrained_message = "", estimator_id = 1L,
       objective_source = "fit$tmb_obj (penalised LA-MSPL)", observed_statistic = 0,
       usable_refits = 499L, p_value = 1, test_status = "ok"
@@ -101,10 +103,12 @@ test_that("private MSPL constrained-inversion calibration contract is frozen", {
     endpoint <- expand.grid(target = seq_len(3L), grid_id = seq_len(5L))
     endpoint <- endpoint[order(endpoint$target, endpoint$grid_id), , drop = FALSE]
     truth <- c(-0.5, 0.1, 0.55) + full_manifest$beta_shift[[i]]
+    centres <- c(0.2, -0.4, 1.1) + full_manifest$beta_shift[[i]]
     endpoint <- data.frame(
       case_id = full_manifest$case_id[[i]], outer_id = 1L, target = endpoint$target,
       grid_id = endpoint$grid_id,
-      target_value = rep(truth, each = 5L) + rep(c(-1, -0.5, 0, 0.5, 1), 3L),
+      centre_estimate = rep(centres, each = 5L),
+      target_value = rep(centres, each = 5L) + rep(c(-1, -0.5, 0, 0.5, 1), 3L),
       truth = rep(truth, each = 5L), constrained_status = "ok", constrained_message = "", estimator_id = 1L,
       objective_source = "fit$tmb_obj (penalised LA-MSPL)", observed_statistic = 0,
       usable_refits = 2L, p_value = rep(c(0.01, 0.5, 0.8, 0.5, 0.01), 3L),
@@ -128,7 +132,13 @@ test_that("private MSPL constrained-inversion calibration contract is frozen", {
     "--expected-source-sha", "abc123"), env = smoke_env, stdout = TRUE, stderr = TRUE)
   expect_null(attr(output, "status"))
   full_summary <- utils::read.csv(file.path(full_root, "summary.csv"), stringsAsFactors = FALSE)
+  interval_rows <- utils::read.csv(file.path(full_root, "interval-rows.csv"), stringsAsFactors = FALSE)
   expect_identical(nrow(full_summary), 36L)
   expect_true(all(full_summary$available_outer == 1L))
-  expect_true(all(utils::read.csv(file.path(full_root, "interval-rows.csv"))$status == "finite_grid_interval"))
+  expect_true(all(interval_rows$status == "finite_grid_interval"))
+  expect_equal(interval_rows$centre_estimate[interval_rows$case_id == "C001"], c(0.2, -0.4, 1.1))
+  expect_equal(interval_rows$lower[interval_rows$case_id == "C001"], c(-0.3, -0.9, 0.6))
+  expect_equal(interval_rows$upper[interval_rows$case_id == "C001"], c(0.7, 0.1, 1.6))
+  expect_identical(interval_rows$covers[interval_rows$case_id == "C001"], c(FALSE, TRUE, FALSE))
+  expect_false(any(grepl("truth + inversion_settings", readLines(runner), fixed = TRUE)))
 })

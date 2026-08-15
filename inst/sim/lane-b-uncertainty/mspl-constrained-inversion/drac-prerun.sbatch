@@ -46,7 +46,7 @@ mspl_load_modules
 mspl_stage_runtime
 
 TASK_ID="${SLURM_ARRAY_TASK_ID:-}"
-[[ "$TASK_ID" =~ ^([1-9]|1[0-2])$ ]] || die "Pre-run task ID must be 1..12."
+[[ "$TASK_ID" =~ ^[1-9][0-9]*$ ]] || die "Pre-run task ID must be a positive frozen-map index."
 ROW="$(awk -F '\t' -v id="$TASK_ID" '$1 == id {print; found=1; exit} END {exit found ? 0 : 2}' "$MAP")" || die "No frozen map row for task $TASK_ID."
 IFS=$'\t' read -r INDEX CASE_ID SHARD_ID <<< "$ROW"
 [[ "$INDEX" == "$TASK_ID" && "$SHARD_ID" == 1 && "$CASE_ID" =~ ^C[0-9]{3}$ ]] || die "Malformed pre-run map row."

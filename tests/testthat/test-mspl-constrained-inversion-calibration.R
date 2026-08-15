@@ -18,7 +18,9 @@ test_that("private MSPL constrained-inversion calibration contract is frozen", {
   expect_true(all(manifest$outer_per_shard == 1L))
   expect_true(all(manifest$minimum_usable_bootstrap == 499L))
   expect_identical(nrow(utils::read.delim(file.path(root, "array-map.tsv"))), 12000L)
-  expect_identical(nrow(utils::read.delim(file.path(root, "pre-run-array-map.tsv"))), 12L)
+  pre_run_map <- utils::read.delim(file.path(root, "pre-run-array-map.tsv"))
+  expect_identical(nrow(pre_run_map), 12L)
+  expect_identical(pre_run_map$array_index, seq.int(1L, 11001L, by = 1000L))
 
   for (i in seq_len(nrow(manifest))) {
     endpoint <- expand.grid(target = seq_len(3L), grid_id = seq_len(5L))

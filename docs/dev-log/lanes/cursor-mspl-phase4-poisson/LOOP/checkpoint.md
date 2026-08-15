@@ -1,6 +1,7 @@
 # checkpoint — cursor-mspl-phase4-poisson
 
-GOAL: see GOAL.md.   STATE: A0–A2 landed; A3 after-task/PR in progress.
+GOAL: see GOAL.md.   STATE: **A0–A3 LANDED** — docs+test PR #972 open.
+HARD STOP: no admit, no merge-to-main.
 
 ARCS DONE (verified):
 - A0 — isolated worktree `/private/tmp/gllvmtmb-mspl-phase4-poisson` on
@@ -11,23 +12,26 @@ ARCS DONE (verified):
 - A2 — `test-mspl-poisson-phase4-oracles.R` **10 tests / 102
   expectations / 0 failed / 0 error**. Registry 26/26. `src/` and
   `R/mspl.R` diffs empty.
+- A3 — commit `8f936953`; PR
+  https://github.com/itchyshin/gllvmTMB/pull/972 stacked on #971.
 
-ARC IN PROGRESS: A3 — after-task + commit + push + docs+test PR.
+ARC IN PROGRESS: none.
 
-NEXT: land A3 PR URL; HARD STOP (no admit, no merge-to-main).
+NEXT: human review of #972. Do not admit Poisson. Do not merge to main.
 
-OPEN GATES (need human): review docs+test PR; admit Poisson; merge-to-main.
+OPEN GATES (need human): review #972; admit Poisson; merge-to-main.
 Neither admit nor merge is this lane's job.
 
-TRUTH LIVES IN: this worktree + this LOOP kit +
-`docs/dev-log/research/2026-08-15-mspl-phase4-poisson-prep.md` +
-`tests/testthat/test-mspl-poisson-phase4-oracles.R` +
+TRUTH LIVES IN: `cursor/mspl-phase4-poisson` @ `8f936953` · PR #972 ·
+this LOOP kit ·
+`docs/dev-log/research/2026-08-15-mspl-phase4-poisson-prep.md` ·
+`tests/testthat/test-mspl-poisson-phase4-oracles.R` ·
 `docs/dev-log/after-task/2026-08-15-mspl-phase4-poisson.md`.
 
 RESUME:
 ```text
 You are cursor/mspl-phase4-poisson. Isolated worktree
 /private/tmp/gllvmtmb-mspl-phase4-poisson. READ LOOP/GOAL.md then
-checkpoint.md. A0–A2 done (102/102 oracle expectations). Finish or
-update the docs+test PR. Do not admit Poisson. Do not merge to main.
+checkpoint.md. GOAL landed as prep+PR #972 (102/102 oracle
+expectations). HARD STOP: do not admit Poisson; do not merge to main.
 ```

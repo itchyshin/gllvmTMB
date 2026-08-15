@@ -49226,3 +49226,46 @@ Moved the Arc 1A kit to
 `LOOP/` from `origin/main`. `git diff origin/main -- LOOP/` is empty.
 
 Not run: tests (docs-only restore). Not merged. Arc 1B not started.
+
+---
+
+## 2026-08-15 — MSPL catch-up Phase 2 + Phase 3 prep (Cursor)
+
+Lane `cursor/mspl-catchup-ml-laplace` in
+`/private/tmp/gllvmtmb-mspl-estimator-programme-roadmap`.
+Pre-edit: `gh pr list --state open` showed #962 (1A sibling),
+#961 (programme docs), #960/#958/#957/#955 (foreign). Append only.
+Phase 2 already at `5f306119`. This closeout adds the Heywood
+derivation, E1–E7 oracles, and stacked-PR docs. Not EVA. Do not
+merge #962 or #961 from here.
+
+Commands (OMP_NUM_THREADS=1, NOT_CRAN=true, `pkgload::load_all`
+compile=FALSE):
+
+```r
+testthat::test_file("tests/testthat/test-mspl-gaussian-heywood-oracles.R")
+# [ FAIL 0 | WARN 0 | SKIP 0 | PASS 68 ]
+
+testthat::test_file("tests/testthat/test-mspl-registry.R")
+# [ FAIL 0 | WARN 0 | SKIP 0 | PASS 13 ]
+
+testthat::test_file("tests/testthat/test-mspl-api.R")
+# [ FAIL 0 | WARN 0 | SKIP 0 | PASS 241 ]
+```
+
+rg / grep:
+
+- `estimator = "mspl"` in the new oracle file — comment only;
+  no Gaussian MSPL fit.
+- Gaussian registry `status = "planned"` — present; no
+  `admitted` flip.
+- `git diff -- src/` — empty.
+- NEWS / validation-register / repo-root `LOOP/` / Design 117 /
+  interval-feasibility / iSDM / G3P / #872 / #855 / AA-03 — not
+  in this closeout diff.
+
+Not run: `devtools::test()`, `R CMD check`, `pkgdown`, campaigns.
+After-task:
+`docs/dev-log/after-task/2026-08-15-mspl-catchup-phase2-phase3prep.md`.
+Plan-actual: `docs/dev-log/plan-actual/2026-08-15-mspl-catchup.md`.
+Gaussian remains `planned`. No C++. No NEWS.

@@ -114,3 +114,70 @@ spde_slope_gauge_nofit_validate_predecessor_bytes <- function(
     receipt = receipt, state = state, state_md5 = unname(locked$files[["v2-materialized-state.rds"]])
   )
 }
+
+## Bridge an already-created object to the strict generic callback contract.
+## The runner alone must prove the live DLL/object lifecycle; this local helper
+## checks the supplied bridge evidence and retains its callback records.  It
+## never loads a DLL or calls TMB::MakeADFun.
+spde_slope_gauge_nofit_wrap_object_callbacks <- function(
+    object, state, object_id, dll_path, dll_md5,
+    locked = spde_slope_gauge_nofit_locked_predecessor()) {
+  if (!.spde_slope_gauge_nofit_state_ok(state, locked$state_schema) ||
+      !is.list(object) || !is.function(object$fn) || !is.function(object$gr) ||
+      !is.numeric(object$par) || !identical(names(object$par), state$block_labels) ||
+      length(object$par) != length(state$theta) ||
+      !is.integer(object_id) || length(object_id) != 1L || is.na(object_id) || object_id < 1L ||
+      !is.character(dll_path) || length(dll_path) != 1L || is.na(dll_path) || !file.exists(dll_path) ||
+      !.spde_slope_gauge_nofit_md5(dll_md5) ||
+      !identical(unname(tools::md5sum(dll_path))[[1L]], dll_md5)) {
+    .spde_slope_gauge_fail("object callback bridge evidence is invalid")
+  }
+  raw_order <- state$parameter_order
+  audit <- new.env(parent = emptyenv())
+  audit$objective <- list()
+  audit$gradient <- list()
+  require_theta <- function(theta) {
+    if (!is.numeric(theta) || length(theta) != length(raw_order) || any(!is.finite(theta))) {
+      .spde_slope_gauge_fail("fresh object callback received an invalid raw vector")
+    }
+    unname(as.double(theta))
+  }
+  objective_fn <- function(theta) {
+    input <- require_theta(theta)
+    value <- .spde_slope_gauge_scalar_double(object$fn(input), "fresh object objective")
+    audit$objective[[length(audit$objective) + 1L]] <- list(
+      input = stats::setNames(input, raw_order), value = value
+    )
+    value
+  }
+  gradient_fn <- function(theta) {
+    input <- require_theta(theta)
+    gradient <- object$gr(input)
+    if (!is.numeric(gradient) || length(gradient) != length(raw_order) || any(!is.finite(gradient))) {
+      .spde_slope_gauge_fail("fresh object gradient is not finite positional evidence")
+    }
+    supplied_names <- names(gradient)
+    raw_gradient <- as.double(gradient)
+    if (is.null(names(gradient))) {
+      gradient <- stats::setNames(as.double(gradient), raw_order)
+    } else if (!identical(names(gradient), raw_order)) {
+      .spde_slope_gauge_fail("fresh object gradient supplied a noncanonical positional order")
+    } else {
+      gradient <- stats::setNames(as.double(gradient), raw_order)
+    }
+    audit$gradient[[length(audit$gradient) + 1L]] <- list(
+      input = stats::setNames(input, raw_order), raw_gradient = raw_gradient,
+      supplied_names = supplied_names, named_gradient = gradient
+    )
+    gradient
+  }
+  list(
+    object_id = object_id, dll_path = normalizePath(dll_path, mustWork = TRUE), dll_md5 = dll_md5,
+    block_labels = state$block_labels, parameter_order = raw_order,
+    objective_fn = objective_fn, gradient_fn = gradient_fn,
+    evaluation_audit = function() list(
+      object_id = object_id, dll_path = normalizePath(dll_path, mustWork = TRUE),
+      dll_md5 = dll_md5, objective = audit$objective, gradient = audit$gradient
+    )
+  )
+}

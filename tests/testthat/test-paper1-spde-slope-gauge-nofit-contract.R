@@ -161,3 +161,61 @@ test_that("the no-fit predecessor gate rejects a symlinked claim directory", {
     fixture$root, fixture$locked
   )$reason, "predecessor_packet_bytes_invalid")
 })
+
+test_that("a verified fresh object bridges an unnamed TMB gradient to strict callback evidence", {
+  contract <- spde_slope_gauge_nofit_contract_env()
+  fixture <- spde_slope_gauge_nofit_fixture(contract)
+  on.exit(unlink(fixture$root, recursive = TRUE), add = TRUE)
+  state <- fixture$state
+  state$schema <- contract$spde_slope_gauge_nofit_locked_predecessor()$state_schema
+  dll_path <- tempfile("spde-slope-gauge-dll-")
+  on.exit(unlink(dll_path), add = TRUE)
+  writeLines("synthetic DLL bytes", dll_path)
+  dll_md5 <- unname(tools::md5sum(dll_path))[[1L]]
+  object <- list(
+    par = stats::setNames(rep(0, 22L), state$block_labels),
+    fn = function(theta) fixture$state$objective + sum((theta - fixture$state$theta)^2),
+    gr = function(theta) unname(2 * (theta - fixture$state$theta))
+  )
+  state$objective <- object$fn(state$theta)
+  state$gradient <- stats::setNames(object$gr(state$theta), names(state$theta))
+  callbacks <- contract$spde_slope_gauge_nofit_wrap_object_callbacks(
+    object, state, 1L, dll_path, dll_md5
+  )
+  verdict <- contract$spde_slope_gauge_validate_no_fit_state(
+    state[c("theta", "objective", "gradient")], callbacks$objective_fn, callbacks$gradient_fn
+  )
+  expect_true(verdict$valid)
+  expect_identical(callbacks$object_id, 1L)
+  expect_identical(callbacks$parameter_order, contract$spde_slope_gauge_raw_order())
+  audit <- callbacks$evaluation_audit()
+  expect_length(audit$objective, 45L)
+  expect_length(audit$gradient, 1L)
+  expect_identical(audit$gradient[[1L]]$supplied_names, NULL)
+  expect_identical(audit$gradient[[1L]]$raw_gradient, unname(state$gradient))
+  expect_identical(names(audit$gradient[[1L]]$input), contract$spde_slope_gauge_raw_order())
+})
+
+test_that("the fresh-object bridge rejects wrong object or supplied gradient order", {
+  contract <- spde_slope_gauge_nofit_contract_env()
+  fixture <- spde_slope_gauge_nofit_fixture(contract)
+  on.exit(unlink(fixture$root, recursive = TRUE), add = TRUE)
+  state <- fixture$state
+  state$schema <- contract$spde_slope_gauge_nofit_locked_predecessor()$state_schema
+  dll_path <- tempfile("spde-slope-gauge-dll-")
+  on.exit(unlink(dll_path), add = TRUE)
+  writeLines("synthetic DLL bytes", dll_path)
+  dll_md5 <- unname(tools::md5sum(dll_path))[[1L]]
+  good <- list(par = stats::setNames(rep(0, 22L), state$block_labels),
+    fn = function(theta) 0, gr = function(theta) stats::setNames(rep(0, 22L),
+      rev(contract$spde_slope_gauge_raw_order())))
+  callbacks <- contract$spde_slope_gauge_nofit_wrap_object_callbacks(
+    good, state, 1L, dll_path, dll_md5
+  )
+  expect_error(callbacks$gradient_fn(state$theta), "noncanonical positional order")
+  bad_object <- good
+  names(bad_object$par)[[1L]] <- "wrong_block"
+  expect_error(contract$spde_slope_gauge_nofit_wrap_object_callbacks(
+    bad_object, state, 1L, dll_path, dll_md5
+  ), "object callback bridge evidence")
+})

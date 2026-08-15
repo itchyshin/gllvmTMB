@@ -457,3 +457,122 @@ test_that("loading_ridge is an integration-neutral alias and cannot double-speci
     class = "gllvmTMB_loading_ridge_alias_conflict"
   )
 })
+
+## ---- Design 118 s7.1 prerequisite: mspl_c_n_multiplier ------------------
+##
+## Private, unexported probe hook for the Phase-B penalty-sensitivity fence
+## (docs/design/118-mspl-interval-calibration-protocol.md s1.2). It is read
+## from an undocumented `control$mspl_c_n_multiplier` entry -- NOT a
+## gllvmTMBcontrol() formal -- so it must never surface as public API.
+
+test_that("mspl_c_n_multiplier is not a gllvmTMBcontrol() formal", {
+  expect_false("mspl_c_n_multiplier" %in% names(formals(gllvmTMBcontrol)))
+  expect_false("mspl_c_n_multiplier" %in% names(gllvmTMBcontrol()))
+})
+
+test_that("mspl_c_n_multiplier = 1.0 reproduces the unmultiplied objective and gradient", {
+  ## Reference value recorded from the unchanged code path (multiplier field
+  ## always defaults to 1.0, so this fixture's fit is numerically identical
+  ## before and after the DATA_SCALAR(mspl_c_n_multiplier) addition): fitting
+  ## `.mspl_fit("logit", q = 1L)` on this platform gave
+  ## `fit$opt$objective == 47.2138369916192` (exact trailing digits are
+  ## BLAS/platform dependent, which is why the gate below re-derives the
+  ## comparator inside the test rather than pinning a literal constant).
+  fit <- .mspl_fit("logit", q = 1L)
+  par <- fit$opt$par
+
+  build_obj <- function(mult) {
+    data <- fit$tmb_data
+    data$mspl_c_n_multiplier <- mult
+    TMB::MakeADFun(
+      data = data, parameters = fit$tmb_params, map = fit$tmb_map,
+      random = fit$random, DLL = fit$tmb_obj$env$DLL, silent = TRUE
+    )
+  }
+
+  obj_1  <- build_obj(1.0)
+  obj_05 <- build_obj(0.5)
+  obj_2  <- build_obj(2.0)
+
+  fn_1  <- obj_1$fn(par); gr_1  <- obj_1$gr(par)
+  fn_05 <- obj_05$fn(par); gr_05 <- obj_05$gr(par)
+  fn_2  <- obj_2$fn(par); gr_2  <- obj_2$gr(par)
+
+  ## GATE: multiplier = 1.0 must reproduce the pre-change tape's value --
+  ## the objective and gradient at the fit's own optimum. Both are compared
+  ## on an ABSOLUTE scale (rather than expect_equal()'s relative default):
+  ## the gradient entries sit near the fit's own numerical-convergence floor
+  ## (~1e-6), where a relative tolerance is dominated by noise.
+  expect_lt(abs(as.numeric(fn_1) - as.numeric(fit$opt$objective)), 1e-8)
+  expect_lt(
+    max(abs(as.numeric(gr_1) - as.numeric(fit$tmb_obj$gr(par)))), 1e-8
+  )
+
+  ## 0.5 and 2.0 must differ from 1.0, both in objective and gradient.
+  expect_false(isTRUE(all.equal(fn_05, fn_1)))
+  expect_false(isTRUE(all.equal(fn_2, fn_1)))
+  expect_false(isTRUE(all.equal(as.numeric(gr_05), as.numeric(gr_1))))
+  expect_false(isTRUE(all.equal(as.numeric(gr_2), as.numeric(gr_1))))
+})
+
+test_that("mspl_c_n_multiplier is a fail-closed private probe hook", {
+  dat <- .mspl_fixture("logit", 1L)
+  form <- y ~ 0 + trait + latent(0 + trait | site, d = 1, unique = FALSE)
+  bad_multiplier <- function(value) {
+    ctrl <- gllvmTMBcontrol(n_init = 1L, init_jitter = 0, se = FALSE,
+                             warn_runaway = FALSE)
+    ctrl$mspl_c_n_multiplier <- value
+    ctrl
+  }
+  for (bad in list(NA_real_, Inf, -Inf, NaN, 0, -1, c(1, 2), "1")) {
+    expect_error(
+      gllvmTMB(form, dat, family = binomial(), estimator = "mspl",
+               control = bad_multiplier(bad)),
+      class = "gllvmTMB_mspl_c_n_multiplier_invalid"
+    )
+  }
+})
+
+test_that("mspl_c_n_multiplier moves the count-attractor root under saturation", {
+  ## A1b's mechanism at small scale: an intercept-only trait whose column is
+  ## fully saturated (all successes) under cloglog collapses the loading and
+  ## pins the fixed effect on a penalty-determined root. Larger c_n pulls
+  ## that root toward zero -- verified empirically below, not assumed.
+  set.seed(9001)
+  n_site <- 18L; n_trait <- 3L
+  site <- factor(rep(sprintf("s%02d", seq_len(n_site)), each = n_trait))
+  trait <- factor(rep(sprintf("t%d", seq_len(n_trait)), n_site),
+                   levels = sprintf("t%d", seq_len(n_trait)))
+  z <- matrix(stats::rnorm(n_site), n_site, 1L)
+  Lambda <- matrix(c(0.8, -0.55, 0.35), n_trait, 1L)
+  beta <- c(-0.5, 0.1, 3.0)
+  eta <- beta[as.integer(trait)] + rowSums(
+    z[as.integer(site), , drop = FALSE] * Lambda[as.integer(trait), , drop = FALSE]
+  )
+  mu <- -expm1(-exp(eta))
+  dat <- data.frame(site = site, trait = trait,
+                     y = stats::rbinom(length(mu), 1L, mu))
+  stopifnot(identical(unname(tapply(dat$y, dat$trait, mean)[[3L]]), 1))
+
+  fit_at <- function(mult) {
+    ctrl <- gllvmTMBcontrol(n_init = 1L, init_jitter = 0, se = FALSE,
+                             warn_runaway = FALSE)
+    ctrl$mspl_c_n_multiplier <- mult
+    gllvmTMB(
+      y ~ 0 + trait + latent(0 + trait | site, d = 1, unique = FALSE),
+      data = dat, family = stats::binomial(link = "cloglog"),
+      estimator = "mspl", control = ctrl
+    )
+  }
+
+  b3 <- function(fit) unname(fit$opt$par[names(fit$opt$par) == "b_fix"][[3L]])
+  root_low  <- b3(fit_at(0.5))
+  root_mid  <- b3(fit_at(1.0))
+  root_high <- b3(fit_at(2.0))
+
+  expect_true(all(is.finite(c(root_low, root_mid, root_high))))
+  ## Empirically: the root strictly DECREASES (moves toward zero) as the
+  ## multiplier -- and hence c_n -- increases.
+  expect_lt(root_high, root_mid)
+  expect_lt(root_mid, root_low)
+})

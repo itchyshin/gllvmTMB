@@ -160,11 +160,27 @@
   use_spde_latent_slope, d_spde_lv, theta_rr_spde_lv, log_tau_spde,
   log_tau_spde_map, mesh, use_mi_predictor, integration, engine, REML,
   ridge_explicit,
-  unit_id = NULL, trait_id = NULL, sigma_eps_mapped = FALSE
+  unit_id = NULL, trait_id = NULL, sigma_eps_mapped = FALSE,
+  mspl_c_n_multiplier = 1
 ) {
   if (isTRUE(REML)) {
     .gllvmTMB_mspl_abort("{.code estimator = \"mspl\"} cannot be combined with {.code REML = TRUE}.")
   }
+  ## Design 118 s7.1 prerequisite: a private, unexported probe hook on the
+  ## penalty strength c_n (mspl_c_n_multiplier, default 1.0). It is read from
+  ## an undocumented control-list entry rather than a gllvmTMBcontrol()
+  ## formal -- the Phase-B penalty-sensitivity fence (s1.2) is the only
+  ## intended caller and must never be advertised as public API. Fail closed
+  ## on a malformed probe value exactly as any other internal MSPL surface
+  ## mismatch does.
+  if (!is.numeric(mspl_c_n_multiplier) || length(mspl_c_n_multiplier) != 1L ||
+      !is.finite(mspl_c_n_multiplier) || mspl_c_n_multiplier <= 0) {
+    .gllvmTMB_mspl_abort(c(
+      "Internal LA-MSPL penalty multiplier is invalid.",
+      "x" = "{.field mspl_c_n_multiplier} must be a single finite value greater than zero."
+    ), class = "gllvmTMB_mspl_c_n_multiplier_invalid")
+  }
+  mspl_c_n_multiplier <- as.numeric(mspl_c_n_multiplier)
   if (!identical(engine, "tmb") || !identical(integration, "laplace")) {
     .gllvmTMB_mspl_abort(c(
       "LA-MSPL currently requires the native TMB Laplace route.",
@@ -418,6 +434,7 @@
   } else {
     2 * sqrt(p_free / N_eff)
   }
+  rate <- rate * mspl_c_n_multiplier
 
   list(
     estimator_id = 1L,
@@ -430,6 +447,7 @@
     p_psi = as.integer(p_psi),
     p_free = as.integer(p_free),
     rate = rate,
+    mspl_c_n_multiplier = mspl_c_n_multiplier,
     mspl_S_diag = as.numeric(mspl_S_diag),
     mspl_N_units = as.integer(mspl_N_units),
     fixed_design = fixed,

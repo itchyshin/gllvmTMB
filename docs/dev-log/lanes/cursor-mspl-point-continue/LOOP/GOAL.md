@@ -8,6 +8,9 @@ This kit lives at `docs/dev-log/lanes/cursor-mspl-point-continue/LOOP/`.
 Closed kits (`cursor-mspl-catchup`, `cursor-mspl-gaussian`, `cursor-mspl-arc-1a`)
 are historical — do not reopen their GOALs.
 
+Successor verification lane (do not reopen this GOAL):
+`docs/dev-log/lanes/cursor-mspl-phase4-prep-goal/LOOP/`.
+
 This is **LA-MSPL**, not EVA, not VA, not AGHQ-MSPL.
 
 ## Mission

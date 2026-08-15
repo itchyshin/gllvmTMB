@@ -49359,3 +49359,32 @@ After-task:
 Decision:
 `docs/dev-log/research/2026-08-15-mspl-gaussian-psi-uniqueness-map.md`.
 
+## 2026-08-15 — MSPL Phase-4 prep-goal verify (Cursor)
+
+Lane `cursor/mspl-phase4-prep-goal` in
+`/private/tmp/gllvmtmb-mspl-estimator-programme-roadmap`. Independent
+verifier counts recorded. No admit. No merge of #972–#976. No
+`src/` / `R/mspl.R` change.
+
+| PR | Measured |
+|---|---|
+| #971 MERGED `cb126576` | 29/29 PASS (168 expects); TSV 64/64; Ubuntu CI pending |
+| #972 Poisson | 102/102 PASS; planned/phase4_prep |
+| #973 Tweedie | 62/62 (not 51); wording `90a156cf` |
+| #974 NB2 | 72/72; stays excluded |
+| #975 beta | 65/65; wording `daa76352` |
+| #976 NB1 | 68/68; no nbinom1 row |
+
+```sh
+rg -n "fam_ids %in% c\\(0L, 1L\\)" R/mspl.R
+# prepare still {0,1}
+git merge-tree --write-tree origin/main origin/cursor/mspl-phase4-poisson
+# CLEAN; same for tweedie/nbinom2/beta/nbinom1; 1 behind = cb126576 only
+```
+
+After-task:
+`docs/dev-log/after-task/2026-08-15-mspl-phase4-prep-goal.md`.
+Melissa:
+`docs/dev-log/plan-actual/2026-08-15-mspl-phase4-prep-goal.md`.
+Not run: merge, admit, NEWS covered, Totoro, rebase onto main.
+

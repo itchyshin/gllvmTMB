@@ -1,11 +1,13 @@
 # Phase 4 prep — Poisson LA-MSPL route (not admitted)
 
-**Status:** design + local oracles only. Registry rows
+**Status:** design + local oracles only (2026-08-15 strengthen pass
+on lane `cursor/mspl-phase4-poisson`). Registry rows
 `poisson:log:ordinary:q1` and `q2` are **`planned`** with
 `evidence = "phase4_prep"`. `.gllvmTMB_mspl_prepare()` still rejects
 every non-binomial / non-gaussian family at the `family_id` fence
-(`fam_ids %in% c(0L, 1L)`). **Verdict: PASS for oracles / planned
-rows, FAIL for C++ / admission / `estimator = "mspl"` on Poisson.**
+(`fam_ids %in% c(0L, 1L)`; Poisson is `family_id = 2`). **Verdict:
+PASS for oracles / planned rows, FAIL for C++ / admission /
+`estimator = "mspl"` on Poisson.**
 
 **Reader:** statistical method developer / TMB engineer who must
 decide whether a later tape may add a Poisson count atom.
@@ -89,6 +91,16 @@ slice first; latent loadings deferred to a separate proof):
   rows. Using Bernoulli \(N_{\mathrm{eff}}=\#\{\text{rows}\}\) as the
   sole rate denominator would mis-scale designs that differ only by
   exposure.
+- **P5** (log-det scaling, exact). For \(\varepsilon>0\),
+  \(I(\varepsilon\mu)=\varepsilon I(\mu)\) and therefore
+  \(P^*_{\mathrm{J}}(\varepsilon\mu)=P^*_{\mathrm{J}}(\mu)+\tfrac{p_*}{2}\log\varepsilon\)
+  with \(p_*=\mathrm{ncol}(X_*)\). Near-zero deterioration is this
+  identity, not a numerical coincidence (oracle E3).
+- **P6** (all-zero log-pmf bound). For \(y\equiv 0\),
+  \(\sum(y\log\mu-\mu)=-\sum\mu\le 0\), so the conditional Poisson
+  kernel is bounded above by 0 and tends to 0 as \(\mu\to 0\). The
+  Jeffreys atom, not the pmf, is what diverges to \(-\infty\) on that
+  path (oracle E2).
 
 Latent loading coercivity under Laplace is **OPEN**. The Bernoulli
 radial atom is listed only as a forbidden transplant, not as a
@@ -109,9 +121,12 @@ The conditional MLE drives \(\mu_{\cdot t}\to 0\) (equivalently
 weights on those rows vanish with \(\mu\). Any soft penalty whose
 fixed-effect atom is \(\tfrac12\log\det(X_*^\top W X_*)\) therefore
 diverges to \(-\infty\) on that path when the trait’s design columns
-remain in \(X_*\) (oracle E2). Finiteness of a penalised fit on
-all-zero data is necessary and **not** sufficient for admission
-(programme §16).
+remain in \(X_*\) (oracle E2). The same divergence holds
+*trait-wise*: sending only trait A’s intercept to \(-\infty\) while
+trait B stays healthy still drives \(P^*_{\mathrm{J}}\to-\infty\)
+because trait A’s column remains in \(X_*\). Finiteness of a
+penalised fit on all-zero data is necessary and **not** sufficient
+for admission (programme §16).
 
 ### Near-zero counts
 
@@ -151,10 +166,15 @@ with known exposure \(E_{it}>0\). Then \(\mu=E\circ\exp(\eta^{\mathrm{free}})\).
 
 Oracle E4: at fixed free \(\eta\), replacing \(E\) by \(2E\) doubles
 \(\mu\) and doubles every entry of \(I(\beta_*)\), while \(N_{\mathrm{rows}}\)
-is unchanged. Oracle E5: absorbing \(\log E\) into the offset leaves
+is unchanged. The transplanted rates
+\(c_n=2\sqrt{p_{\mathrm{free}}/N_{\mathrm{rows}}}\) and
+\(c_N=\sqrt{2/N_{\mathrm{rows}}}\) are **invariant** under that
+exposure change, so they cannot be the Poisson information-size
+knob. Oracle E5: absorbing \(\log E\) into the offset leaves
 \(\mu\) unchanged when \(\eta^{\mathrm{free}}\) is reduced by
 \(\log E\); the information atom tracks \(\mu\), not the spelling of
-the offset.
+the offset. Dropping the offset without folding \(\eta\) changes
+both \(\mu\) and \(I\).
 
 Live Design 88 still fences *nonzero* offsets on the Bernoulli MSPL
 surface. This prep cell records the exposure algebra for a *future*
@@ -233,13 +253,13 @@ Oracle E6 refuses Hirose-on-Poisson as a type error: there is no
 
 | ID | What | Tolerance / decision |
 |---|---|---|
-| E1 | Poisson \(I=X^\top\operatorname{diag}(\mu)X\); Bernoulli \(W_g=\mu(1-\mu)\) **differs** | rel. err \(<10^{-12}\) on Poisson; contrast fires |
-| E2 | All-zero path: \(\beta\to-\infty\Rightarrow\mu\to 0\Rightarrow P^*_{\mathrm{J}}\to-\infty\) | monotone decrease; large negative |
-| E3 | Near-zero: scale \(\mu\leftarrow \varepsilon\mu_0\) deteriorates \(P^*_{\mathrm{J}}\) | monotone in \(\varepsilon\downarrow 0\) |
-| E4 | Exposure doubling at fixed \(\eta\) doubles \(I\) and \(\sum\mu\); \(N_{\mathrm{rows}}\) fixed | exact factor 2 |
-| E5 | Offset spelling: \(o=\log E\) vs folding \(\log E\) into \(\eta\) leaves \(\mu\) and \(I\) identical | \(<10^{-12}\) |
-| E6 | Hirose \(\sum S/\psi\) is undefined / refused for Poisson mean model | structural reject |
-| E7 | \(\partial V_{\mathrm{loading}}/\partial\mu\equiv 0\); Poisson \(P^*_{\mathrm{J}}\) **does** move with \(\mu\) | finite-diff |
+| E1 | Poisson \(I=X^\top\operatorname{diag}(\mu)X\) (also \(X^\top W X\) with \(W=\mathrm{diag}(\mu)\)); PD; P1 continuity; Bernoulli \(W_g=\mu(1-\mu)\) **differs**, and is not even non-negative at typical Poisson \(\mu>1\) | rel. err \(<10^{-12}\) on Poisson; contrast fires |
+| E2 | All-zero path: \(\beta\to-\infty\Rightarrow\mu\to 0\Rightarrow\operatorname{tr}(W)\to 0\Rightarrow P^*_{\mathrm{J}}\to-\infty\); P6 kernel \(-\sum\mu\le 0\); trait-wise vanishing of one intercept still diverges | monotone decrease; large negative; trait-B means stay \(O(1)\) |
+| E3 | Near-zero: scale \(\mu\leftarrow \varepsilon\mu_0\) deteriorates \(P^*_{\mathrm{J}}\); **P5** \(I(\varepsilon\mu)=\varepsilon I(\mu)\), \(P^*_{\mathrm{J}}(\varepsilon\mu)=P^*_{\mathrm{J}}(\mu)+\tfrac{p_*}{2}\log\varepsilon\) | identity \(<10^{-12}\); monotone in \(\varepsilon\downarrow 0\) |
+| E4 | Exposure doubling at fixed \(\eta\) doubles \(I\) and \(\sum\mu\); \(N_{\mathrm{rows}}\) fixed; \(\sum\mu\neq\sum E\) in general; Bernoulli \(c_n\) and Gaussian \(c_N\) **unchanged** | exact factor 2; rate contrast |
+| E5 | Offset spelling: \(o=\log E\) vs folding \(\log E\) into \(\eta\) leaves \(\mu\) and \(I\) identical; dropping the offset without folding does **not** | \(<10^{-12}\); converse fires |
+| E6 | Hirose \(\sum S/\psi\) is undefined / refused for Poisson mean model; \(1/\mu\) fabrication \(\neq P^*_{\mathrm{J}}\); Hirose \(\to+\infty\) as \(\psi\to 0\) while \(P^*_{\mathrm{J}}\to-\infty\) as \(\mu\to 0\) | structural reject; opposite-signed |
+| E7 | \(\partial V_{\mathrm{loading}}/\partial\mu\equiv 0\); Poisson \(P^*_{\mathrm{J}}\) **does** move with \(\mu\); on the all-zero path \(V_{\mathrm{loading}}\) stays put while \(P^*_{\mathrm{J}}\) falls | finite-diff; path contrast |
 
 ## 6. Verdict
 
@@ -287,9 +307,34 @@ This note does **not** claim:
 - **No C++.** `git diff -- src/` must stay empty on this arc.
 - **No NEWS covered.** No validation-register promotion.
 - **No repo-root `LOOP/`.** Lane kit:
-  `docs/dev-log/lanes/cursor-mspl-point-continue/LOOP/`.
+  `docs/dev-log/lanes/cursor-mspl-phase4-poisson/LOOP/`.
+  The earlier point-continue kit that first landed this note is
+  historical; do not reopen it.
 
 ## Out of scope here
 
 Campaigns, Totoro/DRAC, NEWS, register promotion, Phase 1B API,
 interval lane, NB1/NB2, C++ tape, `estimator = "mspl"` on Poisson.
+
+## 10. Strengthen pass (this lane)
+
+Lane `cursor/mspl-phase4-poisson` did **not** admit Poisson and did
+**not** add a new oracle ID. It pinned identities that the first
+prep pass only sketched:
+
+- E1 now checks the explicit \(X^\top\operatorname{diag}(\mu)X\)
+  form, positive-definiteness, P1 continuity, and that Bernoulli
+  \(W_g\) can be negative at Poisson means \(\mu>1\).
+- E2 now tracks \(\mu\) and \(\operatorname{tr}(W)\), pins P6, and
+  adds a two-trait all-zero path.
+- E3 now asserts the exact P5 log-det scaling identity.
+- E4 now refuses Bernoulli \(c_n\) / Gaussian \(c_N\) as
+  exposure-blind rate transplants.
+- E5 adds the converse (offset dropped, \(\eta\) not folded).
+- E6 contrasts opposite-signed Hirose vs Jeffreys boundaries.
+- E7 holds \(V_{\mathrm{loading}}\) fixed on the all-zero path.
+- A read-only source pin records that prepare still admits only
+  `family_id %in% {0,1}` while Poisson remains `2`.
+
+Loading-atom coercivity under Laplace, and the Poisson rate \(c\),
+remain **OPEN**.

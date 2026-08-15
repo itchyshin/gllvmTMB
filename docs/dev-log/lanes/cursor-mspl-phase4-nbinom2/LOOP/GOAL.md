@@ -20,8 +20,8 @@ Deliverable: NB2 Phase-4 prep only — information/coercivity note
 HEADLINE: pin why NB2 is not Poisson before anyone tapes a count atom
 DEFER: registry admit; prepare widen; C++ tape; live estimator="mspl";
   SE; NEWS covered; NB1; truncated/hurdle NB; Poisson admit
-DISCIPLINE: planned-only writeup; OMP=1; no src/; no R/mspl.R;
-  closure=after-task+PR
+DISCIPLINE: excluded / no planned NB2 rows; OMP=1; no src/;
+  no R/mspl.R; closure=after-task+PR
 ```
 
 ## Headline
@@ -37,7 +37,8 @@ Poisson.
 - Lane LOOP only under `docs/dev-log/lanes/cursor-mspl-phase4-nbinom2/LOOP/`.
 - Do NOT edit the Dropbox checkout or the point-continue worktree.
 - Do NOT edit `R/mspl.R`, `src/`, other families, or widen prepare.
-- Do NOT flip any registry row to `admitted`.
+- Do NOT add planned or admitted nbinom2 rows. nbinom2 stays
+  **excluded**.
 - Do NOT write NEWS “covered”. Do NOT implement SE / intervals.
 - Local tests only; `OMP_NUM_THREADS=1`; no campaign.
 - Never `git add -A`. Never write repo-root `LOOP/`.
@@ -60,12 +61,12 @@ Poisson.
    `tests/testthat/test-mspl-nbinom2-phase4-oracles.R` (no live
    NB2 `estimator = "mspl"`).
 3. After-task + check-log with structured test counts.
-4. Commit, push, open PR. Registry stays not-admitted; prepare
-   fence unchanged.
+4. Commit, push, open PR. nbinom2 stays **excluded**; no planned
+   NB2 rows; prepare fence unchanged.
 
 ## OPEN GATES (do not execute)
 
-- Registry `planned` → `admitted` (or even adding planned NB2 rows)
+- Adding planned NB2 rows, or `excluded` → `planned` / `admitted`
 - `.gllvmTMB_mspl_prepare()` widen beyond `family_id %in% {0,1}`
 - C++ tape / live `estimator = "mspl"` on nbinom2
 - SE / intervals (Codex Lane B PROTECTED; Gaussian SE also closed)

@@ -49291,3 +49291,28 @@ collapsed to ~0. Not a programme result.
 
 Note: `docs/dev-log/research/2026-08-15-mspl-local-binary-pair-smoke.md`.
 Not run: `devtools::test()`, `R CMD check`, campaigns, intervals.
+
+## 2026-08-15 — MSPL Arc U Ψ uniqueness map + E5b (Cursor)
+
+Lane `cursor/mspl-gaussian-uniqueness-map` in
+`/private/tmp/gllvmtmb-mspl-estimator-programme-roadmap` after merging
+#964 and #965. Shinichi KEEP GOING; uniqueness OPEN GATE closed as
+pick C (pinned-σ_ε FA). Not EVA. No C++. No admission flip.
+
+```r
+OMP_NUM_THREADS=1 NOT_CRAN=true
+pkgload::load_all(".", compile = FALSE)
+testthat::test_file("tests/testthat/test-mspl-gaussian-heywood-oracles.R")
+# [ FAIL 0 | WARN 0 | SKIP 0 | PASS 74 ]
+```
+
+- `git diff -- src/` — empty.
+- Gaussian registry still `planned`.
+- SE/interval paths not touched (PROTECTED Codex Lane B).
+- Repo-root `LOOP/` untouched.
+
+After-task:
+`docs/dev-log/after-task/2026-08-15-mspl-gaussian-psi-uniqueness-map.md`.
+Decision:
+`docs/dev-log/research/2026-08-15-mspl-gaussian-psi-uniqueness-map.md`.
+

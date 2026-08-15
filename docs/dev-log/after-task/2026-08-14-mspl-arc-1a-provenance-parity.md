@@ -44,9 +44,9 @@ accepted call, default, NEWS claim, or numeric result.
 - `tests/testthat/test-estimator-provenance.R` (new)
 - `tests/testthat/test-mspl-api.R` (two provenance expects on the
   existing ML-identity test)
-- `LOOP/GOAL.md`, `LOOP/arcs.md`, `LOOP/checkpoint.md`,
-  `LOOP/ultra-plan.md` (this-branch `/goal` kit; replaces the
-  historical 0.6 LOOP files on this branch only)
+- `docs/dev-log/lanes/cursor-mspl-arc-1a/LOOP/` (Arc 1A `/goal` kit).
+  Repo-root `LOOP/` was restored from `origin/main` on 2026-08-15 so
+  merging #962 cannot clobber the 0.6 release kit.
 - `docs/dev-log/plans/2026-08-14-cursor-mspl-one-arc-ultra-plan.md`
 - `docs/dev-log/after-task/2026-08-14-mspl-arc-1a-provenance-parity.md`
   (this file)

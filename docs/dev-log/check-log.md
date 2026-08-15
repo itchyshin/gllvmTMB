@@ -49212,3 +49212,17 @@ After-task:
 `docs/dev-log/after-task/2026-08-14-mspl-arc-1a-provenance-parity.md`.
 Plan-actual: `docs/dev-log/plan-actual/2026-08-14-mspl-arc-1a.md`.
 Do not merge. Leave #961 as the docs vehicle.
+
+---
+
+## 2026-08-15 — MSPL Arc 1A LOOP unclobber (Cursor)
+
+Shinichi: clean up, then continue MSPL. The stacked PR would have
+replaced `main`'s 0.6 `LOOP/` kit (377 insertions / 1006 deletions on
+those four files).
+
+Moved the Arc 1A kit to
+`docs/dev-log/lanes/cursor-mspl-arc-1a/LOOP/` and restored repo-root
+`LOOP/` from `origin/main`. `git diff origin/main -- LOOP/` is empty.
+
+Not run: tests (docs-only restore). Not merged. Arc 1B not started.

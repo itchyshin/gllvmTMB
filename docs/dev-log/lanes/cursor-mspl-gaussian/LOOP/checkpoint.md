@@ -1,20 +1,20 @@
 # checkpoint — cursor-mspl-gaussian
 
-GOAL: see GOAL.md.   STATE: S0–S4 PASS; awaiting CI green for single #967 merge (Q1).
+GOAL: see GOAL.md.   STATE: **CLOSED** — #967 MERGED @ `834c4cb6` (2026-08-15).
 
 ARCS DONE (verified):
-- S0 — #967 OPEN MERGEABLE; 3 ahead / 0 behind `origin/main` @ `813da14a`; MSPL-only file map; no foreign lanes.
-- S1 — LOOP kit landed under `docs/dev-log/lanes/cursor-mspl-gaussian/LOOP/` (catch-up GOAL untouched).
-- S2 — Hirose tape PASS (source read): `psi=exp(2*theta_diag_B)`; `c_N=sqrt(2/N)`; gaussian adds Hirose only; Jeffreys/`V_loading` Bernoulli-only; R fence pick C.
-- S3 — `test-mspl-registry.R` + `test-mspl-gaussian-fit-smoke.R` → `S3_SUMMARY failed=0` (log, not exit code alone); Bernoulli admit row still present.
-- S4 — Rose PASS: NEWS untouched in PR; no SE/sandwich/profile/interval paths; registry `oracle_local` + not-covered note; Codex Lane B untouched.
+- S0–S4 PASS (Hirose tape; local smoke; Rose; no rebuild).
+- S4b — oracle fence fix `aaac7701` (planned→admitted/oracle_local). Local `LOCAL_MSPL_SUMMARY failed=0`.
+- S5 — CI run 31893473934 **SUCCESS** (37m58s ubuntu); merged once. Merge SHA `834c4cb684820f64f6c710e897bae97dbf5481c5`.
+- V — fix `aaac7701` is ancestor of `origin/main` @ `834c4cb6`.
+- R — Melissa plan-actual filled with merge SHA.
 
-ARC IN PROGRESS: S5 — Melissa plan-actual drafted; merge when CI green (check not already merged).
+ARC IN PROGRESS: none.
 
-NEXT: poll `gh pr checks 967` → merge once → fill merge SHA in plan-actual → Mission Control NOW → V/R freeze GOAL.
+NEXT: Phase 3 campaign / multi-seed recovery for `covered` is a **later gated** arc (HARD STOP here). SE stays on PROTECTED Codex Lane B. Optional: catch-up checkpoint one-line pointer.
 
-OPEN GATES (need human): none (Q1 already YES; waiting only on CI).
+OPEN GATES (need human): none for this GOAL. Next programme gates: Totoro campaign (covered), Gaussian/binary SE, Poisson Phase 4 — all HARD STOP until chosen.
 
-TRUTH LIVES IN: worktree `/private/tmp/gllvmtmb-mspl-estimator-programme-roadmap` @ `813da14a` (+ pending LOOP/Melissa commit); PR https://github.com/itchyshin/gllvmTMB/pull/967
+TRUTH LIVES IN: `origin/main` @ `834c4cb6`; PR https://github.com/itchyshin/gllvmTMB/pull/967 (MERGED); LOOP `docs/dev-log/lanes/cursor-mspl-gaussian/LOOP/`.
 
-RESUME: You are cursor-mspl-gaussian. READ GOAL→checkpoint→ultra-plan. CONTINUE FROM S5: if #967 still OPEN and CI green and Rose PASS, merge once. If already merged, record SHA and close GOAL. HARD STOP campaign/SE/Poisson/NEWS covered/free-ε.
+RESUME: GOAL done. Do not reopen #967. Do not rebuild Hirose. Next work needs a new G0.

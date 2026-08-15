@@ -129,8 +129,9 @@ write_inversion_manifest <- function(root, manifest) {
     case_id = manifest$case_id[[i]], shard_id = seq_len(manifest$n_shards[[i]]),
     stringsAsFactors = FALSE
   )))
-  utils::write.table(array_map, file.path(root, "array-map.tsv"), sep = "\t", row.names = FALSE,
-    quote = FALSE)
+  atomic_write_tsv(array_map, file.path(root, "array-map.tsv"))
+  atomic_write_tsv(array_map[array_map$shard_id == 1L, , drop = FALSE],
+    file.path(root, "pre-run-array-map.tsv"))
   invisible(manifest)
 }
 

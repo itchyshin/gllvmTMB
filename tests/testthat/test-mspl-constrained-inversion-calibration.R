@@ -18,6 +18,7 @@ test_that("private MSPL constrained-inversion calibration contract is frozen", {
   expect_true(all(manifest$outer_per_shard == 1L))
   expect_true(all(manifest$minimum_usable_bootstrap == 499L))
   expect_identical(nrow(utils::read.delim(file.path(root, "array-map.tsv"))), 12000L)
+  expect_identical(nrow(utils::read.delim(file.path(root, "pre-run-array-map.tsv"))), 12L)
 
   smoke_root <- tempfile("mspl-constrained-inversion-smoke-")
   smoke_env <- c("GLLVM_TMB_PILOT_SOURCE=true", "MSPL_INVERSION_TEST_MODE=true")

@@ -190,18 +190,27 @@ is yours rather than the data's*.
 **This is the arc that makes a penalty safe to leave on**, and it is worth shipping whatever
 §6.3 concludes.
 
-### 6.2 Interval construction under a penalty
+### 6.2 Interval construction under a penalty — RESOLVED INTO A PROTOCOL (2026-08-15)
 
-**Deliverable.** Either a defensible interval for penalised estimates, or a documented refusal.
+This arc is no longer an open question; it has a signed-off Phase-A adjudication and a
+pre-registered Phase-B protocol. Three facts closed it:
 
-Design 88's point-only fence is the honest interim answer. Do **not** start by assuming profile
-intervals fix the coverage problem — verify constraint 3 against the Kosmidis & Firth PDF
-first. If the caveat holds under profiling, the honest options narrow to:
-
-- simulation-calibrated intervals,
-- a bootstrap with the penalty applied **inside** each resample, or
-- **reporting the estimate without an interval and saying why** — a legitimate answer, and
-  better than a confident wrong one.
+- **Constraint 3 is verified against the primary** (Phase-A slice A2, arXiv:1812.01938v4):
+  the Kosmidis & Firth (2021, §2.2, p. 5) coverage caveat **does survive profiling** —
+  *"also true when the penalized likelihood is profiled"* — so "just use profile intervals"
+  is not a fix, exactly as §4 warned. The caveat is an existence statement about the
+  extreme-parameter region; the paper is silent about the rest of the space.
+- **The campaign verdict** (2026-08-14 production campaign, 108 cells; Phase-A slices
+  A1/A1b): 55 joint-gate failures partition 26 over / 6 under / 1 availability-only /
+  22 borderline-MCSE; the catastrophic pocket (cloglog × high prevalence, coverage 0.010)
+  is an **intrinsic penalty-determined optimum under quasi-complete separation** — a
+  discrete family of count-attractors matched analytically to 1e-6 — not a bug. It is
+  refused by a fence, never calibrated.
+- **The interval design now lives in Design 118**
+  (`docs/design/118-mspl-interval-calibration-protocol.md`): a level-calibrated penalised
+  profile behind a saturation screen + penalty-sensitivity fence, with a pre-registered
+  simulation-calibration protocol (Phase B) gated on the maintainer. Design 88's
+  point-only fence stands until that gate passes.
 
 Lands on the already-open CI-08 / CI-10 interval-calibration weak spot.
 

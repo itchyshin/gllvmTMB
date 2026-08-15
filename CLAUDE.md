@@ -3,13 +3,26 @@
 This repository is shared by humans, Codex, and Claude Code. Read
 `AGENTS.md` first; it is the source of truth for project rules.
 
-## Live Phase Snapshot — 2026-08-08
+## Live Phase Snapshot — 2026-08-15
 
 > **🔴 MULTI-LANE REPO — this snapshot is NOT a single lane's status.** No one bullet
 > represents the project. **The lane map is authoritative for ownership:**
 > `docs/dev-log/handover/2026-07-25-active-lane-split.md`, which names EACH lane's own
 > current handover. Read it before any repository mutation. Milestone state is not in
 > either place and must be re-derived from `git`.
+
+- **2026-08-15 — LA-MSPL CATCH-UP + GAUSSIAN ORDINARY CLOSED; NEXT = POINT EVIDENCE LANE.**
+  On `main`: **#963** Phase 2 registry, **#966** uniqueness pick C, **#967** Gaussian Hirose
+  `admitted`/`oracle_local`, **#968/#969** LOOP closeouts. Estimator is **LA-MSPL** (not EVA/VA,
+  not AGHQ-MSPL). Closed kits `cursor-mspl-catchup` / `cursor-mspl-gaussian` — do not reopen.
+  **PROTECTED:** Codex `codex/lane-b-mspl-interval-feasibility` (binary SE). Worktree only
+  `/private/tmp/gllvmtmb-mspl-estimator-programme-roadmap` (not Dropbox). **Recommended next:**
+  `cursor/mspl-gaussian-point-evidence` — multi-seed healthy+near-Heywood LA-ML vs LA-MSPL
+  point smoke (`se=FALSE`) + Poisson Phase-4 planned only; **≥5 h parallel until GOAL done**;
+  no Gaussian SE; no campaign without G0+receipt. **START HERE:**
+  `docs/dev-log/handover/2026-07-25-active-lane-split.md`, then
+  `docs/dev-log/handover/2026-08-15-cursor-handover.md` for the MSPL lane (other lanes keep
+  their named handovers in the split table).
 
 - **2026-08-08 — CRAN 0.7 TRACK PICK LOCKED; HANDOFF TO CODEX (LIVE TOOLCHAIN).**
   Shinichi G0 answers: **(1)** Ada default tarball — leave-M5 hygiene + Rose fence + later

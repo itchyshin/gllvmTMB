@@ -187,3 +187,85 @@ test_that("the full transformed gradient matches a 22-dimensional quadratic harn
 
   expect_lte(contract$.spde_slope_gauge_relative_error(analytic, finite_difference), 1e-5)
 })
+
+spde_slope_gauge_quadratic_state <- function(contract) {
+  theta <- stats::setNames(seq(-1.1, 1.0, length.out = 22L), contract$spde_slope_gauge_raw_order())
+  theta[20:22] <- c(0.2, -0.1, 0.3)
+  precision <- diag(seq(1.1, 3.2, length.out = 22L))
+  precision[1L, 2L] <- precision[2L, 1L] <- 0.1
+  linear <- seq(-0.3, 0.3, length.out = 22L)
+  objective_fn <- function(raw_theta) {
+    0.5 * drop(crossprod(raw_theta, precision %*% raw_theta)) + sum(linear * raw_theta)
+  }
+  gradient_fn <- function(raw_theta) {
+    stats::setNames(drop(precision %*% raw_theta + linear), contract$spde_slope_gauge_raw_order())
+  }
+  list(
+    state = list(
+      theta = theta, objective = objective_fn(theta),
+      gradient = gradient_fn(theta)
+    ),
+    objective_fn = objective_fn, gradient_fn = gradient_fn
+  )
+}
+
+test_that("the no-fit callback gate independently validates a transformed state", {
+  contract <- spde_slope_gauge_contract_env()
+  fixture <- spde_slope_gauge_quadratic_state(contract)
+
+  verdict <- contract$spde_slope_gauge_validate_no_fit_state(
+    fixture$state, fixture$objective_fn, fixture$gradient_fn
+  )
+  expect_true(verdict$valid)
+  expect_identical(verdict$reason, "no_fit_state_valid")
+  expect_lte(verdict$errors$theta, 64 * .Machine$double.eps)
+  expect_lte(verdict$errors$objective, 1e-10)
+  expect_lte(verdict$errors$gradient, 1e-6)
+  expect_lte(verdict$errors$transformed_gradient, 1e-5)
+  expect_identical(verdict$controls, contract$spde_slope_gauge_no_fit_controls())
+  expect_length(verdict$finite_difference, 22L)
+  expect_identical(vapply(verdict$finite_difference, `[[`, integer(1L), "index"), 1:22)
+  expect_identical(vapply(verdict$finite_difference, `[[`, character(1L), "phi_id"),
+    contract$spde_slope_gauge_phi_order())
+  expect_true(all(vapply(verdict$finite_difference, function(record) {
+    identical(names(record), c("index", "phi_id", "h", "phi_plus", "phi_minus", "theta_plus",
+      "theta_minus", "objective_plus", "objective_minus")) &&
+      is.finite(record$h) && is.finite(record$objective_plus) && is.finite(record$objective_minus)
+  }, logical(1L))))
+})
+
+test_that("the no-fit callback gate rejects named gradient permutations and replay drift", {
+  contract <- spde_slope_gauge_contract_env()
+  fixture <- spde_slope_gauge_quadratic_state(contract)
+  bad_names <- function(raw_theta) {
+    stats::setNames(fixture$gradient_fn(raw_theta), rev(contract$spde_slope_gauge_raw_order()))
+  }
+  bad_objective <- function(raw_theta) fixture$objective_fn(raw_theta) + 1
+  unnamed_gradient <- function(raw_theta) unname(fixture$gradient_fn(raw_theta))
+  perturbation_failure <- function(raw_theta) {
+    if (any(abs(raw_theta - fixture$state$theta) > 1e-7)) NA_real_ else fixture$objective_fn(raw_theta)
+  }
+
+  expect_identical(contract$spde_slope_gauge_validate_no_fit_state(
+    fixture$state, fixture$objective_fn, bad_names
+  )$reason, "callback_unavailable")
+  expect_identical(contract$spde_slope_gauge_validate_no_fit_state(
+    fixture$state, bad_objective, fixture$gradient_fn
+  )$reason, "no_fit_state_replay_failed")
+  expect_identical(contract$spde_slope_gauge_validate_no_fit_state(
+    fixture$state, fixture$objective_fn, unnamed_gradient
+  )$reason, "callback_unavailable")
+  expect_identical(contract$spde_slope_gauge_validate_no_fit_state(
+    fixture$state, perturbation_failure, fixture$gradient_fn
+  )$reason, "finite_difference_callback_unavailable")
+  relaxed_controls <- contract$spde_slope_gauge_no_fit_controls()
+  relaxed_controls$gradient <- 1
+  expect_identical(contract$spde_slope_gauge_validate_no_fit_state(
+    fixture$state, fixture$objective_fn, fixture$gradient_fn, relaxed_controls
+  )$reason, "state_or_callback_schema_invalid")
+  bad_state <- fixture$state
+  bad_state$theta[20L] <- -0.2
+  expect_identical(contract$spde_slope_gauge_validate_no_fit_state(
+    bad_state, fixture$objective_fn, fixture$gradient_fn
+  )$reason, "gauge_domain_hold")
+})

@@ -383,11 +383,14 @@ retry nor a trust-region/numerical attempt.
 
 ## Future estimator boundary
 
-If the pure map and full sign-orbit checks pass, a later, separately reviewed
-execution design may specify one full-22-dimensional trust-region/Newton
-procedure in \(\varphi\)-coordinates.  It must predeclare its radius
-schedule, acceptance rule, exact-gradient callback count, candidate selection,
-hard time limit, terminal schemas, and a fresh source-gate root.
+If the pure map and full sign-orbit checks pass, the separately reviewed
+execution design in
+`2026-08-15-paper1-spde-slope-gauge-trust-region-execution-design.md` specifies
+one full-22-dimensional trust-region procedure in \(\varphi\)-coordinates.
+It predeclares its radius schedule, acceptance rule, exact-gradient callback
+count, candidate selection, hard time limit, terminal schemas, and a fresh
+source-gate root.  That execution design remains design-only until its own
+implementation, tests, and independent review have passed.
 
 At the retained nonstationary state, its transformed Hessian must not be
 approximated by the congruence term alone.  It must use either

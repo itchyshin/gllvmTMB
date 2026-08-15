@@ -364,6 +364,13 @@ must also retain the same MSPDE V3
 root/commit/state/DLL/control/FD-order/tolerance bindings.  The sole execution
 change is propagation of the full locked predecessor verdict
 `root,commit,receipt,state_md5` into the already fixed child predicate.
+Every V2 child receipt also retains the exact reached stage
+(`v1_forensic`, `predecessor_bytes`, `dll`, `historical`, `factory`,
+`callback`, `audit`, `release`, or `complete`). A caught deadline is a typed
+`time_limit_exceeded` infrastructure record only when its retained stage,
+predecessor, DLL, and object/release counts satisfy that stage's exact partial
+schema; otherwise the parent records `child_evidence_invalid` rather than
+inferring callback evidence.
 
 V2 must not inspect or use V1's retained objective, gradient, FD values,
 transformed values, or child status to select a chart, tolerance, callback

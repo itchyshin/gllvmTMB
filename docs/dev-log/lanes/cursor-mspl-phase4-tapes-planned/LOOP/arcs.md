@@ -2,12 +2,12 @@
 
 | ID | Status | Arc | Notes |
 |---|---|---|---|
-| A0 | **IN PROGRESS** | LOOP kit on `cursor/mspl-phase4-tapes-planned` | from `origin/main` @ #977 `2a99af3a` |
-| A1 | pending | Wave 1: specs + failing tests (no `src/`) | Shannon, Noether-math, four Curie files |
-| A2 | pending | Wave 2: shared weight hook | one cpp owner; Bernoulli/Gaussian numbers unchanged |
-| A3 | pending | Wave 3: Poisson tape + prepare widen | public `mspl` for Poisson; still `planned` |
-| A4 | pending | Wave 4: NB1, NB2, beta, Tweedie tapes | public still errors |
-| A5 | pending | Wave 5: Gauss, Noether, Rose, Shannon, Melissa | still no admit |
+| A0 | **DONE** | LOOP kit on `cursor/mspl-phase4-tapes-planned` | `b1271cca` from `origin/main` @ #977 `2a99af3a` |
+| A1 | **DONE** | Wave 1: specs + failing tests (no `src/` first) | Poisson public-door was RED on the old fence; now GREEN |
+| A2 | **DONE** | Wave 2: shared weight hook | `gll_mspl_log_weight_glm`; 2-arg Bernoulli `gll_mspl_log_weight` unchanged |
+| A3 | **DONE** | Wave 3: Poisson tape + prepare widen | public `mspl` for Poisson; still `planned` |
+| A4 | **DONE** | Wave 4: NB1, NB2, beta, Tweedie tapes | public still errors; NB2 stays `excluded` |
+| A5 | **DONE** | Wave 5: Gauss, Noether, Rose, Shannon, Melissa | still no admit |
 
 ## HARD STOP flags
 

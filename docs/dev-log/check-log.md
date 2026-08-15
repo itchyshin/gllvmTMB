@@ -49388,3 +49388,39 @@ Melissa:
 `docs/dev-log/plan-actual/2026-08-15-mspl-phase4-prep-goal.md`.
 Not run: merge, admit, NEWS covered, Totoro, rebase onto main.
 
+## 2026-08-15 — MSPL Phase-4 tapes + Poisson public door (Cursor)
+
+Lane `cursor/mspl-phase4-tapes-planned` in
+`/private/tmp/gllvmtmb-mspl-estimator-programme-roadmap`. Five C++
+GLM-outer tapes. Public `estimator="mspl"` is gaussian + bernoulli +
+Poisson only. Poisson stays `planned`. No NEWS. No admit. Codex
+interval lane untouched. #972–#976 not merged.
+
+```sh
+rg -n 'fam_ids %in% c\\(' R/mspl.R
+# R/mspl.R:182  c(0L, 1L, 2L)
+
+rg -n 'binomial or gaussian only' R/mspl.R tests
+# no matches
+
+rg -n 'status = "planned"|NB2 waits' R/mspl-registry.R
+# poisson planned / phase4_prep; nbinom2 excluded
+
+NOT_CRAN=true OMP_NUM_THREADS=1
+# prepare-fence, poisson-public-door, fenced-family, nb1-fenced-tape,
+# api, registry, gaussian-fit-smoke, poisson-phase4-oracles,
+# gaussian-heywood-oracles — all PASS after TMB recompile
+```
+
+Rose: no admit, no NEWS covered, door = three families.
+Shannon: WARN — five prep PRs still open on the old point-continue
+base; `R/mspl.R` also lives on the PROTECTED Codex interval branch
+(this lane only added the Poisson door).
+After-task:
+`docs/dev-log/after-task/2026-08-15-mspl-phase4-tapes-planned.md`.
+Melissa:
+`docs/dev-log/plan-actual/2026-08-15-mspl-phase4-tapes-planned.md`.
+Handover:
+`docs/dev-log/handover/2026-08-15-cursor-handover-phase4-tapes.md`.
+Not run: `devtools::test()`, `R CMD check`, pkgdown, Totoro, admit.
+

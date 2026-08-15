@@ -1129,9 +1129,12 @@ expand_multinomial_response <- function(formula, data, family, trait_col) {
       ))
     }
     mn_trait <- mn_trait_lvls
-    if (anyNA(data[[resp]][mn_rows])) {
-      cli::cli_abort("multinomial(): missing categorical responses are not supported in this release.")
-    }
+    ## An NA categorical response propagates NA into ALL of its K-1 one-hot
+    ## indicator rows below, so the downstream response-missingness machinery
+    ## (drop_missing_response_rows) treats the contrast group as one unit:
+    ## group-uniform masking under "include", whole-group removal under
+    ## "drop". The C++ anchor gate (is_anchor && is_y_observed) then skips
+    ## the grouped softmax density exactly once per masked observation.
     yf <- droplevels(if (is.factor(data[[resp]])) data[[resp]][mn_rows]
                      else factor(data[[resp]][mn_rows]))
     if (!is.null(requested_baseline)) {
@@ -1179,9 +1182,12 @@ expand_multinomial_response <- function(formula, data, family, trait_col) {
     cli::cli_abort("multinomial(): the response must be a single categorical variable on the formula LHS.")
   }
   y_raw <- data[[resp]]
-  if (anyNA(y_raw)) {
-    cli::cli_abort("multinomial(): missing categorical responses are not supported in this release.")
-  }
+  ## NA categorical responses are admitted: as.integer(yf) is NA for them, so
+  ## every one of the K-1 one-hot indicator rows built below is NA and the
+  ## response-missingness machinery masks/drops the contrast group as one
+  ## unit (group-uniform by construction; see the anchor gate in
+  ## src/gllvmTMB.cpp). A category observed ONLY in NA cells drops out of
+  ## levels() the same way under both policies, so include == drop holds.
   yf   <- droplevels(if (is.factor(y_raw)) y_raw else factor(y_raw))
   cats <- levels(yf)
   K    <- length(cats)

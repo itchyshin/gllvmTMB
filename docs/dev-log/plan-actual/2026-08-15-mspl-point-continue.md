@@ -13,11 +13,11 @@ DISCIPLINE: se=FALSE; OMP=1; verify by logs; failure-inclusive; after-task+PRs+M
 
 | Slice | Plan | Actual | Status |
 |---|---|---|---|
-| A0 LOOP + branch + handover | lane kit under `cursor-mspl-point-continue/LOOP/` | PR #971 opened; commits `c01b7e1a` / `d192e4a9` | **DONE** |
-| A1 Gaussian multi-seed grid + note | failure-inclusive; q=1/2; several seeds | *in progress via parallel agent* | **IN PROGRESS** |
-| B1 Poisson derivation + oracles + planned rows | no admit; no C++ | *in progress via parallel agent* | **IN PROGRESS** |
-| C1 Rose fences + Mission Control | curated status only | Rose note filed; MC vault commit `0c4d90f` | **PARTIAL** (poisson→planned after B1) |
-| C2 after-task + PR stack closeout | merge docs/low-risk when green | pending A1+B1 | **PENDING** |
+| A0 LOOP + branch + handover | lane kit under `cursor-mspl-point-continue/LOOP/` | PR #971; commits through closeout | **DONE** |
+| A1 Gaussian multi-seed grid + note | failure-inclusive; q=1/2; several seeds | 64/64 finite; Heywood q1 collapse 4/8→0/8; note+TSV | **DONE** |
+| B1 Poisson derivation + oracles + planned rows | no admit; no C++ | note + E1–E7 oracles + planned q1/q2 | **DONE** |
+| C1 Rose fences + Mission Control | curated status only | Rose note; MC poisson→planned | **DONE** |
+| C2 after-task + PR stack closeout | merge docs/low-risk when green | after-task filed; PR #971 open for human merge | **DONE** (merge human) |
 
 ## HARD STOP hits
 

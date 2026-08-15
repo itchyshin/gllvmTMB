@@ -38,6 +38,20 @@ All 64 arms: `conv = 0`, finite objective/par, zero thrown errors.
 MSPL registry on every MSPL row: `admitted` / `oracle_local` /
 `gaussian:identity:ordinary:q{1,2}`.
 
+**Uniqueness collapse proxy** (\(\min\psi < 0.1\)), failure-inclusive:
+
+| cell | q | ML collapses | MSPL collapses |
+|---|---:|---:|---:|
+| healthy | 1 | 1/8 | 0/8 |
+| healthy | 2 | 0/8 | 0/8 |
+| near_heywood | 1 | **4/8** | **0/8** |
+| near_heywood | 2 | 0/8 | 0/8 |
+
+Near-Heywood q=1 is where Hirose visibly interiors uniqueness under
+this local DGP (ML median min ψ 0.068 vs MSPL 0.414). That is an
+anti-collapse observation, not a covered recovery claim — ML still
+has better median relF vs true \(G\) on that cell.
+
 Paired median rel Frobenius MSPL vs ML ≈ 0.06–0.11 (arms disagree
 mildly; they are not bit-identical).
 

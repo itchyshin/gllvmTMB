@@ -58,34 +58,75 @@ Public `sigma` on nbinom1 is the same orientation (larger \(\sigma\)
 \(\Rightarrow\) more linear-mean overdispersion;
 `docs/design/03-likelihoods.md`). Oracles use the internal \(\varphi\).
 
-## 1. Five-row symbolic alignment
+## 1. Exact fixed-effect information alignment
 
-GLM expected information for free fixed coordinates \(\beta_*\) on
-the log link is textbook:
+The familiar variance-function expression
 
 \[
-I(\beta_*)=X_*^\top W\,X_*,\qquad
-W=\operatorname{diag}\!\left(\frac{(\mathrm{d}\mu/\mathrm{d}\eta)^2}{V(\mu)}\right)
-=\operatorname{diag}\!\left(\frac{\mu^2}{V(\mu)}\right).
+W_{\mathrm{quasi}}=
+\operatorname{diag}\!\left(\frac{(\mathrm{d}\mu/\mathrm{d}\eta)^2}{V(\mu)}\right)
+=\operatorname{diag}\!\left(\frac{\mu}{1+\varphi}\right)
 \]
 
-The three count variance functions then give **three different
-weights**:
+is a **quasi-likelihood / IRLS working weight**, not the exact Fisher
+information for gllvmTMB's NB1 likelihood. NB1 uses
+`size = mu / phi`, so the negative-binomial shape
+\(r=\mu/\varphi\) changes with the linear predictor.
 
-| Family | Variance \(V(\mu)\) | Log-link weight \(W\) |
-|---|---|---|
-| Poisson | \(\mu\) | \(\mu\) |
-| **NB1** | \(\mu+\varphi\mu=\mu(1+\varphi)\) | \(\mu/(1+\varphi)\) |
-| NB2 | \(\mu+\mu^2/\theta\) | \(\mu\theta/(\theta+\mu)\) |
-
-A Jeffreys-shaped fixed-effect atom on the *maximised* log-likelihood
-scale for **this** family is therefore
+In R/TMB's convention,
 
 \[
-P^*_{\mathrm{J,NB1}}=\tfrac12\log\det\bigl(X_*^\top W_{\mathrm{NB1}}(\mu,\varphi)\,X_*\bigr),
+f(y\mid\mu,\varphi)=
+\frac{\Gamma(y+r)}{\Gamma(r)\Gamma(y+1)}
+p^r(1-p)^y,\qquad
+r=\frac{\mu}{\varphi},\qquad
+p=\frac{1}{1+\varphi}.
+\]
+
+Here \(p\) is the success probability; \(1-p=\varphi/(1+\varphi)\).
+At fixed \(\varphi\), \(\mathrm dr/\mathrm d\eta=r\), giving score
+
+\[
+s_\eta(y)=r\{\psi(y+r)-\psi(r)+\log p\}.
+\]
+
+The exact scalar Fisher contribution is
+
+\[
+\mathcal I_\eta(\mu,\varphi)
+=\sum_{y=0}^{\infty}f(y\mid\mu,\varphi)s_\eta(y)^2
+=-\operatorname E\!\left[\frac{\partial s_\eta}{\partial\eta}\right],
+\]
+
+with
+
+\[
+-\frac{\partial s_\eta}{\partial\eta}
+=-r\{\psi(y+r)-\psi(r)+\log p\}
+-r^2\{\psi_1(y+r)-\psi_1(r)\}.
+\]
+
+The pure-R oracles sum the same `stats::dnbinom` pmf implied by the
+implementation, truncating only after the remaining tail probability
+is below \(10^{-13}\), and check the outer-product and
+expected-Hessian forms against each other. Therefore
+
+\[
+I_{\mathrm{exact}}(\beta_*)=
+X_*^\top\operatorname{diag}\{\mathcal I_\eta(\mu_i,\varphi)\}X_*,
 \qquad
-W_{\mathrm{NB1}}=\operatorname{diag}\bigl(\mu/(1+\varphi)\bigr).
+P^*_{\mathrm{J,NB1}}=
+\tfrac12\log\det I_{\mathrm{exact}}(\beta_*).
 \]
+
+For orientation:
+
+| Family / object | Variance \(V(\mu)\) | Log-link quantity |
+|---|---|---|
+| Poisson exact Fisher | \(\mu\) | \(\mu\) |
+| **NB1 exact Fisher** | \(\mu(1+\varphi)\) | \(\mathcal I_\eta(\mu,\varphi)\), pmf expectation above |
+| **NB1 quasi / IRLS** | \(\mu(1+\varphi)\) | \(\mu/(1+\varphi)\) |
+| NB2 GLM weight | \(\mu+\mu^2/\theta\) | \(\mu\theta/(\theta+\mu)\) |
 
 TMB minimises negative log-likelihood, so a later tape would add
 \(-c\,P^*_{\mathrm{J,NB1}}\) together with any loading or
@@ -95,23 +136,25 @@ rate \(c\) is **not** pinned here. Bernoulli
 \(c_N=\sqrt{2/N}\), and any Poisson rate left OPEN in the Poisson
 note are all rejected transplants (kill list §5).
 
-When \(\varphi\) is **shared** across the stacked rows of \(X_*\),
+Even when \(\varphi\) is shared, the identity
 
 \[
-I_{\mathrm{NB1}}(\beta_*)=\frac{I_{\mathrm{Poisson}}(\beta_*)}{1+\varphi},
+I_{\mathrm{quasi}}(\beta_*)=\frac{I_{\mathrm{Poisson}}(\beta_*)}{1+\varphi},
 \qquad
-P^*_{\mathrm{J,NB1}}=P^*_{\mathrm{J,Pois}}-\frac{p_*}{2}\log(1+\varphi).
+P^*_{\mathrm{quasi}}=P^*_{\mathrm{J,Pois}}-\frac{p_*}{2}\log(1+\varphi)
 \]
 
-That identity is an oracle pin (N3). It is **not** a license to
-drop the \(\varphi\) term and reuse the Poisson atom.
+holds only for the quasi weight. It is false for exact NB1 Fisher
+information. N3 pins that failure so a later tape cannot mistake the
+working weight for a Jeffreys atom.
 
 | Criterion | Atom | Parameters | TMB-shaped expression on paper | Interpretation |
 |---|---|---|---|---|
-| NB1 Jeffreys-shaped \(P^*_{\mathrm{J,NB1}}\) | \(\tfrac12\log\det(X_*^\top\operatorname{diag}(\mu/(1+\varphi))X_*)\) | free \(\beta_*\); \(\mu=\exp(\eta)\) (× exposure if offset); \(\varphi>0\) | \(\mathrm{nll}\mathrel{+}=-c\,P^*_{\mathrm{J,NB1}}\) | Softens \(\beta\to-\infty\) / \(\mu\to 0\) **and** feels \(\varphi\to\infty\) through \(W\). \(\beta\)- and \(\varphi\)-dependent. |
-| Information size | \(\operatorname{tr}(W)=\sum\mu/(1+\varphi)\) or \(\lambda_{\min}(I_{\mathrm{NB1}})\) | \(\mu,\varphi\) | diagnostic only | **Not** \(\sum\mu\) (Poisson), **not** \(\sum\mu\theta/(\theta+\mu)\) (NB2), **not** the row count. |
-| Dispersion \(\varphi\to 0\) | nested Poisson limit of \(W\), **not** a mean-boundary atom | \(\varphi\) at fixed \(\mu>0\) | OPEN; no tape | \(W\to\mu\), \(P^*_{\mathrm{J,NB1}}\to P^*_{\mathrm{J,Pois}}\) from below. Does **not** send \(P^*_{\mathrm{J}}\) to \(-\infty\). |
-| Dispersion \(\varphi\to\infty\) | same \(W=\mu/(1+\varphi)\) collapses | \(\varphi\) at fixed \(\mu>0\) | consequence of the mean atom; dedicated \(\varphi\) atom OPEN | Information collapse from overdispersion, distinct from \(\mu\to 0\). |
+| NB1 exact Jeffreys-shaped \(P^*_{\mathrm{J,NB1}}\) | \(\tfrac12\log\det(X_*^\top\operatorname{diag}\{\mathcal I_\eta(\mu,\varphi)\}X_*)\) | free \(\beta_*\); \(\mu=\exp(\eta)\) (× exposure if offset); \(\varphi>0\) | candidate only; no tape | Uses the actual `size = mu / phi` pmf. |
+| NB1 quasi / IRLS object | \(\mu/(1+\varphi)\) | \(\mu,\varphi\) | diagnostic contrast only | **Not** the Jeffreys atom. |
+| Information size | \(\sum_i\mathcal I_\eta(\mu_i,\varphi)\) or \(\lambda_{\min}(I_{\mathrm{exact}})\) | \(\mu,\varphi\) | diagnostic only | **Not** \(\sum\mu/(1+\varphi)\), \(\sum\mu\), or row count. |
+| Dispersion \(\varphi\to 0\) | exact pmf information approaches Poisson | \(\varphi\) at fixed \(\mu>0\) | OPEN; no tape | \(P^*_{\mathrm{J,NB1}}\to P^*_{\mathrm{J,Pois}}\). |
+| Dispersion \(\varphi\to\infty\) | exact pmf information collapses | \(\varphi\) at fixed \(\mu>0\) | dedicated \(\varphi\) atom OPEN | Distinct from \(\mu\to 0\). |
 | Contrast: Poisson \(W=\operatorname{diag}(\mu)\) | \(\tfrac12\log\det(X_*^\top\operatorname{diag}(\mu)X_*)\) | \(\mu\) only | Poisson Phase-4 candidate | Equals NB1 only at \(\varphi=0\). Oracle kill as a transplant. |
 | Contrast: NB2 \(W=\operatorname{diag}(\mu\theta/(\theta+\mu))\) | \(\tfrac12\log\det(X_*^\top\operatorname{diag}(\mu\theta/(\theta+\mu))X_*)\) | \(\mu,\theta\) | not this cell | Quadratic-mean information. Setting \(\theta=1/\varphi\) does **not** recover NB1 unless \(\mu=1\). |
 | Contrast: Bernoulli \(V_{\mathrm{loading}}\) | \(\sum_t(\sqrt{1+\|\lambda_t\|^2}-1)\) | \(\Lambda\) only | live `gll_mspl_row_radial_penalty` | Binary link-scale runaway atom. No NB1 coercivity proof. |
@@ -123,16 +166,19 @@ slice first; latent loadings and a dedicated \(\varphi\) atom deferred):
 - **N-P1** \(P^*_{\mathrm{J,NB1}}\) is continuous for \(\mu>0\),
   \(\varphi>0\), and full-rank \(X_*\).
 - **N-P2 (mean boundary).** Along an all-zero or near-zero path with
-  \(\mu_t\to 0\) at **fixed** \(\varphi>0\), \(W\to 0\) and
+  \(\mu_t\to 0\) at **fixed** \(\varphi>0\), the pmf-summed exact
+  \(\mathcal I_\eta\to 0\) and
   \(P^*_{\mathrm{J,NB1}}\to-\infty\) whenever \(X_*\) has a column
   that is active on those rows.
 - **N-P3 (dispersion \(\to 0\)).** At fixed \(\mu>0\),
-  \(\varphi\to 0^+\) sends \(W\to\operatorname{diag}(\mu)\) and
+  \(\varphi\to 0^+\) sends the exact information toward
+  \(\operatorname{diag}(\mu)\) and
   \(P^*_{\mathrm{J,NB1}}\uparrow P^*_{\mathrm{J,Pois}}\). This is a
   nested-family limit, not a mean-boundary, and **not** a reason to
   inherit a Poisson MSPL tape.
 - **N-P4 (dispersion \(\to\infty\)).** At fixed \(\mu>0\),
-  \(\varphi\to\infty\) sends \(W\to 0\) and
+  the exact pmf-summed information decreases toward zero as
+  \(\varphi\to\infty\), and
   \(P^*_{\mathrm{J,NB1}}\to-\infty\). Same qualitative divergence as
   N-P2, **different coordinate**. A dedicated \(\varphi\) atom (Jeffreys
   in \(\varphi\), barrier, or otherwise) is **OPEN**. Using the mean
@@ -140,15 +186,18 @@ slice first; latent loadings and a dedicated \(\varphi\) atom deferred):
   *increases* \(P^*_{\mathrm{J}}\).
 - **N-P5** The conditional NB1 log-pmf is bounded above for fixed
   \(y\) (size \(\mu/\varphi\), success probability
-  \(\varphi/(1+\varphi)\) is \(\mu\)-free). Combined with N-P2, a soft
+  \(1/(1+\varphi)\) is \(\mu\)-free). Combined with N-P2, a soft
   \(+c P^*_{\mathrm{J,NB1}}\) term (maximisation scale) pulls away
   from the infinite-\(|\beta|\) all-zero MLE path in the same
   *qualitative* way Poisson Jeffreys does — **AGENT-INFERRED**
   analogy, not a transferred theorem.
 - **N-P6** Exposure enters only through \(\mu=E\circ e^{\eta}\).
   Doubling every \(E\) at fixed \(\eta_{\mathrm{free}}\) and fixed
-  \(\varphi\) doubles \(\mu\) and doubles \(I(\beta_*)\). Information
-  size is \(\sum\mu/(1+\varphi)\), not \(\sum\mu\) and not
+  \(\varphi\) doubles \(\mu\), but does **not** double exact Fisher
+  information because \(r=\mu/\varphi\) also changes. N9 observes
+  increasing but sublinear information on the frozen fixture. The
+  exact information size is \(\sum_i\mathcal I_\eta(\mu_i,\varphi)\),
+  not the quasi sum \(\sum\mu/(1+\varphi)\), \(\sum\mu\), or
   \(N_{\mathrm{rows}}\).
 
 Latent loading coercivity under Laplace is **OPEN**. The Bernoulli
@@ -167,18 +216,18 @@ from \(0\),
 \]
 
 still drives \(\mu_{\cdot t}\to 0\) (equivalently
-\(\beta_t\to-\infty\) on an intercept-only trait design). Fisher
-weights on those rows vanish as \(\mu/(1+\varphi)\). Any soft
+\(\beta_t\to-\infty\) on an intercept-only trait design). Exact
+pmf-summed Fisher contributions on those rows vanish. Any soft
 penalty whose fixed-effect atom is
-\(\tfrac12\log\det(X_*^\top W_{\mathrm{NB1}} X_*)\) therefore
+\(\tfrac12\log\det I_{\mathrm{exact}}(\beta_*)\) therefore
 diverges to \(-\infty\) on that path when the trait’s design columns
 remain in \(X_*\) (oracle N4). Finiteness of a penalised fit on
 all-zero data is necessary and **not** sufficient for admission
 (programme §16).
 
-Sparse but non-zero counts keep \(\mu\) small on most units.
-Information remains \(O(\sum\mu/(1+\varphi))\), so the same atom is
-soft rather than hard (oracle N5).
+Sparse but non-zero counts keep \(\mu\) small on most units. N5 pins
+the exact atom's deterioration numerically without asserting the
+quasi weight as its asymptotic rate.
 
 ### Dispersion \(\varphi\to 0\) — Poisson limit, not a mean repair
 
@@ -194,11 +243,10 @@ changes the estimand.
 
 ### Dispersion \(\varphi\to\infty\) — overdispersion information collapse
 
-At fixed \(\mu>0\), \(W=\mu/(1+\varphi)\to 0\). Mean information
-vanishes because every count is infinitely noisy, not because the
-mean hit the boundary. Oracle N7 checks this path separately from
-N4. The mean atom is consequentially coercive here; that does
-**not** close a \(\varphi\)-atom derivation.
+At fixed \(\mu>0\), exact pmf-summed mean information decreases
+toward zero. Every count becomes infinitely noisy; the mean did not
+hit its boundary. N7 checks this path separately from N4. This
+qualitative behavior does **not** close a \(\varphi\)-atom derivation.
 
 ### Loading runaway (named, not solved)
 
@@ -212,12 +260,11 @@ separation. **No NB1 loading atom is admitted in this note.**
 
 ### Poisson \(W=\operatorname{diag}(\mu)\)
 
-Equals \(W_{\mathrm{NB1}}\) if and only if \(\varphi=0\). At any
-interior \(\varphi>0\) the information matrices differ by the
-exact factor \(1/(1+\varphi)\) when \(\varphi\) is shared (oracle
-N3). Reusing the Poisson atom silently drops that factor and
-mis-scales every later rate comparison. The Poisson note itself
-forbids NB1/NB2 inheritance.
+Exact NB1 information approaches Poisson information only in the
+\(\varphi\to0\) limit. At interior \(\varphi>0\), it is neither
+Poisson information nor its constant \(1/(1+\varphi)\) rescaling.
+That rescaling belongs to the quasi weight only (N2–N3). The
+Poisson note itself forbids NB1/NB2 inheritance.
 
 ### NB2 \(V=\mu+\mu^2/\theta\)
 
@@ -248,8 +295,9 @@ Design 88 maximises a Bernoulli Jeffreys term with link-specific
 \(W_g\) plus \(V_{\mathrm{loading}}=\sum_t(\sqrt{1+\|\lambda_t\|^2}-1)\).
 Three transfer failures remain, now with an extra NB1 reason:
 
-1. **Weights.** NB1 \(W=\mu/(1+\varphi)\) is not \(\mu\), not
-   \(\mu(1-\mu)\), and not a probit/cloglog weight.
+1. **Information.** Exact NB1 \(\mathcal I_\eta(\mu,\varphi)\) is not
+   its quasi weight \(\mu/(1+\varphi)\), Poisson \(\mu\), Bernoulli
+   \(\mu(1-\mu)\), or a probit/cloglog weight.
 2. **Boundary object.** Bernoulli repairs *separation*. NB1 must
    separate \(\mu\to 0\) from \(\varphi\to 0\) and \(\varphi\to\infty\).
 3. **\(V_{\mathrm{loading}}\) is \(\mu\)-inert and \(\varphi\)-inert.**
@@ -267,19 +315,20 @@ the dispersion or the mean problem without a proof (oracle N11).
 
 Write \(\log\mu_{it}=o_{it}+\eta_{it}^{\mathrm{free}}\) with
 \(o_{it}=\log E_{it}\) and known \(E_{it}>0\). Then
-\(\mu=E\circ\exp(\eta^{\mathrm{free}})\) and
-\(W=\mu/(1+\varphi)\).
+\(\mu=E\circ\exp(\eta^{\mathrm{free}})\), while exact information is
+\(\mathcal I_\eta(\mu,\varphi)\).
 
 | Quantity | What it is | What it is not |
 |---|---|---|
 | Exposure \(E\) | Known mean multiplier / offset | Sample size; penalty rate \(c\); \(N_{\mathrm{eff}}\) |
 | Row count \(N_{\mathrm{rows}}\) | Number of stacked \((i,t)\) observations | NB1 information |
 | Poisson information size \(\sum\mu\) | Poisson weights | NB1 information unless \(\varphi=0\) |
-| NB1 information size | \(X_*^\top\operatorname{diag}(\mu/(1+\varphi))X_*\) and \(\sum\mu/(1+\varphi)\) | \(\sum E\), \(\sum\mu\), or Bernoulli \(N_{\mathrm{eff}}\) |
+| NB1 information size | \(X_*^\top\operatorname{diag}\{\mathcal I_\eta(\mu,\varphi)\}X_*\) and \(\sum_i\mathcal I_\eta(\mu_i,\varphi)\) | quasi \(\sum\mu/(1+\varphi)\), \(\sum E\), \(\sum\mu\), or Bernoulli \(N_{\mathrm{eff}}\) |
 
 Oracle N9: at fixed free \(\eta\) and fixed \(\varphi\), replacing
-\(E\) by \(2E\) doubles \(\mu\), doubles \(W\), and doubles
-\(I(\beta_*)\), while \(N_{\mathrm{rows}}\) is unchanged. Oracle
+\(E\) by \(2E\) doubles \(\mu\), but exact information increases
+sublinearly on the fixture; only the quasi weight doubles exactly.
+\(N_{\mathrm{rows}}\) is unchanged. Oracle
 N10: absorbing \(\log E\) into the offset leaves \(\mu\) and \(I\)
 unchanged. Live Design 88 still fences *nonzero* offsets on the
 Bernoulli MSPL surface. This prep does not ask the prepare fence
@@ -310,7 +359,8 @@ to accept offsets.
    an NB1 rate argument against the Laplace objective.
 10. Treating exposure \(\sum E\), row count, or Poisson
     \(\sum\mu\) as interchangeable with
-    \(\sum\mu/(1+\varphi)\).
+    exact \(\sum_i\mathcal I_\eta(\mu_i,\varphi)\); or treating the
+    quasi sum \(\sum\mu/(1+\varphi)\) as exact information.
 11. Claiming Design 88 or Sterzinger–Kosmidis–Moustaki 2026 covers
     NB1 GLLVM MSPL under Laplace.
 12. Finiteness of a count fit offered as the scientific result.
@@ -329,30 +379,30 @@ to accept offsets.
 | ID | What | Tolerance / decision |
 |---|---|---|
 | N1 | \(V_{\mathrm{NB1}}=\mu(1+\varphi)\); \(V_{\mathrm{Pois}}=\mu\); \(V_{\mathrm{NB2}}=\mu+\mu^2/\theta\) **differ** | rel. err \(<10^{-12}\) on NB1; contrasts fire |
-| N2 | \(W_{\mathrm{NB1}}=\mu/(1+\varphi)\); not Poisson \(\mu\); not NB2 \(\mu\theta/(\theta+\mu)\) | same |
-| N3 | \(P^*_{\mathrm{J,NB1}}\) uses \(W_{\mathrm{NB1}}\); shared-\(\varphi\) identity \(P^*_{\mathrm{J,Pois}}-(p_*/2)\log(1+\varphi)\) | \(<10^{-12}\); Poisson/NB2 substitutions differ |
+| N2 | Exact \(\mathcal I_\eta\) from the NB1 pmf: analytic score = finite difference of `dnbinom`, total mass 1, expected score 0, outer product = expected Hessian; differs from quasi \(\mu/(1+\varphi)\) | score \(<10^{-8}\); moment identities \(<10^{-10}\); contrasts fire |
+| N3 | \(P^*_{\mathrm{J,NB1}}\) uses exact \(\mathcal I_\eta\); shared-\(\varphi\) Poisson-rescaling identity holds only for the quasi object and fails for exact Fisher | quasi identity \(<10^{-12}\); exact contrast fires |
 | N4 | Mean-boundary: \(\beta\to-\infty\Rightarrow\mu\to 0\Rightarrow P^*_{\mathrm{J,NB1}}\to-\infty\) at fixed \(\varphi>0\) | monotone decrease; large negative |
 | N5 | Near-zero: scale \(\mu\leftarrow\varepsilon\mu_0\) at fixed \(\varphi\) deteriorates \(P^*_{\mathrm{J,NB1}}\) | monotone in \(\varepsilon\downarrow 0\) |
-| N6 | \(\varphi\to 0\) at fixed \(\mu\): \(W\to W_{\mathrm{Pois}}\); \(P^*_{\mathrm{J}}\) **increases** toward Poisson; does **not** go to \(-\infty\) | monotone increase; contrast with N4 |
+| N6 | \(\varphi\to 0\) at fixed \(\mu\): exact \(P^*_{\mathrm{J}}\) **increases** toward Poisson; does **not** go to \(-\infty\) | monotone increase; contrast with N4 |
 | N7 | \(\varphi\to\infty\) at fixed \(\mu>0\): \(P^*_{\mathrm{J,NB1}}\to-\infty\) | monotone decrease; large negative |
 | N8 | \(\theta=1/\varphi\) does **not** equate \(V\) or \(W\) unless \(\mu=1\) | contrast fires on the fixture |
-| N9 | Exposure doubling at fixed \(\eta,\varphi\) doubles \(I\) and \(\sum\mu/(1+\varphi)\); \(N_{\mathrm{rows}}\) fixed; \(\sum\mu/(1+\varphi)\neq\sum\mu\) | exact factor 2 |
+| N9 | Exposure doubling at fixed \(\eta,\varphi\) doubles the quasi weight but increases exact information sublinearly on the fixture; \(N_{\mathrm{rows}}\) fixed | exact-vs-quasi contrast fires |
 | N10 | Offset spelling: \(o=\log E\) vs folding \(\log E\) into \(\eta\) leaves \(\mu\) and \(I\) identical | \(<10^{-12}\) |
 | N11 | Hirose \(\sum S/\psi\) refused (\(\varphi\) is not \(\psi\)); \(V_{\mathrm{loading}}\) is \(\mu\)- and \(\varphi\)-inert | structural reject + finite-diff |
-| N12 | NB1 size \(\mu/\varphi\) depends on \(\mu\); NB2 size \(\theta\) does not; \(\log(V-\mu)\) matches the TMB comments | \(<10^{-12}\) |
+| N12 | NB1 size \(\mu/\varphi\) depends on \(\mu\); success probability is \(1/(1+\varphi)\); \(\log(V-\mu)\) matches TMB | \(<10^{-12}\) |
 | N13 | No live nbinom1 MSPL call; nbinom1 is not `admitted` and has no `planned` registry row | structural |
 
 ## 6. Verdict
 
 | Surface | Verdict | Why |
 |---|---|---|
-| Local R oracles / this writeup (N1–N13, kill list) | **PASS** | Variance/weight triple, three named boundaries, and exposure≠information are testable without an NB1 MSPL fit. |
+| Local R oracles / this writeup (N1–N13, kill list) | **PASS** | Exact PMF-summed score information, its distinction from the quasi weight, three named boundaries, and exposure behavior are testable without an NB1 MSPL fit. |
 | C++ tape / live nbinom1 MSPL / registry `planned` or `admitted` | **FAIL** | No tape, no prepare widening, no registry row, no Shinichi admission gate. |
 | NEWS / covered / SE / intervals | **FAIL** | Out of scope; SE remains PROTECTED on Codex Lane B. |
 
 Preferred later-admission *candidate* for the fixed-effect slice:
 NB1 Jeffreys-shaped
-\(\tfrac12\log\det(X_*^\top\operatorname{diag}(\mu/(1+\varphi))X_*)\),
+\(\tfrac12\log\det(X_*^\top\operatorname{diag}\{\mathcal I_\eta(\mu,\varphi)\}X_*)\),
 with rate, loading atom, and dedicated \(\varphi\) atom still OPEN.
 Not a theorem transfer. Not the Poisson candidate.
 
@@ -380,7 +430,8 @@ This note does **not** claim:
    loading atom under Laplace.
 2. Exposure vs information size pinned in the implemented rate
    (oracles N9–N10; rate choice still OPEN). Information size must
-   be \(\sum\mu/(1+\varphi)\), not Poisson \(\sum\mu\).
+   use exact \(\sum_i\mathcal I_\eta(\mu_i,\varphi)\), not quasi
+   \(\sum\mu/(1+\varphi)\) or Poisson \(\sum\mu\).
 3. Healthy-regime no-harm vs LA-ML, plus boundary DGPs that
    **label** which of the three boundaries is active (not this run).
 4. Family-specific TMB oracles after any tape (not this run).

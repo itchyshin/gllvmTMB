@@ -24,7 +24,7 @@
   as.numeric(mu)
 }
 
-.nb1_W <- function(mu, phi) {
+.nb1_quasi_W <- function(mu, phi) {
   as.numeric(mu) / (1 + as.numeric(phi))
 }
 
@@ -38,9 +38,60 @@
   as.numeric(mu)
 }
 
-.nb1_I <- function(X, mu, phi) {
+.nb1_logpmf_eta <- function(y, eta, phi) {
+  mu <- exp(as.numeric(eta))
+  stats::dnbinom(
+    y,
+    size = mu / as.numeric(phi),
+    prob = 1 / (1 + as.numeric(phi)),
+    log = TRUE
+  )
+}
+
+.nb1_score_eta <- function(y, mu, phi) {
+  size <- as.numeric(mu) / as.numeric(phi)
+  prob <- 1 / (1 + as.numeric(phi))
+  size * (digamma(y + size) - digamma(size) + log(prob))
+}
+
+.nb1_score_moments <- function(mu, phi, tail_prob = 1e-13) {
+  mu <- as.numeric(mu)
+  phi <- as.numeric(phi)
+  stopifnot(
+    length(mu) == 1L, length(phi) == 1L,
+    is.finite(mu), mu > 0,
+    is.finite(phi), phi > 0
+  )
+  size <- mu / phi
+  prob <- 1 / (1 + phi)
+  ymax <- stats::qnbinom(1 - tail_prob, size = size, prob = prob)
+  y <- 0:ymax
+  pmf <- stats::dnbinom(y, size = size, prob = prob)
+  score_eta <- .nb1_score_eta(y, mu, phi)
+  bracket <- score_eta / size
+  observed_info_eta <- -(
+    size * bracket +
+      size^2 * (trigamma(y + size) - trigamma(size))
+  )
+  c(
+    mass = sum(pmf),
+    expected_score = sum(pmf * score_eta),
+    fisher_outer = sum(pmf * score_eta^2),
+    fisher_hessian = sum(pmf * observed_info_eta)
+  )
+}
+
+.nb1_exact_W <- function(mu, phi) {
+  vapply(
+    as.numeric(mu),
+    function(mu_i) .nb1_score_moments(mu_i, phi)[["fisher_outer"]],
+    numeric(1L)
+  )
+}
+
+.nb1_exact_I <- function(X, mu, phi) {
   X <- as.matrix(X)
-  w <- .nb1_W(mu, phi)
+  w <- .nb1_exact_W(mu, phi)
   crossprod(X, X * w)
 }
 
@@ -56,8 +107,19 @@
   crossprod(X, X * w)
 }
 
-.nb1_Pj <- function(X, mu, phi) {
-  I <- .nb1_I(X, mu, phi)
+.nb1_exact_Pj <- function(X, mu, phi) {
+  I <- .nb1_exact_I(X, mu, phi)
+  0.5 * as.numeric(determinant(I, logarithm = TRUE)$modulus)
+}
+
+.nb1_quasi_I <- function(X, mu, phi) {
+  X <- as.matrix(X)
+  w <- .nb1_quasi_W(mu, phi)
+  crossprod(X, X * w)
+}
+
+.nb1_quasi_Pj <- function(X, mu, phi) {
+  I <- .nb1_quasi_I(X, mu, phi)
   0.5 * as.numeric(determinant(I, logarithm = TRUE)$modulus)
 }
 
@@ -131,46 +193,80 @@ test_that("N1: NB1 variance is mu*(1+phi); Poisson and NB2 differ", {
   expect_equal(.nb1_var(fx$mu, 0), .pois_var(fx$mu), tolerance = 1e-12)
 })
 
-test_that("N2: NB1 weights are mu/(1+phi); not Poisson; not NB2", {
+test_that("N2: exact NB1 Fisher information comes from its mu-dependent-size pmf", {
   fx <- .nb1_fixture()
-  w_nb1 <- .nb1_W(fx$mu, fx$phi)
-  expect_equal(w_nb1, fx$mu / (1 + fx$phi), tolerance = 1e-12)
+  moments <- lapply(fx$mu, .nb1_score_moments, phi = fx$phi)
+  w_exact <- vapply(moments, `[[`, numeric(1L), "fisher_outer")
+  w_hessian <- vapply(moments, `[[`, numeric(1L), "fisher_hessian")
+  mass <- vapply(moments, `[[`, numeric(1L), "mass")
+  expected_score <- vapply(moments, `[[`, numeric(1L), "expected_score")
+  y_probe <- 0:4
+  eta_probe <- log(fx$mu[1L])
+  eps <- 1e-6
+  score_fd <- (
+    .nb1_logpmf_eta(y_probe, eta_probe + eps, fx$phi) -
+      .nb1_logpmf_eta(y_probe, eta_probe - eps, fx$phi)
+  ) / (2 * eps)
+  expect_equal(mass, rep(1, fx$n_rows), tolerance = 1e-12)
+  expect_equal(expected_score, rep(0, fx$n_rows), tolerance = 1e-10)
+  expect_equal(w_exact, w_hessian, tolerance = 1e-10)
   expect_equal(
-    w_nb1,
+    .nb1_score_eta(y_probe, fx$mu[1L], fx$phi),
+    score_fd,
+    tolerance = 1e-8
+  )
+  expect_equal(
+    .nb1_quasi_W(fx$mu, fx$phi),
     (fx$mu * fx$mu) / .nb1_var(fx$mu, fx$phi),
     tolerance = 1e-12
   )
-  expect_false(isTRUE(all.equal(w_nb1, .pois_W(fx$mu), tolerance = 1e-6)))
+  expect_true(all(w_exact > .nb1_quasi_W(fx$mu, fx$phi)))
   expect_false(isTRUE(all.equal(
-    w_nb1,
+    w_exact,
+    .nb1_quasi_W(fx$mu, fx$phi),
+    tolerance = 1e-6
+  )))
+  expect_false(isTRUE(all.equal(w_exact, .pois_W(fx$mu), tolerance = 1e-6)))
+  expect_false(isTRUE(all.equal(
+    w_exact,
     .nb2_W(fx$mu, fx$theta_contrast),
     tolerance = 1e-6
   )))
-  expect_equal(.nb1_W(fx$mu, 0), .pois_W(fx$mu), tolerance = 1e-12)
 })
 
-test_that("N3: Jeffreys atom uses NB1 W; shared-phi identity holds", {
+test_that("N3: exact Jeffreys atom rejects the quasi shared-phi identity", {
   fx <- .nb1_fixture()
-  I_nb1 <- .nb1_I(fx$X, fx$mu, fx$phi)
+  I_nb1 <- .nb1_exact_I(fx$X, fx$mu, fx$phi)
+  I_quasi <- .nb1_quasi_I(fx$X, fx$mu, fx$phi)
   I_pois <- .pois_I(fx$X, fx$mu)
-  expect_equal(I_nb1, I_pois / (1 + fx$phi), tolerance = 1e-12)
+  expect_equal(I_quasi, I_pois / (1 + fx$phi), tolerance = 1e-12)
+  expect_false(isTRUE(all.equal(
+    I_nb1,
+    I_quasi,
+    tolerance = 1e-6
+  )))
   expect_equal(
-    .nb1_Pj(fx$X, fx$mu, fx$phi),
+    .nb1_quasi_Pj(fx$X, fx$mu, fx$phi),
     .pois_Pj(fx$X, fx$mu) - (fx$p_free / 2) * log(1 + fx$phi),
     tolerance = 1e-12
   )
+  expect_false(isTRUE(all.equal(
+    .nb1_exact_Pj(fx$X, fx$mu, fx$phi),
+    .nb1_quasi_Pj(fx$X, fx$mu, fx$phi),
+    tolerance = 1e-6
+  )))
   expect_equal(
-    .nb1_Pj(fx$X, fx$mu, fx$phi),
+    .nb1_exact_Pj(fx$X, fx$mu, fx$phi),
     0.5 * log(det(I_nb1)),
     tolerance = 1e-12
   )
   expect_false(isTRUE(all.equal(
-    .nb1_Pj(fx$X, fx$mu, fx$phi),
+    .nb1_exact_Pj(fx$X, fx$mu, fx$phi),
     .pois_Pj(fx$X, fx$mu),
     tolerance = 1e-6
   )))
   expect_false(isTRUE(all.equal(
-    .nb1_Pj(fx$X, fx$mu, fx$phi),
+    .nb1_exact_Pj(fx$X, fx$mu, fx$phi),
     .nb2_Pj(fx$X, fx$mu, fx$theta_contrast),
     tolerance = 1e-6
   )))
@@ -181,7 +277,7 @@ test_that("N4: mean-boundary at fixed phi sends NB1 Jeffreys atom to -Inf", {
   beta1_grid <- seq(0, -20, length.out = 11)
   Pj <- vapply(beta1_grid, function(b0) {
     eta <- fx$X[, 1L] * b0 + fx$X[, 2L] * fx$beta[2L]
-    .nb1_Pj(fx$X, .nb1_mu(eta), fx$phi)
+    .nb1_exact_Pj(fx$X, .nb1_mu(eta), fx$phi)
   }, numeric(1L))
   expect_true(all(is.finite(Pj)))
   expect_true(all(diff(Pj) < 0))
@@ -193,7 +289,7 @@ test_that("N5: near-zero mean scaling at fixed phi deteriorates P_J", {
   fx <- .nb1_fixture()
   eps_grid <- 10^seq(0, -6, length.out = 7)
   Pj <- vapply(eps_grid, function(eps) {
-    .nb1_Pj(fx$X, eps * fx$mu, fx$phi)
+    .nb1_exact_Pj(fx$X, eps * fx$mu, fx$phi)
   }, numeric(1L))
   expect_true(all(is.finite(Pj)))
   expect_true(all(diff(Pj) < 0))
@@ -204,16 +300,10 @@ test_that("N6: phi -> 0 at fixed mu increases P_J toward Poisson; not -Inf", {
   fx <- .nb1_fixture()
   phi_grid <- c(10, 5, 2, 1, 0.1, 0.01)
   Pj <- vapply(phi_grid, function(phi) {
-    .nb1_Pj(fx$X, fx$mu, phi)
+    .nb1_exact_Pj(fx$X, fx$mu, phi)
   }, numeric(1L))
   expect_true(all(is.finite(Pj)))
   expect_true(all(diff(Pj) > 0))
-  phi_lo <- tail(phi_grid, 1L)
-  expect_equal(
-    tail(Pj, 1L),
-    .pois_Pj(fx$X, fx$mu) - (fx$p_free / 2) * log(1 + phi_lo),
-    tolerance = 1e-12
-  )
   expect_lt(abs(tail(Pj, 1L) - .pois_Pj(fx$X, fx$mu)), 0.02)
   ## Opposite monotonicity from the mean-boundary path (N4).
   expect_gt(tail(Pj, 1L), Pj[1L])
@@ -223,16 +313,11 @@ test_that("N7: phi -> Inf at fixed mu sends P_J to -Inf", {
   fx <- .nb1_fixture()
   phi_grid <- c(0.5, 1, 2, 5, 20, 100)
   Pj <- vapply(phi_grid, function(phi) {
-    .nb1_Pj(fx$X, fx$mu, phi)
+    .nb1_exact_Pj(fx$X, fx$mu, phi)
   }, numeric(1L))
   expect_true(all(is.finite(Pj)))
   expect_true(all(diff(Pj) < 0))
-  expect_equal(
-    tail(Pj, 1L),
-    .pois_Pj(fx$X, fx$mu) - (fx$p_free / 2) * log(1 + tail(phi_grid, 1L)),
-    tolerance = 1e-12
-  )
-  expect_lt(tail(Pj, 1L), Pj[1L] - 4)
+  expect_lt(tail(Pj, 1L), Pj[1L] - 2.5)
 })
 
 test_that("N8: setting theta = 1/phi does not recover NB1 V or W", {
@@ -242,7 +327,7 @@ test_that("N8: setting theta = 1/phi does not recover NB1 V or W", {
   v_nb2 <- .nb2_var(fx$mu, fx$theta_contrast)
   expect_false(isTRUE(all.equal(v_nb1, v_nb2, tolerance = 1e-6)))
   expect_false(isTRUE(all.equal(
-    .nb1_W(fx$mu, fx$phi),
+    .nb1_exact_W(fx$mu, fx$phi),
     .nb2_W(fx$mu, fx$theta_contrast),
     tolerance = 1e-6
   )))
@@ -255,29 +340,38 @@ test_that("N8: setting theta = 1/phi does not recover NB1 V or W", {
   )
 })
 
-test_that("N9: exposure doubling doubles NB1 information; row count fixed", {
+test_that("N9: exposure changes exact NB1 information, but not linearly", {
   fx <- .nb1_fixture()
   E <- c(1, 2, 0.5, 4)
   mu1 <- .nb1_mu(fx$eta, exposure = E)
   mu2 <- .nb1_mu(fx$eta, exposure = 2 * E)
-  I1 <- .nb1_I(fx$X, mu1, fx$phi)
-  I2 <- .nb1_I(fx$X, mu2, fx$phi)
-  expect_equal(I2, 2 * I1, tolerance = 1e-12)
-  info1 <- sum(.nb1_W(mu1, fx$phi))
-  info2 <- sum(.nb1_W(mu2, fx$phi))
-  expect_equal(info2, 2 * info1, tolerance = 1e-12)
-  expect_equal(info1, sum(mu1) / (1 + fx$phi), tolerance = 1e-12)
-  expect_false(isTRUE(all.equal(info1, sum(mu1), tolerance = 1e-6)))
+  w1 <- .nb1_exact_W(mu1, fx$phi)
+  w2 <- .nb1_exact_W(mu2, fx$phi)
+  I1 <- .nb1_exact_I(fx$X, mu1, fx$phi)
+  I2 <- .nb1_exact_I(fx$X, mu2, fx$phi)
+  expect_true(all(w2 > w1))
+  expect_true(all(w2 < 2 * w1))
+  expect_false(isTRUE(all.equal(I2, 2 * I1, tolerance = 1e-6)))
+  expect_equal(
+    .nb1_quasi_W(mu2, fx$phi),
+    2 * .nb1_quasi_W(mu1, fx$phi),
+    tolerance = 1e-12
+  )
+  expect_false(isTRUE(all.equal(
+    sum(w1),
+    sum(.nb1_quasi_W(mu1, fx$phi)),
+    tolerance = 1e-6
+  )))
   expect_identical(length(mu1), fx$n_rows)
   expect_identical(length(mu2), fx$n_rows)
   expect_false(isTRUE(all.equal(
-    info1,
+    sum(w1),
     as.numeric(fx$n_rows),
     tolerance = 1e-6
   )))
 })
 
-test_that("N10: offset spelling vs folded log-exposure leave mu and I identical", {
+test_that("N10: offset spelling vs folded log-exposure leave mu and exact I identical", {
   fx <- .nb1_fixture()
   E <- c(1.5, 2.0, 0.8, 3.0)
   eta_free <- fx$eta
@@ -286,13 +380,13 @@ test_that("N10: offset spelling vs folded log-exposure leave mu and I identical"
   mu_folded <- .nb1_mu(eta_folded, exposure = 1)
   expect_equal(mu_offset, mu_folded, tolerance = 1e-12)
   expect_equal(
-    .nb1_I(fx$X, mu_offset, fx$phi),
-    .nb1_I(fx$X, mu_folded, fx$phi),
+    .nb1_exact_I(fx$X, mu_offset, fx$phi),
+    .nb1_exact_I(fx$X, mu_folded, fx$phi),
     tolerance = 1e-12
   )
   expect_equal(
-    .nb1_Pj(fx$X, mu_offset, fx$phi),
-    .nb1_Pj(fx$X, mu_folded, fx$phi),
+    .nb1_exact_Pj(fx$X, mu_offset, fx$phi),
+    .nb1_exact_Pj(fx$X, mu_folded, fx$phi),
     tolerance = 1e-12
   )
 })
@@ -308,12 +402,12 @@ test_that("N11: Hirose Psi and V_loading are refused / inert for NB1", {
   hirose_invmu <- .nb1_hirose_atom(fx$mu, 1 / fx$mu)
   expect_false(isTRUE(all.equal(
     hirose_phi,
-    .nb1_Pj(fx$X, fx$mu, fx$phi),
+    .nb1_exact_Pj(fx$X, fx$mu, fx$phi),
     tolerance = 1e-3
   )))
   expect_false(isTRUE(all.equal(
     hirose_invmu,
-    .nb1_Pj(fx$X, fx$mu, fx$phi),
+    .nb1_exact_Pj(fx$X, fx$mu, fx$phi),
     tolerance = 1e-3
   )))
   expect_equal(hirose_invmu, sum(fx$mu^2), tolerance = 1e-12)
@@ -329,13 +423,13 @@ test_that("N11: Hirose Psi and V_loading are refused / inert for NB1", {
     tolerance = 0
   )
   expect_false(isTRUE(all.equal(
-    .nb1_Pj(fx$X, fx$mu, fx$phi),
-    .nb1_Pj(fx$X, mu_up, fx$phi),
+    .nb1_exact_Pj(fx$X, fx$mu, fx$phi),
+    .nb1_exact_Pj(fx$X, mu_up, fx$phi),
     tolerance = 1e-10
   )))
   expect_false(isTRUE(all.equal(
-    .nb1_Pj(fx$X, fx$mu, fx$phi),
-    .nb1_Pj(fx$X, fx$mu, fx$phi + eps),
+    .nb1_exact_Pj(fx$X, fx$mu, fx$phi),
+    .nb1_exact_Pj(fx$X, fx$mu, fx$phi + eps),
     tolerance = 1e-10
   )))
   Lambda_up <- fx$Lambda
@@ -368,13 +462,16 @@ test_that("N12: NB1 size is mu/phi; log(V-mu) matches the TMB comment", {
     .nb2_log_v_minus_mu(fx$mu, fx$theta_contrast),
     tolerance = 1e-6
   )))
-  ## Success probability phi/(1+phi) is mu-free (Design 105 NB1 density).
-  p_from_mu <- fx$mu / (fx$mu + size)
-  expect_equal(p_from_mu, rep(fx$phi / (1 + fx$phi), fx$n_rows),
+  ## R/TMB success probability is size/(size + mu) = 1/(1 + phi).
+  p_success <- size / (size + fx$mu)
+  p_failure <- fx$mu / (size + fx$mu)
+  expect_equal(p_success, rep(1 / (1 + fx$phi), fx$n_rows),
+               tolerance = 1e-12)
+  expect_equal(p_failure, rep(fx$phi / (1 + fx$phi), fx$n_rows),
                tolerance = 1e-12)
   expect_false(isTRUE(all.equal(
-    p_from_mu,
-    fx$mu / (fx$mu + fx$theta_contrast),
+    p_success,
+    fx$theta_contrast / (fx$theta_contrast + fx$mu),
     tolerance = 1e-6
   )))
 })

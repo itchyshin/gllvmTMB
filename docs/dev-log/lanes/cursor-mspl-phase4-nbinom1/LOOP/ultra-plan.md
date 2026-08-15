@@ -1,4 +1,4 @@
-# Ultra-plan — cursor-mspl-phase4-nbinom1 (copy-not-rewrite)
+# Ultra-plan — cursor-mspl-phase4-nbinom1
 
 ```text
 🎯 GOAL
@@ -20,7 +20,7 @@ SCIENCE OWNER: sibling on
 
 ## HARD STOP
 
-- Rewrite sibling note or oracles
+- Rewrite beyond the authorized exact-information / probability-convention review repair
 - Add nbinom1 registry row / admit
 - Widen `.gllvmTMB_mspl_prepare()`
 - Edit `R/mspl.R` or `src/`
@@ -34,3 +34,4 @@ SCIENCE OWNER: sibling on
 | A1 | Copy sibling note + oracles | do not rewrite |
 | A2 | Re-run oracles; structured counts | HARD STOP if FAIL |
 | A3 | Explicit-path commit + push + stacked PR | no merge |
+| R1 | Repair PR #976 exact Fisher + success convention | keep every admission fence |

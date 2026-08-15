@@ -13,6 +13,15 @@ base, not this lane's science editor.
 
 This is **LA-MSPL**, not EVA, not VA, not AGHQ-MSPL.
 
+## Review amendment — 2026-08-15
+
+Shinichi authorized a bounded rewrite of the copied note and oracles
+to repair PR #976's blocking NB1 information error. This amendment
+supersedes only the earlier copy-not-rewrite fence: use exact Fisher
+information from the `size = mu / phi` pmf, label
+\(\mu/(1+\varphi)\) quasi/IRLS only, and use R/TMB success probability
+\(1/(1+\varphi)\). Every admission fence below remains unchanged.
+
 ## Mission
 
 ```text
@@ -40,8 +49,9 @@ row, without prepare widening, without admission.
   `cursor/mspl-point-programme-continue`).
 - Lane LOOP only under
   `docs/dev-log/lanes/cursor-mspl-phase4-nbinom1/LOOP/`.
-- Science files are **copies** of the sibling shared-worktree
-  versions. Do not rewrite them.
+- Science files began as sibling copies; the review amendment above
+  authorizes only the exact-information and probability-convention
+  repair.
 - Do NOT edit `R/mspl.R`, `src/`, `.gllvmTMB_mspl_prepare()`,
   or add/admit an nbinom1 registry row.
 - Do NOT implement SE / intervals / NEWS covered / C++.

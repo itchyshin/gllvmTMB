@@ -111,20 +111,40 @@
     admitted_gauss$q
   )
 
+  ## Poisson ordinary q=1,2: planned Phase-4 prep only. NOT admitted.
+  ## .gllvmTMB_mspl_prepare() still rejects family_id outside {0,1}.
+  planned_pois <- data.frame(
+    family = "poisson",
+    link = "log",
+    structure = "ordinary",
+    q = c(1L, 2L),
+    status = "planned",
+    evidence = "phase4_prep",
+    notes = paste(
+      "Phase 4 prep: information atom + pure-R oracles only;",
+      "no C++ tape; no estimator=mspl on Poisson; not admitted"
+    ),
+    stringsAsFactors = FALSE
+  )
+  planned_pois$cell_id <- .gllvmTMB_mspl_registry_cell_id(
+    planned_pois$family, planned_pois$link, planned_pois$structure,
+    planned_pois$q
+  )
+
   excluded <- data.frame(
     family = c(
       "binomial", "binomial", "binomial", "binomial", "binomial",
-      "binomial", "nbinom2", "poisson"
+      "binomial", "nbinom2"
     ),
     link = c(
       "logit", "logit", "logit", "logit", "logit",
-      "logit", "log", "log"
+      "logit", "log"
     ),
     structure = c(
       "ordinary", "ordinary", "ordinary", "ordinary", "ordinary",
-      "dep", "ordinary", "ordinary"
+      "dep", "ordinary"
     ),
-    q = c(3L, 1L, 1L, 1L, 1L, 1L, 1L, 1L),
+    q = c(3L, 1L, 1L, 1L, 1L, 1L, 1L),
     status = "excluded",
     evidence = "fence",
     notes = c(
@@ -134,8 +154,7 @@
       "nonzero offset deferred",
       "free Bernoulli Psi deferred",
       "unstructured dep not an admitted MSPL structure",
-      "count families wait for Phase 4",
-      "count families wait for Phase 4"
+      "NB2 waits for Phase 4 after Poisson admission gate"
     ),
     stringsAsFactors = FALSE
   )
@@ -145,12 +164,12 @@
     ),
     c(
       "qgt2", "trials", "missing", "offset", "psi",
-      "dep", "nbinom2", "poisson"
+      "dep", "nbinom2"
     ),
     sep = ":"
   )
 
-  rows <- rbind(admitted_binom, admitted_gauss, excluded)
+  rows <- rbind(admitted_binom, admitted_gauss, planned_pois, excluded)
   rows[order(rows$status, rows$family, rows$structure, rows$link, rows$q), ]
 }
 

@@ -131,6 +131,8 @@ test_that("ML remains the default and explicit ml is numerically identical", {
   expect_equal(explicit$opt$par, implicit$opt$par, tolerance = 1e-10)
   expect_equal(explicit$opt$objective, implicit$opt$objective, tolerance = 1e-10)
   expect_identical(implicit$tmb_data$estimator_id, 0L)
+  expect_identical(implicit$estimator_provenance$estimator_id, 0L)
+  expect_identical(explicit$estimator_provenance$criterion_id, "la_ml")
 })
 
 test_that("LA-MSPL returns labelled finite point estimates for all binary links", {

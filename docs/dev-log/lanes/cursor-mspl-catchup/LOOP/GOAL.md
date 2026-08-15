@@ -3,60 +3,70 @@
 Read this first, every cycle. Auto-compact eats messages, not this file.
 
 This kit lives at `docs/dev-log/lanes/cursor-mspl-catchup/LOOP/`.
-**Do not write repo-root `LOOP/`.** That path is the 0.6 release kit on `main`.
+**Do not write repo-root `LOOP/`.** That path is the 0.6 EVA/VA kit on `main`.
+
+This is **LA-MSPL**, not EVA.
 
 ## Mission
 
-Catch LA-MSPL up to LA-ML as a *parallel research estimator* on this
-Cursor lane, as far as reversible work allows. Finish line for this
-run: current Bernoulli surface is an explicit cell registry (Phase 2)
-with unchanged admits/aborts/numbers; Gaussian Heywood is designed
-and fenced as the next scientific route (Phase 3 prep), not silently
-admitted.
+Solo platform: Cursor.
+
+Landed Phase 2 Bernoulli cell registry with unchanged admits /
+aborts / numbers, plus a Sol/Opus-reviewed Gaussian Heywood
+derivation and local oracles that do not admit Gaussian MSPL.
+
+Finish line for this run: those artefacts are on `main` via
+authorized merge of PR **#963** only.
 
 ## Headline
 
-Re-express the live Bernoulli MSPL surface as named cells, then prepare
-the matched Gaussian factor/Heywood route — without pretending MSPL
-already matches Laplace-ML on new families.
+Make LA-MSPL a truthful parallel to LA-ML on the live binary
+surface, then earn the first matched Gaussian cell on paper and
+in oracles — not by transplanting the Bernoulli penalty.
 
 ## Invariants
 
 - Workspace ONLY `/private/tmp/gllvmtmb-mspl-estimator-programme-roadmap`.
-- Do NOT edit the Dropbox checkout or Design 117 / iSDM / G3P / #872 /
-  #855 / AA-03 / interval-feasibility files.
+- Branch `cursor/mspl-catchup-ml-laplace`. Lane LOOP only.
+- Do NOT edit the Dropbox checkout or Design 117 / iSDM / G3P /
+  #872 / #855 / AA-03 / interval-feasibility files.
 - Do NOT write repo-root `LOOP/`.
-- TMB `estimator_id` stays 0/1/2. No C++ tape change without a HOLD.
-- No accepted-call change. That is Phase 1B — OPEN GATE.
-- No merge to main. No NEWS. No register promotion. No default change.
+- TMB `estimator_id` stays 0/1/2. No C++ tape change.
+- No Phase 1B accepted-call change.
+- Merge **#963** is authorized. Do **not** merge #962 or #961.
+- No NEWS. No register promotion. No default change.
 - No campaign. Local targeted tests only. `OMP_NUM_THREADS=1`.
   Any fit >30 min STOP.
-- Do not merge the interval/jackknife lane.
-- Do not admit Gaussian (or any new family) into `estimator = "mspl"`
-  until Phase 3 has its own derivation + local smoke + Shinichi gate.
+- Do not admit Gaussian (or any new family) into
+  `estimator = "mspl"`. Do not flip `planned` → `admitted`.
+- "Keep going" means finish this GOAL and merge #963. It does
+  **not** mean start Phase 3 live admission.
 
 ## Authoritative WHAT
 
-Programme: `docs/dev-log/after-task/2026-08-14-laplace-mspl-estimator-programme.md`
-(Phases 2 then 3; 1B/4–8 gated or deferred).
+`docs/dev-log/lanes/cursor-mspl-catchup/LOOP/ultra-plan.md`
+(copy of `docs/dev-log/plans/2026-08-15-cursor-mspl-catchup-ultra-plan.md`).
+Programme: `docs/dev-log/after-task/2026-08-14-laplace-mspl-estimator-programme.md`.
 
-## Definition of done (this run)
+## Definition of done
 
-1. Explicit Bernoulli registry lists every current admitted cell and
-   the current exclusions. B2 is marked `partial_incomplete`, not
-   averaged away.
-2. `.gllvmTMB_mspl_prepare()` still admits and rejects the same calls
-   with the same error classes. `test-mspl-api.R` stays green.
+1. Explicit Bernoulli registry lists every current admitted cell
+   and the current exclusions. B2 stays `partial_b2_incomplete`.
+2. `.gllvmTMB_mspl_prepare()` still admits and rejects the same
+   calls with the same error classes. `test-mspl-api.R` stays green.
 3. Successful MSPL fits carry a registry cell id.
 4. Phase 3 Gaussian Heywood is a written design + planned registry
-   rows (`status = planned`), not a live admission.
-5. After-task + check-log + stacked PR. No merge.
+   rows (`status = planned`), not a live admission. Symbolic
+   alignment table present. Oracles do not call Gaussian MSPL.
+5. After-task + Melissa plan-actual exist.
+6. PR #963 is merged (merge commit). `src/` still empty vs that PR.
 
-## OPEN GATES
+## OPEN GATES (do not execute)
 
-- merge to main
 - Phase 1B typed error / deprecation / new criterion API
-- NEWS / public claim / validation-register promotion
+- merge #962 or #961
+- Gaussian uniqueness mapping / #856
 - C++ tape change
-- admitting a new family/link/structure to MSPL
+- flipping Gaussian rows to `admitted`
+- NEWS / public claim / validation-register promotion
 - any campaign / Totoro / DRAC

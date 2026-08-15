@@ -186,7 +186,7 @@ source(file.path(script_dir, "spde-slope-gauge-nofit-contract.R"), local = TRUE)
         path = NA_character_, md5 = NA_character_
       )
   child_evidence_valid <- has_child && isTRUE(.spde_slope_gauge_nofit_child_ok(
-    child, c(predecessor[c("receipt", "state_md5")]), observed_dll, state = predecessor$state
+    child, predecessor, observed_dll, state = predecessor$state
   ))
   child_status <- if (!has_child) {
     "SPDE_SLOPE_GAUGE_NOFIT_INFRASTRUCTURE_HOLD"

@@ -50217,3 +50217,22 @@ Focused tests and parse checks passed; the scans found only intentional private
 gauge/history entries and pre-existing public package surfaces.  No child,
 preflight, gate materialization, TMB build, fit, optimiser, simulation, smoke,
 remote compute, recovery, or public/article execution occurred.
+
+## 2026-08-15 — SPDE-slope gauge no-fit V1 terminal forensic closeout
+
+`PAPER1_SPDE_SLOPE_GAUGE_NOFIT_GATE_V1` is consumed and frozen at source commit
+`4eb710ed12cc5346d4ed4bcae0e8182d8ba3fbc3`.  Its root-receipt, manifest,
+child-receipt, and no-fit-result MD5s are respectively
+`1d9b1b0b31a993dc88427ce6989dea85`, `fd83183495b88a37c677682b9f9e6015`,
+`e5481430c170b8f3fa5c1eb1da33e27e`, and `0af4bc98742861950896c1e79dadb2e0`;
+its terminal status is
+`SPDE_SLOPE_GAUGE_NOFIT_INFRASTRUCTURE_HOLD / child_evidence_invalid`.
+
+The retained child reports a complete no-fit callback trace (45 objective,
+one gradient, 22 FD records; object/release 1/1), but its values are not
+admissible because V1's parent passed only `receipt,state_md5` into a schema
+that also required predecessor `root,commit`.  The source repair returns and
+passes the full predecessor projection; it does not mutate, relabel, or rerun
+V1.  Any successor requires a separate V2 design/root/receipt binding V1 as a
+forensic predecessor.  No numerical, ecological, recovery, or public claim is
+earned.

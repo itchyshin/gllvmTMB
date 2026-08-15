@@ -120,7 +120,8 @@ spde_slope_gauge_nofit_validate_predecessor_bytes <- function(
   .spde_slope_gauge_nofit_verdict(
     receipt_ok && state_ok,
     if (receipt_ok && state_ok) "predecessor_bytes_valid" else "predecessor_receipt_or_state_invalid",
-    receipt = receipt, state = state, state_md5 = unname(locked$files[["v2-materialized-state.rds"]])
+    root = normal_root, commit = locked$commit, receipt = receipt, state = state,
+    state_md5 = unname(locked$files[["v2-materialized-state.rds"]])
   )
 }
 
@@ -508,7 +509,7 @@ spde_slope_gauge_nofit_validate_gate_root <- function(
   child_declared_dll <- if (has_result && is.list(child) && is.list(child$dll)) child$dll else
     list(path = NA_character_, md5 = NA_character_)
   raw_child_ok <- has_result && isTRUE(tryCatch(.spde_slope_gauge_nofit_child_ok(
-    child, root_receipt$predecessor, child_declared_dll, state = predecessor_verdict$state
+    child, predecessor_verdict, child_declared_dll, state = predecessor_verdict$state
   ), error = function(e) FALSE))
   evidence_hold <- has_result && identical(root_receipt$status,
     "SPDE_SLOPE_GAUGE_NOFIT_INFRASTRUCTURE_HOLD") &&

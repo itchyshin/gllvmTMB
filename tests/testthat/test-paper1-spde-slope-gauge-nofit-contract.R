@@ -76,6 +76,8 @@ test_that("the no-fit predecessor byte gate accepts a complete regular synthetic
   )
   expect_true(verdict$valid)
   expect_identical(verdict$reason, "predecessor_bytes_valid")
+  expect_identical(verdict$root, fixture$root)
+  expect_identical(verdict$commit, fixture$locked$commit)
   expect_identical(verdict$state, fixture$state)
   expect_identical(verdict$state_md5, fixture$locked$files[["v2-materialized-state.rds"]])
 })
@@ -266,7 +268,7 @@ spde_slope_gauge_nofit_gate_fixture <- function(contract) {
     schema = "PAPER1_SPDE_SLOPE_GAUGE_NOFIT_GATE_V1_CHILD_V1",
     parent_pid = 1001L, child_pid = 1002L, started_at = "2026-08-15 00:00:00 UTC",
     deadline_s = 1800, status = "SPDE_SLOPE_GAUGE_NOFIT_VALID", reason = nofit$reason,
-    predecessor = c(predecessor_verdict[c("receipt", "state_md5")], list(
+    predecessor = c(predecessor_verdict[c("root", "commit", "receipt", "state_md5")], list(
       historical_reason = "closeout_recomputed", post_replay_gc = TRUE
     )),
     dll = list(path = normalizePath(dll), md5 = unname(tools::md5sum(dll))[[1L]]),

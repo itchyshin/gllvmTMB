@@ -160,3 +160,187 @@ requires its own sealed attempt and recovery evidence.  A non-admission or
 infrastructure terminal closes this estimator without a retune or in-place
 retry; a further method would require another separately reviewed algorithm
 design.
+
+## 7. Amendment after independent mathematical audit (2026-08-15)
+
+Sections 1--6 above are retained unchanged as the original design record.  This
+section is appended after the audit at
+`2026-08-15-paper1-range-amplitude-orthogonal-map-audit.md`, which found six
+items.  Where this section conflicts with an earlier section, this section
+governs.
+
+**7.1 Corrected evidence citation (audit F4).**  Section 2 cites the engine for
+`n_lhs_cols_spde_lat = 2` and `d_spde_slope = 1`.  Both are `DATA_INTEGER`
+inputs (`src/gllvmTMB.cpp:366`, validated as "must be 1 or 2" at
+`src/gllvmTMB.cpp:1811-1812`), so the source establishes only that the engine
+*supports* those values, never what the frozen Paper 1 model uses.  The binding
+evidence is the sealed MSPDE V3 state.  The gate specified in Section 5 must
+**re-assert the shape at runtime** from that state -- both integers, the
+22-length raw vector, and the positional layout -- with a typed failure token,
+rather than assuming it.
+
+**7.2 Scoped limitation: one kappa, two loading columns (audit F1).**  The
+engine declares a single `log_kappa_spde` (`src/gllvmTMB.cpp:748`) while the
+SPDE latent-slope block carries two LHS columns, laid out consecutively with
+`len_per_col = p * rank - rank * (rank - 1) / 2`
+(`src/gllvmTMB.cpp:1830,1836-1837`).  Raw 17--19 is therefore the intercept
+column and raw 20--22 the GBIF slope column.  Both columns' fields are governed
+by the same kappa, so the kappa-versus-amplitude trade-off exists for both.
+**This chart separates kappa from the slope amplitude only.**  The intercept
+amplitude remains confounded with the same kappa and stays in the identity block
+of the Jacobian.
+
+Measured on the sealed V3 state during the audit, the untreated amplitude is the
+**dominant** one: `||lambda_intercept|| = 33.522` against
+`||lambda_slope|| = 0.10321`, a ratio of **324.79**.  The chart therefore treats
+the numerically minor of the two kappa-amplitude confoundings.
+
+This is a scoped limitation of the estimator, not a defect to be repaired in
+this lane (maintainer decision, 2026-08-15).  Widening to a six-coordinate chart
+would be a materially different estimator requiring its own identity, contract,
+and review.  The later execution design required by Section 6 **may not assume
+the range--amplitude ridge has been removed**; it has been removed for the
+smaller of two amplitudes, and the larger is 325 times its size.
+
+**7.3 The orthogonal factor is inert with respect to conditioning (audit F2).**
+The map composes as a nonlinear amplitude/direction split of lambda after an
+orthogonal linear factor.  The orthogonal factor is an orthogonal similarity on
+the curvature, so it preserves eigenvalues and cannot change the condition
+number.  Carrying out the congruence directly on `[[A,B],[B,C]]` gives a
+transformed cross-term of exactly `(A - C)/2`, **independent of B**, so the
+factor decorrelates the (log-range, log-amplitude) pair **if and only if
+`A = C`**.  Nothing establishes that equality here.
+
+Two consequences follow that a weaker `tan(2*theta) = 2B/(A-C)` argument hides.
+Because the outcome does not depend on `B` at all, the transform **can create
+correlation in an already-diagonal block** (`A=3, B=0, C=0.4` gives `0 -> 1.30`)
+and **can amplify an existing cross-term without bound** (`A=10, B=0.1, C=0`
+gives `0.1 -> 5.0`, a fiftyfold increase).  The correct statement is not that
+the factor fails to remove the cross-term but that it **cannot control it**.
+The inertness is moreover exact for the whole four-coordinate block: with
+`T = E . blkdiag(R, I2)` and the second factor linear, the transformed curvature
+is an orthogonal congruence with no second-order term.
+
+Section 3's statement that the chart "separates the log-range and log-amplitude
+axes algebraically" is accordingly true of the *coordinates* and not of the
+*curvature*.  The chart's value can come only from the nonlinear split, or from
+axis alignment exploited by a numerical procedure that is not affine-invariant.
+**The execution design required by Section 6 must state which anisotropy it
+exploits**; a procedure that is affine-invariant in exact arithmetic gains
+nothing from the orthogonal factor.
+
+The gate must **compute and report** the transformed curvature entries \(A\) and
+\(C\) for the chart's (u,v) pair and the true diagonalising angle
+\(\tfrac12\operatorname{atan2}(2B,\,A-C)\) at the frozen point, written into the
+ledger.  This is a **reported diagnostic and explicitly not a pass/fail
+criterion** (maintainer decision, 2026-08-15): no threshold on \(|A-C|\) has
+evidence behind it, and inventing one now would close the lane on a criterion
+manufactured after the design.  Its purpose is to inform the execution design.
+
+Note also that "orthogonal" here denotes an orthogonal coordinate map, **not**
+Cox--Reid parameter orthogonality (\(i_{\psi\lambda}=0\)), which this chart does
+not deliver.
+
+**7.4 Per-coordinate gradient tolerance (audit F3).**  Section 5 gate 2 requires
+the transformed gradient to match a 22-coordinate central-difference ledger to
+`1e-5`.  The supplied helper `rao_relative_error` divides the largest deviation
+by the largest magnitude anywhere in the vector, so a single wrong coordinate
+can hide behind a large one, and when all components are below 1 the denominator
+pins to 1 and the tolerance is silently absolute.
+
+That is the regime at the frozen point.  Measured on the sealed V3 state:
+`max|g| = 2.8237e-4`, `min|g| = 1.5687e-6`, and **4 of the 22 coordinates
+already have `|g| < 1e-5`** -- for those, the stated tolerance *exceeds the
+quantity being tested*, so a 100% error is undetectable.  On the chart's own
+log-range coordinate, `|g_16| = 8.86e-5`, an absolute `1e-5` admits an 11%
+relative error.
+
+**A per-coordinate *relative* tolerance does not fix this, and was tried.**  The
+first attempt, `rao_coordinatewise_relative_error`, kept the floor at 1 and
+therefore still judged absolutely every coordinate below unity -- which is every
+coordinate here.  On the sealed state it passes a **100% error** on the smallest
+gradient coordinate (returns `5.53e-6` against a `1e-5` gate).
+
+**And a strictly relative `1e-5` is unreachable.**  With `|f| = 2549.04` the
+best attainable central-difference accuracy is about
+`(eps*|f|)^(2/3) = 6.84e-9` absolute, i.e. `2.42e-5` relative against
+`max|g| = 2.82e-4` and `4.36e-3` against `min|g| = 1.57e-6`.  **All 22 of 22
+coordinates fail a true `1e-5` relative gate.**  Section 5 gate 2 as literally
+written is therefore unsatisfiable, and would only ever pass by virtue of the
+floor.
+
+Gate 2 accordingly requires a **mixed** criterion,
+`|x_j - y_j| <= atol + rtol * |y_j|` for every `j`, with `y` the
+finite-difference ledger, via `rao_coordinatewise_discrepancy(x, y, atol, rtol)`.
+Both tolerances are **required arguments with no default**.  `atol` must be
+justified against the *measured* central-difference noise floor of the objective
+under test -- measured, for instance, by differencing at several step sizes and
+observing where the estimate stops improving.  **The two numbers are
+deliberately not fixed here**; the execution design fixes them after that
+measurement.  `rao_relative_error` remains valid for scalar comparisons;
+`rao_coordinatewise_relative_error` remains a diagnostic for the masking face
+alone.  Neither may gate the ledger.
+
+(Note for the record: the figure `0.002431251466981631` that appears in the G3
+adjudication belongs to the consumed `G3_P1_S3_C360_R3_V3` root, not to the
+MSPDE V3 predecessor this chart starts from.)
+
+**7.4a Read the start state from the packet, never from a literal.**  The
+contract's test fixture carries `theta[16] = 2.687653160`, but the sealed value
+is `2.6876531596114015` -- a difference of `3.886e-10`, which is **27,345 times**
+the `64*.Machine$double.eps` tolerance that Section 5 gate 2 itself imposes.
+Positions 20--22 are bit-identical; position 16 is not.  Any gate that starts
+from the fixture and asserts `T(phi0) = theta0` to `64*eps` will fail at
+coordinate 16 for a reason that has nothing to do with the chart.  The gate must
+read `theta0` from the sealed packet.
+
+**7.4b Record the cancellation witness.**  At the frozen point `q = 2.687653`
+and `eta = log(lambda_1) = -2.715757`, so `u = (q + eta)/sqrt(2)` is formed from
+`q + eta = -0.02810406` -- a subtraction of near-equal magnitudes that destroys
+about **two decimal digits** in the chart's own primary coordinate, worsening
+without bound as kappa approaches the reciprocal of the amplitude.  The gate must
+record `q + eta` alongside `lambda_1` as a conditioning witness.  This compounds
+7.4: the coordinate least able to tolerate noise is the one the chart
+manufactures by cancellation.
+
+**7.4c The determinant is never checked.**  The contract validates only
+`any(!is.finite(jacobian))`.  At `lambda_1 = 1e-160` and at denormal
+`lambda_1`, every finiteness check passes while `det J_local` has underflowed to
+exactly `-0`; at `lambda_1 = 1e160` it is `-Inf` with round-trip error `5.09e146`.
+The chart is thus admitted at points where it is numerically non-invertible,
+silently.  A determinant check belongs in the contract; its floor is left to the
+execution design, since it depends on the conditioning the numerical procedure
+requires.
+
+**7.5 Predeclared reference coordinate (audit F5).**  Section 3 writes
+`lambda = e^eta (1, a, b)`, which silently makes `lambda_1` the amplitude
+reference while `lambda_2, lambda_3` become ratios.  **Index 1 is hereby
+recorded as predeclared**, fixed before evaluating this estimator and not
+selected from data; at the frozen point `lambda_1` is not the largest-magnitude
+component, and a data-selected reference would forfeit the fixed-chart property
+this design rests on.  Because \(\det J = -\lambda_1^{3}\), the chart degenerates
+as `lambda_1` approaches zero, so the gate must **record `lambda_1` at the
+frozen point** as a conditioning witness.
+
+**7.6 The no-Jacobian argument needs a THIRD condition, and it is the untested
+one.**  Section 2's argument has a pointwise half and an argmin half.  The
+pointwise half holds unconditionally: the chart touches only fixed parameters
+(verified -- `random = c("s_B", "g_spde_slope")`, and neither appears in
+`parameter_order` or `map`), so the inner Laplace integral is untouched and
+`f(T(phi))` is the identical number.
+
+The argmin half needs more.  `T` is a bijection onto `R x {lambda_1 > 0}`, **not
+onto R^4**.  If the raw optimum had `lambda_1 <= 0`, `T^{-1}(argmin f)` would be
+undefined.  What makes the restriction without loss of generality is exactly the
+**full random-effect sign-orbit property of Section 5 gate 3 -- which is
+untested**.  Until it passes on the immutable V3 state, this chart is
+established as an exact re-expression of the objective's *values* but **not of
+its optimum**.  Gate 3 should therefore be sequenced **first** among the live
+gates, not third.  Note also that the chart pushes the `lambda_1 = 0` boundary
+to `eta -> -infinity`, so a raw path crossing it cannot be represented at all.
+
+**7.7 Confirmed unchanged.**  The audit confirmed, and this amendment does not
+alter: the derivative contract of Section 4, and bijectivity of the chart on its
+stated domain (round-trip error `1.39e-17` at the frozen point;
+`det J = -lambda_1^3` exactly, orientation-reversing, nonzero throughout the
+domain).

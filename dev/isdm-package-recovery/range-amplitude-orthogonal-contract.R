@@ -115,10 +115,49 @@ rao_full_chain_gradient <- function(phi, raw_gradient) {
   )
 }
 
+# rao_relative_error is a WHOLE-VECTOR metric: every coordinate is scaled by
+# the single largest magnitude found anywhere in x or y, so a large coordinate
+# can mask a total miss on a small one. It must NOT be used to gate the
+# 22-coordinate gradient ledger; use rao_coordinatewise_relative_error there.
 rao_relative_error <- function(x, y) {
   if (!is.numeric(x) || !is.numeric(y) || length(x) != length(y) ||
       any(!is.finite(x)) || any(!is.finite(y))) {
     .rao_fail("relative-error inputs must be finite numeric vectors of equal length")
   }
   max(abs(x - y)) / max(1, abs(x), abs(y))
+}
+
+# rao_coordinatewise_relative_error removes only the MASKING face of the defect
+# -- a large coordinate hiding a total miss on a small sibling. It does NOT
+# remove the absolute-tolerance face: its floor of 1 still judges every
+# coordinate below unity absolutely, and EVERY coordinate of the frozen
+# gradient is below unity. On the frozen state a 100% error on the smallest
+# coordinate returns 5.53e-06 and passes a 1e-5 gate. It is a diagnostic for
+# the masking face only; it is NOT the gradient-ledger gate.
+rao_coordinatewise_relative_error <- function(x, y) {
+  if (!is.numeric(x) || !is.numeric(y) || length(x) != length(y) ||
+      any(!is.finite(x)) || any(!is.finite(y))) {
+    .rao_fail("relative-error inputs must be finite numeric vectors of equal length")
+  }
+  max(abs(x - y) / pmax(1, abs(x), abs(y)))
+}
+
+# The gradient-ledger gate. Mixed absolute/relative criterion against the
+# reference y: the ledger passes when the returned worst ratio is <= 1.
+# Both tolerances are REQUIRED. There is no defensible default: a floor of 1
+# silently converts the comparison to an absolute one, and a purely relative
+# tolerance is unreachable wherever the reference approaches the objective's
+# central-difference noise floor. `atol` must be justified against that
+# measured floor, never chosen for convenience.
+rao_coordinatewise_discrepancy <- function(x, y, atol, rtol) {
+  if (!is.numeric(x) || !is.numeric(y) || length(x) != length(y) ||
+      any(!is.finite(x)) || any(!is.finite(y))) {
+    .rao_fail("discrepancy inputs must be finite numeric vectors of equal length")
+  }
+  if (!is.numeric(atol) || length(atol) != 1L || !is.finite(atol) || atol < 0 ||
+      !is.numeric(rtol) || length(rtol) != 1L || !is.finite(rtol) || rtol < 0 ||
+      atol + rtol <= 0) {
+    .rao_fail("atol and rtol must be single finite non-negative numbers, not both zero")
+  }
+  max(abs(x - y) / (atol + rtol * abs(y)))
 }

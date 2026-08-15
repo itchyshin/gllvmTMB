@@ -1,6 +1,6 @@
 # checkpoint — cursor-mspl-point-continue
 
-GOAL: see GOAL.md.   STATE: **RUNNING** — A0+A1 done; B1+C* remain.
+GOAL: see GOAL.md.   STATE: **RUNNING** — A0+A1+B1 done; C* remain.
 
 ARCS DONE (verified):
 - A0 — branch `cursor/mspl-point-programme-continue` @ `origin/main` tip; LOOP kit written under `docs/dev-log/lanes/cursor-mspl-point-continue/LOOP/`.
@@ -10,13 +10,20 @@ ARCS DONE (verified):
   note `docs/dev-log/research/2026-08-15-mspl-gaussian-multiseed-point-evidence.md`.
   Grid: 64/64 finite conv0 in 14.5 s; near-Heywood q=1 ML uniqueness
   collapse 4/8 vs MSPL 0/8; no registry flip; no SE.
+- B1 — Poisson Phase-4 prep (NOT admission).
+  Note `docs/dev-log/research/2026-08-15-mspl-phase4-poisson-prep.md`;
+  oracles `tests/testthat/test-mspl-poisson-phase4-oracles.R`;
+  registry `poisson:log:ordinary:q1/q2` status=`planned`, evidence=`phase4_prep`.
+  Prepare fence still `family_id %in% {0,1}`; `git diff -- src/` empty on B1.
 
 ARC IN PROGRESS:
-- B1 — Poisson derivation + oracles + planned registry (parallel).
+- (none on B1)
 
-NEXT: land B1 artefacts; then C1 Mission Control + Rose; then C2 closeout.
+NEXT: C1 Mission Control + Rose; then C2 closeout.
 
-OPEN GATES (need human): none yet. HARD STOPs listed in GOAL.md.
+OPEN GATES (need human): Poisson `planned`→`admitted` (smoke + Shinichi);
+loading-atom coercivity under Laplace still OPEN in the Phase-4 note.
+HARD STOPs listed in GOAL.md.
 
 TRUTH LIVES IN: worktree `/private/tmp/gllvmtmb-mspl-estimator-programme-roadmap`; branch `cursor/mspl-point-programme-continue`; this LOOP kit; handover `docs/dev-log/handover/2026-08-15-cursor-handover.md`.
 

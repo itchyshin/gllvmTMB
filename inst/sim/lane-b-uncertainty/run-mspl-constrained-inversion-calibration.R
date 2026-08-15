@@ -248,6 +248,73 @@ run_shard <- function(case, shard_id, cluster) {
   )
 }
 
+validate_prerun_shards <- function(root, manifest) {
+  files <- sort(list.files(file.path(root, "shards"), pattern = "\\.rds$", full.names = TRUE))
+  expected <- file.path(file.path(root, "shards"), sprintf("C%03d-shard-0001.rds", seq_len(12L)))
+  if (!identical(files, expected)) stop("Pre-run requires exactly the 12 immutable shard-0001 files.", call. = FALSE)
+  shards <- lapply(files, readRDS)
+  required <- c("schema_version", "case_id", "shard_id", "cluster", "source_sha", "campaign_id", "endpoints", "attempts")
+  if (any(!vapply(shards, function(x) is.list(x) && identical(x$schema_version,
+      "mspl-constrained-inversion-shard-v1") && all(required %in% names(x)), logical(1L)))) {
+    stop("A constrained-inversion pre-run shard has the wrong schema.", call. = FALSE)
+  }
+  case_id <- vapply(shards, `[[`, character(1L), "case_id")
+  if (!identical(case_id, manifest$case_id) || any(vapply(shards, `[[`, integer(1L), "shard_id") != 1L) ||
+      any(vapply(shards, `[[`, character(1L), "campaign_id") != manifest$campaign_id[[1L]]) ||
+      any(vapply(shards, `[[`, character(1L), "source_sha") != manifest$source_sha[[1L]]) ||
+      any(vapply(seq_along(shards), function(i) shards[[i]]$cluster != manifest$assigned_cluster[[i]], logical(1L)))) {
+    stop("Pre-run shard provenance disagrees with the frozen manifest.", call. = FALSE)
+  }
+  endpoints <- do.call(rbind, lapply(shards, `[[`, "endpoints"))
+  attempts <- do.call(rbind, lapply(shards, `[[`, "attempts"))
+  settings <- inversion_settings()
+  endpoint_key <- paste(endpoints$case_id, endpoints$outer_id, endpoints$target, endpoints$grid_id, sep = "\r")
+  attempt_key <- paste(attempts$case_id, attempts$outer_id, attempts$target, attempts$grid_id, attempts$replicate, sep = "\r")
+  if (nrow(endpoints) != 180L || nrow(attempts) != 89820L || anyDuplicated(endpoint_key) || anyDuplicated(attempt_key) ||
+      !identical(sort(unique(endpoint_key)), sort(do.call(c, lapply(manifest$case_id, function(case_id)
+        as.vector(outer(case_id, sprintf("1\r%d\r%d", rep(seq_len(3L), each = 5L), rep(seq_len(5L), 3L)), paste, sep = "\r"))))))) {
+    stop("Pre-run endpoint or attempt keys do not match the frozen contract.", call. = FALSE)
+  }
+  per_endpoint <- table(paste(attempts$case_id, attempts$outer_id, attempts$target, attempts$grid_id, sep = "\r"))
+  if (length(per_endpoint) != nrow(endpoints) || any(per_endpoint != settings$bootstrap_reps)) {
+    stop("Each constrained null must retain exactly 499 bootstrap attempts.", call. = FALSE)
+  }
+  list(endpoints = endpoints, attempts = attempts)
+}
+
+aggregate_prerun <- function(root) {
+  manifest <- utils::read.csv(file.path(root, "manifest.csv"), stringsAsFactors = FALSE)
+  validate_inversion_manifest(manifest)
+  receipts <- validate_prerun_shards(root, manifest)
+  endpoint_ok <- receipts$endpoints$test_status == "ok" & is.finite(receipts$endpoints$p_value) &
+    receipts$endpoints$usable_refits == inversion_settings()$bootstrap_reps &
+    receipts$endpoints$estimator_id == 1L &
+    receipts$endpoints$objective_source == "fit$tmb_obj (penalised LA-MSPL)"
+  summary <- data.frame(
+    endpoint_rows = nrow(receipts$endpoints), attempt_rows = nrow(receipts$attempts),
+    endpoint_tests_ok = sum(endpoint_ok), endpoint_tests_failed = sum(!endpoint_ok),
+    bootstrap_attempts_ok = sum(receipts$attempts$status == "ok"),
+    bootstrap_attempts_failed = sum(receipts$attempts$status != "ok"),
+    calibration_gate_eligible = FALSE, public_fence = "unchanged", stringsAsFactors = FALSE
+  )
+  atomic_write_rds(list(manifest = manifest, endpoints = receipts$endpoints,
+    attempts = receipts$attempts, summary = summary), file.path(root, "prerun-summary.rds"))
+  atomic_write_lines(c(
+    "receipt_type: mspl-constrained-inversion-prerun-v1",
+    paste("campaign_id:", manifest$campaign_id[[1L]]),
+    paste("source_sha:", manifest$source_sha[[1L]]),
+    paste("endpoint_rows:", summary$endpoint_rows),
+    paste("bootstrap_attempt_rows:", summary$attempt_rows),
+    paste("endpoint_tests_ok:", summary$endpoint_tests_ok),
+    paste("endpoint_tests_failed:", summary$endpoint_tests_failed),
+    paste("bootstrap_attempts_ok:", summary$bootstrap_attempts_ok),
+    paste("bootstrap_attempts_failed:", summary$bootstrap_attempts_failed),
+    "calibration_gate_eligible: FALSE",
+    "public_fence: unchanged"
+  ), file.path(root, "prerun-receipt.txt"))
+  invisible(summary)
+}
+
 run_cli <- function() {
   command <- if (length(args)) args[[1L]] else ""
   if (identical(command, "validate")) return(validate_inversion_settings())
@@ -271,7 +338,8 @@ run_cli <- function() {
     if (!file.exists(path)) atomic_write_rds(run_shard(case, shard_id, cluster), path)
     return(invisible(path))
   }
-  stop("Use validate, manifest, or run-shard.", call. = FALSE)
+  if (identical(command, "aggregate-prerun")) return(aggregate_prerun(root))
+  stop("Use validate, manifest, run-shard, or aggregate-prerun.", call. = FALSE)
 }
 
 if (!identical(Sys.getenv("MSPL_CONSTRAINED_INVERSION_SOURCE_ONLY"), "true")) run_cli()

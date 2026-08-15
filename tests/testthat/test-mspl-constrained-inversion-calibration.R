@@ -20,6 +20,38 @@ test_that("private MSPL constrained-inversion calibration contract is frozen", {
   expect_identical(nrow(utils::read.delim(file.path(root, "array-map.tsv"))), 12000L)
   expect_identical(nrow(utils::read.delim(file.path(root, "pre-run-array-map.tsv"))), 12L)
 
+  for (i in seq_len(nrow(manifest))) {
+    endpoint <- expand.grid(target = seq_len(3L), grid_id = seq_len(5L))
+    endpoint <- endpoint[order(endpoint$target, endpoint$grid_id), , drop = FALSE]
+    endpoint <- data.frame(
+      case_id = manifest$case_id[[i]], outer_id = 1L, target = endpoint$target,
+      grid_id = endpoint$grid_id, target_value = 0, truth = 0,
+      constrained_status = "ok", constrained_message = "", estimator_id = 1L,
+      objective_source = "fit$tmb_obj (penalised LA-MSPL)", observed_statistic = 0,
+      usable_refits = 499L, p_value = 1, test_status = "ok"
+    )
+    attempts <- endpoint[rep(seq_len(nrow(endpoint)), each = 499L),
+      c("case_id", "outer_id", "target", "grid_id")]
+    attempts$replicate <- rep(seq_len(499L), times = nrow(endpoint))
+    attempts$status <- "ok"
+    attempts$message <- ""
+    attempts$estimate <- 0
+    attempts$statistic <- 0
+    saveRDS(list(
+      schema_version = "mspl-constrained-inversion-shard-v1",
+      case_id = manifest$case_id[[i]], shard_id = 1L,
+      cluster = manifest$assigned_cluster[[i]], source_sha = manifest$source_sha[[i]],
+      campaign_id = manifest$campaign_id[[i]], endpoints = endpoint, attempts = attempts
+    ), file.path(root, "shards", sprintf("%s-shard-0001.rds", manifest$case_id[[i]])))
+  }
+  output <- system2("Rscript", c("--vanilla", runner, "aggregate-prerun", "--root", root),
+    stdout = TRUE, stderr = TRUE)
+  expect_null(attr(output, "status"))
+  aggregate <- readRDS(file.path(root, "prerun-summary.rds"))
+  expect_identical(aggregate$summary$endpoint_rows, 180L)
+  expect_identical(aggregate$summary$attempt_rows, 89820L)
+  expect_identical(aggregate$summary$endpoint_tests_ok, 180L)
+
   smoke_root <- tempfile("mspl-constrained-inversion-smoke-")
   smoke_env <- c("GLLVM_TMB_PILOT_SOURCE=true", "MSPL_INVERSION_TEST_MODE=true")
   output <- system2("Rscript", c("--vanilla", runner, "manifest", "--root", smoke_root,

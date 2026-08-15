@@ -99,7 +99,20 @@ missing-response evidence (Laplace + VA), plus the first accuracy evidence for
   `delta_gamma_log` are health-gate-marginal (multi-start objective range
   2e-6..1e-5, finite gradients — dispersion polish fragility, not a masking
   defect), recorded in-test, not hidden.
-- (Pending at write time: h2h pre-run self-check.)
+- Head-to-head (G2-approved full grid; `dev/missing-accuracy/rung1-prerun.md`):
+  reimplementation self-check PASS (subspace angle 1.5e-8, σ² rel diff
+  4.7e-8 vs the analytical solution); **180/180 fast-grid fits, zero
+  failures, 414 s**. On P3CA's home DGP (all four DGP-a cells)
+  `phylo_latent(species, d = 3, unique = TRUE)` + include-mask is
+  statistically indistinguishable from the P3CA EM (within 1 MC SE), and
+  both beat the misspecified-lean spec by 5–10+ SEs; on the native
+  anisotropic DGP-b all three arms are at parity, as designed. Rphylopars
+  (the comparator the paper beat) exceeds a 600 s per-fit cap on n=50×p=25
+  in every pre-run cell; its labelled 2-seeds-per-cell cameo runs under
+  that cap with timeouts failure-counted (one completed pre-run fit:
+  MSE 2.165 vs our 0.83 on DGP-b clade). G2 shape and approval recorded in
+  the report; the approval provenance is the maintainer's in-session
+  AskUserQuestion answer of 2026-08-15.
 
 ## 5. Tests of the Tests
 

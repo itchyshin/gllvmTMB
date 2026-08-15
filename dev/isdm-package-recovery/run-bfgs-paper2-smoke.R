@@ -16,9 +16,9 @@ if (!paper %in% c("paper1", "paper2")) {
   stop("invalid private BFGS paper route", call. = FALSE)
 }
 source_gate <- if (identical(paper, "paper1")) {
-  "BFGS_P1_S3_C360_R3_V3"
+  "BFGS_P1_S3_C360_R3_V4"
 } else {
-  "BFGS_P2_S6_C360_R3_V3"
+  "BFGS_P2_S6_C360_R3_V4"
 }
 if (!mode %in% c("validate", "preflight", "smoke") || is.null(root_arg)) {
   stop("require --mode=validate|preflight|smoke and --output=PATH", call. = FALSE)
@@ -54,18 +54,31 @@ dirty <- function() length(system2(
   "git", c("-C", pkg, "status", "--porcelain", "--untracked-files=normal"),
   stdout = TRUE
 )) > 0L
-manifest <- function(root) {
-  paths <- setdiff(
-    list.files(root, full.names = TRUE, recursive = TRUE),
-    file.path(root, "file-manifest.csv")
-  )
-  utils::write.csv(
-    data.frame(
-      path = sub(paste0("^", root, "/"), "", paths),
-      md5 = vapply(paths, hash_file, character(1L))
-    ),
-    file.path(root, "file-manifest.csv"), row.names = FALSE
-  )
+atomic_rds <- function(value, path) {
+  tmp <- tempfile(paste0(".", basename(path), "."), tmpdir = dirname(path))
+  on.exit(if (file.exists(tmp)) unlink(tmp), add = TRUE)
+  saveRDS(value, tmp, version = 3)
+  if (!file.rename(tmp, path)) stop("atomic RDS rename failed", call. = FALSE)
+  invisible(path)
+}
+atomic_lines <- function(value, path) {
+  tmp <- tempfile(paste0(".", basename(path), "."), tmpdir = dirname(path))
+  on.exit(if (file.exists(tmp)) unlink(tmp), add = TRUE)
+  writeLines(value, tmp, useBytes = TRUE)
+  if (!file.rename(tmp, path)) stop("atomic text rename failed", call. = FALSE)
+  invisible(path)
+}
+manifest <- function(root, paths) {
+  paths <- sort(paths, method = "radix")
+  value <- data.frame(path = paths,
+    md5 = unname(tools::md5sum(file.path(root, paths))),
+    stringsAsFactors = FALSE, check.names = FALSE)
+  tmp <- tempfile(".file-manifest.csv.", tmpdir = root)
+  on.exit(if (file.exists(tmp)) unlink(tmp), add = TRUE)
+  utils::write.csv(value, tmp, row.names = FALSE, quote = TRUE)
+  if (!file.rename(tmp, file.path(root, "file-manifest.csv")))
+    stop("atomic manifest rename failed", call. = FALSE)
+  invisible(file.path(root, "file-manifest.csv"))
 }
 peak_rss_kb <- function() {
   output <- tryCatch(
@@ -226,8 +239,8 @@ select_initial_nlminb <- function(fit) {
     is.numeric(fit$tmb_obj$par) &&
     length(fit$tmb_obj$par) == length(raw$parameter_vector) &&
     identical(names(raw$parameter_vector), names(fit$tmb_obj$par)) &&
-    is.numeric(raw$convergence) && length(raw$convergence) == 1L &&
-    identical(as.integer(raw$convergence), 0L) &&
+    is.integer(raw$convergence) && length(raw$convergence) == 1L &&
+    identical(raw$convergence, 0L) &&
     is.numeric(raw$objective) && length(raw$objective) == 1L &&
     is.finite(raw$objective) && is.numeric(raw$gradient) &&
     length(raw$gradient) == length(raw$parameter_vector) &&
@@ -284,7 +297,7 @@ select_initial_nlminb <- function(fit) {
     gradient = stats::setNames(
       as.numeric(replay_gradient), names(parameter_vector)
     ),
-    convergence = as.integer(raw$convergence),
+    convergence = raw$convergence,
     pd_hessian = raw$pd_hessian,
     boundary_flags = raw$boundary_flags,
     objective_replay_error = abs(replay_objective - raw$objective),
@@ -317,7 +330,7 @@ parent <- normalizePath(
   file.path(pkg, "dev", "isdm-package-recovery", "results"), mustWork = FALSE
 )
 paper2_ledger_path <- file.path(
-  parent, "BFGS_P2_S6_C360_R3_V3", "all-attempt-ledger.rds"
+  parent, "BFGS_P2_S6_C360_R3_V4", "all-attempt-ledger.rds"
 )
 expected_root <- normalizePath(file.path(parent, source_gate), mustWork = FALSE)
 if (!identical(root, expected_root)) {
@@ -342,10 +355,12 @@ if (identical(mode, "validate")) {
 }
 if (identical(mode, "preflight")) {
   if (dirty()) stop("preflight requires a clean estimator tree", call. = FALSE)
-  if (dir.exists(root) && length(list.files(root, all.files = TRUE, no.. = TRUE))) {
-    stop("preflight root must be empty", call. = FALSE)
-  }
-  dir.create(root, recursive = TRUE, showWarnings = FALSE)
+  if (file.exists(root)) stop("preflight root must not exist", call. = FALSE)
+  if (!dir.exists(parent) && !dir.create(parent, recursive = TRUE, showWarnings = FALSE))
+    stop("unable to create result parent", call. = FALSE)
+  staging <- tempfile(paste0(".", source_gate, "-preflight-"), tmpdir = parent)
+  if (!dir.create(staging)) stop("unable to create preflight staging root", call. = FALSE)
+  on.exit(if (dir.exists(staging)) unlink(staging, recursive = TRUE), add = TRUE)
   z <- make()
   fit_control <- fit_control_object()
   paper2_evidence <- NULL
@@ -375,10 +390,10 @@ if (identical(mode, "preflight")) {
     }
   }
   session_info <- sessionInfo()
-  saveRDS(z$fixture, file.path(root, "fixture.rds"))
-  if (!is.null(z$mesh)) saveRDS(z$mesh, file.path(root, "mesh.rds"))
-  saveRDS(session_info, file.path(root, "session-info.rds"))
-  writeLines(time_lines, file.path(root, "time-estimate.md"))
+  atomic_rds(z$fixture, file.path(staging, "fixture.rds"))
+  if (!is.null(z$mesh)) atomic_rds(z$mesh, file.path(staging, "mesh.rds"))
+  atomic_rds(session_info, file.path(staging, "session-info.rds"))
+  atomic_lines(time_lines, file.path(staging, "time-estimate.md"))
   receipt <- list(
     schema = paste0(source_gate, "_PREFLIGHT_V1"), source_gate = source_gate,
     root = expected_root, commit = commit(), seed = expected_seed,
@@ -392,16 +407,26 @@ if (identical(mode, "preflight")) {
       bfgs_contract = hash_file(contract_file), dll = z$dll$md5
     ),
     dll_path = normalizePath(z$dll$path, mustWork = TRUE),
-    session_info_md5 = hash_file(file.path(root, "session-info.rds")),
-    time_estimate_md5 = hash_file(file.path(root, "time-estimate.md")),
+    session_info_md5 = hash_file(file.path(staging, "session-info.rds")),
+    time_estimate_md5 = hash_file(file.path(staging, "time-estimate.md")),
     control_md5 = hash_object(fit_control),
     paper2_terminal_status = if (is.null(paper2_evidence)) NA_character_ else
       paper2_evidence$ledger$status,
     paper2_terminal_md5 = if (is.null(paper2_evidence)) NA_character_ else
       paper2_evidence$md5
   )
-  saveRDS(receipt, file.path(root, "root-receipt.rds"))
-  manifest(root)
+  atomic_rds(receipt, file.path(staging, "root-receipt.rds"))
+  preflight_paths <- c("fixture.rds", "root-receipt.rds", "session-info.rds",
+    "time-estimate.md")
+  if (!is.null(z$mesh)) preflight_paths <- c(preflight_paths, "mesh.rds")
+  manifest(staging, preflight_paths)
+  require_verdict(bfgs_smoke_validate_receipt(receipt, receipt))
+  require_verdict(bfgs_smoke_validate_manifest(staging, preflight_paths))
+  if (!file.rename(staging, root)) stop("atomic preflight root rename failed", call. = FALSE)
+  reread_receipt <- tryCatch(readRDS(file.path(root, "root-receipt.rds")),
+    error = function(e) NULL)
+  require_verdict(bfgs_smoke_validate_receipt(reread_receipt, receipt))
+  require_verdict(bfgs_smoke_validate_manifest(root, preflight_paths))
   cat(if (identical(paper, "paper1")) {
     "BFGS_P1_PREFLIGHT_PASS (no fit)\n"
   } else {
@@ -411,153 +436,188 @@ if (identical(mode, "preflight")) {
 }
 
 main <- function() {
-  ledger_path <- file.path(root, "all-attempt-ledger.rds")
+  current_commit <- commit()
+  if (!identical(campaign_sha, current_commit))
+    provenance_stop("exact --campaign-sha is required")
+  if (!dir.exists(root)) provenance_stop("smoke requires one untouched immutable preflight")
   initial_consumed <- bfgs_smoke_consumed_state(root)
-  if (isTRUE(initial_consumed$terminal_ledger_exists)) {
-    stop("smoke root already has a terminal ledger and is consumed", call. = FALSE)
+  if (isTRUE(initial_consumed$consumed))
+    provenance_stop("smoke root is already claimed or terminal")
+  if (dirty()) provenance_stop("clean committed estimator tree required")
+  preflight_paths <- c("fixture.rds", "root-receipt.rds", "session-info.rds",
+    "time-estimate.md")
+  if (identical(paper, "paper1")) preflight_paths <- c(preflight_paths, "mesh.rds")
+  require_verdict(bfgs_smoke_validate_manifest(root, preflight_paths))
+  receipt <- tryCatch(readRDS(file.path(root, "root-receipt.rds")),
+    error = function(e) provenance_stop(conditionMessage(e)))
+  z <- make()
+  fit_control <- fit_control_object()
+  paper2_evidence <- NULL
+  if (identical(paper, "paper1")) {
+    paper2_evidence <- bfgs_smoke_validate_paper2_prerequisite(
+      paper2_ledger_path, current_commit, list(
+        runner_md5 = hash_file(core_runner_file),
+        core_runner_md5 = hash_file(core_runner_file),
+        fixture_md5 = hash_file(file.path(base, "g2h-360cell-fixture.R")),
+        design_md5 = hash_file(design_file),
+        source_md5 = c(
+          fit_multi = hash_file(file.path(pkg, "R", "fit-multi.R")),
+          isdm_fit = hash_file(file.path(pkg, "R", "isdm-developer-fit.R")),
+          tmb = hash_file(file.path(pkg, "src", "gllvmTMB.cpp")),
+          bfgs_contract = hash_file(contract_file), dll = z$dll$md5
+        ), dll_path = normalizePath(z$dll$path, mustWork = TRUE),
+        control_md5 = hash_object(fit_control)
+      )
+    )
+    require_verdict(paper2_evidence)
   }
-  if (!dir.exists(root)) dir.create(root, recursive = TRUE, showWarnings = FALSE)
+  observed <- c(
+    fit_multi = hash_file(file.path(pkg, "R", "fit-multi.R")),
+    isdm_fit = hash_file(file.path(pkg, "R", "isdm-developer-fit.R")),
+    tmb = hash_file(file.path(pkg, "src", "gllvmTMB.cpp")),
+    bfgs_contract = hash_file(contract_file), dll = z$dll$md5
+  )
+  expected_receipt <- list(
+    schema = paste0(source_gate, "_PREFLIGHT_V1"), source_gate = source_gate,
+    root = expected_root, commit = current_commit, seed = expected_seed,
+    dimensions = expected_dimensions, n_rows = nrow(z$fixture$rows),
+    runner_md5 = hash_file(script), core_runner_md5 = hash_file(core_runner_file),
+    fixture_md5 = hash_file(fixture_file), design_md5 = hash_file(design_file),
+    source_md5 = observed, dll_path = normalizePath(z$dll$path, mustWork = TRUE),
+    session_info_md5 = hash_file(file.path(root, "session-info.rds")),
+    time_estimate_md5 = hash_file(file.path(root, "time-estimate.md")),
+    control_md5 = hash_object(fit_control),
+    paper2_terminal_status = if (is.null(paper2_evidence)) NA_character_ else
+      paper2_evidence$ledger$status,
+    paper2_terminal_md5 = if (is.null(paper2_evidence)) NA_character_ else
+      paper2_evidence$md5
+  )
+  require_verdict(bfgs_smoke_validate_receipt(receipt, expected_receipt))
+  fixture_ok <- identical(z$fixture, readRDS(file.path(root, "fixture.rds"))) &&
+    (!identical(paper, "paper1") ||
+      identical(z$mesh, readRDS(file.path(root, "mesh.rds"))))
+  if (!fixture_ok) provenance_stop("preflight fixture or mesh drift")
+
+  ledger_path <- file.path(root, "all-attempt-ledger.rds")
+  marker_path <- file.path(root, "attempt-started.rds")
+  entry_path <- file.path(root, "bfgs-entered.rds")
+  claim_path <- file.path(root, ".attempt-started.claim")
+  parent_pid <- as.integer(Sys.getpid())
+  timestamp <- function() format(Sys.time(), "%Y-%m-%d %H:%M:%OS6", tz = "UTC")
+  attempt_marker <- list(
+    schema = paste0(source_gate, "_ATTEMPT_STARTED_V1"), source_gate = source_gate,
+    root = expected_root, commit = current_commit,
+    receipt_md5 = hash_file(file.path(root, "root-receipt.rds")),
+    claim = ".attempt-started.claim",
+    claimed_at = timestamp(), started_at = timestamp(), parent_pid = parent_pid
+  )
   ledger <- list(
-    schema = paste0(source_gate, "_ALL_ATTEMPT_V1"), status = "ATTEMPT_STARTED",
-    terminal = FALSE, receipt = NULL, signature = NULL, raw = NULL,
-    continuation_source = NULL, bfgs = NULL,
-    fit_control = NULL, control_md5 = NA_character_,
+    schema = paste0(source_gate, "_ALL_ATTEMPT_V2"), status = "ATTEMPT_STARTED",
+    reason = "attempt_started", terminal = FALSE, receipt = receipt,
+    attempt_marker = attempt_marker, bfgs_entry = NULL, signature = NULL,
+    raw = NULL, continuation_source = NULL, bfgs = NULL,
+    fit_control = fit_control, control_md5 = hash_object(fit_control),
     covariance_hash = NA_character_, order_hash = NA_character_,
+    checks = stats::setNames(as.list(rep(FALSE, 6L)), .bfgs_smoke_check_names),
     warnings = character(), error = NA_character_,
     timing = list(fit_elapsed_s = NA_real_), peak_rss_kb = NA_real_
   )
   warnings <- character()
-  finalise <- function() {
-    if (!isTRUE(ledger$terminal)) {
-      ledger$status <<- "BFGS_INFRASTRUCTURE_HOLD"
-      ledger$error <<- "runner ended before terminal record"
-      ledger$terminal <<- TRUE
+  claimed <- FALSE
+  sealed <- FALSE
+  normalise_fallback <- function(error) {
+    if (!file.exists(file.path(root, "fit.rds")))
+      ledger$timing$fit_elapsed_s <<- NA_real_
+    if (!file.exists(entry_path)) ledger$bfgs_entry <<- NULL
+    entered <- !is.null(ledger$bfgs_entry)
+    ledger$status <<- if (inherits(error, "bfgs_provenance_error"))
+      "INVALID_PROVENANCE" else "BFGS_INFRASTRUCTURE_HOLD"
+    ledger$reason <<- if (inherits(error, "bfgs_provenance_error"))
+      "provenance_failure" else "runner_unwind"
+    ledger$error <<- conditionMessage(error)
+    ledger$bfgs <<- NULL
+    ledger$covariance_hash <<- NA_character_
+    if (!entered) {
+      ledger$signature <<- NULL
+      ledger$raw <<- NULL
+      ledger$continuation_source <<- NULL
+      ledger$order_hash <<- NA_character_
+    }
+    ledger$checks <<- list(
+      provenance = identical(ledger$status, "BFGS_INFRASTRUCTURE_HOLD"),
+      preflight = TRUE, attempt_claimed = TRUE,
+      fit_available = !is.na(ledger$timing$fit_elapsed_s),
+      bfgs_entered = entered, terminal_evidence = FALSE
+    )
+    ledger$terminal <<- TRUE
+    invisible(ledger)
+  }
+  terminal_paths <- function() {
+    paths <- c(preflight_paths, "attempt-started.rds", "all-attempt-ledger.rds")
+    if (file.exists(file.path(root, "fit.rds"))) paths <- c(paths, "fit.rds")
+    if (!is.null(ledger$bfgs_entry)) paths <- c(paths, "bfgs-entered.rds")
+    paths
+  }
+  seal <- function() {
+    if (!isTRUE(ledger$terminal))
+      normalise_fallback(simpleError("runner ended before terminal record"))
+    if (!is.null(ledger$bfgs)) {
+      evidence <- bfgs_smoke_recompute_result(ledger$bfgs)
+      if (!identical(evidence$valid, TRUE))
+        normalise_fallback(simpleError(evidence$reason))
     }
     ledger$warnings <<- unique(warnings)
-    ledger$peak_rss_kb <<- peak_rss_kb()
-    if (is.list(ledger$receipt)) {
-      terminal_verdict <- bfgs_smoke_validate_terminal_ledger(
-        ledger, source_gate, commit()
+    ledger$peak_rss_kb <<- as.double(peak_rss_kb())
+    in_memory <- bfgs_smoke_validate_terminal_ledger(
+      ledger, source_gate, current_commit
+    )
+    if (!identical(in_memory$valid, TRUE)) {
+      normalise_fallback(simpleError(in_memory$reason))
+      ledger$warnings <<- unique(warnings)
+      ledger$peak_rss_kb <<- as.double(peak_rss_kb())
+      in_memory <- bfgs_smoke_validate_terminal_ledger(
+        ledger, source_gate, current_commit
       )
-      if (!identical(terminal_verdict$valid, TRUE)) {
-        ledger$status <<- "BFGS_INFRASTRUCTURE_HOLD"
-        ledger$error <<- terminal_verdict$reason
-        ledger$terminal <<- TRUE
-      }
+      if (!identical(in_memory$valid, TRUE)) stop(in_memory$reason, call. = FALSE)
     }
-    if (!file.exists(ledger_path)) {
-      saveRDS(ledger, ledger_path)
-      manifest_error <- tryCatch({
-        manifest(root)
-        NULL
-      }, error = function(e) e)
-      if (inherits(manifest_error, "error")) {
-        ledger$status <<- "BFGS_INFRASTRUCTURE_HOLD"
-        ledger$error <<- paste0(
-          "terminal manifest write failed: ", conditionMessage(manifest_error)
-        )
-        saveRDS(ledger, ledger_path)
-        manifest(root)
-      }
-    }
+    atomic_rds(ledger, ledger_path)
+    manifest(root, terminal_paths())
+    disk <- tryCatch(readRDS(ledger_path), error = function(e) NULL)
+    verdict <- bfgs_smoke_validate_terminal_ledger(
+      disk, source_gate, current_commit, root
+    )
+    if (!identical(verdict$valid, TRUE)) stop(verdict$reason, call. = FALSE)
+    sealed <<- TRUE
+    disk
   }
-  on.exit(finalise(), add = TRUE)
+  on.exit({
+    if (claimed && !sealed) {
+      if (!file.exists(marker_path)) atomic_rds(attempt_marker, marker_path)
+      seal()
+    }
+  }, add = TRUE)
   setTimeLimit(elapsed = 1800, transient = TRUE)
   on.exit(setTimeLimit(elapsed = Inf, transient = FALSE), add = TRUE)
+  if (!dir.create(claim_path, showWarnings = FALSE))
+    provenance_stop("attempt claim already exists")
+  claimed <- TRUE
+  atomic_rds(attempt_marker, marker_path)
+
   tryCatch({
-    if (!identical(campaign_sha, commit())) {
-      provenance_stop("exact --campaign-sha is required")
-    }
-    needed <- c(
-      "root-receipt.rds", "fixture.rds", "session-info.rds",
-      "file-manifest.csv", "time-estimate.md"
-    )
-    if (identical(paper, "paper1")) needed <- c(needed, "mesh.rds")
-    if (!all(file.exists(file.path(root, needed)))) {
-      provenance_stop("smoke requires one untouched immutable preflight")
-    }
-    if (isTRUE(initial_consumed$attempt_marker_exists)) {
-      provenance_stop("attempt-started marker exists; smoke root is consumed")
-    }
-    if (dirty()) provenance_stop("clean committed estimator tree required")
-    receipt <- readRDS(file.path(root, "root-receipt.rds"))
-    ledger$receipt <- receipt
-    z <- make()
-    fit_control <- fit_control_object()
-    ledger$fit_control <- fit_control
-    ledger$control_md5 <- hash_object(fit_control)
-    paper2_evidence <- NULL
-    if (identical(paper, "paper1")) {
-      paper2_evidence <- bfgs_smoke_validate_paper2_prerequisite(
-        paper2_ledger_path, commit(), list(
-          runner_md5 = hash_file(core_runner_file),
-          core_runner_md5 = hash_file(core_runner_file),
-          fixture_md5 = hash_file(file.path(base, "g2h-360cell-fixture.R")),
-          design_md5 = hash_file(design_file),
-          source_md5 = c(
-            fit_multi = hash_file(file.path(pkg, "R", "fit-multi.R")),
-            isdm_fit = hash_file(file.path(pkg, "R", "isdm-developer-fit.R")),
-            tmb = hash_file(file.path(pkg, "src", "gllvmTMB.cpp")),
-            bfgs_contract = hash_file(contract_file), dll = z$dll$md5
-          ),
-          dll_path = normalizePath(z$dll$path, mustWork = TRUE),
-          control_md5 = hash_object(fit_control)
-        )
-      )
-      require_verdict(paper2_evidence)
-    }
-    observed <- c(
-      fit_multi = hash_file(file.path(pkg, "R", "fit-multi.R")),
-      isdm_fit = hash_file(file.path(pkg, "R", "isdm-developer-fit.R")),
-      tmb = hash_file(file.path(pkg, "src", "gllvmTMB.cpp")),
-      bfgs_contract = hash_file(contract_file), dll = z$dll$md5
-    )
-    expected_receipt <- list(
-      schema = paste0(source_gate, "_PREFLIGHT_V1"),
-      source_gate = source_gate, root = expected_root,
-      commit = commit(), seed = expected_seed,
-      dimensions = expected_dimensions, n_rows = nrow(z$fixture$rows),
-      runner_md5 = hash_file(script),
-      core_runner_md5 = hash_file(core_runner_file),
-      fixture_md5 = hash_file(fixture_file),
-      design_md5 = hash_file(design_file), source_md5 = observed,
-      dll_path = normalizePath(z$dll$path, mustWork = TRUE),
-      session_info_md5 = hash_file(file.path(root, "session-info.rds")),
-      time_estimate_md5 = hash_file(file.path(root, "time-estimate.md")),
-      control_md5 = hash_object(fit_control),
-      paper2_terminal_status = if (is.null(paper2_evidence)) NA_character_ else
-        paper2_evidence$ledger$status,
-      paper2_terminal_md5 = if (is.null(paper2_evidence)) NA_character_ else
-        paper2_evidence$md5
-    )
-    require_verdict(bfgs_smoke_validate_receipt(receipt, expected_receipt))
-    require_verdict(bfgs_smoke_validate_manifest(
-      root, setdiff(needed, "file-manifest.csv")
-    ))
-    fixture_ok <- identical(z$fixture, readRDS(file.path(root, "fixture.rds"))) &&
-      (!identical(paper, "paper1") ||
-        identical(z$mesh, readRDS(file.path(root, "mesh.rds"))))
-    if (!fixture_ok) provenance_stop("preflight fixture or mesh drift")
-    saveRDS(list(status = "OPTIMIZER_ENTERED"), file.path(root, "attempt-started.rds"))
     started <- proc.time()[["elapsed"]]
-    fit_args <- list(
-      z$fixture$rows, z$fixture$X, z$fixture$B, d = 1L,
-      control = fit_control, silent = TRUE,
-      .internal_continuation = FALSE
-    )
+    fit_args <- list(z$fixture$rows, z$fixture$X, z$fixture$B, d = 1L,
+      control = fit_control, silent = TRUE, .internal_continuation = FALSE)
     if (identical(paper, "paper1")) {
       fit_args$mesh <- z$mesh
       fit_args$spatial <- TRUE
     }
-    fit <- withCallingHandlers(
-      do.call(.gll_isdm_fit, fit_args),
+    fit <- withCallingHandlers(do.call(.gll_isdm_fit, fit_args),
       warning = function(w) {
         warnings <<- c(warnings, conditionMessage(w))
         invokeRestart("muffleWarning")
-      }
-    )
-    ledger$timing$fit_elapsed_s <- proc.time()[["elapsed"]] - started
-    saveRDS(fit, file.path(root, "fit.rds"))
+      })
+    ledger$timing$fit_elapsed_s <- as.double(proc.time()[["elapsed"]] - started)
+    atomic_rds(fit, file.path(root, "fit.rds"))
     selected_raw <- select_initial_nlminb(fit)
     par <- selected_raw$parameter_vector
     gradient <- selected_raw$gradient
@@ -565,41 +625,28 @@ main <- function() {
     labels <- names(par)
     ids <- paste0(labels, "[", seq_along(par), "]")
     provenance_hashes <- list(
-      warm_restart_provenance = hash_object(
-        selected_raw$warm_restart_provenance
-      ),
-      isdm_polish_provenance = hash_object(
-        selected_raw$isdm_polish_provenance
-      ),
+      warm_restart_provenance = hash_object(selected_raw$warm_restart_provenance),
+      isdm_polish_provenance = hash_object(selected_raw$isdm_polish_provenance),
       restart_history = hash_object(selected_raw$restart_history),
       start_provenance = hash_object(selected_raw$start_provenance),
       selection_source = hash_object(selected_raw$selection_source)
     )
-    ledger$continuation_source <- c(
-      selected_raw,
-      list(provenance_hashes = provenance_hashes)
-    )
+    ledger$continuation_source <- c(selected_raw,
+      list(provenance_hashes = provenance_hashes))
     signature <- list(
-      objective = hash_object(list(
-        fn = "tmb_obj$fn", value = raw_objective, dll = z$dll$md5
-      )),
-      gradient = hash_object(list(
-        gr = "tmb_obj$gr", exact = TRUE, value = gradient
-      )),
+      objective = hash_object(list(fn = "tmb_obj$fn", value = raw_objective,
+        dll = z$dll$md5)),
+      gradient = hash_object(list(gr = "tmb_obj$gr", exact = TRUE, value = gradient)),
       parameter_order = hash_object(list(labels = labels, ids = ids)),
       map = hash_object(fit$tmb_map), data = hash_object(fit$tmb_data),
       random = hash_object(fit$random), bounds = "unconstrained_transformed_scale",
       scale = "package_internal_unconstrained", controls = hash_object(list(
-        starting_fit = list(
-          full_control = fit_control
-        ),
-        method = "BFGS",
-        control = list(maxit = 500L, reltol = 1e-12, trace = 0L, REPORT = 1L)
-      )), starts = hash_object(list(
-        parameter_vector = par,
+        starting_fit = list(full_control = fit_control), method = "BFGS",
+        control = list(maxit = 500L, reltol = 1e-12, trace = 0L, REPORT = 1L))),
+      starts = hash_object(list(parameter_vector = par,
         selection_source = selected_raw$selection_source,
-        provenance_hashes = provenance_hashes
-      )), selection = "isdm_polish_provenance_raw_initial_nlminb",
+        provenance_hashes = provenance_hashes)),
+      selection = "isdm_polish_provenance_raw_initial_nlminb",
       source_gate = source_gate
     )
     raw_state <- list(
@@ -611,36 +658,37 @@ main <- function() {
       profile_enabled = FALSE, source_gate = source_gate
     )
     ledger$signature <- signature
-    ledger$raw <- list(
-      parameter_vector = par, gradient = gradient,
+    ledger$raw <- list(parameter_vector = par, gradient = gradient,
       objective = raw_objective, raw_state = raw_state,
-      selection_source = selected_raw$selection_source
+      selection_source = selected_raw$selection_source)
+    ledger$order_hash <- hash_object(list(labels = labels, ids = ids))
+    ledger$bfgs_entry <- list(
+      schema = paste0(source_gate, "_BFGS_ENTERED_V1"), source_gate = source_gate,
+      root = expected_root, commit = current_commit,
+      attempt_marker_md5 = hash_file(marker_path), entered_at = timestamp(),
+      parent_pid = parent_pid, parameter_order_hash = ledger$order_hash
     )
+    atomic_rds(ledger$bfgs_entry, entry_path)
     ledger$bfgs <- .gllvmTMB_isdm_bfgs_exact_gradient_continuation(
       fit$tmb_obj, par, raw_objective, signature, raw_state,
       curvature_fn = curvature_callback(fit, labels)
     )
-    ledger$status <- ledger$bfgs$status
-    ledger$error <- if (ledger$status %in% c(
-      "BFGS_INFRASTRUCTURE_HOLD", "BFGS_OPTIMIZER_ERROR",
-      "BFGS_CURVATURE_UNAVAILABLE"
-    )) ledger$bfgs$reason else NA_character_
-    ledger$order_hash <- hash_object(list(labels = labels, ids = ids))
-    ledger$covariance_hash <- if (is.null(ledger$bfgs$curvature$covariance)) {
-      NA_character_
-    } else {
-      hash_object(ledger$bfgs$curvature$covariance)
-    }
+    evidence <- bfgs_smoke_recompute_result(ledger$bfgs)
+    if (!identical(evidence$valid, TRUE)) stop(evidence$reason, call. = FALSE)
+    ledger$status <- evidence$status
+    ledger$reason <- evidence$result_reason
+    ledger$signature <- ledger$bfgs$signature
+    ledger$raw <- ledger$bfgs$raw
+    ledger$order_hash <- evidence$order_hash
+    ledger$covariance_hash <- evidence$covariance_hash
+    ledger$error <- if (ledger$status %in% c("BFGS_INFRASTRUCTURE_HOLD",
+      "BFGS_OPTIMIZER_ERROR", "BFGS_CURVATURE_UNAVAILABLE"))
+      ledger$bfgs$reason else NA_character_
+    ledger$checks <- stats::setNames(as.list(rep(TRUE, 6L)),
+      .bfgs_smoke_check_names)
     ledger$terminal <- TRUE
-  }, error = function(e) {
-    ledger$status <<- if (inherits(e, "bfgs_provenance_error")) {
-      "INVALID_PROVENANCE"
-    } else {
-      "BFGS_INFRASTRUCTURE_HOLD"
-    }
-    ledger$error <<- conditionMessage(e)
-    ledger$terminal <<- TRUE
-  })
-  cat(ledger$status, "\n")
+  }, error = function(e) normalise_fallback(e))
+  terminal <- seal()
+  cat(terminal$status, "\n")
 }
 main()

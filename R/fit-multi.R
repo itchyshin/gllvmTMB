@@ -7966,11 +7966,13 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   frozen_control <- list(
     maxit = 500L, reltol = 1e-12, trace = 0L, REPORT = 1L
   )
+  optimizer_entered <- FALSE
   result <- function(status, reason, raw = NULL, optimizer = NULL,
                      candidate = NULL, curvature = NULL) {
     list(
       estimator = "BFGS_EXACT_GRADIENT_CONTINUATION_V1",
-      status = status, reason = reason, method = method, control = control,
+      status = status, reason = reason,
+      optimizer_entered = optimizer_entered, method = method, control = control,
       signature = signature, raw_state = raw_state, raw = raw,
       optimizer = optimizer, candidate = candidate, curvature = curvature
     )
@@ -8032,7 +8034,17 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     tryCatch(obj$fn(unname(theta)), error = function(e) e)
   }
   evaluate_gradient <- function(theta) {
-    tryCatch(obj$gr(unname(theta)), error = function(e) e)
+    tryCatch({
+      value <- obj$gr(unname(theta))
+      value_names <- names(value)
+      ordered <- is.null(value_names) || identical(value_names, block_labels) ||
+        identical(value_names, positional_ids)
+      if (!is.numeric(value) || length(value) != length(theta) ||
+          any(!is.finite(value)) || !ordered) {
+        stop("gradient returned an invalid positional vector", call. = FALSE)
+      }
+      stats::setNames(as.numeric(value), positional_ids)
+    }, error = function(e) e)
   }
   raw_objective <- evaluate_objective(par)
   raw_gradient <- evaluate_gradient(par)
@@ -8072,31 +8084,48 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   }
 
   started <- proc.time()[["elapsed"]]
-  optimizer <- tryCatch(
+  optim_gradient <- function(theta) {
+    value <- evaluate_gradient(stats::setNames(as.numeric(theta), positional_ids))
+    if (inherits(value, "error")) stop(value)
+    unname(value)
+  }
+  optimizer_entered <- TRUE
+  optimizer_raw <- tryCatch(
     stats::optim(
-      par = par, fn = obj$fn, gr = obj$gr, method = method,
+      par = par, fn = obj$fn, gr = optim_gradient, method = method,
       control = control
     ),
     error = function(e) e
   )
   elapsed <- proc.time()[["elapsed"]] - started
-  if (inherits(optimizer, "error")) {
+  if (inherits(optimizer_raw, "error")) {
     return(result(
-      "BFGS_OPTIMIZER_ERROR", conditionMessage(optimizer), raw,
-      optimizer = list(error = conditionMessage(optimizer), elapsed_s = elapsed)
+      "BFGS_OPTIMIZER_ERROR", conditionMessage(optimizer_raw), raw,
+      optimizer = list(error = conditionMessage(optimizer_raw), elapsed_s = elapsed)
     ))
   }
-  optimizer$elapsed_s <- elapsed
-  optimizer_valid <- is.list(optimizer) && is.numeric(optimizer$par) &&
-    length(optimizer$par) == length(par) && all(is.finite(optimizer$par)) &&
-    (is.null(names(optimizer$par)) ||
-      identical(names(optimizer$par), positional_ids)) &&
-    is.numeric(optimizer$value) && length(optimizer$value) == 1L &&
-    is.finite(optimizer$value) && is.numeric(optimizer$convergence) &&
-    length(optimizer$convergence) == 1L && is.finite(optimizer$convergence)
+  optimizer_valid <- is.list(optimizer_raw) && is.numeric(optimizer_raw$par) &&
+    length(optimizer_raw$par) == length(par) && all(is.finite(optimizer_raw$par)) &&
+    (is.null(names(optimizer_raw$par)) ||
+      identical(names(optimizer_raw$par), positional_ids)) &&
+    is.numeric(optimizer_raw$value) && length(optimizer_raw$value) == 1L &&
+    is.finite(optimizer_raw$value) && is.integer(optimizer_raw$convergence) &&
+    length(optimizer_raw$convergence) == 1L && !is.na(optimizer_raw$convergence) &&
+    is.numeric(optimizer_raw$counts) && length(optimizer_raw$counts) == 2L &&
+    all(is.finite(optimizer_raw$counts)) &&
+    (is.null(optimizer_raw$message) ||
+      (is.character(optimizer_raw$message) && length(optimizer_raw$message) == 1L))
   if (!optimizer_valid) {
-    return(result("BFGS_OPTIMIZER_ERROR", "malformed_optimizer_result", raw, optimizer))
+    return(result(
+      "BFGS_OPTIMIZER_ERROR", "malformed_optimizer_result", raw,
+      list(error = "malformed_optimizer_result", elapsed_s = elapsed)
+    ))
   }
+  optimizer <- list(
+    par = optimizer_raw$par, value = as.numeric(optimizer_raw$value),
+    counts = optimizer_raw$counts, convergence = optimizer_raw$convergence,
+    message = optimizer_raw$message %||% NA_character_, elapsed_s = elapsed
+  )
   candidate_par <- stats::setNames(as.numeric(optimizer$par), positional_ids)
   candidate_objective <- evaluate_objective(candidate_par)
   candidate_gradient <- evaluate_gradient(candidate_par)
@@ -8115,7 +8144,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     objective = as.numeric(candidate_objective),
     optimizer_objective = as.numeric(optimizer$value),
     gradient = stats::setNames(as.numeric(candidate_gradient), positional_ids),
-    convergence = as.integer(optimizer$convergence), counts = optimizer$counts,
+    convergence = optimizer$convergence, counts = optimizer$counts,
     message = optimizer$message %||% NA_character_
   )
   candidate$max_gradient <- max(abs(candidate$gradient))

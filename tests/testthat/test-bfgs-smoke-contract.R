@@ -3,15 +3,16 @@ bfgs_contract_env <- function() {
   sys.source(testthat::test_path(
     "..", "..", "dev", "isdm-package-recovery", "bfgs-smoke-contract.R"
   ), envir = env)
+  env$gllvmTMBcontrol <- gllvmTMB::gllvmTMBcontrol
   env
 }
 
 bfgs_receipt_fixture <- function(paper1 = FALSE) {
   hash <- function(letter) paste(rep(letter, 32L), collapse = "")
   ans <- list(
-    schema = "BFGS_P2_S6_C360_R3_V3_PREFLIGHT_V1",
-    source_gate = "BFGS_P2_S6_C360_R3_V3",
-    root = "/sealed/results/BFGS_P2_S6_C360_R3_V3",
+    schema = "BFGS_P2_S6_C360_R3_V4_PREFLIGHT_V1",
+    source_gate = "BFGS_P2_S6_C360_R3_V4",
+    root = "/sealed/results/BFGS_P2_S6_C360_R3_V4",
     commit = paste(rep("a", 40L), collapse = ""), seed = 86302L,
     dimensions = c(S = 6L, C = 360L, r = 3L, b = 1L, d = 1L),
     n_rows = 8640L,
@@ -26,9 +27,9 @@ bfgs_receipt_fixture <- function(paper1 = FALSE) {
     paper2_terminal_status = NA_character_, paper2_terminal_md5 = NA_character_
   )
   if (paper1) {
-    ans$schema <- "BFGS_P1_S3_C360_R3_V3_PREFLIGHT_V1"
-    ans$source_gate <- "BFGS_P1_S3_C360_R3_V3"
-    ans$root <- "/sealed/results/BFGS_P1_S3_C360_R3_V3"
+    ans$schema <- "BFGS_P1_S3_C360_R3_V4_PREFLIGHT_V1"
+    ans$source_gate <- "BFGS_P1_S3_C360_R3_V4"
+    ans$root <- "/sealed/results/BFGS_P1_S3_C360_R3_V4"
     ans$seed <- 86301L
     ans$dimensions <- c(S = 3L, C = 360L, r = 3L, b = 1L, d = 1L)
     ans$n_rows <- 4320L
@@ -40,7 +41,7 @@ bfgs_receipt_fixture <- function(paper1 = FALSE) {
 
 bfgs_terminal_ledger_fixture <- function(
     status = "BFGS_NUMERICAL_ADMISSION",
-    source_gate = "BFGS_P2_S6_C360_R3_V3",
+    source_gate = "BFGS_P2_S6_C360_R3_V4",
     commit = paste(rep("a", 40L), collapse = "")) {
   list(
     schema = paste0(source_gate, "_ALL_ATTEMPT_V1"), status = status,
@@ -103,6 +104,30 @@ test_that("exact TMB gradient order accepts positional output but rejects drift"
   expect_false(contract$bfgs_smoke_gradient_order_ok(0.1, theta))
 })
 
+test_that("BFGS independent recomputation accepts evidence and rejects coordinated drift", {
+  contract <- bfgs_contract_env()
+  x <- bfgs_quadratic_fixture()
+  out <- gllvmTMB:::.gllvmTMB_isdm_bfgs_exact_gradient_continuation(
+    x$obj, x$par, x$objective, bfgs_signature_fixture(),
+    bfgs_raw_state_fixture(),
+    function(theta, ids) bfgs_curvature_record(theta, ids, x$covariance)
+  )
+  accepted <- contract$bfgs_smoke_recompute_result(out)
+  expect_true(accepted$valid, info = accepted$reason)
+  attacks <- list(
+    raw_gradient_order = function(x) { x$raw$gradient <- x$raw$gradient[c(2, 1, 3)]; x },
+    optimizer_parameter_order = function(x) { x$optimizer$par <- x$optimizer$par[c(2, 1, 3)]; x },
+    candidate_gradient_order = function(x) { x$candidate$gradient <- x$candidate$gradient[c(2, 1, 3)]; x },
+    malformed_convergence = function(x) { x$optimizer$convergence <- 0.5; x },
+    candidate_objective = function(x) { x$candidate$objective <- x$candidate$objective + 1; x },
+    covariance = function(x) { x$curvature$covariance[1, 1] <- 2; x }
+  )
+  for (label in names(attacks)) {
+    expect_false(contract$bfgs_smoke_recompute_result(attacks[[label]](out))$valid,
+      info = label)
+  }
+})
+
 test_that("BFGS manifest validation detects file, schema, and hash tampering", {
   contract <- bfgs_contract_env()
   root <- withr::local_tempdir()
@@ -147,12 +172,43 @@ test_that("BFGS manifest validation detects file, schema, and hash tampering", {
   )
 })
 
+test_that("BFGS manifest inventory rejects symlinks, nested files, and nonempty claims", {
+  skip_if(.Platform$OS.type == "windows", "symlink semantics are platform-specific")
+  contract <- bfgs_contract_env()
+  root <- withr::local_tempdir()
+  writeLines("receipt", file.path(root, "root-receipt.rds"))
+  paths <- "root-receipt.rds"
+  write_manifest <- function() utils::write.csv(data.frame(path = paths,
+    md5 = unname(tools::md5sum(file.path(root, paths)))),
+    file.path(root, "file-manifest.csv"), row.names = FALSE)
+  write_manifest()
+  expect_true(contract$bfgs_smoke_validate_manifest(root, paths)$valid)
+  expect_true(file.symlink(file.path(root, "root-receipt.rds"),
+    file.path(root, "linked.rds")))
+  expect_identical(contract$bfgs_smoke_validate_manifest(root, paths)$reason,
+    "manifest_file_type_invalid")
+  unlink(file.path(root, "linked.rds"))
+  dir.create(file.path(root, "nested"))
+  writeLines("hidden", file.path(root, "nested", "payload"))
+  expect_identical(contract$bfgs_smoke_validate_manifest(root, paths)$reason,
+    "manifest_directory_set_mismatch")
+  unlink(file.path(root, "nested"), recursive = TRUE)
+  dir.create(file.path(root, ".attempt-started.claim"))
+  expect_true(contract$bfgs_smoke_validate_manifest(root, paths,
+    expected_dirs = ".attempt-started.claim")$valid)
+  writeLines("nested", file.path(root, ".attempt-started.claim", "payload"))
+  expect_identical(contract$bfgs_smoke_validate_manifest(root, paths,
+    expected_dirs = ".attempt-started.claim")$reason,
+    "manifest_directory_set_mismatch")
+})
+
 test_that("attempt marker or terminal ledger consumes a BFGS root without mutation", {
   contract <- bfgs_contract_env()
   root <- withr::local_tempdir()
   expect_identical(contract$bfgs_smoke_consumed_state(root), list(
     consumed = FALSE, reason = "fresh_root",
-    terminal_ledger_exists = FALSE, attempt_marker_exists = FALSE
+    terminal_ledger_exists = FALSE, attempt_marker_exists = FALSE,
+    attempt_claim_exists = FALSE
   ))
   saveRDS(list(status = "OPTIMIZER_ENTERED"),
     file.path(root, "attempt-started.rds"))
@@ -163,44 +219,159 @@ test_that("attempt marker or terminal ledger consumes a BFGS root without mutati
   expect_identical(list.files(root, all.files = TRUE, no.. = TRUE), before)
   saveRDS(bfgs_terminal_ledger_fixture(),
     file.path(root, "all-attempt-ledger.rds"))
+  expect_true(dir.create(file.path(root, ".attempt-started.claim")))
   both <- contract$bfgs_smoke_consumed_state(root)
   expect_true(both$consumed)
   expect_identical(both$reason, "attempt_marker_and_terminal_ledger_exist")
 })
 
-test_that("terminal ledger taxonomy is exact and infrastructure is not optimizer error", {
+test_that("V2 terminal ledgers distinguish early and fallback terminal shapes", {
   contract <- bfgs_contract_env()
   commit <- strrep("a", 40L)
-  statuses <- c(
-    "INVALID_PROVENANCE", "BFGS_INFRASTRUCTURE_HOLD",
-    "BFGS_RAW_INELIGIBLE", "BFGS_OPTIMIZER_ERROR",
-    "BFGS_CURVATURE_UNAVAILABLE", "BFGS_CURVATURE_INVALID",
-    "BFGS_NO_NUMERICAL_ADMISSION", "BFGS_NUMERICAL_ADMISSION"
-  )
-  for (status in statuses) {
-    verdict <- contract$bfgs_smoke_validate_terminal_ledger(
-      bfgs_terminal_ledger_fixture(status = status),
-      "BFGS_P2_S6_C360_R3_V3", commit
+  for (case in list(
+      early = c("INVALID_PROVENANCE", "provenance_failure"),
+      fallback = c("BFGS_INFRASTRUCTURE_HOLD", "runner_unwind"))) {
+    root <- withr::local_tempdir()
+    ledger <- bfgs_v2_fallback_ledger(contract, root, case[[1L]], case[[2L]])
+    ledger <- bfgs_v2_materialize(contract, ledger)
+    accepted <- contract$bfgs_smoke_validate_terminal_ledger(
+      ledger, ledger$receipt$source_gate, commit
     )
-    expect_true(verdict$valid, info = status)
+    expect_true(accepted$valid, info = accepted$reason)
+    attacks <- list(
+      status = function(x) { x$status <- "BFGS_OPTIMIZER_ERROR"; x },
+      checks = function(x) { x$checks$terminal_evidence <- TRUE; x },
+      reason = function(x) { x$reason <- "forged"; x },
+      marker = function(x) { x$attempt_marker$claim <- "forged"; x }
+    )
+    for (label in names(attacks)) {
+      expect_false(contract$bfgs_smoke_validate_terminal_ledger(
+        attacks[[label]](ledger), ledger$receipt$source_gate, commit
+      )$valid, info = paste(case[[1L]], label))
+    }
   }
-  expect_false(contract$bfgs_smoke_validate_terminal_ledger(
-    bfgs_terminal_ledger_fixture(status = "ATTEMPT_STARTED"),
-    "BFGS_P2_S6_C360_R3_V3", commit
-  )$valid)
-  nonterminal <- bfgs_terminal_ledger_fixture()
-  nonterminal$terminal <- FALSE
-  expect_false(contract$bfgs_smoke_validate_terminal_ledger(
-    nonterminal, "BFGS_P2_S6_C360_R3_V3", commit
-  )$valid)
-  wrong_commit <- bfgs_terminal_ledger_fixture()
-  wrong_commit$receipt$commit <- strrep("b", 40L)
-  expect_false(contract$bfgs_smoke_validate_terminal_ledger(
-    wrong_commit, "BFGS_P2_S6_C360_R3_V3", commit
-  )$valid)
 })
 
-test_that("Paper 1 accepts only a full manifested Paper 2 algorithm attempt", {
+test_that("BFGS entry evidence requires a claimed marker and immutable order hash", {
+  contract <- bfgs_contract_env()
+  root <- withr::local_tempdir()
+  ledger <- bfgs_v2_fallback_ledger(contract, root)
+  receipt_md5 <- strrep("2", 32L)
+  marker <- bfgs_v2_marker(contract, ledger$receipt, md5 = receipt_md5)
+  order_hash <- contract$.bfgs_smoke_hash_object(list(
+    labels = "beta", ids = "beta[1]"
+  ))
+  entry <- list(schema = paste0(marker$source_gate, "_BFGS_ENTERED_V1"),
+    source_gate = marker$source_gate, root = marker$root, commit = marker$commit,
+    attempt_marker_md5 = strrep("3", 32L),
+    entered_at = "2026-08-14 00:00:01.000000", parent_pid = marker$parent_pid,
+    parameter_order_hash = order_hash)
+  accepted <- contract$bfgs_smoke_validate_bfgs_entry(
+    entry, marker, order_hash, strrep("3", 32L)
+  )
+  expect_true(accepted$valid, info = accepted$reason)
+  for (attack in list(
+      marker_hash = function(x) { x$attempt_marker_md5 <- strrep("0", 32L); x },
+      order = function(x) { x$parameter_order_hash <- strrep("1", 32L); x },
+      parent = function(x) { x$parent_pid <- 2L; x })) {
+    expect_false(contract$bfgs_smoke_validate_bfgs_entry(
+      attack(entry), marker, order_hash, strrep("3", 32L)
+    )$valid)
+  }
+})
+
+test_that("normal V2 terminal evidence is recomputed before a Paper 2 prerequisite", {
+  contract <- bfgs_contract_env()
+  root <- withr::local_tempdir()
+  ledger <- bfgs_v2_normal_ledger(contract, root)
+  fit <- attr(ledger, "bfgs_fixture_fit", exact = TRUE)
+  ledger <- bfgs_v2_materialize(contract, ledger, fit)
+  commit <- ledger$receipt$commit
+  normal <- contract$bfgs_smoke_validate_terminal_ledger(
+    ledger, ledger$receipt$source_gate, commit
+  )
+  expect_true(normal$valid, info = normal$reason)
+  expect_true(isTRUE(ledger$bfgs$optimizer_entered))
+
+  attacks <- list(
+    pre_helper_entry = function(x) { x$bfgs$optimizer_entered <- FALSE; x },
+    raw_ineligible_entry = function(x) {
+      x$bfgs$status <- "BFGS_RAW_INELIGIBLE"
+      x$bfgs$reason <- "raw_gradient_gate"
+      x
+    },
+    receipt_control = function(x) { x$receipt$control_md5 <- strrep("e", 32L); x },
+    ledger_control = function(x) { x$control_md5 <- strrep("d", 32L); x },
+    manifest_coordinated = function(x) {
+      writeLines("coordinated drift", file.path(root, "session-info.rds"))
+      paths <- sort(setdiff(list.files(root, all.files = TRUE, no.. = TRUE),
+        c("file-manifest.csv", ".attempt-started.claim")))
+      utils::write.csv(data.frame(path = paths,
+        md5 = unname(tools::md5sum(file.path(root, paths)))),
+        file.path(root, "file-manifest.csv"), row.names = FALSE)
+      x
+    }
+  )
+  for (label in names(attacks)) {
+    candidate <- attacks[[label]](ledger)
+    expect_false(contract$bfgs_smoke_validate_terminal_ledger(
+      candidate, candidate$receipt$source_gate, commit,
+      if (identical(label, "manifest_coordinated")) root else NULL
+    )$valid, info = label)
+  }
+})
+
+test_that("a live-root V2 terminal is the only accepted Paper 2 prerequisite", {
+  contract <- bfgs_contract_env()
+  pkg <- normalizePath(testthat::test_path("..", ".."), mustWork = TRUE)
+  results <- file.path(pkg, "dev", "isdm-package-recovery", "results")
+  dir.create(results, recursive = TRUE, showWarnings = FALSE)
+  root <- tempfile("test-bfgs-p2-", tmpdir = results)
+  dir.create(root)
+  withr::defer(unlink(root, recursive = TRUE))
+  ledger <- bfgs_v2_normal_ledger(contract, root, live = TRUE)
+  fit <- attr(ledger, "bfgs_fixture_fit", exact = TRUE)
+  ledger <- bfgs_v2_materialize(contract, ledger, fit)
+  expected <- list(
+    runner_md5 = ledger$receipt$runner_md5,
+    core_runner_md5 = ledger$receipt$core_runner_md5,
+    fixture_md5 = ledger$receipt$fixture_md5,
+    design_md5 = ledger$receipt$design_md5,
+    source_md5 = ledger$receipt$source_md5,
+    dll_path = ledger$receipt$dll_path,
+    control_md5 = ledger$receipt$control_md5
+  )
+  path <- file.path(root, "all-attempt-ledger.rds")
+  accepted <- contract$bfgs_smoke_validate_paper2_prerequisite(
+    path, ledger$receipt$commit, expected
+  )
+  expect_true(accepted$valid, info = accepted$reason)
+
+  attacks <- list(
+    raw_ineligible_pre_helper = function(x) {
+      x$bfgs$optimizer_entered <- FALSE
+      x
+    },
+    receipt_source = function(x) { x$receipt$source_md5[["fit_multi"]] <- strrep("a", 32L); x },
+    receipt_dll = function(x) { x$receipt$dll_path <- "/forged/gllvmTMB.so"; x },
+    receipt_control = function(x) { x$receipt$control_md5 <- strrep("b", 32L); x },
+    coordinated_ledger_receipt = function(x) {
+      x$receipt$source_md5[["tmb"]] <- strrep("c", 32L)
+      x$source_md5 <- x$receipt$source_md5
+      x
+    }
+  )
+  for (label in names(attacks)) {
+    candidate <- attacks[[label]](ledger)
+    candidate <- bfgs_v2_materialize(contract, candidate, fit)
+    expect_false(contract$bfgs_smoke_validate_paper2_prerequisite(
+      path, candidate$receipt$commit, expected
+    )$valid, info = label)
+    ledger <- bfgs_v2_materialize(contract, ledger, fit)
+  }
+})
+
+if (FALSE) { # superseded V1 packet retained only as a parse-time reference
   contract <- bfgs_contract_env()
   root <- withr::local_tempdir()
   path <- file.path(root, "all-attempt-ledger.rds")
@@ -233,7 +404,7 @@ test_that("Paper 1 accepts only a full manifested Paper 2 algorithm attempt", {
   par <- c(beta = 0)
   labels <- names(par)
   ids <- paste0(labels, "[", seq_along(par), "]")
-  signature <- list(source_gate = "BFGS_P2_S6_C360_R3_V3")
+  signature <- list(source_gate = "BFGS_P2_S6_C360_R3_V4")
   continuation <- list(
     warm_restart_provenance = list(attempted = FALSE),
     isdm_polish_provenance = list(attempted = FALSE),
@@ -328,7 +499,7 @@ test_that("Paper 1 accepts only a full manifested Paper 2 algorithm attempt", {
   expect_false(contract$bfgs_smoke_validate_paper2_prerequisite(
     path, commit, expected
   )$valid)
-})
+}
 
 test_that("Paper BFGS runners execute their validation modes without a fit", {
   skip_if_not_installed("devtools")
@@ -340,11 +511,11 @@ test_that("Paper BFGS runners execute their validation modes without a fit", {
     stdout = TRUE)[[1L]]
   cases <- list(
     paper2 = list(
-      runner = "run-bfgs-paper2-smoke.R", gate = "BFGS_P2_S6_C360_R3_V3",
+      runner = "run-bfgs-paper2-smoke.R", gate = "BFGS_P2_S6_C360_R3_V4",
       marker = "BFGS_P2_RUNNER_VALIDATION_PASS (no fit)"
     ),
     paper1 = list(
-      runner = "run-bfgs-paper1-smoke.R", gate = "BFGS_P1_S3_C360_R3_V3",
+      runner = "run-bfgs-paper1-smoke.R", gate = "BFGS_P1_S3_C360_R3_V4",
       marker = "BFGS_P1_RUNNER_VALIDATION_PASS (no fit)"
     )
   )

@@ -9,8 +9,8 @@ test_that("BFGS paper runners are bounded, immutable, and provenance-first", {
   expect_match(p1_text, 'GLLVM_BFGS_SMOKE_PAPER = "paper1"', fixed = TRUE)
   expect_match(p1_text, 'run-bfgs-paper2-smoke.R', fixed = TRUE)
   expect_match(p2_text, 'paper <- Sys.getenv("GLLVM_BFGS_SMOKE_PAPER"', fixed = TRUE)
-  expect_match(p2_text, "BFGS_P1_S3_C360_R3_V3", fixed = TRUE)
-  expect_match(p2_text, "BFGS_P2_S6_C360_R3_V3", fixed = TRUE)
+  expect_match(p2_text, "BFGS_P1_S3_C360_R3_V4", fixed = TRUE)
+  expect_match(p2_text, "BFGS_P2_S6_C360_R3_V4", fixed = TRUE)
   expect_match(p2_text, "elapsed = 1800", fixed = TRUE)
   expect_match(p2_text, "Expected wall clock: 5-20 minutes", fixed = TRUE)
   expect_match(p2_text, "all-attempt-ledger.rds", fixed = TRUE)
@@ -38,14 +38,17 @@ test_that("BFGS runner records terminal provenance before optimizer entry", {
   path <- testthat::test_path("..", "..", "dev", "isdm-package-recovery",
     "run-bfgs-paper2-smoke.R")
   text <- paste(readLines(path, warn = FALSE), collapse = "\n")
-  ledger_start <- regexpr("ledger <- list\\(", text)[[1L]]
-  receipt_read <- regexpr('readRDS(file.path(root, "root-receipt.rds"))',
-    text, fixed = TRUE)[[1L]]
-  fit_start <- regexpr("fit <- withCallingHandlers", text, fixed = TRUE)[[1L]]
+  main_at <- regexpr("main <- function()", text, fixed = TRUE)[[1L]]
+  expect_gt(main_at, 0L)
+  main_text <- substr(text, main_at, nchar(text))
+  ledger_start <- regexpr("ledger <- list(", main_text, fixed = TRUE)[[1L]]
+  receipt_read <- regexpr('receipt <- tryCatch(readRDS(file.path(root, "root-receipt.rds"))',
+    main_text, fixed = TRUE)[[1L]]
+  fit_start <- regexpr("fit <- withCallingHandlers", main_text, fixed = TRUE)[[1L]]
 
   expect_gt(ledger_start, 0L)
-  expect_gt(receipt_read, ledger_start)
-  expect_gt(fit_start, receipt_read)
+  expect_lt(receipt_read, ledger_start)
+  expect_gt(fit_start, ledger_start)
   expect_match(text, "if (dirty()) provenance_stop", fixed = TRUE)
   expect_match(text, "core_runner_md5", fixed = TRUE)
   expect_match(text, "design_md5", fixed = TRUE)
@@ -83,9 +86,63 @@ test_that("BFGS runner records terminal provenance before optimizer entry", {
   expect_match(text, "BFGS_OPTIMIZER_ERROR", fixed = TRUE)
   expect_match(text, "BFGS_INFRASTRUCTURE_HOLD", fixed = TRUE)
   expect_match(text, "BFGS_CURVATURE_UNAVAILABLE", fixed = TRUE)
-  expect_match(text, "saveRDS(ledger, ledger_path)", fixed = TRUE)
+  expect_match(text, "bfgs_smoke_recompute_result(ledger$bfgs)", fixed = TRUE)
+  expect_match(text, "atomic_rds(ledger, ledger_path)", fixed = TRUE)
+  expect_match(main_text,
+    "disk, source_gate, current_commit, root", fixed = TRUE)
   expect_match(text, "ledger$terminal <<- TRUE", fixed = TRUE)
   expect_match(text, ".internal_continuation = FALSE", fixed = TRUE)
+})
+
+test_that("BFGS runner uses an atomic preflight, claim, marker, and terminal lifecycle", {
+  path <- testthat::test_path("..", "..", "dev", "isdm-package-recovery",
+    "run-bfgs-paper2-smoke.R")
+  text <- paste(readLines(path, warn = FALSE), collapse = "\n")
+  required <- c("atomic_rds <- function", "atomic_lines <- function",
+    "atomic manifest rename failed", "atomic preflight root rename failed",
+    "claim_path <- file.path(root, \".attempt-started.claim\")",
+    "if (!dir.create(claim_path, showWarnings = FALSE))",
+    "atomic_rds(attempt_marker, marker_path)",
+    "on.exit({", "atomic_rds(ledger, ledger_path)",
+    "disk, source_gate, current_commit, root"
+  )
+  for (needle in required) expect_match(text, needle, fixed = TRUE, info = needle)
+  main_at <- regexpr("main <- function()", text, fixed = TRUE)[[1L]]
+  expect_gt(main_at, 0L)
+  main_text <- substr(text, main_at, nchar(text))
+  seal_at <- regexpr("seal <- function()", main_text, fixed = TRUE)[[1L]]
+  finalizer_at <- regexpr("on.exit({", main_text, fixed = TRUE)[[1L]]
+  expect_true(all(c(seal_at, finalizer_at) > 0L))
+  seal_text <- substr(main_text, seal_at, finalizer_at - 1L)
+  lifecycle <- vapply(c(
+    finalizer = "on.exit({",
+    claim = "if (!dir.create(claim_path, showWarnings = FALSE))",
+    marker = "claimed <- TRUE\n  atomic_rds(attempt_marker, marker_path)",
+    entry = "atomic_rds(ledger$bfgs_entry, entry_path)",
+    sealed_terminal = "terminal <- seal()"
+  ), function(x) regexpr(x, main_text, fixed = TRUE)[[1L]], numeric(1L))
+  expect_true(all(lifecycle > 0L),
+    info = paste(names(lifecycle)[lifecycle < 1L], collapse = ","))
+  expect_lt(lifecycle[["finalizer"]], lifecycle[["claim"]])
+  expect_lt(lifecycle[["claim"]], lifecycle[["marker"]])
+  expect_lt(lifecycle[["marker"]], lifecycle[["entry"]])
+  expect_lt(lifecycle[["entry"]], lifecycle[["sealed_terminal"]])
+
+  seal_steps <- vapply(c(
+    recompute = "bfgs_smoke_recompute_result(ledger$bfgs)",
+    in_memory = "in_memory <- bfgs_smoke_validate_terminal_ledger(",
+    atomic_ledger = "atomic_rds(ledger, ledger_path)",
+    manifest = "manifest(root, terminal_paths())",
+    reread = "disk <- tryCatch(readRDS(ledger_path)",
+    disk_validation = "disk, source_gate, current_commit, root"
+  ), function(x) regexpr(x, seal_text, fixed = TRUE)[[1L]], numeric(1L))
+  expect_true(all(seal_steps > 0L),
+    info = paste(names(seal_steps)[seal_steps < 1L], collapse = ","))
+  expect_lt(seal_steps[["recompute"]], seal_steps[["in_memory"]])
+  expect_lt(seal_steps[["in_memory"]], seal_steps[["atomic_ledger"]])
+  expect_lt(seal_steps[["atomic_ledger"]], seal_steps[["manifest"]])
+  expect_lt(seal_steps[["manifest"]], seal_steps[["reread"]])
+  expect_lt(seal_steps[["reread"]], seal_steps[["disk_validation"]])
 })
 
 test_that("BFGS runners expose no retry, profile, G3, remote, or relaxed path", {

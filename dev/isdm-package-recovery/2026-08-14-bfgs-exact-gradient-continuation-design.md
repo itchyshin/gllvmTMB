@@ -34,17 +34,19 @@ Frozen control is
 list(maxit = 500L, reltol = 1e-12, trace = 0L, REPORT = 1L)
 ```
 
-with `stats::optim(method = "BFGS", fn = obj$fn, gr = obj$gr)`. The control,
-method, start, objective signature, and gradient signature are hashed and
-retained.
+with `stats::optim(method = "BFGS", fn = obj$fn, gr = checked_gr)`, where
+`checked_gr` invokes `obj$gr` once per request and fails closed unless the
+returned gradient is finite and has the exact retained positional identity.
+The control, method, start, objective signature, and gradient signature are
+hashed and retained.
 
 ## Alignment
 
 | Mathematical object | Implementation | Validation | Evidence |
 | --- | --- | --- | --- |
 | \(\theta_0\) | pre-continuation selected `nlminb` vector retained in `fit$isdm_polish_provenance$raw` | exactly one initial restart selected; finite positional IDs; `nlminb` convergence zero | start vector/order and complete restart-provenance hashes |
-| \(f_0,g_0\) | `obj$fn(theta0)`, `obj$gr(theta0)` | objective replay within `64 * eps * max(1, abs(f0))`; exact-gradient replay finite, same names/order, and symmetric relative discrepancy `<=1e-8` | retained and replayed raw states plus discrepancies |
-| BFGS estimator | `stats::optim(..., method="BFGS")` | exact frozen call and controls | result, counts, message, elapsed time |
+| \(f_0,g_0\) | `obj$fn(theta0)`, `obj$gr(theta0)` | objective replay within `64 * eps * max(1, abs(f0))`; gradient replay finite with the retained positional order (unnamed is valid; supplied names must match), and symmetric relative discrepancy `<=1e-8` | retained and replayed raw states plus discrepancies |
+| BFGS estimator | `stats::optim(..., method="BFGS", gr=checked_gr)` | exact frozen call and controls; every `obj$gr` return is finite and positionally identified | result, counts, message, elapsed time |
 | \(f_B,g_B\) | exact `fn`/`gr` replay at returned `par` | finite; same signature | candidate state |
 | \(V_B\) | candidate-specific `sdreport$cov.fixed` | exact parameter replay/order; finite, symmetric, PD, `pdHess=TRUE`, condition `<=1e8` | covariance/eigenvalues/hash |
 | admission | frozen predicates below | all conjunctive | terminal ledger |
@@ -93,6 +95,44 @@ post-optimizer exact replay are `BFGS_INFRASTRUCTURE_HOLD`; they are never
 reported as algorithm rejection. A root containing either
 `attempt-started.rds` or a terminal ledger is consumed and cannot be rerun.
 
+### Terminal-evidence hardening amendment
+
+The estimator, objective, controls, thresholds, starts, and paper ordering above
+are unchanged. The executable packet uses terminal schema
+`<source_gate>_ALL_ATTEMPT_V2` to separate lifecycle evidence that the earlier
+`V1` ledger conflated:
+
+- atomic creation of the sole empty `.attempt-started.claim` directory is the
+  no-retry boundary;
+- `attempt-started.rds` is an exact receipt-, commit-, root-, claim-, time-, and
+  PID-bound attempt marker (`<source_gate>_ATTEMPT_STARTED_V1`), whose receipt
+  hash is the MD5 of the materialized `root-receipt.rds` bytes;
+- `bfgs-entered.rds` is a later, distinct marker
+  (`<source_gate>_BFGS_ENTERED_V1`) bound to the MD5 of the materialized
+  attempt-marker bytes and the
+  positional parameter-order hash. It records entry to the continuation helper,
+  not necessarily entry to `stats::optim()`; the helper retains exact logical
+  `optimizer_entered`, set to `TRUE` immediately before its one sealed optimiser
+  call and `FALSE` for every pre-optimiser outcome. Paper 1 requires this marker,
+  `optimizer_entered=TRUE`, and a valid recomputed Paper 2 terminal, not merely
+  an attempt marker.
+
+Preflight is built in a sibling staging directory and atomically renamed into
+the literal source-gate root. Terminal RDS and manifest replacements are
+atomic. Every sealed root has an exact flat regular-file inventory, no symlink,
+and no directory other than the empty claim. Before printing a status, the
+runner rereads the ledger and manifest and the contract independently
+recomputes the raw gate, strict integer optimizer convergence, candidate
+objective/gradient gates, covariance axes and health, terminal status/reason,
+and order/covariance hashes from retained result evidence. A post-claim unwind
+has its own exact `INVALID_PROVENANCE` or `BFGS_INFRASTRUCTURE_HOLD` schema and
+cannot project a scientific or optimizer result.
+
+An abrupt hard-process termination cannot execute the R unwind finalizer. A
+claim-only root is therefore permanently consumed but unsealed: it is not a
+terminal evidence packet, cannot be relabelled as an algorithm outcome, and
+does not unlock a retry or Paper 1.
+
 ## Test and execution gates
 
 Before a paper smoke: pure quadratic exact-gradient recovery; malformed input
@@ -126,6 +166,17 @@ stopped before BFGS because the runner required the exact TMB gradient to carry
 the parameter-vector names. Its retained and replayed gradients were both
 unnamed, as TMB returns them positionally; objective replay error was zero and
 relative gradient disagreement was `3.213207e-11`, below the frozen `1e-8`
-tolerance. V3 accepts an unnamed exact gradient only after parameter order and
-length have been proved; any supplied gradient names must still match exactly.
+tolerance. The V3 validation-only repair accepts an unnamed exact gradient only
+after its retained positional order and length have been proved; supplied names
+must still match exactly. It changes neither the objective nor the BFGS call.
 V2 remains immutable and is not BFGS algorithm evidence.
+
+The historical V3 roots are also immutable. Their terminal records predate the
+V2 terminal-evidence contract above and therefore cannot support numerical
+admission, Paper 1 ordering, or recovery. The sole successor is the fresh V4
+source-gate pair, `BFGS_P2_S6_C360_R3_V4` followed conditionally by
+`BFGS_P1_S3_C360_R3_V4`. V4 is a provenance-and-lifecycle repair only: it
+repeats the exact frozen estimator once from the immutable selected state, with
+no changed scientific controls, objective, parameterization, thresholds,
+fixture, seed, or candidate selection. It does not make V3 evidence valid, and
+there is no V5 retry after a V4 terminal of any kind.

@@ -202,7 +202,16 @@ slice first; latent loadings and a dedicated \(\varphi\) atom deferred):
 
 Latent loading coercivity under Laplace is **OPEN**. The Bernoulli
 radial atom is listed only as a forbidden transplant, not as a
-candidate. A \(\varphi\)-only atom is **OPEN**.
+candidate. A \(\varphi\)-only atom is **OPEN**. The mean-model atom
+in this note is **fixed-only / conditional** GLM information,
+evaluated at
+\(\eta=X_{\mathrm{fix}}b_{\mathrm{fix}}+\mathrm{offset}\) before any
+latent-score contribution — the same convention the live tape
+records at `src/gllvmTMB.cpp` ("before any latent-score
+contribution"). Laplace-marginal information for \(\beta\) is a
+different object and remains **OPEN**. These oracles do not compute
+it. The \(\beta\)-block at fixed \(\varphi\) is not the joint
+\((\beta,\varphi)\) Jeffreys determinant.
 
 ## 2. Three named boundaries (do not collapse them)
 
@@ -403,7 +412,8 @@ to accept offsets.
 Preferred later-admission *candidate* for the fixed-effect slice:
 NB1 Jeffreys-shaped
 \(\tfrac12\log\det(X_*^\top\operatorname{diag}\{\mathcal I_\eta(\mu,\varphi)\}X_*)\),
-with rate, loading atom, and dedicated \(\varphi\) atom still OPEN.
+with rate, loading atom, dedicated \(\varphi\) atom, and
+Laplace-marginal \(I(\beta)\) still OPEN.
 Not a theorem transfer. Not the Poisson candidate.
 
 ## 7. Non-claims
@@ -420,7 +430,8 @@ This note does **not** claim:
 - structured tiers (`phylo_*`, `spatial_*`, `animal_*`, `kernel_*`);
 - that nonzero offsets are admitted;
 - that EVA/VA is involved (it is not);
-- a registry cell (none is added).
+- a registry cell (none is added);
+- that this atom is the Laplace-marginal information for \(\beta\).
 
 ## 8. What must exist before admission (unchanged programme gate)
 

@@ -21,13 +21,11 @@ NEXT: squash-merge #978 when CI green; rebase/retarget #979 onto
 OPEN GATES (need human at 05:00 only if CI still red): none for
 reversible work. Do not merge #972–#976. Do not admit.
 
-COMPUTE: **local only.** D-50 (vault): recovery/power/coverage/sim
-campaigns run on Totoro or DRAC, never GitHub Actions, never Actions
-artifacts. Tonight's 8×3 se=TRUE pin is a smoke, not a campaign —
-do not occupy Totoro/DRAC. Sibling note
-`docs/dev-log/research/2026-08-15-mspl-compute-totoro-drac.md` was
-absent at write time. Totoro/DRAC >30 min still needs a checkpoint
-receipt; Gaussian SE campaign remains deferred.
+COMPUTE: **local only.** Sibling note now on disk:
+`docs/dev-log/research/2026-08-15-mspl-compute-totoro-drac.md`.
+D-50 + D-139: tonight is the laptop pin; Totoro/DRAC receipt is
+**NONE ISSUED**. Do not occupy the fleet for an 8×3 smoke.
+Gaussian SE campaign remains deferred.
 
 TRUTH LIVES IN: `cursor/mspl-se-feasibility-pin` · this kit ·
 after-task `docs/dev-log/after-task/2026-08-15-mspl-se-feasibility-pin.md`

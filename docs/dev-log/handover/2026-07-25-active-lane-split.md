@@ -3,13 +3,23 @@
 This coordination note prevents a new session from treating this repository as
 a single writable lane.  It is a map, not a release/capability claim.
 
+**Refresh 2026-08-15 #5 (Cursor): LA-MSPL Phase-4 tapes Wave 5 closeout.**
+Lane **`cursor/mspl-phase4-tapes-planned`** · WT
+`/private/tmp/gllvmtmb-mspl-estimator-programme-roadmap` · LOOP
+`docs/dev-log/lanes/cursor-mspl-phase4-tapes-planned/LOOP/` · PR
+[#978](https://github.com/itchyshin/gllvmTMB/pull/978) (open; not admitted).
+Five C++ GLM-outer tapes; public `estimator="mspl"` is gaussian +
+bernoulli + Poisson only; Poisson stays `planned`. Do **not** merge
+#972–#976 from this lane. **PROTECTED:** `codex/lane-b-mspl-interval-feasibility`
+(binary SE). **START HERE:** `2026-08-15-cursor-handover-phase4-tapes.md`.
+
 **Refresh 2026-08-15 #3 (Cursor): LA-MSPL point-continue GOAL A+B+C LANDED.**
 Lane **`cursor/mspl-point-programme-continue`** · WT
 `/private/tmp/gllvmtmb-mspl-estimator-programme-roadmap` · LOOP
 `docs/dev-log/lanes/cursor-mspl-point-continue/LOOP/` · PR
-[#971](https://github.com/itchyshin/gllvmTMB/pull/971) (awaiting human merge).
-Gaussian multi-seed point evidence + Poisson Phase-4 `planned` rows on the
-PR tip. Handover opener [#970](https://github.com/itchyshin/gllvmTMB/pull/970)
+[#971](https://github.com/itchyshin/gllvmTMB/pull/971) **MERGED** `cb126576`.
+Gaussian multi-seed point evidence + Poisson Phase-4 `planned` rows.
+Handover opener [#970](https://github.com/itchyshin/gllvmTMB/pull/970)
 already on `main`. **PROTECTED:** binary SE Codex lane.
 
 **Refresh 2026-08-15 (Cursor→Cursor): LA-MSPL catch-up + Gaussian ordinary closed on `main`.**
@@ -58,7 +68,8 @@ missing-data ledger remains open and separately owned unless reassigned.
 
 | Lane | Owner | State | Start here | Boundary |
 | --- | --- | --- | --- | --- |
-| **LA-MSPL point-continue** | Cursor | **GOAL A+B+C LANDED on [#971](https://github.com/itchyshin/gllvmTMB/pull/971)** (awaiting merge). Gaussian multi-seed point + Poisson Phase-4 planned. Catch-up/gaussian kits CLOSED. #970 on main | `2026-08-15-cursor-handover.md`; LOOP `docs/dev-log/lanes/cursor-mspl-point-continue/LOOP/` | LA-MSPL only; never root `LOOP/`; **no Gaussian SE**; Binary SE **PROTECTED**; Poisson planned only (not admitted); no NEWS covered; no campaign without G0+receipt |
+| **LA-MSPL Phase-4 tapes** | Cursor | **GOAL LANDED** [#978](https://github.com/itchyshin/gllvmTMB/pull/978) (not admitted; CI pending). Five C++ tapes; public `mspl` = gaussian + bernoulli + Poisson. #971 on main. Do not merge #972–#976 from this lane | `2026-08-15-cursor-handover-phase4-tapes.md`; LOOP `docs/dev-log/lanes/cursor-mspl-phase4-tapes-planned/LOOP/` | LA-MSPL only; never root `LOOP/`; **no SE**; Binary SE **PROTECTED** (`codex/lane-b-mspl-interval-feasibility`); Poisson planned only; no NEWS covered; no public `mspl` on NB1/NB2/beta/Tweedie |
+| **LA-MSPL point-continue** | Cursor | **CLOSED** — GOAL A+B+C MERGED [#971](https://github.com/itchyshin/gllvmTMB/pull/971) `cb126576`. Do not reopen | `2026-08-15-cursor-handover.md` (historical); LOOP `docs/dev-log/lanes/cursor-mspl-point-continue/LOOP/` | Historical; successor is Phase-4 tapes |
 | **LA-MSPL binary SE / intervals** | Codex | **PROTECTED** private branch `codex/lane-b-mspl-interval-feasibility` @ `/Users/z3437171/.codex/worktrees/8e9d/gllvmTMB` | classify-only; do not mutate from Cursor MSPL | No absorb/rebase/merge into point-evidence lane |
 | **CRAN 0.7** | Cursor → **Codex** | **Track pick LOCKED 2026-08-08.** Worktree `/private/tmp/gllvmtmb-cran-0.7-20260807` · `cursor/cran-0.7-20260807` from `origin/main` @ `d7bee2fa`. `DESCRIPTION` still `0.6.0`. First CRAN **not imminent** — more testing first | `2026-08-08-codex-handover.md`; G0 `docs/dev-log/plan-actual/2026-08-07-gllvmtmb-cran-0.7-g0.md`; LOOP `lanes/gllvmtmb-cran-0.7/LOOP/` | Leave-M5 + Rose + testing-debt inventory OWED; **no bump yet**; no upload; keep #949 fenced; Laplace default; D-112 holds; portal ≥19 Aug is not a deadline |
 | **CRAN Path A 0.6.1** | Cursor | **PARKED / superseded for upload.** Freeze `v0.6.1-rc.1` @ `6a58683c` retained as **failure archive**. S7 STOPPED (PDF ≈ ERROR + galamm 404). Do not remint as CRAN 0.6.1; do not retag as 0.7 | Path A LOOP + `docs/dev-log/plan-actual/2026-08-07-gllvmtmb-cran-path-a-s7-progress.md` | Historical only; carry hygiene into 0.7 lane |

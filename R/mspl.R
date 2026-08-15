@@ -179,14 +179,15 @@
   }
 
   fam_ids <- unique(as.integer(family_id_vec))
-  if (length(fam_ids) != 1L || !fam_ids %in% c(0L, 1L)) {
+  if (length(fam_ids) != 1L || !fam_ids %in% c(0L, 1L, 2L)) {
     .gllvmTMB_mspl_abort(c(
-      "LA-MSPL supports a single binomial or gaussian response family only.",
-      "i" = "Count and mixed-family MSPL remain deferred."
+      "LA-MSPL supports a single gaussian, bernoulli, or Poisson response family only.",
+      "i" = "NB1, NB2, beta, Tweedie, and mixed-family MSPL remain deferred at the public door."
     ))
   }
   is_gaussian <- identical(fam_ids, 0L)
   is_bernoulli <- identical(fam_ids, 1L)
+  is_poisson <- identical(fam_ids, 2L)
 
   if (is_bernoulli) {
     if (length(unique(link_id_vec)) != 1L || !all(link_id_vec %in% 0:2)) {
@@ -201,7 +202,7 @@
         "i" = "Grouped and weighted binomial MSPL is deferred."
       ))
     }
-  } else {
+  } else if (is_gaussian) {
     if (length(unique(link_id_vec)) != 1L || !all(link_id_vec == 0L)) {
       .gllvmTMB_mspl_abort(c(
         "Gaussian LA-MSPL requires the identity link.",
@@ -210,6 +211,16 @@
     }
     if (any(!is.finite(y))) {
       .gllvmTMB_mspl_abort("Gaussian LA-MSPL requires finite responses.")
+    }
+  } else if (is_poisson) {
+    if (length(unique(link_id_vec)) != 1L || !all(link_id_vec == 0L)) {
+      .gllvmTMB_mspl_abort(c(
+        "Poisson LA-MSPL requires the log link.",
+        "i" = "Use {.code poisson(link = \"log\")}."
+      ))
+    }
+    if (any(!is.finite(y)) || any(y < 0)) {
+      .gllvmTMB_mspl_abort("Poisson LA-MSPL requires finite non-negative counts.")
     }
   }
   if (!all(is_y_observed == 1L)) {
@@ -238,6 +249,13 @@
     if (!isTRUE(ordinary) || isTRUE(spatial_indep) || isTRUE(spatial_latent)) {
       .gllvmTMB_mspl_abort(c(
         "Gaussian LA-MSPL admits only ordinary {.fn latent} with {.arg unique = TRUE}.",
+        "i" = "Spatial and other structures are deferred."
+      ))
+    }
+  } else if (is_poisson) {
+    if (!isTRUE(ordinary) || isTRUE(spatial_indep) || isTRUE(spatial_latent)) {
+      .gllvmTMB_mspl_abort(c(
+        "Poisson LA-MSPL admits only ordinary {.fn latent}.",
         "i" = "Spatial and other structures are deferred."
       ))
     }
@@ -374,7 +392,13 @@
     .gllvmTMB_mspl_abort("LA-MSPL requires a positive effective sample size.")
   }
 
-  family_name <- if (is_gaussian) "gaussian" else "binomial"
+  family_name <- if (is_gaussian) {
+    "gaussian"
+  } else if (is_poisson) {
+    "poisson"
+  } else {
+    "binomial"
+  }
   link_name <- .gllvmTMB_mspl_family_link_name(fam_ids, unique(link_id_vec))
   if (is.na(link_name)) {
     .gllvmTMB_mspl_abort("LA-MSPL could not resolve the family/link cell.")
@@ -401,7 +425,7 @@
   ## Bernoulli: admitted only. Gaussian ordinary: planned allowed during
   ## implement smoke; flip to admitted after se=FALSE smoke (point only —
   ## SE/intervals remain PROTECTED on codex/lane-b-mspl-interval-feasibility).
-  ok_status <- if (is_gaussian) {
+  ok_status <- if (is_gaussian || is_poisson) {
     registry_row$status %in% c("admitted", "planned")
   } else {
     identical(registry_row$status, "admitted")
@@ -413,8 +437,11 @@
     ), class = "gllvmTMB_mspl_registry_miss")
   }
 
+  ## Poisson c is unpinned (not a Bernoulli or Gaussian transplant).
   rate <- if (is_gaussian) {
     sqrt(2 / mspl_N_units)
+  } else if (is_poisson) {
+    1
   } else {
     2 * sqrt(p_free / N_eff)
   }
@@ -445,6 +472,12 @@
       paste0(
         "complete gaussian identity; ordinary latent(unique=TRUE) q=",
         d_B, "; Hirose pick C; Laplace"
+      )
+    } else if (is_poisson) {
+      paste0(
+        "complete poisson log; ordinary latent q=", d_B,
+        "; GLM-outer W=diag(mu) candidate (not I_LA(beta)); ",
+        "unpinned c=1; planned tape, not admitted; Laplace"
       )
     } else {
       paste0(

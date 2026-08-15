@@ -3,7 +3,8 @@
 ## Research note:
 ##   docs/dev-log/research/2026-08-15-mspl-phase4-poisson-prep.md
 ## Helpers stay in this file. Do not call live MSPL on Poisson.
-## Do not edit src/. Do not widen .gllvmTMB_mspl_prepare().
+## The public door lives in test-mspl-poisson-public-door.R.
+## Do not rebuild E1-E7 science. Do not flip planned -> admitted.
 
 .poisson_mu <- function(eta, exposure = 1) {
   as.numeric(exposure) * exp(as.numeric(eta))
@@ -199,6 +200,14 @@ test_that("Poisson ordinary q1/q2 are planned phase4_prep only (not admitted)", 
   expect_identical(p2$status, "planned")
   expect_identical(p1$evidence, "phase4_prep")
   expect_identical(p2$cell_id, "poisson:log:ordinary:q2")
+  notes_claim <- gsub(
+    "not admitted|not covered",
+    "",
+    paste(p1$notes, p2$notes),
+    ignore.case = TRUE
+  )
+  expect_false(grepl("\\badmitted\\b", notes_claim, ignore.case = TRUE))
+  expect_false(grepl("\\bcovered\\b", notes_claim, ignore.case = TRUE))
 
   ## No excluded poisson ordinary q1 collision with planned lookup.
   excluded <- tbl[tbl$status == "excluded", , drop = FALSE]

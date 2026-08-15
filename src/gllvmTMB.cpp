@@ -248,6 +248,98 @@ Type gll_mspl_log_weight(Type eta, int link_id)
   return Type(0.0);
 }
 
+// AD-safe digamma / trigamma via recurrence + asymptotic. Used only for
+// the fenced NB1 / Beta GLM-outer atoms. Not Laplace-marginal I(beta).
+template <class Type>
+Type gll_mspl_digamma(Type x)
+{
+  Type acc = Type(0.0);
+  Type z = x;
+  for (int i = 0; i < 8; ++i) {
+    acc -= Type(1.0) / z;
+    z += Type(1.0);
+  }
+  Type iz = Type(1.0) / z;
+  Type iz2 = iz * iz;
+  return acc + log(z) - Type(0.5) * iz - iz2 / Type(12.0) +
+    iz2 * iz2 / Type(120.0);
+}
+
+template <class Type>
+Type gll_mspl_trigamma(Type x)
+{
+  Type acc = Type(0.0);
+  Type z = x;
+  for (int i = 0; i < 8; ++i) {
+    acc += Type(1.0) / (z * z);
+    z += Type(1.0);
+  }
+  Type iz = Type(1.0) / z;
+  Type iz2 = iz * iz;
+  return acc + iz + Type(0.5) * iz2 + iz2 * iz / Type(6.0);
+}
+
+// GLM-outer log weight at eta = X_fix * b_fix + offset, before any
+// latent-score contribution. This is the candidate outer penalty weight,
+// NOT Laplace-marginal I(beta).
+template <class Type>
+Type gll_mspl_log_weight_glm(Type eta, int family_id, int link_id,
+                             Type log_phi, Type logit_p)
+{
+  if (family_id == 1)
+    return gll_mspl_log_weight(eta, link_id);
+  if (family_id == 2) {
+    // Poisson log link: W = mu, log w = eta (offset already in eta).
+    return eta;
+  }
+  if (family_id == 5) {
+    // NB2: W = mu * phi / (phi + mu)
+    Type log_mu = eta;
+    return log_mu + log_phi - logspace_add(log_mu, log_phi);
+  }
+  if (family_id == 15) {
+    // NB1: PMF-summed exact I_eta at fixed phi via truncated PMF outer product.
+    // NOT quasi W=mu/(1+phi).
+    Type mu = exp(eta);
+    Type phi = exp(log_phi);
+    Type r = mu / phi;
+    Type log_p = -logspace_add(Type(0.0), log_phi);
+    Type sd = sqrt(mu * (Type(1.0) + phi));
+    int ymax = 80;
+    double cap = asDouble(mu + Type(12.0) * sd);
+    if (R_FINITE(cap) && cap < 80.0)
+      ymax = (cap < 8.0) ? 8 : (int)cap;
+    Type I = Type(0.0);
+    for (int y = 0; y <= ymax; ++y) {
+      Type yy = Type(y);
+      Type log_f = lgamma(yy + r) - lgamma(r) - lgamma(yy + Type(1.0)) +
+        r * log_p + yy * (log_phi + log_p);
+      Type s = r * (gll_mspl_digamma(yy + r) - gll_mspl_digamma(r) + log_p);
+      I += exp(log_f) * s * s;
+    }
+    return log(I + Type(1e-12));
+  }
+  if (family_id == 7) {
+    // Beta mean-model Jeffreys weight (Ferrari & Cribari-Neto).
+    // This weight goes to 1 as mu -> 0/1: not coercive at the mean boundary.
+    Type mu = Type(1.0) / (Type(1.0) + exp(-eta));
+    Type phi = exp(log_phi);
+    Type a = mu * phi;
+    Type b = (Type(1.0) - mu) * phi;
+    Type I_mu = phi * (gll_mspl_trigamma(a) + gll_mspl_trigamma(b));
+    Type dmu = mu * (Type(1.0) - mu);
+    Type w = I_mu * dmu * dmu;
+    return log(w + Type(1e-12));
+  }
+  if (family_id == 6) {
+    // Tweedie: W = mu^{2-p} / phi. This atom rewards phi -> 0.
+    Type p = Type(1.0) + invlogit(logit_p);
+    return (Type(2.0) - p) * eta - log_phi;
+  }
+  error("gllvmTMB_multi: MSPL GLM-outer weight: unknown family_id");
+  return Type(0.0);
+}
+
 template <class Type>
 Type gll_mspl_bernoulli_loglik(Type y, Type eta, int link_id)
 {
@@ -1070,9 +1162,25 @@ Type objective_function<Type>::operator()()
     }
     bool mspl_gaussian = (common_family == 0);
     bool mspl_bernoulli = (common_family == 1);
-    if (!mspl_gaussian && !mspl_bernoulli)
-      error("gllvmTMB_multi: MSPL admits only gaussian identity or Bernoulli families");
-    mspl_family_mode = mspl_gaussian ? 2 : 1;
+    bool mspl_poisson = (common_family == 2);
+    bool mspl_fenced = (common_family == 5 || common_family == 6 ||
+                        common_family == 7 || common_family == 15);
+    if (!mspl_gaussian && !mspl_bernoulli && !mspl_poisson && !mspl_fenced)
+      error("gllvmTMB_multi: MSPL admits only gaussian, Bernoulli, Poisson, or fenced planned families");
+    if (mspl_gaussian)
+      mspl_family_mode = 2;
+    else if (mspl_bernoulli)
+      mspl_family_mode = 1;
+    else if (mspl_poisson)
+      mspl_family_mode = 3;
+    else if (common_family == 5)
+      mspl_family_mode = 4;
+    else if (common_family == 15)
+      mspl_family_mode = 5;
+    else if (common_family == 7)
+      mspl_family_mode = 6;
+    else
+      mspl_family_mode = 7;
 
     bool mspl_ordinary = (use_rr_B == 1 && use_spde == 0);
     bool mspl_spatial_indep = (use_rr_B == 0 && use_spde == 1 &&
@@ -1086,6 +1194,9 @@ Type objective_function<Type>::operator()()
         error("gllvmTMB_multi: Gaussian MSPL admits only ordinary latent(unique=TRUE)");
       if (mspl_spatial_indep || mspl_spatial_latent)
         error("gllvmTMB_multi: Gaussian MSPL does not admit spatial structures yet");
+    } else if (mspl_poisson || mspl_fenced) {
+      if (!mspl_ordinary)
+        error("gllvmTMB_multi: Poisson/fenced MSPL admits only ordinary latent");
     } else {
       int n_admitted = int(mspl_ordinary) + int(mspl_spatial_indep) +
                        int(mspl_spatial_latent);
@@ -1178,7 +1289,7 @@ Type objective_function<Type>::operator()()
           if (!R_FINITE(asDouble(X_mspl(o, j))))
             error("gllvmTMB_multi: MSPL resolved fixed design must be finite");
       }
-    } else {
+    } else if (mspl_bernoulli) {
       if (common_link < 0 || common_link > 2)
         error("gllvmTMB_multi: MSPL link must be logit, probit, or cloglog");
       for (int o = 0; o < y.size(); ++o) {
@@ -1191,6 +1302,29 @@ Type objective_function<Type>::operator()()
             (yo != 0.0 && yo != 1.0) || wo != 1.0 ||
             !R_FINITE(oo) || oo != 0.0)
           error("gllvmTMB_multi: MSPL requires complete unweighted single-trial Bernoulli rows with one common link and all-zero offsets");
+        for (int j = 0; j < X_mspl.cols(); ++j)
+          if (!R_FINITE(asDouble(X_mspl(o, j))))
+            error("gllvmTMB_multi: MSPL resolved fixed design must be finite");
+      }
+    } else {
+      if (mspl_poisson) {
+        if (common_link != 0)
+          error("gllvmTMB_multi: Poisson MSPL requires the log link");
+      } else if (common_family == 7) {
+        if (common_link != 0)
+          error("gllvmTMB_multi: Beta MSPL requires the logit link");
+      } else if (common_link != 0) {
+        error("gllvmTMB_multi: fenced count/Tweedie MSPL requires the log link");
+      }
+      for (int o = 0; o < y.size(); ++o) {
+        double yo = asDouble(y(o));
+        double wo = asDouble(weights_i(o));
+        double oo = asDouble(offset_vec(o));
+        if (is_y_observed(o) != 1 || family_id_vec(o) != common_family ||
+            link_id_vec(o) != common_link ||
+            wo != 1.0 || !R_FINITE(yo) || !R_FINITE(oo) || oo != 0.0 ||
+            (mspl_poisson && yo < 0.0))
+          error("gllvmTMB_multi: Poisson/fenced MSPL requires complete unweighted rows with all-zero offsets");
         for (int j = 0; j < X_mspl.cols(); ++j)
           if (!R_FINITE(asDouble(X_mspl(o, j))))
             error("gllvmTMB_multi: MSPL resolved fixed design must be finite");
@@ -3156,15 +3290,39 @@ Type objective_function<Type>::operator()()
       mspl_atom_status = Type(0.0);
       nll += mspl_hirose_nll;
     } else {
-      mspl_c_n = Type(2.0) * sqrt(Type(p_free) / Type(N_eff));
+      // Bernoulli keeps the validated rate. Poisson / fenced GLM-outer
+      // use unpinned c=1 (not a Bernoulli or Gaussian transplant).
+      if (mspl_family_mode == 1)
+        mspl_c_n = Type(2.0) * sqrt(Type(p_free) / Type(N_eff));
+      else
+        mspl_c_n = Type(1.0);
       vector<Type> mspl_logw(N_eff);
       int link_id = link_id_vec(0);
+      int fid = family_id_vec(0);
       for (int o = 0; o < N_eff; ++o) {
         Type eta_fixed_offset = eta_fix(o) + offset_vec(o);
-        mspl_logw(o) = gll_mspl_log_weight(eta_fixed_offset, link_id);
-        if (link_id == 2) {
-          mspl_cloglog_weight_tail_extension_count += CppAD::CondExpGt(
-            eta_fixed_offset, Type(690.0), Type(1.0), Type(0.0));
+        int t = trait_id(o);
+        Type log_phi = Type(0.0);
+        Type logit_p = Type(0.0);
+        if (fid == 5)
+          log_phi = log_phi_nbinom2(t);
+        else if (fid == 15)
+          log_phi = log_phi_nbinom1(t);
+        else if (fid == 7)
+          log_phi = log_phi_beta(t);
+        else if (fid == 6) {
+          log_phi = log_phi_tweedie(t);
+          logit_p = logit_p_tweedie(t);
+        }
+        if (fid == 1) {
+          mspl_logw(o) = gll_mspl_log_weight(eta_fixed_offset, link_id);
+          if (link_id == 2) {
+            mspl_cloglog_weight_tail_extension_count += CppAD::CondExpGt(
+              eta_fixed_offset, Type(690.0), Type(1.0), Type(0.0));
+          }
+        } else {
+          mspl_logw(o) = gll_mspl_log_weight_glm(
+            eta_fixed_offset, fid, link_id, log_phi, logit_p);
         }
       }
       vector<Type> atom = gll_mspl_atomic_half_logdet(mspl_logw, X_mspl);

@@ -17,12 +17,17 @@
 }
 
 ## Identity is link_id 0 for gaussian; Bernoulli reuses 0 as logit.
+## Poisson log is also link_id 0 in family_to_id(); do not call it logit.
 .gllvmTMB_mspl_family_link_name <- function(family_id, link_id) {
-  if (identical(as.integer(family_id[[1L]]), 0L)) {
+  fid <- as.integer(family_id[[1L]])
+  if (identical(fid, 0L)) {
     if (!identical(as.integer(link_id[[1L]]), 0L)) {
       return(NA_character_)
     }
     return("identity")
+  }
+  if (identical(fid, 2L)) {
+    return("log")
   }
   .gllvmTMB_mspl_link_name(link_id)
 }
@@ -111,8 +116,7 @@
     admitted_gauss$q
   )
 
-  ## Poisson ordinary q=1,2: planned Phase-4 prep only. NOT admitted.
-  ## .gllvmTMB_mspl_prepare() still rejects family_id outside {0,1}.
+  ## Poisson ordinary q=1,2: planned fenced tape. NOT admitted.
   planned_pois <- data.frame(
     family = "poisson",
     link = "log",
@@ -121,8 +125,8 @@
     status = "planned",
     evidence = "phase4_prep",
     notes = paste(
-      "Phase 4 prep: information atom + pure-R oracles only;",
-      "no C++ tape; no estimator=mspl on Poisson; not admitted"
+      "Phase 4 fenced planned tape: GLM-outer W=diag(mu), not I_LA(beta);",
+      "public estimator=mspl is experimental; not admitted; not covered"
     ),
     stringsAsFactors = FALSE
   )

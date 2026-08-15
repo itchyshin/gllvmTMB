@@ -16,7 +16,10 @@ ARCS DONE (verified):
 ARC IN PROGRESS: A10 wait for #979 CI then squash-merge.
 
 NEXT: squash-merge https://github.com/itchyshin/gllvmTMB/pull/979
-when CI green. #978 already squash-merged `78f6d6b6`.
+when CI green. Rebased onto `origin/main` @ `aa2daa13` (#980
+docs after #978 `78f6d6b6`). First #979 CI failed on unrelated
+`test-va-all-family-light-fits.R` `delta_lognormal_log` health
+gate (not an MSPL SE file). Re-run after rebase.
 
 OPEN GATES (need human at 05:00 only if CI still red): none for
 reversible work. Do not merge #972–#976. Do not admit.

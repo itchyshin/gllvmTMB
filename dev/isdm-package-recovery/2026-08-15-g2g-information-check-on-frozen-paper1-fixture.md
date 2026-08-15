@@ -140,6 +140,70 @@ prior on kappa) address a \(\kappa\)--\(\lambda\) ridge that the measurement
 shows does not exist.  **Only item 4, spatial replication, and more generally
 the design/data, bear on what was actually measured.**
 
+## 1b. AMENDMENT (same day, after independent adversarial review and the effort-ladder pilot)
+
+A fresh-context reviewer attacked §1a; every number reproduced, but three
+framings were overturned, and the effort-ladder pilot
+(`2026-08-15-paper1-gbif-effort-ladder-pilot.md`) then settled the question
+§1a left open.  Corrections, in order of weight:
+
+**1b.1 The truth was never consulted, and it is NOT near zero.**  The sealed
+V2 root's own `fixture.rds` records
+\(\lambda_{\rm bias}^{\rm true} = (11.2798, -8.7732, 7.5199)\),
+\(\lVert\cdot\rVert = 16.148\) -- **64% of the ecological field's amplitude by
+construction**.  The fitted \(0.1032\) is a 156-fold collapse with the wrong
+sign pattern.  But raising \(\theta_{20:22}\) to the truth costs only 0.574
+nats (\(2\Delta = 1.148\) on 3 df, \(p = 0.765\)), and the LR-95% bound on
+\(\lVert\lambda\rVert\) reaches 33.  **§1a's "the GBIF-only field collapses to
+approximately zero *and that is the answer the data gives*" is wrong**: the
+answer the data give is an indifference interval containing both zero and the
+truth.  A recovery failure was reported as a scientific result.
+
+**1b.2 The negative eigenvalue is a sign-symmetry fixed point, not a
+substantive saddle.**  \((\Lambda_1, g_1)\to(-\Lambda_1, -g_1)\) leaves the
+likelihood and prior exactly invariant (verified bitwise), so
+\(\Lambda_1 = 0\) is a stationary point of the marginal likelihood **for any
+data**, and whether it is a minimum or a saddle is the symmetry-breaking
+question.  Consequently §1a's "no reparameterisation can help" conflated two
+things and is a **non-sequitur as stated**: the *information deficit* is real
+and no chart creates information, but the *pdHess failure* is a symmetry
+artifact that a sign-quotiented parameterisation (log-SD with an anchored
+direction) removes without adding information.  The pilot confirmed the
+fixed-point behaviour replicates under fresh noise at baseline effort.
+
+**1b.3 Framing and citation repairs.**
+(i) Step-size stability was **invalid evidence** for the eigenvalue's realness
+-- the exact gradient is deterministic, so a smooth inner-solve bias would be
+equally stable; the claim survives on other grounds (gradient-free second
+differences \(-2.589\times10^{-4}\), `optimHess`, `sdreport` non-PD).
+(ii) "Flat to numerical precision" and "four to six orders" were unscaled-
+Hessian rhetoric; on the correlation scale the near-null eigenvalue is ~1/60 of
+the stiffest direction.  The **localisation** survives scaling (weight 0.99992
+on coords 20--22).
+(iii) §1a's \(\tau\) citation pointed at a **dead branch**
+(`use_spde_slope == 1`; this state runs `use_spde_latent_slope == 1`,
+`src/gllvmTMB.cpp:1810-1866`).  The conclusion holds on the live path --
+`log_tau_spde` is simply **absent** there, not "fixed at 1".
+(iv) The frozen point is **not stationary** (max\(|g| = 2.8\times10^{-4}\),
+concentrated on coords 20--22); any "saddle" language must carry that caveat.
+(v) The u/v curvature test in §1a was nearly vacuous: with
+\(\lVert\lambda_{\rm slope}\rVert = 0.1\), both axes were ~99% \(\kappa\)
+(\(\cos(u,v) = 0.979\)).  The honest \(2\times2\) chart Hessian has **zero**
+\(q\)--\(\eta\) cross-term with \(\eta\) alone flat.  And on the **intercept**
+block the same chart shows a *genuine* range--amplitude ridge
+(corr \(-0.955\), curvature ratio 28:1) -- so the range is also weakly
+determined on its own terms, which likely explains the pilot's small
+\(\hat q\) drift.
+
+**1b.4 The pilot's settlement.**  With the truth held fixed and GBIF effort
+multiplied: at \(E=1\) the collapse **replicates** (fresh noise,
+\(\lVert\hat\lambda\rVert = 0.07\), pdHess FALSE); at \(E=4\) the field is
+recovered; by \(E=16\) amplitude, direction (cos 0.996), and \(\gamma\) are
+all essentially at truth with a PD Hessian.  **The estimator is correct; the
+frozen design is information-poor for its own question; the recoverability
+frontier lies between ~460 and ~1,900 GBIF detections.**  This supersedes both
+§1a's framing and §2's mechanism as the diagnosis of record.
+
 ## 2. SUPERSEDED -- what the earlier pass inferred (retained for the record)
 
 > The following section was written before the live objective was available. Its

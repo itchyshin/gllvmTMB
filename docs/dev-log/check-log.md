@@ -49337,3 +49337,9 @@ After-task:
 Decision:
 `docs/dev-log/research/2026-08-15-mspl-gaussian-psi-uniqueness-map.md`.
 
+
+## 2026-08-15 — cursor/mspl-point-programme-continue
+
+- `Rscript --vanilla dev/mspl-gaussian-multiseed-point-grid.R` → 64/64 finite arm-rows; TSV committed; wall ~17s; log `/tmp/mspl-gaussian-multiseed-point-grid.log`.
+- `devtools::test(filter="mspl-registry|mspl-poisson-phase4|mspl-gaussian-fit-smoke|mspl-gaussian-heywood")` → PASS (summary reporter).
+- Poisson: planned registry rows + Phase-4 note + pure-R oracles; NOT admitted.

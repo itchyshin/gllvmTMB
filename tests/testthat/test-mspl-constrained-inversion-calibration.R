@@ -35,6 +35,9 @@ test_that("private MSPL constrained-inversion calibration contract is frozen", {
   production_lines <- readLines(production_wrapper)
   expect_true(any(grepl('MAP="\\$MSPL_COVERAGE_ROOT/array-map.tsv"', production_lines)))
   expect_true(any(grepl('MSPL_CONSTRAINED_INVERSION_ARRAY_MAP_SHA256', production_lines)))
+  expect_true(any(grepl('MSPL_CONSTRAINED_INVERSION_PRODUCTION_WRAPPER_SHA256', production_lines)))
+  expect_true(any(grepl('MSPL_CONSTRAINED_INVERSION_ARRAY_OFFSET', production_lines)))
+  expect_true(any(grepl('MAP_ID=$((TASK_ID + MSPL_CONSTRAINED_INVERSION_ARRAY_OFFSET))', production_lines, fixed = TRUE)))
   expect_true(any(grepl('--shard-id "$SHARD_ID"', production_lines, fixed = TRUE)))
   expect_true(any(grepl('Refusing absent or replacement shard publication.', production_lines, fixed = TRUE)))
 
@@ -85,4 +88,45 @@ test_that("private MSPL constrained-inversion calibration contract is frozen", {
   expect_identical(nrow(shard$attempts), 30L)
   expect_true(all(shard$endpoints$constrained_status == "ok"))
   expect_true(all(shard$attempts$status == "ok"))
+
+  full_root <- tempfile("mspl-constrained-inversion-full-")
+  output <- system2("Rscript", c("--vanilla", runner, "manifest", "--root", full_root,
+    "--campaign-id", "local-full", "--source-sha", "abc123"), env = smoke_env,
+    stdout = TRUE, stderr = TRUE)
+  expect_null(attr(output, "status"))
+  full_manifest <- utils::read.csv(file.path(full_root, "manifest.csv"), stringsAsFactors = FALSE)
+  for (i in seq_len(nrow(full_manifest))) {
+    endpoint <- expand.grid(target = seq_len(3L), grid_id = seq_len(5L))
+    endpoint <- endpoint[order(endpoint$target, endpoint$grid_id), , drop = FALSE]
+    truth <- c(-0.5, 0.1, 0.55) + full_manifest$beta_shift[[i]]
+    endpoint <- data.frame(
+      case_id = full_manifest$case_id[[i]], outer_id = 1L, target = endpoint$target,
+      grid_id = endpoint$grid_id,
+      target_value = rep(truth, each = 5L) + rep(c(-1, -0.5, 0, 0.5, 1), 3L),
+      truth = rep(truth, each = 5L), constrained_status = "ok", constrained_message = "", estimator_id = 1L,
+      objective_source = "fit$tmb_obj (penalised LA-MSPL)", observed_statistic = 0,
+      usable_refits = 2L, p_value = rep(c(0.01, 0.5, 0.8, 0.5, 0.01), 3L),
+      test_status = "ok"
+    )
+    attempts <- endpoint[rep(seq_len(nrow(endpoint)), each = 2L),
+      c("case_id", "outer_id", "target", "grid_id")]
+    attempts$replicate <- rep(seq_len(2L), times = nrow(endpoint))
+    attempts$status <- "ok"
+    attempts$message <- ""
+    attempts$estimate <- 0
+    attempts$statistic <- 0
+    saveRDS(list(
+      schema_version = "mspl-constrained-inversion-shard-v1",
+      case_id = full_manifest$case_id[[i]], shard_id = 1L,
+      cluster = full_manifest$assigned_cluster[[i]], source_sha = full_manifest$source_sha[[i]],
+      campaign_id = full_manifest$campaign_id[[i]], endpoints = endpoint, attempts = attempts
+    ), file.path(full_root, "shards", sprintf("%s-shard-0001.rds", full_manifest$case_id[[i]])))
+  }
+  output <- system2("Rscript", c("--vanilla", runner, "aggregate-full", "--root", full_root,
+    "--expected-source-sha", "abc123"), env = smoke_env, stdout = TRUE, stderr = TRUE)
+  expect_null(attr(output, "status"))
+  full_summary <- utils::read.csv(file.path(full_root, "summary.csv"), stringsAsFactors = FALSE)
+  expect_identical(nrow(full_summary), 36L)
+  expect_true(all(full_summary$available_outer == 1L))
+  expect_true(all(utils::read.csv(file.path(full_root, "interval-rows.csv"))$status == "finite_grid_interval"))
 })

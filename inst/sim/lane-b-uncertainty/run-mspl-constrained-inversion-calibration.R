@@ -319,6 +319,159 @@ aggregate_prerun <- function(root) {
   invisible(summary)
 }
 
+full_shard_files <- function(root, manifest) {
+  expected <- unlist(lapply(seq_len(nrow(manifest)), function(i) {
+    file.path(root, "shards", sprintf("%s-shard-%04d.rds", manifest$case_id[[i]],
+      seq_len(manifest$n_shards[[i]])))
+  }), use.names = FALSE)
+  observed <- sort(list.files(file.path(root, "shards"), pattern = "\\.rds$", full.names = TRUE))
+  if (!identical(observed, sort(expected))) {
+    stop("Full aggregation requires every immutable constrained-inversion shard exactly once.", call. = FALSE)
+  }
+  expected
+}
+
+validate_full_shards <- function(root, manifest) {
+  files <- full_shard_files(root, manifest)
+  settings <- inversion_settings()
+  endpoint_parts <- vector("list", length(files))
+  attempts_ok <- 0L
+  attempts_failed <- 0L
+  for (i in seq_along(files)) {
+    shard <- readRDS(files[[i]])
+    case_id <- sub("-shard-[0-9]{4}\\.rds$", "", basename(files[[i]]))
+    shard_id <- as.integer(sub("^.*-shard-([0-9]{4})\\.rds$", "\\1", basename(files[[i]])))
+    case <- manifest[match(case_id, manifest$case_id), , drop = FALSE]
+    required <- c("schema_version", "case_id", "shard_id", "cluster", "source_sha", "campaign_id", "endpoints", "attempts")
+    if (!is.list(shard) || !identical(shard$schema_version, "mspl-constrained-inversion-shard-v1") ||
+        !all(required %in% names(shard)) || !identical(shard$case_id, case_id) ||
+        !identical(as.integer(shard$shard_id), shard_id) || !identical(shard$cluster, case$assigned_cluster[[1L]]) ||
+        !identical(shard$source_sha, case$source_sha[[1L]]) || !identical(shard$campaign_id, case$campaign_id[[1L]])) {
+      stop("A full constrained-inversion shard has invalid schema or provenance.", call. = FALSE)
+    }
+    endpoints <- shard$endpoints
+    attempts <- shard$attempts
+    expected_outer <- shard_id
+    endpoint_key <- paste(endpoints$target, endpoints$grid_id, sep = "\r")
+    expected_endpoint_key <- as.vector(outer(seq_len(3L), seq_len(5L), paste, sep = "\r"))
+    if (!is.data.frame(endpoints) || nrow(endpoints) != 15L || anyDuplicated(endpoint_key) ||
+        !identical(sort(endpoint_key), sort(expected_endpoint_key)) ||
+        any(endpoints$case_id != case_id) || any(endpoints$outer_id != expected_outer) ||
+        any(endpoints$truth != rep(case_truth(case), each = 5L))) {
+      stop("A full constrained-inversion endpoint block has invalid keys or truth.", call. = FALSE)
+    }
+    attempt_key <- paste(attempts$target, attempts$grid_id, attempts$replicate, sep = "\r")
+    if (!is.data.frame(attempts) || nrow(attempts) != 15L * settings$bootstrap_reps ||
+        anyDuplicated(attempt_key) || any(attempts$case_id != case_id) ||
+        any(attempts$outer_id != expected_outer) ||
+        !identical(sort(unique(paste(attempts$target, attempts$grid_id, sep = "\r"))), sort(expected_endpoint_key)) ||
+        any(table(paste(attempts$target, attempts$grid_id, sep = "\r")) != settings$bootstrap_reps)) {
+      stop("A full constrained-inversion attempt block has invalid keys or cardinality.", call. = FALSE)
+    }
+    attempts_ok <- attempts_ok + sum(attempts$status == "ok")
+    attempts_failed <- attempts_failed + sum(attempts$status != "ok")
+    endpoint_parts[[i]] <- endpoints
+  }
+  list(endpoints = do.call(rbind, endpoint_parts), attempts_ok = attempts_ok,
+    attempts_failed = attempts_failed, shard_files = files)
+}
+
+inversion_interval_rows <- function(endpoints) {
+  settings <- inversion_settings()
+  groups <- split(endpoints, interaction(endpoints$case_id, endpoints$outer_id, endpoints$target, drop = TRUE))
+  out <- lapply(groups, function(x) {
+    x <- x[order(x$grid_id), , drop = FALSE]
+    valid <- x$test_status == "ok" & is.finite(x$p_value) &
+      x$usable_refits == settings$bootstrap_reps & x$estimator_id == 1L &
+      x$objective_source == "fit$tmb_obj (penalised LA-MSPL)"
+    accepted <- valid & x$p_value > settings$alpha
+    accepted_id <- which(accepted)
+    contiguous <- length(accepted_id) > 0L && identical(accepted_id, seq.int(min(accepted_id), max(accepted_id)))
+    lower_rejected <- any(valid[seq_len(2L)] & !accepted[seq_len(2L)])
+    upper_rejected <- any(valid[4:5] & !accepted[4:5])
+    status <- if (!all(valid)) {
+      "endpoint_test_failed"
+    } else if (!accepted[[3L]]) {
+      "truth_null_rejected"
+    } else if (!contiguous) {
+      "nonmonotone_acceptance"
+    } else if (!lower_rejected) {
+      "lower_truncated"
+    } else if (!upper_rejected) {
+      "upper_truncated"
+    } else {
+      "finite_grid_interval"
+    }
+    available <- identical(status, "finite_grid_interval")
+    data.frame(
+      case_id = x$case_id[[1L]], outer_id = x$outer_id[[1L]], target = x$target[[1L]],
+      truth = x$truth[[1L]], lower = if (available) min(x$target_value[accepted]) else NA_real_,
+      upper = if (available) max(x$target_value[accepted]) else NA_real_,
+      available = available, covers = available && accepted[[3L]], status = status,
+      stringsAsFactors = FALSE
+    )
+  })
+  do.call(rbind, out)
+}
+
+summarise_inversion_intervals <- function(intervals, manifest) {
+  groups <- split(intervals, interaction(intervals$case_id, intervals$target, drop = TRUE))
+  out <- do.call(rbind, lapply(groups, function(x) {
+    case <- manifest[match(x$case_id[[1L]], manifest$case_id), , drop = FALSE]
+    available_n <- sum(x$available)
+    covered_n <- sum(x$covers)
+    coverage <- covered_n / nrow(x)
+    wi <- wilson_interval(covered_n, nrow(x), level = case$coverage_wilson_level[[1L]])
+    availability <- available_n / nrow(x)
+    data.frame(
+      case_id = x$case_id[[1L]], regime = case$regime[[1L]], link = case$link[[1L]],
+      method = "constrained_parametric_bootstrap_inversion", target = x$target[[1L]],
+      attempted_outer = nrow(x), available_outer = available_n, availability = availability,
+      availability_gate = availability >= case$availability_min[[1L]], covered_outer = covered_n,
+      coverage = coverage, coverage_wilson_lower = wi[["lower"]], coverage_wilson_upper = wi[["upper"]],
+      coverage_gate = wi[["lower"]] >= case$coverage_equivalence_lower[[1L]] &&
+        wi[["upper"]] <= case$coverage_equivalence_upper[[1L]],
+      coverage_mcse = sqrt(coverage * (1 - coverage) / nrow(x)),
+      gate_pass = availability >= case$availability_min[[1L]] &&
+        wi[["lower"]] >= case$coverage_equivalence_lower[[1L]] && wi[["upper"]] <= case$coverage_equivalence_upper[[1L]],
+      stringsAsFactors = FALSE
+    )
+  }))
+  rownames(out) <- NULL
+  out
+}
+
+aggregate_full <- function(root, expected_source_sha) {
+  manifest <- utils::read.csv(file.path(root, "manifest.csv"), stringsAsFactors = FALSE)
+  validate_inversion_manifest(manifest)
+  if (!identical(manifest$source_sha[[1L]], expected_source_sha)) {
+    stop("Manifest source SHA does not match --expected-source-sha.", call. = FALSE)
+  }
+  receipts <- validate_full_shards(root, manifest)
+  intervals <- inversion_interval_rows(receipts$endpoints)
+  summary <- summarise_inversion_intervals(intervals, manifest)
+  atomic_write_csv(summary, file.path(root, "summary.csv"))
+  atomic_write_csv(intervals, file.path(root, "interval-rows.csv"))
+  atomic_write_csv(receipts$endpoints, file.path(root, "endpoint-rows.csv"))
+  atomic_write_lines(c(
+    "receipt_type: mspl-constrained-inversion-production-v1",
+    paste("campaign_id:", manifest$campaign_id[[1L]]),
+    paste("source_sha:", manifest$source_sha[[1L]]),
+    paste("expected_source_sha:", expected_source_sha),
+    paste("shard_rows:", length(receipts$shard_files)),
+    paste("endpoint_rows:", nrow(receipts$endpoints)),
+    paste("bootstrap_attempts_ok:", receipts$attempts_ok),
+    paste("bootstrap_attempts_failed:", receipts$attempts_failed),
+    paste("availability_gates_pass:", sum(summary$availability_gate)),
+    paste("coverage_gates_pass:", sum(summary$coverage_gate)),
+    paste("joint_gates_pass:", sum(summary$gate_pass)),
+    "calibration_gate_eligible: TRUE",
+    "launcher_unlock_eligible: FALSE",
+    "public_fence: unchanged"
+  ), file.path(root, "production-receipt.txt"))
+  invisible(summary)
+}
+
 run_cli <- function() {
   command <- if (length(args)) args[[1L]] else ""
   if (identical(command, "validate")) return(validate_inversion_settings())
@@ -343,7 +496,12 @@ run_cli <- function() {
     return(invisible(path))
   }
   if (identical(command, "aggregate-prerun")) return(aggregate_prerun(root))
-  stop("Use validate, manifest, run-shard, or aggregate-prerun.", call. = FALSE)
+  if (identical(command, "aggregate-full")) {
+    source_sha <- arg_value("--expected-source-sha")
+    if (!nzchar(source_sha %||% "")) stop("aggregate-full requires --expected-source-sha.", call. = FALSE)
+    return(aggregate_full(root, source_sha))
+  }
+  stop("Use validate, manifest, run-shard, aggregate-prerun, or aggregate-full.", call. = FALSE)
 }
 
 if (!identical(Sys.getenv("MSPL_CONSTRAINED_INVERSION_SOURCE_ONLY"), "true")) run_cli()

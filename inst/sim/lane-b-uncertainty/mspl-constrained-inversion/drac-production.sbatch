@@ -27,11 +27,14 @@ import_job_env() {
 }
 
 [[ -z "${MSPL_COVERAGE_JOB_ENV:-}" ]] || import_job_env "$MSPL_COVERAGE_JOB_ENV"
-for required in MSPL_COVERAGE_ROOT MSPL_COVERAGE_LAUNCHER_DIR MSPL_COVERAGE_HELPER_SHA256 MSPL_COVERAGE_RUNTIME_ARCHIVE MSPL_COVERAGE_RUNTIME_ARCHIVE_SHA256 MSPL_COVERAGE_CLUSTER MSPL_COVERAGE_SOURCE_SHA MSPL_COVERAGE_MANIFEST_SHA256 MSPL_CONSTRAINED_INVERSION_ARRAY_MAP_SHA256; do
+for required in MSPL_COVERAGE_ROOT MSPL_COVERAGE_LAUNCHER_DIR MSPL_COVERAGE_HELPER_SHA256 MSPL_COVERAGE_RUNTIME_ARCHIVE MSPL_COVERAGE_RUNTIME_ARCHIVE_SHA256 MSPL_COVERAGE_CLUSTER MSPL_COVERAGE_SOURCE_SHA MSPL_COVERAGE_MANIFEST_SHA256 MSPL_CONSTRAINED_INVERSION_ARRAY_MAP_SHA256 MSPL_CONSTRAINED_INVERSION_PRODUCTION_WRAPPER_SHA256 MSPL_CONSTRAINED_INVERSION_ARRAY_OFFSET; do
   [[ -n "${!required:-}" ]] || die "Missing required binding: $required"
 done
 [[ "$MSPL_COVERAGE_ROOT" == /project/* ]] || die "Campaign root must be explicit /project storage."
 [[ "$MSPL_CONSTRAINED_INVERSION_ARRAY_MAP_SHA256" =~ ^[0-9a-f]{64}$ ]] || die "Invalid production map SHA-256."
+[[ "$MSPL_CONSTRAINED_INVERSION_PRODUCTION_WRAPPER_SHA256" =~ ^[0-9a-f]{64}$ ]] || die "Invalid production wrapper SHA-256."
+[[ "$MSPL_CONSTRAINED_INVERSION_ARRAY_OFFSET" =~ ^[0-9]+$ ]] || die "Invalid production array offset."
+[[ "$(sha256sum "${BASH_SOURCE[0]}" | awk '{print $1}')" == "$MSPL_CONSTRAINED_INVERSION_PRODUCTION_WRAPPER_SHA256" ]] || die "Production wrapper hash disagrees."
 
 HELPER="$MSPL_COVERAGE_LAUNCHER_DIR/lib-mspl-coverage.sh"
 [[ -f "$HELPER" ]] || die "Missing staged launcher helper."
@@ -47,9 +50,11 @@ mspl_stage_runtime
 
 TASK_ID="${SLURM_ARRAY_TASK_ID:-}"
 [[ "$TASK_ID" =~ ^[1-9][0-9]*$ ]] || die "Production task ID must be a positive frozen-map index."
-ROW="$(awk -F '\t' -v id="$TASK_ID" '$1 == id {print; found=1; exit} END {exit found ? 0 : 2}' "$MAP")" || die "No frozen map row for task $TASK_ID."
+MAP_ID=$((TASK_ID + MSPL_CONSTRAINED_INVERSION_ARRAY_OFFSET))
+[[ "$MAP_ID" -ge 1 && "$MAP_ID" -le 12000 ]] || die "Production map index is outside the frozen 12,000-key contract."
+ROW="$(awk -F '\t' -v id="$MAP_ID" '$1 == id {print; found=1; exit} END {exit found ? 0 : 2}' "$MAP")" || die "No frozen map row for task $MAP_ID."
 IFS=$'\t' read -r INDEX CASE_ID SHARD_ID <<< "$ROW"
-[[ "$INDEX" == "$TASK_ID" && "$CASE_ID" =~ ^C[0-9]{3}$ && "$SHARD_ID" =~ ^[1-9][0-9]*$ ]] || die "Malformed production map row."
+[[ "$INDEX" == "$MAP_ID" && "$CASE_ID" =~ ^C[0-9]{3}$ && "$SHARD_ID" =~ ^[1-9][0-9]*$ ]] || die "Malformed production map row."
 ASSIGNED="$(mspl_manifest_case_field "$MSPL_COVERAGE_ROOT/manifest.csv" "$CASE_ID" assigned_cluster)" || die "Could not resolve case cluster."
 [[ "$ASSIGNED" == "$MSPL_COVERAGE_CLUSTER" ]] || die "Case $CASE_ID is assigned to $ASSIGNED, not $MSPL_COVERAGE_CLUSTER."
 mkdir -p "$MSPL_COVERAGE_ROOT/shards"

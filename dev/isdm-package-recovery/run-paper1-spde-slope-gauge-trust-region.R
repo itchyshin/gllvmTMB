@@ -109,6 +109,7 @@ source(file.path(script_dir, "spde-slope-gauge-trust-region-smoke-contract.R"), 
     dll = "dll_identity_failure",
     historical = "historical_v3_replay_failure",
     factory = "fresh_object_unavailable",
+    no_fit = "frozen_no_fit_replay_failed",
     sign = "sign_orbit_invariance_failed",
     callback_adapter = "callback_or_trust_region_failure",
     trust_region = "callback_or_trust_region_failure",
@@ -220,7 +221,7 @@ spde_slope_gauge_trust_region_v3_live_child <- function(output, parent_pid) {
 
 .spde_slope_gauge_tr_runner_worker_receipt <- function(
   parent_pid, started, predecessor, state_md5, dll, object, sign_orbit,
-  trust_region, audit, status, reason, stage, completed_stage, error
+  nofit, trust_region, audit, status, reason, stage, completed_stage, error
 ) {
   list(
     schema = "PAPER1_SPDE_SLOPE_GAUGE_TRUST_REGION_V1_CHILD_V1",
@@ -233,6 +234,7 @@ spde_slope_gauge_trust_region_v3_live_child <- function(output, parent_pid) {
     state_md5 = state_md5,
     dll = dll,
     object = object,
+    nofit = nofit,
     sign_orbit = sign_orbit,
     trust_region = trust_region,
     audit = audit,
@@ -257,6 +259,7 @@ spde_slope_gauge_trust_region_worker_child <- function(output, parent_pid) {
   object <- NULL
   created <- 0L
   released <- 0L
+  nofit <- NULL
   sign_orbit <- NULL
   trust_region <- NULL
   audit <- NULL
@@ -294,6 +297,38 @@ spde_slope_gauge_trust_region_worker_child <- function(output, parent_pid) {
     )
     created <- 1L
     completed_stage <- "factory"
+    bound <- spde_slope_gauge_trust_region_bind_object_order(
+      object, state$parameter_order, state$block_labels
+    )
+    object <- bound$object
+    stage <- "no_fit"
+    nofit_gradient <- NULL
+    nofit <- spde_slope_gauge_validate_no_fit_state(
+      list(theta = state$theta, objective = state$objective, gradient = state$gradient),
+      objective_fn = function(theta) object$fn(unname(theta)),
+      gradient_fn = function(theta) {
+        value <- object$gr(unname(theta))
+        supplied_names <- names(value)
+        if (!is.numeric(value) || length(value) != length(state$parameter_order) ||
+            any(!is.finite(value)) ||
+            (!is.null(supplied_names) && !identical(supplied_names, state$parameter_order))) {
+          .spde_slope_gauge_tr_runner_fail("no-fit gradient has no verified positional order")
+        }
+        named <- stats::setNames(as.double(unname(value)), state$parameter_order)
+        nofit_gradient <<- list(
+          supplied_names = supplied_names,
+          raw_values = as.double(unname(value)),
+          named_gradient = named,
+          mapping = bound$mapping
+        )
+        named
+      }
+    )
+    nofit["gradient_callback"] <- list(nofit_gradient)
+    if (!isTRUE(nofit$valid)) {
+      .spde_slope_gauge_tr_runner_fail(sprintf("frozen no-fit replay failed: %s", nofit$reason))
+    }
+    completed_stage <- "no_fit"
     invisible(object$fn(unname(state$theta)))
     stage <- "sign"
     full <- object$env$last.par
@@ -332,14 +367,14 @@ spde_slope_gauge_trust_region_worker_child <- function(output, parent_pid) {
     completed_stage <- "complete"
     .spde_slope_gauge_tr_runner_worker_receipt(
       parent_pid, started, predecessor, state_md5, runtime_dll,
-      list(created = created, released = released), sign_orbit, trust_region, audit,
+      list(created = created, released = released), sign_orbit, nofit, trust_region, audit,
       trust_region$status, trust_region$reason, "complete", completed_stage, NA_character_
     )
   }, error = function(e) {
     release_pending()
     .spde_slope_gauge_tr_runner_worker_receipt(
       parent_pid, started, predecessor, state_md5, runtime_dll,
-      list(created = created, released = released), sign_orbit, trust_region, audit,
+      list(created = created, released = released), sign_orbit, nofit, trust_region, audit,
       "GAUGE_TRUST_REGION_INFRASTRUCTURE_HOLD",
       .spde_slope_gauge_tr_runner_stage_reason(stage, conditionMessage(e)), stage, completed_stage,
       conditionMessage(e)

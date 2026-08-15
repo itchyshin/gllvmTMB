@@ -26,6 +26,37 @@
     all(is.finite(object$par))
 }
 
+spde_slope_gauge_trust_region_bind_object_order <- function(object, parameter_order, block_labels) {
+  raw_order <- spde_slope_gauge_raw_order()
+  expected_blocks <- c(
+    rep("b_fix", 12L), rep("theta_diag_B", 3L), "log_kappa_spde",
+    rep("theta_rr_spde_slope", 6L)
+  )
+  if (!is.list(object) || !is.function(object$fn) || !is.function(object$gr) ||
+      !is.double(object$par) || length(object$par) != length(raw_order) ||
+      any(!is.finite(object$par)) || !identical(parameter_order, raw_order) ||
+      !identical(block_labels, expected_blocks)) {
+    .spde_slope_gauge_tr_adapter_fail("object fixed-parameter mapping is not the sealed 22-coordinate order")
+  }
+  object_order <- block_labels
+  supplied_names <- names(object$par)
+  if (!is.null(supplied_names) && !identical(supplied_names, raw_order) &&
+      !identical(supplied_names, object_order)) {
+    .spde_slope_gauge_tr_adapter_fail("object supplied a noncanonical fixed-parameter order")
+  }
+  object$par <- stats::setNames(as.double(unname(object$par)), raw_order)
+  list(
+    object = object,
+    mapping = list(
+      supplied_names = supplied_names,
+      object_order = object_order,
+      parameter_order = parameter_order,
+      block_labels = block_labels,
+      raw_order = raw_order
+    )
+  )
+}
+
 .spde_slope_gauge_tr_adapter_gradient <- function(value, raw_order) {
   if (!is.numeric(value) || length(value) != length(raw_order) || any(!is.finite(value))) {
     .spde_slope_gauge_tr_adapter_fail("gradient callback must return 22 finite coordinates")

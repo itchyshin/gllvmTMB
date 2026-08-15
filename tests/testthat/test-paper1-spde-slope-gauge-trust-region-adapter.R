@@ -79,13 +79,27 @@ test_that("the adapter cannot be created with unverified object order", {
   contract <- spde_slope_gauge_tr_adapter_env()
   object <- spde_slope_gauge_tr_adapter_fixture(contract)
   object$par <- unname(object$par)
+  raw_order <- contract$spde_slope_gauge_raw_order()
+  blocks <- c(rep("b_fix", 12L), rep("theta_diag_B", 3L), "log_kappa_spde",
+    rep("theta_rr_spde_slope", 6L))
 
+  bound <- contract$spde_slope_gauge_trust_region_bind_object_order(
+    object, raw_order, blocks
+  )
+  expect_identical(names(bound$object$par), raw_order)
+  expect_null(bound$mapping$supplied_names)
   expect_error(
-    contract$spde_slope_gauge_trust_region_callback_adapter(
-      object, 1L, "/sealed/gllvmTMB.so", "7797c4674e4758fca2da27151e5c2508",
-      function(object, raw_theta) list()
+    contract$spde_slope_gauge_trust_region_bind_object_order(
+      object, rev(raw_order), blocks
     ),
-    "object or factory evidence"
+    "sealed 22-coordinate order"
+  )
+  object$par <- stats::setNames(object$par, rev(raw_order))
+  expect_error(
+    contract$spde_slope_gauge_trust_region_bind_object_order(
+      object, raw_order, blocks
+    ),
+    "noncanonical fixed-parameter order"
   )
 })
 

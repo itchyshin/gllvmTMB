@@ -26,6 +26,7 @@ test_that("compiled 22-coordinate fixture preserves the full sign orbit and call
   dyn.load(dll)
   on.exit({
     if (exists("object", inherits = FALSE)) rm(object)
+    if (exists("bound", inherits = FALSE)) rm(bound)
     invisible(gc(verbose = FALSE))
     dyn.unload(dll)
   }, add = TRUE)
@@ -39,13 +40,19 @@ test_that("compiled 22-coordinate fixture preserves the full sign orbit and call
   object <- TMB::MakeADFun(
     data = list(y = c(0.7, -0.3, 0.4)),
     parameters = list(
-      b_fix = theta[1:12], theta_diag_B = theta[13:15], log_kappa = theta[[16L]],
+      b_fix = theta[1:12], theta_diag_B = theta[13:15], log_kappa_spde = theta[[16L]],
       theta_rr_spde_slope = theta[17:22], s_B = 0,
       g_spde_slope = array(0, dim = c(3L, 1L, 2L))
     ),
     random = c("s_B", "g_spde_slope"), DLL = "spde_slope_gauge_random", silent = TRUE
   )
-  object$par <- stats::setNames(as.double(object$par), raw_order)
+  bound <- env$spde_slope_gauge_trust_region_bind_object_order(
+    object,
+    raw_order,
+    c(rep("b_fix", 12L), rep("theta_diag_B", 3L), "log_kappa_spde",
+      rep("theta_rr_spde_slope", 6L))
+  )
+  object <- bound$object
   expect_length(object$par, 22L)
   expect_true(is.finite(object$fn(unname(theta))))
 

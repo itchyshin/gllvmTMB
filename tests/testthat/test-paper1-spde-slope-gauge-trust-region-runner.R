@@ -95,5 +95,8 @@ test_that("the worker has one factory seam and no outer-optimizer or DLL-unload 
   expect_false(grepl("nlminb", runner, fixed = TRUE))
   expect_match(runner, "spde-slope-gauge-trust-region-adapter.R", fixed = TRUE)
   expect_match(runner, "spde-slope-gauge-sign-contract.R", fixed = TRUE)
+  expect_match(runner, "spde_slope_gauge_validate_no_fit_state", fixed = TRUE)
+  expect_match(runner, "spde_slope_gauge_trust_region_bind_object_order", fixed = TRUE)
+  expect_match(runner, "gradient_callback", fixed = TRUE)
   expect_match(runner, "spde_slope_gauge_validate_sign_orbit", fixed = TRUE)
 })

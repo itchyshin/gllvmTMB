@@ -565,7 +565,7 @@ test_that("the production parent retains a valid partial worker prefix without s
       parent_pid = parent_pid, child_pid = 103L,
       started_at = "2026-08-15 12:00:02 UTC", ended_at = "2026-08-15 12:00:03 UTC",
       elapsed_s = 1, predecessor = receipt$predecessor, state_md5 = receipt$state_md5,
-      dll = expected_dll, object = list(created = 1L, released = 1L), sign_orbit = NULL,
+      dll = expected_dll, object = list(created = 1L, released = 1L), nofit = NULL, sign_orbit = NULL,
       trust_region = NULL, audit = NULL, status = "GAUGE_TRUST_REGION_INFRASTRUCTURE_HOLD",
       reason = "fresh_object_unavailable", stage = "factory", completed_stage = "factory",
       error = "synthetic factory failure"

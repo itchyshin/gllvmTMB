@@ -70,7 +70,7 @@ Before any numerical step, that object must pass the already declared live
 identity and sign-orbit gates: exact state/order/DLL replay, `T(phi0)` identity,
 full random-effect sign-operator invariance, live sign-orbit objective replay,
 and the 22-coordinate chain-gradient finite-difference ledger.  A failure is
-a typed estimator infrastructure or gauge-domain HOLD, never a numerical
+a typed estimator infrastructure HOLD, never a numerical
 conclusion.  These checks are part of the future worker evidence; they do not
 create a third gauge no-fit root.
 
@@ -210,12 +210,10 @@ The mutually exclusive non-admission terminals are:
 
 | Terminal | Required evidence boundary |
 | --- | --- |
-| `GAUGE_TRUST_REGION_GAUGE_DOMAIN_HOLD` | complete prior evidence up to the failed map/domain gate; no inferred later calls |
 | `GAUGE_TRUST_REGION_CURVATURE_VALIDATION_HOLD` | all completed identity/sign/gradient and 132-Hessian prefix records; no trial inference |
 | `GAUGE_TRUST_REGION_NO_ADMISSIBLE_CANDIDATE` | complete 24-trial grid with no admitted candidate |
-| `GAUGE_TRUST_REGION_INFRASTRUCTURE_HOLD` | typed process/DLL/factory/callback/release/manifest failure with the exact completed prefix only |
+| `GAUGE_TRUST_REGION_INFRASTRUCTURE_HOLD` | typed process/DLL/factory/no-fit/domain/callback/release/manifest/time-limit failure with the exact completed prefix only; an out-of-domain trial is a retained deterministic rejection, not a terminal of its own |
 | `GAUGE_TRUST_REGION_TERMINAL_EVIDENCE_HOLD` | materialised evidence fails independent schema/recomputation; it cannot relabel valid numerical evidence |
-| `GAUGE_TRUST_REGION_TIME_LIMIT_HOLD` | observed 1800-second process deadline with exact completed prefix, or no callback result if the child does not report |
 
 The terminal validator derives admission, curvature validation, and no-candidate
 statuses from a retained trust-region result by independent replay.  A valid
@@ -226,8 +224,9 @@ partial result or a typed null-result fallback.
 
 Every reporting worker has one ordered receipt containing its parent/child PID
 pair, start/end/elapsed fields, predecessor projection, state MD5, observed DLL
-pair, created/released object counts, sign-orbit evidence, trust-region result,
-callback audit, status/reason/stage, and error.  Early predecessor, DLL, and
+pair, created/released object counts, the retained no-fit replay, sign-orbit
+evidence, trust-region result, callback audit, status/reason/stage, and error.
+Early predecessor, DLL, and
 factory failures retain no later evidence; a release failure may retain only
 the completed sign/trust/audit prefix with `created = 1, released = 0`.  The
 parent may not invent a full worker result from a killed or non-reporting child.

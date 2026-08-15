@@ -164,6 +164,7 @@ spde_slope_gauge_tr_smoke_worker <- function(result, predecessor = list(root = "
     state_md5 = "0123456789abcdef0123456789abcdef",
     dll = list(path = "/sealed/gllvmTMB.so", md5 = "fedcba9876543210fedcba9876543210"),
     object = list(created = 1L, released = 1L),
+    nofit = list(valid = TRUE),
     sign_orbit = list(valid = TRUE),
     trust_region = result,
     audit = list(),
@@ -349,7 +350,7 @@ test_that("worker receipts retain only the evidence completed at their declared 
   sign_failure$status <- "GAUGE_TRUST_REGION_INFRASTRUCTURE_HOLD"
   sign_failure$reason <- "sign_orbit_invariance_failed"
   sign_failure$stage <- "sign"
-  sign_failure$completed_stage <- "factory"
+  sign_failure$completed_stage <- "no_fit"
   sign_failure$error <- "sign orbit failed"
   sign_failure$sign_orbit <- list(valid = FALSE)
   sign_failure["trust_region"] <- list(NULL)

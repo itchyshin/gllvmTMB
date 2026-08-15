@@ -63,6 +63,16 @@ test_that("the transformed Hessian retains the fixed three-scale 132-gradient le
   expect_lte(max(hessian$eigen_error), controls$hessian_agreement)
 })
 
+test_that("Hessian diagnostics use the declared Frobenius-relative error", {
+  contract <- spde_slope_gauge_tr_contract_env()
+  reference <- diag(2L)
+  perturbed <- reference + matrix(1e-6, 2L, 2L)
+  expected <- sqrt(sum(matrix(1e-6, 2L, 2L)^2)) / sqrt(sum(reference^2))
+
+  expect_lt(abs(contract$.spde_slope_gauge_tr_relative_error(perturbed, reference) - expected), 2e-11)
+  expect_gt(expected, 1e-6)
+})
+
 test_that("the fixed shifted grid admits a candidate only after raw covariance gates", {
   contract <- spde_slope_gauge_tr_contract_env()
   fixture <- spde_slope_gauge_tr_fixture(contract)

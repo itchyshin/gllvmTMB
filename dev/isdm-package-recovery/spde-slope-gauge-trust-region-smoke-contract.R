@@ -188,7 +188,7 @@ spde_slope_gauge_trust_region_terminal_evidence_hold <- function() {
 spde_slope_gauge_trust_region_worker_fields <- function() {
   c(
     "schema", "parent_pid", "child_pid", "started_at", "ended_at", "elapsed_s",
-    "predecessor", "state_md5", "dll", "object", "sign_orbit", "trust_region",
+    "predecessor", "state_md5", "dll", "object", "nofit", "sign_orbit", "trust_region",
     "audit", "status", "reason", "stage", "completed_stage", "error"
   )
 }
@@ -260,6 +260,7 @@ spde_slope_gauge_trust_region_worker_ok <- function(worker, predecessor) {
       identical(worker$predecessor, predecessor) && .spde_slope_gauge_tr_smoke_md5(worker$state_md5) &&
         .spde_slope_gauge_tr_smoke_worker_dll(worker$dll) &&
         .spde_slope_gauge_tr_smoke_worker_object(worker$object, 1L, 1L) &&
+        is.list(worker$nofit) && isTRUE(worker$nofit$valid) &&
         is.list(worker$sign_orbit) && isTRUE(worker$sign_orbit$valid) &&
         is.list(worker$trust_region) && identical(worker$trust_region$status, worker$status) &&
         identical(worker$trust_region$reason, worker$reason) && is.list(worker$audit) &&
@@ -276,14 +277,21 @@ spde_slope_gauge_trust_region_worker_ok <- function(worker, predecessor) {
     if (!common) return(FALSE)
     switch(
       completed_stage,
-      factory = is.null(worker$sign_orbit) && is.null(worker$trust_region) && is.null(worker$audit),
-      sign = is.list(worker$sign_orbit) && isTRUE(worker$sign_orbit$valid) &&
+      factory = is.null(worker$nofit) && is.null(worker$sign_orbit) &&
         is.null(worker$trust_region) && is.null(worker$audit),
-      callback_adapter = is.list(worker$sign_orbit) && isTRUE(worker$sign_orbit$valid) &&
+      no_fit = is.list(worker$nofit) && identical(worker$nofit$valid, FALSE) &&
+        is.null(worker$sign_orbit) && is.null(worker$trust_region) && is.null(worker$audit),
+      sign = is.list(worker$nofit) && isTRUE(worker$nofit$valid) &&
+        is.list(worker$sign_orbit) && isTRUE(worker$sign_orbit$valid) &&
         is.null(worker$trust_region) && is.null(worker$audit),
-      trust_region = is.list(worker$sign_orbit) && isTRUE(worker$sign_orbit$valid) &&
+      callback_adapter = is.list(worker$nofit) && isTRUE(worker$nofit$valid) &&
+        is.list(worker$sign_orbit) && isTRUE(worker$sign_orbit$valid) &&
+        is.null(worker$trust_region) && is.null(worker$audit),
+      trust_region = is.list(worker$nofit) && isTRUE(worker$nofit$valid) &&
+        is.list(worker$sign_orbit) && isTRUE(worker$sign_orbit$valid) &&
         is.list(worker$trust_region) && is.null(worker$audit),
-      audit = is.list(worker$sign_orbit) && isTRUE(worker$sign_orbit$valid) &&
+      audit = is.list(worker$nofit) && isTRUE(worker$nofit$valid) &&
+        is.list(worker$sign_orbit) && isTRUE(worker$sign_orbit$valid) &&
         is.list(worker$trust_region) && is.list(worker$audit),
       FALSE
     )
@@ -292,18 +300,20 @@ spde_slope_gauge_trust_region_worker_ok <- function(worker, predecessor) {
     worker$stage,
     predecessor = is.null(worker$predecessor) && .spde_slope_gauge_tr_smoke_missing_md5(worker$state_md5) &&
       is.null(worker$dll) && .spde_slope_gauge_tr_smoke_worker_object(worker$object, 0L, 0L) &&
-      is.null(worker$sign_orbit) && is.null(worker$trust_region) && is.null(worker$audit) &&
+      is.null(worker$nofit) && is.null(worker$sign_orbit) && is.null(worker$trust_region) && is.null(worker$audit) &&
       identical(worker$completed_stage, "none"),
     dll = identical(worker$predecessor, predecessor) && .spde_slope_gauge_tr_smoke_md5(worker$state_md5) &&
       is.null(worker$dll) && .spde_slope_gauge_tr_smoke_worker_object(worker$object, 0L, 0L) &&
-      is.null(worker$sign_orbit) && is.null(worker$trust_region) && is.null(worker$audit) &&
+      is.null(worker$nofit) && is.null(worker$sign_orbit) && is.null(worker$trust_region) && is.null(worker$audit) &&
       identical(worker$completed_stage, "v3_live"),
     v3_live = identical(worker$predecessor, predecessor) && .spde_slope_gauge_tr_smoke_md5(worker$state_md5) &&
       is.null(worker$dll) && .spde_slope_gauge_tr_smoke_worker_object(worker$object, 0L, 0L) &&
-      is.null(worker$sign_orbit) && is.null(worker$trust_region) && is.null(worker$audit) &&
+      is.null(worker$nofit) && is.null(worker$sign_orbit) && is.null(worker$trust_region) && is.null(worker$audit) &&
       identical(worker$completed_stage, "predecessor"),
     factory = prefix_ok("factory", 1L) && identical(worker$completed_stage, "factory"),
-    sign = identical(worker$completed_stage, "factory") &&
+    no_fit = prefix_ok("no_fit", 1L) && identical(worker$completed_stage, "factory"),
+    sign = identical(worker$completed_stage, "no_fit") &&
+      is.list(worker$nofit) && isTRUE(worker$nofit$valid) &&
       (is.null(worker$sign_orbit) || (is.list(worker$sign_orbit) && identical(worker$sign_orbit$valid, FALSE))) &&
       identical(worker$predecessor, predecessor) && .spde_slope_gauge_tr_smoke_md5(worker$state_md5) &&
       .spde_slope_gauge_tr_smoke_worker_dll(worker$dll) &&
@@ -312,7 +322,7 @@ spde_slope_gauge_trust_region_worker_ok <- function(worker, predecessor) {
     callback_adapter = prefix_ok("sign", 1L) && identical(worker$completed_stage, "sign"),
     trust_region = prefix_ok("callback_adapter", 1L) && identical(worker$completed_stage, "callback_adapter"),
     audit = prefix_ok("trust_region", 1L) && identical(worker$completed_stage, "trust_region"),
-    release = worker$completed_stage %in% c("factory", "sign", "callback_adapter", "trust_region", "audit") &&
+    release = worker$completed_stage %in% c("factory", "no_fit", "sign", "callback_adapter", "trust_region", "audit") &&
       prefix_ok(worker$completed_stage, 0L),
     FALSE
   )

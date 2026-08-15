@@ -86,10 +86,15 @@ no-build preflight are complete.
   attempt, fit, recovery calculation, or empirical run has occurred.  The
   source tree is still intentionally uncommitted.
 
-## Next safest action
+## 2026-08-15 source-gate correction
 
-Perform the final adversarial source review of the corrected signed-Hessian
-contract and the parent terminal projection.  If it passes, commit this exact
-slice, create a fresh no-build preflight packet, reread its production
-validator, and then seek/record the bounded one-shot smoke authorization.  Do
-not turn the compiled fixture into evidence about the ecological estimator.
+The preceding entries are a contemporaneous record of the earlier uncommitted
+slice at `9d9ef568cfbd3f360b2e688abc1703dd9cc8ef52`; they are not current source
+state.  The initial source gate was committed as
+`91dc35eec4654bc0dcd68be997f36e5a670ef7db`.  Its post-commit independent review
+found a Frobenius-norm implementation drift and two missing worker bindings:
+the sealed object-order map and the retained live no-fit replay.  The current
+uncommitted amendment corrects those source-gate issues and must be retested,
+reviewed, and committed before any no-build preflight.  No V3 live child,
+scientific preflight packet, worker, fit, recovery calculation, or empirical
+run has occurred.

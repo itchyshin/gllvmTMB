@@ -34,7 +34,9 @@ spde_slope_gauge_trust_region_controls <- function() {
       any(!is.finite(x)) || any(!is.finite(y))) {
     .spde_slope_gauge_tr_fail("relative-error inputs must be finite numeric vectors of equal length")
   }
-  max(abs(x - y)) / max(1, abs(x), abs(y))
+  numerator <- sqrt(sum((as.double(x) - as.double(y))^2))
+  denominator <- max(sqrt(sum(as.double(x)^2)), sqrt(.Machine$double.eps))
+  numerator / denominator
 }
 
 .spde_slope_gauge_tr_scalar <- function(x, what) {

@@ -5,7 +5,7 @@ Type objective_function<Type>::operator() () {
   DATA_VECTOR(y);
   PARAMETER_VECTOR(b_fix);
   PARAMETER_VECTOR(theta_diag_B);
-  PARAMETER(log_kappa);
+PARAMETER(log_kappa_spde);
   PARAMETER_VECTOR(theta_rr_spde_slope);
   PARAMETER_VECTOR(s_B);
   PARAMETER_ARRAY(g_spde_slope);
@@ -17,7 +17,7 @@ Type objective_function<Type>::operator() () {
   for (int j = 0; j < theta_diag_B.size(); ++j) {
     nll += Type(0.5) * theta_diag_B(j) * theta_diag_B(j);
   }
-  nll += Type(0.5) * log_kappa * log_kappa;
+  nll += Type(0.5) * log_kappa_spde * log_kappa_spde;
 
   for (int j = 0; j < theta_rr_spde_slope.size(); ++j) {
     nll += Type(0.25) * theta_rr_spde_slope(j) * theta_rr_spde_slope(j);

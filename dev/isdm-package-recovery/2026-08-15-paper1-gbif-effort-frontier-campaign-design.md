@@ -248,3 +248,55 @@ aborts that level, not the campaign.
 **A1 kill rules.**  As the parent design, plus: if the anchor level's E in
 {1, 2, 4} cells fail to reproduce the effort campaign's corresponding
 pd-rates within 3 MCSE, stop -- the pipeline has drifted.
+
+---
+
+## Amendment A2 (2026-08-15, post-A1): the domain-growth axis
+
+**Trigger.**  A1 REFUTED replication-via-finer-patches: on a fixed grid it
+monotonically degrades identifiability, because per-patch information falls
+exactly as patch count rises.  Domain growth -- more cells at FIXED range and
+FIXED cell size -- raises patch count without diluting per-patch sampling, and
+is the last surviving design lever.  Launch pre-approved by the maintainer
+(the third-axis goal); the fit-cost scaling pre-run is the internal gate.
+
+**A2-D (DGP).**  The sealed skeleton recipe, scaled: grid `n_lon = 20s`,
+`n_lat = 18s` over `[0,s]^2`, cell size constant; covariates from the sealed
+formulas (`x = scale(lon)`, `b = scale(sin 2 pi lat + 0.35 cos 2 pi lon)` --
+note b's unit period repeats across larger domains, a stated design feature);
+support sequences the sealed log-ramps over n_cell.  Mesh per level:
+`make_mesh(cutoff = 0.085)` -- node DENSITY constant by construction.  Fields
+per replicate from Q(kappa = sqrt(8)/0.22) on the level's mesh, scale
+`c_use(s) = target_SD / sd_cell(s)` with the anchor's exact discrete target
+(0.926998), so the predictor-scale truth is constant across levels (measured
+truth ||lambda_bias(s)||: 16.148 / 16.551 / 16.644 / 16.516 -- within 3%).
+
+| s | cells | mesh nodes | truth ||lambda_bias|| |
+| --- | --- | --- | --- |
+| 1 (anchor) | 360 | 118 | 16.148 |
+| 1.5 | 810 | 254 | 16.551 |
+| 2 | 1,440 | 444 | 16.644 |
+| 2.5 | 2,250 | 681 | 16.516 |
+
+**A2 construction gates, all PASSED at build.**  (i) **Anchor rebuild**: the
+per-level builder goes through the sealed lineage's own developer entry
+(`.gll_isdm_fit`), and rebuilding the anchor from the sealed `rows/X/B`
+reproduced the sealed objective at the sealed theta to **5.5e-12**.  (ii) Row-map
+gate per level: `tmb_data$y` bitwise-equals the skeleton's `value` column.
+(iii) Discrete normalisation as in A1, exact (`sd_cell` 0.0198-0.0203 across
+levels -- node density genuinely constant).
+
+**A2 factors.**  s in {1, 1.5, 2, 2.5} x E in {1, 2} x 200 seeds = **1,600
+fits**.  Seeds: base = 20260817 + 100000*s_index + 10000*E_index + rep
+(disjoint from A0/A1 streams).  E capped at 2 because A1 showed E=4 adds
+little discrimination near the frontier and the top level's fits are the
+expensive ones.
+
+**A2-E/P.**  As the parent design against per-level truth; primary readout:
+pd_rate and median relative amplitude error **as functions of n_cell** at
+fixed per-cell effort -- the N_cells frontier.  Anchor-consistency kill rule:
+s=1 cells must reproduce the A1 anchor (E=1, E=2) within 3 MCSE.
+
+**A2 pre-run (fit-cost scaling gate).**  Two fits per level at E=1 on Totoro,
+timed; the campaign estimate and per-level chunking are set from those
+timings before launch.  Declared wall budget: 45 min, kill at 2x.

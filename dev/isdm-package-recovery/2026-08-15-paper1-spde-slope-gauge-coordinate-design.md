@@ -42,6 +42,7 @@ root-receipt.rds: 1940354271459b695e3ed2af70f1ca9c
 session-info.rds: 817aea4f16c4ddc7d844bb7af342024e
 time-estimate.md: e0a79bbfdb48668328d5f0224e6bd40f
 v2-materialized-state.rds: e3b17636c9f5fa0e9e555a307c923724
+required empty directory: .attempt-started.claim
 ```
 
 Before any future preflight, its whole-root manifest, receipt, marker, ledger,

@@ -212,16 +212,19 @@ measured, not against an unseen prior document).
 ### Rphylopars cameo (2 seeds/cell = 12 fits, 600 s cap, SUBSET)
 
 Launched as a background process at the same time as the fast grid (per
-the approved shape). **Still running at the time of this report** -- per
-the coordinator's instruction, the fast-grid results above are reported
-now rather than waiting. Interim signal from its live log: the same
-"`solve(): system is singular`" warnings seen throughout the 3-replicate
-pre-run are recurring on this larger design too, consistent with the
-pre-run's finding that this is a property of the problem class, not one
-seed. Progress and the eventual `dev/missing-accuracy/rung1-cells-cameo.csv`
-will need a follow-up check once it completes; `dev/missing-accuracy/rung1-cells.csv`
-should be re-merged with the cameo rows at that point (it currently holds
-only the 180 fast-grid rows).
+the approved shape). **FINAL STATE: killed early at a session boundary
+after 5 of 12 fits — and all 5 attempted fits hit the 600 s cap with no
+completion** (DGP-a λ=0.6 MCAR5 ×2, λ=0.6 clade ×2, λ=0.98 MCAR5 ×1;
+recorded in `dev/missing-accuracy/rung1-cells-cameo.csv`, 5 rows, all
+`timeout`). The remaining 7 fits never ran. Together with the pre-run —
+where the single completion took 603.5 s (DGP-b clade, MSE 2.165) and the
+other two cells timed out — the honest summary is: **Rphylopars at
+n = 50 × p = 25 under default `phylopars(model = "lambda", REML = FALSE)`
+options exceeds a 600 s per-fit budget in 7 of 8 attempted fits.** The
+recurring "`solve(): system is singular`" warnings are a property of the
+problem class, not one seed. Whether to pursue it further (longer cap,
+`skip_optim`/`npd`/`EM_missing_limit` tuning, or smaller p) is a
+maintainer decision; on this evidence it is not a viable full-grid arm.
 
 ## Deviations from the brief
 

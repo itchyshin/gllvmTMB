@@ -107,10 +107,13 @@ missing-response evidence (Laplace + VA), plus the first accuracy evidence for
   statistically indistinguishable from the P3CA EM (within 1 MC SE), and
   both beat the misspecified-lean spec by 5–10+ SEs; on the native
   anisotropic DGP-b all three arms are at parity, as designed. Rphylopars
-  (the comparator the paper beat) exceeds a 600 s per-fit cap on n=50×p=25
-  in every pre-run cell; its labelled 2-seeds-per-cell cameo runs under
-  that cap with timeouts failure-counted (one completed pre-run fit:
-  MSE 2.165 vs our 0.83 on DGP-b clade). G2 shape and approval recorded in
+  (the comparator the paper beat): across pre-run + cameo, **7 of 8
+  attempted fits exceeded the 600 s per-fit cap** at n=50×p=25 under
+  default options (cameo final state: 5/12 fits attempted before an early
+  kill, 5/5 timeouts, failure-counted in
+  `dev/missing-accuracy/rung1-cells-cameo.csv`); the single completion
+  took 603.5 s with MSE 2.165 vs our 0.83 on DGP-b clade. Not a viable
+  full-grid arm on this evidence; further pursuit is a maintainer call. G2 shape and approval recorded in
   the report; the approval provenance is the maintainer's in-session
   AskUserQuestion answer of 2026-08-15.
 

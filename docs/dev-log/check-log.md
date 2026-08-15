@@ -50192,3 +50192,28 @@ Rscript --vanilla -e 'testthat::test_file("tests/testthat/test-g3p-provenance-co
 
 No runner mode, preflight, smoke, fit, profile, simulation, remote compute,
 model/DGP/map/threshold change, or public/article change occurred.
+
+## 2026-08-15 — SPDE-slope gauge no-fit parent gate (no gate execution)
+
+Added a private, sibling-staged parent gate for the separately named
+SPDE-slope gauge no-fit adapter.  It locks the full frozen MSPDE V3 packet and
+historical closeout-validator MD5; supervises the isolated child with a
+1,800-second `processx` deadline; retains exact command/PID/process evidence;
+and atomically seals only a reread, manifest-bound non-scientific gate root.
+The terminal taxonomy distinguishes a complete numerical callback replay from
+an infrastructure boundary, including timeout, zero-exit missing output, and
+unreadable child RDS.  No MNCB/BFGS root, model, likelihood, parameterisation,
+control, threshold, package API, or public claim changed.
+
+```sh
+Rscript --vanilla -e 'testthat::test_file("tests/testthat/test-paper1-spde-slope-gauge-contract.R", reporter = "summary"); testthat::test_file("tests/testthat/test-paper1-spde-slope-gauge-nofit-contract.R", reporter = "summary"); testthat::test_file("tests/testthat/test-paper1-spde-slope-gauge-nofit-runner.R", reporter = "summary"); testthat::test_file("tests/testthat/test-paper1-spde-slope-gauge-nofit-materializer.R", reporter = "summary"); for (p in c("dev/isdm-package-recovery/spde-slope-gauge-contract.R", "dev/isdm-package-recovery/spde-slope-gauge-nofit-contract.R", "dev/isdm-package-recovery/run-paper1-spde-slope-gauge-nofit.R", "dev/isdm-package-recovery/materialize-paper1-spde-slope-gauge-nofit-gate.R")) parse(file = p); cat("FOCUSED_PARSE_OK\\n")'
+git diff --check
+rg -n "SPDE_SLOPE_GAUGE_NOFIT|PAPER1_SPDE_SLOPE_GAUGE|MNCB|BFGS" dev/isdm-package-recovery docs/dev-log/check-log.md docs/dev-log/after-task
+rg -n "gllvmTMB\\(" R vignettes README.md NEWS.md docs/design
+rg -n "meta_known_V|gllvmTMB_wide|in prep|in preparation" README.md NEWS.md docs vignettes
+```
+
+Focused tests and parse checks passed; the scans found only intentional private
+gauge/history entries and pre-existing public package surfaces.  No child,
+preflight, gate materialization, TMB build, fit, optimiser, simulation, smoke,
+remote compute, recovery, or public/article execution occurred.

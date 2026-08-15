@@ -271,7 +271,7 @@ outside every scientific result root.  Its exact inventory is a root receipt,
 the child receipt, the no-fit result (including all 22 ordered FD records), a
 CSV manifest, session information, and the materializer source copy.  The
 receipt binds the full MSPDE V3 packet hashes, current runner/contract/design
-and map-helper hashes, the retained materializer hash, actual DLL path/MD5,
+and map-helper hashes, the frozen historical MSPDE V3 validator path/MD5, the retained materializer hash, actual DLL path/MD5,
 the frozen state hash, child/parent process identifiers, object/release
 counts, and the exact control packet.  The parent rereads the sealed root,
 recomputes its manifest, and applies the production validator before printing
@@ -303,6 +303,29 @@ exact regular-file inventory with no extras, directories, or symlinks, checks
 every declared hash, and then recomputes the gate status.  Any missing,
 extra, partial, or symlinked artifact is infrastructure HOLD and no pass token
 is printed.
+
+The private materializer requires `processx` before it creates a staging root,
+so the parent—not merely the R child—enforces the 1800-second deadline.  If
+that supervisor is unavailable, the gate is not started.
+
+The final root always has one empty, real `.attempt-started.claim` directory
+and the regular files `child-receipt.rds`, `file-manifest.csv`,
+`materializer.R`, `root-receipt.rds`, `session-info.rds`, and
+`time-estimate.md`.  A reporting child adds exactly `no-fit-result.rds`; a
+hard non-reporting child does not.  The root receipt has the ordered fields
+`schema`, `gate`, `root`, `commit`, `status`, `reason`, `predecessor`,
+`sources`, `dll`, `controls`, `parent_stage`, `process`, `child_result_md5`, and
+`time_estimate_md5`.  The process receipt has the ordered fields `schema`,
+`command`, `arguments`, `parent_pid`, `child_pid`, `started_at`, `ended_at`,
+`elapsed_s`, `deadline_s`, `timed_out`, `exit_status`, `signal`, `stdout_md5`,
+`stderr_md5`, and `child_result_md5`.  The receipt binds the copied
+`materializer.R` to the committed materializer source as well as binding every
+other source MD5.  A readable child result that fails its own exact schema or
+audit is retained only as
+`SPDE_SLOPE_GAUGE_NOFIT_INFRASTRUCTURE_HOLD / child_evidence_invalid`; a
+non-reporting child is
+`SPDE_SLOPE_GAUGE_NOFIT_INFRASTRUCTURE_HOLD / child_process_no_result` and has
+no inferred DLL, factory, callback, or finite-difference evidence.
 
 ## Future estimator boundary
 

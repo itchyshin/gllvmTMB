@@ -95,40 +95,18 @@ source(file.path(script_dir, "spde-slope-gauge-nofit-contract.R"), local = TRUE)
 }
 
 .spde_slope_gauge_nofit_historical_contract <- function(locked) {
-  repo <- dirname(dirname(dirname(dirname(locked$root))))
-  path <- file.path(repo, "dev", "isdm-package-recovery", "matched-spde-smoke-contract.R")
-  if (!file.exists(path)) stop("historical MSPDE V3 contract is absent", call. = FALSE)
+  path <- locked$historical_contract_path
+  if (!.spde_slope_gauge_nofit_regular_file(path) ||
+      !identical(unname(tools::md5sum(path))[[1L]], locked$historical_contract_md5)) {
+    stop("historical MSPDE V3 contract bytes are not frozen", call. = FALSE)
+  }
   env <- new.env(parent = baseenv())
   source(path, local = env)
   env
 }
 
 .spde_slope_gauge_nofit_audit_ok <- function(audit, nofit) {
-  records <- if (is.list(nofit)) nofit$finite_difference else NULL
-  if (!is.list(audit) || !is.list(nofit) || !is.list(records) || length(records) != 22L ||
-      !is.list(audit$objective) || length(audit$objective) != 45L ||
-      !is.list(audit$gradient) || length(audit$gradient) != 1L ||
-      !is.numeric(nofit$raw_theta) || !is.numeric(nofit$raw_gradient) ||
-      !all(vapply(audit$objective, function(record) {
-        is.list(record) && identical(names(record), c("input", "value"))
-      }, logical(1L))) ||
-      !is.list(audit$gradient[[1L]]) || !identical(names(audit$gradient[[1L]]),
-        c("input", "raw_gradient", "supplied_names", "named_gradient")) ||
-      !identical(audit$objective[[1L]]$input, nofit$raw_theta) ||
-      !identical(audit$objective[[1L]]$value, nofit$objective) ||
-      !identical(audit$gradient[[1L]]$input, nofit$raw_theta) ||
-      !identical(audit$gradient[[1L]]$raw_gradient, unname(nofit$raw_gradient)) ||
-      !(is.null(audit$gradient[[1L]]$supplied_names) ||
-        identical(audit$gradient[[1L]]$supplied_names, names(nofit$raw_gradient))) ||
-      !identical(audit$gradient[[1L]]$named_gradient, nofit$raw_gradient)) return(FALSE)
-  expected <- unlist(lapply(records, function(record) list(
-    list(input = record$theta_plus, value = record$objective_plus),
-    list(input = record$theta_minus, value = record$objective_minus)
-  )), recursive = FALSE)
-  all(vapply(seq_along(expected), function(i) {
-    identical(audit$objective[[i + 1L]]$input, expected[[i]]$input) &&
-      identical(audit$objective[[i + 1L]]$value, expected[[i]]$value)
-  }, logical(1L)))
+  spde_slope_gauge_nofit_audit_ok(audit, nofit)
 }
 
 .spde_slope_gauge_nofit_stage_reason <- function(stage, message) {

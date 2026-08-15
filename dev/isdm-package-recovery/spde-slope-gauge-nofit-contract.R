@@ -39,7 +39,12 @@ spde_slope_gauge_nofit_locked_predecessor <- function() {
     ),
     directories = ".attempt-started.claim",
     receipt_schema = "MSPDE_P1_S3_C360_R3_V3_CLOSEOUT_PREFLIGHT_V1",
-    state_schema = "MSPDE_P1_S3_C360_R3_V3_MATERIALIZED_V2_STATE_V1"
+    state_schema = "MSPDE_P1_S3_C360_R3_V3_MATERIALIZED_V2_STATE_V1",
+    historical_contract_path = paste0(
+      "/private/tmp/gllvmtmb-isdm-paper1-qfixed-matched-spde/",
+      "dev/isdm-package-recovery/matched-spde-smoke-contract.R"
+    ),
+    historical_contract_md5 = "8b1b58aa72406ed5a2de74f93239a1d0"
   )
 }
 
@@ -105,6 +110,10 @@ spde_slope_gauge_nofit_validate_predecessor_bytes <- function(
     "contract_md5", "design_md5"
   )) && identical(receipt$schema, locked$receipt_schema) &&
     identical(receipt$root, normal_root) && identical(receipt$commit, locked$commit) &&
+    identical(receipt$contract_md5, locked$historical_contract_md5) &&
+    .spde_slope_gauge_nofit_regular_file(locked$historical_contract_path) &&
+    identical(unname(tools::md5sum(locked$historical_contract_path))[[1L]],
+      locked$historical_contract_md5) &&
     all(vapply(receipt[c("runner_md5", "contract_md5", "design_md5")],
       .spde_slope_gauge_nofit_md5, logical(1L)))
   state_ok <- .spde_slope_gauge_nofit_state_ok(state, locked$state_schema)
@@ -179,5 +188,377 @@ spde_slope_gauge_nofit_wrap_object_callbacks <- function(
       object_id = object_id, dll_path = normalizePath(dll_path, mustWork = TRUE),
       dll_md5 = dll_md5, objective = audit$objective, gradient = audit$gradient
     )
+  )
+}
+
+## The parent-side gate contract is deliberately byte- and evidence-oriented.
+## It does not construct a TMB object or re-run an objective: the child is the
+## one-object executor, while this validator proves that exactly the retained
+## process/result evidence supports the non-scientific gate status.
+
+.spde_slope_gauge_nofit_gate_schema <- function() {
+  "PAPER1_SPDE_SLOPE_GAUGE_NOFIT_GATE_V1_ROOT_V1"
+}
+
+.spde_slope_gauge_nofit_process_schema <- function() {
+  "PAPER1_SPDE_SLOPE_GAUGE_NOFIT_GATE_V1_PROCESS_V1"
+}
+
+.spde_slope_gauge_nofit_gate_files <- function(has_child_result) {
+  base <- c(
+    "child-receipt.rds", "file-manifest.csv", "materializer.R",
+    "root-receipt.rds", "session-info.rds", "time-estimate.md"
+  )
+  if (isTRUE(has_child_result)) c(base[[1L]], "no-fit-result.rds", base[-1L]) else base
+}
+
+.spde_slope_gauge_nofit_exact_names <- function(x, fields) {
+  is.list(x) && identical(names(x), fields)
+}
+
+.spde_slope_gauge_nofit_scalar_character <- function(x, allow_na = FALSE) {
+  is.character(x) && length(x) == 1L && (isTRUE(allow_na) || !is.na(x))
+}
+
+.spde_slope_gauge_nofit_scalar_double <- function(x, allow_na = FALSE) {
+  is.double(x) && length(x) == 1L && (isTRUE(allow_na) || is.finite(x))
+}
+
+.spde_slope_gauge_nofit_named_hashes_ok <- function(x, names) {
+  is.character(x) && identical(names(x), names) &&
+    all(vapply(unname(x), .spde_slope_gauge_nofit_md5, logical(1L)))
+}
+
+.spde_slope_gauge_nofit_gate_manifest_ok <- function(root, files) {
+  manifest_path <- file.path(root, "file-manifest.csv")
+  manifest <- if (.spde_slope_gauge_nofit_regular_file(manifest_path)) {
+    tryCatch(utils::read.csv(manifest_path, stringsAsFactors = FALSE), error = function(e) NULL)
+  } else NULL
+  declared <- setdiff(files, "file-manifest.csv")
+  is.data.frame(manifest) && identical(names(manifest), c("path", "md5")) &&
+    identical(as.character(manifest$path), declared) &&
+    identical(as.character(manifest$md5), unname(tools::md5sum(file.path(root, declared))))
+}
+
+.spde_slope_gauge_nofit_controls_ok <- function(x) {
+  identical(x, spde_slope_gauge_no_fit_controls())
+}
+
+spde_slope_gauge_nofit_audit_ok <- function(audit, nofit) {
+  records <- if (is.list(nofit)) nofit$finite_difference else NULL
+  raw_order <- spde_slope_gauge_raw_order()
+  if (!is.list(audit) || !identical(names(audit), c(
+    "object_id", "dll_path", "dll_md5", "objective", "gradient"
+  )) || !is.list(nofit) || !is.list(records) || length(records) != 22L ||
+      !is.integer(audit$object_id) || length(audit$object_id) != 1L || audit$object_id < 1L ||
+      !.spde_slope_gauge_nofit_scalar_character(audit$dll_path) ||
+      !.spde_slope_gauge_nofit_md5(audit$dll_md5) ||
+      !is.list(audit$objective) || length(audit$objective) != 45L ||
+      !is.list(audit$gradient) || length(audit$gradient) != 1L ||
+      !is.double(nofit$raw_theta) || !identical(names(nofit$raw_theta), raw_order) ||
+      !is.double(nofit$raw_gradient) || !identical(names(nofit$raw_gradient), raw_order) ||
+      !all(vapply(audit$objective, function(record) {
+        is.list(record) && identical(names(record), c("input", "value")) &&
+          is.double(record$input) && identical(names(record$input), raw_order) &&
+          is.double(record$value) && length(record$value) == 1L && is.finite(record$value)
+      }, logical(1L))) ||
+      !.spde_slope_gauge_nofit_exact_names(audit$gradient[[1L]], c(
+        "input", "raw_gradient", "supplied_names", "named_gradient"
+      )) || !identical(audit$objective[[1L]]$input, nofit$raw_theta) ||
+      !identical(audit$objective[[1L]]$value, nofit$objective) ||
+      !identical(audit$gradient[[1L]]$input, nofit$raw_theta) ||
+      !identical(audit$gradient[[1L]]$raw_gradient, unname(nofit$raw_gradient)) ||
+      !(is.null(audit$gradient[[1L]]$supplied_names) ||
+        identical(audit$gradient[[1L]]$supplied_names, raw_order)) ||
+      !identical(audit$gradient[[1L]]$named_gradient, nofit$raw_gradient)) return(FALSE)
+  expected <- unlist(lapply(records, function(record) list(
+    list(input = record$theta_plus, value = record$objective_plus),
+    list(input = record$theta_minus, value = record$objective_minus)
+  )), recursive = FALSE)
+  all(vapply(seq_along(expected), function(i) {
+    identical(audit$objective[[i + 1L]]$input, expected[[i]]$input) &&
+      identical(audit$objective[[i + 1L]]$value, expected[[i]]$value)
+  }, logical(1L)))
+}
+
+.spde_slope_gauge_nofit_complete_result_ok <- function(nofit, state) {
+  fields <- c(
+    "valid", "reason", "phi", "raw_theta", "objective", "raw_gradient",
+    "transformed_gradient", "transformed_gradient_fd", "finite_difference", "controls", "errors"
+  )
+  raw_order <- spde_slope_gauge_raw_order()
+  phi_order <- spde_slope_gauge_phi_order()
+  if (!.spde_slope_gauge_nofit_exact_names(nofit, fields) ||
+      !is.logical(nofit$valid) || length(nofit$valid) != 1L || is.na(nofit$valid) ||
+      !.spde_slope_gauge_nofit_scalar_character(nofit$reason) ||
+      !is.double(nofit$phi) || !identical(names(nofit$phi), phi_order) ||
+      !is.double(nofit$raw_theta) || !identical(names(nofit$raw_theta), raw_order) ||
+      !is.double(nofit$objective) || length(nofit$objective) != 1L || !is.finite(nofit$objective) ||
+      !is.double(nofit$raw_gradient) || !identical(names(nofit$raw_gradient), raw_order) ||
+      !is.double(nofit$transformed_gradient) || !identical(names(nofit$transformed_gradient), phi_order) ||
+      !is.double(nofit$transformed_gradient_fd) ||
+      !identical(names(nofit$transformed_gradient_fd), phi_order) ||
+      !.spde_slope_gauge_nofit_controls_ok(nofit$controls) ||
+      !is.list(nofit$errors) || !identical(names(nofit$errors), c(
+        "theta", "objective", "gradient", "transformed_gradient"
+      )) || !all(vapply(nofit$errors, .spde_slope_gauge_nofit_scalar_double, logical(1L))) ||
+      !is.list(nofit$finite_difference) || length(nofit$finite_difference) != 22L ||
+      any(!is.finite(c(nofit$phi, nofit$raw_theta, nofit$raw_gradient,
+        nofit$transformed_gradient, nofit$transformed_gradient_fd)))) return(FALSE)
+  records_ok <- all(vapply(seq_along(nofit$finite_difference), function(j) {
+    record <- nofit$finite_difference[[j]]
+    is.list(record) && identical(names(record), c(
+      "index", "phi_id", "h", "phi_plus", "phi_minus", "theta_plus", "theta_minus",
+      "objective_plus", "objective_minus"
+    )) && identical(record$index, as.integer(j)) && identical(record$phi_id, phi_order[[j]]) &&
+      is.double(record$h) && length(record$h) == 1L && is.finite(record$h) &&
+      is.double(record$phi_plus) && identical(names(record$phi_plus), phi_order) &&
+      is.double(record$phi_minus) && identical(names(record$phi_minus), phi_order) &&
+      is.double(record$theta_plus) && identical(names(record$theta_plus), raw_order) &&
+      is.double(record$theta_minus) && identical(names(record$theta_minus), raw_order) &&
+      is.double(record$objective_plus) && length(record$objective_plus) == 1L &&
+      is.double(record$objective_minus) && length(record$objective_minus) == 1L &&
+      is.finite(record$objective_plus) && is.finite(record$objective_minus)
+  }, logical(1L)))
+  if (!records_ok) return(FALSE)
+  recomputed <- tryCatch({
+    phi <- spde_slope_gauge_phi_from_theta(state$theta)
+    raw_theta <- spde_slope_gauge_theta_from_phi(phi)
+    transformed <- spde_slope_gauge_full_chain_gradient(phi, nofit$raw_gradient)
+    step <- .Machine$double.eps^(1 / 3) * pmax(1, abs(phi))
+    fd <- vapply(nofit$finite_difference, function(record) {
+      (record$objective_plus - record$objective_minus) / (2 * record$h)
+    }, numeric(1L))
+    names(fd) <- phi_order
+    errors <- c(
+      theta = .spde_slope_gauge_relative_error(raw_theta, state$theta),
+      objective = abs(nofit$objective - state$objective) / max(1, abs(nofit$objective), abs(state$objective)),
+      gradient = .spde_slope_gauge_relative_error(nofit$raw_gradient, state$gradient),
+      transformed_gradient = .spde_slope_gauge_relative_error(transformed, fd)
+    )
+    list(phi = phi, raw_theta = raw_theta, transformed = transformed, step = step, fd = fd, errors = errors)
+  }, error = function(e) NULL)
+  if (is.null(recomputed) || !identical(nofit$phi, recomputed$phi) ||
+      !identical(nofit$raw_theta, recomputed$raw_theta) ||
+      !identical(nofit$transformed_gradient, recomputed$transformed) ||
+      !identical(nofit$transformed_gradient_fd, recomputed$fd) ||
+      !identical(unname(nofit$errors), unname(as.list(recomputed$errors)))) return(FALSE)
+  for (j in seq_along(nofit$finite_difference)) {
+    record <- nofit$finite_difference[[j]]
+    delta <- rep(0, 22L); names(delta) <- phi_order; delta[[j]] <- recomputed$step[[j]]
+    if (!identical(record$h, as.double(recomputed$step[[j]])) ||
+        !identical(record$phi_plus, recomputed$phi + delta) ||
+        !identical(record$phi_minus, recomputed$phi - delta) ||
+        !identical(record$theta_plus, spde_slope_gauge_theta_from_phi(recomputed$phi + delta)) ||
+        !identical(record$theta_minus, spde_slope_gauge_theta_from_phi(recomputed$phi - delta))) return(FALSE)
+  }
+  expected_valid <- all(recomputed$errors <= unlist(nofit$controls[c(
+    "theta", "objective", "gradient", "transformed_gradient"
+  )]))
+  identical(nofit$valid, expected_valid) && identical(nofit$reason,
+    if (expected_valid) "no_fit_state_valid" else "no_fit_state_replay_failed")
+}
+
+.spde_slope_gauge_nofit_child_ok <- function(child, predecessor, expected_dll, state = NULL) {
+  fields <- c(
+    "schema", "parent_pid", "child_pid", "started_at", "deadline_s", "status", "reason",
+    "predecessor", "dll", "object", "nofit", "callback_audit", "error", "ended_at", "elapsed_s"
+  )
+  complete_status <- c("SPDE_SLOPE_GAUGE_NOFIT_VALID", "SPDE_SLOPE_GAUGE_NOFIT_REPLAY_HOLD")
+  if (!.spde_slope_gauge_nofit_exact_names(child, fields) ||
+      !identical(child$schema, "PAPER1_SPDE_SLOPE_GAUGE_NOFIT_GATE_V1_CHILD_V1") ||
+      !is.integer(child$parent_pid) || length(child$parent_pid) != 1L || child$parent_pid < 1L ||
+      !is.integer(child$child_pid) || length(child$child_pid) != 1L || child$child_pid < 1L ||
+      identical(child$parent_pid, child$child_pid) ||
+      !.spde_slope_gauge_nofit_scalar_double(child$deadline_s) || child$deadline_s != 1800 ||
+      !.spde_slope_gauge_nofit_scalar_double(child$elapsed_s) || child$elapsed_s < 0 ||
+      !.spde_slope_gauge_nofit_scalar_character(child$status) ||
+      !.spde_slope_gauge_nofit_scalar_character(child$reason) ||
+      !.spde_slope_gauge_nofit_scalar_character(child$started_at) ||
+      !.spde_slope_gauge_nofit_scalar_character(child$ended_at) ||
+      !is.list(child$object) || !is.integer(child$object$created) ||
+      !is.integer(child$object$released) || length(child$object$created) != 1L ||
+      length(child$object$released) != 1L || child$object$created < 0L ||
+      child$object$released < 0L || child$object$created < child$object$released) return(FALSE)
+  if (child$status %in% complete_status) {
+    return(is.list(child$predecessor) && identical(child$predecessor$root, predecessor$root) &&
+      identical(child$predecessor$commit, predecessor$commit) &&
+      identical(child$predecessor$state_md5, predecessor$state_md5) &&
+      identical(child$predecessor$historical_reason, "closeout_recomputed") &&
+      isTRUE(child$predecessor$post_replay_gc) && is.list(child$dll) &&
+      identical(child$dll$path, expected_dll$path) && identical(child$dll$md5, expected_dll$md5) &&
+      identical(child$object$created, 1L) && identical(child$object$released, 1L) &&
+      is.list(child$nofit) && is.list(child$callback_audit) &&
+      is.character(child$error) && length(child$error) == 1L && is.na(child$error) &&
+      is.list(state) && .spde_slope_gauge_nofit_complete_result_ok(child$nofit, state) &&
+      spde_slope_gauge_nofit_audit_ok(child$callback_audit, child$nofit) &&
+      if (identical(child$status, "SPDE_SLOPE_GAUGE_NOFIT_VALID")) isTRUE(child$nofit$valid) else
+        identical(child$nofit$reason, "no_fit_state_replay_failed"))
+  }
+  identical(child$status, "SPDE_SLOPE_GAUGE_NOFIT_INFRASTRUCTURE_HOLD") &&
+    child$reason %in% c("predecessor_bytes_invalid", "dll_identity_failure",
+      "historical_v3_replay_failure", "fresh_object_unavailable",
+      "callback_or_finite_difference_failure", "callback_audit_invalid",
+      "object_release_failure", "time_limit_exceeded", "child_unexpected_failure") &&
+    !isTRUE(child$nofit$valid) && .spde_slope_gauge_nofit_scalar_character(child$error)
+}
+
+.spde_slope_gauge_nofit_process_ok <- function(
+    process, child, command, arguments, child_evidence_valid = TRUE) {
+  fields <- c(
+    "schema", "command", "arguments", "parent_pid", "child_pid", "started_at", "ended_at",
+    "elapsed_s", "deadline_s", "timed_out", "exit_status", "signal", "stdout_md5", "stderr_md5", "child_result_md5"
+  )
+  if (!.spde_slope_gauge_nofit_exact_names(process, fields) ||
+      !identical(process$schema, .spde_slope_gauge_nofit_process_schema()) ||
+      !identical(process$command, command) || !identical(process$arguments, arguments) ||
+      !is.integer(process$parent_pid) ||
+      length(process$parent_pid) != 1L || process$parent_pid < 1L ||
+      !.spde_slope_gauge_nofit_scalar_character(process$started_at) ||
+      !.spde_slope_gauge_nofit_scalar_character(process$ended_at) ||
+      !.spde_slope_gauge_nofit_scalar_double(process$elapsed_s) || process$elapsed_s < 0 ||
+      !.spde_slope_gauge_nofit_scalar_double(process$deadline_s) || process$deadline_s != 1800 ||
+      !is.logical(process$timed_out) || length(process$timed_out) != 1L || is.na(process$timed_out) ||
+      !.spde_slope_gauge_nofit_md5(process$stdout_md5) || !.spde_slope_gauge_nofit_md5(process$stderr_md5) ||
+      !(is.integer(process$exit_status) && length(process$exit_status) == 1L) ||
+      !.spde_slope_gauge_nofit_scalar_character(process$signal, allow_na = TRUE)) return(FALSE)
+  if (is.null(child)) {
+    return(is.integer(process$child_pid) && length(process$child_pid) == 1L && is.na(process$child_pid) &&
+      is.character(process$child_result_md5) && length(process$child_result_md5) == 1L && is.na(process$child_result_md5) &&
+      .spde_slope_gauge_nofit_scalar_character(process$signal, allow_na = TRUE))
+  }
+  if (!isTRUE(child_evidence_valid)) {
+    return(!isTRUE(process$timed_out) && identical(process$exit_status, 0L) && is.na(process$signal) &&
+      ((is.integer(process$child_pid) && length(process$child_pid) == 1L && is.na(process$child_pid)) ||
+        (is.integer(process$child_pid) && length(process$child_pid) == 1L &&
+        process$child_pid > 0L && !identical(process$child_pid, process$parent_pid))) &&
+      .spde_slope_gauge_nofit_md5(process$child_result_md5))
+  }
+  !isTRUE(process$timed_out) && identical(process$parent_pid, child$parent_pid) &&
+    identical(process$child_pid, child$child_pid) && !identical(process$child_pid, process$parent_pid) &&
+    identical(process$exit_status, 0L) && is.na(process$signal) &&
+    .spde_slope_gauge_nofit_md5(process$child_result_md5)
+}
+
+spde_slope_gauge_nofit_validate_gate_root <- function(
+    root, source_paths, predecessor = spde_slope_gauge_nofit_locked_predecessor(),
+    commit = NULL) {
+  normal_root <- tryCatch(normalizePath(root, mustWork = TRUE), error = function(e) NA_character_)
+  source_names <- c("child_runner", "pure_contract", "nofit_contract", "historical_contract",
+    "design", "materializer")
+  if (!.spde_slope_gauge_nofit_scalar_character(normal_root) ||
+      !is.character(source_paths) || !identical(names(source_paths), source_names) ||
+      !all(vapply(unname(source_paths), .spde_slope_gauge_nofit_regular_file, logical(1L)))) {
+    return(.spde_slope_gauge_nofit_verdict(FALSE, "gate_root_or_source_invalid"))
+  }
+  inventory <- list.files(normal_root, all.files = TRUE, no.. = TRUE, recursive = FALSE)
+  has_result <- "no-fit-result.rds" %in% inventory
+  files <- .spde_slope_gauge_nofit_gate_files(has_result)
+  claim <- file.path(normal_root, ".attempt-started.claim")
+  paths <- file.path(normal_root, files)
+  packet_ok <- identical(sort(inventory), sort(c(files, ".attempt-started.claim"))) &&
+    all(vapply(paths, .spde_slope_gauge_nofit_regular_file, logical(1L))) &&
+    isTRUE(file.info(claim)$isdir[[1L]]) && identical(Sys.readlink(claim), "") &&
+    identical(list.files(claim, all.files = TRUE, no.. = TRUE), character()) &&
+    .spde_slope_gauge_nofit_gate_manifest_ok(normal_root, files)
+  if (!packet_ok) return(.spde_slope_gauge_nofit_verdict(FALSE, "gate_packet_bytes_invalid"))
+  root_receipt <- tryCatch(readRDS(file.path(normal_root, "root-receipt.rds")), error = function(e) NULL)
+  process <- tryCatch(readRDS(file.path(normal_root, "child-receipt.rds")), error = function(e) NULL)
+  child <- if (has_result) tryCatch(readRDS(file.path(normal_root, "no-fit-result.rds")), error = function(e) NULL) else NULL
+  receipt_fields <- c(
+    "schema", "gate", "root", "commit", "status", "reason", "predecessor", "sources", "dll",
+    "controls", "parent_stage", "process", "child_result_md5", "time_estimate_md5"
+  )
+  source_hashes <- unname(tools::md5sum(source_paths)); names(source_hashes) <- source_names
+  if (is.null(commit)) {
+    repo <- dirname(dirname(dirname(source_paths[["materializer"]])))
+    commit <- tryCatch(system2("git", c("-C", repo, "rev-parse", "HEAD"), stdout = TRUE,
+      stderr = FALSE), error = function(e) NA_character_)
+    commit <- if (is.character(commit) && length(commit) == 1L) commit else NA_character_
+  }
+  predecessor_verdict <- spde_slope_gauge_nofit_validate_predecessor_bytes(predecessor$root, predecessor)
+  receipt_ok <- .spde_slope_gauge_nofit_exact_names(root_receipt, receipt_fields) &&
+    identical(root_receipt$schema, .spde_slope_gauge_nofit_gate_schema()) &&
+    identical(root_receipt$gate, "PAPER1_SPDE_SLOPE_GAUGE_NOFIT_GATE_V1") &&
+    identical(root_receipt$root, normal_root) && identical(root_receipt$commit, commit) &&
+    .spde_slope_gauge_nofit_scalar_character(root_receipt$status) &&
+    .spde_slope_gauge_nofit_scalar_character(root_receipt$reason) &&
+    identical(root_receipt$predecessor, predecessor_verdict[c("receipt", "state_md5")]) &&
+    identical(root_receipt$sources, source_hashes) && .spde_slope_gauge_nofit_exact_names(
+      root_receipt$dll, c("path", "md5")
+    ) &&
+    identical(unname(tools::md5sum(file.path(normal_root, "materializer.R")))[[1L]],
+      source_hashes[["materializer"]]) && is.list(root_receipt$dll) &&
+    .spde_slope_gauge_nofit_controls_ok(root_receipt$controls) &&
+    .spde_slope_gauge_nofit_exact_names(root_receipt$parent_stage, c(
+      "schema", "gate_base", "stage", "parent_pid", "child_output"
+    )) && identical(root_receipt$parent_stage$schema,
+      "PAPER1_SPDE_SLOPE_GAUGE_NOFIT_GATE_V1_PARENT_STAGE_V1") &&
+    identical(root_receipt$parent_stage$gate_base, dirname(normal_root)) &&
+    identical(dirname(root_receipt$parent_stage$stage), dirname(normal_root)) &&
+    grepl("^\\.PAPER1_SPDE_SLOPE_GAUGE_NOFIT_GATE_V1-", basename(root_receipt$parent_stage$stage)) &&
+    identical(root_receipt$parent_stage$child_output,
+      file.path(root_receipt$parent_stage$stage, "child-result.rds")) &&
+    identical(root_receipt$parent_stage$parent_pid, process$parent_pid) &&
+    identical(root_receipt$process, process) && .spde_slope_gauge_nofit_md5(root_receipt$time_estimate_md5) &&
+    identical(root_receipt$time_estimate_md5,
+      unname(tools::md5sum(file.path(normal_root, "time-estimate.md")))[[1L]]) &&
+    if (has_result) identical(root_receipt$child_result_md5,
+      unname(tools::md5sum(file.path(normal_root, "no-fit-result.rds")))[[1L]]) else is.na(root_receipt$child_result_md5)
+  child_declared_dll <- if (has_result && is.list(child) && is.list(child$dll)) child$dll else
+    list(path = NA_character_, md5 = NA_character_)
+  raw_child_ok <- has_result && isTRUE(tryCatch(.spde_slope_gauge_nofit_child_ok(
+    child, root_receipt$predecessor, child_declared_dll, state = predecessor_verdict$state
+  ), error = function(e) FALSE))
+  evidence_hold <- has_result && identical(root_receipt$status,
+    "SPDE_SLOPE_GAUGE_NOFIT_INFRASTRUCTURE_HOLD") &&
+    identical(root_receipt$reason, "child_evidence_invalid") && !raw_child_ok
+  expected_dll <- root_receipt$dll
+  child_ok <- !has_result || evidence_hold || raw_child_ok
+  complete_child <- has_result && !evidence_hold &&
+    is.list(child) && .spde_slope_gauge_nofit_scalar_character(child$status) && child$status %in% c(
+      "SPDE_SLOPE_GAUGE_NOFIT_VALID", "SPDE_SLOPE_GAUGE_NOFIT_REPLAY_HOLD"
+    )
+  dll_missing <- is.character(root_receipt$dll$path) && length(root_receipt$dll$path) == 1L &&
+    is.na(root_receipt$dll$path) && is.character(root_receipt$dll$md5) &&
+    length(root_receipt$dll$md5) == 1L && is.na(root_receipt$dll$md5)
+  dll_live <- .spde_slope_gauge_nofit_scalar_character(root_receipt$dll$path) &&
+    .spde_slope_gauge_nofit_md5(root_receipt$dll$md5) &&
+    .spde_slope_gauge_nofit_regular_file(root_receipt$dll$path) &&
+    identical(unname(tools::md5sum(root_receipt$dll$path))[[1L]], root_receipt$dll$md5)
+  dll_ok <- if (complete_child) {
+    dll_live && identical(root_receipt$dll, child$dll)
+  } else if (has_result && !evidence_hold && is.list(child$dll)) {
+    dll_live && identical(root_receipt$dll, child$dll)
+  } else {
+    dll_missing
+  }
+  expected_command <- R.home("bin/Rscript")
+  expected_arguments <- c("--vanilla", source_paths[["child_runner"]], "child",
+    root_receipt$parent_stage$child_output, as.character(process$parent_pid))
+  process_ok <- .spde_slope_gauge_nofit_process_ok(process, child, expected_command,
+    expected_arguments, child_evidence_valid = !evidence_hold) &&
+    (!has_result || identical(process$child_result_md5, root_receipt$child_result_md5))
+  status_ok <- if (!has_result) {
+    identical(root_receipt$status, "SPDE_SLOPE_GAUGE_NOFIT_INFRASTRUCTURE_HOLD") &&
+      identical(root_receipt$reason, "child_process_no_result")
+  } else if (evidence_hold) {
+    TRUE
+  } else if (identical(child$status, "SPDE_SLOPE_GAUGE_NOFIT_VALID")) {
+    identical(root_receipt$status, child$status) && identical(root_receipt$reason, child$reason)
+  } else if (identical(child$status, "SPDE_SLOPE_GAUGE_NOFIT_REPLAY_HOLD")) {
+    identical(root_receipt$status, child$status) && identical(root_receipt$reason, child$reason)
+  } else {
+    identical(root_receipt$status, "SPDE_SLOPE_GAUGE_NOFIT_INFRASTRUCTURE_HOLD") &&
+      identical(root_receipt$reason, child$reason)
+  }
+  valid <- packet_ok && isTRUE(predecessor_verdict$valid) && receipt_ok && dll_ok && child_ok && process_ok && status_ok
+  .spde_slope_gauge_nofit_verdict(
+    valid,
+    if (valid)
+      "nofit_gate_root_valid" else "nofit_gate_evidence_invalid",
+    receipt = root_receipt, process = process, child = child,
+    checks = c(packet = packet_ok, predecessor = isTRUE(predecessor_verdict$valid),
+      receipt = receipt_ok, dll = dll_ok, child = child_ok, process = process_ok, status = status_ok)
   )
 }

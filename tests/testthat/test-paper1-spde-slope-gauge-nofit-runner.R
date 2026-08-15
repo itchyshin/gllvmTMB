@@ -118,7 +118,9 @@ test_that("the child accepts only a complete callback audit tied to its FD ledge
     list(input = record$theta_plus, value = record$objective_plus),
     list(input = record$theta_minus, value = record$objective_minus)
   )), recursive = FALSE)
-  audit <- list(objective = c(list(list(input = theta, value = 0)), sides),
+  audit <- list(object_id = 1L, dll_path = "/synthetic/gllvmTMB.so",
+    dll_md5 = paste0(rep("a", 32L), collapse = ""),
+    objective = c(list(list(input = theta, value = 0)), sides),
     gradient = list(list(input = theta, raw_gradient = unname(gradient),
       supplied_names = NULL, named_gradient = gradient)))
   expect_true(runner$.spde_slope_gauge_nofit_audit_ok(audit, nofit))

@@ -49269,3 +49269,25 @@ After-task:
 `docs/dev-log/after-task/2026-08-15-mspl-catchup-phase2-phase3prep.md`.
 Plan-actual: `docs/dev-log/plan-actual/2026-08-15-mspl-catchup.md`.
 Gaussian remains `planned`. No C++. No NEWS.
+
+## 2026-08-15 — local Bernoulli LA-MSPL vs LA-ML pair smoke (Cursor)
+
+Lane `cursor/mspl-local-binary-pair-smoke` in
+`/private/tmp/gllvmtmb-mspl-estimator-programme-roadmap` @ `fb6f9dae`.
+Point estimates only. Interval/SE owned by
+`codex/lane-b-mspl-interval-feasibility` — no sandwich / profile /
+jackknife. No C++. No admit/NEWS/registry flip. No repo-root LOOP/.
+
+```sh
+OMP_NUM_THREADS=1 NOT_CRAN=true Rscript --vanilla /tmp/mspl-local-binary-pair-smoke.R
+```
+
+Two cells × two arms, ordinary binomial logit q=1, `se=FALSE`.
+Both MSPL fits `binomial:logit:ordinary:q1` / admitted /
+`partial_b2_incomplete`. Healthy: both conv=0 finite; MSPL closer
+to true LL' on this seed (rel Frob 1.46 vs 2.58). Near-boundary
+(not a certified separation DGP): ML runaway max|Λ|=47; MSPL
+collapsed to ~0. Not a programme result.
+
+Note: `docs/dev-log/research/2026-08-15-mspl-local-binary-pair-smoke.md`.
+Not run: `devtools::test()`, `R CMD check`, campaigns, intervals.

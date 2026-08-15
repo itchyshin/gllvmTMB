@@ -1589,3 +1589,454 @@ spde_slope_gauge_nofit_validate_gate_root <- function(
     )
   )
 }
+
+## V2 has its own root and receipt predicates.  It consumes the V1 forensic
+## root and the immutable MSPDE V3 packet, but never recycles either result.
+.spde_slope_gauge_nofit_v2_gate_root <- function() {
+  "/private/tmp/gllvmtmb-isdm-bfgs-exact-gradient/dev/isdm-package-recovery/results/PAPER1_SPDE_SLOPE_GAUGE_NOFIT_GATE_V2"
+}
+
+.spde_slope_gauge_nofit_v2_gate_schema <- function() {
+  "PAPER1_SPDE_SLOPE_GAUGE_NOFIT_GATE_V2_ROOT_V1"
+}
+
+.spde_slope_gauge_nofit_v2_process_schema <- function() {
+  "PAPER1_SPDE_SLOPE_GAUGE_NOFIT_GATE_V2_PROCESS_V1"
+}
+
+.spde_slope_gauge_nofit_v2_gate_files <- function(
+  has_child_result,
+  unvalidated_child_result = FALSE
+) {
+  base <- c(
+    "child-receipt.rds",
+    "child-stderr.txt",
+    "child-stdout.txt",
+    "file-manifest.csv",
+    "materializer.R",
+    "root-receipt.rds",
+    "session-info.rds",
+    "time-estimate.md"
+  )
+  if (isTRUE(has_child_result) && !isTRUE(unvalidated_child_result)) {
+    c(base[[1L]], "no-fit-result.rds", base[-1L])
+  } else if (isTRUE(unvalidated_child_result) && !isTRUE(has_child_result)) {
+    c(base[[1L]], "unvalidated-child-result.rds", base[-1L])
+  } else {
+    base
+  }
+}
+
+.spde_slope_gauge_nofit_v2_source_names <- function() {
+  c(
+    "child_runner",
+    "pure_contract",
+    "nofit_contract",
+    "historical_contract",
+    "design",
+    "materializer"
+  )
+}
+
+.spde_slope_gauge_nofit_v2_predecessor_projection <- function(v1, v3) {
+  list(
+    v1_forensic = v1[c(
+      "root",
+      "commit",
+      "receipt",
+      "files",
+      "status",
+      "terminal_reason"
+    )],
+    v3 = v3[c("root", "commit", "receipt", "state_md5")]
+  )
+}
+
+.spde_slope_gauge_nofit_v2_process_ok <- function(
+  process,
+  child,
+  command,
+  arguments,
+  child_evidence_valid
+) {
+  fields <- c(
+    "schema",
+    "command",
+    "arguments",
+    "parent_pid",
+    "child_pid",
+    "observed_child_pid",
+    "started_at",
+    "ended_at",
+    "elapsed_s",
+    "deadline_s",
+    "timed_out",
+    "exit_status",
+    "signal",
+    "stdout_md5",
+    "stderr_md5",
+    "child_result_md5"
+  )
+  if (
+    !.spde_slope_gauge_nofit_exact_names(process, fields) ||
+      !identical(process$schema, .spde_slope_gauge_nofit_v2_process_schema())
+  ) {
+    return(FALSE)
+  }
+  observed_pid_ok <- is.integer(process$observed_child_pid) &&
+    length(process$observed_child_pid) == 1L &&
+    ((!is.na(process$observed_child_pid) &&
+      process$observed_child_pid > 0L &&
+      !identical(process$observed_child_pid, process$parent_pid)) ||
+      (is.na(process$observed_child_pid) &&
+        is.null(child) &&
+        is.na(process$exit_status)))
+  if (!observed_pid_ok) {
+    return(FALSE)
+  }
+  if (
+    isTRUE(child_evidence_valid) &&
+      (!is.list(child) ||
+        !identical(process$observed_child_pid, child$child_pid))
+  ) {
+    return(FALSE)
+  }
+  legacy <- process
+  legacy$schema <- .spde_slope_gauge_nofit_process_schema()
+  if (!isTRUE(child_evidence_valid)) {
+    legacy$child_pid <- NA_integer_
+  }
+  legacy$observed_child_pid <- NULL
+  .spde_slope_gauge_nofit_process_ok(
+    legacy,
+    child,
+    command,
+    arguments,
+    child_evidence_valid
+  )
+}
+
+spde_slope_gauge_nofit_v2_validate_gate_root <- function(
+  root,
+  source_paths,
+  commit = NULL,
+  v1_locked = .spde_slope_gauge_nofit_v2_locked_v1(),
+  v3_locked = spde_slope_gauge_nofit_locked_predecessor(),
+  expected_root = .spde_slope_gauge_nofit_v2_gate_root()
+) {
+  normal_root <- tryCatch(
+    normalizePath(root, mustWork = TRUE),
+    error = function(e) NA_character_
+  )
+  source_names <- .spde_slope_gauge_nofit_v2_source_names()
+  canonical_root <- tryCatch(
+    normalizePath(expected_root, mustWork = FALSE),
+    error = function(e) NA_character_
+  )
+  if (
+    !.spde_slope_gauge_nofit_scalar_character(normal_root) ||
+      is.na(canonical_root) ||
+      !is.character(source_paths) ||
+      !identical(names(source_paths), source_names) ||
+      !all(vapply(
+        unname(source_paths),
+        .spde_slope_gauge_nofit_regular_file,
+        logical(1L)
+      ))
+  ) {
+    return(.spde_slope_gauge_nofit_verdict(
+      FALSE,
+      "v2_gate_root_or_source_invalid"
+    ))
+  }
+  inventory <- list.files(
+    normal_root,
+    all.files = TRUE,
+    no.. = TRUE,
+    recursive = FALSE
+  )
+  has_result <- "no-fit-result.rds" %in% inventory
+  has_unvalidated <- "unvalidated-child-result.rds" %in% inventory
+  if (has_result && has_unvalidated) {
+    return(.spde_slope_gauge_nofit_verdict(
+      FALSE,
+      "v2_gate_packet_bytes_invalid"
+    ))
+  }
+  files <- .spde_slope_gauge_nofit_v2_gate_files(
+    has_result,
+    has_unvalidated
+  )
+  claim <- file.path(normal_root, ".attempt-started.claim")
+  packet_ok <- identical(
+    sort(inventory),
+    sort(c(files, ".attempt-started.claim"))
+  ) &&
+    all(vapply(
+      file.path(normal_root, files),
+      .spde_slope_gauge_nofit_regular_file,
+      logical(1L)
+    )) &&
+    isTRUE(file.info(claim)$isdir[[1L]]) &&
+    identical(Sys.readlink(claim), "") &&
+    identical(list.files(claim, all.files = TRUE, no.. = TRUE), character()) &&
+    .spde_slope_gauge_nofit_gate_manifest_ok(normal_root, files)
+  if (!packet_ok) {
+    return(.spde_slope_gauge_nofit_verdict(
+      FALSE,
+      "v2_gate_packet_bytes_invalid"
+    ))
+  }
+  receipt <- tryCatch(
+    readRDS(file.path(normal_root, "root-receipt.rds")),
+    error = function(e) NULL
+  )
+  process <- tryCatch(
+    readRDS(file.path(normal_root, "child-receipt.rds")),
+    error = function(e) NULL
+  )
+  child <- if (has_result) {
+    tryCatch(
+      readRDS(file.path(normal_root, "no-fit-result.rds")),
+      error = function(e) NULL
+    )
+  } else {
+    NULL
+  }
+  if (!is.list(receipt) || !is.list(process)) {
+    return(.spde_slope_gauge_nofit_verdict(
+      FALSE,
+      "v2_gate_receipt_or_process_invalid"
+    ))
+  }
+  v1 <- spde_slope_gauge_nofit_v2_validate_v1_forensic(
+    v1_locked$root,
+    v1_locked
+  )
+  v3 <- spde_slope_gauge_nofit_validate_predecessor_bytes(
+    v3_locked$root,
+    v3_locked
+  )
+  source_hashes <- unname(tools::md5sum(source_paths))
+  names(source_hashes) <- source_names
+  historical_source <- tryCatch(
+    normalizePath(source_paths[["historical_contract"]], mustWork = TRUE),
+    error = function(e) NA_character_
+  )
+  locked_historical <- tryCatch(
+    normalizePath(v3_locked$historical_contract_path, mustWork = TRUE),
+    error = function(e) NA_character_
+  )
+  historical_source_ok <-
+    .spde_slope_gauge_nofit_scalar_character(historical_source) &&
+    .spde_slope_gauge_nofit_scalar_character(locked_historical) &&
+    identical(historical_source, locked_historical) &&
+    .spde_slope_gauge_nofit_md5(v3_locked$historical_contract_md5) &&
+    identical(
+      source_hashes[["historical_contract"]],
+      v3_locked$historical_contract_md5
+    )
+  if (is.null(commit)) {
+    repo <- dirname(dirname(dirname(source_paths[["materializer"]])))
+    candidate <- tryCatch(
+      system2(
+        "git",
+        c("-C", repo, "rev-parse", "HEAD"),
+        stdout = TRUE,
+        stderr = FALSE
+      ),
+      error = function(e) NA_character_
+    )
+    commit <- if (.spde_slope_gauge_nofit_scalar_character(candidate)) {
+      candidate
+    } else {
+      NA_character_
+    }
+  }
+  receipt_fields <- c(
+    "schema",
+    "gate",
+    "root",
+    "commit",
+    "status",
+    "reason",
+    "predecessors",
+    "sources",
+    "dll",
+    "controls",
+    "parent_stage",
+    "process",
+    "child_result_md5",
+    "unvalidated_child_md5",
+    "seal_failure",
+    "time_estimate_md5"
+  )
+  receipt_ok <- .spde_slope_gauge_nofit_exact_names(receipt, receipt_fields) &&
+    identical(receipt$schema, .spde_slope_gauge_nofit_v2_gate_schema()) &&
+    identical(receipt$gate, "PAPER1_SPDE_SLOPE_GAUGE_NOFIT_GATE_V2") &&
+    identical(receipt$root, canonical_root) &&
+    identical(receipt$commit, commit) &&
+    identical(
+      receipt$predecessors,
+      .spde_slope_gauge_nofit_v2_predecessor_projection(v1, v3)
+    ) &&
+    identical(receipt$sources, source_hashes) &&
+    .spde_slope_gauge_nofit_controls_ok(receipt$controls) &&
+    .spde_slope_gauge_nofit_exact_names(
+      receipt$parent_stage,
+      c("schema", "gate_base", "stage", "parent_pid", "child_output")
+    ) &&
+    identical(
+      receipt$parent_stage$schema,
+      "PAPER1_SPDE_SLOPE_GAUGE_NOFIT_GATE_V2_PARENT_STAGE_V1"
+    ) &&
+    identical(receipt$parent_stage$gate_base, dirname(canonical_root)) &&
+    identical(dirname(receipt$parent_stage$stage), dirname(canonical_root)) &&
+    grepl(
+      "^\\.PAPER1_SPDE_SLOPE_GAUGE_NOFIT_GATE_V2-",
+      basename(receipt$parent_stage$stage)
+    ) &&
+    identical(
+      receipt$parent_stage$child_output,
+      file.path(receipt$parent_stage$stage, "child-result.rds")
+    ) &&
+    (identical(normal_root, canonical_root) ||
+      identical(normal_root, receipt$parent_stage$stage)) &&
+    identical(receipt$parent_stage$parent_pid, process$parent_pid) &&
+    identical(receipt$process, process) &&
+    .spde_slope_gauge_nofit_md5(receipt$time_estimate_md5) &&
+    identical(
+      receipt$time_estimate_md5,
+      unname(tools::md5sum(file.path(normal_root, "time-estimate.md")))[[1L]]
+    ) &&
+    identical(
+      unname(tools::md5sum(file.path(normal_root, "materializer.R")))[[1L]],
+      source_hashes[["materializer"]]
+    ) &&
+    if (has_result) {
+      identical(
+        receipt$child_result_md5,
+        unname(tools::md5sum(file.path(normal_root, "no-fit-result.rds")))[[1L]]
+      ) &&
+        is.na(receipt$unvalidated_child_md5) &&
+        is.na(receipt$seal_failure)
+    } else if (has_unvalidated) {
+      is.na(receipt$child_result_md5) &&
+        .spde_slope_gauge_nofit_md5(receipt$unvalidated_child_md5) &&
+        identical(
+          receipt$unvalidated_child_md5,
+          unname(tools::md5sum(file.path(
+            normal_root,
+            "unvalidated-child-result.rds"
+          )))[[1L]]
+        ) &&
+        .spde_slope_gauge_nofit_scalar_character(receipt$seal_failure)
+    } else {
+      is.na(receipt$child_result_md5) &&
+        is.na(receipt$unvalidated_child_md5) &&
+        (is.na(receipt$seal_failure) ||
+          .spde_slope_gauge_nofit_scalar_character(receipt$seal_failure))
+    }
+  expected_dll <- if (has_result && is.list(child) && is.list(child$dll)) {
+    child$dll
+  } else {
+    list(path = NA_character_, md5 = NA_character_)
+  }
+  child_valid <- has_result &&
+    isTRUE(.spde_slope_gauge_nofit_v2_child_ok(child, v1, v3, expected_dll))
+  evidence_hold <- has_result && !child_valid
+  child_ok <- if (has_unvalidated || !has_result) {
+    is.null(child)
+  } else {
+    is.list(child)
+  }
+  process_ok <- .spde_slope_gauge_nofit_v2_process_ok(
+    process,
+    child,
+    R.home("bin/Rscript"),
+    c(
+      "--vanilla",
+      source_paths[["child_runner"]],
+      "child",
+      receipt$parent_stage$child_output,
+      as.character(process$parent_pid)
+    ),
+    child_evidence_valid = has_result && !evidence_hold
+  ) &&
+    (!has_result ||
+      identical(process$child_result_md5, receipt$child_result_md5))
+  stream_ok <- identical(
+    process$stdout_md5,
+    unname(tools::md5sum(file.path(normal_root, "child-stdout.txt")))[[1L]]
+  ) &&
+    identical(
+      process$stderr_md5,
+      unname(tools::md5sum(file.path(normal_root, "child-stderr.txt")))[[1L]]
+    )
+  missing_dll <- .spde_slope_gauge_nofit_exact_names(
+    receipt$dll,
+    c("path", "md5")
+  ) &&
+    is.character(receipt$dll$path) &&
+    length(receipt$dll$path) == 1L &&
+    is.na(receipt$dll$path) &&
+    is.character(receipt$dll$md5) &&
+    length(receipt$dll$md5) == 1L &&
+    is.na(receipt$dll$md5)
+  live_dll <- .spde_slope_gauge_nofit_exact_names(
+    receipt$dll,
+    c("path", "md5")
+  ) &&
+    .spde_slope_gauge_nofit_regular_file(receipt$dll$path) &&
+    .spde_slope_gauge_nofit_md5(receipt$dll$md5) &&
+    identical(unname(tools::md5sum(receipt$dll$path))[[1L]], receipt$dll$md5)
+  dll_ok <- if (child_valid) {
+    live_dll && identical(receipt$dll, child$dll)
+  } else {
+    missing_dll
+  }
+  status_ok <- if (has_unvalidated) {
+    identical(receipt$status, "SPDE_SLOPE_GAUGE_NOFIT_INFRASTRUCTURE_HOLD") &&
+      identical(receipt$reason, "parent_seal_failure")
+  } else if (!has_result) {
+    identical(receipt$status, "SPDE_SLOPE_GAUGE_NOFIT_INFRASTRUCTURE_HOLD") &&
+      ((identical(receipt$reason, "child_process_no_result") &&
+        is.na(receipt$seal_failure)) ||
+        (identical(receipt$reason, "parent_seal_failure") &&
+          .spde_slope_gauge_nofit_scalar_character(receipt$seal_failure)))
+  } else if (evidence_hold) {
+    identical(receipt$status, "SPDE_SLOPE_GAUGE_NOFIT_INFRASTRUCTURE_HOLD") &&
+      identical(receipt$reason, "child_evidence_invalid")
+  } else {
+    identical(receipt$status, child$status) &&
+      identical(receipt$reason, child$reason)
+  }
+  valid <- isTRUE(v1$valid) &&
+    isTRUE(v3$valid) &&
+    historical_source_ok &&
+    receipt_ok &&
+    child_ok &&
+    process_ok &&
+    stream_ok &&
+    dll_ok &&
+    status_ok
+  .spde_slope_gauge_nofit_verdict(
+    valid,
+    if (valid) "v2_gate_root_valid" else "v2_gate_evidence_invalid",
+    receipt = receipt,
+    process = process,
+    child = child,
+    checks = c(
+      packet = packet_ok,
+      v1 = isTRUE(v1$valid),
+      v3 = isTRUE(v3$valid),
+      historical_source = historical_source_ok,
+      receipt = receipt_ok,
+      child = child_ok,
+      process = process_ok,
+      streams = stream_ok,
+      dll = dll_ok,
+      status = status_ok
+    )
+  )
+}

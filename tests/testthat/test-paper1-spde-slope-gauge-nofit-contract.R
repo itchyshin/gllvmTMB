@@ -1451,3 +1451,566 @@ test_that("a non-reporting child seals only its observed process boundary", {
   expect_null(verdict$child)
   expect_identical(verdict$receipt$reason, "child_process_no_result")
 })
+
+spde_slope_gauge_nofit_v2_gate_fixture <- function(contract) {
+  v1 <- spde_slope_gauge_nofit_v1_forensic_fixture()
+  v3 <- spde_slope_gauge_nofit_fixture(contract)
+  root <- tempfile(
+    ".PAPER1_SPDE_SLOPE_GAUGE_NOFIT_GATE_V2-",
+    tmpdir = dirname(tempfile())
+  )
+  dir.create(root)
+  root <- normalizePath(root, mustWork = TRUE)
+  source_dir <- testthat::test_path("..", "..", "dev", "isdm-package-recovery")
+  source_paths <- c(
+    child_runner = file.path(
+      source_dir,
+      "run-paper1-spde-slope-gauge-nofit-v2.R"
+    ),
+    pure_contract = file.path(source_dir, "spde-slope-gauge-contract.R"),
+    nofit_contract = file.path(source_dir, "spde-slope-gauge-nofit-contract.R"),
+    historical_contract = v3$locked$historical_contract_path,
+    design = file.path(
+      source_dir,
+      "2026-08-15-paper1-spde-slope-gauge-coordinate-design.md"
+    ),
+    materializer = file.path(
+      source_dir,
+      "materialize-paper1-spde-slope-gauge-nofit-v2-gate.R"
+    )
+  )
+  dll <- tempfile("spde-slope-gauge-v2-dll-")
+  writeLines("synthetic V2 DLL", dll)
+  dll <- list(
+    path = normalizePath(dll),
+    md5 = unname(tools::md5sum(dll))[[1L]]
+  )
+  v1_verdict <- contract$spde_slope_gauge_nofit_v2_validate_v1_forensic(
+    v1$root,
+    v1$locked
+  )
+  v3_verdict <- contract$spde_slope_gauge_nofit_validate_predecessor_bytes(
+    v3$root,
+    v3$locked
+  )
+  parent_pid <- 31001L
+  child <- list(
+    schema = "PAPER1_SPDE_SLOPE_GAUGE_NOFIT_GATE_V2_CHILD_V1",
+    parent_pid = parent_pid,
+    child_pid = 31002L,
+    started_at = "2026-08-15 00:00:00 UTC",
+    deadline_s = 1800,
+    status = "SPDE_SLOPE_GAUGE_NOFIT_INFRASTRUCTURE_HOLD",
+    reason = "historical_v3_replay_failure",
+    stage = "historical",
+    predecessor = c(
+      v3_verdict[c("root", "commit", "receipt", "state_md5")],
+      list(
+        v1_forensic = v1_verdict[c(
+          "root",
+          "commit",
+          "receipt",
+          "files",
+          "status",
+          "terminal_reason"
+        )],
+        historical_reason = NA_character_,
+        post_replay_gc = FALSE
+      )
+    ),
+    dll = dll,
+    object = list(created = 0L, released = 0L),
+    nofit = NULL,
+    callback_audit = NULL,
+    error = "synthetic historical replay failure",
+    ended_at = "2026-08-15 00:00:01 UTC",
+    elapsed_s = 1
+  )
+  saveRDS(child, file.path(root, "no-fit-result.rds"))
+  stage <- file.path(
+    dirname(root),
+    ".PAPER1_SPDE_SLOPE_GAUGE_NOFIT_GATE_V2-synthetic"
+  )
+  parent_stage <- list(
+    schema = "PAPER1_SPDE_SLOPE_GAUGE_NOFIT_GATE_V2_PARENT_STAGE_V1",
+    gate_base = dirname(root),
+    stage = stage,
+    parent_pid = parent_pid,
+    child_output = file.path(stage, "child-result.rds")
+  )
+  writeLines("synthetic V2 child stdout", file.path(root, "child-stdout.txt"))
+  writeLines("synthetic V2 child stderr", file.path(root, "child-stderr.txt"))
+  process <- list(
+    schema = contract$.spde_slope_gauge_nofit_v2_process_schema(),
+    command = R.home("bin/Rscript"),
+    arguments = c(
+      "--vanilla",
+      source_paths[["child_runner"]],
+      "child",
+      parent_stage$child_output,
+      as.character(parent_pid)
+    ),
+    parent_pid = parent_pid,
+    child_pid = child$child_pid,
+    observed_child_pid = child$child_pid,
+    started_at = child$started_at,
+    ended_at = child$ended_at,
+    elapsed_s = 1,
+    deadline_s = 1800,
+    timed_out = FALSE,
+    exit_status = 0L,
+    signal = NA_character_,
+    stdout_md5 = unname(tools::md5sum(file.path(
+      root,
+      "child-stdout.txt"
+    ))[[1L]]),
+    stderr_md5 = unname(tools::md5sum(file.path(
+      root,
+      "child-stderr.txt"
+    ))[[1L]]),
+    child_result_md5 = unname(tools::md5sum(file.path(
+      root,
+      "no-fit-result.rds"
+    ))[[1L]])
+  )
+  saveRDS(process, file.path(root, "child-receipt.rds"))
+  file.copy(source_paths[["materializer"]], file.path(root, "materializer.R"))
+  saveRDS(list(session = "synthetic V2"), file.path(root, "session-info.rds"))
+  writeLines(
+    "synthetic V2 no-fit time estimate",
+    file.path(root, "time-estimate.md")
+  )
+  receipt <- list(
+    schema = contract$.spde_slope_gauge_nofit_v2_gate_schema(),
+    gate = "PAPER1_SPDE_SLOPE_GAUGE_NOFIT_GATE_V2",
+    root = root,
+    commit = "synthetic-v2-commit",
+    status = child$status,
+    reason = child$reason,
+    predecessors = contract$.spde_slope_gauge_nofit_v2_predecessor_projection(
+      v1_verdict,
+      v3_verdict
+    ),
+    sources = stats::setNames(
+      unname(tools::md5sum(source_paths)),
+      names(source_paths)
+    ),
+    dll = dll,
+    controls = contract$spde_slope_gauge_no_fit_controls(),
+    parent_stage = parent_stage,
+    process = process,
+    child_result_md5 = process$child_result_md5,
+    unvalidated_child_md5 = NA_character_,
+    seal_failure = NA_character_,
+    time_estimate_md5 = unname(tools::md5sum(file.path(
+      root,
+      "time-estimate.md"
+    ))[[1L]])
+  )
+  saveRDS(receipt, file.path(root, "root-receipt.rds"))
+  dir.create(file.path(root, ".attempt-started.claim"))
+  files <- contract$.spde_slope_gauge_nofit_v2_gate_files(TRUE)
+  declared <- setdiff(files, "file-manifest.csv")
+  utils::write.csv(
+    data.frame(
+      path = declared,
+      md5 = unname(tools::md5sum(file.path(root, declared)))
+    ),
+    file.path(root, "file-manifest.csv"),
+    row.names = FALSE,
+    quote = TRUE
+  )
+  list(
+    root = root,
+    source_paths = source_paths,
+    v1 = v1,
+    v3 = v3,
+    dll_path = dll$path,
+    child = child
+  )
+}
+
+spde_slope_gauge_nofit_v2_refresh_manifest <- function(contract, root) {
+  files <- contract$.spde_slope_gauge_nofit_v2_gate_files(
+    file.exists(file.path(root, "no-fit-result.rds")),
+    file.exists(file.path(root, "unvalidated-child-result.rds"))
+  )
+  declared <- setdiff(files, "file-manifest.csv")
+  utils::write.csv(
+    data.frame(
+      path = declared,
+      md5 = unname(tools::md5sum(file.path(root, declared)))
+    ),
+    file.path(root, "file-manifest.csv"),
+    row.names = FALSE,
+    quote = TRUE
+  )
+}
+
+spde_slope_gauge_nofit_v2_contract_materializer_env <- function() {
+  path <- testthat::test_path(
+    "..",
+    "..",
+    "dev",
+    "isdm-package-recovery",
+    "materialize-paper1-spde-slope-gauge-nofit-v2-gate.R"
+  )
+  old_source <- Sys.getenv(
+    "SPDE_SLOPE_GAUGE_NOFIT_V2_MATERIALIZER_SOURCE_ONLY",
+    unset = NA_character_
+  )
+  old_path <- Sys.getenv(
+    "SPDE_SLOPE_GAUGE_NOFIT_V2_MATERIALIZER_PATH",
+    unset = NA_character_
+  )
+  Sys.setenv(SPDE_SLOPE_GAUGE_NOFIT_V2_MATERIALIZER_SOURCE_ONLY = "1")
+  Sys.setenv(SPDE_SLOPE_GAUGE_NOFIT_V2_MATERIALIZER_PATH = path)
+  on.exit(
+    {
+      if (is.na(old_source)) {
+        Sys.unsetenv("SPDE_SLOPE_GAUGE_NOFIT_V2_MATERIALIZER_SOURCE_ONLY")
+      } else {
+        Sys.setenv(
+          SPDE_SLOPE_GAUGE_NOFIT_V2_MATERIALIZER_SOURCE_ONLY = old_source
+        )
+      }
+      if (is.na(old_path)) {
+        Sys.unsetenv("SPDE_SLOPE_GAUGE_NOFIT_V2_MATERIALIZER_PATH")
+      } else {
+        Sys.setenv(SPDE_SLOPE_GAUGE_NOFIT_V2_MATERIALIZER_PATH = old_path)
+      }
+    },
+    add = TRUE
+  )
+  env <- new.env(parent = globalenv())
+  source(path, local = env)
+  env
+}
+
+test_that("the V2 parent validator accepts a complete infrastructure packet", {
+  contract <- spde_slope_gauge_nofit_contract_env()
+  fixture <- spde_slope_gauge_nofit_v2_gate_fixture(contract)
+  on.exit(
+    unlink(
+      c(fixture$root, fixture$v1$root, fixture$v3$root),
+      recursive = TRUE
+    ),
+    add = TRUE
+  )
+  on.exit(
+    unlink(c(fixture$dll_path, fixture$v3$historical_contract)),
+    add = TRUE
+  )
+  verdict <- contract$spde_slope_gauge_nofit_v2_validate_gate_root(
+    fixture$root,
+    fixture$source_paths,
+    commit = "synthetic-v2-commit",
+    v1_locked = fixture$v1$locked,
+    v3_locked = fixture$v3$locked,
+    expected_root = fixture$root
+  )
+  expect_true(
+    verdict$valid,
+    info = paste(names(verdict$checks)[!verdict$checks], collapse = ", ")
+  )
+  expect_identical(verdict$reason, "v2_gate_root_valid")
+})
+
+test_that("the V2 parent validator accepts a fully validated sibling staging packet", {
+  contract <- spde_slope_gauge_nofit_contract_env()
+  fixture <- spde_slope_gauge_nofit_v2_gate_fixture(contract)
+  on.exit(
+    unlink(
+      c(fixture$root, fixture$v1$root, fixture$v3$root),
+      recursive = TRUE
+    ),
+    add = TRUE
+  )
+  on.exit(
+    unlink(c(fixture$dll_path, fixture$v3$historical_contract)),
+    add = TRUE
+  )
+  final_root <- file.path(
+    normalizePath(dirname(fixture$root), mustWork = TRUE),
+    "PAPER1_SPDE_SLOPE_GAUGE_NOFIT_GATE_V2-sealed"
+  )
+  receipt <- readRDS(file.path(fixture$root, "root-receipt.rds"))
+  receipt$root <- final_root
+  receipt$parent_stage$stage <- fixture$root
+  receipt$parent_stage$child_output <- file.path(
+    fixture$root,
+    "child-result.rds"
+  )
+  process <- readRDS(file.path(fixture$root, "child-receipt.rds"))
+  process$arguments[[4L]] <- receipt$parent_stage$child_output
+  saveRDS(process, file.path(fixture$root, "child-receipt.rds"))
+  receipt$process <- process
+  saveRDS(receipt, file.path(fixture$root, "root-receipt.rds"))
+  spde_slope_gauge_nofit_v2_refresh_manifest(contract, fixture$root)
+  verdict <- contract$spde_slope_gauge_nofit_v2_validate_gate_root(
+    fixture$root,
+    fixture$source_paths,
+    commit = "synthetic-v2-commit",
+    v1_locked = fixture$v1$locked,
+    v3_locked = fixture$v3$locked,
+    expected_root = final_root
+  )
+  expect_true(
+    verdict$valid,
+    info = paste(names(verdict$checks)[!verdict$checks], collapse = ", ")
+  )
+})
+
+test_that("the V2 parent validator seals a non-reporting child from observed process evidence", {
+  contract <- spde_slope_gauge_nofit_contract_env()
+  fixture <- spde_slope_gauge_nofit_v2_gate_fixture(contract)
+  on.exit(
+    unlink(
+      c(fixture$root, fixture$v1$root, fixture$v3$root),
+      recursive = TRUE
+    ),
+    add = TRUE
+  )
+  on.exit(
+    unlink(c(fixture$dll_path, fixture$v3$historical_contract)),
+    add = TRUE
+  )
+  unlink(file.path(fixture$root, "no-fit-result.rds"))
+  process <- readRDS(file.path(fixture$root, "child-receipt.rds"))
+  process$child_pid <- NA_integer_
+  process$exit_status <- 139L
+  process$child_result_md5 <- NA_character_
+  saveRDS(process, file.path(fixture$root, "child-receipt.rds"))
+  receipt <- readRDS(file.path(fixture$root, "root-receipt.rds"))
+  receipt$status <- "SPDE_SLOPE_GAUGE_NOFIT_INFRASTRUCTURE_HOLD"
+  receipt$reason <- "child_process_no_result"
+  receipt$dll <- list(path = NA_character_, md5 = NA_character_)
+  receipt$process <- process
+  receipt$child_result_md5 <- NA_character_
+  saveRDS(receipt, file.path(fixture$root, "root-receipt.rds"))
+  spde_slope_gauge_nofit_v2_refresh_manifest(contract, fixture$root)
+  verdict <- contract$spde_slope_gauge_nofit_v2_validate_gate_root(
+    fixture$root,
+    fixture$source_paths,
+    commit = "synthetic-v2-commit",
+    v1_locked = fixture$v1$locked,
+    v3_locked = fixture$v3$locked,
+    expected_root = fixture$root
+  )
+  expect_true(
+    verdict$valid,
+    info = paste(names(verdict$checks)[!verdict$checks], collapse = ", ")
+  )
+  expect_null(verdict$child)
+  expect_identical(verdict$receipt$reason, "child_process_no_result")
+})
+
+test_that("the V2 parent validator seals unvalidated child bytes as a forensic terminal", {
+  contract <- spde_slope_gauge_nofit_contract_env()
+  fixture <- spde_slope_gauge_nofit_v2_gate_fixture(contract)
+  on.exit(
+    unlink(
+      c(fixture$root, fixture$v1$root, fixture$v3$root),
+      recursive = TRUE
+    ),
+    add = TRUE
+  )
+  on.exit(
+    unlink(c(fixture$dll_path, fixture$v3$historical_contract)),
+    add = TRUE
+  )
+  validated <- file.path(fixture$root, "no-fit-result.rds")
+  unvalidated <- file.path(fixture$root, "unvalidated-child-result.rds")
+  expect_true(file.rename(validated, unvalidated))
+  process <- readRDS(file.path(fixture$root, "child-receipt.rds"))
+  process$child_pid <- NA_integer_
+  process$child_result_md5 <- NA_character_
+  saveRDS(process, file.path(fixture$root, "child-receipt.rds"))
+  receipt <- readRDS(file.path(fixture$root, "root-receipt.rds"))
+  receipt$status <- "SPDE_SLOPE_GAUGE_NOFIT_INFRASTRUCTURE_HOLD"
+  receipt$reason <- "parent_seal_failure"
+  receipt$dll <- list(path = NA_character_, md5 = NA_character_)
+  receipt$process <- process
+  receipt$child_result_md5 <- NA_character_
+  receipt$unvalidated_child_md5 <- unname(tools::md5sum(unvalidated))[[1L]]
+  receipt$seal_failure <- "synthetic parent receipt write failure"
+  saveRDS(receipt, file.path(fixture$root, "root-receipt.rds"))
+  spde_slope_gauge_nofit_v2_refresh_manifest(contract, fixture$root)
+  verdict <- contract$spde_slope_gauge_nofit_v2_validate_gate_root(
+    fixture$root,
+    fixture$source_paths,
+    commit = "synthetic-v2-commit",
+    v1_locked = fixture$v1$locked,
+    v3_locked = fixture$v3$locked,
+    expected_root = fixture$root
+  )
+  expect_true(
+    verdict$valid,
+    info = paste(names(verdict$checks)[!verdict$checks], collapse = ", ")
+  )
+  expect_null(verdict$child)
+  expect_identical(verdict$receipt$reason, "parent_seal_failure")
+})
+
+test_that("the V2 parent validator retains a no-result parent sealing failure", {
+  contract <- spde_slope_gauge_nofit_contract_env()
+  fixture <- spde_slope_gauge_nofit_v2_gate_fixture(contract)
+  on.exit(
+    unlink(
+      c(fixture$root, fixture$v1$root, fixture$v3$root),
+      recursive = TRUE
+    ),
+    add = TRUE
+  )
+  on.exit(
+    unlink(c(fixture$dll_path, fixture$v3$historical_contract)),
+    add = TRUE
+  )
+  unlink(file.path(fixture$root, "no-fit-result.rds"))
+  process <- readRDS(file.path(fixture$root, "child-receipt.rds"))
+  process$child_pid <- NA_integer_
+  process$observed_child_pid <- NA_integer_
+  process$exit_status <- NA_integer_
+  process$child_result_md5 <- NA_character_
+  saveRDS(process, file.path(fixture$root, "child-receipt.rds"))
+  receipt <- readRDS(file.path(fixture$root, "root-receipt.rds"))
+  receipt$status <- "SPDE_SLOPE_GAUGE_NOFIT_INFRASTRUCTURE_HOLD"
+  receipt$reason <- "parent_seal_failure"
+  receipt$dll <- list(path = NA_character_, md5 = NA_character_)
+  receipt$process <- process
+  receipt$child_result_md5 <- NA_character_
+  receipt$unvalidated_child_md5 <- NA_character_
+  receipt$seal_failure <- "synthetic receipt-write failure"
+  saveRDS(receipt, file.path(fixture$root, "root-receipt.rds"))
+  spde_slope_gauge_nofit_v2_refresh_manifest(contract, fixture$root)
+  verdict <- contract$spde_slope_gauge_nofit_v2_validate_gate_root(
+    fixture$root,
+    fixture$source_paths,
+    commit = "synthetic-v2-commit",
+    v1_locked = fixture$v1$locked,
+    v3_locked = fixture$v3$locked,
+    expected_root = fixture$root
+  )
+  expect_true(
+    verdict$valid,
+    info = paste(names(verdict$checks)[!verdict$checks], collapse = ", ")
+  )
+  expect_null(verdict$child)
+  expect_identical(verdict$receipt$reason, "parent_seal_failure")
+  expect_identical(
+    verdict$receipt$seal_failure,
+    "synthetic receipt-write failure"
+  )
+})
+
+test_that("the production V2 forensic sealer satisfies the real validator", {
+  contract <- spde_slope_gauge_nofit_contract_env()
+  materializer <- spde_slope_gauge_nofit_v2_contract_materializer_env()
+  seal_one <- function(retain_child_bytes) {
+    fixture <- spde_slope_gauge_nofit_v2_gate_fixture(contract)
+    on.exit(
+      unlink(
+        c(fixture$root, fixture$v1$root, fixture$v3$root),
+        recursive = TRUE
+      ),
+      add = TRUE
+    )
+    on.exit(
+      unlink(c(fixture$dll_path, fixture$v3$historical_contract)),
+      add = TRUE
+    )
+    if (!isTRUE(retain_child_bytes)) {
+      unlink(file.path(fixture$root, "no-fit-result.rds"))
+    }
+    receipt <- readRDS(file.path(fixture$root, "root-receipt.rds"))
+    token <- receipt$parent_stage
+    v1 <- contract$spde_slope_gauge_nofit_v2_validate_v1_forensic(
+      fixture$v1$root,
+      fixture$v1$locked
+    )
+    v3 <- contract$spde_slope_gauge_nofit_validate_predecessor_bytes(
+      fixture$v3$root,
+      fixture$v3$locked
+    )
+    sealed <- materializer$.spde_slope_gauge_nofit_v2_forensic_seal(
+      fixture$root,
+      fixture$root,
+      fixture$source_paths,
+      commit = "synthetic-v2-commit",
+      v1 = v1,
+      v3 = v3,
+      token = token,
+      child_run = list(
+        process = NULL,
+        child = NULL,
+        output = token$child_output
+      ),
+      seal_failure = if (isTRUE(retain_child_bytes)) {
+        "synthetic post-rename retained-child failure"
+      } else {
+        "synthetic post-rename no-child failure"
+      },
+      validator = contract$spde_slope_gauge_nofit_v2_validate_gate_root,
+      v1_locked = fixture$v1$locked,
+      v3_locked = fixture$v3$locked
+    )
+    expect_true(
+      sealed$valid,
+      info = paste(names(sealed$checks)[!sealed$checks], collapse = ", ")
+    )
+    expect_identical(sealed$receipt$reason, "parent_seal_failure")
+    expect_identical(
+      file.exists(file.path(fixture$root, "unvalidated-child-result.rds")),
+      isTRUE(retain_child_bytes)
+    )
+  }
+  seal_one(FALSE)
+  seal_one(TRUE)
+})
+
+test_that("the V2 parent validator rejects coordinated source and predecessor tampering", {
+  contract <- spde_slope_gauge_nofit_contract_env()
+  fixture <- spde_slope_gauge_nofit_v2_gate_fixture(contract)
+  on.exit(
+    unlink(
+      c(fixture$root, fixture$v1$root, fixture$v3$root),
+      recursive = TRUE
+    ),
+    add = TRUE
+  )
+  on.exit(
+    unlink(c(fixture$dll_path, fixture$v3$historical_contract)),
+    add = TRUE
+  )
+  validate <- function() {
+    contract$spde_slope_gauge_nofit_v2_validate_gate_root(
+      fixture$root,
+      fixture$source_paths,
+      commit = "synthetic-v2-commit",
+      v1_locked = fixture$v1$locked,
+      v3_locked = fixture$v3$locked,
+      expected_root = fixture$root
+    )
+  }
+  receipt <- readRDS(file.path(fixture$root, "root-receipt.rds"))
+  receipt$predecessors$v1_forensic$receipt <- list(forged = TRUE)
+  saveRDS(receipt, file.path(fixture$root, "root-receipt.rds"))
+  spde_slope_gauge_nofit_v2_refresh_manifest(contract, fixture$root)
+  expect_false(validate()$valid)
+
+  fixture <- spde_slope_gauge_nofit_v2_gate_fixture(contract)
+  on.exit(
+    unlink(
+      c(fixture$root, fixture$v1$root, fixture$v3$root),
+      recursive = TRUE
+    ),
+    add = TRUE
+  )
+  on.exit(
+    unlink(c(fixture$dll_path, fixture$v3$historical_contract)),
+    add = TRUE
+  )
+  writeLines("tampered materializer", file.path(fixture$root, "materializer.R"))
+  spde_slope_gauge_nofit_v2_refresh_manifest(contract, fixture$root)
+  expect_false(validate()$valid)
+})

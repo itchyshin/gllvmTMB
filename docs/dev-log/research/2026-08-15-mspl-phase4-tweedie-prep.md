@@ -391,7 +391,7 @@ This note does **not** claim:
 - **No C++.** `git diff -- src/` must stay empty on this arc.
 - **No NEWS covered.** No validation-register promotion.
 - **No repo-root `LOOP/`.** Lane kit:
-  `docs/dev-log/lanes/cursor-mspl-point-continue/LOOP/`.
+  `docs/dev-log/lanes/cursor-mspl-phase4-tweedie/LOOP/`.
 - **No family transfer.** Poisson Phase 4 is a sibling prep, not
   a licence.
 

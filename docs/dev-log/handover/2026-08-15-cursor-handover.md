@@ -30,7 +30,7 @@ You are Cursor. Reconcile with live `git` before any mutation.
 ## OWED next (human / new GOAL)
 
 1. Review/merge https://github.com/itchyshin/gllvmTMB/pull/971 when CI green.
-2. Optional: close #970 as superseded by #971.
+2. #970 is already on `main` (historical opener) — no close needed.
 3. **New G0** required for: Poisson admit, Gaussian SE, Totoro campaign, NEWS covered.
 
 ## HARD STOP (unchanged)

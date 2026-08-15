@@ -193,3 +193,58 @@ papers stated in expected-detections units.
 **Next action if approved:** implement `0_prepare_bundle.R` + `1_run_frontier.R`,
 ship to Totoro, run the pre-run test, and post its results for the launch
 decision.
+
+---
+
+## Amendment A1 (2026-08-15, post-campaign): the replication axis
+
+**Trigger.**  The effort campaign measured E*_pd = 1.85 [1.43, 3.17] but found
+the amplitude frontier unreached at every effort (median relative error 0.58
+at E = 16; PD plateau ~0.68).  The standing diagnosis says spatial replication
+is the binding constraint.  This amendment measures that axis.  Launch
+pre-approved by the maintainer ("go -- launch the replication-axis campaign");
+the pre-run smoke gate is retained as an internal stop condition.
+
+**A1-D (DGP change -- surgical).**  Replication is varied by shrinking the
+Matern practical range on the FROZEN 360-cell grid and 118-node mesh -- no new
+geometry.  For range r: kappa(r) = sqrt(8)/r, c_ref(r) = sqrt(4 pi) kappa(r).
+Because c_ref normalises the node field to ~unit marginal variance, the
+predictor-scale truth (v_eco, v_bias, psi, beta, gamma) is IDENTICAL across
+levels; only the estimand vector lambda(r) = c_ref(r) v and q(r) = log kappa(r)
+rescale, both known exactly.  Factor table:
+
+| r (range) | patches/side (unit domain) | kappa | q_true | ||lambda_bias(r)|| |
+| --- | --- | --- | --- | --- |
+| 0.22 (anchor) | 4.5 | 12.856 | 2.5538 | 16.148 |
+| 0.165 | 6.1 | 17.141 | 2.8414 | 21.530 |
+| 0.132 | 7.6 | 21.427 | 3.0646 | 26.913 |
+| 0.11  | 9.1 | 25.712 | 3.2470 | 32.295 |
+
+**Ceiling stated honestly:** mesh node spacing is ~0.11, so r = 0.11 is the
+floor at which the SPDE representation remains marginally adequate; a stronger
+push needs a denser mesh (new geometry -- the deferred robustness arm).  The
+axis therefore spans a factor ~2 in patches/side (~4x in patches).
+
+**A1 factors.**  r in {0.22, 0.165, 0.132, 0.11} x E in {1, 2, 4} (bracketing
+E*_pd) x 200 seeds = **2,400 fits**, ~7 core-h at the measured ~10.5 s/fit,
+~8-10 min wall at 120 workers.  Seeds: base = 20260816 + 100000*r_index +
+10000*E_index + rep (a stream disjoint from the effort campaign's).
+
+**A1-E/P.**  Estimands and metrics as in E/P above, computed against the
+per-level truth lambda(r), q(r); relative amplitude error and direction cosine
+are invariant to the c_ref rescaling by construction.  Primary readout: the
+E*_pd crossing and median amplitude error **as functions of r** -- does the
+frontier move with replication at fixed effort?  Same MCSE budget (200/cell).
+
+**A1 validation gate (new fixture levels have no sealed reference).**  At the
+anchor r = 0.22 the G1 byte gate applies unchanged.  At each new r the worker
+must verify, before any fit: (i) chol succeeds on Q(r) built from the sealed
+spde_M0/M1/M2; (ii) the unit-field marginal SD across nodes is within [0.8,
+1.25] of 1 (the c_ref normalisation check; boundary nodes excluded is not
+attempted -- the tolerance absorbs them); (iii) the per-level truth vector is
+recomputed from constants, never transcribed.  Gate failure at any level
+aborts that level, not the campaign.
+
+**A1 kill rules.**  As the parent design, plus: if the anchor level's E in
+{1, 2, 4} cells fail to reproduce the effort campaign's corresponding
+pd-rates within 3 MCSE, stop -- the pipeline has drifted.

@@ -1,4 +1,4 @@
-# Design 89 — Separation as estimability: what Design 88 discharges, and the programme that remains
+# Design 117 — Separation as estimability: what Design 88 discharges, and the programme that remains
 
 **Maintained by:** Fisher (inference / estimability), Warton (ecological statistics),
 Curie (validation), Jason (literature scout).
@@ -8,13 +8,21 @@ landed here 2026-08-10. Decides the **research** arcs; it does **not** re-specif
 estimator, which Design 88 owns.
 
 **Numbering note — read this, it is the point.** The vault plan said "copy into the repo as
-`docs/design/NN-separation.md`". The next free slot on `main` looked like **88**. It is not:
-`88-binary-mspl-estimator.md` is already allocated on the live branch
-`codex/lane-b-mspl-reconcile-951` ([PR #952](https://github.com/itchyshin/gllvmTMB/pull/952),
-open). Taking 88 would have produced two different Design 88s, each internally consistent and
-invisible from inside its own lane — the same failure class as the two live `D-124` entries on
-2026-08-05. **A design-doc number is a shared sequential ledger: read-then-append is a race,
-so claim the number by committing it.** This document is therefore Design **89**.
+`docs/design/NN-separation.md`". `main`'s highest was **87**, so **88** looked free. It was not:
+`88-binary-mspl-estimator.md` was already allocated on the live branch
+`codex/lane-b-mspl-reconcile-951` ([PR #952](https://github.com/itchyshin/gllvmTMB/pull/952)).
+This document was then numbered **89** — **and that was wrong too**: `89-upstream-reference-eva.md`
+exists on another ref (`8f8251a4`). It is now Design **117**.
+
+**The general fact, measured 2026-08-10:** `main` held slots up to 87, but across **all refs** the
+highest is **116**, and **15 numbers are already duplicated** (2, 3, 4, 59, 66, 73, 74, 86, 87, 88,
+89, 94, 109, 110, 111 — slot 86 alone has **twelve** distinct files). **Reading `main` under-counts
+the ledger by construction**, because a slot claimed on a branch is invisible from the checkout.
+
+**A design-doc number is a shared sequential ledger, exactly like `DECISIONS.md`'s `D-` numbers:
+read-then-append is a race, not an allocation — claim the number by committing it.** This is now
+mechanised: `tools/lane_preflight.sh` scans **all refs plus untracked files** and prints the true
+next-free slot. Run it before allocating a number; do not read the directory listing and guess.
 
 **Lane note (D-87/D-88).** PR #952 is a **live Codex lane** on this subject. This document
 deliberately touches **no file that PR touches** — it is additive, and it is written to

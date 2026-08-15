@@ -13,10 +13,10 @@ ARCS DONE (verified):
 - A7 Rose PASS closeout
 - A11 morning brief written
 
-ARC IN PROGRESS: A8 open PR · A9 merge #978 · A10 merge SE PR
+ARC IN PROGRESS: A8 **#979 opened** · A9 merge #978 · A10 merge #979
 
-NEXT: push this branch; squash-merge #978 when CI green; open/retarget
-SE PR onto `main`; squash-merge SE PR when CI green.
+NEXT: squash-merge #978 when CI green; rebase/retarget #979 onto
+`main`; squash-merge #979 when CI green.
 
 OPEN GATES (need human at 05:00 only if CI still red): none for
 reversible work. Do not merge #972–#976. Do not admit.

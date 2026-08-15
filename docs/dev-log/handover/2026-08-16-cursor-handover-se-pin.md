@@ -49,10 +49,9 @@ Poisson registry stays `planned`.
 
 ## PR URL
 
-SE-pin PR is opened from `cursor/mspl-se-feasibility-pin` (see the
-GitHub link in the chat / `gh pr view` if this file is read after
-push). #978 remains
-https://github.com/itchyshin/gllvmTMB/pull/978
+- SE-pin: https://github.com/itchyshin/gllvmTMB/pull/979
+  (stacked on #978; retarget to `main` after #978 squash-merges)
+- Tapes: https://github.com/itchyshin/gllvmTMB/pull/978
 
 ## What Shinichi should do at 05:00
 

@@ -130,8 +130,12 @@ write_inversion_manifest <- function(root, manifest) {
     stringsAsFactors = FALSE
   )))
   atomic_write_tsv(array_map, file.path(root, "array-map.tsv"))
-  atomic_write_tsv(array_map[array_map$shard_id == 1L, , drop = FALSE],
-    file.path(root, "pre-run-array-map.tsv"))
+  ## The pre-run is its own twelve-task scheduler array.  Its task IDs must
+  ## remain compact (1:12): production task IDs span 1:12000 and exceed the
+  ## MaxArraySize on some DRAC clusters.
+  pre_run_map <- array_map[array_map$shard_id == 1L, , drop = FALSE]
+  pre_run_map$array_index <- seq_len(nrow(pre_run_map))
+  atomic_write_tsv(pre_run_map, file.path(root, "pre-run-array-map.tsv"))
   invisible(manifest)
 }
 

@@ -16,9 +16,52 @@
   )
 }
 
+## Identity is link_id 0 for gaussian; Bernoulli reuses 0 as logit.
+.gllvmTMB_mspl_family_link_name <- function(family_id, link_id) {
+  if (identical(as.integer(family_id[[1L]]), 0L)) {
+    if (!identical(as.integer(link_id[[1L]]), 0L)) {
+      return(NA_character_)
+    }
+    return("identity")
+  }
+  .gllvmTMB_mspl_link_name(link_id)
+}
+
+## ML Gram diagonal S_jj = N^{-1} sum_i (y_{it} - mean_t)^2 for each trait.
+## Trait order follows sort(unique(trait_id)) as integers 1..p.
+.gllvmTMB_mspl_S_diag <- function(y, trait_id, unit_id) {
+  y <- as.numeric(y)
+  trait_id <- as.integer(trait_id)
+  unit_id <- as.integer(unit_id)
+  traits <- sort(unique(trait_id))
+  N <- length(unique(unit_id))
+  if (!is.finite(N) || N < 2L) {
+    .gllvmTMB_mspl_abort(
+      "Gaussian LA-MSPL requires at least two units to form S."
+    )
+  }
+  vapply(traits, function(t) {
+    yt <- y[trait_id == t]
+    if (length(yt) != N) {
+      .gllvmTMB_mspl_abort(c(
+        "Gaussian LA-MSPL requires a complete balanced trait x unit grid.",
+        "x" = "Trait {.val {t}} has {length(yt)} rows; expected {N} units."
+      ))
+    }
+    sjj <- mean((yt - mean(yt))^2)
+    if (!is.finite(sjj) || !(sjj > 0)) {
+      .gllvmTMB_mspl_abort(c(
+        "Gaussian LA-MSPL requires strictly positive trait sample variances.",
+        "x" = "Trait {.val {t}} has S_jj = {.val {sjj}}."
+      ))
+    }
+    sjj
+  }, numeric(1))
+}
+
 .gllvmTMB_mspl_registry <- function() {
   links <- c("logit", "probit", "cloglog")
-  admitted <- rbind(
+  admitted_binom <- rbind(
     expand.grid(
       family = "binomial",
       link = links,
@@ -41,25 +84,31 @@
       stringsAsFactors = FALSE
     )
   )
-  admitted$status <- "admitted"
-  admitted$evidence <- "partial_b2_incomplete"
-  admitted$notes <- "Design 88 live surface; B2 shards incomplete; not a covered claim"
-  admitted$cell_id <- .gllvmTMB_mspl_registry_cell_id(
-    admitted$family, admitted$link, admitted$structure, admitted$q
+  admitted_binom$status <- "admitted"
+  admitted_binom$evidence <- "partial_b2_incomplete"
+  admitted_binom$notes <- "Design 88 live surface; B2 shards incomplete; not a covered claim"
+  admitted_binom$cell_id <- .gllvmTMB_mspl_registry_cell_id(
+    admitted_binom$family, admitted_binom$link, admitted_binom$structure,
+    admitted_binom$q
   )
 
-  planned <- data.frame(
+  admitted_gauss <- data.frame(
     family = "gaussian",
     link = "identity",
     structure = "ordinary",
     q = c(1L, 2L),
-    status = "planned",
-    evidence = "none",
-    notes = "Phase 3 Heywood route; not admitted",
+    status = "admitted",
+    evidence = "oracle_local",
+    notes = paste(
+      "Phase 3 ordinary FA pick C (pinned sigma_eps); Hirose atom;",
+      "experimental point only (se=FALSE smoke); not a covered campaign;",
+      "SE/intervals PROTECTED on Codex Lane B"
+    ),
     stringsAsFactors = FALSE
   )
-  planned$cell_id <- .gllvmTMB_mspl_registry_cell_id(
-    planned$family, planned$link, planned$structure, planned$q
+  admitted_gauss$cell_id <- .gllvmTMB_mspl_registry_cell_id(
+    admitted_gauss$family, admitted_gauss$link, admitted_gauss$structure,
+    admitted_gauss$q
   )
 
   excluded <- data.frame(
@@ -101,7 +150,7 @@
     sep = ":"
   )
 
-  rows <- rbind(admitted, planned, excluded)
+  rows <- rbind(admitted_binom, admitted_gauss, excluded)
   rows[order(rows$status, rows$family, rows$structure, rows$link, rows$q), ]
 }
 

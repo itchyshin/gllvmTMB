@@ -289,6 +289,29 @@ Type gll_mspl_bernoulli_loglik(Type y, Type eta, int link_id)
   return y * log_p1 + (Type(1.0) - y) * log_p0;
 }
 
+// Gaussian FA Hirose atom (Sterzinger–Kosmidis–Moustaki 2026 (4.1)):
+// sum_j S_jj / psi_j. Primary soft atom for Gaussian LA-MSPL Heywood.
+// Do NOT reuse Bernoulli V_loading here — that atom is inert in psi.
+template <class Type>
+Type gll_mspl_hirose_atom(const vector<Type> &S_diag, const vector<Type> &psi)
+{
+  if (S_diag.size() != psi.size())
+    error("gllvmTMB_multi: MSPL Hirose S_diag and psi length mismatch");
+  Type ans = Type(0.0);
+  for (int j = 0; j < S_diag.size(); ++j) {
+    Type sjj = S_diag(j);
+    Type psi_j = psi(j);
+    double sjj_d = asDouble(sjj);
+    double psi_d = asDouble(psi_j);
+    if (!R_FINITE(sjj_d) || !(sjj_d > 0.0))
+      error("gllvmTMB_multi: MSPL Hirose requires finite S_jj > 0");
+    if (!R_FINITE(psi_d) || !(psi_d > 0.0))
+      error("gllvmTMB_multi: MSPL Hirose requires psi_j > 0");
+    ans += sjj / psi_j;
+  }
+  return ans;
+}
+
 template <class Type>
 Type gll_mspl_row_radial_penalty(const matrix<Type> &Lambda, int rank)
 {
@@ -570,10 +593,14 @@ Type objective_function<Type>::operator()()
   // data-constant branch below never tapes the guarded Jeffreys atom.
   DATA_INTEGER(estimator_id);      // 0 = ML, 1 = LA-MSPL, 2 = internal penalty-off LA-MSPL kernel
   DATA_MATRIX(X_mspl);             // resolved free fixed design; N_eff x p_beta
-  DATA_INTEGER(N_eff);             // complete contributing Bernoulli rows
+  DATA_INTEGER(N_eff);             // complete contributing Bernoulli rows (or stacked Gaussian rows)
   DATA_INTEGER(p_free);            // independent penalized outer coordinates
   DATA_SCALAR(spde_r0);            // positive spatial reference distance; 1 for ML
   DATA_IVECTOR(mspl_tau_representative); // 0-based free tau representatives
+  // Gaussian ordinary LA-MSPL (pick C / Hirose): ML Gram diagonal S_jj and
+  // unit count N for c_N = sqrt(2/N). Bernoulli / ML supply length-1 stubs.
+  DATA_VECTOR(mspl_S_diag);
+  DATA_INTEGER(mspl_N_units);
 
   // ordinal_probit (fid 14): per-trait cutpoint metadata.
   // n_ordinal_cuts_per_trait(t)  = K_t - 2, the number of FREE cutpoints
@@ -1028,6 +1055,7 @@ Type objective_function<Type>::operator()()
   Type mspl_cloglog_likelihood_tail_extension_count = Type(0.0);
   Type mspl_cloglog_weight_tail_extension_count = Type(0.0);
   int mspl_structure_id_int = 0; // 1 ordinary, 2 spatial_indep, 3 spatial_latent
+  int mspl_family_mode = 0; // 0 unused, 1 Bernoulli, 2 Gaussian FA (pick C)
   if (estimator_id != 0 && estimator_id != 1 && estimator_id != 2)
     error("gllvmTMB_multi: estimator_id must be 0 (ML), 1 (MSPL), or 2 (internal penalty-off MSPL)");
 
@@ -1035,16 +1063,35 @@ Type objective_function<Type>::operator()()
   // before MakeADFun(), but unsupported structures must not acquire an MSPL
   // objective merely by bypassing that public fence.
   if (estimator_id != 0) {
+    int common_family = family_id_vec(0);
+    for (int o = 0; o < y.size(); ++o) {
+      if (family_id_vec(o) != common_family)
+        error("gllvmTMB_multi: MSPL requires a single response family");
+    }
+    bool mspl_gaussian = (common_family == 0);
+    bool mspl_bernoulli = (common_family == 1);
+    if (!mspl_gaussian && !mspl_bernoulli)
+      error("gllvmTMB_multi: MSPL admits only gaussian identity or Bernoulli families");
+    mspl_family_mode = mspl_gaussian ? 2 : 1;
+
     bool mspl_ordinary = (use_rr_B == 1 && use_spde == 0);
     bool mspl_spatial_indep = (use_rr_B == 0 && use_spde == 1 &&
                                spde_lv_k == 0 && spde_lv_unique == 0);
     bool mspl_spatial_latent = (use_rr_B == 0 && use_spde == 1 &&
                                 spde_lv_k >= 1 && spde_lv_k <= 2 &&
                                 spde_lv_k <= n_traits && spde_lv_unique == 0);
-    int n_admitted = int(mspl_ordinary) + int(mspl_spatial_indep) +
-                     int(mspl_spatial_latent);
-    if (n_admitted != 1)
-      error("gllvmTMB_multi: MSPL requires exactly one ordinary latent, spatial_indep, or spatial_latent(q=1:2) block");
+    if (mspl_gaussian) {
+      // Gaussian LA-MSPL: ordinary latent + free Psi only (pick C).
+      if (!mspl_ordinary)
+        error("gllvmTMB_multi: Gaussian MSPL admits only ordinary latent(unique=TRUE)");
+      if (mspl_spatial_indep || mspl_spatial_latent)
+        error("gllvmTMB_multi: Gaussian MSPL does not admit spatial structures yet");
+    } else {
+      int n_admitted = int(mspl_ordinary) + int(mspl_spatial_indep) +
+                       int(mspl_spatial_latent);
+      if (n_admitted != 1)
+        error("gllvmTMB_multi: MSPL requires exactly one ordinary latent, spatial_indep, or spatial_latent(q=1:2) block");
+    }
     if (mspl_ordinary && (d_B < 1 || d_B > 2 || d_B > n_traits))
       error("gllvmTMB_multi: ordinary MSPL latent rank q must be 1 or 2");
     mspl_structure_id_int = mspl_ordinary ? 1 :
@@ -1059,14 +1106,32 @@ Type objective_function<Type>::operator()()
         use_phylo_latent_slope == 1 || n_kernel_tiers != 0 ||
         use_re_int == 1 || has_mi == 1 || use_aghq != 0)
       error("gllvmTMB_multi: MSPL admits no additional random or structured block");
-    if (!mspl_ordinary && use_diag_B == 1)
-      error("gllvmTMB_multi: spatial MSPL does not admit an ordinary Psi block");
-    if (mspl_ordinary && use_diag_B == 1) {
+    if (mspl_gaussian) {
+      if (use_diag_B != 1)
+        error("gllvmTMB_multi: Gaussian MSPL requires free unique Psi (latent unique=TRUE)");
       if (diag_B_skip.size() != n_traits)
         error("gllvmTMB_multi: MSPL diag_B_skip has wrong length");
       for (int t = 0; t < n_traits; ++t)
-        if (diag_B_skip(t) != 1)
-          error("gllvmTMB_multi: MSPL does not admit free Bernoulli Psi coordinates");
+        if (diag_B_skip(t) != 0)
+          error("gllvmTMB_multi: Gaussian MSPL requires every Psi coordinate free");
+      if (mspl_S_diag.size() != n_traits)
+        error("gllvmTMB_multi: Gaussian MSPL requires mspl_S_diag length n_traits");
+      if (mspl_N_units < 2)
+        error("gllvmTMB_multi: Gaussian MSPL requires mspl_N_units >= 2");
+    } else {
+      if (!mspl_ordinary && use_diag_B == 1)
+        error("gllvmTMB_multi: spatial MSPL does not admit an ordinary Psi block");
+      if (mspl_ordinary && use_diag_B == 1) {
+        if (diag_B_skip.size() != n_traits)
+          error("gllvmTMB_multi: MSPL diag_B_skip has wrong length");
+        for (int t = 0; t < n_traits; ++t)
+          if (diag_B_skip(t) != 1)
+            error("gllvmTMB_multi: MSPL does not admit free Bernoulli Psi coordinates");
+      }
+      if (mspl_S_diag.size() < 1)
+        error("gllvmTMB_multi: Bernoulli MSPL requires an mspl_S_diag stub");
+      if (mspl_N_units != 0)
+        error("gllvmTMB_multi: Bernoulli MSPL leaves mspl_N_units at 0");
     }
     if (!mspl_ordinary) {
       double r0 = asDouble(spde_r0);
@@ -1086,9 +1151,11 @@ Type objective_function<Type>::operator()()
       }
     }
     int expected_p_free = X_mspl.cols();
-    if (mspl_ordinary)
+    if (mspl_ordinary) {
       expected_p_free += theta_rr_B.size();
-    else if (mspl_spatial_indep)
+      if (mspl_gaussian)
+        expected_p_free += theta_diag_B.size();
+    } else if (mspl_spatial_indep)
       expected_p_free += mspl_tau_representative.size() + 1;
     else
       expected_p_free += theta_rr_spde_lv.size() + 1;
@@ -1096,21 +1163,38 @@ Type objective_function<Type>::operator()()
         X_mspl.cols() < 1 || p_free != expected_p_free)
       error("gllvmTMB_multi: invalid MSPL N_eff, p_free, or resolved fixed design");
     int common_link = link_id_vec(0);
-    if (common_link < 0 || common_link > 2)
-      error("gllvmTMB_multi: MSPL link must be logit, probit, or cloglog");
-    for (int o = 0; o < y.size(); ++o) {
-      double yo = asDouble(y(o));
-      double no = asDouble(n_trials(o));
-      double wo = asDouble(weights_i(o));
-      double oo = asDouble(offset_vec(o));
-      if (is_y_observed(o) != 1 || family_id_vec(o) != 1 ||
-          link_id_vec(o) != common_link || no != 1.0 ||
-          (yo != 0.0 && yo != 1.0) || wo != 1.0 ||
-          !R_FINITE(oo) || oo != 0.0)
-        error("gllvmTMB_multi: MSPL requires complete unweighted single-trial Bernoulli rows with one common link and all-zero offsets");
-      for (int j = 0; j < X_mspl.cols(); ++j)
-        if (!R_FINITE(asDouble(X_mspl(o, j))))
-          error("gllvmTMB_multi: MSPL resolved fixed design must be finite");
+    if (mspl_gaussian) {
+      if (common_link != 0)
+        error("gllvmTMB_multi: Gaussian MSPL requires the identity link");
+      for (int o = 0; o < y.size(); ++o) {
+        double yo = asDouble(y(o));
+        double wo = asDouble(weights_i(o));
+        double oo = asDouble(offset_vec(o));
+        if (is_y_observed(o) != 1 || family_id_vec(o) != 0 ||
+            link_id_vec(o) != 0 || wo != 1.0 ||
+            !R_FINITE(yo) || !R_FINITE(oo) || oo != 0.0)
+          error("gllvmTMB_multi: Gaussian MSPL requires complete unweighted identity rows with all-zero offsets");
+        for (int j = 0; j < X_mspl.cols(); ++j)
+          if (!R_FINITE(asDouble(X_mspl(o, j))))
+            error("gllvmTMB_multi: MSPL resolved fixed design must be finite");
+      }
+    } else {
+      if (common_link < 0 || common_link > 2)
+        error("gllvmTMB_multi: MSPL link must be logit, probit, or cloglog");
+      for (int o = 0; o < y.size(); ++o) {
+        double yo = asDouble(y(o));
+        double no = asDouble(n_trials(o));
+        double wo = asDouble(weights_i(o));
+        double oo = asDouble(offset_vec(o));
+        if (is_y_observed(o) != 1 || family_id_vec(o) != 1 ||
+            link_id_vec(o) != common_link || no != 1.0 ||
+            (yo != 0.0 && yo != 1.0) || wo != 1.0 ||
+            !R_FINITE(oo) || oo != 0.0)
+          error("gllvmTMB_multi: MSPL requires complete unweighted single-trial Bernoulli rows with one common link and all-zero offsets");
+        for (int j = 0; j < X_mspl.cols(); ++j)
+          if (!R_FINITE(asDouble(X_mspl(o, j))))
+            error("gllvmTMB_multi: MSPL resolved fixed design must be finite");
+      }
     }
   }
 
@@ -3029,22 +3113,28 @@ Type objective_function<Type>::operator()()
     ADREPORT(beta_mi);
   }
 
-  // -------- Lane B Bernoulli LA-MSPL outer objective --------------------
+  // -------- Lane B LA-MSPL outer objective --------------------------------
   // TMB adds the Laplace log determinant outside this joint template. These
   // penalties contain outer parameters only, so adding them here leaves the
-  // conditional z_B mode and its random Hessian unchanged.
+  // conditional random mode and its Hessian unchanged.
+  // Bernoulli: Jeffreys + V_loading (+ spatial covariance terms).
+  // Gaussian ordinary (pick C): Hirose atom only — c_N * sum_j S_jj / psi_j
+  // with psi_j = sd_B(j)^2 and c_N = sqrt(2/N). No Jeffreys, no V_loading.
   Type joint_nll_unpenalized = nll;
   Type mspl_c_n = Type(0.0);
   Type mspl_logdet_information = Type(0.0);
   Type mspl_V_loading = Type(0.0);
   Type mspl_V_covariance = Type(0.0);
+  Type mspl_V_hirose = Type(0.0);
   Type mspl_jeffreys_nll = Type(0.0);
   Type mspl_loading_nll = Type(0.0);
   Type mspl_covariance_nll = Type(0.0);
+  Type mspl_hirose_nll = Type(0.0);
   Type mspl_private_ridge_nll = Type(0.0);
   Type mspl_status = Type(0.0);       // 0 = ML/not requested, 1 = MSPL active
   Type mspl_atom_status = Type(-1.0); // frozen V8Status; -1 = not requested
   Type mspl_structure_id = Type(0.0); // 1 ordinary, 2 spatial_indep, 3 spatial_latent
+  Type mspl_family_mode_rep = Type(0.0); // 1 Bernoulli, 2 Gaussian
   Type mspl_log_range_ratio = Type(0.0);
   vector<Type> mspl_log_sigma_spde_reference(n_traits);
   mspl_log_sigma_spde_reference.setZero();
@@ -3053,53 +3143,66 @@ Type objective_function<Type>::operator()()
 
   if (estimator_id == 1) {
     mspl_status = Type(1.0);
-    mspl_c_n = Type(2.0) * sqrt(Type(p_free) / Type(N_eff));
-    vector<Type> mspl_logw(N_eff);
-    int link_id = link_id_vec(0);
-    for (int o = 0; o < N_eff; ++o) {
-      Type eta_fixed_offset = eta_fix(o) + offset_vec(o);
-      mspl_logw(o) = gll_mspl_log_weight(eta_fixed_offset, link_id);
-      if (link_id == 2) {
-        mspl_cloglog_weight_tail_extension_count += CppAD::CondExpGt(
-          eta_fixed_offset, Type(690.0), Type(1.0), Type(0.0));
-      }
-    }
-    vector<Type> atom = gll_mspl_atomic_half_logdet(mspl_logw, X_mspl);
-    Type mspl_half_logdet_information = atom(0);
-    mspl_atom_status = atom(1);
-    mspl_logdet_information = Type(2.0) * mspl_half_logdet_information;
     mspl_structure_id = Type(mspl_structure_id_int);
-    if (mspl_structure_id_int == 1) {
-      mspl_V_loading = gll_mspl_row_radial_penalty(Lambda_B, d_B);
+    mspl_family_mode_rep = Type(mspl_family_mode);
+    if (mspl_family_mode == 2) {
+      // Pick C: psi_j = sd_B(j)^2 = exp(2 * theta_diag_B(j)).
+      vector<Type> psi(n_traits);
+      for (int t = 0; t < n_traits; ++t)
+        psi(t) = exp(Type(2.0) * theta_diag_B(t));
+      mspl_V_hirose = gll_mspl_hirose_atom(mspl_S_diag, psi);
+      mspl_c_n = sqrt(Type(2.0) / Type(mspl_N_units));
+      mspl_hirose_nll = mspl_c_n * mspl_V_hirose;
+      mspl_atom_status = Type(0.0);
+      nll += mspl_hirose_nll;
     } else {
-      Type half_log_4pi = Type(0.5) * log(Type(4.0) * M_PI);
-      mspl_log_range_ratio = Type(0.5) * log(Type(8.0)) -
-        log_kappa_spde - log(spde_r0);
-      mspl_V_covariance = gll_mspl_pseudohuber(mspl_log_range_ratio);
-      if (mspl_structure_id_int == 2) {
-        for (int t = 0; t < n_traits; ++t) {
-          mspl_log_sigma_spde_reference(t) = -half_log_4pi -
-            log_kappa_spde - log_tau_spde(t);
+      mspl_c_n = Type(2.0) * sqrt(Type(p_free) / Type(N_eff));
+      vector<Type> mspl_logw(N_eff);
+      int link_id = link_id_vec(0);
+      for (int o = 0; o < N_eff; ++o) {
+        Type eta_fixed_offset = eta_fix(o) + offset_vec(o);
+        mspl_logw(o) = gll_mspl_log_weight(eta_fixed_offset, link_id);
+        if (link_id == 2) {
+          mspl_cloglog_weight_tail_extension_count += CppAD::CondExpGt(
+            eta_fixed_offset, Type(690.0), Type(1.0), Type(0.0));
         }
-        for (int j = 0; j < mspl_tau_representative.size(); ++j) {
-          int t = mspl_tau_representative(j);
-          mspl_V_covariance += gll_mspl_pseudohuber(
-            mspl_log_sigma_spde_reference(t));
-        }
-      } else {
-        Type loading_scale = exp(-half_log_4pi - log_kappa_spde);
-        for (int t = 0; t < n_traits; ++t)
-          for (int k = 0; k < spde_lv_k; ++k)
-            mspl_Lambda_spde_reference(t, k) =
-              loading_scale * Lambda_spde(t, k);
-        mspl_V_loading = gll_mspl_row_radial_penalty(
-          mspl_Lambda_spde_reference, spde_lv_k);
       }
+      vector<Type> atom = gll_mspl_atomic_half_logdet(mspl_logw, X_mspl);
+      Type mspl_half_logdet_information = atom(0);
+      mspl_atom_status = atom(1);
+      mspl_logdet_information = Type(2.0) * mspl_half_logdet_information;
+      if (mspl_structure_id_int == 1) {
+        mspl_V_loading = gll_mspl_row_radial_penalty(Lambda_B, d_B);
+      } else {
+        Type half_log_4pi = Type(0.5) * log(Type(4.0) * M_PI);
+        mspl_log_range_ratio = Type(0.5) * log(Type(8.0)) -
+          log_kappa_spde - log(spde_r0);
+        mspl_V_covariance = gll_mspl_pseudohuber(mspl_log_range_ratio);
+        if (mspl_structure_id_int == 2) {
+          for (int t = 0; t < n_traits; ++t) {
+            mspl_log_sigma_spde_reference(t) = -half_log_4pi -
+              log_kappa_spde - log_tau_spde(t);
+          }
+          for (int j = 0; j < mspl_tau_representative.size(); ++j) {
+            int t = mspl_tau_representative(j);
+            mspl_V_covariance += gll_mspl_pseudohuber(
+              mspl_log_sigma_spde_reference(t));
+          }
+        } else {
+          Type loading_scale = exp(-half_log_4pi - log_kappa_spde);
+          for (int t = 0; t < n_traits; ++t)
+            for (int k = 0; k < spde_lv_k; ++k)
+              mspl_Lambda_spde_reference(t, k) =
+                loading_scale * Lambda_spde(t, k);
+          mspl_V_loading = gll_mspl_row_radial_penalty(
+            mspl_Lambda_spde_reference, spde_lv_k);
+        }
+      }
+      mspl_jeffreys_nll = -mspl_c_n * mspl_half_logdet_information;
+      mspl_loading_nll = mspl_c_n * mspl_V_loading;
+      mspl_covariance_nll = mspl_c_n * mspl_V_covariance;
+      nll += mspl_jeffreys_nll + mspl_loading_nll + mspl_covariance_nll;
     }
-    mspl_jeffreys_nll = -mspl_c_n * mspl_half_logdet_information;
-    mspl_loading_nll = mspl_c_n * mspl_V_loading;
-    mspl_covariance_nll = mspl_c_n * mspl_V_covariance;
-    nll += mspl_jeffreys_nll + mspl_loading_nll + mspl_covariance_nll;
   }
   Type joint_nll_penalized = nll;
   Type mspl_cloglog_tail_extension_count =
@@ -3112,9 +3215,11 @@ Type objective_function<Type>::operator()()
   REPORT(mspl_logdet_information);
   REPORT(mspl_V_loading);
   REPORT(mspl_V_covariance);
+  REPORT(mspl_V_hirose);
   REPORT(mspl_jeffreys_nll);
   REPORT(mspl_loading_nll);
   REPORT(mspl_covariance_nll);
+  REPORT(mspl_hirose_nll);
   REPORT(mspl_private_ridge_nll);
   REPORT(mspl_cloglog_tail_extension_count);
   REPORT(mspl_cloglog_likelihood_tail_extension_count);
@@ -3122,6 +3227,7 @@ Type objective_function<Type>::operator()()
   REPORT(mspl_status);
   REPORT(mspl_atom_status);
   REPORT(mspl_structure_id);
+  REPORT(mspl_family_mode_rep);
   REPORT(mspl_log_range_ratio);
   REPORT(mspl_log_sigma_spde_reference);
   REPORT(mspl_Lambda_spde_reference);

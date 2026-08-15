@@ -408,18 +408,23 @@ test_that("E7: V_loading psi-gradient is identically zero", {
   )))
 })
 
-test_that("Gaussian MSPL registry rows stay planned and oracles do not admit", {
+test_that("Gaussian MSPL ordinary rows are admitted oracle_local (point only; not covered)", {
+  ## G0 Q2 2026-08-15: keep admitted / oracle_local after local se=FALSE smoke.
+  ## Oracles here still do NOT promote a covered / NEWS claim.
   tbl <- .gllvmTMB_mspl_registry()
   planned <- tbl[tbl$status == "planned", , drop = FALSE]
-  expect_true(all(planned$family == "gaussian"))
-  expect_true(all(planned$status == "planned"))
-  expect_false(any(planned$status == "admitted"))
+  expect_identical(nrow(planned), 0L)
   g1 <- .gllvmTMB_mspl_registry_lookup("gaussian", "identity", "ordinary", 1L)
   g2 <- .gllvmTMB_mspl_registry_lookup("gaussian", "identity", "ordinary", 2L)
-  expect_identical(g1$status, "planned")
-  expect_identical(g2$status, "planned")
-  expect_identical(g1$evidence, "none")
+  expect_identical(g1$status, "admitted")
+  expect_identical(g2$status, "admitted")
+  expect_identical(g1$evidence, "oracle_local")
+  expect_identical(g2$evidence, "oracle_local")
+  expect_false(identical(g1$evidence, "covered"))
   admitted <- tbl[tbl$status == "admitted", , drop = FALSE]
-  expect_true(all(admitted$evidence == "partial_b2_incomplete"))
-  expect_true(all(admitted$family == "binomial"))
+  binom <- admitted[admitted$family == "binomial", , drop = FALSE]
+  gauss <- admitted[admitted$family == "gaussian", , drop = FALSE]
+  expect_true(all(binom$evidence == "partial_b2_incomplete"))
+  expect_true(all(gauss$evidence == "oracle_local"))
+  expect_identical(nrow(gauss), 2L)
 })

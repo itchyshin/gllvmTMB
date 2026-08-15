@@ -18,4 +18,20 @@ test_that("private MSPL constrained-inversion calibration contract is frozen", {
   expect_true(all(manifest$outer_per_shard == 1L))
   expect_true(all(manifest$minimum_usable_bootstrap == 499L))
   expect_identical(nrow(utils::read.delim(file.path(root, "array-map.tsv"))), 12000L)
+
+  smoke_root <- tempfile("mspl-constrained-inversion-smoke-")
+  smoke_env <- c("GLLVM_TMB_PILOT_SOURCE=true", "MSPL_INVERSION_TEST_MODE=true")
+  output <- system2("Rscript", c("--vanilla", runner, "manifest", "--root", smoke_root,
+    "--campaign-id", "local-smoke", "--source-sha", "abc123"), env = smoke_env,
+    stdout = TRUE, stderr = TRUE)
+  expect_null(attr(output, "status"))
+  output <- system2("Rscript", c("--vanilla", runner, "run-shard", "--root", smoke_root,
+    "--case-id", "C001", "--shard-id", "1", "--cluster", "nibi"), env = smoke_env,
+    stdout = TRUE, stderr = TRUE)
+  expect_null(attr(output, "status"))
+  shard <- readRDS(file.path(smoke_root, "shards", "C001-shard-0001.rds"))
+  expect_identical(nrow(shard$endpoints), 15L)
+  expect_identical(nrow(shard$attempts), 30L)
+  expect_true(all(shard$endpoints$constrained_status == "ok"))
+  expect_true(all(shard$attempts$status == "ok"))
 })

@@ -42,6 +42,19 @@ atomic_write_csv <- function(x, path) {
 }
 
 inversion_settings <- function() {
+  if (identical(Sys.getenv("MSPL_INVERSION_TEST_MODE"), "true")) {
+    return(list(
+      bootstrap_reps = 2L,
+      alpha = 0.05,
+      grid_offsets = c(-1, -0.5, 0, 0.5, 1),
+      n_outer = 1L,
+      outer_per_shard = 1L,
+      availability_min = 0.95,
+      coverage_wilson_level = 0.90,
+      coverage_equivalence_lower = 0.92,
+      coverage_equivalence_upper = 0.98
+    ))
+  }
   list(
     bootstrap_reps = 499L,
     alpha = 0.05,
@@ -56,9 +69,12 @@ inversion_settings <- function() {
 }
 
 validate_inversion_settings <- function(settings = inversion_settings()) {
-  if (!identical(settings$bootstrap_reps, 499L) || !identical(settings$alpha, 0.05) ||
+  production <- !identical(Sys.getenv("MSPL_INVERSION_TEST_MODE"), "true")
+  if (!identical(settings$alpha, 0.05) ||
       !identical(settings$grid_offsets, c(-1, -0.5, 0, 0.5, 1)) ||
-      !identical(settings$n_outer, 1000L) || !identical(settings$outer_per_shard, 1L)) {
+      !identical(settings$outer_per_shard, 1L) ||
+      (production && (!identical(settings$bootstrap_reps, 499L) || !identical(settings$n_outer, 1000L))) ||
+      (!production && (!identical(settings$bootstrap_reps, 2L) || !identical(settings$n_outer, 1L)))) {
     stop("The constrained-inversion calibration settings are frozen.", call. = FALSE)
   }
   invisible(TRUE)
@@ -76,7 +92,11 @@ inversion_manifest <- function(campaign_id, source_sha) {
     coverage_equivalence_upper = settings$coverage_equivalence_upper,
     wald_min_available = 1L
   )
-  out$manifest_version <- "lane-b-mspl-constrained-inversion-v1-2026-08-15"
+  out$manifest_version <- if (identical(Sys.getenv("MSPL_INVERSION_TEST_MODE"), "true")) {
+    "lane-b-mspl-constrained-inversion-test-v1-2026-08-15"
+  } else {
+    "lane-b-mspl-constrained-inversion-v1-2026-08-15"
+  }
   out$minimum_usable_bootstrap <- settings$bootstrap_reps
   out
 }
@@ -91,8 +111,10 @@ validate_inversion_manifest <- function(manifest) {
       !identical(manifest[fixed], expected[fixed])) {
     stop("The constrained-inversion manifest is not the frozen 12-case contract.", call. = FALSE)
   }
-  if (settings$bootstrap_reps * length(settings$grid_offsets) * 3L *
-      nrow(manifest) * settings$n_outer != 89820000L) {
+  expected_refits <- settings$bootstrap_reps * length(settings$grid_offsets) * 3L *
+    nrow(manifest) * settings$n_outer
+  if ((!identical(Sys.getenv("MSPL_INVERSION_TEST_MODE"), "true") && expected_refits != 89820000L) ||
+      (identical(Sys.getenv("MSPL_INVERSION_TEST_MODE"), "true") && expected_refits != 360L)) {
     stop("The constrained-inversion refit cardinality drifted.", call. = FALSE)
   }
   invisible(TRUE)

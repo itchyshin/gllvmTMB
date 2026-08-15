@@ -27,12 +27,13 @@ import_job_env() {
 }
 
 [[ -z "${MSPL_COVERAGE_JOB_ENV:-}" ]] || import_job_env "$MSPL_COVERAGE_JOB_ENV"
-for required in MSPL_COVERAGE_ROOT MSPL_COVERAGE_LAUNCHER_DIR MSPL_COVERAGE_HELPER_SHA256 MSPL_COVERAGE_RUNTIME_ARCHIVE MSPL_COVERAGE_RUNTIME_ARCHIVE_SHA256 MSPL_COVERAGE_CLUSTER MSPL_COVERAGE_SOURCE_SHA MSPL_COVERAGE_MANIFEST_SHA256 MSPL_CONSTRAINED_INVERSION_ARRAY_MAP_SHA256 MSPL_CONSTRAINED_INVERSION_PRODUCTION_WRAPPER_SHA256 MSPL_CONSTRAINED_INVERSION_ARRAY_OFFSET; do
+for required in MSPL_COVERAGE_ROOT MSPL_COVERAGE_LAUNCHER_DIR MSPL_COVERAGE_HELPER_SHA256 MSPL_COVERAGE_RUNTIME_ARCHIVE MSPL_COVERAGE_RUNTIME_ARCHIVE_SHA256 MSPL_COVERAGE_CLUSTER MSPL_COVERAGE_SOURCE_SHA MSPL_COVERAGE_MANIFEST_SHA256 MSPL_CONSTRAINED_INVERSION_ARRAY_MAP_SHA256 MSPL_CONSTRAINED_INVERSION_PRODUCTION_WRAPPER_SHA256 MSPL_CONSTRAINED_INVERSION_PRERUN_RECEIPT_SHA256 MSPL_CONSTRAINED_INVERSION_ARRAY_OFFSET; do
   [[ -n "${!required:-}" ]] || die "Missing required binding: $required"
 done
 [[ "$MSPL_COVERAGE_ROOT" == /project/* ]] || die "Campaign root must be explicit /project storage."
 [[ "$MSPL_CONSTRAINED_INVERSION_ARRAY_MAP_SHA256" =~ ^[0-9a-f]{64}$ ]] || die "Invalid production map SHA-256."
 [[ "$MSPL_CONSTRAINED_INVERSION_PRODUCTION_WRAPPER_SHA256" =~ ^[0-9a-f]{64}$ ]] || die "Invalid production wrapper SHA-256."
+[[ "$MSPL_CONSTRAINED_INVERSION_PRERUN_RECEIPT_SHA256" =~ ^[0-9a-f]{64}$ ]] || die "Invalid pre-run receipt SHA-256."
 [[ "$MSPL_CONSTRAINED_INVERSION_ARRAY_OFFSET" =~ ^[0-9]+$ ]] || die "Invalid production array offset."
 [[ "$(sha256sum "${BASH_SOURCE[0]}" | awk '{print $1}')" == "$MSPL_CONSTRAINED_INVERSION_PRODUCTION_WRAPPER_SHA256" ]] || die "Production wrapper hash disagrees."
 
@@ -45,6 +46,15 @@ mspl_validate_runtime_inputs
 mspl_validate_manifest_binding
 MAP="$MSPL_COVERAGE_ROOT/array-map.tsv"
 mspl_verify_hash "$MAP" "$MSPL_CONSTRAINED_INVERSION_ARRAY_MAP_SHA256"
+PRERUN_RECEIPT="$MSPL_COVERAGE_ROOT/prerun-receipt.txt"
+mspl_verify_hash "$PRERUN_RECEIPT" "$MSPL_CONSTRAINED_INVERSION_PRERUN_RECEIPT_SHA256"
+grep -Fxq "campaign_id: $MSPL_COVERAGE_CAMPAIGN_ID" "$PRERUN_RECEIPT" || die "Pre-run receipt campaign disagrees."
+grep -Fxq "source_sha: $MSPL_COVERAGE_SOURCE_SHA" "$PRERUN_RECEIPT" || die "Pre-run receipt source disagrees."
+grep -Fxq "endpoint_rows: 180" "$PRERUN_RECEIPT" || die "Pre-run receipt endpoint count disagrees."
+grep -Fxq "bootstrap_attempt_rows: 89820" "$PRERUN_RECEIPT" || die "Pre-run receipt bootstrap count disagrees."
+grep -Fxq "endpoint_tests_failed: 0" "$PRERUN_RECEIPT" || die "Pre-run receipt has failed endpoint tests."
+grep -Fxq "bootstrap_attempts_failed: 0" "$PRERUN_RECEIPT" || die "Pre-run receipt has failed bootstrap refits."
+grep -Fxq "public_fence: unchanged" "$PRERUN_RECEIPT" || die "Pre-run receipt does not preserve the public fence."
 mspl_load_modules
 mspl_stage_runtime
 

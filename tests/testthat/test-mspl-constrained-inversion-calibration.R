@@ -36,8 +36,10 @@ test_that("private MSPL constrained-inversion calibration contract is frozen", {
   expect_true(any(grepl('MAP="\\$MSPL_COVERAGE_ROOT/array-map.tsv"', production_lines)))
   expect_true(any(grepl('MSPL_CONSTRAINED_INVERSION_ARRAY_MAP_SHA256', production_lines)))
   expect_true(any(grepl('MSPL_CONSTRAINED_INVERSION_PRODUCTION_WRAPPER_SHA256', production_lines)))
+  expect_true(any(grepl('MSPL_CONSTRAINED_INVERSION_PRERUN_RECEIPT_SHA256', production_lines)))
   expect_true(any(grepl('MSPL_CONSTRAINED_INVERSION_ARRAY_OFFSET', production_lines)))
   expect_true(any(grepl('MAP_ID=$((TASK_ID + MSPL_CONSTRAINED_INVERSION_ARRAY_OFFSET))', production_lines, fixed = TRUE)))
+  expect_true(any(grepl('Pre-run receipt bootstrap count disagrees.', production_lines, fixed = TRUE)))
   expect_true(any(grepl('--shard-id "$SHARD_ID"', production_lines, fixed = TRUE)))
   expect_true(any(grepl('Refusing absent or replacement shard publication.', production_lines, fixed = TRUE)))
 

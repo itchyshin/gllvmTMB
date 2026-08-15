@@ -232,6 +232,77 @@ these results are observed.
 | candidate curvature | candidate raw-coordinate `sdreport$cov.fixed` | original positional axes, finite/symmetric/PD/pdHess/condition gates | raw covariance and axes |
 | ecological recovery | existing raw-coordinate extractor only | only after numerical admission | separate recovery ledger |
 
+## No-fit adapter and process provenance
+
+The callback-only contract above is deliberately not a source-to-state
+certificate.  Its executable successor is a **non-scientific** gate named
+`PAPER1_SPDE_SLOPE_GAUGE_NOFIT_GATE_V1`; it is neither an MNCB/BFGS retry nor
+an estimator admission attempt.  It may run only after an implementation and
+its tests have been reviewed.  Passing it establishes that the live frozen
+state can be expressed in this chart.  It does not establish curvature,
+accept a step, run a trust region, calculate recovery, or make an ecological
+claim.
+
+The gate is run in one clean `Rscript --vanilla` child.  The child starts with
+no loaded `gllvmTMB` DLL, rejects any preloaded same-basename DLL rather than
+unloading or replacing it, then loads the exact frozen DLL once and verifies
+its canonical path and MD5.  It first re-enters the production MSPDE V3
+terminal validator using the complete packet listed above.  Only after that
+validator returns its exact success reason may it force collection of the
+predecessor object and construct one fresh `TMB::MakeADFun` object from the
+materialized state.  That object remains resident for the one start
+objective, one raw gradient, and the fixed 44 objective calls.  It is released
+and collected while the DLL remains loaded.  There is no `dyn.unload`, no
+second DLL activation, no outer optimizer, and no callback/factory rebuilding
+inside the finite-difference loop.
+
+Before applying names to an otherwise unnamed TMB gradient, the adapter must
+require the fresh object's `par` labels and length to equal the sealed
+`block_labels` and 22-coordinate state order.  The resulting named gradient,
+the original unnamed values, the raw input vector, the actual DLL identity,
+and a monotone object identifier are retained together.  A supplied named
+gradient must already have the exact sealed order; it is never silently
+relabelled.  This is the only bridge from the generic callback rule to TMB's
+positional gradient convention.
+
+The parent retains a dedicated, sibling-staged, atomically renamed gate root
+outside every scientific result root.  Its exact inventory is a root receipt,
+the child receipt, the no-fit result (including all 22 ordered FD records), a
+CSV manifest, session information, and the materializer source copy.  The
+receipt binds the full MSPDE V3 packet hashes, current runner/contract/design
+and map-helper hashes, the retained materializer hash, actual DLL path/MD5,
+the frozen state hash, child/parent process identifiers, object/release
+counts, and the exact control packet.  The parent rereads the sealed root,
+recomputes its manifest, and applies the production validator before printing
+any pass token.  A child failure yields only a typed infrastructure gate
+record; it never manufactures missing callback evidence.
+
+That new root has its own production validator and terminal schema; the MSPDE
+validator validates only the predecessor.  Its sole non-scientific success is
+`SPDE_SLOPE_GAUGE_NOFIT_VALID`.  Invalid predecessor evidence, DLL identity,
+process receipt, factory order, raw-gradient order, callback result,
+finite-difference record, or manifest produces a typed
+`SPDE_SLOPE_GAUGE_NOFIT_INFRASTRUCTURE_HOLD` with only the evidence that was
+actually materialized.  A mathematically complete callback result that fails
+one of the frozen replay tolerances is
+`SPDE_SLOPE_GAUGE_NOFIT_REPLAY_HOLD`.  Neither status is a numerical-admission
+or ecological-model outcome.  A killed or otherwise non-reporting child has
+no inferred callback result; its parent receipt records only the observed
+process boundary.
+
+Every child receipt records the exact `Rscript` command and arguments,
+parent/child process IDs, started/ended timestamps and elapsed seconds, exit
+status or signal, fixed deadline, and the disposition of stdout/stderr.  The
+parent atomically copies the child receipt and any returned result into its
+staging root before constructing its own receipt.  It retains stdout/stderr
+only as bounded diagnostic fields or content hashes, never as a substitute for
+the child RDS.  The root validator rereads the root receipt, child receipt,
+result, session file, retained materializer, and manifest; it requires the
+exact regular-file inventory with no extras, directories, or symlinks, checks
+every declared hash, and then recomputes the gate status.  Any missing,
+extra, partial, or symlinked artifact is infrastructure HOLD and no pass token
+is printed.
+
 ## Future estimator boundary
 
 If the pure map and full sign-orbit checks pass, a later, separately reviewed

@@ -5,10 +5,13 @@
 ## unit-tier latent() ordination, phylo_latent(), and the default auto-Psi)
 ## still fits. See R/multinomial-fence.R for the leak this closes.
 ##
-## Most cells below are caught by the EARLY covstruct-keyed classifier
-## (class "gllvmTMB_multinomial_structured_not_admitted"); phylo_scalar() /
-## animal_scalar() and mi() are caught only by the LATE use_* re-scan
-## (belt-and-braces; no special class), so those use a regexp instead.
+## Every cell below carries the SAME class,
+## "gllvmTMB_multinomial_structured_not_admitted", whether pass 1 (the early
+## covstruct-keyed classifier) or pass 2 (the late use_* re-scan,
+## belt-and-braces) catches it -- phylo_scalar() / animal_scalar() and mi()
+## are pass-2-only cells (propto and mi() predictor terms are not
+## covstructs), but the class is shared, so their assertions are just as
+## tight as the pass-1 cells.
 
 .mn_fence_data <- function(seed = 1L, n = 60L, K = 3L) {
   set.seed(seed)
@@ -133,6 +136,84 @@ test_that("indep() at the cluster2 tier is not admitted for multinomial", {
   )
 })
 
+## ---- Blocked: augmented (intercept + slope) latent() / phylo_latent() ----
+## (Slice 0 repair, adversarial Opus review 2026-08-16, findings 1-2: pass 1
+## fell through to ADMITTED for both -- neither carries `.dep`/`.phylo_unique`/
+## `.kernel_name`/`.animal_source`, so the plain unit-tier / plain-latent
+## checks matched. The `latent()` case was still caught by the untyped
+## pass-2 use_rr_B_slope scan (see the pre-existing
+## test-cross-family-multinomial.R regression test); the `phylo_latent()`
+## case was caught by NEITHER pass -- an unrelated per-family
+## augmented-slope-support gate happened to abort first.)
+
+test_that("augmented (1 + x) latent() is not admitted for multinomial", {
+  skip_on_cran()
+  df <- .mn_fence_data(41L, n = 60L)
+  expect_error(
+    gllvmTMB(value ~ 0 + trait + latent(1 + x | unit, d = 1), data = df,
+             family = multinomial(), trait = "trait", unit = "unit"),
+    class = .mn_not_admitted
+  )
+})
+
+test_that("augmented (1 + x) phylo_latent() is not admitted for multinomial", {
+  skip_on_cran(); skip_if_not_installed("ape")
+  fx <- .mn_fence_phylo_data(42L, n = 20L)
+  df <- fx$data
+  df$x <- stats::rnorm(nrow(df))
+  expect_error(
+    gllvmTMB(value ~ 0 + trait + phylo_latent(1 + x | species, d = 1),
+             data = df, family = multinomial(), trait = "trait",
+             unit = "species", phylo_tree = fx$tree),
+    class = .mn_not_admitted
+  )
+})
+
+## ---- Blocked: phylo_latent(unique = TRUE) (a free phylogenetic Psi) ------
+## (Slice 0 repair, finding 3: pass 1 + the admission table wrongly said
+## ADMITTED, contradicting R/extract-sigma.R's documented policy. Pass 2
+## already caught it via use_phylo_diag, so this was a pass-1/table
+## contradiction, not a live leak -- fixed anyway, since pass 1 not being
+## load-bearing here defeats its purpose.)
+
+test_that("phylo_latent(unique = TRUE) is not admitted for multinomial", {
+  skip_on_cran(); skip_if_not_installed("ape")
+  fx <- .mn_fence_phylo_data(43L, n = 20L)
+  expect_error(
+    gllvmTMB(value ~ 0 + trait + phylo_latent(species, d = 1, unique = TRUE),
+             data = fx$data, family = multinomial(), trait = "trait",
+             unit = "species", phylo_tree = fx$tree),
+    class = .mn_not_admitted
+  )
+})
+
+## ---- Blocked: meta_V() / equalto() (Slice 0 repair, finding 8) -----------
+## Previously blanket-exempted in both passes alongside use_propto; no
+## established route for a known-sampling-covariance term on a
+## categorical-contrast pseudo-trait, so fail-closed by default.
+
+test_that("meta_V() is not admitted for multinomial", {
+  skip_on_cran()
+  set.seed(44L)
+  n_unit <- 20L; K <- 3L
+  df <- data.frame(
+    unit = factor(seq_len(n_unit)), trait = factor("morph"),
+    value = factor(sample.int(K, n_unit, replace = TRUE))
+  )
+  ## known_V is sized to the internal n_obs AFTER multinomial's (K-1)
+  ## pseudo-trait expansion (n_unit * (K - 1)), not nrow(df). This only
+  ## matters if the fence is ever removed and the fit runs far enough to
+  ## reach the known_V dimension check -- get it right so a future
+  ## regression is reported as "not blocked", not masked as "bad V size".
+  V <- diag(stats::runif(n_unit * (K - 1L), 0.02, 0.08))
+  expect_error(
+    gllvmTMB(value ~ 0 + trait + meta_V(V = V), data = df,
+             family = multinomial(), trait = "trait", unit = "unit",
+             known_V = V),
+    class = .mn_not_admitted
+  )
+})
+
 ## ---- Blocked: phylo_dep() / phylo_indep() / phylo_unique() ---------------
 
 test_that("phylo_dep() is not admitted for multinomial", {
@@ -177,7 +258,7 @@ test_that("phylo_scalar() is not admitted for multinomial (propto exemption remo
     gllvmTMB(value ~ 0 + trait + phylo_scalar(species), data = fx$data,
              family = multinomial(), trait = "trait", unit = "species",
              phylo_tree = fx$tree),
-    regexp = "not admitted|unsupported latent|deferred"
+    class = .mn_not_admitted
   )
 })
 
@@ -188,7 +269,7 @@ test_that("animal_scalar() is not admitted for multinomial", {
   expect_error(
     gllvmTMB(value ~ 0 + trait + animal_scalar(species, A = A), data = fx$data,
              family = multinomial(), trait = "trait", unit = "species"),
-    regexp = "not admitted|unsupported latent|deferred"
+    class = .mn_not_admitted
   )
 })
 
@@ -320,7 +401,7 @@ test_that("mi() is not admitted for multinomial (timing-gap regression)", {
              family = multinomial(), trait = "trait", unit = "unit",
              impute = list(x = impute_model(x ~ 1, family = gaussian())),
              missing = miss_control(predictor = "model")),
-    regexp = "not admitted|unsupported latent|deferred"
+    class = .mn_not_admitted
   )
 })
 
@@ -431,4 +512,87 @@ test_that("a mixed-family propto() term targeting only the non-multinomial trait
   )
   expect_true(inherits(err, "error"))
   expect_match(conditionMessage(err), "per-fit|not per-trait|propto")
+})
+
+test_that("a mixed gaussian+multinomial dep(0+trait|unit) fit (a pass-1 path) also states the per-fit limitation", {
+  skip_on_cran(); skip_if_not_installed("MASS")
+  ## Slice 0 repair, finding 5: pass 2's message already carried a "per-fit,
+  ## not per-trait" note; pass 1's did not. dep(0 + trait | unit) is a
+  ## pass-1-only path (a plain "rr" covstruct, never reaches the use_*
+  ## re-scan because pass 1 aborts first), so this pins that pass 1's
+  ## message states the same limitation.
+  set.seed(45L)
+  N <- 40L
+  dat <- rbind(
+    data.frame(unit = seq_len(N), trait = "g", family = "g",
+               value = stats::rnorm(N)),
+    data.frame(unit = seq_len(N), trait = "cat", family = "m",
+               value = sample(1:3, N, replace = TRUE))
+  )
+  dat$unit <- factor(dat$unit); dat$trait <- factor(dat$trait)
+  dat$family <- factor(dat$family)
+  fam <- list(g = gaussian(), m = multinomial())
+  attr(fam, "family_var") <- "family"
+  err <- tryCatch(
+    gllvmTMB(value ~ 0 + trait + dep(0 + trait | unit), data = dat,
+             family = fam, trait = "trait", unit = "unit"),
+    error = function(e) e
+  )
+  expect_true(inherits(err, .mn_not_admitted))
+  expect_match(conditionMessage(err), "per-fit|not per-trait")
+})
+
+## ---- Table-consistency: .mn_admission_table matches the classifier -------
+## (Slice 0 repair, finding 6b -- would have caught finding 3: an admission-
+## table row whose `status` disagreed with what the classifier actually
+## returns for a representative covstruct of that row.)
+
+test_that(".mn_admission_table is consistent with .mn_classify_covstruct() for every row", {
+  skip_on_cran()
+  tbl <- gllvmTMB:::.mn_admission_table
+  site <- "unit"; ss_name <- "site_species"; species <- "species"
+  cluster2_col <- NULL
+  ## One representative covstruct per table row, in row order.
+  reprs <- list(
+    list(kind = "rr",       group = as.name("unit"),    extra = list()),
+    list(kind = "diag",     group = as.name("unit"),    extra = list(.auto_unique = TRUE)),
+    list(kind = "phylo_rr", group = as.name("species"), extra = list()),
+    list(kind = "phylo_rr", group = as.name("species"),
+         extra = list(.phylo_unique = TRUE, .auto_unique = TRUE)),
+    list(kind = "rr",       group = as.name("unit"),    extra = list(.latent_augmented = TRUE)),
+    list(kind = "phylo_rr", group = as.name("species"), extra = list(.latent_slope = TRUE)),
+    list(kind = "equalto",  group = as.name("grp_V"),   extra = list())
+  )
+  expect_equal(nrow(tbl), length(reprs))
+  for (i in seq_len(nrow(tbl))) {
+    cls <- gllvmTMB:::.mn_classify_covstruct(
+      reprs[[i]], site = site, ss_name = ss_name, species = species,
+      cluster2_col = cluster2_col
+    )
+    expect_identical(
+      cls$admitted, identical(tbl$status[i], "admitted"),
+      info = sprintf("row %d (%s/%s/%s): table says %s, classifier says admitted=%s",
+                      i, tbl$source[i], tbl$mode[i], tbl$tier[i], tbl$status[i], cls$admitted)
+    )
+  }
+})
+
+## ---- VA route pin: integration = "va" rejects multinomial -----------------
+## (Slice 0 repair, finding 6c.) Pass 1 runs before the VA route branches off
+## and only classifies covstructs -- it does not look at `control$integration`
+## -- and pass 2 is UNREACHABLE on the VA route (an early `return()` in
+## gllvmTMB_multi_fit() sends `integration = "va"` straight to
+## .gllvmTMB_va_route(), well before pass 2). The VA route's own
+## family/link fence (R/va-routing.R, `.va_route_family_link()`) is what
+## actually protects this route; this test pins that it still does.
+
+test_that("integration = \"va\" rejects a multinomial trait (VA route pin)", {
+  skip_on_cran()
+  df <- .mn_fence_data(46L, n = 60L)
+  expect_error(
+    gllvmTMB(value ~ 0 + trait, data = df, family = multinomial(),
+             trait = "trait", unit = "unit",
+             control = gllvmTMBcontrol(integration = "va")),
+    regexp = "multinomial|coupled-softmax|does not admit this model"
+  )
 })

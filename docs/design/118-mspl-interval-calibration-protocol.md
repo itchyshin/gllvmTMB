@@ -643,9 +643,22 @@ changed and the measurement that forced it.
 
 | 2026-08-16 | **DEV-10 — H3 cloglog × `n_site = 192` is expected to fail on a PRE-EXISTING package boundary, and is launched anyway rather than dropped.** The worst-corner pre-run found `estimator = "mspl"` aborting its penalty-off decomposition check at large `n_site` on cloglog — reproduced identically on unmodified `origin/main` (residual `0.827679` to 6 s.f.), so it is not a campaign artefact ([#1020](https://github.com/itchyshin/gllvmTMB/issues/1020)). Driver is unit count, not data size: cloglog 48×12 (`N_eff` 576) passes while 192×3 (`N_eff` 576) fails; logit at 192 passes. **5 of 132 cells** are affected, all hold-out. They are launched so the campaign *measures* the boundary instead of assuming it (~29 core-hours, ≈1% of budget); their availability-gate failures are attributed to #1020 and **must not be read as calibration failures**. The cloglog × largest-`n_site` extrapolation corner is therefore **UNMEASURED pending #1020**, and any Phase-B claim must say so. | Totoro worst-corner pre-run + `origin/main` reproduction, 2026-08-16 | Shinichi (standing authorization, 2026-08-16) |
 
+| 2026-08-16 | **DEV-11 — PHASE B FAILED ITS HOLD-OUT GATES; the pre-registration is DISCHARGED, not amended.** G1 **0.0%** (PASS 0 / FAIL 12 / INDETERMINATE 0 / **NO_DATA 105** of 117 eligible rows) and G4 fail; G2, G3 (availability 1.0000) and G5 meet. **Mechanism, independently verified by a fresh adversarial reviewer: a DEGENERATE OPTIMUM in this document's own objective.** §1.3's clip-as-refusal removes rows from the metric (`b2_eval_rows` sets `avail = !clip_refused`; §2.4's metric filters `n_avail > 0`), so on the real 102,536-row training set the frozen map (M2, `gamma0 = −1.8733`, `c_n = +0.3259`, α\* ≈ 0.0086–0.0097 → below the 0.01 clip) scores **0.0690 over 30 surviving units with 95,578 rows refused**, versus **12.985 over 264 units** for a no-refusal map. Discarding the hard cells beat calibrating them. A specification defect, not a coding error, and not evidence that calibration is impossible. **`MSPL-04` stays `blocked`.** | B2 hold-out evaluation, 2026-08-16 + independent adversarial verification | Recorded under standing authorization; the REMEDY is explicitly NOT authorized (see below) |
+| 2026-08-16 | **DEV-12 — three corrections to this document's own premises, forced by the B1 data.** (a) **The inherited "failures run toward OVERcoverage, the calibratable direction" thesis does NOT hold on the B1 grid** — 131 of 264 training units cover **below** 0.95 (min 0.0078), so roughly half the population genuinely wants α\* < 0.05; §0/§2's motivating asymmetry was a lane-B property that did not transfer. (b) The hold-out failure is **fence + clip jointly**, not clip alone: 26% of hold-out refusals are fence refusals independent of the calibrator (B089 probit refuses 444/600), because §5.1 holds out all of probit and the map must extrapolate to an unseen link. (c) §2.3's admission rule compares `max_err` across **incomparable unit denominators** — a rung that refuses more units is scored on a smaller, easier set, which is the proximate route by which M2 was admitted over M0. | Same evaluation + verification | Recorded |
+
 **B1 launch authorization:** granted 2026-08-15 (*"Approve"*, *"Gate is open"*) on the
 reduced ≈26 M budget (D2) under F-AMD. Launch spec:
 `docs/dev-log/2026-08-15-b1-launch-spec.md` (branch `claude/mspl-b0-prereqs`).
+
+**Phase B closure.** This pre-registration is **discharged with a FAIL**. Its single
+hold-out read (§5.7) is **spent**: repairing the objective and re-scoring against the same
+hold-out would convert a pre-registered test into a fitted one, so no such amendment is
+made here. The defect was diagnosable from training alone — the fit-time log printed
+`clip-refused 95578/102536` before any hold-out was read — so a corrected objective is
+legitimately motivatable, but it belongs to a **new pre-registration** that must decide how
+refusal is priced, adopt a denominator-invariant admission rule, and declare a fresh split
+before any refit. Verdict and recommendation:
+`docs/dev-log/2026-08-16-phase-b-verdict-and-recommendation.md`.
 
 ---
 

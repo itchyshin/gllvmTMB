@@ -207,7 +207,18 @@ missing-response policy may be used: masked cells
 (\code{miss_control(response = "include")}) contribute nothing to the
 likelihood, so the restricted likelihood is formed over the observed rows
 and matches the corresponding \code{"drop"} fit. The default \code{FALSE} keeps the
-historical ML fit.}
+historical ML fit.
+
+REML is validated for all-Gaussian fits only. For non-Gaussian families
+an opt-in escape hatch exists
+(\code{gllvmTMBcontrol(allow_nongaussian_reml = TRUE)}) that realises the
+Cox-Reid adjusted profile likelihood rather than an exact restricted
+likelihood -- this is unvalidated: a hypothesis under test, not an
+inherited result. Users estimating variance components or heritability
+on non-Gaussian data should be aware that plain Laplace can carry
+substantial downward bias on latent standard deviations. An opt-in AGHQ
+engine exists (\code{gllvmTMBcontrol(aghq = k)}) with its own,
+separately-scoped evidence; AGHQ and \code{REML = TRUE} cannot be combined.}
 
 \item{mesh}{Optional mesh object from \code{\link[=make_mesh]{make_mesh()}}. Required for any
 \verb{spatial_*()} or \code{spatial()} term unless that term supplies its own

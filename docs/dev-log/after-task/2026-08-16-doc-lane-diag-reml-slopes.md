@@ -47,9 +47,14 @@ follow-on into one Design 66 scoping conversation.
 - **Extend `fit-diagnostics.Rmd`, not a new article** — a new
   `model-checking.Rmd` collided with the existing 29-article estate
   (Rose plan-review, BLOCKING); integrate-before-adding rule.
-- **REML roxygen honesty note deferred** — `R/gllvmTMB.R` is hot (7 foreign
-  non-doc commits in 2 weeks); the text is staged in Design 121 §7 for
-  whichever lane next touches the `@param REML` block.
+- **REML roxygen honesty note: deferred, then landed on maintainer
+  direction** — `R/gllvmTMB.R` is hot (7 foreign non-doc commits in 2
+  weeks), so the first commit staged the text in Design 121 §7 only; the
+  maintainer then directed it applied, and a follow-up commit adds the
+  comment-block-only paragraph to `@param REML` with `man/gllvmTMB.Rd`
+  regenerated (`devtools::document()`; the unrelated `predict_missing.Rd`
+  regeneration it also produced was reverted — pre-existing drift, another
+  lane's to land).
 - **No numeric false-positive rate in the article** — the "25 %" separation
   figure is an internal, non-audited measurement; qualitative framing only.
 - **Rejected:** any #897 detector work (NO-SHIP 2026-08-14 respected); any
@@ -64,7 +69,9 @@ follow-on into one Design 66 scoping conversation.
 - `dev/held-articles/README.md` (provenance entry)
 - `docs/dev-log/2026-08-16-slope-article-reader-path-staging.md` (new)
 - `docs/dev-log/after-task/2026-08-16-doc-lane-diag-reml-slopes.md` (this report)
-- NOT touched: `_pkgdown.yml`, any `R/*.R`, any test, any export.
+- `R/gllvmTMB.R` (follow-up commit: `@param REML` roxygen paragraph only) +
+  `man/gllvmTMB.Rd` (regenerated)
+- NOT touched: `_pkgdown.yml`, any code path, any test, any export.
 
 ## 5. Checks Run
 
@@ -126,8 +133,8 @@ checklist rewords carry no register codes on proposed reader-facing prose
 - `fit-diagnostics.Rmd` has 5 unlanded foreign refs touching it (two
   condense the same sections); merge-order to reconcile at landing.
 - NB1 register/roxygen drift (flagged, unowned).
-- The deferred REML roxygen note (Design 121 §7) awaits a lane that owns
-  `R/gllvmTMB.R`.
+- `man/predict_missing.Rd` is regeneration-stale on main (documenting
+  reorders it); left for the owning lane.
 
 ## 11. Team Learning
 

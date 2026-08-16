@@ -285,18 +285,20 @@ requirement applies here unchanged.
   gllvmTMB, because that combined engine does not exist and is out of scope
   to build here.
 
-## 7. Deferred doc edit — REML roxygen honesty note
+## 7. REML roxygen honesty note — APPLIED in this lane (2026-08-16)
 
 `R/gllvmTMB.R` is a **hot file**: `git log origin/main --oneline --since=2026-08-02
 -- R/gllvmTMB.R` shows seven non-doc commits since 2026-08-02 from other lanes
 (`9be2e3f1` NA categorical responses for `multinomial()`, `18f24fdd` estimator
 provenance, `14650312` LA-MSPL reconciliation, `0d992c61` LA-MSPL Lane B,
 `ae340bdd` bounded 0.6 validation surface, `d7bee2fa` VA Arc-1 scalar fence,
-`42d7452f` register-code removal from reader-facing surfaces). Per this task's
-own instruction, the roxygen edit is deferred here rather than applied
-directly to avoid colliding with active lanes on that file. The intended
-addition, for whichever lane next touches the `@param REML` block
-(`R/gllvmTMB.R:200-210`), matching the existing roxygen voice:
+`42d7452f` register-code removal from reader-facing surfaces). The edit was
+initially deferred to avoid colliding with active lanes on that file; the
+maintainer then directed it landed (2026-08-16), and since it is a pure
+comment-block addition it rebases trivially even on a hot file. It is now
+**applied** to the `@param REML` block (`R/gllvmTMB.R:200`, anchor:
+`@param REML`), with `man/gllvmTMB.Rd` regenerated via
+`devtools::document()` in the same commit. The applied text:
 
 > REML is validated for **all-Gaussian** fits only. For non-Gaussian families
 > an opt-in escape hatch exists
@@ -315,8 +317,11 @@ in this design doc instead. The AGHQ sentence points at that engine's scope
 rather than recommending it: AGHQ's integrator is established, its estimator
 is not.)
 
-This text is not yet applied to `R/gllvmTMB.R`; do not treat this section as
-a completed edit.
+Guard for future edits: the sentence "unvalidated: a hypothesis under test,
+not an inherited result" is the load-bearing honesty for the
+variance-component / heritability audience — do not soften it if this
+slice later produces a positive-looking number; promotion goes through its
+own decision, not through a doc edit.
 
 ## 8. UNVERIFIED flags
 

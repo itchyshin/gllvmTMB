@@ -208,6 +208,17 @@
 #'   likelihood, so the restricted likelihood is formed over the observed rows
 #'   and matches the corresponding `"drop"` fit. The default `FALSE` keeps the
 #'   historical ML fit.
+#'
+#'   REML is validated for all-Gaussian fits only. For non-Gaussian families
+#'   an opt-in escape hatch exists
+#'   (`gllvmTMBcontrol(allow_nongaussian_reml = TRUE)`) that realises the
+#'   Cox-Reid adjusted profile likelihood rather than an exact restricted
+#'   likelihood -- this is unvalidated: a hypothesis under test, not an
+#'   inherited result. Users estimating variance components or heritability
+#'   on non-Gaussian data should be aware that plain Laplace can carry
+#'   substantial downward bias on latent standard deviations. An opt-in AGHQ
+#'   engine exists (`gllvmTMBcontrol(aghq = k)`) with its own,
+#'   separately-scoped evidence; AGHQ and `REML = TRUE` cannot be combined.
 #' @param mesh Optional mesh object from [make_mesh()]. Required for any
 #'   `spatial_*()` or `spatial()` term unless that term supplies its own
 #'   `mesh =` argument; ignored only when the model has no spatial term.

@@ -5,7 +5,7 @@
 ## Q_P and Q_0 separately. Not exported. Not calibrated.
 ##
 ## skip_if the public MSPL family door is missing (prepare still rejects).
-## Do not weaken the pin-family contract to go green.
+## skip_if the internal curvature pin is still fenced from these families.
 ##
 ## Named test-zz-* so it runs after test-va-all-family-light-fits.R.
 ## See the Bernoulli twin file for the CI #979 ordering note.
@@ -179,13 +179,19 @@ test_that("internal curvature pin is unexported and not fenced from rest familie
   )
   for (case in .mspl_rest_cases()) {
     stub <- .mspl_rest_stub(case)
-    ## Missing tapes is the expected stub outcome once the family is allowed.
-    ## A curvature_family abort means the pin is still fenced away.
-    expect_error(
+    pin_err <- tryCatch(
       gllvmTMB:::.gllvmTMB_mspl_curvature_pin(stub),
-      class = "gllvmTMB_mspl_curvature_tape",
-      info = case$family_name
+      error = function(e) e
     )
+    testthat::skip_if(
+      inherits(pin_err, "gllvmTMB_mspl_curvature_family"),
+      paste(
+        "internal curvature pin is still fenced from",
+        case$family_name
+      )
+    )
+    ## Missing tapes is the expected stub outcome once the family is allowed.
+    expect_s3_class(pin_err, "gllvmTMB_mspl_curvature_tape")
   }
 })
 

@@ -120,6 +120,9 @@ if (nzchar(precompute_cache) && file.exists(precompute_cache)) {
     n_fallback <- cached$diagnostics$n_fallback
     legacy_drift_n <- cached$diagnostics$legacy_drift_n
     legacy_drift_max <- cached$diagnostics$legacy_drift_max
+    ## Carried so the provenance record reports the checks that actually ran
+    ## when this cache was built, rather than silently reporting zero.
+    n_verify_checks <- cached$diagnostics$n_verify_checks %||% 0L
     precompute_cached <- TRUE
     message(sprintf(
       "Reusing cached precompute (%s): %d rows; fast-path max |diff| = %.3g; legacy drift %d rows (max %.4g).",
@@ -230,9 +233,11 @@ message(sprintf(
   "Legacy stored-column drift: %d of %d rows (%.2f%%) differ from the recomputed endpoint; max |diff| = %.4g. Traces are authoritative; stored columns are NOT used.",
   legacy_drift_n, nrow(input), 100 * legacy_drift_n / max(1L, nrow(input)), legacy_drift_max
 ))
-} ## end if (!precompute_cached)
-
 ## ---- Verification: fast-path vs the registered function ------------------
+## Inside the !cached branch on purpose: it verifies the precompute that was
+## just built (and needs verify_rows/verify_traces, which only exist here).
+## A reused cache was verified when it was written; the cache key covers the
+## inputs that could invalidate it.
 n_verify_checks <- 0L
 for (r in verify_rows) {
   tr <- verify_traces[[as.character(r)]]
@@ -252,6 +257,9 @@ for (r in verify_rows) {
   }
 }
 message(sprintf("Precompute verification: %d (row, alpha) checks against b1_profile_trace_endpoint, all agree", n_verify_checks))
+} else {
+  message("Precompute reused from cache; its fast-path verification ran when the cache was written.")
+} ## end if (!precompute_cached)
 
 ## ---- Bootstrap precompute from replicate sidecars (s2.1) -----------------
 boot <- input[input$bootstrap_available %in% TRUE, , drop = FALSE]
@@ -329,7 +337,8 @@ if (nzchar(precompute_cache)) {
       input = input,
       diagnostics = list(
         identity_max_prof = identity_max_prof, n_fallback = n_fallback,
-        legacy_drift_n = legacy_drift_n, legacy_drift_max = legacy_drift_max
+        legacy_drift_n = legacy_drift_n, legacy_drift_max = legacy_drift_max,
+        n_verify_checks = n_verify_checks
       )
     ),
     precompute_cache

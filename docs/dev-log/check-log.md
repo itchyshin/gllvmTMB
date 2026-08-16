@@ -4,6 +4,33 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-08-16 — Gaussian-identity LA-MSPL SE pin (Cursor)
+
+Lane `cursor/mspl-se-gaussian-pin-rebased` rebased onto `origin/main`
+after #1017. Extends the internal \(Q_P\)/\(Q_0\) pin to Gaussian
+identity. Public `se=TRUE` still withholds `sdreport()`. No
+`vcov()` / `confint()`. No Gaussian registry flip. No NEWS covered.
+Bernoulli pin not rebuilt. Does not take #1014's Tweedie/Beta door.
+Codex Lane B remains the binary SE owner.
+
+```sh
+export OMP_NUM_THREADS=1 NOT_CRAN=true
+# RED (before fence extension):
+#   gllvmTMB_mspl_curvature_family
+#   "fenced to Bernoulli logit and Poisson log"
+#   Resolved family "gaussian", link "identity"
+# GREEN (after):
+#   test-zz-mspl-gaussian-se-feasibility.R  PASS 35
+```
+
+```sh
+rg -n 'gllvmTMB_mspl_curvature_pin' NAMESPACE
+# no matches (unexported)
+```
+
+Not run: `devtools::test()`, `R CMD check`, pkgdown, Totoro.
+VA-light `delta_lognormal_log` flake is #985 / #1013, not this pin.
+
 ## 2026-08-16 — Poisson ordinary experimental-point admit (Cursor)
 
 Lane `cursor/mspl-poisson-admit-g0` from `origin/main` @

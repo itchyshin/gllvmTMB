@@ -7,6 +7,9 @@
 ## This is not TMB::sdreport(), not I_LA(beta), and not a public SE.
 ## Non-PD Hessians stay typed. No pseudoinverse, clip, or nearest-PD.
 ## Do not copy Codex lane-b helpers. Do not export.
+##
+## Family fence (availability pin only; not admission):
+##   binomial + logit, poisson + log, gaussian + identity.
 
 .gllvmTMB_mspl_pin_family_link <- function(fit) {
   fam <- fit$family
@@ -111,10 +114,11 @@
   }
   fl <- .gllvmTMB_mspl_pin_family_link(fit)
   allowed <- (identical(fl$family, "binomial") && identical(fl$link, "logit")) ||
-    (identical(fl$family, "poisson") && identical(fl$link, "log"))
+    (identical(fl$family, "poisson") && identical(fl$link, "log")) ||
+    (identical(fl$family, "gaussian") && identical(fl$link, "identity"))
   if (!isTRUE(allowed)) {
     .gllvmTMB_mspl_abort(
-      "The internal MSPL curvature pin is fenced to Bernoulli logit and Poisson log.",
+      "The internal MSPL curvature pin is fenced to Bernoulli logit, Poisson log, and Gaussian identity.",
       "x" = "Resolved family {.val {fl$family}}, link {.val {fl$link}}.",
       class = "gllvmTMB_mspl_curvature_family"
     )

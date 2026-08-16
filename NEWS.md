@@ -7,6 +7,23 @@ bridge remains experimental and is not required for the main workflow.
 
 ## Changed
 
+* **Integrated models now take any number of named sources, declared with
+  `isdm_sources()` (experimental).** A portal stream, digitised literature
+  records, checklists, and a structured survey can each be a named source with
+  its own observation law, all sharing one ecological process:
+  `family = isdm_sources(gbif = poisson(), literature = poisson(), survey =
+  binomial("cloglog"))`, with an `isdm_source` column in the data naming each
+  row's source. Two laws are admitted — a Poisson count stream and a
+  complementary-log-log detection stream — because both observe a thinning of
+  the same shared intensity; that argument holds arm by arm, so it does not
+  weaken as sources are added. Everything the two-source route refused stays
+  refused: logit or probit detection, dispersion-carrying families, `weights`,
+  multi-trial rows, and any trait not observed by every declared source. The
+  existing two-source form (`list(gbif = ..., survey_pa = ...)`) keeps working
+  unchanged and gives identical fits — it is now the two-source case of the
+  same rule. Everything reported remains relative intensity, and the interface
+  remains experimental.
+
 * **Integrated two-source models can now be fitted through `gllvmTMB()`
   itself (experimental).** Opportunistic presence-only records and a
   structured detection/non-detection survey of the same species can enter one

@@ -335,6 +335,59 @@ wave-4 data existed; timestamped in the vault at commit `3fefde2`):**
    double bootstrap, no further waves. ("Yes if it narrows but doesn't
    close, document the measured coverage.")
 
+### 7f. Wave-4 — the REML-corrected bootstrap DGP; the programme's final measurement
+
+Same grid, same seeds, same B = 200, `boot_dgp = "reml"`: the bootstrap world
+is generated from an auxiliary `REML = TRUE` fit while the pivoted estimator
+inside each replicate stays ML. 1,600/1,600 converged, zero non-finite SEs,
+47.7 min wall on Totoro at 48 cores.
+
+Failure-inclusive coverage, with the wave-3 (ML DGP) value beside it:
+
+| mechanism | conf 90% | conf 95% | pred 90% | pred 95% |
+|---|---|---|---|---|
+| mcar05 | 0.884 (was 0.880) | 0.932 (0.930) | 0.893 (0.890) | 0.936 (0.933) |
+| mcar20 | 0.880 (0.876) | 0.929 (0.926) | 0.886 (0.882) | 0.931 (0.928) |
+| trait_clustered | 0.885 (0.880) | 0.933 (0.928) | 0.887 (0.881) | 0.934 (0.929) |
+| unit_clustered | 0.883 (0.880) | 0.933 (0.931) | 0.886 (0.882) | 0.932 (0.929) |
+
+**Gate: 0/16 — and the pre-registered narrows-but-fails branch is what
+fired.** The REML correction moved coverage the right way in **16 cells out of
+16** (mean +0.36 points; range +0.22 to +0.58). A uniform sign across sixteen
+cells is not sampling noise, so the diagnosis in §7e was correct in
+*direction*: some of the deficit really is plug-in underdispersion of the
+bootstrap DGP, and correcting the DGP recovers part of it. But the remaining
+deficit is ~1.6 points at both nominal levels, four to eight times the ±2×MCSE
+band, so the correction explains only about **18%** of the gap it was aimed at.
+Under-coverage of this size is not a plug-in artefact alone.
+
+**Per the pre-registered rule, the interval programme STOPS here.** The final,
+honest label for `predict_missing(se = TRUE)` at n = 50 × p = 25, q = 2,
+gaussian:
+
+- **`sim` is the best-measured route: 0.941–0.946 at nominal 0.95.**
+- **`boot` with `boot_dgp = "reml"` reaches 0.929–0.933**, at roughly 300×
+  `sim`'s cost.
+- **No route is `calibrated`. `se =` stays `heuristic_unvalidated`**, and no
+  interval claim is made in NEWS, README, any article, or any exported
+  surface. A user asking for an interval here should read ~93–95% actual
+  coverage for a nominal 95% interval.
+
+**What the whole five-route ladder bought.** Not a calibrated interval — a
+localised cause. Every route that propagates *more* uncertainty lands in the
+same 1–2 point band, the bootstrap included, and correcting the bootstrap's
+own DGP moves it 0.36 of the needed 2.0 points. The residual is therefore a
+property of the fitted model at this scale (n = 50 units against 25 traits and
+a rank-2 loading matrix is a genuinely small-sample regime for the latent
+covariance), not of any variance formula. That is a statement about when
+reconstruction intervals can be trusted, and it belongs in the paper rather
+than in a sixth route.
+
+**Cost note, deliberately not claimed as a finding.** Wave-4 averaged 75 s per
+fit against wave-3's 95 s despite doing strictly more work. The two waves ran
+under different machine loads on a shared server, so the comparison measures
+contention, not the routes.
+
 ## 6. Decision needed from the maintainer
 
 - Approve the estimand split (confidence-for-mean vs prediction-for-value

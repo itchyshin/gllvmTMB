@@ -170,11 +170,12 @@
 ## developer route and the public route are admitted through it.
 .gllvmTMB_integrated_two_source_contract <- function(family_input, data,
                                                      family_id_vec,
-                                                     link_id_vec) {
+                                                     link_id_vec,
+                                                     trait_labels) {
   ok <- is.list(family_input) &&
     !inherits(family_input, "family") &&
     identical(attr(family_input, "family_var"), "isdm_family") &&
-    identical(names(family_input), c("gbif", "survey_pa")) &&
+    identical(sort(names(family_input)), c("gbif", "survey_pa")) &&
     "source" %in% names(data) &&
     "isdm_family" %in% names(data) &&
     all(data$source %in% c("gbif", "survey")) &&
@@ -187,7 +188,27 @@
               ifelse(data$source == "gbif", 2L, 1L)) &&
     identical(unname(as.integer(link_id_vec)),
               ifelse(data$source == "survey", 2L, 0L))
-  isTRUE(ok)
+  if (!isTRUE(ok)) return(FALSE)
+
+  ## EVERY trait must carry BOTH arms. Without this the clauses above are
+  ## statements about the data frame as a whole, and an ordinary BETWEEN-trait
+  ## mixed-family fit -- trait A all Poisson/gbif, trait B all cloglog/survey --
+  ## would satisfy them while containing no integrated species at all. That fit
+  ## needs no relaxation (no family varies within any trait), yet admitting it
+  ## would hand it the cloglog offset and the augmented spatial slope, neither
+  ## of which it has any claim to. One dummy gbif row would likewise buy a
+  ## whole survey-only data set the same access. The within-trait pairing IS
+  ## the model, so it is the thing to check.
+  if (missing(trait_labels) || is.null(trait_labels) ||
+      length(trait_labels) != nrow(data)) {
+    return(FALSE)
+  }
+  by_trait <- split(as.character(data$source), as.character(trait_labels),
+                    drop = TRUE)
+  isTRUE(length(by_trait) > 0L) &&
+    all(vapply(by_trait,
+               function(s) all(c("gbif", "survey") %in% s),
+               logical(1L)))
 }
 
 .gllvmTMB_loading_ridge_applies <- function(ridge_tau, parameter_names) {
@@ -702,7 +723,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     family_input = family_input,
     data = data,
     family_id_vec = family_id_vec,
-    link_id_vec = link_id_vec
+    link_id_vec = link_id_vec,
+    trait_labels = data[[trait]]
   )
   if (isdm_internal && !isdm_structural) {
     cli::cli_abort(c(
@@ -1214,9 +1236,17 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     ## LHS column gets its own Lambda_k Lambda_k^T and there is no
     ## intercept-slope correlation block. SPA-09 records direct route evidence;
     ## RE-14's ID 3/9 admission remains C1 partial and non-route-specific.
+    ## The structural (public) route additionally requires the slope to be the
+    ## SOURCE GATE itself. The token route was implicitly pinned to that column
+    ## because .isdm_formula() is its only constructor; the public route has no
+    ## such constructor, so without this a caller meeting the family contract
+    ## could hang an arbitrary continuous covariate off the SPDE slope on a
+    ## cloglog arm -- a shape nothing has ever exercised.
+    isdm_structural_slope <- isdm_structural &&
+      identical(spde_latent_slope_cs$extra$slope_col, "isdm_gbif")
     isdm_spatial_slope_ok <- .isdm_spatial_augmented_slope_allowed(
       isdm_spatial_token, family_id_vec, link_id_vec,
-      structural_ok = isdm_structural
+      structural_ok = isdm_structural_slope
     )
     if (any(!.augmented_slope_family_allowed(family_id_vec, link_id_vec)) &&
         !isdm_spatial_slope_ok) {

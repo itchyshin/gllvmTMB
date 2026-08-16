@@ -129,30 +129,36 @@ test_that("the two-source contract predicate is exact", {
   d <- data.frame(source = c("gbif", "survey"),
                   isdm_family = c("gbif", "survey_pa"),
                   stringsAsFactors = FALSE)
+  tl <- factor(c("sp1", "sp1"))
   fam_ok <- local({
     f <- list(gbif = stats::poisson(), survey_pa = stats::binomial(link = "cloglog"))
     attr(f, "family_var") <- "isdm_family"
     f
   })
   expect_true(.gllvmTMB_integrated_two_source_contract(
-    fam_ok, d, c(2L, 1L), c(0L, 2L)))
+    fam_ok, d, c(2L, 1L), c(0L, 2L), trait_labels = tl))
 
   ## logit instead of cloglog on the survey arm -> NOT the contract
   expect_false(.gllvmTMB_integrated_two_source_contract(
-    fam_ok, d, c(2L, 1L), c(0L, 1L)))
+    fam_ok, d, c(2L, 1L), c(0L, 1L), trait_labels = tl))
   ## only one source present -> NOT the contract
   one <- data.frame(source = c("gbif", "gbif"),
                     isdm_family = c("gbif", "gbif"), stringsAsFactors = FALSE)
   expect_false(.gllvmTMB_integrated_two_source_contract(
-    fam_ok, one, c(2L, 2L), c(0L, 0L)))
+    fam_ok, one, c(2L, 2L), c(0L, 0L), trait_labels = tl))
   ## wrong family_var attribute -> NOT the contract
   fam_bad <- fam_ok
   attr(fam_bad, "family_var") <- "family"
   expect_false(.gllvmTMB_integrated_two_source_contract(
-    fam_bad, d, c(2L, 1L), c(0L, 2L)))
+    fam_bad, d, c(2L, 1L), c(0L, 2L), trait_labels = tl))
   ## an ordinary single family object -> NOT the contract
   expect_false(.gllvmTMB_integrated_two_source_contract(
-    stats::poisson(), d, c(2L, 1L), c(0L, 2L)))
+    stats::poisson(), d, c(2L, 1L), c(0L, 2L), trait_labels = tl))
+  ## trait labels absent or misaligned -> fail closed, never silently admit
+  expect_false(.gllvmTMB_integrated_two_source_contract(
+    fam_ok, d, c(2L, 1L), c(0L, 2L), trait_labels = NULL))
+  expect_false(.gllvmTMB_integrated_two_source_contract(
+    fam_ok, d, c(2L, 1L), c(0L, 2L), trait_labels = factor("sp1")))
 })
 
 test_that("spatial mesh receipt has one projection row per prepared observation", {

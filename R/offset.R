@@ -147,10 +147,13 @@ gll_prepare_offset <- function(offset_expr, data, formula_env,
 
   ## ---- The count-family gate ------------------------------------------
   ## Only NONZERO offsets are gated. See the note above on why zero passes.
-  ## A Bernoulli-cloglog offset is a change-of-support term, not an ordinary
-  ## log-rate exposure. It remains unavailable to the public interface but is
-  ## admitted for the unexported iSDM developer route, which supplies known
-  ## sampled area and pins its coefficient to one.
+  ## A Bernoulli-cloglog offset is a change-of-support term (known sampled area
+  ## or visit effort), not an ordinary log-rate exposure, which is why it is
+  ## admitted here and nowhere else outside the count families. The caller
+  ## passes allow_isdm_cloglog only once the exact integrated two-source
+  ## contract has matched -- see .gllvmTMB_integrated_two_source_contract() --
+  ## so this reaches the unexported developer route AND a public caller who
+  ## meets that same contract, and nothing else.
   is_isdm_cloglog <- isTRUE(allow_isdm_cloglog) &
     family_id_vec == 1L & link_id_vec == 2L
   offending <- off != 0 & !(family_id_vec %in% .gll_offset_count_family_ids | is_isdm_cloglog)

@@ -215,6 +215,16 @@ test_that("the public mixed-family route is admitted for the exact contract", {
   ## The public route carries no developer marker; it is the same fit, reached
   ## through the documented door.
   expect_null(fit$isdm_developer)
+
+  ## ...and "the same fit" is asserted, not assumed. Without this the lane's
+  ## central claim -- that the public door reaches the model the developer
+  ## route reached, rather than a lookalike -- rests on reading the diff.
+  dev_fit <- .gll_isdm_fit(
+    rows = fixture$rows, X = fixture$X, B = fixture$B, d = 1L,
+    control = .isdm_test_control(), silent = TRUE
+  )
+  expect_equal(fit$opt$objective, dev_fit$opt$objective, tolerance = 1e-6)
+  expect_equal(unname(fit$opt$par), unname(dev_fit$opt$par), tolerance = 1e-4)
 })
 
 test_that("the within-trait guard stays closed for anything but that contract", {

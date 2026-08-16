@@ -103,11 +103,6 @@ pa <- do.call(rbind, lapply(1:3, function(v) transform(base,
   visit = v)))
 
 rows <- rbind(gbif, pa)
-X <- matrix(x[match(rows$cell_id, cells)], ncol = 1,
-            dimnames = list(NULL, "env"))
-B <- matrix(ifelse(rows$source == "gbif",
-                   b[match(rows$cell_id, cells)], NA_real_),
-            ncol = 1, dimnames = list(NULL, "bias"))
 table(rows$source)
 ```
 
@@ -185,9 +180,14 @@ identified rather than silently absorbed. At this deliberately small design
 expect useful but noisy estimates:
 
 ```{r gamma}
+## factor() ordered the species alphabetically, so the fitted coefficients come
+## back in that order -- realign the simulated truth before comparing, and name
+## the columns so the pairing is visible rather than assumed.
 idx <- grep("bias", fit$X_fix_names)
-round(rbind(truth = gamma,
-            estimate = unname(fit$opt$par[idx])), 2)
+gamma_ordered <- gamma[match(levels(dat$trait), species)]
+tab <- rbind(truth = gamma_ordered, estimate = unname(fit$opt$par[idx]))
+colnames(tab) <- levels(dat$trait)
+round(tab, 2)
 ```
 
 The shared-state loadings and the portal-only field's covariance are
@@ -216,6 +216,23 @@ Three honest cautions, each with a package-level reason.
    contract and the terms above may change without deprecation. Check
    convergence and positive-definiteness on every fit, and do not build a
    pipeline on this interface yet.
+
+## What this route does and does not cover
+
+**Covered here:** two sources — one presence-only count stream and one
+detection/non-detection survey — sharing one ecological linear predictor,
+with a portal-only bias term and known per-row support, fitted through
+`gllvmTMB()`.
+
+**Works but not certified:** the estimates themselves. The route is
+contract-tested and the model fits, but recovery accuracy at this or any
+particular design size is not established, and the portal-only *spatial*
+field in particular rests on development experience rather than a completed
+recovery study. Read the numbers above as illustration, not validation.
+
+**Not available:** more than two sources; calibrated confidence intervals for
+this route; and weighting one source's contribution against the other's.
+Each is real work, not an oversight.
 
 ```{r session, include=FALSE}
 ## kept minimal deliberately; this article is a workflow illustration only

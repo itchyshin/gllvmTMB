@@ -1,10 +1,13 @@
 # Phase 4-style prep — truncated Poisson and truncated NB2 (not admitted)
 
-**Status:** design + local oracles only. **No registry row** is added
-for `truncated_poisson` (fid **10**) or `truncated_nbinom2` (fid
-**11**). Prepare still admits only gaussian / binomial / Poisson.
-**Verdict: PASS for oracles / this writeup, FAIL for C++ / admission
-/ registry / `estimator = "mspl"` on either truncated family.**
+**Status:** design + local oracles + **`planned` registry rows only**.
+Registry cells `truncated_poisson:log:ordinary:q1/q2` and
+`truncated_nbinom2:log:ordinary:q1/q2` are `status = "planned"`,
+`evidence = "phase4_prep"` (#1039). They are **not** `admitted`.
+`.gllvmTMB_mspl_prepare()` still rejects both truncated families
+(fid **10** / **11**). **Verdict: PASS for oracles / planned rows,
+FAIL for C++ / admission / `estimator = "mspl"` on either
+truncated family.**
 
 **Reader:** statistical method developer / TMB engineer who must
 decide whether a later tape may add a *positive-count* atom.
@@ -127,7 +130,8 @@ truncated Poisson, not ordinary Poisson.
 
 Helpers live in
 `tests/testthat/test-mspl-truncated-phase4-oracles.R`.
-No live MSPL, no prepare, no registry.
+No live MSPL, no prepare widen. Registry is `planned` /
+`phase4_prep` only.
 
 | ID | Pin |
 |---|---|
@@ -139,4 +143,4 @@ No live MSPL, no prepare, no registry.
 | T6 | TNB2 \(I_\eta\neq\) untruncated NB2 weight at interior \((\mu,\varphi)\). |
 | T7 | TNB2 \(\varphi\to\infty\) tracks ZTP, not Poisson. |
 | T8 | \(V_{\mathrm{loading}}\) / Hirose are mean-inert. |
-| T9 | No live MSPL fit / registry / prepare. |
+| T9 | Registry rows `planned` / `phase4_prep`; **not** `admitted`. |

@@ -1,10 +1,12 @@
 # Phase 4-style prep — multinomial (baseline-category logit) LA-MSPL (not admitted)
 
-**Status:** design + local oracles only. **No registry row** is added
-for `multinomial`. Prepare still admits only gaussian / binomial /
-Poisson. Multinomial is runtime `family_id` **16**. **Verdict: PASS
-for oracles / this writeup, FAIL for C++ / admission / registry /
-`estimator = "mspl"` on multinomial.**
+**Status:** design + local oracles + **`planned` registry rows only**.
+Registry cells `multinomial:logit:ordinary:q1` and `q2` are
+`status = "planned"`, `evidence = "phase4_prep"` (#1039). They are
+**not** `admitted`. `.gllvmTMB_mspl_prepare()` still rejects
+`multinomial` (`family_id` **16**). **Verdict: PASS for oracles /
+planned rows, FAIL for C++ / admission / `estimator = "mspl"` on
+multinomial.**
 
 **Reader:** statistical method developer / TMB engineer who must
 decide whether a later tape may add an *unordered-category* atom.
@@ -107,7 +109,8 @@ and \(I=\pi(1-\pi)\). That recovers Bernoulli Fisher. It is a
 
 Helpers live in
 `tests/testthat/test-mspl-multinomial-phase4-oracles.R`.
-No live MSPL, no prepare, no registry.
+No live MSPL, no prepare widen. Registry is `planned` /
+`phase4_prep` only.
 
 | ID | Pin |
 |---|---|
@@ -118,4 +121,4 @@ No live MSPL, no prepare, no registry.
 | M5 | Separation path (one \(\eta\to+\infty\)) drives \(\log\det I\to-\infty\). |
 | M6 | Anchor-once log-likelihood; summing \(K-1\) row densities is wrong. |
 | M7 | \(V_{\mathrm{loading}}\) / Hirose / ordinal cut objects are the wrong atom. |
-| M8 | No live MSPL fit / registry / prepare. |
+| M8 | Registry rows `planned` / `phase4_prep`; **not** `admitted`. |

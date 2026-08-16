@@ -1,11 +1,12 @@
 # Phase 4-style prep — betabinomial (logit) LA-MSPL route (not admitted)
 
-**Status:** design + local oracles only. **No registry row** is added
-for `betabinomial`. `.gllvmTMB_mspl_prepare()` still admits only
-gaussian / binomial / Poisson (`family_id %in% c(0L, 1L, 2L)`).
-Betabinomial is runtime `family_id` **8**. **Verdict: PASS for
-oracles / this writeup, FAIL for C++ / admission / registry /
-`estimator = "mspl"` on betabinomial.**
+**Status:** design + local oracles + **`planned` registry rows only**.
+Registry cells `betabinomial:logit:ordinary:q1` and `q2` are
+`status = "planned"`, `evidence = "phase4_prep"` (#1039). They are
+**not** `admitted`. `.gllvmTMB_mspl_prepare()` still rejects
+`betabinomial` (`family_id` **8**). **Verdict: PASS for oracles /
+planned rows, FAIL for C++ / admission / `estimator = "mspl"` on
+betabinomial.**
 
 **Reader:** statistical method developer / TMB engineer who must
 decide whether a later tape may add a trials-and-precision atom.
@@ -154,8 +155,8 @@ are rejected transplants.
 
 Helpers live in
 `tests/testthat/test-mspl-betabinomial-phase4-oracles.R`.
-They must not call `gllvmTMB(..., estimator = "mspl")`,
-`.gllvmTMB_mspl_prepare()`, or the registry.
+They must not call `gllvmTMB(..., estimator = "mspl")` or
+`.gllvmTMB_mspl_prepare()`. B9 looks up the planned row only.
 
 | ID | Pin |
 |---|---|
@@ -167,4 +168,4 @@ They must not call `gllvmTMB(..., estimator = "mspl")`,
 | B6 | Ferrari Beta weight \(\neq\) BB exact or quasi. |
 | B7 | All-zero / all-\(N\) paths drive \(P^*_{\mathrm{J,BB}}\to-\infty\). |
 | B8 | \(V_{\mathrm{loading}}\) and Hirose are \((\mu,\varphi,N)\)-inert. |
-| B9 | No live MSPL fit / registry / prepare. |
+| B9 | Registry rows `planned` / `phase4_prep`; **not** `admitted`. |

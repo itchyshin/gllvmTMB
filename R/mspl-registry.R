@@ -26,7 +26,8 @@
     }
     return("identity")
   }
-  if (identical(fid, 2L)) {
+  if (fid %in% c(2L, 3L, 4L, 5L, 15L)) {
+    ## Poisson / lognormal / Gamma / nbinom2 / nbinom1: log is link_id 0.
     return("log")
   }
   .gllvmTMB_mspl_link_name(link_id)
@@ -45,23 +46,27 @@
       "Gaussian LA-MSPL requires at least two units to form S."
     )
   }
-  vapply(traits, function(t) {
-    yt <- y[trait_id == t]
-    if (length(yt) != N) {
-      .gllvmTMB_mspl_abort(c(
-        "Gaussian LA-MSPL requires a complete balanced trait x unit grid.",
-        "x" = "Trait {.val {t}} has {length(yt)} rows; expected {N} units."
-      ))
-    }
-    sjj <- mean((yt - mean(yt))^2)
-    if (!is.finite(sjj) || !(sjj > 0)) {
-      .gllvmTMB_mspl_abort(c(
-        "Gaussian LA-MSPL requires strictly positive trait sample variances.",
-        "x" = "Trait {.val {t}} has S_jj = {.val {sjj}}."
-      ))
-    }
-    sjj
-  }, numeric(1))
+  vapply(
+    traits,
+    function(t) {
+      yt <- y[trait_id == t]
+      if (length(yt) != N) {
+        .gllvmTMB_mspl_abort(c(
+          "Gaussian LA-MSPL requires a complete balanced trait x unit grid.",
+          "x" = "Trait {.val {t}} has {length(yt)} rows; expected {N} units."
+        ))
+      }
+      sjj <- mean((yt - mean(yt))^2)
+      if (!is.finite(sjj) || !(sjj > 0)) {
+        .gllvmTMB_mspl_abort(c(
+          "Gaussian LA-MSPL requires strictly positive trait sample variances.",
+          "x" = "Trait {.val {t}} has S_jj = {.val {sjj}}."
+        ))
+      }
+      sjj
+    },
+    numeric(1)
+  )
 }
 
 .gllvmTMB_mspl_registry <- function() {
@@ -93,7 +98,9 @@
   admitted_binom$evidence <- "partial_b2_incomplete"
   admitted_binom$notes <- "Design 88 live surface; B2 shards incomplete; not a covered claim"
   admitted_binom$cell_id <- .gllvmTMB_mspl_registry_cell_id(
-    admitted_binom$family, admitted_binom$link, admitted_binom$structure,
+    admitted_binom$family,
+    admitted_binom$link,
+    admitted_binom$structure,
     admitted_binom$q
   )
 
@@ -112,43 +119,139 @@
     stringsAsFactors = FALSE
   )
   admitted_gauss$cell_id <- .gllvmTMB_mspl_registry_cell_id(
-    admitted_gauss$family, admitted_gauss$link, admitted_gauss$structure,
+    admitted_gauss$family,
+    admitted_gauss$link,
+    admitted_gauss$structure,
     admitted_gauss$q
   )
 
-  ## Poisson ordinary q=1,2: planned fenced tape. NOT admitted.
-  planned_pois <- data.frame(
+  ## Poisson ordinary q=1,2: experimental point after #1008 + G0 2026-08-16.
+  ## #990 smoke was operational PASS / admit-evidence FAIL. Not covered.
+  ## No public SE / vcov / confint.
+  admitted_pois <- data.frame(
     family = "poisson",
+    link = "log",
+    structure = "ordinary",
+    q = c(1L, 2L),
+    status = "admitted",
+    evidence = "admit_packet",
+    notes = paste(
+      "Phase 4 GLM-outer W=diag(mu), not I_LA(beta);",
+      "c_P event-count rate + event-weighted loading atom (#1008);",
+      "experimental point (G0 2026-08-16); #990 operational PASS /",
+      "admit-evidence FAIL; not a covered campaign; no public SE"
+    ),
+    stringsAsFactors = FALSE
+  )
+  admitted_pois$cell_id <- .gllvmTMB_mspl_registry_cell_id(
+    admitted_pois$family,
+    admitted_pois$link,
+    admitted_pois$structure,
+    admitted_pois$q
+  )
+
+  ## nbinom1 / nbinom2 ordinary q=1,2: planned fenced tape. NOT admitted.
+  planned_nb <- data.frame(
+    family = rep(c("nbinom1", "nbinom2"), each = 2L),
+    link = "log",
+    structure = "ordinary",
+    q = c(1L, 2L, 1L, 2L),
+    status = "planned",
+    evidence = "phase4_prep",
+    notes = c(
+      paste(
+        "Phase 4 fenced planned tape: GLM-outer PMF-summed exact I,",
+        "NOT quasi W=mu/(1+phi); public estimator=mspl is experimental;",
+        "not admitted; not covered"
+      ),
+      paste(
+        "Phase 4 fenced planned tape: GLM-outer PMF-summed exact I,",
+        "NOT quasi W=mu/(1+phi); public estimator=mspl is experimental;",
+        "not admitted; not covered"
+      ),
+      paste(
+        "Phase 4 fenced planned tape: GLM-outer W=mu*phi/(phi+mu),",
+        "not I_LA(beta); public estimator=mspl is experimental;",
+        "not admitted; not covered"
+      ),
+      paste(
+        "Phase 4 fenced planned tape: GLM-outer W=mu*phi/(phi+mu),",
+        "not I_LA(beta); public estimator=mspl is experimental;",
+        "not admitted; not covered"
+      )
+    ),
+    stringsAsFactors = FALSE
+  )
+  planned_nb$cell_id <- .gllvmTMB_mspl_registry_cell_id(
+    planned_nb$family, planned_nb$link, planned_nb$structure,
+    planned_nb$q
+  )
+
+  ## Gamma(log) and lognormal(log) ordinary q=1,2: planned Phase-4-style
+  ## prep only. NOT admitted. No prepare widen. No C++ tape.
+  planned_gamma <- data.frame(
+    family = "gamma",
     link = "log",
     structure = "ordinary",
     q = c(1L, 2L),
     status = "planned",
     evidence = "phase4_prep",
     notes = paste(
-      "Phase 4 fenced planned tape: GLM-outer W=diag(mu), not I_LA(beta);",
-      "public estimator=mspl is experimental; not admitted; not covered"
+      "Phase 4-style prep: GLM-outer W=phi (mean-inert);",
+      "not Tweedie p->2; not admitted; not covered; se=FALSE only"
     ),
     stringsAsFactors = FALSE
   )
-  planned_pois$cell_id <- .gllvmTMB_mspl_registry_cell_id(
-    planned_pois$family, planned_pois$link, planned_pois$structure,
-    planned_pois$q
+  planned_gamma$cell_id <- .gllvmTMB_mspl_registry_cell_id(
+    planned_gamma$family, planned_gamma$link, planned_gamma$structure,
+    planned_gamma$q
+  )
+
+  planned_lnorm <- data.frame(
+    family = "lognormal",
+    link = "log",
+    structure = "ordinary",
+    q = c(1L, 2L),
+    status = "planned",
+    evidence = "phase4_prep",
+    notes = paste(
+      "Phase 4-style prep: GLM-outer W=1/sigma_eps^2 on log y;",
+      "shared sigma_eps with gaussian is not a theorem transfer;",
+      "not admitted; not covered; se=FALSE only"
+    ),
+    stringsAsFactors = FALSE
+  )
+  planned_lnorm$cell_id <- .gllvmTMB_mspl_registry_cell_id(
+    planned_lnorm$family, planned_lnorm$link, planned_lnorm$structure,
+    planned_lnorm$q
   )
 
   excluded <- data.frame(
     family = c(
-      "binomial", "binomial", "binomial", "binomial", "binomial",
-      "binomial", "nbinom2"
+      "binomial",
+      "binomial",
+      "binomial",
+      "binomial",
+      "binomial",
+      "binomial"
     ),
     link = c(
-      "logit", "logit", "logit", "logit", "logit",
-      "logit", "log"
+      "logit",
+      "logit",
+      "logit",
+      "logit",
+      "logit",
+      "logit"
     ),
     structure = c(
-      "ordinary", "ordinary", "ordinary", "ordinary", "ordinary",
-      "dep", "ordinary"
+      "ordinary",
+      "ordinary",
+      "ordinary",
+      "ordinary",
+      "ordinary",
+      "dep"
     ),
-    q = c(3L, 1L, 1L, 1L, 1L, 1L, 1L),
+    q = c(3L, 1L, 1L, 1L, 1L, 1L),
     status = "excluded",
     evidence = "fence",
     notes = c(
@@ -157,23 +260,32 @@
       "missing responses deferred",
       "nonzero offset deferred",
       "free Bernoulli Psi deferred",
-      "unstructured dep not an admitted MSPL structure",
-      "NB2 waits for Phase 4 after Poisson admission gate"
+      "unstructured dep not an admitted MSPL structure"
     ),
     stringsAsFactors = FALSE
   )
   excluded$cell_id <- paste(
     .gllvmTMB_mspl_registry_cell_id(
-      excluded$family, excluded$link, excluded$structure, excluded$q
+      excluded$family,
+      excluded$link,
+      excluded$structure,
+      excluded$q
     ),
     c(
-      "qgt2", "trials", "missing", "offset", "psi",
-      "dep", "nbinom2"
+      "qgt2",
+      "trials",
+      "missing",
+      "offset",
+      "psi",
+      "dep"
     ),
     sep = ":"
   )
 
-  rows <- rbind(admitted_binom, admitted_gauss, planned_pois, excluded)
+  rows <- rbind(
+    admitted_binom, admitted_gauss, admitted_pois, planned_nb,
+    planned_gamma, planned_lnorm, excluded
+  )
   rows[order(rows$status, rows$family, rows$structure, rows$link, rows$q), ]
 }
 
@@ -182,10 +294,12 @@
   paste(family, link, structure, q_lab, sep = ":")
 }
 
-.gllvmTMB_mspl_registry_lookup <- function(family = "binomial",
-                                           link,
-                                           structure,
-                                           q = NA_integer_) {
+.gllvmTMB_mspl_registry_lookup <- function(
+  family = "binomial",
+  link,
+  structure,
+  q = NA_integer_
+) {
   tbl <- .gllvmTMB_mspl_registry()
   q <- if (identical(structure, "spatial_indep")) {
     NA_integer_

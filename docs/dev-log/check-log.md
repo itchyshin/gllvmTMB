@@ -4,6 +4,221 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-08-16 — hotfix: nbinom2 Phase-4 oracles after #1007 door (Cursor)
+
+Main R-CMD-check `31946637369` on `f3bd4e6a` (#1007) failed
+`FAIL 7` in `test-mspl-nbinom2-phase4-oracles.R` (lines 348–362).
+#1007 opened planned nbinom1/nbinom2 ordinary q=1,2 rows and updated
+the nbinom1 oracle, but left the nbinom2 oracle asserting
+`excluded` / lookup NULL / `any(planned$family == "nbinom2")` FALSE.
+#1013 is already an ancestor; this is not the VA flake.
+
+```sh
+export OMP_NUM_THREADS=1 NOT_CRAN=true
+# targeted (this sitting):
+#   test-mspl-nbinom2-phase4-oracles.R
+#   test-mspl-nbinom1-phase4-oracles.R
+#   test-mspl-registry.R
+#   FAIL 0 | WARN 0 | SKIP 0 | PASS 185
+```
+
+Not run: full `devtools::test()`, `R CMD check`, pkgdown, Totoro.
+
+## 2026-08-16 — planned-only nbinom door replayed onto main (Cursor)
+
+Lane `cursor/mspl-se-nb-impl` (#1007) reset onto `origin/main` after
+#1017 Poisson admit. Opens a **planned-only** nbinom1/nbinom2 log
+public door so #998 Q_P/Q_0 pins can run. Poisson stays admitted with
+its event-weighted `c_P`. nbinom rate stays unpinned `c=1`. Registry
+`planned` / `phase4_prep`. Not admitted. No public `vcov()` /
+`confint()` / `sdreport()`. No NEWS covered.
+
+```sh
+export OMP_NUM_THREADS=1 NOT_CRAN=true
+# targeted after the replay (this sitting):
+#   mspl-registry|mspl-prepare-fence|mspl-fenced-family-tapes|
+#   mspl-nb1-fenced-tape|mspl-nb2-fenced-tape|
+#   zz-mspl-nbinom-se-feasibility|mspl-nbinom1-phase4-oracles|
+#   estimator-provenance|mspl-api$|mspl-gaussian-heywood-oracles
+#   FAIL 0 | WARN 0 | SKIP 0 | PASS 629
+```
+
+Not run: full `devtools::test()`, `R CMD check`, pkgdown, Totoro.
+No `git add -A`.
+
+## 2026-08-16 — #1003 R CMD check fence pin (Cursor)
+
+Rebased onto `origin/main` @ `f3bd4e6a` (#1007). Replaced
+`readLines(test_path("../../R/mspl.R"))` / `skip_if(!file.exists)`
+with `deparse(getFromNamespace(".gllvmTMB_mspl_prepare", "gllvmTMB"))`.
+Gamma/lognormal stay planned. nbinom planned rows from #1007 kept.
+Scientific oracles unchanged.
+
+## 2026-08-15 — MSPL Gamma(log)+lognormal(log) Phase-4 prep (Cursor)
+
+Lane `cursor/mspl-phase4-gamma-lognormal` at
+`/tmp/gllvmtmb-mspl-gamma-lnorm` from `origin/main` @ `fe867e40`.
+Planned rows only. No `src/`. No prepare widen. No NEWS covered.
+No `git add -A`. No repo-root `LOOP/`.
+
+```sh
+export OMP_NUM_THREADS=1 NOT_CRAN=true
+pkgload::load_all(".", compile = FALSE)
+# RED: gamma E9 / lognormal E10 lookups NULL (0 planned rows)
+testthat::test_file("tests/testthat/test-mspl-gamma-phase4-oracles.R")
+# [ FAIL 0 | WARN 0 | SKIP 0 | PASS 70 ]
+testthat::test_file("tests/testthat/test-mspl-lognormal-phase4-oracles.R")
+# [ FAIL 0 | WARN 0 | SKIP 0 | PASS 66 ]
+testthat::test_file("tests/testthat/test-mspl-registry.R")
+# [ FAIL 0 | WARN 0 | SKIP 0 | PASS 34 ]
+rg -n 'fam_ids %in%' R/mspl.R
+# fam_ids %in% c(0L, 1L, 2L) unchanged
+git diff --stat -- src/ R/mspl.R R/fit-multi.R NEWS.md
+# empty
+```
+
+Not run: `devtools::test()`, `R CMD check`, pkgdown, Totoro.
+
+## 2026-08-16 — Gaussian-identity LA-MSPL SE pin (Cursor)
+
+Lane `cursor/mspl-se-gaussian-pin-rebased` rebased onto `origin/main`
+after #1017. Extends the internal \(Q_P\)/\(Q_0\) pin to Gaussian
+identity. Public `se=TRUE` still withholds `sdreport()`. No
+`vcov()` / `confint()`. No Gaussian registry flip. No NEWS covered.
+Bernoulli pin not rebuilt. Does not take #1014's Tweedie/Beta door.
+Codex Lane B remains the binary SE owner.
+
+```sh
+export OMP_NUM_THREADS=1 NOT_CRAN=true
+# RED (before fence extension):
+#   gllvmTMB_mspl_curvature_family
+#   "fenced to Bernoulli logit and Poisson log"
+#   Resolved family "gaussian", link "identity"
+# GREEN (after):
+#   test-zz-mspl-gaussian-se-feasibility.R  PASS 35
+```
+
+```sh
+rg -n 'gllvmTMB_mspl_curvature_pin' NAMESPACE
+# no matches (unexported)
+```
+
+Not run: `devtools::test()`, `R CMD check`, pkgdown, Totoro.
+VA-light `delta_lognormal_log` flake is #985 / #1013, not this pin.
+
+## 2026-08-16 — Poisson ordinary experimental-point admit (Cursor)
+
+Lane `cursor/mspl-poisson-admit-g0` from `origin/main` @
+`235be4b4` (#1008). Two Poisson ordinary rows `planned` →
+`admitted` / `admit_packet`. No NEWS. No public SE. No other
+family. No `git add -A`.
+
+```sh
+export OMP_NUM_THREADS=1 NOT_CRAN=true
+pkgload::load_all(".", compile = TRUE)
+testthat::test_file("tests/testthat/test-mspl-registry.R")
+# FAIL 0 | PASS 28
+testthat::test_file("tests/testthat/test-mspl-poisson-admit-packet.R")
+# FAIL 0 | PASS 45
+testthat::test_file("tests/testthat/test-mspl-poisson-public-door.R")
+# FAIL 0 | PASS 7
+testthat::test_file("tests/testthat/test-mspl-poisson-phase4-oracles.R")
+# FAIL 0 | PASS 43
+testthat::test_file("tests/testthat/test-mspl-fenced-family-tapes.R")
+# FAIL 0 | PASS 23
+rg 'family = "poisson"' -A 12 R/mspl-registry.R
+# status = "admitted"; evidence = "admit_packet"
+```
+
+Not run: full `devtools::test()`, `--as-cran`, Totoro B1
+restart. B1 pid 2779264 left running.
+
+## 2026-08-15 — Poisson LA-MSPL admit packet (Cursor)
+
+Lane `cursor/mspl-poisson-admit-rebased` from `origin/main` after
+#989/#993/#994/#1002. Same atoms as #1001, rebased so
+`check-log.md` is not DIRTY. Pinned \(c_P\) + event-weighted
+loading atom. Registry stays `planned` on this PR. No NEWS.
+No public SE. No `git add -A`.
+
+```sh
+export OMP_NUM_THREADS=1 NOT_CRAN=true
+# RED: helpers missing — FAIL 7 | PASS 9
+pkgload::load_all(".", compile = TRUE)
+testthat::test_file("tests/testthat/test-mspl-poisson-admit-packet.R")
+# GREEN: FAIL 0 | WARN 0 | SKIP 0 | PASS 41
+testthat::test_file("tests/testthat/test-mspl-poisson-public-door.R")    # PASS 6
+testthat::test_file("tests/testthat/test-mspl-poisson-phase4-oracles.R")  # PASS 42
+testthat::test_file("tests/testthat/test-mspl-registry.R")               # PASS 26
+testthat::test_file("tests/testthat/test-mspl-fenced-family-tapes.R")    # PASS 23
+rg 'family = "poisson"' -A 8 R/mspl-registry.R   # status = "planned"
+```
+
+Not run: full `devtools::test()`, `--as-cran`. Admit flip is a
+separate commit after this PR is CI-green (Shinichi G0 2026-08-16).
+
+## 2026-08-15 — MSPL Phase-4 nbinom2 prep (not admitted; Cursor)
+
+Worktree `/private/tmp/gllvmtmb-mspl-phase4-nbinom2`,
+branch `cursor/mspl-phase4-nbinom2`.
+
+```sh
+export OMP_NUM_THREADS=1 NOT_CRAN=true
+Rscript --vanilla -e 'pkgload::load_all(".", compile = FALSE, quiet = TRUE);
+  testthat::test_file("tests/testthat/test-mspl-nbinom2-phase4-oracles.R");
+  testthat::test_file("tests/testthat/test-mspl-registry.R")'
+# nbinom2 oracles: 9 tests / 72 expectations / FAIL 0 / WARN 0 / SKIP 0 / PASS 72
+# registry:        2 tests / 26 expectations / FAIL 0 / WARN 0 / SKIP 0 / PASS 26
+git diff --stat -- src/ R/mspl.R R/mspl-registry.R
+# empty (no C++; prepare fence untouched; nbinom2 stays excluded)
+```
+
+Note: `docs/dev-log/research/2026-08-15-mspl-phase4-nbinom2-prep.md`.
+Not run: `devtools::test()`, `R CMD check`, live NB2 MSPL fits, campaigns.
+
+## 2026-08-15 — D-139 B1 Totoro receipt (Cursor)
+
+Lane `cursor/mspl-b1-totoro-receipt`. Receipt + dry-run launcher
+only. No `src/`. No Totoro SSH. No SE-covered claim.
+
+```sh
+chmod +x dev/mspl-b1-totoro-launch.sh
+dev/mspl-b1-totoro-launch.sh --self-test
+# self-test PASS (dry-run, cap, Actions, confirm, hostname)
+dev/mspl-b1-totoro-launch.sh --mode=full
+# prints plan; does not SSH
+rg -n 'SE covered' docs/dev-log/research/2026-08-15-mspl-b1-totoro-receipt.md
+```
+
+Not run: `devtools::test()`, `R CMD check`, pkgdown, Totoro,
+DRAC.
+
+## 2026-08-15 — MSPL Student-t + ordinal Phase-4 prep (Cursor)
+
+Lane `cursor/mspl-phase4-student-ordinal`. Planned prep only.
+No `src/`. No registry row. No public door. No NEWS covered.
+No `git add -A`. No repo-root `LOOP/`.
+
+```sh
+export OMP_NUM_THREADS=1 NOT_CRAN=true
+pkgload::load_all(".", compile = FALSE)
+# RED: could not find function .st_fixture / .ord_fixture
+testthat::test_file("tests/testthat/test-mspl-student-phase4-oracles.R")
+# GREEN PASS 51 / 13 blocks
+testthat::test_file("tests/testthat/test-mspl-ordinal-phase4-oracles.R")
+# GREEN PASS 45 / 12 blocks
+testthat::test_file("tests/testthat/test-mspl-registry.R")
+# PASS 26
+git diff --stat -- src/ R/mspl.R R/mspl-registry.R NEWS.md
+# empty
+rg -n "estimator\\s*=\\s*[\"']mspl[\"']" \
+  tests/testthat/test-mspl-student-phase4-oracles.R \
+  tests/testthat/test-mspl-ordinal-phase4-oracles.R
+# fence-only (negated expects)
+```
+
+Not run: `devtools::test()`, `devtools::check()`, pkgdown, Totoro.
+
 ## 2026-08-15 — MSPL items 1–3 conductor (Cursor)
 
 Items 1–3 + SE-CI. No `src/`. No registry admit. No `git add -A`.
@@ -49582,3 +49797,55 @@ Handover:
 `docs/dev-log/handover/2026-08-15-cursor-handover-phase4-tapes.md`.
 Not run: `devtools::test()`, `R CMD check`, pkgdown, Totoro, admit.
 
+## 2026-08-16 — MSPL remaining-gap board (Cursor)
+
+Lane `cursor/mspl-remaining-gap-board` in
+`/tmp/gllvmtmb-mspl-gap-board` from `origin/main` @ `af1edd2c`.
+Docs-only census. drmTMB parked. Lane B untouched. No admit.
+No NEWS covered. Sibling PRs not edited.
+
+```sh
+git fetch origin
+git log -1 --oneline origin/main
+# af1edd2c
+
+rg -n 'status = ' R/mspl-registry.R
+# admitted binomial / gaussian / poisson; excluded nbinom2; 0 planned
+
+gh pr list --state open --limit 40
+# #974 #1003 #1004 #1005 #1007 #1014 merge-wait
+# #998 #999 #1000 expected-red
+```
+
+Rose: board names merge-wait vs needs-code vs needs-evidence.
+Shannon: do not fight sibling registry/door PRs.
+After-task:
+`docs/dev-log/after-task/2026-08-16-mspl-remaining-gap-board.md`.
+Not run: merge, admit, Totoro, drmTMB.
+
+## 2026-08-16 (Cursor) — #1022 fast-path CI: drop trailing blank line
+
+`git diff --check` failed on `docs/dev-log/check-log.md:49705: new blank line at EOF`.
+Removed the extra EOF newline so the ignored-source fast path can go green.
+Not run: merge, admit, Totoro.
+
+## 2026-08-16 — MSPL betabinomial Phase-4-style prep (Cursor)
+
+Lane `cursor/mspl-phase4-betabinomial` in
+`/tmp/gllvmtmb-mspl-phase4-betabinomial` from `origin/main` @
+`af1edd2c`. Oracles + note only. No registry row. No prepare
+widen. No src. No admit. No NEWS covered.
+
+```sh
+git diff --stat -- src/ R/mspl.R R/mspl-registry.R
+# empty
+
+export OMP_NUM_THREADS=1 NOT_CRAN=true
+# testthat::test_file tests/testthat/test-mspl-betabinomial-phase4-oracles.R
+# testthat::test_file tests/testthat/test-mspl-registry.R
+```
+
+Rose: no admit, no planned row, no public se=TRUE.
+After-task:
+`docs/dev-log/after-task/2026-08-16-mspl-betabinomial-phase4-prep.md`.
+Not run: merge, admit, Totoro, registry edit.

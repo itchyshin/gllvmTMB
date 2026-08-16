@@ -42,7 +42,10 @@ is the **local** cell of that table.
    does **not** repeal D-139 or this GOAL's HARD STOP.
 6. **Hard cap.** No Totoro (or DRAC) job **>30 min** without a filled
    receipt in **§ Receipt** below ([[DECISIONS#D-139|D-139]]: plan +
-   pre-run results + Shinichi approval). **NONE ISSUED.**
+   pre-run results + Shinichi approval). **SE campaign: NONE
+   ISSUED.** **B1 interval calibration: proposed host=Totoro,
+   not launched** —
+   `docs/dev-log/research/2026-08-15-mspl-b1-totoro-receipt.md`.
 7. **If you cannot estimate, that is the finding** — run a smaller
    local pre-run; do not guess a remote wall-clock and launch
    (D-139). A run that overruns its estimate **stops and re-reports**.
@@ -235,17 +238,25 @@ below is filled. An empty receipt means **do not launch**.
 
 ### Receipt — Totoro / DRAC >30 min
 
-**Status: NONE ISSUED (2026-08-15).**
+**SE campaign: NONE ISSUED (2026-08-15).** See
+`docs/dev-log/research/2026-08-15-mspl-no-se-campaign-receipt.md`.
+
+**B1 interval calibration: PROPOSED host=Totoro, not launched
+(2026-08-15).** Full table:
+`docs/dev-log/research/2026-08-15-mspl-b1-totoro-receipt.md`.
+Launcher (dry-run default): `dev/mspl-b1-totoro-launch.sh`.
 
 | Field | Value |
 |---|---|
-| Host | — |
-| Estimate (min) | — |
-| Pre-run test + result | — |
-| Why local pin is insufficient | — |
-| Shinichi approval (quote + time) | — |
-| Core / array request | — |
+| Host | **Totoro** (B1 only; SE remains none) |
+| Estimate (min) | **~1,160–1,260** full B1 @ 140–150 cores (B0 0.4 s/fit-eq × 26 M ⇒ ≈2,900 core-h). Extrapolated, not a B1-measured shard. |
+| Pre-run test + result | B0 Totoro 7,200/7,200 ok, 32 s wall @ 140-way (#981) |
+| Why local pin is insufficient | B1 is the signed 132 × 600 grid, not the #979 Hessian pin |
+| Shinichi approval (quote + time) | B1 authorized 2026-08-15 (*"Approve"*, *"Gate is open"*); Totoro host fence lifted this sitting |
+| Core / array request | 140 workers, cap 150 (D-143) |
 | What happens if it overruns | stop and re-report |
+| Totoro started? | **no** |
+| SE covered? | **no** |
 
 Filling this table after a job has started is not a receipt.
 
@@ -276,9 +287,10 @@ after-tasks. That absence is why this file exists.
 
 ## What this note does not authorise
 
-- A Totoro or DRAC campaign tonight.
-- Gaussian SE, coverage, width, or nominal 95%.
+- Starting B1 from a sitting that only wrote the receipt.
+- Gaussian SE, coverage, width, or nominal 95% as a *covered* claim.
 - `planned` → `admitted`.
 - Public `vcov()` / `confint()` / `sdreport()` on MSPL.
-- Occupying Totoro "because standing permission exists" while the
-  local pin is still the deliverable.
+- Occupying Totoro "because standing permission exists" for the
+  SE pin. B1 has its own receipt; that receipt still does not
+  start the job by itself.

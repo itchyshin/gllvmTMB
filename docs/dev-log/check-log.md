@@ -4,6 +4,27 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-08-15 — Poisson LA-MSPL admit packet (Cursor)
+
+Lane `cursor/mspl-poisson-admit-packet` from `origin/main`. Science
+only: pinned \(c_P\) + event-weighted loading atom. Registry stays
+`planned`. No NEWS. No Totoro. No `git add -A`.
+
+```sh
+export OMP_NUM_THREADS=1 NOT_CRAN=true
+# RED: helpers missing — FAIL 7 | PASS 9
+pkgload::load_all(".", compile = TRUE)
+testthat::test_file("tests/testthat/test-mspl-poisson-admit-packet.R")
+# GREEN: FAIL 0 | WARN 0 | SKIP 0 | PASS 41
+testthat::test_file("tests/testthat/test-mspl-poisson-public-door.R")    # PASS 6
+testthat::test_file("tests/testthat/test-mspl-poisson-phase4-oracles.R")  # PASS 42
+testthat::test_file("tests/testthat/test-mspl-registry.R")               # PASS 26
+testthat::test_file("tests/testthat/test-mspl-fenced-family-tapes.R")    # PASS 23
+rg 'family = "poisson"' -A 8 R/mspl-registry.R   # status = "planned"
+```
+
+Not run: full `devtools::test()`, `--as-cran`, B1 Totoro/DRAC.
+
 ## 2026-08-15 — MSPL items 1–3 conductor (Cursor)
 
 Items 1–3 + SE-CI. No `src/`. No registry admit. No `git add -A`.

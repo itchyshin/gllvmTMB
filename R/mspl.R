@@ -11,16 +11,23 @@
     identical(toupper(estimator %||% ""), "MSPL")
 }
 
-.gllvmTMB_mspl_abort <- function(message, ..., class = "gllvmTMB_mspl_unsupported") {
+.gllvmTMB_mspl_abort <- function(
+  message,
+  ...,
+  class = "gllvmTMB_mspl_unsupported"
+) {
   cli::cli_abort(c(message, ...), class = class, .envir = parent.frame())
 }
 
 .gllvmTMB_mspl_inference_abort <- function(what) {
-  cli::cli_abort(c(
-    "{.fn {what}} is not available for an {.code estimator = \"mspl\"} fit.",
-    "i" = "LA-MSPL is an experimental point estimator; repeated-sampling inference is not yet calibrated.",
-    ">" = "Use {.fn coef}, {.fn predict}, or the covariance extractors for point estimates, and fit {.code estimator = \"ml\"} when likelihood-based inference is required."
-  ), class = "gllvmTMB_mspl_inference_unsupported")
+  cli::cli_abort(
+    c(
+      "{.fn {what}} is not available for an {.code estimator = \"mspl\"} fit.",
+      "i" = "LA-MSPL is an experimental point estimator; repeated-sampling inference is not yet calibrated.",
+      ">" = "Use {.fn coef}, {.fn predict}, or the covariance extractors for point estimates, and fit {.code estimator = \"ml\"} when likelihood-based inference is required."
+    ),
+    class = "gllvmTMB_mspl_inference_unsupported"
+  )
 }
 
 .gllvmTMB_mspl_assert_inference <- function(x, what) {
@@ -76,11 +83,14 @@
   rank_tol <- max(dim(X_mspl)) * max(singular_values) * .Machine$double.eps
   rank_x <- sum(singular_values > rank_tol)
   if (rank_x != p_beta) {
-    .gllvmTMB_mspl_abort(c(
-      "The resolved LA-MSPL fixed-effect design is rank deficient.",
-      "x" = "Numerical rank is {rank_x}; {p_beta} free coefficient{?s} remain after maps and ties.",
-      ">" = "Remove aliased fixed effects or pin a redundant coefficient with {.arg Xcoef_fixed} before fitting."
-    ), class = "gllvmTMB_mspl_rank_deficient")
+    .gllvmTMB_mspl_abort(
+      c(
+        "The resolved LA-MSPL fixed-effect design is rank deficient.",
+        "x" = "Numerical rank is {rank_x}; {p_beta} free coefficient{?s} remain after maps and ties.",
+        ">" = "Remove aliased fixed effects or pin a redundant coefficient with {.arg Xcoef_fixed} before fitting."
+      ),
+      class = "gllvmTMB_mspl_rank_deficient"
+    )
   }
 
   list(
@@ -100,7 +110,9 @@
       class = "gllvmTMB_mspl_internal_surface"
     )
   }
-  if (is.null(tau_map)) return(as.integer(seq_len(n_tau) - 1L))
+  if (is.null(tau_map)) {
+    return(as.integer(seq_len(n_tau) - 1L))
+  }
 
   map_code <- as.integer(tau_map)
   if (length(map_code) != n_tau) {
@@ -131,8 +143,12 @@
     )
   }
   locations <- unique(as.matrix(mesh$loc_xy))
-  if (!is.numeric(locations) || ncol(locations) != 2L ||
-      nrow(locations) < 2L || any(!is.finite(locations))) {
+  if (
+    !is.numeric(locations) ||
+      ncol(locations) != 2L ||
+      nrow(locations) < 2L ||
+      any(!is.finite(locations))
+  ) {
     .gllvmTMB_mspl_abort(
       "Spatial LA-MSPL requires at least two distinct finite observed locations."
     )
@@ -151,19 +167,50 @@
 ## after maps and the random-effect vector have been resolved, so admission is
 ## based on the model TMB will actually see rather than formula spelling.
 .gllvmTMB_mspl_prepare <- function(
-  X_fix, b_map, y, n_trials, is_y_observed, family_id_vec, link_id_vec,
-  offset_vec, random, use_rr_B, use_lv_B, use_rr_B_slope, use_diag_B,
-  diag_B_all_skipped, d_B, theta_rr_B, theta_diag_B = NULL,
+  X_fix,
+  b_map,
+  y,
+  n_trials,
+  is_y_observed,
+  family_id_vec,
+  link_id_vec,
+  offset_vec,
+  random,
+  use_rr_B,
+  use_lv_B,
+  use_rr_B_slope,
+  use_diag_B,
+  diag_B_all_skipped,
+  d_B,
+  theta_rr_B,
+  theta_diag_B = NULL,
   lambda_constraint,
-  use_spde, is_spatial_indep, is_spatial_scalar, is_spatial_latent,
-  is_spatial_dep, use_spde_latent_diag, use_spde_slope,
-  use_spde_latent_slope, d_spde_lv, theta_rr_spde_lv, log_tau_spde,
-  log_tau_spde_map, mesh, use_mi_predictor, integration, engine, REML,
+  use_spde,
+  is_spatial_indep,
+  is_spatial_scalar,
+  is_spatial_latent,
+  is_spatial_dep,
+  use_spde_latent_diag,
+  use_spde_slope,
+  use_spde_latent_slope,
+  d_spde_lv,
+  theta_rr_spde_lv,
+  log_tau_spde,
+  log_tau_spde_map,
+  mesh,
+  use_mi_predictor,
+  integration,
+  engine,
+  REML,
   ridge_explicit,
-  unit_id = NULL, trait_id = NULL, sigma_eps_mapped = FALSE
+  unit_id = NULL,
+  trait_id = NULL,
+  sigma_eps_mapped = FALSE
 ) {
   if (isTRUE(REML)) {
-    .gllvmTMB_mspl_abort("{.code estimator = \"mspl\"} cannot be combined with {.code REML = TRUE}.")
+    .gllvmTMB_mspl_abort(
+      "{.code estimator = \"mspl\"} cannot be combined with {.code REML = TRUE}."
+    )
   }
   if (!identical(engine, "tmb") || !identical(integration, "laplace")) {
     .gllvmTMB_mspl_abort(c(
@@ -220,7 +267,9 @@
       ))
     }
     if (any(!is.finite(y)) || any(y < 0)) {
-      .gllvmTMB_mspl_abort("Poisson LA-MSPL requires finite non-negative counts.")
+      .gllvmTMB_mspl_abort(
+        "Poisson LA-MSPL requires finite non-negative counts."
+      )
     }
   }
   if (!all(is_y_observed == 1L)) {
@@ -239,11 +288,16 @@
     ))
   }
   ordinary <- isTRUE(use_rr_B) && !isTRUE(use_spde)
-  spatial_indep <- !isTRUE(use_rr_B) && isTRUE(use_spde) &&
-    isTRUE(is_spatial_indep) && !isTRUE(is_spatial_scalar) &&
-    !isTRUE(is_spatial_latent) && !isTRUE(is_spatial_dep)
-  spatial_latent <- !isTRUE(use_rr_B) && isTRUE(use_spde) &&
-    isTRUE(is_spatial_latent) && !isTRUE(is_spatial_dep)
+  spatial_indep <- !isTRUE(use_rr_B) &&
+    isTRUE(use_spde) &&
+    isTRUE(is_spatial_indep) &&
+    !isTRUE(is_spatial_scalar) &&
+    !isTRUE(is_spatial_latent) &&
+    !isTRUE(is_spatial_dep)
+  spatial_latent <- !isTRUE(use_rr_B) &&
+    isTRUE(use_spde) &&
+    isTRUE(is_spatial_latent) &&
+    !isTRUE(is_spatial_dep)
 
   if (is_gaussian) {
     if (!isTRUE(ordinary) || isTRUE(spatial_indep) || isTRUE(spatial_latent)) {
@@ -266,15 +320,20 @@
     ))
   }
 
-  if (ordinary && (!d_B %in% c(1L, 2L) || isTRUE(use_lv_B) ||
-                   isTRUE(use_rr_B_slope))) {
+  if (
+    ordinary &&
+      (!d_B %in% c(1L, 2L) || isTRUE(use_lv_B) || isTRUE(use_rr_B_slope))
+  ) {
     .gllvmTMB_mspl_abort(c(
       "Ordinary LA-MSPL supports one intercept-only {.fn latent} block with {.arg d} equal to 1 or 2.",
       "i" = "Predictor-informed latent means, latent slopes, and q > 2 are deferred."
     ))
   }
-  if (spatial_latent && (!d_spde_lv %in% c(1L, 2L) ||
-                         isTRUE(use_spde_latent_diag))) {
+  if (
+    spatial_latent &&
+      (!d_spde_lv %in% c(1L, 2L) ||
+        isTRUE(use_spde_latent_diag))
+  ) {
     .gllvmTMB_mspl_abort(c(
       "Spatial-latent LA-MSPL supports {.fn spatial_latent} with {.arg d} equal to 1 or 2 and no unique companion.",
       "i" = "Free spatial Psi coordinates and q > 2 are deferred."
@@ -290,8 +349,12 @@
       "Spatial random slopes are outside the current LA-MSPL contract."
     )
   }
-  if (is_bernoulli && ordinary && isTRUE(use_diag_B) &&
-      !isTRUE(diag_B_all_skipped)) {
+  if (
+    is_bernoulli &&
+      ordinary &&
+      isTRUE(use_diag_B) &&
+      !isTRUE(diag_B_all_skipped)
+  ) {
     .gllvmTMB_mspl_abort(c(
       "LA-MSPL does not estimate a Bernoulli Psi companion.",
       "i" = "The automatic Bernoulli Psi may remain in the parsed formula only when every coordinate is mapped off."
@@ -328,9 +391,14 @@
     ))
   }
   if (isTRUE(use_mi_predictor)) {
-    .gllvmTMB_mspl_abort("Modelled missing predictors are outside the current LA-MSPL contract.")
+    .gllvmTMB_mspl_abort(
+      "Modelled missing predictors are outside the current LA-MSPL contract."
+    )
   }
-  if (!is.null(lambda_constraint) && length(Filter(Negate(is.null), lambda_constraint))) {
+  if (
+    !is.null(lambda_constraint) &&
+      length(Filter(Negate(is.null), lambda_constraint))
+  ) {
     .gllvmTMB_mspl_abort(c(
       "Confirmatory loading constraints are outside the current LA-MSPL contract.",
       "i" = "Fit the exploratory lower-triangular ordinary latent model without {.arg lambda_constraint}."
@@ -338,7 +406,9 @@
   }
 
   fixed <- .gllvmTMB_mspl_fixed_design(X_fix, b_map)
-  structure <- if (ordinary) "ordinary" else if (spatial_indep) {
+  structure <- if (ordinary) {
+    "ordinary"
+  } else if (spatial_indep) {
     "spatial_indep"
   } else {
     "spatial_latent"
@@ -370,7 +440,8 @@
     }
   } else if (spatial_indep) {
     tau_representative <- .gllvmTMB_mspl_tau_representatives(
-      log_tau_spde, log_tau_spde_map
+      log_tau_spde,
+      log_tau_spde_map
     )
     p_loading <- 0L
     p_covariance <- length(tau_representative) + 1L
@@ -417,10 +488,13 @@
     q = q_cell
   )
   if (is.null(registry_row)) {
-    .gllvmTMB_mspl_abort(c(
-      "LA-MSPL resolved a surface that is not a registry cell.",
-      "x" = "family {.val {family_name}}, link {.val {link_name}}, structure {.val {structure}}, q {.val {q_cell}}."
-    ), class = "gllvmTMB_mspl_registry_miss")
+    .gllvmTMB_mspl_abort(
+      c(
+        "LA-MSPL resolved a surface that is not a registry cell.",
+        "x" = "family {.val {family_name}}, link {.val {link_name}}, structure {.val {structure}}, q {.val {q_cell}}."
+      ),
+      class = "gllvmTMB_mspl_registry_miss"
+    )
   }
   ## Bernoulli: admitted only. Gaussian ordinary: planned allowed during
   ## implement smoke; flip to admitted after se=FALSE smoke (point only —
@@ -431,17 +505,23 @@
     identical(registry_row$status, "admitted")
   }
   if (!isTRUE(ok_status)) {
-    .gllvmTMB_mspl_abort(c(
-      "LA-MSPL resolved a surface that is not an admitted registry cell.",
-      "x" = "family {.val {family_name}}, link {.val {link_name}}, structure {.val {structure}}, q {.val {q_cell}}, status {.val {registry_row$status}}."
-    ), class = "gllvmTMB_mspl_registry_miss")
+    .gllvmTMB_mspl_abort(
+      c(
+        "LA-MSPL resolved a surface that is not an admitted registry cell.",
+        "x" = "family {.val {family_name}}, link {.val {link_name}}, structure {.val {structure}}, q {.val {q_cell}}, status {.val {registry_row$status}}."
+      ),
+      class = "gllvmTMB_mspl_registry_miss"
+    )
   }
 
-  ## Poisson c is unpinned (not a Bernoulli or Gaussian transplant).
+  ## Poisson c_P uses event count, not N_rows or N_units, and not c = 1.
   rate <- if (is_gaussian) {
     sqrt(2 / mspl_N_units)
   } else if (is_poisson) {
-    1
+    .gllvmTMB_mspl_poisson_rate(
+      p_free,
+      .gllvmTMB_mspl_poisson_event_count(y)
+    )
   } else {
     2 * sqrt(p_free / N_eff)
   }
@@ -471,19 +551,28 @@
     scope = if (is_gaussian) {
       paste0(
         "complete gaussian identity; ordinary latent(unique=TRUE) q=",
-        d_B, "; Hirose pick C; Laplace"
+        d_B,
+        "; Hirose pick C; Laplace"
       )
     } else if (is_poisson) {
       paste0(
-        "complete poisson log; ordinary latent q=", d_B,
+        "complete poisson log; ordinary latent q=",
+        d_B,
         "; GLM-outer W=diag(mu) candidate (not I_LA(beta)); ",
-        "unpinned c=1; planned tape, not admitted; Laplace"
+        "c_P=2*sqrt(p_free/max(sum(y),1)); event-weighted loading atom; ",
+        "planned tape, not admitted; Laplace"
       )
     } else {
       paste0(
-        "complete Bernoulli; ", structure,
-        if (structure == "spatial_latent") paste0("(q=", d_spde_lv, ")") else
-          if (structure == "ordinary") paste0("(q=", d_B, ")") else "",
+        "complete Bernoulli; ",
+        structure,
+        if (structure == "spatial_latent") {
+          paste0("(q=", d_spde_lv, ")")
+        } else if (structure == "ordinary") {
+          paste0("(q=", d_B, ")")
+        } else {
+          ""
+        },
         "; Laplace; one common logit/probit/cloglog link"
       )
     }

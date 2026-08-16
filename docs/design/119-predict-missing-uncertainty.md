@@ -110,6 +110,34 @@ without pre-registered coverage evidence**. Therefore:
    VA-engine intervals (fenced by VA-10 wording), multinomial category
    intervals (needs the #986 surface fixes first).
 
+## 7. Wave-1 coverage results (2026-08-15, Totoro; VERDICT: not calibrated, route change)
+
+Gaussian wave-1 per §4, run on Totoro (harness + raw outputs in
+`dev/cov119/`): 4 mechanisms × 400 reps = 1,600 fits, **100% convergence,
+zero bad SEs**, ~0.9 s/fit, 0.2 core-hours total. The D-139 pre-run first
+caught and fixed an NA-propagating aggregation bug (empty-trait cells at
+sparse masking), then passed clean before launch.
+
+| mechanism | conf 90% | conf 95% | pred 90% | pred 95% |
+|---|---|---|---|---|
+| mcar05 | 0.937 | 0.965 | 0.916 | 0.953 |
+| mcar20 | 0.930 | 0.960 | 0.908 | 0.948 |
+| trait_clustered | 0.939 | 0.966 | 0.911 | 0.951 |
+| unit_clustered | 0.938 | 0.966 | 0.912 | 0.951 |
+
+(MCSEs 0.001–0.002; failure-inclusive columns identical at 100% convergence.)
+
+**Applying the pre-registered rule:** prediction intervals at 95% are
+near-nominal (two mechanisms pass the operative gate outright, one
+borderline, one marginal); every other estimand×level **over-covers** by
+1–4 points with the gap ≫ 2×MCSE → **operative gate FAIL; register status
+stays `heuristic_unvalidated`.** Per the rule the fix is a route change —
+**R1-joint** (exact joint-precision variance) — not a higher-precision
+re-run of R1-quad. The over-coverage direction is informative: R1-quad's
+omissions net to over-stated SEs here (the diagonal conditional latent
+variance plus the full fixed block double-counts shared information),
+exactly what the joint precision removes.
+
 ## 6. Decision needed from the maintainer
 
 - Approve the estimand split (confidence-for-mean vs prediction-for-value

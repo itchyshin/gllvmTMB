@@ -10,6 +10,11 @@ test_that("gllvmTMBcontrol consumers use declared or intentional fields", {
   ## gllvmTMBcontrol() contract.
   files <- files[!basename(files) %in% c(
     "screen-gllvmTMB.R",
+    ## screen-separation.R consumes the same screen_control() object as
+    ## screen-gllvmTMB.R (its `control$separation_tolerance` is a documented
+    ## screen_control() formal, not a gllvmTMBcontrol() field); the file was
+    ## split out by 0d992c61 without joining this exclusion.
+    "screen-separation.R",
     "va-r3-proto.R"
   )]
   source_text <- unlist(lapply(files, readLines, warn = FALSE))

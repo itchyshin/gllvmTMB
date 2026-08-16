@@ -1,7 +1,7 @@
 # After Task: Gaussian-identity LA-MSPL SE feasibility pin
 
-**Branch**: `cursor/mspl-se-other-impl`
-**Worktree**: `/tmp/gllvmtmb-mspl-se-impl`
+**Branch**: `cursor/mspl-se-gaussian-pin-rebased` (successor of #996)
+**Worktree**: `/tmp/gllvmtmb-mspl-se-996-rebased`
 **Date**: `2026-08-16`
 **Roles (engaged)**: Ada / Curie / Fisher / Rose
 

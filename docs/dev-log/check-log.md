@@ -4,6 +4,22 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-08-15 — MSPL items 1–3 conductor (Cursor)
+
+Items 1–3 + SE-CI. No `src/`. No registry admit. No `git add -A`.
+No repo-root `LOOP/`.
+
+```sh
+gh pr view 988 --json state,mergedAt   # MERGED 6dfd2d75 (docs fast-pass)
+gh pr create  #989 cursor/mspl-se-ci (tests only)
+gh pr create  #990 cursor/mspl-poisson-point-smoke (docs+dev)
+# 972-976 left OPEN; comments already posted
+```
+
+Poisson smoke: 64/64 arms `conv=0` locally (`OMP=1`, `se=FALSE`);
+admit evidence FAIL. Verdict KEEP PLANNED.
+D-139 receipt: host=none, minutes=0.
+
 ## 2026-08-15 — MSPL SE pin CI: VA delta_lognormal order (Cursor)
 
 #979 failed twice on `test-va-all-family-light-fits.R`

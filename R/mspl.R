@@ -247,7 +247,15 @@
   }
 
   fam_ids <- unique(as.integer(family_id_vec))
-  if (length(fam_ids) != 1L || !fam_ids %in% c(0L, 1L, 2L, 5L, 15L)) {
+  ## Public door stays closed for Tweedie. The probe env is a
+  ## timeout-bounded hang check only — not a user-facing door and
+  ## not an admit. Default unset: family 6 still aborts here.
+  mspl_allow <- c(0L, 1L, 2L, 5L, 15L)
+  if (identical(Sys.getenv("GLLVMTMB_MSPL_TWEEDIE_PROBE"), "1") &&
+      identical(fam_ids, 6L)) {
+    mspl_allow <- c(mspl_allow, 6L)
+  }
+  if (length(fam_ids) != 1L || !fam_ids %in% mspl_allow) {
     .gllvmTMB_mspl_abort(c(
       "LA-MSPL supports a single gaussian, bernoulli, Poisson, nbinom1, or nbinom2 response family only.",
       "i" = "Beta, Tweedie, and mixed-family MSPL remain deferred at the public door."
@@ -673,8 +681,8 @@
       paste0(
         "complete tweedie log; ordinary latent q=",
         d_B,
-        "; GLM-outer W=mu^{2-p}/phi (rewards phi->0; not I_LA(beta)); ",
-        "unpinned c=1; planned tape, not admitted; Laplace"
+        "; GLM-outer working logistic W_* (true W=mu^{2-p}/phi rewards phi->0; not I_LA(beta)); ",
+        "Huber on log_phi and logit(p-1); unpinned c=1; planned tape, not admitted; Laplace"
       )
     } else if (is_beta) {
       paste0(

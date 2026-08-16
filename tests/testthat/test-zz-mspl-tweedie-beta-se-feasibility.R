@@ -44,15 +44,26 @@
   .mspl_se_tb_fit(.mspl_se_tweedie_dat(), tweedie())
 }
 
-## Live Tweedie MSPL on this 8×3 cell hung (>5 min). The atom
-## W = mu^{2-p}/phi rewards phi → 0. skip_if, not setTimeLimit:
-## elapsed time limits do not interrupt TMB's compiled inner loop.
+## Hang fuse for the #999 8x3 live cell. True W = mu^{2-p}/phi
+## rewards phi → 0 and hung (>5 min); Tweedie ML on the same cell
+## was ~1.3 s. Working logistic W_* + Huber is the fenced repair.
+## Public door stays closed. skip_if, not setTimeLimit: elapsed
+## time limits do not interrupt TMB's compiled inner loop.
+##
+## Lift later: flip `.mspl_se_tweedie_live_hangs` to FALSE after a
+## timeout-bounded probe of this cell returns. The door-missing
+## skip in `.mspl_se_tb_try_fit()` still fences CI while prepare
+## rejects family 6.
+.mspl_se_tweedie_live_hangs <- TRUE
+
 .mspl_se_tweedie_skip_if_live_hangs <- function() {
   testthat::skip_if(
-    TRUE,
+    isTRUE(.mspl_se_tweedie_live_hangs),
     paste(
-      "Tweedie live MSPL on the #999 8x3 cell hung (>5 min).",
-      "Atom W=mu^{2-p}/phi rewards phi->0."
+      "Tweedie live MSPL hang fuse is on for the #999 8x3 cell.",
+      "True W=mu^{2-p}/phi rewards phi->0; working W_* is the repair.",
+      "Public door stays closed. Flip .mspl_se_tweedie_live_hangs",
+      "after a timeout-bounded probe returns."
     )
   )
 }

@@ -43,6 +43,16 @@
   mu * (1 - mu)
 }
 
+.tweedie_working_W <- function(eta) {
+  mu_star <- plogis(as.numeric(eta))
+  mu_star * (1 - mu_star)
+}
+
+.tweedie_huber <- function(x) {
+  ax <- abs(as.numeric(x))
+  ifelse(ax <= 1, 0.5 * ax * ax, ax - 0.5)
+}
+
 .tweedie_bernoulli_V_loading <- function(Lambda) {
   Lambda <- as.matrix(Lambda)
   sum(sqrt(1 + rowSums(Lambda * Lambda)) - 1)
@@ -305,6 +315,31 @@ test_that("E9: V_loading is (mu, phi, p)-inert; Tweedie P_J moves", {
   expect_gt(abs(dV_dL), 1e-8)
 })
 
+test_that("E11: working W_* vanishes two-sided and is phi-inert; true W is not", {
+  fx <- .tweedie_fixture()
+  eta_lo <- fx$eta - 20
+  eta_hi <- fx$eta + 20
+  w_star <- .tweedie_working_W(fx$eta)
+  w_lo <- .tweedie_working_W(eta_lo)
+  w_hi <- .tweedie_working_W(eta_hi)
+  expect_true(all(w_star > 0))
+  expect_true(all(w_lo < 1e-6))
+  expect_true(all(w_hi < 1e-6))
+  ## phi-inert: working W does not see phi.
+  expect_equal(w_star, .tweedie_bernoulli_Wg(plogis(fx$eta)), tolerance = 1e-12)
+
+  w_true <- .tweedie_W(fx$mu, fx$phi, fx$p)
+  w_true_hi <- .tweedie_W(.tweedie_mu(eta_hi), fx$phi, fx$p)
+  w_true_phi0 <- .tweedie_W(fx$mu, fx$phi * 1e-4, fx$p)
+  expect_true(all(w_true_hi > w_true))
+  expect_true(all(w_true_phi0 > w_true * 1e3))
+
+  ## Huber on log phi kills both collapse and explosion.
+  expect_gt(.tweedie_huber(log(1e-6)), .tweedie_huber(0) + 5)
+  expect_gt(.tweedie_huber(log(1e6)), .tweedie_huber(0) + 5)
+  expect_gt(.tweedie_huber(qlogis(1e-6)), .tweedie_huber(0) + 5)
+})
+
 test_that("E10: Tweedie registry rows stay planned and are not admitted", {
   tbl <- .gllvmTMB_mspl_registry()
   r1 <- .gllvmTMB_mspl_registry_lookup("tweedie", "log", "ordinary", 1L)
@@ -312,6 +347,9 @@ test_that("E10: Tweedie registry rows stay planned and are not admitted", {
   expect_true(!is.null(r1) && identical(r1$status, "planned"))
   expect_true(!is.null(r2) && identical(r2$status, "planned"))
   expect_false(any(tbl$status == "admitted" & tbl$family == "tweedie"))
+  expect_match(r1$notes, "working logistic W_\\*")
+  expect_match(r1$notes, "no public door")
+  expect_match(r1$notes, "not admitted")
 })
 
 test_that("Phase-4-style oracles never invoke a live Tweedie MSPL fit", {

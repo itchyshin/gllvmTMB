@@ -342,9 +342,14 @@ Type gll_mspl_log_weight_glm(Type eta, int family_id, int link_id,
       log(trig + Type(1e-12));
   }
   if (family_id == 6) {
-    // Tweedie: W = mu^{2-p} / phi. This atom rewards phi -> 0.
-    Type p = Type(1.0) + invlogit(logit_p);
-    return (Type(2.0) - p) * eta - log_phi;
+    // True Tweedie W = mu^{2-p}/phi fails the two-sided vanishing
+    // test (0 / +inf) and rewards phi -> 0. That chase hung the
+    // #999 8x3 live cell (>5 min) while Tweedie ML on the same
+    // cell returned in ~1.3 s. Live tape uses working logistic
+    // W_* = mu_*(1-mu_*) on eta (2023 P^(f)); existence device,
+    // not true-model Jeffreys. log_phi / logit_p enter Huber, not
+    // this weight. Not admitted.
+    return gll_mspl_log_weight(eta, 0);
   }
   error("gllvmTMB_multi: MSPL GLM-outer weight: unknown family_id");
   return Type(0.0);
@@ -3329,6 +3334,8 @@ Type objective_function<Type>::operator()()
   Type mspl_loading_nll = Type(0.0);
   Type mspl_covariance_nll = Type(0.0);
   Type mspl_hirose_nll = Type(0.0);
+  Type mspl_V_dispersion = Type(0.0);
+  Type mspl_dispersion_nll = Type(0.0);
   Type mspl_private_ridge_nll = Type(0.0);
   Type mspl_status = Type(0.0);       // 0 = ML/not requested, 1 = MSPL active
   Type mspl_atom_status = Type(-1.0); // frozen V8Status; -1 = not requested
@@ -3436,7 +3443,18 @@ Type objective_function<Type>::operator()()
       mspl_jeffreys_nll = -mspl_c_n * mspl_half_logdet_information;
       mspl_loading_nll = mspl_c_n * mspl_V_loading;
       mspl_covariance_nll = mspl_c_n * mspl_V_covariance;
-      nll += mspl_jeffreys_nll + mspl_loading_nll + mspl_covariance_nll;
+      if (fid == 6) {
+        // Huber on unconstrained Tweedie extras. Working W_* is
+        // phi-inert, so this is what kills |log phi| and
+        // |logit(p-1)|. Not admitted.
+        for (int t = 0; t < n_traits; ++t) {
+          mspl_V_dispersion += gll_mspl_pseudohuber(log_phi_tweedie(t));
+          mspl_V_dispersion += gll_mspl_pseudohuber(logit_p_tweedie(t));
+        }
+        mspl_dispersion_nll = mspl_c_n * mspl_V_dispersion;
+      }
+      nll += mspl_jeffreys_nll + mspl_loading_nll + mspl_covariance_nll +
+        mspl_dispersion_nll;
     }
   }
   Type joint_nll_penalized = nll;
@@ -3455,6 +3473,8 @@ Type objective_function<Type>::operator()()
   REPORT(mspl_loading_nll);
   REPORT(mspl_covariance_nll);
   REPORT(mspl_hirose_nll);
+  REPORT(mspl_V_dispersion);
+  REPORT(mspl_dispersion_nll);
   REPORT(mspl_private_ridge_nll);
   REPORT(mspl_cloglog_tail_extension_count);
   REPORT(mspl_cloglog_likelihood_tail_extension_count);

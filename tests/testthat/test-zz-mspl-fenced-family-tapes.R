@@ -5,8 +5,10 @@
 ## Beta family id 7 stays off the public door (atom is now K_bb).
 ##
 ## Beta Jeffreys (Ferrari–Cribari-Neto mean-model weight) is NOT coercive
-## at mu -> 0/1. Tweedie W = mu^{2-p} / phi REWARDS phi -> 0. These are
-## hostilities, not repairs. Do not sell either atom as a fix.
+## at mu -> 0/1. True Tweedie W = mu^{2-p} / phi REWARDS phi -> 0
+## (one-sided). Live tape uses working logistic W_* plus Huber on
+## log_phi / logit(p-1). That is an existence device, not a repair
+## and not an admit. Public door stays closed.
 ##
 ## Atom = GLM-outer 1/2 log det(X' W X) candidate, NOT I_LA(beta).
 
@@ -82,6 +84,15 @@ test_that("public mspl still rejects Gamma and lognormal", {
 })
 
 test_that("public mspl still rejects Beta() and tweedie() at the door", {
+  old_probe <- Sys.getenv("GLLVMTMB_MSPL_TWEEDIE_PROBE", unset = NA_character_)
+  Sys.unsetenv("GLLVMTMB_MSPL_TWEEDIE_PROBE")
+  on.exit({
+    if (is.na(old_probe)) {
+      Sys.unsetenv("GLLVMTMB_MSPL_TWEEDIE_PROBE")
+    } else {
+      Sys.setenv(GLLVMTMB_MSPL_TWEEDIE_PROBE = old_probe)
+    }
+  }, add = TRUE)
   dat_beta <- .mspl_fence_dat(rep(c(0.2, 0.5, 0.8), length.out = 24L))
   expect_error(
     gllvmTMB(
@@ -126,8 +137,11 @@ test_that("C++ GLM-outer hook names beta/Tweedie hostilities and not I_LA(beta)"
   expect_match(cpp, "family_id == 6", info = "Tweedie tape")
   ## Beta Jeffreys is NOT coercive at mu -> 0/1. Not a repair.
   expect_match(cpp, "not coercive", info = "Beta hostility")
-  ## Tweedie W = mu^{2-p} / phi REWARDS phi -> 0. Not a repair.
-  expect_match(cpp, "rewards", info = "Tweedie hostility")
+  ## True Tweedie W rewards phi -> 0. Live tape is working W_*.
+  expect_match(cpp, "rewards", info = "Tweedie true-W hostility")
+  expect_match(cpp, "working logistic", info = "Tweedie working W_*")
+  expect_match(cpp, "pseudohuber(log_phi_tweedie", info = "Tweedie Huber on log phi",
+               fixed = TRUE)
   expect_match(cpp, "family_id == 2", info = "Poisson tape")
   expect_match(cpp, "family_id == 5", info = "NB2 tape")
   expect_match(cpp, "family_id == 15", info = "NB1 tape")

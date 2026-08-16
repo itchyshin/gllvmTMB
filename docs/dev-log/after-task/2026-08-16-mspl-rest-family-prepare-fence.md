@@ -3,7 +3,7 @@
 **Date:** 2026-08-16
 **Lane:** `cursor/mspl-rest-family-prepare-fence`
 **Worktree:** `/tmp/gllvmtmb-mspl-rest-family-fence`
-**Branch:** `cursor/mspl-rest-family-prepare-fence` (from `origin/main` @ `937ce216`)
+**Branch:** `cursor/mspl-rest-family-prepare-fence` (rebased onto `origin/main` @ `f3bd4e6a`, #1007)
 
 ## 1. Goal
 
@@ -17,7 +17,7 @@ This is not a Phase-4 oracle, not a registry row, and not a door.
 `tests/testthat/test-mspl-rest-family-prepare-fence.R` calls
 `gllvmTMB(..., estimator = "mspl")` and requires class
 `gllvmTMB_mspl_unsupported` plus the current door sentence
-("gaussian, bernoulli, or Poisson") for:
+("gaussian, bernoulli, Poisson, nbinom1, or nbinom2" after #1007) for:
 
 - Gamma(log), lognormal, student, ordinal_probit
 - delta_lognormal, delta_gamma

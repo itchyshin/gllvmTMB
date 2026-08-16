@@ -1,6 +1,6 @@
 ## Live public-door fence for families that still have no MSPL door.
-## Complements test-mspl-prepare-fence.R (NB1/NB2/beta/Tweedie) and
-## does not open a door. Not an admission. No registry row. No src/.
+## Complements test-mspl-prepare-fence.R (beta/Tweedie after #1007)
+## and does not open a door. Not an admission. No registry row. No src/.
 ##
 ## Sibling oracle PRs (#1003/#1004/#1005/#1023/#1024/#1025) are
 ## source-scan only; this file is the live gllvmTMB() reject.
@@ -20,7 +20,7 @@
 .mspl_rest_expect_unsupported <- function(family_name, expr) {
   expect_error(
     expr,
-    "supports a single gaussian, bernoulli, or Poisson response family only",
+    "supports a single gaussian, bernoulli, Poisson, nbinom1, or nbinom2 response family only",
     class = "gllvmTMB_mspl_unsupported",
     info = family_name
   )

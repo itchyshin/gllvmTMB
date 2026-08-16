@@ -226,10 +226,10 @@
   }
 
   fam_ids <- unique(as.integer(family_id_vec))
-  if (length(fam_ids) != 1L || !fam_ids %in% c(0L, 1L, 2L, 5L, 6L, 7L, 15L)) {
+  if (length(fam_ids) != 1L || !fam_ids %in% c(0L, 1L, 2L, 5L, 15L)) {
     .gllvmTMB_mspl_abort(c(
-      "LA-MSPL supports a single gaussian, bernoulli, Poisson, nbinom1, nbinom2, Tweedie, or Beta response family only.",
-      "i" = "Gamma, lognormal, and mixed-family MSPL remain deferred at the public door."
+      "LA-MSPL supports a single gaussian, bernoulli, Poisson, nbinom1, or nbinom2 response family only.",
+      "i" = "Beta, Tweedie, and mixed-family MSPL remain deferred at the public door."
     ))
   }
   is_gaussian <- identical(fam_ids, 0L)

@@ -13,16 +13,15 @@ planned status.
 
 ## Outcome
 
-- Public `estimator = "mspl"` now accepts Tweedie log and Beta logit
-  ordinary latent q=1/2 as planned doors.
-- Registry rows are `planned` / `phase4_prep`. Not admitted. Not covered.
+- Registry rows are `planned` / `phase4_prep` for Tweedie log and
+  Beta logit ordinary q=1/2. Not admitted. Not covered.
+- **Public door BLOCKED.** Allow-list stays
+  `c(0L, 1L, 2L, 5L, 15L)`. Tweedie live MSPL hangs on the #999
+  8×3 cell (`W=mu^{2-p}/phi` rewards `phi → 0`). Beta Jeffreys
+  atom returns status 1 on that cell (invalid atom, not an inert
+  Q_P/Q_0 nll-tie). `skip_if` fences both live pins. No admit.
 - Public `se=TRUE` still withholds `sdreport()` / `vcov()` / `confint()`.
-- Tweedie live MSPL on the #999 8×3 cell stays `skip_if` (atom
-  `W=mu^{2-p}/phi` rewards `phi → 0`).
-- Beta curvature pin names `Q_P`/`Q_0` then `skip_if` both NLLs are
-  exploded nonfinite. The nll-difference assertion was not weakened.
-- Neighbor fence tests moved the still-fenced abort pin onto
-  Gamma/lognormal and `student()`.
+- Poisson `c_P` untouched. nbinom planned door untouched.
 
 ## Follow-up
 

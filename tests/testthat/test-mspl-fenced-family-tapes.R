@@ -1,6 +1,8 @@
-## Fenced planned tapes: Gamma and lognormal may exist in C++ but the
-## public door still rejects estimator = "mspl". nbinom / Tweedie / Beta
-## now share the planned door (not admitted).
+## Fenced planned tapes: Tweedie/Beta may exist in C++ and now have
+## planned registry rows, but the public door still rejects
+## estimator = "mspl". nbinom1/nbinom2 share the Poisson planned door
+## (not admitted). Tweedie hang + Beta Jeffreys atom status 1 keep
+## those families off the allow-list.
 ##
 ## Beta Jeffreys (Ferrari–Cribari-Neto mean-model weight) is NOT coercive
 ## at mu -> 0/1. Tweedie W = mu^{2-p} / phi REWARDS phi -> 0. These are
@@ -79,16 +81,37 @@ test_that("public mspl still rejects Gamma and lognormal", {
   }
 })
 
-test_that("nbinom/Tweedie/Beta planned is not admitted; Gamma stays fenced", {
+test_that("public mspl still rejects Beta() and tweedie() at the door", {
+  dat_beta <- .mspl_fence_dat(rep(c(0.2, 0.5, 0.8), length.out = 24L))
+  expect_error(
+    gllvmTMB(
+      .mspl_fence_form,
+      data = dat_beta,
+      family = Beta(),
+      estimator = "mspl"
+    ),
+    class = "gllvmTMB_mspl_unsupported"
+  )
+  dat_tweedie <- .mspl_fence_dat(rep(c(0.5, 1, 2), length.out = 24L))
+  expect_error(
+    gllvmTMB(
+      .mspl_fence_form,
+      data = dat_tweedie,
+      family = tweedie(),
+      estimator = "mspl"
+    ),
+    class = "gllvmTMB_mspl_unsupported"
+  )
+})
+
+test_that("nbinom/Tweedie/Beta planned is not admitted; public door stays closed", {
   reg <- gllvmTMB:::.gllvmTMB_mspl_registry()
-  planned_ok <- c("nbinom1", "nbinom2", "tweedie", "Beta")
+  planned_ok <- c("nbinom1", "nbinom2", "tweedie", "Beta", "gamma", "lognormal")
   nb_tb <- reg[reg$family %in% planned_ok, , drop = FALSE]
   expect_true(nrow(nb_tb) >= 8L)
   expect_true(all(nb_tb$status == "planned"))
   expect_false(any(nb_tb$status == "admitted"))
   expect_true(any(reg$family == "poisson" & reg$status == "admitted"))
-  expect_false(any(reg$family %in% c("Gamma", "lognormal") &
-                     reg$status %in% c("planned", "admitted")))
   expect_false(any(reg$family %in% planned_ok & reg$status == "admitted"))
 })
 

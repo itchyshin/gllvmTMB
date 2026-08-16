@@ -184,9 +184,9 @@ test_that("accepted VA+ml is still accepted and records coarse ML", {
 
 test_that("existing MSPL and REML aborts keep their classes", {
   dat <- .prov_ml_fixture()
-  ## Poisson / nbinom / Tweedie / Beta are now public planned doors.
-  ## Pin the unsupported-family abort class on a still-fenced family
-  ## (student; binary fixture stays valid).
+  ## Poisson / nbinom are public planned doors. Tweedie/Beta stay
+  ## fenced (Tweedie hang; Beta Jeffreys atom status 1). Pin the
+  ## unsupported-family abort class on student.
   expect_error(
     gllvmTMB(
       y ~ 0 + trait + latent(0 + trait | site, d = 1, unique = FALSE),

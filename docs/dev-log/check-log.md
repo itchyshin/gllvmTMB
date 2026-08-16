@@ -50364,3 +50364,53 @@ foregrounded `conv = 1.000` while never stating in prose that `pd_rate` tops out
 
 After-task: `docs/dev-log/after-task/2026-08-16-two-articles.md`.
 Register: `ISDM-01` updated to cite the new article as evidence.
+
+
+---
+
+## 2026-08-16 — Model 2: multi-source integrated model (`claude/isdm-model2-multisource-20260816`)
+
+Lane off `codex/isdm-range-amplitude-orthogonal` @ `bdaf24d4`. Design 120 (claimed by
+committing a stub first — the planning scout said 111 was the highest number in use, the
+preflight census said 120; the census was right, 112–119 live on branches the checkout
+cannot see). Umbrella #941.
+
+Two planning probes resized the arc before any code: three all-Poisson sources fit
+TODAY unchanged (3.6 s, pd PASS, gammas recovered), and three mixed-law sources fit the
+moment the data are relabelled into the gbif/survey_pa vocabulary. So Model 2 is a
+contract generalisation, not the engine extension the steer expected. `src/` untouched.
+
+Shipped: `isdm_sources()` (new export), `.gllvmTMB_integrated_sources_contract()` (one
+generalised predicate; the legacy two-source shape translates into the same core; old
+name kept as an alias), Design 120 with the n-arm coherence derivation, NEWS + register
+row ISDM-02 (`partial`), test-isdm-multisource.R.
+
+Commands run, with exact outcomes:
+
+- Planning probes: `probe-multisource.R` (3-source all-Poisson: conv 0, pd PASS,
+  per-source effects −0.83/−0.8 etc.) and `probe-mixed-multisource.R` (honest names
+  REFUSED pre-change; relabelled FITTED — the defect in one contrast).
+- `devtools::document()` — clean; NAMESPACE gains exactly `isdm_sources`.
+- `devtools::test(filter = "isdm|offset|family-within-trait|augmented-slope")` —
+  **0 failures, 0 errors** (Model 1 suite unchanged through the rewrite).
+- `devtools::test(filter = "isdm-multisource")` — 19/19, including byte-compatibility:
+  the legacy route and the declared route give identical objective and parameters on
+  the same data.
+- Pre-run (Mac, 12 fits): 12/12 conv, 12/12 pd PASS, gamma RMSE ~0.10, median 3.6 s.
+- Campaign (Totoro, 100 cores, `R_LIBS` fix after one dead launch): **1,200/1,200 fits,
+  0 errors, 14 s wall**; conv 1199/1200; pd PASS 95%; gamma RMSE flat in n_sources,
+  doubled by a 10× effort deficit; |bias| ≤ 0.023. Results + raw CSV in
+  `dev/isdm-multisource/`.
+
+Defect found by the smoke, worth remembering: the declaration was first carried as an
+attribute on the family list, and `.align_mixed_family_list()` reorders the list by
+subsetting — subsetting drops attributes, so the predicate never saw the map. The map is
+now rebuilt from the list's names and laws inside the predicate; the attribute is
+constructor metadata only.
+
+Deliberately NOT run: full `devtools::test()` locally (the isdm/offset/family filter is
+the affected surface; the Totoro R CMD check covers the suite at the PR); no article
+(the two existing articles teach the two-source case; extending them is a maintainer
+decision recorded in the after-task, not silently skipped).
+
+After-task: `docs/dev-log/after-task/2026-08-16-model2-multisource.md`.

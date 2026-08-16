@@ -85,4 +85,23 @@ So the arc became: generalise the admission to a **declared** contract, and vali
 
 ## 7. Campaign results and review findings
 
-*(Filled in at close — see the check-log entry of the same date.)*
+**Campaign (Totoro, 1,200 fits, 14 s wall on 100 cores): 0 errors, 1199/1200 converged,
+`pd_hessian` PASS 95%.** Full table in `dev/isdm-multisource/2026-08-16-campaign-results.md`;
+raw rows committed beside it. Three readings:
+
+1. **Adding sources does not degrade recovery** — gamma RMSE is flat in `n_sources`
+   within every condition (0.070/0.073/0.075 at the easiest cell; 0.186/0.197/0.193 at
+   the hardest), answering Fisher's conditioning question at these settings.
+2. **Effort ratio, not source count, drives error** — arms at a tenth of the reference
+   effort roughly double RMSE. A weak extra source costs precision on its own gamma,
+   not on the others'.
+3. **Bias negligible everywhere** (|mean| ≤ 0.023): reference coding behaves at every
+   measured n.
+
+D-139 receipt: priced from the pre-run at ~80 core-minutes (under the 30-minute line →
+run without a separate gate); actual wall 14 s. One relaunch — the first attempt died on
+`R_LIBS_USER` + `--vanilla` hiding the dependency library on Totoro.
+
+**Review findings (Gauss + Rose, fresh-context, on the full diff):** recorded in the
+check-log entry of the same date and in the PR discussion, with each finding's
+disposition (fixed / declined-with-reason).

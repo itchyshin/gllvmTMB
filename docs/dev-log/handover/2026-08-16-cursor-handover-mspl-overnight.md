@@ -1,134 +1,131 @@
-# Morning brief — MSPL overnight (KEEP PLANNED except Poisson admit *after* #1008 green)
+# Morning brief — MSPL overnight (Poisson experimental-point ADMITTED)
 
-Meta: 2026-08-16 · from Cursor overnight → Shinichi @ ~05:00 local ·
-AUTHOR=cursor · TARGET=cursor · worktrees under `/tmp` and
-`/private/tmp` only (not Dropbox). Repo-root `LOOP/` was not
-touched. `git add -A` was not used.
+Meta: 2026-08-16 · continuation sitting after the first overnight
+conductor exited · AUTHOR=cursor · TARGET=cursor · worktrees under
+`/tmp` and `/private/tmp` only (not Dropbox). Repo-root `LOOP/`
+was not touched. `git add -A` was not used.
 
 You are Cursor. Reconcile with live `git` before any mutation.
 
 ## Critical Context
 
 1. **LA-MSPL** = Laplace + soft outer criterion (not EVA/VA/AGHQ-MSPL).
-2. **Poisson stays `planned` on the landed packet.** Shinichi G0
-   tonight allows planned→admitted **only after #1008 CI is green**,
-   as experimental point, not NEWS covered, not public SE. The
-   #990 smoke was operational PASS / admit-evidence FAIL — record
-   that honestly in the admit note. Do not admit
+2. **Poisson ordinary q1/q2 is `admitted` / `admit_packet` on
+   `main` @ `32faad9d` (#1017).** Experimental point only.
+   **#990 smoke was operational PASS / admit-evidence FAIL.**
+   Not NEWS covered. Not public SE. Do not admit
    NB/Tweedie/Beta/hurdle/ordinal/student.
 3. **Public `vcov()` / `confint()` / `sdreport()` stay fail-closed.**
 4. **PROTECTED:** `codex/lane-b-mspl-interval-feasibility` (binary SE).
-5. **Compute host actually used: Totoro.** DRAC full array was
-   preferred and is **impossible tonight**.
+5. **Compute host actually used: Totoro.** DRAC full array remains
+   **impossible tonight** (quota + `MaxArraySize`).
+6. **Do not start a second Totoro/DRAC full B1.**
 
 ## Compute (D-139)
 
 | Step | Host | Result |
 |---|---|---|
-| Canary `--mode=canary` B010, 1 outer, 5 boot | **Totoro** | **HEALTHY**, wall ≈1–2 min, 3 rows `status=ok`, typed screen-refuse on one coordinate |
-| Full B1 (7,920 tasks, 140 workers) | **Totoro** | **RUNNING** since `2026-08-16T01:53:53Z` pid `2779264` |
-| Full B1 DRAC array | fir / `/project` | **NOT STARTED** — quota exceeded; `MaxArraySize=10000` < 26400 |
+| Canary `--mode=canary` B010, 1 outer, 5 boot | **Totoro** | **HEALTHY**, wall ≈1–2 min |
+| Full B1 (7,920 tasks, 140 workers) | **Totoro** | **STILL ALIVE** pid `2779264` since `2026-08-16T01:53:53Z` |
+| Full B1 DRAC array | fir / `/project` | **NOT STARTED** — quota; `MaxArraySize=10000` < 26400 |
 
-Exact DRAC command (after quota is freed) is in
-`docs/dev-log/research/2026-08-15-mspl-b1-totoro-receipt.md`.
-Do not `--launch` a second Totoro full. Do not use GitHub Actions
-as a campaign host. SE covered? **no**.
+Peek at `2026-08-16T03:23Z` (elapsed **1h29**, shards **2095**,
+task logs **2253**, 282 R workers, load ≈140, **0** task logs
+matching `Error|FATAL|Killed`). Newest shards were B036. No
+second launch. SE covered? **no**.
 
 ```sh
-ssh totoro 'tail -20 ~/gllvmtmb-local-artifacts/b1-full-20260816/logs/full-launch.log
+ssh totoro 'ps -p 2779264 -o pid,etime || echo finished
 ls ~/gllvmtmb-local-artifacts/b1-full-20260816/shards | wc -l
-ps -p 2779264 -o pid,etime || echo finished'
+pgrep -c -f run-b1-shard.R'
 ```
 
-## What landed on `main` this sitting
+If the job dies, record why in the D-139 receipt. Restart a full
+20 h job only if death was an obvious spawn fail in the first
+10 minutes (that window is closed).
+
+## What landed on `main` this continuation
 
 | PR | What | SHA / note |
 |---|---|---|
-| [#989](https://github.com/itchyshin/gllvmTMB/pull/989) | SE withhold + Q0 non-PD pins | `0f4a0bc1` |
-| [#993](https://github.com/itchyshin/gllvmTMB/pull/993) | SE pin series charter | `579caa19` |
-| [#994](https://github.com/itchyshin/gllvmTMB/pull/994) | B1 dry-run receipt + launcher | `4d4bf255` |
-| [#1002](https://github.com/itchyshin/gllvmTMB/pull/1002) | Design 118 §8 DEV-5..9 | `58089758` |
+| [#1010](https://github.com/itchyshin/gllvmTMB/pull/1010) | Overnight brief + D-139 receipt | `8e4e680a` |
+| [#975](https://github.com/itchyshin/gllvmTMB/pull/975) | Beta Phase-4 prep (planned) | `83e41098` |
+| [#976](https://github.com/itchyshin/gllvmTMB/pull/976) | nbinom1 Phase-4 prep (planned) | `dd6b6ce2` |
+| [#1008](https://github.com/itchyshin/gllvmTMB/pull/1008) | Poisson admit-packet atoms (still planned) | `235be4b4` |
+| [#972](https://github.com/itchyshin/gllvmTMB/pull/972) | Poisson Phase-4 E1–E7 oracles (planned) | `a923014f` |
+| [#973](https://github.com/itchyshin/gllvmTMB/pull/973) | Tweedie Phase-4 prep (planned) | `04f897ab` |
+| [#1017](https://github.com/itchyshin/gllvmTMB/pull/1017) | **Poisson ordinary q1/q2 experimental-point admit** | `32faad9d` |
 
-No admit flip. No NEWS covered. No public vcov.
+Earlier sitting already on `main`: #989 #993 #994 #1002.
+No NEWS covered. No public vcov. No other-family admit.
 
-## Green / watch / red doors
+## Doors still open
 
-Prefer the **rebased** successors. Do not force-push sibling branches.
+| PR | Role | State | Action |
+|---|---|---|---|
+| [#1006](https://github.com/itchyshin/gllvmTMB/pull/1006) | Gaussian SE pin rebase | CI **FAIL** twice on `test-va-all-family-light-fits.R` (not the pin); now **CONFLICTING** | leave; do not merge |
+| [#996](https://github.com/itchyshin/gllvmTMB/pull/996) | Gaussian SE pin (older) | CI SUCCESS on old SHA; **CONFLICTING** vs `main` | leave; prefer #1006 if it is rebased |
+| [#997](https://github.com/itchyshin/gllvmTMB/pull/997) | Poisson SE next cells | CI SUCCESS but asserts registry **`planned`** | **do not merge** after #1017; rebase first |
+| [#1007](https://github.com/itchyshin/gllvmTMB/pull/1007) | NB planned door | draft; stacked; no CI on `main` | leave; do not admit NB |
+| [#1014](https://github.com/itchyshin/gllvmTMB/pull/1014) | Tweedie/Beta planned door | draft; **in flight**; touches `R/mspl-registry.R` | **do not collide**; no CI yet |
+| [#974](https://github.com/itchyshin/gllvmTMB/pull/974) | nbinom2 Phase-4 prep | FAIL + CONFLICTING | leave |
+| [#1003](https://github.com/itchyshin/gllvmTMB/pull/1003)–[#1005](https://github.com/itchyshin/gllvmTMB/pull/1005) | Gamma/lnorm, hurdle, student/ordinal | FAIL or CONFLICTING (#1005 SUCCESS but CONFLICTING) | leave |
+| [#995](https://github.com/itchyshin/gllvmTMB/pull/995) [#998](https://github.com/itchyshin/gllvmTMB/pull/998) [#999](https://github.com/itchyshin/gllvmTMB/pull/999) [#1000](https://github.com/itchyshin/gllvmTMB/pull/1000) | Expected-red SE doors | still red | leave |
+| [#981](https://github.com/itchyshin/gllvmTMB/pull/981) | B0/B1 harness | CONFLICTING; Totoro uses `a3b31e62` | do not merge dirty |
 
-| PR | Role | Merge rule |
-|---|---|---|
-| [#1006](https://github.com/itchyshin/gllvmTMB/pull/1006) | Gaussian SE pin rebase (prefer over DIRTY #996 / #995) | squash if CI green; no admit |
-| [#1008](https://github.com/itchyshin/gllvmTMB/pull/1008) | Poisson admit-packet rebase (prefer over DIRTY #1001) | squash if CI green; **still planned** |
-| [#1007](https://github.com/itchyshin/gllvmTMB/pull/1007) | NB1/NB2 **planned** door (sibling) | squash if CI green; do **not** admit NB |
-| [#997](https://github.com/itchyshin/gllvmTMB/pull/997) | Poisson SE next cells (69 pass locally) | squash if CI green |
-| [#972](https://github.com/itchyshin/gllvmTMB/pull/972)–[#976](https://github.com/itchyshin/gllvmTMB/pull/976) | Phase-4 prep (planned only) | squash if CI green and still planned; #974 when green |
-| [#1003](https://github.com/itchyshin/gllvmTMB/pull/1003)–[#1005](https://github.com/itchyshin/gllvmTMB/pull/1005) | Gamma/lnorm, hurdle, student/ordinal prep | squash if CI green and not DIRTY; rebase check-log if needed |
-| [#995](https://github.com/itchyshin/gllvmTMB/pull/995), [#998](https://github.com/itchyshin/gllvmTMB/pull/998), [#999](https://github.com/itchyshin/gllvmTMB/pull/999), [#1000](https://github.com/itchyshin/gllvmTMB/pull/1000) | Expected-red SE doors | **leave open** until implementers turn them green |
-| [#981](https://github.com/itchyshin/gllvmTMB/pull/981) | B0/B1 harness (compute uses this SHA) | CONFLICTING; do not merge dirty; harness is on Totoro @ `a3b31e62` |
-| [#996](https://github.com/itchyshin/gllvmTMB/pull/996), [#1001](https://github.com/itchyshin/gllvmTMB/pull/1001) | Superseded by #1006 / #1008 | close after successors merge |
+#1001 was already closed (superseded by #1008).
 
-At brief-write time Ubuntu R-CMD-check was still **queued** for
-the implementer PRs (Actions backlog). Re-check before merging.
+## Poisson admit (DONE)
 
-## Poisson admit (OWED — gated on #1008 CI)
-
-Shinichi G0: flip Poisson ordinary q1/q2 `planned` → `admitted`
-as **experimental point** after #1008 is green.
-
-Must update in the same commit (or the tests stay red):
-
-- `R/mspl-registry.R` — those two rows only
-- `tests/testthat/test-mspl-registry.R` — admitted count / family set
-- `tests/testthat/test-mspl-poisson-admit-packet.R` A8 + fit
-  `registry_status` (today asserts `planned`)
-- PR body Rose fence: admit = atom packet + tonight's G0; #990
-  smoke = operational PASS / admit-evidence FAIL
+#1017 landed the G0 flip. Evidence token is `admit_packet`, not
+`oracle_local` and not `covered`. Notes record #990 operational
+PASS / admit-evidence FAIL. Public SE still withheld.
 
 Do **not** write NEWS covered. Do **not** open public SE.
 Do **not** admit any other family.
 
 ## Current Working State
 
-- **Working:** Totoro full B1; #1006 / #1008 waiting on CI.
-- **In progress:** sibling #1007 NB planned door; Phase-4 prep PRs.
-- **Not working / blocked:** DRAC full (quota); Poisson admit
-  (wait #1008 green); public vcov; NEWS covered.
+- **Working:** Totoro full B1 pid `2779264` (still alive).
+- **Landed:** Poisson experimental-point admit; Phase-4 prep
+  #972 #973 #975 #976; packet #1008.
+- **Not working / blocked:** DRAC full (quota); #1006 VA-flake
+  + conflict; #997 stale `planned` asserts; public vcov; NEWS
+  covered; Tweedie/Beta implementer still in flight.
 
 ## Landing State
 
 | Artifact / branch | Committed | Pushed | PR | State |
 |---|---|---|---|---|
-| `main` @ `58089758` | y | y | #989 #993 #994 #1002 | LANDED |
-| `cursor/mspl-se-gaussian-pin-rebased` | y | y | #1006 | LANDED as PR; merge if CI green |
-| `cursor/mspl-poisson-admit-rebased` | y | y | #1008 | LANDED as PR; still planned |
-| `cursor/mspl-overnight-brief` | y | this PR | this file + receipt update | LANDED as docs |
-| Totoro canary artifacts | n (local Totoro) | n | none | **CARRIED-OVER** under `~/gllvmtmb-local-artifacts/b1-canary-20260816` |
+| `main` @ `32faad9d` | y | y | #1017 + earlier | LANDED |
 | Totoro full B1 | n (running) | n | none | **CARRIED-OVER** pid `2779264` |
-| DRAC full | n | n | none | **CARRIED-OVER** — quota; command in the receipt |
+| DRAC full | n | n | none | **CARRIED-OVER** — quota |
 | Codex Lane B | n (foreign) | y | none from Cursor | **PROTECTED** |
-| Shared `/private/tmp/gllvmtmb-mspl-estimator-programme-roadmap` | dirty sibling | n | #1001 | **CARRIED-OVER** — do not use for new branches |
+| `cursor/mspl-se-tweedie-beta-impl` / #1014 | y | y | #1014 draft | **CARRIED-OVER** — do not edit |
 
 ## Next Immediate Steps
 
-1. `gh pr checks 1006 1008 1007 997 972 973 974 975 976`. Squash-merge
-   each CI-green PR that does not enable public vcov / NEWS covered /
-   an unauthorised admit.
-2. After #1008 green: Poisson admit flip (two ordinary cells only)
-   with the Rose-fenced PR body. Then merge.
-3. Peek Totoro full B1. Do not start a second full job.
-4. Leave expected-red doors open. Do not absorb Codex Lane B.
+1. Keep peeking Totoro B1. Do not start a second full job.
+2. Rebase #997 onto `main` so it expects `admitted` /
+   `admit_packet` before merging.
+3. Leave #1006/#996 until a clean rebase survives the VA light
+   suite. Do not open public vcov.
+4. Do not absorb #1014 or edit `R/mspl-registry.R` while that
+   implementer is live.
+5. Leave expected-red doors open. Do not absorb Codex Lane B.
 
 ## HARD STOPS (unchanged)
 
-public vcov · NEWS covered · all-family admit · binomial SE rebuild /
-Codex absorb · `git add -A` · Dropbox · repo-root `LOOP/` ·
-GitHub Actions as campaign host
+second full B1 · public vcov · NEWS covered · all-family admit ·
+binomial SE rebuild / Codex absorb · `git add -A` · Dropbox ·
+repo-root `LOOP/` · GitHub Actions as campaign host
 
 ## Resume
 
 ```text
 Read AGENTS.md and docs/dev-log/handover/2026-08-16-cursor-handover-mspl-overnight.md.
-Reconcile with live git. Merge only CI-green no-public-vcov no-NEWS-covered PRs.
-Poisson admit only after #1008 is green. Totoro full B1 is already running —
-do not launch another. DRAC is quota-blocked.
+Reconcile with live git. Poisson ordinary q1/q2 is already admitted
+experimental point (#1017). Totoro full B1 pid 2779264 is already
+running — do not launch another. Merge only CI-green no-public-vcov
+no-NEWS-covered PRs. Do not merge #997 until it is rebased off planned.
 ```

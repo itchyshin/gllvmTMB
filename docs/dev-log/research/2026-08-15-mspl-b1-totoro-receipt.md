@@ -242,6 +242,24 @@ ps -p 2779264 -o pid,etime || echo finished'
 | SE covered? | **no** |
 | Public `sd_report`? | **still withheld** |
 
+### Continuation peek — 2026-08-16T03:23Z
+
+| Field | Value |
+|---|---|
+| pid `2779264` | **ALIVE** elapsed 1h29 |
+| shards | **2095** (of 7,920 tasks) |
+| task logs | 2253 |
+| R workers | 282 |
+| load | ≈140 / 140 / 141 |
+| `Error\|FATAL\|Killed` in task logs | **0** |
+| Second Totoro full? | **no** |
+| Restart? | **no** (not a spawn-fail; first 10 min closed) |
+| SE covered? | **no** |
+
+Job was not silently restarted. If it later dies, write the
+reason here; do not relaunch a 20 h full unless the death is
+an obvious spawn fail (that window is over).
+
 ---
 
 ## Placement note (D3 vs this receipt)

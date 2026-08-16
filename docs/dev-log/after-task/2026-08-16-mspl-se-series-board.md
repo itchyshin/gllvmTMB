@@ -51,7 +51,7 @@ Rejected: a `#1007`-shaped door from the gap list. Confidence: high.
 ## 4. Checks Run
 
 ```sh
-git rev-parse origin/main   # 55666f1e
+git rev-parse origin/main   # e46a3a2e (#1045)
 gh pr view 999,1000,1006,997,998,1007,1014,1039,1041,1045,1047
 rg -n 'allowed <-' -A 8 R/mspl-curvature-pin.R
 ```
@@ -90,16 +90,16 @@ by absolute path in a new worktree.
 
 ## 9. Team Learning (per AGENTS.md Standing Review Roles)
 
-- **Ada:** next *code* merge is rebase #1045. #1047 hang is FIXED
-  but stays draft. This docs wave merges #1051 as research-only.
+- **Ada:** #1045 is on `main`. #1047 hang is FIXED but stays draft.
+  This docs wave merges #1051 as research-only.
 - **Rose:** LIVE pin ≠ public SE; planned door ≠ admit.
 - **Shannon:** board is the SE-series pointer; Lane B stays PROTECTED.
 
 ## 10. Known Limitations And Next Actions
 
 #1047 hang status changed to FIXED (`PROBE_OK`) before this board
-merged; public door and admit stay closed. This docs wave marks
+merged; public door and admit stay closed. #1045 landed on `main`
+@ `e46a3a2e` during the rebase. This docs wave marks
 [#1051](https://github.com/itchyshin/gllvmTMB/pull/1051) ready and
-merges it as research-only (no tape). #1045 is still CONFLICTING.
-After this PR lands, rebase #1045 onto `main`. Do not lift Tweedie
+merges it as research-only (no tape). Do not lift Tweedie
 public-door `skip_if`.

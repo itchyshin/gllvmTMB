@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-16
 **Track:** SE-arc speed-up 5 (coordination)
-**Tip read:** `origin/main` @ `55666f1e` (#1041)
+**Tip read:** `origin/main` @ `e46a3a2e` (#1045)
 **Charter (stale roster, still the contract):**
 `docs/dev-log/research/2026-08-16-mspl-se-other-families-series.md` (#993)
 **Status:** board only. No pin lift. No admit. No public `se=TRUE`.
@@ -50,13 +50,13 @@ Planned registry rows landed with
 
 | Cell | Why blocked | Owning PR | Merge posture |
 |---|---|---|---|
-| Beta logit | Live 8×3 pin used `skip_if(TRUE)` after R accepted only status 0. Status **1 is `OK_MP_CERTIFIED`**, not invalid. Atom is FCN \(K_{\beta\beta}\). | [#1045](https://github.com/itchyshin/gllvmTMB/pull/1045) `cursor/mspl-beta-jeffreys-atom` | **Next merge** after rebase. OPEN, **CONFLICTING** vs `main` (post-#1039/#1041). After land, Beta live skip becomes “door is missing,” not atom-invalid. Still no public door / admit. |
+| Beta logit | Live 8×3 pin used `skip_if(TRUE)` after R accepted only status 0. Status **1 is `OK_MP_CERTIFIED`**, not invalid. Atom is FCN \(K_{\beta\beta}\). | [#1045](https://github.com/itchyshin/gllvmTMB/pull/1045) `cursor/mspl-beta-jeffreys-atom` | **On `main`** @ `e46a3a2e`. Beta live skip is now “door is missing,” not atom-invalid. Still no public door / admit. |
 | Tweedie log | Two-layer hang: true \(W=\mu^{2-p}/\varphi\) is one-sided (\(\varphi\to 0\)); residual hang was the spatial-Bernoulli BFGS rescue (`optim(..., maxit=5000)`). Working \(W_*\) + Huber + skip BFGS for `family_id==6`. Default-nlminb probe: **`PROBE_OK` 1.549 s**. Hang fuse on the PR is now `FALSE`. | [#1047](https://github.com/itchyshin/gllvmTMB/pull/1047) `cursor/mspl-tweedie-hang` | Hang **FIXED**. Still **DRAFT** and **CONFLICTING**. Do not merge as an admit or public door. CI still skips on the closed door. Diagnosis: `docs/dev-log/research/2026-08-16-mspl-tweedie-hang-wstar.md`. |
 
-Track 6 (sibling) may lift Beta `skip_if` only after #1045 is on
-`main` **and** a door exists. Tweedie hang fuse is already `FALSE`
-on #1047 (`PROBE_OK`); still do not open family 6 on the public
-allow-list from that PR.
+Track 6 (sibling) may lift Beta `skip_if` only after a door exists
+(#1045 atom is already on `main`). Tweedie hang fuse is already
+`FALSE` on #1047 (`PROBE_OK`); still do not open family 6 on the
+public allow-list from that PR.
 
 ### #1000 — rest families
 
@@ -109,11 +109,11 @@ remains a Claude draft. It is not in the SE-pin merge stack.
 ## 4. Next merge order for the SE series
 
 Hygiene already on `main` this sitting: #1039 planned-rest rows
-(`a1c008db`), #1041 notes (`55666f1e`), #995 closed.
+(`a1c008db`), #1041 notes (`55666f1e`), #1045 Beta atom
+(`e46a3a2e`), #995 closed.
 
-1. **Rebase + merge [#1045](https://github.com/itchyshin/gllvmTMB/pull/1045)**
-   (Beta atom). Conflicts vs current `main`. Keep planned. No family
-   id 7. No admit.
+1. **[#1045](https://github.com/itchyshin/gllvmTMB/pull/1045) landed**
+   (Beta atom). Keep planned. No family id 7. No admit.
 2. **Leave [#1047](https://github.com/itchyshin/gllvmTMB/pull/1047) draft.**
    Hang is **FIXED** (`PROBE_OK` 1.549 s; fuse `FALSE`). Still
    CONFLICTING. Do not squash-merge as an admit or public-door lift.
@@ -122,9 +122,9 @@ Hygiene already on `main` this sitting: #1039 planned-rest rows
    (track 4) as **research-only**. Gamma/lognormal door is **not
    ready**; gap list only. No `src/` tape. No `#1000` lift.
 4. **Track 6 — lift `skip_if` only for cells that are actually live.**
-   Beta after #1045 **and** a door. Tweedie hang probe already
-   `PROBE_OK`; still no public door. Rest-family pin-family tests
-   stay red/`skip_if` until the fence and door exist.
+   Beta atom is on `main`; still needs a door. Tweedie hang probe
+   already `PROBE_OK`; still no public door. Rest-family pin-family
+   tests stay red/`skip_if` until the fence and door exist.
 5. **Later rest doors** (student / ordinal / delta_* / BB / truncated /
    multinomial). One family, one PR. Local only.
 6. **Do not** start Lane B. **Do not** promote B1. **Do not** open

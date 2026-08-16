@@ -2420,7 +2420,14 @@ predict.gllvmTMB_multi <- function(
     if (isTRUE(include_loadings)) {
       n_traits <- nrow(Lambda)
       theta_idx <- which(par_names == "theta_rr_B")
-      expected_theta <- n_traits * fit$d_B - fit$d_B * (fit$d_B - 1L) %/% 2L
+      ## The parenthesis is load-bearing: `%/%` binds TIGHTER than `*` in R,
+      ## so `d * (d - 1L) %/% 2L` evaluates as `d * ((d - 1L) %/% 2L)`, which
+      ## is 0 at d = 2 (and 4 at d = 4) instead of the intended triangular
+      ## count 1 (and 6). The guard then demanded p*d free entries where the
+      ## packing supplies p*d - d(d-1)/2, and every rank-2 fit aborted --
+      ## invisible at rank 1, where both spellings agree. Caught by the
+      ## wave-1c campaign (25 traits, d = 2: expected 50, found 49).
+      expected_theta <- n_traits * fit$d_B - (fit$d_B * (fit$d_B - 1L)) %/% 2L
       if (length(theta_idx) != expected_theta) {
         cli::cli_abort(c(
           "Could not align the {.field theta_rr_B} block in the joint precision.",

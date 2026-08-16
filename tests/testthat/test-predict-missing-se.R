@@ -564,3 +564,38 @@ test_that("se_confidence under 'joint_load' strictly exceeds 'joint' (the omitte
   pm_joint_load <- predict_missing(fit, se = TRUE, se_route = "joint_load")
   expect_true(all(pm_joint_load$se_confidence > pm_joint$se_confidence))
 })
+
+test_that("joint_load aligns the loading block at rank >= 2 (wave-1c regression)", {
+  skip_if_not_heavy()
+  ## The alignment guard computed the packing's free-entry count as
+  ## `p * d - d * (d - 1) %/% 2`, but `%/%` binds tighter than `*` in R, so
+  ## the subtraction evaluated to 0 at d = 2 and every rank-2 fit aborted
+  ## with "Could not align the theta_rr_B block". Rank 1 hides it (both
+  ## spellings give 0), which is why the unit fixtures passed while the
+  ## coverage campaign (25 traits, d = 2) failed 1,600/1,600 fits.
+  set.seed(915)
+  n <- 40L; p <- 5L; rank <- 2L
+  U <- matrix(rnorm(n * rank), n, rank)
+  Lam <- matrix(rnorm(p * rank, sd = 0.7), p, rank)
+  Lam[1L, 2L] <- 0                      # structural zero of the packing
+  b0 <- rnorm(p, sd = 0.5)
+  y <- sweep(U %*% t(Lam), 2L, b0, `+`) + matrix(rnorm(n * p, sd = 0.5), n, p)
+  dat <- data.frame(
+    site  = factor(rep(seq_len(n), times = p)),
+    trait = factor(rep(paste0("t", seq_len(p)), each = n),
+                   levels = paste0("t", seq_len(p))),
+    value = as.vector(y)
+  )
+  dat$value[c(7L, 33L, 88L, 140L)] <- NA_real_
+  fit <- suppressMessages(suppressWarnings(gllvmTMB(
+    value ~ 0 + trait + latent(0 + trait | site, d = rank, unique = FALSE),
+    data = dat, family = gaussian(),
+    missing = miss_control(response = "include")
+  )))
+  expect_identical(fit$d_B, rank)
+  pm <- predict_missing(fit, type = "response", se = TRUE,
+                        se_route = "joint_load")
+  expect_true(all(is.finite(pm$se_confidence)))
+  expect_true(all(pm$se_confidence > 0))
+  expect_true(all(pm$se_prediction > pm$se_confidence))
+})

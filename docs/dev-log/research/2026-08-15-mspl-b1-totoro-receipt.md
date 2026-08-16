@@ -260,6 +260,20 @@ Job was not silently restarted. If it later dies, write the
 reason here; do not relaunch a 20 h full unless the death is
 an obvious spawn fail (that window is over).
 
+### Continuation peek — 2026-08-16T10:29Z
+
+| Field | Value |
+|---|---|
+| pid `2779264` | **ALIVE** elapsed 8h36 |
+| shards | **7136** (of 7,920 tasks) |
+| R workers | 283 |
+| load | ≈140 |
+| `Error\|FATAL\|Killed` | **0** |
+| Second Totoro full? | **no** |
+| Restart? | **no** |
+| SE covered? | **no** |
+| Note | Hard-tail slowdown then recovery; #1006 Gaussian pin landed on `main` this peek (`a7027b9d`). Public `sdreport` still withheld. |
+
 ---
 
 ## Placement note (D3 vs this receipt)

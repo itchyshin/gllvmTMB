@@ -790,6 +790,17 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   groupings <- vapply(parsed$covstructs, function(cs) deparse(cs$group), character(1))
   kinds     <- vapply(parsed$covstructs, function(cs) cs$kind, character(1))
 
+  ## Multinomial (family_id 16) structured-term admission, pass 1 of 2: an
+  ## early covstruct-keyed classifier. See R/multinomial-fence.R. A no-op for
+  ## any fit without a multinomial trait; the late `use_*` re-scan (moved
+  ## after every `use_*` flag is defined, further down this function) is
+  ## pass 2, belt-and-braces.
+  .multinomial_structured_admission(
+    covstructs = parsed$covstructs, family_id_vec = family_id_vec,
+    site = site, ss_name = unit_obs, species = species,
+    cluster2_col = if (is.null(cluster2)) NULL else as.character(cluster2)[1]
+  )
+
   ## ---- Design 73 `lv = ~ ...` parser/API preflight -----------------------
   ## Validate and prepare the unit-level X_lv_B design for the ordinary
   ## Gaussian B-tier score-mean model. Unsupported regimes still fail here
@@ -2147,67 +2158,18 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## ---- Generic random intercepts (1 | group) ----------------------------
   re_int_idx <- which(kinds == "re_int")
   use_re_int <- length(re_int_idx) > 0L
-  ## Tier-2a fence (Design 84): a multinomial() response may now carry a
-  ## `phylo_latent` term. The K-1 category-contrast pseudo-traits (distinct
-  ## trait_id per contrast; see expand_multinomial_response()) each receive a
-  ## category-specific phylo-factor loading row Lambda_phy(contrast, .), so
-  ## Sigma_phy = Lambda_phy Lambda_phy^T is the (K-1)x(K-1) among-category
-  ## covariance V. Two honesty caveats (see the 2026-07-17 regularization
-  ## after-task): (1) RECOVERY is data-hungry -- V recovers with per-species
-  ## replication or large N, but a single categorical draw per species is weakly
-  ## informative about the (K-1)-dim liability, so one-per-species point
-  ## estimates are high-variance and rail at rho = +/-1 (no cheap fixed
-  ## regularizer fixes this; the fixed-R OLRE was tested and is inert). (2) The
-  ## contrasts are differences against a SHARED baseline category, so a diagonal
-  ## V does NOT mean independence: under independent equal-variance categories
-  ## the null contrast covariance is (I+J)-structured -- equal on the diagonal,
-  ## equal off-diagonal (Hadfield MCMCglmm course notes, multinomial section) --
-  ## so interpret the reported correlations against that null, not against 0. (The
-  ## observation-scale link residual has the same (I+J) shape at scale pi^2/6:
-  ## pi^2/3 diagonal, pi^2/6 off-diagonal -- the softmax analog of binomial's
-  ## pi^2/3; see extract_Sigma()'s link_residual docs.) Every OTHER latent /
-  ## random-effect / structured tier
-  ## remains fixed-effects-only on a multinomial fit and still fails loud rather
-  ## than fit a silently-wrong model.
-  ## Tier-2b item 2a-ii: a multinomial() trait may share an ordinary latent
-  ## ordination -- latent(0 + trait | unit, d) (use_rr_B / use_lv_B) -- with
-  ## other-family traits, so its K-1 pseudo-traits load on the shared factor and
-  ## the cross-family (nominal <-> other) covariance lives in Lambda; phylo_latent
-  ## (use_phylo_rr) stays allowed (Tier-2a). Every OTHER latent / random-effect /
-  ## structured tier is deferred and must fail loud rather than reach an untested
-  ## categorical path.
-  ##
-  ## FAIL-CLOSED allow-list (Rose review 2026-07-18): a partial deny-list let
-  ## use_rr_B_slope (an augmented reaction-norm slope) through. Instead, scan ALL
-  ## `use_*` tier flags and abort if any active one is outside the allowed set --
-  ## so any current or future tier flag cannot silently reach fid 16. Exclude the
-  ## two glmmTMB keyword-mapping flags that are not latent/RE structures.
-  if (any(family_id_vec == 16L)) {
-    .mn_env <- environment()
-    .mn_allowed_tiers <- c("use_phylo_rr", "use_rr_B", "use_lv_B")
-    ## The DEFAULT between-unit auto-Psi -- latent(unique = TRUE), the ordinary
-    ## default -- is allowed: the current engine auto-suppresses multinomial
-    ## contrast Psi while identified partners (Gaussian sigma^2,
-    ## overdispersed-Poisson OLRE) keep theirs. Replication could identify a
-    ## contrast-specific diagonal in principle, but that wider route is not
-    ## admitted in 0.6. So `unique = TRUE` works out of the box for cross-family
-    ## correlations, while an EXPLICIT unique()/indep() diagonal
-    ## (use_diag_B with auto_psi_B = FALSE) stays fenced.
-    if (isTRUE(auto_psi_B)) .mn_allowed_tiers <- c(.mn_allowed_tiers, "use_diag_B")
-    .mn_non_tier      <- c("use_equalto", "use_propto")
-    .mn_use_flags <- setdiff(ls(envir = .mn_env, pattern = "^use_"),
-                             c(.mn_allowed_tiers, .mn_non_tier))
-    .mn_vals <- mget(.mn_use_flags, envir = .mn_env, inherits = FALSE)
-    .mn_active_bad <- .mn_use_flags[vapply(.mn_vals, isTRUE, logical(1))]
-    if (length(.mn_active_bad) > 0L) {
-      cli::cli_abort(c(
-        "{.fn multinomial} supports fixed effects, {.fn phylo_latent}, and a shared {.fn latent} ordination in this release.",
-        "x" = "An unsupported latent / random-effect / structured term was combined with a categorical (multinomial) response.",
-        "i" = "Use a shared {.code latent(0 + trait | unit, d = k)} for cross-family (nominal <-> other) correlations (the default {.code unique = TRUE} works; the categorical contrast Psi is mapped off), or {.code phylo_latent(species, d = K)} for the among-category phylogenetic surface. Replication could identify a contrast-specific diagonal in principle, but an explicit multinomial {.fn unique}/{.fn indep} term is not admitted in this release.",
-        ">" = "Other latent-scale structures on categorical responses are deferred."
-      ))
-    }
-  }
+  ## Multinomial (family_id 16) structured-term admission is now enforced in
+  ## TWO passes (Slice 0, Design 108/122; see R/multinomial-fence.R for the
+  ## full rationale): an EARLY covstruct-keyed classifier
+  ## (`.multinomial_structured_admission()`, called right after `kinds` /
+  ## `groupings` are computed above) that reads the raw parser markers so
+  ## keywords which desugar onto the SAME `use_*` engine flag as an admitted
+  ## keyword (dep()@unit, phylo_dep(), phylo_indep()/phylo_unique(),
+  ## animal_latent(), single-name kernel_*()) are still told apart; and the
+  ## LATE `use_*` re-scan below, kept as belt-and-braces and moved past every
+  ## `use_*` definition (including the `use_mi_*` mi()-predictor flags) so no
+  ## future engine flag can silently reach fid 16 undetected. Both passes are
+  ## no-ops for any fit without a multinomial trait.
   ## Each term gets its own group factor + variance component. We pack all
   ## random intercepts into a single flat vector u_re_int with per-term
   ## offsets so the cpp side can index them with `offset_t + group_id`.
@@ -4451,6 +4413,60 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   } else {
     tmb_params$g_x      <- 0.0
     tmb_params$log_sd_x <- 0.0
+  }
+
+  ## Multinomial (family_id 16) structured-term admission, pass 2 of 2: the
+  ## late `use_*` re-scan (belt-and-braces; pass 1 is
+  ## `.multinomial_structured_admission()` above). FAIL-CLOSED allow-list
+  ## (Rose review 2026-07-18): a partial deny-list let use_rr_B_slope (an
+  ## augmented reaction-norm slope) through. Instead, scan ALL `use_*` tier
+  ## flags and abort if any active one is outside the allowed set -- so any
+  ## current or future tier flag cannot silently reach fid 16. Placed here,
+  ## after every `use_*` flag in this function is defined (including the
+  ## use_mi_* mi()-predictor flags above), so a mi() term on a multinomial
+  ## fit is no longer invisible to the scan (Slice 0, Design 108/122: this
+  ## used to sit right after `use_re_int`, well before use_mi_* existed).
+  if (any(family_id_vec == 16L)) {
+    .mn_env <- environment()
+    .mn_allowed_tiers <- c("use_phylo_rr", "use_rr_B", "use_lv_B")
+    ## The DEFAULT between-unit auto-Psi -- latent(unique = TRUE), the ordinary
+    ## default -- is allowed: the current engine auto-suppresses multinomial
+    ## contrast Psi while identified partners (Gaussian sigma^2,
+    ## overdispersed-Poisson OLRE) keep theirs. Replication could identify a
+    ## contrast-specific diagonal in principle, but that wider route is not
+    ## admitted in 0.6. So `unique = TRUE` works out of the box for cross-family
+    ## correlations, while an EXPLICIT unique()/indep() diagonal
+    ## (use_diag_B with auto_psi_B = FALSE) stays fenced.
+    if (isTRUE(auto_psi_B)) .mn_allowed_tiers <- c(.mn_allowed_tiers, "use_diag_B")
+    ## `use_equalto` is a fixed-effect mapping keyword (meta_V's known-sampling-
+    ## covariance route), not a latent/RE structure, so it stays exempt.
+    ## `use_propto` (phylo_scalar()/animal_scalar()) is NOT exempt any more:
+    ## Slice 0 established that a scalar phylogenetic/pedigree contrast term is
+    ## a real structured tier on the multinomial contrast liabilities and was
+    ## leaking through this exemption.
+    ## `use_any_phy_term` is a pure logical-OR aggregate of use_phylo_rr /
+    ## use_phylo_diag / use_phylo_slope / use_phylo_latent_slope / use_mi_phylo
+    ## (see its definition above) -- every one of those five is ALREADY
+    ## checked here individually (use_phylo_rr admitted; the other four are
+    ## not, and independently trip this scan when active). Moving this scan
+    ## past that definition (Slice 0, so use_mi_* is in scope) means the
+    ## aggregate is now also visible to `ls()`; it carries no information its
+    ## constituents don't already carry, so it stays exempt rather than
+    ## double-counting a legitimate phylo_latent() fit as unsupported.
+    .mn_non_tier      <- c("use_equalto", "use_any_phy_term")
+    .mn_use_flags <- setdiff(ls(envir = .mn_env, pattern = "^use_"),
+                             c(.mn_allowed_tiers, .mn_non_tier))
+    .mn_vals <- mget(.mn_use_flags, envir = .mn_env, inherits = FALSE)
+    .mn_active_bad <- .mn_use_flags[vapply(.mn_vals, isTRUE, logical(1))]
+    if (length(.mn_active_bad) > 0L) {
+      cli::cli_abort(c(
+        "{.fn multinomial} supports fixed effects, {.fn phylo_latent}, and a shared {.fn latent} ordination in this release.",
+        "x" = "An unsupported latent / random-effect / structured term was combined with a categorical (multinomial) response.",
+        "i" = "Use a shared {.code latent(0 + trait | unit, d = k)} for cross-family (nominal <-> other) correlations (the default {.code unique = TRUE} works; the categorical contrast Psi is mapped off), or {.code phylo_latent(species, d = K)} for the among-category phylogenetic surface. Replication could identify a contrast-specific diagonal in principle, but an explicit multinomial {.fn unique}/{.fn indep} term is not admitted in this release.",
+        "i" = "A {.fn propto} (phylo_scalar()/animal_scalar()) term targeting only NON-multinomial traits in a mixed-family fit is also blocked in this release -- the fence is per-fit, not per-trait.",
+        ">" = "Other latent-scale structures on categorical responses are deferred."
+      ))
+    }
   }
 
   ## McGillycuddy / glmmTMB-style residual starts for factor-analytic

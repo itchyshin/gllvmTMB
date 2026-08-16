@@ -2873,6 +2873,7 @@ rewrite_canonical_aliases <- function(formula) {
               list(as.name("phylo_slope"), arg),
               list(
                 .phylo_unique_augmented = TRUE,
+                .animal_source = TRUE,
                 lhs_form = lhs_info$lhs_form,
                 slope_col = lhs_info$slope_col
               ),
@@ -2894,7 +2895,7 @@ rewrite_canonical_aliases <- function(formula) {
           }
           new_call <- as.call(c(
             list(as.name("phylo_rr"), e[[2L]]),
-            list(.phylo_unique = TRUE),
+            list(.phylo_unique = TRUE, .animal_source = TRUE),
             list(vcv = vcv_expr)
           ))
           return(new_call)
@@ -2945,6 +2946,7 @@ rewrite_canonical_aliases <- function(formula) {
                 list(d = d_val),
                 list(
                   .latent_slope = TRUE,
+                  .animal_source = TRUE,
                   lhs_form = lhs_form$lhs_form,
                   slope_col = lhs_form$slope_col
                 ),
@@ -2958,6 +2960,7 @@ rewrite_canonical_aliases <- function(formula) {
                 list(as.name("phylo_slope"), arg),
                 list(
                   .phylo_unique_augmented = TRUE,
+                  .animal_source = TRUE,
                   lhs_form = lhs_form$lhs_form,
                   slope_col = lhs_form$slope_col
                 ),
@@ -2968,7 +2971,7 @@ rewrite_canonical_aliases <- function(formula) {
           }
           new_call <- as.call(c(
             list(as.name("phylo_rr"), e[[2L]]),
-            list(d = d_val),
+            list(d = d_val, .animal_source = TRUE),
             list(vcv = vcv_expr)
           ))
           unique_arg <- e[["unique"]]
@@ -2990,7 +2993,7 @@ rewrite_canonical_aliases <- function(formula) {
           }
           psi_call <- as.call(c(
             list(as.name("phylo_rr"), e[[2L]]),
-            list(.phylo_unique = TRUE, .auto_unique = TRUE),
+            list(.phylo_unique = TRUE, .auto_unique = TRUE, .animal_source = TRUE),
             list(vcv = vcv_expr)
           ))
           return(call("+", new_call, psi_call))
@@ -3048,6 +3051,7 @@ rewrite_canonical_aliases <- function(formula) {
                 ## random regressions. Shares the phylo_slope engine; A via vcv.
                 .phylo_dep_augmented = TRUE,
                 .indep_blockdiag = TRUE,
+                .animal_source = TRUE,
                 lhs_form = lhs_form$lhs_form,
                 slope_col = lhs_form$slope_col
               ),
@@ -3057,7 +3061,7 @@ rewrite_canonical_aliases <- function(formula) {
           }
           new_call <- as.call(c(
             list(as.name("phylo_rr"), species_arg),
-            list(.phylo_unique = TRUE, .indep = TRUE),
+            list(.phylo_unique = TRUE, .indep = TRUE, .animal_source = TRUE),
             list(vcv = vcv_expr)
           ))
           return(new_call)
@@ -3092,6 +3096,7 @@ rewrite_canonical_aliases <- function(formula) {
               list(as.name("phylo_slope"), bar),
               list(
                 .phylo_dep_augmented = TRUE,
+                .animal_source = TRUE,
                 lhs_form = lhs_form$lhs_form,
                 slope_col = lhs_form$slope_col
               ),
@@ -3102,7 +3107,7 @@ rewrite_canonical_aliases <- function(formula) {
           ## Intercept-only bar: the original non-augmented dep path.
           new_call <- as.call(c(
             list(as.name("phylo_rr"), species_arg),
-            list(d = as.name(".deferred_n_traits"), .dep = TRUE),
+            list(d = as.name(".deferred_n_traits"), .dep = TRUE, .animal_source = TRUE),
             list(vcv = vcv_expr)
           ))
           return(new_call)
@@ -3112,6 +3117,7 @@ rewrite_canonical_aliases <- function(formula) {
         if (fn == "animal_slope") {
           new_call <- e
           new_call[[1L]] <- as.name("phylo_slope")
+          new_call[[".animal_source"]] <- TRUE
           if (!is.null(vcv_expr)) {
             new_call[["vcv"]] <- vcv_expr
           }

@@ -111,11 +111,12 @@ row. That pin had to flip in the same PR or CI would fail. The
 dirty MSPL worktree could not take this edit; a fresh worktree
 from `origin/main` was required.
 
-Ubuntu CI on the first #1039 push failed on the known VA-light
-`delta_lognormal_log` health-gate flake (`failed_health_gate`,
-2 < 3 healthy starts), not on the planned rows. `#1013` is already
-on this branch. Followed the `#1026` / `#979` zz-rename so the
-live fenced tapes run after the VA suite. Did not edit the VA test.
+Ubuntu CI failed twice on the known VA-light `delta_lognormal_log`
+health-gate flake (`failed_health_gate`, 2 < 3 healthy starts), not
+on the planned rows. `#1013` is already on this branch. The
+`#1026` / `#979` zz-rename did not clear the second run. Put
+`delta_lognormal_log` on the same N=60 fixture as `delta_gamma_log`.
+Did not loosen the health gate.
 
 ## 9. Team Learning (per AGENTS.md Standing Review Roles)
 

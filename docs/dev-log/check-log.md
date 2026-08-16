@@ -1,5 +1,15 @@
 # Check log
 
+## 2026-08-16 — #1039 VA flake: N=60 for delta_lognormal_log (Cursor)
+
+zz-rename of the fenced tapes (`5376b745`) did not clear Ubuntu
+R-CMD-check. Same `delta_lognormal_log` health-gate flake
+(`failed_health_gate`, healthy_starts 2 < 3). `#1013` already
+scales the agreement bound; the remaining miss is a start that
+fails the health gate at N=30. Put `delta_lognormal_log` on the
+same N=60 fixture as `delta_gamma_log`. Did not loosen the gate.
+Not an admit.
+
 ## 2026-08-16 — #1039 VA flake: zz-rename fenced tapes (Cursor)
 
 `#1039` Ubuntu R-CMD-check failed on

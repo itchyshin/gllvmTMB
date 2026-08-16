@@ -46,6 +46,14 @@ export OMP_NUM_THREADS=1 NOT_CRAN=true
 Not run: full `devtools::test()`, `R CMD check`, pkgdown, Totoro.
 No `git add -A`.
 
+## 2026-08-16 — #1003 R CMD check fence pin (Cursor)
+
+Rebased onto `origin/main` @ `f3bd4e6a` (#1007). Replaced
+`readLines(test_path("../../R/mspl.R"))` / `skip_if(!file.exists)`
+with `deparse(getFromNamespace(".gllvmTMB_mspl_prepare", "gllvmTMB"))`.
+Gamma/lognormal stay planned. nbinom planned rows from #1007 kept.
+Scientific oracles unchanged.
+
 ## 2026-08-15 — MSPL Gamma(log)+lognormal(log) Phase-4 prep (Cursor)
 
 Lane `cursor/mspl-phase4-gamma-lognormal` at

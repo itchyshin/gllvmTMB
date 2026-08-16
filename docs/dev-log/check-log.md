@@ -241,6 +241,39 @@ export OMP_NUM_THREADS=1 NOT_CRAN=true
 Not run: full `devtools::test()`, `R CMD check`, pkgdown, Totoro.
 No `git add -A`.
 
+## 2026-08-16 — #1003 R CMD check fence pin (Cursor)
+
+Rebased onto `origin/main` @ `f3bd4e6a` (#1007). Replaced
+`readLines(test_path("../../R/mspl.R"))` / `skip_if(!file.exists)`
+with `deparse(getFromNamespace(".gllvmTMB_mspl_prepare", "gllvmTMB"))`.
+Gamma/lognormal stay planned. nbinom planned rows from #1007 kept.
+Scientific oracles unchanged.
+
+## 2026-08-15 — MSPL Gamma(log)+lognormal(log) Phase-4 prep (Cursor)
+
+Lane `cursor/mspl-phase4-gamma-lognormal` at
+`/tmp/gllvmtmb-mspl-gamma-lnorm` from `origin/main` @ `fe867e40`.
+Planned rows only. No `src/`. No prepare widen. No NEWS covered.
+No `git add -A`. No repo-root `LOOP/`.
+
+```sh
+export OMP_NUM_THREADS=1 NOT_CRAN=true
+pkgload::load_all(".", compile = FALSE)
+# RED: gamma E9 / lognormal E10 lookups NULL (0 planned rows)
+testthat::test_file("tests/testthat/test-mspl-gamma-phase4-oracles.R")
+# [ FAIL 0 | WARN 0 | SKIP 0 | PASS 70 ]
+testthat::test_file("tests/testthat/test-mspl-lognormal-phase4-oracles.R")
+# [ FAIL 0 | WARN 0 | SKIP 0 | PASS 66 ]
+testthat::test_file("tests/testthat/test-mspl-registry.R")
+# [ FAIL 0 | WARN 0 | SKIP 0 | PASS 34 ]
+rg -n 'fam_ids %in%' R/mspl.R
+# fam_ids %in% c(0L, 1L, 2L) unchanged
+git diff --stat -- src/ R/mspl.R R/fit-multi.R NEWS.md
+# empty
+```
+
+Not run: `devtools::test()`, `R CMD check`, pkgdown, Totoro.
+
 ## 2026-08-16 — Gaussian-identity LA-MSPL SE pin (Cursor)
 
 Lane `cursor/mspl-se-gaussian-pin-rebased` rebased onto `origin/main`
@@ -51200,3 +51233,24 @@ Not run: merge, admit, Totoro, drmTMB.
 `git diff --check` failed on `docs/dev-log/check-log.md:49705: new blank line at EOF`.
 Removed the extra EOF newline so the ignored-source fast path can go green.
 Not run: merge, admit, Totoro.
+
+## 2026-08-16 — MSPL betabinomial Phase-4-style prep (Cursor)
+
+Lane `cursor/mspl-phase4-betabinomial` in
+`/tmp/gllvmtmb-mspl-phase4-betabinomial` from `origin/main` @
+`af1edd2c`. Oracles + note only. No registry row. No prepare
+widen. No src. No admit. No NEWS covered.
+
+```sh
+git diff --stat -- src/ R/mspl.R R/mspl-registry.R
+# empty
+
+export OMP_NUM_THREADS=1 NOT_CRAN=true
+# testthat::test_file tests/testthat/test-mspl-betabinomial-phase4-oracles.R
+# testthat::test_file tests/testthat/test-mspl-registry.R
+```
+
+Rose: no admit, no planned row, no public se=TRUE.
+After-task:
+`docs/dev-log/after-task/2026-08-16-mspl-betabinomial-phase4-prep.md`.
+Not run: merge, admit, Totoro, registry edit.

@@ -271,6 +271,123 @@ from ~0.0015 to ~0.0021 -- still far below the 0.4-0.9-point effect being
 measured. This exceeds the 30-minute line, so it needs an explicit
 pre-run + approval rather than an autonomous launch.
 
+### 7e. Wave-3 — R3, the parametric bootstrap (the ladder closes; VERDICT: 0/16)
+
+`se_route = "boot"`, the full pivot construction (simulate a complete dataset
+at `theta_hat`, mask, REFIT, pivot on `eta_hat_b - eta_b`), B = 200,
+maintainer-approved 400 reps/cell. 1,599/1,600 converged (the one
+non-converged fit is failure-counted), ~114 s/fit, ~50 core-hours on Totoro.
+
+| mechanism | conf 90% | conf 95% | pred 90% | pred 95% |
+|---|---|---|---|---|
+| mcar05 | 0.880 | 0.930 | 0.890 | 0.933 |
+| mcar20 | 0.876 | 0.926 | 0.882 | 0.928 |
+| trait_clustered | 0.882 | 0.930 | 0.883 | 0.931 |
+| unit_clustered | 0.880 | 0.931 | 0.882 | 0.929 |
+
+**Gate: 0/16.** The two-fit pre-run's 0.952 was small-sample luck — exactly
+why the pre-run is a machinery check, never a verdict.
+
+**The five-route ladder, complete (conf 95%, range over mechanisms):**
+
+| route | propagates | conf 95% |
+|---|---|---|
+| quad | fixed + diag latent (delta) | 0.960–0.966 (over) |
+| joint | + exact joint precision | 0.925–0.933 |
+| joint_load | + loading block | 0.935–0.939 |
+| sim | + empirical quantiles, exact family draw | **0.941–0.946** |
+| boot | + parameter/dispersion via full refits | 0.926–0.933 |
+
+**What the closed ladder establishes.** Four of five routes UNDER-cover by
+1–2 points, including the bootstrap that propagates everything by refitting.
+So the common deficit is not un-propagated uncertainty and not interval
+construction: every route, boot included, is anchored on the FITTED model,
+and the bootstrap's DGP simulates from `theta_hat`. At n = 50 the ML
+variance/loading estimates are biased low (no REML correction in this spec;
+classic plug-in bootstrap narrowness), so pivots generated under `theta_hat`
+are systematically narrower than under truth. The deficit is a property of
+the fitted-model plug-in at this scale — an ESTIMATOR issue, not a route
+issue. Notably `sim` beats `boot`: refitting on data simulated from a
+too-narrow model re-imports the bias that `sim` merely inherits once.
+
+**Status: `heuristic_unvalidated` stands for every route.** Remaining
+options, all maintainer decisions (none run): (a) REML-corrected refits in
+the bootstrap DGP; (b) double/calibrated bootstrap (~200x wave-3's cost);
+(c) document ~0.93-at-nominal-0.95 as the honest label and stop. This
+design's own §7c rule — no re-running the same estimator at higher
+precision — applies with full force.
+
+**Maintainer decisions (Shinichi, 2026-08-16, PRE-REGISTERED before any
+wave-4 data existed; timestamped in the vault at commit `3fefde2`):**
+
+1. Option (a) is chosen — wave-4 reruns the bootstrap on the identical
+   1,600-fit grid with a REML-corrected DGP (`boot_dgp = "reml"`): the
+   bootstrap *world* is generated from an auxiliary `REML = TRUE` fit's
+   parameters, while the pivoted estimator inside each replicate stays the
+   campaign's ML fit, so the pivot corrects exactly the plug-in
+   underdispersion diagnosed above and nothing else. This is a different
+   estimator, not the same one at higher precision, so §7c permits it.
+2. The verdict rule is fixed in advance. If wave-4 **passes** the operative
+   gate (|coverage − nominal| ≤ 2×MCSE per cell), the `boot` route with
+   `boot_dgp = "reml"` is promoted to `calibrated` for gaussian at these
+   scales. If it **narrows the deficit but fails**, the measured coverage
+   is documented as the honest label and the programme **stops** — no
+   double bootstrap, no further waves. ("Yes if it narrows but doesn't
+   close, document the measured coverage.")
+
+### 7f. Wave-4 — the REML-corrected bootstrap DGP; the programme's final measurement
+
+Same grid, same seeds, same B = 200, `boot_dgp = "reml"`: the bootstrap world
+is generated from an auxiliary `REML = TRUE` fit while the pivoted estimator
+inside each replicate stays ML. 1,600/1,600 converged, zero non-finite SEs,
+47.7 min wall on Totoro at 48 cores.
+
+Failure-inclusive coverage, with the wave-3 (ML DGP) value beside it:
+
+| mechanism | conf 90% | conf 95% | pred 90% | pred 95% |
+|---|---|---|---|---|
+| mcar05 | 0.884 (was 0.880) | 0.932 (0.930) | 0.893 (0.890) | 0.936 (0.933) |
+| mcar20 | 0.880 (0.876) | 0.929 (0.926) | 0.886 (0.882) | 0.931 (0.928) |
+| trait_clustered | 0.885 (0.880) | 0.933 (0.928) | 0.887 (0.881) | 0.934 (0.929) |
+| unit_clustered | 0.883 (0.880) | 0.933 (0.931) | 0.886 (0.882) | 0.932 (0.929) |
+
+**Gate: 0/16 — and the pre-registered narrows-but-fails branch is what
+fired.** The REML correction moved coverage the right way in **16 cells out of
+16** (mean +0.36 points; range +0.22 to +0.58). A uniform sign across sixteen
+cells is not sampling noise, so the diagnosis in §7e was correct in
+*direction*: some of the deficit really is plug-in underdispersion of the
+bootstrap DGP, and correcting the DGP recovers part of it. But the remaining
+deficit is ~1.6 points at both nominal levels, four to eight times the ±2×MCSE
+band, so the correction explains only about **18%** of the gap it was aimed at.
+Under-coverage of this size is not a plug-in artefact alone.
+
+**Per the pre-registered rule, the interval programme STOPS here.** The final,
+honest label for `predict_missing(se = TRUE)` at n = 50 × p = 25, q = 2,
+gaussian:
+
+- **`sim` is the best-measured route: 0.941–0.946 at nominal 0.95.**
+- **`boot` with `boot_dgp = "reml"` reaches 0.929–0.933**, at roughly 300×
+  `sim`'s cost.
+- **No route is `calibrated`. `se =` stays `heuristic_unvalidated`**, and no
+  interval claim is made in NEWS, README, any article, or any exported
+  surface. A user asking for an interval here should read ~93–95% actual
+  coverage for a nominal 95% interval.
+
+**What the whole five-route ladder bought.** Not a calibrated interval — a
+localised cause. Every route that propagates *more* uncertainty lands in the
+same 1–2 point band, the bootstrap included, and correcting the bootstrap's
+own DGP moves it 0.36 of the needed 2.0 points. The residual is therefore a
+property of the fitted model at this scale (n = 50 units against 25 traits and
+a rank-2 loading matrix is a genuinely small-sample regime for the latent
+covariance), not of any variance formula. That is a statement about when
+reconstruction intervals can be trusted, and it belongs in the paper rather
+than in a sixth route.
+
+**Cost note, deliberately not claimed as a finding.** Wave-4 averaged 75 s per
+fit against wave-3's 95 s despite doing strictly more work. The two waves ran
+under different machine loads on a shared server, so the comparison measures
+contention, not the routes.
+
 ## 6. Decision needed from the maintainer
 
 - Approve the estimand split (confidence-for-mean vs prediction-for-value

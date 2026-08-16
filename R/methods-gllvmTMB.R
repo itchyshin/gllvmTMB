@@ -2264,12 +2264,16 @@ predict.gllvmTMB_multi <- function(
 .gllvmTMB_predict_missing_se <- function(
   fit,
   type = c("link", "response"),
-  route = c("quad", "joint", "joint_load", "sim"),
+  route = c("quad", "joint", "joint_load", "sim", "boot"),
   n_sim = 2000L,
-  sim_seed = NULL
+  sim_seed = NULL,
+  n_boot = 200L,
+  boot_seed = NULL,
+  boot_dgp = c("ml", "reml")
 ) {
   type <- match.arg(type)
   route <- match.arg(route)
+  boot_dgp <- match.arg(boot_dgp)
   fid_vec <- fit$tmb_data$family_id_vec
   if (is.null(fid_vec) || !all(fid_vec == 0L)) {
     cli::cli_abort(c(
@@ -2295,6 +2299,17 @@ predict.gllvmTMB_multi <- function(
   if (route == "sim") {
     return(.gllvmTMB_predict_missing_sim(
       fit, masked, n_obs, n_sim = n_sim, sim_seed = sim_seed
+    ))
+  }
+
+  ## `route = "boot"` (Design 119 R3, sec.7d) likewise bypasses the shared
+  ## machinery entirely -- every quantity comes from full refits, not a
+  ## variance-propagation formula. See
+  ## `.gllvmTMB_predict_missing_boot()`'s header comment for the derivation.
+  if (route == "boot") {
+    return(.gllvmTMB_predict_missing_boot(
+      fit, masked, n_obs, n_boot = n_boot, boot_seed = boot_seed,
+      boot_dgp = boot_dgp
     ))
   }
 
@@ -2794,6 +2809,331 @@ predict.gllvmTMB_multi <- function(
   as.integer(abs(round(h * 1e6)) %% 2147483647L)
 }
 
+## R3 (Design 119 sec.3, sec.7d): the parametric bootstrap route.
+##
+## DERIVATION. The target is the sampling distribution of the pivot
+## `eta_hat - eta_true` at a masked cell -- what every delta-method route
+## (quad/joint/joint_load) and the plug-in simulation route ("sim")
+## approximate holding theta fixed at theta_hat. `route = "sim"` (sec.7d)
+## established that the residual 0.4-0.9-point coverage shortfall is NOT
+## the normal-quantile assumption (empirical quantiles removed that) -- it
+## is that sigma_eps and the joint precision Q are both evaluated AT
+## theta_hat (the classic plug-in of the estimator's own uncertainty),
+## which only REFITTING propagates. R3 refits:
+##
+##   for b = 1..n_boot:
+##     1. Simulate a COMPLETE dataset at theta_hat: draw fresh latent
+##        scores u_b ~ N(0, I_q) (the model's own prior, at the fitted
+##        scale), form eta_b = X b_hat + Lambda_hat u_b for EVERY cell
+##        (observed AND masked), and draw y_b = eta_b + N(0, sigma_eps_hat^2)
+##        (gaussian family draw). eta_b/y_b at the masked cells are this
+##        replicate's TRUTH.
+##     2. Mask the SAME cells in y_b and refit (same formula/spec,
+##        `miss_control(response = "include")`, silent, `se = FALSE` --
+##        no sdreport inside the loop) -> theta_hat_b.
+##     3. Predict the masked cells from the refit: eta_hat_b. Gaussian is
+##        identity-link, so the response-scale estimate IS eta_hat_b (same
+##        convention every other route here already documents).
+##     4. Record the pivot residuals d_eta_b = eta_hat_b - eta_b (the
+##        confidence estimand) and d_y_b = eta_hat_b - y_b (the prediction
+##        estimand, which folds in the family draw).
+##
+## Every b is a FULL refit, so parameter uncertainty (b_fix, loadings,
+## sigma_eps), conditional latent-score uncertainty, AND dispersion
+## uncertainty are all propagated together -- nothing here is plug-in.
+## se_confidence/se_prediction are sd(d_eta)/sd(d_y). The interval for the
+## REAL fit is `eta_hat - quantile(d_eta, c(0.975, 0.025))` for the
+## confidence estimand and `eta_hat - quantile(d_y, c(0.975, 0.025))` for
+## the prediction estimand -- note the reversed order: subtracting the
+## UPPER pivot quantile gives the LOWER endpoint, because
+## `eta_hat - eta_true =d= eta_hat_b - eta_b` is solved for `eta_true`.
+##
+## SCOPE (narrow, matching the other three routes' own rr_B-only scope, but
+## STRICT here rather than silently-omitted: a full refit needs the WHOLE
+## generative model, so an unsupported structure is an error, not a missing
+## term in a variance sum). Gaussian family only (checked by the parent
+## function, `.gllvmTMB_predict_missing_se()`). The random-effect structure
+## must be a single ordinary loadings-only `latent()` term (rr_B,
+## `unique = FALSE`) and nothing else -- no diag_B/Psi companion, no rr_W,
+## no phylo/spatial/kernel/spde term, no `Xcoef_fixed` constraint. This is
+## exactly what `.pm_se_data()`/`.pm_se_fit()` in test-predict-missing-se.R
+## and the Design 119 sec.4 campaign fixture
+## (dev/cov119/harness/cov119-dgp.R) both fit.
+##
+## REFIT MECHANICS. There is no general `update()`/stored `$call` for a
+## `gllvmTMB_multi` fit to replay with new data, so the refit formula is
+## rebuilt from already-resolved, post-desugar fields every `gllvmTMB()`
+## call already carries: `fit$formula` (the fixed-effect-only formula,
+## identical whether the original call used the long or the `traits()`
+## wide grammar) plus the single `fit$covstructs[[1]]` entry (`kind =
+## "rr"`, `lhs`/`group` language objects) reassembled into a `latent()`
+## term. Verified empirically (not just read off the source) to reproduce
+## the ORIGINAL fit's logLik to full numerical precision on both a
+## long-format fixture and the wide `traits()` campaign fixture.
+.gllvmTMB_predict_missing_boot_refit_spec <- function(fit) {
+  other_flags <- c(
+    "diag_B", "rr_W", "diag_W", "rr_B_slope", "diag_B_slope",
+    "phylo_rr", "phylo_latent_slope", "phylo_diag", "phylo_unique",
+    "spatial_scalar", "spatial_latent", "spatial_latent_unique",
+    "indep_B", "indep_W", "indep_cluster", "phylo_indep", "spatial_indep",
+    "dep_B", "dep_W", "dep_cluster", "phylo_dep", "spatial_dep",
+    "phylo_dep_slope", "phylo_indep_slope", "kernel", "spde",
+    "spde_slope", "spde_dep_slope", "spde_indep_slope", "spde_latent_slope",
+    "lv_B", "diag_species", "diag_cluster2", "equalto", "propto", "re_int"
+  )
+  ## `fit$Xcoef_fixed` is always a resolved (non-NULL) structure with a
+  ## `status` entry per fixed-effect column -- "estimated" for every column
+  ## is the ordinary, unconstrained case; anything else means one or more
+  ## coefficients are held at a user-supplied fixed value, which the refit
+  ## reconstruction below does not carry through.
+  has_constrained_xcoef <- !is.null(fit$Xcoef_fixed$status) &&
+    any(fit$Xcoef_fixed$status != "estimated")
+  unsupported <- !isTRUE(fit$use$rr_B) ||
+    any(vapply(fit$use[other_flags], isTRUE, logical(1))) ||
+    length(fit$covstructs) != 1L ||
+    !identical(fit$covstructs[[1]]$kind, "rr") ||
+    has_constrained_xcoef
+  if (unsupported) {
+    cli::cli_abort(c(
+      "{.code se_route = \"boot\"} currently supports gaussian fits with a single ordinary loadings-only {.fn latent} term only.",
+      "i" = "Refitting needs the WHOLE generative model; an unsupported random-effect structure cannot be safely simulated by this route.",
+      ">" = "Use {.code se_route = \"sim\"} or a delta-method route for other structures."
+    ), class = "gllvmTMB_predict_missing_se_boot_unsupported_structure")
+  }
+  cs <- fit$covstructs[[1]]
+  latent_call <- as.call(list(
+    quote(latent), bquote(.(cs$lhs) | .(cs$group)), d = fit$d_B, unique = FALSE
+  ))
+  formula_full <- stats::as.formula(
+    paste(deparse(fit$formula), "+", deparse(latent_call))
+  )
+  list(
+    formula   = formula_full,
+    resp_name = all.vars(fit$formula)[1],
+    unit      = fit$unit_col,
+    trait     = fit$trait_col,
+    cluster   = fit$cluster_col,
+    cluster2  = fit$cluster2_col
+  )
+}
+
+.gllvmTMB_predict_missing_boot <- function(
+  fit, masked, n_obs, n_boot = 200L, boot_seed = NULL, boot_dgp = "ml"
+) {
+  out_names <- c(
+    "se_confidence", "se_prediction",
+    "q_lo_conf", "q_hi_conf", "q_lo_pred", "q_hi_pred",
+    "q_lo_conf90", "q_hi_conf90", "q_lo_pred90", "q_hi_pred90"
+  )
+  result <- stats::setNames(
+    lapply(out_names, function(nm) rep(NA_real_, n_obs)), out_names
+  )
+  result$n_boot_ok <- rep(NA_integer_, n_obs)
+  if (length(masked) == 0L) {
+    return(result)
+  }
+  stopifnot(
+    "n_boot must be a single value >= 2" =
+      is.numeric(n_boot) && length(n_boot) == 1L && n_boot >= 2L
+  )
+  n_boot <- as.integer(round(n_boot))
+
+  spec <- .gllvmTMB_predict_missing_boot_refit_spec(fit)
+
+  ## Design 119 sec.7e (wave-3 diagnosis): the generative WORLD for the B
+  ## complete-data draws should come from the LEAST-BIASED estimate of
+  ## truth, while the quantity being pivoted (`eta_hat_masked` below, and
+  ## every inner refit) stays exactly the user's own estimator (ML).
+  ## `boot_dgp = "ml"` (default, byte-identical to the pre-sec.7e route)
+  ## generates from the same ML fit being intervalised. `boot_dgp = "reml"`
+  ## fits ONE auxiliary REML model on the SAME (masked) data/formula/spec
+  ## and reads b_fix/Lambda_B/sigma_eps from IT instead -- REML's known
+  ## direction of correction (larger variance/loading estimates at small
+  ## n, converging to ML as n grows) is exactly what wave-3 found the "ml"
+  ## world was missing (ML pivots systematically narrow because the world
+  ## they are drawn from already carries ML's own downward bias, so the
+  ## bootstrap "re-imports" it instead of correcting for it, unlike `sim`
+  ## which draws from the joint-precision NORMAL rather than resimulating
+  ## the point estimate itself).
+  ##
+  ## EXTRACTION, verified empirically (not read off the source): under
+  ## `REML = TRUE`, `b_fix` moves into TMB's `random` vector (integrated
+  ## out by Laplace) and therefore never appears in `sd_report$par.fixed`
+  ## -- but it DOES still appear, under the same name, at the SAME
+  ## `last.par.best` positions (the FULL joint parameter vector at the
+  ## optimum, "random" and "fixed" alike) that the ML path already reads.
+  ## So no extraction change was needed for `b_fix`; `Lambda_B`/`sigma_eps`
+  ## come from `report$`/`.gllvmTMB_sigma_eps()`, which are populated
+  ## identically regardless of REML/ML (TMB's REPORT() runs at
+  ## `last.par.best` either way). Checked on a large-n (300-site) fixture
+  ## where REML approx ML: max|b_fix_reml - b_fix_ml| = 8.4e-6,
+  ## sigma_eps relative difference 0.34%, max|Lambda_B_reml - Lambda_B_ml|
+  ## = 0.0042 -- REML converges to ML as expected, confirming the read is
+  ## from the right block rather than some other (silently wrong) one.
+  theta_src <- fit
+  if (identical(boot_dgp, "reml")) {
+    fit_reml_aux <- tryCatch(
+      suppressWarnings(suppressMessages(gllvmTMB(
+        formula  = spec$formula,
+        data     = fit$data,
+        unit     = spec$unit,
+        trait    = spec$trait,
+        cluster  = spec$cluster,
+        cluster2 = spec$cluster2,
+        family   = fit$family_input,
+        missing  = miss_control(response = "include"),
+        REML     = TRUE,
+        silent   = TRUE
+      ))),
+      error = function(e) NULL
+    )
+    reml_ok <- !is.null(fit_reml_aux) && tryCatch(
+      isTRUE(identical(fit_reml_aux$opt$convergence, 0L)) &&
+        is.finite(as.numeric(stats::logLik(fit_reml_aux))),
+      error = function(e) FALSE
+    )
+    if (!reml_ok) {
+      cli::cli_abort(c(
+        "{.code se_route = \"boot\", boot_dgp = \"reml\"}: the auxiliary REML fit failed or did not converge.",
+        "i" = "The REML-corrected bootstrap world could not be generated -- no silent fallback to {.code boot_dgp = \"ml\"}.",
+        ">" = "Inspect the data/model, or explicitly pass {.code boot_dgp = \"ml\"}."
+      ), class = "gllvmTMB_predict_missing_se_boot_reml_aux_failed")
+    }
+    theta_src <- fit_reml_aux
+  }
+
+  par_names <- names(theta_src$tmb_obj$env$last.par.best)
+  par_est   <- theta_src$tmb_obj$env$last.par.best
+  b_hat        <- as.numeric(par_est[par_names == "b_fix"])
+  Lambda_hat   <- theta_src$report$Lambda_B
+  sigma_eps_hat <- .gllvmTMB_sigma_eps(theta_src)
+  trait_id <- as.integer(fit$data[[fit$trait_col]])
+  unit_id  <- as.integer(fit$data[[fit$unit_col]])
+  n_masked <- length(masked)
+  ## The REAL fit's own (ML) point estimate -- the anchor the returned
+  ## interval is built around (`eta_hat - quantile(pivot, ...)`), ALWAYS
+  ## from `fit`, never from `theta_src`/a bootstrap replicate's estimate,
+  ## regardless of `boot_dgp`.
+  eta_hat_masked <- as.numeric(fit$report$eta)[masked]
+
+  Xb <- as.numeric(theta_src$X_fix %*% b_hat)
+  Lambda_row_all <- Lambda_hat[trait_id, , drop = FALSE]
+
+  ## RNG discipline, matching route = "sim": never disturb the caller's
+  ## global RNG state.
+  has_seed <- exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
+  old_seed <- if (has_seed) get(".Random.seed", envir = .GlobalEnv) else NULL
+  on.exit({
+    if (has_seed) {
+      assign(".Random.seed", old_seed, envir = .GlobalEnv)
+    } else if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)) {
+      rm(".Random.seed", envir = .GlobalEnv)
+    }
+  }, add = TRUE)
+  seed_use <- if (is.null(boot_seed)) {
+    .gllvmTMB_predict_missing_sim_default_seed(fit)
+  } else {
+    as.integer(boot_seed)
+  }
+  set.seed(seed_use)
+
+  d_eta <- matrix(NA_real_, n_masked, n_boot)
+  d_y   <- matrix(NA_real_, n_masked, n_boot)
+  n_ok  <- 0L
+
+  data_b   <- fit$data
+  iyo_ref  <- fit$tmb_data$is_y_observed
+
+  for (b in seq_len(n_boot)) {
+    u_b   <- matrix(stats::rnorm(fit$d_B * fit$n_sites), fit$d_B, fit$n_sites)
+    lat_b <- rowSums(Lambda_row_all * t(u_b)[unit_id, , drop = FALSE])
+    eta_b <- Xb + lat_b
+    y_b   <- eta_b + stats::rnorm(n_obs, sd = sigma_eps_hat)
+
+    data_b[[spec$resp_name]] <- y_b
+    data_b[[spec$resp_name]][masked] <- NA_real_
+
+    fit_b <- tryCatch(
+      suppressWarnings(suppressMessages(gllvmTMB(
+        formula  = spec$formula,
+        data     = data_b,
+        unit     = spec$unit,
+        trait    = spec$trait,
+        cluster  = spec$cluster,
+        cluster2 = spec$cluster2,
+        family   = fit$family_input,
+        missing  = miss_control(response = "include"),
+        silent   = TRUE
+      ))),
+      error = function(e) NULL
+    )
+    if (is.null(fit_b)) next
+
+    conv <- tryCatch(
+      isTRUE(identical(fit_b$opt$convergence, 0L)) &&
+        is.finite(as.numeric(stats::logLik(fit_b))) &&
+        identical(fit_b$tmb_data$is_y_observed, iyo_ref),
+      error = function(e) FALSE
+    )
+    if (!conv) next
+
+    eta_hat_b <- as.numeric(fit_b$report$eta)[masked]
+    if (!all(is.finite(eta_hat_b))) next
+
+    n_ok <- n_ok + 1L
+    d_eta[, n_ok] <- eta_hat_b - eta_b[masked]
+    d_y[, n_ok]   <- eta_hat_b - y_b[masked]
+  }
+
+  result$n_boot_ok[masked] <- n_ok
+
+  ## Failure discipline (Design 119 R3 build note): a refit that errors or
+  ## does not converge is DROPPED from the pivot sample and COUNTED, never
+  ## silently ignored. Fewer than 50% surviving refits is treated as too
+  ## thin a sample to trust -- return NA SEs/quantiles with a recorded
+  ## (warned) reason rather than reporting an interval from a handful of
+  ## draws.
+  if (n_ok < ceiling(n_boot / 2)) {
+    cli::cli_warn(c(
+      "{.code se_route = \"boot\"}: only {n_ok} of {n_boot} refits converged (< 50%).",
+      "i" = "Returning NA standard errors and quantiles for this fit rather than a silently thin bootstrap sample.",
+      ">" = "See {.field n_boot_ok} in the returned data frame."
+    ), class = "gllvmTMB_predict_missing_se_boot_too_few_ok")
+    return(result)
+  }
+
+  d_eta <- d_eta[, seq_len(n_ok), drop = FALSE]
+  d_y   <- d_y[, seq_len(n_ok), drop = FALSE]
+
+  se_confidence <- apply(d_eta, 1L, stats::sd)
+  se_prediction <- apply(d_y,   1L, stats::sd)
+
+  q_eta   <- t(apply(d_eta, 1L, stats::quantile,
+                      probs = c(0.025, 0.975), names = FALSE))
+  q_y     <- t(apply(d_y,   1L, stats::quantile,
+                      probs = c(0.025, 0.975), names = FALSE))
+  q_eta90 <- t(apply(d_eta, 1L, stats::quantile,
+                      probs = c(0.05, 0.95), names = FALSE))
+  q_y90   <- t(apply(d_y,   1L, stats::quantile,
+                      probs = c(0.05, 0.95), names = FALSE))
+
+  result$se_confidence[masked] <- se_confidence
+  result$se_prediction[masked] <- se_prediction
+  ## `eta_hat - quantile(pivot, c(0.975, 0.025))`: subtracting the UPPER
+  ## pivot quantile (column 2, the 0.975 probability) gives the LOWER
+  ## endpoint; see the header derivation.
+  result$q_lo_conf[masked]   <- eta_hat_masked - q_eta[, 2L]
+  result$q_hi_conf[masked]   <- eta_hat_masked - q_eta[, 1L]
+  result$q_lo_pred[masked]   <- eta_hat_masked - q_y[, 2L]
+  result$q_hi_pred[masked]   <- eta_hat_masked - q_y[, 1L]
+  result$q_lo_conf90[masked] <- eta_hat_masked - q_eta90[, 2L]
+  result$q_hi_conf90[masked] <- eta_hat_masked - q_eta90[, 1L]
+  result$q_lo_pred90[masked] <- eta_hat_masked - q_y90[, 2L]
+  result$q_hi_pred90[masked] <- eta_hat_masked - q_y90[, 1L]
+
+  result
+}
+
 #' Predict the masked (missing) response cells of a gllvmTMB fit
 #'
 #' For a model fitted with `missing = miss_control(response = "include")`
@@ -2814,7 +3154,7 @@ predict.gllvmTMB_multi <- function(
 #' register status `heuristic_unvalidated` -- no repeated-sampling coverage
 #' evidence exists for `se_confidence` or `se_prediction`, and neither is an
 #' interval claim of any kind. It is currently implemented for gaussian
-#' fits only (other families abort). Four routes exist (`se_route`):
+#' fits only (other families abort). Five routes exist (`se_route`):
 #' `"quad"` (default) omits the b_fix/latent-score cross-covariance and any
 #' `diag_B` ("unique"/Psi) or within-unit (`rr_W`) random-effect
 #' contribution (sec.3 R1-quad) and OVER-covers `se_confidence`;
@@ -2828,17 +3168,46 @@ predict.gllvmTMB_multi <- function(
 #' subvector `"joint_load"` uses from its exact joint-precision marginal
 #' normal, forms `n_sim` EXACT (non-linearised) draws of
 #' `eta* = x'b* + lambda_t*'u_i*`, and adds one gaussian family draw per
-#' replicate for `y*`. Unlike the other three routes it makes NO normality
+#' replicate for `y*`. Unlike the delta-method routes it makes NO normality
 #' assumption about the predictive distribution -- `se_confidence` /
 #' `se_prediction` are the empirical sd of `eta*` / `y*`, and it ALSO
 #' returns empirical-quantile columns (`q_lo_conf`/`q_hi_conf`,
 #' `q_lo_pred`/`q_hi_pred` at nominal 95%, and their `*90` companions at
 #' nominal 90%) that a normal-quantile route cannot produce. It still holds
-#' every parameter at its estimate (a plug-in simulation, like every other
-#' route here), so it does not address hyperparameter uncertainty -- see
-#' `docs/design/119-predict-missing-uncertainty.md` sec.3/sec.7c. Do not
-#' surface `se_confidence` / `se_prediction` / the quantile columns as
-#' calibrated uncertainty in any user-facing output until the Design 119
+#' every parameter at its estimate (a plug-in simulation), so it does not
+#' address hyperparameter uncertainty -- see
+#' `docs/design/119-predict-missing-uncertainty.md` sec.3/sec.7c/sec.7d.
+#' `"boot"` (sec.3 R3, sec.7d) is a parametric bootstrap: it simulates a
+#' complete dataset at the fitted parameters (fresh latent scores AND a
+#' fresh family draw for every cell), masks the same cells, and REFITS the
+#' model `n_boot` times. Because every replicate is a full refit, it is the
+#' only route that propagates parameter (and dispersion) uncertainty rather
+#' than holding it fixed at the plug-in estimate; it is also by far the
+#' most expensive route (`n_boot` model fits per call) and, in this slice,
+#' only supports gaussian fits with a single ordinary loadings-only
+#' `latent()` term (see Details in the source for the derivation and the
+#' scope guard). A refit that errors or fails to converge is dropped from
+#' the pivot sample and counted in `n_boot_ok`; if fewer than half the
+#' refits survive, `se_confidence`/`se_prediction`/the quantile columns are
+#' `NA` for that fit (with a warning) rather than reporting an interval
+#' built from a thin sample.
+#'
+#' `boot_dgp` (sec.7e, following the wave-3 coverage diagnosis that `"boot"`
+#' with `boot_dgp = "ml"` under-covers at the same level as `"joint_load"`)
+#' controls what parameters generate the `n_boot` complete-data worlds.
+#' `"ml"` (default, byte-identical to the pre-sec.7e route) simulates from
+#' the SAME ML fit being intervalised -- so at small n its known downward
+#' variance/loading bias is "re-imported" into the bootstrap world, making
+#' the pivots systematically narrow. `"reml"` fits ONE auxiliary REML model
+#' on the same (masked) data/formula first and simulates from ITS
+#' parameters instead -- REML's own known bias direction (larger, less
+#' biased at small n, converging to ML as n grows) targets exactly that
+#' gap. The quantity being pivoted (the point estimate the interval is
+#' centred on, and every inner refit) stays ML either way; only the
+#' generative world changes. Ignored unless `se_route = "boot"`.
+#'
+#' Do not surface `se_confidence` / `se_prediction` / the quantile columns
+#' as calibrated uncertainty in any user-facing output until the Design 119
 #' sec.4 coverage campaign clears a route and family for export.
 #'
 #' For [ordinal_probit()] traits, `type = "response"` is the **expected
@@ -2858,9 +3227,9 @@ predict.gllvmTMB_multi <- function(
 #'   (`se_confidence` combined with the family noise variance) columns.
 #'   Gaussian fits only in this slice; see Details. Default `FALSE`.
 #' @param se_route EXPERIMENTAL, internal-only. One of `"quad"` (default;
-#'   R1-quad), `"joint"` (R1-joint), `"joint_load"` (R1-joint+loadings), or
-#'   `"sim"` (R2, simulation-based -- see Details). Ignored unless
-#'   `se = TRUE`.
+#'   R1-quad), `"joint"` (R1-joint), `"joint_load"` (R1-joint+loadings),
+#'   `"sim"` (R2, simulation-based), or `"boot"` (R3, parametric
+#'   bootstrap -- see Details). Ignored unless `se = TRUE`.
 #' @param n_sim EXPERIMENTAL, internal-only. Number of Monte Carlo
 #'   replicates drawn per masked cell when `se_route = "sim"`. Ignored for
 #'   every other route. Default `2000`.
@@ -2869,6 +3238,16 @@ predict.gllvmTMB_multi <- function(
 #'   the fitted parameter vector so repeated calls on the same fit
 #'   reproduce identical draws; the caller's global RNG state is always
 #'   saved and restored, never disturbed. Ignored for every other route.
+#' @param n_boot EXPERIMENTAL, internal-only. Number of full-refit bootstrap
+#'   replicates when `se_route = "boot"`. Ignored for every other route.
+#'   Default `200`.
+#' @param boot_seed EXPERIMENTAL, internal-only. Integer RNG seed for
+#'   `se_route = "boot"`. Default `NULL`, which derives a fixed seed from
+#'   the fitted parameter vector (same convention as `sim_seed`); the
+#'   caller's global RNG state is always saved and restored. Ignored for
+#'   every other route.
+#' @param boot_dgp EXPERIMENTAL, internal-only. One of `"ml"` (default) or
+#'   `"reml"` -- see Details. Ignored unless `se_route = "boot"`.
 #' @param ... Unused.
 #'
 #' @return A data frame with one row per masked response cell, with columns:
@@ -2880,12 +3259,14 @@ predict.gllvmTMB_multi <- function(
 #'   the unit / cluster / trait identifier columns, `est` (the prediction
 #'   on the requested scale), and, when `se = TRUE`, `se_confidence` and
 #'   `se_prediction` (see Details -- EXPERIMENTAL, not a calibrated
-#'   interval). When `se = TRUE` and `se_route = "sim"`, also
-#'   `q_lo_conf`/`q_hi_conf`, `q_lo_pred`/`q_hi_pred` (empirical 2.5%/97.5%
-#'   quantiles of the simulated `eta*` / `y*`) and `q_lo_conf90`/
-#'   `q_hi_conf90`, `q_lo_pred90`/`q_hi_pred90` (empirical 5%/95%
-#'   quantiles). A complete-data fit (no masked cells) returns a zero-row
-#'   data frame with the same columns.
+#'   interval). When `se = TRUE` and `se_route` is `"sim"` or `"boot"`,
+#'   also `q_lo_conf`/`q_hi_conf`, `q_lo_pred`/`q_hi_pred` (empirical
+#'   2.5%/97.5% quantiles / bootstrap interval endpoints) and
+#'   `q_lo_conf90`/`q_hi_conf90`, `q_lo_pred90`/`q_hi_pred90` (the nominal
+#'   90% companions). When `se_route = "boot"`, also `n_boot_ok` (the
+#'   number of the `n_boot` refits that converged and entered the pivot
+#'   sample). A complete-data fit (no masked cells) returns a zero-row data
+#'   frame with the same columns.
 #'
 #' @seealso [gllvmTMB()], [miss_control()], [predict.gllvmTMB_multi()].
 #' @export
@@ -2893,9 +3274,12 @@ predict_missing <- function(
   object,
   type = c("link", "response"),
   se = FALSE,
-  se_route = c("quad", "joint", "joint_load", "sim"),
+  se_route = c("quad", "joint", "joint_load", "sim", "boot"),
   n_sim = 2000L,
   sim_seed = NULL,
+  n_boot = 200L,
+  boot_seed = NULL,
+  boot_dgp = c("ml", "reml"),
   ...
 ) {
   if (!inherits(object, "gllvmTMB_multi")) {
@@ -2903,6 +3287,7 @@ predict_missing <- function(
   }
   type <- match.arg(type)
   se_route <- match.arg(se_route)
+  boot_dgp <- match.arg(boot_dgp)
 
   md <- object$missing_data
   iyo <- object$tmb_data$is_y_observed
@@ -2983,13 +3368,14 @@ predict_missing <- function(
   base$est <- est
   if (isTRUE(se)) {
     se_out <- .gllvmTMB_predict_missing_se(
-      object, type = type, route = se_route, n_sim = n_sim, sim_seed = sim_seed
+      object, type = type, route = se_route, n_sim = n_sim, sim_seed = sim_seed,
+      n_boot = n_boot, boot_seed = boot_seed, boot_dgp = boot_dgp
     )
     base$se_confidence <- se_out$se_confidence
     base$se_prediction <- se_out$se_prediction
-    ## Additive columns, "sim" route only -- the campaign driver ignores
-    ## extras, so this never disturbs the other three routes' interface.
-    if (se_route == "sim") {
+    ## Additive columns, "sim"/"boot" routes only -- the campaign driver
+    ## ignores extras, so this never disturbs the other routes' interface.
+    if (se_route %in% c("sim", "boot")) {
       base$q_lo_conf     <- se_out$q_lo_conf
       base$q_hi_conf     <- se_out$q_hi_conf
       base$q_lo_pred     <- se_out$q_lo_pred
@@ -2998,6 +3384,9 @@ predict_missing <- function(
       base$q_hi_conf90   <- se_out$q_hi_conf90
       base$q_lo_pred90   <- se_out$q_lo_pred90
       base$q_hi_pred90   <- se_out$q_hi_pred90
+    }
+    if (se_route == "boot") {
+      base$n_boot_ok <- se_out$n_boot_ok
     }
   }
 

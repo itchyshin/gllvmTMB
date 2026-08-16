@@ -22,12 +22,19 @@
 ##                                   # "joint_load" for wave-1c (Design 119
 ##                                   # sec.7/7b), "sim" for wave-2 (sec.3 R2,
 ##                                   # Monte Carlo -- scored by the empirical
-##                                   # quantile columns, not z*se; see below)
+##                                   # quantile columns, not z*se; see below),
+##                                   # "boot" for wave-3+ (sec.3 R3, sec.7d/
+##                                   # 7e, full-refit parametric bootstrap)
 ##                                   # -- requires an installed gllvmTMB
 ##                                   # build that carries the se_route
 ##                                   # argument (and, for "joint_load" /
-##                                   # "sim", the loading block / quantile
-##                                   # columns respectively).
+##                                   # "sim" / "boot", the loading block /
+##                                   # quantile columns respectively).
+##   export COV119_BOOT_DGP=ml       # default "ml"; "reml" (Design 119
+##                                   # sec.7e) for the REML-corrected
+##                                   # bootstrap world. Forwarded to
+##                                   # predict_missing()'s boot_dgp argument;
+##                                   # ignored unless COV119_SE_ROUTE=boot.
 ##   nohup Rscript cov119-driver.R > cov119-driver.log 2>&1 &
 ##
 ## Output: cov119-cells.csv (one row per fit, appended incrementally after
@@ -54,9 +61,26 @@ stopifnot(is.finite(mc_cores), mc_cores >= 1L)
 ## gate by ~1.2 points at 95%. COV119_SE_ROUTE = "sim" (Design 119 sec.3
 ## R2) reruns the identical harness with the Monte Carlo route, scored by
 ## its EMPIRICAL quantile columns rather than mean +/- z*se (see below).
-## Default preserves wave-1 exactly.
+## COV119_SE_ROUTE = "boot" (Design 119 sec.3 R3, sec.7d) reruns the
+## identical harness with the full-refit parametric bootstrap route --
+## it emits the SAME quantile column names as "sim" (see
+## predict_missing()'s se_route = "boot" documentation), so it is scored
+## by the identical branch below; the only harness change needed to add
+## it was widening that branch's gate from "sim" alone. Default preserves
+## wave-1 exactly.
 cov119_se_route <- Sys.getenv("COV119_SE_ROUTE", unset = "quad")
-stopifnot(cov119_se_route %in% c("quad", "joint", "joint_load", "sim"))
+stopifnot(cov119_se_route %in% c("quad", "joint", "joint_load", "sim", "boot"))
+
+## Design 119 sec.7e (wave-3 diagnosis): route = "boot" with the ML-fit-
+## generated world under-covered at the same level as "joint_load" -- the
+## ML bootstrap world re-imports ML's own small-n downward variance/loading
+## bias. COV119_BOOT_DGP = "reml" (predict_missing()'s boot_dgp argument)
+## generates the B complete-data worlds from one auxiliary REML fit's
+## parameters instead, while the pivoted estimate and every inner refit
+## stay ML. Ignored (harmlessly forwarded but unused) unless
+## COV119_SE_ROUTE = "boot". Default "ml" preserves wave-3 exactly.
+cov119_boot_dgp <- Sys.getenv("COV119_BOOT_DGP", unset = "ml")
+stopifnot(cov119_boot_dgp %in% c("ml", "reml"))
 
 csv_path     <- "cov119-cells.csv"
 summary_path <- "cov119-summary.csv"
@@ -133,7 +157,8 @@ run_one_rep <- function(mechanism, mech_idx, rep) {
     )
 
     pm <- gllvmTMB::predict_missing(
-      fit, type = "response", se = TRUE, se_route = cov119_se_route
+      fit, type = "response", se = TRUE, se_route = cov119_se_route,
+      boot_dgp = cov119_boot_dgp
     )
 
     ## BINDING (Arc0 discipline): no silent join loss, exact cell identity.
@@ -173,15 +198,16 @@ run_one_rep <- function(mechanism, mech_idx, rep) {
     err_eta <- abs(pm$eta_true - pm$est)
     err_y <- abs(pm$y_true - pm$est)
 
-    if (identical(cov119_se_route, "sim")) {
+    if (cov119_se_route %in% c("sim", "boot")) {
       ## Score coverage from the EMPIRICAL quantile columns predict_missing()
-      ## adds for route = "sim" -- eta_true/y_true INSIDE [q_lo, q_hi] --
-      ## rather than mean +/- z*se. This is the point of the route: it makes
-      ## no normal-quantile assumption, so scoring it with z*se would defeat
-      ## the experiment. n_se_bad_conf/n_se_bad_pred and mean_se_conf/
-      ## mean_se_pred (below) are untouched: se_confidence/se_prediction are
-      ## still populated (the empirical sd of the draws), so that bookkeeping
-      ## stays identical across every route.
+      ## adds for route = "sim"/"boot" -- eta_true/y_true INSIDE
+      ## [q_lo, q_hi] -- rather than mean +/- z*se. This is the point of
+      ## both routes: neither makes a normal-quantile assumption, so
+      ## scoring them with z*se would defeat the experiment. n_se_bad_conf/
+      ## n_se_bad_pred and mean_se_conf/mean_se_pred (below) are untouched:
+      ## se_confidence/se_prediction are still populated (the empirical sd
+      ## of the draws), so that bookkeeping stays identical across every
+      ## route.
       stopifnot(
         "sim route requires the quantile columns (interface contract not met)" =
           all(c("q_lo_conf", "q_hi_conf", "q_lo_pred", "q_hi_pred",

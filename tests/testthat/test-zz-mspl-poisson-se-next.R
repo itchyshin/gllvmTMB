@@ -1,8 +1,9 @@
 ## Next Poisson LA-MSPL SE feasibility cells (not the #979 first cell).
 ## First cell: n=8, p=3, y=rep(0:3), q=1, zero fraction 0.25.
 ## These cells: sparse intercepts (high zeros) and ordinary q=2.
-## Public se=TRUE still withholds sdreport(). Registry stays planned.
-## Internal pin names Q_P and Q_0. Not exported. Not admitted.
+## Public se=TRUE still withholds sdreport(). Registry is admitted
+## (experimental point) after G0 2026-08-16. Internal pin names Q_P
+## and Q_0. Not exported. Not covered. No public vcov.
 ##
 ## Named test-zz-* so it runs after test-va-all-family-light-fits.R.
 
@@ -100,7 +101,7 @@
 
 .mspl_se_pois_next_expect_withheld <- function(fit) {
   expect_s3_class(fit, "gllvmTMB_mspl")
-  expect_identical(fit$mspl$registry_status, "planned")
+  expect_identical(fit$mspl$registry_status, "admitted")
   expect_null(fit$sd_report)
   expect_false(isTRUE(fit$mspl$inference$available))
   expect_match(fit$sdreport_error, "withheld")
@@ -157,8 +158,9 @@ test_that("sparse-intercept Poisson MSPL se=TRUE withholds and pins both tapes",
     q = 1L
   )
   expect_false(is.null(row))
-  expect_identical(row$status, "planned")
-  expect_false(identical(row$status, "admitted"))
+  expect_identical(row$status, "admitted")
+  expect_identical(row$evidence, "admit_packet")
+  expect_false(identical(row$evidence, "covered"))
 
   fit <- .mspl_se_pois_next_fit("sparse")
   expect_identical(fit$mspl$registry_cell, "poisson:log:ordinary:q1")
@@ -175,10 +177,11 @@ test_that("q=2 Poisson MSPL se=TRUE withholds and pins both tapes", {
     q = 2L
   )
   expect_false(is.null(row))
-  expect_identical(row$status, "planned")
-  expect_false(identical(row$status, "admitted"))
-  expect_match(row$notes, "not admitted")
-  expect_match(row$notes, "not covered")
+  expect_identical(row$status, "admitted")
+  expect_identical(row$evidence, "admit_packet")
+  expect_false(identical(row$evidence, "covered"))
+  expect_match(row$notes, "not a covered campaign")
+  expect_match(row$notes, "no public SE")
 
   fit <- .mspl_se_pois_next_fit("q2")
   expect_identical(fit$mspl$registry_cell, "poisson:log:ordinary:q2")

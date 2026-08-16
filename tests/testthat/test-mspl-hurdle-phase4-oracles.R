@@ -258,7 +258,7 @@ test_that("E9: V_loading is (pi, sigma, phi)-inert; hurdle P_J moves", {
   expect_gt(abs(dV_dL), 1e-8)
 })
 
-test_that("E10: hurdle rows are planned phase4_prep only; prepare stays {0,1,2}", {
+test_that("E10: hurdle rows are planned phase4_prep only; prepare rejects 12/13", {
   tbl <- .gllvmTMB_mspl_registry()
   hurdle <- tbl[tbl$family %in% c("delta_lognormal", "delta_gamma"), , drop = FALSE]
   expect_identical(nrow(hurdle), 4L)
@@ -296,7 +296,7 @@ test_that("E10: hurdle rows are planned phase4_prep only; prepare stays {0,1,2}"
     value = TRUE
   )
   expect_true(length(fence) >= 1L)
-  expect_true(any(grepl("c\\(0L,\\s*1L,\\s*2L\\)", fence)))
+  expect_true(any(grepl("c\\(0L,\\s*1L,\\s*2L,\\s*5L,\\s*15L\\)", fence)))
   expect_false(any(grepl("12L", fence)))
   expect_false(any(grepl("13L", fence)))
 })

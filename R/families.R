@@ -113,6 +113,14 @@
 #' them stops with an error. Poisson-log with binomial-logit, for instance, is
 #' not a coherent common scale merely because it converges.
 #'
+#' ## Integrated multi-source models (experimental)
+#'
+#' To integrate more than two sources -- a portal stream, digitised
+#' literature records, checklists, a structured survey -- declare every
+#' source and its observation law with [isdm_sources()]. The two-source
+#' contract below is the two-source case of the same rule and keeps working
+#' unchanged.
+#'
 #' ## Integrated two-source models (experimental)
 #'
 #' There is one admitted exception, for combining opportunistic

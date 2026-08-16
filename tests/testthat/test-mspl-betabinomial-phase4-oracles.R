@@ -4,7 +4,7 @@
 ##   docs/dev-log/research/2026-08-16-mspl-phase4-betabinomial-prep.md
 ## Helpers stay in this file. Do not call live MSPL on betabinomial.
 ## Do not edit src/. Do not widen .gllvmTMB_mspl_prepare().
-## Do not add a betabinomial registry row.
+## Registry row is planned, not admitted.
 
 .bb_mu <- function(eta) {
   stats::plogis(as.numeric(eta))

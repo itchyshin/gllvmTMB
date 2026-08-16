@@ -3,7 +3,7 @@
 ## Research note:
 ##   docs/dev-log/research/2026-08-16-mspl-phase4-multinomial-prep.md
 ## Helpers stay in this file. Do not call live MSPL on multinomial.
-## Do not edit src/. Do not widen prepare. Do not add a registry row.
+## Do not edit src/. Do not widen prepare. Registry row is planned, not admitted.
 
 .mn_softmax <- function(eta_free) {
   ## eta_free length K-1; baseline eta_1 = 0.

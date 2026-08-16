@@ -3,7 +3,7 @@
 ## Research note:
 ##   docs/dev-log/research/2026-08-15-mspl-phase4-ordinal-prep.md
 ## Helpers stay in this file. Do not call live MSPL on ordinal_probit().
-## Do not edit src/. Do not add an ordinal_probit registry row.
+## Do not edit src/. Registry row is planned, not admitted.
 ## Do not widen .gllvmTMB_mspl_prepare(). Residual variance stays pinned at 1.
 
 .ord_cuts <- function(delta) {
@@ -293,18 +293,29 @@ test_that("O10: ordinal is not stacked Bernoulli and not multinomial softmax", {
   expect_false(isTRUE(all.equal(P, p_soft, tolerance = 1e-6)))
 })
 
-test_that("O11: ordinal_probit is not admitted and has no planned registry row", {
+test_that("O11: ordinal_probit ordinary cells are planned phase4_prep, not admitted", {
   tbl <- .gllvmTMB_mspl_registry()
   ord <- tbl[tbl$family == "ordinal_probit", , drop = FALSE]
+  expect_gte(nrow(ord), 2L)
+  expect_true(all(ord$status == "planned"))
+  expect_true(all(ord$evidence == "phase4_prep"))
+  expect_true(all(ord$link == "probit"))
+  expect_true(all(ord$structure == "ordinary"))
+  expect_identical(sort(ord$q), c(1L, 2L))
   expect_false(any(ord$status == "admitted"))
-  expect_false(any(ord$status == "planned"))
-  expect_false(any(ord$evidence == "phase4_prep"))
-  expect_true(is.null(
-    .gllvmTMB_mspl_registry_lookup("ordinal_probit", "probit", "ordinary", 1L)
-  ))
-  expect_true(is.null(
-    .gllvmTMB_mspl_registry_lookup("ordinal_probit", "probit", "ordinary", 2L)
-  ))
+
+  q1 <- .gllvmTMB_mspl_registry_lookup(
+    "ordinal_probit", "probit", "ordinary", 1L
+  )
+  q2 <- .gllvmTMB_mspl_registry_lookup(
+    "ordinal_probit", "probit", "ordinary", 2L
+  )
+  expect_identical(q1$status, "planned")
+  expect_identical(q2$status, "planned")
+  expect_identical(q1$evidence, "phase4_prep")
+
+  admitted <- tbl[tbl$status == "admitted", , drop = FALSE]
+  expect_false(any(admitted$family == "ordinal_probit"))
 })
 
 test_that("Phase-4 oracles never invoke a live ordinal_probit MSPL fit", {

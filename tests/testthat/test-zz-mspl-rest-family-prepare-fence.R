@@ -1,10 +1,9 @@
 ## zz- prefix: run after test-va-all-family-light-fits.R (CI order).
 ## Live public-door fence for families that still have no MSPL door.
 ## Complements test-mspl-prepare-fence.R (beta/Tweedie after #1007)
-## and does not open a door. Not an admission. No registry row. No src/.
-## Gamma/lognormal already have planned rows on main (#1003) but no
-## public door — live reject stays; the registry pin below does not
-## claim those names are absent.
+## and does not open a door. Not an admission. No src/.
+## These families now have planned rows but no public door — live
+## reject stays; the registry pin below requires planned, not admitted.
 ##
 ## Sibling oracle PRs (#1003/#1004/#1005/#1023/#1024/#1025) are
 ## source-scan only; this file is the live gllvmTMB() reject.
@@ -137,14 +136,17 @@ test_that("LA-MSPL prepare still rejects multinomial", {
   )
 })
 
-test_that("rest-family fence does not add planned or admitted registry rows", {
+test_that("rest-family cells are planned phase4_prep, not admitted", {
   reg <- gllvmTMB:::.gllvmTMB_mspl_registry()
-  ## gamma/lognormal (#1003) and delta_* (#1004) are planned on main
-  ## with no public door. Live reject above still covers them.
+  ## Planned rows exist; live reject above still covers the public door.
   rest <- c(
     "student", "ordinal_probit", "betabinomial",
     "truncated_poisson", "truncated_nbinom2", "multinomial"
   )
-  expect_false(any(reg$family %in% rest &
-                     reg$status %in% c("planned", "admitted")))
+  rest_rows <- reg[reg$family %in% rest, , drop = FALSE]
+  expect_identical(nrow(rest_rows), 12L)
+  expect_true(all(rest_rows$status == "planned"))
+  expect_true(all(rest_rows$evidence == "phase4_prep"))
+  expect_false(any(rest_rows$status == "admitted"))
+  expect_false(any(reg$family %in% rest & reg$status == "admitted"))
 })

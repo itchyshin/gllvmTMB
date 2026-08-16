@@ -3,7 +3,7 @@
 ## Research note:
 ##   docs/dev-log/research/2026-08-15-mspl-phase4-student-prep.md
 ## Helpers stay in this file. Do not call live MSPL on student().
-## Do not edit src/. Do not add a student registry row.
+## Do not edit src/. Registry row is planned, not admitted.
 ## Do not widen .gllvmTMB_mspl_prepare(). Identity link only.
 
 .st_W <- function(sigma, nu) {
@@ -247,18 +247,25 @@ test_that("S11: this cell is identity only; log/inverse are not this prep", {
   expect_false("inverse" %in% .st_prep_link())
 })
 
-test_that("S12: student is not admitted and has no planned registry row", {
+test_that("S12: student ordinary cells are planned phase4_prep, not admitted", {
   tbl <- .gllvmTMB_mspl_registry()
   st <- tbl[tbl$family == "student", , drop = FALSE]
+  expect_gte(nrow(st), 2L)
+  expect_true(all(st$status == "planned"))
+  expect_true(all(st$evidence == "phase4_prep"))
+  expect_true(all(st$link == "identity"))
+  expect_true(all(st$structure == "ordinary"))
+  expect_identical(sort(st$q), c(1L, 2L))
   expect_false(any(st$status == "admitted"))
-  expect_false(any(st$status == "planned"))
-  expect_false(any(st$evidence == "phase4_prep"))
-  expect_true(is.null(
-    .gllvmTMB_mspl_registry_lookup("student", "identity", "ordinary", 1L)
-  ))
-  expect_true(is.null(
-    .gllvmTMB_mspl_registry_lookup("student", "identity", "ordinary", 2L)
-  ))
+
+  q1 <- .gllvmTMB_mspl_registry_lookup("student", "identity", "ordinary", 1L)
+  q2 <- .gllvmTMB_mspl_registry_lookup("student", "identity", "ordinary", 2L)
+  expect_identical(q1$status, "planned")
+  expect_identical(q2$status, "planned")
+  expect_identical(q1$evidence, "phase4_prep")
+
+  admitted <- tbl[tbl$status == "admitted", , drop = FALSE]
+  expect_false(any(admitted$family == "student"))
 })
 
 test_that("Phase-4 oracles never invoke a live student MSPL fit", {

@@ -3,7 +3,7 @@
 ## Research note:
 ##   docs/dev-log/research/2026-08-16-mspl-phase4-truncated-prep.md
 ## Helpers stay in this file. Do not call live MSPL.
-## Do not edit src/. Do not widen prepare. Do not add registry rows.
+## Do not edit src/. Do not widen prepare. Registry rows are planned, not admitted.
 
 .ztp_lambda <- function(eta) {
   exp(as.numeric(eta))

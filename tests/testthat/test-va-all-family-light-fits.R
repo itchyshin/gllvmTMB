@@ -157,9 +157,12 @@ test_that("all 18 scalar family/link cells pass deterministic H7 light fits", {
 
   for (i in seq_len(nrow(.va_all_family_light_registry))) {
     cell <- .va_all_family_light_registry$cell[[i]]
+    ## delta_lognormal_log at N=30 is the #985 / #1039 ubuntu flake:
+    ## healthy_starts 2 < 3 after #1013's scaled agreement bound. Same
+    ## N=60 treatment as its hurdle sibling; do not loosen the gate.
     N_cell <- if (cell == "ordinal_probit") 100L else
       if (cell %in% c("student_identity", "truncated_nbinom2_log",
-                      "delta_gamma_log")) 60L else 30L
+                      "delta_lognormal_log", "delta_gamma_log")) 60L else 30L
     fixture <- .va_all_family_simulate(cell, N = N_cell)
     optimizer <- .va_all_family_light_registry$optimizer[[i]]
     verdicts[[i]] <- tryCatch(

@@ -4,6 +4,23 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-08-15 — D-139 B1 Totoro receipt (Cursor)
+
+Lane `cursor/mspl-b1-totoro-receipt`. Receipt + dry-run launcher
+only. No `src/`. No Totoro SSH. No SE-covered claim.
+
+```sh
+chmod +x dev/mspl-b1-totoro-launch.sh
+dev/mspl-b1-totoro-launch.sh --self-test
+# self-test PASS (dry-run, cap, Actions, confirm, hostname)
+dev/mspl-b1-totoro-launch.sh --mode=full
+# prints plan; does not SSH
+rg -n 'SE covered' docs/dev-log/research/2026-08-15-mspl-b1-totoro-receipt.md
+```
+
+Not run: `devtools::test()`, `R CMD check`, pkgdown, Totoro,
+DRAC.
+
 ## 2026-08-15 — MSPL items 1–3 conductor (Cursor)
 
 Items 1–3 + SE-CI. No `src/`. No registry admit. No `git add -A`.

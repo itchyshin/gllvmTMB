@@ -7,10 +7,18 @@
 started. DRAC not started. GitHub Actions not used as a campaign
 host.
 
+**2026-08-15 amendment (B1 host fence lifted; SE unchanged):**
+the SE campaign remains **NONE ISSUED**. Public `se=TRUE` still
+withholds `sd_report`. Do **not** read the B1 Totoro proposal as
+SE covered. B1 interval-calibration receipt (proposed
+`host=Totoro`, **not launched** in that sitting):
+`docs/dev-log/research/2026-08-15-mspl-b1-totoro-receipt.md`.
+
 **Scanner:** NO Totoro/DRAC SE campaign. `host=none`. `minutes=0`.
 Bernoulli \(Q_0\) non-PD (min eigenvalue **−0.774**) on the **#979
 first cell**. Public `se=TRUE` still withholds `sd_report`. Pin ≠
-calibrated SE. No remote job started.
+calibrated SE. No remote SE job started. No `src/` edit. B1 is a
+different campaign; see the B1 receipt.
 
 **Reader:** the next conductor who might treat #979 as permission
 to occupy Totoro or DRAC. It is not.

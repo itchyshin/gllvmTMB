@@ -48,10 +48,10 @@ No C++ tape. No prepare widen. No NEWS. No public `se=TRUE`.
 - `tests/testthat/test-mspl-fenced-family-tapes.R`
 - `tests/testthat/test-zz-mspl-rest-family-prepare-fence.R`
 - `docs/dev-log/after-task/2026-08-16-mspl-planned-rest-families.md` (this file)
-- `docs/dev-log/check-log.md`
 
 Not touched: `R/mspl.R`, `src/`, NEWS, validation-debt register,
-research notes (their "no registry row" status lines are now stale).
+research notes (their "no registry row" status lines are now stale),
+`docs/dev-log/check-log.md` (left to the B1 freeze/holdout sibling).
 
 ## 3a. Decisions and Rejected Alternatives
 

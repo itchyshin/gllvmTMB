@@ -51369,38 +51369,3 @@ after the VA light grid. No admit. No `R/` / `src/` edit.
 git mv tests/testthat/test-mspl-rest-family-prepare-fence.R \
   tests/testthat/test-zz-mspl-rest-family-prepare-fence.R
 ```
-
-## 2026-08-16 — MSPL planned rows for remaining Phase-4 families (Cursor)
-
-Lane `cursor/mspl-planned-rest-families` in
-`/private/tmp/gllvmtmb-mspl-planned-rest-families` from `origin/main`
-@ `3e18de94`. Twelve planned ordinary q=1,2 rows for student /
-ordinal_probit / betabinomial / truncated_poisson /
-truncated_nbinom2 / multinomial. Not admitted. No public door.
-No `se=TRUE`. No `src/` / `R/mspl.R` edit.
-
-```sh
-rg -n 'fam_ids %in%' R/mspl.R
-# c(0L, 1L, 2L, 5L, 15L)
-
-rg -n 'student|ordinal_probit|betabinomial|truncated_|multinomial' R/mspl-registry.R
-# planned_rest only
-
-NOT_CRAN=true OMP_NUM_THREADS=1
-pkgload::load_all(".", compile = FALSE)
-# test-mspl-registry.R                         FAIL 0 / PASS 78
-# test-mspl-student-phase4-oracles.R           FAIL 0 / PASS 57
-# test-mspl-ordinal-phase4-oracles.R           FAIL 0 / PASS 51
-# test-mspl-gaussian-heywood-oracles.R         FAIL 0 / PASS 76
-# test-mspl-fenced-family-tapes.R              FAIL 0 / PASS 18
-# test-zz-mspl-rest-family-prepare-fence.R     FAIL 0 / PASS 15
-# test-mspl-betabinomial-phase4-oracles.R      FAIL 0 / PASS 27
-# test-mspl-truncated-phase4-oracles.R         FAIL 0 / PASS 23
-# test-mspl-multinomial-phase4-oracles.R       FAIL 0 / PASS 23
-git diff --stat -- src/ R/mspl.R
-# empty
-```
-
-After-task:
-`docs/dev-log/after-task/2026-08-16-mspl-planned-rest-families.md`.
-Not run: `devtools::test()`, `R CMD check`, pkgdown, Totoro, admit.

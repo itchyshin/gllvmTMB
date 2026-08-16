@@ -22,9 +22,11 @@ bridge remains experimental and is not required for the main workflow.
   that exact contract still gets the ordinary one-family-per-trait error, and
   Poisson-log mixed with binomial-logit or -probit remains refused.
 
-  **In:** the route is reachable, documented, and contract-tested, and the
-  *Integrating opportunistic records with a repeated survey* article fits and
-  renders through it. **Partial:** everything reported is relative intensity —
+  **In:** the route is reachable, documented, and contract-tested. Two
+  articles cover it: *Integrating opportunistic records with a repeated
+  survey* fits and renders through the public route, and *How big does an
+  integrated survey design need to be?* reads a known-truth design curve to
+  ask whether a design is large enough before you fit at all. **Partial:** everything reported is relative intensity —
   presence-only data cannot identify absolute abundance, occupancy, or
   detectability, and none are estimated. Source-specific spatial structure is
   only weakly identified on small designs; treat a portal-only field as a

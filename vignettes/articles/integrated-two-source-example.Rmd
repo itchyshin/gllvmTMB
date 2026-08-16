@@ -267,7 +267,8 @@ two sources, same shared predictor, same portal-bias coefficient -- returns
 `pd_hessian = PASS`. The integrated likelihood is not the difficulty; the
 *spatial fields* are, at 108 cells. That is the same conclusion the design
 article reaches from a much larger set of fits, and it is why the companion
-[How much survey do you need?](integrated-survey-design.html) exists.
+[How big does an integrated survey design need to be?](integrated-survey-design.html)
+exists.
 
 Read this as the honest state of a small illustrative fit, not as a bug --
 but do not trust Wald-type standard errors from this particular fit, and do

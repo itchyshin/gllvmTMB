@@ -245,6 +245,16 @@ fit <- gllvmTMB(
 fit$opt$convergence
 ```
 
+A converged optimizer is not an admissible fit, and admissibility is the very
+thing this page is about — so run the check here rather than taking the
+convergence code at face value:
+
+```{r fit-health}
+health <- check_gllvmTMB(fit)
+health[health$component %in% c("optimizer_convergence", "pd_hessian"),
+       c("component", "status")]
+```
+
 The portal-bias coefficients come back in the order `factor()` chose, so
 realign the simulated truth before comparing:
 
@@ -256,8 +266,8 @@ colnames(tab) <- levels(dat$trait)
 round(tab, 2)
 ```
 
-Eighty cells is an order of magnitude smaller than the smallest design in the
-evidence below, and these are single-draw numbers, so read them as a
+Eighty cells is roughly a fifth of the smallest design in the evidence below,
+and these are single-draw numbers, so read them as a
 demonstration that the route runs and the columns line up rather than as a
 recovery result. They do carry one design lesson, though, and it is the reason
 this page exists: **different quantities in the same model have different
@@ -310,6 +320,14 @@ What the four columns are:
 
 Every one of the four moves monotonically in the right direction as cells are
 added, and `conv` reaches 1.000.
+
+Read `pd_rate` before taking much comfort from that. `conv` reaching 1.000 is
+the *optimizer* declaring itself satisfied; `pd_rate` is the share of those
+fits whose curvature is actually admissible, and at the largest design tested
+— 2,250 cells — it is **0.555**. Barely more than half. It rises from 0.330,
+so the trend is real, but it is the axis furthest from solved and its
+destination lies outside the measured span. Adding cells at fixed per-cell
+support *improves* admissibility; on this evidence it does not yet deliver it.
 
 ```{r fig-curve, fig.cap = "What extra cells buy, at fixed spatial range and fixed cell size. Left: median relative amplitude error falls, but does not reach the campaign's 0.25 target within the measured span; the shaded region is beyond any measurement, and the grey open points are the lower effort level (endpoints only). Right: the three higher-is-better axes, all monotone. The horizontal axis is on a log scale in both panels.", fig.width = 7.5, fig.height = 4}
 op <- par(mfrow = c(1, 2), mar = c(4.4, 4.4, 2.6, 1.0), cex = 0.9)
@@ -402,7 +420,11 @@ Specifically, you **cannot** conclude from this page that:
 5. anything at all about absolute abundance, occupancy, or detectability —
    the design is relative-intensity throughout;
 6. the same ordering holds for a different taxon, likelihood, bias structure,
-   or number of species — none of those were varied.
+   or number of species — none of those were varied;
+7. admissibility becomes likely if you simply add cells — at the largest
+   design measured, `pd_rate` is 0.555, so roughly one fit in two still fails
+   the positive-definiteness check. Growing the domain moves that number in
+   the right direction and does not finish the job.
 
 What you *can* take away is the mechanism and the audit: find out whether your
 own design would hold per-cell support fixed as it grows, because that

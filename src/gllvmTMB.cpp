@@ -437,6 +437,46 @@ Type gll_mspl_row_radial_penalty(const matrix<Type> &Lambda, int rank)
   return ans;
 }
 
+// Poisson event-weighted loading atom (admit-packet science, not admission).
+// V = sum_t (sqrt(1 + ||lambda_t||^2 * ybar_t) - 1). Observed trait means
+// weight the radial term so all-zero traits contribute 0 (Jeffreys-on-beta
+// owns that path). Do not reuse Bernoulli V_loading here.
+template <class Type>
+Type gll_mspl_poisson_event_radial_penalty(const matrix<Type> &Lambda,
+                                           const vector<Type> &y,
+                                           const vector<int> &trait_id,
+                                           int rank,
+                                           int n_traits)
+{
+  if (Lambda.rows() != n_traits)
+    error("gllvmTMB_multi: Poisson loading atom Lambda rows must equal n_traits");
+  if (y.size() != trait_id.size())
+    error("gllvmTMB_multi: Poisson loading atom y/trait_id length mismatch");
+  vector<Type> ysum(n_traits);
+  vector<Type> ycount(n_traits);
+  ysum.setZero();
+  ycount.setZero();
+  for (int o = 0; o < y.size(); ++o) {
+    int t = trait_id(o);
+    if (t < 0 || t >= n_traits)
+      error("gllvmTMB_multi: Poisson loading atom trait_id out of range");
+    ysum(t) += y(o);
+    ycount(t) += Type(1.0);
+  }
+  Type ans = Type(0.0);
+  for (int t = 0; t < n_traits; ++t) {
+    Type ybar = CppAD::CondExpGt(ycount(t), Type(0.0),
+                                 ysum(t) / ycount(t), Type(0.0));
+    ybar = CppAD::CondExpGt(ybar, Type(0.0), ybar, Type(0.0));
+    Type ss = Type(0.0);
+    for (int k = 0; k < rank; ++k)
+      ss += Lambda(t, k) * Lambda(t, k);
+    Type inside = Type(1.0) + ss * ybar;
+    ans += sqrt(inside) - Type(1.0);
+  }
+  return ans;
+}
+
 template <class Type>
 Type gll_mspl_pseudohuber(Type x)
 {
@@ -3290,11 +3330,19 @@ Type objective_function<Type>::operator()()
       mspl_atom_status = Type(0.0);
       nll += mspl_hirose_nll;
     } else {
-      // Bernoulli keeps the validated rate. Poisson / fenced GLM-outer
-      // use unpinned c=1 (not a Bernoulli or Gaussian transplant).
+      // Bernoulli keeps the validated rate. Poisson uses event-count
+      // c_P = 2 * sqrt(p_free / max(sum(y), 1)). Fenced GLM-outer
+      // families stay at unpinned c=1 (not admitted here).
       if (mspl_family_mode == 1)
         mspl_c_n = Type(2.0) * sqrt(Type(p_free) / Type(N_eff));
-      else
+      else if (mspl_family_mode == 3) {
+        Type event_count = Type(0.0);
+        for (int o = 0; o < y.size(); ++o)
+          event_count += y(o);
+        event_count = CppAD::CondExpLt(event_count, Type(1.0),
+                                       Type(1.0), event_count);
+        mspl_c_n = Type(2.0) * sqrt(Type(p_free) / event_count);
+      } else
         mspl_c_n = Type(1.0);
       vector<Type> mspl_logw(N_eff);
       int link_id = link_id_vec(0);
@@ -3330,7 +3378,11 @@ Type objective_function<Type>::operator()()
       mspl_atom_status = atom(1);
       mspl_logdet_information = Type(2.0) * mspl_half_logdet_information;
       if (mspl_structure_id_int == 1) {
-        mspl_V_loading = gll_mspl_row_radial_penalty(Lambda_B, d_B);
+        if (mspl_family_mode == 3)
+          mspl_V_loading = gll_mspl_poisson_event_radial_penalty(
+            Lambda_B, y, trait_id, d_B, n_traits);
+        else
+          mspl_V_loading = gll_mspl_row_radial_penalty(Lambda_B, d_B);
       } else {
         Type half_log_4pi = Type(0.5) * log(Type(4.0) * M_PI);
         mspl_log_range_ratio = Type(0.5) * log(Type(8.0)) -

@@ -4,6 +4,30 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-08-15 — Poisson LA-MSPL admit packet (Cursor)
+
+Lane `cursor/mspl-poisson-admit-rebased` from `origin/main` after
+#989/#993/#994/#1002. Same atoms as #1001, rebased so
+`check-log.md` is not DIRTY. Pinned \(c_P\) + event-weighted
+loading atom. Registry stays `planned` on this PR. No NEWS.
+No public SE. No `git add -A`.
+
+```sh
+export OMP_NUM_THREADS=1 NOT_CRAN=true
+# RED: helpers missing — FAIL 7 | PASS 9
+pkgload::load_all(".", compile = TRUE)
+testthat::test_file("tests/testthat/test-mspl-poisson-admit-packet.R")
+# GREEN: FAIL 0 | WARN 0 | SKIP 0 | PASS 41
+testthat::test_file("tests/testthat/test-mspl-poisson-public-door.R")    # PASS 6
+testthat::test_file("tests/testthat/test-mspl-poisson-phase4-oracles.R")  # PASS 42
+testthat::test_file("tests/testthat/test-mspl-registry.R")               # PASS 26
+testthat::test_file("tests/testthat/test-mspl-fenced-family-tapes.R")    # PASS 23
+rg 'family = "poisson"' -A 8 R/mspl-registry.R   # status = "planned"
+```
+
+Not run: full `devtools::test()`, `--as-cran`. Admit flip is a
+separate commit after this PR is CI-green (Shinichi G0 2026-08-16).
+
 ## 2026-08-15 — D-139 B1 Totoro receipt (Cursor)
 
 Lane `cursor/mspl-b1-totoro-receipt`. Receipt + dry-run launcher

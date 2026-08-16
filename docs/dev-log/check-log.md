@@ -49703,4 +49703,8 @@ After-task:
 `docs/dev-log/after-task/2026-08-16-mspl-remaining-gap-board.md`.
 Not run: merge, admit, Totoro, drmTMB.
 
+## 2026-08-16 (Cursor) — #1022 fast-path CI: drop trailing blank line
 
+`git diff --check` failed on `docs/dev-log/check-log.md:49705: new blank line at EOF`.
+Removed the extra EOF newline so the ignored-source fast path can go green.
+Not run: merge, admit, Totoro.

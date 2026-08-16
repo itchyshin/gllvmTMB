@@ -4,13 +4,18 @@
 \alias{predict_missing}
 \title{Predict the masked (missing) response cells of a gllvmTMB fit}
 \usage{
-predict_missing(object, type = c("link", "response"), ...)
+predict_missing(object, type = c("link", "response"), se = FALSE, ...)
 }
 \arguments{
 \item{object}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}.}
 
 \item{type}{One of \code{"link"} (default; the linear predictor) or
 \code{"response"} (the inverse-link conditional mean).}
+
+\item{se}{EXPERIMENTAL, internal-only. If \code{TRUE}, appends \code{se_confidence}
+(delta-method SE of the reconstructed mean) and \code{se_prediction}
+(\code{se_confidence} combined with the family noise variance) columns.
+Gaussian fits only in this slice; see Details. Default \code{FALSE}.}
 
 \item{...}{Unused.}
 }
@@ -19,9 +24,11 @@ A data frame with one row per masked response cell, with columns:
 \code{original_row} (the supplied long-data row or the supplied wide-data row
 before \code{traits()} stacking),
 \code{model_row} (the row index into the fitted long-format data / response),
-the unit / cluster / trait identifier columns, and \code{est} (the prediction
-on the requested scale). A complete-data fit (no masked cells) returns a
-zero-row data frame with the same columns.
+the unit / cluster / trait identifier columns, \code{est} (the prediction
+on the requested scale), and, when \code{se = TRUE}, \code{se_confidence} and
+\code{se_prediction} (see Details -- EXPERIMENTAL, not a calibrated
+interval). A complete-data fit (no masked cells) returns a zero-row
+data frame with the same columns.
 }
 \description{
 For a model fitted with \code{missing = miss_control(response = "include")}
@@ -37,7 +44,19 @@ not latent covariates. The separate \code{\link[=imputed]{imputed()}} extractor 
 missing \strong{predictors} from supported \code{mi()} fits.
 The point predictions here are the fitted linear predictor (\code{type = "link"})
 or its inverse-link response (\code{type = "response"}). Reconstruction standard
-errors and prediction intervals are not currently returned.
+errors and prediction intervals are not currently returned by default.
+
+\code{se = TRUE} is \strong{EXPERIMENTAL and INTERNAL-ONLY} (Design 119 Slice 1):
+register status \code{heuristic_unvalidated} -- no repeated-sampling coverage
+evidence exists for \code{se_confidence} or \code{se_prediction}, and neither is an
+interval claim of any kind. It is currently implemented for gaussian
+fits only (other families abort); the underlying reconstruction-variance
+decomposition also omits the b_fix/latent-score cross-covariance and any
+\code{diag_B} ("unique"/Psi) or within-unit (\code{rr_W}) random-effect
+contribution (see \code{docs/design/119-predict-missing-uncertainty.md} sec.3
+R1-quad). Do not surface \code{se_confidence} / \code{se_prediction} as calibrated
+uncertainty in any user-facing output until the Design 119 sec.4 coverage
+campaign clears a family for export.
 }
 \seealso{
 \code{\link[=gllvmTMB]{gllvmTMB()}}, \code{\link[=miss_control]{miss_control()}}, \code{\link[=predict.gllvmTMB_multi]{predict.gllvmTMB_multi()}}.

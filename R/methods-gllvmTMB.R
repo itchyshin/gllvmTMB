@@ -2188,6 +2188,93 @@ predict.gllvmTMB_multi <- function(
   out
 }
 
+## Internal-only reconstruction-uncertainty helper for `predict_missing(se =
+## TRUE)` (Design 119 Slice 1, the R1-quad route). GAUSSIAN FAMILIES ONLY in
+## this slice; register status `heuristic_unvalidated` -- no coverage
+## evidence exists and nothing here is exported or advertised.
+##
+## se_confidence: delta-method SE of the conditional mean mu_ut at a masked
+## cell (u, t), combining two curvature sources in quadrature (design sec.3
+## R1-quad):
+##   var(eta_ut) = var_fix(eta_ut)                  -- .gllvmTMB_predict_se_link()
+##               + lambda_t' Cov(u_hat_i) lambda_t   -- getLV(se = TRUE)'s
+##                                                       per-axis marginal
+##                                                       variance (diagonal
+##                                                       only -- cross-axis
+##                                                       and b_fix/u_hat
+##                                                       cross-covariance are
+##                                                       OMITTED, exactly the
+##                                                       approximation Design
+##                                                       119 sec.3 documents
+##                                                       for R1-quad)
+##   se_confidence = sqrt(var(eta_ut)) * |d(linkinv)/d(eta)|   (identity for
+##                                                               gaussian)
+## se_prediction: se_confidence in quadrature with the family noise variance
+## V_family (gaussian: sigma_eps^2 on the response scale; identical on the
+## link scale here because the family's link is identity).
+##
+## Only the ordinary between-site latent-variable block (rr_B / z_B, the
+## loadings tier of `latent()`) is added. A diag_B ("unique"/Psi) companion
+## or a within-site rr_W block, if present in the fit, is NOT accounted for
+## -- this mirrors the scope of predict()'s own newdata random-effect loop
+## above, which likewise only ever adds rr_B/diag_B/propto and never rr_W.
+## Whether that omission is material is exactly the open question the
+## Design 119 sec.4 coverage campaign exists to answer, not something this
+## comment can settle.
+.gllvmTMB_predict_missing_se <- function(fit, type = c("link", "response")) {
+  type <- match.arg(type)
+  fid_vec <- fit$tmb_data$family_id_vec
+  if (is.null(fid_vec) || !all(fid_vec == 0L)) {
+    cli::cli_abort(c(
+      "{.code predict_missing(se = TRUE)} is only implemented for gaussian fits in this slice.",
+      "i" = "Design 119 Slice 3 will extend {.code se = TRUE} to other families once per-family coverage evidence exists.",
+      ">" = "Use {.code se = FALSE} for point-only reconstructions on this family."
+    ), class = "gllvmTMB_predict_missing_se_family_unsupported")
+  }
+  ## Reuses the same refusal set predict(se.fit = TRUE) already enforces:
+  ## mi(), REML, multinomial, no sdreport, non-pdHess. `newdata = NULL`
+  ## always holds here -- predict_missing() has no newdata argument.
+  .gllvmTMB_predict_se_guard(fit, newdata = NULL)
+
+  eta <- as.numeric(fit$report$eta)
+  n_obs <- length(eta)
+  iyo <- fit$tmb_data$is_y_observed
+  masked <- if (is.null(iyo)) integer(0L) else which(iyo == 0L)
+
+  se_fix <- .gllvmTMB_predict_se_link(fit)
+
+  se_lat2 <- rep(0, n_obs)
+  if (isTRUE(fit$use$rr_B) && length(masked) > 0L) {
+    ord <- extract_ordination(fit, level = "unit")
+    if (!is.null(ord)) {
+      se_mat   <- .getLV_se(fit, level = "B", scores = ord$scores)
+      var_mat  <- se_mat^2
+      Lambda   <- ord$loadings
+      trait_id <- as.integer(fit$data[[fit$trait_col]])
+      unit_id  <- as.integer(fit$data[[fit$unit_col]])
+      lam_rows <- Lambda[trait_id[masked], , drop = FALSE]
+      var_rows <- var_mat[unit_id[masked], , drop = FALSE]
+      se_lat2[masked] <- rowSums(lam_rows^2 * var_rows)
+    }
+  }
+
+  var_eta <- se_fix^2 + se_lat2
+  se_eta  <- sqrt(pmax(var_eta, 0))
+
+  sigma_eps <- .gllvmTMB_sigma_eps(fit)
+  deriv <- .dlinkinv_per_row(
+    eta, fid_vec, fit$tmb_data$link_id_vec, sigma_eps = sigma_eps
+  )
+  ## Gaussian is identity-link (deriv == 1 exactly), so se_confidence is the
+  ## same whether `type` is "link" or "response" -- kept type-aware anyway
+  ## so the shape of this function generalises when Slice 3 adds families
+  ## whose link is not identity.
+  se_confidence <- if (type == "response") se_eta * abs(deriv) else se_eta
+  se_prediction <- sqrt(se_confidence^2 + sigma_eps^2)
+
+  list(se_confidence = se_confidence, se_prediction = se_prediction)
+}
+
 #' Predict the masked (missing) response cells of a gllvmTMB fit
 #'
 #' For a model fitted with `missing = miss_control(response = "include")`
@@ -2202,24 +2289,47 @@ predict.gllvmTMB_multi <- function(
 #' missing **predictors** from supported `mi()` fits.
 #' The point predictions here are the fitted linear predictor (`type = "link"`)
 #' or its inverse-link response (`type = "response"`). Reconstruction standard
-#' errors and prediction intervals are not currently returned.
+#' errors and prediction intervals are not currently returned by default.
+#'
+#' `se = TRUE` is **EXPERIMENTAL and INTERNAL-ONLY** (Design 119 Slice 1):
+#' register status `heuristic_unvalidated` -- no repeated-sampling coverage
+#' evidence exists for `se_confidence` or `se_prediction`, and neither is an
+#' interval claim of any kind. It is currently implemented for gaussian
+#' fits only (other families abort); the underlying reconstruction-variance
+#' decomposition also omits the b_fix/latent-score cross-covariance and any
+#' `diag_B` ("unique"/Psi) or within-unit (`rr_W`) random-effect
+#' contribution (see `docs/design/119-predict-missing-uncertainty.md` sec.3
+#' R1-quad). Do not surface `se_confidence` / `se_prediction` as calibrated
+#' uncertainty in any user-facing output until the Design 119 sec.4 coverage
+#' campaign clears a family for export.
 #'
 #' @param object A fit returned by [gllvmTMB()].
 #' @param type One of `"link"` (default; the linear predictor) or
 #'   `"response"` (the inverse-link conditional mean).
+#' @param se EXPERIMENTAL, internal-only. If `TRUE`, appends `se_confidence`
+#'   (delta-method SE of the reconstructed mean) and `se_prediction`
+#'   (`se_confidence` combined with the family noise variance) columns.
+#'   Gaussian fits only in this slice; see Details. Default `FALSE`.
 #' @param ... Unused.
 #'
 #' @return A data frame with one row per masked response cell, with columns:
 #'   `original_row` (the supplied long-data row or the supplied wide-data row
 #'   before `traits()` stacking),
 #'   `model_row` (the row index into the fitted long-format data / response),
-#'   the unit / cluster / trait identifier columns, and `est` (the prediction
-#'   on the requested scale). A complete-data fit (no masked cells) returns a
-#'   zero-row data frame with the same columns.
+#'   the unit / cluster / trait identifier columns, `est` (the prediction
+#'   on the requested scale), and, when `se = TRUE`, `se_confidence` and
+#'   `se_prediction` (see Details -- EXPERIMENTAL, not a calibrated
+#'   interval). A complete-data fit (no masked cells) returns a zero-row
+#'   data frame with the same columns.
 #'
 #' @seealso [gllvmTMB()], [miss_control()], [predict.gllvmTMB_multi()].
 #' @export
-predict_missing <- function(object, type = c("link", "response"), ...) {
+predict_missing <- function(
+  object,
+  type = c("link", "response"),
+  se = FALSE,
+  ...
+) {
   if (!inherits(object, "gllvmTMB_multi")) {
     cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
   }
@@ -2286,6 +2396,11 @@ predict_missing <- function(object, type = c("link", "response"), ...) {
     base[[trait_lbl]] <- object$data[[trait_lbl]]
   }
   base$est <- est
+  if (isTRUE(se)) {
+    se_out <- .gllvmTMB_predict_missing_se(object, type = type)
+    base$se_confidence <- se_out$se_confidence
+    base$se_prediction <- se_out$se_prediction
+  }
 
   out <- base[masked, , drop = FALSE]
   rownames(out) <- NULL

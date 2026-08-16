@@ -161,3 +161,7 @@ Shinichi: *"go ahead"* (2026-08-16), treated as signature to freeze
 from the calibration split and proceed. Draft answer that this freeze
 implements: **freeze M0 (identity) + F-AMD fence in writing; do not
 invent M1/M2 \(\gamma\); then one `--holdout` read.**
+
+**Hold-out after this freeze:**
+`docs/dev-log/research/2026-08-16-mspl-b1-holdout-gate.md` — G1–G5
+conjunction **FAIL**. The frozen map is unchanged.

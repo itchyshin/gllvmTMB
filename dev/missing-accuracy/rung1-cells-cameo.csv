@@ -1,0 +1,6 @@
+"cell","dgp","lambda_target","mechanism","seed","arm","mse","error","wall_s","n_joined","lambda_hat"
+"DGP-a lambda=0.6 MCAR5","a",0.6,"mcar",1001,"Rphylopars (cameo subset, n=2 seeds/cell)",NA,"reached elapsed time limit [cpu=600s, elapsed=600s]",600.049467802048,NA,NA
+"DGP-a lambda=0.6 MCAR5","a",0.6,"mcar",1002,"Rphylopars (cameo subset, n=2 seeds/cell)",NA,"reached elapsed time limit [cpu=600s, elapsed=600s]",600.018426179886,NA,NA
+"DGP-a lambda=0.6 clade","a",0.6,"clade",2001,"Rphylopars (cameo subset, n=2 seeds/cell)",NA,"reached elapsed time limit [cpu=600s, elapsed=600s]",600.012284040451,NA,NA
+"DGP-a lambda=0.6 clade","a",0.6,"clade",2002,"Rphylopars (cameo subset, n=2 seeds/cell)",NA,"reached elapsed time limit [cpu=600s, elapsed=600s]",600.05026102066,NA,NA
+"DGP-a lambda=0.98 MCAR5","a",0.98,"mcar",3001,"Rphylopars (cameo subset, n=2 seeds/cell)",NA,"reached elapsed time limit [cpu=600s, elapsed=600s]",600.00766992569,NA,NA

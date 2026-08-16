@@ -1,0 +1,170 @@
+---
+title: "Integrating opportunistic records with a repeated survey: a small worked example"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+library(gllvmTMB)
+set.seed(20260815)
+```
+
+> **Developer preview.** The integrated two-source route shown here is
+> experimental and unexported: the entry point is internal, its interface may
+> change without deprecation, and no released capability claim is made. The
+> example exists so that early users can see the intended workflow end to end
+> on simulated data.
+
+# The question
+
+Opportunistic portal records (GBIF-style) are abundant but arrive where
+people go; a designed detection/non-detection survey is small but has known
+effort. This example asks a deliberately modest question of a **simulated
+three-species grassland songbird guild** on a prairie-inspired landscape:
+after giving the portal records their own recording-bias term, do the two
+sources agree on one shared habitat gradient?
+
+Both sources see the same ecological state for species $s$ in cell $c$,
+
+$$
+\eta_{cs} = \alpha_s + x_c\,\beta_s + u_c\,\lambda_s,
+$$
+
+with $x_c$ a measured habitat covariate and $u_c$ an unmeasured shared
+spatial gradient carried by a latent field with species loadings
+$\lambda_s$. The portal branch adds what only it suffers -- an
+accessibility bias with species-specific coefficients $\gamma_s$ and its own
+spatial recording field -- while the survey branch is a plain
+complementary-log-log detection/non-detection likelihood with known visit
+support:
+
+$$
+N^{G}_{cs} \sim \text{Poisson}\!\left[a^{G}_c
+  \exp\{\eta_{cs} + b_c\gamma_s + h_c\,\delta_s\}\right],
+\qquad
+Y^{S}_{csv} \sim \text{Bernoulli}\!\left[1 -
+  \exp\{-a^{S}_{cv}\exp(\eta_{cs})\}\right].
+$$
+
+Everything is **relative intensity**: no absolute abundance, occupancy, or
+detectability claim is available from this design.
+
+# Simulate a small two-source data set
+
+One hundred and eight cells, three species, one portal record stream, three
+survey visits. The fields here are simple smooth surfaces -- enough to give
+the model something to find without pretending to be a validation campaign.
+
+```{r simulate}
+n_lon <- 12; n_lat <- 9
+grid <- expand.grid(lon = seq(0, 1.2, length.out = n_lon),
+                    lat = seq(0, 0.9, length.out = n_lat))
+grid <- grid[order(grid$lat, grid$lon), ]
+n_cell <- nrow(grid)
+cells   <- paste0("cell_", seq_len(n_cell))
+species <- c("gralark", "dickcis", "bobolnk")   # simulated guild
+
+## habitat covariate, shared gradient u, and an accessibility index
+x <- as.numeric(scale(grid$lon))                        # measured habitat
+u <- 0.8 * sin(pi * grid$lat / 0.9) * cos(pi * grid$lon / 1.2)  # unmeasured
+b <- as.numeric(scale(-grid$lat + 0.3 * cos(2 * pi * grid$lon)))# access bias
+## the DGP here has NO portal-only spatial field (delta = 0): the fitted
+## model still estimates one, and treating it as a nuisance is the honest
+## reading at this design size (see the closing cautions)
+
+alpha  <- c(-0.3, 0.1, 0.4)
+beta   <- c(0.6, -0.4, 0.5)
+lambda <- c(0.9, 0.7, -0.6)
+gamma  <- c(0.5, -0.3, 0.2)
+
+eta <- outer(u, lambda) +
+  sweep(outer(x, beta), 2, alpha, "+")                  # n_cell x 3
+
+## portal effort concentrates in accessible cells; survey support is designed
+a_g <- 3 * exp(0.4 * b + rnorm(n_cell, sd = 0.2))
+a_s <- rep(0.9, n_cell)
+
+base <- expand.grid(cell_id = cells, trait = species,
+                    stringsAsFactors = FALSE)
+base <- base[order(match(base$cell_id, cells), match(base$trait, species)), ]
+ci <- match(base$cell_id, cells)
+si <- match(base$trait, species)
+
+gbif <- transform(base, source = "gbif", survey_event_id = NA_character_,
+  branch = "count", support = a_g[ci], lon = grid$lon[ci], lat = grid$lat[ci],
+  value = rpois(nrow(base),
+    a_g[ci] * exp(eta[cbind(ci, si)] + b[ci] * gamma[si])),
+  visit = NA_integer_)
+
+pa <- do.call(rbind, lapply(1:3, function(v) transform(base,
+  source = "survey", survey_event_id = paste0("pa_v", v, "_", base$cell_id),
+  branch = "pa", support = a_s[ci], lon = grid$lon[ci], lat = grid$lat[ci],
+  value = rbinom(nrow(base), 1, -expm1(-a_s[ci] * exp(eta[cbind(ci, si)]))),
+  visit = v)))
+
+rows <- rbind(gbif, pa)
+X <- matrix(x[match(rows$cell_id, cells)], ncol = 1,
+            dimnames = list(NULL, "env"))
+B <- matrix(ifelse(rows$source == "gbif",
+                   b[match(rows$cell_id, cells)], NA_real_),
+            ncol = 1, dimnames = list(NULL, "bias"))
+table(rows$source)
+```
+
+# Fit the integrated model
+
+The two sources enter one likelihood: shared fixed effects and shared latent
+field, a portal-only bias coefficient and portal-only spatial field, and the
+survey's cloglog detection branch -- selected internally per row. A mesh over
+the cells carries the spatial terms.
+
+```{r fit}
+mesh <- make_mesh(rows[, c("lon", "lat")], c("lon", "lat"), cutoff = 0.085)
+fit <- gllvmTMB:::.gll_isdm_fit(rows = rows, X = X, B = B, d = 1,
+                                mesh = mesh, spatial = TRUE,
+                                control = gllvmTMBcontrol(), silent = TRUE)
+fit$opt$convergence
+```
+
+# What did the two sources agree on?
+
+The portal-bias coefficients are the part of the model only the integration
+can give you -- the survey anchors the shared state, so $\gamma$ is
+identified rather than silently absorbed. At this deliberately small design
+expect useful but noisy estimates:
+
+```{r gamma}
+idx <- grep("b_bias", fit$X_fix_names)
+round(rbind(truth = gamma,
+            estimate = unname(fit$opt$par[idx])), 2)
+```
+
+The shared-state loadings and the portal-only field's covariance are
+reported on the link scale (both are sign-invariant as outer products):
+
+```{r sigma}
+round(fit$report$Sigma_spde_slope_intercept, 3)
+round(fit$report$Sigma_spde_slope_slope, 3)
+```
+
+# What to check before believing more than this
+
+Three honest cautions, each with a package-level reason.
+
+1. **Design size governs identifiability.** Source-specific spatial
+   structure is only weakly identified on small grids: internal known-truth
+   campaigns place reliable recovery of a portal-only *field* far beyond a
+   design of this size, with identifiability bought by adding cells (at
+   maintained per-cell records), not by piling records into the same cells.
+   Treat the portal-only field here as a nuisance adjustment, not an
+   estimate to interpret.
+2. **Relative intensity only.** Nothing in this design identifies absolute
+   abundance or detectability; comparisons are within-map, not across
+   species in absolute terms.
+3. **Experimental surface.** The entry point is internal and unexported;
+   check convergence and positive-definiteness on every fit, and expect the
+   interface to change.
+
+```{r session, include=FALSE}
+## kept minimal deliberately; this article is a workflow illustration only
+```

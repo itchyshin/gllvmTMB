@@ -120,6 +120,10 @@ articles:
     - articles/phylogenetic-gllvm
     - articles/missing-data
 
+  - title: Data integration (experimental)
+    contents:
+    - articles/integrated-two-source-example
+
   - title: Concepts
     contents:
     - articles/gllvm-vocabulary

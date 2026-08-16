@@ -500,7 +500,15 @@ b2_fit_rung <- function(rung, v, pre, alpha, start = NULL) {
 b2_sign_check <- function(gamma) {
   bad <- character(0)
   for (nm in names(gamma)) {
-    want <- b2_registered_signs[[nm]] %||% NULL
+    ## `[[` on a named vector ERRORS for an absent name (it does not return
+    ## NULL), so `%||%` never sees it. Terms carrying no registered sign --
+    ## gamma0 from M1 up, and M5's link indicators -- must be skipped by an
+    ## explicit membership test.
+    want <- if (nm %in% names(b2_registered_signs)) {
+      b2_registered_signs[[nm]]
+    } else {
+      NULL
+    }
     if (!is.null(want) && !is.na(gamma[[nm]]) && sign(gamma[[nm]]) == -want) {
       bad <- c(bad, sprintf("%s = %.4g (registered sign: >= 0)", nm, gamma[[nm]]))
     }

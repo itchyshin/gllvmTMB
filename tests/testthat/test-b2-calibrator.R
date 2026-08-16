@@ -153,6 +153,23 @@ test_that("s8 DEV-10: the #1020 cells are exactly the 5 cloglog n_site=192 hold-
   expect_false(any(cells %in% g$cell_id[g$split == "train"]))
 })
 
+test_that("s2.3 sign check tolerates terms with NO registered sign, at every rung", {
+  skip_unless_b2()
+  ## gamma0 (M1 up) and M5's link indicators carry no registered sign. `[[` on
+  ## a named vector ERRORS for an absent name rather than returning NULL, so
+  ## these must be skipped by an explicit membership test. Exercise each rung's
+  ## real term set -- exactly what the CV path passes in.
+  v <- data.frame(c_n = 0.3, pi_max = 0.9, s_j = 0.1, link = "cloglog",
+                  stringsAsFactors = FALSE)
+  for (rung in b2_rungs) {
+    terms <- colnames(b2_h_matrix(v, rung))
+    if (!length(terms)) next
+    g <- stats::setNames(rep(0.1, length(terms)), terms)
+    res <- b2_sign_check(g)
+    expect_true(res$ok, info = paste("rung", rung))
+  }
+})
+
 test_that("s2.3 registered sign constraints are enforced", {
   skip_unless_b2()
   good <- c(c_n = 0.4, logit_pi_max = 0.2)

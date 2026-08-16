@@ -5,7 +5,7 @@
 | A0 | **DONE** | LOOP kit + branch `cursor/mspl-phase4-hurdle` | worktree `/tmp/gllvmtmb-mspl-hurdle` |
 | A1 | **DONE** | Research note: shared-η hurdle atoms; kill list | not admitted |
 | A2 | **DONE** | Pure-R oracles + planned registry rows | PASS **66**; prepare stays `{0,1,2}` |
-| A3 | **IN PROGRESS** | Verify; after-task; commit / push / draft PR | no merge |
+| A3 | **DONE** | Verify; after-task; commit / push / draft PR | https://github.com/itchyshin/gllvmTMB/pull/1004 |
 
 ## HARD STOP flags
 

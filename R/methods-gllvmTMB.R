@@ -2238,10 +2238,33 @@ predict.gllvmTMB_multi <- function(
 ## `test-predict-missing-se.R`'s one-cell numeric cross-check). The solve is
 ## always sparse (`Matrix::solve(Q, W)`, CHOLMOD under the hood); Q is never
 ## densified in production code.
+##
+## `route = "joint_load"` is R1-joint+loadings (Design 119 sec.7b), added
+## after wave-1b found route = "joint" UNDER-covers: eta_ut = x_ut'b +
+## lambda_t'u_i has a THIRD nonzero gradient block,
+## d(eta_ut)/d(lambda_{t,k}) = u_{i,k}, that route = "joint" omitted. The
+## loading lambda_{t,k} is not itself a free TMB parameter -- it is read
+## out of a packed vector `theta_rr_B` by `gll_unpack_rr_loadings()`
+## (src/gllvmTMB.cpp), one scalar copy per free (row, column) cell of the
+## loading matrix (diagonal first, then the strict lower triangle,
+## column-by-column) and a hard structural zero above the diagonal. This
+## packing is a pure position embedding, not a smooth reparameterisation
+## (no exp/Cholesky-product/normalisation), so d(lambda_{t,k})/d(theta_j)
+## is exactly 1 at the one theta position lambda_{t,k} was copied from and
+## 0 elsewhere -- no chain rule beyond that copy is needed.
+## `.gllvmTMB_rr_loading_theta_positions()` below reproduces the C++
+## cursor exactly and was checked empirically (not just read off the
+## source) on a rank-2, 4-trait fixture: every free (row, column) cell's
+## `fit$report$Lambda_B` value matched
+## `fit$tmb_obj$env$last.par.best[theta_rr_B position]` exactly, and every
+## NA (structural) cell was exactly 0 (see the "loading position mapping"
+## test in test-predict-missing-se.R). The third block's w entries are
+## therefore `u_hat_{i,k}` (the unit's own fitted `z_B` score, from
+## `last.par.best`) at each free theta position for that trait row.
 .gllvmTMB_predict_missing_se <- function(
   fit,
   type = c("link", "response"),
-  route = c("quad", "joint")
+  route = c("quad", "joint", "joint_load")
 ) {
   type <- match.arg(type)
   route <- match.arg(route)
@@ -2265,6 +2288,10 @@ predict.gllvmTMB_multi <- function(
 
   var_eta <- if (route == "joint") {
     .gllvmTMB_predict_missing_var_eta_joint(fit, masked, n_obs)
+  } else if (route == "joint_load") {
+    .gllvmTMB_predict_missing_var_eta_joint(
+      fit, masked, n_obs, include_loadings = TRUE
+    )
   } else {
     .gllvmTMB_predict_missing_var_eta_quad(fit, masked, n_obs)
   }
@@ -2308,11 +2335,45 @@ predict.gllvmTMB_multi <- function(
   se_fix^2 + se_lat2
 }
 
-## R1-joint: var(eta_ut) = w' Q^{-1} w via the joint (fixed + random)
-## precision. See the parent function's header comment for the derivation.
+## Position map for `gll_unpack_rr_loadings()` (src/gllvmTMB.cpp): for an
+## `n_rows x rank` loading matrix packed as `theta` (diagonal entries
+## first, column by column; then the strict lower triangle, column by
+## column), returns an `n_rows x rank` integer matrix whose (row, column)
+## entry is that cell's 1-indexed position within `theta`, or `NA` for a
+## structural (upper-triangle) zero that is not a free parameter at all.
+## Reproduces the C++ cursor loop exactly rather than a closed-form
+## formula, so it is trivially checkable against the source side by side.
+.gllvmTMB_rr_loading_theta_positions <- function(n_rows, rank) {
+  pos <- matrix(NA_integer_, nrow = n_rows, ncol = rank)
+  cursor <- 0L
+  for (column in seq_len(rank)) {
+    cursor <- cursor + 1L
+    pos[column, column] <- cursor
+  }
+  for (column in seq_len(rank)) {
+    if (column < n_rows) {
+      for (row in (column + 1L):n_rows) {
+        cursor <- cursor + 1L
+        pos[row, column] <- cursor
+      }
+    }
+  }
+  pos
+}
+
+## R1-joint (`include_loadings = FALSE`): var(eta_ut) = w' Q^{-1} w via the
+## joint (fixed + random) precision, w carrying the b_fix and z_B blocks.
+## R1-joint+loadings (`include_loadings = TRUE`, Design 119 sec.7b): w
+## gains a third block, the free `theta_rr_B` positions for trait row t,
+## with entries u_hat_{i,k} (that unit's own fitted z_B score at axis k).
+## See the parent function's header comment for the full derivation. The
+## sparse-solve machinery is otherwise shared between the two so
+## `route = "joint"` cannot silently drift when the third block is added.
 ## Exported (`@noRd`, internal) mainly so the test suite can call it
 ## directly for the one-cell numeric cross-check against a dense solve.
-.gllvmTMB_predict_missing_var_eta_joint <- function(fit, masked, n_obs) {
+.gllvmTMB_predict_missing_var_eta_joint <- function(
+  fit, masked, n_obs, include_loadings = FALSE
+) {
   var_eta <- rep(0, n_obs)
   if (length(masked) == 0L) {
     return(var_eta)
@@ -2342,6 +2403,9 @@ predict.gllvmTMB_multi <- function(
   has_rr_B <- isTRUE(fit$use$rr_B)
   zB_pos_mat <- NULL
   Lambda <- NULL
+  theta_pos_mat <- NULL
+  theta_idx <- NULL
+  z_B_est <- NULL
   if (has_rr_B) {
     zB_pos <- which(par_names == "z_B")
     if (length(zB_pos) != fit$d_B * fit$n_sites) {
@@ -2352,6 +2416,23 @@ predict.gllvmTMB_multi <- function(
     }
     zB_pos_mat <- matrix(zB_pos, nrow = fit$d_B, ncol = fit$n_sites)
     Lambda <- fit$report$Lambda_B
+
+    if (isTRUE(include_loadings)) {
+      n_traits <- nrow(Lambda)
+      theta_idx <- which(par_names == "theta_rr_B")
+      expected_theta <- n_traits * fit$d_B - fit$d_B * (fit$d_B - 1L) %/% 2L
+      if (length(theta_idx) != expected_theta) {
+        cli::cli_abort(c(
+          "Could not align the {.field theta_rr_B} block in the joint precision.",
+          "i" = "Expected {expected_theta} free loading entries; found {length(theta_idx)}."
+        ), class = "gllvmTMB_predict_missing_se_joint_block_mismatch")
+      }
+      theta_pos_mat <- .gllvmTMB_rr_loading_theta_positions(n_traits, fit$d_B)
+      par_est <- fit$tmb_obj$env$last.par.best
+      z_B_est <- matrix(
+        par_est[names(par_est) == "z_B"], nrow = fit$d_B, ncol = fit$n_sites
+      )
+    }
   }
 
   trait_id <- as.integer(fit$data[[fit$trait_col]])
@@ -2370,11 +2451,25 @@ predict.gllvmTMB_multi <- function(
       x_val <- c(x_val, xf_row[nz])
     }
     if (has_rr_B) {
-      pos <- zB_pos_mat[, unit_id[i]]
-      lam <- Lambda[trait_id[i], ]
+      s <- unit_id[i]
+      t <- trait_id[i]
+      pos <- zB_pos_mat[, s]
+      lam <- Lambda[t, ]
       i_idx <- c(i_idx, pos)
       j_idx <- c(j_idx, rep(k, length(pos)))
       x_val <- c(x_val, lam)
+
+      if (isTRUE(include_loadings)) {
+        theta_row <- theta_pos_mat[t, ]
+        free_axes <- which(!is.na(theta_row))
+        if (length(free_axes)) {
+          pos_theta <- theta_idx[theta_row[free_axes]]
+          u_vals <- z_B_est[free_axes, s]
+          i_idx <- c(i_idx, pos_theta)
+          j_idx <- c(j_idx, rep(k, length(pos_theta)))
+          x_val <- c(x_val, u_vals)
+        }
+      }
     }
   }
   W <- Matrix::sparseMatrix(
@@ -2409,17 +2504,20 @@ predict.gllvmTMB_multi <- function(
 #' register status `heuristic_unvalidated` -- no repeated-sampling coverage
 #' evidence exists for `se_confidence` or `se_prediction`, and neither is an
 #' interval claim of any kind. It is currently implemented for gaussian
-#' fits only (other families abort). Two routes exist (`se_route`):
-#' `"quad"` (default) omits the b_fix/latent-score cross-covariance and any
+#' fits only (other families abort). Three routes exist (`se_route`), all
+#' measured on the same wave-1 gaussian coverage grid
+#' (`docs/design/119-predict-missing-uncertainty.md` sec.7): `"quad"`
+#' (default) omits the b_fix/latent-score cross-covariance and any
 #' `diag_B` ("unique"/Psi) or within-unit (`rr_W`) random-effect
-#' contribution (see `docs/design/119-predict-missing-uncertainty.md` sec.3
-#' R1-quad), and Design 119 sec.7's wave-1 coverage run found this
-#' OVER-covers `se_confidence`; `"joint"` computes the exact joint-precision
-#' variance (sec.3 R1-joint) and is expected to correct that, but has not
-#' itself been coverage-tested yet. Do not surface `se_confidence` /
-#' `se_prediction` as calibrated uncertainty in any user-facing output
-#' until the Design 119 sec.4 coverage campaign clears a route and family
-#' for export.
+#' contribution (sec.3 R1-quad) and OVER-covers `se_confidence`;
+#' `"joint"` computes the exact joint-precision variance for the b_fix and
+#' latent-score blocks (sec.3 R1-joint) but omits the loading-uncertainty
+#' block entirely and UNDER-covers; `"joint"` and `"quad"` BRACKET nominal
+#' coverage. `"joint_load"` (sec.7b, R1-joint+loadings) adds that third
+#' block and has not itself been coverage-tested yet. Do not surface
+#' `se_confidence` / `se_prediction` as calibrated uncertainty in any
+#' user-facing output until the Design 119 sec.4 coverage campaign clears
+#' a route and family for export.
 #'
 #' @param object A fit returned by [gllvmTMB()].
 #' @param type One of `"link"` (default; the linear predictor) or
@@ -2429,8 +2527,8 @@ predict.gllvmTMB_multi <- function(
 #'   (`se_confidence` combined with the family noise variance) columns.
 #'   Gaussian fits only in this slice; see Details. Default `FALSE`.
 #' @param se_route EXPERIMENTAL, internal-only. One of `"quad"` (default;
-#'   R1-quad) or `"joint"` (R1-joint, the exact joint-precision variance --
-#'   see Details). Ignored unless `se = TRUE`.
+#'   R1-quad), `"joint"` (R1-joint), or `"joint_load"` (R1-joint+loadings
+#'   -- see Details). Ignored unless `se = TRUE`.
 #' @param ... Unused.
 #'
 #' @return A data frame with one row per masked response cell, with columns:
@@ -2449,7 +2547,7 @@ predict_missing <- function(
   object,
   type = c("link", "response"),
   se = FALSE,
-  se_route = c("quad", "joint"),
+  se_route = c("quad", "joint", "joint_load"),
   ...
 ) {
   if (!inherits(object, "gllvmTMB_multi")) {

@@ -8,7 +8,7 @@ predict_missing(
   object,
   type = c("link", "response"),
   se = FALSE,
-  se_route = c("quad", "joint"),
+  se_route = c("quad", "joint", "joint_load"),
   ...
 )
 }
@@ -24,8 +24,8 @@ predict_missing(
 Gaussian fits only in this slice; see Details. Default \code{FALSE}.}
 
 \item{se_route}{EXPERIMENTAL, internal-only. One of \code{"quad"} (default;
-R1-quad) or \code{"joint"} (R1-joint, the exact joint-precision variance --
-see Details). Ignored unless \code{se = TRUE}.}
+R1-quad), \code{"joint"} (R1-joint), or \code{"joint_load"} (R1-joint+loadings
+-- see Details). Ignored unless \code{se = TRUE}.}
 
 \item{...}{Unused.}
 }
@@ -60,17 +60,20 @@ errors and prediction intervals are not currently returned by default.
 register status \code{heuristic_unvalidated} -- no repeated-sampling coverage
 evidence exists for \code{se_confidence} or \code{se_prediction}, and neither is an
 interval claim of any kind. It is currently implemented for gaussian
-fits only (other families abort). Two routes exist (\code{se_route}):
-\code{"quad"} (default) omits the b_fix/latent-score cross-covariance and any
+fits only (other families abort). Three routes exist (\code{se_route}), all
+measured on the same wave-1 gaussian coverage grid
+(\code{docs/design/119-predict-missing-uncertainty.md} sec.7): \code{"quad"}
+(default) omits the b_fix/latent-score cross-covariance and any
 \code{diag_B} ("unique"/Psi) or within-unit (\code{rr_W}) random-effect
-contribution (see \code{docs/design/119-predict-missing-uncertainty.md} sec.3
-R1-quad), and Design 119 sec.7's wave-1 coverage run found this
-OVER-covers \code{se_confidence}; \code{"joint"} computes the exact joint-precision
-variance (sec.3 R1-joint) and is expected to correct that, but has not
-itself been coverage-tested yet. Do not surface \code{se_confidence} /
-\code{se_prediction} as calibrated uncertainty in any user-facing output
-until the Design 119 sec.4 coverage campaign clears a route and family
-for export.
+contribution (sec.3 R1-quad) and OVER-covers \code{se_confidence};
+\code{"joint"} computes the exact joint-precision variance for the b_fix and
+latent-score blocks (sec.3 R1-joint) but omits the loading-uncertainty
+block entirely and UNDER-covers; \code{"joint"} and \code{"quad"} BRACKET nominal
+coverage. \code{"joint_load"} (sec.7b, R1-joint+loadings) adds that third
+block and has not itself been coverage-tested yet. Do not surface
+\code{se_confidence} / \code{se_prediction} as calibrated uncertainty in any
+user-facing output until the Design 119 sec.4 coverage campaign clears
+a route and family for export.
 }
 \seealso{
 \code{\link[=gllvmTMB]{gllvmTMB()}}, \code{\link[=miss_control]{miss_control()}}, \code{\link[=predict.gllvmTMB_multi]{predict.gllvmTMB_multi()}}.

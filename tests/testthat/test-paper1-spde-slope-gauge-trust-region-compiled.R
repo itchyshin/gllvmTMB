@@ -1,5 +1,4 @@
 spde_slope_gauge_tr_compiled_env <- function() {
-  root <- isdm_dev_path()
   env <- new.env(parent = baseenv())
   for (name in c(
     "spde-slope-gauge-contract.R",
@@ -7,7 +6,10 @@ spde_slope_gauge_tr_compiled_env <- function() {
     "spde-slope-gauge-trust-region-contract.R",
     "spde-slope-gauge-trust-region-adapter.R"
   )) {
-    source(file.path(root, name), local = env)
+    ## Resolve each file through the guard rather than joining onto a directory
+    ## path: in a checked build the directory can exist (another test writes
+    ## results/ into it) while these sources do not.
+    source(isdm_dev_path(name), local = env)
   }
   env
 }

@@ -371,6 +371,7 @@ test_that("normal V2 terminal evidence is recomputed before a Paper 2 prerequisi
 })
 
 test_that("a live-root V2 terminal is the only accepted Paper 2 prerequisite", {
+  isdm_dev_path()  # skips when dev/ did not ship in the built package
   contract <- bfgs_contract_env()
   pkg <- normalizePath(testthat::test_path("..", ".."), mustWork = TRUE)
   results <- file.path(pkg, "dev", "isdm-package-recovery", "results")
@@ -551,6 +552,7 @@ if (FALSE) { # superseded V1 packet retained only as a parse-time reference
 }
 
 test_that("Paper BFGS runners execute their validation modes without a fit", {
+  isdm_dev_path()  # skips when dev/ did not ship in the built package
   skip_if_not_installed("devtools")
   rscript <- Sys.which("Rscript")
   skip_if(!nzchar(rscript), "Rscript is unavailable")

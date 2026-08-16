@@ -1,6 +1,10 @@
 test_that("G3 smallest-smoke packets remain immutable no-run proposals", {
-  root <- isdm_dev_path()
-  packet <- function(name) paste(readLines(file.path(root, name), warn = FALSE), collapse = "\n")
+  ## Resolve each packet through the guard rather than joining onto a directory
+  ## path: in a checked build the directory can exist (another test writes
+  ## results/ into it) while these packets do not.
+  packet <- function(name) {
+    paste(readLines(isdm_dev_path(name), warn = FALSE), collapse = "\n")
+  }
   p1 <- packet("2026-08-13-g3-paper1-smallest-smoke-packet.md")
   p2 <- packet("2026-08-13-g3-paper2-smallest-smoke-packet.md")
 

@@ -1,4 +1,5 @@
 test_that("G2e fixture doubles only observation supports and preserves the source gate", {
+  isdm_dev_path()  # skips when dev/ did not ship in the built package
   pkg_root <- normalizePath(file.path(testthat::test_path(), "..", ".."), mustWork = TRUE)
   env <- new.env(parent = globalenv())
   source(file.path(pkg_root, "dev", "isdm-package-recovery", "g2e-support-fixture.R"), local = env)
@@ -17,6 +18,7 @@ test_that("G2e fixture doubles only observation supports and preserves the sourc
 })
 
 test_that("G2e analytic oracle is finite without fitting", {
+  isdm_dev_path()  # skips when dev/ did not ship in the built package
   pkg_root <- normalizePath(file.path(testthat::test_path(), "..", ".."), mustWork = TRUE)
   env <- new.env(parent = globalenv())
   source(file.path(pkg_root, "dev", "isdm-package-recovery", "g2e-support-fixture.R"), local = env)
@@ -28,6 +30,7 @@ test_that("G2e analytic oracle is finite without fitting", {
 })
 
 test_that("G2e runner validates its no-fit contract", {
+  isdm_dev_path()  # skips when dev/ did not ship in the built package
   pkg_root <- normalizePath(file.path(testthat::test_path(), "..", ".."), mustWork = TRUE)
   script <- file.path(pkg_root, "dev", "isdm-package-recovery", "run-g2e-information-diagnostic.R")
   out <- tempfile("g2e-validate-")
@@ -38,6 +41,7 @@ test_that("G2e runner validates its no-fit contract", {
 })
 
 test_that("G2e dormant smoke launcher validates without entering an optimizer", {
+  isdm_dev_path()  # skips when dev/ did not ship in the built package
   pkg_root <- normalizePath(file.path(testthat::test_path(), "..", ".."), mustWork = TRUE)
   script <- file.path(pkg_root, "dev", "isdm-package-recovery", "run-g2e-information-smoke.R")
   out <- tempfile("g2e-smoke-validate-")
@@ -49,6 +53,7 @@ test_that("G2e dormant smoke launcher validates without entering an optimizer", 
 
 
 test_that("G2e preflight retains a re-readable provenance root without fitting", {
+  isdm_dev_path()  # skips when dev/ did not ship in the built package
   pkg_root <- normalizePath(file.path(testthat::test_path(), "..", ".."), mustWork = TRUE)
   script <- file.path(pkg_root, "dev", "isdm-package-recovery", "run-g2e-information-diagnostic.R")
   out <- file.path(pkg_root, "dev", "isdm-package-recovery", "results", paste0("testthat-g2e-preflight-", Sys.getpid()))

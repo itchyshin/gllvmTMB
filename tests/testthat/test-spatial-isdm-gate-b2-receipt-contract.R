@@ -5,6 +5,7 @@ project_file <- function(...) {
 }
 
 test_that("Paper 1 replacement fixture matches the independent two-field engine", {
+  isdm_dev_path()  # skips when dev/ did not ship in the built package
   e <- new.env(parent = globalenv())
   source(project_file("dev", "isdm-package-recovery", "spatial-isdm-gate-b-smoke-fixture.R"), local = e)
   fx <- e$spatial_isdm_gate_b_make_fixture()
@@ -21,6 +22,7 @@ test_that("Paper 1 replacement fixture matches the independent two-field engine"
 })
 
 test_that("receipt maps both spatial truths to their distinct fit outputs", {
+  isdm_dev_path()  # skips when dev/ did not ship in the built package
   runner <- paste(readLines(project_file("dev", "isdm-package-recovery",
     "run-spatial-isdm-gate-b-smoke.R"), warn = FALSE), collapse = "\n")
   expect_match(runner, 'truth = "shared_Sigma", output = "Sigma_spde_slope_intercept"')
@@ -31,6 +33,7 @@ test_that("receipt maps both spatial truths to their distinct fit outputs", {
 })
 
 test_that("terminal all-attempt ledger has every required field even on a fit error", {
+  isdm_dev_path()  # skips when dev/ did not ship in the built package
   e <- new.env(parent = globalenv())
   source(project_file("dev", "isdm-package-recovery", "spatial-isdm-gate-b-smoke-fixture.R"), local = e)
   ledger <- e$spatial_isdm_gate_b_new_ledger(
@@ -49,6 +52,7 @@ test_that("terminal all-attempt ledger has every required field even on a fit er
 })
 
 test_that("replacement runner finalizes before optional telemetry", {
+  isdm_dev_path()  # skips when dev/ did not ship in the built package
   runner <- paste(readLines(project_file("dev", "isdm-package-recovery",
     "run-spatial-isdm-gate-b-smoke.R"), warn = FALSE), collapse = "\n")
   ledger_write <- regexpr('saveRDS\\(ledger, file.path\\(root, "all-attempt-ledger.rds"\\)\\)', runner)

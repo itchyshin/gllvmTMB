@@ -1,4 +1,5 @@
 test_that("G2n local pre-run validates frozen inputs without fitting", {
+  isdm_dev_path()  # skips when dev/ did not ship in the built package
   pkg <- normalizePath(file.path(testthat::test_path(), "..", ".."), mustWork = TRUE)
   script <- file.path(pkg, "dev", "isdm-package-recovery", "run-g2n-local-prerun.R")
   output <- tempfile("g2n-prerun-validate-")
@@ -12,6 +13,7 @@ test_that("G2n local pre-run validates frozen inputs without fitting", {
 })
 
 test_that("G2n post-run provenance finalizer has no fit or optimizer route", {
+  isdm_dev_path()  # skips when dev/ did not ship in the built package
   pkg <- normalizePath(file.path(testthat::test_path(), "..", ".."), mustWork = TRUE)
   script <- file.path(pkg, "dev", "isdm-package-recovery",
                       "finalize-g2n-local-prerun-provenance.R")

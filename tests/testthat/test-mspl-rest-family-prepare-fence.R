@@ -138,10 +138,10 @@ test_that("LA-MSPL prepare still rejects multinomial", {
 
 test_that("rest-family fence does not add planned or admitted registry rows", {
   reg <- gllvmTMB:::.gllvmTMB_mspl_registry()
-  ## gamma/lognormal are planned on main (#1003) with no public door.
+  ## gamma/lognormal (#1003) and delta_* (#1004) are planned on main
+  ## with no public door. Live reject above still covers them.
   rest <- c(
-    "student", "ordinal_probit",
-    "delta_lognormal", "delta_gamma", "betabinomial",
+    "student", "ordinal_probit", "betabinomial",
     "truncated_poisson", "truncated_nbinom2", "multinomial"
   )
   expect_false(any(reg$family %in% rest &

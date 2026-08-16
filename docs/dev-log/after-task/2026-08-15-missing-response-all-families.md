@@ -179,8 +179,16 @@ advanced.
 - `predict_missing()` remains point-only (no SEs/intervals) — the predictor
   side (`imputed()`) ships EBLUP SEs; closing that asymmetry is a DEFERRED
   design packet, not built here.
-- Accuracy evidence is dev-script (`partial`), gaussian+poisson, n=50×p=25,
-  MCAR + two structured-MAR mechanisms; no MNAR arm, no interval claim.
+- Accuracy evidence is dev-script (`partial`); Arc0 covered gaussian+poisson
+  and Arc0b the remaining four bar families (binomial, ordinal, delta_ln,
+  multinomial; 80/80 fits, 1.2 min). **Reconstruction skill is
+  family-dependent**: multinomial clearly beats its baseline; binomial/
+  ordinal/delta sit near naive baselines (low per-cell information) — the
+  register note now fences any accuracy advertising for those families.
+  No MNAR arm, no interval claim. Two `predict_missing()` categorical
+  surface warts found and issue-filed (ordinal `type="response"` does
+  elementwise pnorm, not category probabilities; multinomial
+  `original_row` falls back to `model_row`).
 - VA masked evidence stays fenced per VA-10 wording until the register
   slice lands; multinomial-VA does not exist (Design 110).
 - The h2h full grid (6 cells × 10 seeds) awaits the G2 pre-run approval.

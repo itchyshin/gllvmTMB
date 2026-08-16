@@ -149,3 +149,177 @@ loaded via a namespace (and not attached):
 [17] vctrs_0.7.3      withr_3.0.3      compiler_4.6.0   purrr_1.2.2     
 [21] pillar_1.11.1    rlang_1.2.0     
 ```
+
+---
+
+# Arc0b: binomial, ordinal_probit, delta_lognormal, multinomial
+
+Follow-up slice, approved scope: {gaussian, poisson, binomial, ordinal, delta,
+multinomial}; Arc0 covered gaussian/poisson above. This section covers the
+remaining four.
+
+**Provenance / engine change from Arc0.** This slice uses
+`devtools::load_all(".")` in the worktree, NOT the installed package. The
+installed `gllvmTMB` 0.6.0 refuses `multinomial()` NA responses
+(`"multinomial(): missing categorical responses are not supported in this
+release."`, confirmed by direct smoke test); the lane's multinomial NA
+admission exists only in this worktree's source. The worktree's `src/`
+`.so`/`.o` were already built (mtime 13:41, no concurrent compile running,
+confirmed via `ps`), so `load_all()` was a pure R-source reload (~3s), no
+recompilation.
+
+## Design (pre-registered, written before running the Arc0b grid)
+
+Same binding protocol as Arc0: `missing = miss_control(response = "include")`;
+`predict_missing()`; failure-inclusive accounting; join by cell identity, not
+row alone; a reproducibility re-run of one seed. Grammar for each family is
+copied from the tests named below (wide `traits()` shorthand where it exists
+for that family; long explicit formula for multinomial, which has no
+multi-trait wide structure in the reference test).
+
+**Families, grammar source, and metrics.**
+
+1. **binomial** (Bernoulli, logit). Wide `traits(...) ~ 1 + latent(1 | unit,
+   d = 1, unique = FALSE)`, `family = binomial()` -- the loadings-only
+   spelling from `test-missing-response-nongaussian.R`'s long-format analogue,
+   applied through the wide shorthand validated for gaussian/poisson in Arc0.
+   `n_units = 60`, `p_traits = 8`, `q = 1`. DGP: `eta = b0 + U %*% t(Lambda)`,
+   `Lambda ~ N(0, 0.7^2)`, `b0 ~ N(0, 0.5^2)`, `p = plogis(eta)`, `y ~
+   Bernoulli(p)`. Metrics: AUC (`gllvmTMB:::.cv_auc`, Mann-Whitney closed
+   form) + Brier score (`mean((p_hat - y)^2)`), both vs a trait-prevalence-fill
+   baseline (`mean(observed y)` per trait, used as the constant score/
+   probability for that trait's masked cells).
+2. **ordinal_probit** (K = 4 ordered categories, taus fixed at DGP truth `(0,
+   0.6, 1.3)`, matching `test-tiers-ordinal.R`'s convention that `tau_1 = 0`
+   is the identification anchor). Wide `traits(...) ~ 1 + unique(1 | unit)`
+   -- the plain per-trait, per-unit diagonal random intercept, matching the
+   `unique(0 + trait | unit)` "B tier" of `test-tiers-ordinal.R` through the
+   wide shorthand (`unique(1 | unit)` validated directly by a pre-flight
+   smoke test in this session). `n_units = 60`, `p_traits = 6`. DGP:
+   `b0 ~ N(0, 0.3^2)` per trait, `u ~ N(0, 0.5^2)` per (unit, trait), `y* = b0
+   + u + N(0,1)`, cut at the fixed taus.
+   **Metric choice -- documented per the brief's instruction to inspect
+   `predict_missing()` for ordinal FIRST.** `predict_missing(fit, type =
+   "response")` for an `ordinal_probit` fit does NOT error, but it applies
+   the scalar link-inverse (`pnorm(eta)`) elementwise -- a single number that
+   is not a real category probability or expected category for a K > 2
+   response, so it is not an honest quantity here and is NOT used. Instead:
+   `predict_missing(fit, type = "link")` gives the fitted liability `eta`,
+   and `extract_cutpoints(fit)` gives the fitted free cutpoints `tau_2,
+   tau_3` per trait (the engine fixes `tau_1 = 0`, confirmed by inspecting
+   `extract_cutpoints()`'s output on a fitted model: only `cutpoint_index in
+   {2,3}` rows are returned). Category probabilities are computed by hand as
+   `P(k) = Phi(tau_k - eta) - Phi(tau_{k-1} - eta)` with `tau_0 = -Inf, tau_K
+   = +Inf`; the modal category is `argmax_k P(k)`. Metrics: Spearman rho of
+   `eta_hat` vs the true category (no baseline pairing -- a constant baseline
+   score has undefined rank correlation, so this metric is reported without a
+   baseline column) + modal-category accuracy vs the trait's modal-category
+   baseline (the most frequent OBSERVED category for that trait).
+3. **delta_lognormal** (fixed-effects only, shared-predictor hurdle). Wide
+   `traits(...) ~ 1` -- no random/latent term, matching
+   `test-delta-lognormal-recovery.R`'s `value ~ 0 + trait` fixed-effects-only
+   formula through the wide shorthand (validated by pre-flight smoke test).
+   `n_units = 100`, `p_traits = 6`. DGP: per-trait `mu_t = seq(0.3, 2.0,
+   length.out = 6)`, `p_pres = plogis(mu_t)`, presence ~ Bernoulli, positive
+   part ~ `rlnorm(meanlog = mu_t, sdlog = 0.6)` -- the exact shared-predictor
+   recipe of the recovery test. Metrics: response-scale RMSE vs a trait-mean
+   fill baseline (mean of the OBSERVED response, zeros included) + occurrence
+   AUC (zero vs nonzero), where the model's presence-probability score is
+   `plogis(eta_hat)` from `predict_missing(type = "link")` (matching the
+   recovery test's own `mean(1/(1+exp(-eta)))` presence-rate check) against a
+   trait-prevalence-fill baseline score.
+4. **multinomial** (K = 3, n = 250, fixed effects + x). Long format `value ~
+   0 + trait + (0 + trait):x`, `trait = "trait"`, `unit = "unit"`, `family =
+   multinomial()` -- copied verbatim from
+   `tests/testthat/test-multinomial-missing-response.R`'s `.make_multinomial_missing()`
+   (`b0 = c(0.5, -0.4)`, `b1 = c(1.0, -0.8)`). Masking is applied to the
+   ORIGINAL long response column before the engine's internal K-1 pseudo-row
+   expansion, so the group-uniform mask invariant (an NA categorical value
+   masks every one of its K-1 contrast rows together) holds automatically.
+   **Finding, documented per the same "inspect first" discipline.**
+   `predict_missing()`'s `original_row` column for a multinomial fit does
+   NOT map back to the user's original per-unit row: `fit$missing_data$original_row`
+   either does not exist or has the wrong length for this family's internal
+   expansion, so the extractor's length-mismatch fallback fires and
+   `original_row` silently equals `model_row` (the internal, expanded
+   pseudo-row index) instead -- confirmed by a pre-flight smoke test (masked
+   original rows 3/10/25 in a 40-row fixture returned `original_row =
+   5,6/19,20/49,50`, i.e. `2*row - 1, 2*row`, not `3,10,25`). The RELIABLE
+   cell-identity key for multinomial is instead the `unit` column (which does
+   correctly carry the user's original unit label) plus the category parsed
+   from the `trait` column suffix (`"morph:2"` -> category 2; category 1 is
+   the implicit reference and never appears as its own row). The join and
+   accounting assertions below use `unit`, not `original_row`. Per-unit
+   category probabilities are computed by hand: softmax over `(0, eta_2,
+   eta_3)` (the reference category's contrast fixed at 0). Metrics:
+   modal-category accuracy (`argmax` of the softmax) vs a marginal-frequency
+   baseline (`argmax` of the observed marginal category frequency, the same
+   constant prediction for every masked unit) + multiclass Brier score
+   (`sum_k (p_hat_k - 1{y=k})^2`, averaged over masked units) vs the same
+   marginal-frequency baseline used as a constant probability vector.
+
+**Mechanisms (2, per the approved reduced scope): `mcar20` (20% of cells,
+uniform) and `unit_clustered` (10% overall, 60% concentrated in a block of
+units, 40% scattered) -- both reusing Arc0's `make_mask()` generator
+unchanged in its default behaviour. The generator gained two new, additive,
+backward-compatible parameters (`n_cluster_units`, `n_cluster_traits`,
+defaults 10/5 identical to Arc0's hardcoded values) purely to support
+multinomial's single-trait (`p_traits = 1`) grid: `unit_clustered` there uses
+`n_cluster_units = 25` (so the cluster pool can hold the designed cluster
+count) and `min_obs_unit = 0` (the "keep >= 3 observed cells per unit" guard
+is structurally inapplicable when a unit has only 1 possible cell). Arc0's
+own call sites and reproducibility check are unaffected by this addition
+(same defaults, same call sites).
+
+**Seeds.** `seed = 1000*family_idx + 100*mech_idx + rep`, mirroring Arc0's
+scheme (`family_idx`: binomial = 1, ordinal_probit = 2, delta_lognormal = 3,
+multinomial = 4; `mech_idx`: mcar20 = 1, unit_clustered = 2; `rep` = 1..10).
+4 families x 2 mechanisms x 10 reps = 80 fits (no oracle refit in this slice
+-- the brief's per-family metric spec pairs each metric with exactly one
+baseline, unlike Arc0's gaussian/poisson which also fit a complete-data
+oracle; this is a deliberate scope reduction, not a deviation).
+
+**Failure-inclusive accounting / join asserts / reproducibility, same
+discipline as Arc0**: every fit records `converged`; `nrow(predict_missing())`
+is asserted equal to the designed mask size (or, for multinomial, to
+`n_masked_units * (K-1)`) with a hard `stopifnot`; cell identity is asserted
+by `setequal()` on the join key (`original_row + trait`, or for multinomial
+the `unit` set) before any metric is computed. One seed
+(binomial/mcar20/seed 1101) is re-run after the grid and its CSV row compared
+for exact reproducibility.
+
+**Deviation discovered live (fixed before the reported run).** The first
+Arc0b driver run errored on `delta_lognormal`/`unit_clustered` with
+`make_mask: could not satisfy guards after 200 attempts`. Cause: `delta_lognormal`
+uses `n_units = 100` (larger than binomial's/ordinal's 60) with the same
+`p_traits = 6`, so Arc0's fixed 10-unit cluster block concentrated 60% of
+that block's 60 cells under mask -- far denser than binomial's/ordinal's
+~36% -- and tripped the "each unit keeps >= 3 observed" guard. Fixed by
+widening `delta_lognormal`'s `n_cluster_units` to 20 (comparable block
+density to the other three families, ~30%). No other family needed this
+override. The reported run below is the one AFTER this fix.
+
+**Stop rules.** D-139: estimated total < 25 min (these are small,
+seconds-per-fit fixtures, matching Arc0's own experience that fits ran far
+faster than estimated); if the run exceeds ~40 min, STOP and report rather
+than continuing.
+
+## Arc0b results
+
+Fits attempted (unique): 80. Converged: 80.
+Grid wall time: 1.2 min.
+Stop rule fired: none
+Reproducibility check (seed 1101): PASS
+
+### Per-cell summary (converged fits only)
+
+| family | mechanism | n_attempt | n_converged | metric1 | mean | baseline | metric2 | mean | baseline |
+|---|---|---|---|---|---|---|---|---|---|
+| binomial | mcar20 | 10 | 10 | AUC | 0.629 (se 0.020) | 0.624 | Brier | 0.249 | 0.236 |
+| binomial | unit_clustered | 10 | 10 | AUC | 0.573 (se 0.026) | 0.531 | Brier | 0.261 | 0.256 |
+| ordinal_probit | mcar20 | 10 | 10 | Spearman_rho | 0.120 (se 0.063) | NA | modal_accuracy | 0.479 | 0.481 |
+| ordinal_probit | unit_clustered | 10 | 10 | Spearman_rho | 0.195 (se 0.062) | NA | modal_accuracy | 0.514 | 0.514 |
+| delta_lognormal | mcar20 | 10 | 10 | RMSE | 3.464 (se 0.227) | 3.434 | occurrence_AUC | 0.643 | 0.645 |
+| delta_lognormal | unit_clustered | 10 | 10 | RMSE | 3.277 (se 0.166) | 3.271 | occurrence_AUC | 0.702 | 0.680 |
+| multinomial | mcar20 | 10 | 10 | modal_accuracy | 0.612 (se 0.023) | 0.524 | multiclass_Brier | 0.500 | 0.619 |
+| multinomial | unit_clustered | 10 | 10 | modal_accuracy | 0.616 (se 0.017) | 0.504 | multiclass_Brier | 0.510 | 0.624 |

@@ -113,3 +113,25 @@ choice, not a package default, so that one extraction call works for both
 keywords. `part = "shared"` returns the loadings-only `Lambda Lambda^T`
 (equal to `part = "total"` here since both keywords are fit with
 `unique = FALSE`, i.e. no diagonal Psi companion).
+
+## Slice 2 addendum (2026-08-16) — phylo_dep / phylo_indep and animal/kernel twins
+
+Design 122 Slice 2 admits the phylo MODE axis (`phylo_dep()` full V,
+`phylo_indep()`/standalone `phylo_unique()` diagonal V) and its
+`animal_*`/`kernel_*` twins alongside Slice 1's `animal_latent()`/
+`kernel_latent()`. New scripts in this directory:
+
+- `campaign-s2-phylo-dep-indep.R` — same `--mode timing|smoke|full`
+  structure as `campaign-s1-animal-kernel-latent.R`, `n_sp = 800`, 20 seeds,
+  `phylo_dep` + `phylo_indep` cells. See `pass-criteria-s2.md` (DRAFT,
+  pending sign-off). `--mode full` has NOT been run.
+- `probe-scalar-null.R` — a NULL-DGP dev probe (not a test) evidencing the
+  `phylo_scalar()`/`animal_scalar()`/`kernel_scalar()` refusal: on `V_true =
+  0` data, `phylo_indep()` correctly recovers near-zero variance, while
+  `phylo_dep()`'s `rho_hat` rails toward ±1 (near-zero-variance correlation
+  is ill-defined) even with a PD Hessian. Writes
+  `results/probe-scalar-null.csv`.
+
+`phylo_scalar()`/`animal_scalar()`/`kernel_scalar()` remain BLOCKED (they
+stayed refused through Slice 2); see `R/multinomial-fence.R`'s
+`.mn_admission_table` for the authoritative per-cell status.

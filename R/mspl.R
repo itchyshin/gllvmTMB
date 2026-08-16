@@ -226,10 +226,10 @@
   }
 
   fam_ids <- unique(as.integer(family_id_vec))
-  if (length(fam_ids) != 1L || !fam_ids %in% c(0L, 1L, 2L, 5L, 15L)) {
+  if (length(fam_ids) != 1L || !fam_ids %in% c(0L, 1L, 2L, 5L, 6L, 7L, 15L)) {
     .gllvmTMB_mspl_abort(c(
-      "LA-MSPL supports a single gaussian, bernoulli, Poisson, nbinom1, or nbinom2 response family only.",
-      "i" = "Beta, Tweedie, and mixed-family MSPL remain deferred at the public door."
+      "LA-MSPL supports a single gaussian, bernoulli, Poisson, nbinom1, nbinom2, Tweedie, or Beta response family only.",
+      "i" = "Gamma, lognormal, and mixed-family MSPL remain deferred at the public door."
     ))
   }
   is_gaussian <- identical(fam_ids, 0L)
@@ -238,6 +238,9 @@
   is_nbinom2 <- identical(fam_ids, 5L)
   is_nbinom1 <- identical(fam_ids, 15L)
   is_nbinom <- is_nbinom1 || is_nbinom2
+  is_tweedie <- identical(fam_ids, 6L)
+  is_beta <- identical(fam_ids, 7L)
+  is_planned_glm <- is_poisson || is_nbinom || is_tweedie || is_beta
 
   if (is_bernoulli) {
     if (length(unique(link_id_vec)) != 1L || !all(link_id_vec %in% 0:2)) {
@@ -286,6 +289,30 @@
         "nbinom1/nbinom2 LA-MSPL requires finite non-negative counts."
       )
     }
+  } else if (is_tweedie) {
+    if (length(unique(link_id_vec)) != 1L || !all(link_id_vec == 0L)) {
+      .gllvmTMB_mspl_abort(c(
+        "Tweedie LA-MSPL requires the log link.",
+        "i" = "Use {.code tweedie(link = \"log\")}."
+      ))
+    }
+    if (any(!is.finite(y)) || any(y < 0)) {
+      .gllvmTMB_mspl_abort(
+        "Tweedie LA-MSPL requires finite non-negative responses."
+      )
+    }
+  } else if (is_beta) {
+    if (length(unique(link_id_vec)) != 1L || !all(link_id_vec == 0L)) {
+      .gllvmTMB_mspl_abort(c(
+        "Beta LA-MSPL requires the logit link.",
+        "i" = "Use {.code Beta(link = \"logit\")}."
+      ))
+    }
+    if (any(!is.finite(y)) || any(y <= 0) || any(y >= 1)) {
+      .gllvmTMB_mspl_abort(
+        "Beta LA-MSPL requires finite responses strictly inside (0, 1)."
+      )
+    }
   }
   if (!all(is_y_observed == 1L)) {
     .gllvmTMB_mspl_abort(c(
@@ -321,13 +348,17 @@
         "i" = "Spatial and other structures are deferred."
       ))
     }
-  } else if (is_poisson || is_nbinom) {
+  } else if (is_planned_glm) {
     if (!isTRUE(ordinary) || isTRUE(spatial_indep) || isTRUE(spatial_latent)) {
       .gllvmTMB_mspl_abort(c(
         if (is_poisson) {
           "Poisson LA-MSPL admits only ordinary {.fn latent}."
-        } else {
+        } else if (is_nbinom) {
           "nbinom1/nbinom2 LA-MSPL admits only ordinary {.fn latent}."
+        } else if (is_tweedie) {
+          "Tweedie LA-MSPL admits only ordinary {.fn latent}."
+        } else {
+          "Beta LA-MSPL admits only ordinary {.fn latent}."
         },
         "i" = "Spatial and other structures are deferred."
       ))
@@ -462,6 +493,12 @@
       expected_outer <- c(expected_outer, "log_phi_nbinom2")
     } else if (is_nbinom1) {
       expected_outer <- c(expected_outer, "log_phi_nbinom1")
+    } else if (is_tweedie) {
+      ## Free per-trait phi and power. C++ p_free still excludes them
+      ## (Jeffreys rate is unpinned c=1, same as the planned nbinom door).
+      expected_outer <- c(expected_outer, "log_phi_tweedie", "logit_p_tweedie")
+    } else if (is_beta) {
+      expected_outer <- c(expected_outer, "log_phi_beta")
     }
   } else if (spatial_indep) {
     tau_representative <- .gllvmTMB_mspl_tau_representatives(
@@ -496,6 +533,10 @@
     "nbinom2"
   } else if (is_nbinom1) {
     "nbinom1"
+  } else if (is_tweedie) {
+    "tweedie"
+  } else if (is_beta) {
+    "Beta"
   } else {
     "binomial"
   }
@@ -528,7 +569,7 @@
   ## Bernoulli: admitted only. Gaussian ordinary: planned allowed during
   ## implement smoke; flip to admitted after se=FALSE smoke (point only —
   ## SE/intervals remain PROTECTED on codex/lane-b-mspl-interval-feasibility).
-  ok_status <- if (is_gaussian || is_poisson || is_nbinom) {
+  ok_status <- if (is_gaussian || is_planned_glm) {
     registry_row$status %in% c("admitted", "planned")
   } else {
     identical(registry_row$status, "admitted")
@@ -551,7 +592,7 @@
       p_free,
       .gllvmTMB_mspl_poisson_event_count(y)
     )
-  } else if (is_nbinom) {
+  } else if (is_nbinom || is_tweedie || is_beta) {
     1
   } else {
     2 * sqrt(p_free / N_eff)
@@ -605,6 +646,20 @@
         "complete nbinom1 log; ordinary latent q=",
         d_B,
         "; GLM-outer PMF-summed exact I (not quasi W=mu/(1+phi)); ",
+        "unpinned c=1; planned tape, not admitted; Laplace"
+      )
+    } else if (is_tweedie) {
+      paste0(
+        "complete tweedie log; ordinary latent q=",
+        d_B,
+        "; GLM-outer W=mu^{2-p}/phi (rewards phi->0; not I_LA(beta)); ",
+        "unpinned c=1; planned tape, not admitted; Laplace"
+      )
+    } else if (is_beta) {
+      paste0(
+        "complete Beta logit; ordinary latent q=",
+        d_B,
+        "; GLM-outer Jeffreys I_mu (not coercive at 0/1; not I_LA(beta)); ",
         "unpinned c=1; planned tape, not admitted; Laplace"
       )
     } else {

@@ -3,7 +3,8 @@
 ## Research note:
 ##   docs/dev-log/research/2026-08-15-mspl-phase4-tweedie-prep.md
 ## Helpers stay in this file. Do not call live MSPL on Tweedie.
-## Do not edit src/. Do not add a Tweedie registry row.
+## Do not edit src/. A later planned-only public door may add Tweedie
+## registry rows; those rows must stay planned / not admitted.
 ## Do not widen .gllvmTMB_mspl_prepare().
 
 .tweedie_mu <- function(eta) {
@@ -304,17 +305,13 @@ test_that("E9: V_loading is (mu, phi, p)-inert; Tweedie P_J moves", {
   expect_gt(abs(dV_dL), 1e-8)
 })
 
-test_that("E10: Tweedie has no registry row and is not admitted", {
+test_that("E10: Tweedie registry rows stay planned and are not admitted", {
   tbl <- .gllvmTMB_mspl_registry()
-  expect_false(any(tbl$family == "tweedie"))
-  expect_null(
-    .gllvmTMB_mspl_registry_lookup("tweedie", "log", "ordinary", 1L)
-  )
-  expect_null(
-    .gllvmTMB_mspl_registry_lookup("tweedie", "log", "ordinary", 2L)
-  )
+  r1 <- .gllvmTMB_mspl_registry_lookup("tweedie", "log", "ordinary", 1L)
+  r2 <- .gllvmTMB_mspl_registry_lookup("tweedie", "log", "ordinary", 2L)
+  expect_true(!is.null(r1) && identical(r1$status, "planned"))
+  expect_true(!is.null(r2) && identical(r2$status, "planned"))
   expect_false(any(tbl$status == "admitted" & tbl$family == "tweedie"))
-  expect_false(any(tbl$status == "planned" & tbl$family == "tweedie"))
 })
 
 test_that("Phase-4-style oracles never invoke a live Tweedie MSPL fit", {

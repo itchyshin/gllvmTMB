@@ -1,6 +1,6 @@
-## Fenced planned tapes: beta and Tweedie may exist in C++ but the
-## public door still rejects estimator = "mspl". nbinom1/nbinom2 now
-## share the Poisson planned door (not admitted).
+## Fenced planned tapes: Gamma and lognormal may exist in C++ but the
+## public door still rejects estimator = "mspl". nbinom / Tweedie / Beta
+## now share the planned door (not admitted).
 ##
 ## Beta Jeffreys (Ferrari–Cribari-Neto mean-model weight) is NOT coercive
 ## at mu -> 0/1. Tweedie W = mu^{2-p} / phi REWARDS phi -> 0. These are
@@ -58,10 +58,10 @@
   )
 }
 
-test_that("public mspl still rejects beta and Tweedie", {
+test_that("public mspl still rejects Gamma and lognormal", {
   cases <- list(
-    beta = list(family = Beta(), y = rep(c(0.2, 0.5, 0.8), length.out = 24L)),
-    tweedie = list(family = tweedie(), y = rep(c(0.5, 1, 2), length.out = 24L))
+    Gamma = list(family = stats::Gamma(link = "log"), y = rep(c(0.5, 1, 2), length.out = 24L)),
+    lognormal = list(family = lognormal(), y = rep(c(0.5, 1, 2), length.out = 24L))
   )
   for (family_name in names(cases)) {
     case <- cases[[family_name]]
@@ -79,51 +79,17 @@ test_that("public mspl still rejects beta and Tweedie", {
   }
 })
 
-test_that("public mspl rejects Beta() and tweedie() at the door", {
-  dat_beta <- .mspl_fence_dat(rep(c(0.2, 0.5, 0.8), length.out = 24L))
-  expect_error(
-    gllvmTMB(
-      .mspl_fence_form,
-      data = dat_beta,
-      family = Beta(),
-      estimator = "mspl"
-    ),
-    class = "gllvmTMB_mspl_unsupported"
-  )
-  dat_tweedie <- .mspl_fence_dat(rep(c(0.5, 1, 2), length.out = 24L))
-  expect_error(
-    gllvmTMB(
-      .mspl_fence_form,
-      data = dat_tweedie,
-      family = tweedie(),
-      estimator = "mspl"
-    ),
-    class = "gllvmTMB_mspl_unsupported"
-  )
-})
-
-test_that("nbinom planned is not admitted; no planned/admitted beta or Tweedie", {
+test_that("nbinom/Tweedie/Beta planned is not admitted; Gamma stays fenced", {
   reg <- gllvmTMB:::.gllvmTMB_mspl_registry()
-  nb <- reg[reg$family %in% c("nbinom1", "nbinom2"), , drop = FALSE]
-  expect_true(nrow(nb) >= 4L)
-  expect_true(all(nb$status == "planned"))
-  expect_false(any(nb$status == "admitted"))
-  beta_names <- c("beta", "Beta")
-  tweedie_names <- c("tweedie", "Tweedie")
-  expect_false(any(reg$family %in% beta_names &
-                     reg$status %in% c("planned", "admitted")))
-  expect_false(any(reg$family %in% tweedie_names &
-                     reg$status %in% c("planned", "admitted")))
-  expect_null(gllvmTMB:::.gllvmTMB_mspl_registry_lookup(
-    "beta", "logit", "ordinary", 1L
-  ))
-  expect_null(gllvmTMB:::.gllvmTMB_mspl_registry_lookup(
-    "tweedie", "log", "ordinary", 1L
-  ))
+  planned_ok <- c("nbinom1", "nbinom2", "tweedie", "Beta")
+  nb_tb <- reg[reg$family %in% planned_ok, , drop = FALSE]
+  expect_true(nrow(nb_tb) >= 8L)
+  expect_true(all(nb_tb$status == "planned"))
+  expect_false(any(nb_tb$status == "admitted"))
   expect_true(any(reg$family == "poisson" & reg$status == "admitted"))
-  expect_false(any(reg$family %in% c("nbinom1", "nbinom2",
-                                     beta_names, tweedie_names) &
-                     reg$status == "admitted"))
+  expect_false(any(reg$family %in% c("Gamma", "lognormal") &
+                     reg$status %in% c("planned", "admitted")))
+  expect_false(any(reg$family %in% planned_ok & reg$status == "admitted"))
 })
 
 test_that("C++ GLM-outer hook names beta/Tweedie hostilities and not I_LA(beta)", {

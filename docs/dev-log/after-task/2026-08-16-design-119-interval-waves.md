@@ -117,12 +117,53 @@ delta variant.
    mapping check coming back clean (0 mismatches) that forced the
    re-derivation instead of a bug report against correct code.
 
-## 7. Known Limitations And Next Actions
+## 7. ADDENDUM (same session, later) — waves 2–4 and the close
+
+The "next" named below was executed the same night. Three further waves ran
+on the identical grid, completing a six-route ladder:
+
+| wave | route | conf 95% | verdict |
+|---|---|---|---|
+| 2 | `sim` (R2, empirical quantiles, exact family draw) | **0.941–0.946** | best measured; fails |
+| 3 | `boot` (R3, B = 200, full ML refits) | 0.926–0.933 | fails, 0/16 |
+| 4 | `boot` + `boot_dgp = "reml"` | 0.929–0.933 | fails, 0/16; narrows 16/16 |
+
+**Wave 3 produced the estimator-level diagnosis.** A full parametric
+bootstrap that refits every replicate under-covers *as much as the delta
+routes*, and `sim` — which propagates strictly less — beats it. That
+inverted ordering is the signature: refitting on data simulated from a
+too-narrow fitted model re-imports the bias `sim` merely inherits once.
+
+**Wave 4 tested that diagnosis and confirmed it partially.** Generating the
+bootstrap world from an auxiliary `REML = TRUE` fit (pivoted estimator left
+at ML) raised coverage in 16 of 16 cells, mean +0.36 points, uniform sign —
+not noise. But it recovered only ~18% of the ~2-point deficit; the residual
+stays four to eight times the ±2×MCSE band. Plug-in underdispersion is a
+real but minor part of the cause. The rest is a small-sample property of the
+fitted model at n = 50 × p = 25, q = 2.
+
+**The programme stopped there, under a rule pre-registered before the wave-4
+data existed** (Design 119 §7e, commit `c674cea2`; vault `3fefde2`):
+narrows-but-fails → document the measured coverage as the honest label and
+stop. Applied mechanically. No route is `calibrated`; `se = ` is
+`heuristic_unvalidated`; the measured numbers are published rather than
+withheld.
+
+Recording the rule before the data is the part worth keeping. It converted a
+tempting judgement call — "it improved, surely one more wave?" — into an
+arithmetic check, at a moment when the improvement was real and the
+temptation was strongest.
+
+## 8. Known Limitations And Next Actions
 
 - Gaussian only; every other family aborts loudly under `se = TRUE`.
-- `quad` remains the default route (unchanged behaviour); `joint` and
-  `joint_load` are internal, opt-in, and uncalibrated.
-- Next: R2/R3 (simulation or parametric bootstrap) as one bounded slice,
-  measured on the same 1,600-fit grid so the four routes are comparable.
-- Open PRs at close: #992 (this work), #1011 (#986 categorical fixes),
-  #1013 (#985 VA CI flake). Merged tonight: #982, #1012.
+- `quad` remains the default route; no existing user's numbers moved.
+- The residual under-coverage is NOT addressable by another variance route.
+  If anyone wants to move it, the open question is *at what n does the
+  deficit fall inside the gate* — a new grid, not a new route.
+- Merged this session: #982, #1012, #992, #1021, #1013. At close: #1029 (the
+  bootstrap routes, waves 3–4, verdict, handover) and #1011 (#986 categorical
+  fixes, merge conflict resolved against the landed `se_route` docs) merge on
+  green CI.
+- Handover:
+  `docs/dev-log/handover/2026-08-16-claude-handover-missing-data-arc-closed.md`.

@@ -28,21 +28,26 @@ test_that("Registry lists Bernoulli + Gaussian + Poisson ordinary admitted (poin
   expect_true(all(pois_adm$structure == "ordinary"))
   expect_identical(sort(pois_adm$q), c(1L, 2L))
   expect_true(all(pois_adm$evidence == "admit_packet"))
-  expect_identical(nrow(planned), 12L)
+  expect_identical(nrow(planned), 16L)
   expect_true(all(planned$family %in% c(
-    "nbinom1", "nbinom2", "gamma", "lognormal", "tweedie", "Beta"
+    "nbinom1", "nbinom2", "gamma", "lognormal", "tweedie", "Beta",
+    "delta_lognormal", "delta_gamma"
   )))
   expect_identical(sum(planned$family == "nbinom1"), 2L)
   expect_identical(sum(planned$family == "nbinom2"), 2L)
   expect_true(all(c("gamma", "lognormal") %in% planned$family))
   expect_identical(sum(planned$family == "tweedie"), 2L)
   expect_identical(sum(planned$family == "Beta"), 2L)
+  expect_identical(sum(planned$family == "delta_lognormal"), 2L)
+  expect_identical(sum(planned$family == "delta_gamma"), 2L)
   expect_true(all(planned$link %in% c("log", "logit")))
   expect_true(all(planned$structure == "ordinary"))
   expect_identical(sort(unique(planned$q)), c(1L, 2L))
   expect_true(all(planned$evidence == "phase4_prep"))
   expect_false(any(duplicated(tbl$cell_id)))
-  expect_false(any(excluded$family %in% c("poisson", "nbinom1", "nbinom2")))
+  expect_false(any(excluded$family %in% c(
+    "poisson", "nbinom1", "nbinom2", "delta_lognormal", "delta_gamma"
+  )))
   expect_false(any(planned$status == "admitted"))
   expect_false(any(admitted$family %in% c("gamma", "lognormal")))
 
@@ -97,6 +102,17 @@ test_that("Registry lists Bernoulli + Gaussian + Poisson ordinary admitted (poin
   expect_identical(be$status, "planned")
   expect_false(identical(tw$status, "admitted"))
   expect_false(identical(be$status, "admitted"))
+
+  dln <- .gllvmTMB_mspl_registry_lookup(
+    "delta_lognormal", "log", "ordinary", 1L
+  )
+  dg <- .gllvmTMB_mspl_registry_lookup(
+    "delta_gamma", "log", "ordinary", 2L
+  )
+  expect_identical(dln$status, "planned")
+  expect_identical(dg$status, "planned")
+  expect_identical(dln$evidence, "phase4_prep")
+  expect_false(identical(dln$status, "admitted"))
 })
 
 test_that("Phase 2 lookup of an admitted Bernoulli cell is unique", {

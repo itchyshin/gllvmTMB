@@ -416,6 +416,9 @@ test_that("Gaussian MSPL ordinary rows are admitted oracle_local (point only; no
   tbl <- .gllvmTMB_mspl_registry()
   planned <- tbl[tbl$status == "planned", , drop = FALSE]
   expect_false(any(planned$family == "gaussian"))
+  expect_true(all(planned$family %in% c(
+    "nbinom1", "nbinom2", "delta_lognormal", "delta_gamma"
+  )))
   g1 <- .gllvmTMB_mspl_registry_lookup("gaussian", "identity", "ordinary", 1L)
   g2 <- .gllvmTMB_mspl_registry_lookup("gaussian", "identity", "ordinary", 2L)
   expect_identical(g1$status, "admitted")

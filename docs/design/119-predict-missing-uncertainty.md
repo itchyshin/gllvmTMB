@@ -317,6 +317,24 @@ the bootstrap DGP; (b) double/calibrated bootstrap (~200x wave-3's cost);
 design's own §7c rule — no re-running the same estimator at higher
 precision — applies with full force.
 
+**Maintainer decisions (Shinichi, 2026-08-16, PRE-REGISTERED before any
+wave-4 data existed; timestamped in the vault at commit `3fefde2`):**
+
+1. Option (a) is chosen — wave-4 reruns the bootstrap on the identical
+   1,600-fit grid with a REML-corrected DGP (`boot_dgp = "reml"`): the
+   bootstrap *world* is generated from an auxiliary `REML = TRUE` fit's
+   parameters, while the pivoted estimator inside each replicate stays the
+   campaign's ML fit, so the pivot corrects exactly the plug-in
+   underdispersion diagnosed above and nothing else. This is a different
+   estimator, not the same one at higher precision, so §7c permits it.
+2. The verdict rule is fixed in advance. If wave-4 **passes** the operative
+   gate (|coverage − nominal| ≤ 2×MCSE per cell), the `boot` route with
+   `boot_dgp = "reml"` is promoted to `calibrated` for gaussian at these
+   scales. If it **narrows the deficit but fails**, the measured coverage
+   is documented as the honest label and the programme **stops** — no
+   double bootstrap, no further waves. ("Yes if it narrows but doesn't
+   close, document the measured coverage.")
+
 ## 6. Decision needed from the maintainer
 
 - Approve the estimand split (confidence-for-mean vs prediction-for-value

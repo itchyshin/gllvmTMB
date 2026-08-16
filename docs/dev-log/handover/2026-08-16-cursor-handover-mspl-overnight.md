@@ -1,9 +1,9 @@
 # Morning brief — MSPL overnight (Poisson experimental-point ADMITTED)
 
-Meta: 2026-08-16 · continuation sitting after the first overnight
-conductor exited · AUTHOR=cursor · TARGET=cursor · worktrees under
-`/tmp` and `/private/tmp` only (not Dropbox). Repo-root `LOOP/`
-was not touched. `git add -A` was not used.
+Meta: 2026-08-16 · second continuation after #1018 · AUTHOR=cursor ·
+TARGET=cursor · worktrees under `/tmp` and `/private/tmp` only
+(not Dropbox). Repo-root `LOOP/` was not touched. `git add -A`
+was not used. #1006 is now on `main`. B1 still running.
 
 You are Cursor. Reconcile with live `git` before any mutation.
 
@@ -29,10 +29,11 @@ You are Cursor. Reconcile with live `git` before any mutation.
 | Full B1 (7,920 tasks, 140 workers) | **Totoro** | **STILL ALIVE** pid `2779264` since `2026-08-16T01:53:53Z` |
 | Full B1 DRAC array | fir / `/project` | **NOT STARTED** — quota; `MaxArraySize=10000` < 26400 |
 
-Peek at `2026-08-16T03:23Z` (elapsed **1h29**, shards **2095**,
-task logs **2253**, 282 R workers, load ≈140, **0** task logs
-matching `Error|FATAL|Killed`). Newest shards were B036. No
-second launch. SE covered? **no**.
+Latest peek at `2026-08-16T10:29Z` (elapsed **8h36**, shards
+**7136** of 7,920, 283 R workers, load ≈140, **0** FATAL/Killed).
+Earlier 03:23Z peek was 1h29 / 2095. Throughput slowed on the
+hard tail (~2 shards/min) then recovered. No second launch.
+SE covered? **no**.
 
 ```sh
 ssh totoro 'ps -p 2779264 -o pid,etime || echo finished
@@ -55,6 +56,9 @@ If the job dies, record why in the D-139 receipt. Restart a full
 | [#972](https://github.com/itchyshin/gllvmTMB/pull/972) | Poisson Phase-4 E1–E7 oracles (planned) | `a923014f` |
 | [#973](https://github.com/itchyshin/gllvmTMB/pull/973) | Tweedie Phase-4 prep (planned) | `04f897ab` |
 | [#1017](https://github.com/itchyshin/gllvmTMB/pull/1017) | **Poisson ordinary q1/q2 experimental-point admit** | `32faad9d` |
+| [#1018](https://github.com/itchyshin/gllvmTMB/pull/1018) | Morning brief after Poisson admit + B1 peek | `829638bb` |
+| [#1013](https://github.com/itchyshin/gllvmTMB/pull/1013) | VA-light start-agreement tolerance (flake owner) | `3bc91953` |
+| [#1006](https://github.com/itchyshin/gllvmTMB/pull/1006) | **Gaussian-identity SE curvature pin** (internal; not public) | `a7027b9d` |
 
 Earlier sitting already on `main`: #989 #993 #994 #1002.
 No NEWS covered. No public vcov. No other-family admit.
@@ -63,9 +67,8 @@ No NEWS covered. No public vcov. No other-family admit.
 
 | PR | Role | State | Action |
 |---|---|---|---|
-| [#1006](https://github.com/itchyshin/gllvmTMB/pull/1006) | Gaussian SE pin rebase | CI **FAIL** twice on `test-va-all-family-light-fits.R` (not the pin); now **CONFLICTING** | leave; do not merge |
-| [#996](https://github.com/itchyshin/gllvmTMB/pull/996) | Gaussian SE pin (older) | CI SUCCESS on old SHA; **CONFLICTING** vs `main` | leave; prefer #1006 if it is rebased |
-| [#997](https://github.com/itchyshin/gllvmTMB/pull/997) | Poisson SE next cells | CI SUCCESS but asserts registry **`planned`** | **do not merge** after #1017; rebase first |
+| [#996](https://github.com/itchyshin/gllvmTMB/pull/996) | Gaussian SE pin (older) | superseded by #1006 on `main` | leave / close if still open |
+| [#997](https://github.com/itchyshin/gllvmTMB/pull/997) | Poisson SE next cells | asserts `admitted` / `admit_packet`; CI still hits VA-light `delta_lognormal_log` flake after #1013 | **leave**; do not merge red |
 | [#1007](https://github.com/itchyshin/gllvmTMB/pull/1007) | NB planned door | draft; stacked; no CI on `main` | leave; do not admit NB |
 | [#1014](https://github.com/itchyshin/gllvmTMB/pull/1014) | Tweedie/Beta planned door | draft; **in flight**; touches `R/mspl-registry.R` | **do not collide**; no CI yet |
 | [#974](https://github.com/itchyshin/gllvmTMB/pull/974) | nbinom2 Phase-4 prep | FAIL + CONFLICTING | leave |
@@ -86,18 +89,20 @@ Do **not** admit any other family.
 
 ## Current Working State
 
-- **Working:** Totoro full B1 pid `2779264` (still alive).
+- **Working:** Totoro full B1 pid `2779264` (still alive at
+  8h36 / 7136 shards).
 - **Landed:** Poisson experimental-point admit; Phase-4 prep
-  #972 #973 #975 #976; packet #1008.
-- **Not working / blocked:** DRAC full (quota); #1006 VA-flake
-  + conflict; #997 stale `planned` asserts; public vcov; NEWS
-  covered; Tweedie/Beta implementer still in flight.
+  #972 #973 #975 #976; packet #1008; Gaussian pin #1006;
+  VA-light tolerance #1013.
+- **Not working / blocked:** DRAC full (quota); #997 CI still
+  red on VA-light flake; public vcov; NEWS covered;
+  Tweedie/Beta implementer still in flight.
 
 ## Landing State
 
 | Artifact / branch | Committed | Pushed | PR | State |
 |---|---|---|---|---|
-| `main` @ `32faad9d` | y | y | #1017 + earlier | LANDED |
+| `main` @ `a7027b9d` | y | y | #1006 + #1017 + earlier | LANDED |
 | Totoro full B1 | n (running) | n | none | **CARRIED-OVER** pid `2779264` |
 | DRAC full | n | n | none | **CARRIED-OVER** — quota |
 | Codex Lane B | n (foreign) | y | none from Cursor | **PROTECTED** |
@@ -106,10 +111,9 @@ Do **not** admit any other family.
 ## Next Immediate Steps
 
 1. Keep peeking Totoro B1. Do not start a second full job.
-2. Rebase #997 onto `main` so it expects `admitted` /
-   `admit_packet` before merging.
-3. Leave #1006/#996 until a clean rebase survives the VA light
-   suite. Do not open public vcov.
+2. Leave #997 until Ubuntu is green on the `admitted` /
+   `admit_packet` asserts (VA-light flake is not this PR).
+3. #1006 is done. Do not open public vcov. Do not NEWS covered.
 4. Do not absorb #1014 or edit `R/mspl-registry.R` while that
    implementer is live.
 5. Leave expected-red doors open. Do not absorb Codex Lane B.
@@ -125,7 +129,7 @@ repo-root `LOOP/` · GitHub Actions as campaign host
 ```text
 Read AGENTS.md and docs/dev-log/handover/2026-08-16-cursor-handover-mspl-overnight.md.
 Reconcile with live git. Poisson ordinary q1/q2 is already admitted
-experimental point (#1017). Totoro full B1 pid 2779264 is already
-running — do not launch another. Merge only CI-green no-public-vcov
-no-NEWS-covered PRs. Do not merge #997 until it is rebased off planned.
+experimental point (#1017). Gaussian pin #1006 is on main (internal
+only). Totoro full B1 pid 2779264 is already running — do not
+launch another. Leave #997 until CI is green. Do not merge #1014.
 ```

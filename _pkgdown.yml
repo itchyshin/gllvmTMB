@@ -73,6 +73,8 @@ navbar:
       menu:
       - text: Joint species distribution model
         href: articles/joint-sdm.html
+      - text: When a rare species breaks the JSDM
+        href: articles/rare-species-jsdm.html
       - text: Joint intensity from opportunistic records
         href: articles/gbif-joint-intensity.html
       - text: Integrating records with a designed survey
@@ -144,6 +146,7 @@ articles:
       experimental.
     contents:
     - articles/joint-sdm
+    - articles/rare-species-jsdm
     - articles/gbif-joint-intensity
     - articles/integrated-two-source-example
     - articles/integrated-repeated-visits

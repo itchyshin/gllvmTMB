@@ -36,7 +36,7 @@ Per-child cold `pkgdown::build_article()` wall-times verified locally: confirmat
 files themselves live under `vignettes/articles/`; only this note remains here
 for that entry.
 
-## random-slopes-nongaussian.Rmd -- RECOVERED 2026-08-16 (parked, NOT in the build)
+## random-slopes-nongaussian.Rmd -- RECOVERED 2026-08-16, UNHIDDEN 2026-08-16 (now in `vignettes/articles/`)
 
 **Provenance.** Deleted at commit `eacbd0f6` ("docs: finalize public article
 estate for 0.5.0", 2026-07-12) as part of a 15-article pkgdown estate cut; not
@@ -65,8 +65,16 @@ validation cell (300 sites, PD Hessian, BLUP correlation above 0.8) has no
 support in the cited test file, which only asserts structural wiring and says
 in its own header that non-Gaussian recovery is "a follow-up."
 
-**Unhide gate.** Do not move this file back into `vignettes/articles/` or
-register it in `_pkgdown.yml` without a joint reader-path review with
-Shinichi, using the staging checklist above as the starting point. That
-review decides, per flagged claim: unhide as-is, unhide with the given
-rewording, or keep parked.
+**Unhide gate -- CLEARED 2026-08-16.** The joint reader-path review this
+gate required happened via
+`docs/dev-log/2026-08-16-slope-article-reader-path-staging.md`; the
+maintainer chose option 2 ("unhide with the rewordings"). The six REWORDs
+(claims 1, 2, 3, 5, 9, 11) and one CUT (claim 8, replaced with the wiring-
+evidence sentence for the Poisson `spatial_indep` structural cell) were
+applied to the article text, the four KEEPs (claims 4, 6, 7, 10) were left
+untouched, and the dead `functional-biogeography` cross-link was retargeted
+to the real `spatial-models.html` article. The file now lives at
+`vignettes/articles/random-slopes-nongaussian.Rmd`, registered in
+`_pkgdown.yml` under the Model Guides section and navbar menu. This entry
+stays here as the provenance record for that history; there is no longer a
+file at this path.

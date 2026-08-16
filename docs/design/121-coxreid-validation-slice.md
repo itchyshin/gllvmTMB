@@ -220,24 +220,19 @@ undecided pending Shinichi's approval.
 
 **PRE-RUN TEST required before any full run is approved** (D-139): 2 seeds x
 all 8 cells x all 3 primary arms = 48 fits (arm D excluded — it is a
-follow-on subset of arm B). Report, per cell x arm:
+follow-on subset of arm B).
 
-| Family | T | n | Arm | Seed | Converged | Wall time (s) | Latent-SD bias (%) | Notes |
-|---|---|---|---|---|---|---|---|---|
-| binomial | 4 | 100 | A | 1 | | | | |
-| binomial | 4 | 100 | A | 2 | | | | |
-| binomial | 4 | 100 | B | 1 | | | | |
-| binomial | 4 | 100 | B | 2 | | | | |
-| binomial | 4 | 100 | C | 1 | | | | |
-| binomial | 4 | 100 | C | 2 | | | | |
-| ... | ... | ... | ... | ... | | | | (repeat for all 8 cells) |
-
-This table must be filled in and shown to Shinichi, with an updated wall-time
-estimate for the full ~2,400-fit run derived from the measured per-fit times,
-**before** the full run is approved. If the pre-run test surfaces convergence
-failures, timing far outside the 5–15s assumption, or an obviously wrong
-direction of effect, that is itself the finding to report — not a reason to
-proceed to the full grid anyway.
+**RUN (2026-08-16): COMPLETE, 48/48.** Full table, per-arm/family bias, the
+runaway-cell writeup, and the updated wall-time estimate live in
+`dev/coxreid-prerun/RESULTS.md` (raw data:
+`dev/coxreid-prerun/prerun-results.csv`). Headline: the full run is now
+estimated at **~18.2 hours sequential-equivalent** (arms A/B measured close
+to the 5–15s assumption; arm C — AGHQ, `k=7`, ridge off — measured a 69.9s
+mean and a 345.1s worst cell, driving the whole estimate up from the
+original 3–10h assumption), and **arm C's convergence rate (9/16, 56.25%)
+is below this design's own 70% cell-level bar**. Neither of these findings
+was anticipated by §4's original assumption; both must be shown to Shinichi
+before any full-run approval, per this section's own requirement.
 
 ## 5. Relationship to Design 66
 
@@ -325,9 +320,13 @@ own decision, not through a doc edit.
 
 ## 8. UNVERIFIED flags
 
-- Per-fit wall-clock timing for this exact grid (family x T x n x arm) — not
-  found in-repo; §4's 5–15s assumption is stated as an assumption per D-139,
-  not sourced from a prior measurement.
+- ~~Per-fit wall-clock timing for this exact grid (family x T x n x arm) —
+  not found in-repo; §4's 5–15s assumption is stated as an assumption per
+  D-139, not sourced from a prior measurement.~~ **MEASURED (2026-08-16),
+  48-fit pre-run:** arms A/B match the assumption (means 5.9s / 6.1s, max
+  19.3s / 23.3s); arm C (AGHQ, `k=7`, ridge off) does not (mean 69.9s, max
+  345.1s at `ordinal_probit`, `T=8`, `n=200`). Full breakdown:
+  `dev/coxreid-prerun/RESULTS.md`.
 - Whether `k = 7` (or any specific node count) is the right AGHQ setting for
   arm C at this `q = 1`, small-`n` scale — the existing AGHQ evidence
   (`dev/aghq-evidence/`) establishes AGHQ's general behaviour but this slice's

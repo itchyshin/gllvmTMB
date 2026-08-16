@@ -282,3 +282,40 @@ The three options:
    distribution instead of one grid-wide article).
 
 This document is the input to that joint review; it does not itself decide.
+
+## Executed -- 2026-08-16
+
+Maintainer chose **option 2** ("unhide with the rewordings") on 2026-08-16.
+Applied in worktree `/private/tmp/gllvmtmb-doc-lane-20260816` (branch of PR
+#1050, uncommitted):
+
+- All six REWORDs applied verbatim to the checklist's drafted text (Claims
+  1, 2, 3, 5, 9, 11 -- Claim 9's two parts, the "full grid at a glance"
+  lead-in sentence and the new `indep`-column caveat note, both applied).
+  No register codes were reintroduced.
+- The one CUT (Claim 8, the Poisson `spatial_indep` "300 sites ... above
+  0.8" sentence) replaced with the drafted wiring-evidence sentence (150
+  sites, structural cell, no convergence/Hessian/BLUP claim).
+- The four KEEPs (Claims 4, 6, 7, 10) left untouched.
+- **Dead link resolved:** the `[functional-biogeography](functional-biogeography.html)`
+  link at ~L430 (no such article exists) was retargeted to the real
+  `[Multivariate spatial models](spatial-models.html)` article, which
+  covers exactly the claimed content (mesh construction, practical-range
+  interpretation, field-SD interpretation -- confirmed against its own
+  title/description and `## Interpret the practical range` section). The
+  other four cross-links (`api-keyword-grid`, `convergence-start-values`,
+  `profile-likelihood-ci`, `response-families`) were re-verified to
+  resolve against the current `vignettes/articles/` listing.
+- File moved with `git mv` from `dev/held-articles/random-slopes-nongaussian.Rmd`
+  to `vignettes/articles/random-slopes-nongaussian.Rmd`.
+- `_pkgdown.yml` updated append-only (no reordering): added to the
+  `articles:` "Model Guides" section (after `articles/missing-data`) and
+  to the `navbar: model_guides` menu (after "Handling missing data"),
+  matching the existing 1:1 mirroring between that section and menu.
+  Not added to the Diagnostics section, per instruction.
+- `dev/held-articles/README.md` updated: the article's entry now records
+  it was unhidden 2026-08-16 under this decision, with a note that the
+  file no longer lives at that path.
+- Render verification result recorded separately once the render
+  finishes (see the reply to this task for the outcome, time, and
+  pass/fail).

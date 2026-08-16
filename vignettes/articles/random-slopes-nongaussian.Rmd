@@ -60,7 +60,12 @@ data:
 
 1. **Non-Gaussian responses.** Counts, proportions, bounded scores, and
    ordinal categories are the rule, not the exception, in trait data. The
-   structured random-slope grid now covers them.
+   structured random-slope grid now reaches them: recovery is established
+   for the diagonal (`indep`) mode under poisson, nbinom1/nbinom2, Gamma,
+   and Beta, and for the `latent` and `dep` modes across the full family
+   list including binomial and ordinal_probit. Binomial and ordinal_probit
+   under the diagonal `indep` mode remain structural-contract-only, with
+   recovery not yet established.
 2. **Structured intercept + slope covariance.** Beyond a single shared
    slope variance, the augmented forms `phylo_dep(1 + x | species)` and
    `spatial_indep(1 + x | coords)` estimate a per-unit random *intercept*
@@ -70,23 +75,27 @@ data:
 The full grid -- every core family (`poisson`, `nbinom1`, `nbinom2`,
 `Gamma`, `Beta`, `binomial`, `ordinal_probit`) crossed with the
 phylogenetic and spatial sources, across the `indep`, `latent`, and
-`dep` correlation modes -- is now validated (gllvmTMB issues
+`dep` correlation modes -- is now largely reachable (gllvmTMB issues
 [#388](https://github.com/itchyshin/gllvmTMB/issues/388),
 [#392](https://github.com/itchyshin/gllvmTMB/issues/392),
 [#422](https://github.com/itchyshin/gllvmTMB/issues/422),
 [#424](https://github.com/itchyshin/gllvmTMB/issues/424),
 [#427](https://github.com/itchyshin/gllvmTMB/issues/427),
 [#429](https://github.com/itchyshin/gllvmTMB/issues/429); `nbinom1`
-added in [#441](https://github.com/itchyshin/gllvmTMB/issues/441)). This
-article is the worked tour of that grid.
+added in [#441](https://github.com/itchyshin/gllvmTMB/issues/441)): the
+`latent` and `dep` modes recover across the full family list, and the
+diagonal `indep` mode recovers for poisson, nbinom2, Gamma, and Beta.
+Binomial and ordinal_probit under `indep` remain structural-contract-only,
+with recovery evidence not yet established. This article is the worked
+tour of that grid, flagged where evidence stops short of recovery.
 
 The scope is deliberately single-slope:
 
 | Claim | Status |
 |---|---|
-| Structured random regression with one covariate, `1 + x` (`s = 1`) | **Covered** for the core phylogenetic, spatial, and animal-model grid |
+| Structured random regression with one covariate, `1 + x` (`s = 1`) | **Covered** for `latent`/`dep` modes across the core grid, and for `indep` mode under poisson/nbinom/Gamma/Beta; `indep`-mode binomial and ordinal_probit remain structural-only, their recovery evidence still pending |
 | Gaussian `phylo_dep(1 + x1 + x2 | species)` (`s = 2`) | **Covered** for the structured phylogenetic dependent path |
-| Non-Gaussian `phylo_dep(..., s >= 2)` | **Partial**; fail-loud guarded while diagnostics continue |
+| Non-Gaussian `phylo_dep(..., s >= 2)` | **Blocked** (reserved); the fit is refused with a clear error until the evidence sweep clears |
 | Delta, hurdle, and two-stage zero-inflated families | **Blocked / out of scope** for latent-scale slope covariance |
 | Confidence intervals on slope variances | **Not calibrated here**; this article reports point estimates and recovery bands, not coverage guarantees |
 
@@ -314,9 +323,11 @@ data.frame(
 ```
 
 The slope variance recovers under the count family. The structured-slope
-grid is validated across the other core families as well (`nbinom1`,
-`nbinom2`, `Gamma`, `Beta`, `binomial`, `ordinal_probit`) -- swap
-`family =` and keep the formula. The
+grid is validated across `nbinom1`, `nbinom2`, `Gamma`, and `Beta` under
+this same diagonal (`indep`) route; `binomial` and `ordinal_probit` are
+validated under the `latent` and `dep` modes but remain
+structural-contract-only under `indep` -- recovery there is not yet
+established. The
 [response-families](response-families.html) article is the family
 catalogue these slope terms compose with.
 
@@ -421,15 +432,15 @@ S_sp <- extract_Sigma(fit_sp_long, level = "spatial")$Sigma
 sqrt(diag(S_sp))   # intercept-field SD, slope-field SD
 ```
 
-In the validation cell (Poisson, `spatial_indep`, 300 sites), the fit
-converges with a positive-definite Hessian, the diagonal `indep` contract
-holds (the cross-field correlation is pinned to exactly 0), and both the
-intercept-field and slope-field BLUPs correlate with their simulated
-truth above 0.8. The marginal field standard deviations recover inside
-the family band via `extract_Sigma(level = "spatial")`. The
-[functional-biogeography](functional-biogeography.html) article develops
-the spatial machinery (mesh construction, range and field-SD
-interpretation) in full.
+In the structural cell (Poisson, `spatial_indep`, 150 sites), the fit
+routes to the correct per-trait engine (2T augmented columns, 3T free
+block-diagonal parameters, correctly sized `sd_spde_b`) -- this is wiring
+evidence, not recovery evidence. Convergence, Hessian positive-definiteness,
+and BLUP correlation with simulated truth are not yet measured for this
+cell (the cited test's own header records full non-Gaussian recovery as
+'a follow-up'). The [Multivariate spatial models](spatial-models.html)
+article develops the spatial machinery (mesh construction, range and
+field-SD interpretation) in full.
 
 ## Where to simulate from
 
@@ -446,10 +457,11 @@ scaffold, and the reaction-norm slope is the piece you layer on top.
 
 ## The full grid at a glance
 
-Every cell below now fits and recovers within its honest band across the
-core families. "Indep" pins the intercept-slope (or cross-field)
-correlation to zero; "latent" is the reduced-rank block; "dep" is the
-full unstructured covariance.
+Every cell below now fits; recovery within its honest band is established
+for the named validated cells, while binomial and ordinal traits under
+the diagonal mode remain structural-only. "Indep" pins the
+intercept-slope (or cross-field) correlation to zero; "latent" is the
+reduced-rank block; "dep" is the full unstructured covariance.
 
 | Source | `indep` | `latent` | `dep` |
 |---|---|---|---|
@@ -459,7 +471,9 @@ full unstructured covariance.
 Families covered for each cell: `gaussian`, `poisson`, `nbinom1`,
 `nbinom2`, `Gamma`, `Beta`, `binomial` (incl. multi-trial), and
 `ordinal_probit`. The deprecated single-variance slope keywords are not used
-in new public examples.
+in new public examples. `indep`: validated except binomial and
+ordinal_probit, which remain structural-contract-only under `indep` with
+recovery not yet established.
 
 This table covers one random-slope covariate. Gaussian
 `phylo_dep(1 + x1 + x2 | species)` has its own recovery evidence, but the

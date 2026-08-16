@@ -144,6 +144,31 @@ evidence-hedging errors. And a pre-registered design deserves adversarial
 statistical review *before* it reaches the maintainer: pre-registration
 converts a wrong probe from "fixable later" into "baked in."
 
+## 11b. Same-day follow-on (maintainer-directed, autonomous)
+
+Shinichi approved all three staged decisions in order:
+
+1. **Design 121 pre-run test RAN** (48/48 fits, 21.8 min, smoke-first,
+   ridge pinned `Inf` — `aghq_ridge = 0` is invalid in the live package, a
+   §2 correction). Findings: full-run estimate **18.2 h** (not 3–10 h),
+   driven by arm C (AGHQ k=7: 69.9 s/fit mean, 345 s max, **9/16
+   converged — below the 70% bar**); arms A/B ~6 s/fit, 100% convergence;
+   2-seed medians show Cox–Reid nudging bias *away* from zero (direction
+   only, not evidence); one reproducible degenerate binomial cell
+   (T=8, n=100, seed 2, ratio ~7.7, identical in A and B —
+   Cox–Reid-orthogonal). `dev/coxreid-prerun/RESULTS.md`; Design 121
+   §4/§8 updated to MEASURED.
+2. **Slope article unhidden with rewordings** (option 2 executed): 6
+   rewords + 1 cut applied verbatim from the checklist, dead link
+   retargeted to `spatial-models.html`, moved into `vignettes/articles/`
+   + Model Guides index/navbar (append-only), renders clean (<1 min —
+   heavy grid chunks are `eval = FALSE` by the article's chunk policy).
+3. **Design 66 scoping one-pager written**
+   (`docs/dev-log/2026-08-16-design66-scoping-onepager.md`): three
+   claimants, one seed budget, decision boxes; recommends VA-vs-Laplace
+   first, the Cox–Reid **A+B half at 100 seeds (~2.7 h Totoro)** second
+   with arm C held pending a ridge/k decision, slope cells third.
+
 ## 12. Cross-Product Coverage
 
 drmTMB's Cox–Reid measurement is cited as prior only; nothing here claims

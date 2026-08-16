@@ -1,0 +1,108 @@
+"family","T","n","arm","seed","converged","wall_time_s","norm_ratio","bias_pct","warning","error"
+"binomial",4,100,"A",1,TRUE,1.00832605361938,0.842279713421068,-15.7720286578932,"",""
+"ordinal_probit",4,100,"A",1,TRUE,8.86675405502319,0.6781336407868,-32.18663592132,"",""
+"binomial",8,100,"A",1,TRUE,1.05669808387756,1.16493007060007,16.493007060007,"",""
+"ordinal_probit",8,100,"A",1,TRUE,10.4437711238861,0.842973347029681,-15.7026652970319,"",""
+"binomial",4,200,"A",1,TRUE,0.696712970733643,0.863288981188383,-13.6711018811617,"",""
+"ordinal_probit",4,200,"A",1,TRUE,7.89356207847595,0.976695782185576,-2.33042178144243,"",""
+"binomial",8,200,"A",1,TRUE,1.49064588546753,0.885282338755474,-11.4717661244526,"",""
+"ordinal_probit",8,200,"A",1,TRUE,19.3157811164856,0.927066420558472,-7.29335794415279,"",""
+"binomial",4,100,"B",1,TRUE,0.40528392791748,0.881996911930585,-11.8003088069415,"Non-Gaussian `REML = TRUE` is EXPERIMENTAL and UNVALIDATED.
+ℹ This is the Cox-Reid adjusted profile likelihood, not an exact restricted
+  likelihood.
+ℹ Do not report it as a validated estimator.",""
+"ordinal_probit",4,100,"B",1,TRUE,4.42011189460754,0.693656373636166,-30.6343626363834,"Non-Gaussian `REML = TRUE` is EXPERIMENTAL and UNVALIDATED.
+ℹ This is the Cox-Reid adjusted profile likelihood, not an exact restricted
+  likelihood.
+ℹ Do not report it as a validated estimator.",""
+"binomial",8,100,"B",1,TRUE,0.955970048904419,1.2073981720546,20.7398172054598,"Non-Gaussian `REML = TRUE` is EXPERIMENTAL and UNVALIDATED.
+ℹ This is the Cox-Reid adjusted profile likelihood, not an exact restricted
+  likelihood.
+ℹ Do not report it as a validated estimator.",""
+"ordinal_probit",8,100,"B",1,TRUE,11.1392469406128,0.854740759287149,-14.5259240712851,"Non-Gaussian `REML = TRUE` is EXPERIMENTAL and UNVALIDATED.
+ℹ This is the Cox-Reid adjusted profile likelihood, not an exact restricted
+  likelihood.
+ℹ Do not report it as a validated estimator.",""
+"binomial",4,200,"B",1,TRUE,0.649914026260376,0.878841384644901,-12.1158615355099,"Non-Gaussian `REML = TRUE` is EXPERIMENTAL and UNVALIDATED.
+ℹ This is the Cox-Reid adjusted profile likelihood, not an exact restricted
+  likelihood.
+ℹ Do not report it as a validated estimator.",""
+"ordinal_probit",4,200,"B",1,TRUE,8.70269799232483,0.992444891725043,-0.755510827495676,"Non-Gaussian `REML = TRUE` is EXPERIMENTAL and UNVALIDATED.
+ℹ This is the Cox-Reid adjusted profile likelihood, not an exact restricted
+  likelihood.
+ℹ Do not report it as a validated estimator.",""
+"binomial",8,200,"B",1,TRUE,1.49932408332825,0.895828432103335,-10.4171567896665,"Non-Gaussian `REML = TRUE` is EXPERIMENTAL and UNVALIDATED.
+ℹ This is the Cox-Reid adjusted profile likelihood, not an exact restricted
+  likelihood.
+ℹ Do not report it as a validated estimator.",""
+"ordinal_probit",8,200,"B",1,TRUE,23.2749600410461,0.932880113063814,-6.71198869361863,"Non-Gaussian `REML = TRUE` is EXPERIMENTAL and UNVALIDATED.
+ℹ This is the Cox-Reid adjusted profile likelihood, not an exact restricted
+  likelihood.
+ℹ Do not report it as a validated estimator.",""
+"binomial",4,100,"C",1,FALSE,7.84151387214661,1.39949201075049,39.9492010750494,"",""
+"ordinal_probit",4,100,"C",1,TRUE,15.0282850265503,0.709198825469926,-29.0801174530074,"",""
+"binomial",8,100,"C",1,TRUE,4.85989499092102,1.25584907807256,25.5849078072564,"",""
+"ordinal_probit",8,100,"C",1,TRUE,42.1763010025024,0.850268713696789,-14.9731286303211,"",""
+"binomial",4,200,"C",1,TRUE,5.10455989837646,1.04242965714515,4.24296571451528,"",""
+"ordinal_probit",4,200,"C",1,FALSE,82.5979571342468,1.10151368760937,10.1513687609371,"",""
+"binomial",8,200,"C",1,TRUE,7.33184790611267,0.9210108546653,-7.89891453347005,"",""
+"ordinal_probit",8,200,"C",1,TRUE,345.136165857315,0.931911193021021,-6.80888069789788,"",""
+"binomial",4,100,"A",2,TRUE,0.331614017486572,1.28240568369468,28.2405683694677,"",""
+"ordinal_probit",4,100,"A",2,TRUE,3.99905800819397,1.45366354955938,45.3663549559376,"",""
+"binomial",8,100,"A",2,TRUE,1.17386412620544,7.68995578525347,668.995578525347,"This fit shows a runaway trait loading; treat it as unusable until checked.
+• t5 prevalence=0.54; max_loading=22.3; relative_loading=17.9;
+  saturated_fit=0.75
+ℹ trait loading has run away from the rest (an improper solution, or Heywood
+  case); quasi-complete separation produces this at ordinary prevalence
+→ treat the fit as unusable rather than interpreting it: this is quasi-complete
+  separation, which lowering the rank does not resolve; refit with a loading
+  penalty via gllvmTMBcontrol(aghq_ridge = 2), which makes the result a
+  penalised (MAP) estimate, so logLik(), AIC() and BIC() no longer apply to it
+→ Full check: `gllvmTMB_diagnose(fit)`. Silence this with
+  `gllvmTMBcontrol(warn_runaway = FALSE)`.
+This warning is displayed once per session.",""
+"ordinal_probit",8,100,"A",2,TRUE,9.30020809173584,1.25352282419441,25.3522824194415,"",""
+"binomial",4,200,"A",2,TRUE,0.612207174301147,0.930145697474365,-6.98543025256347,"",""
+"ordinal_probit",4,200,"A",2,TRUE,6.52104592323303,1.06643937019287,6.64393701928656,"",""
+"binomial",8,200,"A",2,TRUE,1.68055701255798,1.11702699862537,11.7026998625372,"",""
+"ordinal_probit",8,200,"A",2,TRUE,19.3227090835571,1.14286696438641,14.2866964386407,"",""
+"binomial",4,100,"B",2,TRUE,0.393915176391602,1.31972042876302,31.972042876302,"Non-Gaussian `REML = TRUE` is EXPERIMENTAL and UNVALIDATED.
+ℹ This is the Cox-Reid adjusted profile likelihood, not an exact restricted
+  likelihood.
+ℹ Do not report it as a validated estimator.",""
+"ordinal_probit",4,100,"B",2,TRUE,4.35372591018677,1.4777557795641,47.7755779564101,"Non-Gaussian `REML = TRUE` is EXPERIMENTAL and UNVALIDATED.
+ℹ This is the Cox-Reid adjusted profile likelihood, not an exact restricted
+  likelihood.
+ℹ Do not report it as a validated estimator.",""
+"binomial",8,100,"B",2,TRUE,1.08253788948059,7.71793311670026,671.793311670026,"Non-Gaussian `REML = TRUE` is EXPERIMENTAL and UNVALIDATED.
+ℹ This is the Cox-Reid adjusted profile likelihood, not an exact restricted
+  likelihood.
+ℹ Do not report it as a validated estimator.",""
+"ordinal_probit",8,100,"B",2,TRUE,10.2782208919525,1.26778041440468,26.7780414404681,"Non-Gaussian `REML = TRUE` is EXPERIMENTAL and UNVALIDATED.
+ℹ This is the Cox-Reid adjusted profile likelihood, not an exact restricted
+  likelihood.
+ℹ Do not report it as a validated estimator.",""
+"binomial",4,200,"B",2,TRUE,0.689973831176758,0.943897136965348,-5.61028630346518,"Non-Gaussian `REML = TRUE` is EXPERIMENTAL and UNVALIDATED.
+ℹ This is the Cox-Reid adjusted profile likelihood, not an exact restricted
+  likelihood.
+ℹ Do not report it as a validated estimator.",""
+"ordinal_probit",4,200,"B",2,TRUE,7.72456097602844,1.07366060369824,7.36606036982355,"Non-Gaussian `REML = TRUE` is EXPERIMENTAL and UNVALIDATED.
+ℹ This is the Cox-Reid adjusted profile likelihood, not an exact restricted
+  likelihood.
+ℹ Do not report it as a validated estimator.",""
+"binomial",8,200,"B",2,TRUE,1.71053600311279,1.13115750782777,13.1157507827769,"Non-Gaussian `REML = TRUE` is EXPERIMENTAL and UNVALIDATED.
+ℹ This is the Cox-Reid adjusted profile likelihood, not an exact restricted
+  likelihood.
+ℹ Do not report it as a validated estimator.",""
+"ordinal_probit",8,200,"B",2,TRUE,19.8421511650085,1.14905010187342,14.9050101873419,"Non-Gaussian `REML = TRUE` is EXPERIMENTAL and UNVALIDATED.
+ℹ This is the Cox-Reid adjusted profile likelihood, not an exact restricted
+  likelihood.
+ℹ Do not report it as a validated estimator.",""
+"binomial",4,100,"C",2,FALSE,6.19769501686096,1.3931244524242,39.3124452424204,"",""
+"ordinal_probit",4,100,"C",2,FALSE,34.5757830142975,1.50962777116836,50.962777116836,"",""
+"binomial",8,100,"C",2,TRUE,6.43787479400635,1.96648645516096,96.6486455160963,"",""
+"ordinal_probit",8,100,"C",2,FALSE,61.5711450576782,1.26490856596015,26.4908565960146,"",""
+"binomial",4,200,"C",2,FALSE,53.7763199806213,1.04750828033019,4.75082803301872,"",""
+"ordinal_probit",4,200,"C",2,TRUE,301.849473953247,1.09630386098318,9.63038609831759,"",""
+"binomial",8,200,"C",2,TRUE,18.2566418647766,1.1743937147152,17.4393714715199,"",""
+"ordinal_probit",8,200,"C",2,FALSE,125.579903125763,1.15370777915644,15.3707779156439,"",""

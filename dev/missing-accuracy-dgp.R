@@ -79,11 +79,20 @@ simulate_wide_data <- function(family = c("gaussian", "poisson"),
 #'
 #' Guards: every trait keeps >= min_obs_trait observed cells; every unit
 #' keeps >= min_obs_unit observed cells.
+#'
+#' `n_cluster_units` / `n_cluster_traits` size the clustered block for
+#' unit_clustered / trait_clustered. Defaults (10 / 5) match the fixed values
+#' Arc0 used, so existing Arc0 call sites (and its reproducibility check) are
+#' unaffected by this later addition. Arc0b's multinomial arm (p_traits = 1)
+#' overrides n_cluster_units so the cluster pool (n_cluster_units * p_traits)
+#' can hold the designed cluster count, and overrides min_obs_unit to 0 since
+#' a 1-trait grid cannot have "3 observed cells" per unit.
 make_mask <- function(mechanism = c("mcar05", "mcar20", "trait_clustered",
                                      "unit_clustered"),
                        n_units, p_traits, seed,
                        min_obs_trait = 5L, min_obs_unit = 3L,
-                       max_attempts = 200L) {
+                       max_attempts = 200L,
+                       n_cluster_units = 10L, n_cluster_traits = 5L) {
   mechanism <- match.arg(mechanism)
   total <- n_units * p_traits
   target_rate <- switch(
@@ -106,7 +115,7 @@ make_mask <- function(mechanism = c("mcar05", "mcar20", "trait_clustered",
     } else if (mechanism == "trait_clustered") {
       n_cluster <- round(0.6 * n_mask)
       n_scatter <- n_mask - n_cluster
-      cl_traits <- sample.int(p_traits, 5L)
+      cl_traits <- sample.int(p_traits, n_cluster_traits)
       cluster_pool <- which(as.vector(col(mask)) %in% cl_traits)
       cluster_cells <- sample(cluster_pool, min(n_cluster, length(cluster_pool)))
       remaining_pool <- setdiff(seq_len(total), cluster_cells)
@@ -115,7 +124,7 @@ make_mask <- function(mechanism = c("mcar05", "mcar20", "trait_clustered",
     } else { # unit_clustered
       n_cluster <- round(0.6 * n_mask)
       n_scatter <- n_mask - n_cluster
-      cl_units <- sample.int(n_units, 10L)
+      cl_units <- sample.int(n_units, n_cluster_units)
       cluster_pool <- which(as.vector(row(mask)) %in% cl_units)
       cluster_cells <- sample(cluster_pool, min(n_cluster, length(cluster_pool)))
       remaining_pool <- setdiff(seq_len(total), cluster_cells)

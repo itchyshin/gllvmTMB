@@ -50236,3 +50236,71 @@ passes the full predecessor projection; it does not mutate, relabel, or rerun
 V1.  Any successor requires a separate V2 design/root/receipt binding V1 as a
 forensic predecessor.  No numerical, ecological, recovery, or public claim is
 earned.
+
+
+---
+
+## 2026-08-16 — iSDM public door (`claude/isdm-public-door-20260816`)
+
+Lane branched off `codex/isdm-range-amplitude-orthogonal` @ `bd2b261a`.
+Preflight: `tools/lane_preflight.sh` → FOREIGN LANE ACTIVE (cursor/codex
+direct-to-main) + 7 live claude lanes; lane claimed was the iSDM gates, which
+no other lane owns. `lane_preflight.sh --file R/fit-multi.R` re-run
+immediately before editing (50 refs carry work on that file; all mspl lanes,
+all on different functions).
+
+The two-source integrated model is now admitted through the ordinary public
+`gllvmTMB()` call. No new export; `NAMESPACE` unchanged; no `src/`, likelihood,
+or 5×3 grammar change. Admission is structural via
+`.gllvmTMB_integrated_two_source_contract()`, which both the unexported
+developer route and a public caller pass through.
+
+Commands run, with exact outcomes:
+
+- `Rscript -e 'devtools::document(quiet = TRUE)'` — clean; wrote
+  `man/families.Rd`; `git diff --stat NAMESPACE` empty (no new export).
+  Two pre-existing `AIC/BIC.gllvmTMB_multi` @export notes in `aghq-report.R`
+  are untouched by this lane.
+- `devtools::test(filter = "isdm|offset|family-within-trait|augmented-slope")`
+  — **0 failures, 0 errors**; 1 skip
+  (`test-isdm-spatial-control-ladder.R:47`, heavy test, needs
+  `GLLVMTMB_HEAVY_TESTS=1`).
+- Public spatial two-source smoke (hand-built long table, no `:::`):
+  **`fit$opt$convergence == 0`**, 11.3 s, one-time experimental notice fired
+  once.
+- Public ≡ developer equivalence, asserted in `test-isdm-developer-fit.R`:
+  same `opt$objective` (tol 1e-6) and `opt$par` (tol 1e-4).
+- `rmarkdown::render()` on
+  `vignettes/articles/integrated-two-source-example.Rmd` — **OK, 12.4 s**,
+  652,687 bytes.
+- `pkgdown::check_pkgdown()` — **No problems found.**
+
+Stale-wording scans (exact patterns):
+
+- `grep -n ":::" vignettes/articles/integrated-two-source-example.Rmd` → none.
+- `grep -nE "\b(MIS|SPA|RE|FG|FAM|MIX|VA|ISDM)-[0-9]+"` over `NEWS.md`, the
+  article, `R/families.R`, `man/families.Rd` → none (no register codes on
+  reader-facing surfaces).
+- `git grep "fit_isdm\|gllvmTMB_isdm"` across all `codex/isdm-*` refs before
+  starting → no exported iSDM function anywhere; confirmed the lane was
+  unstarted.
+
+Deliberately NOT run: full `devtools::test()` and `R CMD check --as-cran`.
+The maintainer asked for the Mac to be kept light and other lanes were loaded;
+3-OS CI runs on the PR and a Totoro check before merge is the maintainer's
+call.
+
+An adversarial fresh-context review (Noether + Rose, Opus) of the first three
+commits found a real fence bypass: the structural predicate was global over the
+data frame, so an ordinary BETWEEN-trait mixed-family fit satisfied it and was
+handed the cloglog offset and the augmented spatial slope. Fixed in `56477e6a`
+— every trait must now carry both arms, failing closed on absent or misaligned
+trait labels. The same pass caught the article's mis-paired truth/estimate
+table (alphabetical factor levels), which was printing simulated truth against
+the wrong species columns.
+
+After-task: `docs/dev-log/after-task/2026-08-16-isdm-public-door.md`.
+Register: `ISDM-01` (`partial`) — a new prefix, because MIS-37 is already
+claimed on `claude/predict-missing-se-20260815`.
+Issues #945 and #946 are closable on this evidence; the PR says so rather than
+auto-closing, since merge is the maintainer's decision.

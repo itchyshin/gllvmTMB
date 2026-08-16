@@ -54,9 +54,15 @@ stopifnot(is.finite(mc_cores), mc_cores >= 1L)
 ## gate by ~1.2 points at 95%. COV119_SE_ROUTE = "sim" (Design 119 sec.3
 ## R2) reruns the identical harness with the Monte Carlo route, scored by
 ## its EMPIRICAL quantile columns rather than mean +/- z*se (see below).
-## Default preserves wave-1 exactly.
+## COV119_SE_ROUTE = "boot" (Design 119 sec.3 R3, sec.7d) reruns the
+## identical harness with the full-refit parametric bootstrap route --
+## it emits the SAME quantile column names as "sim" (see
+## predict_missing()'s se_route = "boot" documentation), so it is scored
+## by the identical branch below; the only harness change needed to add
+## it was widening that branch's gate from "sim" alone. Default preserves
+## wave-1 exactly.
 cov119_se_route <- Sys.getenv("COV119_SE_ROUTE", unset = "quad")
-stopifnot(cov119_se_route %in% c("quad", "joint", "joint_load", "sim"))
+stopifnot(cov119_se_route %in% c("quad", "joint", "joint_load", "sim", "boot"))
 
 csv_path     <- "cov119-cells.csv"
 summary_path <- "cov119-summary.csv"
@@ -173,15 +179,16 @@ run_one_rep <- function(mechanism, mech_idx, rep) {
     err_eta <- abs(pm$eta_true - pm$est)
     err_y <- abs(pm$y_true - pm$est)
 
-    if (identical(cov119_se_route, "sim")) {
+    if (cov119_se_route %in% c("sim", "boot")) {
       ## Score coverage from the EMPIRICAL quantile columns predict_missing()
-      ## adds for route = "sim" -- eta_true/y_true INSIDE [q_lo, q_hi] --
-      ## rather than mean +/- z*se. This is the point of the route: it makes
-      ## no normal-quantile assumption, so scoring it with z*se would defeat
-      ## the experiment. n_se_bad_conf/n_se_bad_pred and mean_se_conf/
-      ## mean_se_pred (below) are untouched: se_confidence/se_prediction are
-      ## still populated (the empirical sd of the draws), so that bookkeeping
-      ## stays identical across every route.
+      ## adds for route = "sim"/"boot" -- eta_true/y_true INSIDE
+      ## [q_lo, q_hi] -- rather than mean +/- z*se. This is the point of
+      ## both routes: neither makes a normal-quantile assumption, so
+      ## scoring them with z*se would defeat the experiment. n_se_bad_conf/
+      ## n_se_bad_pred and mean_se_conf/mean_se_pred (below) are untouched:
+      ## se_confidence/se_prediction are still populated (the empirical sd
+      ## of the draws), so that bookkeeping stays identical across every
+      ## route.
       stopifnot(
         "sim route requires the quantile columns (interface contract not met)" =
           all(c("q_lo_conf", "q_hi_conf", "q_lo_pred", "q_hi_pred",

@@ -51369,3 +51369,51 @@ after the VA light grid. No admit. No `R/` / `src/` edit.
 git mv tests/testthat/test-mspl-rest-family-prepare-fence.R \
   tests/testthat/test-zz-mspl-rest-family-prepare-fence.R
 ```
+
+---
+
+## 2026-08-16 · Claude → whoever takes the next arc (main lane)
+
+**The missing-data arc is CLOSED.** 14 PRs merged; `main` @ `ab75dea3`.
+Nothing is running, nothing is blocked on the maintainer, and no lane of
+mine holds an open branch.
+
+**START HERE:**
+`docs/dev-log/handover/2026-08-16-claude-handover-missing-data-arc-closed.md`
+
+Four things worth knowing before you touch anything nearby:
+
+1. **The capability shipped.** `miss_control(response = "include")` now has
+   retained per-family evidence across all 17 Laplace families and all 18
+   scalar VA cells (MIS-21 `covered`, VA-10 `partial`). Do not rebuild it.
+
+2. **`predict_missing(se = )` is `heuristic_unvalidated`, permanently at
+   these shapes — and we now know WHY.** Six variance routes on one grid all
+   failed the gate; waves 5–6 then found the cause. The deficit is governed
+   by **traits per unit, not sample size**: a 32× range in `n` moves it 0.1
+   points, a 10× range in `p` cuts it 78%. A masked cell's
+   `eta = x'b + lambda_t' u_i` leans on the unit score, reconstructed from
+   that unit's *other observed traits* — information O(p), not O(n).
+   **Collecting more units will not fix it.** Design 119 §7–§8.
+
+3. **A compound explanation had gone unchallenged for a day.** §7f said
+   "a small-sample property at n = 50 × p = 25" — two quantities, neither
+   tested. Sweeping them separately showed one mattered and one did not. If
+   you inherit a settled-sounding attribution that names several quantities,
+   that is the shape of claim worth re-testing.
+
+4. **Mission Control renders a ref, not necessarily `main`.** This project's
+   capability surface was pinned to `codex/va-gh-all-families` (dormant since
+   2026-08-07), so everything landed on `main` was invisible on the dashboard
+   for a day. Repointed to `origin/main`. If a dashboard looks stale after a
+   merge, check `projects.json`'s `canonical_ref` before blaming caching.
+   **That branch still carries two unmerged VA Arc-2 doc commits — they are
+   the VA lane's to land, and I deliberately did not.**
+
+Totoro artifacts: `~/cov119-campaign` holds waves 1–6 as ONE comparable grid
+family (six routes at fixed n/p, then n and p swept). Reuse it; do not rebuild.
+
+Next arc is **unchosen** — check
+`docs/dev-log/handover/2026-07-25-active-lane-split.md` for ownership before
+claiming anything. My recommendation is the paper's evidence chapter, which
+now carries a mechanistic negative result rather than only a failed gate.

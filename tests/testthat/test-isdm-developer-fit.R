@@ -187,7 +187,12 @@ test_that("the count branch stays Poisson/log and keeps GBIF bias gated", {
   .expect_isdm_frozen_objective_gate(fit, fixture, bias_cols)
 })
 
-test_that("the public mixed-family guard remains closed", {
+## Behaviour CHANGE, deliberate. This test previously asserted that a public
+## caller supplying the exact two-source contract was REFUSED. Opening that
+## door is the point of this lane, so the assertion is inverted here -- but the
+## guard's protective half is kept immediately below: anything that is not the
+## exact contract is still refused.
+test_that("the public mixed-family route is admitted for the exact contract", {
   fixture <- .isdm_fit_fixture("pa")
   prepared <- .isdm_developer_data(fixture$rows, fixture$X, fixture$B)
   dat <- prepared$data
@@ -198,6 +203,33 @@ test_that("the public mixed-family guard remains closed", {
   family <- list(
     gbif = stats::poisson(),
     survey_pa = stats::binomial(link = "cloglog")
+  )
+  attr(family, "family_var") <- "isdm_family"
+
+  fit <- suppressMessages(gllvmTMB(
+    .isdm_formula(prepared$x_names, prepared$b_names, d = 1L),
+    data = dat, trait = "trait", unit = "cell_id", family = family,
+    control = .isdm_test_control(), silent = TRUE
+  ))
+  expect_s3_class(fit, "gllvmTMB")
+  ## The public route carries no developer marker; it is the same fit, reached
+  ## through the documented door.
+  expect_null(fit$isdm_developer)
+})
+
+test_that("the within-trait guard stays closed for anything but that contract", {
+  fixture <- .isdm_fit_fixture("pa")
+  prepared <- .isdm_developer_data(fixture$rows, fixture$X, fixture$B)
+  dat <- prepared$data
+  dat$isdm_family <- factor(
+    ifelse(dat$source == "gbif", "gbif", "survey_pa"),
+    levels = c("gbif", "survey_pa")
+  )
+  ## logit, not cloglog: Poisson-log with binomial-logit is NOT a coherent
+  ## common scale, and no amount of converging makes it one.
+  family <- list(
+    gbif = stats::poisson(),
+    survey_pa = stats::binomial(link = "logit")
   )
   attr(family, "family_var") <- "isdm_family"
 

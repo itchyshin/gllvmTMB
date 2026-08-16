@@ -10,7 +10,7 @@
 ##
 ## Family fence (availability pin only; not admission):
 ##   binomial + logit, poisson + log, gaussian + identity,
-##   nbinom1 + log, nbinom2 + log.
+##   nbinom1 + log, nbinom2 + log, tweedie + log, Beta + logit.
 
 .gllvmTMB_mspl_pin_family_link <- function(fit) {
   fam <- fit$family
@@ -118,10 +118,12 @@
     (identical(fl$family, "poisson") && identical(fl$link, "log")) ||
     (identical(fl$family, "gaussian") && identical(fl$link, "identity")) ||
     (identical(fl$family, "nbinom1") && identical(fl$link, "log")) ||
-    (identical(fl$family, "nbinom2") && identical(fl$link, "log"))
+    (identical(fl$family, "nbinom2") && identical(fl$link, "log")) ||
+    (identical(fl$family, "tweedie") && identical(fl$link, "log")) ||
+    (identical(fl$family, "Beta") && identical(fl$link, "logit"))
   if (!isTRUE(allowed)) {
     .gllvmTMB_mspl_abort(
-      "The internal MSPL curvature pin is fenced to Bernoulli logit, Poisson log, Gaussian identity, and nbinom1/nbinom2 log.",
+      "The internal MSPL curvature pin is fenced to Bernoulli logit, Poisson log, Gaussian identity, nbinom1/nbinom2 log, Tweedie log, and Beta logit.",
       "x" = "Resolved family {.val {fl$family}}, link {.val {fl$link}}.",
       class = "gllvmTMB_mspl_curvature_family"
     )

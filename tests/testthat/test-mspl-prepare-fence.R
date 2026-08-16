@@ -4,6 +4,10 @@
 ## test-mspl-poisson-public-door.R and
 ## test-zz-mspl-nbinom-se-feasibility.R. This file keeps beta and
 ## Tweedie behind class gllvmTMB_mspl_unsupported.
+##
+## #1014 keeps Tweedie/Beta planned registry rows but does NOT open
+## the public door: Tweedie live MSPL hangs; Beta Jeffreys atom
+## returns status 1 on the 8x3 cell.
 
 test_that("LA-MSPL prepare still rejects beta and Tweedie", {
   n_site <- 8L

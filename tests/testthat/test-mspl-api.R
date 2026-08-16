@@ -385,7 +385,7 @@ test_that("unsupported MSPL surfaces stop before optimisation", {
   expect_error(
     gllvmTMB(
       y ~ 0 + trait + latent(0 + trait | site, d = 1, unique = FALSE),
-      dat, family = tweedie(), estimator = "mspl"
+      dat, family = student(df = 5), estimator = "mspl"
     ),
     class = "gllvmTMB_mspl_unsupported"
   )

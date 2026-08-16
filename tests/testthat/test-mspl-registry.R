@@ -28,12 +28,16 @@ test_that("Registry lists Bernoulli + Gaussian + Poisson ordinary admitted (poin
   expect_true(all(pois_adm$structure == "ordinary"))
   expect_identical(sort(pois_adm$q), c(1L, 2L))
   expect_true(all(pois_adm$evidence == "admit_packet"))
-  expect_identical(nrow(planned), 8L)
-  expect_true(all(planned$family %in% c("nbinom1", "nbinom2", "gamma", "lognormal")))
+  expect_identical(nrow(planned), 12L)
+  expect_true(all(planned$family %in% c(
+    "nbinom1", "nbinom2", "gamma", "lognormal", "tweedie", "Beta"
+  )))
   expect_identical(sum(planned$family == "nbinom1"), 2L)
   expect_identical(sum(planned$family == "nbinom2"), 2L)
   expect_true(all(c("gamma", "lognormal") %in% planned$family))
-  expect_true(all(planned$link == "log"))
+  expect_identical(sum(planned$family == "tweedie"), 2L)
+  expect_identical(sum(planned$family == "Beta"), 2L)
+  expect_true(all(planned$link %in% c("log", "logit")))
   expect_true(all(planned$structure == "ordinary"))
   expect_identical(sort(unique(planned$q)), c(1L, 2L))
   expect_true(all(planned$evidence == "phase4_prep"))
@@ -82,6 +86,17 @@ test_that("Registry lists Bernoulli + Gaussian + Poisson ordinary admitted (poin
   expect_identical(lnorm$status, "planned")
   expect_identical(lnorm$evidence, "phase4_prep")
   expect_false(identical(lnorm$status, "admitted"))
+
+  tw <- .gllvmTMB_mspl_registry_lookup(
+    "tweedie", "log", "ordinary", 1L
+  )
+  be <- .gllvmTMB_mspl_registry_lookup(
+    "Beta", "logit", "ordinary", 1L
+  )
+  expect_identical(tw$status, "planned")
+  expect_identical(be$status, "planned")
+  expect_false(identical(tw$status, "admitted"))
+  expect_false(identical(be$status, "admitted"))
 })
 
 test_that("Phase 2 lookup of an admitted Bernoulli cell is unique", {

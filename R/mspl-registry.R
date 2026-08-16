@@ -26,8 +26,9 @@
     }
     return("identity")
   }
-  if (fid %in% c(2L, 3L, 4L, 5L, 15L)) {
-    ## Poisson / lognormal / Gamma / nbinom2 / nbinom1: log is link_id 0.
+  if (fid %in% c(2L, 3L, 4L, 5L, 6L, 15L)) {
+    ## Poisson / lognormal / Gamma / nbinom2 / Tweedie / nbinom1:
+    ## family_to_id() stores log as link_id 0. Do not call it logit.
     return("log")
   }
   .gllvmTMB_mspl_link_name(link_id)
@@ -226,6 +227,47 @@
     planned_lnorm$q
   )
 
+  ## Tweedie log / Beta logit ordinary q=1,2: planned fenced tape. NOT admitted.
+  planned_tb <- data.frame(
+    family = rep(c("tweedie", "Beta"), each = 2L),
+    link = c("log", "log", "logit", "logit"),
+    structure = "ordinary",
+    q = c(1L, 2L, 1L, 2L),
+    status = "planned",
+    evidence = "phase4_prep",
+    notes = c(
+      paste(
+        "Phase 4 fenced planned tape: GLM-outer W=mu^{2-p}/phi,",
+        "REWARDS phi -> 0 (hostility, not a repair);",
+        "public estimator=mspl is experimental; not admitted; not covered"
+      ),
+      paste(
+        "Phase 4 fenced planned tape: GLM-outer W=mu^{2-p}/phi,",
+        "REWARDS phi -> 0 (hostility, not a repair);",
+        "public estimator=mspl is experimental; not admitted; not covered"
+      ),
+      paste(
+        "Phase 4 fenced planned tape: GLM-outer Jeffreys I_mu (Ferrari-Cribari-Neto),",
+        "NOT coercive at mu -> 0/1 (hostility, not a repair);",
+        "atom status 1 on the 8x3 cell; no public door;",
+        "public estimator=mspl is experimental; not admitted; not covered"
+      ),
+      paste(
+        "Phase 4 fenced planned tape: GLM-outer Jeffreys I_mu (Ferrari-Cribari-Neto),",
+        "NOT coercive at mu -> 0/1 (hostility, not a repair);",
+        "atom status 1 on the 8x3 cell; no public door;",
+        "public estimator=mspl is experimental; not admitted; not covered"
+      )
+    ),
+    stringsAsFactors = FALSE
+  )
+  planned_tb$cell_id <- .gllvmTMB_mspl_registry_cell_id(
+    planned_tb$family,
+    planned_tb$link,
+    planned_tb$structure,
+    planned_tb$q
+  )
+
   excluded <- data.frame(
     family = c(
       "binomial",
@@ -284,7 +326,7 @@
 
   rows <- rbind(
     admitted_binom, admitted_gauss, admitted_pois, planned_nb,
-    planned_gamma, planned_lnorm, excluded
+    planned_gamma, planned_lnorm, planned_tb, excluded
   )
   rows[order(rows$status, rows$family, rows$structure, rows$link, rows$q), ]
 }

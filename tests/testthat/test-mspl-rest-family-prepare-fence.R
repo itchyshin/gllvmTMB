@@ -1,6 +1,9 @@
 ## Live public-door fence for families that still have no MSPL door.
 ## Complements test-mspl-prepare-fence.R (beta/Tweedie after #1007)
 ## and does not open a door. Not an admission. No registry row. No src/.
+## Gamma/lognormal already have planned rows on main (#1003) but no
+## public door — live reject stays; the registry pin below does not
+## claim those names are absent.
 ##
 ## Sibling oracle PRs (#1003/#1004/#1005/#1023/#1024/#1025) are
 ## source-scan only; this file is the live gllvmTMB() reject.
@@ -135,8 +138,9 @@ test_that("LA-MSPL prepare still rejects multinomial", {
 
 test_that("rest-family fence does not add planned or admitted registry rows", {
   reg <- gllvmTMB:::.gllvmTMB_mspl_registry()
+  ## gamma/lognormal are planned on main (#1003) with no public door.
   rest <- c(
-    "gamma", "Gamma", "lognormal", "student", "ordinal_probit",
+    "student", "ordinal_probit",
     "delta_lognormal", "delta_gamma", "betabinomial",
     "truncated_poisson", "truncated_nbinom2", "multinomial"
   )

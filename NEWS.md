@@ -28,6 +28,14 @@ is still the default.
   *Integrating opportunistic records with a designed survey* to keep the two
   subjects distinct.
 
+* **A sixth SDM article: rare species and separation.** *When a rare
+  species breaks the JSDM* (`vignettes/articles/rare-species-jsdm.Rmd`) is
+  the species-facing door to the separation workflow: a heat specialist
+  recorded only at the warmest sites, the `screen_gllvmTMB()` certificate,
+  what ordinary ML does at that boundary, the finite opt-in experimental
+  MSPL point with its fences, and a live demonstration that the loading
+  ridge does not repair separation.
+
 * **A four-lens editorial audit of the SDM collection.** Every article under
   the Species Distribution Models menu was audited for readability, claim
   discipline, statistical correctness, and figure integrity. Fixes include:

@@ -405,6 +405,12 @@ extract_correlations <- function(
   ## per-session warning about the default change.
   link_residual_missing <- missing(link_residual)
   method <- match.arg(method)
+  if (!identical(method, "none") && .gllvmTMB_is_mspl(fit)) {
+    .gllvmTMB_mspl_assert_inference(
+      fit,
+      sprintf("extract_correlations(method = %s)", shQuote(method))
+    )
+  }
   if (identical(method, "profile")) {
     cli::cli_abort(c(
       "Nonlinear profile intervals for correlations are not currently available.",
@@ -440,6 +446,10 @@ extract_correlations <- function(
     cli::cli_abort("Provide a fit returned by {.fun gllvmTMB}.")
   }
   if (!identical(method, "none")) {
+    .gllvmTMB_mspl_assert_inference(
+      fit,
+      sprintf("extract_correlations(method = %s)", shQuote(method))
+    )
     .gllvmTMB_require_unweighted_inference(
       fit,
       paste0("extract_correlations(method = '", method, "')")
@@ -877,6 +887,10 @@ extract_cross_correlations <- function(fit, level = "unit", contrasts = FALSE,
                                        conf = 0.95, nsim = 500L, seed = NULL) {
   method <- match.arg(method)
   if (!identical(method, "point")) {
+    .gllvmTMB_mspl_assert_inference(
+      fit,
+      sprintf("extract_cross_correlations(method = %s)", shQuote(method))
+    )
     .gllvmTMB_require_unweighted_inference(
       fit,
       paste0("extract_cross_correlations(method = '", method, "')")

@@ -541,10 +541,13 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                                impute = NULL,
                                missing = miss_control(),
                                is_y_observed = NULL,
-                               missing_meta = NULL) {
+                               missing_meta = NULL,
+                               estimator = "ml",
+                               engine = "tmb") {
   if (!is.logical(REML) || length(REML) != 1L || is.na(REML)) {
     cli::cli_abort("{.arg REML} must be a single {.code TRUE} or {.code FALSE} value.")
   }
+  estimator <- match.arg(estimator, c("ml", "mspl"))
 
   ## Family arg can be:
   ##   * a single family object (as before): same family for all rows.
@@ -5421,6 +5424,83 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## response phylo field -- design 69 sec.5). Independent-only in Phase 3.
   if (use_mi_phylo) random <- c(random, "g_x")
 
+  ## ---- Lane B LA-MSPL resolved estimator surface -----------------------
+  ## The template reads these DATA slots for every fit, but estimator_id = 0
+  ## is a hard no-op and must bypass both penalties.  Resolve the MSPL design
+  ## only after every parameter map and Bernoulli auto-Psi decision is final.
+  ## Arc 1A: the TMB integer is *derived* from the R resolver. Do not assign
+  ## 0/1/2 except through `.gllvmTMB_estimator_id_for_tape()`.
+  mspl_info <- NULL
+  estimator_prov <- .gllvmTMB_resolve_estimator_provenance(
+    estimator = estimator,
+    reml = REML,
+    integration = "laplace",
+    tape_role = "primary"
+  )
+  ## These DATA slots are part of the compiled estimator contract for every
+  ## fit. ML never inspects their values; inert stubs preserve the historical
+  ## objective while keeping one stable TMB signature.
+  tmb_data$spde_r0 <- 1
+  tmb_data$mspl_tau_representative <- as.integer(-1L)
+  tmb_data$mspl_S_diag <- 0
+  tmb_data$mspl_N_units <- 0L
+  if (identical(estimator, "mspl")) {
+    mspl_info <- .gllvmTMB_mspl_prepare(
+      X_fix = X_fix,
+      b_map = tmb_map$b_fix,
+      y = y,
+      n_trials = n_trials,
+      is_y_observed = is_y_observed,
+      family_id_vec = family_id_vec,
+      link_id_vec = link_id_vec,
+      offset_vec = offset_vec,
+      random = random,
+      use_rr_B = use_rr_B,
+      use_lv_B = use_lv_B,
+      use_rr_B_slope = use_rr_B_slope,
+      use_diag_B = use_diag_B,
+      diag_B_all_skipped = diag_B_all_skipped,
+      d_B = d_B,
+      theta_rr_B = tmb_params$theta_rr_B,
+      theta_diag_B = tmb_params$theta_diag_B,
+      lambda_constraint = lambda_constraint,
+      use_spde = use_spde,
+      is_spatial_indep = is_spatial_indep,
+      is_spatial_scalar = is_spatial_scalar,
+      is_spatial_latent = is_spatial_latent,
+      is_spatial_dep = is_spatial_dep,
+      use_spde_latent_diag = use_spde_latent_diag,
+      use_spde_slope = use_spde_slope,
+      use_spde_latent_slope = use_spde_latent_slope,
+      d_spde_lv = d_spde_lv,
+      theta_rr_spde_lv = tmb_params$theta_rr_spde_lv,
+      log_tau_spde = tmb_params$log_tau_spde,
+      log_tau_spde_map = tmb_map$log_tau_spde,
+      mesh = mesh,
+      use_mi_predictor = use_mi_predictor,
+      integration = control$integration %||% "laplace",
+      engine = engine,
+      REML = REML,
+      ridge_explicit = control$aghq_ridge_explicit,
+      unit_id = site_id,
+      trait_id = trait_id,
+      sigma_eps_mapped = !is.null(tmb_map$log_sigma_eps)
+    )
+    tmb_data$estimator_id <- .gllvmTMB_estimator_id_for_tape(estimator_prov)
+    tmb_data$X_mspl <- mspl_info$X_mspl
+    tmb_data$N_eff <- as.integer(mspl_info$N_eff)
+    tmb_data$p_free <- mspl_info$p_free
+    tmb_data$spde_r0 <- mspl_info$spde_r0
+    tmb_data$mspl_tau_representative <- mspl_info$tau_representative
+    tmb_data$mspl_S_diag <- mspl_info$mspl_S_diag
+    tmb_data$mspl_N_units <- as.integer(mspl_info$mspl_N_units)
+  } else {
+    tmb_data$estimator_id <- .gllvmTMB_estimator_id_for_tape(estimator_prov)
+    tmb_data$X_mspl <- matrix(0, nrow = 1L, ncol = 1L)
+    tmb_data$N_eff <- 0L
+    tmb_data$p_free <- 0L
+  }
+
   ## Design 48 §2 Mitigation A (single-trait warmup). Opt-in via
   ## `control$init_strategy = "single_trait_warmup"`. Fits an
   ## intercept-only univariate GLM per trait (with that trait's
@@ -5447,6 +5527,17 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     DLL        = "gllvmTMB",
     silent     = silent
   )
+  if (identical(estimator, "mspl")) {
+    outer_blocks <- unique(names(obj$par))
+    expected_outer <- mspl_info$expected_outer
+    if (!setequal(outer_blocks, expected_outer)) {
+      .gllvmTMB_mspl_abort(c(
+        "Internal LA-MSPL resolved-parameter mismatch.",
+        "x" = "Expected free outer blocks {.val {expected_outer}}; found {.val {outer_blocks}}.",
+        "i" = "The fit was stopped before optimisation rather than softly penalising an unsupported parameter block."
+      ), class = "gllvmTMB_mspl_internal_surface")
+    }
+  }
 
   ## Optimiser dispatch: nlminb (default) or optim with user-supplied
   ## method (per Maeve McGillycuddy's email — optim/BFGS is often more
@@ -5495,7 +5586,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   run_one <- function(par_init, .obj = obj, .iter_cap = NULL, .ridge_tau = NULL) {
     obj <- .obj
     if (!is.null(.ridge_tau) && is.finite(.ridge_tau) && .ridge_tau > 0) {
-      lam_idx <- which(names(obj$par) == "theta_rr_B")
+      lam_idx <- which(names(obj$par) %in%
+                         c("theta_rr_B", "theta_rr_spde_lv"))
       if (length(lam_idx)) {
         inv_t2 <- 1 / (.ridge_tau^2)
         base_fn <- obj$fn; base_gr <- obj$gr
@@ -5535,7 +5627,57 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         opt_args = nlminb_args[keep],
         iter_cap = .iter_cap
       )
-      .gllvmTMB_run_nlminb(nlminb_args)
+      raw <- .gllvmTMB_run_nlminb(nlminb_args)
+      raw$optimizer_used <- raw$optimizer_used %||% "nlminb"
+
+      ## MSPL is released as a finite point estimator, so a finite nlminb stop
+      ## with a material scaled score is not enough.  Difficult spatial
+      ## Bernoulli cells can stop on nlminb's iteration/false-convergence code
+      ## while BFGS, from the same restart, reaches the stationary basin.  This
+      ## rescue is MSPL-only: the estimator = "ml" route and its historical
+      ## optimizer behavior remain byte-for-byte unchanged.
+      if (identical(estimator, "mspl")) {
+        scaled_score <- function(ans) {
+          if (is.null(ans$par) || !length(ans$par) ||
+              !is.finite(ans$objective %||% NA_real_)) return(Inf)
+          gradient <- tryCatch(obj$gr(ans$par),
+                               error = function(e) rep(NA_real_, length(ans$par)))
+          if (length(gradient) != length(ans$par) || any(!is.finite(gradient))) {
+            return(Inf)
+          }
+          max(abs(gradient) * pmax(1, abs(ans$par))) /
+            max(1, abs(ans$objective))
+        }
+        raw_score <- scaled_score(raw)
+        if (!is.finite(raw_score) || raw_score > 1e-4) {
+          bfgs <- tryCatch(
+            stats::optim(
+              par = par_init, fn = obj$fn, gr = obj$gr, method = "BFGS",
+              control = list(maxit = 5000L, reltol = 1e-10)
+            ),
+            error = function(e) NULL
+          )
+          if (!is.null(bfgs)) {
+            rescue <- list(
+              par = bfgs$par, objective = bfgs$value,
+              convergence = bfgs$convergence,
+              message = paste("MSPL BFGS rescue:", bfgs$message %||% "completed"),
+              iterations = unname(bfgs$counts[["function"]] %||% NA_integer_),
+              evaluations = unname(bfgs$counts[["gradient"]] %||% NA_integer_),
+              optimizer_used = "optim(BFGS rescue)"
+            )
+            rescue_score <- scaled_score(rescue)
+            raw_stationary <- is.finite(raw_score) && raw_score <= 1e-4
+            rescue_stationary <- is.finite(rescue_score) && rescue_score <= 1e-4
+            choose_rescue <- (rescue_stationary && !raw_stationary) ||
+              (identical(rescue_stationary, raw_stationary) &&
+                 is.finite(rescue$objective) &&
+                 (!is.finite(raw$objective) || rescue$objective < raw$objective))
+            if (choose_rescue) raw <- rescue
+          }
+        }
+      }
+      raw
     }
   }
 
@@ -5620,7 +5762,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       restart = i,
       start_label = if (i == 1L) "initial" else "jitter",
       start_method = start_provenance$start_method,
-      optimizer = control$optimizer,
+      optimizer = opt_i$optimizer_used %||% control$optimizer,
       jitter_sd = if (i == 1L) 0 else control$init_jitter,
       objective = objective_i,
       convergence = opt_i$convergence %||% NA_integer_,
@@ -6407,12 +6549,117 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ##
   ## See docs/dev-log/audits/2026-05-15-external-audit-response.md
   ## for the bug history.
-  invisible(obj$fn(opt$par))
+  selected_objective <- as.numeric(obj$fn(opt$par))
+  if (identical(estimator, "mspl")) {
+    ## `nlminb()` may retain the last objective value returned before TMB's
+    ## inner random-mode solve is refreshed.  Store the value evaluated at the
+    ## selected outer point so the returned objective and the independent
+    ## penalty-off closure check refer to the same point and fresh inner mode.
+    opt$objective <- selected_objective
+  }
   obj$env$last.par.best <- obj$env$last.par
 
   rep <- obj$report()
+  if (identical(estimator, "mspl")) {
+    atom_status <- as.integer(rep$mspl_atom_status %||% NA_integer_)
+    family_mode <- as.integer(rep$mspl_family_mode_rep %||% NA_integer_)
+    if (identical(family_mode, 2L)) {
+      ## Gaussian Hirose route: atom_status 0 means Hirose evaluated.
+      if (length(atom_status) != 1L || is.na(atom_status) || atom_status != 0L) {
+        .gllvmTMB_mspl_abort(c(
+          "The Gaussian Hirose atom did not return a valid result.",
+          "x" = "Atomic status code: {atom_status}."
+        ), class = "gllvmTMB_mspl_atom_failure")
+      }
+    } else if (length(atom_status) != 1L || is.na(atom_status) || atom_status != 0L) {
+      .gllvmTMB_mspl_abort(c(
+        "The guarded Jeffreys information atom did not return a valid result.",
+        "x" = "Atomic status code: {atom_status}.",
+        "i" = "The fit is stopped rather than returning a silently approximated or rank-altered objective."
+      ), class = "gllvmTMB_mspl_atom_failure")
+    }
+    tail_contact <- as.integer(
+      rep$mspl_cloglog_tail_extension_count %||% 0L
+    )
+    if (tail_contact > 0L) {
+      .gllvmTMB_mspl_abort(c(
+        "The complementary-log-log numerical tail extension was active at the selected estimate.",
+        "x" = "{tail_contact} final likelihood/information row evaluation{?s} used the extension.",
+        "i" = "This point lies outside the validated exact-kernel corridor and is retained as a failed attempt, not returned as a supported fit."
+      ), class = "gllvmTMB_mspl_cloglog_tail_contact")
+    }
+  }
+  mspl_unpenalized_obj <- NULL
+  mspl_unpenalized_nll <- NULL
+  if (identical(estimator, "mspl")) {
+    ## The primary tape optimises the softly penalised Laplace objective. A
+    ## second, penalty-off tape evaluates its unpenalised stable-kernel
+    ## Laplace objective at exactly that point. This value is descriptive
+    ## provenance, not a maximised ML log-likelihood and therefore cannot
+    ## license AIC/LRT.
+    tmb_data_unpenalized <- tmb_data
+    ## Keep the stable MSPL likelihood kernels (especially cloglog) while
+    ## removing only the soft penalties.  `estimator_id = 0` is public ML and
+    ## intentionally retains its historical probability-clamp path.
+    ## Arc 1A: id 2 is adapter output `penalty_eval = provenance_off`.
+    tmb_data_unpenalized$estimator_id <- .gllvmTMB_estimator_id_for_tape(
+      .gllvmTMB_resolve_estimator_provenance(
+        estimator = estimator,
+        reml = REML,
+        integration = "laplace",
+        tape_role = "penalty_off_provenance"
+      )
+    )
+    mspl_unpenalized_obj <- TMB::MakeADFun(
+      data = tmb_data_unpenalized,
+      parameters = tmb_params,
+      map = tmb_map,
+      random = random,
+      DLL = "gllvmTMB",
+      silent = silent
+    )
+    ## The two tapes have the same random-effect surface: every MSPL penalty is
+    ## fixed-parameter-only.  Start the penalty-off solve from the selected
+    ## primary conditional mode so its Laplace evaluation is a same-mode
+    ## provenance check, rather than a comparison of two independently chosen
+    ## numerical modes on a flat separated surface.
+    mspl_unpenalized_obj$env$last.par.best <- obj$env$last.par
+    mspl_unpenalized_obj$env$last.par <- obj$env$last.par
+    mspl_unpenalized_nll <- as.numeric(mspl_unpenalized_obj$fn(opt$par))
+    if (length(mspl_unpenalized_nll) != 1L ||
+        !is.finite(mspl_unpenalized_nll)) {
+      .gllvmTMB_mspl_abort(c(
+        "The penalty-off Laplace tape was non-finite at the LA-MSPL estimate.",
+        "i" = "The fit is not returned because its unpenalised objective provenance could not be verified."
+      ), class = "gllvmTMB_mspl_unpenalized_nonfinite")
+    }
+    reported_penalty <- sum(c(
+      rep$mspl_jeffreys_nll %||% 0,
+      rep$mspl_loading_nll %||% 0,
+      rep$mspl_covariance_nll %||% 0,
+      rep$mspl_hirose_nll %||% 0,
+      rep$mspl_private_ridge_nll %||% 0
+    ))
+    decomposition_residual <- as.numeric(opt$objective) -
+      (mspl_unpenalized_nll + reported_penalty)
+    decomposition_tol <- 1e-7 * (1 + abs(as.numeric(opt$objective)))
+    if (!is.finite(decomposition_residual) ||
+        abs(decomposition_residual) > decomposition_tol) {
+      .gllvmTMB_mspl_abort(c(
+        "The LA-MSPL objective failed its penalty-off decomposition check.",
+        "x" = "Residual {format(decomposition_residual, digits = 6)} exceeds tolerance {format(decomposition_tol, digits = 6)}.",
+        "i" = "The fit is stopped because its reported likelihood and penalty provenance are inconsistent."
+      ), class = "gllvmTMB_mspl_decomposition_failure")
+    }
+  }
   sdreport_error <- NULL
-  sd_rep <- if (isFALSE(control$se)) {
+  sd_rep <- if (identical(estimator, "mspl")) {
+    sdreport_error <- paste(
+      "LA-MSPL is an experimental point estimator;",
+      "standard errors are withheld until repeated-sampling calibration"
+    )
+    NULL
+  } else if (isFALSE(control$se)) {
     sdreport_error <- "standard-error calculation skipped by gllvmTMBcontrol(se = FALSE)"
     NULL
   } else {
@@ -6450,10 +6697,85 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       tmb_params   = tmb_params,
       tmb_map      = tmb_map,
       REML         = REML,
-      estimator    = if (isTRUE(REML)) "REML" else "ML",
+      estimator    = if (identical(estimator, "mspl")) {
+        "MSPL"
+      } else if (isTRUE(REML)) {
+        "REML"
+      } else {
+        "ML"
+      },
+      estimator_provenance = .gllvmTMB_resolve_estimator_provenance(
+        estimator = estimator,
+        reml = REML,
+        integration = if (isTRUE(aghq_info$used)) "aghq" else "laplace",
+        tape_role = "primary"
+      ),
       opt          = opt,
       sd_report    = sd_rep,
       report       = rep,
+      mspl         = if (identical(estimator, "mspl")) {
+        list(
+          experimental = TRUE,
+          objective = "softly penalised Laplace likelihood",
+          penalized_nll = as.numeric(opt$objective),
+          unpenalized_nll_at_estimate = mspl_unpenalized_nll,
+          unpenalized_loglik_at_estimate = -mspl_unpenalized_nll,
+          total_penalty_nll = as.numeric(opt$objective) - mspl_unpenalized_nll,
+          decomposition_residual = decomposition_residual,
+          c_n = as.numeric(rep$mspl_c_n %||% mspl_info$rate),
+          p_beta = mspl_info$p_beta,
+          p_loading = mspl_info$p_loading,
+          p_covariance = mspl_info$p_covariance,
+          p_psi = mspl_info$p_psi %||% 0L,
+          p_free = mspl_info$p_free,
+          N_eff = mspl_info$N_eff,
+          N_units = mspl_info$mspl_N_units %||% NA_integer_,
+          S_diag = mspl_info$mspl_S_diag,
+          family = mspl_info$family %||% "binomial",
+          X_rank = mspl_info$fixed_design$rank,
+          X_rank_tolerance = mspl_info$fixed_design$rank_tolerance,
+          link_id = unique(link_id_vec),
+          scope = mspl_info$scope,
+          registry_cell = mspl_info$registry_cell,
+          registry_status = mspl_info$registry_status,
+          registry_evidence = mspl_info$registry_evidence,
+          structure = mspl_info$structure,
+          spde_r0 = mspl_info$spde_r0,
+          tau_representative = mspl_info$tau_representative,
+          penalty = list(
+            jeffreys_nll = as.numeric(rep$mspl_jeffreys_nll %||% NA_real_),
+            loading_nll = as.numeric(rep$mspl_loading_nll %||% NA_real_),
+            covariance_nll = as.numeric(rep$mspl_covariance_nll %||% 0),
+            hirose_nll = as.numeric(rep$mspl_hirose_nll %||% 0),
+            private_ridge_nll = as.numeric(rep$mspl_private_ridge_nll %||% 0),
+            information_logdet = as.numeric(rep$mspl_logdet_information %||% NA_real_),
+            loading_V = as.numeric(rep$mspl_V_loading %||% NA_real_),
+            covariance_V = as.numeric(rep$mspl_V_covariance %||% NA_real_),
+            hirose_V = as.numeric(rep$mspl_V_hirose %||% NA_real_),
+            log_range_ratio = as.numeric(rep$mspl_log_range_ratio %||% 0),
+            log_sigma_spde_reference = as.numeric(
+              rep$mspl_log_sigma_spde_reference %||% numeric(0)
+            ),
+            Lambda_spde_reference = rep$mspl_Lambda_spde_reference %||% NULL
+          ),
+          atom_status = as.integer(rep$mspl_atom_status %||% NA_integer_),
+          status = as.integer(rep$mspl_status %||% NA_integer_),
+          family_mode = as.integer(rep$mspl_family_mode_rep %||% NA_integer_),
+          cloglog_tail_extension = list(
+            total = as.integer(rep$mspl_cloglog_tail_extension_count %||% 0L),
+            likelihood = as.integer(rep$mspl_cloglog_likelihood_tail_extension_count %||% 0L),
+            information = as.integer(rep$mspl_cloglog_weight_tail_extension_count %||% 0L)
+          ),
+          inference = list(
+            available = FALSE,
+            calibrated = FALSE,
+            reason = sdreport_error
+          ),
+          unpenalized_tmb_obj = mspl_unpenalized_obj
+        )
+      } else {
+        NULL
+      },
       formula      = parsed$fixed,
       covstructs   = parsed$covstructs,
       family       = family,
@@ -6653,7 +6975,11 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       package_version = utils::packageVersion("gllvmTMB"),
       stage        = 2L
     ),
-    class = c("gllvmTMB_multi", "gllvmTMB")
+    class = if (identical(estimator, "mspl")) {
+      c("gllvmTMB_mspl", "gllvmTMB_multi", "gllvmTMB")
+    } else {
+      c("gllvmTMB_multi", "gllvmTMB")
+    }
   )
 
   ## One fail-closed PORT restart for the narrow native-Laplace case where

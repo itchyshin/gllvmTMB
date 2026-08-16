@@ -199,6 +199,388 @@ rg -n "gllvmTMB\\(" R vignettes README.md NEWS.md docs/design
 **Deliberately not run:** any fit, optimizer call, profile, simulator,
 campaign, Totoro/FIR/DRAC action, `R CMD check`, pkgdown render, or public-doc
 check.  The decision remains `NO_REPAIR`; G2k stays held.
+## 2026-08-16 — hotfix: nbinom2 Phase-4 oracles after #1007 door (Cursor)
+
+Main R-CMD-check `31946637369` on `f3bd4e6a` (#1007) failed
+`FAIL 7` in `test-mspl-nbinom2-phase4-oracles.R` (lines 348–362).
+#1007 opened planned nbinom1/nbinom2 ordinary q=1,2 rows and updated
+the nbinom1 oracle, but left the nbinom2 oracle asserting
+`excluded` / lookup NULL / `any(planned$family == "nbinom2")` FALSE.
+#1013 is already an ancestor; this is not the VA flake.
+
+```sh
+export OMP_NUM_THREADS=1 NOT_CRAN=true
+# targeted (this sitting):
+#   test-mspl-nbinom2-phase4-oracles.R
+#   test-mspl-nbinom1-phase4-oracles.R
+#   test-mspl-registry.R
+#   FAIL 0 | WARN 0 | SKIP 0 | PASS 185
+```
+
+Not run: full `devtools::test()`, `R CMD check`, pkgdown, Totoro.
+
+## 2026-08-16 — planned-only nbinom door replayed onto main (Cursor)
+
+Lane `cursor/mspl-se-nb-impl` (#1007) reset onto `origin/main` after
+#1017 Poisson admit. Opens a **planned-only** nbinom1/nbinom2 log
+public door so #998 Q_P/Q_0 pins can run. Poisson stays admitted with
+its event-weighted `c_P`. nbinom rate stays unpinned `c=1`. Registry
+`planned` / `phase4_prep`. Not admitted. No public `vcov()` /
+`confint()` / `sdreport()`. No NEWS covered.
+
+```sh
+export OMP_NUM_THREADS=1 NOT_CRAN=true
+# targeted after the replay (this sitting):
+#   mspl-registry|mspl-prepare-fence|mspl-fenced-family-tapes|
+#   mspl-nb1-fenced-tape|mspl-nb2-fenced-tape|
+#   zz-mspl-nbinom-se-feasibility|mspl-nbinom1-phase4-oracles|
+#   estimator-provenance|mspl-api$|mspl-gaussian-heywood-oracles
+#   FAIL 0 | WARN 0 | SKIP 0 | PASS 629
+```
+
+Not run: full `devtools::test()`, `R CMD check`, pkgdown, Totoro.
+No `git add -A`.
+
+## 2026-08-16 — Gaussian-identity LA-MSPL SE pin (Cursor)
+
+Lane `cursor/mspl-se-gaussian-pin-rebased` rebased onto `origin/main`
+after #1017. Extends the internal \(Q_P\)/\(Q_0\) pin to Gaussian
+identity. Public `se=TRUE` still withholds `sdreport()`. No
+`vcov()` / `confint()`. No Gaussian registry flip. No NEWS covered.
+Bernoulli pin not rebuilt. Does not take #1014's Tweedie/Beta door.
+Codex Lane B remains the binary SE owner.
+
+```sh
+export OMP_NUM_THREADS=1 NOT_CRAN=true
+# RED (before fence extension):
+#   gllvmTMB_mspl_curvature_family
+#   "fenced to Bernoulli logit and Poisson log"
+#   Resolved family "gaussian", link "identity"
+# GREEN (after):
+#   test-zz-mspl-gaussian-se-feasibility.R  PASS 35
+```
+
+```sh
+rg -n 'gllvmTMB_mspl_curvature_pin' NAMESPACE
+# no matches (unexported)
+```
+
+Not run: `devtools::test()`, `R CMD check`, pkgdown, Totoro.
+VA-light `delta_lognormal_log` flake is #985 / #1013, not this pin.
+
+## 2026-08-16 — Poisson ordinary experimental-point admit (Cursor)
+
+Lane `cursor/mspl-poisson-admit-g0` from `origin/main` @
+`235be4b4` (#1008). Two Poisson ordinary rows `planned` →
+`admitted` / `admit_packet`. No NEWS. No public SE. No other
+family. No `git add -A`.
+
+```sh
+export OMP_NUM_THREADS=1 NOT_CRAN=true
+pkgload::load_all(".", compile = TRUE)
+testthat::test_file("tests/testthat/test-mspl-registry.R")
+# FAIL 0 | PASS 28
+testthat::test_file("tests/testthat/test-mspl-poisson-admit-packet.R")
+# FAIL 0 | PASS 45
+testthat::test_file("tests/testthat/test-mspl-poisson-public-door.R")
+# FAIL 0 | PASS 7
+testthat::test_file("tests/testthat/test-mspl-poisson-phase4-oracles.R")
+# FAIL 0 | PASS 43
+testthat::test_file("tests/testthat/test-mspl-fenced-family-tapes.R")
+# FAIL 0 | PASS 23
+rg 'family = "poisson"' -A 12 R/mspl-registry.R
+# status = "admitted"; evidence = "admit_packet"
+```
+
+Not run: full `devtools::test()`, `--as-cran`, Totoro B1
+restart. B1 pid 2779264 left running.
+
+## 2026-08-15 — Poisson LA-MSPL admit packet (Cursor)
+
+Lane `cursor/mspl-poisson-admit-rebased` from `origin/main` after
+#989/#993/#994/#1002. Same atoms as #1001, rebased so
+`check-log.md` is not DIRTY. Pinned \(c_P\) + event-weighted
+loading atom. Registry stays `planned` on this PR. No NEWS.
+No public SE. No `git add -A`.
+
+```sh
+export OMP_NUM_THREADS=1 NOT_CRAN=true
+# RED: helpers missing — FAIL 7 | PASS 9
+pkgload::load_all(".", compile = TRUE)
+testthat::test_file("tests/testthat/test-mspl-poisson-admit-packet.R")
+# GREEN: FAIL 0 | WARN 0 | SKIP 0 | PASS 41
+testthat::test_file("tests/testthat/test-mspl-poisson-public-door.R")    # PASS 6
+testthat::test_file("tests/testthat/test-mspl-poisson-phase4-oracles.R")  # PASS 42
+testthat::test_file("tests/testthat/test-mspl-registry.R")               # PASS 26
+testthat::test_file("tests/testthat/test-mspl-fenced-family-tapes.R")    # PASS 23
+rg 'family = "poisson"' -A 8 R/mspl-registry.R   # status = "planned"
+```
+
+Not run: full `devtools::test()`, `--as-cran`. Admit flip is a
+separate commit after this PR is CI-green (Shinichi G0 2026-08-16).
+
+## 2026-08-15 — MSPL Phase-4 nbinom2 prep (not admitted; Cursor)
+
+Worktree `/private/tmp/gllvmtmb-mspl-phase4-nbinom2`,
+branch `cursor/mspl-phase4-nbinom2`.
+
+```sh
+export OMP_NUM_THREADS=1 NOT_CRAN=true
+Rscript --vanilla -e 'pkgload::load_all(".", compile = FALSE, quiet = TRUE);
+  testthat::test_file("tests/testthat/test-mspl-nbinom2-phase4-oracles.R");
+  testthat::test_file("tests/testthat/test-mspl-registry.R")'
+# nbinom2 oracles: 9 tests / 72 expectations / FAIL 0 / WARN 0 / SKIP 0 / PASS 72
+# registry:        2 tests / 26 expectations / FAIL 0 / WARN 0 / SKIP 0 / PASS 26
+git diff --stat -- src/ R/mspl.R R/mspl-registry.R
+# empty (no C++; prepare fence untouched; nbinom2 stays excluded)
+```
+
+Note: `docs/dev-log/research/2026-08-15-mspl-phase4-nbinom2-prep.md`.
+Not run: `devtools::test()`, `R CMD check`, live NB2 MSPL fits, campaigns.
+
+## 2026-08-15 — D-139 B1 Totoro receipt (Cursor)
+
+Lane `cursor/mspl-b1-totoro-receipt`. Receipt + dry-run launcher
+only. No `src/`. No Totoro SSH. No SE-covered claim.
+
+```sh
+chmod +x dev/mspl-b1-totoro-launch.sh
+dev/mspl-b1-totoro-launch.sh --self-test
+# self-test PASS (dry-run, cap, Actions, confirm, hostname)
+dev/mspl-b1-totoro-launch.sh --mode=full
+# prints plan; does not SSH
+rg -n 'SE covered' docs/dev-log/research/2026-08-15-mspl-b1-totoro-receipt.md
+```
+
+Not run: `devtools::test()`, `R CMD check`, pkgdown, Totoro,
+DRAC.
+
+## 2026-08-15 — MSPL Student-t + ordinal Phase-4 prep (Cursor)
+
+Lane `cursor/mspl-phase4-student-ordinal`. Planned prep only.
+No `src/`. No registry row. No public door. No NEWS covered.
+No `git add -A`. No repo-root `LOOP/`.
+
+```sh
+export OMP_NUM_THREADS=1 NOT_CRAN=true
+pkgload::load_all(".", compile = FALSE)
+# RED: could not find function .st_fixture / .ord_fixture
+testthat::test_file("tests/testthat/test-mspl-student-phase4-oracles.R")
+# GREEN PASS 51 / 13 blocks
+testthat::test_file("tests/testthat/test-mspl-ordinal-phase4-oracles.R")
+# GREEN PASS 45 / 12 blocks
+testthat::test_file("tests/testthat/test-mspl-registry.R")
+# PASS 26
+git diff --stat -- src/ R/mspl.R R/mspl-registry.R NEWS.md
+# empty
+rg -n "estimator\\s*=\\s*[\"']mspl[\"']" \
+  tests/testthat/test-mspl-student-phase4-oracles.R \
+  tests/testthat/test-mspl-ordinal-phase4-oracles.R
+# fence-only (negated expects)
+```
+
+Not run: `devtools::test()`, `devtools::check()`, pkgdown, Totoro.
+
+## 2026-08-15 — MSPL items 1–3 conductor (Cursor)
+
+Items 1–3 + SE-CI. No `src/`. No registry admit. No `git add -A`.
+No repo-root `LOOP/`.
+
+```sh
+gh pr view 988 --json state,mergedAt   # MERGED 6dfd2d75 (docs fast-pass)
+gh pr create  #989 cursor/mspl-se-ci (tests only)
+gh pr create  #990 cursor/mspl-poisson-point-smoke (docs+dev)
+# 972-976 left OPEN; comments already posted
+```
+
+Poisson smoke: 64/64 arms `conv=0` locally (`OMP=1`, `se=FALSE`);
+admit evidence FAIL. Verdict KEEP PLANNED.
+D-139 receipt: host=none, minutes=0.
+
+## 2026-08-15 — MSPL SE pin CI: VA delta_lognormal order (Cursor)
+
+#979 failed twice on `test-va-all-family-light-fits.R`
+`delta_lognormal_log` (`failed_health_gate`, healthy_starts 2 < 3).
+MSPL SE files were 24+29 green. Renamed to
+`test-zz-mspl-*-se-feasibility.R` so they run after the VA suite.
+Did not edit the VA test. Local rename re-run: 24 + 29 PASS.
+
+## 2026-08-15 — MSPL SE feasibility pin (Cursor)
+
+Lane `cursor/mspl-se-feasibility-pin`. Internal both-Hessian pin.
+No `src/`. No `fit-multi.R` edit. Poisson stays `planned`.
+
+```sh
+export OMP_NUM_THREADS=1 NOT_CRAN=true
+# RED (before R/mspl-curvature-pin.R):
+#   test-mspl-bernoulli-se-feasibility.R  9 pass / 1 error
+#     object '.gllvmTMB_mspl_curvature_pin' not found
+#   test-mspl-poisson-se-feasibility.R    14 pass / 1 error
+# GREEN (after):
+#   test-mspl-bernoulli-se-feasibility.R  PASS 24
+#   test-mspl-poisson-se-feasibility.R    PASS 29
+#   test-mspl-poisson-public-door.R       PASS 6
+#   test-mspl-registry.R                  PASS 26
+```
+
+Pin receipt (one cell each; not a campaign):
+
+| Family | Q_P | Q_0 |
+|---|---|---|
+| Bernoulli logit | available, min_ev 0.226 | non_pd, min_ev −0.774 (retained) |
+| Poisson log | available, min_ev 3.300 | available, min_ev 2.473 |
+
+```sh
+rg -n 'sd_rep <- if \\(identical\\(estimator, "mspl"\\)\\)' R/fit-multi.R
+# R/fit-multi.R:6423 unchanged
+rg -n 'gllvmTMB_mspl_curvature_pin' NAMESPACE
+# no matches (unexported)
+```
+
+Not run: `devtools::test()`, `R CMD check`, pkgdown, Totoro.
+
+## 2026-08-15 — MSPL Phase-4 tapes CI fix for #978 (Cursor)
+
+Lane `cursor/mspl-phase4-tapes-planned`. PR
+https://github.com/itchyshin/gllvmTMB/pull/978 run
+31903637769 failed: `[ FAIL 2 | WARN 11 | SKIP 825 | PASS 11452 ]`.
+No `src/` edit. Science unchanged.
+
+```sh
+gh pr checks 978
+# ubuntu-latest (release) fail 35m4s
+# Failure: test-estimator-provenance.R:187 — poisson()+mspl no longer
+#   throws gllvmTMB_mspl_unsupported (public Poisson door).
+# Error: test-mspl-nb1-fenced-tape.R:89 — .mspl_nb1_read_cpp()
+#   readLines() without skip_if when src/ is absent under R CMD check.
+```
+
+Fixes: pin the abort-class test on `nbinom2()`; give the NB1 source
+pin the same candidate-list + `skip_if` as NB2 / fenced-family.
+
+```sh
+export OMP_NUM_THREADS=1 NOT_CRAN=true
+Rscript --vanilla -e 'pkgload::load_all(".", compile = FALSE, quiet = TRUE);
+  testthat::test_file("tests/testthat/test-estimator-provenance.R");
+  testthat::test_file("tests/testthat/test-mspl-nb1-fenced-tape.R");
+  testthat::test_file("tests/testthat/test-mspl-prepare-fence.R");
+  testthat::test_file("tests/testthat/test-mspl-poisson-public-door.R");
+  testthat::test_file("tests/testthat/test-mspl-fenced-family-tapes.R");
+  testthat::test_file("tests/testthat/test-mspl-nb2-fenced-tape.R");
+  testthat::test_file("tests/testthat/test-mspl-api.R");
+  testthat::test_file("tests/testthat/test-mspl-registry.R")'
+# provenance PASS 75; nb1 PASS 12; prepare-fence PASS 4;
+# public-door PASS 6; fenced-family PASS 23; nb2 PASS 17;
+# api PASS 241; registry PASS 26
+```
+
+Not run: `devtools::test()`, `R CMD check`, pkgdown, Totoro.
+Do not merge #972–#976. Do not flip planned → admitted.
+
+## 2026-08-15 — MSPL Phase-4 tapes Wave 5 closeout (Cursor)
+
+Lane `cursor/mspl-phase4-tapes-planned` in
+`/private/tmp/gllvmtmb-mspl-estimator-programme-roadmap`.
+PR https://github.com/itchyshin/gllvmTMB/pull/978. Science already
+on tip `57ae6983`. Wave 5 did not edit `src/gllvmTMB.cpp`.
+
+Pre-edit lane check (before shared-doc writes):
+
+```sh
+gh pr list --state open
+# 978 tapes-planned (this lane)
+# 972–976 Phase-4 prep PRs on cursor/mspl-point-programme-continue
+# 960 / 958 / 957 / 955 other lanes
+git log --all --oneline --since="6 hours ago"
+# includes 57ae6983 feat(mspl): add five GLM-outer tapes...
+# plus ISDM / Codex interval / Phase-4 prep sibling commits
+```
+
+```sh
+export OMP_NUM_THREADS=1 NOT_CRAN=true
+Rscript --vanilla -e 'pkgload::load_all(".", compile = FALSE, quiet = TRUE);
+  testthat::test_file("tests/testthat/test-mspl-prepare-fence.R");
+  testthat::test_file("tests/testthat/test-mspl-poisson-public-door.R");
+  testthat::test_file("tests/testthat/test-mspl-fenced-family-tapes.R");
+  testthat::test_file("tests/testthat/test-mspl-nb1-fenced-tape.R");
+  testthat::test_file("tests/testthat/test-mspl-nb2-fenced-tape.R");
+  testthat::test_file("tests/testthat/test-mspl-api.R");
+  testthat::test_file("tests/testthat/test-mspl-registry.R");
+  testthat::test_file("tests/testthat/test-mspl-poisson-phase4-oracles.R")'
+# prepare-fence PASS; public-door PASS; fenced-family PASS;
+# nb1-fenced PASS; nb2-fenced PASS; api PASS; registry PASS;
+# poisson-phase4-oracles PASS
+
+rg -n 'fam_ids %in% c\\(' R/mspl.R
+# R/mspl.R:182  c(0L, 1L, 2L)
+
+rg -n 'binomial or gaussian only' R/mspl.R tests
+# no matches in R/mspl.R or tests (docs only)
+
+rg -n 'status = "planned"|status = "admitted"|status = "excluded"' R/mspl-registry.R
+# gaussian admitted; poisson planned; nbinom2 excluded
+
+rg -n 'I_LA|Laplace-marginal I\\(beta\\)' src/gllvmTMB.cpp
+# comments only: "NOT Laplace-marginal I(beta)"
+
+rg -n 'not coercive|rewards|NOT quasi' src/gllvmTMB.cpp
+# beta not coercive; Tweedie rewards phi->0; NB1 NOT quasi
+
+git diff origin/main...HEAD --stat -- NEWS.md
+# empty (NEWS untouched)
+```
+
+Rose: **PASS** — public door = gaussian+bernoulli+Poisson; Poisson
+`planned` not `admitted`; no NEWS covered; hostile comments present;
+prepare message names gaussian, bernoulli, or Poisson only.
+Shannon: **WARN** — #972–#976 still open; #974 overlaps
+`check-log.md`; Codex `lane-b-mspl-interval-feasibility` PROTECTED
+and not absorbed. After-task + Melissa + checkpoint name #978.
+Not run: `devtools::test()`, `R CMD check`, pkgdown, Totoro, admit,
+merge.
+
+## 2026-08-15 — MSPL Phase-4 Poisson prep (planned only; Cursor B1)
+
+Worktree `/private/tmp/gllvmtmb-mspl-estimator-programme-roadmap`,
+branch `cursor/mspl-point-programme-continue`.
+
+```sh
+export OMP_NUM_THREADS=1 NOT_CRAN=true
+Rscript --vanilla -e 'pkgload::load_all(".", compile = FALSE, quiet = TRUE);
+  testthat::test_file("tests/testthat/test-mspl-registry.R");
+  testthat::test_file("tests/testthat/test-mspl-poisson-phase4-oracles.R");
+  testthat::test_file("tests/testthat/test-mspl-gaussian-heywood-oracles.R")'
+# registry: PASS 26
+# poisson oracles: PASS 40
+# gaussian heywood oracles: PASS 75
+git diff --stat -- src/ R/mspl.R
+# empty (no C++; prepare fence untouched)
+```
+
+Registry: `poisson:log:ordinary:q1/q2` → `planned` / `phase4_prep`.
+Note: `docs/dev-log/research/2026-08-15-mspl-phase4-poisson-prep.md`.
+Not run: `devtools::test()`, `R CMD check`, Poisson MSPL fits, campaigns.
+
+## 2026-08-15 — Gaussian LA-MSPL Hirose implement (point only; SE PROTECTED)
+
+Worktree `/private/tmp/gllvmtmb-mspl-estimator-programme-roadmap`,
+branch `cursor/mspl-gaussian-heywood-atom`.
+
+```sh
+export OMP_NUM_THREADS=1 NOT_CRAN=true
+Rscript -e 'pkgbuild::compile_dll()'
+# OK (clang++)
+Rscript -e 'devtools::load_all(); testthat::test_file("tests/testthat/test-mspl-registry.R")'
+# PASS 18
+Rscript -e 'devtools::load_all(); testthat::test_file("tests/testthat/test-mspl-gaussian-fit-smoke.R")'
+# PASS 19 (healthy + near-Heywood; se=FALSE)
+# Bernoulli .mspl_fit("logit") still finite (point regression)
+git diff --stat -- src/ | head
+# src/gllvmTMB.cpp only on this lane (Hirose + family fence)
+```
+
+claim_guard: no SE/interval/sandwich/profile edits; Codex Lane B PROTECTED.
+Uniqueness pick C. Registry gaussian ordinary q1/q2 admitted / oracle_local.
 
 ## 2026-08-08 — Codex handover (CRAN 0.7 track pick locked; no R CMD check)
 
@@ -49157,6 +49539,104 @@ validator, and the check log carries the handoff. The warning is the large
 high-risk dirty tree itself. Smallest safe next action: one scoped commit and
 one draft PR; do not self-merge, version-bump, or release.
 
+---
+
+## 2026-08-09 — Lane B local reconciliation candidate (Codex)
+
+Merged the local experimental binary LA-MSPL commit into the active 0.7 draft
+source in a disposable local branch. The combination preserves the draft's
+weighted-objective/VA behavior and places MSPL's point-only inference fence
+before the weighted-objective fence. The MSPL `nlminb` stationary-rescue path
+now uses the draft's shared optimizer helper. This is a local reconciliation
+candidate only: no PR, branch push, remote campaign, or release action was
+performed.
+
+Verification:
+
+```sh
+Rscript --vanilla -e 'devtools::document(quiet = TRUE)'
+# PASS: fresh TMB compile
+Rscript --vanilla -e 'devtools::test(filter = "mspl-api|mspl-simulation-contract", reporter = "summary", stop_on_failure = TRUE)'
+# PASS
+Rscript --vanilla -e 'devtools::test(filter = "screen-separation", reporter = "summary", stop_on_failure = TRUE)'
+# PASS
+git diff --check
+# PASS
+```
+
+---
+
+## 2026-08-09 — Lane B Windows receipt portability repair (Codex)
+
+The required PR #952 three-OS run passed on macOS and Ubuntu but failed on
+Windows. The failure was specific to the Lane B receipt contract:
+`lane_b_sha256_file()` selected Strawberry Perl's `shasum`, which exited with
+status 29 and produced no digest. This made three receipt/provenance tests error.
+The campaign-root containment predicate also used a literal `/`, which does not
+recognise a descendant path after Windows normalisation.
+
+The repair uses `tools::sha256sum()` (R's portable SHA-256 implementation) and
+uses `.Platform$file.sep` in the containment predicate. The active FIR B2 array
+is intentionally unchanged: it runs the separately frozen offline checkout.
+
+Verification:
+
+```sh
+git diff --check
+# PASS
+
+TMPDIR=<writable directory outside the checkout> Rscript --vanilla -e \
+  'devtools::test(filter = "mspl-simulation-contract")'
+# PASS: the three previously failing receipt/root assertions pass.
+# Local devtools staging still yields one pre-existing environmental failure in
+# `ordinary-only corrected campaign scope is explicit and resumable`: its staged
+# directory has no resolvable git HEAD. The required GitHub run has a checkout
+# ancestor and Ubuntu already passed that test; rerun three-OS CI is required.
+```
+
+---
+
+## 2026-08-09 — Lane B Windows campaign-root containment follow-up (Codex)
+
+The repaired three-OS run then exposed one remaining Windows-only failure in
+`campaign roots inside the checkout are rejected`. `normalizePath()` returned
+backslash-separated paths on Windows, so comparing with a slash suffix did not
+recognise a checkout descendant. The guard now canonicalises both comparison
+paths to `/` and folds case on Windows before testing identity or ancestry.
+This changes only local receipt/output-root validation; no FIR job, frozen
+checkout, or submitted B2 shard was modified.
+
+Verification:
+
+```sh
+TMPDIR=<writable worktree directory> Rscript --vanilla -e \
+  'source("inst/sim/lane-b/lane-b-b2-common.R"); ...'
+# PASS: checkout descendant rejected; /tmp outside path accepted.
+
+git diff --check
+# PASS; required three-OS CI rerun follows push.
+```
+
+---
+
+## 2026-08-12 — Lane B B2 partial ordinary-evidence closeout (Codex)
+
+The maintainer accepted the completed portion of the experimental B2 campaign
+as sufficient for the present exploratory point-estimation decision. The
+fenced report is `docs/dev-log/after-task/2026-08-12-lane-b-b2-partial-evidence.md`.
+It records 2,586 / 2,880 completed ordinary shards (64,650 / 72,000
+replicates), retains the 294 timed-out ordinary shards and 88 timed-out
+permutation-audit shards in the limitation statement, and reports conditional
+paired diagnostics separately for logit, probit, and complementary log-log at
+q = 1 and q = 2. The completed subset favours MSPL on usable-fit rate,
+conditional log loss, and beta MSE in all six strata.
+
+This is not frozen B2 adjudication, a full-queue authentication, a release
+claim, or evidence for MSPL standard errors or intervals. No estimator code,
+frozen harness, protected FIR job, or remote artifact was modified.
+
+---
+
 ## 2026-08-09 — integrated 0.6 normal-vignette source artifact
 
 On `cursor/cran-0.7-20260807` at `ae340bdd50c5eee5cbe0b093b5ebf14930bf855f`,
@@ -50414,3 +50894,309 @@ the affected surface; the Totoro R CMD check covers the suite at the PR); no art
 decision recorded in the after-task, not silently skipped).
 
 After-task: `docs/dev-log/after-task/2026-08-16-model2-multisource.md`.
+## 2026-08-12 — post-deployment exact 0.6 artifact
+
+At merged `origin/main` commit `cb3126893883ff9fb0c6114129c158fe0e649be8`,
+the normal-vignette source artifact `gllvmTMB_0.6.0.tar.gz` had SHA-256
+`9706809b9e2f52b130c21843a0396cafcfea602db74bb676eaa232f667f2e05a`.
+`R CMD check --as-cran --run-donttest --no-manual` passed installed docs,
+vignettes, examples, and the full installed-package suite (`[244s/275s]`).
+Its only result was the expected CRAN `New submission` NOTE. The deployed
+Current limitations page returned HTTP 200, so the earlier undeployed URL NOTE
+did not recur. See
+`docs/dev-log/release/2026-08-12-0.6-post-deployment-artifact-receipt.md` for
+the exact command, artifact, byte-identity comparison, and exclusions.
+
+## 2026-08-12 — 0.7 integration intake decision packet
+
+On `codex/mainline-06-issue-closeout` at `148623f4`, the intake branch was
+verified documentation-only relative to `origin/main` `cb312689` across
+`DESCRIPTION`, `NAMESPACE`, `R`, `src`, `inst`, `man`, `vignettes`, `tests`,
+and `.Rbuildignore`. The resulting matrix is
+`docs/dev-log/release/2026-08-12-0.7-integration-intake.md`; its companion
+plan-versus-actual and after-task records are under `docs/dev-log/plan-actual/`
+and `docs/dev-log/after-task/` with the same date.
+
+The packet keeps the ordinary-Laplace route as the only eligible 0.7 intake,
+retains existing fences, and classifies LA-MSPL/separation, integrated-SDM, and
+estimator research as experimental-only. It makes no package, public-claim,
+release, CI, artifact, tag, or compute change. The first `gh` query hit a
+transport error, then Shannon's independent live review verified #956 as this
+clean documentation-only intake, #955 as a clean cross-repo note, #952 as an
+unchecked dirty old-base experimental PR, and #953 as an open planning issue.
+The historical 49-issue count is not represented as current external state.
+Any future installed-package diff from `cb312689` invalidates the exact
+artifact/platform receipt and needs a new ladder.
+
+---
+
+## 2026-08-13 — refreshed 0.7 integration intake (Codex)
+
+The original #956 intake was rebased from its historical `cb312689` base onto
+live `origin/main` `2942b6547ecdda7b6993cdcc49a35d6a4db27db2`.  Direct
+installed-path comparison showed that the exact 0.6 artifact receipt does not
+apply to this source: current main differs in `DESCRIPTION`, `R`, `src`,
+`inst`, `man`, `tests`, `vignettes`, and `.Rbuildignore`, including the
+installed LA-MSPL integration commit `14650312`.
+
+The refreshed decision packet therefore records **HOLD — no current 0.7 source
+candidate is eligible**.  It retains ordinary native-Laplace Gaussian
+`indep()`/`dep()` point estimation as the covered scientific core, keeps AA-03,
+#872, #855, #897, #946, #945, #941/#943, VA, AGHQ, EVA, structured tiers, and
+intervals fenced at their earned scope, and requests a maintainer decision to
+prepare an ordinary native-Laplace-only source line that quarantines LA-MSPL.
+No package code, public prose, release identity, artifact, CI, issue state, or
+compute changed.
+
+Commands/evidence included `git fetch origin --prune`, `git rebase origin/main`,
+live `gh issue view 345`, open-PR inspection (#955--#960),
+`git diff --name-only cb312689..origin/main -- DESCRIPTION NAMESPACE R src inst man vignettes tests .Rbuildignore`,
+and reads of the 0.6 receipt, release ledger, validation register, and #872
+after-task receipt.  No package tests were run because no package-bearing path
+changed; `git diff --check` is required before commit.
+
+Rose's independent boundary review passed the HOLD and established that a
+hypothetical LA-MSPL quarantine would need a pre-LA-MSPL source or removal of
+its installed runtime/compiled contract; default-off would not suffice.  The
+maintainer selected the alternative: retain LA-MSPL as a strategically important
+opt-in, separately adjudicated lane.  The packet now keeps the fixed-design
+separation screen as its own bounded diagnostic and separates both routes from
+the ordinary native-Laplace release claim.
+
+---
+
+## 2026-08-14 — MSPL Arc 1A internal provenance parity (Cursor)
+
+Stacked branch `cursor/mspl-arc-1a-provenance` from `829a6832` in
+`/private/tmp/gllvmtmb-mspl-estimator-programme-roadmap`. G0-approved
+`/goal` run. TMB `estimator_id` stays 0/1/2; R resolver derives the
+integer; `fit$estimator_provenance` is unadvertised. VA+ml remains
+accepted and is recorded as coarse ML.
+
+Commands (OMP_NUM_THREADS=1, NOT_CRAN=true, `pkgload::load_all` on this
+checkout):
+
+```r
+testthat::test_file("tests/testthat/test-estimator-provenance.R")
+# [ FAIL 0 | WARN 0 | SKIP 0 | PASS 75 ]  26.1 s
+
+testthat::test_file("tests/testthat/test-mspl-api.R")
+# [ FAIL 0 | WARN 0 | SKIP 0 | PASS 223 ]  16.9 s
+```
+
+rg / grep:
+
+- `estimator_id <- [012]L` in `R/` and `src/` — expected-absent after
+  the adapter (assignments now go through
+  `.gllvmTMB_estimator_id_for_tape()`).
+- `git diff -- src/` — empty.
+- NEWS / validation-register / Design 117 / interval-feasibility /
+  iSDM / G3P / #872 / #855 / AA-03 — not in this diff.
+
+Not run: `devtools::test()`, `R CMD check`, `pkgdown`, campaigns.
+Deliberate: plan said targeted MSPL + new provenance file only.
+
+After-task:
+`docs/dev-log/after-task/2026-08-14-mspl-arc-1a-provenance-parity.md`.
+Plan-actual: `docs/dev-log/plan-actual/2026-08-14-mspl-arc-1a.md`.
+Do not merge. Leave #961 as the docs vehicle.
+
+---
+
+## 2026-08-15 — MSPL Arc 1A LOOP unclobber (Cursor)
+
+Shinichi: clean up, then continue MSPL. The stacked PR would have
+replaced `main`'s 0.6 `LOOP/` kit (377 insertions / 1006 deletions on
+those four files).
+
+Moved the Arc 1A kit to
+`docs/dev-log/lanes/cursor-mspl-arc-1a/LOOP/` and restored repo-root
+`LOOP/` from `origin/main`. `git diff origin/main -- LOOP/` is empty.
+
+Not run: tests (docs-only restore). Not merged. Arc 1B not started.
+
+---
+
+## 2026-08-15 — MSPL catch-up Phase 2 + Phase 3 prep (Cursor)
+
+Lane `cursor/mspl-catchup-ml-laplace` in
+`/private/tmp/gllvmtmb-mspl-estimator-programme-roadmap`.
+Pre-edit: `gh pr list --state open` showed #962 (1A sibling),
+#961 (programme docs), #960/#958/#957/#955 (foreign). Append only.
+Phase 2 already at `5f306119`. This closeout adds the Heywood
+derivation, E1–E7 oracles, and stacked-PR docs. Not EVA. Do not
+merge #962 or #961 from here.
+
+Commands (OMP_NUM_THREADS=1, NOT_CRAN=true, `pkgload::load_all`
+compile=FALSE):
+
+```r
+testthat::test_file("tests/testthat/test-mspl-gaussian-heywood-oracles.R")
+# [ FAIL 0 | WARN 0 | SKIP 0 | PASS 68 ]
+
+testthat::test_file("tests/testthat/test-mspl-registry.R")
+# [ FAIL 0 | WARN 0 | SKIP 0 | PASS 13 ]
+
+testthat::test_file("tests/testthat/test-mspl-api.R")
+# [ FAIL 0 | WARN 0 | SKIP 0 | PASS 241 ]
+```
+
+rg / grep:
+
+- `estimator = "mspl"` in the new oracle file — comment only;
+  no Gaussian MSPL fit.
+- Gaussian registry `status = "planned"` — present; no
+  `admitted` flip.
+- `git diff -- src/` — empty.
+- NEWS / validation-register / repo-root `LOOP/` / Design 117 /
+  interval-feasibility / iSDM / G3P / #872 / #855 / AA-03 — not
+  in this closeout diff.
+
+Not run: `devtools::test()`, `R CMD check`, `pkgdown`, campaigns.
+After-task:
+`docs/dev-log/after-task/2026-08-15-mspl-catchup-phase2-phase3prep.md`.
+Plan-actual: `docs/dev-log/plan-actual/2026-08-15-mspl-catchup.md`.
+Gaussian remains `planned`. No C++. No NEWS.
+
+## 2026-08-15 — local Bernoulli LA-MSPL vs LA-ML pair smoke (Cursor)
+
+Lane `cursor/mspl-local-binary-pair-smoke` in
+`/private/tmp/gllvmtmb-mspl-estimator-programme-roadmap` @ `fb6f9dae`.
+Point estimates only. Interval/SE owned by
+`codex/lane-b-mspl-interval-feasibility` — no sandwich / profile /
+jackknife. No C++. No admit/NEWS/registry flip. No repo-root LOOP/.
+
+```sh
+OMP_NUM_THREADS=1 NOT_CRAN=true Rscript --vanilla /tmp/mspl-local-binary-pair-smoke.R
+```
+
+Two cells × two arms, ordinary binomial logit q=1, `se=FALSE`.
+Both MSPL fits `binomial:logit:ordinary:q1` / admitted /
+`partial_b2_incomplete`. Healthy: both conv=0 finite; MSPL closer
+to true LL' on this seed (rel Frob 1.46 vs 2.58). Near-boundary
+(not a certified separation DGP): ML runaway max|Λ|=47; MSPL
+collapsed to ~0. Not a programme result.
+
+Note: `docs/dev-log/research/2026-08-15-mspl-local-binary-pair-smoke.md`.
+Not run: `devtools::test()`, `R CMD check`, campaigns, intervals.
+
+## 2026-08-15 — MSPL Arc U Ψ uniqueness map + E5b (Cursor)
+
+Lane `cursor/mspl-gaussian-uniqueness-map` in
+`/private/tmp/gllvmtmb-mspl-estimator-programme-roadmap` after merging
+#964 and #965. Shinichi KEEP GOING; uniqueness OPEN GATE closed as
+pick C (pinned-σ_ε FA). Not EVA. No C++. No admission flip.
+
+```r
+OMP_NUM_THREADS=1 NOT_CRAN=true
+pkgload::load_all(".", compile = FALSE)
+testthat::test_file("tests/testthat/test-mspl-gaussian-heywood-oracles.R")
+# [ FAIL 0 | WARN 0 | SKIP 0 | PASS 74 ]
+```
+
+- `git diff -- src/` — empty.
+- Gaussian registry still `planned`.
+- SE/interval paths not touched (PROTECTED Codex Lane B).
+- Repo-root `LOOP/` untouched.
+
+After-task:
+`docs/dev-log/after-task/2026-08-15-mspl-gaussian-psi-uniqueness-map.md`.
+Decision:
+`docs/dev-log/research/2026-08-15-mspl-gaussian-psi-uniqueness-map.md`.
+
+## 2026-08-15 — MSPL Phase-4 prep-goal verify (Cursor)
+
+Lane `cursor/mspl-phase4-prep-goal` in
+`/private/tmp/gllvmtmb-mspl-estimator-programme-roadmap`. Independent
+verifier counts recorded. No admit. No merge of #972–#976. No
+`src/` / `R/mspl.R` change.
+
+| PR | Measured |
+|---|---|
+| #971 MERGED `cb126576` | 29/29 PASS (168 expects); TSV 64/64; Ubuntu CI pending |
+| #972 Poisson | 102/102 PASS; planned/phase4_prep |
+| #973 Tweedie | 62/62 (not 51); wording `90a156cf` |
+| #974 NB2 | 72/72; stays excluded |
+| #975 beta | 65/65; wording `daa76352` |
+| #976 NB1 | 68/68; no nbinom1 row |
+
+```sh
+rg -n "fam_ids %in% c\\(0L, 1L\\)" R/mspl.R
+# prepare still {0,1}
+git merge-tree --write-tree origin/main origin/cursor/mspl-phase4-poisson
+# CLEAN; same for tweedie/nbinom2/beta/nbinom1; 1 behind = cb126576 only
+```
+
+After-task:
+`docs/dev-log/after-task/2026-08-15-mspl-phase4-prep-goal.md`.
+Melissa:
+`docs/dev-log/plan-actual/2026-08-15-mspl-phase4-prep-goal.md`.
+Not run: merge, admit, NEWS covered, Totoro, rebase onto main.
+
+## 2026-08-15 — MSPL Phase-4 tapes + Poisson public door (Cursor)
+
+Lane `cursor/mspl-phase4-tapes-planned` in
+`/private/tmp/gllvmtmb-mspl-estimator-programme-roadmap`. Five C++
+GLM-outer tapes. Public `estimator="mspl"` is gaussian + bernoulli +
+Poisson only. Poisson stays `planned`. No NEWS. No admit. Codex
+interval lane untouched. #972–#976 not merged.
+
+```sh
+rg -n 'fam_ids %in% c\\(' R/mspl.R
+# R/mspl.R:182  c(0L, 1L, 2L)
+
+rg -n 'binomial or gaussian only' R/mspl.R tests
+# no matches
+
+rg -n 'status = "planned"|NB2 waits' R/mspl-registry.R
+# poisson planned / phase4_prep; nbinom2 excluded
+
+NOT_CRAN=true OMP_NUM_THREADS=1
+# prepare-fence, poisson-public-door, fenced-family, nb1-fenced-tape,
+# api, registry, gaussian-fit-smoke, poisson-phase4-oracles,
+# gaussian-heywood-oracles — all PASS after TMB recompile
+```
+
+Rose: no admit, no NEWS covered, door = three families.
+Shannon: WARN — five prep PRs still open on the old point-continue
+base; `R/mspl.R` also lives on the PROTECTED Codex interval branch
+(this lane only added the Poisson door).
+After-task:
+`docs/dev-log/after-task/2026-08-15-mspl-phase4-tapes-planned.md`.
+Melissa:
+`docs/dev-log/plan-actual/2026-08-15-mspl-phase4-tapes-planned.md`.
+Handover:
+`docs/dev-log/handover/2026-08-15-cursor-handover-phase4-tapes.md`.
+Not run: `devtools::test()`, `R CMD check`, pkgdown, Totoro, admit.
+
+## 2026-08-16 — MSPL remaining-gap board (Cursor)
+
+Lane `cursor/mspl-remaining-gap-board` in
+`/tmp/gllvmtmb-mspl-gap-board` from `origin/main` @ `af1edd2c`.
+Docs-only census. drmTMB parked. Lane B untouched. No admit.
+No NEWS covered. Sibling PRs not edited.
+
+```sh
+git fetch origin
+git log -1 --oneline origin/main
+# af1edd2c
+
+rg -n 'status = ' R/mspl-registry.R
+# admitted binomial / gaussian / poisson; excluded nbinom2; 0 planned
+
+gh pr list --state open --limit 40
+# #974 #1003 #1004 #1005 #1007 #1014 merge-wait
+# #998 #999 #1000 expected-red
+```
+
+Rose: board names merge-wait vs needs-code vs needs-evidence.
+Shannon: do not fight sibling registry/door PRs.
+After-task:
+`docs/dev-log/after-task/2026-08-16-mspl-remaining-gap-board.md`.
+Not run: merge, admit, Totoro, drmTMB.
+
+## 2026-08-16 (Cursor) — #1022 fast-path CI: drop trailing blank line
+
+`git diff --check` failed on `docs/dev-log/check-log.md:49705: new blank line at EOF`.
+Removed the extra EOF newline so the ignored-source fast path can go green.
+Not run: merge, admit, Totoro.

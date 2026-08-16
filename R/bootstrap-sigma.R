@@ -208,6 +208,7 @@ bootstrap_Sigma <- function(
   if (!inherits(fit, "gllvmTMB_multi")) {
     cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
   }
+  .gllvmTMB_mspl_assert_inference(fit, "bootstrap_Sigma")
   .gllvmTMB_require_unweighted_inference(fit, "bootstrap_Sigma")
   level <- match.arg(level, several.ok = TRUE)
   level <- vapply(level, .normalise_level, character(1L), arg_name = "level")

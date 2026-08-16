@@ -250,6 +250,7 @@
   trait_idx  = NULL,
   level      = 0.95
 ) {
+  .gllvmTMB_mspl_assert_inference(fit, ".proportions_wald_ci")
   .gllvmTMB_require_unweighted_inference(fit, ".proportions_wald_ci")
   v <- .proportions_validate_inputs(fit, components, trait_idx, level)
   trait_names <- v$trait_names
@@ -427,6 +428,7 @@
   nsim       = 500L,
   seed       = NULL
 ) {
+  .gllvmTMB_mspl_assert_inference(fit, ".proportions_bootstrap_ci")
   .gllvmTMB_require_unweighted_inference(fit, ".proportions_bootstrap_ci")
   v <- .proportions_validate_inputs(fit, components, trait_idx, level)
   trait_names <- v$trait_names

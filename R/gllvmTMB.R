@@ -291,6 +291,18 @@
 #' @param ci_nboot Number of parametric bootstrap replicates when
 #'   `ci_method = "bootstrap"` on the Julia bridge.
 #' @param ci_seed Seed passed to the Julia bootstrap CI route.
+#' @param estimator Estimation criterion. `"ml"` (the default) preserves the
+#'   ordinary maximum Laplace-likelihood route. `"mspl"` opts into the
+#'   experimental maximum softly penalised Laplace-likelihood point estimator
+#'   for the currently admitted complete-Bernoulli surface. This means exactly
+#'   one ordinary `latent()` block with no free Psi and `d = 1` or `2`, standalone
+#'   `spatial_indep()`, or standalone `spatial_latent()` with `d = 1` or `2`;
+#'   one common logit, probit, or complementary-log-log link; complete
+#'   single-trial responses; a full-rank resolved fixed-effect design;
+#'   all-zero offsets; and the native Laplace engine. Unsupported
+#'   structures fail before optimisation.
+#'   MSPL does not activate automatically after a separation warning and never
+#'   changes the default ML fit.
 #'
 #' @return A `gllvmTMB` object. With no covariance-structure terms in
 #'   the formula the result has class `"gllvmTMB"` (single-response
@@ -299,13 +311,14 @@
 #'   S3 methods are registered on the **subclasses**, not on bare
 #'   `gllvmTMB`: for a multi-trait fit (`gllvmTMB_multi`), `tidy()`,
 #'   `predict()`, `summary()`, `confint()` and `logLik()` are available, and
-#'   `AIC()` / `BIC()` dispatch through `logLik()`. They have their ordinary ML
-#'   interpretation only for unpenalised native-Laplace fits. AGHQ uses a
-#'   different integration objective, and a loading ridge returns a penalised
-#'   MAP point rather than the likelihood maximum; do not use ordinary AIC,
-#'   BIC, or likelihood-ratio interpretations for those fits. Trait-level
-#'   extractors such as `extract_ICC_site()` and `extract_communality()` are
-#'   multi-trait only.
+#'   `AIC()` / `BIC()` dispatch through `logLik()` only when the fitted point is
+#'   an unpenalised native-Laplace ML maximum. AGHQ uses a different integration
+#'   objective and a loading ridge returns a penalised MAP point, so ordinary
+#'   likelihood comparisons do not apply. An MSPL result has leading class
+#'   `"gllvmTMB_mspl"`; likelihood comparison, standard errors, intervals,
+#'   profiles, and hypothesis-test methods fail closed because this experimental
+#'   surface is point estimation only. Trait-level extractors such as
+#'   `extract_ICC_site()` and `extract_communality()` are multi-trait only.
 #'
 #'   `vcov()` and `coef()` are available too — see
 #'   [gllvmTMB_multi-vcov]. `coef()` works on any fit; `vcov()` needs the
@@ -317,6 +330,15 @@
 #'   existed only for `gllvmTMB_va`, where they refuse. The wording was
 #'   corrected first, then the two methods were added, which is why the
 #'   promise now holds.
+#'
+#' @references
+#' Sterzinger, P. and Kosmidis, I. (2023). Maximum softly-penalized
+#' likelihood for mixed effects logistic regression. *Statistics and
+#' Computing*, 33, 53. \doi{10.1007/s11222-023-10217-3}.
+#' This paper is the logistic mixed-effects antecedent for the fixed-effect
+#' Jeffreys component. The probit, complementary-log-log, reduced-rank GLLVM,
+#' and spatial penalties implemented here are gllvmTMB-specific extensions;
+#' that paper does not validate those extensions.
 #'
 #' @details
 #' `gllvmTMB()` parses the glmmTMB-style formula, converts wide
@@ -454,7 +476,9 @@
 #' Schielzeth (2010) \emph{Biol. Rev.} 85: 935-956; Nakagawa, Johnson &
 #' Schielzeth (2017) \emph{J. R. Soc. Interface} 14: 20170213.
 #'
-#' @seealso [traits()] for wide data-frame formula input;
+#' @seealso [screen_gllvmTMB()] for the opt-in fixed-design separation
+#'   certificate; \code{vignette("mspl-binary-jsdm", package = "gllvmTMB")}
+#'   for the screen-first LA-MSPL workflow; [traits()] for wide data-frame formula input;
 #'   [gllvmTMB_wide()] for wide matrix/data-frame input;
 #'   [simulate_site_trait()] for
 #'   generating recovery test data;
@@ -505,9 +529,13 @@ gllvmTMB <- function(
   ci_nboot = 200L,
   ci_seed = 0L,
   site = NULL, # deprecated alias for `unit`
-  species = NULL
+  species = NULL,
+  estimator = c("ml", "mspl")
 ) {
   # deprecated alias for `cluster`
+
+  estimator_missing <- missing(estimator)
+  estimator <- match.arg(estimator)
 
   if (!is.logical(REML) || length(REML) != 1L || is.na(REML)) {
     cli::cli_abort("{.arg REML} must be a single {.code TRUE} or {.code FALSE} value.")
@@ -515,6 +543,32 @@ gllvmTMB <- function(
   ## engine = "julia" routes through the experimental GLLVM.jl bridge fitting
   ## path via JuliaCall; "tmb" (default) keeps the native TMB engine below.
   engine <- match.arg(engine)
+  if (isTRUE(REML) && !estimator_missing) {
+    cli::cli_abort(c(
+      "Do not combine an explicit {.arg estimator} with {.code REML = TRUE}.",
+      "i" = "Omit {.arg estimator} to retain the existing Gaussian REML route, or set {.code REML = FALSE}."
+    ), class = "gllvmTMB_estimator_reml_conflict")
+  }
+  if (identical(estimator, "mspl")) {
+    if (!identical(engine, "tmb")) {
+      .gllvmTMB_mspl_abort("{.code estimator = \"mspl\"} requires {.code engine = \"tmb\"}.")
+    }
+    if (isTRUE(REML)) {
+      .gllvmTMB_mspl_abort("{.code estimator = \"mspl\"} cannot be combined with {.code REML = TRUE}.")
+    }
+    if (!identical(control$integration %||% "laplace", "laplace")) {
+      .gllvmTMB_mspl_abort("{.code estimator = \"mspl\"} requires {.code integration = \"laplace\"}.")
+    }
+    if (!isFALSE(control$aghq %||% FALSE)) {
+      .gllvmTMB_mspl_abort("{.code estimator = \"mspl\"} cannot be combined with AGHQ.")
+    }
+    if (isTRUE(control$aghq_ridge_explicit)) {
+      .gllvmTMB_mspl_abort(c(
+        "Do not combine {.code estimator = \"mspl\"} with an explicit loading ridge.",
+        "i" = "The combination is an unvalidated hybrid estimator, not LA-MSPL."
+      ))
+    }
+  }
   ## An opt-in integration route must never SILENTLY fall back to Laplace. The
   ## caller would get a fit that is not the one they asked for and no signal
   ## that it happened -- the exact failure `gllvmTMBcontrol()` already records
@@ -587,7 +641,7 @@ gllvmTMB <- function(
       eval_env = environment(formula),
       missing = missing
     )
-    fit <- gllvmTMB(
+    recurse_args <- list(
       formula = rewrite$formula_long,
       data = rewrite$data_long,
       trait = trait,
@@ -616,6 +670,11 @@ gllvmTMB <- function(
       site = site,
       species = species
     )
+    ## Preserve missing(estimator) through the wide-to-long recursion.  This is
+    ## load-bearing for the legacy REML route: passing the default "ml"
+    ## explicitly would turn an omitted estimator into an API conflict.
+    if (!estimator_missing) recurse_args$estimator <- estimator
+    fit <- do.call(gllvmTMB, recurse_args)
     ## Round-trip metadata: print method shows the wide form by default
     ## for readability; users who want to see the engine-level long form
     ## inspect fit$call_long_format directly.
@@ -896,7 +955,9 @@ gllvmTMB <- function(
       original_row = observed_response$original_row,
       n_missing_response = observed_response$n_missing_response,
       data_original = data_original
-    )
+    ),
+    estimator = estimator,
+    engine = engine
   )
   .fit <- if (.gllvmTMB_aghq_auto_requested(control)) {
     .gllvmTMB_fit_aghq_auto_ridge(fit_once, control)
@@ -915,6 +976,14 @@ gllvmTMB <- function(
   if (inherits(.fit, "gllvmTMB_va")) {
     .fit$call <- match.call()
   }
+  ## Arc 1A: record resolved integration / criterion / kernel / penalty-eval.
+  ## `estimator = "ml"` + `integration = "va"` stays accepted; this only labels
+  ## the public ML tag as coarse. Do not reject.
+  .fit <- .gllvmTMB_attach_estimator_provenance(
+    .fit,
+    estimator = estimator,
+    reml = REML
+  )
   ## WARN ON AN IMPLAUSIBLE LOADING SCALE -- because the failure is COMMON and SILENT.
   ##
   ## Measured, 12,000 fits, binomial p=6 q=2 (docs/dev-log/audits/
@@ -1060,9 +1129,12 @@ expand_multinomial_response <- function(formula, data, family, trait_col) {
       ))
     }
     mn_trait <- mn_trait_lvls
-    if (anyNA(data[[resp]][mn_rows])) {
-      cli::cli_abort("multinomial(): missing categorical responses are not supported in this release.")
-    }
+    ## An NA categorical response propagates NA into ALL of its K-1 one-hot
+    ## indicator rows below, so the downstream response-missingness machinery
+    ## (drop_missing_response_rows) treats the contrast group as one unit:
+    ## group-uniform masking under "include", whole-group removal under
+    ## "drop". The C++ anchor gate (is_anchor && is_y_observed) then skips
+    ## the grouped softmax density exactly once per masked observation.
     yf <- droplevels(if (is.factor(data[[resp]])) data[[resp]][mn_rows]
                      else factor(data[[resp]][mn_rows]))
     if (!is.null(requested_baseline)) {
@@ -1110,9 +1182,12 @@ expand_multinomial_response <- function(formula, data, family, trait_col) {
     cli::cli_abort("multinomial(): the response must be a single categorical variable on the formula LHS.")
   }
   y_raw <- data[[resp]]
-  if (anyNA(y_raw)) {
-    cli::cli_abort("multinomial(): missing categorical responses are not supported in this release.")
-  }
+  ## NA categorical responses are admitted: as.integer(yf) is NA for them, so
+  ## every one of the K-1 one-hot indicator rows built below is NA and the
+  ## response-missingness machinery masks/drops the contrast group as one
+  ## unit (group-uniform by construction; see the anchor gate in
+  ## src/gllvmTMB.cpp). A category observed ONLY in NA cells drops out of
+  ## levels() the same way under both policies, so include == drop holds.
   yf   <- droplevels(if (is.factor(y_raw)) y_raw else factor(y_raw))
   cats <- levels(yf)
   K    <- length(cats)
@@ -1462,6 +1537,12 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #'   `"auto"` route always uses 9-node multi-start AGHQ for both pilot and final
 #'   fits; a conflicting node/start control is replaced with a warning, while an
 #'   explicit `aghq = FALSE` is incompatible.
+#' @param loading_ridge Integration-neutral alias for `aghq_ridge`. Use this
+#'   spelling to request the same loading MAP penalty on a Laplace fit without
+#'   suggesting that the penalty belongs to AGHQ. The default `NULL` preserves
+#'   historical unpenalised Laplace fits. Supply at most one of
+#'   `loading_ridge` and `aghq_ridge`; neither may be combined with
+#'   `estimator = "mspl"`.
 #' @param warn_runaway If `TRUE` (default), warn once per session when a
 #'   binomial latent-variable fit triggers the package's existing runaway-loading
 #'   diagnostic. Set `FALSE` to silence the fit-time warning; the diagnostic
@@ -1547,6 +1628,8 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #' # scope. The route uses a fixed 9-node multi-start rule; this is not an
 #' # interval-calibration certificate.
 #' gllvmTMBcontrol(aghq_ridge = "auto")
+#' # The same fixed loading MAP penalty, named independently of integration.
+#' gllvmTMBcontrol(loading_ridge = 2)
 #'
 #' # Experimental scalar variational route: public auto uses GH with H = 7.
 #' gllvmTMBcontrol(integration = "va")
@@ -1645,6 +1728,7 @@ gllvmTMBcontrol <- function(
   ## suppress; the check itself is always available via `gllvmTMB_diagnose()`.
   warn_runaway = TRUE,
   allow_nongaussian_reml = FALSE,
+  loading_ridge = NULL,
   ...
 ) {
   ## Did the CALLER name `aghq_ridge`, or is this the package default? The
@@ -1664,6 +1748,18 @@ gllvmTMBcontrol <- function(
   ## cannot see. So the Laplace-path ridge is opt-in ONLY: it fires when the
   ## caller names `aghq_ridge` and never from the default.
   aghq_ridge_explicit <- !missing(aghq_ridge)
+  loading_ridge_explicit <- !missing(loading_ridge) && !is.null(loading_ridge)
+  if (isTRUE(aghq_ridge_explicit) && isTRUE(loading_ridge_explicit)) {
+    cli::cli_abort(c(
+      "Supply only one loading-ridge argument.",
+      "x" = "Both {.arg aghq_ridge} and its integration-neutral alias {.arg loading_ridge} were supplied.",
+      ">" = "Use {.arg loading_ridge} for new Laplace code, or retain {.arg aghq_ridge} for compatibility."
+    ), class = "gllvmTMB_loading_ridge_alias_conflict")
+  }
+  if (isTRUE(loading_ridge_explicit)) {
+    aghq_ridge <- loading_ridge
+    aghq_ridge_explicit <- TRUE
+  }
   aghq_explicit <- !missing(aghq)
   aghq_multistart_explicit <- !missing(aghq_multistart)
   spde_mode <- match.arg(spde_mode)
@@ -1750,6 +1846,8 @@ gllvmTMBcontrol <- function(
     aghq_n_adapt = as.integer(aghq_n_adapt),
     aghq_ridge = aghq_ridge,
     aghq_ridge_explicit = aghq_ridge_explicit,
+    loading_ridge = if (isTRUE(loading_ridge_explicit)) aghq_ridge else NULL,
+    loading_ridge_explicit = loading_ridge_explicit,
     aghq_continuation = isTRUE(aghq_continuation),
     aghq_shift_tol = as.numeric(aghq_shift_tol),
     aghq_grad_tol = as.numeric(aghq_grad_tol),

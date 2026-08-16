@@ -34,6 +34,7 @@ gllvmTMBcontrol(
   aghq_rho_min = 1/64,
   warn_runaway = TRUE,
   allow_nongaussian_reml = FALSE,
+  loading_ridge = NULL,
   ...
 )
 }
@@ -292,6 +293,13 @@ remains available through \code{\link[=gllvmTMB_diagnose]{gllvmTMB_diagnose()}}.
 Default \code{FALSE}; the restricted likelihood is defined by a Gaussian
 marginalisation, so this is an escape hatch, not an endorsement.}
 
+\item{loading_ridge}{Integration-neutral alias for \code{aghq_ridge}. Use this
+spelling to request the same loading MAP penalty on a Laplace fit without
+suggesting that the penalty belongs to AGHQ. The default \code{NULL} preserves
+historical unpenalised Laplace fits. Supply at most one of
+\code{loading_ridge} and \code{aghq_ridge}; neither may be combined with
+\code{estimator = "mspl"}.}
+
 \item{...}{Reserved for future use. Currently ignored with a warning.}
 }
 \value{
@@ -350,6 +358,8 @@ gllvmTMBcontrol(optimizer = "optim", optArgs = list(method = "BFGS"))
 # scope. The route uses a fixed 9-node multi-start rule; this is not an
 # interval-calibration certificate.
 gllvmTMBcontrol(aghq_ridge = "auto")
+# The same fixed loading MAP penalty, named independently of integration.
+gllvmTMBcontrol(loading_ridge = 2)
 
 # Experimental scalar variational route: public auto uses GH with H = 7.
 gllvmTMBcontrol(integration = "va")

@@ -52,11 +52,13 @@ Imports:
     TMB (>= 1.8.0),
     utils
 LinkingTo:
+    BH,
     RcppEigen,
     TMB
 Suggests:
     ape,
     DHARMa,
+    detectseparation (>= 0.4.0),
     dplyr,
     future,
     future.apply,

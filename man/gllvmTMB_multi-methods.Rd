@@ -31,28 +31,28 @@ Standard model-object accessors for a multivariate fit returned by
 \code{\link[=gllvmTMB]{gllvmTMB()}}, whether the call started from wide \code{traits(...)} data
 or already-stacked long data. Internally the fit has class
 \code{gllvmTMB_multi}, which is what these S3 methods dispatch on, but
-you just call \code{print(fit)}, \code{summary(fit)}, \code{logLik(fit)} etc. as
-usual.
+you call \code{print(fit)} and \code{summary(fit)} as usual. Likelihood and inference
+accessors depend on the estimator, as described below.
 }
 \details{
 \itemize{
-\item \code{print()} shows the active covstructs, the number of fixed effects,
-and the converged log-likelihood.
-\item \code{summary()} adds a fixed-effects table with SEs, the global and
+\item For ML fits, \code{print()} shows the active covstructs, the number of fixed
+effects, and the converged log-likelihood.
+\item For ML fits, \code{summary()} adds a fixed-effects table with SEs, the global and
 local trait correlation matrices, per-trait ICCs,
 and global / local communalities.
-\item \code{logLik()} returns the unpenalised log-likelihood evaluated at the fitted
-point, with \code{df = length(opt$par)} and \code{nobs} equal to the number of
-likelihood-contributing observed response cells. For an unpenalised native
-Laplace fit this is the converged maximum and \code{AIC()} / \code{BIC()} have their
-ordinary ML interpretation. AGHQ uses a different integration objective,
-so models must not be compared across engines. With a loading ridge, the
-fitted point is penalised MAP rather than the likelihood maximum; ordinary
-AIC, BIC, and likelihood-ratio interpretations do not apply. The methods
-warn rather than silently relabelling those quantities.
-Fits with non-unit likelihood weights are a separate boundary: their
-objective is a weighted estimating criterion rather than an ordinary
-log-likelihood, so \code{logLik()}, \code{AIC()}, and \code{BIC()} fail loudly.
+\item For an unpenalised native-Laplace ML fit, \code{logLik()} is the converged
+maximum with \code{df = length(opt$par)} and \code{nobs} equal to the number of
+likelihood-contributing response cells. AGHQ has a distinct integration
+objective; a loading ridge is penalised MAP; and non-unit likelihood
+weights define an estimating objective. Ordinary likelihood comparison is
+unavailable on each of those restricted surfaces.
+\item For \code{estimator = "mspl"}, \code{print()} and \code{summary()} identify the
+experimental softly penalised Laplace point estimator and show the
+unpenalised Laplace value at that point only as provenance. \code{logLik()},
+AIC, BIC, likelihood-ratio tests, standard errors, intervals, and profiles
+fail closed because the point is not the ordinary likelihood maximum and
+repeated-sampling inference is not calibrated.
 }
 
 \code{nobs()} returns the number of \strong{likelihood-contributing} observations --

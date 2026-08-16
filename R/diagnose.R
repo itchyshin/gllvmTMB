@@ -748,6 +748,7 @@ check_gllvmTMB <- function(
   if (!inherits(object, "gllvmTMB_multi")) {
     cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
   }
+  is_mspl <- .gllvmTMB_is_mspl(object)
   health <- object$fit_health %||% .gllvmTMB_build_fit_health(object)
   hessian_rank <- .gllvmTMB_hessian_rank(object)
   rows <- list(
@@ -780,27 +781,43 @@ check_gllvmTMB <- function(
     ),
     .gllvmTMB_check_row(
       "sdreport",
-      if (isTRUE(health$sdreport_ok)) "PASS" else "WARN",
-      isTRUE(health$sdreport_ok),
-      TRUE,
-      if (isTRUE(health$sdreport_ok)) {
+      if (is_mspl) "INFO" else if (isTRUE(health$sdreport_ok)) "PASS" else "WARN",
+      if (is_mspl) "withheld" else isTRUE(health$sdreport_ok),
+      if (is_mspl) "not applicable" else TRUE,
+      if (is_mspl) {
+        "sdreport is deliberately withheld for the MSPL point-estimation surface"
+      } else if (isTRUE(health$sdreport_ok)) {
         "sdreport available"
       } else {
         health$sdreport_error %||% "sdreport unavailable"
       },
-      "use point summaries cautiously and prefer profile/bootstrap intervals"
+      if (is_mspl) {
+        "MSPL is point-only; inspect its stationarity and penalty provenance without requesting intervals"
+      } else {
+        "use point summaries cautiously and prefer profile/bootstrap intervals"
+      }
     ),
     .gllvmTMB_check_row(
       "pd_hessian",
-      if (isTRUE(health$pd_hessian)) "PASS" else "WARN",
-      health$pd_hessian,
-      TRUE,
-      "positive-definite Hessian for curvature-based inference",
-      "check gradients, boundary variances, rank, starts, and profile/bootstrap targets"
+      if (is_mspl) "INFO" else if (isTRUE(health$pd_hessian)) "PASS" else "WARN",
+      if (is_mspl) "withheld" else health$pd_hessian,
+      if (is_mspl) "not applicable" else TRUE,
+      if (is_mspl) {
+        "curvature-based inference is outside the MSPL point-estimation contract"
+      } else {
+        "positive-definite Hessian for curvature-based inference"
+      },
+      if (is_mspl) {
+        "check gradients, boundary behaviour, latent rank, and starts; MSPL curvature inference is withheld"
+      } else {
+        "check gradients, boundary variances, rank, starts, and profile/bootstrap targets"
+      }
     ),
     .gllvmTMB_check_row(
       "hessian_rank",
-      if (
+      if (is_mspl) {
+        "INFO"
+      } else if (
         is.finite(hessian_rank$rank) &&
           is.finite(hessian_rank$dimension) &&
           hessian_rank$rank == hessian_rank$dimension
@@ -809,14 +826,24 @@ check_gllvmTMB <- function(
       } else {
         "WARN"
       },
-      paste0(hessian_rank$rank, "/", hessian_rank$dimension),
-      "full rank",
-      "rank of the fixed-parameter covariance matrix from sdreport",
-      "treat rank loss as a Hessian/identifiability warning"
+      if (is_mspl) "withheld" else paste0(hessian_rank$rank, "/", hessian_rank$dimension),
+      if (is_mspl) "not applicable" else "full rank",
+      if (is_mspl) {
+        "fixed-parameter covariance rank is not computed for an MSPL point estimate"
+      } else {
+        "rank of the fixed-parameter covariance matrix from sdreport"
+      },
+      if (is_mspl) {
+        "use the retained latent-rank and stationarity diagnostics"
+      } else {
+        "treat rank loss as a Hessian/identifiability warning"
+      }
     ),
     .gllvmTMB_check_row(
       "max_fixed_se",
-      if (
+      if (is_mspl) {
+        "INFO"
+      } else if (
         is.finite(health$max_fixed_se) &&
           health$max_fixed_se < se_thresh
       ) {
@@ -824,10 +851,18 @@ check_gllvmTMB <- function(
       } else {
         "WARN"
       },
-      signif(health$max_fixed_se, 4),
-      se_thresh,
-      "largest fixed-effect standard error",
-      "check collinearity, scaling, or weakly identified fixed effects"
+      if (is_mspl) "withheld" else signif(health$max_fixed_se, 4),
+      if (is_mspl) "not applicable" else se_thresh,
+      if (is_mspl) {
+        "fixed-effect standard errors are outside the MSPL point-estimation contract"
+      } else {
+        "largest fixed-effect standard error"
+      },
+      if (is_mspl) {
+        "inspect fixed-design separation, gradients, and point-estimate sensitivity"
+      } else {
+        "check collinearity, scaling, or weakly identified fixed effects"
+      }
     )
   )
 
@@ -864,7 +899,11 @@ check_gllvmTMB <- function(
         "none",
         "none",
         "no simple boundary flags detected",
-        "still inspect profile/bootstrap output for target-specific weakness"
+        if (is_mspl) {
+          "MSPL has no simple boundary flag; still inspect stationarity and latent-rank diagnostics"
+        } else {
+          "still inspect profile/bootstrap output for target-specific weakness"
+        }
       ))
     )
   } else {
@@ -1120,6 +1159,7 @@ gllvmTMB_diagnose <- function(
   if (!inherits(object, "gllvmTMB_multi")) {
     cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
   }
+  is_mspl <- .gllvmTMB_is_mspl(object)
 
   ## ---- Pillar 1: sanity flags --------------------------------------
   if (verbose) {
@@ -1250,13 +1290,22 @@ gllvmTMB_diagnose <- function(
   if (!isTRUE(san$pd_hessian)) {
     hints <- c(
       hints,
-      paste(
-        "Hessian is not positive-definite. Treat this as an inference",
-        "and identifiability warning rather than automatic point-estimate",
-        "failure. Inspect `check_gllvmTMB(fit)`, gradients, boundary",
-        "variances, redundant latent dimensions, and prefer profile or",
-        "bootstrap intervals for interpretable Sigma targets."
-      )
+      if (is_mspl) {
+        paste(
+          "MSPL is a point-only estimator, so Hessian-based inference is",
+          "withheld. Inspect `check_gllvmTMB(fit)`, gradients, penalty",
+          "provenance, boundary behaviour, and redundant latent dimensions;",
+          "do not substitute profile or bootstrap intervals in this release."
+        )
+      } else {
+        paste(
+          "Hessian is not positive-definite. Treat this as an inference",
+          "and identifiability warning rather than automatic point-estimate",
+          "failure. Inspect `check_gllvmTMB(fit)`, gradients, boundary",
+          "variances, redundant latent dimensions, and prefer profile or",
+          "bootstrap intervals for interpretable Sigma targets."
+        )
+      }
     )
   }
   if (!is.na(san$max_se) && san$max_se >= se_thresh) {

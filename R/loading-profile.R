@@ -77,6 +77,7 @@ loading_profile <- function(fit,
 
   if (!inherits(fit, "gllvmTMB_multi"))
     cli::cli_abort("{.code fit} must be a multi-trait {.fun gllvmTMB} fit.")
+  .gllvmTMB_mspl_assert_inference(fit, "loading_profile")
   .gllvmTMB_require_unweighted_inference(fit, "loading_profile")
   level <- match.arg(level)
   internal_level <- .normalise_level(level, arg_name = "level")

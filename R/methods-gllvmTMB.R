@@ -402,6 +402,7 @@
 ## function can currently answer. Kept separate from the SE computation
 ## itself so the guard runs (and fails fast) before any prediction work.
 .gllvmTMB_predict_se_guard <- function(object, newdata) {
+  .gllvmTMB_mspl_assert_inference(object, "predict(se.fit = TRUE)")
   .gllvmTMB_require_unweighted_inference(object, "predict(se.fit = TRUE)")
   if (!is.null(newdata)) {
     cli::cli_abort(c(
@@ -593,26 +594,26 @@
 #' [gllvmTMB()], whether the call started from wide `traits(...)` data
 #' or already-stacked long data. Internally the fit has class
 #' `gllvmTMB_multi`, which is what these S3 methods dispatch on, but
-#' you just call `print(fit)`, `summary(fit)`, `logLik(fit)` etc. as
-#' usual.
+#' you call `print(fit)` and `summary(fit)` as usual. Likelihood and inference
+#' accessors depend on the estimator, as described below.
 #'
-#' * `print()` shows the active covstructs, the number of fixed effects,
-#'   and the converged log-likelihood.
-#' * `summary()` adds a fixed-effects table with SEs, the global and
+#' * For ML fits, `print()` shows the active covstructs, the number of fixed
+#'   effects, and the converged log-likelihood.
+#' * For ML fits, `summary()` adds a fixed-effects table with SEs, the global and
 #'   local trait correlation matrices, per-trait ICCs,
 #'   and global / local communalities.
-#' * `logLik()` returns the unpenalised log-likelihood evaluated at the fitted
-#'   point, with `df = length(opt$par)` and `nobs` equal to the number of
-#'   likelihood-contributing observed response cells. For an unpenalised native
-#'   Laplace fit this is the converged maximum and `AIC()` / `BIC()` have their
-#'   ordinary ML interpretation. AGHQ uses a different integration objective,
-#'   so models must not be compared across engines. With a loading ridge, the
-#'   fitted point is penalised MAP rather than the likelihood maximum; ordinary
-#'   AIC, BIC, and likelihood-ratio interpretations do not apply. The methods
-#'   warn rather than silently relabelling those quantities.
-#'   Fits with non-unit likelihood weights are a separate boundary: their
-#'   objective is a weighted estimating criterion rather than an ordinary
-#'   log-likelihood, so `logLik()`, `AIC()`, and `BIC()` fail loudly.
+#' * For an unpenalised native-Laplace ML fit, `logLik()` is the converged
+#'   maximum with `df = length(opt$par)` and `nobs` equal to the number of
+#'   likelihood-contributing response cells. AGHQ has a distinct integration
+#'   objective; a loading ridge is penalised MAP; and non-unit likelihood
+#'   weights define an estimating objective. Ordinary likelihood comparison is
+#'   unavailable on each of those restricted surfaces.
+#' * For `estimator = "mspl"`, `print()` and `summary()` identify the
+#'   experimental softly penalised Laplace point estimator and show the
+#'   unpenalised Laplace value at that point only as provenance. `logLik()`,
+#'   AIC, BIC, likelihood-ratio tests, standard errors, intervals, and profiles
+#'   fail closed because the point is not the ordinary likelihood maximum and
+#'   repeated-sampling inference is not calibrated.
 #'
 #' @param x,object A fit returned by [gllvmTMB()].
 #' @param digits Decimal digits in the printed summary. Default 3.
@@ -672,26 +673,37 @@ print.gllvmTMB_multi <- function(x, ...) {
   }
   if (!is.null(x$opt)) {
     estimator <- x$estimator %||% if (isTRUE(x$REML)) "REML" else "ML"
-    weighted <- isTRUE(x$likelihood_weights$active)
-    penalised <- isTRUE(x$aghq$penalised)
-    objective_label <- if (weighted) {
-      "Weighted objective (-value)"
-    } else if (penalised) {
-      paste(estimator, "log L at MAP point")
+    if (.gllvmTMB_is_mspl(x)) {
+      cat("  Estimator: MSPL (experimental)\n")
+      cat("  Objective: softly penalised Laplace likelihood\n")
+      cat(sprintf(
+        "  Unpenalised log L at estimate = %.3f   convergence = %d   engine = Laplace\n",
+        x$mspl$unpenalized_loglik_at_estimate,
+        x$opt$convergence
+      ))
+      cat("  Inference: point estimates only; repeated-sampling uncertainty is not yet calibrated.\n")
     } else {
-      paste(estimator, "log L")
-    }
-    cat(sprintf(
-      "  %s = %.3f   convergence = %d   engine = %s\n",
-      objective_label,
-      -x$opt$objective,
-      x$opt$convergence,
-      .aghq_engine_label(x)
-    ))
-    if (weighted) {
-      cat("  Note: ordinary Wald and likelihood-based inference is not validated for non-unit likelihood weights.\n")
-    } else if (penalised) {
-      cat("  Note: parameters are a penalised MAP point; ordinary AIC, BIC, and likelihood-ratio interpretations do not apply.\n")
+      weighted <- isTRUE(x$likelihood_weights$active)
+      penalised <- isTRUE(x$aghq$penalised)
+      objective_label <- if (weighted) {
+        "Weighted objective (-value)"
+      } else if (penalised) {
+        paste(estimator, "log L at MAP point")
+      } else {
+        paste(estimator, "log L")
+      }
+      cat(sprintf(
+        "  %s = %.3f   convergence = %d   engine = %s\n",
+        objective_label,
+        -x$opt$objective,
+        x$opt$convergence,
+        .aghq_engine_label(x)
+      ))
+      if (weighted) {
+        cat("  Note: ordinary Wald and likelihood-based inference is not validated for non-unit likelihood weights.\n")
+      } else if (penalised) {
+        cat("  Note: parameters are a penalised MAP point; ordinary AIC, BIC, and likelihood-ratio interpretations do not apply.\n")
+      }
     }
   }
   ## Rotation advisory note (only if any of B / W / phy is unconstrained
@@ -741,7 +753,11 @@ summary.gllvmTMB_multi <- function(object, ...) {
     unit_obs_col = object$unit_obs_col,
     cluster_col = object$cluster_col %||% object$species_col,
     estimator = object$estimator %||% if (isTRUE(object$REML)) "REML" else "ML",
-    logLik = -object$opt$objective,
+    logLik = if (.gllvmTMB_is_mspl(object)) {
+      object$mspl$unpenalized_loglik_at_estimate
+    } else {
+      -object$opt$objective
+    },
     objective_label = if (isTRUE(object$likelihood_weights$active)) {
       "Weighted objective (-value)"
     } else if (isTRUE(object$aghq$penalised)) {
@@ -753,8 +769,17 @@ summary.gllvmTMB_multi <- function(object, ...) {
     weighted_objective = isTRUE(object$likelihood_weights$active),
     penalised = isTRUE(object$aghq$penalised),
     convergence = object$opt$convergence,
-    engine = .aghq_engine_label(object)
+    engine = .aghq_engine_label(object),
+    mspl = .gllvmTMB_is_mspl(object),
+    objective = if (.gllvmTMB_is_mspl(object)) object$mspl$objective else "likelihood"
   )
+  if (.gllvmTMB_is_mspl(object)) {
+    out$estimation <- object$mspl[c(
+      "objective", "penalized_nll", "unpenalized_nll_at_estimate",
+      "total_penalty_nll", "c_n", "p_free", "N_eff", "scope", "penalty"
+    )]
+    out$inference <- object$mspl$inference
+  }
 
   ## Fixed effects with SE
   df <- .gllvmTMB_b_fix_table(object)
@@ -857,17 +882,34 @@ print.summary.gllvmTMB_multi <- function(x, digits = 3, ...) {
     if (length(used_labels)) {
       cat("  Covstructs:", paste(used_labels, collapse = ", "), "\n")
     }
-    cat(sprintf(
-      "  %s = %.3f   convergence = %d   engine = %s\n",
-      objective_label,
-      logLik,
-      convergence,
-      engine
-    ))
-    if (weighted_objective) {
-      cat("  Note: ordinary Wald and likelihood-based inference is not validated for non-unit likelihood weights.\n")
-    } else if (penalised) {
-      cat("  Note: parameters are a penalised MAP point; ordinary AIC, BIC, and likelihood-ratio interpretations do not apply.\n")
+    if (isTRUE(mspl)) {
+      cat("  Estimator: MSPL (experimental)\n")
+      cat("  Objective: softly penalised Laplace likelihood\n")
+      cat(sprintf(
+        "  Unpenalised log L at estimate = %.3f   convergence = %d   engine = Laplace\n",
+        logLik,
+        convergence
+      ))
+    } else {
+      objective_label <- if (weighted_objective) {
+        "Weighted objective (-value)"
+      } else if (penalised) {
+        paste(estimator, "log L at MAP point")
+      } else {
+        paste(estimator, "log L")
+      }
+      cat(sprintf(
+        "  %s = %.3f   convergence = %d   engine = %s\n",
+        objective_label,
+        logLik,
+        convergence,
+        engine
+      ))
+      if (weighted_objective) {
+        cat("  Note: ordinary Wald and likelihood-based inference is not validated for non-unit likelihood weights.\n")
+      } else if (penalised) {
+        cat("  Note: parameters are a penalised MAP point; ordinary AIC, BIC, and likelihood-ratio interpretations do not apply.\n")
+      }
     }
   })
 
@@ -895,7 +937,13 @@ print.summary.gllvmTMB_multi <- function(x, digits = 3, ...) {
     ## read as a computed result. The two causes need DIFFERENT advice:
     ## standard_errors() fixes "never computed" and does nothing at all for a
     ## non-positive-definite Hessian, where the fit itself is the problem.
-    if (isFALSE(x$se_status$available)) {
+    if (isTRUE(x$header$mspl)) {
+      cat(
+        "\n  Std.Err is withheld: LA-MSPL is an experimental point estimator",
+        "\n  and repeated-sampling uncertainty is not yet calibrated.\n",
+        sep = ""
+      )
+    } else if (isFALSE(x$se_status$available)) {
       if (isTRUE(x$se_status$non_finite)) {
         cat(
           "\n  Std.Err is empty: ", x$se_status$reason, ".",
@@ -976,6 +1024,13 @@ print.summary.gllvmTMB_multi <- function(x, digits = 3, ...) {
 #' @rdname gllvmTMB_multi-methods
 #' @export
 logLik.gllvmTMB_multi <- function(object, ...) {
+  if (.gllvmTMB_is_mspl(object)) {
+    cli::cli_abort(c(
+      "{.fn logLik} is not defined for an {.code estimator = \"mspl\"} fit.",
+      "i" = "The fit stores the unpenalised Laplace value at the MSPL point as provenance, but that point is not the maximum of the ordinary likelihood.",
+      ">" = "Inspect {.code fit$mspl$unpenalized_loglik_at_estimate}; do not use it for AIC, BIC, or likelihood-ratio tests."
+    ), class = "gllvmTMB_mspl_likelihood_unsupported")
+  }
   if (isTRUE(object$likelihood_weights$active)) {
     cli::cli_abort(c(
       "{.fn logLik} is undefined for this non-unit weighted objective.",
@@ -1011,6 +1066,7 @@ logLik.gllvmTMB_multi <- function(object, ...) {
   attr(ll, "estimator") <- object$estimator %||%
     if (isTRUE(object$REML)) "REML" else "ML"
   attr(ll, "REML") <- isTRUE(object$REML)
+  attr(ll, "at_maximum") <- TRUE
   ## Which integration engine produced this value (Arc 0 AGHQ). "Laplace" on
   ## a fit that predates AGHQ (fit$aghq is NULL) or explicitly used it
   ## (fit$aghq$used == FALSE); "AGHQ (k = ..., N nodes)" otherwise. AIC()/
@@ -1126,6 +1182,9 @@ tidy.gllvmTMB_multi <- function(
   ...
 ) {
   effects <- match.arg(effects)
+  if (isTRUE(conf.int)) {
+    .gllvmTMB_mspl_assert_inference(x, "tidy(conf.int = TRUE)")
+  }
   if (effects == "fixed") {
     weighted <- isTRUE(x$likelihood_weights$active)
     if (weighted && isTRUE(conf.int)) {
@@ -1752,6 +1811,7 @@ sanity_multi <- function(object, gradient_thresh = 1e-2, se_thresh = 100) {
   if (!inherits(object, "gllvmTMB_multi")) {
     cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
   }
+  is_mspl <- .gllvmTMB_is_mspl(object)
   flags <- list()
 
   ## 1. nlminb convergence
@@ -1778,16 +1838,20 @@ sanity_multi <- function(object, gradient_thresh = 1e-2, se_thresh = 100) {
   if (!sdreport_ok) {
     flags$sdreport_error <- object$sdreport_error %||% "sdreport unavailable"
   }
-  pd <- sdreport_ok &&
-    !is.null(object$sd_report$pdHess) &&
-    object$sd_report$pdHess
+  pd <- if (is_mspl) {
+    NA
+  } else {
+    sdreport_ok &&
+      !is.null(object$sd_report$pdHess) &&
+      object$sd_report$pdHess
+  }
   flags$pd_hessian <- pd
   cat(sprintf(
     "%-44s %s\n",
     "Hessian positive-definite:",
-    if (pd) "PASS" else "WARN"
+    if (is_mspl) "WITHHELD (MSPL point estimate)" else if (pd) "PASS" else "WARN"
   ))
-  if (!sdreport_ok) {
+  if (!sdreport_ok && !is_mspl) {
     cat(sprintf(
       "%-44s WARN (%s)\n",
       "sdreport available:",
@@ -1796,7 +1860,9 @@ sanity_multi <- function(object, gradient_thresh = 1e-2, se_thresh = 100) {
   }
 
   ## 4. Largest fixed-effect SE
-  se <- if (sdreport_ok) {
+  se <- if (is_mspl) {
+    NA_real_
+  } else if (sdreport_ok) {
     tryCatch(
       .gllvmTMB_b_fix_se(object),
       error = function(e) NA_real_
@@ -1809,12 +1875,20 @@ sanity_multi <- function(object, gradient_thresh = 1e-2, se_thresh = 100) {
   } else {
     max(se, na.rm = TRUE)
   }
-  cat(sprintf(
-    "%-44s %s (max SE = %.3g)\n",
-    sprintf("Max fixed-effect SE < %g:", se_thresh),
-    if (!is.na(flags$max_se) && flags$max_se < se_thresh) "PASS" else "WARN",
-    flags$max_se
-  ))
+  if (is_mspl) {
+    cat(sprintf(
+      "%-44s %s\n",
+      sprintf("Max fixed-effect SE < %g:", se_thresh),
+      "WITHHELD (MSPL point estimate)"
+    ))
+  } else {
+    cat(sprintf(
+      "%-44s %s (max SE = %.3g)\n",
+      sprintf("Max fixed-effect SE < %g:", se_thresh),
+      if (!is.na(flags$max_se) && flags$max_se < se_thresh) "PASS" else "WARN",
+      flags$max_se
+    ))
+  }
 
   ## 5. latent loadings: are any near-zero?
   if (object$use$rr_B) {

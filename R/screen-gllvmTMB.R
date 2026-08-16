@@ -15,6 +15,11 @@
 #' @param discordant_warn_n,discordant_strong_n Pairwise discordant-count
 #'   thresholds for near-duplicate binary traits.
 #' @param hamming_rate_warn Pairwise normalized Hamming-distance threshold.
+#' @param separation Optional fixed-design separation screen. The default
+#'   `"none"` preserves the existing advisory screen and does not require
+#'   `detectseparation`; `"fixed"` returns one certificate per maximal
+#'   coefficient-connected fixed-effect block.
+#' @param separation_tolerance Solver tolerance passed to `detectseparation`.
 #' @return A `gllvmTMB_screen_control` object.
 #' @export
 screen_control <- function(
@@ -27,9 +32,12 @@ screen_control <- function(
   phi_strong = 0.95,
   discordant_warn_n = 10,
   discordant_strong_n = 5,
-  hamming_rate_warn = 0.01
+  hamming_rate_warn = 0.01,
+  separation = c("none", "fixed"),
+  separation_tolerance = 1e-4
 ) {
   module <- match.arg(module, "binomial")
+  separation <- match.arg(separation)
   .screen_assert_count(rare_warn_n, "rare_warn_n")
   .screen_assert_count(rare_strong_n, "rare_strong_n")
   .screen_assert_count(discordant_warn_n, "discordant_warn_n")
@@ -39,6 +47,10 @@ screen_control <- function(
   .screen_assert_probability(phi_warn, "phi_warn")
   .screen_assert_probability(phi_strong, "phi_strong")
   .screen_assert_probability(hamming_rate_warn, "hamming_rate_warn")
+  if (!is.numeric(separation_tolerance) || length(separation_tolerance) != 1L ||
+      !is.finite(separation_tolerance) || separation_tolerance <= 0) {
+    cli::cli_abort("{.arg separation_tolerance} must be one positive finite number.")
+  }
 
   out <- list(
     module = module,
@@ -50,7 +62,9 @@ screen_control <- function(
     phi_strong = as.numeric(phi_strong),
     discordant_warn_n = as.integer(discordant_warn_n),
     discordant_strong_n = as.integer(discordant_strong_n),
-    hamming_rate_warn = as.numeric(hamming_rate_warn)
+    hamming_rate_warn = as.numeric(hamming_rate_warn),
+    separation = separation,
+    separation_tolerance = as.numeric(separation_tolerance)
   )
   class(out) <- "gllvmTMB_screen_control"
   out
@@ -76,6 +90,18 @@ screen_control <- function(
 #' response. Rare or constant species are flagged for inspection and possible
 #' sensitivity analysis, not automatically removed.
 #'
+#' With `screen_control(separation = "fixed")`, the screen uses the optional
+#' `detectseparation` package to classify the observed fixed design. This
+#' includes finite known offsets, whose presence is recorded in the returned
+#' separation table. The offset does not change the fixed-design recession
+#' directions used by the certificate. This is diagnostic support only:
+#' [gllvmTMB()] currently rejects nonzero offsets for binomial responses.
+#'
+#' This
+#' certificate covers fixed-effect geometry only. It does not establish
+#' finiteness of latent loadings or covariance parameters, validate the full
+#' marginal GLLVM likelihood, or select a penalized estimator.
+#'
 #' @param formula A `gllvmTMB()` formula. Wide data can use [traits()] on
 #'   the left-hand side; long data should use a response column on the
 #'   left-hand side plus `trait =`.
@@ -89,6 +115,9 @@ screen_control <- function(
 #' @param weights Optional weights vector, with the same binomial trial-count
 #'   semantics as [gllvmTMB()] for long-format binomial fits.
 #' @param missing Missing-data control; defaults to [miss_control()].
+#' @param Xcoef_fixed Optional named structural-zero fixed-effect constraints,
+#'   normalized against the expanded fixed-effect columns as in [gllvmTMB()].
+#'   This argument is used by the opt-in fixed-design separation screen.
 #' @param control A [screen_control()] object.
 #' @return A `gllvmTMB_screen` object. Use [screen_table()] to extract
 #'   report-ready tables.
@@ -108,6 +137,10 @@ screen_control <- function(
 #'   Chalmers RP (2012). mirt: A multidimensional item response theory package
 #'   for the R environment. *Journal of Statistical Software* 48(6):1--29.
 #'   doi:10.18637/jss.v048.i06.
+#'
+#'   Kosmidis I, Schumacher D, Schwendinger F (2026). detectseparation:
+#'   Detect and Check for Separation and Infinite Maximum Likelihood Estimates.
+#'   R package version 0.4.0. doi:10.32614/CRAN.package.detectseparation.
 #' @export
 #' @examples
 #' df <- data.frame(
@@ -134,7 +167,8 @@ screen_gllvmTMB <- function(
   trait = "trait",
   weights = NULL,
   missing = miss_control(),
-  control = screen_control()
+  control = screen_control(),
+  Xcoef_fixed = NULL
 ) {
   if (!inherits(formula, "formula")) {
     cli::cli_abort("{.arg formula} must be a formula.")
@@ -155,28 +189,71 @@ screen_gllvmTMB <- function(
     missing = missing
   )
   fam <- .screen_family_info(family)
+  separation <- .screen_empty_separation()
 
   if (!isTRUE(fam$supported)) {
     traits <- .screen_not_checked_traits(prep, fam)
     pairs <- .screen_empty_pairs()
     units <- .screen_units_table(prep, traits)
-    design <- .screen_design_table(prep, fam, traits)
+    design <- .screen_design_table(
+      prep,
+      fam,
+      traits,
+      Xcoef_fixed = Xcoef_fixed,
+      resolve_fixed = identical(control$separation, "fixed")
+    )
+    if (identical(control$separation, "fixed")) {
+      separation <- .screen_separation_table(
+        prep,
+        fam,
+        response = NULL,
+        control = control,
+        Xcoef_fixed = Xcoef_fixed
+      )
+    }
     recommendations <- .screen_unsupported_recommendations(traits, fam)
   } else {
     response <- .screen_binomial_response(prep)
     traits <- .screen_binomial_traits(prep, response, control)
     pairs <- .screen_binomial_pairs(prep, response, control)
     units <- .screen_units_table(prep, traits, response)
-    design <- .screen_design_table(prep, fam, traits)
-    recommendations <- .screen_recommendations(traits, pairs, design)
+    design <- .screen_design_table(
+      prep,
+      fam,
+      traits,
+      Xcoef_fixed = Xcoef_fixed,
+      resolve_fixed = identical(control$separation, "fixed")
+    )
+    if (identical(control$separation, "fixed")) {
+      separation <- .screen_separation_table(
+        prep,
+        fam,
+        response = response,
+        control = control,
+        Xcoef_fixed = Xcoef_fixed
+      )
+    }
+    recommendations <- .screen_recommendations(
+      traits,
+      pairs,
+      design,
+      separation
+    )
+  }
+  if (!isTRUE(fam$supported) && nrow(separation)) {
+    recommendations <- rbind(
+      recommendations,
+      .screen_recommend_from_separation(separation)
+    )
   }
 
   out <- list(
-    summary = .screen_summary_table(traits, pairs, design),
+    summary = .screen_summary_table(traits, pairs, design, separation),
     traits = traits,
     pairs = pairs,
     units = units,
     design = design,
+    separation = separation,
     recommendations = recommendations,
     settings = data.frame(
       module = control$module,
@@ -208,6 +285,7 @@ screen_table <- function(
     "pairs",
     "units",
     "design",
+    "separation",
     "recommendations",
     "settings"
   )
@@ -228,6 +306,17 @@ print.gllvmTMB_screen <- function(x, ...) {
   if (nrow(status) > 0L) {
     bits <- paste0(status$status, " ", status$n, collapse = " | ")
     cat("  ", bits, "\n", sep = "")
+  }
+  separation <- x$separation %||% .screen_empty_separation()
+  if (nrow(separation) > 0L) {
+    sep_counts <- table(separation$severity)
+    sep_bits <- paste0(
+      names(sep_counts),
+      " ",
+      as.integer(sep_counts),
+      collapse = " | "
+    )
+    cat("  Fixed-design separation: ", sep_bits, ".\n", sep = "")
   }
   rec <- x$recommendations
   actionable <- rec[rec$status %in% c("FAIL", "WARN"), , drop = FALSE]
@@ -370,6 +459,8 @@ print.gllvmTMB_screen <- function(x, ...) {
     X = X,
     fixed_error = fixed_error,
     source_shape = source_shape,
+    is_y_observed = observed_response$is_y_observed,
+    original_row = observed_response$original_row,
     n_input_rows = n_input_rows,
     n_dropped = observed_response$n_dropped %||% 0L
   )
@@ -932,7 +1023,13 @@ print.gllvmTMB_screen <- function(x, ...) {
   out
 }
 
-.screen_design_table <- function(prep, fam, traits) {
+.screen_design_table <- function(
+  prep,
+  fam,
+  traits,
+  Xcoef_fixed = NULL,
+  resolve_fixed = FALSE
+) {
   rows <- list()
   if (!is.null(prep$fixed_error)) {
     rows[[length(rows) + 1L]] <- .screen_design_row(
@@ -945,21 +1042,49 @@ print.gllvmTMB_screen <- function(x, ...) {
       "unsupported"
     )
   } else if (!is.null(prep$X)) {
-    rank <- qr(prep$X)$rank
-    n_col <- ncol(prep$X)
-    rows[[length(rows) + 1L]] <- .screen_design_row(
-      "fixed_effect_rank",
-      if (rank < n_col) "FAIL" else "PASS",
-      if (rank < n_col) "rank_deficient" else "none",
-      rank,
-      n_col,
-      if (rank < n_col) {
-        "fixed-effect design is rank deficient"
+    X <- prep$X
+    if (isTRUE(resolve_fixed)) {
+      resolved <- .normalise_Xcoef_fixed(Xcoef_fixed, colnames(X), REML = FALSE)
+      observed <- prep$is_y_observed %||% rep.int(1L, nrow(X))
+      observed <- as.logical(observed)
+      supported <- vapply(
+        seq_len(ncol(X)),
+        function(j) any(abs(X[observed, j]) > 0, na.rm = TRUE),
+        logical(1L)
+      )
+      X <- X[, resolved$status == "estimated" & supported, drop = FALSE]
+    }
+    n_col <- ncol(X)
+    if (anyNA(X) || any(!is.finite(X))) {
+      rows[[length(rows) + 1L]] <- .screen_design_row(
+        "fixed_effect_rank",
+        "NOT_CHECKED",
+        "non_finite_design",
+        NA_real_,
+        n_col,
+        "fixed-effect design contains missing or non-finite values",
+        "inspect"
+      )
+    } else {
+      rank <- if (n_col) {
+        qr(X, tol = sqrt(.Machine$double.eps))$rank
       } else {
-        "fixed-effect design has full column rank"
-      },
-      if (rank < n_col) "inspect" else "keep"
-    )
+        0L
+      }
+      rows[[length(rows) + 1L]] <- .screen_design_row(
+        "fixed_effect_rank",
+        if (rank < n_col) "FAIL" else "PASS",
+        if (rank < n_col) "rank_deficient" else "none",
+        rank,
+        n_col,
+        if (rank < n_col) {
+          "fixed-effect design is rank deficient"
+        } else {
+          "fixed-effect design has full column rank"
+        },
+        if (rank < n_col) "inspect" else "keep"
+      )
+    }
   }
 
   if (!is.null(prep$unit_col)) {
@@ -1061,11 +1186,12 @@ print.gllvmTMB_screen <- function(x, ...) {
   do.call(rbind, rows)
 }
 
-.screen_recommendations <- function(traits, pairs, design) {
+.screen_recommendations <- function(traits, pairs, design, separation = NULL) {
   recs <- list(
     .screen_recommend_from_traits(traits),
     .screen_recommend_from_pairs(pairs),
-    .screen_recommend_from_design(design)
+    .screen_recommend_from_design(design),
+    .screen_recommend_from_separation(separation)
   )
   out <- do.call(rbind, recs)
   out <- out[out$status != "PASS", , drop = FALSE]

@@ -69,3 +69,18 @@ or the untracked `vignettes/articles/figures/P1-F*.png` copies if present.
 ```text
 Read AGENTS.md and docs/dev-log/handover/2026-08-15-claude-handover-eod.md. Run the handover rehydration steps, reconcile them with the current git state, then continue only the OWED Next Immediate Steps.
 ```
+
+## The arc's aim, in the maintainer's words (final steer, tonight -- binding)
+
+*"This arc's main aim: to be able to fit these models. Model paper 1 can --
+so we now need to make model for paper 2."*
+
+Sequencing this fixes: (1) the OWED public-API lane finishes making Model 1
+(two-source PA + GBIF) a fittable, documented capability; (2) the NEXT
+capability arc is **Model 2** -- the multi-source integrated model
+(GBIF-style + literature + checklist + monitoring branches sharing one
+ecological process, each source its own observation law). That is an ENGINE
+extension (n_sources > 2, per-source detection/observation branches), to be
+designed against OUR small simulated framings -- North America allowed,
+questions and data always distinct from Kristen's projects. The two-source
+machinery, gates, and frontier evidence from today are its foundation.

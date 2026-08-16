@@ -2221,8 +2221,30 @@ predict.gllvmTMB_multi <- function(
 ## Whether that omission is material is exactly the open question the
 ## Design 119 sec.4 coverage campaign exists to answer, not something this
 ## comment can settle.
-.gllvmTMB_predict_missing_se <- function(fit, type = c("link", "response")) {
+##
+## `route = "quad"` is the R1-quad approximation above. `route = "joint"` is
+## the R1-joint route Design 119 sec.7 prescribes after wave-1 found R1-quad
+## systematically OVER-covers se_confidence (diagonal conditional latent
+## variance plus the full fixed block double-counts shared information):
+## var(eta_ut) = w' Q^{-1} w, where Q is the joint (fixed + random)
+## precision from `TMB::sdreport(obj, getJointPrecision = TRUE)` and w is
+## the exact (not approximate -- eta is linear in b_fix and z_B) gradient
+## of eta_ut with respect to the full joint parameter vector: the free
+## X_fix row entries at the b_fix positions, plus lambda_t at that unit's
+## z_B positions, zero elsewhere. This is the same b_fix/z_B block-position
+## convention `.gllvmTMB_predict_se_link()` and `extract_ordination()`
+## already rely on (verified positionally identical to
+## `names(fit$tmb_obj$env$last.par.best)` -- see
+## `test-predict-missing-se.R`'s one-cell numeric cross-check). The solve is
+## always sparse (`Matrix::solve(Q, W)`, CHOLMOD under the hood); Q is never
+## densified in production code.
+.gllvmTMB_predict_missing_se <- function(
+  fit,
+  type = c("link", "response"),
+  route = c("quad", "joint")
+) {
   type <- match.arg(type)
+  route <- match.arg(route)
   fid_vec <- fit$tmb_data$family_id_vec
   if (is.null(fid_vec) || !all(fid_vec == 0L)) {
     cli::cli_abort(c(
@@ -2241,6 +2263,31 @@ predict.gllvmTMB_multi <- function(
   iyo <- fit$tmb_data$is_y_observed
   masked <- if (is.null(iyo)) integer(0L) else which(iyo == 0L)
 
+  var_eta <- if (route == "joint") {
+    .gllvmTMB_predict_missing_var_eta_joint(fit, masked, n_obs)
+  } else {
+    .gllvmTMB_predict_missing_var_eta_quad(fit, masked, n_obs)
+  }
+  se_eta <- sqrt(pmax(var_eta, 0))
+
+  sigma_eps <- .gllvmTMB_sigma_eps(fit)
+  deriv <- .dlinkinv_per_row(
+    eta, fid_vec, fit$tmb_data$link_id_vec, sigma_eps = sigma_eps
+  )
+  ## Gaussian is identity-link (deriv == 1 exactly), so se_confidence is the
+  ## same whether `type` is "link" or "response" -- kept type-aware anyway
+  ## so the shape of this function generalises when Slice 3 adds families
+  ## whose link is not identity.
+  se_confidence <- if (type == "response") se_eta * abs(deriv) else se_eta
+  se_prediction <- sqrt(se_confidence^2 + sigma_eps^2)
+
+  list(se_confidence = se_confidence, se_prediction = se_prediction)
+}
+
+## R1-quad: var_fix(eta) (.gllvmTMB_predict_se_link()) plus the diagonal
+## rr_B latent-score curvature, in quadrature. See the parent function's
+## header comment for the full derivation and documented omissions.
+.gllvmTMB_predict_missing_var_eta_quad <- function(fit, masked, n_obs) {
   se_fix <- .gllvmTMB_predict_se_link(fit)
 
   se_lat2 <- rep(0, n_obs)
@@ -2258,21 +2305,88 @@ predict.gllvmTMB_multi <- function(
     }
   }
 
-  var_eta <- se_fix^2 + se_lat2
-  se_eta  <- sqrt(pmax(var_eta, 0))
+  se_fix^2 + se_lat2
+}
 
-  sigma_eps <- .gllvmTMB_sigma_eps(fit)
-  deriv <- .dlinkinv_per_row(
-    eta, fid_vec, fit$tmb_data$link_id_vec, sigma_eps = sigma_eps
+## R1-joint: var(eta_ut) = w' Q^{-1} w via the joint (fixed + random)
+## precision. See the parent function's header comment for the derivation.
+## Exported (`@noRd`, internal) mainly so the test suite can call it
+## directly for the one-cell numeric cross-check against a dense solve.
+.gllvmTMB_predict_missing_var_eta_joint <- function(fit, masked, n_obs) {
+  var_eta <- rep(0, n_obs)
+  if (length(masked) == 0L) {
+    return(var_eta)
+  }
+
+  sdr_joint <- TMB::sdreport(fit$tmb_obj, getJointPrecision = TRUE)
+  Q <- sdr_joint$jointPrecision
+  if (is.null(Q)) {
+    cli::cli_abort(c(
+      "{.code route = \"joint\"} requires a joint precision from {.fn sdreport}.",
+      "i" = "{.fn TMB::sdreport} did not return a {.field jointPrecision} block for this fit."
+    ), class = "gllvmTMB_predict_missing_se_joint_precision_unavailable")
+  }
+  par_names <- rownames(Q)
+
+  status <- .gllvmTMB_xcoef_status(fit)
+  free <- status != "fixed"
+  Xf <- fit$X_fix[, free, drop = FALSE]
+  bfix_pos <- which(par_names == "b_fix")
+  if (length(bfix_pos) != sum(free)) {
+    cli::cli_abort(c(
+      "Could not align the {.field b_fix} block in the joint precision with the free fixed-effect columns.",
+      "i" = "Expected {sum(free)} free {.field b_fix} entries; found {length(bfix_pos)}."
+    ), class = "gllvmTMB_predict_missing_se_joint_block_mismatch")
+  }
+
+  has_rr_B <- isTRUE(fit$use$rr_B)
+  zB_pos_mat <- NULL
+  Lambda <- NULL
+  if (has_rr_B) {
+    zB_pos <- which(par_names == "z_B")
+    if (length(zB_pos) != fit$d_B * fit$n_sites) {
+      cli::cli_abort(c(
+        "Could not align the {.field z_B} block in the joint precision.",
+        "i" = "Expected {fit$d_B * fit$n_sites} entries; found {length(zB_pos)}."
+      ), class = "gllvmTMB_predict_missing_se_joint_block_mismatch")
+    }
+    zB_pos_mat <- matrix(zB_pos, nrow = fit$d_B, ncol = fit$n_sites)
+    Lambda <- fit$report$Lambda_B
+  }
+
+  trait_id <- as.integer(fit$data[[fit$trait_col]])
+  unit_id  <- as.integer(fit$data[[fit$unit_col]])
+
+  n_par <- nrow(Q)
+  n_m <- length(masked)
+  i_idx <- integer(0); j_idx <- integer(0); x_val <- numeric(0)
+  for (k in seq_along(masked)) {
+    i <- masked[k]
+    xf_row <- Xf[i, ]
+    nz <- which(xf_row != 0)
+    if (length(nz)) {
+      i_idx <- c(i_idx, bfix_pos[nz])
+      j_idx <- c(j_idx, rep(k, length(nz)))
+      x_val <- c(x_val, xf_row[nz])
+    }
+    if (has_rr_B) {
+      pos <- zB_pos_mat[, unit_id[i]]
+      lam <- Lambda[trait_id[i], ]
+      i_idx <- c(i_idx, pos)
+      j_idx <- c(j_idx, rep(k, length(pos)))
+      x_val <- c(x_val, lam)
+    }
+  }
+  W <- Matrix::sparseMatrix(
+    i = i_idx, j = j_idx, x = x_val, dims = c(n_par, n_m)
   )
-  ## Gaussian is identity-link (deriv == 1 exactly), so se_confidence is the
-  ## same whether `type` is "link" or "response" -- kept type-aware anyway
-  ## so the shape of this function generalises when Slice 3 adds families
-  ## whose link is not identity.
-  se_confidence <- if (type == "response") se_eta * abs(deriv) else se_eta
-  se_prediction <- sqrt(se_confidence^2 + sigma_eps^2)
 
-  list(se_confidence = se_confidence, se_prediction = se_prediction)
+  ## Sparse solve -- never a dense inverse of Q.
+  V <- Matrix::solve(Q, W)
+  var_masked <- Matrix::colSums(W * V)
+
+  var_eta[masked] <- as.numeric(var_masked)
+  var_eta
 }
 
 #' Predict the masked (missing) response cells of a gllvmTMB fit
@@ -2295,13 +2409,17 @@ predict.gllvmTMB_multi <- function(
 #' register status `heuristic_unvalidated` -- no repeated-sampling coverage
 #' evidence exists for `se_confidence` or `se_prediction`, and neither is an
 #' interval claim of any kind. It is currently implemented for gaussian
-#' fits only (other families abort); the underlying reconstruction-variance
-#' decomposition also omits the b_fix/latent-score cross-covariance and any
+#' fits only (other families abort). Two routes exist (`se_route`):
+#' `"quad"` (default) omits the b_fix/latent-score cross-covariance and any
 #' `diag_B` ("unique"/Psi) or within-unit (`rr_W`) random-effect
 #' contribution (see `docs/design/119-predict-missing-uncertainty.md` sec.3
-#' R1-quad). Do not surface `se_confidence` / `se_prediction` as calibrated
-#' uncertainty in any user-facing output until the Design 119 sec.4 coverage
-#' campaign clears a family for export.
+#' R1-quad), and Design 119 sec.7's wave-1 coverage run found this
+#' OVER-covers `se_confidence`; `"joint"` computes the exact joint-precision
+#' variance (sec.3 R1-joint) and is expected to correct that, but has not
+#' itself been coverage-tested yet. Do not surface `se_confidence` /
+#' `se_prediction` as calibrated uncertainty in any user-facing output
+#' until the Design 119 sec.4 coverage campaign clears a route and family
+#' for export.
 #'
 #' @param object A fit returned by [gllvmTMB()].
 #' @param type One of `"link"` (default; the linear predictor) or
@@ -2310,6 +2428,9 @@ predict.gllvmTMB_multi <- function(
 #'   (delta-method SE of the reconstructed mean) and `se_prediction`
 #'   (`se_confidence` combined with the family noise variance) columns.
 #'   Gaussian fits only in this slice; see Details. Default `FALSE`.
+#' @param se_route EXPERIMENTAL, internal-only. One of `"quad"` (default;
+#'   R1-quad) or `"joint"` (R1-joint, the exact joint-precision variance --
+#'   see Details). Ignored unless `se = TRUE`.
 #' @param ... Unused.
 #'
 #' @return A data frame with one row per masked response cell, with columns:
@@ -2328,12 +2449,14 @@ predict_missing <- function(
   object,
   type = c("link", "response"),
   se = FALSE,
+  se_route = c("quad", "joint"),
   ...
 ) {
   if (!inherits(object, "gllvmTMB_multi")) {
     cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
   }
   type <- match.arg(type)
+  se_route <- match.arg(se_route)
 
   md <- object$missing_data
   iyo <- object$tmb_data$is_y_observed
@@ -2397,7 +2520,7 @@ predict_missing <- function(
   }
   base$est <- est
   if (isTRUE(se)) {
-    se_out <- .gllvmTMB_predict_missing_se(object, type = type)
+    se_out <- .gllvmTMB_predict_missing_se(object, type = type, route = se_route)
     base$se_confidence <- se_out$se_confidence
     base$se_prediction <- se_out$se_prediction
   }

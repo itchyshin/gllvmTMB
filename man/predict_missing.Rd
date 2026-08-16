@@ -4,7 +4,13 @@
 \alias{predict_missing}
 \title{Predict the masked (missing) response cells of a gllvmTMB fit}
 \usage{
-predict_missing(object, type = c("link", "response"), se = FALSE, ...)
+predict_missing(
+  object,
+  type = c("link", "response"),
+  se = FALSE,
+  se_route = c("quad", "joint"),
+  ...
+)
 }
 \arguments{
 \item{object}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}.}
@@ -16,6 +22,10 @@ predict_missing(object, type = c("link", "response"), se = FALSE, ...)
 (delta-method SE of the reconstructed mean) and \code{se_prediction}
 (\code{se_confidence} combined with the family noise variance) columns.
 Gaussian fits only in this slice; see Details. Default \code{FALSE}.}
+
+\item{se_route}{EXPERIMENTAL, internal-only. One of \code{"quad"} (default;
+R1-quad) or \code{"joint"} (R1-joint, the exact joint-precision variance --
+see Details). Ignored unless \code{se = TRUE}.}
 
 \item{...}{Unused.}
 }
@@ -50,13 +60,17 @@ errors and prediction intervals are not currently returned by default.
 register status \code{heuristic_unvalidated} -- no repeated-sampling coverage
 evidence exists for \code{se_confidence} or \code{se_prediction}, and neither is an
 interval claim of any kind. It is currently implemented for gaussian
-fits only (other families abort); the underlying reconstruction-variance
-decomposition also omits the b_fix/latent-score cross-covariance and any
+fits only (other families abort). Two routes exist (\code{se_route}):
+\code{"quad"} (default) omits the b_fix/latent-score cross-covariance and any
 \code{diag_B} ("unique"/Psi) or within-unit (\code{rr_W}) random-effect
 contribution (see \code{docs/design/119-predict-missing-uncertainty.md} sec.3
-R1-quad). Do not surface \code{se_confidence} / \code{se_prediction} as calibrated
-uncertainty in any user-facing output until the Design 119 sec.4 coverage
-campaign clears a family for export.
+R1-quad), and Design 119 sec.7's wave-1 coverage run found this
+OVER-covers \code{se_confidence}; \code{"joint"} computes the exact joint-precision
+variance (sec.3 R1-joint) and is expected to correct that, but has not
+itself been coverage-tested yet. Do not surface \code{se_confidence} /
+\code{se_prediction} as calibrated uncertainty in any user-facing output
+until the Design 119 sec.4 coverage campaign clears a route and family
+for export.
 }
 \seealso{
 \code{\link[=gllvmTMB]{gllvmTMB()}}, \code{\link[=miss_control]{miss_control()}}, \code{\link[=predict.gllvmTMB_multi]{predict.gllvmTMB_multi()}}.

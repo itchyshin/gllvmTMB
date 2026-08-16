@@ -142,7 +142,9 @@ run_one_rep <- function(mechanism, mech_idx, rep) {
                               n_units = COV119_N_UNITS,
                               p_traits = COV119_P_TRAITS,
                               q_true = COV119_Q_TRUE, seed = seed)
-    mask <- make_mask(mechanism, COV119_N_UNITS, COV119_P_TRAITS, seed = seed)
+    mask <- make_mask(mechanism, COV119_N_UNITS, COV119_P_TRAITS, seed = seed,
+                      n_cluster_units = COV119_CLUSTER_UNITS,
+                      n_cluster_traits = COV119_CLUSTER_TRAITS)
     wide_masked <- apply_mask(sim$wide, sim$trait_names, mask)
     designed <- mask_cells(mask, sim$trait_names)
     n_masked <- nrow(designed)

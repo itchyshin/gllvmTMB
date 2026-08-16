@@ -1,5 +1,41 @@
 # Check log
 
+## 2026-08-16 — B1 official --holdout after M0 freeze (G1–G5 FAIL)
+
+Post-freeze Totoro read, 27.1 s, exit 0. One core.
+
+```sh
+Rscript --vanilla inst/sim/b1-calibration/consolidate-b1.R \
+  --out .../b1-full-20260816 --outer-per-shard 10 --reps 600 \
+  --expect-full --holdout
+# G1 14/132 = 10.6% PASS -> FAILS G1
+# G2 min coverage 0.0218 -> FAILS G2
+# G3 10/132 avail<0.95 -> FAIL; G4 PASS; G5 vacuous PASS
+```
+
+Receipt: `docs/dev-log/research/2026-08-16-mspl-b1-holdout-gate.md`.
+Not run: `evaluate-holdout.R` sidecar re-threshold (M0 = nominal, same
+construction); n=2000 escalation.
+
+## 2026-08-16 — B1 calibrator map FROZEN (M0; train-only)
+
+G0: Shinichi *"go ahead"*. Written freeze from the calibration split
+only. Hold-out not read at freeze time. Official `b2_select_map`
+sidecar ladder not run; M0 (\(h=0\), \(\alpha^*=0.05\)) frozen because
+Phase-A M1 would worsen the train UNDER pocket (60 UNDER vs 64 OVER).
+
+```sh
+# Train-only join of consolidate stdout to b1_grid(); no --holdout
+Rscript --vanilla -e '... class counts 63 PASS / 64 OVER / 60 UNDER ...'
+# Artifacts
+# docs/dev-log/research/2026-08-16-mspl-b1-calibrator-map-freeze.md
+# docs/dev-log/research/2026-08-16-mspl-b1-calibrator-map.json
+# docs/dev-log/research/2026-08-16-mspl-b1-calibrator-fit.rds
+```
+
+Not run at freeze time: `fit-calibrator.R`, `consolidate-b1.R --holdout`,
+`evaluate-holdout.R`, G1–G5.
+
 ## 2026-08-13 — final two-paper G3 reconciliation
 
 Independent Gauss/Noether, Fisher, and Rose review of the two ignored result
@@ -51313,3 +51349,39 @@ are untouched. Separately: the source-pin test
 is red on main — R/mspl.R's door was widened to c(0L,1L,2L,5L,15L) without
 updating the pin; flagged in PR #1031's body, deliberately left to this lane.
 Lane: claude/sdm-repeated-survey-20260816. — Claude
+## 2026-08-16 — MSPL rest-family prepare-fence (Cursor)
+
+Lane `cursor/mspl-rest-family-prepare-fence` in
+`/tmp/gllvmtmb-mspl-rest-family-fence`. Live public-door reject for
+families still off the nbinom allow-list. No src. No admit. Door
+sentence matches `c(0L, 1L, 2L, 5L, 15L)` after #1014 closed the
+Tweedie/Beta public door. Registry pin excludes names that already
+have planned rows on main.
+
+```sh
+rg -n 'fam_ids %in%' R/mspl.R
+# c(0L, 1L, 2L, 5L, 15L)
+
+NOT_CRAN=true OMP_NUM_THREADS=1
+# rest-family-prepare-fence
+git diff --stat -- src/ R/mspl.R R/mspl-registry.R
+# empty
+```
+
+After-task:
+`docs/dev-log/after-task/2026-08-16-mspl-rest-family-prepare-fence.md`.
+Not run: `devtools::test()`, `R CMD check`, pkgdown, Totoro, admit.
+
+## 2026-08-16 — MSPL rest-family fence renamed zz- (CI order)
+
+`#1026` failed twice on `test-va-all-family-light-fits.R`
+`delta_lognormal_log` (`failed_health_gate`, 2 < 3 healthy starts).
+The rest-family file's own tests passed. Renamed
+`test-mspl-rest-family-prepare-fence.R` ->
+`test-zz-mspl-rest-family-prepare-fence.R` so the live door runs
+after the VA light grid. No admit. No `R/` / `src/` edit.
+
+```sh
+git mv tests/testthat/test-mspl-rest-family-prepare-fence.R \
+  tests/testthat/test-zz-mspl-rest-family-prepare-fence.R
+```

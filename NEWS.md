@@ -6,6 +6,18 @@ is still the default.
 
 ## New
 
+* **A Species Distribution Models article collection.** The pkgdown site
+  gains a dedicated navbar menu ordering the SDM material as a curriculum —
+  the joint species distribution model guide, a new presence-only opener,
+  and the three integrated-source articles. The new article, *Joint
+  ecological intensity from opportunistic records*
+  (`vignettes/articles/gbif-joint-intensity.Rmd`), fits a joint
+  relative-intensity model to GBIF-style records alone through the ordinary
+  `gllvmTMB()` call (Poisson counts, an effort offset, a named recording-bias
+  covariate, and one `latent()` factor). It estimates relative ecological
+  intensity only — no abundance, absolute occurrence, or detectability
+  claim — and states the design assumption its bias term rests on.
+
 * **Complete-Bernoulli GLLVMs can opt in to LA-MSPL point estimation.** Set
   `estimator = "mspl"` to fit the experimental maximum softly penalised
   Laplace objective for one ordinary `latent(d = 1:2)` block with no free Psi,

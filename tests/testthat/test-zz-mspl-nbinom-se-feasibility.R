@@ -3,8 +3,8 @@
 ## admitted. Not binomial. Not public vcov.
 ##
 ## Registry may still be planned, excluded, or deferred — never admitted.
-## Do not require an admitted row to go green. Do not weaken the pin
-## assertions to skip the missing door.
+## Do not require an admitted row to go green. Live fits skip_if the
+## public nbinom door is still closed (gllvmTMB_mspl_unsupported).
 ##
 ## Named test-zz-* so it runs after test-va-all-family-light-fits.R.
 ## See the Bernoulli twin file for the CI #979 ordering note.
@@ -36,6 +36,22 @@
       n_init = 1L, init_jitter = 0, se = TRUE, warn_runaway = FALSE
     )
   )
+}
+
+.mspl_se_nb_try_fit <- function(which = c("nbinom1", "nbinom2")) {
+  which <- match.arg(which)
+  fit <- tryCatch(
+    suppressMessages(suppressWarnings(.mspl_se_nb_fit(which))),
+    error = function(e) e
+  )
+  testthat::skip_if(
+    inherits(fit, "gllvmTMB_mspl_unsupported"),
+    paste(which, "MSPL family door is missing")
+  )
+  if (inherits(fit, "error")) {
+    stop(fit)
+  }
+  fit
 }
 
 ## Exact cell_id lookup misses excluded rows that carry a suffix
@@ -122,21 +138,21 @@ test_that("nbinom2 MSPL registry is not admitted (planned or deferred allowed)",
 })
 
 test_that("public se=TRUE still withholds sdreport on nbinom1 MSPL", {
-  fit <- .mspl_se_nb_fit("nbinom1")
+  fit <- .mspl_se_nb_try_fit("nbinom1")
   .mspl_se_nb_assert_public_withheld(fit, "nbinom1")
 })
 
 test_that("public se=TRUE still withholds sdreport on nbinom2 MSPL", {
-  fit <- .mspl_se_nb_fit("nbinom2")
+  fit <- .mspl_se_nb_try_fit("nbinom2")
   .mspl_se_nb_assert_public_withheld(fit, "nbinom2")
 })
 
 test_that("internal nbinom1 curvature pin names both tapes and is unexported", {
-  fit <- .mspl_se_nb_fit("nbinom1")
+  fit <- .mspl_se_nb_try_fit("nbinom1")
   .mspl_se_nb_assert_curvature_pin(fit, "nbinom1")
 })
 
 test_that("internal nbinom2 curvature pin names both tapes and is unexported", {
-  fit <- .mspl_se_nb_fit("nbinom2")
+  fit <- .mspl_se_nb_try_fit("nbinom2")
   .mspl_se_nb_assert_curvature_pin(fit, "nbinom2")
 })

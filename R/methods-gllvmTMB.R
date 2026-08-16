@@ -2841,9 +2841,18 @@ predict.gllvmTMB_multi <- function(
 #' calibrated uncertainty in any user-facing output until the Design 119
 #' sec.4 coverage campaign clears a route and family for export.
 #'
+#' For [ordinal_probit()] traits, `type = "response"` is the **expected
+#' category** \eqn{E[k] = \sum_k k \cdot P(\mathrm{category}\ k \mid \eta,
+#' \tau)}, computed from the fitted cutpoints (Hadfield 2015 convention:
+#' \eqn{\tau_1 = 0} fixed, \eqn{\tau_2, \ldots, \tau_{K-1}} estimated; see
+#' [extract_cutpoints()]) -- not a probability. It is not an elementwise
+#' `pnorm(eta)`, which is not a category quantity once \eqn{K > 2}.
+#' `type = "link"` is unchanged: the probit-scale linear predictor.
+#'
 #' @param object A fit returned by [gllvmTMB()].
 #' @param type One of `"link"` (default; the linear predictor) or
-#'   `"response"` (the inverse-link conditional mean).
+#'   `"response"` (the inverse-link conditional mean; for [ordinal_probit()]
+#'   traits, the expected category instead -- see Details).
 #' @param se EXPERIMENTAL, internal-only. If `TRUE`, appends `se_confidence`
 #'   (delta-method SE of the reconstructed mean) and `se_prediction`
 #'   (`se_confidence` combined with the family noise variance) columns.
@@ -2863,8 +2872,10 @@ predict.gllvmTMB_multi <- function(
 #' @param ... Unused.
 #'
 #' @return A data frame with one row per masked response cell, with columns:
-#'   `original_row` (the supplied long-data row or the supplied wide-data row
-#'   before `traits()` stacking),
+#'   `original_row` (the supplied long-data row, the supplied wide-data row
+#'   before `traits()` stacking, or -- for a [multinomial()] fit -- the
+#'   pre-expansion row of the user's data that the K-1 category-contrast
+#'   pseudo-row belongs to),
 #'   `model_row` (the row index into the fitted long-format data / response),
 #'   the unit / cluster / trait identifier columns, `est` (the prediction
 #'   on the requested scale), and, when `se = TRUE`, `se_confidence` and
@@ -2927,6 +2938,22 @@ predict_missing <- function(
     original_row <- as.integer(wide_source_row)
   }
 
+  ## Multinomial (fid 16) fits expand each observation into K-1
+  ## category-contrast pseudo-rows before fitting; `md$original_row` above
+  ## is computed on the ALREADY-EXPANDED data, so it degenerates to
+  ## `model_row` for these rows and does not map back to the user's
+  ## pre-expansion data row. `.multinom_group_` (0-based, set by
+  ## `expand_multinomial_response()`) is exactly that pre-expansion row
+  ## index and survives on `object$data`, so use it to override
+  ## `original_row` for the multinomial pseudo-rows (`-1` tags a
+  ## non-multinomial row in a mixed-family fit and is left untouched).
+  mn_gid <- object$data[[".multinom_group_"]]
+  if (!is.null(mn_gid) && length(mn_gid) == n_model) {
+    mn_gid <- as.integer(mn_gid)
+    is_mn_row <- !is.na(mn_gid) & mn_gid >= 0L
+    original_row[is_mn_row] <- mn_gid[is_mn_row] + 1L
+  }
+
   ## Cell identifiers: reuse the user's column names where available.
   unit_lbl <- object$unit_col %||% "site"
   trait_lbl <- object$trait_col %||% "trait"
@@ -2975,6 +3002,62 @@ predict_missing <- function(
   }
 
   out <- base[masked, , drop = FALSE]
+
+  ## ordinal_probit (fid 14) has no single-row response mean, so
+  ## `predict(object, type = "response")` (via `.apply_linkinv_per_row()`)
+  ## falls back to the latent probit-scale `pnorm(eta)` -- not a category
+  ## quantity once K > 2. Scoped to predict_missing()'s masked-row output
+  ## only: replace those rows' `est` with the expected category. The
+  ## generic predict() path is untouched.
+  if (identical(type, "response")) {
+    fid_vec <- object$tmb_data$family_id_vec
+    if (!is.null(fid_vec) && length(fid_vec) == n_model && any(fid_vec == 14L)) {
+      out <- .predict_missing_ordinal_response(object, out, fid_vec, trait_lbl)
+    }
+  }
+
   rownames(out) <- NULL
+  out
+}
+
+## For fid == 14 (ordinal_probit) rows in `predict_missing(type =
+## "response")`'s output, replace the pnorm(eta) placeholder with the
+## EXPECTED CATEGORY E[k] = sum_k k * P(category k | eta, cutpoints),
+## following the Hadfield (2015) convention also used by extract_cutpoints():
+## tau_1 = 0 fixed for identifiability, tau_2 .. tau_{K-1} estimated. Built
+## directly from `object$tmb_data`/`object$report` (the same fields
+## `extract_cutpoints()` reads) rather than calling `extract_cutpoints()`
+## itself, so a K = 2 trait (Hadfield eqn 10: ordinal_probit with K = 2
+## reduces exactly to binomial(link = "probit"), zero free cutpoints) is
+## still handled -- `extract_cutpoints()` omits such traits from its
+## per-cutpoint data frame entirely. Non-ordinal rows in `out` are untouched.
+.predict_missing_ordinal_response <- function(object, out, fid_vec, trait_lbl) {
+  ord_idx <- which(fid_vec[out$model_row] == 14L)
+  if (length(ord_idx) == 0L || is.null(trait_lbl) || !trait_lbl %in% names(out)) {
+    return(out)
+  }
+  n_cuts_pt <- as.integer(object$tmb_data$n_ordinal_cuts_per_trait)
+  off_pt <- as.integer(object$tmb_data$ordinal_offset_per_trait)
+  trait_lab <- levels(object$data[[trait_lbl]])
+  taus <- as.numeric(object$report$ordinal_cutpoints %||% numeric(0))
+  eta <- as.numeric(object$report$eta)
+  traits_out <- as.character(out[[trait_lbl]])
+  for (i in ord_idx) {
+    t <- match(traits_out[i], trait_lab)
+    if (is.na(t) || t > length(n_cuts_pt)) {
+      next
+    }
+    kt_minus_2 <- n_cuts_pt[t]
+    tau_free <- if (kt_minus_2 > 0L) {
+      base_off <- off_pt[t]
+      taus[(base_off + 1L):(base_off + kt_minus_2)]
+    } else {
+      numeric(0)
+    }
+    bnds <- c(-Inf, 0, tau_free, Inf)
+    e <- eta[out$model_row[i]]
+    probs <- diff(stats::pnorm(bnds - e))
+    out$est[i] <- sum(seq_along(probs) * probs)
+  }
   out
 }

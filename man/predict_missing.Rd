@@ -18,7 +18,8 @@ predict_missing(
 \item{object}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}.}
 
 \item{type}{One of \code{"link"} (default; the linear predictor) or
-\code{"response"} (the inverse-link conditional mean).}
+\code{"response"} (the inverse-link conditional mean; for \code{\link[=ordinal_probit]{ordinal_probit()}}
+traits, the expected category instead -- see Details).}
 
 \item{se}{EXPERIMENTAL, internal-only. If \code{TRUE}, appends \code{se_confidence}
 (delta-method SE of the reconstructed mean) and \code{se_prediction}
@@ -44,8 +45,10 @@ saved and restored, never disturbed. Ignored for every other route.}
 }
 \value{
 A data frame with one row per masked response cell, with columns:
-\code{original_row} (the supplied long-data row or the supplied wide-data row
-before \code{traits()} stacking),
+\code{original_row} (the supplied long-data row, the supplied wide-data row
+before \code{traits()} stacking, or -- for a \code{\link[=multinomial]{multinomial()}} fit -- the
+pre-expansion row of the user's data that the K-1 category-contrast
+pseudo-row belongs to),
 \code{model_row} (the row index into the fitted long-format data / response),
 the unit / cluster / trait identifier columns, \code{est} (the prediction
 on the requested scale), and, when \code{se = TRUE}, \code{se_confidence} and
@@ -72,6 +75,14 @@ missing \strong{predictors} from supported \code{mi()} fits.
 The point predictions here are the fitted linear predictor (\code{type = "link"})
 or its inverse-link response (\code{type = "response"}). Reconstruction standard
 errors and prediction intervals are not currently returned by default.
+
+For \code{\link[=ordinal_probit]{ordinal_probit()}} traits, \code{type = "response"} is the \strong{expected
+category} \eqn{E[k] = \sum_k k \cdot P(\mathrm{category}\ k \mid \eta,
+\tau)}, computed from the fitted cutpoints (Hadfield 2015 convention:
+\eqn{\tau_1 = 0} fixed, \eqn{\tau_2, \ldots, \tau_{K-1}} estimated; see
+\code{\link[=extract_cutpoints]{extract_cutpoints()}}) -- not a probability. It is not an elementwise
+\code{pnorm(eta)}, which is not a category quantity once \eqn{K > 2}.
+\code{type = "link"} is unchanged: the probit-scale linear predictor.
 
 \code{se = TRUE} is \strong{EXPERIMENTAL and INTERNAL-ONLY} (Design 119 Slice 1):
 register status \code{heuristic_unvalidated} -- no repeated-sampling coverage

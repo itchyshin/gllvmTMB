@@ -8,7 +8,9 @@ predict_missing(
   object,
   type = c("link", "response"),
   se = FALSE,
-  se_route = c("quad", "joint", "joint_load"),
+  se_route = c("quad", "joint", "joint_load", "sim"),
+  n_sim = 2000L,
+  sim_seed = NULL,
   ...
 )
 }
@@ -24,8 +26,19 @@ predict_missing(
 Gaussian fits only in this slice; see Details. Default \code{FALSE}.}
 
 \item{se_route}{EXPERIMENTAL, internal-only. One of \code{"quad"} (default;
-R1-quad), \code{"joint"} (R1-joint), or \code{"joint_load"} (R1-joint+loadings
--- see Details). Ignored unless \code{se = TRUE}.}
+R1-quad), \code{"joint"} (R1-joint), \code{"joint_load"} (R1-joint+loadings), or
+\code{"sim"} (R2, simulation-based -- see Details). Ignored unless
+\code{se = TRUE}.}
+
+\item{n_sim}{EXPERIMENTAL, internal-only. Number of Monte Carlo
+replicates drawn per masked cell when \code{se_route = "sim"}. Ignored for
+every other route. Default \code{2000}.}
+
+\item{sim_seed}{EXPERIMENTAL, internal-only. Integer RNG seed for
+\code{se_route = "sim"}. Default \code{NULL}, which derives a fixed seed from
+the fitted parameter vector so repeated calls on the same fit
+reproduce identical draws; the caller's global RNG state is always
+saved and restored, never disturbed. Ignored for every other route.}
 
 \item{...}{Unused.}
 }
@@ -37,7 +50,11 @@ before \code{traits()} stacking),
 the unit / cluster / trait identifier columns, \code{est} (the prediction
 on the requested scale), and, when \code{se = TRUE}, \code{se_confidence} and
 \code{se_prediction} (see Details -- EXPERIMENTAL, not a calibrated
-interval). A complete-data fit (no masked cells) returns a zero-row
+interval). When \code{se = TRUE} and \code{se_route = "sim"}, also
+\code{q_lo_conf}/\code{q_hi_conf}, \code{q_lo_pred}/\code{q_hi_pred} (empirical 2.5\%/97.5\%
+quantiles of the simulated \verb{eta*} / \verb{y*}) and \code{q_lo_conf90}/
+\code{q_hi_conf90}, \code{q_lo_pred90}/\code{q_hi_pred90} (empirical 5\%/95\%
+quantiles). A complete-data fit (no masked cells) returns a zero-row
 data frame with the same columns.
 }
 \description{
@@ -60,20 +77,32 @@ errors and prediction intervals are not currently returned by default.
 register status \code{heuristic_unvalidated} -- no repeated-sampling coverage
 evidence exists for \code{se_confidence} or \code{se_prediction}, and neither is an
 interval claim of any kind. It is currently implemented for gaussian
-fits only (other families abort). Three routes exist (\code{se_route}), all
-measured on the same wave-1 gaussian coverage grid
-(\code{docs/design/119-predict-missing-uncertainty.md} sec.7): \code{"quad"}
-(default) omits the b_fix/latent-score cross-covariance and any
+fits only (other families abort). Four routes exist (\code{se_route}):
+\code{"quad"} (default) omits the b_fix/latent-score cross-covariance and any
 \code{diag_B} ("unique"/Psi) or within-unit (\code{rr_W}) random-effect
 contribution (sec.3 R1-quad) and OVER-covers \code{se_confidence};
 \code{"joint"} computes the exact joint-precision variance for the b_fix and
 latent-score blocks (sec.3 R1-joint) but omits the loading-uncertainty
 block entirely and UNDER-covers; \code{"joint"} and \code{"quad"} BRACKET nominal
 coverage. \code{"joint_load"} (sec.7b, R1-joint+loadings) adds that third
-block and has not itself been coverage-tested yet. Do not surface
-\code{se_confidence} / \code{se_prediction} as calibrated uncertainty in any
-user-facing output until the Design 119 sec.4 coverage campaign clears
-a route and family for export.
+block; it is the best-calibrated delta-method route measured and still
+fails the gate by ~1.2 points at 95\% (sec.7c). \code{"sim"} (sec.3 R2) is a
+Monte Carlo route: it draws the same gradient-relevant parameter
+subvector \code{"joint_load"} uses from its exact joint-precision marginal
+normal, forms \code{n_sim} EXACT (non-linearised) draws of
+\verb{eta* = x'b* + lambda_t*'u_i*}, and adds one gaussian family draw per
+replicate for \verb{y*}. Unlike the other three routes it makes NO normality
+assumption about the predictive distribution -- \code{se_confidence} /
+\code{se_prediction} are the empirical sd of \verb{eta*} / \verb{y*}, and it ALSO
+returns empirical-quantile columns (\code{q_lo_conf}/\code{q_hi_conf},
+\code{q_lo_pred}/\code{q_hi_pred} at nominal 95\%, and their \verb{*90} companions at
+nominal 90\%) that a normal-quantile route cannot produce. It still holds
+every parameter at its estimate (a plug-in simulation, like every other
+route here), so it does not address hyperparameter uncertainty -- see
+\code{docs/design/119-predict-missing-uncertainty.md} sec.3/sec.7c. Do not
+surface \code{se_confidence} / \code{se_prediction} / the quantile columns as
+calibrated uncertainty in any user-facing output until the Design 119
+sec.4 coverage campaign clears a route and family for export.
 }
 \seealso{
 \code{\link[=gllvmTMB]{gllvmTMB()}}, \code{\link[=miss_control]{miss_control()}}, \code{\link[=predict.gllvmTMB_multi]{predict.gllvmTMB_multi()}}.

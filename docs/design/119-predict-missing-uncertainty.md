@@ -226,6 +226,51 @@ predictive distribution has heavier tails. Both are structural limits of a
 delta-method route, which is why the next step is **R2 (simulation-based)
 or R3 (parametric bootstrap)** from §3 — not a fourth delta variant.
 
+### 7d. Wave-2 — R2, the simulation route (best measured; still short)
+
+`se_route = "sim"`: draws the gradient-relevant parameter subvector from
+`N(theta_hat, Q^{-1})` (the same positions and mapping as `joint_load`),
+forms `eta*` per draw, adds an exact family draw for `y*`, and scores
+coverage from EMPIRICAL quantiles instead of `+/- z * se`. So it differs
+from wave-1c in exactly two respects: no normality assumption, and an exact
+rather than plug-in family-variance term. Same grid, 1,600/1,600 fits.
+
+| mechanism | conf 90% | conf 95% | pred 90% | pred 95% |
+|---|---|---|---|---|
+| mcar05 | 0.895 | 0.944 | **0.900** | 0.942 |
+| mcar20 | 0.892 | 0.941 | 0.891 | 0.936 |
+| trait_clustered | **0.898** | 0.946 | 0.891 | 0.939 |
+| unit_clustered | **0.896** | 0.945 | 0.892 | 0.938 |
+
+**Progression of the confidence estimand at 95% across all four routes:**
+
+| route | conf 95% | deviation from nominal |
+|---|---|---|
+| `quad` | 0.960–0.966 | +1.0 to +1.6 |
+| `joint` | 0.925–0.933 | −1.7 to −2.5 |
+| `joint_load` | 0.935–0.939 | −1.1 to −1.5 |
+| `sim` | **0.941–0.946** | **−0.4 to −0.9** |
+
+Gate: **3/16 cells pass** (up from 1/16); overall still FAIL, status stays
+`heuristic_unvalidated`.
+
+**What wave-2 settles.** The normal-quantile assumption was worth about
+0.6 coverage points — real, and now removed. What remains is a consistent
+0.4–0.9-point shortfall that empirical quantiles cannot touch, and its
+cause is what R2 still holds fixed: the family scale is drawn at
+`sigma_eps_hat`, and `Q` itself is evaluated at `theta_hat` (the classic
+plug-in of the precision). Both are propagated only by refitting, which is
+**R3, the parametric bootstrap** — no longer one candidate among several
+but the single remaining route in the ladder.
+
+**R3 cost, for the D-139 decision.** Each replicate needs `B` refits at the
+measured ~0.9 s/fit: at `B = 200` over the same 4x400 grid that is
+~1,600 x 200 x 0.9 s = **~80 core-hours** (~2.5 h wall at 32 cores, ~35 min
+at 150). Halving to 200 reps/cell halves it at the cost of widening MCSE
+from ~0.0015 to ~0.0021 -- still far below the 0.4-0.9-point effect being
+measured. This exceeds the 30-minute line, so it needs an explicit
+pre-run + approval rather than an autonomous launch.
+
 ## 6. Decision needed from the maintainer
 
 - Approve the estimand split (confidence-for-mean vs prediction-for-value

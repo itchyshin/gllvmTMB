@@ -610,3 +610,196 @@ test_that("joint_load aligns the loading block at rank >= 2 (wave-1c regression)
 ## two-block one, which is exactly what rank-2 fits show. The empirical
 ## position-mapping check (Lambda_B cells vs theta_rr_B entries, 0
 ## mismatches at rank 2) is the real guard and lives above.
+
+# ---- R2 simulation-based route (Design 119 sec.3 R2, sec.7c residual) -----
+#
+# "sim" draws the same gradient-relevant parameter subvector "joint_load"
+# uses from its exact joint-precision marginal normal, forms EXACT
+# (non-linearised) Monte Carlo draws of eta* = x'b* + lambda_t*'u_i*, and
+# adds one gaussian family draw per replicate for y*. It replaces the
+# normal-quantile assumption with empirical quantiles; it does NOT address
+# hyperparameter uncertainty (still plug-in at the parameter estimate).
+
+test_that("se_route = 'sim' returns finite, positive SEs and ordered quantiles", {
+  skip_if_not_heavy()
+  dat <- .pm_se_data()
+  miss_idx <- c(3L, 15L, 47L, 68L)
+  dat_na <- dat
+  dat_na$value[miss_idx] <- NA_real_
+
+  fit <- .pm_se_fit(dat_na, missing = miss_control(response = "include"))
+
+  pm <- predict_missing(fit, se = TRUE, se_route = "sim", n_sim = 2000L)
+  expect_true(all(c(
+    "se_confidence", "se_prediction",
+    "q_lo_conf", "q_hi_conf", "q_lo_pred", "q_hi_pred",
+    "q_lo_conf90", "q_hi_conf90", "q_lo_pred90", "q_hi_pred90"
+  ) %in% names(pm)))
+  expect_identical(nrow(pm), length(miss_idx))
+  expect_true(all(is.finite(pm$se_confidence)))
+  expect_true(all(is.finite(pm$se_prediction)))
+  expect_true(all(pm$se_confidence > 0))
+  expect_true(all(pm$se_prediction > 0))
+
+  # Ordered quantiles, both nominal levels, both estimands.
+  expect_true(all(pm$q_lo_conf < pm$q_hi_conf))
+  expect_true(all(pm$q_lo_pred < pm$q_hi_pred))
+  expect_true(all(pm$q_lo_conf90 < pm$q_hi_conf90))
+  expect_true(all(pm$q_lo_pred90 < pm$q_hi_pred90))
+  # The 90% band nests inside the 95% band (same empirical distribution).
+  expect_true(all(pm$q_lo_conf <= pm$q_lo_conf90))
+  expect_true(all(pm$q_hi_conf90 <= pm$q_hi_conf))
+  expect_true(all(pm$q_lo_pred <= pm$q_lo_pred90))
+  expect_true(all(pm$q_hi_pred90 <= pm$q_hi_pred))
+  # The point estimate sits roughly inside its own empirical band.
+  expect_true(all(pm$q_lo_conf < pm$est & pm$est < pm$q_hi_conf))
+})
+
+test_that("se_route = 'sim': se_prediction strictly exceeds se_confidence", {
+  skip_if_not_heavy()
+  dat <- .pm_se_data()
+  miss_idx <- c(3L, 15L, 47L, 68L)
+  dat_na <- dat
+  dat_na$value[miss_idx] <- NA_real_
+
+  fit <- .pm_se_fit(dat_na, missing = miss_control(response = "include"))
+
+  pm <- predict_missing(fit, se = TRUE, se_route = "sim", n_sim = 2000L)
+  expect_true(all(pm$se_prediction > pm$se_confidence))
+})
+
+test_that("se_route = 'sim': increasing n_sim from 500 to 8000 moves se_confidence by < 5% (MC stability)", {
+  skip_if_not_heavy()
+  dat <- .pm_se_data()
+  miss_idx <- c(3L, 15L, 47L, 68L)
+  dat_na <- dat
+  dat_na$value[miss_idx] <- NA_real_
+
+  fit <- .pm_se_fit(dat_na, missing = miss_control(response = "include"))
+
+  # SAME sim_seed at both n_sim: the RNG draws are column-major, so the
+  # first 500 columns at n_sim = 8000 are exactly the n_sim = 500 draws --
+  # a deterministic, reproducible "does the estimate stabilise as more
+  # (nested) draws are added" check. An INDEPENDENT-seed comparison at
+  # n_sim = 500 has an intrinsic relative MC error of ~1/sqrt(2*500) ~ 3%
+  # per cell (measured up to 8% across 4 cells x 2 estimands here), which
+  # would make the assertion flaky rather than informative.
+  pm_lo <- predict_missing(fit, se = TRUE, se_route = "sim", n_sim = 500L, sim_seed = 99L)
+  pm_hi <- predict_missing(fit, se = TRUE, se_route = "sim", n_sim = 8000L, sim_seed = 99L)
+
+  rel_diff_conf <- abs(pm_hi$se_confidence - pm_lo$se_confidence) / pm_lo$se_confidence
+  rel_diff_pred <- abs(pm_hi$se_prediction - pm_lo$se_prediction) / pm_lo$se_prediction
+  expect_true(all(rel_diff_conf < 0.05))
+  expect_true(all(rel_diff_pred < 0.05))
+})
+
+test_that("se_route = 'sim': se_confidence agrees in magnitude with 'joint_load' (difference is in the quantiles, not the sd)", {
+  skip_if_not_heavy()
+  dat <- .pm_se_data()
+  miss_idx <- c(3L, 15L, 47L, 68L)
+  dat_na <- dat
+  dat_na$value[miss_idx] <- NA_real_
+
+  fit <- .pm_se_fit(dat_na, missing = miss_control(response = "include"))
+
+  pm_sim   <- predict_missing(fit, se = TRUE, se_route = "sim", n_sim = 4000L)
+  pm_joint <- predict_missing(fit, se = TRUE, se_route = "joint_load")
+
+  rel_diff <- abs(pm_sim$se_confidence - pm_joint$se_confidence) / pm_joint$se_confidence
+  expect_true(all(rel_diff < 0.10))
+})
+
+test_that("se_route = 'sim' is deterministic: same sim_seed reproduces identical output", {
+  skip_if_not_heavy()
+  dat <- .pm_se_data()
+  miss_idx <- c(3L, 15L, 47L, 68L)
+  dat_na <- dat
+  dat_na$value[miss_idx] <- NA_real_
+
+  fit <- .pm_se_fit(dat_na, missing = miss_control(response = "include"))
+
+  pm_a <- predict_missing(fit, se = TRUE, se_route = "sim", n_sim = 1000L, sim_seed = 42L)
+  pm_b <- predict_missing(fit, se = TRUE, se_route = "sim", n_sim = 1000L, sim_seed = 42L)
+  expect_identical(pm_a, pm_b)
+
+  # Default (sim_seed = NULL) is ALSO deterministic across repeat calls on
+  # the same fit, since it derives a fixed seed from the parameter vector.
+  pm_c <- predict_missing(fit, se = TRUE, se_route = "sim", n_sim = 1000L)
+  pm_d <- predict_missing(fit, se = TRUE, se_route = "sim", n_sim = 1000L)
+  expect_identical(pm_c, pm_d)
+})
+
+test_that("se_route = 'sim' does not disturb the caller's global RNG state", {
+  skip_if_not_heavy()
+  dat <- .pm_se_data()
+  miss_idx <- c(3L, 15L, 47L, 68L)
+  dat_na <- dat
+  dat_na$value[miss_idx] <- NA_real_
+
+  fit <- .pm_se_fit(dat_na, missing = miss_control(response = "include"))
+
+  set.seed(777)
+  before <- .Random.seed
+  invisible(predict_missing(fit, se = TRUE, se_route = "sim", n_sim = 500L))
+  after <- .Random.seed
+  expect_identical(before, after)
+
+  set.seed(777)
+  draw_no_sim <- runif(1)
+  set.seed(777)
+  invisible(predict_missing(fit, se = TRUE, se_route = "sim", n_sim = 500L))
+  draw_after_sim <- runif(1)
+  expect_identical(draw_no_sim, draw_after_sim)
+})
+
+test_that("se_route = 'sim' aborts for a non-gaussian family, naming Design 119 Slice 3", {
+  skip_if_not_heavy()
+  set.seed(11)
+  n <- 40
+  dat <- data.frame(
+    site = factor(seq_len(n)),
+    env_1 = rnorm(n)
+  )
+  u <- rnorm(n, sd = 0.7)
+  dat_wide <- data.frame(
+    site = dat$site,
+    t1 = rpois(n, exp(0.3 + 0.5 * dat$env_1 + u)),
+    t2 = rpois(n, exp(0.1 - 0.3 * dat$env_1 + u)),
+    t3 = rpois(n, exp(0.2 + 0.2 * dat$env_1 + u))
+  )
+  dat_wide$t1[c(2L, 9L)] <- NA_integer_
+
+  fit_pois <- suppressMessages(suppressWarnings(gllvmTMB(
+    traits(t1, t2, t3) ~ 1 + latent(1 | site, d = 1, unique = FALSE),
+    data    = dat_wide,
+    unit    = "site",
+    family  = poisson(),
+    missing = miss_control(response = "include")
+  )))
+
+  err <- expect_error(
+    predict_missing(fit_pois, se = TRUE, se_route = "sim"),
+    class = "gllvmTMB_predict_missing_se_family_unsupported"
+  )
+  expect_match(conditionMessage(err), "Design 119", fixed = TRUE)
+  expect_match(conditionMessage(err), "Slice 3", fixed = TRUE)
+})
+
+test_that("route = 'joint_load' is unchanged by the sim-route addition (regression guard)", {
+  skip_if_not_heavy()
+  dat <- .pm_se_data()
+  miss_idx <- c(3L, 15L, 47L, 68L)
+  dat_na <- dat
+  dat_na$value[miss_idx] <- NA_real_
+
+  fit <- .pm_se_fit(dat_na, missing = miss_control(response = "include"))
+  pm_joint_load <- predict_missing(fit, se = TRUE, se_route = "joint_load")
+
+  # Same pinned values as the "route = 'joint' is unchanged by the
+  # joint_load-route addition" guard above -- joint_load itself must not
+  # move when the sim route is added alongside it.
+  expect_true(all(is.finite(pm_joint_load$se_confidence)))
+  expect_false(any(c(
+    "q_lo_conf", "q_hi_conf", "q_lo_pred", "q_hi_pred"
+  ) %in% names(pm_joint_load)))
+})

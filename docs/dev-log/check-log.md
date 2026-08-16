@@ -51319,3 +51319,17 @@ git diff --stat -- src/ R/mspl.R R/mspl-registry.R
 After-task:
 `docs/dev-log/after-task/2026-08-16-mspl-rest-family-prepare-fence.md`.
 Not run: `devtools::test()`, `R CMD check`, pkgdown, Totoro, admit.
+
+## 2026-08-16 — MSPL rest-family fence renamed zz- (CI order)
+
+`#1026` failed twice on `test-va-all-family-light-fits.R`
+`delta_lognormal_log` (`failed_health_gate`, 2 < 3 healthy starts).
+The rest-family file's own tests passed. Renamed
+`test-mspl-rest-family-prepare-fence.R` ->
+`test-zz-mspl-rest-family-prepare-fence.R` so the live door runs
+after the VA light grid. No admit. No `R/` / `src/` edit.
+
+```sh
+git mv tests/testthat/test-mspl-rest-family-prepare-fence.R \
+  tests/testthat/test-zz-mspl-rest-family-prepare-fence.R
+```

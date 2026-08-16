@@ -1,3 +1,4 @@
+## zz- prefix: run after test-va-all-family-light-fits.R (CI order).
 ## Live public-door fence for families that still have no MSPL door.
 ## Complements test-mspl-prepare-fence.R (beta/Tweedie after #1007)
 ## and does not open a door. Not an admission. No registry row. No src/.

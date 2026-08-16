@@ -14,7 +14,7 @@ This is not a Phase-4 oracle, not a registry row, and not a door.
 
 ## 2. Implemented
 
-`tests/testthat/test-mspl-rest-family-prepare-fence.R` calls
+`tests/testthat/test-zz-mspl-rest-family-prepare-fence.R` calls
 `gllvmTMB(..., estimator = "mspl")` and requires class
 `gllvmTMB_mspl_unsupported` plus the current door sentence
 ("gaussian, bernoulli, Poisson, nbinom1, or nbinom2" after #1007) for:
@@ -28,9 +28,11 @@ This is not a Phase-4 oracle, not a registry row, and not a door.
 A registry pin asserts none of those names is `planned` or
 `admitted` on this `main`.
 
+The file is `test-zz-*` so it runs after `test-va-all-family-light-fits.R`. Two CI runs of the `test-mspl-*` name failed the unrelated VA `delta_lognormal_log` health gate (`healthy_starts` 2 < 3) while this file's own tests passed. No VA claim change.
+
 ## 3. Files Changed
 
-- `tests/testthat/test-mspl-rest-family-prepare-fence.R`
+- `tests/testthat/test-zz-mspl-rest-family-prepare-fence.R`
 - `docs/dev-log/after-task/2026-08-16-mspl-rest-family-prepare-fence.md`
 - `docs/dev-log/check-log.md`
 
@@ -55,7 +57,7 @@ validation-debt register, sibling oracle files.
 export OMP_NUM_THREADS=1 NOT_CRAN=true
 # worktree /tmp/gllvmtmb-mspl-rest-family-fence
 pkgload::load_all(".", compile = FALSE)
-testthat::test_file("tests/testthat/test-mspl-rest-family-prepare-fence.R")
+testthat::test_file("tests/testthat/test-zz-mspl-rest-family-prepare-fence.R")
 # FAIL 0 / WARN 0 / SKIP 0 / PASS 11
 testthat::test_file("tests/testthat/test-mspl-prepare-fence.R")
 # FAIL 0 / WARN 0 / SKIP 0 / PASS 4
@@ -79,7 +81,7 @@ rg -n 'fam_ids %in%' R/mspl.R
 # still c(0L, 1L, 2L)
 rg -n 'status = "admitted"' R/mspl-registry.R
 # binomial / gaussian / poisson only
-rg -n 'estimator = "mspl"' tests/testthat/test-mspl-rest-family-prepare-fence.R
+rg -n 'estimator = "mspl"' tests/testthat/test-zz-mspl-rest-family-prepare-fence.R
 # live rejects only
 ```
 

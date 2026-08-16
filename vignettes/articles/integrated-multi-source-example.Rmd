@@ -244,6 +244,23 @@ occupancy, detectability — from any number of presence-only sources.
   — the design question, from a 1,600-fit known-truth campaign.
 - [Response families](response-families.html) — the admitted families and
   links in general.
+
+# References
+
+Fletcher, R.J. Jr, Hefley, T.J., Robertson, E.P., Zuckerberg, B., McCleery,
+R.A. and Dorazio, R.M. (2019). A practical guide for combining data to model
+species distributions. *Ecology* **100**, e02710.
+<https://doi.org/10.1002/ecy.2710>
+
+Isaac, N.J.B., Jarzyna, M.A., Keil, P., et al. (2020). Data integration for
+large-scale models of species distributions. *Trends in Ecology & Evolution*
+**35**, 56–67. <https://doi.org/10.1016/j.tree.2019.08.006>
+
+Miller, D.A.W., Pacifici, K., Sanderlin, J.S. and Reich, B.J. (2019). The
+recent past and promising future for data integration methods to estimate
+species' distributions. *Methods in Ecology and Evolution* **10**, 22–37.
+<https://doi.org/10.1111/2041-210X.13110>
+
 ```{r session, include=FALSE}
 ## deliberately minimal; this article is a workflow illustration only
 ```

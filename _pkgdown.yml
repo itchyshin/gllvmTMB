@@ -35,7 +35,7 @@ template:
 
 navbar:
   structure:
-    left:  [intro, model_guides, concepts, diagnostics, reference, news]
+    left:  [intro, model_guides, sdm, concepts, diagnostics, reference, news]
     right: [search, github]
   components:
     intro:
@@ -60,8 +60,6 @@ navbar:
         href: articles/model-selection-latent-rank.html
       - text: Explore loading constraints
         href: articles/lambda-constraint-suggest.html
-      - text: Joint species distribution model
-        href: articles/joint-sdm.html
       - text: Keep rare species with LA-MSPL
         href: articles/mspl-binary-jsdm.html
       - text: Multivariate spatial models
@@ -70,6 +68,23 @@ navbar:
         href: articles/phylogenetic-gllvm.html
       - text: Handling missing data
         href: articles/missing-data.html
+    sdm:
+      text: Species Distribution Models
+      menu:
+      - text: Joint species distribution model
+        href: articles/joint-sdm.html
+      - text: Joint intensity from opportunistic records
+        href: articles/gbif-joint-intensity.html
+      - text: Integrating records with a repeated survey
+        href: articles/integrated-two-source-example.html
+      - text: How much survey do you need?
+        href: articles/integrated-survey-design.html
+      - text: More than two sources
+        href: articles/integrated-multi-source-example.html
+      - text: Keep rare species with LA-MSPL
+        href: articles/mspl-binary-jsdm.html
+      - text: Multivariate spatial models
+        href: articles/spatial-models.html
     concepts:
       text: Concepts
       menu:
@@ -117,17 +132,22 @@ articles:
     - articles/random-regression-reaction-norms
     - articles/model-selection-latent-rank
     - articles/lambda-constraint-suggest
-    - articles/joint-sdm
     - articles/mspl-binary-jsdm
     - articles/spatial-models
     - articles/phylogenetic-gllvm
     - articles/missing-data
 
-  - title: Data integration (experimental)
+  - title: Species distribution models
+    desc: >
+      From a joint model of one community to integrated models that combine
+      opportunistic records with designed surveys. The integrated route is
+      experimental.
     contents:
+    - articles/joint-sdm
+    - articles/gbif-joint-intensity
     - articles/integrated-two-source-example
-    - articles/integrated-multi-source-example
     - articles/integrated-survey-design
+    - articles/integrated-multi-source-example
 
   - title: Concepts
     contents:

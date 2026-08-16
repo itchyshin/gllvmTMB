@@ -1009,3 +1009,105 @@ test_that("route = 'sim' is unchanged by the boot-route addition (regression gua
   ) %in% names(pm_sim)))
   expect_false("n_boot_ok" %in% names(pm_sim))
 })
+
+# ---- R3 boot_dgp = "reml" (Design 119 sec.7e, wave-3 diagnosis) -----------
+#
+# Wave-3 coverage: se_route = "boot" with the (then only) "ml" world
+# under-covered at the SAME level as "joint_load" (0/16), diagnosed as the
+# ML-fit-generated bootstrap world re-importing ML's own downward
+# variance/loading bias at small n. boot_dgp = "reml" generates the B
+# complete-data worlds from ONE auxiliary REML fit's parameters instead,
+# while the pivoted point estimate and every inner refit stay ML.
+
+test_that("boot_dgp = 'ml' (default) is byte-unchanged by the reml addition (regression guard)", {
+  skip_if_not_heavy()
+  dat <- .pm_se_data()
+  miss_idx <- c(3L, 15L, 47L, 68L)
+  dat_na <- dat
+  dat_na$value[miss_idx] <- NA_real_
+
+  fit <- .pm_se_fit(dat_na, missing = miss_control(response = "include"))
+
+  pm_default  <- predict_missing(fit, se = TRUE, se_route = "boot", n_boot = 25L, boot_seed = 1L)
+  pm_explicit <- predict_missing(
+    fit, se = TRUE, se_route = "boot", n_boot = 25L, boot_seed = 1L, boot_dgp = "ml"
+  )
+  expect_identical(pm_default, pm_explicit)
+})
+
+test_that("boot_dgp = 'reml' is deterministic under a fixed boot_seed", {
+  skip_if_not_heavy()
+  dat <- .pm_se_data()
+  miss_idx <- c(3L, 15L, 47L, 68L)
+  dat_na <- dat
+  dat_na$value[miss_idx] <- NA_real_
+
+  fit <- .pm_se_fit(dat_na, missing = miss_control(response = "include"))
+
+  pm_a <- predict_missing(
+    fit, se = TRUE, se_route = "boot", n_boot = 20L, boot_seed = 42L, boot_dgp = "reml"
+  )
+  pm_b <- predict_missing(
+    fit, se = TRUE, se_route = "boot", n_boot = 20L, boot_seed = 42L, boot_dgp = "reml"
+  )
+  expect_identical(pm_a, pm_b)
+  expect_true(all(is.finite(pm_a$se_confidence)))
+  expect_true(all(pm_a$n_boot_ok == 20L))
+})
+
+test_that("boot_dgp = 'reml': sigma_eps_hat exceeds ML's, and mean interval width exceeds 'ml' on the campaign-size fixture", {
+  skip_if_not_heavy()
+  # Same scale as the Design 119 sec.4 campaign fixture (n_units = 50,
+  # p_traits = 25, q = 2, ~5% masked) via the SAME site-trait simulator
+  # already used elsewhere in this file, so the test stays self-contained
+  # (no dev/ sourcing). n_boot is kept modest (30, not the campaign's 200)
+  # to bound runtime -- this checks DIRECTION, not calibration.
+  n_sites  <- 50L
+  n_traits <- 25L
+  set.seed(119001)
+  Lambda_B <- matrix(rnorm(n_traits * 2, sd = 0.6), n_traits, 2)
+  sim <- simulate_site_trait(
+    n_sites = n_sites, n_species = 1, n_traits = n_traits,
+    mean_species_per_site = 1,
+    Lambda_B = Lambda_B, sigma2_eps = 0.4, seed = 119001
+  )
+  dat <- sim$data
+  n_row <- nrow(dat)
+  set.seed(119002)
+  miss_idx <- sample(seq_len(n_row), round(0.05 * n_row))
+  dat_na <- dat
+  dat_na$value[miss_idx] <- NA_real_
+
+  fit_form <- value ~ 0 + trait + (0 + trait):env_1 +
+    latent(0 + trait | site, d = 2, unique = FALSE)
+
+  fit_ml <- suppressMessages(suppressWarnings(gllvmTMB(
+    formula = fit_form, data = dat_na, family = gaussian(),
+    missing = miss_control(response = "include"), REML = FALSE
+  )))
+  fit_reml <- suppressMessages(suppressWarnings(gllvmTMB(
+    formula = fit_form, data = dat_na, family = gaussian(),
+    missing = miss_control(response = "include"), REML = TRUE
+  )))
+
+  # Direction of the correction: REML's sigma_eps_hat is larger (the known
+  # small-n downward bias of ML residual variance).
+  sigma_ml   <- gllvmTMB:::.gllvmTMB_sigma_eps(fit_ml)
+  sigma_reml <- gllvmTMB:::.gllvmTMB_sigma_eps(fit_reml)
+  expect_gt(sigma_reml, sigma_ml)
+
+  pm_ml <- predict_missing(
+    fit_ml, se = TRUE, se_route = "boot", n_boot = 30L, boot_seed = 7L,
+    boot_dgp = "ml"
+  )
+  pm_reml <- predict_missing(
+    fit_ml, se = TRUE, se_route = "boot", n_boot = 30L, boot_seed = 7L,
+    boot_dgp = "reml"
+  )
+  expect_true(all(pm_ml$n_boot_ok >= 15L))
+  expect_true(all(pm_reml$n_boot_ok >= 15L))
+
+  width_ml   <- pm_ml$q_hi_conf   - pm_ml$q_lo_conf
+  width_reml <- pm_reml$q_hi_conf - pm_reml$q_lo_conf
+  expect_gt(mean(width_reml), mean(width_ml))
+})

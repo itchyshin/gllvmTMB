@@ -22,12 +22,19 @@
 ##                                   # "joint_load" for wave-1c (Design 119
 ##                                   # sec.7/7b), "sim" for wave-2 (sec.3 R2,
 ##                                   # Monte Carlo -- scored by the empirical
-##                                   # quantile columns, not z*se; see below)
+##                                   # quantile columns, not z*se; see below),
+##                                   # "boot" for wave-3+ (sec.3 R3, sec.7d/
+##                                   # 7e, full-refit parametric bootstrap)
 ##                                   # -- requires an installed gllvmTMB
 ##                                   # build that carries the se_route
 ##                                   # argument (and, for "joint_load" /
-##                                   # "sim", the loading block / quantile
-##                                   # columns respectively).
+##                                   # "sim" / "boot", the loading block /
+##                                   # quantile columns respectively).
+##   export COV119_BOOT_DGP=ml       # default "ml"; "reml" (Design 119
+##                                   # sec.7e) for the REML-corrected
+##                                   # bootstrap world. Forwarded to
+##                                   # predict_missing()'s boot_dgp argument;
+##                                   # ignored unless COV119_SE_ROUTE=boot.
 ##   nohup Rscript cov119-driver.R > cov119-driver.log 2>&1 &
 ##
 ## Output: cov119-cells.csv (one row per fit, appended incrementally after
@@ -63,6 +70,17 @@ stopifnot(is.finite(mc_cores), mc_cores >= 1L)
 ## wave-1 exactly.
 cov119_se_route <- Sys.getenv("COV119_SE_ROUTE", unset = "quad")
 stopifnot(cov119_se_route %in% c("quad", "joint", "joint_load", "sim", "boot"))
+
+## Design 119 sec.7e (wave-3 diagnosis): route = "boot" with the ML-fit-
+## generated world under-covered at the same level as "joint_load" -- the
+## ML bootstrap world re-imports ML's own small-n downward variance/loading
+## bias. COV119_BOOT_DGP = "reml" (predict_missing()'s boot_dgp argument)
+## generates the B complete-data worlds from one auxiliary REML fit's
+## parameters instead, while the pivoted estimate and every inner refit
+## stay ML. Ignored (harmlessly forwarded but unused) unless
+## COV119_SE_ROUTE = "boot". Default "ml" preserves wave-3 exactly.
+cov119_boot_dgp <- Sys.getenv("COV119_BOOT_DGP", unset = "ml")
+stopifnot(cov119_boot_dgp %in% c("ml", "reml"))
 
 csv_path     <- "cov119-cells.csv"
 summary_path <- "cov119-summary.csv"
@@ -139,7 +157,8 @@ run_one_rep <- function(mechanism, mech_idx, rep) {
     )
 
     pm <- gllvmTMB::predict_missing(
-      fit, type = "response", se = TRUE, se_route = cov119_se_route
+      fit, type = "response", se = TRUE, se_route = cov119_se_route,
+      boot_dgp = cov119_boot_dgp
     )
 
     ## BINDING (Arc0 discipline): no silent join loss, exact cell identity.

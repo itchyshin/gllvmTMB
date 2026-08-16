@@ -1,5 +1,18 @@
 # Check log
 
+## 2026-08-16 — planned-only Beta-logit door (family_id 7)
+
+Worktree `/private/tmp/gllvmtmb-mspl-beta-planned-door` from
+`origin/main` @ `e46a3a2e` (#1045), rebased over #1047.
+Allow-list is now `c(0L, 1L, 2L, 5L, 7L, 15L)` on the public
+`fam_ids %in%` line. Tweedie `6L` stays off (probe bypass only).
+Registry stays `planned` / `phase4_prep`. No NEWS. No admit.
+
+```sh
+# Ubuntu FAIL was hurdle E10 pin still requiring c(0,1,2,5,15)
+# retargeted to c(0,1,2,5,7,15). Hurdle oracles PASS locally.
+```
+
 ## 2026-08-16 — #1047 CI: restore public `%in%` literal for source pins
 
 Ubuntu R-CMD-check failed 3 source pins (Gamma / lognormal / hurdle)

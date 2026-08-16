@@ -115,6 +115,9 @@ test_that("Registry lists Bernoulli + Gaussian + Poisson ordinary admitted (poin
   expect_identical(be$status, "planned")
   expect_false(identical(tw$status, "admitted"))
   expect_false(identical(be$status, "admitted"))
+  expect_match(be$notes, "not admitted")
+  expect_match(be$notes, "not covered")
+  expect_false(grepl("no public door", be$notes, fixed = TRUE))
 
   dln <- .gllvmTMB_mspl_registry_lookup(
     "delta_lognormal", "log", "ordinary", 1L

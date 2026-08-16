@@ -28,10 +28,11 @@ test_that("Registry lists Bernoulli + Gaussian + Poisson ordinary admitted (poin
   expect_true(all(pois_adm$structure == "ordinary"))
   expect_identical(sort(pois_adm$q), c(1L, 2L))
   expect_true(all(pois_adm$evidence == "admit_packet"))
-  expect_identical(nrow(planned), 4L)
-  expect_true(all(planned$family %in% c("nbinom1", "nbinom2")))
+  expect_identical(nrow(planned), 8L)
+  expect_true(all(planned$family %in% c("nbinom1", "nbinom2", "gamma", "lognormal")))
   expect_identical(sum(planned$family == "nbinom1"), 2L)
   expect_identical(sum(planned$family == "nbinom2"), 2L)
+  expect_true(all(c("gamma", "lognormal") %in% planned$family))
   expect_true(all(planned$link == "log"))
   expect_true(all(planned$structure == "ordinary"))
   expect_identical(sort(unique(planned$q)), c(1L, 2L))
@@ -39,6 +40,7 @@ test_that("Registry lists Bernoulli + Gaussian + Poisson ordinary admitted (poin
   expect_false(any(duplicated(tbl$cell_id)))
   expect_false(any(excluded$family %in% c("poisson", "nbinom1", "nbinom2")))
   expect_false(any(planned$status == "admitted"))
+  expect_false(any(admitted$family %in% c("gamma", "lognormal")))
 
   hit <- .gllvmTMB_mspl_registry_lookup(
     "gaussian", "identity", "ordinary", 1L
@@ -66,6 +68,20 @@ test_that("Registry lists Bernoulli + Gaussian + Poisson ordinary admitted (poin
   expect_identical(nb2$evidence, "phase4_prep")
   expect_false(identical(nb1$status, "admitted"))
   expect_false(identical(nb2$status, "admitted"))
+
+  gam <- .gllvmTMB_mspl_registry_lookup(
+    "gamma", "log", "ordinary", 1L
+  )
+  expect_identical(gam$status, "planned")
+  expect_identical(gam$evidence, "phase4_prep")
+  expect_false(identical(gam$status, "admitted"))
+
+  lnorm <- .gllvmTMB_mspl_registry_lookup(
+    "lognormal", "log", "ordinary", 1L
+  )
+  expect_identical(lnorm$status, "planned")
+  expect_identical(lnorm$evidence, "phase4_prep")
+  expect_false(identical(lnorm$status, "admitted"))
 })
 
 test_that("Phase 2 lookup of an admitted Bernoulli cell is unique", {

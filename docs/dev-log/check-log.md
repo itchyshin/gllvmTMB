@@ -46,6 +46,31 @@ export OMP_NUM_THREADS=1 NOT_CRAN=true
 Not run: full `devtools::test()`, `R CMD check`, pkgdown, Totoro.
 No `git add -A`.
 
+## 2026-08-15 — MSPL Gamma(log)+lognormal(log) Phase-4 prep (Cursor)
+
+Lane `cursor/mspl-phase4-gamma-lognormal` at
+`/tmp/gllvmtmb-mspl-gamma-lnorm` from `origin/main` @ `fe867e40`.
+Planned rows only. No `src/`. No prepare widen. No NEWS covered.
+No `git add -A`. No repo-root `LOOP/`.
+
+```sh
+export OMP_NUM_THREADS=1 NOT_CRAN=true
+pkgload::load_all(".", compile = FALSE)
+# RED: gamma E9 / lognormal E10 lookups NULL (0 planned rows)
+testthat::test_file("tests/testthat/test-mspl-gamma-phase4-oracles.R")
+# [ FAIL 0 | WARN 0 | SKIP 0 | PASS 70 ]
+testthat::test_file("tests/testthat/test-mspl-lognormal-phase4-oracles.R")
+# [ FAIL 0 | WARN 0 | SKIP 0 | PASS 66 ]
+testthat::test_file("tests/testthat/test-mspl-registry.R")
+# [ FAIL 0 | WARN 0 | SKIP 0 | PASS 34 ]
+rg -n 'fam_ids %in%' R/mspl.R
+# fam_ids %in% c(0L, 1L, 2L) unchanged
+git diff --stat -- src/ R/mspl.R R/fit-multi.R NEWS.md
+# empty
+```
+
+Not run: `devtools::test()`, `R CMD check`, pkgdown, Totoro.
+
 ## 2026-08-16 — Gaussian-identity LA-MSPL SE pin (Cursor)
 
 Lane `cursor/mspl-se-gaussian-pin-rebased` rebased onto `origin/main`

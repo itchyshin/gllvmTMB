@@ -288,7 +288,24 @@ test_that("E10: hurdle rows are planned phase4_prep only; prepare stays {0,1,2}"
   expect_false(grepl("\\badmitted\\b", notes_claim, ignore.case = TRUE))
   expect_false(grepl("\\bcovered\\b", notes_claim, ignore.case = TRUE))
 
-  prep_src <- readLines(test_path("..", "..", "R", "mspl.R"))
+  .mspl_r_source_lines <- function(rel) {
+    candidates <- c(
+      testthat::test_path("..", "..", "R", rel),
+      testthat::test_path("..", "..", "..", "00_pkg_src", "gllvmTMB", "R", rel),
+      file.path("R", rel)
+    )
+    installed <- system.file("..", "R", rel, package = "gllvmTMB")
+    if (nzchar(installed)) {
+      candidates <- c(installed, candidates)
+    }
+    path <- candidates[file.exists(candidates)][1L]
+    testthat::skip_if(
+      is.na(path),
+      paste0("R/", rel, " is not available in this installed-package test context.")
+    )
+    readLines(path, warn = FALSE)
+  }
+  prep_src <- .mspl_r_source_lines("mspl.R")
   fence <- prep_src[grepl("fam_ids %in%", prep_src)]
   expect_true(length(fence) >= 1L)
   expect_true(any(grepl("c\\(0L,\\s*1L,\\s*2L\\)", fence)))

@@ -94,6 +94,23 @@ is still the default.
   diagnostic only: it does not certify finite latent loadings or covariance
   parameters, and it never selects a penalized estimator automatically.
 
+## Fixed
+
+* **`multinomial()` structured-term admission is now fail-closed (Slice 0,
+  Design 108/122).** Several deferred keywords previously desugared
+  (`R/brms-sugar.R`) onto the same internal engine flag as an admitted
+  keyword and silently reached an untested categorical path instead of
+  erroring: `dep()` at the unit tier, `phylo_dep()`, `phylo_indep()` /
+  `phylo_unique()` (standalone), `animal_latent()`, single-name
+  `kernel_*()`, and `phylo_scalar()` / `animal_scalar()`. Every one of these
+  now aborts, as the documentation always said they should. **If you fitted
+  a `multinomial()` trait combined with any of the keywords above, that fit
+  ran on an unvalidated structured-term path and should be re-checked** —
+  the currently admitted set is unchanged: fixed effects, an ordinary shared
+  `latent(0 + trait | unit, d = k)` ordination, and `phylo_latent()`. A
+  `mi()` predictor term combined with a multinomial trait, previously
+  invisible to the admission scan due to definition order, now also aborts.
+
 # gllvmTMB 0.6.0
 
 This release focuses on multivariate stacked-trait models fitted through the

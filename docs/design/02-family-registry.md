@@ -221,11 +221,30 @@ typed refusal.
 **Historical scope note (Design 83, superseded 2026-07-21).** This originally
 admitted fixed-effect recovery only. The current allow-list is the one stated
 above: fixed effects, a narrow `phylo_latent()` V route, and a narrow ordinary
-shared-`latent()` cross-family route. `dep()`, explicit multinomial
-`unique()`/`indep()`, slopes, spatial/animal/kernel tiers, and all other
-unlisted combinations still fail loud. Name: `multinomial()` (not
+shared-`latent()` cross-family route. Name: `multinomial()` (not
 `categorical()`, which is the unordered missing-**predictor** imputation family,
 Design 68). Julia parity is a separate later arc.
+
+**Admission is enforced by a two-stage fence (Slice 0, Design 108/122,
+2026-08-16).** `dep()`, explicit multinomial `unique()`/`indep()`, slopes,
+spatial/animal/kernel tiers, the `cluster`/`cluster2`/`unit_obs` grouping
+tiers, generic `(1 | group)` random intercepts, and `mi()` predictor terms
+are all deferred and now genuinely fail loud when combined with a
+`multinomial()` trait. Historically this was **not** true: several of these
+keywords desugar (`R/brms-sugar.R`) onto the same engine flag as an admitted
+keyword -- `dep()` at the unit tier, `phylo_dep()`, `phylo_indep()` /
+`phylo_unique()` (standalone), and `animal_latent()` all folded onto the
+same `use_*` flag as an admitted term, single-name `kernel_*()` folded onto
+`phylo_latent()`'s flag, and `phylo_scalar()` / `animal_scalar()` were
+explicitly exempted from the old allow-list scan -- so those specific
+combinations silently reached an untested categorical path instead of
+erroring. `R/multinomial-fence.R` closes this: an early covstruct-keyed
+classifier reads the raw parser markers before that flag-level folding
+happens (so keywords sharing a flag with an admitted term are still told
+apart), and the late `use_*` re-scan is kept as belt-and-braces, moved past
+every `use_*` flag in `gllvmTMB_multi_fit()` (including the `mi()`
+predictor flags, which were previously defined after the old scan and so
+were invisible to it), with the `use_propto` exemption removed.
 
 ### Hurdle / delta families
 

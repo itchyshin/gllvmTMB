@@ -1,5 +1,21 @@
 # Check log
 
+## 2026-08-16 — #1039 VA flake: zz-rename fenced tapes (Cursor)
+
+`#1039` Ubuntu R-CMD-check failed on
+`test-va-all-family-light-fits.R` `delta_lognormal_log`
+(`failed_health_gate`, healthy_starts 2 < 3). Planned-row tests
+did not fail. `#1013` is already on the branch. Renamed
+`test-mspl-fenced-family-tapes.R` ->
+`test-zz-mspl-fenced-family-tapes.R` so the live tapes run after
+the VA light grid (`#1026` / `#979` pattern). No admit. No `src/`
+/ `R/mspl.R` edit. Did not edit the VA test.
+
+```sh
+git mv tests/testthat/test-mspl-fenced-family-tapes.R \
+  tests/testthat/test-zz-mspl-fenced-family-tapes.R
+```
+
 ## 2026-08-16 — B1 official --holdout after M0 freeze (G1–G5 FAIL)
 
 Post-freeze Totoro read, 27.1 s, exit 0. One core.

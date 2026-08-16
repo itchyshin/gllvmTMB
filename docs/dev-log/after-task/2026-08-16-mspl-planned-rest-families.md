@@ -3,7 +3,7 @@
 **Date:** 2026-08-16
 **Lane:** `cursor/mspl-planned-rest-families`
 **Worktree:** `/private/tmp/gllvmtmb-mspl-planned-rest-families`
-**Branch:** `cursor/mspl-planned-rest-families` from `origin/main` @ `3e18de94`
+**Branch:** `cursor/mspl-planned-rest-families` from `origin/main` @ `c849884f`
 **Roles (engaged):** Ada / Curie / Rose / Shannon
 
 ## 1. Goal
@@ -45,7 +45,7 @@ No C++ tape. No prepare widen. No NEWS. No public `se=TRUE`.
 - `tests/testthat/test-mspl-betabinomial-phase4-oracles.R` (header only)
 - `tests/testthat/test-mspl-truncated-phase4-oracles.R` (header only)
 - `tests/testthat/test-mspl-multinomial-phase4-oracles.R` (header only)
-- `tests/testthat/test-mspl-fenced-family-tapes.R`
+- `tests/testthat/test-zz-mspl-fenced-family-tapes.R` (zz-renamed so the live tapes run after the VA light grid; #1039 CI flake)
 - `tests/testthat/test-zz-mspl-rest-family-prepare-fence.R`
 - `docs/dev-log/after-task/2026-08-16-mspl-planned-rest-families.md` (this file)
 
@@ -110,6 +110,12 @@ bookkeeping follow-on to already-merged oracle PRs #1005 / #1023 /
 row. That pin had to flip in the same PR or CI would fail. The
 dirty MSPL worktree could not take this edit; a fresh worktree
 from `origin/main` was required.
+
+Ubuntu CI on the first #1039 push failed on the known VA-light
+`delta_lognormal_log` health-gate flake (`failed_health_gate`,
+2 < 3 healthy starts), not on the planned rows. `#1013` is already
+on this branch. Followed the `#1026` / `#979` zz-rename so the
+live fenced tapes run after the VA suite. Did not edit the VA test.
 
 ## 9. Team Learning (per AGENTS.md Standing Review Roles)
 

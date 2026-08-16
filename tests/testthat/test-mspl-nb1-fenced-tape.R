@@ -3,7 +3,7 @@
 ## src/gllvmTMB.cpp must name family_id == 15 and pin NB1 as PMF-summed
 ## exact I, NOT quasi W=mu/(1+phi).
 ## Kill: "Poisson worked so NB does."
-## Do not edit the shared test-mspl-fenced-family-tapes.R.
+## Do not edit the shared test-zz-mspl-fenced-family-tapes.R.
 
 .mspl_nb1_fence_dat <- function() {
   n_site <- 8L

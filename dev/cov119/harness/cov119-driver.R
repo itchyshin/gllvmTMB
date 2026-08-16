@@ -20,10 +20,14 @@
 ##   export COV119_CORES=40          # default 40
 ##   export COV119_SE_ROUTE=quad     # default "quad"; "joint" for wave-1b,
 ##                                   # "joint_load" for wave-1c (Design 119
-##                                   # sec.7/7b) -- requires an installed
-##                                   # gllvmTMB build that carries the
-##                                   # se_route argument (and, for
-##                                   # "joint_load", the loading block).
+##                                   # sec.7/7b), "sim" for wave-2 (sec.3 R2,
+##                                   # Monte Carlo -- scored by the empirical
+##                                   # quantile columns, not z*se; see below)
+##                                   # -- requires an installed gllvmTMB
+##                                   # build that carries the se_route
+##                                   # argument (and, for "joint_load" /
+##                                   # "sim", the loading block / quantile
+##                                   # columns respectively).
 ##   nohup Rscript cov119-driver.R > cov119-driver.log 2>&1 &
 ##
 ## Output: cov119-cells.csv (one row per fit, appended incrementally after
@@ -43,13 +47,16 @@ suppressPackageStartupMessages(library(gllvmTMB))
 mc_cores <- as.integer(Sys.getenv("COV119_CORES", unset = "40"))
 stopifnot(is.finite(mc_cores), mc_cores >= 1L)
 
-## Design 119 sec.7/7b: wave-1 (route = "quad") over-covered se_confidence;
-## wave-1b (route = "joint") under-covered (the loading-uncertainty block
-## was missing). COV119_SE_ROUTE lets wave-1c rerun the identical harness
-## with route = "joint_load" and nothing else changed. Default preserves
-## wave-1 exactly.
+## Design 119 sec.7/7b/7c: wave-1 (route = "quad") over-covered
+## se_confidence; wave-1b (route = "joint") under-covered (the
+## loading-uncertainty block was missing); wave-1c (route = "joint_load")
+## is the best-calibrated delta-method route measured and still fails the
+## gate by ~1.2 points at 95%. COV119_SE_ROUTE = "sim" (Design 119 sec.3
+## R2) reruns the identical harness with the Monte Carlo route, scored by
+## its EMPIRICAL quantile columns rather than mean +/- z*se (see below).
+## Default preserves wave-1 exactly.
 cov119_se_route <- Sys.getenv("COV119_SE_ROUTE", unset = "quad")
-stopifnot(cov119_se_route %in% c("quad", "joint", "joint_load"))
+stopifnot(cov119_se_route %in% c("quad", "joint", "joint_load", "sim"))
 
 csv_path     <- "cov119-cells.csv"
 summary_path <- "cov119-summary.csv"
@@ -166,11 +173,44 @@ run_one_rep <- function(mechanism, mech_idx, rep) {
     err_eta <- abs(pm$eta_true - pm$est)
     err_y <- abs(pm$y_true - pm$est)
 
-    ind <- function(err, se, bad, z) ifelse(bad, FALSE, err <= z * se)
-    cov90_conf <- agg_trait_then_fit(ind(err_eta, se_c, bad_c, COV119_Z90), pm$trait)
-    cov95_conf <- agg_trait_then_fit(ind(err_eta, se_c, bad_c, COV119_Z95), pm$trait)
-    cov90_pred <- agg_trait_then_fit(ind(err_y, se_p, bad_p, COV119_Z90), pm$trait)
-    cov95_pred <- agg_trait_then_fit(ind(err_y, se_p, bad_p, COV119_Z95), pm$trait)
+    if (identical(cov119_se_route, "sim")) {
+      ## Score coverage from the EMPIRICAL quantile columns predict_missing()
+      ## adds for route = "sim" -- eta_true/y_true INSIDE [q_lo, q_hi] --
+      ## rather than mean +/- z*se. This is the point of the route: it makes
+      ## no normal-quantile assumption, so scoring it with z*se would defeat
+      ## the experiment. n_se_bad_conf/n_se_bad_pred and mean_se_conf/
+      ## mean_se_pred (below) are untouched: se_confidence/se_prediction are
+      ## still populated (the empirical sd of the draws), so that bookkeeping
+      ## stays identical across every route.
+      stopifnot(
+        "sim route requires the quantile columns (interface contract not met)" =
+          all(c("q_lo_conf", "q_hi_conf", "q_lo_pred", "q_hi_pred",
+                "q_lo_conf90", "q_hi_conf90", "q_lo_pred90", "q_hi_pred90") %in%
+                names(pm))
+      )
+      in_band <- function(x, lo, hi) {
+        bad <- !is.finite(lo) | !is.finite(hi)
+        ifelse(bad, FALSE, x >= lo & x <= hi)
+      }
+      cov90_conf <- agg_trait_then_fit(
+        in_band(pm$eta_true, pm$q_lo_conf90, pm$q_hi_conf90), pm$trait
+      )
+      cov95_conf <- agg_trait_then_fit(
+        in_band(pm$eta_true, pm$q_lo_conf, pm$q_hi_conf), pm$trait
+      )
+      cov90_pred <- agg_trait_then_fit(
+        in_band(pm$y_true, pm$q_lo_pred90, pm$q_hi_pred90), pm$trait
+      )
+      cov95_pred <- agg_trait_then_fit(
+        in_band(pm$y_true, pm$q_lo_pred, pm$q_hi_pred), pm$trait
+      )
+    } else {
+      ind <- function(err, se, bad, z) ifelse(bad, FALSE, err <= z * se)
+      cov90_conf <- agg_trait_then_fit(ind(err_eta, se_c, bad_c, COV119_Z90), pm$trait)
+      cov95_conf <- agg_trait_then_fit(ind(err_eta, se_c, bad_c, COV119_Z95), pm$trait)
+      cov90_pred <- agg_trait_then_fit(ind(err_y, se_p, bad_p, COV119_Z90), pm$trait)
+      cov95_pred <- agg_trait_then_fit(ind(err_y, se_p, bad_p, COV119_Z95), pm$trait)
+    }
 
     data.frame(seed = seed, mechanism = mechanism, rep = rep,
                rate = rate, n_masked = n_masked, converged = TRUE,

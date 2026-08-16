@@ -2204,9 +2204,18 @@ predict.gllvmTMB_multi <- function(
 #' or its inverse-link response (`type = "response"`). Reconstruction standard
 #' errors and prediction intervals are not currently returned.
 #'
+#' For [ordinal_probit()] traits, `type = "response"` is the **expected
+#' category** \eqn{E[k] = \sum_k k \cdot P(\mathrm{category}\ k \mid \eta,
+#' \tau)}, computed from the fitted cutpoints (Hadfield 2015 convention:
+#' \eqn{\tau_1 = 0} fixed, \eqn{\tau_2, \ldots, \tau_{K-1}} estimated; see
+#' [extract_cutpoints()]) -- not a probability. It is not an elementwise
+#' `pnorm(eta)`, which is not a category quantity once \eqn{K > 2}.
+#' `type = "link"` is unchanged: the probit-scale linear predictor.
+#'
 #' @param object A fit returned by [gllvmTMB()].
 #' @param type One of `"link"` (default; the linear predictor) or
-#'   `"response"` (the inverse-link conditional mean).
+#'   `"response"` (the inverse-link conditional mean; for [ordinal_probit()]
+#'   traits, the expected category instead -- see Details).
 #' @param ... Unused.
 #'
 #' @return A data frame with one row per masked response cell, with columns:
@@ -2306,6 +2315,62 @@ predict_missing <- function(object, type = c("link", "response"), ...) {
   base$est <- est
 
   out <- base[masked, , drop = FALSE]
+
+  ## ordinal_probit (fid 14) has no single-row response mean, so
+  ## `predict(object, type = "response")` (via `.apply_linkinv_per_row()`)
+  ## falls back to the latent probit-scale `pnorm(eta)` -- not a category
+  ## quantity once K > 2. Scoped to predict_missing()'s masked-row output
+  ## only: replace those rows' `est` with the expected category. The
+  ## generic predict() path is untouched.
+  if (identical(type, "response")) {
+    fid_vec <- object$tmb_data$family_id_vec
+    if (!is.null(fid_vec) && length(fid_vec) == n_model && any(fid_vec == 14L)) {
+      out <- .predict_missing_ordinal_response(object, out, fid_vec, trait_lbl)
+    }
+  }
+
   rownames(out) <- NULL
+  out
+}
+
+## For fid == 14 (ordinal_probit) rows in `predict_missing(type =
+## "response")`'s output, replace the pnorm(eta) placeholder with the
+## EXPECTED CATEGORY E[k] = sum_k k * P(category k | eta, cutpoints),
+## following the Hadfield (2015) convention also used by extract_cutpoints():
+## tau_1 = 0 fixed for identifiability, tau_2 .. tau_{K-1} estimated. Built
+## directly from `object$tmb_data`/`object$report` (the same fields
+## `extract_cutpoints()` reads) rather than calling `extract_cutpoints()`
+## itself, so a K = 2 trait (Hadfield eqn 10: ordinal_probit with K = 2
+## reduces exactly to binomial(link = "probit"), zero free cutpoints) is
+## still handled -- `extract_cutpoints()` omits such traits from its
+## per-cutpoint data frame entirely. Non-ordinal rows in `out` are untouched.
+.predict_missing_ordinal_response <- function(object, out, fid_vec, trait_lbl) {
+  ord_idx <- which(fid_vec[out$model_row] == 14L)
+  if (length(ord_idx) == 0L || is.null(trait_lbl) || !trait_lbl %in% names(out)) {
+    return(out)
+  }
+  n_cuts_pt <- as.integer(object$tmb_data$n_ordinal_cuts_per_trait)
+  off_pt <- as.integer(object$tmb_data$ordinal_offset_per_trait)
+  trait_lab <- levels(object$data[[trait_lbl]])
+  taus <- as.numeric(object$report$ordinal_cutpoints %||% numeric(0))
+  eta <- as.numeric(object$report$eta)
+  traits_out <- as.character(out[[trait_lbl]])
+  for (i in ord_idx) {
+    t <- match(traits_out[i], trait_lab)
+    if (is.na(t) || t > length(n_cuts_pt)) {
+      next
+    }
+    kt_minus_2 <- n_cuts_pt[t]
+    tau_free <- if (kt_minus_2 > 0L) {
+      base_off <- off_pt[t]
+      taus[(base_off + 1L):(base_off + kt_minus_2)]
+    } else {
+      numeric(0)
+    }
+    bnds <- c(-Inf, 0, tau_free, Inf)
+    e <- eta[out$model_row[i]]
+    probs <- diff(stats::pnorm(bnds - e))
+    out$est[i] <- sum(seq_along(probs) * probs)
+  }
   out
 }

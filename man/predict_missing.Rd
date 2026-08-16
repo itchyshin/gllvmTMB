@@ -10,7 +10,8 @@ predict_missing(object, type = c("link", "response"), ...)
 \item{object}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}.}
 
 \item{type}{One of \code{"link"} (default; the linear predictor) or
-\code{"response"} (the inverse-link conditional mean).}
+\code{"response"} (the inverse-link conditional mean; for \code{\link[=ordinal_probit]{ordinal_probit()}}
+traits, the expected category instead -- see Details).}
 
 \item{...}{Unused.}
 }
@@ -40,6 +41,14 @@ missing \strong{predictors} from supported \code{mi()} fits.
 The point predictions here are the fitted linear predictor (\code{type = "link"})
 or its inverse-link response (\code{type = "response"}). Reconstruction standard
 errors and prediction intervals are not currently returned.
+
+For \code{\link[=ordinal_probit]{ordinal_probit()}} traits, \code{type = "response"} is the \strong{expected
+category} \eqn{E[k] = \sum_k k \cdot P(\mathrm{category}\ k \mid \eta,
+\tau)}, computed from the fitted cutpoints (Hadfield 2015 convention:
+\eqn{\tau_1 = 0} fixed, \eqn{\tau_2, \ldots, \tau_{K-1}} estimated; see
+\code{\link[=extract_cutpoints]{extract_cutpoints()}}) -- not a probability. It is not an elementwise
+\code{pnorm(eta)}, which is not a category quantity once \eqn{K > 2}.
+\code{type = "link"} is unchanged: the probit-scale linear predictor.
 }
 \seealso{
 \code{\link[=gllvmTMB]{gllvmTMB()}}, \code{\link[=miss_control]{miss_control()}}, \code{\link[=predict.gllvmTMB_multi]{predict.gllvmTMB_multi()}}.

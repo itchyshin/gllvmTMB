@@ -39,6 +39,17 @@ is still the default.
   use; and figures gain alt text, equal-axis identity lines, and
   non-overlapping labels.
 
+* **The LA-MSPL worked example is rewritten around its two failure modes.**
+  *Rare items and runaway estimates in Paper × Items evidence synthesis*
+  (`vignettes/articles/mspl-binary-jsdm.Rmd`, same URL) now grounds the
+  example in an evidence-map-shaped corpus and demonstrates, on one dataset,
+  that runaway loadings and fixed-design separation are different diseases
+  with different matched remedies — the opt-in loading ridge for the first,
+  opt-in MSPL for the second — including the negative result that the ridge
+  does not repair separation. Claim boundaries (probit vs logit ridge
+  regimes, AGHQ's large-n evidence, MSPL's refused inference surface) are
+  stated in the article.
+
 * **Complete-Bernoulli GLLVMs can opt in to LA-MSPL point estimation.** Set
   `estimator = "mspl"` to fit the experimental maximum softly penalised
   Laplace objective for one ordinary `latent(d = 1:2)` block with no free Psi,

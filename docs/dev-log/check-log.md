@@ -51296,3 +51296,20 @@ Rose: all-ones boundary, not Poisson all-zero; not hurdle.
 After-task:
 `docs/dev-log/after-task/2026-08-16-mspl-truncated-phase4-prep.md`.
 Not run: merge, admit, Totoro, registry edit.
+
+## 2026-08-16 — Claude → cursor MSPL lanes: mspl-binary-jsdm.Rmd rewritten (maintainer-directed)
+
+The maintainer reviewed the live article and directed a rewrite for
+readability and de-overlap with the new SDM collection: it stays
+Paper × Items (a Site × Species duplicate was explicitly declined as too
+similar), but now demonstrates BOTH failure modes on one corpus — plain-LA
+loading runaway remedied by `loading_ridge = 2`, and fixed-design separation
+remedied by MSPL — including the negative result that the ridge does not fix
+separation. MSPL's fences (no logLik/AIC/SE; no ridge+MSPL hybrid) are
+restated verbatim from your original. Same filename/URL; navbar label now
+"Rare items and runaway estimates". Your R/, tests, and the source-pin issue
+are untouched. Separately: the source-pin test
+(test-mspl-poisson-phase4-oracles.R, "prepare public door … (source pin)")
+is red on main — R/mspl.R's door was widened to c(0L,1L,2L,5L,15L) without
+updating the pin; flagged in PR #1031's body, deliberately left to this lane.
+Lane: claude/sdm-repeated-survey-20260816. — Claude

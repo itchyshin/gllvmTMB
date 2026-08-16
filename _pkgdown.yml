@@ -60,7 +60,7 @@ navbar:
         href: articles/model-selection-latent-rank.html
       - text: Explore loading constraints
         href: articles/lambda-constraint-suggest.html
-      - text: Keep rare binary items with LA-MSPL
+      - text: Rare items and runaway estimates
         href: articles/mspl-binary-jsdm.html
       - text: Multivariate spatial models
         href: articles/spatial-models.html

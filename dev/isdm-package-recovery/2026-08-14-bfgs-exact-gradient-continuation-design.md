@@ -1,0 +1,188 @@
+# Exact-gradient BFGS continuation design
+
+## Scope
+
+Estimator ID: `BFGS_EXACT_GRADIENT_CONTINUATION_V1`. This is a distinct
+private estimator opened by the terminal G3 adjudication. It does not rewrite
+G2/G3 history and changes no likelihood, Laplace approximation, DGP,
+parameter transform, map, random-effect declaration, starting fit, scientific
+estimand, or public API.
+
+## Symbolic contract
+
+Given the sole retained `nlminb` solution \(\theta_0\), use the same marginal
+Laplace objective and exact outer gradient,
+
+\[
+  f(\theta),\qquad g(\theta)=\nabla f(\theta),
+\]
+
+and run exactly one unconstrained BFGS continuation
+
+\[
+  \theta_B=\operatorname{BFGS}(f,g;\theta_0).
+\]
+
+All constraints remain embedded in the package's existing unconstrained
+parameter transforms. No finite-difference gradient, bounds projection,
+restart, jitter, line-search tuning after inspection, profile, ridge, or G3
+step is permitted.
+
+Frozen control is
+
+```r
+list(maxit = 500L, reltol = 1e-12, trace = 0L, REPORT = 1L)
+```
+
+with `stats::optim(method = "BFGS", fn = obj$fn, gr = checked_gr)`, where
+`checked_gr` invokes `obj$gr` once per request and fails closed unless the
+returned gradient is finite and has the exact retained positional identity.
+The control, method, start, objective signature, and gradient signature are
+hashed and retained.
+
+## Alignment
+
+| Mathematical object | Implementation | Validation | Evidence |
+| --- | --- | --- | --- |
+| \(\theta_0\) | pre-continuation selected `nlminb` vector retained in `fit$isdm_polish_provenance$raw` | exactly one initial restart selected; finite positional IDs; `nlminb` convergence zero | start vector/order and complete restart-provenance hashes |
+| \(f_0,g_0\) | `obj$fn(theta0)`, `obj$gr(theta0)` | objective replay within `64 * eps * max(1, abs(f0))`; gradient replay finite with the retained positional order (unnamed is valid; supplied names must match), and symmetric relative discrepancy `<=1e-8` | retained and replayed raw states plus discrepancies |
+| BFGS estimator | `stats::optim(..., method="BFGS", gr=checked_gr)` | exact frozen call and controls; every `obj$gr` return is finite and positionally identified | result, counts, message, elapsed time |
+| \(f_B,g_B\) | exact `fn`/`gr` replay at returned `par` | finite; same signature | candidate state |
+| \(V_B\) | candidate-specific `sdreport$cov.fixed` | exact parameter replay/order; finite, symmetric, PD, `pdHess=TRUE`, condition `<=1e8` | covariance/eigenvalues/hash |
+| admission | frozen predicates below | all conjunctive | terminal ledger |
+
+## Raw eligibility
+
+The input fit must have `nlminb` convergence zero, finite objective/gradient,
+no boundary flag, unique positional IDs, unchanged signature, AGHQ/ridge/retry/
+profile disabled, and maximum raw gradient strictly above `1e-3` but below
+`1e-2`. Raw PD curvature is not required: Paper 1 entered this lane precisely
+because its retained raw marginal Hessian was non-PD.
+
+The runner disables the ordinary package fit's internal warm-restart and G2
+candidate routes through a private, fail-closed iSDM control. The default
+package behaviour is unchanged outside this runner. The runner must recover
+the pre-continuation vector and diagnostics from
+`fit$isdm_polish_provenance$raw`, prove that the restart history contains
+exactly one selected initial `nlminb` run, prove that neither internal
+continuation was attempted, replay `fn` and `gr` at that vector, and retain
+hashes of the complete warm-restart, G2-polish, restart-history, actual control,
+and start-provenance records. Missing or inconsistent evidence is
+`INVALID_PROVENANCE`.
+
+## Numerical admission
+
+Admission requires all of:
+
+- BFGS convergence code zero;
+- finite candidate and exact replay identity;
+- \(f_B\le f_0+64\epsilon\max(1,|f_0|)\);
+- \(\|g_B\|_\infty\le10^{-3}\);
+- candidate-specific `sdreport` curvature finite, symmetric to `1e-10`, PD,
+  `pdHess=TRUE`, and condition at most `1e8`;
+- unchanged parameter order, objective, map, data, random set, transforms,
+  controls, starts, DLL content, and source commit.
+
+Terminal states are `INVALID_PROVENANCE`, `BFGS_INFRASTRUCTURE_HOLD`,
+`BFGS_RAW_INELIGIBLE`, `BFGS_OPTIMIZER_ERROR`, `BFGS_CURVATURE_UNAVAILABLE`,
+`BFGS_CURVATURE_INVALID`, `BFGS_NO_NUMERICAL_ADMISSION`, and
+`BFGS_NUMERICAL_ADMISSION`.
+
+`BFGS_OPTIMIZER_ERROR` is reserved for an error thrown by the single sealed
+`stats::optim()` call or a malformed optimizer result. Runner failures,
+timeouts, unavailable objective/gradient/curvature interfaces, and failed
+post-optimizer exact replay are `BFGS_INFRASTRUCTURE_HOLD`; they are never
+reported as algorithm rejection. A root containing either
+`attempt-started.rds` or a terminal ledger is consumed and cannot be rerun.
+
+### Terminal-evidence hardening amendment
+
+The estimator, objective, controls, thresholds, starts, and paper ordering above
+are unchanged. The executable packet uses terminal schema
+`<source_gate>_ALL_ATTEMPT_V2` to separate lifecycle evidence that the earlier
+`V1` ledger conflated:
+
+- atomic creation of the sole empty `.attempt-started.claim` directory is the
+  no-retry boundary;
+- `attempt-started.rds` is an exact receipt-, commit-, root-, claim-, time-, and
+  PID-bound attempt marker (`<source_gate>_ATTEMPT_STARTED_V1`), whose receipt
+  hash is the MD5 of the materialized `root-receipt.rds` bytes;
+- `bfgs-entered.rds` is a later, distinct marker
+  (`<source_gate>_BFGS_ENTERED_V1`) bound to the MD5 of the materialized
+  attempt-marker bytes and the
+  positional parameter-order hash. It records entry to the continuation helper,
+  not necessarily entry to `stats::optim()`; the helper retains exact logical
+  `optimizer_entered`, set to `TRUE` immediately before its one sealed optimiser
+  call and `FALSE` for every pre-optimiser outcome. Paper 1 requires this marker,
+  `optimizer_entered=TRUE`, and a valid recomputed Paper 2 terminal, not merely
+  an attempt marker.
+
+Preflight is built in a sibling staging directory and atomically renamed into
+the literal source-gate root. Terminal RDS and manifest replacements are
+atomic. Every sealed root has an exact flat regular-file inventory, no symlink,
+and no directory other than the empty claim. Before printing a status, the
+runner rereads the ledger and manifest and the contract independently
+recomputes the raw gate, strict integer optimizer convergence, candidate
+objective/gradient gates, covariance axes and health, terminal status/reason,
+and order/covariance hashes from retained result evidence. A post-claim unwind
+has its own exact `INVALID_PROVENANCE` or `BFGS_INFRASTRUCTURE_HOLD` schema and
+cannot project a scientific or optimizer result.
+
+An abrupt hard-process termination cannot execute the R unwind finalizer. A
+claim-only root is therefore permanently consumed but unsealed: it is not a
+terminal evidence packet, cannot be relabelled as an algorithm outcome, and
+does not unlock a retry or Paper 1.
+
+## Test and execution gates
+
+Before a paper smoke: pure quadratic exact-gradient recovery; malformed input
+and control rejection; compiled fixed-effect objective; tiny random-effects
+fixture with candidate `sdreport`; runner receipt/timeout/consumed-root fences;
+no retry/profile/G3/remote/campaign/threshold-relaxation path; independent
+Gauss/Noether and Fisher/Rose review.
+
+Paper 2 runs first, then Paper 1, each in one fresh root with a 5-20 minute
+estimate and 30-minute hard stop. Each paper has exactly one canonical,
+normalized source-gate root; nested or alternate roots with the same basename
+are invalid, and the normalized root is retained in the receipt. Paper 1
+preflight requires Paper 2's full typed receipt, optimizer-entry marker, actual
+BFGS result, current terminal manifest, and matching source, DLL, control, and
+continuation-provenance hashes. A provenance or pre-BFGS infrastructure hold
+does not unlock Paper 1, so ordering is executable rather than prose-only.
+Numerical admission alone does not authorise
+recovery, maps, empirical data, or public claims. A clean BFGS non-admission
+opens the separately designed trust-region Newton lane; it does not authorise
+control tuning.
+
+The first Paper 2 provenance packet, `BFGS_P2_S6_C360_R3_V1`, was consumed as
+`INVALID_PROVENANCE` before fitting because it retained pkgload's
+process-temporary DLL path. The single permitted infrastructure repair uses
+the V2 source-gate roots and retains the stable package-source DLL path only
+after proving its content hash equals the DLL actually loaded in that process.
+V1 remains immutable and is not algorithm evidence.
+
+The V2 packet then passed DLL provenance and completed the ordinary fit, but
+stopped before BFGS because the runner required the exact TMB gradient to carry
+the parameter-vector names. Its retained and replayed gradients were both
+unnamed, as TMB returns them positionally; objective replay error was zero and
+relative gradient disagreement was `3.213207e-11`, below the frozen `1e-8`
+tolerance. The V3 validation-only repair accepts an unnamed exact gradient only
+after its retained positional order and length have been proved; supplied names
+must still match exactly. It changes neither the objective nor the BFGS call.
+V2 remains immutable and is not BFGS algorithm evidence.
+
+The historical V3 roots are also immutable. Their terminal records predate the
+V2 terminal-evidence contract above and therefore cannot support numerical
+admission, Paper 1 ordering, or recovery. The V4 Paper 2 root is likewise
+immutable and unsealed: a post-entry runner error deleted required typed-NULL
+fields from the in-memory fallback ledger, so no terminal ledger or BFGS result
+was retained. It is a consumed infrastructure record, not a BFGS outcome.
+
+The sole successor is the fresh V5 source-gate pair,
+`BFGS_P2_S6_C360_R3_V5` followed conditionally by
+`BFGS_P1_S3_C360_R3_V5`. V5 repairs only that R-list lifecycle error by
+preserving required slots as typed `NULL`s. It repeats the exact frozen
+estimator once from the immutable selected state, with no changed scientific
+controls, objective, parameterization, thresholds, fixture, seed, or candidate
+selection. It does not make V3 or V4 evidence valid, and there is no V6 BFGS
+retry after a V5 terminal of any kind.

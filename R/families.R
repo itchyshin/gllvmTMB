@@ -108,6 +108,47 @@
 #' `attr(families, "family_var")` to select a differently named column. Names on
 #' the list are matched to selector levels; an unnamed list is matched by order.
 #'
+#' Ordinarily the family may vary *between* traits but not *within* one: all
+#' rows of a given trait must share one family and link, and a fit that mixes
+#' them stops with an error. Poisson-log with binomial-logit, for instance, is
+#' not a coherent common scale merely because it converges.
+#'
+#' ## Integrated multi-source models (experimental)
+#'
+#' To integrate more than two sources -- a portal stream, digitised
+#' literature records, checklists, a structured survey -- declare every
+#' source and its observation law with [isdm_sources()]. The two-source
+#' contract below is the two-source case of the same rule and keeps working
+#' unchanged.
+#'
+#' ## Integrated two-source models (experimental)
+#'
+#' There is one admitted exception, for combining opportunistic
+#' presence-only records with a structured detection/non-detection survey of
+#' the same species. Here the family genuinely does vary within a trait: the
+#' portal rows are Poisson-log counts and the survey rows are Bernoulli with
+#' a complementary log-log link, which is what makes both arms consistent with
+#' one shared underlying intensity. Poisson and Bernoulli carry no dispersion
+#' parameter, so nothing per-trait becomes ambiguous.
+#'
+#' To reach it, the fit must match this contract exactly:
+#'
+#' * `family = list(gbif = poisson(), survey_pa = binomial("cloglog"))`,
+#'   with `attr(family, "family_var") <- "isdm_family"`;
+#' * a `source` column holding only `"gbif"` and `"survey"`, with both present;
+#' * an `isdm_family` column equal to `"gbif"` on portal rows and
+#'   `"survey_pa"` on survey rows.
+#'
+#' Within that contract an `offset()` is admitted on the cloglog arm, where it
+#' is a known change-of-support (sampled area or visit effort) rather than an
+#' ordinary log-rate exposure. Anything short of the full contract keeps the
+#' ordinary one-family-per-trait refusal.
+#'
+#' Everything such a fit reports is **relative intensity**. Presence-only data
+#' cannot identify absolute abundance, occupancy, or detectability, so those
+#' quantities are not estimated and must not be read off the output. This
+#' interface is experimental and may change.
+#'
 #' ## Delta defaults and compatibility wrappers
 #'
 #' When `link1` is omitted, standard delta constructors use `"logit"` and
@@ -132,6 +173,24 @@
 #'   family = fam,
 #'   trait  = "trait",
 #'   unit   = "site"
+#' )
+#'
+#' ## Integrated two-source model: portal counts + survey detections, one
+#' ## shared ecological predictor. `dat` is long, one row per
+#' ## (cell, species, source); `log_support` is log sampled area or effort.
+#' dat$isdm_family <- factor(
+#'   ifelse(dat$source == "gbif", "gbif", "survey_pa"),
+#'   levels = c("gbif", "survey_pa")
+#' )
+#' isdm_fam <- list(gbif = poisson(), survey_pa = binomial(link = "cloglog"))
+#' attr(isdm_fam, "family_var") <- "isdm_family"
+#' fit_isdm <- gllvmTMB(
+#'   value ~ 0 + trait + trait:env + trait:isdm_gbif + trait:bias +
+#'     offset(log_support) + latent(0 + trait | cell_id, d = 1),
+#'   data   = dat,
+#'   family = isdm_fam,
+#'   trait  = "trait",
+#'   unit   = "cell_id"
 #' )
 #' }
 Beta <- function(link = "logit") {

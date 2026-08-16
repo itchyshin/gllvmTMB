@@ -328,7 +328,7 @@
       out[i] <- if (lid == 1L) {
         stats::pnorm(e)            # probit
       } else if (lid == 2L) {
-        1 - exp(-exp(e))           # cloglog
+        -expm1(-exp(e))            # cloglog
       } else {
         stats::plogis(e)           # logit (default)
       }
@@ -377,7 +377,7 @@
       out[i] <- if (lid == 1L) {
         stats::dnorm(e)                          # d/de pnorm(e)
       } else if (lid == 2L) {
-        exp(e) * exp(-exp(e))                    # d/de (1 - exp(-exp(e)))
+        exp(e - exp(e))                          # stable cloglog derivative
       } else {
         p <- stats::plogis(e)
         p * (1 - p)                               # d/de plogis(e)
@@ -1577,7 +1577,7 @@ simulate.gllvmTMB_multi <- function(
       } else if (lid == 1L) {
         stats::pnorm(eta_i) # probit
       } else if (lid == 2L) {
-        1 - exp(-exp(eta_i)) # cloglog
+        -expm1(-exp(eta_i))  # cloglog
       } else {
         stats::plogis(eta_i) # fallback
       }

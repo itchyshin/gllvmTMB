@@ -129,6 +129,50 @@ Supply a list of descriptors when response traits use different families.
 The data column \code{family} selects an element for each row. Set
 \code{attr(families, "family_var")} to select a differently named column. Names on
 the list are matched to selector levels; an unnamed list is matched by order.
+
+Ordinarily the family may vary \emph{between} traits but not \emph{within} one: all
+rows of a given trait must share one family and link, and a fit that mixes
+them stops with an error. Poisson-log with binomial-logit, for instance, is
+not a coherent common scale merely because it converges.
+}
+
+\subsection{Integrated multi-source models (experimental)}{
+
+To integrate more than two sources -- a portal stream, digitised
+literature records, checklists, a structured survey -- declare every
+source and its observation law with \code{\link[=isdm_sources]{isdm_sources()}}. The two-source
+contract below is the two-source case of the same rule and keeps working
+unchanged.
+}
+
+\subsection{Integrated two-source models (experimental)}{
+
+There is one admitted exception, for combining opportunistic
+presence-only records with a structured detection/non-detection survey of
+the same species. Here the family genuinely does vary within a trait: the
+portal rows are Poisson-log counts and the survey rows are Bernoulli with
+a complementary log-log link, which is what makes both arms consistent with
+one shared underlying intensity. Poisson and Bernoulli carry no dispersion
+parameter, so nothing per-trait becomes ambiguous.
+
+To reach it, the fit must match this contract exactly:
+\itemize{
+\item \code{family = list(gbif = poisson(), survey_pa = binomial("cloglog"))},
+with \code{attr(family, "family_var") <- "isdm_family"};
+\item a \code{source} column holding only \code{"gbif"} and \code{"survey"}, with both present;
+\item an \code{isdm_family} column equal to \code{"gbif"} on portal rows and
+\code{"survey_pa"} on survey rows.
+}
+
+Within that contract an \code{offset()} is admitted on the cloglog arm, where it
+is a known change-of-support (sampled area or visit effort) rather than an
+ordinary log-rate exposure. Anything short of the full contract keeps the
+ordinary one-family-per-trait refusal.
+
+Everything such a fit reports is \strong{relative intensity}. Presence-only data
+cannot identify absolute abundance, occupancy, or detectability, so those
+quantities are not estimated and must not be read off the output. This
+interface is experimental and may change.
 }
 
 \subsection{Delta defaults and compatibility wrappers}{
@@ -176,6 +220,24 @@ fit <- gllvmTMB(
   family = fam,
   trait  = "trait",
   unit   = "site"
+)
+
+## Integrated two-source model: portal counts + survey detections, one
+## shared ecological predictor. `dat` is long, one row per
+## (cell, species, source); `log_support` is log sampled area or effort.
+dat$isdm_family <- factor(
+  ifelse(dat$source == "gbif", "gbif", "survey_pa"),
+  levels = c("gbif", "survey_pa")
+)
+isdm_fam <- list(gbif = poisson(), survey_pa = binomial(link = "cloglog"))
+attr(isdm_fam, "family_var") <- "isdm_family"
+fit_isdm <- gllvmTMB(
+  value ~ 0 + trait + trait:env + trait:isdm_gbif + trait:bias +
+    offset(log_support) + latent(0 + trait | cell_id, d = 1),
+  data   = dat,
+  family = isdm_fam,
+  trait  = "trait",
+  unit   = "cell_id"
 )
 }
 lognormal(link = "log")

@@ -222,7 +222,9 @@ parse_multi_formula <- function(formula) {
     stats::reformulate(deparse(fixed_rhs))
   } else {
     fmla <- call("~", lhs, fixed_rhs)
-    eval(call("as.formula", deparse(fmla)))
+    ## `deparse()` can wrap a long programmatic formula.  `as.formula()`
+    ## expects one string, rather than the wrapped character vector.
+    eval(call("as.formula", paste(deparse(fmla), collapse = " ")))
   }
   ## reformulate()/as.formula() attach the parser's environment; restore the
   ## user's formula environment so downstream fixed-effect evaluation resolves

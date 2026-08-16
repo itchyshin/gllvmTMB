@@ -140,6 +140,8 @@ Type gll_clamp(Type x, Type lower, Type upper)
   return x;
 }
 
+#include "gllvmTMB_cloglog.h"
+
 template <class Type>
 Type gll_log_pnorm(Type x)
 {
@@ -713,14 +715,18 @@ Type objective_function<Type>::operator()()
   // rate adjustment. Zeros when the user supplied no offset(), so a fit
   // without one is unchanged.
   //
-  // The R side gates this to count families (fids 2, 5, 10, 11, 15) and
-  // rejects a NONZERO entry on any other row, so the template applies it
-  // unconditionally: a permitted row carries the offset, a non-count row
-  // carries an exact zero. Gating here as well would silently discard a
-  // value the R side had already accepted, which is the failure mode
-  // (#807) this feature exists to avoid repeating.
+  // The R side gates this to count families (fids 2, 5, 10, 11, 15), plus
+  // the private iSDM Bernoulli-cloglog route with known sampled-area support.
+  // All other rows have exact zero. The template applies the prepared offset
+  // unconditionally so it cannot discard a value the R side has admitted.
   DATA_VECTOR(offset_vec);
 
+  // MERGE (isdm x mspl): both lanes added DATA objects here; the blocks are
+  // additive and orthogonal, so both are kept.
+  // Developer-only diagnostic: when enabled by the private iSDM R route,
+  // report the unintegrated, weighted observation contribution for each row.
+  // Public fits leave this exactly zero and receive no additional report field.
+  DATA_INTEGER(report_obs_nll);
   // Lane B opt-in estimator contract. ML callers supply inert stubs and the
   // data-constant branch below never tapes the guarded Jeffreys atom.
   DATA_INTEGER(estimator_id);      // 0 = ML, 1 = LA-MSPL, 2 = internal penalty-off LA-MSPL kernel
@@ -2440,6 +2446,8 @@ Type objective_function<Type>::operator()()
   }
 
   // -------- Add RE contributions to eta ---------------------------------
+  vector<Type> observation_nll(y.size());
+  observation_nll.setZero();
   for (int o = 0; o < y.size(); o++) {
     int t  = trait_id(o);
     int s  = site_id(o);
@@ -2613,20 +2621,26 @@ Type objective_function<Type>::operator()()
       // `cbind(successes, failures)` on the LHS of the formula. `y(o)` is
       // the success count; the parser ensures 0 <= y(o) <= n_trials(o).
       int lid = link_id_vec(o);
+      // MERGE (isdm x mspl): two lanes restructured this dispatch. The MSPL
+      // opt-in estimator takes the row when active -- its kernel owns every
+      // link, including its own cloglog tail counter. On the ML path, cloglog
+      // routes to the iSDM tail-safe kernel (series expansion below eta = -20,
+      // cap at 700) instead of the naive clamped form; logit and probit keep
+      // the clamped dbinom path unchanged.
       if (estimator_id != 0) {
         ll += gll_mspl_bernoulli_loglik(y(o), eta_o, lid);
         if (lid == 2) {
           mspl_cloglog_likelihood_tail_extension_count += CppAD::CondExpGt(
             eta_o, Type(690.0), Type(1.0), Type(0.0));
         }
+      } else if (lid == 2) {
+        ll += gll_dbinom_cloglog(y(o), n_trials(o), eta_o);
       } else {
         Type p;
         if (lid == 0) {
           p = Type(1.0) / (Type(1.0) + exp(-eta_o));
         } else if (lid == 1) {
           p = pnorm(eta_o);
-        } else if (lid == 2) {
-          p = Type(1.0) - exp(-exp(eta_o));
         } else {
           error("gllvmTMB_multi: unknown link_id for binomial family");
         }
@@ -3160,7 +3174,10 @@ Type objective_function<Type>::operator()()
     // is a no-op too.
     Type row_nll = nll - nll_before_row;
     nll = nll_before_row + row_nll * weights_i(o);
+    if (report_obs_nll == 1 && use_aghq == 0)
+      observation_nll(o) = row_nll * weights_i(o);
   }
+  if (report_obs_nll == 1 && use_aghq == 0) REPORT(observation_nll);
 
   // -------- AGHQ collapse: log-sum-exp over the quadrature nodes ---------
   // log L_i = logdet_i + log sum_j exp( logw_j + inner_ll(i, j) ).

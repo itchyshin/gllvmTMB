@@ -106,7 +106,9 @@
 #' @keywords internal
 #' @noRd
 gll_prepare_offset <- function(offset_expr, data, formula_env,
-                               family_id_vec, family_per_row, trait_vec) {
+                               family_id_vec, link_id_vec,
+                               family_per_row, trait_vec,
+                               allow_isdm_cloglog = FALSE) {
   n_obs <- nrow(data)
   if (is.null(offset_expr)) return(rep(0.0, n_obs))
 
@@ -145,7 +147,16 @@ gll_prepare_offset <- function(offset_expr, data, formula_env,
 
   ## ---- The count-family gate ------------------------------------------
   ## Only NONZERO offsets are gated. See the note above on why zero passes.
-  offending <- off != 0 & !(family_id_vec %in% .gll_offset_count_family_ids)
+  ## A Bernoulli-cloglog offset is a change-of-support term (known sampled area
+  ## or visit effort), not an ordinary log-rate exposure, which is why it is
+  ## admitted here and nowhere else outside the count families. The caller
+  ## passes allow_isdm_cloglog only once the exact integrated two-source
+  ## contract has matched -- see .gllvmTMB_integrated_two_source_contract() --
+  ## so this reaches the unexported developer route AND a public caller who
+  ## meets that same contract, and nothing else.
+  is_isdm_cloglog <- isTRUE(allow_isdm_cloglog) &
+    family_id_vec == 1L & link_id_vec == 2L
+  offending <- off != 0 & !(family_id_vec %in% .gll_offset_count_family_ids | is_isdm_cloglog)
   if (any(offending)) {
     fam_name <- function(i) {
       f <- family_per_row[[i]]

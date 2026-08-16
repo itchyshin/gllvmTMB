@@ -132,7 +132,8 @@
 
 .gllvmTMB_validate_family_scale_by_trait <- function(family_id_vec,
                                                       link_id_vec,
-                                                      trait_labels) {
+                                                      trait_labels,
+                                                      allow_isdm_mixed = FALSE) {
   stopifnot(
     length(family_id_vec) == length(link_id_vec),
     length(family_id_vec) == length(trait_labels)
@@ -144,15 +145,101 @@
     function(x) length(unique(x)) > 1L,
     logical(1L)
   )]
-  if (length(bad) > 0L) {
+  if (length(bad) > 0L && !isTRUE(allow_isdm_mixed)) {
     cli::cli_abort(c(
       "Response family/link cannot currently vary across rows within a trait.",
       "x" = "Multiple family/link scales were requested within: {paste(bad, collapse = ', ')}.",
       "i" = "Use one family/link per trait. Per-row family mixing needs a separately validated common-scale contract; Poisson-log with binomial-logit/probit is not coherent merely because it converges.",
-      ">" = "The planned integrated Poisson-log / binomial-cloglog route remains experimental and is not admitted here."
+      "i" = "The one admitted exception is the integrated multi-source model: named observation sources whose rows are Poisson-log count streams or Bernoulli-cloglog detection streams for the same trait, where the cloglog link makes every arm consistent with one underlying intensity.",
+      ">" = "To reach it, declare the sources with {.fn isdm_sources}, e.g. {.code family = isdm_sources(gbif = poisson(), literature = poisson(), survey = binomial(\"cloglog\"))}, and give {.arg data} an {.var isdm_source} column naming each row's source. Every trait must be observed by every declared source."
     ), class = "gllvmTMB_family_within_trait_unsupported")
   }
   invisible(TRUE)
+}
+
+## The one sanctioned relaxation of the one-family-per-trait boundary: the
+## integrated multi-source model (Design 120), where each declared source's
+## rows are Poisson-log counts or Bernoulli-cloglog detections for the SAME
+## trait. Poisson and Bernoulli are dispersion-free, so no per-trait nuisance
+## parameter becomes ambiguous (see #945 wrinkle 1); cloglog is what makes
+## every detection arm consistent with the same underlying intensity as the
+## count arms, and the argument is arm-by-arm, so it holds at any source count.
+##
+## This predicate is the single definition of "this is that model". It is
+## deliberately exact: anything short of the full contract keeps the ordinary
+## refusal, so the admission cannot widen by accident. Both the unexported
+## developer route and the public route are admitted through it; the legacy
+## gbif/survey_pa shape is its n = 2 case.
+.gllvmTMB_integrated_sources_contract <- function(family_input, data,
+                                                  family_id_vec,
+                                                  link_id_vec,
+                                                  trait_labels) {
+  if (!is.list(family_input) || inherits(family_input, "family")) {
+    return(FALSE)
+  }
+  if (missing(trait_labels)) trait_labels <- NULL
+
+  ## Route 1 -- the DECLARED contract (Design 120): isdm_sources() built the
+  ## list and the selector column is isdm_source. The map is REBUILT here from
+  ## the list's names and laws rather than read from the constructor's
+  ## attribute, because .align_mixed_family_list() reorders the list with `[`,
+  ## which drops non-name attributes -- an attribute-borne map would silently
+  ## vanish before this predicate runs. `[` DOES preserve names, carried with
+  ## their values through the reorder, and that preservation is exactly what
+  ## makes rebuilding from names+laws safe. The names+laws ARE the
+  ## declaration; the attribute is only constructor metadata.
+  if (identical(attr(family_input, "family_var"), "isdm_source") &&
+      "isdm_source" %in% names(data) &&
+      !is.null(names(family_input)) && all(nzchar(names(family_input)))) {
+    ids <- lapply(family_input, .isdm_admitted_law_id)
+    if (any(vapply(ids, is.null, logical(1L)))) return(FALSE)
+    map <- do.call(rbind, ids)
+    rownames(map) <- names(family_input)
+    return(.gllvmTMB_isdm_declared_core(
+      map = map, selector = data$isdm_source,
+      family_id_vec = family_id_vec, link_id_vec = link_id_vec,
+      trait_labels = trait_labels, data_n = nrow(data)
+    ))
+  }
+
+  ## Route 2 -- the LEGACY two-source shape, recognised and translated into the
+  ## same core so there is one definition of admission, not two. The extra
+  ## `source`-column checks are part of that shape's contract and are kept: a
+  ## legacy caller who satisfied them before still does, and one who did not is
+  ## still refused.
+  if (identical(attr(family_input, "family_var"), "isdm_family") &&
+      identical(sort(names(family_input)), c("gbif", "survey_pa")) &&
+      "source" %in% names(data) &&
+      "isdm_family" %in% names(data) &&
+      all(data$source %in% c("gbif", "survey")) &&
+      identical(
+        as.character(data$isdm_family),
+        ifelse(data$source == "gbif", "gbif", "survey_pa")
+      )) {
+    legacy_map <- rbind(gbif = c(fid = 2L, lid = 0L),
+                        survey_pa = c(fid = 1L, lid = 2L))
+    return(.gllvmTMB_isdm_declared_core(
+      map = legacy_map, selector = data$isdm_family,
+      family_id_vec = family_id_vec, link_id_vec = link_id_vec,
+      trait_labels = trait_labels, data_n = nrow(data)
+    ))
+  }
+  FALSE
+}
+
+## Retained name for the n = 2 era; the generalised predicate above is the
+## single definition of admission and this alias delegates to it. Kept because
+## the name is asserted in tests and referenced in dev-log evidence.
+.gllvmTMB_integrated_two_source_contract <- function(family_input, data,
+                                                     family_id_vec,
+                                                     link_id_vec,
+                                                     trait_labels) {
+  if (missing(trait_labels)) trait_labels <- NULL
+  .gllvmTMB_integrated_sources_contract(
+    family_input = family_input, data = data,
+    family_id_vec = family_id_vec, link_id_vec = link_id_vec,
+    trait_labels = trait_labels
+  )
 }
 
 .gllvmTMB_loading_ridge_applies <- function(ridge_tau, parameter_names) {
@@ -245,6 +332,43 @@
   link_matrix <- as.matrix(contract[c("link_0", "link_1", "link_2")])
   allowed[valid] <- link_matrix[cbind(family_row[valid], link_id[valid] + 1L)]
   allowed
+}
+
+## `structural_ok` is the public admission: TRUE when
+## .gllvmTMB_integrated_two_source_contract() has already matched the exact
+## two-source contract. The namespace token remains the unexported route's own
+## key, so .gll_isdm_fit() is unaffected; neither path widens the family/link
+## check below, which still has to pass on its own.
+.isdm_spatial_augmented_slope_allowed <- function(isdm_spatial_token,
+                                                   family_id_vec, link_id_vec,
+                                                   structural_ok = FALSE) {
+  admitted <- identical(isdm_spatial_token, .isdm_spatial_admission_token()) ||
+    isTRUE(structural_ok)
+  if (!admitted || length(family_id_vec) != length(link_id_vec)) {
+    return(FALSE)
+  }
+  family_id_vec <- as.integer(family_id_vec)
+  link_id_vec <- as.integer(link_id_vec)
+  gbif <- family_id_vec == 2L & link_id_vec == 0L
+  survey <- family_id_vec == 1L & link_id_vec == 2L
+  all(gbif | survey) && any(gbif) && any(survey)
+}
+
+## Exact prepared-input constructor for augmented spatial_latent slopes.
+## Keeping this pure makes the source gate test the same Z matrix supplied to
+## TMB, rather than a parallel hand-written oracle.
+.spde_latent_slope_design <- function(data, slope_column) {
+  if (!is.character(slope_column) || length(slope_column) != 1L ||
+      is.na(slope_column) || !slope_column %in% names(data)) {
+    stop("Internal: augmented spatial_latent slope column is absent from data.",
+         call. = FALSE)
+  }
+  slope <- as.numeric(data[[slope_column]])
+  if (any(!is.finite(slope))) {
+    stop("Internal: augmented spatial_latent slope column must be finite.",
+         call. = FALSE)
+  }
+  cbind(`(Intercept)` = rep.int(1.0, nrow(data)), slope = slope)
 }
 
 .augmented_slope_family_scope_text <- function() {
@@ -582,6 +706,17 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       family
     )
   }
+  ## Developer-only iSDM routing is deliberately opt-in through an unexported
+  ## family-list marker constructed by .gll_isdm_fit().  The public mixed-family
+  ## contract remains one family/link per trait.
+  isdm_internal <- isTRUE(
+    attr(family, "gllvmTMB_internal_isdm", exact = TRUE)
+  )
+  isdm_spatial_token <- if (isdm_internal) {
+    attr(family, "gllvmTMB_internal_isdm_spatial_token", exact = TRUE)
+  } else NULL
+  isdm_report <- isdm_internal ||
+    isTRUE(attr(family, "gllvmTMB_internal_isdm_report", exact = TRUE))
   if (is.list(family) && !inherits(family, "family")) {
     fam_var <- attr(family, "family_var") %||% "family"
     if (!fam_var %in% names(data))
@@ -614,10 +749,41 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     for (i in seq_along(family_per_row)) family_per_row[[i]] <- family
     family_input <- family    # M1.8: single-family path; family_input == family
   }
-  .gllvmTMB_validate_family_scale_by_trait(
+  ## The marker is not itself an admission rule. Admission comes from the exact
+  ## two-source family/source contract, and ONLY from it. The unexported route
+  ## sets the marker and must satisfy the contract; a public caller satisfies
+  ## the same contract directly, with no marker. One predicate, two callers.
+  isdm_structural <- .gllvmTMB_integrated_sources_contract(
+    family_input = family_input,
+    data = data,
     family_id_vec = family_id_vec,
     link_id_vec = link_id_vec,
     trait_labels = data[[trait]]
+  )
+  if (isdm_internal && !isdm_structural) {
+    cli::cli_abort(c(
+      "The internal iSDM marker has an invalid observation contract.",
+      "i" = "The developer marker admits only the exact two-source shape: GBIF Poisson-log rows and survey Bernoulli-cloglog rows selected by {.var isdm_family}."
+    ))
+  }
+  isdm_admitted <- isdm_internal || isdm_structural
+  ## Announce the public route once per session. The unexported developer route
+  ## is already fenced by its own documentation and stays silent.
+  if (isdm_structural && !isdm_internal) {
+    cli::cli_inform(c(
+      "The integrated multi-source route is experimental.",
+      "i" = "It combines presence-only count streams with structured detection/non-detection data under one shared ecological linear predictor.",
+      "i" = "Everything it reports is {.strong relative intensity}: presence-only data cannot identify absolute abundance, occupancy, or detectability, and this fit does not estimate them.",
+      "i" = "Source-specific spatial structure is only weakly identified on small designs; treat a source-only field as a nuisance adjustment unless your design is large enough to support it.",
+      "!" = "Give every presence-only arm its own reporting-rate term (an interaction with a source indicator). Without one, the arms share an absolute intercept and the fit implicitly claims the absolute intensity that presence-only data cannot identify.",
+      ">" = "Check convergence and positive-definiteness on every fit, and expect this interface to change."
+    ), .frequency = "once", .frequency_id = "gllvmTMB-integrated-two-source")
+  }
+  .gllvmTMB_validate_family_scale_by_trait(
+    family_id_vec = family_id_vec,
+    link_id_vec = link_id_vec,
+    trait_labels = data[[trait]],
+    allow_isdm_mixed = isdm_admitted
   )
 
   ## ---- Identify which RE terms are present and on which grouping --------
@@ -1105,7 +1271,25 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     ## LHS column gets its own Lambda_k Lambda_k^T and there is no
     ## intercept-slope correlation block. SPA-09 records direct route evidence;
     ## RE-14's ID 3/9 admission remains C1 partial and non-route-specific.
-    if (any(!.augmented_slope_family_allowed(family_id_vec, link_id_vec))) {
+    ## The structural (public) route additionally requires the slope to be the
+    ## SOURCE GATE itself. The token route was implicitly pinned to that column
+    ## because .isdm_formula() is its only constructor; the public route has no
+    ## such constructor, so without this a caller meeting the family contract
+    ## could hang an arbitrary continuous covariate off the SPDE slope on a
+    ## cloglog arm -- a shape nothing has ever exercised. The pin is on the
+    ## VALUES as well as the name: a review found that requiring only the name
+    ## lets any continuous covariate through by renaming it, so the column must
+    ## actually be a 0/1 gate.
+    isdm_structural_slope <- isdm_structural &&
+      identical(spde_latent_slope_cs$extra$slope_col, "isdm_gbif") &&
+      "isdm_gbif" %in% names(data) &&
+      all(data[["isdm_gbif"]] %in% c(0L, 1L))
+    isdm_spatial_slope_ok <- .isdm_spatial_augmented_slope_allowed(
+      isdm_spatial_token, family_id_vec, link_id_vec,
+      structural_ok = isdm_structural_slope
+    )
+    if (any(!.augmented_slope_family_allowed(family_id_vec, link_id_vec)) &&
+        !isdm_spatial_slope_ok) {
       cli::cli_abort(c(
         "Augmented {.fn spatial_latent} random slopes are not admitted for this family/link combination.",
         "i" = .augmented_slope_family_scope_text(),
@@ -1460,6 +1644,11 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## the printed label and triggers the spatial_indep+spatial_latent guard.
   spde_is_indep_flag <- spde_flag(".spatial_indep")
   is_spatial_indep <- length(spde_idx) > 0L && any(spde_is_indep_flag)
+  ## Both spatial_indep() spellings are marginal spatial models. The common
+  ## spelling is marked `.spatial_scalar`, so exclusion checks must not look
+  ## only for the explicit `.spatial_indep` marker.
+  spde_is_marginal_flag <- spde_is_indep_flag | spde_is_scalar_flag
+  is_spatial_marginal <- length(spde_idx) > 0L && any(spde_is_marginal_flag)
   ## spatial_dep(): rewrites to spde(form, .spatial_latent = TRUE,
   ## d = n_traits, .dep = TRUE). Same engine path as
   ## spatial_latent(d = n_traits) standalone (full-rank packed-triangular
@@ -1470,6 +1659,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ##   * spatial_dep + spatial_indep:  redundant
   spde_idx_for_dep <- spde_idx
   spde_is_dep_flag <- spde_flag(".dep")
+  spde_is_plain <- !spde_is_dep_flag & !spde_is_latent_flag &
+    !spde_is_marginal_flag
   is_spatial_dep <- any(spde_is_dep_flag)
   if (is_spatial_dep) {
     ## spatial_dep + spatial_latent: over-parameterised. Detect by counting
@@ -1485,9 +1676,6 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     }
     ## spatial_dep + spatial_unique: redundant. spatial_unique = spde with
     ## no markers; detect any spde term with no dep/indep/latent/scalar flag.
-    spde_is_plain <- !spde_is_dep_flag & !spde_is_latent &
-      !spde_is_indep_flag &
-      !spde_is_scalar_flag
     if (any(spde_is_plain)) {
       cli::cli_abort(c(
         "{.fn spatial_dep} and {.fn spatial_unique} are redundant together.",
@@ -1495,28 +1683,27 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         ">" = "{.fn spatial_dep} standalone already includes the per-trait spatial diagonal -- pick one."
       ))
     }
-    ## spatial_dep + spatial_indep: redundant.
-    if (any(spde_is_indep_flag)) {
+    ## spatial_dep + either marginal spelling: redundant.
+    if (any(spde_is_marginal_flag)) {
       cli::cli_abort(c(
-        "{.fn spatial_dep} and {.fn spatial_indep} are redundant together.",
-        "i" = "Both {.code spatial_dep(0 + trait | coords)} and {.code spatial_indep(0 + trait | coords)} appear in the formula.",
+        "{.fn spatial_dep} and a marginal spatial term are redundant together.",
+        "i" = "Both {.code spatial_dep(0 + trait | coords)} and {.code spatial_indep(0 + trait | coords, common = TRUE)} appear in the formula.",
         ">" = "{.fn spatial_dep} standalone already includes the per-trait spatial diagonal -- pick one."
       ))
     }
   }
-  if (is_spatial_indep && is_spatial_latent && !is_spatial_dep) {
+  if (is_spatial_marginal && is_spatial_latent && !is_spatial_dep) {
     cli::cli_abort(c(
-      "{.fn spatial_indep} and {.fn spatial_latent} are over-parameterised together.",
-      "i" = "Both {.code spatial_indep(0 + trait | coords)} and {.code spatial_latent(0 + trait | coords, d = K)} appear in the formula.",
-      ">" = "Use {.fn spatial_indep} alone for the marginal-only spatial fit, or use {.fn spatial_latent} (with optional {.code unique = TRUE} for unshared per-trait residual) for the decomposition. They cannot coexist."
+      "A marginal spatial term and {.fn spatial_latent} are over-parameterised together.",
+      "i" = "This includes {.code spatial_indep(..., common = TRUE)} plus {.code spatial_latent(0 + trait | coords, d = K)}.",
+      ">" = "Use the marginal term alone for per-trait smoothing, or {.fn spatial_latent} for a shared spatial decomposition. They cannot coexist."
     ))
   }
-  if (is_spatial_indep && !is_spatial_dep) {
+  if (is_spatial_marginal && !is_spatial_dep) {
     ## spatial_indep + spatial_unique: redundant (both produce per-trait
     ## independent fields with the SPDE precision). Detect by counting
     ## spde terms with vs. without the .spatial_indep marker.
-    spde_indep_flags <- spde_is_indep_flag
-    if (any(!spde_indep_flags) && any(spde_indep_flags)) {
+    if (any(spde_is_plain) && any(spde_is_marginal_flag)) {
       cli::cli_abort(c(
         "{.fn spatial_indep} and {.fn spatial_unique} are redundant together.",
         "i" = "Both appear in the formula.",
@@ -2242,8 +2429,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     data           = data,
     formula_env    = environment(parsed$fixed),
     family_id_vec  = family_id_vec,
+    link_id_vec    = link_id_vec,
     family_per_row = family_per_row,
-    trait_vec      = data[[trait]]
+    trait_vec      = data[[trait]],
+    allow_isdm_cloglog = isdm_admitted
   )
 
   y_raw <- stats::model.response(mf)
@@ -2280,6 +2469,47 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         cli::cli_abort("`weights` (used as binomial size) must be positive and finite.")
     } else {
       n_trials <- rep(1, length(y))
+    }
+  }
+
+  ## ---- Integrated multi-source contract: two inputs it cannot admit ------
+  ## Both are checked HERE rather than in the admission predicate because
+  ## n_trials does not exist yet at that point.
+  ##
+  ## (1) `weights` means two incompatible things across this contract's arms.
+  ## When any binomial row is present -- and the survey arm always is one --
+  ## the block above turns `weights` into a per-row TRIAL COUNT for the whole
+  ## fit, while the `weights_i` construction below sets the likelihood
+  ## multiplier to 1 on exactly those binomial rows. So one vector would be a
+  ## trial count on the survey arm and a likelihood exponent on the portal
+  ## arm: not a common scale, and the existing weighted-objective warning
+  ## skips binomial rows, so it would pass in silence.
+  ##
+  ## (2) The coherence of this contract is a thinned-Poisson argument:
+  ## p = 1 - exp(-a*exp(eta)) is the probability that a Poisson count with
+  ## mean a*exp(eta) is non-zero. That derivation is for ONE trial of support
+  ## a. With n > 1 the same `a` would have to be the PER-TRIAL support, which
+  ## nothing checks -- so a user supplying total effort across n visits gets a
+  ## model wrong by a factor of n inside the exponent. Repeated visits belong
+  ## in this contract as separate Bernoulli ROWS, each with its own support,
+  ## which is what the worked example does.
+  if (isTRUE(isdm_admitted)) {
+    if (!is.null(weights)) {
+      cli::cli_abort(c(
+        "{.arg weights} is not admitted for the integrated multi-source model.",
+        "x" = "Across this model's arms {.arg weights} would mean two different things: a binomial trial count on the detection rows and a likelihood multiplier on the count rows.",
+        "i" = "Repeated survey visits belong in the data as separate detection/non-detection rows, each carrying its own support in the {.fn offset}.",
+        ">" = "Drop {.arg weights} and give each visit its own row."
+      ), class = "gllvmTMB_isdm_weights_unsupported")
+    }
+    survey_rows <- as.integer(family_id_vec) == 1L
+    if (any(survey_rows) && any(n_trials[survey_rows] != 1)) {
+      cli::cli_abort(c(
+        "The integrated multi-source model admits only single-trial detection rows.",
+        "x" = "{sum(n_trials[survey_rows] != 1)} detection row{?s} carr{?ies/y} more than one trial.",
+        "i" = "The complementary-log-log arm is coherent with the count arm because {.code p = 1 - exp(-a * exp(eta))} is the chance that ONE Poisson draw of mean {.code a * exp(eta)} is non-zero; with several trials {.code a} would have to be the per-trial support, which is not checked.",
+        ">" = "Give each visit its own row with its own support rather than a {.code cbind(successes, failures)} response."
+      ), class = "gllvmTMB_isdm_multitrial_unsupported")
     }
   }
   n_obs <- length(y)
@@ -3545,8 +3775,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         "i" = "Add the covariate column to the data frame."
       ))
     }
-    Z_spde_lat[, 1L] <- 1.0
-    Z_spde_lat[, 2L] <- as.numeric(data[[spde_latent_slope_xcol]])
+    Z_spde_lat <- .spde_latent_slope_design(data, spde_latent_slope_xcol)
   }
 
   ## ---- equalto (known V) preparation ------------------------------------
@@ -3826,6 +4055,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     ## All zeros when the formula carries no offset(), so a fit without one is
     ## unchanged.
     offset_vec       = as.numeric(offset_vec),
+    ## Developer-only diagnostic receipt. This is zero for every public fit;
+    ## the private iSDM route alone requests the native observation-NLL vector
+    ## used to compare the fixed predictor against an independent oracle.
+    report_obs_nll   = as.integer(isdm_report),
     n_ordinal_cuts_per_trait = as.integer(n_ordinal_cuts_per_trait),
     ordinal_offset_per_trait = as.integer(ordinal_offset_per_trait),
     multinom_group_id    = as.integer(multinom_group_id),
@@ -6776,7 +7009,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     boundary_before = initial_boundary,
     trigger_reason = initial_trigger_reason
   )
-  warm_eligible <- .gllvmTMB_warm_restart_eligible(
+  internal_continuation <- isTRUE(control$.internal_continuation %||% TRUE)
+  warm_eligible <- internal_continuation && .gllvmTMB_warm_restart_eligible(
     optimizer = control$optimizer,
     aghq_used = aghq_info$used,
     ridge_tau = laplace_ridge_tau,
@@ -6786,7 +7020,37 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     pd_hessian = fit$fit_health$pd_hessian,
     boundary_flags = fit$fit_health$boundary_flags
   )
-  if (isTRUE(warm_eligible)) {
+  isdm_boundary_indices <- integer()
+  isdm_polish_eligible <- FALSE
+  if (isTRUE(isdm_internal)) {
+    isdm_boundary_indices <- .gllvmTMB_isdm_near_zero_sd_B_indices(fit)
+    isdm_polish_eligible <- internal_continuation &&
+      .gllvmTMB_isdm_polish_eligible(
+        isdm_internal = TRUE,
+        optimizer = control$optimizer,
+        aghq_used = aghq_info$used,
+        ridge_tau = laplace_ridge_tau,
+        convergence = opt$convergence,
+        objective = fit$fit_health$objective,
+        gradient = initial_gradient,
+        parameter_names = names(opt$par),
+        pd_hessian = fit$fit_health$pd_hessian,
+        boundary_flags = fit$fit_health$boundary_flags,
+        boundary_diag_indices = isdm_boundary_indices
+      )
+    fit$isdm_polish_provenance <- .gllvmTMB_isdm_polish_record(
+      eligible = isdm_polish_eligible,
+      raw_parameter_vector = opt$par,
+      raw_convergence = opt$convergence,
+      raw_objective = fit$fit_health$objective,
+      raw_gradient = initial_gradient,
+      raw_pd_hessian = fit$fit_health$pd_hessian,
+      raw_boundary_flags = fit$fit_health$boundary_flags,
+      boundary_diag_indices = isdm_boundary_indices,
+      parameter_names = names(opt$par)
+    )
+  }
+  if (isTRUE(warm_eligible) || isTRUE(isdm_polish_eligible)) {
     warm_checkpoint <- .gllvmTMB_warm_restart_checkpoint(fit, obj)
     warm_started <- proc.time()[["elapsed"]]
     warm_opt <- tryCatch(
@@ -6844,27 +7108,195 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
            pd_hessian = warm_health$pd_hessian,
            boundary_flags = warm_health$boundary_flags)
     }
-    warm_accepted <- .gllvmTMB_warm_restart_accept(
-      before_diagnostics, after_diagnostics
+    ## Retain each named candidate separately.  This is private provenance,
+    ## not a candidate generator for any otherwise ineligible fit.
+    isdm_candidate_attempts <- list(
+      nlminb_retry = list(
+        method = "nlminb_retry", objective = warm_objective,
+        gradient = warm_gradient, convergence = after_diagnostics$convergence,
+        pd_hessian = after_diagnostics$pd_hessian,
+        boundary_flags = after_diagnostics$boundary_flags,
+        accepted = FALSE
+      )
     )
-    fit$warm_restart_provenance <- .gllvmTMB_warm_restart_record(
-      attempted = TRUE,
-      accepted = warm_accepted,
-      objective_before = fit$fit_health$objective,
-      objective_after = warm_objective,
-      max_gradient_before = fit$fit_health$max_gradient,
-      max_gradient_after = if (length(warm_gradient) &&
-          all(is.finite(warm_gradient))) max(abs(warm_gradient)) else NA_real_,
-      convergence_before = opt$convergence,
-      convergence_after = after_diagnostics$convergence,
-      pd_hessian_before = fit$fit_health$pd_hessian,
-      pd_hessian_after = after_diagnostics$pd_hessian,
-      boundary_before = initial_boundary,
-      boundary_after = .gllvmTMB_warm_restart_boundary_scalar(
-        after_diagnostics$boundary_flags
-      ),
-      trigger_reason = initial_trigger_reason
-    )
+    warm_accepted <- if (isTRUE(isdm_polish_eligible)) {
+      .gllvmTMB_isdm_polish_accept(
+        before_diagnostics,
+        after_diagnostics,
+        boundary_diag_indices_before = isdm_boundary_indices,
+        boundary_diag_indices_after = if (is.null(warm_fit)) integer() else
+          .gllvmTMB_isdm_near_zero_sd_B_indices(warm_fit),
+        map_identical = !is.null(warm_fit) &&
+          identical(fit$tmb_map, warm_fit$tmb_map)
+      )
+    } else {
+      .gllvmTMB_warm_restart_accept(before_diagnostics, after_diagnostics)
+    }
+    if (isTRUE(isdm_polish_eligible)) {
+      isdm_candidate_attempts$nlminb_retry$accepted <- isTRUE(warm_accepted)
+    }
+    ## A single covariance-Newton correction is available only to the private
+    ## iJSDM route after its same-objective nlminb retry has failed.  The fixed
+    ## covariance from sdreport is the local inverse-Hessian approximation.
+    ## Acceptance below remains fail-closed: it requires the original map and
+    ## named boundary, non-increasing objective, fresh PD Hessian, and the
+    ## unchanged 1e-3 raw-gradient bound.
+    if (isTRUE(isdm_polish_eligible) && !isTRUE(warm_accepted)) {
+      newton_par <- .gllvmTMB_isdm_covariance_newton_candidate(
+        par = opt$par, gradient = initial_gradient,
+        covariance = sd_rep$cov.fixed %||% NULL
+      )
+      if (!is.null(newton_par)) {
+        newton_started <- proc.time()[["elapsed"]]
+        newton_objective_error <- NULL
+        newton_gradient_error <- NULL
+        newton_objective <- tryCatch(
+          obj$fn(newton_par),
+          error = function(e) {
+            newton_objective_error <<- conditionMessage(e)
+            NA_real_
+          }
+        )
+        newton_gradient <- tryCatch(
+          obj$gr(newton_par),
+          error = function(e) {
+            newton_gradient_error <<- conditionMessage(e)
+            NA_real_
+          }
+        )
+        ## An invoked candidate is always recorded, including a failed direct
+        ## objective/gradient evaluation.  This prevents a numerical error
+        ## from disappearing behind the retained nlminb retry.
+        isdm_candidate_attempts$covariance_newton <- list(
+          method = "covariance_newton", parameter_vector = newton_par,
+          objective = newton_objective, gradient = newton_gradient,
+          convergence = NA_integer_, pd_hessian = NA,
+          boundary_flags = character(), accepted = FALSE,
+          reason = if (!is.null(newton_objective_error) ||
+              !is.null(newton_gradient_error)) "evaluation_error" else
+            "invalid_objective_or_gradient",
+          objective_error = newton_objective_error,
+          gradient_error = newton_gradient_error
+        )
+        if (length(newton_objective) == 1L && is.finite(newton_objective) &&
+            length(newton_gradient) == length(opt$par) &&
+            all(is.finite(newton_gradient))) {
+          obj$env$last.par.best <- obj$env$last.par
+          newton_sdreport_error <- NULL
+          newton_sd_report <- tryCatch(
+            TMB::sdreport(obj, par.fixed = newton_par,
+                          getJointPrecision = FALSE),
+            error = function(e) {
+              newton_sdreport_error <<- conditionMessage(e)
+              NULL
+            }
+          )
+          newton_opt <- list(
+            par = newton_par, objective = newton_objective, convergence = 0L,
+            message = "private iJSDM covariance-Newton correction",
+            iterations = NA_integer_, evaluations = integer()
+          )
+          newton_fit <- fit
+          newton_fit$opt <- newton_opt
+          newton_fit$report <- obj$report()
+          newton_fit$sd_report <- newton_sd_report
+          newton_fit$sdreport_error <- newton_sdreport_error
+          newton_health <- .gllvmTMB_build_fit_health(newton_fit)
+          newton_diagnostics <- list(
+            convergence = newton_opt$convergence,
+            objective = newton_health$objective,
+            gradient = newton_gradient,
+            pd_hessian = newton_health$pd_hessian,
+            boundary_flags = newton_health$boundary_flags
+          )
+          newton_accepted <- .gllvmTMB_isdm_polish_accept(
+            before_diagnostics, newton_diagnostics,
+            boundary_diag_indices_before = isdm_boundary_indices,
+            boundary_diag_indices_after =
+              .gllvmTMB_isdm_near_zero_sd_B_indices(newton_fit),
+            map_identical = identical(fit$tmb_map, newton_fit$tmb_map)
+          )
+          isdm_candidate_attempts$covariance_newton <- list(
+            method = "covariance_newton", objective = newton_objective,
+            parameter_vector = newton_par, gradient = newton_gradient,
+            convergence = newton_diagnostics$convergence,
+            pd_hessian = newton_diagnostics$pd_hessian,
+            boundary_flags = newton_diagnostics$boundary_flags,
+            accepted = isTRUE(newton_accepted),
+            reason = if (isTRUE(newton_accepted)) "accepted" else "rejected",
+            objective_error = NULL, gradient_error = NULL
+          )
+          if (isTRUE(newton_accepted)) {
+            warm_opt <- newton_opt
+            warm_objective <- newton_objective
+            warm_gradient <- newton_gradient
+            warm_fit <- newton_fit
+            warm_health <- newton_health
+            after_diagnostics <- newton_diagnostics
+            warm_accepted <- TRUE
+          }
+        }
+        warm_elapsed <- warm_elapsed + (proc.time()[["elapsed"]] - newton_started)
+      }
+    }
+    if (isTRUE(isdm_polish_eligible)) {
+      fit$isdm_polish_provenance <- .gllvmTMB_isdm_polish_record(
+        eligible = TRUE,
+        attempted = TRUE,
+        accepted = warm_accepted,
+        raw_parameter_vector = opt$par,
+        candidate_parameter_vector = if (inherits(warm_opt, "error"))
+          numeric() else warm_opt$par %||% numeric(),
+        raw_objective = fit$fit_health$objective,
+        candidate_objective = warm_objective,
+        raw_gradient = initial_gradient,
+        candidate_gradient = warm_gradient,
+        raw_pd_hessian = fit$fit_health$pd_hessian,
+        candidate_pd_hessian = after_diagnostics$pd_hessian,
+        raw_boundary_flags = fit$fit_health$boundary_flags,
+        candidate_boundary_flags = after_diagnostics$boundary_flags,
+        boundary_diag_indices = isdm_boundary_indices,
+        candidate_boundary_diag_indices = if (is.null(warm_fit)) integer() else
+          .gllvmTMB_isdm_near_zero_sd_B_indices(warm_fit),
+        parameter_names = names(opt$par),
+        map_identical = !is.null(warm_fit) &&
+          identical(fit$tmb_map, warm_fit$tmb_map),
+        candidate_method = if (!inherits(warm_opt, "error") &&
+          identical(warm_opt$message, "private iJSDM covariance-Newton correction"))
+          "covariance_newton" else "nlminb_retry",
+        candidate_attempts = list(
+          attempts = isdm_candidate_attempts,
+          selected = list(
+            method = if (!inherits(warm_opt, "error") &&
+              identical(warm_opt$message, "private iJSDM covariance-Newton correction"))
+              "covariance_newton" else "nlminb_retry",
+            objective = warm_objective, gradient = warm_gradient,
+            convergence = after_diagnostics$convergence,
+            pd_hessian = after_diagnostics$pd_hessian,
+            boundary_flags = after_diagnostics$boundary_flags
+          )
+        )
+      )
+    } else {
+      fit$warm_restart_provenance <- .gllvmTMB_warm_restart_record(
+        attempted = TRUE,
+        accepted = warm_accepted,
+        objective_before = fit$fit_health$objective,
+        objective_after = warm_objective,
+        max_gradient_before = fit$fit_health$max_gradient,
+        max_gradient_after = if (length(warm_gradient) &&
+            all(is.finite(warm_gradient))) max(abs(warm_gradient)) else NA_real_,
+        convergence_before = opt$convergence,
+        convergence_after = after_diagnostics$convergence,
+        pd_hessian_before = fit$fit_health$pd_hessian,
+        pd_hessian_after = after_diagnostics$pd_hessian,
+        boundary_before = initial_boundary,
+        boundary_after = .gllvmTMB_warm_restart_boundary_scalar(
+          after_diagnostics$boundary_flags
+        ),
+        trigger_reason = initial_trigger_reason
+      )
+    }
     if (isTRUE(warm_accepted)) {
       opt <- warm_opt
       rep <- warm_fit$report
@@ -6904,6 +7336,34 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         fit, obj, warm_checkpoint
       )
     }
+  }
+
+  ## Store one prospective admission record after any named-boundary attempt.
+  ## The raw state is retained in the private polish ledger even if a candidate
+  ## was selected, so the classification cannot launder a repair into Case A.
+  if (isTRUE(isdm_internal)) {
+    polish <- fit$isdm_polish_provenance
+    raw_gradient <- if (is.list(polish) && is.list(polish$raw)) polish$raw$gradient else
+      tryCatch(obj$gr(fit$opt$par), error = function(e) NA_real_)
+    raw_objective <- if (is.list(polish) && is.list(polish$raw)) polish$raw$objective else
+      fit$fit_health$objective
+    raw_pd_hessian <- if (is.list(polish) && is.list(polish$raw)) polish$raw$pd_hessian else
+      fit$fit_health$pd_hessian
+    raw_boundary <- if (is.list(polish) && is.list(polish$raw)) polish$raw$boundary_flags else
+      fit$fit_health$boundary_flags
+    fit$isdm_numerical_admission <- .gllvmTMB_isdm_numerical_admission(
+      isdm_internal = TRUE, optimizer = control$optimizer,
+      aghq_used = aghq_info$used, ridge_tau = laplace_ridge_tau,
+      convergence = if (is.list(polish) && is.list(polish$raw))
+        polish$raw$convergence else fit$opt$convergence,
+      objective = raw_objective, gradient = raw_gradient,
+      parameter_names = names(if (is.list(polish) && is.list(polish$raw))
+        polish$raw$parameter_vector else fit$opt$par), pd_hessian = raw_pd_hessian,
+      boundary_flags = raw_boundary,
+      boundary_diag_indices = if (is.list(polish) && is.list(polish$boundary))
+        polish$boundary$diagonal_indices else .gllvmTMB_isdm_near_zero_sd_B_indices(fit),
+      polish = polish
+    )
   }
 
   ## Phase 2a: fill the missing-predictor conditional mode (x_mis EBLUP) from
@@ -7205,6 +7665,1176 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     max(1, abs(before$objective))
   isTRUE(max(abs(after_gradient)) < max(abs(before_gradient))) &&
     isTRUE(after$objective <= before$objective + tolerance)
+}
+
+## G2i's deterministic polish is private to the internal two-source iSDM
+## route.  It deliberately does not broaden the ordinary warm-restart policy:
+## one named near-zero B-tier SD may coexist with a residual gradient in a
+## different parameter block, but the raw and candidate states remain visible.
+.gllvmTMB_isdm_near_zero_sd_B_indices <- function(
+  fit,
+  sd_thresh = 1e-4,
+  sd_rel_thresh = 1e-3
+) {
+  sd_B <- fit$report$sd_B %||% numeric()
+  sd_B <- as.numeric(sd_B)
+  if (!length(sd_B) || any(!is.finite(sd_B))) return(integer())
+  absolute <- which(sd_B < sd_thresh)
+  if (length(absolute)) return(as.integer(absolute))
+  max_sd <- max(sd_B)
+  if (!is.finite(max_sd) || max_sd <= 0) return(integer())
+  relative <- which(sd_B / max_sd < sd_rel_thresh)
+  as.integer(relative)
+}
+
+.gllvmTMB_isdm_polish_eligible <- function(
+  isdm_internal,
+  optimizer,
+  aghq_used,
+  ridge_tau,
+  convergence,
+  objective,
+  gradient,
+  parameter_names,
+  pd_hessian,
+  boundary_flags,
+  boundary_diag_indices,
+  raw_gradient_gate = 1e-3,
+  health_gradient_gate = .gllvmTMB_converged_gtol
+) {
+  typed <- isTRUE(isdm_internal) && identical(optimizer, "nlminb") &&
+    identical(aghq_used, FALSE) && is.null(ridge_tau) &&
+    is.numeric(convergence) && length(convergence) == 1L &&
+    is.finite(convergence) && convergence == 0L &&
+    is.numeric(objective) && length(objective) == 1L && is.finite(objective) &&
+    is.numeric(gradient) && length(gradient) > 0L && all(is.finite(gradient)) &&
+    is.character(parameter_names) && length(parameter_names) == length(gradient) &&
+    identical(pd_hessian, TRUE) &&
+    identical(boundary_flags, "near_zero_sd_B") &&
+    is.integer(boundary_diag_indices) && length(boundary_diag_indices) == 1L &&
+    is.finite(raw_gradient_gate) && identical(raw_gradient_gate, 1e-3) &&
+    is.finite(health_gradient_gate) && health_gradient_gate > raw_gradient_gate
+  if (!typed) return(FALSE)
+  max_gradient <- max(abs(gradient))
+  max_indices <- which(abs(gradient) == max_gradient)
+  isTRUE(max_gradient > raw_gradient_gate) &&
+    isTRUE(max_gradient < health_gradient_gate) &&
+    !any(parameter_names[max_indices] == "theta_diag_B")
+}
+
+## G2n classifies the frozen numerical-admission evidence prospectively.  It
+## never creates a Case-C optimizer route: `b_fix`/`theta_rr_B` residuals are a
+## retained NO_CANDIDATE/HOLD state until a distinct estimator is approved.
+.gllvmTMB_isdm_numerical_admission <- function(
+  isdm_internal, optimizer, aghq_used, ridge_tau, convergence, objective,
+  gradient, parameter_names, pd_hessian, boundary_flags, boundary_diag_indices,
+  polish = NULL, raw_gradient_gate = 1e-3,
+  health_gradient_gate = .gllvmTMB_converged_gtol
+) {
+  typed <- isTRUE(isdm_internal) && identical(optimizer, "nlminb") &&
+    identical(aghq_used, FALSE) && is.null(ridge_tau) &&
+    is.numeric(convergence) && length(convergence) == 1L &&
+    is.finite(convergence) && convergence == 0L &&
+    is.numeric(objective) && length(objective) == 1L && is.finite(objective) &&
+    is.numeric(gradient) && length(gradient) > 0L && all(is.finite(gradient)) &&
+    is.character(parameter_names) && length(parameter_names) == length(gradient) &&
+    identical(pd_hessian, TRUE) && is.character(boundary_flags) &&
+    is.integer(boundary_diag_indices) && is.finite(raw_gradient_gate) &&
+    raw_gradient_gate > 0 && is.finite(health_gradient_gate) &&
+    health_gradient_gate > raw_gradient_gate
+  if (!typed) return(list(case = "D", polish_status = "INVALID_RULE_STATE",
+                           numerical_admission = FALSE, reason = "invalid_prerequisites"))
+  max_gradient <- max(abs(gradient))
+  max_indices <- which(abs(gradient) == max_gradient)
+  if (max_gradient <= raw_gradient_gate) {
+    return(list(case = "A", polish_status = "NOT_REQUIRED",
+                numerical_admission = TRUE, reason = "raw_gradient_pass"))
+  }
+  eligible <- .gllvmTMB_isdm_polish_eligible(
+    isdm_internal, optimizer, aghq_used, ridge_tau, convergence, objective,
+    gradient, parameter_names, pd_hessian, boundary_flags, boundary_diag_indices,
+    raw_gradient_gate, health_gradient_gate
+  )
+  if (isTRUE(eligible)) {
+    accepted <- is.list(polish) && isTRUE(polish$eligible) &&
+      isTRUE(polish$attempted) && isTRUE(polish$accepted)
+    return(list(case = "B", polish_status = if (accepted) "ACCEPTED" else
+      if (is.null(polish)) "ELIGIBLE" else "REJECTED",
+      numerical_admission = accepted, reason = "named_boundary_candidate"))
+  }
+  unique_block <- if (length(max_indices) == 1L) parameter_names[[max_indices]] else NA_character_
+  if (max_gradient < health_gradient_gate && !length(boundary_flags) &&
+      length(max_indices) == 1L && unique_block %in% c("b_fix", "theta_rr_B")) {
+    return(list(case = "C", polish_status = "NO_CANDIDATE",
+                numerical_admission = FALSE, reason = paste0("nonboundary_", unique_block)))
+  }
+  list(case = "D", polish_status = "INVALID_RULE_STATE",
+       numerical_admission = FALSE, reason = "unsupported_raw_gradient_state")
+}
+
+.gllvmTMB_isdm_polish_accept <- function(
+  before,
+  after,
+  boundary_diag_indices_before,
+  boundary_diag_indices_after,
+  map_identical,
+  raw_gradient_gate = 1e-3
+) {
+  required <- c("convergence", "objective", "gradient", "pd_hessian",
+                "boundary_flags")
+  valid <- function(x) {
+    is.list(x) && all(required %in% names(x)) &&
+      is.numeric(x$convergence) && length(x$convergence) == 1L &&
+      is.finite(x$convergence) && x$convergence == 0L &&
+      is.numeric(x$objective) && length(x$objective) == 1L &&
+      is.finite(x$objective) &&
+      is.numeric(x$gradient) && length(x$gradient) > 0L &&
+      all(is.finite(x$gradient)) && identical(x$pd_hessian, TRUE) &&
+      identical(x$boundary_flags, "near_zero_sd_B")
+  }
+  if (!valid(before) || !valid(after) || !isTRUE(map_identical) ||
+      !is.integer(boundary_diag_indices_before) ||
+      !is.integer(boundary_diag_indices_after) ||
+      length(boundary_diag_indices_before) != 1L ||
+      !identical(boundary_diag_indices_before, boundary_diag_indices_after) ||
+      !is.numeric(raw_gradient_gate) || length(raw_gradient_gate) != 1L ||
+      !is.finite(raw_gradient_gate) || raw_gradient_gate <= 0) {
+    return(FALSE)
+  }
+  tolerance <- 64 * .Machine$double.eps * max(1, abs(before$objective))
+  isTRUE(after$objective <= before$objective + tolerance) &&
+    isTRUE(max(abs(after$gradient)) <= raw_gradient_gate)
+}
+
+.gllvmTMB_isdm_covariance_newton_candidate <- function(par, gradient, covariance) {
+  typed <- is.numeric(par) && length(par) > 0L && all(is.finite(par)) &&
+    is.numeric(gradient) && length(gradient) == length(par) &&
+    all(is.finite(gradient)) && is.matrix(covariance) &&
+    identical(dim(covariance), c(length(par), length(par))) &&
+    all(is.finite(covariance))
+  if (!typed) return(NULL)
+  step <- tryCatch(as.numeric(covariance %*% gradient), error = function(e) NULL)
+  if (is.null(step) || length(step) != length(par) || any(!is.finite(step))) {
+    return(NULL)
+  }
+  candidate <- par - step
+  if (any(!is.finite(candidate))) return(NULL)
+  names(candidate) <- names(par)
+  candidate
+}
+
+## G3 is a private prospective numerical-admission candidate.  Unlike the
+## G2i boundary-only route it never calls an optimiser: it evaluates a sealed,
+## deterministic Newton trial grid against the already-constructed TMB
+## objective.  The caller owns eligibility, invariant signatures and all-attempt
+## provenance; this helper fails closed and returns every attempted alpha.
+.gllvmTMB_isdm_g3_signature_names <- c(
+  "objective", "gradient", "parameter_order", "map", "data", "random",
+  "bounds", "scale", "controls", "starts", "selection", "source_gate"
+)
+
+.gllvmTMB_isdm_g3_valid_signature <- function(signature) {
+  is.list(signature) && identical(names(signature), .gllvmTMB_isdm_g3_signature_names) &&
+    all(vapply(signature, function(x) is.character(x) && length(x) == 1L && nzchar(x), logical(1L)))
+}
+
+.gllvmTMB_isdm_g3_valid_raw_state <- function(raw_state) {
+  required <- c("optimizer", "convergence", "pd_hessian", "boundary_flags", "tie_count",
+    "is_isdm", "aghq", "ridge", "retry_enabled", "profile_enabled", "source_gate")
+  is.list(raw_state) && identical(names(raw_state), required) &&
+    identical(raw_state$optimizer, "nlminb") && identical(raw_state$convergence, 0L) &&
+    identical(raw_state$pd_hessian, TRUE) && is.character(raw_state$boundary_flags) &&
+    !length(raw_state$boundary_flags) && is.integer(raw_state$tie_count) &&
+    length(raw_state$tie_count) == 1L && raw_state$tie_count == 1L &&
+    identical(raw_state$is_isdm, TRUE) && identical(raw_state$aghq, FALSE) &&
+    identical(raw_state$ridge, FALSE) && identical(raw_state$retry_enabled, FALSE) &&
+    identical(raw_state$profile_enabled, FALSE) &&
+    is.character(raw_state$source_gate) && length(raw_state$source_gate) == 1L &&
+    nzchar(raw_state$source_gate)
+}
+
+.gllvmTMB_isdm_g3_full_vector_trials <- function(
+  obj, par, lower, upper, signature, raw_state, curvature_fn,
+  metric_source = "sdreport_cov_fixed", alpha_grid = 2^-(0:8),
+  raw_gradient_gate = 1e-3, health_gradient_gate = 1e-2,
+  condition_limit = 1e8, direction_tolerance = 0.01
+) {
+  unavailable <- function(reason, raw = NULL, trials = list(),
+                          direction_check = NULL) {
+    list(
+      status = "G3_CURVATURE_UNAVAILABLE", reason = reason,
+      metric_source = metric_source, signature = signature,
+      raw_state = raw_state, raw = raw, direction_check = direction_check,
+      curvature_validation = direction_check,
+      trials = trials, selected = NA_integer_, selected_alpha = NA_real_
+    )
+  }
+  ineligible <- function(reason, raw = NULL, direction_check = NULL) {
+    list(
+      status = "G3_RAW_INELIGIBLE", reason = reason,
+      metric_source = metric_source, signature = signature,
+      raw_state = raw_state, raw = raw, direction_check = direction_check,
+      curvature_validation = direction_check,
+      trials = list(), selected = NA_integer_, selected_alpha = NA_real_
+    )
+  }
+  invalid_curvature <- function(reason, raw = NULL, direction_check = NULL) {
+    list(
+      status = "G3_CURVATURE_INVALID", reason = reason,
+      metric_source = metric_source, signature = signature,
+      raw_state = raw_state, raw = raw, direction_check = direction_check,
+      curvature_validation = direction_check,
+      trials = list(), selected = NA_integer_, selected_alpha = NA_real_
+    )
+  }
+  if (!is.list(obj) || !is.function(obj$fn) || !is.function(obj$gr) ||
+      !is.function(curvature_fn) || !identical(metric_source, "sdreport_cov_fixed")) {
+    return(unavailable("objective_or_curvature_interface_unavailable"))
+  }
+  typed <- is.numeric(par) && length(par) > 0L &&
+    all(is.finite(par)) && !is.null(names(par)) &&
+    is.numeric(lower) && is.numeric(upper) && length(lower) == length(par) &&
+    length(upper) == length(par) && identical(names(lower), names(par)) &&
+    identical(names(upper), names(par)) && !anyNA(lower) && !anyNA(upper) &&
+    !any(is.nan(lower)) && !any(is.nan(upper)) && all(lower <= upper) &&
+    .gllvmTMB_isdm_g3_valid_signature(signature) &&
+    .gllvmTMB_isdm_g3_valid_raw_state(raw_state) &&
+    is.numeric(alpha_grid) && length(alpha_grid) && identical(alpha_grid, 2^-(0:8)) &&
+    is.numeric(raw_gradient_gate) && length(raw_gradient_gate) == 1L &&
+    is.finite(raw_gradient_gate) && identical(raw_gradient_gate, 1e-3) &&
+    is.numeric(health_gradient_gate) && length(health_gradient_gate) == 1L &&
+    is.finite(health_gradient_gate) && identical(health_gradient_gate, 1e-2) &&
+    is.numeric(condition_limit) && length(condition_limit) == 1L &&
+    is.finite(condition_limit) && identical(condition_limit, 1e8) &&
+    is.numeric(direction_tolerance) && length(direction_tolerance) == 1L &&
+    is.finite(direction_tolerance) && identical(direction_tolerance, 0.01)
+  if (!typed) return(ineligible("invalid_raw_inputs"))
+
+  input_labels <- names(par)
+  suffixes <- paste0("[", seq_along(input_labels), "]")
+  already_positional <- !anyDuplicated(input_labels) &&
+    all(nchar(input_labels) > nchar(suffixes)) &&
+    all(endsWith(input_labels, suffixes))
+  block_labels <- if (already_positional) {
+    substring(input_labels, 1L, nchar(input_labels) - nchar(suffixes))
+  } else {
+    input_labels
+  }
+  positional_ids <- paste0(block_labels, suffixes)
+  if (anyNA(block_labels) || any(!nzchar(block_labels)) ||
+      anyDuplicated(positional_ids) ||
+      !identical(raw_state$source_gate, signature$source_gate)) {
+    return(ineligible("invalid_positional_identity_or_source_gate"))
+  }
+  names(par) <- positional_ids
+  names(lower) <- positional_ids
+  names(upper) <- positional_ids
+  if (any(par < lower) || any(par > upper)) {
+    return(ineligible("raw_parameter_outside_bounds"))
+  }
+
+  evaluate_objective <- function(theta) {
+    tryCatch(
+      {
+        value <- obj$fn(unname(theta))
+        if (!is.numeric(value) || length(value) != 1L || !is.finite(value)) {
+          stop("objective returned a non-finite scalar", call. = FALSE)
+        }
+        list(available = TRUE, value = as.numeric(value), error = NA_character_)
+      },
+      error = function(e) list(
+        available = FALSE, value = NA_real_, error = conditionMessage(e)
+      )
+    )
+  }
+  evaluate_gradient <- function(theta) {
+    tryCatch(
+      {
+        value <- obj$gr(unname(theta))
+        value_names <- names(value)
+        ordered <- is.null(value_names) || identical(value_names, block_labels) ||
+          identical(value_names, positional_ids)
+        if (!is.numeric(value) || length(value) != length(theta) ||
+            any(!is.finite(value)) || !ordered) {
+          stop("gradient returned an invalid positional vector", call. = FALSE)
+        }
+        list(
+          available = TRUE,
+          value = stats::setNames(as.numeric(value), positional_ids),
+          original_labels = value_names,
+          error = NA_character_
+        )
+      },
+      error = function(e) list(
+        available = FALSE,
+        value = stats::setNames(rep(NA_real_, length(theta)), positional_ids),
+        original_labels = NULL,
+        error = conditionMessage(e)
+      )
+    )
+  }
+  call_curvature <- function(theta) {
+    tryCatch(
+      curvature_fn(stats::setNames(as.numeric(theta), positional_ids), positional_ids),
+      error = function(e) list(
+        available = FALSE, reason = "curvature_callback_error",
+        par.fixed = NULL, cov.fixed = NULL, pdHess = NA,
+        positional_ids = positional_ids, error = conditionMessage(e)
+      )
+    )
+  }
+  assess_curvature <- function(record, theta) {
+    required <- c(
+      "available", "reason", "par.fixed", "cov.fixed", "pdHess",
+      "positional_ids", "error"
+    )
+    typed_record <- is.list(record) && length(record) == length(required) &&
+      setequal(names(record), required) && is.logical(record$available) &&
+      length(record$available) == 1L && !is.na(record$available) &&
+      is.character(record$reason) && length(record$reason) == 1L &&
+      !is.na(record$reason) && nzchar(record$reason) &&
+      is.character(record$positional_ids) &&
+      identical(record$positional_ids, positional_ids) &&
+      is.logical(record$pdHess) && length(record$pdHess) == 1L &&
+      is.character(record$error) && length(record$error) == 1L
+    if (!typed_record) {
+      return(list(
+        state = "unavailable", reason = "invalid_curvature_callback_record",
+        callback = record, covariance = NULL, eigenvalues = numeric(),
+        condition = NA_real_, metric_source = metric_source
+      ))
+    }
+    if (!isTRUE(record$available)) {
+      return(list(
+        state = "unavailable", reason = record$reason,
+        callback = record, covariance = record$cov.fixed,
+        eigenvalues = numeric(), condition = NA_real_,
+        metric_source = metric_source
+      ))
+    }
+    replay_tolerance <- 64 * .Machine$double.eps *
+      max(1, max(abs(theta)))
+    par_aligned <- is.numeric(record$par.fixed) &&
+      length(record$par.fixed) == length(theta) &&
+      all(is.finite(record$par.fixed)) &&
+      identical(names(record$par.fixed), positional_ids) &&
+      max(abs(as.numeric(record$par.fixed) - as.numeric(theta))) <= replay_tolerance
+    covariance_aligned <- is.matrix(record$cov.fixed) &&
+      identical(dim(record$cov.fixed), c(length(theta), length(theta))) &&
+      identical(rownames(record$cov.fixed), positional_ids) &&
+      identical(colnames(record$cov.fixed), positional_ids)
+    if (!par_aligned || !covariance_aligned) {
+      return(list(
+        state = "unavailable", reason = "curvature_positional_identity_failure",
+        callback = record, covariance = record$cov.fixed,
+        eigenvalues = numeric(), condition = NA_real_,
+        metric_source = metric_source
+      ))
+    }
+    covariance <- record$cov.fixed
+    finite <- all(is.finite(covariance))
+    symmetric <- finite && max(abs(covariance - t(covariance))) <= 1e-10
+    chol_covariance <- if (symmetric) {
+      tryCatch(chol(covariance), error = function(e) NULL)
+    } else {
+      NULL
+    }
+    eigenvalues <- if (symmetric) {
+      tryCatch(
+        eigen(covariance, symmetric = TRUE, only.values = TRUE)$values,
+        error = function(e) rep(NA_real_, length(theta))
+      )
+    } else {
+      rep(NA_real_, length(theta))
+    }
+    condition <- if (!is.null(chol_covariance)) {
+      tryCatch(kappa(covariance, exact = TRUE), error = function(e) Inf)
+    } else {
+      Inf
+    }
+    valid <- identical(record$pdHess, TRUE) && finite && symmetric &&
+      !is.null(chol_covariance) && all(is.finite(eigenvalues)) &&
+      is.finite(condition) && condition <= condition_limit
+    list(
+      state = if (valid) "valid" else "invalid",
+      reason = if (valid) "curvature_valid" else
+        "curvature_nonfinite_nonsymmetric_nonpd_or_ill_conditioned",
+      callback = record, covariance = covariance,
+      eigenvalues = eigenvalues, condition = condition,
+      metric_source = metric_source, finite = finite, symmetric = symmetric,
+      positive_definite = !is.null(chol_covariance),
+      pdHess = record$pdHess
+    )
+  }
+
+  raw_objective_record <- evaluate_objective(par)
+  raw_gradient_record <- evaluate_gradient(par)
+  if (!raw_objective_record$available || !raw_gradient_record$available) {
+    return(unavailable(
+      "raw_objective_or_exact_gradient_unavailable",
+      raw = list(
+        parameter_vector = par, objective_record = raw_objective_record,
+        gradient_record = raw_gradient_record,
+        positional_ids = positional_ids, block_labels = block_labels
+      )
+    ))
+  }
+  raw_objective <- raw_objective_record$value
+  raw_gradient <- raw_gradient_record$value
+  raw_max_gradient <- max(abs(raw_gradient))
+  if (!(raw_max_gradient > raw_gradient_gate && raw_max_gradient < health_gradient_gate)) {
+    return(ineligible(
+      "raw_gradient_gate",
+      raw = list(
+        parameter_vector = par, objective = raw_objective,
+        gradient = raw_gradient, max_gradient = raw_max_gradient,
+        positional_ids = positional_ids, block_labels = block_labels
+      )
+    ))
+  }
+  if (raw_state$tie_count != sum(abs(raw_gradient) == raw_max_gradient)) {
+    return(ineligible(
+      "raw_gradient_tie_identity",
+      raw = list(
+        parameter_vector = par, objective = raw_objective,
+        gradient = raw_gradient, max_gradient = raw_max_gradient,
+        positional_ids = positional_ids, block_labels = block_labels
+      )
+    ))
+  }
+
+  raw_curvature <- assess_curvature(call_curvature(par), par)
+  raw_base <- list(
+    parameter_vector = par, objective = raw_objective,
+    gradient = raw_gradient, max_gradient = raw_max_gradient,
+    positional_ids = positional_ids, block_labels = block_labels,
+    curvature = raw_curvature, covariance = raw_curvature$covariance,
+    eigenvalues = raw_curvature$eigenvalues,
+    condition = raw_curvature$condition, metric_source = metric_source
+  )
+  if (identical(raw_curvature$state, "unavailable")) {
+    return(unavailable(raw_curvature$reason, raw = raw_base))
+  }
+  if (identical(raw_curvature$state, "invalid")) {
+    return(invalid_curvature(raw_curvature$reason, raw = raw_base))
+  }
+  direction <- tryCatch(
+    as.numeric(raw_curvature$covariance %*% raw_gradient),
+    error = function(e) NULL
+  )
+  if (is.null(direction) || length(direction) != length(par) ||
+      any(!is.finite(direction))) {
+    return(invalid_curvature("covariance_direction_failure", raw = raw_base))
+  }
+  direction <- stats::setNames(direction, positional_ids)
+  direction_norm <- sqrt(sum(direction^2))
+  gradient_dot_direction <- sum(raw_gradient * direction)
+  direction_diagnostics <- list(
+    direction = direction, descent_direction = -direction,
+    direction_norm = direction_norm,
+    gradient_dot_direction = gradient_dot_direction,
+    locally_descending = is.finite(gradient_dot_direction) &&
+      gradient_dot_direction > 0,
+    metric_source = metric_source
+  )
+  raw_base$direction <- direction
+  raw_base$direction_diagnostics <- direction_diagnostics
+  if (!is.finite(direction_norm) || direction_norm <= 0 ||
+      !is.finite(gradient_dot_direction) || gradient_dot_direction <= 0) {
+    return(invalid_curvature(
+      "non_descent_covariance_direction", raw = raw_base
+    ))
+  }
+
+  eps <- .Machine$double.eps
+  fd_multipliers <- c(half = 0.5, default = 1, double = 2)
+  base_steps <- eps^(1 / 3) * pmax(1, abs(par))
+  fd_records <- vector("list", length(fd_multipliers))
+  names(fd_records) <- names(fd_multipliers)
+  fd_directions <- vector("list", length(fd_multipliers))
+  names(fd_directions) <- names(fd_multipliers)
+  for (scale_name in names(fd_multipliers)) {
+    multiplier <- fd_multipliers[[scale_name]]
+    steps <- multiplier * base_steps
+    hessian_fd <- matrix(
+      NA_real_, nrow = length(par), ncol = length(par),
+      dimnames = list(positional_ids, positional_ids)
+    )
+    evaluations <- vector("list", length(par))
+    scale_failure <- NULL
+    for (j in seq_along(par)) {
+      plus <- par
+      minus <- par
+      plus[[j]] <- plus[[j]] + steps[[j]]
+      minus[[j]] <- minus[[j]] - steps[[j]]
+      in_bounds <- plus[[j]] <= upper[[j]] && minus[[j]] >= lower[[j]]
+      if (!in_bounds) {
+        evaluations[[j]] <- list(
+          coordinate = positional_ids[[j]], step = steps[[j]],
+          plus = plus, minus = minus, in_bounds = FALSE,
+          plus_gradient = NULL, minus_gradient = NULL,
+          error = "finite_difference_point_outside_bounds"
+        )
+        scale_failure <- "finite_difference_point_outside_bounds"
+        break
+      }
+      plus_gradient <- evaluate_gradient(plus)
+      minus_gradient <- evaluate_gradient(minus)
+      evaluations[[j]] <- list(
+        coordinate = positional_ids[[j]], step = steps[[j]],
+        plus = plus, minus = minus, in_bounds = TRUE,
+        plus_gradient = plus_gradient, minus_gradient = minus_gradient,
+        error = if (!plus_gradient$available) plus_gradient$error else
+          if (!minus_gradient$available) minus_gradient$error else NA_character_
+      )
+      if (!plus_gradient$available || !minus_gradient$available) {
+        scale_failure <- "finite_difference_exact_gradient_unavailable"
+        break
+      }
+      hessian_fd[, j] <-
+        (plus_gradient$value - minus_gradient$value) / (2 * steps[[j]])
+    }
+    fd_records[[scale_name]] <- list(
+      multiplier = multiplier, steps = stats::setNames(steps, positional_ids),
+      evaluations = evaluations, hessian = hessian_fd,
+      hessian_checked = NULL, finite = NA, relative_antisymmetry = NA_real_,
+      symmetric = NA, positive_definite = NA, eigenvalues = numeric(),
+      condition = NA_real_,
+      direction = NULL, discrepancy = NA_real_, error = scale_failure
+    )
+    if (!is.null(scale_failure)) {
+      direction_check <- list(
+        tolerance = direction_tolerance, base_steps = base_steps,
+        multipliers = fd_multipliers, finite_difference = fd_records,
+        covariance_direction = direction, discrepancies = numeric(),
+        step_sensitivity = NA_real_, passed = FALSE
+      )
+      raw_base$direction_check <- direction_check
+      if (identical(scale_failure, "finite_difference_point_outside_bounds")) {
+        return(ineligible(scale_failure, raw_base, direction_check))
+      }
+      return(unavailable(scale_failure, raw_base, list(), direction_check))
+    }
+    finite_hessian <- all(is.finite(hessian_fd))
+    hessian_norm <- if (finite_hessian) norm(hessian_fd, type = "F") else NA_real_
+    relative_antisymmetry <- if (finite_hessian) {
+      norm(hessian_fd - t(hessian_fd), type = "F") /
+        max(hessian_norm, sqrt(eps))
+    } else {
+      Inf
+    }
+    symmetric_hessian <- if (finite_hessian &&
+        relative_antisymmetry <= 1e-10) {
+      (hessian_fd + t(hessian_fd)) / 2
+    } else {
+      NULL
+    }
+    chol_hessian <- if (!is.null(symmetric_hessian)) {
+      tryCatch(chol(symmetric_hessian), error = function(e) NULL)
+    } else {
+      NULL
+    }
+    eigenvalues <- if (!is.null(symmetric_hessian)) {
+      tryCatch(
+        eigen(symmetric_hessian, symmetric = TRUE, only.values = TRUE)$values,
+        error = function(e) rep(NA_real_, length(par))
+      )
+    } else {
+      rep(NA_real_, length(par))
+    }
+    fd_condition <- if (!is.null(chol_hessian)) {
+      tryCatch(kappa(symmetric_hessian, exact = TRUE), error = function(e) Inf)
+    } else {
+      Inf
+    }
+    valid_fd_curvature <- finite_hessian &&
+      is.finite(relative_antisymmetry) &&
+      relative_antisymmetry <= 1e-10 &&
+      !is.null(chol_hessian) && all(is.finite(eigenvalues)) &&
+      is.finite(fd_condition) && fd_condition <= condition_limit
+    fd_records[[scale_name]]$hessian_checked <- symmetric_hessian
+    fd_records[[scale_name]]$finite <- finite_hessian
+    fd_records[[scale_name]]$relative_antisymmetry <- relative_antisymmetry
+    fd_records[[scale_name]]$symmetric <- finite_hessian &&
+      relative_antisymmetry <= 1e-10
+    fd_records[[scale_name]]$positive_definite <- !is.null(chol_hessian)
+    fd_records[[scale_name]]$eigenvalues <- eigenvalues
+    fd_records[[scale_name]]$condition <- fd_condition
+    if (!valid_fd_curvature) {
+      fd_records[[scale_name]]$error <-
+        "finite_difference_curvature_invalid"
+      direction_check <- list(
+        tolerance = direction_tolerance, base_steps = base_steps,
+        multipliers = fd_multipliers, finite_difference = fd_records,
+        covariance_direction = direction, discrepancies = numeric(),
+        step_sensitivity = NA_real_, passed = FALSE
+      )
+      raw_base$direction_check <- direction_check
+      raw_base$curvature_validation <- direction_check
+      return(invalid_curvature(
+        "finite_difference_curvature_invalid", raw_base, direction_check
+      ))
+    }
+    fd_direction <- tryCatch(
+      as.numeric(solve(symmetric_hessian, raw_gradient)),
+      error = function(e) NULL
+    )
+    if (is.null(fd_direction) || length(fd_direction) != length(par) ||
+        any(!is.finite(fd_direction))) {
+      fd_records[[scale_name]]$error <- "finite_difference_system_unsolved"
+      direction_check <- list(
+        tolerance = direction_tolerance, base_steps = base_steps,
+        multipliers = fd_multipliers, finite_difference = fd_records,
+        covariance_direction = direction, discrepancies = numeric(),
+        step_sensitivity = NA_real_, passed = FALSE
+      )
+      raw_base$direction_check <- direction_check
+      raw_base$curvature_validation <- direction_check
+      return(invalid_curvature(
+        "finite_difference_system_unsolved", raw_base, direction_check
+      ))
+    }
+    fd_direction <- stats::setNames(fd_direction, positional_ids)
+    discrepancy <- sqrt(sum((direction - fd_direction)^2)) /
+      max(direction_norm, sqrt(sum(fd_direction^2)), sqrt(eps))
+    fd_directions[[scale_name]] <- fd_direction
+    fd_records[[scale_name]]$direction <- fd_direction
+    fd_records[[scale_name]]$discrepancy <- discrepancy
+  }
+  direction_discrepancies <- vapply(
+    fd_records, function(x) x$discrepancy, numeric(1L)
+  )
+  step_pairs <- utils::combn(names(fd_directions), 2L, simplify = FALSE)
+  pairwise_step_discrepancies <- vapply(step_pairs, function(pair) {
+    left <- fd_directions[[pair[[1L]]]]
+    right <- fd_directions[[pair[[2L]]]]
+    sqrt(sum((left - right)^2)) /
+      max(sqrt(sum(left^2)), sqrt(sum(right^2)), sqrt(eps))
+  }, numeric(1L))
+  names(pairwise_step_discrepancies) <- vapply(
+    step_pairs, paste, collapse = "_vs_", character(1L)
+  )
+  step_sensitivity <- max(pairwise_step_discrepancies)
+  direction_check_passed <- all(is.finite(direction_discrepancies)) &&
+    max(direction_discrepancies) <= direction_tolerance &&
+    is.finite(step_sensitivity) && step_sensitivity <= direction_tolerance
+  direction_check <- list(
+    tolerance = direction_tolerance, base_steps = base_steps,
+    multipliers = fd_multipliers, finite_difference = fd_records,
+    covariance_direction = direction,
+    discrepancies = direction_discrepancies,
+    pairwise_step_discrepancies = pairwise_step_discrepancies,
+    step_sensitivity = step_sensitivity, passed = direction_check_passed
+  )
+  raw_base$direction_check <- direction_check
+  raw_base$curvature_validation <- direction_check
+  if (!direction_check_passed) {
+    return(invalid_curvature(
+      "finite_difference_direction_disagreement", raw_base, direction_check
+    ))
+  }
+
+  objective_tolerance <- 64 * eps * max(1, abs(raw_objective))
+  trials <- lapply(alpha_grid, function(alpha) {
+    candidate <- par - alpha * direction
+    candidate <- stats::setNames(as.numeric(candidate), positional_ids)
+    objective_record <- evaluate_objective(candidate)
+    gradient_record <- evaluate_gradient(candidate)
+    objective <- objective_record$value
+    gradient <- gradient_record$value
+    bounds_pass <- all(candidate >= lower) && all(candidate <= upper)
+    objective_pass <- objective_record$available &&
+      objective <= raw_objective + objective_tolerance
+    gradient_pass <- gradient_record$available &&
+      max(abs(gradient)) <= raw_gradient_gate
+    evaluation_available <- objective_record$available && gradient_record$available
+    list(
+      alpha = alpha,
+      status = if (evaluation_available) "PENDING_CURVATURE" else "ERROR",
+      reason = if (evaluation_available) "candidate_evaluated" else
+        "candidate_objective_or_gradient_unavailable",
+      parameter_vector = candidate, objective = objective,
+      gradient = gradient, objective_record = objective_record,
+      gradient_record = gradient_record, bounds_pass = bounds_pass,
+      objective_pass = objective_pass, gradient_pass = gradient_pass,
+      curvature_requested = FALSE, curvature = NULL, covariance = NULL,
+      eigenvalues = numeric(), condition = NA_real_,
+      metric_source = metric_source, signature = signature
+    )
+  })
+
+  for (idx in seq_along(trials)) {
+    trial <- trials[[idx]]
+    if (identical(trial$status, "ERROR")) next
+    deterministic_pass <- trial$bounds_pass && trial$objective_pass &&
+      trial$gradient_pass
+    if (!deterministic_pass) {
+      failed <- c(
+        if (!trial$bounds_pass) "bounds",
+        if (!trial$objective_pass) "objective",
+        if (!trial$gradient_pass) "gradient"
+      )
+      trial$status <- "REJECTED"
+      trial$reason <- paste0("candidate_", paste(failed, collapse = "_and_"), "_gate")
+      trials[[idx]] <- trial
+      next
+    }
+    trial$curvature_requested <- TRUE
+    curvature <- assess_curvature(
+      call_curvature(trial$parameter_vector), trial$parameter_vector
+    )
+    trial$curvature <- curvature
+    trial$covariance <- curvature$covariance
+    trial$eigenvalues <- curvature$eigenvalues
+    trial$condition <- curvature$condition
+    if (identical(curvature$state, "unavailable")) {
+      trial$status <- "ERROR"
+      trial$reason <- curvature$reason
+    } else if (identical(curvature$state, "invalid")) {
+      trial$status <- "REJECTED"
+      trial$reason <- curvature$reason
+    } else {
+      trial$status <- "ACCEPTED"
+      trial$reason <- "all_candidate_gates_passed"
+    }
+    trials[[idx]] <- trial
+  }
+  accepted <- which(vapply(
+    trials, function(x) identical(x$status, "ACCEPTED"), logical(1L)
+  ))
+  unresolved <- which(vapply(
+    trials, function(x) identical(x$status, "ERROR"), logical(1L)
+  ))
+  selected <- if (length(accepted)) accepted[[1L]] else NA_integer_
+  if (length(unresolved)) {
+    return(unavailable(
+      "candidate_adjudication_unavailable", raw_base, trials, direction_check
+    ))
+  }
+  terminal_status <- if (is.na(selected)) {
+    "G3_NO_ACCEPTED_TRIAL"
+  } else {
+    "G3_NUMERICAL_ADMISSION"
+  }
+  list(
+    status = terminal_status,
+    reason = if (is.na(selected)) "no_candidate_passed_all_gates" else
+      "first_full_pass_selected",
+    metric_source = metric_source, signature = signature,
+    raw_state = raw_state, raw = raw_base,
+    direction_check = direction_check,
+    curvature_validation = direction_check, trials = trials,
+    selected = selected,
+    selected_alpha = if (is.na(selected)) NA_real_ else alpha_grid[[selected]],
+    later_infrastructure_errors = if (!is.na(selected) && length(unresolved)) {
+      unresolved[unresolved > selected]
+    } else {
+      integer()
+    }
+  )
+}
+
+## One private, exact-gradient BFGS continuation from a retained nlminb fit.
+## This is not a retry route: the method and controls are sealed, optim() is
+## called exactly once, and the returned point is adjudicated without tuning.
+.gllvmTMB_isdm_bfgs_exact_gradient_continuation <- function(
+  obj, par, expected_objective, signature, raw_state, curvature_fn,
+  method = "BFGS",
+  control = list(maxit = 500L, reltol = 1e-12, trace = 0L, REPORT = 1L),
+  raw_gradient_gate = 1e-3, health_gradient_gate = 1e-2,
+  condition_limit = 1e8
+) {
+  frozen_control <- list(
+    maxit = 500L, reltol = 1e-12, trace = 0L, REPORT = 1L
+  )
+  optimizer_entered <- FALSE
+  result <- function(status, reason, raw = NULL, optimizer = NULL,
+                     candidate = NULL, curvature = NULL) {
+    list(
+      estimator = "BFGS_EXACT_GRADIENT_CONTINUATION_V1",
+      status = status, reason = reason,
+      optimizer_entered = optimizer_entered, method = method, control = control,
+      signature = signature, raw_state = raw_state, raw = raw,
+      optimizer = optimizer, candidate = candidate, curvature = curvature
+    )
+  }
+  if (!is.list(obj) || !is.function(obj$fn) || !is.function(obj$gr) ||
+      !is.function(curvature_fn)) {
+    return(result(
+      "BFGS_INFRASTRUCTURE_HOLD",
+      "objective_or_curvature_interface_unavailable"
+    ))
+  }
+  required_raw <- c(
+    "optimizer", "convergence", "pd_hessian", "boundary_flags", "is_isdm",
+    "aghq", "ridge", "retry_enabled", "profile_enabled", "source_gate"
+  )
+  valid_raw_state <- is.list(raw_state) && identical(names(raw_state), required_raw) &&
+    identical(raw_state$optimizer, "nlminb") &&
+    identical(raw_state$convergence, 0L) &&
+    is.logical(raw_state$pd_hessian) && length(raw_state$pd_hessian) == 1L &&
+    !is.na(raw_state$pd_hessian) && is.character(raw_state$boundary_flags) &&
+    !length(raw_state$boundary_flags) && identical(raw_state$is_isdm, TRUE) &&
+    identical(raw_state$aghq, FALSE) && identical(raw_state$ridge, FALSE) &&
+    identical(raw_state$retry_enabled, FALSE) &&
+    identical(raw_state$profile_enabled, FALSE) &&
+    is.character(raw_state$source_gate) && length(raw_state$source_gate) == 1L &&
+    nzchar(raw_state$source_gate)
+  typed <- is.numeric(par) && length(par) > 0L && all(is.finite(par)) &&
+    !is.null(names(par)) && length(names(par)) == length(par) &&
+    !anyNA(names(par)) && all(nzchar(names(par))) &&
+    is.numeric(expected_objective) && length(expected_objective) == 1L &&
+    is.finite(expected_objective) &&
+    .gllvmTMB_isdm_g3_valid_signature(signature) && valid_raw_state &&
+    identical(raw_state$source_gate, signature$source_gate) &&
+    identical(method, "BFGS") && identical(control, frozen_control) &&
+    is.numeric(raw_gradient_gate) && length(raw_gradient_gate) == 1L &&
+    identical(raw_gradient_gate, 1e-3) &&
+    is.numeric(health_gradient_gate) && length(health_gradient_gate) == 1L &&
+    identical(health_gradient_gate, 1e-2) &&
+    is.numeric(condition_limit) && length(condition_limit) == 1L &&
+    identical(condition_limit, 1e8)
+  if (!typed) return(result("BFGS_RAW_INELIGIBLE", "invalid_or_unlocked_raw_inputs"))
+
+  input_labels <- names(par)
+  suffixes <- paste0("[", seq_along(par), "]")
+  already_positional <- !anyDuplicated(input_labels) &&
+    all(nchar(input_labels) > nchar(suffixes)) &&
+    all(endsWith(input_labels, suffixes))
+  block_labels <- if (already_positional) {
+    substring(input_labels, 1L, nchar(input_labels) - nchar(suffixes))
+  } else {
+    input_labels
+  }
+  positional_ids <- paste0(block_labels, suffixes)
+  if (anyDuplicated(positional_ids)) {
+    return(result("BFGS_RAW_INELIGIBLE", "nonunique_positional_ids"))
+  }
+  par <- stats::setNames(as.numeric(par), positional_ids)
+  evaluate_objective <- function(theta) {
+    tryCatch(obj$fn(unname(theta)), error = function(e) e)
+  }
+  evaluate_gradient <- function(theta) {
+    tryCatch({
+      value <- obj$gr(unname(theta))
+      value_names <- names(value)
+      ordered <- is.null(value_names) || identical(value_names, block_labels) ||
+        identical(value_names, positional_ids)
+      if (!is.numeric(value) || length(value) != length(theta) ||
+          any(!is.finite(value)) || !ordered) {
+        stop("gradient returned an invalid positional vector", call. = FALSE)
+      }
+      stats::setNames(as.numeric(value), positional_ids)
+    }, error = function(e) e)
+  }
+  raw_objective <- evaluate_objective(par)
+  raw_gradient <- evaluate_gradient(par)
+  replay_tolerance <- 64 * .Machine$double.eps *
+    max(1, abs(expected_objective))
+  raw_available <- is.numeric(raw_objective) && length(raw_objective) == 1L &&
+    is.finite(raw_objective) &&
+    is.numeric(raw_gradient) && length(raw_gradient) == length(par) &&
+    all(is.finite(raw_gradient))
+  raw <- list(
+    parameter_vector = par, block_labels = block_labels,
+    positional_ids = positional_ids,
+    objective = if (is.numeric(raw_objective)) as.numeric(raw_objective)[1L] else NA_real_,
+    expected_objective = expected_objective,
+    gradient = if (is.numeric(raw_gradient) && length(raw_gradient) == length(par)) {
+      stats::setNames(as.numeric(raw_gradient), positional_ids)
+    } else {
+      stats::setNames(rep(NA_real_, length(par)), positional_ids)
+    }
+  )
+  if (!raw_available) {
+    return(result(
+      "BFGS_INFRASTRUCTURE_HOLD",
+      "raw_objective_or_gradient_unavailable", raw
+    ))
+  }
+  raw$objective <- as.numeric(raw_objective)
+  raw$gradient <- stats::setNames(as.numeric(raw_gradient), positional_ids)
+  raw$max_gradient <- max(abs(raw$gradient))
+  raw$objective_replay_error <- abs(raw$objective - expected_objective)
+  if (raw$objective_replay_error > replay_tolerance) {
+    return(result("BFGS_RAW_INELIGIBLE", "raw_objective_replay_mismatch", raw))
+  }
+  if (!(raw$max_gradient > raw_gradient_gate &&
+      raw$max_gradient < health_gradient_gate)) {
+    return(result("BFGS_RAW_INELIGIBLE", "raw_gradient_gate", raw))
+  }
+
+  started <- proc.time()[["elapsed"]]
+  optim_gradient <- function(theta) {
+    value <- evaluate_gradient(stats::setNames(as.numeric(theta), positional_ids))
+    if (inherits(value, "error")) stop(value)
+    unname(value)
+  }
+  optimizer_entered <- TRUE
+  optimizer_raw <- tryCatch(
+    stats::optim(
+      par = par, fn = obj$fn, gr = optim_gradient, method = method,
+      control = control
+    ),
+    error = function(e) e
+  )
+  elapsed <- proc.time()[["elapsed"]] - started
+  if (inherits(optimizer_raw, "error")) {
+    return(result(
+      "BFGS_OPTIMIZER_ERROR", conditionMessage(optimizer_raw), raw,
+      optimizer = list(error = conditionMessage(optimizer_raw), elapsed_s = elapsed)
+    ))
+  }
+  optimizer_valid <- is.list(optimizer_raw) && is.numeric(optimizer_raw$par) &&
+    length(optimizer_raw$par) == length(par) && all(is.finite(optimizer_raw$par)) &&
+    (is.null(names(optimizer_raw$par)) ||
+      identical(names(optimizer_raw$par), positional_ids)) &&
+    is.numeric(optimizer_raw$value) && length(optimizer_raw$value) == 1L &&
+    is.finite(optimizer_raw$value) && is.integer(optimizer_raw$convergence) &&
+    length(optimizer_raw$convergence) == 1L && !is.na(optimizer_raw$convergence) &&
+    is.numeric(optimizer_raw$counts) && length(optimizer_raw$counts) == 2L &&
+    all(is.finite(optimizer_raw$counts)) &&
+    (is.null(optimizer_raw$message) ||
+      (is.character(optimizer_raw$message) && length(optimizer_raw$message) == 1L))
+  if (!optimizer_valid) {
+    return(result(
+      "BFGS_OPTIMIZER_ERROR", "malformed_optimizer_result", raw,
+      list(error = "malformed_optimizer_result", elapsed_s = elapsed)
+    ))
+  }
+  optimizer <- list(
+    par = optimizer_raw$par, value = as.numeric(optimizer_raw$value),
+    counts = optimizer_raw$counts, convergence = optimizer_raw$convergence,
+    message = optimizer_raw$message %||% NA_character_, elapsed_s = elapsed
+  )
+  candidate_par <- stats::setNames(as.numeric(optimizer$par), positional_ids)
+  candidate_objective <- evaluate_objective(candidate_par)
+  candidate_gradient <- evaluate_gradient(candidate_par)
+  candidate_available <- is.numeric(candidate_objective) &&
+    length(candidate_objective) == 1L && is.finite(candidate_objective) &&
+    is.numeric(candidate_gradient) && length(candidate_gradient) == length(par) &&
+    all(is.finite(candidate_gradient))
+  if (!candidate_available) {
+    return(result(
+      "BFGS_INFRASTRUCTURE_HOLD", "candidate_exact_replay_unavailable",
+      raw, optimizer
+    ))
+  }
+  candidate <- list(
+    parameter_vector = candidate_par,
+    objective = as.numeric(candidate_objective),
+    optimizer_objective = as.numeric(optimizer$value),
+    gradient = stats::setNames(as.numeric(candidate_gradient), positional_ids),
+    convergence = optimizer$convergence, counts = optimizer$counts,
+    message = optimizer$message %||% NA_character_
+  )
+  candidate$max_gradient <- max(abs(candidate$gradient))
+  candidate$objective_replay_error <-
+    abs(candidate$objective - candidate$optimizer_objective)
+  candidate_replay_tolerance <- 64 * .Machine$double.eps *
+    max(1, abs(candidate$optimizer_objective))
+  if (candidate$objective_replay_error > candidate_replay_tolerance) {
+    return(result(
+      "BFGS_INFRASTRUCTURE_HOLD", "candidate_objective_replay_mismatch",
+      raw, optimizer, candidate
+    ))
+  }
+  objective_pass <- candidate$objective <= raw$objective +
+    64 * .Machine$double.eps * max(1, abs(raw$objective))
+  gradient_pass <- candidate$max_gradient <= raw_gradient_gate
+  convergence_pass <- identical(candidate$convergence, 0L)
+  candidate$gates <- list(
+    convergence = convergence_pass, objective = objective_pass,
+    gradient = gradient_pass, curvature = NA
+  )
+  if (!convergence_pass || !objective_pass || !gradient_pass) {
+    return(result(
+      "BFGS_NO_NUMERICAL_ADMISSION",
+      "optimizer_convergence_objective_or_gradient_gate_failed",
+      raw, optimizer, candidate, curvature = NULL
+    ))
+  }
+
+  curvature_record <- tryCatch(
+    curvature_fn(candidate_par, positional_ids),
+    error = function(e) list(
+      available = FALSE, reason = "curvature_callback_error",
+      par.fixed = NULL, cov.fixed = NULL, pdHess = NA,
+      positional_ids = positional_ids, error = conditionMessage(e)
+    )
+  )
+  required_curvature <- c(
+    "available", "reason", "par.fixed", "cov.fixed", "pdHess",
+    "positional_ids", "error"
+  )
+  curvature_typed <- is.list(curvature_record) &&
+    length(curvature_record) == length(required_curvature) &&
+    setequal(names(curvature_record), required_curvature) &&
+    is.logical(curvature_record$available) &&
+    length(curvature_record$available) == 1L &&
+    !is.na(curvature_record$available) &&
+    is.character(curvature_record$reason) &&
+    length(curvature_record$reason) == 1L && nzchar(curvature_record$reason) &&
+    identical(curvature_record$positional_ids, positional_ids)
+  if (!curvature_typed || !isTRUE(curvature_record$available)) {
+    reason <- if (curvature_typed) curvature_record$reason else
+      "invalid_curvature_callback_record"
+    return(result(
+      "BFGS_CURVATURE_UNAVAILABLE", reason, raw, optimizer, candidate,
+      curvature_record
+    ))
+  }
+  par_aligned <- is.numeric(curvature_record$par.fixed) &&
+    length(curvature_record$par.fixed) == length(par) &&
+    all(is.finite(curvature_record$par.fixed)) &&
+    identical(names(curvature_record$par.fixed), positional_ids) &&
+    max(abs(curvature_record$par.fixed - candidate_par)) <=
+      64 * .Machine$double.eps * max(1, max(abs(candidate_par)))
+  covariance <- curvature_record$cov.fixed
+  covariance_aligned <- is.matrix(covariance) &&
+    identical(dim(covariance), c(length(par), length(par))) &&
+    identical(rownames(covariance), positional_ids) &&
+    identical(colnames(covariance), positional_ids)
+  if (!par_aligned || !covariance_aligned) {
+    return(result(
+      "BFGS_CURVATURE_UNAVAILABLE", "curvature_positional_identity_failure",
+      raw, optimizer, candidate, curvature_record
+    ))
+  }
+  finite <- all(is.finite(covariance))
+  symmetric <- finite && max(abs(covariance - t(covariance))) <= 1e-10
+  chol_covariance <- if (symmetric) {
+    tryCatch(chol(covariance), error = function(e) NULL)
+  } else {
+    NULL
+  }
+  eigenvalues <- if (symmetric) {
+    tryCatch(
+      eigen(covariance, symmetric = TRUE, only.values = TRUE)$values,
+      error = function(e) rep(NA_real_, length(par))
+    )
+  } else {
+    rep(NA_real_, length(par))
+  }
+  condition <- if (!is.null(chol_covariance)) {
+    tryCatch(kappa(covariance, exact = TRUE), error = function(e) Inf)
+  } else {
+    Inf
+  }
+  curvature <- list(
+    callback = curvature_record, covariance = covariance,
+    eigenvalues = eigenvalues, condition = condition,
+    finite = finite, symmetric = symmetric,
+    positive_definite = !is.null(chol_covariance),
+    pdHess = curvature_record$pdHess,
+    metric_source = "sdreport_cov_fixed"
+  )
+  curvature_valid <- identical(curvature_record$pdHess, TRUE) && finite &&
+    symmetric && !is.null(chol_covariance) && all(is.finite(eigenvalues)) &&
+    is.finite(condition) && condition <= condition_limit
+  if (!curvature_valid) {
+    return(result(
+      "BFGS_CURVATURE_INVALID", "candidate_curvature_invalid",
+      raw, optimizer, candidate, curvature
+    ))
+  }
+  candidate$gates$curvature <- TRUE
+  result(
+    "BFGS_NUMERICAL_ADMISSION", "all_admission_gates_passed",
+    raw, optimizer, candidate, curvature
+  )
+}
+
+.gllvmTMB_isdm_polish_record <- function(
+  eligible = FALSE,
+  attempted = FALSE,
+  accepted = FALSE,
+  raw_parameter_vector = numeric(),
+  candidate_parameter_vector = numeric(),
+  raw_convergence = NA_integer_,
+  raw_objective = NA_real_,
+  candidate_objective = NA_real_,
+  raw_gradient = numeric(),
+  candidate_gradient = numeric(),
+  raw_pd_hessian = NA,
+  candidate_pd_hessian = NA,
+  raw_boundary_flags = character(),
+  candidate_boundary_flags = character(),
+  boundary_diag_indices = integer(),
+  candidate_boundary_diag_indices = integer(),
+  parameter_names = character(),
+  map_identical = NA,
+  candidate_method = "none",
+  candidate_attempts = list()
+) {
+  candidate_method <- match.arg(
+    as.character(candidate_method)[1L],
+    c("none", "nlminb_retry", "covariance_newton")
+  )
+  if (!is.list(candidate_attempts)) {
+    stop("candidate_attempts must be a list", call. = FALSE)
+  }
+  parameter_names <- as.character(parameter_names)
+  raw_parameter_vector <- as.numeric(raw_parameter_vector)
+  candidate_parameter_vector <- as.numeric(candidate_parameter_vector)
+  raw_gradient <- as.numeric(raw_gradient)
+  candidate_gradient <- as.numeric(candidate_gradient)
+  names(raw_parameter_vector) <- parameter_names
+  if (length(candidate_parameter_vector) == length(parameter_names)) {
+    names(candidate_parameter_vector) <- parameter_names
+  }
+  max_index <- if (length(raw_gradient) == length(parameter_names) &&
+      length(raw_gradient) && all(is.finite(raw_gradient))) {
+    which.max(abs(raw_gradient))
+  } else NA_integer_
+  max_block <- if (is.finite(max_index)) parameter_names[[max_index]] else NA_character_
+  max_block_index <- if (is.finite(max_index)) {
+    sum(parameter_names[seq_len(max_index)] == max_block)
+  } else NA_integer_
+  diag_outer <- which(parameter_names == "theta_diag_B")
+  boundary_outer <- if (is.integer(boundary_diag_indices) &&
+      all(boundary_diag_indices %in% seq_along(diag_outer))) {
+    diag_outer[boundary_diag_indices]
+  } else integer()
+  list(
+    schema = "G2I_INTERNAL_ISDM_POLISH_V1",
+    eligible = isTRUE(eligible),
+    attempted = isTRUE(attempted),
+    accepted = isTRUE(accepted),
+    candidate_method = candidate_method,
+    candidate_attempts = candidate_attempts,
+    raw = list(
+      parameter_vector = raw_parameter_vector,
+      convergence = as.integer(raw_convergence)[1L],
+      objective = as.numeric(raw_objective)[1L],
+      gradient = raw_gradient,
+      max_gradient = if (length(raw_gradient) && all(is.finite(raw_gradient)))
+        max(abs(raw_gradient)) else NA_real_,
+      pd_hessian = as.logical(raw_pd_hessian)[1L],
+      boundary_flags = as.character(raw_boundary_flags),
+      max_gradient_parameter_block = max_block,
+      max_gradient_parameter_index = as.integer(max_block_index)
+    ),
+    candidate = list(
+      parameter_vector = candidate_parameter_vector,
+      objective = as.numeric(candidate_objective)[1L],
+      gradient = candidate_gradient,
+      max_gradient = if (length(candidate_gradient) &&
+          all(is.finite(candidate_gradient))) max(abs(candidate_gradient)) else NA_real_,
+      pd_hessian = as.logical(candidate_pd_hessian)[1L],
+      boundary_flags = as.character(candidate_boundary_flags)
+    ),
+    boundary = list(
+      diagonal_indices = as.integer(boundary_diag_indices),
+      candidate_diagonal_indices = as.integer(candidate_boundary_diag_indices),
+      outer_parameter_indices = as.integer(boundary_outer),
+      raw_theta_diag_values = raw_parameter_vector[boundary_outer],
+      candidate_theta_diag_values = if (
+        length(candidate_parameter_vector) == length(parameter_names)
+      ) candidate_parameter_vector[boundary_outer] else numeric()
+    ),
+    map_identical = isTRUE(map_identical)
+  )
 }
 
 .gllvmTMB_restart_history_row <- function(restart, start_label, start_method,

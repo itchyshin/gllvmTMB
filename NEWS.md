@@ -51,6 +51,54 @@ bridge remains experimental and is not required for the main workflow.
 
 ## Changed
 
+* **Integrated models now take any number of named sources, declared with
+  `isdm_sources()` (experimental).** A portal stream, digitised literature
+  records, checklists, and a structured survey can each be a named source with
+  its own observation law, all sharing one ecological process:
+  `family = isdm_sources(gbif = poisson(), literature = poisson(), survey =
+  binomial("cloglog"))`, with an `isdm_source` column in the data naming each
+  row's source. Two laws are admitted — a Poisson count stream and a
+  complementary-log-log detection stream — because both observe a thinning of
+  the same shared intensity; that argument holds arm by arm, so it does not
+  weaken as sources are added. Everything the two-source route refused stays
+  refused: logit or probit detection, dispersion-carrying families, `weights`,
+  multi-trial rows, and any trait not observed by every declared source. The
+  existing two-source form (`list(gbif = ..., survey_pa = ...)`) keeps working
+  unchanged and gives identical fits — it is now the two-source case of the
+  same rule. A worked example, *Integrating three data sources at once:
+  portal, atlas, and survey*, fits a three-source model end to end through the
+  declared route. Everything reported remains relative intensity, and the
+  interface remains experimental.
+
+* **Integrated two-source models can now be fitted through `gllvmTMB()`
+  itself (experimental).** Opportunistic presence-only records and a
+  structured detection/non-detection survey of the same species can enter one
+  likelihood, sharing an ecological linear predictor while each source keeps
+  its own observation model. There is no separate function for this: supply
+  `family = list(gbif = poisson(), survey_pa = binomial("cloglog"))` with
+  `attr(family, "family_var") <- "isdm_family"`, a `source` column, and a
+  matching `isdm_family` column. This is the one case where the response
+  family may vary *within* a trait rather than only between traits, and it is
+  admitted because the cloglog link makes a detection observation consistent
+  with the same underlying intensity that generates the counts. An `offset()`
+  is admitted on that arm as a known change-of-support term. Anything short of
+  that exact contract still gets the ordinary one-family-per-trait error, and
+  Poisson-log mixed with binomial-logit or -probit remains refused.
+
+  **In:** the route is reachable, documented, and contract-tested. Two
+  articles cover it: *Integrating opportunistic records with a repeated
+  survey* fits and renders through the public route, and *How big does an
+  integrated survey design need to be?* reads a known-truth design curve to
+  ask whether a design is large enough before you fit at all. **Partial:** everything reported is relative intensity —
+  presence-only data cannot identify absolute abundance, occupancy, or
+  detectability, and none are estimated. Source-specific spatial structure is
+  only weakly identified on small designs; treat a portal-only field as a
+  nuisance adjustment unless the design is large. Estimator accuracy at the
+  advertised scope is not certified, and the spatial arm in particular rests
+  on development experience rather than a cleared recovery gate. **Not
+  included:** more than two sources, calibrated intervals for this route, and
+  weighted joint likelihoods. Expect the interface to change.
+
 * **The exact-aa confirmation completed 44,800 production fits and returned
   aggregate HOLD.** Gaussian `indep()`, Gaussian `dep()`,
   Poisson-log rank-1 `latent(unique = TRUE)`, and Binomial(10)-logit rank-1

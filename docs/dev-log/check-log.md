@@ -1,9 +1,204 @@
 # Check log
 
+## 2026-08-13 — final two-paper G3 reconciliation
+
+Independent Gauss/Noether, Fisher, and Rose review of the two ignored result
+roots selected `PRIVATE_TWO_PAPER_G3_STOP_HOLD`. Paper 1 is
+`PRIVATE_PROVENANCE_INCOMPLETE_HOLD`; Paper 2 is
+`PRIVATE_INVALID_PROVENANCE_HOLD_PREOPTIMIZER`. Neither root is numerical,
+recovery, field-separation, Psi, empirical, scale, reader, or public evidence.
+The historical Paper 1 Case D / `PRIVATE_NUMERICAL_ADMISSION_HOLD`, Paper 2
+Case C / `PAPER2_PRIVATE_STOP_HOLD`, and G2N/G2K/G2C holds are unchanged.
+
+## 2026-08-13 — Paper 2 G3 smoke: terminal invalid provenance
+
+Worktree `/private/tmp/gllvmtmb-two-paper-global-analysis`, branch
+`codex/two-paper-global-analysis`, commits `494749aa` and `a2accfaf`.
+
+```sh
+Rscript --vanilla -e 'devtools::test(filter = "g3-(paper2-smoke-runner|full-vector-polish-contract|smallest-smoke-packets)", reporter = "summary")'
+# PASS: focused private runner and G3 no-fit contracts.
+
+Rscript --vanilla dev/isdm-package-recovery/run-g3-paper2-smoke.R --mode=validate ...
+# PASS: G3_P2_SMOKE_RUNNER_VALIDATION_PASS (no fit).
+
+Rscript --vanilla dev/isdm-package-recovery/run-g3-paper2-smoke.R --mode=preflight ...
+# PASS: G3_P2_PREFLIGHT_PASS (no fit).
+
+Rscript --vanilla dev/isdm-package-recovery/run-g3-paper2-smoke.R --mode=smoke ...
+# TERMINAL: INVALID_PROVENANCE before optimizer entry; no fit artifact.
+
+Rscript --vanilla -e 'x <- readRDS("dev/isdm-package-recovery/results/G3_P2_S6_C360_R3_V1/all-attempt-ledger.rds"); stopifnot(identical(x$status,"INVALID_PROVENANCE"), isTRUE(x$terminal), is.na(x$timing$fit_elapsed_s), is.null(x$raw), is.null(x$g3), !file.exists("dev/isdm-package-recovery/results/G3_P2_S6_C360_R3_V1/fit.rds")); cat("P2_INVALID_PROVENANCE_RECEIPT_VALID\\n")'
+# PASS: valid terminal root with no numerical result.
+
+rg -n 'PAPER2_PRIVATE_STOP_HOLD|G2N_LOCAL_PRERUN_HOLD|G2K_CALIBRATION_HOLD|G2C_SMOKE_ADMISSION_HOLD' docs/dev-log dev/isdm-package-recovery
+# PASS: historical holds remain explicit and unchanged.
+```
+
+The source and DLL MD5s matched the preflight receipt. The only mismatch was
+the transient `devtools::load_all()` DLL path, which the sealed runner compared
+and therefore recorded as `INVALID_PROVENANCE`. This is not a failed fit,
+admission failure, recovery result, or basis for a new attempt. No profile,
+retry, recovery metric, simulation, Totoro/DRAC work, public rendering, or
+public/package claim occurred.
+
+## 2026-08-13 — private G3 Gate-B implementation and no-run smoke packets
+
+Worktree `/private/tmp/gllvmtmb-two-paper-global-analysis`, branch
+`codex/two-paper-global-analysis`.
+
+```sh
+Rscript --vanilla -e 'devtools::test(filter = "g3-(full-vector-polish-contract|compiled-cloglog-unit|smallest-smoke-packets)", reporter = "summary")'
+# PASS: pure G3 receipt contract, immutable no-run packets, and a temporary
+# compiled three-coordinate cloglog unit; no iSDM fit or simulation.
+
+Rscript --vanilla dev/isdm-package-recovery/run-g3-full-vector-no-fit-validation.R
+# PASS: G3_FULL_VECTOR_NO_FIT_CONTRACT_PASS.
+
+git diff --check
+# PASS.
+
+rg -n 'g3|G3|full-vector|MakeADFun\(|\.gll_isdm_fit\(|nlminb\(|optim\(|profile\(|download\s*\(' R/fit-multi.R dev/isdm-package-recovery/g3-full-vector-polish-contract.R dev/isdm-package-recovery/run-g3-full-vector-no-fit-validation.R tests/testthat/test-g3-compiled-cloglog-unit.R tests/testthat/test-g3-smallest-smoke-packets.R
+# PASS: only the explicit temporary compiled-unit fixture constructs an object;
+# no G3 execution path fits, profiles, optimises, or downloads.
+```
+
+**Deliberately not run:** Paper 1 or Paper 2 smoke, fit, profile, simulator,
+campaign, Totoro/DRAC work, empirical data, public rendering, `R CMD check`,
+pkgdown, or CI. Gate B permits only a later explicit request to run a packet.
+
+## 2026-08-13 — G3 full-vector numerical-admission design (no fit)
+
+```sh
+Rscript --vanilla dev/isdm-package-recovery/run-g3-full-vector-no-fit-validation.R
+# PASS: symbolic G3 contract; no model construction.
+
+Rscript --vanilla -e 'devtools::test(filter = "g3-full-vector-polish-contract|paper1-spatial-c1-topology|paper2-c2-all-attempt-contract", reporter = "summary")'
+# PASS: targeted pure no-fit contract tests.
+```
+
+**Deliberately not run:** objective construction, compilation, optimisation,
+fit, profile, simulation, data download, local/remote compute, public render,
+or CI. Historical holds remain immutable.
+
+## 2026-08-13 — two-paper C1/C2/Gate-A private receipt implementation (no fit)
+
+Worktree `/private/tmp/gllvmtmb-two-paper-global-analysis`, branch
+`codex/two-paper-global-analysis`.
+
+```sh
+Rscript --vanilla dev/isdm-package-recovery/run-paper1-spatial-c1-receipt.R --mode=validate --ledger=<immutable-B2-ledger>
+# PASS: retained B2 remains Case D / NO_CANDIDATE; no fit.
+
+Rscript --vanilla dev/isdm-package-recovery/run-paper2-c2-no-fit-contract.R --mode=validate
+Rscript --vanilla dev/isdm-package-recovery/run-empirical-gate-a-metadata.R --mode=validate
+# PASS: frozen C2 and metadata-only Gate A contracts; no fit or download.
+
+Rscript --vanilla -e 'devtools::test(filter = "paper1-spatial-c1-topology|paper2-c2-all-attempt-contract|empirical-gate-a-metadata-contract", reporter = "summary")'
+# PASS: 31 targeted assertions.
+
+git diff --check
+# PASS.
+```
+
+**Deliberately not run:** compilation, objective construction, optimiser,
+profile, fit, simulation, recovery campaign, Totoro/DRAC action, data download,
+empirical analysis, `R CMD check`, pkgdown, public-doc render, or GitHub CI.
+The Paper 1/Paper 2 historical HOLDs are unchanged.
+
++## 2026-08-13 — private two-paper narrative and figure staging (no fit)
+
+Worktree `/private/tmp/gllvmtmb-two-paper-global-analysis`, branch
+`codex/two-paper-global-analysis`.
+
+```sh
+Rscript --vanilla dev/isdm-package-recovery/two-paper-staging/render-prototype-figures.R
+# PASS: deterministic P1-F1/P2-F1 design figures; no fit, optimiser, profile,
+# simulation, campaign, empirical record, or package compilation.
+
+Rscript --vanilla -e 'stopifnot(file.info("dev/isdm-package-recovery/results/two-paper-prototypes/P1-F1-synthetic-two-field-design.png")$size > 0, file.info("dev/isdm-package-recovery/results/two-paper-prototypes/P2-F1-frozen-numerical-psi-design.png")$size > 0); cat("private prototype receipt PASS\n")'
+# PASS: both ignored prototype files were non-empty.
+
+rg -n 'gllvmTMB\(|MakeADFun\(|nlminb\(|optim\(|profile\(|run.*campaign' dev/isdm-package-recovery/two-paper-staging
+# PASS: no model-execution path in private staging source.
+
+rg -n 'recovery result|fitted|empirical claim|NO_CANDIDATE|not a rate' dev/isdm-package-recovery/two-paper-staging
+# PASS: scope fences remain visible.
+
+rg -n 'integrated_jsdm\(|iJSDM|repeated-visit' README.md NEWS.md ROADMAP.md _pkgdown.yml vignettes
+# PASS: no public iJSDM/repeated-visit capability claim added.
+
+git diff --check
+# PASS.
+```
+
+**Deliberately not run:** a fit, compiled objective, optimiser, profile,
+simulation, recovery campaign, Totoro/DRAC action, empirical download,
+`devtools::test()`, `R CMD check`, pkgdown check/render, or public-document
+render. The protected Paper 1 and Paper 2 HOLD records remain unchanged.
+
+
+
 Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-08-12 — G2m numerical-admission design (private, no fit)
+
+Worktree `/private/tmp/gllvmtmb-isdm-g2m-numerical-admission`, branch
+`codex/isdm-g2m-numerical-admission`, from G2k diagnostic `5c15da39`.
+
+```sh
+Rscript --vanilla dev/isdm-package-recovery/run-g2m-numerical-admission-validation.R --mode=validate
+# PASS: text-only prospective decision-table validator; no model call.
+
+Rscript --vanilla -e 'devtools::test(filter = "g2m-numerical-admission-protocol", reporter = "summary")'
+# PASS: 6 assertions; no fit.
+
+rg "NOT_REQUIRED|NO_CANDIDATE|conditional repair evidence|candidate_method" dev/isdm-package-recovery
+# PASS: intended private prospective decision/provenance states retained.
+
+rg "integrated_jsdm\\(|iJSDM|repeated-visit" README.md NEWS.md ROADMAP.md _pkgdown.yml vignettes
+# PASS: no public iJSDM/repeated-visit capability claim.
+
+rg -n "gllvmTMB\\(" R vignettes README.md NEWS.md docs/design
+# PASS: only pre-existing reader-facing calls; this lane adds none.
+```
+
+**Deliberately not run:** any fit, optimizer/objective/profile call, simulator,
+campaign, Totoro/FIR/DRAC job, public-doc render, or `R CMD check`. G2k and
+G2c HOLD states are unchanged.
+
+## 2026-08-12 — G2k all-attempt gradient diagnostic (private, no fit)
+
+Worktree `/private/tmp/gllvmtmb-isdm-g2k-gradient-diagnostic`, branch
+`codex/isdm-g2k-gradient-diagnostic`, from G2k closure `9c9ca277`.
+
+```sh
+Rscript --vanilla dev/isdm-package-recovery/run-g2k-gradient-diagnostic.R --mode=validate
+# PASS: exact retained campaign identity, 150 ledgers, and 150 retained
+# fit/profile/truth paths; no objective or fit constructed.
+
+Rscript --vanilla dev/isdm-package-recovery/run-g2k-gradient-diagnostic.R \
+  --mode=audit --output=dev/isdm-package-recovery/results/g2k-gradient-diagnostic-20260812-007
+# PASS: fresh private read-only diagnostic root, 150 attempts.
+
+Rscript --vanilla -e 'devtools::test(filter = "g2k-gradient-diagnostic", reporter = "summary")'
+# PASS: 9 assertions.
+
+rg "G2K_CALIBRATION_HOLD|NO_REPAIR|OPTIMIZER_REPAIR_CANDIDATE|NEW_DESIGN_REQUIRED" dev/isdm-package-recovery docs/dev-log
+# PASS: private NO_REPAIR decision is additive; historical G2k HOLD remains.
+
+rg "integrated_jsdm\\(|iJSDM|repeated-visit" README.md NEWS.md ROADMAP.md _pkgdown.yml vignettes
+# PASS: no public iJSDM/repeated-visit capability claim.
+
+rg -n "gllvmTMB\\(" R vignettes README.md NEWS.md docs/design
+# PASS: only pre-existing reader-facing calls; this lane adds none.
+```
+
+**Deliberately not run:** any fit, optimizer call, profile, simulator,
+campaign, Totoro/FIR/DRAC action, `R CMD check`, pkgdown render, or public-doc
+check.  The decision remains `NO_REPAIR`; G2k stays held.
 ## 2026-08-16 — hotfix: nbinom2 Phase-4 oracles after #1007 door (Cursor)
 
 Main R-CMD-check `31946637369` on `f3bd4e6a` (#1007) failed
@@ -49522,6 +49717,1216 @@ This is platform evidence for the current 0.6 hardening source only. It did
 not merge PR #951, deploy pkgdown, change the package version, publish a
 release, run a scientific simulation campaign, or authorize CRAN submission.
 
+## 2026-08-10 — private two-source iSDM core and spatial-control ladder
+
+On `codex/isdm-package-core`, added a developer-only GBIF Poisson/log plus
+branch-pure survey (PA cloglog or count Poisson/log) route, a fixed-vector
+native objective/oracle test, and a synthetic spatial-control ladder. No
+empirical source, spatial two-field implementation, public API, documentation
+surface, or recovery campaign was run.
+
+```sh
+NOT_CRAN=true GLLVMTMB_HEAVY_TESTS=1 Rscript --vanilla -e 'devtools::load_all(quiet=TRUE); ... test-isdm-contract.R ... test-isdm-spatial-control-ladder.R ...'
+# PASS: focused private contract, PA/count routing/oracle, spatial ladder,
+# parser, offset, family-boundary, scalar, and spatial-mode tests.
+
+NOT_CRAN=true Rscript --vanilla -e 'devtools::load_all(quiet=TRUE); testthat::test_file("tests/testthat/test-isdm-developer-fit.R")'
+# PASS: 35 assertions; frozen zero-random-effect PA/count objective differences
+# equal independent likelihood differences, with GBIF-only nonzero mutation.
+
+git diff --check
+# PASS.
+```
+
+Exact closeout scans:
+
+```sh
+rg -n "gllvmTMB_internal_isdm|report_obs_nll|observation_nll|spatial_indep\\(|spatial_latent\\(" R src tests/testthat docs/design/111-isdm-nonspatial-recovery-protocol.md
+# Verdict: the private implementation, TMB receipt, and structural ladder are
+# all paired with tests; no public surface advertises the developer route.
+
+rg -n "GBIF|Artportalen|empirical|absolute intensity|spatial bias" README.md ROADMAP.md NEWS.md docs/dev-log/known-limitations.md docs/design/111-isdm-nonspatial-recovery-protocol.md
+# Verdict: the private protocol retains explicit empirical/absolute/two-field
+# exclusions; no public scope is widened.
+```
+
+The full `devtools::test(reporter = "summary", stop_on_failure = FALSE)` run
+later completed with exit code 0. It reported its declared gated skips and eight
+existing warnings, with no failures. This is broad package-regression evidence;
+it does not promote the private iSDM route to recovery, empirical, or two-field
+spatial capability.
+
+## 2026-08-10 — package-native iSDM PA recovery campaign
+
+Developer-only PA recovery runner/protocol added under
+`dev/isdm-package-recovery/`; no public API, empirical data, spatial field,
+count branch, comparator, or public documentation was touched.  A local
+synthetic smoke and a Totoro retry at commit `43bc9c63` retained 30 fixture RDS
+files.  All 20 ordinary fixtures were eligible but 0/20 passed the frozen joint
+target rule (required 18/20), so the ordinary panel is
+`G2_PACKAGE_PA_HOLD`.
+
+The original campaign is not a full protocol-complete promotion: D-43 found
+that its disconnected panel was not actually disjoint and that its root receipt
+was incomplete/mutable.  The affected evidence remains retained and is labelled
+invalid; the runner/launcher now correct those controls for a future separately
+approved campaign.  See
+`docs/dev-log/after-task/2026-08-10-package-isdm-pa-recovery.md`.
+
+## 2026-08-10 — package-native iSDM PA harness provenance hardening
+
+No model fit, local smoke, Totoro dispatch, or empirical operation was run.
+The private future-campaign harness now rejects a non-disjoint disconnected
+fixture, any fixture added after root finalisation, a bundle that does not
+exactly equal the frozen 30-row scenario/seed grid, mixed/stale
+runner/protocol/package provenance, and an attack panel that does not actually
+degrade relative to the ordinary target. It records package identity from the
+specified `--pkg` checkout, not the caller's directory, and writes each metric
+for all 20 ordinary rows plus eligible-only rows.
+
+```sh
+Rscript --vanilla dev/isdm-package-recovery/run-pa-recovery.R --mode=validate \
+  --scenario=ordinary --replicate=1 --output=... --pkg="$PWD" --load=source
+Rscript --vanilla dev/isdm-package-recovery/run-pa-recovery.R --mode=validate \
+  --scenario=disconnected --replicate=1 --output=... --pkg="$PWD" --load=source
+# PASS: fixture and summary-contract validation; includes a seed-tamper rejection.
+
+bash -n dev/isdm-package-recovery/run-pa-totoro.sh
+git diff --check
+# PASS.
+```
+
+Fresh D-43 static review (Gauss/Noether, Fisher, Rose) approved this repair.
+It does not rehabilitate the old attack panel or alter its ordinary-panel
+`G2_PACKAGE_PA_HOLD`; any new campaign still requires explicit approval.
+
+## 2026-08-10 — G2c replicated-PA local-smoke admission
+
+Added a separate private G2c runner, frozen protocol, decision note, dormant
+Totoro launcher, and no-fit fixture-contract test.  This is a new three-visit
+synthetic design; it does not alter or reinterpret the one-visit evidence.
+
+```sh
+Rscript --vanilla dev/isdm-package-recovery/run-g2c-replicated-pa-recovery.R \
+  --mode=validate --output=... --pkg="$PWD"
+# PASS: three PA visits, shared cell latent state, unchanged GBIF/visit-1 rows,
+# and structural-zero GBIF bias on all survey rows.
+
+Rscript --vanilla -e 'devtools::test(filter = "g2c-replicated-pa-harness")'
+# PASS: 3 assertions.
+
+Rscript --vanilla dev/isdm-package-recovery/run-g2c-replicated-pa-recovery.R \
+  --mode=smoke --scenario=ordinary --replicate=1 \
+  --output=dev/isdm-package-recovery/results/g2c-smoke-20260810-retry1 \
+  --pkg="$PWD" --campaign-sha=2041684f044303c0fe26d5dde2b83f38d882f05d
+# SMOKE_HOLD, retained locally and ignored by Git.
+```
+
+The smoke's fits and gradients were finite, but all three native
+`theta_diag_B` (log-SD) profiles failed the frozen two-sided endpoint rule for
+at least one coordinate.  This is a named admission HOLD, not a recovery
+result.  Per the approved plan, no Totoro campaign, public update, empirical
+fit, count, comparator, or spatial work followed.
+
+The private decision memo
+`dev/isdm-package-recovery/2026-08-10-g2c-smoke-decision.md` records the
+evidence and recommends a fresh larger-community G2d design rather than a
+threshold relaxation or a repeated G2c launch.
+
+The read-only comparator-readiness record
+`dev/isdm-package-recovery/2026-08-10-g2c-comparator-readiness.md` reuses the
+existing map without installing, fitting, or benchmarking any comparator.
+
+## 2026-08-10 — G2d private six-species harness and local smoke HOLD
+
+Private G2d freezes the six-species extension, `86101:86120` seed map,
+three-visit PA pairing, six free `theta_diag_B` profile coordinates, direct
+attack-map checks, and all-20 denominator. No public/package source or docs
+changed; G2c remains `G2C_SMOKE_ADMISSION_HOLD`.
+
+```sh
+Rscript --vanilla dev/isdm-package-recovery/run-g2d-six-species-recovery.R --mode=validate --output=/private/tmp/gllvmtmb-isdm-g2d-six-species/dev/isdm-package-recovery/results/g2d-validate-probe --pkg=/private/tmp/gllvmtmb-isdm-g2d-six-species
+# PASS: G2D fixture/support/profile contract validation PASS (no fit)
+
+Rscript --vanilla -e 'testthat::test_file("tests/testthat/test-g2d-six-species-harness.R", reporter = "summary")'
+# PASS: 10 expectations.
+
+rg -n 'G2D|G2c|isdm' README.md ROADMAP.md NEWS.md docs/dev-log/known-limitations.md docs/design
+# PASS: no public-surface G2d claim; G2c remains a protected historical HOLD.
+```
+
+The single authorised local smoke for ordinary seed `86101` reached the
+post-fit write stage then failed because the ignored `results/` parent had not
+been created before `normalizePath(..., mustWork = TRUE)`. No numerical output
+was serialised; this is `G2D_SMOKE_HOLD`, not recovery evidence. The runner
+now creates its root before fitting, but no retry, panel, Totoro, public update,
+or Issue #953 action is authorised. See
+`docs/dev-log/after-task/2026-08-10-g2d-six-species-local-smoke.md` and
+`docs/dev-log/recovery-checkpoints/2026-08-10-194411-codex-g2d-six-species-smoke-hold.md`.
+
+## 2026-08-10 — G2d P1 root preflight PASS (no fit)
+
+P1 adds a sealed no-fit `preflight` root, an `init` root receipt for future
+panels, pre-fit receipt provenance checks, protocol-aligned G2D smoke labels,
+and campaign completeness checks. It is not a replacement smoke.
+
+```sh
+Rscript --vanilla -e 'testthat::test_file("tests/testthat/test-g2d-six-species-harness.R", reporter = "summary")'
+# PASS: 16 expectations; no fit.
+
+Rscript --vanilla dev/isdm-package-recovery/run-g2d-six-species-recovery.R --mode=preflight --output=dev/isdm-package-recovery/results/g2d-preflight-20260810-204000 --pkg="$PWD" --campaign-sha=27e75758a585839cc91c2edd255ae0a1169b24ed
+# PASS: G2D_PREFLIGHT_PASS (no fit).
+```
+
+The retained ignored root has verified receipt, sentinel, and manifest files.
+P2 remains a separately authorised fresh local smoke; no Totoro or campaign
+work followed. See `docs/dev-log/after-task/2026-08-10-g2d-root-preflight.md`.
+
+## 2026-08-10 — G2d replacement local smoke HOLD
+
+```sh
+Rscript --vanilla dev/isdm-package-recovery/run-g2d-six-species-recovery.R --mode=smoke --scenario=ordinary --replicate=1 --output=dev/isdm-package-recovery/results/g2d-smoke-20260810-210000 --pkg="$PWD" --campaign-sha=621eb94c8a2a3dc631a620926736af1be9eb3f72
+# HOLD: G2D_SMOKE_HOLD; all receipts retained.
+```
+
+Both arms stopped because partial `$` matching selected `theta_diag_B_slope`
+when no exact free `theta_diag_B` map existed. Exact indexing is repaired and
+tested without a retry. This is a harness HOLD, not recovery evidence, and
+Totoro/panel/Paper-2 promotion remain closed. See
+`docs/dev-log/after-task/2026-08-10-g2d-replacement-smoke-hold.md`.
+
+## 2026-08-10 — G2d repaired local-smoke ineligible HOLD
+
+At frozen commit `45ff9943`, a new no-fit preflight root passed and the
+independent receipt/sentinel audit passed. The one newly authorised ordinary
+seed-86101 smoke retained its complete root, fixture, fit, profile, metric,
+restart, paired-map, event, manifest, and smoke receipts, then returned
+`G2D_SMOKE_HOLD` because the three-visit fit was ineligible.
+
+```sh
+Rscript --vanilla dev/isdm-package-recovery/run-g2d-six-species-recovery.R \
+  --mode=preflight --output=dev/isdm-package-recovery/results/g2d-preflight-20260810-220000 \
+  --pkg="$PWD" --campaign-sha=45ff9943356b4038234885055bf412262421cc97
+# PASS: G2D_PREFLIGHT_PASS (no fit).
+
+Rscript --vanilla dev/isdm-package-recovery/run-g2d-six-species-recovery.R \
+  --mode=smoke --scenario=ordinary --replicate=1 \
+  --output=dev/isdm-package-recovery/results/g2d-smoke-20260810-220000 \
+  --pkg="$PWD" --campaign-sha=45ff9943356b4038234885055bf412262421cc97
+# HOLD: G2D_SMOKE_HOLD; three_visit_status: ineligible;
+# three_visit_max_abs_gradient: 7.384789e-04.
+```
+
+The independent manifest audit passed for every retained artifact/hash,
+frozen provenance, and paired-state invariant, and confirmed the ineligible
+three-visit verdict. This is not estimator recovery evidence, not a repaired
+smoke PASS, and not authority for Totoro, the panel, Paper-2 numerical claims,
+or a retry. See
+`docs/dev-log/after-task/2026-08-10-g2d-repaired-smoke-incomplete-hold.md` and
+`docs/dev-log/plan-actual/2026-08-10-g2d-repaired-smoke-reconciliation.md`.
+
+## 2026-08-11 — G2d deterministic implementation-contract phase
+
+Added no-fit source-kernel, rank-one loading/Psi, and ordinary-pairing tests.
+The exact GBIF/first-visit validator applies only to ordinary fixtures;
+disconnected and weak-overlap attacks retain their intended support structure.
+
+```sh
+Rscript --vanilla -e '<source pure helpers and exercise G2d pack/pair contracts>'
+# PASS: G2D_PURE_CONTRACT_PASS.
+
+Rscript --vanilla -e 'testthat::test_file("tests/testthat/test-g2d-six-species-harness.R", reporter = "summary")'
+# PASS: no-fit ordinary/disconnected/weak-overlap validation.
+```
+
+No fitted model, smoke, Totoro, campaign, empirical, public API/docs, or Issue
+#953 action ran. The next unresolved check is actual six-coordinate
+`theta_diag_B` map/extractor alignment, which remains behind a separate fit
+approval.
+
+## 2026-08-11 — G2d independent method and claim-fence review
+
+An independent read-only review found static symbolic-to-engine alignment for
+the private six-species route, but correctly retained promotion HOLD until an
+explicitly approved diagnostic fit can inspect the actual six-coordinate map
+and extractor. It also found ambiguous "excludes count data" wording: GBIF is
+intentionally a Poisson count component, while only the survey-count branch is
+deferred. The private protocol and deterministic after-task report now say
+"survey-count branch/outcomes". No fit, smoke, campaign, Totoro, empirical,
+public-surface, or Issue #953 operation ran.
++
+## 2026-08-11 — G2d retained diagnostic map audit
+
+One separately approved ordinary three-visit diagnostic fit ran at `b45bbfab`
+with `n_init = 1` and no profile. Its original retained root is
+`G2D_DIAGNOSTIC_MAP_HOLD` solely because labelled extractor matrices differed
+in attributes from unnamed reconstructions; it was not rerun. Two fresh,
+manifest-bound no-fit audit roots re-read that exact fit object. The final audit
+at `ef3d1325` passed all 12 checks, including
+`theta_diag_B -> exp(theta_diag_B) -> sd_B`, rank-one loading packing, and
+shared/unique/total Sigma identities. Independent review passed the correction.
+This is diagnostic-only assembly evidence: `G2D_SMOKE_HOLD`, recovery/campaign
+holds, Totoro hold, and Paper-2 claim fence remain unchanged.
+
+## 2026-08-11 — Paper 2 iJSDM S0–S2 reconciliation and source map
+
+Recorded the exact retained G2d disposition, a symbolic-to-TMB certificate, and
+a cited conceptual comparator source map. The certificate identifies a pending
+numerical-alignment issue: the compiled cloglog calculation uses direct
+one-minus-exp-of-minus-exp plus a probability clip, while the R oracle uses a
+stable expm1 formulation. No fix or fit was made; the next smoke remains
+blocked until that discrepancy is either removed or bounded and tested.
+
+The branch was clean before these records at `7c277d41`; `git diff --check`
+passed after them. No fit, smoke, campaign, Totoro/DRAC work, empirical data,
+spatial/detection/zero-inflation extension, benchmark, public API/docs,
+pkgdown, or Issue #953 action ran. G2c remains
+`G2C_SMOKE_ADMISSION_HOLD`; G2d remains diagnostic assembly PASS only and
+smoke HOLD.
+
+## 2026-08-11 — G2d cloglog tail repair and S3 root-only HOLD
+
+At frozen commit `55be39ba`, the binomial cloglog engine changed from a
+probability-level `1e-12` clip to an AD-safe direct log-scale general-binomial
+helper. Targeted C++/R tail and iJSDM oracle tests passed, as did no-fit G2d
+validation, fresh preflight, and independent receipt read-back.
+
+```sh
+Rscript --vanilla -e 'devtools::test(filter = "tmb-ad-safe-clamps|isdm-developer-fit", reporter = "summary", stop_on_failure = TRUE)'
+# PASS.
+
+Rscript --vanilla dev/isdm-package-recovery/run-g2d-six-species-recovery.R --mode=validate \
+  --output=dev/isdm-package-recovery/results/g2d-tail-preflight-20260811-001 \
+  --pkg=/private/tmp/gllvmtmb-isdm-g2d-six-species \
+  --campaign-sha=55be39babfa128e7c7691690fbdf05acbcdd56f7
+# PASS: no-fit fixture/support/profile contract validation.
+
+Rscript --vanilla dev/isdm-package-recovery/run-g2d-six-species-recovery.R --mode=preflight \
+  --output=dev/isdm-package-recovery/results/g2d-tail-preflight-20260811-001 \
+  --pkg=/private/tmp/gllvmtmb-isdm-g2d-six-species \
+  --campaign-sha=55be39babfa128e7c7691690fbdf05acbcdd56f7
+# PASS: G2D_PREFLIGHT_PASS (no fit).
+
+Rscript --vanilla dev/isdm-package-recovery/run-g2d-six-species-recovery.R --mode=smoke \
+  --scenario=ordinary --replicate=1 \
+  --output=dev/isdm-package-recovery/results/g2d-tail-smoke-20260811-001 \
+  --pkg=/private/tmp/gllvmtmb-isdm-g2d-six-species \
+  --campaign-sha=55be39babfa128e7c7691690fbdf05acbcdd56f7
+# One authorised attempt; only root receipts emitted.
+```
+
+The retained ignored smoke root contains only `root-receipt.rds` and
+`root-receipt.md`, bound to `55be39ba`; no fixture, fit, profile, manifest, or
+terminal receipt exists. It is `G2D_SMOKE_HOLD_INCOMPLETE_ARTIFACTS`, not a
+numerical result and not a reason to retry. G2c, Totoro/campaign, public,
+and Issue #953 boundaries are unchanged. Exact scans and retained hashes are in
+`docs/dev-log/after-task/2026-08-11-g2d-cloglog-tail-s3-hold.md`.
+
+## 2026-08-11 — G2d root-only termination diagnostic
+
+The original root-only smoke cannot be assigned a specific failure cause: it
+retains neither exit status nor an artifact after its root receipt. Static
+inspection found the silent interval from fixture preparation through the first
+fit call. The private runner now has shared `prepare_fixture()`, a no-fit
+`smoke_boundary` mode, and stage-ledger entries before/after each arm.
+
+```sh
+Rscript --vanilla -e 'testthat::test_file("tests/testthat/test-g2d-six-species-harness.R", reporter = "summary", stop_on_failure = TRUE)'
+# PASS.
+
+Rscript --vanilla dev/isdm-package-recovery/run-g2d-six-species-recovery.R \
+  --mode=smoke_boundary --scenario=ordinary --replicate=1 \
+  --output=dev/isdm-package-recovery/results/g2d-tail-boundary-20260811-002 \
+  --pkg=/private/tmp/gllvmtmb-isdm-g2d-six-species \
+  --campaign-sha=d04cb53e47df8553ccd4ebc7e281130cc01fe0c3
+# PASS: G2D_SMOKE_BOUNDARY_PASS (no fit).
+```
+
+The manifest-bound root records `root_receipt_written`, `fixture_constructed`,
+`fixture_validated`, and `optimizer_not_entered`. Verdict:
+`G2D_ROOT_ONLY_CAUSE_UNATTRIBUTED` and
+`RUNNER_OBSERVABILITY_DEFECT_REPAIRED`. No replacement smoke ran or is
+authorised; G2c, Totoro/campaign, public, and Issue #953 boundaries are
+unchanged.
+
+## 2026-08-11 — G2d instrumented replacement smoke HOLD
+
+Fresh no-fit preflight and independent receipt/sentinel/manifest read-back
+passed at `a8b3f80a`. The one authorised ordinary replacement smoke exited 0,
+retained all stage and terminal artifacts, and returned `G2D_SMOKE_HOLD`.
+
+```sh
+Rscript --vanilla dev/isdm-package-recovery/run-g2d-six-species-recovery.R \
+  --mode=preflight --output=dev/isdm-package-recovery/results/g2d-replacement-preflight-20260811-001 \
+  --pkg=/private/tmp/gllvmtmb-isdm-g2d-six-species \
+  --campaign-sha=a8b3f80a5c9afcb2ec4f43172e0819dd92d5af0b
+# PASS: G2D_PREFLIGHT_PASS (no fit).
+
+Rscript --vanilla dev/isdm-package-recovery/run-g2d-six-species-recovery.R \
+  --mode=smoke --scenario=ordinary --replicate=1 \
+  --output=dev/isdm-package-recovery/results/g2d-replacement-smoke-20260811-001 \
+  --pkg=/private/tmp/gllvmtmb-isdm-g2d-six-species \
+  --campaign-sha=a8b3f80a5c9afcb2ec4f43172e0819dd92d5af0b
+# exit 0; G2D_SMOKE_HOLD.
+```
+
+The stage ledger retained the complete root/fixture/two-arm sequence. All
+artifacts and 12 manifest rows verified. The three-visit arm is ineligible:
+all six profiles HOLD and GBIF-bias maximum error is `0.371326 > 0.30`.
+The original apparently root-only result later finished as a complete
+`G2D_SMOKE_HOLD`, superseding its earlier termination explanation. No retry,
+Totoro/campaign, public, or Issue #953 action ran; G2c remains held.
+
+## 2026-08-11 — G2f PA-replication pre-fit preparation
+
+Prepared the private seed-86101, six-species, 120-cell G2f fixture from the
+closed G2e commit. It retains the original G2d supports and changes only PA
+replication from three to six visits. No fitter, optimizer, profile, compilation,
+smoke, campaign, Totoro/DRAC, public surface, or Issue #953 action ran.
+
+```sh
+TMPDIR=/private/tmp/gllvmtmb-isdm-g2f-pa-replication/.tmp-g2f \
+  Rscript --vanilla dev/isdm-package-recovery/run-g2f-pa-replication.R \
+  --mode=validate --output=dev/isdm-package-recovery/results/g2f-validate-unused \
+  --pkg="$PWD"
+# PASS: G2F six-visit fixture/source-gate/oracle validation PASS (no fit).
+
+TMPDIR=/private/tmp/gllvmtmb-isdm-g2f-pa-replication/.tmp-g2f \
+  Rscript --vanilla -e 'devtools::test(filter = "g2f-pa-replication", reporter = "summary")'
+# PASS: 18 assertions.
+
+TMPDIR=/private/tmp/gllvmtmb-isdm-g2f-pa-replication/.tmp-g2f \
+  Rscript --vanilla dev/isdm-package-recovery/run-g2f-pa-replication.R \
+  --mode=preflight --output=dev/isdm-package-recovery/results/g2f-preflight-20260811-143000 \
+  --pkg="$PWD"
+# PASS: G2F_PREFLIGHT_PASS (no fit); receipt/truth/oracle read back.
+```
+
+Independent method review initially held the protocol for a missing decision
+partition, explicit conditional cloglog Fisher oracle, and written seed/support
+provenance. Those corrections were incorporated and re-reviewed PASS. The
+frozen decision and local-smoke boundary are recorded in
+`dev/isdm-package-recovery/2026-08-11-g2f-pa-replication-decision.md`.
+
+## 2026-08-11 — G2f one authorized six-visit local smoke HOLD
+
+The private committed smoke wrapper passed no-fit validation and targeted tests,
+then ran exactly once against the frozen six-visit G2f fixture. The retained root
+is `dev/isdm-package-recovery/results/g2f-smoke-20260811-001`.
+
+```sh
+TMPDIR=/private/tmp/gllvmtmb-isdm-g2f-pa-replication/.tmp-g2f \
+  Rscript --vanilla dev/isdm-package-recovery/run-g2f-pa-replication-smoke.R \
+  --mode=validate --output=dev/isdm-package-recovery/results/g2f-smoke-validate-unused \
+  --pkg="$PWD"
+# PASS: G2F smoke-launcher validation PASS (no fit).
+
+TMPDIR=/private/tmp/gllvmtmb-isdm-g2f-pa-replication/.tmp-g2f \
+  Rscript --vanilla -e 'devtools::test(filter = "g2f-pa-replication", reporter = "summary")'
+# PASS.
+
+TMPDIR=/private/tmp/gllvmtmb-isdm-g2f-pa-replication/.tmp-g2f \
+  Rscript --vanilla dev/isdm-package-recovery/run-g2f-pa-replication-smoke.R \
+  --mode=smoke --output=dev/isdm-package-recovery/results/g2f-smoke-20260811-001 \
+  --pkg="$PWD" --campaign-sha=128d2d60d3df9b9f3bb49e1fd267796607c7bf0b
+# One run only. Frozen classification: NONRESPONSIVE; admission: G2F_SMOKE_HOLD.
+```
+
+All six profiles are valid, but neither frozen response rule passes:
+`gamma_error=0.3972994` is above the G2d comparison 0.371326 and fewer than
+four lower profile values improve by one. The fit's maximum gradient is
+0.001056337, narrowly above the 0.001 eligibility threshold. No retry,
+campaign, Totoro/DRAC, public/package, or Issue #953 action ran.
+
+## 2026-08-11 — G2g retained G2d--G2f identifiability diagnosis
+
+Created a fresh private G2g lane from closed G2f and read the retained G2d, G2e, and G2f artifacts only. No package load, likelihood evaluation, optimizer, profile, simulation, fit, retry, campaign, Totoro/DRAC, public/package, or Issue #953 action occurred.
+
+```sh
+TMPDIR=/private/tmp/gllvmtmb-isdm-g2g-identifiability-diagnostic/.tmp-g2g \
+  Rscript --vanilla dev/isdm-package-recovery/run-g2g-retained-artifact-audit.R \
+  --mode=validate --output=dev/isdm-package-recovery/results/g2g-validate-unused
+# PASS: G2G retained-artifact audit validation PASS (no fit).
+
+TMPDIR=/private/tmp/gllvmtmb-isdm-g2g-identifiability-diagnostic/.tmp-g2g \
+  Rscript --vanilla dev/isdm-package-recovery/run-g2g-retained-artifact-audit.R \
+  --mode=audit --output=dev/isdm-package-recovery/results/g2g-retained-audit-20260811-005
+# PASS: G2G_RETAINED_ARTIFACT_AUDIT_PASS (no fit).
+```
+
+The final reader verifies source-manifest integrity; full-rank 24/24 fixed design; structural GBIF-only bias gate; rank-one Lambda plus six free diagonal Psi coordinates; `Sigma_B = Lambda Lambda'` with separately extracted `sd_B`; and retained local Hessian/profile/gradient diagnostics. G2f is diagnosed `COVARIANCE_INFORMATION_LIMITED`; its gradient threshold miss is an ancillary admission note. The only recommended next design is 360 independent cells with three PA visits, six species, \(|cor(x,b)|\le0.10\), and a minimum conditional GBIF-bias information of 130. This recommendation is not a fit authorization.
+
+## 2026-08-11 — G2h one authorised 360-cell local smoke HOLD
+
+The private `bdc3da6a` wrapper passed its no-fit validation and ran exactly once at `dev/isdm-package-recovery/results/g2h-smoke-20260811-001`. It retained the fit, all three restarts, six five-offset `theta_diag_B` profiles, truth, root receipt, decision ledger, stage ledger, and core-file manifest.
+
+```sh
+TMPDIR=/private/tmp/gllvmtmb-isdm-g2h-360cell-prep/.tmp \
+  Rscript --vanilla dev/isdm-package-recovery/run-g2h-360cell-smoke.R \
+  --mode=validate --output=dev/isdm-package-recovery/results/g2h-validation-unused \
+  --pkg="$PWD"
+# PASS: G2H smoke wrapper validation PASS (no fit).
+
+TMPDIR=/private/tmp/gllvmtmb-isdm-g2h-360cell-prep/.tmp \
+  Rscript --vanilla dev/isdm-package-recovery/run-g2h-360cell-smoke.R \
+  --mode=smoke --output=dev/isdm-package-recovery/results/g2h-smoke-20260811-001 \
+  --pkg="$PWD" --campaign-sha=bdc3da6a36da407d22b9162afcdef38dfda42eea
+# One run only; receipt: G2H_SMOKE_HOLD; scientific classification: GEOMETRY_RESPONSIVE.
+```
+
+All six profiles were finite and converged, three lower-tail deltas exceeded 2, and GBIF-bias maximum error was `0.1149462 < 0.30`. Admission nevertheless holds because the retained maximum gradient is `0.001290534 > 0.001`. No retry, campaign, Totoro/DRAC, public/package, empirical, spatial, detection, count, comparator, zero-inflation, or Issue #953 action ran. G2c remains `G2C_SMOKE_ADMISSION_HOLD`.
+
+## 2026-08-11 — G2h retained numerical-admission diagnosis
+
+Read only the retained G2h smoke root. Two direct AD-gradient reads reproduced `max(abs(gradient)) = 0.001290534` at the second rank-one loading (`theta_rr_B[2] = lambda_sp2`), not the near-zero first diagonal SD coordinate. The saved `sd_report` has `pdHess = TRUE`; covariance-derived local loading curvature is `261.7304`, whereas the `theta_diag_B[1]` boundary creates the large condition number and has gradient only `5.239760e-7`.
+
+The original private warm-restart guard was not attempted because it vetoes *any* boundary flag. This fit's sole flag is `near_zero_sd_B`, although its largest gradient is a high-curvature loading coordinate. The predeclared recommendation is a narrowly conditional same-objective polish guard, with no threshold relaxation and only after pure no-fit acceptance/rejection tests. No model evaluation beyond saved-gradient reads, fit, profile, retry, campaign, Totoro/DRAC, public/package, empirical, spatial, detection, count, comparator, zero-inflation, or Issue #953 action ran.
+
+## 2026-08-11 — G2i deterministic-polish replacement smoke COMPLETE
+
+Fresh private branch `codex/isdm-g2i-polish-recovery` started at retained G2h
+closure `88e32955`; reviewed candidate commit `a45411a7` adds an
+internal-iSDM-only, one-call same-objective `nlminb` polish.  The ordinary
+warm-restart route and public fit object remain unchanged.  The private path
+requires raw code-zero/finite/PD state, `1e-3 < max|g| < 1e-2`, exactly one
+`near_zero_sd_B` coordinate, and no tied or diagonal maximum.  Acceptance
+requires the same map/boundary coordinate, non-worse objective, and final
+gradient at most `1e-3`.
+
+```sh
+Rscript --vanilla -e 'devtools::test(filter="warm-nlminb-restart", reporter="summary")'
+# PASS (six pre-existing heavy tests skipped by policy).
+
+Rscript --vanilla dev/isdm-package-recovery/run-g2i-polish-smoke.R \
+  --mode=validate --output=dev/isdm-package-recovery/results/g2i-validation-unused \
+  --pkg=/private/tmp/gllvmtmb-isdm-g2i-polish-recovery
+# PASS: G2I smoke wrapper validation PASS (no fit).
+
+Rscript --vanilla dev/isdm-package-recovery/run-g2i-polish-smoke.R \
+  --mode=smoke --output=dev/isdm-package-recovery/results/g2i-smoke-20260811-001 \
+  --pkg=/private/tmp/gllvmtmb-isdm-g2i-polish-recovery \
+  --campaign-sha=a45411a785973cab2dab05223c062589ef40d86c
+# One full-SHA run only: G2I_SMOKE_COMPLETE; GEOMETRY_RESPONSIVE.
+```
+
+The retained root has three starts, six finite/converged profiles, a valid
+GBIF-only gate, raw gradient `0.0012905340` at `theta_rr_B[2]`, and accepted
+candidate gradient `0.0005347812`; the sole `theta_diag_B[1]` boundary is
+retained unchanged.  The final closure receipt hashes every terminal artifact,
+including the one-pass manifest and smoke receipt.  Independent numerical and
+artifact reviews both PASS.  `rg -n 'G2H|G2I|isdm.*polish|polish.*isdm' README.md ROADMAP.md NEWS.md docs/design docs/dev-log/known-limitations.md _pkgdown.yml dev/isdm-package-recovery`
+found G2i only on private development surfaces; no public claim was added.
+No retry, recovery pre-run, Totoro/DRAC campaign, public/package work, or Issue
+#953 action ran.  G2h and G2c holds remain unchanged.
+
+## 2026-08-11 — G2j retained diagonal-Psi diagnosis
+
+Fresh private branch `codex/isdm-g2j-psi-diagnostic` read only the committed
+G2i seed-86122 pre-run artifacts.  The reader verifies the retained closure
+and proves the exact scale contract `unique extractor = sd_B^2 =
+exp(2*theta_diag_B)` and the separate shared contract `Sigma_shared = Lambda
+Lambda'`.  It does not load the package, construct an objective, or fit.
+
+```sh
+Rscript --vanilla dev/isdm-package-recovery/run-g2j-psi-diagnostic.R --mode=validate
+# PASS: G2J retained-Psi diagnostic validation PASS (no fit).
+
+Rscript --vanilla dev/isdm-package-recovery/run-g2j-psi-diagnostic.R \
+  --mode=audit --output=dev/isdm-package-recovery/results/g2j-retained-psi-audit-20260811-002
+# PASS: G2J_RETAINED_PSI_DIAGNOSTIC_COMPLETE.
+
+Rscript --vanilla -e 'testthat::test_file("tests/testthat/test-g2j-psi-diagnostic.R", reporter="summary")'
+# PASS: 7 expectations.
+```
+
+The final classification is
+`COMPONENT_INFORMATION_LIMITED_NOT_EXTRACTION_MISMATCH`: the held Psi error is
+`0.2156398 > 0.20`, three lower profile deltas are below 2, and the maximum
+local loading--diagonal correlation is `0.415`.  Independent review first
+held a hard-coded verdict; the repaired reader makes all three predicates
+executable and then passed re-review.  The G2k proposal specifies at most 150
+single-threaded Totoro cores (`17.85` core-hours, 20-minute allocation), but
+no campaign, retry, Totoro/DRAC, public/package, empirical, spatial,
+detection, count-survey, comparator, zero-inflation, or Issue #953 action ran.
+G2c and G2h holds remain unchanged.
+
+## 2026-08-11 — G2i one-replicate recovery pre-run HOLD
+
+Commit `0d0d5772cfa77d6d84af7731f3f8d01c8596305c` added a private,
+SHA-bound G2i recovery-pre-run wrapper.  Its targeted no-fit contract suite
+and validate-only route passed before the exactly one local run below.
+
+```sh
+Rscript --vanilla -e 'invisible(parse(file="dev/isdm-package-recovery/run-g2i-recovery-prerun.R")); devtools::test(filter="g2i-recovery-prerun", reporter="summary")'
+# PASS: 17 targeted no-fit assertions.
+
+Rscript --vanilla dev/isdm-package-recovery/run-g2i-recovery-prerun.R \
+  --mode=validate --output=dev/isdm-package-recovery/results/g2i-validation-unused \
+  --pkg=/private/tmp/gllvmtmb-isdm-g2i-polish-recovery
+# PASS: validation exits before fitting.
+
+Rscript --vanilla dev/isdm-package-recovery/run-g2i-recovery-prerun.R \
+  --mode=prerun --output=dev/isdm-package-recovery/results/g2i-recovery-prerun-20260811-001 \
+  --pkg=/private/tmp/gllvmtmb-isdm-g2i-polish-recovery \
+  --campaign-sha=0d0d5772cfa77d6d84af7731f3f8d01c8596305c
+# Exactly one run: PRE_RUN_RECOVERY_HOLD.
+```
+
+The root records valid structural diagnostics (three restarts, six
+finite/converged five-offset profiles, valid GBIF-only source gate), but final
+gradient `0.002726537 > 0.001` fails the full frozen admission rule.  It
+measured `45.987` seconds fitting plus `382.373` seconds profiling.  Four frozen recovery
+criteria pass: beta error `0.1597133`, GBIF-bias error `0.1043863`, minimum
+map correlation `0.7324197`, and shared-covariance relative Frobenius error
+`0.2403427`.  The fifth does not: maximum diagonal-Psi variance error
+`0.2156398 > 0.20`; it is retained as a HOLD without retry, campaign,
+Totoro/DRAC, public/package, empirical, spatial, detection, count-survey,
+source-admission, comparator, zero-inflation, or Issue #953 action.  G2c and
+G2h holds remain unchanged.
+
+## 2026-08-11 — G2k screened 150-attempt FIR calibration HOLD
+
+The earlier G2k root remains a design-admission HOLD: 22 candidate fixtures
+were invalid before fitting, so its 128 fitting attempts cannot be presented
+as a 150-attempt recovery rate.  The replacement deterministically screened
+`86201L:87000L`, recorded rejected candidates, and fitted the first 150
+admissible fixtures on FIR job array `54323628` at no more than 50 concurrent,
+single-threaded tasks.  The remote representative pre-run passed before the
+array.  All 150 array tasks completed with exit code `0:0`; every decision
+ledger and the immutable campaign receipt were copied into the private G2k
+result root.
+
+```sh
+Rscript --vanilla -e 'devtools::test(filter="g2k-calibration", reporter="summary")'
+# PASS: targeted private campaign contract suite.
+
+Rscript --vanilla dev/isdm-package-recovery/run-g2k-calibration.R --mode=validate
+# PASS: G2K calibration coordinator validation PASS (no fit).
+
+bash -n dev/isdm-package-recovery/run-g2k-calibration-fir.sbatch
+# PASS.
+```
+
+The frozen coordinator records `n_requested=150`, `n_started=150`,
+`n_missing=0`, `n_joint_pass=22`, and `n_recovery_metric_pass=106`.
+Thus 22/150 strict numerical-plus-recovery classifications pass (MCSE
+0.0289), while 106/150 pass the five known-truth metrics (MCSE 0.0372).
+All 150 ledgers have valid structural diagnostics.  The specification did not
+define a promotion-frequency cutoff, so the correct result is
+`G2K_CALIBRATION_HOLD`: it provides a reproducible numerical diagnosis, not a
+recovery-validated integrated-JSDM capability claim.  No public API/docs,
+empirical data, spatial field, count outcome, arbitrary source, generic
+zero-inflation term, package ranking, manuscript work, or Issue #953 changed.
+G2c remains `G2C_SMOKE_ADMISSION_HOLD`.
+
+## 2026-08-12 — G2n one fresh local pre-run HOLD
+
+One and only one actual private six-species G2n local fit was run from commit
+`7a819639` with seed `86122`, after a no-fit wrapper validation.  Its fresh
+root is `dev/isdm-package-recovery/results/g2n-local-prerun-20260812-0630`.
+The fit took `48.254` seconds; its frozen 30 profile optimizations took
+`393.251` seconds; wrapper elapsed time was `444.587` seconds.  Source gate,
+three restarts, all six five-offset profiles, and four recovery metrics pass,
+but G2n admission is Case C / `NO_CANDIDATE`: raw gradient `0.002726537`,
+unique maximum `b_fix`, no named boundary.  The diagonal-Psi variance error
+also fails: `0.2156398 > 0.20`.
+
+```sh
+Rscript --vanilla -e 'devtools::test(filter = "g2n-local-prerun", reporter = "summary")'
+# PASS: private no-fit wrapper validation.
+
+Rscript --vanilla dev/isdm-package-recovery/run-g2n-local-prerun.R \
+  --mode=validate --output=dev/isdm-package-recovery/results/g2n-validate-only \
+  --pkg="$PWD"
+# PASS: frozen fixture/contracts, no fit.
+```
+
+Independent closure review required a no-fit provenance addendum. It
+recomputed source-gate evidence and bound map/data/random/bounds/scale/control
+signatures, ordered parameters, gradient, covariance diagnostics, and
+DLL/TMB/R versions. A self-referential manifest review finding was corrected:
+manifest V3 excludes itself while final closure V3 binds it; V3 verified 20
+artifact hashes. No second fit, recovery
+campaign, Totoro/FIR/DRAC use, repair/new estimator, likelihood/DGP/map/source
+gate/metric/seed change, G2k reclassification, detection/spatial/empirical
+work, public/package/docs/pkgdown activity, Article promotion, or Issue #953
+action occurred. G2k remains `G2K_CALIBRATION_HOLD`; G2c remains
+`G2C_SMOKE_ADMISSION_HOLD`.
+
+## 2026-08-12 — G2n prospective numerical-admission implementation PASS
+
+At base `3110075d`, G2n implemented only the private G2m prospective decision
+table and immutable raw/candidate provenance.  Raw `max(abs(gradient)) <=
+1e-3` is `NOT_REQUIRED`; only the pre-existing one-diagonal `near_zero_sd_B`
+geometry can use the conditional polish; unique non-boundary `b_fix` or
+`theta_rr_B` residuals in `(1e-3, 1e-2)` are `NO_CANDIDATE`/HOLD.  Raw
+convergence is retained, and all invoked covariance-Newton candidates retain
+their method, reason, diagnostics, and evaluation errors where applicable.
+
+```sh
+Rscript --vanilla -e 'devtools::test(filter = "g2n-numerical-admission", reporter = "summary")'
+# PASS: 29 pure-logic expectations.
+
+Rscript --vanilla -e 'devtools::test(filter = "g2n-compiled-cloglog-unit", reporter = "summary")'
+# PASS: 9 compiled no-optimizer expectations; three upstream Eigen warnings.
+
+Rscript --vanilla -e 'devtools::test(filter = "warm-nlminb-restart", reporter = "summary")'
+# PASS: six explicitly guarded heavy tests skipped.
+```
+
+Independent numerical review passed after it required raw-convergence
+retention, all-attempt Newton provenance, and use of the production
+covariance-Newton helper in the compiled unit.  No full iJSDM fit, profile,
+simulation, campaign, Totoro/FIR/DRAC job, public/package documentation,
+empirical data, detection extension, or Issue #953 action ran.  G2k remains
+`G2K_CALIBRATION_HOLD`; G2c remains `G2C_SMOKE_ADMISSION_HOLD`.  A separately
+approved fresh local pre-run is required before any fit execution.
+
+## 2026-08-12 — G2o retained-artifact postmortem: design-only GO
+
+G2o began at the closed G2n commit `a0f0b8a8` and read only its retained
+six-species local-pre-run root plus the completed 150/150 FIR campaign as
+summarized by the G2k diagnostic root. It computed parameter-block scores,
+covariance-scaled scores, marginal block conditioning, Psi truth--estimate
+geometry, and retained lower-profile summaries; it did not fit, optimize,
+profile, simulate, or use remote compute. The Case-C `b_fix` residual remains
+a confirmed raw-gradient admission failure, but neither it nor the Psi miss
+identifies a safe repair or a model/estimand cause. `G2O_NO_FIT_DESIGN_ONLY_GO`
+permits only a new pre-registered estimator/Psi-calibration *design* task.
+`G2N_LOCAL_PRERUN_HOLD`, `G2K_CALIBRATION_HOLD`, and
+`G2C_SMOKE_ADMISSION_HOLD` remain unchanged.
+
+```sh
+env TMPDIR=/private/tmp Rscript --vanilla -e 'devtools::test(filter = "g2o-postmortem", reporter = "summary")'
+# PASS: 5 expectations.
+
+env TMPDIR=/private/tmp Rscript --vanilla dev/isdm-package-recovery/run-g2o-postmortem.R --mode=validate ...
+# PASS: retained-root validation; no fit.
+
+env TMPDIR=/private/tmp Rscript --vanilla dev/isdm-package-recovery/run-g2o-postmortem.R --mode=report ...
+# PASS: retained-artifact report; no fit.
+```
+
+## 2026-08-12 — Paper 2 iJSDM evidence-to-reader A0–A2: specification closed
+
+Fresh private Codex lane `codex/isdm-paper2-evidence-reader-a0` began exactly
+at G2o closure `0f668c46`.  It created a lane-local loop/checkpoint, a cited
+non-ranking source map for `gllvm`, Hmsc, `spOccupancy`, `glmmTMB`, and
+`sdmTMB`, and a preregistered Case-C estimator/Psi information specification.
+The specification freezes the G2d/G2n likelihood, DGP, map, transform,
+thresholds, and all-attempt metrics; proposes recovery cells only at S=6/20/60;
+and defines S=250/1,000 as measured implementation gates, with S=10,000 held
+for a later architecture decision.
+
+```sh
+git diff --check
+# PASS.
+
+rg -n -i 'G2N_LOCAL_PRERUN_HOLD|G2K_CALIBRATION_HOLD|G2C_SMOKE_ADMISSION_HOLD|Case C|NO_CANDIDATE|S = 10,000|architecture HOLD|spatial|count-survey|empirical|absolute-abundance|generic-zero-inflation|arbitrary-source|10,000' \
+  lanes/isdm-paper2-evidence-reader dev/isdm-package-recovery/2026-08-12-paper2-* \
+  docs/dev-log/{plan-actual,audits,recovery-checkpoints,after-task}/2026-08-12-*paper2*
+# PASS: protected HOLDs, scope fences, scale contract, and 10k HOLD explicit.
+
+rg -n 'MakeADFun|nlminb|\.gll_isdm_fit|profile_theta' \
+  lanes/isdm-paper2-evidence-reader dev/isdm-package-recovery/2026-08-12-paper2-* \
+  docs/dev-log/{plan-actual,audits,recovery-checkpoints,after-task}/2026-08-12-*paper2*
+# Expected documentation-only references: estimator/stage names; no invocation.
+```
+
+The separate Gate-A method checklist passed.  No fit, implementation, repair,
+simulation, profile, local/DRAC/Totoro compute, public API/docs/pkgdown/article
+work, or likelihood/DGP/map/threshold alteration occurred.  `G2N_LOCAL_PRERUN_HOLD`,
+`G2K_CALIBRATION_HOLD`, and `G2C_SMOKE_ADMISSION_HOLD` remain unchanged.  Return
+for explicit approval before A3 or any fit.
+
+## 2026-08-12 — Paper 2 iJSDM Arc 0–3: Gate-B-ready no-fit design
+
+The approved private Arc 0–3 scope is complete. A scoped third-party
+NotebookLM record informed a bounded numerical/latent-identifiability source
+synthesis; its automated discovery import yielded no usable added sources.
+Independent design packets retain Case C as `NO_CANDIDATE`/HOLD and
+pre-register S=6/20/60 all-attempt Psi-information summaries. The A4 contract
+specifies only future deterministic no-fit logic/provenance tests. It does not
+implement or run them.
+
+```sh
+git diff --check
+# PASS.
+
+rg -n -i 'G2N_LOCAL_PRERUN_HOLD|G2K_CALIBRATION_HOLD|G2C_SMOKE_ADMISSION_HOLD|NO_CANDIDATE|S = 10,000|architecture HOLD' \
+  lanes/isdm-paper2-evidence-reader dev/isdm-package-recovery/2026-08-12-paper2-* \
+  docs/dev-log/{plan-actual,audits,recovery-checkpoints,after-task}/2026-08-12-*paper2*
+# PASS: protected HOLDs and private scope fences remain explicit.
+```
+
+No fit, objective construction, optimizer/profile call, simulation, benchmark,
+local/DRAC/Totoro compute, estimator repair, public/package/article change, or
+capability claim occurred. `G2N_LOCAL_PRERUN_HOLD`, `G2K_CALIBRATION_HOLD`,
+and `G2C_SMOKE_ADMISSION_HOLD` remain unchanged. Stop at Gate B for explicit
+direction: implement only the A4 no-fit contract, stop, or return to design.
+
+## 2026-08-12 — Paper 2 A4 safeguards and one S=6 local attempt: private HOLD
+
+The approved transition added a deterministic pure-logic A4 suite: Case-C
+non-entry for `b_fix`/`theta_rr_B`, Case-B isolation, adversarial Case-D
+rejections, diagonal-Psi transform, and static no-execution fencing. It passed
+alongside the existing G2n/G2m no-fit suites. One seed-pinned S=6 local attempt
+was then launched with an 8–12 minute estimate and 20-minute stop threshold.
+It completed in 448.155 seconds with verified delegated and outer provenance
+closures. All three starts had code 0 and profiles were finite/converged, but
+raw gradient 0.002726537 in non-boundary `b_fix` is Case C /
+`NO_CANDIDATE`; diagonal-Psi variance error 0.2156398 also exceeds 0.20 and
+sp2/sp5/sp6 lower profile endpoint deltas are <2. It is
+`PRIVATE_NUMERICAL_AND_RECOVERY_HOLD`, not a recovery rate or capability claim.
+
+```sh
+env TMPDIR=/private/tmp Rscript --vanilla -e 'devtools::test(filter = "paper2-a4-no-fit-contract", reporter = "summary")'
+# PASS: 40 expectations; pure logic only.
+
+env TMPDIR=/private/tmp Rscript --vanilla -e 'devtools::test(filter = "g2n-numerical-admission", reporter = "summary"); devtools::test(filter = "g2m-numerical-admission-protocol", reporter = "summary")'
+# PASS: existing independent no-fit cross-checks.
+```
+
+No retry, replacement seed/root, model change, recovery/scale campaign,
+public/article change, or capability claim occurred. All protected HOLDs remain
+unchanged. Any continuation requires separate approval for the next evidence
+decision; it cannot reclassify Case C or relax a frozen threshold.
+
+## 2026-08-12 — Paper 2 iJSDM Gate D: private STOP/HOLD closeout
+
+Maintainer selected the recommended private STOP/HOLD route after the verified
+single S=6 receipt. The Gate-D reconciliation retains the finite objective,
+three code-0 starts, PD Hessian, and finite profiles alongside the decisive
+facts: Case C / `NO_CANDIDATE` from raw `b_fix` gradient 0.002726537,
+diagonal-Psi error 0.2156398 > 0.20, and weak lower profile endpoints for
+sp2/sp5/sp6. Four passing known-truth metrics do not override either failed
+gate. No reader packet is admitted.
+
+The final no-fit evidence audit printed `PAPER2_S6_FINAL_AUDIT_PASS` after
+verifying both closures, Case C / `NO_CANDIDATE`, `PRE_RUN_RECOVERY_HOLD`, and
+the expected weak lower endpoints.
+
+No additional S=6/S=20/S=60 work, scale measurement, Case-C repair, threshold
+change, public/article/package change, or capability claim occurred. The three
+protected HOLDs remain unchanged. Any future work is a fresh approved lane.
+
+## 2026-08-12 — Private shared-range spatial iSDM Gate-A implementation
+
+Implemented only the approved unexported two-field spatial iSDM route:
+`spatial_latent(1 + isdm_gbif | cell_id, d = K)` is paired with
+`indep(0 + trait | cell_id)` to retain the declared nonspatial diagonal Psi
+residual. An identity token constrains the private Poisson/log plus
+PA-cloglog augmented-SPDE exception, and deterministic tests exercise the
+same prepared SPDE design matrix used by the engine.
+
+```sh
+Rscript --vanilla -e 'devtools::load_all(quiet=TRUE); testthat::test_file("tests/testthat/test-isdm-spatial-private-contract.R", reporter="summary"); testthat::test_file("tests/testthat/test-isdm-contract.R", reporter="summary"); testthat::test_file("tests/testthat/test-augmented-slope-family-policy.R", reporter="summary")'
+# PASS; existing isdm-contract reported three expected CRAN skips.
+
+git diff --check
+# PASS.
+```
+
+No model fit, objective build, profile, simulation, timing probe, Totoro/DRAC
+compute, public API/docs/pkgdown/article change, or empirical claim occurred.
+`G2N_LOCAL_PRERUN_HOLD`, `G2K_CALIBRATION_HOLD`,
+`G2C_SMOKE_ADMISSION_HOLD`, and `PAPER2_PRIVATE_STOP_HOLD` are unchanged.
+Return for explicit Gate B approval before any smoke fit.
+
+## 2026-08-12 — Private spatial iSDM Gate B: one-smoke observability HOLD
+
+The committed Paper-1 `S=3`, `C=360`, `r=3` spatial fixture preflight passed:
+4,320 rows, 118 mesh nodes, seed 86201, and the shared intercept/
+`isdm_gbif` slope source map were retained in an immutable root. A 12–20 minute
+estimate permitted exactly one local smoke. The command exited after 16.313
+seconds because the runner read Linux-only `/proc/self/status` before it
+persisted the fit and all-attempt ledger. Independent review additionally found
+that its original DGP correlated the two fields despite the fitted engine's
+independent field columns. The outcome is `PRIVATE_SPATIAL_SMOKE_HOLD`.
+
+```sh
+Rscript --vanilla dev/isdm-package-recovery/run-spatial-isdm-gate-b-smoke.R --mode=validate --output=dev/isdm-package-recovery/results/unused --pkg=/private/tmp/gllvmtmb-isdm-spatial-information-design
+# SPATIAL_ISDM_GATE_B_FIXTURE_VALIDATION_PASS (no fit)
+
+Rscript --vanilla -e '... verify retained preflight/failure receipt exists and fit.rds/all-attempt-ledger.rds do not ...'
+# HOLD_RECEIPT_INTEGRITY_PASS
+```
+
+No retry, profile, campaign, Totoro/DRAC, public/package/article action, or
+claim occurred. The preventative runner repair enforces a consumed-root stop,
+portable RSS handling, manifest comparison, and zero cross-field DGP
+correlation for a future separately approved fixture. G2/Paper 2 HOLDs remain
+unchanged.
+
+## 2026-08-13 — Paper 1 spatial Gate-B2 replacement smoke: numerical-admission HOLD
+
+A fresh Paper 1-only replacement root tied to commit `d5c1481c` was preflighted
+and given a 5–15 minute estimate. The sole seed-86202 fit returned in 12.324
+seconds with code 0, finite objective 2467.705970, maximum gradient 0.003392914,
+PD Hessian TRUE, and no boundary flags or warnings. Its retained package
+classification is Case D / `numerical_admission = FALSE`
+(`unsupported_raw_gradient_state`), so the numerical result is HOLD, not PASS.
+Its complete all-attempt ledger was persisted before optional telemetry; macOS
+RSS is retained as `NA`. The consumed-root guard rejected a second smoke before
+a model call.
+
+```sh
+Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-spatial-isdm-gate-b2-receipt-contract.R", reporter = "summary"); testthat::test_file("tests/testthat/test-isdm-spatial-private-contract.R", reporter = "summary")'
+# PASS.
+
+Rscript --vanilla dev/isdm-package-recovery/run-spatial-isdm-gate-b-smoke.R --mode=preflight --pkg=/private/tmp/gllvmtmb-isdm-paper1-spatial-gate-b2 --campaign-sha=d5c1481c8ffba7cec5a68ebb8de778426e88e0b5 --output=dev/isdm-package-recovery/results/paper1-spatial-gate-b2-d5c1481c
+# SPATIAL_ISDM_GATE_B_PREFLIGHT_PASS (no fit)
+
+Rscript --vanilla dev/isdm-package-recovery/run-spatial-isdm-gate-b-smoke.R --mode=smoke --pkg=/private/tmp/gllvmtmb-isdm-paper1-spatial-gate-b2 --campaign-sha=d5c1481c8ffba7cec5a68ebb8de778426e88e0b5 --output=dev/isdm-package-recovery/results/paper1-spatial-gate-b2-d5c1481c
+# FIT_RETURNED
+
+rg -n 'SPATIAL_ISDM_GATE_B2|paper1-spatial-b2|PRIVATE_SPATIAL_SMOKE' README.md ROADMAP.md NEWS.md docs vignettes R tests
+# Found the intended private receipt identifiers and historical HOLD only; no public/Paper-2 claim added.
+```
+
+This is an observable but non-admitted one-fixture result, not a recovery or
+spatial-separation claim. No retry, repair, profile, campaign, C=1,000, Paper 2,
+Totoro/DRAC, public/package/article action, or threshold change occurred. The
+historical G2 and Paper 2 HOLDs are unchanged. See the after-task report and
+checkpoint dated 2026-08-13 before any new approval request.
+
+## 2026-08-13 — G3P provenance amendment landed (no fit)
+
+The future G3P runner now applies the stable-content/runtime receipt comparator
+before optimizer entry. MD5 fields are structurally validated, DLL paths remain
+diagnostic, and malformed records retain the full comparison table.
+
+```sh
+Rscript --vanilla -e 'testthat::test_file("tests/testthat/test-g3p-provenance-contract.R", reporter = "summary"); testthat::test_file("tests/testthat/test-g3p-paper2-smoke-packet.R", reporter = "summary"); invisible(parse("dev/isdm-package-recovery/g3p-provenance-contract.R")); invisible(parse("dev/isdm-package-recovery/run-g3-paper2-smoke.R"))'
+# PASS: focused no-fit contract and packet tests; both files parse.
+```
+
+No runner mode, preflight, smoke, fit, profile, simulation, remote compute,
+model/DGP/map/threshold change, or public/article change occurred.
+
+## 2026-08-14 — G3P V2 one-smoke terminal HOLD
+
+The separately approved local V2 smoke used the receipt-bound clean commit
+`0f5c27969e5baab96162be92aae056e377fddc9c`, V2 gate/root/attempt identity,
+and 1,500-second hard stop. It returned terminal
+`G3_HESSIAN_UNAVAILABLE` after a 16.525-second fit (19.106 seconds total):
+`Hessian not yet implemented for models with random effects.` Provenance was
+`MATCH` (only the non-binding temporary DLL path differed) and execution
+context was an exact match. No G3 trial, retry, profile, recovery, campaign,
+or public action ran.
+
+```sh
+Rscript --vanilla -e 'root <- "dev/isdm-package-recovery/results/G3P_P2_S6_C360_R3_V2"; x <- readRDS(file.path(root, "all-attempt-ledger.rds")); y <- readRDS(file.path(root, "root-receipt.rds")); m <- utils::read.csv(file.path(root, "file-manifest.csv"), stringsAsFactors = FALSE); stopifnot(identical(x$status, "G3_HESSIAN_UNAVAILABLE"), isTRUE(x$terminal), identical(x$provenance$status, "MATCH"), identical(x$execution_context$status, "MATCH"), !file.exists(file.path(root, "retry-ledger.rds")), !file.exists(file.path(root, "profile.rds"))); cat(y$commit, x$timing$fit_elapsed_s, x$timing$total_elapsed_s, nrow(m), "\n")'
+# 0f5c27969e5baab96162be92aae056e377fddc9c 16.525 19.106 7
+
+rg -n 'G3P_P2_SMOKE_V2|G3_HESSIAN_UNAVAILABLE|G3_P2_S6_C360_R3_V2' README.md ROADMAP.md NEWS.md vignettes R
+# No public-surface matches.
+```
+
+This terminal result supports only the statement that one receipt-bound V2
+attempt stopped before G3 evaluation because the requested Hessian was
+unavailable. It is not a numerical-admission, rejection, convergence,
+likelihood, recovery/Psi, spatial, empirical, scale, or public-capability
+result.
+
+## 2026-08-13 — G3P Gate B materialised (no runner)
+
+With explicit maintainer approval, the V2 packet
+`G3P_P2_SMOKE_V2` and its empty ignored root
+`results/G3P_P2_S6_C360_R3_V2/` were created. The root is covered by the
+repository ignore rule and contains no files. The packet fixes V2 gate/root
+identity, packet-MD5 receipt binding, a V2 attempt ID, and the explicitly
+supplied 15–25 minute / 1,500-second time budget.
+
+```sh
+Rscript --vanilla -e 'testthat::test_file("tests/testthat/test-g3p-provenance-contract.R", reporter = "summary"); testthat::test_file("tests/testthat/test-g3p-paper2-smoke-packet.R", reporter = "summary"); invisible(parse("dev/isdm-package-recovery/g3p-provenance-contract.R")); invisible(parse("dev/isdm-package-recovery/run-g3-paper2-smoke.R"))'
+# PASS: 35 provenance-contract and 9 packet expectations; both files parse.
+```
+
+No runner mode, preflight, smoke, fit, profile, simulation, remote compute,
+model/DGP/map/threshold change, or public/article change occurred.
+
+## 2026-08-13 — G3P V2 binding review complete (Gate-B request ready)
+
+Independent Gauss/Noether, Fisher, and Rose re-reviews passed on the pinned
+`fdcb05cd` runner baseline. The generic runner preserves V1 defaults while a
+non-V1 invocation must explicitly supply its packet, root, attempt, and time
+arguments. Receipt MD5/content, execution context, and time budget are binding
+before package loading or optimizer entry.
+
+The branch is ready to request only Gate B: creation of the V2 packet and its
+ignored root. It does not authorise that creation, a preflight, or a smoke.
+
+No runner mode, preflight, smoke, fit, profile, simulation, remote compute,
+model/DGP/map/threshold change, or public/article change occurred.
+
+## 2026-08-13 — G3P receipt-bound time budget (no runner)
+
+The preflight receipt and pre-optimizer execution-context comparator now bind
+the time estimate and hard limit alongside the gate, root, attempt, and schema.
+A later smoke cannot change its approved runtime budget without a terminal
+`INVALID_PROVENANCE` result.
+
+```sh
+Rscript --vanilla -e 'testthat::test_file("tests/testthat/test-g3p-provenance-contract.R", reporter = "summary"); testthat::test_file("tests/testthat/test-g3p-paper2-smoke-packet.R", reporter = "summary"); invisible(parse("dev/isdm-package-recovery/g3p-provenance-contract.R")); invisible(parse("dev/isdm-package-recovery/run-g3-paper2-smoke.R"))'
+# PASS: focused no-fit contract and packet tests; both files parse.
+```
+
+No runner mode, preflight, smoke, fit, profile, simulation, remote compute,
+model/DGP/map/threshold change, or public/article change occurred.
+
+## 2026-08-13 — G3P execution-context receipt binding (no runner)
+
+The preflight receipt now binds `schema`, `source_gate`, `root_id`, and
+`attempt_id`; smoke compares that complete field table before loading the
+compiled package or entering the optimizer. Non-V1 invocations also require
+their own attempt and time metadata rather than inheriting V1 defaults. Packet
+content MD5 remains binding; the supplied path/name is diagnostic.
+
+```sh
+Rscript --vanilla -e 'testthat::test_file("tests/testthat/test-g3p-provenance-contract.R", reporter = "summary"); testthat::test_file("tests/testthat/test-g3p-paper2-smoke-packet.R", reporter = "summary"); invisible(parse("dev/isdm-package-recovery/g3p-provenance-contract.R")); invisible(parse("dev/isdm-package-recovery/run-g3-paper2-smoke.R"))'
+# PASS: focused no-fit contract and packet tests; both files parse.
+```
+
+No runner mode, preflight, smoke, fit, profile, simulation, remote compute,
+model/DGP/map/threshold change, or public/article change occurred.
+
+## 2026-08-13 — G3P V2 identity binding preparation (no runner)
+
+The generic G3P runner now carries explicit `--packet`, `--source-gate`, and
+`--root-id` bindings. Any non-V1 source gate must name a non-V1 packet and root
+identity, and the output-root basename must equal `--root-id`; this prevents a
+later V2 invocation from silently inheriting V1's packet/root defaults.
+
+```sh
+Rscript --vanilla -e 'testthat::test_file("tests/testthat/test-g3p-provenance-contract.R", reporter = "summary"); testthat::test_file("tests/testthat/test-g3p-paper2-smoke-packet.R", reporter = "summary"); invisible(parse("dev/isdm-package-recovery/g3p-provenance-contract.R")); invisible(parse("dev/isdm-package-recovery/run-g3-paper2-smoke.R"))'
+# PASS: focused no-fit contract and packet tests; both files parse.
+```
+
+No runner mode, preflight, smoke, fit, profile, simulation, remote compute,
+model/DGP/map/threshold change, or public/article change occurred.
+
+## 2026-08-15 — SPDE-slope gauge no-fit parent gate (no gate execution)
+
+Added a private, sibling-staged parent gate for the separately named
+SPDE-slope gauge no-fit adapter.  It locks the full frozen MSPDE V3 packet and
+historical closeout-validator MD5; supervises the isolated child with a
+1,800-second `processx` deadline; retains exact command/PID/process evidence;
+and atomically seals only a reread, manifest-bound non-scientific gate root.
+The terminal taxonomy distinguishes a complete numerical callback replay from
+an infrastructure boundary, including timeout, zero-exit missing output, and
+unreadable child RDS.  No MNCB/BFGS root, model, likelihood, parameterisation,
+control, threshold, package API, or public claim changed.
+
+```sh
+Rscript --vanilla -e 'testthat::test_file("tests/testthat/test-paper1-spde-slope-gauge-contract.R", reporter = "summary"); testthat::test_file("tests/testthat/test-paper1-spde-slope-gauge-nofit-contract.R", reporter = "summary"); testthat::test_file("tests/testthat/test-paper1-spde-slope-gauge-nofit-runner.R", reporter = "summary"); testthat::test_file("tests/testthat/test-paper1-spde-slope-gauge-nofit-materializer.R", reporter = "summary"); for (p in c("dev/isdm-package-recovery/spde-slope-gauge-contract.R", "dev/isdm-package-recovery/spde-slope-gauge-nofit-contract.R", "dev/isdm-package-recovery/run-paper1-spde-slope-gauge-nofit.R", "dev/isdm-package-recovery/materialize-paper1-spde-slope-gauge-nofit-gate.R")) parse(file = p); cat("FOCUSED_PARSE_OK\\n")'
+git diff --check
+rg -n "SPDE_SLOPE_GAUGE_NOFIT|PAPER1_SPDE_SLOPE_GAUGE|MNCB|BFGS" dev/isdm-package-recovery docs/dev-log/check-log.md docs/dev-log/after-task
+rg -n "gllvmTMB\\(" R vignettes README.md NEWS.md docs/design
+rg -n "meta_known_V|gllvmTMB_wide|in prep|in preparation" README.md NEWS.md docs vignettes
+```
+
+Focused tests and parse checks passed; the scans found only intentional private
+gauge/history entries and pre-existing public package surfaces.  No child,
+preflight, gate materialization, TMB build, fit, optimiser, simulation, smoke,
+remote compute, recovery, or public/article execution occurred.
+
+## 2026-08-15 — SPDE-slope gauge no-fit V1 terminal forensic closeout
+
+`PAPER1_SPDE_SLOPE_GAUGE_NOFIT_GATE_V1` is consumed and frozen at source commit
+`4eb710ed12cc5346d4ed4bcae0e8182d8ba3fbc3`.  Its root-receipt, manifest,
+child-receipt, and no-fit-result MD5s are respectively
+`1d9b1b0b31a993dc88427ce6989dea85`, `fd83183495b88a37c677682b9f9e6015`,
+`e5481430c170b8f3fa5c1eb1da33e27e`, and `0af4bc98742861950896c1e79dadb2e0`;
+its terminal status is
+`SPDE_SLOPE_GAUGE_NOFIT_INFRASTRUCTURE_HOLD / child_evidence_invalid`.
+
+The retained child reports a complete no-fit callback trace (45 objective,
+one gradient, 22 FD records; object/release 1/1), but its values are not
+admissible because V1's parent passed only `receipt,state_md5` into a schema
+that also required predecessor `root,commit`.  The source repair returns and
+passes the full predecessor projection; it does not mutate, relabel, or rerun
+V1.  Any successor requires a separate V2 design/root/receipt binding V1 as a
+forensic predecessor.  No numerical, ecological, recovery, or public claim is
+earned.
+
+
+---
+
+## 2026-08-16 — iSDM public door (`claude/isdm-public-door-20260816`)
+
+Lane branched off `codex/isdm-range-amplitude-orthogonal` @ `bd2b261a`.
+Preflight: `tools/lane_preflight.sh` → FOREIGN LANE ACTIVE (cursor/codex
+direct-to-main) + 7 live claude lanes; lane claimed was the iSDM gates, which
+no other lane owns. `lane_preflight.sh --file R/fit-multi.R` re-run
+immediately before editing (50 refs carry work on that file; all mspl lanes,
+all on different functions).
+
+The two-source integrated model is now admitted through the ordinary public
+`gllvmTMB()` call. No new export; `NAMESPACE` unchanged; no `src/`, likelihood,
+or 5×3 grammar change. Admission is structural via
+`.gllvmTMB_integrated_two_source_contract()`, which both the unexported
+developer route and a public caller pass through.
+
+Commands run, with exact outcomes:
+
+- `Rscript -e 'devtools::document(quiet = TRUE)'` — clean; wrote
+  `man/families.Rd`; `git diff --stat NAMESPACE` empty (no new export).
+  Two pre-existing `AIC/BIC.gllvmTMB_multi` @export notes in `aghq-report.R`
+  are untouched by this lane.
+- `devtools::test(filter = "isdm|offset|family-within-trait|augmented-slope")`
+  — **0 failures, 0 errors**; 1 skip
+  (`test-isdm-spatial-control-ladder.R:47`, heavy test, needs
+  `GLLVMTMB_HEAVY_TESTS=1`).
+- Public spatial two-source smoke (hand-built long table, no `:::`):
+  **`fit$opt$convergence == 0`**, 11.3 s, one-time experimental notice fired
+  once.
+- Public ≡ developer equivalence, asserted in `test-isdm-developer-fit.R`:
+  same `opt$objective` (tol 1e-6) and `opt$par` (tol 1e-4).
+- `rmarkdown::render()` on
+  `vignettes/articles/integrated-two-source-example.Rmd` — **OK, 12.4 s**,
+  652,687 bytes.
+- `pkgdown::check_pkgdown()` — **No problems found.**
+
+Stale-wording scans (exact patterns):
+
+- `grep -n ":::" vignettes/articles/integrated-two-source-example.Rmd` → none.
+- `grep -nE "\b(MIS|SPA|RE|FG|FAM|MIX|VA|ISDM)-[0-9]+"` over `NEWS.md`, the
+  article, `R/families.R`, `man/families.Rd` → none (no register codes on
+  reader-facing surfaces).
+- `git grep "fit_isdm\|gllvmTMB_isdm"` across all `codex/isdm-*` refs before
+  starting → no exported iSDM function anywhere; confirmed the lane was
+  unstarted.
+
+Deliberately NOT run: full `devtools::test()` and `R CMD check --as-cran`.
+The maintainer asked for the Mac to be kept light and other lanes were loaded;
+3-OS CI runs on the PR and a Totoro check before merge is the maintainer's
+call.
+
+An adversarial fresh-context review (Noether + Rose, Opus) of the first three
+commits found a real fence bypass: the structural predicate was global over the
+data frame, so an ordinary BETWEEN-trait mixed-family fit satisfied it and was
+handed the cloglog offset and the augmented spatial slope. Fixed in `56477e6a`
+— every trait must now carry both arms, failing closed on absent or misaligned
+trait labels. The same pass caught the article's mis-paired truth/estimate
+table (alphabetical factor levels), which was printing simulated truth against
+the wrong species columns.
+
+After-task: `docs/dev-log/after-task/2026-08-16-isdm-public-door.md`.
+Register: `ISDM-01` (`partial`) — a new prefix, because MIS-37 is already
+claimed on `claude/predict-missing-se-20260815`.
+Issues #945 and #946 are closable on this evidence; the PR says so rather than
+auto-closing, since merge is the maintainer's decision.
+
+
+---
+
+## 2026-08-16 — two iSDM articles (`claude/isdm-public-door-20260816`, continued)
+
+Same lane as the public-door entry above. Preflight re-run: FOREIGN LANE ACTIVE
+(cursor/codex direct-to-main) + 60 lanes live; no other lane owns
+`vignettes/articles/integrated-*`, and the design article is a new file.
+
+Shipped: `integrated-two-source-example.Rmd` brought to Tier-1 parity, and a new
+`integrated-survey-design.Rmd`. Two code fixes came out of review (below). No new
+export; NAMESPACE unchanged.
+
+Commands run, with exact outcomes:
+
+- `devtools::test(filter = "isdm|offset|family-within-trait|augmented-slope")`
+  — **0 failures, 0 errors**; 1 skip (`test-isdm-spatial-control-ladder.R:47`,
+  heavy, needs `GLLVMTMB_HEAVY_TESTS=1`).
+- `rmarkdown::render()` on both articles — **OK**, 13.6 s and 8.1 s.
+- `pkgdown::check_pkgdown()` — **No problems found.**
+- `R CMD check` on Totoro — see
+  `docs/dev-log/2026-08-16-totoro-check-receipt-isdm-public-door.md`.
+
+Stale-wording scans (exact patterns):
+
+- `grep -n ":::"` on both articles → none.
+- `grep -nE "\b(MIS|SPA|RE|FG|FAM|MIX|VA|ISDM|CI)-[0-9]+"` over both articles and
+  `NEWS.md` → none (no register codes on reader-facing surfaces).
+- Cross-link audit: all five inter-article links resolve to real `.Rmd` files that
+  are registered in `_pkgdown.yml`.
+- Every campaign number in the design article checked line-by-line against
+  `dev/isdm-package-recovery/2026-08-15-domain-growth-results.md` → all match; the
+  10,000–20,000-cell figure is labelled extrapolation in both.
+
+Deliberately NOT run: full `devtools::test()` locally (the Mac was loaded and other
+lanes were live; the Totoro check covers the suite). Vignettes were not rebuilt
+inside `R CMD check` (`--no-vignettes --no-build-vignettes`); both articles were
+rendered separately on the Mac instead.
+
+**Attribution work worth recording.** The Totoro check returned 1 ERROR / 46 test
+failures. Rather than assume they were inherited, the five affected files were run
+locally against both `bd2b261a` and this lane's head: **164 passing, identical, on
+both**. Cause found: those tests invoke runner scripts under `dev/`, `.Rbuildignore`
+line 21 excludes `^dev$`, and `tar tzf ... | grep -c '^gllvmTMB/dev/'` returns 0. They
+guard for Windows/devtools/Rscript but never for the scripts existing, so they cannot
+pass any tarball-based check. This is an isdm-branch blocker, filed separately, not
+fixed here.
+
+**Review findings that changed the work.** Gauss (the lens the previous entry recorded
+as a deviation) derived the contract's two coherence claims from source and found two
+inputs the predicate did not enforce — `weights`, which means a binomial trial count on
+one arm and a likelihood exponent on the other, and multi-trial survey rows, which the
+thinned-Poisson argument does not cover. Both now refused with named classes. Rose and
+Darwin returned no blockers on the articles but caught that the design article
+foregrounded `conv = 1.000` while never stating in prose that `pd_rate` tops out at
+0.555 at the largest measured design.
+
+After-task: `docs/dev-log/after-task/2026-08-16-two-articles.md`.
+Register: `ISDM-01` updated to cite the new article as evidence.
+
+
+---
+
+## 2026-08-16 — Model 2: multi-source integrated model (`claude/isdm-model2-multisource-20260816`)
+
+Lane off `codex/isdm-range-amplitude-orthogonal` @ `bdaf24d4`. Design 120 (claimed by
+committing a stub first — the planning scout said 111 was the highest number in use, the
+preflight census said 120; the census was right, 112–119 live on branches the checkout
+cannot see). Umbrella #941.
+
+Two planning probes resized the arc before any code: three all-Poisson sources fit
+TODAY unchanged (3.6 s, pd PASS, gammas recovered), and three mixed-law sources fit the
+moment the data are relabelled into the gbif/survey_pa vocabulary. So Model 2 is a
+contract generalisation, not the engine extension the steer expected. `src/` untouched.
+
+Shipped: `isdm_sources()` (new export), `.gllvmTMB_integrated_sources_contract()` (one
+generalised predicate; the legacy two-source shape translates into the same core; old
+name kept as an alias), Design 120 with the n-arm coherence derivation, NEWS + register
+row ISDM-02 (`partial`), test-isdm-multisource.R.
+
+Commands run, with exact outcomes:
+
+- Planning probes: `probe-multisource.R` (3-source all-Poisson: conv 0, pd PASS,
+  per-source effects −0.83/−0.8 etc.) and `probe-mixed-multisource.R` (honest names
+  REFUSED pre-change; relabelled FITTED — the defect in one contrast).
+- `devtools::document()` — clean; NAMESPACE gains exactly `isdm_sources`.
+- `devtools::test(filter = "isdm|offset|family-within-trait|augmented-slope")` —
+  **0 failures, 0 errors** (Model 1 suite unchanged through the rewrite).
+- `devtools::test(filter = "isdm-multisource")` — 19/19, including byte-compatibility:
+  the legacy route and the declared route give identical objective and parameters on
+  the same data.
+- Pre-run (Mac, 12 fits): 12/12 conv, 12/12 pd PASS, gamma RMSE ~0.10, median 3.6 s.
+- Campaign (Totoro, 100 cores, `R_LIBS` fix after one dead launch): **1,200/1,200 fits,
+  0 errors, 14 s wall**; conv 1199/1200; pd PASS 95%; gamma RMSE flat in n_sources,
+  doubled by a 10× effort deficit; |bias| ≤ 0.023. Results + raw CSV in
+  `dev/isdm-multisource/`.
+
+Defect found by the smoke, worth remembering: the declaration was first carried as an
+attribute on the family list, and `.align_mixed_family_list()` reorders the list by
+subsetting — subsetting drops attributes, so the predicate never saw the map. The map is
+now rebuilt from the list's names and laws inside the predicate; the attribute is
+constructor metadata only.
+
+Deliberately NOT run: full `devtools::test()` locally (the isdm/offset/family filter is
+the affected surface; the Totoro R CMD check covers the suite at the PR); no article
+(the two existing articles teach the two-source case; extending them is a maintainer
+decision recorded in the after-task, not silently skipped).
+
+After-task: `docs/dev-log/after-task/2026-08-16-model2-multisource.md`.
 ## 2026-08-12 — post-deployment exact 0.6 artifact
 
 At merged `origin/main` commit `cb3126893883ff9fb0c6114129c158fe0e649be8`,

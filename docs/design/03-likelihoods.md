@@ -470,7 +470,13 @@ verification runs):
 - Density: $y_i \sim \text{Binomial}(n_i, \mu_i)$.
 - Numerical: logit on $\mu$ is the default; probit available for
   ordinal-probit cross-family fits; cloglog for asymmetric
-  occurrence patterns.
+  occurrence patterns.  The cloglog branch evaluates its binomial density on
+  the log scale, with a dedicated AD-safe left-tail series and bounded
+  temporary branch inputs; it does not apply the generic binomial probability
+  clip to cloglog rows.  At link predictor values above 700, where
+  `exp(eta)` approaches floating-point overflow, the failure log-probability
+  is held at `-exp(700)` with zero derivative; this is a representability guard
+  rather than ordinary-range inference and is tested explicitly.
 - Comparator: `stats::glm(family = binomial())`; analytic match
   for the link-scale linear-predictor calculation.
 

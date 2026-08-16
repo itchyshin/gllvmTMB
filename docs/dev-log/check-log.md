@@ -50236,3 +50236,131 @@ passes the full predecessor projection; it does not mutate, relabel, or rerun
 V1.  Any successor requires a separate V2 design/root/receipt binding V1 as a
 forensic predecessor.  No numerical, ecological, recovery, or public claim is
 earned.
+
+
+---
+
+## 2026-08-16 — iSDM public door (`claude/isdm-public-door-20260816`)
+
+Lane branched off `codex/isdm-range-amplitude-orthogonal` @ `bd2b261a`.
+Preflight: `tools/lane_preflight.sh` → FOREIGN LANE ACTIVE (cursor/codex
+direct-to-main) + 7 live claude lanes; lane claimed was the iSDM gates, which
+no other lane owns. `lane_preflight.sh --file R/fit-multi.R` re-run
+immediately before editing (50 refs carry work on that file; all mspl lanes,
+all on different functions).
+
+The two-source integrated model is now admitted through the ordinary public
+`gllvmTMB()` call. No new export; `NAMESPACE` unchanged; no `src/`, likelihood,
+or 5×3 grammar change. Admission is structural via
+`.gllvmTMB_integrated_two_source_contract()`, which both the unexported
+developer route and a public caller pass through.
+
+Commands run, with exact outcomes:
+
+- `Rscript -e 'devtools::document(quiet = TRUE)'` — clean; wrote
+  `man/families.Rd`; `git diff --stat NAMESPACE` empty (no new export).
+  Two pre-existing `AIC/BIC.gllvmTMB_multi` @export notes in `aghq-report.R`
+  are untouched by this lane.
+- `devtools::test(filter = "isdm|offset|family-within-trait|augmented-slope")`
+  — **0 failures, 0 errors**; 1 skip
+  (`test-isdm-spatial-control-ladder.R:47`, heavy test, needs
+  `GLLVMTMB_HEAVY_TESTS=1`).
+- Public spatial two-source smoke (hand-built long table, no `:::`):
+  **`fit$opt$convergence == 0`**, 11.3 s, one-time experimental notice fired
+  once.
+- Public ≡ developer equivalence, asserted in `test-isdm-developer-fit.R`:
+  same `opt$objective` (tol 1e-6) and `opt$par` (tol 1e-4).
+- `rmarkdown::render()` on
+  `vignettes/articles/integrated-two-source-example.Rmd` — **OK, 12.4 s**,
+  652,687 bytes.
+- `pkgdown::check_pkgdown()` — **No problems found.**
+
+Stale-wording scans (exact patterns):
+
+- `grep -n ":::" vignettes/articles/integrated-two-source-example.Rmd` → none.
+- `grep -nE "\b(MIS|SPA|RE|FG|FAM|MIX|VA|ISDM)-[0-9]+"` over `NEWS.md`, the
+  article, `R/families.R`, `man/families.Rd` → none (no register codes on
+  reader-facing surfaces).
+- `git grep "fit_isdm\|gllvmTMB_isdm"` across all `codex/isdm-*` refs before
+  starting → no exported iSDM function anywhere; confirmed the lane was
+  unstarted.
+
+Deliberately NOT run: full `devtools::test()` and `R CMD check --as-cran`.
+The maintainer asked for the Mac to be kept light and other lanes were loaded;
+3-OS CI runs on the PR and a Totoro check before merge is the maintainer's
+call.
+
+An adversarial fresh-context review (Noether + Rose, Opus) of the first three
+commits found a real fence bypass: the structural predicate was global over the
+data frame, so an ordinary BETWEEN-trait mixed-family fit satisfied it and was
+handed the cloglog offset and the augmented spatial slope. Fixed in `56477e6a`
+— every trait must now carry both arms, failing closed on absent or misaligned
+trait labels. The same pass caught the article's mis-paired truth/estimate
+table (alphabetical factor levels), which was printing simulated truth against
+the wrong species columns.
+
+After-task: `docs/dev-log/after-task/2026-08-16-isdm-public-door.md`.
+Register: `ISDM-01` (`partial`) — a new prefix, because MIS-37 is already
+claimed on `claude/predict-missing-se-20260815`.
+Issues #945 and #946 are closable on this evidence; the PR says so rather than
+auto-closing, since merge is the maintainer's decision.
+
+
+---
+
+## 2026-08-16 — two iSDM articles (`claude/isdm-public-door-20260816`, continued)
+
+Same lane as the public-door entry above. Preflight re-run: FOREIGN LANE ACTIVE
+(cursor/codex direct-to-main) + 60 lanes live; no other lane owns
+`vignettes/articles/integrated-*`, and the design article is a new file.
+
+Shipped: `integrated-two-source-example.Rmd` brought to Tier-1 parity, and a new
+`integrated-survey-design.Rmd`. Two code fixes came out of review (below). No new
+export; NAMESPACE unchanged.
+
+Commands run, with exact outcomes:
+
+- `devtools::test(filter = "isdm|offset|family-within-trait|augmented-slope")`
+  — **0 failures, 0 errors**; 1 skip (`test-isdm-spatial-control-ladder.R:47`,
+  heavy, needs `GLLVMTMB_HEAVY_TESTS=1`).
+- `rmarkdown::render()` on both articles — **OK**, 13.6 s and 8.1 s.
+- `pkgdown::check_pkgdown()` — **No problems found.**
+- `R CMD check` on Totoro — see
+  `docs/dev-log/2026-08-16-totoro-check-receipt-isdm-public-door.md`.
+
+Stale-wording scans (exact patterns):
+
+- `grep -n ":::"` on both articles → none.
+- `grep -nE "\b(MIS|SPA|RE|FG|FAM|MIX|VA|ISDM|CI)-[0-9]+"` over both articles and
+  `NEWS.md` → none (no register codes on reader-facing surfaces).
+- Cross-link audit: all five inter-article links resolve to real `.Rmd` files that
+  are registered in `_pkgdown.yml`.
+- Every campaign number in the design article checked line-by-line against
+  `dev/isdm-package-recovery/2026-08-15-domain-growth-results.md` → all match; the
+  10,000–20,000-cell figure is labelled extrapolation in both.
+
+Deliberately NOT run: full `devtools::test()` locally (the Mac was loaded and other
+lanes were live; the Totoro check covers the suite). Vignettes were not rebuilt
+inside `R CMD check` (`--no-vignettes --no-build-vignettes`); both articles were
+rendered separately on the Mac instead.
+
+**Attribution work worth recording.** The Totoro check returned 1 ERROR / 46 test
+failures. Rather than assume they were inherited, the five affected files were run
+locally against both `bd2b261a` and this lane's head: **164 passing, identical, on
+both**. Cause found: those tests invoke runner scripts under `dev/`, `.Rbuildignore`
+line 21 excludes `^dev$`, and `tar tzf ... | grep -c '^gllvmTMB/dev/'` returns 0. They
+guard for Windows/devtools/Rscript but never for the scripts existing, so they cannot
+pass any tarball-based check. This is an isdm-branch blocker, filed separately, not
+fixed here.
+
+**Review findings that changed the work.** Gauss (the lens the previous entry recorded
+as a deviation) derived the contract's two coherence claims from source and found two
+inputs the predicate did not enforce — `weights`, which means a binomial trial count on
+one arm and a likelihood exponent on the other, and multi-trial survey rows, which the
+thinned-Poisson argument does not cover. Both now refused with named classes. Rose and
+Darwin returned no blockers on the articles but caught that the design article
+foregrounded `conv = 1.000` while never stating in prose that `pd_rate` tops out at
+0.555 at the largest measured design.
+
+After-task: `docs/dev-log/after-task/2026-08-16-two-articles.md`.
+Register: `ISDM-01` updated to cite the new article as evidence.

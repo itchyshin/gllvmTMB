@@ -2694,3 +2694,34 @@ estimated anisotropy matrix `H`. Consequently, `plot_anisotropy()` and
 the likelihood estimates the necessary directional structure. See
 `docs/dev-log/research/2026-08-01-independent-spatial-helper-literature.md` and
 `docs/dev-log/plan-actual/2026-08-01-independent-spatial-helpers.md`.
+
+## 2026-08-16 -- The integrated worked example keeps its non-positive-definite fit
+
+Maintainer decision (Shinichi, 2026-08-16): *"keep the WARN fit - it's honest."*
+
+`vignettes/articles/integrated-two-source-example.Rmd` fits the two-source
+integrated model on 108 cells and `check_gllvmTMB()` reports
+`pd_hessian = WARN` -- the optimizer reaches a stationary point whose Hessian
+is not positive-definite. The article runs that check, shows the WARN, and
+explains it rather than omitting the diagnostic it tells readers to run.
+
+**Do not "fix" this by changing the model, the design size, or the seed.** The
+warning is the honest state of a small illustrative fit, and it carries real
+teaching load:
+
+- It is localised by measurement, not hand-waved. Refitting the same data with
+  the spatial terms replaced by an ordinary non-spatial `latent()` block
+  returns `pd_hessian = PASS`. The integrated likelihood is not the
+  difficulty; the spatial fields at this design size are.
+- That is the same conclusion the domain-growth campaign reaches from 1,600
+  fits, and it is why `vignettes/articles/integrated-survey-design.Rmd`
+  exists. The two articles are complementary because of this warning, not in
+  spite of it.
+- Making the example pass would require either dropping the augmented
+  `spatial_latent(1 + isdm_gbif | ...)` slope -- which is precisely the route
+  the public admission opened, so nothing public would exercise it -- or
+  growing the design past what an article can render. Neither trade is worth
+  a cleaner-looking fit.
+
+The register row `ISDM-01` stays `partial` for the same reason: the spatial
+arm's evidence is campaign experience, not a cleared recovery gate.

@@ -70,7 +70,13 @@ test_that("private spatial admission requires the namespace token", {
   expect_false(.augmented_slope_family_allowed(1L, 2L))
 })
 
-test_that("a manually marked public entry still fails the PA-cloglog slope gate", {
+## Behaviour CHANGE, deliberate. The predecessor of this test asserted that an
+## outsider who forged the internal attributes was still refused. That premise
+## is obsolete: admission is now structural, so forging an attribute buys
+## nothing, and an outsider who meets the exact two-source contract is a
+## legitimate public caller. What must NOT change is the narrowness -- pinned
+## by the two negative tests below and by the token test above.
+test_that("a public entry meeting the two-source contract clears the slope gate", {
   data <- data.frame(
     value = c(1, 1), trait = factor("sp1"), cell_id = factor(c("c1", "c2")),
     source = c("gbif", "survey"), isdm_gbif = c(1L, 0L),
@@ -79,20 +85,80 @@ test_that("a manually marked public entry still fails the PA-cloglog slope gate"
   )
   family <- list(gbif = stats::poisson(), survey_pa = stats::binomial(link = "cloglog"))
   attr(family, "family_var") <- "isdm_family"
-  attr(family, "gllvmTMB_internal_isdm") <- TRUE
-  attr(family, "gllvmTMB_internal_isdm_spatial_token") <-
-    new.env(parent = emptyenv())
+  ## NO internal marker and NO token: an ordinary public caller.
 
-  expect_error(
-    gllvmTMB(
+  err <- tryCatch({
+    suppressMessages(gllvmTMB(
       value ~ 0 + trait + offset(log_support) +
         spatial_latent(1 + isdm_gbif | cell_id, d = 1),
       data = data, trait = "trait", unit = "cell_id", family = family,
       mesh = list(A_st = Matrix::Matrix(0, nrow = 2L, ncol = 1L, sparse = TRUE)),
       silent = TRUE
+    ))
+    ""
+  }, error = function(e) conditionMessage(e))
+
+  ## This two-row toy cannot actually fit; the assertion is only that it is no
+  ## longer stopped BY THE SLOPE GATE, which is the fence this lane opened.
+  expect_false(grepl("random slopes are not admitted", err))
+})
+
+test_that("the augmented-slope gate still refuses an unadmitted family/link", {
+  ## binomial-cloglog alone is NOT the two-source contract (one source, one
+  ## family), so no structural admission applies, and link_2 is FALSE for every
+  ## family in the augmented-slope contract. The gate must still fire.
+  data <- data.frame(
+    value = c(1, 0, 1, 0),
+    trait = factor(c("sp1", "sp1", "sp2", "sp2")),
+    cell_id = factor(c("c1", "c2", "c1", "c2")),
+    z = c(1L, 0L, 1L, 0L)
+  )
+  expect_error(
+    gllvmTMB(
+      value ~ 0 + trait + spatial_latent(1 + z | cell_id, d = 1),
+      data = data, trait = "trait", unit = "cell_id",
+      family = stats::binomial(link = "cloglog"),
+      mesh = list(A_st = Matrix::Matrix(0, nrow = 4L, ncol = 2L, sparse = TRUE)),
+      silent = TRUE
     ),
     "random slopes are not admitted"
   )
+})
+
+test_that("the two-source contract predicate is exact", {
+  d <- data.frame(source = c("gbif", "survey"),
+                  isdm_family = c("gbif", "survey_pa"),
+                  stringsAsFactors = FALSE)
+  tl <- factor(c("sp1", "sp1"))
+  fam_ok <- local({
+    f <- list(gbif = stats::poisson(), survey_pa = stats::binomial(link = "cloglog"))
+    attr(f, "family_var") <- "isdm_family"
+    f
+  })
+  expect_true(.gllvmTMB_integrated_two_source_contract(
+    fam_ok, d, c(2L, 1L), c(0L, 2L), trait_labels = tl))
+
+  ## logit instead of cloglog on the survey arm -> NOT the contract
+  expect_false(.gllvmTMB_integrated_two_source_contract(
+    fam_ok, d, c(2L, 1L), c(0L, 1L), trait_labels = tl))
+  ## only one source present -> NOT the contract
+  one <- data.frame(source = c("gbif", "gbif"),
+                    isdm_family = c("gbif", "gbif"), stringsAsFactors = FALSE)
+  expect_false(.gllvmTMB_integrated_two_source_contract(
+    fam_ok, one, c(2L, 2L), c(0L, 0L), trait_labels = tl))
+  ## wrong family_var attribute -> NOT the contract
+  fam_bad <- fam_ok
+  attr(fam_bad, "family_var") <- "family"
+  expect_false(.gllvmTMB_integrated_two_source_contract(
+    fam_bad, d, c(2L, 1L), c(0L, 2L), trait_labels = tl))
+  ## an ordinary single family object -> NOT the contract
+  expect_false(.gllvmTMB_integrated_two_source_contract(
+    stats::poisson(), d, c(2L, 1L), c(0L, 2L), trait_labels = tl))
+  ## trait labels absent or misaligned -> fail closed, never silently admit
+  expect_false(.gllvmTMB_integrated_two_source_contract(
+    fam_ok, d, c(2L, 1L), c(0L, 2L), trait_labels = NULL))
+  expect_false(.gllvmTMB_integrated_two_source_contract(
+    fam_ok, d, c(2L, 1L), c(0L, 2L), trait_labels = factor("sp1")))
 })
 
 test_that("spatial mesh receipt has one projection row per prepared observation", {

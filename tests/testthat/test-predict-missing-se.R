@@ -599,3 +599,14 @@ test_that("joint_load aligns the loading block at rank >= 2 (wave-1c regression)
   expect_true(all(pm$se_confidence > 0))
   expect_true(all(pm$se_prediction > pm$se_confidence))
 })
+
+## REMOVED (2026-08-16): a "joint_load >= joint elementwise" monotonicity
+## test was added here and is FALSE as mathematics. Extending w in
+## w' Q^{-1} w is not the same as adding a separate positive-definite form:
+## the cross-covariances can be negative, and here they SHOULD be --
+## lambda_hat and u_hat are negatively correlated because only their
+## product is identified (the factor-model scale trade-off). A correctly
+## specified three-block variance can therefore be SMALLER than the
+## two-block one, which is exactly what rank-2 fits show. The empirical
+## position-mapping check (Lambda_B cells vs theta_rr_B entries, 0
+## mismatches at rank 2) is the real guard and lives above.

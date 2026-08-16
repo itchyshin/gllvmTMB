@@ -175,6 +175,57 @@ gate is the wave-1c measurement, not a prediction.
 re-running either at higher precision. Both routes are measured; the gap is
 a named missing term, and the fix is to include it.
 
+### 7c. Wave-1c — R1-joint+loadings (the three-block route)
+
+`se_route = "joint_load"` adds the third block `d eta / d lambda_{t,k} =
+u_{i,k}`. Same grid, 1,600/1,600 fits.
+
+| mechanism | conf 90% | conf 95% | pred 90% | pred 95% |
+|---|---|---|---|---|
+| mcar05 | 0.886 | 0.936 | **0.899** | 0.942 |
+| mcar20 | 0.883 | 0.935 | 0.890 | 0.936 |
+| trait_clustered | 0.889 | 0.939 | 0.890 | 0.939 |
+| unit_clustered | 0.887 | 0.939 | 0.891 | 0.938 |
+
+**It is the best-calibrated route measured, and still fails the gate**:
+confidence 95% moves 0.929 → 0.937 (deficit halved, 1.9 → 1.2 points), but
+every cell but one remains outside 2×MCSE. Status stays
+`heuristic_unvalidated`.
+
+**Two corrections to §7b, both worth keeping:**
+
+1. **A first run of this wave aborted 1,600/1,600 fits** on a guard that
+   computed the packing's free-entry count as `p*d - d*(d-1) %/% 2`. R's
+   `%/%` binds tighter than `*`, so the subtraction was 0 at d = 2: the
+   guard demanded 50 entries where the packing supplies 49. Invisible at
+   rank 1, where both spellings agree — and the campaign runs at rank 2.
+   Fixed; a rank-2 regression fixture now covers the route end-to-end.
+   The failure was loud and failure-inclusive (error text on every row,
+   no silent NA), which is why it cost minutes rather than a wave.
+2. **§7b's prediction that the third block would make the variance
+   strictly larger was WRONG, and so was a "monotonicity" test written to
+   enforce it.** Extending `w` in `w' Q^{-1} w` is not adding a separate
+   positive-definite form: the cross-covariances enter, and here they are
+   negative — `lambda_hat` and `u_hat` are negatively correlated because
+   only their product is identified (the factor-model scale trade-off). A
+   correctly specified three-block variance can therefore be *smaller*
+   than the two-block one, and at rank 2 it is (mean SE 0.251 → 0.223).
+   It nonetheless covers BETTER, which is the signature of a variance that
+   is right per cell rather than merely large on average. The test was
+   removed; the empirical position-mapping check (0 mismatches at rank 2,
+   `rownames(Q)` identical to `names(last.par.best)`) is the real guard.
+
+**Where the residual now sits.** Error-to-SE ratios (`rmse_eta /
+mean_se_conf`, converged fits): quad **0.821** (22% too wide → over-covers),
+joint **1.026**, joint_load **1.103**. All three gradient blocks are now
+present, so the ~1.2-point shortfall is NOT another missing derivative. The
+two live candidates are (a) the plug-in/Laplace understatement of the
+conditional variance when hyperparameters are estimated (no Kass–Steffey
+style second-order term), and (b) normal quantiles where the finite-sample
+predictive distribution has heavier tails. Both are structural limits of a
+delta-method route, which is why the next step is **R2 (simulation-based)
+or R3 (parametric bootstrap)** from §3 — not a fourth delta variant.
+
 ## 6. Decision needed from the maintainer
 
 - Approve the estimand split (confidence-for-mean vs prediction-for-value

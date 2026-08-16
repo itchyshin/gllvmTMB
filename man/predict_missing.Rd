@@ -13,6 +13,7 @@ predict_missing(
   sim_seed = NULL,
   n_boot = 200L,
   boot_seed = NULL,
+  boot_dgp = c("ml", "reml"),
   ...
 )
 }
@@ -51,6 +52,9 @@ Default \code{200}.}
 the fitted parameter vector (same convention as \code{sim_seed}); the
 caller's global RNG state is always saved and restored. Ignored for
 every other route.}
+
+\item{boot_dgp}{EXPERIMENTAL, internal-only. One of \code{"ml"} (default) or
+\code{"reml"} -- see Details. Ignored unless \code{se_route = "boot"}.}
 
 \item{...}{Unused.}
 }
@@ -127,10 +131,25 @@ scope guard). A refit that errors or fails to converge is dropped from
 the pivot sample and counted in \code{n_boot_ok}; if fewer than half the
 refits survive, \code{se_confidence}/\code{se_prediction}/the quantile columns are
 \code{NA} for that fit (with a warning) rather than reporting an interval
-built from a thin sample. Do not surface \code{se_confidence} /
-\code{se_prediction} / the quantile columns as calibrated uncertainty in any
-user-facing output until the Design 119 sec.4 coverage campaign clears a
-route and family for export.
+built from a thin sample.
+
+\code{boot_dgp} (sec.7e, following the wave-3 coverage diagnosis that \code{"boot"}
+with \code{boot_dgp = "ml"} under-covers at the same level as \code{"joint_load"})
+controls what parameters generate the \code{n_boot} complete-data worlds.
+\code{"ml"} (default, byte-identical to the pre-sec.7e route) simulates from
+the SAME ML fit being intervalised -- so at small n its known downward
+variance/loading bias is "re-imported" into the bootstrap world, making
+the pivots systematically narrow. \code{"reml"} fits ONE auxiliary REML model
+on the same (masked) data/formula first and simulates from ITS
+parameters instead -- REML's own known bias direction (larger, less
+biased at small n, converging to ML as n grows) targets exactly that
+gap. The quantity being pivoted (the point estimate the interval is
+centred on, and every inner refit) stays ML either way; only the
+generative world changes. Ignored unless \code{se_route = "boot"}.
+
+Do not surface \code{se_confidence} / \code{se_prediction} / the quantile columns
+as calibrated uncertainty in any user-facing output until the Design 119
+sec.4 coverage campaign clears a route and family for export.
 }
 \seealso{
 \code{\link[=gllvmTMB]{gllvmTMB()}}, \code{\link[=miss_control]{miss_control()}}, \code{\link[=predict.gllvmTMB_multi]{predict.gllvmTMB_multi()}}.

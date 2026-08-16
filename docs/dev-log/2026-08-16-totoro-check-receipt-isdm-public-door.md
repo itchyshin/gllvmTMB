@@ -31,13 +31,39 @@ Status: 1 ERROR, 2 WARNINGs
 [ FAIL 46 | WARN 33 | SKIP 1406 | PASS 6731 ]
 ```
 
-### The ERROR: 46 failures, all from tests that invoke `dev/` scripts the tarball does not contain
+### Confirmation run on the final tree — identical
 
-Failing files: `test-g2d-six-species-harness.R`, `test-g2e-information-diagnostic.R`,
-`test-g2f-pa-replication.R`, `test-g2n-local-prerun.R`, `test-bfgs-smoke-contract.R`.
-**None is a file this lane touched.**
+The check was run twice: once on the public-door core (11:18:35Z → 11:31:08Z, 12 m 33 s) and
+again on the completed lane including the Gauss fixes and both articles (11:35:00Z → 11:47:11Z,
+12 m 11 s). Both returned `1 ERROR, 2 WARNINGs`.
 
-Mechanism, confirmed rather than inferred:
+| | run 1 (public-door core) | run 2 (final tree) |
+|---|---|---|
+| FAIL | 46 | **46** |
+| PASS | 6731 | **6733** |
+| failing files | 10 | **the same 10** |
+| per-file counts | 4/9/10/12/3/1/1/1/1/4 | **identical** |
+
+**The lane adds two passing tests and zero failures.** That is the question run 2 existed to
+answer, and it answers it.
+
+### The ERROR: 46 failures, all from tests referencing files the built package does not contain
+
+Failing files, with counts (identical in both runs):
+`test-g2f-pa-replication.R` (12), `test-g2e-information-diagnostic.R` (10),
+`test-g2d-six-species-harness.R` (9), `test-bfgs-smoke-contract.R` (4),
+`test-spatial-isdm-gate-b2-receipt-contract.R` (4), `test-g2n-local-prerun.R` (3),
+`test-g3-full-vector-polish-contract.R` (1), `test-g3-smallest-smoke-packets.R` (1),
+`test-isdm-developer-fit.R` (1), `test-paper1-spde-slope-gauge-trust-region-compiled.R` (1).
+
+**Two of these are files this lane edited** — `test-isdm-developer-fit.R` and
+`test-spatial-isdm-gate-b2-receipt-contract.R` — so "not mine" is asserted only because both
+runs show *identical* per-file counts, and run 1 predates every edit to them.
+
+There are **two** sources, not one, both the same class — *a test referencing a file the built
+package does not contain*:
+
+**(a) `dev/` runner scripts.** Mechanism, confirmed rather than inferred:
 
 - `.Rbuildignore:21` contains `^dev$`.
 - `tar tzf gllvmTMB_0.6.0.tar.gz | grep -c '^gllvmTMB/dev/'` → **0**.
@@ -49,8 +75,20 @@ Mechanism, confirmed rather than inferred:
   (`test-bfgs-smoke-contract.R:174,554,556`) but **never for the existence of the scripts they
   invoke**.
 
+**(b) `src/` headers, in the two compiled-fixture tests.**
+`test-isdm-developer-fit.R:355` ("compiled cloglog objective … stay finite in both tails") fails
+with `subscript out of bounds` on
+`header_candidates[file.exists(header_candidates)][[1L]]` — every candidate path is absent, so
+the subset is empty and `[[1L]]` errors. It compiles a fixture against the production header
+`src/gllvmTMB_cloglog.h`, which is not where it expects post-install.
+`test-paper1-spde-slope-gauge-trust-region-compiled.R:17` fails the same way via
+`source(file.path(root, name))` → *"cannot open the connection"*.
+
 So these tests pass in a source tree (`devtools::test()`, `load_all()`) and **cannot pass any
-tarball-based check**, on any platform, with or without this lane's changes.
+tarball-based check**, on any platform, with or without this lane's changes. Note the
+consequence for the cloglog tail guard specifically: its dedicated numerical test is one of the
+ones that silently does not run under `R CMD check`, so that guard is verified locally and
+**not** by a checked build.
 
 **Attribution, measured.** The same five files were run locally on macOS against both the base
 commit `bd2b261a` and this lane's head: **164 passing, 0 failures, identical on both.** The

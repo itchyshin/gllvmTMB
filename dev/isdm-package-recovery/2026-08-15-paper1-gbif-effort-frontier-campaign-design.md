@@ -300,3 +300,87 @@ s=1 cells must reproduce the A1 anchor (E=1, E=2) within 3 MCSE.
 **A2 pre-run (fit-cost scaling gate).**  Two fits per level at E=1 on Totoro,
 timed; the campaign estimate and per-level chunking are set from those
 timings before launch.  Declared wall budget: 45 min, kill at 2x.
+
+---
+
+## Amendment A3 (2026-08-15, post-A2): the crossing campaign
+
+**Status: DESIGN.  This amendment authorises the PRE-RUN only; the full
+campaign launches after the pre-run's scaling gate is shown and approved
+(D-139 -- this one is a genuinely long run, unlike A0-A2).**
+
+**Trigger.**  A2 measured monotone improvement with domain growth but did not
+cross the amplitude frontier by 2,250 cells; the crossing was EXTRAPOLATED to
+~10-20k cells.  A3 measures it.  The last doubling moved the E=2 median
+relative amplitude error 0.98 -> 0.63; if that rate holds, crossing 0.25
+lands near 9-11k cells, so the ladder must straddle 10k.
+
+**A3-D.**  Identical DGP machinery to A2 (sealed skeleton recipe scaled,
+`make_mesh(cutoff = 0.085)`, fields per replicate, discrete-anchored
+normalisation to the SAME anchor target 0.926998, seeds
+base = 20260818 + 100000*s_index + 10000*E_index + rep).  Levels:
+
+| s | cells | est. nodes | est. fit time (0.045 s/cell) |
+| --- | --- | --- | --- |
+| 2.5 (chain anchor) | 2,250 | 681 | ~100 s |
+| 3 | 3,240 | ~980 | ~146 s |
+| 4 | 5,760 | ~1,740 | ~259 s |
+| 5.5 | 10,890 | ~3,300 | ~490 s |
+| 7.5 | 20,250 | ~6,100 | ~911 s |
+
+**A3 factors and seed allocation (cost-weighted; MCSE stated per cell).**
+E = 2 is primary (the crossing is in reach); E = 1 secondary (its crossing may
+lie beyond the ladder; measuring the curve's slope is still design guidance).
+
+| cell | n_sim | core-h | purpose |
+| --- | --- | --- | --- |
+| s=2.5, E in {1,2} | 50 + 50 | ~3 | chain anchor vs A2 (3-MCSE rule) |
+| s=3, E=2 / E=1 | 200 / 200 | 8.1 / 8.1 | full precision below the bracket |
+| s=4, E=2 / E=1 | 200 / 100 | 14.4 / 7.2 | |
+| s=5.5, E=2 / E=1 | 120 / 60 | 16.3 / 8.2 | straddles the extrapolated crossing |
+| s=7.5, E=2 / E=1 | 100 / 60 | 25.3 / 15.2 | confirms from below |
+
+Total ~1,340 fits, **~106 core-h**; wall estimate **~2 h** with the
+memory-capped worker schedule below.  Reduced n_sim at the top keeps the
+median-crossing MCSE adequate (the isotonic crossing estimator pools levels;
+a proportion at n = 100 carries MCSE <= 5%), and the asymmetry is declared
+here, not improvised later.
+
+**A3 logistics (the new constraints are memory and the builder).**
+- Bundles built LOCALLY through the A2 builder (anchor gate re-run each
+  build); the top template build is itself ~10-30 min and its `chol_q` is a
+  dense ~6,100^2 matrix (~300 MB) -- bundles ship at ~450 MB total.  A_cells
+  must be stored SPARSE at these sizes (an A2 implementation detail that must
+  change: `as.matrix(A_cells)` would be ~1 GB dense at s=7.5).
+- Worker concurrency capped by RSS, not cores: s <= 4: 100 workers; s = 5.5:
+  60; s = 7.5: 40 (per-worker RSS budget 4 GB; D-143's 150-core cap
+  respected with margin on the shared box).  Levels launch cheap-first so
+  early kill rules act before the expensive levels spend.
+- Random-effect count at s=7.5 is ~73k (s_B 3x20,250 + fields 2x6,100); the
+  0.045 s/cell scaling is EXTRAPOLATED two octaves -- exactly what the
+  pre-run gate exists to check.
+
+**A3 pre-run gate (needs approval to run; ~25 min wall).**  Two fits per new
+level at E=2, launched together: (i) all rows finite and complete; (ii) fit
+time within **1.5x** the linear prediction at every level -- super-linear
+scaling is a REDESIGN signal, not a tax; (iii) per-worker peak RSS <= 4 GB;
+(iv) builder gates (anchor rebuild, row-map, normalisation) green at every
+level.  The full campaign launches only after these numbers are posted and
+approved.
+
+**A3 kill rules.**  Wall > 2x estimate at any checkpoint; > 5% errors in the
+first completed cell; chain-anchor (s=2.5) drift from A2 beyond 3 MCSE;
+any bundle MD5 drift.  A kill closes the campaign with whatever levels
+completed -- partial evidence is reported as partial, never topped up
+silently.
+
+**A3-E/P.**  As A2, plus the predeclared crossing estimands:
+N*_rec(E) = cells at which the isotonic median relative amplitude error
+crosses 0.25 (log-linear interpolation, 1,000-rep bootstrap CI), and
+N*_pd(E=1) = cells at which pd crosses 0.5 (E=2 crossed it inside A2's span).
+Figure P1-F5 extends P1-F4 with the A3 levels and the crossing bands.
+
+**A3 boundaries.**  One truth configuration; b's unit period repeats ~7.5
+times at the top level (stated design feature); no claim beyond the design
+family; the empirical-scale consistency statement stays extrapolative for
+grids larger than 20,250 cells.

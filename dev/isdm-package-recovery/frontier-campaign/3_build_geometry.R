@@ -107,7 +107,7 @@ for (s in scales) {
     schema = "PAPER1_DOMAIN_GROWTH_A2_BUNDLE_V1", scale = s,
     n_cell = sk$n_cell, n_nodes = nrow(M0s),
     data = tfit$tmb_data, parameters = tfit$tmb_params, map = tfit$tmb_map,
-    random = tfit$random, chol_q = chol_s, A_cells = as.matrix(A_cells),
+    random = tfit$random, chol_q = chol_s, A_cells = A_cells,  # keep SPARSE (A3: ~1 GB dense at s=7.5)
     c_use = c_use, constants = K, x_cell = sk$x, b_cell = sk$b,
     cellIx = sk$cellIx, spIx = sk$spIx,
     gbif = sk$rows$source == "gbif", support = sk$rows$support,

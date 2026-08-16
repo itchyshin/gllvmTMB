@@ -3,6 +3,14 @@
 This coordination note prevents a new session from treating this repository as
 a single writable lane.  It is a map, not a release/capability claim.
 
+**Refresh 2026-08-15 #8 (Cursor): MSPL items 1–3 KEEP PLANNED.**
+Conductor sitting. Poisson admit **KEEP PLANNED** (smoke operational
+PASS / admit FAIL). #988 no-SE-campaign receipt **MERGED**.
+#989 SE-CI honesty and #990 Poisson point smoke opened; merge only
+if CI-green and no admit. **Do not merge #972–#976.**
+**PROTECTED:** `codex/lane-b-mspl-interval-feasibility`.
+**START HERE:** `2026-08-15-cursor-handover-mspl-1-3.md`.
+
 **Refresh 2026-08-15 #7 (Cursor): LA-MSPL SE pin MERGED.**
 Lane **`cursor/mspl-se-feasibility-pin`** · [#979](https://github.com/itchyshin/gllvmTMB/pull/979)
 squash-merged `10d6a209`. Internal both-Hessian pin on `main`.
@@ -76,6 +84,7 @@ missing-data ledger remains open and separately owned unless reassigned.
 
 | Lane | Owner | State | Start here | Boundary |
 | --- | --- | --- | --- | --- |
+| **LA-MSPL items 1–3 (smoke / SE-CI / receipts)** | Cursor | **KEEP PLANNED.** #988 MERGED. #989 + #990 open. Do not merge #972–#976. Do not admit | `2026-08-15-cursor-handover-mspl-1-3.md` | No admit; no NEWS covered; no Totoro SE campaign; Binary SE **PROTECTED** |
 | **LA-MSPL SE feasibility pin** | Cursor | **CLOSED + MERGED** [#979](https://github.com/itchyshin/gllvmTMB/pull/979) `10d6a209`. Internal \(Q_P\)+\(Q_0\) pin; public SE withheld; Poisson `planned`. Do not reopen. Do not merge #972–#976 | `2026-08-16-cursor-handover-se-pin.md`; LOOP `docs/dev-log/lanes/cursor-mspl-se-feasibility-pin/LOOP/` | Historical; no admit; no NEWS covered; no Codex absorb; no public `vcov()`; Binary SE **PROTECTED** |
 | **LA-MSPL Phase-4 tapes** | Cursor | **GOAL LANDED** [#978](https://github.com/itchyshin/gllvmTMB/pull/978) (not admitted; CI re-running after provenance/NB1 fix). Five C++ tapes; public `mspl` = gaussian + bernoulli + Poisson. Do not merge #972–#976 from this lane | `2026-08-15-cursor-handover-phase4-tapes.md`; LOOP `docs/dev-log/lanes/cursor-mspl-phase4-tapes-planned/LOOP/` | Historical successor is the SE-pin lane; Poisson planned only; no NEWS covered; no public `mspl` on NB1/NB2/beta/Tweedie |
 | **LA-MSPL point-continue** | Cursor | **CLOSED** — GOAL A+B+C MERGED [#971](https://github.com/itchyshin/gllvmTMB/pull/971) `cb126576`. Do not reopen | `2026-08-15-cursor-handover.md` (historical); LOOP `docs/dev-log/lanes/cursor-mspl-point-continue/LOOP/` | Historical; successor is Phase-4 tapes |

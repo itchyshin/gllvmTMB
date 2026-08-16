@@ -1,11 +1,28 @@
 ---
 title: "Integrating opportunistic records with a repeated survey: a small worked example"
-output: html_document
+description: "Fit a presence-only portal stream and a repeated presence/absence survey in one likelihood through the ordinary gllvmTMB() call, and read what the shared spatial gradient and the portal-only bias term do and do not tell you."
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{Integrating opportunistic records with a repeated survey: a small worked example}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 6.5,
+  fig.height = 5,
+  fig.align = "center",
+  message = FALSE,
+  warning = FALSE
+)
 library(gllvmTMB)
+library(ggplot2)
 set.seed(20260815)
 ```
 
@@ -48,6 +65,13 @@ $$
 
 Everything is **relative intensity**: no absolute abundance, occupancy, or
 detectability claim is available from this design.
+
+This is the intrinsic shape of the problem, not a stylistic choice: the
+per-row family selector below needs several observation rows per (cell,
+species) that carry *different* response families, which is exactly what the
+long-format grammar represents and the wide `traits()` grammar cannot -- a
+wide row is one (cell, species) cell with one family. There is no wide
+version of this example to show alongside it.
 
 # Simulate a small two-source data set
 
@@ -106,6 +130,21 @@ rows <- rbind(gbif, pa)
 table(rows$source)
 ```
 
+The shared gradient `u` is what both sources are supposed to see in common.
+Mapping it over the grid before fitting anything gives a visual reference
+for the "do the two sources agree?" question the rest of the article works
+toward:
+
+```{r u-map, fig.cap = "The simulated shared spatial gradient u across the 108-cell grid. Both the portal stream and the survey observe species intensities driven partly by this common field; neither source sees u directly."}
+ggplot(grid, aes(lon, lat, fill = u)) +
+  geom_raster() +
+  scale_fill_gradient2(low = "#8c4d8f", mid = "white", high = "#0a617d") +
+  coord_fixed() +
+  labs(x = "Longitude (arbitrary units)", y = "Latitude (arbitrary units)",
+       fill = "u") +
+  theme_minimal()
+```
+
 # Assemble the long table
 
 `gllvmTMB()` works on long data: one row per (cell, species, source). Three
@@ -148,6 +187,20 @@ observation is consistent with the same underlying intensity that generates
 the counts -- and because Poisson and Bernoulli carry no dispersion parameter,
 so nothing per-species becomes ambiguous.
 
+**The contract is exact, not approximate.** Mixing families within a trait is
+admitted only for `family = list(gbif = poisson(), survey_pa =
+binomial(link = "cloglog"))` (Poisson-log paired with binomial-cloglog),
+together with a `family_var` attribute naming the per-row selector column and
+a matching factor column in the data. Anything short of that -- a missing or
+misnamed `family_var` attribute, a `source` present without its matching
+`isdm_family` levels, or only one of the two sources actually present in the
+data -- falls back to the ordinary one-family-per-trait rule and errors
+there, because from the fitter's point of view it no longer looks like an
+integrated fit at all. Swapping the survey link for logit or probit is
+refused outright: those links do not share the intensity that generates the
+portal counts, so the two branches would no longer describe the same
+$\eta_{cs}$.
+
 # Fit the integrated model
 
 The two sources enter one likelihood: shared fixed effects and shared latent
@@ -169,8 +222,60 @@ fit <- gllvmTMB(
   mesh   = mesh,
   silent = TRUE
 )
+```
+
+The mesh triangulates the 108 cells for both the shared and the portal-only
+spatial fields:
+
+```{r plot-mesh, fig.cap = "Triangular SPDE mesh built from the 108 grid cells. The mesh carries both the shared spatial field u and the portal-only recording field at its vertices; the observation-to-mesh projection maps each back to the cell rows fitted above."}
+plot(mesh)
+```
+
+# Did the fit converge, and can you trust its curvature?
+
+```{r convergence}
 fit$opt$convergence
 ```
+
+`0` is the optimizer's own signal that it stopped at a point it judges
+stationary -- not proof that the point is a good estimate, and not a
+substitute for checking curvature. `check_gllvmTMB()` runs that second,
+independent check: it reports whether the Hessian at the optimum is
+positive-definite, which is what actually licenses Wald-type standard
+errors.
+
+```{r health}
+health <- check_gllvmTMB(fit)
+health[
+  health$component %in% c("optimizer_convergence", "pd_hessian"),
+  c("component", "status", "value")
+]
+```
+
+`optimizer_convergence` reads `PASS`: the optimizer itself is content. But
+`pd_hessian` reads `WARN` -- the Hessian at this optimum is *not*
+positive-definite. That combination (stationary point, non-PD curvature) is
+consistent with the first caution below: source-specific spatial structure
+is only weakly identified at this design size, and a weakly identified
+spatial covariance is exactly the kind of thing that leaves the Hessian
+non-PD even while the optimizer is satisfied.
+
+It is worth being precise about *which* part of the model is responsible,
+because it is not the integration. Refitting these same data with the
+spatial terms replaced by an ordinary non-spatial `latent()` block -- same
+two sources, same shared predictor, same portal-bias coefficient -- returns
+`pd_hessian = PASS`. The integrated likelihood is not the difficulty; the
+*spatial fields* are, at 108 cells. That is the same conclusion the design
+article reaches from a much larger set of fits, and it is why the companion
+[How much survey do you need?](integrated-survey-design.html) exists.
+
+Read this as the honest state of a small illustrative fit, not as a bug --
+but do not trust Wald-type standard errors from this particular fit, and do
+not skip this check on your own data because a real analysis is unlikely to
+be this forgiving. See
+[Convergence and start values](convergence-start-values.html) for the fuller
+triage (more starts, rescaling, a simpler covariance) when `pd_hessian`
+warns on a fit you intend to use.
 
 # What did the two sources agree on?
 
@@ -190,13 +295,52 @@ colnames(tab) <- levels(dat$trait)
 round(tab, 2)
 ```
 
+```{r gamma-plot, fig.width = 5.2, fig.height = 5.2, fig.cap = "True versus fitted portal accessibility-bias coefficients gamma, one point per species. The line marks exact recovery; distance from it is recovery error at this design size."}
+gamma_df <- data.frame(
+  species  = levels(dat$trait),
+  truth    = gamma_ordered,
+  estimate = unname(fit$opt$par[idx])
+)
+lims <- range(c(gamma_df$truth, gamma_df$estimate)) + c(-0.1, 0.1)
+ggplot(gamma_df, aes(truth, estimate, label = species)) +
+  geom_abline(slope = 1, intercept = 0, colour = "grey55", linewidth = 0.5) +
+  geom_point(size = 2.8, colour = "#0a617d") +
+  geom_text(vjust = -1, size = 3.3) +
+  coord_equal(xlim = lims, ylim = lims) +
+  labs(x = "True gamma", y = "Fitted gamma") +
+  theme_minimal()
+```
+
+All three species land close to the identity line at this size -- the
+portal-only bias term is doing what it is meant to, separating recording
+effort from the shared ecological signal rather than absorbing it into
+$\beta$ or $\lambda$. `bobolnk` (the smallest true $|\gamma|$) is the noisiest
+of the three in relative terms, which is the expected pattern: a
+near-zero true effect is the hardest one to pin down precisely, not evidence
+that the method singles that species out.
+
 The shared-state loadings and the portal-only field's covariance are
-reported on the link scale (both are sign-invariant as outer products):
+reported on the link scale (both are sign-invariant as outer products).
+Rather than the raw internal report fields, use the public accessor, which
+attaches trait names and validates that the fit actually carries this term:
 
 ```{r sigma}
-round(fit$report$Sigma_spde_slope_intercept, 3)
-round(fit$report$Sigma_spde_slope_slope, 3)
+sigma_slope <- extract_Sigma(fit, level = "spde_slope")
+round(sigma_slope$intercept, 3)
+round(sigma_slope$slope, 3)
 ```
+
+`sigma_slope$intercept` is the shared spatial field's cross-species
+covariance: it is what carries the "one shared gradient" question, and its
+sign pattern should echo the simulated loadings `lambda` above (`gralark`
+and `dickcis` positively coupled, `bobolnk` moving the other way).
+`sigma_slope$slope` is the portal-only field's covariance -- here it is
+estimating structure that the data-generating process never put there
+(`delta = 0` above), so its magnitude is a measure of how much unclaimed
+spatial variance the portal branch is willing to soak up at this design
+size, not a recovered effect to interpret species by species. Reading it
+alongside the first caution below is deliberate: this is exactly the
+quantity that caution says to treat as a nuisance adjustment.
 
 # What to check before believing more than this
 
@@ -233,6 +377,15 @@ recovery study. Read the numbers above as illustration, not validation.
 **Not available:** more than two sources; calibrated confidence intervals for
 this route; and weighting one source's contribution against the other's.
 Each is real work, not an oversight.
+
+## See also
+
+- [Multivariate spatial models with an SPDE mesh](spatial-models.html) for
+  `spatial_latent()` and mesh construction on their own, outside the
+  two-source setting.
+- [Choose a response family](response-families.html) for the ordinary
+  one-family-per-trait rule that this article's per-row contract is an
+  exception to.
 
 ```{r session, include=FALSE}
 ## kept minimal deliberately; this article is a workflow illustration only

@@ -162,7 +162,10 @@ if (MODE == "timing") {
 
 } else if (MODE == "full") {
   N_SEED <- 20L
-  N_SP   <- 150L
+  ## n_sp = 800 matches the pre-registered pass criteria, which are calibrated
+  ## on the 2026-07-17 phylo-multinomial spike (N=800 recovers rho 0.6 -> ~0.45;
+  ## N=250 was underpowered). Do not lower without recalibrating the bands.
+  N_SP   <- 800L
   cat(sprintf("MODE: full -- %d seeds x %d keywords, n_sp=%d, cores=%d\n",
               N_SEED, length(KEYWORDS), N_SP, N_CORES))
   suppressMessages(devtools::load_all(PKG_DIR, quiet = TRUE))

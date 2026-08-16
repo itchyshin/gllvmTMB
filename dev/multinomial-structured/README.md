@@ -74,17 +74,24 @@ railed (`rho_hat` = 1, |rho_hat| > 0.99) — both are exactly the kind of
 early red flag the pass-criteria block (`pass-criteria-s1.md`) is designed to
 count, not evidence against running `--mode full`.
 
-Projected full-campaign wall-clock: `--mode full` uses **n_sp = 150**, not
-the n_sp = 60 measured above, so a straight `elapsed * 40 / 60` projection
-understates it. Using the smoke-mode mean (~1.83 sec/fit at n_sp = 60) and
-20 cores (`mclapply`, 40 fits / 20 cores = 2 sequential batches):
-- Linear n_sp scaling: ~1.83 sec/fit x 2.5 x 2 batches ≈ **9 sec**.
-- Cubic n_sp scaling (dense n_sp x n_sp Cholesky is the dominant cost,
-  (150/60)^3 ≈ 15.6x): ~1.83 sec/fit x 15.6 x 2 batches ≈ **57 sec**.
+Projected full-campaign wall-clock: `--mode full` uses **n_sp = 800** — the
+size the pre-registered pass criteria are calibrated on (the 2026-07-17
+phylo-multinomial spike: N=800 recovers rho 0.6 → ~0.45; N=250 was
+underpowered; do not lower n_sp without recalibrating the bands). Scaling
+from the smoke-mode mean (~1.83 sec/fit at n_sp = 60), 40 fits / 20 cores =
+2 sequential batches:
+- Linear n_sp scaling (800/60 ≈ 13.3x): ~1.83 x 13.3 x 2 ≈ **49 sec**.
+- Cubic n_sp scaling (dense n_sp x n_sp Cholesky dominates,
+  (800/60)^3 ≈ 2370x): ~1.83 x 2370 x 2 ≈ **2.4 h** worst case.
 
-Even the pessimistic cubic-scaling estimate is minutes, not the ~30 min
-D-139 line — `--mode full` would be a "just run it" case on time grounds
-alone. It is still gated on `pass-criteria-s1.md`'s DRAFT status (needs
+**MEASURED (2026-08-16): one fit at n_sp = 800 took 65.6 sec** (animal_latent,
+seed 1, conv = 0, PD Hessian) — so the D-139 estimate is settled: 40 fits ≈
+**~2.2 min on 20 cores / ~8 min on 6 cores**, far under the 30-min line;
+the full campaign runs LOCALLY, no Totoro needed. Honest observation from
+that same fit: it railed at rho_hat = −1.0 (true 0.6) with clean
+convergence and a PD Hessian — the exact silent-tail the pre-registered
+rail-rate criterion counts separately; one seed is not an aggregate.
+`--mode full` stays gated on `pass-criteria-s1.md`'s DRAFT status (needs
 Shinichi's sign-off) and was **not run** as part of Slice 1.
 
 ## Extraction convention

@@ -123,6 +123,7 @@ articles:
   - title: Data integration (experimental)
     contents:
     - articles/integrated-two-source-example
+    - articles/integrated-survey-design
 
   - title: Concepts
     contents:

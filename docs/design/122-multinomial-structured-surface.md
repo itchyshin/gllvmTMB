@@ -21,6 +21,25 @@ category count, baseline stability), and priority. Not written yet — this
 stub only claims the design number so Slice 0's admission-table comment in
 `R/multinomial-fence.R` has somewhere to point.
 
+## Status (Slice 1, 2026-08-16)
+
+Two more cells moved from deferred to admitted, both loadings-only
+(`unique = FALSE`) and both pure engine sugar over the already-admitted
+`phylo_latent()` `phylo_rr` route (no engine/C++ change):
+
+- `animal_latent(species, A = A, d = k)` — admitted. Numerically verified
+  identical to `phylo_latent()` (matched TMB objective, matched `V`); see
+  `tests/testthat/test-matrix-multinomial-phylo.R` and register row FAM-20C.
+- Single-name `kernel_latent(species, K = K, d = k, name = nm)` — admitted.
+  Same verification. Multiple `kernel_latent()` names in one fit
+  (multi-kernel) stay BLOCKED — that check is whole-fit, not per-cell.
+
+`unique = TRUE` on either keyword and every other `animal_*`/`kernel_*` mode
+(`*_indep`, `*_dep`, `*_scalar`, `kernel_unique`) remain deferred, along with
+everything else this stub's Scope section lists. See
+`R/multinomial-fence.R`'s `.mn_admission_table` for the authoritative
+per-cell status.
+
 ## See also
 
 - `docs/design/02-family-registry.md` — the unordered categorical family

@@ -5,7 +5,7 @@
 | A0 | **DONE** | LOOP kit on isolated worktree | no root `LOOP/` |
 | A1 | **DONE** | RED oracle tests | helpers missing; `could not find function` |
 | A2 | **DONE** | GREEN helpers + notes | student **51/51**; ordinal **45/45** |
-| A3 | **DONE** | Explicit-path commit + push + DRAFT PR | not admitted; no merge |
+| A3 | **DONE** | Explicit-path commit + push + DRAFT PR | [#1005](https://github.com/itchyshin/gllvmTMB/pull/1005); no merge |
 
 ## Structured counts (A2 log)
 

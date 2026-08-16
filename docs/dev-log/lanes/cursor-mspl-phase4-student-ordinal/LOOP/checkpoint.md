@@ -1,4 +1,4 @@
-GOAL: see GOAL.md.   STATE: **A0–A3 LANDED** — DRAFT PR; do not merge.
+GOAL: see GOAL.md.   STATE: **A0–A3 LANDED** — DRAFT PR #1005; do not merge.
 
 ARCS DONE (verified):
 - A0 — LOOP kit under `docs/dev-log/lanes/cursor-mspl-phase4-student-ordinal/LOOP/`.
@@ -6,17 +6,17 @@ ARCS DONE (verified):
 - A2 — GREEN: `test-mspl-student-phase4-oracles.R` **51/51**;
   `test-mspl-ordinal-phase4-oracles.R` **45/45**;
   `test-mspl-registry.R` **26** untouched.
-- A3 — explicit-path commit + push + DRAFT PR (planned / not admitted).
+- A3 — explicit-path commit `eb01cbbd` + push + DRAFT PR https://github.com/itchyshin/gllvmTMB/pull/1005 (planned / not admitted).
 
 ARC IN PROGRESS: none (merge is human).
 
 NEXT: Shinichi review/merge. Do **not** add a registry row. Do **not**
 admit student or ordinal_probit. Do **not** open a public door.
 
-OPEN GATES (need human): merge of this DRAFT PR (not this lane).
+OPEN GATES (need human): merge of #1005 (not this lane).
 
-TRUTH LIVES IN: `cursor/mspl-phase4-student-ordinal` · WT
-`/tmp/gllvmtmb-mspl-student-ordinal`.
+TRUTH LIVES IN: `cursor/mspl-phase4-student-ordinal` @ `eb01cbbd` · WT
+`/tmp/gllvmtmb-mspl-student-ordinal` · PR #1005.
 
 RESUME:
 ```text

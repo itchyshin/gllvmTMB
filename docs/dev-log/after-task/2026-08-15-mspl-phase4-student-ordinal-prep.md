@@ -4,6 +4,7 @@
 **Lane:** `cursor/mspl-phase4-student-ordinal`
 **Worktree:** `/tmp/gllvmtmb-mspl-student-ordinal`
 **Branch:** `cursor/mspl-phase4-student-ordinal` from `origin/main` @ `fe867e40`
+**PR:** https://github.com/itchyshin/gllvmTMB/pull/1005 (DRAFT; not admitted)
 **Arc:** A0–A3
 
 ## 1. Goal

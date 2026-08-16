@@ -1,8 +1,8 @@
 ## Fenced planned tapes: Tweedie/Beta may exist in C++ and now have
 ## planned registry rows, but the public door still rejects
 ## estimator = "mspl". nbinom1/nbinom2 share the Poisson planned door
-## (not admitted). Tweedie hang + Beta Jeffreys atom status 1 keep
-## those families off the allow-list.
+## (not admitted). Tweedie hang keeps Tweedie off the allow-list.
+## Beta family id 7 stays off the public door (atom is now K_bb).
 ##
 ## Beta Jeffreys (Ferrari–Cribari-Neto mean-model weight) is NOT coercive
 ## at mu -> 0/1. Tweedie W = mu^{2-p} / phi REWARDS phi -> 0. These are

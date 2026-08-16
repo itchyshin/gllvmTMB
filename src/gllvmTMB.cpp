@@ -322,16 +322,25 @@ Type gll_mspl_log_weight_glm(Type eta, int family_id, int link_id,
     return log(I + Type(1e-12));
   }
   if (family_id == 7) {
-    // Beta mean-model Jeffreys weight (Ferrari & Cribari-Neto).
-    // This weight goes to 1 as mu -> 0/1: not coercive at the mean boundary.
-    Type mu = Type(1.0) / (Type(1.0) + exp(-eta));
-    Type phi = exp(log_phi);
-    Type a = mu * phi;
-    Type b = (Type(1.0) - mu) * phi;
-    Type I_mu = phi * (gll_mspl_trigamma(a) + gll_mspl_trigamma(b));
-    Type dmu = mu * (Type(1.0) - mu);
-    Type w = I_mu * dmu * dmu;
-    return log(w + Type(1e-12));
+    // Ferrari & Cribari-Neto (2004) K_ββ = φ X' W X with
+    //   w_t = φ {ψ'(a)+ψ'(b)} / {g'(μ)}^2, a=μφ, b=(1-μ)φ.
+    // Logit: g'(μ)=1/(μ(1-μ)), so the GLM-outer diagonal is
+    //   w = φ² {μ(1-μ)}² {ψ'(a)+ψ'(b)}.
+    // I_μ = φ² {ψ'(a)+ψ'(b)} from ∂²ℓ/∂μ²; the previous one-φ
+    // form was FCN's inner W, not K_ββ. Default log_phi_beta=1
+    // (φ=e) mis-scaled every row and sent maxvol down the MP
+    // path (V8 status 1 = OK_MP_CERTIFIED). As μ→0/1, w→1:
+    // not coercive at the mean boundary.
+    Type log_mu = -logspace_add(Type(0.0), -eta);
+    Type log_ommu = -logspace_add(Type(0.0), eta);
+    Type a = exp(log_mu + log_phi);
+    Type b = exp(log_ommu + log_phi);
+    Type a_floor = Type(1e-8);
+    a = CppAD::CondExpGt(a, a_floor, a, a_floor);
+    b = CppAD::CondExpGt(b, a_floor, b, a_floor);
+    Type trig = gll_mspl_trigamma(a) + gll_mspl_trigamma(b);
+    return Type(2.0) * log_phi + Type(2.0) * (log_mu + log_ommu) +
+      log(trig + Type(1e-12));
   }
   if (family_id == 6) {
     // Tweedie: W = mu^{2-p} / phi. This atom rewards phi -> 0.

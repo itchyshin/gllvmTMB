@@ -1,5 +1,25 @@
 # Check log
 
+## 2026-08-16 — Beta Jeffreys atom: status 1 is OK_MP, weight is phi^2
+
+Worktree `/private/tmp/gllvmtmb-mspl-beta-atom-fix` from
+`origin/main` @ `55666f1e`. C++ GLM-outer Beta weight is FCN
+\(K_{\beta\beta}\) (\(\phi^2\) form, log-space). R accepts V8
+status 0 and 1. Public door unchanged (`fam_ids` 0/1/2/5/15).
+Tweedie hang not touched. Replays the #1045 diagnosis onto
+current `main`.
+
+```sh
+Rscript --vanilla -e 'devtools::test(filter = "mspl-beta-jeffreys-atom|mspl-beta-phase4|zz-mspl-tweedie-beta|mspl-prepare-fence|zz-mspl-fenced-family|mspl-registry$|estimator-provenance")'
+# [ FAIL 0 | WARN 0 | SKIP 4 | PASS 267 ]
+# Tweedie SKIP hang; Beta SKIP door missing (not atom-invalid)
+rg -n "atom status 1|skip_if_atom_invalid" tests src R
+# only the new test's negative pin
+```
+
+Not run: full `devtools::test()`; `--as-cran`; live Beta fit
+(door closed); Tweedie hang reproduction.
+
 ## 2026-08-16 — #1039 VA flake: N=60 for delta_lognormal_log (Cursor)
 
 zz-rename of the fenced tapes (`5376b745`) did not clear Ubuntu

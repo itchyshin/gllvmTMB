@@ -1,7 +1,7 @@
-## Curie-nb1: fenced NB1 LA-MSPL tape.
-## Public estimator="mspl" must still error. No planned/admitted nbinom1 row.
-## After the C++ hook exists, src/gllvmTMB.cpp must name family_id == 15 and
-## pin NB1 as PMF-summed exact I, NOT quasi W=mu/(1+phi).
+## Curie-nb1: planned NB1 LA-MSPL tape (not admitted).
+## Public estimator="mspl" is the planned door. Registry stays planned.
+## src/gllvmTMB.cpp must name family_id == 15 and pin NB1 as PMF-summed
+## exact I, NOT quasi W=mu/(1+phi).
 ## Kill: "Poisson worked so NB does."
 ## Do not edit the shared test-mspl-fenced-family-tapes.R.
 
@@ -60,40 +60,44 @@
   sum(pmf * score^2)
 }
 
-test_that("public nbinom1 estimator=mspl still errors at the fence", {
+test_that("public nbinom1 estimator=mspl is the planned door, not admitted", {
   dat <- .mspl_nb1_fence_dat()
   expect_error(
     gllvmTMB(
       y ~ 0 + trait + latent(0 + trait | site, d = 1, unique = FALSE),
       data = dat,
       family = nbinom1(),
-      estimator = "mspl"
+      estimator = "mspl",
+      control = gllvmTMBcontrol(n_init = 1L, se = FALSE, warn_runaway = FALSE)
     ),
-    class = "gllvmTMB_mspl_unsupported"
+    NA
   )
 })
 
-test_that("registry has no planned or admitted nbinom1 row", {
+test_that("nbinom1 ordinary q1/q2 registry cells stay planned, not admitted", {
   reg <- gllvmTMB:::.gllvmTMB_mspl_registry()
   nb1 <- reg[reg$family == "nbinom1", , drop = FALSE]
-  expect_false(any(nb1$status == "planned"))
+  expect_true(nrow(nb1) >= 2L)
+  expect_true(all(nb1$status == "planned"))
   expect_false(any(nb1$status == "admitted"))
-  expect_true(is.null(
-    gllvmTMB:::.gllvmTMB_mspl_registry_lookup(
-      family = "nbinom1",
-      link = "log",
-      structure = "ordinary",
-      q = 1L
-    )
-  ))
-  expect_true(is.null(
-    gllvmTMB:::.gllvmTMB_mspl_registry_lookup(
-      family = "nbinom1",
-      link = "log",
-      structure = "ordinary",
-      q = 2L
-    )
-  ))
+  r1 <- gllvmTMB:::.gllvmTMB_mspl_registry_lookup(
+    family = "nbinom1",
+    link = "log",
+    structure = "ordinary",
+    q = 1L
+  )
+  r2 <- gllvmTMB:::.gllvmTMB_mspl_registry_lookup(
+    family = "nbinom1",
+    link = "log",
+    structure = "ordinary",
+    q = 2L
+  )
+  expect_false(is.null(r1))
+  expect_false(is.null(r2))
+  expect_identical(r1$status, "planned")
+  expect_identical(r2$status, "planned")
+  expect_match(r1$notes, "not admitted")
+  expect_match(r1$notes, "not covered")
 })
 
 test_that("C++ NB1 tape names family_id 15 and PMF-summed exact I, not quasi W", {

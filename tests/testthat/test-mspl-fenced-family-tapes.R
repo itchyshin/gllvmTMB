@@ -1,5 +1,6 @@
-## Fenced planned tapes: NB1, NB2, beta, Tweedie may exist in C++ but
-## the public door still rejects estimator = "mspl".
+## Fenced planned tapes: beta and Tweedie may exist in C++ but the
+## public door still rejects estimator = "mspl". nbinom1/nbinom2 now
+## share the Poisson planned door (not admitted).
 ##
 ## Beta Jeffreys (Ferrari–Cribari-Neto mean-model weight) is NOT coercive
 ## at mu -> 0/1. Tweedie W = mu^{2-p} / phi REWARDS phi -> 0. These are
@@ -57,10 +58,8 @@
   )
 }
 
-test_that("public mspl still rejects NB2, NB1, beta, and Tweedie", {
+test_that("public mspl still rejects beta and Tweedie", {
   cases <- list(
-    nbinom2 = list(family = nbinom2(), y = rep(0:3, length.out = 24L)),
-    nbinom1 = list(family = nbinom1(), y = rep(0:3, length.out = 24L)),
     beta = list(family = Beta(), y = rep(c(0.2, 0.5, 0.8), length.out = 24L)),
     tweedie = list(family = tweedie(), y = rep(c(0.5, 1, 2), length.out = 24L))
   )
@@ -103,12 +102,12 @@ test_that("public mspl rejects Beta() and tweedie() at the door", {
   )
 })
 
-test_that("NB2 stays excluded; no planned/admitted beta or Tweedie; Poisson ordinary admitted", {
-  ## Excluded rows carry a suffix on cell_id, so lookup() is the wrong door.
+test_that("nbinom planned is not admitted; no planned/admitted beta or Tweedie", {
   reg <- gllvmTMB:::.gllvmTMB_mspl_registry()
-  nb2 <- reg[reg$family == "nbinom2", , drop = FALSE]
-  expect_true(nrow(nb2) >= 1L)
-  expect_true(all(nb2$status == "excluded"))
+  nb <- reg[reg$family %in% c("nbinom1", "nbinom2"), , drop = FALSE]
+  expect_true(nrow(nb) >= 4L)
+  expect_true(all(nb$status == "planned"))
+  expect_false(any(nb$status == "admitted"))
   beta_names <- c("beta", "Beta")
   tweedie_names <- c("tweedie", "Tweedie")
   expect_false(any(reg$family %in% beta_names &

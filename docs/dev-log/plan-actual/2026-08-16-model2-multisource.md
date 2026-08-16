@@ -79,3 +79,15 @@ committed (harness, results doc v2, raw CSV).
 2. **Pooled recovery metrics manufacture findings when arm counts vary across cells.** New
    class, worth a guard: any campaign whose grid varies the number of estimand groups must
    report per-group metrics, or the aggregate will move for composition reasons alone.
+
+## Amendment (same day, after the goal gate)
+
+The "article did not ship" drift above is RESOLVED, and the resolution corrects this
+reconciliation's own judgment: the goal gate refused the closure-line-only reading, and
+it was right to — the deliverable named the article as a hard clause, and routing a
+named deliverable to the maintainer as an "editorial call" is a scope cut, not a
+deference. `integrated-multi-source-example.Rmd` shipped in `84d4bd94` (renders 5.4 s,
+`check_pkgdown` clean, registered beside its siblings; `isdm_sources` added to the
+reference index). The drift-ledger lesson supersedes the earlier template note: **a
+deliverable clause is binding unless the maintainer explicitly cuts it — the closure
+line abbreviates the deliverable, it does not override it.**

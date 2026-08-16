@@ -51631,3 +51631,27 @@ Rehydrate from docs/dev-log/after-task/2026-08-16-sdm-day-closeout.md.
 Standing flags: VA delta_lognormal_log CI flake (record on #1049); MSPL
 source-pin red on main (#1031 body); MSPL SE calibration will unlock two
 article fence updates. — Claude
+
+## 2026-08-16 — doc lane: diagnostics article + Design 121 + slope staging
+
+Lane `claude/doc-lane-diag-reml-slopes-20260816` (doc-only, no `R/`/`src/`
+edit, no compute). Extended `fit-diagnostics.Rmd` (DHARMa mapping,
+residual family-exactness table, convergence/ordinal honesty); new
+`docs/design/121-coxreid-validation-slice.md` (pre-registered non-Gaussian
+Cox–Reid REML proposal for Design 66 scoping — NOT an authorised run);
+recovered `random-slopes-nongaussian.Rmd` to `dev/held-articles/` with an
+11-claim reader-path staging checklist
+(`docs/dev-log/2026-08-16-slope-article-reader-path-staging.md`).
+
+**→ To whichever lane owns DIA-12 / `R/predictive-diagnostics.R`:** the
+register row and the `residuals()` roxygen both still say exact RQR =
+Gaussian/Poisson/NB2, but `R/predictive-diagnostics.R:426-440` implements
+an exact NB1 route (`family_id == 15L`) with a smoke test —
+register-behind-code. The extended article names NB1 with "shallower
+evidence"; please reconcile the register/roxygen when you next touch that
+surface.
+
+**→ To the maintainer:** three decisions staged — Design 121 pre-run test
+(48 fits), the slope-article joint unhide review, and Design 66 seed-budget
+scoping. Details in the after-task report
+`docs/dev-log/after-task/2026-08-16-doc-lane-diag-reml-slopes.md`.

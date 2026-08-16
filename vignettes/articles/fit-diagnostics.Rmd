@@ -41,6 +41,22 @@ low-rank axis of between-individual covariance; this is a diagnostic
 example, not the full ordinary `latent()` covariance-decomposition
 tutorial from [Morphometrics](morphometrics.html).
 
+The counts fitted below are Poisson, so nothing here screens the response
+before fitting. For binary or binomial traits, some conditions are worth
+checking before you fit at all -- rare or constant outcomes, near-duplicate
+or complementary columns, unusable denominators. `screen_gllvmTMB()` runs
+that check; see the
+[pre-fit response screening](pre-fit-response-screening.html) article for
+the full walkthrough. Its threshold checks (prevalence, minority counts,
+duplicate and complement pairs) are advisory: a flag is a hint to inspect
+the design more closely, not a pass/fail verdict. The optional
+fixed-design separation module (`screen_control(separation = "fixed")`)
+is different in kind -- a formal certificate of overlap, complete, or
+quasi-complete separation over coefficient-connected fixed-design blocks.
+It does not inspect latent loadings or covariance and does not guarantee
+convergence; coverage is fixed-design binomial blocks only, and overall
+screening is partial.
+
 ## Setup
 
 ```{r setup}
@@ -201,6 +217,24 @@ latent variable explains only a small share of the fitted common covariance
 and may therefore be hard to interpret; it does not by itself prove
 that the fitted response distribution is wrong.
 
+`optimizer_convergence` and `pd_hessian` are worth reading narrowly.
+The `optimizer_convergence` row reports only the optimizer's exit code:
+it says the optimizer stopped appropriately, not that the point
+estimate is close to the true generating parameters. (The separate
+`fit$fit_health$converged` list field is stricter -- it also requires a
+finite objective and a small maximum gradient -- but the same reading
+applies.) `pd_hessian` is a local curvature test at that point
+estimate, not a global check. Read together, a clean table supports
+"the optimizer stopped appropriately with locally consistent
+curvature," not "this fit is near the truth."
+
+For `ordinal_probit()` traits, the loading/variance degeneracy screen
+shown above is binomial-only and does not run on ordinal rows, so a
+degenerate ordinal fit can pass this table with no warning at all.
+There is no calibrated ordinal degeneracy detector; see
+[Current limits](current-limits.html) before treating an ordinal fit
+as healthy.
+
 `boundary_sigma_eps` checks the continuous-family residual scale when
 that parameter is active. A warning means the estimate is below the
 reported threshold, so the residual scale is close to its boundary; it
@@ -245,6 +279,15 @@ are not a formal calibration test. NB1 uses the same implemented exact-CDF
 route and has a display smoke test, but it has not yet reached the same depth of
 evidence as Gaussian, Poisson, and NB2. `diagnostic_table()` turns the attached
 metadata into ordinary data frames for reports and articles.
+
+| Family | `type = "randomized_quantile"` result | Status |
+|---|---|---|
+| Gaussian | Exact family-CDF residual | Established |
+| Poisson | Exact family-CDF residual | Established |
+| NB2 | Exact family-CDF residual | Established |
+| NB1 | Exact family-CDF residual, same route | Implemented, shallower evidence |
+| Every other family | No exact residual: the row is retained with `status = "unsupported_family"` and `residual = NA`; request `type = "simulation_rank"` explicitly for a simulation-based check | Simulation-based route available, not exact |
+| Missing response / non-finite observed value | No residual computed | Row retained with an explicit `status`, never silently dropped |
 
 ```{r residual-table}
 rq <- residuals(
@@ -302,6 +345,18 @@ predictive_check(
   max_count = 7L
 )
 ```
+
+### Coming From DHARMa
+
+If DHARMa is your reference point from glmmTMB workflows, the rough
+correspondence is: DHARMa's simulation-based residuals map to
+`residuals(fit, type = "simulation_rank")`, and DHARMa's diagnostic plots
+map to `predictive_check(fit, ...)`. This is a conceptual mapping, not
+DHARMa compatibility -- gllvmTMB does not wrap or reproduce DHARMa, and it
+does not currently provide DHARMa's formal uniformity, dispersion, or
+outlier tests. Never treat the two as equivalent. Predictive plots here
+are diagnostic display only: no interval calibration, latent-rank proof,
+or DHARMa-equivalent formal test.
 
 ## What To Do Next
 

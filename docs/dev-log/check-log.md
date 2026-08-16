@@ -49677,3 +49677,30 @@ Handover:
 `docs/dev-log/handover/2026-08-15-cursor-handover-phase4-tapes.md`.
 Not run: `devtools::test()`, `R CMD check`, pkgdown, Totoro, admit.
 
+## 2026-08-16 — MSPL remaining-gap board (Cursor)
+
+Lane `cursor/mspl-remaining-gap-board` in
+`/tmp/gllvmtmb-mspl-gap-board` from `origin/main` @ `af1edd2c`.
+Docs-only census. drmTMB parked. Lane B untouched. No admit.
+No NEWS covered. Sibling PRs not edited.
+
+```sh
+git fetch origin
+git log -1 --oneline origin/main
+# af1edd2c
+
+rg -n 'status = ' R/mspl-registry.R
+# admitted binomial / gaussian / poisson; excluded nbinom2; 0 planned
+
+gh pr list --state open --limit 40
+# #974 #1003 #1004 #1005 #1007 #1014 merge-wait
+# #998 #999 #1000 expected-red
+```
+
+Rose: board names merge-wait vs needs-code vs needs-evidence.
+Shannon: do not fight sibling registry/door PRs.
+After-task:
+`docs/dev-log/after-task/2026-08-16-mspl-remaining-gap-board.md`.
+Not run: merge, admit, Totoro, drmTMB.
+
+

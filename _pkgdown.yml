@@ -60,7 +60,7 @@ navbar:
         href: articles/model-selection-latent-rank.html
       - text: Explore loading constraints
         href: articles/lambda-constraint-suggest.html
-      - text: Keep rare species with LA-MSPL
+      - text: Keep rare binary items with LA-MSPL
         href: articles/mspl-binary-jsdm.html
       - text: Multivariate spatial models
         href: articles/spatial-models.html
@@ -75,14 +75,14 @@ navbar:
         href: articles/joint-sdm.html
       - text: Joint intensity from opportunistic records
         href: articles/gbif-joint-intensity.html
-      - text: Integrating records with a repeated survey
+      - text: Integrating records with a designed survey
         href: articles/integrated-two-source-example.html
       - text: How much survey do you need?
         href: articles/integrated-survey-design.html
       - text: More than two sources
         href: articles/integrated-multi-source-example.html
-      - text: Keep rare species with LA-MSPL
-        href: articles/mspl-binary-jsdm.html
+      - text: What do repeated visits add?
+        href: articles/integrated-repeated-visits.html
       - text: Multivariate spatial models
         href: articles/spatial-models.html
     concepts:
@@ -146,6 +146,7 @@ articles:
     - articles/joint-sdm
     - articles/gbif-joint-intensity
     - articles/integrated-two-source-example
+    - articles/integrated-repeated-visits
     - articles/integrated-survey-design
     - articles/integrated-multi-source-example
 

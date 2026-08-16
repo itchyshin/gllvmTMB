@@ -1,12 +1,12 @@
 ---
-title: "Integrating opportunistic records with a repeated survey: a small worked example"
+title: "Integrating opportunistic records with a designed survey: a small worked example"
 description: "Fit a presence-only portal stream and a repeated presence/absence survey in one likelihood through the ordinary gllvmTMB() call, and read what the shared spatial gradient and the portal-only bias term do and do not tell you."
 output:
   rmarkdown::html_vignette:
     toc: true
     toc_depth: 3
 vignette: >
-  %\VignetteIndexEntry{Integrating opportunistic records with a repeated survey: a small worked example}
+  %\VignetteIndexEntry{Integrating opportunistic records with a designed survey: a small worked example}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -49,19 +49,27 @@ $$
 
 with $x_c$ a measured habitat covariate and $u_c$ an unmeasured shared
 spatial gradient carried by a latent field with species loadings
-$\lambda_s$. The portal branch adds what only it suffers -- an
-accessibility bias with species-specific coefficients $\gamma_s$ and its own
-spatial recording field -- while the survey branch is a plain
-complementary-log-log detection/non-detection likelihood with known visit
-support:
+$\lambda_s$. The portal branch adds what only it suffers -- a per-species
+reporting level $\rho_s$, an accessibility bias with species-specific
+coefficients $\gamma_s$, and its own spatial recording field -- while the
+survey branch is a plain complementary-log-log (`cloglog`)
+detection/non-detection likelihood with known visit support:
 
 $$
 N^{G}_{cs} \sim \text{Poisson}\!\left[a^{G}_c
-  \exp\{\eta_{cs} + b_c\gamma_s + h_c\,\delta_s\}\right],
+  \exp\{\eta_{cs} + \rho_s + b_c\gamma_s + h_c\,\delta_s\}\right],
 \qquad
 Y^{S}_{csv} \sim \text{Bernoulli}\!\left[1 -
   \exp\{-a^{S}_{cv}\exp(\eta_{cs})\}\right].
 $$
+
+The $\rho_s$ term (fitted below as `trait:isdm_gbif`) is not decoration: it is
+the identification device this model class requires. Presence-only records
+cannot say how *many* records "should" occur per unit intensity, only where
+relatively more occur. Without a per-species reporting level on the
+presence-only arm, the two arms would share an absolute intercept and the fit
+would implicitly claim the absolute intensity that presence-only data cannot
+identify.
 
 Everything is **relative intensity**: no absolute abundance, occupancy, or
 detectability claim is available from this design.
@@ -135,13 +143,13 @@ Mapping it over the grid before fitting anything gives a visual reference
 for the "do the two sources agree?" question the rest of the article works
 toward:
 
-```{r u-map, fig.cap = "The simulated shared spatial gradient u across the 108-cell grid. Both the portal stream and the survey observe species intensities driven partly by this common field; neither source sees u directly."}
+```{r u-map, fig.cap = "The simulated shared spatial gradient u across the 108-cell grid. Both the portal stream and the survey observe species intensities driven partly by this common field; neither source sees u directly.", fig.alt = "Choropleth raster of a smooth spatial gradient over a rectangular grid, coloured purple through white to teal."}
 ggplot(grid, aes(lon, lat, fill = u)) +
   geom_raster() +
   scale_fill_gradient2(low = "#8c4d8f", mid = "white", high = "#0a617d") +
   coord_fixed() +
   labs(x = "Longitude (arbitrary units)", y = "Latitude (arbitrary units)",
-       fill = "u") +
+       fill = "Shared gradient (u)") +
   theme_minimal()
 ```
 
@@ -181,22 +189,27 @@ attr(fam, "family_var") <- "isdm_family"
 
 The family list is the heart of it. Ordinarily `gllvmTMB()` requires one
 family per trait; here a single species is Poisson on its portal rows and
-Bernoulli-cloglog on its survey rows. That mix is admitted for exactly this
-contract, because cloglog is the link under which a detection/non-detection
-observation is consistent with the same underlying intensity that generates
-the counts -- and because Poisson and Bernoulli carry no dispersion parameter,
-so nothing per-species becomes ambiguous.
+Bernoulli-cloglog on its survey rows. That mix is admitted because cloglog is
+the link under which a detection/non-detection observation is mathematically
+consistent with the same underlying intensity that generates the Poisson
+counts -- not an approximation. It also works because neither Poisson nor
+Bernoulli carries a dispersion (overdispersion) parameter, so there is no
+ambiguity about which family owns a per-species dispersion.
 
 **The contract is exact, not approximate.** Mixing families within a trait is
 admitted only for `family = list(gbif = poisson(), survey_pa =
 binomial(link = "cloglog"))` (Poisson-log paired with binomial-cloglog),
 together with a `family_var` attribute naming the per-row selector column and
-a matching factor column in the data. Anything short of that -- a missing or
-misnamed `family_var` attribute, a `source` present without its matching
-`isdm_family` levels, or only one of the two sources actually present in the
-data -- falls back to the ordinary one-family-per-trait rule and errors
-there, because from the fitter's point of view it no longer looks like an
-integrated fit at all. Swapping the survey link for logit or probit is
+a matching factor column in the data. Anything short of that falls back to
+the ordinary one-family-per-trait rule and errors there, because from the
+fitter's point of view it no longer looks like an integrated fit at all.
+The three ways to fall short:
+
+- a missing or misnamed `family_var` attribute;
+- a `source` column present without its matching `isdm_family` levels;
+- only one of the two sources actually present in the data.
+
+Swapping the survey link for logit or probit is
 refused outright: those links do not share the intensity that generates the
 portal counts, so the two branches would no longer describe the same
 $\eta_{cs}$.
@@ -224,24 +237,18 @@ fit <- gllvmTMB(
 )
 ```
 
-The mesh triangulates the 108 cells for both the shared and the portal-only
-spatial fields:
+That one call has now estimated the shared slopes, the portal's reporting
+level and bias terms, both spatial fields, and the survey's cloglog branch,
+all from one likelihood. Before reading any coefficient, check whether the
+fit is trustworthy — starting with the mesh both spatial terms rest on:
 
-```{r plot-mesh, fig.cap = "Triangular SPDE mesh built from the 108 grid cells. The mesh carries both the shared spatial field u and the portal-only recording field at its vertices; the observation-to-mesh projection maps each back to the cell rows fitted above."}
+```{r plot-mesh, fig.cap = "Triangular SPDE mesh built from the 108 grid cells. The mesh carries both the shared spatial field u and the portal-only recording field at its vertices; the observation-to-mesh projection maps each back to the cell rows fitted above.", fig.alt = "Triangulated mesh of small triangles covering a rectangular grid of points, shown without axis scales."}
 plot(mesh)
 ```
 
-<!--
-MAINTAINER DECISION, 2026-08-16 (Shinichi): "keep the WARN fit - it's honest."
-This fit reports pd_hessian = WARN and that is DELIBERATE. Do not change the
-model, the design size, or the seed to make it pass. The warning is the
-teaching content: it is localised by measurement (the same data refitted
-non-spatially returns PASS, so the spatial fields are the difficulty, not the
-integration), and it is the hinge to the companion design article. Making it
-pass would mean dropping the augmented spatial slope -- the exact route the
-public admission opened -- or growing the design past what an article can
-render. See docs/dev-log/decisions.md, 2026-08-16.
--->
+<!-- Editors: the pd_hessian = WARN outcome below is deliberate teaching
+content, discussed at length in the prose. Do not change the model, design
+size, or seed to make it pass. -->
 
 # Did the fit converge, and can you trust its curvature?
 
@@ -308,7 +315,7 @@ colnames(tab) <- levels(dat$trait)
 round(tab, 2)
 ```
 
-```{r gamma-plot, fig.width = 5.2, fig.height = 5.2, fig.cap = "True versus fitted portal accessibility-bias coefficients gamma, one point per species. The line marks exact recovery; distance from it is recovery error at this design size."}
+```{r gamma-plot, fig.width = 5.2, fig.height = 5.2, fig.cap = "True versus fitted portal accessibility-bias coefficients gamma, one point per species. The line marks exact recovery; distance from it is recovery error at this design size.", fig.alt = "Scatterplot of three labelled species points lying near a dashed 45-degree identity line, with equal x and y axes."}
 gamma_df <- data.frame(
   species  = levels(dat$trait),
   truth    = gamma_ordered,
@@ -324,10 +331,9 @@ ggplot(gamma_df, aes(truth, estimate, label = species)) +
   theme_minimal()
 ```
 
-All three species land close to the identity line at this size -- the
-portal-only bias term is doing what it is meant to, separating recording
-effort from the shared ecological signal rather than absorbing it into
-$\beta$ or $\lambda$. `bobolnk` (the smallest true $|\gamma|$) is the noisiest
+All three species land close to the identity line on this draw: the
+portal-only bias term separates recording effort from the shared ecological
+signal rather than absorbing it into $\beta$ or $\lambda$. `bobolnk` (the smallest true $|\gamma|$) is the noisiest
 of the three in relative terms, which is the expected pattern: a
 near-zero true effect is the hardest one to pin down precisely, not evidence
 that the method singles that species out.
@@ -368,7 +374,12 @@ Three honest cautions, each with a package-level reason.
    estimate to interpret.
 2. **Relative intensity only.** Nothing in this design identifies absolute
    abundance or detectability; comparisons are within-map, not across
-   species in absolute terms.
+   species in absolute terms. And the bias coefficients $\gamma_s$ carry
+   their own design requirement: the accessibility covariate must vary
+   separately from the habitat covariate (and from the portal-only spatial
+   field), or bias and ecology are confounded and no fitting choice can
+   separate them. The simulation satisfies this by construction; in real
+   data it is yours to check.
 3. **Experimental surface.** The route is public but experimental: the data
    contract and the terms above may change without deprecation. Check
    convergence and positive-definiteness on every fit, and do not build a
@@ -387,9 +398,12 @@ particular design size is not established, and the portal-only *spatial*
 field in particular rests on development experience rather than a completed
 recovery study. Read the numbers above as illustration, not validation.
 
-**Not available:** more than two sources; calibrated confidence intervals for
-this route; and weighting one source's contribution against the other's.
-Each is real work, not an oversight.
+**Not available:** more than two sources *through this article's manual
+two-source contract* — for any number of named sources, use the
+`isdm_sources()` declaration shown in
+[More than two sources](integrated-multi-source-example.html); calibrated
+confidence intervals for this route; and weighting one source's contribution
+against the other's. The latter two are real work, not an oversight.
 
 ## See also
 

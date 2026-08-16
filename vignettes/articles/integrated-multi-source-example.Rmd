@@ -91,9 +91,11 @@ alpha  <- c(-0.2,  0.2,  0.0)
 beta   <- c( 0.5, -0.3,  0.4)
 lambda <- c( 0.8,  0.5, -0.4)
 ## per-source recording effects, reference-coded on the portal
-gamma  <- rbind(portal = c(0, 0, 0),
+gamma  <- rbind(portal = c(0, 0, 0),   # reference source
                 atlas  = c(-0.8, -0.5, -1.1),
-                survey = c(0, 0, 0))   # the survey's level rides on its support
+                survey = c(0, 0, 0))   # zero by simulation choice, not a
+                                       # second reference; its level rides
+                                       # on its support
 support <- c(portal = 2.0, atlas = 0.8, survey = 0.9)
 
 dat <- expand.grid(cell_id = cells, trait = species, isdm_source = sources,
@@ -116,6 +118,10 @@ dat$env         <- x[ci]
 dat$src         <- factor(dat$isdm_source, levels = sources)
 table(dat$isdm_source, dat$value > 0)
 ```
+
+Each source shows a different mix of zero and non-zero rows — the atlas is
+the sparsest, matching its lower simulated support and negative recording
+effects.
 
 # Declare the sources, then fit
 
@@ -163,9 +169,11 @@ health[health$component %in% c("optimizer_convergence", "pd_hessian"),
        c("component", "status")]
 ```
 
-Both pass on this fit. On the small spatial design of the two-source article
-the same check warns — read that article's discussion of what a `WARN` there
-means and why it is shown rather than hidden.
+Both pass on this fit (`pd_hessian` checks whether the curvature at the
+optimum is trustworthy enough to license standard errors). On the small
+spatial design of the two-source article the same check warns — read that
+article's discussion of what a `WARN` there means and why it is shown rather
+than hidden.
 
 # What the integration bought
 
@@ -174,7 +182,7 @@ you: with the portal as reference, the fitted `trait:src` terms say how much
 each species' atlas and survey records depart from its portal recording
 level, on the log scale, after the shared gradient is accounted for.
 
-```{r gamma-figure, fig.cap = "Per-source recording effects, truth against estimate, for the atlas source (the survey's simulated departures are zero by construction). Estimates come from one fit on one simulated draw; the spread you see is sampling noise at this design size, not bias."}
+```{r gamma-figure, fig.cap = "Per-source recording effects, truth against estimate, for the atlas source (the survey's simulated departures are zero by construction). Estimates come from one fit on one simulated draw; the spread you see is sampling noise at this design size, not bias.", fig.alt = "Scatterplot of three labelled species points near a dashed 45-degree identity line, axes on equal scales."}
 idx <- grep(":srcatlas", fit$X_fix_names)
 est <- unname(fit$opt$par[idx])
 truth <- gamma["atlas", match(levels(dat$trait), species)]
@@ -237,7 +245,7 @@ occupancy, detectability — from any number of presence-only sources.
 
 # See also
 
-- [Integrating opportunistic records with a repeated survey](integrated-two-source-example.html)
+- [Integrating opportunistic records with a designed survey](integrated-two-source-example.html)
   — the two-source worked example, including the spatial variant and an
   honest treatment of a non-positive-definite fit.
 - [How big does an integrated survey design need to be?](integrated-survey-design.html)

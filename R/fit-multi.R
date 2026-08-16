@@ -6571,10 +6571,11 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
           "x" = "Atomic status code: {atom_status}."
         ), class = "gllvmTMB_mspl_atom_failure")
       }
-    } else if (length(atom_status) != 1L || is.na(atom_status) || atom_status != 0L) {
+    } else if (!.gllvmTMB_mspl_jeffreys_atom_ok(atom_status)) {
       .gllvmTMB_mspl_abort(c(
         "The guarded Jeffreys information atom did not return a valid result.",
         "x" = "Atomic status code: {atom_status}.",
+        "i" = "Valid codes are 0 (OK_DOUBLE_CERTIFIED) and 1 (OK_MP_CERTIFIED).",
         "i" = "The fit is stopped rather than returning a silently approximated or rank-altered objective."
       ), class = "gllvmTMB_mspl_atom_failure")
     }

@@ -19,6 +19,27 @@
   cli::cli_abort(c(message, ...), class = class, .envir = parent.frame())
 }
 
+## Frozen V8 Jeffreys atom: 0 = OK_DOUBLE_CERTIFIED, 1 = OK_MP_CERTIFIED.
+## Both are valid certified results. Codes >= 10 are failures.
+.gllvmTMB_mspl_jeffreys_atom_ok <- function(atom_status) {
+  status <- as.integer(atom_status)
+  length(status) == 1L && !is.na(status) && status %in% c(0L, 1L)
+}
+
+## Ferrari–Cribari-Neto logit GLM-outer weight: I(β) diagonal.
+## Matches src/gllvmTMB.cpp family_id 7 (φ² form, not FCN's inner W).
+.gllvmTMB_mspl_beta_jeffreys_weight <- function(eta, phi) {
+  eta <- as.numeric(eta)
+  phi <- as.numeric(phi)
+  if (length(phi) == 1L) {
+    phi <- rep(phi, length(eta))
+  }
+  mu <- stats::plogis(eta)
+  a <- mu * phi
+  b <- (1 - mu) * phi
+  (phi^2) * (mu * (1 - mu))^2 * (trigamma(a) + trigamma(b))
+}
+
 .gllvmTMB_mspl_inference_abort <- function(what) {
   cli::cli_abort(
     c(

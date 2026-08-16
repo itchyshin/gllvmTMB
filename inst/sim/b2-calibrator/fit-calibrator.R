@@ -38,6 +38,7 @@ arg_value <- function(name, default = NULL) {
   if (hit == length(cli_args)) stop("Missing value for ", name, call. = FALSE)
   cli_args[[hit + 1L]]
 }
+arg_flag <- function(name) name %in% cli_args
 
 file_arg <- grep("^--file=", args, value = TRUE)
 script_path <- if (length(file_arg)) {

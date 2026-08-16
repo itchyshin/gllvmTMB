@@ -263,6 +263,59 @@ shared information, which is exactly what the exact joint-precision route
 (R1-joint) removes. Per the pre-registered rule, the prescribed next step is
 that route change, not a higher-precision re-run of R1-quad.
 
+### 4b. What followed: six routes, one grid, and a programme that stopped
+
+That route change was made, and then four more. Every subsequent route was
+measured on the *identical* 1,600-fit grid, so the comparison is exact rather
+than approximate. Each row propagates strictly more uncertainty than the one
+above it (confidence intervals at nominal 95%, range over the four
+mechanisms):
+
+| route | what it adds | conf 95% |
+|---|---|---|
+| `quad` | fixed block + diagonal latent curvature | 0.960–0.966 (over) |
+| `joint` | exact `w' Q⁻¹ w` from the joint precision | 0.925–0.933 |
+| `joint_load` | + the loading block ∂η/∂λ = u | 0.935–0.939 |
+| `sim` | draws from N(θ̂, Q⁻¹); empirical quantiles, no normality assumption | **0.941–0.946** |
+| `boot` | parametric bootstrap, B = 200, full refits | 0.926–0.933 |
+| `boot` + REML DGP | bootstrap world from an auxiliary REML fit | 0.929–0.933 |
+
+Two features of this table matter more than any single number. First, the
+routes **bracket** nominal coverage, which establishes that the estimator
+family contains a correct member — the approach is not structurally wrong.
+Second, by `joint_load` no gradient block remains missing (all three were
+cross-checked against a dense brute force to floating-point noise), and yet
+every route that propagates *more* uncertainty still lands 1–2 points low.
+The full parametric bootstrap, which refits the model on every replicate and
+therefore propagates everything, is among the worst.
+
+That inverted ordering — `sim` beating `boot` — is the diagnostic. All six
+routes are anchored on the *fitted* model, and a bootstrap that simulates
+from θ̂ re-imports the small-sample bias that `sim` merely inherits once. A
+final wave tested this directly by generating the bootstrap world from an
+auxiliary REML fit while leaving the pivoted estimator at ML. Coverage
+improved in **16 of 16 cells** — a uniform sign across sixteen cells is not
+sampling noise — by a mean of 0.36 percentage points. The gate still scored
+0/16, and the residual deficit of ~1.6 points remained four to eight times
+the ±2×MCSE band.
+
+Under a rule registered before that wave's data existed, the programme
+stopped there. **No route is calibrated; `se = ` remains
+`heuristic_unvalidated`; the measured coverage is reported rather than
+withheld.** For a nominal 95% interval, a user at these scales should read
+roughly 93–95% actual coverage, with `sim` the best-measured route at
+0.941–0.946 and roughly 1/300 of the bootstrap's cost.
+
+What this leaves is not a calibrated interval but a boundary condition, and
+it is the more useful result. Plug-in underdispersion of the bootstrap DGP
+is real but accounts for only about 18% of the gap; the remainder is a
+property of the fitted model at n = 50 units against 25 traits with a rank-2
+loading matrix — a genuinely small-sample regime for a latent covariance. No
+amount of additional variance propagation addresses it, which is why the
+honest stop is a finding and a seventh route would not have been. The open
+question this poses is a question about sample size: at what n does the
+deficit fall inside the gate? That is a new grid, not a new estimator.
+
 ## 5. Boundaries — what is NOT claimed
 
 | Claim explicitly out of scope | Status |
@@ -271,7 +324,7 @@ that route change, not a higher-precision re-run of R1-quad.
 | Multiple-imputation pooling (Rubin's rules or similar) | `blocked`, not built. |
 | VA (variational) missing-response evidence | `partial`: sentinel/admission contract holds across 18 scalar cells, but this is not a public missing-data certificate, not VA `mi()` support, and carries no coverage or recovery evidence; multinomial has no VA route at all. |
 | MSPL (binary Laplace-MSPL estimator) and masked responses | MSPL refuses masks by design; a FIML-MSPL route is deferred and unbuilt. |
-| Reconstruction standard errors / prediction intervals as a public feature | None shipped. Design 119 wave-1 gaussian coverage failed its pre-registered gate (over-coverage); register status is `heuristic_unvalidated`; R1-joint is the prescribed next route, not yet built. |
+| Reconstruction standard errors / prediction intervals as a public feature | None shipped, and now deliberately so. Six variance routes — including a full parametric bootstrap and a REML-corrected bootstrap DGP — were measured on one 1,600-fit gaussian grid; every one failed the pre-registered gate. Best measured: `sim`, 0.941–0.946 at nominal 0.95. Register status `heuristic_unvalidated` is final at this scale rather than provisional: the residual under-coverage is a small-sample property of the fitted model, not a missing derivative. |
 | Categorical / binary / hurdle masked-cell reconstruction accuracy | Measured near baseline (binomial, ordinal_probit, delta_lognormal); explicitly not to be advertised as accurate on this evidence. Multinomial is the one categorical family that clearly beats baseline. |
 | `predict_missing()` accuracy evidence status | `partial` by register rule (dev-script, not testthat-backed); no interval or MNAR claim attached. |
 | Full-grid Rphylopars comparison | Not run: 7 of 8 attempted fits exceeded the 600 s cap at n = 50 × p = 25 under default settings; only a thin (n = 1 completed fit) data point exists. |
@@ -290,9 +343,14 @@ that route change, not a higher-precision re-run of R1-quad.
   comparator provenance, self-check, 3-replicate pre-run, G2-approved full
   fast-grid (180 fits) and per-cell MSE table, Rphylopars cameo, full-grid
   extrapolation.
-- `docs/design/119-predict-missing-uncertainty.md` (worktree `gllvmtmb-pm-se`)
-  — estimand split, R1a source-inspection finding, wave-1 gaussian coverage
-  table and verdict (§7).
+- `docs/design/119-predict-missing-uncertainty.md` (on `main`) — estimand
+  split, R1a source-inspection finding, and every wave's coverage table and
+  verdict: §7 `quad`, §7b `joint`, §7c `joint_load` plus two self-corrections,
+  §7d `sim`, §7e `boot` and the pre-registered stop rule, §7f the
+  REML-corrected DGP and the close.
+- `dev/cov119/cov119-{summary,cells}-wave*.csv` — the raw per-cell and
+  per-fit records for all six waves, on one grid and therefore directly
+  comparable.
 - `docs/design/35-validation-debt-register.md` — register rows consulted for
   claim-boundary wording: **MIS-21** (`covered`, per-family masked-response
   evidence across all 17 families under Laplace), **MIS-37** (`partial`,

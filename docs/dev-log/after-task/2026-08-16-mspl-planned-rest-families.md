@@ -66,8 +66,9 @@ research notes (their "no registry row" status lines are now stale),
 
 ## 4. Checks Run
 
-See check-log entry of the same date. Targeted `testthat::test_file`
-on the registry, S12/O11, rest-family fence, and Heywood allowlist.
+Targeted `testthat::test_file` on the registry, S12/O11, rest-family
+fence, and Heywood allowlist. Check-log left to the B1 freeze/holdout
+sibling so the two PRs do not collide on that file.
 
 ## 5. Tests of the Tests
 

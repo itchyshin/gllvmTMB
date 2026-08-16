@@ -5636,7 +5636,14 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ## while BFGS, from the same restart, reaches the stationary basin.  This
       ## rescue is MSPL-only: the estimator = "ml" route and its historical
       ## optimizer behavior remain byte-for-byte unchanged.
-      if (identical(estimator, "mspl")) {
+      ##
+      ## Tweedie is excluded. The rescue restarts BFGS from par_init with
+      ## maxit=5000. On the #999 8x3 cell that walk enters the dtweedie
+      ## series-cost region and hung (>180 s) even after working W_* +
+      ## Huber. The rescue was written for spatial Bernoulli, not Tweedie.
+      ## Public door stays closed; this skip is a hang fuse, not an admit.
+      if (identical(estimator, "mspl") &&
+          !identical(as.integer(family_id), 6L)) {
         scaled_score <- function(ans) {
           if (is.null(ans$par) || !length(ans$par) ||
               !is.finite(ans$objective %||% NA_real_)) return(Inf)
@@ -6639,6 +6646,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       rep$mspl_loading_nll %||% 0,
       rep$mspl_covariance_nll %||% 0,
       rep$mspl_hirose_nll %||% 0,
+      ## Tweedie Huber on log phi and logit(p-1). Omitted from this
+      ## sum, the #999 cell aborted as a 38-unit decomposition
+      ## residual after the hang itself was gone.
+      rep$mspl_dispersion_nll %||% 0,
       rep$mspl_private_ridge_nll %||% 0
     ))
     decomposition_residual <- as.numeric(opt$objective) -
@@ -6748,6 +6759,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
             loading_nll = as.numeric(rep$mspl_loading_nll %||% NA_real_),
             covariance_nll = as.numeric(rep$mspl_covariance_nll %||% 0),
             hirose_nll = as.numeric(rep$mspl_hirose_nll %||% 0),
+            dispersion_nll = as.numeric(rep$mspl_dispersion_nll %||% 0),
             private_ridge_nll = as.numeric(rep$mspl_private_ridge_nll %||% 0),
             information_logdet = as.numeric(rep$mspl_logdet_information %||% NA_real_),
             loading_V = as.numeric(rep$mspl_V_loading %||% NA_real_),

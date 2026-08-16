@@ -239,14 +239,16 @@
     evidence = "phase4_prep",
     notes = c(
       paste(
-        "Phase 4 fenced planned tape: GLM-outer W=mu^{2-p}/phi,",
-        "REWARDS phi -> 0 (hostility, not a repair);",
-        "public estimator=mspl is experimental; not admitted; not covered"
+        "Phase 4 fenced planned tape: working logistic W_* on eta",
+        "(true W=mu^{2-p}/phi rewards phi -> 0; one-sided, not a repair);",
+        "Huber on log_phi and logit(p-1); no public door;",
+        "not admitted; not covered"
       ),
       paste(
-        "Phase 4 fenced planned tape: GLM-outer W=mu^{2-p}/phi,",
-        "REWARDS phi -> 0 (hostility, not a repair);",
-        "public estimator=mspl is experimental; not admitted; not covered"
+        "Phase 4 fenced planned tape: working logistic W_* on eta",
+        "(true W=mu^{2-p}/phi rewards phi -> 0; one-sided, not a repair);",
+        "Huber on log_phi and logit(p-1); no public door;",
+        "not admitted; not covered"
       ),
       paste(
         "Phase 4 fenced planned tape: GLM-outer Jeffreys I_mu (Ferrari-Cribari-Neto K_bb),",

@@ -1,5 +1,53 @@
 # Check log
 
+## 2026-08-16 — #1047 CI: restore public `%in%` literal for source pins
+
+Ubuntu R-CMD-check failed 3 source pins (Gamma / lognormal / hurdle)
+because the Tweedie probe moved the allow-list off the
+`fam_ids %in%` line. Public door is still
+`c(0L, 1L, 2L, 5L, 15L)`; probe env is a separate bypass, not a
+door widen. No admit. No NEWS.
+
+```sh
+# after restore: gamma/lognormal/hurdle oracles + fenced tapes PASS
+# probe still PROBE_OK ~1.6s
+```
+
+## 2026-08-16 — Tweedie MSPL hang unstuck (W_* + BFGS skip)
+
+Worktree `/private/tmp/gllvmtmb-mspl-tweedie-hang` ·
+`cursor/mspl-tweedie-hang`.
+
+```sh
+pkgload::load_all(/private/tmp/gllvmtmb-mspl-tweedie-hang)
+# Staged: MakeADFun + fn/gr ms; hang was MSPL BFGS rescue maxit=5000
+# After family-6 skip + mspl_dispersion_nll in penalty-off sum:
+# PROBE_OK elapsed=1.549s optimizer=nlminb
+rg -n "Tweedie is excluded|mspl_dispersion_nll|mspl_se_tweedie_live_hangs" \
+  R/fit-multi.R tests/testthat
+```
+
+Not run: `devtools::test()`, `--as-cran`, pkgdown. No NEWS. No
+admit. No public door. Hang fuse now FALSE; CI still skips on the
+closed family-6 door.
+
+## 2026-08-16 — Tweedie MSPL hang vs working W_* (BLOCKED as hang-fix)
+
+Worktree `/private/tmp/gllvmtmb-mspl-tweedie-hang` ·
+`cursor/mspl-tweedie-hang` from `origin/main` @ `b9bd0cd4`.
+
+```sh
+pkgbuild::compile_dll(compile_attributes = TRUE, debug = FALSE)  # DONE
+R CMD INSTALL --library=$TMPLIB .                               # DONE
+# ML 8x3 tweedie se=FALSE n_init=1: ML_OK elapsed=0.786s
+# MSPL probe GLLVMTMB_MSPL_TWEEDIE_PROBE=1: 180s kill after PROBE_START_FIT
+rg -n "working logistic|rewards phi|GLLVMTMB_MSPL_TWEEDIE_PROBE|mspl_se_tweedie_live_hangs" \
+  src/gllvmTMB.cpp R/mspl.R R/mspl-registry.R tests/testthat
+```
+
+Not run: `devtools::test()`, `--as-cran`, pkgdown, live `#999` pin
+(hang fuse on). No NEWS. No admit. No public door.
+
 ## 2026-08-16 — Gamma / lognormal MSPL door gap (Cursor)
 
 SE-arc track 4. Rebased onto `origin/main` @ `7db5f2dc` (#1053).

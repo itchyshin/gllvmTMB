@@ -31,7 +31,13 @@ COV119_FAMILY   <- "gaussian"   # wave 1 is gaussian ONLY (interface contract)
 ## unset environment leaves every earlier wave exactly reproducible.
 COV119_N_UNITS  <- as.integer(Sys.getenv("COV119_N_UNITS", unset = "50"))
 stopifnot(is.finite(COV119_N_UNITS), COV119_N_UNITS >= 20L)
-COV119_P_TRAITS <- 25L
+## Wave-6 (Design 119 §8b) sweeps p. Wave-5 found the CONFIDENCE deficit
+## flat in n while the PREDICTION deficit closed, which points at the unit
+## score u_i: it is reconstructed from that unit's OTHER OBSERVED TRAITS, so
+## its information is O(p), not O(n). More units cannot sharpen it; more
+## traits per unit should. p is the axis that tests this.
+COV119_P_TRAITS <- as.integer(Sys.getenv("COV119_P_TRAITS", unset = "25"))
+stopifnot(is.finite(COV119_P_TRAITS), COV119_P_TRAITS >= 8L)
 COV119_Q_TRUE   <- 2L
 COV119_MECHS    <- c("mcar05", "mcar20", "trait_clustered", "unit_clustered")
 
@@ -43,8 +49,10 @@ COV119_MECHS    <- c("mcar05", "mcar20", "trait_clustered", "unit_clustered")
 ## rather than the estimator improving. Scaling keeps "unit-clustered" the
 ## same proposition at every n. round(0.2 * 50) = 10 exactly, so the n = 50
 ## cell still reproduces waves 1-4 bit-for-bit. p is not an axis, so the
-## trait-side block stays at its default 5 of 25.
-COV119_CLUSTER_UNITS <- max(2L, as.integer(round(0.2 * COV119_N_UNITS)))
+## trait-side block scales the same way once p is an axis (wave-6):
+## round(0.2 * 25) = 5 exactly, so p = 25 also stays bit-for-bit frozen.
+COV119_CLUSTER_UNITS  <- max(2L, as.integer(round(0.2 * COV119_N_UNITS)))
+COV119_CLUSTER_TRAITS <- max(2L, as.integer(round(0.2 * COV119_P_TRAITS)))
 COV119_N_REPS   <- 400L        # Design 119 §4: >= 400 replicates per cell
 
 ## Pre-registered critical values (stated in the campaign brief; NOT qnorm

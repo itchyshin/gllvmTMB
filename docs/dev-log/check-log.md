@@ -50304,3 +50304,63 @@ Register: `ISDM-01` (`partial`) — a new prefix, because MIS-37 is already
 claimed on `claude/predict-missing-se-20260815`.
 Issues #945 and #946 are closable on this evidence; the PR says so rather than
 auto-closing, since merge is the maintainer's decision.
+
+
+---
+
+## 2026-08-16 — two iSDM articles (`claude/isdm-public-door-20260816`, continued)
+
+Same lane as the public-door entry above. Preflight re-run: FOREIGN LANE ACTIVE
+(cursor/codex direct-to-main) + 60 lanes live; no other lane owns
+`vignettes/articles/integrated-*`, and the design article is a new file.
+
+Shipped: `integrated-two-source-example.Rmd` brought to Tier-1 parity, and a new
+`integrated-survey-design.Rmd`. Two code fixes came out of review (below). No new
+export; NAMESPACE unchanged.
+
+Commands run, with exact outcomes:
+
+- `devtools::test(filter = "isdm|offset|family-within-trait|augmented-slope")`
+  — **0 failures, 0 errors**; 1 skip (`test-isdm-spatial-control-ladder.R:47`,
+  heavy, needs `GLLVMTMB_HEAVY_TESTS=1`).
+- `rmarkdown::render()` on both articles — **OK**, 13.6 s and 8.1 s.
+- `pkgdown::check_pkgdown()` — **No problems found.**
+- `R CMD check` on Totoro — see
+  `docs/dev-log/2026-08-16-totoro-check-receipt-isdm-public-door.md`.
+
+Stale-wording scans (exact patterns):
+
+- `grep -n ":::"` on both articles → none.
+- `grep -nE "\b(MIS|SPA|RE|FG|FAM|MIX|VA|ISDM|CI)-[0-9]+"` over both articles and
+  `NEWS.md` → none (no register codes on reader-facing surfaces).
+- Cross-link audit: all five inter-article links resolve to real `.Rmd` files that
+  are registered in `_pkgdown.yml`.
+- Every campaign number in the design article checked line-by-line against
+  `dev/isdm-package-recovery/2026-08-15-domain-growth-results.md` → all match; the
+  10,000–20,000-cell figure is labelled extrapolation in both.
+
+Deliberately NOT run: full `devtools::test()` locally (the Mac was loaded and other
+lanes were live; the Totoro check covers the suite). Vignettes were not rebuilt
+inside `R CMD check` (`--no-vignettes --no-build-vignettes`); both articles were
+rendered separately on the Mac instead.
+
+**Attribution work worth recording.** The Totoro check returned 1 ERROR / 46 test
+failures. Rather than assume they were inherited, the five affected files were run
+locally against both `bd2b261a` and this lane's head: **164 passing, identical, on
+both**. Cause found: those tests invoke runner scripts under `dev/`, `.Rbuildignore`
+line 21 excludes `^dev$`, and `tar tzf ... | grep -c '^gllvmTMB/dev/'` returns 0. They
+guard for Windows/devtools/Rscript but never for the scripts existing, so they cannot
+pass any tarball-based check. This is an isdm-branch blocker, filed separately, not
+fixed here.
+
+**Review findings that changed the work.** Gauss (the lens the previous entry recorded
+as a deviation) derived the contract's two coherence claims from source and found two
+inputs the predicate did not enforce — `weights`, which means a binomial trial count on
+one arm and a likelihood exponent on the other, and multi-trial survey rows, which the
+thinned-Poisson argument does not cover. Both now refused with named classes. Rose and
+Darwin returned no blockers on the articles but caught that the design article
+foregrounded `conv = 1.000` while never stating in prose that `pd_rate` tops out at
+0.555 at the largest measured design.
+
+After-task: `docs/dev-log/after-task/2026-08-16-two-articles.md`.
+Register: `ISDM-01` updated to cite the new article as evidence.

@@ -53,8 +53,26 @@
     consensus_id <- eligible_id[order(objectives[eligible_id])][seq_len(3L)]
     agreement_range <- .va_r3_best_three_range(objectives[eligible_id])
   }
+  ## SCALE the agreement tolerance by the objective magnitude (issue #985).
+  ## `agreement_tolerance` was applied as an ABSOLUTE range bound, but the
+  ## VA objective's magnitude varies by family and fixture: at |objective|
+  ## ~ 1e3 an absolute 1e-6 is a ~1e-9 RELATIVE demand, which no optimiser
+  ## meets reproducibly across BLAS implementations. That made the light-fit
+  ## health gate knife-edged -- green on macOS, `failed_health_gate` on
+  ## ubuntu CI, with no difference in the fit itself. Measured on the same
+  ## families (2026-08-15, masked-response VA sweep): betabinomial_logit and
+  ## delta_gamma_log land at best-three ranges 2e-6..1e-5 with small finite
+  ## per-start gradients -- the same optimum, adjudicated as disagreement.
+  ## The tolerance is now `agreement_tolerance * max(1, |median objective|)`,
+  ## so it keeps its original meaning for O(1) objectives and becomes a
+  ## relative bound where the objective is large.
+  agreement_scale <- if (length(eligible_id) >= 3L) {
+    max(1, abs(stats::median(objectives[eligible_id])))
+  } else {
+    1
+  }
   agreement <- length(eligible_id) >= 3L &&
-    agreement_range <= agreement_tolerance
+    agreement_range <= agreement_tolerance * agreement_scale
   consensus_has_strict_convergence <- length(consensus_id) == 3L &&
     any(consensus_id %in% strictly_converged_id)
   admitted <- agreement && consensus_has_strict_convergence

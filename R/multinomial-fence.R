@@ -1,5 +1,5 @@
-## Multinomial structured-term admission fence (Slice 0 + Slice 1, Design
-## 108/122).
+## Multinomial structured-term admission fence (Slice 0 + Slice 1 + Slice 2,
+## Design 108/122).
 ##
 ## `multinomial()` (family_id 16) is fixed-effects-plus-two-tiers only in this
 ## release: ordinary shared `latent()` at the unit tier (cross-family
@@ -24,6 +24,30 @@
 ## mode (`*_indep`/`*_dep`/`*_scalar`/`kernel_unique`), and more than one
 ## `kernel_latent()` name in the same fit (multi-kernel) remain BLOCKED --
 ## see the admission table and `.mn_classify_covstruct()` below.
+##
+## Slice 2 (2026-08-16): the PHYLO MODE AXIS and its animal/kernel twins join
+## the admitted set -- `phylo_dep()`/`animal_dep()`/`kernel_dep()` (the
+## intercept-only full-`V` route) and `phylo_indep()`/`animal_indep()`/
+## `kernel_indep()` plus their soft-deprecated standalone `*_unique()`
+## aliases (the diagonal-`V` route). All six/eight resolve to the SAME
+## `phylo_rr`/`theta_rr_phy` engine slot as `phylo_latent()` -- `*_dep()`
+## with a full free packed-triangular Lambda (IDENTICAL parameterisation to
+## `phylo_latent(d = n_traits)`, not merely V-equivalent: both go through
+## `gll_unpack_rr_loadings()` with an unconstrained diagonal; the genuinely
+## exp()-positive Cholesky diagonal belongs to the AUGMENTED `*_dep(1 + x |
+## ...)` slope engine, `theta_dep_chol`, a different covstruct kind that
+## stays blocked), `*_indep()`/`*_unique()` with the strict lower triangle
+## pinned to 0 via a TMB map (D independent per-contrast variances, no
+## among-category correlation). `*_scalar()` (`phylo_scalar()`,
+## `animal_scalar()`, `kernel_scalar()`) STAYS REFUSED -- the first two route
+## through the unrelated `propto` engine (blocked by the late `use_propto`
+## re-scan, unchanged since Slice 0); `kernel_scalar()` shares the SAME
+## `.phylo_unique`/`.indep` markers as the now-admitted `kernel_indep()` and
+## is distinguished only by `.kernel_mode == "scalar"`, so this file's
+## classifier carries an explicit carve-out for it. See
+## `dev/multinomial-structured/probe-scalar-null.R` for the null-DGP evidence
+## behind the scalar refusal. Augmented (intercept + slope) `*_dep`/`*_indep`
+## forms, `*_latent(unique = TRUE)`, and every other cell remain BLOCKED.
 ##
 ## Historically the ONLY gate was a late allow-list re-scan of `use_*` engine
 ## flags in R/fit-multi.R (the "FAIL-CLOSED allow-list", Rose review
@@ -101,22 +125,44 @@
 ## `.mn_classify_covstruct()`'s verdict matches `status` -- catching exactly
 ## the kind of table/code drift that let row 4 (below) go stale.
 .mn_admission_table <- data.frame(
-  source = c("none",     "none",            "phylo",
-             "phylo",                     "none",       "phylo",
-             "none",     "animal",     "kernel",
-             "animal",                     "kernel"),
-  mode   = c("latent",   "latent",          "latent",
-             "latent",                     "latent_slope", "latent_slope",
-             "equalto",  "latent",     "latent",
-             "latent",                     "latent"),
-  tier   = c("unit",     "unit (auto-Psi)", "among-category",
-             "among-category (auto-Psi)", "unit",       "among-category",
-             "-",        "among-category", "among-category (single name)",
-             "among-category (auto-Psi)",  "among-category (auto-Psi, single name)"),
-  status = c("admitted", "admitted",        "admitted",
-             "blocked",                    "blocked",    "blocked",
-             "blocked",  "admitted",   "admitted",
-             "blocked",                    "blocked"),
+  source = c(
+    "none", "none", "phylo", "phylo", "none", "phylo", "none",
+    "animal", "kernel", "animal", "kernel",
+    ## Slice 2 (Design 122, 2026-08-16): the phylo mode axis and its
+    ## animal/kernel twins.
+    "phylo", "phylo", "phylo",
+    "animal", "animal", "animal",
+    "kernel", "kernel", "kernel", "kernel"
+  ),
+  mode   = c(
+    "latent", "latent", "latent", "latent", "latent_slope", "latent_slope",
+    "equalto", "latent", "latent", "latent", "latent",
+    "dep", "indep", "unique",
+    "dep", "indep", "unique",
+    "dep", "indep", "unique", "indep (scalar)"
+  ),
+  tier   = c(
+    "unit", "unit (auto-Psi)", "among-category",
+    "among-category (auto-Psi)", "unit", "among-category", "-",
+    "among-category", "among-category (single name)",
+    "among-category (auto-Psi)",
+    "among-category (auto-Psi, single name)",
+    "among-category (full V)", "among-category (diagonal V)",
+    "among-category (diagonal V, deprecated alias)",
+    "among-category (full V)", "among-category (diagonal V)",
+    "among-category (diagonal V, deprecated alias)",
+    "among-category (full V, single name)",
+    "among-category (diagonal V, single name)",
+    "among-category (diagonal V, deprecated alias, single name)",
+    "among-category (single shared level, single name)"
+  ),
+  status = c(
+    "admitted", "admitted", "admitted", "blocked", "blocked", "blocked",
+    "blocked", "admitted", "admitted", "blocked", "blocked",
+    "admitted", "admitted", "admitted",
+    "admitted", "admitted", "admitted",
+    "admitted", "admitted", "admitted", "blocked"
+  ),
   since  = c(
     "Tier-2b item 2a-ii (0.6.0)",
     "0.2.0 (latent() default Psi)",
@@ -128,7 +174,17 @@
     "ADMITTED -- Design 122 Slice 1 (2026-08-16): loadings-only (unique = FALSE) animal_latent() is pure sugar over phylo_rr, engine-identical to phylo_latent() -- equivalence verified in test-matrix-multinomial-phylo.R.",
     "ADMITTED -- Design 122 Slice 1 (2026-08-16): loadings-only (unique = FALSE) single-name kernel_latent() routes through the SAME phylo_rr engine (Design 65 C1 phylo-equivalence) -- equivalence verified in test-matrix-multinomial-phylo.R. Multiple kernel_latent() terms in one fit (multi-kernel) stay BLOCKED; that check is whole-fit, not per-covstruct, so it has no row of its own here -- see .multinomial_structured_admission()'s kernel-name count and test-multinomial-fence.R's 'multi-kernel is not admitted'.",
     "BLOCKED -- Design 122 Slice 1 (2026-08-16): animal_latent(unique = TRUE)'s auto-emitted Psi companion is a free phylogenetic Psi, not admitted for multinomial for the same reason as row 4 (phylo_latent(unique = TRUE)).",
-    "BLOCKED -- Design 122 Slice 1 (2026-08-16): kernel_latent(unique = TRUE)'s auto-emitted Psi companion is a free phylogenetic Psi, not admitted for multinomial for the same reason as row 4 (phylo_latent(unique = TRUE))."
+    "BLOCKED -- Design 122 Slice 1 (2026-08-16): kernel_latent(unique = TRUE)'s auto-emitted Psi companion is a free phylogenetic Psi, not admitted for multinomial for the same reason as row 4 (phylo_latent(unique = TRUE)).",
+    "ADMITTED -- Design 122 Slice 2 (2026-08-16): intercept-only phylo_dep(0 + trait | species) resolves d = n_traits and populates the SAME phylo_rr/theta_rr_phy slot as phylo_latent(species, d = n_traits) -- the IDENTICAL unconstrained packed-triangular parameterisation (gll_unpack_rr_loadings, src/gllvmTMB.cpp), not merely V-equivalent. Do not confuse with the augmented *_dep(1 + x | species) slope engine (theta_dep_chol), which DOES exp()-transform its Cholesky diagonal and stays BLOCKED (row 5/6). Equivalence to phylo_latent(d = n_traits) verified in test-matrix-multinomial-phylo.R.",
+    "ADMITTED -- Design 122 Slice 2 (2026-08-16): phylo_indep(0 + trait | species) reroutes to the phylo_rr diagonal slot (.phylo_unique + .indep markers) -- a diagonal Lambda_phy (strict lower triangle pinned to 0 via a TMB map), giving D independent per-contrast phylogenetic variances with no among-category correlation.",
+    "ADMITTED -- Design 122 Slice 2 (2026-08-16): standalone phylo_unique(species) is the soft-deprecated alias of phylo_indep() -- same phylo_rr diagonal slot, same engine, differing only in the printed label (R/brms-sugar.R issues a one-time deprecation warning).",
+    "ADMITTED -- Design 122 Slice 2 (2026-08-16): animal_dep() twin of phylo_dep(), pure sugar over the same phylo_rr/theta_rr_phy route with the pedigree/A matrix supplied via vcv.",
+    "ADMITTED -- Design 122 Slice 2 (2026-08-16): animal_indep() twin of phylo_indep(), same diagonal phylo_rr route.",
+    "ADMITTED -- Design 122 Slice 2 (2026-08-16): animal_unique() twin of standalone phylo_unique() (soft-deprecated alias of animal_indep()).",
+    "ADMITTED -- Design 122 Slice 2 (2026-08-16): kernel_dep() twin of phylo_dep(), single named dense K matrix, same phylo_rr/theta_rr_phy route (Design 65 C1 phylo-equivalence).",
+    "ADMITTED -- Design 122 Slice 2 (2026-08-16): kernel_indep() twin of phylo_indep(), same diagonal phylo_rr route.",
+    "ADMITTED -- Design 122 Slice 2 (2026-08-16): kernel_unique() twin of standalone phylo_unique() (soft-deprecated alias of kernel_indep()).",
+    "BLOCKED -- Design 122 Slice 2 (2026-08-16): kernel_scalar() (and kernel_indep(..., common = TRUE)) carry the SAME .phylo_unique + .indep markers as kernel_indep() and are distinguished ONLY by .kernel_mode == \"scalar\"; it ties the per-trait diagonal phylogenetic variances to ONE shared level. STAYS REFUSED like phylo_scalar()/animal_scalar() -- see dev/multinomial-structured/probe-scalar-null.R for the null-DGP evidence motivating the refusal."
   ),
   stringsAsFactors = FALSE
 )
@@ -259,8 +315,26 @@
                   kernel_name = kernel_name))
     }
     if (isTRUE(extra$.dep)) {
+      ## Slice 2 (Design 122, 2026-08-16): admit the intercept-only *_dep()
+      ## cell for all three sources. `phylo_dep(0 + trait | species)` /
+      ## `animal_dep(0 + trait | id)` / `kernel_dep(unit, K = K)` all resolve
+      ## `d = n_traits` and populate the SAME `phylo_rr_idx` / `theta_rr_phy`
+      ## slot as `phylo_latent(species, d = n_traits)` (R/fit-multi.R) --
+      ## unpacked by the SAME `gll_unpack_rr_loadings()` (src/gllvmTMB.cpp),
+      ## whose diagonal is UNCONSTRAINED for every caller of that function.
+      ## This is the intercept-only route; it must not be confused with the
+      ## AUGMENTED (intercept + slope) `*_dep(1 + x | ...)` engine
+      ## (`use_phylo_dep_slope`, `theta_dep_chol`), which genuinely DOES
+      ## exp()-transform its Cholesky diagonal for positivity -- that path is
+      ## a different covstruct kind (`phylo_slope`, handled above) and stays
+      ## BLOCKED (augmented slopes are not admitted for multinomial). So the
+      ## intercept-only cell admitted here is not merely V-equivalent to
+      ## `phylo_latent(d = n_traits)`, it is the IDENTICAL parameterisation
+      ## (full-rank packed lower-triangular Lambda, no positivity
+      ## constraint) under a different parse-time label -- see
+      ## test-matrix-multinomial-phylo.R's equivalence tests.
       label <- sprintf("%s_dep()", kw)
-      return(list(source = source_label, mode = "dep", admitted = FALSE,
+      return(list(source = source_label, mode = "dep", admitted = TRUE,
                   label = label, kernel_name = kernel_name))
     }
     if (isTRUE(extra$.phylo_unique)) {
@@ -282,6 +356,29 @@
         ))
       }
       mode <- if (isTRUE(extra$.indep)) "indep" else "unique"
+      ## kernel_scalar()/kernel_indep(..., common = TRUE) carry the SAME
+      ## `.phylo_unique = TRUE, .indep = TRUE` markers as kernel_indep() and
+      ## are distinguished ONLY by `.kernel_mode == "scalar"` (set at parse
+      ## time, R/brms-sugar.R). phylo_scalar()/animal_scalar() take a
+      ## DIFFERENT covstruct kind entirely (`propto`, handled at the top of
+      ## this function) so they never reach this branch -- only kernel_scalar
+      ## needs an explicit carve-out here to stay BLOCKED while its
+      ## kernel_indep()/kernel_dep() siblings are admitted (Slice 2).
+      is_kernel_scalar <- identical(source_label, "kernel") &&
+        identical(kernel_mode, "scalar")
+      ## Slice 2 (Design 122, 2026-08-16): admit the diagonal-V cell
+      ## (*_indep() and the deprecated standalone *_unique() alias) for all
+      ## three sources -- same `phylo_rr`/`theta_rr_phy` route as *_dep(),
+      ## with the strict lower triangle pinned to 0 via a TMB map
+      ## (R/fit-multi.R's `is_phylo_unique` diagonal-`lambda_constraint`
+      ## block), giving D independent per-contrast phylogenetic variances
+      ## with NO among-category correlation. `*_scalar()` (source = kernel
+      ## only, reached via this branch) ties those independent variances to
+      ## ONE shared level and stays BLOCKED (the null-DGP probe,
+      ## dev/multinomial-structured/probe-scalar-null.R, evidences why a
+      ## scalar summary is not interpretable on the (I+J) contrast
+      ## geometry).
+      admitted <- !is_kernel_scalar
       label <- if (identical(source_label, "kernel")) {
         ## kernel_indep()/kernel_scalar() both carry `.indep = TRUE` and are
         ## distinguished only by `.kernel_mode` ("indep" vs "scalar");
@@ -291,7 +388,7 @@
       } else {
         sprintf("%s_%s()", kw, mode)
       }
-      return(list(source = source_label, mode = mode, admitted = FALSE,
+      return(list(source = source_label, mode = mode, admitted = admitted,
                   label = label, kernel_name = kernel_name))
     }
     ## Plain loadings-only cell (no slope/dep/unique marker): admitted for
@@ -396,10 +493,10 @@
     return(invisible(NULL))
   }
   cli::cli_abort(c(
-    "{.fn multinomial} supports fixed effects, a shared {.fn latent} ordination, {.fn phylo_latent}, {.fn animal_latent}, and single-name {.fn kernel_latent} in this release.",
+    "{.fn multinomial} supports fixed effects, a shared {.fn latent} ordination, and the phylogenetic/relatedness mode axis ({.fn phylo_latent}/{.fn animal_latent}/{.fn kernel_latent} and their {.fn phylo_dep}/{.fn phylo_indep}/{.fn animal_dep}/{.fn animal_indep}/{.fn kernel_dep}/{.fn kernel_indep} twins) in this release.",
     "x" = "Not admitted: {.val {unique(labels)}}.",
-    "i" = "Admitted set: {.code latent(0 + trait | unit, d = k)} (the default {.code unique = TRUE} works; the categorical contrast Psi is mapped off); intercept-only {.code phylo_latent(species, d = K)}, {.code animal_latent(species, A = A, d = K)}, or a SINGLE named {.code kernel_latent(species, K = K, d = K, name = nm)} (default {.code unique = FALSE}) for the among-category phylogenetic/relatedness surface -- {.code unique = TRUE} is NOT admitted for any of the three (a free phylogenetic Psi is deliberately unsupported for multinomial), and more than one {.fn kernel_latent} name in the same fit (multi-kernel) is NOT admitted.",
+    "i" = "Admitted set: {.code latent(0 + trait | unit, d = k)} (the default {.code unique = TRUE} works; the categorical contrast Psi is mapped off); and, for the among-category phylogenetic/relatedness surface, intercept-only {.code phylo_latent(species, d = K)}/{.code animal_latent(species, A = A, d = K)}/single-named {.code kernel_latent(species, K = K, d = K, name = nm)} (loadings-only ordination), {.code phylo_dep(0 + trait | species)}/{.code animal_dep(0 + trait | id)}/{.code kernel_dep(unit, K = K, name = nm)} (the full unstructured (K-1)x(K-1) V), and {.code phylo_indep(0 + trait | species)}/{.code animal_indep(0 + trait | id)}/{.code kernel_indep(unit, K = K, name = nm)} (diagonal V, no among-category correlation; standalone {.code phylo_unique()}/{.code animal_unique()}/{.code kernel_unique()} are soft-deprecated aliases of the {.code indep} cell) -- {.code unique = TRUE} on {.fn phylo_latent}/{.fn animal_latent}/{.fn kernel_latent} is NOT admitted (a free phylogenetic Psi is deliberately unsupported for multinomial), {.fn phylo_scalar}/{.fn animal_scalar}/{.fn kernel_scalar} (a single shared level across contrasts) are NOT admitted, and more than one {.fn kernel_latent}/{.fn kernel_dep}/{.fn kernel_indep} name in the same fit (multi-kernel) is NOT admitted.",
     "i" = "This fence is per-fit, not per-trait: a blocked term targeting only a non-multinomial trait in a mixed-family fit still aborts the whole fit.",
-    ">" = "Other latent-scale structures on categorical responses -- including dep(), phylo_dep()/phylo_indep()/phylo_unique(), phylo_scalar()/animal_scalar()/animal_indep()/animal_dep(), kernel_indep()/kernel_dep()/kernel_scalar()/kernel_unique(), multi-kernel, spatial_*(), augmented (intercept + slope) latent()/phylo_latent()/animal_latent(), *_latent(unique = TRUE), meta_V()/equalto(), the cluster/cluster2/unit_obs tiers, and generic (1 | group) random intercepts -- are deferred."
+    ">" = "Other latent-scale structures on categorical responses -- including dep()/indep()/unique() at the unit tier, phylo_scalar()/animal_scalar()/kernel_scalar(), multi-kernel, spatial_*(), augmented (intercept + slope) forms of every one of the above, *_latent(unique = TRUE), meta_V()/equalto(), the cluster/cluster2/unit_obs tiers, and generic (1 | group) random intercepts -- are deferred."
   ), class = "gllvmTMB_multinomial_structured_not_admitted")
 }

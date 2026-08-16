@@ -2,10 +2,14 @@
 ##
 ## `multinomial()` (family_id 16) is fixed-effects-plus-two-tiers only in this
 ## release: ordinary shared `latent()` at the unit tier (cross-family
-## correlations) and `phylo_latent()` (the among-category phylogenetic
-## surface), each with its default auto-Psi companion. Every other
-## structured / random-effect keyword is deferred and must fail loud rather
-## than silently fit an unvalidated categorical path.
+## correlations, with its default auto-Psi companion mapped off for the
+## categorical contrast diagonal) and intercept-only `phylo_latent()` (the
+## among-category phylogenetic surface, default `unique = FALSE` -- it emits
+## NO Psi companion at all; `unique = TRUE` is NOT admitted, since a free
+## phylogenetic Psi is deliberately unsupported for multinomial, see
+## R/extract-sigma.R). Every other structured / random-effect keyword is
+## deferred and must fail loud rather than silently fit an unvalidated
+## categorical path.
 ##
 ## Historically the ONLY gate was a late allow-list re-scan of `use_*` engine
 ## flags in R/fit-multi.R (the "FAIL-CLOSED allow-list", Rose review
@@ -48,19 +52,62 @@
 ## The late `use_*` re-scan in R/fit-multi.R stays as belt-and-braces (moved
 ## after every `use_*` flag is defined, including the `use_mi_*` mi()
 ## predictor flags -- see the call site) and the `use_propto` exemption is
-## removed there for family_id 16 fits.
+## removed there for family_id 16 fits. Both passes share the classed
+## condition "gllvmTMB_multinomial_structured_not_admitted".
+##
+## Slice-0 repair (adversarial Opus review, 2026-08-16): the FIRST pass of
+## this fence, above, had three more holes of the same shape --
+## classification gaps that made pass 1 non-load-bearing (a coincidental
+## OTHER gate, or the untyped pass-2 scan, happened to catch them instead):
+##   * augmented (intercept + slope) ordinary `latent(1 + x | unit)` stays
+##     `kind == "rr"` at the unit tier with no `.dep` marker, so the plain
+##     unit-tier check admitted it; only untyped pass-2 (`use_rr_B_slope`)
+##     caught it.
+##   * augmented `phylo_latent(1 + x | species)` stays `kind == "phylo_rr"`
+##     with none of the other markers set, so the plain-latent fall-through
+##     admitted it; NEITHER pass caught it -- an unrelated per-family
+##     augmented-slope-support gate happened to abort first.
+##   * `phylo_latent(unique = TRUE)`'s auto-emitted Psi companion
+##     (`.phylo_unique` + `.auto_unique`) was classified ADMITTED, directly
+##     contradicting R/extract-sigma.R's documented policy that a free
+##     phylogenetic Psi is not admitted for multinomial (pass 2 already
+##     caught it via `use_phylo_diag`, so this was a documentation/pass-1
+##     contradiction, not a live leak).
+## Also closed: `equalto()` / `meta_V()` (known-sampling-covariance) was
+## blanket-exempted in both passes; it is now fail-closed for fid 16 (no
+## established route on a categorical-contrast pseudo-trait).
 
 ## The current admitted set. Kept as an explicit constant so the CURRENT
 ## ADMITTED SET is legible in one place and the cli_abort message below can
 ## quote it without hand-duplicating prose. `since` records the design/PR
 ## that admitted the cell; it is documentation only.
+## Each row is deliberately ONE classifiable cell with ONE representative
+## covstruct shape, so a table-consistency test can iterate every row,
+## construct that row's representative covstruct, and assert
+## `.mn_classify_covstruct()`'s verdict matches `status` -- catching exactly
+## the kind of table/code drift that let row 4 (below) go stale.
 .mn_admission_table <- data.frame(
-  source = c("none",     "none",      "phylo",              "phylo"),
-  mode   = c("latent",   "latent",    "latent",             "latent"),
-  tier   = c("unit",     "unit (auto-Psi)", "among-category", "among-category (auto-Psi)"),
-  status = c("admitted", "admitted",  "admitted",            "admitted"),
-  since  = c("Tier-2b item 2a-ii (0.6.0)", "0.2.0 (latent() default Psi)",
-             "Design 84 Tier-2a (0.6.0)", "Design 84 Tier-2a (0.6.0)"),
+  source = c("none",     "none",            "phylo",
+             "phylo",                     "none",       "phylo",
+             "none"),
+  mode   = c("latent",   "latent",          "latent",
+             "latent",                     "latent_slope", "latent_slope",
+             "equalto"),
+  tier   = c("unit",     "unit (auto-Psi)", "among-category",
+             "among-category (auto-Psi)", "unit",       "among-category",
+             "-"),
+  status = c("admitted", "admitted",        "admitted",
+             "blocked",                    "blocked",    "blocked",
+             "blocked"),
+  since  = c(
+    "Tier-2b item 2a-ii (0.6.0)",
+    "0.2.0 (latent() default Psi)",
+    "Design 84 Tier-2a (0.6.0)",
+    "BLOCKED -- Slice 0 repair (2026-08-16): was wrongly admitted, contradicting R/extract-sigma.R's documented policy that a free phylogenetic Psi ('unique = TRUE') is not admitted for multinomial. phylo_latent() with the default unique = FALSE emits no Psi companion at all; an explicit unique = TRUE request is blocked.",
+    "BLOCKED -- Slice 0 repair (2026-08-16): pass 1 fell through to ADMITTED for augmented latent(1 + x | unit) / latent(0 + trait + (0 + trait):x | unit); only the untyped pass-2 use_rr_B_slope scan caught it.",
+    "BLOCKED -- Slice 0 repair (2026-08-16): pass 1 fell through to ADMITTED for augmented phylo_latent(1 + x | species); NEITHER pass caught it (an unrelated family-augmented-slope gate happened to abort first).",
+    "BLOCKED -- Slice 0 repair (2026-08-16): meta_V()/equalto() (known-sampling-covariance) has no admitted route on a categorical-contrast pseudo-trait; fail-closed default rather than the prior blanket pass-1/pass-2 exemption."
+  ),
   stringsAsFactors = FALSE
 )
 
@@ -84,12 +131,21 @@
     "other"
   }
 
-  ## propto / equalto are handled entirely by the late use_* re-scan (the
-  ## use_propto exemption is removed there for fid 16; use_equalto stays
-  ## exempt as a fixed-effect mapping keyword). Not this classifier's job.
-  if (kind %in% c("propto", "equalto")) {
+  ## propto is handled entirely by the late use_* re-scan (the use_propto
+  ## exemption is removed there for fid 16) -- not this classifier's job.
+  if (identical(kind, "propto")) {
     return(list(source = NA_character_, mode = NA_character_,
                 admitted = TRUE, label = NA_character_))
+  }
+  ## equalto (meta_V()) is a known-sampling-covariance term. It has no
+  ## established route for a categorical-contrast pseudo-trait -- fail
+  ## closed here rather than carry the old blanket propto/equalto
+  ## exemption forward. (Both passes previously exempted it identically;
+  ## pass 2's use_equalto exemption is now vestigial for fid 16 but is left
+  ## in place as it is shared with every other family.)
+  if (identical(kind, "equalto")) {
+    return(list(source = "none", mode = "equalto", admitted = FALSE,
+                label = "meta_V() / equalto()"))
   }
 
   if (identical(kind, "re_int")) {
@@ -98,6 +154,14 @@
   }
 
   if (identical(kind, "rr")) {
+    ## Augmented (intercept + slope) ordinary latent(): latent(1 + x | unit)
+    ## / latent(0 + trait + (0 + trait):x | unit, d = K) carry
+    ## `.latent_augmented` and stay `kind == "rr"` at the unit tier, so the
+    ## plain unit-tier check below would otherwise admit them.
+    if (isTRUE(extra$.latent_augmented)) {
+      return(list(source = "none", mode = "latent_slope", admitted = FALSE,
+                  label = "an augmented (intercept + slope) latent() random-regression term"))
+    }
     if (identical(tier, "unit") && !isTRUE(extra$.dep)) {
       return(list(source = "none", mode = "latent", admitted = TRUE,
                   label = "latent() at the unit tier"))
@@ -130,8 +194,23 @@
       ## animal_latent() already lands on an already-blocked phylo_rr cell
       ## (.dep or .phylo_unique set), so only the plain latent cell needs the
       ## marker to keep animal_latent() distinguishable from phylo_latent().
+      ## Covers the augmented (intercept + slope) animal_latent() form too
+      ## (it also carries .latent_slope, checked below for the plain-phylo
+      ## case; here .animal_source alone is sufficient and gives the more
+      ## specific label).
       return(list(source = "animal", mode = "latent", admitted = FALSE,
                   label = "animal_latent()"))
+    }
+    ## Augmented (intercept + slope) phylo_latent(1 + x | species): carries
+    ## `.latent_slope` and stays `kind == "phylo_rr"` with no other marker, so
+    ## the plain-latent fall-through below would otherwise admit it. Neither
+    ## this early classifier nor the late use_* re-scan caught this
+    ## previously -- an unrelated per-family augmented-slope gate happened to
+    ## abort first for every family currently reachable via multinomial(),
+    ## which is NOT the same as this fence being load-bearing here.
+    if (isTRUE(extra$.latent_slope)) {
+      return(list(source = "phylo", mode = "latent_slope", admitted = FALSE,
+                  label = "an augmented (intercept + slope) phylo_latent() random-regression term"))
     }
     if (isTRUE(extra$.dep)) {
       return(list(source = "phylo", mode = "dep", admitted = FALSE,
@@ -139,8 +218,14 @@
     }
     if (isTRUE(extra$.phylo_unique)) {
       if (isTRUE(extra$.auto_unique)) {
-        return(list(source = "phylo", mode = "latent", admitted = TRUE,
-                    label = "the auto-Psi companion of phylo_latent(unique = TRUE)"))
+        ## The auto-emitted companion of phylo_latent(unique = TRUE). A free
+        ## phylogenetic Psi is deliberately NOT admitted for multinomial
+        ## (see the has_multinomial branch of extract_Sigma()'s "phylogenetic
+        ## tier is currently latent-only" note, R/extract-sigma.R) -- so this
+        ## is blocked, not admitted. plain phylo_latent() (the default
+        ## unique = FALSE) never emits this covstruct at all.
+        return(list(source = "phylo", mode = "latent", admitted = FALSE,
+                    label = "phylo_latent(unique = TRUE) (a free phylogenetic Psi is not admitted for multinomial)"))
       }
       mode <- if (isTRUE(extra$.indep)) "indep" else "unique"
       return(list(source = "phylo", mode = mode, admitted = FALSE,
@@ -215,7 +300,8 @@
   cli::cli_abort(c(
     "{.fn multinomial} supports fixed effects, a shared {.fn latent} ordination, and {.fn phylo_latent} in this release.",
     "x" = "Not admitted: {.val {unique(labels)}}.",
-    "i" = "Admitted set: {.code latent(0 + trait | unit, d = k)} (the default {.code unique = TRUE} works; the categorical contrast Psi is mapped off), or {.code phylo_latent(species, d = K)} for the among-category phylogenetic surface (with its default auto-Psi companion).",
-    ">" = "Other latent-scale structures on categorical responses -- including dep(), phylo_dep(), phylo_indep()/phylo_unique(), phylo_scalar()/animal_scalar(), animal_*(), kernel_*(), spatial_*(), the cluster/cluster2/unit_obs tiers, and generic (1 | group) random intercepts -- are deferred."
+    "i" = "Admitted set: {.code latent(0 + trait | unit, d = k)} (the default {.code unique = TRUE} works; the categorical contrast Psi is mapped off), or intercept-only {.code phylo_latent(species, d = K)} (default {.code unique = FALSE}) for the among-category phylogenetic surface -- {.code phylo_latent(..., unique = TRUE)} is NOT admitted (a free phylogenetic Psi is deliberately unsupported for multinomial).",
+    "i" = "This fence is per-fit, not per-trait: a blocked term targeting only a non-multinomial trait in a mixed-family fit still aborts the whole fit.",
+    ">" = "Other latent-scale structures on categorical responses -- including dep(), phylo_dep(), phylo_indep()/phylo_unique(), phylo_scalar()/animal_scalar(), animal_*(), kernel_*(), spatial_*(), augmented (intercept + slope) latent()/phylo_latent(), meta_V()/equalto(), the cluster/cluster2/unit_obs tiers, and generic (1 | group) random intercepts -- are deferred."
   ), class = "gllvmTMB_multinomial_structured_not_admitted")
 }

@@ -4422,10 +4422,15 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## augmented reaction-norm slope) through. Instead, scan ALL `use_*` tier
   ## flags and abort if any active one is outside the allowed set -- so any
   ## current or future tier flag cannot silently reach fid 16. Placed here,
-  ## after every `use_*` flag in this function is defined (including the
-  ## use_mi_* mi()-predictor flags above), so a mi() term on a multinomial
-  ## fit is no longer invisible to the scan (Slice 0, Design 108/122: this
-  ## used to sit right after `use_re_int`, well before use_mi_* existed).
+  ## after every COVSTRUCT-DERIVED `use_*` tier flag in this function is
+  ## defined (including the use_mi_* mi()-predictor flags above), so a mi()
+  ## term on a multinomial fit is no longer invisible to the scan (Slice 0,
+  ## Design 108/122: this used to sit right after `use_re_int`, well before
+  ## use_mi_* existed). This is NOT every `use_*` variable in the function --
+  ## e.g. `use_continuation` (AGHQ continuation scheduling) and `use_aghq`
+  ## are assigned later, well after fitting begins; they are integration/
+  ## optimiser knobs, not latent/RE structures, and are out of this scan's
+  ## scope by construction rather than by accident.
   if (any(family_id_vec == 16L)) {
     .mn_env <- environment()
     .mn_allowed_tiers <- c("use_phylo_rr", "use_rr_B", "use_lv_B")
@@ -4462,10 +4467,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       cli::cli_abort(c(
         "{.fn multinomial} supports fixed effects, {.fn phylo_latent}, and a shared {.fn latent} ordination in this release.",
         "x" = "An unsupported latent / random-effect / structured term was combined with a categorical (multinomial) response.",
-        "i" = "Use a shared {.code latent(0 + trait | unit, d = k)} for cross-family (nominal <-> other) correlations (the default {.code unique = TRUE} works; the categorical contrast Psi is mapped off), or {.code phylo_latent(species, d = K)} for the among-category phylogenetic surface. Replication could identify a contrast-specific diagonal in principle, but an explicit multinomial {.fn unique}/{.fn indep} term is not admitted in this release.",
+        "i" = "Use a shared {.code latent(0 + trait | unit, d = k)} for cross-family (nominal <-> other) correlations (the default {.code unique = TRUE} works; the categorical contrast Psi is mapped off), or intercept-only {.code phylo_latent(species, d = K)} (default {.code unique = FALSE}) for the among-category phylogenetic surface. Replication could identify a contrast-specific diagonal in principle, but an explicit multinomial {.fn unique}/{.fn indep} term -- including {.code phylo_latent(..., unique = TRUE)}'s free phylogenetic Psi -- is not admitted in this release.",
         "i" = "A {.fn propto} (phylo_scalar()/animal_scalar()) term targeting only NON-multinomial traits in a mixed-family fit is also blocked in this release -- the fence is per-fit, not per-trait.",
         ">" = "Other latent-scale structures on categorical responses are deferred."
-      ))
+      ), class = "gllvmTMB_multinomial_structured_not_admitted")
     }
   }
 

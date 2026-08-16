@@ -35,12 +35,17 @@ structured-term surface is narrow: fixed effects always; an ordinary
 shared \code{latent(0 + trait | unit, d = k)} ordination, which connects
 a multinomial trait to other-family traits through its \eqn{K-1}
 contrast pseudo-traits (the default \code{unique = TRUE} works, with the
-categorical contrast \eqn{\Psi} mapped off); and \code{phylo_latent()}
-for the among-category phylogenetic surface. Every other structured /
+categorical contrast \eqn{\Psi} mapped off); and intercept-only
+\code{phylo_latent(species, d = K)} (default \code{unique = FALSE}) for
+the among-category phylogenetic surface -- it emits no \eqn{\Psi}
+companion at all in that default form, and \code{unique = TRUE} (a free
+phylogenetic \eqn{\Psi}) is NOT admitted. Every other structured /
 random-effect keyword -- \code{dep()}, explicit \code{unique()} /
 \code{indep()}, \code{phylo_dep()} / \code{phylo_indep()} /
 \code{phylo_unique()}, \code{phylo_scalar()}, \code{animal_*()},
-\code{kernel_*()}, \code{spatial_*()}, the \code{cluster} /
+\code{kernel_*()}, \code{spatial_*()}, augmented (intercept + slope)
+\code{latent()} / \code{phylo_latent()} random regressions,
+\code{meta_V()} / \code{equalto()}, the \code{cluster} /
 \code{cluster2} / \code{unit_obs} grouping tiers, generic
 \code{(1 | group)} random intercepts, and \code{mi()} predictor terms --
 is deferred and fails loud (\code{R/multinomial-fence.R}) rather than

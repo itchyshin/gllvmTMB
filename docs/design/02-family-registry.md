@@ -246,6 +246,28 @@ every `use_*` flag in `gllvmTMB_multi_fit()` (including the `mi()`
 predictor flags, which were previously defined after the old scan and so
 were invisible to it), with the `use_propto` exemption removed.
 
+**Adversarial-review repair (2026-08-16, same day).** An Opus review of the
+fence above found it was not yet load-bearing everywhere. `phylo_latent()`
+is admitted intercept-only with its default `unique = FALSE` (no Psi
+companion emitted at all); `phylo_latent(..., unique = TRUE)` (a free
+phylogenetic Psi) is explicitly **not** admitted, and the fence's first
+pass had wrongly classified it as admitted (the late re-scan already
+caught it via a different flag, so this was a documentation/classifier
+contradiction rather than a live leak). Augmented (intercept + slope)
+`latent(1 + x | unit)` and `phylo_latent(1 + x | species)` random
+regressions reuse the same covstruct kind as their intercept-only admitted
+forms with no `.dep`/`.phylo_unique` marker set, so the early classifier's
+first pass fell through to admitted for both; the ordinary-`latent()` case
+was still caught by the untyped late re-scan, but the `phylo_latent()` case
+was caught by neither fence pass -- an unrelated per-family
+augmented-slope-support gate happened to abort first. Both are now
+classified blocked directly. `meta_V()` / `equalto()` (known
+sampling-covariance) was blanket-exempted in both passes alongside
+`propto()`; it is now fail-closed by default, since no route is
+established for it on a categorical-contrast pseudo-trait. Both fence
+passes now share one classed condition,
+`gllvmTMB_multinomial_structured_not_admitted`.
+
 ### Hurdle / delta families
 
 **Status:** the standard `delta_lognormal()` and `delta_gamma()` routes are

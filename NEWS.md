@@ -107,9 +107,18 @@ is still the default.
   a `multinomial()` trait combined with any of the keywords above, that fit
   ran on an unvalidated structured-term path and should be re-checked** —
   the currently admitted set is unchanged: fixed effects, an ordinary shared
-  `latent(0 + trait | unit, d = k)` ordination, and `phylo_latent()`. A
-  `mi()` predictor term combined with a multinomial trait, previously
+  `latent(0 + trait | unit, d = k)` ordination, and intercept-only
+  `phylo_latent()` (default `unique = FALSE`; it emits no Psi companion at
+  all). A `mi()` predictor term combined with a multinomial trait, previously
   invisible to the admission scan due to definition order, now also aborts.
+  A follow-up adversarial review found the fence itself was not yet
+  load-bearing everywhere: augmented (intercept + slope) `latent()` /
+  `phylo_latent()` random regressions, `phylo_latent(unique = TRUE)` (a free
+  phylogenetic Psi, never admitted, but the fence's first pass wrongly
+  labelled it admitted), and `meta_V()` / `equalto()` (no established route
+  on a categorical-contrast pseudo-trait) are now all explicitly blocked,
+  with a shared classed condition (`gllvmTMB_multinomial_structured_not_admitted`)
+  on every path.
 
 # gllvmTMB 0.6.0
 

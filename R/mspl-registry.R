@@ -26,8 +26,8 @@
     }
     return("identity")
   }
-  if (fid %in% c(2L, 5L, 15L)) {
-    ## Poisson / nbinom2 / nbinom1: family_to_id() stores log as link_id 0.
+  if (fid %in% c(2L, 3L, 4L, 5L, 15L)) {
+    ## Poisson / lognormal / Gamma / nbinom2 / nbinom1: log is link_id 0.
     return("log")
   }
   .gllvmTMB_mspl_link_name(link_id)
@@ -187,6 +187,45 @@
     planned_nb$q
   )
 
+  ## Gamma(log) and lognormal(log) ordinary q=1,2: planned Phase-4-style
+  ## prep only. NOT admitted. No prepare widen. No C++ tape.
+  planned_gamma <- data.frame(
+    family = "gamma",
+    link = "log",
+    structure = "ordinary",
+    q = c(1L, 2L),
+    status = "planned",
+    evidence = "phase4_prep",
+    notes = paste(
+      "Phase 4-style prep: GLM-outer W=phi (mean-inert);",
+      "not Tweedie p->2; not admitted; not covered; se=FALSE only"
+    ),
+    stringsAsFactors = FALSE
+  )
+  planned_gamma$cell_id <- .gllvmTMB_mspl_registry_cell_id(
+    planned_gamma$family, planned_gamma$link, planned_gamma$structure,
+    planned_gamma$q
+  )
+
+  planned_lnorm <- data.frame(
+    family = "lognormal",
+    link = "log",
+    structure = "ordinary",
+    q = c(1L, 2L),
+    status = "planned",
+    evidence = "phase4_prep",
+    notes = paste(
+      "Phase 4-style prep: GLM-outer W=1/sigma_eps^2 on log y;",
+      "shared sigma_eps with gaussian is not a theorem transfer;",
+      "not admitted; not covered; se=FALSE only"
+    ),
+    stringsAsFactors = FALSE
+  )
+  planned_lnorm$cell_id <- .gllvmTMB_mspl_registry_cell_id(
+    planned_lnorm$family, planned_lnorm$link, planned_lnorm$structure,
+    planned_lnorm$q
+  )
+
   excluded <- data.frame(
     family = c(
       "binomial",
@@ -244,7 +283,8 @@
   )
 
   rows <- rbind(
-    admitted_binom, admitted_gauss, admitted_pois, planned_nb, excluded
+    admitted_binom, admitted_gauss, admitted_pois, planned_nb,
+    planned_gamma, planned_lnorm, excluded
   )
   rows[order(rows$status, rows$family, rows$structure, rows$link, rows$q), ]
 }

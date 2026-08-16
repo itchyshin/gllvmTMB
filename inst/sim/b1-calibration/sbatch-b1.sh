@@ -27,13 +27,35 @@
 #SBATCH --account=def-snakagaw_cpu
 #SBATCH --job-name=mspl_b1_calibration
 ## ARRAY range: N = number of rows from
-##   Rscript inst/sim/b1-calibration/run-b1-shard.R --print-map | wc -l
+##   Rscript inst/sim/b1-calibration/run-b1-shard.R --print-map --outer-per-shard 3 | wc -l
 ## which is `132 cells * ceiling(600 / outer-per-shard) shards/cell`
-## (7,920 at the default --outer-per-shard 10; Design 118 s5). Fill in
-## before submitting -- deliberately left unset here so an accidental
-## `sbatch` of this file fails closed instead of launching an unsized array.
-##SBATCH --array=1-7920
-#SBATCH --time=03:00:00
+## (26,400 at --outer-per-shard 3, the PROVISIONAL value below; Design 118
+## s5). Fill in before submitting -- deliberately left unset here so an
+## accidental `sbatch` of this file fails closed instead of launching an
+## unsized array.
+##SBATCH --array=1-26400
+##
+## --time=02:30:00 and --outer-per-shard=3 (below) are PROVISIONAL,
+## measured LOCALLY (Mac, nice -19, single-threaded) at an ad hoc stress
+## corner (n_site=192, n_trait=12, q=2 -- combining the worst value on
+## each axis; NOT a registered grid cell, since bootstrap-bearing cells
+## never combine n_trait=12 with anything, and only C-ID2 -- which carries
+## no bootstrap -- reaches n_trait=12 at all). Measured there: fit=11.4s,
+## probe(2 refits)=26.0s, hessian=7.2s, screen=1.2s, profile(3 targets,
+## widened to threshold 3.317)=318.5s -- 364.3s/outer, non-bootstrap. The
+## SAME probe's bootstrap arm returned 0/25 usable replicates near-
+## instantly (INCONCLUSIVE, not a valid timing) at that corner, so the
+## bootstrap figure below is instead the real B091 smoke rate
+## (0.246 s/replicate, 5/5 usable) scaled by the corner's own fit-cost
+## ratio (11.4s/0.878s = 12.9x) -> ~3.19 s/replicate -> ~1,593s per
+## in-subset outer at 500 replicates (EXTRAPOLATED-LOCAL, both numbers).
+## At --outer-per-shard=10 (the harness's own CLI default) this projects
+## to ~2.8h raw / ~8.4h with 3x headroom -- over the 3h ceiling -- so
+## --outer-per-shard is reduced to 3 here (raw ~0.75h, ~2.24h with 3x
+## headroom) rather than raising --time past 3h, per fix 9's fallback
+## rule. The definitive numbers are a Totoro job for the orchestrator;
+## revisit both PROVISIONAL values once that lands.
+#SBATCH --time=02:30:00
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=4G
 
@@ -63,7 +85,7 @@ export GLLVM_TMB_PILOT_SOURCE=true
 cd "$PACKAGE_ROOT"
 Rscript --vanilla inst/sim/b1-calibration/run-b1-shard.R \
   --task-id "${SLURM_ARRAY_TASK_ID:?}" \
-  --outer-per-shard 10 \
+  --outer-per-shard 3 \
   --reps 600 \
   --bootstrap-reps 500 \
   --out "$OUT_ROOT"

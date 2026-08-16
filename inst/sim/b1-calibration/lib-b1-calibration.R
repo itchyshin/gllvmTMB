@@ -35,12 +35,25 @@ b1_seed_base <- function(cell_index) 218000000L + as.integer(cell_index) * 10000
 
 b1_outer_seed <- function(row, outer_id) as.integer(row$seed_base[[1L]]) + as.integer(outer_id)
 
-## Bootstrap resample seeds live in a disjoint offset band per outer
-## dataset (500,000 + ...), so they never collide with another outer_id's
-## plain seed (outer_id is always < 500,000 in this campaign).
+## Bootstrap resample seeds live in a SEPARATE global family, indexed
+## directly by (cell_index, outer_id, attempt_id) rather than by an offset
+## relative to seed_base. Pre-launch review fix: the old scheme
+## (seed_base + 500,000 + (outer_id-1)*1000 + attempt_id) spilled past the
+## 1,000,000 per-cell spacing for outer_id > ~501, landing in an unused gap
+## of the NEXT cell's range only by luck at the base n = 600 (0 collisions,
+## confirmed by exhaustive enumeration) -- but at the s2.5 escalation cap
+## n = 2000 the spillover collides with that cell's own outer-data seeds
+## (189,000 duplicates, confirmed by the same enumeration method; see
+## test-b1-calibration.R's reps = 2000 collision test). The new family
+## below sits in [400,000,000, 532,263,999] at the registered ceilings
+## (132 cells x outer_id 1..2000 x attempt_id 1..500) -- disjoint from B0
+## (<= 1.3e8), the archive (>= 1.9e9), and B1's own outer-seed family
+## (<= 350,002,000 at outer_id = 2000) by construction, at ANY reps count
+## up to the registered escalation cap, not just n = 600.
 b1_bootstrap_seed <- function(row, outer_id, attempt_id) {
-  as.integer(row$seed_base[[1L]]) + 500000L +
-    (as.integer(outer_id) - 1L) * 1000L + as.integer(attempt_id)
+  cell_index <- as.integer(row$cell_index[[1L]])
+  400000000L + (cell_index - 1L) * 1002000L +
+    (as.integer(outer_id) - 1L) * 501L + as.integer(attempt_id)
 }
 
 ## Deterministic 1-in-3 bootstrap-subset selection (Design 118 s6.2
@@ -300,6 +313,34 @@ b1_proximity_refused <- function(estimate, attractor_root, tol = 1e-4) {
   b0_label_l2(estimate, attractor_root, tol = tol)
 }
 
+## ---- Profile trace interpolation (Design 118 s2.4: "no refitting") -----
+## Given ONE side's ("lower"/"upper") walked trace rows (plus the centre
+## row, side == "centre") from a `.gllvmTMB_mspl_profile_feasibility()`
+## probe, linearly interpolate the profile target value at an arbitrary
+## deviance `threshold` from the ALREADY-EVALUATED (target, objective_delta)
+## pairs -- no new fit. This is what makes storing ONE wide walk (to
+## Design 118 s3.4's outer threshold, 3.317) sufficient to recover the
+## endpoint at any OTHER threshold within the walked range, including the
+## registered nominal level (0.95, threshold 1.9207...), without a second
+## walk. Returns NA if the trace never reaches `threshold` on that side.
+b1_profile_trace_endpoint <- function(trace, threshold, side) {
+  sub <- trace[
+    trace$side %in% c(side, "centre") & trace$finite %in% TRUE &
+      trace$convergence %in% 0L,
+  ]
+  if (nrow(sub) < 2L) return(NA_real_)
+  sub <- sub[if (identical(side, "lower")) order(-sub$target_value) else order(sub$target_value), ]
+  below <- sub$objective_delta < threshold
+  if (!any(below) || all(below)) return(NA_real_) ## never brackets threshold
+  i <- max(which(below))
+  x0 <- sub$target_value[[i]]
+  y0 <- sub$objective_delta[[i]]
+  x1 <- sub$target_value[[i + 1L]]
+  y1 <- sub$objective_delta[[i + 1L]]
+  if (!is.finite(y0) || !is.finite(y1) || y1 <= y0) return(NA_real_)
+  x0 + (threshold - y0) * (x1 - x0) / (y1 - y0)
+}
+
 ## ---- Output schema -----------------------------------------------------
 ## One row per (outer dataset x calibration target). Keep the schema test
 ## in test-b1-calibration.R in sync with any change here.
@@ -311,7 +352,7 @@ b1_output_columns <- c(
   "target", "target_name", "target_slot", "truth", "k", "n_obs",
   "estimate", "converged",
   "screen_status", "screen_severity", "screen_refused",
-  "attractor_root", "proximity_refused",
+  "attractor_root", "proximity_refused", "root_na",
   "refused", "refusal_reason",
   "estimate_half_cn", "half_converged", "estimate_double_cn", "double_converged",
   "se_penalised", "hessian_status", "d_per_efold", "s_j", "probe_class",
@@ -332,11 +373,31 @@ b1_na_row <- function(n = 1L) {
   out
 }
 
-## ---- One outer dataset: simulate, fit, fence, profile, (subset) --------
+## ---- Sidecar schemas (Design 118 s3.4 storage contract) -----------------
+## Per-target profile trace (all walked grid + refinement points from the
+## widened level = 0.99 probe) and the full bootstrap replicate vector
+## (usable values only) -- persisted so a later calibrator-fitting step can
+## re-evaluate coverage at ANY alpha* by re-thresholding these stored
+## values, with no refitting (Design 118 s2.4).
+b1_profile_trace_columns <- c(
+  "cell_id", "shard_id", "outer_id", "calibration_target",
+  "calibration_target_name", "side", "stage", "target_value", "objective",
+  "objective_delta", "convergence", "finite", "nuisance_reoptimized", "message"
+)
+b1_bootstrap_replicate_columns <- c(
+  "cell_id", "shard_id", "outer_id", "calibration_target",
+  "calibration_target_name", "attempt_id", "seed", "estimate"
+)
+
+## ---- One outer dataset: simulate, fit, fence, profile, (shared) --------
 ## bootstrap. Every stage is wrapped so a failure anywhere downgrades that
 ## row's status/message instead of aborting the shard (B0's convention).
+## Returns a LIST, not a bare data.frame: `rows` is the per-coordinate
+## summary (b1_output_columns), `profile_trace` and `bootstrap_replicates`
+## are the raw sidecar rows the s3.4 storage contract requires (Blocker 1).
 b1_run_outer <- function(row, outer_id, shard_id, bootstrap_reps = 500L,
-                          profile_level = 0.95, boot_alpha = 0.05,
+                          profile_level = 0.95, profile_walk_level = 0.99,
+                          profile_max_widen_rounds = 3L, boot_alpha = 0.05,
                           proximity_tol = 1e-4) {
   link <- row$link[[1L]]
   q <- as.integer(row$q[[1L]])
@@ -347,6 +408,12 @@ b1_run_outer <- function(row, outer_id, shard_id, bootstrap_reps = 500L,
   seed <- b1_outer_seed(row, outer_id)
   data <- b1_simulate_outer_data(row, outer_id)
   counts <- b0_trait_counts(data)
+  empty_result <- function(out) {
+    list(
+      rows = out, profile_trace = NULL,
+      bootstrap_replicates = NULL
+    )
+  }
 
   base_row <- function(status, message = "") {
     out <- b1_na_row(n_targets)
@@ -382,14 +449,14 @@ b1_run_outer <- function(row, outer_id, shard_id, bootstrap_reps = 500L,
   if (inherits(fit, "error")) {
     out <- base_row("outer_fit_error", conditionMessage(fit))
     out$fit_elapsed_seconds <- fit_elapsed
-    return(out)
+    return(empty_result(out))
   }
 
   idx_all <- which(names(fit$opt$par) == "b_fix")
   if (length(idx_all) != n_trait) {
     out <- base_row("outer_target_alignment_failed", "")
     out$fit_elapsed_seconds <- fit_elapsed
-    return(out)
+    return(empty_result(out))
   }
   idx <- idx_all[targets$position]
 
@@ -411,6 +478,11 @@ b1_run_outer <- function(row, outer_id, shard_id, bootstrap_reps = 500L,
     )
   }, numeric(1L))
   out$proximity_refused <- b1_proximity_refused(out$estimate, out$attractor_root, tol = proximity_tol)
+  ## Fix 8 (fail-open on root failure): if `uniroot` could not bracket the
+  ## attractor root (root = NA), the proximity check is INCONCLUSIVE, not
+  ## clean -- b0_label_l2() returns FALSE for a non-finite root, which
+  ## previously admitted the coordinate. Refuse instead, fail-closed.
+  out$root_na <- !is.finite(out$attractor_root)
 
   ## Fence line 1: the shipped separation screen.
   screen_started <- proc.time()[["elapsed"]]
@@ -426,9 +498,11 @@ b1_run_outer <- function(row, outer_id, shard_id, bootstrap_reps = 500L,
     out$screen_refused <- TRUE ## fail-closed: screen itself errored -> refuse (Design 88 style)
   }
 
-  out$refused <- out$screen_refused | out$proximity_refused
+  out$refused <- out$screen_refused | out$proximity_refused | out$root_na
   out$refusal_reason <- ifelse(out$screen_refused %in% TRUE, "screen",
-    ifelse(out$proximity_refused %in% TRUE, "proximity", "")
+    ifelse(out$proximity_refused %in% TRUE, "proximity",
+      ifelse(out$root_na %in% TRUE, "root_na", "")
+    )
   )
 
   ## Route A probe (s_j): two extra outer refits at c_n/2 and 2c_n. Still
@@ -469,7 +543,15 @@ b1_run_outer <- function(row, outer_id, shard_id, bootstrap_reps = 500L,
   out$route_b_s_surr <- rb$s_surr[idx]
 
   ## Penalised-profile interval (base construction, Design 118 s3.1), only
-  ## for coordinates the fence did not refuse.
+  ## for coordinates the fence did not refuse. Blocker 1 fix: the walk runs
+  ## at `profile_walk_level` (registered outer bound 0.99, threshold
+  ## 3.317, s3.4), widening on request (s7.2) so it actually reaches that
+  ## far; the FULL raw trace is persisted to `profile_trace` (the sidecar),
+  ## and the nominal-level (`profile_level`, default 0.95) diagnostic
+  ## endpoints reported in the main row are interpolated from that SAME
+  ## trace -- no second walk (Design 118 s2.4: "no refitting").
+  threshold_nominal <- stats::qchisq(profile_level, df = 1L) / 2
+  profile_traces <- list()
   for (i in seq_len(n_targets)) {
     if (isTRUE(out$refused[[i]])) {
       out$profile_attempted[[i]] <- FALSE
@@ -480,9 +562,10 @@ b1_run_outer <- function(row, outer_id, shard_id, bootstrap_reps = 500L,
     profile_started <- proc.time()[["elapsed"]]
     probe <- tryCatch(
       gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
-        fit, which = idx[[i]], step = 0.5, max_steps = 12L, level = profile_level,
+        fit, which = idx[[i]], step = 0.5, max_steps = 12L, level = profile_walk_level,
         control = list(eval.max = 100L, iter.max = 100L),
-        refinement_steps = 12L, bracket_tolerance = 1.25e-4
+        refinement_steps = 20L, bracket_tolerance = 1.25e-4,
+        max_widen_rounds = profile_max_widen_rounds
       ),
       error = identity
     )
@@ -498,63 +581,116 @@ b1_run_outer <- function(row, outer_id, shard_id, bootstrap_reps = 500L,
     out$profile_status[[i]] <- if (ok) "ok" else paste0(
       "profile_", diagnostic$centre_status, "_", diagnostic$lower_status, "_", diagnostic$upper_status
     )
-    if (ok) {
-      out$profile_lower[[i]] <- diagnostic$diagnostic_lower
-      out$profile_upper[[i]] <- diagnostic$diagnostic_upper
-      out$profile_available[[i]] <- TRUE
+
+    ## s3.4 storage: persist the raw trace regardless of whether the
+    ## widened walk fully crossed -- a partial/truncated trace is still
+    ## real material (and the calibrator's own availability accounting
+    ## needs genuine truncation/failure outcomes visible, not just "ok").
+    trace <- probe$trace
+    names(trace)[names(trace) == "target"] <- "target_value" ## avoid a
+    ## name clash with `out$target` (the calibration-target POSITION,
+    ## 1/2/3) -- the archived campaign used the same rename for the same
+    ## reason.
+    trace$cell_id <- out$cell_id[[1L]]
+    trace$shard_id <- out$shard_id[[1L]]
+    trace$outer_id <- out$outer_id[[1L]]
+    trace$calibration_target <- out$target[[i]]
+    trace$calibration_target_name <- out$target_name[[i]]
+    profile_traces[[length(profile_traces) + 1L]] <- trace[, b1_profile_trace_columns]
+
+    out$profile_lower[[i]] <- b1_profile_trace_endpoint(trace, threshold_nominal, "lower")
+    out$profile_upper[[i]] <- b1_profile_trace_endpoint(trace, threshold_nominal, "upper")
+    out$profile_available[[i]] <- is.finite(out$profile_lower[[i]]) && is.finite(out$profile_upper[[i]])
+    if (isTRUE(out$profile_available[[i]])) {
       out$profile_covered[[i]] <- out$truth[[i]] >= out$profile_lower[[i]] &&
         out$truth[[i]] <= out$profile_upper[[i]]
-    } else {
-      out$profile_available[[i]] <- FALSE
     }
   }
+  profile_trace_out <- if (length(profile_traces)) do.call(rbind, profile_traces) else NULL
 
   ## Percentile bootstrap fallback (1-in-3 subset, bootstrap-bearing cells
-  ## only, non-refused coordinates only -- Design 118 s1.4/s3.5/s6.2).
-  for (i in seq_len(n_targets)) {
-    attempt <- row$bootstrap_bearing[[1L]] && out$in_bootstrap_subset[[i]] && !isTRUE(out$refused[[i]])
-    out$bootstrap_attempted[[i]] <- attempt
-    if (!attempt) {
-      out$bootstrap_status[[i]] <- if (isTRUE(out$refused[[i]])) "refused" else "not_in_subset"
-      next
-    }
+  ## only). Blocker 2 fix: ONE shared 500-refit simulate+refit cycle per
+  ## outer dataset, not one per target -- the pre-launch review found the
+  ## old code re-running the identical 500 cycles inside the per-target
+  ## loop (3x the authorized array cost). All 3 calibration-target
+  ## coordinates are extracted from each shared refit; a target the fence
+  ## refused simply does not get its own column reported below (the
+  ## shared refits are not wasted re-running for it).
+  bootstrap_replicate_rows <- list()
+  in_subset <- isTRUE(out$in_bootstrap_subset[[1L]])
+  any_admitted <- any(!(out$refused %in% TRUE))
+  boot_estimates <- matrix(NA_real_, nrow = bootstrap_reps, ncol = n_targets)
+  redraw_status <- "not_attempted"
+  boot_elapsed <- 0
+  if (row$bootstrap_bearing[[1L]] && in_subset && any_admitted) {
     boot_started <- proc.time()[["elapsed"]]
-    redraw <- tryCatch(.check_simulate_unconditional(fit), error = identity)
+    redraw <- tryCatch(gllvmTMB:::.check_simulate_unconditional(fit), error = identity)
     if (inherits(redraw, "error") || !isTRUE(redraw$can_redraw)) {
-      out$bootstrap_status[[i]] <- "unconditional_redraw_unavailable"
-      out$bootstrap_elapsed_seconds[[i]] <- proc.time()[["elapsed"]] - boot_started
+      redraw_status <- "unconditional_redraw_unavailable"
+    } else {
+      redraw_status <- "ok"
+      for (attempt_id in seq_len(bootstrap_reps)) {
+        bseed <- b1_bootstrap_seed(row, outer_id, attempt_id)
+        simulated <- tryCatch(
+          stats::simulate(fit, nsim = 1L, seed = bseed, condition_on_RE = FALSE),
+          error = identity
+        )
+        if (inherits(simulated, "error")) next
+        y <- as.numeric(simulated[, 1L])
+        if (length(y) != nrow(fit$data) || any(!is.finite(y))) next
+        bdata <- fit$data
+        bdata$y <- y
+        refit <- tryCatch(b1_fit_mspl(bdata, link, q, mult = 1), error = identity)
+        if (inherits(refit, "error")) next
+        ridx <- which(names(refit$opt$par) == "b_fix")
+        if (length(ridx) != n_trait || !identical(as.integer(refit$opt$convergence), 0L)) next
+        boot_estimates[attempt_id, ] <- as.numeric(refit$opt$par[ridx[targets$position]])
+      }
+    }
+    boot_elapsed <- proc.time()[["elapsed"]] - boot_started
+  }
+
+  min_usable <- ceiling(0.95 * bootstrap_reps)
+  for (i in seq_len(n_targets)) {
+    refused_i <- isTRUE(out$refused[[i]])
+    attempted_i <- row$bootstrap_bearing[[1L]] && in_subset && !refused_i && identical(redraw_status, "ok")
+    out$bootstrap_attempted[[i]] <- attempted_i
+    ## The shared cost is recorded once (target 1) so summed timings don't
+    ## triple-count a single 500-refit cycle across 3 rows.
+    out$bootstrap_elapsed_seconds[[i]] <- if (i == 1L) boot_elapsed else 0
+    if (refused_i) {
+      out$bootstrap_status[[i]] <- "refused"
       next
     }
-    values <- vapply(seq_len(bootstrap_reps), function(attempt_id) {
-      bseed <- b1_bootstrap_seed(row, outer_id, attempt_id)
-      simulated <- tryCatch(
-        stats::simulate(fit, nsim = 1L, seed = bseed, condition_on_RE = FALSE),
-        error = identity
+    if (!row$bootstrap_bearing[[1L]] || !in_subset) {
+      out$bootstrap_status[[i]] <- "not_in_subset"
+      next
+    }
+    if (!identical(redraw_status, "ok")) {
+      out$bootstrap_status[[i]] <- redraw_status
+      next
+    }
+    vals <- boot_estimates[, i]
+    usable_idx <- which(is.finite(vals))
+    out$bootstrap_usable_n[[i]] <- length(usable_idx)
+    if (length(usable_idx)) {
+      ## s3.4 storage: persist the FULL replicate vector (usable values),
+      ## not just two quantiles -- re-thresholdable at any alpha* later.
+      bootstrap_replicate_rows[[length(bootstrap_replicate_rows) + 1L]] <- data.frame(
+        cell_id = out$cell_id[[1L]], shard_id = out$shard_id[[1L]], outer_id = out$outer_id[[1L]],
+        calibration_target = out$target[[i]], calibration_target_name = out$target_name[[i]],
+        attempt_id = usable_idx,
+        seed = vapply(usable_idx, function(a) b1_bootstrap_seed(row, outer_id, a), integer(1L)),
+        estimate = vals[usable_idx], stringsAsFactors = FALSE
       )
-      if (inherits(simulated, "error")) return(NA_real_)
-      y <- as.numeric(simulated[, 1L])
-      if (length(y) != nrow(fit$data) || any(!is.finite(y))) return(NA_real_)
-      bdata <- fit$data
-      bdata$y <- y
-      refit <- tryCatch(b1_fit_mspl(bdata, link, q, mult = 1), error = identity)
-      if (inherits(refit, "error")) return(NA_real_)
-      ridx <- which(names(refit$opt$par) == "b_fix")
-      if (length(ridx) != n_trait || !identical(as.integer(refit$opt$convergence), 0L)) {
-        return(NA_real_)
-      }
-      as.numeric(refit$opt$par[ridx[targets$position[[i]]]])
-    }, numeric(1L))
-    out$bootstrap_elapsed_seconds[[i]] <- proc.time()[["elapsed"]] - boot_started
-    usable <- values[is.finite(values)]
-    out$bootstrap_usable_n[[i]] <- length(usable)
-    min_usable <- ceiling(0.95 * bootstrap_reps)
-    if (length(usable) < min_usable) {
+    }
+    if (length(usable_idx) < min_usable) {
       out$bootstrap_status[[i]] <- "insufficient_usable_bootstrap"
       next
     }
     q_lo <- boot_alpha / 2
     q_hi <- 1 - boot_alpha / 2
-    endpoints <- stats::quantile(usable, c(q_lo, q_hi), type = 7L, names = FALSE)
+    endpoints <- stats::quantile(vals[usable_idx], c(q_lo, q_hi), type = 7L, names = FALSE)
     if (any(!is.finite(endpoints)) || endpoints[[1L]] >= endpoints[[2L]]) {
       out$bootstrap_status[[i]] <- "bootstrap_endpoints_invalid"
       next
@@ -565,6 +701,14 @@ b1_run_outer <- function(row, outer_id, shard_id, bootstrap_reps = 500L,
     out$bootstrap_available[[i]] <- TRUE
     out$bootstrap_covered[[i]] <- out$truth[[i]] >= endpoints[[1L]] && out$truth[[i]] <= endpoints[[2L]]
   }
+  bootstrap_replicates_out <- if (length(bootstrap_replicate_rows)) {
+    do.call(rbind, bootstrap_replicate_rows)[, b1_bootstrap_replicate_columns]
+  } else {
+    NULL
+  }
 
-  out
+  list(
+    rows = out, profile_trace = profile_trace_out,
+    bootstrap_replicates = bootstrap_replicates_out
+  )
 }

@@ -92,7 +92,7 @@ local({
     expect_equal(b1_seed_base(132L), 218000000L + 132L * 1000000L)
   })
 
-  test_that("B1's seed range is disjoint from B0's and the 2026-08-14 archive's", {
+  test_that("B1's plain-outer seed range is disjoint from B0's and the 2026-08-14 archive's", {
     g <- b1_grid()
     ## B0: 118,000,000 + case_number*1,000,000 for case_number in 1..12 ->
     ## range [1.19e8, 1.30e8].
@@ -101,12 +101,40 @@ local({
     archive_range <- c(1900000000L + 1L * 10000000L, 1900000000L + 12L * 10000000L)
     expect_true(all(g$seed_base > b0_range[[2L]]))
     expect_true(all(g$seed_base < archive_range[[1L]]))
-    ## Bootstrap seeds (offset +500,000+) stay below the next cell's plain
-    ## seed_base band and never collide with another outer_id's plain seed.
-    row <- g[1L, ]
-    plain_seeds <- vapply(1:2000, function(o) b1_outer_seed(row, o), integer(1L))
-    boot_seeds <- vapply(1:5, function(a) b1_bootstrap_seed(row, outer_id = 1L, attempt_id = a), integer(1L))
-    expect_true(all(!boot_seeds %in% plain_seeds))
+  })
+
+  test_that("B1's bootstrap seed family is disjoint from B0, the archive, and its own plain-outer family, AT REPS = 2000", {
+    ## Pre-launch review fix 4: the OLD scheme (seed_base + 500,000 +
+    ## (outer_id-1)*1000 + attempt_id) collided with the NEXT cell's own
+    ## outer-data seeds once outer_id exceeded ~501 -- invisible at the
+    ## base n = 600 (0 collisions, luck of an unused gap) but producing
+    ## 189,000 duplicated seeds at the s2.5 escalation cap reps = 2000.
+    ## This test enumerates at reps = 2000, the escalation cap, not just
+    ## the base 600, and is exhaustive over (cell_index, outer_id) --  the
+    ## two axes the review's collision was actually in -- with attempt_id
+    ## sampled at its two extremes plus interior points (injectivity in
+    ## attempt_id follows from the fixed 501-wide per-outer span; the
+    ## cross-cell/cross-outer collision is what actually matters here).
+    g <- b1_grid()
+    reps <- 2000L
+    outer_seeds <- as.vector(outer(g$seed_base, seq_len(reps), `+`))
+    expect_equal(anyDuplicated(outer_seeds), 0L)
+
+    attempt_ids <- c(1L, 2L, 250L, 499L, 500L)
+    boot_seeds <- unlist(lapply(seq_len(nrow(g)), function(i) {
+      row <- g[i, ]
+      unlist(lapply(seq_len(reps), function(o) {
+        vapply(attempt_ids, function(a) b1_bootstrap_seed(row, outer_id = o, attempt_id = a), integer(1L))
+      }))
+    }))
+    expect_equal(anyDuplicated(boot_seeds), 0L)
+    expect_equal(anyDuplicated(c(outer_seeds, boot_seeds)), 0L) ## the collision the review found
+
+    b0_max <- 118000000L + 12L * 1000000L
+    archive_min <- 1900000000L + 1L * 10000000L
+    expect_true(all(boot_seeds > b0_max))
+    expect_true(all(boot_seeds < archive_min))
+    expect_true(all(boot_seeds > max(outer_seeds))) ## disjoint from B1's own plain-seed family
   })
 
   ## ---- Task-id <-> (cell, shard) mapping: bijective ----------------------
@@ -191,18 +219,90 @@ local({
     expect_false(b1_proximity_refused(NA_real_, root))
   })
 
+  test_that("fix 8: a non-finite attractor root is fail-CLOSED (root_na), not fail-open", {
+    ## b0_label_l2() itself returns FALSE, never NA, for a non-finite root
+    ## (by design, confirmed above) -- but b1_run_outer() must not read
+    ## that FALSE as "not refused". The `root_na` flag independently
+    ## catches exactly this NA case, whatever b1_proximity_refused() says.
+    ## uniroot's bracket genuinely fails to bracket a root outside [-15,15]:
+    expect_true(is.na(b0_attractor_root(k = 24L, n = 24L, c_n = 1e-6, link = "logit")))
+    root_na_of <- function(root) !is.finite(root)
+    expect_true(root_na_of(NA_real_))
+    expect_false(root_na_of(1.5964000447))
+    ## The combined refusal rule b1_run_outer() applies: screen OR
+    ## proximity OR root_na. A root_na coordinate is refused even when
+    ## b1_proximity_refused() itself returns FALSE for the same NA root.
+    est <- 2.0
+    root <- NA_real_
+    expect_false(b1_proximity_refused(est, root)) ## fails open on its own
+    refused <- FALSE | b1_proximity_refused(est, root) | root_na_of(root)
+    expect_true(refused) ## root_na closes the gap
+  })
+
+  ## ---- Profile trace interpolation (Design 118 s2.4: no refitting) -------
+  test_that("b1_profile_trace_endpoint() linearly interpolates a stored trace at an arbitrary threshold", {
+    ## A synthetic monotone trace: centre at 0, upper side walked out to
+    ## delta = 4 in steps of 1 (a clean line, so the interpolated endpoint
+    ## at any threshold has a closed form).
+    trace <- data.frame(
+      side = c("centre", "upper", "upper", "upper", "upper"),
+      target_value = c(0, 1, 2, 3, 4),
+      objective_delta = c(0, 1, 2, 3, 4),
+      finite = TRUE, convergence = 0L, stringsAsFactors = FALSE
+    )
+    expect_equal(b1_profile_trace_endpoint(trace, threshold = 1.9207, side = "upper"), 1.9207, tolerance = 1e-8)
+    expect_equal(b1_profile_trace_endpoint(trace, threshold = 3.317, side = "upper"), 3.317, tolerance = 1e-8)
+    ## Beyond the walked range -> NA (never refit to find out).
+    expect_true(is.na(b1_profile_trace_endpoint(trace, threshold = 10, side = "upper")))
+    ## The "lower" side is absent from this fixture -> NA, not an error.
+    expect_true(is.na(b1_profile_trace_endpoint(trace, threshold = 1.9207, side = "lower")))
+  })
+
+  test_that("b1_profile_trace_endpoint() ignores non-finite/non-converged trace rows", {
+    trace <- data.frame(
+      side = c("centre", "upper", "upper", "upper"),
+      target_value = c(0, 1, 2, 3),
+      objective_delta = c(0, 1, NA, 3),
+      finite = c(TRUE, TRUE, FALSE, TRUE), convergence = c(0L, 0L, 1L, 0L),
+      stringsAsFactors = FALSE
+    )
+    ## Skips the bad middle point and interpolates between (1,1) and (3,3).
+    expect_equal(b1_profile_trace_endpoint(trace, threshold = 2, side = "upper"), 2, tolerance = 1e-8)
+  })
+
   ## ---- Output schema -------------------------------------------------------
   test_that("b1_output_columns is a schema of unique, present names", {
     expect_true(is.character(b1_output_columns))
     expect_equal(anyDuplicated(b1_output_columns), 0L)
     required <- c(
       "cell_id", "block", "split", "seed", "estimate", "truth",
-      "screen_refused", "proximity_refused", "refused", "s_j",
+      "screen_refused", "proximity_refused", "root_na", "refused", "s_j",
       "profile_lower", "profile_upper", "profile_covered",
       "bootstrap_lower", "bootstrap_upper", "bootstrap_covered",
       "in_bootstrap_subset", "status"
     )
     expect_true(all(required %in% b1_output_columns))
+  })
+
+  ## ---- s3.4 storage-contract sidecar schemas (Blocker 1) -------------------
+  test_that("the profile-trace and bootstrap-replicate sidecar schemas are unique, present names", {
+    expect_true(is.character(b1_profile_trace_columns))
+    expect_equal(anyDuplicated(b1_profile_trace_columns), 0L)
+    expect_true(all(c(
+      "cell_id", "shard_id", "outer_id", "calibration_target",
+      "calibration_target_name", "side", "stage", "target_value",
+      "objective_delta", "convergence", "finite"
+    ) %in% b1_profile_trace_columns))
+    ## No name clash with the calibration-target POSITION column (fix for
+    ## the profile probe's own `target` column, renamed to `target_value`).
+    expect_false("target" %in% b1_profile_trace_columns)
+
+    expect_true(is.character(b1_bootstrap_replicate_columns))
+    expect_equal(anyDuplicated(b1_bootstrap_replicate_columns), 0L)
+    expect_true(all(c(
+      "cell_id", "shard_id", "outer_id", "calibration_target",
+      "calibration_target_name", "attempt_id", "seed", "estimate"
+    ) %in% b1_bootstrap_replicate_columns))
   })
 
   test_that("b1_na_row() produces a schema-conformant all-NA data.frame", {

@@ -108,18 +108,53 @@ message(sprintf(
   row$n_site[[1L]], row$n_trait[[1L]], row$q[[1L]], shard_id, first_outer, last_outer
 ))
 
-rows <- lapply(first_outer:last_outer, function(outer_id) {
+results <- lapply(first_outer:last_outer, function(outer_id) {
   b1_run_outer(row, outer_id, shard_id, bootstrap_reps = bootstrap_reps)
 })
-shard <- do.call(rbind, rows)
+shard <- do.call(rbind, lapply(results, `[[`, "rows"))
+
+## Design 118 s3.4 storage-contract sidecars (pre-launch review Blocker 1):
+## the raw profile trace (widened to the s3.4 outer threshold) and the raw
+## bootstrap replicate vector, one long-format CSV each per shard, so a
+## later calibrator-fitting step can re-evaluate coverage at any alpha*
+## with no refitting. Empty (header-only) when the shard produced none --
+## e.g. a shard of entirely refused/C-ID cells -- so the file's mere
+## PRESENCE still confirms the shard ran to completion.
+publish_csv <- function(df, dir, path, empty_columns) {
+  dir.create(dir, recursive = TRUE, showWarnings = FALSE)
+  if (is.null(df) || !nrow(df)) {
+    df <- as.data.frame(
+      stats::setNames(replicate(length(empty_columns), character(0), simplify = FALSE), empty_columns)
+    )
+  }
+  tmp <- tempfile(".b1-calibration-", dir, fileext = ".tmp")
+  utils::write.csv(df, tmp, row.names = FALSE, na = "NA")
+  if (!file.rename(tmp, path)) stop("Could not atomically publish ", path, call. = FALSE)
+  nrow(df)
+}
 
 shard_dir <- file.path(out_root, "shards")
 dir.create(shard_dir, recursive = TRUE, showWarnings = FALSE)
 out_path <- file.path(shard_dir, sprintf("%s-shard-%03d.csv", cell_id, as.integer(shard_id)))
-tmp <- tempfile(".b1-calibration-", shard_dir, fileext = ".csv")
+tmp <- tempfile(".b1-calibration-", shard_dir, fileext = ".tmp")
 utils::write.csv(shard, tmp, row.names = FALSE, na = "NA")
 if (!file.rename(tmp, out_path)) stop("Could not atomically publish ", out_path, call. = FALSE)
 
+sidecar_dir <- file.path(out_root, "sidecars")
+trace <- do.call(rbind, Filter(Negate(is.null), lapply(results, `[[`, "profile_trace")))
+boot <- do.call(rbind, Filter(Negate(is.null), lapply(results, `[[`, "bootstrap_replicates")))
+n_trace <- publish_csv(
+  trace, sidecar_dir,
+  file.path(sidecar_dir, sprintf("%s-shard-%03d-profile-trace.csv", cell_id, as.integer(shard_id))),
+  b1_profile_trace_columns
+)
+n_boot <- publish_csv(
+  boot, sidecar_dir,
+  file.path(sidecar_dir, sprintf("%s-shard-%03d-bootstrap-replicates.csv", cell_id, as.integer(shard_id))),
+  b1_bootstrap_replicate_columns
+)
+
 message(sprintf(
-  "Wrote %d rows (%d outer datasets) to %s", nrow(shard), length(first_outer:last_outer), out_path
+  "Wrote %d rows (%d outer datasets) to %s; %d profile-trace rows, %d bootstrap-replicate rows to %s",
+  nrow(shard), length(first_outer:last_outer), out_path, n_trace, n_boot, sidecar_dir
 ))

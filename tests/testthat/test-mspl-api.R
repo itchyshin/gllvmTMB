@@ -718,3 +718,72 @@ test_that("MSPL profile bracket search retains the last known-good point across 
   expect_lte(diff(range(probe$upper_bracket)), probe$bracket_tolerance)
   expect_equal(probe$upper_endpoint, baseline$upper_endpoint, tolerance = 1e-4)
 })
+
+test_that("MSPL profile bracket search widens on request to reach Design 118 s3.4's outer threshold (s7.2)", {
+  ## s7.2's OTHER half -- "widen the ... stored bracket to thresholds
+  ## [0.354, 3.317]" -- was ported by 0d6de305 only as far as the two
+  ## root-finder fixes above; the walk's reach stayed fixed at
+  ## step*max_steps. This proves both halves of the opt-in fix: (1) the
+  ## DEFAULT (`max_widen_rounds = 0L`, unset by any existing caller)
+  ## reproduces the OLD "truncated" outcome exactly -- the failing case
+  ## the gate requires -- and (2) opting in with `max_widen_rounds > 0`
+  ## reaches and crosses `threshold` from the same starting budget.
+  fit <- .mspl_fit("logit", q = 1L)
+
+  ## A deliberately narrow grid budget (reach = step*max_steps = 0.6) at
+  ## level = 0.99 (threshold 3.317, Design 118 s3.4's upper bound) cannot
+  ## reach the crossing -- this is the "unfixed" behaviour, still the
+  ## default.
+  narrow <- gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
+    fit, which = 1L, step = 0.2, max_steps = 3L, level = 0.99
+  )
+  expect_identical(narrow$lower_status, "truncated")
+  expect_identical(narrow$upper_status, "truncated")
+  expect_false(narrow$finite_stable)
+
+  ## Same starting budget, opted into widening: the walk continues from
+  ## the last known-good point with a larger step until it brackets
+  ## `threshold`, then refines to `bracket_tolerance` as before.
+  widened <- gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
+    fit, which = 1L, step = 0.2, max_steps = 3L, level = 0.99,
+    max_widen_rounds = 3L, refinement_steps = 20L
+  )
+  expect_identical(widened$lower_status, "crossed")
+  expect_identical(widened$upper_status, "crossed")
+  expect_true(widened$finite_stable)
+  expect_true(is.finite(widened$lower_endpoint))
+  expect_true(is.finite(widened$upper_endpoint))
+  expect_lte(diff(range(widened$lower_bracket)), widened$bracket_tolerance)
+  expect_lte(diff(range(widened$upper_bracket)), widened$bracket_tolerance)
+  ## The walked trace now actually spans out to (and past) 3.317 -- the
+  ## s3.4 upper threshold -- not just the narrow starting reach.
+  expect_gt(max(widened$trace$objective_delta, na.rm = TRUE), widened$threshold)
+  expect_equal(widened$threshold, stats::qchisq(0.99, df = 1L) / 2, tolerance = 1e-8)
+
+  ## Existing callers that omit the new argument are byte-for-byte
+  ## unaffected (max_widen_rounds defaults to 0L): the s7.2 baseline test
+  ## above already pins this at level = 0.95; confirm it also holds at a
+  ## budget that previously truncated at level = 0.99.
+  still_truncated <- gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
+    fit, which = 1L, step = 0.2, max_steps = 3L, level = 0.99
+  )
+  expect_identical(still_truncated$lower_status, narrow$lower_status)
+  expect_identical(still_truncated$upper_status, narrow$upper_status)
+  expect_identical(still_truncated$trace, narrow$trace)
+})
+
+test_that("MSPL profile bracket search validates max_widen_rounds", {
+  fit <- .mspl_fit("logit", q = 1L)
+  expect_error(
+    gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
+      fit, which = 1L, step = 0.5, max_steps = 6L, max_widen_rounds = -1L
+    ),
+    class = "gllvmTMB_mspl_profile_grid"
+  )
+  expect_error(
+    gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
+      fit, which = 1L, step = 0.5, max_steps = 6L, max_widen_rounds = 1.5
+    ),
+    class = "gllvmTMB_mspl_profile_grid"
+  )
+})

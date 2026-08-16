@@ -64,6 +64,17 @@
 ##     once from the joint-MLE nuisance vector before recording the point as
 ##     failed.
 ##
+## s7.2's OTHER half -- "widen the ... bracket to thresholds [0.354, 3.317]"
+## -- was not part of 0d6de305 and is added here as an opt-in
+## `max_widen_rounds` argument (default 0L, byte-identical to the prior
+## behaviour for every existing caller): when a grid-walk round finishes
+## cleanly but does not reach `threshold`, and the caller asked for at
+## least one widen round, the walk continues from the last known-good point
+## with a 4x larger step instead of reporting "truncated". This is what
+## lets a single call at `level = 0.99` (threshold 3.317) actually reach
+## that far when the default (step = 0.5, max_steps = 6) reach of 3 units
+## would not, without changing anything for callers that omit the argument.
+##
 ## Private feasibility instrument only. This is intentionally separate from
 ## the public profile/confint dispatch: a finite trace establishes neither
 ## calibrated standard errors nor confidence-interval coverage.
@@ -85,7 +96,8 @@
   level = 0.95,
   control = list(eval.max = 100L, iter.max = 100L),
   refinement_steps = 12L,
-  bracket_tolerance = 1.25e-4
+  bracket_tolerance = 1.25e-4,
+  max_widen_rounds = 0L
 ) {
   if (!.gllvmTMB_is_mspl(fit)) {
     .gllvmTMB_mspl_abort(
@@ -127,7 +139,11 @@
       !is.numeric(bracket_tolerance) ||
       length(bracket_tolerance) != 1L ||
       !is.finite(bracket_tolerance) ||
-      bracket_tolerance <= 0
+      bracket_tolerance <= 0 ||
+      !is.numeric(max_widen_rounds) ||
+      length(max_widen_rounds) != 1L ||
+      max_widen_rounds < 0L ||
+      max_widen_rounds %% 1 != 0
   ) {
     .gllvmTMB_mspl_abort(
       "The internal MSPL profile grid requires positive finite grid and refinement controls, with {.arg level} in (0, 1).",
@@ -236,35 +252,66 @@
   }
 
   walk_side <- function(direction) {
-    values <- mle_par[which] + direction * step * seq_len(as.integer(max_steps))
     points <- list()
     previous_success <- centre_point
     start <- centre_point$nuisance
     bracket <- NULL
-    for (target in values) {
-      point <- evaluate_point(
-        target, start, if (direction < 0) "lower" else "upper", "grid"
-      )
-      points[[length(points) + 1L]] <- point
-      if (successful(point)) {
-        start <- point$nuisance
-        if (successful(previous_success) &&
-            previous_success$row$objective_delta[[1L]] < threshold &&
-            point$row$objective_delta[[1L]] >= threshold) {
-          bracket <- list(inside = previous_success, outside = point)
-          break
+    origin <- mle_par[which]
+    current_step <- step
+    widen_round <- 0L
+    repeat {
+      values <- origin + direction * current_step * seq_len(as.integer(max_steps))
+      round_points <- list()
+      for (target in values) {
+        point <- evaluate_point(
+          target, start, if (direction < 0) "lower" else "upper", "grid"
+        )
+        points[[length(points) + 1L]] <- point
+        round_points[[length(round_points) + 1L]] <- point
+        if (successful(point)) {
+          start <- point$nuisance
+          if (successful(previous_success) &&
+              previous_success$row$objective_delta[[1L]] < threshold &&
+              point$row$objective_delta[[1L]] >= threshold) {
+            bracket <- list(inside = previous_success, outside = point)
+            break
+          }
+          previous_success <- point
         }
-        previous_success <- point
+        ## Fix (1): do NOT discard `previous_success` on a failed grid point.
+        ## The old code set it to NULL here, so a single transient
+        ## non-convergence permanently erased the last known sub-threshold
+        ## reference -- if the very next point already crossed the threshold,
+        ## the bracket was silently missed and the walk ran out its budget
+        ## reporting "truncated"/"optimizer_failed" instead of "crossed".
+        ## Leaving `previous_success` unchanged means a later successful
+        ## point is still correctly bracketed against it (over a wider, but
+        ## still valid, interval).
       }
-      ## Fix (1): do NOT discard `previous_success` on a failed grid point.
-      ## The old code set it to NULL here, so a single transient
-      ## non-convergence permanently erased the last known sub-threshold
-      ## reference -- if the very next point already crossed the threshold,
-      ## the bracket was silently missed and the walk ran out its budget
-      ## reporting "truncated"/"optimizer_failed" instead of "crossed".
-      ## Leaving `previous_success` unchanged means a later successful
-      ## point is still correctly bracketed against it (over a wider, but
-      ## still valid, interval).
+      if (!is.null(bracket)) break
+
+      ## Design 118 s7.2, second half ("widen the ... bracket to thresholds
+      ## [0.354, 3.317]"): 0d6de305 ported the two root-finder fixes above
+      ## but left the walk's reach fixed at step*max_steps, which the
+      ## default (0.5, 6) does not always cover for the wider registered
+      ## threshold range (level up to 0.99, i.e. threshold 3.317). When a
+      ## round finishes CLEANLY (no nonfinite/optimizer_failed point) but
+      ## simply never reaches `threshold`, and the caller opted in via
+      ## `max_widen_rounds > 0`, continue the walk from the last known-good
+      ## point with a 4x larger step instead of reporting "truncated".
+      ## `max_widen_rounds = 0L` (the default) makes this loop run exactly
+      ## once, reproducing the pre-existing trace byte-for-byte for every
+      ## caller that does not pass the new argument -- see
+      ## test-mspl-api.R's `max_steps = 1L` truncation test, unchanged.
+      round_rows <- do.call(rbind, lapply(round_points, `[[`, "row"))
+      clean_round <- !any(!round_rows$finite) && !any(round_rows$convergence != 0L)
+      if (!clean_round || widen_round >= as.integer(max_widen_rounds) ||
+          !successful(previous_success)) {
+        break
+      }
+      widen_round <- widen_round + 1L
+      origin <- previous_success$row$target[[1L]]
+      current_step <- current_step * 4
     }
 
     if (is.null(bracket)) {

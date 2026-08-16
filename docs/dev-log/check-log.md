@@ -4,6 +4,26 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-08-16 — hotfix: nbinom2 Phase-4 oracles after #1007 door (Cursor)
+
+Main R-CMD-check `31946637369` on `f3bd4e6a` (#1007) failed
+`FAIL 7` in `test-mspl-nbinom2-phase4-oracles.R` (lines 348–362).
+#1007 opened planned nbinom1/nbinom2 ordinary q=1,2 rows and updated
+the nbinom1 oracle, but left the nbinom2 oracle asserting
+`excluded` / lookup NULL / `any(planned$family == "nbinom2")` FALSE.
+#1013 is already an ancestor; this is not the VA flake.
+
+```sh
+export OMP_NUM_THREADS=1 NOT_CRAN=true
+# targeted (this sitting):
+#   test-mspl-nbinom2-phase4-oracles.R
+#   test-mspl-nbinom1-phase4-oracles.R
+#   test-mspl-registry.R
+#   FAIL 0 | WARN 0 | SKIP 0 | PASS 185
+```
+
+Not run: full `devtools::test()`, `R CMD check`, pkgdown, Totoro.
+
 ## 2026-08-16 — planned-only nbinom door replayed onto main (Cursor)
 
 Lane `cursor/mspl-se-nb-impl` (#1007) reset onto `origin/main` after

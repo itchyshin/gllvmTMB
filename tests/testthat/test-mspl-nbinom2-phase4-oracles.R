@@ -4,7 +4,9 @@
 ##   docs/dev-log/research/2026-08-15-mspl-phase4-nbinom2-prep.md
 ## Helpers stay in this file. Do not call live MSPL on nbinom2.
 ## Do not edit src/. Do not widen .gllvmTMB_mspl_prepare().
-## Do not add planned / admitted nbinom2 registry rows.
+## A later planned-only public door may add nbinom2 registry rows.
+## Those rows must stay planned / not admitted. These oracles still
+## do not call live MSPL.
 
 .nb2_mu <- function(eta, exposure = 1) {
   as.numeric(exposure) * exp(as.numeric(eta))
@@ -341,25 +343,20 @@ test_that("E7: V_loading is mu- and phi-inert; NB2 P_J moves with both", {
   expect_gt(abs(dV_dL), 1e-8)
 })
 
-test_that("nbinom2 ordinary cells stay excluded (not planned, not admitted)", {
+test_that("nbinom2 is not admitted (planned door allowed)", {
   tbl <- .gllvmTMB_mspl_registry()
-  nb <- tbl[tbl$family == "nbinom2", , drop = FALSE]
-  expect_gte(nrow(nb), 1L)
-  expect_true(all(nb$status == "excluded"))
-  expect_false(any(nb$status == "planned"))
-  expect_false(any(nb$status == "admitted"))
-  expect_true(any(grepl("NB2 waits for Phase 4", nb$notes)))
-  expect_true(any(nb$evidence == "fence"))
-  expect_true(any(grepl("nbinom2:log:ordinary:q1", nb$cell_id)))
-
-  ## Bare ordinary q1/q2 lookups are not planned cells.
-  expect_null(.gllvmTMB_mspl_registry_lookup("nbinom2", "log", "ordinary", 1L))
-  expect_null(.gllvmTMB_mspl_registry_lookup("nbinom2", "log", "ordinary", 2L))
-
-  admitted <- tbl[tbl$status == "admitted", , drop = FALSE]
-  expect_false(any(admitted$family == "nbinom2"))
-  planned <- tbl[tbl$status == "planned", , drop = FALSE]
-  expect_false(any(planned$family == "nbinom2"))
+  nb2 <- tbl[tbl$family == "nbinom2", , drop = FALSE]
+  expect_false(any(nb2$status == "admitted"))
+  if (nrow(nb2)) {
+    expect_true(all(nb2$status == "planned"))
+    expect_true(all(nb2$evidence == "phase4_prep"))
+  }
+  r1 <- .gllvmTMB_mspl_registry_lookup("nbinom2", "log", "ordinary", 1L)
+  r2 <- .gllvmTMB_mspl_registry_lookup("nbinom2", "log", "ordinary", 2L)
+  expect_true(is.null(r1) || identical(r1$status, "planned"))
+  expect_true(is.null(r2) || identical(r2$status, "planned"))
+  expect_false(isTRUE(r1$status == "admitted"))
+  expect_false(isTRUE(r2$status == "admitted"))
 })
 
 test_that("Phase-4 oracles never invoke a live nbinom2 MSPL fit", {

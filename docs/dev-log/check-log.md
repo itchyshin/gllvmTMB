@@ -1,5 +1,24 @@
 # Check log
 
+## 2026-08-16 — B1 calibrator map FROZEN (M0; train-only)
+
+G0: Shinichi *"go ahead"*. Written freeze from the calibration split
+only. Hold-out not read. Official `b2_select_map` sidecar ladder not
+run; M0 (\(h=0\), \(\alpha^*=0.05\)) frozen because Phase-A M1 would
+worsen the train UNDER pocket (60 UNDER vs 64 OVER).
+
+```sh
+# Train-only join of consolidate stdout to b1_grid(); no --holdout
+Rscript --vanilla -e '... class counts 63 PASS / 64 OVER / 60 UNDER ...'
+# Artifacts
+# docs/dev-log/research/2026-08-16-mspl-b1-calibrator-map-freeze.md
+# docs/dev-log/research/2026-08-16-mspl-b1-calibrator-map.json
+# docs/dev-log/research/2026-08-16-mspl-b1-calibrator-fit.rds
+```
+
+Not run: `fit-calibrator.R`, `consolidate-b1.R --holdout`,
+`evaluate-holdout.R`, G1–G5.
+
 ## 2026-08-13 — final two-paper G3 reconciliation
 
 Independent Gauss/Noether, Fisher, and Rose review of the two ignored result

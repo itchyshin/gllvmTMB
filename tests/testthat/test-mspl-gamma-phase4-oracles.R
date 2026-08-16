@@ -301,8 +301,26 @@ test_that("E10: Phase-4 oracles never invoke a live Gamma MSPL fit", {
   expect_false(any(grepl("family_id\\s*%in%\\s*c\\(0L,\\s*1L,\\s*2L,\\s*4L\\)", code)))
 })
 
+.mspl_r_source_lines <- function(rel) {
+  candidates <- c(
+    testthat::test_path("..", "..", "R", rel),
+    testthat::test_path("..", "..", "..", "00_pkg_src", "gllvmTMB", "R", rel),
+    file.path("R", rel)
+  )
+  installed <- system.file("..", "R", rel, package = "gllvmTMB")
+  if (nzchar(installed)) {
+    candidates <- c(installed, candidates)
+  }
+  path <- candidates[file.exists(candidates)][1L]
+  testthat::skip_if(
+    is.na(path),
+    paste0("R/", rel, " is not available in this installed-package test context.")
+  )
+  readLines(path, warn = FALSE)
+}
+
 test_that("prepare fence is not widened to Gamma family_id 4", {
-  mspl_src <- readLines(test_path("../../R/mspl.R"))
+  mspl_src <- .mspl_r_source_lines("mspl.R")
   allow <- grep("fam_ids %in%", mspl_src, value = TRUE)
   expect_true(length(allow) >= 1L)
   expect_true(any(grepl("0L, 1L, 2L", allow)))

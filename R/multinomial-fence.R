@@ -1,4 +1,5 @@
-## Multinomial structured-term admission fence (Slice 0, Design 108/122).
+## Multinomial structured-term admission fence (Slice 0 + Slice 1, Design
+## 108/122).
 ##
 ## `multinomial()` (family_id 16) is fixed-effects-plus-two-tiers only in this
 ## release: ordinary shared `latent()` at the unit tier (cross-family
@@ -10,6 +11,19 @@
 ## R/extract-sigma.R). Every other structured / random-effect keyword is
 ## deferred and must fail loud rather than silently fit an unvalidated
 ## categorical path.
+##
+## Slice 1 (2026-08-16): the among-category phylogenetic surface is extended
+## from `phylo_latent()` alone to also admit loadings-only (`unique = FALSE`)
+## `animal_latent()` (pedigree/known-relatedness `A`) and SINGLE-NAME
+## loadings-only `kernel_latent()` (a dense supplied `K`). Both are PURE
+## ENGINE SUGAR: they desugar (R/brms-sugar.R) into the identical `phylo_rr`
+## covstruct `phylo_latent()` itself produces, so no engine/C++ code changes
+## for this slice -- only the classifier below and the evidence in
+## `tests/testthat/test-matrix-multinomial-phylo.R`. `unique = TRUE` on
+## either keyword, their augmented-slope forms, every other animal_*/kernel_*
+## mode (`*_indep`/`*_dep`/`*_scalar`/`kernel_unique`), and more than one
+## `kernel_latent()` name in the same fit (multi-kernel) remain BLOCKED --
+## see the admission table and `.mn_classify_covstruct()` below.
 ##
 ## Historically the ONLY gate was a late allow-list re-scan of `use_*` engine
 ## flags in R/fit-multi.R (the "FAIL-CLOSED allow-list", Rose review
@@ -89,16 +103,20 @@
 .mn_admission_table <- data.frame(
   source = c("none",     "none",            "phylo",
              "phylo",                     "none",       "phylo",
-             "none"),
+             "none",     "animal",     "kernel",
+             "animal",                     "kernel"),
   mode   = c("latent",   "latent",          "latent",
              "latent",                     "latent_slope", "latent_slope",
-             "equalto"),
+             "equalto",  "latent",     "latent",
+             "latent",                     "latent"),
   tier   = c("unit",     "unit (auto-Psi)", "among-category",
              "among-category (auto-Psi)", "unit",       "among-category",
-             "-"),
+             "-",        "among-category", "among-category (single name)",
+             "among-category (auto-Psi)",  "among-category (auto-Psi, single name)"),
   status = c("admitted", "admitted",        "admitted",
              "blocked",                    "blocked",    "blocked",
-             "blocked"),
+             "blocked",  "admitted",   "admitted",
+             "blocked",                    "blocked"),
   since  = c(
     "Tier-2b item 2a-ii (0.6.0)",
     "0.2.0 (latent() default Psi)",
@@ -106,7 +124,11 @@
     "BLOCKED -- Slice 0 repair (2026-08-16): was wrongly admitted, contradicting R/extract-sigma.R's documented policy that a free phylogenetic Psi ('unique = TRUE') is not admitted for multinomial. phylo_latent() with the default unique = FALSE emits no Psi companion at all; an explicit unique = TRUE request is blocked.",
     "BLOCKED -- Slice 0 repair (2026-08-16): pass 1 fell through to ADMITTED for augmented latent(1 + x | unit) / latent(0 + trait + (0 + trait):x | unit); only the untyped pass-2 use_rr_B_slope scan caught it.",
     "BLOCKED -- Slice 0 repair (2026-08-16): pass 1 fell through to ADMITTED for augmented phylo_latent(1 + x | species); NEITHER pass caught it (an unrelated family-augmented-slope gate happened to abort first).",
-    "BLOCKED -- Slice 0 repair (2026-08-16): meta_V()/equalto() (known-sampling-covariance) has no admitted route on a categorical-contrast pseudo-trait; fail-closed default rather than the prior blanket pass-1/pass-2 exemption."
+    "BLOCKED -- Slice 0 repair (2026-08-16): meta_V()/equalto() (known-sampling-covariance) has no admitted route on a categorical-contrast pseudo-trait; fail-closed default rather than the prior blanket pass-1/pass-2 exemption.",
+    "ADMITTED -- Design 122 Slice 1 (2026-08-16): loadings-only (unique = FALSE) animal_latent() is pure sugar over phylo_rr, engine-identical to phylo_latent() -- equivalence verified in test-matrix-multinomial-phylo.R.",
+    "ADMITTED -- Design 122 Slice 1 (2026-08-16): loadings-only (unique = FALSE) single-name kernel_latent() routes through the SAME phylo_rr engine (Design 65 C1 phylo-equivalence) -- equivalence verified in test-matrix-multinomial-phylo.R. Multiple kernel_latent() terms in one fit (multi-kernel) stay BLOCKED; that check is whole-fit, not per-covstruct, so it has no row of its own here -- see .multinomial_structured_admission()'s kernel-name count and test-multinomial-fence.R's 'multi-kernel is not admitted'.",
+    "BLOCKED -- Design 122 Slice 1 (2026-08-16): animal_latent(unique = TRUE)'s auto-emitted Psi companion is a free phylogenetic Psi, not admitted for multinomial for the same reason as row 4 (phylo_latent(unique = TRUE)).",
+    "BLOCKED -- Design 122 Slice 1 (2026-08-16): kernel_latent(unique = TRUE)'s auto-emitted Psi companion is a free phylogenetic Psi, not admitted for multinomial for the same reason as row 4 (phylo_latent(unique = TRUE))."
   ),
   stringsAsFactors = FALSE
 )
@@ -183,56 +205,107 @@
   }
 
   if (identical(kind, "phylo_rr")) {
-    if (!is.null(extra$.kernel_name)) {
-      mode <- extra$.kernel_mode %||% "latent"
-      return(list(source = "kernel", mode = as.character(mode),
-                  admitted = FALSE,
-                  label = sprintf("kernel_%s()", mode)))
+    ## Slice 1 (Design 122, 2026-08-16): determine the SOURCE label first
+    ## (kernel / animal / phylo), then apply the mode checks (.latent_slope /
+    ## .dep / .phylo_unique) UNIFORMLY across sources, mirroring the plain
+    ## phylo_* logic below instead of short-circuiting animal_*/kernel_* to
+    ## "blocked" before those checks run (Slice 0's behaviour). This is what
+    ## lets the plain loadings-only cell (no slope/dep/unique marker) reach
+    ## the fall-through at the bottom and be admitted for animal_latent() and
+    ## single-name kernel_latent() -- pure sugar / a Design 65 C1
+    ## phylo-equivalent path over the ALREADY-admitted phylo_latent() engine;
+    ## equivalence to phylo_latent() is verified in
+    ## test-matrix-multinomial-phylo.R. Every other animal_*/kernel_* mode
+    ## (unique = TRUE, augmented slopes, *_indep/*_dep/*_scalar) still carries
+    ## one of those markers and is still blocked, unchanged from Slice 0.
+    ## Multiple kernel_latent() terms in one fit (multi-kernel) are NOT
+    ## classifiable from a single covstruct in isolation -- that whole-fit
+    ## check lives in .multinomial_structured_admission(), below, which
+    ## overrides an individually-admitted kernel cell back to blocked when
+    ## more than one distinct kernel name is present.
+    kernel_name <- if (!is.null(extra$.kernel_name)) {
+      as.character(extra$.kernel_name)
+    } else {
+      NA_character_
     }
-    if (isTRUE(extra$.animal_source)) {
-      ## Pure sugar for phylo_*; every animal_* keyword OTHER than
-      ## animal_latent() already lands on an already-blocked phylo_rr cell
-      ## (.dep or .phylo_unique set), so only the plain latent cell needs the
-      ## marker to keep animal_latent() distinguishable from phylo_latent().
-      ## Covers the augmented (intercept + slope) animal_latent() form too
-      ## (it also carries .latent_slope, checked below for the plain-phylo
-      ## case; here .animal_source alone is sufficient and gives the more
-      ## specific label).
-      return(list(source = "animal", mode = "latent", admitted = FALSE,
-                  label = "animal_latent()"))
+    kernel_mode <- if (!is.null(extra$.kernel_mode)) {
+      as.character(extra$.kernel_mode)
+    } else {
+      NA_character_
     }
-    ## Augmented (intercept + slope) phylo_latent(1 + x | species): carries
+    source_label <- if (!is.na(kernel_name)) {
+      "kernel"
+    } else if (isTRUE(extra$.animal_source)) {
+      "animal"
+    } else {
+      "phylo"
+    }
+    kw <- source_label # "kernel" / "animal" / "phylo" is also the keyword prefix
+
+    ## Augmented (intercept + slope) *_latent(1 + x | species): carries
     ## `.latent_slope` and stays `kind == "phylo_rr"` with no other marker, so
-    ## the plain-latent fall-through below would otherwise admit it. Neither
-    ## this early classifier nor the late use_* re-scan caught this
-    ## previously -- an unrelated per-family augmented-slope gate happened to
-    ## abort first for every family currently reachable via multinomial(),
-    ## which is NOT the same as this fence being load-bearing here.
+    ## the plain-latent fall-through below would otherwise admit it. (Neither
+    ## this early classifier nor the late use_* re-scan caught the
+    ## phylo_latent() case pre-Slice-0 -- an unrelated per-family
+    ## augmented-slope gate happened to abort first for every family
+    ## currently reachable via multinomial(), which is NOT the same as this
+    ## fence being load-bearing here.) kernel_latent() itself has no wired
+    ## augmented-bar form at all (it fails loud in the parser, for every
+    ## family, before reaching this classifier), so this branch is reached by
+    ## phylo_latent() and animal_latent() only.
     if (isTRUE(extra$.latent_slope)) {
-      return(list(source = "phylo", mode = "latent_slope", admitted = FALSE,
-                  label = "an augmented (intercept + slope) phylo_latent() random-regression term"))
+      return(list(source = source_label, mode = "latent_slope", admitted = FALSE,
+                  label = sprintf("an augmented (intercept + slope) %s_latent() random-regression term", kw),
+                  kernel_name = kernel_name))
     }
     if (isTRUE(extra$.dep)) {
-      return(list(source = "phylo", mode = "dep", admitted = FALSE,
-                  label = "phylo_dep()"))
+      label <- sprintf("%s_dep()", kw)
+      return(list(source = source_label, mode = "dep", admitted = FALSE,
+                  label = label, kernel_name = kernel_name))
     }
     if (isTRUE(extra$.phylo_unique)) {
       if (isTRUE(extra$.auto_unique)) {
-        ## The auto-emitted companion of phylo_latent(unique = TRUE). A free
-        ## phylogenetic Psi is deliberately NOT admitted for multinomial
-        ## (see the has_multinomial branch of extract_Sigma()'s "phylogenetic
-        ## tier is currently latent-only" note, R/extract-sigma.R) -- so this
-        ## is blocked, not admitted. plain phylo_latent() (the default
-        ## unique = FALSE) never emits this covstruct at all.
-        return(list(source = "phylo", mode = "latent", admitted = FALSE,
-                    label = "phylo_latent(unique = TRUE) (a free phylogenetic Psi is not admitted for multinomial)"))
+        ## The auto-emitted companion of *_latent(unique = TRUE), any source.
+        ## A free phylogenetic Psi is deliberately NOT admitted for
+        ## multinomial (see the has_multinomial branch of extract_Sigma()'s
+        ## "phylogenetic tier is currently latent-only" note,
+        ## R/extract-sigma.R) -- so this is blocked, not admitted. Plain
+        ## *_latent() (the default unique = FALSE) never emits this covstruct
+        ## at all.
+        return(list(
+          source = source_label, mode = "latent", admitted = FALSE,
+          label = sprintf(
+            "%s_latent(unique = TRUE) (a free phylogenetic Psi is not admitted for multinomial)",
+            kw
+          ),
+          kernel_name = kernel_name
+        ))
       }
       mode <- if (isTRUE(extra$.indep)) "indep" else "unique"
-      return(list(source = "phylo", mode = mode, admitted = FALSE,
-                  label = sprintf("phylo_%s()", mode)))
+      label <- if (identical(source_label, "kernel")) {
+        ## kernel_indep()/kernel_scalar() both carry `.indep = TRUE` and are
+        ## distinguished only by `.kernel_mode` ("indep" vs "scalar");
+        ## kernel_unique() carries neither `.indep` nor `.kernel_mode` !=
+        ## "unique". Prefer the more specific kernel_mode label when present.
+        sprintf("kernel_%s()", if (!is.na(kernel_mode)) kernel_mode else mode)
+      } else {
+        sprintf("%s_%s()", kw, mode)
+      }
+      return(list(source = source_label, mode = mode, admitted = FALSE,
+                  label = label, kernel_name = kernel_name))
     }
-    return(list(source = "phylo", mode = "latent", admitted = TRUE,
-                label = "phylo_latent()"))
+    ## Plain loadings-only cell (no slope/dep/unique marker): admitted for
+    ## ALL THREE sources as of Slice 1 -- phylo_latent() (Design 84,
+    ## pre-existing), animal_latent() and single-name kernel_latent()
+    ## (Design 122 Slice 1, 2026-08-16). Multi-kernel is blocked separately,
+    ## at the whole-fit level, by the caller.
+    label <- switch(source_label,
+      kernel = "kernel_latent()",
+      animal = "animal_latent()",
+      "phylo_latent()"
+    )
+    return(list(source = source_label, mode = "latent", admitted = TRUE,
+                label = label, kernel_name = kernel_name))
   }
 
   if (identical(kind, "phylo_slope")) {
@@ -272,6 +345,14 @@
 #' engine flag as an admitted keyword and are only distinguishable here, from
 #' the raw parser markers.
 #'
+#' Multiple `kernel_latent()` terms in one fit (multi-kernel) are NOT
+#' classifiable from a single covstruct in isolation -- each individual term
+#' would otherwise be an admitted plain loadings-only kernel cell on its own
+#' (Slice 1). This function does that whole-fit check itself, after
+#' classifying every covstruct individually: if more than one distinct
+#' `kernel_latent` name is present, every kernel-sourced classification is
+#' overridden back to blocked.
+#'
 #' @param covstructs `parsed$covstructs`, a list of covstruct specs.
 #' @param family_id_vec Integer family-id vector (one per row of `data`).
 #' @param site,ss_name,species,cluster2_col Grouping-tier column names, as
@@ -285,11 +366,28 @@
   if (!any(family_id_vec == 16L)) {
     return(invisible(NULL))
   }
+  cls_list <- lapply(covstructs, function(cs) {
+    .mn_classify_covstruct(cs, site = site, ss_name = ss_name,
+                            species = species, cluster2_col = cluster2_col)
+  })
+  ## Multi-kernel override (see roxygen above): count DISTINCT kernel names
+  ## across all covstructs, admitted or not (two covstructs from the SAME
+  ## kernel_latent(unique = TRUE) call share one name and must not count as
+  ## "multi").
+  kernel_names <- vapply(cls_list, function(cl) {
+    if (identical(cl$source, "kernel")) cl$kernel_name %||% NA_character_ else NA_character_
+  }, character(1L))
+  if (length(unique(stats::na.omit(kernel_names))) > 1L) {
+    cls_list <- lapply(cls_list, function(cl) {
+      if (identical(cl$source, "kernel")) {
+        cl$admitted <- FALSE
+        cl$label <- "multiple kernel_*() terms in one fit (multi-kernel)"
+      }
+      cl
+    })
+  }
   labels <- character(0L)
-  for (cs in covstructs) {
-    cls <- .mn_classify_covstruct(cs, site = site, ss_name = ss_name,
-                                   species = species,
-                                   cluster2_col = cluster2_col)
+  for (cls in cls_list) {
     if (!isTRUE(cls$admitted)) {
       labels <- c(labels, cls$label)
     }
@@ -298,10 +396,10 @@
     return(invisible(NULL))
   }
   cli::cli_abort(c(
-    "{.fn multinomial} supports fixed effects, a shared {.fn latent} ordination, and {.fn phylo_latent} in this release.",
+    "{.fn multinomial} supports fixed effects, a shared {.fn latent} ordination, {.fn phylo_latent}, {.fn animal_latent}, and single-name {.fn kernel_latent} in this release.",
     "x" = "Not admitted: {.val {unique(labels)}}.",
-    "i" = "Admitted set: {.code latent(0 + trait | unit, d = k)} (the default {.code unique = TRUE} works; the categorical contrast Psi is mapped off), or intercept-only {.code phylo_latent(species, d = K)} (default {.code unique = FALSE}) for the among-category phylogenetic surface -- {.code phylo_latent(..., unique = TRUE)} is NOT admitted (a free phylogenetic Psi is deliberately unsupported for multinomial).",
+    "i" = "Admitted set: {.code latent(0 + trait | unit, d = k)} (the default {.code unique = TRUE} works; the categorical contrast Psi is mapped off); intercept-only {.code phylo_latent(species, d = K)}, {.code animal_latent(species, A = A, d = K)}, or a SINGLE named {.code kernel_latent(species, K = K, d = K, name = nm)} (default {.code unique = FALSE}) for the among-category phylogenetic/relatedness surface -- {.code unique = TRUE} is NOT admitted for any of the three (a free phylogenetic Psi is deliberately unsupported for multinomial), and more than one {.fn kernel_latent} name in the same fit (multi-kernel) is NOT admitted.",
     "i" = "This fence is per-fit, not per-trait: a blocked term targeting only a non-multinomial trait in a mixed-family fit still aborts the whole fit.",
-    ">" = "Other latent-scale structures on categorical responses -- including dep(), phylo_dep(), phylo_indep()/phylo_unique(), phylo_scalar()/animal_scalar(), animal_*(), kernel_*(), spatial_*(), augmented (intercept + slope) latent()/phylo_latent(), meta_V()/equalto(), the cluster/cluster2/unit_obs tiers, and generic (1 | group) random intercepts -- are deferred."
+    ">" = "Other latent-scale structures on categorical responses -- including dep(), phylo_dep()/phylo_indep()/phylo_unique(), phylo_scalar()/animal_scalar()/animal_indep()/animal_dep(), kernel_indep()/kernel_dep()/kernel_scalar()/kernel_unique(), multi-kernel, spatial_*(), augmented (intercept + slope) latent()/phylo_latent()/animal_latent(), *_latent(unique = TRUE), meta_V()/equalto(), the cluster/cluster2/unit_obs tiers, and generic (1 | group) random intercepts -- are deferred."
   ), class = "gllvmTMB_multinomial_structured_not_admitted")
 }

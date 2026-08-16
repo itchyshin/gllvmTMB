@@ -138,6 +138,43 @@ omissions net to over-stated SEs here (the diagonal conditional latent
 variance plus the full fixed block double-counts shared information),
 exactly what the joint precision removes.
 
+### 7b. Wave-1b — the R1-joint route (same night; VERDICT: under-covers)
+
+Rerun of the identical grid with `se_route = "joint"` (exact joint-precision
+variance, `w' Q^{-1} w` by sparse solve; implementation cross-checked against
+a dense brute force to floating-point noise). 1,600/1,600 fits again.
+
+| mechanism | conf 90% | conf 95% | pred 90% | pred 95% |
+|---|---|---|---|---|
+| mcar05 | 0.881 | 0.929 | **0.904** | 0.945 |
+| mcar20 | 0.877 | 0.925 | 0.895 | 0.940 |
+| trait_clustered | 0.885 | 0.932 | **0.897** | 0.943 |
+| unit_clustered | 0.887 | 0.933 | **0.898** | 0.942 |
+
+(Bold = passes the operative |dev| ≤ 2·MCSE gate.)
+
+**The two routes BRACKET nominal.** R1-quad over-covers (conf 95%
+0.960–0.966); R1-joint under-covers (conf 95% 0.925–0.933). Prediction
+intervals under the joint route are close: 3 of 4 mechanisms PASS at 90%,
+and the 95% shortfall is 0.5–1.0 points. Gate verdict overall: still FAIL,
+status stays `heuristic_unvalidated`.
+
+**Diagnosed cause of the joint route's shortfall — the gradient is
+incomplete.** A masked cell's predictor is
+`eta_ut = x_ut' b + lambda_t' u_i`, so
+`d eta / d lambda_t = u_i` is a THIRD nonzero block. Wave-1b's `w` carries
+only the `b_fix` and latent-score (`u`) blocks; loading uncertainty is
+omitted, which under-states `Var(eta)` and therefore under-covers — exactly
+the sign observed. The next route is **R1-joint+loadings**: extend `w` with
+the loading positions (`d eta / d lambda_{t,k} = u_{i,k}`) taken from the
+same joint precision. This is a strictly larger variance, so it moves
+coverage UP from 0.925–0.933 toward nominal; whether it lands inside the
+gate is the wave-1c measurement, not a prediction.
+
+**Not to be re-litigated:** widening a band, averaging the two routes, or
+re-running either at higher precision. Both routes are measured; the gap is
+a named missing term, and the fix is to include it.
+
 ## 6. Decision needed from the maintainer
 
 - Approve the estimand split (confidence-for-mean vs prediction-for-value

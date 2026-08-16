@@ -51296,3 +51296,40 @@ Rose: all-ones boundary, not Poisson all-zero; not hurdle.
 After-task:
 `docs/dev-log/after-task/2026-08-16-mspl-truncated-phase4-prep.md`.
 Not run: merge, admit, Totoro, registry edit.
+
+## 2026-08-16 — MSPL rest-family prepare-fence (Cursor)
+
+Lane `cursor/mspl-rest-family-prepare-fence` in
+`/tmp/gllvmtmb-mspl-rest-family-fence`. Live public-door reject for
+families still off the nbinom allow-list. No src. No admit. Door
+sentence matches `c(0L, 1L, 2L, 5L, 15L)` after #1014 closed the
+Tweedie/Beta public door. Registry pin excludes names that already
+have planned rows on main.
+
+```sh
+rg -n 'fam_ids %in%' R/mspl.R
+# c(0L, 1L, 2L, 5L, 15L)
+
+NOT_CRAN=true OMP_NUM_THREADS=1
+# rest-family-prepare-fence
+git diff --stat -- src/ R/mspl.R R/mspl-registry.R
+# empty
+```
+
+After-task:
+`docs/dev-log/after-task/2026-08-16-mspl-rest-family-prepare-fence.md`.
+Not run: `devtools::test()`, `R CMD check`, pkgdown, Totoro, admit.
+
+## 2026-08-16 — MSPL rest-family fence renamed zz- (CI order)
+
+`#1026` failed twice on `test-va-all-family-light-fits.R`
+`delta_lognormal_log` (`failed_health_gate`, 2 < 3 healthy starts).
+The rest-family file's own tests passed. Renamed
+`test-mspl-rest-family-prepare-fence.R` ->
+`test-zz-mspl-rest-family-prepare-fence.R` so the live door runs
+after the VA light grid. No admit. No `R/` / `src/` edit.
+
+```sh
+git mv tests/testthat/test-mspl-rest-family-prepare-fence.R \
+  tests/testthat/test-zz-mspl-rest-family-prepare-fence.R
+```

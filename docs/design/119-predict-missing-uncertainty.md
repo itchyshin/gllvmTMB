@@ -388,6 +388,85 @@ fit against wave-3's 95 s despite doing strictly more work. The two waves ran
 under different machine loads on a shared server, so the comparison measures
 contention, not the routes.
 
+## 8. Waves 5 and 6 — the deficit is governed by TRAITS PER UNIT, not by units
+
+§7f closed the route programme and attributed the residual under-coverage to
+"a small-sample property of the fitted model at n = 50 × p = 25". That
+attribution named two quantities and tested neither. Waves 5 and 6 test them
+separately, on the same harness, with the cheap `sim` route.
+
+**Wave-5 — sweep n, hold p = 25.** Six grids, n ∈ {50 … 1600}, 1,600 fits
+each, 100% convergence throughout.
+
+| n | conf 95% | pred 95% | pred 90% |
+|---|---|---|---|
+| 50 | 0.9439 (−0.61 pt) | 0.9387 (−1.13) | 0.8934 (−0.66) |
+| 200 | 0.9443 (−0.57) | 0.9433 (−0.67) | 0.8999 (−0.01) |
+| 800 | 0.9450 (−0.50) | 0.9439 (−0.61) | 0.9012 (+0.12) |
+| 1600 | 0.9449 (−0.51) | 0.9444 (−0.56) | 0.9021 (+0.21) |
+
+**A 32-fold increase in n moves the confidence deficit by 0.10 points.** It is
+flat (regression slope −0.046 pt per e-fold of n). The prediction deficit,
+by contrast, falls monotonically (−0.170 pt per e-fold) and pred-90 crosses
+nominal by n = 400.
+
+**Wave-6 — sweep p, hold n = 200.** Four grids, p ∈ {10, 25, 50, 100}.
+
+| p | conf 95% | conf 90% | pred 95% |
+|---|---|---|---|
+| 10 | 0.9368 (−1.32 pt) | 0.8864 (−1.36) | 0.9427 (−0.73) |
+| 25 | 0.9443 (−0.57) | 0.8946 (−0.54) | 0.9433 (−0.67) |
+| 50 | 0.9463 (−0.37) | 0.8977 (−0.23) | 0.9424 (−0.76) |
+| 100 | 0.9471 (−0.29) | 0.9004 (**−0.04**) | 0.9424 (−0.76) |
+
+**A 10-fold increase in p cuts the confidence deficit by 78%** (1.32 → 0.29,
+monotone), and confidence-90 reaches nominal at p = 100. The prediction
+deficit is flat in p (0.73, 0.67, 0.76, 0.76).
+
+**This is a double dissociation, and it identifies the mechanism.**
+
+| | grows with n | grows with p |
+|---|---|---|
+| confidence deficit | no (flat) | **yes (78% cut)** |
+| prediction deficit | **yes (halves)** | no (flat) |
+
+A masked cell's linear predictor is `η_ut = x'b + λ_t' u_i`. The unit score
+`u_i` is reconstructed from *that unit's other observed traits* — roughly p
+of them, no matter how many units the dataset contains. Its information is
+therefore **O(p), not O(n)**, and it is the dominant term. Adding units
+sharpens `λ` and `b`, whose contribution does vanish, but cannot sharpen
+`u_i`. Prediction intervals add the family variance `σ²`, which is estimated
+globally from n·p cells and so improves with n and not with p. Both halves of
+the dissociation follow.
+
+**So §7f's attribution was half right and half wrong.** The residual is
+genuinely an information limit rather than a defect in any variance route —
+that part stands, and it is why the sixth route was correctly abandoned. But
+it is **not** a small-*n* effect, and no amount of sample size fixes it. The
+honest user-facing rule is about the SHAPE of the data, not its size:
+reconstruction intervals are near-nominal when each unit carries many
+measured traits, and optimistic by 1–1.5 points when it carries ~10.
+
+**Independent corroboration.** The AGHQ lane reached the structurally
+identical conclusion from an unrelated direction on 2026-07-28: Laplace's
+downward bias is *"flat, and 16× more data does not touch it"*, because its
+error is O(1/T) **per cluster** — governed by traits per site, not by number
+of sites. Two unrelated arcs, two different estimands, the same lesson: in a
+stacked-trait GLLVM the quantity that matters for within-unit accuracy is the
+trait count, and dataset size is the wrong axis to reason on.
+
+**Two validity checks, both exact.** Wave-5's n = 50 grid reproduces wave-2
+bit-for-bit (max |difference| = 0 on all four coverage measures), and the
+(n = 200, p = 25) cell appears in both sweeps and agrees to 0. The harness
+changes therefore introduced no drift, and the trends are the axes.
+
+**Scope, stated rather than implied.** Gaussian, q = 2, `sim` route,
+`unique = FALSE`, four MAR/MCAR mechanisms, 400 reps per cell. The clustered
+mechanisms' mask block was scaled with n and p (0.2 n units, 0.2 p traits);
+holding it fixed would have softened those mechanisms along the sweep and
+confounded the very trend being measured. **No status changes.** `se =`
+remains `heuristic_unvalidated`; nothing here is a calibration claim.
+
 ## 6. Decision needed from the maintainer
 
 - Approve the estimand split (confidence-for-mean vs prediction-for-value

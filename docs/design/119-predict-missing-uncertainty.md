@@ -271,6 +271,52 @@ from ~0.0015 to ~0.0021 -- still far below the 0.4-0.9-point effect being
 measured. This exceeds the 30-minute line, so it needs an explicit
 pre-run + approval rather than an autonomous launch.
 
+### 7e. Wave-3 — R3, the parametric bootstrap (the ladder closes; VERDICT: 0/16)
+
+`se_route = "boot"`, the full pivot construction (simulate a complete dataset
+at `theta_hat`, mask, REFIT, pivot on `eta_hat_b - eta_b`), B = 200,
+maintainer-approved 400 reps/cell. 1,599/1,600 converged (the one
+non-converged fit is failure-counted), ~114 s/fit, ~50 core-hours on Totoro.
+
+| mechanism | conf 90% | conf 95% | pred 90% | pred 95% |
+|---|---|---|---|---|
+| mcar05 | 0.880 | 0.930 | 0.890 | 0.933 |
+| mcar20 | 0.876 | 0.926 | 0.882 | 0.928 |
+| trait_clustered | 0.882 | 0.930 | 0.883 | 0.931 |
+| unit_clustered | 0.880 | 0.931 | 0.882 | 0.929 |
+
+**Gate: 0/16.** The two-fit pre-run's 0.952 was small-sample luck — exactly
+why the pre-run is a machinery check, never a verdict.
+
+**The five-route ladder, complete (conf 95%, range over mechanisms):**
+
+| route | propagates | conf 95% |
+|---|---|---|
+| quad | fixed + diag latent (delta) | 0.960–0.966 (over) |
+| joint | + exact joint precision | 0.925–0.933 |
+| joint_load | + loading block | 0.935–0.939 |
+| sim | + empirical quantiles, exact family draw | **0.941–0.946** |
+| boot | + parameter/dispersion via full refits | 0.926–0.933 |
+
+**What the closed ladder establishes.** Four of five routes UNDER-cover by
+1–2 points, including the bootstrap that propagates everything by refitting.
+So the common deficit is not un-propagated uncertainty and not interval
+construction: every route, boot included, is anchored on the FITTED model,
+and the bootstrap's DGP simulates from `theta_hat`. At n = 50 the ML
+variance/loading estimates are biased low (no REML correction in this spec;
+classic plug-in bootstrap narrowness), so pivots generated under `theta_hat`
+are systematically narrower than under truth. The deficit is a property of
+the fitted-model plug-in at this scale — an ESTIMATOR issue, not a route
+issue. Notably `sim` beats `boot`: refitting on data simulated from a
+too-narrow model re-imports the bias that `sim` merely inherits once.
+
+**Status: `heuristic_unvalidated` stands for every route.** Remaining
+options, all maintainer decisions (none run): (a) REML-corrected refits in
+the bootstrap DGP; (b) double/calibrated bootstrap (~200x wave-3's cost);
+(c) document ~0.93-at-nominal-0.95 as the honest label and stop. This
+design's own §7c rule — no re-running the same estimator at higher
+precision — applies with full force.
+
 ## 6. Decision needed from the maintainer
 
 - Approve the estimand split (confidence-for-mean vs prediction-for-value

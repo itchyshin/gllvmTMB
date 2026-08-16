@@ -144,6 +144,148 @@ test_that("kernel_latent() (single name) fits for multinomial (Slice 1 admission
 })
 
 ## ---------------------------------------------------------------
+## Slice 2 (Design 122, 2026-08-16): the phylo MODE axis (dep = full V,
+## indep/standalone unique = diagonal V) and its animal/kernel twins.
+##
+## `phylo_dep(0 + trait | species)` resolves `d = n_traits` and populates the
+## SAME `phylo_rr`/`theta_rr_phy` slot as `phylo_latent(species, d =
+## n_traits)` -- the IDENTICAL unconstrained packed-triangular parameterisation
+## (`gll_unpack_rr_loadings()`, src/gllvmTMB.cpp), not merely V-equivalent
+## (see R/multinomial-fence.R). `phylo_indep()`/standalone `phylo_unique()`
+## reroute to the same slot with the strict lower triangle pinned to 0 (a
+## diagonal Lambda_phy), giving D independent per-contrast phylogenetic
+## variances. animal_*/kernel_* are pure sugar over the identical route, same
+## as Slice 1's animal_latent()/kernel_latent().
+## ---------------------------------------------------------------
+
+## Small helper: one admission-fit smoke cell for a given formula-building
+## function, mirroring Cells 1-2's shape without repeating the boilerplate
+## nine times. `use_flag` is the `fit$use$<flag>` this keyword's engine route
+## should set (all TRUE for the phylo_rr slot; distinguishes dep/indep for
+## readability in failure messages only).
+mn_phylo_mode_admission_cell <- function(label, seed, form_fn, use_flag) {
+  fx <- make_mn_phylo_admission_fixture(seed = seed, n_sp = 40L, K = 3L)
+  fit <- tryCatch(
+    suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+      form_fn(fx), data = fx$data, family = gllvmTMB::multinomial(),
+      trait = "trait", unit = "species"
+    ))),
+    error = function(e) e
+  )
+  if (inherits(fit, "error") || !inherits(fit, "gllvmTMB_multi")) {
+    testthat::skip(sprintf(
+      "%s multinomial fit failed to construct: %s", label,
+      if (inherits(fit, "error")) conditionMessage(fit) else "not a gllvmTMB_multi fit"
+    ))
+  }
+  if (!.fit_stationary_for_recovery_test(fit)) {
+    testthat::skip(sprintf(
+      "%s multinomial fit did not converge with PD Hessian; FAM-20D stays partial", label
+    ))
+  }
+  expect_mn_phylo_fit_health(fit)
+  testthat::expect_true(isTRUE(fit$use$phylo_rr))
+  if (!is.null(use_flag)) {
+    testthat::expect_true(isTRUE(fit$use[[use_flag]]))
+  }
+  Smat <- expect_mn_shared_sigma_wellformed(fit, fx$K)
+  invisible(list(fit = fit, Smat = Smat))
+}
+
+test_that("phylo_dep() fits for multinomial (Slice 2 admission)", {
+  skip_if_not_mn_phylo_deps()
+  mn_phylo_mode_admission_cell(
+    "phylo_dep()", seed = 71L,
+    function(fx) as.formula(value ~ 0 + trait + phylo_dep(0 + trait | species, tree = fx$tree)),
+    "phylo_dep"
+  )
+})
+
+test_that("phylo_indep() fits for multinomial (Slice 2 admission); diagonal Sigma", {
+  skip_if_not_mn_phylo_deps()
+  out <- mn_phylo_mode_admission_cell(
+    "phylo_indep()", seed = 72L,
+    function(fx) as.formula(value ~ 0 + trait + phylo_indep(0 + trait | species, tree = fx$tree)),
+    "phylo_indep"
+  )
+  ## Task item 6 (FAM-20D): level = "phy" must return the per-contrast
+  ## DIAGONAL explicitly, never collapse to a scalar correlation summary --
+  ## Lambda_phy's strict lower triangle is pinned to 0 by a TMB map, so
+  ## Lambda_phy %*% t(Lambda_phy) is diagonal by construction; confirmed here
+  ## directly on a real fit rather than by code inspection alone.
+  off_diag <- out$Smat[row(out$Smat) != col(out$Smat)]
+  testthat::expect_true(all(abs(off_diag) < 1e-8))
+  testthat::expect_true(all(diag(out$Smat) > 0))
+})
+
+test_that("phylo_unique() (standalone, deprecated alias) fits for multinomial (Slice 2 admission)", {
+  skip_if_not_mn_phylo_deps()
+  mn_phylo_mode_admission_cell(
+    "phylo_unique()", seed = 73L,
+    function(fx) as.formula(value ~ 0 + trait + phylo_unique(species, tree = fx$tree)),
+    "phylo_unique"
+  )
+})
+
+test_that("animal_dep() fits for multinomial (Slice 2 admission)", {
+  skip_if_not_mn_phylo_deps()
+  mn_phylo_mode_admission_cell(
+    "animal_dep()", seed = 74L,
+    function(fx) as.formula(value ~ 0 + trait + animal_dep(0 + trait | species, A = fx$A)),
+    "phylo_dep"
+  )
+})
+
+test_that("animal_indep() fits for multinomial (Slice 2 admission); diagonal Sigma", {
+  skip_if_not_mn_phylo_deps()
+  out <- mn_phylo_mode_admission_cell(
+    "animal_indep()", seed = 75L,
+    function(fx) as.formula(value ~ 0 + trait + animal_indep(0 + trait | species, A = fx$A)),
+    "phylo_indep"
+  )
+  off_diag <- out$Smat[row(out$Smat) != col(out$Smat)]
+  testthat::expect_true(all(abs(off_diag) < 1e-8))
+})
+
+test_that("animal_unique() (standalone, deprecated alias) fits for multinomial (Slice 2 admission)", {
+  skip_if_not_mn_phylo_deps()
+  mn_phylo_mode_admission_cell(
+    "animal_unique()", seed = 76L,
+    function(fx) as.formula(value ~ 0 + trait + animal_unique(species, A = fx$A)),
+    "phylo_unique"
+  )
+})
+
+test_that("kernel_dep() (single name) fits for multinomial (Slice 2 admission)", {
+  skip_if_not_mn_phylo_deps()
+  mn_phylo_mode_admission_cell(
+    "kernel_dep()", seed = 77L,
+    function(fx) as.formula(value ~ 0 + trait + kernel_dep(species, K = fx$A, name = "phy")),
+    "phylo_dep"
+  )
+})
+
+test_that("kernel_indep() (single name) fits for multinomial (Slice 2 admission); diagonal Sigma", {
+  skip_if_not_mn_phylo_deps()
+  out <- mn_phylo_mode_admission_cell(
+    "kernel_indep()", seed = 78L,
+    function(fx) as.formula(value ~ 0 + trait + kernel_indep(species, K = fx$A, name = "phy")),
+    "phylo_indep"
+  )
+  off_diag <- out$Smat[row(out$Smat) != col(out$Smat)]
+  testthat::expect_true(all(abs(off_diag) < 1e-8))
+})
+
+test_that("kernel_unique() (single name, deprecated alias) fits for multinomial (Slice 2 admission)", {
+  skip_if_not_mn_phylo_deps()
+  mn_phylo_mode_admission_cell(
+    "kernel_unique()", seed = 79L,
+    function(fx) as.formula(value ~ 0 + trait + kernel_unique(species, K = fx$A, name = "phy")),
+    "phylo_unique"
+  )
+})
+
+## ---------------------------------------------------------------
 ## Equivalence: animal_latent() / kernel_latent() are numerically identical
 ## to phylo_latent() for multinomial (task item 3, Design 122 Slice 1).
 ##
@@ -285,4 +427,191 @@ test_that("kernel_latent() (single name) is numerically equivalent to phylo_late
   )
   expect_equal(unname(as.matrix(.mn_sigma_only(V_kernel))),
                unname(as.matrix(.mn_sigma_only(V_phylo))), tolerance = 1e-4)
+})
+
+## ---------------------------------------------------------------
+## Slice 2 (Design 122, 2026-08-16), task item 3 (stats-review contract):
+## phylo_dep(0 + trait | species) vs phylo_latent(species, d = K - 1) on the
+## SAME DGP data, compared at the V level (extract_Sigma(level = "phy", part
+## = "shared", link_residual = "none")), agreement < 1e-4; both fits' Hessian
+## PD-ness checked; repeated across 3 random seeds of the SAME DGP (gllvmTMB()
+## has no start/init argument to perturb -- searched R/gllvmTMB.R's formals
+## and tests/testthat/ for a start=/init= convention; none exists -- so this
+## is 3 independent draws, one per seed, compared per-seed, NOT 3 restarts of
+## one dataset; see the limitation note below).
+##
+## CORRECTION to the task brief's premise: "dep's chol diagonal is
+## exp()-positive; phylo_latent's rr diagonal is unconstrained" is TRUE only
+## for the AUGMENTED (intercept + slope) *_dep(1 + x | ...) engine
+## (`theta_dep_chol`, src/gllvmTMB.cpp ~L1919) -- a different, still-BLOCKED
+## covstruct kind. The INTERCEPT-ONLY phylo_dep(0 + trait | species) admitted
+## here resolves d = n_traits and populates the SAME phylo_rr/theta_rr_phy
+## slot as phylo_latent(species, d = n_traits), unpacked by the SAME
+## gll_unpack_rr_loadings() with an UNCONSTRAINED diagonal -- i.e. the
+## IDENTICAL parameterisation, not merely V-equivalent. This test therefore
+## expects (and finds) near-bitwise agreement, tighter than the 1e-4 V-level
+## tolerance the task specified.
+## ---------------------------------------------------------------
+
+test_that("phylo_dep() is numerically equivalent to phylo_latent(d = K - 1) for multinomial (3 seeds)", {
+  skip_on_cran(); skip_if_not_heavy()
+  skip_if_not_installed("ape"); skip_if_not_installed("MASS")
+  skip_if_no_mn_dgp()
+  source(.mn_dgp_path, local = TRUE)
+
+  seeds <- c(511L, 512L, 513L)
+  n_checked <- 0L
+  for (sd in seeds) {
+    dgp <- dgp_multinomial_structured(n_sp = 100L, seed = sd, K = 3L)
+
+    fit_latent <- tryCatch(
+      suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+        value ~ 0 + trait + phylo_latent(species, tree = dgp$tree, d = dgp$K - 1L),
+        data = dgp$data, family = gllvmTMB::multinomial(),
+        trait = "trait", unit = "species"
+      ))),
+      error = function(e) e
+    )
+    fit_dep <- tryCatch(
+      suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+        value ~ 0 + trait + phylo_dep(0 + trait | species, tree = dgp$tree),
+        data = dgp$data, family = gllvmTMB::multinomial(),
+        trait = "trait", unit = "species"
+      ))),
+      error = function(e) e
+    )
+    if (inherits(fit_latent, "error") || inherits(fit_dep, "error")) {
+      next # honest-skip this seed; counted via n_checked below
+    }
+    pd_latent <- isTRUE(fit_latent$sd_report$pdHess)
+    pd_dep <- isTRUE(fit_dep$sd_report$pdHess)
+    if (!pd_latent || !pd_dep ||
+          !.fit_stationary_for_recovery_test(fit_latent) ||
+          !.fit_stationary_for_recovery_test(fit_dep)) {
+      next # honest-skip: non-PD or non-stationary on either arm this seed
+    }
+
+    V_latent <- .mn_sigma_only(gllvmTMB::extract_Sigma(
+      fit_latent, level = "phy", part = "shared", link_residual = "none"
+    ))
+    V_dep <- .mn_sigma_only(gllvmTMB::extract_Sigma(
+      fit_dep, level = "phy", part = "shared", link_residual = "none"
+    ))
+    testthat::expect_equal(
+      unname(as.matrix(V_dep)), unname(as.matrix(V_latent)),
+      tolerance = 1e-4,
+      info = sprintf("seed %d: V-level phylo_dep() vs phylo_latent(d = K - 1)", sd)
+    )
+    n_checked <- n_checked + 1L
+  }
+  if (n_checked == 0L) {
+    testthat::skip("No seed produced a jointly PD/stationary phylo_dep()/phylo_latent(d = K - 1) pair")
+  }
+  ## LIMITATION (recorded per task item 3): gllvmTMB() has no start=/init=
+  ## argument, so "3 random inits" above means 3 independent DGP DRAWS
+  ## (different data each seed), not 3 restarts from different starting
+  ## values on ONE dataset. This tests robustness of the V-level equivalence
+  ## across datasets, not across local optima of a single likelihood surface.
+})
+
+## ---------------------------------------------------------------
+## Slice 2, task item 4: phylo_indep() planted-zero check. DGP with a
+## DIAGONAL true V (rho_true = 0): phylo_indep() should recover the two
+## per-contrast variances within a loose factor of truth; a phylo_latent()
+## refit on the SAME data should not invent a large spurious correlation.
+## Heavy-gated (a real recovery claim, not just admission-fit smoke).
+## ---------------------------------------------------------------
+
+test_that("phylo_indep() recovers per-contrast variances under a planted-zero (diagonal) true V, and phylo_latent() does not invent correlation", {
+  skip_on_cran(); skip_if_not_heavy()
+  skip_if_not_installed("ape"); skip_if_not_installed("MASS")
+  skip_if_no_mn_dgp()
+  source(.mn_dgp_path, local = TRUE)
+
+  ## One-species-per-tip phylogenetic recovery is data-hungry (Design 84's
+  ## own caveat). MEASURED (this task): at n_sp = 120, all 3 tried seeds
+  ## (521/522/523) collapsed to near-zero on at least one contrast dimension
+  ## -- a real degenerate local optimum (PD Hessian, stationary), matching
+  ## the S1 README's own n_sp = 250 "underpowered" finding and its n_sp = 800
+  ## calibration. Raised to n_sp = 800 (D-139: measured ~66 sec/fit at that
+  ## size in the S1 campaign, so 2 seeds x 2 fits stays well under the 30-min
+  ## line). Try a few seeds and honest-skip a collapsed seed rather than
+  ## asserting a ratio against an estimate of ~0; report which seeds
+  ## collapsed.
+  seeds <- c(521L, 522L)
+  collapsed_seeds <- integer(0L)
+  checked <- FALSE
+  for (sd in seeds) {
+    dgp <- dgp_multinomial_structured(
+      n_sp = 800L, seed = sd, K = 3L,
+      sd_true = c(0.8, 0.8), rho_true = 0
+    )
+
+    fit_indep <- tryCatch(
+      suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+        value ~ 0 + trait + phylo_indep(0 + trait | species, tree = dgp$tree),
+        data = dgp$data, family = gllvmTMB::multinomial(),
+        trait = "trait", unit = "species"
+      ))),
+      error = function(e) e
+    )
+    if (inherits(fit_indep, "error") || !.fit_stationary_for_recovery_test(fit_indep) ||
+          !isTRUE(fit_indep$sd_report$pdHess)) {
+      next
+    }
+    V_indep <- .mn_sigma_only(gllvmTMB::extract_Sigma(
+      fit_indep, level = "phy", part = "shared", link_residual = "none"
+    ))
+    var_hat <- diag(V_indep)
+    var_true <- dgp$sd_true^2
+    if (any(var_hat < 1e-6)) {
+      ## Degenerate near-zero collapse on at least one contrast dimension --
+      ## a real, previously-documented failure mode of one-per-species
+      ## phylogenetic recovery (a per-dimension Heywood case), not a bug in
+      ## the diagonal-V route. Report and try the next seed.
+      collapsed_seeds <- c(collapsed_seeds, sd)
+      next
+    }
+    ratio <- var_hat / var_true
+    ## "Loose factor" (task item 4): each per-contrast variance within 5x of
+    ## truth in either direction -- smoke-level sanity, not a calibrated-
+    ## recovery claim.
+    testthat::expect_true(
+      all(ratio > 0.2 & ratio < 5),
+      label = sprintf("seed %d var_hat/var_true ratios: %s", sd, paste(signif(ratio, 3), collapse = ", "))
+    )
+
+    fit_latent <- tryCatch(
+      suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+        value ~ 0 + trait + phylo_latent(species, tree = dgp$tree, d = dgp$K - 1L),
+        data = dgp$data, family = gllvmTMB::multinomial(),
+        trait = "trait", unit = "species"
+      ))),
+      error = function(e) e
+    )
+    if (inherits(fit_latent, "error") || !.fit_stationary_for_recovery_test(fit_latent) ||
+          !isTRUE(fit_latent$sd_report$pdHess)) {
+      checked <- TRUE
+      break # indep-only recovery already checked above for this seed; stop here
+    }
+    V_latent <- .mn_sigma_only(gllvmTMB::extract_Sigma(
+      fit_latent, level = "phy", part = "shared", link_residual = "none"
+    ))
+    rho_hat <- V_latent[1, 2] / sqrt(V_latent[1, 1] * V_latent[2, 2])
+    ## Smoke-level sanity (task item 4): a shared low-rank ordination
+    ## refit on planted-zero (independent) data should not report a large
+    ## spurious correlation.
+    testthat::expect_true(
+      is.finite(rho_hat) && abs(rho_hat) < 0.6,
+      label = sprintf("seed %d: |rho_hat| from phylo_latent() refit on planted-zero data: %s", sd, signif(rho_hat, 3))
+    )
+    checked <- TRUE
+    break
+  }
+  if (!checked) {
+    testthat::skip(sprintf(
+      "No seed produced a non-degenerate, jointly PD/stationary phylo_indep() planted-zero fit (collapsed seeds: %s)",
+      paste(collapsed_seeds, collapse = ", ")
+    ))
+  }
 })

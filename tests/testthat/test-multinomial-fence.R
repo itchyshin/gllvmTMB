@@ -214,40 +214,15 @@ test_that("meta_V() is not admitted for multinomial", {
   )
 })
 
-## ---- Blocked: phylo_dep() / phylo_indep() / phylo_unique() ---------------
-
-test_that("phylo_dep() is not admitted for multinomial", {
-  skip_on_cran(); skip_if_not_installed("ape")
-  fx <- .mn_fence_phylo_data(11L)
-  expect_error(
-    gllvmTMB(value ~ 0 + trait + phylo_dep(0 + trait | species), data = fx$data,
-             family = multinomial(), trait = "trait", unit = "species",
-             phylo_tree = fx$tree),
-    class = .mn_not_admitted
-  )
-})
-
-test_that("phylo_indep() is not admitted for multinomial", {
-  skip_on_cran(); skip_if_not_installed("ape")
-  fx <- .mn_fence_phylo_data(12L)
-  expect_error(
-    gllvmTMB(value ~ 0 + trait + phylo_indep(0 + trait | species), data = fx$data,
-             family = multinomial(), trait = "trait", unit = "species",
-             phylo_tree = fx$tree),
-    class = .mn_not_admitted
-  )
-})
-
-test_that("phylo_unique() (standalone) is not admitted for multinomial", {
-  skip_on_cran(); skip_if_not_installed("ape")
-  fx <- .mn_fence_phylo_data(13L)
-  expect_error(
-    gllvmTMB(value ~ 0 + trait + phylo_unique(species), data = fx$data,
-             family = multinomial(), trait = "trait", unit = "species",
-             phylo_tree = fx$tree),
-    class = .mn_not_admitted
-  )
-})
+## ---- Admitted (Slice 2, 2026-08-16): phylo_dep() / phylo_indep() /
+## phylo_unique() / their animal_*/kernel_* twins -------------------------
+## The phylo mode axis (dep = full V, indep/standalone unique = diagonal V)
+## moved from BLOCKED to ADMITTED for all three sources (phylo/animal/kernel)
+## in Slice 2 -- see R/multinomial-fence.R's `.mn_admission_table` and
+## admission-fit / equivalence coverage in
+## test-matrix-multinomial-phylo.R. Only the *_scalar() cells (below) and
+## every other mode (augmented slopes, *_latent(unique = TRUE), multi-kernel)
+## stay blocked.
 
 ## ---- Blocked: phylo_scalar() / animal_scalar() (propto exemption removed) --
 
@@ -269,6 +244,45 @@ test_that("animal_scalar() is not admitted for multinomial", {
   expect_error(
     gllvmTMB(value ~ 0 + trait + animal_scalar(species, A = A), data = fx$data,
              family = multinomial(), trait = "trait", unit = "species"),
+    class = .mn_not_admitted
+  )
+})
+
+## ---- Blocked: kernel_scalar() (Slice 2, 2026-08-16) -----------------------
+## Unlike phylo_scalar()/animal_scalar() (which route through the unrelated
+## `propto` engine and were already blocked by pass 2's use_propto re-scan,
+## unchanged since Slice 0), kernel_scalar() shares the SAME phylo_rr
+## covstruct shape and the SAME `.phylo_unique = TRUE, .indep = TRUE` markers
+## as the now-admitted kernel_indep() -- distinguished ONLY by
+## `.kernel_mode == "scalar"` (R/brms-sugar.R). This is the one cell where
+## pass 1 (this file's early classifier) is the ONLY thing keeping a scalar
+## cell blocked now that its indep/dep siblings are admitted -- a load-bearing
+## distinction that did not need testing before Slice 2 (every kernel_rr mode
+## was uniformly blocked).
+
+test_that("kernel_scalar() is not admitted for multinomial (distinguished from the now-admitted kernel_indep())", {
+  skip_on_cran()
+  df <- .mn_fence_data(19L, n = 20L)
+  K <- diag(20L)
+  rownames(K) <- colnames(K) <- levels(df$unit)
+  expect_error(
+    gllvmTMB(value ~ 0 + trait + kernel_scalar(unit, K = K, name = "k1"),
+             data = df, family = multinomial(), trait = "trait", unit = "unit",
+             cluster = "unit"),
+    class = .mn_not_admitted
+  )
+})
+
+test_that("kernel_indep(..., common = TRUE) (kernel_mode = scalar) is not admitted for multinomial", {
+  skip_on_cran()
+  df <- .mn_fence_data(20L, n = 20L)
+  K <- diag(20L)
+  rownames(K) <- colnames(K) <- levels(df$unit)
+  expect_error(
+    gllvmTMB(value ~ 0 + trait +
+               kernel_indep(unit, K = K, name = "k1", common = TRUE),
+             data = df, family = multinomial(), trait = "trait", unit = "unit",
+             cluster = "unit"),
     class = .mn_not_admitted
   )
 })
@@ -578,7 +592,33 @@ test_that(".mn_admission_table is consistent with .mn_classify_covstruct() for e
          extra = list(.phylo_unique = TRUE, .auto_unique = TRUE, .animal_source = TRUE)),
     list(kind = "phylo_rr", group = as.name("species"),
          extra = list(.phylo_unique = TRUE, .auto_unique = TRUE,
-                      .kernel_name = "phy", .kernel_mode = "unique"))
+                      .kernel_name = "phy", .kernel_mode = "unique")),
+    ## Slice 2 (Design 122, 2026-08-16): the phylo mode axis (dep = full V,
+    ## indep/standalone unique = diagonal V) and its animal/kernel twins,
+    ## admitted; kernel_scalar() (same markers as kernel_indep(), .kernel_mode
+    ## = "scalar") stays blocked.
+    list(kind = "phylo_rr", group = as.name("species"), extra = list(.dep = TRUE)),
+    list(kind = "phylo_rr", group = as.name("species"),
+         extra = list(.phylo_unique = TRUE, .indep = TRUE)),
+    list(kind = "phylo_rr", group = as.name("species"),
+         extra = list(.phylo_unique = TRUE)),
+    list(kind = "phylo_rr", group = as.name("species"),
+         extra = list(.dep = TRUE, .animal_source = TRUE)),
+    list(kind = "phylo_rr", group = as.name("species"),
+         extra = list(.phylo_unique = TRUE, .indep = TRUE, .animal_source = TRUE)),
+    list(kind = "phylo_rr", group = as.name("species"),
+         extra = list(.phylo_unique = TRUE, .animal_source = TRUE)),
+    list(kind = "phylo_rr", group = as.name("species"),
+         extra = list(.dep = TRUE, .kernel_name = "k1", .kernel_mode = "dep")),
+    list(kind = "phylo_rr", group = as.name("species"),
+         extra = list(.phylo_unique = TRUE, .indep = TRUE,
+                      .kernel_name = "k1", .kernel_mode = "indep")),
+    list(kind = "phylo_rr", group = as.name("species"),
+         extra = list(.phylo_unique = TRUE,
+                      .kernel_name = "k1", .kernel_mode = "unique")),
+    list(kind = "phylo_rr", group = as.name("species"),
+         extra = list(.phylo_unique = TRUE, .indep = TRUE,
+                      .kernel_name = "k1", .kernel_mode = "scalar"))
   )
   expect_equal(nrow(tbl), length(reprs))
   for (i in seq_len(nrow(tbl))) {

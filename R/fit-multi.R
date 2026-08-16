@@ -150,8 +150,8 @@
       "Response family/link cannot currently vary across rows within a trait.",
       "x" = "Multiple family/link scales were requested within: {paste(bad, collapse = ', ')}.",
       "i" = "Use one family/link per trait. Per-row family mixing needs a separately validated common-scale contract; Poisson-log with binomial-logit/probit is not coherent merely because it converges.",
-      "i" = "The one admitted exception is the integrated two-source model: GBIF-style Poisson-log rows and survey Bernoulli-cloglog rows for the same trait, where the cloglog link makes both arms consistent with one underlying intensity.",
-      ">" = "To reach it, supply {.code family = list(gbif = poisson(), survey_pa = binomial(\"cloglog\"))} with {.code attr(family, \"family_var\") <- \"isdm_family\"}, a {.var source} column of {.val gbif}/{.val survey}, and an {.var isdm_family} column matching it."
+      "i" = "The one admitted exception is the integrated multi-source model: named observation sources whose rows are Poisson-log count streams or Bernoulli-cloglog detection streams for the same trait, where the cloglog link makes every arm consistent with one underlying intensity.",
+      ">" = "To reach it, declare the sources with {.fn isdm_sources}, e.g. {.code family = isdm_sources(gbif = poisson(), literature = poisson(), survey = binomial(\"cloglog\"))}, and give {.arg data} an {.var isdm_source} column naming each row's source. Every trait must be observed by every declared source."
     ), class = "gllvmTMB_family_within_trait_unsupported")
   }
   invisible(TRUE)
@@ -168,47 +168,74 @@
 ## deliberately exact: anything short of the full contract keeps the ordinary
 ## refusal, so the admission cannot widen by accident. Both the unexported
 ## developer route and the public route are admitted through it.
+.gllvmTMB_integrated_sources_contract <- function(family_input, data,
+                                                  family_id_vec,
+                                                  link_id_vec,
+                                                  trait_labels) {
+  if (!is.list(family_input) || inherits(family_input, "family")) {
+    return(FALSE)
+  }
+  if (missing(trait_labels)) trait_labels <- NULL
+
+  ## Route 1 -- the DECLARED contract (Design 120): isdm_sources() built the
+  ## list and the selector column is isdm_source. The map is REBUILT here from
+  ## the list's names and laws rather than read from the constructor's
+  ## attribute, because .align_mixed_family_list() reorders the list by
+  ## subsetting, and subsetting drops attributes -- an attribute-borne map
+  ## would silently vanish before this predicate runs. The names+laws ARE the
+  ## declaration; the attribute is only constructor metadata.
+  if (identical(attr(family_input, "family_var"), "isdm_source") &&
+      "isdm_source" %in% names(data) &&
+      !is.null(names(family_input)) && all(nzchar(names(family_input)))) {
+    ids <- lapply(family_input, .isdm_admitted_law_id)
+    if (any(vapply(ids, is.null, logical(1L)))) return(FALSE)
+    map <- do.call(rbind, ids)
+    rownames(map) <- names(family_input)
+    return(.gllvmTMB_isdm_declared_core(
+      map = map, selector = data$isdm_source,
+      family_id_vec = family_id_vec, link_id_vec = link_id_vec,
+      trait_labels = trait_labels, data_n = nrow(data)
+    ))
+  }
+
+  ## Route 2 -- the LEGACY two-source shape, recognised and translated into the
+  ## same core so there is one definition of admission, not two. The extra
+  ## `source`-column checks are part of that shape's contract and are kept: a
+  ## legacy caller who satisfied them before still does, and one who did not is
+  ## still refused.
+  if (identical(attr(family_input, "family_var"), "isdm_family") &&
+      identical(sort(names(family_input)), c("gbif", "survey_pa")) &&
+      "source" %in% names(data) &&
+      "isdm_family" %in% names(data) &&
+      all(data$source %in% c("gbif", "survey")) &&
+      identical(
+        as.character(data$isdm_family),
+        ifelse(data$source == "gbif", "gbif", "survey_pa")
+      )) {
+    legacy_map <- rbind(gbif = c(fid = 2L, lid = 0L),
+                        survey_pa = c(fid = 1L, lid = 2L))
+    return(.gllvmTMB_isdm_declared_core(
+      map = legacy_map, selector = data$isdm_family,
+      family_id_vec = family_id_vec, link_id_vec = link_id_vec,
+      trait_labels = trait_labels, data_n = nrow(data)
+    ))
+  }
+  FALSE
+}
+
+## Retained name for the n = 2 era; the generalised predicate above is the
+## single definition of admission and this alias delegates to it. Kept because
+## the name is asserted in tests and referenced in dev-log evidence.
 .gllvmTMB_integrated_two_source_contract <- function(family_input, data,
                                                      family_id_vec,
                                                      link_id_vec,
                                                      trait_labels) {
-  ok <- is.list(family_input) &&
-    !inherits(family_input, "family") &&
-    identical(attr(family_input, "family_var"), "isdm_family") &&
-    identical(sort(names(family_input)), c("gbif", "survey_pa")) &&
-    "source" %in% names(data) &&
-    "isdm_family" %in% names(data) &&
-    all(data$source %in% c("gbif", "survey")) &&
-    all(c("gbif", "survey") %in% data$source) &&
-    identical(
-      as.character(data$isdm_family),
-      ifelse(data$source == "gbif", "gbif", "survey_pa")
-    ) &&
-    identical(unname(as.integer(family_id_vec)),
-              ifelse(data$source == "gbif", 2L, 1L)) &&
-    identical(unname(as.integer(link_id_vec)),
-              ifelse(data$source == "survey", 2L, 0L))
-  if (!isTRUE(ok)) return(FALSE)
-
-  ## EVERY trait must carry BOTH arms. Without this the clauses above are
-  ## statements about the data frame as a whole, and an ordinary BETWEEN-trait
-  ## mixed-family fit -- trait A all Poisson/gbif, trait B all cloglog/survey --
-  ## would satisfy them while containing no integrated species at all. That fit
-  ## needs no relaxation (no family varies within any trait), yet admitting it
-  ## would hand it the cloglog offset and the augmented spatial slope, neither
-  ## of which it has any claim to. One dummy gbif row would likewise buy a
-  ## whole survey-only data set the same access. The within-trait pairing IS
-  ## the model, so it is the thing to check.
-  if (missing(trait_labels) || is.null(trait_labels) ||
-      length(trait_labels) != nrow(data)) {
-    return(FALSE)
-  }
-  by_trait <- split(as.character(data$source), as.character(trait_labels),
-                    drop = TRUE)
-  isTRUE(length(by_trait) > 0L) &&
-    all(vapply(by_trait,
-               function(s) all(c("gbif", "survey") %in% s),
-               logical(1L)))
+  if (missing(trait_labels)) trait_labels <- NULL
+  .gllvmTMB_integrated_sources_contract(
+    family_input = family_input, data = data,
+    family_id_vec = family_id_vec, link_id_vec = link_id_vec,
+    trait_labels = trait_labels
+  )
 }
 
 .gllvmTMB_loading_ridge_applies <- function(ridge_tau, parameter_names) {
@@ -719,7 +746,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## two-source family/source contract, and ONLY from it. The unexported route
   ## sets the marker and must satisfy the contract; a public caller satisfies
   ## the same contract directly, with no marker. One predicate, two callers.
-  isdm_structural <- .gllvmTMB_integrated_two_source_contract(
+  isdm_structural <- .gllvmTMB_integrated_sources_contract(
     family_input = family_input,
     data = data,
     family_id_vec = family_id_vec,

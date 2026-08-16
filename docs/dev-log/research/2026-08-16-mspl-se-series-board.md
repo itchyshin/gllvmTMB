@@ -51,11 +51,12 @@ Planned registry rows landed with
 | Cell | Why blocked | Owning PR | Merge posture |
 |---|---|---|---|
 | Beta logit | Live 8×3 pin used `skip_if(TRUE)` after R accepted only status 0. Status **1 is `OK_MP_CERTIFIED`**, not invalid. Atom is FCN \(K_{\beta\beta}\). | [#1045](https://github.com/itchyshin/gllvmTMB/pull/1045) `cursor/mspl-beta-jeffreys-atom` | **Next merge** after rebase. OPEN, **CONFLICTING** vs `main` (post-#1039/#1041). After land, Beta live skip becomes “door is missing,” not atom-invalid. Still no public door / admit. |
-| Tweedie log | 8×3 live MSPL hangs (`W=\mu^{2-p}/\varphi` one-sided, \(\varphi\to 0\)). Working \(W_*\) taped; timeout-bounded probe still >180 s. | [#1047](https://github.com/itchyshin/gllvmTMB/pull/1047) `cursor/mspl-tweedie-hang` | **Do not merge as a hang-fix.** DRAFT. Hang still **BLOCKED**. Keep `.mspl_se_tweedie_live_hangs`. Diagnosis: `docs/dev-log/research/2026-08-16-mspl-tweedie-hang-wstar.md`. |
+| Tweedie log | Two-layer hang: true \(W=\mu^{2-p}/\varphi\) is one-sided (\(\varphi\to 0\)); residual hang was the spatial-Bernoulli BFGS rescue (`optim(..., maxit=5000)`). Working \(W_*\) + Huber + skip BFGS for `family_id==6`. Default-nlminb probe: **`PROBE_OK` 1.549 s**. Hang fuse on the PR is now `FALSE`. | [#1047](https://github.com/itchyshin/gllvmTMB/pull/1047) `cursor/mspl-tweedie-hang` | Hang **FIXED**. Still **DRAFT** and **CONFLICTING**. Do not merge as an admit or public door. CI still skips on the closed door. Diagnosis: `docs/dev-log/research/2026-08-16-mspl-tweedie-hang-wstar.md`. |
 
 Track 6 (sibling) may lift Beta `skip_if` only after #1045 is on
-`main` **and** a door exists. Do not lift the Tweedie hang fuse
-until a timeout-bounded probe prints `PROBE_OK`.
+`main` **and** a door exists. Tweedie hang fuse is already `FALSE`
+on #1047 (`PROBE_OK`); still do not open family 6 on the public
+allow-list from that PR.
 
 ### #1000 — rest families
 
@@ -69,7 +70,7 @@ is missing. The unexported pin still raises
 
 | Family | Planned row on `main` | Door / tape | Owning work |
 |---|---|---|---|
-| gamma / lognormal | [#1003](https://github.com/itchyshin/gllvmTMB/pull/1003) Phase-4-style prep | no public door; no GLM-outer fid on the live prepare fence | **Track 4** [#1051](https://github.com/itchyshin/gllvmTMB/pull/1051) DRAFT — oracles→door gap list; **no tape tonight**. |
+| gamma / lognormal | [#1003](https://github.com/itchyshin/gllvmTMB/pull/1003) Phase-4-style prep | no public door; no GLM-outer fid on the live prepare fence | **Track 4** [#1051](https://github.com/itchyshin/gllvmTMB/pull/1051) — oracles→door gap list; **research-only, no tape**. This docs wave marks it ready and merges it. |
 | student / ordinal_probit | [#1039](https://github.com/itchyshin/gllvmTMB/pull/1039) rows; Phase-4 [#1005](https://github.com/itchyshin/gllvmTMB/pull/1005) | no public door | later rest-door slice; not tonight |
 | delta_lognormal / delta_gamma | [#1004](https://github.com/itchyshin/gllvmTMB/pull/1004) prep | no public door | later rest-door slice; not tonight |
 | betabinomial / truncated_* / multinomial | [#1039](https://github.com/itchyshin/gllvmTMB/pull/1039) rows; oracles [#1023](https://github.com/itchyshin/gllvmTMB/pull/1023)–[#1025](https://github.com/itchyshin/gllvmTMB/pull/1025) | not in #1000’s original six; no door | after the original six |
@@ -114,15 +115,16 @@ Hygiene already on `main` this sitting: #1039 planned-rest rows
    (Beta atom). Conflicts vs current `main`. Keep planned. No family
    id 7. No admit.
 2. **Leave [#1047](https://github.com/itchyshin/gllvmTMB/pull/1047) draft.**
-   Tweedie hang is BLOCKED. Do not squash-merge as a fix. Do not lift
-   the hang fuse.
-3. **Leave [#1051](https://github.com/itchyshin/gllvmTMB/pull/1051) draft**
-   (track 4). Gamma/lognormal door is **not ready**; gap list only.
-   Do not implement a speculative tape from this board.
+   Hang is **FIXED** (`PROBE_OK` 1.549 s; fuse `FALSE`). Still
+   CONFLICTING. Do not squash-merge as an admit or public-door lift.
+   Do not open family 6.
+3. **Merge [#1051](https://github.com/itchyshin/gllvmTMB/pull/1051)**
+   (track 4) as **research-only**. Gamma/lognormal door is **not
+   ready**; gap list only. No `src/` tape. No `#1000` lift.
 4. **Track 6 — lift `skip_if` only for cells that are actually live.**
-   Beta after #1045 **and** a door. Tweedie only after `PROBE_OK`.
-   Rest-family pin-family tests stay red/`skip_if` until the fence
-   and door exist.
+   Beta after #1045 **and** a door. Tweedie hang probe already
+   `PROBE_OK`; still no public door. Rest-family pin-family tests
+   stay red/`skip_if` until the fence and door exist.
 5. **Later rest doors** (student / ordinal / delta_* / BB / truncated /
    multinomial). One family, one PR. Local only.
 6. **Do not** start Lane B. **Do not** promote B1. **Do not** open

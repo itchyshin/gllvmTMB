@@ -6,9 +6,10 @@ Docs-only board at
 `docs/dev-log/research/2026-08-16-mspl-se-series-board.md`.
 Read `origin/main` @ `55666f1e`. LIVE pins: Bernoulli #979/#989,
 Gaussian #1006, Poisson #979/#997, nbinom #998+#1007. Blocked:
-#999 (owning #1045 Beta, #1047 Tweedie hang BLOCKED), #1000
-(#1051 DRAFT gamma/lognormal gap list). B1 G1–G5 FAIL / Lane B
-deferred. No `devtools::test()`. No admit. No public `se=TRUE`.
+#999 (owning #1045 Beta, #1047 Tweedie hang FIXED / still draft),
+#1000 (#1051 gamma/lognormal gap list, research-only). B1 G1–G5
+FAIL / Lane B deferred. No `devtools::test()`. No admit. No public
+`se=TRUE`.
 
 ## 2026-08-16 — Beta Jeffreys atom: status 1 is OK_MP, weight is phi^2
 

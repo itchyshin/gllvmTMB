@@ -36,10 +36,17 @@ Rationale: `origin/main` prepare accepts those families and the
 curvature fence names them.
 Rejected: listing nbinom under #1000. Confidence: high.
 
-Decision: #1047 stays draft / do-not-merge.
-Rationale: PR body is explicit BLOCKED; hang fuse must stay.
-Rejected: merging the working-\(W_*\) tape as if it unblocked #999.
+Decision: #1047 stays draft / do-not-merge as admit.
+Rationale: hang is now FIXED (`PROBE_OK` 1.549 s; fuse `FALSE` on
+the PR) but the PR is CONFLICTING and is not an admit or
+public-door lift.
+Rejected: treating `PROBE_OK` as permission to open family 6.
 Confidence: high.
+
+Decision: #1051 is research-only and may merge as a gap list.
+Rationale: Phase-4 oracles pin the weights; rate / loading /
+Laplace-marginal \(I(\beta)\) stay OPEN. No `src/` tape.
+Rejected: a `#1007`-shaped door from the gap list. Confidence: high.
 
 ## 4. Checks Run
 
@@ -83,13 +90,16 @@ by absolute path in a new worktree.
 
 ## 9. Team Learning (per AGENTS.md Standing Review Roles)
 
-- **Ada:** next merge is rebase #1045, not B1 G0 and not #1047.
+- **Ada:** next *code* merge is rebase #1045. #1047 hang is FIXED
+  but stays draft. This docs wave merges #1051 as research-only.
 - **Rose:** LIVE pin ≠ public SE; planned door ≠ admit.
 - **Shannon:** board is the SE-series pointer; Lane B stays PROTECTED.
 
 ## 10. Known Limitations And Next Actions
 
-Track 4 opened [#1051](https://github.com/itchyshin/gllvmTMB/pull/1051)
-as a DRAFT gap list while this board was written. #1045 is
-CONFLICTING. After this PR lands, rebase #1045 onto `main`. Do not
-lift Tweedie `skip_if`. Leave #1051 draft.
+#1047 hang status changed to FIXED (`PROBE_OK`) before this board
+merged; public door and admit stay closed. This docs wave marks
+[#1051](https://github.com/itchyshin/gllvmTMB/pull/1051) ready and
+merges it as research-only (no tape). #1045 is still CONFLICTING.
+After this PR lands, rebase #1045 onto `main`. Do not lift Tweedie
+public-door `skip_if`.

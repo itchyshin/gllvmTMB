@@ -1,5 +1,23 @@
 # Check log
 
+## 2026-08-16 — Tweedie MSPL hang unstuck (W_* + BFGS skip)
+
+Worktree `/private/tmp/gllvmtmb-mspl-tweedie-hang` ·
+`cursor/mspl-tweedie-hang`.
+
+```sh
+pkgload::load_all(/private/tmp/gllvmtmb-mspl-tweedie-hang)
+# Staged: MakeADFun + fn/gr ms; hang was MSPL BFGS rescue maxit=5000
+# After family-6 skip + mspl_dispersion_nll in penalty-off sum:
+# PROBE_OK elapsed=1.549s optimizer=nlminb
+rg -n "Tweedie is excluded|mspl_dispersion_nll|mspl_se_tweedie_live_hangs" \
+  R/fit-multi.R tests/testthat
+```
+
+Not run: `devtools::test()`, `--as-cran`, pkgdown. No NEWS. No
+admit. No public door. Hang fuse now FALSE; CI still skips on the
+closed family-6 door.
+
 ## 2026-08-16 — Tweedie MSPL hang vs working W_* (BLOCKED as hang-fix)
 
 Worktree `/private/tmp/gllvmtmb-mspl-tweedie-hang` ·

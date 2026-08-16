@@ -1,4 +1,4 @@
-# After Task: Tweedie MSPL hang vs working W_*
+# After Task: Tweedie MSPL hang — working W_* + BFGS skip
 
 **Branch**: `cursor/mspl-tweedie-hang`
 **Date**: `2026-08-16`
@@ -14,25 +14,39 @@ no NEWS covered.
 ## 2. Implemented
 
 True Tweedie `W = μ^{2-p}/φ` is one-sided (`0 / +∞`) and rewards
-`φ → 0`. That matches the hang note from #1014 (ML on the same cell
-is fast; MSPL was not). The live C++ tape now uses working logistic
-`W_*` on `η` plus `gll_mspl_pseudohuber` on `log φ` and
-`logit(p-1)`. Public prepare still rejects family 6. `#999` hang
-fuse stays `TRUE` and is now a named flip.
+`φ → 0`. The live C++ tape uses working logistic `W_*` on `η` plus
+Huber on `log φ` and `logit(p-1)`.
 
-**BLOCKED as a hang-fix.** Timeout-bounded probe of the known cell
-with the new tape did not return in 180 s. Do not fake a door.
+The residual hang after that tape change was **not** first-eval AD
+cost. Staged probe: `MakeADFun` and each `fn()`/`gr()` were
+milliseconds; the process then sat in the MSPL BFGS rescue
+(`optim(..., maxit = 5000)` from `par_init`), written for spatial
+Bernoulli. Family 6 now skips that rescue. Huber
+`mspl_dispersion_nll` is included in the penalty-off decomposition
+sum (without it the cell aborted in 4.5 s with residual 38.68).
+
+Default-nlminb probe:
+
+```
+PROBE_OK class=gllvmTMB_mspl/... registry=planned elapsed=1.549s
+optimizer=nlminb
+```
+
+Public prepare still rejects family 6. Hang fuse is `FALSE`.
+`#999` live pins still skip on the closed door.
 
 ## 3. Files Changed
 
-- `src/gllvmTMB.cpp` — working `W_*` + Huber extras; REPORT
-  `mspl_V_dispersion` / `mspl_dispersion_nll`
+- `src/gllvmTMB.cpp` — working `W_*` + Huber extras
 - `R/mspl.R` — probe-only env; provenance string
 - `R/mspl-registry.R` — planned notes name working `W_*`
+- `R/fit-multi.R` — skip BFGS rescue for family 6; count
+  `mspl_dispersion_nll` in the penalty-off sum
 - `tests/testthat/test-mspl-fenced-family-tapes.R`
 - `tests/testthat/test-mspl-tweedie-phase4-oracles.R` (E11)
 - `tests/testthat/test-zz-mspl-tweedie-beta-se-feasibility.R`
 - `dev/mspl-tweedie-hang-probe.R`
+- `dev/mspl-tweedie-hang-stages.R`
 - `docs/dev-log/research/2026-08-16-mspl-tweedie-hang-wstar.md`
 - `docs/dev-log/after-task/2026-08-16-mspl-tweedie-hang-wstar.md`
 - `docs/dev-log/check-log.md`
@@ -41,105 +55,84 @@ No `NEWS.md`, no register `covered`, no allow-list door.
 
 ## 3a. Decisions and Rejected Alternatives
 
-- **Decision:** keep working `W_*` on the fenced tape even though
-  the hang remains. **Rationale:** true W fails the two-sided test
-  and is the wrong existence penalty. **Rejected:** revert C++ and
-  docs-only BLOCKED — would leave the hostile atom as the live
-  tape. **Confidence:** high on the W classification; medium that
-  a later inner-loop cap will be the hang fix.
+- **Decision:** keep working `W_*` even after the hang was shown to
+  be the BFGS rescue. **Rationale:** true W still fails the
+  two-sided test. **Rejected:** revert C++ to true W.
+- **Decision:** skip BFGS rescue for Tweedie only, not for
+  Bernoulli. **Rationale:** the rescue earned its keep on spatial
+  Bernoulli. **Rejected:** delete the rescue globally.
 - **Decision:** do not open family 6 on the public allow-list.
-  **Rejected:** planned door like #1014. CI must not hang.
-- **Decision:** named hang fuse, not `skip_if(TRUE)` literal.
-  Lift later by flipping `.mspl_se_tweedie_live_hangs` after a
-  returning probe.
+  Probe env only. **Rejected:** planned door like #1014.
 
 ## 4. Checks Run
 
 ```sh
-pkgbuild::compile_dll(...)                 # DONE, Eigen unused-var only
-R CMD INSTALL --library=$TMPLIB            # DONE
-# ML same 8x3 cell, se=FALSE, n_init=1
-# ML_OK elapsed=0.786s
-# MSPL probe GLLVMTMB_MSPL_TWEEDIE_PROBE=1, OS timeout
-# 90s timeout; 180s PROBE_START_FIT then kill. No return.
-testthat::test_file("tests/testthat/test-mspl-tweedie-phase4-oracles.R")
-# E11 PASS; E10 FAIL only when package not loaded (registry helper)
+pkgload::load_all(...)
+# ML 8x3: ~0.7 s
+# Staged MSPL iter.max=1: fn 0.005 s; then hung in BFGS rescue
+# After skip + dispersion bookkeeping:
+# PROBE_OK elapsed=1.549s optimizer=nlminb
 ```
 
-Targeted files after install (temp lib, probe env unset):
+Targeted files after `load_all` (probe env unset unless named):
 
-- oracles 72 PASS
-- fenced tapes 20 PASS
-- registry 61 PASS
-- prepare-fence 2 PASS
-- `#999` zz 8 PASS / 4 SKIP (Tweedie hang fuse + Beta atom)
+- oracles / fenced tapes / `#999` zz (CI path: door skip)
 
 Not run: `devtools::test()`, `--as-cran`, pkgdown.
 
-rg:
-
-```
-rg -n "working logistic|rewards phi|GLLVMTMB_MSPL_TWEEDIE_PROBE|mspl_se_tweedie_live_hangs" \
-  src/gllvmTMB.cpp R/mspl.R R/mspl-registry.R tests/testthat
-```
-
 ## 5. Tests of the Tests
 
-- E1–E10 still document true-W hostility (would fail if someone
-  rewrote those oracles to working W and called it a repair).
-- E11 fails if working W does not vanish at both infinities or if
-  true W stops rewarding `φ → 0`.
-- Fenced-door test unsets the probe env; would fail if family 6
-  entered the public allow-list.
-- `#999` hang fuse stays on; CI cannot start the live fit.
+- E11 fails if working W does not vanish at both infinities.
+- Fenced-door test unsets the probe env.
+- BFGS-skip test fails if family 6 re-enters the rescue.
+- `#999` hang fuse is `FALSE`; CI still cannot start a public live
+  fit because prepare rejects family 6.
 
 ## 6. Consistency Audit
 
 | pattern | verdict |
 |---|---|
-| `W=mu^{2-p}/phi` as the *live* atom in C++ return | gone; comment only |
-| `working logistic` in C++ / registry / provenance | present |
-| public allow-list `c(0L, 1L, 2L, 5L, 15L)` | held; probe env is extra |
+| live C++ atom is working logistic | held |
+| public allow-list excludes 6 | held; probe env is extra |
+| BFGS rescue skips `family_id == 6` | held |
 | `admitted` Tweedie | absent |
 | NEWS covered | not touched |
 
 ## 7. Roadmap Tick
 
-N/A. No ROADMAP row.
+N/A.
 
 ## 7a. GitHub Issue Ledger
 
-No relevant open issue; no new issue created. The hang is the
-known `#999` / `#1014` cell, recorded in the research note.
+No new issue. `#999` SE pin remains planned-only behind a closed
+door.
 
 ## 8. What Did Not Go Smoothly
 
-Working `W_*` was the predicted hang fix. The 180 s probe refuted
-"W-reward is sufficient". A second mechanism (Tweedie series ×
-Laplace AD, or a long `nlminb` path) is still live. Do not treat
-CI silence as green.
+The first sitting treated a 180 s timeout as "W_* did not unstick
+the cell" and marked BLOCKED. The staged probe showed the timeout
+was the Bernoulli BFGS rescue. Do not treat an OS kill after
+`PROBE_START_FIT` as a W-atom result.
 
-## 9. Team Learning (per AGENTS.md Standing Review Roles)
+## 9. Team Learning
 
-**Fisher:** the two-sided vanishing test correctly indicts true
-Tweedie W. It does not by itself prove the optimiser will return.
+**Fisher:** two-sided vanishing correctly indicts true Tweedie W.
+It does not identify a post-`nlminb` rescue hang.
 
-**Gauss:** `dtweedie` + Laplace AD can dominate even after the
-penalty stops rewarding `φ → 0`. ML 0.8 s vs MSPL >180 s is the
-measurement.
+**Gauss:** `dtweedie` series cost is the expensive region the
+rescue walked into, not the first `fn()`.
 
-**Curie:** OS `timeout` / process kill, not `setTimeLimit`.
+**Curie:** instrument `MakeADFun` / `fn` / `nlminb` / `optim`
+separately. One `iter.max=1` fit is enough to split the layers.
 
-**Rose:** keep the hostility comment (`rewards`) so the true-W
-bug stays named after the tape change.
+**Rose:** keep the true-W `rewards` comment after the tape change.
 
-**Grace:** no public door; hang fuse on; CI must not compile-loop
-this cell.
+**Grace:** no public door. Hang fuse off. CI skips on the closed
+door, not on a residual hang.
 
 ## 10. Known Limitations And Next Actions
 
-- Hang fuse stays `TRUE`. Public door stays closed.
-- Next hang slice: instrument one MSPL `fn()` vs ML `fn()` on this
-  cell (AD cost), then consider an eval cap — not a door.
-- Do not admit. Do not public `se=TRUE`. Do not lift `#999` until
-  a timeout-bounded probe prints `PROBE_OK`.
+- Public door stays closed. No admit. No public `se=TRUE`.
+- `#999` live curvature pin still needs a later planned door, not
+  this hang slice.
+- Do not transplant the BFGS skip onto Bernoulli.

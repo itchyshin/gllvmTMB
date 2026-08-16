@@ -3,26 +3,23 @@
 ## Call via:  timeout 90 env GLLVMTMB_MSPL_TWEEDIE_PROBE=1 \
 ##   Rscript --vanilla dev/mspl-tweedie-hang-probe.R
 ## Do not run from testthat / CI.
+##
+## Default nlminb (no iter.max cap). Tweedie skips the MSPL BFGS
+## rescue. Working W_* + Huber is the existence tape.
 
 Sys.setenv(GLLVMTMB_MSPL_TWEEDIE_PROBE = "1")
 if (!identical(Sys.getenv("GLLVMTMB_MSPL_TWEEDIE_PROBE"), "1")) {
   stop("probe env failed to set", call. = FALSE)
 }
 
-suppressPackageStartupMessages(library(gllvmTMB))
+suppressPackageStartupMessages({
+  if (dir.exists("/private/tmp/gllvmtmb-mspl-tweedie-hang/R")) {
+    pkgload::load_all("/private/tmp/gllvmtmb-mspl-tweedie-hang", quiet = TRUE)
+  } else {
+    library(gllvmTMB)
+  }
+})
 cat(sprintf("PROBE_LIB=%s\n", system.file(package = "gllvmTMB")))
-cpp <- system.file("..", "src", "gllvmTMB.cpp", package = "gllvmTMB")
-if (!nzchar(cpp) || !file.exists(cpp)) {
-  cpp <- file.path(dirname(system.file(package = "gllvmTMB")), "gllvmTMB", "src", "gllvmTMB.cpp")
-}
-if (file.exists(cpp)) {
-  txt <- paste(readLines(cpp, warn = FALSE), collapse = "\n")
-  cat(sprintf(
-    "PROBE_TAPE working_logistic=%s true_W_formula=%s\n",
-    grepl("working logistic", txt, fixed = TRUE),
-    grepl("return (Type(2.0) - p) * eta - log_phi;", txt, fixed = TRUE)
-  ))
-}
 
 dat <- data.frame(
   site = factor(rep(seq_len(8L), each = 3L)),
@@ -47,8 +44,9 @@ fit <- gllvmTMB(
 elapsed <- proc.time()[["elapsed"]] - t0
 
 cat(sprintf(
-  "PROBE_OK class=%s registry=%s elapsed=%.3fs\n",
+  "PROBE_OK class=%s registry=%s elapsed=%.3fs optimizer=%s\n",
   paste(class(fit), collapse = "/"),
   if (is.null(fit$mspl$registry_status)) "NA" else fit$mspl$registry_status,
-  elapsed
+  elapsed,
+  if (is.null(fit$opt$optimizer_used)) "NA" else fit$opt$optimizer_used
 ))

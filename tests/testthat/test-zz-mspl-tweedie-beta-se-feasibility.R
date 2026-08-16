@@ -45,16 +45,18 @@
 }
 
 ## Hang fuse for the #999 8x3 live cell. True W = mu^{2-p}/phi
-## rewards phi → 0 and hung (>5 min); Tweedie ML on the same cell
-## was ~1.3 s. Working logistic W_* + Huber is the fenced repair.
-## Public door stays closed. skip_if, not setTimeLimit: elapsed
-## time limits do not interrupt TMB's compiled inner loop.
+## rewards phi → 0. Working logistic W_* + Huber is the existence
+## tape. The residual hang was the MSPL BFGS rescue (maxit=5000
+## from par_init) walking into dtweedie series cost — that rescue
+## is now skipped for family 6. Public door stays closed.
+## skip_if, not setTimeLimit: elapsed time limits do not interrupt
+## TMB's compiled inner loop.
 ##
 ## Lift later: flip `.mspl_se_tweedie_live_hangs` to FALSE after a
-## timeout-bounded probe of this cell returns. The door-missing
-## skip in `.mspl_se_tb_try_fit()` still fences CI while prepare
-## rejects family 6.
-.mspl_se_tweedie_live_hangs <- TRUE
+## timeout-bounded default-nlminb probe of this cell prints
+## PROBE_OK. The door-missing skip in `.mspl_se_tb_try_fit()` still
+## fences CI while prepare rejects family 6.
+.mspl_se_tweedie_live_hangs <- FALSE
 
 .mspl_se_tweedie_skip_if_live_hangs <- function() {
   testthat::skip_if(

@@ -49828,3 +49828,24 @@ Not run: merge, admit, Totoro, drmTMB.
 `git diff --check` failed on `docs/dev-log/check-log.md:49705: new blank line at EOF`.
 Removed the extra EOF newline so the ignored-source fast path can go green.
 Not run: merge, admit, Totoro.
+
+## 2026-08-16 — MSPL betabinomial Phase-4-style prep (Cursor)
+
+Lane `cursor/mspl-phase4-betabinomial` in
+`/tmp/gllvmtmb-mspl-phase4-betabinomial` from `origin/main` @
+`af1edd2c`. Oracles + note only. No registry row. No prepare
+widen. No src. No admit. No NEWS covered.
+
+```sh
+git diff --stat -- src/ R/mspl.R R/mspl-registry.R
+# empty
+
+export OMP_NUM_THREADS=1 NOT_CRAN=true
+# testthat::test_file tests/testthat/test-mspl-betabinomial-phase4-oracles.R
+# testthat::test_file tests/testthat/test-mspl-registry.R
+```
+
+Rose: no admit, no planned row, no public se=TRUE.
+After-task:
+`docs/dev-log/after-task/2026-08-16-mspl-betabinomial-phase4-prep.md`.
+Not run: merge, admit, Totoro, registry edit.

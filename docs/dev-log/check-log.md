@@ -1,5 +1,18 @@
 # Check log
 
+## 2026-08-16 — #1047 CI: restore public `%in%` literal for source pins
+
+Ubuntu R-CMD-check failed 3 source pins (Gamma / lognormal / hurdle)
+because the Tweedie probe moved the allow-list off the
+`fam_ids %in%` line. Public door is still
+`c(0L, 1L, 2L, 5L, 15L)`; probe env is a separate bypass, not a
+door widen. No admit. No NEWS.
+
+```sh
+# after restore: gamma/lognormal/hurdle oracles + fenced tapes PASS
+# probe still PROBE_OK ~1.6s
+```
+
 ## 2026-08-16 — Tweedie MSPL hang unstuck (W_* + BFGS skip)
 
 Worktree `/private/tmp/gllvmtmb-mspl-tweedie-hang` ·

@@ -627,11 +627,18 @@ target.
 
 Binding rule: thresholds, gates, model-selection rules, grid, and hold-out declarations
 above are fixed. Any future change is recorded here as a dated deviation naming what
-changed and the measurement that forced it. **(empty)**
+changed and the measurement that forced it.
 
 | Date | Deviation | Forcing measurement | Approved by |
 |---|---|---|---|
-| — | — | — | — |
+| 2026-08-15 | **DEV-1 — §5.3 probe-detection gate (≥0.90) evaluated as written: FAIL (0.0000, n=192).** Not tuned away; recorded. The probe *mechanism* is validated (P5 exact to 6 dp); the s_j ≥ 1.0 refusal tier is mis-scaled ~2.5–3× against the measured disease (movement ≈0.25–0.41 SE/e-fold at the attractors). | B0 (`docs/dev-log/2026-08-15-b0-fence-roc-results.md`, 7,200 fits, fresh seeds) | Shinichi ("Approve", 2026-08-15) |
+| 2026-08-15 | **DEV-2 — §1.6 Route-B switch rule (corr ≥ 0.95): FAIL (0.8744, n=7,134).** The free curvature surrogate cannot replace the FD probe; wherever a probe is computed it is the two-refit finite difference. | B0, same run | Shinichi (same) |
+| 2026-08-15 | **DEV-3 — fence line 2 amended (F-AMD): the s_j ≥ 1.0 refusal tier is replaced by the attractor-proximity statistic** — refuse a coordinate whose estimate lies within the harness tolerance of its own column's analytic count-attractor root (roots computable at fit time from k, n, T, c_n, link; A1b, derived before B0). Measured on B0: catches 782/782 of the class the pre-registered fence missed, 0/5,909 false positives. The s_j probe is retained for §6.1 penalty-sensitivity *reporting* only. Screen line 1 unchanged (509/509 on saturation). | B0 fence-by-label-class table | Shinichi (same) |
+| 2026-08-15 | **DEV-4 — grid unchanged.** The optional dedicated near-saturated-band cell axis (B0 results §"open question") is declined; the 782-class coverage consequence is measured through the registered grid's per-cell gates under F-AMD refusal semantics (refusal rates recorded per cell). | Maintainer default at launch | Shinichi (same) |
+
+**B1 launch authorization:** granted 2026-08-15 (*"Approve"*, *"Gate is open"*) on the
+reduced ≈26 M budget (D2) under F-AMD. Launch spec:
+`docs/dev-log/2026-08-15-b1-launch-spec.md` (branch `claude/mspl-b0-prereqs`).
 
 ---
 

@@ -22,12 +22,25 @@ include missing responses" — is delivered and evidenced.**
 | #1013 | #985 fixed: VA start-agreement tolerance was an ABSOLUTE `1e-6` on a family-dependent objective — green on macOS, red on ubuntu CI for identical fits |
 | #1029 | Route `boot` (R3) + `boot_dgp = "reml"` + waves 3 and 4 + the closing verdict |
 | #1011 | #986 fixed: ordinal `type = "response"` is the expected category, not an elementwise `pnorm`; multinomial `original_row` maps through `.multinom_group_` |
+| #1035 | `make_mask()` accepts the cluster-size args Arc0b already passed — the landed script errored on `main` until this |
+| #1036 / #1037 | Capability surface: missing-response ✓ for every family; 0.6.0, the 5 × 3 grid, no CRAN claim |
+| #1043 | Waves 5–6 — the mechanism behind the interval deficit (Design 119 §8) |
 
 ## 2. The one thing to read before touching intervals
 
-**`predict_missing(se = )` is `heuristic_unvalidated`, and that label is now
-FINAL at this scale rather than provisional.** Do not "improve" it without
-reading Design 119 §7–§7f first. Six variance routes were measured on ONE
+**`predict_missing(se = )` is `heuristic_unvalidated`, and waves 5–6 explain
+WHY rather than merely recording that it failed.** Do not "improve" it without
+reading Design 119 §7–§8 first.
+
+**The short version: the deficit is governed by TRAITS PER UNIT, not by
+sample size.** Sweeping the two separately gives a double dissociation — a
+32× range in n leaves the confidence deficit flat (0.61 → 0.51 pt) while the
+prediction deficit halves; a 10× range in p cuts the confidence deficit 78%
+(1.32 → 0.29 pt) while the prediction deficit stays flat. A masked cell's
+`η = x'b + λ_t'u_i` leans on the unit score `u_i`, reconstructed from that
+unit's *other observed traits*, so its information is O(p) and not O(n).
+**Adding data will not fix this; adding traits per unit will.** §7f's original
+"small-sample at n = 50" wording was half wrong and is corrected in §8. Six variance routes were measured on ONE
 identical 1,600-fit gaussian grid (n = 50 × p = 25, q = 2, four masking
 mechanisms × 400 reps):
 
@@ -114,14 +127,26 @@ a new route.
 6. **Never renice or touch another lane's processes or worktree index.** One
    renice of a bench master propagated to its PSOCK workers (inherited at
    fork) and disturbed a concurrent lane.
+7. **A compound explanation that names two quantities has tested neither.**
+   §7f's "small-sample property at n = 50 × p = 25" read as settled for a day.
+   Sweeping n alone returned a flat line, which looked like a dead end — the
+   finding came from noticing that the prediction interval in the *same table*
+   was converging, and sweeping the second axis. When a sweep comes back flat,
+   look for what did move before concluding the hypothesis is dead.
+8. **Mission Control can render a branch, not `main`.** This project's
+   capability surface was pinned to `codex/va-gh-all-families`, dormant since
+   2026-08-07, so everything landed on `main` was invisible on the dashboard.
+   Repointed to `origin/main` on 2026-08-16. If a dashboard looks stale after
+   a merge, check `projects.json`'s `canonical_ref` before blaming caching.
 
 ## 6. State at handover
 
-- **Open**: #1029 and #1011 merge as soon as their CI concludes (both were
-  green-pending at handover; #1011 needed a merge-conflict resolution against
-  the newly-landed `se_route` docs, which is committed and pushed).
+- **Everything is merged.** 13 PRs: #982, #992, #1011, #1012, #1013, #1021,
+  #1029, #1032, #1033, #1035, #1036, #1037, #1043.
 - **Nothing is blocked on Shinichi.**
-- **No campaign is running.** Totoro is idle of this lane's work.
+- **No campaign is running.** Totoro is idle of this lane's work; waves 1–6
+  are preserved at `~/cov119-campaign` as ONE comparable grid family — reuse
+  it rather than rebuilding.
 - **Next arc is UNCHOSEN.** The standing candidates from the wider repo are
   the Design 66 power-study capstone (the paper's evidence chapter) and the
   MSPL programme, both owned elsewhere — check

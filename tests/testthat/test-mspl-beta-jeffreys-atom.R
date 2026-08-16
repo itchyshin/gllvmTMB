@@ -7,7 +7,8 @@
 ## on the logit link. The one-φ form is FCN's inner W, not I(β).
 ##
 ## V8 status 1 is OK_MP_CERTIFIED, not invalid. Do not skip_if(TRUE)
-## for that reason. Public door stays closed. Not admitted. No se=TRUE.
+## for that reason. Public door is planned-only. Not admitted. No
+## public se=TRUE inference.
 
 test_that("Jeffreys atom status 0 and 1 are both valid certified codes", {
   expect_true(gllvmTMB:::.gllvmTMB_mspl_jeffreys_atom_ok(0L))

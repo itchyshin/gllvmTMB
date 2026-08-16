@@ -1,8 +1,7 @@
-## Fenced planned tapes: Tweedie/Beta may exist in C++ and now have
-## planned registry rows, but the public door still rejects
-## estimator = "mspl". nbinom1/nbinom2 share the Poisson planned door
-## (not admitted). Tweedie hang keeps Tweedie off the allow-list.
-## Beta family id 7 stays off the public door (atom is now K_bb).
+## Fenced planned tapes: Tweedie still has planned registry rows, but
+## the public door rejects estimator = "mspl" (probe env is not a
+## door). nbinom1/nbinom2/Beta share the planned door (not admitted).
+## Beta family id 7 is on the allow-list (atom is FCN K_bb).
 ##
 ## Beta Jeffreys (Ferrari–Cribari-Neto mean-model weight) is NOT coercive
 ## at mu -> 0/1. True Tweedie W = mu^{2-p} / phi REWARDS phi -> 0
@@ -83,7 +82,7 @@ test_that("public mspl still rejects Gamma and lognormal", {
   }
 })
 
-test_that("public mspl still rejects Beta() and tweedie() at the door", {
+test_that("public mspl still rejects tweedie() at the door", {
   old_probe <- Sys.getenv("GLLVMTMB_MSPL_TWEEDIE_PROBE", unset = NA_character_)
   Sys.unsetenv("GLLVMTMB_MSPL_TWEEDIE_PROBE")
   on.exit({
@@ -93,16 +92,6 @@ test_that("public mspl still rejects Beta() and tweedie() at the door", {
       Sys.setenv(GLLVMTMB_MSPL_TWEEDIE_PROBE = old_probe)
     }
   }, add = TRUE)
-  dat_beta <- .mspl_fence_dat(rep(c(0.2, 0.5, 0.8), length.out = 24L))
-  expect_error(
-    gllvmTMB(
-      .mspl_fence_form,
-      data = dat_beta,
-      family = Beta(),
-      estimator = "mspl"
-    ),
-    class = "gllvmTMB_mspl_unsupported"
-  )
   dat_tweedie <- .mspl_fence_dat(rep(c(0.5, 1, 2), length.out = 24L))
   expect_error(
     gllvmTMB(
@@ -115,7 +104,7 @@ test_that("public mspl still rejects Beta() and tweedie() at the door", {
   )
 })
 
-test_that("nbinom/Tweedie/Beta planned is not admitted; public door stays closed", {
+test_that("nbinom/Tweedie/Beta planned is not admitted", {
   reg <- gllvmTMB:::.gllvmTMB_mspl_registry()
   planned_ok <- c(
     "nbinom1", "nbinom2", "tweedie", "Beta", "gamma", "lognormal",

@@ -2,7 +2,9 @@
 ## Public se=TRUE must still withhold sdreport(). Registry stays planned.
 ## Internal pin names Q_P and Q_0 separately. Not exported. Not admitted.
 ## Not binomial. Not public vcov. Registry may be planned or absent.
-## Live fits skip_if the public door is still closed.
+## Live Tweedie fits skip_if hang (#1047 not on main). Live Beta
+## fits skip_if the public door is still closed, or for other
+## honest reasons (named Q_P/Q_0 nll-tie). #1045 fixed the atom.
 ##
 ## Named test-zz-* so it runs after test-va-all-family-light-fits.R.
 ## See the Bernoulli twin file for the CI #979 ordering note.

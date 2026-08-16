@@ -9,11 +9,11 @@ library(gllvmTMB)
 set.seed(20260815)
 ```
 
-> **Developer preview.** The integrated two-source route shown here is
-> experimental and unexported: the entry point is internal, its interface may
-> change without deprecation, and no released capability claim is made. The
-> example exists so that early users can see the intended workflow end to end
-> on simulated data.
+> **Experimental.** The model here is fitted through the ordinary
+> `gllvmTMB()` entry point — there is no separate integrated-model function —
+> but the route is experimental: the interface may change without deprecation,
+> and no released capability claim is made. The example exists so that early
+> users can see the intended workflow end to end on simulated data.
 
 # The question
 
@@ -111,18 +111,69 @@ B <- matrix(ifelse(rows$source == "gbif",
 table(rows$source)
 ```
 
+# Assemble the long table
+
+`gllvmTMB()` works on long data: one row per (cell, species, source). Three
+columns do the work that makes this an *integrated* model rather than two
+models glued together.
+
+```{r assemble}
+dat <- rows
+dat$trait   <- factor(dat$trait)
+dat$cell_id <- factor(dat$cell_id)
+
+## 1. the source gate: 1 on portal rows, 0 on survey rows. Every portal-only
+##    term is written as an interaction with this, so it is structurally
+##    absent from the survey likelihood rather than merely small.
+dat$isdm_gbif <- as.integer(dat$source == "gbif")
+
+## 2. known support, on the log scale: portal effort and survey visit area.
+##    This is the change-of-support term, not a parameter.
+dat$log_support <- log(dat$support)
+
+## 3. the covariates. `bias` is portal-only, so it is a structural zero on
+##    survey rows -- a zero, never an NA, because a survey row genuinely has
+##    no accessibility term rather than a missing one.
+dat$env  <- x[match(as.character(dat$cell_id), cells)]
+dat$bias <- ifelse(dat$isdm_gbif == 1L,
+                   b[match(as.character(dat$cell_id), cells)], 0)
+
+## the per-row family selector, and the family list it selects from
+dat$isdm_family <- factor(ifelse(dat$source == "gbif", "gbif", "survey_pa"),
+                          levels = c("gbif", "survey_pa"))
+fam <- list(gbif = poisson(), survey_pa = binomial(link = "cloglog"))
+attr(fam, "family_var") <- "isdm_family"
+```
+
+The family list is the heart of it. Ordinarily `gllvmTMB()` requires one
+family per trait; here a single species is Poisson on its portal rows and
+Bernoulli-cloglog on its survey rows. That mix is admitted for exactly this
+contract, because cloglog is the link under which a detection/non-detection
+observation is consistent with the same underlying intensity that generates
+the counts -- and because Poisson and Bernoulli carry no dispersion parameter,
+so nothing per-species becomes ambiguous.
+
 # Fit the integrated model
 
 The two sources enter one likelihood: shared fixed effects and shared latent
 field, a portal-only bias coefficient and portal-only spatial field, and the
-survey's cloglog detection branch -- selected internally per row. A mesh over
-the cells carries the spatial terms.
+survey's cloglog detection branch -- selected per row by `isdm_family`. A mesh
+over the cells carries the spatial terms.
 
 ```{r fit}
-mesh <- make_mesh(rows[, c("lon", "lat")], c("lon", "lat"), cutoff = 0.085)
-fit <- gllvmTMB:::.gll_isdm_fit(rows = rows, X = X, B = B, d = 1,
-                                mesh = mesh, spatial = TRUE,
-                                control = gllvmTMBcontrol(), silent = TRUE)
+mesh <- make_mesh(dat[, c("lon", "lat")], c("lon", "lat"), cutoff = 0.085)
+fit <- gllvmTMB(
+  value ~ 0 + trait + trait:env + trait:isdm_gbif + trait:bias +
+    offset(log_support) +
+    indep(0 + trait | cell_id) +
+    spatial_latent(1 + isdm_gbif | cell_id, d = 1),
+  data   = dat,
+  trait  = "trait",
+  unit   = "cell_id",
+  family = fam,
+  mesh   = mesh,
+  silent = TRUE
+)
 fit$opt$convergence
 ```
 
@@ -134,7 +185,7 @@ identified rather than silently absorbed. At this deliberately small design
 expect useful but noisy estimates:
 
 ```{r gamma}
-idx <- grep("b_bias", fit$X_fix_names)
+idx <- grep("bias", fit$X_fix_names)
 round(rbind(truth = gamma,
             estimate = unname(fit$opt$par[idx])), 2)
 ```
@@ -161,9 +212,10 @@ Three honest cautions, each with a package-level reason.
 2. **Relative intensity only.** Nothing in this design identifies absolute
    abundance or detectability; comparisons are within-map, not across
    species in absolute terms.
-3. **Experimental surface.** The entry point is internal and unexported;
-   check convergence and positive-definiteness on every fit, and expect the
-   interface to change.
+3. **Experimental surface.** The route is public but experimental: the data
+   contract and the terms above may change without deprecation. Check
+   convergence and positive-definiteness on every fit, and do not build a
+   pipeline on this interface yet.
 
 ```{r session, include=FALSE}
 ## kept minimal deliberately; this article is a workflow illustration only

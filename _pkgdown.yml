@@ -123,6 +123,7 @@ articles:
   - title: Data integration (experimental)
     contents:
     - articles/integrated-two-source-example
+    - articles/integrated-multi-source-example
     - articles/integrated-survey-design
 
   - title: Concepts
@@ -191,6 +192,7 @@ reference:
       current reader-facing boundary.
     contents:
     - Families
+    - isdm_sources
     - Beta
     - lognormal
     - gamma_mix

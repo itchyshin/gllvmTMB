@@ -21,8 +21,10 @@ bridge remains experimental and is not required for the main workflow.
   multi-trial rows, and any trait not observed by every declared source. The
   existing two-source form (`list(gbif = ..., survey_pa = ...)`) keeps working
   unchanged and gives identical fits — it is now the two-source case of the
-  same rule. Everything reported remains relative intensity, and the interface
-  remains experimental.
+  same rule. A worked example, *Integrating three data sources at once:
+  portal, atlas, and survey*, fits a three-source model end to end through the
+  declared route. Everything reported remains relative intensity, and the
+  interface remains experimental.
 
 * **Integrated two-source models can now be fitted through `gllvmTMB()`
   itself (experimental).** Opportunistic presence-only records and a

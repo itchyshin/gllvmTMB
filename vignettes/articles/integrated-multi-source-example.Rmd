@@ -1,0 +1,249 @@
+---
+title: "Integrating three data sources at once: portal, atlas, and survey"
+description: "Declare several named observation sources with isdm_sources() — portal counts, digitised atlas records, a small detection survey — and fit one shared ecological process across all of them through the ordinary gllvmTMB() call."
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{Integrating three data sources at once: portal, atlas, and survey}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 6.5,
+  fig.height = 4.5,
+  fig.align = "center",
+  message = FALSE,
+  warning = FALSE
+)
+library(gllvmTMB)
+set.seed(20260816)
+```
+
+> **Experimental.** The multi-source route shown here is fitted through the
+> ordinary `gllvmTMB()` entry point with sources declared by `isdm_sources()`.
+> It is experimental: the interface may change without deprecation, and no
+> released capability claim is made. If you have exactly two sources — one
+> portal stream and one survey — start with the companion
+> [two-source worked example](integrated-two-source-example.html) instead.
+
+# The question
+
+Real integration problems rarely stop at two sources. For a **simulated guild
+of three boreal-wetland dragonflies**, suppose you hold three records of the
+same landscape: an opportunistic portal stream (abundant, biased toward
+accessible water), a digitised regional atlas (sparser counts, older effort,
+its own recording habits), and a small designed detection/non-detection
+survey. The question this article walks through: **can all three enter one
+likelihood, each keeping its own observation law, while estimating one shared
+ecological gradient?**
+
+Every source sees the same ecological state for species $s$ in cell $c$,
+
+$$
+\eta_{cs} = \alpha_s + x_c\,\beta_s + u_c\,\lambda_s,
+$$
+
+and each source $d$ adds only its own recording level $\gamma_{ds}$ (with
+source 1 as the reference, $\gamma_{1s} = 0$) and its own known support
+$a_{cd}$:
+
+$$
+N^{(d)}_{cs} \sim \text{Poisson}\!\left[a_{cd}\,
+  e^{\eta_{cs} + \gamma_{ds}}\right]
+\quad\text{(count sources)},
+\qquad
+Y^{(d)}_{cs} \sim \text{Bernoulli}\!\left[1 -
+  e^{-a_{cd}\, e^{\eta_{cs} + \gamma_{ds}}}\right]
+\quad\text{(detection source)}.
+$$
+
+The complementary log-log link is what makes the detection source consistent
+with the count sources: $1 - e^{-a e^{\eta}}$ is exactly the probability that
+a Poisson draw with mean $a e^{\eta}$ is non-zero, so every source observes a
+thinning of one shared intensity. That argument is per-source, which is why
+it does not weaken as sources are added.
+
+Everything here is **relative intensity**: no absolute abundance, occupancy,
+or detectability claim is available from data like these, however many
+sources you add.
+
+# Simulate three sources over one landscape
+
+One hundred and fifty cells, three species, three sources. The portal stream
+is dense, the atlas is thin, the survey is small but designed.
+
+```{r simulate}
+n_cell  <- 150
+cells   <- paste0("cell_", seq_len(n_cell))
+species <- c("emerald", "whiteface", "darner")   # simulated guild
+sources <- c("portal", "atlas", "survey")
+
+x <- as.numeric(scale(runif(n_cell)))            # measured wetland gradient
+u <- as.numeric(scale(sin(seq_len(n_cell) / 6))) # unmeasured shared gradient
+
+alpha  <- c(-0.2,  0.2,  0.0)
+beta   <- c( 0.5, -0.3,  0.4)
+lambda <- c( 0.8,  0.5, -0.4)
+## per-source recording effects, reference-coded on the portal
+gamma  <- rbind(portal = c(0, 0, 0),
+                atlas  = c(-0.8, -0.5, -1.1),
+                survey = c(0, 0, 0))   # the survey's level rides on its support
+support <- c(portal = 2.0, atlas = 0.8, survey = 0.9)
+
+dat <- expand.grid(cell_id = cells, trait = species, isdm_source = sources,
+                   stringsAsFactors = FALSE)
+ci <- match(dat$cell_id, cells)
+si <- match(dat$trait, species)
+di <- match(dat$isdm_source, sources)
+eta <- alpha[si] + x[ci] * beta[si] + u[ci] * lambda[si] +
+  gamma[cbind(di, si)]
+dat$support <- support[di]
+dat$value <- ifelse(
+  dat$isdm_source == "survey",
+  rbinom(nrow(dat), 1, -expm1(-dat$support * exp(eta))),
+  rpois(nrow(dat), dat$support * exp(eta))
+)
+dat$trait       <- factor(dat$trait)
+dat$cell_id     <- factor(dat$cell_id)
+dat$log_support <- log(dat$support)
+dat$env         <- x[ci]
+dat$src         <- factor(dat$isdm_source, levels = sources)
+table(dat$isdm_source, dat$value > 0)
+```
+
+# Declare the sources, then fit
+
+The declaration is the whole interface: name every source and state its
+observation law. Two laws are admitted — `poisson()` for a count stream and
+`binomial("cloglog")` for detection/non-detection — because both observe a
+thinning of the same shared intensity. A logit detection model, a
+dispersion-carrying family, or an all-detection declaration is refused at
+this line, with the reason.
+
+```{r declare}
+fam <- isdm_sources(
+  portal = poisson(),
+  atlas  = poisson(),
+  survey = binomial(link = "cloglog")
+)
+```
+
+The data need an `isdm_source` column naming each row's source (built above),
+and every species must be observed by every declared source. The per-source
+recording effects enter the formula as an ordinary interaction with the
+source factor — because `portal` is the first level, it is the reference and
+the fitted terms are `atlas` and `survey` effects *relative to the portal*:
+
+```{r fit}
+fit <- gllvmTMB(
+  value ~ 0 + trait + trait:env + trait:src + offset(log_support) +
+    latent(0 + trait | cell_id, d = 1),
+  data   = dat,
+  trait  = "trait",
+  unit   = "cell_id",
+  family = fam,
+  silent = TRUE
+)
+fit$opt$convergence
+```
+
+`0` means the optimizer reached a point it judges stationary. That is not the
+same as trustworthy curvature, so run the package's own check rather than
+stopping here:
+
+```{r health}
+health <- check_gllvmTMB(fit)
+health[health$component %in% c("optimizer_convergence", "pd_hessian"),
+       c("component", "status")]
+```
+
+Both pass on this fit. On the small spatial design of the two-source article
+the same check warns — read that article's discussion of what a `WARN` there
+means and why it is shown rather than hidden.
+
+# What the integration bought
+
+The per-source recording effects are the quantities only integration gives
+you: with the portal as reference, the fitted `trait:src` terms say how much
+each species' atlas and survey records depart from its portal recording
+level, on the log scale, after the shared gradient is accounted for.
+
+```{r gamma-figure, fig.cap = "Per-source recording effects, truth against estimate, for the atlas source (the survey's simulated departures are zero by construction). Estimates come from one fit on one simulated draw; the spread you see is sampling noise at this design size, not bias."}
+idx <- grep(":srcatlas", fit$X_fix_names)
+est <- unname(fit$opt$par[idx])
+truth <- gamma["atlas", match(levels(dat$trait), species)]
+plot(truth, est, pch = 19, cex = 1.3,
+     xlim = range(c(truth, est)) + c(-0.15, 0.15),
+     ylim = range(c(truth, est)) + c(-0.15, 0.15),
+     xlab = "true atlas recording effect (log scale)",
+     ylab = "estimated",
+     main = "")
+abline(0, 1, lty = 2)
+text(truth, est, labels = levels(dat$trait), pos = 3, cex = 0.85)
+```
+
+The estimates track the simulated truths along the identity line. In a real
+analysis you would read these as each source's species-specific recording
+tendency — which species a source over- or under-records relative to the
+portal — and, per the relative-intensity boundary, nothing more absolute
+than that.
+
+# How large does a design like this need to be?
+
+Two pieces of measured guidance from this package's internal campaigns, both
+with their regimes stated:
+
+1. **Adding sources neither helps nor hurts the sources you already have.**
+   In a 1,200-fit known-truth study on exactly this model shape (150 cells,
+   3 species, non-spatial, 2–4 fully-crossed sources), each source type's own
+   recovery error was flat as sources were added. Integration's cost is not
+   interference between arms.
+2. **A weak source pays its own price.** Dropping a source's effort to a
+   tenth of the reference roughly doubled the error of *that source's*
+   recording effects, and left the others essentially untouched.
+
+Both were measured with every source observing every cell — balanced,
+fully-crossed designs. Sources with partial, patchy coverage are the harder
+and unmeasured case, and the spatial version of this model has its own,
+stricter design requirements — see
+[How big does an integrated survey design need to be?](integrated-survey-design.html).
+
+# What this route does and does not cover
+
+**Covered here:** any number of named sources declared with `isdm_sources()`,
+each a Poisson count stream or a cloglog detection stream, sharing one
+ecological process through the ordinary `gllvmTMB()` call, with per-source
+recording effects via an ordinary source-factor interaction.
+
+**Works but not certified:** the estimates themselves. The route is
+contract-tested and the recovery evidence above is real but nonspatial, at
+one design size, on balanced sources. Read fitted numbers as illustration
+until your own design has been checked against the design article's
+guidance.
+
+**Not available:** an all-detection declaration (refused when you build it —
+the detection arm's offset is only admitted alongside a count arm);
+per-source bias *covariates* beyond the recording level (expressible by hand
+as source-gated interaction columns, as the two-source article shows, but
+not yet packaged); weighting one source against another; calibrated
+confidence intervals for this route; and anything absolute — abundance,
+occupancy, detectability — from any number of presence-only sources.
+
+# See also
+
+- [Integrating opportunistic records with a repeated survey](integrated-two-source-example.html)
+  — the two-source worked example, including the spatial variant and an
+  honest treatment of a non-positive-definite fit.
+- [How big does an integrated survey design need to be?](integrated-survey-design.html)
+  — the design question, from a 1,600-fit known-truth campaign.
+- [Response families](response-families.html) — the admitted families and
+  links in general.
+```{r session, include=FALSE}
+## deliberately minimal; this article is a workflow illustration only
+```

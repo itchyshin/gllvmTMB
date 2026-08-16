@@ -109,6 +109,11 @@ input$tau_avail_max <- NA_real_
 input$tau_cover <- NA_real_
 input$precompute_fast <- NA
 identity_max_prof <- 0
+## Divergence between the recomputed endpoint and the shard's LEGACY stored
+## column (pre-fix rule in the main run, corrected rule in the 102 repaired
+## shards). Reported, never fatal -- traces are ground truth.
+legacy_drift_n <- 0L
+legacy_drift_max <- 0
 n_fallback <- 0L
 verify_rows <- sort(sample.int(nrow(input), min(verify_sample, nrow(input))))
 verify_traces <- vector("list", length(verify_rows))
@@ -135,22 +140,48 @@ for (i in seq_len(nrow(shard_keys))) {
         " target ", input$target[[r]], " in ", tf, call. = FALSE
       )
     }
-    ## Identity check: re-thresholding the stored trace at the NOMINAL
-    ## level must reproduce the shard's own stored endpoints (same trace,
-    ## same registered function b1_profile_trace_endpoint).
+    ## Identity check: the fast path must reproduce the REGISTERED function
+    ## b1_profile_trace_endpoint() on the same trace. This is the guard that
+    ## matters -- b2_profile_endpoints_at() is an optimisation used inside the
+    ## CV'd optimiser, and a silent divergence would corrupt every calibrated
+    ## endpoint.
+    ##
+    ## NOTE: this deliberately no longer compares against the shard's stored
+    ## `profile_lower/upper` columns. Those are LEGACY: the main B1 run
+    ## computed them with the pre-fix endpoint rule (`max(which(below))`),
+    ## which is wrong on a non-monotone trace, and the 102 repaired shards
+    ## used the corrected first-bracketing-pair rule -- so the stored columns
+    ## are a MIXTURE of two semantics. The raw traces are ground truth and
+    ## every endpoint used from here on is recomputed from them (which is what
+    ## the §3.4 sidecar storage contract exists for). The divergence is
+    ## counted below and reported, not silently absorbed.
+    tau_nominal <- b2_threshold(alpha)
     ep <- b2_profile_endpoints_at(tr, alpha)
-    d <- max(
-      abs(ep[["lower"]] - input$profile_lower[[r]]),
-      abs(ep[["upper"]] - input$profile_upper[[r]])
-    )
-    if (!is.finite(d) || d > identity_tol) {
+    ref_lo <- b1_profile_trace_endpoint(tr, tau_nominal, "lower")
+    ref_hi <- b1_profile_trace_endpoint(tr, tau_nominal, "upper")
+    na_ok <- (is.na(ep[["lower"]]) == is.na(ref_lo)) &&
+      (is.na(ep[["upper"]]) == is.na(ref_hi))
+    d <- suppressWarnings(max(
+      abs(ep[["lower"]] - ref_lo), abs(ep[["upper"]] - ref_hi), na.rm = TRUE
+    ))
+    if (!is.finite(d)) d <- 0
+    if (!na_ok || d > identity_tol) {
       stop(sprintf(
-        "IDENTITY CHECK FAILED (%s outer %d target %d): recomputed nominal endpoints [%.10g, %.10g] vs stored [%.10g, %.10g]",
+        "FAST-PATH IDENTITY CHECK FAILED (%s outer %d target %d): fast [%.10g, %.10g] vs registered [%.10g, %.10g]",
         cid, input$outer_id[[r]], input$target[[r]],
-        ep[["lower"]], ep[["upper"]], input$profile_lower[[r]], input$profile_upper[[r]]
+        ep[["lower"]], ep[["upper"]], ref_lo, ref_hi
       ), call. = FALSE)
     }
     identity_max_prof <- max(identity_max_prof, d)
+    ## Legacy-column drift, recorded for the record (never fatal).
+    legacy_d <- suppressWarnings(max(
+      abs(ep[["lower"]] - input$profile_lower[[r]]),
+      abs(ep[["upper"]] - input$profile_upper[[r]]), na.rm = TRUE
+    ))
+    if (is.finite(legacy_d) && legacy_d > identity_tol) {
+      legacy_drift_n <<- legacy_drift_n + 1L
+      legacy_drift_max <<- max(legacy_drift_max, legacy_d)
+    }
     pc <- b2_profile_precompute(tr, input$truth[[r]])
     input$tau_avail_min[[r]] <- pc$tau_avail_min
     input$tau_avail_max[[r]] <- pc$tau_avail_max
@@ -161,8 +192,12 @@ for (i in seq_len(nrow(shard_keys))) {
   }
 }
 message(sprintf(
-  "Profile precompute done: %d rows; identity check max |diff| = %.3g (tol %.1g); %d dense-fallback rows",
+  "Profile precompute done: %d rows; fast-path vs registered max |diff| = %.3g (tol %.1g); %d dense-fallback rows",
   nrow(input), identity_max_prof, identity_tol, n_fallback
+))
+message(sprintf(
+  "Legacy stored-column drift: %d of %d rows (%.2f%%) differ from the recomputed endpoint; max |diff| = %.4g. Traces are authoritative; stored columns are NOT used.",
+  legacy_drift_n, nrow(input), 100 * legacy_drift_n / max(1L, nrow(input)), legacy_drift_max
 ))
 
 ## ---- Verification: fast-path vs the registered function ------------------

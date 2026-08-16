@@ -32,7 +32,9 @@ question: **how can I fit several continuous traits with spatially structured
 residual variation, while keeping the mesh and the trait covariance explicit?**
 
 The first worked model gives each trait an independent spatial field with a
-common practical range. It uses `spatial_indep()`: *spatial* identifies the
+common practical range (the distance beyond which spatial correlation has
+decayed to about 0.1 — interpreted in full in its own section below). It
+uses `spatial_indep()`: *spatial* identifies the
 mesh-based covariance source, and *indep* fixes cross-trait spatial covariance
 to zero while estimating a separate field scale for each trait.
 
@@ -156,7 +158,7 @@ knitr::kable(mesh_summary, col.names = c("Component", "Size"))
 Access `mesh$spde$c0`, `mesh$spde$g1`, or `mesh$spde$g2` directly when you need
 to inspect a particular matrix.
 
-```{r plot-mesh}
+```{r plot-mesh, fig.cap = "SPDE mesh triangulating the simulated sites: edges show the triangulation, vertices carry the spatial field. Axes are in the site coordinate units.", fig.alt = "Triangulated mesh of many small triangles covering a scatter of site locations, with a coarser buffer of triangles around the edge."}
 plot(mesh)
 ```
 
@@ -259,7 +261,7 @@ data.frame(
 )
 ```
 
-```{r range-plot}
+```{r range-plot, fig.cap = "The fitted isotropic practical range drawn as a circle around the origin. Equal axes reflect the assumed isotropic model (H = I); the plot displays a model assumption plus one fitted range, not an estimate of directional anisotropy.", fig.alt = "A single circle centred on the origin with equal x and y axes, whose radius is the fitted practical range."}
 invisible(plot_anisotropy(fit_long))
 ```
 
@@ -272,10 +274,14 @@ SD, and projected marginal SD as exploratory model-based point estimates; do
 not present them as recovered absolute scale or calibrated uncertainty. Those
 estimands require a separate fixed-range and estimated-range recovery study.
 
-Run the ordinary fit diagnostics before interpreting spatial parameters:
+Run the ordinary fit diagnostics before interpreting spatial parameters —
+look for the same `optimizer_convergence` / `pd_hessian` pair used
+throughout this series:
 
 ```{r diagnostics}
-invisible(check_gllvmTMB(fit_long))
+health <- check_gllvmTMB(fit_long)
+health[health$component %in% c("optimizer_convergence", "pd_hessian"),
+       c("component", "status")]
 ```
 
 ## Choose the spatial covariance mode
@@ -339,7 +345,10 @@ knitr::kable(spatial_comparison, digits = 1)
 Here `d = 2` requests two shared spatial axes, while `unique = TRUE` retains a
 trait-specific spatial diagonal, so
 $\Sigma_{\mathrm{spatial}} = \Lambda_{\mathrm{spatial}}
-\Lambda_{\mathrm{spatial}}^\top + \Psi_{\mathrm{spatial}}$.
+\Lambda_{\mathrm{spatial}}^\top + \Psi_{\mathrm{spatial}}$. As with every
+loading matrix in this package, the rotation and sign of
+$\Lambda_{\mathrm{spatial}}$ are arbitrary — only the product
+$\Lambda\Lambda^\top$ is identified.
 `spatial_dep()` estimates the full
 cross-trait spatial covariance. The data were generated with independent
 trait fields, so this table demonstrates runnable syntax and relative fit on

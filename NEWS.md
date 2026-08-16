@@ -18,6 +18,38 @@ is still the default.
   intensity only — no abundance, absolute occurrence, or detectability
   claim — and states the design assumption its bias term rests on.
 
+* **A fifth SDM article: repeated survey visits.** *What do repeated survey
+  visits add to an integrated model?*
+  (`vignettes/articles/integrated-repeated-visits.Rmd`) shows visit-varying
+  conditions entering the survey branch on the complementary-log-log scale,
+  demonstrates that within-cell replication under varying conditions is what
+  separates a poor visit from low intensity, and states the boundary with
+  separate-detection occupancy models. The two-source article is renamed
+  *Integrating opportunistic records with a designed survey* to keep the two
+  subjects distinct.
+
+* **A four-lens editorial audit of the SDM collection.** Every article under
+  the Species Distribution Models menu was audited for readability, claim
+  discipline, statistical correctness, and figure integrity. Fixes include:
+  the two-source and design articles' displayed equations now carry the
+  per-species reporting level `rho_s` their code always fitted; the stale
+  "more than two sources: not available" claims are corrected to point at
+  `isdm_sources()`; health-check outcomes are stated after every
+  `check_gllvmTMB()` chunk; `pd_hessian` and Fisher-z are glossed at first
+  use; and figures gain alt text, equal-axis identity lines, and
+  non-overlapping labels.
+
+* **The LA-MSPL worked example is rewritten around its two failure modes.**
+  *Rare items and runaway estimates in Paper × Items evidence synthesis*
+  (`vignettes/articles/mspl-binary-jsdm.Rmd`, same URL) now grounds the
+  example in an evidence-map-shaped corpus and demonstrates, on one dataset,
+  that runaway loadings and fixed-design separation are different diseases
+  with different matched remedies — the opt-in loading ridge for the first,
+  opt-in MSPL for the second — including the negative result that the ridge
+  does not repair separation. Claim boundaries (probit vs logit ridge
+  regimes, AGHQ's large-n evidence, MSPL's refused inference surface) are
+  stated in the article.
+
 * **Complete-Bernoulli GLLVMs can opt in to LA-MSPL point estimation.** Set
   `estimator = "mspl"` to fit the experimental maximum softly penalised
   Laplace objective for one ordinary `latent(d = 1:2)` block with no free Psi,

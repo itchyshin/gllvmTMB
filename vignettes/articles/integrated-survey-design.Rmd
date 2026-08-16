@@ -46,7 +46,7 @@ answer a question that is not about estimation at all:
 **where should the survey effort go, and is the design big enough?**
 
 This page is about judging a design *before* you fit it. Its companion,
-[Integrating opportunistic records with a repeated
+[Integrating opportunistic records with a designed
 survey](integrated-two-source-example.html), asks the estimation question —
 *do the two sources agree on one shared gradient?* — and answers it with a
 single fit. Read that one first if you want the model explained. Read this
@@ -76,10 +76,13 @@ $$
 
 with $x_c$ a measured habitat covariate and $u_c$ an unmeasured spatial
 gradient carried by a latent field with species loadings $\lambda_s$. The
-portal branch adds an accessibility bias with species-specific coefficients
-$\gamma_s$; the survey branch is a complementary-log-log
-detection/non-detection likelihood with known visit support. The companion
-article writes both likelihoods out in full.
+portal branch adds a per-species reporting level $\rho_s$ (fitted as
+`trait:isdm_gbif` — the identification device that stops presence-only
+records from claiming an absolute intensity) and an accessibility bias with
+species-specific coefficients $\gamma_s$; the survey branch is a
+complementary-log-log (`cloglog`) detection/non-detection likelihood with
+known visit support. The companion article writes both likelihoods out in
+full.
 
 Three things are yours to choose, and they are not interchangeable:
 
@@ -177,7 +180,7 @@ number of well-supported cells is far below your cell count, and a plan to
 curve below was measured under the opposite condition — per-cell support held
 fixed while cells were added — and it does not describe the thinning case.
 
-```{r fig-audit, fig.cap = "Design audit of the simulated portal stream. Left: records per cell, showing how far the per-cell support spreads. Right: the cumulative share of all records against the cumulative share of cells, ranked from best- to worst-sampled; the diagonal is even effort. The gap between the curve and the diagonal is the part of your cell count that is not doing the work you think it is.", fig.width = 7, fig.height = 3.6}
+```{r fig-audit, fig.alt = "Two-panel base-graphics figure: left, a histogram-style audit of per-cell portal records with a dashed median line; right, a diagonal reference comparing effort share against cell share.", fig.cap = "Design audit of the simulated portal stream. Left: records per cell, showing how far the per-cell support spreads. Right: the cumulative share of all records against the cumulative share of cells, ranked from best- to worst-sampled; the diagonal is even effort. The gap between the curve and the diagonal is the part of your cell count that is not doing the work you think it is.", fig.width = 7, fig.height = 3.6}
 op <- par(mfrow = c(1, 2), mar = c(4.2, 4.2, 2.2, 1.0), cex = 0.9)
 
 hist(recs, breaks = 12, col = "grey85", border = "white",
@@ -255,6 +258,13 @@ health[health$component %in% c("optimizer_convergence", "pd_hessian"),
        c("component", "status")]
 ```
 
+Both read `PASS` on this small demonstration fit (`pd_hessian` — whether the
+curvature at the optimum is trustworthy; the
+[two-source article](integrated-two-source-example.html) explains a `WARN`).
+Hold that in mind for the design curve below, where the same admissibility
+rate is only 0.555 even at 2,250 cells — this demo drew a passing hand, and
+the curve says how often that happens by design size.
+
 The portal-bias coefficients come back in the order `factor()` chose, so
 realign the simulated truth before comparing:
 
@@ -329,7 +339,7 @@ so the trend is real, but it is the axis furthest from solved and its
 destination lies outside the measured span. Adding cells at fixed per-cell
 support *improves* admissibility; on this evidence it does not yet deliver it.
 
-```{r fig-curve, fig.cap = "What extra cells buy, at fixed spatial range and fixed cell size. Left: median relative amplitude error falls, but does not reach the campaign's 0.25 target within the measured span; the shaded region is beyond any measurement, and the grey open points are the lower effort level (endpoints only). Right: the three higher-is-better axes, all monotone. The horizontal axis is on a log scale in both panels.", fig.width = 7.5, fig.height = 4}
+```{r fig-curve, fig.alt = "Two-panel line chart against cell count on a log axis: left, amplitude error falling as cells grow, with a shaded extrapolation region and a target reference line; right, three admissibility and agreement proportions rising with cells.", fig.cap = "What extra cells buy, at fixed spatial range and fixed cell size. Left: median relative amplitude error falls, but does not reach the campaign's 0.25 target within the measured span; the shaded region is beyond any measurement, and the grey open points are the lower effort level (endpoints only). Right: the three higher-is-better axes, all monotone. The horizontal axis is on a log scale in both panels.", fig.width = 7.5, fig.height = 4}
 op <- par(mfrow = c(1, 2), mar = c(4.4, 4.4, 2.6, 1.0), cex = 0.9)
 
 ## --- amplitude ---
@@ -358,7 +368,9 @@ for (j in seq_along(v <- c("conv", "pd_rate", "cos95"))) {
   lines(design_curve$n_cell, design_curve[[v[j]]], type = "b",
         pch = c(15, 17, 18)[j], lty = j, lwd = 2, col = grey(c(0, 0.35, 0.6)[j]))
 }
-legend("bottomright", bty = "n", cex = 0.75, legend = v,
+legend("bottomright", bty = "n", cex = 0.75,
+       legend = c("converged", "PD Hessian (admissible)",
+                  "direction agreement (cos > 0.95)"),
        pch = c(15, 17, 18), lty = 1:3, col = grey(c(0, 0.35, 0.6)))
 
 par(op)
@@ -424,7 +436,11 @@ Specifically, you **cannot** conclude from this page that:
 7. admissibility becomes likely if you simply add cells — at the largest
    design measured, `pd_rate` is 0.555, so roughly one fit in two still fails
    the positive-definiteness check. Growing the domain moves that number in
-   the right direction and does not finish the job.
+   the right direction and does not finish the job;
+8. the bias coefficients are identified regardless of your covariates — the
+   campaign simulated its accessibility covariate independently of habitat,
+   and that independence is a design requirement of your data, not a property
+   the model supplies.
 
 What you *can* take away is the mechanism and the audit: find out whether your
 own design would hold per-cell support fixed as it grows, because that
@@ -445,10 +461,22 @@ of the accuracy frontier is not established, and the estimates from the small
 fit above are illustration, not validation.
 
 **Not available:** a power calculator or a recommended cell count for a real
-study; more than two sources; calibrated confidence intervals for this route;
-weighting one source's contribution against the other's; and any measured
-result outside the fixed-range, fixed-cell-size regime described above. Each
-is real work, not an oversight.
+study; calibrated confidence intervals for this route; weighting one source's
+contribution against the other's; and any measured result outside the
+fixed-range, fixed-cell-size regime described above. Each is real work, not
+an oversight. (More than two sources IS available — through the
+`isdm_sources()` declaration shown in
+[More than two sources](integrated-multi-source-example.html) — but this
+campaign measured the two-source design only.)
+
+## See also
+
+- [Integrating opportunistic records with a designed survey](integrated-two-source-example.html)
+  — the estimation workflow this page's design audit is meant to precede.
+- [More than two sources](integrated-multi-source-example.html) — the
+  declaration route for three or more sources.
+- [What do repeated survey visits add to an integrated model?](integrated-repeated-visits.html)
+  — the visit-structure question.
 
 # References
 

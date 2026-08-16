@@ -63,6 +63,13 @@ if (is.null(input_path) || is.null(sidecar_dir) || is.null(out_dir)) {
 }
 outer_per_shard <- as.integer(arg_value("--outer-per-shard", "10"))
 k_folds <- as.integer(arg_value("--k-folds", as.character(b2_k_folds)))
+## Cache for the expensive sidecar precompute (see below). Empty string or
+## --no-precompute-cache disables it.
+precompute_cache <- if (arg_flag("--no-precompute-cache")) {
+  ""
+} else {
+  arg_value("--precompute-cache", file.path(out_dir, "b2-precompute-cache.rds"))
+}
 alpha <- as.numeric(arg_value("--alpha", as.character(b2_alpha_nominal)))
 max_rung <- arg_value("--max-rung", "M5")
 verify_sample <- as.integer(arg_value("--verify-sample", "200"))
@@ -100,7 +107,30 @@ input$pi_max <- ds$pi_max[match(
 )]
 n_pi_saturated <- sum(input$pi_max >= 1)
 
+## ---- Reuse a cached precompute when the inputs are unchanged --------------
+precompute_cached <- FALSE
+if (nzchar(precompute_cache) && file.exists(precompute_cache)) {
+  cached <- readRDS(precompute_cache)
+  key_now <- list(input_path = input_path, nrow = nrow(input),
+                  sidecar_dir = sidecar_dir, alpha = alpha)
+  if (identical(cached$key, key_now)) {
+    input <- cached$input
+    identity_max_prof <- cached$diagnostics$identity_max_prof
+    n_fallback <- cached$diagnostics$n_fallback
+    legacy_drift_n <- cached$diagnostics$legacy_drift_n
+    legacy_drift_max <- cached$diagnostics$legacy_drift_max
+    precompute_cached <- TRUE
+    message(sprintf(
+      "Reusing cached precompute (%s): %d rows; fast-path max |diff| = %.3g; legacy drift %d rows (max %.4g).",
+      precompute_cache, nrow(input), identity_max_prof, legacy_drift_n, legacy_drift_max
+    ))
+  } else {
+    message("Precompute cache key mismatch -- recomputing.")
+  }
+}
+
 ## ---- Profile precompute from the trace sidecars (s2.4: no refitting) -----
+if (!precompute_cached) {
 message("Loading profile-trace sidecars and precomputing re-threshold summaries...")
 set.seed(20260816L) ## verification sampling only; the fit itself uses no RNG
 prof_keep <- rep(TRUE, nrow(input)) ## calibrator-input is already profile_available-only
@@ -199,6 +229,7 @@ message(sprintf(
   "Legacy stored-column drift: %d of %d rows (%.2f%%) differ from the recomputed endpoint; max |diff| = %.4g. Traces are authoritative; stored columns are NOT used.",
   legacy_drift_n, nrow(input), 100 * legacy_drift_n / max(1L, nrow(input)), legacy_drift_max
 ))
+} ## end if (!precompute_cached)
 
 ## ---- Verification: fast-path vs the registered function ------------------
 n_verify_checks <- 0L
@@ -278,6 +309,31 @@ if (nrow(boot)) {
     "Bootstrap precompute done: identity max |diff| = %.3g; %d verification checks agree",
     identity_max_boot, n_boot_verify
   ))
+}
+
+## ---- Cache the precompute -------------------------------------------------
+## The sidecar precompute above is the expensive half (~2 h over 102k rows on
+## Totoro) and is a pure function of the input table + sidecars. Model-
+## selection bugs downstream should not cost that again on every retry, so
+## persist it. Keyed on the input path, row count and the sidecar directory;
+## delete the file (or pass --no-precompute-cache) to force a rebuild.
+if (nzchar(precompute_cache) && !dir.exists(dirname(precompute_cache))) {
+  dir.create(dirname(precompute_cache), recursive = TRUE, showWarnings = FALSE)
+}
+if (nzchar(precompute_cache)) {
+  saveRDS(
+    list(
+      key = list(input_path = input_path, nrow = nrow(input),
+                 sidecar_dir = sidecar_dir, alpha = alpha),
+      input = input,
+      diagnostics = list(
+        identity_max_prof = identity_max_prof, n_fallback = n_fallback,
+        legacy_drift_n = legacy_drift_n, legacy_drift_max = legacy_drift_max
+      )
+    ),
+    precompute_cache
+  )
+  message("Precompute cached to ", precompute_cache)
 }
 
 ## ---- Assemble fitting tables ---------------------------------------------

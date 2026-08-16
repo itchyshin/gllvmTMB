@@ -192,7 +192,14 @@ b2_h_matrix <- function(v, rung) {
     cols$link_probit <- as.numeric(v$link == "probit")
   }
   if (!length(cols)) {
-    return(matrix(numeric(0), nrow = n, ncol = 0L))
+    ## M0 has no design columns. Carry an EMPTY character colnames vector, not
+    ## NULL: callers select columns by name (`H[, fit$terms, drop = FALSE]` in
+    ## b2_cv_rung), and character subsetting of a dimnames-less array errors
+    ## with "no 'dimnames' attribute for array" instead of returning the empty
+    ## selection. M0 is the baseline rung, so this is on every CV path.
+    return(matrix(
+      numeric(0), nrow = n, ncol = 0L, dimnames = list(NULL, character(0))
+    ))
   }
   do.call(cbind, cols)
 }

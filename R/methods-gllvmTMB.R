@@ -2188,6 +2188,309 @@ predict.gllvmTMB_multi <- function(
   out
 }
 
+## Internal-only reconstruction-uncertainty helper for `predict_missing(se =
+## TRUE)` (Design 119 Slice 1, the R1-quad route). GAUSSIAN FAMILIES ONLY in
+## this slice; register status `heuristic_unvalidated` -- no coverage
+## evidence exists and nothing here is exported or advertised.
+##
+## se_confidence: delta-method SE of the conditional mean mu_ut at a masked
+## cell (u, t), combining two curvature sources in quadrature (design sec.3
+## R1-quad):
+##   var(eta_ut) = var_fix(eta_ut)                  -- .gllvmTMB_predict_se_link()
+##               + lambda_t' Cov(u_hat_i) lambda_t   -- getLV(se = TRUE)'s
+##                                                       per-axis marginal
+##                                                       variance (diagonal
+##                                                       only -- cross-axis
+##                                                       and b_fix/u_hat
+##                                                       cross-covariance are
+##                                                       OMITTED, exactly the
+##                                                       approximation Design
+##                                                       119 sec.3 documents
+##                                                       for R1-quad)
+##   se_confidence = sqrt(var(eta_ut)) * |d(linkinv)/d(eta)|   (identity for
+##                                                               gaussian)
+## se_prediction: se_confidence in quadrature with the family noise variance
+## V_family (gaussian: sigma_eps^2 on the response scale; identical on the
+## link scale here because the family's link is identity).
+##
+## Only the ordinary between-site latent-variable block (rr_B / z_B, the
+## loadings tier of `latent()`) is added. A diag_B ("unique"/Psi) companion
+## or a within-site rr_W block, if present in the fit, is NOT accounted for
+## -- this mirrors the scope of predict()'s own newdata random-effect loop
+## above, which likewise only ever adds rr_B/diag_B/propto and never rr_W.
+## Whether that omission is material is exactly the open question the
+## Design 119 sec.4 coverage campaign exists to answer, not something this
+## comment can settle.
+##
+## `route = "quad"` is the R1-quad approximation above. `route = "joint"` is
+## the R1-joint route Design 119 sec.7 prescribes after wave-1 found R1-quad
+## systematically OVER-covers se_confidence (diagonal conditional latent
+## variance plus the full fixed block double-counts shared information):
+## var(eta_ut) = w' Q^{-1} w, where Q is the joint (fixed + random)
+## precision from `TMB::sdreport(obj, getJointPrecision = TRUE)` and w is
+## the exact (not approximate -- eta is linear in b_fix and z_B) gradient
+## of eta_ut with respect to the full joint parameter vector: the free
+## X_fix row entries at the b_fix positions, plus lambda_t at that unit's
+## z_B positions, zero elsewhere. This is the same b_fix/z_B block-position
+## convention `.gllvmTMB_predict_se_link()` and `extract_ordination()`
+## already rely on (verified positionally identical to
+## `names(fit$tmb_obj$env$last.par.best)` -- see
+## `test-predict-missing-se.R`'s one-cell numeric cross-check). The solve is
+## always sparse (`Matrix::solve(Q, W)`, CHOLMOD under the hood); Q is never
+## densified in production code.
+##
+## `route = "joint_load"` is R1-joint+loadings (Design 119 sec.7b), added
+## after wave-1b found route = "joint" UNDER-covers: eta_ut = x_ut'b +
+## lambda_t'u_i has a THIRD nonzero gradient block,
+## d(eta_ut)/d(lambda_{t,k}) = u_{i,k}, that route = "joint" omitted. The
+## loading lambda_{t,k} is not itself a free TMB parameter -- it is read
+## out of a packed vector `theta_rr_B` by `gll_unpack_rr_loadings()`
+## (src/gllvmTMB.cpp), one scalar copy per free (row, column) cell of the
+## loading matrix (diagonal first, then the strict lower triangle,
+## column-by-column) and a hard structural zero above the diagonal. This
+## packing is a pure position embedding, not a smooth reparameterisation
+## (no exp/Cholesky-product/normalisation), so d(lambda_{t,k})/d(theta_j)
+## is exactly 1 at the one theta position lambda_{t,k} was copied from and
+## 0 elsewhere -- no chain rule beyond that copy is needed.
+## `.gllvmTMB_rr_loading_theta_positions()` below reproduces the C++
+## cursor exactly and was checked empirically (not just read off the
+## source) on a rank-2, 4-trait fixture: every free (row, column) cell's
+## `fit$report$Lambda_B` value matched
+## `fit$tmb_obj$env$last.par.best[theta_rr_B position]` exactly, and every
+## NA (structural) cell was exactly 0 (see the "loading position mapping"
+## test in test-predict-missing-se.R). The third block's w entries are
+## therefore `u_hat_{i,k}` (the unit's own fitted `z_B` score, from
+## `last.par.best`) at each free theta position for that trait row.
+.gllvmTMB_predict_missing_se <- function(
+  fit,
+  type = c("link", "response"),
+  route = c("quad", "joint", "joint_load")
+) {
+  type <- match.arg(type)
+  route <- match.arg(route)
+  fid_vec <- fit$tmb_data$family_id_vec
+  if (is.null(fid_vec) || !all(fid_vec == 0L)) {
+    cli::cli_abort(c(
+      "{.code predict_missing(se = TRUE)} is only implemented for gaussian fits in this slice.",
+      "i" = "Design 119 Slice 3 will extend {.code se = TRUE} to other families once per-family coverage evidence exists.",
+      ">" = "Use {.code se = FALSE} for point-only reconstructions on this family."
+    ), class = "gllvmTMB_predict_missing_se_family_unsupported")
+  }
+  ## Reuses the same refusal set predict(se.fit = TRUE) already enforces:
+  ## mi(), REML, multinomial, no sdreport, non-pdHess. `newdata = NULL`
+  ## always holds here -- predict_missing() has no newdata argument.
+  .gllvmTMB_predict_se_guard(fit, newdata = NULL)
+
+  eta <- as.numeric(fit$report$eta)
+  n_obs <- length(eta)
+  iyo <- fit$tmb_data$is_y_observed
+  masked <- if (is.null(iyo)) integer(0L) else which(iyo == 0L)
+
+  var_eta <- if (route == "joint") {
+    .gllvmTMB_predict_missing_var_eta_joint(fit, masked, n_obs)
+  } else if (route == "joint_load") {
+    .gllvmTMB_predict_missing_var_eta_joint(
+      fit, masked, n_obs, include_loadings = TRUE
+    )
+  } else {
+    .gllvmTMB_predict_missing_var_eta_quad(fit, masked, n_obs)
+  }
+  se_eta <- sqrt(pmax(var_eta, 0))
+
+  sigma_eps <- .gllvmTMB_sigma_eps(fit)
+  deriv <- .dlinkinv_per_row(
+    eta, fid_vec, fit$tmb_data$link_id_vec, sigma_eps = sigma_eps
+  )
+  ## Gaussian is identity-link (deriv == 1 exactly), so se_confidence is the
+  ## same whether `type` is "link" or "response" -- kept type-aware anyway
+  ## so the shape of this function generalises when Slice 3 adds families
+  ## whose link is not identity.
+  se_confidence <- if (type == "response") se_eta * abs(deriv) else se_eta
+  se_prediction <- sqrt(se_confidence^2 + sigma_eps^2)
+
+  list(se_confidence = se_confidence, se_prediction = se_prediction)
+}
+
+## R1-quad: var_fix(eta) (.gllvmTMB_predict_se_link()) plus the diagonal
+## rr_B latent-score curvature, in quadrature. See the parent function's
+## header comment for the full derivation and documented omissions.
+.gllvmTMB_predict_missing_var_eta_quad <- function(fit, masked, n_obs) {
+  se_fix <- .gllvmTMB_predict_se_link(fit)
+
+  se_lat2 <- rep(0, n_obs)
+  if (isTRUE(fit$use$rr_B) && length(masked) > 0L) {
+    ord <- extract_ordination(fit, level = "unit")
+    if (!is.null(ord)) {
+      se_mat   <- .getLV_se(fit, level = "B", scores = ord$scores)
+      var_mat  <- se_mat^2
+      Lambda   <- ord$loadings
+      trait_id <- as.integer(fit$data[[fit$trait_col]])
+      unit_id  <- as.integer(fit$data[[fit$unit_col]])
+      lam_rows <- Lambda[trait_id[masked], , drop = FALSE]
+      var_rows <- var_mat[unit_id[masked], , drop = FALSE]
+      se_lat2[masked] <- rowSums(lam_rows^2 * var_rows)
+    }
+  }
+
+  se_fix^2 + se_lat2
+}
+
+## Position map for `gll_unpack_rr_loadings()` (src/gllvmTMB.cpp): for an
+## `n_rows x rank` loading matrix packed as `theta` (diagonal entries
+## first, column by column; then the strict lower triangle, column by
+## column), returns an `n_rows x rank` integer matrix whose (row, column)
+## entry is that cell's 1-indexed position within `theta`, or `NA` for a
+## structural (upper-triangle) zero that is not a free parameter at all.
+## Reproduces the C++ cursor loop exactly rather than a closed-form
+## formula, so it is trivially checkable against the source side by side.
+.gllvmTMB_rr_loading_theta_positions <- function(n_rows, rank) {
+  pos <- matrix(NA_integer_, nrow = n_rows, ncol = rank)
+  cursor <- 0L
+  for (column in seq_len(rank)) {
+    cursor <- cursor + 1L
+    pos[column, column] <- cursor
+  }
+  for (column in seq_len(rank)) {
+    if (column < n_rows) {
+      for (row in (column + 1L):n_rows) {
+        cursor <- cursor + 1L
+        pos[row, column] <- cursor
+      }
+    }
+  }
+  pos
+}
+
+## R1-joint (`include_loadings = FALSE`): var(eta_ut) = w' Q^{-1} w via the
+## joint (fixed + random) precision, w carrying the b_fix and z_B blocks.
+## R1-joint+loadings (`include_loadings = TRUE`, Design 119 sec.7b): w
+## gains a third block, the free `theta_rr_B` positions for trait row t,
+## with entries u_hat_{i,k} (that unit's own fitted z_B score at axis k).
+## See the parent function's header comment for the full derivation. The
+## sparse-solve machinery is otherwise shared between the two so
+## `route = "joint"` cannot silently drift when the third block is added.
+## Exported (`@noRd`, internal) mainly so the test suite can call it
+## directly for the one-cell numeric cross-check against a dense solve.
+.gllvmTMB_predict_missing_var_eta_joint <- function(
+  fit, masked, n_obs, include_loadings = FALSE
+) {
+  var_eta <- rep(0, n_obs)
+  if (length(masked) == 0L) {
+    return(var_eta)
+  }
+
+  sdr_joint <- TMB::sdreport(fit$tmb_obj, getJointPrecision = TRUE)
+  Q <- sdr_joint$jointPrecision
+  if (is.null(Q)) {
+    cli::cli_abort(c(
+      "{.code route = \"joint\"} requires a joint precision from {.fn sdreport}.",
+      "i" = "{.fn TMB::sdreport} did not return a {.field jointPrecision} block for this fit."
+    ), class = "gllvmTMB_predict_missing_se_joint_precision_unavailable")
+  }
+  par_names <- rownames(Q)
+
+  status <- .gllvmTMB_xcoef_status(fit)
+  free <- status != "fixed"
+  Xf <- fit$X_fix[, free, drop = FALSE]
+  bfix_pos <- which(par_names == "b_fix")
+  if (length(bfix_pos) != sum(free)) {
+    cli::cli_abort(c(
+      "Could not align the {.field b_fix} block in the joint precision with the free fixed-effect columns.",
+      "i" = "Expected {sum(free)} free {.field b_fix} entries; found {length(bfix_pos)}."
+    ), class = "gllvmTMB_predict_missing_se_joint_block_mismatch")
+  }
+
+  has_rr_B <- isTRUE(fit$use$rr_B)
+  zB_pos_mat <- NULL
+  Lambda <- NULL
+  theta_pos_mat <- NULL
+  theta_idx <- NULL
+  z_B_est <- NULL
+  if (has_rr_B) {
+    zB_pos <- which(par_names == "z_B")
+    if (length(zB_pos) != fit$d_B * fit$n_sites) {
+      cli::cli_abort(c(
+        "Could not align the {.field z_B} block in the joint precision.",
+        "i" = "Expected {fit$d_B * fit$n_sites} entries; found {length(zB_pos)}."
+      ), class = "gllvmTMB_predict_missing_se_joint_block_mismatch")
+    }
+    zB_pos_mat <- matrix(zB_pos, nrow = fit$d_B, ncol = fit$n_sites)
+    Lambda <- fit$report$Lambda_B
+
+    if (isTRUE(include_loadings)) {
+      n_traits <- nrow(Lambda)
+      theta_idx <- which(par_names == "theta_rr_B")
+      ## The parenthesis is load-bearing: `%/%` binds TIGHTER than `*` in R,
+      ## so `d * (d - 1L) %/% 2L` evaluates as `d * ((d - 1L) %/% 2L)`, which
+      ## is 0 at d = 2 (and 4 at d = 4) instead of the intended triangular
+      ## count 1 (and 6). The guard then demanded p*d free entries where the
+      ## packing supplies p*d - d(d-1)/2, and every rank-2 fit aborted --
+      ## invisible at rank 1, where both spellings agree. Caught by the
+      ## wave-1c campaign (25 traits, d = 2: expected 50, found 49).
+      expected_theta <- n_traits * fit$d_B - (fit$d_B * (fit$d_B - 1L)) %/% 2L
+      if (length(theta_idx) != expected_theta) {
+        cli::cli_abort(c(
+          "Could not align the {.field theta_rr_B} block in the joint precision.",
+          "i" = "Expected {expected_theta} free loading entries; found {length(theta_idx)}."
+        ), class = "gllvmTMB_predict_missing_se_joint_block_mismatch")
+      }
+      theta_pos_mat <- .gllvmTMB_rr_loading_theta_positions(n_traits, fit$d_B)
+      par_est <- fit$tmb_obj$env$last.par.best
+      z_B_est <- matrix(
+        par_est[names(par_est) == "z_B"], nrow = fit$d_B, ncol = fit$n_sites
+      )
+    }
+  }
+
+  trait_id <- as.integer(fit$data[[fit$trait_col]])
+  unit_id  <- as.integer(fit$data[[fit$unit_col]])
+
+  n_par <- nrow(Q)
+  n_m <- length(masked)
+  i_idx <- integer(0); j_idx <- integer(0); x_val <- numeric(0)
+  for (k in seq_along(masked)) {
+    i <- masked[k]
+    xf_row <- Xf[i, ]
+    nz <- which(xf_row != 0)
+    if (length(nz)) {
+      i_idx <- c(i_idx, bfix_pos[nz])
+      j_idx <- c(j_idx, rep(k, length(nz)))
+      x_val <- c(x_val, xf_row[nz])
+    }
+    if (has_rr_B) {
+      s <- unit_id[i]
+      t <- trait_id[i]
+      pos <- zB_pos_mat[, s]
+      lam <- Lambda[t, ]
+      i_idx <- c(i_idx, pos)
+      j_idx <- c(j_idx, rep(k, length(pos)))
+      x_val <- c(x_val, lam)
+
+      if (isTRUE(include_loadings)) {
+        theta_row <- theta_pos_mat[t, ]
+        free_axes <- which(!is.na(theta_row))
+        if (length(free_axes)) {
+          pos_theta <- theta_idx[theta_row[free_axes]]
+          u_vals <- z_B_est[free_axes, s]
+          i_idx <- c(i_idx, pos_theta)
+          j_idx <- c(j_idx, rep(k, length(pos_theta)))
+          x_val <- c(x_val, u_vals)
+        }
+      }
+    }
+  }
+  W <- Matrix::sparseMatrix(
+    i = i_idx, j = j_idx, x = x_val, dims = c(n_par, n_m)
+  )
+
+  ## Sparse solve -- never a dense inverse of Q.
+  V <- Matrix::solve(Q, W)
+  var_masked <- Matrix::colSums(W * V)
+
+  var_eta[masked] <- as.numeric(var_masked)
+  var_eta
+}
+
 #' Predict the masked (missing) response cells of a gllvmTMB fit
 #'
 #' For a model fitted with `missing = miss_control(response = "include")`
@@ -2202,28 +2505,63 @@ predict.gllvmTMB_multi <- function(
 #' missing **predictors** from supported `mi()` fits.
 #' The point predictions here are the fitted linear predictor (`type = "link"`)
 #' or its inverse-link response (`type = "response"`). Reconstruction standard
-#' errors and prediction intervals are not currently returned.
+#' errors and prediction intervals are not currently returned by default.
+#'
+#' `se = TRUE` is **EXPERIMENTAL and INTERNAL-ONLY** (Design 119 Slice 1):
+#' register status `heuristic_unvalidated` -- no repeated-sampling coverage
+#' evidence exists for `se_confidence` or `se_prediction`, and neither is an
+#' interval claim of any kind. It is currently implemented for gaussian
+#' fits only (other families abort). Three routes exist (`se_route`), all
+#' measured on the same wave-1 gaussian coverage grid
+#' (`docs/design/119-predict-missing-uncertainty.md` sec.7): `"quad"`
+#' (default) omits the b_fix/latent-score cross-covariance and any
+#' `diag_B` ("unique"/Psi) or within-unit (`rr_W`) random-effect
+#' contribution (sec.3 R1-quad) and OVER-covers `se_confidence`;
+#' `"joint"` computes the exact joint-precision variance for the b_fix and
+#' latent-score blocks (sec.3 R1-joint) but omits the loading-uncertainty
+#' block entirely and UNDER-covers; `"joint"` and `"quad"` BRACKET nominal
+#' coverage. `"joint_load"` (sec.7b, R1-joint+loadings) adds that third
+#' block and has not itself been coverage-tested yet. Do not surface
+#' `se_confidence` / `se_prediction` as calibrated uncertainty in any
+#' user-facing output until the Design 119 sec.4 coverage campaign clears
+#' a route and family for export.
 #'
 #' @param object A fit returned by [gllvmTMB()].
 #' @param type One of `"link"` (default; the linear predictor) or
 #'   `"response"` (the inverse-link conditional mean).
+#' @param se EXPERIMENTAL, internal-only. If `TRUE`, appends `se_confidence`
+#'   (delta-method SE of the reconstructed mean) and `se_prediction`
+#'   (`se_confidence` combined with the family noise variance) columns.
+#'   Gaussian fits only in this slice; see Details. Default `FALSE`.
+#' @param se_route EXPERIMENTAL, internal-only. One of `"quad"` (default;
+#'   R1-quad), `"joint"` (R1-joint), or `"joint_load"` (R1-joint+loadings
+#'   -- see Details). Ignored unless `se = TRUE`.
 #' @param ... Unused.
 #'
 #' @return A data frame with one row per masked response cell, with columns:
 #'   `original_row` (the supplied long-data row or the supplied wide-data row
 #'   before `traits()` stacking),
 #'   `model_row` (the row index into the fitted long-format data / response),
-#'   the unit / cluster / trait identifier columns, and `est` (the prediction
-#'   on the requested scale). A complete-data fit (no masked cells) returns a
-#'   zero-row data frame with the same columns.
+#'   the unit / cluster / trait identifier columns, `est` (the prediction
+#'   on the requested scale), and, when `se = TRUE`, `se_confidence` and
+#'   `se_prediction` (see Details -- EXPERIMENTAL, not a calibrated
+#'   interval). A complete-data fit (no masked cells) returns a zero-row
+#'   data frame with the same columns.
 #'
 #' @seealso [gllvmTMB()], [miss_control()], [predict.gllvmTMB_multi()].
 #' @export
-predict_missing <- function(object, type = c("link", "response"), ...) {
+predict_missing <- function(
+  object,
+  type = c("link", "response"),
+  se = FALSE,
+  se_route = c("quad", "joint", "joint_load"),
+  ...
+) {
   if (!inherits(object, "gllvmTMB_multi")) {
     cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
   }
   type <- match.arg(type)
+  se_route <- match.arg(se_route)
 
   md <- object$missing_data
   iyo <- object$tmb_data$is_y_observed
@@ -2286,6 +2624,11 @@ predict_missing <- function(object, type = c("link", "response"), ...) {
     base[[trait_lbl]] <- object$data[[trait_lbl]]
   }
   base$est <- est
+  if (isTRUE(se)) {
+    se_out <- .gllvmTMB_predict_missing_se(object, type = type, route = se_route)
+    base$se_confidence <- se_out$se_confidence
+    base$se_prediction <- se_out$se_prediction
+  }
 
   out <- base[masked, , drop = FALSE]
   rownames(out) <- NULL

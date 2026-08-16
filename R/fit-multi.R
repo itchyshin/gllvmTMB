@@ -741,6 +741,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       "i" = "It combines opportunistic presence-only counts with structured survey detection/non-detection data under one shared ecological linear predictor.",
       "i" = "Everything it reports is {.strong relative intensity}: presence-only data cannot identify absolute abundance, occupancy, or detectability, and this fit does not estimate them.",
       "i" = "Source-specific spatial structure is only weakly identified on small designs; treat a portal-only field as a nuisance adjustment unless your design is large enough to support it.",
+      "!" = "Give the presence-only arm its own reporting-rate term (an interaction with the source indicator). Without one, the two arms share an absolute intercept and the fit implicitly claims the absolute intensity that presence-only data cannot identify.",
       ">" = "Check convergence and positive-definiteness on every fit, and expect this interface to change."
     ), .frequency = "once", .frequency_id = "gllvmTMB-integrated-two-source")
   }
@@ -2429,6 +2430,47 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         cli::cli_abort("`weights` (used as binomial size) must be positive and finite.")
     } else {
       n_trials <- rep(1, length(y))
+    }
+  }
+
+  ## ---- Integrated two-source contract: two inputs it cannot admit --------
+  ## Both are checked HERE rather than in the admission predicate because
+  ## n_trials does not exist yet at that point.
+  ##
+  ## (1) `weights` means two incompatible things across this contract's arms.
+  ## When any binomial row is present -- and the survey arm always is one --
+  ## the block above turns `weights` into a per-row TRIAL COUNT for the whole
+  ## fit, while the `weights_i` construction below sets the likelihood
+  ## multiplier to 1 on exactly those binomial rows. So one vector would be a
+  ## trial count on the survey arm and a likelihood exponent on the portal
+  ## arm: not a common scale, and the existing weighted-objective warning
+  ## skips binomial rows, so it would pass in silence.
+  ##
+  ## (2) The coherence of this contract is a thinned-Poisson argument:
+  ## p = 1 - exp(-a*exp(eta)) is the probability that a Poisson count with
+  ## mean a*exp(eta) is non-zero. That derivation is for ONE trial of support
+  ## a. With n > 1 the same `a` would have to be the PER-TRIAL support, which
+  ## nothing checks -- so a user supplying total effort across n visits gets a
+  ## model wrong by a factor of n inside the exponent. Repeated visits belong
+  ## in this contract as separate Bernoulli ROWS, each with its own support,
+  ## which is what the worked example does.
+  if (isTRUE(isdm_admitted)) {
+    if (!is.null(weights)) {
+      cli::cli_abort(c(
+        "{.arg weights} is not admitted for the integrated two-source model.",
+        "x" = "Across this model's two arms {.arg weights} would mean two different things: a binomial trial count on the survey rows and a likelihood multiplier on the portal rows.",
+        "i" = "Repeated survey visits belong in the data as separate detection/non-detection rows, each carrying its own support in the {.fn offset}.",
+        ">" = "Drop {.arg weights} and give each visit its own row."
+      ), class = "gllvmTMB_isdm_weights_unsupported")
+    }
+    survey_rows <- as.integer(family_id_vec) == 1L
+    if (any(survey_rows) && any(n_trials[survey_rows] != 1)) {
+      cli::cli_abort(c(
+        "The integrated two-source model admits only single-trial survey rows.",
+        "x" = "{sum(n_trials[survey_rows] != 1)} survey row{?s} carr{?ies/y} more than one trial.",
+        "i" = "The complementary-log-log arm is coherent with the count arm because {.code p = 1 - exp(-a * exp(eta))} is the chance that ONE Poisson draw of mean {.code a * exp(eta)} is non-zero; with several trials {.code a} would have to be the per-trial support, which is not checked.",
+        ">" = "Give each visit its own row with its own support rather than a {.code cbind(successes, failures)} response."
+      ), class = "gllvmTMB_isdm_multitrial_unsupported")
     }
   }
   n_obs <- length(y)

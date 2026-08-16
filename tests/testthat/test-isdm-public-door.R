@@ -109,6 +109,75 @@ test_that("the contract requires BOTH arms within every trait", {
     trait_labels = factor(c("A", "B", "B", "B"))))
 })
 
+## Gauss's two blockers, found by adversarial review of the opened fence.
+## Both inputs are reachable through the PUBLIC door and neither is coherent
+## inside this contract, so both must be refused rather than silently accepted.
+
+## Two traits, two cells, both arms in every trait: the smallest shape that
+## satisfies the contract AND survives model.matrix (a single-level trait
+## factor cannot be contrast-coded, and fails before either gate is reached).
+.isdm_door_fixture <- function() {
+  d <- expand.grid(
+    cell_id = c("c1", "c2"),
+    trait = c("sp1", "sp2"),
+    source = c("gbif", "survey"),
+    stringsAsFactors = FALSE
+  )
+  d$trait <- factor(d$trait)
+  d$cell_id <- factor(d$cell_id)
+  d$isdm_gbif <- as.integer(d$source == "gbif")
+  d$isdm_family <- factor(ifelse(d$source == "gbif", "gbif", "survey_pa"),
+                          levels = c("gbif", "survey_pa"))
+  d$log_support <- 0.1
+  d$value <- c(3, 2, 4, 1, 1, 0, 1, 0)
+  d$succ <- d$value
+  d$fail <- c(0, 0, 0, 0, 2, 3, 1, 2)
+  d
+}
+
+.isdm_door_family <- function() {
+  f <- list(gbif = stats::poisson(),
+            survey_pa = stats::binomial(link = "cloglog"))
+  attr(f, "family_var") <- "isdm_family"
+  f
+}
+
+test_that("weights is refused inside the integrated two-source contract", {
+  skip_if_not_installed("TMB")
+  d <- .isdm_door_fixture()
+  ## Across the two arms `weights` would be a binomial trial count on the
+  ## survey rows and a likelihood multiplier on the portal rows -- and the
+  ## existing weighted-objective warning skips binomial rows, so without this
+  ## refusal it would pass in silence.
+  expect_error(
+    suppressMessages(gllvmTMB(
+      value ~ 0 + trait + trait:isdm_gbif + offset(log_support) +
+        latent(0 + trait | cell_id, d = 1),
+      data = d, trait = "trait", unit = "cell_id", family = .isdm_door_family(),
+      weights = rep(c(1, 3), each = 4), silent = TRUE
+    )),
+    class = "gllvmTMB_isdm_weights_unsupported"
+  )
+})
+
+test_that("multi-trial survey rows are refused inside the contract", {
+  skip_if_not_installed("TMB")
+  ## cbind(successes, failures) reaches n_trials > 1 without `weights`. The
+  ## thinned-Poisson coherence argument is for ONE trial of support a, so a
+  ## user supplying total effort across n visits would be wrong by a factor
+  ## of n inside the exponent.
+  d <- .isdm_door_fixture()
+  expect_error(
+    suppressMessages(gllvmTMB(
+      cbind(succ, fail) ~ 0 + trait + trait:isdm_gbif + offset(log_support) +
+        latent(0 + trait | cell_id, d = 1),
+      data = d, trait = "trait", unit = "cell_id", family = .isdm_door_family(),
+      silent = TRUE
+    )),
+    class = "gllvmTMB_isdm_multitrial_unsupported"
+  )
+})
+
 ## The public-vs-developer equivalence test lives in
 ## test-isdm-developer-fit.R, where the .isdm_fit_fixture() /
 ## .isdm_test_control() helpers are defined (they are file-local there, not in

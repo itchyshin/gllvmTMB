@@ -803,3 +803,209 @@ test_that("route = 'joint_load' is unchanged by the sim-route addition (regressi
     "q_lo_conf", "q_hi_conf", "q_lo_pred", "q_hi_pred"
   ) %in% names(pm_joint_load)))
 })
+
+# ---- R3 parametric bootstrap route (Design 119 sec.3 R3, sec.7d) ----------
+#
+# "boot" refits the model n_boot times from data simulated at theta_hat
+# (fresh latent scores AND a fresh family draw every replicate), scoring the
+# pivot eta_hat_b - eta_b (confidence) / eta_hat_b - y_b (prediction) at the
+# masked cells. Unlike every other route it propagates parameter and
+# dispersion uncertainty, because every replicate is a full refit rather
+# than a plug-in evaluation at theta_hat. n_boot is kept small (25) here to
+# keep the suite fast; this is a smoke/contract test, not a coverage check
+# (that is the campaign's job, docs/design/119-predict-missing-uncertainty.md
+# sec.4/sec.7d).
+
+test_that("se_route = 'boot' returns finite, positive SEs, ordered quantiles, and n_boot_ok", {
+  skip_if_not_heavy()
+  dat <- .pm_se_data()
+  miss_idx <- c(3L, 15L, 47L, 68L)
+  dat_na <- dat
+  dat_na$value[miss_idx] <- NA_real_
+
+  fit <- .pm_se_fit(dat_na, missing = miss_control(response = "include"))
+
+  pm <- predict_missing(fit, se = TRUE, se_route = "boot", n_boot = 25L, boot_seed = 1L)
+  expect_true(all(c(
+    "se_confidence", "se_prediction",
+    "q_lo_conf", "q_hi_conf", "q_lo_pred", "q_hi_pred",
+    "q_lo_conf90", "q_hi_conf90", "q_lo_pred90", "q_hi_pred90",
+    "n_boot_ok"
+  ) %in% names(pm)))
+  expect_identical(nrow(pm), length(miss_idx))
+  expect_true(all(is.finite(pm$se_confidence)))
+  expect_true(all(is.finite(pm$se_prediction)))
+  expect_true(all(pm$se_confidence > 0))
+  expect_true(all(pm$se_prediction > 0))
+
+  # Ordered quantiles, both nominal levels, both estimands.
+  expect_true(all(pm$q_lo_conf < pm$q_hi_conf))
+  expect_true(all(pm$q_lo_pred < pm$q_hi_pred))
+  expect_true(all(pm$q_lo_conf90 < pm$q_hi_conf90))
+  expect_true(all(pm$q_lo_pred90 < pm$q_hi_pred90))
+  expect_true(all(pm$q_lo_conf <= pm$q_lo_conf90))
+  expect_true(all(pm$q_hi_conf90 <= pm$q_hi_conf))
+  expect_true(all(pm$q_lo_pred <= pm$q_lo_pred90))
+  expect_true(all(pm$q_hi_pred90 <= pm$q_hi_pred))
+
+  # On a clean fixture (well-posed rr_B gaussian fit), every refit should
+  # converge.
+  expect_true(all(pm$n_boot_ok == 25L))
+})
+
+test_that("se_route = 'boot': se_prediction strictly exceeds se_confidence", {
+  skip_if_not_heavy()
+  dat <- .pm_se_data()
+  miss_idx <- c(3L, 15L, 47L, 68L)
+  dat_na <- dat
+  dat_na$value[miss_idx] <- NA_real_
+
+  fit <- .pm_se_fit(dat_na, missing = miss_control(response = "include"))
+
+  pm <- predict_missing(fit, se = TRUE, se_route = "boot", n_boot = 25L, boot_seed = 1L)
+  expect_true(all(pm$se_prediction > pm$se_confidence))
+})
+
+test_that("se_route = 'boot' is deterministic: same boot_seed reproduces identical output", {
+  skip_if_not_heavy()
+  dat <- .pm_se_data()
+  miss_idx <- c(3L, 15L, 47L, 68L)
+  dat_na <- dat
+  dat_na$value[miss_idx] <- NA_real_
+
+  fit <- .pm_se_fit(dat_na, missing = miss_control(response = "include"))
+
+  pm_a <- predict_missing(fit, se = TRUE, se_route = "boot", n_boot = 25L, boot_seed = 7L)
+  pm_b <- predict_missing(fit, se = TRUE, se_route = "boot", n_boot = 25L, boot_seed = 7L)
+  expect_identical(pm_a, pm_b)
+
+  # Default (boot_seed = NULL) is ALSO deterministic across repeat calls on
+  # the same fit, since it derives a fixed seed from the parameter vector
+  # (same convention as se_route = "sim").
+  pm_c <- predict_missing(fit, se = TRUE, se_route = "boot", n_boot = 25L)
+  pm_d <- predict_missing(fit, se = TRUE, se_route = "boot", n_boot = 25L)
+  expect_identical(pm_c, pm_d)
+})
+
+test_that("se_route = 'boot': se_confidence agrees in magnitude with 'sim' (sanity, not calibration)", {
+  skip_if_not_heavy()
+  dat <- .pm_se_data()
+  miss_idx <- c(3L, 15L, 47L, 68L)
+  dat_na <- dat
+  dat_na$value[miss_idx] <- NA_real_
+
+  fit <- .pm_se_fit(dat_na, missing = miss_control(response = "include"))
+
+  pm_boot <- predict_missing(fit, se = TRUE, se_route = "boot", n_boot = 25L, boot_seed = 1L)
+  pm_sim  <- predict_missing(fit, se = TRUE, se_route = "sim", n_sim = 4000L)
+
+  # A loose sanity band, not a calibration claim: boot propagates parameter
+  # uncertainty that sim holds plug-in, so the two need not agree closely --
+  # only stay within the same order of magnitude on this well-posed fixture.
+  ratio <- pm_boot$se_confidence / pm_sim$se_confidence
+  expect_true(all(ratio > 0.5 & ratio < 2))
+})
+
+test_that("se_route = 'boot': fewer than 50% converged refits returns NA with n_boot_ok recorded", {
+  skip_if_not_heavy()
+  # Deliberately degenerate fixture -- 4 sites is too few to estimate a
+  # between-site rank-1 loading + residual variance reliably, so BOTH the
+  # original fit and (honestly, not rigged) its bootstrap refits on freshly
+  # simulated 4-site data fail to converge. This exercises the <50% path
+  # without faking a failure.
+  dat_tiny <- simulate_site_trait(
+    n_sites = 4, n_species = 1, n_traits = 2,
+    mean_species_per_site = 1,
+    Lambda_B = matrix(c(0.9, 0.6), 2, 1),
+    sigma2_eps = 0.4,
+    seed = 501
+  )$data
+  dat_tiny$value[c(1L, 3L)] <- NA_real_
+
+  fit_tiny <- .pm_se_fit(dat_tiny, missing = miss_control(response = "include"))
+
+  expect_warning(
+    pm <- predict_missing(
+      fit_tiny, se = TRUE, se_route = "boot", n_boot = 8L, boot_seed = 1L
+    ),
+    class = "gllvmTMB_predict_missing_se_boot_too_few_ok"
+  )
+  expect_true(all(pm$n_boot_ok < 4L))
+  expect_true(all(is.na(pm$se_confidence)))
+  expect_true(all(is.na(pm$se_prediction)))
+  expect_true(all(is.na(pm$q_lo_conf)))
+})
+
+test_that("se_route = 'boot' aborts for a non-gaussian family, naming Design 119 Slice 3", {
+  skip_if_not_heavy()
+  set.seed(11)
+  n <- 40
+  dat <- data.frame(
+    site = factor(seq_len(n)),
+    env_1 = rnorm(n)
+  )
+  u <- rnorm(n, sd = 0.7)
+  dat_wide <- data.frame(
+    site = dat$site,
+    t1 = rpois(n, exp(0.3 + 0.5 * dat$env_1 + u)),
+    t2 = rpois(n, exp(0.1 - 0.3 * dat$env_1 + u)),
+    t3 = rpois(n, exp(0.2 + 0.2 * dat$env_1 + u))
+  )
+  dat_wide$t1[c(2L, 9L)] <- NA_integer_
+
+  fit_pois <- suppressMessages(suppressWarnings(gllvmTMB(
+    traits(t1, t2, t3) ~ 1 + latent(1 | site, d = 1, unique = FALSE),
+    data    = dat_wide,
+    unit    = "site",
+    family  = poisson(),
+    missing = miss_control(response = "include")
+  )))
+
+  err <- expect_error(
+    predict_missing(fit_pois, se = TRUE, se_route = "boot"),
+    class = "gllvmTMB_predict_missing_se_family_unsupported"
+  )
+  expect_match(conditionMessage(err), "Design 119", fixed = TRUE)
+  expect_match(conditionMessage(err), "Slice 3", fixed = TRUE)
+})
+
+test_that("se_route = 'boot' aborts for an unsupported random-effect structure", {
+  skip_if_not_heavy()
+  # unique = TRUE adds a diag_B (Psi) companion -- outside the boot route's
+  # narrow rr_B-only scope (a full refit needs the WHOLE generative model).
+  dat <- .pm_se_data()
+  miss_idx <- c(3L, 15L, 47L, 68L)
+  dat_na <- dat
+  dat_na$value[miss_idx] <- NA_real_
+
+  fit <- suppressMessages(suppressWarnings(gllvmTMB(
+    formula = value ~ 0 + trait + (0 + trait):env_1 +
+      latent(0 + trait | site, d = 1, unique = TRUE),
+    data    = dat_na,
+    family  = gaussian(),
+    missing = miss_control(response = "include")
+  )))
+
+  err <- expect_error(
+    predict_missing(fit, se = TRUE, se_route = "boot"),
+    class = "gllvmTMB_predict_missing_se_boot_unsupported_structure"
+  )
+  expect_match(conditionMessage(err), "boot", fixed = TRUE)
+})
+
+test_that("route = 'sim' is unchanged by the boot-route addition (regression guard)", {
+  skip_if_not_heavy()
+  dat <- .pm_se_data()
+  miss_idx <- c(3L, 15L, 47L, 68L)
+  dat_na <- dat
+  dat_na$value[miss_idx] <- NA_real_
+
+  fit <- .pm_se_fit(dat_na, missing = miss_control(response = "include"))
+  pm_sim <- predict_missing(fit, se = TRUE, se_route = "sim", n_sim = 2000L)
+
+  expect_true(all(is.finite(pm_sim$se_confidence)))
+  expect_true(all(c(
+    "q_lo_conf", "q_hi_conf", "q_lo_pred", "q_hi_pred"
+  ) %in% names(pm_sim)))
+  expect_false("n_boot_ok" %in% names(pm_sim))
+})

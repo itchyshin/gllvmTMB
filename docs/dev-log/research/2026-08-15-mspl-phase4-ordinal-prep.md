@@ -1,16 +1,16 @@
 # Phase 4-style prep — ordinal_probit LA-MSPL route (not admitted)
 
-**Status:** design + local oracles only. **No registry row** is added
-for `ordinal_probit`. `.gllvmTMB_mspl_prepare()` still admits only
-gaussian / bernoulli / Poisson at the public door
-(`family_id %in% {0,1,2}` after #978). Ordinal probit is runtime
-`family_id` **14**. **Verdict: PASS for oracles / this writeup, FAIL
-for C++ / admission / registry / `estimator = "mspl"` on
+**Status:** design + local oracles + **`planned` registry rows only**.
+Registry cells `ordinal_probit:probit:ordinary:q1` and `q2` are
+`status = "planned"`, `evidence = "phase4_prep"` (#1039). They are
+**not** `admitted`. `.gllvmTMB_mspl_prepare()` still rejects
+`ordinal_probit` (`family_id` **14**). **Verdict: PASS for oracles /
+planned rows, FAIL for C++ / admission / `estimator = "mspl"` on
 `ordinal_probit()`.**
 
-**Board move:** this cell was **na**. It is now **planned prep
-only**. That is a documentation + oracle status, not a registry
-`planned` row and not admission.
+**Board move:** this cell was **na**, then oracle-only prep (#1005).
+After #1039 it is **`planned` / `phase4_prep`**. That is not
+admission.
 
 **Reader:** statistical method developer / TMB engineer who must
 decide whether a later tape may add an ordinal location or
@@ -176,12 +176,13 @@ loading atom is admitted here.** \(V_{\mathrm{loading}}\) is
 8. Claiming Design 88 or Hadfield (2015) covers ordinal *GLLVM
    MSPL* under Laplace.
 9. Finiteness of a fit offered as the scientific result.
-10. Any admission-shaped language (`admitted` or registry
-    `planned`, NEWS covered, C++ tape) ahead of the Shinichi gate.
+10. Any admission-shaped language (status flip to `admitted`, NEWS
+    covered, C++ tape) ahead of the Shinichi gate.
 11. Live `gllvmTMB(..., estimator = "mspl")` on
     `ordinal_probit()`.
-12. Quietly widening `.gllvmTMB_mspl_prepare()` beyond `{0,1,2}`.
-13. Adding an `ordinal_probit` registry row in this prep cell.
+12. Quietly widening `.gllvmTMB_mspl_prepare()` to `family_id` 14.
+13. Flipping `ordinal_probit` from `planned` / `phase4_prep` to
+    `admitted` in this note.
 14. Student-t inheritance in either direction.
 
 ## 5. Oracle contract O1–O11 (pure R; no ordinal `estimator="mspl"`)
@@ -198,14 +199,15 @@ loading atom is admitted here.** \(V_{\mathrm{loading}}\) is
 | O8 | Hirose refused; cuts are not \(\psi\) | structural reject |
 | O9 | \(V_{\mathrm{loading}}\) is \((\eta,\tau)\)-inert | finite-diff |
 | O10 | not stacked Bernoulli; not multinomial softmax | contrasts fire |
-| O11 | no live ordinal MSPL; no `admitted` / `planned` row | structural |
+| O11 | Registry rows `planned` / `phase4_prep`; **not** `admitted` | lookup |
 
 ## 6. Verdict
 
 | Surface | Verdict | Why |
 |---|---|---|
 | Local R oracles / this writeup (O1–O11, kill list) | **PASS** | Exact finite-category information, three named boundaries, and refused transplants are testable without an ordinal MSPL fit. |
-| C++ tape / live ordinal MSPL / registry `planned` or `admitted` | **FAIL** | No tape, no prepare widening, no registry row, no Shinichi admission gate. |
+| Registry `planned` rows | **PASS as planned only** | `ordinal_probit:probit:ordinary:q1/q2`. Not a public claim. |
+| Registry `admitted` / C++ tape / live ordinal MSPL | **FAIL** | No tape, no prepare widen, no Shinichi admission gate. |
 | NEWS / covered / SE / intervals | **FAIL** | Out of scope; SE remains PROTECTED on Codex Lane B. |
 
 Preferred later-admission *candidate* for the fixed-effect slice:
@@ -219,15 +221,15 @@ with rate, cut-increment atom, loading atom, and Laplace-marginal
 This note does **not** claim calibrated inference, SEs, a live
 `estimator = "mspl"` fit, that Bernoulli / Hirose / Student-t
 transfer, that Laplace is exact for ordinal, \(K=2\) admission,
-structured tiers, EVA/VA, or a registry cell.
+structured tiers, EVA/VA, or a status flip to `admitted`.
 
 ## 8. Rose boundary
 
 - **Not EVA / not VA.**
 - **Not Bernoulli Design 88.** \(K\ge 3\); residual pinned at 1.
 - **Not Student-t.** Location information here depends on \(\eta\).
-- **No registry row.**
-- **Prepare fence unchanged.** Public door still `{0,1,2}`.
+- **`planned` ≠ `admitted`.** `ordinal_probit` is `phase4_prep` only.
+- **Prepare fence unchanged.** `ordinal_probit` still rejected.
 - **No C++.** `git diff -- src/` must stay empty on this arc.
 - **No NEWS covered.**
 - **No repo-root `LOOP/`.** Lane kit:

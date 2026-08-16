@@ -1,16 +1,16 @@
 # Phase 4-style prep — Student-t (identity) LA-MSPL route (not admitted)
 
-**Status:** design + local oracles only. **No registry row** is added
-for `student`. `.gllvmTMB_mspl_prepare()` still admits only
-gaussian / bernoulli / Poisson at the public door
-(`family_id %in% {0,1,2}` after #978). Student-t is runtime
-`family_id` **9**. **Verdict: PASS for oracles / this writeup, FAIL
-for C++ / admission / registry / `estimator = "mspl"` on
+**Status:** design + local oracles + **`planned` registry rows only**.
+Registry cells `student:identity:ordinary:q1` and `q2` are
+`status = "planned"`, `evidence = "phase4_prep"` (#1039). They are
+**not** `admitted`. `.gllvmTMB_mspl_prepare()` still rejects
+`student` (`family_id` **9**). **Verdict: PASS for oracles / planned
+rows, FAIL for C++ / admission / `estimator = "mspl"` on
 `student()`.**
 
-**Board move:** this cell was **na**. It is now **planned prep
-only**. That is a documentation + oracle status, not a registry
-`planned` row and not admission.
+**Board move:** this cell was **na**, then oracle-only prep (#1005).
+After #1039 it is **`planned` / `phase4_prep`**. That is not
+admission.
 
 **Reader:** statistical method developer / TMB engineer who must
 decide whether a later tape may add a Student-t location or scale
@@ -174,13 +174,13 @@ Rate transplants
 9. Claiming Lange–Little–Taylor or Pinheiro–Liu–Wu covers Student-t
    *GLLVM* MSPL under Laplace.
 10. Finiteness of a fit offered as the scientific result.
-11. Any admission-shaped language (`admitted` or registry
-    `planned`, NEWS covered, validation-register promotion, C++
-    tape) ahead of the Shinichi gate.
+11. Any admission-shaped language (status flip to `admitted`, NEWS
+    covered, validation-register promotion, C++ tape) ahead of the
+    Shinichi gate.
 12. Live `gllvmTMB(..., estimator = "mspl")` on `student()`.
-13. Quietly widening `.gllvmTMB_mspl_prepare()` beyond
-    `{0,1,2}`.
-14. Adding a student registry row in this prep cell.
+13. Quietly widening `.gllvmTMB_mspl_prepare()` to `family_id` 9.
+14. Flipping student from `planned` / `phase4_prep` to `admitted`
+    in this note.
 
 ## 5. Oracle contract S1–S12 (pure R; no student `estimator="mspl"`)
 
@@ -197,14 +197,15 @@ Rate transplants
 | S9 | Hirose refused; \(\sigma,\nu\) are not \(\psi\) | structural reject |
 | S10 | \(V_{\mathrm{loading}}\) is \((\mu,\sigma,\nu)\)-inert | finite-diff |
 | S11 | identity-only cell | structural |
-| S12 | no live student MSPL; no `admitted` / `planned` row | structural |
+| S12 | Registry rows `planned` / `phase4_prep`; **not** `admitted` | lookup |
 
 ## 6. Verdict
 
 | Surface | Verdict | Why |
 |---|---|---|
 | Local R oracles / this writeup (S1–S12, kill list) | **PASS** | Location inertness, anti-coercive \(\sigma\to 0\), TMB df transform, and refused transplants are testable without a student MSPL fit. |
-| C++ tape / live student MSPL / registry `planned` or `admitted` | **FAIL** | No tape, no prepare widening, no registry row, no Shinichi admission gate. |
+| Registry `planned` rows | **PASS as planned only** | `student:identity:ordinary:q1/q2`. Not a public claim. |
+| Registry `admitted` / C++ tape / live student MSPL | **FAIL** | No tape, no prepare widen, no Shinichi admission gate. |
 | NEWS / covered / SE / intervals | **FAIL** | Out of scope; SE remains PROTECTED on Codex Lane B. |
 
 Preferred later-admission *candidate* is **not** the location
@@ -218,15 +219,15 @@ Not a theorem transfer. Not Gaussian Hirose.
 This note does **not** claim calibrated inference, SEs, a live
 `estimator = "mspl"` fit, that Hirose / Bernoulli / Poisson
 transfer, that Laplace is exact for Student-t, `log`/`inverse`
-Student-t MSPL, structured tiers, EVA/VA, or a registry cell.
+Student-t MSPL, structured tiers, EVA/VA, or admission.
 
 ## 8. Rose boundary
 
 - **Not EVA / not VA.** Outer criterion is Laplace-ML plus a soft
   penalty yet to be taped.
 - **Not Gaussian Phase 3.** Residual \(\sigma\) is not \(\Psi\).
-- **No registry row.** student is not `planned` and not `admitted`.
-- **Prepare fence unchanged.** Public door still `{0,1,2}`.
+- **`planned` ≠ `admitted`.** student is `phase4_prep` only.
+- **Prepare fence unchanged.** `student` still rejected.
 - **No C++.** `git diff -- src/` must stay empty on this arc.
 - **No NEWS covered.** No validation-register promotion.
 - **No repo-root `LOOP/`.** Lane kit:

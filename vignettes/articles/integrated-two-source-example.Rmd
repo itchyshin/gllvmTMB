@@ -231,6 +231,18 @@ spatial fields:
 plot(mesh)
 ```
 
+<!--
+MAINTAINER DECISION, 2026-08-16 (Shinichi): "keep the WARN fit - it's honest."
+This fit reports pd_hessian = WARN and that is DELIBERATE. Do not change the
+model, the design size, or the seed to make it pass. The warning is the
+teaching content: it is localised by measurement (the same data refitted
+non-spatially returns PASS, so the spatial fields are the difficulty, not the
+integration), and it is the hinge to the companion design article. Making it
+pass would mean dropping the augmented spatial slope -- the exact route the
+public admission opened -- or growing the design past what an article can
+render. See docs/dev-log/decisions.md, 2026-08-16.
+-->
+
 # Did the fit converge, and can you trust its curvature?
 
 ```{r convergence}

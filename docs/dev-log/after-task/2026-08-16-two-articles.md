@@ -117,3 +117,16 @@ visual snapshots, did not run.
 - The two articles share a ~50-line simulation block by design (each must stand alone); a
   future edit to one should check the other.
 - Model 2 (multi-source) remains the next capability arc, untouched here.
+
+## 9. Resolved after the report was first written
+
+**The `pd_hessian = WARN` example is deliberate and stays.** This report originally left it as
+an open editorial call for the maintainer: should the flagship example demonstrate a fit whose
+curvature cannot be trusted? Answered 2026-08-16 — *"keep the WARN fit — it's honest."*
+
+Recorded in `docs/dev-log/decisions.md` and guarded with a comment in the article source, because
+the failure mode is a future session seeing a WARN in a flagship article and helpfully making it
+pass. Doing so would mean either dropping the augmented `spatial_latent(1 + isdm_gbif | ...)`
+slope — the exact route this lane's public admission opened, leaving nothing public to exercise
+it — or growing the design beyond what an article can render. The warning is load-bearing: it is
+localised by measurement, and it is the hinge between the two articles.

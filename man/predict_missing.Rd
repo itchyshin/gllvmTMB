@@ -16,8 +16,10 @@ predict_missing(object, type = c("link", "response"), ...)
 }
 \value{
 A data frame with one row per masked response cell, with columns:
-\code{original_row} (the supplied long-data row or the supplied wide-data row
-before \code{traits()} stacking),
+\code{original_row} (the supplied long-data row, the supplied wide-data row
+before \code{traits()} stacking, or -- for a \code{\link[=multinomial]{multinomial()}} fit -- the
+pre-expansion row of the user's data that the K-1 category-contrast
+pseudo-row belongs to),
 \code{model_row} (the row index into the fitted long-format data / response),
 the unit / cluster / trait identifier columns, and \code{est} (the prediction
 on the requested scale). A complete-data fit (no masked cells) returns a

@@ -80,4 +80,46 @@ test_that("multinomial masked response: predict_missing returns the masked cells
   pm <- predict_missing(fit)
   expect_s3_class(pm, "data.frame")
   expect_true(all(is.finite(pm$est)))
+
+  ## #986 fix 2: original_row maps back to the PRE-EXPANSION user row, not
+  ## the post-expansion model row (each masked observation contributes
+  ## K - 1 = 2 contiguous model rows sharing one true original_row).
+  K <- 3L
+  expect_setequal(unique(pm$original_row), masked)
+  expect_true(all(table(pm$original_row) == K - 1L))
+  ## The bug this guards against: falling back to model_row would make
+  ## original_row strictly increasing 1:nrow(pm) instead of repeating in
+  ## blocks of K - 1.
+  expect_false(identical(pm$original_row, pm$model_row))
+})
+
+test_that("multinomial masked response: predict_missing original_row joins back to the user's data by original_row alone", {
+  skip_on_cran()
+  K <- 3L
+  df <- .make_multinomial_missing(seed = 13L, n = 220L, K = K)
+  masked <- c(9L, 58L, 100L, 150L, 205L)
+  data_na <- df
+  data_na$value[masked] <- NA
+  fit <- suppressMessages(gllvmTMB(
+    value ~ 0 + trait + (0 + trait):x, data = data_na,
+    trait = "trait", unit = "unit", family = multinomial(),
+    missing = miss_control(response = "include"), silent = TRUE
+  ))
+  pm <- predict_missing(fit)
+
+  ## Truth derived from the KNOWN masked positions x (K - 1) contrast rows:
+  ## every masked observation contributes exactly K - 1 model rows, all
+  ## reporting the same true pre-expansion original_row.
+  L <- K - 1L
+  expect_equal(nrow(pm), length(masked) * L)
+  expect_setequal(unique(pm$original_row), masked)
+  expect_true(all(table(pm$original_row) == L))
+
+  ## Join back to the user's original (pre-expansion) data by original_row
+  ## alone -- a plain merge()/subscript join on original_row must land on
+  ## the row the mask was actually applied at (unit is a distinct id per
+  ## pre-expansion row, so this catches any off-by-block original_row).
+  joined <- merge(pm, data.frame(original_row = seq_len(nrow(df)), unit_truth = as.character(df$unit)),
+                   by = "original_row")
+  expect_equal(as.character(joined$unit), joined$unit_truth)
 })

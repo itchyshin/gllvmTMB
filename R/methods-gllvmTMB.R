@@ -2210,8 +2210,10 @@ predict.gllvmTMB_multi <- function(
 #' @param ... Unused.
 #'
 #' @return A data frame with one row per masked response cell, with columns:
-#'   `original_row` (the supplied long-data row or the supplied wide-data row
-#'   before `traits()` stacking),
+#'   `original_row` (the supplied long-data row, the supplied wide-data row
+#'   before `traits()` stacking, or -- for a [multinomial()] fit -- the
+#'   pre-expansion row of the user's data that the K-1 category-contrast
+#'   pseudo-row belongs to),
 #'   `model_row` (the row index into the fitted long-format data / response),
 #'   the unit / cluster / trait identifier columns, and `est` (the prediction
 #'   on the requested scale). A complete-data fit (no masked cells) returns a
@@ -2257,6 +2259,22 @@ predict_missing <- function(object, type = c("link", "response"), ...) {
       length(wide_source_row) == n_model
   ) {
     original_row <- as.integer(wide_source_row)
+  }
+
+  ## Multinomial (fid 16) fits expand each observation into K-1
+  ## category-contrast pseudo-rows before fitting; `md$original_row` above
+  ## is computed on the ALREADY-EXPANDED data, so it degenerates to
+  ## `model_row` for these rows and does not map back to the user's
+  ## pre-expansion data row. `.multinom_group_` (0-based, set by
+  ## `expand_multinomial_response()`) is exactly that pre-expansion row
+  ## index and survives on `object$data`, so use it to override
+  ## `original_row` for the multinomial pseudo-rows (`-1` tags a
+  ## non-multinomial row in a mixed-family fit and is left untouched).
+  mn_gid <- object$data[[".multinom_group_"]]
+  if (!is.null(mn_gid) && length(mn_gid) == n_model) {
+    mn_gid <- as.integer(mn_gid)
+    is_mn_row <- !is.na(mn_gid) & mn_gid >= 0L
+    original_row[is_mn_row] <- mn_gid[is_mn_row] + 1L
   }
 
   ## Cell identifiers: reuse the user's column names where available.

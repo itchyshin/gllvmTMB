@@ -226,15 +226,18 @@
   }
 
   fam_ids <- unique(as.integer(family_id_vec))
-  if (length(fam_ids) != 1L || !fam_ids %in% c(0L, 1L, 2L)) {
+  if (length(fam_ids) != 1L || !fam_ids %in% c(0L, 1L, 2L, 5L, 15L)) {
     .gllvmTMB_mspl_abort(c(
-      "LA-MSPL supports a single gaussian, bernoulli, or Poisson response family only.",
-      "i" = "NB1, NB2, beta, Tweedie, and mixed-family MSPL remain deferred at the public door."
+      "LA-MSPL supports a single gaussian, bernoulli, Poisson, nbinom1, or nbinom2 response family only.",
+      "i" = "Beta, Tweedie, and mixed-family MSPL remain deferred at the public door."
     ))
   }
   is_gaussian <- identical(fam_ids, 0L)
   is_bernoulli <- identical(fam_ids, 1L)
   is_poisson <- identical(fam_ids, 2L)
+  is_nbinom2 <- identical(fam_ids, 5L)
+  is_nbinom1 <- identical(fam_ids, 15L)
+  is_nbinom <- is_nbinom1 || is_nbinom2
 
   if (is_bernoulli) {
     if (length(unique(link_id_vec)) != 1L || !all(link_id_vec %in% 0:2)) {
@@ -269,6 +272,18 @@
     if (any(!is.finite(y)) || any(y < 0)) {
       .gllvmTMB_mspl_abort(
         "Poisson LA-MSPL requires finite non-negative counts."
+      )
+    }
+  } else if (is_nbinom) {
+    if (length(unique(link_id_vec)) != 1L || !all(link_id_vec == 0L)) {
+      .gllvmTMB_mspl_abort(c(
+        "nbinom1/nbinom2 LA-MSPL requires the log link.",
+        "i" = "Use {.code nbinom1(link = \"log\")} or {.code nbinom2(link = \"log\")}."
+      ))
+    }
+    if (any(!is.finite(y)) || any(y < 0)) {
+      .gllvmTMB_mspl_abort(
+        "nbinom1/nbinom2 LA-MSPL requires finite non-negative counts."
       )
     }
   }
@@ -306,10 +321,14 @@
         "i" = "Spatial and other structures are deferred."
       ))
     }
-  } else if (is_poisson) {
+  } else if (is_poisson || is_nbinom) {
     if (!isTRUE(ordinary) || isTRUE(spatial_indep) || isTRUE(spatial_latent)) {
       .gllvmTMB_mspl_abort(c(
-        "Poisson LA-MSPL admits only ordinary {.fn latent}.",
+        if (is_poisson) {
+          "Poisson LA-MSPL admits only ordinary {.fn latent}."
+        } else {
+          "nbinom1/nbinom2 LA-MSPL admits only ordinary {.fn latent}."
+        },
         "i" = "Spatial and other structures are deferred."
       ))
     }
@@ -437,6 +456,12 @@
       }
       mspl_S_diag <- .gllvmTMB_mspl_S_diag(y, trait_id, unit_id)
       mspl_N_units <- length(unique(as.integer(unit_id)))
+    } else if (is_nbinom2) {
+      ## Free per-trait phi is an outer block. C++ p_free still excludes it
+      ## (Jeffreys rate is unpinned c=1, same as the planned nbinom door).
+      expected_outer <- c(expected_outer, "log_phi_nbinom2")
+    } else if (is_nbinom1) {
+      expected_outer <- c(expected_outer, "log_phi_nbinom1")
     }
   } else if (spatial_indep) {
     tau_representative <- .gllvmTMB_mspl_tau_representatives(
@@ -467,6 +492,10 @@
     "gaussian"
   } else if (is_poisson) {
     "poisson"
+  } else if (is_nbinom2) {
+    "nbinom2"
+  } else if (is_nbinom1) {
+    "nbinom1"
   } else {
     "binomial"
   }
@@ -499,7 +528,7 @@
   ## Bernoulli: admitted only. Gaussian ordinary: planned allowed during
   ## implement smoke; flip to admitted after se=FALSE smoke (point only —
   ## SE/intervals remain PROTECTED on codex/lane-b-mspl-interval-feasibility).
-  ok_status <- if (is_gaussian || is_poisson) {
+  ok_status <- if (is_gaussian || is_poisson || is_nbinom) {
     registry_row$status %in% c("admitted", "planned")
   } else {
     identical(registry_row$status, "admitted")
@@ -522,6 +551,8 @@
       p_free,
       .gllvmTMB_mspl_poisson_event_count(y)
     )
+  } else if (is_nbinom) {
+    1
   } else {
     2 * sqrt(p_free / N_eff)
   }
@@ -561,6 +592,20 @@
         "; GLM-outer W=diag(mu) candidate (not I_LA(beta)); ",
         "c_P=2*sqrt(p_free/max(sum(y),1)); event-weighted loading atom; ",
         "planned tape, not admitted; Laplace"
+      )
+    } else if (is_nbinom2) {
+      paste0(
+        "complete nbinom2 log; ordinary latent q=",
+        d_B,
+        "; GLM-outer W=mu*phi/(phi+mu) candidate (not I_LA(beta)); ",
+        "unpinned c=1; planned tape, not admitted; Laplace"
+      )
+    } else if (is_nbinom1) {
+      paste0(
+        "complete nbinom1 log; ordinary latent q=",
+        d_B,
+        "; GLM-outer PMF-summed exact I (not quasi W=mu/(1+phi)); ",
+        "unpinned c=1; planned tape, not admitted; Laplace"
       )
     } else {
       paste0(

@@ -26,7 +26,8 @@
     }
     return("identity")
   }
-  if (identical(fid, 2L)) {
+  if (fid %in% c(2L, 5L, 15L)) {
+    ## Poisson / nbinom2 / nbinom1: family_to_id() stores log as link_id 0.
     return("log")
   }
   .gllvmTMB_mspl_link_name(link_id)
@@ -149,6 +150,43 @@
     admitted_pois$q
   )
 
+  ## nbinom1 / nbinom2 ordinary q=1,2: planned fenced tape. NOT admitted.
+  planned_nb <- data.frame(
+    family = rep(c("nbinom1", "nbinom2"), each = 2L),
+    link = "log",
+    structure = "ordinary",
+    q = c(1L, 2L, 1L, 2L),
+    status = "planned",
+    evidence = "phase4_prep",
+    notes = c(
+      paste(
+        "Phase 4 fenced planned tape: GLM-outer PMF-summed exact I,",
+        "NOT quasi W=mu/(1+phi); public estimator=mspl is experimental;",
+        "not admitted; not covered"
+      ),
+      paste(
+        "Phase 4 fenced planned tape: GLM-outer PMF-summed exact I,",
+        "NOT quasi W=mu/(1+phi); public estimator=mspl is experimental;",
+        "not admitted; not covered"
+      ),
+      paste(
+        "Phase 4 fenced planned tape: GLM-outer W=mu*phi/(phi+mu),",
+        "not I_LA(beta); public estimator=mspl is experimental;",
+        "not admitted; not covered"
+      ),
+      paste(
+        "Phase 4 fenced planned tape: GLM-outer W=mu*phi/(phi+mu),",
+        "not I_LA(beta); public estimator=mspl is experimental;",
+        "not admitted; not covered"
+      )
+    ),
+    stringsAsFactors = FALSE
+  )
+  planned_nb$cell_id <- .gllvmTMB_mspl_registry_cell_id(
+    planned_nb$family, planned_nb$link, planned_nb$structure,
+    planned_nb$q
+  )
+
   excluded <- data.frame(
     family = c(
       "binomial",
@@ -156,8 +194,7 @@
       "binomial",
       "binomial",
       "binomial",
-      "binomial",
-      "nbinom2"
+      "binomial"
     ),
     link = c(
       "logit",
@@ -165,8 +202,7 @@
       "logit",
       "logit",
       "logit",
-      "logit",
-      "log"
+      "logit"
     ),
     structure = c(
       "ordinary",
@@ -174,10 +210,9 @@
       "ordinary",
       "ordinary",
       "ordinary",
-      "dep",
-      "ordinary"
+      "dep"
     ),
-    q = c(3L, 1L, 1L, 1L, 1L, 1L, 1L),
+    q = c(3L, 1L, 1L, 1L, 1L, 1L),
     status = "excluded",
     evidence = "fence",
     notes = c(
@@ -186,8 +221,7 @@
       "missing responses deferred",
       "nonzero offset deferred",
       "free Bernoulli Psi deferred",
-      "unstructured dep not an admitted MSPL structure",
-      "NB2 waits for Phase 4 after Poisson admission gate"
+      "unstructured dep not an admitted MSPL structure"
     ),
     stringsAsFactors = FALSE
   )
@@ -204,13 +238,14 @@
       "missing",
       "offset",
       "psi",
-      "dep",
-      "nbinom2"
+      "dep"
     ),
     sep = ":"
   )
 
-  rows <- rbind(admitted_binom, admitted_gauss, admitted_pois, excluded)
+  rows <- rbind(
+    admitted_binom, admitted_gauss, admitted_pois, planned_nb, excluded
+  )
   rows[order(rows$status, rows$family, rows$structure, rows$link, rows$q), ]
 }
 

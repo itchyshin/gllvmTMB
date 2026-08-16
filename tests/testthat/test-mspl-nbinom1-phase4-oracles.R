@@ -4,7 +4,9 @@
 ##   docs/dev-log/research/2026-08-15-mspl-phase4-nbinom1-prep.md
 ## Helpers stay in this file. Do not call live MSPL on nbinom1.
 ## Do not edit src/. Do not widen .gllvmTMB_mspl_prepare().
-## Do not add an nbinom1 registry row.
+## A later planned-only public door may add nbinom1 registry rows.
+## Those rows must stay planned / not admitted. These oracles still
+## do not call live MSPL.
 
 .nb1_mu <- function(eta, exposure = 1) {
   as.numeric(exposure) * exp(as.numeric(eta))
@@ -476,18 +478,20 @@ test_that("N12: NB1 size is mu/phi; log(V-mu) matches the TMB comment", {
   )))
 })
 
-test_that("N13: nbinom1 is not admitted and has no planned registry row", {
+test_that("N13: nbinom1 is not admitted (planned door allowed)", {
   tbl <- .gllvmTMB_mspl_registry()
   nb1 <- tbl[tbl$family == "nbinom1", , drop = FALSE]
   expect_false(any(nb1$status == "admitted"))
-  expect_false(any(nb1$status == "planned"))
-  expect_false(any(nb1$evidence == "phase4_prep"))
-  expect_true(is.null(
-    .gllvmTMB_mspl_registry_lookup("nbinom1", "log", "ordinary", 1L)
-  ))
-  expect_true(is.null(
-    .gllvmTMB_mspl_registry_lookup("nbinom1", "log", "ordinary", 2L)
-  ))
+  if (nrow(nb1)) {
+    expect_true(all(nb1$status == "planned"))
+    expect_true(all(nb1$evidence == "phase4_prep"))
+  }
+  r1 <- .gllvmTMB_mspl_registry_lookup("nbinom1", "log", "ordinary", 1L)
+  r2 <- .gllvmTMB_mspl_registry_lookup("nbinom1", "log", "ordinary", 2L)
+  expect_true(is.null(r1) || identical(r1$status, "planned"))
+  expect_true(is.null(r2) || identical(r2$status, "planned"))
+  expect_false(isTRUE(r1$status == "admitted"))
+  expect_false(isTRUE(r2$status == "admitted"))
 })
 
 test_that("Phase-4 oracles never invoke a live nbinom1 MSPL fit", {

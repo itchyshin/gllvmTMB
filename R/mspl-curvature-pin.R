@@ -9,7 +9,8 @@
 ## Do not copy Codex lane-b helpers. Do not export.
 ##
 ## Family fence (availability pin only; not admission):
-##   binomial + logit, poisson + log, gaussian + identity.
+##   binomial + logit, poisson + log, gaussian + identity,
+##   nbinom1 + log, nbinom2 + log.
 
 .gllvmTMB_mspl_pin_family_link <- function(fit) {
   fam <- fit$family
@@ -115,10 +116,12 @@
   fl <- .gllvmTMB_mspl_pin_family_link(fit)
   allowed <- (identical(fl$family, "binomial") && identical(fl$link, "logit")) ||
     (identical(fl$family, "poisson") && identical(fl$link, "log")) ||
-    (identical(fl$family, "gaussian") && identical(fl$link, "identity"))
+    (identical(fl$family, "gaussian") && identical(fl$link, "identity")) ||
+    (identical(fl$family, "nbinom1") && identical(fl$link, "log")) ||
+    (identical(fl$family, "nbinom2") && identical(fl$link, "log"))
   if (!isTRUE(allowed)) {
     .gllvmTMB_mspl_abort(
-      "The internal MSPL curvature pin is fenced to Bernoulli logit, Poisson log, and Gaussian identity.",
+      "The internal MSPL curvature pin is fenced to Bernoulli logit, Poisson log, Gaussian identity, and nbinom1/nbinom2 log.",
       "x" = "Resolved family {.val {fl$family}}, link {.val {fl$link}}.",
       class = "gllvmTMB_mspl_curvature_family"
     )

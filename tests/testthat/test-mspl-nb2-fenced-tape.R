@@ -1,11 +1,11 @@
-## Curie-nb2: fenced NB2 LA-MSPL tape (Wave 1).
+## Curie-nb2: planned NB2 LA-MSPL tape (not admitted).
 ##
-## Public estimator="mspl" must still error for nbinom2(). The registry
-## cell stays excluded — never planned, never admitted. Poisson being
-## planned (or even publicly callable) does not transfer to NB2.
+## Public estimator="mspl" is the planned door. The registry cell stays
+## planned — never admitted. Poisson being admitted does not make NB2
+## admitted or a covered claim.
 ##
-## The C++ source-pin is allowed RED until the GLM-outer atom exists.
-## Do not treat a Poisson tape as evidence that NB2 is callable.
+## The C++ source-pin names the GLM-outer atom. Do not treat a Poisson
+## tape as evidence that NB2 is admitted.
 
 .mspl_nb2_tiny <- function() {
   n_site <- 8L
@@ -75,29 +75,30 @@
   hits[1L, , drop = FALSE]
 }
 
-test_that("public nbinom2 estimator=mspl still errors at the fence", {
+test_that("public nbinom2 estimator=mspl is the planned door, not admitted", {
   dat <- .mspl_nb2_tiny()
   expect_error(
     gllvmTMB(
       .mspl_nb2_form,
       data = dat,
       family = nbinom2(),
-      estimator = "mspl"
+      estimator = "mspl",
+      control = gllvmTMBcontrol(n_init = 1L, se = FALSE, warn_runaway = FALSE)
     ),
-    class = "gllvmTMB_mspl_unsupported"
+    NA
   )
 })
 
-test_that("nbinom2 ordinary q=1 registry cell stays excluded", {
+test_that("nbinom2 ordinary q=1 registry cell stays planned, not admitted", {
   row <- .mspl_nb2_registry_cell()
   expect_false(is.null(row))
-  expect_identical(row$status, "excluded")
+  expect_identical(row$status, "planned")
 
   tbl <- gllvmTMB:::.gllvmTMB_mspl_registry()
   nb2 <- tbl[tbl$family == "nbinom2", , drop = FALSE]
   expect_gt(nrow(nb2), 0L)
-  expect_true(all(nb2$status == "excluded"))
-  expect_false(any(nb2$status == "planned"))
+  expect_true(all(nb2$status == "planned"))
+  expect_false(any(nb2$status == "excluded"))
   expect_false(any(nb2$status == "admitted"))
 })
 
@@ -116,7 +117,7 @@ test_that("C++ source pins NB2 family_id 5 and W=mu*phi/(phi+mu)", {
   )
 })
 
-test_that("Poisson planned does not make nbinom2 admitted or publicly callable", {
+test_that("nbinom2 planned door is not an admitted or covered claim", {
   pois <- gllvmTMB:::.gllvmTMB_mspl_registry_lookup(
     family = "poisson",
     link = "log",
@@ -130,21 +131,12 @@ test_that("Poisson planned does not make nbinom2 admitted or publicly callable",
 
   tbl <- gllvmTMB:::.gllvmTMB_mspl_registry()
   expect_false(any(tbl$family == "nbinom2" & tbl$status == "admitted"))
-  expect_false(any(tbl$family == "nbinom2" & tbl$status == "planned"))
+  expect_true(any(tbl$family == "nbinom2" & tbl$status == "planned"))
 
   nb2 <- .mspl_nb2_registry_cell()
   expect_false(is.null(nb2))
-  expect_identical(nb2$status, "excluded")
+  expect_identical(nb2$status, "planned")
   expect_false(identical(nb2$status, "admitted"))
-
-  dat <- .mspl_nb2_tiny()
-  expect_error(
-    gllvmTMB(
-      .mspl_nb2_form,
-      data = dat,
-      family = nbinom2(),
-      estimator = "mspl"
-    ),
-    class = "gllvmTMB_mspl_unsupported"
-  )
+  expect_match(nb2$notes, "not admitted")
+  expect_match(nb2$notes, "not covered")
 })

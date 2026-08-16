@@ -4,6 +4,28 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-08-16 — planned-only nbinom door replayed onto main (Cursor)
+
+Lane `cursor/mspl-se-nb-impl` (#1007) reset onto `origin/main` after
+#1017 Poisson admit. Opens a **planned-only** nbinom1/nbinom2 log
+public door so #998 Q_P/Q_0 pins can run. Poisson stays admitted with
+its event-weighted `c_P`. nbinom rate stays unpinned `c=1`. Registry
+`planned` / `phase4_prep`. Not admitted. No public `vcov()` /
+`confint()` / `sdreport()`. No NEWS covered.
+
+```sh
+export OMP_NUM_THREADS=1 NOT_CRAN=true
+# targeted after the replay (this sitting):
+#   mspl-registry|mspl-prepare-fence|mspl-fenced-family-tapes|
+#   mspl-nb1-fenced-tape|mspl-nb2-fenced-tape|
+#   zz-mspl-nbinom-se-feasibility|mspl-nbinom1-phase4-oracles|
+#   estimator-provenance|mspl-api$|mspl-gaussian-heywood-oracles
+#   FAIL 0 | WARN 0 | SKIP 0 | PASS 629
+```
+
+Not run: full `devtools::test()`, `R CMD check`, pkgdown, Totoro.
+No `git add -A`.
+
 ## 2026-08-16 — Gaussian-identity LA-MSPL SE pin (Cursor)
 
 Lane `cursor/mspl-se-gaussian-pin-rebased` rebased onto `origin/main`

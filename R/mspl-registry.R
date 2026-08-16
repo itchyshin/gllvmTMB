@@ -249,16 +249,18 @@
         "public estimator=mspl is experimental; not admitted; not covered"
       ),
       paste(
-        "Phase 4 fenced planned tape: GLM-outer Jeffreys I_mu (Ferrari-Cribari-Neto),",
+        "Phase 4 fenced planned tape: GLM-outer Jeffreys I_mu (Ferrari-Cribari-Neto K_bb),",
+        "w = phi^2 {mu(1-mu)}^2 {trigamma(a)+trigamma(b)};",
         "NOT coercive at mu -> 0/1 (hostility, not a repair);",
-        "atom status 1 on the 8x3 cell; no public door;",
-        "public estimator=mspl is experimental; not admitted; not covered"
+        "no public door; public estimator=mspl is experimental;",
+        "not admitted; not covered"
       ),
       paste(
-        "Phase 4 fenced planned tape: GLM-outer Jeffreys I_mu (Ferrari-Cribari-Neto),",
+        "Phase 4 fenced planned tape: GLM-outer Jeffreys I_mu (Ferrari-Cribari-Neto K_bb),",
+        "w = phi^2 {mu(1-mu)}^2 {trigamma(a)+trigamma(b)};",
         "NOT coercive at mu -> 0/1 (hostility, not a repair);",
-        "atom status 1 on the 8x3 cell; no public door;",
-        "public estimator=mspl is experimental; not admitted; not covered"
+        "no public door; public estimator=mspl is experimental;",
+        "not admitted; not covered"
       )
     ),
     stringsAsFactors = FALSE

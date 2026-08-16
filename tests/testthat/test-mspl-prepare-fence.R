@@ -6,8 +6,9 @@
 ## Tweedie behind class gllvmTMB_mspl_unsupported.
 ##
 ## #1014 keeps Tweedie/Beta planned registry rows but does NOT open
-## the public door: Tweedie live MSPL hangs; Beta Jeffreys atom
-## returns status 1 on the 8x3 cell.
+## the public door: Tweedie live MSPL hangs. The Beta Jeffreys atom
+## is the FCN K_bb (phi^2) form; V8 status 1 is OK_MP_CERTIFIED.
+## Family id 7 stays off the public allow-list.
 
 test_that("LA-MSPL prepare still rejects beta and Tweedie", {
   n_site <- 8L

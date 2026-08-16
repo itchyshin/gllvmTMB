@@ -183,33 +183,28 @@ test_that("E7: V_loading is mu-inert; Poisson P_J moves with mu", {
   expect_gt(abs(dV_dL), 1e-8)
 })
 
-test_that("Poisson ordinary q1/q2 are planned phase4_prep only (not admitted)", {
+test_that("Poisson ordinary q1/q2 are experimental-point admitted (not covered)", {
   tbl <- .gllvmTMB_mspl_registry()
-  planned <- tbl[tbl$status == "planned", , drop = FALSE]
-  pois <- planned[planned$family == "poisson", , drop = FALSE]
+  admitted <- tbl[tbl$status == "admitted", , drop = FALSE]
+  pois <- admitted[admitted$family == "poisson", , drop = FALSE]
   expect_identical(nrow(pois), 2L)
   expect_true(all(pois$link == "log"))
   expect_true(all(pois$structure == "ordinary"))
   expect_identical(sort(pois$q), c(1L, 2L))
-  expect_true(all(pois$evidence == "phase4_prep"))
-  expect_false(any(pois$status == "admitted"))
+  expect_true(all(pois$evidence == "admit_packet"))
+  expect_false(any(pois$evidence == "covered"))
 
   p1 <- .gllvmTMB_mspl_registry_lookup("poisson", "log", "ordinary", 1L)
   p2 <- .gllvmTMB_mspl_registry_lookup("poisson", "log", "ordinary", 2L)
-  expect_identical(p1$status, "planned")
-  expect_identical(p2$status, "planned")
-  expect_identical(p1$evidence, "phase4_prep")
+  expect_identical(p1$status, "admitted")
+  expect_identical(p2$status, "admitted")
+  expect_identical(p1$evidence, "admit_packet")
   expect_identical(p2$cell_id, "poisson:log:ordinary:q2")
-  notes_claim <- gsub(
-    "not admitted|not covered",
-    "",
-    paste(p1$notes, p2$notes),
-    ignore.case = TRUE
-  )
-  expect_false(grepl("\\badmitted\\b", notes_claim, ignore.case = TRUE))
-  expect_false(grepl("\\bcovered\\b", notes_claim, ignore.case = TRUE))
+  expect_match(p1$notes, "not a covered campaign")
+  expect_match(p1$notes, "no public SE")
+  expect_false(grepl("\\bcovered\\b", p1$evidence, ignore.case = TRUE))
 
-  ## No excluded poisson ordinary q1 collision with planned lookup.
+  ## No excluded poisson ordinary q1 collision with admitted lookup.
   excluded <- tbl[tbl$status == "excluded", , drop = FALSE]
   expect_false(any(excluded$cell_id == "poisson:log:ordinary:q1"))
   expect_false(any(grepl("^poisson:log:ordinary:q1", excluded$cell_id)))

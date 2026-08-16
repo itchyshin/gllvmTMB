@@ -1,11 +1,11 @@
-test_that("Registry lists Bernoulli + Gaussian ordinary admitted (point only)", {
+test_that("Registry lists Bernoulli + Gaussian + Poisson ordinary admitted (point only)", {
   tbl <- .gllvmTMB_mspl_registry()
   admitted <- tbl[tbl$status == "admitted", , drop = FALSE]
   planned <- tbl[tbl$status == "planned", , drop = FALSE]
   excluded <- tbl[tbl$status == "excluded", , drop = FALSE]
 
-  expect_identical(nrow(admitted), 17L)
-  expect_true(all(admitted$family %in% c("binomial", "gaussian")))
+  expect_identical(nrow(admitted), 19L)
+  expect_true(all(admitted$family %in% c("binomial", "gaussian", "poisson")))
   binom <- admitted[admitted$family == "binomial", , drop = FALSE]
   expect_identical(nrow(binom), 15L)
   expect_identical(sort(unique(binom$link)), c("cloglog", "logit", "probit"))
@@ -22,12 +22,13 @@ test_that("Registry lists Bernoulli + Gaussian ordinary admitted (point only)", 
   expect_true(all(gauss$evidence == "oracle_local"))
   expect_identical(sort(gauss$q), c(1L, 2L))
 
-  expect_identical(nrow(planned), 2L)
-  expect_true(all(planned$family == "poisson"))
-  expect_true(all(planned$link == "log"))
-  expect_true(all(planned$structure == "ordinary"))
-  expect_identical(sort(planned$q), c(1L, 2L))
-  expect_true(all(planned$evidence == "phase4_prep"))
+  pois_adm <- admitted[admitted$family == "poisson", , drop = FALSE]
+  expect_identical(nrow(pois_adm), 2L)
+  expect_true(all(pois_adm$link == "log"))
+  expect_true(all(pois_adm$structure == "ordinary"))
+  expect_identical(sort(pois_adm$q), c(1L, 2L))
+  expect_true(all(pois_adm$evidence == "admit_packet"))
+  expect_identical(nrow(planned), 0L)
   expect_false(any(duplicated(tbl$cell_id)))
   expect_true(any(grepl("NB2 waits for Phase 4", excluded$notes)))
   expect_false(any(excluded$family == "poisson"))
@@ -41,8 +42,10 @@ test_that("Registry lists Bernoulli + Gaussian ordinary admitted (point only)", 
   pois <- .gllvmTMB_mspl_registry_lookup(
     "poisson", "log", "ordinary", 1L
   )
-  expect_identical(pois$status, "planned")
-  expect_identical(pois$evidence, "phase4_prep")
+  expect_identical(pois$status, "admitted")
+  expect_identical(pois$evidence, "admit_packet")
+  expect_match(pois$notes, "not a covered campaign")
+  expect_match(pois$notes, "no public SE")
 })
 
 test_that("Phase 2 lookup of an admitted Bernoulli cell is unique", {

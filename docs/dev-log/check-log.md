@@ -4,6 +4,33 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-08-16 — Poisson ordinary experimental-point admit (Cursor)
+
+Lane `cursor/mspl-poisson-admit-g0` from `origin/main` @
+`235be4b4` (#1008). Two Poisson ordinary rows `planned` →
+`admitted` / `admit_packet`. No NEWS. No public SE. No other
+family. No `git add -A`.
+
+```sh
+export OMP_NUM_THREADS=1 NOT_CRAN=true
+pkgload::load_all(".", compile = TRUE)
+testthat::test_file("tests/testthat/test-mspl-registry.R")
+# FAIL 0 | PASS 28
+testthat::test_file("tests/testthat/test-mspl-poisson-admit-packet.R")
+# FAIL 0 | PASS 45
+testthat::test_file("tests/testthat/test-mspl-poisson-public-door.R")
+# FAIL 0 | PASS 7
+testthat::test_file("tests/testthat/test-mspl-poisson-phase4-oracles.R")
+# FAIL 0 | PASS 43
+testthat::test_file("tests/testthat/test-mspl-fenced-family-tapes.R")
+# FAIL 0 | PASS 23
+rg 'family = "poisson"' -A 12 R/mspl-registry.R
+# status = "admitted"; evidence = "admit_packet"
+```
+
+Not run: full `devtools::test()`, `--as-cran`, Totoro B1
+restart. B1 pid 2779264 left running.
+
 ## 2026-08-15 — Poisson LA-MSPL admit packet (Cursor)
 
 Lane `cursor/mspl-poisson-admit-rebased` from `origin/main` after

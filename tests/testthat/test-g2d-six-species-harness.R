@@ -14,6 +14,7 @@ test_that("G2d six-species fixture contract validates without fitting", {
 })
 
 test_that("G2d preflight seals a writable root without fitting", {
+  isdm_dev_path()  # skips when dev/ did not ship in the built package
   pkg_root <- normalizePath(file.path(testthat::test_path(), "..", ".."), mustWork = TRUE)
   script <- file.path(pkg_root, "dev", "isdm-package-recovery", "run-g2d-six-species-recovery.R")
   out_abs <- file.path(pkg_root, "dev", "isdm-package-recovery", "results", paste0("testthat-g2d-preflight-", Sys.getpid()))
@@ -27,6 +28,7 @@ test_that("G2d preflight seals a writable root without fitting", {
 })
 
 test_that("G2d smoke-boundary diagnostic proves the shared pre-fit path", {
+  isdm_dev_path()  # skips when dev/ did not ship in the built package
   pkg_root <- normalizePath(file.path(testthat::test_path(), "..", ".."), mustWork = TRUE)
   script <- file.path(pkg_root, "dev", "isdm-package-recovery", "run-g2d-six-species-recovery.R")
   out_abs <- file.path(pkg_root, "dev", "isdm-package-recovery", "results", paste0("testthat-g2d-smoke-boundary-", Sys.getpid()))
@@ -44,6 +46,7 @@ test_that("G2d smoke-boundary diagnostic proves the shared pre-fit path", {
 })
 
 test_that("G2d private artifacts freeze the six-species contract", {
+  isdm_dev_path()  # skips when dev/ did not ship in the built package
   pkg_root <- normalizePath(file.path(testthat::test_path(), "..", ".."), mustWork = TRUE)
   artifact <- function(name) {
     paste(readLines(file.path(pkg_root, "dev", "isdm-package-recovery", name), warn = FALSE), collapse = "\n")

@@ -347,12 +347,25 @@ test_that("compiled cloglog objective, gradient, and Hessian stay finite in both
   dir.create(scratch)
   on.exit(unlink(scratch, recursive = TRUE), add = TRUE)
   fixture_dir <- testthat::test_path("fixtures")
+  ## Candidate 1 is the source tree. Candidate 2 is a checked build, where the
+  ## sources sit in <pkg>.Rcheck/00_pkg_src/ -- TWO levels up from
+  ## tests/testthat, not three. The three-level form was off by one, so the
+  ## fallback written for the check environment never resolved there, and the
+  ## empty-subset `[[1L]]` raised `subscript out of bounds` instead. Verified
+  ## against a real check tree, 2026-08-16. The three-level form is retained in
+  ## case some layout does need it.
   header_candidates <- c(
     testthat::test_path("..", "..", "src", "gllvmTMB_cloglog.h"),
+    testthat::test_path("..", "..", "00_pkg_src", "gllvmTMB",
+                        "src", "gllvmTMB_cloglog.h"),
     testthat::test_path("..", "..", "..", "00_pkg_src", "gllvmTMB",
                         "src", "gllvmTMB_cloglog.h")
   )
-  header <- header_candidates[file.exists(header_candidates)][[1L]]
+  header_found <- header_candidates[file.exists(header_candidates)]
+  ## Skip rather than subscript an empty vector when no layout matches.
+  testthat::skip_if(length(header_found) == 0L,
+                    "production cloglog header not locatable in this layout")
+  header <- header_found[[1L]]
   files <- c("gllvmTMB_cloglog_tail.cpp", "gllvmTMB_cloglog.h")
   file.copy(c(file.path(fixture_dir, files[[1L]]),
               header), scratch)

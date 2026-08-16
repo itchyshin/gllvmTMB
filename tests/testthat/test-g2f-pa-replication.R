@@ -1,4 +1,5 @@
 test_that("G2f adds only PA visits while retaining original supports and the source gate", {
+  isdm_dev_path()  # skips when dev/ did not ship in the built package
   pkg <- normalizePath(file.path(testthat::test_path(), "..", ".."), mustWork = TRUE)
   e <- new.env(parent = globalenv())
   source(file.path(pkg, "dev", "isdm-package-recovery", "g2f-pa-replication-fixture.R"), local = e)
@@ -13,6 +14,7 @@ test_that("G2f adds only PA visits while retaining original supports and the sou
 })
 
 test_that("G2f oracle doubles conditional PA information and retains GBIF information", {
+  isdm_dev_path()  # skips when dev/ did not ship in the built package
   pkg <- normalizePath(file.path(testthat::test_path(), "..", ".."), mustWork = TRUE)
   e <- new.env(parent = globalenv())
   source(file.path(pkg, "dev", "isdm-package-recovery", "g2f-pa-replication-fixture.R"), local = e)
@@ -25,6 +27,7 @@ test_that("G2f oracle doubles conditional PA information and retains GBIF inform
 })
 
 test_that("G2f preflight retains a readable, self-contained no-fit contract", {
+  isdm_dev_path()  # skips when dev/ did not ship in the built package
   pkg <- normalizePath(file.path(testthat::test_path(), "..", ".."), mustWork = TRUE)
   script <- file.path(pkg, "dev", "isdm-package-recovery", "run-g2f-pa-replication.R")
   root <- file.path(pkg, "dev", "isdm-package-recovery", "results", paste0("g2f-test-preflight-", as.integer(Sys.time())))
@@ -39,6 +42,7 @@ test_that("G2f preflight retains a readable, self-contained no-fit contract", {
 })
 
 test_that("G2f runner validates without a fit", {
+  isdm_dev_path()  # skips when dev/ did not ship in the built package
   pkg <- normalizePath(file.path(testthat::test_path(), "..", ".."), mustWork = TRUE)
   script <- file.path(pkg, "dev", "isdm-package-recovery", "run-g2f-pa-replication.R")
   out <- tempfile("g2f-validate-")
@@ -48,6 +52,7 @@ test_that("G2f runner validates without a fit", {
 })
 
 test_that("G2f smoke launcher validates without loading the package or fitting", {
+  isdm_dev_path()  # skips when dev/ did not ship in the built package
   pkg <- normalizePath(file.path(testthat::test_path(), "..", ".."), mustWork = TRUE)
   script <- file.path(pkg, "dev", "isdm-package-recovery", "run-g2f-pa-replication-smoke.R")
   out <- tempfile("g2f-smoke-validate-")
@@ -58,6 +63,7 @@ test_that("G2f smoke launcher validates without loading the package or fitting",
 })
 
 test_that("G2f reconciliation closes only an existing unclosed smoke root without fitting", {
+  isdm_dev_path()  # skips when dev/ did not ship in the built package
   pkg <- normalizePath(file.path(testthat::test_path(), "..", ".."), mustWork = TRUE)
   script <- file.path(pkg, "dev", "isdm-package-recovery", "run-g2f-pa-replication-smoke.R")
   root <- file.path(pkg, "dev", "isdm-package-recovery", "results", paste0("g2f-test-reconcile-", Sys.getpid()))

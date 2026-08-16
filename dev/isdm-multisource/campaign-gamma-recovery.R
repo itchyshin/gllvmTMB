@@ -40,6 +40,11 @@ run_cell <- function(n_sources, mix, eff_ratio, seed) {
   dat$env <- x[match(as.character(dat$cell_id), cells)]
   dat$src <- factor(dat$isdm_source, levels = src_names)
 
+  ## the all-count arm uses plain poisson() DELIBERATELY: an all-count
+  ## declaration needs no admission and isdm_sources() would add nothing --
+  ## but that means the allpo half of the grid exercises the ordinary route,
+  ## not the declared one, and the register row must count only the "pa"
+  ## half (600 fits) as isdm_sources() evidence.
   fit <- try(suppressMessages(suppressWarnings(gllvmTMB(
     value ~ 0 + trait + trait:env + trait:src + offset(log_support) +
       latent(0 + trait | cell_id, d = 1),
@@ -63,10 +68,24 @@ run_cell <- function(n_sources, mix, eff_ratio, seed) {
   est <- unname(fit$opt$par[idx])
   truth <- as.vector(t(gamma[-1L, , drop = FALSE]))
   ok <- length(est) == length(truth)
+  ## SPLIT the recovery metric by arm type. Pooling all (n_sources - 1) * 3
+  ## gammas into one RMSE dilutes the fixed number of hard PA gammas with a
+  ## growing pool of easy PO gammas as arms are added, manufacturing an
+  ## apparent improvement that is an averaging artifact (review finding B2).
+  ## In the "pa" mix the LAST source is the PA arm, so its 3 gammas are the
+  ## final 3 entries of `truth`/`est` (trait-fastest within source).
+  err <- if (ok) est - truth else NULL
+  pa_idx <- if (ok && mix == "pa") {
+    seq.int(length(err) - 2L, length(err))
+  } else integer(0)
+  po_idx <- if (ok) setdiff(seq_along(err), pa_idx) else integer(0)
+  rmse <- function(z) if (length(z)) sqrt(mean(z^2)) else NA_real_
   data.frame(n_sources = n_sources, mix = mix, eff_ratio = eff_ratio,
              seed = seed, conv = fit$opt$convergence, pd = pd,
-             gamma_rmse = if (ok) sqrt(mean((est - truth)^2)) else NA_real_,
-             gamma_bias = if (ok) mean(est - truth) else NA_real_)
+             gamma_rmse = rmse(err),
+             gamma_rmse_po = rmse(err[po_idx]),
+             gamma_rmse_pa = rmse(err[pa_idx]),
+             gamma_bias = if (ok) mean(err) else NA_real_)
 }
 
 grid <- expand.grid(n_sources = c(2L, 3L, 4L), mix = c("allpo", "pa"),
@@ -82,6 +101,8 @@ cat("wrote", out, "rows", nrow(res), "\n")
 cat("\n== errors:", sum(is.na(res$conv)),
     " conv0:", sum(res$conv == 0, na.rm = TRUE), "/", nrow(res),
     " pd_pass:", sum(res$pd, na.rm = TRUE), "\n")
-agg <- aggregate(cbind(gamma_rmse, gamma_bias, pd) ~ n_sources + mix + eff_ratio,
-                 data = res, FUN = function(z) round(mean(z, na.rm = TRUE), 3))
+agg <- aggregate(cbind(gamma_rmse, gamma_rmse_po, gamma_rmse_pa, gamma_bias, pd)
+                 ~ n_sources + mix + eff_ratio,
+                 data = res, FUN = function(z) round(mean(z, na.rm = TRUE), 3),
+                 na.action = na.pass)
 print(agg, row.names = FALSE)

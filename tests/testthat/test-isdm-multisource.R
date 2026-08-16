@@ -52,16 +52,34 @@ test_that("isdm_sources() validates its declaration", {
 test_that("a declared three-source mixed-law model fits through gllvmTMB()", {
   skip_if_not_installed("TMB")
   dat <- .ms_fixture()
+  ## the per-source reporting-rate term (trait:src) is part of the exemplar on
+  ## purpose: without one, the arms share an absolute intercept and the fit
+  ## implicitly claims the absolute intensity PO data cannot identify -- the
+  ## exact shape the one-time notice warns users against. The test must not
+  ## demonstrate the misspecification the package tells users to avoid.
+  dat$src <- factor(dat$isdm_source,
+                    levels = c("gbif", "literature", "survey"))
   fam <- isdm_sources(gbif = poisson(), literature = poisson(),
                       survey = binomial(link = "cloglog"))
   fit <- suppressMessages(gllvmTMB(
-    value ~ 0 + trait + trait:env + offset(log_support) +
+    value ~ 0 + trait + trait:env + trait:src + offset(log_support) +
       latent(0 + trait | cell_id, d = 1),
     data = dat, trait = "trait", unit = "cell_id", family = fam,
     silent = TRUE
   ))
   expect_s3_class(fit, "gllvmTMB")
   expect_identical(fit$opt$convergence, 0L)
+})
+
+test_that("an all-detection declaration is refused at construction", {
+  ## B1 from review: the constructor accepted an all-PA declaration that the
+  ## offset gate then killed 200 lines downstream with an error about Poisson.
+  ## Refused here, where the reason is visible.
+  expect_error(
+    isdm_sources(survey_a = binomial("cloglog"),
+                 survey_b = binomial("cloglog")),
+    "at least one count arm"
+  )
 })
 
 test_that("the declared contract's refusals hold", {

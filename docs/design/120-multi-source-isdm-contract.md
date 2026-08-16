@@ -38,11 +38,15 @@ is the admission predicate's hard-coded `gbif`/`survey_pa` names.
 The concern: the thinned-Poisson argument that licenses mixing Poisson-log with
 Bernoulli-cloglog was verified at two arms. Does it survive `D > 2`?
 
-**Yes, because it was never a pairwise argument.** The joint log-likelihood the
-template computes is a per-row sum (`src/gllvmTMB.cpp`, fid dispatch): conditional on
-the shared latent field `u`, rows are independent, and each row's density involves
-only that row's `eta`. There is no cross-arm term anywhere. So coherence is an
-**arm-by-arm property against the shared intensity**, checked once per arm:
+**Yes, because it was never a pairwise argument.** Conditional on the shared latent
+field `u`, the rows factorise: each row's density involves only that row's `eta`, and
+there is no cross-arm term anywhere in the template. (Stated carefully, because the
+template is not literally a flat per-row sum: the AGHQ branch aggregates per unit, the
+`mi()` machinery sums per unit, and the multinomial family is evaluated per group at an
+anchor row — but each of these is an exact marginalisation or regrouping of the
+conditionally-independent product, and none introduces a term coupling two arms beyond
+their shared `eta`.) So coherence is an **arm-by-arm property against the shared
+intensity**, checked once per arm:
 
 - A **Poisson-log** arm asserts `log E[Y] = eta + log a` — the arm observes the
   intensity `exp(eta)` thinned by its own known support `a`. Coherent by definition
@@ -61,8 +65,20 @@ transformation; #945's original refusal reasoning), false of every
 dispersion-carrying family (per-trait nuisance ambiguity, #945 wrinkle 1).
 
 **Consequence:** the admitted law set at `D` arms is exactly the admitted set at 2
-arms — `{Poisson-log, Bernoulli-cloglog}` — with any multiset of them across arms:
-all-count, all-PA, or any mix. No shrinkage, no expansion.
+arms — `{Poisson-log, Bernoulli-cloglog}`. Two qualifications keep this honest:
+
+- **All-PA is refused at construction, not admitted.** The arms of an all-detection
+  declaration are mutually coherent by the argument above, but the cloglog
+  change-of-support offset is currently admitted only inside the mixed contract, so an
+  all-PA fit cannot be expressed; `isdm_sources()` refuses it where the user can see
+  why rather than letting the offset gate kill it downstream with an error about
+  Poisson. An all-detection multi-survey route is deferred scope, not a coherence
+  failure. (All-count is the opposite case: no relaxation needed, ordinary route.)
+- **This bounds the admitted LAW SET, not estimator quality.** The Laplace
+  approximation's accuracy is not arm-count-invariant even though the model is:
+  sparse Bernoulli arms degrade the Gaussian-curvature approximation in a way count
+  arms do not. The campaign's 95% `pd_hessian` rate is evidence on exactly this axis
+  and should be read as a rate, not a guarantee.
 
 ## 3. Identifiability at D arms (Fisher's question, and what the recovery study must test)
 
@@ -102,8 +118,10 @@ fit <- gllvmTMB(
 
 - takes ≥ 2 named arguments, each a `family` object from the admitted set;
 - returns the ordinary mixed-family list the engine already consumes, with
-  `attr(., "family_var") = "isdm_source"` and
-  `attr(., "isdm_source_laws")` recording the declared name→law map;
+  `attr(., "family_var") = "isdm_source"`. (An `isdm_source_laws` attribute records
+  the map for inspection but is informational only — validation rebuilds the
+  declaration from the list's names and laws, which survive the reordering that
+  strips attributes.);
 - the data must carry an `isdm_source` column whose values are exactly the declared
   names. The user's `source`/`src` column for the formula is their own business —
   the *selector* column is the contract surface.
@@ -116,8 +134,12 @@ magic strings. Declaration-first is what makes the admission auditable at any `n
 - any law outside `{Poisson-log, Bernoulli-cloglog}` on any arm — including
   logit/probit and all dispersion-carrying families;
 - a trait missing any declared source (the per-trait both-arms rule becomes a
-  per-trait **all-declared-sources** rule; same rationale — the within-trait pairing
-  IS the model, and a partial trait re-opens the fence-bypass class found in review);
+  per-trait **all-declared-sources** rule). Two honest limits of this rule: it checks
+  **presence, not balance** — a single row of a source inside a trait satisfies it, as
+  it did in the two-source form — and it counts **rows, not observed responses**, so
+  under `miss_control(response = "include")` an all-`NA` detection column passes the
+  check while contributing nothing to the likelihood. Both are inherited from Model 1
+  and recorded rather than silently claimed away;
 - an `isdm_source` value not in the declaration, or a declared source absent from
   the data;
 - `weights` (two incompatible meanings across arms — Gauss blocker, unchanged);
@@ -141,10 +163,10 @@ one code path, one definition of admission.
 - **Methods:** the public route, nonspatial `latent(d = 1)` (the arm with cleared
   Design 111 gates); spatial deferred to its own campaign.
 - **Performance:** bias/RMSE per gamma; `pd_hessian` PASS rate per cell; convergence.
-- **Compute:** Totoro, ≤150 cores, D-139 discipline — estimate + pre-run test +
-  maintainer approval before the full grid. The two planning probes (3.6 s and ~5 s
-  per fit at these sizes) suggest a full grid in low core-hours, to be confirmed by
-  the pre-run.
+- **Compute:** Totoro, ≤150 cores, D-139 discipline — estimate + pre-run test first;
+  a full grid whose priced wall-clock exceeds 30 minutes additionally needs maintainer
+  approval, and one under it runs on the receipt alone (D-139's own rule). The
+  realised campaign priced at ~1–2 minutes wall on 100 cores and ran on the receipt.
 
 ## 7. Explicitly out of scope (deferred, not forgotten)
 

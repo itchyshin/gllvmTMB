@@ -52,9 +52,14 @@
 #' This interface is experimental and may change.
 #'
 #' @param ... Two or more named arguments; each name is a source label and each
-#'   value its observation law (`poisson()` or `binomial("cloglog")`).
-#' @return A mixed-family list understood by [gllvmTMB()], carrying the
-#'   declaration as attributes (`family_var = "isdm_source"`).
+#'   value its observation law (`poisson()` or `binomial("cloglog")`). At least
+#'   one source must be a count stream: the detection arm's offset is admitted
+#'   only alongside a count arm sharing the same intensity, so an
+#'   all-detection declaration is refused here rather than failing later.
+#' @return A mixed-family list understood by [gllvmTMB()], with
+#'   `family_var = "isdm_source"`. (The `isdm_source_laws` attribute is
+#'   informational only: internal validation rebuilds the declaration from the
+#'   list's names and laws, which survive reordering; the attribute does not.)
 #' @examples
 #' fam <- isdm_sources(
 #'   gbif       = poisson(),
@@ -93,6 +98,22 @@ isdm_sources <- function(...) {
       "x" = "Logit or probit detection models, and dispersion-carrying families, do not share that scale and are refused."
     ))
   }
+  ## An all-detection declaration cannot currently be fitted: the cloglog
+  ## change-of-support offset is admitted only inside the mixed contract, so a
+  ## declaration with no count arm would be built here and then refused far
+  ## downstream by the count-family offset gate, with an error about Poisson
+  ## that never mentions the real cause. Refuse it where the user can see why.
+  ## (An all-count declaration is the opposite case: it needs no relaxation at
+  ## all and fits through the ordinary route, so it is accepted.)
+  fids <- vapply(ids, function(x) x[["fid"]], integer(1L))
+  if (!any(fids == 2L)) {
+    cli::cli_abort(c(
+      "An integrated declaration needs at least one count arm.",
+      "x" = "Every declared source is a detection/non-detection stream.",
+      "i" = "The detection arm's offset is admitted as a change-of-support term only alongside a count arm sharing the same intensity; an all-detection multi-survey route is not yet supported.",
+      ">" = "Declare at least one {.code poisson()} source, or fit the surveys separately."
+    ))
+  }
   out <- laws
   attr(out, "family_var") <- "isdm_source"
   attr(out, "isdm_source_laws") <- do.call(rbind, ids)
@@ -126,8 +147,11 @@ isdm_sources <- function(...) {
   ## EVERY trait must carry EVERY declared source. The two-source form of this
   ## rule closed a real fence bypass (an ordinary between-trait mixed-family
   ## fit satisfying a data-frame-global predicate); the generalised rule closes
-  ## the same class at any n. A trait observed by only some declared sources is
-  ## not the declared model.
+  ## the same class at any n. Two honest limits, inherited from the two-source
+  ## form and recorded in Design 120 section 5: this checks PRESENCE, not
+  ## balance (one row of a source inside a trait satisfies it), and it counts
+  ## ROWS, not observed responses (under miss_control(response = "include") an
+  ## all-NA arm passes while contributing nothing to the likelihood).
   if (is.null(trait_labels) || length(trait_labels) != data_n) return(FALSE)
   by_trait <- split(sel, as.character(trait_labels), drop = TRUE)
   isTRUE(length(by_trait) > 0L) &&

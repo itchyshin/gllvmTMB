@@ -8,11 +8,16 @@ isdm_sources(...)
 }
 \arguments{
 \item{...}{Two or more named arguments; each name is a source label and each
-value its observation law (\code{poisson()} or \code{binomial("cloglog")}).}
+value its observation law (\code{poisson()} or \code{binomial("cloglog")}). At least
+one source must be a count stream: the detection arm's offset is admitted
+only alongside a count arm sharing the same intensity, so an
+all-detection declaration is refused here rather than failing later.}
 }
 \value{
-A mixed-family list understood by \code{\link[=gllvmTMB]{gllvmTMB()}}, carrying the
-declaration as attributes (\code{family_var = "isdm_source"}).
+A mixed-family list understood by \code{\link[=gllvmTMB]{gllvmTMB()}}, with
+\code{family_var = "isdm_source"}. (The \code{isdm_source_laws} attribute is
+informational only: internal validation rebuilds the declaration from the
+list's names and laws, which survive reordering; the attribute does not.)
 }
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}

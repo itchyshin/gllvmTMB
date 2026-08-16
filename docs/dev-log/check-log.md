@@ -1,5 +1,25 @@
 # Check log
 
+## 2026-08-16 — Gamma / lognormal MSPL door gap (Cursor)
+
+SE-arc track 4. Rebased onto `origin/main` @ `7db5f2dc` (#1053).
+Phase-4 oracles pin \(W=\phi_\gamma\) and \(W=1/\sigma_\varepsilon^2\)
+but leave rate, loading atom, and the tape OPEN. `#1007` is not a
+licence: nbinom C++ weights already existed; fid 3/4 still
+`unknown family_id`. Research-only gap list. No door. No `src/`
+tape. No admit. No NEWS. `#1000` skip_if stays.
+
+```sh
+git rev-parse --short origin/main   # 7db5f2dc
+rg -n 'fam_ids %in%' R/mspl.R
+# c(0L, 1L, 2L, 5L, 15L)
+rg -n 'No prepare widen|No C\+\+ tape' R/mspl-registry.R
+git diff --stat -- src/ R/mspl.R R/fit-multi.R NEWS.md
+# empty
+```
+
+Not run: `devtools::test()`, `--as-cran`, Totoro.
+
 ## 2026-08-16 — MSPL SE series board (Cursor)
 
 Docs-only board at

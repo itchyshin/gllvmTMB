@@ -268,6 +268,27 @@
     planned_tb$q
   )
 
+  ## Delta/hurdle ordinary q=1,2: planned Phase-4-style prep. NOT admitted.
+  ## Prepare still rejects family_id 12/13 — no public estimator door.
+  planned_hurdle <- data.frame(
+    family = rep(c("delta_lognormal", "delta_gamma"), each = 2L),
+    link = "log",
+    structure = "ordinary",
+    q = c(1L, 2L, 1L, 2L),
+    status = "planned",
+    evidence = "phase4_prep",
+    notes = paste(
+      "Phase 5 cell; Phase-4-style prep only; shared-eta hurdle atom;",
+      "prepare still rejects family_id 12/13; no public estimator door;",
+      "not admitted; not covered"
+    ),
+    stringsAsFactors = FALSE
+  )
+  planned_hurdle$cell_id <- .gllvmTMB_mspl_registry_cell_id(
+    planned_hurdle$family, planned_hurdle$link, planned_hurdle$structure,
+    planned_hurdle$q
+  )
+
   excluded <- data.frame(
     family = c(
       "binomial",
@@ -326,7 +347,7 @@
 
   rows <- rbind(
     admitted_binom, admitted_gauss, admitted_pois, planned_nb,
-    planned_gamma, planned_lnorm, planned_tb, excluded
+    planned_gamma, planned_lnorm, planned_tb, planned_hurdle, excluded
   )
   rows[order(rows$status, rows$family, rows$structure, rows$link, rows$q), ]
 }

@@ -4,6 +4,36 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-08-16 — Gaussian-identity LA-MSPL SE pin (Cursor)
+
+Lane `cursor/mspl-se-other-impl` in `/tmp/gllvmtmb-mspl-se-impl`.
+Extends the existing internal \(Q_P\)/\(Q_0\) pin to Gaussian
+identity. Public `se=TRUE` still withholds `sdreport()`. No
+`vcov()` / `confint()`. No registry flip. Bernoulli pin not
+rebuilt. Codex Lane B remains the binary SE owner.
+
+```sh
+export OMP_NUM_THREADS=1 NOT_CRAN=true
+# RED (before fence extension):
+#   gllvmTMB_mspl_curvature_family
+#   "fenced to Bernoulli logit and Poisson log"
+#   Resolved family "gaussian", link "identity"
+# GREEN (after):
+#   test-zz-mspl-gaussian-se-feasibility.R  PASS 35
+```
+
+```sh
+rg -n 'sd_rep <- if \\(identical\\(estimator, "mspl"\\)\\)' R/fit-multi.R
+# R/fit-multi.R:6423 unchanged
+rg -n 'gllvmTMB_mspl_curvature_pin' NAMESPACE
+# no matches (unexported)
+rg -n 'status = "admitted"' R/mspl-registry.R
+# gaussian/bernoulli rows untouched
+```
+
+Not run: `devtools::test()`, `R CMD check`, pkgdown, Totoro,
+Poisson next-step (wait for admit-packet PR).
+
 ## 2026-08-15 — MSPL items 1–3 conductor (Cursor)
 
 Items 1–3 + SE-CI. No `src/`. No registry admit. No `git add -A`.

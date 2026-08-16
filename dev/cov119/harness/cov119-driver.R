@@ -18,6 +18,10 @@
 ##   export OPENBLAS_NUM_THREADS=1
 ##   export COV119_REPO_ROOT=/path/to/gllvmTMB-checkout
 ##   export COV119_CORES=40          # default 40
+##   export COV119_SE_ROUTE=quad     # default "quad"; "joint" for wave-1b
+##                                   # (Design 119 sec.7) -- requires an
+##                                   # installed gllvmTMB build that carries
+##                                   # the se_route argument.
 ##   nohup Rscript cov119-driver.R > cov119-driver.log 2>&1 &
 ##
 ## Output: cov119-cells.csv (one row per fit, appended incrementally after
@@ -36,6 +40,13 @@ suppressPackageStartupMessages(library(gllvmTMB))
 
 mc_cores <- as.integer(Sys.getenv("COV119_CORES", unset = "40"))
 stopifnot(is.finite(mc_cores), mc_cores >= 1L)
+
+## Design 119 sec.7: wave-1 (route = "quad") over-covered se_confidence;
+## COV119_SE_ROUTE lets wave-1b rerun the identical harness with
+## route = "joint" and nothing else changed. Default preserves wave-1
+## exactly.
+cov119_se_route <- Sys.getenv("COV119_SE_ROUTE", unset = "quad")
+stopifnot(cov119_se_route %in% c("quad", "joint"))
 
 csv_path     <- "cov119-cells.csv"
 summary_path <- "cov119-summary.csv"
@@ -111,7 +122,9 @@ run_one_rep <- function(mechanism, mech_idx, rep) {
       error = function(e) FALSE
     )
 
-    pm <- gllvmTMB::predict_missing(fit, type = "response", se = TRUE)
+    pm <- gllvmTMB::predict_missing(
+      fit, type = "response", se = TRUE, se_route = cov119_se_route
+    )
 
     ## BINDING (Arc0 discipline): no silent join loss, exact cell identity.
     stopifnot(

@@ -3,6 +3,15 @@
 This coordination note prevents a new session from treating this repository as
 a single writable lane.  It is a map, not a release/capability claim.
 
+**Refresh 2026-08-15 #9 (Cursor): Student-t + ordinal Phase-4 planned prep.**
+Lane **`cursor/mspl-phase4-student-ordinal`** · WT
+`/tmp/gllvmtmb-mspl-student-ordinal` · LOOP
+`docs/dev-log/lanes/cursor-mspl-phase4-student-ordinal/LOOP/`.
+Board **na → planned prep** for `student()` identity and
+`ordinal_probit()`. **Not admitted.** No registry row. No public
+door. **PROTECTED:** `codex/lane-b-mspl-interval-feasibility`.
+**START HERE:** `2026-08-15-cursor-handover-phase4-student-ordinal.md`.
+
 **Refresh 2026-08-15 #8 (Cursor): MSPL items 1–3 KEEP PLANNED.**
 Conductor sitting. Poisson admit **KEEP PLANNED** (smoke operational
 PASS / admit FAIL). #988 no-SE-campaign receipt **MERGED**.
@@ -84,6 +93,7 @@ missing-data ledger remains open and separately owned unless reassigned.
 
 | Lane | Owner | State | Start here | Boundary |
 | --- | --- | --- | --- | --- |
+| **LA-MSPL Student-t + ordinal Phase-4 prep** | Cursor | **PLANNED PREP** (not admitted). Notes + oracles only; no registry row; no public door | `2026-08-15-cursor-handover-phase4-student-ordinal.md`; LOOP `docs/dev-log/lanes/cursor-mspl-phase4-student-ordinal/LOOP/` | No admit; no NEWS covered; no `estimator=mspl` on student/ordinal; Binary SE **PROTECTED** |
 | **LA-MSPL items 1–3 (smoke / SE-CI / receipts)** | Cursor | **KEEP PLANNED.** #988 MERGED. #989 + #990 open. Do not merge #972–#976. Do not admit | `2026-08-15-cursor-handover-mspl-1-3.md` | No admit; no NEWS covered; no Totoro SE campaign; Binary SE **PROTECTED** |
 | **LA-MSPL SE feasibility pin** | Cursor | **CLOSED + MERGED** [#979](https://github.com/itchyshin/gllvmTMB/pull/979) `10d6a209`. Internal \(Q_P\)+\(Q_0\) pin; public SE withheld; Poisson `planned`. Do not reopen. Do not merge #972–#976 | `2026-08-16-cursor-handover-se-pin.md`; LOOP `docs/dev-log/lanes/cursor-mspl-se-feasibility-pin/LOOP/` | Historical; no admit; no NEWS covered; no Codex absorb; no public `vcov()`; Binary SE **PROTECTED** |
 | **LA-MSPL Phase-4 tapes** | Cursor | **GOAL LANDED** [#978](https://github.com/itchyshin/gllvmTMB/pull/978) (not admitted; CI re-running after provenance/NB1 fix). Five C++ tapes; public `mspl` = gaussian + bernoulli + Poisson. Do not merge #972–#976 from this lane | `2026-08-15-cursor-handover-phase4-tapes.md`; LOOP `docs/dev-log/lanes/cursor-mspl-phase4-tapes-planned/LOOP/` | Historical successor is the SE-pin lane; Poisson planned only; no NEWS covered; no public `mspl` on NB1/NB2/beta/Tweedie |

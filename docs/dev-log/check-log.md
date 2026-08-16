@@ -118,6 +118,32 @@ rg -n 'SE covered' docs/dev-log/research/2026-08-15-mspl-b1-totoro-receipt.md
 Not run: `devtools::test()`, `R CMD check`, pkgdown, Totoro,
 DRAC.
 
+## 2026-08-15 — MSPL Student-t + ordinal Phase-4 prep (Cursor)
+
+Lane `cursor/mspl-phase4-student-ordinal`. Planned prep only.
+No `src/`. No registry row. No public door. No NEWS covered.
+No `git add -A`. No repo-root `LOOP/`.
+
+```sh
+export OMP_NUM_THREADS=1 NOT_CRAN=true
+pkgload::load_all(".", compile = FALSE)
+# RED: could not find function .st_fixture / .ord_fixture
+testthat::test_file("tests/testthat/test-mspl-student-phase4-oracles.R")
+# GREEN PASS 51 / 13 blocks
+testthat::test_file("tests/testthat/test-mspl-ordinal-phase4-oracles.R")
+# GREEN PASS 45 / 12 blocks
+testthat::test_file("tests/testthat/test-mspl-registry.R")
+# PASS 26
+git diff --stat -- src/ R/mspl.R R/mspl-registry.R NEWS.md
+# empty
+rg -n "estimator\\s*=\\s*[\"']mspl[\"']" \
+  tests/testthat/test-mspl-student-phase4-oracles.R \
+  tests/testthat/test-mspl-ordinal-phase4-oracles.R
+# fence-only (negated expects)
+```
+
+Not run: `devtools::test()`, `devtools::check()`, pkgdown, Totoro.
+
 ## 2026-08-15 — MSPL items 1–3 conductor (Cursor)
 
 Items 1–3 + SE-CI. No `src/`. No registry admit. No `git add -A`.

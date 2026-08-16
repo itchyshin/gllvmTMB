@@ -296,7 +296,7 @@ test_that("E10: hurdle rows are planned phase4_prep only; prepare rejects 12/13"
     value = TRUE
   )
   expect_true(length(fence) >= 1L)
-  expect_true(any(grepl("c\\(0L,\\s*1L,\\s*2L,\\s*5L,\\s*15L\\)", fence)))
+  expect_true(any(grepl("c\\(0L,\\s*1L,\\s*2L,\\s*5L,\\s*7L,\\s*15L\\)", fence)))
   expect_false(any(grepl("12L", fence)))
   expect_false(any(grepl("13L", fence)))
 })

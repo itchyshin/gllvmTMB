@@ -103,7 +103,7 @@ test_that("public mspl rejects Beta() and tweedie() at the door", {
   )
 })
 
-test_that("NB2 stays excluded; no planned/admitted beta or Tweedie; Poisson not admitted", {
+test_that("NB2 stays excluded; no planned/admitted beta or Tweedie; Poisson ordinary admitted", {
   ## Excluded rows carry a suffix on cell_id, so lookup() is the wrong door.
   reg <- gllvmTMB:::.gllvmTMB_mspl_registry()
   nb2 <- reg[reg$family == "nbinom2", , drop = FALSE]
@@ -121,8 +121,8 @@ test_that("NB2 stays excluded; no planned/admitted beta or Tweedie; Poisson not 
   expect_null(gllvmTMB:::.gllvmTMB_mspl_registry_lookup(
     "tweedie", "log", "ordinary", 1L
   ))
-  expect_false(any(reg$family == "poisson" & reg$status == "admitted"))
-  expect_false(any(reg$family %in% c("poisson", "nbinom1", "nbinom2",
+  expect_true(any(reg$family == "poisson" & reg$status == "admitted"))
+  expect_false(any(reg$family %in% c("nbinom1", "nbinom2",
                                      beta_names, tweedie_names) &
                      reg$status == "admitted"))
 })

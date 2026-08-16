@@ -124,26 +124,29 @@
     admitted_gauss$q
   )
 
-  ## Poisson ordinary q=1,2: planned fenced tape. NOT admitted.
-  planned_pois <- data.frame(
+  ## Poisson ordinary q=1,2: experimental point after #1008 + G0 2026-08-16.
+  ## #990 smoke was operational PASS / admit-evidence FAIL. Not covered.
+  ## No public SE / vcov / confint.
+  admitted_pois <- data.frame(
     family = "poisson",
     link = "log",
     structure = "ordinary",
     q = c(1L, 2L),
-    status = "planned",
-    evidence = "phase4_prep",
+    status = "admitted",
+    evidence = "admit_packet",
     notes = paste(
-      "Phase 4 fenced planned tape: GLM-outer W=diag(mu), not I_LA(beta);",
-      "c_P event-count rate + event-weighted loading atom (admit packet);",
-      "public estimator=mspl is experimental; not admitted; not covered"
+      "Phase 4 GLM-outer W=diag(mu), not I_LA(beta);",
+      "c_P event-count rate + event-weighted loading atom (#1008);",
+      "experimental point (G0 2026-08-16); #990 operational PASS /",
+      "admit-evidence FAIL; not a covered campaign; no public SE"
     ),
     stringsAsFactors = FALSE
   )
-  planned_pois$cell_id <- .gllvmTMB_mspl_registry_cell_id(
-    planned_pois$family,
-    planned_pois$link,
-    planned_pois$structure,
-    planned_pois$q
+  admitted_pois$cell_id <- .gllvmTMB_mspl_registry_cell_id(
+    admitted_pois$family,
+    admitted_pois$link,
+    admitted_pois$structure,
+    admitted_pois$q
   )
 
   excluded <- data.frame(
@@ -207,7 +210,7 @@
     sep = ":"
   )
 
-  rows <- rbind(admitted_binom, admitted_gauss, planned_pois, excluded)
+  rows <- rbind(admitted_binom, admitted_gauss, admitted_pois, excluded)
   rows[order(rows$status, rows$family, rows$structure, rows$link, rows$q), ]
 }
 

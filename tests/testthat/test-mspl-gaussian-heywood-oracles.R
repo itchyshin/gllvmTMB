@@ -411,10 +411,11 @@ test_that("E7: V_loading psi-gradient is identically zero", {
 test_that("Gaussian MSPL ordinary rows are admitted oracle_local (point only; not covered)", {
   ## G0 Q2 2026-08-15: keep admitted / oracle_local after local se=FALSE smoke.
   ## Oracles here still do NOT promote a covered / NEWS claim.
-  ## Poisson Phase-4 prep may occupy planned rows; Gaussian stays admitted.
+  ## Poisson ordinary is now admitted experimental point; Gaussian stays
+  ## admitted / oracle_local. Planned rows, if any, are not Gaussian.
   tbl <- .gllvmTMB_mspl_registry()
   planned <- tbl[tbl$status == "planned", , drop = FALSE]
-  expect_true(all(planned$family == "poisson"))
+  expect_false(any(planned$family == "gaussian"))
   g1 <- .gllvmTMB_mspl_registry_lookup("gaussian", "identity", "ordinary", 1L)
   g2 <- .gllvmTMB_mspl_registry_lookup("gaussian", "identity", "ordinary", 2L)
   expect_identical(g1$status, "admitted")

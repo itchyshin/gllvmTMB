@@ -1,6 +1,7 @@
 ## Poisson LA-MSPL SE feasibility pin (availability only).
-## Public se=TRUE must still withhold sdreport(). Registry stays planned.
-## Internal pin names Q_P and Q_0 separately. Not exported. Not admitted.
+## Public se=TRUE must still withhold sdreport(). Registry is admitted
+## (experimental point) after G0 2026-08-16. Internal pin names Q_P and
+## Q_0 separately. Not exported. Not covered. No public vcov.
 ##
 ## Named test-zz-* so it runs after test-va-all-family-light-fits.R.
 ## See the Bernoulli twin file for the CI #979 ordering note.
@@ -76,7 +77,7 @@ withr::local_envvar(c(OMP_NUM_THREADS = "1"), .local_envir = teardown_env())
   )
 }
 
-test_that("Poisson MSPL registry stays planned while se=TRUE is withheld", {
+test_that("Poisson MSPL registry is admitted while se=TRUE is withheld", {
   row <- gllvmTMB:::.gllvmTMB_mspl_registry_lookup(
     family = "poisson",
     link = "log",
@@ -84,14 +85,15 @@ test_that("Poisson MSPL registry stays planned while se=TRUE is withheld", {
     q = 1L
   )
   expect_false(is.null(row))
-  expect_identical(row$status, "planned")
-  expect_false(identical(row$status, "admitted"))
-  expect_match(row$notes, "not admitted")
-  expect_match(row$notes, "not covered")
+  expect_identical(row$status, "admitted")
+  expect_identical(row$evidence, "admit_packet")
+  expect_false(identical(row$evidence, "covered"))
+  expect_match(row$notes, "not a covered campaign")
+  expect_match(row$notes, "no public SE")
 
   fit <- .mspl_se_pois_fit()
   expect_s3_class(fit, "gllvmTMB_mspl")
-  expect_identical(fit$mspl$registry_status, "planned")
+  expect_identical(fit$mspl$registry_status, "admitted")
   expect_null(fit$sd_report)
   expect_false(isTRUE(fit$mspl$inference$available))
   expect_false(isTRUE(fit$mspl$inference$calibrated))
@@ -155,7 +157,7 @@ test_that("internal Poisson curvature pin names both tapes and stays unexported"
   expect_false(isTRUE(all.equal(pin$penalised$nll, pin$penalty_off$nll)))
   expect_null(fit$sd_report)
   expect_false(isTRUE(fit$mspl$inference$calibrated))
-  expect_identical(fit$mspl$registry_status, "planned")
+  expect_identical(fit$mspl$registry_status, "admitted")
 })
 
 test_that("Poisson Q_0 non-PD is a recorded finding, not a crash", {
@@ -182,5 +184,5 @@ test_that("Poisson Q_0 non-PD is a recorded finding, not a crash", {
   expect_null(fit$sd_report)
   expect_false(isTRUE(fit$mspl$inference$available))
   expect_false(isTRUE(fit$mspl$inference$calibrated))
-  expect_identical(fit$mspl$registry_status, "planned")
+  expect_identical(fit$mspl$registry_status, "admitted")
 })

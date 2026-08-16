@@ -1,6 +1,8 @@
 ## Poisson LA-MSPL admit packet — pinned c_P, event-weighted loading
-## atom, TMB/pure-R oracles. Registry stays planned. Not an admission
-## flip. Not Bernoulli V_loading. Not Gaussian Hirose. Not public SE.
+## atom, TMB/pure-R oracles. Registry is admitted / admit_packet after
+## G0 2026-08-16 (experimental point). #990 was operational PASS /
+## admit-evidence FAIL. Not Bernoulli V_loading. Not Gaussian Hirose.
+## Not public SE. Not NEWS covered.
 ##
 ## Research: docs/dev-log/research/2026-08-15-mspl-phase4-poisson-prep.md
 ## Constitution Phase 4: information atom + coercivity; exposure ≠
@@ -216,8 +218,9 @@ test_that("A7: live Poisson tape reports pinned c_P and event-weighted V", {
   dat <- .poisson_admit_dat()
   fit <- .poisson_admit_fit(dat, q = 1L)
   expect_s3_class(fit, "gllvmTMB_mspl")
-  expect_identical(fit$mspl$registry_status, "planned")
-  expect_false(identical(fit$mspl$registry_status, "admitted"))
+  expect_identical(fit$mspl$registry_status, "admitted")
+  expect_identical(fit$mspl$registry_evidence, "admit_packet")
+  expect_false(identical(fit$mspl$registry_evidence, "covered"))
 
   p_free <- as.integer(fit$mspl$p_free)
   event <- .gllvmTMB_mspl_poisson_event_count(dat$y)
@@ -251,12 +254,15 @@ test_that("A7: live Poisson tape reports pinned c_P and event-weighted V", {
   )
 })
 
-test_that("A8: Poisson ordinary cells stay planned after the admit packet", {
+test_that("A8: Poisson ordinary cells are experimental-point admitted after G0", {
   p1 <- .gllvmTMB_mspl_registry_lookup("poisson", "log", "ordinary", 1L)
   p2 <- .gllvmTMB_mspl_registry_lookup("poisson", "log", "ordinary", 2L)
-  expect_identical(p1$status, "planned")
-  expect_identical(p2$status, "planned")
-  expect_false(identical(p1$status, "admitted"))
-  expect_match(p1$notes, "not admitted")
-  expect_match(p1$notes, "not covered")
+  expect_identical(p1$status, "admitted")
+  expect_identical(p2$status, "admitted")
+  expect_identical(p1$evidence, "admit_packet")
+  expect_identical(p2$evidence, "admit_packet")
+  expect_false(identical(p1$evidence, "covered"))
+  expect_match(p1$notes, "admit-evidence FAIL")
+  expect_match(p1$notes, "not a covered campaign")
+  expect_match(p1$notes, "no public SE")
 })

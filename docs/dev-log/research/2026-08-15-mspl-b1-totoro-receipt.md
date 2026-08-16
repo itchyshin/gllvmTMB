@@ -1,18 +1,22 @@
-# D-139 receipt — Design 118 B1 proposed on Totoro (not launched)
+# D-139 receipt — Design 118 B1 (Totoro canary + Totoro full)
 
-**Date:** 2026-08-15
+**Date:** 2026-08-15 (proposed) · **updated 2026-08-16 overnight**
 **Roles:** Gauss / Rose
-**Lane:** `cursor/mspl-b1-totoro-receipt` (this file + launcher only)
-**Status:** **PROPOSED, NOT STARTED.** Host = **Totoro**. Full-grid
-estimate **~2,900 core-hours / ~19–21 h wall at 140–150 cores**.
-This sitting did **not** SSH and did **not** start the campaign.
+**Lane:** overnight Cursor sitting after Shinichi G0
+(`--mode=canary`, then full B1; prefer DRAC; Totoro full only if
+DRAC impossible)
 
-**Scanner:** B1 interval-calibration D-139 receipt is **filled**.
-`host=Totoro`. `minutes` for the full grid is **~1,160–1,260**
-(19–21 h), from B0's published conversion, **not** a B1-measured
-shard. Totoro **not** occupied. DRAC **not** started. GitHub
-Actions **not** used. Public MSPL `se=TRUE` / `sd_report` is
-**still withheld**. This is **not** an SE-covered claim.
+**Status:** **CANARY DONE. FULL B1 RUNNING ON TOTORO.**
+Host used = **Totoro**. DRAC full array **not started** (impossible
+tonight: `/project` quota exceeded; `MaxArraySize=10000` < 26400
+tasks at `--outer-per-shard 3`). GitHub Actions **not** used.
+Public MSPL `se=TRUE` / `sd_report` is **still withheld**. This is
+**not** an SE-covered claim.
+
+**Scanner:** `host=Totoro`. Canary `minutes≈2`. Full-grid estimate
+still **~1,160–1,260** min @ 140 cores (B0 conversion); full job
+started `2026-08-16T01:53:53Z` pid `2779264` workers=140.
+DRAC started? **no**. Actions campaign? **no**. SE covered? **no**.
 
 **Reader:** the human or next agent who will fire
 `dev/mspl-b1-totoro-launch.sh`. Read the estimate caveats before
@@ -106,8 +110,8 @@ without a new number.
 
 **Canary (optional, ≤30 min intended):** one reduced shard of
 B010 (`--outer-per-shard 1 --bootstrap-reps 5`). That is a
-timing probe, not B1. The launcher `--mode=canary` prints that
-command. This sitting does not run it.
+timing probe, not B1. **Overnight 2026-08-16 ran it on Totoro
+and it was healthy** (see the update below).
 
 ---
 
@@ -129,7 +133,114 @@ command. This sitting does not run it.
 | SE covered? | **no** |
 
 Filling this table after a job has started would not have been a
-receipt. This sitting fills it **before** any SSH.
+receipt. The 2026-08-15 sitting filled it **before** any SSH.
+The 2026-08-16 overnight sitting updates the live table below.
+
+---
+
+## Overnight update — 2026-08-16 (Shinichi G0: canary, then DRAC full, Totoro full only if DRAC impossible)
+
+### Totoro canary — HEALTHY
+
+Host `totoro`. Command:
+
+```sh
+MSPL_B1_PACKAGE_ROOT=/home/snakagaw/gllvmtmb-b1-timing-a3b31e62 \
+MSPL_B1_OUT_ROOT=/home/snakagaw/gllvmtmb-local-artifacts/b1-canary-20260816 \
+MSPL_B1_WORKERS=140 \
+MSPL_B1_CONFIRM=yes \
+  ~/mspl-b1-totoro-launch.sh --on-totoro --mode=canary
+```
+
+Checkout: `#981` @ `a3b31e62` (harness not on `main`).
+Cell B010, 1 outer, 5 bootstrap reps. Wall **≈1–2 min**
+(finished 2026-08-15 19:50:26 MDT). Wrote
+`shards/B010-shard-001.csv` (3 rows, `status=ok`), 65
+profile-trace rows, 10 bootstrap-replicate rows. One coordinate
+was screen-refused (`constant_response`) with typed NA profile
+bounds — fence behaviour, not a crash. Reap complete (D-142).
+Not B1. Not coverage. Not SE-covered.
+
+### DRAC full — NOT STARTED (impossible tonight)
+
+`sbatch-b1.sh` on #981 is a **template**, not a ready launcher
+(array bounds commented; `/project` paths required). Fir SSH
+works (`login2`, `sbatch` present, account `def-snakagaw_cpu`
+used by the earlier arc3 array). Staging failed:
+
+- `mkdir /project/def-snakagaw/snakagaw/gllvmtmb-mspl-b1-20260816`
+  → **Disk quota exceeded**. Touch inside the existing arc3
+  tree also failed. `/project` used 29.59G with write refused.
+- `MaxArraySize=10000` on fir; `--outer-per-shard 3` map is
+  **26400** tasks (header+26400 from `--print-map`). Would need
+  three arrays even after quota is freed.
+- `/scratch` write works, but Design 118 / D-50 keepers stay on
+  `/project`, never `/scratch`.
+
+Exact DRAC command **after Shinichi frees `/project` quota**
+and a one-time `R CMD INSTALL` of `a3b31e62` into `$ROOT/Rlib`
+(setup job, not a login-node fit):
+
+```sh
+# On fir, after quota is free and setup INSTALL has finished:
+ROOT=/project/def-snakagaw/snakagaw/gllvmtmb-mspl-b1-20260816
+# Split 26400 tasks across MaxArraySize=10000:
+#   sbatch --array=1-10000   sbatch-b1-filled.sh   # task-id 1..10000
+#   sbatch --array=1-10000   sbatch-b1-filled.sh   # remap +10000
+#   sbatch --array=1-6400    sbatch-b1-filled.sh   # remap +20000
+# Each filled script must set:
+#   MSPL_B1_PACKAGE_ROOT=$ROOT/source/gllvmTMB
+#   MSPL_B1_R_LIB=$ROOT/Rlib:/home/snakagaw/R/lane_b_4.5
+#   MSPL_B1_OUT_ROOT=$ROOT/out          # must be /project/*
+#   #SBATCH --account=def-snakagaw_cpu
+#   #SBATCH --time=02:30:00
+#   --outer-per-shard 3 --reps 600 --bootstrap-reps 500
+# Unset GLLVM_TMB_PILOT_SOURCE after INSTALL so 26400 tasks
+# do not race load_all.
+```
+
+Do **not** submit that until `/project` accepts writes.
+Do **not** put keepers on `/scratch`.
+
+### Totoro full — STARTED (DRAC impossible)
+
+Because DRAC could not be staged, the G0 fallback fired:
+
+```sh
+MSPL_B1_PACKAGE_ROOT=/home/snakagaw/gllvmtmb-b1-timing-a3b31e62 \
+MSPL_B1_OUT_ROOT=/home/snakagaw/gllvmtmb-local-artifacts/b1-full-20260816 \
+MSPL_B1_WORKERS=140 \
+MSPL_B1_CONFIRM=yes \
+  ~/mspl-b1-totoro-launch.sh --on-totoro --mode=full
+```
+
+Started **2026-08-16T01:53:53Z**, pid `2779264`, workers=140
+(D-143 cap 150). 129 shard CSVs within 28 s; load rose to ~58
+on a 384-core box. Estimate still ~19–21 h @ 140 cores from
+the B0 conversion. If it overruns ~21 h, stop and re-report.
+
+```sh
+# Morning peek
+ssh totoro 'tail -20 ~/gllvmtmb-local-artifacts/b1-full-20260816/logs/full-launch.log
+ls ~/gllvmtmb-local-artifacts/b1-full-20260816/shards | wc -l
+ps -p 2779264 -o pid,etime || echo finished'
+```
+
+---
+
+## Live receipt table (2026-08-16 overnight)
+
+| Field | Value |
+|---|---|
+| Status | **CANARY DONE · FULL B1 RUNNING** |
+| Host actually used | **Totoro** |
+| Canary minutes | **≈2** (B010, 1 outer, 5 boot; healthy) |
+| Full estimate (min) | **~1,160–1,260** @ 140 cores (B0 conversion; still uncertain) |
+| Full started | **2026-08-16T01:53:53Z** pid `2779264` |
+| DRAC started? | **no** — `/project` quota exceeded; exact command recorded above |
+| Actions campaign? | **no** |
+| SE covered? | **no** |
+| Public `sd_report`? | **still withheld** |
 
 ---
 

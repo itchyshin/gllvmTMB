@@ -20,14 +20,16 @@
 ## Poisson log is also link_id 0 in family_to_id(); do not call it logit.
 .gllvmTMB_mspl_family_link_name <- function(family_id, link_id) {
   fid <- as.integer(family_id[[1L]])
-  if (identical(fid, 0L)) {
+  if (fid %in% c(0L, 9L)) {
+    ## gaussian / student: identity is link_id 0. Do not call it logit.
     if (!identical(as.integer(link_id[[1L]]), 0L)) {
       return(NA_character_)
     }
     return("identity")
   }
-  if (fid %in% c(2L, 3L, 4L, 5L, 6L, 15L)) {
-    ## Poisson / lognormal / Gamma / nbinom2 / Tweedie / nbinom1:
+  if (fid %in% c(2L, 3L, 4L, 5L, 6L, 10L, 11L, 15L)) {
+    ## Poisson / lognormal / Gamma / nbinom2 / Tweedie /
+    ## truncated_poisson / truncated_nbinom2 / nbinom1:
     ## family_to_id() stores log as link_id 0. Do not call it logit.
     return("log")
   }
@@ -289,6 +291,71 @@
     planned_hurdle$q
   )
 
+  ## student / ordinal_probit / betabinomial / truncated_* / multinomial
+  ## ordinary q=1,2: planned Phase-4-style prep. NOT admitted.
+  ## Prepare still rejects family_id 8/9/10/11/14/16 — no public door.
+  planned_rest <- data.frame(
+    family = c(
+      "student", "student",
+      "ordinal_probit", "ordinal_probit",
+      "betabinomial", "betabinomial",
+      "truncated_poisson", "truncated_poisson",
+      "truncated_nbinom2", "truncated_nbinom2",
+      "multinomial", "multinomial"
+    ),
+    link = c(
+      "identity", "identity",
+      "probit", "probit",
+      "logit", "logit",
+      "log", "log",
+      "log", "log",
+      "logit", "logit"
+    ),
+    structure = "ordinary",
+    q = rep(c(1L, 2L), 6L),
+    status = "planned",
+    evidence = "phase4_prep",
+    notes = c(
+      rep(paste(
+        "Phase 4-style prep: GLM-outer W=(nu+1)/(nu+3)/sigma^2 (mean-inert);",
+        "not Gaussian Hirose; prepare still rejects family_id 9;",
+        "no public door; not admitted; not covered; se=FALSE only"
+      ), 2L),
+      rep(paste(
+        "Phase 4-style prep: GLM-outer W=E[s_eta^2] (threshold probit);",
+        "psi pinned at 1; not Bernoulli V_loading;",
+        "prepare still rejects family_id 14; no public door;",
+        "not admitted; not covered; se=FALSE only"
+      ), 2L),
+      rep(paste(
+        "Phase 4-style prep: GLM-outer PMF-summed exact I_eta,",
+        "NOT binomial N*mu*(1-mu); prepare still rejects family_id 8;",
+        "no public door; not admitted; not covered; se=FALSE only"
+      ), 2L),
+      rep(paste(
+        "Phase 4-style prep: GLM-outer W=Var(Y|Y>=1), NOT Poisson mu;",
+        "prepare still rejects family_id 10; no public door;",
+        "not admitted; not covered; se=FALSE only"
+      ), 2L),
+      rep(paste(
+        "Phase 4-style prep: GLM-outer truncated exact I,",
+        "NOT untruncated W=mu*phi/(phi+mu);",
+        "prepare still rejects family_id 11; no public door;",
+        "not admitted; not covered; se=FALSE only"
+      ), 2L),
+      rep(paste(
+        "Phase 4-style prep: GLM-outer I=diag(p)-pp' on K-1 contrasts,",
+        "NOT independent Bernoulli; prepare still rejects family_id 16;",
+        "no public door; not admitted; not covered; se=FALSE only"
+      ), 2L)
+    ),
+    stringsAsFactors = FALSE
+  )
+  planned_rest$cell_id <- .gllvmTMB_mspl_registry_cell_id(
+    planned_rest$family, planned_rest$link, planned_rest$structure,
+    planned_rest$q
+  )
+
   excluded <- data.frame(
     family = c(
       "binomial",
@@ -347,7 +414,8 @@
 
   rows <- rbind(
     admitted_binom, admitted_gauss, admitted_pois, planned_nb,
-    planned_gamma, planned_lnorm, planned_tb, planned_hurdle, excluded
+    planned_gamma, planned_lnorm, planned_tb, planned_hurdle,
+    planned_rest, excluded
   )
   rows[order(rows$status, rows$family, rows$structure, rows$link, rows$q), ]
 }

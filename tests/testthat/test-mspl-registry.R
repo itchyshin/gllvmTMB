@@ -28,10 +28,12 @@ test_that("Registry lists Bernoulli + Gaussian + Poisson ordinary admitted (poin
   expect_true(all(pois_adm$structure == "ordinary"))
   expect_identical(sort(pois_adm$q), c(1L, 2L))
   expect_true(all(pois_adm$evidence == "admit_packet"))
-  expect_identical(nrow(planned), 16L)
+  expect_identical(nrow(planned), 28L)
   expect_true(all(planned$family %in% c(
     "nbinom1", "nbinom2", "gamma", "lognormal", "tweedie", "Beta",
-    "delta_lognormal", "delta_gamma"
+    "delta_lognormal", "delta_gamma",
+    "student", "ordinal_probit", "betabinomial",
+    "truncated_poisson", "truncated_nbinom2", "multinomial"
   )))
   expect_identical(sum(planned$family == "nbinom1"), 2L)
   expect_identical(sum(planned$family == "nbinom2"), 2L)
@@ -40,16 +42,27 @@ test_that("Registry lists Bernoulli + Gaussian + Poisson ordinary admitted (poin
   expect_identical(sum(planned$family == "Beta"), 2L)
   expect_identical(sum(planned$family == "delta_lognormal"), 2L)
   expect_identical(sum(planned$family == "delta_gamma"), 2L)
-  expect_true(all(planned$link %in% c("log", "logit")))
+  expect_identical(sum(planned$family == "student"), 2L)
+  expect_identical(sum(planned$family == "ordinal_probit"), 2L)
+  expect_identical(sum(planned$family == "betabinomial"), 2L)
+  expect_identical(sum(planned$family == "truncated_poisson"), 2L)
+  expect_identical(sum(planned$family == "truncated_nbinom2"), 2L)
+  expect_identical(sum(planned$family == "multinomial"), 2L)
+  expect_true(all(planned$link %in% c("log", "logit", "identity", "probit")))
   expect_true(all(planned$structure == "ordinary"))
   expect_identical(sort(unique(planned$q)), c(1L, 2L))
   expect_true(all(planned$evidence == "phase4_prep"))
   expect_false(any(duplicated(tbl$cell_id)))
   expect_false(any(excluded$family %in% c(
-    "poisson", "nbinom1", "nbinom2", "delta_lognormal", "delta_gamma"
+    "poisson", "nbinom1", "nbinom2", "delta_lognormal", "delta_gamma",
+    "student", "ordinal_probit", "betabinomial",
+    "truncated_poisson", "truncated_nbinom2", "multinomial"
   )))
   expect_false(any(planned$status == "admitted"))
-  expect_false(any(admitted$family %in% c("gamma", "lognormal")))
+  expect_false(any(admitted$family %in% c(
+    "gamma", "lognormal", "student", "ordinal_probit", "betabinomial",
+    "truncated_poisson", "truncated_nbinom2", "multinomial"
+  )))
 
   hit <- .gllvmTMB_mspl_registry_lookup(
     "gaussian", "identity", "ordinary", 1L
@@ -113,6 +126,39 @@ test_that("Registry lists Bernoulli + Gaussian + Poisson ordinary admitted (poin
   expect_identical(dg$status, "planned")
   expect_identical(dln$evidence, "phase4_prep")
   expect_false(identical(dln$status, "admitted"))
+
+  st <- .gllvmTMB_mspl_registry_lookup(
+    "student", "identity", "ordinary", 1L
+  )
+  ord <- .gllvmTMB_mspl_registry_lookup(
+    "ordinal_probit", "probit", "ordinary", 2L
+  )
+  bb <- .gllvmTMB_mspl_registry_lookup(
+    "betabinomial", "logit", "ordinary", 1L
+  )
+  ztp <- .gllvmTMB_mspl_registry_lookup(
+    "truncated_poisson", "log", "ordinary", 1L
+  )
+  tnb <- .gllvmTMB_mspl_registry_lookup(
+    "truncated_nbinom2", "log", "ordinary", 2L
+  )
+  mn <- .gllvmTMB_mspl_registry_lookup(
+    "multinomial", "logit", "ordinary", 1L
+  )
+  expect_identical(st$status, "planned")
+  expect_identical(ord$status, "planned")
+  expect_identical(bb$status, "planned")
+  expect_identical(ztp$status, "planned")
+  expect_identical(tnb$status, "planned")
+  expect_identical(mn$status, "planned")
+  expect_true(all(c(
+    st$evidence, ord$evidence, bb$evidence,
+    ztp$evidence, tnb$evidence, mn$evidence
+  ) == "phase4_prep"))
+  expect_false(identical(st$status, "admitted"))
+  expect_false(identical(mn$status, "admitted"))
+  expect_match(st$notes, "no public door")
+  expect_match(mn$notes, "no public door")
 })
 
 test_that("Phase 2 lookup of an admitted Bernoulli cell is unique", {

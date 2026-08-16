@@ -106,7 +106,11 @@ test_that("public mspl still rejects Beta() and tweedie() at the door", {
 
 test_that("nbinom/Tweedie/Beta planned is not admitted; public door stays closed", {
   reg <- gllvmTMB:::.gllvmTMB_mspl_registry()
-  planned_ok <- c("nbinom1", "nbinom2", "tweedie", "Beta", "gamma", "lognormal")
+  planned_ok <- c(
+    "nbinom1", "nbinom2", "tweedie", "Beta", "gamma", "lognormal",
+    "student", "ordinal_probit", "betabinomial",
+    "truncated_poisson", "truncated_nbinom2", "multinomial"
+  )
   nb_tb <- reg[reg$family %in% planned_ok, , drop = FALSE]
   expect_true(nrow(nb_tb) >= 8L)
   expect_true(all(nb_tb$status == "planned"))

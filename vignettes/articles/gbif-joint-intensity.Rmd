@@ -244,3 +244,29 @@ levels and is exactly what the integrated route provides:
 - [More than two sources](integrated-multi-source-example.html)
 - [Joint species distribution model](joint-sdm.html) — the binary-occurrence
   JSDM guide, without the point-process framing.
+
+# References
+
+Blanchet, F.G., Cazelles, K. and Gravel, D. (2020). Co-occurrence is not
+evidence of ecological interactions. *Ecology Letters* **23**, 1050–1063.
+
+Elith, J., Graham, C.H., Anderson, R.P., et al. (2006). Novel methods improve
+prediction of species' distributions from occurrence data. *Ecography* **29**,
+129–151.
+
+Renner, I.W., Elith, J., Baddeley, A., Fithian, W., Hastie, T., Phillips,
+S.J., Popovic, G. and Warton, D.I. (2015). Point process models for
+presence-only analysis. *Methods in Ecology and Evolution* **6**, 366–379.
+<https://doi.org/10.1111/2041-210X.12352>
+
+Warton, D.I., Renner, I.W. and Ramp, D. (2013). Model-based control of
+observer bias for the analysis of presence-only data in ecology. *PLoS ONE*
+**8**, e79168. <https://doi.org/10.1371/journal.pone.0079168>
+
+Warton, D.I., Blanchet, F.G., O'Hara, R.B., Ovaskainen, O., Taskinen, S.,
+Walker, S.C. and Hui, F.K.C. (2015). So many variables: joint modeling in
+community ecology. *Trends in Ecology & Evolution* **30**, 766–779.
+
+Zurell, D., Pollock, L.J. and Thuiller, W. (2018). Do joint species
+distribution models reliably detect interspecific interactions from
+co-occurrence data in homogenous environments? *Ecography* **41**, 1812–1819.

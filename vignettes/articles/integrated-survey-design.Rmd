@@ -450,8 +450,22 @@ weighting one source's contribution against the other's; and any measured
 result outside the fixed-range, fixed-cell-size regime described above. Each
 is real work, not an oversight.
 
-# Reference
+# References
 
 Fithian, W., Elith, J., Hastie, T. and Keith, D.A. (2015) Bias correction in
 species distribution models: pooling survey and collection data for multiple
 species. *Methods in Ecology and Evolution* **6**, 424–438.
+
+Isaac, N.J.B., Jarzyna, M.A., Keil, P., et al. (2020). Data integration for
+large-scale models of species distributions. *Trends in Ecology & Evolution*
+**35**, 56–67. <https://doi.org/10.1016/j.tree.2019.08.006>
+
+Miller, D.A.W., Pacifici, K., Sanderlin, J.S. and Reich, B.J. (2019). The
+recent past and promising future for data integration methods to estimate
+species' distributions. *Methods in Ecology and Evolution* **10**, 22–37.
+<https://doi.org/10.1111/2041-210X.13110>
+
+Simmonds, E.G., Jarvis, S.G., Henrys, P.A., Isaac, N.J.B. and O'Hara, R.B.
+(2020). Is more data always better? A simulation study of benefits and
+limitations of integrated distribution models. *Ecography* **43**, 1413–1422.
+<https://doi.org/10.1111/ecog.05146>

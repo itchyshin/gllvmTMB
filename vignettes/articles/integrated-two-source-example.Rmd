@@ -400,6 +400,32 @@ Each is real work, not an oversight.
   one-family-per-trait rule that this article's per-row contract is an
   exception to.
 
+# References
+
+Fithian, W., Elith, J., Hastie, T. and Keith, D.A. (2015). Bias correction in
+species distribution models: pooling survey and collection data for multiple
+species. *Methods in Ecology and Evolution* **6**, 424–438.
+<https://doi.org/10.1111/2041-210X.12242>
+
+Fletcher, R.J. Jr, Hefley, T.J., Robertson, E.P., Zuckerberg, B., McCleery,
+R.A. and Dorazio, R.M. (2019). A practical guide for combining data to model
+species distributions. *Ecology* **100**, e02710.
+<https://doi.org/10.1002/ecy.2710>
+
+Isaac, N.J.B., Jarzyna, M.A., Keil, P., et al. (2020). Data integration for
+large-scale models of species distributions. *Trends in Ecology & Evolution*
+**35**, 56–67. <https://doi.org/10.1016/j.tree.2019.08.006>
+
+Koshkina, V., Wang, Y., Gordon, A., Dorazio, R.M., White, M. and Stone, L.
+(2017). Integrated species distribution models: combining presence-background
+data and site-occupancy data with imperfect detection. *Methods in Ecology
+and Evolution* **8**, 420–430. <https://doi.org/10.1111/2041-210X.12738>
+
+Miller, D.A.W., Pacifici, K., Sanderlin, J.S. and Reich, B.J. (2019). The
+recent past and promising future for data integration methods to estimate
+species' distributions. *Methods in Ecology and Evolution* **10**, 22–37.
+<https://doi.org/10.1111/2041-210X.13110>
+
 ```{r session, include=FALSE}
 ## kept minimal deliberately; this article is a workflow illustration only
 ```

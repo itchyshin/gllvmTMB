@@ -35,15 +35,15 @@ fids **1, 2, 5, 6, 7, 15**. That is a tape, not an admission.
 | 5 | nbinom2 | log | `excluded` | no | **#974** prep (stays excluded); **#1007** door | #998 expected-red | yes | **merge-wait** |
 | 6 | tweedie | log | none | yes (#973) | **#1014** door | #999 expected-red | yes | **merge-wait** |
 | 7 | Beta | logit | none | yes (#975) | **#1014** door | #999 | yes | **merge-wait** |
-| 8 | betabinomial | logit | none | **none** | none | none | no | **needs-code** |
+| 8 | betabinomial | logit | none | **#1023** (oracles; no row) | none | none | no | **needs-code** (PR open) |
 | 9 | student | identity | none | no | **#1005** (oracles; *no* registry row) | #1000 | no | **merge-wait** |
-| 10 | truncated_poisson | log | none | **none** | none | none | no | **needs-code** |
-| 11 | truncated_nbinom2 | log | none | **none** | none | none | no | **needs-code** |
+| 10 | truncated_poisson | log | none | **#1024** (oracles; no row) | none | none | no | **needs-code** (PR open) |
+| 11 | truncated_nbinom2 | log | none | **#1024** (oracles; no row) | none | none | no | **needs-code** (PR open) |
 | 12 | delta_lognormal | logit+log | none | no | **#1004** | #1000 | no | **merge-wait** |
 | 13 | delta_gamma | logit+log | none | no | **#1004** | #1000 | no | **merge-wait** |
 | 14 | ordinal_probit | probit | none | no | **#1005** | #1000 | no | **merge-wait** |
 | 15 | nbinom1 | log | none | yes (#976) | **#1007** door | #998 | yes | **merge-wait** |
-| 16 | multinomial | baseline logit | none | **none** | none | none | no (grouped softmax) | **needs-code** |
+| 16 | multinomial | baseline logit | none | **#1025** (oracles; no row) | none | none | no (grouped softmax) | **needs-code** (PR open) |
 
 `main` registry still has **zero `planned` rows**. Mission Control
 showing "mostly planned/excluded" is the sibling-PR surface, not
@@ -72,12 +72,12 @@ ordinal stay row-less unless a follow-on adds them after #1005.
 Opened from `origin/main` @ `af1edd2c`. Docs + pure-R oracles only.
 **No** `R/mspl-registry.R`, `R/mspl.R`, `src/`, admit, or NEWS.
 
-| Branch | Worktree | Family | Why it is not merge-wait |
-|---|---|---|---|
-| `cursor/mspl-remaining-gap-board` | `/tmp/gllvmtmb-mspl-gap-board` | (this note) | coordination |
-| `cursor/mspl-phase4-betabinomial` | `/tmp/gllvmtmb-mspl-phase4-betabinomial` | fid 8 | no sibling prep |
-| `cursor/mspl-phase4-truncated` | `/tmp/gllvmtmb-mspl-phase4-truncated` | fid 10 + 11 | no sibling prep |
-| `cursor/mspl-phase4-multinomial` | `/tmp/gllvmtmb-mspl-phase4-multinomial` | fid 16 | no sibling prep |
+| Branch | Worktree | PR | Family | Why it is not merge-wait |
+|---|---|---|---|---|
+| `cursor/mspl-remaining-gap-board` | `/tmp/gllvmtmb-mspl-gap-board` | **#1022** | (this note) | coordination |
+| `cursor/mspl-phase4-betabinomial` | `/tmp/gllvmtmb-mspl-phase4-betabinomial` | **#1023** | fid 8 | no sibling prep |
+| `cursor/mspl-phase4-truncated` | `/tmp/gllvmtmb-mspl-phase4-truncated` | **#1024** | fid 10 + 11 | no sibling prep |
+| `cursor/mspl-phase4-multinomial` | `/tmp/gllvmtmb-mspl-phase4-multinomial` | **#1025** | fid 16 | no sibling prep |
 
 If #1003/#1004/#1005/#1007/#1014 land mid-flight, rebase these four
 onto new `main`. They should be clean: they do not edit the registry.
@@ -100,10 +100,11 @@ onto new `main`. They should be clean: they do not edit the registry.
    (#974, #1003, #1004, #1005), then the nbinom door (#1007), then
    the Tweedie/Beta door (#1014). Leave expected-red #998/#999/#1000
    closed until their doors exist on `main`.
-2. **Land this sitting's three prep PRs** (betabinomial, truncated
-   pair, multinomial) after rebase onto the new `main`. Still no
-   planned rows and no admit — add rows in a *later* sweep once the
-   sibling registry edits have settled.
+2. **Land this sitting's three prep PRs** (#1023 betabinomial,
+   #1024 truncated pair, #1025 multinomial; board is #1022) after
+   rebase onto the new `main`. Still no planned rows and no admit —
+   add rows in a *later* sweep once the sibling registry edits have
+   settled.
 3. **Do not admit anyone new.** The only admitted non-binary cells
    remain gaussian + Poisson experimental point. Next scientific
    *door that could later seek admit* is nbinom1, and only after

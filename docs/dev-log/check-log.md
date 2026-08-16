@@ -82,6 +82,25 @@ rg 'family = "poisson"' -A 8 R/mspl-registry.R   # status = "planned"
 Not run: full `devtools::test()`, `--as-cran`. Admit flip is a
 separate commit after this PR is CI-green (Shinichi G0 2026-08-16).
 
+## 2026-08-15 — MSPL Phase-4 nbinom2 prep (not admitted; Cursor)
+
+Worktree `/private/tmp/gllvmtmb-mspl-phase4-nbinom2`,
+branch `cursor/mspl-phase4-nbinom2`.
+
+```sh
+export OMP_NUM_THREADS=1 NOT_CRAN=true
+Rscript --vanilla -e 'pkgload::load_all(".", compile = FALSE, quiet = TRUE);
+  testthat::test_file("tests/testthat/test-mspl-nbinom2-phase4-oracles.R");
+  testthat::test_file("tests/testthat/test-mspl-registry.R")'
+# nbinom2 oracles: 9 tests / 72 expectations / FAIL 0 / WARN 0 / SKIP 0 / PASS 72
+# registry:        2 tests / 26 expectations / FAIL 0 / WARN 0 / SKIP 0 / PASS 26
+git diff --stat -- src/ R/mspl.R R/mspl-registry.R
+# empty (no C++; prepare fence untouched; nbinom2 stays excluded)
+```
+
+Note: `docs/dev-log/research/2026-08-15-mspl-phase4-nbinom2-prep.md`.
+Not run: `devtools::test()`, `R CMD check`, live NB2 MSPL fits, campaigns.
+
 ## 2026-08-15 — D-139 B1 Totoro receipt (Cursor)
 
 Lane `cursor/mspl-b1-totoro-receipt`. Receipt + dry-run launcher

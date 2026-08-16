@@ -10,7 +10,7 @@
 ## HARD STOP flags
 
 - Poisson `planned` → `admitted`
-- Widen `.gllvmTMB_mspl_prepare()` beyond `{0,1}`
+- Widen `.gllvmTMB_mspl_prepare()` beyond `{0,1,2}`
 - Live Poisson `estimator = "mspl"` *success* tests
 - C++ tape / `src/` / `R/mspl.R`
 - NEWS covered / validation-register promotion

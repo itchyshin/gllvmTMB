@@ -18,10 +18,11 @@ pin algebraic identities that the first prep pass only sketched:
 log-det scaling \(P^*_{\mathrm{J}}(\varepsilon\mu)=P^*_{\mathrm{J}}(\mu)+\tfrac{p_*}{2}\log\varepsilon\),
 trait-wise all-zero divergence, exposure-blind Bernoulli/Gaussian
 rate transplants, offset converse, opposite-signed Hirose vs
-Jeffreys boundaries, and a read-only prepare-fence source pin
-(`family_id %in% {0,1}`; Poisson remains `2`). No C++ tape, no
-prepare widen, no NEWS, no live Poisson `estimator = "mspl"`
-success test.
+Jeffreys boundaries, and a read-only prepare-fence source pin.
+After the #978 retarget the pin records the planned public door
+`family_id %in% {0,1,2}` (Poisson is `2`, not admitted). No C++
+tape, no further prepare widen, no NEWS, no live Poisson
+`estimator = "mspl"` success test in this file.
 
 ## 3. Files Changed
 
@@ -81,7 +82,7 @@ Structured oracle PASS counts (expectations per test):
 | E7 \(V_{\mathrm{loading}}\) \(\mu\)-inert + all-zero path | 6 | 0 |
 | planned `phase4_prep` registry pin | 13 | 0 |
 | no live Poisson MSPL / no `gllvmTMB(` | 3 | 0 |
-| prepare fence source pin `{0,1}` | 4 | 0 |
+| prepare fence source pin `{0,1,2}` planned door | 4 | 0 |
 | **total** | **102** | **0** |
 
 `load_all(..., compile = FALSE)` printed a DLL-load warning; oracles
@@ -94,7 +95,9 @@ are pure R and did not need the compiled tape.
   would fail if the atom used \(\operatorname{tr}(W)\) or Bernoulli
   weights. E4’s rate contrast would fail if \(c_n\) were keyed on
   \(\sum\mu\). The prepare source pin would fail if
-  `fam_ids %in% c(0L, 1L, 2L)` landed.
+  `fam_ids %in% c(0L, 1L, 2L)` landed. That string *did* land on
+  `main` via #978; the retarget updates the pin to the planned door
+  and does not edit `R/mspl.R`.
 - **Boundary:** E2 trait-wise path keeps trait-B means \(>0.5\) while
   trait-A means drop below \(10^{-6}\).
 - **Feature-combination:** E5 identity plus converse (offset dropped
@@ -110,7 +113,8 @@ rg -n "admitted|estimator = .mspl.|NEWS covered|prepare widen" \
 # Verdict: every hit is a fence / non-claim, not an admission.
 
 rg "fam_ids %in% c\\(0L, 1L, 2L\\)" R/mspl.R
-# Verdict: no match (fence unchanged).
+# Verdict after #978 retarget: match (planned public door). This PR
+# still does not edit R/mspl.R.
 
 git diff --stat -- src/ R/mspl.R R/mspl-registry.R
 # Verdict: empty.
@@ -152,7 +156,8 @@ Finish line is prep+PR, not merge.
 test-of-the-test that keeps this file off the live Poisson MSPL
 surface.
 
-**Rose.** `planned` ≠ `admitted`; prepare fence unchanged; LOOP path
+**Rose.** `planned` ≠ `admitted`; prepare door is the #978
+`{0,1,2}` planned set; this PR does not edit it; LOOP path
 moved from the historical point-continue kit to this lane.
 
 **Shannon.** Owned paths only. After-task is a new file
@@ -165,6 +170,7 @@ point-continue B1 report.
 - Poisson rate \(c\): **OPEN**.
 - No tape, no healthy/boundary DGP, no admit.
 - **HARD STOP:** do not merge this PR to `main` as an admission;
-  do not flip registry status; do not widen prepare.
+  do not flip registry status; do not widen prepare past `{0,1,2}`.
+  Shinichi later lifted the *planned-only* merge-to-main gate.
 - Next human gate: review the docs+test PR. A later GOAL is
   required before any Poisson admit smoke.

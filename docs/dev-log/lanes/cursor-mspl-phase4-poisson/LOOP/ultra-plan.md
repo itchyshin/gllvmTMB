@@ -26,7 +26,7 @@ it does not re-admit or re-open Gaussian.
 ## HARD STOP (pause and ask Shinichi)
 
 - Flip Poisson planned → admitted
-- Widen prepare beyond `family_id %in% {0,1}`
+- Widen prepare beyond `family_id %in% {0,1,2}`
 - Live Poisson `estimator = "mspl"` success tests
 - C++ tape / `R/mspl.R` / `src/`
 - NEWS “covered”

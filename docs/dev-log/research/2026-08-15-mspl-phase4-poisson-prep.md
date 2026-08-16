@@ -3,11 +3,11 @@
 **Status:** design + local oracles only (2026-08-15 strengthen pass
 on lane `cursor/mspl-phase4-poisson`). Registry rows
 `poisson:log:ordinary:q1` and `q2` are **`planned`** with
-`evidence = "phase4_prep"`. `.gllvmTMB_mspl_prepare()` still rejects
-every non-binomial / non-gaussian family at the `family_id` fence
-(`fam_ids %in% c(0L, 1L)`; Poisson is `family_id = 2`). **Verdict:
-PASS for oracles / planned rows, FAIL for C++ / admission /
-`estimator = "mspl"` on Poisson.**
+`evidence = "phase4_prep"`. After #978 the public door is
+`fam_ids %in% c(0L, 1L, 2L)` (gaussian / bernoulli / Poisson);
+NB1, NB2, beta, and Tweedie stay out. Poisson remains `family_id = 2`
+and is **not admitted**. **Verdict:
+PASS for oracles / planned rows, FAIL for admission / NEWS covered.**
 
 **Reader:** statistical method developer / TMB engineer who must
 decide whether a later tape may add a Poisson count atom.
@@ -254,7 +254,7 @@ Oracle E6 refuses Hirose-on-Poisson as a type error: there is no
     Shinichi gate.
 11. Live `gllvmTMB(..., estimator = "mspl")` on Poisson in tests.
 12. Quietly widening `.gllvmTMB_mspl_prepare()` beyond
-    `family_id %in% {0,1}`.
+    `family_id %in% {0,1,2}` (the #978 planned public door).
 
 ## 5b. Oracle contract E1–E7 (pure R; no Poisson `estimator="mspl"`)
 
@@ -311,8 +311,9 @@ This note does **not** claim:
   penalty yet to be taped.
 - **`planned` ≠ `admitted`.** Poisson registry rows stay `planned`
   with `evidence = "phase4_prep"`.
-- **Prepare fence unchanged.** `family_id` still only `{0,1}`;
-  planned Poisson rows must not widen prepare.
+- **Prepare fence is the #978 planned door.** `family_id` is
+  `{0,1,2}`; this PR does not edit `R/mspl.R` and does not admit
+  Poisson.
 - **No C++.** `git diff -- src/` must stay empty on this arc.
 - **No NEWS covered.** No validation-register promotion.
 - **No repo-root `LOOP/`.** Lane kit:
@@ -342,8 +343,8 @@ prep pass only sketched:
 - E5 adds the converse (offset dropped, \(\eta\) not folded).
 - E6 contrasts opposite-signed Hirose vs Jeffreys boundaries.
 - E7 holds \(V_{\mathrm{loading}}\) fixed on the all-zero path.
-- A read-only source pin records that prepare still admits only
-  `family_id %in% {0,1}` while Poisson remains `2`.
+- A read-only source pin records the #978 planned public door
+  `family_id %in% {0,1,2}` (Poisson is `2`, not admitted).
 
 Loading-atom coercivity under Laplace, the Poisson rate \(c\), and
 Laplace-marginal information for \(\beta\), remain **OPEN**.

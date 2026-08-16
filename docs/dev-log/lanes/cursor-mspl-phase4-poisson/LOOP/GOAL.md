@@ -39,7 +39,7 @@ inside E1–E7, not a new family tape and not an admission.
   `codex/lane-b-mspl-interval-feasibility`, repo-root `LOOP/`,
   Dropbox checkout, or sibling Phase-4 Tweedie files.
 - Do NOT flip Poisson `planned` → `admitted`.
-- Do NOT widen `.gllvmTMB_mspl_prepare()` beyond `family_id %in% {0,1}`.
+- Do NOT widen `.gllvmTMB_mspl_prepare()` beyond `family_id %in% {0,1,2}`.
 - Do NOT write NEWS “covered”. Do NOT add live Poisson MSPL success tests.
 - Local oracles only; `OMP_NUM_THREADS=1`.
 - Never `git add -A`. Stage explicit paths.

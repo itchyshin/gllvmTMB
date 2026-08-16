@@ -393,19 +393,36 @@ test_that("Phase-4 oracles never invoke a live Poisson MSPL fit", {
   expect_false(grepl("gllvmTMB\\s*\\(", code))
 })
 
-test_that("prepare fence still rejects family_id outside {0,1} (source pin)", {
+.mspl_r_source <- function(rel) {
+  candidates <- c(
+    testthat::test_path("..", "..", "R", rel),
+    testthat::test_path("..", "..", "..", "00_pkg_src", "gllvmTMB", "R", rel),
+    file.path("R", rel)
+  )
+  installed <- system.file("..", "R", rel, package = "gllvmTMB")
+  if (nzchar(installed)) {
+    candidates <- c(installed, candidates)
+  }
+  path <- candidates[file.exists(candidates)][1L]
+  testthat::skip_if(
+    is.na(path),
+    paste0("R/", rel, " is not available in this installed-package test context.")
+  )
+  paste(readLines(path, warn = FALSE), collapse = "\n")
+}
+
+test_that("prepare public door is gaussian/bernoulli/poisson only (source pin)", {
   ## Read-only pin. This test must not edit R/mspl.R.
-  mspl_src <- paste(
-    readLines(test_path("../../R/mspl.R")),
-    collapse = "\n"
-  )
-  expect_true(grepl("fam_ids %in% c\\(0L, 1L\\)", mspl_src))
-  expect_false(grepl("fam_ids %in% c\\(0L, 1L, 2L\\)", mspl_src))
-  expect_true(grepl("Count and mixed-family MSPL remain deferred", mspl_src))
-  ## Poisson is family_id 2 in R/enum.R; it is not in the prepare set.
-  enum_src <- paste(
-    readLines(test_path("../../R/enum.R")),
-    collapse = "\n"
-  )
+  ## After #978 the planned public door includes Poisson (family_id 2).
+  ## NB1/NB2/beta/Tweedie stay out. Not admission.
+  mspl_src <- .mspl_r_source("mspl.R")
+  expect_true(grepl("fam_ids %in% c\\(0L, 1L, 2L\\)", mspl_src))
+  expect_false(grepl("fam_ids %in% c\\(0L, 1L, 2L, 3L\\)", mspl_src))
+  expect_true(grepl(
+    "NB1, NB2, beta, Tweedie, and mixed-family MSPL remain deferred",
+    mspl_src
+  ))
+  ## Poisson is family_id 2 in R/enum.R; it is in the planned door, not admitted.
+  enum_src <- .mspl_r_source("enum.R")
   expect_true(grepl("poisson\\s*=\\s*2L", enum_src))
 })

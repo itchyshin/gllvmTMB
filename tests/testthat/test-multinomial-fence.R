@@ -273,36 +273,41 @@ test_that("animal_scalar() is not admitted for multinomial", {
   )
 })
 
-## ---- Blocked: animal_latent() (pure sugar for phylo_latent(); the ONE ----
-## ---- animal_* keyword with no marker distinguishing it from an admitted --
-## ---- phylo_* cell -- see the .animal_source marker in R/brms-sugar.R) ----
+## ---- Blocked: animal_latent(unique = TRUE) / kernel_latent(unique = TRUE) -
+## Slice 1 (2026-08-16) admits the PLAIN loadings-only cell for both keywords
+## (see test-matrix-multinomial-phylo.R for the admission-fit tests and the
+## phylo_latent() equivalence check); the auto-emitted Psi companion of
+## `unique = TRUE` stays blocked for the same reason phylo_latent(unique =
+## TRUE) does (a free phylogenetic Psi is not admitted for multinomial).
 
-test_that("animal_latent() is not admitted for multinomial", {
+test_that("animal_latent(unique = TRUE) is not admitted for multinomial", {
   skip_on_cran(); skip_if_not_installed("ape")
   fx <- .mn_fence_phylo_data(16L)
   A <- ape::vcv(fx$tree, corr = TRUE)
   expect_error(
-    gllvmTMB(value ~ 0 + trait + animal_latent(species, A = A, d = 1),
+    gllvmTMB(value ~ 0 + trait +
+               animal_latent(species, A = A, d = 1, unique = TRUE),
              data = fx$data, family = multinomial(), trait = "trait",
              unit = "species"),
     class = .mn_not_admitted
   )
 })
 
-## ---- Blocked: kernel_latent() (single name) and multi-kernel -------------
-
-test_that("kernel_latent() (single name) is not admitted for multinomial", {
+test_that("kernel_latent(unique = TRUE) (single name) is not admitted for multinomial", {
   skip_on_cran()
   df <- .mn_fence_data(17L, n = 20L)
   K <- diag(20L)
   rownames(K) <- colnames(K) <- levels(df$unit)
   expect_error(
-    gllvmTMB(value ~ 0 + trait + kernel_latent(unit, K = K, d = 1, name = "k1"),
+    gllvmTMB(value ~ 0 + trait +
+               kernel_latent(unit, K = K, d = 1, name = "k1", unique = TRUE),
              data = df, family = multinomial(), trait = "trait", unit = "unit",
              cluster = "unit"),
     class = .mn_not_admitted
   )
 })
+
+## ---- Blocked: multi-kernel -------------------------------------------
 
 test_that("multi-kernel is not admitted for multinomial", {
   skip_on_cran()
@@ -561,7 +566,19 @@ test_that(".mn_admission_table is consistent with .mn_classify_covstruct() for e
          extra = list(.phylo_unique = TRUE, .auto_unique = TRUE)),
     list(kind = "rr",       group = as.name("unit"),    extra = list(.latent_augmented = TRUE)),
     list(kind = "phylo_rr", group = as.name("species"), extra = list(.latent_slope = TRUE)),
-    list(kind = "equalto",  group = as.name("grp_V"),   extra = list())
+    list(kind = "equalto",  group = as.name("grp_V"),   extra = list()),
+    ## Slice 1 (Design 122, 2026-08-16): animal_latent()/kernel_latent()
+    ## (single name) admitted rows, and their unique = TRUE auto-Psi
+    ## companions, blocked.
+    list(kind = "phylo_rr", group = as.name("species"),
+         extra = list(.animal_source = TRUE)),
+    list(kind = "phylo_rr", group = as.name("species"),
+         extra = list(.kernel_name = "phy", .kernel_mode = "latent")),
+    list(kind = "phylo_rr", group = as.name("species"),
+         extra = list(.phylo_unique = TRUE, .auto_unique = TRUE, .animal_source = TRUE)),
+    list(kind = "phylo_rr", group = as.name("species"),
+         extra = list(.phylo_unique = TRUE, .auto_unique = TRUE,
+                      .kernel_name = "phy", .kernel_mode = "unique"))
   )
   expect_equal(nrow(tbl), length(reprs))
   for (i in seq_len(nrow(tbl))) {

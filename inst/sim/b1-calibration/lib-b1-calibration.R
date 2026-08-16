@@ -331,8 +331,20 @@ b1_profile_trace_endpoint <- function(trace, threshold, side) {
   if (nrow(sub) < 2L) return(NA_real_)
   sub <- sub[if (identical(side, "lower")) order(-sub$target_value) else order(sub$target_value), ]
   below <- sub$objective_delta < threshold
-  if (!any(below) || all(below)) return(NA_real_) ## never brackets threshold
-  i <- max(which(below))
+  ## Take the FIRST bracketing pair walking outward from the centre: the first
+  ## adjacent (below, not-below) transition. `max(which(below))` is equivalent
+  ## ONLY if objective_delta is monotone along the walk -- and it is not on a
+  ## flat or near-separated surface, where the profile wiggles and the LAST
+  ## below-threshold point can be the final row, so `i + 1L` runs off the end.
+  ## Observed live on 2026-08-16: 80 shards died with "subscript out of bounds"
+  ## here, 75 of them cloglog at extreme prevalence -- i.e. concentrated in
+  ## exactly the regime this campaign exists to measure. NA deltas never bracket.
+  n <- nrow(sub)
+  lo <- below[-n]
+  hi <- below[-1L]
+  brackets <- !is.na(lo) & !is.na(hi) & lo & !hi
+  if (!any(brackets)) return(NA_real_) ## never brackets threshold
+  i <- min(which(brackets))
   x0 <- sub$target_value[[i]]
   y0 <- sub$objective_delta[[i]]
   x1 <- sub$target_value[[i + 1L]]

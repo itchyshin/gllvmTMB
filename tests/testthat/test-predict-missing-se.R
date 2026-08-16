@@ -230,3 +230,143 @@ test_that("smoke: eta_true empirical coverage under se_confidence lands in a wid
   expect_gte(coverage, 0.80)
   expect_lte(coverage, 1.00)
 })
+
+# ---- R1-joint route (Design 119 sec.7 wave-1 route change) ----------------
+#
+# Wave-1 coverage (dev/cov119/, Totoro, 1,600 gaussian fits) found
+# se_confidence under route = "quad" systematically OVER-covers (95% CI
+# coverage 0.960-0.966; gap >> 2x MCSE): the diagonal conditional latent
+# variance plus the full fixed block double-counts shared information.
+# route = "joint" replaces the quadrature approximation with the exact
+# w' Q^{-1} w joint-precision variance (Q from
+# TMB::sdreport(obj, getJointPrecision = TRUE)).
+
+test_that("se_route = 'joint' returns finite, positive se columns", {
+  skip_if_not_heavy()
+  dat <- .pm_se_data()
+  miss_idx <- c(3L, 15L, 47L, 68L)
+  dat_na <- dat
+  dat_na$value[miss_idx] <- NA_real_
+
+  fit <- .pm_se_fit(dat_na, missing = miss_control(response = "include"))
+
+  pm <- predict_missing(fit, se = TRUE, se_route = "joint")
+  expect_true(all(c("se_confidence", "se_prediction") %in% names(pm)))
+  expect_identical(nrow(pm), length(miss_idx))
+  expect_true(all(is.finite(pm$se_confidence)))
+  expect_true(all(is.finite(pm$se_prediction)))
+  expect_true(all(pm$se_confidence > 0))
+  expect_true(all(pm$se_prediction > 0))
+})
+
+test_that("route = 'joint' one-cell numeric cross-check against a dense jointPrecision solve", {
+  skip_if_not_heavy()
+  # Tiny fixture, hand-written DGP (mirrors the smoke test above) so the
+  # gradient-vector construction can be brute-forced independently.
+  set.seed(1)
+  n <- 12
+  alpha <- c(0.5, -0.2, 0.3); beta <- c(0.4, -0.3, 0.2); lam <- c(0.9, 0.6, -0.7)
+  env_1 <- rnorm(n); u <- rnorm(n)
+  eta_mat <- vapply(
+    seq_along(alpha),
+    function(t) alpha[t] + beta[t] * env_1 + lam[t] * u,
+    numeric(n)
+  )
+  y_mat <- eta_mat + matrix(rnorm(n * 3, sd = 0.5), n, 3)
+  dat <- data.frame(
+    site  = factor(rep(seq_len(n), times = 3)),
+    trait = factor(
+      rep(paste0("trait_", 1:3), each = n),
+      levels = paste0("trait_", 1:3)
+    ),
+    env_1 = rep(env_1, times = 3),
+    value = as.vector(y_mat)
+  )
+  dat$value[c(1L, 5L)] <- NA_real_
+
+  fit <- suppressMessages(suppressWarnings(gllvmTMB(
+    value ~ 0 + trait + (0 + trait):env_1 +
+      latent(0 + trait | site, d = 1, unique = FALSE),
+    data    = dat,
+    family  = gaussian(),
+    missing = miss_control(response = "include")
+  )))
+
+  masked_rows <- which(fit$tmb_data$is_y_observed == 0L)
+  expect_length(masked_rows, 2L)
+
+  # The package's sparse-solve route.
+  var_sparse <- gllvmTMB:::.gllvmTMB_predict_missing_var_eta_joint(
+    fit, masked_rows, length(fit$report$eta)
+  )[masked_rows]
+
+  # Independent brute-force: build the same w vectors and solve against a
+  # DENSE inverse of the joint precision (the "never a dense inverse in
+  # production code" rule applies only to the package's own implementation
+  # -- this test is explicitly allowed a dense solve to cross-check it).
+  sdr <- TMB::sdreport(fit$tmb_obj, getJointPrecision = TRUE)
+  Q <- sdr$jointPrecision
+  Qinv_dense <- solve(as.matrix(Q))
+  par_names <- rownames(Q)
+  status <- gllvmTMB:::.gllvmTMB_xcoef_status(fit)
+  free <- status != "fixed"
+  Xf <- fit$X_fix[, free, drop = FALSE]
+  bfix_pos <- which(par_names == "b_fix")
+  zB_pos_mat <- matrix(
+    which(par_names == "z_B"), nrow = fit$d_B, ncol = fit$n_sites
+  )
+  Lambda <- fit$report$Lambda_B
+  trait_id <- as.integer(fit$data[[fit$trait_col]])
+  unit_id  <- as.integer(fit$data[[fit$unit_col]])
+
+  var_dense <- vapply(masked_rows, function(i) {
+    w <- rep(0, nrow(Qinv_dense))
+    w[bfix_pos] <- Xf[i, ]
+    w[zB_pos_mat[, unit_id[i]]] <- Lambda[trait_id[i], ]
+    as.numeric(t(w) %*% Qinv_dense %*% w)
+  }, numeric(1))
+
+  expect_equal(var_sparse, var_dense, tolerance = 1e-6)
+})
+
+test_that("mean se under 'joint' is smaller than under 'quad' (the double-count is removed)", {
+  skip_if_not_heavy()
+  dat <- .pm_se_data()
+  miss_idx <- c(3L, 15L, 47L, 68L)
+  dat_na <- dat
+  dat_na$value[miss_idx] <- NA_real_
+
+  fit <- .pm_se_fit(dat_na, missing = miss_control(response = "include"))
+
+  pm_quad  <- predict_missing(fit, se = TRUE, se_route = "quad")
+  pm_joint <- predict_missing(fit, se = TRUE, se_route = "joint")
+  expect_lt(mean(pm_joint$se_confidence), mean(pm_quad$se_confidence))
+})
+
+test_that("route = 'quad' is unchanged by the joint-route addition (regression guard)", {
+  skip_if_not_heavy()
+  dat <- .pm_se_data()
+  miss_idx <- c(3L, 15L, 47L, 68L)
+  dat_na <- dat
+  dat_na$value[miss_idx] <- NA_real_
+
+  fit <- .pm_se_fit(dat_na, missing = miss_control(response = "include"))
+
+  pm_default <- predict_missing(fit, se = TRUE)
+  pm_quad    <- predict_missing(fit, se = TRUE, se_route = "quad")
+  expect_identical(pm_default, pm_quad)
+
+  # Pinned values (computed once, on this seeded fixture, from the R1-quad
+  # implementation the joint-route addition left untouched). A future change
+  # to the quad math should show up here, not just as "still finite".
+  expect_equal(
+    pm_quad$se_confidence,
+    c(0.317298536777259, 0.223280793541261, 0.251703705707742, 0.207706175508292),
+    tolerance = 1e-9
+  )
+  expect_equal(
+    pm_quad$se_prediction,
+    c(0.775704356618387, 0.742221799868591, 0.75126136790252, 0.737686073326613),
+    tolerance = 1e-9
+  )
+})

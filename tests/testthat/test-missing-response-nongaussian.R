@@ -100,7 +100,13 @@ make_missing_resp_data2 <- function(family, seed = 7L, n_unit = 45L) {
   df$value <- switch(
     family,
     lognormal = exp(stats::rnorm(n, mean = 0.3 * eta, sd = 0.4)),
-    Gamma = stats::rgamma(n, shape = 3, rate = 3 / exp(eta)),
+    ## shape = 10 keeps every draw well away from 0: the Gamma likelihood of a
+    ## small fixture is SPIKED near y ~ 0 (scale -> 0 sends the density to
+    ## +Inf), and on ubuntu CI a single-start include-fit found that spike
+    ## (logLik +232,395 vs -276 on the complete-case arm) while macOS missed
+    ## it. Conditioning the data removes the spike rather than widening the
+    ## equality band.
+    Gamma = stats::rgamma(n, shape = 10, rate = 10 / exp(eta)),
     nbinom1 = {
       mu <- exp(eta)
       stats::rnbinom(n, mu = mu, size = mu / 0.8)
@@ -183,7 +189,10 @@ for (fam in list(
   list(name = "nbinom1",           fun = quote(nbinom1()),            kind = "latent"),
   list(name = "tweedie",           fun = quote(tweedie()),            kind = "latent"),
   list(name = "Beta",              fun = quote(Beta()),               kind = "latent"),
-  list(name = "student",           fun = quote(student()),            kind = "latent"),
+  ## df fixed: with estimated df this small fixture is multimodal and the two
+  ## arms can converge to different basins (ubuntu CI: -146.3 vs -67.2). The
+  ## mask contract is about the SAME likelihood surface, so pin df.
+  list(name = "student",           fun = quote(student(df = 5)),      kind = "latent"),
   list(name = "truncated_poisson", fun = quote(truncated_poisson()),  kind = "latent"),
   list(name = "truncated_nbinom2", fun = quote(truncated_nbinom2()),  kind = "latent"),
   list(name = "delta_lognormal",   fun = quote(delta_lognormal()),    kind = "fixed"),

@@ -7,6 +7,11 @@
 started. DRAC not started. GitHub Actions not used as a campaign
 host.
 
+**Scanner:** NO Totoro/DRAC SE campaign. `host=none`. `minutes=0`.
+Bernoulli \(Q_0\) non-PD (min eigenvalue **−0.774**) on the **#979
+first cell**. Public `se=TRUE` still withholds `sd_report`. Pin ≠
+calibrated SE. No remote job started.
+
 **Reader:** the next conductor who might treat #979 as permission
 to occupy Totoro or DRAC. It is not.
 

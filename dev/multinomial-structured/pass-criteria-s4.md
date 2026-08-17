@@ -40,7 +40,7 @@ if the cluster-tier diagonal route needs its own calibrated recovery claim
 ## Notes (not part of the pre-registered block above)
 
 - `sigma_re` is REFERENCE-CATEGORY-SPECIFIC (R/multinomial-fence.R,
-  docs/design/122-multinomial-structured-surface.md's Slice 4 section): the
+  docs/design/123-multinomial-structured-surface.md's Slice 4 section): the
   `(1 | group)` shared additive shift moves `P(y = baseline)` vs
   `P(y != baseline)`, so its recovered value is only comparable across fits
   that share the same `baseline` — re-labelling `baseline` is NOT a
@@ -73,7 +73,7 @@ if the cluster-tier diagonal route needs its own calibrated recovery claim
   `dev/multinomial-structured/results/s4-summary-20260816-183635.csv` --
   20/20 rows, all `keyword = "re_int"`); the verdict is PASSED, recorded
   in `docs/design/35-validation-debt-register.md`'s FAM-20F row and
-  `docs/design/122-multinomial-structured-surface.md` §1/§4. The
+  `docs/design/123-multinomial-structured-surface.md` §1/§4. The
   "Non-degenerate diagonal cell" section above remains accurate as
   written: the cluster/cluster2 route was NOT part of this campaign and
   stays construction-level-only, `partial` on its recovery axis -- this

@@ -27,7 +27,7 @@
 ##   OPENBLAS_NUM_THREADS=1 CAMPAIGN_CORES=20 \
 ##     Rscript campaign-s2-phylo-dep-indep.R --mode full
 ##
-## `--mode full` is NOT run as part of this task (D-139 + Design 122: gated on
+## `--mode full` is NOT run as part of this task (D-139 + Design 123: gated on
 ## dev/multinomial-structured/pass-criteria-s2.md's DRAFT status, pending
 ## Shinichi's sign-off -- see that file).
 

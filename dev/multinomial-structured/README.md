@@ -116,7 +116,7 @@ keywords. `part = "shared"` returns the loadings-only `Lambda Lambda^T`
 
 ## Slice 2 addendum (2026-08-16) — phylo_dep / phylo_indep and animal/kernel twins
 
-Design 122 Slice 2 admits the phylo MODE axis (`phylo_dep()` full V,
+Design 123 Slice 2 admits the phylo MODE axis (`phylo_dep()` full V,
 `phylo_indep()`/standalone `phylo_unique()` diagonal V) and its
 `animal_*`/`kernel_*` twins alongside Slice 1's `animal_latent()`/
 `kernel_latent()`. New scripts in this directory:
@@ -138,7 +138,7 @@ stayed refused through Slice 2); see `R/multinomial-fence.R`'s
 
 ## Slice 3 addendum (2026-08-16) — the spatial (SPDE) mode axis
 
-Design 122 Slice 3 admits `spatial_latent()`/`spatial_indep()`/
+Design 123 Slice 3 admits `spatial_latent()`/`spatial_indep()`/
 `spatial_dep()` for the among-category spatial surface, alongside the
 phylogenetic and generic-group tiers above. **This environment has fmesher
 but NOT INLA** -- verified (this task) that `make_mesh()` and the base SPDE

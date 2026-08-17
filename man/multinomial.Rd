@@ -32,9 +32,9 @@ This is a \strong{response} family and must not be confused with the
 imputation family. Because an unordered categorical response spans
 \eqn{K-1} latent liability dimensions rather than one, the admitted
 structured-term surface is bounded and every cell below was decided by a
-signed recovery campaign, not construction alone (Design 122, Slices 1-4,
+signed recovery campaign, not construction alone (Design 123, Slices 1-4,
 2026-08-16; full per-cell table and campaign numbers:
-\code{docs/design/122-multinomial-structured-surface.md}).
+\code{docs/design/123-multinomial-structured-surface.md}).
 
 \strong{Admitted:} fixed effects always; an ordinary
 shared \code{latent(0 + trait | unit, d = k)} ordination, which connects

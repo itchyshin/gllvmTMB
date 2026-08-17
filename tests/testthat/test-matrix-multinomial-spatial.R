@@ -1,5 +1,5 @@
 ## Multinomial (family_id 16) structured-dependency admission -- Slice 3
-## (Design 122, 2026-08-16): the spatial (SPDE) mode axis --
+## (Design 123, 2026-08-16): the spatial (SPDE) mode axis --
 ## `spatial_latent()` (shared fields, loadings-only), `spatial_indep()`
 ## (per-contrast independent fields), and `spatial_dep()` (full unstructured
 ## cross-contrast field covariance) -- join the pre-existing phylogenetic

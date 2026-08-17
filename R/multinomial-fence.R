@@ -1,5 +1,5 @@
 ## Multinomial structured-term admission fence (Slice 0 + Slice 1 + Slice 2,
-## Design 108/122).
+## Design 108/123).
 ##
 ## `multinomial()` (family_id 16) is fixed-effects-plus-two-tiers only in this
 ## release: ordinary shared `latent()` at the unit tier (cross-family
@@ -115,7 +115,7 @@
 ## blanket-exempted in both passes; it is now fail-closed for fid 16 (no
 ## established route on a categorical-contrast pseudo-trait).
 ##
-## Slice 4 (Design 122, 2026-08-16): ordinary GROUP random intercepts join
+## Slice 4 (Design 123, 2026-08-16): ordinary GROUP random intercepts join
 ## the admitted set -- a generic `(1 | g)` random intercept (engine kind
 ## `re_int`, src/gllvmTMB.cpp's `re_int` block) and the non-phylogenetic
 ## `cluster`/`cluster2` diagonal tier (`indep(0 + trait | g)` via the
@@ -199,15 +199,15 @@
   source = c(
     "none", "none", "phylo", "phylo", "none", "phylo", "none",
     "animal", "kernel", "animal", "kernel",
-    ## Slice 2 (Design 122, 2026-08-16): the phylo mode axis and its
+    ## Slice 2 (Design 123, 2026-08-16): the phylo mode axis and its
     ## animal/kernel twins.
     "phylo", "phylo", "phylo",
     "animal", "animal", "animal",
     "kernel", "kernel", "kernel", "kernel",
-    ## Slice 4 (Design 122, 2026-08-16): generic group random intercepts and
+    ## Slice 4 (Design 123, 2026-08-16): generic group random intercepts and
     ## the non-phylogenetic cluster/cluster2 diagonal tier.
     "none", "none", "none", "none", "none", "none", "none",
-    ## Slice 3 (Design 122, 2026-08-16): the spatial (SPDE) mode axis.
+    ## Slice 3 (Design 123, 2026-08-16): the spatial (SPDE) mode axis.
     "spatial", "spatial", "spatial", "spatial", "spatial", "spatial", "spatial",
     ## Slice 5 repair (D-43 completion panel R1/R2, 2026-08-16): explicit
     ## unit-tier dep()/indep()/unique() (previously blocked only via
@@ -267,38 +267,38 @@
     "BLOCKED -- Slice 0 repair (2026-08-16): pass 1 fell through to ADMITTED for augmented latent(1 + x | unit) / latent(0 + trait + (0 + trait):x | unit); only the untyped pass-2 use_rr_B_slope scan caught it.",
     "BLOCKED -- Slice 0 repair (2026-08-16): pass 1 fell through to ADMITTED for augmented phylo_latent(1 + x | species); NEITHER pass caught it (an unrelated family-augmented-slope gate happened to abort first).",
     "BLOCKED -- Slice 0 repair (2026-08-16): meta_V()/equalto() (known-sampling-covariance) has no admitted route on a categorical-contrast pseudo-trait; fail-closed default rather than the prior blanket pass-1/pass-2 exemption.",
-    "ADMITTED -- Design 122 Slice 1 (2026-08-16): loadings-only (unique = FALSE) animal_latent() is pure sugar over phylo_rr, engine-identical to phylo_latent() -- equivalence verified in test-matrix-multinomial-phylo.R.",
-    "ADMITTED -- Design 122 Slice 1 (2026-08-16): loadings-only (unique = FALSE) single-name kernel_latent() routes through the SAME phylo_rr engine (Design 65 C1 phylo-equivalence) -- equivalence verified in test-matrix-multinomial-phylo.R. Multiple kernel_latent() terms in one fit (multi-kernel) stay BLOCKED; that check is whole-fit, not per-covstruct, so it has no row of its own here -- see .multinomial_structured_admission()'s kernel-name count and test-multinomial-fence.R's 'multi-kernel is not admitted'.",
-    "BLOCKED -- Design 122 Slice 1 (2026-08-16): animal_latent(unique = TRUE)'s auto-emitted Psi companion is a free phylogenetic Psi, not admitted for multinomial for the same reason as row 4 (phylo_latent(unique = TRUE)).",
-    "BLOCKED -- Design 122 Slice 1 (2026-08-16): kernel_latent(unique = TRUE)'s auto-emitted Psi companion is a free phylogenetic Psi, not admitted for multinomial for the same reason as row 4 (phylo_latent(unique = TRUE)).",
-    "ADMITTED -- Design 122 Slice 2 (2026-08-16): intercept-only phylo_dep(0 + trait | species) resolves d = n_traits and populates the SAME phylo_rr/theta_rr_phy slot as phylo_latent(species, d = n_traits) -- the IDENTICAL unconstrained packed-triangular parameterisation (gll_unpack_rr_loadings, src/gllvmTMB.cpp), not merely V-equivalent. Do not confuse with the augmented *_dep(1 + x | species) slope engine (theta_dep_chol), which DOES exp()-transform its Cholesky diagonal and stays BLOCKED (row 5/6). Equivalence to phylo_latent(d = n_traits) verified in test-matrix-multinomial-phylo.R.",
-    "ADMITTED -- Design 122 Slice 2 (2026-08-16): phylo_indep(0 + trait | species) reroutes to the phylo_rr diagonal slot (.phylo_unique + .indep markers) -- a diagonal Lambda_phy (strict lower triangle pinned to 0 via a TMB map), giving D independent per-contrast phylogenetic variances with no among-category correlation.",
-    "ADMITTED -- Design 122 Slice 2 (2026-08-16): standalone phylo_unique(species) is the soft-deprecated alias of phylo_indep() -- same phylo_rr diagonal slot, same engine, differing only in the printed label (R/brms-sugar.R issues a one-time deprecation warning).",
-    "ADMITTED -- Design 122 Slice 2 (2026-08-16): animal_dep() twin of phylo_dep(), pure sugar over the same phylo_rr/theta_rr_phy route with the pedigree/A matrix supplied via vcv.",
-    "ADMITTED -- Design 122 Slice 2 (2026-08-16): animal_indep() twin of phylo_indep(), same diagonal phylo_rr route.",
-    "ADMITTED -- Design 122 Slice 2 (2026-08-16): animal_unique() twin of standalone phylo_unique() (soft-deprecated alias of animal_indep()).",
-    "ADMITTED -- Design 122 Slice 2 (2026-08-16): kernel_dep() twin of phylo_dep(), single named dense K matrix, same phylo_rr/theta_rr_phy route (Design 65 C1 phylo-equivalence).",
-    "ADMITTED -- Design 122 Slice 2 (2026-08-16): kernel_indep() twin of phylo_indep(), same diagonal phylo_rr route.",
-    "ADMITTED -- Design 122 Slice 2 (2026-08-16): kernel_unique() twin of standalone phylo_unique() (soft-deprecated alias of kernel_indep()).",
-    "BLOCKED -- Design 122 Slice 2 (2026-08-16): kernel_scalar() (and kernel_indep(..., common = TRUE)) carry the SAME .phylo_unique + .indep markers as kernel_indep() and are distinguished ONLY by .kernel_mode == \"scalar\"; it ties the per-trait diagonal phylogenetic variances to ONE shared level. STAYS REFUSED like phylo_scalar()/animal_scalar() -- see dev/multinomial-structured/probe-scalar-null.R for the null-DGP evidence motivating the refusal.",
-    "ADMITTED -- Design 122 Slice 4 (2026-08-16): a generic (1 | g) random intercept adds one draw per group level to EVERY pseudo-trait row of a multinomial observation (src/gllvmTMB.cpp re_int block, group id read off the AFTER-expansion data). Semantics: a baseline-vs-rest group effect (the shared shift does not cancel in the softmax); sigma_re is REFERENCE-CATEGORY-SPECIFIC. Subject to the whole-fit OLRE guard (.multinomial_reint_group_olre_guard()) below. EXCLUDES the unit_obs tier (Slice 5 repair, D-43 R1, 2026-08-16 -- see the last table row and the re_int classifier branch's comment; this row's 'admitted' verdict is only reached for a grouping OTHER than the unit_obs column).",
-    "ADMITTED -- Design 122 Slice 4 (2026-08-16): indep(0 + trait | <cluster_col>) via the cluster = argument routes through use_diag_species (per-trait/per-contrast independent normal variances, family-agnostic, pre-existing engine code). Subject to the OLRE guard.",
-    "ADMITTED -- Design 122 Slice 4 (2026-08-16): standalone unique(0 + trait | <cluster_col>) is the SAME use_diag_species engine path as indep() at this tier (the .indep marker only changes the printed label, as at the unit tier) -- admitted alongside it.",
-    "ADMITTED -- Design 122 Slice 4 (2026-08-16): indep(0 + trait | <cluster2_col>) via the cluster2 = argument routes through use_diag_cluster2 -- verified LITERALLY IDENTICAL engine math to use_diag_species (same per-trait independent-normal density, different DATA/PARAMETER slot; src/gllvmTMB.cpp), so admitted together with cluster.",
-    "ADMITTED -- Design 122 Slice 4 (2026-08-16): standalone unique(0 + trait | <cluster2_col>) is the SAME use_diag_cluster2 engine path as indep() at this tier -- admitted alongside it.",
-    "BLOCKED -- Design 122 Slice 4 (2026-08-16): indep(0 + trait | <cluster_col>, common = TRUE) (the scalar() modifier). The generic engine has no common-pooling map for use_diag_species (unlike the unit/unit_obs diag_B_common/diag_W_common map tricks); admitting it would silently ADMIT the term while silently IGNORING the common = TRUE request rather than actually pooling to one shared level, so it is refused explicitly instead, matching phylo_scalar()/animal_scalar()/kernel_scalar().",
-    "BLOCKED -- Design 122 Slice 4 (2026-08-16): indep(0 + trait | <cluster2_col>, common = TRUE), same reasoning as the cluster-tier scalar refusal above (no common-pooling map for use_diag_cluster2 either).",
-    "ADMITTED -- Design 122 Slice 3 (2026-08-16): intercept-only spatial_latent(0 + trait | coords, d = k) (loadings-only, default unique = FALSE) -- the shared-field cross-contrast SPDE ordination; A_proj row alignment verified (dev/multinomial-structured/gate-check-a-proj.R): the SPDE eta contribution is applied per EXPANDED row, and a mesh built on the post-expansion coordinate frame carries each site's projector row correctly repeated across its K-1 contrast rows.",
-    "ADMITTED -- Design 122 Slice 3 (2026-08-16): spatial_indep(0 + trait | coords) (`.spatial_indep = TRUE`) -- per-contrast independent SPDE fields, no cross-contrast field correlation.",
-    "ADMITTED -- Design 122 Slice 3 (2026-08-16): spatial_dep(0 + trait | coords) -- VERIFIED (R/brms-sugar.R desugar) to literally set `.spatial_latent = TRUE, d = n_traits, .dep = TRUE`, i.e. it IS spatial_latent(d = n_traits) under a documentary keyword (the package's own roxygen already states this identity); same `use_spde` engine slot, not a separate one.",
-    "BLOCKED -- Design 122 Slice 3 (2026-08-16): spatial_latent(unique = TRUE)'s paired diagonal Psi_spde companion (`.spatial_unique_diag = TRUE`, a SINGLE marker on the SAME covstruct, architecturally different from phylo/animal/kernel's separate-companion-covstruct pattern) is a free spatial Psi, not admitted for multinomial for the same reason as row 4 (phylo_latent(unique = TRUE)).",
-    "BLOCKED -- Design 122 Slice 3 (2026-08-16): spatial_scalar() (`.spatial_scalar = TRUE`, incl. spatial_indep(..., common = TRUE)) ties the per-contrast spatial-field variances to ONE shared level -- the (I+J) carve-out, refused for the same reason as phylo_scalar()/animal_scalar()/kernel_scalar().",
-    "BLOCKED -- Design 122 Slice 3 (2026-08-16): standalone spatial_unique()/deprecated bare spatial() (no markers at all) is the PAIRED-COMPANION alias mechanism (meant to pair with spatial_latent(), Design 60), not an independent diagonal term the way phylo_unique()/phylo_indep() are -- unlike Slice 2's phylo mode axis, this cell is NOT admitted as a deprecated alias of spatial_indep(); use spatial_indep() directly for a standalone diagonal spatial fit.",
-    "BLOCKED -- Design 122 Slice 3 (2026-08-16): every augmented (intercept + slope) spatial_*(1 + x | coords) term (`.spatial_unique_augmented` / `.spatial_dep_augmented` / `.spatial_latent_augmented`) stays blocked, mirroring rows 5/6's augmented phylo/ordinary-latent refusal.",
+    "ADMITTED -- Design 123 Slice 1 (2026-08-16): loadings-only (unique = FALSE) animal_latent() is pure sugar over phylo_rr, engine-identical to phylo_latent() -- equivalence verified in test-matrix-multinomial-phylo.R.",
+    "ADMITTED -- Design 123 Slice 1 (2026-08-16): loadings-only (unique = FALSE) single-name kernel_latent() routes through the SAME phylo_rr engine (Design 65 C1 phylo-equivalence) -- equivalence verified in test-matrix-multinomial-phylo.R. Multiple kernel_latent() terms in one fit (multi-kernel) stay BLOCKED; that check is whole-fit, not per-covstruct, so it has no row of its own here -- see .multinomial_structured_admission()'s kernel-name count and test-multinomial-fence.R's 'multi-kernel is not admitted'.",
+    "BLOCKED -- Design 123 Slice 1 (2026-08-16): animal_latent(unique = TRUE)'s auto-emitted Psi companion is a free phylogenetic Psi, not admitted for multinomial for the same reason as row 4 (phylo_latent(unique = TRUE)).",
+    "BLOCKED -- Design 123 Slice 1 (2026-08-16): kernel_latent(unique = TRUE)'s auto-emitted Psi companion is a free phylogenetic Psi, not admitted for multinomial for the same reason as row 4 (phylo_latent(unique = TRUE)).",
+    "ADMITTED -- Design 123 Slice 2 (2026-08-16): intercept-only phylo_dep(0 + trait | species) resolves d = n_traits and populates the SAME phylo_rr/theta_rr_phy slot as phylo_latent(species, d = n_traits) -- the IDENTICAL unconstrained packed-triangular parameterisation (gll_unpack_rr_loadings, src/gllvmTMB.cpp), not merely V-equivalent. Do not confuse with the augmented *_dep(1 + x | species) slope engine (theta_dep_chol), which DOES exp()-transform its Cholesky diagonal and stays BLOCKED (row 5/6). Equivalence to phylo_latent(d = n_traits) verified in test-matrix-multinomial-phylo.R.",
+    "ADMITTED -- Design 123 Slice 2 (2026-08-16): phylo_indep(0 + trait | species) reroutes to the phylo_rr diagonal slot (.phylo_unique + .indep markers) -- a diagonal Lambda_phy (strict lower triangle pinned to 0 via a TMB map), giving D independent per-contrast phylogenetic variances with no among-category correlation.",
+    "ADMITTED -- Design 123 Slice 2 (2026-08-16): standalone phylo_unique(species) is the soft-deprecated alias of phylo_indep() -- same phylo_rr diagonal slot, same engine, differing only in the printed label (R/brms-sugar.R issues a one-time deprecation warning).",
+    "ADMITTED -- Design 123 Slice 2 (2026-08-16): animal_dep() twin of phylo_dep(), pure sugar over the same phylo_rr/theta_rr_phy route with the pedigree/A matrix supplied via vcv.",
+    "ADMITTED -- Design 123 Slice 2 (2026-08-16): animal_indep() twin of phylo_indep(), same diagonal phylo_rr route.",
+    "ADMITTED -- Design 123 Slice 2 (2026-08-16): animal_unique() twin of standalone phylo_unique() (soft-deprecated alias of animal_indep()).",
+    "ADMITTED -- Design 123 Slice 2 (2026-08-16): kernel_dep() twin of phylo_dep(), single named dense K matrix, same phylo_rr/theta_rr_phy route (Design 65 C1 phylo-equivalence).",
+    "ADMITTED -- Design 123 Slice 2 (2026-08-16): kernel_indep() twin of phylo_indep(), same diagonal phylo_rr route.",
+    "ADMITTED -- Design 123 Slice 2 (2026-08-16): kernel_unique() twin of standalone phylo_unique() (soft-deprecated alias of kernel_indep()).",
+    "BLOCKED -- Design 123 Slice 2 (2026-08-16): kernel_scalar() (and kernel_indep(..., common = TRUE)) carry the SAME .phylo_unique + .indep markers as kernel_indep() and are distinguished ONLY by .kernel_mode == \"scalar\"; it ties the per-trait diagonal phylogenetic variances to ONE shared level. STAYS REFUSED like phylo_scalar()/animal_scalar() -- see dev/multinomial-structured/probe-scalar-null.R for the null-DGP evidence motivating the refusal.",
+    "ADMITTED -- Design 123 Slice 4 (2026-08-16): a generic (1 | g) random intercept adds one draw per group level to EVERY pseudo-trait row of a multinomial observation (src/gllvmTMB.cpp re_int block, group id read off the AFTER-expansion data). Semantics: a baseline-vs-rest group effect (the shared shift does not cancel in the softmax); sigma_re is REFERENCE-CATEGORY-SPECIFIC. Subject to the whole-fit OLRE guard (.multinomial_reint_group_olre_guard()) below. EXCLUDES the unit_obs tier (Slice 5 repair, D-43 R1, 2026-08-16 -- see the last table row and the re_int classifier branch's comment; this row's 'admitted' verdict is only reached for a grouping OTHER than the unit_obs column).",
+    "ADMITTED -- Design 123 Slice 4 (2026-08-16): indep(0 + trait | <cluster_col>) via the cluster = argument routes through use_diag_species (per-trait/per-contrast independent normal variances, family-agnostic, pre-existing engine code). Subject to the OLRE guard.",
+    "ADMITTED -- Design 123 Slice 4 (2026-08-16): standalone unique(0 + trait | <cluster_col>) is the SAME use_diag_species engine path as indep() at this tier (the .indep marker only changes the printed label, as at the unit tier) -- admitted alongside it.",
+    "ADMITTED -- Design 123 Slice 4 (2026-08-16): indep(0 + trait | <cluster2_col>) via the cluster2 = argument routes through use_diag_cluster2 -- verified LITERALLY IDENTICAL engine math to use_diag_species (same per-trait independent-normal density, different DATA/PARAMETER slot; src/gllvmTMB.cpp), so admitted together with cluster.",
+    "ADMITTED -- Design 123 Slice 4 (2026-08-16): standalone unique(0 + trait | <cluster2_col>) is the SAME use_diag_cluster2 engine path as indep() at this tier -- admitted alongside it.",
+    "BLOCKED -- Design 123 Slice 4 (2026-08-16): indep(0 + trait | <cluster_col>, common = TRUE) (the scalar() modifier). The generic engine has no common-pooling map for use_diag_species (unlike the unit/unit_obs diag_B_common/diag_W_common map tricks); admitting it would silently ADMIT the term while silently IGNORING the common = TRUE request rather than actually pooling to one shared level, so it is refused explicitly instead, matching phylo_scalar()/animal_scalar()/kernel_scalar().",
+    "BLOCKED -- Design 123 Slice 4 (2026-08-16): indep(0 + trait | <cluster2_col>, common = TRUE), same reasoning as the cluster-tier scalar refusal above (no common-pooling map for use_diag_cluster2 either).",
+    "ADMITTED -- Design 123 Slice 3 (2026-08-16): intercept-only spatial_latent(0 + trait | coords, d = k) (loadings-only, default unique = FALSE) -- the shared-field cross-contrast SPDE ordination; A_proj row alignment verified (dev/multinomial-structured/gate-check-a-proj.R): the SPDE eta contribution is applied per EXPANDED row, and a mesh built on the post-expansion coordinate frame carries each site's projector row correctly repeated across its K-1 contrast rows.",
+    "ADMITTED -- Design 123 Slice 3 (2026-08-16): spatial_indep(0 + trait | coords) (`.spatial_indep = TRUE`) -- per-contrast independent SPDE fields, no cross-contrast field correlation.",
+    "ADMITTED -- Design 123 Slice 3 (2026-08-16): spatial_dep(0 + trait | coords) -- VERIFIED (R/brms-sugar.R desugar) to literally set `.spatial_latent = TRUE, d = n_traits, .dep = TRUE`, i.e. it IS spatial_latent(d = n_traits) under a documentary keyword (the package's own roxygen already states this identity); same `use_spde` engine slot, not a separate one.",
+    "BLOCKED -- Design 123 Slice 3 (2026-08-16): spatial_latent(unique = TRUE)'s paired diagonal Psi_spde companion (`.spatial_unique_diag = TRUE`, a SINGLE marker on the SAME covstruct, architecturally different from phylo/animal/kernel's separate-companion-covstruct pattern) is a free spatial Psi, not admitted for multinomial for the same reason as row 4 (phylo_latent(unique = TRUE)).",
+    "BLOCKED -- Design 123 Slice 3 (2026-08-16): spatial_scalar() (`.spatial_scalar = TRUE`, incl. spatial_indep(..., common = TRUE)) ties the per-contrast spatial-field variances to ONE shared level -- the (I+J) carve-out, refused for the same reason as phylo_scalar()/animal_scalar()/kernel_scalar().",
+    "BLOCKED -- Design 123 Slice 3 (2026-08-16): standalone spatial_unique()/deprecated bare spatial() (no markers at all) is the PAIRED-COMPANION alias mechanism (meant to pair with spatial_latent(), Design 60), not an independent diagonal term the way phylo_unique()/phylo_indep() are -- unlike Slice 2's phylo mode axis, this cell is NOT admitted as a deprecated alias of spatial_indep(); use spatial_indep() directly for a standalone diagonal spatial fit.",
+    "BLOCKED -- Design 123 Slice 3 (2026-08-16): every augmented (intercept + slope) spatial_*(1 + x | coords) term (`.spatial_unique_augmented` / `.spatial_dep_augmented` / `.spatial_latent_augmented`) stays blocked, mirroring rows 5/6's augmented phylo/ordinary-latent refusal.",
     "BLOCKED -- Slice 5 repair (D-43 completion panel finding R2, 2026-08-16): dep(0 + trait | unit) at the unit tier was already blocked by the classifier's rr-kind fallthrough (row above the auto-Psi row) and by fit-level tests, but had no explicit table row of its own -- the table is documented as the single source of truth, so it must be literally exhaustive. Same engine/reasoning as row 1's admitted latent(); this is the DIFFERENT, unadmitted dep() covstruct at the same tier.",
     "BLOCKED -- Slice 5 repair (D-43 completion panel finding R2, 2026-08-16): explicit indep(0 + trait | unit) at the unit tier -- classifier's diag-kind fallthrough, previously untabled. Only the default latent()-carried auto-Psi (row 2) is admitted at this tier; an EXPLICIT indep()/unique() diagonal term here is not.",
     "BLOCKED -- Slice 5 repair (D-43 completion panel finding R2, 2026-08-16): explicit standalone unique(0 + trait | unit) at the unit tier -- same fallthrough/reasoning as the indep() row immediately above, differing only in the .indep marker (printed label only).",
-    "BLOCKED -- Slice 5 repair (D-43 completion panel finding R1, 2026-08-16): (1 | <unit_obs column>) at the unit_obs tier. The re_int classifier branch previously admitted ANY grouping unconditionally, discarding the tier computed above it -- a unit_obs-tier (1 | g) term classified ADMITTED and was only stopped by the coincidental OLRE guard on fixtures where every unit_obs level happened to be a categorical singleton. Fixed: re_int now consults tier directly and blocks unit_obs, matching design-122 Section 1/6's documented unit_obs-out-of-scope statement. See test-multinomial-fence.R's typed regression test for a fit where unit_obs levels are NOT singletons (so the OLRE guard would not have caught it either)."
+    "BLOCKED -- Slice 5 repair (D-43 completion panel finding R1, 2026-08-16): (1 | <unit_obs column>) at the unit_obs tier. The re_int classifier branch previously admitted ANY grouping unconditionally, discarding the tier computed above it -- a unit_obs-tier (1 | g) term classified ADMITTED and was only stopped by the coincidental OLRE guard on fixtures where every unit_obs level happened to be a categorical singleton. Fixed: re_int now consults tier directly and blocks unit_obs, matching design-123 Section 1/6's documented unit_obs-out-of-scope statement. See test-multinomial-fence.R's typed regression test for a fit where unit_obs levels are NOT singletons (so the OLRE guard would not have caught it either)."
   ),
   stringsAsFactors = FALSE
 )
@@ -351,9 +351,9 @@
   }
 
   if (identical(kind, "re_int")) {
-    ## Slice 4 (Design 122, 2026-08-16): admitted for any grouping EXCEPT
-    ## the unit_obs tier, which is out of scope for this arc (design-122
-    ## Section 1/6). Design 122 Slice 5 repair (D-43 completion panel
+    ## Slice 4 (Design 123, 2026-08-16): admitted for any grouping EXCEPT
+    ## the unit_obs tier, which is out of scope for this arc (design-123
+    ## Section 1/6). Design 123 Slice 5 repair (D-43 completion panel
     ## finding R1, 2026-08-16): this branch used to ignore `tier` entirely
     ## and admit re_int for ANY grouping, so a `(1 | <unit_obs-like
     ## column>)` term classified ADMITTED here and was only stopped by the
@@ -402,7 +402,7 @@
                   label = "the default auto-Psi companion of latent()"))
     }
     mode <- if (isTRUE(extra$.indep)) "indep" else "unique"
-    ## Slice 4 (Design 122, 2026-08-16): admit the cluster/cluster2
+    ## Slice 4 (Design 123, 2026-08-16): admit the cluster/cluster2
     ## diagonal tier -- indep(0 + trait | g) / the soft-deprecated
     ## standalone unique(0 + trait | g) alias via `cluster =`/`cluster2 =`,
     ## the SAME use_diag_species/use_diag_cluster2 engine route for both
@@ -430,7 +430,7 @@
   }
 
   if (identical(kind, "phylo_rr")) {
-    ## Slice 1 (Design 122, 2026-08-16): determine the SOURCE label first
+    ## Slice 1 (Design 123, 2026-08-16): determine the SOURCE label first
     ## (kernel / animal / phylo), then apply the mode checks (.latent_slope /
     ## .dep / .phylo_unique) UNIFORMLY across sources, mirroring the plain
     ## phylo_* logic below instead of short-circuiting animal_*/kernel_* to
@@ -484,7 +484,7 @@
                   kernel_name = kernel_name))
     }
     if (isTRUE(extra$.dep)) {
-      ## Slice 2 (Design 122, 2026-08-16): admit the intercept-only *_dep()
+      ## Slice 2 (Design 123, 2026-08-16): admit the intercept-only *_dep()
       ## cell for all three sources. `phylo_dep(0 + trait | species)` /
       ## `animal_dep(0 + trait | id)` / `kernel_dep(unit, K = K)` all resolve
       ## `d = n_traits` and populate the SAME `phylo_rr_idx` / `theta_rr_phy`
@@ -535,7 +535,7 @@
       ## kernel_indep()/kernel_dep() siblings are admitted (Slice 2).
       is_kernel_scalar <- identical(source_label, "kernel") &&
         identical(kernel_mode, "scalar")
-      ## Slice 2 (Design 122, 2026-08-16): admit the diagonal-V cell
+      ## Slice 2 (Design 123, 2026-08-16): admit the diagonal-V cell
       ## (*_indep() and the deprecated standalone *_unique() alias) for all
       ## three sources -- same `phylo_rr`/`theta_rr_phy` route as *_dep(),
       ## with the strict lower triangle pinned to 0 via a TMB map
@@ -563,7 +563,7 @@
     ## Plain loadings-only cell (no slope/dep/unique marker): admitted for
     ## ALL THREE sources as of Slice 1 -- phylo_latent() (Design 84,
     ## pre-existing), animal_latent() and single-name kernel_latent()
-    ## (Design 122 Slice 1, 2026-08-16). Multi-kernel is blocked separately,
+    ## (Design 123 Slice 1, 2026-08-16). Multi-kernel is blocked separately,
     ## at the whole-fit level, by the caller.
     label <- switch(source_label,
       kernel = "kernel_latent()",
@@ -580,7 +580,7 @@
   }
 
   if (identical(kind, "spde")) {
-    ## Slice 3 (Design 122, 2026-08-16): admit intercept-only spatial_latent()
+    ## Slice 3 (Design 123, 2026-08-16): admit intercept-only spatial_latent()
     ## (shared fields, loadings-only), spatial_indep() (per-contrast
     ## independent fields, `.spatial_indep = TRUE`), and spatial_dep() (full
     ## unstructured cross-contrast field covariance). VERIFIED at the parser
@@ -717,7 +717,7 @@
 #' multinomial trait
 #'
 #' A generic `(1 | g)` random intercept and the `cluster`/`cluster2`
-#' `indep()`/`unique()` diagonal tier are admitted (Slice 4, Design 122) as a
+#' `indep()`/`unique()` diagonal tier are admitted (Slice 4, Design 123) as a
 #' family-agnostic, per-covstruct classification -- see
 #' `.mn_classify_covstruct()` above. But when EVERY level of the grouping
 #' factor covers exactly one multinomial observation (one row of the

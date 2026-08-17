@@ -87,7 +87,7 @@ median, not a one-seed sanity check).
   `dev/multinomial-structured/results/s2-summary-20260816-183632.csv`,
   `s2-indep-corrected-summary.csv`); the verdict is BOTH cells FAILED,
   recorded in `docs/design/35-validation-debt-register.md`'s FAM-20D row
-  and `docs/design/122-multinomial-structured-surface.md` §1/§4 -- this
+  and `docs/design/123-multinomial-structured-surface.md` §1/§4 -- this
   bullet is left as the historical pre-run note rather than deleted.
 
 **Amendment (D-43 completion panel R6, 2026-08-16, dated below the frozen

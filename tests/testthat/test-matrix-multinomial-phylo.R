@@ -1,5 +1,5 @@
 ## Multinomial (family_id 16) structured-dependency admission -- Slice 1
-## (Design 122, 2026-08-16): `animal_latent()` (pedigree/known-relatedness
+## (Design 123, 2026-08-16): `animal_latent()` (pedigree/known-relatedness
 ## `A`) and single-name `kernel_latent()` (a dense supplied `K`), both
 ## loadings-only (`unique = FALSE`), join the pre-existing `phylo_latent()`
 ## admission for the among-category phylogenetic surface. Both keywords are
@@ -144,7 +144,7 @@ test_that("kernel_latent() (single name) fits for multinomial (Slice 1 admission
 })
 
 ## ---------------------------------------------------------------
-## Slice 2 (Design 122, 2026-08-16): the phylo MODE axis (dep = full V,
+## Slice 2 (Design 123, 2026-08-16): the phylo MODE axis (dep = full V,
 ## indep/standalone unique = diagonal V) and its animal/kernel twins.
 ##
 ## `phylo_dep(0 + trait | species)` resolves `d = n_traits` and populates the
@@ -287,7 +287,7 @@ test_that("kernel_unique() (single name, deprecated alias) fits for multinomial 
 
 ## ---------------------------------------------------------------
 ## Equivalence: animal_latent() / kernel_latent() are numerically identical
-## to phylo_latent() for multinomial (task item 3, Design 122 Slice 1).
+## to phylo_latent() for multinomial (task item 3, Design 123 Slice 1).
 ##
 ## Both keywords desugar (R/brms-sugar.R) into the SAME `phylo_rr` covstruct
 ## `phylo_latent()` itself produces, differing only by a classification
@@ -430,7 +430,7 @@ test_that("kernel_latent() (single name) is numerically equivalent to phylo_late
 })
 
 ## ---------------------------------------------------------------
-## Slice 2 (Design 122, 2026-08-16), task item 3 (stats-review contract):
+## Slice 2 (Design 123, 2026-08-16), task item 3 (stats-review contract):
 ## phylo_dep(0 + trait | species) vs phylo_latent(species, d = K - 1) on the
 ## SAME DGP data, compared at the V level (extract_Sigma(level = "phy", part
 ## = "shared", link_residual = "none")), agreement < 1e-4; both fits' Hessian

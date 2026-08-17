@@ -1,5 +1,5 @@
 ## Multinomial (family_id 16) structured-dependency admission -- Slice 4
-## (Design 122, 2026-08-16): ordinary GROUP random intercepts join the
+## (Design 123, 2026-08-16): ordinary GROUP random intercepts join the
 ## admitted set -- a generic `(1 | g)` random intercept (`re_int` engine kind,
 ## `src/gllvmTMB.cpp`'s `re_int` block) and the non-phylogenetic `cluster`/
 ## `cluster2` diagonal tier (`indep(0 + trait | g)` via the `cluster =`/

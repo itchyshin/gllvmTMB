@@ -192,7 +192,7 @@ truth for whether a family is `covered`, `partial`, or `blocked`.
 
 **Current status (2026-08-16; supersedes the 2026-07-21 wording below and the
 historical Tier-1-only wording in Design 83).** Fixed-effect recovery for one
-unordered categorical trait is **covered** (FAM-20). The Design 122 arc
+unordered categorical trait is **covered** (FAM-20). The Design 123 arc
 (Slices 1-4, 2026-08-16) admitted a bounded structured-term surface on top of
 that -- MOST cells gated on a signed recovery campaign rather than
 construction alone, with one explicit exception noted below: the among-category phylogenetic/relatedness surface in all three
@@ -217,7 +217,7 @@ returns a well-formed diagonal); it was NOT part of the `(1 | group)`
 campaign and its recovery axis remains open (`partial`). `phylo_scalar()`/`animal_scalar()`/`kernel_scalar()`/`spatial_scalar()` and
 `common = TRUE` at the cluster/cluster2 tier are REFUSED, not merely
 deferred -- a shared-level collapse across the $K-1$ contrasts has no
-interpretable null. See `docs/design/122-multinomial-structured-surface.md`
+interpretable null. See `docs/design/123-multinomial-structured-surface.md`
 for the complete per-cell table and every number, and
 `docs/design/35-validation-debt-register.md`'s FAM-20A-F rows for the
 register statements.
@@ -257,7 +257,7 @@ shared-`latent()` cross-family route. Name: `multinomial()` (not
 `categorical()`, which is the unordered missing-**predictor** imputation family,
 Design 68). Julia parity is a separate later arc.
 
-**Admission is enforced by a two-stage fence (Slice 0, Design 108/122,
+**Admission is enforced by a two-stage fence (Slice 0, Design 108/123,
 2026-08-16).** `dep()`, explicit multinomial `unique()`/`indep()`, slopes,
 spatial/animal/kernel tiers, the `cluster`/`cluster2`/`unit_obs` grouping
 tiers, generic `(1 | group)` random intercepts, and `mi()` predictor terms

@@ -1,6 +1,6 @@
 ## dev/multinomial-structured/gate-check-a-proj.R
 ##
-## Slice 3 (Design 122, 2026-08-16), GATE CHECK (run BEFORE any spatial
+## Slice 3 (Design 123, 2026-08-16), GATE CHECK (run BEFORE any spatial
 ## admission edit landed): does the SPDE projection matrix `A_proj` align
 ## correctly with the multinomial K-1 contrast-row expansion?
 ##

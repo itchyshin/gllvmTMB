@@ -130,7 +130,7 @@ test_that("multinomial admits only fixed effects + phylo_latent (+ Slice 4 group
   skip_on_cran()
   df <- .make_multinomial(seed = 3L, n = 120L, K = 3L)
   ## Tier-2a (Design 84) relaxed the Tier-1 fence to permit phylo_latent();
-  ## Design 122 Slice 4 (2026-08-16) further admits a generic (1 | group)
+  ## Design 123 Slice 4 (2026-08-16) further admits a generic (1 | group)
   ## random intercept (see test-matrix-multinomial-unit.R) and the
   ## cluster/cluster2 indep() diagonal tier -- so a bare (1 | unit) is no
   ## longer a fixed exemplar of "still blocked" here (this fixture's `unit`

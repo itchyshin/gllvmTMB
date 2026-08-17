@@ -1,11 +1,11 @@
 ## dev/multinomial-structured/probe-scalar-null.R
 ##
-## Slice 2 (Design 122, 2026-08-16), task item 5: NULL-DGP probe evidencing
+## Slice 2 (Design 123, 2026-08-16), task item 5: NULL-DGP probe evidencing
 ## the phylo_scalar()/animal_scalar()/kernel_scalar() REFUSAL for multinomial
 ## (family_id 16). This is a DEV SCRIPT, not a test -- it reports numbers, it
 ## does not gate a pass/fail criterion.
 ##
-## `*_scalar()` is not admitted for multinomial in this release (Design 122
+## `*_scalar()` is not admitted for multinomial in this release (Design 123
 ## Slice 0/2, R/multinomial-fence.R): phylo_scalar()/animal_scalar() route
 ## through the unrelated `propto` engine (blocked by the late `use_propto`
 ## re-scan); kernel_scalar() shares the SAME phylo_rr/theta_rr_phy diagonal
@@ -162,7 +162,7 @@ if (nrow(converged) > 0L) {
     signif(max(abs(converged$rho_hat[converged$keyword == "phylo_dep"]), na.rm = TRUE), 3)
   ))
 }
-cat("\nThis is a REPORT, not a gate (Design 122): it evidences whether a scalar-\n")
+cat("\nThis is a REPORT, not a gate (Design 123): it evidences whether a scalar-\n")
 cat("like summary would be interpretable on the (I+J) contrast geometry -- it\n")
 cat("does not itself decide the *_scalar() admission question.\n")
 

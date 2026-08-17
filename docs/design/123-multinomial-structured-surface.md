@@ -1,4 +1,4 @@
-# Design 122 — the full multinomial() structured-dependency surface
+# Design 123 — the full multinomial() structured-dependency surface
 
 **Status: FINAL (post-Slice-4 consolidation, 2026-08-16).** Five build
 slices (0-4) plus signed recovery campaigns for every admitted cell are

@@ -801,7 +801,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     cluster2_col = if (is.null(cluster2)) NULL else as.character(cluster2)[1]
   )
 
-  ## Multinomial (family_id 16), Slice 4 (Design 122, 2026-08-16): whole-fit
+  ## Multinomial (family_id 16), Slice 4 (Design 123, 2026-08-16): whole-fit
   ## OLRE guard for the newly-admitted generic (1 | group) / cluster /
   ## cluster2 group intercepts -- needs `data` (the observation-to-group
   ## mapping), so it cannot live inside the per-covstruct classifier above.
@@ -2182,7 +2182,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   re_int_idx <- which(kinds == "re_int")
   use_re_int <- length(re_int_idx) > 0L
   ## Multinomial (family_id 16) structured-term admission is now enforced in
-  ## TWO passes (Slice 0, Design 108/122; see R/multinomial-fence.R for the
+  ## TWO passes (Slice 0, Design 108/123; see R/multinomial-fence.R for the
   ## full rationale): an EARLY covstruct-keyed classifier
   ## (`.multinomial_structured_admission()`, called right after `kinds` /
   ## `groupings` are computed above) that reads the raw parser markers so
@@ -4448,7 +4448,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## after every COVSTRUCT-DERIVED `use_*` tier flag in this function is
   ## defined (including the use_mi_* mi()-predictor flags above), so a mi()
   ## term on a multinomial fit is no longer invisible to the scan (Slice 0,
-  ## Design 108/122: this used to sit right after `use_re_int`, well before
+  ## Design 108/123: this used to sit right after `use_re_int`, well before
   ## use_mi_* existed). This is NOT every `use_*` variable in the function --
   ## e.g. `use_continuation` (AGHQ continuation scheduling) and `use_aghq`
   ## are assigned later, well after fitting begins; they are integration/
@@ -4456,7 +4456,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## scope by construction rather than by accident.
   if (any(family_id_vec == 16L)) {
     .mn_env <- environment()
-    ## Slice 4 (Design 122, 2026-08-16): `use_re_int` (generic (1 | group)),
+    ## Slice 4 (Design 123, 2026-08-16): `use_re_int` (generic (1 | group)),
     ## `use_diag_species` (cluster tier), and `use_diag_cluster2` (cluster2
     ## tier, the literally-identical engine route on a second grouping
     ## column) join the allowed set. Safe to allow unconditionally here: the
@@ -4466,7 +4466,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     ## (`.multinomial_reint_group_olre_guard()`), BOTH of which run earlier
     ## in this function and would already have aborted before this scan is
     ## reached -- see R/multinomial-fence.R.
-    ## `use_spde` (Slice 3, Design 122): the base intercept-only SPDE engine
+    ## `use_spde` (Slice 3, Design 123): the base intercept-only SPDE engine
     ## slot -- spatial_latent()/spatial_indep()/spatial_dep() ALL populate
     ## this ONE flag (spatial_dep literally desugars to
     ## `.spatial_latent = TRUE`, R/brms-sugar.R); spatial_scalar(),

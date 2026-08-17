@@ -1,4 +1,4 @@
-# After Task: multinomial() structured-dependency arc (Slices 0-5, Design 108/122)
+# After Task: multinomial() structured-dependency arc (Slices 0-5, Design 108/123)
 
 **Branch**: `claude/multinomial-structured-20260816`
 **Date**: `2026-08-16`
@@ -44,7 +44,7 @@ commit order, and states this explicitly):
   every admitted cell's recovery campaign was run to completion under
   SIGNED, pre-registered criteria (by the maintainer, commits `9e4d2d07`,
   `438a156f`, `47a71428`); this task consolidated those verbatim verdicts
-  into `docs/design/122-multinomial-structured-surface.md` (promoted from
+  into `docs/design/123-multinomial-structured-surface.md` (promoted from
   stub to final design doc), the FAM-20C/D/E/F register rows, the
   `docs/design/02-family-registry.md` and capability-surface.html summary
   surfaces, and a roxygen sweep.
@@ -57,12 +57,12 @@ rates 8/20 against a 6/20 threshold). A pre-registered replication rescue
 is untested for the diagonal-V cell, whose own corrected rerun
 independently FAILS. The spatial surface (FAM-20E) and the group-intercept
 surface (FAM-20F) both PASS their signed gates outright. See §4 below and
-`docs/design/122-multinomial-structured-surface.md` §1/§4 for every number.
+`docs/design/123-multinomial-structured-surface.md` §1/§4 for every number.
 
 ## 3. Files Changed
 
 **Design/register documents (Slice 5, this task's primary scope):**
-- `docs/design/122-multinomial-structured-surface.md` — promoted from stub
+- `docs/design/123-multinomial-structured-surface.md` — promoted from stub
   to final design doc: per-cell table (§1), engine identities (§2),
   identification frame (§3), data-hunger + replication rescue (§4), scalar
   refusal rationale (§5), out-of-scope list (§6), build log appendix (§7,
@@ -268,13 +268,13 @@ already fixed and excluded from this list — the provenance-script finding,
   truth. Added explicit rows + `reprs` entries for all three.
 - **R3 (docs, blocking): FAM-20F conflated `(1 | group)`'s signed PASS
   with `cluster`/`cluster2`'s construction-level-only evidence** across
-  three surfaces (register, design-122, NEWS) and this report. Fixed
+  three surfaces (register, design-123, NEWS) and this report. Fixed
   everywhere; `pass-criteria-s4.md` itself never had this bug.
 - **R4 (docs, blocking): the `phylo_indep()` 7/20 numerical-zero collapse
   was under-disclosed.** "Median ratio 0.24, 9/20 in band" did not state
   that 7 of those 20 seeds collapse to numerical zero with `convergence =
   0` AND a PD Hessian, invisible to every current diagnostic. Disclosed
-  in FAM-20D, design-122, NEWS; the `#897`-class detector gap added to
+  in FAM-20D, design-123, NEWS; the `#897`-class detector gap added to
   Known Limitations.
 - **R5 (docs, should-fix): the capability-board hedge was uniform and
   partly wrong** ("recovery needs per-species replication" does not
@@ -288,7 +288,7 @@ already fixed and excluded from this list — the provenance-script finding,
   landed in ONE commit — got an explicit "not git-verifiable" provenance
   note rather than an implied one.
 - **R7 (docs, should-fix): the s3 frozen rail threshold was re-expressed
-  as ">6/14"** in design-122 and NEWS; the pre-registered frozen wording
+  as ">6/14"** in design-123 and NEWS; the pre-registered frozen wording
   is ">6/20". Restored in both places plus the register row, with the
   14-PD-seed context kept alongside rather than dropped.
 - **R8 (docs, should-fix): s1b's non-railed-filter median (0.680) was
@@ -296,7 +296,7 @@ already fixed and excluded from this list — the provenance-script finding,
   ALL 20 conv+PD seeds is 0.696, also in band — the PASS does not depend
   on which one is headlined.
 - **R9 (docs, should-fix): spatial per-seed dispersion was absent.** Added
-  to design-122/FAM-20E/NEWS: 4/14 PD seeds outside band for
+  to design-123/FAM-20E/NEWS: 4/14 PD seeds outside band for
   `latent()`/`dep()` (worst ratio 4.56); `indep()`'s 3 rails at range
   ratios 2.3e-4–3.4e-4, ALL with `pdHess = TRUE` — verified directly from
   `s3-summary-20260816-190701.csv`, which also corrected one sub-detail
@@ -304,7 +304,7 @@ already fixed and excluded from this list — the provenance-script finding,
   re-verification, not two).
 - **R10 (docs, note-level): the OLRE guard's all-or-nothing boundary**
   (fires only when EVERY level is a categorical singleton) recorded
-  explicitly in design-122 §3 as a known boundary + follow-up, no code
+  explicitly in design-123 §3 as a known boundary + follow-up, no code
   change.
 
 ## 6. Checks Run
@@ -347,7 +347,7 @@ already fixed and excluded from this list — the provenance-script finding,
 
 ## 7. Roadmap Tick
 
-N/A — no `ROADMAP.md` row is tied to this arc by name; Design 122 and the
+N/A — no `ROADMAP.md` row is tied to this arc by name; Design 123 and the
 FAM-20 register rows are the tracked artifacts.
 
 ## 7a. GitHub Issue Ledger
@@ -417,7 +417,7 @@ contradiction only existed across slices.
   EVERY level of the grouping factor has exactly one categorical
   observation (`all(n_obs_per_level == 1L)`); a grouping where MOST
   levels are singletons but a few are not passes the guard silently.
-  Recorded as a known boundary in `docs/design/122-multinomial-
+  Recorded as a known boundary in `docs/design/123-multinomial-
   structured-surface.md`'s §1 OLRE-guard row rather than changed here —
   a partial-degeneracy detector would need its own identifiability
   argument (some groups may be estimable even when most are not), not a

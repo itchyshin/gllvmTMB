@@ -1,5 +1,5 @@
 ## Multinomial (family_id 16) structured-term admission fence (Slice 0,
-## Design 108/122). Confirms every deferred keyword combined with a
+## Design 108/123). Confirms every deferred keyword combined with a
 ## multinomial() trait fails loud rather than silently reaching an
 ## untested categorical path, and that the current admitted set (a shared
 ## unit-tier latent() ordination, phylo_latent(), and the default auto-Psi)
@@ -726,7 +726,7 @@ test_that(".mn_admission_table is consistent with .mn_classify_covstruct() for e
   skip_on_cran()
   tbl <- gllvmTMB:::.mn_admission_table
   site <- "unit"; ss_name <- "site_species"; species <- "species"
-  ## Slice 4 (Design 122, 2026-08-16) added cluster2-tier rows to the table,
+  ## Slice 4 (Design 123, 2026-08-16) added cluster2-tier rows to the table,
   ## so cluster2_col must resolve to a real column name here (NULL made the
   ## cluster2 tier unreachable, which was fine before any row needed it).
   cluster2_col <- "year"
@@ -740,7 +740,7 @@ test_that(".mn_admission_table is consistent with .mn_classify_covstruct() for e
     list(kind = "rr",       group = as.name("unit"),    extra = list(.latent_augmented = TRUE)),
     list(kind = "phylo_rr", group = as.name("species"), extra = list(.latent_slope = TRUE)),
     list(kind = "equalto",  group = as.name("grp_V"),   extra = list()),
-    ## Slice 1 (Design 122, 2026-08-16): animal_latent()/kernel_latent()
+    ## Slice 1 (Design 123, 2026-08-16): animal_latent()/kernel_latent()
     ## (single name) admitted rows, and their unique = TRUE auto-Psi
     ## companions, blocked.
     list(kind = "phylo_rr", group = as.name("species"),
@@ -752,7 +752,7 @@ test_that(".mn_admission_table is consistent with .mn_classify_covstruct() for e
     list(kind = "phylo_rr", group = as.name("species"),
          extra = list(.phylo_unique = TRUE, .auto_unique = TRUE,
                       .kernel_name = "phy", .kernel_mode = "unique")),
-    ## Slice 2 (Design 122, 2026-08-16): the phylo mode axis (dep = full V,
+    ## Slice 2 (Design 123, 2026-08-16): the phylo mode axis (dep = full V,
     ## indep/standalone unique = diagonal V) and its animal/kernel twins,
     ## admitted; kernel_scalar() (same markers as kernel_indep(), .kernel_mode
     ## = "scalar") stays blocked.
@@ -778,7 +778,7 @@ test_that(".mn_admission_table is consistent with .mn_classify_covstruct() for e
     list(kind = "phylo_rr", group = as.name("species"),
          extra = list(.phylo_unique = TRUE, .indep = TRUE,
                       .kernel_name = "k1", .kernel_mode = "scalar")),
-    ## Slice 4 (Design 122, 2026-08-16): generic (1 | g) random intercepts
+    ## Slice 4 (Design 123, 2026-08-16): generic (1 | g) random intercepts
     ## and the non-phylogenetic cluster/cluster2 diagonal tier, admitted;
     ## common = TRUE (the scalar() modifier) at cluster/cluster2, blocked.
     list(kind = "re_int",   group = as.name("group3"), extra = list()),
@@ -790,7 +790,7 @@ test_that(".mn_admission_table is consistent with .mn_classify_covstruct() for e
          extra = list(.indep = TRUE, common = TRUE)),
     list(kind = "diag",     group = as.name("year"),
          extra = list(.indep = TRUE, common = TRUE)),
-    ## Slice 3 (Design 122, 2026-08-16): the spatial (SPDE) mode axis --
+    ## Slice 3 (Design 123, 2026-08-16): the spatial (SPDE) mode axis --
     ## spatial_latent()/spatial_indep()/spatial_dep() admitted;
     ## spatial_latent(unique = TRUE)'s paired Psi companion, spatial_scalar(),
     ## standalone spatial_unique() (no markers at all), and every augmented

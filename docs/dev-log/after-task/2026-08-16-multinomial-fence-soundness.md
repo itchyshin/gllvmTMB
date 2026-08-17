@@ -8,7 +8,7 @@
 
 Make the multinomial (fid 16) structured-term admission fence actually
 fail-closed. Slice 0 of the structured-dependency arc (ultra-planned this
-session; design stub `docs/design/122-multinomial-structured-surface.md`).
+session; design stub `docs/design/123-multinomial-structured-surface.md`).
 
 ## 2. What was wrong
 

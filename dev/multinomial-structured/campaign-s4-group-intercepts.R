@@ -6,7 +6,7 @@
 ## campaign-s1/s2's mode/timing/results conventions.
 ##
 ## `(1 | group)`'s semantics are BASELINE-VS-REST, not per-category (see
-## R/multinomial-fence.R and docs/design/122-multinomial-structured-
+## R/multinomial-fence.R and docs/design/123-multinomial-structured-
 ## surface.md's Slice 4 section): the engine adds ONE draw per group level to
 ## EVERY one of a multinomial observation's K-1 baseline-contrast rows, so
 ## `sigma_re` is a single scalar per fit (not per-contrast) and is what this
@@ -23,7 +23,7 @@
 ##   OPENBLAS_NUM_THREADS=1 CAMPAIGN_CORES=20 \
 ##     Rscript campaign-s4-group-intercepts.R --mode full
 ##
-## `--mode full` is NOT run as part of this task (D-139 + Design 122: gated on
+## `--mode full` is NOT run as part of this task (D-139 + Design 123: gated on
 ## dev/multinomial-structured/pass-criteria-s4.md's DRAFT status, pending
 ## Shinichi's sign-off -- see that file).
 

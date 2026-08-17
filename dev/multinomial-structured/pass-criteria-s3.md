@@ -69,7 +69,7 @@ spatial.R's equivalence test), so its band is expected to track
   `dev/multinomial-structured/results/s3-summary-20260816-190701.csv`);
   the verdict is PASSED all three cells, recorded in
   `docs/design/35-validation-debt-register.md`'s FAM-20E row and
-  `docs/design/122-multinomial-structured-surface.md` §1/§4 -- this bullet
+  `docs/design/123-multinomial-structured-surface.md` §1/§4 -- this bullet
   is left as the historical pre-run note rather than deleted. `n_site =
   300` is the task brief's starting point, NOT calibrated against a prior
   spike (unlike S1/S2's `n_sp = 800`, which traces to the 2026-07-17

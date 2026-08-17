@@ -97,7 +97,7 @@ is still the default.
 ## Fixed
 
 * **`multinomial()` structured-term admission is now fail-closed (Slice 0,
-  Design 108/122).** Several deferred keywords previously desugared
+  Design 108/123).** Several deferred keywords previously desugared
   (`R/brms-sugar.R`) onto the same internal engine flag as an admitted
   keyword and silently reached an untested categorical path instead of
   erroring: `dep()` at the unit tier, `phylo_dep()`, `phylo_indep()` /
@@ -120,14 +120,14 @@ is still the default.
   with a shared classed condition (`gllvmTMB_multinomial_structured_not_admitted`)
   on every path.
 
-* **The `multinomial()` structured-term surface (Design 122, Slices 1-4,
+* **The `multinomial()` structured-term surface (Design 123, Slices 1-4,
   2026-08-16) now admits a bounded set of among-category and grouping
   structures, each gated on a signed, pre-registered recovery campaign
   rather than construction alone.** Every admission below is enforced by
   the same fail-closed classifier (`R/multinomial-fence.R`); anything not
   named below still aborts typed
   (`gllvmTMB_multinomial_structured_not_admitted`). See
-  `docs/design/122-multinomial-structured-surface.md` for the full per-cell
+  `docs/design/123-multinomial-structured-surface.md` for the full per-cell
   table and `docs/design/35-validation-debt-register.md`'s FAM-20C/D/E/F
   rows for the underlying evidence.
 

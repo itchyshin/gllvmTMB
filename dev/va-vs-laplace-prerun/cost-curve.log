@@ -1,0 +1,22 @@
+run_row extracted from run-prerun122.R -- 271 lines.
+
+=== COST CURVE: n=100, p=27, T-strong, arm=VGH, seed=1 ===
+using C++ compiler: ‘g++ (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0’
+g++ -std=gnu++17 -I"/usr/share/R/include" -DNDEBUG -I"/home/snakagaw/R/lib/TMB/include" -I"/home/snakagaw/R/lib/RcppEigen/include"  -DTMB_SAFEBOUNDS -DTMB_EIGEN_DISABLE_WARNINGS -DLIB_UNLOAD=R_unload_gllvmTMB_va_r3  -DTMB_LIB_INIT=R_init_gllvmTMB_va_r3  -DCPPAD_FRAMEWORK      -fpic  -O2  -c gllvmTMB_va_r3.cpp -o gllvmTMB_va_r3.o
+g++ -std=gnu++17 -shared -L/usr/lib/R/lib -Wl,-Bsymbolic-functions -flto=auto -ffat-lto-objects -Wl,-z,relro -o gllvmTMB_va_r3.so gllvmTMB_va_r3.o -L/usr/lib/R/lib -lR
+n=100 wall=45.0s (0.75 min) status=ok converged=TRUE error=(none)
+
+=== COST CURVE: n=400, p=27, T-strong, arm=VGH, seed=1 ===
+n=400 wall=125.7s (2.10 min) status=ok converged=TRUE error=(none)
+
+
+=== COST CURVE SUMMARY ===
+      n status converged measured_wall_s testA_c_hat testA_pass
+100 100     ok      TRUE        44.96534    1.000281       TRUE
+400 400     ok      TRUE       125.71535    1.000285       TRUE
+
+n=100: 45.0s (0.75 min)
+n=400: 125.7s (2.10 min)
+n=1600 (prior attempt, killed, incomplete): >1037s (>17.3 min)
+
+AFFORDABLE (n=400 <= 3 min): TRUE

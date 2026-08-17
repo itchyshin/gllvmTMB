@@ -751,3 +751,23 @@ Consequences, pre-registered here rather than discovered mid-campaign:
 **This section is a finding, not a failure**: the pre-run's job was to
 price the campaign before seeds were burned, and it did — the decision on
 (a)/(b)/(c) belongs to Design 66 scoping.
+
+## 15. Completed pre-run (2026-08-16, later) — §14's options resolved by measurement
+
+The reduced-sentinel pre-run ran to completion (120/120 fits, stop rule not
+fired; `dev/va-vs-laplace-prerun/RESULTS.md`). VGH cost curve: 45.0 s
+(n=100) · 125.7 s (n=400) · >17.3 min unfinished (n=1600). **Recommended
+disposition = (c-modified): confirmatory n ∈ {100, 400}; n = 1600
+exploratory-budgeted; no `n_starts` arm.** TEST A passes 120/120 across all
+arms after an instrument correction the pre-run itself caught: the Laplace
+`aghq_ridge` penalty is applied at the R level (`R/fit-multi.R:5586-5592`,
+anchor: the ridge penalty block) and is NOT part of `tmb_obj$fn()` — a
+TEST A that evaluates the raw TMB objective scores L2 against the wrong
+function (18/40 false alarms, all cleared on the corrected objective,
+`c_hat ∈ [1.0000, 1.0014]`). Seeds/cell from measured SD(Δ) (primary
+stratum, VGH−L2): ~205–306 at binomial sentinels; ordinal trivially small;
+VGH−L0 contrasts degenerate-inflated and adjudicated on intersection
+denominators only, as §6 already mandates. One open flag for the campaign:
+4/40 optimiser non-determinism flips (parallel vs sequential) at the
+weakest-signal cell. Final scoping lives in
+`docs/dev-log/2026-08-16-design66-scoping-proposal.md`.

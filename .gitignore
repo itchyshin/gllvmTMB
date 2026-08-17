@@ -135,8 +135,9 @@ dev/va-speed/0[6-9]-*.rds
 dev/va-speed/0[6-9]-*log*.txt
 dev/va-speed/1[0-9]-*.rds
 
-# Stale Dropbox / cloud-agent LOOP scratch — live LOOP for Design 125 lives only in
-# /Users/z3437171/local-scratch/lanes/gllvmTMB-mspl-profile-led-ci/LOOP/
-# Do not commit root LOOP/ or docs/dev-log/lanes/ from Dropbox checkouts.
-/LOOP/
+# Stale Dropbox / cloud-agent lane scratch under docs/dev-log/lanes/ (Arc 1A
+# historical kits, etc.). Live Design 125 LOOP/ is tracked only on the
+# local-scratch lane worktree; Dropbox root LOOP/ must stay local-only
+# (add /LOOP/ in that checkout's .gitignore — do NOT ignore LOOP/ here or
+# the live lane loses new LOOP files).
 docs/dev-log/lanes/

@@ -54,5 +54,5 @@ Hard stops: #1077 stays draft fb44d7b5; MSPL-04 blocked; no Design 118 reopen; A
 
 - Overnight WT Confirm: already on `origin/main`; uncommitted overnight dirt **discarded**.
 - Poisson W ledger: **one truth** — Gate 1 = operational PARK; card **UNSIGNED** until KEEP/REPLACE (Rose).
-- Dropbox root `LOOP/` + `docs/dev-log/lanes/` = stale scratch; **gitignored** on this lane (do not treat as live LOOP).
+- Dropbox root `LOOP/` + `docs/dev-log/lanes/` = stale scratch (not live LOOP). Lane ignores `docs/dev-log/lanes/`; Dropbox checkout locally ignores `/LOOP/`.
 - #1077 stays **draft**; no smoke / Totoro / fork A/B/C invented.

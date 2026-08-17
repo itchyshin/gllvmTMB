@@ -7,7 +7,7 @@ Fixed:
 - Restored `docs/dev-log/research/2026-08-17-mspl-poisson-W-G0.md` to **UNSIGNED** (Rose `70b8d874` body).
 - Aligned LOOP arcs / decision-queue / Design 125 / checkpoint to ops-PARK + UNSIGNED card.
 - Overnight WT `/private/tmp/gllvmtmb-mspl-estimator-programme-roadmap`: Confirm already == `origin/main`; discarded uncommitted dirt.
-- `.gitignore`: `/LOOP/` + `docs/dev-log/lanes/` (Dropbox stale root LOOP / cloud-agent junk).
+- `.gitignore` (lane): `docs/dev-log/lanes/` only. Dropbox checkout keeps local `/LOOP/` ignore so root LOOP scratch stays untracked; do not ignore `LOOP/` on the live local-scratch lane.
 - Committed dirty post-#1087-merge checkpoint.
 
 Still NOT: undraft #1077 · Totoro · public se · smoke · invent KEEP/REPLACE · invent fork A/B/C.
@@ -15,7 +15,8 @@ Still NOT: undraft #1077 · Totoro · public se · smoke · invent KEEP/REPLACE 
 ```sh
 rg -n '^\*\*Status' docs/dev-log/research/2026-08-17-mspl-poisson-W-G0.md
 rg -n 'UNSIGNED|operational PARK|SIGNED PARK' LOOP/arcs.md LOOP/decision-queue.md LOOP/checkpoint.md docs/design/125-mspl-profile-led-intervals.md
-rg -n '^/LOOP/|docs/dev-log/lanes/' .gitignore
+rg -n 'docs/dev-log/lanes/' .gitignore
+# Dropbox checkout only: /LOOP/ in that tree's .gitignore (local; not this lane)
 git -C /private/tmp/gllvmtmb-mspl-estimator-programme-roadmap status --short
 # deliberately not: undraft #1077, Totoro, smoke, fork pick
 ```

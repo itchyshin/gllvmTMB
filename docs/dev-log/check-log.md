@@ -1,5 +1,23 @@
 # Check log
 
+## 2026-08-17 — MSPL CI triad = profile signature + Wald quick + bootstrap asymmetry
+
+Docs only. Shinichi paste: try Wald (quickest) but signature error is
+profile. Brain: **D-12** already records profile as featured/hero CI
+(Wald ≪ profile ≪ bootstrap); D-157 keeps B1 PARK / new construction;
+D-149 keeps \(Q_0\) for if/ever Wald SE with CI calibration separate.
+Notes: `docs/dev-log/research/2026-08-17-mspl-ci-wald-plus-profile.md`
+(+ amend of `2026-08-17-mspl-profile-bootstrap-ci-next.md`). After-task:
+`docs/dev-log/after-task/2026-08-17-mspl-ci-wald-plus-profile.md`.
+No Totoro. No Design 118 reopen. No public `se=TRUE`.
+
+```sh
+rg -n 'signature|D-12|triad|Wald \(\\?Q_0\)' \
+  docs/dev-log/research/2026-08-17-mspl-ci-wald-plus-profile.md \
+  docs/dev-log/research/2026-08-17-mspl-profile-bootstrap-ci-next.md
+# no testthat; docs-only
+```
+
 ## 2026-08-17 — Poisson W=diag(mu) G0 paste card (UNSIGNED)
 
 Docs only. Short G0 card for Shinichi: KEEP / REPLACE \(W_*\) /

@@ -86,6 +86,77 @@ Recovery campaign staged at
 `--mode full` NOT run), gated on
 `dev/multinomial-structured/pass-criteria-s2.md` (DRAFT, pending sign-off).
 
+## Status (Slice 4, 2026-08-16)
+
+Ordinary GROUP random intercepts move from deferred to admitted -- a
+different axis from Slices 1-2 (source/mode of the phylogenetic surface):
+this slice is about ordinary, non-phylogenetic grouping structure. (Slice 3,
+the spatial mode axis, is reserved for future work and is NOT part of this
+slice; every spatial cell stays BLOCKED, unchanged.)
+
+- **Admitted:** a generic `(1 | group)` random intercept (engine kind
+  `re_int`, `src/gllvmTMB.cpp`'s `re_int` block). Verified against the
+  engine's own indexing: the group id is read off the AFTER-expansion
+  pseudo-trait data (`R/fit-multi.R`), so every one of a multinomial
+  observation's `K-1` baseline-contrast rows carries the SAME group id and
+  gets the SAME additive draw. This is a **baseline-vs-rest** group effect,
+  not a per-category one: the shared shift moves `P(y = baseline)` versus
+  `P(y != baseline)` and leaves the odds between any two NON-baseline
+  categories unchanged -- WITHIN one fit, across groups (pinned empirically:
+  the log-odds between the two non-baseline categories has sd = 0 across all
+  900 observations of a `G = 20`, `n_per_g = 5` fixture, tolerance 1e-6;
+  `test-matrix-multinomial-unit.R`). `sigma_re`'s substantive interpretation
+  is therefore **reference-category-specific**. **Correction to an earlier
+  draft of this section (this task, caught by a failing test):**
+  re-labelling `baseline` is **NOT** a reparameterisation of the same
+  model, so it is not only `sigma_re` that changes under a different
+  baseline -- the fitted response-scale probabilities change too. Under
+  `baseline = 1`, `eta = (0, b0_2 + u_g, b0_3 + u_g)` constrains the
+  log-odds *between categories 2 and 3* to be constant across groups (no
+  `u_g` term in `eta_3 - eta_2`); under `baseline = 3` the SAME engine
+  instead shares a (new) `u_g` between categories 1 and 2, constraining
+  *their* log-odds to be constant instead -- a genuinely different
+  parametric restriction on the model space, not the same distribution
+  under two labels (unlike the fixed-effects-only case, where relabelling
+  really is a reparameterisation; see `test-multinomial.R`'s existing
+  baseline-invariance tests, which have no random-effect term).
+- **Admitted:** the non-phylogenetic `cluster`/`cluster2` diagonal tier --
+  `indep(0 + trait | g)` via the `cluster =`/`cluster2 =` arguments, and the
+  soft-deprecated standalone `unique()` alias (the SAME engine path, only the
+  printed label differs). `use_diag_species` (cluster) and `use_diag_cluster2`
+  (cluster2) are LITERALLY IDENTICAL engine math (`eta(o) += q_sp(t,
+  species_id(o))` vs `eta(o) += r_c2(t, cluster2_id(o))`,
+  `src/gllvmTMB.cpp`) on two different grouping columns, so both are admitted
+  together. This gives `D` independent per-CONTRAST (pseudo-trait) variances
+  at that grouping -- the per-category random intercept most users actually
+  want.
+- **New: an OLRE guard.** For a fid-16 fit, if EVERY level of an admitted
+  `(1 | g)` or cluster/cluster2 `indep()` grouping covers exactly one
+  categorical observation (`.multinom_group_`), the term is an
+  observation-level random effect (OLRE) in disguise: the softmax latent
+  scale is fixed (no free residual-dispersion parameter, unlike a
+  Gaussian/count response), so a per-observation intercept shared across its
+  own `K-1` contrast rows is not identifiable from the fixed effects. This is
+  a WHOLE-FIT check against `data` (needs the observation-to-group mapping,
+  not just the covstruct shape), so it is a SEPARATE typed guard
+  (`gllvmTMB_multinomial_olre_not_admitted`), layered on top of an
+  individually-admitted classification -- mirroring how the multi-kernel
+  override (Slice 1) sits on top of an individually-admitted kernel cell.
+- **Stays BLOCKED:** `common = TRUE` (the `scalar()` modifier) at the
+  cluster/cluster2 tier -- the generic engine has no common-pooling map for
+  `use_diag_species`/`use_diag_cluster2` (unlike the unit/unit_obs
+  `diag_B_common`/`diag_W_common` map tricks), so admitting it would silently
+  ADMIT the term while silently IGNORING the `common = TRUE` request rather
+  than actually pooling to one shared level -- refused explicitly, matching
+  `phylo_scalar()`/`animal_scalar()`/`kernel_scalar()`. The `unit_obs`
+  grouping tier and `latent()`/`dep()` at the cluster/cluster2 tiers also
+  stay BLOCKED (no engine slot).
+
+Recovery campaign staged at
+`dev/multinomial-structured/campaign-s4-group-intercepts.R` (`--mode full`
+NOT run), gated on `dev/multinomial-structured/pass-criteria-s4.md` (DRAFT,
+pending sign-off). Register row FAM-20F.
+
 ## See also
 
 - `docs/design/02-family-registry.md` — the unordered categorical family

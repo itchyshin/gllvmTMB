@@ -17,9 +17,9 @@ PROTECTED** before mutating. Execute only **OWED**.
 | Repo | `itchyshin/gllvmTMB` |
 | Tip for rehydrate | this branch tip (ahead of `origin/main`; re-fetch before merge) |
 | What shipped overnight | D-157 B1 PARK; point admits; internal SE pins; Ranga \(Q_0\); W-onesided #1064; Gamma/lnorm oracles #1063; CI triad docs #1075; Poisson W G0 #1076; #1078 as-cran guard |
-| What landed this lane | Triad Confirm **SIGNED** (`7de94fc7`); Design **125** claimed (`b68b20b4`); S2 ADEMP pre-reg **draft done** |
-| What is UNSIGNED | Poisson W KEEP/REPLACE/PARK SE doors only |
-| Plan by leverage | (1) **S3** Poisson W note ∥ **S4** Rose fence · (2) optional #1065 planned-only · (3) no undraft #1077 / no live profile / no Totoro |
+| What landed this lane | Triad Confirm **SIGNED** (`7de94fc7`); Design **125** claimed (`b68b20b4`) **APPROVED**; S2 ADEMP **SIGNED**; S3/S4 done; decision queue G1–G4e SIGNED |
+| What is UNSIGNED | Poisson W **card Status** (silent default PARK SE doors; not KEEP/REPLACE) |
+| Plan by leverage | (1) C1 done · (2) G2 non-draft docs PR when asked · (3) no undraft #1077 / no H1 / no Totoro / no public se |
 | PROTECTED | Codex Lane B binary intervals; no public `se=TRUE` / NEWS covered without G0; #1077 stays draft |
 
 ## Critical Context
@@ -43,13 +43,14 @@ PROTECTED** before mutating. Execute only **OWED**.
 7. **Design 125 claimed** at **`b68b20b4`** —
    `docs/design/125-mspl-profile-led-intervals.md` (STUB; MSPL-04 stays
    `blocked`).
-8. **S2 ADEMP pre-reg draft done** —
+8. **S2 ADEMP pre-reg SIGNED** (sibling finished) —
    `docs/dev-log/research/2026-08-17-mspl-profile-led-prereg-ademp.md`
-   (cites Design 125; not signed; not a campaign).
-9. **Poisson W G0 (#1076) UNSIGNED** — KEEP / REPLACE \(W_*\) /
-   PARK SE doors. Do not invent; default PARK further SE doors if silent.
+   (cites Design 125; not a campaign launch).
+9. **Poisson W card (#1076) UNSIGNED** — Status line stays UNSIGNED;
+   G1 operational **PARK SE doors** (silent default); do not invent
+   KEEP/REPLACE or flip Status without paste.
 10. **Profile scaffold DRAFT #1077** — **still draft** tip `fb44d7b5`;
-    still refuses public `confint`. Confirm SIGNED ≠ undraft permission.
+    still refuses public `confint`. Design APPROVED ≠ undraft permission.
 11. **PROTECTED:** `codex/lane-b-mspl-interval-feasibility` (binary SE).
     Do not absorb/rebase/merge from Cursor MSPL.
 12. **Multi-lane:** ownership map is
@@ -65,11 +66,11 @@ no Design 118 reopen after B1 FAIL.
 
 ## Plans / roadmap (if applicable)
 
-Design 125 + ADEMP draft are on this branch. Immediate NEXT = **S3 ∥ S4**
-(`LOOP/checkpoint.md`). Optional nbinom admit-packet science while staying
-`planned` (#1065). Family SE-series doors frozen pending Poisson W G0;
-Codex Lane B remains foreign. No live profile / undraft #1077 until
-separate Shinichi G0 after S2+S4.
+Design 125 **APPROVED** + ADEMP **SIGNED** on this branch. Decision queue
+G1–G4e SIGNED. Immediate NEXT per `LOOP/checkpoint.md`: finish **V1** if
+needed → **C1** (this sitting) → **G2** non-draft docs PR when asked.
+**H1 blocked** (G3 WAIT + G4c FORK-DEFER). Optional #1065 planned-only.
+Codex Lane B remains foreign. No live profile / undraft #1077.
 
 ## What Was Accomplished (DONE / SIGNED)
 
@@ -82,9 +83,11 @@ separate Shinichi G0 after S2+S4.
 | W-onesided audit | #1064 |
 | Gamma / lognormal rate+loading oracles | #1063 |
 | CI triad docs + Confirm | #1075 landed; Confirm **SIGNED** in `7de94fc7` |
-| Design 125 stub | claim SHA **`b68b20b4`** — `docs/design/125-mspl-profile-led-intervals.md` |
-| S2 ADEMP pre-reg | **draft done** — `docs/dev-log/research/2026-08-17-mspl-profile-led-prereg-ademp.md` |
-| Poisson W G0 card | #1076 (**UNSIGNED**) |
+| Design 125 stub | claim SHA **`b68b20b4`** — **APPROVED** programme stub |
+| S2 ADEMP pre-reg | **SIGNED** — `docs/dev-log/research/2026-08-17-mspl-profile-led-prereg-ademp.md` |
+| S4 Rose fence | **PASS** — closed stale co-primary wording in bootstrap sketch |
+| V1 verify | **done** / in progress per LOOP — #1077 draft; MSPL-04 blocked |
+| Poisson W G0 card | #1076 card **UNSIGNED** (G1 PARK SE doors operational) |
 | Profile CI scaffold | **DRAFT** #1077 — still draft after Confirm; tip `fb44d7b5` |
 | as-cran lane-b guard | #1078 on `main` @ `a5c83011` |
 
@@ -172,27 +175,34 @@ gh pr view 981
 | Class | Item |
 |---|---|
 | **DONE** | Triad Confirm SIGNED (`7de94fc7`) |
-| **DONE** | Design 125 claimed (`b68b20b4`) |
-| **DONE** | S2 ADEMP pre-reg draft (`2026-08-17-mspl-profile-led-prereg-ademp.md`) |
-| **OWED** | **S3** — Poisson W UNSIGNED chase / PARK SE doors note (do not invent KEEP/REPLACE/PARK) |
-| **OWED** | **S4** — Rose fence pass on S1–S2 (no NEWS covered; #1077 still draft) |
-| **OWED** | Rehydrate: `LOOP/checkpoint.md` + this handover vs live `git`; then only S3∥S4 (or optional #1065 planned-only) |
-| **PROTECTED** | Codex Lane B; Dropbox WT; `git add -A` |
-| **RETRACTED** | “wait triad G0 before any Design work” — Confirm SIGNED; Design 125 + S2 already claimed/drafted |
+| **DONE** | Design 125 claimed (`b68b20b4`) + APPROVED |
+| **DONE** | S2 ADEMP pre-reg SIGNED (`2026-08-17-mspl-profile-led-prereg-ademp.md`) |
+| **DONE** | S3/S4 arcs (G1 PARK operational; Rose PASS) |
+| **DONE** | C1 after-task + this handover refresh |
+| **OWED** | Rehydrate `LOOP/checkpoint.md` vs live tip; finish any remaining **V1** checks |
+| **OWED** | **G2** — open **non-draft docs PR** (Design 125 + Confirm + LOOP/pre-reg) when Shinichi asks; does **not** undraft #1077 |
+| **OWED** | Optional #1065 planned-only CI fix |
+| **PROTECTED** | Codex Lane B; Dropbox WT; `git add -A`; #1077 draft |
+| **RETRACTED** | “wait triad G0 before Design work” — Confirm SIGNED |
+| **RETRACTED** | “S2 TBD” — S2 SIGNED |
+| **RETRACTED** | “NEXT = S3∥S4 only” — S3/S4 done; live NEXT = V1/C1/G2 |
 
 Hard fences (not OWED work): undraft #1077 · live profile `confint` ·
-public `se=TRUE` · Totoro · Design 118 reopen · B1 relaunch.
+H1 smoke · public `se=TRUE` · Totoro · Design 118 reopen · B1 relaunch ·
+inventing Poisson W KEEP/REPLACE SIGNED Status.
 
 ## Blockers / Open Questions
 
 | ID | Status | Ask |
 |---|---|---|
-| CI triad confirm | **SIGNED** 2026-08-17 (`7de94fc7`; under D-157; no new D-) | Exact Confirm in `2026-08-17-mspl-ci-wald-plus-profile.md`. Design 125 + S2 drafted; #1077 still draft. |
-| Design 125 | **claimed STUB** @ `b68b20b4` | Soft Ada defaults only until signed G0; MSPL-04 stays blocked |
-| S2 ADEMP | **draft done** (unsigned) | Numeric L\*/T\* + profile fork freeze at Shinichi sign |
-| Poisson W | **UNSIGNED** | KEEP / REPLACE \(W_*\) / PARK SE doors? Paste in `2026-08-17-mspl-poisson-W-G0.md` |
+| CI triad confirm | **SIGNED** (`7de94fc7`) | Exact Confirm in `2026-08-17-mspl-ci-wald-plus-profile.md` |
+| Design 125 | **APPROVED** @ `b68b20b4` | MSPL-04 stays blocked until evidence path |
+| S2 ADEMP | **SIGNED** | T\* still need explicit numbers before Totoro |
+| Poisson W card | **UNSIGNED** | G1 PARK SE doors operational; KEEP/REPLACE later; Status stays UNSIGNED |
+| G2 docs PR | **OWED** when asked | Non-draft docs PR; not #1077 |
+| G3 / H1 | **WAIT** | No local profile smoke until fork A/B/C |
 | #1065 | open | CI/CONFLICTING — fix allowed; admit forbidden |
-| #1077 | **still draft** | Confirm SIGNED ≠ undraft; needs Design+pre-reg+tests + separate G0 |
+| #1077 | **still draft** | FORK-DEFER; needs separate undraft G0 |
 | #981 | CONFLICTING | leave |
 
 ## Gotchas & Failed Approaches
@@ -250,7 +260,7 @@ rg -n 'SIGNED|Design 125|b68b20b4|7de94fc7|S3|UNSIGNED|#1077' \
 
 Live fits / `R CMD check` / Totoro: only if an OWED step after a
 separate Shinichi G0 explicitly requires them. Default next sitting is
-**S3 ∥ S4** (or #1065 planned-only CI fix).
+**G2 docs PR when asked** (or #1065 planned-only CI fix) — **not** H1.
 
 ## HARD STOPS
 

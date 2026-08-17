@@ -1,7 +1,7 @@
 # After-task — Poisson \(W\) G0 SIGNED — REPLACE
 
-**Date:** 2026-08-17  
-**Lane:** `cursor/mspl-poisson-W-REPLACE-signed`  
+**Date:** 2026-08-17
+**Lane:** `cursor/mspl-poisson-W-REPLACE-signed`
 **Scope:** Docs / signature only. No `R/`, `src/`, NEWS, or register mutation.
 
 ## Outcome

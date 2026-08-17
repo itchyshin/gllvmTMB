@@ -15,7 +15,7 @@
 |---|---|
 | Design stub | `docs/design/125-mspl-profile-led-intervals.md` @ `b68b20b4` |
 | This pre-reg | Draft complete under Design **125** (not TBD); aligns §3–§4 estimands / refusal taxonomy |
-| Follow-up | S3 (Poisson W UNSIGNED) ∥ S4 Rose fence; numeric L\*/T\* thresholds freeze at Shinichi sign |
+| Follow-up | S3 (Poisson W UNSIGNED) then V1; S4 Rose fence **done**; numeric L\*/T\* thresholds freeze at Shinichi sign |
 
 ---
 

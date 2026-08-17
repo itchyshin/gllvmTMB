@@ -276,6 +276,21 @@ run_one <- function(arm, n, seed, q = probe$Q_FACTORS, p = probe$P_TRAITS,
   ## the span itself tracks degeneracy, the reference is not independent and
   ## the variant is refused regardless of its raw numbers. Record both so
   ## that precondition can actually be tested.
+  ## The S1 probe established the pathology is a SINGLE-COLUMN runaway (one
+  ## trait's loading explodes while its siblings stay near truth). The
+  ## scale-invariant signature of that specific mechanism is a within-fit
+  ## SPIKE RATIO: largest per-trait loading over the second largest. It is
+  ## dimensionless by construction (a ratio of two loadings from the same
+  ## fit, same liability units) and — unlike the cutpoint-span normaliser —
+  ## independent of cutpoint geometry, so it is not disqualified by the same
+  ## circularity argument. Record it so it can be scored.
+  spike_ratio <- NA_real_
+  if (!is.null(stats) && "max_loading_unit" %in% names(stats)) {
+    v <- sort(as.numeric(stats$max_loading_unit[is.finite(stats$max_loading_unit)]),
+              decreasing = TRUE)
+    if (length(v) >= 2L && v[2] > 0) spike_ratio <- v[1] / v[2]
+  }
+
   span_tab <- tryCatch(
     gllvmTMB:::.gllvmTMB_ordinal_cutpoint_span_by_trait(fit, ord_ids),
     error = function(e) NULL
@@ -293,6 +308,7 @@ run_one <- function(arm, n, seed, q = probe$Q_FACTORS, p = probe$P_TRAITS,
     o1 = o1, o2 = o2, status_row = status_row,
     max_loading_unit = max_loading_unit, relative_loading = relative_loading,
     cutpoint_span = cutpoint_span, loading_over_span = loading_over_span,
+    spike_ratio = spike_ratio,
     note = "", stringsAsFactors = FALSE
   )
 }

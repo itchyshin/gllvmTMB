@@ -316,3 +316,55 @@ finding rather than an open gap.** Closing #897's detection gap needs a
 statistic the screen does not currently have — one independent of both the
 loading magnitude and the cutpoint geometry. That is a research question,
 recorded as such, not a threshold to be tuned.
+
+## SPIKE-RATIO CANDIDATE — TESTED AND FAILED (2026-08-17); search stopped here
+
+The S1 probe established that ordinal degeneracy is a **single-column
+runaway** (one trait's loading explodes while its siblings stay near truth).
+The direct scale-invariant signature of that mechanism is a within-fit
+**spike ratio**: largest per-trait unit-tier loading over the second largest.
+It is dimensionless by construction and — unlike the cutpoint-span
+normaliser — independent of cutpoint geometry, so the circularity argument
+that refused the span does not apply to it.
+
+**It is genuinely a different statistic** (correlation with
+`max_loading_unit` only **+0.242**, so this is not the absolute threshold in
+disguise) and it **does** discriminate centrally: median **4.16 on degenerate
+fits vs 1.32 on healthy — 3.1x**. But the tails overlap badly and it fails the
+frozen rule at every threshold:
+
+| threshold | sensitivity | FP (arm-level) |
+|---|---|---|
+| 2 | 58.5% | 32.2% |
+| 5 | 39.0% | 21.2% |
+| 35 | 17.1% | 4.7% |
+| 100 (first zero-FP) | **2.4%** | 0.0% |
+
+Healthy pool reaches 72.6 while the degenerate arm starts at 1.01.
+
+## SEARCH STOPPED — and why that is a decision, not exhaustion
+
+Four candidate statistics have now been scored against the same 315 fits:
+
+| candidate | outcome |
+|---|---|
+| `max_loading_unit` (absolute) | fails — does not transport across heterogeneous trait scales |
+| `relative_loading` (family-scoped) | fails — 28.6% FP at its best sensitivity |
+| `loading / cutpoint_span` | REFUSED on circularity (span correlates +0.546 with degeneracy) and fails empirically |
+| `spike_ratio` (max / second max) | independent and centrally discriminating, but fails — 2.4% sensitivity at zero FP |
+
+**Testing further candidates on this same dataset would be multiple testing
+without correction.** A fifth or sixth statistic that finally cleared the bar
+here would have a materially elevated chance of being a fit to these 315
+fits rather than a real signal, and the arc has already had one lesson about
+choosing an analysis after seeing results. The honest stopping point is now:
+**no statistic available from the fitted loading/cutpoint state separates
+degenerate from healthy ordinal fits at a usable operating point**, and a
+genuine solution needs either a different information source (e.g. the
+observed-information/curvature structure, or a refit-based check such as the
+dichotomisation counterfactual the S1 probe used at 24/24) or a fresh
+dataset on which to test a pre-registered candidate.
+
+Both ordinal arms therefore remain **DISARMED**, and #897's detection gap is
+recorded as an open research question with four eliminated candidates and a
+named path forward — not as an untried gap.

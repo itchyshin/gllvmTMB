@@ -1,5 +1,22 @@
 # Check log
 
+## 2026-08-17 — Cursor handover: LA-MSPL overnight arc
+
+Docs only. Handover-to-cursor protocol (`TARGET=cursor`, `AUTHOR=cursor`).
+`tools/handoff_gate.sh` reported XX on stale local branch tips; overnight
+content already on `origin/main` via merge PRs; this sitting cuts
+`handover/2026-08-17-cursor` from `origin/main` @ `a5c83011`. Encodes
+D-157 PARK, point admits, pins, Ranga \(Q_0\), UNSIGNED triad + Poisson W
+G0s, #1065/#1077/#981 open rows, Lane B PROTECTED. Lane-split + CLAUDE
+snapshot point MSPL baton at the new doc without orphaning siblings.
+
+```sh
+rg -n 'D-157|UNSIGNED|#1065|#1077|PROTECTED' \
+  docs/dev-log/handover/2026-08-17-cursor-handover.md \
+  docs/dev-log/handover/2026-07-25-active-lane-split.md
+# no testthat; docs-only
+```
+
 ## 2026-08-17 — `--as-cran` ERROR fixed: lane-b test needed the git-checkout guard
 
 Tests only, one guard, 8 lines. Reproduced the pre-existing `--as-cran`

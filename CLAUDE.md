@@ -11,18 +11,28 @@ This repository is shared by humans, Codex, and Claude Code. Read
 > current handover. Read it before any repository mutation. Milestone state is not in
 > either place and must be re-derived from `git`.
 
+- **2026-08-17 — LA-MSPL OVERNIGHT ARC CLOSED TO CURSOR HANDOVER.** D-157 B1 **SIGNED
+  PARK** (no second campaign; `MSPL-04` blocked; no Totoro relaunch; later intervals =
+  new construction). Point admits: binomial / gaussian / poisson (experimental). Internal
+  SE pins live; public `se` withheld. CI triad docs (#1075) + Poisson W G0 (#1076) are
+  **UNSIGNED** — STOP there unless Shinichi pastes. Profile scaffold DRAFT #1077 waits
+  triad G0; optional #1065 planned-only fix only. **PROTECTED:** Codex
+  `codex/lane-b-mspl-interval-feasibility`. Worktree
+  `/private/tmp/gllvmtmb-mspl-estimator-programme-roadmap` (not Dropbox). **START HERE:**
+  `docs/dev-log/handover/2026-07-25-active-lane-split.md`, then
+  `docs/dev-log/handover/2026-08-17-cursor-handover.md` for the MSPL overnight baton
+  (other lanes keep their named handovers in the split table).
+
 - **2026-08-15 — LA-MSPL CATCH-UP + GAUSSIAN ORDINARY CLOSED; NEXT = POINT EVIDENCE LANE.**
+  *(Historical kit closeout — baton superseded by 2026-08-17 overnight handover.)*
   On `main`: **#963** Phase 2 registry, **#966** uniqueness pick C, **#967** Gaussian Hirose
   `admitted`/`oracle_local`, **#968/#969** LOOP closeouts. Estimator is **LA-MSPL** (not EVA/VA,
   not AGHQ-MSPL). Closed kits `cursor-mspl-catchup` / `cursor-mspl-gaussian` — do not reopen.
   **PROTECTED:** Codex `codex/lane-b-mspl-interval-feasibility` (binary SE). Worktree only
-  `/private/tmp/gllvmtmb-mspl-estimator-programme-roadmap` (not Dropbox). **Recommended next:**
-  `cursor/mspl-gaussian-point-evidence` — multi-seed healthy+near-Heywood LA-ML vs LA-MSPL
-  point smoke (`se=FALSE`) + Poisson Phase-4 planned only; **≥5 h parallel until GOAL done**;
-  no Gaussian SE; no campaign without G0+receipt. **START HERE:**
+  `/private/tmp/gllvmtmb-mspl-estimator-programme-roadmap` (not Dropbox). **START HERE:**
   `docs/dev-log/handover/2026-07-25-active-lane-split.md`, then
-  `docs/dev-log/handover/2026-08-15-cursor-handover.md` for the MSPL lane (other lanes keep
-  their named handovers in the split table).
+  `docs/dev-log/handover/2026-08-17-cursor-handover.md` for current MSPL (historical kit
+  note: `2026-08-15-cursor-handover.md`).
 
 - **2026-08-08 — CRAN 0.7 TRACK PICK LOCKED; HANDOFF TO CODEX (LIVE TOOLCHAIN).**
   Shinichi G0 answers: **(1)** Ada default tarball — leave-M5 hygiene + Rose fence + later

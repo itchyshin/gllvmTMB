@@ -4,6 +4,10 @@
 **When:** 2026-08-17.
 **Reader:** Shinichi.
 **Author:** Cursor. Docs only. No `src/` edit. No tape replace from this card.
+**Rose note (2026-08-17):** blanket *"approve all things in this lane"* does **not**
+append SIGNED here. Gate 1 `G1 PARK SE doors` paste text itself says the card
+**stays UNSIGNED** until KEEP/REPLACE. Silent default = operational PARK further
+SE doors only (tape unchanged).
 **Evidence:** [#1064](https://github.com/itchyshin/gllvmTMB/pull/1064) (`6bc9f385`) —
 `docs/dev-log/research/2026-08-16-mspl-W-onesided-audit.md`.
 **Question:** Live Poisson MSPL still uses GLM-outer \(W=\operatorname{diag}(\mu)\).

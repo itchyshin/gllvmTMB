@@ -735,9 +735,16 @@ extract_Sigma <- function(
   ## same shape as the generic cluster-tier branch below for every other
   ## family), but still a DEFINED one. Only a FIXED-EFFECTS-ONLY
   ## multinomial has no latent Sigma; keep the clear refusal for that case.
+  ## (Design 122 Slice 3, 2026-08-16): `use$spde` is the master flag for ANY
+  ## intercept-only spatial term (spatial_latent()/spatial_indep()/
+  ## spatial_dep() all set it -- see R/fit-multi.R). Before this fix, a
+  ## multinomial fit with ONLY a spatial term (no phylo/unit/cluster tier)
+  ## incorrectly tripped the fixed-effects-only refusal below for EVERY
+  ## level, not just an unsupported one -- the gate was blind to the newly
+  ## admitted spatial mode axis.
   .mn_has_latent <- isTRUE(fit$use$phylo_rr) || isTRUE(fit$use$rr_B) ||
     isTRUE(fit$use$lv_B) || isTRUE(fit$use$diag_species) ||
-    isTRUE(fit$use$diag_cluster2)
+    isTRUE(fit$use$diag_cluster2) || isTRUE(fit$use$spde)
   if (!is.null(fit$tmb_data$family_id_vec) &&
       any(fit$tmb_data$family_id_vec == 16L) &&
       !.mn_has_latent) {

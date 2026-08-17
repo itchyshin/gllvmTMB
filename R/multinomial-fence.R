@@ -206,7 +206,9 @@
     "kernel", "kernel", "kernel", "kernel",
     ## Slice 4 (Design 122, 2026-08-16): generic group random intercepts and
     ## the non-phylogenetic cluster/cluster2 diagonal tier.
-    "none", "none", "none", "none", "none", "none", "none"
+    "none", "none", "none", "none", "none", "none", "none",
+    ## Slice 3 (Design 122, 2026-08-16): the spatial (SPDE) mode axis.
+    "spatial", "spatial", "spatial", "spatial", "spatial", "spatial", "spatial"
   ),
   mode   = c(
     "latent", "latent", "latent", "latent", "latent_slope", "latent_slope",
@@ -214,7 +216,8 @@
     "dep", "indep", "unique",
     "dep", "indep", "unique",
     "dep", "indep", "unique", "indep (scalar)",
-    "re_int", "indep", "unique", "indep", "unique", "indep (scalar)", "indep (scalar)"
+    "re_int", "indep", "unique", "indep", "unique", "indep (scalar)", "indep (scalar)",
+    "latent", "indep", "dep", "latent (unique=TRUE)", "scalar", "unique", "latent_slope"
   ),
   tier   = c(
     "unit", "unit (auto-Psi)", "among-category",
@@ -231,7 +234,12 @@
     "among-category (diagonal V, deprecated alias, single name)",
     "among-category (single shared level, single name)",
     "any group (generic)", "cluster", "cluster", "cluster2", "cluster2",
-    "cluster", "cluster2"
+    "cluster", "cluster2",
+    "spatial (shared field, loadings-only)", "spatial (per-contrast independent fields)",
+    "spatial (full field covariance, === latent(d=T))",
+    "spatial (paired Psi_spde companion)", "spatial (single shared level)",
+    "spatial (standalone / deprecated bare alias)",
+    "spatial (augmented intercept + slope, any mode)"
   ),
   status = c(
     "admitted", "admitted", "admitted", "blocked", "blocked", "blocked",
@@ -240,7 +248,8 @@
     "admitted", "admitted", "admitted",
     "admitted", "admitted", "admitted", "blocked",
     "admitted", "admitted", "admitted", "admitted", "admitted",
-    "blocked", "blocked"
+    "blocked", "blocked",
+    "admitted", "admitted", "admitted", "blocked", "blocked", "blocked", "blocked"
   ),
   since  = c(
     "Tier-2b item 2a-ii (0.6.0)",
@@ -270,7 +279,14 @@
     "ADMITTED -- Design 122 Slice 4 (2026-08-16): indep(0 + trait | <cluster2_col>) via the cluster2 = argument routes through use_diag_cluster2 -- verified LITERALLY IDENTICAL engine math to use_diag_species (same per-trait independent-normal density, different DATA/PARAMETER slot; src/gllvmTMB.cpp), so admitted together with cluster.",
     "ADMITTED -- Design 122 Slice 4 (2026-08-16): standalone unique(0 + trait | <cluster2_col>) is the SAME use_diag_cluster2 engine path as indep() at this tier -- admitted alongside it.",
     "BLOCKED -- Design 122 Slice 4 (2026-08-16): indep(0 + trait | <cluster_col>, common = TRUE) (the scalar() modifier). The generic engine has no common-pooling map for use_diag_species (unlike the unit/unit_obs diag_B_common/diag_W_common map tricks); admitting it would silently ADMIT the term while silently IGNORING the common = TRUE request rather than actually pooling to one shared level, so it is refused explicitly instead, matching phylo_scalar()/animal_scalar()/kernel_scalar().",
-    "BLOCKED -- Design 122 Slice 4 (2026-08-16): indep(0 + trait | <cluster2_col>, common = TRUE), same reasoning as the cluster-tier scalar refusal above (no common-pooling map for use_diag_cluster2 either)."
+    "BLOCKED -- Design 122 Slice 4 (2026-08-16): indep(0 + trait | <cluster2_col>, common = TRUE), same reasoning as the cluster-tier scalar refusal above (no common-pooling map for use_diag_cluster2 either).",
+    "ADMITTED -- Design 122 Slice 3 (2026-08-16): intercept-only spatial_latent(0 + trait | coords, d = k) (loadings-only, default unique = FALSE) -- the shared-field cross-contrast SPDE ordination; A_proj row alignment verified (dev/multinomial-structured/gate-check-a-proj.R): the SPDE eta contribution is applied per EXPANDED row, and a mesh built on the post-expansion coordinate frame carries each site's projector row correctly repeated across its K-1 contrast rows.",
+    "ADMITTED -- Design 122 Slice 3 (2026-08-16): spatial_indep(0 + trait | coords) (`.spatial_indep = TRUE`) -- per-contrast independent SPDE fields, no cross-contrast field correlation.",
+    "ADMITTED -- Design 122 Slice 3 (2026-08-16): spatial_dep(0 + trait | coords) -- VERIFIED (R/brms-sugar.R desugar) to literally set `.spatial_latent = TRUE, d = n_traits, .dep = TRUE`, i.e. it IS spatial_latent(d = n_traits) under a documentary keyword (the package's own roxygen already states this identity); same `use_spde` engine slot, not a separate one.",
+    "BLOCKED -- Design 122 Slice 3 (2026-08-16): spatial_latent(unique = TRUE)'s paired diagonal Psi_spde companion (`.spatial_unique_diag = TRUE`, a SINGLE marker on the SAME covstruct, architecturally different from phylo/animal/kernel's separate-companion-covstruct pattern) is a free spatial Psi, not admitted for multinomial for the same reason as row 4 (phylo_latent(unique = TRUE)).",
+    "BLOCKED -- Design 122 Slice 3 (2026-08-16): spatial_scalar() (`.spatial_scalar = TRUE`, incl. spatial_indep(..., common = TRUE)) ties the per-contrast spatial-field variances to ONE shared level -- the (I+J) carve-out, refused for the same reason as phylo_scalar()/animal_scalar()/kernel_scalar().",
+    "BLOCKED -- Design 122 Slice 3 (2026-08-16): standalone spatial_unique()/deprecated bare spatial() (no markers at all) is the PAIRED-COMPANION alias mechanism (meant to pair with spatial_latent(), Design 60), not an independent diagonal term the way phylo_unique()/phylo_indep() are -- unlike Slice 2's phylo mode axis, this cell is NOT admitted as a deprecated alias of spatial_indep(); use spatial_indep() directly for a standalone diagonal spatial fit.",
+    "BLOCKED -- Design 122 Slice 3 (2026-08-16): every augmented (intercept + slope) spatial_*(1 + x | coords) term (`.spatial_unique_augmented` / `.spatial_dep_augmented` / `.spatial_latent_augmented`) stays blocked, mirroring rows 5/6's augmented phylo/ordinary-latent refusal."
   ),
   stringsAsFactors = FALSE
 )
@@ -539,6 +555,39 @@
   }
 
   if (identical(kind, "spde")) {
+    ## Slice 3 (Design 122, 2026-08-16): admit intercept-only spatial_latent()
+    ## (shared fields, loadings-only), spatial_indep() (per-contrast
+    ## independent fields, `.spatial_indep = TRUE`), and spatial_dep() (full
+    ## unstructured cross-contrast field covariance). VERIFIED at the parser
+    ## level (R/brms-sugar.R, `fn == "spatial_dep"` intercept-only branch):
+    ## spatial_dep(0 + trait | coords) desugars to
+    ## `spde(form, .spatial_latent = TRUE, d = n_traits, .dep = TRUE)` -- it
+    ## literally SETS the SAME `.spatial_latent` marker spatial_latent()
+    ## itself uses (plus a `.dep` label-only marker), i.e. it reuses the
+    ## IDENTICAL `use_spde` engine slot at full rank d = n_traits. This is
+    ## the identity the task brief asked to verify; it holds exactly as
+    ## hypothesised (spatial_dep === spatial_latent(d = T), even more
+    ## directly than phylo_dep's shared-slot-but-separate-marker relationship
+    ## to phylo_latent).
+    ##
+    ## Stays BLOCKED: spatial_scalar() (`.spatial_scalar`, one shared level
+    ## across contrasts -- the (I+J) carve-out, mirroring phylo_scalar()/
+    ## animal_scalar()/kernel_scalar()); spatial_latent(unique = TRUE) (the
+    ## PAIRED diagonal Psi_spde companion -- unlike phylo/animal/kernel,
+    ## this is a SINGLE marker `.spatial_unique_diag = TRUE` on the SAME
+    ## covstruct rather than a second covstruct, so it needs an explicit
+    ## carve-out here); standalone `spatial_unique()`/deprecated bare
+    ## `spatial()` (desugars with NO markers at all -- it is the PAIRED-
+    ## COMPANION alias mechanism, not an independent diagonal term the way
+    ## phylo_unique()/phylo_indep() are, so it stays on the DEFAULT "unique"
+    ## fallthrough below, blocked); and every AUGMENTED (intercept + slope)
+    ## spatial term (`.spatial_unique_augmented` / `.spatial_dep_augmented` /
+    ## `.spatial_latent_augmented`, covering spatial_unique(1+x|.)/
+    ## spatial_dep(1+x|.)/spatial_indep(1+x|.) [reuses .spatial_dep_augmented]/
+    ## spatial_latent(1+x|.)).
+    is_spatial_augmented <- isTRUE(extra$.spatial_unique_augmented) ||
+      isTRUE(extra$.spatial_dep_augmented) ||
+      isTRUE(extra$.spatial_latent_augmented)
     mode <- if (isTRUE(extra$.dep)) {
       "dep"
     } else if (isTRUE(extra$.spatial_latent)) {
@@ -550,8 +599,18 @@
     } else {
       "unique"
     }
-    return(list(source = "spatial", mode = mode, admitted = FALSE,
-                label = sprintf("spatial_%s()", mode)))
+    has_unique_diag <- isTRUE(extra$.spatial_unique_diag)
+    admitted <- !is_spatial_augmented && !has_unique_diag &&
+      mode %in% c("dep", "latent", "indep")
+    label <- if (is_spatial_augmented) {
+      sprintf("an augmented (intercept + slope) spatial_%s() random-regression term", mode)
+    } else if (has_unique_diag) {
+      "spatial_latent(unique = TRUE) (a free spatial Psi companion is not admitted for multinomial)"
+    } else {
+      sprintf("spatial_%s()", mode)
+    }
+    return(list(source = "spatial", mode = mode, admitted = admitted,
+                label = label))
   }
 
   ## Defensive default-deny: any covstruct kind this classifier does not
@@ -621,11 +680,11 @@
     return(invisible(NULL))
   }
   cli::cli_abort(c(
-    "{.fn multinomial} supports fixed effects, a shared {.fn latent} ordination, the phylogenetic/relatedness mode axis ({.fn phylo_latent}/{.fn animal_latent}/{.fn kernel_latent} and their {.fn phylo_dep}/{.fn phylo_indep}/{.fn animal_dep}/{.fn animal_indep}/{.fn kernel_dep}/{.fn kernel_indep} twins), a generic {.code (1 | group)} random intercept, and the non-phylogenetic {.code cluster}/{.code cluster2} diagonal tier in this release.",
+    "{.fn multinomial} supports fixed effects, a shared {.fn latent} ordination, the phylogenetic/relatedness mode axis ({.fn phylo_latent}/{.fn animal_latent}/{.fn kernel_latent} and their {.fn phylo_dep}/{.fn phylo_indep}/{.fn animal_dep}/{.fn animal_indep}/{.fn kernel_dep}/{.fn kernel_indep} twins), the spatial (SPDE) mode axis ({.fn spatial_latent}/{.fn spatial_indep}/{.fn spatial_dep}), a generic {.code (1 | group)} random intercept, and the non-phylogenetic {.code cluster}/{.code cluster2} diagonal tier in this release.",
     "x" = "Not admitted: {.val {unique(labels)}}.",
-    "i" = "Admitted set: {.code latent(0 + trait | unit, d = k)} (the default {.code unique = TRUE} works; the categorical contrast Psi is mapped off); {.code (1 | group)} (a baseline-vs-rest group effect -- {.code sigma_re} is reference-category-specific; subject to an OLRE guard, see below); {.code indep(0 + trait | <cluster_col>)}/{.code indep(0 + trait | <cluster2_col>)} via the {.arg cluster}/{.arg cluster2} arguments (per-contrast independent variances; the standalone {.code unique()} alias is admitted alongside {.code indep()} at this tier too; {.code common = TRUE} is NOT admitted; also subject to the OLRE guard); and, for the among-category phylogenetic/relatedness surface, intercept-only {.code phylo_latent(species, d = K)}/{.code animal_latent(species, A = A, d = K)}/single-named {.code kernel_latent(species, K = K, d = K, name = nm)} (loadings-only ordination), {.code phylo_dep(0 + trait | species)}/{.code animal_dep(0 + trait | id)}/{.code kernel_dep(unit, K = K, name = nm)} (the full unstructured (K-1)x(K-1) V), and {.code phylo_indep(0 + trait | species)}/{.code animal_indep(0 + trait | id)}/{.code kernel_indep(unit, K = K, name = nm)} (diagonal V, no among-category correlation; standalone {.code phylo_unique()}/{.code animal_unique()}/{.code kernel_unique()} are soft-deprecated aliases of the {.code indep} cell) -- {.code unique = TRUE} on {.fn phylo_latent}/{.fn animal_latent}/{.fn kernel_latent} is NOT admitted (a free phylogenetic Psi is deliberately unsupported for multinomial), {.fn phylo_scalar}/{.fn animal_scalar}/{.fn kernel_scalar} (a single shared level across contrasts) are NOT admitted, and more than one {.fn kernel_latent}/{.fn kernel_dep}/{.fn kernel_indep} name in the same fit (multi-kernel) is NOT admitted.",
+    "i" = "Admitted set: {.code latent(0 + trait | unit, d = k)} (the default {.code unique = TRUE} works; the categorical contrast Psi is mapped off); {.code (1 | group)} (a baseline-vs-rest group effect -- {.code sigma_re} is reference-category-specific; subject to an OLRE guard, see below); {.code indep(0 + trait | <cluster_col>)}/{.code indep(0 + trait | <cluster2_col>)} via the {.arg cluster}/{.arg cluster2} arguments (per-contrast independent variances; the standalone {.code unique()} alias is admitted alongside {.code indep()} at this tier too; {.code common = TRUE} is NOT admitted; also subject to the OLRE guard); for the among-category phylogenetic/relatedness surface, intercept-only {.code phylo_latent(species, d = K)}/{.code animal_latent(species, A = A, d = K)}/single-named {.code kernel_latent(species, K = K, d = K, name = nm)} (loadings-only ordination), {.code phylo_dep(0 + trait | species)}/{.code animal_dep(0 + trait | id)}/{.code kernel_dep(unit, K = K, name = nm)} (the full unstructured (K-1)x(K-1) V), and {.code phylo_indep(0 + trait | species)}/{.code animal_indep(0 + trait | id)}/{.code kernel_indep(unit, K = K, name = nm)} (diagonal V, no among-category correlation; standalone {.code phylo_unique()}/{.code animal_unique()}/{.code kernel_unique()} are soft-deprecated aliases of the {.code indep} cell) -- {.code unique = TRUE} on {.fn phylo_latent}/{.fn animal_latent}/{.fn kernel_latent} is NOT admitted (a free phylogenetic Psi is deliberately unsupported for multinomial), {.fn phylo_scalar}/{.fn animal_scalar}/{.fn kernel_scalar} (a single shared level across contrasts) are NOT admitted, and more than one {.fn kernel_latent}/{.fn kernel_dep}/{.fn kernel_indep} name in the same fit (multi-kernel) is NOT admitted; and, for the spatial surface, intercept-only {.code spatial_latent(0 + trait | coords, d = k)} (shared fields), {.code spatial_indep(0 + trait | coords)} (per-contrast independent fields), or {.code spatial_dep(0 + trait | coords)} (full field covariance -- VERIFIED identical to {.code spatial_latent(d = n_traits)}) -- {.fn spatial_scalar} (a single shared level), {.code spatial_latent(unique = TRUE)}'s paired Psi_spde companion, and standalone {.fn spatial_unique}/deprecated bare {.fn spatial} (the paired-companion alias, not an independent diagonal cell) are NOT admitted.",
     "i" = "This fence is per-fit, not per-trait: a blocked term targeting only a non-multinomial trait in a mixed-family fit still aborts the whole fit.",
-    ">" = "Other latent-scale structures on categorical responses -- including dep()/indep()/unique() at the unit tier, {.code latent()}/{.code dep()} at the cluster/cluster2 tiers, the {.code unit_obs} tier, phylo_scalar()/animal_scalar()/kernel_scalar(), multi-kernel, spatial_*(), augmented (intercept + slope) forms of every one of the above, *_latent(unique = TRUE), and meta_V()/equalto() -- are deferred."
+    ">" = "Other latent-scale structures on categorical responses -- including dep()/indep()/unique() at the unit tier, {.code latent()}/{.code dep()} at the cluster/cluster2 tiers, the {.code unit_obs} tier, phylo_scalar()/animal_scalar()/kernel_scalar(), multi-kernel, augmented (intercept + slope) forms of every keyword above (phylo/animal/kernel/spatial), *_latent(unique = TRUE), and meta_V()/equalto() -- are deferred."
   ), class = "gllvmTMB_multinomial_structured_not_admitted")
 }
 

@@ -4466,8 +4466,24 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     ## (`.multinomial_reint_group_olre_guard()`), BOTH of which run earlier
     ## in this function and would already have aborted before this scan is
     ## reached -- see R/multinomial-fence.R.
+    ## `use_spde` (Slice 3, Design 122): the base intercept-only SPDE engine
+    ## slot -- spatial_latent()/spatial_indep()/spatial_dep() ALL populate
+    ## this ONE flag (spatial_dep literally desugars to
+    ## `.spatial_latent = TRUE`, R/brms-sugar.R); spatial_scalar(),
+    ## spatial_latent(unique = TRUE)'s paired Psi_spde companion, standalone
+    ## spatial_unique(), and every AUGMENTED spatial_*(1 + x | ...) form set
+    ## a DIFFERENT flag (use_spde_slope / use_spde_latent_slope /
+    ## use_spde_dep_slope) or are indistinguishable from an admitted cell at
+    ## this coarse flag level -- same reliance on pass 1
+    ## (`.multinomial_structured_admission()`) already established for
+    ## `use_phylo_rr` above: pass 1 aborts BEFORE this scan is reached for
+    ## every one of those blocked cells, so this flag-level exemption is
+    ## safe. Augmented forms remain caught here too (use_spde_slope /
+    ## use_spde_latent_slope stay OUT of this allow-list) as belt-and-braces
+    ## if pass 1 is ever bypassed or extended incorrectly.
     .mn_allowed_tiers <- c("use_phylo_rr", "use_rr_B", "use_lv_B",
-                            "use_re_int", "use_diag_species", "use_diag_cluster2")
+                            "use_re_int", "use_diag_species", "use_diag_cluster2",
+                            "use_spde")
     ## The DEFAULT between-unit auto-Psi -- latent(unique = TRUE), the ordinary
     ## default -- is allowed: the current engine auto-suppresses multinomial
     ## contrast Psi while identified partners (Gaussian sigma^2,
@@ -4499,9 +4515,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     .mn_active_bad <- .mn_use_flags[vapply(.mn_vals, isTRUE, logical(1))]
     if (length(.mn_active_bad) > 0L) {
       cli::cli_abort(c(
-        "{.fn multinomial} supports fixed effects, a shared {.fn latent} ordination, the phylogenetic/relatedness mode axis ({.fn phylo_latent}/{.fn animal_latent}/{.fn kernel_latent} and their {.fn phylo_dep}/{.fn phylo_indep}/{.fn animal_dep}/{.fn animal_indep}/{.fn kernel_dep}/{.fn kernel_indep} twins), a generic {.code (1 | group)} random intercept, and the non-phylogenetic {.code cluster}/{.code cluster2} diagonal tier in this release.",
+        "{.fn multinomial} supports fixed effects, a shared {.fn latent} ordination, the phylogenetic/relatedness mode axis ({.fn phylo_latent}/{.fn animal_latent}/{.fn kernel_latent} and their {.fn phylo_dep}/{.fn phylo_indep}/{.fn animal_dep}/{.fn animal_indep}/{.fn kernel_dep}/{.fn kernel_indep} twins), the spatial (SPDE) mode axis ({.fn spatial_latent}/{.fn spatial_indep}/{.fn spatial_dep}), a generic {.code (1 | group)} random intercept, and the non-phylogenetic {.code cluster}/{.code cluster2} diagonal tier in this release.",
         "x" = "An unsupported latent / random-effect / structured term was combined with a categorical (multinomial) response.",
-        "i" = "Use a shared {.code latent(0 + trait | unit, d = k)} for cross-family (nominal <-> other) correlations (the default {.code unique = TRUE} works; the categorical contrast Psi is mapped off); {.code (1 | group)} (baseline-vs-rest; {.code sigma_re} is reference-category-specific); {.code indep(0 + trait | <cluster_col>)}/{.code indep(0 + trait | <cluster2_col>)} via the {.arg cluster}/{.arg cluster2} arguments (per-contrast independent variances; {.code common = TRUE} not admitted); intercept-only {.code phylo_latent}/{.code animal_latent}/single-named {.code kernel_latent} (loadings-only ordination), {.code phylo_dep}/{.code animal_dep}/{.code kernel_dep} (the full unstructured V), or {.code phylo_indep}/{.code animal_indep}/{.code kernel_indep} (diagonal V; standalone {.code phylo_unique}/{.code animal_unique}/{.code kernel_unique} are soft-deprecated aliases) for the among-category phylogenetic/relatedness surface. {.code unique = TRUE} on the {.fn latent} trio is not admitted (a free phylogenetic Psi is deliberately unsupported for multinomial), {.fn phylo_scalar}/{.fn animal_scalar}/{.fn kernel_scalar} are not admitted, and multi-kernel (more than one {.fn kernel_latent}/{.fn kernel_dep}/{.fn kernel_indep} name in one fit) is not admitted.",
+        "i" = "Use a shared {.code latent(0 + trait | unit, d = k)} for cross-family (nominal <-> other) correlations (the default {.code unique = TRUE} works; the categorical contrast Psi is mapped off); {.code (1 | group)} (baseline-vs-rest; {.code sigma_re} is reference-category-specific); {.code indep(0 + trait | <cluster_col>)}/{.code indep(0 + trait | <cluster2_col>)} via the {.arg cluster}/{.arg cluster2} arguments (per-contrast independent variances; {.code common = TRUE} not admitted); intercept-only {.code phylo_latent}/{.code animal_latent}/single-named {.code kernel_latent} (loadings-only ordination), {.code phylo_dep}/{.code animal_dep}/{.code kernel_dep} (the full unstructured V), or {.code phylo_indep}/{.code animal_indep}/{.code kernel_indep} (diagonal V; standalone {.code phylo_unique}/{.code animal_unique}/{.code kernel_unique} are soft-deprecated aliases) for the among-category phylogenetic/relatedness surface; and intercept-only {.code spatial_latent(0 + trait | coords, d = k)} (shared fields), {.code spatial_indep(0 + trait | coords)} (per-contrast independent fields), or {.code spatial_dep(0 + trait | coords)} (full field covariance, identical to {.code spatial_latent(d = n_traits)}) for the spatial surface. {.code unique = TRUE} on the {.fn latent} trio, {.fn phylo_scalar}/{.fn animal_scalar}/{.fn kernel_scalar}, {.fn spatial_scalar}, {.code spatial_latent(unique = TRUE)}'s Psi companion, and standalone {.fn spatial_unique}/deprecated bare {.fn spatial} are NOT admitted; multi-kernel (more than one {.fn kernel_latent}/{.fn kernel_dep}/{.fn kernel_indep} name in one fit) is NOT admitted; and every augmented (intercept + slope) form of any keyword above is NOT admitted.",
         "i" = "A {.fn propto} (phylo_scalar()/animal_scalar()) term targeting only NON-multinomial traits in a mixed-family fit is also blocked in this release -- the fence is per-fit, not per-trait.",
         ">" = "Other latent-scale structures on categorical responses are deferred."
       ), class = "gllvmTMB_multinomial_structured_not_admitted")

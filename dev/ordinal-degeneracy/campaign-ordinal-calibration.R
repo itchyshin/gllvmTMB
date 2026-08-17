@@ -258,7 +258,7 @@ run_one <- function(arm, n, seed, q = probe$Q_FACTORS, p = probe$P_TRAITS,
   ## campaign. `max_loading_unit` drives O2, `relative_loading` drives O1.
   ord_ids <- tryCatch({
     td <- fit$tmb_data
-    sort(unique(td$trait_id[td$family_id_vec == 14L]))
+    sort(unique(as.integer(td$trait_id[td$family_id_vec == 14L]))) + 1L
   }, error = function(e) NULL)
   stats <- tryCatch(
     gllvmTMB:::.gllvmTMB_max_loading_by_trait(fit, reference_traits = ord_ids),
@@ -271,11 +271,28 @@ run_one <- function(arm, n, seed, q = probe$Q_FACTORS, p = probe$P_TRAITS,
     suppressWarnings(max(stats$relative_loading, na.rm = TRUE))
   } else NA_real_
 
+  ## The pre-registration names loading-over-cutpoint-span as the candidate
+  ## SCALE-INVARIANT statistic, gated behind a circularity precondition: if
+  ## the span itself tracks degeneracy, the reference is not independent and
+  ## the variant is refused regardless of its raw numbers. Record both so
+  ## that precondition can actually be tested.
+  span_tab <- tryCatch(
+    gllvmTMB:::.gllvmTMB_ordinal_cutpoint_span_by_trait(fit, ord_ids),
+    error = function(e) NULL
+  )
+  cutpoint_span <- if (!is.null(span_tab)) {
+    suppressWarnings(stats::median(as.numeric(span_tab), na.rm = TRUE))
+  } else NA_real_
+  loading_over_span <- if (is.finite(cutpoint_span) && cutpoint_span > 0) {
+    max_loading_unit / cutpoint_span
+  } else NA_real_
+
   data.frame(
     arm = arm, n = n, seed = seed, seconds = secs, status = "OK",
     rel_frob = rel_frob, degenerate_label = degenerate_label,
     o1 = o1, o2 = o2, status_row = status_row,
     max_loading_unit = max_loading_unit, relative_loading = relative_loading,
+    cutpoint_span = cutpoint_span, loading_over_span = loading_over_span,
     note = "", stringsAsFactors = FALSE
   )
 }

@@ -267,3 +267,52 @@ behaviour change and is left to the maintainer.
 promoted (its circularity precondition was not tested here, so it remains
 calibration-only per the pre-registration); sensitivity below 90% is a real
 miss, recorded as such rather than reframed.
+
+## SPAN-VARIANT PRECONDITION — TESTED AND FAILED (2026-08-17, closing the question)
+
+The frozen block reserved `loading_over_span` (`max_loading_unit /
+cutpoint_span`) as the candidate SCALE-INVARIANT statistic — the kind the
+main calibration concluded is needed — behind an explicit precondition: *if
+the span is downstream of the same mechanism O1/O2 already screen, using it
+as an independent reference is circular, and the variant is refused
+regardless of its raw numbers.* That check had never been run. It has now
+been run on all 315 fits (the campaign was extended to record
+`cutpoint_span` and `loading_over_span`; a first attempt returned all-NA
+because the harness passed 0-based trait ids where `R/diagnose.R:1191` uses
+1-based — a harness bug, not a package one, corrected before these numbers).
+
+**PRECONDITION FAILS.** Point-biserial correlation between the fitted
+cutpoint span and the degeneracy label: **+0.546** (95% CI +0.451..+0.629,
+p = 4.6e-20, n = 240). Median span is **1.272 on degenerate fits vs 0.677 on
+healthy ones — 1.88x wider**. The span is not an independent scale
+reference; it is itself a symptom of the same runaway. Dividing the loading
+by it is dividing one symptom by another.
+
+**And it would not have helped even if it were admissible.** Under the
+frozen rule the variant separates no better than the raw statistic:
+
+| threshold | sensitivity | FP (arm-level) |
+|---|---|---|
+| 5 | 100.0% | 38.8% |
+| 20 | 73.2% | 23.5% |
+| 40 | 39.0% | 11.8% |
+| 300 (first zero-FP) | 0.0% | 0.0% |
+
+Healthy pool reaches 228.6 while the degenerate arm starts at 12.1 — if
+anything marginally worse overlap than the raw loading (216.9 vs 13.5).
+
+**The variant is REFUSED on its pre-registered precondition**, and the
+ordinal question is now closed rather than merely unresolved:
+
+1. The mechanism is settled — category-level separation, not link
+   saturation (S1 probe).
+2. The absolute liability-scale threshold does not transport across
+   heterogeneous per-trait scales (315-fit calibration).
+3. The one candidate scale-invariant normaliser available to the screen is
+   circular and no better empirically (this section).
+
+**Therefore both ordinal arms remain DISARMED, and that is now a complete
+finding rather than an open gap.** Closing #897's detection gap needs a
+statistic the screen does not currently have — one independent of both the
+loading magnitude and the cutpoint geometry. That is a research question,
+recorded as such, not a threshold to be tuned.

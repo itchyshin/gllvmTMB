@@ -1,3 +1,23 @@
+## 2026-08-17 — `/goal` S4: Rose fence on Design 125 + ADEMP
+
+**Lane:** `claude/lane-mspl-profile-led-ci` @ `/Users/z3437171/local-scratch/lanes/gllvmTMB-mspl-profile-led-ci`
+Docs only. Rose-style consistency audit of Design 125, `LOOP/GOAL.md`, triad
+Confirm SIGNED card, R1 lessons, ADEMP draft. **PASS after one clear fix:**
+`2026-08-17-mspl-profile-bootstrap-ci-next.md` still said bootstrap
+“fallback / co-primary” and left refuse-triad G0 options open after Confirm
+SIGNED — closed those; Design 125 itself needed no edit. Evidence: MSPL-04
+`blocked`; #1077 `draft:true`; no Design 118 / NEWS edits on branch; Poisson W
+card remains UNSIGNED. Updated LOOP arcs + checkpoint (NEXT=S3). No undraft;
+no push; no Totoro.
+
+```sh
+rg -n 'co-primary|Still available if he refuses' \
+  docs/dev-log/research/2026-08-17-mspl-profile-bootstrap-ci-next.md
+gh api repos/itchyshin/gllvmTMB/pulls/1077 --jq '.draft'
+rg -n 'MSPL-04' docs/design/35-validation-debt-register.md
+# deliberately not run: undraft #1077, confint, Totoro, Design 118 edits
+```
+
 ## 2026-08-17 — `/goal` S2: ADEMP pre-reg draft under Design 125
 
 **Lane:** `claude/lane-mspl-profile-led-ci` @ `/Users/z3437171/local-scratch/lanes/gllvmTMB-mspl-profile-led-ci`

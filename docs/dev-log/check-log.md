@@ -51574,3 +51574,13 @@ Next arc is **unchosen** — check
 `docs/dev-log/handover/2026-07-25-active-lane-split.md` for ownership before
 claiming anything. My recommendation is the paper's evidence chapter, which
 now carries a mechanistic negative result rather than only a failed gate.
+
+## 2026-08-16 — Claude: SDM day closed (directed at whichever lane rehydrates next)
+
+The SDM article programme is merged and deployed: #1031 (isdm on main), #1034
+(collection), #1046 (audit + repeated-visits + Paper × Items re-aim), #1049
+(0.7.0 + reconciliation), #1054 (rare-species MSPL door). Live site verified.
+Rehydrate from docs/dev-log/after-task/2026-08-16-sdm-day-closeout.md.
+Standing flags: VA delta_lognormal_log CI flake (record on #1049); MSPL
+source-pin red on main (#1031 body); MSPL SE calibration will unlock two
+article fence updates. — Claude

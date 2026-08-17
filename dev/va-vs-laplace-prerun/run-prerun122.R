@@ -4,6 +4,16 @@
 ## pre-run: ~10 seeds x 4 sentinel cells x 3 confirmatory arms (L0, L2, VGH),
 ## smoke-first, 25-minute stop rule.
 ##
+## REDUCED-SENTINEL RE-RUN (maintainer-authorised follow-up, same date). The
+## FIRST attempt's smoke fit -- VGH at n=1600, p=27, T-strong -- did not
+## complete in 17.3 minutes of wall-clock (killed; see RESULTS.md's original
+## "STOP RULE FIRED" section, kept intact below the new one). A standalone
+## VGH cost-curve check (n=100 and n=400 at the same p=27/T-strong config,
+## see RESULTS.md) found n=400 affordable, so the "most_expensive" sentinel
+## below is now n = 400 (not 1600) -- the n=1600 corner is deferred, not
+## measured by this run. The smoke-first + 25-min stop rule below still
+## binds unmodified; only the sentinel's own n changed.
+##
 ## READ FIRST: docs/design/122-va-vs-laplace-recovery.md SS7 (spec), SS5.1
 ## (arm control calls), SS3 (DGP), SS4/SS6.1 (estimands / stratification).
 ##
@@ -53,12 +63,16 @@ PKG_DIR <- Sys.getenv("PRERUN_PKG_DIR", normalizePath("."))
 Sys.setenv(OPENBLAS_NUM_THREADS = "1", OMP_NUM_THREADS = "1", MKL_NUM_THREADS = "1")
 
 ## =========================================================== 1. sentinels ==
-## Design SS7, items 1-4, verbatim.
+## Design SS7, items 1-4, REDUCED: item 2 (originally n=1600, the confirmatory
+## grid's own large-n rung) is replaced by its n=400 counterpart, per the
+## maintainer-authorised follow-up above -- the cost-curve check found n=1600
+## VGH did not complete in the pre-run's budget at all, while n=400 did (see
+## RESULTS.md). Same (p=27, T-strong) cell identity, only n changed.
 sentinels <- data.frame(
   cell_id = 1:4,
   label   = c("cheapest", "most_expensive", "ordinal", "strong_small_n"),
   family  = c("binomial_probit", "binomial_probit", "ordinal_probit", "binomial_probit"),
-  n       = c(100L, 1600L, 400L, 100L),
+  n       = c(100L, 400L, 400L, 100L),
   p       = c(12L, 27L, 12L, 27L),
   truth   = c("T-weak", "T-strong", "T-mid", "T-strong"),
   stringsAsFactors = FALSE
@@ -199,18 +213,39 @@ run_row <- function(g, pkg_dir, out_dir, truth_seed_base) {
   }
 
   ## Laplace TEST A: fit$tmb_obj$fn() with theta_rr_B entries scaled by c.
+  ## FIX (found by the reduced-sentinel run itself, on real L2 fits): the
+  ## `aghq_ridge` loading penalty on the LAPLACE path is applied at the R
+  ## level -- `run_one()`'s closure adds `0.5*sum(par[loading_idx]^2)/tau^2`
+  ## on top of `obj$fn()`'s raw value (R/fit-multi.R:5586-5592) -- it is NOT
+  ## baked into the TMB C++ template's objective. `fit$tmb_obj$fn()` alone is
+  ## therefore the UNPENALISED negative log-likelihood, not "the arm's own
+  ## objective" F1 requires for a penalised (L2) fit: evaluating it along the
+  ## scale ray was measuring the wrong function and would show `c_hat > 1`
+  ## by construction (the raw likelihood always "wants" to grow the loadings
+  ## back toward the unpenalised ML scale). Corrected here by re-adding the
+  ## SAME penalty term the optimiser actually used, read from
+  ## `fit$aghq$ridge_tau`/`fit$aghq$penalised` (R/fit-multi.R:6816,
+  ## "ridge_tau"/"penalised are recorded on BOTH engines and every reporting
+  ## surface reads the same two fields"). For L0 (`ridge_tau = Inf`,
+  ## `penalised = FALSE`) this adds exactly 0 -- byte-identical to the
+  ## original, unpenalised behaviour.
   testA_laplace <- function(fit) {
     out <- list(c_hat = NA_real_, pass = NA, note = "")
     obj <- fit$tmb_obj; par0 <- fit$opt$par
     idx <- which(names(par0) == "theta_rr_B")
     if (is.null(obj) || length(idx) == 0L) { out$note <- "tmb_obj/theta_rr_B not found"; return(out) }
+    ridge_tau <- tryCatch(fit$aghq$ridge_tau, error = function(e) Inf)
+    penalised <- isTRUE(fit$aghq$penalised) && is.finite(ridge_tau) && ridge_tau > 0
     vals <- vapply(TESTA_C, function(c) {
       par1 <- par0; par1[idx] <- par1[idx] * c
-      tryCatch(as.numeric(obj$fn(par1)), error = function(e) NA_real_)
+      v <- tryCatch(as.numeric(obj$fn(par1)), error = function(e) NA_real_)
+      if (is.finite(v) && penalised) v <- v + 0.5 * sum(par1[idx]^2) / (ridge_tau^2)
+      v
     }, numeric(1))
     chat <- testA_chat(TESTA_C, vals)
     out$c_hat <- chat; out$pass <- is.finite(chat) && abs(chat - 1) <= 0.01
-    out$note <- paste(sprintf("c=%.2f:%.4f", TESTA_C, vals), collapse = "; ")
+    out$note <- paste0(if (penalised) sprintf("ridge_tau=%.4g penalty ADDED (fix); ", ridge_tau) else "unpenalised (ridge_tau=Inf); ",
+                        paste(sprintf("c=%.2f:%.4f", TESTA_C, vals), collapse = "; "))
     out
   }
 
@@ -400,12 +435,21 @@ print(smoke_row[, c("status", "converged", "wall_time_s", "rel_frob", "kappa",
                      "max_abs_lambda_hat", "testA_c_hat", "testA_pass", "error")])
 cat(sprintf("Smoke wall: %.1f s (%.2f min)\n", smoke_wall, smoke_wall / 60))
 
-## Projection (task-specified formula): per-fit time x ceil(fits_in_cell /
-## workers) + overhead, taken over the most expensive cell (30 fits: 10 seeds
-## x 3 arms), using the measured VGH time as the ceiling for that cell (VGH
-## is the unmeasured unknown this smoke exists to resolve; L0/L2 at this
-## corner were already measured at ~37s/fit by Design 108 Stage 8,
-## dev/design108-stage8/README.md).
+## CORRECTED projection (the first attempt's own formula under-counted a
+## real cost -- see RESULTS.md's "STOP RULE FIRED" section, item 2). The
+## smoke fit runs SEQUENTIALLY, before daemons()/mirai_map() ever start; its
+## own elapsed wall-clock is a sunk cost that must be ADDED to the grid's
+## own projected wall, not folded into the same `waves * smoke_wall` term
+## that also covers the PARALLEL remainder (the smoke row is reused, not
+## refit, so it costs the grid stage nothing further -- but it already cost
+## the launcher `smoke_wall` seconds before the grid stage even begins).
+## fits_in_cell / workers) + overhead, taken over the most expensive cell (30
+## fits: 10 seeds x 3 arms), using the measured VGH time as the ceiling for
+## that cell (VGH is the unmeasured unknown this smoke exists to resolve;
+## L0/L2 at this corner are expected far cheaper, c.f. Design 108 Stage 8's
+## ~37s/fit at the ORIGINAL n=1600 corner, dev/design108-stage8/README.md --
+## not directly comparable to this reduced n=400 corner, but an existence
+## proof that Laplace-path arms are cheap here regardless).
 fits_in_expensive_cell <- length(SEEDS) * 3L
 waves <- ceiling(fits_in_expensive_cell / NWORK)
 projected_expensive_cell_s <- waves * smoke_wall
@@ -413,10 +457,10 @@ projected_expensive_cell_s <- waves * smoke_wall
 ## 60 s/fit as an upper bound.
 fits_remaining <- (nrow(sentinels) - 1L) * length(SEEDS) * 3L
 projected_remaining_s <- ceiling(fits_remaining / NWORK) * 60
-projected_total_s <- projected_expensive_cell_s + projected_remaining_s + 30
+projected_total_s <- smoke_wall + projected_expensive_cell_s + projected_remaining_s + 30
 cat(sprintf(
-  "Projection: expensive-cell fits=%d, waves=%d @ %.1fs => %.1fs; remaining %d fits => %.1fs; +30s overhead => TOTAL %.1fs (%.2f min)\n",
-  fits_in_expensive_cell, waves, smoke_wall, projected_expensive_cell_s,
+  "Projection (CORRECTED): sequential smoke=%.1fs; expensive-cell parallel wave fits=%d, waves=%d @ %.1fs => %.1fs; remaining %d fits => %.1fs; +30s overhead => TOTAL %.1fs (%.2f min)\n",
+  smoke_wall, fits_in_expensive_cell, waves, smoke_wall, projected_expensive_cell_s,
   fits_remaining, projected_remaining_s, projected_total_s, projected_total_s / 60))
 
 STOP_RULE_FIRED <- projected_total_s > 25 * 60

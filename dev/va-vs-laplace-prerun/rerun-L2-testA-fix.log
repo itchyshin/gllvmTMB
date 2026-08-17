@@ -1,0 +1,18 @@
+run_row (with the TEST A ridge fix) extracted -- 292 lines.
+
+Re-running 40 L2 fits sequentially...
+Done in 214.5s (3.57 min)
+
+status:
+
+nonconvergence             ok
+             5             35
+
+testA_pass:
+
+TRUE
+  40
+
+testA_c_hat summary:
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max.
+  1.000   1.000   1.001   1.001   1.001   1.001

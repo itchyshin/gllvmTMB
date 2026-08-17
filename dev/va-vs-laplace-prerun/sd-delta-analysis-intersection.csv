@@ -1,0 +1,17 @@
+"cell_id","label","truth","n","p","comparator","stratum","n_intersection_seeds","n_paired","mean_delta","sd_delta","derived_seeds_per_cell"
+1,"cheapest","T-weak",100,12,"L2","rel_frob_offdiag_strong",7,7,0.5838,0.3482,194
+1,"cheapest","T-weak",100,12,"L2","rel_frob_diag",7,7,1.2808,1.2854,2644
+1,"cheapest","T-weak",100,12,"L0","rel_frob_offdiag_strong",7,7,0.4331,0.2788,125
+1,"cheapest","T-weak",100,12,"L0","rel_frob_diag",7,7,0.9124,1.2521,2509
+2,"most_expensive","T-strong",400,27,"L2","rel_frob_offdiag_strong",10,10,-0.1825,0.3578,205
+2,"most_expensive","T-strong",400,27,"L2","rel_frob_diag",10,10,-1.1089,2.0364,6635
+2,"most_expensive","T-strong",400,27,"L0","rel_frob_offdiag_strong",10,10,-0.95,1.0351,1715
+2,"most_expensive","T-strong",400,27,"L0","rel_frob_diag",10,10,-8.349,9.0587,131298
+3,"ordinal","T-mid",400,12,"L2","rel_frob_offdiag_strong",10,10,0.0407,0.0318,2
+3,"ordinal","T-mid",400,12,"L2","rel_frob_diag",10,10,0.2488,0.2793,125
+3,"ordinal","T-mid",400,12,"L0","rel_frob_offdiag_strong",10,10,0.0378,0.03,2
+3,"ordinal","T-mid",400,12,"L0","rel_frob_diag",10,10,0.2384,0.2701,117
+4,"strong_small_n","T-strong",100,27,"L2","rel_frob_offdiag_strong",4,4,0.0544,0.0397,3
+4,"strong_small_n","T-strong",100,27,"L2","rel_frob_diag",4,4,0.0459,0.0457,4
+4,"strong_small_n","T-strong",100,27,"L0","rel_frob_offdiag_strong",4,4,-0.0272,0.006,1
+4,"strong_small_n","T-strong",100,27,"L0","rel_frob_diag",4,4,-0.0639,0.0287,2

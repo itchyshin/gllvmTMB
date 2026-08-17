@@ -1,14 +1,14 @@
-# gllvmTMB 0.6 arc-loop decision queue
+# Decision queue — mspl-profile-led-ci
 
-The loop parks consequential decisions here and continues only genuinely
-independent reversible work. An empty queue does not waive gates listed in
-`LOOP/GOAL.md`.
+Parks consequential decisions. Empty/OPEN does not waive `LOOP/GOAL.md` hard stops.
 
 | Gate | State | Question | Recommendation | Blocked work | Safe work meanwhile |
 |---|---|---|---|---|---|
-| M1 close | OPEN | Does exact-head local/platform evidence plus fresh D-43 support closing M1? | Default NOT-DONE until every receipt is terminal | **M3 entry** (M2 is cut) | finish M1 tests/docs/receipts |
-| Design 86 | **CUT 2026-07-21** | ~~Approve the new narrow q1 estimator/scientific contract?~~ | **Superseded by the maintainer's EVA cut. Never written or approved — do not cite as a contract. A 0.7 successor must target sparse binary, not q1 multi-trial, and needs its own Gate-0 scope freeze.** | nothing — no EVA work in 0.6 | the Laplace-only release path |
-| Remote scientific compute | **CUT 2026-07-21** | ~~Approve Totoro smoke + DRAC pilot for the frozen campaign?~~ | **Dissolved with M2. No Totoro/DRAC scientific compute for 0.6; compute target is LOCAL only.** Revisit only when a 0.7 EVA contract exists. | nothing | local package checks only |
-| Public EVA | **CUT 2026-07-21** | ~~Admit the evidence-backed allowlist to the installed package?~~ | **Still CUT for EVA specifically** — EVA is a surrogate that earns its place only on families VA cannot reach (Design 104 §4.4), and no `integration = "eva"` surface is created. **⚠ But "0.6 ships Laplace-only" is REVERSED (Amendment 4, 2026-07-30):** 0.6 ships an opt-in, hard-fenced **`engine = "va"`** (GH quadrature), admitted by Design 85 §11 Gate 3, with no intervals. | nothing for EVA | VA release path — `docs/dev-log/2026-07-30-va-ships-in-06-reversal.md` |
-| #750 spde redraw | **RESOLVED 2026-07-21** | Does 0.6 ship unconditional spatial RE redraw? | **No — doc corrected to match code; #750 retargeted to 0.7.** The implemented work is stranded on parked branches (`dd80244a`..`051eb4e5`, not in `origin/main`); it was NOT brought in, to avoid touching the quarantined estate and re-minting M1's source identity. | nothing | — |
-| Release ceremony | NOT YET OPEN | Approve API/candidate freeze, RC/final tag, and submission at each rung? | separate decisions; never bundle them | irreversible outward action | read-only review and receipt assembly |
+| Triad Confirm | **SIGNED** 2026-08-17 | Profile / Wald(Q₀) / Bootstrap roles? | Locked under D-157 + D-12; no new D- | — | Design stub + pre-reg |
+| Design NN claim | OPEN soft | Binary-first vs Poisson+binary? | Ada default: **binary profile-led first** | S1 prose scope | R0/R1 done |
+| Undraft #1077 | OPEN / not-ready | Undraft after Design+pre-reg+tests? | Default **not-ready**; tip stays `fb44d7b5` draft | undraft / public confint | keep draft scaffold |
+| Live profile impl | OPEN / not-ready | Implement real MSPL `confint(method="profile")`? | Needs Design G0 + tests | real intervals | docs Design + pre-reg |
+| Public se=TRUE | OPEN / not-ready | Flip public SE/vcov? | Separate G0 only | public SE | internal Q₀ pins only |
+| Totoro/campaign | OPEN / not-ready | Run coverage campaign? | Separate G0 + pre-reg (D-50/D-139/D-157) | Totoro/DRAC | local docs |
+| Poisson W | **UNSIGNED** | KEEP / REPLACE / PARK SE doors? | Do **not** invent; if silent default **PARK further SE doors** | inventing paste | leave card UNSIGNED |
+| Design 118 / B1 / Arc 1A | PARKED | Reopen? | **No** (D-157; Arc 1A historical) | any reopen | new NN only |

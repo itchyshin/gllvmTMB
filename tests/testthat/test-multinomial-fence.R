@@ -69,16 +69,27 @@ test_that("explicit indep() at the unit tier is not admitted for multinomial", {
   )
 })
 
-## ---- Blocked: generic (1 | group) random intercept -----------------------
+## ---- Admitted (Slice 4, 2026-08-16): generic (1 | group) random intercept -
+## Moved to test-matrix-multinomial-unit.R (admission-fit, sigma_re recovery,
+## baseline-invariance, and OLRE-guard coverage) -- see R/multinomial-fence.R
+## and `.mn_admission_table`. The OLD fixture here (`.mn_fence_data(4L)`, a
+## `(1 | unit)` term where `unit = factor(seq_len(n))` gives exactly ONE
+## categorical observation per group level) is now itself the canonical OLRE
+## case: it still errors, but typed `gllvmTMB_multinomial_olre_not_admitted`
+## rather than `gllvmTMB_multinomial_structured_not_admitted` -- a DIFFERENT
+## fence catches it now, not this one.
 
-test_that("(1 | group) is not admitted for multinomial", {
+test_that("(1 | group) with one observation per level is an OLRE, not this admission fence (regression pin)", {
   skip_on_cran()
   df <- .mn_fence_data(4L)
-  expect_error(
+  err <- tryCatch(
     gllvmTMB(value ~ 0 + trait + (1 | unit), data = df,
              family = multinomial(), trait = "trait", unit = "unit"),
-    class = .mn_not_admitted
+    error = function(e) e
   )
+  expect_true(inherits(err, "error"))
+  expect_false(inherits(err, .mn_not_admitted))
+  expect_true(inherits(err, "gllvmTMB_multinomial_olre_not_admitted"))
 })
 
 ## ---- Blocked: unit_obs ("within") tier ------------------------------------
@@ -100,9 +111,18 @@ test_that("latent() at the unit_obs tier is not admitted for multinomial", {
   )
 })
 
-## ---- Blocked: cluster tier (indep(0 + trait | g) via `cluster =`) --------
+## ---- Admitted (Slice 4, 2026-08-16): cluster tier (indep(0 + trait | g)
+## via `cluster =`) -------------------------------------------------------
+## Moved to test-matrix-multinomial-unit.R (admission-fit + extract_Sigma()
+## coverage). The old fixture (10 species levels x 4 observations each,
+## `.mn_fence_data`-style) has MULTIPLE observations per level, so it is not
+## the OLRE case -- flipping this cell from blocked to admitted means the
+## fit now genuinely constructs and converges, which is a positive-control
+## claim, not a fence regression pin. This is a lightweight construction
+## smoke check only; test-matrix-multinomial-unit.R carries the real
+## admission-fit + extract_Sigma() evidence.
 
-test_that("indep() at the cluster tier is not admitted for multinomial", {
+test_that("indep() at the cluster tier is admitted for multinomial (Slice 4)", {
   skip_on_cran()
   set.seed(6L)
   n <- 40L
@@ -110,17 +130,25 @@ test_that("indep() at the cluster tier is not admitted for multinomial", {
     unit = factor(seq_len(n)), species = factor(rep(seq_len(10L), length.out = n)),
     trait = factor("morph"), value = factor(sample.int(3L, n, replace = TRUE))
   )
-  expect_error(
+  fit <- tryCatch(
     gllvmTMB(value ~ 0 + trait + indep(0 + trait | species), data = df,
              family = multinomial(), trait = "trait", unit = "unit",
              cluster = "species"),
-    class = .mn_not_admitted
+    error = function(e) e
   )
+  if (inherits(fit, "error")) {
+    expect_false(inherits(fit, .mn_not_admitted))
+  } else {
+    expect_s3_class(fit, "gllvmTMB_multi")
+  }
 })
 
-## ---- Blocked: cluster2 tier -----------------------------------------------
+## ---- Admitted (Slice 4, 2026-08-16): cluster2 tier ------------------------
+## Same reasoning as the cluster-tier cell above; use_diag_cluster2 is the
+## LITERALLY IDENTICAL engine route to use_diag_species (verified in
+## R/multinomial-fence.R's header comment).
 
-test_that("indep() at the cluster2 tier is not admitted for multinomial", {
+test_that("indep() at the cluster2 tier is admitted for multinomial (Slice 4, same engine as cluster)", {
   skip_on_cran()
   set.seed(7L)
   n <- 40L
@@ -128,9 +156,53 @@ test_that("indep() at the cluster2 tier is not admitted for multinomial", {
     unit = factor(seq_len(n)), year = factor(rep(seq_len(5L), length.out = n)),
     trait = factor("morph"), value = factor(sample.int(3L, n, replace = TRUE))
   )
-  expect_error(
+  fit <- tryCatch(
     gllvmTMB(value ~ 0 + trait + indep(0 + trait | year), data = df,
              family = multinomial(), trait = "trait", unit = "unit",
+             cluster2 = "year"),
+    error = function(e) e
+  )
+  if (inherits(fit, "error")) {
+    expect_false(inherits(fit, .mn_not_admitted))
+  } else {
+    expect_s3_class(fit, "gllvmTMB_multi")
+  }
+})
+
+## ---- Blocked: cluster/cluster2 common = TRUE (the scalar() modifier) -----
+## The generic engine has no common-pooling map for use_diag_species /
+## use_diag_cluster2 (unlike the unit/unit_obs diag_B_common/diag_W_common
+## map tricks), so admitting a common = TRUE request would silently ignore
+## it rather than actually pool to one shared level -- refused explicitly,
+## matching phylo_scalar()/animal_scalar()/kernel_scalar().
+
+test_that("indep(..., common = TRUE) at the cluster tier is not admitted for multinomial", {
+  skip_on_cran()
+  set.seed(8L)
+  n <- 40L
+  df <- data.frame(
+    unit = factor(seq_len(n)), species = factor(rep(seq_len(10L), length.out = n)),
+    trait = factor("morph"), value = factor(sample.int(3L, n, replace = TRUE))
+  )
+  expect_error(
+    gllvmTMB(value ~ 0 + trait + indep(0 + trait | species, common = TRUE),
+             data = df, family = multinomial(), trait = "trait", unit = "unit",
+             cluster = "species"),
+    class = .mn_not_admitted
+  )
+})
+
+test_that("indep(..., common = TRUE) at the cluster2 tier is not admitted for multinomial", {
+  skip_on_cran()
+  set.seed(9L)
+  n <- 40L
+  df <- data.frame(
+    unit = factor(seq_len(n)), year = factor(rep(seq_len(5L), length.out = n)),
+    trait = factor("morph"), value = factor(sample.int(3L, n, replace = TRUE))
+  )
+  expect_error(
+    gllvmTMB(value ~ 0 + trait + indep(0 + trait | year, common = TRUE),
+             data = df, family = multinomial(), trait = "trait", unit = "unit",
              cluster2 = "year"),
     class = .mn_not_admitted
   )
@@ -570,7 +642,10 @@ test_that(".mn_admission_table is consistent with .mn_classify_covstruct() for e
   skip_on_cran()
   tbl <- gllvmTMB:::.mn_admission_table
   site <- "unit"; ss_name <- "site_species"; species <- "species"
-  cluster2_col <- NULL
+  ## Slice 4 (Design 122, 2026-08-16) added cluster2-tier rows to the table,
+  ## so cluster2_col must resolve to a real column name here (NULL made the
+  ## cluster2 tier unreachable, which was fine before any row needed it).
+  cluster2_col <- "year"
   ## One representative covstruct per table row, in row order.
   reprs <- list(
     list(kind = "rr",       group = as.name("unit"),    extra = list()),
@@ -618,7 +693,19 @@ test_that(".mn_admission_table is consistent with .mn_classify_covstruct() for e
                       .kernel_name = "k1", .kernel_mode = "unique")),
     list(kind = "phylo_rr", group = as.name("species"),
          extra = list(.phylo_unique = TRUE, .indep = TRUE,
-                      .kernel_name = "k1", .kernel_mode = "scalar"))
+                      .kernel_name = "k1", .kernel_mode = "scalar")),
+    ## Slice 4 (Design 122, 2026-08-16): generic (1 | g) random intercepts
+    ## and the non-phylogenetic cluster/cluster2 diagonal tier, admitted;
+    ## common = TRUE (the scalar() modifier) at cluster/cluster2, blocked.
+    list(kind = "re_int",   group = as.name("group3"), extra = list()),
+    list(kind = "diag",     group = as.name("species"), extra = list(.indep = TRUE)),
+    list(kind = "diag",     group = as.name("species"), extra = list()),
+    list(kind = "diag",     group = as.name("year"),    extra = list(.indep = TRUE)),
+    list(kind = "diag",     group = as.name("year"),    extra = list()),
+    list(kind = "diag",     group = as.name("species"),
+         extra = list(.indep = TRUE, common = TRUE)),
+    list(kind = "diag",     group = as.name("year"),
+         extra = list(.indep = TRUE, common = TRUE))
   )
   expect_equal(nrow(tbl), length(reprs))
   for (i in seq_len(nrow(tbl))) {

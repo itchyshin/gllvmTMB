@@ -126,14 +126,21 @@ test_that("multinomial dispatches family_id 16 with a (K-1) coefficient block", 
   expect_false(is.unsorted(gid))
 })
 
-test_that("multinomial admits only fixed effects + phylo_latent: other RE terms fail loud", {
+test_that("multinomial admits only fixed effects + phylo_latent (+ Slice 4 group intercepts): other RE terms fail loud", {
   skip_on_cran()
   df <- .make_multinomial(seed = 3L, n = 120L, K = 3L)
-  ## Tier-2a (Design 84) relaxed the Tier-1 fence to permit phylo_latent(); every
-  ## OTHER latent / random-effect tier (here a generic (1 | unit) intercept) still
-  ## fails loud rather than fit a silently-wrong model.
+  ## Tier-2a (Design 84) relaxed the Tier-1 fence to permit phylo_latent();
+  ## Design 122 Slice 4 (2026-08-16) further admits a generic (1 | group)
+  ## random intercept (see test-matrix-multinomial-unit.R) and the
+  ## cluster/cluster2 indep() diagonal tier -- so a bare (1 | unit) is no
+  ## longer a fixed exemplar of "still blocked" here (this fixture's `unit`
+  ## column is one-obs-per-level, which is now caught by a DIFFERENT typed
+  ## OLRE guard, not this fence -- see test-multinomial-fence.R's
+  ## "(1 | group) with one observation per level is an OLRE" regression
+  ## pin). dep() at the unit tier remains genuinely blocked and still
+  ## exercises the claim this test makes.
   expect_error(
-    gllvmTMB(value ~ 0 + trait + (1 | unit), data = df,
+    gllvmTMB(value ~ 0 + trait + dep(0 + trait | unit), data = df,
              family = multinomial(), trait = "trait", unit = "unit"),
     regexp = "unsupported latent|deferred|Design 84"
   )

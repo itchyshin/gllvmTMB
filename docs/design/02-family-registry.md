@@ -190,14 +190,41 @@ truth for whether a family is `covered`, `partial`, or `blocked`.
 
 ### Unordered categorical (multinomial) families
 
-**Current status (2026-07-21; supersedes the historical Tier-1-only wording in
-Design 83).** Fixed-effect recovery for one unordered categorical trait is
-**covered** (FAM-20). Two deliberately narrow Tier-2 routes are **partial**:
+**Current status (2026-08-16; supersedes the 2026-07-21 wording below and the
+historical Tier-1-only wording in Design 83).** Fixed-effect recovery for one
+unordered categorical trait is **covered** (FAM-20). The Design 122 arc
+(Slices 1-4, 2026-08-16) admitted a bounded structured-term surface on top of
+that, each cell gated on a signed recovery campaign rather than construction
+alone: the among-category phylogenetic/relatedness surface in all three
+modes (`phylo_latent()`/`animal_latent()`/single-name `kernel_latent()`
+loadings-only; `phylo_dep()`/`animal_dep()`/`kernel_dep()` full unstructured
+$V$; `phylo_indep()`/`animal_indep()`/`kernel_indep()` diagonal $V$), the
+spatial (SPDE) mode axis (`spatial_latent()`/`spatial_indep()`/
+`spatial_dep()`), a generic `(1 | group)` random intercept, and the
+non-phylogenetic `cluster`/`cluster2` diagonal tier. **The honest evidence:**
+the one-categorical-draw-per-species recovery gate FAILED for the entire
+phylogenetic/relatedness surface (rail rates 8/20 against a 6/20 threshold);
+a pre-registered replication rescue (five draws per species) PASSED for the
+loadings-only and full-$V$ cells but is untested for the diagonal-$V$ cell,
+whose corrected rerun independently FAILED (small-variance collapse, a
+failed planted-zero check). The spatial surface and the group-intercept
+surface both PASSED their signed gates outright, no replication needed.
+`phylo_scalar()`/`animal_scalar()`/`kernel_scalar()`/`spatial_scalar()` and
+`common = TRUE` at the cluster/cluster2 tier are REFUSED, not merely
+deferred -- a shared-level collapse across the $K-1$ contrasts has no
+interpretable null. See `docs/design/122-multinomial-structured-surface.md`
+for the complete per-cell table and every number, and
+`docs/design/35-validation-debt-register.md`'s FAM-20A-F rows for the
+register statements.
+
+**Prior status (2026-07-21), still accurate as far as it goes.** Two
+deliberately narrow Tier-2 routes were **partial**:
 `phylo_latent()` reports the $(K-1)\times(K-1)$ among-category phylogenetic
 covariance $V$, and an ordinary shared `latent()` block may connect one
 multinomial trait to other families through its $K-1$ contrast pseudo-traits.
 Neither route turns the nominal response into one scalar correlation: reporting
-keeps the contrast block explicit. The phylogenetic V route is data-hungry; the
+keeps the contrast block explicit. The phylogenetic V route is data-hungry (now
+quantified above: one draw per species does not identify $V$, five does); the
 ordinary cross-family route permits one multinomial trait per fit and rejects
 unsupported tiers before TMB construction.
 
@@ -216,7 +243,7 @@ typed refusal.
 
 | Family | R constructor | `dpars` | Links | Bounds | Status |
 |--------|---------------|---------|-------|--------|--------|
-| Multinomial | `multinomial()` | `mu` ($K-1$ baseline-category linear predictors) | baseline-category logit (softmax) | $\{1, \ldots, K\}$ unordered categories | covered fixed-effect route; partial, fenced phylogenetic and ordinary shared-latent routes (Designs 83--84) |
+| Multinomial | `multinomial()` | `mu` ($K-1$ baseline-category linear predictors) | baseline-category logit (softmax) | $\{1, \ldots, K\}$ unordered categories | covered fixed-effect route; partial, campaign-gated phylogenetic/relatedness, spatial, and group-intercept structured routes (Designs 83, 84, 122) |
 
 **Historical scope note (Design 83, superseded 2026-07-21).** This originally
 admitted fixed-effect recovery only. The current allow-list is the one stated
@@ -229,8 +256,8 @@ Design 68). Julia parity is a separate later arc.
 2026-08-16).** `dep()`, explicit multinomial `unique()`/`indep()`, slopes,
 spatial/animal/kernel tiers, the `cluster`/`cluster2`/`unit_obs` grouping
 tiers, generic `(1 | group)` random intercepts, and `mi()` predictor terms
-are all deferred and now genuinely fail loud when combined with a
-`multinomial()` trait. Historically this was **not** true: several of these
+were all deferred at Slice 0 and genuinely fail loud when combined with a
+`multinomial()` trait unless separately admitted below. Historically this was **not** true: several of these
 keywords desugar (`R/brms-sugar.R`) onto the same engine flag as an admitted
 keyword -- `dep()` at the unit tier, `phylo_dep()`, `phylo_indep()` /
 `phylo_unique()` (standalone), and `animal_latent()` all folded onto the

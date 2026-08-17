@@ -1,5 +1,16 @@
 # Check log
 
+## 2026-08-16 — overnight conductor pulse 21:15 (brief + W-onesided oracles)
+
+Living 05:00 brief:
+`docs/dev-log/research/2026-08-17-mspl-overnight-brief.md`.
+#1060/#1061/#1062/#1064 already on `main`. This pulse is the
+brief only. No tape. No Tweedie door. No public se. Do not
+merge conflicting #1065.
+Morning G0: (1) Q_0 vs Q_P vs sandwich (2) B1 park/B2/new
+(3) replace Poisson W=diag(mu)?
+`origin/main` @ `489162dc`.
+
 ## 2026-08-17 — B1 aftermath G0 brief (park default; unsigned)
 
 Docs only. Overnight track after #1040: official hold-out

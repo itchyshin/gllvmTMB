@@ -688,14 +688,20 @@ ordinal_probit <- function(link = "probit") {
 #' \code{\link{categorical}()} constructor, which is a missing-\emph{predictor}
 #' imputation family. Because an unordered categorical response spans
 #' \eqn{K-1} latent liability dimensions rather than one, the admitted
-#' structured-term surface is narrow: fixed effects always; an ordinary
+#' structured-term surface is bounded: fixed effects always; an ordinary
 #' shared \code{latent(0 + trait | unit, d = k)} ordination, which connects
 #' a multinomial trait to other-family traits through its \eqn{K-1}
 #' contrast pseudo-traits (the default \code{unique = TRUE} works, with the
-#' categorical contrast \eqn{\Psi} mapped off); and intercept-only
-#' \code{phylo_latent(species, d = K)} (default \code{unique = FALSE}) for
-#' the among-category phylogenetic surface -- it emits no \eqn{\Psi}
-#' companion at all in that default form, and \code{unique = TRUE} (a free
+#' categorical contrast \eqn{\Psi} mapped off); the intercept-only
+#' phylogenetic-machinery tier in all three modes -- \code{phylo_latent(species,
+#' d = k)} (reduced-rank), \code{phylo_dep()} (full unstructured \eqn{V};
+#' the identical \code{phylo_rr} parameterisation as
+#' \code{phylo_latent(d = K - 1)}), and \code{phylo_indep()} (diagonal
+#' \eqn{V}; standalone \code{phylo_unique()} is its deprecated alias) --
+#' together with their \code{animal_*()} (pedigree/\code{A}) and single-name
+#' \code{kernel_*()} (dense \code{K}) twins, which run the same engine.
+#' All of these are loadings-only: none emits a \eqn{\Psi}
+#' companion, and \code{unique = TRUE} (a free
 #' phylogenetic \eqn{\Psi}) is NOT admitted. A generic \code{(1 | group)}
 #' random intercept is also admitted, but its semantics are
 #' \strong{baseline-vs-rest}, not per-category: the engine adds one draw per

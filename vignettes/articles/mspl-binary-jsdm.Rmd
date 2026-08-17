@@ -248,7 +248,7 @@ of a silently deleted item or an unusable coefficient in the hundreds.
 |---|---|---|
 | `convergence = 0` but loadings at absurd link-scale magnitudes | Flat likelihood direction in the latent structure | `gllvmTMBcontrol(loading_ridge = 2)` — opt-in shrinkage, probit-grid track record |
 | `screen_gllvmTMB()` flags an item `complete` / `quasi_complete` | Fixed-design separation; the ML slope is infinite | `estimator = "mspl"` — opt-in, experimental penalised point estimate with explicit fences |
-| Both at once | Two diseases | Still one fit, one outer penalty: MSPL treats only the separated term(s), and the ridge+MSPL combination is refused, so a co-occurring loading runaway has no packaged remedy — simplify the latent structure or collect more information |
+| Both symptoms in the same fit | Two diseases at once — but still one fit | Still one outer penalty: treat the separation with `estimator = "mspl"`. The ridge+MSPL combination is refused, so a co-occurring loading runaway has no packaged remedy — simplify the latent structure or collect more information |
 
 Report, in either case: the certificate table, which route was fitted and why,
 the penalty scale (`summary(fit)$estimation` stores `c_n` for MSPL), and the

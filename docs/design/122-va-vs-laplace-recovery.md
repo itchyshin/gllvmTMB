@@ -813,3 +813,34 @@ pre-registered as out of scope.
 **Status: awaiting the final D-139 go.** The measured 382 core-hours exceeds
 the "tens of CPU-hours" stated at scoping, so the number is restated here
 rather than absorbed silently.
+
+## 17. PRE-REGISTERED AMENDMENT, before any confirmatory data exists (2026-08-17)
+
+Maintainer decision, recorded **prior to the launch** of the confirmatory
+campaign and therefore binding on its analysis:
+
+**The VGH ordinal cutpoint target is OUT OF SCOPE for this campaign.**
+`extract_cutpoints()` rejects VA-route fits (*"Provide a fit returned by
+`gllvmTMB()`"*), so `tau_k` cannot be recovered for the VGH arm on
+`ordinal_probit` rows. Rather than fix the accessor under time pressure, or —
+worse — discover the gap during analysis and decide then, the target is
+withdrawn now.
+
+What this does and does not cost:
+
+- **Unaffected:** the primary estimand, stratified `Sigma_B` relative
+  Frobenius error, together with `kappa`, the two-sided degeneracy detector,
+  `max|Lambda|`, silent-divergence rates, and TEST A. All measured normally on
+  ordinal rows in all three arms; rung 3 produced 900/900 complete rows for
+  exactly this cell. **The campaign still answers the question it was built to
+  answer.**
+- **Withdrawn:** any claim about VGH's recovery of ordinal cutpoints. Rows
+  will carry `tau2_hat`/`tau3_hat` as `NA` with the captured error string, so
+  the absence is visible in the data rather than inferred from silence.
+- **Not withdrawn for Laplace:** L0 and L2 ordinal cutpoints are measured
+  normally; only the VGH arm's are missing. Any cross-arm cutpoint comparison
+  is therefore impossible and must not be attempted post hoc.
+
+Tracked as a follow-up: `extract_cutpoints()` should accept VA fits, or refuse
+them with a message naming the actual limitation. Until then, this amendment
+stands.

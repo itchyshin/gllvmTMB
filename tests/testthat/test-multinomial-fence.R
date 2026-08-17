@@ -410,56 +410,56 @@ test_that("multi-kernel is not admitted for multinomial", {
   )
 })
 
-## ---- Blocked: spatial_* -----------------------------------------------
+## ---- Admitted (Slice 3, 2026-08-16): spatial_latent()/spatial_indep()/
+## spatial_dep() ------------------------------------------------------------
+## The spatial (SPDE) mode axis moved from BLOCKED to ADMITTED for all three
+## modes -- see R/multinomial-fence.R's `.mn_admission_table` and
+## admission-fit / equivalence / gate-check coverage in
+## test-matrix-multinomial-spatial.R (and its own regression pin: a mesh
+## built on the un-expanded per-site data aborts loud rather than silently
+## misaligning A_proj -- dev/multinomial-structured/gate-check-a-proj.R).
+## Only spatial_scalar() (below), spatial_latent(unique = TRUE)'s paired Psi
+## companion, standalone spatial_unique()/deprecated bare spatial(), and
+## augmented (intercept + slope) forms stay blocked.
+
+## ---- Blocked: spatial_* (scalar / paired-Psi / standalone-unique /
+## augmented) ----------------------------------------------------------
 
 .mn_spatial_skip <- function() {
   testthat::skip_if_not_installed("fmesher")
-  testthat::skip_if_not_installed("INLA")
+  ## NOTE: unlike an earlier version of this guard, INLA is NOT required --
+  ## verified (Slice 3, this task) that make_mesh() and the base SPDE engine
+  ## need only fmesher, matching test-matrix-ordinal-spatial.R's convention
+  ## (fmesher + TMB, no INLA).
+  testthat::skip_if_not_installed("TMB")
 }
 
 .mn_spatial_fixture <- function(seed = 21L, n = 40L, K = 3L) {
   set.seed(seed)
   df <- data.frame(
+    ## `site` (the default `unit =` column) is REQUIRED -- gllvmTMB()'s
+    ## early input validation (R/gllvmTMB.R, well before any family-specific
+    ## dispatch) asserts `site %in% names(data)` unconditionally. Its absence
+    ## here was a latent bug in this fixture that a blocked spatial_*() cell
+    ## never surfaced (the admission fence -- or, before Slice 3, mesh
+    ## construction itself failing at cutoff = 0.3 for some seeds -- usually
+    ## aborted/skipped first); fixed alongside Slice 3's own blocked-cell
+    ## tests, which reach this validation on every seed since their mesh
+    ## build succeeds.
+    site = factor(seq_len(n)),
     trait = factor("morph"), value = factor(sample.int(K, n, replace = TRUE)),
     x = stats::runif(n), y = stats::runif(n)
   )
-  mesh <- tryCatch(gllvmTMB::make_mesh(df, c("x", "y"), cutoff = 0.3),
+  ## cutoff = 0.3 was too coarse for n = 40 random unit-square points on
+  ## several seeds (fmesher triangulation degenerates), silently skipping
+  ## those cells; 0.1 is verified to build cleanly across the seeds this
+  ## file uses (21/24/27/28/29/30) -- these are typed-BLOCKED cells, so mesh
+  ## quality / A_proj row alignment do not matter for what they exercise,
+  ## only that a mesh object exists at all.
+  mesh <- tryCatch(gllvmTMB::make_mesh(df, c("x", "y"), cutoff = 0.1),
                     error = function(e) NULL)
   list(data = df, mesh = mesh)
 }
-
-test_that("spatial_indep() is not admitted for multinomial", {
-  skip_on_cran(); .mn_spatial_skip()
-  fx <- .mn_spatial_fixture(21L)
-  skip_if(is.null(fx$mesh), "mesh build failed")
-  expect_error(
-    gllvmTMB(value ~ 0 + trait + spatial_indep(0 + trait | coords), data = fx$data,
-             family = multinomial(), trait = "trait", mesh = fx$mesh),
-    class = .mn_not_admitted
-  )
-})
-
-test_that("spatial_dep() is not admitted for multinomial", {
-  skip_on_cran(); .mn_spatial_skip()
-  fx <- .mn_spatial_fixture(22L)
-  skip_if(is.null(fx$mesh), "mesh build failed")
-  expect_error(
-    gllvmTMB(value ~ 0 + trait + spatial_dep(0 + trait | coords), data = fx$data,
-             family = multinomial(), trait = "trait", mesh = fx$mesh),
-    class = .mn_not_admitted
-  )
-})
-
-test_that("spatial_latent() is not admitted for multinomial", {
-  skip_on_cran(); .mn_spatial_skip()
-  fx <- .mn_spatial_fixture(23L)
-  skip_if(is.null(fx$mesh), "mesh build failed")
-  expect_error(
-    gllvmTMB(value ~ 0 + trait + spatial_latent(0 + trait | coords, d = 1),
-             data = fx$data, family = multinomial(), trait = "trait", mesh = fx$mesh),
-    class = .mn_not_admitted
-  )
-})
 
 test_that("spatial_scalar() is not admitted for multinomial", {
   skip_on_cran(); .mn_spatial_skip()
@@ -468,6 +468,60 @@ test_that("spatial_scalar() is not admitted for multinomial", {
   expect_error(
     gllvmTMB(value ~ 0 + trait + spatial_scalar(0 + trait | coords), data = fx$data,
              family = multinomial(), trait = "trait", mesh = fx$mesh),
+    class = .mn_not_admitted
+  )
+})
+
+test_that("spatial_indep(..., common = TRUE) (spatial_mode = scalar) is not admitted for multinomial", {
+  skip_on_cran(); .mn_spatial_skip()
+  fx <- .mn_spatial_fixture(27L)
+  skip_if(is.null(fx$mesh), "mesh build failed")
+  expect_error(
+    gllvmTMB(value ~ 0 + trait +
+               spatial_indep(0 + trait | coords, common = TRUE),
+             data = fx$data, family = multinomial(), trait = "trait", mesh = fx$mesh),
+    class = .mn_not_admitted
+  )
+})
+
+test_that("spatial_latent(unique = TRUE) (a free spatial Psi companion) is not admitted for multinomial", {
+  skip_on_cran(); .mn_spatial_skip()
+  fx <- .mn_spatial_fixture(28L)
+  skip_if(is.null(fx$mesh), "mesh build failed")
+  expect_error(
+    gllvmTMB(value ~ 0 + trait +
+               spatial_latent(0 + trait | coords, d = 1, unique = TRUE),
+             data = fx$data, family = multinomial(), trait = "trait", mesh = fx$mesh),
+    class = .mn_not_admitted
+  )
+})
+
+test_that("standalone spatial_unique() (paired-companion alias, not an independent diagonal cell) is not admitted for multinomial", {
+  skip_on_cran(); .mn_spatial_skip()
+  fx <- .mn_spatial_fixture(29L)
+  skip_if(is.null(fx$mesh), "mesh build failed")
+  expect_error(
+    suppressWarnings(gllvmTMB(value ~ 0 + trait + spatial_unique(0 + trait | coords), data = fx$data,
+             family = multinomial(), trait = "trait", mesh = fx$mesh)),
+    class = .mn_not_admitted
+  )
+})
+
+test_that("augmented (1 + x) spatial_indep() is not admitted for multinomial", {
+  skip_on_cran(); .mn_spatial_skip()
+  set.seed(30L)
+  n <- 40L
+  df <- data.frame(
+    site = factor(seq_len(n)),
+    trait = factor("morph"), value = factor(sample.int(3L, n, replace = TRUE)),
+    x = stats::runif(n), y = stats::runif(n), z = stats::rnorm(n)
+  )
+  mesh <- tryCatch(gllvmTMB::make_mesh(df, c("x", "y"), cutoff = 0.1),
+                    error = function(e) NULL)
+  skip_if(is.null(mesh), "mesh build failed")
+  expect_error(
+    gllvmTMB(value ~ 0 + trait + spatial_indep(1 + z | coords), data = df,
+             family = multinomial(), trait = "trait", mesh = mesh),
     class = .mn_not_admitted
   )
 })
@@ -705,7 +759,23 @@ test_that(".mn_admission_table is consistent with .mn_classify_covstruct() for e
     list(kind = "diag",     group = as.name("species"),
          extra = list(.indep = TRUE, common = TRUE)),
     list(kind = "diag",     group = as.name("year"),
-         extra = list(.indep = TRUE, common = TRUE))
+         extra = list(.indep = TRUE, common = TRUE)),
+    ## Slice 3 (Design 122, 2026-08-16): the spatial (SPDE) mode axis --
+    ## spatial_latent()/spatial_indep()/spatial_dep() admitted;
+    ## spatial_latent(unique = TRUE)'s paired Psi companion, spatial_scalar(),
+    ## standalone spatial_unique() (no markers at all), and every augmented
+    ## form stay blocked.
+    list(kind = "spde", group = as.name("coords"),
+         extra = list(.spatial_latent = TRUE, .spatial_unique_diag = FALSE)),
+    list(kind = "spde", group = as.name("coords"), extra = list(.spatial_indep = TRUE)),
+    list(kind = "spde", group = as.name("coords"),
+         extra = list(.spatial_latent = TRUE, .dep = TRUE, .spatial_unique_diag = FALSE)),
+    list(kind = "spde", group = as.name("coords"),
+         extra = list(.spatial_latent = TRUE, .spatial_unique_diag = TRUE)),
+    list(kind = "spde", group = as.name("coords"), extra = list(.spatial_scalar = TRUE)),
+    list(kind = "spde", group = as.name("coords"), extra = list()),
+    list(kind = "spde", group = as.name("coords"),
+         extra = list(.spatial_latent_augmented = TRUE, d = 1L))
   )
   expect_equal(nrow(tbl), length(reprs))
   for (i in seq_len(nrow(tbl))) {

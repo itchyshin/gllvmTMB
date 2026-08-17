@@ -38,18 +38,19 @@
 }
 
 .nb1_admit_dat <- function(n_site = 12L, n_trait = 3L, seed = 160817L) {
-  ## Mild counts only. Ubuntu CI rejected the 8-site / max-6 pattern:
-  ## penalty-off residual 4.78e-6 vs tol 3.71e-6 (I_eta ymax asDouble).
-  ## Twelve sites, max 3, keeps ymax in the tape clip and |obj| large
-  ## enough that the same residual stays inside 1e-7*(1+|obj|), while
-  ## still rejecting c_P and Poisson ybar weights.
+  ## Designed mild OD, max 4. Ubuntu CI rejected the 8-site / max-6
+  ## cell (penalty-off residual 4.78e-6 vs tol 3.71e-6). A max-3
+  ## regular pattern collapses Ibar to ybar (Poisson-limit MoM) so
+  ## V matches Bernoulli/Poisson within 1e-6. Trait 2 is overdispersed
+  ## (phi_hat ~ 0.64); traits 1/3 stay near the Poisson floor. Live
+  ## twin still rejects c=1, c_P, Bernoulli V, and Poisson ybar V.
   set.seed(seed)
   site <- factor(rep(seq_len(n_site), each = n_trait))
   trait <- factor(rep(paste0("t", seq_len(n_trait)), n_site))
   y <- c(
-    0, 1, 2, 1, 0, 2, 2, 3, 1, 0, 2, 2,
-    3, 1, 0, 1, 3, 2, 2, 1, 3, 0, 2, 1,
-    1, 2, 0, 2, 1, 3, 0, 2, 1, 1, 0, 2
+    0, 0, 2, 1, 4, 2, 0, 0, 1, 1, 4, 2,
+    0, 1, 2, 1, 4, 1, 0, 0, 2, 1, 3, 2,
+    0, 1, 1, 1, 4, 2, 0, 0, 2, 1, 3, 1
   )
   data.frame(site = site, trait = trait, y = y)
 }

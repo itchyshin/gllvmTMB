@@ -60,10 +60,10 @@ Rebased `cursor/mspl-nbinom-admit-packet` onto `origin/main` after
 #1073 / #1068 / #1071 / #1072. Conflict was `docs/dev-log/check-log.md`
 only (kept both entries). CI pins: D-phi skips when `gllvmTMB.cpp`
 is absent under R CMD check (no `readLines` on a missing `src/`);
-A7 NB1 fixture is a 12-site designed-OD cell so the ubuntu
-penalty-off residual stays inside `1e-7*(1+|obj|)` without
-collapsing Ibar onto ybar. Registry stays `planned`. No admit.
-No Tweedie door. #981 untouched.
+A7 NB1 fixture is a 12-site designed-OD cell (max 4, trait-2
+phi_hat ~ 0.64) so the ubuntu penalty-off residual stays inside
+`1e-7*(1+|obj|)` without collapsing Ibar onto ybar. Registry
+stays `planned`. No admit. No Tweedie door. #981 untouched.
 
 ```sh
 rg 'status\s*=\s*"admitted"' R/mspl-registry.R

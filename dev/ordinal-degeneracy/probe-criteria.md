@@ -289,3 +289,36 @@ fired in this grid.
   the label this probe's frozen rule conditions on, but "silent" in the
   stricter `laplace-silent-divergence.R` sense (`conv == 0 & pdHess == TRUE`)
   was not separately verified per row.
+
+## 🔴 CORRECTION TO THIS VERDICT (2026-08-17, after the dichotomised-check campaign)
+
+This document's VERDICT reached **"category-level separation, not link
+saturation"** on three measurements. **Measurement 3 has since been shown to
+carry no information, and the positive half of the verdict must be weakened
+accordingly.**
+
+Measurement 3 was: *"24/24 dichotomised refits fire the existing binomial
+detector -> strong evidence for shared quasi-separation geometry."* The
+dichotomised check was subsequently scored properly on 315 fits across four
+arms (`pass-criteria-dichotomised.md`): it fires on **86.3% of healthy
+fits** (67.8% healthy, 93.3% transport, 100% mixed). A check with that
+false-alarm rate fires on 24 of 24 degenerate fits **by construction**; the
+24/24 discriminates nothing.
+
+The mechanism is now understood: collapsing a K = 4 ordinal response to
+binary destroys enough information to create quasi-separation **in the
+refit** that was never in the data — healthy datasets give saturated binary
+refits (`saturated_fit` 0.83-0.91) with runaway loadings (`max_loading` 13.4)
+at a benign overall prevalence of 0.26.
+
+**What still stands:** measurement 2, **flat-row share exactly 0 on all 24
+degenerate fits**, cleanly refutes link saturation — the
+`gll_log_pnorm_diff` underflow is never reached at a degenerate optimum.
+Measurement 1 was already reported as landing in the MIXED bucket for a
+disclosed reason.
+
+**Corrected verdict: "NOT link saturation" is solidly evidenced. "Therefore
+category-level separation" is the residual hypothesis, not a demonstrated
+one** — the measurement that appeared to demonstrate it does not
+discriminate. Anyone citing this probe should cite the negative half only,
+and treat the positive half as open.

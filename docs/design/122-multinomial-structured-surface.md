@@ -86,13 +86,86 @@ Recovery campaign staged at
 `--mode full` NOT run), gated on
 `dev/multinomial-structured/pass-criteria-s2.md` (DRAFT, pending sign-off).
 
+## Status (Slice 3, 2026-08-16)
+
+**Landed after Slice 4 chronologically in this worktree** (Slice 4's own
+Status section above predates this one and still says Slice 3 "is reserved
+for future work" -- that note is now superseded by this section). The
+spatial (SPDE) mode axis moves from deferred to admitted:
+
+- **GATE CHECK (done FIRST, before any admission edit):**
+  `expand_multinomial_response()` (`R/gllvmTMB.R`) duplicates each
+  observation into `K-1` contrast rows BEFORE mesh/`A_proj` construction. Not
+  a bug: `make_mesh()` is a pure per-row function of whatever coordinate
+  frame it is given, and the engine's `nrow(mesh$A_st) == n_obs` check (`n_obs`
+  measured on the ALREADY-expanded data) fails LOUD on a naively-built mesh
+  rather than silently misaligning rows. VERIFIED on a real fit (this
+  environment has fmesher but NOT INLA, confirmed sufficient for both
+  `make_mesh()` and the base SPDE engine): a mesh built on the user's
+  original per-site data aborts with `make_mesh() projection has <n_site>
+  rows but the long-format data has <n_site*(K-1)>`; a mesh built on a
+  coordinate frame pre-expanded with the SAME `rep(seq_len(n), each = K-1)`
+  convention `expand_multinomial_response()` uses internally aligns
+  EXACTLY -- 0/40 mismatched site-blocks, every contrast row of a site
+  carrying the identical `A_proj` row (`dev/multinomial-structured/
+  gate-check-a-proj.R`). This IS a real usability burden (the required
+  pre-expansion step is undocumented and the internal expansion function is
+  not exported), recorded here rather than silently patched.
+- **Admitted:** `spatial_latent(0 + trait | coords, d = k)` (loadings-only,
+  default `unique = FALSE`) -- the shared cross-contrast SPDE ordination.
+- **Admitted:** `spatial_indep(0 + trait | coords)` -- per-contrast
+  independent SPDE fields, no cross-contrast field correlation.
+- **Admitted:** `spatial_dep(0 + trait | coords)` -- VERIFIED (parser
+  desugar, `R/brms-sugar.R`) to literally set `.spatial_latent = TRUE, d =
+  n_traits, .dep = TRUE`, i.e. it IS `spatial_latent(d = n_traits)` under a
+  documentary keyword (the package's own roxygen already stated this
+  identity; now confirmed on real fits -- matched TMB objective at each
+  other's converged parameters both directions, tolerance 1e-6, and
+  IDENTICAL `kappa_hat`/`range_hat` at every campaign smoke-mode seed).
+- **`extract_Sigma(level = "spatial")` bug fixed alongside this admission:**
+  the top-level fixed-effects-only multinomial refusal (`.mn_has_latent`,
+  `R/extract-sigma.R`) did not recognise ANY spatial term (`use$spde`), so a
+  multinomial fit with ONLY a spatial term (no phylo/unit/cluster tier)
+  incorrectly tripped the "fixed-effects-only" abort for EVERY requested
+  level, not just an unsupported one. Fixed by adding `use$spde` to the
+  check. `link_residual = "auto"` correctly adds the `(pi^2/6)(I+J)` softmax
+  residual on the total surface at this level too (the generic code path is
+  not level-gated), matching the `phy`/FAM-20A contract.
+- **PARTIAL, pre-existing, NOT fixed here:**
+  `extract_Sigma(level = "spatial")` on a `spatial_indep()`-ONLY fit still
+  aborts ("Fit has no `spatial_latent()` term") -- this gap exists for EVERY
+  family, not just multinomial (e.g. `test-matrix-ordinal-spatial.R`'s own
+  `spatial_indep` cell reads `fit$report$kappa`/`log_tau_spde` directly
+  rather than through `extract_Sigma()`, for the same reason). Building a
+  new diagonal-SPDE extraction surface is out of this slice's scope.
+- **Stays BLOCKED:** `spatial_scalar()` (one shared level across contrasts,
+  the (I+J) carve-out, mirroring `phylo_scalar()`/`animal_scalar()`/
+  `kernel_scalar()`); `spatial_latent(unique = TRUE)`'s paired diagonal
+  Psi_spde companion -- architecturally a SINGLE marker
+  (`.spatial_unique_diag`) on the SAME covstruct, unlike phylo/animal/kernel's
+  separate-companion-covstruct pattern, so it needed an explicit carve-out;
+  standalone `spatial_unique()`/deprecated bare `spatial()` -- desugars with
+  NO markers at all, and is the PAIRED-COMPANION alias mechanism (meant to
+  pair with `spatial_latent()`, Design 60), not an independent diagonal term
+  the way `phylo_unique()`/`phylo_indep()` are, so **unlike Slice 2's phylo
+  mode axis it is NOT admitted as a deprecated alias of `spatial_indep()`**;
+  and every augmented (intercept + slope) `spatial_*(1 + x | coords)` form.
+
+Recovery campaign staged at `dev/multinomial-structured/campaign-s3-spatial.R`
+(timing/smoke run: timing 2.54 sec at `n_site = 300`; `--mode full` NOT run),
+gated on `dev/multinomial-structured/pass-criteria-s3.md` (DRAFT, pending
+sign-off; `n_site = 300` is NOT calibrated against a prior spike, unlike
+S1/S2's `n_sp = 800`). Register row FAM-20E.
+
 ## Status (Slice 4, 2026-08-16)
 
 Ordinary GROUP random intercepts move from deferred to admitted -- a
 different axis from Slices 1-2 (source/mode of the phylogenetic surface):
-this slice is about ordinary, non-phylogenetic grouping structure. (Slice 3,
-the spatial mode axis, is reserved for future work and is NOT part of this
-slice; every spatial cell stays BLOCKED, unchanged.)
+this slice is about ordinary, non-phylogenetic grouping structure. (This
+section originally said Slice 3, the spatial mode axis, was reserved for
+future work; Slice 3 has since landed -- see its own Status section above,
+inserted before this one for numeric ordering even though it was written
+after this section chronologically.)
 
 - **Admitted:** a generic `(1 | group)` random intercept (engine kind
   `re_int`, `src/gllvmTMB.cpp`'s `re_int` block). Verified against the

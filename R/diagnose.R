@@ -714,6 +714,13 @@
 #'   collapsed (M1) contrast. Default `1e-10`, the campaign code's own guard;
 #'   labeled evidence: 7/20 `phylo_indep` seeds at or below `1e-9`, every one
 #'   reporting `convergence = 0` and a positive-definite Hessian.
+#'   **Calibrated** (2026-08-17): sensitivity **6/7** on the labeled
+#'   `phylo_indep` collapse seeds (the miss sat at 1.79e-10, just above the
+#'   floor; the threshold was NOT loosened to capture it), and **7/7** on a
+#'   fully out-of-sample replicated diagonal-V cell with 0/13 firings on
+#'   that cell's healthy fits. A genuinely zero variance component fires
+#'   this arm by design -- at the fit level a true zero and a collapse are
+#'   indistinguishable, which is what the row's action text addresses.
 #' @param multinomial_collapse_rel_thresh Threshold on the ratio of the
 #'   smallest to the largest fitted contrast loading energy within one
 #'   response's K-1 contrasts, below which the smallest is flagged as
@@ -727,16 +734,32 @@
 #'   (`Lambda %*% t(Lambda)`) within one response's contrasts, at or above
 #'   which two contrasts are reported as rail-correlated (M2). Only
 #'   evaluated at tiers with rank `d >= 2` (see Details). Default `0.99`,
-#'   provisional pending the S3 calibration campaign; labeled evidence: 8/20
-#'   seeds at or above it.
+#'   **calibrated** (2026-08-17, 128 refits of labeled cells): sensitivity
+#'   **8/8** on the labeled `phylo_dep` rail seeds, plus 4/4 on individually
+#'   railed fits sitting inside a cell whose AGGREGATE gate passed --
+#'   verified by refitting (rho = +-1.00000 on all four; non-firing controls
+#'   0.490 and -0.145). Specificity: zero false positives on 40 informative
+#'   healthy fits, which bounds the false-positive rate at roughly 7.5% by
+#'   the rule of three -- a real improvement on the binomial screen's
+#'   measured 25% (issue #897), but NOT a verified zero. The `d >= 2` gate is
+#'   load-bearing, not defensive: at rank 1 every pair of contrast rows is
+#'   proportional, so `|rho| = 1` exactly on healthy fits; suppression
+#'   confirmed out-of-sample at 0/20 on a healthy `d = 1` cell.
 #' @param multinomial_range_collapse_thresh Threshold on the fitted spatial
 #'   practical range (`sqrt(8) / kappa`) relative to the coordinate-domain
 #'   diameter (the ratio, when the fit's mesh coordinates are reachable via
 #'   `object$mesh$loc_xy`), or on the practical range itself in absolute
 #'   coordinate units (the fallback, when they are not), at or below which
-#'   the spatial field is reported as collapsed (M3). Default `0.02`,
-#'   provisional pending the S3 calibration campaign; labeled evidence:
-#'   collapsed ratios 7e-5 to 3.4e-4.
+#'   the spatial field is reported as collapsed (M3). Default `0.02`;
+#'   labeled evidence: collapsed ratios 7e-5 to 3.4e-4. This arm measured
+#'   **0/3** in the first calibration pass for a scope reason rather than a
+#'   threshold one -- it gated on `Lambda_spde`, which the engine reports
+#'   only on the low-rank `spatial_latent()`/`spatial_dep()` route, so
+#'   `spatial_indep()` fits (the labeled collapse cell) were invisible to
+#'   it. Both routes are now covered, and the re-measurement gives
+#'   sensitivity **3/3** on those labeled seeds with **0/11** false positives
+#'   on the same cell's healthy fits (2026-08-17, 20 refits, row now emitted
+#'   for 20/20 rather than 0/20).
 #' @return A one-row data frame in the [check_gllvmTMB()] row shape, or
 #'   `NULL` when the fit has no multinomial (fid 16) contrast pseudo-traits.
 #' @keywords internal
@@ -845,40 +868,62 @@
   ## 6.5e6-vs-66 unit-tier hazard), but a practical range compared against a
   ## coordinate-scale diameter is itself in coordinate units, not link units,
   ## so that hazard does not apply to M3.
+  ## Two mutually exclusive engine routes reach the spatial tier, and M3 must
+  ## see BOTH. `Lambda_spde` is REPORTed only when `spde_lv_k > 0`
+  ## (src/gllvmTMB.cpp, the low-rank spatial_latent()/spatial_dep() route);
+  ## spatial_indep() runs the per-trait diagonal route, which has no loading
+  ## matrix at all and reports `log_tau_spde` instead. Gating M3 on
+  ## `Lambda_spde` therefore made it structurally blind to exactly the fits it
+  ## was built for (measured 0/3 on the labeled spatial_indep collapse cell,
+  ## dev/multinomial-structured/pass-criteria-detector-mn.md). On the diagonal
+  ## route the C++ loops over every trait unconditionally, so every trait
+  ## carries a field and participation needs no per-trait test.
   m3_cells <- list()
   if (isTRUE(object$use$spde)) {
     L_spde <- .gllvmTMB_report_matrix(object, "Lambda_spde")
     kappa <- tryCatch(.gllvm_spatial_kappa(object), error = function(e) NULL)
     kappa_ok <- is.numeric(kappa) && length(kappa) == 1L &&
       is.finite(kappa) && kappa > 0
-    if (!is.null(L_spde) && kappa_ok) {
-      row_idx <- .gllvmTMB_match_rows_by_trait(L_spde, trait_names, ids)
+    if (kappa_ok) {
       practical_range <- sqrt(8) / as.numeric(kappa)
       diameter <- .gllvmTMB_spatial_domain_diameter(object)
-      for (b in unique(block)) {
-        b_row <- row_idx[block == b]
-        keep <- !is.na(b_row)
-        if (sum(keep) < 1L) {
-          next
-        }
-        Lb <- L_spde[b_row[keep], , drop = FALSE]
-        loads_spatial <- any(is.finite(Lb) & Lb != 0)
-        if (!loads_spatial) {
-          next
-        }
+      m3_row <- function(b, route) {
         if (is.finite(diameter) && diameter > 0) {
           value <- practical_range / diameter
-          hit <- is.finite(value) && value < multinomial_range_collapse_thresh
           metric <- "range_over_diameter"
         } else {
           value <- practical_range
-          hit <- is.finite(value) && value < multinomial_range_collapse_thresh
           metric <- "range_absolute"
         }
-        m3_cells[[length(m3_cells) + 1L]] <- data.frame(
-          block = b, metric = metric, value = value, m3 = hit,
-          stringsAsFactors = FALSE
+        data.frame(
+          block = b, metric = metric, value = value,
+          m3 = is.finite(value) && value < multinomial_range_collapse_thresh,
+          route = route, stringsAsFactors = FALSE
         )
+      }
+      if (!is.null(L_spde)) {
+        row_idx <- .gllvmTMB_match_rows_by_trait(L_spde, trait_names, ids)
+        for (b in unique(block)) {
+          b_row <- row_idx[block == b]
+          keep <- !is.na(b_row)
+          if (sum(keep) < 1L) {
+            next
+          }
+          Lb <- L_spde[b_row[keep], , drop = FALSE]
+          loads_spatial <- any(is.finite(Lb) & Lb != 0)
+          if (!loads_spatial) {
+            next
+          }
+          m3_cells[[length(m3_cells) + 1L]] <- m3_row(b, "low_rank")
+        }
+      } else {
+        log_tau_spde <- object$report$log_tau_spde
+        if (is.numeric(log_tau_spde) && length(log_tau_spde) > 0L &&
+            any(is.finite(log_tau_spde))) {
+          for (b in unique(block)) {
+            m3_cells[[length(m3_cells) + 1L]] <- m3_row(b, "diagonal")
+          }
+        }
       }
     }
   }

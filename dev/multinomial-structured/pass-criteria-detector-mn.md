@@ -175,3 +175,21 @@ then re-measure.
 rail 0.99) with this evidence written into the roxygen. M3 stays DISARMED
 pending the scope fix + re-measurement. The relative-collapse sub-arm stays
 disarmed (Inf) — untested here.
+
+## M3 RE-MEASUREMENT (2026-08-17, after the scope fix)
+
+The scope fix landed: M3 now branches on the engine route rather than gating
+on `Lambda_spde` (low-rank route unchanged; new diagonal branch reads
+`log_tau_spde`, which the C++ populates for every trait unconditionally on
+that route, so participation needs no per-trait test). Re-running the same
+20 `spatial_indep` seeds:
+
+| Measure | Before fix | After fix |
+|---|---|---|
+| Detector row emitted | **0/20** (row never appeared) | **20/20** |
+| Sensitivity on the 3 labeled collapse seeds | **0/3** | **3/3** |
+| False positives on the cell's healthy fits | n/a (no rows) | **0/11** |
+
+**All three multinomial arms now meet their frozen targets** (M1 6/7, M2 8/8,
+M3 3/3) and each carries its measured sensitivity and specificity in the
+shipped roxygen.

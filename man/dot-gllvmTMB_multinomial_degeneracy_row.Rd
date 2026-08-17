@@ -19,7 +19,14 @@
 loading energy (\code{rowSums(Lambda^2)}), at or below which it is a
 collapsed (M1) contrast. Default \code{1e-10}, the campaign code's own guard;
 labeled evidence: 7/20 \code{phylo_indep} seeds at or below \code{1e-9}, every one
-reporting \code{convergence = 0} and a positive-definite Hessian.}
+reporting \code{convergence = 0} and a positive-definite Hessian.
+\strong{Calibrated} (2026-08-17): sensitivity \strong{6/7} on the labeled
+\code{phylo_indep} collapse seeds (the miss sat at 1.79e-10, just above the
+floor; the threshold was NOT loosened to capture it), and \strong{7/7} on a
+fully out-of-sample replicated diagonal-V cell with 0/13 firings on
+that cell's healthy fits. A genuinely zero variance component fires
+this arm by design -- at the fit level a true zero and a collapse are
+indistinguishable, which is what the row's action text addresses.}
 
 \item{multinomial_collapse_rel_thresh}{Threshold on the ratio of the
 smallest to the largest fitted contrast loading energy within one
@@ -35,17 +42,33 @@ off-diagonal correlation of the implied contrast-level covariance
 (\code{Lambda \%*\% t(Lambda)}) within one response's contrasts, at or above
 which two contrasts are reported as rail-correlated (M2). Only
 evaluated at tiers with rank \code{d >= 2} (see Details). Default \code{0.99},
-provisional pending the S3 calibration campaign; labeled evidence: 8/20
-seeds at or above it.}
+\strong{calibrated} (2026-08-17, 128 refits of labeled cells): sensitivity
+\strong{8/8} on the labeled \code{phylo_dep} rail seeds, plus 4/4 on individually
+railed fits sitting inside a cell whose AGGREGATE gate passed --
+verified by refitting (rho = +-1.00000 on all four; non-firing controls
+0.490 and -0.145). Specificity: zero false positives on 40 informative
+healthy fits, which bounds the false-positive rate at roughly 7.5\% by
+the rule of three -- a real improvement on the binomial screen's
+measured 25\% (issue #897), but NOT a verified zero. The \code{d >= 2} gate is
+load-bearing, not defensive: at rank 1 every pair of contrast rows is
+proportional, so \verb{|rho| = 1} exactly on healthy fits; suppression
+confirmed out-of-sample at 0/20 on a healthy \code{d = 1} cell.}
 
 \item{multinomial_range_collapse_thresh}{Threshold on the fitted spatial
 practical range (\code{sqrt(8) / kappa}) relative to the coordinate-domain
 diameter (the ratio, when the fit's mesh coordinates are reachable via
 \code{object$mesh$loc_xy}), or on the practical range itself in absolute
 coordinate units (the fallback, when they are not), at or below which
-the spatial field is reported as collapsed (M3). Default \code{0.02},
-provisional pending the S3 calibration campaign; labeled evidence:
-collapsed ratios 7e-5 to 3.4e-4.}
+the spatial field is reported as collapsed (M3). Default \code{0.02};
+labeled evidence: collapsed ratios 7e-5 to 3.4e-4. This arm measured
+\strong{0/3} in the first calibration pass for a scope reason rather than a
+threshold one -- it gated on \code{Lambda_spde}, which the engine reports
+only on the low-rank \code{spatial_latent()}/\code{spatial_dep()} route, so
+\code{spatial_indep()} fits (the labeled collapse cell) were invisible to
+it. Both routes are now covered, and the re-measurement gives
+sensitivity \strong{3/3} on those labeled seeds with \strong{0/11} false positives
+on the same cell's healthy fits (2026-08-17, 20 refits, row now emitted
+for 20/20 rather than 0/20).}
 }
 \value{
 A one-row data frame in the \code{\link[=check_gllvmTMB]{check_gllvmTMB()}} row shape, or

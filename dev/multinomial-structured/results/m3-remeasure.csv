@@ -1,0 +1,21 @@
+"cell","seed","convergence","pdHess","labeled_degenerate","det_present","det_status","det_m1","det_m2","det_m3","det_message","range_hat","elapsed_sec"
+"deg_m3_spatial_indep",301,0,FALSE,FALSE,TRUE,"WARN",FALSE,FALSE,TRUE,"multinomial contrast degeneracy detected (arms: M3)",0.000513015862527371,2.09736609458923
+"deg_m3_spatial_indep",302,0,FALSE,FALSE,TRUE,"WARN",FALSE,FALSE,TRUE,"multinomial contrast degeneracy detected (arms: M3)",0.018269173483636,1.68229508399963
+"deg_m3_spatial_indep",303,0,TRUE,TRUE,TRUE,"WARN",FALSE,FALSE,TRUE,"multinomial contrast degeneracy detected (arms: M3)",6.90681959237506e-05,1.94664406776428
+"deg_m3_spatial_indep",304,0,TRUE,TRUE,TRUE,"WARN",FALSE,FALSE,TRUE,"multinomial contrast degeneracy detected (arms: M3)",9.59262543206961e-05,2.41649317741394
+"deg_m3_spatial_indep",305,0,TRUE,FALSE,TRUE,"PASS",FALSE,FALSE,FALSE,"multinomial K-1 contrast pseudo-trait degeneracy screen",0.212317888855858,1.72556686401367
+"deg_m3_spatial_indep",306,0,TRUE,FALSE,TRUE,"PASS",FALSE,FALSE,FALSE,"multinomial K-1 contrast pseudo-trait degeneracy screen",0.698360694911839,1.88375902175903
+"deg_m3_spatial_indep",307,0,TRUE,FALSE,TRUE,"PASS",FALSE,FALSE,FALSE,"multinomial K-1 contrast pseudo-trait degeneracy screen",0.227906749728894,1.61430311203003
+"deg_m3_spatial_indep",308,0,TRUE,FALSE,TRUE,"PASS",FALSE,FALSE,FALSE,"multinomial K-1 contrast pseudo-trait degeneracy screen",0.411151462687431,1.93058013916016
+"deg_m3_spatial_indep",309,0,TRUE,FALSE,TRUE,"PASS",FALSE,FALSE,FALSE,"multinomial K-1 contrast pseudo-trait degeneracy screen",0.286876295114902,2.0960521697998
+"deg_m3_spatial_indep",310,0,FALSE,FALSE,TRUE,"WARN",FALSE,FALSE,TRUE,"multinomial contrast degeneracy detected (arms: M3)",0.0234681090046536,1.65357398986816
+"deg_m3_spatial_indep",311,0,TRUE,FALSE,TRUE,"PASS",FALSE,FALSE,FALSE,"multinomial K-1 contrast pseudo-trait degeneracy screen",0.535914103970093,1.58356785774231
+"deg_m3_spatial_indep",312,0,TRUE,TRUE,TRUE,"WARN",FALSE,FALSE,TRUE,"multinomial contrast degeneracy detected (arms: M3)",0.000103291966287418,2.45296311378479
+"deg_m3_spatial_indep",313,0,FALSE,FALSE,TRUE,"PASS",FALSE,FALSE,FALSE,"multinomial K-1 contrast pseudo-trait degeneracy screen",0.0303986910376767,1.17030692100525
+"deg_m3_spatial_indep",314,0,TRUE,FALSE,TRUE,"PASS",FALSE,FALSE,FALSE,"multinomial K-1 contrast pseudo-trait degeneracy screen",0.290836375478256,1.28650093078613
+"deg_m3_spatial_indep",315,0,TRUE,FALSE,TRUE,"PASS",FALSE,FALSE,FALSE,"multinomial K-1 contrast pseudo-trait degeneracy screen",0.364632976177258,1.53384709358215
+"deg_m3_spatial_indep",316,0,TRUE,FALSE,TRUE,"PASS",FALSE,FALSE,FALSE,"multinomial K-1 contrast pseudo-trait degeneracy screen",0.27648725146761,1.64914202690125
+"deg_m3_spatial_indep",317,0,TRUE,FALSE,TRUE,"PASS",FALSE,FALSE,FALSE,"multinomial K-1 contrast pseudo-trait degeneracy screen",0.338566345813664,1.44994115829468
+"deg_m3_spatial_indep",318,0,FALSE,FALSE,TRUE,"WARN",FALSE,FALSE,TRUE,"multinomial contrast degeneracy detected (arms: M3)",2.11375191444662e-05,1.73364996910095
+"deg_m3_spatial_indep",319,0,TRUE,FALSE,TRUE,"PASS",FALSE,FALSE,FALSE,"multinomial K-1 contrast pseudo-trait degeneracy screen",0.335237688258745,1.6253969669342
+"deg_m3_spatial_indep",320,0,FALSE,FALSE,TRUE,"WARN",FALSE,FALSE,TRUE,"multinomial contrast degeneracy detected (arms: M3)",0.0231412294613479,1.32571911811829

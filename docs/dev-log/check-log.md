@@ -77,6 +77,26 @@ After-task: `docs/dev-log/after-task/2026-08-16-mspl-W-onesided-audit.md`.
 G0 menu (keep / replace / park) is in the note §6. Do not execute
 from this PR.
 
+## 2026-08-16 — MSPL SE paper + Ranga synthesis (safe pin metadata)
+
+Lane: `cursor/mspl-se-ranga-synthesis` · WT `/private/tmp/gllvmtmb-mspl-se-ranga-synthesis`
+Conductor: `bc4b4fa1`.
+
+```sh
+rg -n 'paper_reporting_target|role = "availability_only"|role = "paper_reporting_target"' \
+  R/mspl-curvature-pin.R \
+  tests/testthat/test-zz-mspl-bernoulli-se-feasibility.R \
+  tests/testthat/test-zz-mspl-poisson-se-feasibility.R
+rg -n 'Q_0|one-sided|Tweedie|agent paste' \
+  docs/dev-log/research/2026-08-16-mspl-se-paper-ranga-synthesis.md \
+  docs/dev-log/research/2026-08-16-mspl-softness-w-onesided-audit.md \
+  docs/dev-log/research/2026-08-16-mspl-se-series-board.md
+```
+
+Deliberately not run: `--as-cran`, pkgdown, Totoro, public-door edits,
+registry admit flips. Fence: no Tweedie door, no public se, no admit.
+
+
 
 ## 2026-08-16 — DIRECTED: binary Phase-B failure, five items for the SE-series lane
 

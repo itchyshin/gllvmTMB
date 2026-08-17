@@ -4,6 +4,12 @@
 ##   Q_P = fit$tmb_obj              (estimator_id = 1, active penalised tape)
 ##   Q_0 = fit$mspl$unpenalized_tmb_obj (estimator_id = 2, evaluate only)
 ##
+## Paper alignment (Sterzinger & Kosmidis 2023; Sterzinger et al. 2026;
+## Ranga 2026-08-16): if/when an SE is ever formed, the reporting target
+## is unpenalized observed information at theta_tilde = Q_0. Q_P is the
+## companion availability / interiority gate only. Soft c_n + Laplace
+## error + CI calibration remain separate programmes. Not public se.
+##
 ## This is not TMB::sdreport(), not I_LA(beta), and not a public SE.
 ## Non-PD Hessians stay typed. No pseudoinverse, clip, or nearest-PD.
 ## Do not copy Codex lane-b helpers. Do not export.
@@ -11,6 +17,7 @@
 ## Family fence (availability pin only; not admission):
 ##   binomial + logit, poisson + log, gaussian + identity,
 ##   nbinom1 + log, nbinom2 + log, tweedie + log, Beta + logit.
+## Tweedie in the fence is not a public prepare door (family 6 closed).
 
 .gllvmTMB_mspl_pin_family_link <- function(fit) {
   fam <- fit$family
@@ -143,9 +150,18 @@
     family = fl$family,
     link = fl$link,
     public_se_withheld = is.null(fit$sd_report),
+    ## Paper-aligned eventual reporting target (not a public SE tonight).
+    paper_reporting_target = "Q_0",
+    paper_reporting_rationale = paste(
+      "Sterzinger & Kosmidis (2023) report SEs from the negative Hessian",
+      "of the approximate / unpenalized log-likelihood at the MSPL point;",
+      "Q_P/Q_0 PD is D-149 availability only (Ranga 2026-08-16)."
+    ),
     penalised = c(
       list(
         tape = "Q_P",
+        role = "availability_only",
+        paper_reporting_target = FALSE,
         estimator_id = .gllvmTMB_mspl_tape_estimator_id(fit$tmb_obj),
         hessian_method = "stats::optimHess on the active penalised tape"
       ),
@@ -154,6 +170,8 @@
     penalty_off = c(
       list(
         tape = "Q_0",
+        role = "paper_reporting_target",
+        paper_reporting_target = TRUE,
         estimator_id = .gllvmTMB_mspl_tape_estimator_id(fit$mspl$unpenalized_tmb_obj),
         hessian_method = "stats::optimHess on the penalty-off tape at the MSPL point",
         evaluated_not_optimised = TRUE

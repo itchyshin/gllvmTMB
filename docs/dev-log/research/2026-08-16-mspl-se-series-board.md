@@ -1,15 +1,39 @@
 # LA-MSPL SE series board — 2026-08-16
 
-**Date:** 2026-08-16
-**Track:** SE-arc speed-up 5 (coordination)
-**Tip read:** `origin/main` @ `e46a3a2e` (#1045)
+**Date:** 2026-08-16 (overnight refresh after Ranga)
+**Track:** SE-arc coordination
+**Tip read:** re-derive from `origin/main` (do not trust a frozen sha here)
 **Charter (stale roster, still the contract):**
 `docs/dev-log/research/2026-08-16-mspl-se-other-families-series.md` (#993)
-**Status:** board only. No pin lift. No admit. No public `se=TRUE`.
+**Paper + Ranga:**
+`docs/dev-log/research/2026-08-16-mspl-se-paper-ranga-synthesis.md`
+**Softness / one-sided W audit:**
+`docs/dev-log/research/2026-08-16-mspl-softness-w-onesided-audit.md`
+**Status:** board + pin-metadata honesty. No pin lift. No admit.
+No public `se=TRUE`. No Tweedie public door.
 
 This is **LA-MSPL**. Pins are internal \(Q_P\) / \(Q_0\) availability +
-PD (D-149). Forming a finite SE is not “MSPL has standard errors.”
+PD (D-149). **Paper-aligned eventual reporting target = \(Q_0\)**
+(unpenalized observed info at \(\tilde\theta\)); \(Q_P\) is availability
+only. Forming a finite SE is not “MSPL has standard errors.”
 Public `sdreport` / `vcov` / `confint` stay withheld.
+
+**Agent paste:** *Pins check that both Hessians exist at θ̃; papers
+report unpenalized observed J (Q_0); softness + Laplace error +
+separate CI work still gate “SE”; one-sided W blocks honest Jeffreys
+doors for Tweedie/Poisson/nbinom until W_\* is settled.*
+
+---
+
+## 0. Ranga G0 list (morning — not tonight)
+
+1. Which matrix ships if public SE ever opens: **Q_0 vs Q_P vs sandwich**.
+2. **B1 aftermath** (park / B2 / new construction) — Lane B only;
+   hold-out G1–G5 FAIL 10.6% PASS.
+3. Whether to **replace live Poisson `W=diag(mu)`** (one-sided red flag)
+   before more SE-series doors.
+4. Hard stop: public `vcov` / `confint` / `se=TRUE` / NEWS `covered`
+   from pins alone.
 
 ---
 
@@ -17,15 +41,16 @@ Public `sdreport` / `vcov` / `confint` stay withheld.
 
 These cells have a public `estimator = "mspl"` door **and** a live
 unexported curvature pin on `main`. Public `se=TRUE` still leaves
-`sd_report` NULL.
+`sd_report` NULL. Pin metadata now names
+`paper_reporting_target = "Q_0"`.
 
 | Family / link | Door | Pin tests | Implementer | Registry |
 |---|---|---|---|---|
 | binomial / Bernoulli logit | admitted (B2 partial) | [#979](https://github.com/itchyshin/gllvmTMB/pull/979) + honesty [#989](https://github.com/itchyshin/gllvmTMB/pull/989) | `R/mspl-curvature-pin.R` | `admitted` · point only |
 | gaussian identity | admitted ordinary \(q=1,2\) | [#1006](https://github.com/itchyshin/gllvmTMB/pull/1006) (`test-zz-mspl-gaussian-se-feasibility.R`) | same; fence includes gaussian | `admitted` · `oracle_local` |
-| poisson log | admitted ordinary \(q=1,2\) | [#979](https://github.com/itchyshin/gllvmTMB/pull/979) + next cells [#997](https://github.com/itchyshin/gllvmTMB/pull/997) | same; fence includes poisson | `admitted` · `admit_packet` (not covered) |
-| nbinom1 log | planned door [#1007](https://github.com/itchyshin/gllvmTMB/pull/1007) | [#998](https://github.com/itchyshin/gllvmTMB/pull/998) (was expected-red; door + fence now live) | fence includes nbinom1 | `planned` · not admitted |
-| nbinom2 log | planned door [#1007](https://github.com/itchyshin/gllvmTMB/pull/1007) | [#998](https://github.com/itchyshin/gllvmTMB/pull/998) | fence includes nbinom2 | `planned` · not admitted |
+| poisson log | admitted ordinary \(q=1,2\) | [#979](https://github.com/itchyshin/gllvmTMB/pull/979) + next cells [#997](https://github.com/itchyshin/gllvmTMB/pull/997) | same; fence includes poisson | `admitted` · `admit_packet` (not covered); **live `W=diag(mu)` still one-sided** |
+| nbinom1 log | planned door [#1007](https://github.com/itchyshin/gllvmTMB/pull/1007) | [#998](https://github.com/itchyshin/gllvmTMB/pull/998) (was expected-red; door + fence now live) | fence includes nbinom1 | `planned` · not admitted; weight saturates |
+| nbinom2 log | planned door [#1007](https://github.com/itchyshin/gllvmTMB/pull/1007) | [#998](https://github.com/itchyshin/gllvmTMB/pull/998) | fence includes nbinom2 | `planned` · not admitted; weight saturates |
 
 [#995](https://github.com/itchyshin/gllvmTMB/pull/995) (Gaussian expected-red)
 is **CLOSED** as superseded by #1006.
@@ -33,7 +58,9 @@ is **CLOSED** as superseded by #1006.
 `.gllvmTMB_mspl_curvature_pin()` on `main` is fenced to Bernoulli
 logit, Poisson log, Gaussian identity, nbinom1/nbinom2 log, Tweedie
 log, and Beta logit. Tweedie/Beta are in the *fence*, not LIVE: the
-public prepare door still rejects them, and the zz tests `skip_if`.
+public prepare door still rejects Tweedie; Beta has planned door
+[#1055](https://github.com/itchyshin/gllvmTMB/pull/1055) only.
+**Ranga: do not open Tweedie family 6.**
 
 ---
 
@@ -46,37 +73,22 @@ Merged pin file:
 ([#999](https://github.com/itchyshin/gllvmTMB/pull/999)).
 Planned registry rows landed with
 [#1014](https://github.com/itchyshin/gllvmTMB/pull/1014).
-**Public door stays closed** (`fam_ids` still `0/1/2/5/15`).
+Beta planned door [#1055](https://github.com/itchyshin/gllvmTMB/pull/1055)
+is on `main` (family id 7) — still **not admitted**.
+**Tweedie public door stays CLOSED.**
 
 | Cell | Why blocked | Owning PR | Merge posture |
 |---|---|---|---|
-| Beta logit | Live 8×3 pin used `skip_if(TRUE)` after R accepted only status 0. Status **1 is `OK_MP_CERTIFIED`**, not invalid. Atom is FCN \(K_{\beta\beta}\). | [#1045](https://github.com/itchyshin/gllvmTMB/pull/1045) `cursor/mspl-beta-jeffreys-atom` | **On `main`** @ `e46a3a2e`. Beta live skip is now “door is missing,” not atom-invalid. Still no public door / admit. |
-| Tweedie log | Two-layer hang: true \(W=\mu^{2-p}/\varphi\) is one-sided (\(\varphi\to 0\)); residual hang was the spatial-Bernoulli BFGS rescue (`optim(..., maxit=5000)`). Working \(W_*\) + Huber + skip BFGS for `family_id==6`. Default-nlminb probe: **`PROBE_OK` 1.549 s**. Hang fuse on the PR is now `FALSE`. | [#1047](https://github.com/itchyshin/gllvmTMB/pull/1047) `cursor/mspl-tweedie-hang` | Hang **FIXED**. Still **DRAFT** and **CONFLICTING**. Do not merge as an admit or public door. CI still skips on the closed door. Diagnosis: `docs/dev-log/research/2026-08-16-mspl-tweedie-hang-wstar.md`. |
-
-Track 6 (sibling) may lift Beta `skip_if` only after a door exists
-(#1045 atom is already on `main`). Tweedie hang fuse is already
-`FALSE` on #1047 (`PROBE_OK`); still do not open family 6 on the
-public allow-list from that PR.
+| Beta logit | Atom FCN \(K_{\beta\beta}\) on main; planned door #1055; soft \(c_n\) + live pin still required. Atom ≠ admit. | [#1045](https://github.com/itchyshin/gllvmTMB/pull/1045) atom · [#1055](https://github.com/itchyshin/gllvmTMB/pull/1055) door | On `main`. No admit. #999 pin may run past “door missing”; skip only for honest nll-tie. |
+| Tweedie log | True \(W=\mu^{2-p}/\varphi\) is **one-sided** (same class as Poisson). Hang fix / `PROBE_OK` ≠ soft Jeffreys atom ≠ door. | [#1047](https://github.com/itchyshin/gllvmTMB/pull/1047) hang-fix | Hang may be fixed on main as probe-only. **Do not open family 6.** Diagnosis: `docs/dev-log/research/2026-08-16-mspl-tweedie-hang-wstar.md`. |
 
 ### #1000 — rest families
 
 Merged pin file:
 `tests/testthat/test-zz-mspl-rest-families-se-feasibility.R`
 ([#1000](https://github.com/itchyshin/gllvmTMB/pull/1000)).
-Original six: Gamma, lognormal, Student-t, `ordinal_probit`,
-delta-lognormal, delta-Gamma. Live fits `skip_if` the prepare door
-is missing. The unexported pin still raises
-`gllvmTMB_mspl_curvature_family` for these names.
-
-| Family | Planned row on `main` | Door / tape | Owning work |
-|---|---|---|---|
-| gamma / lognormal | [#1003](https://github.com/itchyshin/gllvmTMB/pull/1003) Phase-4-style prep | no public door; no GLM-outer fid on the live prepare fence | **Track 4** [#1051](https://github.com/itchyshin/gllvmTMB/pull/1051) — oracles→door gap list; **research-only, no tape**. This docs wave marks it ready and merges it. |
-| student / ordinal_probit | [#1039](https://github.com/itchyshin/gllvmTMB/pull/1039) rows; Phase-4 [#1005](https://github.com/itchyshin/gllvmTMB/pull/1005) | no public door | later rest-door slice; not tonight |
-| delta_lognormal / delta_gamma | [#1004](https://github.com/itchyshin/gllvmTMB/pull/1004) prep | no public door | later rest-door slice; not tonight |
-| betabinomial / truncated_* / multinomial | [#1039](https://github.com/itchyshin/gllvmTMB/pull/1039) rows; oracles [#1023](https://github.com/itchyshin/gllvmTMB/pull/1023)–[#1025](https://github.com/itchyshin/gllvmTMB/pull/1025) | not in #1000’s original six; no door | after the original six |
-
-Notes retarget [#1041](https://github.com/itchyshin/gllvmTMB/pull/1041)
-is already on `main`. Planned ≠ admitted. Registry edits are not pins.
+Gamma / lognormal stay gap-list ([#1051](https://github.com/itchyshin/gllvmTMB/pull/1051)
+research-only). No tape from a gap list. Planned ≠ admitted.
 
 ---
 
@@ -90,45 +102,25 @@ is already on `main`. Planned ≠ admitted. Registry edits are not pins.
 | Map | FROZEN at M0 ([#1040](https://github.com/itchyshin/gllvmTMB/pull/1040)) |
 | Official hold-out | G1–G5 **FAIL** 14/132 = 10.6% PASS |
 | Promote? | **no** |
-| Second Totoro/DRAC campaign? | **no** (Design 118: no second campaign) |
-| Refit map on hold-out? | **no** |
+| Second Totoro/DRAC campaign? | **no** |
 | Public `se=TRUE` / `vcov` / `confint`? | **still withheld** |
-| Aftermath G0 | park vs B2 vs a new construction — **Shinichi**, not this board |
+| Aftermath G0 | park vs B2 vs a new construction — **Shinichi**, Lane B |
 
-**Codex Lane B** (`codex/lane-b-mspl-interval-feasibility`) stays the
-binomial SE / interval owner. D-148 public-interval fence stands
-(binary-only; MSPL-04 blocked). Do not absorb, rebase, or duplicate
-sandwich / profile / bootstrap / coverage from Cursor. Cursor fan-out
-is non-binomial internal pins only.
-
-[#981](https://github.com/itchyshin/gllvmTMB/pull/981) B0 harness
-remains a Claude draft. It is not in the SE-pin merge stack.
+**Codex Lane B** stays the binomial SE / interval owner. D-148 stands.
+Do not absorb sandwich / profile / bootstrap from Cursor.
 
 ---
 
-## 4. Next merge order for the SE series
+## 4. Next safe action (overnight → morning)
 
-Hygiene already on `main` this sitting: #1039 planned-rest rows
-(`a1c008db`), #1041 notes (`55666f1e`), #1045 Beta atom
-(`e46a3a2e`), #995 closed.
-
-1. **[#1045](https://github.com/itchyshin/gllvmTMB/pull/1045) landed**
-   (Beta atom). Keep planned. No family id 7. No admit.
-2. **Leave [#1047](https://github.com/itchyshin/gllvmTMB/pull/1047) draft.**
-   Hang is **FIXED** (`PROBE_OK` 1.549 s; fuse `FALSE`). Still
-   CONFLICTING. Do not squash-merge as an admit or public-door lift.
-   Do not open family 6.
-3. **Merge [#1051](https://github.com/itchyshin/gllvmTMB/pull/1051)**
-   (track 4) as **research-only**. Gamma/lognormal door is **not
-   ready**; gap list only. No `src/` tape. No `#1000` lift.
-4. **Track 6 — lift `skip_if` only for cells that are actually live.**
-   Beta atom is on `main`; still needs a door. Tweedie hang probe
-   already `PROBE_OK`; still no public door. Rest-family pin-family
-   tests stay red/`skip_if` until the fence and door exist.
-5. **Later rest doors** (student / ordinal / delta_* / BB / truncated /
-   multinomial). One family, one PR. Local only.
-6. **Do not** start Lane B. **Do not** promote B1. **Do not** open
-   public `se=TRUE`. **Do not** flip planned → admitted from a pin.
+1. **Land** paper+Ranga synthesis + pin metadata + W-onesided audit
+   (this refresh).
+2. **Do NOT** open Tweedie public door. **Do NOT** public `se=TRUE`.
+   **Do NOT** flip admits. **Do NOT** promote B1. **Do NOT** start Lane B.
+3. Optional local: #999 Beta pin execution on main — skip only for an
+   honest nll-tie, never “door missing.” Still no admit.
+4. Morning: answer Ranga G0 list (§0). Softness / \(W_*\) before any
+   new Jeffreys door for counts.
 
 Hard stops unchanged: NEWS `covered`, Codex absorb, `git add -A`,
 Dropbox checkout, repo-root `LOOP/`, Totoro/DRAC without a D-139
@@ -138,7 +130,9 @@ receipt.
 
 ## Pointers
 
-- Pin implementation: `R/mspl-curvature-pin.R`
+- Pin implementation: `R/mspl-curvature-pin.R` (`paper_reporting_target`)
+- Synthesis: `docs/dev-log/research/2026-08-16-mspl-se-paper-ranga-synthesis.md`
+- Softness / W audit: `docs/dev-log/research/2026-08-16-mspl-softness-w-onesided-audit.md`
 - LIVE zz twins: `test-zz-mspl-{bernoulli,gaussian,poisson,nbinom}-se-feasibility.R`
 - Blocked zz twins: `test-zz-mspl-{tweedie-beta,rest-families}-se-feasibility.R`
 - D-149: vault `memory/DECISIONS.md`

@@ -1,7 +1,10 @@
 ## Poisson LA-MSPL SE feasibility pin (availability only).
 ## Public se=TRUE must still withhold sdreport(). Registry is admitted
 ## (experimental point) after G0 2026-08-16. Internal pin names Q_P and
-## Q_0 separately. Not exported. Not covered. No public vcov.
+## Q_0 separately. Paper reporting target = Q_0 (Ranga 2026-08-16);
+## Q_P is availability only. Live Poisson W=diag(mu) remains a
+## one-sided red flag (softness audit) — pin ≠ atom clearance.
+## Not exported. Not covered. No public vcov.
 ##
 ## Named test-zz-* so it runs after test-va-all-family-light-fits.R.
 ## See the Bernoulli twin file for the CI #979 ordering note.
@@ -137,9 +140,14 @@ test_that("internal Poisson curvature pin names both tapes and stays unexported"
   expect_identical(pin$family, "poisson")
   expect_identical(pin$link, "log")
   expect_true(isTRUE(pin$public_se_withheld))
+  expect_identical(pin$paper_reporting_target, "Q_0")
   expect_identical(pin$penalised$tape, "Q_P")
+  expect_identical(pin$penalised$role, "availability_only")
+  expect_false(isTRUE(pin$penalised$paper_reporting_target))
   expect_identical(pin$penalised$estimator_id, 1L)
   expect_identical(pin$penalty_off$tape, "Q_0")
+  expect_identical(pin$penalty_off$role, "paper_reporting_target")
+  expect_true(isTRUE(pin$penalty_off$paper_reporting_target))
   expect_identical(pin$penalty_off$estimator_id, 2L)
   expect_true(isTRUE(pin$penalty_off$evaluated_not_optimised))
   expect_false(isTRUE(pin$penalised$repaired))

@@ -85,3 +85,62 @@ is eliminated like the other four.
 refit each. Binomial probit fits are cheaper than the ordinal ones. D-139:
 a timing pilot runs first and the projection is recorded here before the
 full run; if it exceeds 30 minutes the grid is trimmed and the trim stated.
+
+## VERDICT (2026-08-17) — FAILS, and it falsifies one leg of the S1 verdict
+
+Grid: 315 cells, all four pre-registered arms, n = 100/400, same seeds as the
+main ordinal campaign. Every cell produced a binomial refit verdict (0
+excluded).
+
+| frozen target | measured | result |
+|---|---|---|
+| sensitivity >= 90% on the degenerate arm | **97.6%** (40/41) | PASS |
+| zero false positives, arm-level, healthy+transport+mixed | **86.3%** (220/255) | **FAIL** |
+
+FP by arm: healthy 67.8%, transport 93.3%, **mixed 100.0%**. That is worse
+than the binomial screen's own measured 25% (issue #897) and worse than every
+loading statistic tested (best was 39.2%). **The check fires on nearly
+everything.**
+
+### Mechanism — the dichotomisation MANUFACTURES what the screen looks for
+
+Direct inspection of three healthy-arm datasets: overall binary prevalence
+after the collapse is benign (0.26-0.28), but the binomial refit itself comes
+back **saturated** (`saturated_fit` 0.83-0.91) with **runaway loadings**
+(`max_loading` 13.4 where the ordinal fit's are near truth). Collapsing K = 4
+to binary at the middle cutpoint destroys enough information to create
+quasi-separation IN THE REFIT that was never present in the data. The check
+is not measuring the ordinal fit's health; it is measuring damage done by the
+collapse.
+
+### 🔴 This falsifies one leg of the S1 mechanism verdict
+
+`probe-criteria.md` reached "category-level SEPARATION, not link saturation"
+on three measurements, of which the third was *"24/24 dichotomised refits
+fire the existing binomial detector -> shared quasi-separation geometry"*.
+**That measurement carries essentially no information**: a check that fires
+on 86% of healthy fits was always going to fire on 24 of 24 degenerate ones.
+It cannot distinguish the hypotheses it was recruited to distinguish.
+
+What survives, and it is still decisive for the NEGATIVE half:
+**measurement 2, flat-row share EXACTLY 0 on all 24 degenerate fits**, which
+cleanly refutes link saturation — the `gll_log_pnorm_diff` underflow is never
+reached. Measurement 1 (directional derivative) was already reported as
+landing in the pre-registered MIXED bucket.
+
+**Corrected standing of the S1 verdict: "NOT link saturation" is solidly
+evidenced; "therefore category-level separation" is now under-evidenced** —
+it was the residual hypothesis rather than a positively demonstrated one, and
+the measurement that appeared to demonstrate it does not. The mechanism
+question is REOPENED to that extent, and `probe-criteria.md` carries a
+pointer to this section.
+
+### Consequence for the route to closing #897
+
+The dichotomised check is **eliminated**, and the binomial re-calibration
+(#897 directive 2) is **NOT** the prerequisite it would have been under a
+"detecting-but-crying-wolf" result. Recalibrating the binomial screen would
+not help here: the problem is not the screen's thresholds but that it is
+being shown a dataset the collapse has already damaged. Any future
+refit-based check must preserve the information the ordinal response carries
+-- which a two-category collapse cannot.

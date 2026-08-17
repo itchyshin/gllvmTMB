@@ -3,13 +3,28 @@
 This repository is shared by humans, Codex, and Claude Code. Read
 `AGENTS.md` first; it is the source of truth for project rules.
 
-## Live Phase Snapshot — 2026-08-15
+## Live Phase Snapshot — 2026-08-17
 
 > **🔴 MULTI-LANE REPO — this snapshot is NOT a single lane's status.** No one bullet
 > represents the project. **The lane map is authoritative for ownership:**
 > `docs/dev-log/handover/2026-07-25-active-lane-split.md`, which names EACH lane's own
 > current handover. Read it before any repository mutation. Milestone state is not in
 > either place and must be re-derived from `git`.
+
+- **2026-08-17 — EVIDENCE/DIAGNOSTICS LANE: two questions answered, nine families
+  greened, one halt missed.** Merged #1050/#1066/#1074/#1085/#1086/#1089/#1091/#1093.
+  **Non-Gaussian REML is CLOSED with a pre-registered negative** (Cox-Reid worsens bias;
+  binomial 7.26→10.84pp, ordinal 3.08→4.39pp; `allow_nongaussian_reml` stays opt-in,
+  unpromoted). **Exact residuals 4/17→13/17 families; `simulate()` 8/17→16/17** (multi-trial
+  binomial had been silently Bernoulli, #1079). Board corrected on three counts: VA restored
+  across all 18 scalar cells, REML recorded as a *tested negative*, gaps box reframed to
+  **0.7.0**. Compute-admission slice built (Design 124) and used for a 21,600-fit Design 122
+  campaign (365 core-h). 🔴 **Its K1 halt fired on pre-run data nobody tabulated — every
+  accuracy number is PROVISIONAL until #1092** (`aghq_ridge` is an R-level penalty outside
+  `tmb_obj$fn()`, so `gr()` and `fit_health$max_gradient` report the wrong objective on any
+  ridged fit). VA shows no demonstrated payoff over the cheap ridge; K4 fired in the
+  *transfers* direction, so the motivation for a non-Laplace route survives.
+  **START HERE:** `docs/dev-log/handover/2026-08-17-claude-handover.md`.
 
 - **2026-08-17 — LA-MSPL OVERNIGHT ARC CLOSED TO CURSOR HANDOVER.** D-157 B1 **SIGNED
   PARK** (no second campaign; `MSPL-04` blocked; no Totoro relaunch; later intervals =

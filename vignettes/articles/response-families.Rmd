@@ -195,6 +195,126 @@ Equivalent long and wide designs should give the same likelihood. This check
 does not show that Poisson is the right family; that requires diagnostics and a
 scientific mean--variance argument.
 
+## Overdispersed counts and the NB2 dispersion
+
+When counts vary more than a Poisson mean allows even after the mean structure
+and covariance terms, `nbinom2()` adds one dispersion parameter per trait. Its
+conditional variance is
+
+\[
+\operatorname{Var}(Y) = \mu + \frac{\mu^2}{\phi},
+\]
+
+so \(\phi\) controls the quadratic extra-Poisson variance: smaller \(\phi\)
+means stronger overdispersion, and as \(\phi \to \infty\) the family collapses
+back to Poisson. This \(\phi\) is the negative binomial `size` parameter on the
+natural scale—the value you would pass to `rnbinom(mu = , size = )`—not a
+variance, a standard deviation, or a log-scale quantity.
+
+The simulation below draws three insect counts per site from that exact
+mean--variance relationship, sharing one latent axis across traits:
+
+```{r nb2-data}
+set.seed(20260817)
+n_unit_nb <- 200L
+nb_trait_names <- c("aphids", "thrips", "weevils")
+nb_unit <- factor(seq_len(n_unit_nb))
+z_nb <- rnorm(n_unit_nb, sd = 0.45)
+
+eta_nb <- cbind(
+  aphids = 1.0 + 0.8 * z_nb,
+  thrips = 1.4 - 0.4 * z_nb,
+  weevils = 0.8 + 0.5 * z_nb
+)
+phi_true <- c(aphids = 1.5, thrips = 2, weevils = 1.2)
+Y_nb <- matrix(
+  rnbinom(length(eta_nb),
+          mu = exp(eta_nb),
+          size = rep(phi_true, each = n_unit_nb)),
+  nrow = n_unit_nb,
+  dimnames = list(NULL, nb_trait_names)
+)
+
+nb_wide <- data.frame(unit = nb_unit, Y_nb, check.names = FALSE)
+nb_long <- data.frame(
+  unit = rep(nb_unit, each = length(nb_trait_names)),
+  trait = factor(rep(nb_trait_names, times = n_unit_nb),
+                 levels = nb_trait_names),
+  count = as.vector(t(Y_nb))
+)
+```
+
+The long and wide calls change only `family = nbinom2()` relative to the
+Poisson fits above:
+
+```{r nb2-fits}
+fit_nb_long <- gllvmTMB(
+  count ~ 0 + trait + latent(0 + trait | unit, d = 1),
+  data = nb_long,
+  trait = "trait",
+  unit = "unit",
+  family = nbinom2(),
+  silent = TRUE
+)
+
+fit_nb_wide <- gllvmTMB(
+  traits(aphids, thrips, weevils) ~ 1 + latent(1 | unit, d = 1),
+  data = nb_wide,
+  unit = "unit",
+  family = nbinom2(),
+  silent = TRUE
+)
+
+data.frame(
+  input = c("long", "wide"),
+  logLik = c(as.numeric(logLik(fit_nb_long)), as.numeric(logLik(fit_nb_wide)))
+)
+```
+
+The fitted dispersions live in `fit$report$phi_nbinom2`, one value per trait in
+trait factor-level order, already on the natural \(\phi\) scale:
+
+```{r nb2-dispersion}
+data.frame(
+  trait = nb_trait_names,
+  phi_true = as.numeric(phi_true),
+  phi_hat = round(as.numeric(fit_nb_long$report$phi_nbinom2), 2)
+)
+```
+
+Read these against the variance formula, not as effect sizes: `aphids` with
+\(\hat\phi \approx 2\) has extra variance \(\mu^2 / 2\) at mean \(\mu\), which
+at \(\mu = 5\) already exceeds the Poisson variance. The estimates sit somewhat
+above the simulated values because the `latent()` tier—whose default per-trait
+`Psi` acts like an observation-level variance here—absorbs part of the
+extra-Poisson variation, leaving less for \(\phi\). The two components compete,
+and that competition has a failure mode worth recognizing: when the data carry
+little quadratic overdispersion beyond what the covariance terms explain,
+\(\phi\) is weakly identified and can run away to a huge value (`1e6` or more).
+A runaway \(\hat\phi\) means "this trait looks Poisson after the random
+effects", not a precise estimate; refit with `poisson()` and compare rather
+than reporting the number.
+
+Exact randomized-quantile residuals are available for NB2 rows and return
+standard-normal residuals when the family, link, and mean model are adequate:
+
+```{r nb2-residuals}
+r_nb <- residuals(fit_nb_long, type = "randomized_quantile", seed = 1)
+round(c(mean = mean(r_nb$residual), sd = sd(r_nb$residual)), 2)
+```
+
+The `residual` column should look like draws from \(N(0, 1)\); a mean near 0
+and a standard deviation near 1, with no trend against fitted means, is
+consistent with the NB2 mean--variance assumption. Systematic departure—for
+example residual variance still growing with the mean—points back to the
+family table above.
+
+This example demonstrates point estimation and fitted diagnostics only.
+Interval coverage for negative binomial fits has not been certified, and
+NB2 latent models at small sample sizes have documented dispersion failures;
+see [Current limitations and boundaries](current-limits.html) before reporting
+uncertainty statements from a fit like this one.
+
 ## Different families in one fit
 
 A mixed-family model needs long data because the family selector belongs to

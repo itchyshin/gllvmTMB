@@ -1,3 +1,13 @@
+## 2026-08-17 — Cursor: Poisson MSPL W_* REPLACE (#1102)
+
+- worktree: ~/local-scratch/lanes/gllvmTMB-mspl-poisson-W-REPLACE
+- branch: cursor/mspl-poisson-W-REPLACE-impl
+- A1: src/gllvmTMB.cpp family_id==2 → gll_mspl_log_weight(eta, 0)
+- A2–A4: W2/W7/W8 + atoms/A6 rematch + local recovery; 243/0 focused
+- A5: 03-likelihoods.md + tmb-review note
+- A6: family-door PREP note; #1077 stays draft
+- deliberately not: public se, undraft #1077, Totoro, Lane B, NEWS covered, git add -A
+
 ## 2026-08-17 — Cursor: KF2021 footnote + handover §4 align (post-#1102)
 
 **Lane:** `cursor/mspl-kf2021-footnote-post-1102`

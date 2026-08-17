@@ -291,8 +291,12 @@ Type gll_mspl_log_weight_glm(Type eta, int family_id, int link_id,
   if (family_id == 1)
     return gll_mspl_log_weight(eta, link_id);
   if (family_id == 2) {
-    // Poisson log link: W = mu, log w = eta (offset already in eta).
-    return eta;
+    // True Poisson W = mu (log w = eta) is one-sided (0 / +Inf) and
+    // rewards intercept runaway under soft Jeffreys (#1064 W2).
+    // Live tape uses working logistic W_* = mu_*(1-mu_*) on eta
+    // (Tweedie family_id==6 precedent; 2023 P^(f) existence device).
+    // Not true-model Jeffreys. G0 SIGNED REPLACE 2026-08-17 (#1102).
+    return gll_mspl_log_weight(eta, 0);
   }
   if (family_id == 5) {
     // NB2: W = mu * phi / (phi + mu)

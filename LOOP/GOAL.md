@@ -1,27 +1,24 @@
-# GOAL — mspl-profile-led-ci (IMMUTABLE — re-read at the top of EVERY arc)
+# GOAL — overnight Poisson MSPL W_* REPLACE (Cursor · ~10–12 h)
 
-## 🎯 GOAL
-Outcome: Design stub + ADEMP-style pre-registration for profile-led MSPL intervals under D-157 (claim Design NN ~125 by commit; profile = signature; Wald(Q₀) = availability; bootstrap = asymmetry).
-IN: R0–R1 inventory/#118 lessons (read-only) → S1 Design stub → S2 pre-reg; #1077 stays draft scaffold; Poisson W parallel G0 stay UNSIGNED.
-OUT: undraft #1077 · real MSPL confint(method="profile") · public se=TRUE/vcov · Design 118 recalibration · B1/Totoro · NEWS covered · Arc 1A reopen · invent W KEEP/REPLACE/PARK.
-Hard stops: no Design 118/B1/Totoro; no undraft or live profile impl without explicit G0; no public se=TRUE; no Arc 1A; docs-only until separate campaign G0 (D-50/D-139/D-157).
-Success: NN claimed by commit; pre-reg names estimands/families/local-then-Totoro gates/refusal rules; #1077 still draft; MSPL-04 blocked; Poisson W still UNSIGNED (default PARK further SE doors if silent).
+**IMMUTABLE for this run.** Re-read at the top of EVERY arc.
+**Authority:** G0 SIGNED REPLACE — `docs/dev-log/research/2026-08-17-mspl-poisson-W-G0.md` (#1102).
+**Owner:** Cursor owns `src/` (Codex override). Shinichi 2026-08-17: **"I preapprove all"** → push PR + merge when CI green allowed; hard OUT still absolute.
 
 ## Mission
-Deliver Design stub + ADEMP-style pre-registration for profile-led MSPL intervals under D-157. Claim Design NN (~125) by commit. Triad: profile = signature; Wald(Q₀) = availability; bootstrap = asymmetry.
+On this local-scratch worktree from origin/main, implement SIGNED G0 REPLACE: Poisson MSPL live weight `family_id==2` from `return eta` / `W=diag(mu)` → working logistic `W_* = gll_mspl_log_weight(eta, 0)` (Tweedie precedent). Rewrite #1064 W2/W7 (+ W8), rematch `R/mspl-poisson-atoms.R` + A6, update `03-likelihoods.md`, tmb-likelihood-review + simulation recovery. Secondary after rematch green: fence docs, #1077 draft-only, family-door PREP notes, mspl-api tests.
 
-## Headline
-Docs-only Design + pre-reg under D-157; #1077 stays draft; no live intervals.
+## Soft-gate defaults (preapproved)
+- Admit: keep experimental `admitted` if rematch green; else park `planned`
+- #1077 stays draft; no Design 125 fork smoke; SE doors PREP notes only
 
-## Invariants
-- One lane: mspl-profile-led-ci (Cursor). Do not touch foreign Claude/Codex trees or other Cursor MSPL lanes' live R work beyond read-only inventory of #1077.
-- Workspace: bounded worktree only.
-- Hard stops: no Design 118/B1/Totoro; no undraft #1077 or live profile impl without explicit G0; no public se=TRUE; no Arc 1A reopen; docs-only until separate campaign G0 (D-50/D-139/D-157); do not invent Poisson W KEEP/REPLACE/PARK.
-
-## Authoritative WHAT
-See LOOP/ultra-plan.md (frozen approved plan).
+## Hard OUT (absolute even under preapprove)
+- public se=TRUE / vcov / confint / NEWS covered
+- undraft #1077 for public confint
+- Totoro / Design 118 / Lane B / rebuild #1090
+- KF2021 beyond binomial; git add -A; isdm-package-recovery
 
 ## Definition of done
-- Design NN claimed by commit (stub under docs/design/).
-- Pre-reg names estimands, families, local-then-Totoro gates, refusal rules.
-- #1077 still draft; MSPL-04 blocked; Poisson W still UNSIGNED (default PARK further SE doors if silent).
+- [x] A0 worktree
+- [ ] A1–A5 rematch/recovery/review green
+- [ ] A6–A8 fence/tests/after-task
+- [ ] PR pushed + merge when CI green

@@ -2,8 +2,9 @@
 ##
 ## Research note:
 ##   docs/dev-log/research/2026-08-16-mspl-W-onesided-audit.md
-## Helpers stay in this file. Do not call live MSPL. Do not replace
-## the Poisson tape. Do not flip planned -> admitted. No se=TRUE.
+## Helpers stay in this file. Do not call live MSPL. No se=TRUE.
+## G0 SIGNED REPLACE (#1102): live Poisson tape is working W_*;
+## W1/W2 keep true-W=mu algebra as historical contrast.
 
 .wstar_working_W <- function(eta) {
   mu <- stats::plogis(as.numeric(eta))
@@ -86,18 +87,41 @@ test_that("W1: Poisson W=exp(eta) vanishes at -Inf and grows at +Inf", {
   expect_gt(min(w_hi), 1e3)
 })
 
-test_that("W2: Poisson P_J rewards +Inf (existence risk for soft Jeffreys)", {
+test_that("W2: Poisson true W is one-sided; live tape is W_*", {
   fx <- .wstar_toy()
   b0 <- c(-8, -4, 0, 4, 8)
-  Pj <- vapply(b0, function(b) {
+  ## Historical / true-W contrast (why REPLACE was signed): P_J rewards +Inf.
+  Pj_true <- vapply(b0, function(b) {
     .wstar_Pj(fx$X, .wstar_pois_W(.wstar_eta(fx, b)))
   }, numeric(1L))
-  expect_true(all(is.finite(Pj)))
-  expect_true(all(diff(Pj) > 0))
-  expect_lt(Pj[1L], -5)
-  expect_gt(tail(Pj, 1L), 8)
+  expect_true(all(is.finite(Pj_true)))
+  expect_true(all(diff(Pj_true) > 0))
+  expect_lt(Pj_true[1L], -5)
+  expect_gt(tail(Pj_true, 1L), 8)
   ## Linear in the intercept on this design: +4 per +4 in beta0.
-  expect_equal(diff(Pj), rep(4, 4L), tolerance = 1e-8)
+  expect_equal(diff(Pj_true), rep(4, 4L), tolerance = 1e-8)
+
+  ## Live tape after #1102: working logistic W_* is two-sided on this design
+  ## (same algebra W3 pins; kept here so W2 mirrors the Tweedie W4 shape).
+  Pj_live <- vapply(b0, function(b) {
+    .wstar_Pj(fx$X, .wstar_working_W(.wstar_eta(fx, b)))
+  }, numeric(1L))
+  expect_true(all(is.finite(Pj_live)))
+  expect_lt(Pj_live[1L], -5)
+  expect_lt(tail(Pj_live, 1L), -5)
+  expect_equal(Pj_live[1L], tail(Pj_live, 1L), tolerance = 1e-8)
+  expect_gt(Pj_live[3L], Pj_live[1L])
+  expect_gt(Pj_live[3L], tail(Pj_live, 1L))
+
+  ## Source pin (Tweedie W4 pattern): live Poisson branch is W_*, not return eta.
+  cpp <- paste(.wstar_cpp_src(), collapse = "\n")
+  expect_match(cpp, "True Poisson W = mu")
+  expect_match(cpp, "working logistic")
+  expect_match(
+    cpp,
+    "if \\(family_id == 2\\) \\{[\\s\\S]*?return gll_mspl_log_weight\\(eta, 0\\);",
+    perl = TRUE
+  )
 })
 
 test_that("W3: working W_* vanishes at both infinities; P_J is two-sided", {
@@ -170,24 +194,33 @@ test_that("W6: nbinom1 quasi W is one-sided like Poisson", {
   expect_gt(Pj_hi, 5)
 })
 
-test_that("W7: C++ still ships Poisson W=mu and NB2 saturating W", {
+test_that("W7: C++ Poisson live tape is working W_*; NB2 still saturates", {
   cpp <- paste(.wstar_cpp_src(), collapse = "\n")
-  expect_match(cpp, "Poisson log link: W = mu, log w = eta")
-  ## The Poisson branch returns eta. A G0 tape replace must update
-  ## this pin; this sitting does not replace the tape.
+  expect_match(cpp, "Live tape uses working logistic W_\\*")
+  expect_match(cpp, "G0 SIGNED REPLACE 2026-08-17")
+  ## Poisson branch must NOT return eta (true-W); it must call the
+  ## Tweedie-precedent working-logistic helper on link_id 0.
   expect_match(
     cpp,
-    "if \\(family_id == 2\\) \\{[\\s\\S]*?return eta;",
+    "if \\(family_id == 2\\) \\{[\\s\\S]*?return gll_mspl_log_weight\\(eta, 0\\);",
     perl = TRUE
   )
+  expect_false(grepl(
+    "if \\(family_id == 2\\) \\{[\\s\\S]*?return eta;",
+    cpp,
+    perl = TRUE
+  ))
   expect_match(cpp, "NB2: W = mu \\* phi / \\(phi \\+ mu\\)")
   expect_match(cpp, "NOT quasi W=mu/\\(1\\+phi\\)")
 })
 
-test_that("W8: registry still names the live weights; no admit flip", {
+test_that("W8: registry names live Poisson W_*; no admit flip / no covered", {
   pois <- .gllvmTMB_mspl_registry_lookup("poisson", "log", "ordinary", 1L)
   expect_identical(pois$status, "admitted")
-  expect_match(pois$notes, "W=diag\\(mu\\)")
+  expect_match(pois$notes, "working logistic W_\\*")
+  expect_match(pois$notes, "G0 REPLACE")
+  ## Historical true-W wording may remain as contrast; live claim is W_*.
+  expect_match(pois$notes, "true W=diag\\(mu\\) was one-sided")
   notes_claim <- gsub(
     "not a covered campaign|not covered",
     "",

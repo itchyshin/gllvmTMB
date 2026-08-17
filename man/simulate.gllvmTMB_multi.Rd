@@ -53,7 +53,19 @@ cannot be redrawn).}
 }
 \value{
 A matrix of dimension \verb{n_obs x nsim} (or \verb{nrow(newdata) x nsim}
-when \code{newdata} is supplied).
+when \code{newdata} is supplied). \strong{Per-row family coverage (#1079):} rows
+are drawn from their true fitted distribution for gaussian, binomial
+(at the row's actual trial count, not forced to Bernoulli), poisson,
+lognormal, Gamma, nbinom2, nbinom1, Beta, betabinomial, student-t,
+zero-truncated poisson, zero-truncated nbinom2, delta_lognormal,
+delta_gamma, ordinal_probit, and multinomial. The one exception is
+tweedie, which has no exact draw implemented; its rows (and any other
+unrecognised family) are returned as \code{NA_real_}, together with a
+warning naming the affected \code{family_id} values — never a
+Gaussian-on-link-scale substitute, and never silent. The \code{newdata}
+path (predictions on unseen data) still falls back to a
+Gaussian-on-link-scale draw for every family, with its own warning;
+family-aware \code{newdata} simulation is not yet implemented.
 }
 \description{
 Draws \code{nsim} new response vectors from a fitted model. By default

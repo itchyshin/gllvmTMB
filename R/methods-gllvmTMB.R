@@ -1413,7 +1413,19 @@ tidy.gllvmTMB_multi <- function(
 #' @param ... Currently unused.
 #'
 #' @return A matrix of dimension `n_obs x nsim` (or `nrow(newdata) x nsim`
-#'   when `newdata` is supplied).
+#'   when `newdata` is supplied). **Per-row family coverage (#1079):** rows
+#'   are drawn from their true fitted distribution for gaussian, binomial
+#'   (at the row's actual trial count, not forced to Bernoulli), poisson,
+#'   lognormal, Gamma, nbinom2, nbinom1, Beta, betabinomial, student-t,
+#'   zero-truncated poisson, zero-truncated nbinom2, delta_lognormal,
+#'   delta_gamma, ordinal_probit, and multinomial. The one exception is
+#'   tweedie, which has no exact draw implemented; its rows (and any other
+#'   unrecognised family) are returned as `NA_real_`, together with a
+#'   warning naming the affected `family_id` values — never a
+#'   Gaussian-on-link-scale substitute, and never silent. The `newdata`
+#'   path (predictions on unseen data) still falls back to a
+#'   Gaussian-on-link-scale draw for every family, with its own warning;
+#'   family-aware `newdata` simulation is not yet implemented.
 #' @importFrom stats simulate
 #' @export
 simulate.gllvmTMB_multi <- function(
@@ -1510,12 +1522,20 @@ simulate.gllvmTMB_multi <- function(
 #' Family-aware per-row draw from a fitted model
 #'
 #' For each row in the long-format data, look up `(family_id, link_id)`
-#' from `fit$tmb_data` and draw `y` from the appropriate distribution
-#' at the linear predictor `eta`. Supports the 5 families exercised by
-#' the M1.2 fixture (Gaussian, binomial, Poisson, Gamma, nbinom2) plus
-#' lognormal. Other families warn once per session and fall back to
-#' Gaussian-on-the-link-scale (i.e., previous behaviour); per-family draws for
-#' the remaining families are not yet implemented.
+#' from `fit$tmb_data` and draw `y` from the appropriate distribution at
+#' the linear predictor `eta`, using the SAME per-family parameterisations
+#' as `.gllvmTMB_exact_rq_residuals()` (`R/predictive-diagnostics.R`).
+#' Drawn from their true distribution: gaussian (0), binomial (1, at the
+#' row's actual `n_trials`), poisson (2), lognormal (3), Gamma (4),
+#' nbinom2 (5), Beta (7), betabinomial (8), student-t (9),
+#' zero-truncated poisson (10, by CDF inversion), zero-truncated nbinom2
+#' (11, by CDF inversion), delta_lognormal (12, presence + positive part
+#' sharing the fitted eta), delta_gamma (13, same), ordinal_probit (14,
+#' latent-threshold draw), nbinom1 (15), multinomial (16, grouped
+#' softmax pass below). Tweedie (6) has no simple exact draw without a
+#' new package dependency and is NOT implemented. Any unsupported
+#' family_id draws `NA_real_` for the affected rows (never a
+#' Gaussian-on-link-scale substitute) and warns on every call (#1079).
 #'
 #' @keywords internal
 #' @noRd
@@ -1537,28 +1557,66 @@ simulate.gllvmTMB_multi <- function(
   phi_gamma <- as.numeric(fit$report$phi_gamma %||% numeric(0L))
   phi_nbinom2 <- fit$report$phi_nbinom2 # length n_traits
   phi_nbinom1 <- fit$report$phi_nbinom1 # length n_traits
+  phi_beta <- fit$report$phi_beta # length n_traits
+  phi_betabinom <- fit$report$phi_betabinom # length n_traits
+  sigma_student <- fit$report$sigma_student # length n_traits, a SCALE not an sd
+  df_student <- fit$report$df_student # length n_traits
+  phi_truncnb2 <- fit$report$phi_truncnb2 # length n_traits (NOT phi_nbinom2)
+  sigma_lognormal_delta <- fit$report$sigma_lognormal_delta # length n_traits
+  phi_gamma_delta <- fit$report$phi_gamma_delta # length n_traits
+  n_trials <- fit$tmb_data$n_trials # length n; default 1 (Bernoulli) when not multi-trial
 
-  ## Pre-flag any unsupported families with a one-shot warning so users
-  ## know fall-back-to-Gaussian-on-link-scale is in play.
+  ## ordinal_probit (fid 14) cutpoint reconstruction -- the SAME convention
+  ## .gllvmTMB_exact_rq_residuals() uses (R/predictive-diagnostics.R):
+  ## tau_1 = 0 fixed, tau_2 .. tau_{K-1} read from the flattened report
+  ## vector via n_ordinal_cuts_per_trait / ordinal_offset_per_trait.
+  n_ordinal_cuts_per_trait <- as.integer(
+    fit$tmb_data$n_ordinal_cuts_per_trait %||% integer(0)
+  )
+  ordinal_offset_per_trait <- as.integer(
+    fit$tmb_data$ordinal_offset_per_trait %||% integer(0)
+  )
+  ordinal_cutpoints_flat <- as.numeric(fit$report$ordinal_cutpoints %||% numeric(0))
+  ordinal_full_cuts <- if (length(n_ordinal_cuts_per_trait) > 0L) {
+    lapply(seq_along(n_ordinal_cuts_per_trait), function(t) {
+      k_minus_2 <- n_ordinal_cuts_per_trait[t]
+      if (is.na(k_minus_2) || k_minus_2 < 0L) {
+        return(NULL)
+      }
+      base <- ordinal_offset_per_trait[t]
+      extra <- if (k_minus_2 > 0L) {
+        ordinal_cutpoints_flat[(base + 1L):(base + k_minus_2)]
+      } else {
+        numeric(0)
+      }
+      c(0, extra)
+    })
+  } else {
+    list()
+  }
+
+  ## Pre-flag any unsupported families with a warning so users know
+  ## fall-back-to-NA is in play. Fires on EVERY call (i.e. per simulate()
+  ## draw, not once per session, #1079) -- a repeated warning is a much
+  ## smaller cost than a user missing it entirely because an earlier fit
+  ## in the same session already tripped it once.
   uniq_fids <- unique(fids)
   ## family_id 16 (multinomial, baseline-category softmax) is drawn in the
   ## grouped pass after the per-row loop (one categorical draw per observation-
   ## group, not per contrast row); the per-row loop leaves those rows at 0.
-  supported <- c(0L, 1L, 2L, 3L, 4L, 5L, 15L, 16L)
+  supported <- c(
+    0L, 1L, 2L, 3L, 4L, 5L, 7L, 8L, 9L, 10L, 11L, 12L, 13L, 14L, 15L, 16L
+  )
   unsupp <- setdiff(uniq_fids, supported)
   if (length(unsupp) > 0L) {
-    cache_key <- "gllvmTMB.warned_simulate_unsupported_family"
-    if (is.null(getOption(cache_key))) {
-      cli::cli_warn(
-        c(
-          "Family-aware {.fn simulate} not yet implemented for family_id values: {.val {unsupp}}.",
-          "i" = "Affected rows fall back to Gaussian-on-link-scale draws. Broader family coverage is not yet implemented.",
-          ">" = "Currently supported: gaussian (0), binomial (1), poisson (2), lognormal (3), Gamma (4), nbinom2 (5), nbinom1 (15), multinomial (16)."
-        ),
-        class = "gllvmTMB_simulate_unsupported_family"
-      )
-      options(stats::setNames(list(TRUE), cache_key))
-    }
+    cli::cli_warn(
+      c(
+        "Family-aware {.fn simulate} not yet implemented for family_id values: {.val {unsupp}}.",
+        "i" = "Affected rows are drawn as {.val NA}, not a Gaussian-on-link-scale substitute -- a wrong number is worse than a missing one.",
+        ">" = "Currently supported: gaussian (0), binomial (1), poisson (2), lognormal (3), Gamma (4), nbinom2 (5), Beta (7), betabinomial (8), student-t (9), truncated_poisson (10), truncated_nbinom2 (11), delta_lognormal (12), delta_gamma (13), ordinal_probit (14), nbinom1 (15), multinomial (16). Tweedie (6) has no exact draw implemented."
+      ),
+      class = "gllvmTMB_simulate_unsupported_family"
+    )
   }
 
   for (i in seq_len(n)) {
@@ -1571,7 +1629,10 @@ simulate.gllvmTMB_multi <- function(
       ## Gaussian, identity link
       y[i] <- eta_i + stats::rnorm(1L, sd = sigma_eps)
     } else if (fid == 1L) {
-      ## Binomial — gllvmTMB does 1-trial Bernoulli per row
+      ## Binomial, dispatched on link_id_vec exactly as src/gllvmTMB.cpp
+      ## fid == 1 does. size is the row's actual n_trials (cbind(succ, fail)
+      ## or weights = n_trials) -- previously hard-coded to 1, silently
+      ## drawing Bernoulli for every row regardless of trial count (#1079).
       p <- if (lid == 0L) {
         stats::plogis(eta_i) # logit
       } else if (lid == 1L) {
@@ -1581,7 +1642,9 @@ simulate.gllvmTMB_multi <- function(
       } else {
         stats::plogis(eta_i) # fallback
       }
-      y[i] <- stats::rbinom(1L, size = 1L, prob = p)
+      Nt <- if (!is.null(n_trials) && length(n_trials) >= i) n_trials[i] else 1
+      if (!is.finite(Nt) || Nt < 1) Nt <- 1
+      y[i] <- stats::rbinom(1L, size = as.integer(round(Nt)), prob = p)
     } else if (fid == 2L) {
       ## Poisson, log link
       y[i] <- stats::rpois(1L, lambda = exp(eta_i))
@@ -1600,6 +1663,148 @@ simulate.gllvmTMB_multi <- function(
       mu <- exp(eta_i)
       size <- if (is.null(phi_nbinom2)) 1 else phi_nbinom2[tid_1]
       y[i] <- stats::rnbinom(1L, mu = mu, size = size)
+    } else if (fid == 7L) {
+      ## Beta, logit link, mean-precision parametrisation (src/gllvmTMB.cpp
+      ## fid == 7): mu = plogis(eta), shape1 = mu*phi, shape2 = (1-mu)*phi.
+      ## The engine hardcodes logit for this family regardless of link_id
+      ## (R/fit-multi.R aborts at fit time on any other link).
+      mu_b <- stats::plogis(eta_i)
+      phi_b <- if (!is.null(phi_beta) && length(phi_beta) >= tid_1) {
+        phi_beta[tid_1]
+      } else {
+        1
+      }
+      if (!is.finite(phi_b) || phi_b <= 0) phi_b <- 1
+      y[i] <- stats::rbeta(1L, shape1 = mu_b * phi_b, shape2 = (1 - mu_b) * phi_b)
+    } else if (fid == 8L) {
+      ## Beta-binomial (src/gllvmTMB.cpp fid == 8; same hardcoded-logit note
+      ## as fid 7): draw p ~ Beta(a, b) with mu = plogis(eta), a = mu*phi,
+      ## b = (1-mu)*phi, then y ~ Binomial(n_trials, p).
+      mu_bb <- stats::plogis(eta_i)
+      phi_bb <- if (!is.null(phi_betabinom) && length(phi_betabinom) >= tid_1) {
+        phi_betabinom[tid_1]
+      } else {
+        1
+      }
+      if (!is.finite(phi_bb) || phi_bb <= 0) phi_bb <- 1
+      Nt <- if (!is.null(n_trials) && length(n_trials) >= i) n_trials[i] else 1
+      if (!is.finite(Nt) || Nt < 1) Nt <- 1
+      p_bb <- stats::rbeta(1L, shape1 = mu_bb * phi_bb, shape2 = (1 - mu_bb) * phi_bb)
+      y[i] <- stats::rbinom(1L, size = as.integer(round(Nt)), prob = p_bb)
+    } else if (fid == 9L) {
+      ## Student-t, identity link (src/gllvmTMB.cpp fid == 9): eta IS the
+      ## location mu directly. sigma_student is a SCALE, not an sd -- the
+      ## draw is eta + sigma_student * rt(df), matching z = (y-eta)/sigma_t
+      ## ~ t_df in the exact-residual code.
+      sigma_t <- if (!is.null(sigma_student) && length(sigma_student) >= tid_1) {
+        sigma_student[tid_1]
+      } else {
+        1
+      }
+      df_t <- if (!is.null(df_student) && length(df_student) >= tid_1) {
+        df_student[tid_1]
+      } else {
+        5
+      }
+      if (!is.finite(sigma_t) || sigma_t <= 0) sigma_t <- 1
+      if (!is.finite(df_t) || df_t <= 0) df_t <- 5
+      y[i] <- eta_i + sigma_t * stats::rt(1L, df = df_t)
+    } else if (fid == 10L) {
+      ## Zero-truncated Poisson (src/gllvmTMB.cpp fid == 10): support starts
+      ## at y = 1. Exact draw by CDF inversion: u ~ Unif(0,1), target =
+      ## u*(1-p0) + p0 lands in [p0, 1), and qpois(target, lambda) inverts
+      ## the ordinary Poisson CDF at that target -- exactly the truncated-
+      ## CDF inverse restricted above the truncation point.
+      lambda_t <- exp(eta_i)
+      p0_t <- exp(-lambda_t)
+      denom_t <- 1 - p0_t
+      if (!is.finite(denom_t) || denom_t <= 0) {
+        y[i] <- NA_real_
+      } else {
+        target <- stats::runif(1L) * denom_t + p0_t
+        y[i] <- stats::qpois(target, lambda = lambda_t)
+      }
+    } else if (fid == 11L) {
+      ## Zero-truncated NB2 (src/gllvmTMB.cpp fid == 11): same inversion as
+      ## truncated Poisson above. Dispersion is the SEPARATE per-trait
+      ## phi_truncnb2 (its own log_phi_truncnb2 PARAMETER_VECTOR), NOT
+      ## phi_nbinom2.
+      mu_t <- exp(eta_i)
+      size_t <- if (!is.null(phi_truncnb2) && length(phi_truncnb2) >= tid_1) {
+        phi_truncnb2[tid_1]
+      } else {
+        NA_real_
+      }
+      p0_t <- if (is.finite(size_t) && size_t > 0) {
+        stats::pnbinom(0, size = size_t, mu = mu_t)
+      } else {
+        NA_real_
+      }
+      denom_t <- if (is.finite(p0_t)) 1 - p0_t else NA_real_
+      if (!is.finite(denom_t) || denom_t <= 0) {
+        y[i] <- NA_real_
+      } else {
+        target <- stats::runif(1L) * denom_t + p0_t
+        y[i] <- stats::qnbinom(target, size = size_t, mu = mu_t)
+      }
+    } else if (fid == 12L) {
+      ## delta_lognormal (hurdle; src/gllvmTMB.cpp fid == 12): ONE shared
+      ## eta drives both components -- presence I{y>0} ~ Bernoulli(plogis(eta)),
+      ## and log(y) | y>0 ~ Normal(eta, sigma_lognormal_delta) at the SAME
+      ## eta (not a separate presence/positive predictor).
+      pres <- stats::rbinom(1L, size = 1L, prob = stats::plogis(eta_i))
+      if (pres == 1L) {
+        sigma_ld <- if (
+          !is.null(sigma_lognormal_delta) && length(sigma_lognormal_delta) >= tid_1
+        ) {
+          sigma_lognormal_delta[tid_1]
+        } else {
+          1
+        }
+        if (!is.finite(sigma_ld) || sigma_ld <= 0) sigma_ld <- 1
+        y[i] <- exp(eta_i + stats::rnorm(1L, sd = sigma_ld))
+      } else {
+        y[i] <- 0
+      }
+    } else if (fid == 13L) {
+      ## delta_gamma (hurdle; src/gllvmTMB.cpp fid == 13): same shared-eta
+      ## presence draw as delta_lognormal above; positive part has
+      ## shape = 1/phi^2, scale = mu*phi^2 (mu = exp(eta), CV(y) = phi).
+      pres <- stats::rbinom(1L, size = 1L, prob = stats::plogis(eta_i))
+      if (pres == 1L) {
+        phi_gd <- if (
+          !is.null(phi_gamma_delta) && length(phi_gamma_delta) >= tid_1
+        ) {
+          phi_gamma_delta[tid_1]
+        } else {
+          1
+        }
+        if (!is.finite(phi_gd) || phi_gd <= 0) phi_gd <- 1
+        mu_g <- exp(eta_i)
+        shape_g <- 1 / (phi_gd^2)
+        scale_g <- mu_g * (phi_gd^2)
+        y[i] <- stats::rgamma(1L, shape = shape_g, scale = scale_g)
+      } else {
+        y[i] <- 0
+      }
+    } else if (fid == 14L) {
+      ## ordinal_probit (Hadfield 2015 eqn 9; src/gllvmTMB.cpp fid == 14):
+      ## draw the latent y* = eta + N(0, 1) and bin it against the
+      ## reconstructed cutpoints tau_1 = 0 .. tau_{K-1} (tau_0 = -Inf,
+      ## tau_K = +Inf) -- the SAME cutpoints .gllvmTMB_exact_rq_residuals()
+      ## reconstructs. y = k iff tau_{k-1} < y* <= tau_k, so counting how
+      ## many cutpoints y* exceeds gives k - 1.
+      cuts_t <- if (tid_1 >= 1L && tid_1 <= length(ordinal_full_cuts)) {
+        ordinal_full_cuts[[tid_1]]
+      } else {
+        NULL
+      }
+      if (is.null(cuts_t)) {
+        y[i] <- NA_real_
+      } else {
+        ystar <- eta_i + stats::rnorm(1L)
+        y[i] <- 1L + sum(ystar > cuts_t)
+      }
     } else if (fid == 15L) {
       ## nbinom1, log link. LINEAR mean-variance Var = mu * (1 + phi),
       ## so the dispersion enters the size as size = mu / phi (NOT size =
@@ -1617,11 +1822,13 @@ simulate.gllvmTMB_multi <- function(
       }
     } else if (fid == 16L) {
       ## Multinomial (softmax) — drawn in the grouped pass below, one categorical
-      ## draw per observation-group. Leave y[i] = 0 so the terminal Gaussian-on-
-      ## link fallback does NOT overwrite the one-hot (panel Slice-1 correctness).
+      ## draw per observation-group. Leave y[i] = 0 so it isn't left as NA by
+      ## the terminal fallback below (panel Slice-1 correctness).
     } else {
-      ## Unsupported family — Gaussian-on-link-scale fallback (warned above)
-      y[i] <- eta_i + stats::rnorm(1L, sd = sigma_eps)
+      ## Unsupported family (currently only tweedie, fid 6, and anything
+      ## unrecognised) — NA, not a Gaussian-on-link-scale substitute
+      ## (warned above, once per call, #1079).
+      y[i] <- NA_real_
     }
   }
 

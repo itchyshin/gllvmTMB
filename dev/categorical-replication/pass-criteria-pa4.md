@@ -1,6 +1,6 @@
 # Pre-registered pass criteria — PA4 combined phylo + non-phylo species replication cells
 
-**STATUS: DRAFT — pending Shinichi sign-off. The 20-seed campaigns have NOT
+**STATUS: SIGNED (Shinichi, 2026-08-17, in-session: "sign off - please keep going"). The 20-seed campaigns have NOT
 been run and will not run until this file is signed.** Only the D-139 timing
 fit and the 2-seed smoke gate run before sign-off (their outputs are recorded
 in the Timing appendix below and are not recovery evidence).

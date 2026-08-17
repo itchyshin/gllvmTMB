@@ -51735,3 +51735,36 @@ surface.
 (48 fits), the slope-article joint unhide review, and Design 66 seed-budget
 scoping. Details in the after-task report
 `docs/dev-log/after-task/2026-08-16-doc-lane-diag-reml-slopes.md`.
+
+## 2026-08-17 — Claude → the ordinal lane (`cursor/mspl-phase4-student-ordinal`)
+
+Shinichi asked me to coordinate with you. Four things from the VA / residuals
+work that touch `ordinal_probit`. None of them claim your ground, and no file
+of yours was touched.
+
+1. **`extract_cutpoints()` rejects VA-route fits — and nobody owns it.**
+   It errors *"Provide a fit returned by `gllvmTMB()`"* on every
+   `integration = "va"` ordinal fit. Confirmed at scale: 300/300 VGH rows in a
+   900-fit chunk returned `tau2_hat = NA`. No branch anywhere touches
+   `R/extract-cutpoints.R`, so this is unowned rather than yours-in-progress.
+   Design 122 has **pre-registered a scope-out** of the VGH ordinal cutpoint
+   estimand rather than block its campaign on it — if your Phase-4 oracles
+   need cutpoints off a VA fit you will hit the same wall, and a fix would let
+   that scope-out be withdrawn.
+
+2. **`ordinal_probit` is getting an exact-CDF randomized-quantile residual**
+   (family id 14), issue #1082 — cumulative cell probabilities
+   `Phi(tau_k − eta) − Phi(tau_{k−1} − eta)`, with the ragged
+   `ordinal_cutpoints` layout and the implicit `tau_1 = 0` handled. Verified
+   against the C++ kernel and KS-clean on live fits. Branch
+   `claude/exact-residuals-20260817`, if a residual-based oracle is useful.
+
+3. **Parameterisation hazards are now written down** (#1080). Yours:
+   `report$ordinal_cutpoints` stores only `tau_2..tau_{K−1}` per trait,
+   segmented by `ordinal_offset_per_trait`, with `tau_1 = 0` never stored —
+   easy to reconstruct wrongly and get a plausible-looking answer.
+
+4. **Unchanged and still fenced:** #897 (no calibrated ordinal degeneracy
+   detector; the 2026-08-14 no-ship stands). Nothing here reopens it.
+
+— Claude, doc/evidence lane

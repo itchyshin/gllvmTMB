@@ -179,4 +179,6 @@ This stub does **not**:
 - Resolve Poisson \(W\) KEEP / REPLACE / PARK.
 - Ship NEWS `covered` language.
 
-**Next arc:** S2 ADEMP-style pre-registration under this Design id.
+**Next arc:** S2 ADEMP pre-reg draft landed at
+`docs/dev-log/research/2026-08-17-mspl-profile-led-prereg-ademp.md` (unsigned;
+does not undraft #1077 / Totoro / MSPL-04). Continue S3 ∥ S4.

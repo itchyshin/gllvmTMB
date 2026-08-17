@@ -6,8 +6,8 @@ Status: todo / doing / done / blocked. Gate = needs human before proceed.
 |---|-----|--------|-------|-------|
 | R0 | Recon: #1077 scaffold + assert_inference map + Confirm-in-ref check | **done** | — | Critical: Confirm was uncommitted on overnight WT; now committed on this lane. #1077 tip `fb44d7b5` draft. |
 | R1 | Read-only Design 118 / B1 negative lessons extract | **done** | — | See `docs/dev-log/research/2026-08-17-mspl-profile-led-r1-lessons.md`. No Design 118 edits. |
-| S1 | Draft `docs/design/NN-mspl-profile-led-intervals.md` stub; claim NN by commit | **done** | soft: NEXT FREE re-checked = 125 | Claimed `docs/design/125-mspl-profile-led-intervals.md` by commit. Profile=signature; Wald(Q₀)=availability; bootstrap=asymmetry. |
-| S2 | ADEMP-style pre-registration draft | todo | — | Depends S1. Local-then-Totoro gates; refusal rules; no Totoro run. |
+| S1 | Draft Design stub; claim NN by commit | **done** | — | Claimed `docs/design/125-mspl-profile-led-intervals.md` @ `b68b20b4`. Profile=signature; Wald(Q₀)=availability; bootstrap=asymmetry. |
+| S2 | ADEMP-style pre-registration draft | **done** (draft) | soft: sign G0 later | `docs/dev-log/research/2026-08-17-mspl-profile-led-prereg-ademp.md` cites Design **125**; refusal-priced coverage; local-then-Totoro; no Totoro run; #1077 still draft. |
 | S3 | Parallel: Poisson W G0 chase / PARK SE doors note | todo | **OPEN if inventing KEEP/REPLACE/PARK** | Leave UNSIGNED unless Shinichi pastes. Default if silent: PARK further SE doors. |
 | S4 | Rose fence pass on S1–S2 | todo | — | No NEWS covered; no public se; #1077 still draft. |
 | V1 | Verify: #1077 draft; MSPL-04 blocked; no Design 118 edits | todo | — | Mechanical. |

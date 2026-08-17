@@ -2,7 +2,7 @@
 
 **From:** Cursor · **To:** Shinichi @ ~05:36 America/Denver
 **Status:** **FINALIZED** (no longer a living pulse)
-**Tip read:** `origin/main` @ `2b2e6568` (#1069 B1 PARK sign)
+**Tip read:** `origin/main` @ `4e3e2ad7` (#1069 B1 PARK sign; #1072 D-157 retarget)
 **This closeout:** `docs/mspl-overnight-brief-am`
 
 This is **LA-MSPL**. Public `se=TRUE` / `vcov` / `confint` / NEWS
@@ -22,8 +22,8 @@ open).
 1. **Which matrix ships** if public SE ever opens:
    **Q_0** (paper) / **Q_P** / **sandwich**?
    Ada default: **Q_0**, still internal until a later calibration G0.
-2. **B1 aftermath — SIGNED PARK (brain D-156).**
-   Repo receipt **#1069** is on `main`.
+2. **B1 aftermath — SIGNED PARK (brain D-157).**
+   Repo receipt **#1069** (sign) + **#1072** (D-157 retarget) on `main`.
    No second Totoro/DRAC campaign. `MSPL-04` stays `blocked`.
 3. **Replace live Poisson `W=diag(mu)`** with working two-sided
    \(W_*\) before more SE-series doors?
@@ -74,8 +74,8 @@ PASS** (need ≥90%). G2 min coverage **0.0218**. G3 availability
 fails. G4/G5 pass (G5 vacuous at M0). \(n\to 2000\) cannot reach
 90% even if every INDETERMINATE row flipped.
 
-Aftermath brief **#1060** is now **SIGNED PARK** (brain **D-156**).
-Repo sign receipt **#1069** is on `main`. #1056 / DEV-11 is a later
+Aftermath brief **#1060** is now **SIGNED PARK** (brain **D-157**).
+Repo sign receipt **#1069** + retarget **#1072** are on `main`. #1056 / DEV-11 is a later
 **M2** evaluator (0.0% PASS), not the same number as #1040. Do
 not collapse them. Do not promote. Do not launch a second
 campaign. `MSPL-04` stays `blocked`.
@@ -91,7 +91,7 @@ campaign. `MSPL-04` stays `blocked`.
 | Ranga synthesis + pin `paper_reporting_target = "Q_0"` + softness/W research audit + board | **#1061** on `main` | not public SE |
 | W-onesided measurement oracles (Poisson \(W=\mu\), Tweedie, nbinom2) | **#1064** on `main` | not a tape replace |
 | B1 aftermath G0 brief | **#1060** on `main` | unsigned when landed |
-| B1 aftermath **SIGNED PARK** (D-156) | **#1069** on `main` | not a second campaign; not `MSPL-04` unblocked |
+| B1 aftermath **SIGNED PARK** (D-157) | **#1069** sign + **#1072** retarget on `main` | not a second campaign; not `MSPL-04` unblocked |
 | First landing of this brief | **#1067** on `main` | living 21:15 pulse; this file is the morning closeout |
 | Gamma / lognormal rate + loading oracles | **#1063** on `main` | no door; registry stays `planned` |
 | Beta planned door (family id 7) | #1055 | not admitted |
@@ -114,7 +114,7 @@ campaign. `MSPL-04` stays `blocked`.
   green rebase as an admit.
 - **#981 B0 harness.** CONFLICTING Claude draft. Leave it.
 - **#957 / #958 / #960.** Old CONFLICTING docs. Not this morning.
-- **B1 second campaign / Lane B absorb.** D-156 PARK. #1069 on `main`.
+- **B1 second campaign / Lane B absorb.** D-157 PARK. #1069 + #1072 on `main`.
 - **Poisson `W=diag(mu)` replacement.** Documented red flag; tape
   change needs G0-3.
 - **Gamma / lognormal door.** #1051 gap list + #1063 oracles only.
@@ -134,5 +134,5 @@ leftover, not an R MSPL unblock.
 This brief does not claim MSPL has standard errors, that \(Q_P\) and
 \(Q_0\) are interchangeable at finite \(n\), that Poisson admission
 cleared the one-sided-\(W\) flag, or that #1065 is an admit. It does
-not sign G0-1 or G0-3. G0-2 is already signed PARK (D-156). drmTMB
+not sign G0-1 or G0-3. G0-2 is already signed PARK (D-157). drmTMB
 stays parked.

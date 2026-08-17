@@ -18,7 +18,7 @@ with the Ranga \(Q_0\) verdict and the B1 FAIL G0 on one page.
   05:00” list is gone.
 - #1063 (gamma/lognormal oracles) and #1066 (Design 66, adjacent)
   are named. #1065 stays CONFLICTING / not an admit. G0-2 is
-  SIGNED PARK (D-156); #1069 is on `main`.
+  SIGNED PARK (D-157); #1069 sign + #1072 retarget are on `main`.
 - The 21:15 after-task on this path is left in place.
 - Mission Control `status/gllvmTMB.json` is refreshed in the vault
   (separate scoped commit).
@@ -98,6 +98,6 @@ not carry this path.
 ## 10. Known Limitations And Next Actions
 
 Shinichi still owes G0-1 (matrix) and G0-3 (Poisson \(W_*\)).
-G0-2 is SIGNED PARK (D-156); #1069 is on `main`. Do not merge
+G0-2 is SIGNED PARK (D-157); #1069 + #1072 are on `main`. Do not merge
 conflicting #1065 as an admit. Do not open a Tweedie door. Do not
 promote B1.

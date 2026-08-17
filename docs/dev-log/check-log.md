@@ -5,13 +5,13 @@
 Docs only. Closed the living 21:15 pulse (#1067) into
 `docs/dev-log/research/2026-08-17-mspl-overnight-brief.md`
 as **FINALIZED**. G0-2 B1 aftermath is **SIGNED PARK**
-(brain D-156; #1069 on `main`). Remaining G0s: (1) Q_0 vs
-Q_P vs sandwich (3) replace Poisson W=diag(mu)? Ranga
-reporting target = Q_0 (#1061/#1062). Official B1 hold-out
-G1–G5 FAIL 14/132 = 10.6% (#1040). #1065 still
-OPEN+CONFLICTING; not an admit. No tape. No Tweedie door.
-No public se.
-`origin/main` @ `2b2e6568`.
+(brain D-157; #1069 sign + #1072 retarget on `main`).
+Remaining G0s: (1) Q_0 vs Q_P vs sandwich (3) replace
+Poisson W=diag(mu)? Ranga reporting target = Q_0
+(#1061/#1062). Official B1 hold-out G1–G5 FAIL
+14/132 = 10.6% (#1040). #1065 still OPEN+CONFLICTING;
+not an admit. No tape. No Tweedie door. No public se.
+`origin/main` @ `4e3e2ad7`.
 
 ```sh
 rg -n 'still owed before 05:00|living; next update' \
@@ -22,18 +22,18 @@ rg -n 'FINALIZED|14/132|paper_reporting_target|Q_0' \
 gh pr view 1065 --json state,mergeable
 ```
 
-## 2026-08-17 — B1 aftermath G0 SIGNED PARK (D-156)
+## 2026-08-17 — B1 aftermath G0 SIGNED PARK (D-157)
 
 Shinichi pasted the park reply. Brief
 `docs/dev-log/research/2026-08-17-mspl-b1-aftermath-G0.md`
-marked **SIGNED**; brain **D-156**. No second campaign;
+marked **SIGNED**; brain **D-157**. No second campaign;
 `MSPL-04` blocked; no Totoro relaunch; later intervals =
 new construction + new pre-registration (not Design 118
 recalibration, not \(n\to 2000\)). Docs only. No `R/` /
 `src/` / NEWS. No public confint.
 
 ```sh
-rg -n 'SIGNED|D-156|Park\. No second' \
+rg -n 'SIGNED|D-157|Park\. No second' \
   docs/dev-log/research/2026-08-17-mspl-b1-aftermath-G0.md
 # no testthat; docs-only
 ```

@@ -7,7 +7,7 @@ ARCS DONE (verified):
 - R1 — lessons `docs/dev-log/research/2026-08-17-mspl-profile-led-r1-lessons.md`; no Design 118 file edits.
 - S1 — Design stub `docs/design/125-mspl-profile-led-intervals.md`; claimed by commit `b68b20b4`; **APPROVED** as D-157 new-construction Design.
 - S2 — ADEMP pre-reg **SIGNED** `docs/dev-log/research/2026-08-17-mspl-profile-led-prereg-ademp.md` (G4a BINARY-FIRST, G4b E1-E2-ONLY, G4c FORK-DEFER, G4d THRESHOLDS-SIGN-NOW, G4e BOOT-PARAMETRIC).
-- S3 — Poisson W **SIGNED PARK SE doors** `docs/dev-log/research/2026-08-17-mspl-poisson-W-G0.md` (tape unchanged; KEEP/REPLACE not invented).
+- S3 — Poisson W card **UNSIGNED** `docs/dev-log/research/2026-08-17-mspl-poisson-W-G0.md` (tape unchanged; KEEP/REPLACE not invented).
 - S4 — Rose fence PASS (triad / Design / ADEMP fences aligned; #1077 draft; MSPL-04 blocked).
 - V1 — mechanical PASS: #1077 `draft:true` tip `fb44d7b5`; MSPL-04 `blocked`; no Design 118 / `R/` / `src/` / NEWS edits on this lane kit.
 ARC IN PROGRESS: C1 (after-task / handover + G2 non-draft docs PR).

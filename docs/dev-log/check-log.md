@@ -1,5 +1,22 @@
 # Check log
 
+## 2026-08-17 — B1 aftermath G0 SIGNED PARK (D-156)
+
+Shinichi pasted the park reply. Brief
+`docs/dev-log/research/2026-08-17-mspl-b1-aftermath-G0.md`
+marked **SIGNED**; brain **D-156**. No second campaign;
+`MSPL-04` blocked; no Totoro relaunch; later intervals =
+new construction + new pre-registration (not Design 118
+recalibration, not \(n\to 2000\)). Docs only. No `R/` /
+`src/` / NEWS. No public confint.
+
+```sh
+rg -n 'SIGNED|D-156|Park\. No second' \
+  docs/dev-log/research/2026-08-17-mspl-b1-aftermath-G0.md
+# no testthat; docs-only
+```
+
+
 ## 2026-08-16 — overnight conductor pulse 21:15 (brief + W-onesided oracles)
 
 Living 05:00 brief:

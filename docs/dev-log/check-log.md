@@ -1,5 +1,33 @@
 # Check log
 
+## 2026-08-17 — nbinom1/nbinom2 admit-packet Pure-R oracles (Cursor)
+
+Lane `cursor/mspl-nbinom-admit-oracles` from `origin/main` after
+#1042. Oracle pin only: \(c_{\mathrm{NB1}}\), \(c_{\mathrm{NB2}}\),
+information-weighted \(V_\lambda\), NB2 Jeffreys-on-\(\varphi\)
+**DROP**. Registry stays `planned` / `phase4_prep`. No `src/`.
+No prepare-path rate change. No live A7. No NEWS. No Totoro.
+Do not merge conflicting #1065 (C++ / live twin; CI failed).
+
+```sh
+export OMP_NUM_THREADS=1 NOT_CRAN=true
+pkgload::load_all(".", compile = FALSE)
+testthat::test_file("tests/testthat/test-mspl-nbinom2-admit-packet.R")   # PASS 39
+testthat::test_file("tests/testthat/test-mspl-nbinom1-admit-packet.R")   # PASS 33
+testthat::test_file("tests/testthat/test-mspl-nbinom1-phase4-oracles.R") # PASS 76
+testthat::test_file("tests/testthat/test-mspl-nbinom2-phase4-oracles.R") # PASS 68
+testthat::test_file("tests/testthat/test-mspl-registry.R")               # PASS 81
+pkgload::load_all(".", compile = TRUE)
+testthat::test_file("tests/testthat/test-mspl-nb1-fenced-tape.R")        # PASS 17
+testthat::test_file("tests/testthat/test-mspl-nb2-fenced-tape.R")        # PASS 18
+rg -n 'status\s*=\s*"admitted"' R/mspl-registry.R
+# nbinom blocks stay planned (admitted hits are gaussian/bernoulli/poisson)
+git diff --stat -- src/ R/mspl.R R/mspl-registry.R NEWS.md
+# empty (new R/mspl-nbinom*-atoms.R only)
+```
+
+Not run: full `devtools::test()`, `--as-cran`, pkgdown, Totoro/DRAC.
+
 ## 2026-08-17 — `--as-cran` ERROR fixed: lane-b test needed the git-checkout guard
 
 Tests only, one guard, 8 lines. Reproduced the pre-existing `--as-cran`

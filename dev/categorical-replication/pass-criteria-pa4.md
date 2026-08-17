@@ -152,3 +152,18 @@ after the pre-registration commit and before sign-off, as declared above.
 Both cells are far below the D-139 30-minute line (worst case ~4.5 min
 serial); the gate on `--mode full` is Shinichi's sign-off of THIS file,
 not compute.
+
+## VERDICT (2026-08-17, applied per the frozen gates above; results committed alongside)
+
+- **Cell A (ordinal): PASS.** 20/20 conv+PD; component medians est/true —
+  phy1 0.77, phy2 0.82, sp1 1.04, sp2 0.96 — all four in [0.33, 3.0]
+  separately. The eq 38-46 combined phylo + species model is EVIDENCED for
+  ordinal_probit at n_sp=150 × 5 reps.
+- **Cell B (multinomial): FAIL on the rail gate.** 20/20 conv+PD and all
+  four component medians in band (phy1 0.97, phy2 0.56, sp1 0.90, sp2
+  0.69), but 12/20 seeds railed (threshold >6/20). Interpretation, recorded
+  not softened: the variance components separate and recover under the
+  combined model, but the among-category correlation — which plain n_rep=5
+  replication had rescued (s1b: 4/20 rails) — destabilises again when the
+  species tier competes for liability variance at this design. No rho
+  recovery claim for the combined multinomial model; components-only.

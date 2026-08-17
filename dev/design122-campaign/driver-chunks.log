@@ -1,0 +1,1065 @@
+Design 122 confirmatory full (chunk=1) starting on totoro workers=96 commit=646005cf campaign_id=design122-confirmatory-20260817-646005cf
+gllvmTMB is EXPERIMENTAL (lifecycle: experimental). Use at your own risk: the package is not complete, is not fully human-verified, and needs extensive further validation. Point estimates are the primary inferential output, but evidence is route- and regime-specific. Broad interval coverage is not certified. One narrow two-sided Gaussian total-variance profile regime has a documented 0.94 floor. See the Current limitations and boundaries page for scope.
+Loaded existing frozen truths from /home/snakagaw/gllvm_work/campaigns/design122-confirmatory-20260817-646005cf/design122-campaign-truths.rds 
+[chunk-001 (binomial_probit n=100 p=12 T-weak)] 900 fits, workers=96
+■                                  0% | ETA: 29m
+■                                  0% | ETA: 44m
+■■■■■                             13% | ETA:  1m
+■■■■■■■■■                         28% | ETA: 42s
+■■■■■■■■■■■                       35% | ETA: 32s
+■■■■■■■■■■■■■■■■                  49% | ETA: 21s
+■■■■■■■■■■■■■■■■■■                57% | ETA: 19s
+■■■■■■■■■■■■■■■■■■■■■             68% | ETA: 13s
+■■■■■■■■■■■■■■■■■■■■■■■■■■        85% | ETA:  5s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■     92% | ETA:  3s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■  100% | ETA:  0s
+[chunk-001 (binomial_probit n=100 p=12 T-weak)] wall=33.7s (0.56 min), rows=900/900
+Wrote /home/snakagaw/gllvm_work/campaigns/design122-confirmatory-20260817-646005cf/chunk-001.csv (n_attempted=900, n_ok=900, wall=33.7s)
+Design 122 confirmatory full (chunk=1) finished.
+Design 122 confirmatory full (chunk=2) starting on totoro workers=96 commit=646005cf campaign_id=design122-confirmatory-20260817-646005cf
+gllvmTMB is EXPERIMENTAL (lifecycle: experimental). Use at your own risk: the package is not complete, is not fully human-verified, and needs extensive further validation. Point estimates are the primary inferential output, but evidence is route- and regime-specific. Broad interval coverage is not certified. One narrow two-sided Gaussian total-variance profile regime has a documented 0.94 floor. See the Current limitations and boundaries page for scope.
+Loaded existing frozen truths from /home/snakagaw/gllvm_work/campaigns/design122-confirmatory-20260817-646005cf/design122-campaign-truths.rds 
+[chunk-002 (binomial_probit n=100 p=12 T-mid)] 900 fits, workers=96
+■                                  0% | ETA: 22m
+■                                  0% | ETA: 45m
+■■■■■■■■                          24% | ETA: 37s
+■■■■■■■■■■                        31% | ETA: 33s
+■■■■■■■■■■■                       34% | ETA: 39s
+■■■■■■■■■■■■■■■■■■■■              62% | ETA: 16s
+■■■■■■■■■■■■■■■■■■■■■■■           72% | ETA: 10s
+■■■■■■■■■■■■■■■■■■■■■■■■■■        84% | ETA:  6s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■    98% | ETA:  1s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■  100% | ETA:  0s
+[chunk-002 (binomial_probit n=100 p=12 T-mid)] wall=32.8s (0.55 min), rows=900/900
+Wrote /home/snakagaw/gllvm_work/campaigns/design122-confirmatory-20260817-646005cf/chunk-002.csv (n_attempted=900, n_ok=900, wall=32.8s)
+Design 122 confirmatory full (chunk=2) finished.
+Design 122 confirmatory full (chunk=3) starting on totoro workers=96 commit=646005cf campaign_id=design122-confirmatory-20260817-646005cf
+gllvmTMB is EXPERIMENTAL (lifecycle: experimental). Use at your own risk: the package is not complete, is not fully human-verified, and needs extensive further validation. Point estimates are the primary inferential output, but evidence is route- and regime-specific. Broad interval coverage is not certified. One narrow two-sided Gaussian total-variance profile regime has a documented 0.94 floor. See the Current limitations and boundaries page for scope.
+Loaded existing frozen truths from /home/snakagaw/gllvm_work/campaigns/design122-confirmatory-20260817-646005cf/design122-campaign-truths.rds 
+[chunk-003 (binomial_probit n=100 p=12 T-strong)] 900 fits, workers=96
+■                                  0% | ETA: 18m
+■                                  0% | ETA: 39m
+■                                  1% | ETA: 21m
+■■■■■■■■■                         28% | ETA: 29s
+■■■■■■■■■■■                       32% | ETA: 31s
+■■■■■■■■■■■■■■■                   46% | ETA: 20s
+■■■■■■■■■■■■■■■■■■■               61% | ETA: 13s
+■■■■■■■■■■■■■■■■■■■■■             68% | ETA: 11s
+■■■■■■■■■■■■■■■■■■■■■■■■■■        84% | ETA:  5s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■    97% | ETA:  1s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■  100% | ETA:  0s
+[chunk-003 (binomial_probit n=100 p=12 T-strong)] wall=30.4s (0.51 min), rows=900/900
+Wrote /home/snakagaw/gllvm_work/campaigns/design122-confirmatory-20260817-646005cf/chunk-003.csv (n_attempted=900, n_ok=900, wall=30.4s)
+Design 122 confirmatory full (chunk=3) finished.
+Design 122 confirmatory full (chunk=4) starting on totoro workers=96 commit=646005cf campaign_id=design122-confirmatory-20260817-646005cf
+gllvmTMB is EXPERIMENTAL (lifecycle: experimental). Use at your own risk: the package is not complete, is not fully human-verified, and needs extensive further validation. Point estimates are the primary inferential output, but evidence is route- and regime-specific. Broad interval coverage is not certified. One narrow two-sided Gaussian total-variance profile regime has a documented 0.94 floor. See the Current limitations and boundaries page for scope.
+Loaded existing frozen truths from /home/snakagaw/gllvm_work/campaigns/design122-confirmatory-20260817-646005cf/design122-campaign-truths.rds 
+[chunk-004 (binomial_probit n=100 p=27 T-weak)] 900 fits, workers=96
+■                                  0% | ETA: 35m
+■                                  0% | ETA:  2h
+■                                  1% | ETA: 49m
+■                                  1% | ETA: 42m
+■■                                 2% | ETA: 25m
+■■■                                6% | ETA: 11m
+■■■■■■■■■                         27% | ETA:  2m
+■■■■■■■■■■                        31% | ETA:  2m
+■■■■■■■■■■■                       34% | ETA:  2m
+■■■■■■■■■■■                       35% | ETA:  2m
+■■■■■■■■■■■■■                     41% | ETA:  2m
+■■■■■■■■■■■■■■■■                  50% | ETA:  1m
+■■■■■■■■■■■■■■■■■                 53% | ETA:  1m
+■■■■■■■■■■■■■■■■■■                57% | ETA:  1m
+■■■■■■■■■■■■■■■■■■■               59% | ETA:  1m
+■■■■■■■■■■■■■■■■■■■               62% | ETA:  1m
+■■■■■■■■■■■■■■■■■■■■              63% | ETA:  1m
+■■■■■■■■■■■■■■■■■■■■              64% | ETA:  1m
+■■■■■■■■■■■■■■■■■■■■■■■■          76% | ETA: 33s
+■■■■■■■■■■■■■■■■■■■■■■■■■         80% | ETA: 27s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■      90% | ETA: 13s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■   99% | ETA:  1s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■  100% | ETA:  0s
+[chunk-004 (binomial_probit n=100 p=27 T-weak)] wall=124.8s (2.08 min), rows=900/900
+Wrote /home/snakagaw/gllvm_work/campaigns/design122-confirmatory-20260817-646005cf/chunk-004.csv (n_attempted=900, n_ok=900, wall=124.8s)
+Design 122 confirmatory full (chunk=4) finished.
+Design 122 confirmatory full (chunk=5) starting on totoro workers=96 commit=646005cf campaign_id=design122-confirmatory-20260817-646005cf
+gllvmTMB is EXPERIMENTAL (lifecycle: experimental). Use at your own risk: the package is not complete, is not fully human-verified, and needs extensive further validation. Point estimates are the primary inferential output, but evidence is route- and regime-specific. Broad interval coverage is not certified. One narrow two-sided Gaussian total-variance profile regime has a documented 0.94 floor. See the Current limitations and boundaries page for scope.
+Loaded existing frozen truths from /home/snakagaw/gllvm_work/campaigns/design122-confirmatory-20260817-646005cf/design122-campaign-truths.rds 
+[chunk-005 (binomial_probit n=100 p=27 T-mid)] 900 fits, workers=96
+■                                  0% | ETA: 32m
+■                                  0% | ETA:  2h
+■■                                 3% | ETA: 16m
+■■■                                6% | ETA:  8m
+■■■■                              10% | ETA:  6m
+■■■■■■■■■■                        31% | ETA:  2m
+■■■■■■■■■■■                       33% | ETA:  2m
+■■■■■■■■■■■                       34% | ETA:  2m
+■■■■■■■■■■■■■                     40% | ETA:  1m
+■■■■■■■■■■■■■■■■■                 52% | ETA:  1m
+■■■■■■■■■■■■■■■■■■                56% | ETA:  1m
+■■■■■■■■■■■■■■■■■■                57% | ETA:  1m
+■■■■■■■■■■■■■■■■■■■■■             67% | ETA: 38s
+■■■■■■■■■■■■■■■■■■■■■             68% | ETA: 40s
+■■■■■■■■■■■■■■■■■■■■■■            71% | ETA: 35s
+■■■■■■■■■■■■■■■■■■■■■■■■          76% | ETA: 29s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■      90% | ETA: 11s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■  100% | ETA:  0s
+[chunk-005 (binomial_probit n=100 p=27 T-mid)] wall=102.4s (1.71 min), rows=900/900
+Wrote /home/snakagaw/gllvm_work/campaigns/design122-confirmatory-20260817-646005cf/chunk-005.csv (n_attempted=900, n_ok=900, wall=102.4s)
+Design 122 confirmatory full (chunk=5) finished.
+Design 122 confirmatory full (chunk=6) starting on totoro workers=96 commit=646005cf campaign_id=design122-confirmatory-20260817-646005cf
+gllvmTMB is EXPERIMENTAL (lifecycle: experimental). Use at your own risk: the package is not complete, is not fully human-verified, and needs extensive further validation. Point estimates are the primary inferential output, but evidence is route- and regime-specific. Broad interval coverage is not certified. One narrow two-sided Gaussian total-variance profile regime has a documented 0.94 floor. See the Current limitations and boundaries page for scope.
+Loaded existing frozen truths from /home/snakagaw/gllvm_work/campaigns/design122-confirmatory-20260817-646005cf/design122-campaign-truths.rds 
+[chunk-006 (binomial_probit n=100 p=27 T-strong)] 900 fits, workers=96
+■                                  0% | ETA: 49m
+■                                  0% | ETA:  2h
+■                                  1% | ETA: 25m
+■■■■■■■                           19% | ETA:  2m
+■■■■■■■■■                         26% | ETA:  1m
+■■■■■■■■■■                        30% | ETA:  1m
+■■■■■■■■■■                        31% | ETA:  1m
+■■■■■■■■■■■                       32% | ETA:  1m
+■■■■■■■■■■■■■                     40% | ETA:  1m
+■■■■■■■■■■■■■■■                   48% | ETA: 48s
+■■■■■■■■■■■■■■■■■■                56% | ETA: 38s
+■■■■■■■■■■■■■■■■■■■               60% | ETA: 34s
+■■■■■■■■■■■■■■■■■■■               61% | ETA: 34s
+■■■■■■■■■■■■■■■■■■■■              64% | ETA: 32s
+■■■■■■■■■■■■■■■■■■■■■             65% | ETA: 32s
+■■■■■■■■■■■■■■■■■■■■■■            71% | ETA: 25s
+■■■■■■■■■■■■■■■■■■■■■■■■          77% | ETA: 19s
+■■■■■■■■■■■■■■■■■■■■■■■■■■        84% | ETA: 13s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■      91% | ETA:  7s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■     94% | ETA:  5s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■   98% | ETA:  1s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■  100% | ETA:  0s
+[chunk-006 (binomial_probit n=100 p=27 T-strong)] wall=78.3s (1.31 min), rows=900/900
+Wrote /home/snakagaw/gllvm_work/campaigns/design122-confirmatory-20260817-646005cf/chunk-006.csv (n_attempted=900, n_ok=900, wall=78.3s)
+Design 122 confirmatory full (chunk=6) finished.
+Design 122 confirmatory full (chunk=7) starting on totoro workers=96 commit=646005cf campaign_id=design122-confirmatory-20260817-646005cf
+gllvmTMB is EXPERIMENTAL (lifecycle: experimental). Use at your own risk: the package is not complete, is not fully human-verified, and needs extensive further validation. Point estimates are the primary inferential output, but evidence is route- and regime-specific. Broad interval coverage is not certified. One narrow two-sided Gaussian total-variance profile regime has a documented 0.94 floor. See the Current limitations and boundaries page for scope.
+Loaded existing frozen truths from /home/snakagaw/gllvm_work/campaigns/design122-confirmatory-20260817-646005cf/design122-campaign-truths.rds 
+[chunk-007 (binomial_probit n=400 p=12 T-weak)] 900 fits, workers=96
+■                                  0% | ETA: 41m
+■                                  0% | ETA:  6h
+■■                                 5% | ETA: 26m
+■■■                                8% | ETA: 16m
+■■■■■■                            15% | ETA:  9m
+■■■■■■■■■                         26% | ETA:  5m
+■■■■■■■■■■■                       32% | ETA:  4m
+■■■■■■■■■■■                       32% | ETA:  5m
+■■■■■■■■■■■                       33% | ETA:  5m
+■■■■■■■■■■■■■■                    44% | ETA:  3m
+■■■■■■■■■■■■■■■■                  51% | ETA:  3m
+■■■■■■■■■■■■■■■■■                 55% | ETA:  2m
+■■■■■■■■■■■■■■■■■■■               62% | ETA:  2m
+■■■■■■■■■■■■■■■■■■■■              62% | ETA:  2m
+■■■■■■■■■■■■■■■■■■■■              64% | ETA:  2m
+■■■■■■■■■■■■■■■■■■■■              64% | ETA:  2m
+■■■■■■■■■■■■■■■■■■■■              65% | ETA:  2m
+■■■■■■■■■■■■■■■■■■■■■             65% | ETA:  2m
+■■■■■■■■■■■■■■■■■■■■■             66% | ETA:  2m
+■■■■■■■■■■■■■■■■■■■■■             67% | ETA:  2m
+■■■■■■■■■■■■■■■■■■■■■■■           75% | ETA:  1m
+■■■■■■■■■■■■■■■■■■■■■■■■          75% | ETA:  1m
+■■■■■■■■■■■■■■■■■■■■■■■■■         78% | ETA:  1m
+■■■■■■■■■■■■■■■■■■■■■■■■■         80% | ETA:  1m
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■     92% | ETA: 22s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■     95% | ETA: 14s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■    95% | ETA: 12s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■    96% | ETA: 12s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■    96% | ETA: 11s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■    96% | ETA: 10s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■    97% | ETA:  8s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■    98% | ETA:  6s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■   99% | ETA:  2s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■  100% | ETA:  0s
+[chunk-007 (binomial_probit n=400 p=12 T-weak)] wall=274.0s (4.57 min), rows=900/900
+Wrote /home/snakagaw/gllvm_work/campaigns/design122-confirmatory-20260817-646005cf/chunk-007.csv (n_attempted=900, n_ok=900, wall=274.0s)
+Design 122 confirmatory full (chunk=7) finished.
+Design 122 confirmatory full (chunk=8) starting on totoro workers=96 commit=646005cf campaign_id=design122-confirmatory-20260817-646005cf
+gllvmTMB is EXPERIMENTAL (lifecycle: experimental). Use at your own risk: the package is not complete, is not fully human-verified, and needs extensive further validation. Point estimates are the primary inferential output, but evidence is route- and regime-specific. Broad interval coverage is not certified. One narrow two-sided Gaussian total-variance profile regime has a documented 0.94 floor. See the Current limitations and boundaries page for scope.
+Loaded existing frozen truths from /home/snakagaw/gllvm_work/campaigns/design122-confirmatory-20260817-646005cf/design122-campaign-truths.rds 
+[chunk-008 (binomial_probit n=400 p=12 T-mid)] 900 fits, workers=96
+■                                  0% | ETA: 43m
+■                                  0% | ETA:  6h
+■■                                 2% | ETA:  1h
+■■■                                6% | ETA: 20m
+■■■                                8% | ETA: 15m
+■■■■                               9% | ETA: 15m
+■■■■■                             12% | ETA: 10m
+■■■■■■■■■                         26% | ETA:  4m
+■■■■■■■■■■■                       32% | ETA:  4m
+■■■■■■■■■■■                       32% | ETA:  5m
+■■■■■■■■■■■                       33% | ETA:  5m
+■■■■■■■■■■■                       35% | ETA:  4m
+■■■■■■■■■■■■                      38% | ETA:  4m
+■■■■■■■■■■■■■■■■                  49% | ETA:  3m
+■■■■■■■■■■■■■■■■■■■■              64% | ETA:  2m
+■■■■■■■■■■■■■■■■■■■■              64% | ETA:  2m
+■■■■■■■■■■■■■■■■■■■■              64% | ETA:  2m
+■■■■■■■■■■■■■■■■■■■■              65% | ETA:  2m
+■■■■■■■■■■■■■■■■■■■■■■            70% | ETA:  2m
+■■■■■■■■■■■■■■■■■■■■■■■           72% | ETA:  1m
+■■■■■■■■■■■■■■■■■■■■■■■■          75% | ETA:  1m
+■■■■■■■■■■■■■■■■■■■■■■■■■         79% | ETA:  1m
+■■■■■■■■■■■■■■■■■■■■■■■■■■        84% | ETA: 45s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■     94% | ETA: 16s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■    96% | ETA: 10s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■  100% | ETA:  1s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■  100% | ETA:  0s
+[chunk-008 (binomial_probit n=400 p=12 T-mid)] wall=264.7s (4.41 min), rows=900/900
+Wrote /home/snakagaw/gllvm_work/campaigns/design122-confirmatory-20260817-646005cf/chunk-008.csv (n_attempted=900, n_ok=900, wall=264.7s)
+Design 122 confirmatory full (chunk=8) finished.
+Design 122 confirmatory full (chunk=9) starting on totoro workers=96 commit=646005cf campaign_id=design122-confirmatory-20260817-646005cf
+gllvmTMB is EXPERIMENTAL (lifecycle: experimental). Use at your own risk: the package is not complete, is not fully human-verified, and needs extensive further validation. Point estimates are the primary inferential output, but evidence is route- and regime-specific. Broad interval coverage is not certified. One narrow two-sided Gaussian total-variance profile regime has a documented 0.94 floor. See the Current limitations and boundaries page for scope.
+Loaded existing frozen truths from /home/snakagaw/gllvm_work/campaigns/design122-confirmatory-20260817-646005cf/design122-campaign-truths.rds 
+[chunk-009 (binomial_probit n=400 p=12 T-strong)] 900 fits, workers=96
+■                                  0% | ETA: 38m
+■                                  0% | ETA:  5h
+■■                                 4% | ETA: 24m
+■■■■■■■                           20% | ETA:  5m
+■■■■■■■■■■                        30% | ETA:  3m
+■■■■■■■■■■                        31% | ETA:  3m
+■■■■■■■■■■■                       32% | ETA:  3m
+■■■■■■■■■■■                       32% | ETA:  4m
+■■■■■■■■■■■                       33% | ETA:  4m
+■■■■■■■■■■■■■                     42% | ETA:  3m
+■■■■■■■■■■■■■■■                   46% | ETA:  3m
+■■■■■■■■■■■■■■■■■                 53% | ETA:  2m
+■■■■■■■■■■■■■■■■■■■               59% | ETA:  2m
+■■■■■■■■■■■■■■■■■■■               60% | ETA:  2m
+■■■■■■■■■■■■■■■■■■■■              62% | ETA:  1m
+■■■■■■■■■■■■■■■■■■■■              63% | ETA:  1m
+■■■■■■■■■■■■■■■■■■■■              64% | ETA:  1m
+■■■■■■■■■■■■■■■■■■■■              64% | ETA:  2m
+■■■■■■■■■■■■■■■■■■■■■             66% | ETA:  2m
+■■■■■■■■■■■■■■■■■■■■■■            70% | ETA:  1m
+■■■■■■■■■■■■■■■■■■■■■■■           72% | ETA:  1m
+■■■■■■■■■■■■■■■■■■■■■■■■          78% | ETA:  1m
+■■■■■■■■■■■■■■■■■■■■■■■■■■        83% | ETA: 40s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■      89% | ETA: 24s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■     92% | ETA: 18s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■     94% | ETA: 13s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■    95% | ETA: 10s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■    96% | ETA:  9s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■    96% | ETA:  9s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■    97% | ETA:  8s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■   99% | ETA:  2s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■  100% | ETA:  0s
+[chunk-009 (binomial_probit n=400 p=12 T-strong)] wall=235.3s (3.92 min), rows=900/900
+Wrote /home/snakagaw/gllvm_work/campaigns/design122-confirmatory-20260817-646005cf/chunk-009.csv (n_attempted=900, n_ok=900, wall=235.3s)
+Design 122 confirmatory full (chunk=9) finished.
+Design 122 confirmatory full (chunk=10) starting on totoro workers=96 commit=646005cf campaign_id=design122-confirmatory-20260817-646005cf
+gllvmTMB is EXPERIMENTAL (lifecycle: experimental). Use at your own risk: the package is not complete, is not fully human-verified, and needs extensive further validation. Point estimates are the primary inferential output, but evidence is route- and regime-specific. Broad interval coverage is not certified. One narrow two-sided Gaussian total-variance profile regime has a documented 0.94 floor. See the Current limitations and boundaries page for scope.
+Loaded existing frozen truths from /home/snakagaw/gllvm_work/campaigns/design122-confirmatory-20260817-646005cf/design122-campaign-truths.rds 
+[chunk-010 (binomial_probit n=400 p=27 T-weak)] 900 fits, workers=96
+■                                  0% | ETA:  2h
+■                                  0% | ETA:  1d
+■                                  2% | ETA:  5h
+■■■                                8% | ETA:  1h
+■■■■                               9% | ETA:  1h
+■■■■■                             12% | ETA: 39m
+■■■■■■■■■                         28% | ETA: 14m
+■■■■■■■■■■                        30% | ETA: 14m
+■■■■■■■■■■■                       32% | ETA: 14m
+■■■■■■■■■■■                       32% | ETA: 17m
+■■■■■■■■■■■                       33% | ETA: 16m
+■■■■■■■■■■■                       34% | ETA: 16m
+■■■■■■■■■■■                       34% | ETA: 16m
+■■■■■■■■■■■                       35% | ETA: 16m
+■■■■■■■■■■■■■                     39% | ETA: 14m
+■■■■■■■■■■■■■                     41% | ETA: 13m
+■■■■■■■■■■■■■■                    44% | ETA: 12m
+■■■■■■■■■■■■■■■                   45% | ETA: 12m
+■■■■■■■■■■■■■■■■■■                56% | ETA:  8m
+■■■■■■■■■■■■■■■■■■                56% | ETA:  8m
+■■■■■■■■■■■■■■■■■■■               60% | ETA:  7m
+■■■■■■■■■■■■■■■■■■■■              64% | ETA:  6m
+■■■■■■■■■■■■■■■■■■■■              64% | ETA:  6m
+■■■■■■■■■■■■■■■■■■■■              64% | ETA:  7m
+■■■■■■■■■■■■■■■■■■■■              65% | ETA:  7m
+■■■■■■■■■■■■■■■■■■■■■             65% | ETA:  7m
+■■■■■■■■■■■■■■■■■■■■■             65% | ETA:  7m
+■■■■■■■■■■■■■■■■■■■■■             66% | ETA:  7m
+■■■■■■■■■■■■■■■■■■■■■             68% | ETA:  6m
+■■■■■■■■■■■■■■■■■■■■■■■■■         81% | ETA:  3m
+■■■■■■■■■■■■■■■■■■■■■■■■■■        82% | ETA:  3m
+■■■■■■■■■■■■■■■■■■■■■■■■■■■       87% | ETA:  2m
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■     92% | ETA:  1m
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■     93% | ETA:  1m
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■    96% | ETA: 41s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■    96% | ETA: 38s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■    96% | ETA: 35s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■    97% | ETA: 33s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■    97% | ETA: 26s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■   98% | ETA: 16s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■  100% | ETA:  3s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■  100% | ETA:  0s
+[chunk-010 (binomial_probit n=400 p=27 T-weak)] wall=983.2s (16.39 min), rows=900/900
+Wrote /home/snakagaw/gllvm_work/campaigns/design122-confirmatory-20260817-646005cf/chunk-010.csv (n_attempted=900, n_ok=900, wall=983.2s)
+Design 122 confirmatory full (chunk=10) finished.
+Design 122 confirmatory full (chunk=11) starting on totoro workers=96 commit=646005cf campaign_id=design122-confirmatory-20260817-646005cf
+gllvmTMB is EXPERIMENTAL (lifecycle: experimental). Use at your own risk: the package is not complete, is not fully human-verified, and needs extensive further validation. Point estimates are the primary inferential output, but evidence is route- and regime-specific. Broad interval coverage is not certified. One narrow two-sided Gaussian total-variance profile regime has a documented 0.94 floor. See the Current limitations and boundaries page for scope.
+Loaded existing frozen truths from /home/snakagaw/gllvm_work/campaigns/design122-confirmatory-20260817-646005cf/design122-campaign-truths.rds 
+[chunk-011 (binomial_probit n=400 p=27 T-mid)] 900 fits, workers=96
+■                                  0% | ETA:  2h
+■                                  0% | ETA: 18h
+■                                  1% | ETA:  9h
+■                                  1% | ETA:  6h
+■                                  2% | ETA:  4h
+■■■                                5% | ETA:  1h
+■■■■■■■■                          24% | ETA: 14m
+■■■■■■■■■                         26% | ETA: 12m
+■■■■■■■■■                         27% | ETA: 12m
+■■■■■■■■■■                        29% | ETA: 11m
+■■■■■■■■■■                        31% | ETA: 11m
+■■■■■■■■■■■                       32% | ETA: 11m
+■■■■■■■■■■■                       32% | ETA: 11m
+■■■■■■■■■■■                       32% | ETA: 15m
+■■■■■■■■■■■                       33% | ETA: 15m
+■■■■■■■■■■■                       33% | ETA: 15m
+■■■■■■■■■■■                       34% | ETA: 14m
+■■■■■■■■■■■■                      37% | ETA: 13m
+■■■■■■■■■■■■■                     39% | ETA: 12m
+■■■■■■■■■■■■■                     42% | ETA: 11m
+■■■■■■■■■■■■■■                    42% | ETA: 11m
+■■■■■■■■■■■■■■■■                  50% | ETA:  8m
+■■■■■■■■■■■■■■■■■                 53% | ETA:  7m
+■■■■■■■■■■■■■■■■■                 54% | ETA:  7m
+■■■■■■■■■■■■■■■■■■■               59% | ETA:  6m
+■■■■■■■■■■■■■■■■■■■               59% | ETA:  6m
+■■■■■■■■■■■■■■■■■■■               61% | ETA:  5m
+■■■■■■■■■■■■■■■■■■■■              62% | ETA:  5m
+■■■■■■■■■■■■■■■■■■■■              63% | ETA:  5m
+■■■■■■■■■■■■■■■■■■■■              64% | ETA:  6m
+■■■■■■■■■■■■■■■■■■■■              65% | ETA:  6m
+■■■■■■■■■■■■■■■■■■■■■             65% | ETA:  6m
+■■■■■■■■■■■■■■■■■■■■■             67% | ETA:  5m
+■■■■■■■■■■■■■■■■■■■■■             68% | ETA:  5m
+■■■■■■■■■■■■■■■■■■■■■             68% | ETA:  5m
+■■■■■■■■■■■■■■■■■■■■■■■           73% | ETA:  4m
+■■■■■■■■■■■■■■■■■■■■■■■           74% | ETA:  4m
+■■■■■■■■■■■■■■■■■■■■■■■           75% | ETA:  4m
+■■■■■■■■■■■■■■■■■■■■■■■■          78% | ETA:  3m
+■■■■■■■■■■■■■■■■■■■■■■■■■         81% | ETA:  3m
+■■■■■■■■■■■■■■■■■■■■■■■■■         82% | ETA:  3m
+■■■■■■■■■■■■■■■■■■■■■■■■■■        83% | ETA:  2m
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■     93% | ETA:  1m
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■     95% | ETA: 42s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■    95% | ETA: 37s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■    96% | ETA: 33s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■    96% | ETA: 32s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■    98% | ETA: 17s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■  100% | ETA:  0s
+[chunk-011 (binomial_probit n=400 p=27 T-mid)] wall=850.3s (14.17 min), rows=900/900
+Wrote /home/snakagaw/gllvm_work/campaigns/design122-confirmatory-20260817-646005cf/chunk-011.csv (n_attempted=900, n_ok=900, wall=850.3s)
+Design 122 confirmatory full (chunk=11) finished.
+Design 122 confirmatory full (chunk=12) starting on totoro workers=96 commit=646005cf campaign_id=design122-confirmatory-20260817-646005cf
+gllvmTMB is EXPERIMENTAL (lifecycle: experimental). Use at your own risk: the package is not complete, is not fully human-verified, and needs extensive further validation. Point estimates are the primary inferential output, but evidence is route- and regime-specific. Broad interval coverage is not certified. One narrow two-sided Gaussian total-variance profile regime has a documented 0.94 floor. See the Current limitations and boundaries page for scope.
+Loaded existing frozen truths from /home/snakagaw/gllvm_work/campaigns/design122-confirmatory-20260817-646005cf/design122-campaign-truths.rds 
+[chunk-012 (binomial_probit n=400 p=27 T-strong)] 900 fits, workers=96
+■                                  0% | ETA:  3h
+■                                  0% | ETA: 16h
+■                                  1% | ETA:  8h
+■■                                 2% | ETA:  3h
+■■                                 4% | ETA:  1h
+■■■■                              11% | ETA: 29m
+■■■■■                             14% | ETA: 22m
+■■■■■■                            18% | ETA: 17m
+■■■■■■■                           20% | ETA: 14m
+■■■■■■■■                          24% | ETA: 12m
+■■■■■■■■                          24% | ETA: 12m
+■■■■■■■■■                         26% | ETA: 11m
+■■■■■■■■■■                        29% | ETA: 10m
+■■■■■■■■■■                        30% | ETA: 10m
+■■■■■■■■■■                        31% | ETA:  9m
+■■■■■■■■■■                        31% | ETA:  9m
+■■■■■■■■■■■                       32% | ETA: 10m
+■■■■■■■■■■■                       32% | ETA: 10m
+■■■■■■■■■■■                       32% | ETA: 12m
+■■■■■■■■■■■                       33% | ETA: 11m
+■■■■■■■■■■■                       33% | ETA: 12m
+■■■■■■■■■■■                       34% | ETA: 11m
+■■■■■■■■■■■                       34% | ETA: 11m
+■■■■■■■■■■■                       35% | ETA: 11m
+■■■■■■■■■■■■                      35% | ETA: 11m
+■■■■■■■■■■■■                      36% | ETA: 11m
+■■■■■■■■■■■■                      38% | ETA: 10m
+■■■■■■■■■■■■■                     40% | ETA: 10m
+■■■■■■■■■■■■■                     41% | ETA:  9m
+■■■■■■■■■■■■■■                    42% | ETA:  9m
+■■■■■■■■■■■■■■                    45% | ETA:  8m
+■■■■■■■■■■■■■■■■                  49% | ETA:  7m
+■■■■■■■■■■■■■■■■                  51% | ETA:  6m
+■■■■■■■■■■■■■■■■■                 53% | ETA:  6m
+■■■■■■■■■■■■■■■■■                 54% | ETA:  6m
+■■■■■■■■■■■■■■■■■■                56% | ETA:  6m
+■■■■■■■■■■■■■■■■■■                57% | ETA:  5m
+■■■■■■■■■■■■■■■■■■■               60% | ETA:  5m
+■■■■■■■■■■■■■■■■■■■               61% | ETA:  5m
+■■■■■■■■■■■■■■■■■■■■              62% | ETA:  5m
+■■■■■■■■■■■■■■■■■■■■              63% | ETA:  4m
+■■■■■■■■■■■■■■■■■■■■              63% | ETA:  4m
+■■■■■■■■■■■■■■■■■■■■              63% | ETA:  4m
+■■■■■■■■■■■■■■■■■■■■              64% | ETA:  4m
+■■■■■■■■■■■■■■■■■■■■              64% | ETA:  5m
+■■■■■■■■■■■■■■■■■■■■              64% | ETA:  5m
+■■■■■■■■■■■■■■■■■■■■              65% | ETA:  5m
+■■■■■■■■■■■■■■■■■■■■■             65% | ETA:  5m
+■■■■■■■■■■■■■■■■■■■■■             65% | ETA:  5m
+■■■■■■■■■■■■■■■■■■■■■             66% | ETA:  5m
+■■■■■■■■■■■■■■■■■■■■■             67% | ETA:  4m
+■■■■■■■■■■■■■■■■■■■■■             68% | ETA:  4m
+■■■■■■■■■■■■■■■■■■■■■■            69% | ETA:  4m
+■■■■■■■■■■■■■■■■■■■■■■            69% | ETA:  4m
+■■■■■■■■■■■■■■■■■■■■■■■           72% | ETA:  4m
+■■■■■■■■■■■■■■■■■■■■■■■           74% | ETA:  3m
+■■■■■■■■■■■■■■■■■■■■■■■           75% | ETA:  3m
+■■■■■■■■■■■■■■■■■■■■■■■■          77% | ETA:  3m
+■■■■■■■■■■■■■■■■■■■■■■■■■         79% | ETA:  3m
+■■■■■■■■■■■■■■■■■■■■■■■■■■        83% | ETA:  2m
+■■■■■■■■■■■■■■■■■■■■■■■■■■        84% | ETA:  2m
+■■■■■■■■■■■■■■■■■■■■■■■■■■■       87% | ETA:  2m
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■      90% | ETA:  1m
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■      91% | ETA:  1m
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■     92% | ETA:  1m
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■     93% | ETA: 49s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■     93% | ETA: 46s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■     94% | ETA: 42s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■     95% | ETA: 36s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■     95% | ETA: 33s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■    95% | ETA: 32s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■    96% | ETA: 27s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■    96% | ETA: 26s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■    97% | ETA: 23s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■    97% | ETA: 19s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■   98% | ETA: 12s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■  100% | ETA:  2s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■  100% | ETA:  0s
+[chunk-012 (binomial_probit n=400 p=27 T-strong)] wall=699.1s (11.65 min), rows=900/900
+Wrote /home/snakagaw/gllvm_work/campaigns/design122-confirmatory-20260817-646005cf/chunk-012.csv (n_attempted=900, n_ok=900, wall=699.1s)
+Design 122 confirmatory full (chunk=12) finished.
+Design 122 confirmatory full (chunk=13) starting on totoro workers=96 commit=646005cf campaign_id=design122-confirmatory-20260817-646005cf
+gllvmTMB is EXPERIMENTAL (lifecycle: experimental). Use at your own risk: the package is not complete, is not fully human-verified, and needs extensive further validation. Point estimates are the primary inferential output, but evidence is route- and regime-specific. Broad interval coverage is not certified. One narrow two-sided Gaussian total-variance profile regime has a documented 0.94 floor. See the Current limitations and boundaries page for scope.
+Loaded existing frozen truths from /home/snakagaw/gllvm_work/campaigns/design122-confirmatory-20260817-646005cf/design122-campaign-truths.rds 
+[chunk-013 (ordinal_probit n=100 p=12 T-weak)] 900 fits, workers=96
+■                                  0% | ETA:  2h
+■                                  0% | ETA:  3h
+■                                  1% | ETA:  2h
+■                                  1% | ETA:  1h
+■■■                                6% | ETA: 13m
+■■■■■■                            16% | ETA:  5m
+■■■■■■■                           19% | ETA:  4m
+■■■■■■■■                          24% | ETA:  4m
+■■■■■■■■■■                        29% | ETA:  3m
+■■■■■■■■■■■■                      38% | ETA:  2m
+■■■■■■■■■■■■■■■                   47% | ETA:  2m
+■■■■■■■■■■■■■■■■                  49% | ETA:  2m
+■■■■■■■■■■■■■■■■                  50% | ETA:  2m
+■■■■■■■■■■■■■■■■                  51% | ETA:  2m
+■■■■■■■■■■■■■■■■■                 54% | ETA:  1m
+■■■■■■■■■■■■■■■■■■                56% | ETA:  1m
+■■■■■■■■■■■■■■■■■■■               59% | ETA:  1m
+■■■■■■■■■■■■■■■■■■■■              62% | ETA:  1m
+■■■■■■■■■■■■■■■■■■■■              63% | ETA:  1m
+■■■■■■■■■■■■■■■■■■■■■             66% | ETA:  1m
+■■■■■■■■■■■■■■■■■■■■■■            70% | ETA:  1m
+■■■■■■■■■■■■■■■■■■■■■■■           72% | ETA: 47s
+■■■■■■■■■■■■■■■■■■■■■■■           73% | ETA: 46s
+■■■■■■■■■■■■■■■■■■■■■■■■          78% | ETA: 37s
+■■■■■■■■■■■■■■■■■■■■■■■■■         79% | ETA: 36s
+■■■■■■■■■■■■■■■■■■■■■■■■■         81% | ETA: 31s
+■■■■■■■■■■■■■■■■■■■■■■■■■■        82% | ETA: 30s
+■■■■■■■■■■■■■■■■■■■■■■■■■■        85% | ETA: 26s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■       86% | ETA: 23s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■    97% | ETA:  5s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■    98% | ETA:  4s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■  100% | ETA:  0s
+[chunk-013 (ordinal_probit n=100 p=12 T-weak)] wall=152.1s (2.54 min), rows=900/900
+Wrote /home/snakagaw/gllvm_work/campaigns/design122-confirmatory-20260817-646005cf/chunk-013.csv (n_attempted=900, n_ok=900, wall=152.1s)
+Design 122 confirmatory full (chunk=13) finished.
+Design 122 confirmatory full (chunk=14) starting on totoro workers=96 commit=646005cf campaign_id=design122-confirmatory-20260817-646005cf
+gllvmTMB is EXPERIMENTAL (lifecycle: experimental). Use at your own risk: the package is not complete, is not fully human-verified, and needs extensive further validation. Point estimates are the primary inferential output, but evidence is route- and regime-specific. Broad interval coverage is not certified. One narrow two-sided Gaussian total-variance profile regime has a documented 0.94 floor. See the Current limitations and boundaries page for scope.
+Loaded existing frozen truths from /home/snakagaw/gllvm_work/campaigns/design122-confirmatory-20260817-646005cf/design122-campaign-truths.rds 
+[chunk-014 (ordinal_probit n=100 p=12 T-mid)] 900 fits, workers=96
+■                                  0% | ETA:  2h
+■                                  0% | ETA:  3h
+■■■                                7% | ETA:  9m
+■■■■                               9% | ETA:  8m
+■■■■■■                            17% | ETA:  4m
+■■■■■■■                           22% | ETA:  3m
+■■■■■■■■■                         28% | ETA:  3m
+■■■■■■■■■■                        30% | ETA:  3m
+■■■■■■■■■■■■                      38% | ETA:  2m
+■■■■■■■■■■■■■■■                   48% | ETA:  2m
+■■■■■■■■■■■■■■■■■                 52% | ETA:  1m
+■■■■■■■■■■■■■■■■■■                56% | ETA:  1m
+■■■■■■■■■■■■■■■■■■■               60% | ETA:  1m
+■■■■■■■■■■■■■■■■■■■               61% | ETA:  1m
+■■■■■■■■■■■■■■■■■■■               62% | ETA:  1m
+■■■■■■■■■■■■■■■■■■■■■■            70% | ETA:  1m
+■■■■■■■■■■■■■■■■■■■■■■■           73% | ETA: 45s
+■■■■■■■■■■■■■■■■■■■■■■■           74% | ETA: 44s
+■■■■■■■■■■■■■■■■■■■■■■■■■         79% | ETA: 35s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■       85% | ETA: 23s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■       88% | ETA: 19s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■      90% | ETA: 16s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■      91% | ETA: 14s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■     94% | ETA:  9s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■     95% | ETA:  8s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■  100% | ETA:  0s
+[chunk-014 (ordinal_probit n=100 p=12 T-mid)] wall=148.8s (2.48 min), rows=900/900
+Wrote /home/snakagaw/gllvm_work/campaigns/design122-confirmatory-20260817-646005cf/chunk-014.csv (n_attempted=900, n_ok=900, wall=148.8s)
+Design 122 confirmatory full (chunk=14) finished.
+Design 122 confirmatory full (chunk=15) starting on totoro workers=96 commit=646005cf campaign_id=design122-confirmatory-20260817-646005cf
+gllvmTMB is EXPERIMENTAL (lifecycle: experimental). Use at your own risk: the package is not complete, is not fully human-verified, and needs extensive further validation. Point estimates are the primary inferential output, but evidence is route- and regime-specific. Broad interval coverage is not certified. One narrow two-sided Gaussian total-variance profile regime has a documented 0.94 floor. See the Current limitations and boundaries page for scope.
+Loaded existing frozen truths from /home/snakagaw/gllvm_work/campaigns/design122-confirmatory-20260817-646005cf/design122-campaign-truths.rds 
+[chunk-015 (ordinal_probit n=100 p=12 T-strong)] 900 fits, workers=96
+■                                  0% | ETA:  2h
+■                                  0% | ETA:  2h
+■■■■                              11% | ETA:  4m
+■■■■■                             15% | ETA:  3m
+■■■■■■■                           19% | ETA:  2m
+■■■■■■■■                          22% | ETA:  2m
+■■■■■■■■■                         25% | ETA:  2m
+■■■■■■■■■                         27% | ETA:  2m
+■■■■■■■■■■                        31% | ETA:  2m
+■■■■■■■■■■■                       35% | ETA:  2m
+■■■■■■■■■■■■■                     39% | ETA:  1m
+■■■■■■■■■■■■■■                    44% | ETA:  1m
+■■■■■■■■■■■■■■■                   45% | ETA:  1m
+■■■■■■■■■■■■■■■■                  49% | ETA:  1m
+■■■■■■■■■■■■■■■■■                 52% | ETA:  1m
+■■■■■■■■■■■■■■■■■                 54% | ETA:  1m
+■■■■■■■■■■■■■■■■■■                56% | ETA:  1m
+■■■■■■■■■■■■■■■■■■■               58% | ETA:  1m
+■■■■■■■■■■■■■■■■■■■               62% | ETA:  1m
+■■■■■■■■■■■■■■■■■■■■■■            69% | ETA: 38s
+■■■■■■■■■■■■■■■■■■■■■■            71% | ETA: 35s
+■■■■■■■■■■■■■■■■■■■■■■■           74% | ETA: 31s
+■■■■■■■■■■■■■■■■■■■■■■■■■         78% | ETA: 26s
+■■■■■■■■■■■■■■■■■■■■■■■■■         82% | ETA: 21s
+■■■■■■■■■■■■■■■■■■■■■■■■■■        84% | ETA: 19s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■       88% | ETA: 14s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■      90% | ETA: 12s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■    96% | ETA:  4s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■  100% | ETA:  0s
+[chunk-015 (ordinal_probit n=100 p=12 T-strong)] wall=108.6s (1.81 min), rows=900/900
+Wrote /home/snakagaw/gllvm_work/campaigns/design122-confirmatory-20260817-646005cf/chunk-015.csv (n_attempted=900, n_ok=900, wall=108.6s)
+Design 122 confirmatory full (chunk=15) finished.
+Design 122 confirmatory full (chunk=16) starting on totoro workers=96 commit=646005cf campaign_id=design122-confirmatory-20260817-646005cf
+gllvmTMB is EXPERIMENTAL (lifecycle: experimental). Use at your own risk: the package is not complete, is not fully human-verified, and needs extensive further validation. Point estimates are the primary inferential output, but evidence is route- and regime-specific. Broad interval coverage is not certified. One narrow two-sided Gaussian total-variance profile regime has a documented 0.94 floor. See the Current limitations and boundaries page for scope.
+Loaded existing frozen truths from /home/snakagaw/gllvm_work/campaigns/design122-confirmatory-20260817-646005cf/design122-campaign-truths.rds 
+[chunk-016 (ordinal_probit n=100 p=27 T-weak)] 900 fits, workers=96
+■                                  0% | ETA:  1d
+■                                  0% | ETA: 10h
+■                                  1% | ETA:  6h
+■■                                 2% | ETA:  2h
+■■■■■                             15% | ETA: 16m
+■■■■■■■                           21% | ETA: 14m
+■■■■■■■■■                         26% | ETA: 11m
+■■■■■■■■■■                        29% | ETA: 10m
+■■■■■■■■■■                        31% | ETA: 10m
+■■■■■■■■■■■■                      36% | ETA:  8m
+■■■■■■■■■■■■                      36% | ETA: 10m
+■■■■■■■■■■■■■■■■                  50% | ETA:  6m
+■■■■■■■■■■■■■■■■                  51% | ETA:  6m
+■■■■■■■■■■■■■■■■■                 53% | ETA:  6m
+■■■■■■■■■■■■■■■■■■■■              63% | ETA:  4m
+■■■■■■■■■■■■■■■■■■■■              65% | ETA:  4m
+■■■■■■■■■■■■■■■■■■■■■             68% | ETA:  3m
+■■■■■■■■■■■■■■■■■■■■■■            70% | ETA:  3m
+■■■■■■■■■■■■■■■■■■■■■■            71% | ETA:  3m
+■■■■■■■■■■■■■■■■■■■■■■            71% | ETA:  3m
+■■■■■■■■■■■■■■■■■■■■■■■           72% | ETA:  3m
+■■■■■■■■■■■■■■■■■■■■■■■           74% | ETA:  3m
+■■■■■■■■■■■■■■■■■■■■■■■■■■■       85% | ETA:  2m
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■     94% | ETA: 35s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■   99% | ETA:  6s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■  100% | ETA:  0s
+[chunk-016 (ordinal_probit n=100 p=27 T-weak)] wall=560.3s (9.34 min), rows=900/900
+Wrote /home/snakagaw/gllvm_work/campaigns/design122-confirmatory-20260817-646005cf/chunk-016.csv (n_attempted=900, n_ok=900, wall=560.3s)
+Design 122 confirmatory full (chunk=16) finished.
+Design 122 confirmatory full (chunk=17) starting on totoro workers=96 commit=646005cf campaign_id=design122-confirmatory-20260817-646005cf
+gllvmTMB is EXPERIMENTAL (lifecycle: experimental). Use at your own risk: the package is not complete, is not fully human-verified, and needs extensive further validation. Point estimates are the primary inferential output, but evidence is route- and regime-specific. Broad interval coverage is not certified. One narrow two-sided Gaussian total-variance profile regime has a documented 0.94 floor. See the Current limitations and boundaries page for scope.
+Loaded existing frozen truths from /home/snakagaw/gllvm_work/campaigns/design122-confirmatory-20260817-646005cf/design122-campaign-truths.rds 
+[chunk-017 (ordinal_probit n=100 p=27 T-mid)] 900 fits, workers=96
+■                                  0% | ETA:  8h
+■                                  0% | ETA:  7h
+■                                  1% | ETA:  3h
+■                                  2% | ETA:  2h
+■■■■                               9% | ETA: 18m
+■■■■■                             12% | ETA: 24m
+■■■■■■■■■                         28% | ETA:  9m
+■■■■■■■■■■■                       34% | ETA:  7m
+■■■■■■■■■■■■                      37% | ETA:  6m
+■■■■■■■■■■■■■                     39% | ETA:  6m
+■■■■■■■■■■■■■                     39% | ETA:  6m
+■■■■■■■■■■■■■                     40% | ETA:  6m
+■■■■■■■■■■■■■■                    42% | ETA:  6m
+■■■■■■■■■■■■■■                    43% | ETA:  6m
+■■■■■■■■■■■■■■                    44% | ETA:  6m
+■■■■■■■■■■■■■■■                   45% | ETA:  5m
+■■■■■■■■■■■■■■■                   48% | ETA:  5m
+■■■■■■■■■■■■■■■■                  51% | ETA:  4m
+■■■■■■■■■■■■■■■■■                 54% | ETA:  4m
+■■■■■■■■■■■■■■■■■                 54% | ETA:  4m
+■■■■■■■■■■■■■■■■■                 55% | ETA:  4m
+■■■■■■■■■■■■■■■■■■                56% | ETA:  4m
+■■■■■■■■■■■■■■■■■■■■              62% | ETA:  3m
+■■■■■■■■■■■■■■■■■■■■              64% | ETA:  3m
+■■■■■■■■■■■■■■■■■■■■              64% | ETA:  3m
+■■■■■■■■■■■■■■■■■■■■■             66% | ETA:  3m
+■■■■■■■■■■■■■■■■■■■■■■            71% | ETA:  3m
+■■■■■■■■■■■■■■■■■■■■■■■           72% | ETA:  3m
+■■■■■■■■■■■■■■■■■■■■■■■■          75% | ETA:  2m
+■■■■■■■■■■■■■■■■■■■■■■■■■■        82% | ETA:  1m
+■■■■■■■■■■■■■■■■■■■■■■■■■■■       86% | ETA:  1m
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■      89% | ETA:  1m
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■    96% | ETA: 18s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■  100% | ETA:  0s
+[chunk-017 (ordinal_probit n=100 p=27 T-mid)] wall=460.9s (7.68 min), rows=900/900
+Wrote /home/snakagaw/gllvm_work/campaigns/design122-confirmatory-20260817-646005cf/chunk-017.csv (n_attempted=900, n_ok=900, wall=460.9s)
+Design 122 confirmatory full (chunk=17) finished.
+Design 122 confirmatory full (chunk=18) starting on totoro workers=96 commit=646005cf campaign_id=design122-confirmatory-20260817-646005cf
+gllvmTMB is EXPERIMENTAL (lifecycle: experimental). Use at your own risk: the package is not complete, is not fully human-verified, and needs extensive further validation. Point estimates are the primary inferential output, but evidence is route- and regime-specific. Broad interval coverage is not certified. One narrow two-sided Gaussian total-variance profile regime has a documented 0.94 floor. See the Current limitations and boundaries page for scope.
+Loaded existing frozen truths from /home/snakagaw/gllvm_work/campaigns/design122-confirmatory-20260817-646005cf/design122-campaign-truths.rds 
+[chunk-018 (ordinal_probit n=100 p=27 T-strong)] 900 fits, workers=96
+■                                  0% | ETA:  9h
+■                                  0% | ETA:  7h
+■■■■■                             12% | ETA: 10m
+■■■■■                             13% | ETA: 10m
+■■■■■                             14% | ETA: 11m
+■■■■■                             14% | ETA: 10m
+■■■■■■■                           19% | ETA:  8m
+■■■■■■■                           20% | ETA:  8m
+■■■■■■■                           20% | ETA:  7m
+■■■■■■■                           21% | ETA:  8m
+■■■■■■■■                          23% | ETA:  7m
+■■■■■■■■                          23% | ETA:  7m
+■■■■■■■■■                         25% | ETA:  6m
+■■■■■■■■■                         26% | ETA:  7m
+■■■■■■■■■                         27% | ETA:  6m
+■■■■■■■■■                         27% | ETA:  7m
+■■■■■■■■■■■                       32% | ETA:  5m
+■■■■■■■■■■■                       33% | ETA:  5m
+■■■■■■■■■■■                       33% | ETA:  5m
+■■■■■■■■■■■                       35% | ETA:  5m
+■■■■■■■■■■■                       35% | ETA:  5m
+■■■■■■■■■■■■                      36% | ETA:  5m
+■■■■■■■■■■■■■                     39% | ETA:  5m
+■■■■■■■■■■■■■                     39% | ETA:  5m
+■■■■■■■■■■■■■                     40% | ETA:  4m
+■■■■■■■■■■■■■                     41% | ETA:  4m
+■■■■■■■■■■■■■■                    43% | ETA:  4m
+■■■■■■■■■■■■■■                    44% | ETA:  4m
+■■■■■■■■■■■■■■                    44% | ETA:  4m
+■■■■■■■■■■■■■■■                   46% | ETA:  4m
+■■■■■■■■■■■■■■■                   46% | ETA:  4m
+■■■■■■■■■■■■■■■                   48% | ETA:  4m
+■■■■■■■■■■■■■■■■                  50% | ETA:  4m
+■■■■■■■■■■■■■■■■■                 52% | ETA:  3m
+■■■■■■■■■■■■■■■■■                 53% | ETA:  3m
+■■■■■■■■■■■■■■■■■                 53% | ETA:  3m
+■■■■■■■■■■■■■■■■■                 54% | ETA:  3m
+■■■■■■■■■■■■■■■■■■                57% | ETA:  3m
+■■■■■■■■■■■■■■■■■■                58% | ETA:  3m
+■■■■■■■■■■■■■■■■■■■               59% | ETA:  3m
+■■■■■■■■■■■■■■■■■■■               60% | ETA:  3m
+■■■■■■■■■■■■■■■■■■■               61% | ETA:  3m
+■■■■■■■■■■■■■■■■■■■■              62% | ETA:  3m
+■■■■■■■■■■■■■■■■■■■■              63% | ETA:  2m
+■■■■■■■■■■■■■■■■■■■■              64% | ETA:  2m
+■■■■■■■■■■■■■■■■■■■■■             66% | ETA:  2m
+■■■■■■■■■■■■■■■■■■■■■             68% | ETA:  2m
+■■■■■■■■■■■■■■■■■■■■■             68% | ETA:  2m
+■■■■■■■■■■■■■■■■■■■■■■            70% | ETA:  2m
+■■■■■■■■■■■■■■■■■■■■■■■           72% | ETA:  2m
+■■■■■■■■■■■■■■■■■■■■■■■           74% | ETA:  2m
+■■■■■■■■■■■■■■■■■■■■■■■■          76% | ETA:  2m
+■■■■■■■■■■■■■■■■■■■■■■■■          76% | ETA:  2m
+■■■■■■■■■■■■■■■■■■■■■■■■          78% | ETA:  1m
+■■■■■■■■■■■■■■■■■■■■■■■■■         79% | ETA:  1m
+■■■■■■■■■■■■■■■■■■■■■■■■■         80% | ETA:  1m
+■■■■■■■■■■■■■■■■■■■■■■■■■         80% | ETA:  1m
+■■■■■■■■■■■■■■■■■■■■■■■■■         81% | ETA:  1m
+■■■■■■■■■■■■■■■■■■■■■■■■■■        82% | ETA:  1m
+■■■■■■■■■■■■■■■■■■■■■■■■■■        83% | ETA:  1m
+■■■■■■■■■■■■■■■■■■■■■■■■■■        84% | ETA:  1m
+■■■■■■■■■■■■■■■■■■■■■■■■■■■       88% | ETA: 43s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■      89% | ETA: 43s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■      91% | ETA: 35s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■      91% | ETA: 32s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■     94% | ETA: 22s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■    96% | ETA: 16s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■    96% | ETA: 13s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■   98% | ETA:  6s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■   99% | ETA:  5s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■  100% | ETA:  1s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■  100% | ETA:  0s
+[chunk-018 (ordinal_probit n=100 p=27 T-strong)] wall=359.2s (5.99 min), rows=900/900
+Wrote /home/snakagaw/gllvm_work/campaigns/design122-confirmatory-20260817-646005cf/chunk-018.csv (n_attempted=900, n_ok=900, wall=359.2s)
+Design 122 confirmatory full (chunk=18) finished.
+Design 122 confirmatory full (chunk=19) starting on totoro workers=96 commit=646005cf campaign_id=design122-confirmatory-20260817-646005cf
+gllvmTMB is EXPERIMENTAL (lifecycle: experimental). Use at your own risk: the package is not complete, is not fully human-verified, and needs extensive further validation. Point estimates are the primary inferential output, but evidence is route- and regime-specific. Broad interval coverage is not certified. One narrow two-sided Gaussian total-variance profile regime has a documented 0.94 floor. See the Current limitations and boundaries page for scope.
+Loaded existing frozen truths from /home/snakagaw/gllvm_work/campaigns/design122-confirmatory-20260817-646005cf/design122-campaign-truths.rds 
+[chunk-019 (ordinal_probit n=400 p=12 T-weak)] 900 fits, workers=96
+■                                  0% | ETA: 11h
+■                                  0% | ETA:  6h
+■                                  0% | ETA:  1d
+■                                  1% | ETA: 10h
+■■                                 3% | ETA:  2h
+■■■■                              11% | ETA: 35m
+■■■■■                             15% | ETA: 26m
+■■■■■                             15% | ETA: 27m
+■■■■■■■                           19% | ETA: 21m
+■■■■■■■                           19% | ETA: 21m
+■■■■■■■                           21% | ETA: 19m
+■■■■■■■■                          24% | ETA: 17m
+■■■■■■■■■                         25% | ETA: 17m
+■■■■■■■■■                         28% | ETA: 15m
+■■■■■■■■■                         28% | ETA: 15m
+■■■■■■■■■■                        29% | ETA: 15m
+■■■■■■■■■■                        29% | ETA: 15m
+■■■■■■■■■■                        30% | ETA: 15m
+■■■■■■■■■■                        30% | ETA: 16m
+■■■■■■■■■■                        31% | ETA: 16m
+■■■■■■■■■■                        31% | ETA: 16m
+■■■■■■■■■■■                       32% | ETA: 17m
+■■■■■■■■■■■                       32% | ETA: 17m
+■■■■■■■■■■■                       34% | ETA: 16m
+■■■■■■■■■■■■                      36% | ETA: 15m
+■■■■■■■■■■■■                      36% | ETA: 14m
+■■■■■■■■■■■■                      37% | ETA: 16m
+■■■■■■■■■■■■■■■                   48% | ETA: 10m
+■■■■■■■■■■■■■■■                   48% | ETA: 10m
+■■■■■■■■■■■■■■■■                  51% | ETA:  9m
+■■■■■■■■■■■■■■■■■                 54% | ETA:  8m
+■■■■■■■■■■■■■■■■■■                56% | ETA:  8m
+■■■■■■■■■■■■■■■■■■                57% | ETA:  8m
+■■■■■■■■■■■■■■■■■■                57% | ETA:  8m
+■■■■■■■■■■■■■■■■■■■               61% | ETA:  7m
+■■■■■■■■■■■■■■■■■■■               62% | ETA:  7m
+■■■■■■■■■■■■■■■■■■■■              62% | ETA:  7m
+■■■■■■■■■■■■■■■■■■■■              63% | ETA:  7m
+■■■■■■■■■■■■■■■■■■■■              64% | ETA:  7m
+■■■■■■■■■■■■■■■■■■■■              65% | ETA:  7m
+■■■■■■■■■■■■■■■■■■■■■             66% | ETA:  6m
+■■■■■■■■■■■■■■■■■■■■■             66% | ETA:  6m
+■■■■■■■■■■■■■■■■■■■■■■            71% | ETA:  5m
+■■■■■■■■■■■■■■■■■■■■■■            71% | ETA:  5m
+■■■■■■■■■■■■■■■■■■■■■■■           73% | ETA:  5m
+■■■■■■■■■■■■■■■■■■■■■■■           74% | ETA:  5m
+■■■■■■■■■■■■■■■■■■■■■■■           75% | ETA:  4m
+■■■■■■■■■■■■■■■■■■■■■■■           75% | ETA:  4m
+■■■■■■■■■■■■■■■■■■■■■■■■          77% | ETA:  4m
+■■■■■■■■■■■■■■■■■■■■■■■■          77% | ETA:  4m
+■■■■■■■■■■■■■■■■■■■■■■■■■         78% | ETA:  4m
+■■■■■■■■■■■■■■■■■■■■■■■■■         81% | ETA:  3m
+■■■■■■■■■■■■■■■■■■■■■■■■■■        83% | ETA:  3m
+■■■■■■■■■■■■■■■■■■■■■■■■■■        85% | ETA:  3m
+■■■■■■■■■■■■■■■■■■■■■■■■■■■       86% | ETA:  2m
+■■■■■■■■■■■■■■■■■■■■■■■■■■■       87% | ETA:  2m
+■■■■■■■■■■■■■■■■■■■■■■■■■■■       88% | ETA:  2m
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■      89% | ETA:  2m
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■      89% | ETA:  2m
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■     93% | ETA:  1m
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■     94% | ETA:  1m
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■    96% | ETA: 40s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■    97% | ETA: 30s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■    98% | ETA: 23s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■   99% | ETA: 10s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■  100% | ETA:  3s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■  100% | ETA:  0s
+[chunk-019 (ordinal_probit n=400 p=12 T-weak)] wall=976.9s (16.28 min), rows=900/900
+Wrote /home/snakagaw/gllvm_work/campaigns/design122-confirmatory-20260817-646005cf/chunk-019.csv (n_attempted=900, n_ok=900, wall=976.9s)
+Design 122 confirmatory full (chunk=19) finished.
+Design 122 confirmatory full (chunk=20) starting on totoro workers=96 commit=646005cf campaign_id=design122-confirmatory-20260817-646005cf
+gllvmTMB is EXPERIMENTAL (lifecycle: experimental). Use at your own risk: the package is not complete, is not fully human-verified, and needs extensive further validation. Point estimates are the primary inferential output, but evidence is route- and regime-specific. Broad interval coverage is not certified. One narrow two-sided Gaussian total-variance profile regime has a documented 0.94 floor. See the Current limitations and boundaries page for scope.
+Loaded existing frozen truths from /home/snakagaw/gllvm_work/campaigns/design122-confirmatory-20260817-646005cf/design122-campaign-truths.rds 
+[chunk-020 (ordinal_probit n=400 p=12 T-mid)] 900 fits, workers=96
+■                                  0% | ETA: 14h
+■                                  0% | ETA:  7h
+■                                  0% | ETA:  1d
+■                                  1% | ETA:  6h
+■■■■■■■                           19% | ETA: 21m
+■■■■■■■                           20% | ETA: 21m
+■■■■■■■■                          23% | ETA: 17m
+■■■■■■■■■                         26% | ETA: 15m
+■■■■■■■■■                         27% | ETA: 15m
+■■■■■■■■■                         27% | ETA: 14m
+■■■■■■■■■■                        29% | ETA: 14m
+■■■■■■■■■■                        29% | ETA: 14m
+■■■■■■■■■■                        30% | ETA: 14m
+■■■■■■■■■■                        31% | ETA: 14m
+■■■■■■■■■■                        31% | ETA: 14m
+■■■■■■■■■■■                       32% | ETA: 15m
+■■■■■■■■■■■                       32% | ETA: 15m
+■■■■■■■■■■■                       33% | ETA: 15m
+■■■■■■■■■■■                       34% | ETA: 15m
+■■■■■■■■■■■                       35% | ETA: 15m
+■■■■■■■■■■■■                      36% | ETA: 14m
+■■■■■■■■■■■■                      37% | ETA: 13m
+■■■■■■■■■■■■■                     38% | ETA: 13m
+■■■■■■■■■■■■■                     39% | ETA: 13m
+■■■■■■■■■■■■■                     40% | ETA: 13m
+■■■■■■■■■■■■■                     41% | ETA: 12m
+■■■■■■■■■■■■■■                    43% | ETA: 13m
+■■■■■■■■■■■■■■■■                  50% | ETA: 10m
+■■■■■■■■■■■■■■■■■■                57% | ETA:  7m
+■■■■■■■■■■■■■■■■■■                58% | ETA:  8m
+■■■■■■■■■■■■■■■■■■■■              64% | ETA:  6m
+■■■■■■■■■■■■■■■■■■■■              64% | ETA:  6m
+■■■■■■■■■■■■■■■■■■■■■             65% | ETA:  6m
+■■■■■■■■■■■■■■■■■■■■■             66% | ETA:  6m
+■■■■■■■■■■■■■■■■■■■■■             67% | ETA:  6m
+■■■■■■■■■■■■■■■■■■■■■■            69% | ETA:  5m
+■■■■■■■■■■■■■■■■■■■■■■            69% | ETA:  5m
+■■■■■■■■■■■■■■■■■■■■■■            71% | ETA:  5m
+■■■■■■■■■■■■■■■■■■■■■■            71% | ETA:  5m
+■■■■■■■■■■■■■■■■■■■■■■■           72% | ETA:  5m
+■■■■■■■■■■■■■■■■■■■■■■■           75% | ETA:  4m
+■■■■■■■■■■■■■■■■■■■■■■■■          76% | ETA:  4m
+■■■■■■■■■■■■■■■■■■■■■■■■          77% | ETA:  4m
+■■■■■■■■■■■■■■■■■■■■■■■■          78% | ETA:  4m
+■■■■■■■■■■■■■■■■■■■■■■■■■         78% | ETA:  4m
+■■■■■■■■■■■■■■■■■■■■■■■■■         81% | ETA:  3m
+■■■■■■■■■■■■■■■■■■■■■■■■■■        83% | ETA:  3m
+■■■■■■■■■■■■■■■■■■■■■■■■■■        83% | ETA:  3m
+■■■■■■■■■■■■■■■■■■■■■■■■■■        85% | ETA:  2m
+■■■■■■■■■■■■■■■■■■■■■■■■■■■       88% | ETA:  2m
+■■■■■■■■■■■■■■■■■■■■■■■■■■■       88% | ETA:  2m
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■      89% | ETA:  2m
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■      89% | ETA:  2m
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■      90% | ETA:  2m
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■      90% | ETA:  2m
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■      91% | ETA:  1m
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■      91% | ETA:  1m
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■     92% | ETA:  1m
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■     93% | ETA:  1m
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■     93% | ETA:  1m
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■     94% | ETA:  1m
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■    96% | ETA: 41s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■    97% | ETA: 25s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■    98% | ETA: 19s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■  100% | ETA:  0s
+[chunk-020 (ordinal_probit n=400 p=12 T-mid)] wall=910.9s (15.18 min), rows=900/900
+Wrote /home/snakagaw/gllvm_work/campaigns/design122-confirmatory-20260817-646005cf/chunk-020.csv (n_attempted=900, n_ok=900, wall=910.9s)
+Design 122 confirmatory full (chunk=20) finished.
+Design 122 confirmatory full (chunk=21) starting on totoro workers=96 commit=646005cf campaign_id=design122-confirmatory-20260817-646005cf
+gllvmTMB is EXPERIMENTAL (lifecycle: experimental). Use at your own risk: the package is not complete, is not fully human-verified, and needs extensive further validation. Point estimates are the primary inferential output, but evidence is route- and regime-specific. Broad interval coverage is not certified. One narrow two-sided Gaussian total-variance profile regime has a documented 0.94 floor. See the Current limitations and boundaries page for scope.
+Loaded existing frozen truths from /home/snakagaw/gllvm_work/campaigns/design122-confirmatory-20260817-646005cf/design122-campaign-truths.rds 
+[chunk-021 (ordinal_probit n=400 p=12 T-strong)] 900 fits, workers=96
+■                                  0% | ETA:  5h
+■                                  0% | ETA:  4h
+■                                  0% | ETA: 15h
+■                                  1% | ETA:  5h
+■■■■■                             13% | ETA: 22m
+■■■■■                             15% | ETA: 20m
+■■■■■■                            17% | ETA: 18m
+■■■■■■■                           21% | ETA: 14m
+■■■■■■■                           22% | ETA: 14m
+■■■■■■■■                          25% | ETA: 12m
+■■■■■■■■■                         25% | ETA: 12m
+■■■■■■■■■                         27% | ETA: 11m
+■■■■■■■■■                         28% | ETA: 11m
+■■■■■■■■■                         28% | ETA: 11m
+■■■■■■■■■■                        29% | ETA: 11m
+■■■■■■■■■■                        29% | ETA: 11m
+■■■■■■■■■■                        29% | ETA: 11m
+■■■■■■■■■■                        30% | ETA: 11m
+■■■■■■■■■■                        30% | ETA: 11m
+■■■■■■■■■■                        30% | ETA: 11m
+■■■■■■■■■■                        31% | ETA: 12m
+■■■■■■■■■■                        31% | ETA: 12m
+■■■■■■■■■■                        31% | ETA: 12m
+■■■■■■■■■■■                       32% | ETA: 12m
+■■■■■■■■■■■                       32% | ETA: 12m
+■■■■■■■■■■■                       32% | ETA: 12m
+■■■■■■■■■■■                       33% | ETA: 12m
+■■■■■■■■■■■                       34% | ETA: 11m
+■■■■■■■■■■■                       34% | ETA: 12m
+■■■■■■■■■■■■                      36% | ETA: 11m
+■■■■■■■■■■■■                      37% | ETA: 11m
+■■■■■■■■■■■■                      38% | ETA: 10m
+■■■■■■■■■■■■                      38% | ETA: 10m
+■■■■■■■■■■■■■                     38% | ETA: 10m
+■■■■■■■■■■■■■■                    44% | ETA:  8m
+■■■■■■■■■■■■■■                    44% | ETA:  8m
+■■■■■■■■■■■■■■■                   46% | ETA:  8m
+■■■■■■■■■■■■■■■                   46% | ETA:  8m
+■■■■■■■■■■■■■■■                   48% | ETA:  7m
+■■■■■■■■■■■■■■■■                  49% | ETA:  7m
+■■■■■■■■■■■■■■■■                  51% | ETA:  7m
+■■■■■■■■■■■■■■■■■                 52% | ETA:  7m
+■■■■■■■■■■■■■■■■■                 53% | ETA:  6m
+■■■■■■■■■■■■■■■■■                 54% | ETA:  6m
+■■■■■■■■■■■■■■■■■                 54% | ETA:  6m
+■■■■■■■■■■■■■■■■■■                57% | ETA:  6m
+■■■■■■■■■■■■■■■■■■■               59% | ETA:  6m
+■■■■■■■■■■■■■■■■■■■               60% | ETA:  5m
+■■■■■■■■■■■■■■■■■■■               61% | ETA:  5m
+■■■■■■■■■■■■■■■■■■■■              62% | ETA:  5m
+■■■■■■■■■■■■■■■■■■■■              63% | ETA:  5m
+■■■■■■■■■■■■■■■■■■■■              64% | ETA:  5m
+■■■■■■■■■■■■■■■■■■■■■             67% | ETA:  4m
+■■■■■■■■■■■■■■■■■■■■■             68% | ETA:  4m
+■■■■■■■■■■■■■■■■■■■■■■            69% | ETA:  4m
+■■■■■■■■■■■■■■■■■■■■■■■           72% | ETA:  4m
+■■■■■■■■■■■■■■■■■■■■■■■■          75% | ETA:  3m
+■■■■■■■■■■■■■■■■■■■■■■■■          77% | ETA:  3m
+■■■■■■■■■■■■■■■■■■■■■■■■■         78% | ETA:  3m
+■■■■■■■■■■■■■■■■■■■■■■■■■         80% | ETA:  3m
+■■■■■■■■■■■■■■■■■■■■■■■■■         80% | ETA:  3m
+■■■■■■■■■■■■■■■■■■■■■■■■■         81% | ETA:  2m
+■■■■■■■■■■■■■■■■■■■■■■■■■■        82% | ETA:  2m
+■■■■■■■■■■■■■■■■■■■■■■■■■■        82% | ETA:  2m
+■■■■■■■■■■■■■■■■■■■■■■■■■■        83% | ETA:  2m
+■■■■■■■■■■■■■■■■■■■■■■■■■■        84% | ETA:  2m
+■■■■■■■■■■■■■■■■■■■■■■■■■■        84% | ETA:  2m
+■■■■■■■■■■■■■■■■■■■■■■■■■■■       85% | ETA:  2m
+■■■■■■■■■■■■■■■■■■■■■■■■■■■       86% | ETA:  2m
+■■■■■■■■■■■■■■■■■■■■■■■■■■■       87% | ETA:  2m
+■■■■■■■■■■■■■■■■■■■■■■■■■■■       88% | ETA:  2m
+■■■■■■■■■■■■■■■■■■■■■■■■■■■       88% | ETA:  1m
+■■■■■■■■■■■■■■■■■■■■■■■■■■■       88% | ETA:  1m
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■      89% | ETA:  1m
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■      90% | ETA:  1m
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■      91% | ETA:  1m
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■     92% | ETA:  1m
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■     92% | ETA:  1m
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■     93% | ETA:  1m
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■    96% | ETA: 32s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■    97% | ETA: 24s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■    97% | ETA: 22s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■    98% | ETA: 17s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■  100% | ETA:  2s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■  100% | ETA:  0s
+[chunk-021 (ordinal_probit n=400 p=12 T-strong)] wall=722.7s (12.04 min), rows=900/900
+Wrote /home/snakagaw/gllvm_work/campaigns/design122-confirmatory-20260817-646005cf/chunk-021.csv (n_attempted=900, n_ok=900, wall=722.7s)
+Design 122 confirmatory full (chunk=21) finished.
+Design 122 confirmatory full (chunk=24) starting on totoro workers=96 commit=646005cf campaign_id=design122-confirmatory-20260817-646005cf
+gllvmTMB is EXPERIMENTAL (lifecycle: experimental). Use at your own risk: the package is not complete, is not fully human-verified, and needs extensive further validation. Point estimates are the primary inferential output, but evidence is route- and regime-specific. Broad interval coverage is not certified. One narrow two-sided Gaussian total-variance profile regime has a documented 0.94 floor. See the Current limitations and boundaries page for scope.
+Loaded existing frozen truths from /home/snakagaw/gllvm_work/campaigns/design122-confirmatory-20260817-646005cf/design122-campaign-truths.rds 
+[chunk-024 (ordinal_probit n=400 p=27 T-strong)] 900 fits, workers=96
+■                                  0% | ETA:  1d
+■                                  0% | ETA:  2d
+■                                  1% | ETA: 11h
+■                                  2% | ETA:  9h
+■■                                 3% | ETA:  6h
+■■■                                6% | ETA:  3h
+■■■                                6% | ETA:  2h
+■■■■                              10% | ETA:  1h
+■■■■                              11% | ETA:  1h
+■■■■■                             12% | ETA:  1h
+■■■■■                             13% | ETA:  1h
+■■■■■                             13% | ETA:  1h
+■■■■■                             14% | ETA:  1h
+■■■■■■                            16% | ETA:  1h
+■■■■■■■                           19% | ETA: 48m
+■■■■■■■                           19% | ETA: 48m
+■■■■■■■                           20% | ETA: 47m
+■■■■■■■                           22% | ETA: 43m
+■■■■■■■■                          22% | ETA: 42m
+■■■■■■■■                          23% | ETA: 41m
+■■■■■■■■                          23% | ETA: 42m
+■■■■■■■■■                         25% | ETA: 38m
+■■■■■■■■■                         25% | ETA: 39m
+■■■■■■■■■                         26% | ETA: 39m
+■■■■■■■■■                         26% | ETA: 39m
+■■■■■■■■■                         27% | ETA: 38m
+■■■■■■■■■                         28% | ETA: 37m
+■■■■■■■■■                         28% | ETA: 37m
+■■■■■■■■■                         28% | ETA: 37m
+■■■■■■■■■■                        29% | ETA: 37m
+■■■■■■■■■■                        29% | ETA: 38m
+■■■■■■■■■■                        29% | ETA: 38m
+■■■■■■■■■■                        30% | ETA: 39m
+■■■■■■■■■■                        30% | ETA: 39m
+■■■■■■■■■■                        31% | ETA: 38m
+■■■■■■■■■■                        31% | ETA: 37m
+■■■■■■■■■■■                       32% | ETA: 38m
+■■■■■■■■■■■                       34% | ETA: 34m
+■■■■■■■■■■■■                      35% | ETA: 34m
+■■■■■■■■■■■■                      37% | ETA: 32m
+■■■■■■■■■■■■■                     39% | ETA: 30m
+■■■■■■■■■■■■■                     39% | ETA: 30m
+■■■■■■■■■■■■■                     40% | ETA: 29m
+■■■■■■■■■■■■■■                    42% | ETA: 27m
+■■■■■■■■■■■■■■                    43% | ETA: 26m
+■■■■■■■■■■■■■■                    43% | ETA: 27m
+■■■■■■■■■■■■■■                    44% | ETA: 26m
+■■■■■■■■■■■■■■■                   45% | ETA: 25m
+■■■■■■■■■■■■■■■                   46% | ETA: 24m
+■■■■■■■■■■■■■■■                   47% | ETA: 24m
+■■■■■■■■■■■■■■■                   47% | ETA: 24m
+■■■■■■■■■■■■■■■                   48% | ETA: 24m
+■■■■■■■■■■■■■■■■                  49% | ETA: 23m
+■■■■■■■■■■■■■■■■                  49% | ETA: 22m
+■■■■■■■■■■■■■■■■                  50% | ETA: 22m
+■■■■■■■■■■■■■■■■                  51% | ETA: 22m
+■■■■■■■■■■■■■■■■■                 52% | ETA: 21m
+■■■■■■■■■■■■■■■■■                 53% | ETA: 21m
+■■■■■■■■■■■■■■■■■                 54% | ETA: 20m
+■■■■■■■■■■■■■■■■■                 55% | ETA: 20m
+■■■■■■■■■■■■■■■■■■                55% | ETA: 20m
+■■■■■■■■■■■■■■■■■■                56% | ETA: 19m
+■■■■■■■■■■■■■■■■■■                57% | ETA: 19m
+■■■■■■■■■■■■■■■■■■                57% | ETA: 19m
+■■■■■■■■■■■■■■■■■■                58% | ETA: 19m
+■■■■■■■■■■■■■■■■■■■               60% | ETA: 17m
+■■■■■■■■■■■■■■■■■■■               60% | ETA: 17m
+■■■■■■■■■■■■■■■■■■■               61% | ETA: 17m
+■■■■■■■■■■■■■■■■■■■               61% | ETA: 17m
+■■■■■■■■■■■■■■■■■■■■              62% | ETA: 17m
+■■■■■■■■■■■■■■■■■■■■              63% | ETA: 16m
+■■■■■■■■■■■■■■■■■■■■              64% | ETA: 16m
+■■■■■■■■■■■■■■■■■■■■              64% | ETA: 15m
+■■■■■■■■■■■■■■■■■■■■■             65% | ETA: 15m
+■■■■■■■■■■■■■■■■■■■■■             66% | ETA: 15m
+■■■■■■■■■■■■■■■■■■■■■             66% | ETA: 15m
+■■■■■■■■■■■■■■■■■■■■■             67% | ETA: 14m
+■■■■■■■■■■■■■■■■■■■■■             68% | ETA: 14m
+■■■■■■■■■■■■■■■■■■■■■             68% | ETA: 14m
+■■■■■■■■■■■■■■■■■■■■■             68% | ETA: 13m
+■■■■■■■■■■■■■■■■■■■■■■            69% | ETA: 13m
+■■■■■■■■■■■■■■■■■■■■■■            70% | ETA: 12m
+■■■■■■■■■■■■■■■■■■■■■■            71% | ETA: 12m
+■■■■■■■■■■■■■■■■■■■■■■            71% | ETA: 12m
+■■■■■■■■■■■■■■■■■■■■■■            71% | ETA: 12m
+■■■■■■■■■■■■■■■■■■■■■■■           72% | ETA: 12m
+■■■■■■■■■■■■■■■■■■■■■■■           73% | ETA: 11m
+■■■■■■■■■■■■■■■■■■■■■■■           74% | ETA: 11m
+■■■■■■■■■■■■■■■■■■■■■■■           75% | ETA: 10m
+■■■■■■■■■■■■■■■■■■■■■■■■          76% | ETA: 10m
+■■■■■■■■■■■■■■■■■■■■■■■■          77% | ETA: 10m
+■■■■■■■■■■■■■■■■■■■■■■■■          77% | ETA: 10m
+■■■■■■■■■■■■■■■■■■■■■■■■■         79% | ETA:  8m
+■■■■■■■■■■■■■■■■■■■■■■■■■         80% | ETA:  8m
+■■■■■■■■■■■■■■■■■■■■■■■■■         81% | ETA:  8m
+■■■■■■■■■■■■■■■■■■■■■■■■■         82% | ETA:  7m
+■■■■■■■■■■■■■■■■■■■■■■■■■■        82% | ETA:  7m
+■■■■■■■■■■■■■■■■■■■■■■■■■■        83% | ETA:  7m
+■■■■■■■■■■■■■■■■■■■■■■■■■■        84% | ETA:  6m
+■■■■■■■■■■■■■■■■■■■■■■■■■■        85% | ETA:  6m
+■■■■■■■■■■■■■■■■■■■■■■■■■■■       85% | ETA:  6m
+■■■■■■■■■■■■■■■■■■■■■■■■■■■       86% | ETA:  6m
+■■■■■■■■■■■■■■■■■■■■■■■■■■■       87% | ETA:  5m
+■■■■■■■■■■■■■■■■■■■■■■■■■■■       87% | ETA:  5m
+■■■■■■■■■■■■■■■■■■■■■■■■■■■       88% | ETA:  5m
+■■■■■■■■■■■■■■■■■■■■■■■■■■■       88% | ETA:  5m
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■      90% | ETA:  4m
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■      91% | ETA:  4m
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■      91% | ETA:  3m
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■     93% | ETA:  3m
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■     94% | ETA:  2m
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■     94% | ETA:  2m
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■     95% | ETA:  2m
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■    96% | ETA:  2m
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■    97% | ETA:  1m
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■   99% | ETA: 31s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■  100% | ETA:  8s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■  100% | ETA:  0s
+[chunk-024 (ordinal_probit n=400 p=27 T-strong)] wall=2282.6s (38.04 min), rows=900/900
+Wrote /home/snakagaw/gllvm_work/campaigns/design122-confirmatory-20260817-646005cf/chunk-024.csv (n_attempted=900, n_ok=900, wall=2282.6s)
+Design 122 confirmatory full (chunk=24) finished.

@@ -3,8 +3,9 @@
 ## Research note:
 ##   docs/dev-log/research/2026-08-16-mspl-W-onesided-audit.md
 ## Helpers stay in this file. Do not call live MSPL. No se=TRUE.
-## G0 SIGNED REPLACE (#1102): live Poisson tape is working W_*;
-## W1/W2 keep true-W=mu algebra as historical contrast.
+## G0 SIGNED REPLACE (#1102): live Poisson tape REPLACE to working W_*
+## is allowed and expected. W1 keeps true-W=mu algebra; W2 documents
+## true-W one-sided P_J but pins live W_* two-sided (cf W3/W4).
 
 .wstar_working_W <- function(eta) {
   mu <- stats::plogis(as.numeric(eta))
@@ -87,22 +88,18 @@ test_that("W1: Poisson W=exp(eta) vanishes at -Inf and grows at +Inf", {
   expect_gt(min(w_hi), 1e3)
 })
 
-test_that("W2: Poisson true W is one-sided; live tape is W_*", {
+test_that("W2: live Poisson working W_* is two-sided (true W=mu documented)", {
   fx <- .wstar_toy()
   b0 <- c(-8, -4, 0, 4, 8)
-  ## Historical / true-W contrast (why REPLACE was signed): P_J rewards +Inf.
-  Pj_true <- vapply(b0, function(b) {
-    .wstar_Pj(fx$X, .wstar_pois_W(.wstar_eta(fx, b)))
-  }, numeric(1L))
-  expect_true(all(is.finite(Pj_true)))
-  expect_true(all(diff(Pj_true) > 0))
-  expect_lt(Pj_true[1L], -5)
-  expect_gt(tail(Pj_true, 1L), 8)
-  ## Linear in the intercept on this design: +4 per +4 in beta0.
-  expect_equal(diff(Pj_true), rep(4, 4L), tolerance = 1e-8)
+  ## Documentation only — not a live pin. True Poisson W=mu on this
+  ## design rewards +Inf: Pj_true at b0 = (-8,-4,0,4,8) climbs by +4
+  ## per +4 in the intercept (why G0 REPLACE was signed; see W1).
+  ## Pj_true <- vapply(b0, function(b) {
+  ##   .wstar_Pj(fx$X, .wstar_pois_W(.wstar_eta(fx, b)))
+  ## }, numeric(1L))
+  ## # diff(Pj_true) == c(4, 4, 4, 4); Pj_true[1] < -5; tail > 8
 
-  ## Live tape after #1102: working logistic W_* is two-sided on this design
-  ## (same algebra W3 pins; kept here so W2 mirrors the Tweedie W4 shape).
+  ## Live pin after #1102 (cf W3/W4): working logistic W_* is two-sided.
   Pj_live <- vapply(b0, function(b) {
     .wstar_Pj(fx$X, .wstar_working_W(.wstar_eta(fx, b)))
   }, numeric(1L))

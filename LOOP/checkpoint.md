@@ -3,7 +3,7 @@
 GOAL: see LOOP/GOAL.md.
 STATE: SCAFFOLD complete; Confirm landed on this branch; R0+R1 done; next = S1 Design stub.
 ARCS DONE (verified):
-- R0 — inventory note `docs/dev-log/research/2026-08-17-mspl-profile-led-r0-inventory.md`; #1077 still draft tip fb44d7b5; Confirm SIGNED files present in worktree (commit this sitting).
+- R0 — inventory note `docs/dev-log/research/2026-08-17-mspl-profile-led-r0-inventory.md`; #1077 still draft tip fb44d7b5; Confirm SIGNED in ref `7de94fc7` on this branch.
 - R1 — lessons `docs/dev-log/research/2026-08-17-mspl-profile-led-r1-lessons.md`; no Design 118 file edits.
 ARC IN PROGRESS: none (batch barrier after SCAFFOLD).
 NEXT: **S1** — draft `docs/design/NN-mspl-profile-led-intervals.md` after re-checking NEXT FREE (~125); claim NN by commit.

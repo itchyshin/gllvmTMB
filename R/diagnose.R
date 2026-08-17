@@ -504,7 +504,7 @@
   saturation_share_thresh = 0.5,
   loading_relative_thresh = 8,
   loading_runaway_thresh = 25,
-  loading_absolute_thresh = 6
+  loading_absolute_thresh = 8
 ) {
   required <- c("y", "family_id_vec", "link_id_vec", "trait_id")
   tmb <- .gllvmTMB_tmb_data_or_null(object, required)
@@ -1381,14 +1381,29 @@
 #'   this supplies the absolute reference the ratio lacks. It is
 #'   meaningful because the latent scores are standard normal by
 #'   identification, so a binomial loading is the trait's latent standard
-#'   deviation in link units: a value of 6 already implies a fitted
+#'   deviation in link units: a value of 8 already implies a fitted
 #'   probability indistinguishable from 0 or 1 across an ordinary swing
-#'   of the axis. Default 6. Measured over 3,944 simulated binomial fits:
-#'   no healthy fit exceeded 3.99 and none was flagged, while the
-#'   threshold reported 97.3% of degenerate fits and caught 14 that the
-#'   relative criterion missed. Being a link-scale quantity it does not
-#'   transport to families whose response scale is arbitrary, which is
-#'   why this row is binomial-only.
+#'   of the axis. Default 8, raised from 6 (issue #1098) after the earlier
+#'   calibration pool (3,944 simulated binomial fits, no healthy fit above
+#'   3.99) turned out to be unrepresentative: its true loading scale never
+#'   reached the regime where this arm misfires. A second pool built
+#'   specifically to cross a realistic loading-scale range (928 healthy /
+#'   272 degenerate binomial-probit fits, `sigma_lambda` in `c(0.7, 3.0)`)
+#'   measured this arm as the SOLE source of every false positive found
+#'   (232/928 at threshold 6, all attributable to this arm alone). Raising
+#'   the threshold to 8 lowers the false-positive rate on that pool from
+#'   0.2500 to 0.1552 while sensitivity on its degenerate fits falls only
+#'   from 1.0000 to 0.9963 (one additional missed fit out of 272). This is
+#'   an interim improvement, not a fix: the arm is measurably
+#'   scale-dependent (false-positive rate 3.85% at a mild true loading
+#'   scale of `sigma_lambda = 0.7` versus 49.08% at `sigma_lambda = 3.0`,
+#'   the scale `aghq_ridge = 2` is already known to struggle at), so no
+#'   fixed link-scale constant is correct across loading scales, and this
+#'   default should not be read as calibrated against that regime.
+#'   `aghq_ridge = 2` reduces but does not remove the problem (46.0% ->
+#'   13.5% false positives at `sigma_lambda = 3.0`). Being a link-scale
+#'   quantity it does not transport to families whose response scale is
+#'   arbitrary, which is why this row is binomial-only.
 #' @param multinomial_collapse_floor Absolute floor on a `multinomial()`
 #'   (fid 16) contrast pseudo-trait's fitted loading energy
 #'   (`rowSums(Lambda^2)`), at or below which it is a collapsed contrast.
@@ -1459,7 +1474,7 @@ check_gllvmTMB <- function(
   binary_saturation_share_thresh = 0.5,
   loading_relative_thresh = 8,
   loading_runaway_thresh = 25,
-  loading_absolute_thresh = 6,
+  loading_absolute_thresh = 8,
   multinomial_collapse_floor = 1e-10,
   multinomial_collapse_rel_thresh = Inf,
   multinomial_rail_thresh = 0.99,

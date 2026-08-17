@@ -32,6 +32,26 @@ This development release adds an opt-in separation-screening and LA-MSPL lane
 for complete single-trial Bernoulli GLLVMs. Ordinary ML remains unchanged and
 is still the default.
 
+## Changed
+
+* **`check_gllvmTMB()`'s `loading_absolute_thresh` default raised from 6 to
+  8 (issue #1098).** Some binomial fits that previously reported `WARN` on
+  the `binomial_prevalence_loading` row now report `PASS`; nothing that
+  reported `PASS` before starts reporting `WARN`. The earlier default was
+  calibrated on a pool whose true loading scale never reached the regime
+  where this arm misfires. A pool built to cross a realistic loading-scale
+  range (928 healthy / 272 degenerate binomial-probit fits) measured a 25%
+  false-positive rate at the old threshold, all of it attributable to this
+  one arm; raising the threshold to 8 lowers that rate to 15.52% while
+  sensitivity on the same pool's degenerate fits falls only from 100.00% to
+  99.63% (one additional missed fit out of 272). This is an improvement,
+  not a fix: the arm remains measurably scale-dependent — false-positive
+  rate 3.85% at a mild true loading scale versus 49.08% at the scale
+  `aghq_ridge = 2` is already known to struggle at (issue #847) — so a
+  fixed link-scale constant cannot be correct across every loading scale a
+  fit may have. `aghq_ridge = 2` reduces the problem (46.0% -> 13.5% false
+  positives at that larger scale) but does not remove it.
+
 ## New
 
 * **Exact randomized-quantile residuals now cover nine more families.**

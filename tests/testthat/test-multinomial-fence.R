@@ -1,0 +1,850 @@
+## Multinomial (family_id 16) structured-term admission fence (Slice 0,
+## Design 108/123). Confirms every deferred keyword combined with a
+## multinomial() trait fails loud rather than silently reaching an
+## untested categorical path, and that the current admitted set (a shared
+## unit-tier latent() ordination, phylo_latent(), and the default auto-Psi)
+## still fits. See R/multinomial-fence.R for the leak this closes.
+##
+## Every cell below carries the SAME class,
+## "gllvmTMB_multinomial_structured_not_admitted", whether pass 1 (the early
+## covstruct-keyed classifier) or pass 2 (the late use_* re-scan,
+## belt-and-braces) catches it -- phylo_scalar() / animal_scalar() and mi()
+## are pass-2-only cells (propto and mi() predictor terms are not
+## covstructs), but the class is shared, so their assertions are just as
+## tight as the pass-1 cells.
+
+.mn_fence_data <- function(seed = 1L, n = 60L, K = 3L) {
+  set.seed(seed)
+  data.frame(
+    unit = factor(seq_len(n)), trait = factor("morph"),
+    value = factor(sample.int(K, n, replace = TRUE)),
+    x = stats::rnorm(n)
+  )
+}
+
+.mn_fence_phylo_data <- function(seed = 11L, n = 20L, K = 3L) {
+  set.seed(seed)
+  tree <- ape::rcoal(n); tree$tip.label <- paste0("sp", seq_len(n))
+  df <- data.frame(
+    species = factor(tree$tip.label, levels = tree$tip.label),
+    trait = factor("morph"),
+    value = factor(sample.int(K, n, replace = TRUE))
+  )
+  list(data = df, tree = tree)
+}
+
+.mn_not_admitted <- "gllvmTMB_multinomial_structured_not_admitted"
+
+## ---- Blocked: unit-tier dep() -------------------------------------------
+
+test_that("dep() at the unit tier is not admitted for multinomial", {
+  skip_on_cran()
+  df <- .mn_fence_data(1L)
+  expect_error(
+    gllvmTMB(value ~ 0 + trait + dep(0 + trait | unit), data = df,
+             family = multinomial(), trait = "trait", unit = "unit"),
+    class = .mn_not_admitted
+  )
+})
+
+## ---- Blocked: explicit unique()/indep() at the unit tier -----------------
+
+test_that("explicit unique() at the unit tier is not admitted for multinomial", {
+  skip_on_cran()
+  df <- .mn_fence_data(2L)
+  expect_error(
+    gllvmTMB(value ~ 0 + trait + unique(0 + trait | unit), data = df,
+             family = multinomial(), trait = "trait", unit = "unit"),
+    class = .mn_not_admitted
+  )
+})
+
+test_that("explicit indep() at the unit tier is not admitted for multinomial", {
+  skip_on_cran()
+  df <- .mn_fence_data(3L)
+  expect_error(
+    gllvmTMB(value ~ 0 + trait + indep(0 + trait | unit), data = df,
+             family = multinomial(), trait = "trait", unit = "unit"),
+    class = .mn_not_admitted
+  )
+})
+
+## ---- Admitted (Slice 4, 2026-08-16): generic (1 | group) random intercept -
+## Moved to test-matrix-multinomial-unit.R (admission-fit, sigma_re recovery,
+## baseline-invariance, and OLRE-guard coverage) -- see R/multinomial-fence.R
+## and `.mn_admission_table`. The OLD fixture here (`.mn_fence_data(4L)`, a
+## `(1 | unit)` term where `unit = factor(seq_len(n))` gives exactly ONE
+## categorical observation per group level) is now itself the canonical OLRE
+## case: it still errors, but typed `gllvmTMB_multinomial_olre_not_admitted`
+## rather than `gllvmTMB_multinomial_structured_not_admitted` -- a DIFFERENT
+## fence catches it now, not this one.
+
+test_that("(1 | group) with one observation per level is an OLRE, not this admission fence (regression pin)", {
+  skip_on_cran()
+  df <- .mn_fence_data(4L)
+  err <- tryCatch(
+    gllvmTMB(value ~ 0 + trait + (1 | unit), data = df,
+             family = multinomial(), trait = "trait", unit = "unit"),
+    error = function(e) e
+  )
+  expect_true(inherits(err, "error"))
+  expect_false(inherits(err, .mn_not_admitted))
+  expect_true(inherits(err, "gllvmTMB_multinomial_olre_not_admitted"))
+})
+
+## ---- Blocked: unit_obs ("within") tier ------------------------------------
+
+test_that("latent() at the unit_obs tier is not admitted for multinomial", {
+  skip_on_cran()
+  set.seed(5L)
+  n_unit <- 20L
+  df <- data.frame(
+    unit = factor(rep(seq_len(n_unit), each = 2L)),
+    site_species = factor(seq_len(n_unit * 2L)),
+    trait = factor("morph"),
+    value = factor(sample.int(3L, n_unit * 2L, replace = TRUE))
+  )
+  expect_error(
+    gllvmTMB(value ~ 0 + trait + latent(0 + trait | site_species, d = 1),
+             data = df, family = multinomial(), trait = "trait", unit = "unit"),
+    class = .mn_not_admitted
+  )
+})
+
+## ---- Blocked: (1 | group) at the unit_obs tier (Slice 5 repair, D-43
+## completion panel finding R1, 2026-08-16) -------------------------------
+## The re_int classifier branch used to admit ANY grouping unconditionally,
+## discarding the tier computed above it -- a unit_obs-tier (1 | g) term
+## classified ADMITTED and was only stopped (on some fixtures) by the
+## coincidental OLRE guard, not by a real admission decision. This fixture
+## deliberately gives `site_species` MULTIPLE observations per level (10
+## levels x 4 obs each, NOT singletons), so the OLRE guard would NOT have
+## caught the old bug either -- this is a genuine regression pin for the
+## tier fix, typed to the ADMISSION fence's class, not the OLRE class.
+
+test_that("(1 | group) at the unit_obs tier is not admitted for multinomial (not merely an OLRE coincidence)", {
+  skip_on_cran()
+  set.seed(51L)
+  n_ss <- 10L; n_per_ss <- 4L
+  n <- n_ss * n_per_ss
+  df <- data.frame(
+    unit = factor(seq_len(n)),
+    site_species = factor(rep(seq_len(n_ss), each = n_per_ss)),
+    trait = factor("morph"),
+    value = factor(sample.int(3L, n, replace = TRUE))
+  )
+  expect_error(
+    gllvmTMB(value ~ 0 + trait + (1 | site_species), data = df,
+             family = multinomial(), trait = "trait", unit = "unit",
+             unit_obs = "site_species"),
+    class = .mn_not_admitted
+  )
+})
+
+## ---- Admitted (Slice 4, 2026-08-16): cluster tier (indep(0 + trait | g)
+## via `cluster =`) -------------------------------------------------------
+## Moved to test-matrix-multinomial-unit.R (admission-fit + extract_Sigma()
+## coverage). The old fixture (10 species levels x 4 observations each,
+## `.mn_fence_data`-style) has MULTIPLE observations per level, so it is not
+## the OLRE case -- flipping this cell from blocked to admitted means the
+## fit now genuinely constructs and converges, which is a positive-control
+## claim, not a fence regression pin. This is a lightweight construction
+## smoke check only; test-matrix-multinomial-unit.R carries the real
+## admission-fit + extract_Sigma() evidence.
+
+test_that("indep() at the cluster tier is admitted for multinomial (Slice 4)", {
+  skip_on_cran()
+  set.seed(6L)
+  n <- 40L
+  df <- data.frame(
+    unit = factor(seq_len(n)), species = factor(rep(seq_len(10L), length.out = n)),
+    trait = factor("morph"), value = factor(sample.int(3L, n, replace = TRUE))
+  )
+  fit <- tryCatch(
+    gllvmTMB(value ~ 0 + trait + indep(0 + trait | species), data = df,
+             family = multinomial(), trait = "trait", unit = "unit",
+             cluster = "species"),
+    error = function(e) e
+  )
+  if (inherits(fit, "error")) {
+    expect_false(inherits(fit, .mn_not_admitted))
+  } else {
+    expect_s3_class(fit, "gllvmTMB_multi")
+  }
+})
+
+## ---- Admitted (Slice 4, 2026-08-16): cluster2 tier ------------------------
+## Same reasoning as the cluster-tier cell above; use_diag_cluster2 is the
+## LITERALLY IDENTICAL engine route to use_diag_species (verified in
+## R/multinomial-fence.R's header comment).
+
+test_that("indep() at the cluster2 tier is admitted for multinomial (Slice 4, same engine as cluster)", {
+  skip_on_cran()
+  set.seed(7L)
+  n <- 40L
+  df <- data.frame(
+    unit = factor(seq_len(n)), year = factor(rep(seq_len(5L), length.out = n)),
+    trait = factor("morph"), value = factor(sample.int(3L, n, replace = TRUE))
+  )
+  fit <- tryCatch(
+    gllvmTMB(value ~ 0 + trait + indep(0 + trait | year), data = df,
+             family = multinomial(), trait = "trait", unit = "unit",
+             cluster2 = "year"),
+    error = function(e) e
+  )
+  if (inherits(fit, "error")) {
+    expect_false(inherits(fit, .mn_not_admitted))
+  } else {
+    expect_s3_class(fit, "gllvmTMB_multi")
+  }
+})
+
+## ---- Blocked: cluster/cluster2 common = TRUE (the scalar() modifier) -----
+## The generic engine has no common-pooling map for use_diag_species /
+## use_diag_cluster2 (unlike the unit/unit_obs diag_B_common/diag_W_common
+## map tricks), so admitting a common = TRUE request would silently ignore
+## it rather than actually pool to one shared level -- refused explicitly,
+## matching phylo_scalar()/animal_scalar()/kernel_scalar().
+
+test_that("indep(..., common = TRUE) at the cluster tier is not admitted for multinomial", {
+  skip_on_cran()
+  set.seed(8L)
+  n <- 40L
+  df <- data.frame(
+    unit = factor(seq_len(n)), species = factor(rep(seq_len(10L), length.out = n)),
+    trait = factor("morph"), value = factor(sample.int(3L, n, replace = TRUE))
+  )
+  expect_error(
+    gllvmTMB(value ~ 0 + trait + indep(0 + trait | species, common = TRUE),
+             data = df, family = multinomial(), trait = "trait", unit = "unit",
+             cluster = "species"),
+    class = .mn_not_admitted
+  )
+})
+
+test_that("indep(..., common = TRUE) at the cluster2 tier is not admitted for multinomial", {
+  skip_on_cran()
+  set.seed(9L)
+  n <- 40L
+  df <- data.frame(
+    unit = factor(seq_len(n)), year = factor(rep(seq_len(5L), length.out = n)),
+    trait = factor("morph"), value = factor(sample.int(3L, n, replace = TRUE))
+  )
+  expect_error(
+    gllvmTMB(value ~ 0 + trait + indep(0 + trait | year, common = TRUE),
+             data = df, family = multinomial(), trait = "trait", unit = "unit",
+             cluster2 = "year"),
+    class = .mn_not_admitted
+  )
+})
+
+## ---- Blocked: augmented (intercept + slope) latent() / phylo_latent() ----
+## (Slice 0 repair, adversarial Opus review 2026-08-16, findings 1-2: pass 1
+## fell through to ADMITTED for both -- neither carries `.dep`/`.phylo_unique`/
+## `.kernel_name`/`.animal_source`, so the plain unit-tier / plain-latent
+## checks matched. The `latent()` case was still caught by the untyped
+## pass-2 use_rr_B_slope scan (see the pre-existing
+## test-cross-family-multinomial.R regression test); the `phylo_latent()`
+## case was caught by NEITHER pass -- an unrelated per-family
+## augmented-slope-support gate happened to abort first.)
+
+test_that("augmented (1 + x) latent() is not admitted for multinomial", {
+  skip_on_cran()
+  df <- .mn_fence_data(41L, n = 60L)
+  expect_error(
+    gllvmTMB(value ~ 0 + trait + latent(1 + x | unit, d = 1), data = df,
+             family = multinomial(), trait = "trait", unit = "unit"),
+    class = .mn_not_admitted
+  )
+})
+
+test_that("augmented (1 + x) phylo_latent() is not admitted for multinomial", {
+  skip_on_cran(); skip_if_not_installed("ape")
+  fx <- .mn_fence_phylo_data(42L, n = 20L)
+  df <- fx$data
+  df$x <- stats::rnorm(nrow(df))
+  expect_error(
+    gllvmTMB(value ~ 0 + trait + phylo_latent(1 + x | species, d = 1),
+             data = df, family = multinomial(), trait = "trait",
+             unit = "species", phylo_tree = fx$tree),
+    class = .mn_not_admitted
+  )
+})
+
+## ---- Blocked: phylo_latent(unique = TRUE) (a free phylogenetic Psi) ------
+## (Slice 0 repair, finding 3: pass 1 + the admission table wrongly said
+## ADMITTED, contradicting R/extract-sigma.R's documented policy. Pass 2
+## already caught it via use_phylo_diag, so this was a pass-1/table
+## contradiction, not a live leak -- fixed anyway, since pass 1 not being
+## load-bearing here defeats its purpose.)
+
+test_that("phylo_latent(unique = TRUE) is not admitted for multinomial", {
+  skip_on_cran(); skip_if_not_installed("ape")
+  fx <- .mn_fence_phylo_data(43L, n = 20L)
+  expect_error(
+    gllvmTMB(value ~ 0 + trait + phylo_latent(species, d = 1, unique = TRUE),
+             data = fx$data, family = multinomial(), trait = "trait",
+             unit = "species", phylo_tree = fx$tree),
+    class = .mn_not_admitted
+  )
+})
+
+## ---- Blocked: meta_V() / equalto() (Slice 0 repair, finding 8) -----------
+## Previously blanket-exempted in both passes alongside use_propto; no
+## established route for a known-sampling-covariance term on a
+## categorical-contrast pseudo-trait, so fail-closed by default.
+
+test_that("meta_V() is not admitted for multinomial", {
+  skip_on_cran()
+  set.seed(44L)
+  n_unit <- 20L; K <- 3L
+  df <- data.frame(
+    unit = factor(seq_len(n_unit)), trait = factor("morph"),
+    value = factor(sample.int(K, n_unit, replace = TRUE))
+  )
+  ## known_V is sized to the internal n_obs AFTER multinomial's (K-1)
+  ## pseudo-trait expansion (n_unit * (K - 1)), not nrow(df). This only
+  ## matters if the fence is ever removed and the fit runs far enough to
+  ## reach the known_V dimension check -- get it right so a future
+  ## regression is reported as "not blocked", not masked as "bad V size".
+  V <- diag(stats::runif(n_unit * (K - 1L), 0.02, 0.08))
+  expect_error(
+    gllvmTMB(value ~ 0 + trait + meta_V(V = V), data = df,
+             family = multinomial(), trait = "trait", unit = "unit",
+             known_V = V),
+    class = .mn_not_admitted
+  )
+})
+
+## ---- Admitted (Slice 2, 2026-08-16): phylo_dep() / phylo_indep() /
+## phylo_unique() / their animal_*/kernel_* twins -------------------------
+## The phylo mode axis (dep = full V, indep/standalone unique = diagonal V)
+## moved from BLOCKED to ADMITTED for all three sources (phylo/animal/kernel)
+## in Slice 2 -- see R/multinomial-fence.R's `.mn_admission_table` and
+## admission-fit / equivalence coverage in
+## test-matrix-multinomial-phylo.R. Only the *_scalar() cells (below) and
+## every other mode (augmented slopes, *_latent(unique = TRUE), multi-kernel)
+## stay blocked.
+
+## ---- Blocked: phylo_scalar() / animal_scalar() (propto exemption removed) --
+
+test_that("phylo_scalar() is not admitted for multinomial (propto exemption removed)", {
+  skip_on_cran(); skip_if_not_installed("ape")
+  fx <- .mn_fence_phylo_data(14L)
+  expect_error(
+    gllvmTMB(value ~ 0 + trait + phylo_scalar(species), data = fx$data,
+             family = multinomial(), trait = "trait", unit = "species",
+             phylo_tree = fx$tree),
+    class = .mn_not_admitted
+  )
+})
+
+test_that("animal_scalar() is not admitted for multinomial", {
+  skip_on_cran(); skip_if_not_installed("ape")
+  fx <- .mn_fence_phylo_data(15L)
+  A <- ape::vcv(fx$tree, corr = TRUE)
+  expect_error(
+    gllvmTMB(value ~ 0 + trait + animal_scalar(species, A = A), data = fx$data,
+             family = multinomial(), trait = "trait", unit = "species"),
+    class = .mn_not_admitted
+  )
+})
+
+## ---- Blocked: kernel_scalar() (Slice 2, 2026-08-16) -----------------------
+## Unlike phylo_scalar()/animal_scalar() (which route through the unrelated
+## `propto` engine and were already blocked by pass 2's use_propto re-scan,
+## unchanged since Slice 0), kernel_scalar() shares the SAME phylo_rr
+## covstruct shape and the SAME `.phylo_unique = TRUE, .indep = TRUE` markers
+## as the now-admitted kernel_indep() -- distinguished ONLY by
+## `.kernel_mode == "scalar"` (R/brms-sugar.R). This is the one cell where
+## pass 1 (this file's early classifier) is the ONLY thing keeping a scalar
+## cell blocked now that its indep/dep siblings are admitted -- a load-bearing
+## distinction that did not need testing before Slice 2 (every kernel_rr mode
+## was uniformly blocked).
+
+test_that("kernel_scalar() is not admitted for multinomial (distinguished from the now-admitted kernel_indep())", {
+  skip_on_cran()
+  df <- .mn_fence_data(19L, n = 20L)
+  K <- diag(20L)
+  rownames(K) <- colnames(K) <- levels(df$unit)
+  expect_error(
+    gllvmTMB(value ~ 0 + trait + kernel_scalar(unit, K = K, name = "k1"),
+             data = df, family = multinomial(), trait = "trait", unit = "unit",
+             cluster = "unit"),
+    class = .mn_not_admitted
+  )
+})
+
+test_that("kernel_indep(..., common = TRUE) (kernel_mode = scalar) is not admitted for multinomial", {
+  skip_on_cran()
+  df <- .mn_fence_data(20L, n = 20L)
+  K <- diag(20L)
+  rownames(K) <- colnames(K) <- levels(df$unit)
+  expect_error(
+    gllvmTMB(value ~ 0 + trait +
+               kernel_indep(unit, K = K, name = "k1", common = TRUE),
+             data = df, family = multinomial(), trait = "trait", unit = "unit",
+             cluster = "unit"),
+    class = .mn_not_admitted
+  )
+})
+
+## ---- Blocked: animal_latent(unique = TRUE) / kernel_latent(unique = TRUE) -
+## Slice 1 (2026-08-16) admits the PLAIN loadings-only cell for both keywords
+## (see test-matrix-multinomial-phylo.R for the admission-fit tests and the
+## phylo_latent() equivalence check); the auto-emitted Psi companion of
+## `unique = TRUE` stays blocked for the same reason phylo_latent(unique =
+## TRUE) does (a free phylogenetic Psi is not admitted for multinomial).
+
+test_that("animal_latent(unique = TRUE) is not admitted for multinomial", {
+  skip_on_cran(); skip_if_not_installed("ape")
+  fx <- .mn_fence_phylo_data(16L)
+  A <- ape::vcv(fx$tree, corr = TRUE)
+  expect_error(
+    gllvmTMB(value ~ 0 + trait +
+               animal_latent(species, A = A, d = 1, unique = TRUE),
+             data = fx$data, family = multinomial(), trait = "trait",
+             unit = "species"),
+    class = .mn_not_admitted
+  )
+})
+
+test_that("kernel_latent(unique = TRUE) (single name) is not admitted for multinomial", {
+  skip_on_cran()
+  df <- .mn_fence_data(17L, n = 20L)
+  K <- diag(20L)
+  rownames(K) <- colnames(K) <- levels(df$unit)
+  expect_error(
+    gllvmTMB(value ~ 0 + trait +
+               kernel_latent(unit, K = K, d = 1, name = "k1", unique = TRUE),
+             data = df, family = multinomial(), trait = "trait", unit = "unit",
+             cluster = "unit"),
+    class = .mn_not_admitted
+  )
+})
+
+## ---- Blocked: multi-kernel -------------------------------------------
+
+test_that("multi-kernel is not admitted for multinomial", {
+  skip_on_cran()
+  df <- .mn_fence_data(18L, n = 20L)
+  K1 <- diag(20L); rownames(K1) <- colnames(K1) <- levels(df$unit)
+  K2 <- diag(20L); rownames(K2) <- colnames(K2) <- levels(df$unit)
+  expect_error(
+    gllvmTMB(value ~ 0 + trait +
+               kernel_latent(unit, K = K1, d = 1, name = "k1") +
+               kernel_latent(unit, K = K2, d = 1, name = "k2"),
+             data = df, family = multinomial(), trait = "trait", unit = "unit",
+             cluster = "unit"),
+    class = .mn_not_admitted
+  )
+})
+
+## ---- Admitted (Slice 3, 2026-08-16): spatial_latent()/spatial_indep()/
+## spatial_dep() ------------------------------------------------------------
+## The spatial (SPDE) mode axis moved from BLOCKED to ADMITTED for all three
+## modes -- see R/multinomial-fence.R's `.mn_admission_table` and
+## admission-fit / equivalence / gate-check coverage in
+## test-matrix-multinomial-spatial.R (and its own regression pin: a mesh
+## built on the un-expanded per-site data aborts loud rather than silently
+## misaligning A_proj -- dev/multinomial-structured/gate-check-a-proj.R).
+## Only spatial_scalar() (below), spatial_latent(unique = TRUE)'s paired Psi
+## companion, standalone spatial_unique()/deprecated bare spatial(), and
+## augmented (intercept + slope) forms stay blocked.
+
+## ---- Blocked: spatial_* (scalar / paired-Psi / standalone-unique /
+## augmented) ----------------------------------------------------------
+
+.mn_spatial_skip <- function() {
+  testthat::skip_if_not_installed("fmesher")
+  ## NOTE: unlike an earlier version of this guard, INLA is NOT required --
+  ## verified (Slice 3, this task) that make_mesh() and the base SPDE engine
+  ## need only fmesher, matching test-matrix-ordinal-spatial.R's convention
+  ## (fmesher + TMB, no INLA).
+  testthat::skip_if_not_installed("TMB")
+}
+
+.mn_spatial_fixture <- function(seed = 21L, n = 40L, K = 3L) {
+  set.seed(seed)
+  df <- data.frame(
+    ## `site` (the default `unit =` column) is REQUIRED -- gllvmTMB()'s
+    ## early input validation (R/gllvmTMB.R, well before any family-specific
+    ## dispatch) asserts `site %in% names(data)` unconditionally. Its absence
+    ## here was a latent bug in this fixture that a blocked spatial_*() cell
+    ## never surfaced (the admission fence -- or, before Slice 3, mesh
+    ## construction itself failing at cutoff = 0.3 for some seeds -- usually
+    ## aborted/skipped first); fixed alongside Slice 3's own blocked-cell
+    ## tests, which reach this validation on every seed since their mesh
+    ## build succeeds.
+    site = factor(seq_len(n)),
+    trait = factor("morph"), value = factor(sample.int(K, n, replace = TRUE)),
+    x = stats::runif(n), y = stats::runif(n)
+  )
+  ## cutoff = 0.3 was too coarse for n = 40 random unit-square points on
+  ## several seeds (fmesher triangulation degenerates), silently skipping
+  ## those cells; 0.1 is verified to build cleanly across the seeds this
+  ## file uses (21/24/27/28/29/30) -- these are typed-BLOCKED cells, so mesh
+  ## quality / A_proj row alignment do not matter for what they exercise,
+  ## only that a mesh object exists at all.
+  mesh <- tryCatch(gllvmTMB::make_mesh(df, c("x", "y"), cutoff = 0.1),
+                    error = function(e) NULL)
+  list(data = df, mesh = mesh)
+}
+
+test_that("spatial_scalar() is not admitted for multinomial", {
+  skip_on_cran(); .mn_spatial_skip()
+  fx <- .mn_spatial_fixture(24L)
+  skip_if(is.null(fx$mesh), "mesh build failed")
+  expect_error(
+    gllvmTMB(value ~ 0 + trait + spatial_scalar(0 + trait | coords), data = fx$data,
+             family = multinomial(), trait = "trait", mesh = fx$mesh),
+    class = .mn_not_admitted
+  )
+})
+
+test_that("spatial_indep(..., common = TRUE) (spatial_mode = scalar) is not admitted for multinomial", {
+  skip_on_cran(); .mn_spatial_skip()
+  fx <- .mn_spatial_fixture(27L)
+  skip_if(is.null(fx$mesh), "mesh build failed")
+  expect_error(
+    gllvmTMB(value ~ 0 + trait +
+               spatial_indep(0 + trait | coords, common = TRUE),
+             data = fx$data, family = multinomial(), trait = "trait", mesh = fx$mesh),
+    class = .mn_not_admitted
+  )
+})
+
+test_that("spatial_latent(unique = TRUE) (a free spatial Psi companion) is not admitted for multinomial", {
+  skip_on_cran(); .mn_spatial_skip()
+  fx <- .mn_spatial_fixture(28L)
+  skip_if(is.null(fx$mesh), "mesh build failed")
+  expect_error(
+    gllvmTMB(value ~ 0 + trait +
+               spatial_latent(0 + trait | coords, d = 1, unique = TRUE),
+             data = fx$data, family = multinomial(), trait = "trait", mesh = fx$mesh),
+    class = .mn_not_admitted
+  )
+})
+
+test_that("standalone spatial_unique() (paired-companion alias, not an independent diagonal cell) is not admitted for multinomial", {
+  skip_on_cran(); .mn_spatial_skip()
+  fx <- .mn_spatial_fixture(29L)
+  skip_if(is.null(fx$mesh), "mesh build failed")
+  expect_error(
+    suppressWarnings(gllvmTMB(value ~ 0 + trait + spatial_unique(0 + trait | coords), data = fx$data,
+             family = multinomial(), trait = "trait", mesh = fx$mesh)),
+    class = .mn_not_admitted
+  )
+})
+
+test_that("augmented (1 + x) spatial_indep() is not admitted for multinomial", {
+  skip_on_cran(); .mn_spatial_skip()
+  set.seed(30L)
+  n <- 40L
+  df <- data.frame(
+    site = factor(seq_len(n)),
+    trait = factor("morph"), value = factor(sample.int(3L, n, replace = TRUE)),
+    x = stats::runif(n), y = stats::runif(n), z = stats::rnorm(n)
+  )
+  mesh <- tryCatch(gllvmTMB::make_mesh(df, c("x", "y"), cutoff = 0.1),
+                    error = function(e) NULL)
+  skip_if(is.null(mesh), "mesh build failed")
+  expect_error(
+    gllvmTMB(value ~ 0 + trait + spatial_indep(1 + z | coords), data = df,
+             family = multinomial(), trait = "trait", mesh = mesh),
+    class = .mn_not_admitted
+  )
+})
+
+## ---- Blocked: mi() (THE load-bearing timing-gap regression test) ---------
+## use_mi_predictor / use_mi_group / use_mi_discrete / use_mi_ordered are
+## defined AFTER the old fence location; a mi() term was invisible to the
+## late re-scan until it was moved past every use_mi_* definition.
+
+test_that("mi() is not admitted for multinomial (timing-gap regression)", {
+  skip_on_cran()
+  set.seed(25L)
+  n <- 60L
+  df <- data.frame(
+    unit = factor(seq_len(n)), trait = factor("morph"),
+    value = factor(sample.int(3L, n, replace = TRUE)),
+    x = stats::rnorm(n)
+  )
+  df$x[sample.int(n, 5L)] <- NA
+  expect_error(
+    gllvmTMB(value ~ 0 + trait + mi(x), data = df,
+             family = multinomial(), trait = "trait", unit = "unit",
+             impute = list(x = impute_model(x ~ 1, family = gaussian())),
+             missing = miss_control(predictor = "model")),
+    class = .mn_not_admitted
+  )
+})
+
+## ---- Not blocked by this fence: AGHQ request (orthogonal to covstructs) --
+## AGHQ is an integration-method choice, not a structured/latent term; it
+## acts on z_B (the shared latent() score, an ADMITTED tier) downstream of
+## this fence and is not itself a `use_*` covstruct flag. A request should
+## not trip the admission fence -- whatever AGHQ itself decides to do
+## (adapt, or decline back to Laplace because the fit is not AGHQ-eligible)
+## is out of this fence's scope.
+
+test_that("an AGHQ request on multinomial is not rejected by the admission fence", {
+  skip_on_cran()
+  df <- .mn_fence_data(26L, n = 60L)
+  fit <- tryCatch(
+    gllvmTMB(value ~ 0 + trait, data = df, family = multinomial(),
+             trait = "trait", unit = "unit",
+             control = gllvmTMBcontrol(aghq = 2)),
+    error = function(e) e
+  )
+  if (inherits(fit, "error")) {
+    expect_false(inherits(fit, .mn_not_admitted))
+  } else {
+    expect_s3_class(fit, "gllvmTMB_multi")
+  }
+})
+
+## ---- Positive controls: the admitted set still fits -----------------------
+
+test_that("phylo_latent() still fits for multinomial (positive control)", {
+  skip_on_cran(); skip_if_not_installed("ape")
+  fx <- .mn_fence_phylo_data(31L, n = 30L)
+  fit <- suppressMessages(gllvmTMB(
+    value ~ 0 + trait + phylo_latent(species, d = 2), data = fx$data,
+    family = multinomial(), trait = "trait", unit = "species",
+    phylo_tree = fx$tree
+  ))
+  expect_s3_class(fit, "gllvmTMB_multi")
+  expect_true(all(fit$tmb_data$family_id_vec == 16L))
+})
+
+test_that("shared latent() cross-family fit still constructs (positive control)", {
+  skip_on_cran(); skip_if_not_installed("MASS")
+  ## K = 3 categories (mirrors .build_xfam_raw() in
+  ## test-cross-family-multinomial.R): Lam is 3-column (gaussian trait +
+  ## two category-contrast columns), so the multinomial trait genuinely has
+  ## 3 unordered categories.
+  set.seed(32L)
+  N <- 80L
+  Lam <- matrix(c(1.3, 0.4, 1.0, 0.6, -0.6, 0.9), 3, byrow = TRUE)
+  d <- ncol(Lam)
+  Z <- matrix(stats::rnorm(N * d), N, d)
+  u <- Z %*% t(Lam)
+  yg <- u[, 1L] + stats::rnorm(N, sd = 0.25)
+  p <- cbind(1, exp(u[, 2L]), exp(u[, 3L])); p <- p / rowSums(p)
+  yc <- vapply(seq_len(N), function(i) sample.int(3L, 1L, prob = p[i, ]), integer(1))
+  dat <- rbind(
+    data.frame(unit = seq_len(N), trait = "g", family = "g", value = yg),
+    data.frame(unit = seq_len(N), trait = "cat", family = "m", value = yc)
+  )
+  dat$unit <- factor(dat$unit); dat$trait <- factor(dat$trait)
+  dat$family <- factor(dat$family)
+  fam <- list(g = gaussian(), m = multinomial())
+  attr(fam, "family_var") <- "family"
+  fit <- suppressWarnings(suppressMessages(gllvmTMB(
+    value ~ 0 + trait + latent(0 + trait | unit, d = 2),
+    data = dat, family = fam, trait = "trait", unit = "unit"
+  )))
+  expect_s3_class(fit, "gllvmTMB_multi")
+})
+
+test_that("the default auto-Psi works for multinomial (positive control)", {
+  skip_on_cran()
+  df <- .mn_fence_data(33L, n = 60L)
+  fit <- suppressMessages(suppressWarnings(gllvmTMB(
+    value ~ 0 + trait + latent(0 + trait | unit, d = 1), data = df,
+    family = multinomial(), trait = "trait", unit = "unit"
+  )))
+  expect_s3_class(fit, "gllvmTMB_multi")
+})
+
+## ---- Mixed-family propto message quality ---------------------------------
+## The fence is per-fit, not per-trait: a propto() (phylo_scalar()) term
+## targeting only a NON-multinomial trait in a mixed-family fit still aborts,
+## and the message should say so rather than blaming the multinomial trait.
+
+test_that("a mixed-family propto() term targeting only the non-multinomial trait still aborts, with a helpful message", {
+  skip_on_cran(); skip_if_not_installed("ape")
+  fx <- .mn_fence_phylo_data(34L, n = 20L)
+  ## A single mixed-family frame with a gaussian trait "g" carrying the
+  ## phylo_scalar() term and a multinomial trait sharing no structured term
+  ## of its own.
+  set.seed(35L)
+  n_sp <- 20L
+  tree <- fx$tree
+  dat <- data.frame(
+    species = factor(rep(tree$tip.label, 2L), levels = tree$tip.label),
+    trait = factor(rep(c("g", "cat"), each = n_sp)),
+    family = factor(rep(c("g", "m"), each = n_sp)),
+    value = c(stats::rnorm(n_sp), sample(1:3, n_sp, replace = TRUE))
+  )
+  fam <- list(g = gaussian(), m = multinomial())
+  attr(fam, "family_var") <- "family"
+  err <- tryCatch(
+    gllvmTMB(value ~ 0 + trait + phylo_scalar(species), data = dat,
+             family = fam, trait = "trait", unit = "species", phylo_tree = tree),
+    error = function(e) e
+  )
+  expect_true(inherits(err, "error"))
+  expect_match(conditionMessage(err), "per-fit|not per-trait|propto")
+})
+
+test_that("a mixed gaussian+multinomial dep(0+trait|unit) fit (a pass-1 path) also states the per-fit limitation", {
+  skip_on_cran(); skip_if_not_installed("MASS")
+  ## Slice 0 repair, finding 5: pass 2's message already carried a "per-fit,
+  ## not per-trait" note; pass 1's did not. dep(0 + trait | unit) is a
+  ## pass-1-only path (a plain "rr" covstruct, never reaches the use_*
+  ## re-scan because pass 1 aborts first), so this pins that pass 1's
+  ## message states the same limitation.
+  set.seed(45L)
+  N <- 40L
+  dat <- rbind(
+    data.frame(unit = seq_len(N), trait = "g", family = "g",
+               value = stats::rnorm(N)),
+    data.frame(unit = seq_len(N), trait = "cat", family = "m",
+               value = sample(1:3, N, replace = TRUE))
+  )
+  dat$unit <- factor(dat$unit); dat$trait <- factor(dat$trait)
+  dat$family <- factor(dat$family)
+  fam <- list(g = gaussian(), m = multinomial())
+  attr(fam, "family_var") <- "family"
+  err <- tryCatch(
+    gllvmTMB(value ~ 0 + trait + dep(0 + trait | unit), data = dat,
+             family = fam, trait = "trait", unit = "unit"),
+    error = function(e) e
+  )
+  expect_true(inherits(err, .mn_not_admitted))
+  expect_match(conditionMessage(err), "per-fit|not per-trait")
+})
+
+## ---- Table-consistency: .mn_admission_table matches the classifier -------
+## (Slice 0 repair, finding 6b -- would have caught finding 3: an admission-
+## table row whose `status` disagreed with what the classifier actually
+## returns for a representative covstruct of that row.)
+
+test_that(".mn_admission_table is consistent with .mn_classify_covstruct() for every row", {
+  skip_on_cran()
+  tbl <- gllvmTMB:::.mn_admission_table
+  site <- "unit"; ss_name <- "site_species"; species <- "species"
+  ## Slice 4 (Design 123, 2026-08-16) added cluster2-tier rows to the table,
+  ## so cluster2_col must resolve to a real column name here (NULL made the
+  ## cluster2 tier unreachable, which was fine before any row needed it).
+  cluster2_col <- "year"
+  ## One representative covstruct per table row, in row order.
+  reprs <- list(
+    list(kind = "rr",       group = as.name("unit"),    extra = list()),
+    list(kind = "diag",     group = as.name("unit"),    extra = list(.auto_unique = TRUE)),
+    list(kind = "phylo_rr", group = as.name("species"), extra = list()),
+    list(kind = "phylo_rr", group = as.name("species"),
+         extra = list(.phylo_unique = TRUE, .auto_unique = TRUE)),
+    list(kind = "rr",       group = as.name("unit"),    extra = list(.latent_augmented = TRUE)),
+    list(kind = "phylo_rr", group = as.name("species"), extra = list(.latent_slope = TRUE)),
+    list(kind = "equalto",  group = as.name("grp_V"),   extra = list()),
+    ## Slice 1 (Design 123, 2026-08-16): animal_latent()/kernel_latent()
+    ## (single name) admitted rows, and their unique = TRUE auto-Psi
+    ## companions, blocked.
+    list(kind = "phylo_rr", group = as.name("species"),
+         extra = list(.animal_source = TRUE)),
+    list(kind = "phylo_rr", group = as.name("species"),
+         extra = list(.kernel_name = "phy", .kernel_mode = "latent")),
+    list(kind = "phylo_rr", group = as.name("species"),
+         extra = list(.phylo_unique = TRUE, .auto_unique = TRUE, .animal_source = TRUE)),
+    list(kind = "phylo_rr", group = as.name("species"),
+         extra = list(.phylo_unique = TRUE, .auto_unique = TRUE,
+                      .kernel_name = "phy", .kernel_mode = "unique")),
+    ## Slice 2 (Design 123, 2026-08-16): the phylo mode axis (dep = full V,
+    ## indep/standalone unique = diagonal V) and its animal/kernel twins,
+    ## admitted; kernel_scalar() (same markers as kernel_indep(), .kernel_mode
+    ## = "scalar") stays blocked.
+    list(kind = "phylo_rr", group = as.name("species"), extra = list(.dep = TRUE)),
+    list(kind = "phylo_rr", group = as.name("species"),
+         extra = list(.phylo_unique = TRUE, .indep = TRUE)),
+    list(kind = "phylo_rr", group = as.name("species"),
+         extra = list(.phylo_unique = TRUE)),
+    list(kind = "phylo_rr", group = as.name("species"),
+         extra = list(.dep = TRUE, .animal_source = TRUE)),
+    list(kind = "phylo_rr", group = as.name("species"),
+         extra = list(.phylo_unique = TRUE, .indep = TRUE, .animal_source = TRUE)),
+    list(kind = "phylo_rr", group = as.name("species"),
+         extra = list(.phylo_unique = TRUE, .animal_source = TRUE)),
+    list(kind = "phylo_rr", group = as.name("species"),
+         extra = list(.dep = TRUE, .kernel_name = "k1", .kernel_mode = "dep")),
+    list(kind = "phylo_rr", group = as.name("species"),
+         extra = list(.phylo_unique = TRUE, .indep = TRUE,
+                      .kernel_name = "k1", .kernel_mode = "indep")),
+    list(kind = "phylo_rr", group = as.name("species"),
+         extra = list(.phylo_unique = TRUE,
+                      .kernel_name = "k1", .kernel_mode = "unique")),
+    list(kind = "phylo_rr", group = as.name("species"),
+         extra = list(.phylo_unique = TRUE, .indep = TRUE,
+                      .kernel_name = "k1", .kernel_mode = "scalar")),
+    ## Slice 4 (Design 123, 2026-08-16): generic (1 | g) random intercepts
+    ## and the non-phylogenetic cluster/cluster2 diagonal tier, admitted;
+    ## common = TRUE (the scalar() modifier) at cluster/cluster2, blocked.
+    list(kind = "re_int",   group = as.name("group3"), extra = list()),
+    list(kind = "diag",     group = as.name("species"), extra = list(.indep = TRUE)),
+    list(kind = "diag",     group = as.name("species"), extra = list()),
+    list(kind = "diag",     group = as.name("year"),    extra = list(.indep = TRUE)),
+    list(kind = "diag",     group = as.name("year"),    extra = list()),
+    list(kind = "diag",     group = as.name("species"),
+         extra = list(.indep = TRUE, common = TRUE)),
+    list(kind = "diag",     group = as.name("year"),
+         extra = list(.indep = TRUE, common = TRUE)),
+    ## Slice 3 (Design 123, 2026-08-16): the spatial (SPDE) mode axis --
+    ## spatial_latent()/spatial_indep()/spatial_dep() admitted;
+    ## spatial_latent(unique = TRUE)'s paired Psi companion, spatial_scalar(),
+    ## standalone spatial_unique() (no markers at all), and every augmented
+    ## form stay blocked.
+    list(kind = "spde", group = as.name("coords"),
+         extra = list(.spatial_latent = TRUE, .spatial_unique_diag = FALSE)),
+    list(kind = "spde", group = as.name("coords"), extra = list(.spatial_indep = TRUE)),
+    list(kind = "spde", group = as.name("coords"),
+         extra = list(.spatial_latent = TRUE, .dep = TRUE, .spatial_unique_diag = FALSE)),
+    list(kind = "spde", group = as.name("coords"),
+         extra = list(.spatial_latent = TRUE, .spatial_unique_diag = TRUE)),
+    list(kind = "spde", group = as.name("coords"), extra = list(.spatial_scalar = TRUE)),
+    list(kind = "spde", group = as.name("coords"), extra = list()),
+    list(kind = "spde", group = as.name("coords"),
+         extra = list(.spatial_latent_augmented = TRUE, d = 1L)),
+    ## Slice 5 repair (D-43 completion panel R1/R2, 2026-08-16): explicit
+    ## unit-tier dep()/indep()/unique() (previously classifier-fallthrough
+    ## only, no table row) and unit_obs-tier re_int (previously mis-admitted
+    ## -- see the re_int classifier branch's comment). All four blocked.
+    list(kind = "rr",     group = as.name("unit"), extra = list(.dep = TRUE)),
+    list(kind = "diag",   group = as.name("unit"), extra = list(.indep = TRUE)),
+    list(kind = "diag",   group = as.name("unit"), extra = list()),
+    list(kind = "re_int", group = as.name("site_species"), extra = list())
+  )
+  expect_equal(nrow(tbl), length(reprs))
+  for (i in seq_len(nrow(tbl))) {
+    cls <- gllvmTMB:::.mn_classify_covstruct(
+      reprs[[i]], site = site, ss_name = ss_name, species = species,
+      cluster2_col = cluster2_col
+    )
+    expect_identical(
+      cls$admitted, identical(tbl$status[i], "admitted"),
+      info = sprintf("row %d (%s/%s/%s): table says %s, classifier says admitted=%s",
+                      i, tbl$source[i], tbl$mode[i], tbl$tier[i], tbl$status[i], cls$admitted)
+    )
+  }
+})
+
+## ---- VA route pin: integration = "va" rejects multinomial -----------------
+## (Slice 0 repair, finding 6c.) Pass 1 runs before the VA route branches off
+## and only classifies covstructs -- it does not look at `control$integration`
+## -- and pass 2 is UNREACHABLE on the VA route (an early `return()` in
+## gllvmTMB_multi_fit() sends `integration = "va"` straight to
+## .gllvmTMB_va_route(), well before pass 2). The VA route's own
+## family/link fence (R/va-routing.R, `.va_route_family_link()`) is what
+## actually protects this route; this test pins that it still does.
+
+test_that("integration = \"va\" rejects a multinomial trait (VA route pin)", {
+  skip_on_cran()
+  df <- .mn_fence_data(46L, n = 60L)
+  expect_error(
+    gllvmTMB(value ~ 0 + trait, data = df, family = multinomial(),
+             trait = "trait", unit = "unit",
+             control = gllvmTMBcontrol(integration = "va")),
+    regexp = "multinomial|coupled-softmax|does not admit this model"
+  )
+})

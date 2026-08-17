@@ -94,6 +94,117 @@ is still the default.
   diagnostic only: it does not certify finite latent loadings or covariance
   parameters, and it never selects a penalized estimator automatically.
 
+## Fixed
+
+* **`multinomial()` structured-term admission is now fail-closed (Slice 0,
+  Design 108/123).** Several deferred keywords previously desugared
+  (`R/brms-sugar.R`) onto the same internal engine flag as an admitted
+  keyword and silently reached an untested categorical path instead of
+  erroring: `dep()` at the unit tier, `phylo_dep()`, `phylo_indep()` /
+  `phylo_unique()` (standalone), `animal_latent()`, single-name
+  `kernel_*()`, and `phylo_scalar()` / `animal_scalar()`. Every one of these
+  now aborts, as the documentation always said they should. **If you fitted
+  a `multinomial()` trait combined with any of the keywords above, that fit
+  ran on an unvalidated structured-term path and should be re-checked** —
+  the currently admitted set is unchanged: fixed effects, an ordinary shared
+  `latent(0 + trait | unit, d = k)` ordination, and intercept-only
+  `phylo_latent()` (default `unique = FALSE`; it emits no Psi companion at
+  all). A `mi()` predictor term combined with a multinomial trait, previously
+  invisible to the admission scan due to definition order, now also aborts.
+  A follow-up adversarial review found the fence itself was not yet
+  load-bearing everywhere: augmented (intercept + slope) `latent()` /
+  `phylo_latent()` random regressions, `phylo_latent(unique = TRUE)` (a free
+  phylogenetic Psi, never admitted, but the fence's first pass wrongly
+  labelled it admitted), and `meta_V()` / `equalto()` (no established route
+  on a categorical-contrast pseudo-trait) are now all explicitly blocked,
+  with a shared classed condition (`gllvmTMB_multinomial_structured_not_admitted`)
+  on every path.
+
+* **The `multinomial()` structured-term surface (Design 123, Slices 1-4,
+  2026-08-16) now admits a bounded set of among-category and grouping
+  structures, each gated on a signed, pre-registered recovery campaign
+  rather than construction alone.** Every admission below is enforced by
+  the same fail-closed classifier (`R/multinomial-fence.R`); anything not
+  named below still aborts typed
+  (`gllvmTMB_multinomial_structured_not_admitted`). See
+  `docs/design/123-multinomial-structured-surface.md` for the full per-cell
+  table and `docs/design/35-validation-debt-register.md`'s FAM-20C/D/E/F
+  rows for the underlying evidence.
+
+  **Admitted:** the phylogenetic/relatedness surface -- intercept-only
+  `phylo_latent()`/`animal_latent()`/single-name `kernel_latent()`
+  (loadings-only), `phylo_dep()`/`animal_dep()`/`kernel_dep()` (full
+  unstructured `V`, the IDENTICAL parameterisation as
+  `phylo_latent(d = K - 1)`), and `phylo_indep()`/`animal_indep()`/
+  `kernel_indep()` (diagonal `V`); the spatial (SPDE) surface --
+  `spatial_latent()`, `spatial_indep()`, and `spatial_dep()` (verified
+  identical to `spatial_latent(d = n_traits)`); a generic `(1 | group)`
+  random intercept (baseline-vs-rest semantics, `sigma_re`
+  reference-category-specific); and the non-phylogenetic `cluster`/
+  `cluster2` diagonal tier, `indep(0 + trait | g)`.
+
+  **The honest evidence, not softened:** on the phylogenetic surface, the
+  ONE-CATEGORICAL-DRAW-PER-SPECIES recovery gate **FAILED** for both the
+  loadings-only route (FAM-20C: rail rate 8/20, exceeding the 6/20
+  threshold, identically for `animal_latent()`/`kernel_latent()` by proven
+  engine identity to `phylo_latent()`) and the mode-axis route (FAM-20D:
+  `phylo_dep()` rails 8/20; `phylo_indep()`'s corrected diagonal-truth
+  rerun shows larger contrast variances recover fine, median ratio 0.78,
+  17/20 in band, but smaller ones collapse, median ratio 0.24, 9/20 --
+  **7 of those 20 seeds collapse the smaller contrast variance to
+  numerical zero (≤1e-9)**, each with `convergence = 0` AND a PD Hessian,
+  and no runtime detector currently flags it (`R/diagnose.R`'s degeneracy
+  gate is family_id == 1-only, issue #897's class) -- and the planted-zero
+  check FAILS -- a full-`V` `phylo_latent()` refit on
+  diagonal-truth data rails to median |rho| = 1.0). A pre-registered
+  **replication rescue PASSED**: five categorical draws per species (`n_sp
+  = 300`, `n_rep = 5`) recovers V with rail rate 4/20, median rho 0.680
+  among the 16 NON-RAILED seeds (0.696 among all 20 conv+PD seeds --
+  both bands, true 0.6), SD ratios 0.89/0.85 -- **one categorical draw per
+  species does not identify V; five draws per species does.** This rescue
+  transfers exactly to `phylo_dep()` (the identical parameterisation) but
+  has NOT been tested for the diagonal-`V` mode (`phylo_indep()`). The
+  spatial kappa/tau gate, by contrast, **PASSED all three cells** (median
+  practical-range ratios 1.75 / 1.12 / 1.75 among the 14 conv+PD seeds per
+  cell, band 0.33-3.0; rails 0, 3, 0 of those 14 against the frozen
+  threshold, restated in its pre-registered form: >6/20; 6/20 seeds were
+  non-PD per cell, excluded from the ratio band). Per-seed dispersion is
+  wider than the median suggests: 4 of the 14 PD seeds fall outside
+  [0.33, 3.0] for `latent()`/`dep()` (up to a 4.56 ratio), and
+  `spatial_indep()` collapses the range in **6 of all 20 seeds** (ratios
+  down to 7e-5): 3 of those 6 are PD -- the rails counted under the frozen
+  criteria, at ratios 2.3e-4 to 3.4e-4 -- and the other 3 sit among the
+  6/20 non-PD exclusions. A collapsed field can pass the Hessian check,
+  the same pattern as the phylogenetic surface's zero-collapse above. **The group-intercept gate ((1 | group)
+  ONLY) also PASSED**: 20/20 converged with a PD Hessian, median
+  `sigma_re` ratio 0.947, range [0.60, 1.51]. **This PASSED verdict does
+  NOT extend to the cluster/cluster2 diagonal tier** -- the s4 campaign
+  fit `re_int` exclusively; `cluster`/`cluster2` are admitted with
+  construction-level evidence only (the fit constructs, `extract_Sigma()`
+  returns a well-formed diagonal), and their recovery axis remains OPEN
+  (a correction to an earlier draft of this entry, which wrongly implied
+  the same PASSED verdict covered both).
+
+  **Refused, not merely deferred:** `phylo_scalar()`/`animal_scalar()`/
+  `kernel_scalar()`/`spatial_scalar()` and `common = TRUE` on the cluster/
+  cluster2 tier -- a single shared level across the `K-1` contrasts has no
+  interpretable null on the `(I+J)` contrast geometry. Null-DGP evidence:
+  on `V_true = 0` data, `phylo_indep()` correctly recovers near-zero
+  variance in 5/5 seeds, but `phylo_dep()`'s `rho_hat` rails toward `+-1`
+  in 4/5 seeds despite a PD Hessian.
+
+  **Behaviour changes:** a `(1 | group)` or cluster/cluster2 `indep()` term
+  whose grouping factor covers exactly one categorical observation per
+  level now aborts typed (`gllvmTMB_multinomial_olre_not_admitted`) -- it
+  is an observation-level random effect in disguise, unidentifiable
+  because the softmax latent scale is fixed. `meta_V()`/`equalto()`
+  (known-sampling-covariance) remains fail-closed for `multinomial()`
+  traits -- confirmed Gaussian-only, no established route on a
+  categorical-contrast pseudo-trait. `cluster2` co-admission alongside
+  `cluster` was a maintainer decision (2026-08-16): `use_diag_species` and
+  `use_diag_cluster2` are literally identical engine math on two different
+  grouping columns.
+
 # gllvmTMB 0.6.0
 
 This release focuses on multivariate stacked-trait models fitted through the

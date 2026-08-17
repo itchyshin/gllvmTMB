@@ -574,7 +574,9 @@ link_residual_per_trait <- function(fit) {
 #'   no-op convention. `unit_obs`, structured tiers, and augmented-slope tiers
 #'   remain gated for Julia bridge extractors.
 #' @param level One of `"unit"` (between-unit), `"unit_obs"` (within-unit),
-#'   `"phy"` (phylogenetic), `"spatial"`, or `"cluster"`. Legacy aliases
+#'   `"phy"` (phylogenetic), `"spatial"`, `"cluster"`, or `"cluster2"` (a
+#'   second, independent diagonal grouping alongside `"cluster"` -- see the
+#'   `cluster2` argument to [gllvmTMB()]). Legacy aliases
 #'   `"B"`, `"W"`, and `"spde"` are accepted with a soft-deprecation
 #'   message.
 #' @param part One of `"total"` (default), `"shared"`, `"unique"`. `"psi"`
@@ -728,10 +730,23 @@ extract_Sigma <- function(
   ## A multinomial trait carries a latent-scale Sigma iff it has SOME latent
   ## tier: phylo_latent (Tier-2a, level = "phy") OR a shared ordinary latent
   ## ordination (Tier-2b item 2a-ii, level = "unit") that couples the K-1
-  ## pseudo-traits with other-family traits. Only a FIXED-EFFECTS-ONLY
+  ## pseudo-traits with other-family traits, OR (Design 123 Slice 4,
+  ## 2026-08-16) the non-phylogenetic cluster/cluster2 diagonal tier
+  ## (`indep(0 + trait | g)` via `cluster =`/`cluster2 =`, level =
+  ## "cluster"/"cluster2") -- a diagonal-only Sigma (no Lambda component,
+  ## same shape as the generic cluster-tier branch below for every other
+  ## family), but still a DEFINED one. Only a FIXED-EFFECTS-ONLY
   ## multinomial has no latent Sigma; keep the clear refusal for that case.
+  ## (Design 123 Slice 3, 2026-08-16): `use$spde` is the master flag for ANY
+  ## intercept-only spatial term (spatial_latent()/spatial_indep()/
+  ## spatial_dep() all set it -- see R/fit-multi.R). Before this fix, a
+  ## multinomial fit with ONLY a spatial term (no phylo/unit/cluster tier)
+  ## incorrectly tripped the fixed-effects-only refusal below for EVERY
+  ## level, not just an unsupported one -- the gate was blind to the newly
+  ## admitted spatial mode axis.
   .mn_has_latent <- isTRUE(fit$use$phylo_rr) || isTRUE(fit$use$rr_B) ||
-    isTRUE(fit$use$lv_B)
+    isTRUE(fit$use$lv_B) || isTRUE(fit$use$diag_species) ||
+    isTRUE(fit$use$diag_cluster2) || isTRUE(fit$use$spde)
   if (!is.null(fit$tmb_data$family_id_vec) &&
       any(fit$tmb_data$family_id_vec == 16L) &&
       !.mn_has_latent) {

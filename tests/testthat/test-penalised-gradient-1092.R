@@ -78,3 +78,75 @@ test_that("#1092: an unpenalised fit's gradient reporting is unchanged", {
   g_raw <- max(abs(as.numeric(fit$tmb_obj$gr(fit$opt$par))))
   expect_equal(fit$fit_health$max_gradient, g_raw, tolerance = 1e-10)
 })
+
+## The SECOND penalised block. `run_one()` applies the ridge to `theta_rr_B`
+## AND `theta_rr_spde_lv`, so a fit combining `latent()` with
+## `spatial_latent()` has two penalised blocks. The first fix for #1092
+## repaired only `theta_rr_B` and was a silent NO-OP on exactly this shape --
+## it passed every test above while `fit_health$max_gradient` still reported
+## |lambda_spde|/tau^2 and `gradient_is_penalised` asserted TRUE about a
+## number that was not fully penalised. Found by adversarial review, not by
+## the suite, which is why this case is pinned here.
+test_that("#1092: the ridge on theta_rr_spde_lv is corrected too", {
+  skip_on_cran()
+  skip_if_not_installed("fmesher")
+  withr::local_options(gllvmTMB.quiet_grammar_notes = TRUE)
+
+  set.seed(33L)
+  n_site <- 50L
+  n_trait <- 3L
+  lam_spde <- c(1.8, 1.4, -1.6)   # spatial LV must carry real signal, or the
+  lam_site <- c(0.1, -0.1, 0.1)   # spde block collapses and cannot discriminate
+  coords <- cbind(lon = stats::runif(n_site), lat = stats::runif(n_site))
+  D <- as.matrix(stats::dist(coords))
+  z_spde <- as.numeric(
+    t(chol(exp(-D / 0.7) + diag(1e-6, n_site))) %*% stats::rnorm(n_site)
+  )
+  z_site <- stats::rnorm(n_site)
+  long <- do.call(rbind, lapply(seq_len(n_trait), function(t) {
+    data.frame(
+      site = paste0("s", seq_len(n_site)),
+      lon = coords[, 1], lat = coords[, 2],
+      trait = paste0("t", t),
+      value = lam_spde[t] * z_spde + lam_site[t] * z_site +
+        stats::rnorm(n_site, 0, 0.2),
+      stringsAsFactors = FALSE
+    )
+  }))
+  mesh <- gllvmTMB::make_mesh(long, c("lon", "lat"), cutoff = 0.05)
+
+  fit <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+    value ~ 0 + trait +
+      spatial_latent(0 + trait | coords, d = 1) + latent(0 + trait | site, d = 1),
+    data = long, unit = "site", family = gaussian(), mesh = mesh,
+    control = gllvmTMB::gllvmTMBcontrol(aghq_ridge = 2, se = FALSE)
+  )))
+
+  nm <- names(fit$tmb_obj$par)
+  par <- fit$opt$par
+  i_spde <- which(nm == "theta_rr_spde_lv")
+  i_B <- which(nm == "theta_rr_B")
+  expect_gt(length(i_spde), 0L)
+  expect_gt(length(i_B), 0L)
+  expect_true(isTRUE(fit$aghq$penalised))
+
+  ## FIXTURE GUARD: the spatial loadings must be large enough that the omitted
+  ## penalty term would dominate. If the spde block collapses (it does at
+  ## other n / mesh settings) this test silently stops discriminating, so fail
+  ## loudly instead.
+  expect_gt(max(abs(par[i_spde])), 1)
+
+  g <- as.numeric(fit$tmb_obj$gr(par))
+  g_b_only <- g
+  g_b_only[i_B] <- g_b_only[i_B] + par[i_B] / (fit$aghq$ridge_tau^2)
+  g_both <- g_b_only
+  g_both[i_spde] <- g_both[i_spde] + par[i_spde] / (fit$aghq$ridge_tau^2)
+
+  ## Correcting only `theta_rr_B` leaves the spde penalty term behind, and it
+  ## is the dominant one here -- this is the assertion the old fix failed.
+  expect_gt(max(abs(g_b_only)), 1e-1)
+  expect_lt(max(abs(g_both)), 1e-2)
+
+  expect_equal(fit$fit_health$max_gradient, max(abs(g_both)), tolerance = 1e-8)
+  expect_true(fit$fit_health$converged)
+})

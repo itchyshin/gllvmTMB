@@ -242,10 +242,34 @@
   )
 }
 
+## THE blocks the R-level `aghq_ridge` penalty actually reaches. Single source
+## of truth: `run_one()` applies the penalty to exactly these, and every
+## instrument that reports on the penalised objective -- the gradient accessor
+## and `.gllvmTMB_objective_components()` -- must use the SAME set or it
+## describes a different function than the one minimised. Getting this list
+## wrong is #1092 one level down: the first fix for #1092 repaired
+## `theta_rr_B` alone and was therefore a silent no-op on any fit that also
+## carries `theta_rr_spde_lv` (`latent()` + `spatial_latent()`), which the
+## adversarial review caught by measurement.
+##
+## NOTE the asymmetry with `.gllvmTMB_loading_ridge_applies()` below, which is
+## deliberate and is NOT a bug: that predicate is the GATE deciding whether the
+## ridge is applied at all, and it keys on `theta_rr_B` only. Once the gate
+## opens, the penalty lands on every block named here. Widening the gate would
+## change which models get penalised -- a behaviour change, and a maintainer
+## decision (see the fenced note at the `aghq_ridge` mismatch warning).
+.gllvmTMB_ridge_block_names <- c("theta_rr_B", "theta_rr_spde_lv")
+
 .gllvmTMB_loading_ridge_applies <- function(ridge_tau, parameter_names) {
   is.numeric(ridge_tau) && length(ridge_tau) == 1L && !is.na(ridge_tau) &&
     is.finite(ridge_tau) && ridge_tau > 0 &&
     any(parameter_names == "theta_rr_B")
+}
+
+## Positions of the penalised blocks in a parameter vector, in `run_one()`'s
+## own order. Empty when the ridge reaches nothing.
+.gllvmTMB_ridge_block_index <- function(parameter_names) {
+  which(parameter_names %in% .gllvmTMB_ridge_block_names)
 }
 
 ## THE gradient of the objective the optimiser actually minimised (#1092).
@@ -266,8 +290,8 @@
 .gllvmTMB_penalised_gradient <- function(obj, par, ridge_tau) {
   g <- as.numeric(obj$gr(par))
   if (.gllvmTMB_loading_ridge_applies(ridge_tau, names(obj$par))) {
-    li <- which(names(obj$par) == "theta_rr_B")
-    g[li] <- g[li] + par[li] / (ridge_tau^2)
+    li <- .gllvmTMB_ridge_block_index(names(obj$par))
+    if (length(li)) g[li] <- g[li] + par[li] / (ridge_tau^2)
   }
   g
 }
@@ -290,7 +314,12 @@
        is.finite(ridge_tau) && ridge_tau > 0)
   ridge_penalty <- 0
   if (penalised) {
-    loading_index <- which(names(opt$par) == "theta_rr_B")
+    ## Every block `run_one()` penalises, not just `theta_rr_B` (#1092): on a
+    ## `latent()` + `spatial_latent()` fit the omitted `theta_rr_spde_lv` term
+    ## made this UNDERSTATE the penalty, so the logLik/AIC disclosure reported
+    ## a smaller gap between the likelihood and the optimised objective than
+    ## the optimiser actually opened.
+    loading_index <- .gllvmTMB_ridge_block_index(names(opt$par))
     if (length(loading_index)) {
       ridge_penalty <- 0.5 * sum(opt$par[loading_index]^2) / (ridge_tau^2)
     }
@@ -5681,8 +5710,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   run_one <- function(par_init, .obj = obj, .iter_cap = NULL, .ridge_tau = NULL) {
     obj <- .obj
     if (!is.null(.ridge_tau) && is.finite(.ridge_tau) && .ridge_tau > 0) {
-      lam_idx <- which(names(obj$par) %in%
-                         c("theta_rr_B", "theta_rr_spde_lv"))
+      lam_idx <- .gllvmTMB_ridge_block_index(names(obj$par))
       if (length(lam_idx)) {
         inv_t2 <- 1 / (.ridge_tau^2)
         base_fn <- obj$fn; base_gr <- obj$gr
@@ -5810,6 +5838,18 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       laplace_ridge_tau <- tau_req
     }
   }
+  ## OPEN QUESTION FOR THE MAINTAINER, surfaced by the #1092 adversarial review
+  ## and deliberately NOT decided here (it is a behaviour change, not an
+  ## instrument fix). The "i" line below is true only when `theta_rr_B` is
+  ## ABSENT. When an ordinary `latent()` block IS present, this gate opens and
+  ## `run_one()` then penalises `theta_rr_spde_lv` as well -- so on a
+  ## `latent() + spatial_latent()` fit the spatial LV loadings ARE silently
+  ## penalised, which is exactly what this message tells the user does not
+  ## happen. Either the penalty should be confined to `theta_rr_B` (narrow the
+  ## block set in `.gllvmTMB_ridge_block_names`) or the message should stop
+  ## promising that spatial terms are exempt. Both are estimand-visible; the
+  ## instruments in this file now describe the CURRENT behaviour faithfully
+  ## either way.
   if (!is.null(laplace_ridge_tau) &&
       !.gllvmTMB_loading_ridge_applies(laplace_ridge_tau, names(obj$par))) {
     cli::cli_warn(c(

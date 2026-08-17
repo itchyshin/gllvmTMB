@@ -179,9 +179,29 @@ FAILED even without the one-draw confound: larger contrast variances
 recover fine (median ratio 0.78, 17/20 in band) but smaller ones collapse
 (median ratio 0.24, 9/20), and the planted-zero criterion fails outright
 (a full-`V` `phylo_latent()` refit on diagonal-truth data rails to median
-|rho| = 1.0). **Replication rescue is untested for the diagonal-V mode**
-— this is stated as an open question, not resolved by extrapolation from
-the full-`V` result.
+|rho| = 1.0).
+
+**The diagonal-V replication question is now MEASURED, and the answer is
+no (2026-08-17).** The cell was pre-registered at `1925bc24` BEFORE any
+results (`dev/multinomial-structured/pass-criteria-diagonal-v-replication.md`)
+and the verdict landed at `5e745dcd`: at `n_rep = 5` the collapse rate is
+**7/20 — IDENTICAL to the unreplicated baseline of 7/20** (gate ≤ 2/20,
+FAIL), with 20/20 conv+PD and per-seed in-band counts 16/20 and 12/20
+(gate ≥ 14/20 each, FAIL on the second contrast). The failure is the
+finding: replication rescues the FULL-RANK cell (s1b, rails 8/20 → 4/20)
+and does nothing for the DIAGONAL one, because the two cells fail by
+different mechanisms — *correlation railing*, which more information per
+species fixes, versus *small-variance collapse*, which it does not. An
+amendment is recorded rather than silently applied: the pre-registered
+`sd_true = c(0.8, 0)` is unrunnable (singular `V`, Cholesky fails), so
+`c(0.8, 0.05)` was substituted. The planted-near-zero sub-cell PASSES its
+variance criterion (ratio 0.0175 against a true 0.0039 — the model does
+not invent variance where there is none) and FAILS its rail criterion as
+scored (10/10), with the honest reading attached: a correlation over a
+~zero variance is undefined, so railing is the expected numerical
+consequence — the same signature as the Arc-1 null probe that grounds the
+`*_scalar` refusal in §5, and the criterion is NOT retro-fitted.
+**The register must not extrapolate the s1b rescue to the diagonal mode.**
 
 The spatial surface does not share this data-hunger pattern at the
 tested scale: the kappa/tau gate PASSED all three cells outright at
@@ -469,6 +489,192 @@ ran to completion under `dev/multinomial-structured/pass-criteria-s4.md`
 (signed): **PASSED** -- see §1/§4 above for the final verdict. Register row
 FAM-20F.
 
+## 8. Detector coverage — what `check_gllvmTMB()` screens on a categorical fit
+
+Every campaign in §1 and §4 produced fits that converged (`convergence == 0`)
+with a positive-definite Hessian while reporting a degenerate quantity, and
+none of them was flagged: `R/diagnose.R`'s Heywood/degeneracy gate tested
+`family_id == 1L` (binomial) only. That is issue #897's class of gap
+(`ordinal_probit`: **0/239** degenerate fits flagged, where the binomial
+screen caught **272/272**). This section records what the detector covers
+now, at what thresholds, and with what measured sensitivity and specificity.
+
+**All of it is `check_gllvmTMB()` surface only. Fit-time warnings are NOT
+wired for either categorical family.** No `gllvmTMB()` call warns differently
+than it did before this arc; turning any of these rows into an automatic
+warning is a behaviour change and is deliberately left to the maintainer.
+
+### 8.1 The mechanism question #897 left open, settled
+
+#897 flagged the mechanism behind ordinal degeneracy as unknown, naming link
+saturation (cutpoint underflow in `gll_log_pnorm_diff`) as the suspect. The
+pre-registered S1 probe (`dev/ordinal-degeneracy/probe-criteria.md`, decision
+rule frozen at `e932cf37`, verdict at `b33d3b90`; 60-fit grid, 24 fits
+degenerate by per-fit truth) measured three things and the verdict is
+**category-level separation, not link saturation**:
+
+1. **Flat-row share is EXACTLY 0 on all 24 degenerate fits** — the cutpoint
+   underflow condition (both bracketing cutpoints more than 8.2924 from
+   `eta` on the same side) is never reached on any observed row. Saturation
+   is refuted, not merely unsupported.
+2. **24/24 dichotomised refits fire the EXISTING binomial detector** —
+   collapsing each degenerate fit's response to binary at the middle
+   cutpoint and refitting as `binomial(link = "probit")` reproduces the
+   pathology under a screen that already works, which is what identifies
+   the mechanism as the same quasi-complete separation geometry.
+3. **The pathology is a SINGLE-COLUMN runaway** — worked example: one
+   trait's loading 44.2 against a true `max|Lambda| = 4.79`, with sibling
+   traits near truth.
+
+The directional-derivative arm landed in the pre-registered "mixed" bucket,
+for a disclosed reason rather than a silent one: a uniform whole-matrix
+rescale masks a single-column pathology, so that arm cannot see what arms 1-3
+see. Consequence for the build: **a flat-fit/saturation arm has no empirical
+basis and was deliberately not built**; the ordinal row is modelled on the
+binomial loading arms instead.
+
+### 8.2 Ordinal (`ordinal_probit()`, fid 14) — `ordinal_liability_loading`
+
+Two loading arms, both armed at **40** after the S2b calibration campaign
+(`dev/ordinal-degeneracy/pass-criteria-ordinal.md`, verdict 2026-08-17; 315
+fits, `n = 100/400`, four pre-registered arms, per-fit truth
+`rel_frob > 10`).
+
+| Arm | Statistic | Threshold | Sensitivity | False positives |
+|---|---|---|---|---|
+| O1 `runaway_loading` | trait's largest loading / typical loading among the fit's OTHER ordinal traits (family-scoped denominator) | 40 | 37.8% | **0.0% on every arm** |
+| O2 `extreme_magnitude` | trait's largest unit-tier loading, liability scale (never the SPDE tier) | 40 | 60.2% overall, **70.0% homogeneous** | 0.9% overall; **0.0% plain healthy, 0.0% transport**, 2.7% mixed |
+
+**The frozen conjunction (sensitivity ≥ 90% AND zero false positives) was NOT
+achieved at any threshold, and is reported rather than fudged.**
+`max_loading_unit` separates the classes in the middle (degenerate median
+49.68 vs healthy median 1.23) but the tails overlap (degenerate minimum 10.2,
+healthy maximum 52.3). The full trade-off curve:
+
+| O2 threshold | sensitivity | FP (all healthy) |
+|---|---|---|
+| 6 (binomial's own) | 100.0% | **24.0%** |
+| 20 | 90.8% | 10.6% |
+| 40 (**shipped**) | 60.2% | 0.9% |
+
+Two measured facts decided the operating point. First, **at binomial's own
+threshold of 6 the ordinal screen reaches 100% sensitivity but 24% false
+positives — reproducing on ordinal exactly the defect #897 reports in
+binomial (25%)**; borrowing binomial's number would have shipped the very
+failure the issue asks us to fix, which is why the thresholds were set on
+ordinal's own evidence. Second, **every false alarm at any threshold comes
+from heterogeneous-scale designs** (the adversarial transport arm: 78.6% FP
+at 6, 35.7% at 20, 0.0% at 40); **the plain healthy arm has ZERO false
+positives at EVERY threshold from 6 to 40**. An absolute liability-scale
+threshold cannot transport across heterogeneous trait scales, because a
+legitimately large loading on a wide-cutpoint trait is indistinguishable from
+a runaway.
+
+Arming at 40 rather than taking the pre-registered ship-disarmed fallback
+follows #897's own stated priority — *"a check that cries wolf a quarter of
+the time gets switched off"* — so specificity is the binding constraint.
+Against the status quo of 0/239 detection, a screen that never cries wolf on
+a healthy fit and still catches ~60-70% of degenerate ones is a strict
+improvement.
+
+Grid trim, stated rather than silent: the pre-registered grid was
+`n in {100, 400, 1600}`; **`n = 1600` was DROPPED and the `n = 400` seed
+count halved** to stay inside the D-139 budget (315 fits, 9.0 min on 10
+cores; the full grid projected past 30 minutes). The healthy pool is 217
+fits, so the rule-of-three FPR bound is **~1.4%**, not the ~0.6% a 500-fit
+pool would have given. The `cutpoint_span` / `loading_over_span` variant is
+computed and reported for the campaign but is **NOT** wired into `flag` or
+`status`: its circularity precondition (is the span confounded with the
+label it screens for?) was not tested, so it stays calibration-only.
+
+Why this row is the whole of a default ordinal fit's coverage: fid 14 traits
+drop the auto-Psi at parse time (`auto_unique_off_family`, `R/fit-multi.R`),
+so a pure-ordinal fit has no `report$sd_B` and every `near_zero_psi_*` row is
+dark by design.
+
+### 8.3 Multinomial (`multinomial()`, fid 16) — `multinomial_contrast_degeneracy`
+
+Three arms over the `K-1` baseline-contrast pseudo-traits of one response
+(`dev/multinomial-structured/pass-criteria-detector-mn.md`, criteria frozen
+at `f6552ee9` BEFORE results, verdict at `6f34568e`, M3 re-measurement after
+the scope fix at `860a91c0`; 128 fits, 122 conv+PD).
+
+| Arm | Statistic | Armed default | Measured against the labeled cells |
+|---|---|---|---|
+| M1 `contrast_variance_collapse` | a contrast's fitted loading energy at or below an absolute floor | `multinomial_collapse_floor = 1e-10` | **6/7** labeled collapses (target ≥ 6/7) **plus 7/7 fully out-of-sample** on the diagonal-V replication cell (0/13 FP there) |
+| M2 `contrast_rail` | largest `|rho|` between two contrasts of the same response, evaluated **only where the tier's rank is ≥ 2** | `multinomial_rail_thresh = 0.99` | **8/8** labeled rails (target ≥ 7/8), **plus 4/4 individually-railed fits hidden inside a cell whose AGGREGATE gate passed** |
+| M3 `spatial_range_collapse` | fitted spatial practical range relative to the coordinate domain | `multinomial_range_collapse_thresh = 0.02` | **3/3** after the scope fix (**0/3** before it) |
+
+The M1 sibling/relative sub-arm (`multinomial_collapse_rel_thresh`) stays
+**disarmed (`Inf`)** — untested in this campaign.
+
+**M2's four "false positives" were TRUE positives, verified by refitting.**
+M2 fired on four seeds of the s1b cell whose aggregate gates had PASSED;
+refitting those exact seeds gives `rho = +1.00000, -1.00000, +1.00000,
++1.00000`, while two non-firing controls give 0.48997 and -0.14534. The
+cell-level "healthy" label was the artifact, not the detector — an aggregate
+gate can pass while containing individually railed fits.
+
+**Rank-1 suppression is proven out-of-sample:** on 20 healthy `d = 1` fits M2
+never fires, despite `rho = ±1` holding on every one of them by row
+proportionality (a single shared loading column). This was the statistical
+review's blocking objection to the arm and it is now empirically closed.
+
+**Zero false positives on 40 informative healthy fits — with the honest
+denominator.** The naive denominator was 56; the s4 `re_int` cell's 20 fits
+are EXCLUDED because a bare `(1 | group)` multinomial fit has no loading tier
+at all, so the detector row never appears (`det_present` 0/20) and those fits
+carry zero information about specificity. The informative pool is 20 `d = 1`
+fits plus s1b's 16 non-railed fits, giving a rule-of-three bound of **3/40 ≈
+7.5%** at 95% confidence. This is a real improvement on binomial's measured
+25% but is **NOT a verified zero**; bounding it near 0.6% needs a ≥ 500-fit
+healthy arm, which is outstanding, not done.
+
+**M1 fires 8/8 on a null DGP (`V_true = 0`), counted separately and BY
+DESIGN:** a truly zero variance component is indistinguishable from a
+collapsed one at the fit level, which is why the row's action text says
+"intentionally mapped off, boundary-pinned, or genuinely collapsed" rather
+than asserting a defect.
+
+**M3's original 0/3 was a keyword-scope bug, not a calibration miss.** The
+arm gated on `Lambda_spde`, which the engine REPORTs only on the low-rank
+`spatial_latent()`/`spatial_dep()` route (`spde_lv_k > 0`); the labeled
+collapse cell is `spatial_indep()`, whose per-trait fields carry no loading
+matrix — so the arm never evaluated the fits it was built for and emitted no
+row at all. The fix branches on the engine route (the diagonal branch reads
+`log_tau_spde`, populated for every trait unconditionally on that route).
+Re-running the same 20 seeds: detector row emitted **0/20 → 20/20**,
+sensitivity on the labeled collapse seeds **0/3 → 3/3**, false positives on
+that cell's healthy fits **0/11**.
+
+### 8.4 A structural false positive that predates this arc, fixed
+
+`check_gllvmTMB()`'s `near_zero_psi_unit` screen WARNed on a healthy mixed
+`multinomial()` + `gaussian()` fit purely because `R/fit-multi.R`'s
+`skip_psi_b_t` block pins each multinomial contrast pseudo-trait's
+`theta_diag_B` at `log(1e-6)` while `src/gllvmTMB.cpp` still `REPORT`s `sd_B`
+for the pinned entries — so the pinned `1e-6` always cleared both the
+absolute and the relative collapse thresholds. Live-confirmed on a fit whose
+free gaussian trait had sd 0.312 (healthy). The screen now drops pinned
+entries (via `tmb_data$diag_B_skip`) before evaluating the row; a genuine
+collapse among the remaining free traits is still caught. Fixed at
+`120fc58c`; this predates the Design 123 arc and affected every fit with a
+single-trial-Bernoulli or multinomial trait sharing a `latent()` term with a
+free partner trait.
+
+### 8.5 What the detector still does NOT cover
+
+- **Fit-time warnings**, for either family (see the top of this section).
+- **Binomial's own 25% false-positive rate** (#897 point 2): measured and
+  diagnosed by the ordinal campaign — the same absolute-threshold transport
+  failure — but its re-calibration is a separate slice, deliberately not
+  rushed into this arc.
+- **Ordinal at `n = 1600`**: no evidence.
+- **The `cutpoint_span` variant**: calibration-only, circularity untested.
+- **The M1 relative/sibling sub-arm**: disarmed, untested.
+- **FPR bounds, not verified zeros**: ~1.4% (ordinal, 217 healthy fits) and
+  ~7.5% (multinomial, 40 informative healthy fits).
+
 ## See also
 
 - `docs/design/02-family-registry.md` — the unordered categorical family
@@ -484,6 +690,11 @@ FAM-20F.
 - `docs/dev-log/after-task/2026-08-16-multinomial-structured-arc.md` — the
   arc-level after-task report (scope, all five slices, campaign verdicts,
   corrections made along the way, follow-ups).
+- `docs/dev-log/after-task/2026-08-17-categorical-paper-alignment-and-detector.md`
+  — the after-task report for the paper-alignment (PA1-PA4) + detector
+  (§8) arc, including its known limits.
+- `dev/ordinal-degeneracy/` and `dev/multinomial-structured/pass-criteria-detector-mn.md`
+  — the pre-registered criteria and verdicts behind every §8 number.
 
 ## Paper alignment — Mizuno, Drobniak, Williams, Lagisz & Nakagawa (2025) J. Evol. Biol. 38:1699-1715 (doi 10.1093/jeb/voaf116)
 
@@ -514,13 +725,13 @@ in-repo evidence are marked accordingly rather than assumed to work.
 | 33-37 | Nominal (unordered) PGLMM, unit-tier shared ordination, K-1 baseline-contrast logits | `gllvmTMB(value ~ 0 + trait + latent(0 + trait \| unit, d = K - 1), data = df, trait = "trait", unit = "unit", family = multinomial())` | admitted | FAM-20B (this document's §1, unit-tier default `latent()` row). Full per-cell detail lives in §1 above; not repeated here to avoid drift between two tables in the same file. |
 | 33-37 | Nominal PGLMM, non-phylogenetic group / within-species replication tier (`(1 \| group)` or `indep(cluster)`) | `gllvmTMB(value ~ 0 + trait + (1 \| group), data = df, ..., family = multinomial())` | admitted, `(1 \| group)` PASSED recovery; `indep(cluster)` construction-only | FAM-20F (this document's §1). `(1 \| group)` 20/20 seeds converged PD, `sigma_re` ratio median 0.947; `indep(0 + trait \| cluster)` is construction-verified only, recovery axis explicitly OPEN per `pass-criteria-s4.md`. |
 | 33-37 | Nominal PGLMM, per-contrast phylogenetic/relatedness variances AND correlations, Sigma_a (x) A over the K-1 contrasts | `gllvmTMB(value ~ 0 + trait + phylo_latent(species, tree = tree, d = K - 1), data = df, ..., cluster = "species", family = multinomial())` (loadings-only) or `phylo_dep(0 + trait \| species)` (full unstructured V) | admitted, ONE-DRAW gate FAILED, replication rescue PASSED | FAM-20C/FAM-20D (this document's §1/§4). One categorical draw per species: rail rate 8/20 (FAIL, threshold 6/20). Pre-registered replication rescue (`n_sp = 300`, `n_rep = 5`): rail rate 4/20 (PASS), median rho 0.680, direction-correct 15/16 non-railed. Register statement: "one categorical draw per species does not identify V; five draws per species does." This is the direct gllvmTMB analogue of the paper's own stated data requirement (see the replication-model note below). |
-| 33-37 | Nominal PGLMM, diagonal per-contrast phylogenetic variances only (no among-category correlation) | `gllvmTMB(value ~ 0 + trait + phylo_indep(0 + trait \| species, tree = tree), data = df, ..., cluster = "species", family = multinomial())` | admitted, FAILED (both draw regimes) | FAM-20D (this document's §1). Diagonal-truth DGP: larger contrast variance recovers (median ratio 0.78, 17/20 in band), smaller one collapses to numerical zero in 7/20 seeds with `convergence == 0` and a PD Hessian and NO runtime degeneracy flag (`R/diagnose.R:464` gates `family_id == 1L` only, i.e. binomial — issue #897). Replication rescue is explicitly UNTESTED for this diagonal-V mode. |
+| 33-37 | Nominal PGLMM, diagonal per-contrast phylogenetic variances only (no among-category correlation) | `gllvmTMB(value ~ 0 + trait + phylo_indep(0 + trait \| species, tree = tree), data = df, ..., cluster = "species", family = multinomial())` | admitted, FAILED (both draw regimes) | FAM-20D (this document's §1). Diagonal-truth DGP: larger contrast variance recovers (median ratio 0.78, 17/20 in band), smaller one collapses to numerical zero in 7/20 seeds with `convergence == 0` and a PD Hessian. That silent-collapse gap is now CLOSED on the detector side (§8): the M1 arm of the `multinomial_contrast_degeneracy` row flags 7/7 of those collapse seeds and 0/13 of the non-collapsed fits of the same cell, out-of-sample. The replication rescue is no longer untested: the pre-registered diagonal-V replication cell (`dev/multinomial-structured/pass-criteria-diagonal-v-replication.md`, criteria frozen at `1925bc24` BEFORE results, verdict at `5e745dcd`) **FAILED** — collapse 7/20 at `n_rep = 5`, IDENTICAL to the unreplicated baseline of 7/20. Replication does NOT transfer to this mode. |
 | 33-37 | Nominal PGLMM, spatial (SPDE) source over the K-1 contrasts | `gllvmTMB(value ~ 0 + trait + spatial_latent(0 + trait \| coords, d = K - 1), data = df, ..., mesh = mesh, family = multinomial())` | admitted, PASSED | FAM-20E (this document's §1). Median practical-range ratio 1.75 (14 conv+PD seeds), 0 rails against the frozen >6/20 threshold; per-seed dispersion caveat recorded in §1's dedicated note (4/14 seeds outside the nominal band despite the passing median). |
 | 33-37 | Nominal PGLMM, scalar / single shared level across contrasts (any source) | `gllvmTMB(value ~ 0 + trait + phylo_scalar(species), ..., family = multinomial())` | refused (structural, not merely untested) | §5 above. Null-DGP probe: `phylo_dep()`'s rho_hat rails toward magnitude 1 in 4/5 seeds even when the true signal is zero, DESPITE a PD Hessian — a scalar summary has no natural null on the `(I+J)` contrast geometry. |
 | 38-46 | PGLMM with BOTH a phylogenetic species effect a_i (A-structured) and a non-phylogenetic species effect s_i (I-structured) plus residual, for continuous/other core families | `gllvmTMB(value ~ 0 + trait + phylo_indep(0 + trait \| species, tree = tree) + indep(0 + trait \| species), data = df, trait = "trait", unit = "species", cluster = "species", family = <core family>)` | covered (for the families it is documented against — NOT ordinal/multinomial) | `docs/design/03-phylogenetic-gllvm.md` ("The non-phylogenetic species tier is `g_non ~ MVN(0, Sigma_non (x) I)`"), `docs/design/13-phylo-signal-partition.md` (the "full4" `extract_communality()` partition requires exactly `phylo_unique()` + an ordinary non-phylogenetic `latent(species)`), and the worked recipe in `docs/design/78-functional-phylogeography-recipe.md` combining `phylo_indep(species, tree = tree)` with `indep(0 + trait \| species)` in one formula. This is the general-family analogue of the paper's eq 38-46 decomposition and is an established, documented gllvmTMB pattern — just never exercised for a categorical trait. |
-| 38-46 | Same combined phylo + non-phylo species effect, for `multinomial()` (fid 16) | `gllvmTMB(value ~ 0 + trait + phylo_latent(species, d = K - 1, tree = tree) + indep(0 + trait \| species), data = df, ..., unit = "obs", cluster = "species", family = multinomial())` (replicated data, both terms co-located on the `species` cluster column per the Design 78 routing rule) | construction VERIFIED live (2026-08-17); recovery campaign STAGED, pre-registered, awaiting sign-off | PA4 (this lane): `dev/categorical-replication/verify-admission-pa4.R` cell M1 — the combined fit RUNS on replicated probe data (conv = 0, PD Hessian) with BOTH engine tiers live (`use_phylo_rr = 1` AND `use_diag_species = 1`, separate `theta_rr_phy`/`theta_diag_species` parameter blocks); the fence does not block the combination (its only whole-fit overrides remain the multi-kernel count and the OLRE guard). Both extraction routes verified live (`extract_Sigma(level = "phy", part = "shared")` and `level = "cluster"`). Full-size D-139 timing fit (n_sp = 300 x 5 reps): 2.6 s, conv = 0, PD, rho_hat 0.555 (single seed, NOT evidence). Recovery evidence: `dev/categorical-replication/pass-criteria-pa4.md` Cell B (DRAFT — frozen bands committed BEFORE any results, commit `78507518`) + `campaign-pa4-multinomial.R --mode full` (20 seeds), gated on Shinichi's sign-off of that criteria file. |
-| 38-46 | Same combined phylo + non-phylo species effect, for `ordinal_probit()` (fid 14) | `gllvmTMB(value ~ 0 + trait + phylo_indep(0 + trait \| species, tree = tree) + indep(0 + trait \| species), data = df, ..., unit = "obs", cluster = "species", family = ordinal_probit())` (replicated data) | construction VERIFIED live (2026-08-17), both `phylo_indep` and `phylo_latent(d = 2)` variants; recovery campaign STAGED, pre-registered, awaiting sign-off | PA4 (this lane): `ordinal_probit()` is not gated by `R/multinomial-fence.R` at all (that fence checks `family_id_vec == 16L` only), and `dev/categorical-replication/verify-admission-pa4.R` cells O1 (`phylo_indep` + `indep`, the shape at left) and O2 (`phylo_latent(species, d = 2)` + `indep`) both RUN on replicated probe data (conv = 0, PD Hessian) with both engine tiers live (`use_phylo_rr = 1` AND `use_diag_species = 1`) and both extraction routes returning finite estimates. Full-size D-139 timing fit (n_sp = 150 x 5 reps, T = 2, K = 4): 13.4 s, conv = 0, PD (single seed, NOT evidence). Recovery evidence: `pass-criteria-pa4.md` Cell A (DRAFT, frozen bands pre-committed at `78507518`) + `campaign-pa4-ordinal.R --mode full` (20 seeds), gated on sign-off. Still distinct from — and narrower than — the single-source `partial` rows tracked under PHY-04/PHY-05/FG-07/08/09 above. |
-| 4, 18, 19 | Estimand: per-trait / per-contrast phylogenetic heritability H^2 = sigma_a^2 / (sigma_a^2 + sigma_e^2) | `extract_phylo_signal(fit, link_residual = "auto")` | fid 14/16 **covered by PA2** (liability denominator, see the PA2 outcome note below); gaussian/binomial/poisson covered as before via the default denominator | `R/extract-omega.R:421-` implements exactly this ratio (`H2 = phylo_parts[, "H2"]`, `R/extract-omega.R:531`) over `extract_Sigma(level = "phy")`; `tests/testthat/test-m1-7-extract-omega-phylo-signal-mixed-family.R` exercises it across a mixed gaussian/binomial/poisson fit. The function body has no family gate and calls the family-agnostic `extract_Sigma()`, so it is plausible it would run on an admitted `phylo_latent()` fid 14/16 fit — but no test does this, `R/extract-omega.R` contains no reference to `ordinal`/`multinomial`/fid 14/16, and this is therefore correctly read as UNTESTED, not confirmed-working. (`extract_repeatability()`, by contrast, computes a DIFFERENT unit-vs-unit_obs ratio, not this paper's phylogenetic H^2 — do not conflate the two extractors when scoping PA2.) |
+| 38-46 | Same combined phylo + non-phylo species effect, for `multinomial()` (fid 16) | `gllvmTMB(value ~ 0 + trait + phylo_latent(species, d = K - 1, tree = tree) + indep(0 + trait \| species), data = df, ..., unit = "obs", cluster = "species", family = multinomial())` (replicated data, both terms co-located on the `species` cluster column per the Design 78 routing rule) | admitted, campaign RUN (2026-08-17): **components recover, rail gate FAILED — components-only claim, no rho claim** | **PA4 VERDICT (criteria signed at `6db3296d`, results at `f9fe7d3c`; `pass-criteria-pa4.md` Cell B, `n_sp = 300` x 5 reps, 20 seeds):** 20/20 conv+PD and all four component medians (est/true) in the frozen [0.33, 3.0] band — phy1 0.97, phy2 0.56, sp1 0.90, sp2 0.69 — but **12/20 seeds railed `|rho_hat| > 0.99` against a frozen threshold of >6/20 = FAIL.** Recorded, not softened: the variance components separate and recover under the combined model, but the among-category correlation — which plain `n_rep = 5` replication had rescued in s1b (4/20 rails) — destabilises again once a non-phylogenetic species tier competes for the same liability variance at this design. **No rho recovery claim for the combined multinomial model.** Construction evidence (unchanged): `dev/categorical-replication/verify-admission-pa4.R` cell M1 — the combined fit RUNS on replicated probe data (conv = 0, PD Hessian) with BOTH engine tiers live (`use_phylo_rr = 1` AND `use_diag_species = 1`, separate `theta_rr_phy`/`theta_diag_species` parameter blocks); the fence does not block the combination (its only whole-fit overrides remain the multi-kernel count and the OLRE guard). Both extraction routes verified live (`extract_Sigma(level = "phy", part = "shared")` and `level = "cluster"`). Full-size D-139 timing fit (n_sp = 300 x 5 reps): 2.6 s, conv = 0, PD, rho_hat 0.555 (single seed, NOT evidence). Recovery evidence: `dev/categorical-replication/pass-criteria-pa4.md` Cell B (DRAFT — frozen bands committed BEFORE any results, commit `78507518`) + `campaign-pa4-multinomial.R --mode full` (20 seeds), gated on Shinichi's sign-off of that criteria file. |
+| 38-46 | Same combined phylo + non-phylo species effect, for `ordinal_probit()` (fid 14) | `gllvmTMB(value ~ 0 + trait + phylo_indep(0 + trait \| species, tree = tree) + indep(0 + trait \| species), data = df, ..., unit = "obs", cluster = "species", family = ordinal_probit())` (replicated data) | admitted, campaign RUN (2026-08-17): **PASSED all four component gates** | **PA4 VERDICT (criteria signed at `6db3296d`, results at `f9fe7d3c`; `pass-criteria-pa4.md` Cell A, `n_sp = 150` x 5 reps, T = 2, K = 4, 20 seeds):** 20/20 conv+PD; component medians (est/true) phy1 0.77, phy2 0.82, sp1 1.04, sp2 0.96 — all four inside the frozen [0.33, 3.0] band separately. The paper's eq 38-46 combined phylogenetic + non-phylogenetic species model is EVIDENCED for `ordinal_probit()` at this design. Construction evidence (unchanged): `ordinal_probit()` is not gated by `R/multinomial-fence.R` at all (that fence checks `family_id_vec == 16L` only), and `dev/categorical-replication/verify-admission-pa4.R` cells O1 (`phylo_indep` + `indep`, the shape at left) and O2 (`phylo_latent(species, d = 2)` + `indep`) both RUN on replicated probe data (conv = 0, PD Hessian) with both engine tiers live (`use_phylo_rr = 1` AND `use_diag_species = 1`) and both extraction routes returning finite estimates. Full-size D-139 timing fit (n_sp = 150 x 5 reps, T = 2, K = 4): 13.4 s, conv = 0, PD (single seed, NOT evidence). Recovery evidence: `pass-criteria-pa4.md` Cell A (DRAFT, frozen bands pre-committed at `78507518`) + `campaign-pa4-ordinal.R --mode full` (20 seeds), gated on sign-off. Still distinct from — and narrower than — the single-source `partial` rows tracked under PHY-04/PHY-05/FG-07/08/09 above. |
+| 4, 18, 19 | Estimand: per-trait / per-contrast phylogenetic heritability H^2 = sigma_a^2 / (sigma_a^2 + sigma_e^2) | `extract_phylo_signal(fit, link_residual = "auto")` | fid 14/16 **covered by PA2** (liability denominator, see the PA2 outcome note below); gaussian/binomial/poisson covered as before via the default denominator | `R/extract-omega.R:421-` implements exactly this ratio (`H2 = phylo_parts[, "H2"]`, `R/extract-omega.R:531`) over `extract_Sigma(level = "phy")`; `tests/testthat/test-m1-7-extract-omega-phylo-signal-mixed-family.R` exercises it across a mixed gaussian/binomial/poisson fit. **MEASURED and FIXED by PA2 (2026-08-17)**: the pre-PA2 extractor was not merely untested on fid 14/16, it returned `H2 = 1.0` for EVERY categorical trait and contrast (the fixed liability residual never entered the denominator — technically the species-level-latent proportion, silently nonsense against the paper's estimand, whose own values for these data are ~0.37/0.35/0.27/0.41). `link_residual = "auto"` now puts `1` (ordinal, eq 18) or `pi^2/3` (multinomial per contrast, eq 19) into the denominator, hand-verified to 1e-10 against mocked cells, never collapsed to a scalar for multinomial; the default (`"none"`) is byte-identical to the old behaviour. Live MCMCglmm `family = "ordinal"` comparator on a shared fixture: 0.357 (gllvmTMB) vs 0.436 (MCMCglmm), band 0.15, truth 0.5. Evidence: `tests/testthat/test-phylo-signal-categorical.R`. (`extract_repeatability()`, by contrast, computes a DIFFERENT unit-vs-unit_obs ratio, not this paper's phylogenetic H^2 — do not conflate the two extractors when scoping PA2.) |
 | 27-32 estimand | Ordinal fixed link-residual variance sigma_d^2 = 1 (the denominator term of the binary/ordinal H^2 formulas) | n/a (internal constant) | covered | `R/extract-sigma.R:327-337` (fid == 14 branch, `out[t] <- 1`, "the ordinal latent scale ... probit-liability convention"). |
 | 33-37 estimand | Nominal fixed link-residual matrix (pi^2/6)(I + J): pi^2/3 diagonal, pi^2/6 off-diagonal per McFadden (1974) | n/a (internal constant) | covered | `R/extract-sigma.R:365-374` (fid == 16 branch, diagonal `pi^2/3`); `R/extract-sigma.R:406` (`.multinomial_link_residual_offdiag()`, the full `(K-1)x(K-1)` off-diagonal block). |
 | 8 | Estimand: phylogenetic correlation between traits/contrasts | `extract_correlations(fit, tier = "phy")` / `extract_cross_correlations(fit)` | covered for admitted phylo tiers, including ordinal and multinomial | `R/extract-correlations.R` (`extract_correlations` at line 392, `extract_cross_correlations` at line 884); exercised directly against `ordinal_probit()` phylo/spatial fits in `test-matrix-ordinal-phylo.R`'s `expect_phy_correlations_nondegenerate()` helper and against `multinomial()` in the FAM-20C/20D campaigns above. |
@@ -662,9 +873,31 @@ criteria (`dev/categorical-replication/pass-criteria-pa4.md`, frozen bands
 committed BEFORE any results at `78507518`) and the two campaign scripts
 (`campaign-pa4-ordinal.R`, `campaign-pa4-multinomial.R`, modes
 timing/smoke/full) are committed; D-139 timing fits project ~4.5 min
-(ordinal) and ~0.9 min (multinomial) serial for the 20-seed runs. The
-`--mode full` campaigns have NOT run — they are gated on Shinichi signing
-off the DRAFT criteria file.
+(ordinal) and ~0.9 min (multinomial) serial for the 20-seed runs.
+
+**PA4 outcome (2026-08-17, CLOSED — split verdict).** Shinichi signed the
+criteria file at `6db3296d` and both `--mode full` campaigns ran to
+completion (results at `f9fe7d3c`). The paper's eq 38-46 model RUNS for both
+categorical families, and the two verdicts differ:
+
+- **Ordinal (Cell A) PASSES.** 20/20 conv+PD; all four component medians
+  (est/true) inside the frozen [0.33, 3.0] band separately — phy1 0.77,
+  phy2 0.82, sp1 1.04, sp2 0.96.
+- **Multinomial (Cell B) FAILS its rail gate** while its components recover.
+  20/20 conv+PD, component medians 0.97 / 0.56 / 0.90 / 0.69 all in band,
+  but 12/20 seeds rail `|rho_hat| > 0.99` against the frozen >6/20
+  threshold. The claim admitted from this cell is therefore
+  **components-only: the phylogenetic and non-phylogenetic species
+  variances separate and recover; the among-category correlation does
+  not, under a competing species tier.** Plain replication had rescued
+  rho in s1b (4/20 rails); adding the s tier undoes that rescue at this
+  design.
+
+What PA4 does NOT cover: any calibrated interval on either tier, any design
+other than the two run (`n_sp = 150` ordinal, `n_sp = 300` multinomial, both
+at `n_rep = 5`), and a rho claim for the combined multinomial model at any
+design — a larger `n_rep` or `n_sp` might restore it, and that is untested,
+not ruled out.
 
 ### Frequentist-engine positioning
 

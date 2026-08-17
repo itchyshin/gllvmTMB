@@ -18,7 +18,11 @@ check_gllvmTMB(
   binary_saturation_share_thresh = 0.5,
   loading_relative_thresh = 8,
   loading_runaway_thresh = 25,
-  loading_absolute_thresh = 6
+  loading_absolute_thresh = 6,
+  multinomial_collapse_floor = 1e-10,
+  multinomial_collapse_rel_thresh = Inf,
+  multinomial_rail_thresh = 0.99,
+  multinomial_range_collapse_thresh = 0.02
 )
 }
 \arguments{
@@ -110,6 +114,40 @@ threshold reported 97.3\% of degenerate fits and caught 14 that the
 relative criterion missed. Being a link-scale quantity it does not
 transport to families whose response scale is arbitrary, which is
 why this row is binomial-only.}
+
+\item{multinomial_collapse_floor}{Absolute floor on a \code{multinomial()}
+(fid 16) contrast pseudo-trait's fitted loading energy
+(\code{rowSums(Lambda^2)}), at or below which it is a collapsed contrast.
+Default \code{1e-10}, the campaign code's own guard. Provisional pending the
+S3 calibration campaign; labeled evidence: 7/20 \code{phylo_indep} seeds at
+or below \code{1e-9}, every one reporting \code{convergence = 0} and a
+positive-definite Hessian.}
+
+\item{multinomial_collapse_rel_thresh}{Threshold on the ratio of the
+smallest to the largest fitted contrast loading energy within one
+\code{multinomial()} response's K-1 contrasts, below which the smallest is
+flagged as collapsed relative to its siblings. Default \code{Inf}
+(disarmed): those K-1 contrasts are \code{pi^2/6}-correlated siblings through
+their shared baseline category, not the independent siblings
+\code{psi_rel_thresh} was calibrated on, so this arm is provisional pending
+the S3 calibration campaign.}
+
+\item{multinomial_rail_thresh}{Threshold on the largest absolute
+off-diagonal correlation of the implied contrast-level covariance
+within one \code{multinomial()} response's contrasts, at or above which two
+contrasts are reported as rail-correlated. Only evaluated at tiers with
+rank \code{d >= 2} -- at \code{d = 1} every healthy fit reaches \verb{|rho| = 1}
+exactly by row proportionality. Default \code{0.99}, provisional pending the
+S3 calibration campaign; labeled evidence: 8/20 seeds at or above it.}
+
+\item{multinomial_range_collapse_thresh}{Threshold on the fitted spatial
+practical range (\code{sqrt(8) / kappa}) relative to the coordinate-domain
+diameter (when the fit's mesh coordinates are reachable), or on the
+practical range itself in absolute coordinate units (the fallback when
+they are not), at or below which a \code{multinomial()} response's spatial
+field is reported as collapsed. Default \code{0.02}, provisional pending the
+S3 calibration campaign; labeled evidence: collapsed ratios 7e-5 to
+3.4e-4.}
 }
 \value{
 A data frame with columns \code{component}, \code{status}, \code{value},

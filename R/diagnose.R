@@ -430,6 +430,58 @@
   )
 }
 
+## ---- shared scaffolding for the family-specific detector rows ----
+##
+## These three helpers are the genuinely reusable pieces behind the binomial
+## prevalence/loading row and the multinomial contrast-degeneracy row below:
+## a `tmb_data` presence/field guard, a trait-id -> label lookup, and a
+## report-matrix-row -> trait-id matcher that mirrors the rowname-or-
+## positional convention `.gllvmTMB_max_loading_by_trait()` already uses.
+## Extracting them keeps the binomial row's own logic (prevalence,
+## saturation, the relative/runaway/absolute loading arms) untouched -- the
+## refactor is required to be byte-identical in behaviour, verified by the
+## existing binomial/runaway-warning test suites before and after.
+
+## Returns `object$tmb_data` unchanged if every name in `required` is
+## present, else `NULL`. This is the "presence" half of a detector row's
+## guard; row-specific length/consistency checks (e.g. binomial's
+## `length(family_id) != n`) stay in the calling row, since those checks
+## are not shared across families.
+.gllvmTMB_tmb_data_or_null <- function(object, required) {
+  tmb <- object$tmb_data
+  if (is.null(tmb) || !all(required %in% names(tmb))) {
+    return(NULL)
+  }
+  tmb
+}
+
+## The trait-id -> label lookup every per-trait/per-contrast row uses:
+## the fitted trait name where one is registered, else a positional
+## `trait_<id>` fallback.
+.gllvmTMB_trait_label <- function(trait_names, id) {
+  if (id <= length(trait_names)) {
+    trait_names[[id]]
+  } else {
+    paste0("trait_", id)
+  }
+}
+
+## Matches each entry of `ids` (1-based trait ids) to a row index in the
+## report matrix `L`. Mirrors `.gllvmTMB_max_loading_by_trait()`'s own
+## matching rule: prefer `rownames(L)` against the fitted trait labels
+## when any are present, else fall back to positional alignment (row i of
+## `L` is trait i, for i <= nrow(L)). Returns an integer vector the same
+## length as `ids`, `NA` where a trait has no row in `L`.
+.gllvmTMB_match_rows_by_trait <- function(L, trait_names, ids) {
+  if (!is.null(rownames(L)) && any(rownames(L) %in% trait_names)) {
+    return(match(trait_names[ids], rownames(L)))
+  }
+  out <- rep(NA_integer_, length(ids))
+  in_range <- ids <= nrow(L)
+  out[in_range] <- ids[in_range]
+  out
+}
+
 .gllvmTMB_binomial_prevalence_loading_row <- function(
   object,
   prevalence_thresh = 0.9,
@@ -439,9 +491,9 @@
   loading_runaway_thresh = 25,
   loading_absolute_thresh = 6
 ) {
-  tmb <- object$tmb_data
   required <- c("y", "family_id_vec", "link_id_vec", "trait_id")
-  if (is.null(tmb) || !all(required %in% names(tmb))) {
+  tmb <- .gllvmTMB_tmb_data_or_null(object, required)
+  if (is.null(tmb)) {
     return(NULL)
   }
 
@@ -486,11 +538,7 @@
     prob_i <- prob_i[is.finite(prob_i)]
     rows[[i]] <- data.frame(
       trait_id = id,
-      trait = if (id <= length(trait_names)) {
-        trait_names[[id]]
-      } else {
-        paste0("trait_", id)
-      },
+      trait = .gllvmTMB_trait_label(trait_names, id),
       n = sum(idx),
       prevalence = sum(y[idx], na.rm = TRUE) / sum(trials[idx], na.rm = TRUE),
       saturation_share = if (length(prob_i) > 0L) {
@@ -611,6 +659,319 @@
   out
 }
 
+## The absolute domain diameter reachable from a fitted spatial fit's stored
+## mesh, in the coordinate units `xy_cols` was fit in. `.gllvm_new_mesh()`
+## (R/mesh.R) stores the raw fitting coordinates as `mesh$loc_xy`, an n x 2
+## matrix -- this reads them directly rather than through fmesher, so it works
+## whether or not fmesher is available at diagnose time. Returns `NA_real_`
+## when the coordinates are not reachable (e.g. a hand-built fixture with no
+## `mesh` element), which callers treat as "fall back to the absolute range
+## threshold".
+.gllvmTMB_spatial_domain_diameter <- function(object) {
+  loc <- object$mesh$loc_xy
+  if (is.null(loc) || !is.matrix(loc) || ncol(loc) < 2L || nrow(loc) < 2L) {
+    return(NA_real_)
+  }
+  span <- apply(
+    loc[, 1:2, drop = FALSE], 2L,
+    function(x) diff(range(x, na.rm = TRUE))
+  )
+  if (!all(is.finite(span))) {
+    return(NA_real_)
+  }
+  sqrt(sum(span^2))
+}
+
+#' Multinomial K-1 contrast pseudo-trait degeneracy screen
+#'
+#' `multinomial()` (family_id 16) is fitted as K-1 baseline-category
+#' contrast pseudo-traits per categorical response
+#' (`expand_multinomial_response()`, named `"<base>:<category>"`). Three
+#' failure mechanisms are specific to that expansion and invisible to the
+#' generic weak-axis/near-zero-psi rows, which screen every trait's loadings
+#' pooled together rather than a single categorical response's own K-1
+#' contrasts against each other:
+#'   M1 (`contrast_variance_collapse`) one contrast's loading energy
+#'     (`rowSums(Lambda^2)`) collapses to ~0, absolutely or relative to its
+#'     sibling contrasts.
+#'   M2 (`contrast_rail`) two contrasts of the same response load almost
+#'     perfectly on the same axis (`|rho| ~ 1` in the implied contrast-level
+#'     covariance), a rank collapse that only shows up when the tier carries
+#'     `d >= 2` -- at `d = 1` every healthy fit reaches `rho = +-1` by row
+#'     proportionality, so `d = 1` is exempt by construction.
+#'   M3 (`spatial_range_collapse`) the fitted spatial practical range
+#'     (`sqrt(8) / kappa`) collapses relative to the coordinate domain the
+#'     multinomial response was fit over.
+#' Lambda matrices are read directly from `object$report` rather than
+#' through `.gllvmTMB_latent_specs()`, which deliberately skips `Lambda_phy`
+#' under `use$phylo_dep` -- irrelevant here, since the implied covariance
+#' `Lambda %*% t(Lambda)` is rotation-invariant, and a `phylo_dep` rail is
+#' precisely a failure this row must be able to see.
+#'
+#' @param object A fit returned by [gllvmTMB()].
+#' @param multinomial_collapse_floor Absolute floor on a contrast's fitted
+#'   loading energy (`rowSums(Lambda^2)`), at or below which it is a
+#'   collapsed (M1) contrast. Default `1e-10`, the campaign code's own guard;
+#'   labeled evidence: 7/20 `phylo_indep` seeds at or below `1e-9`, every one
+#'   reporting `convergence = 0` and a positive-definite Hessian.
+#' @param multinomial_collapse_rel_thresh Threshold on the ratio of the
+#'   smallest to the largest fitted contrast loading energy within one
+#'   response's K-1 contrasts, below which the smallest is flagged as
+#'   collapsed relative to its siblings (the M1 sibling arm). Default `Inf`
+#'   (disarmed): the K-1 contrasts of one multinomial response are
+#'   `pi^2/6`-correlated siblings through their shared baseline category,
+#'   not the independent siblings `psi_rel_thresh` (0.01) was calibrated on,
+#'   so this arm is provisional pending the S3 calibration campaign.
+#' @param multinomial_rail_thresh Threshold on the largest absolute
+#'   off-diagonal correlation of the implied contrast-level covariance
+#'   (`Lambda %*% t(Lambda)`) within one response's contrasts, at or above
+#'   which two contrasts are reported as rail-correlated (M2). Only
+#'   evaluated at tiers with rank `d >= 2` (see Details). Default `0.99`,
+#'   provisional pending the S3 calibration campaign; labeled evidence: 8/20
+#'   seeds at or above it.
+#' @param multinomial_range_collapse_thresh Threshold on the fitted spatial
+#'   practical range (`sqrt(8) / kappa`) relative to the coordinate-domain
+#'   diameter (the ratio, when the fit's mesh coordinates are reachable via
+#'   `object$mesh$loc_xy`), or on the practical range itself in absolute
+#'   coordinate units (the fallback, when they are not), at or below which
+#'   the spatial field is reported as collapsed (M3). Default `0.02`,
+#'   provisional pending the S3 calibration campaign; labeled evidence:
+#'   collapsed ratios 7e-5 to 3.4e-4.
+#' @return A one-row data frame in the [check_gllvmTMB()] row shape, or
+#'   `NULL` when the fit has no multinomial (fid 16) contrast pseudo-traits.
+#' @keywords internal
+.gllvmTMB_multinomial_degeneracy_row <- function(
+  object,
+  multinomial_collapse_floor = 1e-10,
+  multinomial_collapse_rel_thresh = Inf,
+  multinomial_rail_thresh = 0.99,
+  multinomial_range_collapse_thresh = 0.02
+) {
+  required <- c("trait_id", "multinom_K_per_trait")
+  tmb <- .gllvmTMB_tmb_data_or_null(object, required)
+  if (is.null(tmb)) {
+    return(NULL)
+  }
+
+  mnK <- as.integer(tmb$multinom_K_per_trait)
+  is_mn <- is.finite(mnK) & mnK > 0L
+  if (!any(is_mn)) {
+    return(NULL)
+  }
+
+  trait_names <- .gllvmTMB_trait_names(object)
+  ids <- which(is_mn)
+  labels <- vapply(
+    ids, function(id) .gllvmTMB_trait_label(trait_names, id), character(1)
+  )
+  ## Group K-1 contrast pseudo-traits into one response's block by their
+  ## shared "<base>:" prefix (expand_multinomial_response() names each
+  ## contrast "<base>:<category>").
+  block <- sub(":[^:]*$", "", labels)
+
+  ## Tiers read DIRECTLY from the report -- see roxygen Details above for why
+  ## `.gllvmTMB_latent_specs()` is not used here.
+  tiers <- c(
+    unit = "Lambda_B",
+    unit_obs = "Lambda_W",
+    phylo = "Lambda_phy",
+    spatial = "Lambda_spde"
+  )
+
+  cells <- list()
+  for (level in names(tiers)) {
+    L <- .gllvmTMB_report_matrix(object, tiers[[level]])
+    if (is.null(L)) {
+      next
+    }
+    row_idx <- .gllvmTMB_match_rows_by_trait(L, trait_names, ids)
+    for (b in unique(block)) {
+      b_row <- row_idx[block == b]
+      keep <- !is.na(b_row)
+      ## The K-1 >= 2 contrasts of one response can be a genuine M1/M2
+      ## sibling set even with only 2 rows present in this tier; a lone row
+      ## still gets an M1 floor test but no M2 rail test (handled below via
+      ## d_eligible).
+      if (sum(keep) < 1L) {
+        next
+      }
+      Lb <- L[b_row[keep], , drop = FALSE]
+      d <- ncol(Lb)
+      contrast_var <- rowSums(Lb^2)
+      finite_var <- contrast_var[is.finite(contrast_var)]
+      min_var <- if (length(finite_var) > 0L) min(finite_var) else NA_real_
+      floor_hit <- is.finite(min_var) && min_var <= multinomial_collapse_floor
+      ## Disarmed by construction when the threshold is non-finite (the
+      ## `Inf` default): `.gllvmTMB_relative_collapse()`'s own `<` test would
+      ## otherwise fire on every finite ratio.
+      sibling_hit <- is.finite(multinomial_collapse_rel_thresh) &&
+        .gllvmTMB_relative_collapse(contrast_var, multinomial_collapse_rel_thresh)
+      m1 <- isTRUE(floor_hit || sibling_hit)
+
+      ## HARD PRECONDITION: at d = 1 every healthy fit has rho = +-1 exactly
+      ## by row proportionality (a single shared loading column), so M2 is
+      ## evaluated only where the tier's rank is >= 2.
+      m2 <- FALSE
+      max_rho <- NA_real_
+      if (d >= 2L && sum(keep) >= 2L) {
+        V <- Lb %*% t(Lb)
+        dg <- diag(V)
+        ok <- is.finite(dg) & dg > 0
+        if (sum(ok) >= 2L) {
+          Vok <- V[ok, ok, drop = FALSE]
+          dgok <- diag(Vok)
+          R <- Vok / sqrt(outer(dgok, dgok))
+          diag(R) <- NA_real_
+          if (any(is.finite(R))) {
+            max_rho <- max(abs(R), na.rm = TRUE)
+            m2 <- isTRUE(max_rho >= multinomial_rail_thresh)
+          }
+        }
+      }
+
+      cells[[length(cells) + 1L]] <- data.frame(
+        block = b, tier = level, d = d, n_contrasts = sum(keep),
+        min_contrast_var = min_var, m1 = m1,
+        max_rail_rho = max_rho, m2 = m2,
+        stringsAsFactors = FALSE
+      )
+    }
+  }
+  tab <- if (length(cells) > 0L) do.call(rbind, cells) else NULL
+
+  ## M3: spatial practical range vs the coordinate domain, once per response
+  ## block that actually loads on the spatial tier -- SPDE loadings stay OUT
+  ## of every absolute-loading statistic elsewhere in this file (the
+  ## 6.5e6-vs-66 unit-tier hazard), but a practical range compared against a
+  ## coordinate-scale diameter is itself in coordinate units, not link units,
+  ## so that hazard does not apply to M3.
+  m3_cells <- list()
+  if (isTRUE(object$use$spde)) {
+    L_spde <- .gllvmTMB_report_matrix(object, "Lambda_spde")
+    kappa <- tryCatch(.gllvm_spatial_kappa(object), error = function(e) NULL)
+    kappa_ok <- is.numeric(kappa) && length(kappa) == 1L &&
+      is.finite(kappa) && kappa > 0
+    if (!is.null(L_spde) && kappa_ok) {
+      row_idx <- .gllvmTMB_match_rows_by_trait(L_spde, trait_names, ids)
+      practical_range <- sqrt(8) / as.numeric(kappa)
+      diameter <- .gllvmTMB_spatial_domain_diameter(object)
+      for (b in unique(block)) {
+        b_row <- row_idx[block == b]
+        keep <- !is.na(b_row)
+        if (sum(keep) < 1L) {
+          next
+        }
+        Lb <- L_spde[b_row[keep], , drop = FALSE]
+        loads_spatial <- any(is.finite(Lb) & Lb != 0)
+        if (!loads_spatial) {
+          next
+        }
+        if (is.finite(diameter) && diameter > 0) {
+          value <- practical_range / diameter
+          hit <- is.finite(value) && value < multinomial_range_collapse_thresh
+          metric <- "range_over_diameter"
+        } else {
+          value <- practical_range
+          hit <- is.finite(value) && value < multinomial_range_collapse_thresh
+          metric <- "range_absolute"
+        }
+        m3_cells[[length(m3_cells) + 1L]] <- data.frame(
+          block = b, metric = metric, value = value, m3 = hit,
+          stringsAsFactors = FALSE
+        )
+      }
+    }
+  }
+  m3_tab <- if (length(m3_cells) > 0L) do.call(rbind, m3_cells) else NULL
+
+  if (is.null(tab) && is.null(m3_tab)) {
+    return(NULL)
+  }
+
+  any_m1 <- !is.null(tab) && any(tab$m1)
+  any_m2 <- !is.null(tab) && any(tab$m2)
+  any_m3 <- !is.null(m3_tab) && any(m3_tab$m3)
+  status <- if (any_m1 || any_m2 || any_m3) "WARN" else "PASS"
+  arms <- c(
+    if (any_m1) "M1" else NULL,
+    if (any_m2) "M2" else NULL,
+    if (any_m3) "M3" else NULL
+  )
+
+  ## The worst cell drives the reported value/message, mirroring the
+  ## binomial row's "worst trait" convention. M1+M2 share `tab`; M3 lives in
+  ## its own table because it is keyed by block only, not block x tier.
+  worst_line <- character(0)
+  if (!is.null(tab)) {
+    hit <- tab[tab$m1 | tab$m2, , drop = FALSE]
+    src <- if (nrow(hit) > 0L) hit[1L, , drop = FALSE] else tab[1L, , drop = FALSE]
+    worst_line <- c(worst_line, paste0(
+      src$block, "@", src$tier, ": d=", src$d,
+      "; min_contrast_var=", .gllvmTMB_fmt_num(src$min_contrast_var),
+      "; max_rail_rho=", .gllvmTMB_fmt_num(src$max_rail_rho)
+    ))
+  }
+  if (!is.null(m3_tab)) {
+    hit3 <- m3_tab[m3_tab$m3, , drop = FALSE]
+    src3 <- if (nrow(hit3) > 0L) hit3[1L, , drop = FALSE] else m3_tab[1L, , drop = FALSE]
+    worst_line <- c(worst_line, paste0(
+      src3$block, "@spatial: ", src3$metric, "=",
+      .gllvmTMB_fmt_num(src3$value)
+    ))
+  }
+
+  msg <- if (identical(status, "PASS")) {
+    "multinomial K-1 contrast pseudo-trait degeneracy screen"
+  } else {
+    paste0(
+      "multinomial contrast degeneracy detected (arms: ",
+      paste(arms, collapse = ","), ")"
+    )
+  }
+  action <- if (identical(status, "PASS")) {
+    "none"
+  } else {
+    parts <- character(0)
+    if (any_m1) {
+      ## House wording (shared with the near-zero-psi row): a true-zero
+      ## variance fit fires M1 by design, so the action must not assert
+      ## pathology outright.
+      parts <- c(
+        parts,
+        "check whether the component is intentionally mapped off, boundary-pinned, or genuinely collapsed"
+      )
+    }
+    if (any_m2) {
+      parts <- c(
+        parts,
+        "a rail (|rho| near 1) between two contrasts of the same response suggests the fitted rank is not supported by these K-1 contrasts; compare a lower rank or re-check baseline-category coding"
+      )
+    }
+    if (any_m3) {
+      parts <- c(
+        parts,
+        "the spatial practical range is small relative to the coordinate domain; check mesh resolution and whether the spatial term is identified for this response"
+      )
+    }
+    paste(parts, collapse = "; ")
+  }
+
+  .gllvmTMB_check_row(
+    "multinomial_contrast_degeneracy",
+    status,
+    paste(worst_line, collapse = "; "),
+    paste0(
+      "variance <= ", multinomial_collapse_floor,
+      " (M1 absolute) or sibling ratio < ", multinomial_collapse_rel_thresh,
+      " (M1 relative); rail |rho| >= ", multinomial_rail_thresh,
+      " at tier rank d >= 2 (M2); spatial range/domain (or absolute range) < ",
+      multinomial_range_collapse_thresh, " (M3)"
+    ),
+    msg,
+    action
+  )
+}
+
 .gllvmTMB_sigma_eps_mapped_off <- function(object) {
   map <- object$tmb_obj$env$map
   if (is.null(map) || !"log_sigma_eps" %in% names(map)) {
@@ -719,6 +1080,36 @@
 #'   relative criterion missed. Being a link-scale quantity it does not
 #'   transport to families whose response scale is arbitrary, which is
 #'   why this row is binomial-only.
+#' @param multinomial_collapse_floor Absolute floor on a `multinomial()`
+#'   (fid 16) contrast pseudo-trait's fitted loading energy
+#'   (`rowSums(Lambda^2)`), at or below which it is a collapsed contrast.
+#'   Default `1e-10`, the campaign code's own guard. Provisional pending the
+#'   S3 calibration campaign; labeled evidence: 7/20 `phylo_indep` seeds at
+#'   or below `1e-9`, every one reporting `convergence = 0` and a
+#'   positive-definite Hessian.
+#' @param multinomial_collapse_rel_thresh Threshold on the ratio of the
+#'   smallest to the largest fitted contrast loading energy within one
+#'   `multinomial()` response's K-1 contrasts, below which the smallest is
+#'   flagged as collapsed relative to its siblings. Default `Inf`
+#'   (disarmed): those K-1 contrasts are `pi^2/6`-correlated siblings through
+#'   their shared baseline category, not the independent siblings
+#'   `psi_rel_thresh` was calibrated on, so this arm is provisional pending
+#'   the S3 calibration campaign.
+#' @param multinomial_rail_thresh Threshold on the largest absolute
+#'   off-diagonal correlation of the implied contrast-level covariance
+#'   within one `multinomial()` response's contrasts, at or above which two
+#'   contrasts are reported as rail-correlated. Only evaluated at tiers with
+#'   rank `d >= 2` -- at `d = 1` every healthy fit reaches `|rho| = 1`
+#'   exactly by row proportionality. Default `0.99`, provisional pending the
+#'   S3 calibration campaign; labeled evidence: 8/20 seeds at or above it.
+#' @param multinomial_range_collapse_thresh Threshold on the fitted spatial
+#'   practical range (`sqrt(8) / kappa`) relative to the coordinate-domain
+#'   diameter (when the fit's mesh coordinates are reachable), or on the
+#'   practical range itself in absolute coordinate units (the fallback when
+#'   they are not), at or below which a `multinomial()` response's spatial
+#'   field is reported as collapsed. Default `0.02`, provisional pending the
+#'   S3 calibration campaign; labeled evidence: collapsed ratios 7e-5 to
+#'   3.4e-4.
 #' @return A data frame with columns `component`, `status`, `value`,
 #'   `threshold`, `message`, and `action`. Status values are `"PASS"`,
 #'   `"WARN"`, or `"FAIL"`.
@@ -743,7 +1134,11 @@ check_gllvmTMB <- function(
   binary_saturation_share_thresh = 0.5,
   loading_relative_thresh = 8,
   loading_runaway_thresh = 25,
-  loading_absolute_thresh = 6
+  loading_absolute_thresh = 6,
+  multinomial_collapse_floor = 1e-10,
+  multinomial_collapse_rel_thresh = Inf,
+  multinomial_rail_thresh = 0.99,
+  multinomial_range_collapse_thresh = 0.02
 ) {
   if (!inherits(object, "gllvmTMB_multi")) {
     cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
@@ -936,6 +1331,13 @@ check_gllvmTMB <- function(
     identical(binomial_row$status[[1L]], "WARN")
   binomial_runaway <- binomial_warn &&
     isTRUE(attr(binomial_row, "runaway_loading"))
+  multinomial_row <- .gllvmTMB_multinomial_degeneracy_row(
+    object,
+    multinomial_collapse_floor = multinomial_collapse_floor,
+    multinomial_collapse_rel_thresh = multinomial_collapse_rel_thresh,
+    multinomial_rail_thresh = multinomial_rail_thresh,
+    multinomial_range_collapse_thresh = multinomial_range_collapse_thresh
+  )
   if (length(latent_specs) == 0L) {
     rows <- c(
       rows,
@@ -1030,6 +1432,9 @@ check_gllvmTMB <- function(
   }
   if (!is.null(binomial_row)) {
     rows <- c(rows, list(binomial_row))
+  }
+  if (!is.null(multinomial_row)) {
+    rows <- c(rows, list(multinomial_row))
   }
 
   psi_specs <- c(

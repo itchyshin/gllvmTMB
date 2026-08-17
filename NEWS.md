@@ -20,6 +20,23 @@ is still the default.
   unordered so a randomized-quantile residual is undefined for it. See
   `?residuals.gllvmTMB_multi` for the full scope statement.
 
+* **A `check_gllvmTMB()` row for multinomial K-1 contrast degeneracy.**
+  `multinomial()` (fid 16) fits as K-1 baseline-category contrast
+  pseudo-traits per response; `check_gllvmTMB()` now reports a
+  `multinomial_contrast_degeneracy` row that screens those contrasts
+  against each other for three failure modes generic loading diagnostics
+  cannot see: one contrast's loading energy collapsing to ~0 (absolutely,
+  or relative to its sibling contrasts), two contrasts of the same
+  response loading almost perfectly on the same axis (evaluated only where
+  the tier's rank is 2 or more, since rank-1 tiers reach that correlation
+  on every healthy fit by construction), and a spatial field's practical
+  range collapsing relative to the coordinate domain. This is a check-row
+  addition only -- no fit-time warning, no new export, no behaviour change
+  to any existing fit. New arguments `multinomial_collapse_floor`,
+  `multinomial_collapse_rel_thresh` (disarmed by default, `Inf`),
+  `multinomial_rail_thresh`, and `multinomial_range_collapse_thresh` are
+  documented as provisional pending a calibration campaign.
+
 * **Liability-scale phylogenetic heritability for categorical families.**
   `extract_phylo_signal()` gains a `link_residual` argument. The default
   (`"none"`) keeps the historical species-level-latent denominator

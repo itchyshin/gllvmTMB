@@ -1,3 +1,20 @@
+## 2026-08-17 — Cursor MSPL SE/CI: triad KF2021 footnote + #1077 wording
+
+**Lane:** `cursor/mspl-se-ci-docs-reconcile` (+ wording-only on draft `#1077`)
+OWED only: `#1075` MSPL/KF2021 footnote; `#1077` stale “bounds not computed /
+Design G0 open” wording. Poisson \(W\) on main stays **SIGNED — PARK SE doors**;
+do not invent KEEP/REPLACE; handover §4 / provenance left to open Claude `#1096`.
+
+```sh
+rg -n 'MSPL footnote|Kosmidis|SIGNED — PARK' \
+  docs/dev-log/research/2026-08-17-mspl-ci-wald-plus-profile.md
+rg -n '1090|not_constructed|bounds can be computed' \
+  R/mspl-profile-ci-stub.R docs/dev-log/research/2026-08-17-mspl-profile-ci-scaffold.md
+Rscript --vanilla -e 'devtools::load_all("."); testthat::test_local(filter="mspl-api")'
+# deliberately not: undraft #1077, invent KEEP/REPLACE, restore UNSIGNED,
+# edit handover (#1096), extend KF2021 beyond binomial, Lane B absorb
+```
+
 ## 2026-08-17 — AUTHORITATIVE: G1 PARK SE doors is SIGNED (supersedes Rose RETRACT)
 
 **Lane:** `claude/lane-mspl-profile-led-ci`

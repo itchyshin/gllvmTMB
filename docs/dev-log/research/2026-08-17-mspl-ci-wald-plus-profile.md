@@ -42,6 +42,14 @@ This sitting’s phrasing (“signature error is profile”) is therefore a **sh
 
 Speed / cost order (D-12): **Wald (quickest) → profile (signature) → bootstrap (asymmetry / calibration layer).**
 
+### MSPL footnote — profile = signature under a finiteness penalty
+
+**D-12 stands** for ML generally and as the house brand: profile remains the signature / primary claim path; Wald stays the quick baseline.
+
+What does **not** stand is the inference that **profiling rescues coverage under a finiteness penalty**. Kosmidis & Firth (2021) §2.2 state that for binomial-response GLMs the usual regions fail to cover **even when the penalised likelihood is profiled** — the failure is the bounded attainable estimator set, not a quadratic-approximation artefact (see `docs/dev-log/research/2026-08-17-kosmidis-firth-2021-profile-caveat.md`, Status **VERIFIED**). So “profile = signature” here means **which instrument we build next**, not “profile of the MSPL penalised tape is already a calibrated CI”.
+
+**Scope fence (do not over-cite):** KF2021 is **binomial-response only**. For Gamma / lognormal / Student / Tweedie / ordinal_probit / delta / hurdle / nbinom the same profile-coverage question is **UNVERIFIED**. Transfer to a latent-variable GLLVM (Laplace marginal) is **AGENT-INFERRED**, not established. An internal uncalibrated profile *computer* (e.g. `#1090` binomial probe) remains allowed under D-149’s computability ≠ coverage split; calling its endpoints confidence intervals does not.
+
 ### How this sits next to B1 / Design 118
 
 - B1 failed as a **Wald-shaped calibrated-interval** programme (hold-out G1–G5 FAIL 14/132 = 10.6% under frozen M0).
@@ -59,7 +67,7 @@ Speed / cost order (D-12): **Wald (quickest) → profile (signature) → bootstr
 
 > **Confirm MSPL interval triad for the new construction:** Profile = signature / primary claim path; Wald (\(Q_0\)) = quickest baseline / availability check (not the brand; not Design 118 reopen); Bootstrap = asymmetry / non-symmetric sampling. SE pins stay D-149. No Totoro. No public `se=TRUE` without separate G0.
 
-Recorded under **D-157** new construction + this card SIGNED. **No new vault/repo D-number** (D-12 already heroizes profile; this paste locks the triad roles for the post-B1 path). Poisson \(W\) G0 remains UNSIGNED. #1077 stays draft/fenced; no real profile intervals; no Design 118 / B1 / Totoro reopen; no public `se=TRUE`.
+Recorded under **D-157** new construction + this card SIGNED. **No new vault/repo D-number** (D-12 already heroizes profile; this paste locks the triad roles for the post-B1 path). Poisson \(W\) G0 Status on `main` is **SIGNED — PARK SE doors** (Shinichi *"approve all things in this lane"* / `G1 PARK SE doors`); do **not** invent KEEP / REPLACE. Handover §4 UNSIGNED wording is stale — see open Claude [#1096](https://github.com/itchyshin/gllvmTMB/pull/1096) provenance note. #1077 stays draft/fenced; no public profile intervals; no Design 118 / B1 / Totoro reopen; no public `se=TRUE`. Binomial profile **computability** on `main` (`#1090`) is not a calibrated CI claim.
 
 ---
 

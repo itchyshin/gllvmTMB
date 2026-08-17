@@ -95,6 +95,63 @@ dgp_multinomial_structured <- function(n_sp, seed, K = 3L,
   )
 }
 
+#' Simulate one multinomial + group random-intercept dataset (Slice 4)
+#'
+#' Model: `G` groups, `n_per_g` categorical draws each (`N = G * n_per_g`
+#' observations), `K` unordered categories, reference category 1, `K-1`
+#' baseline-contrast pseudo-traits. Fixed per-category intercepts `b0` plus
+#' an ADDITIVE group random intercept `u_g ~ N(0, sigma_re^2)`, shared across
+#' ALL `K-1` contrast columns of every observation in that group -- this
+#' mirrors the `(1 | g)` engine route EXACTLY (`src/gllvmTMB.cpp`'s `re_int`
+#' block adds one draw per group id to every row of `eta` sharing that id,
+#' and the K-1 expanded pseudo-trait rows of one multinomial observation all
+#' carry the same group id; see R/multinomial-fence.R):
+#'   eta_i1 = 0 (baseline, never shifted)
+#'   eta_ik = b0_k + u_{g(i)},   k = 2..K
+#' One categorical draw per observation (softmax over eta_i).
+#'
+#' @param G Integer number of groups.
+#' @param n_per_g Integer number of categorical draws per group (constant
+#'   across groups; `N = G * n_per_g` observations total).
+#' @param seed Integer seed (fully determines the group draws and the
+#'   categorical draws).
+#' @param K Integer number of categories (default 3L -> K-1 = 2 contrasts).
+#' @param b0 Length K-1 numeric vector of true per-category intercepts.
+#' @param sigma_re True group random-intercept SD (default 0.6).
+#' @return A list with:
+#'   \item{data}{data.frame(unit, group, trait, value) ready for gllvmTMB()}
+#'   \item{u_true}{named numeric length-G vector of the TRUE group draws}
+#'   \item{b0_true, sigma_re_true, K, G, n_per_g, seed}{echoed inputs}
+dgp_multinomial_grouped <- function(G, n_per_g, seed, K = 3L,
+                                     b0 = c(0.2, -0.3),
+                                     sigma_re = 0.6) {
+  stopifnot(K >= 3L, length(b0) == K - 1L, G >= 2L, n_per_g >= 1L)
+  set.seed(seed)
+  n_obs <- G * n_per_g
+  grp_lvls <- paste0("g", seq_len(G))
+  grp <- factor(rep(grp_lvls, each = n_per_g), levels = grp_lvls)
+  u_g <- stats::setNames(stats::rnorm(G, 0, sigma_re), grp_lvls)
+  shift <- u_g[as.character(grp)]                    # length n_obs, one draw per row's group
+  ## `shift` (length n_obs) recycles down each COLUMN of the n_obs x (K-1)
+  ## fixed-effect matrix, adding the SAME per-row group draw to every
+  ## contrast column -- i.e. every K-1 pseudo-trait row of one observation
+  ## gets the identical additive shift, exactly like the (1 | g) engine term.
+  eta <- cbind(0, matrix(b0, n_obs, K - 1L, byrow = TRUE) + shift)
+  P <- exp(eta - apply(eta, 1L, max))
+  P <- P / rowSums(P)
+  y <- vapply(seq_len(n_obs), function(i) sample.int(K, 1L, prob = P[i, ]), integer(1))
+
+  dat <- data.frame(
+    unit = factor(seq_len(n_obs)), group = grp,
+    trait = factor("morph"), value = factor(y)
+  )
+
+  list(
+    data = dat, u_true = u_g, b0_true = b0, sigma_re_true = sigma_re,
+    K = K, G = G, n_per_g = n_per_g, seed = seed
+  )
+}
+
 ## ---- pure-R self-check (no gllvmTMB load) ---------------------------------
 ## Rscript dev/multinomial-structured/dgp-multinomial-structured.R
 
@@ -117,6 +174,24 @@ dgp_multinomial_structured <- function(n_sp, seed, K = 3L,
   invisible(dgp)
 }
 
+.run_grouped_dgp_check <- function() {
+  dgp <- dgp_multinomial_grouped(G = 60L, n_per_g = 15L, seed = 1L)
+  d <- dgp$data
+  cat("== dgp_multinomial_grouped() one-seed check (G = 60, n_per_g = 15, seed = 1) ==\n")
+  cat("nrow(data):", nrow(d), " (expect 900)\n")
+  cat("colnames(data):", paste(colnames(d), collapse = ", "), "\n")
+  cat("nlevels(group):", nlevels(d$group), " (expect 60)\n")
+  cat("obs per group all equal:", length(unique(table(d$group))) == 1L, "\n")
+  tab <- table(d$value)
+  cat("category counts:\n"); print(tab)
+  cat("all K categories observed:", length(tab) == dgp$K, "\n")
+  cat("length(u_true):", length(dgp$u_true), " sd(u_true):", sd(dgp$u_true),
+      " (target sigma_re =", dgp$sigma_re_true, ")\n")
+  cat("any NA in data:", anyNA(d), "\n")
+  invisible(dgp)
+}
+
 if (sys.nframe() == 0L) {
   .run_dgp_check()
+  .run_grouped_dgp_check()
 }

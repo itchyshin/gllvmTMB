@@ -1,24 +1,24 @@
-## 2026-08-17 — C1: after-task + handover for Design 125 / S2 → NEXT S3
+## 2026-08-17 — C1: after-task + handover for Design 125 / S2 → G2
 
 **Lane:** `claude/lane-mspl-profile-led-ci` @ `/Users/z3437171/local-scratch/lanes/gllvmTMB-mspl-profile-led-ci`
 Docs only. **C1** closure. Wrote/refreshed
 `docs/dev-log/after-task/2026-08-17-mspl-design-125-profile-led.md` and
 `docs/dev-log/handover/2026-08-17-cursor-handover.md` OWED table.
 Pins: Design path `docs/design/125-mspl-profile-led-intervals.md`; claim
-`b68b20b4`; Confirm-in-ref `7de94fc7`; #1077 still draft; Poisson W card
-**UNSIGNED** (do not invent KEEP/REPLACE/PARK — note: a parallel check-log
-line claimed SIGNED PARK before the card Status flipped; card remains
-authoritative until Status: SIGNED). Cited S2
-`docs/dev-log/research/2026-08-17-mspl-profile-led-prereg-ademp.md`.
-S4/V1 sibling DONE; live NEXT = **S3**. No undraft #1077; no push.
+`b68b20b4`; Confirm-in-ref `7de94fc7`; #1077 still draft; Poisson W **card**
+**UNSIGNED** (G1 PARK SE doors operational; do not invent KEEP/REPLACE
+SIGNED Status). Cited S2
+`docs/dev-log/research/2026-08-17-mspl-profile-led-prereg-ademp.md`
+(**SIGNED**). Live LOOP NEXT = V1/C1 → **G2** non-draft docs PR when asked;
+H1 blocked. No undraft #1077; no push. Did **not** stage sibling LOOP/prereg
+dirt in this commit.
 
 ```sh
 test -f docs/dev-log/after-task/2026-08-17-mspl-design-125-profile-led.md
 rg -n '^\*\*Status:\*\*' docs/dev-log/research/2026-08-17-mspl-poisson-W-G0.md
-rg -n 'b68b20b4|7de94fc7|Design 125|S3|UNSIGNED|#1077|SIGNED' \
+rg -n 'b68b20b4|7de94fc7|Design 125|UNSIGNED|#1077|SIGNED|G2' \
   docs/dev-log/after-task/2026-08-17-mspl-design-125-profile-led.md \
-  docs/dev-log/handover/2026-08-17-cursor-handover.md \
-  LOOP/checkpoint.md
+  docs/dev-log/handover/2026-08-17-cursor-handover.md
 # deliberately not run: undraft #1077, confint, Totoro, Design 118 edits, push
 ```
 

@@ -1,5 +1,43 @@
 # Check log
 
+## 2026-08-17 — `--as-cran` ERROR fixed: lane-b test needed the git-checkout guard
+
+Tests only, one guard, 8 lines. Reproduced the pre-existing `--as-cran`
+failure the multinomial arc attributed out of scope
+(`docs/dev-log/after-task/2026-08-16-multinomial-structured-arc.md`):
+`test-mspl-simulation-contract.R:132` errored in `lane_b_checkout_head()`
+("Lane B requires a git checkout with a resolvable HEAD") because
+`R CMD check` copies `tests/` to a temp dir with no `.git`, while
+`lane_b_repo_root()` resolves to the R library. The file called
+`lane_b_prepare()` twice and guarded only the second (line 968); added the
+same `skip_if_not(file.exists(file.path(source_root, ".git")), ...)` idiom
+to the first, placed after the pure queue/registry assertions so those
+still execute under CRAN.
+
+Commands: `R CMD build --no-build-vignettes` + `R CMD check --as-cran
+--no-manual --no-build-vignettes` (before: `1 ERROR, 2 WARNINGs, 1 NOTE`,
+`checking tests` = `[FAIL 1 | SKIP 1565 | PASS 8887]`; after:
+`2 WARNINGs, 1 NOTE`, `checking tests ... OK`,
+`[FAIL 0 | WARN 0 | SKIP 1566 | PASS 8887]`). PASS identical, SKIP +1, and
+the skip reason `requires a source checkout for git-bound campaign
+receipts` goes 1 -> 2 instances: the guard fires on exactly one site.
+`testthat::test_file()` from a source checkout unchanged at 35 tests /
+206 passed / 0 failed.
+
+Swept the defect class rather than patching one line: the other four
+git-shelling test files are already safe — `helper-aghq-o3.R:486` returns
+`NA_character_`, `test-g2d-six-species-harness.R:4` skips on missing
+script, `test-bfgs-smoke-contract.R:555` opens with `isdm_dev_path()`
+(`^dev$` is in `.Rbuildignore`; 0 `dev/` entries in the tarball). Singleton
+confirmed, matching the observed `FAIL 1`.
+
+Deliberately NOT done: no graceful degrade of `lane_b_checkout_head()` —
+it feeds `frozen$checkout_head`, a campaign-provenance pin, and returning
+`NA` would weaken a receipt to paper over a harness gap. No `R/`, `src/`,
+NEWS, or register change. No public `se=TRUE`, no `vcov`/`confint`. The two
+residual WARNINGs are artifacts of `--no-build-vignettes` (absent
+`inst/doc`, unrendered `gllvmTMB.Rmd`), not this change.
+
 ## 2026-08-17 — MSPL CI triad = profile signature + Wald quick + bootstrap asymmetry
 
 Docs only. Shinichi paste: try Wald (quickest) but signature error is

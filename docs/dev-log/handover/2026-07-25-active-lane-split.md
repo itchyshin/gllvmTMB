@@ -3,6 +3,14 @@
 This coordination note prevents a new session from treating this repository as
 a single writable lane.  It is a map, not a release/capability claim.
 
+**Refresh 2026-08-17 (Cursor): B1 aftermath G0 brief filed, UNSIGNED.**
+Lane **`docs/mspl-b1-aftermath-g0`** · WT
+`/private/tmp/gllvmtmb-mspl-b1-aftermath-g0`. Official hold-out is
+[#1040](https://github.com/itchyshin/gllvmTMB/pull/1040) (M0;
+G1 14/132 = 10.6%). Default recommended: **PARK**. No Totoro
+relaunch. No promote. `MSPL-04` stays `blocked`.
+**START HERE:** `docs/dev-log/research/2026-08-17-mspl-b1-aftermath-G0.md`.
+
 **Refresh 2026-08-15 #9 (Cursor): Student-t + ordinal Phase-4 planned prep.**
 Lane **`cursor/mspl-phase4-student-ordinal`** · WT
 `/tmp/gllvmtmb-mspl-student-ordinal` · LOOP
@@ -93,6 +101,7 @@ missing-data ledger remains open and separately owned unless reassigned.
 
 | Lane | Owner | State | Start here | Boundary |
 | --- | --- | --- | --- | --- |
+| **LA-MSPL B1 aftermath G0** | Cursor | **BRIEF FILED, UNSIGNED.** Official gate #1040 M0 14/132 = 10.6%. Default **PARK**. No Totoro relaunch | `docs/dev-log/research/2026-08-17-mspl-b1-aftermath-G0.md` | No promote; no second campaign; no \(n\to 2000\); `MSPL-04` stays `blocked`; Design 118 already discharged (#1056) |
 | **Private two-source iSDM G2d** | Codex | **NEW PLAN-ONLY LANE (2026-08-10).** Fresh worktree `/private/tmp/gllvmtmb-isdm-g2d-six-species` · `codex/isdm-g2d-six-species`, forked locally from the closed G2c smoke branch. G2c is `G2C_SMOKE_ADMISSION_HOLD`; no campaign launched. | `2026-08-10-codex-handover-g2d.md`; then G2c after-task report and smoke decision | First task is an Ultra Plan only: six-species, nonspatial, private known-truth recovery design with the same free-Psi relative-intensity estimand. No fits, Totoro, count, spatial, source, empirical, public/API, or Issue #953 work without a new approval. |
 | **LA-MSPL Student-t + ordinal Phase-4 prep** | Cursor | **PLANNED PREP** (not admitted). Notes + oracles only; no registry row; no public door | `2026-08-15-cursor-handover-phase4-student-ordinal.md`; LOOP `docs/dev-log/lanes/cursor-mspl-phase4-student-ordinal/LOOP/` | No admit; no NEWS covered; no `estimator=mspl` on student/ordinal; Binary SE **PROTECTED** |
 | **LA-MSPL items 1–3 (smoke / SE-CI / receipts)** | Cursor | **KEEP PLANNED.** #988 MERGED. #989 + #990 open. Do not merge #972–#976. Do not admit | `2026-08-15-cursor-handover-mspl-1-3.md` | No admit; no NEWS covered; no Totoro SE campaign; Binary SE **PROTECTED** |

@@ -141,7 +141,12 @@ signed campaign results).
   changes. **Confidence:** medium — a future cleanup could trim these
   further once the arc is fully closed out.
 
-## 4. Campaign verdicts (verbatim, as handed off — not re-derived)
+## 4. Campaign verdicts
+
+Originally recorded verbatim as handed off; **amended in the D-43
+completion-panel repair round (same day) to fix two conflations and one
+disclosure gap the panel caught** — see the annotations inline below and
+§5's "Corrections made" for the fuller account.
 
 - **FAM-20C** (`animal_latent()`/`kernel_latent()`, loadings-only):
   equivalence to `phylo_latent()` proven (matched objective to double
@@ -149,34 +154,60 @@ signed campaign results).
   8/20 (>6/20 threshold), identically for both keywords (engine identity).
   Non-railed median rho 0.695. Replication rescue (s1b, pre-registered
   before running) **PASSED**: n_sp=300 × n_rep=5 → rails 4/20, median rho
-  0.680 ∈ [0.35,0.75], SD ratios 0.89/0.85, direction-correct 15/16
-  non-railed (94%; proportion reading passes "≥16/20", strict count
-  reading is one short — both recorded). Tree-vs-star check: Δ logLik
-  29.7 (phylogeny genuinely enters).
+  0.680 ∈ [0.35,0.75] (non-railed filter; median over ALL 20 conv+PD
+  seeds, unfiltered, is 0.696 — also in band, disclosed per D-43 R8), SD
+  ratios 0.89/0.85, direction-correct 15/16 non-railed (94%; proportion
+  reading passes "≥16/20", strict count reading is one short — both
+  recorded). Tree-vs-star check: Δ logLik 29.7 (phylogeny genuinely
+  enters).
 - **FAM-20D** (`phylo_dep()`/`phylo_indep()` + twins): `phylo_dep()` gate
   **FAILED** (rails 8/20, median rho 0.781). `phylo_indep()` as-run had a
   DGP mismatch (correlated truth fed to the diagonal-truth cell — recorded
   openly); the corrected rerun (diagonal truth, sd 0.8/0.5) **FAILED**:
   larger variance fine (median ratio 0.78, 17/20 in band), smaller
-  variance collapses (median ratio 0.24, 9/20), planted-zero criterion
+  variance collapses (median ratio 0.24, 9/20 in band) — **7 of the 20
+  seeds collapse the smaller variance to numerical zero (ratio ≤ 1e-9),
+  every one with convergence = 0 AND a PD Hessian, and no runtime
+  detector fires (D-43 R4; `R/diagnose.R`'s degeneracy gate is
+  `family_id == 1`-only, issue #897's class)** — planted-zero criterion
   failed (full-V `phylo_latent()` refit on diagonal-truth data rails to
   median |rho|=1.0). The s1b replication rescue transfers to `phylo_dep()`
   EXACTLY (identical parameterisation); it does NOT cover `phylo_indep()`
   (replication rescue untested for the diagonal-V mode).
 - **FAM-20E** (`spatial_latent()`/`indep()`/`dep()`): kappa/tau gate
   **PASSED all three cells** — median practical-range ratios 1.75 / 1.12 /
-  1.75 (band 0.33-3.0), rails 0/14, 3/14, 0/14 (threshold >6), non-PD 6/20
-  per cell (reported, excluded per criteria). Field correlation
-  descriptive-only per the frozen criteria. `A_proj` usability finding:
-  users must pre-expand coordinates before `make_mesh()`; `n_site = 300`
-  was not calibrated against a prior spike.
-- **FAM-20F** ((1|g) + cluster/cluster2): **PASSED** — 20/20 conv+PD,
-  median sigma ratio 0.947, range [0.60,1.51] ⊂ [0.5,2.0]. Baseline-vs-rest
+  1.75 among the 14 conv+PD seeds (band 0.33-3.0), rails 0, 3, 0 of those
+  14 against the frozen threshold **>6/20** (D-43 R7: an earlier draft of
+  this report mis-stated the denominator as ">6/14"; restored here),
+  non-PD 6/20 per cell (reported, excluded per criteria). **Dispersion
+  disclosed (D-43 R9):** 4 of 14 PD seeds fall outside [0.33,3.0] for
+  `latent()`/`dep()` (worst ratio 4.56); `indep()`'s 3 rails sit at range
+  ratios 2.3e-4 to 3.4e-4, and ALL THREE have `pdHess = TRUE`. Field
+  correlation descriptive-only per the frozen criteria. `A_proj`
+  usability finding: users must pre-expand coordinates before
+  `make_mesh()`; `n_site = 300` was not calibrated against a prior spike.
+- **FAM-20F**: **`(1 | group)` PASSED** — 20/20 conv+PD, median sigma
+  ratio 0.947, range [0.60,1.51] ⊂ [0.5,2.0]. **This PASSED verdict does
+  NOT extend to `cluster`/`cluster2`** (D-43 R3: an earlier draft of this
+  report, and three docs surfaces, wrongly implied the same campaign
+  covered both — the s4 summary CSV fit `re_int` exclusively, zero
+  `cluster`/`cluster2` rows). `cluster`/`cluster2` are admitted with
+  CONSTRUCTION-level evidence only (the fit constructs, `extract_Sigma()`
+  returns a well-formed per-contrast diagonal); their recovery axis
+  remains OPEN (`partial`), exactly as `pass-criteria-s4.md`'s own
+  "Non-degenerate diagonal cell" section already stated (that file's own
+  framing was correct throughout; the conflation was introduced only in
+  the register/design-doc/NEWS/this-report surfaces). Baseline-vs-rest
   semantics + the corrected non-invariance claim stand as Slice 4 wrote
   them.
 - **Slice-2 scalar refusal**: unchanged; null-probe evidence (`phylo_dep()`
   rails ±1 on zero-signal data 4/5 seeds with PD Hessians;
   `phylo_indep()` correctly ~0 in 5/5).
+- **OLRE guard boundary (D-43 R10, note-level, no code change):** the
+  guard fires only when EVERY level of a grouping factor is a categorical
+  singleton (`all(n_obs_per_level == 1L)`); a mostly-singleton grouping
+  passes silently. Recorded as a known boundary in `docs/design/122-
+  multinomial-structured-surface.md` §3, not changed.
 - **Maintainer decisions recorded**: `meta_V()`/`equalto()` is
   Gaussian-only → fid-16 fail-closed CONFIRMED; `cluster2` co-admission
   approved (identical engine math to `cluster`); campaigns signed
@@ -213,6 +244,68 @@ signed campaign results).
   descriptions are not files in the repo and this task's scope was
   file-based consolidation. Flagged as a follow-up (§7) rather than done
   silently via the `gh` CLI without being asked.
+
+### 5a. D-43 completion-panel repair round (same day, follow-on task)
+
+The D-43 completion panel returned 2× NOT-DONE and 1× DONE on this arc's
+Slice-5 consolidation, finding two CODE gaps and eight DOCS issues (one
+already fixed and excluded from this list — the provenance-script finding,
+`rerun-s2-indep-corrected.R`, committed `899dc9c7`):
+
+- **R1 (code, blocking): `re_int` was tier-blind.** The classifier
+  admitted a `(1 | group)` term for ANY grouping regardless of tier,
+  discarding the tier it had already computed — a unit_obs-tier term
+  classified ADMITTED and was only stopped, on SOME fixtures, by the
+  coincidental OLRE guard (fixtures where every unit_obs level happened to
+  be a categorical singleton). Fixed: the classifier now checks tier
+  directly and blocks unit_obs. New table row + table-consistency
+  coverage + a fit-level regression test using a NON-singleton unit_obs
+  fixture (so the fix is pinned independently of the OLRE guard).
+- **R2 (code, housekeeping): the admission table was not literally
+  exhaustive.** `dep()`/`indep()`/`unique()` at the unit tier were blocked
+  only via classifier fallthrough + fit-level tests, with no table row —
+  inconsistent with the table's documented status as the single source of
+  truth. Added explicit rows + `reprs` entries for all three.
+- **R3 (docs, blocking): FAM-20F conflated `(1 | group)`'s signed PASS
+  with `cluster`/`cluster2`'s construction-level-only evidence** across
+  three surfaces (register, design-122, NEWS) and this report. Fixed
+  everywhere; `pass-criteria-s4.md` itself never had this bug.
+- **R4 (docs, blocking): the `phylo_indep()` 7/20 numerical-zero collapse
+  was under-disclosed.** "Median ratio 0.24, 9/20 in band" did not state
+  that 7 of those 20 seeds collapse to numerical zero with `convergence =
+  0` AND a PD Hessian, invisible to every current diagnostic. Disclosed
+  in FAM-20D, design-122, NEWS; the `#897`-class detector gap added to
+  Known Limitations.
+- **R5 (docs, should-fix): the capability-board hedge was uniform and
+  partly wrong** ("recovery needs per-species replication" does not
+  describe `phylo_indep()`'s actual failure mode, and is irrelevant to
+  spatial, which passed outright). Reworded to name each axis's real
+  status.
+- **R6 (docs, should-fix): pass-criteria STATUS lines still read DRAFT**
+  after the register already reported them SIGNED. Updated all four
+  (s1-s4) with a dated amendment note below the frozen block (the frozen
+  block itself untouched); s1b — whose file, DGP script, and results all
+  landed in ONE commit — got an explicit "not git-verifiable" provenance
+  note rather than an implied one.
+- **R7 (docs, should-fix): the s3 frozen rail threshold was re-expressed
+  as ">6/14"** in design-122 and NEWS; the pre-registered frozen wording
+  is ">6/20". Restored in both places plus the register row, with the
+  14-PD-seed context kept alongside rather than dropped.
+- **R8 (docs, should-fix): s1b's non-railed-filter median (0.680) was
+  reported without its unfiltered counterpart.** Disclosed: median over
+  ALL 20 conv+PD seeds is 0.696, also in band — the PASS does not depend
+  on which one is headlined.
+- **R9 (docs, should-fix): spatial per-seed dispersion was absent.** Added
+  to design-122/FAM-20E/NEWS: 4/14 PD seeds outside band for
+  `latent()`/`dep()` (worst ratio 4.56); `indep()`'s 3 rails at range
+  ratios 2.3e-4–3.4e-4, ALL with `pdHess = TRUE` — verified directly from
+  `s3-summary-20260816-190701.csv`, which also corrected one sub-detail
+  in the original finding (all three rails have `pdHess = TRUE` on
+  re-verification, not two).
+- **R10 (docs, note-level): the OLRE guard's all-or-nothing boundary**
+  (fires only when EVERY level is a categorical singleton) recorded
+  explicitly in design-122 §3 as a known boundary + follow-up, no code
+  change.
 
 ## 6. Checks Run
 
@@ -308,6 +401,27 @@ contradiction only existed across slices.
   loadings-only cells, or does its independent small-variance-collapse
   failure mode persist under replication? Needs its own s1b-style
   pre-registered campaign.
+- **No fid-16 (multinomial) degeneracy detector exists (cf. #897).**
+  7 of the 20 corrected `phylo_indep()` seeds collapse the smaller
+  contrast variance to numerical zero (ratio ≤ 1e-9) with `convergence =
+  0` AND a PD Hessian on every one -- a silent-looking pass by every
+  currently-reported diagnostic. `R/diagnose.R`'s Heywood/degeneracy gate
+  (`.gllvmTMB_binomial_prevalence_loading_row()`,
+  `R/diagnose.R:433-484`) checks `family_id == 1` (binomial) only; issue
+  #897 already tracks the analogous gap for `ordinal_probit`
+  (`family_id == 14`), and this arc's evidence shows the same class of
+  gap extends to `family_id == 16`. A fid-16 extension of that detector
+  (or a dedicated one) is a concrete, scoped follow-up.
+- **The OLRE guard's boundary condition is narrower than "mostly
+  degenerate."** `.multinomial_reint_group_olre_guard()` fires only when
+  EVERY level of the grouping factor has exactly one categorical
+  observation (`all(n_obs_per_level == 1L)`); a grouping where MOST
+  levels are singletons but a few are not passes the guard silently.
+  Recorded as a known boundary in `docs/design/122-multinomial-
+  structured-surface.md`'s §1 OLRE-guard row rather than changed here —
+  a partial-degeneracy detector would need its own identifiability
+  argument (some groups may be estimable even when most are not), not a
+  mechanical tightening of the current all-or-nothing check.
 - **`extract_Sigma(level = "spatial")` on a `spatial_indep()`-only fit
   still aborts** — a pre-existing, family-agnostic gap (not multinomial-
   specific, not introduced or fixed by this arc). A dedicated diagonal-SPDE

@@ -169,6 +169,30 @@ Shinichi approved all three staged decisions in order:
    first, the Cox–Reid **A+B half at 100 seeds (~2.7 h Totoro)** second
    with arm C held pending a ridge/k decision, slope cells third.
 
+## 11c. Second same-day follow-on (ultra-planned; maintainer: "all under one ultraplan")
+
+1. **The A+B campaign RAN and K1 FIRED.** 1,600 fits, Totoro, 96 workers,
+   16.5 s wall (23.2 min sequential-equivalent), commit `ae17a501`,
+   100 % convergence both arms, canary-gated launch after a real canary
+   catch (mirai worker-env serialization bug → self-contained `run_row` +
+   error-as-row). Adjudication (`dev/coxreid-ab/RESULTS.md`, Design 121
+   §9): Cox–Reid WORSENS median |bias| in both families (binomial
+   7.26 → 10.84 pp; ordinal 3.08 → 4.39 pp; paired-median MCSE 22–53×
+   under threshold; B degenerates more, 36 vs 22/800). **Pre-registered
+   negative; hypothesis dead at these scales.** K2/K3/K4 explicitly
+   unadjudicated. No promotion either way.
+2. **Design 122 (VA-vs-Laplace ADEMP) written + Opus-reviewed.** Fisher's
+   F1–F5 embedded; Opus caught the guaranteed-null class AGAIN (pdHess
+   does not exist on the VA route → silent-divergence undefined for VGH;
+   K3's condition 2 auto-satisfied) plus 5 more fixes — all applied.
+3. **Design 122's pre-run stopped on its own D-139 rule with a
+   load-bearing finding:** one VGH smoke fit at n=1600/p=27 exceeded
+   17.3 min (VA default `n_starts = 4`, ~8,080 free parameters); §12's
+   compute assumption falsified BEFORE any seeds were burned; options
+   (n_starts arm / budget / drop tier) recorded in Design 122 §14 for
+   Design 66 scoping.
+4. One-pager updated: claimant 2 RESOLVED (K1), claimant 1 repriced.
+
 ## 12. Cross-Product Coverage
 
 drmTMB's Cox–Reid measurement is cited as prior only; nothing here claims

@@ -1,0 +1,22 @@
+Cox-Reid A+B full starting on totoro workers=96 commit=ae17a501
+gllvmTMB is EXPERIMENTAL (lifecycle: experimental). Use at your own risk: the package is not complete, is not fully human-verified, and needs extensive further validation. Point estimates are the primary inferential output, but evidence is route- and regime-specific. Broad interval coverage is not certified. One narrow two-sided Gaussian total-variance profile regime has a documented 0.94 floor. See the Current limitations and boundaries page for scope.
+AB_MODE=full  tasks=1600  smoke=FALSE  local_dev=FALSE
+■■■■                              10% | ETA:  9s
+■■■■■■■                           19% | ETA: 10s
+■■■■■■■■■■■■■■                    44% | ETA:  7s
+■■■■■■■■■■■■■■■■■■■■■■            72% | ETA:  3s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■       88% | ETA:  2s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■     94% | ETA:  1s
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■  100% | ETA:  0s
+mirai: 1600/1600 tasks returned a row (16.5 s elapsed)
+
+DONE. rows=1600  written to /home/snakagaw/gllvm_work/results/coxreid-ab-full.{rds,csv}
+rows per arm:
+
+  A   B 
+800 800 
+converged per arm:
+  A   B 
+800 800 
+non-finite norm_ratio rows: 0 / 1600
+Cox-Reid A+B full finished.

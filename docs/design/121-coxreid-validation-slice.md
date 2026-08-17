@@ -336,3 +336,46 @@ own decision, not through a doc edit.
   probes) holds or fails for gllvmTMB's Lambda/Psi parameterisation — this
   slice does not test orthogonality directly (see §2, arm D note) and no
   orthogonality check exists in-repo for this model class.
+
+## 9. Campaign outcome (2026-08-16)
+
+**The full A+B campaign ran** (arm C dropped, arm D not run): 1,600 fits,
+2 families x `T in {4,8}` x `n in {100,200}` x arm {A,B} x seed 1:100,
+`aghq_ridge = Inf` (off) identically in both arms, 100% convergence in both
+arms. Full adjudication: `dev/coxreid-ab/RESULTS.md`; script:
+`dev/coxreid-ab/adjudicate.R`; raw data: `dev/coxreid-ab/coxreid-ab-full.csv`
+(commit `ae17a501`).
+
+**K1 FIRES.** At the pre-registered `n = 100` gate, arm B's median absolute
+bias in latent SD is *larger*, not smaller, than arm A's in both families
+(reduction −3.58pp binomial, −1.31pp ordinal_probit — both `< 2pp`, the
+opposite sign from a positive Cox–Reid effect). Medians are the primary
+metric because the raw mean is dominated by a degenerate/runaway tail
+concentrated in `n=100` cells (up to 26 runaway rows in one cell); the
+spec-literal MCSE (SD of the paired difference / √n) is itself inflated by
+that tail and does not clear governance, but the bootstrap MCSE of the
+paired **median** difference — the statistic K1 is actually adjudicated on
+— is 22–53x smaller than the 2pp threshold, so the null read is
+well-powered, not underpowered.
+
+The pre-run's reproducible `binomial, T=8, n=100, seed=2` degenerate cell
+**recurs** at comparable magnitude (norm_ratio 5.4/5.6 vs the pre-run's 7.7,
+converged, paired across arms, unflagged); more broadly this cell shows a
+14% recurrence rate for that pathology class across the full 100 seeds, and
+`binomial T=4 n=100` is a *worse* cell than `T=8 n=100` for runaway mass
+(26 vs 17 runaway rows across both arms).
+
+**K2 (non-invariance) and K4 (interval harm) are UNADJUDICATED** — arm D and
+any coverage/interval columns were out of scope for this campaign; K3
+(ridge confounding) is likewise unadjudicated as a formal test (no arm C, no
+default-state comparison run), though this campaign's own A-vs-B ridge
+equality means the K1 read above is not vulnerable to that specific
+asymmetry.
+
+**No promotion decision follows.** `allow_nongaussian_reml` stays opt-in and
+unvalidated (§6 above, unchanged); the §7 roxygen honesty text is untouched.
+This is a reportable negative result for the Cox–Reid hypothesis in
+gllvmTMB's own parameterisation on these two families — not a closure of K2
+or K4, and not evidence either way about a different structure, ridge
+setting, or family. Candidate hand-in to Design 66 (§5) should **not**
+budget seeds for a Cox–Reid arm on this evidence.

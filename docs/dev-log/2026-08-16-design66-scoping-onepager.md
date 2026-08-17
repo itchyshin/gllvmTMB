@@ -7,7 +7,20 @@ campaigns duplicating cells.
 
 ## The three claimants
 
-### 1. VA-vs-Laplace recovery study — recommended FIRST
+> **⚡ UPDATE (same day, later): Design 122 is written, adversarially
+> reviewed, and its D-139 pre-run STOPPED ON ITS OWN RULE with a
+> load-bearing finding.** The smoke fit alone — one VGH fit at the
+> n=1600/p=27 sentinel — exceeded 17.3 min without finishing (the VA
+> route's default `n_starts = 4` runs four sequential optimisations over
+> ~8,080 free parameters; Laplace's reference at that corner is ~37 s).
+> **VGH's per-fit cost at realistic scale is far larger than assumed**,
+> which reprices this claimant's whole compute frame: before ANY full
+> campaign, the design needs either a pre-registered `n_starts` reduction
+> arm or an accepted multi-day VGH budget. Zero grid fits were spent
+> learning this. Full record: `dev/va-vs-laplace-prerun/RESULTS.md`,
+> Design 122 (`docs/design/122-va-vs-laplace-recovery.md`).
+
+### 1. VA-vs-Laplace recovery study — recommended FIRST (pre-run finding above changes its cost frame)
 
 The standing recommended next arc (Live Phase Snapshot, 2026-08-02): the
 4,320-fit campaign partly undercut Design 108 §0.2's own justification
@@ -17,7 +30,18 @@ tests the premise the 10,000-species programme rests on — it goes first
 because its answer changes what the other two claimants should even measure
 against. Scope: needs Shinichi (cells/seeds/families/gate).
 
-### 2. Cox–Reid REML slice (Design 121) — recommended SECOND, after redesign of arm C
+> **⚡ UPDATE (same day, later): the A+B campaign RAN and K1 FIRED.** 1,600
+> fits (100 seeds/cell, Totoro, commit `ae17a501`, 16.5 s wall on 96
+> workers): Cox–Reid made median |bias| WORSE in both families (binomial
+> 7.26 → 10.84 pp; ordinal 3.08 → 4.39 pp; paired-median MCSE 22–53×
+> below the 2 pp threshold; arm B also degenerated more, 36 vs 22 / 800).
+> **The Cox–Reid hypothesis is dead in this parameterisation at these
+> scales** — a pre-registered negative for the paper. Claimant 2 is now
+> RESOLVED; K2/K4 (arm D, intervals) are explicitly unadjudicated and only
+> worth running if someone wants the mechanism, not the verdict. Full
+> record: `dev/coxreid-ab/RESULTS.md`, Design 121 §9.
+
+### 2. Cox–Reid REML slice (Design 121) — RESOLVED (K1 fired); section kept for provenance
 
 Pre-registered in `docs/design/121-coxreid-validation-slice.md`; the D-139
 pre-run test (48 fits) RAN 2026-08-16 — results in

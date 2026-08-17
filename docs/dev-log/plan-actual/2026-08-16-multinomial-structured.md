@@ -3,7 +3,7 @@
 **Reconciler**: Melissa (plan-vs-actual, receipt-based, material deviations only)
 **Date**: 2026-08-16
 **Arc**: gllvmTMB multinomial (fid 16) structured-dependency admission + fence
-  soundness (Design 122)
+  soundness (Design 123)
 **Plan**: `/Users/z3437171/.claude/plans/for-ordered-cateogrical-structure-noble-parasol.md`
 **Branch / worktree**: `claude/multinomial-structured-20260816` @
   `/private/tmp/gllvmtmb-multinomial-structured`

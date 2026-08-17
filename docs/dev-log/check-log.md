@@ -1,5 +1,35 @@
 # Check log
 
+## 2026-08-16 — DIRECTED: binary Phase-B failure, five items for the SE-series lane
+
+Addressed to the LA-MSPL SE-series lane (Beta / Tweedie / Gamma / lognormal /
+nbinom doors). Binary Phase B is discharged with a **FAIL** (G1 0.0%);
+`MSPL-04` stays `blocked`. Your board already has that headline — this is the
+mechanism underneath, and item 1 is NOT binary-specific:
+
+1. **#1020 lives in the shared MSPL objective path** (`R/fit-multi.R:6395-6421`),
+   so every admitted family runs through it. Trigger is inner Laplace dimension
+   **`n_site x q`** combined with a deep tail in the linear predictor — cloglog
+   96x3 at q=2 fails 38% while the same `N_eff` at q=1 passes. Heavy-tailed
+   families at large `n_site * q` are candidates. Probe your worst corner before
+   sizing a campaign; write guards in `n_site * q`.
+2. **Refusal must be priced.** Our calibrator scored 0.0690 over 30 surviving
+   units (95,578 rows refused) vs 12.985 over 264 for a no-refusal map —
+   refusing the hard cells beat calibrating them. Applies to any withhold path
+   tuned against a fitted criterion.
+3. **Do not inherit "failures run toward overcoverage."** It did not transfer:
+   131 of 264 B1 training units cover BELOW 0.95 (min 0.0078).
+4. Two reusable fixes on `claude/mspl-b0-prereqs`: the profile-endpoint
+   interpolation bug (biased loss — 75 of 80 dead shards were cloglog at extreme
+   prevalence) and the `mspl_c_n_multiplier` probe hook.
+5. Store raw traces, not endpoints: 6.06% of stored endpoints were wrong
+   (max 33.17) and were recoverable only because the sidecars existed.
+
+Full note: `docs/dev-log/research/2026-08-16-note-to-se-series-lane.md`.
+Verdict: `docs/dev-log/2026-08-16-phase-b-verdict-and-recommendation.md`.
+Design 118 §8 DEV-11/DEV-12 (#1056); vault D-155.
+
+
 ## 2026-08-16 — planned-only Beta-logit door (family_id 7)
 
 Worktree `/private/tmp/gllvmtmb-mspl-beta-planned-door` from

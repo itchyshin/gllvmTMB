@@ -135,3 +135,37 @@ Design 122 Slice 2 admits the phylo MODE axis (`phylo_dep()` full V,
 `phylo_scalar()`/`animal_scalar()`/`kernel_scalar()` remain BLOCKED (they
 stayed refused through Slice 2); see `R/multinomial-fence.R`'s
 `.mn_admission_table` for the authoritative per-cell status.
+
+## Slice 3 addendum (2026-08-16) — the spatial (SPDE) mode axis
+
+Design 122 Slice 3 admits `spatial_latent()`/`spatial_indep()`/
+`spatial_dep()` for the among-category spatial surface, alongside the
+phylogenetic and generic-group tiers above. **This environment has fmesher
+but NOT INLA** -- verified (this task) that `make_mesh()` and the base SPDE
+engine need only fmesher, so every script below runs real fits here (not
+classifier-only).
+
+GATE CHECK (done BEFORE the admission landed): `expand_multinomial_response()`
+duplicates each observation into K-1 contrast rows before mesh/A_proj
+construction, so the mesh MUST be built on the post-expansion coordinate
+frame (each site's coords repeated K-1 times, matching the internal
+`rep(seq_len(n), each = K-1)` convention) -- see `gate-check-a-proj.R`, which
+confirms this empirically: a naively-built mesh fails LOUD, a correctly
+pre-expanded one aligns EXACTLY (0 mismatches across 40 site-blocks).
+
+New scripts in this directory:
+
+- `gate-check-a-proj.R` — the A_proj row-alignment gate check (`Rscript
+  gate-check-a-proj.R`; prints `GATE CHECK: PASS`/`FAIL`).
+- `campaign-s3-spatial.R` — same `--mode timing|smoke|full` structure as
+  campaigns S1/S2, `n_site = 300`, unit square, small mesh, 20 seeds,
+  `spatial_latent`/`spatial_indep`/`spatial_dep` cells. See
+  `pass-criteria-s3.md` (DRAFT, pending sign-off; unlike S1/S2's `n_sp =
+  800`, `n_site = 300` is NOT calibrated against a prior spike). `--mode
+  full` has NOT been run.
+
+`spatial_scalar()`, `spatial_latent(unique = TRUE)`'s paired Psi companion,
+standalone `spatial_unique()`/deprecated bare `spatial()`, and every
+augmented (intercept + slope) spatial form remain BLOCKED; see
+`R/multinomial-fence.R`'s `.mn_admission_table` for the authoritative
+per-cell status.

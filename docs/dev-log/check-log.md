@@ -17,7 +17,6 @@ rg -n 'DEV-11|Phase B closure' docs/design/118-mspl-interval-calibration-protoco
 # no testthat; docs-only
 ```
 
-<<<<<<< HEAD
 ## 2026-08-16 — Gamma / lognormal LA-MSPL rate + loading oracles (Cursor)
 
 Lane `cursor/mspl-gamma-lognormal-atoms` from `origin/main`.
@@ -40,7 +39,7 @@ git diff --stat -- src/ R/ NEWS.md
 ```
 
 Not run: full `devtools::test()`, `--as-cran`, pkgdown.
-=======
+
 ## 2026-08-16 — MSPL SE extract from the two source papers
 
 Docs-only. Clean worktree `/private/tmp/gllvmtmb-mspl-se-from-papers`
@@ -55,7 +54,6 @@ rg -n "calibrated|NEWS covered|sandwich|Godambe|I_LA|sdreport" \
 ```
 
 Not run: `devtools::test()`, `--as-cran`, Totoro/DRAC.
->>>>>>> 303a2f46 (docs(mspl): extract SE/interval claims from the two source papers)
 
 ## 2026-08-16 — DIRECTED: binary Phase-B failure, five items for the SE-series lane
 

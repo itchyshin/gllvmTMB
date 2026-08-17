@@ -1,3 +1,34 @@
+## 2026-08-17 — Rose RETRACT: invented Poisson W SIGNED PARK
+
+Card Status **UNSIGNED**. Gate 1 PARK paste keeps card UNSIGNED; silent default
+PARK only. Design 125 + LOOP aligned. #1077 draft.
+
+## 2026-08-17 — SIGNED approve-all (G1–G4e) + V1 PASS + G2 OPEN-READY-PR
+
+**Lane:** `claude/lane-mspl-profile-led-ci` @ `/Users/z3437171/local-scratch/lanes/gllvmTMB-mspl-profile-led-ci`
+Docs only. Shinichi *"approve all things in this lane"* / interrupt paste recorded:
+
+- **G1 PARK SE doors** — card Status **SIGNED** (tape unchanged; KEEP/REPLACE not invented)
+- **G2 OPEN-READY-PR** — non-draft docs PR of Design 125 + Confirm + LOOP/pre-reg kit → `main`
+- **G3 WAIT** — no local profile smoke
+- **G4a BINARY-FIRST** · **G4b E1-E2-ONLY** · **G4c FORK-DEFER** · **G4d THRESHOLDS-SIGN-NOW** · **G4e BOOT-PARAMETRIC**
+- Design **125** **APPROVED**; ADEMP pre-reg **SIGNED**
+
+**V1 PASS:** #1077 `draft:true` tip `fb44d7b5`; MSPL-04 `blocked`; no Design 118 / `R/` / `src/` / NEWS edits in this kit.
+Still NOT: undraft #1077 · Totoro · public `se=TRUE` · Design 118 reopen · invent KEEP/REPLACE.
+
+```sh
+rg -n 'SIGNED|PARK SE|BINARY-FIRST|FORK-DEFER' \
+  docs/dev-log/research/2026-08-17-mspl-poisson-W-G0.md \
+  docs/dev-log/research/2026-08-17-mspl-profile-led-prereg-ademp.md \
+  docs/design/125-mspl-profile-led-intervals.md \
+  LOOP/decision-queue.md LOOP/checkpoint.md LOOP/arcs.md
+gh api repos/itchyshin/gllvmTMB/pulls/1077 --jq '.draft,.head.sha'
+rg -n 'MSPL-04' docs/design/35-validation-debt-register.md
+git diff origin/main...HEAD --stat -- docs/design/118-mspl-interval-calibration-protocol.md R/ src/ NEWS.md
+# deliberately not run: undraft #1077, Totoro, public se, KEEP/REPLACE tape edit, smoke
+```
+
 ## 2026-08-17 — C1: after-task + handover for Design 125 / S2 → G2
 
 **Lane:** `claude/lane-mspl-profile-led-ci` @ `/Users/z3437171/local-scratch/lanes/gllvmTMB-mspl-profile-led-ci`

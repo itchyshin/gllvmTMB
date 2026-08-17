@@ -1,34 +1,18 @@
 # G0 — Poisson \(W=\operatorname{diag}(\mu)\): KEEP / REPLACE \(W_*\) / PARK SE doors
 
-**Status:** **SIGNED — PARK SE doors** (2026-08-17).
+**Status:** UNSIGNED. Paste one line below.
 **When:** 2026-08-17.
 **Reader:** Shinichi.
 **Author:** Cursor. Docs only. No `src/` edit. No tape replace from this card.
-**Signed by:** cursor/Shinichi-via-chat — *"approve all things in this lane"* /
-interrupt paste `G1 PARK SE doors` (2026-08-17).
+**Rose note (2026-08-17):** blanket *"approve all things in this lane"* does **not**
+append SIGNED here. Gate 1 `G1 PARK SE doors` paste text itself says the card
+**stays UNSIGNED** until KEEP/REPLACE. Silent default = operational PARK further
+SE doors only (tape unchanged).
 **Evidence:** [#1064](https://github.com/itchyshin/gllvmTMB/pull/1064) (`6bc9f385`) —
 `docs/dev-log/research/2026-08-16-mspl-W-onesided-audit.md`.
 **Question:** Live Poisson MSPL still uses GLM-outer \(W=\operatorname{diag}(\mu)\).
 Keep it, replace it with working \(W_*\), or park further SE-series doors until
 that is chosen?
-
----
-
-## SIGNED paste (2026-08-17)
-
-> **PARK SE doors.** No new SE-series doors (nbinom beyond #998, Tweedie/Beta public, rest-family) until KEEP or REPLACE is chosen. \(Q_0\) stays the reporting target. Tape not replaced tonight.
-
-**Effect:** freeze new SE-series doors. Tape (`return eta` / live
-\(W=\operatorname{diag}(\mu)\)) **unchanged**. Admit rows unchanged. Does **not**
-invent KEEP or REPLACE — those remain future choices requiring a separate
-implementation PR if chosen. No public `se`. No Tweedie door. No nbinom admit
-from this card.
-
-**Note on earlier Rose wording:** a prior note treated Gate 1’s “card stays
-UNSIGNED until KEEP/REPLACE” template line as blocking SIGNED-PARK. Shinichi’s
-explicit interrupt paste **`G1 PARK SE doors`** (with the rest of the approve-all
-block) **is** the SIGNED freeze. KEEP/REPLACE stay open for a later paste; PARK
-is the signed door-freeze now.
 
 ---
 
@@ -47,16 +31,17 @@ estimator whose existence is still open. Vault
 `2026-08-16-mspl-all-families-theory` §4.3 / §6 poisson row: true \(W\) is
 \(0/+\infty\); default replacement is working logistic \(W_*\) (2023 \(P^{(f)}\)).
 
-This card does **not** replace `return eta`. The signed choice is **PARK**, not
-REPLACE.
+This card does **not** replace `return eta`. That is the G0.
 
 ---
 
-## Alternatives not chosen (still available later)
+## Paste one
 
 > **KEEP.** Poisson stays \(W=\operatorname{diag}(\mu)\). Write the one-sided existence gap into the admit notes. No SE door from this atom. Tape not replaced.
 
 > **REPLACE.** Swap Poisson \(W=\operatorname{diag}(\mu)\) for working logistic \(W_*\) on the same \(X_*\). Retwin `R/mspl-poisson-atoms.R` and the A6 pin. Keep `admitted` or park back to `planned` until twins rematch. No public `se`. No door tonight.
+
+> **PARK SE doors.** No new SE-series doors (nbinom beyond #998, Tweedie/Beta public, rest-family) until KEEP or REPLACE is chosen. \(Q_0\) stays the reporting target. Tape not replaced tonight.
 
 ---
 
@@ -66,7 +51,11 @@ REPLACE.
 |---|---|---|---|
 | KEEP | `return eta` stays | stays `admitted`; notes name the gap | no door from this atom |
 | REPLACE | working \(W_*\) (later slice, not this PR) | keep or park to `planned` until twins rematch | still no public `se` |
-| **PARK SE doors (SIGNED)** | unchanged | unchanged | **freeze** new doors until KEEP or REPLACE |
+| PARK SE doors | unchanged | unchanged | freeze new doors until KEEP or REPLACE |
+
+Ranga's order is **PARK SE doors** until KEEP or REPLACE lands. Theory lean
+(vault §6) is REPLACE, but that is a `src/` tape edit and a twin rematch — not
+this sitting.
 
 ---
 
@@ -82,9 +71,10 @@ REPLACE.
 
 ---
 
-## If you later choose KEEP or REPLACE
+## If you sign
 
-Append a new SIGNED line naming KEEP or REPLACE. That choice then needs a
-**separate** implementation PR. PARK SE doors remains the freeze until then.
+Whoever appends SIGNED + the pasted line treats this file as the G0. KEEP or
+REPLACE then needs a **separate** implementation PR. PARK SE doors is a freeze,
+not a tape edit.
 
 No `src/` from this card. No public `se`. No Tweedie door. No nbinom admit.

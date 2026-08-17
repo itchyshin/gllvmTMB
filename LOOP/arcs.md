@@ -9,5 +9,5 @@
 | A4 | Local multi-seed recovery | done | — |
 | A5 | tmb-likelihood-review + 03-likelihoods.md | done | — |
 | A6 | Fence docs / #1077 draft / family-door PREP | done | soft defaults |
-| A7 | mspl-api; as-cran deferred | doing | — |
+| A7 | mspl-api; as-cran deferred | done | — |
 | A8 | after-task + PR + merge when CI green | doing | preapproved ship |

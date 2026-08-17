@@ -26,26 +26,29 @@ The owned outcome is narrow:
 
 1. The active implementation worktree is
    `/private/tmp/gllvmtmb-1092-grad` on
-   `claude/fix-1092-penalised-gradient`. At the latest inspection its two commits
-   matched the pushed remote branch, with only an untracked active-run `.check.log`:
+   `claude/fix-1092-penalised-gradient`. At the latest inspection it was clean and
+   matched the pushed remote branch at five commits:
    - `e51738c9` — `fix(#1092): gradient reporting judges the objective the fit actually optimised`
    - `bb6d1bdc` — `docs(register): restore the DIA-11/DIA-12 rows that b4c9109e silently reverted`
-2. Both commits are now pushed and PR
+   - `a485dc01` — `docs(dev-log): after-task report + check-log entry for the OWED-items lane`
+   - `a86b1734` — `fix(#1092): the ridge reaches TWO blocks -- correct both, from one source of truth`
+   - `dce409a6` — `docs(dev-log): Melissa reconcile + after-task corrections after the adversarial refute`
+2. All five commits are pushed and PR
    [#1106](https://github.com/itchyshin/gllvmTMB/pull/1106) is open. Its
    `R-CMD-check` run
-   [32067467202](https://github.com/itchyshin/gllvmTMB/actions/runs/32067467202)
+   [32068523005](https://github.com/itchyshin/gllvmTMB/actions/runs/32068523005)
    was in progress at the latest refresh. This is still **CARRIED-OVER**, not landed
    work.
-3. The code commit reports that the focused regression test passes 11/11 after the
-   repair and that 3/11 assertions fail before it. Codex inspected the commit but did
-   **not** independently rerun the test. Claude must verify it rather than repeating
-   the claim as new evidence.
-4. The worktree now has an untracked `.check.log`, and the PR says the local
-   `devtools::check(args = "--no-manual")` is running. Treat the lane as actively
-   owned by Claude; do not touch or remove that file. The branch still lacks the
-   required issue-specific entry in
-   `docs/dev-log/check-log.md` and lacks an after-task report under
-   `docs/dev-log/after-task/`.
+3. The first code commit reported 11/11 focused assertions after the repair and 3/11
+   failures before it. The adversarial follow-up then found that the optimiser also
+   penalises `theta_rr_spde_lv`; its new combined ordinary-plus-spatial fixture reports
+   19/19 passing. Codex inspected the commits but did **not** independently rerun these
+   tests. Claude must preserve exact evidence rather than treating commit prose as an
+   independent check.
+4. The required check-log and after-task report were added in `a485dc01`.
+   `dce409a6` corrects the after-task math and test count to cover both blocks, records
+   the plan-versus-actual drift, and explicitly claims no valid completed R CMD check.
+   The check-log still needs the final ridge-scope disposition and final check result.
 5. The repository is highly concurrent. Lane preflight saw 28 live lanes. In
    particular, `claude/1080-dispersion-naming` and
    `claude/1082-one-worked-example` are separate active work and are **PROTECTED**.
@@ -83,6 +86,47 @@ The second commit restores the DIA-11 and DIA-12 validation-debt rows that an ea
 commit silently reverted. Review that restoration as part of this PR; do not drop it
 merely because it is documentation rather than #1092 implementation.
 
+### Closure commit `a485dc01`
+
+This commit adds `docs/dev-log/check-log.md` evidence and
+`docs/dev-log/after-task/2026-08-17-owed-items-1092-1080-1082.md`. It records the
+pre-fix 3/11 failure, post-fix 11/11 success, a wider focused test exit 0, and the
+polluted first R CMD check caused by writing `.check.log` inside the package. The clean
+R CMD check result was still outstanding in that report.
+
+### Second penalised block — commit `a86b1734`
+
+Adversarial review found that `run_one()` penalises both `theta_rr_B` and
+`theta_rr_spde_lv` once the ordinary-loading gate opens. The first helper corrected only
+`theta_rr_B`, so a `latent() + spatial_latent()` fit still reported approximately
+`max(abs(theta_rr_spde_lv)) / tau^2` as its gradient. The measured fixture was:
+
+- maximum spatial loading: `4.249070`;
+- B-only corrected gradient: `1.062241`;
+- B-plus-spatial corrected gradient: `0.000128`;
+- package gradient tolerance: `1e-2`.
+
+The follow-up creates `.gllvmTMB_ridge_block_names` as the single source used by the
+penalty applier, gradient instrument, and objective decomposition, and reports 19/19
+focused assertions passing.
+
+It also exposes an unresolved contract problem: when ordinary and spatial latent terms
+coexist, current code silently penalises the spatial loadings, while the warning says
+spatial terms are not silently penalised. This must be resolved before merge. The
+recommended repair is to confine this loading ridge to `theta_rr_B`: the admission gate,
+public warning, and validation evidence are ordinary-loading-specific, and there is no
+earned evidence for silently placing the same prior on the spatial block. If the
+maintainer instead chooses to penalise both blocks, the warning, documentation, scope
+statement, and validation evidence must all change explicitly.
+
+### Corrected closure — commit `dce409a6`
+
+This commit updates the after-task report to the two-block mathematical contract and
+19/19 result, retracts any clean R CMD check claim because both attempts were void, and
+adds `docs/dev-log/plan-actual/2026-08-17-owed-items.md`. The report correctly records
+that reader inventory alone did not verify the definition of the quantity being
+reconstructed. A valid final package check remains owed after the ridge-scope decision.
+
 ### Design 122 retrospective
 
 `docs/dev-log/2026-08-17-design122-k1-reread-infeasible.md` records that a
@@ -104,8 +148,7 @@ never GitHub Actions.
 
 ### Working
 
-- The implementation and focused regression test are committed and pushed; the only
-  observed untracked worktree item is Claude's active-run `.check.log`.
+- Five implementation/closure commits are pushed and the worktree is clean.
 - The fix keeps the ridge in R and centralises the penalised-gradient calculation;
   it does not widen the repair into TMB parameterisation or retaping.
 - The validation-register restoration is a separate, explicit commit.
@@ -113,12 +156,12 @@ never GitHub Actions.
 ### In progress / not yet proven
 
 - No independent post-commit test run is recorded by Codex.
-- A local R CMD check is reportedly running, but its completed result is not yet
-  recorded. No full package test, documentation check, or pkgdown result is recorded
-  for the two-commit branch.
-- No issue-specific check-log or after-task report exists.
-- The branch is pushed and PR #1106 is open; its first GitHub CI run is in progress,
-  not yet evidence of a green package gate.
+- The first local R CMD check was invalidated by a hidden `.check.log`; the completed
+  clean rerun result is not yet recorded. No documentation or pkgdown result is recorded.
+- The after-task report is corrected through `dce409a6`; the check-log and final closure
+  remain incomplete until the ridge-scope decision and a valid check result land.
+- PR #1106 is open; earlier runs were correctly cancelled by newer commits, and the
+  current run 32068523005 is in progress, not yet green evidence.
 
 ### Blocked decisions
 
@@ -128,6 +171,9 @@ never GitHub Actions.
 - During review, confirm that the disclosure field plus direct `tmb_obj$gr()` access
   are sufficient for compatibility. Do not invent a larger public diagnostic API in
   this PR unless the current implementation is demonstrably inadequate.
+- Ridge scope: resolve whether `aghq_ridge` applies only to `theta_rr_B` or also to
+  `theta_rr_spde_lv`. Recommended: confine it to `theta_rr_B` and add a negative test
+  proving spatial loadings are not silently penalised.
 
 ## Key decisions already made
 
@@ -141,6 +187,8 @@ never GitHub Actions.
 5. Treat the register restoration as owned branch state and review it explicitly.
 6. Finish #1092 only. Ayumi #25, Ayumi #23, and collaborator replies are deferred to
    a fresh lane after maintainer review.
+7. Do not merge while the warning promises that spatial terms are unpenalised but the
+   objective penalises them. Prefer narrowing the ridge to the ordinary loading block.
 
 ## Files created or modified in the carried implementation
 
@@ -155,6 +203,9 @@ Codex did not edit these implementation files; it inspected the two Claude commi
 | `docs/design/122-va-vs-laplace-recovery.md` | Design 122 interpretation update |
 | `docs/design/35-validation-debt-register.md` | #1092 evidence plus restored DIA rows |
 | `docs/dev-log/2026-08-17-design122-k1-reread-infeasible.md` | limits of retrospective K1 correction |
+| `docs/dev-log/check-log.md` | exact commands, evidence, and directed lane notes; needs final-scope refresh |
+| `docs/dev-log/after-task/2026-08-17-owed-items-1092-1080-1082.md` | corrected two-block closure report; needs final-scope/check refresh |
+| `docs/dev-log/plan-actual/2026-08-17-owed-items.md` | plan-versus-actual reconciliation after the adversarial refute |
 
 This handover lane additionally updates:
 
@@ -166,7 +217,7 @@ This handover lane additionally updates:
 | Branch / item | Commit | Committed? | Pushed? | PR / CI | Status and action |
 | --- | --- | --- | --- | --- | --- |
 | `origin/main` | `40a41e32` at last fetch | yes | yes | main CI was still running at snapshot | LANDED baseline; fetch again |
-| `claude/fix-1092-penalised-gradient` | `e51738c9`, `bb6d1bdc` | yes | yes | PR #1106; CI run 32067467202 in progress | **CARRIED-OVER**; Claude owns finishing only |
+| `claude/fix-1092-penalised-gradient` | `e51738c9` through `dce409a6` (five commits) | yes | yes | PR #1106; CI run 32068523005 in progress | **CARRIED-OVER**; Claude owns finishing only |
 | `codex/handover-ayumi-bugfix-20260817` | PR #1105 plus this refinement | yes | handover update pending | #1105 previously green | handover-only lane; no implementation |
 | primary Dropbox checkout | unrelated accumulated work | mixed | mixed | multiple lanes | **PROTECTED**; do not clean, stage, or switch it |
 | all other live Claude/Cursor/Codex branches | varied | varied | varied | varied | **PROTECTED**; never absorb or revert |
@@ -181,18 +232,24 @@ git status --short --branch
 git log --oneline --decorate origin/main..HEAD
 ```
 
-If preflight reports ownership by another surface, or the worktree contains changes
-beyond Claude's expected `.check.log`, stop and reconcile with Shinichi rather than
+If preflight reports ownership by another surface, or the worktree contains unexpected
+changes, stop and reconcile with Shinichi rather than
 editing through the collision.
 
 ## Next immediate steps — OWED, in order
 
-1. Run the resume commands above and inspect both commits against the newly fetched
-   `origin/main`. Preserve unrelated lane state.
+1. Run the resume commands above and inspect all five commits against the newly fetched
+   `origin/main`. Preserve unrelated lane state and include `a485dc01` plus `a86b1734`
+   plus `dce409a6` in the review.
 2. Review the full diff, including every reader of `fit_health$max_gradient` and both
    penalised loading blocks. Confirm the helper matches the penalty used by the
    optimiser and that non-ridged behaviour is unchanged.
-3. Rerun the focused regression test:
+3. Resolve the spatial-ridge contract before merge. Recommended: remove
+   `theta_rr_spde_lv` from the penalised block list, retain the central source of truth,
+   and replace the positive spatial-penalty fixture with a negative test proving the
+   documented/warned exemption. If Shinichi chooses both blocks instead, stop and make
+   the expanded estimand, warning, documentation, and evidence explicit.
+4. Rerun the focused regression test after that decision:
 
    ```sh
    Rscript --vanilla -e 'devtools::test(filter = "penalised-gradient-1092")'
@@ -200,21 +257,21 @@ editing through the collision.
 
    Record the exact command, counts, warnings, and failures. If the filter does not
    select the intended file, correct the invocation and document both attempts.
-4. Add the required #1092 entry to `docs/dev-log/check-log.md` and create a compliant
-   after-task report under `docs/dev-log/after-task/`. Explicitly audit whether NEWS,
-   roxygen, or other user-facing documentation is required because
-   `fit_health$max_gradient` semantics changed; do not silently skip that decision.
-5. Run, at minimum, documentation generation/check, the full test suite, and
+5. Update the existing #1092 check-log entry and after-task report for the final
+   block-scope decision and `a86b1734`. Explicitly audit whether NEWS, roxygen, or other
+   user-facing documentation is required because `fit_health$max_gradient` semantics
+   changed; do not silently skip that decision.
+6. Run, at minimum, documentation generation/check, the full test suite, and
    `pkgdown::check_pkgdown()`. Run the proportionate local R CMD check required by the
    package contract. Record exact outcomes and anything deliberately not run.
-6. Let the currently running local check and PR CI finish before deciding on changes.
+7. Let the currently running PR CI finish before pushing another change.
    Record their exact results; a cancelled run is a pacing result, not a test failure.
-7. Inspect `git status` and the final diff. Stage explicit owned paths only; never use
-   `git add -A` and do not stage `.check.log`. Commit the closure records, then wait for
+8. Inspect `git status` and the final diff. Stage explicit owned paths only; never use
+   `git add -A`. Commit the final repair/closure records, then wait for
    any active PR run to finish before one deliberate push to PR #1106.
-8. Monitor the resulting package CI. Do not push fix-up commits while an earlier run is
+9. Monitor the resulting package CI. Do not push fix-up commits while an earlier run is
    active. Do not auto-merge; hand the green PR back to Shinichi for review.
-9. Stop. Report the Design 122 choice as a follow-up decision with safe default (a).
+10. Stop. Report the Design 122 choice as a follow-up decision with safe default (a).
    Do not launch compute, start Ayumi #25/#23, or post any Ayumi reply.
 
 ## Blockers and questions for the maintainer
@@ -224,8 +281,11 @@ editing through the collision.
    rerun be planned?
 2. After #1092 is landed, who owns the next fresh lane: Claude, Codex, or the main
    gllvmTMB lane? Do not assume the answer by continuing into Ayumi #25.
+3. Resolve the current spatial-ridge contradiction. Recommendation: penalise only
+   `theta_rr_B`; this preserves the documented ordinary-loading scope and avoids an
+   unsupported silent prior on `theta_rr_spde_lv`.
 
-Neither question blocks completing and opening the #1092 PR.
+Question 3 blocks merging #1106; questions 1 and 2 do not.
 
 ## Risks and gotchas
 
@@ -233,6 +293,8 @@ Neither question blocks completing and opening the #1092 PR.
   R-side ridge is active; at the penalised optimum it balances `Lambda / tau^2`.
 - Do not fix the problem by weakening `.gllvmTMB_converged_gtol`.
 - Do not move the ridge into C++ in this bounded repair.
+- Do not merge with code and warning disagreeing about whether spatial loadings are
+  penalised.
 - Do not let the corrected stationarity signal suppress Hessian or inference warnings.
 - Do not describe the 21,600 retained scalar rows as sufficient for corrected K1
   reconstruction; the necessary vectors were not retained.
@@ -244,7 +306,7 @@ Neither question blocks completing and opening the #1092 PR.
 
 | Lane | State | Owner | Next action |
 | --- | --- | --- | --- |
-| gllvmTMB #1092 loading-ridge gradient | active; PR #1106 open, checks running | Claude | verify, close records, CI, then stop |
+| gllvmTMB #1092 loading-ridge gradient | active; PR #1106 open, five commits, checks running | Claude | resolve spatial scope, refresh closure, CI, then stop |
 | Design 122 K1 retrospective | decision pending; no compute authorised | Shinichi | accept caveat by default or commission sentinel later |
 | Ayumi #25 | deferred | unassigned after #1092 | fresh-lane decision |
 | Ayumi #23 | deferred | unassigned after #25 | fresh-lane decision |

@@ -31,11 +31,33 @@ is still the default.
   the tier's rank is 2 or more, since rank-1 tiers reach that correlation
   on every healthy fit by construction), and a spatial field's practical
   range collapsing relative to the coordinate domain. This is a check-row
-  addition only -- no fit-time warning, no new export, no behaviour change
-  to any existing fit. New arguments `multinomial_collapse_floor`,
-  `multinomial_collapse_rel_thresh` (disarmed by default, `Inf`),
-  `multinomial_rail_thresh`, and `multinomial_range_collapse_thresh` are
-  documented as provisional pending a calibration campaign.
+  addition only -- **no fit-time warning**, no new export, no behaviour
+  change to any existing fit.
+
+  Three arms ship armed at calibrated defaults: `multinomial_collapse_floor
+  = 1e-10` (M1, contrast variance collapse), `multinomial_rail_thresh =
+  0.99` (M2, two contrasts railed onto one axis), and
+  `multinomial_range_collapse_thresh = 0.02` (M3, spatial range collapse).
+  `multinomial_collapse_rel_thresh` stays disarmed (`Inf`) -- untested.
+  Measured against pre-registered labels (128 fits, 122 converged with a PD
+  Hessian): M1 6/7 labeled collapses **plus 7/7 on a later, entirely
+  out-of-sample cell**; M2 8/8 labeled rails, **plus four individually
+  railed fits hidden inside a cell whose aggregate gate had passed**
+  (refitting confirms |rho| = 1.00000, against controls at 0.49 and
+  -0.15); M3 3/3. Zero false positives on 40 informative healthy fits, and
+  the denominator is stated honestly: fits with no loading tier emit no row
+  at all and cannot evidence specificity, so the rule-of-three bound is
+  **about 7.5%, not a verified zero**. M2 is deliberately silent on rank-1
+  tiers, where |rho| = 1 holds on every healthy fit by construction
+  (verified 0/20 out-of-sample).
+
+  M3 was fixed before arming: it originally read the low-rank loading
+  matrix `Lambda_spde`, which the engine reports only for
+  `spatial_latent()`/`spatial_dep()` fits, so on `spatial_indep()` fits --
+  exactly the ones it was built for -- it produced no row at all. It now
+  branches on the engine route, taking the range from `log_tau_spde` on
+  the diagonal route: rows emitted 0/20 to 20/20, detection 0/3 to 3/3,
+  with 0/11 false positives on the same cell's healthy fits.
 
 * **A `check_gllvmTMB()` row for ordinal-probit loading degeneracy** (fixes
   the coverage gap reported in #897, where a degenerate `ordinal_probit()`
@@ -50,16 +72,48 @@ is still the default.
   among the other ordinal traits, and the largest loading on the link
   (liability) scale, unit tiers only -- scale-free because the
   probit-liability residual variance is exactly 1 by the Wright/
-  Falconer/Hadfield threshold convention. New arguments
-  `ordinal_loading_runaway_thresh` and `ordinal_loading_absolute_thresh`
-  are disarmed by default (`Inf`) pending a calibration campaign; this is
-  a check-row addition only, no fit-time warning, no new export, no
-  behaviour change to any existing fit.
+  Falconer/Hadfield threshold convention. This is a check-row addition
+  only -- **no fit-time warning**, no new export, no behaviour change to
+  any existing fit.
 
-* **Liability-scale phylogenetic heritability for categorical families.**
+  Both arms ship armed at **40** (`ordinal_loading_runaway_thresh`,
+  `ordinal_loading_absolute_thresh`), calibrated on 315 fits across four
+  pre-registered design arms, and the numbers are reported as measured
+  rather than as a headline. At 40 the absolute arm catches **60.2%** of
+  degenerate fits overall (**70.0%** on designs with homogeneous trait
+  scales) at **0.9%** false positives, and the relative arm catches 37.8%
+  at **0.0%** false positives on every arm. The pre-registered target of
+  90% sensitivity with zero false alarms was **not** reached at any
+  threshold: at binomial's own threshold of 6 the screen reaches 100%
+  sensitivity but **24% false positives**, which is the same failure mode
+  #897 reports for binomial itself (25%) -- so ordinal's thresholds were
+  set on ordinal evidence rather than inherited. Every false alarm at any
+  threshold came from designs mixing very different per-trait loading
+  scales; the plain healthy arm produced none at any threshold from 6 to
+  40. Specificity was the binding constraint deliberately: against the
+  previous state of 239 degenerate fits and no flag at all, a screen that
+  never cries wolf on a healthy fit and catches most degenerate ones is
+  the useful trade. Honest limits: no evidence at `n = 1600` (that arm was
+  dropped for run time), and with 217 healthy fits the false-positive rate
+  is bounded near **1.4%**, not verified at zero.
+
+  Neither categorical screen changes what fitting itself does: `gllvmTMB()`
+  warns exactly as before, and both rows appear only when you call
+  `check_gllvmTMB()` on the fit.
+
+* **Liability-scale phylogenetic heritability for categorical families**
+  (this corrects a real defect: on a phylogeny-only `ordinal_probit()` or
+  `multinomial()` fit, `extract_phylo_signal()` previously reported
+  **`H2 = 1.0` for every trait and every contrast**. That number was the
+  species-level-latent proportion and was arithmetically correct as such,
+  but as a heritability it was silent nonsense -- the fixed liability
+  residual never entered the denominator, so a phylogenetic signal that
+  should read around 0.3-0.4 read as 1. If you have reported a categorical
+  `H2` from this function, re-run it with `link_residual = "auto"`.)
   `extract_phylo_signal()` gains a `link_residual` argument. The default
   (`"none"`) keeps the historical species-level-latent denominator
-  unchanged; `link_residual = "auto"` adds each trait's fixed
+  unchanged, so no existing non-categorical result moves;
+  `link_residual = "auto"` adds each trait's fixed
   distribution-specific latent residual to the denominator, returning the
   conventional liability-scale phylogenetic heritability of Mizuno et al.
   (2025, *J. Evol. Biol.* 38:1699-1715, eq 4/18/19):

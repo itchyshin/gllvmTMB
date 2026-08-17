@@ -421,3 +421,51 @@ extractor fix, not a recovery-evidence promotion.
 - Optional: a ≥ 500-fit healthy arm to tighten either FPR bound; an ordinal
   `n = 1600` arm; a multinomial combined-model design sweep to see whether rho
   is recoverable at any `n_rep`.
+
+---
+
+## 11. Addendum — the ordinal candidate search, closed (2026-08-17, after §10 was written)
+
+Sections above predate the final two measurements. The ordinal threshold
+question is now closed rather than open, on four eliminated candidates:
+
+| candidate | verdict |
+|---|---|
+| `max_loading_unit` (absolute liability scale) | fails — does not transport across heterogeneous per-trait scales; at binomial's own threshold of 6 it gives 39.2% FP, worse than the 25% binomial rate #897 exists to complain about |
+| `relative_loading` (family-scoped denominator) | fails — 28.6% FP at its best sensitivity |
+| `loading / cutpoint_span` | **REFUSED on its pre-registered circularity precondition**: cor(span, degeneracy) = +0.546 (p = 4.6e-20), degenerate spans 1.88x wider — the span is a symptom of the same runaway, not an independent reference. Also fails empirically |
+| `spike_ratio` (max / second-max loading) | independent of the absolute statistic (cor +0.242) and centrally discriminating (4.16 vs 1.32), but 2.4% sensitivity at the first zero-FP point |
+
+**The search was stopped deliberately at four.** All four were scored against
+the SAME 315 fits; a fifth or sixth candidate that finally cleared the frozen
+bar would have a materially elevated chance of fitting this dataset rather
+than reflecting a real signal. This arc had already produced one error of
+exactly that family (scoring FP with a labelling chosen after seeing
+results, caught by the D-43 panel and corrected), so continuing to search
+would have been repeating a known failure mode with more steps.
+
+**Standing conclusion:** no statistic available from the fitted
+loading/cutpoint state separates degenerate from healthy ordinal fits at a
+usable operating point. Both ordinal arms ship DISARMED. Closing #897's
+detection needs a different information source — the observed-information /
+curvature structure, or a refit-based check such as the dichotomisation
+counterfactual that scored 24/24 in the S1 probe — tested pre-registered on
+fresh data.
+
+**Where that leaves #897 versus where this arc found it:** mechanism was
+unknown, now settled (separation, not saturation, on three corroborating
+measurements); zero candidate statistics had been tested, now four with
+recorded numbers; the false-positive concern the issue raises is measured
+rather than asserted. The detection gap itself remains open, and is recorded
+as a research question with a named path rather than as untried work.
+
+## 12. What remains with the maintainer (nothing further is actionable in-lane)
+
+1. **Merge sign-off** on PR #1088 (detector + admission behaviour is the
+   high-risk class per CLAUDE.md).
+2. **Fit-time warnings** for the calibrated multinomial arms — deliberately
+   NOT wired. They are a behaviour change, and both the repo's merge-authority
+   rule and this arc's own goal statement reserve those for the maintainer.
+   The `check_gllvmTMB()` surface is live; only the automatic warning is not.
+3. **PA5** — the paper-companion vignette (AVONET/BirdTree worked examples
+   with the MCMCglmm comparison): in this arc's scope, or its own?

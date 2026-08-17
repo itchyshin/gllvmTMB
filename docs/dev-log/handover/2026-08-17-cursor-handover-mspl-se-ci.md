@@ -101,10 +101,19 @@ C++ already computes `mspl_c_n` equivalently to multiplier 1.0). **#981 stays op
 The **admission gate** (softness ratio / N2′ curvature / separation) is deliberately **absent** — it
 belongs to the parked calibrated construction (D-157), not to a probe.
 
-## 4. 🔴 The Poisson G0 is still UNSIGNED and it gates your lane
+## 4. 🔴 The Poisson G0 — now reads SIGNED (PARK), provenance UNCONFIRMED
 
-`docs/dev-log/research/2026-08-17-mspl-poisson-W-G0.md` — **Status: UNSIGNED**, three paste lines
-(KEEP / REPLACE \(W_*\) / PARK SE doors). Filed as #1076.
+> **CORRECTION (same day, after this note was merged).** The card on `main` now reads
+> **"Status: SIGNED — PARK SE doors"**, signed by *"cursor/Shinichi-via-chat — 'approve all things
+> in this lane'"*. The "UNSIGNED" statement below is **stale**. But the recorded authority is a
+> **blanket lane approval**, not a paste against this card's three-way choice, and this exact card
+> was marked SIGNED and retracted by Rose **twice** the same day. So treat PARK as **in force but
+> unconfirmed** — do not open SE doors, and do not treat the signature as settled either.
+> Full flag + paste-ready confirmations:
+> `docs/dev-log/research/2026-08-17-poisson-W-G0-signature-provenance.md`.
+
+`docs/dev-log/research/2026-08-17-mspl-poisson-W-G0.md` — originally **Status: UNSIGNED**, three
+paste lines (KEEP / REPLACE \(W_*\) / PARK SE doors). Filed as #1076.
 
 **Why it blocks you:** the same sitting's Design 125 kit signed **G1 PARK SE doors** — new
 SE-series doors are frozen until this G0 resolves. That is why Gamma, lognormal, Student,

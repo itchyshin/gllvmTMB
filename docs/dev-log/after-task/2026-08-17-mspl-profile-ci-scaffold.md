@@ -6,7 +6,7 @@
 
 ## 1. Goal
 
-While Design G0 on the CI triad is open, land **fenced** internal scaffolding for a profile-interval construction on a toy LA-MSPL point fit, keep public `confint` refused, and document Wald \(Q_0\) as the quick baseline versus profile as the signature. New construction only (D-157). Do not reopen Design 118. Do not run Totoro.
+Land **fenced** internal scaffolding for a profile-interval construction on a toy LA-MSPL point fit, keep public `confint` refused, and document Wald \(Q_0\) as the quick baseline versus profile as the signature. Triad Confirm is SIGNED; this PR stays draft. New construction only (D-157). Do not reopen Design 118. Do not run Totoro.
 
 ## 2. Implemented
 
@@ -79,6 +79,6 @@ The MSPL estimator-programme worktree was dirty on `cursor/mspl-poisson-admit-pa
 
 ## 10. Known Limitations And Next Actions
 
-- Profile bounds are not computed. Objective fork A/B/C is unpicked.
+- This scaffold still leaves `profile$status = "not_constructed"` (no calibrated / public profile CI). Binomial profile *computability* on `main` (`#1090`) is a separate probe — wording reconciled so we no longer say “bounds are not computed while Design G0 is open.” Objective fork A/B/C for a claim path stays unpicked.
 - Optional `run_wald_q0=TRUE` is untested in CI (Hessian cost).
 - Next: wait for Shinichi G0 on the triad paste; then a **new Design number**, not Design 118. No Totoro until that pre-registration exists.

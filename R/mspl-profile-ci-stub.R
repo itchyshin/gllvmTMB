@@ -49,9 +49,15 @@
 }
 
 ## Internal stub: accept a toy MSPL point fit (gaussian identity or
-## poisson log, se=FALSE) and return a fenced scaffold. Profile bounds
-## are not computed while Design G0 is open. Optional Wald Q_0 pin is
-## the quick check only — never a public interval.
+## poisson log, se=FALSE) and return a fenced scaffold.
+##
+## Wording (reconciled 2026-08-17 after #1090): binomial profile
+## *bounds can be computed* on main via
+## `.gllvmTMB_mspl_profile_feasibility()` (internal, calibrated=FALSE,
+## public_confint refused). This scaffold is a separate toy door for
+## gaussian/poisson point fits and still does NOT construct a
+## calibrated / public profile CI — profile$status stays
+## "not_constructed". Optional Wald Q_0 pin is the quick check only.
 .gllvmTMB_mspl_profile_ci_scaffold <- function(fit, run_wald_q0 = FALSE) {
   if (!.gllvmTMB_is_mspl(fit)) {
     .gllvmTMB_mspl_abort(
@@ -108,14 +114,19 @@
       status = "not_constructed",
       public_confint = "refused",
       reason = paste(
-        "Design G0 is open; D-157 requires a new construction,",
-        "not a Design 118 reopen and not a public profile method on MSPL."
+        "This scaffold does not construct a calibrated / public profile CI.",
+        "Binomial profile *computability* exists on main (#1090",
+        ".gllvmTMB_mspl_profile_feasibility; calibrated=FALSE); that probe",
+        "is binomial-fenced and is not this toy gaussian/poisson stub.",
+        "D-157 still requires a new construction for any claim path;",
+        "Design 118 stays parked; public confint remains refused."
       ),
       objective_fork_unpicked = c(
         "A_penalised_Q_P",
         "B_unpenalized_Q_0_at_mspl_point",
         "C_hybrid"
-      )
+      ),
+      related_binomial_probe = ".gllvmTMB_mspl_profile_feasibility"
     ),
     wald_q0 = wald,
     bootstrap = list(

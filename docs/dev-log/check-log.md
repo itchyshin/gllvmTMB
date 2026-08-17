@@ -1,3 +1,13 @@
+## 2026-08-17 — #1077: reconcile stale profile-bounds wording post-#1090
+
+**Lane:** `cursor/mspl-profile-ci-scaffold` (draft #1077)
+**Authority:** handover OWED item 2 — bounds *can* be computed on main for binomial via #1090; this scaffold remains a gaussian/poisson toy with `not_constructed` claim path.
+
+```sh
+rg -n '1090|not_constructed|Design G0 is open' R/mspl-profile-ci-stub.R   docs/dev-log/research/2026-08-17-mspl-profile-ci-scaffold.md   docs/dev-log/after-task/2026-08-17-mspl-profile-ci-scaffold.md
+# deliberately not: undraft; wire public confint; rebuild probe
+```
+
 # Check log
 
 ## 2026-08-17 — MSPL profile-CI scaffold (fenced; G0 open)

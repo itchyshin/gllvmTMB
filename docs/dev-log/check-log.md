@@ -1,5 +1,27 @@
 # Check log
 
+## 2026-08-17 — overnight brief morning finalize (Q_0 + B1 FAIL G0)
+
+Docs only. Closed the living 21:15 pulse (#1067) into
+`docs/dev-log/research/2026-08-17-mspl-overnight-brief.md`
+as **FINALIZED**. G0-2 B1 aftermath is **SIGNED PARK**
+(brain D-157; #1069 sign + #1072 retarget on `main`).
+Remaining G0s: (1) Q_0 vs Q_P vs sandwich (3) replace
+Poisson W=diag(mu)? Ranga reporting target = Q_0
+(#1061/#1062). Official B1 hold-out G1–G5 FAIL
+14/132 = 10.6% (#1040). #1065 still OPEN+CONFLICTING;
+not an admit. No tape. No Tweedie door. No public se.
+`origin/main` @ `4e3e2ad7`.
+
+```sh
+rg -n 'still owed before 05:00|living; next update' \
+  docs/dev-log/research/2026-08-17-mspl-overnight-brief.md
+# expect 0
+rg -n 'FINALIZED|14/132|paper_reporting_target|Q_0' \
+  docs/dev-log/research/2026-08-17-mspl-overnight-brief.md
+gh pr view 1065 --json state,mergeable
+```
+
 ## 2026-08-17 — B1 aftermath G0 SIGNED PARK (D-157)
 
 Shinichi pasted the park reply. Brief
@@ -15,7 +37,6 @@ rg -n 'SIGNED|D-157|Park\. No second' \
   docs/dev-log/research/2026-08-17-mspl-b1-aftermath-G0.md
 # no testthat; docs-only
 ```
-
 
 ## 2026-08-16 — overnight conductor pulse 21:15 (brief + W-onesided oracles)
 

@@ -144,8 +144,14 @@ cell-level healthy label was the artifact, not the detector. M2's agreement
 with the truth on that cell is 4/4 with no misses and no spurious firings.
 
 **FPR precision (rule of three, stated rather than implied):** 0 false
-positives over 56 genuinely healthy conv+PD fits bounds the true false-
-positive rate at roughly **3/56 ~ 5.4%** at 95% confidence. This is a real
+positives, but the honest denominator is **40, not 56** (independent
+verification, 2026-08-17). The s4 `re_int` cell's 20 fits are excluded:
+a bare `(1|group)` multinomial fit has no loading tier at all, so the
+detector row never even appears (`det_present` 0/20) — those fits carry
+ZERO information about specificity and counting them would inflate the
+denominator. The informative healthy pool is the 20 d=1 fits plus s1b's 16
+non-railed fits, giving a rule-of-three bound of **3/40 ~ 7.5%** at 95%
+confidence. This is a real
 improvement on the binomial screen's measured 25% (issue #897 point 2) but
 is NOT a "verified zero" claim; a >= 500-fit healthy arm would be needed to
 bound it near 0.6%, and that is recorded as outstanding, not done.

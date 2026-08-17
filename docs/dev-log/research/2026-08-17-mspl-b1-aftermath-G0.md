@@ -1,12 +1,16 @@
 # G0 — B1 aftermath: park, redesign the calibrator, or new construction
 
-**Status:** UNSIGNED. Default recommended: **PARK**.
-**When:** 2026-08-17 05:00 (overnight track).
+**Status:** SIGNED — **PARK** (brain **D-156**, 2026-08-17).
+**When:** 2026-08-17 05:00 (overnight track); signed 2026-08-17 morning.
 **Reader:** Shinichi.
 **Author:** Cursor (Ada / Fisher / Rose). Docs only. No Totoro relaunch.
 **Question:** Design 118 Phase B failed its official hold-out. What happens to binary LA-MSPL intervals now?
 
-This is the call document D-155 left open. It does not promote an interval, does not edit `MSPL-04`, and does not start compute.
+**Shinichi paste (exact):**
+
+> Park. No second campaign. MSPL-04 stays blocked. No Totoro relaunch. If we want intervals later, that is a new construction and a new pre-registration, not a Design 118 recalibration and not n to 2000.
+
+This closes the call document D-155 left open. Decision id: **D-156**. It does not promote an interval, does not edit `MSPL-04` off blocked, and does not start compute.
 
 ---
 
@@ -132,3 +136,15 @@ Alternatives, same register:
 | Codex Lane B | still PROTECTED | classify-only |
 
 No NEWS. No public `confint()`. No second campaign.
+
+---
+
+## Signature (SIGNED)
+
+**Decision id:** brain `D-156` (2026-08-17).
+
+**Paste:**
+
+> Park. No second campaign. MSPL-04 stays blocked. No Totoro relaunch. If we want intervals later, that is a new construction and a new pre-registration, not a Design 118 recalibration and not n to 2000.
+
+**Effect:** B1 PARKED. No second campaign. `MSPL-04` stays `blocked`. No Totoro relaunch. No public `confint()` / `vcov()` / `se=TRUE`. Later intervals = new construction + new pre-registration — not Design 118 recalibration and not \(n\to 2000\).

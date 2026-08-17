@@ -381,6 +381,38 @@ extract_Omega <- function(
 #' [extract_proportions()] if you want every component reported separately
 #' rather than folded into a species-level ratio.
 #'
+#' @section Liability-scale heritability for categorical families:
+#' With the default `link_residual = "none"` the denominator contains only
+#' the *estimated* species-level components, so a phylogenetic-only fit
+#' reports `H2 = 1` for every trait. For threshold/liability families the
+#' conventional phylogenetic heritability (Mizuno et al. 2025 J. Evol. Biol.,
+#' eq 4/18/19; de Villemereuil & Nakagawa 2014) instead includes the
+#' distribution-specific latent residual \eqn{\sigma^2_d} in the
+#' denominator. Request it with `link_residual = "auto"`, which adds each
+#' trait's fixed link-scale residual (see [extract_Sigma()]'s
+#' "Family-aware link residuals" table) as a fourth component:
+#'
+#' * **`ordinal_probit()`** (and binomial probit): \eqn{\sigma^2_d = 1}
+#'   exactly, so a phylogenetic-only fit reports the paper's
+#'   \eqn{H^2 = V_a / (V_a + 1)} per trait.
+#' * **`multinomial()`**: each of the K-1 baseline-category contrasts is a
+#'   logit, so \eqn{\sigma^2_d = \pi^2/3} per *contrast* and a
+#'   phylogenetic-only fit reports \eqn{H^2_{(k)} = V_{a(k)} / (V_{a(k)} +
+#'   \pi^2/3)} for contrast \eqn{k}. **Contrast heritabilities are
+#'   baseline-referenced**: the softmax link residual is the full matrix
+#'   \eqn{(\pi^2/6)(\mathbf{I} + \mathbf{J})} — the shared baseline category
+#'   couples the contrasts with \eqn{\pi^2/6} off-diagonals — so each
+#'   \eqn{H^2_{(k)}} is the heritability of the "category k vs baseline"
+#'   liability under that baseline choice, not of "the trait". Do **not**
+#'   average or otherwise collapse the per-contrast values into a single
+#'   scalar heritability; changing the baseline changes the contrasts.
+#'
+#' When a categorical family (fid 14/16) is present and
+#' `link_residual = "none"`, an advisory fires pointing at
+#' `link_residual = "auto"`; the default is unchanged for backward
+#' compatibility. `ci = TRUE` is not yet implemented for the
+#' liability-scale denominator and refuses with a typed error.
+#'
 #' @param fit A fit returned by [gllvmTMB()] with a `phylo_latent()` term.
 #' @param ci Logical. When `TRUE`, adds confidence-interval columns to
 #'   the output for the H^2 column. Default `FALSE` for backward
@@ -396,9 +428,19 @@ extract_Omega <- function(
 #' @param nsim Number of bootstrap replicates when
 #'   `method = "bootstrap"`. Default 500.
 #' @param seed Optional RNG seed for the bootstrap.
+#' @param link_residual `"none"` (default) keeps the historical
+#'   species-level-latent denominator. `"auto"` adds each trait's
+#'   distribution-specific link-scale residual \eqn{\sigma^2_d} to the
+#'   denominator and reports it as a fourth `link_residual` proportion
+#'   column — the liability-scale phylogenetic heritability for
+#'   threshold families (see the dedicated section below). Not yet
+#'   compatible with `ci = TRUE`.
 #' @return A data frame with columns `trait`, `H2`, `C2_non`, `Psi`,
 #'   `V_eta` (the denominator), one row per trait. The three proportions
-#'   sum to 1.0 by construction. When `ci = TRUE`, three additional
+#'   sum to 1.0 by construction. With `link_residual = "auto"` an extra
+#'   `link_residual` proportion column is inserted before `V_eta`, the
+#'   four proportions sum to 1.0, and `V_eta` includes \eqn{\sigma^2_d}.
+#'   When `ci = TRUE`, three additional
 #'   columns are added: `H2_lower`, `H2_upper`, `H2_method`.
 #' @seealso [extract_Sigma()]; [extract_Omega()]; [extract_proportions()];
 #'   [extract_repeatability()]; [extract_communality()];
@@ -424,15 +466,27 @@ extract_phylo_signal <- function(
   conf_level = 0.95,
   method = c("profile", "wald", "bootstrap"),
   nsim = 500L,
-  seed = NULL
+  seed = NULL,
+  link_residual = c("none", "auto")
 ) {
   if (!inherits(fit, "gllvmTMB_multi")) {
     cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
   }
+  link_residual <- match.arg(link_residual)
+  method <- match.arg(method)
+  if (isTRUE(ci) && link_residual == "auto") {
+    cli::cli_abort(
+      c(
+        "{.code ci = TRUE} is not implemented for the liability-scale denominator ({.code link_residual = \"auto\"}).",
+        "i" = "The profile/Wald/bootstrap machinery targets the species-level-latent H^2; its intervals do not transfer to the sigma^2_d-augmented ratio.",
+        ">" = "Use {.code link_residual = \"auto\"} for point estimates, or {.code ci = TRUE} with the default denominator."
+      ),
+      class = "gllvmTMB_phylo_signal_ci_link_residual_unsupported"
+    )
+  }
   if (isTRUE(ci)) {
     .gllvmTMB_mspl_assert_inference(fit, "extract_phylo_signal(ci = TRUE)")
   }
-  method <- match.arg(method)
   if (isTRUE(ci)) {
     .gllvmTMB_require_unweighted_inference(
       fit,
@@ -441,9 +495,24 @@ extract_phylo_signal <- function(
   }
   has_phy <- isTRUE(fit$use$phylo_rr) || isTRUE(fit$use$phylo_diag)
   if (!has_phy) {
-    cli::cli_abort(c(
-      "Fit has no {.code phylo_latent()} term.",
-      "i" = "Phylogenetic-signal proportions require a phylogenetic component."
+    cli::cli_abort(
+      c(
+        "Fit has no {.code phylo_latent()} term.",
+        "i" = "Phylogenetic-signal proportions require a phylogenetic component."
+      ),
+      class = "gllvmTMB_phylo_signal_no_phylo_tier"
+    )
+  }
+  ## Liability-family advisory: for the fixed-latent-residual categorical
+  ## families the conventional (Mizuno et al. 2025) H^2 denominator includes
+  ## sigma^2_d, which the default excludes. Advisory only -- the default is
+  ## unchanged for backward compatibility.
+  fids <- unique(as.integer(fit$tmb_data$family_id_vec %||% integer(0)))
+  if (link_residual == "none" && any(fids %in% c(14L, 16L))) {
+    cli::cli_inform(c(
+      "Categorical liability family detected ({.code ordinal_probit()} / {.code multinomial()}).",
+      "i" = "The default denominator excludes the fixed latent residual sigma^2_d (1 for ordinal probit; pi^2/3 per multinomial contrast), so a phylogenetic-only fit reports H2 = 1.",
+      ">" = "For the liability-scale phylogenetic heritability H^2 = V_a / (V_a + sigma^2_d) use {.code extract_phylo_signal(fit, link_residual = \"auto\")}."
     ))
   }
   trait_names <- levels(fit$data[[fit$trait_col]])
@@ -504,11 +573,22 @@ extract_phylo_signal <- function(
     Psi_diag <- as.numeric(fit$report$sd_q)^2
   }
 
-  V_eta <- Sigma_phy + Sigma_non_s + Psi_diag
+  ## Liability-scale denominator: the per-trait distribution-specific link
+  ## residual sigma^2_d (fixed by construction for probit/ordinal/multinomial;
+  ## family-aware for the rest -- see link_residual_per_trait()). NA per-trait
+  ## values propagate to NA proportions rather than being silently replaced.
+  Sigma_d <- if (link_residual == "auto") {
+    as.numeric(link_residual_per_trait(fit))
+  } else {
+    NULL
+  }
+
+  V_eta <- Sigma_phy + Sigma_non_s + Psi_diag + (Sigma_d %||% 0)
   phylo_parts <- .safe_phylo_signal_components(
     Sigma_phy = Sigma_phy,
     Sigma_non_s = Sigma_non_s,
-    Psi_diag = Psi_diag
+    Psi_diag = Psi_diag,
+    Sigma_d = Sigma_d
   )
 
   ## Build advisory if any component is structurally zero
@@ -535,6 +615,11 @@ extract_phylo_signal <- function(
     row.names = NULL,
     stringsAsFactors = FALSE
   )
+  if (!is.null(Sigma_d)) {
+    pe_df$link_residual <- phylo_parts[, "link_residual"]
+    ## Keep V_eta last among the point-estimate columns.
+    pe_df <- pe_df[, c("trait", "H2", "C2_non", "Psi", "link_residual", "V_eta")]
+  }
 
   if (!isTRUE(ci)) {
     return(pe_df)
@@ -574,12 +659,16 @@ extract_phylo_signal <- function(
   pe_df
 }
 
-.safe_phylo_signal_components <- function(Sigma_phy, Sigma_non_s, Psi_diag) {
+.safe_phylo_signal_components <- function(Sigma_phy, Sigma_non_s, Psi_diag,
+                                          Sigma_d = NULL) {
   M <- cbind(
     H2 = Sigma_phy,
     C2_non = Sigma_non_s,
     Psi = Psi_diag
   )
+  if (!is.null(Sigma_d)) {
+    M <- cbind(M, link_residual = Sigma_d)
+  }
   .safe_variance_proportion_matrix(M)
 }
 

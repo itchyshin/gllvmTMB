@@ -10,7 +10,8 @@ extract_phylo_signal(
   conf_level = 0.95,
   method = c("profile", "wald", "bootstrap"),
   nsim = 500L,
-  seed = NULL
+  seed = NULL,
+  link_residual = c("none", "auto")
 )
 }
 \arguments{
@@ -34,11 +35,22 @@ delta-method Wald bounds labelled \code{"wald(numeric)"}.}
 \code{method = "bootstrap"}. Default 500.}
 
 \item{seed}{Optional RNG seed for the bootstrap.}
+
+\item{link_residual}{\code{"none"} (default) keeps the historical
+species-level-latent denominator. \code{"auto"} adds each trait's
+distribution-specific link-scale residual \eqn{\sigma^2_d} to the
+denominator and reports it as a fourth \code{link_residual} proportion
+column — the liability-scale phylogenetic heritability for
+threshold families (see the dedicated section below). Not yet
+compatible with \code{ci = TRUE}.}
 }
 \value{
 A data frame with columns \code{trait}, \code{H2}, \code{C2_non}, \code{Psi},
 \code{V_eta} (the denominator), one row per trait. The three proportions
-sum to 1.0 by construction. When \code{ci = TRUE}, three additional
+sum to 1.0 by construction. With \code{link_residual = "auto"} an extra
+\code{link_residual} proportion column is inserted before \code{V_eta}, the
+four proportions sum to 1.0, and \code{V_eta} includes \eqn{\sigma^2_d}.
+When \code{ci = TRUE}, three additional
 columns are added: \code{H2_lower}, \code{H2_upper}, \code{H2_method}.
 }
 \description{
@@ -103,6 +115,41 @@ unconditionally, which silently reported \code{H2 = 1} for every trait in a
 crossed design because the \code{q_it} variance was never read. Compare
 \code{\link[=extract_proportions]{extract_proportions()}} if you want every component reported separately
 rather than folded into a species-level ratio.
+}
+
+\section{Liability-scale heritability for categorical families}{
+
+With the default \code{link_residual = "none"} the denominator contains only
+the \emph{estimated} species-level components, so a phylogenetic-only fit
+reports \code{H2 = 1} for every trait. For threshold/liability families the
+conventional phylogenetic heritability (Mizuno et al. 2025 J. Evol. Biol.,
+eq 4/18/19; de Villemereuil & Nakagawa 2014) instead includes the
+distribution-specific latent residual \eqn{\sigma^2_d} in the
+denominator. Request it with \code{link_residual = "auto"}, which adds each
+trait's fixed link-scale residual (see \code{\link[=extract_Sigma]{extract_Sigma()}}'s
+"Family-aware link residuals" table) as a fourth component:
+\itemize{
+\item \strong{\code{ordinal_probit()}} (and binomial probit): \eqn{\sigma^2_d = 1}
+exactly, so a phylogenetic-only fit reports the paper's
+\eqn{H^2 = V_a / (V_a + 1)} per trait.
+\item \strong{\code{multinomial()}}: each of the K-1 baseline-category contrasts is a
+logit, so \eqn{\sigma^2_d = \pi^2/3} per \emph{contrast} and a
+phylogenetic-only fit reports \eqn{H^2_{(k)} = V_{a(k)} / (V_{a(k)} +
+  \pi^2/3)} for contrast \eqn{k}. \strong{Contrast heritabilities are
+baseline-referenced}: the softmax link residual is the full matrix
+\eqn{(\pi^2/6)(\mathbf{I} + \mathbf{J})} — the shared baseline category
+couples the contrasts with \eqn{\pi^2/6} off-diagonals — so each
+\eqn{H^2_{(k)}} is the heritability of the "category k vs baseline"
+liability under that baseline choice, not of "the trait". Do \strong{not}
+average or otherwise collapse the per-contrast values into a single
+scalar heritability; changing the baseline changes the contrasts.
+}
+
+When a categorical family (fid 14/16) is present and
+\code{link_residual = "none"}, an advisory fires pointing at
+\code{link_residual = "auto"}; the default is unchanged for backward
+compatibility. \code{ci = TRUE} is not yet implemented for the
+liability-scale denominator and refuses with a typed error.
 }
 
 \examples{

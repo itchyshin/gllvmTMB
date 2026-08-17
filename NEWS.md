@@ -20,6 +20,25 @@ is still the default.
   unordered so a randomized-quantile residual is undefined for it. See
   `?residuals.gllvmTMB_multi` for the full scope statement.
 
+* **Liability-scale phylogenetic heritability for categorical families.**
+  `extract_phylo_signal()` gains a `link_residual` argument. The default
+  (`"none"`) keeps the historical species-level-latent denominator
+  unchanged; `link_residual = "auto"` adds each trait's fixed
+  distribution-specific latent residual to the denominator, returning the
+  conventional liability-scale phylogenetic heritability of Mizuno et al.
+  (2025, *J. Evol. Biol.* 38:1699-1715, eq 4/18/19):
+  `ordinal_probit()` reports per-trait `H2 = V_a / (V_a + 1)` and
+  `multinomial()` reports per-*contrast*
+  `H2 = V_a(k) / (V_a(k) + pi^2/3)`. Multinomial contrast heritabilities
+  are baseline-referenced (the softmax link residual couples contrasts
+  through the shared baseline category) and are reported one row per
+  contrast, never collapsed to a scalar. An advisory now fires when a
+  categorical fit is summarised with the default denominator, and
+  `ci = TRUE` with `link_residual = "auto"` refuses with a typed error
+  rather than returning uncalibrated intervals. Verified against an
+  MCMCglmm `family = "ordinal"` comparator on a shared phylogenetic
+  fixture.
+
 * **A Species Distribution Models article collection.** The pkgdown site
   gains a dedicated navbar menu ordering the SDM material as a curriculum —
   the joint species distribution model guide, a new presence-only opener,

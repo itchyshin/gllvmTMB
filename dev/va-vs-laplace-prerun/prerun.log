@@ -9,7 +9,7 @@ g++ -std=gnu++17 -shared -L/usr/lib/R/lib -Wl,-Bsymbolic-functions -flto=auto -f
   status converged wall_time_s  rel_frob    kappa max_abs_lambda_hat
 1     ok      TRUE      157.67 0.4454117 1.348798           1.748982
   testA_c_hat testA_pass error
-1    1.000285       TRUE      
+1    1.000285       TRUE
 Smoke wall: 157.9 s (2.63 min)
 Projection (CORRECTED): sequential smoke=157.9s; expensive-cell parallel wave fits=30, waves=1 @ 157.9s => 157.9s; remaining 90 fits => 60.0s; +30s overhead => TOTAL 405.7s (6.76 min)
 
@@ -106,7 +106,7 @@ g++ -std=gnu++17 -shared -L/usr/lib/R/lib -Wl,-Bsymbolic-functions -flto=auto -f
 === FULL GRID WALL: 196.3 s (3.27 min) ===
 Rows completed: 120 / 120
 status by arm:
-     
+
       nonconvergence ok
   L0               0 40
   L2               1 39

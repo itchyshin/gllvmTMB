@@ -17,9 +17,9 @@ PROTECTED** before mutating. Execute only **OWED**.
 | Repo | `itchyshin/gllvmTMB` |
 | Tip for rehydrate | this branch tip (ahead of `origin/main`; re-fetch before merge) |
 | What shipped overnight | D-157 B1 PARK; point admits; internal SE pins; Ranga \(Q_0\); W-onesided #1064; Gamma/lnorm oracles #1063; CI triad docs #1075; Poisson W G0 #1076; #1078 as-cran guard |
-| What landed this lane | Triad Confirm **SIGNED** (`7de94fc7`); Design **125** claimed (`b68b20b4`) **APPROVED**; S2 ADEMP **SIGNED**; S3/S4 done; decision queue G1–G4e SIGNED |
-| What is UNSIGNED | (none on this baton — Poisson W card is **SIGNED PARK**) |
-| Plan by leverage | (1) C1 done · (2) G2 non-draft docs PR when asked · (3) no undraft #1077 / no H1 / no Totoro / no public se |
+| What landed this lane | Triad Confirm **SIGNED**; Design **125 APPROVED**; ADEMP **SIGNED**; Poisson W **PARK SE doors**; S4 Rose **PASS**; V1 **PASS**; G2 OPEN-READY-PR |
+| What is SIGNED (approve-all) | G1 PARK SE doors · G2 OPEN-READY-PR · G3 WAIT · G4a–G4e; Design 125 APPROVED; ADEMP SIGNED |
+| Plan by leverage | (1) human review of G2 docs PR · (2) still NOT undraft #1077 / Totoro / public se / invent KEEP/REPLACE · (3) H1 blocked until fork |
 | PROTECTED | Codex Lane B binary intervals; no public `se=TRUE` / NEWS covered without G0; #1077 stays draft |
 
 ## Critical Context

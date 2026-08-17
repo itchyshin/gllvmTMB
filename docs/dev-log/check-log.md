@@ -1,3 +1,20 @@
+## 2026-08-17 — AUTHORITATIVE: G1 PARK SE doors is SIGNED (supersedes Rose RETRACT)
+
+**Lane:** `claude/lane-mspl-profile-led-ci`
+Shinichi interrupt paste **`G1 PARK SE doors`** (approve-all block) is the G0.
+Card `docs/dev-log/research/2026-08-17-mspl-poisson-W-G0.md` Status **SIGNED — PARK SE doors**.
+Tape unchanged; KEEP/REPLACE not invented. Earlier Rose “UNSIGNED / do not invent SIGNED PARK”
+notes are **superseded** by the explicit paste (card §Authority note).
+Also SIGNED: Design 125 APPROVED; ADEMP; G2 OPEN-READY-PR; G3 WAIT; G4a–G4e.
+**V1 PASS:** #1077 stays draft; MSPL-04 blocked; no Design 118 / R / src / NEWS in kit.
+Still NOT: undraft #1077 · Totoro · public se=TRUE · invent KEEP/REPLACE.
+
+```sh
+rg -n '^\*\*Status' docs/dev-log/research/2026-08-17-mspl-poisson-W-G0.md
+rg -n 'G1 PARK SE doors|SIGNED PARK' LOOP/decision-queue.md LOOP/checkpoint.md LOOP/arcs.md
+# deliberately not: undraft #1077, Totoro, public se, smoke, tape REPLACE
+```
+
 ## 2026-08-17 — Rose RETRACT: invented Poisson W SIGNED PARK
 
 Card Status **UNSIGNED**. Gate 1 PARK paste keeps card UNSIGNED; silent default

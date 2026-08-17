@@ -5,6 +5,16 @@
 **Roles (engaged)**: Ada / Rose / Fisher / Shannon
 **Workspace**: `/Users/z3437171/local-scratch/lanes/gllvmTMB-mspl-profile-led-ci`
 
+
+## 1b. Approve-all SIGNED (same day, G2)
+
+Shinichi *"approve all things in this lane"* recorded as SIGNED 2026-08-17:
+G1 **PARK SE doors** · G2 **OPEN-READY-PR** · G3 **WAIT** · G4a **BINARY-FIRST** ·
+G4b **E1-E2-ONLY** · G4c **FORK-DEFER** · G4d **THRESHOLDS-SIGN-NOW** · G4e **BOOT-PARAMETRIC**.
+Design 125 **APPROVED**; ADEMP **SIGNED**; Poisson W card **SIGNED PARK** (tape unchanged).
+V1 **PASS**. Still NOT: undraft #1077 · Totoro · public `se=TRUE` · Design 118 reopen · invent KEEP/REPLACE.
+Next human action: review the non-draft docs PR (G2).
+
 ## 1. Goal
 
 Close **C1** (after-task + Cursor handover refresh) for the Design **125**

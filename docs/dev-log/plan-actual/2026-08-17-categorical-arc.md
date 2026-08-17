@@ -118,3 +118,43 @@ silently dropped S5 sub-item. None of them threatens a public claim — nothing
 was posted, no export was added, and no register status moved — but together
 they mean the arc is finished in a worktree rather than landed, and a reader
 outside this session cannot yet see any of it.
+
+---
+
+# REFRESH (2026-08-17, post-panel) — everything after the original reconcile
+
+The reconcile above was written before the D-43 panel's findings were acted
+on. Six further material events, classified on the same six axes.
+
+| # | Event | Axis | Classification |
+|---|---|---|---|
+| R1 | Ordinal arms ARMED at 40, then **DISARMED** after the panel found the FP rate had been scored with a post-hoc per-fit relabelling (frozen block defines it arm-level) | evidence/verification · public claims | **drift, CORRECTED in-lane.** The original arming was the drift; disarming restored the pre-registration's own fallback. Withdrawn numbers retained inside explicit correction notes across six documents |
+| R2 | Two further candidate statistics tested (span variant, spike ratio) beyond the plan's scope | scope | **adaptive.** Both pre-registered before running; the span variant was refused on its own circularity precondition (cor +0.546), the spike ratio failed empirically. Search then stopped deliberately at four to avoid multiple testing |
+| R3 | Dichotomised-check campaign added (not in the original plan) | scope · evidence | **adaptive**, maintainer-directed ("do 1-2"). Pre-registered before results; eliminated at 86.3% FP |
+| R4 | **S1 mechanism verdict partially falsified by R3** — its measurement 3 (24/24 dichotomised firings) carries no information once the check is known to fire on 86% of healthy fits | evidence/verification · public claims | **adaptive** (self-correction on new evidence, propagated to five documents including the externally-posted #897 comment). NOT drift: the original verdict was honestly derived from what was measured at the time |
+| R5 | Multinomial fit-time warning WIRED | safety gates · public claims | **adaptive.** The plan reserved this as a maintainer gate; sign-off was given explicitly this session before wiring. Ordinal deliberately left unwired (nothing to warn about) |
+| R6 | Three follow-up issues filed (#1097 ordinal research question, #1098 binomial FPR, #1099 PA5 vignette); #897 close-out comment posted | handoff state | **adaptive.** All maintainer-approved; PA5 deferred to its own arc rather than bolted onto a closing lane |
+
+## Refreshed counts
+
+adaptive **5** · drift **1 (corrected in-lane)** · unclear **0**
+
+## Drift routed
+
+**R1** was the only genuine drift and it is CLOSED in-lane: arms disarmed,
+frozen scoring restored as primary, the post-hoc reading demoted to a
+labelled exploratory section, and the lesson filed to the brain's
+cross-repo guards ("score by the FROZEN rule, or the pre-registration bought
+you nothing"). No item remains pending a decision-owner.
+
+## Refreshed verdict
+
+The arc's second half was dominated by self-correction, and the corrections
+went the *unfavourable* direction each time — arms disarmed rather than
+armed, a mechanism verdict weakened rather than strengthened, a candidate
+that looked like the answer (24/24) eliminated at 86.3% false positives.
+That is the discipline working as designed: two D-43 reviewers caught what
+the producing lane and a third reviewer had endorsed, and a follow-up
+campaign caught what the producing lane's own probe had concluded. The
+deliverable is smaller than the plan hoped and better evidenced than it
+would otherwise have been.

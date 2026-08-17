@@ -58,15 +58,27 @@ not escape the coverage failure. Three specifics:
    is an argument for the refusal path (Rainey 2016) being the honest default,
    not an argument for a better calibrator.
 
-Also FYI, measured this sitting and offered rather than taken: the stranded
-interval-computability instrument on `claude/mspl-b0-prereqs`
-(`.gllvmTMB_mspl_profile_feasibility()` + `..._threshold_diagnostic()`, plus
-helper `.gllvmTMB_mspl_nlminb`) **lifts cleanly onto current `main`** — purely
-additive, all four internal symbols unchanged, and it does **not** need the
-`src/` `mspl_c_n_multiplier` hook (it touches only
-`obj$env$data$estimator_id`; main's C++ already computes `mspl_c_n` equivalent
-to multiplier 1.0). This lane stood down from re-porting it on D-88 grounds
-since Design 125 owns the profile surface; take it if useful.
+**Correction to an earlier draft of this note, which said the instrument was
+"offered rather than taken" and that this lane had stood down.** That was true
+when written and is no longer. The stranded interval-computability instrument on
+`claude/mspl-b0-prereqs` (`.gllvmTMB_mspl_profile_feasibility()` +
+`..._threshold_diagnostic()`, plus helper `.gllvmTMB_mspl_nlminb`) **has been
+re-ported and is sitting in an UNMERGED PR** from this lane — so do **not**
+build it a second time. It lifts cleanly onto current `main`: purely additive,
+all four internal symbols unchanged, and it does **not** need the `src/`
+`mspl_c_n_multiplier` hook (it reads only `obj$env$data$estimator_id`; main's
+C++ already computes `mspl_c_n` equivalently to multiplier 1.0).
+
+Two things that PR does **not** claim, and that matter to you specifically:
+
+- It profiles the **penalised tape only** (hard-refused otherwise), so it
+  implements your **fork A** and structurally cannot run fork B
+  (`unpenalized_tmb_obj`) or C. It is *not* neutral machinery for choosing among
+  your G4c forks — an earlier draft of this note said otherwise and was wrong.
+- It is therefore blocked on a maintainer **G0**, because your G4c says "no live
+  profile impl / smoke until fork G0", D-149 names Codex Lane B the binomial SE
+  owner ("do not rebuild, reassign, or absorb"), and the source branch is
+  PROTECTED. If you would rather own it, say so and this lane will close its PR.
 
 ### Directed → the Cursor SE/CI lane
 

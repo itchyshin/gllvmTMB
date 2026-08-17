@@ -13,7 +13,19 @@ no-coverage-claim interval-computability instrument. Ten slices, ~4–5 h, 6 sub
 ## Actual
 
 Deliverable (1) landed in full: [#1090](https://github.com/itchyshin/gllvmTMB/pull/1090).
-Deliverable (2) **stood down before any code was written.**
+
+Deliverable (2) **stood down, then reversed, then written and put to PR unmerged** — the honest
+sequence, recorded because the intermediate state was published:
+
+1. Stood down mid-execution on D-88 grounds when the Design 125 lane surfaced (see below).
+2. **Reversed** after re-reading D-88: *concurrency is allowed, bleed-through is not.* Design 125's
+   kit is docs-only with zero R code, its G4c blocks live profile work "until fork G0", and there is
+   no file overlap. Shinichi had also answered the pin-vs-construction question directly in chat.
+3. Re-ported, reviewed adversarially (Opus), and **left unmerged pending a recorded G0** — because
+   the review found that chat authority does not discharge three *written* fences (below).
+
+**This section previously read "stood down before any code was written" and "no code changed".
+That became false at commit `6e8bb37e` and is corrected here rather than left standing.**
 
 ## Material deviations
 

@@ -57,14 +57,22 @@
   }
   invisible(x)
 }
-## calibrated standard errors nor confidence-interval coverage.
 
 ## Thin, mockable wrapper around stats::nlminb() -- exists so tests can
 ## simulate a transient optimizer failure at one specific profile point
 ## without touching the stats namespace (repo convention: mock private
 ## gllvmTMB helpers, see e.g. test-confint-lambda.R).
+.gllvmTMB_mspl_nlminb <- function(start, objective, gradient, control) {
+  stats::nlminb(start, objective = objective, gradient = gradient,
+                control = control)
+}
+
 ## ---------------------------------------------------------------------------
 ## Internal LA-MSPL profile COMPUTABILITY probe (availability only).
+##
+## Private feasibility instrument only.  This is intentionally separate from the
+## public profile/confint dispatch: a finite trace establishes neither
+## calibrated standard errors nor confidence-interval coverage.
 ##
 ## Scope, stated once: this instrument answers "can a finite penalised-profile
 ## bracket be computed at this fit?" and nothing else.  It is NOT a confidence
@@ -75,26 +83,43 @@
 ## an interval.  Non-crossing / non-finite / optimiser failures stay typed; no
 ## repair, no clipping, no widening beyond the caller's explicit request.
 ##
+## `level` selects the chi-square_1 LR threshold used to bracket; it confers NO
+## coverage at that or any level.  See the Kosmidis & Firth note below.
+##
+## Family fence (computability probe only; not admission): binomial +
+## logit/probit/cloglog.  The public MSPL door admits six families, but the only
+## evidence here -- and the only authority cited below -- is binomial.
+##
+## Admission gate: DELIBERATELY NOT IMPLEMENTED.  The softness-ratio /
+## N2'-curvature / separation admission conditions belong to the parked
+## calibrated construction (D-157; Design 125), not to this probe.  Their
+## absence is a scope decision, not an omission.
+##
 ## Why the fence is not merely conventional: Kosmidis & Firth (2021, Biometrika
 ## 108(1), s2.2 p.5) state that under a finiteness penalty Wald intervals "or
 ## confidence regions in general, will fail to cover regardless of the nominal
 ## level alpha", and that this "is also true when the penalized likelihood is
-## profiled".  So a finite bracket here is evidence of computability only.
+## profiled".  So a finite bracket here is evidence of computability only.  That
+## paper is binomial-response only, which is the second reason for the family
+## fence above.
 ##
-## Provenance: ported from `claude/mspl-b0-prereqs` (PR #981), which itself
-## ported it from `codex/lane-b-mspl-interval-feasibility` (commit e2055c7b).
-## R-side only -- deliberately WITHOUT that branch's `src/` `mspl_c_n_multiplier`
-## hook, which these functions do not use (they read only
-## `obj$env$data$estimator_id`).  Design 125 owns the separate question of a
-## calibrated interval CONSTRUCTION; this probe is not that, and does not
-## pre-empt its G4c fork choice -- it is an instrument the fork can be measured
-## with.
+## Provenance AND its constraint: ported from `claude/mspl-b0-prereqs` (PR #981,
+## still open), which itself ported it from
+## `codex/lane-b-mspl-interval-feasibility` (commit e2055c7b) -- a branch marked
+## PROTECTED ("No absorb/rebase/merge") in
+## docs/dev-log/handover/2026-07-25-active-lane-split.md, and D-149 names Codex
+## Lane B the binomial SE owner ("Do not rebuild, reassign, or absorb it").
+## Landing this therefore requires an explicit maintainer G0; do not re-port it
+## further without one.  R-side only -- deliberately WITHOUT that branch's
+## `src/` `mspl_c_n_multiplier` hook, which these functions do not use (they
+## read only `obj$env$data$estimator_id`).
+##
+## Relation to Design 125: this probe profiles the PENALISED tape only (enforced
+## below), i.e. it implements that pre-registration's fork **A** and
+## structurally refuses fork B (`unpenalized_tmb_obj`) and fork C.  Design 125's
+## G4c is FORK-DEFER and states "no live profile impl / smoke until fork G0", so
+## this is NOT neutral machinery for choosing among the forks.
 ## ---------------------------------------------------------------------------
-.gllvmTMB_mspl_nlminb <- function(start, objective, gradient, control) {
-  stats::nlminb(start, objective = objective, gradient = gradient,
-                control = control)
-}
-
 .gllvmTMB_mspl_profile_feasibility <- function(
   fit,
   which = 1L,
@@ -110,6 +135,21 @@
     .gllvmTMB_mspl_abort(
       "The internal MSPL profile probe requires an {.code estimator = \"mspl\"} fit.",
       class = "gllvmTMB_mspl_profile_input"
+    )
+  }
+  ## Family fence, enforced not merely documented -- mirrors
+  ## `.gllvmTMB_mspl_curvature_pin()`.  Binomial only: it is the only family with
+  ## evidence here, and the Kosmidis & Firth authority cited in the header is
+  ## binomial-response only, so on a gaussian or Poisson fit the returned
+  ## `coverage_claim = "none"` would rest on a citation that does not apply.
+  fl <- .gllvmTMB_mspl_pin_family_link(fit)
+  if (!(identical(fl$family, "binomial") &&
+        fl$link %in% c("logit", "probit", "cloglog"))) {
+    .gllvmTMB_mspl_abort(
+      "The internal MSPL profile computability probe is fenced to binomial logit, probit, or cloglog fits.",
+      "x" = "Resolved family {.val {fl$family}}, link {.val {fl$link}}.",
+      "i" = "This is a computability probe, not an admission gate and not an interval route.",
+      class = "gllvmTMB_mspl_profile_family"
     )
   }
   if (

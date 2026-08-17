@@ -724,3 +724,14 @@ test_that("the profile probe refuses a non-MSPL fit with a typed condition", {
     class = "gllvmTMB_mspl_profile_input"
   )
 })
+
+test_that("the profile probe is fenced to binomial, with a typed refusal", {
+  gaussian_fit <- .mspl_fit("logit", q = 1L)
+  ## Re-label the family so only the fence, not the fit, decides. The probe must
+  ## refuse on family before it touches any tape.
+  gaussian_fit$family <- stats::gaussian()
+  expect_error(
+    gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(gaussian_fit, which = 1L),
+    class = "gllvmTMB_mspl_profile_family"
+  )
+})

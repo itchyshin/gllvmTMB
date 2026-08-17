@@ -51,8 +51,8 @@ arm — without reusing the spent Design 118 / B1 Wald-calibrator.
 - Undrafting #1077 or wiring MSPL into public `confint`
 - Flipping register row **MSPL-04** off `blocked`
 - NEWS / article / README claims of `covered` intervals
-- Inventing Poisson \(W=\mathrm{diag}(\mu)\) KEEP / REPLACE (parallel G0 is
-  **SIGNED PARK SE doors** only — freeze, not tape edit)
+- Inventing Poisson \(W=\mathrm{diag}(\mu)\) KEEP / REPLACE (parallel G0:
+  **operational PARK** SE doors; card **UNSIGNED** until KEEP/REPLACE — freeze, not tape edit)
 - Reopening Arc 1A LOOP (`docs/dev-log/lanes/cursor-mspl-arc-1a/` is historical)
 
 ---
@@ -98,7 +98,7 @@ Speed / cost order (D-12): **Wald → profile → bootstrap**.
 **SIGNED soft G0 (2026-08-17) — G4a BINARY-FIRST:** **binary / Bernoulli
 LA-MSPL first** (logit / probit / cloglog as already admitted for MSPL point
 estimation). Poisson (and other count families) stay on the **point / SE-atom**
-track; with Poisson \(W\) now **SIGNED PARK SE doors** (not KEEP/REPLACE), they
+track; with Poisson \(W\) under **operational PARK** SE doors (card UNSIGNED; not KEEP/REPLACE), they
 remain **out** of the first profile-led coverage claim set until a later widen
 G0.
 
@@ -157,7 +157,7 @@ messages, and which arms may still report diagnostics).
 | Register **MSPL-04** | Remains **`blocked`** |
 | Design **118** file | **Read-only**; no recalibration edits from this lane |
 | Public `se=TRUE` / `vcov` / Wald `confint` | **Closed** until separate G0 |
-| Poisson \(W\) card | **SIGNED PARK SE doors** (2026-08-17) — freeze new SE doors; tape unchanged; KEEP/REPLACE not invented |
+| Poisson \(W\) card | **UNSIGNED** — Gate 1 = **operational PARK** SE doors (freeze); KEEP/REPLACE not invented |
 
 ---
 
@@ -183,11 +183,11 @@ This stub does **not**:
 - Authorise public `se=TRUE`.
 - Unblock MSPL-04.
 - Reopen Design 118, B1, Totoro, or Arc 1A.
-- Choose Poisson \(W\) KEEP / REPLACE (PARK SE doors is signed; tape stays).
+- Choose Poisson \(W\) KEEP / REPLACE (card UNSIGNED; operational PARK holds; tape stays).
 - Ship NEWS `covered` language.
 
 **Companions (2026-08-17):** ADEMP pre-reg
 `docs/dev-log/research/2026-08-17-mspl-profile-led-prereg-ademp.md`; Poisson W
-`docs/dev-log/research/2026-08-17-mspl-poisson-W-G0.md` (**PARK SE doors**);
+`docs/dev-log/research/2026-08-17-mspl-poisson-W-G0.md` (**UNSIGNED**; ops PARK);
 decision queue `LOOP/decision-queue.md`. Next: V1/C1; **not** undraft #1077.
 

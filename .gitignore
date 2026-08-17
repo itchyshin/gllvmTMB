@@ -134,3 +134,9 @@ dev/isdm-package-recovery/results/
 dev/va-speed/0[6-9]-*.rds
 dev/va-speed/0[6-9]-*log*.txt
 dev/va-speed/1[0-9]-*.rds
+
+# Stale Dropbox / cloud-agent LOOP scratch — live LOOP for Design 125 lives only in
+# /Users/z3437171/local-scratch/lanes/gllvmTMB-mspl-profile-led-ci/LOOP/
+# Do not commit root LOOP/ or docs/dev-log/lanes/ from Dropbox checkouts.
+/LOOP/
+docs/dev-log/lanes/

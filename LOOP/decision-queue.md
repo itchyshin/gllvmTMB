@@ -26,7 +26,7 @@ Still NOT: undraft #1077 · Totoro · public se=TRUE · Design 118 reopen
 
 | Gate | State | Record |
 |---|---|---|
-| **G1** | **SIGNED PARK SE doors** | Card `docs/dev-log/research/2026-08-17-mspl-poisson-W-G0.md` — freeze new SE doors; tape unchanged; KEEP/REPLACE not invented |
+| **G1** | **operational PARK SE doors** (card **UNSIGNED**) | Gate 1 freeze: no new SE doors; tape unchanged. Card stays UNSIGNED until KEEP/REPLACE (Rose). KEEP/REPLACE not invented |
 | **G2** | **SIGNED OPEN-READY-PR** | Non-draft docs PR of Design 125 + Confirm + LOOP/pre-reg kit → `main`; does **not** undraft #1077 |
 | **G3** | **SIGNED WAIT** | No local profile smoke; re-ask after fork A/B/C |
 | **G4a** | **SIGNED BINARY-FIRST** | Design 125 §3.1 Bernoulli first; Poisson off coverage claim |
@@ -68,7 +68,7 @@ Still NOT: undraft #1077 · Totoro · public se=TRUE · Design 118 reopen
 
 ### Gate 1 — Poisson \(W\)
 
-- G1 KEEP / G1 REPLACE / G1 PARK SE doors — **chose PARK SE doors**
+- G1 KEEP / G1 REPLACE / G1 PARK SE doors — **ops PARK** (card UNSIGNED until KEEP/REPLACE)
 
 ### Gate 2 — PR to main
 

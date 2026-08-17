@@ -7,6 +7,8 @@
 - A5: 03-likelihoods.md + tmb-review note
 - A6: family-door PREP note; #1077 stays draft
 - deliberately not: public se, undraft #1077, Totoro, Lane B, NEWS covered, git add -A
+- A7: `devtools::test(filter="mspl-api")` → 293/0; `--as-cran` deferred
+- A8: after-task present; PR #1111 open; merge when CI green
 
 ## 2026-08-17 — Cursor: KF2021 footnote + handover §4 align (post-#1102)
 

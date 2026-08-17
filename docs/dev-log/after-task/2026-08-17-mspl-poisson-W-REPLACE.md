@@ -18,7 +18,7 @@ NEWS covered / undraft #1077.
 
 - Smoke `se=FALSE`: class `gllvmTMB_mspl`, `convergence=0`, status admitted
 - `devtools::test(filter="mspl-W-onesided|mspl-poisson-admit|mspl-poisson-phase4|mspl-poisson-W-REPLACE")` → **243 pass / 0 fail**
-- `devtools::test(filter="mspl-api")` — see check-log
+- `devtools::test(filter="mspl-api")` → **293 pass / 0 fail**
 - `--as-cran` + vignettes: **deferred** (cut order if late)
 
 ## Hard OUT audit (untouched)

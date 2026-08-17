@@ -119,3 +119,53 @@ blocking finding, reported prominently, regardless of how the sensitivity
 numbers land. Any threshold change is proposed with a measured
 sensitivity/specificity trade-off table and left flagged for the maintainer
 to decide — never applied unilaterally to make a target pass.
+
+## VERDICT (2026-08-17, frozen criteria applied; 128 fits, 122 conv+PD)
+
+| Arm | Target | Measured | Result |
+|---|---|---|---|
+| M1 contrast_variance_collapse | >= 6/7 labeled collapses | **6/7** (phylo_indep cell) | **PASS** |
+| M2 contrast_rail | >= 7/8 labeled rails | **8/8** (phylo_dep cell) | **PASS** |
+| M3 spatial_range_collapse | 3/3 labeled PD range collapses | **0/3** | **FAIL — structural, not threshold** |
+
+**False positives: ZERO on every genuinely healthy fit.** s4 re_int 0/20;
+healthy d=1 phylo_latent 0/20 (**the rank-1 suppression works out-of-sample**
+— M2 never fired despite rho = +-1 by row-proportionality, the statistical
+review's blocking finding now empirically closed); s1b replicated cell 0/16
+among its non-railed seeds.
+
+**The s1b "false positives" were TRUE positives — verified by refitting.**
+M2 fired on seeds 304, 311, 312, 316 of the cell-labelled-healthy s1b arm.
+Refitting those exact seeds gives rho = +1.00000, -1.00000, +1.00000,
++1.00000 (all railed); two non-firing controls give 0.48997 and -0.14534.
+The s1b campaign itself recorded "rails 4/20" — the cell passed its
+AGGREGATE gates while containing four genuinely railed fits, so the
+cell-level healthy label was the artifact, not the detector. M2's agreement
+with the truth on that cell is 4/4 with no misses and no spurious firings.
+
+**FPR precision (rule of three, stated rather than implied):** 0 false
+positives over 56 genuinely healthy conv+PD fits bounds the true false-
+positive rate at roughly **3/56 ~ 5.4%** at 95% confidence. This is a real
+improvement on the binomial screen's measured 25% (issue #897 point 2) but
+is NOT a "verified zero" claim; a >= 500-fit healthy arm would be needed to
+bound it near 0.6%, and that is recorded as outstanding, not done.
+
+**Null-DGP (V_true = 0): M1 fires 8/8, counted separately and BY DESIGN** —
+a truly zero variance component is indistinguishable from a collapsed one at
+the fit level; the row's action text carries the "intentionally mapped off,
+boundary-pinned, or genuinely collapsed" wording for exactly this case.
+
+**M3's failure is a keyword-scope bug, not a calibration miss.**
+`Lambda_spde` is REPORTed only when `spde_lv_k > 0` (the low-rank
+`spatial_latent()`/`spatial_dep()` route; src/gllvmTMB.cpp ~:2104-2133), but
+`spatial_indep()` fits carry per-trait fields with no loading matrix — and
+the labeled M3-positive cell IS `spatial_indep()`. The arm gates on
+`Lambda_spde` being readable, so it never evaluates the fits it was built
+for. Fix required before M3 can be armed: gate on `use$spde` plus the
+family/trait map and read `kappa` from `report$kappa` regardless of route,
+then re-measure.
+
+**Disposition:** M1 and M2 are armed at their measured defaults (floor 1e-10,
+rail 0.99) with this evidence written into the roxygen. M3 stays DISARMED
+pending the scope fix + re-measurement. The relative-collapse sub-arm stays
+disarmed (Inf) — untested here.

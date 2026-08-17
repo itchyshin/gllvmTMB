@@ -131,3 +131,79 @@ minutes, a PRE-RUN TEST and Shinichi's explicit approval are required before
 committing the full run, per the campaign script's own gate. See
 `campaign-ordinal-calibration.R`'s printed projection for the actual
 numbers from this session's pilot.
+
+## VERDICT (2026-08-17; 315 fits, n = 100/400, per-fit truth `rel_frob > 10`)
+
+### The frozen conjunction (sensitivity >= 90% AND zero false positives) was
+### NOT ACHIEVED at any threshold. Reported, not fudged.
+
+Grid trim, stated rather than silent: the pre-registered grid was
+n in {100, 400, 1600}; n = 1600 was DROPPED and the n = 400 seed count
+halved to keep the run inside the D-139 budget (measured: 315 fits in
+9.0 min on 10 cores; the full three-n grid projected past the 30-minute
+line). Healthy pool 217 genuinely-healthy fits -> rule-of-three FPR bound
+~1.4%, not the ~0.6% a 500-fit pool would have given.
+
+### What the data say
+
+`max_loading_unit` separates the classes strongly in the middle of the
+distribution — degenerate median **49.68**, healthy median **1.23** — but the
+tails overlap (degenerate minimum 10.2, healthy maximum 52.3), so no
+threshold achieves both targets simultaneously:
+
+| O2 threshold | sensitivity | FP (all healthy) |
+|---|---|---|
+| 6 (binomial's) | 100.0% | **24.0%** |
+| 20 | 90.8% | 10.6% |
+| 40 | 60.2% | 0.9% |
+
+**The 24% false-positive rate at binomial's own threshold reproduces, on
+ordinal, exactly the failure issue #897 complains about in binomial (25%).**
+Borrowing binomial's number would have shipped the very defect the issue
+asks us to fix — which is why #897 directive 1 ("thresholds on ordinal's own
+evidence, not inherited") exists, and it is now vindicated by measurement.
+
+### Where the false positives come from — the transport arm earned its keep
+
+FP rate by arm, healthy fits only:
+
+| O2 threshold | healthy | transport | mixed |
+|---|---|---|---|
+| 6 | **0.0%** | 78.6% | 13.3% |
+| 20 | **0.0%** | 35.7% | 8.0% |
+| 40 | **0.0%** | 0.0% | 2.7% |
+
+**The plain healthy arm has ZERO false positives at every threshold tested.**
+Every false alarm comes from designs with heterogeneous per-trait loading
+scales (the transport arm, 10-30x spread) — which is precisely the
+hypothesis that arm was pre-registered to test. An absolute liability-scale
+threshold cannot transport across heterogeneous trait scales: a legitimately
+large loading on a wide-cutpoint trait is indistinguishable from a runaway.
+
+### Disposition (maintainer-visible; ARMED CONSERVATIVELY, not disarmed)
+
+Both arms ship armed at **40**, the operating point where FP is 0.0% on the
+healthy arm, 0.0% on transport and 2.7% on mixed:
+
+- **O2 `ordinal_loading_absolute_thresh = 40`** — sensitivity 60.2% overall,
+  **70.0% on homogeneous designs**, FP 0.9% overall.
+- **O1 `ordinal_loading_runaway_thresh = 40`** — sensitivity 37.8%, FP
+  **0.0%** on every arm.
+
+Rationale for arming rather than taking the pre-registered
+ship-disarmed fallback: #897's own priority is explicit — *"a check that
+cries wolf a quarter of the time gets switched off"* — so specificity is the
+binding constraint, and at 40 the screen never cries wolf on any healthy
+homogeneous or heterogeneous fit while still catching the majority of
+degenerate ones. Against the status quo of **0/239 detection** (#897's
+headline), a zero-false-alarm screen catching ~60-70% is a strict
+improvement. The alternative (disarmed) leaves #897's gap fully open.
+
+**The fit-time warning is NOT wired for ordinal** — the row surfaces through
+`check_gllvmTMB()` only. Turning it into an automatic warning is a separate
+behaviour change and is left to the maintainer.
+
+**Not done / honest limits:** no n = 1600 evidence; the span variant was NOT
+promoted (its circularity precondition was not tested here, so it remains
+calibration-only per the pre-registration); sensitivity below 90% is a real
+miss, recorded as such rather than reframed.

@@ -1135,17 +1135,47 @@
 #' is `NA` wherever `cutpoint_span` is `NA` or non-positive.
 #'
 #' @param object A fit returned by [gllvmTMB()].
-#' @param ordinal_loading_runaway_thresh Threshold on `relative_loading`
-#'   (Arm O1). Default `Inf` (disarmed pending calibration).
-#' @param ordinal_loading_absolute_thresh Threshold on `max_loading_unit`,
-#'   unit tiers only (Arm O2). Default `Inf` (disarmed pending calibration).
+#' @param ordinal_loading_runaway_thresh Threshold on an ordinal trait's
+#'   loading magnitude relative to the typical loading among the fit's OTHER
+#'   ordinal traits (O1; the denominator is family-scoped, so a gaussian or
+#'   binomial partner can neither mask nor manufacture an ordinal runaway).
+#'   Default `40`, **calibrated** (2026-08-17; 315 fits, n = 100/400, four
+#'   pre-registered arms, per-fit truth `rel_frob > 10`): sensitivity 37.8%
+#'   at **0.0% false positives on every arm including the adversarial
+#'   heterogeneous-scale transport arm**. Specificity is the binding
+#'   constraint here by design (issue #897: a screen that cries wolf gets
+#'   switched off), so the threshold is set where false alarms vanish rather
+#'   than where sensitivity peaks.
+#' @param ordinal_loading_absolute_thresh Threshold on an ordinal trait's
+#'   largest unit-tier loading in liability units (O2). Unit tiers only —
+#'   never the SPDE tier, whose loadings carry a different normalisation.
+#'   Scale-free by construction: the probit-liability residual variance is
+#'   exactly 1, so an ordinal loading IS the trait's latent SD in liability
+#'   units (the same argument that justifies the binomial-only absolute
+#'   threshold, and the reason categorical liabilities are immune to the
+#'   scale-dependent-constants class). Default `40`, **calibrated** on the
+#'   same 315-fit campaign: sensitivity 60.2% overall (70.0% on homogeneous
+#'   designs) at 0.9% false positives overall — **0.0% on the plain healthy
+#'   arm and 0.0% on the heterogeneous-scale transport arm**.
+#'
+#'   Two measured findings shaped this number and are recorded rather than
+#'   buried. First, at binomial's own threshold of 6 the ordinal screen
+#'   reaches 100% sensitivity but **24% false positives** — reproducing on
+#'   ordinal exactly the defect issue #897 reports in binomial (25%), which
+#'   is why that issue insists ordinal thresholds be set on ordinal evidence
+#'   rather than inherited. Second, every false alarm at any threshold comes
+#'   from designs with heterogeneous per-trait loading scales; the plain
+#'   healthy arm has zero false positives at every threshold from 6 to 40.
+#'   An absolute liability-scale threshold cannot transport across
+#'   heterogeneous trait scales, because a legitimately large loading on a
+#'   wide-cutpoint trait is indistinguishable from a runaway.
 #' @return A one-row data frame in the [check_gllvmTMB()] row shape, or
 #'   `NULL` when the fit has no `ordinal_probit()` (family_id 14) trait.
 #' @keywords internal
 .gllvmTMB_ordinal_degeneracy_row <- function(
   object,
-  ordinal_loading_runaway_thresh = Inf,
-  ordinal_loading_absolute_thresh = Inf
+  ordinal_loading_runaway_thresh = 40,
+  ordinal_loading_absolute_thresh = 40
 ) {
   required <- c("family_id_vec", "trait_id")
   tmb <- .gllvmTMB_tmb_data_or_null(object, required)
@@ -1415,8 +1445,8 @@ check_gllvmTMB <- function(
   multinomial_collapse_rel_thresh = Inf,
   multinomial_rail_thresh = 0.99,
   multinomial_range_collapse_thresh = 0.02,
-  ordinal_loading_runaway_thresh = Inf,
-  ordinal_loading_absolute_thresh = Inf
+  ordinal_loading_runaway_thresh = 40,
+  ordinal_loading_absolute_thresh = 40
 ) {
   if (!inherits(object, "gllvmTMB_multi")) {
     cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")

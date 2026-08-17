@@ -252,11 +252,31 @@ run_one <- function(arm, n, seed, q = probe$Q_FACTORS, p = probe$P_TRAITS,
     }
   }
 
+  ## Record the RAW statistics, not just the boolean verdicts at one
+  ## threshold pair: a calibration that stores only "fired / did not fire"
+  ## cannot choose a threshold afterwards, which is the whole purpose of the
+  ## campaign. `max_loading_unit` drives O2, `relative_loading` drives O1.
+  ord_ids <- tryCatch({
+    td <- fit$tmb_data
+    sort(unique(td$trait_id[td$family_id_vec == 14L]))
+  }, error = function(e) NULL)
+  stats <- tryCatch(
+    gllvmTMB:::.gllvmTMB_max_loading_by_trait(fit, reference_traits = ord_ids),
+    error = function(e) NULL
+  )
+  max_loading_unit <- if (!is.null(stats) && "max_loading_unit" %in% names(stats)) {
+    suppressWarnings(max(stats$max_loading_unit, na.rm = TRUE))
+  } else NA_real_
+  relative_loading <- if (!is.null(stats) && "relative_loading" %in% names(stats)) {
+    suppressWarnings(max(stats$relative_loading, na.rm = TRUE))
+  } else NA_real_
+
   data.frame(
     arm = arm, n = n, seed = seed, seconds = secs, status = "OK",
     rel_frob = rel_frob, degenerate_label = degenerate_label,
-    o1 = o1, o2 = o2, status_row = status_row, note = "",
-    stringsAsFactors = FALSE
+    o1 = o1, o2 = o2, status_row = status_row,
+    max_loading_unit = max_loading_unit, relative_loading = relative_loading,
+    note = "", stringsAsFactors = FALSE
   )
 }
 

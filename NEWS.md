@@ -150,20 +150,39 @@ is still the default.
   engine identity to `phylo_latent()`) and the mode-axis route (FAM-20D:
   `phylo_dep()` rails 8/20; `phylo_indep()`'s corrected diagonal-truth
   rerun shows larger contrast variances recover fine, median ratio 0.78,
-  17/20 in band, but smaller ones collapse, median ratio 0.24, 9/20, and
-  the planted-zero check FAILS -- a full-`V` `phylo_latent()` refit on
+  17/20 in band, but smaller ones collapse, median ratio 0.24, 9/20 --
+  **7 of those 20 seeds collapse the smaller contrast variance to
+  numerical zero (≤1e-9)**, each with `convergence = 0` AND a PD Hessian,
+  and no runtime detector currently flags it (`R/diagnose.R`'s degeneracy
+  gate is family_id == 1-only, issue #897's class) -- and the planted-zero
+  check FAILS -- a full-`V` `phylo_latent()` refit on
   diagonal-truth data rails to median |rho| = 1.0). A pre-registered
   **replication rescue PASSED**: five categorical draws per species (`n_sp
   = 300`, `n_rep = 5`) recovers V with rail rate 4/20, median rho 0.680
-  (true 0.6), SD ratios 0.89/0.85 -- **one categorical draw per species
-  does not identify V; five draws per species does.** This rescue transfers
-  exactly to `phylo_dep()` (the identical parameterisation) but has NOT
-  been tested for the diagonal-`V` mode (`phylo_indep()`). The spatial
-  kappa/tau gate, by contrast, **PASSED all three cells** (median
-  practical-range ratios 1.75 / 1.12 / 1.75, band 0.33-3.0; rails 0/14,
-  3/14, 0/14 against a >6/14 threshold). The group-intercept gate also
-  **PASSED**: 20/20 converged with a PD Hessian, median `sigma_re` ratio
-  0.947, range [0.60, 1.51].
+  among the 16 NON-RAILED seeds (0.696 among all 20 conv+PD seeds --
+  both bands, true 0.6), SD ratios 0.89/0.85 -- **one categorical draw per
+  species does not identify V; five draws per species does.** This rescue
+  transfers exactly to `phylo_dep()` (the identical parameterisation) but
+  has NOT been tested for the diagonal-`V` mode (`phylo_indep()`). The
+  spatial kappa/tau gate, by contrast, **PASSED all three cells** (median
+  practical-range ratios 1.75 / 1.12 / 1.75 among the 14 conv+PD seeds per
+  cell, band 0.33-3.0; rails 0, 3, 0 of those 14 against the frozen
+  threshold, restated in its pre-registered form: >6/20; 6/20 seeds were
+  non-PD per cell, excluded from the ratio band). Per-seed dispersion is
+  wider than the median suggests: 4 of the 14 PD seeds fall outside
+  [0.33, 3.0] for `latent()`/`dep()` (up to a 4.56 ratio), and
+  `spatial_indep()`'s 3 rails (of the 14 conv+PD seeds) sit at range
+  ratios 2.3e-4 to 3.4e-4, and ALL THREE have `pdHess = TRUE` -- a
+  collapsed field passes the Hessian check, the same pattern as the
+  phylogenetic surface's zero-collapse above. **The group-intercept gate ((1 | group)
+  ONLY) also PASSED**: 20/20 converged with a PD Hessian, median
+  `sigma_re` ratio 0.947, range [0.60, 1.51]. **This PASSED verdict does
+  NOT extend to the cluster/cluster2 diagonal tier** -- the s4 campaign
+  fit `re_int` exclusively; `cluster`/`cluster2` are admitted with
+  construction-level evidence only (the fit constructs, `extract_Sigma()`
+  returns a well-formed diagonal), and their recovery axis remains OPEN
+  (a correction to an earlier draft of this entry, which wrongly implied
+  the same PASSED verdict covered both).
 
   **Refused, not merely deferred:** `phylo_scalar()`/`animal_scalar()`/
   `kernel_scalar()`/`spatial_scalar()` and `common = TRUE` on the cluster/

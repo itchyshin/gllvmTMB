@@ -194,8 +194,8 @@ truth for whether a family is `covered`, `partial`, or `blocked`.
 historical Tier-1-only wording in Design 83).** Fixed-effect recovery for one
 unordered categorical trait is **covered** (FAM-20). The Design 122 arc
 (Slices 1-4, 2026-08-16) admitted a bounded structured-term surface on top of
-that, each cell gated on a signed recovery campaign rather than construction
-alone: the among-category phylogenetic/relatedness surface in all three
+that -- MOST cells gated on a signed recovery campaign rather than
+construction alone, with one explicit exception noted below: the among-category phylogenetic/relatedness surface in all three
 modes (`phylo_latent()`/`animal_latent()`/single-name `kernel_latent()`
 loadings-only; `phylo_dep()`/`animal_dep()`/`kernel_dep()` full unstructured
 $V$; `phylo_indep()`/`animal_indep()`/`kernel_indep()` diagonal $V$), the
@@ -206,10 +206,15 @@ the one-categorical-draw-per-species recovery gate FAILED for the entire
 phylogenetic/relatedness surface (rail rates 8/20 against a 6/20 threshold);
 a pre-registered replication rescue (five draws per species) PASSED for the
 loadings-only and full-$V$ cells but is untested for the diagonal-$V$ cell,
-whose corrected rerun independently FAILED (small-variance collapse, a
-failed planted-zero check). The spatial surface and the group-intercept
-surface both PASSED their signed gates outright, no replication needed.
-`phylo_scalar()`/`animal_scalar()`/`kernel_scalar()`/`spatial_scalar()` and
+whose corrected rerun independently FAILED (small-variance collapse --
+7/20 seeds collapse to numerical zero despite convergence = 0 and a PD
+Hessian, undetected by any current diagnostic -- and a
+failed planted-zero check). The spatial surface and the `(1 | group)`
+route both PASSED their signed gates outright, no replication needed --
+**but the cluster/cluster2 diagonal tier is admitted with
+CONSTRUCTION-level evidence only** (the fit constructs, `extract_Sigma()`
+returns a well-formed diagonal); it was NOT part of the `(1 | group)`
+campaign and its recovery axis remains open (`partial`). `phylo_scalar()`/`animal_scalar()`/`kernel_scalar()`/`spatial_scalar()` and
 `common = TRUE` at the cluster/cluster2 tier are REFUSED, not merely
 deferred -- a shared-level collapse across the $K-1$ contrasts has no
 interpretable null. See `docs/design/122-multinomial-structured-surface.md`

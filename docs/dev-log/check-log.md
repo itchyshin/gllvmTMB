@@ -40,6 +40,21 @@ git diff --stat -- src/ R/ NEWS.md
 
 Not run: full `devtools::test()`, `--as-cran`, pkgdown.
 
+## 2026-08-16 — MSPL SE extract from the two source papers
+
+Docs-only. Clean worktree `/private/tmp/gllvmtmb-mspl-se-from-papers`
+from `origin/main`. No `R/`, no `src/`, no admit, no public SE.
+
+```sh
+pdftotext -layout s11222-023-10217-3-1.pdf   # 992 lines
+pdftotext -layout maximum-softly-penalized-likelihood-in-factor-analysis.pdf  # 772 lines
+rg -n "calibrated|NEWS covered|sandwich|Godambe|I_LA|sdreport" \
+  docs/dev-log/research/2026-08-16-mspl-se-from-papers.md
+# those tokens appear only as negations / absent-object names
+```
+
+Not run: `devtools::test()`, `--as-cran`, Totoro/DRAC.
+
 ## 2026-08-16 — DIRECTED: binary Phase-B failure, five items for the SE-series lane
 
 Addressed to the LA-MSPL SE-series lane (Beta / Tweedie / Gamma / lognormal /
@@ -68,7 +83,6 @@ mechanism underneath, and item 1 is NOT binary-specific:
 Full note: `docs/dev-log/research/2026-08-16-note-to-se-series-lane.md`.
 Verdict: `docs/dev-log/2026-08-16-phase-b-verdict-and-recommendation.md`.
 Design 118 §8 DEV-11/DEV-12 (#1056); vault D-155.
-
 
 ## 2026-08-16 — planned-only Beta-logit door (family_id 7)
 

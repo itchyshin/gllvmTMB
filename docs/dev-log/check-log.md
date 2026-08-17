@@ -52223,3 +52223,68 @@ of yours was touched.
    detector; the 2026-08-14 no-ship stands). Nothing here reopens it.
 
 — Claude, doc/evidence lane
+
+---
+
+## 2026-08-17 — #1092 closed at every reader; #1080 and #1082 advanced (Claude, OWED-items lane)
+
+Continuing only the OWED "next immediate steps" of the 2026-08-17 Claude handover
+(which lives on `claude/handover-20260817` @ `b65192f3`, **not** on `main` — a
+session following it literally stalls at step one).
+
+**Commands run, exactly:**
+
+```
+gh pr checks 1094                          # ubuntu-latest release, pass, 45m34s
+gh pr merge 1094 --merge                   # -> 40a41e32
+Rscript --vanilla scratch/smoke-1092.R     # defect demo on the SHIPPED 0.7.0
+devtools::test(filter = "penalised-gradient")            # PRE-fix: 3 failures
+devtools::test(filter = "penalised-gradient")            # POST-fix: 11/11 pass
+devtools::test(filter = "aghq|diagnose|fit-health|sanity")   # exit 0
+devtools::test(filter = "family-cdf-args|exact-rq-residuals")# 109 + 40 pass
+rmarkdown::render("vignettes/articles/response-families.Rmd")# succeeds
+devtools::check(args = "--no-manual")                    # see caveat below
+```
+
+**rg / git patterns used for the reader sweep** (regenerated from source rather than
+taken from the issue's list — which is what found the second instance):
+
+```
+git grep -nE '\$gr\(' origin/main -- R/
+git grep -n  'max_gradient' origin/main -- R/
+git grep -l  'penalised_gradient' <all refs> -- R/    # nobody had it: unclaimed
+```
+
+**Deliberately NOT run:** `--as-cran` (CRAN is off the table, 2026-08-02); any
+Design 122 re-run (a compute campaign — D-139 estimate + pre-run + approval, D-50
+Totoro not Actions); the VA/EVA/MSPL gradient sites (own penalties, ~20 live
+Cursor `mspl-*` lanes own those files — D-88 bleed-through avoided).
+
+**Caveat on the check:** the first `devtools::check` run was polluted by a log file
+written inside the package directory, producing a self-inflicted "hidden files"
+NOTE. Re-run clean; **no `--as-cran` or 0/0/0 claim is made from the first run.**
+
+### Directed notes
+
+**To the MSPL / SE-CI lanes (Cursor):** `fit_health$max_gradient` changed meaning on
+ridged fits — it is now the gradient of the *penalised* objective, with
+`fit_health$gradient_is_penalised` disclosing which. If any MSPL oracle reads
+`max_gradient` as a stationarity gate, it was previously reading `lambda/tau^2` on
+any ridged fit and is now correct; if an oracle deliberately wanted the raw TMB
+gradient, use `tmb_obj$gr()` directly. Ridge and MSPL are never stacked (#1068), so
+no MSPL-path behaviour changes here.
+
+**To whoever owns the ordinal / detector lanes:** `b4c9109e` (PA3, ordinal engine
+identity) silently reverted the **DIA-11 and DIA-12** register rows to their
+pre-#1089 text, four commits after PR #1089 promoted them to the 13-of-17-family
+exact-residual wording. Almost certainly an edit from a stale base. `main` has
+under-reported the residual surface as 3 families instead of 13 since then.
+Restored verbatim from `fc78ab9b` in PR #1106. **Worth a glance at whether the same
+stale base touched anything else in that commit.**
+
+**To the maintainer, blocking nothing:** the Design 122 K1 re-read owed by the
+handover **cannot be done from the stored rows** — the CSVs keep only a scalar
+`max_abs_gradient`, itself sourced from the defect, so L2's leg is not recomputable.
+Three options in `docs/dev-log/2026-08-17-design122-k1-reread-infeasible.md`.
+
+— Claude, OWED-items lane (PRs #1106, #1107, #1108)

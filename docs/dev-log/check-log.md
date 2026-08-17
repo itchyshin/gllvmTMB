@@ -1,3 +1,15 @@
+## 2026-08-17 — Cursor: KF2021 footnote + handover §4 align (post-#1102)
+
+**Lane:** `cursor/mspl-kf2021-footnote-post-1102`
+Residual from conflicting #1101 / closed #1096 after REPLACE signature #1102.
+No `src/`. #1077 stays draft.
+
+```sh
+rg -n 'MSPL footnote|footnote is landed|SIGNED — REPLACE'   docs/dev-log/research/2026-08-17-mspl-ci-wald-plus-profile.md   docs/dev-log/research/2026-08-17-kosmidis-firth-2021-profile-caveat.md   docs/dev-log/handover/2026-08-17-cursor-handover-mspl-se-ci.md   docs/dev-log/handover/2026-08-17-codex-handover-poisson-W-REPLACE.md
+git diff --check
+# deliberately not: src/ tape, undraft #1077, public se
+```
+
 ## 2026-08-17 — AUTHORITATIVE: Poisson W G0 is SIGNED — REPLACE (supersedes PARK)
 
 **Lane:** `cursor/mspl-poisson-W-REPLACE-signed`

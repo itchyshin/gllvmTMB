@@ -48,20 +48,32 @@ A data frame with row metadata (\code{.row}, \code{trait}, \code{family_id},
 \description{
 Returns row-wise residual diagnostics for a fitted \code{gllvmTMB_multi}
 model. \code{type = "randomized_quantile"} uses exact family CDFs for
-Gaussian, Poisson, and NB2 rows. \code{type = "simulation_rank"} uses
-fitted-model simulations and is available as a fallback for checking
-the same row contract when exact family-CDF plumbing is not yet
-implemented.
+Gaussian, binomial, Poisson, lognormal, Gamma, NB2, Beta, betabinomial,
+Student-t, zero-truncated Poisson, zero-truncated NB2, NB1, and
+ordinal-probit rows. \code{type = "simulation_rank"} uses fitted-model
+simulations and is available as a fallback for checking the same row
+contract when exact family-CDF plumbing is not implemented for a family;
+its own family coverage (what \code{\link[=simulate.gllvmTMB_multi]{simulate.gllvmTMB_multi()}} can draw from)
+is tracked separately and is not extended here.
 }
 \details{
 Rows are retained even when a residual cannot be computed. Inspect the
 \code{status} column before treating residuals as complete.
 
 Scope: exact family-CDF randomized-quantile residuals for Gaussian,
-Poisson, and NB2 rows plus simulation-rank residuals from fitted-model
-draws. Unsupported families are retained with row status rather than
-promoted to exact residual claims. Broader family coverage and formal
-residual tests remain later validation work.
+binomial, Poisson, lognormal, Gamma, NB2, Beta, betabinomial, Student-t,
+zero-truncated Poisson, zero-truncated NB2, NB1, and ordinal-probit rows,
+plus simulation-rank residuals from fitted-model draws. Tweedie, the
+delta/hurdle families (\code{delta_lognormal}, \code{delta_gamma}), and
+multinomial are deliberately not implemented: tweedie has no closed-form
+CDF without a new dependency, the delta/hurdle families mix a point mass
+at zero with a continuous part and need an explicit design decision for
+splitting the point mass, and multinomial's categories are unordered so a
+randomized-quantile residual is undefined without inventing an ordering.
+Unsupported families are retained with row status rather than promoted
+to exact residual claims. Formal residual tests (beyond the recovery
+checks in \code{tests/testthat/test-exact-rq-residuals-families.R}) remain
+later validation work.
 
 The returned data frame also carries \code{attr(x, "gllvmTMB_diagnostic")}
 with \code{\link[=check_gllvmTMB]{check_gllvmTMB()}} output and the fitted object's \code{fit_health}

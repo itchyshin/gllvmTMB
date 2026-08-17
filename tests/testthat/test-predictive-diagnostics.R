@@ -464,7 +464,10 @@ test_that("exact residuals retain non-finite and unsupported rows", {
   expect_true(all(res$status[-1] == "ok"))
 
   fit$tmb_data$y[1] <- 0
-  fit$tmb_data$family_id_vec[1] <- 7L
+  ## fid 7 (Beta) gained exact-CDF support; use fid 6 (tweedie), which
+  ## deliberately remains unsupported_family (no closed-form CDF without a
+  ## new dependency -- see R/predictive-diagnostics.R).
+  fit$tmb_data$family_id_vec[1] <- 6L
   expect_warning(
     res_unsupported <- stats::residuals(
       fit,

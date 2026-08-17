@@ -1,5 +1,23 @@
 # Check log
 
+## 2026-08-17 — MSPL profile-CI scaffold (fenced; G0 open)
+
+Internal stub only. Public `confint` still refused. Profile =
+signature (not constructed); Wald \(Q_0\) = quickest baseline;
+bootstrap = asymmetry. Coordinates with sibling triad note
+`docs/dev-log/research/2026-08-17-mspl-ci-wald-plus-profile.md`
+(#1075). No Totoro. No Design 118 reopen. No NEWS covered. No export.
+
+```sh
+rg -n 'export|TMB::sdreport|confint\\(' R/mspl-profile-ci-stub.R
+rg -n 'mspl_profile_ci_scaffold|mspl_ci_triad' R/z-confint-gllvmTMB.R
+# expect 0
+rg -n 'signature|quickest_baseline|asymmetry|D-157' \
+  R/mspl-profile-ci-stub.R \
+  docs/dev-log/research/2026-08-17-mspl-profile-ci-scaffold.md
+Rscript --vanilla -e 'testthat::test_file("tests/testthat/test-zz-mspl-profile-ci-stub.R")'
+```
+
 ## 2026-08-17 — Poisson W=diag(mu) G0 paste card (UNSIGNED)
 
 Docs only. Short G0 card for Shinichi: KEEP / REPLACE \(W_*\) /

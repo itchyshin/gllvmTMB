@@ -3,6 +3,25 @@
 This coordination note prevents a new session from treating this repository as
 a single writable lane.  It is a map, not a release/capability claim.
 
+**Refresh 2026-08-17 #3 (Claude): the CATEGORICAL arc is CLOSED — lane retired.**
+Both PRs merged: [#1057](https://github.com/itchyshin/gllvmTMB/pull/1057)
+(`489162dc`, multinomial structured-dependency surface + fail-closed
+admission fence) and [#1088](https://github.com/itchyshin/gllvmTMB/pull/1088)
+(`c26c294c`, Mizuno-2025 paper alignment + categorical degeneracy detector).
+**Nothing is owed by this lane**; it claims no files and takes nothing from
+the lanes below. Multinomial screen calibrated, armed, fit-time warning
+wired; **ordinal screen ships DISARMED** after five pre-registered candidates
+were eliminated. 🔴 `extract_phylo_signal()` was returning H^2 = 1.0 for every
+categorical trait — fixed. Follow-ups are ISSUES, not carried state:
+[#1097](https://github.com/itchyshin/gllvmTMB/issues/1097) (ordinal
+detection research), [#1098](https://github.com/itchyshin/gllvmTMB/issues/1098)
+(binomial 25% FPR), [#1099](https://github.com/itchyshin/gllvmTMB/issues/1099)
+(paper vignette). ⚠ post-merge CI was still running at merge time — verify.
+**START HERE (this lane only):**
+`docs/dev-log/handover/2026-08-17-claude-handover-categorical-arc.md`
+(every other lane keeps its own named handover below — this entry does NOT
+supersede the Cursor LA-MSPL baton immediately following.)
+
 **Refresh 2026-08-17 #2 (Cursor): LA-MSPL overnight arc → Cursor handover.**
 D-157 B1 **SIGNED PARK** (no second campaign; `MSPL-04` blocked; no
 Totoro relaunch; later intervals = new construction). Point admits:

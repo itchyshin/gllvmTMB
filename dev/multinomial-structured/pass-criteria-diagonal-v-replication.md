@@ -68,3 +68,58 @@ set, so this is genuine out-of-sample evidence.
 FAIL is recorded as *"replication does not rescue the diagonal-V mode at
 this design"* and FAM-20D keeps its point-estimate-only honesty. Bands are
 frozen as of this commit.
+
+## AMENDMENT (2026-08-17, dated, below the frozen block — frozen block untouched)
+
+The planted-zero sub-cell as pre-registered (`sd_true = c(0.8, 0)`) is
+**mathematically unrunnable with this DGP**: V is then singular and the
+generator's `chol(V)` fails ("the leading minor of order 2 is not positive").
+Substituted `sd_true = c(0.8, 0.05)` — a genuinely tiny but positive-definite
+variance, true ratio 0.0039 — and the gates are applied unchanged to it. The
+substitution is recorded here rather than by editing the frozen block.
+
+## VERDICT (2026-08-17; results committed alongside)
+
+### Main cell — **FAIL**, and the failure is the finding
+
+| Gate | Frozen | Measured | Result |
+|---|---|---|---|
+| 1 collapse rate | <= 2/20 | **7/20** | **FAIL** |
+| 2 median ratios both contrasts in [0.33, 3.0] | — | 0.82, 0.54 | PASS |
+| 3 per-seed in-band >= 14/20 each | — | 16/20, **12/20** | **FAIL** |
+
+20/20 conv+PD. **Replication does NOT rescue the diagonal-V mode: the
+collapse rate is 7/20, IDENTICAL to the unreplicated baseline of 7/20.**
+
+This is a genuine mechanism split, and it sharpens what Arc-1 could claim.
+Per-species replication (n_rep = 5) DID rescue the FULL-RANK cell (s1b:
+rails 8/20 -> 4/20, median rho 0.680 in band). It does nothing for the
+DIAGONAL mode, because the two cells fail differently: the full-rank cell's
+pathology is *correlation railing*, which more information per species fixes;
+the diagonal cell's pathology is *small-variance collapse*, which it does
+not. FAM-20D's caveat is therefore CLOSED with a NEGATIVE result — the
+rescue does not transfer — and the register must not extrapolate s1b to the
+diagonal mode.
+
+### Planted-near-zero sub-cell
+
+- Variance ratio median **0.0175** against a true 0.0039 (frozen < 0.35) —
+  **PASS**: the model does not invent variance where there is essentially
+  none.
+- Rails |rho| > 0.99: **10/10** (frozen <= 3/10) — **FAIL as scored**, but
+  the honest reading is that the criterion was mis-specified for this
+  design, not that the model misbehaved: when one contrast's variance is
+  ~0 the correlation between contrasts is *undefined* (a ratio over ~zero),
+  so railing is the expected numerical consequence. This reproduces Arc-1's
+  null-DGP probe exactly (phylo_dep railed +-1 on zero-signal data with PD
+  Hessians) and is the same evidence that grounds the `*_scalar` refusal.
+  Reported as scored (FAIL) with the interpretation attached; the criterion
+  is NOT retro-fitted.
+
+### Detector cross-check (out-of-sample — these fits were never in the
+### calibration set)
+
+**7/7 collapse seeds flagged WARN; 0/13 non-collapsed fits flagged.** Perfect
+sensitivity and perfect specificity on a cell the detector had never seen.
+This is the strongest single piece of evidence that M1 generalises beyond
+its calibration data.

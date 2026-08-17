@@ -1,4 +1,31 @@
+## 2026-08-17 — `/goal` SCAFFOLD mspl-profile-led-ci (Confirm-in-ref + R0/R1)
+
+**Lane:** `claude/lane-mspl-profile-led-ci` @ `/Users/z3437171/local-scratch/lanes/gllvmTMB-mspl-profile-led-ci`
+**Critical R0:** overnight WT had **uncommitted** triad Confirm SIGNED; `origin/main` still UNSIGNED header. Confirm + ultra-plan + decisions/check-log/handover/brief copied into this lane and committed so S1 cannot lose Confirm.
+**Also:** LOOP/ kit filled (GOAL/arcs/checkpoint/ultra-plan); R0 inventory + R1 lessons notes; #1077 remains draft tip `fb44d7b5`; Poisson W UNSIGNED; no Design 118 edits; no undraft; no push.
+
 # Check log
+
+## 2026-08-17 — MSPL CI triad Confirm SIGNED (under D-157; no new D-)
+
+Docs only. Shinichi: *"paste Confirm for me"* (cursor/Shinichi-via-chat).
+Exact Confirm pasted under **Recommended G0 (confirm triad)** in
+`docs/dev-log/research/2026-08-17-mspl-ci-wald-plus-profile.md`; Status
+**SIGNED** 2026-08-17. Mirrored to `docs/dev-log/decisions.md` as a
+2026-08-17 entry **under D-157 new construction** (no new D-number;
+preflight NEXT FREE design slot ~125; vault D-157 already claimed for
+B1 PARK; duplicate ledger IDs → do not race-claim). Poisson W card left
+**UNSIGNED**. No #1077 undraft. No real profile intervals. No Design 118 /
+B1 / Totoro. No public `se=TRUE`.
+
+```sh
+rg -n 'SIGNED|Confirm MSPL interval triad|paste Confirm for me' \
+  docs/dev-log/research/2026-08-17-mspl-ci-wald-plus-profile.md \
+  docs/dev-log/decisions.md
+rg -n '^\*\*Status:\*\* UNSIGNED' \
+  docs/dev-log/research/2026-08-17-mspl-poisson-W-G0.md
+# no testthat; docs-only
+```
 
 ## 2026-08-17 — Cursor handover: LA-MSPL overnight arc
 

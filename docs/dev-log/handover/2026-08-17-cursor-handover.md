@@ -79,7 +79,7 @@ Key research paths (already on `main`):
 
 - `docs/dev-log/research/2026-08-17-mspl-b1-aftermath-G0.md` (SIGNED PARK)
 - `docs/dev-log/research/2026-08-17-mspl-overnight-brief.md` (FINALIZED)
-- `docs/dev-log/research/2026-08-17-mspl-ci-wald-plus-profile.md` (UNSIGNED triad)
+- `docs/dev-log/research/2026-08-17-mspl-ci-wald-plus-profile.md` (**SIGNED** triad Confirm; under D-157)
 - `docs/dev-log/research/2026-08-17-mspl-poisson-W-G0.md` (UNSIGNED)
 - `docs/dev-log/research/2026-08-17-mspl-profile-bootstrap-ci-next.md`
 
@@ -165,7 +165,7 @@ gh pr view 981
 
 | ID | Status | Ask |
 |---|---|---|
-| CI triad confirm | **UNSIGNED** | Profile = signature; Wald \(Q_0\) = quick; Bootstrap = asymmetry? Paste in `2026-08-17-mspl-ci-wald-plus-profile.md` |
+| CI triad confirm | **SIGNED** 2026-08-17 (cursor/Shinichi-via-chat; under D-157; no new D-) | Exact Confirm in `2026-08-17-mspl-ci-wald-plus-profile.md`. Next: profile-led Design ultra-plan `2026-08-17-mspl-profile-led-ci-ultra-plan.md`. #1077 still draft. |
 | Poisson W | **UNSIGNED** | KEEP / REPLACE \(W_*\) / PARK SE doors? Paste in `2026-08-17-mspl-poisson-W-G0.md` |
 | #1065 | open | CI/CONFLICTING — fix allowed; admit forbidden |
 | #1077 | draft | blocked on triad G0 |

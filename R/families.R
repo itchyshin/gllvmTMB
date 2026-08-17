@@ -696,15 +696,41 @@ ordinal_probit <- function(link = "probit") {
 #' \code{phylo_latent(species, d = K)} (default \code{unique = FALSE}) for
 #' the among-category phylogenetic surface -- it emits no \eqn{\Psi}
 #' companion at all in that default form, and \code{unique = TRUE} (a free
-#' phylogenetic \eqn{\Psi}) is NOT admitted. Every other structured /
+#' phylogenetic \eqn{\Psi}) is NOT admitted. A generic \code{(1 | group)}
+#' random intercept is also admitted, but its semantics are
+#' \strong{baseline-vs-rest}, not per-category: the engine adds one draw per
+#' group level to EVERY one of a multinomial observation's \eqn{K-1}
+#' baseline-contrast rows, which shifts \eqn{P(y = \text{baseline})} versus
+#' \eqn{P(y \ne \text{baseline})} without changing the odds between any two
+#' NON-baseline categories (within one fit, across groups). \code{sigma_re}'s
+#' substantive interpretation is therefore \strong{reference-category-
+#' specific}, and re-labelling the \code{baseline} is \strong{not} a
+#' reparameterisation of the same model: under \code{baseline = 1} the shared
+#' draw constrains the log-odds between the two non-baseline categories to be
+#' constant across groups, while under a different \code{baseline} the SAME
+#' engine shares a (new) draw between a different pair of categories instead
+#' -- a different parametric restriction, not the same distribution
+#' relabelled. Re-fitting under a different \code{baseline} therefore changes
+#' the fitted response-scale probabilities too, not only \code{sigma_re}.
+#' The non-phylogenetic \code{cluster} /
+#' \code{cluster2} diagonal tier (\code{indep(0 + trait | g)} via the
+#' \code{cluster}/\code{cluster2} arguments to \code{\link{gllvmTMB}}, and its
+#' soft-deprecated standalone \code{unique()} alias) is admitted as
+#' per-contrast independent variances -- the per-category random intercept
+#' most users want -- but \code{common = TRUE} (the \code{scalar()} modifier)
+#' at that tier is NOT admitted. Both the \code{(1 | group)} and cluster/
+#' cluster2 routes abort typed if every level of the grouping factor covers
+#' exactly one categorical observation: that is an observation-level random
+#' effect (OLRE) in disguise, unidentifiable because the softmax latent scale
+#' is fixed. Every other structured /
 #' random-effect keyword -- \code{dep()}, explicit \code{unique()} /
-#' \code{indep()}, \code{phylo_dep()} / \code{phylo_indep()} /
+#' \code{indep()} at the unit tier, \code{phylo_dep()} / \code{phylo_indep()} /
 #' \code{phylo_unique()}, \code{phylo_scalar()}, \code{animal_*()},
 #' \code{kernel_*()}, \code{spatial_*()}, augmented (intercept + slope)
 #' \code{latent()} / \code{phylo_latent()} random regressions,
-#' \code{meta_V()} / \code{equalto()}, the \code{cluster} /
-#' \code{cluster2} / \code{unit_obs} grouping tiers, generic
-#' \code{(1 | group)} random intercepts, and \code{mi()} predictor terms --
+#' \code{meta_V()} / \code{equalto()}, \code{latent()}/\code{dep()} at the
+#' \code{cluster}/\code{cluster2} tiers, and the \code{unit_obs} grouping
+#' tier, and \code{mi()} predictor terms --
 #' is deferred and fails loud (\code{R/multinomial-fence.R}) rather than
 #' reaching an untested categorical path.
 #' A two-category response is exactly \code{binomial(link = "logit")} and is

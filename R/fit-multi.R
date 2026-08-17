@@ -801,6 +801,29 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     cluster2_col = if (is.null(cluster2)) NULL else as.character(cluster2)[1]
   )
 
+  ## Multinomial (family_id 16), Slice 4 (Design 122, 2026-08-16): whole-fit
+  ## OLRE guard for the newly-admitted generic (1 | group) / cluster /
+  ## cluster2 group intercepts -- needs `data` (the observation-to-group
+  ## mapping), so it cannot live inside the per-covstruct classifier above.
+  ## See R/multinomial-fence.R.
+  .multinomial_reint_group_olre_guard(
+    covstructs = parsed$covstructs, data = data, family_id_vec = family_id_vec,
+    site = site, ss_name = unit_obs, species = species,
+    cluster2_col = if (is.null(cluster2)) NULL else as.character(cluster2)[1]
+  )
+  ## One-time informational note: a (1 | group) term combined with a
+  ## multinomial trait is a BASELINE-VS-REST group effect, not a per-category
+  ## one -- sigma_re's substantive interpretation is reference-category-
+  ## specific. Mirrors the existing fit-time informational-note precedent
+  ## (e.g. "gllvmTMB-phylo-q-decomposition-inform" above, and
+  ## "gllvmTMB-integrated-two-source").
+  if (any(family_id_vec == 16L) && any(kinds == "re_int")) {
+    cli::cli_inform(c(
+      "i" = "{.code (1 | group)} combined with {.fn multinomial} adds one shared draw to every baseline-contrast row of an observation -- a BASELINE-VS-REST group effect, not a per-category one.",
+      "*" = "The shared shift moves P(y = baseline) vs P(y != baseline); the ratio between any two NON-baseline categories, within this fit, is unaffected by it. {.code sigma_re}'s substantive interpretation is therefore reference-category-specific -- and re-labelling the baseline (the {.arg baseline} argument to {.fn multinomial}) is NOT a reparameterisation of the same model: it changes the fitted response-scale probabilities too, not just {.code sigma_re}."
+    ), .frequency = "once", .frequency_id = "gllvmTMB-multinomial-reint-baseline-inform")
+  }
+
   ## ---- Design 73 `lv = ~ ...` parser/API preflight -----------------------
   ## Validate and prepare the unit-level X_lv_B design for the ordinary
   ## Gaussian B-tier score-mean model. Unsupported regimes still fail here
@@ -4433,7 +4456,18 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## scope by construction rather than by accident.
   if (any(family_id_vec == 16L)) {
     .mn_env <- environment()
-    .mn_allowed_tiers <- c("use_phylo_rr", "use_rr_B", "use_lv_B")
+    ## Slice 4 (Design 122, 2026-08-16): `use_re_int` (generic (1 | group)),
+    ## `use_diag_species` (cluster tier), and `use_diag_cluster2` (cluster2
+    ## tier, the literally-identical engine route on a second grouping
+    ## column) join the allowed set. Safe to allow unconditionally here: the
+    ## `common = TRUE` (scalar) and OLRE-degenerate variants of these two
+    ## covstructs are already aborted by pass 1
+    ## (`.multinomial_structured_admission()`) and the OLRE guard
+    ## (`.multinomial_reint_group_olre_guard()`), BOTH of which run earlier
+    ## in this function and would already have aborted before this scan is
+    ## reached -- see R/multinomial-fence.R.
+    .mn_allowed_tiers <- c("use_phylo_rr", "use_rr_B", "use_lv_B",
+                            "use_re_int", "use_diag_species", "use_diag_cluster2")
     ## The DEFAULT between-unit auto-Psi -- latent(unique = TRUE), the ordinary
     ## default -- is allowed: the current engine auto-suppresses multinomial
     ## contrast Psi while identified partners (Gaussian sigma^2,
@@ -4465,9 +4499,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     .mn_active_bad <- .mn_use_flags[vapply(.mn_vals, isTRUE, logical(1))]
     if (length(.mn_active_bad) > 0L) {
       cli::cli_abort(c(
-        "{.fn multinomial} supports fixed effects, a shared {.fn latent} ordination, and the phylogenetic/relatedness mode axis ({.fn phylo_latent}/{.fn animal_latent}/{.fn kernel_latent} and their {.fn phylo_dep}/{.fn phylo_indep}/{.fn animal_dep}/{.fn animal_indep}/{.fn kernel_dep}/{.fn kernel_indep} twins) in this release.",
+        "{.fn multinomial} supports fixed effects, a shared {.fn latent} ordination, the phylogenetic/relatedness mode axis ({.fn phylo_latent}/{.fn animal_latent}/{.fn kernel_latent} and their {.fn phylo_dep}/{.fn phylo_indep}/{.fn animal_dep}/{.fn animal_indep}/{.fn kernel_dep}/{.fn kernel_indep} twins), a generic {.code (1 | group)} random intercept, and the non-phylogenetic {.code cluster}/{.code cluster2} diagonal tier in this release.",
         "x" = "An unsupported latent / random-effect / structured term was combined with a categorical (multinomial) response.",
-        "i" = "Use a shared {.code latent(0 + trait | unit, d = k)} for cross-family (nominal <-> other) correlations (the default {.code unique = TRUE} works; the categorical contrast Psi is mapped off); intercept-only {.code phylo_latent}/{.code animal_latent}/single-named {.code kernel_latent} (loadings-only ordination), {.code phylo_dep}/{.code animal_dep}/{.code kernel_dep} (the full unstructured V), or {.code phylo_indep}/{.code animal_indep}/{.code kernel_indep} (diagonal V; standalone {.code phylo_unique}/{.code animal_unique}/{.code kernel_unique} are soft-deprecated aliases) for the among-category phylogenetic/relatedness surface. {.code unique = TRUE} on the {.fn latent} trio is not admitted (a free phylogenetic Psi is deliberately unsupported for multinomial), {.fn phylo_scalar}/{.fn animal_scalar}/{.fn kernel_scalar} are not admitted, and multi-kernel (more than one {.fn kernel_latent}/{.fn kernel_dep}/{.fn kernel_indep} name in one fit) is not admitted.",
+        "i" = "Use a shared {.code latent(0 + trait | unit, d = k)} for cross-family (nominal <-> other) correlations (the default {.code unique = TRUE} works; the categorical contrast Psi is mapped off); {.code (1 | group)} (baseline-vs-rest; {.code sigma_re} is reference-category-specific); {.code indep(0 + trait | <cluster_col>)}/{.code indep(0 + trait | <cluster2_col>)} via the {.arg cluster}/{.arg cluster2} arguments (per-contrast independent variances; {.code common = TRUE} not admitted); intercept-only {.code phylo_latent}/{.code animal_latent}/single-named {.code kernel_latent} (loadings-only ordination), {.code phylo_dep}/{.code animal_dep}/{.code kernel_dep} (the full unstructured V), or {.code phylo_indep}/{.code animal_indep}/{.code kernel_indep} (diagonal V; standalone {.code phylo_unique}/{.code animal_unique}/{.code kernel_unique} are soft-deprecated aliases) for the among-category phylogenetic/relatedness surface. {.code unique = TRUE} on the {.fn latent} trio is not admitted (a free phylogenetic Psi is deliberately unsupported for multinomial), {.fn phylo_scalar}/{.fn animal_scalar}/{.fn kernel_scalar} are not admitted, and multi-kernel (more than one {.fn kernel_latent}/{.fn kernel_dep}/{.fn kernel_indep} name in one fit) is not admitted.",
         "i" = "A {.fn propto} (phylo_scalar()/animal_scalar()) term targeting only NON-multinomial traits in a mixed-family fit is also blocked in this release -- the fence is per-fit, not per-trait.",
         ">" = "Other latent-scale structures on categorical responses are deferred."
       ), class = "gllvmTMB_multinomial_structured_not_admitted")

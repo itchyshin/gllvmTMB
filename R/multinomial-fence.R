@@ -114,6 +114,77 @@
 ## Also closed: `equalto()` / `meta_V()` (known-sampling-covariance) was
 ## blanket-exempted in both passes; it is now fail-closed for fid 16 (no
 ## established route on a categorical-contrast pseudo-trait).
+##
+## Slice 4 (Design 122, 2026-08-16): ordinary GROUP random intercepts join
+## the admitted set -- a generic `(1 | g)` random intercept (engine kind
+## `re_int`, src/gllvmTMB.cpp's `re_int` block) and the non-phylogenetic
+## `cluster`/`cluster2` diagonal tier (`indep(0 + trait | g)` via the
+## `cluster =`/`cluster2 =` arguments, the `use_diag_species`/
+## `use_diag_cluster2` engine slots). Both routes are pre-existing,
+## family-agnostic engine code; nothing in src/gllvmTMB.cpp changes for this
+## slice -- only the classifier below, a new whole-fit OLRE guard, and their
+## test/doc coverage.
+##   * `(1 | g)`: `src/gllvmTMB.cpp`'s `re_int` block adds ONE draw per group
+##     level to EVERY row of `eta` that shares that group (`re_int_group_id`
+##     is read off the group column of the AFTER-expansion pseudo-trait data,
+##     R/fit-multi.R, so all K-1 baseline-contrast rows of one multinomial
+##     observation carry the SAME group id and so get the SAME draw added).
+##     Verified: this shared additive shift does NOT cancel in the softmax
+##     between the baseline and any non-baseline category (it moves
+##     baseline-vs-rest probability, i.e. P(y = baseline) vs
+##     P(y != baseline)); the *ratio* between any TWO non-baseline
+##     categories, WITHIN one fit, IS invariant to it (it cancels there).
+##     So the semantics are a baseline-vs-rest group effect, and
+##     `sigma_re`'s substantive interpretation is
+##     REFERENCE-CATEGORY-SPECIFIC. CORRECTION (this task, caught by a test
+##     failure -- see the after-task report): re-anchoring the baseline is
+##     NOT a reparameterisation of the same model here, so it is not just
+##     `sigma_re` that changes -- the fitted response-scale probabilities
+##     change too. Under `baseline = 1`, `eta = (0, b0_2 + u_g, b0_3 +
+##     u_g)` constrains the log-odds BETWEEN categories 2 and 3 to be
+##     constant across groups (`eta_3 - eta_2 = b0_3 - b0_2`, no `u_g`
+##     term); under `baseline = 3`, the SAME engine instead shares a (new)
+##     `u_g` between categories 1 and 2, constraining THEIR log-odds to be
+##     constant instead. These are two different parametric restrictions on
+##     the model space, not one distribution under two labels -- unlike the
+##     fixed-effects-only case, where relabelling genuinely is a
+##     reparameterisation (`test-multinomial.R`'s existing baseline-
+##     invariance tests). See `multinomial()`'s roxygen (R/families.R),
+##     `test-matrix-multinomial-unit.R`'s Cell (c) (the corrected,
+##     within-fit claim), and the informational note `fit-multi.R` emits
+##     once per session (`gllvmTMB-multinomial-reint-baseline-inform`).
+##   * cluster/cluster2 `indep(0 + trait | g)`: `use_diag_species` /
+##     `use_diag_cluster2` are the IDENTICAL engine route (same per-trait
+##     independent-normal math, `eta(o) += q_sp(t, species_id(o))` /
+##     `eta(o) += r_c2(t, cluster2_id(o))`, src/gllvmTMB.cpp) on two
+##     different grouping columns -- so both are admitted together, giving
+##     D independent per-CONTRAST (pseudo-trait) variances at that grouping,
+##     the per-category random intercept users usually want. The
+##     soft-deprecated standalone `unique()` alias is the SAME engine path
+##     as `indep()` at this tier too (only the printed label differs, exactly
+##     as at the unit tier) and is admitted alongside it.
+##     `common = TRUE` (the `scalar()` modifier) STAYS BLOCKED at this tier:
+##     the generic engine has no `common`-pooling map for `use_diag_species`/
+##     `use_diag_cluster2` (unlike the unit/unit_obs `diag_B_common`/
+##     `diag_W_common` map tricks), so a `common = TRUE` request would
+##     otherwise be silently admitted and silently ignored rather than
+##     actually pooling to one shared level -- refused explicitly instead.
+##   * `unit_obs` (`site_species`) grouping stays BLOCKED (no change this
+##     slice); augmented slopes and `latent()`/`dep()` at the cluster/
+##     cluster2 tiers stay BLOCKED (no engine slot); the spatial mode axis
+##     (Slice 3, not this slice) stays BLOCKED.
+##   * OLRE guard: for a fid-16 fit, if EVERY level of an admitted `(1 | g)`
+##     or cluster/cluster2 `indep()` grouping factor covers exactly one
+##     multinomial observation (`.multinom_group_`), the term is an
+##     observation-level random effect (OLRE) in disguise -- the softmax
+##     latent scale is fixed (no free residual-dispersion parameter, unlike
+##     a Gaussian/count response), so a per-observation intercept shared
+##     across its own K-1 contrast rows is not identifiable from the fixed
+##     effects. `.multinomial_reint_group_olre_guard()` below aborts this
+##     case typed, separately from (after) the admission classification --
+##     the term IS admitted per-covstruct, exactly like the multi-kernel
+##     override is a separate whole-fit check layered on top of an
+##     individually-admitted classification.
 
 ## The current admitted set. Kept as an explicit constant so the CURRENT
 ## ADMITTED SET is legible in one place and the cli_abort message below can
@@ -132,14 +203,18 @@
     ## animal/kernel twins.
     "phylo", "phylo", "phylo",
     "animal", "animal", "animal",
-    "kernel", "kernel", "kernel", "kernel"
+    "kernel", "kernel", "kernel", "kernel",
+    ## Slice 4 (Design 122, 2026-08-16): generic group random intercepts and
+    ## the non-phylogenetic cluster/cluster2 diagonal tier.
+    "none", "none", "none", "none", "none", "none", "none"
   ),
   mode   = c(
     "latent", "latent", "latent", "latent", "latent_slope", "latent_slope",
     "equalto", "latent", "latent", "latent", "latent",
     "dep", "indep", "unique",
     "dep", "indep", "unique",
-    "dep", "indep", "unique", "indep (scalar)"
+    "dep", "indep", "unique", "indep (scalar)",
+    "re_int", "indep", "unique", "indep", "unique", "indep (scalar)", "indep (scalar)"
   ),
   tier   = c(
     "unit", "unit (auto-Psi)", "among-category",
@@ -154,14 +229,18 @@
     "among-category (full V, single name)",
     "among-category (diagonal V, single name)",
     "among-category (diagonal V, deprecated alias, single name)",
-    "among-category (single shared level, single name)"
+    "among-category (single shared level, single name)",
+    "any group (generic)", "cluster", "cluster", "cluster2", "cluster2",
+    "cluster", "cluster2"
   ),
   status = c(
     "admitted", "admitted", "admitted", "blocked", "blocked", "blocked",
     "blocked", "admitted", "admitted", "blocked", "blocked",
     "admitted", "admitted", "admitted",
     "admitted", "admitted", "admitted",
-    "admitted", "admitted", "admitted", "blocked"
+    "admitted", "admitted", "admitted", "blocked",
+    "admitted", "admitted", "admitted", "admitted", "admitted",
+    "blocked", "blocked"
   ),
   since  = c(
     "Tier-2b item 2a-ii (0.6.0)",
@@ -184,20 +263,26 @@
     "ADMITTED -- Design 122 Slice 2 (2026-08-16): kernel_dep() twin of phylo_dep(), single named dense K matrix, same phylo_rr/theta_rr_phy route (Design 65 C1 phylo-equivalence).",
     "ADMITTED -- Design 122 Slice 2 (2026-08-16): kernel_indep() twin of phylo_indep(), same diagonal phylo_rr route.",
     "ADMITTED -- Design 122 Slice 2 (2026-08-16): kernel_unique() twin of standalone phylo_unique() (soft-deprecated alias of kernel_indep()).",
-    "BLOCKED -- Design 122 Slice 2 (2026-08-16): kernel_scalar() (and kernel_indep(..., common = TRUE)) carry the SAME .phylo_unique + .indep markers as kernel_indep() and are distinguished ONLY by .kernel_mode == \"scalar\"; it ties the per-trait diagonal phylogenetic variances to ONE shared level. STAYS REFUSED like phylo_scalar()/animal_scalar() -- see dev/multinomial-structured/probe-scalar-null.R for the null-DGP evidence motivating the refusal."
+    "BLOCKED -- Design 122 Slice 2 (2026-08-16): kernel_scalar() (and kernel_indep(..., common = TRUE)) carry the SAME .phylo_unique + .indep markers as kernel_indep() and are distinguished ONLY by .kernel_mode == \"scalar\"; it ties the per-trait diagonal phylogenetic variances to ONE shared level. STAYS REFUSED like phylo_scalar()/animal_scalar() -- see dev/multinomial-structured/probe-scalar-null.R for the null-DGP evidence motivating the refusal.",
+    "ADMITTED -- Design 122 Slice 4 (2026-08-16): a generic (1 | g) random intercept adds one draw per group level to EVERY pseudo-trait row of a multinomial observation (src/gllvmTMB.cpp re_int block, group id read off the AFTER-expansion data). Semantics: a baseline-vs-rest group effect (the shared shift does not cancel in the softmax); sigma_re is REFERENCE-CATEGORY-SPECIFIC. Subject to the whole-fit OLRE guard (.multinomial_reint_group_olre_guard()) below.",
+    "ADMITTED -- Design 122 Slice 4 (2026-08-16): indep(0 + trait | <cluster_col>) via the cluster = argument routes through use_diag_species (per-trait/per-contrast independent normal variances, family-agnostic, pre-existing engine code). Subject to the OLRE guard.",
+    "ADMITTED -- Design 122 Slice 4 (2026-08-16): standalone unique(0 + trait | <cluster_col>) is the SAME use_diag_species engine path as indep() at this tier (the .indep marker only changes the printed label, as at the unit tier) -- admitted alongside it.",
+    "ADMITTED -- Design 122 Slice 4 (2026-08-16): indep(0 + trait | <cluster2_col>) via the cluster2 = argument routes through use_diag_cluster2 -- verified LITERALLY IDENTICAL engine math to use_diag_species (same per-trait independent-normal density, different DATA/PARAMETER slot; src/gllvmTMB.cpp), so admitted together with cluster.",
+    "ADMITTED -- Design 122 Slice 4 (2026-08-16): standalone unique(0 + trait | <cluster2_col>) is the SAME use_diag_cluster2 engine path as indep() at this tier -- admitted alongside it.",
+    "BLOCKED -- Design 122 Slice 4 (2026-08-16): indep(0 + trait | <cluster_col>, common = TRUE) (the scalar() modifier). The generic engine has no common-pooling map for use_diag_species (unlike the unit/unit_obs diag_B_common/diag_W_common map tricks); admitting it would silently ADMIT the term while silently IGNORING the common = TRUE request rather than actually pooling to one shared level, so it is refused explicitly instead, matching phylo_scalar()/animal_scalar()/kernel_scalar().",
+    "BLOCKED -- Design 122 Slice 4 (2026-08-16): indep(0 + trait | <cluster2_col>, common = TRUE), same reasoning as the cluster-tier scalar refusal above (no common-pooling map for use_diag_cluster2 either)."
   ),
   stringsAsFactors = FALSE
 )
 
-## Classify ONE covstruct into (source, mode, admitted). Reads only the raw
-## fields the parser preserves on `cs` -- never a derived `use_*` flag -- so
-## keywords that later fold onto the same engine flag are still distinguished
-## here. Returns a one-row list; never errors (the caller aborts).
-.mn_classify_covstruct <- function(cs, site, ss_name, species, cluster2_col) {
-  kind  <- cs$kind
-  extra <- cs$extra %||% list()
-  grp   <- tryCatch(deparse(cs$group), error = function(e) NA_character_)
-  tier  <- if (identical(grp, site)) {
+## Determine which grouping TIER (unit / unit_obs / cluster / cluster2 /
+## other) a covstruct's grouping factor maps to. Extracted so both
+## `.mn_classify_covstruct()` and `.multinomial_reint_group_olre_guard()`
+## (the whole-fit OLRE check, Slice 4) agree on the SAME tier logic rather
+## than risking two copies drifting apart.
+.mn_covstruct_tier <- function(cs, site, ss_name, species, cluster2_col) {
+  grp <- tryCatch(deparse(cs$group), error = function(e) NA_character_)
+  if (identical(grp, site)) {
     "unit"
   } else if (identical(grp, ss_name)) {
     "unit_obs"
@@ -208,6 +293,17 @@
   } else {
     "other"
   }
+}
+
+## Classify ONE covstruct into (source, mode, admitted). Reads only the raw
+## fields the parser preserves on `cs` -- never a derived `use_*` flag -- so
+## keywords that later fold onto the same engine flag are still distinguished
+## here. Returns a one-row list; never errors (the caller aborts).
+.mn_classify_covstruct <- function(cs, site, ss_name, species, cluster2_col) {
+  kind  <- cs$kind
+  extra <- cs$extra %||% list()
+  tier  <- .mn_covstruct_tier(cs, site = site, ss_name = ss_name,
+                               species = species, cluster2_col = cluster2_col)
 
   ## propto is handled entirely by the late use_* re-scan (the use_propto
   ## exemption is removed there for fid 16) -- not this classifier's job.
@@ -227,7 +323,17 @@
   }
 
   if (identical(kind, "re_int")) {
-    return(list(source = "none", mode = "re_int", admitted = FALSE,
+    ## Slice 4 (Design 122, 2026-08-16): admitted. `src/gllvmTMB.cpp`'s
+    ## `re_int` block adds one draw per group level to EVERY row of `eta`
+    ## sharing that group id -- for multinomial's expanded K-1 pseudo-trait
+    ## rows, that is a baseline-vs-rest group effect (see the header comment
+    ## above). Whether a PARTICULAR grouping is degenerate (an OLRE in
+    ## disguise, one categorical observation per level) is a whole-fit check
+    ## against `data`, not classifiable from this covstruct alone -- see
+    ## `.multinomial_reint_group_olre_guard()` below, mirroring how the
+    ## multi-kernel override works on top of an individually-admitted
+    ## classification.
+    return(list(source = "none", mode = "re_int", admitted = TRUE,
                 label = "a generic (1 | group) random intercept"))
   }
 
@@ -255,6 +361,28 @@
                   label = "the default auto-Psi companion of latent()"))
     }
     mode <- if (isTRUE(extra$.indep)) "indep" else "unique"
+    ## Slice 4 (Design 122, 2026-08-16): admit the cluster/cluster2
+    ## diagonal tier -- indep(0 + trait | g) / the soft-deprecated
+    ## standalone unique(0 + trait | g) alias via `cluster =`/`cluster2 =`,
+    ## the SAME use_diag_species/use_diag_cluster2 engine route for both
+    ## aliases (only the printed label differs, exactly as at the unit
+    ## tier). `common = TRUE` (the scalar() modifier) stays BLOCKED at this
+    ## tier: the generic engine has no common-pooling map for
+    ## use_diag_species/use_diag_cluster2, so admitting it would silently
+    ## ignore the request instead of actually pooling -- refused explicitly.
+    if (tier %in% c("cluster", "cluster2")) {
+      if (isTRUE(extra$common)) {
+        return(list(
+          source = "none", mode = "indep (scalar)", admitted = FALSE,
+          label = sprintf(
+            "%s(..., common = TRUE) (a single shared level across contrasts) at the %s tier",
+            mode, tier
+          )
+        ))
+      }
+      return(list(source = "none", mode = mode, admitted = TRUE,
+                  label = sprintf("%s() at the %s tier", mode, tier)))
+    }
     return(list(source = "none", mode = mode, admitted = FALSE,
                 label = sprintf("an explicit %s() term at the %s tier",
                                  mode, tier)))
@@ -493,10 +621,86 @@
     return(invisible(NULL))
   }
   cli::cli_abort(c(
-    "{.fn multinomial} supports fixed effects, a shared {.fn latent} ordination, and the phylogenetic/relatedness mode axis ({.fn phylo_latent}/{.fn animal_latent}/{.fn kernel_latent} and their {.fn phylo_dep}/{.fn phylo_indep}/{.fn animal_dep}/{.fn animal_indep}/{.fn kernel_dep}/{.fn kernel_indep} twins) in this release.",
+    "{.fn multinomial} supports fixed effects, a shared {.fn latent} ordination, the phylogenetic/relatedness mode axis ({.fn phylo_latent}/{.fn animal_latent}/{.fn kernel_latent} and their {.fn phylo_dep}/{.fn phylo_indep}/{.fn animal_dep}/{.fn animal_indep}/{.fn kernel_dep}/{.fn kernel_indep} twins), a generic {.code (1 | group)} random intercept, and the non-phylogenetic {.code cluster}/{.code cluster2} diagonal tier in this release.",
     "x" = "Not admitted: {.val {unique(labels)}}.",
-    "i" = "Admitted set: {.code latent(0 + trait | unit, d = k)} (the default {.code unique = TRUE} works; the categorical contrast Psi is mapped off); and, for the among-category phylogenetic/relatedness surface, intercept-only {.code phylo_latent(species, d = K)}/{.code animal_latent(species, A = A, d = K)}/single-named {.code kernel_latent(species, K = K, d = K, name = nm)} (loadings-only ordination), {.code phylo_dep(0 + trait | species)}/{.code animal_dep(0 + trait | id)}/{.code kernel_dep(unit, K = K, name = nm)} (the full unstructured (K-1)x(K-1) V), and {.code phylo_indep(0 + trait | species)}/{.code animal_indep(0 + trait | id)}/{.code kernel_indep(unit, K = K, name = nm)} (diagonal V, no among-category correlation; standalone {.code phylo_unique()}/{.code animal_unique()}/{.code kernel_unique()} are soft-deprecated aliases of the {.code indep} cell) -- {.code unique = TRUE} on {.fn phylo_latent}/{.fn animal_latent}/{.fn kernel_latent} is NOT admitted (a free phylogenetic Psi is deliberately unsupported for multinomial), {.fn phylo_scalar}/{.fn animal_scalar}/{.fn kernel_scalar} (a single shared level across contrasts) are NOT admitted, and more than one {.fn kernel_latent}/{.fn kernel_dep}/{.fn kernel_indep} name in the same fit (multi-kernel) is NOT admitted.",
+    "i" = "Admitted set: {.code latent(0 + trait | unit, d = k)} (the default {.code unique = TRUE} works; the categorical contrast Psi is mapped off); {.code (1 | group)} (a baseline-vs-rest group effect -- {.code sigma_re} is reference-category-specific; subject to an OLRE guard, see below); {.code indep(0 + trait | <cluster_col>)}/{.code indep(0 + trait | <cluster2_col>)} via the {.arg cluster}/{.arg cluster2} arguments (per-contrast independent variances; the standalone {.code unique()} alias is admitted alongside {.code indep()} at this tier too; {.code common = TRUE} is NOT admitted; also subject to the OLRE guard); and, for the among-category phylogenetic/relatedness surface, intercept-only {.code phylo_latent(species, d = K)}/{.code animal_latent(species, A = A, d = K)}/single-named {.code kernel_latent(species, K = K, d = K, name = nm)} (loadings-only ordination), {.code phylo_dep(0 + trait | species)}/{.code animal_dep(0 + trait | id)}/{.code kernel_dep(unit, K = K, name = nm)} (the full unstructured (K-1)x(K-1) V), and {.code phylo_indep(0 + trait | species)}/{.code animal_indep(0 + trait | id)}/{.code kernel_indep(unit, K = K, name = nm)} (diagonal V, no among-category correlation; standalone {.code phylo_unique()}/{.code animal_unique()}/{.code kernel_unique()} are soft-deprecated aliases of the {.code indep} cell) -- {.code unique = TRUE} on {.fn phylo_latent}/{.fn animal_latent}/{.fn kernel_latent} is NOT admitted (a free phylogenetic Psi is deliberately unsupported for multinomial), {.fn phylo_scalar}/{.fn animal_scalar}/{.fn kernel_scalar} (a single shared level across contrasts) are NOT admitted, and more than one {.fn kernel_latent}/{.fn kernel_dep}/{.fn kernel_indep} name in the same fit (multi-kernel) is NOT admitted.",
     "i" = "This fence is per-fit, not per-trait: a blocked term targeting only a non-multinomial trait in a mixed-family fit still aborts the whole fit.",
-    ">" = "Other latent-scale structures on categorical responses -- including dep()/indep()/unique() at the unit tier, phylo_scalar()/animal_scalar()/kernel_scalar(), multi-kernel, spatial_*(), augmented (intercept + slope) forms of every one of the above, *_latent(unique = TRUE), meta_V()/equalto(), the cluster/cluster2/unit_obs tiers, and generic (1 | group) random intercepts -- are deferred."
+    ">" = "Other latent-scale structures on categorical responses -- including dep()/indep()/unique() at the unit tier, {.code latent()}/{.code dep()} at the cluster/cluster2 tiers, the {.code unit_obs} tier, phylo_scalar()/animal_scalar()/kernel_scalar(), multi-kernel, spatial_*(), augmented (intercept + slope) forms of every one of the above, *_latent(unique = TRUE), and meta_V()/equalto() -- are deferred."
   ), class = "gllvmTMB_multinomial_structured_not_admitted")
+}
+
+#' OLRE guard for `(1 | group)` / cluster / cluster2 group intercepts on a
+#' multinomial trait
+#'
+#' A generic `(1 | g)` random intercept and the `cluster`/`cluster2`
+#' `indep()`/`unique()` diagonal tier are admitted (Slice 4, Design 122) as a
+#' family-agnostic, per-covstruct classification -- see
+#' `.mn_classify_covstruct()` above. But when EVERY level of the grouping
+#' factor covers exactly one multinomial observation (one row of the
+#' `.multinom_group_` carrier `expand_multinomial_response()` writes), the
+#' term is an observation-level random effect (OLRE) in disguise: the
+#' softmax latent scale is fixed (no free residual-dispersion parameter,
+#' unlike a Gaussian/count response), so a per-observation intercept shared
+#' across that observation's own K-1 contrast rows is not identifiable from
+#' the fixed effects alone. This is a WHOLE-FIT check against `data` (it
+#' needs the observation-to-group mapping, not just the covstruct shape), so
+#' it runs as a separate pass after `.multinomial_structured_admission()`,
+#' mirroring how the multi-kernel override sits on top of an individually-
+#' admitted classification.
+#'
+#' @param covstructs `parsed$covstructs`.
+#' @param data The (already multinomial-expanded) model data frame; must
+#'   carry `.multinom_group_` when any fid-16 row is present (always true
+#'   once `expand_multinomial_response()` has run).
+#' @param family_id_vec Integer family-id vector, one per row of `data`.
+#' @param site,ss_name,species,cluster2_col Grouping-tier column names, as in
+#'   `.multinomial_structured_admission()`.
+#' @return `invisible(NULL)`; called for its `cli_abort()` side effect.
+#' @noRd
+.multinomial_reint_group_olre_guard <- function(covstructs, data, family_id_vec,
+                                                  site, ss_name, species,
+                                                  cluster2_col = NULL) {
+  if (!any(family_id_vec == 16L) || !(".multinom_group_" %in% names(data))) {
+    return(invisible(NULL))
+  }
+  mn_rows <- family_id_vec == 16L
+  if (!any(mn_rows)) {
+    return(invisible(NULL))
+  }
+  mgrp_all <- data[[".multinom_group_"]]
+  for (cs in covstructs) {
+    kind <- cs$kind
+    tier <- .mn_covstruct_tier(cs, site = site, ss_name = ss_name,
+                                species = species, cluster2_col = cluster2_col)
+    is_group_term <- identical(kind, "re_int") ||
+      (identical(kind, "diag") && tier %in% c("cluster", "cluster2"))
+    if (!is_group_term) {
+      next
+    }
+    gname <- tryCatch(as.character(cs$group), error = function(e) NA_character_)
+    if (is.na(gname) || !(gname %in% names(data))) {
+      next # a bad/missing column is reported by the caller's own checks
+    }
+    grp_vals  <- data[[gname]][mn_rows]
+    mgrp_vals <- mgrp_all[mn_rows]
+    if (length(grp_vals) == 0L) {
+      next
+    }
+    grp_f <- droplevels(factor(grp_vals))
+    n_obs_per_level <- tapply(mgrp_vals, grp_f, function(x) length(unique(x)))
+    if (length(n_obs_per_level) > 0L && all(n_obs_per_level == 1L)) {
+      term_label <- if (identical(kind, "re_int")) {
+        sprintf("(1 | %s)", gname)
+      } else {
+        sprintf("indep(0 + trait | %s)", gname)
+      }
+      cli::cli_abort(c(
+        "{.code {term_label}} is an observation-level random effect (OLRE) in disguise for {.fn multinomial}.",
+        "x" = "Every level of {.var {gname}} covers exactly one categorical observation (one multinomial draw): {length(n_obs_per_level)} levels, {length(n_obs_per_level)} observations.",
+        "i" = "The {.fn multinomial} softmax latent scale is fixed (unlike a Gaussian/count residual variance), so a per-observation intercept shared across its own K-1 baseline-contrast rows is not identifiable from the fixed effects.",
+        ">" = "Use a coarser grouping factor with multiple categorical observations per level, or drop the term."
+      ), class = "gllvmTMB_multinomial_olre_not_admitted")
+    }
+  }
+  invisible(NULL)
 }

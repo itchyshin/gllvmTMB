@@ -728,10 +728,16 @@ extract_Sigma <- function(
   ## A multinomial trait carries a latent-scale Sigma iff it has SOME latent
   ## tier: phylo_latent (Tier-2a, level = "phy") OR a shared ordinary latent
   ## ordination (Tier-2b item 2a-ii, level = "unit") that couples the K-1
-  ## pseudo-traits with other-family traits. Only a FIXED-EFFECTS-ONLY
+  ## pseudo-traits with other-family traits, OR (Design 122 Slice 4,
+  ## 2026-08-16) the non-phylogenetic cluster/cluster2 diagonal tier
+  ## (`indep(0 + trait | g)` via `cluster =`/`cluster2 =`, level =
+  ## "cluster"/"cluster2") -- a diagonal-only Sigma (no Lambda component,
+  ## same shape as the generic cluster-tier branch below for every other
+  ## family), but still a DEFINED one. Only a FIXED-EFFECTS-ONLY
   ## multinomial has no latent Sigma; keep the clear refusal for that case.
   .mn_has_latent <- isTRUE(fit$use$phylo_rr) || isTRUE(fit$use$rr_B) ||
-    isTRUE(fit$use$lv_B)
+    isTRUE(fit$use$lv_B) || isTRUE(fit$use$diag_species) ||
+    isTRUE(fit$use$diag_cluster2)
   if (!is.null(fit$tmb_data$family_id_vec) &&
       any(fit$tmb_data$family_id_vec == 16L) &&
       !.mn_has_latent) {

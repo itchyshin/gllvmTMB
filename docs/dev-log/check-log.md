@@ -1,5 +1,22 @@
 # Check log
 
+## 2026-08-17 — B1 aftermath G0 brief (park default; unsigned)
+
+Docs only. Overnight track after #1040: official hold-out
+G1–G5 FAIL (14/132 = 10.6%, M0 frozen). Brief:
+`docs/dev-log/research/2026-08-17-mspl-b1-aftermath-G0.md`.
+Default recommended: **PARK**. Options: redesign calibrator /
+new construction. \(n\to 2000\) refused (cannot reach 90%).
+#1056 / DEV-11 kept as a later M2 evaluator, not collapsed.
+No promote. No second campaign. No Totoro relaunch.
+`MSPL-04` stays `blocked`. No `R/` / `src/` / NEWS.
+
+```sh
+rg -n '14/132|10\\.6%|M0' docs/dev-log/research/2026-08-16-mspl-b1-holdout-gate.md
+rg -n 'DEV-11|Phase B closure' docs/design/118-mspl-interval-calibration-protocol.md
+# no testthat; docs-only
+```
+
 ## 2026-08-16 — DIRECTED: binary Phase-B failure, five items for the SE-series lane
 
 Addressed to the LA-MSPL SE-series lane (Beta / Tweedie / Gamma / lognormal /

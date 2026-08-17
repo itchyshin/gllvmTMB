@@ -658,7 +658,17 @@ made here. The defect was diagnosable from training alone — the fit-time log p
 legitimately motivatable, but it belongs to a **new pre-registration** that must decide how
 refusal is priced, adopt a denominator-invariant admission rule, and declare a fresh split
 before any refit. Verdict and recommendation:
-`docs/dev-log/2026-08-16-phase-b-verdict-and-recommendation.md`.
+`docs/dev-log/2026-08-16-phase-b-verdict-and-recommendation.md`
+(on `claude/mspl-b0-prereqs`; not yet on `origin/main`).
+
+**G0 brief (2026-08-17, UNSIGNED).** The overnight-track call
+document is `docs/dev-log/research/2026-08-17-mspl-b1-aftermath-G0.md`.
+It treats [#1040](https://github.com/itchyshin/gllvmTMB/pull/1040)
+(M0; G1 14/132 = 10.6%) as the official hold-out and this
+section's DEV-11 M2 read as a later evaluator. Default
+recommended: **PARK** (no promote, no second campaign, no
+\(n\to 2000\)). Redesign-calibrator and new-construction remain
+the signed alternatives. No Totoro relaunch until Shinichi pastes.
 
 ---
 

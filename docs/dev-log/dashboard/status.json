@@ -28,11 +28,11 @@
   "truth_cards": [
     {
       "label": "Design 118 B1 intervals",
-      "value": "map FROZEN M0; G1–G5 FAIL",
+      "value": "G1–G5 FAIL 10.6%; G0 park (unsigned)",
       "status": "blocked",
-      "note": "B1 table COMPLETE 7920/7920 on Totoro. Calibrator map frozen 2026-08-16T18:36Z at M0 (alpha*=0.05) from the train split only (PR #1040). Official --holdout after freeze: G1 14/132 = 10.6% PASS (need >=90%), G2 FAIL (min coverage 0.0218), G3 FAIL, G4 PASS (anchor refusal 0.00-0.04), G5 vacuous PASS. Conjunction FAIL. Not a public confint/se admit. MSPL-04 stays blocked. Receipts: 2026-08-16-mspl-b1-calibrator-map-freeze.md and 2026-08-16-mspl-b1-holdout-gate.md.",
-      "url": "https://github.com/itchyshin/gllvmTMB/pull/1040",
-      "link_label": "PR #1040"
+      "note": "Official overnight gate is PR #1040: map frozen M0 (alpha*=0.05); G1 14/132 = 10.6% PASS; G2 min coverage 0.0218; G3 FAIL; G4/G5 PASS. Conjunction FAIL. Later #1056/DEV-11 scored a different M2 map at 0.0% and discharged Design 118; do not collapse the two reads. 05:00 G0 brief recommends PARK (no promote, no second campaign, no n->2000). UNSIGNED. MSPL-04 stays blocked. Brief: 2026-08-17-mspl-b1-aftermath-G0.md.",
+      "url": "https://github.com/itchyshin/gllvmTMB/blob/main/docs/dev-log/research/2026-08-17-mspl-b1-aftermath-G0.md",
+      "link_label": "G0 brief"
     },
     {
       "label": "V1 distance",

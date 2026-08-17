@@ -171,10 +171,11 @@ is still the default.
   non-PD per cell, excluded from the ratio band). Per-seed dispersion is
   wider than the median suggests: 4 of the 14 PD seeds fall outside
   [0.33, 3.0] for `latent()`/`dep()` (up to a 4.56 ratio), and
-  `spatial_indep()`'s 3 rails (of the 14 conv+PD seeds) sit at range
-  ratios 2.3e-4 to 3.4e-4, and ALL THREE have `pdHess = TRUE` -- a
-  collapsed field passes the Hessian check, the same pattern as the
-  phylogenetic surface's zero-collapse above. **The group-intercept gate ((1 | group)
+  `spatial_indep()` collapses the range in **6 of all 20 seeds** (ratios
+  down to 7e-5): 3 of those 6 are PD -- the rails counted under the frozen
+  criteria, at ratios 2.3e-4 to 3.4e-4 -- and the other 3 sit among the
+  6/20 non-PD exclusions. A collapsed field can pass the Hessian check,
+  the same pattern as the phylogenetic surface's zero-collapse above. **The group-intercept gate ((1 | group)
   ONLY) also PASSED**: 20/20 converged with a PD Hessian, median
   `sigma_re` ratio 0.947, range [0.60, 1.51]. **This PASSED verdict does
   NOT extend to the cluster/cluster2 diagonal tier** -- the s4 campaign

@@ -104,10 +104,13 @@ after this proposal is approved — the A+B campaign's guarded-launcher +
 pinned-lib + canary pattern (`dev/coxreid-ab/launch-ab.sh`) is ~70 % of it
 and should be generalised rather than rebuilt.
 
-## Decision boxes (approve as recommended, or amend inline)
+## Decision boxes — APPROVED as recommended (Shinichi, 2026-08-17, chat: "as you recommended")
 
-- [ ] §1 claimant dispositions as stated
-- [ ] §2 Design 122 disposition (c-modified, pending measurements below)
-- [ ] §3 interval-method assignment
-- [ ] §4 seed-budget rule
-- [ ] §6 compute-admission slice authorised as the next lane
+- [x] §1 claimant dispositions as stated
+- [x] §2 Design 122 disposition (c-modified: confirmatory n ∈ {100, 400})
+- [x] §3 interval-method assignment (profile primary / bootstrap ≥200 diagnostic)
+- [x] §4 seed-budget rule (MCSE-governed, ~300/cell working value)
+- [x] §6 compute-admission slice authorised as the next lane
+
+Design 66 scoping is CLOSED. The capstone campaign itself still requires the
+compute-admission slice (now authorised, in build) and a final D-139 go.

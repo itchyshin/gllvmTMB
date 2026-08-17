@@ -1,6 +1,6 @@
 ---
 title: "When a rare species breaks the JSDM"
-description: "A rare specialist recorded only at one end of a gradient can make a joint species distribution model unfittable. Certify the problem with screen_gllvmTMB(), keep the species with the opt-in MSPL estimator, and know exactly what the penalised fit does and does not give you."
+description: "A species recorded only at one end of a gradient can have no finite ML slope — complete separation. Certify the problem with screen_gllvmTMB() and keep the species with the opt-in MSPL estimator. A loading ridge does not fix this, and the two are never combined in one fit."
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -70,7 +70,9 @@ Note what makes this dangerous: the problem is not rarity itself. A species
 at 8% prevalence scattered across the gradient fits fine. This one's
 presences all sit past a temperature threshold, so a line on `temp` can
 separate every presence from every absence — and that is a property of the
-fixed design, diagnosable before any model is fitted.
+fixed design, diagnosable before any model is fitted. The same certificate
+fires for a species present at almost every site: rarity is not the
+definition of the problem; a perfect split is.
 
 # Certify the problem before fitting
 
@@ -194,10 +196,11 @@ if (inherits(fit_ridge, "error")) {
 ```
 
 The separated species' slope is still runaway — the ridge changed nothing
-about the boundary the certificate diagnosed. (Combining the ridge with
-`estimator = "mspl"` is refused with an error; the two remedies target
-different diseases and do not compose.) The ridge's own job — taming runaway
-*loadings* — is demonstrated in the
+about the boundary the certificate diagnosed. And the two remedies must not
+be stacked: supplying `loading_ridge` together with `estimator = "mspl"` is
+refused with an error. One outer penalty per fit — the ridge shrinks
+loadings, and this species' boundary is in the fixed-effect slope. The
+ridge's own job — taming runaway *loadings* — is demonstrated in the
 [evidence-synthesis article](mspl-binary-jsdm.html).
 
 # What the penalised fit does and does not give you
@@ -219,8 +222,8 @@ stands. Report the certificate together with the estimate.
 If your fit shows the *other* classic pathology — convergence with latent
 loadings at absurd magnitudes — that is a different disease with a different
 remedy (an opt-in loading ridge), and the
-[evidence-synthesis article](mspl-binary-jsdm.html) demonstrates the two
-side by side, including why they do not substitute for one another.
+[evidence-synthesis article](mspl-binary-jsdm.html) demonstrates each remedy
+against its own disease — one outer penalty per fit, never both.
 
 # See also
 

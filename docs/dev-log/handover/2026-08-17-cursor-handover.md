@@ -41,7 +41,7 @@ PROTECTED** before mutating. Execute only **OWED**.
    Bootstrap = asymmetry. Exact Confirm in
    `docs/dev-log/research/2026-08-17-mspl-ci-wald-plus-profile.md`.
 7. **Design 125 claimed** at **`b68b20b4`** —
-   `docs/design/125-mspl-profile-led-intervals.md` (STUB; MSPL-04 stays
+   `docs/design/125-mspl-profile-led-intervals.md` (**APPROVED**; MSPL-04 stays
    `blocked`).
 8. **S2 ADEMP pre-reg SIGNED** (sibling finished) —
    `docs/dev-log/research/2026-08-17-mspl-profile-led-prereg-ademp.md`
@@ -97,9 +97,9 @@ Key research / design paths:
 - `docs/dev-log/research/2026-08-17-mspl-overnight-brief.md` (FINALIZED)
 - `docs/dev-log/research/2026-08-17-mspl-ci-wald-plus-profile.md` (**SIGNED** triad Confirm; under D-157; Confirm-in-ref `7de94fc7`)
 - `docs/design/125-mspl-profile-led-intervals.md` (claim `b68b20b4`)
-- `docs/dev-log/research/2026-08-17-mspl-profile-led-prereg-ademp.md` (S2 draft)
+- `docs/dev-log/research/2026-08-17-mspl-profile-led-prereg-ademp.md` (S2 **SIGNED**)
 - `docs/dev-log/after-task/2026-08-17-mspl-design-125-profile-led.md`
-- `docs/dev-log/research/2026-08-17-mspl-poisson-W-G0.md` (UNSIGNED)
+- `docs/dev-log/research/2026-08-17-mspl-poisson-W-G0.md` (card **UNSIGNED**)
 - `docs/dev-log/research/2026-08-17-mspl-profile-bootstrap-ci-next.md`
 
 ## Current Working State
@@ -107,8 +107,8 @@ Key research / design paths:
 - **Working / landed on `main`:** D-157 PARK; overnight brief finalized;
   triad + Poisson W cards filed; pins + point admits as above; #1078.
 - **This lane (unpushed docs ahead of main):** Confirm `7de94fc7`;
-  Design 125 @ `b68b20b4`; S2 ADEMP draft; LOOP kit; after-task
-  `2026-08-17-mspl-design-125-profile-led.md`.
+  Design 125 @ `b68b20b4` **APPROVED**; S2 ADEMP **SIGNED**; LOOP kit;
+  after-task `2026-08-17-mspl-design-125-profile-led.md`.
 - **In progress / open PRs:**
   - [#1065](https://github.com/itchyshin/gllvmTMB/pull/1065) nbinom
     admit-packet science — **planned only**; CONFLICTING / CI issues —

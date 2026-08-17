@@ -52444,3 +52444,89 @@ tests OK ~17 min). Notes were CRAN-incoming feasibility + hidden files
 Hard OUT untouched: no NEWS `covered`; no public `se`.
 Logs: `/tmp/mspl-A4A7-ascran-build3.log`, `/tmp/mspl-A4A7-ascran-check3.log`,
 `/tmp/gllvmTMB.Rcheck/00check.log`.
+
+## 2026-08-17 — Claude (Fisher): binomial screen FP attribution, `loading_absolute_thresh` retune (#1098, PR #1110)
+
+Full after-task report:
+`docs/dev-log/after-task/2026-08-17-binomial-screen-fp-attribution.md`.
+Recording here per Definition-of-Done item 5 (AGENTS.md): exact commands,
+exact stale-wording scan patterns, and what was deliberately not run.
+
+**Commands run, verbatim, with outcomes:**
+
+```sh
+cd /private/tmp/gllvmtmb-1098-fp
+OPENBLAS_NUM_THREADS=1 Rscript --vanilla dev/heywood/fp-attribution.R
+```
+-> reproduces `n=928, WARN=232, FPR=0.2500` exactly against #897's own
+figure; `runaway_loading` fires 0/928, `extreme_magnitude` fires 232/232
+(100% of the healthy pool's false positives); prevalence branch fires 0
+(subtraction check: `WARN & !runaway & !magnitude` = 0, and the
+reconstructed rule matches the real recorded `check_status` with 0
+mismatches across all 1,200 binomial_probit fits, both healthy and
+degenerate).
+
+```sh
+OPENBLAS_NUM_THREADS=1 Rscript --vanilla -e 'devtools::document()'
+```
+-> `Writing 'check_gllvmTMB.Rd'`; three pre-existing unrelated
+`aghq-report.R` S3-export warnings emitted (not introduced by, not fixed
+by, this PR).
+
+```sh
+OPENBLAS_NUM_THREADS=1 Rscript --vanilla -e 'devtools::test(filter="runaway|diagnose|sanity")'
+```
+-> `[ FAIL 0 | WARN 0 | SKIP 0 | PASS 174 ]`, run twice with identical
+results (immediately after the code+test edit, and again after all
+doc/register edits landed). Filter match verified by direct enumeration
+(`ls tests/testthat/test-*.R | sed 's#.*/test-##;s#\.R$##' | grep -E
+"runaway|diagnose|sanity"` -> 5 files:
+`gllvmTMB-diagnose`, `runaway-warning`, `sanity-categorical`,
+`sanity-multi`, `scale-free-runaway-detector`); the last of those was
+additionally confirmed standalone (`13 pass, 0 fail`) since its filename
+match on "runaway" is non-obvious at a glance. Coordinator's independent
+re-run after PR #1110 opened: `0 failures / 0 errors / 174 passing / 13
+environment-gated skips` (the skip-count delta is `skip_on_cran()` guards
+on real-fit tests behaving differently across invocation contexts; pass
+and fail counts agree exactly with the runs above).
+
+**Exact stale-wording / cascade grep patterns used** (AGENTS.md rule 10 /
+`docs/design/10-after-task-protocol.md` Convention-Change Cascade):
+
+```sh
+grep -rn "loading_absolute_thresh" --include="*.R" --include="*.Rd" --include="*.Rmd" --include="*.md" .
+grep -rn "3,944\|3944" --include="*.R" --include="*.Rd" --include="*.Rmd" --include="*.md" .
+grep -rn "3\.99" --include="*.R" --include="*.Rd" --include="*.Rmd" --include="*.md" .
+grep -n "loading_absolute_thresh\|3,944\|3\.99\b" README.md
+grep -rln "loading_absolute_thresh|3,944" vignettes/
+grep -rln "loading_absolute_thresh" docs/design/
+grep -n -i "897\|1098\|degenera\|heywood\|binomial_prevalence" ROADMAP.md
+```
+
+Verdicts: every live `R/diagnose.R` and `man/check_gllvmTMB.Rd` site reads
+the new default (8); ~30 historical mentions of the old value (6) and the
+old calibration figures (3,944 / 3.99) survive untouched in
+`docs/dev-log/handover/*`, `docs/dev-log/audits/*`, and `check-log.md`
+itself — deliberately left alone as append-only session history, not live
+documentation. `docs/design/35-validation-debt-register.md`'s FAM-14 row
+carries one stale cross-reference to "binomial's own threshold of 6"
+inside its own frozen ordinal-campaign record — flagged, not silently
+edited (would misrepresent what that campaign was actually scored
+against; see the after-task report §3a/§10 for the reasoning). Zero hits
+in `README.md`, zero hits in `vignettes/`, zero `ROADMAP.md` row for this
+issue.
+
+**Deliberately NOT run**: full `devtools::check()` / `rcmdcheck(args =
+"--as-cran")` (one diagnostic-row default changed, not a build/packaging
+concern; 3-OS CI is already running on the open PR — Definition-of-Done
+item 1 is explicitly recorded as NOT yet met in the after-task report);
+the `GLLVMTMB_HEAVY_TESTS=1` heavy suite (no family/likelihood/grammar
+code touched); `pkgdown::build_articles()` (zero vignette hits, nothing to
+re-render). Pool 2's 3,600-fit CSV (Totoro-generated) was deliberately
+never committed to this repo, per D-50 — the attribution script reads it
+from its Totoro-retrieved path outside the repo via the `POOL2_CSV` env
+var, and only the two derived analysis files (`dev/heywood/
+fp-attribution.R`, `fp-attribution-findings.md`) plus the structural note
+(`dev/heywood/fp-scale-dependence.md`) are committed.
+
+— Claude (Fisher), inference-machinery lens

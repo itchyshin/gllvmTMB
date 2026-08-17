@@ -484,3 +484,135 @@ FAM-20F.
 - `docs/dev-log/after-task/2026-08-16-multinomial-structured-arc.md` — the
   arc-level after-task report (scope, all five slices, campaign verdicts,
   corrections made along the way, follow-ups).
+
+## Paper alignment — Mizuno, Drobniak, Williams, Lagisz & Nakagawa (2025) J. Evol. Biol. 38:1699-1715 (doi 10.1093/jeb/voaf116)
+
+This section is the authoritative equation-by-equation map from Mizuno et al.
+(2025) — the methods reference for phylogenetic ordinal and nominal PGLMMs,
+with a companion tutorial (ayumi-495.github.io/multinomial-GLMM-tutorial) and
+code (Zenodo 10.5281/zenodo.17038830) implemented in MCMCglmm and brms — onto
+the equivalent `gllvmTMB()` call, with a per-cell status verified against this
+worktree's code and tests (not the paper's Bayesian implementations). Every
+status claim below was checked against `R/families.R`, `R/multinomial-fence.R`,
+`R/extract-cutpoints.R`, `R/extract-sigma.R`, `R/extract-omega.R`,
+`R/extract-repeatability.R`, `docs/design/35-validation-debt-register.md`, and
+the cited test files in this worktree; none is aspirational, and cells with no
+in-repo evidence are marked accordingly rather than assumed to work.
+
+### Alignment table
+
+| Paper eq | Model | `gllvmTMB` call | Status | Evidence pointer |
+|---|---|---|---|---|
+| 1-5 | Univariate continuous PMM: y = beta0 + Xbeta + a + e, a ~ N(0, sigma_a^2 A) | `gllvmTMB(value ~ 0 + trait + phylo_indep(0 + trait \| species, tree = tree), data = df, trait = "trait", unit = "species", cluster = "species", family = gaussian())` | covered | Register PHY-01/PHY-02/PHY-03 (`covered`); `test-phylo-hadfield.R`, `test-stage35-phylo-rr.R`, `test-phylo-q-decomposition.R`. `animal_indep()`/single-name `kernel_indep()` inherit by the proven parser-desugar engine identity onto the same `phylo_rr` covstruct (Design 123 §2; Design 65 C1). |
+| 6-11 | Multivariate/bivariate PMM: cross-trait Kronecker Sigma_a (x) A | `gllvmTMB(value ~ 0 + trait + phylo_dep(0 + trait \| species, tree = tree), data = df, trait = "trait", unit = "species", cluster = "species", family = gaussian())` | covered | Register PHY-02/PHY-05 (`covered`, gaussian); `phylo_dep(0 + trait \| species)` is verified the IDENTICAL unconstrained packed-triangular parameterisation as `phylo_latent(species, d = n_traits)` (`gll_unpack_rr_loadings()`, `src/gllvmTMB.cpp`), documented generically in §2 above (the identity is not multinomial-specific — it is the shared phylo-tier engine). |
+| 12-21 | Binary PGLMM, probit liability: H^2 = sigma_a^2 / (sigma_a^2 + 1) | `gllvmTMB(value ~ 0 + trait + phylo_indep(0 + trait \| species, tree = tree), data = df, trait = "trait", unit = "species", cluster = "species", family = binomial(link = "probit"))` | covered | Register PHY-04 (`covered`, `phylo_scalar` shared-variance recovery + CI smoke), PHY-05 (`covered`, `phylo_indep`/`phylo_dep` structural + recovery); `test-phyloscalar-binary.R`, `test-phylodepindep-binary.R` — both fit `binomial(link = "probit")` specifically, matching the paper's probit-liability H^2 denominator `sigma_a^2 + 1` exactly (`R/extract-sigma.R` has no separate probit branch — probit's link residual is fixed at 1 by the same construction as `ordinal_probit`, see the fid == 14 branch below). Logit-link H^2 = sigma_a^2/(sigma_a^2 + pi^2/3) uses the fid == 0 branch of `link_residual_per_trait()`; general-family construction is covered by the family registry but a dedicated logit-link phylo recovery cell was not located in this pass — do not extend the "covered" verdict to logit without checking further. |
+| 27-32 | Ordinal (threshold) PGLMM, probit cutpoints, latent residual fixed at 1, no source structure (unit tier only) | `gllvmTMB(value ~ 0 + trait + latent(0 + trait \| unit, d = 1), data = df, trait = "trait", unit = "unit", family = ordinal_probit())` (also `indep()`/`dep()`/`scalar` at the unit tier) | admitted, recovery skip-honest (not a settled `covered` claim) | Register FG-07/08/09 rows referenced directly in the test file's own skip messages ("ordinal ... stays partial"); `test-matrix-ordinal-unit.R` walks `latent`, `unique`, `latent+unique` paired, `indep`, `dep`, and `scalar` cells, each one `test_that`, each with an honest `skip()` on non-convergence/non-PD rather than a relaxed assertion — fits construct and are family-checked (`family_id_vec[1] == 14L`) and `extract_cutpoints()` returns finite estimates, but no cell is unconditionally green. |
+| 27-32 | Ordinal PGLMM with phylogenetic/relatedness source: liability = beta0 + a_phy + e | `gllvmTMB(value ~ 0 + trait + phylo_latent(species, tree = tree, d = 1), data = df, trait = "trait", unit = "unit", cluster = "species", family = ordinal_probit())` (also `phylo_scalar`, `phylo_indep`, `phylo_dep`) | admitted, recovery skip-honest | `tests/testthat/test-matrix-ordinal-phylo.R`, header comment: "Walks PHY-04 / PHY-05 ... from `partial` toward `covered` for the ordinal-probit branch." Fits assert `family_id_vec[1] == 14L`, finite cutpoints, and non-degenerate `extract_correlations(tier = "phy")`; each `test_that`'s own skip message states explicitly "PHY-04 stays partial pending bigger n / different seed" / "PHY-05 stays partial pending bigger n / different seed". The register rows PHY-04/PHY-05 as currently worded describe binary-probit evidence only — the ordinal-probit branch's pass/skip counts are not yet folded into the register prose; treat this cell as evidenced-but-not-registered rather than silently covered. |
+| 27-32 | Ordinal PGLMM with pedigree/relatedness source (`animal_*`) | `gllvmTMB(value ~ 0 + trait + animal_dep(0 + trait \| id, A = A), data = df, ..., family = ordinal_probit())` | admitted, byte-equivalence evidence only | `tests/testthat/test-matrix-animal-nongaussian.R` "Cell 5: animal_dep x ordinal_probit" tests byte-equivalence to `phylo_dep()` plus CI smoke on a T <= 3 fixture (ordinal `dep` is noted BLOCKED at T >= 4 in that file's own comments); this establishes the engine identity, not a recovery gate — no rho/variance recovery claim is admissible from this cell alone. |
+| 27-32 | Ordinal PGLMM with an arbitrary dense-kernel source (`kernel_*`) | `gllvmTMB(value ~ 0 + trait + kernel_latent(species, K = K, name = "k1", d = 1), data = df, ..., family = ordinal_probit())` | NOT VERIFIED in this pass | No dedicated `kernel_* x ordinal_probit` test file was located (`test-*ordinal*kernel*`/`test-*kernel*ordinal*` search returned nothing). By the general Design 65 C1 phylo-equivalence argument (`kernel_*()` desugars onto the same `phylo_rr` covstruct as `phylo_*()`) this cell is plausibly admitted, but that is an inference from engine architecture, not a checked test — do not cite this row as evidence of a passing fit. |
+| 27-32 | Ordinal PGLMM with spatial (SPDE) source | `gllvmTMB(value ~ 0 + trait + spatial_latent(0 + trait \| coords, d = 1), data = df, ..., mesh = mesh, family = ordinal_probit())` (also `spatial_scalar`, `spatial_indep`, `spatial_dep`) | admitted, recovery skip-honest | `tests/testthat/test-matrix-ordinal-spatial.R`, header comment: "Walks SPA-02 ... SPA-03 ... SPA-04 ... from `partial` toward `covered` for the ordinal-probit branch." Each cell's own skip message states "SPA-0N(ordinal) stays partial pending bigger n / different seed" for exactly the same skip-honest reasons as the phylo branch above. |
+| 33-37 | Nominal (unordered) PGLMM, unit-tier shared ordination, K-1 baseline-contrast logits | `gllvmTMB(value ~ 0 + trait + latent(0 + trait \| unit, d = K - 1), data = df, trait = "trait", unit = "unit", family = multinomial())` | admitted | FAM-20B (this document's §1, unit-tier default `latent()` row). Full per-cell detail lives in §1 above; not repeated here to avoid drift between two tables in the same file. |
+| 33-37 | Nominal PGLMM, non-phylogenetic group / within-species replication tier (`(1 \| group)` or `indep(cluster)`) | `gllvmTMB(value ~ 0 + trait + (1 \| group), data = df, ..., family = multinomial())` | admitted, `(1 \| group)` PASSED recovery; `indep(cluster)` construction-only | FAM-20F (this document's §1). `(1 \| group)` 20/20 seeds converged PD, `sigma_re` ratio median 0.947; `indep(0 + trait \| cluster)` is construction-verified only, recovery axis explicitly OPEN per `pass-criteria-s4.md`. |
+| 33-37 | Nominal PGLMM, per-contrast phylogenetic/relatedness variances AND correlations, Sigma_a (x) A over the K-1 contrasts | `gllvmTMB(value ~ 0 + trait + phylo_latent(species, tree = tree, d = K - 1), data = df, ..., cluster = "species", family = multinomial())` (loadings-only) or `phylo_dep(0 + trait \| species)` (full unstructured V) | admitted, ONE-DRAW gate FAILED, replication rescue PASSED | FAM-20C/FAM-20D (this document's §1/§4). One categorical draw per species: rail rate 8/20 (FAIL, threshold 6/20). Pre-registered replication rescue (`n_sp = 300`, `n_rep = 5`): rail rate 4/20 (PASS), median rho 0.680, direction-correct 15/16 non-railed. Register statement: "one categorical draw per species does not identify V; five draws per species does." This is the direct gllvmTMB analogue of the paper's own stated data requirement (see the replication-model note below). |
+| 33-37 | Nominal PGLMM, diagonal per-contrast phylogenetic variances only (no among-category correlation) | `gllvmTMB(value ~ 0 + trait + phylo_indep(0 + trait \| species, tree = tree), data = df, ..., cluster = "species", family = multinomial())` | admitted, FAILED (both draw regimes) | FAM-20D (this document's §1). Diagonal-truth DGP: larger contrast variance recovers (median ratio 0.78, 17/20 in band), smaller one collapses to numerical zero in 7/20 seeds with `convergence == 0` and a PD Hessian and NO runtime degeneracy flag (`R/diagnose.R:464` gates `family_id == 1L` only, i.e. binomial — issue #897). Replication rescue is explicitly UNTESTED for this diagonal-V mode. |
+| 33-37 | Nominal PGLMM, spatial (SPDE) source over the K-1 contrasts | `gllvmTMB(value ~ 0 + trait + spatial_latent(0 + trait \| coords, d = K - 1), data = df, ..., mesh = mesh, family = multinomial())` | admitted, PASSED | FAM-20E (this document's §1). Median practical-range ratio 1.75 (14 conv+PD seeds), 0 rails against the frozen >6/20 threshold; per-seed dispersion caveat recorded in §1's dedicated note (4/14 seeds outside the nominal band despite the passing median). |
+| 33-37 | Nominal PGLMM, scalar / single shared level across contrasts (any source) | `gllvmTMB(value ~ 0 + trait + phylo_scalar(species), ..., family = multinomial())` | refused (structural, not merely untested) | §5 above. Null-DGP probe: `phylo_dep()`'s rho_hat rails toward magnitude 1 in 4/5 seeds even when the true signal is zero, DESPITE a PD Hessian — a scalar summary has no natural null on the `(I+J)` contrast geometry. |
+| 38-46 | PGLMM with BOTH a phylogenetic species effect a_i (A-structured) and a non-phylogenetic species effect s_i (I-structured) plus residual, for continuous/other core families | `gllvmTMB(value ~ 0 + trait + phylo_indep(0 + trait \| species, tree = tree) + indep(0 + trait \| species), data = df, trait = "trait", unit = "species", cluster = "species", family = <core family>)` | covered (for the families it is documented against — NOT ordinal/multinomial) | `docs/design/03-phylogenetic-gllvm.md` ("The non-phylogenetic species tier is `g_non ~ MVN(0, Sigma_non (x) I)`"), `docs/design/13-phylo-signal-partition.md` (the "full4" `extract_communality()` partition requires exactly `phylo_unique()` + an ordinary non-phylogenetic `latent(species)`), and the worked recipe in `docs/design/78-functional-phylogeography-recipe.md` combining `phylo_indep(species, tree = tree)` with `indep(0 + trait \| species)` in one formula. This is the general-family analogue of the paper's eq 38-46 decomposition and is an established, documented gllvmTMB pattern — just never exercised for a categorical trait. |
+| 38-46 | Same combined phylo + non-phylo species effect, for `multinomial()` (fid 16) | `gllvmTMB(value ~ 0 + trait + phylo_indep(0 + trait \| species, tree = tree) + indep(0 + trait \| cluster_species), data = df, ..., cluster = "cluster_species", family = multinomial())` | grammatically admitted, combination UNTESTED | Each term classifies `admitted` on its own in `R/multinomial-fence.R`'s per-cell table (§1 above), and the fence's only whole-fit override that blocks a combination of otherwise-admitted cells is the multi-kernel check (`R/multinomial-fence.R`, more than one distinct `kernel_*` name) — no equivalent override exists for phylo + cluster together. No test file combines a phylo-tier term with a cluster-tier term for `multinomial()` in one fit. This is a genuine gap, not a refusal: PA4 is the natural place to build the recovery evidence. |
+| 38-46 | Same combined phylo + non-phylo species effect, for `ordinal_probit()` (fid 14) | `gllvmTMB(value ~ 0 + trait + phylo_indep(0 + trait \| species, tree = tree) + indep(0 + trait \| species), data = df, ..., family = ordinal_probit())` | grammatically admitted, combination UNTESTED | `ordinal_probit()` is not gated by `R/multinomial-fence.R` at all (that fence checks `family_id_vec == 16L` only), so this combination is subject only to the general-purpose grammar that already supports it for gaussian/Beta/Gamma (row above). No `ordinal_probit`-specific test exercises the combined phylo + cluster formula. Genuine gap for PA4, distinct from — and narrower than — the single-source `partial` rows already tracked under PHY-04/PHY-05/FG-07/08/09 above. |
+| 4, 18, 19 | Estimand: per-trait / per-contrast phylogenetic heritability H^2 = sigma_a^2 / (sigma_a^2 + sigma_e^2) | `extract_phylo_signal(fit)` | covered for gaussian/binomial/poisson; UNTESTED for fid 14/16 | `R/extract-omega.R:421-` implements exactly this ratio (`H2 = phylo_parts[, "H2"]`, `R/extract-omega.R:531`) over `extract_Sigma(level = "phy")`; `tests/testthat/test-m1-7-extract-omega-phylo-signal-mixed-family.R` exercises it across a mixed gaussian/binomial/poisson fit. The function body has no family gate and calls the family-agnostic `extract_Sigma()`, so it is plausible it would run on an admitted `phylo_latent()` fid 14/16 fit — but no test does this, `R/extract-omega.R` contains no reference to `ordinal`/`multinomial`/fid 14/16, and this is therefore correctly read as UNTESTED, not confirmed-working. (`extract_repeatability()`, by contrast, computes a DIFFERENT unit-vs-unit_obs ratio, not this paper's phylogenetic H^2 — do not conflate the two extractors when scoping PA2.) |
+| 27-32 estimand | Ordinal fixed link-residual variance sigma_d^2 = 1 (the denominator term of the binary/ordinal H^2 formulas) | n/a (internal constant) | covered | `R/extract-sigma.R:327-337` (fid == 14 branch, `out[t] <- 1`, "the ordinal latent scale ... probit-liability convention"). |
+| 33-37 estimand | Nominal fixed link-residual matrix (pi^2/6)(I + J): pi^2/3 diagonal, pi^2/6 off-diagonal per McFadden (1974) | n/a (internal constant) | covered | `R/extract-sigma.R:365-374` (fid == 16 branch, diagonal `pi^2/3`); `R/extract-sigma.R:406` (`.multinomial_link_residual_offdiag()`, the full `(K-1)x(K-1)` off-diagonal block). |
+| 8 | Estimand: phylogenetic correlation between traits/contrasts | `extract_correlations(fit, tier = "phy")` / `extract_cross_correlations(fit)` | covered for admitted phylo tiers, including ordinal and multinomial | `R/extract-correlations.R` (`extract_correlations` at line 392, `extract_cross_correlations` at line 884); exercised directly against `ordinal_probit()` phylo/spatial fits in `test-matrix-ordinal-phylo.R`'s `expect_phy_correlations_nondegenerate()` helper and against `multinomial()` in the FAM-20C/20D campaigns above. |
+| — | Estimand: ancestral state reconstruction | not provided | out of scope | gllvmTMB has no ancestral-state extractor of any kind; this is a modelling target the paper's MCMCglmm/brms implementations support that gllvmTMB does not attempt. |
+| A.1-A.9 | Appendix contrast-matrix (Delta) reparameterisation of the softmax | n/a | no action | Equivalent reparameterisation of the identical baseline-category-logit softmax `gllvmTMB` already fits directly (`multinomial(link = "logit", baseline = NULL)`, `R/families.R:797-808`); no functional gap, nothing to build. |
+
+### The Box-2 parameterisation translation (ordinal cutpoints)
+
+The paper's Box 2 distinguishes two equivalent-but-differently-labelled
+threshold parameterisations for an ordinal PGLMM: MCMCglmm's convention
+(intercept free, first cutpoint fixed at 0, and the *second* cutpoint is
+what a user coming from `MCMCglmm::MCMCglmm()` reads off as "the reported
+threshold") versus brms's convention (intercept fixed at 0, all cutpoints
+free). `gllvmTMB`'s `ordinal_probit()` follows Hadfield (2015)'s own
+convention directly: tau_1 = 0 is FIXED for identifiability and the K - 2
+free cutpoints tau_2, ..., tau_{K-1} are estimated per trait and returned by
+`extract_cutpoints()` as `cutpoint_2`, `cutpoint_3`, ... (`R/extract-cutpoints.R:3-20`,
+`:66-`). This is the SAME fixed-first-cutpoint convention MCMCglmm uses, not
+brms's zero-intercept convention — a user translating an MCMCglmm ordinal
+PGLMM into `gllvmTMB` maps `MCMCglmm`'s free intercept directly onto
+`gllvmTMB`'s trait intercept and MCMCglmm's second-cutpoint report onto
+`gllvmTMB`'s `cutpoint_2`, with no re-anchoring needed. A user translating a
+brms fit (zero intercept, all cutpoints free) must instead re-express brms's
+`Intercept[1]` as `gllvmTMB`'s trait intercept plus `tau_1 = 0`, and shift
+every subsequent brms cutpoint by that same additive constant to land on
+`gllvmTMB`'s `cutpoint_2`, `cutpoint_3`, ... — the two parameterisations
+differ by a location shift, not a distributional one, but the shift is not
+performed automatically by either package.
+
+### The H^2 gap (PA2)
+
+Every admitted phylogenetic tier for `ordinal_probit()` and `multinomial()`
+(the ordinal and nominal rows above) has NO tested route to the paper's
+headline estimand, phylogenetic heritability H^2 (eq 4, 18, 19). The
+extractor that computes this ratio for every other admitted family,
+`extract_phylo_signal()`, is family-agnostic in its own code (no fid switch,
+built on the equally family-agnostic `extract_Sigma()`) but has zero test
+coverage against a fid 14 or fid 16 fit — `R/extract-omega.R` never mentions
+`ordinal`, `multinomial`, `14`, or `16`, and no test file pairs
+`extract_phylo_signal()` with either family. The two fixed link-residual
+denominators this formula would need for categorical traits already exist
+and are unit-tested (`R/extract-sigma.R:327-337` for ordinal's sigma_d^2 = 1,
+`R/extract-sigma.R:365-374` + `:406` for multinomial's `(pi^2/6)(I+J)`), so
+the missing piece is narrowly the wiring-and-evidence step, not new theory.
+This is PA2's scope: exercise `extract_phylo_signal()` against the admitted
+ordinal/multinomial phylo cells above, decide whether the diagonal-only
+denominator is the right target for multinomial's `(I+J)`-coupled residual,
+and add the recovery evidence the register currently lacks.
+
+### The ordinal x kernel/animal evidence gap (PA3)
+
+Within the ordinal PGLMM rows above, the phylo and spatial tiers both carry
+real (if skip-honest, not-yet-passing) recovery-test evidence
+(`test-matrix-ordinal-phylo.R`, `test-matrix-ordinal-spatial.R`). The
+`animal_*` tier has only a byte-equivalence + CI-smoke cell
+(`test-matrix-animal-nongaussian.R`'s "Cell 5"), capped at T <= 3 traits and
+making no recovery claim. The `kernel_*` tier has NO dedicated test at all
+for `ordinal_probit()` — its admission is inferred from the general Design 65
+C1 phylo-equivalence architecture, not measured. PA3 should close this
+asymmetry: either add a `kernel_* x ordinal_probit` construct+recovery cell
+mirroring `test-matrix-ordinal-phylo.R`'s structure, or explicitly register
+the kernel tier as untested for this family rather than leaving it silently
+implied by the phylo evidence.
+
+### The replication-model note (PA4)
+
+The paper defers within-species (non-phylogenetic) variation for discrete
+traits to "future development" and names replication — multiple
+observations per species — as the practical mechanism that would let such a
+model be fit. This is not a hypothetical for `gllvmTMB`: the FAM-20C/FAM-20D
+campaign already measured exactly this mechanism for the nominal
+(multinomial) among-category surface (this document's §4) — one categorical
+draw per species FAILS the identifiability gate (rail rate 8/20) and five
+draws per species PASSES it (rail rate 4/20, median rho 0.680) — and the
+combined-effects rows above (eq 38-46) show that the GRAMMAR for a's paired
+non-phylogenetic species effect already exists and is documented for other
+families (`docs/design/03-phylogenetic-gllvm.md`,
+`docs/design/78-functional-phylogeography-recipe.md`). PA4's job is
+therefore to run the s1b-style replication recovery campaign for the
+COMBINED phylo + non-phylo (a_i + s_i) formula on `ordinal_probit()` and
+`multinomial()` specifically — the untested-combination rows above — rather
+than to invent new machinery.
+
+### Frequentist-engine positioning
+
+Mizuno et al. (2025) ships Bayesian implementations only (MCMCglmm and brms);
+`gllvmTMB` is a frequentist Laplace/TMB engine and is the paper's methods
+family, not a translation of its software. Where PA2 needs a second-opinion
+comparator for the H^2 / cutpoint estimates on a shared fixture, the paper's
+own companion tutorial (ayumi-495.github.io/multinomial-GLMM-tutorial) and
+Zenodo code archive (10.5281/zenodo.17038830) are the natural MCMCglmm-side
+reference implementations to fit alongside `gllvmTMB` — the same
+cross-package-comparator pattern already used elsewhere in this repository
+for `glmmTMB`/`gllvm` (see `docs/design/04-sister-package-scope.md`), not a
+new engine to build.

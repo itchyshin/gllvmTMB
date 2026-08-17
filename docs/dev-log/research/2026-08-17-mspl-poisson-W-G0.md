@@ -1,38 +1,45 @@
 # G0 — Poisson \(W=\operatorname{diag}(\mu)\): KEEP / REPLACE \(W_*\) / PARK SE doors
 
-**Status:** **SIGNED — PARK SE doors** (2026-08-17).
+**Status:** **SIGNED — REPLACE** (2026-08-17).
 **When:** 2026-08-17.
 **Reader:** Shinichi.
-**Author:** Cursor. Docs only. No `src/` edit. No tape replace from this card.
-**Signed by:** cursor/Shinichi-via-chat — *"approve all things in this lane"* /
-interrupt paste `G1 PARK SE doors` (2026-08-17).
+**Author:** cursor/Shinichi-via-chat — *"as you recommended"* (after Cursor REPLACE recommendation). Docs only. No `src/` edit in this signature PR.
 **Evidence:** [#1064](https://github.com/itchyshin/gllvmTMB/pull/1064) (`6bc9f385`) —
 `docs/dev-log/research/2026-08-16-mspl-W-onesided-audit.md`.
-**Question:** Live Poisson MSPL still uses GLM-outer \(W=\operatorname{diag}(\mu)\).
+**Provenance:** [#1096](https://github.com/itchyshin/gllvmTMB/pull/1096) §3 REPLACE paste; see
+`docs/dev-log/research/2026-08-17-poisson-W-G0-signature-provenance.md` (**RESOLVED — REPLACE**).
+**Question (closed):** Live Poisson MSPL still uses GLM-outer \(W=\operatorname{diag}(\mu)\).
 Keep it, replace it with working \(W_*\), or park further SE-series doors until
 that is chosen?
 
 ---
 
-## SIGNED paste (2026-08-17)
+## SIGNED paste (2026-08-17) — REPLACE
 
-> **PARK SE doors.** No new SE-series doors (nbinom beyond #998, Tweedie/Beta public, rest-family) until KEEP or REPLACE is chosen. \(Q_0\) stays the reporting target. Tape not replaced tonight.
+> **G0 Poisson W: REPLACE with working \(W_*\), following the Tweedie
+> precedent. src/ likelihood change — tmb-likelihood-review + Gauss/Noether + 03-likelihoods.md +
+> simulation recovery, and #1064's W2/W7 oracles rewritten (they pin `return eta` by design).**
 
-**Effect:** freeze new SE-series doors. Tape (`return eta` / live
-\(W=\operatorname{diag}(\mu)\)) **unchanged**. Admit rows unchanged. Does **not**
-invent KEEP or REPLACE — those remain future choices requiring a separate
-implementation PR if chosen. No public `se`. No Tweedie door. No nbinom admit
-from this card.
+Authority: Shinichi chat *"as you recommended"* after Cursor’s REPLACE recommendation
+(2026-08-17). This is an **explicit three-way choice** against this card.
 
-**Authority note:** Shinichi’s interrupt paste **`G1 PARK SE doors`** (with the
-approve-all block) **is** the SIGNED freeze. A prior Rose reading that Gate 1’s
-template line “card stays UNSIGNED until KEEP/REPLACE” blocked SIGNED-PARK is
-**superseded** by that explicit paste. KEEP/REPLACE stay open for a later paste;
-PARK is the signed door-freeze now.
+**Prior PARK from “approve all” / `G1 PARK SE doors` is superseded.** That freeze was a
+blanket-lane artefact (#1096 provenance flag). The three-way paste above discharges the G0.
 
 ---
 
-## Ranga one-sided flag
+## What REPLACE unlocks — and what it does *not*
+
+| Layer | After this G0 |
+|---|---|
+| **Programme** | Unlocked: Codex may change the Poisson MSPL tape (`return eta` → working \(W_*\)) under the review/recovery contract in the paste. |
+| **This PR** | Docs/signature only. **Implementation not started.** No `src/`, no twin rematch, no oracle rewrite here. |
+| **SE-series doors** | **Stay closed** until twins rematch and simulation recovery is green. REPLACE does **not** open Gamma / lognormal / Tweedie public / rest-family doors. Park-on-doors holds until code lands and rematch passes. |
+| **Public surface** | No public `se=TRUE` / `vcov` / `confint`. `MSPL-04` stays `blocked`. No Design 118. Lane B PROTECTED. No rebuild of #1090. |
+
+---
+
+## Ranga one-sided flag (why REPLACE)
 
 Live Poisson Jeffreys is **one-sided**: \(W=\mu=e^\eta\) vanishes at \(-\infty\)
 and **rewards** \(+\infty\). Soft Jeffreys therefore kills the all-zero path and
@@ -41,38 +48,34 @@ increases as the mean runs away. Toy cell (#1064 W2): \(P_J\) rises \(+4\) per
 Working logistic \(W_*=\mu_*(1-\mu_*)\) is two-sided (same \(P_J=-6.84\) at both
 ends).
 
-Ranga: \(Q_0\) is the reporting target; \(W_*\) must be settled **before more
-SE-series doors**. A \(Q_0\) pin on a one-sided atom reports curvature of an
-estimator whose existence is still open. Vault
-`2026-08-16-mspl-all-families-theory` §4.3 / §6 poisson row: true \(W\) is
-\(0/+\infty\); default replacement is working logistic \(W_*\) (2023 \(P^{(f)}\)).
-
-This card does **not** replace `return eta`. The signed choice is **PARK**, not
-REPLACE.
+Ranga: \(Q_0\) is the reporting target; \(W_*\) must land **before more
+SE-series doors**. Vault `2026-08-16-mspl-all-families-theory` §4.3 / §6 poisson
+row: true \(W\) is \(0/+\infty\); default replacement is working logistic \(W_*\)
+(2023 \(P^{(f)}\)). Tweedie live tape already uses \(W_*\).
 
 ---
 
-## Alternatives not chosen (still available later)
+## Alternatives not chosen
 
 > **KEEP.** Poisson stays \(W=\operatorname{diag}(\mu)\). Write the one-sided existence gap into the admit notes. No SE door from this atom. Tape not replaced.
 
-> **REPLACE.** Swap Poisson \(W=\operatorname{diag}(\mu)\) for working logistic \(W_*\) on the same \(X_*\). Retwin `R/mspl-poisson-atoms.R` and the A6 pin. Keep `admitted` or park back to `planned` until twins rematch. No public `se`. No door tonight.
+> **PARK SE doors.** Freeze new SE-series doors without choosing KEEP/REPLACE. Tape unchanged. *(Previously signed via blanket approve-all; **superseded** by REPLACE above.)*
 
 ---
 
-## What each does
+## What each would have done
 
 | Paste | Tape | Admit row | SE-series doors |
 |---|---|---|---|
 | KEEP | `return eta` stays | stays `admitted`; notes name the gap | no door from this atom |
-| REPLACE | working \(W_*\) (later slice, not this PR) | keep or park to `planned` until twins rematch | still no public `se` |
-| **PARK SE doors (SIGNED)** | unchanged | unchanged | **freeze** new doors until KEEP or REPLACE |
+| **REPLACE (SIGNED)** | working \(W_*\) (**Codex impl PR**, not this signature) | keep or park to `planned` until twins rematch | still no public `se`; doors closed until rematch green |
+| PARK SE doors | unchanged | unchanged | freeze until KEEP or REPLACE |
 
 ---
 
 ## Already true (not the decision)
 
-- #1064 merged: documented + toy-cell measured; tape **not** replaced.
+- #1064 merged: documented + toy-cell measured; tape **not yet** replaced (await Codex).
 - Tweedie live tape already uses \(W_*\); public door still closed.
 - nbinom2 saturates (\(W\to\varphi\)); same E3 class; #1065 is packet-only,
   still `planned`.
@@ -82,9 +85,16 @@ REPLACE.
 
 ---
 
-## If you later choose KEEP or REPLACE
+## Next (Codex — implementation not started)
 
-Append a new SIGNED line naming KEEP or REPLACE. That choice then needs a
-**separate** implementation PR. PARK SE doors remains the freeze until then.
+See `docs/dev-log/handover/2026-08-17-codex-poisson-W-REPLACE.md`.
 
-No `src/` from this card. No public `se`. No Tweedie door. No nbinom admit.
+1. `src/gllvmTMB.cpp`: Poisson MSPL weight `return eta` → working \(W_*\) (Tweedie precedent).
+2. Twin rematch `R/mspl-poisson-atoms.R` + A6 pin.
+3. Rewrite #1064 W2/W7 oracles (they pin `return eta` by design).
+4. `tmb-likelihood-review` + Gauss/Noether + `docs/design/03-likelihoods.md` + simulation recovery.
+5. Only after rematch green: revisit SE-series door freezes (still no public `se` without separate G0).
+
+**Cursor does not implement `src/` unless Shinichi explicitly overrides** (he did not — only signed G0).
+
+No public `se`. No Tweedie door. No nbinom admit from this card. No Design 118. Lane B PROTECTED. No rebuild #1090.

@@ -2,6 +2,27 @@
 
 Date-stamped one-paragraph design decisions. Append-only.
 
+## 2026-08-17  G0 SIGNED: Poisson MSPL \(W\) — REPLACE with working \(W_*\) (supersedes PARK)
+
+Decision (Shinichi, chat — *"as you recommended"* after Cursor’s REPLACE
+recommendation; explicit three-way paste against the G0 card, not blanket
+lane approval): Poisson MSPL live weight moves from GLM-outer
+\(W=\operatorname{diag}(\mu)\) / `return eta` to working logistic \(W_*\) on
+the same \(X_*\), following the Tweedie precedent.
+
+Card: `docs/dev-log/research/2026-08-17-mspl-poisson-W-G0.md` Status
+**SIGNED — REPLACE**. The earlier **SIGNED — PARK SE doors** reading from
+*"approve all things in this lane"* / `G1 PARK SE doors` is **superseded**
+(#1096 provenance flag answered). Signed paste requires `src/` change with
+`tmb-likelihood-review` + Gauss/Noether + `03-likelihoods.md` + simulation
+recovery, and rewrite of #1064 W2/W7 oracles (they pin `return eta` by design).
+
+**This sitting signs the G0 only.** Implementation is **not** started here;
+Codex owns the tape PR. REPLACE unlocks the *programme* to change the tape;
+SE-series family doors **stay closed** until twin rematch + recovery are green.
+Hard stops unchanged: no public `se`; `MSPL-04` `blocked`; no Design 118;
+Lane B PROTECTED; no rebuild #1090.
+
 ## 2026-08-17  G0 RECORDED: land the binomial profile-computability probe from the Claude lane
 
 Decision (Shinichi, this sitting, repeated and explicit — *"a pin — build it

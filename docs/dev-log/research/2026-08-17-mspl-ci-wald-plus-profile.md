@@ -59,7 +59,7 @@ Speed / cost order (D-12): **Wald (quickest) → profile (signature) → bootstr
 
 > **Confirm MSPL interval triad for the new construction:** Profile = signature / primary claim path; Wald (\(Q_0\)) = quickest baseline / availability check (not the brand; not Design 118 reopen); Bootstrap = asymmetry / non-symmetric sampling. SE pins stay D-149. No Totoro. No public `se=TRUE` without separate G0.
 
-Recorded under **D-157** new construction + this card SIGNED. **No new vault/repo D-number** (D-12 already heroizes profile; this paste locks the triad roles for the post-B1 path). Poisson \(W\) G0 remains UNSIGNED. #1077 stays draft/fenced; no real profile intervals; no Design 118 / B1 / Totoro reopen; no public `se=TRUE`.
+Recorded under **D-157** new construction + this card SIGNED. **No new vault/repo D-number** (D-12 already heroizes profile; this paste locks the triad roles for the post-B1 path). Poisson \(W\) G0 is **SIGNED — REPLACE** (Shinichi *"as you recommended"*; prior PARK-from-approve-all superseded — see `docs/dev-log/research/2026-08-17-mspl-poisson-W-G0.md`). #1077 stays draft/fenced; no real profile intervals; no Design 118 / B1 / Totoro reopen; no public `se=TRUE`.
 
 ---
 

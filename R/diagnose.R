@@ -136,6 +136,31 @@
   min(val) / max_val < rel_thresh
 }
 
+## `sd_B` (unit level only) is REPORTed for every trait, including ones
+## R/fit-multi.R's auto-Psi skip block pins to `log(1e-6)` and maps off
+## (single-trial Bernoulli and multinomial fid-16 contrasts -- see
+## `skip_psi_b_t` there, and the `diag_B_skip` guard in
+## src/gllvmTMB.cpp:1586). Those pinned entries are plumbing residue, not a
+## fitted quantity, and their 1e-6 value fires an absolute near-zero
+## threshold unconditionally. Every raw-`sd_B` reader that screens for
+## near-zero must drop the mapped-off entries the same way, or a default
+## auto-skip fit and its explicit `latent(..., unique = FALSE)` mirror
+## disagree on boundary diagnostics for a model that is otherwise identical.
+.gllvmTMB_estimable_components <- function(object, name) {
+  val <- object$report[[name]]
+  if (is.null(val)) {
+    return(NULL)
+  }
+  val <- as.numeric(val)
+  if (identical(name, "sd_B")) {
+    skip <- object$tmb_data$diag_B_skip
+    if (!is.null(skip) && length(skip) == length(val)) {
+      val <- val[skip != 1L]
+    }
+  }
+  val
+}
+
 .gllvmTMB_boundary_flags <- function(
   object,
   loading_thresh = 1e-3,
@@ -181,7 +206,7 @@
     ),
     names(rep)
   )) {
-    val <- as.numeric(rep[[nm]])
+    val <- .gllvmTMB_estimable_components(object, nm)
     val <- val[is.finite(val)]
     if (length(val) > 0L &&
         (any(val < sd_thresh) ||
@@ -1783,22 +1808,13 @@ check_gllvmTMB <- function(
     if (!nm %in% names(object$report)) {
       next
     }
-    val <- as.numeric(object$report[[nm]])
-    ## `sd_B` (unit level only) is REPORTed for every trait, including ones
-    ## R/fit-multi.R's auto-Psi skip block pins to `log(1e-6)` and maps off
-    ## (single-trial Bernoulli and multinomial fid-16 contrasts -- see
-    ## `skip_psi_b_t` there, and the `diag_B_skip` guard in
-    ## src/gllvmTMB.cpp:1586). Those pinned entries are plumbing residue, not
-    ## a fitted quantity, and their 1e-6 value fires the absolute threshold
-    ## unconditionally -- drop them before the finite filter, the minimum, and
-    ## the sibling set passed to `.gllvmTMB_relative_collapse()` so a
-    ## deliberately-suppressed Psi does not read as a collapsed one.
-    if (level == "unit") {
-      skip <- object$tmb_data$diag_B_skip
-      if (!is.null(skip) && length(skip) == length(val)) {
-        val <- val[skip != 1L]
-      }
-    }
+    ## `.gllvmTMB_estimable_components()` drops the mapped-off `sd_B`
+    ## placeholders (unit level only; see its own comment above) before the
+    ## finite filter, the minimum, and the sibling set passed to
+    ## `.gllvmTMB_relative_collapse()`, so a deliberately-suppressed Psi does
+    ## not read as a collapsed one -- and `.gllvmTMB_boundary_flags()` below
+    ## agrees with this screen on the same reported quantity.
+    val <- .gllvmTMB_estimable_components(object, nm)
     val <- val[is.finite(val)]
     if (length(val) == 0L) {
       next

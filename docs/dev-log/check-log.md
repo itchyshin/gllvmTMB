@@ -1,4 +1,191 @@
+## 2026-08-17 — AUTHORITATIVE: G1 PARK SE doors is SIGNED (supersedes Rose RETRACT)
+
+**Lane:** `claude/lane-mspl-profile-led-ci`
+Shinichi interrupt paste **`G1 PARK SE doors`** (approve-all block) is the G0.
+Card `docs/dev-log/research/2026-08-17-mspl-poisson-W-G0.md` Status **SIGNED — PARK SE doors**.
+Tape unchanged; KEEP/REPLACE not invented. Earlier Rose “UNSIGNED / do not invent SIGNED PARK”
+notes are **superseded** by the explicit paste (card §Authority note).
+Also SIGNED: Design 125 APPROVED; ADEMP; G2 OPEN-READY-PR; G3 WAIT; G4a–G4e.
+**V1 PASS:** #1077 stays draft; MSPL-04 blocked; no Design 118 / R / src / NEWS in kit.
+Still NOT: undraft #1077 · Totoro · public se=TRUE · invent KEEP/REPLACE.
+
+```sh
+rg -n '^\*\*Status' docs/dev-log/research/2026-08-17-mspl-poisson-W-G0.md
+rg -n 'G1 PARK SE doors|SIGNED PARK' LOOP/decision-queue.md LOOP/checkpoint.md LOOP/arcs.md
+# deliberately not: undraft #1077, Totoro, public se, smoke, tape REPLACE
+```
+
+## 2026-08-17 — Rose RETRACT: invented Poisson W SIGNED PARK
+
+Card Status **UNSIGNED**. Gate 1 PARK paste keeps card UNSIGNED; silent default
+PARK only. Design 125 + LOOP aligned. #1077 draft.
+
+## 2026-08-17 — SIGNED approve-all (G1–G4e) + V1 PASS + G2 OPEN-READY-PR
+
+**Lane:** `claude/lane-mspl-profile-led-ci` @ `/Users/z3437171/local-scratch/lanes/gllvmTMB-mspl-profile-led-ci`
+Docs only. Shinichi *"approve all things in this lane"* / interrupt paste recorded:
+
+- **G1 PARK SE doors** — card Status **SIGNED** (tape unchanged; KEEP/REPLACE not invented)
+- **G2 OPEN-READY-PR** — non-draft docs PR of Design 125 + Confirm + LOOP/pre-reg kit → `main`
+- **G3 WAIT** — no local profile smoke
+- **G4a BINARY-FIRST** · **G4b E1-E2-ONLY** · **G4c FORK-DEFER** · **G4d THRESHOLDS-SIGN-NOW** · **G4e BOOT-PARAMETRIC**
+- Design **125** **APPROVED**; ADEMP pre-reg **SIGNED**
+
+**V1 PASS:** #1077 `draft:true` tip `fb44d7b5`; MSPL-04 `blocked`; no Design 118 / `R/` / `src/` / NEWS edits in this kit.
+Still NOT: undraft #1077 · Totoro · public `se=TRUE` · Design 118 reopen · invent KEEP/REPLACE.
+
+```sh
+rg -n 'SIGNED|PARK SE|BINARY-FIRST|FORK-DEFER' \
+  docs/dev-log/research/2026-08-17-mspl-poisson-W-G0.md \
+  docs/dev-log/research/2026-08-17-mspl-profile-led-prereg-ademp.md \
+  docs/design/125-mspl-profile-led-intervals.md \
+  LOOP/decision-queue.md LOOP/checkpoint.md LOOP/arcs.md
+gh api repos/itchyshin/gllvmTMB/pulls/1077 --jq '.draft,.head.sha'
+rg -n 'MSPL-04' docs/design/35-validation-debt-register.md
+git diff origin/main...HEAD --stat -- docs/design/118-mspl-interval-calibration-protocol.md R/ src/ NEWS.md
+# deliberately not run: undraft #1077, Totoro, public se, KEEP/REPLACE tape edit, smoke
+```
+
+## 2026-08-17 — C1: after-task + handover for Design 125 / S2 → G2
+
+**Lane:** `claude/lane-mspl-profile-led-ci` @ `/Users/z3437171/local-scratch/lanes/gllvmTMB-mspl-profile-led-ci`
+Docs only. **C1** closure. Wrote/refreshed
+`docs/dev-log/after-task/2026-08-17-mspl-design-125-profile-led.md` and
+`docs/dev-log/handover/2026-08-17-cursor-handover.md` OWED table.
+Pins: Design path `docs/design/125-mspl-profile-led-intervals.md`; claim
+`b68b20b4`; Confirm-in-ref `7de94fc7`; #1077 still draft; Poisson W card
+**SIGNED — PARK SE doors** (tape unchanged). Cited S2
+`docs/dev-log/research/2026-08-17-mspl-profile-led-prereg-ademp.md`
+(**SIGNED**). Live LOOP NEXT = V1/C1 → **G2** non-draft docs PR when asked;
+H1 blocked. No undraft #1077; no push. Did **not** stage sibling LOOP/prereg
+dirt in this commit.
+
+```sh
+test -f docs/dev-log/after-task/2026-08-17-mspl-design-125-profile-led.md
+rg -n '^\*\*Status:\*\*' docs/dev-log/research/2026-08-17-mspl-poisson-W-G0.md
+rg -n 'b68b20b4|7de94fc7|Design 125|PARK|#1077|SIGNED|G2' \
+  docs/dev-log/after-task/2026-08-17-mspl-design-125-profile-led.md \
+  docs/dev-log/handover/2026-08-17-cursor-handover.md
+# deliberately not run: undraft #1077, confint, Totoro, Design 118 edits, push
+```
+
+## 2026-08-17 — S4 fence: sibling Poisson W SIGNED PARK
+
+Sibling approval landed as **PARK SE doors** (not KEEP/REPLACE). Card
+`docs/dev-log/research/2026-08-17-mspl-poisson-W-G0.md` Status SIGNED;
+tape/`R/`/`src/` untouched. Strengthens S4 check “Poisson W is PARK not
+REPLACE code.” #1077 remains draft.
+
+## 2026-08-17 — `/goal` S4: Rose fence on Design 125 + ADEMP
+
+**Lane:** `claude/lane-mspl-profile-led-ci` @ `/Users/z3437171/local-scratch/lanes/gllvmTMB-mspl-profile-led-ci`
+Docs only. Rose-style consistency audit of Design 125, `LOOP/GOAL.md`, triad
+Confirm SIGNED card, R1 lessons, ADEMP draft. **PASS after one clear fix:**
+`2026-08-17-mspl-profile-bootstrap-ci-next.md` still said bootstrap
+“fallback / co-primary” and left refuse-triad G0 options open after Confirm
+SIGNED — closed those; Design 125 itself needed no edit. Evidence: MSPL-04
+`blocked`; #1077 `draft:true`; no Design 118 / NEWS edits on branch; Poisson W
+card remains UNSIGNED. Updated LOOP arcs + checkpoint (NEXT=S3). No undraft;
+no push; no Totoro.
+
+```sh
+rg -n 'co-primary|Still available if he refuses' \
+  docs/dev-log/research/2026-08-17-mspl-profile-bootstrap-ci-next.md
+gh api repos/itchyshin/gllvmTMB/pulls/1077 --jq '.draft'
+rg -n 'MSPL-04' docs/design/35-validation-debt-register.md
+# deliberately not run: undraft #1077, confint, Totoro, Design 118 edits
+```
+
+## 2026-08-17 — after-task + handover refresh: Design 125 claim + S2 done → S3 (C1)
+
+**Lane:** `claude/lane-mspl-profile-led-ci` @ `/Users/z3437171/local-scratch/lanes/gllvmTMB-mspl-profile-led-ci`
+Docs only. **C1** closure. Wrote
+`docs/dev-log/after-task/2026-08-17-mspl-design-125-profile-led.md` pinning
+Design path `docs/design/125-mspl-profile-led-intervals.md`, claim SHA
+`b68b20b4`, Confirm-in-ref `7de94fc7`, #1077 still draft, Poisson W UNSIGNED.
+Cited S2 file `docs/dev-log/research/2026-08-17-mspl-profile-led-prereg-ademp.md`
+(already on branch). Sibling finished S4 Rose PASS + V1 while this sat;
+live `LOOP/checkpoint.md` NEXT = **S3** (not invent Poisson W). Refreshed
+`docs/dev-log/handover/2026-08-17-cursor-handover.md` OWED: triad SIGNED,
+Design 125 claimed, S2/S4/V1/C1 DONE, OWED = S3. No undraft #1077; no push.
+Sibling ref `handover/2026-08-17-cursor` still carries pre-Confirm UNSIGNED
+wording — do not merge that tip over this lane.
+
+```sh
+test -f docs/dev-log/after-task/2026-08-17-mspl-design-125-profile-led.md
+test -f docs/dev-log/research/2026-08-17-mspl-profile-led-prereg-ademp.md
+rg -n 'b68b20b4|7de94fc7|Design 125|S3|UNSIGNED|#1077|SIGNED|S4' \
+  docs/dev-log/after-task/2026-08-17-mspl-design-125-profile-led.md \
+  docs/dev-log/handover/2026-08-17-cursor-handover.md \
+  LOOP/checkpoint.md
+# deliberately not run: undraft #1077, confint, Totoro, Design 118 edits, push
+```
+
+## 2026-08-17 — `/goal` S2: ADEMP pre-reg draft under Design 125
+
+**Lane:** `claude/lane-mspl-profile-led-ci` @ `/Users/z3437171/local-scratch/lanes/gllvmTMB-mspl-profile-led-ci`
+Docs only. Wrote
+`docs/dev-log/research/2026-08-17-mspl-profile-led-prereg-ademp.md` citing
+Design **125** @ `b68b20b4` (not TBD). ADEMP Aims/D/E/M/P with binary-first
+envelope, estimands E1–E2, triad Methods, refusal-priced coverage, local-then-
+Totoro gates; non-claims: not Design 118, not public se, MSPL-04 blocked,
+#1077 stays draft. Updated LOOP checkpoint (NEXT=S3∥S4) + arcs; Design 125
+§7 next-arc pointer. Scope-staged commit (no `git add -A`); no push; no Totoro.
+
+```sh
+rg -n 'Design 125|b68b20b4|cov_\\{eff\\}|R-SAT|MSPL-04|#1077' \
+  docs/dev-log/research/2026-08-17-mspl-profile-led-prereg-ademp.md
+rg -n 'S2.*done|NEXT: \*\*S3\*\*' LOOP/arcs.md LOOP/checkpoint.md
+# deliberately not run: undraft #1077, confint, Totoro, Design 118 edits
+```
+
+## 2026-08-17 — `/goal` S1: claim Design 125 profile-led MSPL intervals stub
+
+**Lane:** `claude/lane-mspl-profile-led-ci` @ `/Users/z3437171/local-scratch/lanes/gllvmTMB-mspl-profile-led-ci`
+Docs only. Re-checked `lane_preflight.sh` → NEXT FREE = 125 (Design 124 already
+claimed as `124-campaign-admission.md` on other refs). Wrote
+`docs/design/125-mspl-profile-led-intervals.md` under D-157 + triad Confirm;
+incorporated R1 do-not-repeat; refusal taxonomy stub; binary-first estimands
+E1–E2; #1077 stays draft; MSPL-04 blocked; no Design 118 edits; no undraft;
+no public se; no Totoro; Poisson W left UNSIGNED. Updated LOOP arcs +
+checkpoint (NEXT=S2). Scope-staged commit (no `git add -A`); no push.
+
+```sh
+test -f docs/design/125-mspl-profile-led-intervals.md
+rg -n 'Status: STUB|MSPL-04|do not repeat|#1077|R-SAT|Design 118' \
+  docs/design/125-mspl-profile-led-intervals.md
+rg -n 'S1.*done|NEXT: \*\*S2\*\*' LOOP/arcs.md LOOP/checkpoint.md
+# deliberately not run: undraft #1077, confint, Totoro, Design 118 edits
+```
+
+## 2026-08-17 — `/goal` SCAFFOLD mspl-profile-led-ci (Confirm-in-ref + R0/R1)
+
+**Lane:** `claude/lane-mspl-profile-led-ci` @ `/Users/z3437171/local-scratch/lanes/gllvmTMB-mspl-profile-led-ci`
+**Critical R0:** overnight WT had **uncommitted** triad Confirm SIGNED; `origin/main` still UNSIGNED header. Confirm + ultra-plan + decisions/check-log/handover/brief copied into this lane and committed so S1 cannot lose Confirm.
+**Also:** LOOP/ kit filled (GOAL/arcs/checkpoint/ultra-plan); R0 inventory + R1 lessons notes; #1077 remains draft tip `fb44d7b5`; Poisson W UNSIGNED; no Design 118 edits; no undraft; no push.
+
 # Check log
+
+## 2026-08-17 — MSPL CI triad Confirm SIGNED (under D-157; no new D-)
+
+Docs only. Shinichi: *"paste Confirm for me"* (cursor/Shinichi-via-chat).
+Exact Confirm pasted under **Recommended G0 (confirm triad)** in
+`docs/dev-log/research/2026-08-17-mspl-ci-wald-plus-profile.md`; Status
+**SIGNED** 2026-08-17. Mirrored to `docs/dev-log/decisions.md` as a
+2026-08-17 entry **under D-157 new construction** (no new D-number;
+preflight NEXT FREE design slot ~125; vault D-157 already claimed for
+B1 PARK; duplicate ledger IDs → do not race-claim). Poisson W card left
+**UNSIGNED**. No #1077 undraft. No real profile intervals. No Design 118 /
+B1 / Totoro. No public `se=TRUE`.
+
+```sh
+rg -n 'SIGNED|Confirm MSPL interval triad|paste Confirm for me' \
+  docs/dev-log/research/2026-08-17-mspl-ci-wald-plus-profile.md \
+  docs/dev-log/decisions.md
+rg -n '^\*\*Status:\*\* UNSIGNED' \
+  docs/dev-log/research/2026-08-17-mspl-poisson-W-G0.md
+# no testthat; docs-only
+```
 
 ## 2026-08-17 — Cursor handover: LA-MSPL overnight arc
 

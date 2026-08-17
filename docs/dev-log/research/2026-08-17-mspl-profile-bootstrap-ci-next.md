@@ -58,7 +58,7 @@ Each estimand needs a typed unavailable path (non-PD \(Q_0\), bracket non-closur
 - **Use for:** availability / triage / rough width next to profile brackets — “try Wald as well.”
 - **Do not use for:** a Design 118-style calibrated public-interval campaign (D-157 PARK). Public Wald `confint` still needs separate G0; CI calibration ≠ SE availability (Ranga).
 
-### Bootstrap (fallback / co-primary for asymmetry)
+### Bootstrap (asymmetry / non-symmetric sampling — not co-primary)
 
 | Flavour | Use | Fence |
 |---|---|---|
@@ -129,17 +129,19 @@ Pins remain useful: PD/\(Q_0\) availability is the **Wald baseline** and a **pre
 
 ## Recommended G0 options (for Shinichi)
 
-**Preferred paste (triad confirmation):**
+**Preferred paste — SIGNED 2026-08-17** (card
+`docs/dev-log/research/2026-08-17-mspl-ci-wald-plus-profile.md`). Do not treat
+the refuse-triad alternatives below as still open.
 
 > Confirm MSPL interval triad for the new construction: Profile = signature / primary claim path; Wald (\(Q_0\)) = quickest baseline / availability check (not the brand; not Design 118 reopen); Bootstrap = asymmetry / non-symmetric sampling. SE pins stay D-149. No Totoro. No public `se=TRUE` without separate G0.
 
-Still available if he refuses the triad:
+**Closed (he did not refuse the triad):** historical counterfactuals only —
 
-1. **Profile-first Design only** — new Design; estimands = intercept + one loading; family = binomial-logit ordinary `q=1`; bootstrap = nonparametric fallback with saturation refuse; Wald diagnostic allowed but not branded; Lane B consulted before any binary campaign.
-2. **Bootstrap-first Design** — same estimands; parametric bootstrap primary; profile as co-primary; Wald still quickest diagnostic only.
-3. **Park intervals entirely** — keep point admits + D-149 pins; no new Design until Poisson \(W_*\) / other point work clears; SE/CI public stays withheld.
+1. ~~Profile-first Design only~~ — superseded by signed triad + Design 125 profile-primary path.
+2. ~~Bootstrap-first Design~~ (parametric bootstrap primary; profile as co-primary) — **rejected** by Confirm; bootstrap stays asymmetry arm, not brand.
+3. ~~Park intervals entirely~~ — not chosen; Design 125 + ADEMP draft proceed under D-157 fences.
 
-**Hard stops regardless of pick:** no Totoro; no Design 118 reopen; no public `se=TRUE`.
+**Hard stops (unchanged):** no Totoro; no Design 118 reopen; no public `se=TRUE`; #1077 stays draft until separate G0.
 
 ---
 

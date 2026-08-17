@@ -1,7 +1,8 @@
 # MSPL CI triad — Profile signature + Wald quick + Bootstrap asymmetry
 
 **Date:** 2026-08-17
-**Status:** research doctrine note — **not** a Design number, **not** a pre-registration, **not** permission to run Totoro / flip public `se=TRUE`
+**Status:** **SIGNED** (2026-08-17) — triad Confirm under **D-157** new construction (no new D-number). Still **not** a Design number, **not** a pre-registration, **not** permission to run Totoro / flip public `se=TRUE`.
+**Author of sign:** cursor/Shinichi-via-chat (“paste Confirm for me”).
 **Amends:** `docs/dev-log/research/2026-08-17-mspl-profile-bootstrap-ci-next.md` (#1073)
 **Binding:** D-12 (profile = featured/hero CI), D-157 (B1 PARK; new construction), D-149 (pins ≠ public CI; \(Q_0\) if/ever Wald SE), D-97 (drmTMB profile default accepted)
 
@@ -52,11 +53,13 @@ Speed / cost order (D-12): **Wald (quickest) → profile (signature) → bootstr
 
 ## Recommended G0 (confirm triad)
 
-Paste option for Shinichi:
+**Status:** **SIGNED** — 2026-08-17 · author **cursor/Shinichi-via-chat** (“paste Confirm for me”).
+
+**Confirm (exact paste):**
 
 > **Confirm MSPL interval triad for the new construction:** Profile = signature / primary claim path; Wald (\(Q_0\)) = quickest baseline / availability check (not the brand; not Design 118 reopen); Bootstrap = asymmetry / non-symmetric sampling. SE pins stay D-149. No Totoro. No public `se=TRUE` without separate G0.
 
-Alternatives if he refuses the triad: park intervals entirely (keep pins + point admits only).
+Recorded under **D-157** new construction + this card SIGNED. **No new vault/repo D-number** (D-12 already heroizes profile; this paste locks the triad roles for the post-B1 path). Poisson \(W\) G0 remains UNSIGNED. #1077 stays draft/fenced; no real profile intervals; no Design 118 / B1 / Totoro reopen; no public `se=TRUE`.
 
 ---
 

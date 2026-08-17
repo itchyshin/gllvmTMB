@@ -124,9 +124,31 @@ Timing fits (1 seed at full design size per cell) and 2-seed smoke gates
 run BEFORE sign-off by design; results recorded here. Projections assume
 `CAMPAIGN_CORES = 20` (one seed per core, so wall-clock ~ one fit).
 
-- Cell A (ordinal, n_sp = 150, n_rep = 5, T = 2, K = 4, seed 401):
-  elapsed: PENDING (to be measured by `campaign-pa4-ordinal.R --mode
-  timing` and recorded here in a follow-up commit).
-- Cell B (multinomial, n_sp = 300, n_rep = 5, K = 3, seed 501):
-  elapsed: PENDING (`campaign-pa4-multinomial.R --mode timing`).
-- Smoke gates (2 seeds, reduced size, both cells): PENDING.
+Measured 2026-08-17 on the local Mac (this worktree, `devtools::load_all`),
+after the pre-registration commit and before sign-off, as declared above.
+
+- Cell A (ordinal, FULL size n_sp = 150, n_rep = 5, T = 2, K = 4,
+  seed 401): elapsed **13.4 s** (conv = 0, pdHess = TRUE). Projected full
+  run: 20 fits x 13.4 s ~= **4.5 min serial**, ~0.2 min wall-clock at 20
+  cores. (Single-seed point-estimate ratios on this timing fit, NOT
+  evidence: phy (0.58, 0.57), sp (1.04, 1.15).)
+- Cell B (multinomial, FULL size n_sp = 300, n_rep = 5, K = 3, seed 501):
+  elapsed **2.6 s** (conv = 0, pdHess = TRUE). Projected full run: 20 fits
+  x 2.6 s ~= **0.9 min serial**. (Single-seed point estimates, NOT
+  evidence: rho_hat 0.555, phy ratios (1.05, 0.54), sp ratios
+  (1.16, 0.58).)
+- Smoke gates (2 seeds, reduced size): Cell A (n_sp = 60, n_rep = 3) 2/2
+  fit-and-extract OK, conv 0/0, PD 2/2 — seed 401 shows var_phy2
+  collapsed to ~1.6e-10 at this reduced size (the criterion-5 collapse
+  mode, expected at small n). Cell B (n_sp = 80, n_rep = 4) 2/2
+  fit-and-extract OK, conv 0/0, PD 2/2 — BOTH reduced-size seeds rail
+  (rho_hat = 1.0) with one component collapsed each, consistent with the
+  known small-N rail behaviour that motivated the s1b full design
+  (n_sp = 300); the full-size timing fit above does not rail. The smoke
+  gate verifies mechanics (fit + extraction shapes), and these
+  reduced-size pathologies are recorded here so they cannot later be
+  presented as surprises.
+
+Both cells are far below the D-139 30-minute line (worst case ~4.5 min
+serial); the gate on `--mode full` is Shinichi's sign-off of THIS file,
+not compute.

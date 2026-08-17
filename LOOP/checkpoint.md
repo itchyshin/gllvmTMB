@@ -9,9 +9,9 @@ ARCS DONE (verified):
 - S2 — ADEMP pre-reg `docs/dev-log/research/2026-08-17-mspl-profile-led-prereg-ademp.md` cites Design **125**; estimands E1–E2, binary-first, refusal-priced coverage, local-then-Totoro gates; non-claims (not Design 118, not public se, MSPL-04 blocked, #1077 draft).
 - S4 — Rose fence: Design 125 / ADEMP / triad / GOAL / R1 consistent on fences + triad roles; fixed stale co-primary + open refuse-triad wording in `2026-08-17-mspl-profile-bootstrap-ci-next.md`.
 ARC IN PROGRESS: none.
-NEXT: **S3** (Poisson W UNSIGNED / PARK SE doors note — do **not** invent KEEP/REPLACE/PARK); then V1.
+NEXT: C1 residual / hold for PR gates; V1+S4 done. No undraft #1077.
 OPEN GATES (need human):
-- Poisson W KEEP/REPLACE/PARK — UNSIGNED (do not invent; default PARK further SE doors if silent)
+- Poisson W KEEP/REPLACE/PARK — **SIGNED PARK SE doors** (tape unchanged; KEEP/REPLACE still future)
 - Pre-reg sign (thresholds / profile fork A·B·C) — not signed
 - Undraft #1077 — not-ready
 - Live profile impl — not-ready

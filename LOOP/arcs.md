@@ -8,8 +8,8 @@ Status: todo / doing / done / blocked. Gate = needs human before proceed.
 | R1 | Read-only Design 118 / B1 negative lessons extract | **done** | — | See `docs/dev-log/research/2026-08-17-mspl-profile-led-r1-lessons.md`. No Design 118 edits. |
 | S1 | Draft Design stub; claim NN by commit | **done** | — | Claimed `docs/design/125-mspl-profile-led-intervals.md` @ `b68b20b4`. Profile=signature; Wald(Q₀)=availability; bootstrap=asymmetry. |
 | S2 | ADEMP-style pre-registration draft | **done** (draft) | soft: sign G0 later | `docs/dev-log/research/2026-08-17-mspl-profile-led-prereg-ademp.md` cites Design **125**; refusal-priced coverage; local-then-Totoro; no Totoro run; #1077 still draft. |
-| S3 | Parallel: Poisson W G0 chase / PARK SE doors note | todo | **OPEN if inventing KEEP/REPLACE/PARK** | Leave UNSIGNED unless Shinichi pastes. Default if silent: PARK further SE doors. |
-| S4 | Rose fence pass on S1–S2 | **done** | — | PASS after fix: stale #1073 sketch co-primary / open refuse-triad options closed; Design 125 + ADEMP + triad + R1 align; #1077 draft; MSPL-04 blocked; Poisson W UNSIGNED. |
+| S3 | Parallel: Poisson W G0 chase / PARK SE doors note | **done** | — | Card **SIGNED — PARK SE doors** (no REPLACE/`src` tape). |
+| S4 | Rose fence pass on S1–S2 | **done** | — | PASS; #1077 draft; MSPL-04 blocked; Poisson W **SIGNED PARK** (not REPLACE code). |
 | V1 | Verify: #1077 draft; MSPL-04 blocked; no Design 118 edits | **done** | — | Re-verified tip `8b1bb1c0`/`b9cc7b45`: #1077 draft `fb44d7b5`; MSPL-04 blocked; no Design 118 / NEWS / R Poisson edits on branch. |
 | C1 | Melissa reconcile + after-task + handover refresh | todo | — | Docs closure. |
 | H1 | Optional HANDS TO Codex: local profile smoke | blocked | **G0** | Only after S2 + separate Shinichi G0. Not this docs sitting. |
@@ -25,4 +25,4 @@ Status: todo / doing / done / blocked. Gate = needs human before proceed.
 | Live profile impl | After Design G0 | **not-ready** |
 | Public se=TRUE | Separate G0 | **not-ready** |
 | Totoro/campaign | Separate G0 + pre-reg (D-50/D-139/D-157) | **not-ready** |
-| Poisson W KEEP/REPLACE/PARK | Shinichi paste only | leave UNSIGNED; default PARK SE doors if silent |
+| Poisson W KEEP/REPLACE/PARK | **SIGNED PARK SE doors** | tape unchanged; KEEP/REPLACE still future |

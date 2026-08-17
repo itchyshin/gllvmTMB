@@ -9,11 +9,11 @@
 
 - Add MSPL footnote to triad “profile = signature” (D-12 stands; profiling does **not** rescue coverage under a finiteness penalty; KF2021 VERIFIED; binomial-only).
 - Reconcile `#1077` wording: binomial bounds *are* computable on main via `#1090`; this scaffold still leaves `profile$status = "not_constructed"` (no calibrated/public CI). Stay draft.
+- Align triad Poisson line to **SIGNED — REPLACE** (Shinichi *"as you recommended"*). Prior PARK wording in this PR is **superseded**; card + Codex baton land on `cursor/mspl-poisson-W-REPLACE-signed`.
 
 ## Explicitly not in this PR
 
-- No Poisson Status change. Card on main stays **SIGNED — PARK SE doors**. Do **not** restore UNSIGNED. Do **not** invent KEEP/REPLACE.
-- Handover §4 / provenance → Claude [#1096](https://github.com/itchyshin/gllvmTMB/pull/1096).
+- No `src/` tape edit. REPLACE signature / Codex handover are on the REPLACE-signed PR (not inventing KEEP; PARK superseded).
 - No rebuild of profile probe; no public `se`/`confint`; no Lane B absorb.
 
 ## Mathematical contract
@@ -45,6 +45,7 @@ Rscript --vanilla -e 'devtools::load_all("."); testthat::test_local(filter="zz-m
 
 ## Needs you
 
-1. Merge this docs PR.
-2. Optional glance at `#1077` wording push — keep draft.
-3. Provenance confirm for Poisson PARK → `#1096` (not this PR).
+1. Merge REPLACE-signed PR for the Poisson card (authoritative Status).
+2. Merge this docs PR (KF2021 footnote + triad align to REPLACE).
+3. Optional glance at `#1077` wording push — keep draft.
+4. Close or supersede `#1096` once provenance RESOLVED lands with REPLACE.

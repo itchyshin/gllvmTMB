@@ -111,6 +111,36 @@ test_that("latent() at the unit_obs tier is not admitted for multinomial", {
   )
 })
 
+## ---- Blocked: (1 | group) at the unit_obs tier (Slice 5 repair, D-43
+## completion panel finding R1, 2026-08-16) -------------------------------
+## The re_int classifier branch used to admit ANY grouping unconditionally,
+## discarding the tier computed above it -- a unit_obs-tier (1 | g) term
+## classified ADMITTED and was only stopped (on some fixtures) by the
+## coincidental OLRE guard, not by a real admission decision. This fixture
+## deliberately gives `site_species` MULTIPLE observations per level (10
+## levels x 4 obs each, NOT singletons), so the OLRE guard would NOT have
+## caught the old bug either -- this is a genuine regression pin for the
+## tier fix, typed to the ADMISSION fence's class, not the OLRE class.
+
+test_that("(1 | group) at the unit_obs tier is not admitted for multinomial (not merely an OLRE coincidence)", {
+  skip_on_cran()
+  set.seed(51L)
+  n_ss <- 10L; n_per_ss <- 4L
+  n <- n_ss * n_per_ss
+  df <- data.frame(
+    unit = factor(seq_len(n)),
+    site_species = factor(rep(seq_len(n_ss), each = n_per_ss)),
+    trait = factor("morph"),
+    value = factor(sample.int(3L, n, replace = TRUE))
+  )
+  expect_error(
+    gllvmTMB(value ~ 0 + trait + (1 | site_species), data = df,
+             family = multinomial(), trait = "trait", unit = "unit",
+             unit_obs = "site_species"),
+    class = .mn_not_admitted
+  )
+})
+
 ## ---- Admitted (Slice 4, 2026-08-16): cluster tier (indep(0 + trait | g)
 ## via `cluster =`) -------------------------------------------------------
 ## Moved to test-matrix-multinomial-unit.R (admission-fit + extract_Sigma()
@@ -775,7 +805,15 @@ test_that(".mn_admission_table is consistent with .mn_classify_covstruct() for e
     list(kind = "spde", group = as.name("coords"), extra = list(.spatial_scalar = TRUE)),
     list(kind = "spde", group = as.name("coords"), extra = list()),
     list(kind = "spde", group = as.name("coords"),
-         extra = list(.spatial_latent_augmented = TRUE, d = 1L))
+         extra = list(.spatial_latent_augmented = TRUE, d = 1L)),
+    ## Slice 5 repair (D-43 completion panel R1/R2, 2026-08-16): explicit
+    ## unit-tier dep()/indep()/unique() (previously classifier-fallthrough
+    ## only, no table row) and unit_obs-tier re_int (previously mis-admitted
+    ## -- see the re_int classifier branch's comment). All four blocked.
+    list(kind = "rr",     group = as.name("unit"), extra = list(.dep = TRUE)),
+    list(kind = "diag",   group = as.name("unit"), extra = list(.indep = TRUE)),
+    list(kind = "diag",   group = as.name("unit"), extra = list()),
+    list(kind = "re_int", group = as.name("site_species"), extra = list())
   )
   expect_equal(nrow(tbl), length(reprs))
   for (i in seq_len(nrow(tbl))) {

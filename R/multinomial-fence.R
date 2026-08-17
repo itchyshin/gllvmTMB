@@ -208,7 +208,12 @@
     ## the non-phylogenetic cluster/cluster2 diagonal tier.
     "none", "none", "none", "none", "none", "none", "none",
     ## Slice 3 (Design 122, 2026-08-16): the spatial (SPDE) mode axis.
-    "spatial", "spatial", "spatial", "spatial", "spatial", "spatial", "spatial"
+    "spatial", "spatial", "spatial", "spatial", "spatial", "spatial", "spatial",
+    ## Slice 5 repair (D-43 completion panel R1/R2, 2026-08-16): explicit
+    ## unit-tier dep()/indep()/unique() (previously blocked only via
+    ## classifier fallthrough, no table row) and the unit_obs-tier re_int
+    ## exclusion (previously mis-admitted, see the re_int branch's comment).
+    "none", "none", "none", "none"
   ),
   mode   = c(
     "latent", "latent", "latent", "latent", "latent_slope", "latent_slope",
@@ -217,7 +222,8 @@
     "dep", "indep", "unique",
     "dep", "indep", "unique", "indep (scalar)",
     "re_int", "indep", "unique", "indep", "unique", "indep (scalar)", "indep (scalar)",
-    "latent", "indep", "dep", "latent (unique=TRUE)", "scalar", "unique", "latent_slope"
+    "latent", "indep", "dep", "latent (unique=TRUE)", "scalar", "unique", "latent_slope",
+    "dep", "indep", "unique", "re_int"
   ),
   tier   = c(
     "unit", "unit (auto-Psi)", "among-category",
@@ -233,13 +239,14 @@
     "among-category (diagonal V, single name)",
     "among-category (diagonal V, deprecated alias, single name)",
     "among-category (single shared level, single name)",
-    "any group (generic)", "cluster", "cluster", "cluster2", "cluster2",
+    "any group (generic, except unit_obs)", "cluster", "cluster", "cluster2", "cluster2",
     "cluster", "cluster2",
     "spatial (shared field, loadings-only)", "spatial (per-contrast independent fields)",
     "spatial (full field covariance, === latent(d=T))",
     "spatial (paired Psi_spde companion)", "spatial (single shared level)",
     "spatial (standalone / deprecated bare alias)",
-    "spatial (augmented intercept + slope, any mode)"
+    "spatial (augmented intercept + slope, any mode)",
+    "unit", "unit", "unit", "unit_obs"
   ),
   status = c(
     "admitted", "admitted", "admitted", "blocked", "blocked", "blocked",
@@ -249,7 +256,8 @@
     "admitted", "admitted", "admitted", "blocked",
     "admitted", "admitted", "admitted", "admitted", "admitted",
     "blocked", "blocked",
-    "admitted", "admitted", "admitted", "blocked", "blocked", "blocked", "blocked"
+    "admitted", "admitted", "admitted", "blocked", "blocked", "blocked", "blocked",
+    "blocked", "blocked", "blocked", "blocked"
   ),
   since  = c(
     "Tier-2b item 2a-ii (0.6.0)",
@@ -273,7 +281,7 @@
     "ADMITTED -- Design 122 Slice 2 (2026-08-16): kernel_indep() twin of phylo_indep(), same diagonal phylo_rr route.",
     "ADMITTED -- Design 122 Slice 2 (2026-08-16): kernel_unique() twin of standalone phylo_unique() (soft-deprecated alias of kernel_indep()).",
     "BLOCKED -- Design 122 Slice 2 (2026-08-16): kernel_scalar() (and kernel_indep(..., common = TRUE)) carry the SAME .phylo_unique + .indep markers as kernel_indep() and are distinguished ONLY by .kernel_mode == \"scalar\"; it ties the per-trait diagonal phylogenetic variances to ONE shared level. STAYS REFUSED like phylo_scalar()/animal_scalar() -- see dev/multinomial-structured/probe-scalar-null.R for the null-DGP evidence motivating the refusal.",
-    "ADMITTED -- Design 122 Slice 4 (2026-08-16): a generic (1 | g) random intercept adds one draw per group level to EVERY pseudo-trait row of a multinomial observation (src/gllvmTMB.cpp re_int block, group id read off the AFTER-expansion data). Semantics: a baseline-vs-rest group effect (the shared shift does not cancel in the softmax); sigma_re is REFERENCE-CATEGORY-SPECIFIC. Subject to the whole-fit OLRE guard (.multinomial_reint_group_olre_guard()) below.",
+    "ADMITTED -- Design 122 Slice 4 (2026-08-16): a generic (1 | g) random intercept adds one draw per group level to EVERY pseudo-trait row of a multinomial observation (src/gllvmTMB.cpp re_int block, group id read off the AFTER-expansion data). Semantics: a baseline-vs-rest group effect (the shared shift does not cancel in the softmax); sigma_re is REFERENCE-CATEGORY-SPECIFIC. Subject to the whole-fit OLRE guard (.multinomial_reint_group_olre_guard()) below. EXCLUDES the unit_obs tier (Slice 5 repair, D-43 R1, 2026-08-16 -- see the last table row and the re_int classifier branch's comment; this row's 'admitted' verdict is only reached for a grouping OTHER than the unit_obs column).",
     "ADMITTED -- Design 122 Slice 4 (2026-08-16): indep(0 + trait | <cluster_col>) via the cluster = argument routes through use_diag_species (per-trait/per-contrast independent normal variances, family-agnostic, pre-existing engine code). Subject to the OLRE guard.",
     "ADMITTED -- Design 122 Slice 4 (2026-08-16): standalone unique(0 + trait | <cluster_col>) is the SAME use_diag_species engine path as indep() at this tier (the .indep marker only changes the printed label, as at the unit tier) -- admitted alongside it.",
     "ADMITTED -- Design 122 Slice 4 (2026-08-16): indep(0 + trait | <cluster2_col>) via the cluster2 = argument routes through use_diag_cluster2 -- verified LITERALLY IDENTICAL engine math to use_diag_species (same per-trait independent-normal density, different DATA/PARAMETER slot; src/gllvmTMB.cpp), so admitted together with cluster.",
@@ -286,7 +294,11 @@
     "BLOCKED -- Design 122 Slice 3 (2026-08-16): spatial_latent(unique = TRUE)'s paired diagonal Psi_spde companion (`.spatial_unique_diag = TRUE`, a SINGLE marker on the SAME covstruct, architecturally different from phylo/animal/kernel's separate-companion-covstruct pattern) is a free spatial Psi, not admitted for multinomial for the same reason as row 4 (phylo_latent(unique = TRUE)).",
     "BLOCKED -- Design 122 Slice 3 (2026-08-16): spatial_scalar() (`.spatial_scalar = TRUE`, incl. spatial_indep(..., common = TRUE)) ties the per-contrast spatial-field variances to ONE shared level -- the (I+J) carve-out, refused for the same reason as phylo_scalar()/animal_scalar()/kernel_scalar().",
     "BLOCKED -- Design 122 Slice 3 (2026-08-16): standalone spatial_unique()/deprecated bare spatial() (no markers at all) is the PAIRED-COMPANION alias mechanism (meant to pair with spatial_latent(), Design 60), not an independent diagonal term the way phylo_unique()/phylo_indep() are -- unlike Slice 2's phylo mode axis, this cell is NOT admitted as a deprecated alias of spatial_indep(); use spatial_indep() directly for a standalone diagonal spatial fit.",
-    "BLOCKED -- Design 122 Slice 3 (2026-08-16): every augmented (intercept + slope) spatial_*(1 + x | coords) term (`.spatial_unique_augmented` / `.spatial_dep_augmented` / `.spatial_latent_augmented`) stays blocked, mirroring rows 5/6's augmented phylo/ordinary-latent refusal."
+    "BLOCKED -- Design 122 Slice 3 (2026-08-16): every augmented (intercept + slope) spatial_*(1 + x | coords) term (`.spatial_unique_augmented` / `.spatial_dep_augmented` / `.spatial_latent_augmented`) stays blocked, mirroring rows 5/6's augmented phylo/ordinary-latent refusal.",
+    "BLOCKED -- Slice 5 repair (D-43 completion panel finding R2, 2026-08-16): dep(0 + trait | unit) at the unit tier was already blocked by the classifier's rr-kind fallthrough (row above the auto-Psi row) and by fit-level tests, but had no explicit table row of its own -- the table is documented as the single source of truth, so it must be literally exhaustive. Same engine/reasoning as row 1's admitted latent(); this is the DIFFERENT, unadmitted dep() covstruct at the same tier.",
+    "BLOCKED -- Slice 5 repair (D-43 completion panel finding R2, 2026-08-16): explicit indep(0 + trait | unit) at the unit tier -- classifier's diag-kind fallthrough, previously untabled. Only the default latent()-carried auto-Psi (row 2) is admitted at this tier; an EXPLICIT indep()/unique() diagonal term here is not.",
+    "BLOCKED -- Slice 5 repair (D-43 completion panel finding R2, 2026-08-16): explicit standalone unique(0 + trait | unit) at the unit tier -- same fallthrough/reasoning as the indep() row immediately above, differing only in the .indep marker (printed label only).",
+    "BLOCKED -- Slice 5 repair (D-43 completion panel finding R1, 2026-08-16): (1 | <unit_obs column>) at the unit_obs tier. The re_int classifier branch previously admitted ANY grouping unconditionally, discarding the tier computed above it -- a unit_obs-tier (1 | g) term classified ADMITTED and was only stopped by the coincidental OLRE guard on fixtures where every unit_obs level happened to be a categorical singleton. Fixed: re_int now consults tier directly and blocks unit_obs, matching design-122 Section 1/6's documented unit_obs-out-of-scope statement. See test-multinomial-fence.R's typed regression test for a fit where unit_obs levels are NOT singletons (so the OLRE guard would not have caught it either)."
   ),
   stringsAsFactors = FALSE
 )
@@ -339,16 +351,29 @@
   }
 
   if (identical(kind, "re_int")) {
-    ## Slice 4 (Design 122, 2026-08-16): admitted. `src/gllvmTMB.cpp`'s
+    ## Slice 4 (Design 122, 2026-08-16): admitted for any grouping EXCEPT
+    ## the unit_obs tier, which is out of scope for this arc (design-122
+    ## Section 1/6). Design 122 Slice 5 repair (D-43 completion panel
+    ## finding R1, 2026-08-16): this branch used to ignore `tier` entirely
+    ## and admit re_int for ANY grouping, so a `(1 | <unit_obs-like
+    ## column>)` term classified ADMITTED here and was only stopped by the
+    ## coincidental OLRE guard on fixtures where every unit_obs level
+    ## happened to be a categorical singleton -- not a real admission
+    ## decision, and silently wrong on any fixture where a unit_obs level
+    ## covered more than one categorical observation. `src/gllvmTMB.cpp`'s
     ## `re_int` block adds one draw per group level to EVERY row of `eta`
     ## sharing that group id -- for multinomial's expanded K-1 pseudo-trait
     ## rows, that is a baseline-vs-rest group effect (see the header comment
-    ## above). Whether a PARTICULAR grouping is degenerate (an OLRE in
-    ## disguise, one categorical observation per level) is a whole-fit check
-    ## against `data`, not classifiable from this covstruct alone -- see
-    ## `.multinomial_reint_group_olre_guard()` below, mirroring how the
-    ## multi-kernel override works on top of an individually-admitted
-    ## classification.
+    ## above). Whether a PARTICULAR admitted grouping is degenerate (an OLRE
+    ## in disguise, one categorical observation per level) remains a
+    ## SEPARATE whole-fit check against `data`, not classifiable from this
+    ## covstruct alone -- see `.multinomial_reint_group_olre_guard()` below,
+    ## mirroring how the multi-kernel override works on top of an
+    ## individually-admitted classification.
+    if (identical(tier, "unit_obs")) {
+      return(list(source = "none", mode = "re_int", admitted = FALSE,
+                  label = "a (1 | group) random intercept at the unit_obs tier"))
+    }
     return(list(source = "none", mode = "re_int", admitted = TRUE,
                 label = "a generic (1 | group) random intercept"))
   }

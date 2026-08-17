@@ -94,14 +94,6 @@ The point predictions here are the fitted linear predictor (\code{type = "link"}
 or its inverse-link response (\code{type = "response"}). Reconstruction standard
 errors and prediction intervals are not currently returned by default.
 
-For \code{\link[=ordinal_probit]{ordinal_probit()}} traits, \code{type = "response"} is the \strong{expected
-category} \eqn{E[k] = \sum_k k \cdot P(\mathrm{category}\ k \mid \eta,
-\tau)}, computed from the fitted cutpoints (Hadfield 2015 convention:
-\eqn{\tau_1 = 0} fixed, \eqn{\tau_2, \ldots, \tau_{K-1}} estimated; see
-\code{\link[=extract_cutpoints]{extract_cutpoints()}}) -- not a probability. It is not an elementwise
-\code{pnorm(eta)}, which is not a category quantity once \eqn{K > 2}.
-\code{type = "link"} is unchanged: the probit-scale linear predictor.
-
 \code{se = TRUE} is \strong{EXPERIMENTAL and INTERNAL-ONLY} (Design 119 Slice 1):
 register status \code{heuristic_unvalidated} -- no repeated-sampling coverage
 evidence exists for \code{se_confidence} or \code{se_prediction}, and neither is an
@@ -161,6 +153,14 @@ generative world changes. Ignored unless \code{se_route = "boot"}.
 Do not surface \code{se_confidence} / \code{se_prediction} / the quantile columns
 as calibrated uncertainty in any user-facing output until the Design 119
 sec.4 coverage campaign clears a route and family for export.
+
+For \code{\link[=ordinal_probit]{ordinal_probit()}} traits, \code{type = "response"} is the \strong{expected
+category} \eqn{E[k] = \sum_k k \cdot P(\mathrm{category}\ k \mid \eta,
+\tau)}, computed from the fitted cutpoints (Hadfield 2015 convention:
+\eqn{\tau_1 = 0} fixed, \eqn{\tau_2, \ldots, \tau_{K-1}} estimated; see
+\code{\link[=extract_cutpoints]{extract_cutpoints()}}) -- not a probability. It is not an elementwise
+\code{pnorm(eta)}, which is not a category quantity once \eqn{K > 2}.
+\code{type = "link"} is unchanged: the probit-scale linear predictor.
 }
 \seealso{
 \code{\link[=gllvmTMB]{gllvmTMB()}}, \code{\link[=miss_control]{miss_control()}}, \code{\link[=predict.gllvmTMB_multi]{predict.gllvmTMB_multi()}}.

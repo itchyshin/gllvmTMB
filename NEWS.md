@@ -1,5 +1,16 @@
 # gllvmTMB 0.7.0 (development)
 
+* **Multinomial fits now warn at fit time when their contrast structure is
+  degenerate.** The screen added this release (collapsed contrast variance,
+  rail-correlated contrasts, or a collapsed spatial range) is now surfaced
+  automatically, under the existing `gllvmTMBcontrol(warn_runaway = )`
+  switch and with its own once-per-session slot, so it cannot suppress or be
+  suppressed by the binomial runaway warning. Set `warn_runaway = FALSE` to
+  silence both; `check_gllvmTMB()` and `gllvmTMB_diagnose()` are unaffected.
+  Ordinal fits deliberately emit no such warning — that family's arms ship
+  disarmed (see the calibration note below), so the row reports statistics
+  without a verdict.
+
 This development release adds an opt-in separation-screening and LA-MSPL lane
 for complete single-trial Bernoulli GLLVMs. Ordinary ML remains unchanged and
 is still the default.
@@ -19,6 +30,126 @@ is still the default.
   splitting the point mass at zero, and multinomial's categories are
   unordered so a randomized-quantile residual is undefined for it. See
   `?residuals.gllvmTMB_multi` for the full scope statement.
+
+* **A `check_gllvmTMB()` row for multinomial K-1 contrast degeneracy.**
+  `multinomial()` (fid 16) fits as K-1 baseline-category contrast
+  pseudo-traits per response; `check_gllvmTMB()` now reports a
+  `multinomial_contrast_degeneracy` row that screens those contrasts
+  against each other for three failure modes generic loading diagnostics
+  cannot see: one contrast's loading energy collapsing to ~0 (absolutely,
+  or relative to its sibling contrasts), two contrasts of the same
+  response loading almost perfectly on the same axis (evaluated only where
+  the tier's rank is 2 or more, since rank-1 tiers reach that correlation
+  on every healthy fit by construction), and a spatial field's practical
+  range collapsing relative to the coordinate domain. This is a check-row
+  addition only -- **no fit-time warning**, no new export, no behaviour
+  change to any existing fit.
+
+  Three arms ship armed at calibrated defaults: `multinomial_collapse_floor
+  = 1e-10` (M1, contrast variance collapse), `multinomial_rail_thresh =
+  0.99` (M2, two contrasts railed onto one axis), and
+  `multinomial_range_collapse_thresh = 0.02` (M3, spatial range collapse).
+  `multinomial_collapse_rel_thresh` stays disarmed (`Inf`) -- untested.
+  Measured against pre-registered labels (128 fits, 122 converged with a PD
+  Hessian): M1 6/7 labeled collapses **plus 7/7 on a later, entirely
+  out-of-sample cell**; M2 8/8 labeled rails, **plus four individually
+  railed fits hidden inside a cell whose aggregate gate had passed**
+  (refitting confirms |rho| = 1.00000, against controls at 0.49 and
+  -0.15); M3 3/3. Zero false positives on 40 informative healthy fits, and
+  the denominator is stated honestly: fits with no loading tier emit no row
+  at all and cannot evidence specificity, so the rule-of-three bound is
+  **about 7.5%, not a verified zero**. M2 is deliberately silent on rank-1
+  tiers, where |rho| = 1 holds on every healthy fit by construction
+  (verified 0/20 out-of-sample).
+
+  M3 was fixed before arming: it originally read the low-rank loading
+  matrix `Lambda_spde`, which the engine reports only for
+  `spatial_latent()`/`spatial_dep()` fits, so on `spatial_indep()` fits --
+  exactly the ones it was built for -- it produced no row at all. It now
+  branches on the engine route, taking the range from `log_tau_spde` on
+  the diagonal route: rows emitted 0/20 to 20/20, detection 0/3 to 3/3,
+  with 0/11 false positives on the same cell's healthy fits.
+
+* **A `check_gllvmTMB()` row for ordinal-probit loading degeneracy** (fixes
+  the coverage gap reported in #897, where a degenerate `ordinal_probit()`
+  fit had no detector at all -- 239/239 unflagged where the binomial screen
+  caught 272/272). A mechanism probe found no empirical support for
+  cutpoint-underflow saturation across 24 measured degenerate fits
+  (flat-row share exactly 0 throughout) -- that negative finding stands.
+  The probe's third measurement, originally read as positive evidence for
+  category-level quasi-complete separation (the same mechanism the
+  binomial row already screens for), was later shown, on a larger 315-fit
+  calibration, to fire on 86.3% of healthy fits and so does not
+  discriminate; category-level separation remains the residual hypothesis,
+  not a demonstrated one. The pathology's shape is a single trait's
+  loading column running away while sibling traits stay near truth.
+  `check_gllvmTMB()` now reports an
+  `ordinal_liability_loading` row with two arms modeled directly on the
+  binomial row: a trait's largest loading relative to the typical loading
+  among the other ordinal traits, and the largest loading on the link
+  (liability) scale, unit tiers only -- scale-free because the
+  probit-liability residual variance is exactly 1 by the Wright/
+  Falconer/Hadfield threshold convention. This is a check-row addition
+  only -- **no fit-time warning**, no new export, no behaviour change to
+  any existing fit.
+
+  Both arms ship **DISARMED at `Inf`/`Inf`** -- the row still computes and
+  reports its statistics, but neither threshold is armed by default.
+  Calibration ran 315 fits across four pre-registered design arms, scored
+  under the frozen pre-registration (sensitivity on the `degenerate` arm's
+  `rel_frob > 10` fits; false positives measured across `healthy` +
+  `transport` + `mixed` combined), and found **no threshold that clears
+  the pre-registered target of 90% sensitivity with zero false alarms --
+  and none can**: the healthy pool reaches a loading magnitude of 216.9
+  while the degenerate arm starts at 13.5, so the classes are not
+  separable on this statistic at all. At binomial's own threshold of 6,
+  the absolute arm reaches 100% sensitivity but **39.2%** false positives
+  and the relative arm 61.0% sensitivity at 28.6% false positives --
+  *worse* than the 25% false-positive rate #897 reports for binomial
+  itself, so borrowing binomial's threshold would have shipped a bigger
+  problem than the one the issue complains about. The false alarms
+  concentrate in designs mixing very different per-trait loading scales:
+  an absolute liability-scale threshold cannot transport across
+  heterogeneous trait scales, so a future screen needs a scale-invariant
+  statistic rather than a better constant. Honest limits: no evidence at
+  `n = 1600` (that arm was dropped for run time). What the campaign
+  establishes: link saturation is refuted as the mechanism (solid);
+  category-level separation, the residual hypothesis, is NOT demonstrated
+  -- the evidence originally cited for it does not discriminate (see the
+  correction recorded in `dev/ordinal-degeneracy/probe-criteria.md`); and
+  the threshold question is answered negatively with a stated path forward.
+
+  Neither categorical screen changes what fitting itself does: `gllvmTMB()`
+  warns exactly as before, and both rows appear only when you call
+  `check_gllvmTMB()` on the fit.
+
+* **Liability-scale phylogenetic heritability for categorical families**
+  (this corrects a real defect: on a phylogeny-only `ordinal_probit()` or
+  `multinomial()` fit, `extract_phylo_signal()` previously reported
+  **`H2 = 1.0` for every trait and every contrast**. That number was the
+  species-level-latent proportion and was arithmetically correct as such,
+  but as a heritability it was silent nonsense -- the fixed liability
+  residual never entered the denominator, so a phylogenetic signal that
+  should read around 0.3-0.4 read as 1. If you have reported a categorical
+  `H2` from this function, re-run it with `link_residual = "auto"`.)
+  `extract_phylo_signal()` gains a `link_residual` argument. The default
+  (`"none"`) keeps the historical species-level-latent denominator
+  unchanged, so no existing non-categorical result moves;
+  `link_residual = "auto"` adds each trait's fixed
+  distribution-specific latent residual to the denominator, returning the
+  conventional liability-scale phylogenetic heritability of Mizuno et al.
+  (2025, *J. Evol. Biol.* 38:1699-1715, eq 4/18/19):
+  `ordinal_probit()` reports per-trait `H2 = V_a / (V_a + 1)` and
+  `multinomial()` reports per-*contrast*
+  `H2 = V_a(k) / (V_a(k) + pi^2/3)`. Multinomial contrast heritabilities
+  are baseline-referenced (the softmax link residual couples contrasts
+  through the shared baseline category) and are reported one row per
+  contrast, never collapsed to a scalar. An advisory now fires when a
+  categorical fit is summarised with the default denominator, and
+  `ci = TRUE` with `link_residual = "auto"` refuses with a typed error
+  rather than returning uncalibrated intervals. Verified against an
+  MCMCglmm `family = "ordinal"` comparator on a shared phylogenetic
+  fixture.
 
 * **A Species Distribution Models article collection.** The pkgdown site
   gains a dedicated navbar menu ordering the SDM material as a curriculum —
@@ -129,6 +260,22 @@ is still the default.
   trial count and drew Bernoulli regardless of `cbind(success, failure)` /
   `weights = n_trials`; they now draw `rbinom()` at the row's actual
   `n_trials`.
+
+* **`check_gllvmTMB()`'s `near_zero_psi_unit` screen no longer flags traits
+  the auto-Psi skip block deliberately pinned off.** `R/fit-multi.R`'s
+  `skip_psi_b_t` block maps a trait's between-unit `Psi` off (single-trial
+  Bernoulli, and every multinomial contrast pseudo-trait) by pinning
+  `theta_diag_B` at `log(1e-6)`, but `src/gllvmTMB.cpp` still `REPORT`s
+  `sd_B` for every trait including the pinned ones, so the pinned `1e-6`
+  entry always cleared both the absolute (`psi_thresh = 1e-4`) and relative
+  (`psi_rel_thresh`) collapse thresholds. This was a structural false
+  positive that predates the Design 123 arc above: `check_gllvmTMB()` WARNed
+  `near_zero_psi_unit` on every fit with a single-trial-Bernoulli or
+  multinomial trait sharing a `latent()` term with a free partner trait,
+  regardless of whether the free trait's Psi was healthy. The screen now
+  drops pinned entries (via `tmb_data$diag_B_skip`) before evaluating the
+  unit-level psi row; a genuine collapse among the remaining free traits is
+  still caught.
 
 * **`multinomial()` structured-term admission is now fail-closed (Slice 0,
   Design 108/123).** Several deferred keywords previously desugared

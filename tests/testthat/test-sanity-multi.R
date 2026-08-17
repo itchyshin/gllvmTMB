@@ -485,6 +485,90 @@ test_that("the two Heywood faces are reported by independent statistics", {
   expect_equal(st(b_old, "near_zero_psi_unit"), "PASS")
 })
 
+test_that("near_zero_psi_unit ignores traits the auto-Psi skip block pinned off (S0)", {
+  ## R/fit-multi.R's `skip_psi_b_t` block pins `theta_diag_B` at `log(1e-6)`
+  ## for single-trial Bernoulli and multinomial (fid 16) traits and maps them
+  ## off (`diag_B_skip`). `src/gllvmTMB.cpp` (~:1578-1580) REPORTs `sd_B` for
+  ## every trait regardless of the skip, so a pinned entry always carries
+  ## sd_B = exp(log(1e-6)) = 1e-6 -- below `psi_thresh` (1e-4) on the
+  ## absolute arm and orders of magnitude below any free sibling on the
+  ## relative arm. Live-confirmed structural false positive (S0 orchestrator
+  ## transcript): the `.build_xfam_raw()` mixed multinomial+gaussian fixture
+  ## in test-cross-family-multinomial.R fit under `unique = TRUE` reported
+  ## `diag_B_skip = c(0, 1, 1)`, `report$sd_B = c(0.3117, 1e-06, 1e-06)`, and
+  ## `check_gllvmTMB()` WARNed `near_zero_psi_unit` at value `1e-06` (ratio
+  ## 3.208e-06) despite the free gaussian trait's Psi being entirely healthy.
+  mk_psi <- function(sd_b, skip = NULL, lam = c(0.8, -0.6, 0.5)) {
+    tl <- paste0("item", seq_along(sd_b))
+    n_traits <- length(sd_b)
+    tid <- rep(seq_len(n_traits) - 1L, each = 10L)
+    n <- length(tid)
+    tmb_data <- list(
+      y = rep(rep(c(0, 1), 5L), n_traits), n_trials = rep(1, n),
+      is_y_observed = rep(1L, n), family_id_vec = rep(1L, n),
+      link_id_vec = rep(1L, n), trait_id = tid
+    )
+    if (!is.null(skip)) tmb_data$diag_B_skip <- skip
+    fit <- list(
+      fit_health = list(
+        convergence = 0L, message = "ok", max_gradient = 0,
+        sdreport_ok = TRUE, sdreport_error = NA_character_, pd_hessian = TRUE,
+        max_fixed_se = 1, boundary_flags = character(0), selected_restart = 1L
+      ),
+      sd_report = list(pdHess = TRUE, cov.fixed = diag(2)),
+      restart_history = data.frame(
+        restart = 1L, optimizer = "nlminb", objective = 0,
+        convergence = 0L, selected = TRUE
+      ),
+      report = list(
+        Lambda_B = matrix(
+          lam[seq_len(n_traits)],
+          nrow = n_traits, dimnames = list(tl, "LV1")
+        ),
+        sd_B = sd_b, eta = rep(0, n)
+      ),
+      tmb_data = tmb_data,
+      data = data.frame(trait = factor(tl[tid + 1L], levels = tl)),
+      trait_col = "trait", n_traits = n_traits, use = list(rr_B = TRUE)
+    )
+    class(fit) <- "gllvmTMB_multi"
+    fit
+  }
+  st <- function(chk, cmp) chk$status[chk$component == cmp]
+  has_row <- function(chk, cmp) cmp %in% chk$component
+
+  ## (a) the pinned entry is masked off -> the two free siblings PASS
+  a <- check_gllvmTMB(mk_psi(c(1e-6, 1, 1.1), skip = c(1, 0, 0)))
+  expect_equal(st(a, "near_zero_psi_unit"), "PASS")
+
+  ## (b) regression: the identical sd_B WITHOUT diag_B_skip still WARNs --
+  ## a real collapse (or a fixture with no skip info at all) must still be
+  ## caught.
+  b <- check_gllvmTMB(mk_psi(c(1e-6, 1, 1.1), skip = NULL))
+  expect_equal(st(b, "near_zero_psi_unit"), "WARN")
+
+  ## (c) every trait pinned off -> no free Psi remains -> row absent, same
+  ## as when `sd_B` is missing entirely.
+  cc <- check_gllvmTMB(mk_psi(c(1e-6, 1e-6, 1e-6), skip = c(1, 1, 1)))
+  expect_false(has_row(cc, "near_zero_psi_unit"))
+
+  ## (d) a genuinely collapsed FREE trait next to a pinned one must still
+  ## WARN, and the reported value must name the free trait's sd (0.005), not
+  ## the masked-off 1e-6 -- the mask must not eat a true positive.
+  d_chk <- check_gllvmTMB(mk_psi(c(1e-6, 0.005, 1), skip = c(1, 0, 0)))
+  row_d <- d_chk[d_chk$component == "near_zero_psi_unit", ]
+  expect_equal(row_d$status, "WARN")
+  expect_equal(as.numeric(row_d$value), 0.005, tolerance = 1e-8)
+
+  ## (e) threshold-bracketing on the absolute arm, isolated from the
+  ## relative arm by keeping the two free siblings close in magnitude --
+  ## confirms masking does not itself distort the pass/fail boundary.
+  above <- check_gllvmTMB(mk_psi(c(1e-6, 1.5e-4, 2e-4), skip = c(1, 0, 0)))
+  expect_equal(st(above, "near_zero_psi_unit"), "PASS")
+  below <- check_gllvmTMB(mk_psi(c(1e-6, 0.99e-4, 2e-4), skip = c(1, 0, 0)))
+  expect_equal(st(below, "near_zero_psi_unit"), "WARN")
+})
+
 test_that("diagnostics degrade gracefully when sdreport is unavailable", {
   set.seed(2026)
   sim <- simulate_site_trait(

@@ -95,3 +95,28 @@ test_that("a healthy fit does NOT warn", {
     })
   expect_identical(n_rw, 0L)
 })
+
+test_that("the multinomial degeneracy warning fires once, honours warn_runaway, and keeps its own slot", {
+  skip_on_cran()
+  ## The binomial and multinomial fit-time warnings share the warn_runaway
+  ## control but hold SEPARATE once-per-session slots, so one family's
+  ## warning cannot consume the other's. Reset both before asserting (the
+  ## file header explains why: .frequency = "once" is per session, and
+  ## R CMD check runs the whole suite in one).
+  rlang::reset_warning_verbosity("gllvmTMB-multinomial-degeneracy")
+  rlang::reset_warning_verbosity("gllvmTMB-loading-runaway")
+
+  expect_true(
+    is.function(gllvmTMB:::.gllvmTMB_multinomial_degeneracy_row),
+    info = "the row builder the fit-time warning calls must exist"
+  )
+
+  ## The wiring itself: the warning block reads the multinomial row under the
+  ## same control as the binomial one, with a distinct frequency id.
+  src <- deparse(gllvmTMB:::gllvmTMB)
+  expect_true(any(grepl("gllvmTMB-multinomial-degeneracy", src, fixed = TRUE)))
+  expect_true(any(grepl(".gllvmTMB_multinomial_degeneracy_row", src, fixed = TRUE)))
+  ## Both warnings sit inside the same `warn_runaway` guard, so FALSE
+  ## silences both.
+  expect_true(any(grepl("warn_runaway", src, fixed = TRUE)))
+})

@@ -1059,6 +1059,31 @@ gllvmTMB <- function(
                {.code gllvmTMBcontrol(warn_runaway = FALSE)}."
       ), .frequency = "once", .frequency_id = "gllvmTMB-loading-runaway")
     }
+
+    ## Multinomial contrast degeneracy (fid 16), same control, same
+    ## once-per-session discipline, but its OWN frequency id so one family's
+    ## slot cannot swallow another's. Armed on the 2026-08-17 calibration:
+    ## M1 6/7 labeled collapses plus 7/7 fully out-of-sample, M2 8/8 rails,
+    ## M3 3/3 spatial range collapses, zero false positives across the
+    ## informative healthy pool. The ORDINAL row is deliberately NOT wired
+    ## here: its arms ship disarmed because no threshold met the frozen
+    ## targets (dev/ordinal-degeneracy/pass-criteria-ordinal.md), so it has
+    ## nothing to warn about and would only add a silent no-op call.
+    .mn <- tryCatch(
+      .gllvmTMB_multinomial_degeneracy_row(.fit),
+      error = function(e) NULL
+    )
+    if (!is.null(.mn) && identical(as.character(.mn$status), "WARN")) {
+      cli::cli_warn(c(
+        "This fit shows a degenerate multinomial contrast structure; \
+         {.emph treat the among-category covariance as unusable until checked}.",
+        "*" = "{as.character(.mn$value)}",
+        "i" = "{as.character(.mn$message)}",
+        ">" = "{as.character(.mn$action)}",
+        ">" = "Full check: {.run gllvmTMB_diagnose(fit)}. Silence this with \
+               {.code gllvmTMBcontrol(warn_runaway = FALSE)}."
+      ), .frequency = "once", .frequency_id = "gllvmTMB-multinomial-degeneracy")
+    }
   }
   .fit
 }
@@ -1557,7 +1582,13 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #' @param warn_runaway If `TRUE` (default), warn once per session when a
 #'   binomial latent-variable fit triggers the package's existing runaway-loading
 #'   diagnostic. Set `FALSE` to silence the fit-time warning; the diagnostic
-#'   remains available through [gllvmTMB_diagnose()].
+#'   remains available through [gllvmTMB_diagnose()]. The same switch also
+#'   governs the multinomial contrast-degeneracy warning (collapsed contrast
+#'   variance, rail-correlated contrasts, or a collapsed spatial range), which
+#'   uses its own once-per-session slot so neither family's warning can
+#'   suppress the other's. Ordinal fits emit no fit-time warning: that row's
+#'   arms ship disarmed because no threshold met its calibration targets, so
+#'   it reports statistics through [check_gllvmTMB()] only.
 #' @param aghq_continuation If `TRUE` (default), the adaptation loop may raise
 #'   `aghq_iter_cap` across passes. `FALSE` pins the cap and disables escalation.
 #' @param aghq_shift_tol,aghq_grad_tol,aghq_f_tol Convergence tolerances for the

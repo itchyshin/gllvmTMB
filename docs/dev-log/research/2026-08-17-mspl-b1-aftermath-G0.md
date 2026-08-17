@@ -1,6 +1,6 @@
 # G0 — B1 aftermath: park, redesign the calibrator, or new construction
 
-**Status:** SIGNED — **PARK** (brain **D-156**, 2026-08-17).
+**Status:** SIGNED — **PARK** (brain **D-157**, 2026-08-17).
 **When:** 2026-08-17 05:00 (overnight track); signed 2026-08-17 morning.
 **Reader:** Shinichi.
 **Author:** Cursor (Ada / Fisher / Rose). Docs only. No Totoro relaunch.
@@ -10,7 +10,7 @@
 
 > Park. No second campaign. MSPL-04 stays blocked. No Totoro relaunch. If we want intervals later, that is a new construction and a new pre-registration, not a Design 118 recalibration and not n to 2000.
 
-This closes the call document D-155 left open. Decision id: **D-156**. It does not promote an interval, does not edit `MSPL-04` off blocked, and does not start compute.
+This closes the call document D-155 left open. Decision id: **D-157**. It does not promote an interval, does not edit `MSPL-04` off blocked, and does not start compute.
 
 ---
 
@@ -141,7 +141,7 @@ No NEWS. No public `confint()`. No second campaign.
 
 ## Signature (SIGNED)
 
-**Decision id:** brain `D-156` (2026-08-17).
+**Decision id:** brain `D-157` (2026-08-17). Numbering note: vault D-155/D-156 were already claimed the same morning (roster symlink / one-day grace); the B1 park paste is D-157.
 
 **Paste:**
 

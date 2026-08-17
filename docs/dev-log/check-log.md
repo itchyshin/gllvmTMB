@@ -1,3 +1,21 @@
+## 2026-08-17 — OWED: KF2021 footnote on #1075 triad (Poisson left to #1096)
+
+**Lane:** `cursor/mspl-se-ci-owed-docs`
+**Authority:** handover `2026-08-17-cursor-handover-mspl-se-ci.md` OWED 4–5 + Shinichi/Claude correction — Poisson W **SIGNED PARK** stands; do **not** restore UNSIGNED; defer provenance to #1096.
+
+Done:
+- MSPL footnote on `docs/dev-log/research/2026-08-17-mspl-ci-wald-plus-profile.md`: profile = signature ≠ coverage rescue (KF2021 §2.2); non-binomial **UNVERIFIED**; GLLVM transfer AGENT-INFERRED.
+- Stale “Poisson W remains UNSIGNED” on that card → **SIGNED — PARK SE doors** + pointer to #1096.
+- #1077 stale bounds wording reconciled on draft PR branch (separate push).
+
+Not done / deferred: sign REPLACE/KEEP; rebuild #1090; undraft #1077; open SE doors.
+
+```sh
+rg -n 'KF2021|coverage rescue|UNVERIFIED' docs/dev-log/research/2026-08-17-mspl-ci-wald-plus-profile.md
+rg -n 'SIGNED — PARK|UNSIGNED' docs/dev-log/research/2026-08-17-mspl-ci-wald-plus-profile.md docs/dev-log/research/2026-08-17-mspl-poisson-W-G0.md
+# deliberately not: edit Poisson W Status; invent KEEP/REPLACE; undraft #1077
+```
+
 ## 2026-08-17 — AUTHORITATIVE: G1 PARK SE doors is SIGNED (supersedes Rose RETRACT)
 
 **Lane:** `claude/lane-mspl-profile-led-ci`

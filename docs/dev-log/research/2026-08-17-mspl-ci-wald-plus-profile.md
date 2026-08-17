@@ -36,11 +36,21 @@ This sitting’s phrasing (“signature error is profile”) is therefore a **sh
 
 | Method | Role | What it is **not** |
 |---|---|---|
-| **Profile** | **Signature / primary claim path** (D-12 hero; house brand for uncertainty) | Not “slow Wald”. Not Design 118. Not automatic public `confint` without a new Design + G0. |
+| **Profile** | **Signature / primary claim path** (D-12 hero; house brand for uncertainty) | Not “slow Wald”. Not Design 118. Not automatic public `confint` without a new Design + G0. **Not** a coverage rescue under a finiteness penalty (see MSPL footnote). |
 | **Wald (\(Q_0\))** | **Quickest baseline / availability check** — one Hessian, \(\pm z\cdot\mathrm{se}\) for many targets at once | Not the brand. Not a calibrated public interval programme (B1 FAIL under D-157). Pins stay D-149 until separate public-`se` G0. |
 | **Bootstrap** | **Asymmetry / non-symmetric sampling** arm (percentile; saturation refuse) | Not a repair for Wald undercoverage on the same misspecified centre. Not BCa-by-default (Design 118 A4). |
 
 Speed / cost order (D-12): **Wald (quickest) → profile (signature) → bootstrap (asymmetry / calibration layer).**
+
+### MSPL footnote — “profile = signature” ≠ coverage rescue (KF2021)
+
+D-12’s profile-over-Wald doctrine stands generally and for ML. What does **not** stand for MSPL is the inference that profiling the *penalised* objective repairs Wald undercoverage.
+
+Kosmidis & Firth (2021), *Biometrika* 108(1):71–82 (arXiv:1812.01938 v4, §2.2), state that confidence regions built from the Jeffreys-penalised binomial-response GLM estimator **fail to cover regardless of \(\alpha\)**, **including when the penalised likelihood is profiled**. The mechanism is finiteness of the attainable estimator set (their Corollary 1), not a quadratic-approximation artefact — so profiling changes shape, not reach. Full quotes and qualifications: `docs/dev-log/research/2026-08-17-kosmidis-firth-2021-profile-caveat.md` (VERIFIED on primary source via #1090’s companion note).
+
+**Scope (do not over-cite):** the paper is **binomial-response GLMs** with full-rank \(X\) (logit / probit / c-log-log / log-log / cauchit). For **Gamma, lognormal, Student, Tweedie, ordinal_probit, delta/hurdle, nbinom** the same profile-coverage question is **UNVERIFIED**. Transfer to a latent-variable GLLVM (Laplace-approximated marginal likelihood) is **AGENT-INFERRED**, not established.
+
+**Operational split:** an internal uncalibrated profile *computer* remains allowed (D-149: computability ≠ coverage claim). Do not design a register-covered MSPL interval path on the premise that profiling escapes the KF2021 failure.
 
 ### How this sits next to B1 / Design 118
 
@@ -59,7 +69,7 @@ Speed / cost order (D-12): **Wald (quickest) → profile (signature) → bootstr
 
 > **Confirm MSPL interval triad for the new construction:** Profile = signature / primary claim path; Wald (\(Q_0\)) = quickest baseline / availability check (not the brand; not Design 118 reopen); Bootstrap = asymmetry / non-symmetric sampling. SE pins stay D-149. No Totoro. No public `se=TRUE` without separate G0.
 
-Recorded under **D-157** new construction + this card SIGNED. **No new vault/repo D-number** (D-12 already heroizes profile; this paste locks the triad roles for the post-B1 path). Poisson \(W\) G0 remains UNSIGNED. #1077 stays draft/fenced; no real profile intervals; no Design 118 / B1 / Totoro reopen; no public `se=TRUE`.
+Recorded under **D-157** new construction + this card SIGNED. **No new vault/repo D-number** (D-12 already heroizes profile; this paste locks the triad roles for the post-B1 path). Poisson \(W\) G0 card reads **SIGNED — PARK SE doors** on `main` (blanket lane approval; provenance confirmations live in #1096 / `2026-08-17-poisson-W-G0-signature-provenance.md` — do not invent KEEP/REPLACE here). #1077 stays draft/fenced; no real profile intervals; no Design 118 / B1 / Totoro reopen; no public `se=TRUE`.
 
 ---
 
@@ -67,5 +77,6 @@ Recorded under **D-157** new construction + this card SIGNED. **No new vault/rep
 
 - Not MSPL-04 unblocked. Not public `se=TRUE` / `vcov` / Wald `confint`.
 - Not permission to implement MSPL `confint(method="profile")` on this note alone.
+- Not a claim that profiling the MSPL penalty repairs KF2021-style undercoverage (see MSPL footnote).
 - Not a recalibration of Design 118 α\* / M0–M5.
 - Not NEWS `covered`.

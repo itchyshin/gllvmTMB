@@ -2400,6 +2400,28 @@ predict.gllvmTMB_multi <- function(
   out
 }
 
+#' Fitted values from a fitted gllvmTMB model
+#'
+#' A thin wrapper over [predict.gllvmTMB_multi()] at the training rows
+#' (`newdata = NULL`). Returns the same long data frame `predict()` returns
+#' -- one row per training observation, carrying its unit/species/trait
+#' identifiers alongside the fitted value -- rather than a bare vector, so
+#' row identity against the original data is preserved.
+#'
+#' @param object A fit returned by [gllvmTMB()].
+#' @param type One of `"response"` (default, the `fitted()` convention) or
+#'   `"link"`.
+#' @param ... Unused.
+#'
+#' @return A data frame with the original row identifiers (unit, species,
+#'   trait columns) plus an `est` column on the requested scale -- identical
+#'   in shape to `predict(object, newdata = NULL, type = type)`.
+#' @export
+fitted.gllvmTMB_multi <- function(object, type = c("response", "link"), ...) {
+  type <- match.arg(type)
+  predict(object, newdata = NULL, type = type)
+}
+
 ## Internal-only reconstruction-uncertainty helper for `predict_missing(se =
 ## TRUE)` (Design 119 Slice 1, the R1-quad route). GAUSSIAN FAMILIES ONLY in
 ## this slice; register status `heuristic_unvalidated` -- no coverage

@@ -1,6 +1,6 @@
 # Slice-2 pass criteria — multinomial structured random effects (phylo_dep / phylo_indep)
 
-**STATUS: DRAFT — pending Shinichi sign-off.** This is a pre-registered criteria
+**STATUS: SIGNED (Shinichi, 2026-08-16, in-session).** This is a pre-registered criteria
 block copied verbatim into this file so the aggregation logic cannot drift from
 what was agreed before results exist. Do not weaken or add cells to this
 block after seeing the `--mode full` output; any change after that point needs
@@ -81,5 +81,17 @@ median, not a one-seed sanity check).
   single-seed rail observation, now reproduced under a KNOWN-zero truth. This
   is evidence for the rail-rate criterion above (both cells), not a reason to
   change the pre-registered bands.
-- `--mode full` was **NOT run** as part of this task -- staged only, per
-  Design 122's D-139 discipline and pending this file's sign-off.
+- `--mode full` was **NOT run** as part of the ORIGINAL task that drafted
+  this file -- staged only, at that time. **Update: the full campaign HAS
+  since run to completion under these signed criteria** (results:
+  `dev/multinomial-structured/results/s2-summary-20260816-183632.csv`,
+  `s2-indep-corrected-summary.csv`); the verdict is BOTH cells FAILED,
+  recorded in `docs/design/35-validation-debt-register.md`'s FAM-20D row
+  and `docs/design/122-multinomial-structured-surface.md` §1/§4 -- this
+  bullet is left as the historical pre-run note rather than deleted.
+
+**Amendment (D-43 completion panel R6, 2026-08-16, dated below the frozen
+block above -- the frozen block itself is unedited):** STATUS updated from
+DRAFT to SIGNED to match the register's FAM-20D row, which already
+reported this campaign's verdict as signed. The criteria numbers above
+were not touched.

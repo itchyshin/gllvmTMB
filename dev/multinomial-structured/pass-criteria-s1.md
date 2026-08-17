@@ -1,6 +1,6 @@
 # Slice-1 pass criteria — multinomial structured random effects (animal_latent / kernel_latent)
 
-**STATUS: DRAFT — pending Shinichi sign-off.** This is a pre-registered criteria
+**STATUS: SIGNED (Shinichi, 2026-08-16, in-session).** This is a pre-registered criteria
 block copied verbatim into this file so the aggregation logic cannot drift from
 what was agreed before results exist. Do not weaken or add cells to this
 block after seeing the `--mode full` output; any change after that point needs
@@ -30,3 +30,9 @@ contrast-SD ratio ∈ [0.5, 2.0].
   dropped from the write-up — a high exclusion/rail rate is itself a finding
   (cf. Design 84's own "data-hungry, especially with one observation per
   species" caveat).
+
+**Amendment (D-43 completion panel R6, 2026-08-16, dated below the frozen
+block above -- the frozen block itself is unedited):** STATUS updated from
+DRAFT to SIGNED to match `docs/design/35-validation-debt-register.md`'s
+FAM-20C row, which already reported this campaign's verdict as signed.
+The criteria above were not touched.

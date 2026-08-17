@@ -30,3 +30,20 @@ and reported, excluded from bands):
 Bands are frozen as of this commit; they will not be widened after seeing
 results. A FAIL here is recorded as "replication at this design does not
 rescue recovery" — the register then keeps point-estimate-only honesty.
+
+## Provenance note (D-43 completion panel R6, 2026-08-16)
+
+**Stated plainly, not glossed over: this pre-registration is NOT
+git-verifiable.** This file, the DGP script
+(`dgp-multinomial-replicated.R`), and the campaign's results CSV
+(`results/s1b-replication-summary.csv`) all landed in ONE commit
+(`438a156f`) — there is no earlier commit showing this criteria file
+existing before the results were computed. The claim that the
+declaration preceded the campaign rests on Shinichi's in-session
+approval ("Yes go ahead") reported at the time, not on git history
+independently proving the sequence. This does not retract the PASSED
+verdict (the criteria themselves are the same either way, and nothing
+about them was tuned post hoc to fit the observed numbers), but the
+git-provenance guarantee the other pass-criteria files' separate
+draft-then-results commits provide does not apply here, and this file
+should not be cited as though it does.

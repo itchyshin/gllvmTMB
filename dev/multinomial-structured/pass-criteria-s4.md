@@ -1,6 +1,6 @@
 # Slice-4 pass criteria — multinomial group random intercepts ((1 | group))
 
-**STATUS: DRAFT — pending Shinichi sign-off.** This is a pre-registered criteria
+**STATUS: SIGNED (Shinichi, 2026-08-16, in-session).** This is a pre-registered criteria
 block copied verbatim into this file so the aggregation logic cannot drift from
 what was agreed before results exist. Do not weaken or add cells to this
 block after seeing the `--mode full` output; any change after that point needs
@@ -66,5 +66,23 @@ if the cluster-tier diagonal route needs its own calibrated recovery claim
   `sigma_re_true = 0.6`) recovered `sigma_hat = 0.718`, ratio 1.197 — inside
   the pre-registered [0.5, 2.0] band (`test-matrix-multinomial-unit.R`'s
   heavy-gated Cell (b)).
-- `--mode full` was **NOT run** as part of this task — staged only, per
-  Design 122's D-139 discipline and pending this file's sign-off.
+- `--mode full` was **NOT run** as part of the ORIGINAL task that drafted
+  this file — staged only, at that time. **Update: the full campaign HAS
+  since run to completion under these signed criteria, for the `(1 |
+  group)` cell only** (results:
+  `dev/multinomial-structured/results/s4-summary-20260816-183635.csv` --
+  20/20 rows, all `keyword = "re_int"`); the verdict is PASSED, recorded
+  in `docs/design/35-validation-debt-register.md`'s FAM-20F row and
+  `docs/design/122-multinomial-structured-surface.md` §1/§4. The
+  "Non-degenerate diagonal cell" section above remains accurate as
+  written: the cluster/cluster2 route was NOT part of this campaign and
+  stays construction-level-only, `partial` on its recovery axis -- this
+  file's own framing of that cell was correct throughout; the conflation
+  that needed fixing was in the register/design-doc/NEWS surfaces, not
+  here.
+
+**Amendment (D-43 completion panel R6, 2026-08-16, dated below the frozen
+block above -- the frozen block itself is unedited):** STATUS updated from
+DRAFT to SIGNED to match the register's FAM-20F row, which already
+reported this campaign's verdict as signed. The criteria numbers above
+were not touched.

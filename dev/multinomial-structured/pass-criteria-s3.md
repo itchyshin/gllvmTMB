@@ -1,6 +1,6 @@
 # Slice-3 pass criteria — multinomial structured random effects (spatial / SPDE mode axis)
 
-**STATUS: DRAFT — pending Shinichi sign-off.** This is a pre-registered criteria
+**STATUS: SIGNED (Shinichi, 2026-08-16, in-session).** This is a pre-registered criteria
 block copied verbatim into this file so the aggregation logic cannot drift from
 what was agreed before results exist. Do not weaken or add cells to this
 block after seeing the `--mode full` output; any change after that point needs
@@ -63,9 +63,23 @@ spatial.R's equivalence test), so its band is expected to track
   reporting IDENTICAL `kappa_hat`/`range_hat` at every seed, reinforcing the
   desugar-identity finding quantitatively) and seed 2 failing PD for all
   three (n_site = 100 is small; `--mode full`'s n_site = 300 is 3x larger).
-- `--mode full` was **NOT run** as part of this task -- staged only, per
-  Design 122's D-139 discipline and pending this file's sign-off. `n_site =
+- `--mode full` was **NOT run** as part of the ORIGINAL task that drafted
+  this file -- staged only, at that time. **Update: the full campaign HAS
+  since run to completion under these signed criteria** (results:
+  `dev/multinomial-structured/results/s3-summary-20260816-190701.csv`);
+  the verdict is PASSED all three cells, recorded in
+  `docs/design/35-validation-debt-register.md`'s FAM-20E row and
+  `docs/design/122-multinomial-structured-surface.md` §1/§4 -- this bullet
+  is left as the historical pre-run note rather than deleted. `n_site =
   300` is the task brief's starting point, NOT calibrated against a prior
   spike (unlike S1/S2's `n_sp = 800`, which traces to the 2026-07-17
-  phylo-multinomial spike) -- a calibration pass may be needed before
-  `--mode full` is approved.
+  phylo-multinomial spike) -- the PASS is real, but a calibration spike
+  against a different `n_site` would strengthen confidence 300 is not an
+  accidentally-favourable scale; recorded as a follow-up, not required
+  before citing this PASS.
+
+**Amendment (D-43 completion panel R6, 2026-08-16, dated below the frozen
+block above -- the frozen block itself is unedited):** STATUS updated from
+DRAFT to SIGNED to match the register's FAM-20E row, which already
+reported this campaign's verdict as signed. The criteria numbers above
+were not touched.

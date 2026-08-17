@@ -1,7 +1,8 @@
 ## Phase 4-style Gamma(log) LA-MSPL oracles — pure R, not an admission surface.
 ##
-## Research note:
+## Research notes:
 ##   docs/dev-log/research/2026-08-15-mspl-phase4-gamma-prep.md
+##   docs/dev-log/research/2026-08-16-mspl-gamma-lognormal-atom-pin.md
 ## Helpers stay in this file. Do not call live MSPL on Gamma.
 ## Do not edit src/. Do not widen .gllvmTMB_mspl_prepare() to family_id 4.
 
@@ -53,6 +54,40 @@
 
 .gamma_hirose_atom <- function(S_diag, psi) {
   sum(as.numeric(S_diag) / as.numeric(psi))
+}
+
+.gamma_info_size <- function(n_rows, phi) {
+  s <- as.numeric(n_rows) * as.numeric(phi)
+  if (!is.finite(s) || s < 1) 1 else s
+}
+
+.gamma_cG <- function(p_free, info_size) {
+  2 * sqrt(as.numeric(p_free) / as.numeric(info_size))
+}
+
+.gamma_c_bernoulli <- function(p_free, n_rows) {
+  2 * sqrt(as.numeric(p_free) / as.numeric(n_rows))
+}
+
+.gamma_c_gaussian <- function(n_units) {
+  sqrt(2 / as.numeric(n_units))
+}
+
+.gamma_c_poisson <- function(p_free, y) {
+  2 * sqrt(as.numeric(p_free) / max(sum(as.numeric(y)), 1))
+}
+
+.gamma_V_shape <- function(Lambda, phi) {
+  Lambda <- as.matrix(Lambda)
+  phi <- as.numeric(phi)
+  if (length(phi) == 1L) {
+    phi <- rep(phi, nrow(Lambda))
+  }
+  if (length(phi) != nrow(Lambda)) {
+    stop("Gamma loading atom requires phi length n_traits.", call. = FALSE)
+  }
+  phi <- pmax(phi, 0)
+  sum(sqrt(1 + rowSums(Lambda * Lambda) * phi) - 1)
 }
 
 .gamma_fixture <- function() {
@@ -299,6 +334,154 @@ test_that("E10: Phase-4 oracles never invoke a live Gamma MSPL fit", {
   ))
   expect_false(any(grepl("estimator\\s*=\\s*[\"']mspl[\"']", code)))
   expect_false(any(grepl("family_id\\s*%in%\\s*c\\(0L,\\s*1L,\\s*2L,\\s*4L\\)", code)))
+})
+
+test_that("E11: Gamma rate c_G uses n*phi, not N_rows, N_units, events, or 1", {
+  fx <- .gamma_fixture()
+  info_fx <- .gamma_info_size(fx$n_rows, fx$phi)
+  expect_equal(info_fx, fx$n_rows * fx$phi, tolerance = 1e-15)
+  expect_equal(
+    .gamma_cG(fx$p_free, info_fx),
+    2 * sqrt(fx$p_free / (fx$n_rows * fx$phi)),
+    tolerance = 1e-15
+  )
+  ## Contrast block uses (p, n, phi) that cannot collide with c=1
+  ## (the toy fixture is 2 * sqrt(2 / 8) = 1 by algebra).
+  p_free <- 6
+  n_rows <- 10
+  phi <- 2
+  info <- .gamma_info_size(n_rows, phi)
+  cG <- .gamma_cG(p_free, info)
+  expect_equal(cG, 2 * sqrt(6 / 20), tolerance = 1e-15)
+  expect_false(isTRUE(all.equal(cG, 1, tolerance = 1e-8)))
+  expect_false(isTRUE(all.equal(
+    cG,
+    .gamma_c_bernoulli(p_free, n_rows),
+    tolerance = 1e-8
+  )))
+  expect_false(isTRUE(all.equal(
+    cG,
+    .gamma_c_gaussian(n_rows),
+    tolerance = 1e-8
+  )))
+  y_fake <- c(1, 2, 0, 3, 1, 4, 2, 1, 0, 2)
+  expect_false(isTRUE(all.equal(
+    cG,
+    .gamma_c_poisson(p_free, y_fake),
+    tolerance = 1e-8
+  )))
+  expect_false(isTRUE(all.equal(info, n_rows, tolerance = 1e-8)))
+  expect_false(isTRUE(all.equal(info, sum(fx$mu), tolerance = 1e-8)))
+})
+
+test_that("E12: n*phi < 1 floors c_G; rate vanishes as n*phi grows; mu-inert", {
+  expect_equal(.gamma_info_size(4, 0.1), 1)
+  expect_equal(.gamma_cG(4, 1), 4)
+  big <- .gamma_cG(4, 1e6)
+  expect_lt(big, 0.01)
+  expect_gt(big, 0)
+  expect_lt(.gamma_cG(4, 400), .gamma_cG(4, 100))
+
+  fx <- .gamma_fixture()
+  c0 <- .gamma_cG(fx$p_free, .gamma_info_size(fx$n_rows, fx$phi))
+  ## Doubling the mean leaves W = phi, so c_G stays put.
+  expect_equal(
+    .gamma_cG(fx$p_free, .gamma_info_size(fx$n_rows, fx$phi)),
+    c0,
+    tolerance = 0
+  )
+  expect_equal(
+    .gamma_cG(fx$p_free, .gamma_info_size(fx$n_rows, 2 * fx$phi)),
+    2 * sqrt(fx$p_free / (fx$n_rows * 2 * fx$phi)),
+    tolerance = 1e-15
+  )
+  expect_lt(
+    .gamma_cG(fx$p_free, .gamma_info_size(fx$n_rows, 2 * fx$phi)),
+    c0
+  )
+})
+
+test_that("E13: phi-weighted loading is 0 at phi=0; phi=1 recovers Bernoulli", {
+  Lambda <- matrix(c(2.0, -1.5, 0.8, 0.4), 4L, 1L)
+  expect_equal(.gamma_V_shape(Lambda, 0), 0, tolerance = 0)
+  expect_equal(
+    .gamma_V_shape(Lambda, 1),
+    .gamma_bernoulli_V_loading(Lambda),
+    tolerance = 1e-12
+  )
+  expect_false(isTRUE(all.equal(
+    .gamma_V_shape(Lambda, c(0.4, 2.0, 0.25, 1.5)),
+    .gamma_bernoulli_V_loading(Lambda),
+    tolerance = 1e-8
+  )))
+  expect_error(.gamma_V_shape(Lambda, c(1, 2)), "n_traits")
+})
+
+test_that("E14: Gamma loading atom is coercive at phi>0 and silent at phi=0", {
+  phi <- c(1.2, 0.4, 0.8, 2.0)
+  grid <- c(0.5, 2, 8, 32)
+  V <- vapply(
+    grid,
+    function(a) .gamma_V_shape(matrix(a * c(1, -0.6, 0.4, 0.2), 4L, 1L), phi),
+    numeric(1L)
+  )
+  expect_true(all(is.finite(V)))
+  expect_true(all(diff(V) > 0))
+  expect_gt(tail(V, 1L), 10)
+  V0 <- vapply(
+    grid,
+    function(a) .gamma_V_shape(matrix(a * c(1, -0.6, 0.4, 0.2), 4L, 1L), 0),
+    numeric(1L)
+  )
+  expect_equal(V0, rep(0, length(grid)), tolerance = 0)
+  expect_gt(.gamma_bernoulli_V_loading(matrix(32 * c(1, -0.6, 0.4, 0.2), 4L, 1L)), 1)
+})
+
+test_that("E15: V_lambda^G is mu-inert and phi-aware; Bernoulli V is phi-inert", {
+  fx <- .gamma_fixture()
+  V0 <- .gamma_V_shape(fx$Lambda, fx$phi)
+  eps <- 1e-6
+  expect_equal(.gamma_V_shape(fx$Lambda, fx$phi), V0, tolerance = 0)
+  expect_false(isTRUE(all.equal(
+    V0,
+    .gamma_V_shape(fx$Lambda, fx$phi + eps),
+    tolerance = 1e-10
+  )))
+  expect_equal(
+    .gamma_bernoulli_V_loading(fx$Lambda),
+    .gamma_bernoulli_V_loading(fx$Lambda),
+    tolerance = 0
+  )
+  expect_equal(
+    (.gamma_bernoulli_V_loading(fx$Lambda) -
+      .gamma_bernoulli_V_loading(fx$Lambda)) / eps,
+    0,
+    tolerance = 0
+  )
+  ## Mean path cannot move a phi-weighted atom.
+  expect_equal(
+    .gamma_V_shape(fx$Lambda, fx$phi),
+    V0,
+    tolerance = 0
+  )
+})
+
+test_that("E16: Gamma loading atom is not Hirose and not Poisson ybar-weight", {
+  fx <- .gamma_fixture()
+  V <- .gamma_V_shape(fx$Lambda, fx$phi)
+  expect_false(isTRUE(all.equal(
+    V,
+    .gamma_hirose_atom(rep(1, fx$n_rows), rep(1 / fx$phi, fx$n_rows)),
+    tolerance = 1e-3
+  )))
+  ybar <- fx$mu
+  V_pois <- sum(sqrt(1 + rowSums(fx$Lambda * fx$Lambda) * ybar) - 1)
+  expect_false(isTRUE(all.equal(V, V_pois, tolerance = 1e-8)))
+  expect_false(isTRUE(all.equal(
+    V,
+    .gamma_bernoulli_V_loading(fx$Lambda),
+    tolerance = 1e-8
+  )))
 })
 
 test_that("prepare fence is not widened to Gamma family_id 4", {

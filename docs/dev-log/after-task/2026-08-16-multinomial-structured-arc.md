@@ -446,3 +446,15 @@ contradiction only existed across slices.
   estimate campaign verdict. This is stated in the out-of-scope list
   (design doc §6) and should stay visible on the capability board (done,
   this task) rather than fade once the "admitted" label reads as done.
+
+## Addendum — arc-close `--as-cran` check (Melissa's routed item, resolved)
+
+`rcmdcheck::rcmdcheck(args = "--as-cran")` on the final rebased branch
+(904e7d91): **0 ERRORS / 0 WARNINGS / 2 NOTES**. Notes: the standard
+new-submission incoming-feasibility note, and a local untracked scratch log
+(`.full-test-run.log`, not in git, not shipped). One test failure under CRAN
+conditions is PRE-EXISTING and out of arc scope:
+`test-mspl-simulation-contract.R` exercising the mspl lane's own
+`inst/sim/lane-b/lane-b-b2-runner.R` (their commit 0d992c61) — this branch
+touched neither file (`git diff origin/main...HEAD` empty on both), so the
+failure reproduces identically on origin/main.

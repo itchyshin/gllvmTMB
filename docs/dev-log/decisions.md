@@ -2,6 +2,42 @@
 
 Date-stamped one-paragraph design decisions. Append-only.
 
+## 2026-08-17  G0 RECORDED: land the binomial profile-computability probe from the Claude lane
+
+Decision (Shinichi, this sitting, repeated and explicit — *"a pin — build it
+now"* in direct answer to the pin-vs-parked-construction question; *"you can go
+ahead — you choose the best one"*; and a `/goal` naming the two functions
+`landed on current main`): the internal, unexported, uncalibrated binomial
+profile-COMPUTABILITY probe lands on `main` from
+`claude/mspl-interval-computable-pin`.
+
+Recorded here because the authority was given in chat and the repo is the message
+bus. Three **written** fences would otherwise forbid it, and an adversarial
+review correctly refused to open them on a lane's own say-so:
+
+- **D-149** — *"Codex Lane B remains the binomial SE owner. Do not rebuild,
+  reassign, or absorb it."*
+- `docs/dev-log/handover/2026-07-25-active-lane-split.md` — the source branch
+  `codex/lane-b-mspl-interval-feasibility` is **PROTECTED**, *"No
+  absorb/rebase/merge"*.
+- **Design 125 G4c (SIGNED)** — *"no live profile impl / smoke until fork G0."*
+
+**Waived for this artefact ONLY.** Explicitly NOT waived: no public `confint()` /
+`vcov()` / `se = TRUE`; `MSPL-04` stays `blocked`; no coverage claim of any kind;
+no admission gate (softness ratio / N2′-curvature / separation stays with the
+parked construction, D-157); no `src/` change; PR #981 stays open for its own
+`src/` work; #1077 stays draft. Codex Lane B keeps binomial SE ownership — this
+probe is a computability instrument, not an SE route, and does not reassign that.
+
+Two facts the next reader needs. (1) The probe profiles the **penalised tape
+only** (hard-refused otherwise), so it implements Design 125's **fork A** and
+structurally cannot run fork B (`unpenalized_tmb_obj`) or C; landing it must not
+be read as picking that fork. (2) Kosmidis & Firth (2021, Biometrika 108(1),
+§2.2 p. 5), verified this sitting, state the coverage failure under a finiteness
+penalty *"is also true when the penalized likelihood is profiled"* — so a finite
+bracket from this probe is evidence of computability and nothing else. See
+`docs/dev-log/research/2026-08-17-kosmidis-firth-2021-profile-caveat.md`.
+
 ## 2026-05-10  Bootstrap fresh repo from gllvmTMB-native subset
 
 Decision: rebuild gllvmTMB from a clean GitHub repository

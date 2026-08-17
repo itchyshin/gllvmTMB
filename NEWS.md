@@ -1,5 +1,16 @@
 # gllvmTMB 0.7.0 (development)
 
+* **Multinomial fits now warn at fit time when their contrast structure is
+  degenerate.** The screen added this release (collapsed contrast variance,
+  rail-correlated contrasts, or a collapsed spatial range) is now surfaced
+  automatically, under the existing `gllvmTMBcontrol(warn_runaway = )`
+  switch and with its own once-per-session slot, so it cannot suppress or be
+  suppressed by the binomial runaway warning. Set `warn_runaway = FALSE` to
+  silence both; `check_gllvmTMB()` and `gllvmTMB_diagnose()` are unaffected.
+  Ordinal fits deliberately emit no such warning — that family's arms ship
+  disarmed (see the calibration note below), so the row reports statistics
+  without a verdict.
+
 This development release adds an opt-in separation-screening and LA-MSPL lane
 for complete single-trial Bernoulli GLLVMs. Ordinary ML remains unchanged and
 is still the default.

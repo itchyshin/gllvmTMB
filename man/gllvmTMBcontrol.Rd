@@ -287,7 +287,13 @@ Default \code{1/64}.}
 \item{warn_runaway}{If \code{TRUE} (default), warn once per session when a
 binomial latent-variable fit triggers the package's existing runaway-loading
 diagnostic. Set \code{FALSE} to silence the fit-time warning; the diagnostic
-remains available through \code{\link[=gllvmTMB_diagnose]{gllvmTMB_diagnose()}}.}
+remains available through \code{\link[=gllvmTMB_diagnose]{gllvmTMB_diagnose()}}. The same switch also
+governs the multinomial contrast-degeneracy warning (collapsed contrast
+variance, rail-correlated contrasts, or a collapsed spatial range), which
+uses its own once-per-session slot so neither family's warning can
+suppress the other's. Ordinal fits emit no fit-time warning: that row's
+arms ship disarmed because no threshold met its calibration targets, so
+it reports statistics through \code{\link[=check_gllvmTMB]{check_gllvmTMB()}} only.}
 
 \item{allow_nongaussian_reml}{Permit \code{REML = TRUE} for non-Gaussian families.
 Default \code{FALSE}; the restricted likelihood is defined by a Gaussian

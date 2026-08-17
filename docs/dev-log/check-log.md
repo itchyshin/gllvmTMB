@@ -1,3 +1,22 @@
+## 2026-08-17 — AUTHORITATIVE: Poisson W G0 is SIGNED — REPLACE (supersedes PARK)
+
+**Lane:** `cursor/mspl-poisson-W-REPLACE-signed`
+Shinichi *"as you recommended"* after Cursor REPLACE recommendation = explicit
+three-way paste. Card Status **SIGNED — REPLACE**. Prior PARK-from-approve-all /
+`G1 PARK SE doors` on this card is **superseded**. Provenance note **RESOLVED**.
+Codex handover written; **src/ impl not started** (Cursor does not implement tape).
+Doors stay closed until rematch green. Hard stops: no public se; MSPL-04 blocked;
+no Design 118; Lane B PROTECTED; no rebuild #1090.
+
+```sh
+rg -n '^\*\*Status|\*\*SIGNED — REPLACE|superseded' \
+  docs/dev-log/research/2026-08-17-mspl-poisson-W-G0.md \
+  docs/dev-log/research/2026-08-17-poisson-W-G0-signature-provenance.md
+rg -n 'SIGNED — REPLACE|working \$W_\\*\$' docs/dev-log/decisions.md
+git diff --stat -- R/ src/ NEWS.md
+# deliberately not: src/ tape, twin rematch, undraft #1077, public se, Design 118
+```
+
 ## 2026-08-17 — AUTHORITATIVE: G1 PARK SE doors is SIGNED (supersedes Rose RETRACT)
 
 **Lane:** `claude/lane-mspl-profile-led-ci`
@@ -8,6 +27,9 @@ notes are **superseded** by the explicit paste (card §Authority note).
 Also SIGNED: Design 125 APPROVED; ADEMP; G2 OPEN-READY-PR; G3 WAIT; G4a–G4e.
 **V1 PASS:** #1077 stays draft; MSPL-04 blocked; no Design 118 / R / src / NEWS in kit.
 Still NOT: undraft #1077 · Totoro · public se=TRUE · invent KEEP/REPLACE.
+
+> **Superseded for the Poisson W card only (same day):** see entry above —
+> Shinichi’s explicit REPLACE paste. Design 125 G1–G4e kit signatures otherwise stand.
 
 ```sh
 rg -n '^\*\*Status' docs/dev-log/research/2026-08-17-mspl-poisson-W-G0.md

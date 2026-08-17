@@ -535,57 +535,60 @@ binomial loading arms instead.
 
 ### 8.2 Ordinal (`ordinal_probit()`, fid 14) — `ordinal_liability_loading`
 
-Two loading arms, both armed at **40** after the S2b calibration campaign
-(`dev/ordinal-degeneracy/pass-criteria-ordinal.md`, verdict 2026-08-17; 315
-fits, `n = 100/400`, four pre-registered arms, per-fit truth
-`rel_frob > 10`).
+Two loading arms, both shipping **DISARMED at `Inf`/`Inf`** — the
+pre-registered fallback, applied — after the S2b calibration campaign
+(`dev/ordinal-degeneracy/pass-criteria-ordinal.md`, frozen rule scored
+2026-08-17; 315 fits, `n = 100/400`, four pre-registered arms). Sensitivity
+is measured on the `degenerate` arm's 41 `rel_frob > 10` fits; false
+positives are measured ARM-LEVEL across `healthy` + `transport` + `mixed`
+combined (255 fits) — this is what the pre-registration froze, and a first
+scoring pass that relabelled truth per-fit instead of per-arm was caught by
+a D-43 panel and withdrawn (see the correction note in
+`pass-criteria-ordinal.md`).
 
-| Arm | Statistic | Threshold | Sensitivity | False positives |
-|---|---|---|---|---|
-| O1 `runaway_loading` | trait's largest loading / typical loading among the fit's OTHER ordinal traits (family-scoped denominator) | 40 | 37.8% | **0.0% on every arm** |
-| O2 `extreme_magnitude` | trait's largest unit-tier loading, liability scale (never the SPDE tier) | 40 | 60.2% overall, **70.0% homogeneous** | 0.9% overall; **0.0% plain healthy, 0.0% transport**, 2.7% mixed |
+| Arm | Statistic | Note |
+|---|---|---|
+| O1 `runaway_loading` | trait's largest loading / typical loading among the fit's OTHER ordinal traits (family-scoped denominator) | ships disarmed |
+| O2 `extreme_magnitude` | trait's largest unit-tier loading, liability scale (never the SPDE tier) | ships disarmed |
 
 **The frozen conjunction (sensitivity ≥ 90% AND zero false positives) was NOT
-achieved at any threshold, and is reported rather than fudged.**
-`max_loading_unit` separates the classes in the middle (degenerate median
-49.68 vs healthy median 1.23) but the tails overlap (degenerate minimum 10.2,
-healthy maximum 52.3). The full trade-off curve:
+achieved at any threshold, and none can achieve it:** the healthy pool
+reaches `max_loading_unit` 216.9 while the degenerate arm starts at 13.5, so
+the classes are not separable on this statistic at all. The full trade-off
+curve (arm-level FP, the frozen rule):
 
-| O2 threshold | sensitivity | FP (all healthy) |
-|---|---|---|
-| 6 (binomial's own) | 100.0% | **24.0%** |
-| 20 | 90.8% | 10.6% |
-| 40 (**shipped**) | 60.2% | 0.9% |
+| threshold | O2 sensitivity | O2 FP | O1 sensitivity | O1 FP |
+|---|---|---|---|---|
+| 6 (binomial's own) | 100.0% | 39.2% | 61.0% | 28.6% |
+| 20 | 95.1% | 27.8% | 43.9% | 20.4% |
+| 40 | 80.5% | 11.0% | 36.6% | 8.6% |
+| 250 (first zero-FP) | 0.0% | 0.0% | 0.0% | 0.0% |
 
-Two measured facts decided the operating point. First, **at binomial's own
-threshold of 6 the ordinal screen reaches 100% sensitivity but 24% false
-positives — reproducing on ordinal exactly the defect #897 reports in
-binomial (25%)**; borrowing binomial's number would have shipped the very
-failure the issue asks us to fix, which is why the thresholds were set on
-ordinal's own evidence. Second, **every false alarm at any threshold comes
-from heterogeneous-scale designs** (the adversarial transport arm: 78.6% FP
-at 6, 35.7% at 20, 0.0% at 40); **the plain healthy arm has ZERO false
-positives at EVERY threshold from 6 to 40**. An absolute liability-scale
-threshold cannot transport across heterogeneous trait scales, because a
-legitimately large loading on a wide-cutpoint trait is indistinguishable from
-a runaway.
+Two measured facts decided the disposition. First, **at binomial's own
+threshold of 6 the ordinal screen would fire on 39.2% of healthy-arm
+fits — worse than the 25% binomial rate #897 exists to complain about**;
+borrowing binomial's number would have shipped a worse defect than the one
+the issue asks us to fix, which is why #897 directive 1 ("thresholds on
+ordinal's own evidence, not inherited") is vindicated by measurement rather
+than assumed. Second, **the failure mode is heterogeneous per-trait loading
+scales**: false alarms concentrate in the transport arm, and an absolute
+liability-scale threshold cannot transport across per-trait scale
+heterogeneity, because a legitimately large loading on a wide-cutpoint trait
+is indistinguishable from a runaway. A future ordinal screen needs a
+scale-invariant statistic, not a better constant.
 
-Arming at 40 rather than taking the pre-registered ship-disarmed fallback
-follows #897's own stated priority — *"a check that cries wolf a quarter of
-the time gets switched off"* — so specificity is the binding constraint.
-Against the status quo of 0/239 detection, a screen that never cries wolf on
-a healthy fit and still catches ~60-70% of degenerate ones is a strict
-improvement.
+Both arms therefore ship at `Inf`/`Inf`: the row still computes and reports
+its statistics, so a user may arm either threshold explicitly, but arming a
+DEFAULT is a maintainer decision this evidence does not support.
 
 Grid trim, stated rather than silent: the pre-registered grid was
 `n in {100, 400, 1600}`; **`n = 1600` was DROPPED and the `n = 400` seed
 count halved** to stay inside the D-139 budget (315 fits, 9.0 min on 10
-cores; the full grid projected past 30 minutes). The healthy pool is 217
-fits, so the rule-of-three FPR bound is **~1.4%**, not the ~0.6% a 500-fit
-pool would have given. The `cutpoint_span` / `loading_over_span` variant is
-computed and reported for the campaign but is **NOT** wired into `flag` or
-`status`: its circularity precondition (is the span confounded with the
-label it screens for?) was not tested, so it stays calibration-only.
+cores; the full grid projected past 30 minutes). The `cutpoint_span` /
+`loading_over_span` variant is computed and reported for the campaign but is
+**NOT** wired into `flag` or `status`: its circularity precondition (is the
+span confounded with the label it screens for?) was not tested, so it stays
+calibration-only.
 
 Why this row is the whole of a default ordinal fit's coverage: fid 14 traits
 drop the auto-Psi at parse time (`auto_unique_off_family`, `R/fit-multi.R`),
@@ -672,8 +675,10 @@ free partner trait.
 - **Ordinal at `n = 1600`**: no evidence.
 - **The `cutpoint_span` variant**: calibration-only, circularity untested.
 - **The M1 relative/sibling sub-arm**: disarmed, untested.
-- **FPR bounds, not verified zeros**: ~1.4% (ordinal, 217 healthy fits) and
-  ~7.5% (multinomial, 40 informative healthy fits).
+- **Ordinal has no usable threshold, measured rather than assumed**: the
+  frozen calibration found no threshold meeting the sensitivity/FP
+  conjunction, so both ordinal arms ship disarmed (§8.2); the multinomial
+  FPR bound (~7.5%, 40 informative healthy fits) is unaffected.
 
 ## See also
 

@@ -11,9 +11,14 @@ branch `claude/categorical-paper-alignment-20260817`.
 
 ## Draft comment
 
-**Both categorical families now have a degeneracy screen, and this issue's
-three directives were each answered on their own terms.** Summary against the
-directives, then the evidence.
+**Both categorical families now have a degeneracy row in `check_gllvmTMB()`,
+and this issue's three directives were each answered on their own terms —
+though not all three land as a working screen.** The mechanism question is
+settled. The multinomial screen ships armed and measured. The ordinal
+threshold question is answered **negatively, with evidence**: no threshold on
+the statistic tested is defensible, so both ordinal arms ship disarmed, and
+the campaign identifies what a working screen would need instead. Summary
+against the directives, then the evidence.
 
 ### 1. The mechanism you flagged as unknown is SETTLED: separation, not saturation
 
@@ -45,57 +50,70 @@ arm has no empirical basis, so it was **deliberately not built**. The ordinal
 row is modelled on the binomial loading arms instead, which is where the
 measurement pointed.
 
-### 2. Ordinal thresholds were set on ordinal evidence, NOT inherited — and the measurement shows exactly why that mattered
+### 2. Ordinal thresholds were set on ordinal evidence, NOT inherited — and the measurement says no threshold is defensible
 
 Directive 2 asked that ordinal not borrow binomial's numbers. Calibration ran
-315 fits (`n = 100/400`, four pre-registered design arms, per-fit truth
-`rel_frob > 10`; `dev/ordinal-degeneracy/pass-criteria-ordinal.md`, VERDICT
-2026-08-17).
+315 fits (`n = 100/400`, four pre-registered design arms;
+`dev/ordinal-degeneracy/pass-criteria-ordinal.md`, frozen rule scored
+2026-08-17). The frozen pre-registration measures sensitivity on the
+`degenerate` arm's `rel_frob > 10` fits (41 of them) and false positives
+ARM-LEVEL across `healthy` + `transport` + `mixed` combined (255 fits) — a
+first scoring pass instead relabelled truth per-fit, which moved 57 fits out
+of the false-positive denominator and inflated the numbers; two independent
+reviewers caught the substitution before anything shipped, and the numbers
+below are the frozen, corrected ones.
 
 **At binomial's own threshold of 6, the ordinal screen measures 100%
-sensitivity and 24% false positives** — reproducing on ordinal precisely the
-defect this issue reports in binomial (25%). Inheriting the number would have
-shipped the very failure the issue asks us to fix. The full curve:
+sensitivity and 39.2% false positives** — *worse* than the 25% defect this
+issue reports in binomial. Inheriting the number would not just have repeated
+the failure the issue asks us to fix, it would have made it worse. The full
+curve:
 
-| O2 threshold | sensitivity | FP (all healthy fits) |
-|---|---|---|
-| 6 (binomial's) | 100.0% | **24.0%** |
-| 20 | 90.8% | 10.6% |
-| 40 (**shipped**) | 60.2% | 0.9% |
+| threshold | O2 sensitivity | O2 FP | O1 sensitivity | O1 FP |
+|---|---|---|---|---|
+| 6 (binomial's) | 100.0% | 39.2% | 61.0% | 28.6% |
+| 20 | 95.1% | 27.8% | 43.9% | 20.4% |
+| 40 | 80.5% | 11.0% | 36.6% | 8.6% |
+| 250 (first zero-FP) | 0.0% | 0.0% | 0.0% | 0.0% |
 
-**Where the false positives come from.** Every false alarm at every threshold
-comes from designs with heterogeneous per-trait loading scales — the
-adversarial *transport* arm, pre-registered to test exactly that hypothesis
-(78.6% FP at 6, 35.7% at 20, 0.0% at 40). **The plain healthy arm has ZERO
-false positives at every threshold from 6 to 40.** An absolute liability-scale
-threshold cannot transport across heterogeneous trait scales: a legitimately
-large loading on a wide-cutpoint trait is indistinguishable from a runaway.
+**No threshold meets the frozen conjunction (sensitivity ≥ 90% AND zero false
+positives), and none can:** the healthy pool reaches `max_loading_unit` 216.9
+while the degenerate arm starts at 13.5, so the classes are not separable on
+this statistic at all. The first zero-false-positive point is threshold 250,
+where sensitivity is 0.0%.
 
-**Shipped, armed at 40** (`check_gllvmTMB()` row `ordinal_liability_loading`):
+**Disposition: both arms ship DISARMED at `Inf`/`Inf`** — the pre-registered
+fallback, applied as measured. `check_gllvmTMB()`'s `ordinal_liability_loading`
+row still computes and reports both statistics for every fid-14 fit, so a
+user can arm either threshold explicitly; arming a *default* is a maintainer
+decision this evidence does not support.
 
-- **O2 `ordinal_loading_absolute_thresh = 40`** — sensitivity 60.2% overall,
-  **70.0% on homogeneous designs**, FP 0.9% overall (0.0% healthy arm, 0.0%
-  transport arm, 2.7% mixed).
-- **O1 `ordinal_loading_runaway_thresh = 40`** — sensitivity 37.8%, FP
-  **0.0% on every arm**.
+**What the campaign nonetheless establishes — the finding is the
+deliverable:**
 
-**Reported honestly, because it did not pass:** the frozen conjunction
-(sensitivity ≥ 90% **and** zero false positives) was **NOT achieved at any
-threshold** — the class distributions overlap in the tails (degenerate minimum
-10.2, healthy maximum 52.3). Arming at 40 rather than taking the pre-registered
-ship-disarmed fallback follows this issue's own stated priority — *a check that
-cries wolf a quarter of the time gets switched off* — so specificity was
-treated as the binding constraint. Against the status quo this issue reports
-(**0/239** detected), a screen that never cries wolf on a healthy fit and
-catches ~60-70% of degenerate ones is a strict improvement; the alternative
-leaves the gap fully open.
+1. **Borrowing binomial's threshold would have been a bug, not a shortcut.**
+   At 6 the ordinal screen fires on 39.2% of healthy-arm fits — worse than the
+   25% binomial rate this issue exists to complain about. Directive 1's
+   premise (thresholds on ordinal's own evidence, not inherited) is vindicated
+   by measurement, not merely honoured procedurally.
+2. **The failure mode is heterogeneous per-trait loading scales.** False
+   alarms concentrate in the *transport* arm (pre-registered specifically to
+   test 10-30x per-trait loading-scale heterogeneity). An absolute
+   liability-scale threshold cannot transport across per-trait scale
+   heterogeneity: a legitimately large loading on a wide-cutpoint trait is
+   indistinguishable from a runaway. **A future ordinal screen needs a
+   scale-invariant statistic, not a better constant** — that is the stated
+   path forward, not a re-tuned threshold on the same statistic.
 
 **Limits, stated rather than buried:** no `n = 1600` evidence (that arm was
 dropped and `n = 400`'s seeds halved to stay inside the 30-minute pre-run
-budget); the healthy pool of 217 fits gives a rule-of-three FPR bound of
-**~1.4%, not a verified zero**; the `cutpoint_span` variant was NOT promoted
-(its circularity precondition was untested, so it stays calibration-only); and
-sensitivity below 90% is a real miss, recorded as one.
+budget); the `cutpoint_span` variant was NOT promoted (its circularity
+precondition was untested, so it stays calibration-only).
+
+**Do not read this as the detection gap closed for ordinal.** The mechanism
+question this issue raised is settled (§1). The threshold question is
+answered — negatively, with evidence and a stated path forward — not solved.
+`ordinal_probit()` fits still get no armed degeneracy screen by default.
 
 ### 3. `aghq_ridge` was not touched
 
@@ -154,12 +172,12 @@ remaining free traits is still caught.
 **The binomial screen's own ~25% false-positive rate is measured and diagnosed
 but NOT re-calibrated here.** The ordinal campaign identifies the cause — an
 absolute liability-scale threshold cannot transport across heterogeneous
-per-trait loading scales, which is the same mechanism that produced 24% on
-ordinal at the same threshold — but re-tuning a shipped, load-bearing screen on
-evidence gathered for a *different* family would repeat exactly the inheritance
-error directive 1 warns against. It needs its own binomial healthy/degenerate
-arms and its own pre-registration, and is proposed as a follow-up issue rather
-than folded into this one.
+per-trait loading scales, the same mechanism that produced an even higher
+39.2% false-positive rate on ordinal at that same threshold — but re-tuning a
+shipped, load-bearing screen on evidence gathered for a *different* family
+would repeat exactly the inheritance error directive 1 warns against. It needs
+its own binomial healthy/degenerate arms and its own pre-registration, and is
+proposed as a follow-up issue rather than folded into this one.
 
 ### One behaviour change deliberately NOT made
 
@@ -170,9 +188,14 @@ would feel and is left to the maintainer.
 
 ### Suggested disposition
 
-Close this issue on directives 1-3 (mechanism settled, ordinal screen shipped
-on ordinal evidence, `aghq_ridge` untouched), and open a follow-up for the
-binomial re-calibration described above. Full record:
+Close this issue on directives 1-3: the mechanism is settled (separation, not
+saturation); the ordinal threshold question is answered on ordinal's own
+evidence, negatively — no threshold is defensible on `max_loading_unit`, so
+both arms ship disarmed, with a stated path forward (a scale-invariant
+statistic); `aghq_ridge` is untouched. Multinomial's parallel gap is also
+closed with an armed, measured screen. Open a follow-up for the binomial
+re-calibration described above, and a second follow-up for an ordinal
+scale-invariant statistic if a working default screen is wanted. Full record:
 `docs/design/123-multinomial-structured-surface.md` §8, register rows FAM-14 /
 FAM-20 / DIA-08, and
 `docs/dev-log/after-task/2026-08-17-categorical-paper-alignment-and-detector.md`.

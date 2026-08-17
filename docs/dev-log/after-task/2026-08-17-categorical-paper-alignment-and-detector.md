@@ -61,8 +61,11 @@ what the calibration actually measures.
   **single-column runaway** (loading 44.2 against a true `max|Lambda|` 4.79).
 - **Multinomial arms armed**: M1 (`collapse_floor = 1e-10`), M2 (`rail_thresh
   = 0.99`, rank-≥2 tiers only), M3 (`range_collapse_thresh = 0.02`).
-- **Ordinal arms armed at 40**: O1 (`runaway_loading`) and O2
-  (`extreme_magnitude`), on 315 fits across four pre-registered arms.
+- **Ordinal arms ship DISARMED at `Inf`/`Inf`**: O1 (`runaway_loading`) and O2
+  (`extreme_magnitude`), on 315 fits across four pre-registered arms, scored
+  under the frozen arm-level rule — no threshold clears the pre-registered
+  conjunction (§3a corrects an earlier, withdrawn per-fit-scored verdict that
+  had armed both arms at 40).
 - **Diagonal-V replication rider (FAM-20D)** — pre-registered before results,
   **FAILS its gates, and the failure is the finding**: replication does not
   rescue the diagonal-V mode.
@@ -134,21 +137,41 @@ what the calibration actually measures.
   suspected mechanism never fires. *Rejected alternative*: build the arm #897
   hypothesised anyway, "for completeness". *Confidence*: high — the refutation
   is a measurement, not an absence of evidence.
-- **Decision: ordinal thresholds set on ordinal evidence (40), not inherited
+- **Decision: ordinal thresholds are set on ordinal evidence, never inherited
   from binomial (6).** *Rationale*: at 6 the ordinal screen measures 100%
-  sensitivity and **24% false positives**, reproducing the exact defect #897
-  reports in binomial (25%). *Rejected alternative*: reuse binomial's number
-  for consistency — that would have shipped the defect the issue asks us to
-  fix. *Confidence*: high.
-- **Decision: arm the ordinal arms at 40 rather than take the pre-registered
-  ship-disarmed fallback.** *Rationale*: the frozen conjunction (sensitivity
-  ≥ 90% **and** zero FP) was not achievable at any threshold; #897's own stated
-  priority is that a screen crying wolf gets switched off, so specificity
-  binds. At 40 the screen has 0.0% FP on the plain healthy arm and 0.0% on the
-  adversarial transport arm while catching ~60-70%. Against 0/239 detection
-  that is a strict improvement. *Rejected alternative*: ship disarmed and leave
-  #897 fully open. *Confidence*: medium-high — sensitivity below the frozen
-  target is a real miss and is recorded as one.
+  sensitivity and **39.2% false positives** (arm-level, the frozen rule) —
+  *worse* than the 25% defect #897 reports in binomial. *Rejected
+  alternative*: reuse binomial's number for consistency — that would have
+  shipped a bigger version of the defect the issue asks us to fix.
+  *Confidence*: high.
+- **CORRECTION (2026-08-17, after D-43 panel review): the ordinal arms ship
+  DISARMED at `Inf`/`Inf`, reversing this report's own earlier "armed at 40"
+  entry.** *What happened*: the first scoring pass computed false positives
+  with a PER-FIT relabelling (`rel_frob > 10` applied to every arm), which
+  moved 57 of 180 healthy+transport fits out of the false-positive denominator
+  and into the sensitivity numerator — a substitution applied AFTER results,
+  never pre-registered. That reading produced the now-withdrawn "O2 60.2%
+  sensitivity / 70.0% homogeneous at 0.9% FP", "O1 37.8% at 0.0% FP", and "24%
+  false positives at threshold 6" numbers, and this report originally armed
+  both arms at 40 on that basis. The frozen pre-registration
+  (`dev/ordinal-degeneracy/pass-criteria-ordinal.md`) instead defines
+  sensitivity on the `degenerate` arm's `rel_frob > 10` fits and false
+  positives ARM-LEVEL across `healthy` + `transport` + `mixed` combined — two
+  independent D-43 reviewers caught the substitution. Rescored under the
+  frozen rule: at threshold 6, O2 sensitivity 100.0% / FP **39.2%**, O1
+  61.0% / FP 28.6%; at 40, O2 80.5% / FP 11.0%, O1 36.6% / FP 8.6%; the first
+  zero-FP point is threshold 250, where sensitivity is 0.0%. **No threshold
+  meets the frozen conjunction, and none can** — the healthy pool reaches
+  `max_loading_unit` 216.9 while the degenerate arm starts at 13.5, so the
+  classes are not separable on this statistic. *Disposition*: both arms
+  revert to the pre-registered ship-disarmed fallback, `Inf`/`Inf`; the row
+  still computes and reports its statistics. *What the campaign still
+  establishes positively*: borrowing binomial's threshold of 6 would have
+  shipped a 39.2% false-alarm screen — worse than the 25% rate #897 complains
+  about — vindicating #897 directive 1 by measurement; and the failure mode is
+  heterogeneous per-trait loading scales, so a future ordinal screen needs a
+  scale-invariant statistic, not a better constant. *Confidence*: high — this
+  is the frozen pre-registration, restored.
 - **Decision: the multinomial FP denominator is 40, not 56.** *Rationale*: the
   s4 `re_int` cell's 20 fits emit no detector row at all (a bare `(1 | group)`
   fit has no loading tier), so they carry zero specificity information;
@@ -219,8 +242,10 @@ what the calibration actually measures.
   tested directly.
 - **Adversarial arm**: the ordinal calibration's *transport* arm (10-30x
   per-trait scale spread) was pre-registered specifically to break an absolute
-  threshold, and it did (78.6% FP at 6) — the arm earned its keep rather than
-  padding the pass rate.
+  threshold, and it did — false alarms across the arm-level `healthy` +
+  `transport` + `mixed` pool reach 39.2% at threshold 6, and the transport
+  arm is where they concentrate — the arm earned its keep rather than padding
+  the pass rate.
 - **Hand-computed oracle**: PA2's mocked cells verify the H^2 arithmetic to
   1e-10 independently of any fit; the live cells and the MCMCglmm comparator
   are separate.
@@ -236,10 +261,9 @@ what the calibration actually measures.
   still says ordinal has no detector.
 - `rg "UNTESTED for the diagonal-V"` — zero hits: the caveat is closed in both
   the register and the design doc, in the same direction (negative result).
-- `rg -n "disarmed" NEWS.md` — one hit,
-  `multinomial_collapse_rel_thresh` (line 27), which is correct; the two
-  "disarmed by default (`Inf`) pending a calibration campaign" claims that
-  described the now-armed arms are gone.
+- `rg -n "disarmed" NEWS.md` — hits on `multinomial_collapse_rel_thresh`
+  (still correct) and on the ordinal O1/O2 arms, which ship disarmed at
+  `Inf`/`Inf` after the D-43 correction recorded in §3a.
 - `rg "extract_phylo_signal" docs/design/35-validation-debt-register.md` —
   PHY-07 and EXT-07 both exist; the defect note is on PHY-07, and EXT-07's
   older #677 claim is untouched and still true.
@@ -258,11 +282,16 @@ extractor fix, not a recovery-evidence promotion.
 ## 7a. GitHub Issue Ledger
 
 - **#897** (`ordinal_probit` has no degeneracy detector) — the arc that answers
-  it. A ready-to-post closeout comment is drafted at
-  `docs/dev-log/issue-897-closeout-draft.md`; **it has not been posted**, and
-  the issue is not closed by this lane. Recommended disposition: close on the
-  mechanism + ordinal-screen half, and open a follow-up for the binomial
-  re-calibration named below.
+  it, though not with a working ordinal screen. A ready-to-post closeout
+  comment is drafted at `docs/dev-log/issue-897-closeout-draft.md`; **it has
+  not been posted**, and the issue is not closed by this lane. Recommended
+  disposition: close on the mechanism half (settled: category-level
+  separation, not link saturation) and the threshold half (answered
+  negatively, with evidence: no threshold on `max_loading_unit` clears the
+  frozen conjunction, both arms ship disarmed, and borrowing binomial's own
+  threshold would have been worse than the defect #897 complains about); open
+  a follow-up for the binomial re-calibration named below and for a
+  scale-invariant ordinal statistic.
 - **Follow-up to file (not filed by this lane)**: re-calibrate the binomial
   prevalence/loading screen's own ~25% false-positive rate. The ordinal
   campaign diagnosed the cause (an absolute threshold cannot transport across
@@ -303,12 +332,14 @@ extractor fix, not a recovery-evidence promotion.
   stashes from other lanes, `git stash pop` is never a safe read-only tool.
   Use `git show <rev>:<path>` to compare versions instead.
 - **The frozen ordinal conjunction was not achievable at all.** No threshold
-  reaches 90% sensitivity with zero false positives, because the class
-  distributions overlap in the tails (degenerate minimum 10.2, healthy maximum
-  52.3). Discovering that a pre-registration was unsatisfiable is a better
-  outcome than discovering it after quietly relaxing it, but it did mean the
-  arming decision had to be made against the issue's stated priority rather
-  than against the frozen rule.
+  reaches 90% sensitivity with zero false positives, because the classes are
+  not separable on `max_loading_unit` (healthy pool reaches 216.9, degenerate
+  arm starts at 13.5). Discovering that a pre-registration was unsatisfiable is
+  a better outcome than discovering it after quietly relaxing it — and here it
+  also caught a scoring error: a first pass scored false positives per-fit
+  instead of arm-level, which looked good enough to justify arming both arms
+  at 40 against the issue's stated priority, until a D-43 panel caught the
+  substitution and restored the frozen rule, which both arms fail. See §3a.
 
 ## 9. Team Learning (per AGENTS.md Standing Review Roles)
 
@@ -341,16 +372,21 @@ extractor fix, not a recovery-evidence promotion.
    `n in {100, 400, 1600}`; the largest arm was dropped and `n = 400`'s seeds
    halved for the D-139 budget. Nothing is known about how either ordinal arm
    behaves at that scale.
-2. **Ordinal sensitivity is below the frozen 90%.** At the shipped threshold of
-   40, O2 catches 60.2% overall (70.0% on homogeneous designs) and O1 catches
-   37.8%. The pre-registered conjunction was not achieved at any threshold, and
-   arming was a judgement call against #897's stated specificity priority — not
-   a gate that passed.
-3. **The false-positive rates are BOUNDS, not verified zeros.** Zero false
-   alarms were observed, but the healthy pools give rule-of-three bounds of
-   **~1.4%** (ordinal, 217 fits) and **~7.5%** (multinomial, 40 informative
-   fits). Bounding either near 0.6% needs a ≥ 500-fit healthy arm; that is
-   outstanding, not done.
+2. **No ordinal threshold clears the frozen conjunction, and both arms ship
+   disarmed.** Under the frozen arm-level rule, O2 reaches 100.0% sensitivity
+   only at the cost of 39.2% false positives (threshold 6), and false
+   positives never reach zero before sensitivity does (threshold 250, 0.0%
+   sensitivity). The classes are not separable on `max_loading_unit` at all.
+   §3a records the correction: an earlier per-fit-scored pass looked good
+   enough to arm both arms at 40, was caught by a D-43 panel, and was
+   reverted to the pre-registered ship-disarmed fallback.
+3. **The multinomial false-positive rate is a BOUND, not a verified zero.**
+   Zero false alarms were observed on 40 informative healthy multinomial
+   fits, giving a rule-of-three bound of **~7.5%**. Bounding it near 0.6%
+   needs a ≥ 500-fit healthy arm; that is outstanding, not done. (Ordinal has
+   no comparable bound to tighten — its arms ship disarmed because no
+   threshold is defensible on this statistic, not because the false-positive
+   estimate is merely imprecise.)
 4. **No rho claim for the combined multinomial model (PA4 Cell B).** The
    variance components recover; the among-category correlation rails on 12/20
    seeds once a non-phylogenetic species tier competes for liability variance.

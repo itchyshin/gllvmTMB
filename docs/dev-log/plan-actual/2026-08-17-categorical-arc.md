@@ -54,7 +54,7 @@ without a recorded decision. **unclear**: no receipt exists either way.
 | # | Planned | Actual | Class |
 |---|---|---|---|
 | 4.1 | Fit-time warnings are a behaviour change requiring maintainer sign-off | Not wired for either family; stated on NEWS, Design 123 §8, and register FAM-14 / FAM-20 / DIA-08 (grep: 2 / 2 / 4 hits). Gate respected conservatively | adaptive |
-| 4.2 | S3 thresholds are a maintainer gate; the ordinal pre-registration's own fallback is "ship-disarmed-and-document if unreachable" | The frozen conjunction failed at every threshold, and the arms shipped **armed at 40** on the lane's judgement against #897's specificity priority. `dev/ordinal-degeneracy/pass-criteria-ordinal.md` still reads "STATUS: DRAFT — pending sign-off" while its arms ship — unlike the PA4 and diagonal-V files, which carry explicit SIGNED headers | **drift** |
+| 4.2 | S3 thresholds are a maintainer gate; the ordinal pre-registration's own fallback is "ship-disarmed-and-document if unreachable" | The frozen conjunction failed at every threshold. This reconcile originally found the arms shipped **armed at 40** on the lane's own judgement, against the maintainer-gate fallback. **CORRECTED IN-LANE, 2026-08-17, after a D-43 panel:** the "armed at 40" verdict itself was scored with a per-fit relabelling never in the pre-registration; the frozen arm-level rule was restored, both arms failed it at every threshold tested, and they now ship **DISARMED at `Inf`/`Inf`** — the pre-registered fallback, as originally specified. See `dev/ordinal-degeneracy/pass-criteria-ordinal.md`'s correction notice | **drift (corrected in-lane; see closure note below)** |
 | 4.3 | Pre-registration frozen before results, draft and results in separate commits | Held in all four campaigns: `e932cf37` to `b33d3b90` (S1), `f6552ee9` to `6f34568e` (S3-mn), `1925bc24` to `5e745dcd` (diagonal-V), `78507518`/`6db3296d` to `f9fe7d3c` (PA4) | adaptive |
 | 4.4 | Frozen bands never widened after results | `sd_true = c(0.8, 0)` proved mathematically unrunnable (singular V, `chol` fails); substituted `c(0.8, 0.05)` as a dated amendment **below** an untouched frozen block, and the planted-zero rail gate stands as FAIL-as-scored with the "correlation over ~zero variance is undefined" reading attached rather than retro-fitted | adaptive |
 | 4.5 | D-139: estimate before running; > 30 min needs a pre-run test and approval | Every campaign time-estimated from a timing fit; the one projection that breached 30 min (the three-n ordinal grid) was trimmed rather than run — see 2.1 for the cost | adaptive |
@@ -65,7 +65,7 @@ without a recorded decision. **unclear**: no receipt exists either way.
 | # | Planned | Actual | Class |
 |---|---|---|---|
 | 5.1 | Diagnostic coverage only; no register status promotion | No new export, no `method=`; register FAM-14 and FAM-20 each state in-line that this is "NOT a status change" and after-task §7 says the same | adaptive |
-| 5.2 | Report measured numbers, never a verified zero | NEWS carries 60.2% / 70.0% / 37.8% sensitivity, the failed 90% target, the 24% FP at threshold 6, and the ~1.4% bound; the multinomial surfaces carry the ~7.5% bound with the excluded s4 denominator explained | adaptive |
+| 5.2 | Report measured numbers, never a verified zero | NEWS (corrected 2026-08-17 after the D-43 panel) carries the frozen arm-level numbers — O2 100.0%/39.2% at threshold 6, down to 0.0%/0.0% at 250, both arms shipping disarmed, the failed 90%-sensitivity/zero-FP target, and no ordinal FPR bound (there is no default threshold to bound); the multinomial surfaces carry the ~7.5% bound with the excluded s4 denominator explained | adaptive |
 | 5.3 | PA4 claim scoped by its own gates | Multinomial fenced to components-only (12/20 rails against a frozen > 6/20); no rho claim under a competing species tier | adaptive |
 | 5.4 | FAM-20D caveat closed either way | Closed with a **negative** result: replication does not rescue the diagonal-V mode (7/20, identical to baseline), with the register instructed not to extrapolate the s1b full-rank pass | adaptive |
 | 5.5 | Nothing posted publicly | Nothing posted; the #897 comment is a draft and no issue was closed or commented on | adaptive |
@@ -88,8 +88,8 @@ without a recorded decision. **unclear**: no receipt exists either way.
 
 | Item | Owner | Action |
 |---|---|---|
-| 4.2 — ordinal arms armed at 40 against the pre-registered ship-disarmed fallback, on a threshold decision the plan named a maintainer gate | **Shinichi** | Ratify arming at 40 or order the arms back to `Inf`. The evidence for either is complete and in one place (`dev/ordinal-degeneracy/pass-criteria-ordinal.md` VERDICT). Nothing else in the arc depends on the answer |
-| 4.2b — `pass-criteria-ordinal.md` header still reads "DRAFT — pending sign-off" while its arms ship | orchestrator (lane) | One-line status fix once 4.2 is answered, matching the SIGNED headers on the PA4 and diagonal-V files |
+| 4.2 — ordinal arms armed at 40 against the pre-registered ship-disarmed fallback, on a threshold decision the plan named a maintainer gate | **CLOSED — corrected in-lane, 2026-08-17** | No longer needs Shinichi's ratification. A D-43 panel found the "armed at 40" verdict was scored with a per-fit relabelling not in the pre-registration; the frozen arm-level rule was restored, no threshold clears it, and both arms now ship `Inf`/`Inf` — the pre-registered fallback itself, applied as originally specified. Nothing routed to the maintainer here |
+| 4.2b — `pass-criteria-ordinal.md` header still reads "DRAFT — pending sign-off" while its arms ship | **CLOSED — corrected in-lane** | The header now reads "FROZEN pre-registration; scored 2026-08-17. NOT signed off as a shipping threshold — both arms ship DISARMED per its own fallback clause", consistent with the disarmed disposition |
 | 2.4 — D-43 panel verdicts not landed anywhere | orchestrator (`main`) | Append the three panel verdicts (or an explicit "panel not required, no status promotion" note) to the after-task §4 before handover. As it stands the panel is unfalsifiable from the repo |
 | 1.4 — S5's declined print method: no contract note, no follow-up issue | orchestrator (lane) | Either record the bare-data.frame contract decision in Design 123 §8, or strike the item from scope explicitly |
 | 6.1 — 5 unpushed commits | orchestrator (`main`) | Push (this reconciler does not push per brief) |
@@ -102,13 +102,17 @@ that changed a number is disclosed on the surface where the number appears —
 the trimmed ordinal grid, the failed frozen conjunction, the components-only
 multinomial claim, the diagonal-V negative result, and the honest 40-not-56
 false-positive denominator all reached NEWS and the register in the same words
-they have in the pre-registrations. Two of the six drift items are substantive:
-the ordinal arms were armed on the lane's own judgement after the
-pre-registration's fallback said ship-disarmed, on a threshold decision the plan
-had reserved to the maintainer (well-argued, fully documented, and reversible in
-one edit — but not the lane's call to make), and the arc-close D-43 panel ran
-without leaving a verdict in the repo, which means the one check designed to
-catch an over-claim is the one check with no receipt. The remaining four are
+they have in the pre-registrations. Two of the six drift items were substantive
+at the time this reconcile first ran. One is now **closed**: the ordinal arms
+had been armed on the lane's own judgement after the pre-registration's
+fallback said ship-disarmed, on a threshold decision the plan had reserved to
+the maintainer — a D-43 panel caught the scoring error behind that arming
+in-lane (a per-fit relabelling never in the frozen rule), the arms were
+reverted to `Inf`/`Inf`, and no maintainer ratification is now pending (item
+4.2 above). The other stands: the arc-close D-43 panel ran without leaving a
+consolidated verdict record in the repo (beyond what the ordinal correction
+itself now documents), which means the check designed to catch an over-claim
+is still short its own receipt for the arc as a whole. The remaining four are
 handoff hygiene: five unpushed commits, no PR, no message-bus line, and a
 silently dropped S5 sub-item. None of them threatens a public claim — nothing
 was posted, no export was added, and no register status moved — but together

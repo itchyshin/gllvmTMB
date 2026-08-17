@@ -76,26 +76,29 @@ is still the default.
   only -- **no fit-time warning**, no new export, no behaviour change to
   any existing fit.
 
-  Both arms ship armed at **40** (`ordinal_loading_runaway_thresh`,
-  `ordinal_loading_absolute_thresh`), calibrated on 315 fits across four
-  pre-registered design arms, and the numbers are reported as measured
-  rather than as a headline. At 40 the absolute arm catches **60.2%** of
-  degenerate fits overall (**70.0%** on designs with homogeneous trait
-  scales) at **0.9%** false positives, and the relative arm catches 37.8%
-  at **0.0%** false positives on every arm. The pre-registered target of
-  90% sensitivity with zero false alarms was **not** reached at any
-  threshold: at binomial's own threshold of 6 the screen reaches 100%
-  sensitivity but **24% false positives**, which is the same failure mode
-  #897 reports for binomial itself (25%) -- so ordinal's thresholds were
-  set on ordinal evidence rather than inherited. Every false alarm at any
-  threshold came from designs mixing very different per-trait loading
-  scales; the plain healthy arm produced none at any threshold from 6 to
-  40. Specificity was the binding constraint deliberately: against the
-  previous state of 239 degenerate fits and no flag at all, a screen that
-  never cries wolf on a healthy fit and catches most degenerate ones is
-  the useful trade. Honest limits: no evidence at `n = 1600` (that arm was
-  dropped for run time), and with 217 healthy fits the false-positive rate
-  is bounded near **1.4%**, not verified at zero.
+  Both arms ship **DISARMED at `Inf`/`Inf`** -- the row still computes and
+  reports its statistics, but neither threshold is armed by default.
+  Calibration ran 315 fits across four pre-registered design arms, scored
+  under the frozen pre-registration (sensitivity on the `degenerate` arm's
+  `rel_frob > 10` fits; false positives measured across `healthy` +
+  `transport` + `mixed` combined), and found **no threshold that clears
+  the pre-registered target of 90% sensitivity with zero false alarms --
+  and none can**: the healthy pool reaches a loading magnitude of 216.9
+  while the degenerate arm starts at 13.5, so the classes are not
+  separable on this statistic at all. At binomial's own threshold of 6,
+  the absolute arm reaches 100% sensitivity but **39.2%** false positives
+  and the relative arm 61.0% sensitivity at 28.6% false positives --
+  *worse* than the 25% false-positive rate #897 reports for binomial
+  itself, so borrowing binomial's threshold would have shipped a bigger
+  problem than the one the issue complains about. The false alarms
+  concentrate in designs mixing very different per-trait loading scales:
+  an absolute liability-scale threshold cannot transport across
+  heterogeneous trait scales, so a future screen needs a scale-invariant
+  statistic rather than a better constant. Honest limits: no evidence at
+  `n = 1600` (that arm was dropped for run time). What the campaign does
+  establish positively: the mechanism question (#897's other open
+  question) is settled as category-level separation, and the threshold
+  question is answered negatively with a stated path forward.
 
   Neither categorical screen changes what fitting itself does: `gllvmTMB()`
   warns exactly as before, and both rows appear only when you call

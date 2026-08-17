@@ -1,6 +1,6 @@
 ---
 title: "Rare items and runaway estimates in Paper × Items evidence synthesis"
-description: "Ordinate a papers-by-items evidence table with a probit GLLVM, then meet the two ways such fits break — runaway loadings and separated rare items — and the matched remedy for each: an opt-in loading ridge, and the opt-in MSPL estimator."
+description: "Ordinate a papers-by-items evidence table with a probit GLLVM, then meet the two ways such fits break — runaway loadings and separated rare items — and the matched remedy for each: an opt-in loading ridge for one, the opt-in MSPL estimator for the other, never both in one fit."
 tier: 1
 output:
   rmarkdown::html_vignette:
@@ -44,9 +44,10 @@ break, on purpose, and shows the matched remedy for each:
    (`estimator = "mspl"`), after the separation is certified by
    `screen_gllvmTMB()`.
 
-The remedies do not substitute for one another — the middle of the article
-demonstrates that too. Ordinary `estimator = "ml"` with no penalty remains the
-default throughout the package; nothing here changes any default.
+Each remedy treats only its own disease: they do not substitute for one
+another — the middle of the article demonstrates that too — and they are
+never combined in one fit. Ordinary `estimator = "ml"` with no penalty
+remains the default throughout the package; nothing here changes any default.
 
 # A papers-by-items corpus
 
@@ -247,7 +248,7 @@ of a silently deleted item or an unusable coefficient in the hundreds.
 |---|---|---|
 | `convergence = 0` but loadings at absurd link-scale magnitudes | Flat likelihood direction in the latent structure | `gllvmTMBcontrol(loading_ridge = 2)` — opt-in shrinkage, probit-grid track record |
 | `screen_gllvmTMB()` flags an item `complete` / `quasi_complete` | Fixed-design separation; the ML slope is infinite | `estimator = "mspl"` — opt-in, experimental penalised point estimate with explicit fences |
-| Both at once | Two diseases | MSPL treats only the separated term(s); the ridge+MSPL combination is refused, so a co-occurring loading runaway has no packaged remedy — simplify the latent structure or collect more information |
+| Both at once | Two diseases | Still one fit, one outer penalty: MSPL treats only the separated term(s), and the ridge+MSPL combination is refused, so a co-occurring loading runaway has no packaged remedy — simplify the latent structure or collect more information |
 
 Report, in either case: the certificate table, which route was fitted and why,
 the penalty scale (`summary(fit)$estimation` stores `c_n` for MSPL), and the

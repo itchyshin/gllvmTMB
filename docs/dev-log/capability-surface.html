@@ -226,7 +226,7 @@
     <span><span class="swatch s-tested"></span><b>Tested</b> — passing recovery/health tests; no worked article (yet)</span>
     <span><span class="swatch s-avail"></span><b>Available · point-only</b> — live API, no systematic recovery test</span>
     <span><span class="swatch s-exp"></span><b>Experimental</b> — partial route, fail-loud guards</span>
-    <span><span class="swatch s-gone"></span><b>Withdrawn / deferred</b> — out of the 0.5.0 exported/public surface</span>
+    <span><span class="swatch s-gone"></span><b>Withdrawn / deferred</b> — out of the exported/public surface</span>
   </div>
 
   <!-- COVARIANCE GRID -->
@@ -465,12 +465,12 @@
       </table>
     </div>
     <div class="gapbox">
-      <h4>Where the gaps are · 0.5.0 → 1.0</h4>
+      <h4>Where the gaps are · at 0.7.0</h4>
       <ul>
-        <li><b>Interval coverage — the headline gap.</b> Zero families have coverage-checked intervals; every cell is point-only. Calibration is the largest 1.0 task.</li>
-        <li><b>Random slopes (≥1) are unfinished.</b> In development / diagnostic-grade even for Gaussian — not a finished 0.5.0 capability. Shown as <span class="tag t-avail">partial</span>, not ✓.</li>
+        <li><b>Interval coverage — the headline gap.</b> Zero families have coverage-checked intervals; every cell is point-only. Calibration is the largest remaining task.</li>
+        <li><b>Random slopes (≥1) are unfinished.</b> In development / diagnostic-grade even for Gaussian — not a finished capability. Shown as <span class="tag t-avail">partial</span>, not ✓.</li>
         <li><b>Missing responses: every admitted family is now tested</b> (2026-08-15, PR&nbsp;#982) — which is why this column reads ✓ throughout rather than for four families. Masked-response equivalence spans all 17 Laplace families and all 18 scalar VA cells; register rows MIS-21 <code>covered</code>, VA-10 <code>partial</code>. Two fences remain, and they are about quality rather than support: reconstruction ACCURACY is family-dependent (multinomial clearly beats its baseline; binomial / ordinal / delta sit near theirs at these scales), and reconstruction <b>intervals are not calibrated</b> — Design 119 measured six variance routes on one 1,600-fit gaussian grid and every one failed the pre-registered gate, the best being <code>sim</code> at 0.941–0.946 for a nominal 0.95. <code>mi()</code> predictor coverage is still pending.</li>
-        <li><b>Fitted diagnostics reach 3 families</b> (Gaussian, Poisson, NB2). Extending residual / predictive checks to more families is the next diagnostics step.</li>
+        <li><b>Fitted diagnostics reach 4 families</b> (Gaussian, Poisson, NB2, NB1). Extending residual / predictive checks to more families is the next diagnostics step.</li>
         <li><b>Categorical needs major development</b> — nominal support is early-stage, not a usable path yet.</li>
         <li><b>REML is a Gaussian-only pilot — and the non-Gaussian route has now been tested and closed, not merely deferred.</b>
           The opt-in escape hatch (<code>allow_nongaussian_reml</code>) realises the Cox&ndash;Reid adjusted profile
@@ -493,7 +493,7 @@
       admitted family since 2026-08-15, with reconstruction accuracy and intervals separately fenced;
       categorical early-stage). Where per-family structured or slope support is not individually validated
       in code, the column reflects grammar availability, not a coverage claim — firming these into
-      per-cell evidence is a 1.0 audit, not a 0.5.0 promise.
+      per-cell evidence is a later audit, not a 0.7.0 promise.
     </p>
   </section>
 

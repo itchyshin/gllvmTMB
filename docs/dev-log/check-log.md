@@ -1,3 +1,22 @@
+## 2026-08-17 — `/goal` S1: claim Design 125 profile-led MSPL intervals stub
+
+**Lane:** `claude/lane-mspl-profile-led-ci` @ `/Users/z3437171/local-scratch/lanes/gllvmTMB-mspl-profile-led-ci`
+Docs only. Re-checked `lane_preflight.sh` → NEXT FREE = 125 (Design 124 already
+claimed as `124-campaign-admission.md` on other refs). Wrote
+`docs/design/125-mspl-profile-led-intervals.md` under D-157 + triad Confirm;
+incorporated R1 do-not-repeat; refusal taxonomy stub; binary-first estimands
+E1–E2; #1077 stays draft; MSPL-04 blocked; no Design 118 edits; no undraft;
+no public se; no Totoro; Poisson W left UNSIGNED. Updated LOOP arcs +
+checkpoint (NEXT=S2). Scope-staged commit (no `git add -A`); no push.
+
+```sh
+test -f docs/design/125-mspl-profile-led-intervals.md
+rg -n 'Status: STUB|MSPL-04|do not repeat|#1077|R-SAT|Design 118' \
+  docs/design/125-mspl-profile-led-intervals.md
+rg -n 'S1.*done|NEXT: \*\*S2\*\*' LOOP/arcs.md LOOP/checkpoint.md
+# deliberately not run: undraft #1077, confint, Totoro, Design 118 edits
+```
+
 ## 2026-08-17 — `/goal` SCAFFOLD mspl-profile-led-ci (Confirm-in-ref + R0/R1)
 
 **Lane:** `claude/lane-mspl-profile-led-ci` @ `/Users/z3437171/local-scratch/lanes/gllvmTMB-mspl-profile-led-ci`

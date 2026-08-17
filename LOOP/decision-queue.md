@@ -5,7 +5,7 @@ Parks consequential decisions. Empty/OPEN does not waive `LOOP/GOAL.md` hard sto
 | Gate | State | Question | Recommendation | Blocked work | Safe work meanwhile |
 |---|---|---|---|---|---|
 | Triad Confirm | **SIGNED** 2026-08-17 | Profile / Wald(Q₀) / Bootstrap roles? | Locked under D-157 + D-12; no new D- | — | Design stub + pre-reg |
-| Design NN claim | OPEN soft | Binary-first vs Poisson+binary? | Ada default: **binary profile-led first** | S1 prose scope | R0/R1 done |
+| Design NN claim | **CLAIMED 125** | Binary-first vs Poisson+binary? | Ada default: **binary profile-led first** (in Design 125 §3.1) | Soft widen only at S2 G0 | S1 done; S2 pre-reg |
 | Undraft #1077 | OPEN / not-ready | Undraft after Design+pre-reg+tests? | Default **not-ready**; tip stays `fb44d7b5` draft | undraft / public confint | keep draft scaffold |
 | Live profile impl | OPEN / not-ready | Implement real MSPL `confint(method="profile")`? | Needs Design G0 + tests | real intervals | docs Design + pre-reg |
 | Public se=TRUE | OPEN / not-ready | Flip public SE/vcov? | Separate G0 only | public SE | internal Q₀ pins only |

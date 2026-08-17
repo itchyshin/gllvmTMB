@@ -389,7 +389,7 @@
             <td class="gram">LA · VA GH H7 default · JJ logit explicit · EVA (Taylor-2)</td>
             <td class="gram">mu</td><td class="gram">S I D L</td><td class="gram">phy spa ani ker</td>
             <td><span class="tag t-avail">partial</span></td><td class="no">— <span style="font-size:10px">JSDM worked; single-trial diag RE off</span></td>
-            <td><span class="tag t-avail">point</span></td><td><span class="yes">✓</span></td><td class="no">—</td>
+            <td><span class="tag t-avail">point</span></td><td><span class="yes">✓</span></td><td class="no">— <span style="font-size:10px">Cox&ndash;Reid tested 2026-08-16; K1 fired (bias worsened)</span></td>
           </tr>
           <tr>
             <th><span class="fampip fp-a"></span><span class="fam">betabinomial</span><div class="dom">overdispersed binomial</div></th>
@@ -445,7 +445,7 @@
             <td class="gram">LA · VA GH H7</td>
             <td class="gram">mu + cutpoints</td><td class="gram">S I D L</td><td class="gram">phy spa ani ker</td>
             <td class="no">— <span style="font-size:10px">ordinal RE not implemented</span></td><td class="no">—</td>
-            <td><span class="tag t-avail">point</span></td><td><span class="yes">✓</span></td><td class="no">—</td>
+            <td><span class="tag t-avail">point</span></td><td><span class="yes">✓</span></td><td class="no">— <span style="font-size:10px">Cox&ndash;Reid tested 2026-08-16; K1 fired (bias worsened)</span></td>
           </tr>
           <tr>
             <th><span class="fampip fp-a"></span><span class="fam">multinomial</span><div class="dom">unordered categorical · logit</div></th>
@@ -472,7 +472,14 @@
         <li><b>Missing responses: every admitted family is now tested</b> (2026-08-15, PR&nbsp;#982) — which is why this column reads ✓ throughout rather than for four families. Masked-response equivalence spans all 17 Laplace families and all 18 scalar VA cells; register rows MIS-21 <code>covered</code>, VA-10 <code>partial</code>. Two fences remain, and they are about quality rather than support: reconstruction ACCURACY is family-dependent (multinomial clearly beats its baseline; binomial / ordinal / delta sit near theirs at these scales), and reconstruction <b>intervals are not calibrated</b> — Design 119 measured six variance routes on one 1,600-fit gaussian grid and every one failed the pre-registered gate, the best being <code>sim</code> at 0.941–0.946 for a nominal 0.95. <code>mi()</code> predictor coverage is still pending.</li>
         <li><b>Fitted diagnostics reach 3 families</b> (Gaussian, Poisson, NB2). Extending residual / predictive checks to more families is the next diagnostics step.</li>
         <li><b>Categorical needs major development</b> — nominal support is early-stage, not a usable path yet.</li>
-        <li><b>REML is a Gaussian-only pilot.</b> Non-Gaussian, weighted, and missing-data REML are later work.</li>
+        <li><b>REML is a Gaussian-only pilot — and the non-Gaussian route has now been tested and closed, not merely deferred.</b>
+          The opt-in escape hatch (<code>allow_nongaussian_reml</code>) realises the Cox&ndash;Reid adjusted profile
+          likelihood rather than an exact restricted likelihood. It was pre-registered with kill criteria and
+          measured on 2026-08-16 (1,600 fits, binomial + ordinal probit, 100% convergence): Cox&ndash;Reid made
+          median variance bias <b>worse</b> in both families (binomial 7.26&nbsp;&rarr;&nbsp;10.84&nbsp;pp; ordinal
+          3.08&nbsp;&rarr;&nbsp;4.39&nbsp;pp, paired-median MCSE 22&ndash;53&times; under the threshold), so its
+          no-effect criterion fired and the route stays opt-in and unpromoted. A published negative, not a gap.
+          Weighted and missing-data REML remain later work.</li>
         <li><b>Delta / hurdle latent-scale correlation</b> awaits a reporting convention (two response scales) — a design gap, not a bug.</li>
         <li><b>Grammar symmetry:</b> the covariance grid is three modes {indep, dep, latent}; the one-shared-variance ("scalar") case folded into the <code>common = TRUE</code> modifier on any <code>indep</code> term (the <code>scalar()</code>/<code>*_scalar()</code> keywords are soft-deprecated compatibility syntax). The correlated-vs-uncorrelated (<code>|</code> / <code>||</code>) random-slope axis is now <b>built</b>: <code>mode(1 + x || g)</code> = intercept ⟂ slope (<code>indep||</code> fully diagonal, <code>dep||</code> = Σ<sub>int</sub>⊕Σ<sub>slope</sub> via a Cholesky parity pin, <code>latent||</code> the separate-Λ form) across phylo / animal / kernel / spatial + source-tier latent, recovery/target-matrix tested (Design 79 §4).</li>
       </ul>

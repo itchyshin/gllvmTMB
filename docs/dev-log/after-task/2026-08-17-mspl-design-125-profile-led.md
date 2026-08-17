@@ -20,8 +20,8 @@ rediscover state from overnight chat.
 | Triad Confirm | **SIGNED** | Confirm-in-ref **`7de94fc7`**; card `2026-08-17-mspl-ci-wald-plus-profile.md` |
 | S2 ADEMP pre-reg | **SIGNED** (sibling finished) | `docs/dev-log/research/2026-08-17-mspl-profile-led-prereg-ademp.md` |
 | #1077 | **still draft** | tip `fb44d7b5`; Confirm / Design APPROVED ≠ undraft |
-| Poisson W card | **UNSIGNED** | `2026-08-17-mspl-poisson-W-G0.md` Status line; silent default = PARK SE doors; do **not** invent KEEP/REPLACE or flip Status without paste |
-| Decision queue | **SIGNED** G1–G4e | `LOOP/decision-queue.md` (G1 PARK SE doors operational; card stays UNSIGNED until KEEP/REPLACE) |
+| Poisson W card | **SIGNED — PARK SE doors** | `2026-08-17-mspl-poisson-W-G0.md`; tape unchanged; KEEP/REPLACE not invented |
+| Decision queue | **SIGNED** G1–G4e | `LOOP/decision-queue.md` (G1 = PARK SE doors; card Status matches) |
 | NEXT (live LOOP) | V1 → C1; G2 OPEN-READY-PR | `LOOP/checkpoint.md` — **not** H1; **not** undraft #1077 |
 
 No `R/`, `src/`, registry, NEWS, public `se=TRUE` / `confint`, Totoro,
@@ -41,10 +41,11 @@ Cited (sibling / earlier commits, not rewritten here):
 
 ## 3a. Decisions and Rejected Alternatives
 
-- **Decision:** treat Poisson W **card Status** as authoritative (**UNSIGNED**).
-  **Rationale:** Rose notes `8907c8c7` / `6ee2a284`; Design 125 § still says
-  card UNSIGNED; G1 PARK is operational silent default. **Rejected:** flipping
-  card to SIGNED without KEEP/REPLACE paste. **Confidence:** high.
+- **Decision:** record Poisson W as **SIGNED — PARK SE doors** on the
+  card. **Rationale:** live card Status + G1 paste under *"approve all
+  things in this lane"*. **Rejected:** inventing KEEP/REPLACE tape change.
+  Earlier Rose retractions applied to accidental SIGNED without paste;
+  paste now present. **Confidence:** high.
 - **Decision:** #1077 stays draft despite Design APPROVED + ADEMP SIGNED.
   **Rationale:** G4c FORK-DEFER + G3 WAIT. **Rejected:** undraft. **Confidence:** high.
 - **Decision:** C1 docs only; do not open the G2 non-draft PR in this commit.
@@ -78,7 +79,7 @@ N/A — docs-only; no testthat.
 | Design path + claim `b68b20b4` | present |
 | Confirm ref `7de94fc7` | present |
 | #1077 still draft | consistent |
-| Poisson W card Status UNSIGNED | consistent with card + Rose notes |
+| Poisson W card Status | **SIGNED — PARK SE doors** |
 | S2 ADEMP file present | cited |
 
 ## 7. Roadmap Tick
@@ -96,21 +97,20 @@ docs PR of Design 125 + Confirm + LOOP kit, not #1077.
 
 Sibling advanced S2→APPROVED/SIGNED and S4/V1 while C1 drafted; LOOP tip
 moved under this sitting. Handover OWED was rewritten to live
-`LOOP/checkpoint.md` rather than freezing “S2 TBD”. A parallel check-log
-line briefly claimed Poisson W “SIGNED PARK” while the card Status stayed
-UNSIGNED — C1 treats the **card** as authoritative.
+`LOOP/checkpoint.md`. Poisson W Status flipped UNSIGNED→SIGNED PARK during
+the sitting; C1 follows the **card**.
 
 ## 9. Team Learning
 
 - **Ada:** claim SHA `b68b20b4` is durable; APPROVED is a later Status flip.
-- **Rose:** UNSIGNED Status line ≠ “no PARK default”; do not invent SIGNED.
+- **Rose:** card Status is authoritative; PARK is not KEEP/REPLACE.
 - **Fisher:** ADEMP SIGNED ≠ campaign launch ≠ undraft #1077.
 - **Shannon:** scope-stage C1 files only; sibling owns LOOP/prereg races.
 
 ## 10. Known Limitations And Next Actions
 
+- **Poisson W** card is **SIGNED — PARK SE doors** (tape unchanged).
 - **#1077** stays draft tip `fb44d7b5`.
-- Poisson W **card** stays **UNSIGNED** (silent default PARK SE doors).
 - **NEXT (LOOP):** finish V1 if needed → open **non-draft docs PR** (G2);
   do **not** start H1; do **not** undraft #1077; do **not** Totoro /
   public `se=TRUE`.

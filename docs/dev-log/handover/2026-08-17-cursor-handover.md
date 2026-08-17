@@ -18,7 +18,7 @@ PROTECTED** before mutating. Execute only **OWED**.
 | Tip for rehydrate | this branch tip (ahead of `origin/main`; re-fetch before merge) |
 | What shipped overnight | D-157 B1 PARK; point admits; internal SE pins; Ranga \(Q_0\); W-onesided #1064; Gamma/lnorm oracles #1063; CI triad docs #1075; Poisson W G0 #1076; #1078 as-cran guard |
 | What landed this lane | Triad Confirm **SIGNED** (`7de94fc7`); Design **125** claimed (`b68b20b4`) **APPROVED**; S2 ADEMP **SIGNED**; S3/S4 done; decision queue G1–G4e SIGNED |
-| What is UNSIGNED | Poisson W **card Status** (silent default PARK SE doors; not KEEP/REPLACE) |
+| What is UNSIGNED | (none on this baton — Poisson W card is **SIGNED PARK**) |
 | Plan by leverage | (1) C1 done · (2) G2 non-draft docs PR when asked · (3) no undraft #1077 / no H1 / no Totoro / no public se |
 | PROTECTED | Codex Lane B binary intervals; no public `se=TRUE` / NEWS covered without G0; #1077 stays draft |
 
@@ -46,9 +46,8 @@ PROTECTED** before mutating. Execute only **OWED**.
 8. **S2 ADEMP pre-reg SIGNED** (sibling finished) —
    `docs/dev-log/research/2026-08-17-mspl-profile-led-prereg-ademp.md`
    (cites Design 125; not a campaign launch).
-9. **Poisson W card (#1076) UNSIGNED** — Status line stays UNSIGNED;
-   G1 operational **PARK SE doors** (silent default); do not invent
-   KEEP/REPLACE or flip Status without paste.
+9. **Poisson W card (#1076) SIGNED — PARK SE doors** — tape unchanged;
+   KEEP/REPLACE not invented; further SE-series doors parked.
 10. **Profile scaffold DRAFT #1077** — **still draft** tip `fb44d7b5`;
     still refuses public `confint`. Design APPROVED ≠ undraft permission.
 11. **PROTECTED:** `codex/lane-b-mspl-interval-feasibility` (binary SE).
@@ -87,7 +86,7 @@ Codex Lane B remains foreign. No live profile / undraft #1077.
 | S2 ADEMP pre-reg | **SIGNED** — `docs/dev-log/research/2026-08-17-mspl-profile-led-prereg-ademp.md` |
 | S4 Rose fence | **PASS** — closed stale co-primary wording in bootstrap sketch |
 | V1 verify | **done** / in progress per LOOP — #1077 draft; MSPL-04 blocked |
-| Poisson W G0 card | #1076 card **UNSIGNED** (G1 PARK SE doors operational) |
+| Poisson W G0 card | #1076 **SIGNED — PARK SE doors** (tape unchanged) |
 | Profile CI scaffold | **DRAFT** #1077 — still draft after Confirm; tip `fb44d7b5` |
 | as-cran lane-b guard | #1078 on `main` @ `a5c83011` |
 
@@ -99,7 +98,7 @@ Key research / design paths:
 - `docs/design/125-mspl-profile-led-intervals.md` (claim `b68b20b4`)
 - `docs/dev-log/research/2026-08-17-mspl-profile-led-prereg-ademp.md` (S2 **SIGNED**)
 - `docs/dev-log/after-task/2026-08-17-mspl-design-125-profile-led.md`
-- `docs/dev-log/research/2026-08-17-mspl-poisson-W-G0.md` (card **UNSIGNED**)
+- `docs/dev-log/research/2026-08-17-mspl-poisson-W-G0.md` (**SIGNED — PARK SE doors**)
 - `docs/dev-log/research/2026-08-17-mspl-profile-bootstrap-ci-next.md`
 
 ## Current Working State
@@ -189,7 +188,7 @@ gh pr view 981
 
 Hard fences (not OWED work): undraft #1077 · live profile `confint` ·
 H1 smoke · public `se=TRUE` · Totoro · Design 118 reopen · B1 relaunch ·
-inventing Poisson W KEEP/REPLACE SIGNED Status.
+inventing KEEP/REPLACE tape change without a new G0.
 
 ## Blockers / Open Questions
 
@@ -198,7 +197,7 @@ inventing Poisson W KEEP/REPLACE SIGNED Status.
 | CI triad confirm | **SIGNED** (`7de94fc7`) | Exact Confirm in `2026-08-17-mspl-ci-wald-plus-profile.md` |
 | Design 125 | **APPROVED** @ `b68b20b4` | MSPL-04 stays blocked until evidence path |
 | S2 ADEMP | **SIGNED** | T\* still need explicit numbers before Totoro |
-| Poisson W card | **UNSIGNED** | G1 PARK SE doors operational; KEEP/REPLACE later; Status stays UNSIGNED |
+| Poisson W card | **SIGNED — PARK SE doors** | Tape unchanged; KEEP/REPLACE later if needed |
 | G2 docs PR | **OWED** when asked | Non-draft docs PR; not #1077 |
 | G3 / H1 | **WAIT** | No local profile smoke until fork A/B/C |
 | #1065 | open | CI/CONFLICTING — fix allowed; admit forbidden |

@@ -26,4 +26,4 @@ Status: todo / doing / done / blocked. Gate = needs human before proceed.
 | Local profile smoke | After fork + smoke G0 | **blocked** (G3 WAIT) |
 | Public se=TRUE | Separate G0 | **not-ready** |
 | Totoro/campaign | Separate G0 + T\* freeze (D-50/D-139/D-157) | **not-ready** |
-| Poisson W KEEP/REPLACE | Explicit later paste | **PARK SE doors holds** until KEEP or REPLACE |
+| Poisson W KEEP/REPLACE/PARK | Shinichi paste only | leave card **UNSIGNED**; silent default PARK further SE doors |

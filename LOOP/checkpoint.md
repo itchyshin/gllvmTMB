@@ -17,7 +17,7 @@ OPEN GATES (need human — still blocked):
 - Local profile smoke (H1) — blocked (G3 WAIT + FORK-DEFER)
 - Public se=TRUE — not-ready
 - Totoro/campaign — not-ready (T\* unfrozen)
-- Poisson W KEEP/REPLACE — open later (PARK freeze holds)
+- Poisson W KEEP/REPLACE/PARK — **UNSIGNED** (do not invent; silent default PARK)
 TRUTH LIVES IN:
 - worktree `/Users/z3437171/local-scratch/lanes/gllvmTMB-mspl-profile-led-ci`
 - branch `claude/lane-mspl-profile-led-ci`
@@ -35,6 +35,6 @@ READ FIRST: LOOP/GOAL.md -> LOOP/checkpoint.md -> LOOP/decision-queue.md -> LOOP
 WORKSPACE: /Users/z3437171/local-scratch/lanes/gllvmTMB-mspl-profile-led-ci
 BRANCH: claude/lane-mspl-profile-led-ci
 CONTINUE FROM: V1 mechanical verify → C1 after-task if PR open; do NOT start H1 smoke.
-Still NOT: undraft #1077 · Totoro · public se=TRUE · Design 118 reopen · invent KEEP/REPLACE.
+Still NOT: undraft #1077 · Totoro · public se=TRUE · Design 118 reopen · invent Poisson W SIGNED.
 Hard stops: #1077 stays draft fb44d7b5; MSPL-04 blocked; no Design 118 reopen; Arc 1A historical.
 ```

@@ -68,6 +68,8 @@ navbar:
         href: articles/phylogenetic-gllvm.html
       - text: Handling missing data
         href: articles/missing-data.html
+      - text: Structured random slopes for non-Gaussian traits
+        href: articles/random-slopes-nongaussian.html
     sdm:
       text: Species Distribution Models
       menu:
@@ -138,6 +140,7 @@ articles:
     - articles/spatial-models
     - articles/phylogenetic-gllvm
     - articles/missing-data
+    - articles/random-slopes-nongaussian
 
   - title: Species distribution models
     desc: >

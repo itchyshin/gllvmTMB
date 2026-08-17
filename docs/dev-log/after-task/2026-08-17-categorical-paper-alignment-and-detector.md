@@ -292,6 +292,16 @@ extractor fix, not a recovery-evidence promotion.
   grid projected past 30 minutes, so `n = 1600` was dropped and the `n = 400`
   seed count halved. That is a real coverage hole, stated in every surface
   rather than absorbed.
+- **A documentation session nearly disturbed another lane's parked work.** A
+  `git stash` / `git stash pop` pair run to compare two versions of the
+  register found nothing to stash (the tree was clean) and the `pop` therefore
+  targeted a **pre-existing stash entry belonging to another lane**, leaving a
+  conflicted `R/fit-multi.R` and two stray untracked files in this worktree.
+  Both were reverted immediately (`git checkout HEAD -- R/fit-multi.R`, the
+  stray files moved out of the tree) and the stash entry itself is intact and
+  unpopped, so nothing was lost — but in a repository with a dozen parked
+  stashes from other lanes, `git stash pop` is never a safe read-only tool.
+  Use `git show <rev>:<path>` to compare versions instead.
 - **The frozen ordinal conjunction was not achievable at all.** No threshold
   reaches 90% sensitivity with zero false positives, because the class
   distributions overlap in the tails (degenerate minimum 10.2, healthy maximum

@@ -1,5 +1,21 @@
 # Check log
 
+## 2026-08-17 — MSPL intervals next = profile/bootstrap sketch
+
+Docs only. Verdict: SE pins stay D-149 availability; public
+interval path re-aims to **profile + bootstrap** new construction
+(D-157), not Wald-first and not Design 118 reopen. Note:
+`docs/dev-log/research/2026-08-17-mspl-profile-bootstrap-ci-next.md`.
+After-task:
+`docs/dev-log/after-task/2026-08-17-mspl-profile-bootstrap-ci-next.md`.
+No Totoro. No public `se=TRUE`. No `R/` / `src/` / NEWS.
+
+```sh
+rg -n 'D-157|profile \+ bootstrap|Q_0|Lane B' \
+  docs/dev-log/research/2026-08-17-mspl-profile-bootstrap-ci-next.md
+# no testthat; docs-only
+```
+
 ## 2026-08-17 — overnight brief morning finalize (Q_0 + B1 FAIL G0)
 
 Docs only. Closed the living 21:15 pulse (#1067) into

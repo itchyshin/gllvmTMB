@@ -46,6 +46,11 @@
 }
 
 .nb2_read_cpp <- function() {
+  ## Source-checkout + R CMD check layouts only. Do not use cwd-relative
+  ## `../../src` or `system.file("..", "src", ...)`: under R CMD check those
+  ## can be "" or a missing path, and `readLines` then errors instead of
+  ## skipping (ubuntu CI 2026-08-17). Same two-/three-level 00_pkg_src
+  ## rule as test-isdm-developer-fit.R.
   candidates <- c(
     testthat::test_path("..", "..", "src", "gllvmTMB.cpp"),
     testthat::test_path(
@@ -53,21 +58,19 @@
     ),
     testthat::test_path(
       "..", "..", "..", "00_pkg_src", "gllvmTMB", "src", "gllvmTMB.cpp"
-    ),
-    file.path("src", "gllvmTMB.cpp"),
-    file.path("..", "src", "gllvmTMB.cpp"),
-    file.path("..", "..", "src", "gllvmTMB.cpp")
+    )
   )
-  installed <- system.file("..", "src", "gllvmTMB.cpp", package = "gllvmTMB")
-  if (nzchar(installed)) {
-    candidates <- c(installed, candidates)
-  }
-  cpp_path <- candidates[file.exists(candidates)][1L]
+  found <- candidates[
+    nzchar(candidates) &
+      !is.na(candidates) &
+      file.exists(candidates) &
+      !dir.exists(candidates)
+  ]
   testthat::skip_if(
-    is.na(cpp_path),
+    length(found) == 0L,
     "gllvmTMB.cpp source file is not available in this test context."
   )
-  paste(readLines(cpp_path, warn = FALSE), collapse = "\n")
+  paste(readLines(found[[1L]], warn = FALSE), collapse = "\n")
 }
 
 .nb2_admit_fit <- function(dat, q = 1L) {
@@ -247,6 +250,9 @@ test_that("D-phi: NB2 Jeffreys-on-phi is DROPPED; Jacobian and quasi pins stay",
   Pj0 <- .gllvmTMB_mspl_nbinom2_jeffreys(cbind(1, c(-1, 0, 1, 2)), mu, phi)
   Pj_hi <- .gllvmTMB_mspl_nbinom2_jeffreys(cbind(1, c(-1, 0, 1, 2)), mu, 1e4)
   expect_false(isTRUE(all.equal(Pj0, Pj_hi, tolerance = 1e-6)))
+})
+
+test_that("D-phi C++: dropped phi atom is commented, not taped", {
   cpp <- .nb2_read_cpp()
   expect_true(grepl("NB2 Jeffreys-on-phi DROPPED", cpp, fixed = TRUE))
   expect_false(grepl(

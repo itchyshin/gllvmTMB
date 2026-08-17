@@ -229,6 +229,12 @@ this note.**
 | E8 | \(\partial V_{\mathrm{loading}}/\partial(\mu,\phi)\equiv 0\); \(P^*_{\mathrm{J}}\) moves with \(\phi\) | finite-diff |
 | E9 | Registry rows `planned` / `phase4_prep`; **not** `admitted` | lookup |
 | E10 | This file never calls live MSPL; prepare not widened to 4 | source scan |
+| E11 | \(c_\Gamma=2\sqrt{p_{\mathrm{free}}/\max(n\phi,1)}\); \(c_n\), \(c_N\), \(c_P\), \(c=1\) differ | exact; contrasts |
+| E12 | Floor at \(n\phi<1\); vanishes as \(n\phi\) grows; \(\mu\)-inert | exact |
+| E13 | \(\phi=0\Rightarrow V_\lambda^\Gamma=0\); \(\phi=1\) recovers Bernoulli | exact |
+| E14 | Coercive as \(\|\lambda\|\) grows at \(\phi>0\); silent at \(\phi=0\) | monotone |
+| E15 | \(V_\lambda^\Gamma\) is \(\phi\)-aware; Bernoulli \(V\) is not | finite-diff |
+| E16 | Not Hirose; not Poisson \(\bar y\) | contrasts |
 
 ## 6. Verdict
 
@@ -241,8 +247,12 @@ this note.**
 
 Preferred later-admission *candidate* for the fixed-effect slice:
 Gamma Jeffreys-shaped \(\tfrac12\log\det(\phi_{\gamma} X_*^\top X_*)\),
-with rate, shape atom, loading atom, and Laplace-marginal
-\(I(\beta)\) still OPEN. Not a theorem transfer.
+with oracle-pinned
+\(c_\Gamma=2\sqrt{p_{\mathrm{free}}/\max(n\phi_\gamma,1)}\) and
+\(V_\lambda^\Gamma=\sum_t(\sqrt{1+\|\lambda_t\|^2\phi_t}-1)\)
+(`docs/dev-log/research/2026-08-16-mspl-gamma-lognormal-atom-pin.md`,
+E11–E16). Shape atom and Laplace-marginal \(I(\beta)\) still
+OPEN. Not a theorem transfer. Not a tape.
 
 ## 7. Non-claims
 

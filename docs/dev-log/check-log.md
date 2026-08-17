@@ -17,6 +17,29 @@ rg -n 'DEV-11|Phase B closure' docs/design/118-mspl-interval-calibration-protoco
 # no testthat; docs-only
 ```
 
+## 2026-08-16 — Gamma / lognormal LA-MSPL rate + loading oracles (Cursor)
+
+Lane `cursor/mspl-gamma-lognormal-atoms` from `origin/main`.
+Oracle pin only: \(c_\Gamma\), \(c_L\), \(V_\lambda^\Gamma\),
+\(V_\lambda^L\). Registry stays `planned`. No `src/`. No
+prepare widen. No NEWS. No Totoro.
+
+```sh
+export OMP_NUM_THREADS=1 NOT_CRAN=true
+pkgload::load_all(".", compile = FALSE)
+# GREEN: FAIL 0 | SKIP 0
+testthat::test_file("tests/testthat/test-mspl-gamma-phase4-oracles.R")      # PASS 104
+testthat::test_file("tests/testthat/test-mspl-lognormal-phase4-oracles.R")  # PASS 99
+testthat::test_file("tests/testthat/test-mspl-registry.R")                  # PASS 81
+testthat::test_file("tests/testthat/test-zz-mspl-rest-family-prepare-fence.R") # PASS 15
+rg -n 'fam_ids %in%' R/mspl.R
+# R/mspl.R:258: c(0L, 1L, 2L, 5L, 7L, 15L)  — not 3 or 4
+git diff --stat -- src/ R/ NEWS.md
+# empty
+```
+
+Not run: full `devtools::test()`, `--as-cran`, pkgdown.
+
 ## 2026-08-16 — DIRECTED: binary Phase-B failure, five items for the SE-series lane
 
 Addressed to the LA-MSPL SE-series lane (Beta / Tweedie / Gamma / lognormal /

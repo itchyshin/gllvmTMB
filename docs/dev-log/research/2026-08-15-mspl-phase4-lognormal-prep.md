@@ -221,6 +221,12 @@ in this note.**
 | E8 | Hirose refused | structural reject |
 | E9 | \(V_{\mathrm{loading}}\) inert; \(P^*_{\mathrm{J}}\) moves with \(\sigma\) | finite-diff |
 | E10 | Registry rows `planned` / `phase4_prep`; **not** `admitted`; no live MSPL; prepare not widened to 3 | lookup + source scan |
+| E11 | \(c_L=2\sqrt{p_{\mathrm{free}}/\max(n/\sigma^2,1)}\); \(c_n\), \(c_N\), \(c_P\), \(c=1\) differ | exact; contrasts |
+| E12 | Floor at \(n/\sigma^2<1\); vanishes as info grows; \(\eta\)-inert | exact |
+| E13 | \(\sigma\to\infty\Rightarrow V_\lambda^L\to 0\); \(\sigma=1\) recovers Bernoulli | exact |
+| E14 | Coercive as \(\|\lambda\|\) grows at finite \(\sigma\); silent as \(\sigma\to\infty\) | monotone |
+| E15 | \(V_\lambda^L\) is \(\sigma\)-aware; Bernoulli \(V\) is not | finite-diff |
+| E16 | Not Hirose; not \(c_N\); shared \(\sigma\neq\) per-trait \(\phi\) | contrasts |
 
 ## 6. Verdict
 
@@ -234,9 +240,14 @@ in this note.**
 Preferred later-admission *candidate* for the fixed-effect slice:
 lognormal Jeffreys-shaped
 \(\tfrac12\log\det(\sigma_{\varepsilon}^{-2} X_*^\top X_*)\),
-with rate, residual atom, loading atom, shared-\(\sigma_{\varepsilon}\)
+with oracle-pinned
+\(c_L=2\sqrt{p_{\mathrm{free}}/\max(n/\sigma_\varepsilon^2,1)}\)
+and
+\(V_\lambda^L=\sum_t(\sqrt{1+\|\lambda_t\|^2/\sigma_\varepsilon^2}-1)\)
+(`docs/dev-log/research/2026-08-16-mspl-gamma-lognormal-atom-pin.md`,
+E11–E16). Residual atom, shared-\(\sigma_{\varepsilon}\)
 composition, and Laplace-marginal \(I(\beta)\) still OPEN.
-Not a theorem transfer. Not a Gaussian transfer.
+Not a theorem transfer. Not a Gaussian transfer. Not a tape.
 
 ## 7. Non-claims
 

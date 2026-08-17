@@ -6,6 +6,10 @@
 **Ground truth:** `origin/main` @ `55666f1e` (`#1041`)
 **Status:** DRAFT note only. No prepare widen. No `src/` tape. No
 admit. No NEWS `covered`. No public `se=TRUE`.
+**Addendum 2026-08-16:** G-c / L-c and G-λ / L-λ are
+oracle-pinned in
+`docs/dev-log/research/2026-08-16-mspl-gamma-lognormal-atom-pin.md`.
+They are not taped.
 
 **Reader:** the next MSPL conductor who wants to know whether
 Gamma(log) / lognormal(log) may get a `#1007`-shaped planned door
@@ -135,24 +139,27 @@ Pinned formulas from
 |---|---|---|---|---|
 | G-W | Gamma \(W=\phi_\gamma\); \(\log w=\log\phi_\gamma\) | READY (E1–E3, E5). Mean-inert. Not Poisson \(W=\mu\). Not Tweedie \(p\to 2\). | Add `family_id == 4` in `gll_mspl_log_weight_glm()` and pass `log_phi_gamma(t)` at the call site (today only 5 / 15 / 7 / 6 set `log_phi`). | Weight formula is ready. Wiring is new `src/`. |
 | L-W | Lognormal \(W=1/\sigma_\varepsilon^2\); \(\log w=-2\log\sigma_\varepsilon\) | READY (E1–E5). Identity on \(\log y\). Jacobian \(-\log y\) is parameter-free. \(\mathrm{E}[Y]=\mathrm{e}^{\eta+\sigma^2/2}\). | Add `family_id == 3`. There is no per-trait `log_phi_*` for this family; the live residual is shared `log_sigma_eps`. | Weight formula is ready. Shared-\(\sigma\) plumbing is not a Gaussian Phase-3 transfer (L-E7). |
-| G-c / L-c | Soft rate \(c\) | **OPEN.** Kill: \(c_n\), \(c_N\), \(c_P\). | Inherit `mspl_c_n = 1`. | Speculative. Same default nbinom used; nbinom admit-next still refuses to treat that as science. |
-| G-λ / L-λ | Loading atom | **OPEN.** Kill: Bernoulli \(V_{\mathrm{loading}}\), Hirose \(\Psi\). | Inherit `gll_mspl_row_radial_penalty`. | Speculative and already proven inert (Gamma E8, lognormal E9). |
+| G-c / L-c | Soft rate \(c\) | **PINNED (oracle).** \(c_\Gamma=2\sqrt{p_{\mathrm{free}}/\max(n\phi_\gamma,1)}\); \(c_L=2\sqrt{p_{\mathrm{free}}/\max(n/\sigma_\varepsilon^2,1)}\). Kill: \(c_n\), \(c_N\), \(c_P\), \(c=1\). E11–E12. | Inherit `mspl_c_n = 1` would still be a transplant. | Oracle pin is not a tape. See `2026-08-16-mspl-gamma-lognormal-atom-pin.md`. |
+| G-λ / L-λ | Loading atom | **PINNED (oracle).** \(V_\lambda^\Gamma=\sum_t(\sqrt{1+\|\lambda_t\|^2\phi_t}-1)\); \(V_\lambda^L=\sum_t(\sqrt{1+\|\lambda_t\|^2/\sigma_\varepsilon^2}-1)\). Kill: Bernoulli radial, Hirose, Poisson \(\bar y\). E13–E16. | Inherit `gll_mspl_row_radial_penalty` would still be a transplant. | Oracle pin is not a tape. Bernoulli radial remains inert (Gamma E8, lognormal E9). |
 | G-φ / L-σ | Shape / residual atom | **OPEN.** \(\tfrac12\log I_{\phi\phi}\) *rewards* \(\phi_\gamma\to 0\); \(\beta\)-atom *rewards* \(\sigma_\varepsilon\to 0\). | None. Live tape has no Gamma-shape or lognormal-residual atom. | Not required to form a fit. Required before anyone calls the atom a boundary repair. |
 | L-mix | Shared `log_sigma_eps` with Gaussian | **OPEN.** | Single-family door would hide it. | Mixed 0+3 is Phase-6; do not “solve” it by opening only lognormal. |
 | I-LA | Laplace-marginal \(I(\beta)\) | **OPEN.** Atom is fixed-only / conditional at \(\eta=X_{\mathrm{fix}}b_{\mathrm{fix}}+\mathrm{offset}\). | Same convention as the live GLM-outer tape. | Honest as a planned-tape label. Not a theorem. |
-| Door | `.gllvmTMB_mspl_prepare()` | Oracle E10 / kill 13: must stay `{0,1,2,5,15}`. | Add 3 and 4; retarget Gamma / lognormal E10 and `#1026` rest-family fence. | Shinichi gate. Oracle files would FAIL until retargeted. |
+| Door | `.gllvmTMB_mspl_prepare()` | Oracle E10 / kill 13: must stay `{0,1,2,5,7,15}` (Beta `7` is already a planned door). Not 3 or 4. | Add 3 and 4; retarget Gamma / lognormal E10 and `#1026` rest-family fence. | Shinichi gate. Oracle files would FAIL until retargeted. |
 | Pin | Curvature family fence | Gamma / lognormal → `gllvmTMB_mspl_curvature_family`. | Add `Gamma+log` and `lognormal+log` the way `#1007` added nbinom. | Only after a real fit exists. |
 | Live | `estimator = "mspl"` in tests | Kill 12: oracle files must not call it. | New fenced-tape tests, `#1000` un-skip. | Operational reachability, not Phase-4 exit. |
 | Admit | Registry / NEWS / `se=TRUE` | FAIL on both notes. | Must stay `planned` / withheld / no NEWS covered. | Not a gap. A fence. |
 
 Preferred later-admission *candidates* (still not a tape):
 
-- Gamma: \(\tfrac12\log\det(\phi_\gamma X_*^\top X_*)\).
+- Gamma: \(\tfrac12\log\det(\phi_\gamma X_*^\top X_*)\) with
+  oracle-pinned \(c_\Gamma\) and \(V_\lambda^\Gamma\).
 - Lognormal: \(\tfrac12\log\det(\sigma_\varepsilon^{-2} X_*^\top X_*)\)
-  on \(\log y\).
+  on \(\log y\) with oracle-pinned \(c_L\) and \(V_\lambda^L\).
 
-Rate, loading, shape/residual, and Laplace-marginal \(I(\beta)\)
-stay OPEN on both notes.
+Shape/residual, shared-\(\sigma\) mix, and Laplace-marginal
+\(I(\beta)\) stay OPEN. Rate and loading are oracle-pinned in
+`docs/dev-log/research/2026-08-16-mspl-gamma-lognormal-atom-pin.md`.
+They are not taped.
 
 ---
 

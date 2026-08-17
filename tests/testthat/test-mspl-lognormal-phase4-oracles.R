@@ -1,7 +1,8 @@
 ## Phase 4-style lognormal(log) LA-MSPL oracles — pure R, not an admission surface.
 ##
-## Research note:
+## Research notes:
 ##   docs/dev-log/research/2026-08-15-mspl-phase4-lognormal-prep.md
+##   docs/dev-log/research/2026-08-16-mspl-gamma-lognormal-atom-pin.md
 ## Helpers stay in this file. Do not call live MSPL on lognormal.
 ## Do not edit src/. Do not widen .gllvmTMB_mspl_prepare() to family_id 3.
 
@@ -61,6 +62,36 @@
 
 .lnorm_hirose_atom <- function(S_diag, psi) {
   sum(as.numeric(S_diag) / as.numeric(psi))
+}
+
+.lnorm_info_size <- function(n_rows, sigma) {
+  s <- as.numeric(n_rows) / as.numeric(sigma)^2
+  if (!is.finite(s) || s < 1) 1 else s
+}
+
+.lnorm_cL <- function(p_free, info_size) {
+  2 * sqrt(as.numeric(p_free) / as.numeric(info_size))
+}
+
+.lnorm_c_bernoulli <- function(p_free, n_rows) {
+  2 * sqrt(as.numeric(p_free) / as.numeric(n_rows))
+}
+
+.lnorm_c_gaussian <- function(n_units) {
+  sqrt(2 / as.numeric(n_units))
+}
+
+.lnorm_c_poisson <- function(p_free, y) {
+  2 * sqrt(as.numeric(p_free) / max(sum(as.numeric(y)), 1))
+}
+
+.lnorm_V_residual <- function(Lambda, sigma) {
+  Lambda <- as.matrix(Lambda)
+  w <- 1 / as.numeric(sigma)^2
+  if (length(w) != 1L) {
+    stop("lognormal loading atom uses shared sigma_eps.", call. = FALSE)
+  }
+  sum(sqrt(1 + rowSums(Lambda * Lambda) * w) - 1)
 }
 
 .lnorm_fixture <- function() {
@@ -297,6 +328,150 @@ test_that("Phase-4 oracles never invoke a live lognormal MSPL fit", {
   ))
   expect_false(any(grepl("estimator\\s*=\\s*[\"']mspl[\"']", code)))
   expect_false(any(grepl("family_id\\s*%in%\\s*c\\(0L,\\s*1L,\\s*2L,\\s*3L\\)", code)))
+})
+
+test_that("E11: lognormal rate c_L uses n/sigma^2, not N_rows, N_units, or 1", {
+  fx <- .lnorm_fixture()
+  info_fx <- .lnorm_info_size(fx$n_rows, fx$sigma)
+  expect_equal(info_fx, fx$n_rows / fx$sigma^2, tolerance = 1e-15)
+  expect_equal(
+    .lnorm_cL(fx$p_free, info_fx),
+    2 * sqrt(fx$p_free / (fx$n_rows / fx$sigma^2)),
+    tolerance = 1e-15
+  )
+  ## Contrast block avoids the toy collision
+  ## 2 * sqrt(2 / (4 / 0.5^2)) = sqrt(2 / 4) = c_N(n=4).
+  p_free <- 6
+  n_rows <- 10
+  sigma <- 0.5
+  info <- .lnorm_info_size(n_rows, sigma)
+  cL <- .lnorm_cL(p_free, info)
+  expect_equal(cL, 2 * sqrt(6 / (10 / 0.25)), tolerance = 1e-15)
+  expect_false(isTRUE(all.equal(cL, 1, tolerance = 1e-8)))
+  expect_false(isTRUE(all.equal(
+    cL,
+    .lnorm_c_bernoulli(p_free, n_rows),
+    tolerance = 1e-8
+  )))
+  expect_false(isTRUE(all.equal(
+    cL,
+    .lnorm_c_gaussian(n_rows),
+    tolerance = 1e-8
+  )))
+  y_fake <- c(1, 2, 0, 3, 1, 4, 2, 1, 0, 2)
+  expect_false(isTRUE(all.equal(
+    cL,
+    .lnorm_c_poisson(p_free, y_fake),
+    tolerance = 1e-8
+  )))
+  expect_false(isTRUE(all.equal(info, n_rows, tolerance = 1e-8)))
+  expect_false(isTRUE(all.equal(info, sum(fx$mu_mean), tolerance = 1e-8)))
+})
+
+test_that("E12: n/sigma^2 < 1 floors c_L; rate vanishes as info grows; eta-inert", {
+  ## Large residual: n/sigma^2 = 4/100 = 0.04 < 1, so the floor fires.
+  expect_equal(.lnorm_info_size(4, 10), 1)
+  expect_equal(.lnorm_cL(4, 1), 4)
+  big <- .lnorm_cL(4, 1e6)
+  expect_lt(big, 0.01)
+  expect_gt(big, 0)
+  expect_lt(.lnorm_cL(4, 400), .lnorm_cL(4, 100))
+
+  fx <- .lnorm_fixture()
+  c0 <- .lnorm_cL(fx$p_free, .lnorm_info_size(fx$n_rows, fx$sigma))
+  ## Doubling eta leaves W = 1/sigma^2, so c_L stays put.
+  expect_equal(
+    .lnorm_cL(fx$p_free, .lnorm_info_size(fx$n_rows, fx$sigma)),
+    c0,
+    tolerance = 0
+  )
+  expect_lt(
+    .lnorm_cL(fx$p_free, .lnorm_info_size(fx$n_rows, fx$sigma / 2)),
+    c0
+  )
+})
+
+test_that("E13: residual-weighted loading vanishes as sigma->Inf; sigma=1 is Bernoulli", {
+  Lambda <- matrix(c(2.0, -1.5, 0.8, 0.4), 4L, 1L)
+  expect_lt(.lnorm_V_residual(Lambda, 1e6), 1e-8)
+  expect_equal(
+    .lnorm_V_residual(Lambda, 1),
+    .lnorm_bernoulli_V_loading(Lambda),
+    tolerance = 1e-12
+  )
+  expect_false(isTRUE(all.equal(
+    .lnorm_V_residual(Lambda, 0.5),
+    .lnorm_bernoulli_V_loading(Lambda),
+    tolerance = 1e-8
+  )))
+  expect_error(.lnorm_V_residual(Lambda, c(0.5, 1.0)), "shared sigma_eps")
+})
+
+test_that("E14: lognormal loading atom is coercive at finite sigma; silent as sigma->Inf", {
+  sigma <- 0.5
+  grid <- c(0.5, 2, 8, 32)
+  V <- vapply(
+    grid,
+    function(a) {
+      .lnorm_V_residual(matrix(a * c(1, -0.6, 0.4, 0.2), 4L, 1L), sigma)
+    },
+    numeric(1L)
+  )
+  expect_true(all(is.finite(V)))
+  expect_true(all(diff(V) > 0))
+  expect_gt(tail(V, 1L), 10)
+  V_inf <- vapply(
+    grid,
+    function(a) {
+      .lnorm_V_residual(matrix(a * c(1, -0.6, 0.4, 0.2), 4L, 1L), 1e6)
+    },
+    numeric(1L)
+  )
+  expect_true(all(V_inf < 1e-8))
+  expect_gt(.lnorm_bernoulli_V_loading(matrix(32 * c(1, -0.6, 0.4, 0.2), 4L, 1L)), 1)
+})
+
+test_that("E15: V_lambda^L is eta-inert and sigma-aware; Bernoulli V is sigma-inert", {
+  fx <- .lnorm_fixture()
+  V0 <- .lnorm_V_residual(fx$Lambda, fx$sigma)
+  eps <- 1e-6
+  expect_equal(.lnorm_V_residual(fx$Lambda, fx$sigma), V0, tolerance = 0)
+  expect_false(isTRUE(all.equal(
+    V0,
+    .lnorm_V_residual(fx$Lambda, fx$sigma + eps),
+    tolerance = 1e-10
+  )))
+  expect_equal(
+    .lnorm_bernoulli_V_loading(fx$Lambda),
+    .lnorm_bernoulli_V_loading(fx$Lambda),
+    tolerance = 0
+  )
+})
+
+test_that("E16: lognormal loading atom is not Hirose, not Gamma-phi, not c_N", {
+  fx <- .lnorm_fixture()
+  V <- .lnorm_V_residual(fx$Lambda, fx$sigma)
+  expect_false(isTRUE(all.equal(
+    V,
+    .lnorm_hirose_atom(rep(1, fx$n_rows), rep(fx$sigma^2, fx$n_rows)),
+    tolerance = 1e-3
+  )))
+  ## Fabricating per-trait phi := 1/sigma^2 is a Gamma rename, not this cell.
+  V_gamma_rename <- sum(
+    sqrt(1 + rowSums(fx$Lambda * fx$Lambda) * (1 / fx$sigma^2)) - 1
+  )
+  expect_equal(V, V_gamma_rename, tolerance = 1e-12)
+  expect_false(identical(fx$sigma, 1 / fx$sigma^2))
+  expect_false(isTRUE(all.equal(
+    V,
+    .lnorm_bernoulli_V_loading(fx$Lambda),
+    tolerance = 1e-8
+  )))
+  expect_false(isTRUE(all.equal(
+    .lnorm_cL(6, .lnorm_info_size(10, 0.5)),
+    .lnorm_c_gaussian(10),
+    tolerance = 1e-8
+  )))
 })
 
 test_that("prepare fence is not widened to lognormal family_id 3", {

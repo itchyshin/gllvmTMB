@@ -420,7 +420,12 @@ residuals.gllvmTMB_multi <- function(
     isTRUE(flag) && !is.null(group_col) && group_col %in% names(object$data) &&
       nrow(unique(object$data[c(trait_col, group_col)])) == nrow(object$data)
   }
-  gaussian_per_row_diag <- any(row_meta$family_id == 0L) &&
+  ## Gate matches the fit-time decision at R/fit-multi.R:5177
+  ## (`any_sigma_eps <- any(family_id_vec %in% c(0L, 3L))`): gaussian (fid 0)
+  ## and lognormal (fid 3) share one literal sigma_eps, and both are
+  ## auto-suppressed to ~1e-3*sd(y) under the identical per-row-diagonal
+  ## structure. The residuals-time warning must stay consistent with that.
+  gaussian_per_row_diag <- any(row_meta$family_id %in% c(0L, 3L)) &&
     (
       per_row_diag(object$use$diag_B, object$unit_col) ||
         per_row_diag(object$use$diag_W, object$unit_obs_col)

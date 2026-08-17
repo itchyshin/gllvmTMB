@@ -1,5 +1,22 @@
 # Check log
 
+## 2026-08-17 — Poisson W=diag(mu) G0 paste card (UNSIGNED)
+
+Docs only. Short G0 card for Shinichi: KEEP / REPLACE \(W_*\) /
+PARK SE doors. Cites Ranga one-sided flag from #1064
+(`W=diag(mu)` is \(0/+\infty\); soft Jeffreys rewards \(+\infty\);
+\(Q_0\) reporting target; \(W_*\) before more SE doors). Note:
+`docs/dev-log/research/2026-08-17-mspl-poisson-W-G0.md`.
+After-task:
+`docs/dev-log/after-task/2026-08-17-mspl-poisson-W-G0.md`.
+No `src/` edit. No tape replace. No public `se`. No NEWS covered.
+
+```sh
+rg -n 'KEEP|REPLACE|PARK SE doors|Ranga|one-sided' \
+  docs/dev-log/research/2026-08-17-mspl-poisson-W-G0.md
+# no testthat; docs-only
+```
+
 ## 2026-08-17 — MSPL intervals next = profile/bootstrap sketch
 
 Docs only. Verdict: SE pins stay D-149 availability; public

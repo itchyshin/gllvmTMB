@@ -55,6 +55,29 @@ rg -n "calibrated|NEWS covered|sandwich|Godambe|I_LA|sdreport" \
 
 Not run: `devtools::test()`, `--as-cran`, Totoro/DRAC.
 
+## 2026-08-16 — W one-sidedness audit (Poisson live W=mu; Tweedie true W; nbinom saturation)
+
+Research + pure-R oracles. **No tape replace.** No door, no admit, no
+`se=TRUE`. Ranga: \(Q_0\) is the reporting target; \(W_*\) must be
+settled before more SE-series doors.
+
+Live Poisson (`family_id == 2`) still `return eta` (\(W=\mu\)). Toy
+cell: \(P_J\) rises \(+4\) per \(+4\) in the intercept (rewards
+\(+\infty\)). Working \(W_*\) is two-sided. Tweedie true W is the
+same one-sided bug; live Tweedie tape already uses working \(W_*\).
+nbinom2 saturates (\(W\to\varphi\), \(P_J\) finite).
+
+```sh
+Rscript -e 'devtools::test(filter = "mspl-W-onesided")'
+rg -n "return eta|gll_mspl_log_weight\\(eta, 0\\)" src/gllvmTMB.cpp
+```
+
+Note: `docs/dev-log/research/2026-08-16-mspl-W-onesided-audit.md`.
+After-task: `docs/dev-log/after-task/2026-08-16-mspl-W-onesided-audit.md`.
+G0 menu (keep / replace / park) is in the note §6. Do not execute
+from this PR.
+
+
 ## 2026-08-16 — DIRECTED: binary Phase-B failure, five items for the SE-series lane
 
 Addressed to the LA-MSPL SE-series lane (Beta / Tweedie / Gamma / lognormal /

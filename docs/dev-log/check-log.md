@@ -1,5 +1,85 @@
 # Check log
 
+## 2026-08-17 — VERIFIED: Kosmidis & Firth (2021) extends the coverage caveat to PROFILED penalised likelihood
+
+Docs only. Settles the question left open in
+`docs/dev-log/research/2026-08-16-mspl-se-paper-ranga-synthesis.md` and in the
+maintainer's SE/CI pass-on note (*"the warning may hold even for profiles.
+Verify against the PDF before anyone designs an MSPL interval"*).
+
+**Verdict: it does.** arXiv:1812.01938 v4, §2.2 "Finiteness", final paragraph,
+p. 5, read directly: Wald-type intervals *"or confidence regions in general,
+will fail to cover regardless of the nominal level α that is used… and it is
+also true when the penalized likelihood is profiled for the construction of
+confidence intervals"* (citing Heinze & Schemper 2002; Bull et al. 2007;
+Kosmidis 2014 enumerations).
+
+**Mechanism (the load-bearing part).** Not a quadratic-approximation artefact —
+which is the one failure mode profiling repairs. With binomial responses the
+penalised estimator takes only finitely many values, each with finite
+components (their Corollary 1), while the parameter is unbounded; so for β with
+large enough components no interval built from that estimator reaches it, at any
+α. Profiling changes the interval's shape, not the boundedness of what it is
+built from.
+
+**Standing:** authors' assertion supported by citation, **not** a theorem proved
+there (Theorem 1/Corollary 1 = finiteness; Theorem 2 = shrinkage).
+**Scope:** binomial-response GLMs, full-rank X; links logit/probit/c-log-log/
+log-log/cauchit (Table 1). Transfer to a latent-variable GLLVM is
+**AGENT-INFERRED, not established**. **Not citable** for Gamma / lognormal /
+Student / Tweedie / ordinal_probit / delta / hurdle.
+
+Note: `docs/dev-log/research/2026-08-17-kosmidis-firth-2021-profile-caveat.md`.
+Commands: WebFetch of the preprint (PDF unparsed by the fetcher) then direct
+`Read` of pp. 4–6 to confirm the sentence verbatim; a sub-agent's first pass was
+independently re-read before this note, because the finding redirects other
+lanes. A search snippet was deliberately **not** treated as evidence — the
+abstract covers finiteness and shrinkage only and would have supported a wrong
+"silent on profiles" verdict.
+
+No `R/`, `src/`, NEWS, or register change. `Q_0` stays the SE target (D-149);
+`MSPL-04` stays `blocked`; no public `se`/`vcov`/`confint`.
+
+### Directed → the Design 125 profile-led lane (`claude/lane-mspl-profile-led-ci`)
+
+Your SIGNED ADEMP prereg's Aim 1 is a **profile-primary** construction targeting
+coverage near 0.95 for binary LA-MSPL. **Nothing in that prereg cites this
+caveat**, and the primary source says profiling the penalised likelihood does
+not escape the coverage failure. Three specifics:
+
+1. G4c's fork A (penalised MSPL profile) is the arm this caveat hits directly.
+   Fork B (unpenalized Laplace at fixed MSPL nuisance) is **not** obviously
+   covered by the same argument and may be the survivor — worth making the
+   caveat an explicit input to the fork decision rather than a later surprise.
+2. Your prereg already says *"Do not claim ordinary Laplace profile calibration
+   transfers to MSPL"* — this note supplies the citation for why.
+3. It also retroactively explains Design 118: a fitted map cannot repair a
+   coverage failure whose mechanism is a bounded attainable estimator set. That
+   is an argument for the refusal path (Rainey 2016) being the honest default,
+   not an argument for a better calibrator.
+
+Also FYI, measured this sitting and offered rather than taken: the stranded
+interval-computability instrument on `claude/mspl-b0-prereqs`
+(`.gllvmTMB_mspl_profile_feasibility()` + `..._threshold_diagnostic()`, plus
+helper `.gllvmTMB_mspl_nlminb`) **lifts cleanly onto current `main`** — purely
+additive, all four internal symbols unchanged, and it does **not** need the
+`src/` `mspl_c_n_multiplier` hook (it touches only
+`obj$env$data$estimator_id`; main's C++ already computes `mspl_c_n` equivalent
+to multiplier 1.0). This lane stood down from re-porting it on D-88 grounds
+since Design 125 owns the profile surface; take it if useful.
+
+### Directed → the Cursor SE/CI lane
+
+Do not build a profile-CI **claim** path for MSPL on the premise that profiling
+repairs Wald undercoverage, and do not cite this paper for the non-binomial
+families you are working — its scope is binomial-response only, so for
+Gamma/lognormal/Student/Tweedie/ordinal/delta the question is **open**, not
+settled either way, and the honest label is UNVERIFIED. #1075's
+"profile = signature / primary claim path" needs a footnote for the MSPL case:
+D-12's profile-over-Wald doctrine stands generally and for ML; what does not
+stand is the inference that profiling rescues coverage under a finiteness
+penalty. The SE side is untouched — `Q_0` remains the paper-aligned target.
+
 ## 2026-08-17 — Cursor handover: LA-MSPL overnight arc
 
 Docs only. Handover-to-cursor protocol (`TARGET=cursor`, `AUTHOR=cursor`).

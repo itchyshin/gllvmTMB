@@ -248,6 +248,30 @@
     any(parameter_names == "theta_rr_B")
 }
 
+## THE gradient of the objective the optimiser actually minimised (#1092).
+## The `aghq_ridge` loading penalty is applied at the R level, OUTSIDE the TMB
+## template, so `obj$gr()` alone is the gradient of a function a ridged fit was
+## NOT minimising: at the penalised (MAP) optimum the raw gradient on the
+## `theta_rr_B` block equals `lambda / tau^2`, not ~0, and any gradient-based
+## convergence judgement built on it reads a perfectly converged fit as
+## unconverged (Design 122 SS15 found this for TEST A; issue #1092 records that
+## the same instrument is read everywhere else). Every reader that can see a
+## ridged fit must go through this accessor; `obj$gr()` itself stays reachable
+## and is the UNPENALISED gradient, mirroring how `.gllvmTMB_objective_
+## components()` keeps `obj$fn()` as the unpenalised likelihood and discloses
+## the split.
+##
+## `ridge_tau` is the scalar penalty scale (`fit$aghq$ridge_tau`; Inf or NULL
+## means unpenalised, when the gradient reduces to the raw `obj$gr(par)`).
+.gllvmTMB_penalised_gradient <- function(obj, par, ridge_tau) {
+  g <- as.numeric(obj$gr(par))
+  if (.gllvmTMB_loading_ridge_applies(ridge_tau, names(obj$par))) {
+    li <- which(names(obj$par) == "theta_rr_B")
+    g[li] <- g[li] + par[li] / (ridge_tau^2)
+  }
+  g
+}
+
 .gllvmTMB_objective_components <- function(obj, opt, aghq) {
   likelihood_nll <- tryCatch(
     as.numeric(obj$fn(opt$par)),
@@ -6274,14 +6298,11 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         ## The fix is to test the gradient of the objective being minimised, NOT
         ## to loosen the tolerance -- a loosened tolerance would hide a genuine
         ## non-convergence just as effectively.
-        g_cur <- tryCatch({
-          g <- as.numeric(obj_try$gr(par_cur))
-          if (is.finite(aghq_ridge_tau) && aghq_ridge_tau > 0) {
-            li <- which(names(obj_try$par) == "theta_rr_B")
-            if (length(li)) g[li] <- g[li] + par_cur[li] / (aghq_ridge_tau^2)
-          }
-          max(abs(g))
-        }, error = function(e) NA_real_)
+        g_cur <- tryCatch(
+          max(abs(.gllvmTMB_penalised_gradient(obj_try, par_cur,
+                                               aghq_ridge_tau))),
+          error = function(e) NA_real_
+        )
         shift <- if (is.null(mode_prev)) Inf else max(abs(ad$mode - mode_prev))
         mode_prev <- ad$mode
         aghq_passes <- it
@@ -6336,7 +6357,16 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
             ## engine that made it IMPOSSIBLE to tell a genuine local-optimum stop
             ## from a real failure to descend, so a third of every campaign's fits
             ## were unclassifiable. One number fixes that.
-            g_last <- tryCatch(max(abs(obj_try$gr(par_cur))), error = function(e) NA_real_)
+            ##
+            ## #1092: the PENALISED gradient, or the number is meaningless on a
+            ## ridged fit -- this was the uncorrected sibling of the g_cur read
+            ## above, reporting |lambda|/tau^2 in the user-visible stop reason
+            ## while the corrected copy sat sixty lines earlier.
+            g_last <- tryCatch(
+              max(abs(.gllvmTMB_penalised_gradient(obj_try, par_cur,
+                                                   aghq_ridge_tau))),
+              error = function(e) NA_real_
+            )
             aghq_stop <- sprintf(
               paste0("stalled (no honest descent at cap 1 after backtracking); ",
                      "max |grad| = %.3g (relative %.3g) against tolerances of %.3g / %.3g"),

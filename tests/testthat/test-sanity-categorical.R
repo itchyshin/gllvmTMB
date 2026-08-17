@@ -432,28 +432,23 @@ test_that("a healthy ordinal fit PASSes under calibration-style armed thresholds
   expect_equal(row$status, "PASS")
 })
 
-test_that("the CALIBRATED defaults fire on a runaway, and explicit Inf disarms", {
-  ## Both ordinal thresholds ship armed at 40 as of the 2026-08-17
-  ## calibration (dev/ordinal-degeneracy/pass-criteria-ordinal.md). This
-  ## fixture's third trait has loading 20 against siblings near 0.5, so its
-  ## relative loading is 40 -- at the armed threshold, which must fire.
+test_that("the disarmed defaults fire nothing; explicit thresholds arm the arms", {
+  ## Both ordinal thresholds ship at Inf. The 2026-08-17 calibration could
+  ## not find a value meeting its frozen targets (see
+  ## dev/ordinal-degeneracy/pass-criteria-ordinal.md), so the pre-registered
+  ## ship-disarmed fallback applies: the row reports its statistics and a
+  ## user arms it explicitly if they want the verdict.
   lam <- matrix(
     c(0.5, -0.4, 20),
     nrow = 3, dimnames = list(paste0("ord", 1:3), "LV1")
   )
   fit <- mk_ord(lam, cuts = list(c(0.7, 1.4), c(0.5, 1.1), c(0.6, 1.3)))
 
-  expect_equal(ord_row(fit)$status, "WARN")
+  expect_equal(ord_row(fit)$status, "PASS")
 
-  ## Explicit Inf still disarms both arms on the SAME fixture -- the house
-  ## bracketing convention, and the escape hatch for a user who wants the
-  ## row's reported statistics without the verdict.
-  disarmed <- ord_row(
-    fit,
-    ordinal_loading_runaway_thresh = Inf,
-    ordinal_loading_absolute_thresh = Inf
-  )
-  expect_equal(disarmed$status, "PASS")
+  ## Explicitly armed on the SAME fixture, the runaway trait fires.
+  armed <- ord_row(fit, ordinal_loading_runaway_thresh = 25)
+  expect_equal(armed$status, "WARN")
 })
 
 test_that("a single-column runaway fixture fires O1 (armed) and names the right trait", {

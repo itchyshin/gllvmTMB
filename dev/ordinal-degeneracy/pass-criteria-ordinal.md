@@ -1,6 +1,6 @@
 # Detector-S2b ordinal calibration: pre-registered arms and targets
 
-STATUS: **DRAFT — pending sign-off.** Written before any calibration fit is
+STATUS: **FROZEN pre-registration; scored 2026-08-17. NOT signed off as a shipping threshold — both arms ship DISARMED per its own fallback clause.** Written before any calibration fit is
 run (only a timing pilot and a 2-seed smoke check have been run; see
 `campaign-ordinal-calibration.R`'s own log for those two runs). Frozen once
 signed off, mirroring the S1 probe's own frozen-then-VERDICT pattern in
@@ -131,6 +131,66 @@ minutes, a PRE-RUN TEST and Shinichi's explicit approval are required before
 committing the full run, per the campaign script's own gate. See
 `campaign-ordinal-calibration.R`'s printed projection for the actual
 numbers from this session's pilot.
+
+## CORRECTION NOTICE (2026-08-17, after D-43 panel review)
+
+The verdict first written below this line scored false positives with a
+PER-FIT relabelling (`rel_frob > 10` applied to every arm), which moved 57 of
+180 healthy+transport fits out of the false-positive denominator and into the
+sensitivity numerator. **The frozen block above does not say that.** It
+defines sensitivity on the `degenerate` arm's `rel_frob > 10` fits and false
+positives ARM-LEVEL: "across `healthy` + `transport` + `mixed` combined
+(armed O1-or-O2 stays silent on every one of the fits)". Two independent
+D-43 reviewers caught the substitution. The per-fit reading was applied AFTER
+results and made the numbers look substantially better than the
+pre-registration allows; it is retained below only as clearly-labelled
+exploratory analysis. The scored verdict is the FROZEN one, and it follows.
+
+## SCORED VERDICT (frozen rule; 315 fits, n = 100/400)
+
+Sensitivity: degenerate arm, 41 fits with `rel_frob > 10`.
+False positives: `healthy` + `transport` + `mixed`, 255 fits, arm-level.
+
+| threshold | O2 sens | O2 FP | O1 sens | O1 FP |
+|---|---|---|---|---|
+| 6 (binomial's) | 100.0% | **39.2%** | 61.0% | 28.6% |
+| 20 | 95.1% | 27.8% | 43.9% | 20.4% |
+| 40 | 80.5% | 11.0% | 36.6% | 8.6% |
+| 80 | 31.7% | 1.6% | 22.0% | 5.1% |
+| 250 | 0.0% | 0.0% | 0.0% | 0.0% |
+
+**No threshold meets the frozen conjunction (sens >= 90% AND zero FP), and
+none can:** the healthy pool reaches `max_loading_unit` 216.9 while the
+degenerate arm starts at 13.5, so the classes are not separable on this
+statistic at all. The first zero-FP point is 250, where sensitivity is 0%.
+
+### Disposition: SHIP DISARMED — the pre-registered fallback, applied
+
+Both ordinal arms ship at `Inf`/`Inf`. The row still computes and reports its
+statistics, so a user may arm either threshold explicitly; arming a DEFAULT
+is a maintainer decision this evidence does not support. An earlier draft of
+this document armed them at 40 on the per-fit reading; that was reverted.
+
+### What the campaign nonetheless establishes (the finding IS the deliverable)
+
+1. **Borrowing binomial's threshold would have been a bug, not a shortcut.**
+   At 6 the ordinal screen fires on 39.2% of healthy-arm fits — worse than
+   the 25% binomial rate issue #897 exists to complain about. #897 directive
+   1 ("thresholds on ordinal's own evidence, not inherited") is vindicated
+   by measurement.
+2. **The failure mode is heterogeneous trait scales.** False alarms
+   concentrate in the transport arm; an absolute liability-scale threshold
+   cannot transport across per-trait scale heterogeneity, because a
+   legitimately large loading on a wide-cutpoint trait is indistinguishable
+   from a runaway. A future ordinal screen needs a scale-invariant statistic,
+   not a better constant.
+3. Grid trim, stated: n = 1600 dropped and n = 400 seeds halved for the
+   D-139 budget (315 fits, 9.0 min on 10 cores).
+
+---
+
+## EXPLORATORY (NOT the scored verdict) — per-fit relabelling, retained for
+## transparency and superseded by the frozen scoring above
 
 ## VERDICT (2026-08-17; 315 fits, n = 100/400, per-fit truth `rel_frob > 10`)
 

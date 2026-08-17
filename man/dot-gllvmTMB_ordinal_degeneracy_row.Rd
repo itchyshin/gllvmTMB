@@ -6,8 +6,8 @@
 \usage{
 .gllvmTMB_ordinal_degeneracy_row(
   object,
-  ordinal_loading_runaway_thresh = 40,
-  ordinal_loading_absolute_thresh = 40
+  ordinal_loading_runaway_thresh = Inf,
+  ordinal_loading_absolute_thresh = Inf
 )
 }
 \arguments{
@@ -15,39 +15,43 @@
 
 \item{ordinal_loading_runaway_thresh}{Threshold on an ordinal trait's
 loading magnitude relative to the typical loading among the fit's OTHER
-ordinal traits (O1; the denominator is family-scoped, so a gaussian or
-binomial partner can neither mask nor manufacture an ordinal runaway).
-Default \code{40}, \strong{calibrated} (2026-08-17; 315 fits, n = 100/400, four
-pre-registered arms, per-fit truth \code{rel_frob > 10}): sensitivity 37.8\%
-at \strong{0.0\% false positives on every arm including the adversarial
-heterogeneous-scale transport arm}. Specificity is the binding
-constraint here by design (issue #897: a screen that cries wolf gets
-switched off), so the threshold is set where false alarms vanish rather
-than where sensitivity peaks.}
+ordinal traits (O1; family-scoped denominator, so a gaussian or binomial
+partner can neither mask nor manufacture an ordinal runaway). Default
+\code{Inf} — \strong{DISARMED}, and deliberately so: see
+\code{ordinal_loading_absolute_thresh} for the calibration that could not
+find a defensible armed value.}
 
 \item{ordinal_loading_absolute_thresh}{Threshold on an ordinal trait's
 largest unit-tier loading in liability units (O2). Unit tiers only —
 never the SPDE tier, whose loadings carry a different normalisation.
 Scale-free by construction: the probit-liability residual variance is
 exactly 1, so an ordinal loading IS the trait's latent SD in liability
-units (the same argument that justifies the binomial-only absolute
-threshold, and the reason categorical liabilities are immune to the
-scale-dependent-constants class). Default \code{40}, \strong{calibrated} on the
-same 315-fit campaign: sensitivity 60.2\% overall (70.0\% on homogeneous
-designs) at 0.9\% false positives overall — \strong{0.0\% on the plain healthy
-arm and 0.0\% on the heterogeneous-scale transport arm}.
+units. Default \code{Inf} — \strong{DISARMED}.
 
-Two measured findings shaped this number and are recorded rather than
-buried. First, at binomial's own threshold of 6 the ordinal screen
-reaches 100\% sensitivity but \strong{24\% false positives} — reproducing on
-ordinal exactly the defect issue #897 reports in binomial (25\%), which
-is why that issue insists ordinal thresholds be set on ordinal evidence
-rather than inherited. Second, every false alarm at any threshold comes
-from designs with heterogeneous per-trait loading scales; the plain
-healthy arm has zero false positives at every threshold from 6 to 40.
-An absolute liability-scale threshold cannot transport across
-heterogeneous trait scales, because a legitimately large loading on a
-wide-cutpoint trait is indistinguishable from a runaway.}
+Both ordinal arms ship disarmed because a pre-registered 315-fit
+calibration (2026-08-17; four arms — degenerate, healthy, transport,
+mixed) could not find a threshold meeting its frozen targets
+(sensitivity >= 90\% on the degenerate arm AND zero false positives
+across the healthy, transport and mixed arms combined). Measured under
+that rule: at a threshold of 6, sensitivity 100\% but \strong{39.2\% false
+positives}; at 40, 80.5\% and 11.0\%; the first zero-FP point sits at
+250, where sensitivity is 0\%. The classes are not separable at all on
+this statistic, because the healthy pool reaches \code{max_loading_unit}
+216.9 while the degenerate arm starts at 13.5.
+
+Two findings from that campaign are worth stating. First, borrowing
+binomial's own threshold of 6 would have shipped a screen with a ~39\%
+false-alarm rate — reproducing on ordinal exactly the defect issue #897
+reports in binomial (25\%), which is precisely why that issue insists
+ordinal thresholds be set on ordinal evidence rather than inherited.
+Second, the false alarms concentrate in designs with heterogeneous
+per-trait loading scales: an absolute liability-scale threshold cannot
+transport across them, because a legitimately large loading on a
+wide-cutpoint trait is indistinguishable from a runaway.
+
+The row still computes and reports its statistics, so a user who wants
+the screen can set either threshold explicitly. Arming a default is a
+maintainer decision that this evidence does not support.}
 }
 \value{
 A one-row data frame in the \code{\link[=check_gllvmTMB]{check_gllvmTMB()}} row shape, or

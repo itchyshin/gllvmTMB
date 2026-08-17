@@ -31,7 +31,12 @@ This is a \strong{response} family and must not be confused with the
 \code{\link{categorical}()} constructor, which is a missing-\emph{predictor}
 imputation family. Because an unordered categorical response spans
 \eqn{K-1} latent liability dimensions rather than one, the admitted
-structured-term surface is bounded: fixed effects always; an ordinary
+structured-term surface is bounded and every cell below was decided by a
+signed recovery campaign, not construction alone (Design 122, Slices 1-4,
+2026-08-16; full per-cell table and campaign numbers:
+\code{docs/design/122-multinomial-structured-surface.md}).
+
+\strong{Admitted:} fixed effects always; an ordinary
 shared \code{latent(0 + trait | unit, d = k)} ordination, which connects
 a multinomial trait to other-family traits through its \eqn{K-1}
 contrast pseudo-traits (the default \code{unique = TRUE} works, with the
@@ -42,10 +47,32 @@ the identical \code{phylo_rr} parameterisation as
 \code{phylo_latent(d = K - 1)}), and \code{phylo_indep()} (diagonal
 \eqn{V}; standalone \code{phylo_unique()} is its deprecated alias) --
 together with their \code{animal_*()} (pedigree/\code{A}) and single-name
-\code{kernel_*()} (dense \code{K}) twins, which run the same engine.
-All of these are loadings-only: none emits a \eqn{\Psi}
-companion, and \code{unique = TRUE} (a free
-phylogenetic \eqn{\Psi}) is NOT admitted. A generic \code{(1 | group)}
+\code{kernel_*()} (dense \code{K}) twins, which run the same engine;
+and the analogous spatial (SPDE) mode axis -- \code{spatial_latent(0 +
+trait | coords, d = k)} (loadings-only), \code{spatial_indep()}
+(per-contrast independent fields), and \code{spatial_dep()} (verified
+identical to \code{spatial_latent(d = n_traits)}). All of the
+phylogenetic/relatedness cells are loadings-only: none emits a
+\eqn{\Psi} companion, and \code{unique = TRUE} (a free phylogenetic
+\eqn{\Psi}) is NOT admitted.
+
+\strong{The honest evidence, not softened:} on the phylogenetic/
+relatedness surface, the one-categorical-draw-per-species recovery gate
+FAILED (rail rate 8/20 against a 6/20 threshold, identically for
+\code{phylo_latent()}/\code{animal_latent()}/\code{kernel_latent()} by
+proven engine identity; \code{phylo_dep()} rails 8/20 separately). A
+pre-registered replication rescue -- five categorical draws per species
+rather than one -- PASSED for the loadings-only and full-\eqn{V} cells
+(rail rate 4/20, median \eqn{\hat\rho} 0.680 against a true 0.6) but has
+NOT been tested for \code{phylo_indep()}'s diagonal-\eqn{V} mode, whose
+own corrected rerun independently FAILED (small contrast variances
+collapse; a planted-zero check fails). The spatial mode axis and the
+\code{(1 | group)} route below both PASSED their signed recovery gates
+outright, with no replication rescue needed. \strong{One categorical
+draw per species does not identify \eqn{V}; five draws per species
+does.}
+
+A generic \code{(1 | group)}
 random intercept is also admitted, but its semantics are
 \strong{baseline-vs-rest}, not per-category: the engine adds one draw per
 group level to EVERY one of a multinomial observation's \eqn{K-1}
@@ -71,17 +98,31 @@ at that tier is NOT admitted. Both the \code{(1 | group)} and cluster/
 cluster2 routes abort typed if every level of the grouping factor covers
 exactly one categorical observation: that is an observation-level random
 effect (OLRE) in disguise, unidentifiable because the softmax latent scale
-is fixed. Every other structured /
-random-effect keyword -- \code{dep()}, explicit \code{unique()} /
-\code{indep()} at the unit tier, \code{phylo_dep()} / \code{phylo_indep()} /
-\code{phylo_unique()}, \code{phylo_scalar()}, \code{animal_*()},
-\code{kernel_*()}, \code{spatial_*()}, augmented (intercept + slope)
-\code{latent()} / \code{phylo_latent()} random regressions,
-\code{meta_V()} / \code{equalto()}, \code{latent()}/\code{dep()} at the
+is fixed.
+
+\strong{Refused, not merely deferred:} \code{phylo_scalar()} /
+\code{animal_scalar()} / \code{kernel_scalar()} / \code{spatial_scalar()}
+and \code{common = TRUE} at the cluster/cluster2 tier -- a single shared
+level across the \eqn{K-1} contrasts has no interpretable null on the
+\eqn{(I+J)} contrast geometry (null-DGP evidence:
+\code{dev/multinomial-structured/probe-scalar-null.R}).
+
+\strong{Everything else is still deferred} and fails loud
+(\code{R/multinomial-fence.R}) rather than reaching an untested
+categorical path: \code{dep()}, explicit \code{unique()} /
+\code{indep()} at the unit tier, \code{latent()}/\code{dep()} at the
 \code{cluster}/\code{cluster2} tiers, and the \code{unit_obs} grouping
-tier, and \code{mi()} predictor terms --
-is deferred and fails loud (\code{R/multinomial-fence.R}) rather than
-reaching an untested categorical path.
+tier; augmented (intercept + slope) forms of every admitted keyword above;
+\code{unique = TRUE} on \code{phylo_latent()}/\code{animal_latent()}/
+\code{kernel_latent()} (a free phylogenetic \eqn{\Psi}) and
+\code{spatial_latent()}'s paired diagonal companion; standalone
+\code{spatial_unique()}/deprecated bare \code{spatial()} (a
+paired-companion alias mechanism, unlike the phylogenetic mode axis's
+\code{*_unique()}, which IS admitted); multi-kernel (more than one
+\code{kernel_latent()}/\code{kernel_dep()}/\code{kernel_indep()} name in
+one fit); \code{meta_V()} / \code{equalto()} (confirmed Gaussian-only, no
+route on a categorical-contrast pseudo-trait); and \code{mi()} predictor
+terms.
 A two-category response is exactly \code{binomial(link = "logit")} and is
 redirected there. See also \code{\link{ordinal_probit}()} for \emph{ordered}
 categories.

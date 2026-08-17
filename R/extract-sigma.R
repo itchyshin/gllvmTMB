@@ -574,7 +574,9 @@ link_residual_per_trait <- function(fit) {
 #'   no-op convention. `unit_obs`, structured tiers, and augmented-slope tiers
 #'   remain gated for Julia bridge extractors.
 #' @param level One of `"unit"` (between-unit), `"unit_obs"` (within-unit),
-#'   `"phy"` (phylogenetic), `"spatial"`, or `"cluster"`. Legacy aliases
+#'   `"phy"` (phylogenetic), `"spatial"`, `"cluster"`, or `"cluster2"` (a
+#'   second, independent diagonal grouping alongside `"cluster"` -- see the
+#'   `cluster2` argument to [gllvmTMB()]). Legacy aliases
 #'   `"B"`, `"W"`, and `"spde"` are accepted with a soft-deprecation
 #'   message.
 #' @param part One of `"total"` (default), `"shared"`, `"unique"`. `"psi"`

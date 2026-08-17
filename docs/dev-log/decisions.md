@@ -2761,3 +2761,33 @@ teaching load:
 
 The register row `ISDM-01` stays `partial` for the same reason: the spatial
 arm's evidence is campaign experience, not a cleared recovery gate.
+
+## 2026-08-17 -- MSPL interval triad Confirm SIGNED under D-157 (no new D-)
+
+Shinichi authorized paste Confirm (via chat: *"paste Confirm for me"*; recorded by cursor/Shinichi-via-chat, 2026-08-17).
+
+> **Confirm MSPL interval triad for the new construction:** Profile = signature / primary claim path; Wald (\(Q_0\)) = quickest baseline / availability check (not the brand; not Design 118 reopen); Bootstrap = asymmetry / non-symmetric sampling. SE pins stay D-149. No Totoro. No public `se=TRUE` without separate G0.
+
+This is **not** a new decision id. Brain **D-157** already requires later intervals = new construction + new pre-registration; **D-12** already makes profile the featured/hero CI. The paste locks the **roles** of the triad for that construction. Card: `docs/dev-log/research/2026-08-17-mspl-ci-wald-plus-profile.md` (**SIGNED**). Hard stops unchanged: no Design 118 reopen, no B1/Totoro, no public `se=TRUE`, #1077 stays draft until a later Design+pre-reg sitting. Poisson \(W\) G0 (`2026-08-17-mspl-poisson-W-G0.md`) stays **UNSIGNED**.
+
+
+## 2026-08-17 -- Design 125 + ADEMP pre-reg SIGNED; Poisson W PARK SE doors (no new D-)
+
+Shinichi authorized *"approve all things in this lane"* for `mspl-profile-led-ci`
+(via chat / interrupt paste; recorded by cursor/Shinichi-via-chat, 2026-08-17).
+
+> **SIGNED block:** G1 PARK SE doors · G2 OPEN-READY-PR · G3 WAIT · G4a BINARY-FIRST ·
+> G4b E1-E2-ONLY · G4c FORK-DEFER · G4d THRESHOLDS-SIGN-NOW · G4e BOOT-PARAMETRIC.
+> Still NOT: undraft #1077 · Totoro · public `se=TRUE` · Design 118 reopen.
+
+This is **not** a new decision id. Brain **D-157** already requires later intervals =
+new construction + new pre-registration; **D-12** already makes profile the featured CI.
+Design **125** is the approved programme stub for that construction; the ADEMP pre-reg
+(`docs/dev-log/research/2026-08-17-mspl-profile-led-prereg-ademp.md`) is signed with the
+Ada/Ranga defaults above (binary-first; L* thresholds frozen; fork deferred; parametric
+bootstrap). Poisson \(W\) card
+(`docs/dev-log/research/2026-08-17-mspl-poisson-W-G0.md`) is **SIGNED PARK SE doors** —
+freezes new SE-series doors; tape unchanged; KEEP/REPLACE remain future choices only.
+Hard stops unchanged: #1077 stays draft; MSPL-04 blocked; no public `se=TRUE`; no Totoro
+from this sign.
+

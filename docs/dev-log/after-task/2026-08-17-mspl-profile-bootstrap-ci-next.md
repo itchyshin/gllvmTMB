@@ -1,7 +1,7 @@
 # After-task: MSPL profile/bootstrap CI next sketch
 
-**Date:** 2026-08-17  
-**Lane:** docs-only (`docs/mspl-profile-bootstrap-ci-next`)  
+**Date:** 2026-08-17
+**Lane:** docs-only (`docs/mspl-profile-bootstrap-ci-next`)
 **Outcome:** filed the next-interval construction sketch; updated Mission Control `next_safe_action`.
 
 ## Scope

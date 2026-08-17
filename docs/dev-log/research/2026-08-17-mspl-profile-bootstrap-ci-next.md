@@ -1,8 +1,8 @@
 # MSPL intervals next — profile + bootstrap construction (sketch)
 
-**Date:** 2026-08-17  
-**Status:** research sketch only — **not** a Design number, **not** a pre-registration, **not** permission to run Totoro  
-**Closes the “is SE-first OK?” question for intervals:** **re-aim**  
+**Date:** 2026-08-17
+**Status:** research sketch only — **not** a Design number, **not** a pre-registration, **not** permission to run Totoro
+**Closes the “is SE-first OK?” question for intervals:** **re-aim**
 **Binding decisions:** D-157 (B1 PARKED), D-149 (pins ≠ public intervals), D-148 (public calibrated intervals withheld)
 
 ---

@@ -972,6 +972,221 @@
   )
 }
 
+## Per-trait fitted cutpoint span (`max(tau) - min(tau)` over the free
+## cutpoints `tau_2 .. tau_{K-1}`; `tau_1 = 0` is fixed by the Hadfield
+## convention and is not itself a free parameter) for the O2-variant
+## calibration statistic in `.gllvmTMB_ordinal_degeneracy_row()`. Mirrors the
+## `n_ordinal_cuts_per_trait` / `ordinal_offset_per_trait` packing that
+## `extract_cutpoints()` (`R/extract-cutpoints.R`) already uses. Returns a
+## named numeric vector (names = trait_id as character), `NA` for any trait
+## with fewer than one free cutpoint (`K = 2`, no free cutpoint under the
+## Hadfield convention) or where the packing metadata is unreachable (e.g. a
+## hand-built fixture without it) -- fails closed rather than dividing by
+## zero; callers must not treat a `0`-length span as "no spread", only as
+## "undefined".
+.gllvmTMB_ordinal_cutpoint_span_by_trait <- function(object, ids) {
+  out <- rep(NA_real_, length(ids))
+  names(out) <- as.character(ids)
+  tmb <- object$tmb_data
+  n_cuts_pt <- tmb$n_ordinal_cuts_per_trait
+  off_pt <- tmb$ordinal_offset_per_trait
+  taus <- object$report$ordinal_cutpoints
+  if (is.null(n_cuts_pt) || is.null(off_pt) || is.null(taus)) {
+    return(out)
+  }
+  n_cuts_pt <- as.integer(n_cuts_pt)
+  off_pt <- as.integer(off_pt)
+  taus <- as.numeric(taus)
+  for (id in ids) {
+    if (id > length(n_cuts_pt) || id > length(off_pt)) {
+      next
+    }
+    nk <- n_cuts_pt[id]
+    if (!is.finite(nk) || nk < 1L) {
+      next
+    }
+    base <- off_pt[id]
+    idx <- base + seq_len(nk)
+    if (any(idx > length(taus))) {
+      next
+    }
+    tk <- taus[idx]
+    if (length(tk) > 0L && all(is.finite(tk))) {
+      out[[as.character(id)]] <- max(tk) - min(tk)
+    }
+  }
+  out
+}
+
+#' Ordinal-probit loading degeneracy screen
+#'
+#' `ordinal_probit()` (family_id 14) traits drop the auto-Psi at parse time
+#' (`auto_unique_off_family` in `R/fit-multi.R`, fids 12/13/14), so a
+#' pure-ordinal fit has no `report$sd_B` and the `near_zero_psi_*` rows
+#' elsewhere in [check_gllvmTMB()] are dark by design -- these two loading
+#' arms are the ONLY degeneracy coverage a default all-ordinal fit gets,
+#' which is exactly issue #897's gap in one sentence (`ordinal_probit` had
+#' zero detector coverage, 239/239 fits unflagged, where the binomial screen
+#' caught 272/272).
+#'
+#' The detector-S1 mechanism probe (`dev/ordinal-degeneracy/probe-criteria.md`,
+#' VERDICT 2026-08-17) measured the mechanism behind 24 degenerate ordinal
+#' fits over a 60-fit grid and found **category-level separation, not link
+#' saturation**: `gll_log_pnorm_diff`'s cutpoint-underflow condition (both
+#' bracketing cutpoints more than 8.2924 from `eta` on the same side) never
+#' fired on any observed row of any degenerate fit (flat-row share exactly
+#' 0/24 fits), while dichotomising every degenerate fit's response to binary
+#' at the middle cutpoint and refitting as `binomial(link = "probit")` fired
+#' the package's EXISTING `binomial_prevalence_loading` detector on 24/24
+#' refits. **A flat-fit/saturation arm therefore has no empirical basis in
+#' this probe and is deliberately not built here.** This row is instead
+#' modeled directly on `.gllvmTMB_binomial_prevalence_loading_row()`'s
+#' loading arms, because the probe found the pathology concentrated in a
+#' single trait's loading column (worked example: one trait's loading 44.2
+#' against a true `max|Lambda| = 4.79` while sibling traits stayed near
+#' truth) -- the same per-trait quasi-separation geometry, not a
+#' cutpoint-arithmetic artifact.
+#'
+#' Two arms, both loading-only. Unlike the binomial row there is no
+#' prevalence/saturation conjunct: an ordinal trait has no single Bernoulli
+#' "prevalence" to test against, and the probe found no evidence that an
+#' extreme-category-prevalence conjunct would add sensitivity here; if the
+#' detector-S2 calibration campaign shows otherwise, one can be added later.
+#'   - **O1 (`runaway_loading`)**: `relative_loading` (a trait's largest
+#'     loading divided by the typical loading among the OTHER ordinal
+#'     traits, via `.gllvmTMB_max_loading_by_trait(object, reference_traits =
+#'     <ordinal trait ids>)` -- the family-scoped denominator, so a
+#'     gaussian/binomial partner trait can neither mask nor manufacture an
+#'     ordinal runaway) at or above `ordinal_loading_runaway_thresh`.
+#'   - **O2 (`extreme_magnitude`)**: `max_loading_unit` (unit tiers ONLY --
+#'     never the SPDE tier; see `.gllvmTMB_max_loading_by_trait()`'s own
+#'     comment on the `sqrt(4*pi)*kappa` normalisation hazard, measured at
+#'     6.5e6 against 66 on the unit tier of the same fit) at or above
+#'     `ordinal_loading_absolute_thresh`. This is scale-free for
+#'     `ordinal_probit` by the same argument that justifies binomial's
+#'     absolute arm: the probit-liability residual variance is EXACTLY 1
+#'     under the Wright/Falconer/Hadfield threshold convention
+#'     (`R/extract-sigma.R`, `sigma_d^2 = 1` fixed, no free scale
+#'     parameter), so a loading IS the trait's latent SD in liability units.
+#'
+#' Both thresholds default to `Inf` (fully disarmed) pending the detector-S2
+#' calibration campaign staged at `dev/ordinal-degeneracy/`
+#' (`campaign-ordinal-calibration.R`, `pass-criteria-ordinal.md`) -- shipping
+#' an armed default ahead of that evidence would repeat the mistake the
+#' binomial thresholds in this file were originally calibrated to correct.
+#'
+#' A third statistic is computed and reported for the calibration campaign's
+#' own use but is **NOT** wired into `flag` or `status`: `cutpoint_span`
+#' (a trait's fitted cutpoint span, `max(tau) - min(tau)` over its free
+#' cutpoints `tau_2 .. tau_{K-1}`, via
+#' `.gllvmTMB_ordinal_cutpoint_span_by_trait()`) and the derived
+#' `loading_over_span` (`max_loading_unit / cutpoint_span`). Whether this
+#' variant adds sensitivity beyond O1/O2, and whether the span itself is
+#' confounded with the degeneracy label it would be screening for (a
+#' precondition the calibration campaign must report before this variant
+#' could ever ship), is exactly what that campaign is for. `K = 2` traits
+#' (no free cutpoint under the Hadfield `tau_1 = 0` convention) return `NA`
+#' for `cutpoint_span` rather than dividing by zero, and `loading_over_span`
+#' is `NA` wherever `cutpoint_span` is `NA` or non-positive.
+#'
+#' @param object A fit returned by [gllvmTMB()].
+#' @param ordinal_loading_runaway_thresh Threshold on `relative_loading`
+#'   (Arm O1). Default `Inf` (disarmed pending calibration).
+#' @param ordinal_loading_absolute_thresh Threshold on `max_loading_unit`,
+#'   unit tiers only (Arm O2). Default `Inf` (disarmed pending calibration).
+#' @return A one-row data frame in the [check_gllvmTMB()] row shape, or
+#'   `NULL` when the fit has no `ordinal_probit()` (family_id 14) trait.
+#' @keywords internal
+.gllvmTMB_ordinal_degeneracy_row <- function(
+  object,
+  ordinal_loading_runaway_thresh = Inf,
+  ordinal_loading_absolute_thresh = Inf
+) {
+  required <- c("family_id_vec", "trait_id")
+  tmb <- .gllvmTMB_tmb_data_or_null(object, required)
+  if (is.null(tmb)) {
+    return(NULL)
+  }
+
+  family_id <- as.integer(tmb$family_id_vec)
+  trait_id <- as.integer(tmb$trait_id) + 1L
+  if (length(trait_id) != length(family_id)) {
+    return(NULL)
+  }
+  ordinal_rows <- family_id == 14L
+  if (!any(ordinal_rows)) {
+    return(NULL)
+  }
+
+  ids <- sort(unique(trait_id[ordinal_rows]))
+  trait_names <- .gllvmTMB_trait_names(object)
+  loadings <- .gllvmTMB_max_loading_by_trait(object, reference_traits = ids)
+  tab <- loadings[loadings$trait_id %in% ids, , drop = FALSE]
+  if (nrow(tab) == 0L) {
+    return(NULL)
+  }
+
+  span <- .gllvmTMB_ordinal_cutpoint_span_by_trait(object, ids)
+  tab$cutpoint_span <- unname(span[as.character(tab$trait_id)])
+  tab$loading_over_span <- ifelse(
+    is.finite(tab$max_loading_unit) & is.finite(tab$cutpoint_span) &
+      tab$cutpoint_span > 0,
+    tab$max_loading_unit / tab$cutpoint_span,
+    NA_real_
+  )
+
+  ## Same standalone-arm shape as binomial's `runaway_loading` /
+  ## `extreme_magnitude` (no prevalence gate) -- see roxygen for why there is
+  ## no ordinal analogue of `dominant_loading`.
+  tab$runaway_loading <- is.finite(tab$relative_loading) &
+    tab$relative_loading >= ordinal_loading_runaway_thresh
+  tab$extreme_magnitude <- is.finite(tab$max_loading_unit) &
+    tab$max_loading_unit >= ordinal_loading_absolute_thresh
+  tab$flag <- tab$runaway_loading | tab$extreme_magnitude
+
+  score <- ifelse(is.finite(tab$relative_loading), tab$relative_loading, -Inf) +
+    ifelse(tab$flag, 1000, 0)
+  best <- tab[which.max(score), , drop = FALSE]
+  any_o1 <- any(tab$runaway_loading)
+  any_o2 <- any(tab$extreme_magnitude)
+  status <- if (any_o1 || any_o2) "WARN" else "PASS"
+  arms <- c(if (any_o1) "O1" else NULL, if (any_o2) "O2" else NULL)
+
+  msg <- if (!identical(status, "WARN")) {
+    "ordinal-probit trait loading screen (O1 relative / O2 absolute liability-scale magnitude)"
+  } else {
+    paste0(
+      "ordinal trait loading has run away from the rest (quasi-complete ",
+      "category-level separation; see dev/ordinal-degeneracy/probe-criteria.md; arms: ",
+      paste(arms, collapse = ","), ")"
+    )
+  }
+  action <- if (!identical(status, "WARN")) {
+    "none"
+  } else {
+    "treat the fit as unusable rather than interpreting it: the S1 probe found this is the same quasi-complete-separation geometry the binomial screen catches (24/24 dichotomised refits fired binomial_prevalence_loading); refit with a loading penalty via gllvmTMBcontrol(aghq_ridge = 2), which makes the result a penalised (MAP) estimate, so logLik(), AIC() and BIC() no longer apply to it"
+  }
+
+  .gllvmTMB_check_row(
+    "ordinal_liability_loading",
+    status,
+    paste0(
+      best$trait,
+      " max_loading=", .gllvmTMB_fmt_num(best$max_loading),
+      "; relative_loading=", .gllvmTMB_fmt_num(best$relative_loading),
+      "; max_loading_unit=", .gllvmTMB_fmt_num(best$max_loading_unit),
+      "; cutpoint_span=", .gllvmTMB_fmt_num(best$cutpoint_span)
+    ),
+    paste0(
+      "relative_loading >= ", ordinal_loading_runaway_thresh,
+      " (O1) or max_loading_unit >= ", ordinal_loading_absolute_thresh,
+      " on the link scale (O2); both disarmed at Inf pending the detector-S2 calibration campaign"
+    ),
+    msg,
+    action
+  )
+}
+
 .gllvmTMB_sigma_eps_mapped_off <- function(object) {
   map <- object$tmb_obj$env$map
   if (is.null(map) || !"log_sigma_eps" %in% names(map)) {
@@ -1110,6 +1325,22 @@
 #'   field is reported as collapsed. Default `0.02`, provisional pending the
 #'   S3 calibration campaign; labeled evidence: collapsed ratios 7e-5 to
 #'   3.4e-4.
+#' @param ordinal_loading_runaway_thresh Threshold on an `ordinal_probit()`
+#'   (fid 14) trait's largest loading relative to the typical loading among
+#'   the other ordinal traits, at or above which the loading is reported on
+#'   its own. Mirrors `loading_runaway_thresh`'s binomial arm. Default `Inf`
+#'   (disarmed): the detector-S1 mechanism probe
+#'   (`dev/ordinal-degeneracy/probe-criteria.md`) established that degenerate
+#'   ordinal fits share binomial's quasi-complete-separation mechanism, but
+#'   the threshold itself awaits the detector-S2 calibration campaign.
+#' @param ordinal_loading_absolute_thresh Threshold on an `ordinal_probit()`
+#'   trait's largest loading on the link (liability) scale, unit tiers only,
+#'   at or above which it is reported regardless of the other traits.
+#'   Meaningful because the probit-liability residual variance is exactly 1
+#'   under the Wright/Falconer/Hadfield threshold convention, so a loading
+#'   is the trait's latent standard deviation in liability units, mirroring
+#'   `loading_absolute_thresh`'s binomial justification. Default `Inf`
+#'   (disarmed pending the detector-S2 calibration campaign).
 #' @return A data frame with columns `component`, `status`, `value`,
 #'   `threshold`, `message`, and `action`. Status values are `"PASS"`,
 #'   `"WARN"`, or `"FAIL"`.
@@ -1138,7 +1369,9 @@ check_gllvmTMB <- function(
   multinomial_collapse_floor = 1e-10,
   multinomial_collapse_rel_thresh = Inf,
   multinomial_rail_thresh = 0.99,
-  multinomial_range_collapse_thresh = 0.02
+  multinomial_range_collapse_thresh = 0.02,
+  ordinal_loading_runaway_thresh = Inf,
+  ordinal_loading_absolute_thresh = Inf
 ) {
   if (!inherits(object, "gllvmTMB_multi")) {
     cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
@@ -1338,6 +1571,11 @@ check_gllvmTMB <- function(
     multinomial_rail_thresh = multinomial_rail_thresh,
     multinomial_range_collapse_thresh = multinomial_range_collapse_thresh
   )
+  ordinal_row <- .gllvmTMB_ordinal_degeneracy_row(
+    object,
+    ordinal_loading_runaway_thresh = ordinal_loading_runaway_thresh,
+    ordinal_loading_absolute_thresh = ordinal_loading_absolute_thresh
+  )
   if (length(latent_specs) == 0L) {
     rows <- c(
       rows,
@@ -1435,6 +1673,9 @@ check_gllvmTMB <- function(
   }
   if (!is.null(multinomial_row)) {
     rows <- c(rows, list(multinomial_row))
+  }
+  if (!is.null(ordinal_row)) {
+    rows <- c(rows, list(ordinal_row))
   }
 
   psi_specs <- c(

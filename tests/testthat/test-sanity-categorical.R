@@ -303,6 +303,309 @@ test_that("multinomial_collapse_rel_thresh is disarmed by default (Inf)", {
   expect_false(grepl("M2", armed_row$message))
 })
 
+# ---------------------------------------------------------------------------
+# Tests for the ordinal-probit loading degeneracy row
+# (`.gllvmTMB_ordinal_degeneracy_row()`, component "ordinal_liability_loading")
+# added beside the binomial and multinomial detector rows in
+# `check_gllvmTMB()`. See R/diagnose.R for the O1/O2 arm definitions and the
+# detector-S1 mechanism-probe verdict (dev/ordinal-degeneracy/probe-criteria.md)
+# that shaped them: category-level separation, not link saturation -- hence
+# no flat-fit/saturation arm and no prevalence conjunct.
+
+## Hand-built `gllvmTMB_multi`-classed fixture. `cuts` is a list, one entry
+## per ordinal trait, of that trait's FREE cutpoints (tau_2 .. tau_{K-1});
+## an empty numeric vector means K = 2 (no free cutpoint, the Hadfield
+## convention). `extra_traits` is a named list mapping trait name -> family
+## id (0 = gaussian, 1 = binomial) for non-ordinal traits appended after the
+## ordinal ones, to probe disjointness against the other detector rows.
+mk_ord <- function(
+  lam_B = NULL,
+  cuts = list(c(0.7, 1.4)),
+  extra_traits = NULL,
+  use = list(rr_B = TRUE),
+  spde = NULL,
+  mesh = NULL
+) {
+  n_ord <- length(cuts)
+  ord_labels <- if (n_ord > 0L) paste0("ord", seq_len(n_ord)) else character(0)
+  n_extra <- length(extra_traits)
+  tl <- c(ord_labels, names(extra_traits))
+  n_traits <- length(tl)
+
+  n_cuts_pt <- integer(n_traits)
+  off_pt <- integer(n_traits)
+  cum <- 0L
+  taus_flat <- numeric(0)
+  if (n_ord > 0L) {
+    for (i in seq_len(n_ord)) {
+      ci <- cuts[[i]]
+      nk <- length(ci)
+      n_cuts_pt[i] <- nk
+      off_pt[i] <- cum
+      if (nk > 0L) {
+        taus_flat <- c(taus_flat, ci)
+        cum <- cum + nk
+      }
+    }
+  }
+
+  family_id_ord <- rep(14L, n_ord)
+  family_id_extra <- if (n_extra > 0L) as.integer(unlist(extra_traits)) else integer(0)
+  family_id_by_trait <- c(family_id_ord, family_id_extra)
+
+  tid <- rep(seq_len(n_traits) - 1L, each = 10L)
+  n <- length(tid)
+  family_id_vec <- family_id_by_trait[tid + 1L]
+  link_id_vec <- rep(0L, n)
+  ## Binomial extras (family_id 1) need y/n_trials/is_y_observed for the
+  ## binomial row to compute at all; an unremarkable 50/50 split so it PASSes
+  ## unless the caller inflates that trait's own loading.
+  y <- ifelse(family_id_vec == 1L, rep(c(0, 1), length.out = n), 0)
+  n_trials <- rep(1, n)
+  is_y_observed <- rep(1L, n)
+
+  report <- list(eta = rep(0, n), ordinal_cutpoints = taus_flat)
+  if (!is.null(lam_B)) {
+    report$Lambda_B <- lam_B
+  }
+  if (!is.null(spde)) {
+    report$Lambda_spde <- spde$Lambda
+    report$kappa <- spde$kappa
+  }
+
+  fit <- list(
+    fit_health = list(
+      convergence = 0L, message = "ok", max_gradient = 0,
+      sdreport_ok = TRUE, sdreport_error = NA_character_, pd_hessian = TRUE,
+      max_fixed_se = 1, boundary_flags = character(0), selected_restart = 1L
+    ),
+    sd_report = list(pdHess = TRUE, cov.fixed = diag(2)),
+    restart_history = data.frame(
+      restart = 1L, optimizer = "nlminb", objective = 0,
+      convergence = 0L, selected = TRUE
+    ),
+    report = report,
+    tmb_data = list(
+      trait_id = tid, family_id_vec = family_id_vec, link_id_vec = link_id_vec,
+      y = y, n_trials = n_trials, is_y_observed = is_y_observed,
+      n_ordinal_cuts_per_trait = n_cuts_pt, ordinal_offset_per_trait = off_pt
+    ),
+    data = data.frame(trait = factor(tl[tid + 1L], levels = tl)),
+    trait_col = "trait", n_traits = n_traits, use = use,
+    mesh = mesh
+  )
+  class(fit) <- "gllvmTMB_multi"
+  fit
+}
+
+ord_row <- function(fit, ...) {
+  chk <- check_gllvmTMB(fit, ...)
+  chk[chk$component == "ordinal_liability_loading", , drop = FALSE]
+}
+
+test_that("a fit with no ordinal_probit trait has no degeneracy row", {
+  fit <- mk_ord(
+    lam_B = matrix(0.5, nrow = 1, dimnames = list("g1", "LV1")),
+    cuts = list(),
+    extra_traits = list(g1 = 0L)
+  )
+
+  expect_null(gllvmTMB:::.gllvmTMB_ordinal_degeneracy_row(fit))
+  expect_false(
+    "ordinal_liability_loading" %in% check_gllvmTMB(fit)$component
+  )
+})
+
+test_that("a healthy ordinal fit PASSes under calibration-style armed thresholds", {
+  lam <- matrix(
+    c(0.5, -0.4, 0.6),
+    nrow = 3, dimnames = list(paste0("ord", 1:3), "LV1")
+  )
+  fit <- mk_ord(lam, cuts = list(c(0.7, 1.4), c(0.5, 1.1), c(0.6, 1.3)))
+  row <- ord_row(
+    fit,
+    ordinal_loading_runaway_thresh = 25,
+    ordinal_loading_absolute_thresh = 6
+  )
+
+  expect_equal(nrow(row), 1L)
+  expect_equal(row$status, "PASS")
+})
+
+test_that("the disarmed defaults (Inf) fire nothing, even on an otherwise-runaway fixture", {
+  lam <- matrix(
+    c(0.5, -0.4, 20),
+    nrow = 3, dimnames = list(paste0("ord", 1:3), "LV1")
+  )
+  fit <- mk_ord(lam, cuts = list(c(0.7, 1.4), c(0.5, 1.1), c(0.6, 1.3)))
+  row <- ord_row(fit)
+
+  expect_equal(row$status, "PASS")
+})
+
+test_that("a single-column runaway fixture fires O1 (armed) and names the right trait", {
+  lam <- matrix(
+    c(0.5, -0.4, 20),
+    nrow = 3, dimnames = list(paste0("ord", 1:3), "LV1")
+  )
+  fit <- mk_ord(lam, cuts = list(c(0.7, 1.4), c(0.5, 1.1), c(0.6, 1.3)))
+  row <- ord_row(
+    fit,
+    ordinal_loading_runaway_thresh = 25,
+    ordinal_loading_absolute_thresh = Inf
+  )
+
+  expect_equal(row$status, "WARN")
+  expect_match(row$message, "O1")
+  expect_false(grepl("O2", row$message))
+  expect_match(row$value, "^ord3")
+})
+
+test_that("an absolute-magnitude fixture fires O2 under an explicit threshold", {
+  ## All three loadings are similar in magnitude (relative_loading stays
+  ## near 1), but the common magnitude itself clears the absolute threshold.
+  lam <- matrix(
+    c(7, 6.5, 7.2),
+    nrow = 3, dimnames = list(paste0("ord", 1:3), "LV1")
+  )
+  fit <- mk_ord(lam, cuts = list(c(0.7, 1.4), c(0.5, 1.1), c(0.6, 1.3)))
+  row <- ord_row(
+    fit,
+    ordinal_loading_runaway_thresh = 25,
+    ordinal_loading_absolute_thresh = 6
+  )
+
+  expect_equal(row$status, "WARN")
+  expect_match(row$message, "O2")
+  expect_false(grepl("O1", row$message))
+})
+
+test_that("ordinal_loading_runaway_thresh brackets the O1 arm", {
+  lam <- matrix(
+    c(0.5, -0.4, 15),
+    nrow = 3, dimnames = list(paste0("ord", 1:3), "LV1")
+  )
+  fit <- mk_ord(lam, cuts = list(c(0.7, 1.4), c(0.5, 1.1), c(0.6, 1.3)))
+
+  ## relative_loading for ord3 is 15 / 0.5 = 30.
+  below <- ord_row(
+    fit, ordinal_loading_runaway_thresh = 40,
+    ordinal_loading_absolute_thresh = Inf
+  )
+  above <- ord_row(
+    fit, ordinal_loading_runaway_thresh = 25,
+    ordinal_loading_absolute_thresh = Inf
+  )
+
+  expect_equal(below$status, "PASS")
+  expect_equal(above$status, "WARN")
+  expect_match(above$message, "O1")
+})
+
+test_that("ordinal_loading_absolute_thresh brackets the O2 arm", {
+  lam <- matrix(6, nrow = 1, dimnames = list("ord1", "LV1"))
+  fit <- mk_ord(lam, cuts = list(c(0.7, 1.4)))
+
+  below <- ord_row(
+    fit, ordinal_loading_runaway_thresh = Inf,
+    ordinal_loading_absolute_thresh = 6.5
+  )
+  above <- ord_row(
+    fit, ordinal_loading_runaway_thresh = Inf,
+    ordinal_loading_absolute_thresh = 6
+  )
+
+  expect_equal(below$status, "PASS")
+  expect_equal(above$status, "WARN")
+  expect_match(above$message, "O2")
+})
+
+test_that("a huge SPDE-only loading fires no absolute arm (unit-tier rule)", {
+  ## Lambda_B is absent for this trait -- only the spatial tier loads --
+  ## so max_loading_unit is NA (no unit-tier entry exists) and O2 can never
+  ## fire from it, mirroring the binomial row's 6.5e6-vs-66 unit-tier hazard.
+  lam_spde <- matrix(6.5e6, nrow = 1, dimnames = list("ord1", "LV1"))
+  fit <- mk_ord(
+    NULL, cuts = list(c(0.7, 1.4)),
+    spde = list(Lambda = lam_spde, kappa = 0.01)
+  )
+  row <- ord_row(
+    fit,
+    ordinal_loading_runaway_thresh = 25,
+    ordinal_loading_absolute_thresh = 6
+  )
+
+  expect_equal(row$status, "PASS")
+  expect_match(row$value, "max_loading_unit=NA")
+})
+
+test_that("disjointness vs the binomial row: gaussian + ordinal + binomial, no masking", {
+  ## The gaussian trait carries a huge loading (300) that must not leak into
+  ## the ordinal trait's family-scoped typical/spread, and the ordinal
+  ## trait's own runaway must not be masked by (or leak into) the binomial
+  ## row, which screens only its own family's rows.
+  lam <- matrix(
+    c(0.5, 300, 0.4),
+    nrow = 3, dimnames = list(c("ord1", "g1", "b1"), "LV1")
+  )
+  fit <- mk_ord(
+    lam, cuts = list(c(0.7, 1.4)),
+    extra_traits = list(g1 = 0L, b1 = 1L)
+  )
+  chk <- check_gllvmTMB(
+    fit,
+    loading_runaway_thresh = 25, loading_absolute_thresh = 6,
+    ordinal_loading_runaway_thresh = 25, ordinal_loading_absolute_thresh = 6
+  )
+  ord <- chk[chk$component == "ordinal_liability_loading", , drop = FALSE]
+  bin <- chk[chk$component == "binomial_prevalence_loading", , drop = FALSE]
+
+  ## Neither family's screen is disturbed by the gaussian trait's scale.
+  expect_equal(ord$status, "PASS")
+  expect_equal(bin$status, "PASS")
+  expect_false("multinomial_contrast_degeneracy" %in% chk$component)
+
+  ## Now make the ordinal trait itself runaway: the binomial row must stay
+  ## clean, proving the ordinal arm does not leak into it either.
+  lam2 <- lam
+  lam2["ord1", ] <- 20
+  fit2 <- mk_ord(
+    lam2, cuts = list(c(0.7, 1.4)),
+    extra_traits = list(g1 = 0L, b1 = 1L)
+  )
+  chk2 <- check_gllvmTMB(
+    fit2,
+    loading_runaway_thresh = 25, loading_absolute_thresh = 6,
+    ordinal_loading_runaway_thresh = 25, ordinal_loading_absolute_thresh = 6
+  )
+  expect_equal(
+    chk2$status[chk2$component == "ordinal_liability_loading"], "WARN"
+  )
+  expect_equal(
+    chk2$status[chk2$component == "binomial_prevalence_loading"], "PASS"
+  )
+})
+
+test_that("a K = 2 ordinal trait's cutpoint span is NA, not an error", {
+  span <- gllvmTMB:::.gllvmTMB_ordinal_cutpoint_span_by_trait(
+    mk_ord(cuts = list(numeric(0))), ids = 1L
+  )
+  expect_true(is.na(span[["1"]]))
+
+  ## Wired into the row without erroring, and without blocking O1/O2 from
+  ## still firing on the SAME fixture when a runaway loading is present.
+  lam <- matrix(20, nrow = 1, dimnames = list("ord1", "LV1"))
+  fit <- mk_ord(lam, cuts = list(numeric(0)))
+  row <- ord_row(
+    fit,
+    ordinal_loading_runaway_thresh = Inf,
+    ordinal_loading_absolute_thresh = 6
+  )
+
+  expect_equal(row$status, "WARN")
+  expect_match(row$value, "cutpoint_span=NA")
+})
+
 test_that("multinomial_rail_thresh brackets the M2 arm", {
   ## Two unit-norm contrast rows separated by angle 0.1 rad give an exact
   ## rho = cos(0.1) = 0.995004..., independent of magnitude. Bracket the

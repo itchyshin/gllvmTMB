@@ -147,7 +147,7 @@ from `origin/main` @ `a5c83011`.
 | CI triad docs + Confirm | y | Confirm on this branch | #1075 + `7de94fc7` | **DONE** (SIGNED) |
 | Design 125 claim | y | n (this lane) | — | **DONE** @ `b68b20b4` |
 | S2 ADEMP pre-reg | y | n (this lane) | — | **DONE** (draft; unsigned) |
-| Poisson W G0 card | y | y | #1076 | **LANDED** (G0 still UNSIGNED) |
+| Poisson W G0 card | y | y | #1076 | **SIGNED — PARK SE doors** |
 | Profile scaffold `cursor/mspl-profile-ci-scaffold` | y | y | #1077 draft | **CARRIED-OVER** — still draft; do not undraft |
 | nbinom admit packet | y | y | #1065 | **CARRIED-OVER** — planned only; fix CONFLICTING/CI; no admit |
 | B0 #981 | y | y | #981 CONFLICTING | **CARRIED-OVER** — leave |

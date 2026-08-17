@@ -1,5 +1,22 @@
 # gllvmTMB 0.7.0 (development)
 
+* **Convergence diagnostics on ridged fits now judge the objective the fit
+  actually optimised (#1092).** `aghq_ridge` applies a loading penalty in R,
+  outside the TMB objective, so `fit_health$max_gradient` previously reported
+  the gradient of the *unpenalised* likelihood at the penalised optimum — a
+  number that equals the missing ridge term (`|Lambda|/tau^2`) rather than
+  ~0, making perfectly converged ridged fits read as unconverged. The
+  reported gradient, `stationary_by_gradient`, `converged`, `sanity_multi()`
+  and the AGHQ stop reason now evaluate the penalised objective; the new
+  `fit_health$gradient_is_penalised` field discloses when this applies, and
+  the raw likelihood gradient remains available via `fit$tmb_obj$gr()`.
+  Unridged fits are unchanged. Relatedly, the ridge's reach is now pinned to
+  the ordinary loading block `theta_rr_B` **only**: an accidental merge had
+  briefly made it also penalise spatial latent loadings
+  (`theta_rr_spde_lv`), contradicting the documented exemption for spatial
+  terms — a regression test now proves spatial loadings carry no silent
+  penalty.
+
 * **Multinomial fits now warn at fit time when their contrast structure is
   degenerate.** The screen added this release (collapsed contrast variance,
   rail-correlated contrasts, or a collapsed spatial range) is now surfaced

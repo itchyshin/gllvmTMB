@@ -52288,3 +52288,35 @@ handover **cannot be done from the stored rows** — the CSVs keep only a scalar
 Three options in `docs/dev-log/2026-08-17-design122-k1-reread-infeasible.md`.
 
 — Claude, OWED-items lane (PRs #1106, #1107, #1108)
+
+### Final disposition (same lane, later on 2026-08-17)
+
+Three maintainer decisions landed and are executed in this branch:
+
+1. **Ridge scope NARROWED to `theta_rr_B` only** (resolves the spatial-ridge
+   contradiction in the warning's favour). Provenance established first: the
+   exemption warning (`ae340bdd`) and the spde-in-ridge line (`0d992c61`)
+   landed the same day on parallel branches — `git merge-base --is-ancestor`
+   confirms neither is an ancestor of the other — so the contradiction was a
+   merge collision, not a decision. The positive two-block fixture is replaced
+   by a NEGATIVE test pinning the exemption; it fails 3 ways against the
+   two-block behaviour (verified by temporarily restoring it) and passes 20/20
+   with the narrow.
+2. **Design 122: option (a), permanent caveat.** No rerun, no sentinel.
+   Recorded in the K1 memo.
+3. **NEWS audit: YES, an entry was owed** — `fit_health$max_gradient` changed
+   meaning on ridged fits (user-facing behaviour). Added under 0.7.0 (dev).
+   Roxygen: no exported surface documents `fit_health` fields, so no Rd
+   change; `devtools::document()` run to confirm no drift.
+
+Commands (exact): `devtools::test(filter = "penalised-gradient")` → 20/20;
+same filter against the two-block variant → 3 failures (the discrimination
+proof); `devtools::document()`; `pkgdown::check_pkgdown()`; full
+`devtools::check(args = "--no-manual")` re-run after the narrow — result
+recorded in the after-task report.
+
+Deliberately not done: Ayumi #25 / #23 (fresh lanes, after this PR lands);
+any Ayumi reply (held by Shinichi until the fixes are established); any
+Design 122 compute.
+
+— Claude, OWED-items lane, finishing pass

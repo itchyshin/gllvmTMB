@@ -242,23 +242,28 @@
   )
 }
 
-## THE blocks the R-level `aghq_ridge` penalty actually reaches. Single source
-## of truth: `run_one()` applies the penalty to exactly these, and every
+## THE blocks the R-level `aghq_ridge` penalty reaches. Single source of
+## truth: `run_one()` applies the penalty to exactly these, and every
 ## instrument that reports on the penalised objective -- the gradient accessor
 ## and `.gllvmTMB_objective_components()` -- must use the SAME set or it
 ## describes a different function than the one minimised. Getting this list
-## wrong is #1092 one level down: the first fix for #1092 repaired
-## `theta_rr_B` alone and was therefore a silent no-op on any fit that also
-## carries `theta_rr_spde_lv` (`latent()` + `spatial_latent()`), which the
-## adversarial review caught by measurement.
+## wrong is #1092 one level down: the first fix for #1092 repaired one block
+## while the applier reached two, which the adversarial review caught by
+## measurement.
 ##
-## NOTE the asymmetry with `.gllvmTMB_loading_ridge_applies()` below, which is
-## deliberate and is NOT a bug: that predicate is the GATE deciding whether the
-## ridge is applied at all, and it keys on `theta_rr_B` only. Once the gate
-## opens, the penalty lands on every block named here. Widening the gate would
-## change which models get penalised -- a behaviour change, and a maintainer
-## decision (see the fenced note at the `aghq_ridge` mismatch warning).
-.gllvmTMB_ridge_block_names <- c("theta_rr_B", "theta_rr_spde_lv")
+## MAINTAINER DECISION (Shinichi, 2026-08-17, PR #1106): the ridge is
+## `theta_rr_B` ONLY. `theta_rr_spde_lv` was briefly in this set because
+## 0d992c61 (LA-MSPL Lane B) added it to `run_one()` the same day ae340bdd
+## added the warning promising spatial terms are NOT silently penalised --
+## parallel branches, neither an ancestor of the other, merged into a
+## contradiction nobody chose. The admission gate keys on `theta_rr_B`, the
+## public warning promises the exemption, and every piece of ridge validation
+## evidence is ordinary-loading-specific, so the block set narrows to match
+## the documented contract rather than the accidental union. A negative test
+## (test-penalised-gradient-1092.R) now pins the exemption: on a
+## `latent() + spatial_latent()` ridged fit the spatial loadings carry NO
+## penalty pressure at the optimum.
+.gllvmTMB_ridge_block_names <- "theta_rr_B"
 
 .gllvmTMB_loading_ridge_applies <- function(ridge_tau, parameter_names) {
   is.numeric(ridge_tau) && length(ridge_tau) == 1L && !is.na(ridge_tau) &&
@@ -5838,18 +5843,11 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       laplace_ridge_tau <- tau_req
     }
   }
-  ## OPEN QUESTION FOR THE MAINTAINER, surfaced by the #1092 adversarial review
-  ## and deliberately NOT decided here (it is a behaviour change, not an
-  ## instrument fix). The "i" line below is true only when `theta_rr_B` is
-  ## ABSENT. When an ordinary `latent()` block IS present, this gate opens and
-  ## `run_one()` then penalises `theta_rr_spde_lv` as well -- so on a
-  ## `latent() + spatial_latent()` fit the spatial LV loadings ARE silently
-  ## penalised, which is exactly what this message tells the user does not
-  ## happen. Either the penalty should be confined to `theta_rr_B` (narrow the
-  ## block set in `.gllvmTMB_ridge_block_names`) or the message should stop
-  ## promising that spatial terms are exempt. Both are estimand-visible; the
-  ## instruments in this file now describe the CURRENT behaviour faithfully
-  ## either way.
+  ## RESOLVED (Shinichi, 2026-08-17): the contradiction the #1092 adversarial
+  ## review surfaced -- `run_one()` penalising `theta_rr_spde_lv` while this
+  ## message promises spatial terms are exempt -- is settled in the message's
+  ## favour: `.gllvmTMB_ridge_block_names` is `theta_rr_B` only, so the "i"
+  ## line below is now true unconditionally.
   if (!is.null(laplace_ridge_tau) &&
       !.gllvmTMB_loading_ridge_applies(laplace_ridge_tau, names(obj$par))) {
     cli::cli_warn(c(

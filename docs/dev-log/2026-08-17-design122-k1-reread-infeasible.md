@@ -110,3 +110,18 @@ property of the bar, not of the fits. Any change belongs in the
 campaign-admission schema and the next design's §F1, decided before that
 campaign's pre-run, so the bar is never again tightened past the package's
 own definition of convergence without a stated reason.
+
+
+---
+
+## DECIDED — 2026-08-17, Shinichi
+
+**Option (a): retain the existing adjudication with a permanent caveat.** No rerun, no
+sentinel. The caveat: Design 122's K1 gradient leg fired on L2 as an instrument artefact
+(#1092), its rows cannot be retrospectively corrected (only the defective scalar was
+retained), and L2 stationarity rests on TEST A's independent 7,200/7,200 pass rather
+than on the gradient column. L0's breach is a tolerance-choice finding, not an optimiser
+failure. Any future campaign inherits the fixed instrument via
+`fit_health$max_gradient` and must retain per-fit parameter and gradient vectors if a
+gradient criterion is to be re-readable. A sentinel rerun remains available later as a
+separately approved D-139 exercise; it is not commissioned.

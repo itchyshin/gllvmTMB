@@ -79,15 +79,16 @@ test_that("#1092: an unpenalised fit's gradient reporting is unchanged", {
   expect_equal(fit$fit_health$max_gradient, g_raw, tolerance = 1e-10)
 })
 
-## The SECOND penalised block. `run_one()` applies the ridge to `theta_rr_B`
-## AND `theta_rr_spde_lv`, so a fit combining `latent()` with
-## `spatial_latent()` has two penalised blocks. The first fix for #1092
-## repaired only `theta_rr_B` and was a silent NO-OP on exactly this shape --
-## it passed every test above while `fit_health$max_gradient` still reported
-## |lambda_spde|/tau^2 and `gradient_is_penalised` asserted TRUE about a
-## number that was not fully penalised. Found by adversarial review, not by
-## the suite, which is why this case is pinned here.
-test_that("#1092: the ridge on theta_rr_spde_lv is corrected too", {
+## The spatial exemption. `run_one()` briefly penalised `theta_rr_spde_lv`
+## alongside `theta_rr_B` (an accidental union of two same-day branches, see
+## `.gllvmTMB_ridge_block_names`), while the mismatch warning promised spatial
+## terms are never silently penalised. The maintainer resolved the
+## contradiction in the warning's favour (Shinichi, 2026-08-17, PR #1106):
+## the ridge is `theta_rr_B` ONLY. This is the NEGATIVE test pinning that
+## exemption -- on a `latent() + spatial_latent()` ridged fit the spatial
+## loadings must carry NO penalty pressure at the optimum, and the reported
+## gradient must be the `theta_rr_B`-corrected one.
+test_that("#1092: spatial loadings are NOT silently penalised (exemption pinned)", {
   skip_on_cran()
   skip_if_not_installed("fmesher")
   withr::local_options(gllvmTMB.quiet_grammar_notes = TRUE)
@@ -95,8 +96,9 @@ test_that("#1092: the ridge on theta_rr_spde_lv is corrected too", {
   set.seed(33L)
   n_site <- 50L
   n_trait <- 3L
-  lam_spde <- c(1.8, 1.4, -1.6)   # spatial LV must carry real signal, or the
-  lam_site <- c(0.1, -0.1, 0.1)   # spde block collapses and cannot discriminate
+  lam_spde <- c(1.8, 1.4, -1.6)   # spatial LV must carry real signal: if the
+  lam_site <- c(0.1, -0.1, 0.1)   # spde block collapses this test cannot
+                                  # discriminate penalised from unpenalised
   coords <- cbind(lon = stats::runif(n_site), lat = stats::runif(n_site))
   D <- as.matrix(stats::dist(coords))
   z_spde <- as.numeric(
@@ -130,23 +132,29 @@ test_that("#1092: the ridge on theta_rr_spde_lv is corrected too", {
   expect_gt(length(i_B), 0L)
   expect_true(isTRUE(fit$aghq$penalised))
 
-  ## FIXTURE GUARD: the spatial loadings must be large enough that the omitted
-  ## penalty term would dominate. If the spde block collapses (it does at
-  ## other n / mesh settings) this test silently stops discriminating, so fail
-  ## loudly instead.
+  ## FIXTURE GUARD: the spatial loadings must be large enough that a penalty
+  ## on them would leave visible gradient pressure (|lambda_spde|/tau^2 > 0.25
+  ## at this scale). A collapsed spde block would make this test pass under
+  ## EITHER contract, so fail loudly instead.
   expect_gt(max(abs(par[i_spde])), 1)
 
-  g <- as.numeric(fit$tmb_obj$gr(par))
-  g_b_only <- g
-  g_b_only[i_B] <- g_b_only[i_B] + par[i_B] / (fit$aghq$ridge_tau^2)
-  g_both <- g_b_only
-  g_both[i_spde] <- g_both[i_spde] + par[i_spde] / (fit$aghq$ridge_tau^2)
+  g_raw <- as.numeric(fit$tmb_obj$gr(par))
+  tau <- fit$aghq$ridge_tau
 
-  ## Correcting only `theta_rr_B` leaves the spde penalty term behind, and it
-  ## is the dominant one here -- this is the assertion the old fix failed.
-  expect_gt(max(abs(g_b_only)), 1e-1)
-  expect_lt(max(abs(g_both)), 1e-2)
+  ## THE EXEMPTION ITSELF. If `run_one()` had penalised the spatial block, the
+  ## raw gradient there would balance the ridge term at the optimum:
+  ## |g_raw[i_spde]| ~= |lambda_spde|/tau^2 -- large here by the guard above.
+  ## Unpenalised, the raw spatial gradient is simply ~0 at the optimum. This
+  ## assertion fails against the two-block behaviour by construction.
+  expect_lt(max(abs(g_raw[i_spde])), 1e-2)
+  expect_gt(max(abs(par[i_spde])) / tau^2, 0.25)
 
-  expect_equal(fit$fit_health$max_gradient, max(abs(g_both)), tolerance = 1e-8)
+  ## And the ordinary block IS penalised: its raw gradient carries the ridge
+  ## term, and the reported health gradient corrects for exactly that block.
+  g_corrected <- g_raw
+  g_corrected[i_B] <- g_corrected[i_B] + par[i_B] / (tau^2)
+  expect_lt(max(abs(g_corrected)), 1e-2)
+  expect_equal(fit$fit_health$max_gradient, max(abs(g_corrected)),
+               tolerance = 1e-8)
   expect_true(fit$fit_health$converged)
 })

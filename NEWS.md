@@ -37,6 +37,25 @@ is still the default.
   `multinomial_rail_thresh`, and `multinomial_range_collapse_thresh` are
   documented as provisional pending a calibration campaign.
 
+* **A `check_gllvmTMB()` row for ordinal-probit loading degeneracy** (fixes
+  the coverage gap reported in #897, where a degenerate `ordinal_probit()`
+  fit had no detector at all -- 239/239 unflagged where the binomial screen
+  caught 272/272). A mechanism probe found the pathology is category-level
+  quasi-complete separation, the same mechanism the binomial row already
+  screens for, concentrated in a single trait's loading column -- not
+  cutpoint-underflow saturation, which had zero empirical support across
+  24 measured degenerate fits. `check_gllvmTMB()` now reports an
+  `ordinal_liability_loading` row with two arms modeled directly on the
+  binomial row: a trait's largest loading relative to the typical loading
+  among the other ordinal traits, and the largest loading on the link
+  (liability) scale, unit tiers only -- scale-free because the
+  probit-liability residual variance is exactly 1 by the Wright/
+  Falconer/Hadfield threshold convention. New arguments
+  `ordinal_loading_runaway_thresh` and `ordinal_loading_absolute_thresh`
+  are disarmed by default (`Inf`) pending a calibration campaign; this is
+  a check-row addition only, no fit-time warning, no new export, no
+  behaviour change to any existing fit.
+
 * **Liability-scale phylogenetic heritability for categorical families.**
   `extract_phylo_signal()` gains a `link_residual` argument. The default
   (`"none"`) keeps the historical species-level-latent denominator

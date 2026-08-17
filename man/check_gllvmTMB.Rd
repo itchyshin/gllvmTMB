@@ -22,7 +22,9 @@ check_gllvmTMB(
   multinomial_collapse_floor = 1e-10,
   multinomial_collapse_rel_thresh = Inf,
   multinomial_rail_thresh = 0.99,
-  multinomial_range_collapse_thresh = 0.02
+  multinomial_range_collapse_thresh = 0.02,
+  ordinal_loading_runaway_thresh = Inf,
+  ordinal_loading_absolute_thresh = Inf
 )
 }
 \arguments{
@@ -148,6 +150,24 @@ they are not), at or below which a \code{multinomial()} response's spatial
 field is reported as collapsed. Default \code{0.02}, provisional pending the
 S3 calibration campaign; labeled evidence: collapsed ratios 7e-5 to
 3.4e-4.}
+
+\item{ordinal_loading_runaway_thresh}{Threshold on an \code{ordinal_probit()}
+(fid 14) trait's largest loading relative to the typical loading among
+the other ordinal traits, at or above which the loading is reported on
+its own. Mirrors \code{loading_runaway_thresh}'s binomial arm. Default \code{Inf}
+(disarmed): the detector-S1 mechanism probe
+(\code{dev/ordinal-degeneracy/probe-criteria.md}) established that degenerate
+ordinal fits share binomial's quasi-complete-separation mechanism, but
+the threshold itself awaits the detector-S2 calibration campaign.}
+
+\item{ordinal_loading_absolute_thresh}{Threshold on an \code{ordinal_probit()}
+trait's largest loading on the link (liability) scale, unit tiers only,
+at or above which it is reported regardless of the other traits.
+Meaningful because the probit-liability residual variance is exactly 1
+under the Wright/Falconer/Hadfield threshold convention, so a loading
+is the trait's latent standard deviation in liability units, mirroring
+\code{loading_absolute_thresh}'s binomial justification. Default \code{Inf}
+(disarmed pending the detector-S2 calibration campaign).}
 }
 \value{
 A data frame with columns \code{component}, \code{status}, \code{value},

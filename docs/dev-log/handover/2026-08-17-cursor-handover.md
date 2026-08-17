@@ -210,8 +210,8 @@ inventing KEEP/REPLACE tape change without a new G0.
   \(n\to 2000\). D-157 forbids both.
 - Do **not** treat internal \(Q_P\)/\(Q_0\) pins as public SE or NEWS
   `covered`.
-- Do **not** silently swap Poisson `W=diag(mu)` — that is the UNSIGNED
-  G0 (#1076); #1064 audited one-sidedness only.
+- Do **not** silently swap Poisson `W=diag(mu)` — PARK freezes SE doors;
+  KEEP/REPLACE needs a new paste, not a quiet tape edit.
 - Do **not** merge red / CONFLICTING doors (#981, #1065 until green).
 - Do **not** use Dropbox checkout; do **not** `git add -A`.
 - Lane `LOOP/` on this worktree is the live `/goal` kit — do not

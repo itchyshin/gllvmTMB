@@ -3,6 +3,18 @@
 This coordination note prevents a new session from treating this repository as
 a single writable lane.  It is a map, not a release/capability claim.
 
+**Refresh 2026-08-17 #5 (Codex to Claude): finish #1092 only; wider Ayumi programme deferred.**
+The implementation worktree `/private/tmp/gllvmtmb-1092-grad` is active on
+`claude/fix-1092-penalised-gradient` and carries two pushed commits:
+`e51738c9` (objective-consistent ridge gradient) and `bb6d1bdc` (restore DIA-11/DIA-12).
+PR [#1106](https://github.com/itchyshin/gllvmTMB/pull/1106) is open and its first CI
+run is in progress; the worktree has an untracked `.check.log`. There is no #1092
+check-log closure or after-task report yet. Claude owns verification, closure records,
+and CI for **#1092 only**, then must stop and hand back. Ayumi #25, Ayumi #23,
+Design 122 compute, and all replies to Ayumi remain deferred. All sibling lanes are
+**PROTECTED**. **START HERE:**
+`docs/dev-log/handover/2026-08-17-claude-handover-1092-finish.md`.
+
 **Refresh 2026-08-17 #4 (Codex to Claude): Ayumi #23-25 bug-fix programme assigned to Claude.**
 P0 is the confirmed loading-ridge objective/gradient mismatch, package
 [#1092](https://github.com/itchyshin/gllvmTMB/issues/1092) / Ayumi

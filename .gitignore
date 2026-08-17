@@ -46,12 +46,15 @@ vignettes/*.pdf
 .Renviron
 
 # pkgdown site (built output goes under docs/, but we keep
-# docs/design/ and docs/dev-log/ tracked as project memory).
+# docs/design/, docs/dev-log/, and docs/paper-drafts/ tracked as
+# project memory).
 docs/*
 !docs/design/
 !docs/design/**
 !docs/dev-log/
 !docs/dev-log/**
+!docs/paper-drafts/
+!docs/paper-drafts/**
 
 # translation temp files
 po/*~

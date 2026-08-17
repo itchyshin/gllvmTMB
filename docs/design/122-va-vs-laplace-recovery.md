@@ -771,3 +771,76 @@ denominators only, as §6 already mandates. One open flag for the campaign:
 4/40 optimiser non-determinism flips (parallel vs sequential) at the
 weakest-signal cell. Final scoping lives in
 `docs/dev-log/2026-08-16-design66-scoping-proposal.md`.
+
+## 16. Confirmatory campaign STAGED — measured cost, awaiting the D-139 go (2026-08-17)
+
+The campaign is built, **admitted through the Design 124 compute-admission
+slice** (`campaign_id = design122-confirmatory-20260817-646005cf`, pinned
+commit `646005cf`, fresh pinned library — the older `ae17a501` lib was
+correctly REFUSED because `R/` and `src/` had drifted), and has cleared all
+three smoke-ladder rungs. It has **not** been launched.
+
+**Rung results.** Rung 1 (1 fit) PASS. Rung 2 (canary, 24 cells × 3 arms =
+72 rows) PASS — 72/72 rows, 97.2% converged, zero NA among outcome columns,
+TEST A 71/72 (the one FAIL is a genuinely degenerate L0 fit at `rel_frob`
+7401, correctly caught, not a harness artefact). Rung 3 (one full chunk: the
+worst-cost cell `ordinal_probit, n=400, p=27, T-weak`, 300 seeds × 3 arms =
+900 fits) PASS — 900/900 rows, TEST A 900/900, zero degenerate, zero
+silent-divergent, 56.5 min wall.
+
+**Measured full-run cost (21,600 fits): ~382 core-hours**, of which **VGH is
+83%**; the VGH `n = 400` corner alone is 80.9% of all VGH core-seconds
+despite being half the VGH fits. Per-arm wall from rung 3: L0 ~90 s, L2 ~94 s,
+**VGH ~769 s** per fit. At 96 workers the pure-compute floor is **~4.0 h**.
+
+**A fixable +2.8 h overhead.** Launching as 24 chunk jobs re-pays a ~7 min
+VA-R3 DLL compile burst per daemon pool (measured: rung 3's 56.5 min minus
+`sum(wall)/96` ≈ 49.6 min). `R/va-r3-proto.R:1070-1075` documents the remedy
+and this run did not use it: `GLLVMTMB_VA_R3_BUILD_ROOT` lets workers share
+one precompiled template (its own comment notes *"a 100-worker Totoro launch
+would compile the same source 100 times"* without it). **Set it before the
+full launch** — that collapses the realistic ~6.5–7 h back toward ~4 h.
+
+**Scope limitation found at rung 2 and confirmed at rung 3:**
+`extract_cutpoints()` errors on **every** VGH `ordinal_probit` row
+(*"Provide a fit returned by gllvmTMB()"*), so `tau2_hat`/`tau3_hat` are NA
+for 300/300 VGH rows. The error is captured in-row, not silently dropped.
+**The VGH ordinal cutpoint estimand is currently unmeasurable through this
+harness** — ordinal is one of the two confirmatory families, so this either
+needs fixing before the full run or the ordinal-VGH cutpoint target must be
+pre-registered as out of scope.
+
+**Status: awaiting the final D-139 go.** The measured 382 core-hours exceeds
+the "tens of CPU-hours" stated at scoping, so the number is restated here
+rather than absorbed silently.
+
+## 17. PRE-REGISTERED AMENDMENT, before any confirmatory data exists (2026-08-17)
+
+Maintainer decision, recorded **prior to the launch** of the confirmatory
+campaign and therefore binding on its analysis:
+
+**The VGH ordinal cutpoint target is OUT OF SCOPE for this campaign.**
+`extract_cutpoints()` rejects VA-route fits (*"Provide a fit returned by
+`gllvmTMB()`"*), so `tau_k` cannot be recovered for the VGH arm on
+`ordinal_probit` rows. Rather than fix the accessor under time pressure, or —
+worse — discover the gap during analysis and decide then, the target is
+withdrawn now.
+
+What this does and does not cost:
+
+- **Unaffected:** the primary estimand, stratified `Sigma_B` relative
+  Frobenius error, together with `kappa`, the two-sided degeneracy detector,
+  `max|Lambda|`, silent-divergence rates, and TEST A. All measured normally on
+  ordinal rows in all three arms; rung 3 produced 900/900 complete rows for
+  exactly this cell. **The campaign still answers the question it was built to
+  answer.**
+- **Withdrawn:** any claim about VGH's recovery of ordinal cutpoints. Rows
+  will carry `tau2_hat`/`tau3_hat` as `NA` with the captured error string, so
+  the absence is visible in the data rather than inferred from silence.
+- **Not withdrawn for Laplace:** L0 and L2 ordinal cutpoints are measured
+  normally; only the VGH arm's are missing. Any cross-arm cutpoint comparison
+  is therefore impossible and must not be attempted post hoc.
+
+Tracked as a follow-up: `extract_cutpoints()` should accept VA fits, or refuse
+them with a message naming the actual limitation. Until then, this amendment
+stands.

@@ -6,6 +6,20 @@ is still the default.
 
 ## New
 
+* **Exact randomized-quantile residuals now cover nine more families.**
+  `residuals(fit, type = "randomized_quantile")` and
+  `predictive_check(fit, type = "rq_qq")` compute exact family-CDF
+  residuals for binomial (logit/probit/cloglog), lognormal, Gamma, Beta,
+  betabinomial, Student-t, zero-truncated Poisson, zero-truncated NB2, and
+  ordinal-probit rows, in addition to the existing Gaussian, Poisson, NB1,
+  and NB2 support. Rows for tweedie, the delta/hurdle families
+  (`delta_lognormal`, `delta_gamma`), and multinomial remain
+  `status = "unsupported_family"`: tweedie has no closed-form CDF without a
+  new dependency, the delta/hurdle families need a design decision for
+  splitting the point mass at zero, and multinomial's categories are
+  unordered so a randomized-quantile residual is undefined for it. See
+  `?residuals.gllvmTMB_multi` for the full scope statement.
+
 * **A Species Distribution Models article collection.** The pkgdown site
   gains a dedicated navbar menu ordering the SDM material as a curriculum —
   the joint species distribution model guide, a new presence-only opener,

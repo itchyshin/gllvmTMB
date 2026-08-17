@@ -1044,6 +1044,21 @@ check_gllvmTMB <- function(
       next
     }
     val <- as.numeric(object$report[[nm]])
+    ## `sd_B` (unit level only) is REPORTed for every trait, including ones
+    ## R/fit-multi.R's auto-Psi skip block pins to `log(1e-6)` and maps off
+    ## (single-trial Bernoulli and multinomial fid-16 contrasts -- see
+    ## `skip_psi_b_t` there, and the `diag_B_skip` guard in
+    ## src/gllvmTMB.cpp:1586). Those pinned entries are plumbing residue, not
+    ## a fitted quantity, and their 1e-6 value fires the absolute threshold
+    ## unconditionally -- drop them before the finite filter, the minimum, and
+    ## the sibling set passed to `.gllvmTMB_relative_collapse()` so a
+    ## deliberately-suppressed Psi does not read as a collapsed one.
+    if (level == "unit") {
+      skip <- object$tmb_data$diag_B_skip
+      if (!is.null(skip) && length(skip) == length(val)) {
+        val <- val[skip != 1L]
+      }
+    }
     val <- val[is.finite(val)]
     if (length(val) == 0L) {
       next

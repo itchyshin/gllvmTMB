@@ -130,6 +130,22 @@ is still the default.
   `weights = n_trials`; they now draw `rbinom()` at the row's actual
   `n_trials`.
 
+* **`check_gllvmTMB()`'s `near_zero_psi_unit` screen no longer flags traits
+  the auto-Psi skip block deliberately pinned off.** `R/fit-multi.R`'s
+  `skip_psi_b_t` block maps a trait's between-unit `Psi` off (single-trial
+  Bernoulli, and every multinomial contrast pseudo-trait) by pinning
+  `theta_diag_B` at `log(1e-6)`, but `src/gllvmTMB.cpp` still `REPORT`s
+  `sd_B` for every trait including the pinned ones, so the pinned `1e-6`
+  entry always cleared both the absolute (`psi_thresh = 1e-4`) and relative
+  (`psi_rel_thresh`) collapse thresholds. This was a structural false
+  positive that predates the Design 123 arc above: `check_gllvmTMB()` WARNed
+  `near_zero_psi_unit` on every fit with a single-trial-Bernoulli or
+  multinomial trait sharing a `latent()` term with a free partner trait,
+  regardless of whether the free trait's Psi was healthy. The screen now
+  drops pinned entries (via `tmb_data$diag_B_skip`) before evaluating the
+  unit-level psi row; a genuine collapse among the remaining free traits is
+  still caught.
+
 * **`multinomial()` structured-term admission is now fail-closed (Slice 0,
   Design 108/123).** Several deferred keywords previously desugared
   (`R/brms-sugar.R`) onto the same internal engine flag as an admitted

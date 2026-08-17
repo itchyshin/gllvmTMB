@@ -1,8 +1,14 @@
 # Design 125 — Profile-led MSPL intervals (new construction under D-157)
 
-**Status: STUB.** Docs-only claim of Design number **125**. This file opens the
-post–B1 construction path; it is **not** a signed pre-registration, **not**
-permission to run Totoro/DRAC, **not** permission to undraft [#1077](https://github.com/itchyshin/gllvmTMB/pull/1077),
+**Status: APPROVED (programme stub).** Docs-only claim of Design number **125**.
+**SIGNED 2026-08-17** by cursor/Shinichi-via-chat — *"approve all things in this
+lane"* — as the **D-157 new-construction Design** for profile-led MSPL
+intervals. Soft scope **binary-first** (§3.1) is **APPROVED**. Companion ADEMP
+pre-reg is signed separately
+(`docs/dev-log/research/2026-08-17-mspl-profile-led-prereg-ademp.md`).
+
+This file opens the post–B1 construction path; it is **not** permission to run
+Totoro/DRAC, **not** permission to undraft [#1077](https://github.com/itchyshin/gllvmTMB/pull/1077),
 and **not** permission to ship public `confint` / `vcov` / `se=TRUE`.
 
 **Number-ledger check:** `tools/lane_preflight.sh` on 2026-08-17 against this
@@ -45,8 +51,8 @@ arm — without reusing the spent Design 118 / B1 Wald-calibrator.
 - Undrafting #1077 or wiring MSPL into public `confint`
 - Flipping register row **MSPL-04** off `blocked`
 - NEWS / article / README claims of `covered` intervals
-- Inventing Poisson \(W=\mathrm{diag}(\mu)\) KEEP / REPLACE / PARK (parallel
-  G0 stays **UNSIGNED**)
+- Inventing Poisson \(W=\mathrm{diag}(\mu)\) KEEP / REPLACE (parallel G0 is
+  **SIGNED PARK SE doors** only — freeze, not tape edit)
 - Reopening Arc 1A LOOP (`docs/dev-log/lanes/cursor-mspl-arc-1a/` is historical)
 
 ---
@@ -89,11 +95,11 @@ Speed / cost order (D-12): **Wald → profile → bootstrap**.
 
 ### 3.1 Family
 
-**Ada default (OPEN soft G0):** **binary / Bernoulli LA-MSPL first**
-(logit / probit / cloglog as already admitted for MSPL point estimation).
-Poisson (and other count families) stay on the **point / SE-atom** track until
-the Poisson \(W\) G0 is signed; they are **not** in the first profile-led
-coverage claim set.
+**SIGNED soft G0 (2026-08-17) — G4a BINARY-FIRST:** **binary / Bernoulli
+LA-MSPL first** (logit / probit / cloglog as already admitted for MSPL point
+estimation). Poisson (and other count families) stay on the **point / SE-atom**
+track; with Poisson \(W\) now **PARK SE doors** (not KEEP/REPLACE), they remain
+**out** of the first profile-led coverage claim set until a later widen G0.
 
 ### 3.2 Estimands (narrow — refuse silent expansion)
 
@@ -150,7 +156,7 @@ messages, and which arms may still report diagnostics).
 | Register **MSPL-04** | Remains **`blocked`** |
 | Design **118** file | **Read-only**; no recalibration edits from this lane |
 | Public `se=TRUE` / `vcov` / Wald `confint` | **Closed** until separate G0 |
-| Poisson \(W\) card | **UNSIGNED** — do not invent KEEP/REPLACE/PARK in this Design |
+| Poisson \(W\) card | **SIGNED PARK SE doors** (2026-08-17) — freeze new SE doors; tape unchanged; KEEP/REPLACE not invented |
 
 ---
 
@@ -176,9 +182,12 @@ This stub does **not**:
 - Authorise public `se=TRUE`.
 - Unblock MSPL-04.
 - Reopen Design 118, B1, Totoro, or Arc 1A.
-- Resolve Poisson \(W\) KEEP / REPLACE / PARK.
+- Choose Poisson \(W\) KEEP / REPLACE (PARK SE doors is signed; tape stays).
 - Ship NEWS `covered` language.
+- Undraft #1077, Totoro, or public `se=TRUE`.
 
-**Next arc:** S2 ADEMP pre-reg draft landed at
-`docs/dev-log/research/2026-08-17-mspl-profile-led-prereg-ademp.md` (unsigned;
-does not undraft #1077 / Totoro / MSPL-04). Continue S3 ∥ S4.
+**Signed companions (2026-08-17):** ADEMP pre-reg
+`docs/dev-log/research/2026-08-17-mspl-profile-led-prereg-ademp.md`; Poisson W
+`docs/dev-log/research/2026-08-17-mspl-poisson-W-G0.md` (**PARK SE doors**);
+decision queue `LOOP/decision-queue.md`. Next: V1/C1 docs closure; **not**
+H1 smoke (G3 WAIT + G4c FORK-DEFER).

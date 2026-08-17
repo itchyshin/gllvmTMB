@@ -504,34 +504,46 @@ wired for either categorical family.** No `gllvmTMB()` call warns differently
 than it did before this arc; turning any of these rows into an automatic
 warning is a behaviour change and is deliberately left to the maintainer.
 
-### 8.1 The mechanism question #897 left open, settled
+### 8.1 The mechanism question #897 left open, partially settled
 
 #897 flagged the mechanism behind ordinal degeneracy as unknown, naming link
 saturation (cutpoint underflow in `gll_log_pnorm_diff`) as the suspect. The
 pre-registered S1 probe (`dev/ordinal-degeneracy/probe-criteria.md`, decision
 rule frozen at `e932cf37`, verdict at `b33d3b90`; 60-fit grid, 24 fits
-degenerate by per-fit truth) measured three things and the verdict is
-**category-level separation, not link saturation**:
+degenerate by per-fit truth) measured three things. 🔴 **CORRECTED
+2026-08-17** (`dev/ordinal-degeneracy/pass-criteria-dichotomised.md`): the
+verdict originally read **"category-level separation, not link saturation"**;
+the positive half is now under-evidenced. **"NOT link saturation" is solidly
+evidenced. "Therefore category-level separation" is the residual hypothesis,
+not a demonstrated one** — the measurement that appeared to demonstrate it
+does not discriminate:
 
 1. **Flat-row share is EXACTLY 0 on all 24 degenerate fits** — the cutpoint
    underflow condition (both bracketing cutpoints more than 8.2924 from
    `eta` on the same side) is never reached on any observed row. Saturation
-   is refuted, not merely unsupported.
-2. **24/24 dichotomised refits fire the EXISTING binomial detector** —
-   collapsing each degenerate fit's response to binary at the middle
-   cutpoint and refitting as `binomial(link = "probit")` reproduces the
-   pathology under a screen that already works, which is what identifies
-   the mechanism as the same quasi-complete separation geometry.
+   is refuted, not merely unsupported. This finding STANDS.
+2. ~~**24/24 dichotomised refits fire the EXISTING binomial detector**~~ —
+   **ELIMINATED as evidence.** Scored properly on 315 fits across four arms
+   (`dev/ordinal-degeneracy/pass-criteria-dichotomised.md`), the same
+   dichotomised check fires on **86.3% of healthy fits** (67.8% healthy arm,
+   93.3% transport, 100% mixed). A check with that false-alarm rate fires on
+   24/24 degenerate fits BY CONSTRUCTION, so it discriminates nothing.
+   Mechanism: collapsing `K = 4` ordinal to binary destroys enough
+   information to create quasi-separation IN THE REFIT that was never in
+   the data (healthy datasets give saturated binary refits, `saturated_fit`
+   0.83-0.91, at a benign overall prevalence of 0.26).
 3. **The pathology is a SINGLE-COLUMN runaway** — worked example: one
    trait's loading 44.2 against a true `max|Lambda| = 4.79`, with sibling
-   traits near truth.
+   traits near truth. (Descriptive of the runaway's shape; not, on its own,
+   evidence for either candidate mechanism.)
 
 The directional-derivative arm landed in the pre-registered "mixed" bucket,
 for a disclosed reason rather than a silent one: a uniform whole-matrix
-rescale masks a single-column pathology, so that arm cannot see what arms 1-3
-see. Consequence for the build: **a flat-fit/saturation arm has no empirical
+rescale masks a single-column pathology, so that arm cannot see what arm 1
+sees. Consequence for the build: **a flat-fit/saturation arm has no empirical
 basis and was deliberately not built**; the ordinal row is modelled on the
-binomial loading arms instead.
+binomial loading arms instead — a choice that rests on the surviving "not
+saturation" finding alone, independent of the now-open separation question.
 
 ### 8.2 Ordinal (`ordinal_probit()`, fid 14) — `ordinal_liability_loading`
 

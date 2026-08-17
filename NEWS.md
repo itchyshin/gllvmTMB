@@ -73,11 +73,17 @@ is still the default.
 * **A `check_gllvmTMB()` row for ordinal-probit loading degeneracy** (fixes
   the coverage gap reported in #897, where a degenerate `ordinal_probit()`
   fit had no detector at all -- 239/239 unflagged where the binomial screen
-  caught 272/272). A mechanism probe found the pathology is category-level
-  quasi-complete separation, the same mechanism the binomial row already
-  screens for, concentrated in a single trait's loading column -- not
-  cutpoint-underflow saturation, which had zero empirical support across
-  24 measured degenerate fits. `check_gllvmTMB()` now reports an
+  caught 272/272). A mechanism probe found no empirical support for
+  cutpoint-underflow saturation across 24 measured degenerate fits
+  (flat-row share exactly 0 throughout) -- that negative finding stands.
+  The probe's third measurement, originally read as positive evidence for
+  category-level quasi-complete separation (the same mechanism the
+  binomial row already screens for), was later shown, on a larger 315-fit
+  calibration, to fire on 86.3% of healthy fits and so does not
+  discriminate; category-level separation remains the residual hypothesis,
+  not a demonstrated one. The pathology's shape is a single trait's
+  loading column running away while sibling traits stay near truth.
+  `check_gllvmTMB()` now reports an
   `ordinal_liability_loading` row with two arms modeled directly on the
   binomial row: a trait's largest loading relative to the typical loading
   among the other ordinal traits, and the largest loading on the link
@@ -106,10 +112,12 @@ is still the default.
   an absolute liability-scale threshold cannot transport across
   heterogeneous trait scales, so a future screen needs a scale-invariant
   statistic rather than a better constant. Honest limits: no evidence at
-  `n = 1600` (that arm was dropped for run time). What the campaign does
-  establish positively: the mechanism question (#897's other open
-  question) is settled as category-level separation, and the threshold
-  question is answered negatively with a stated path forward.
+  `n = 1600` (that arm was dropped for run time). What the campaign
+  establishes: link saturation is refuted as the mechanism (solid);
+  category-level separation, the residual hypothesis, is NOT demonstrated
+  -- the evidence originally cited for it does not discriminate (see the
+  correction recorded in `dev/ordinal-degeneracy/probe-criteria.md`); and
+  the threshold question is answered negatively with a stated path forward.
 
   Neither categorical screen changes what fitting itself does: `gllvmTMB()`
   warns exactly as before, and both rows appear only when you call

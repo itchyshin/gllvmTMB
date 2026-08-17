@@ -53,12 +53,21 @@ what the calibration actually measures.
   because the auto-Psi skip block pins each contrast pseudo-trait at
   `log(1e-6)` while the C++ still REPORTs `sd_B` for it (the free trait's sd
   was 0.312 — healthy). Predates this arc.
-- **S1** — the mechanism question #897 flagged as unknown is **SETTLED:
-  category-level separation, not link saturation**. 60-fit grid, 24 degenerate:
+- **S1** — the mechanism question #897 flagged as unknown is **PARTIALLY
+  settled: NOT link saturation, solidly; category-level separation, the
+  residual hypothesis, NOT demonstrated.** 60-fit grid, 24 degenerate:
   flat-row share **exactly 0 on all 24** (the cutpoint underflow is never
-  reached — saturation refuted, not merely unsupported); **24/24** dichotomised
-  refits fire the existing binomial detector; the pathology is a
-  **single-column runaway** (loading 44.2 against a true `max|Lambda|` 4.79).
+  reached — saturation refuted, not merely unsupported; this finding
+  stands). The third leg originally read as positive evidence for
+  separation — **24/24** dichotomised refits firing the existing binomial
+  detector — is **ELIMINATED as evidence** (🔴 correction, 2026-08-17, see
+  `dev/ordinal-degeneracy/pass-criteria-dichotomised.md`): scored properly
+  on 315 fits across four arms, the same check fires on **86.3% of healthy
+  fits** (67.8% healthy, 93.3% transport, 100% mixed), so 24/24 on
+  degenerate fits discriminates nothing — it fires by construction. The
+  pathology is a **single-column runaway** (loading 44.2 against a true
+  `max|Lambda|` 4.79), descriptive of the shape, not evidence for either
+  mechanism.
 - **Multinomial arms armed**: M1 (`collapse_floor = 1e-10`), M2 (`rail_thresh
   = 0.99`, rank-≥2 tiers only), M3 (`range_collapse_thresh = 0.02`).
 - **Ordinal arms ship DISARMED at `Inf`/`Inf`**: O1 (`runaway_loading`) and O2
@@ -172,6 +181,32 @@ what the calibration actually measures.
   heterogeneous per-trait loading scales, so a future ordinal screen needs a
   scale-invariant statistic, not a better constant. *Confidence*: high — this
   is the frozen pre-registration, restored.
+- **CORRECTION (2026-08-17, after the dichotomised-check calibration
+  campaign): the S1 mechanism verdict's positive half — "category-level
+  separation" — is WITHDRAWN as demonstrated; the negative half — "NOT link
+  saturation" — stands.** *What happened*: S1's third measurement was "24/24
+  dichotomised refits fire the existing binomial detector", read as
+  corroborating a category-level separation mechanism. A follow-on campaign
+  (`dev/ordinal-degeneracy/pass-criteria-dichotomised.md`) scored that same
+  dichotomised check properly, for the first time, on its own false-positive
+  rate: **86.3% of healthy fits** across 315 fits / four arms (67.8% healthy,
+  93.3% transport, 100% mixed) also fire it. A check that fires on 86% of
+  healthy fits was always going to fire on 24/24 degenerate ones — the
+  measurement never discriminated the hypotheses it was recruited to
+  distinguish. Mechanism: collapsing `K = 4` ordinal to binary destroys
+  enough information to create quasi-separation IN THE REFIT that was never
+  in the data (healthy datasets give saturated binary refits, `saturated_fit`
+  0.83-0.91, at a benign prevalence of 0.26). *What still stands*: measurement
+  2 (flat-row share exactly 0 on all 24 degenerate fits) refutes link
+  saturation cleanly and is unaffected; measurement 1 was already reported as
+  landing in the pre-registered MIXED bucket. *Disposition*: `probe-criteria.md`
+  carries the correction in place; the §11 elimination table below gains the
+  dichotomised check as a fifth eliminated candidate. *Consequence*: the
+  binomial re-calibration (#897 directive 2) is **NOT** a prerequisite for
+  this route — the failure is damaged input from the collapse, not a bad
+  threshold, so recalibrating binomial would not fix it. *Confidence*: high —
+  this is a direct, properly-scored measurement of the check's own
+  false-positive rate.
 - **Decision: the multinomial FP denominator is 40, not 56.** *Rationale*: the
   s4 `re_int` cell's 20 fits emit no detector row at all (a bare `(1 | group)`
   fit has no loading tier), so they carry zero specificity information;
@@ -285,8 +320,10 @@ extractor fix, not a recovery-evidence promotion.
   it, though not with a working ordinal screen. A ready-to-post closeout
   comment is drafted at `docs/dev-log/issue-897-closeout-draft.md`; **it has
   not been posted**, and the issue is not closed by this lane. Recommended
-  disposition: close on the mechanism half (settled: category-level
-  separation, not link saturation) and the threshold half (answered
+  disposition: close on the mechanism half (partially settled: NOT link
+  saturation, solidly; category-level separation remains the residual,
+  undemonstrated hypothesis — see the correction in
+  `dev/ordinal-degeneracy/probe-criteria.md`) and the threshold half (answered
   negatively, with evidence: no threshold on `max_loading_unit` clears the
   frozen conjunction, both arms ship disarmed, and borrowing binomial's own
   threshold would have been worse than the defect #897 complains about); open
@@ -427,7 +464,7 @@ extractor fix, not a recovery-evidence promotion.
 ## 11. Addendum — the ordinal candidate search, closed (2026-08-17, after §10 was written)
 
 Sections above predate the final two measurements. The ordinal threshold
-question is now closed rather than open, on four eliminated candidates:
+question is now closed rather than open, on five eliminated candidates:
 
 | candidate | verdict |
 |---|---|
@@ -435,29 +472,40 @@ question is now closed rather than open, on four eliminated candidates:
 | `relative_loading` (family-scoped denominator) | fails — 28.6% FP at its best sensitivity |
 | `loading / cutpoint_span` | **REFUSED on its pre-registered circularity precondition**: cor(span, degeneracy) = +0.546 (p = 4.6e-20), degenerate spans 1.88x wider — the span is a symptom of the same runaway, not an independent reference. Also fails empirically |
 | `spike_ratio` (max / second-max loading) | independent of the absolute statistic (cor +0.242) and centrally discriminating (4.16 vs 1.32), but 2.4% sensitivity at the first zero-FP point |
+| dichotomisation counterfactual (collapse to binary, refit, run the existing binomial detector) | fails — 🔴 originally reported as 24/24 sensitivity in the S1 probe and read as corroborating the category-level-separation mechanism; scored properly for false positives (`dev/ordinal-degeneracy/pass-criteria-dichotomised.md`, 315 fits, four arms): **97.6% sensitivity but 86.3% FP** (67.8% healthy, 93.3% transport, 100% mixed) — worse than every loading statistic above, and it discriminates nothing because it fires on healthy fits by construction (collapsing `K = 4` to binary manufactures quasi-separation in the refit) |
 
-**The search was stopped deliberately at four.** All four were scored against
-the SAME 315 fits; a fifth or sixth candidate that finally cleared the frozen
-bar would have a materially elevated chance of fitting this dataset rather
-than reflecting a real signal. This arc had already produced one error of
-exactly that family (scoring FP with a labelling chosen after seeing
-results, caught by the D-43 panel and corrected), so continuing to search
-would have been repeating a known failure mode with more steps.
+**The loading/cutpoint-state search was stopped deliberately at four.** All
+four were scored against the SAME 315 fits; a fifth or sixth candidate drawn
+from that same information source would have a materially elevated chance of
+fitting this dataset rather than reflecting a real signal. This arc had
+already produced one error of exactly that family (scoring FP with a
+labelling chosen after seeing results, caught by the D-43 panel and
+corrected), so continuing to search THAT well would have been repeating a
+known failure mode with more steps. **A fifth candidate was tested
+afterward, from a genuinely different information source** — a refit-based
+check rather than a statistic of the fitted loading/cutpoint state — and it
+is also eliminated, bringing the total to five.
 
 **Standing conclusion:** no statistic available from the fitted
 loading/cutpoint state separates degenerate from healthy ordinal fits at a
-usable operating point. Both ordinal arms ship DISARMED. Closing #897's
-detection needs a different information source — the observed-information /
-curvature structure, or a refit-based check such as the dichotomisation
-counterfactual that scored 24/24 in the S1 probe — tested pre-registered on
-fresh data.
+usable operating point, and the one refit-based candidate tested from a
+different information source — the dichotomisation counterfactual — is ALSO
+eliminated (86.3% FP). Both ordinal arms ship DISARMED. Closing #897's
+detection needs an information source neither of these five candidates
+drew on — the observed-information / curvature structure is the remaining
+untested route, not the dichotomisation counterfactual (that route is now
+closed).
 
 **Where that leaves #897 versus where this arc found it:** mechanism was
-unknown, now settled (separation, not saturation, on three corroborating
-measurements); zero candidate statistics had been tested, now four with
-recorded numbers; the false-positive concern the issue raises is measured
-rather than asserted. The detection gap itself remains open, and is recorded
-as a research question with a named path rather than as untried work.
+unknown, now **partially** settled — NOT link saturation, solidly (flat-row
+share exactly 0 on all 24 degenerate fits); category-level separation is the
+residual hypothesis, NOT demonstrated (the measurement originally read as
+its third corroborating leg does not discriminate — see the correction in
+`dev/ordinal-degeneracy/probe-criteria.md`); zero candidate statistics had
+been tested, now five with recorded numbers, all five eliminated; the
+false-positive concern the issue raises is measured rather than asserted.
+The detection gap itself remains open, and is recorded as a research
+question with a named path rather than as untried work.
 
 ## 12. What remains with the maintainer (nothing further is actionable in-lane)
 

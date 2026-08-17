@@ -388,28 +388,28 @@
             <th><span class="fampip fp-w"></span><span class="fam">binomial</span><div class="dom">binary · logit/probit/cloglog</div></th>
             <td class="gram">LA · VA GH H7 default · JJ logit explicit · EVA (Taylor-2)</td>
             <td class="gram">mu</td><td class="gram">S I D L</td><td class="gram">phy spa ani ker</td>
-            <td><span class="tag t-avail">partial</span></td><td class="no">— <span style="font-size:10px">JSDM worked; single-trial diag RE off</span></td>
+            <td><span class="tag t-avail">partial</span></td><td><span class="yes">✓</span> <span style="font-size:10px">JSDM worked; single-trial diag RE off</span></td>
             <td><span class="tag t-avail">point</span></td><td><span class="yes">✓</span></td><td class="no">— <span style="font-size:10px">Cox&ndash;Reid tested 2026-08-16; K1 fired (bias worsened)</span></td>
           </tr>
           <tr>
-            <th><span class="fampip fp-a"></span><span class="fam">betabinomial</span><div class="dom">overdispersed binomial</div></th>
+            <th><span class="fampip fp-w"></span><span class="fam">betabinomial</span><div class="dom">overdispersed binomial</div></th>
             <td class="gram">LA · VA GH H7</td>
             <td class="gram">mu, phi</td><td class="gram">S I D L</td><td class="gram">phy spa ani ker</td>
-            <td><span class="tag t-avail">partial</span> <span style="font-size:10px">C1 phylo_indep large-N</span></td><td class="no">—</td>
+            <td><span class="tag t-avail">partial</span> <span style="font-size:10px">C1 phylo_indep large-N</span></td><td><span class="yes">✓</span></td>
             <td><span class="tag t-avail">point</span></td><td><span class="yes">✓</span></td><td class="no">—</td>
           </tr>
           <tr>
-            <th><span class="fampip fp-a"></span><span class="fam">beta</span><div class="dom">proportions · interior (0,1)</div></th>
+            <th><span class="fampip fp-w"></span><span class="fam">beta</span><div class="dom">proportions · interior (0,1)</div></th>
             <td class="gram">LA · VA GH H7</td>
             <td class="gram">mu, phi</td><td class="gram">S I D L</td><td class="gram">phy spa ani ker</td>
-            <td class="no">—</td><td class="no">—</td>
+            <td class="no">—</td><td><span class="yes">✓</span></td>
             <td><span class="tag t-avail">point</span></td><td><span class="yes">✓</span></td><td class="no">—</td>
           </tr>
           <tr>
-            <th><span class="fampip fp-a"></span><span class="fam">Gamma</span><div class="dom">positive · log</div></th>
+            <th><span class="fampip fp-w"></span><span class="fam">Gamma</span><div class="dom">positive · log</div></th>
             <td class="gram">LA · VA exact</td>
             <td class="gram">mu, shape</td><td class="gram">S I D L</td><td class="gram">phy spa ani ker</td>
-            <td class="no">—</td><td class="no">—</td>
+            <td class="no">—</td><td><span class="yes">✓</span></td>
             <td><span class="tag t-avail">point</span></td><td><span class="yes">✓</span></td><td class="no">—</td>
           </tr>
           <tr>
@@ -420,31 +420,31 @@
             <td><span class="tag t-avail">point</span></td><td><span class="yes">✓</span></td><td class="no">—</td>
           </tr>
           <tr>
-            <th><span class="fampip fp-a"></span><span class="fam">student</span><div class="dom">heavy-tailed continuous</div></th>
+            <th><span class="fampip fp-w"></span><span class="fam">student</span><div class="dom">heavy-tailed continuous</div></th>
             <td class="gram">LA · VA GH H7</td>
             <td class="gram">mu, sigma, nu</td><td class="gram">S I D L</td><td class="gram">phy spa ani ker</td>
-            <td class="no">—</td><td class="no">— <span style="font-size:10px">sigma undefined if nu ≤ 2 → NA</span></td>
+            <td class="no">—</td><td><span class="yes">✓</span> <span style="font-size:10px">sigma undefined if nu ≤ 2 → NA</span></td>
             <td><span class="tag t-avail">point</span></td><td><span class="yes">✓</span></td><td class="no">—</td>
           </tr>
           <tr>
-            <th><span class="fampip fp-a"></span><span class="fam">lognormal</span><div class="dom">positive continuous · <span style="color:var(--gone)">gengamma exported, not admitted</span></div></th>
+            <th><span class="fampip fp-w"></span><span class="fam">lognormal</span><div class="dom">positive continuous · <span style="color:var(--gone)">gengamma exported, not admitted</span></div></th>
             <td class="gram">LA · VA exact</td>
             <td class="gram">mu, sigma (,Q)</td><td class="gram">S I D L</td><td class="gram">phy spa ani ker</td>
-            <td class="no">—</td><td class="no">—</td>
+            <td class="no">—</td><td><span class="yes">✓</span></td>
             <td><span class="tag t-avail">point</span></td><td><span class="yes">✓</span></td><td class="no">—</td>
           </tr>
           <tr>
-            <th><span class="fampip fp-a"></span><span class="fam">truncated_poisson · truncated_nbinom2</span><div class="dom">truncated count · <span style="color:var(--gone)">censored_poisson, truncated_nbinom1 not admitted</span></div></th>
+            <th><span class="fampip fp-w"></span><span class="fam">truncated_poisson · truncated_nbinom2</span><div class="dom">truncated count · <span style="color:var(--gone)">censored_poisson, truncated_nbinom1 not admitted</span></div></th>
             <td class="gram">LA · VA GH H7</td>
             <td class="gram">mu (,phi)</td><td class="gram">S I D L</td><td class="gram">phy spa ani ker</td>
-            <td class="no">—</td><td class="no">—</td>
+            <td class="no">—</td><td><span class="yes">✓</span></td>
             <td><span class="tag t-avail">point</span></td><td><span class="yes">✓</span></td><td class="no">—</td>
           </tr>
           <tr>
-            <th><span class="fampip fp-a"></span><span class="fam">ordinal_probit</span><div class="dom">ordered categorical</div></th>
+            <th><span class="fampip fp-w"></span><span class="fam">ordinal_probit</span><div class="dom">ordered categorical</div></th>
             <td class="gram">LA · VA GH H7</td>
             <td class="gram">mu + cutpoints</td><td class="gram">S I D L</td><td class="gram">phy spa ani ker</td>
-            <td class="no">— <span style="font-size:10px">ordinal RE not implemented</span></td><td class="no">—</td>
+            <td class="no">— <span style="font-size:10px">ordinal RE not implemented</span></td><td><span class="yes">✓</span></td>
             <td><span class="tag t-avail">point</span></td><td><span class="yes">✓</span></td><td class="no">— <span style="font-size:10px">Cox&ndash;Reid tested 2026-08-16; K1 fired (bias worsened)</span></td>
           </tr>
           <tr>
@@ -470,7 +470,7 @@
         <li><b>Interval coverage — the headline gap.</b> Zero families have coverage-checked intervals; every cell is point-only. Calibration is the largest remaining task.</li>
         <li><b>Random slopes (≥1) are unfinished.</b> In development / diagnostic-grade even for Gaussian — not a finished capability. Shown as <span class="tag t-avail">partial</span>, not ✓.</li>
         <li><b>Missing responses: every admitted family is now tested</b> (2026-08-15, PR&nbsp;#982) — which is why this column reads ✓ throughout rather than for four families. Masked-response equivalence spans all 17 Laplace families and all 18 scalar VA cells; register rows MIS-21 <code>covered</code>, VA-10 <code>partial</code>. Two fences remain, and they are about quality rather than support: reconstruction ACCURACY is family-dependent (multinomial clearly beats its baseline; binomial / ordinal / delta sit near theirs at these scales), and reconstruction <b>intervals are not calibrated</b> — Design 119 measured six variance routes on one 1,600-fit gaussian grid and every one failed the pre-registered gate, the best being <code>sim</code> at 0.941–0.946 for a nominal 0.95. <code>mi()</code> predictor coverage is still pending.</li>
-        <li><b>Fitted diagnostics reach 4 families</b> (Gaussian, Poisson, NB2, NB1). Extending residual / predictive checks to more families is the next diagnostics step.</li>
+        <li><b>Fitted diagnostics reach 13 families</b> (2026-08-17, PR&nbsp;#1085: gaussian, binomial, poisson, lognormal, Gamma, nbinom2, Beta, betabinomial, student, truncated_poisson, truncated_nbinom2, ordinal_probit, nbinom1 — exact family-CDF residuals). Not implemented: tweedie (no closed-form CDF without a new dependency), delta_lognormal / delta_gamma (hurdle point-mass split undecided), and multinomial (unordered categories have no residual ordering). These are exact point residuals and diagnostic plots only — not calibrated intervals or a recovery certificate.</li>
         <li><b>Categorical needs major development</b> — nominal support is early-stage, not a usable path yet.</li>
         <li><b>REML is a Gaussian-only pilot — and the non-Gaussian route has now been tested and closed, not merely deferred.</b>
           The opt-in escape hatch (<code>allow_nongaussian_reml</code>) realises the Cox&ndash;Reid adjusted profile

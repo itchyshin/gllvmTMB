@@ -110,6 +110,26 @@ is still the default.
 
 ## Fixed
 
+* **`simulate()` now draws from each row's true family instead of silently
+  substituting a Gaussian-on-link-scale number for nine families, and
+  multi-trial `binomial()` responses are drawn at the correct trial count.**
+  `.draw_y_per_family()` previously fell through to a single shared branch
+  for any family it did not explicitly recognise, so tweedie, Beta,
+  betabinomial, Student-t, truncated Poisson, truncated NB2,
+  `delta_lognormal`, `delta_gamma`, and ordinal-probit rows were redrawn as
+  plain Gaussian noise on the link scale — a plausible-looking but wrong
+  number, not an error. `simulate()`, `predictive_check()`'s simulation-based
+  plot types (`stat_grouped`, `dens_overlay`), and anything built on
+  `.gllvmTMB_predictive_draws()` (bootstrap/coverage helpers included) now
+  draw correctly for 16 of these — every family except tweedie, which has no
+  exact draw without a new dependency and now returns `NA` with a per-call
+  warning rather than the previous wrong-distribution substitute. Multinomial
+  rows draw a single grouped categorical outcome per observation rather than
+  an independent draw per contrast row. Binomial rows previously ignored
+  trial count and drew Bernoulli regardless of `cbind(success, failure)` /
+  `weights = n_trials`; they now draw `rbinom()` at the row's actual
+  `n_trials`.
+
 * **`multinomial()` structured-term admission is now fail-closed (Slice 0,
   Design 108/123).** Several deferred keywords previously desugared
   (`R/brms-sugar.R`) onto the same internal engine flag as an admitted

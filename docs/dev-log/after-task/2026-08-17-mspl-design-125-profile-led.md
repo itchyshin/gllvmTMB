@@ -22,7 +22,9 @@ reopening B1 / Design 118 / #1077.
 | S2 ADEMP pre-reg | **draft done** | `docs/dev-log/research/2026-08-17-mspl-profile-led-prereg-ademp.md` (commits `7bab0943` / `04c344fd`) |
 | #1077 | **still draft** | tip `fb44d7b5`; **not** undrafted |
 | Poisson W G0 | **UNSIGNED** | `docs/dev-log/research/2026-08-17-mspl-poisson-W-G0.md` |
-| NEXT after S2 | **S3 ∥ S4** | `LOOP/checkpoint.md`, `LOOP/arcs.md` |
+| S4 Rose fence | **PASS** | tip `8b1bb1c0` / fix `01f5645e`; no NEWS / public se / Design 118 / undraft |
+| V1 mechanical | **PASS** | #1077 draft `fb44d7b5`; MSPL-04 `blocked`; Poisson W UNSIGNED (PARK default, no REPLACE code) |
+| NEXT | **S3** then continue | Poisson W card stays UNSIGNED; do not invent KEEP/REPLACE/PARK |
 
 No `R/`, `src/`, registry, NEWS, public `se=TRUE` / `confint`, Totoro,
 or Design 118 edits.

@@ -1,7 +1,7 @@
 # Checkpoint — OVERWRITTEN every arc
 
 GOAL: see LOOP/GOAL.md.
-STATE: **GOAL_MET** (Design 125 + ADEMP) + S4 Rose fence **PASS** (one research-note wording fix). Tip includes `8b1bb1c0` (check-log) / `01f5645e` (sketch fix).
+STATE: **GOAL_MET** (Design 125 + ADEMP) + S4 Rose fence **PASS** (one research-note wording fix). Tip includes `b9cc7b45` (bookkeeping) / `8b1bb1c0` (check-log) / `01f5645e` (sketch fix).
 ARCS DONE (verified):
 - R0 — inventory note `docs/dev-log/research/2026-08-17-mspl-profile-led-r0-inventory.md`; #1077 still draft tip fb44d7b5; Confirm SIGNED in ref `7de94fc7` on this branch.
 - R1 — lessons `docs/dev-log/research/2026-08-17-mspl-profile-led-r1-lessons.md`; no Design 118 file edits.

@@ -18,6 +18,31 @@ rg -n 'MSPL-04' docs/design/35-validation-debt-register.md
 # deliberately not run: undraft #1077, confint, Totoro, Design 118 edits
 ```
 
+## 2026-08-17 — after-task + handover refresh: Design 125 claim + S2 done → S3∥S4
+
+**Lane:** `claude/lane-mspl-profile-led-ci` @ `/Users/z3437171/local-scratch/lanes/gllvmTMB-mspl-profile-led-ci`
+Docs only. Wrote
+`docs/dev-log/after-task/2026-08-17-mspl-design-125-profile-led.md` pinning
+Design path `docs/design/125-mspl-profile-led-intervals.md`, claim SHA
+`b68b20b4`, Confirm-in-ref `7de94fc7`, #1077 still draft, Poisson W UNSIGNED,
+NEXT after S2 = **S3 ∥ S4**. Cited sibling S2 file
+`docs/dev-log/research/2026-08-17-mspl-profile-led-prereg-ademp.md` (already
+on branch). Refreshed
+`docs/dev-log/handover/2026-08-17-cursor-handover.md` OWED table: triad
+SIGNED, Design 125 claimed, S2 draft done, OWED = S3∥S4. No undraft #1077;
+no push. Sibling ref `handover/2026-08-17-cursor` still carries pre-Confirm
+UNSIGNED wording — do not merge that tip over this lane.
+
+```sh
+test -f docs/dev-log/after-task/2026-08-17-mspl-design-125-profile-led.md
+test -f docs/dev-log/research/2026-08-17-mspl-profile-led-prereg-ademp.md
+rg -n 'b68b20b4|7de94fc7|Design 125|S3|UNSIGNED|#1077|SIGNED' \
+  docs/dev-log/after-task/2026-08-17-mspl-design-125-profile-led.md \
+  docs/dev-log/handover/2026-08-17-cursor-handover.md \
+  LOOP/checkpoint.md
+# deliberately not run: undraft #1077, confint, Totoro, Design 118 edits, push
+```
+
 ## 2026-08-17 — `/goal` S2: ADEMP pre-reg draft under Design 125
 
 **Lane:** `claude/lane-mspl-profile-led-ci` @ `/Users/z3437171/local-scratch/lanes/gllvmTMB-mspl-profile-led-ci`

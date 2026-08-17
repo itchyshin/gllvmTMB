@@ -10,7 +10,7 @@ Status: todo / doing / done / blocked. Gate = needs human before proceed.
 | S2 | ADEMP-style pre-registration draft | **done** (draft) | soft: sign G0 later | `docs/dev-log/research/2026-08-17-mspl-profile-led-prereg-ademp.md` cites Design **125**; refusal-priced coverage; local-then-Totoro; no Totoro run; #1077 still draft. |
 | S3 | Parallel: Poisson W G0 chase / PARK SE doors note | todo | **OPEN if inventing KEEP/REPLACE/PARK** | Leave UNSIGNED unless Shinichi pastes. Default if silent: PARK further SE doors. |
 | S4 | Rose fence pass on S1–S2 | **done** | — | PASS after fix: stale #1073 sketch co-primary / open refuse-triad options closed; Design 125 + ADEMP + triad + R1 align; #1077 draft; MSPL-04 blocked; Poisson W UNSIGNED. |
-| V1 | Verify: #1077 draft; MSPL-04 blocked; no Design 118 edits | todo | — | Mechanical. |
+| V1 | Verify: #1077 draft; MSPL-04 blocked; no Design 118 edits | **done** | — | Re-verified tip `8b1bb1c0`/`b9cc7b45`: #1077 draft `fb44d7b5`; MSPL-04 blocked; no Design 118 / NEWS / R Poisson edits on branch. |
 | C1 | Melissa reconcile + after-task + handover refresh | todo | — | Docs closure. |
 | H1 | Optional HANDS TO Codex: local profile smoke | blocked | **G0** | Only after S2 + separate Shinichi G0. Not this docs sitting. |
 

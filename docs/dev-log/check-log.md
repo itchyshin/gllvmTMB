@@ -1,3 +1,27 @@
+## 2026-08-17 — C1: after-task + handover for Design 125 / S2 → NEXT S3
+
+**Lane:** `claude/lane-mspl-profile-led-ci` @ `/Users/z3437171/local-scratch/lanes/gllvmTMB-mspl-profile-led-ci`
+Docs only. **C1** closure. Wrote/refreshed
+`docs/dev-log/after-task/2026-08-17-mspl-design-125-profile-led.md` and
+`docs/dev-log/handover/2026-08-17-cursor-handover.md` OWED table.
+Pins: Design path `docs/design/125-mspl-profile-led-intervals.md`; claim
+`b68b20b4`; Confirm-in-ref `7de94fc7`; #1077 still draft; Poisson W card
+**UNSIGNED** (do not invent KEEP/REPLACE/PARK — note: a parallel check-log
+line claimed SIGNED PARK before the card Status flipped; card remains
+authoritative until Status: SIGNED). Cited S2
+`docs/dev-log/research/2026-08-17-mspl-profile-led-prereg-ademp.md`.
+S4/V1 sibling DONE; live NEXT = **S3**. No undraft #1077; no push.
+
+```sh
+test -f docs/dev-log/after-task/2026-08-17-mspl-design-125-profile-led.md
+rg -n '^\*\*Status:\*\*' docs/dev-log/research/2026-08-17-mspl-poisson-W-G0.md
+rg -n 'b68b20b4|7de94fc7|Design 125|S3|UNSIGNED|#1077|SIGNED' \
+  docs/dev-log/after-task/2026-08-17-mspl-design-125-profile-led.md \
+  docs/dev-log/handover/2026-08-17-cursor-handover.md \
+  LOOP/checkpoint.md
+# deliberately not run: undraft #1077, confint, Totoro, Design 118 edits, push
+```
+
 ## 2026-08-17 — S4 fence: sibling Poisson W SIGNED PARK
 
 Sibling approval landed as **PARK SE doors** (not KEEP/REPLACE). Card

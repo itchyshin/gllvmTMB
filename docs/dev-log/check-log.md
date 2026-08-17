@@ -1,3 +1,21 @@
+## 2026-08-17 — `/goal` S2: ADEMP pre-reg draft under Design 125
+
+**Lane:** `claude/lane-mspl-profile-led-ci` @ `/Users/z3437171/local-scratch/lanes/gllvmTMB-mspl-profile-led-ci`
+Docs only. Wrote
+`docs/dev-log/research/2026-08-17-mspl-profile-led-prereg-ademp.md` citing
+Design **125** @ `b68b20b4` (not TBD). ADEMP Aims/D/E/M/P with binary-first
+envelope, estimands E1–E2, triad Methods, refusal-priced coverage, local-then-
+Totoro gates; non-claims: not Design 118, not public se, MSPL-04 blocked,
+#1077 stays draft. Updated LOOP checkpoint (NEXT=S3∥S4) + arcs; Design 125
+§7 next-arc pointer. Scope-staged commit (no `git add -A`); no push; no Totoro.
+
+```sh
+rg -n 'Design 125|b68b20b4|cov_\\{eff\\}|R-SAT|MSPL-04|#1077' \
+  docs/dev-log/research/2026-08-17-mspl-profile-led-prereg-ademp.md
+rg -n 'S2.*done|NEXT: \*\*S3\*\*' LOOP/arcs.md LOOP/checkpoint.md
+# deliberately not run: undraft #1077, confint, Totoro, Design 118 edits
+```
+
 ## 2026-08-17 — `/goal` S1: claim Design 125 profile-led MSPL intervals stub
 
 **Lane:** `claude/lane-mspl-profile-led-ci` @ `/Users/z3437171/local-scratch/lanes/gllvmTMB-mspl-profile-led-ci`

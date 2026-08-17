@@ -120,6 +120,71 @@ is still the default.
   with a shared classed condition (`gllvmTMB_multinomial_structured_not_admitted`)
   on every path.
 
+* **The `multinomial()` structured-term surface (Design 122, Slices 1-4,
+  2026-08-16) now admits a bounded set of among-category and grouping
+  structures, each gated on a signed, pre-registered recovery campaign
+  rather than construction alone.** Every admission below is enforced by
+  the same fail-closed classifier (`R/multinomial-fence.R`); anything not
+  named below still aborts typed
+  (`gllvmTMB_multinomial_structured_not_admitted`). See
+  `docs/design/122-multinomial-structured-surface.md` for the full per-cell
+  table and `docs/design/35-validation-debt-register.md`'s FAM-20C/D/E/F
+  rows for the underlying evidence.
+
+  **Admitted:** the phylogenetic/relatedness surface -- intercept-only
+  `phylo_latent()`/`animal_latent()`/single-name `kernel_latent()`
+  (loadings-only), `phylo_dep()`/`animal_dep()`/`kernel_dep()` (full
+  unstructured `V`, the IDENTICAL parameterisation as
+  `phylo_latent(d = K - 1)`), and `phylo_indep()`/`animal_indep()`/
+  `kernel_indep()` (diagonal `V`); the spatial (SPDE) surface --
+  `spatial_latent()`, `spatial_indep()`, and `spatial_dep()` (verified
+  identical to `spatial_latent(d = n_traits)`); a generic `(1 | group)`
+  random intercept (baseline-vs-rest semantics, `sigma_re`
+  reference-category-specific); and the non-phylogenetic `cluster`/
+  `cluster2` diagonal tier, `indep(0 + trait | g)`.
+
+  **The honest evidence, not softened:** on the phylogenetic surface, the
+  ONE-CATEGORICAL-DRAW-PER-SPECIES recovery gate **FAILED** for both the
+  loadings-only route (FAM-20C: rail rate 8/20, exceeding the 6/20
+  threshold, identically for `animal_latent()`/`kernel_latent()` by proven
+  engine identity to `phylo_latent()`) and the mode-axis route (FAM-20D:
+  `phylo_dep()` rails 8/20; `phylo_indep()`'s corrected diagonal-truth
+  rerun shows larger contrast variances recover fine, median ratio 0.78,
+  17/20 in band, but smaller ones collapse, median ratio 0.24, 9/20, and
+  the planted-zero check FAILS -- a full-`V` `phylo_latent()` refit on
+  diagonal-truth data rails to median |rho| = 1.0). A pre-registered
+  **replication rescue PASSED**: five categorical draws per species (`n_sp
+  = 300`, `n_rep = 5`) recovers V with rail rate 4/20, median rho 0.680
+  (true 0.6), SD ratios 0.89/0.85 -- **one categorical draw per species
+  does not identify V; five draws per species does.** This rescue transfers
+  exactly to `phylo_dep()` (the identical parameterisation) but has NOT
+  been tested for the diagonal-`V` mode (`phylo_indep()`). The spatial
+  kappa/tau gate, by contrast, **PASSED all three cells** (median
+  practical-range ratios 1.75 / 1.12 / 1.75, band 0.33-3.0; rails 0/14,
+  3/14, 0/14 against a >6/14 threshold). The group-intercept gate also
+  **PASSED**: 20/20 converged with a PD Hessian, median `sigma_re` ratio
+  0.947, range [0.60, 1.51].
+
+  **Refused, not merely deferred:** `phylo_scalar()`/`animal_scalar()`/
+  `kernel_scalar()`/`spatial_scalar()` and `common = TRUE` on the cluster/
+  cluster2 tier -- a single shared level across the `K-1` contrasts has no
+  interpretable null on the `(I+J)` contrast geometry. Null-DGP evidence:
+  on `V_true = 0` data, `phylo_indep()` correctly recovers near-zero
+  variance in 5/5 seeds, but `phylo_dep()`'s `rho_hat` rails toward `+-1`
+  in 4/5 seeds despite a PD Hessian.
+
+  **Behaviour changes:** a `(1 | group)` or cluster/cluster2 `indep()` term
+  whose grouping factor covers exactly one categorical observation per
+  level now aborts typed (`gllvmTMB_multinomial_olre_not_admitted`) -- it
+  is an observation-level random effect in disguise, unidentifiable
+  because the softmax latent scale is fixed. `meta_V()`/`equalto()`
+  (known-sampling-covariance) remains fail-closed for `multinomial()`
+  traits -- confirmed Gaussian-only, no established route on a
+  categorical-contrast pseudo-trait. `cluster2` co-admission alongside
+  `cluster` was a maintainer decision (2026-08-16): `use_diag_species` and
+  `use_diag_cluster2` are literally identical engine math on two different
+  grouping columns.
+
 # gllvmTMB 0.6.0
 
 This release focuses on multivariate stacked-trait models fitted through the

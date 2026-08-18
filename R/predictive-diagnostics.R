@@ -409,31 +409,46 @@ residuals.gllvmTMB_multi <- function(
     list()
   }
 
-  ## A Gaussian diagonal random effect indexed at the same resolution as the
-  ## observed trait-cell can absorb the observation residual, with sigma_eps
-  ## mapped to a tiny fixed value. Conditional exact-CDF residuals then collapse
-  ## near zero and are not a goodness-of-fit check. Warn and direct users to the
-  ## marginal simulation-rank route rather than displaying an automatically
-  ## perfect Q-Q plot.
+  ## A diagonal random effect indexed at the same resolution as the observed
+  ## trait-cell can absorb the observation residual, driving the family's
+  ## dispersion/scale parameter toward a degenerate confound (sigma_eps -> 0
+  ## for gaussian/lognormal, shape -> Inf for Gamma, precision -> Inf for
+  ## Beta, sigma -> 0 for student). Conditional exact-CDF residuals then
+  ## collapse near zero and are not a goodness-of-fit check. Warn and direct
+  ## users to the marginal simulation-rank route rather than displaying an
+  ## automatically perfect Q-Q plot.
   trait_col <- object$trait_col
   per_row_diag <- function(flag, group_col) {
     isTRUE(flag) && !is.null(group_col) && group_col %in% names(object$data) &&
       nrow(unique(object$data[c(trait_col, group_col)])) == nrow(object$data)
   }
-  ## Gate matches the fit-time decision at R/fit-multi.R:5177
-  ## (`any_sigma_eps <- any(family_id_vec %in% c(0L, 3L))`): gaussian (fid 0)
-  ## and lognormal (fid 3) share one literal sigma_eps, and both are
-  ## auto-suppressed to ~1e-3*sd(y) under the identical per-row-diagonal
-  ## structure. The residuals-time warning must stay consistent with that.
-  gaussian_per_row_diag <- any(row_meta$family_id %in% c(0L, 3L)) &&
+  ## Families included: gaussian (0), lognormal (3), Gamma (4), Beta (7),
+  ## student (9) -- exactly the families whose residual CDF is computed
+  ## EXACT (lower == upper) rather than randomized-quantile above, i.e. those
+  ## with a genuinely continuous density that can diverge to +Inf as its
+  ## scale/dispersion parameter degenerates (a Gaussian/lognormal/Gamma/
+  ## Beta/student density -> Inf as sigma -> 0 / shape,precision -> Inf; a
+  ## discrete pmf is bounded by 1 and cannot do this, which is why Poisson,
+  ## binomial, NB1/NB2, tweedie, and beta-binomial are excluded here).
+  ## gaussian (0) and lognormal (3) additionally get an auto-suppressed
+  ## sigma_eps at fit time (`any_sigma_eps` at R/fit-multi.R:5177); Gamma/
+  ## Beta/student have no analogous fit-time fix, only this residuals-time
+  ## warning -- see #1083. Confirmed empirically (15-seed sweep, n_ind = 36):
+  ## Gamma's phi_gamma ran away to > 1e6 (true 6) in 9/15 seeds, student's
+  ## sigma_student collapsed below 0.1 (true 0.4) in 6/15 seeds, and Beta's
+  ## phi_beta ran away to > 1e8 (true 20) in 2/15 seeds -- all under the
+  ## identical per-row-diagonal structure. A matched Poisson sweep (8 seeds)
+  ## showed no such collapse (sd(residual) ~ 1 throughout), consistent with
+  ## Poisson having no continuous dispersion to degenerate.
+  saturating_family <- any(row_meta$family_id %in% c(0L, 3L, 4L, 7L, 9L)) &&
     (
       per_row_diag(object$use$diag_B, object$unit_col) ||
         per_row_diag(object$use$diag_W, object$unit_obs_col)
     )
-  if (gaussian_per_row_diag) {
+  if (saturating_family) {
     cli::cli_warn(
       c(
-        "Exact conditional Gaussian residuals are not informative when a diagonal random effect is indexed at the observed trait-cell resolution.",
+        "Exact conditional residuals are not informative when a diagonal random effect is indexed at the observed trait-cell resolution.",
         "i" = "Use {.code type = \"simulation_rank\"} with {.code condition_on_RE = FALSE} to inspect marginal fitted-model draws."
       ),
       class = "gllvmTMB_conditional_residual_saturated"

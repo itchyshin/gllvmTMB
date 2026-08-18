@@ -3,7 +3,8 @@
 **Lane:** `claude/lane-mspl-profile-led-ci` @
 `/Users/z3437171/local-scratch/lanes/gllvmTMB-mspl-profile-led-ci`  
 **Updated:** 2026-08-18 — **G4c discharged: fork B.** (Base sign 2026-08-17,
-Shinichi *"approve all things in this lane"*.)  
+Shinichi *"approve all things in this lane"*.)
+
 Empty/OPEN does **not** waive `LOOP/GOAL.md` hard stops.
 
 > **2026-08-18 amendments (both supersede the 2026-08-17 block below).**

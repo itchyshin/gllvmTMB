@@ -101,8 +101,9 @@ You are implementing SE/CI across the non-binomial families. Three asks:
 - **Do not cite this paper for non-binomial families.** Its scope is binomial-response with
   full-rank \(X\). For Gamma/lognormal/Student/Tweedie/ordinal/delta the question is *open*, not
   settled either way, and the honest label is UNVERIFIED.
-- **`#1075`'s "profile = signature / primary claim path" needs a footnote** for the MSPL case
-  specifically. D-12's profile-over-Wald doctrine stands in general and for ML; what does not
+- **`#1075`'s "profile = signature / primary claim path" MSPL footnote is landed** in
+  `docs/dev-log/research/2026-08-17-mspl-ci-wald-plus-profile.md` (post-#1102 docs
+  align). D-12's profile-over-Wald doctrine stands in general and for ML; what does not
   stand is the inference that profiling rescues coverage under a finiteness penalty.
 
 ## 8. Verification trail

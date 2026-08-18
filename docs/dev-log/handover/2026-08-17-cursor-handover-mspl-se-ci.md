@@ -101,33 +101,33 @@ C++ already computes `mspl_c_n` equivalently to multiplier 1.0). **#981 stays op
 The **admission gate** (softness ratio / N2′ curvature / separation) is deliberately **absent** — it
 belongs to the parked calibrated construction (D-157), not to a probe.
 
-## 4. 🔴 The Poisson G0 is still UNSIGNED and it gates your lane
+## 4. The Poisson G0 — **SIGNED — REPLACE** (confirmed)
 
-`docs/dev-log/research/2026-08-17-mspl-poisson-W-G0.md` — **Status: UNSIGNED**, three paste lines
-(KEEP / REPLACE \(W_*\) / PARK SE doors). Filed as #1076.
+> **RESOLVED (2026-08-17).** Shinichi *"as you recommended"* after Cursor’s REPLACE
+> recommendation = explicit three-way paste. Card Status **SIGNED — REPLACE**. Prior
+> PARK-from-approve-all / `G1 PARK SE doors` on this card is **superseded**. Provenance:
+> `docs/dev-log/research/2026-08-17-poisson-W-G0-signature-provenance.md` (**RESOLVED — REPLACE**).
+> Codex baton: `docs/dev-log/handover/2026-08-17-codex-handover-poisson-W-REPLACE.md`.
+> **Implementation not started** (docs signature only; no `src/` until Codex).
 
-**Why it blocks you:** the same sitting's Design 125 kit signed **G1 PARK SE doors** — new
-SE-series doors are frozen until this G0 resolves. That is why Gamma, lognormal, Student,
-ordinal_probit, delta_lognormal, delta_gamma and Tweedie sit as `skip`s reading *"family door is
-missing"* in `test-zz-mspl-rest-families-se-feasibility.R`.
+`docs/dev-log/research/2026-08-17-mspl-poisson-W-G0.md` — **Status: SIGNED — REPLACE**.
+
+**Doors:** REPLACE unlocks the *programme* to change the tape; SE-series family doors
+**stay closed** until twin rematch + simulation recovery are green. That is why Gamma,
+lognormal, Student, ordinal_probit, delta_lognormal, delta_gamma and Tweedie remain
+`skip`s reading *"family door is missing"* until rematch.
 
 **The measurement, from #1064** (`docs/dev-log/after-task/2026-08-16-mspl-W-onesided-audit.md`): the
 live Poisson MSPL tape still uses GLM-outer \(W=\operatorname{diag}(\mu)\) — `src/gllvmTMB.cpp` still
-`return eta`. On a toy cell Poisson \(P_J\) rises **+4 per +4** in the intercept (−6.84 at
+`return eta` **until Codex lands REPLACE**. On a toy cell Poisson \(P_J\) rises **+4 per +4** in the intercept (−6.84 at
 \(\beta_0=-8\), +9.16 at +8), i.e. the soft Jeffreys atom is **one-sided and rewards \(+\infty\)**,
 while the working \(W_*\) is **symmetric** (−6.84 at both ends). nbinom2 saturates naturally
 (\(W/\varphi \to 1\)). Tweedie's live tape **already** uses `gll_mspl_log_weight(eta, 0)`.
 
-**My recommendation (not a decision — it is Shinichi's):** **REPLACE**, following the Tweedie
-precedent. Pinning curvature on an atom whose estimator's *existence* is open is weak ground. But it
-is a `src/` likelihood change, so AGENTS.md rule 4 pulls in `tmb-likelihood-review`, Gauss + Noether,
-a `03-likelihoods.md` update, and simulation recovery — budget most of a day, and note that #1064's
-oracles W2/W7 currently **pin `return eta` by design** and will need rewriting with it.
-
-⚠ **History worth knowing:** the Poisson W card was accidentally marked SIGNED and Rose retracted it
-twice (`claude/lane-mspl-profile-led-ci`, commits "retract invented Poisson W SIGNED PARK",
-"restore Poisson W UNSIGNED after SIGNED fight"). **Confirm its Status line in the file before acting
-on any claim that it is signed.**
+**Signed contract:** REPLACE with working \(W_*\) (Tweedie precedent); `tmb-likelihood-review` +
+Gauss/Noether + `03-likelihoods.md` + simulation recovery; rewrite #1064 W2/W7 (they pin
+`return eta` by design). Hard stops: no public `se`; `MSPL-04` blocked; no Design 118;
+Lane B PROTECTED; no rebuild #1090.
 
 ## 5. Your open PRs, and one collision to watch
 

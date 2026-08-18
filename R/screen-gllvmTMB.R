@@ -90,6 +90,35 @@ screen_control <- function(
 #' response. Rare or constant species are flagged for inspection and possible
 #' sensitivity analysis, not automatically removed.
 #'
+#' The screen also checks the response side for exact higher-order
+#' dependencies that the pairwise duplicate/complement check cannot see --
+#' most commonly a one-hot/simplex block, where several trait columns are
+#' really the dummy coding of one categorical variable and sum to exactly 1
+#' on every complete row (a review-type, geographic-scope, or temporal-scope
+#' set is a typical source). It works by an affine-rank check on the
+#' augmented response matrix `M = cbind(1, Y)` over complete Bernoulli rows
+#' (rows where every screened trait is observed), using base R's [qr()] with
+#' tolerance `sqrt(.Machine$double.eps) * max(dim(M))` (the usual
+#' dimension-scaled machine-precision rule, so the check tightens
+#' automatically on a larger response matrix rather than using one fixed
+#' constant regardless of size). The `$design` table's
+#' `response_affine_rank` row reports the matrix's rank (`value`) and its
+#' column count (`threshold`, `= ncol(M)`); a rank deficiency --
+#' `threshold - value` -- means at least one exact affine dependency exists
+#' among the traits. The `$response_dependencies` table then adds, where
+#' cheaply recoverable from the matrix's null space, a human-readable
+#' certificate naming the traits and the relation (for example
+#' `"A + B + C = 1"`). This is a best-effort report, not exhaustive
+#' minimal-subset discovery: with more than one simultaneous exact
+#' dependency the automatic search can fail to decompose the null space into
+#' individually clean certificates, in which case the remaining deficiency
+#' is reported without a certificate (`type = "unresolved"`), never silently
+#' dropped. Declaring known structure via `known_groups` sidesteps that
+#' limitation with an exact, deterministic, per-group check. An exact
+#' one-hot block is not itself a bug to silently filter -- it is one
+#' categorical variable, and belongs in [multinomial()] or a deliberate
+#' reference-level coding, not in several unconstrained binary traits.
+#'
 #' With `screen_control(separation = "fixed")`, the screen uses the optional
 #' `detectseparation` package to classify the observed fixed design. This
 #' includes finite known offsets, whose presence is recorded in the returned
@@ -118,6 +147,23 @@ screen_control <- function(
 #' @param Xcoef_fixed Optional named structural-zero fixed-effect constraints,
 #'   normalized against the expanded fixed-effect columns as in [gllvmTMB()].
 #'   This argument is used by the opt-in fixed-design separation screen.
+#' @param known_groups Optional named list of character vectors of trait
+#'   names, each with at least two distinct names (duplicated names within
+#'   one group are an error). Each element declares a set of traits the
+#'   user believes forms an exact one-hot (simplex) block or a
+#'   nesting/containment chain -- for example the dummy columns of one
+#'   categorical review-type or geographic-scope variable, or a broad-realm
+#'   indicator together with a narrower nested realm. Each declared group is
+#'   checked against the observed complete rows with an exact deterministic
+#'   test: row sums for a one-hot block, or a containment chain checked in
+#'   BOTH the order written and its reverse for nesting (so it does not
+#'   matter which end of a real chain the group happens to name first). A
+#'   group whose members are all constant on the complete rows is reported
+#'   separately (not as a nesting chain: the chain condition is vacuously
+#'   true for two constants and would not be genuine evidence). Each result
+#'   is its own row in the `response_dependencies` table, independent of the
+#'   automatic affine-rank screen below. Screening is Bernoulli-only,
+#'   matching the automatic screen.
 #' @param control A [screen_control()] object.
 #' @return A `gllvmTMB_screen` object. Use [screen_table()] to extract
 #'   report-ready tables.
@@ -168,7 +214,8 @@ screen_gllvmTMB <- function(
   weights = NULL,
   missing = miss_control(),
   control = screen_control(),
-  Xcoef_fixed = NULL
+  Xcoef_fixed = NULL,
+  known_groups = NULL
 ) {
   if (!inherits(formula, "formula")) {
     cli::cli_abort("{.arg formula} must be a formula.")
@@ -178,6 +225,18 @@ screen_gllvmTMB <- function(
   }
   if (!inherits(control, "gllvmTMB_screen_control")) {
     cli::cli_abort("{.arg control} must come from {.fn screen_control}.")
+  }
+  if (!is.null(known_groups)) {
+    if (
+      !is.list(known_groups) ||
+        length(known_groups) == 0L ||
+        is.null(names(known_groups)) ||
+        any(!nzchar(names(known_groups)))
+    ) {
+      cli::cli_abort(
+        "{.arg known_groups} must be a non-empty named list of character vectors of trait names."
+      )
+    }
   }
 
   prep <- .screen_prepare_formula_data(
@@ -194,6 +253,7 @@ screen_gllvmTMB <- function(
   if (!isTRUE(fam$supported)) {
     traits <- .screen_not_checked_traits(prep, fam)
     pairs <- .screen_empty_pairs()
+    response_dependencies <- .screen_empty_response_dependencies()
     units <- .screen_units_table(prep, traits)
     design <- .screen_design_table(
       prep,
@@ -216,6 +276,11 @@ screen_gllvmTMB <- function(
     response <- .screen_binomial_response(prep)
     traits <- .screen_binomial_traits(prep, response, control)
     pairs <- .screen_binomial_pairs(prep, response, control)
+    response_dependencies <- .screen_response_dependencies_table(
+      prep,
+      response,
+      known_groups
+    )
     units <- .screen_units_table(prep, traits, response)
     design <- .screen_design_table(
       prep,
@@ -223,6 +288,10 @@ screen_gllvmTMB <- function(
       traits,
       Xcoef_fixed = Xcoef_fixed,
       resolve_fixed = identical(control$separation, "fixed")
+    )
+    design <- rbind(
+      design,
+      .screen_response_affine_design_row(prep, response)
     )
     if (identical(control$separation, "fixed")) {
       separation <- .screen_separation_table(
@@ -237,7 +306,8 @@ screen_gllvmTMB <- function(
       traits,
       pairs,
       design,
-      separation
+      separation,
+      response_dependencies
     )
   }
   if (!isTRUE(fam$supported) && nrow(separation)) {
@@ -248,9 +318,16 @@ screen_gllvmTMB <- function(
   }
 
   out <- list(
-    summary = .screen_summary_table(traits, pairs, design, separation),
+    summary = .screen_summary_table(
+      traits,
+      pairs,
+      design,
+      separation,
+      response_dependencies
+    ),
     traits = traits,
     pairs = pairs,
+    response_dependencies = response_dependencies,
     units = units,
     design = design,
     separation = separation,
@@ -283,6 +360,7 @@ screen_table <- function(
     "summary",
     "traits",
     "pairs",
+    "response_dependencies",
     "units",
     "design",
     "separation",
@@ -956,6 +1034,634 @@ print.gllvmTMB_screen <- function(x, ...) {
   )
 }
 
+## ---- response-side exact affine dependency screen (S3a) -----------------
+##
+## Complements the pairwise duplicate/complement check above, which only
+## sees two-way exact relations. This screens for higher-order exact
+## relations among three or more traits at once -- most commonly a one-hot
+## / simplex block, where several columns are really the dummy coding of one
+## categorical variable and sum to exactly 1 on every complete row.
+
+## Build the unit x trait wide matrix from complete Bernoulli rows only
+## (every screened trait observed for that unit). Mirrors the xtabs
+## construction in .screen_binomial_pairs(), but requires full-row
+## completeness rather than pairwise overlap, because an affine dependency
+## among p traits needs all p columns observed together to be checked.
+.screen_response_wide <- function(prep, response) {
+  if (is.null(prep$unit_col)) {
+    return(list(
+      ok = FALSE,
+      reason = "no unit column was available for response-dependency screening"
+    ))
+  }
+  if (!all(response$valid & response$binary_row)) {
+    return(list(
+      ok = FALSE,
+      reason = "response-dependency screening is implemented for Bernoulli rows only"
+    ))
+  }
+  dat <- data.frame(
+    unit = prep$data[[prep$unit_col]],
+    trait = prep$data[[prep$trait_col]],
+    value = as.numeric(response$success),
+    stringsAsFactors = FALSE
+  )
+  dup <- duplicated(dat[c("unit", "trait")])
+  if (any(dup)) {
+    return(list(ok = FALSE, reason = "duplicate unit-trait rows were present"))
+  }
+  wide <- stats::xtabs(value ~ unit + trait, data = dat)
+  present <- stats::xtabs(rep(1, nrow(dat)) ~ unit + trait, data = dat) > 0
+  traits <- colnames(wide)
+  if (length(traits) < 2L) {
+    return(list(
+      ok = FALSE,
+      reason = "fewer than two traits were available for response-dependency screening"
+    ))
+  }
+  complete <- apply(present, 1L, all)
+  if (sum(complete) < 2L) {
+    return(list(
+      ok = FALSE,
+      reason = "fewer than two units had every screened trait observed"
+    ))
+  }
+  Y <- as.matrix(wide)
+  Y <- Y[complete, , drop = FALSE]
+  storage.mode(Y) <- "double"
+  list(ok = TRUE, Y = Y, traits = traits, n_rows = nrow(Y))
+}
+
+## The affine-rank check itself: qr() on cbind(1, Y), with a dimension-scaled
+## tolerance (documented in ?screen_gllvmTMB). Shared by the design-table row
+## and the certificate search below.
+.screen_response_affine_info <- function(prep, response) {
+  wide <- .screen_response_wide(prep, response)
+  if (!isTRUE(wide$ok)) {
+    return(list(ok = FALSE, reason = wide$reason))
+  }
+  M <- cbind(1, wide$Y)
+  tol <- sqrt(.Machine$double.eps) * max(dim(M))
+  rank <- qr(M, tol = tol)$rank
+  list(
+    ok = TRUE,
+    M = M,
+    Y = wide$Y,
+    traits = wide$traits,
+    n_rows = nrow(M),
+    n_col = ncol(M),
+    rank = rank,
+    tol = tol
+  )
+}
+
+## One row for the $design table, following the fixed_effect_rank pattern.
+.screen_response_affine_design_row <- function(prep, response) {
+  info <- .screen_response_affine_info(prep, response)
+  if (!isTRUE(info$ok)) {
+    return(.screen_design_row(
+      "response_affine_rank",
+      "NOT_CHECKED",
+      "not_checked",
+      NA_real_,
+      NA_real_,
+      info$reason,
+      "unsupported"
+    ))
+  }
+  deficiency <- info$n_col - info$rank
+  .screen_design_row(
+    "response_affine_rank",
+    if (deficiency > 0L) "FAIL" else "PASS",
+    if (deficiency > 0L) "response_rank_deficient" else "none",
+    info$rank,
+    info$n_col,
+    if (deficiency > 0L) {
+      sprintf(
+        "response matrix augmented with an intercept is rank deficient by %d on %d complete row%s: at least one exact affine dependency exists among the screened traits",
+        deficiency,
+        info$n_rows,
+        if (info$n_rows == 1L) "" else "s"
+      )
+    } else {
+      sprintf(
+        "response matrix augmented with an intercept has full column rank on %d complete row%s: no exact affine dependency among the screened traits",
+        info$n_rows,
+        if (info$n_rows == 1L) "" else "s"
+      )
+    },
+    if (deficiency > 0L) "inspect" else "keep"
+  )
+}
+
+## Cheap, non-combinatorial candidates for 1-dimensional null-space
+## directions that are ALREADY independently detected elsewhere in the
+## screen: a constant column (all-0 or all-1 on the complete-row subset),
+## and an exact duplicate or complement pair. Each candidate is verified
+## against info$M before use (max(abs(M %*% v)) ~ 0), so a false positive
+## here can only drop a deflation, never fabricate one. Constant columns
+## are excluded from the pairwise duplicate/complement scan so a
+## constant-vs-constant pair is not double-counted against the same
+## deficiency dimension.
+.screen_response_known_null_vectors <- function(info) {
+  Y <- info$Y
+  traits <- info$traits
+  n_col <- info$n_col
+  p <- length(traits)
+  is_constant0 <- vapply(seq_len(p), function(j) all(Y[, j] == 0), logical(1L))
+  is_constant1 <- vapply(seq_len(p), function(j) all(Y[, j] == 1), logical(1L))
+  is_constant <- is_constant0 | is_constant1
+
+  vectors <- list()
+  types <- character(0)
+  traits_involved <- list()
+  certificates <- character(0)
+
+  for (j in seq_len(p)) {
+    if (is_constant0[[j]]) {
+      v <- rep(0, n_col)
+      v[1L + j] <- 1
+      vectors[[length(vectors) + 1L]] <- v
+      types <- c(types, "deflated_constant")
+      traits_involved[[length(traits_involved) + 1L]] <- traits[[j]]
+      certificates <- c(certificates, paste0(traits[[j]], " = 0"))
+    } else if (is_constant1[[j]]) {
+      v <- rep(0, n_col)
+      v[1L] <- -1
+      v[1L + j] <- 1
+      vectors[[length(vectors) + 1L]] <- v
+      types <- c(types, "deflated_constant")
+      traits_involved[[length(traits_involved) + 1L]] <- traits[[j]]
+      certificates <- c(certificates, paste0(traits[[j]], " = 1"))
+    }
+  }
+
+  if (p >= 2L) {
+    for (i in seq_len(p - 1L)) {
+      if (is_constant[[i]]) {
+        next
+      }
+      for (j in seq.int(i + 1L, p)) {
+        if (is_constant[[j]]) {
+          next
+        }
+        if (all(Y[, i] == Y[, j])) {
+          v <- rep(0, n_col)
+          v[1L + i] <- 1
+          v[1L + j] <- -1
+          vectors[[length(vectors) + 1L]] <- v
+          types <- c(types, "deflated_duplicate")
+          traits_involved[[length(traits_involved) + 1L]] <- c(traits[[i]], traits[[j]])
+          certificates <- c(certificates, paste0(traits[[j]], " = ", traits[[i]]))
+        } else if (all(Y[, i] == 1 - Y[, j])) {
+          v <- rep(0, n_col)
+          v[1L] <- -1
+          v[1L + i] <- 1
+          v[1L + j] <- 1
+          vectors[[length(vectors) + 1L]] <- v
+          types <- c(types, "deflated_complement")
+          traits_involved[[length(traits_involved) + 1L]] <- c(traits[[i]], traits[[j]])
+          certificates <- c(certificates, paste0(traits[[i]], " + ", traits[[j]], " = 1"))
+        }
+      }
+    }
+  }
+
+  if (length(vectors) == 0L) {
+    return(list(
+      vectors = matrix(numeric(0), nrow = n_col, ncol = 0L),
+      types = character(0),
+      traits = list(),
+      certificates = character(0)
+    ))
+  }
+  list(
+    vectors = do.call(cbind, vectors),
+    types = types,
+    traits = traits_involved,
+    certificates = certificates
+  )
+}
+
+## Best-effort certificate search: right singular vectors of M spanning its
+## null space, normalized so the intercept coefficient is 1. A clean one-hot
+## block ("A + B + C = 1") then shows up as coefficient -1 on the group
+## traits and ~0 elsewhere. This is reliable when the null space is
+## essentially one clean relation at a time -- with several simultaneous
+## exact dependencies the generic orthonormal basis SVD returns is a
+## rotation of them and is not guaranteed to align with any individual
+## relation.
+##
+## Before running that search, columns whose dependency is ALREADY
+## independently detected elsewhere (a constant column; the later-indexed
+## trait of an exact duplicate or complement pair -- see
+## .screen_response_known_null_vectors()) are DROPPED from the matrix and
+## re-run through a fresh rank/SVD pass. Dropping a column that is exactly
+## an affine function of the others removes one column and exactly one
+## unit of rank deficiency simultaneously (the column contributed nothing
+## to the column space beyond what the rest already span), so the reduced
+## matrix's own deficiency is exactly `deficiency - length(deflated)` and
+## its null space is not contaminated by the deflated relation the way an
+## ORTHOGONAL projection would be (projecting a non-orthogonal known vector
+## out of the null space produces some new linear COMBINATION of the
+## original relations, not the original clean one-hot vector -- measured
+## while building this deflation). Each deflated direction gets its own
+## named row (`$deflated`) instead of silently reducing the search space;
+## whatever deficiency remains after both steps is reported `unresolved`
+## (never silently dropped). Exhaustive minimal-subset discovery over all
+## trait subsets is combinatorial and is not attempted.
+.screen_response_affine_certificates <- function(info, coef_tol = 1e-6) {
+  deficiency <- info$n_col - info$rank
+  if (deficiency <= 0L) {
+    return(list(certs = list(), deflated = list()))
+  }
+
+  known <- .screen_response_known_null_vectors(info)
+  deflated <- list()
+  drop_idx <- integer(0)
+  if (ncol(known$vectors) > 0L) {
+    tol <- 1e-6 * max(1, max(abs(info$M)))
+    for (j in seq_len(ncol(known$vectors))) {
+      v <- known$vectors[, j]
+      if (max(abs(info$M %*% v)) >= tol) {
+        next
+      }
+      trait_coef_idx <- which(abs(v[-1L]) > coef_tol)
+      if (length(trait_coef_idx) == 0L) {
+        next
+      }
+      drop_trait_idx <- trait_coef_idx[[length(trait_coef_idx)]]
+      if (drop_trait_idx %in% drop_idx) {
+        next
+      }
+      drop_idx <- c(drop_idx, drop_trait_idx)
+      deflated[[length(deflated) + 1L]] <- list(
+        type = known$types[[j]],
+        traits = known$traits[[j]],
+        certificate = known$certificates[[j]]
+      )
+    }
+  }
+
+  if (length(drop_idx) > 0L) {
+    keep_idx <- setdiff(seq_along(info$traits), drop_idx)
+    M_reduced <- info$M[, c(1L, 1L + keep_idx), drop = FALSE]
+    traits_reduced <- info$traits[keep_idx]
+  } else {
+    M_reduced <- info$M
+    traits_reduced <- info$traits
+  }
+
+  n_col_reduced <- ncol(M_reduced)
+  tol_reduced <- sqrt(.Machine$double.eps) * max(dim(M_reduced))
+  rank_reduced <- if (n_col_reduced) qr(M_reduced, tol = tol_reduced)$rank else 0L
+  residual_deficiency <- n_col_reduced - rank_reduced
+
+  certs <- list()
+  if (residual_deficiency > 0L) {
+    sv <- svd(M_reduced)
+    idx <- seq.int(ncol(sv$v) - residual_deficiency + 1L, ncol(sv$v))
+    for (i in idx) {
+      v <- sv$v[, i]
+      v0 <- v[1L]
+      if (abs(v0) < coef_tol) {
+        next
+      }
+      coefs <- (v / v0)[-1L]
+      group_idx <- which(abs(coefs - (-1)) < coef_tol)
+      other_idx <- setdiff(seq_along(coefs), group_idx)
+      if (length(group_idx) < 2L) {
+        next
+      }
+      if (length(other_idx) > 0L && !all(abs(coefs[other_idx]) < coef_tol)) {
+        next
+      }
+      group_traits <- traits_reduced[group_idx]
+      certs[[length(certs) + 1L]] <- list(
+        traits = group_traits,
+        certificate = paste0(paste(group_traits, collapse = " + "), " = 1")
+      )
+    }
+  }
+  list(certs = certs, deflated = deflated)
+}
+
+## One row of the $response_dependencies table.
+.screen_response_dependency_row <- function(
+  scope,
+  group,
+  type,
+  status,
+  severity,
+  traits,
+  certificate,
+  n_rows,
+  action,
+  message
+) {
+  data.frame(
+    scope = scope,
+    group = group,
+    type = type,
+    status = status,
+    severity = severity,
+    traits = traits,
+    certificate = certificate,
+    n_rows = n_rows,
+    action = action,
+    message = message,
+    stringsAsFactors = FALSE
+  )
+}
+
+.screen_empty_response_dependencies <- function() {
+  data.frame(
+    scope = character(0),
+    group = character(0),
+    type = character(0),
+    status = character(0),
+    severity = character(0),
+    traits = character(0),
+    certificate = character(0),
+    n_rows = integer(0),
+    action = character(0),
+    message = character(0),
+    stringsAsFactors = FALSE
+  )
+}
+
+## Exact, deterministic checks for a user-declared known_groups entry: does
+## it sum to exactly 1 on every complete row (one-hot), or does it form an
+## exact containment chain (nesting)? Unlike the automatic affine-rank
+## search, this never has to guess a decomposition. Two guards keep the
+## check honest:
+##
+## - A group where every member is CONSTANT on the complete rows makes the
+##   nesting chain condition (`col[j] >= col[j+1]`) vacuously TRUE (e.g. two
+##   all-zero traits: 0 >= 0 on every row) without the traits being
+##   genuinely nested -- and each constant member is already reported on
+##   its own (as a $traits FAIL / a deflated_constant row), so reporting a
+##   "known_nesting" FAIL on top would be misleading, not additional
+##   evidence. Degenerate (all-constant) groups are reported PASS with a
+##   distinguishing message instead.
+## - Nesting is checked in BOTH the declared order and its reverse, since a
+##   real containment chain does not depend on which end the user happened
+##   to write first; the certificate reports whichever direction actually
+##   holds.
+.screen_known_group_rows <- function(info, known_groups) {
+  rows <- list()
+  for (gname in names(known_groups)) {
+    group <- known_groups[[gname]]
+    if (!is.character(group) || length(group) < 2L) {
+      cli::cli_abort(
+        "{.arg known_groups[[{gname}]]} must be a character vector of at least two trait names."
+      )
+    }
+    if (anyDuplicated(group) > 0L) {
+      cli::cli_abort(
+        "{.arg known_groups[[{gname}]]} names the same trait more than once."
+      )
+    }
+    if (!isTRUE(info$ok)) {
+      rows[[length(rows) + 1L]] <- .screen_response_dependency_row(
+        "known_group",
+        gname,
+        "not_checked",
+        "NOT_CHECKED",
+        "not_checked",
+        paste(group, collapse = ", "),
+        NA_character_,
+        NA_integer_,
+        "unsupported",
+        info$reason
+      )
+      next
+    }
+    missing_traits <- setdiff(group, info$traits)
+    if (length(missing_traits) > 0L) {
+      cli::cli_abort(c(
+        "{.arg known_groups[[{gname}]]} names trait(s) that were not screened.",
+        "x" = "Not found: {.val {missing_traits}}."
+      ))
+    }
+    Yg <- info$Y[, group, drop = FALSE]
+    tol <- 1e-8
+    degenerate <- all(vapply(
+      seq_len(ncol(Yg)),
+      function(j) length(unique(Yg[, j])) <= 1L,
+      logical(1L)
+    ))
+    one_hot_ok <- !degenerate && all(abs(rowSums(Yg) - 1) < tol)
+    is_chain <- function(order_idx) {
+      all(vapply(
+        seq_len(length(order_idx) - 1L),
+        function(j) all(Yg[, order_idx[[j]]] >= Yg[, order_idx[[j + 1L]]]),
+        logical(1L)
+      ))
+    }
+    nesting_fwd <- !degenerate && is_chain(seq_len(ncol(Yg)))
+    nesting_rev <- !degenerate && !nesting_fwd && is_chain(rev(seq_len(ncol(Yg))))
+    if (one_hot_ok) {
+      rows[[length(rows) + 1L]] <- .screen_response_dependency_row(
+        "known_group",
+        gname,
+        "known_one_hot",
+        "FAIL",
+        "exact_dependency",
+        paste(group, collapse = ", "),
+        paste0(paste(group, collapse = " + "), " = 1"),
+        info$n_rows,
+        "collapse_or_recode",
+        sprintf(
+          "declared group '%s' (%s) sums to exactly 1 on every complete row (%d rows): this is one categorical variable, not %d independent binary traits",
+          gname,
+          paste(group, collapse = ", "),
+          info$n_rows,
+          length(group)
+        )
+      )
+    } else if (nesting_fwd || nesting_rev) {
+      chain_order <- if (nesting_fwd) group else rev(group)
+      reversed_note <- if (nesting_rev) " (reversed from the order given)" else ""
+      rows[[length(rows) + 1L]] <- .screen_response_dependency_row(
+        "known_group",
+        gname,
+        "known_nesting",
+        "FAIL",
+        "exact_dependency",
+        paste(group, collapse = ", "),
+        paste(chain_order, collapse = " >= "),
+        info$n_rows,
+        "inspect",
+        sprintf(
+          "declared group '%s' forms an exact nesting/containment chain on every complete row (%d rows)%s: %s: the narrower trait is never present without its broader trait",
+          gname,
+          info$n_rows,
+          reversed_note,
+          paste(chain_order, collapse = " contains ")
+        )
+      )
+    } else if (degenerate) {
+      rows[[length(rows) + 1L]] <- .screen_response_dependency_row(
+        "known_group",
+        gname,
+        "known_group_degenerate",
+        "PASS",
+        "none",
+        paste(group, collapse = ", "),
+        NA_character_,
+        info$n_rows,
+        "keep",
+        sprintf(
+          "declared group '%s' is not checked for nesting or a one-hot sum: every member is constant on the complete rows, which would make a chain condition vacuously true without evidence of a genuine relationship; see each trait's own constant-response row instead",
+          gname
+        )
+      )
+    } else {
+      rows[[length(rows) + 1L]] <- .screen_response_dependency_row(
+        "known_group",
+        gname,
+        "known_group_checked",
+        "PASS",
+        "none",
+        paste(group, collapse = ", "),
+        NA_character_,
+        info$n_rows,
+        "keep",
+        sprintf(
+          "declared group '%s' did not show an exact one-hot sum or a nesting containment chain (either direction) on the observed rows",
+          gname
+        )
+      )
+    }
+  }
+  do.call(rbind, rows)
+}
+
+.screen_response_dependencies_table <- function(prep, response, known_groups = NULL) {
+  info <- .screen_response_affine_info(prep, response)
+  rows <- list()
+  if (!isTRUE(info$ok)) {
+    rows[[length(rows) + 1L]] <- .screen_response_dependency_row(
+      "affine",
+      NA_character_,
+      "not_checked",
+      "NOT_CHECKED",
+      "not_checked",
+      NA_character_,
+      NA_character_,
+      NA_integer_,
+      "unsupported",
+      info$reason
+    )
+  } else {
+    deficiency <- info$n_col - info$rank
+    if (deficiency == 0L) {
+      rows[[length(rows) + 1L]] <- .screen_response_dependency_row(
+        "affine",
+        NA_character_,
+        "none",
+        "PASS",
+        "none",
+        NA_character_,
+        NA_character_,
+        info$n_rows,
+        "keep",
+        "no exact affine dependency was found among the screened traits"
+      )
+    } else {
+      found <- .screen_response_affine_certificates(info)
+      certs <- found$certs
+      deflated <- found$deflated
+      for (cert in certs) {
+        rows[[length(rows) + 1L]] <- .screen_response_dependency_row(
+          "affine",
+          NA_character_,
+          "one_hot_block",
+          "FAIL",
+          "exact_dependency",
+          paste(cert$traits, collapse = ", "),
+          cert$certificate,
+          info$n_rows,
+          "collapse_or_recode",
+          sprintf(
+            "%s form an exact one-hot / simplex block on the screened rows (%s): this is one categorical variable, not %d independent binary traits",
+            paste(cert$traits, collapse = " + "),
+            cert$certificate,
+            length(cert$traits)
+          )
+        )
+      }
+      for (defl in deflated) {
+        rows[[length(rows) + 1L]] <- .screen_response_dependency_row(
+          "affine",
+          NA_character_,
+          defl$type,
+          "FAIL",
+          "exact_dependency",
+          paste(defl$traits, collapse = ", "),
+          defl$certificate,
+          info$n_rows,
+          "collapse_or_recode",
+          sprintf(
+            "%s: this affine dependency is already reported at trait/pair level (%s) and was projected out before the one-hot certificate search",
+            defl$certificate,
+            switch(
+              defl$type,
+              deflated_constant = "a constant trait",
+              deflated_duplicate = "a duplicate pair",
+              deflated_complement = "a complement pair",
+              "a known dependency"
+            )
+          )
+        )
+      }
+      unresolved <- deficiency - length(certs) - length(deflated)
+      if (unresolved > 0L) {
+        rows[[length(rows) + 1L]] <- .screen_response_dependency_row(
+          "affine",
+          NA_character_,
+          "unresolved",
+          "FAIL",
+          "rank_deficient",
+          NA_character_,
+          NA_character_,
+          info$n_rows,
+          "inspect",
+          sprintf(
+            "%d further exact affine dependenc%s beyond any certificate above could not be automatically resolved into a one-hot block; minimal-subset discovery is not attempted",
+            unresolved,
+            if (unresolved == 1L) "y" else "ies"
+          )
+        )
+      }
+    }
+  }
+  if (!is.null(known_groups)) {
+    rows <- c(rows, list(.screen_known_group_rows(info, known_groups)))
+  }
+  do.call(rbind, rows)
+}
+
+.screen_recommend_from_response_dependencies <- function(response_dependencies) {
+  if (is.null(response_dependencies) || nrow(response_dependencies) == 0L) {
+    return(.screen_empty_recommendations())
+  }
+  data.frame(
+    scope = "response_dependency",
+    status = response_dependencies$status,
+    action = response_dependencies$action,
+    trait = response_dependencies$traits,
+    evidence = response_dependencies$message,
+    model_implication = ifelse(
+      response_dependencies$status %in% c("FAIL", "WARN"),
+      "this is one categorical variable coded as several binary columns; keep it out of the latent block as-is, and either recode it as multinomial() or fix a deliberate reference level",
+      "no response-dependency pre-fit action"
+    ),
+    stringsAsFactors = FALSE
+  )
+}
+
 .screen_units_table <- function(prep, traits, response = NULL) {
   if (is.null(prep$unit_col)) {
     return(data.frame(
@@ -1186,12 +1892,19 @@ print.gllvmTMB_screen <- function(x, ...) {
   do.call(rbind, rows)
 }
 
-.screen_recommendations <- function(traits, pairs, design, separation = NULL) {
+.screen_recommendations <- function(
+  traits,
+  pairs,
+  design,
+  separation = NULL,
+  response_dependencies = NULL
+) {
   recs <- list(
     .screen_recommend_from_traits(traits),
     .screen_recommend_from_pairs(pairs),
     .screen_recommend_from_design(design),
-    .screen_recommend_from_separation(separation)
+    .screen_recommend_from_separation(separation),
+    .screen_recommend_from_response_dependencies(response_dependencies)
   )
   out <- do.call(rbind, recs)
   out <- out[out$status != "PASS", , drop = FALSE]

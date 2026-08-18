@@ -336,6 +336,7 @@ reference:
     - screen_gllvmTMB
     - screen_control
     - screen_table
+    - ridge_path
     - check_gllvmTMB
     - gllvmTMB_diagnose
     - predictive_check

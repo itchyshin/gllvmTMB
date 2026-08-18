@@ -83,6 +83,32 @@ is still the default.
 
 ## New
 
+* **`screen_gllvmTMB()` now catches exact response-side dependencies
+  among three or more traits (issue Ayumi-495 /
+  `urbanisation_map#23`).** The pairwise duplicate/complement check only
+  sees two-way exact relations; a `response_affine_rank` row (in `$design`)
+  and a new `$response_dependencies` table now also flag one-hot/simplex
+  blocks, most commonly a review-type, geographic-scope, or
+  temporal-scope variable recorded as several dummy columns that sum to
+  exactly 1 on every row, via an affine-rank check on the augmented
+  response matrix. Certificates are recovered on a best-effort basis (not
+  exhaustive minimal-subset discovery); the new `known_groups` argument
+  lets you declare a set of trait names as a one-hot block or a
+  nesting/containment chain for an exact, deterministic check instead.
+  See the new "Exact response-side dependencies" section of
+  `vignette("pre-fit-response-screening", package = "gllvmTMB")`.
+
+* **New `ridge_path()`: a loading-ridge sensitivity sweep (issue
+  Ayumi-495 / `urbanisation_map#23`).** Refits a model across a grid of
+  `gllvmTMBcontrol(loading_ridge = tau)` scales and reports, per trait,
+  how the largest loading and its communality move as the penalty
+  weakens. `print()` classifies each trait as "interior (stabilises as
+  penalty weakens)" or "penalty-determined (moves toward boundary)" using
+  a documented slope rule on the last two finite-`tau` grid points. This
+  is sensitivity evidence, not an identification certificate; `tau = Inf`
+  (plain ML) can legitimately fail to converge for a pathological trait,
+  and that failure is itself part of the diagnostic.
+
 * **`fitted()` now works on the default `gllvmTMB_multi` fit (#25).**
   `fitted` was only registered as an S3 method for the `gllvmTMB_julia` and
   `gllvmTMB_va` engine classes, so `fitted(fit)` on an ordinary fit silently

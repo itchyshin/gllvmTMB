@@ -280,6 +280,94 @@ the same trait-support summaries in this example. It does not claim that every
 future table is identical under every formula. Use whichever data shape matches
 your workflow.
 
+## Exact response-side dependencies
+
+The pairwise check above only sees two-way exact relations: duplicates and
+complements. It cannot see a *higher-order* exact relation among three or
+more traits, and systematic-map data commonly contain exactly that: a
+review-type, geographic-scope, or temporal-scope variable recorded as
+several dummy columns rather than one categorical column, so those columns
+sum to exactly 1 on every review.
+
+`screen_gllvmTMB()` checks for this with an affine-rank check on the
+response matrix (augmented with an intercept column), restricted to reviews
+with every screened trait observed. A rank deficiency means at least one
+exact affine dependency exists among the traits; where it decomposes into a
+clean one-hot block, a human-readable certificate is reported. This is a
+best-effort search, not exhaustive minimal-subset discovery: with more than
+one such block at once it can fail to decompose them cleanly (see
+`?screen_gllvmTMB`), so declaring known structure with `known_groups` is the
+more reliable route whenever it is already known.
+
+```{r response-dependency-data}
+scope <- data.frame(
+  review = factor(seq_len(30)),
+  scope_global = rep(c(1, 0, 0), 10),
+  scope_regional = rep(c(0, 1, 0), 10),
+  scope_local = rep(c(0, 0, 1), 10),
+  outcome_richness = rep(c(0, 1), 15)
+)
+```
+
+`scope_global`, `scope_regional`, and `scope_local` are the dummy coding of
+one geographic-scope variable: exactly one of the three is 1 for every
+review.
+
+```{r response-dependency-screen}
+scr_scope <- suppressWarnings(screen_gllvmTMB(
+  traits(scope_global, scope_regional, scope_local, outcome_richness) ~
+    1 + latent(1 | review, d = 2),
+  data = scope,
+  unit = "review",
+  family = binomial("probit")
+))
+
+design_scope <- screen_table(scr_scope, "design")
+design_scope[
+  design_scope$component == "response_affine_rank",
+  c("component", "status", "value", "threshold", "message")
+]
+
+screen_table(scr_scope, "response_dependencies")[, c(
+  "scope", "type", "status", "traits", "certificate"
+)]
+```
+
+The `design` table's `response_affine_rank` row reports the rank
+deficiency; the `response_dependencies` table adds the certificate,
+`"scope_global + scope_regional + scope_local = 1"`, and names exactly
+those three traits — `outcome_richness` is uninvolved.
+
+When the grouping is already known, `known_groups` gives the same
+certificate as an exact, deterministic check rather than a best-effort
+search, and also covers a declared nesting/containment chain (for example a
+broad realm indicator together with a narrower nested realm):
+
+```{r known-groups}
+scr_known <- screen_gllvmTMB(
+  traits(scope_global, scope_regional, scope_local, outcome_richness) ~
+    1 + latent(1 | review, d = 2),
+  data = scope,
+  unit = "review",
+  family = binomial("probit"),
+  known_groups = list(
+    geographic_scope = c("scope_global", "scope_regional", "scope_local")
+  )
+)
+
+deps_known <- screen_table(scr_known, "response_dependencies")
+deps_known[
+  deps_known$scope == "known_group",
+  c("group", "type", "status", "certificate")
+]
+```
+
+Neither check removes or recodes the block automatically. An exact one-hot
+block is one categorical variable: recode it as
+[`multinomial()`](multinomial.html) or fix a deliberate reference level,
+rather than fitting it as several unconstrained binary traits in the same
+latent block.
+
 ## Apply the screen before fitting
 
 The constant response cannot inform this latent block, and the duplicate and

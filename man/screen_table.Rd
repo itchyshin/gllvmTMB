@@ -6,8 +6,8 @@
 \usage{
 screen_table(
   x,
-  table = c("summary", "traits", "pairs", "units", "design", "separation",
-    "recommendations", "settings")
+  table = c("summary", "traits", "pairs", "response_dependencies", "units", "design",
+    "separation", "recommendations", "settings")
 )
 }
 \arguments{

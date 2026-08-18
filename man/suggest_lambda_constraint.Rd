@@ -90,7 +90,11 @@ Produces a default constraint matrix \code{M} for the reduced-rank loadings
 Lambda in a fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}} or in a formula-data pair that will
 be passed to \code{\link[=gllvmTMB]{gllvmTMB()}}. The matrix is returned in the format expected by
 the \code{lambda_constraint} argument: \code{NA} in free entries, numeric values in
-pinned entries.
+pinned entries. This function supplies an identification convention -- an
+orientation/scale scaffold that resolves rotational ambiguity -- and does
+not discover biological factor structure; a low or pinned loading is a
+constraint choice or a result to interpret, not by itself grounds to
+exclude a trait.
 }
 \examples{
 \dontrun{

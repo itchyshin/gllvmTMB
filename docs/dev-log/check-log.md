@@ -1,3 +1,20 @@
+## 2026-08-18 — Cursor: g0_unlock fork B `/goal` kit (does **not** reopen REPLACE)
+
+Docs-only kit at `docs/dev-log/lanes/cursor-mspl-fork-B/LOOP/`. New goal:
+Design 125 G4c **fork B** (unpenalized Laplace at fixed MSPL nuisance;
+A = ablation) + D-148→D-159 / PARK→REPLACE sync + L0 penalty-off path +
+L1 local smoke. Repo-root `LOOP/` left as REPLACE **GOAL_MET** (#1111 /
+#1116 / #1124). Sibling stub `16fd7c0d` dropped on rebase (conflicted
+with #1124). After-task:
+`docs/dev-log/after-task/2026-08-18-mspl-forkB-g0-unlock-goal-kit.md`.
+
+```sh
+test -f docs/dev-log/lanes/cursor-mspl-fork-B/LOOP/GOAL.md
+git diff --name-only origin/main -- LOOP/   # must be empty
+gh pr view 1077 --json isDraft              # true
+# not run: R CMD check, Totoro, L0/L1 impl, Design 125 body edit
+```
+
 ## 2026-08-18 — Cursor: Poisson MSPL W_* REPLACE **MERGED** (closes the LOOP)
 
 PR [#1111](https://github.com/itchyshin/gllvmTMB/pull/1111) merged into `main`

@@ -47,20 +47,27 @@ This argument is used by the opt-in fixed-design separation screen.}
 \item{known_groups}{Optional named list of character vectors of trait
 names, each with at least two distinct names (duplicated names within
 one group are an error). Each element declares a set of traits the
-user believes forms an exact one-hot (simplex) block or a
-nesting/containment chain -- for example the dummy columns of one
-categorical review-type or geographic-scope variable, or a broad-realm
-indicator together with a narrower nested realm. Each declared group is
-checked against the observed complete rows with an exact deterministic
-test: row sums for a one-hot block, or a containment chain checked in
-BOTH the order written and its reverse for nesting (so it does not
-matter which end of a real chain the group happens to name first). A
-group whose members are all constant on the complete rows is reported
-separately (not as a nesting chain: the chain condition is vacuously
-true for two constants and would not be genuine evidence). Each result
-is its own row in the \code{response_dependencies} table, independent of the
-automatic affine-rank screen below. Screening is Bernoulli-only,
-matching the automatic screen.}
+user believes forms an exact one-hot (simplex) block or one or more
+exact pairwise containment (nesting) relations -- for example the
+dummy columns of one categorical review-type or geographic-scope
+variable, or a broad-realm indicator together with one or more
+narrower nested realms. Each declared group is checked against the
+observed complete rows with an exact deterministic test: row sums for
+a one-hot block, or, for nesting, EVERY pairwise containment among the
+declared members (so it does not matter which order -- or how many
+mutually incomparable narrower members -- the group happens to be
+written in). When the relations found form a single total chain, the
+certificate reports that chain; when they form a partial order instead
+(for example one broad member containing two mutually incomparable
+narrower ones), every relation found is named and the group still
+fails as nesting. A group whose members are all constant on the
+complete rows is reported separately (not as nesting: a containment
+test is vacuously true against a constant and would not be genuine
+evidence); a member that is constant while other members of the same
+group are not is excluded from every pairwise comparison for the same
+reason. Each result is its own row in the \code{response_dependencies}
+table, independent of the automatic affine-rank screen below.
+Screening is Bernoulli-only, matching the automatic screen.}
 }
 \value{
 A \code{gllvmTMB_screen} object. Use \code{\link[=screen_table]{screen_table()}} to extract

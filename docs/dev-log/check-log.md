@@ -52984,3 +52984,39 @@ version, CI, artifact, tag, or GitHub issue state changed. The results retain
 the no-remedy fence: no warning, convergence criterion, optimizer-control
 change, or release claim is admitted.
 
+## 2026-08-17 — Claude iSDM predict probe lane (`claude/isdm-predict-20260817`)
+
+OWED-1 from the 2026-08-17 iSDM handover (merged as PR #1113 by this lane on
+green single-OS CI). Probe → certify-or-scope fork taken on measured evidence.
+
+Commands run (worktree `/private/tmp/gllvmtmb-isdm-predict`, off `main`
+@ `3053fce3`, `OPENBLAS_NUM_THREADS=1` throughout):
+
+- `Rscript --vanilla dev/isdm-predict-probe/probe.R` — twice during
+  development (round 1 had a degenerate latent DGP and a rejected
+  `spatial_latent(1 | cell_id)` bar form; round 2 is the committed,
+  reproducible version, output captured in
+  `dev/isdm-predict-probe/probe-output.txt`).
+- `testthat::test_file("tests/testthat/test-isdm-predict.R")` — 15 pass /
+  0 fail / 0 skip.
+- All `tests/testthat/test-isdm*.R` files via `test_file()` loop — 0 failures.
+- `gh pr merge 1113 --merge` after `mergeable: MERGEABLE`, CI SUCCESS
+  (docs-class self-merge authority; unmergeable-PR-gets-no-CI gotcha checked
+  first via `git merge-tree`: 0 conflicts).
+
+Deliberately NOT run: `devtools::check()` / `--as-cran` (no `R/`, `src/`,
+`NAMESPACE`, or vignette changes on this branch — probe/dev, tests, and docs
+only); `pkgdown::check_pkgdown()` (no reference or article surface touched);
+any Totoro/DRAC compute (D-157/D-139 — the interval campaign exists only as a
+proposal document awaiting approval).
+
+Stale-wording scans: `grep -rn "prediction map" vignettes/` (no article
+promises an actual predict()-based map yet — the fence in Design 126 §4 holds);
+`grep -c "ISDM-03" docs/design/35-validation-debt-register.md` = 1.
+
+Key measured findings (full evidence `dev/isdm-predict-probe/findings.md`):
+in-sample predict() certified (est == report$eta, per-arm inverse links);
+`predict(newdata=)` on spatial fits silently drops the SPDE field even at
+training locations (dropped sd 0.381 vs eta sd 0.949, cor(-diff, u_true) 0.82);
+`re_form = NA` includes REs against its own roxygen; no A_proj projection for
+new locations. Map-making article fenced behind Design 126 §3–4.

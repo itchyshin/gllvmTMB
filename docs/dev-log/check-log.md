@@ -1,3 +1,16 @@
+## 2026-08-18 — Cursor: Design 125 fork-B L1 harness + local smoke
+
+- worktree: `~/local-scratch/lanes/gllvmTMB-mspl-forkB-L1`
+- branch: `cursor/mspl-forkB-l1-smoke-20260818`
+- harness: `dev/mspl-forkB-l1-ademp.R` (blocked-on-L0 on main; `tape = "Q_0"` when L0 loaded)
+- `devtools::test(filter = "mspl-forkB-l1-ademp-harness")` → 30/0
+- local smoke: 50-rep `L1-anchor-n80-T8` via L0 WT (PR #1126, not on main):
+  availability 1.000, refusal 0.000, cov_eff 0.880 Wilson [0.762, 0.944], L1 PASS
+- receipt: `docs/dev-log/research/2026-08-18-mspl-forkB-l1-smoke.md`
+- rg: `se = TRUE|NEWS covered|MSPL-04` on harness + receipt + after-task — no public-claim hits
+- deliberately not: Totoro, T*, public se/vcov/confint, undraft #1077, NEWS covered,
+  git add -A, isdm-package-recovery, E2, L2
+
 ## 2026-08-18 — Cursor: Design 125 fork B G0 + `objective=` selector (reconciles #1126)
 
 Signed G0 (fork B = unpenalized Laplace at fixed MSPL nuisance) plus
@@ -73,7 +86,6 @@ git diff --name-only origin/main -- LOOP/   # must be empty
 gh pr view 1077 --json isDraft              # true
 # not run: R CMD check, Totoro, L0/L1 impl, Design 125 body edit
 ```
-
 
 ## 2026-08-18 — Cursor: Poisson MSPL W_* REPLACE **MERGED** (closes the LOOP)
 

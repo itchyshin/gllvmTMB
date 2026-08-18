@@ -67,13 +67,21 @@ REPLACE kit; not this lane's to rewrite). Design 125 stub not edited
 
 ```sh
 Rscript -e 'devtools::load_all("."); testthat::test_file("tests/testthat/test-mspl-api.R")'
-# [ FAIL 0 | WARN 0 | SKIP 0 | PASS 330 ]
+# [ FAIL 0 | WARN 0 | SKIP 0 | PASS 352 ]
+Rscript -e 'devtools::load_all("."); testthat::test_local(filter="mspl|estimator-provenance|curvature")'
+# [ FAIL 0 | WARN 0 | SKIP 17 | PASS 2313 ]   (all 17 skips pre-existing family-door skips)
 gh pr view 1077 --json isDraft   # true
 rg -n 'MSPL-04' docs/design/35-validation-debt-register.md
 # still `blocked`
 ```
 
 Full `--as-cran` deferred to CI. No NEWS edit. No register flip.
+
+The count moved 330 → 352 in a second pass on this branch, which added the
+four cases in §5's last block. The broader `mspl|estimator-provenance|curvature`
+sweep is new in that pass too: the `tape` argument is additive, but
+`estimator_id` and the Q_P/Q_0 tape pair are read by the curvature-pin and
+provenance suites, so "additive" was worth checking rather than asserting.
 
 ## 5. Tests of the Tests
 
@@ -91,6 +99,26 @@ Full `--as-cran` deferred to CI. No NEWS edit. No register flip.
   fences drop.
 - Existing Q_P cases still assert `objective_source` on the penalised
   tape with the penalty-off `$fn` mocked to `stop()`.
+
+Four cases added in a second pass, each covering a way the unlock could be
+wrong that nothing above would have caught:
+
+- **Fork B differs from fork A.** Same target, same estimate, same threshold,
+  different endpoints. Without this, `tape = "Q_0"` could be new field names
+  over the old walk and the whole suite would still pass. Both reference
+  values are also cross-checked against numbers the fit recorded
+  independently at fitting time (`opt$objective`, `mspl$unpenalized_nll`).
+- **The default is byte-for-byte fork A.** `implicit$trace` is
+  `expect_identical` to `explicit$trace` at `tape = "Q_P"`, so no caller that
+  predates the argument moves.
+- **A mislabelled penalty-off slot is refused.** Present-but-wrong
+  (`estimator_id = 1` sitting in `unpenalized_tmb_obj`) is the dangerous
+  case: without the id check the probe would walk it and still report the
+  penalty-off `objective_source`. The sibling case only covers a NULL slot.
+- **The diagnostic accepts two sources, not anything.** Widening it from one
+  accepted `objective_source` to two must not have widened it to "any list
+  with the right names"; a foreign source and a tape-stripped probe both
+  stay typed refusals.
 
 ## 6. Consistency Audit
 

@@ -10,7 +10,10 @@ G0: unpenalised Laplace profile at fixed MSPL nuisance, INTERNAL only
 ```sh
 # targeted
 Rscript -e 'devtools::load_all("."); testthat::test_file("tests/testthat/test-mspl-api.R")'
-# [ FAIL 0 | WARN 0 | SKIP 0 | PASS 330 ]
+# [ FAIL 0 | WARN 0 | SKIP 0 | PASS 352 ]   (330 before the second pass below)
+# neighbours that read estimator_id / the Q_P-Q_0 tape pair
+Rscript -e 'devtools::load_all("."); testthat::test_local(filter="mspl|estimator-provenance|curvature")'
+# [ FAIL 0 | WARN 0 | SKIP 17 | PASS 2313 ]  (17 pre-existing family-door skips)
 # stale-wording / fence (verbatim)
 rg -n 'MSPL-04' docs/design/35-validation-debt-register.md
 rg -n 'calibrated = FALSE|public_confint = \"refused\"|coverage_claim = \"none\"' R/mspl.R

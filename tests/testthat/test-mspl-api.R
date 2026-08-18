@@ -854,3 +854,106 @@ test_that("tape = Q_0 refuses a missing penalty-off tape and an unbuilt fork", {
     class = "gllvmTMB_mspl_profile_objective"
   )
 })
+
+test_that("fork B is a different measurement from fork A, not a relabelling", {
+  ## The load-bearing claim of this unlock. If the two arms returned the same
+  ## bracket, `tape = "Q_0"` would be new field names over the old walk and
+  ## there would be nothing to measure -- and no other test here would notice.
+  fit <- .mspl_fit("logit", q = 1L)
+  fork_a <- gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
+    fit, which = 1L, step = 0.5, max_steps = 6L
+  )
+  fork_b <- gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
+    fit, which = 1L, step = 0.5, max_steps = 6L, tape = "Q_0"
+  )
+
+  expect_identical(fork_a$design_125_fork, "A")
+  expect_identical(fork_b$design_125_fork, "B")
+  ## Same target, same estimate, same threshold -- so any difference in the
+  ## endpoints is the objective and the nuisance treatment, nothing else.
+  expect_identical(fork_a$mle, fork_b$mle)
+  expect_identical(fork_a$threshold, fork_b$threshold)
+  expect_identical(fork_a$target_index, fork_b$target_index)
+
+  expect_false(isTRUE(all.equal(
+    fork_a$upper_endpoint, fork_b$upper_endpoint, tolerance = 1e-6
+  )))
+  expect_false(isTRUE(all.equal(
+    fork_a$lower_endpoint, fork_b$lower_endpoint, tolerance = 1e-6
+  )))
+
+  ## The two reference values are the two tapes read at the same point: the
+  ## attained penalised optimum, and the penalty-off value the fit already
+  ## recorded as unpenalised provenance at fitting time. Cross-checking against
+  ## that stored number is independent of the walk itself.
+  expect_equal(fork_a$mle_objective, as.numeric(fit$opt$objective),
+               tolerance = 1e-10)
+  expect_equal(fork_b$mle_objective, as.numeric(fit$mspl$unpenalized_nll),
+               tolerance = 1e-8)
+  expect_false(isTRUE(all.equal(fork_a$mle_objective, fork_b$mle_objective)))
+})
+
+test_that("the default tape stays fork A, byte-for-byte", {
+  ## Every caller that predates this unlock omits `tape`. The default must be
+  ## the penalised walk AND must produce the identical trace to naming it.
+  fit <- .mspl_fit("logit", q = 1L)
+  implicit <- gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
+    fit, which = 1L, step = 0.5, max_steps = 6L
+  )
+  explicit <- gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
+    fit, which = 1L, step = 0.5, max_steps = 6L, tape = "Q_P"
+  )
+
+  expect_identical(implicit$tape, "Q_P")
+  expect_identical(implicit$design_125_fork, "A")
+  expect_identical(implicit$nuisance_treatment, "reoptimized")
+  expect_true(implicit$reference_is_maximum)
+  expect_identical(implicit$objective_source, "fit$tmb_obj (penalised LA-MSPL)")
+  expect_identical(implicit$trace, explicit$trace)
+  expect_identical(implicit$lower_endpoint, explicit$lower_endpoint)
+  expect_identical(implicit$upper_endpoint, explicit$upper_endpoint)
+})
+
+test_that("fork B refuses a penalty-off slot that is not the penalty-off tape", {
+  ## Present but mislabelled is the dangerous case: without the estimator_id
+  ## check the probe would happily walk whatever sits in that slot and still
+  ## report `objective_source` as the penalty-off tape.
+  fit <- .mspl_fit("logit", q = 1L)
+  fit$mspl$unpenalized_tmb_obj <- list(
+    fn = function(...) 0, gr = function(...) 0,
+    env = list(data = list(estimator_id = 1L))
+  )
+  expect_error(
+    gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
+      fit, which = 1L, tape = "Q_0"
+    ),
+    class = "gllvmTMB_mspl_profile_objective"
+  )
+})
+
+test_that("the threshold diagnostic accepts two sources, not anything", {
+  ## Widening the diagnostic from one accepted `objective_source` to two must
+  ## not have widened it to "any list with the right field names".
+  fit <- .mspl_fit("logit", q = 1L)
+  probe <- gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
+    fit, which = 1L, step = 0.5, max_steps = 6L, tape = "Q_0"
+  )
+  expect_no_error(
+    gllvmTMB:::.gllvmTMB_mspl_profile_threshold_diagnostic(probe)
+  )
+
+  foreign <- probe
+  foreign$objective_source <- "some other likelihood"
+  expect_error(
+    gllvmTMB:::.gllvmTMB_mspl_profile_threshold_diagnostic(foreign),
+    class = "gllvmTMB_mspl_profile_threshold_input"
+  )
+
+  ## A probe stripped of the tape fields is incomplete, not silently Q_P.
+  incomplete <- probe
+  incomplete$tape <- NULL
+  expect_error(
+    gllvmTMB:::.gllvmTMB_mspl_profile_threshold_diagnostic(incomplete),
+    class = "gllvmTMB_mspl_profile_threshold_input"
+  )
+})

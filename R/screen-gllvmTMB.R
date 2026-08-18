@@ -1142,46 +1142,196 @@ print.gllvmTMB_screen <- function(x, ...) {
   )
 }
 
+## Cheap, non-combinatorial candidates for 1-dimensional null-space
+## directions that are ALREADY independently detected elsewhere in the
+## screen: a constant column (all-0 or all-1 on the complete-row subset),
+## and an exact duplicate or complement pair. Each candidate is verified
+## against info$M before use (max(abs(M %*% v)) ~ 0), so a false positive
+## here can only drop a deflation, never fabricate one. Constant columns
+## are excluded from the pairwise duplicate/complement scan so a
+## constant-vs-constant pair is not double-counted against the same
+## deficiency dimension.
+.screen_response_known_null_vectors <- function(info) {
+  Y <- info$Y
+  traits <- info$traits
+  n_col <- info$n_col
+  p <- length(traits)
+  is_constant0 <- vapply(seq_len(p), function(j) all(Y[, j] == 0), logical(1L))
+  is_constant1 <- vapply(seq_len(p), function(j) all(Y[, j] == 1), logical(1L))
+  is_constant <- is_constant0 | is_constant1
+
+  vectors <- list()
+  types <- character(0)
+  traits_involved <- list()
+  certificates <- character(0)
+
+  for (j in seq_len(p)) {
+    if (is_constant0[[j]]) {
+      v <- rep(0, n_col)
+      v[1L + j] <- 1
+      vectors[[length(vectors) + 1L]] <- v
+      types <- c(types, "deflated_constant")
+      traits_involved[[length(traits_involved) + 1L]] <- traits[[j]]
+      certificates <- c(certificates, paste0(traits[[j]], " = 0"))
+    } else if (is_constant1[[j]]) {
+      v <- rep(0, n_col)
+      v[1L] <- -1
+      v[1L + j] <- 1
+      vectors[[length(vectors) + 1L]] <- v
+      types <- c(types, "deflated_constant")
+      traits_involved[[length(traits_involved) + 1L]] <- traits[[j]]
+      certificates <- c(certificates, paste0(traits[[j]], " = 1"))
+    }
+  }
+
+  if (p >= 2L) {
+    for (i in seq_len(p - 1L)) {
+      if (is_constant[[i]]) {
+        next
+      }
+      for (j in seq.int(i + 1L, p)) {
+        if (is_constant[[j]]) {
+          next
+        }
+        if (all(Y[, i] == Y[, j])) {
+          v <- rep(0, n_col)
+          v[1L + i] <- 1
+          v[1L + j] <- -1
+          vectors[[length(vectors) + 1L]] <- v
+          types <- c(types, "deflated_duplicate")
+          traits_involved[[length(traits_involved) + 1L]] <- c(traits[[i]], traits[[j]])
+          certificates <- c(certificates, paste0(traits[[j]], " = ", traits[[i]]))
+        } else if (all(Y[, i] == 1 - Y[, j])) {
+          v <- rep(0, n_col)
+          v[1L] <- -1
+          v[1L + i] <- 1
+          v[1L + j] <- 1
+          vectors[[length(vectors) + 1L]] <- v
+          types <- c(types, "deflated_complement")
+          traits_involved[[length(traits_involved) + 1L]] <- c(traits[[i]], traits[[j]])
+          certificates <- c(certificates, paste0(traits[[i]], " + ", traits[[j]], " = 1"))
+        }
+      }
+    }
+  }
+
+  if (length(vectors) == 0L) {
+    return(list(
+      vectors = matrix(numeric(0), nrow = n_col, ncol = 0L),
+      types = character(0),
+      traits = list(),
+      certificates = character(0)
+    ))
+  }
+  list(
+    vectors = do.call(cbind, vectors),
+    types = types,
+    traits = traits_involved,
+    certificates = certificates
+  )
+}
+
 ## Best-effort certificate search: right singular vectors of M spanning its
 ## null space, normalized so the intercept coefficient is 1. A clean one-hot
 ## block ("A + B + C = 1") then shows up as coefficient -1 on the group
 ## traits and ~0 elsewhere. This is reliable when the null space is
-## essentially one clean relation at a time; with several simultaneous exact
-## dependencies the generic orthonormal basis SVD returns is not guaranteed
-## to align with each individual relation, so some deficiency can remain
-## unresolved (reported as such, never silently dropped). Exhaustive
-## minimal-subset discovery over all trait subsets is combinatorial and is
-## not attempted.
+## essentially one clean relation at a time -- with several simultaneous
+## exact dependencies the generic orthonormal basis SVD returns is a
+## rotation of them and is not guaranteed to align with any individual
+## relation.
+##
+## Before running that search, columns whose dependency is ALREADY
+## independently detected elsewhere (a constant column; the later-indexed
+## trait of an exact duplicate or complement pair -- see
+## .screen_response_known_null_vectors()) are DROPPED from the matrix and
+## re-run through a fresh rank/SVD pass. Dropping a column that is exactly
+## an affine function of the others removes one column and exactly one
+## unit of rank deficiency simultaneously (the column contributed nothing
+## to the column space beyond what the rest already span), so the reduced
+## matrix's own deficiency is exactly `deficiency - length(deflated)` and
+## its null space is not contaminated by the deflated relation the way an
+## ORTHOGONAL projection would be (projecting a non-orthogonal known vector
+## out of the null space produces some new linear COMBINATION of the
+## original relations, not the original clean one-hot vector -- measured
+## while building this deflation). Each deflated direction gets its own
+## named row (`$deflated`) instead of silently reducing the search space;
+## whatever deficiency remains after both steps is reported `unresolved`
+## (never silently dropped). Exhaustive minimal-subset discovery over all
+## trait subsets is combinatorial and is not attempted.
 .screen_response_affine_certificates <- function(info, coef_tol = 1e-6) {
   deficiency <- info$n_col - info$rank
   if (deficiency <= 0L) {
-    return(list())
+    return(list(certs = list(), deflated = list()))
   }
-  sv <- svd(info$M)
-  idx <- seq.int(ncol(sv$v) - deficiency + 1L, ncol(sv$v))
+
+  known <- .screen_response_known_null_vectors(info)
+  deflated <- list()
+  drop_idx <- integer(0)
+  if (ncol(known$vectors) > 0L) {
+    tol <- 1e-6 * max(1, max(abs(info$M)))
+    for (j in seq_len(ncol(known$vectors))) {
+      v <- known$vectors[, j]
+      if (max(abs(info$M %*% v)) >= tol) {
+        next
+      }
+      trait_coef_idx <- which(abs(v[-1L]) > coef_tol)
+      if (length(trait_coef_idx) == 0L) {
+        next
+      }
+      drop_trait_idx <- trait_coef_idx[[length(trait_coef_idx)]]
+      if (drop_trait_idx %in% drop_idx) {
+        next
+      }
+      drop_idx <- c(drop_idx, drop_trait_idx)
+      deflated[[length(deflated) + 1L]] <- list(
+        type = known$types[[j]],
+        traits = known$traits[[j]],
+        certificate = known$certificates[[j]]
+      )
+    }
+  }
+
+  if (length(drop_idx) > 0L) {
+    keep_idx <- setdiff(seq_along(info$traits), drop_idx)
+    M_reduced <- info$M[, c(1L, 1L + keep_idx), drop = FALSE]
+    traits_reduced <- info$traits[keep_idx]
+  } else {
+    M_reduced <- info$M
+    traits_reduced <- info$traits
+  }
+
+  n_col_reduced <- ncol(M_reduced)
+  tol_reduced <- sqrt(.Machine$double.eps) * max(dim(M_reduced))
+  rank_reduced <- if (n_col_reduced) qr(M_reduced, tol = tol_reduced)$rank else 0L
+  residual_deficiency <- n_col_reduced - rank_reduced
+
   certs <- list()
-  for (i in idx) {
-    v <- sv$v[, i]
-    v0 <- v[1L]
-    if (abs(v0) < coef_tol) {
-      next
+  if (residual_deficiency > 0L) {
+    sv <- svd(M_reduced)
+    idx <- seq.int(ncol(sv$v) - residual_deficiency + 1L, ncol(sv$v))
+    for (i in idx) {
+      v <- sv$v[, i]
+      v0 <- v[1L]
+      if (abs(v0) < coef_tol) {
+        next
+      }
+      coefs <- (v / v0)[-1L]
+      group_idx <- which(abs(coefs - (-1)) < coef_tol)
+      other_idx <- setdiff(seq_along(coefs), group_idx)
+      if (length(group_idx) < 2L) {
+        next
+      }
+      if (length(other_idx) > 0L && !all(abs(coefs[other_idx]) < coef_tol)) {
+        next
+      }
+      group_traits <- traits_reduced[group_idx]
+      certs[[length(certs) + 1L]] <- list(
+        traits = group_traits,
+        certificate = paste0(paste(group_traits, collapse = " + "), " = 1")
+      )
     }
-    coefs <- (v / v0)[-1L]
-    group_idx <- which(abs(coefs - (-1)) < coef_tol)
-    other_idx <- setdiff(seq_along(coefs), group_idx)
-    if (length(group_idx) < 2L) {
-      next
-    }
-    if (length(other_idx) > 0L && !all(abs(coefs[other_idx]) < coef_tol)) {
-      next
-    }
-    group_traits <- info$traits[group_idx]
-    certs[[length(certs) + 1L]] <- list(
-      traits = group_traits,
-      certificate = paste0(paste(group_traits, collapse = " + "), " = 1")
-    )
   }
-  certs
+  list(certs = certs, deflated = deflated)
 }
 
 ## One row of the $response_dependencies table.
@@ -1361,7 +1511,9 @@ print.gllvmTMB_screen <- function(x, ...) {
         "no exact affine dependency was found among the screened traits"
       )
     } else {
-      certs <- .screen_response_affine_certificates(info)
+      found <- .screen_response_affine_certificates(info)
+      certs <- found$certs
+      deflated <- found$deflated
       for (cert in certs) {
         rows[[length(rows) + 1L]] <- .screen_response_dependency_row(
           "affine",
@@ -1381,7 +1533,31 @@ print.gllvmTMB_screen <- function(x, ...) {
           )
         )
       }
-      unresolved <- deficiency - length(certs)
+      for (defl in deflated) {
+        rows[[length(rows) + 1L]] <- .screen_response_dependency_row(
+          "affine",
+          NA_character_,
+          defl$type,
+          "FAIL",
+          "exact_dependency",
+          paste(defl$traits, collapse = ", "),
+          defl$certificate,
+          info$n_rows,
+          "collapse_or_recode",
+          sprintf(
+            "%s: this affine dependency is already reported at trait/pair level (%s) and was projected out before the one-hot certificate search",
+            defl$certificate,
+            switch(
+              defl$type,
+              deflated_constant = "a constant trait",
+              deflated_duplicate = "a duplicate pair",
+              deflated_complement = "a complement pair",
+              "a known dependency"
+            )
+          )
+        )
+      }
+      unresolved <- deficiency - length(certs) - length(deflated)
       if (unresolved > 0L) {
         rows[[length(rows) + 1L]] <- .screen_response_dependency_row(
           "affine",

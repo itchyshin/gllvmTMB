@@ -469,3 +469,68 @@ test_that("screen_gllvmTMB() known_groups PASSes when the declared group is not 
   kg <- deps[deps$scope == "known_group", ]
   expect_equal(kg$status, "PASS")
 })
+
+test_that("screen_gllvmTMB() certificate survives a one-hot block plus an all-ones column", {
+  n <- 30
+  df <- data.frame(
+    unit = factor(seq_len(n)),
+    A = rep(c(1, 0, 0), length.out = n),
+    B = rep(c(0, 1, 0), length.out = n),
+    C = rep(c(0, 0, 1), length.out = n),
+    D = rep(1, n)
+  )
+  scr <- suppressWarnings(screen_gllvmTMB(
+    traits(A, B, C, D) ~ 1 + latent(1 | unit, d = 2),
+    data = df,
+    unit = "unit",
+    family = binomial()
+  ))
+  deps <- screen_table(scr, "response_dependencies")
+
+  one_hot <- deps[deps$type == "one_hot_block", ]
+  expect_equal(nrow(one_hot), 1L)
+  expect_true(grepl("A", one_hot$traits))
+  expect_true(grepl("B", one_hot$traits))
+  expect_true(grepl("C", one_hot$traits))
+  expect_false(grepl("D", one_hot$traits))
+
+  deflated <- deps[grepl("^deflated", deps$type), ]
+  expect_equal(nrow(deflated), 1L)
+  expect_equal(deflated$type, "deflated_constant")
+  expect_true(grepl("D", deflated$traits))
+
+  expect_equal(nrow(deps[deps$type == "unresolved", ]), 0L)
+})
+
+test_that("screen_gllvmTMB() certificate survives a one-hot block plus a duplicated column", {
+  n <- 30
+  df <- data.frame(
+    unit = factor(seq_len(n)),
+    A = rep(c(1, 0, 0), length.out = n),
+    B = rep(c(0, 1, 0), length.out = n),
+    C = rep(c(0, 0, 1), length.out = n),
+    D = rep(c(0, 0, 1), length.out = n)
+  )
+  scr <- suppressWarnings(screen_gllvmTMB(
+    traits(A, B, C, D) ~ 1 + latent(1 | unit, d = 2),
+    data = df,
+    unit = "unit",
+    family = binomial()
+  ))
+  deps <- screen_table(scr, "response_dependencies")
+
+  one_hot <- deps[deps$type == "one_hot_block", ]
+  expect_equal(nrow(one_hot), 1L)
+  expect_true(grepl("A", one_hot$traits))
+  expect_true(grepl("B", one_hot$traits))
+  expect_true(grepl("C", one_hot$traits))
+  expect_false(grepl("D", one_hot$traits))
+
+  deflated <- deps[grepl("^deflated", deps$type), ]
+  expect_equal(nrow(deflated), 1L)
+  expect_equal(deflated$type, "deflated_duplicate")
+  expect_true(grepl("D", deflated$traits))
+  expect_true(grepl("C", deflated$traits))
+
+  expect_equal(nrow(deps[deps$type == "unresolved", ]), 0L)
+})

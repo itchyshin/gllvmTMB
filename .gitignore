@@ -137,3 +137,7 @@ dev/va-speed/1[0-9]-*.rds
 
 # campaign intermediate: exactly rbind() of the two committed CSVs
 dev/isdm-intervals/e1-final-results.csv
+
+# stray commit-message scratch files (content lands in the real commit message,
+# not durable evidence; sandbox could not rm the existing one so it is ignored)
+dev/.commit-msg-tmp.txt

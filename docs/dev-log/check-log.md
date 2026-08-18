@@ -53328,3 +53328,44 @@ Design 127 written (implementation design for #1133). Register ISDM-03 stays
 `partial`: the newdata spatial path moves broken -> covered **for training
 coordinates**; off-mesh projection is a code-reading claim only and the map
 claim stays fenced.
+
+## 2026-08-18 — Claude random-slope surface: truth ledger, board correction, interval feasibility, campaign costing (`claude/rand-slope-surface-20260818`)
+
+D-113 track 6 (Shinichi, 2026-08-01, "at least one random slope for each distribution";
+2026-08-08 note: propose a programme, STOP FOR APPROVAL). Five-slice ultra-plan (S0 Haiku
+recon, S1 Sonnet board, S2 Sonnet probe, S3 Sonnet campaign costing, S4 Opus adversarial
+review), consolidated here.
+
+Truth ledger (`dev/rand-slope-truth-ledger.md`) cross-checked `.augmented_slope_family_contract()`
+(`R/fit-multi.R:453`) against the validation register and `capability-surface.html` for
+all 16 family ids: 9 disagreed. `dev/board-correction-notes.md` fixed 5 (Beta, Gamma,
+student, lognormal, ordinal_probit — all raised to `partial`, never `✓`); the other 4
+(gaussian, poisson, nbinom2, nbinom1) were left deliberately untouched per the board's own
+gap-box policy capping the whole Rand. slope column at `partial` board-wide.
+
+Interval-computability probe (`dev/slope-interval-feasibility.R`): a slope-variance CI is
+computable on a healthy Gaussian `phylo_indep(1+x|species)` fit on both parameterisation
+routes (`sd_report` populated by default; no existing exported extractor) —
+**computability only, not calibration or coverage**.
+
+Campaign design (`docs/design/128-slope-per-family-campaign.md`, COSTING ONLY, nothing
+run): costs the three still-open family ids (tweedie 6, truncated_poisson 10,
+truncated_nbinom2 11); recommends truncated_poisson first, tweedie scoped separately as a
+research question (documented ~44% slope-SD bias survives fixing `p`, not an N problem).
+
+Rose's adversarial review (`dev/S4-adversarial-review.md`) returned CHANGES REQUIRED and
+caught two genuine defects, both fixed before consolidation: R1 the ordinal_probit board
+annotation was mis-scoped and itself false (commit `f2a75761`); R2 the interval probe's
+Route A parameter indexing was wrong — `theta_dep_chol` packs all diagonals first then
+off-diagonals column-major, not per-trait 3-entry blocks, and the marginal slope variance
+needs a multivariate delta method, not a univariate `exp()` (commit `d5e9f198`).
+
+Verified before close: `git diff --name-only origin/main...HEAD -- R/ src/ NEWS.md
+DESCRIPTION tests/` empty; no `class="yes"` added to the Rand. slope column; no
+"works for all families" language anywhere in the diff; no `DESCRIPTION`/`NEWS.md`
+change. After-task: `docs/dev-log/after-task/2026-08-18-rand-slope-surface.md`. Melissa
+reconciliation (2 material deviations, both tagged adaptive — S2's three-pass rework, S4's
+non-clean verdict — 0 drift, 0 unclear): `docs/dev-log/plan-actual/2026-08-18-rand-slope-surface.md`.
+PR opened against `main`, marked needs maintainer review, NOT merged. Two open questions
+for Shinichi in the PR body: campaign ordering (truncated_poisson vs tweedie) and whether
+to build a slope-interval extractor now that computability is demonstrated.

@@ -1,3 +1,18 @@
+## 2026-08-18 — Cursor: L1 ADEMP 50-rep re-run on origin/main after #1130
+
+- worktree: `~/local-scratch/lanes/gllvmTMB-pr1128-l1-ademp`
+- branch: `cursor/mspl-forkB-l1-smoke-20260818` rebased onto `origin/main` @ `2f80d844`
+- L0: [#1130](https://github.com/itchyshin/gllvmTMB/pull/1130) `d7f526d4` is an ancestor of `origin/main`
+- `devtools::test(filter = "mspl-forkB-l1-ademp-harness")` → 27/0
+- `devtools::test(filter = "mspl-forkB-l1-dual-arm-smoke")` → 22/0 + 1 empty-test skip
+- 1-rep smoke-first on `L1-anchor-n80-T8`: two-sided `Q_0` interval, 2.3 s
+- 50-rep `--seed_base=20260818`: availability 1.000, refusal 0.000,
+  cov_eff 0.880 Wilson [0.7620, 0.9438], 50/0/44, all rows `tape=Q_0` fork B,
+  88.2 s, **L1-PASS**. Same counts as the superseded L0-WT walk.
+- receipt: `docs/dev-log/research/2026-08-18-mspl-forkB-l1-smoke.md` (now main-reproducible)
+- deliberately not: Totoro, T*, public se/vcov/confint, undraft #1077, NEWS covered,
+  MSPL-04 flip, L2, git add -A
+
 ## 2026-08-18 — Cursor: orphan dual-arm L1 probe folded into #1128
 
 - worktree: `~/local-scratch/lanes/gllvmTMB-pr1128-l1-ademp`

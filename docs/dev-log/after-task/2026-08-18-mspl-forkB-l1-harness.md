@@ -15,11 +15,14 @@ numbers on one anchor cell or stop as blocked-on-L0. Public doors stay closed.
 `dev/mspl-forkB-l1-ademp.R` is the L1 measurement harness. If the loaded
 package has no `tape=` argument on `.gllvmTMB_mspl_profile_feasibility()`,
 `mspl_forkB_l1_run_cell()` returns `status = "blocked-on-L0"` and does not
-walk fork A as a substitute. Against the L0 worktree (PR #1126, not then on
-`main`) a 50-rep local smoke on `L1-anchor-n80-T8` recorded availability 1,
-refusal 0, \(\widehat{\mathrm{cov}}_{\mathrm{eff}}=0.88\), Wilson
-[0.762, 0.944], L1 gate PASS. `calibrated = FALSE`; `public_confint = refused`;
-`coverage_claim = none`.
+walk fork A as a substitute. After [#1130](https://github.com/itchyshin/gllvmTMB/pull/1130)
+landed on `origin/main` (`d7f526d4`), a 50-rep local smoke on
+`L1-anchor-n80-T8` against this tree rebased onto `origin/main` @ `2f80d844`
+recorded availability 1, refusal 0, \(\widehat{\mathrm{cov}}_{\mathrm{eff}}=0.88\),
+Wilson [0.762, 0.944], L1 gate PASS, all 50 rows `tape = "Q_0"` / fork B.
+`calibrated = FALSE`; `public_confint = refused`; `coverage_claim = none`.
+The earlier L0-worktree walk (PR #1126) produced the same counts and is
+superseded.
 
 ## 3. Files Changed
 
@@ -40,24 +43,23 @@ Not touched: `R/`, `src/`, `NEWS.md`, register, #1077, `LOOP/` (REPLACE GOAL_MET
 - **Decision:** treat “Wilson not entirely below 0.80” as Wilson *upper* ≥ 0.80.
   **Rationale:** that is the ADEMP sentence; the lower bound here is 0.762.
   **Rejected:** requiring Wilson lower ≥ 0.80 (would FAIL this cell). **Confidence:** high.
-- **Decision:** measure against the L0 worktree rather than wait for #1126 to
-  merge. **Rationale:** L1’s job is numbers or blocked-on-L0; L0 was measurable
-  locally. **Rejected:** silent fork-A substitute. **Confidence:** high.
+- **Decision:** first measure against the L0 worktree, then re-run on
+  `origin/main` after #1130. **Rationale:** L1’s job is a `main`-reproducible
+  receipt; the L0-WT walk was a placeholder. **Rejected:** silent fork-A
+  substitute; treating the #1126 walk as the landing receipt. **Confidence:** high.
 
 ## 4. Checks Run
 
 ```sh
 devtools::test(filter = "mspl-forkB-l1-ademp-harness")
-# FAIL 0 | WARN 0 | SKIP 0 | PASS 30
+# FAIL 0 | WARN 0 | SKIP 0 | PASS 27  (after rebase onto origin/main @ 2f80d844)
 
-Rscript --vanilla dev/mspl-forkB-l1-smoke.R --n_rep=1 --cell=L1-anchor-n40-T4 \
-  --pkg=$HOME/local-scratch/lanes/gllvmTMB-mspl-forkB-L0 --no-write
-# 1-rep timing 1.0 s; tape=Q_0 fork=B confirmed on a separate probe
+Rscript --vanilla dev/mspl-forkB-l1-smoke.R --n_rep=1 --cell=L1-anchor-n80-T8 --no-write
+# 2.3 s; two-sided Q_0 interval returned; n_rep=1 is not an L1 gate
 
 Rscript --vanilla dev/mspl-forkB-l1-smoke.R --n_rep=50 --cell=L1-anchor-n80-T8 \
-  --pkg=$HOME/local-scratch/lanes/gllvmTMB-mspl-forkB-L0 \
-  --out=docs/dev-log/research
-# 95.1 s; L1-PASS; numbers in the receipt
+  --seed_base=20260818
+# 88.2 s; L1-PASS; all 50 rows tape=Q_0 fork=B; numbers in the receipt
 
 rg -n "se = TRUE|NEWS covered|MSPL-04" \
   dev/mspl-forkB-l1-ademp.R \
@@ -76,7 +78,9 @@ rg -n "se = TRUE|NEWS covered|MSPL-04" \
 - All-miss rows fail `l1_wilson_eff_not_below_080`.
 - R-SAT is dropped from the availability denominator and still priced in
   `cov_eff`.
-- On main (no `tape=`), `mspl_forkB_l1_run_cell()` is `blocked-on-L0`.
+- Before #1130, on main (no `tape=`), `mspl_forkB_l1_run_cell()` is
+  `blocked-on-L0`. After #1130 the same helper is TRUE and the live 50-rep
+  walk stays in `dev/`, not in CI.
 
 ## 6. Consistency Audit
 
@@ -94,13 +98,14 @@ N/A — no ROADMAP row; Design 125 L1 is a local ADEMP gate only.
 
 ## 7a. GitHub Issue Ledger
 
-No relevant open issue closed. Sibling L0 plumbing is PR #1126. #1077 stays draft.
+No relevant open issue closed. L0 plumbing is [#1130](https://github.com/itchyshin/gllvmTMB/pull/1130) on `origin/main`. #1077 stays draft.
 
 ## 8. What Did Not Go Smoothly
 
-L0 was not on `main` when L1 ran. The harness is correct on main (blocked-on-L0);
-the numbers required `load_all()` of the L0 worktree. Re-run after #1126 merges
-before treating the 0.88 figure as a `main`-reproducible receipt.
+The first 50-rep walk was against the L0 worktree, not `main`. After #1130
+merged, the same command on this tree rebased onto `origin/main` reproduced
+the same 50 / 0 / 44 counts and Wilson band in 88.2 s. That is now the
+landing receipt.
 
 ## 9. Team Learning (per AGENTS.md Standing Review Roles)
 
@@ -118,9 +123,8 @@ harness refuses that.
 
 ## 10. Known Limitations And Next Actions
 
-- E2 not measured.
-- L2 (near-tail + multi-seed) not run.
-- L0 (#1126) must merge before this receipt is reproducible from `main`.
+- E2 not measured (companion coverage-gate PR #1143 records E2 as `R-ENV`).
+- L2 (near-tail + multi-seed) not run — needs Shinichi G0.
 - Do not escalate to Totoro on this cell. T\* numbers are still unsigned.
 - Hard OUTs remain: no public `se` / `vcov` / `confint`, no undraft #1077,
   no MSPL-04 `covered`.

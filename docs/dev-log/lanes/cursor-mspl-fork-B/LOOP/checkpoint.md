@@ -12,8 +12,10 @@ three sibling lanes and has not been claimed from here.**
 - **ARC IN PROGRESS:** **A2** — the 2026-08-18 G0 entry is written but **still uncommitted**, on
   `cursor/g0-unlock-design125-forkB`. It has to land on `cursor/mspl-forkB-decision` or be merged
   from where it sits; until then the signed decision lives only in a dirty worktree.
-- **NEXT:** **A1** (Design 125 + ADEMP amendment note) and **A2** on the decision lane, then **A4a**
-  on the L0 lane. Nothing on this list is executed from this docs kit.
+- **NEXT:** **A1** (Design 125 + ADEMP amendment note) and **A2** on the decision lane, then **A4**
+  (not A4a — that id is retired) on the L0 lane (`#1126`). This kit's remaining job is **A6**:
+  land the whitespace/`arcs.md` ID-align on `#1127`. Nothing on this list is executed from this
+  docs kit.
 - **OPEN GATES (need a human):**
   1. **L2 and every Totoro / DRAC gate** — blocked, needs Shinichi G0. Never auto-start.
   2. **Merge of PR #1127** and of any sibling PR — merge is a human gate.

@@ -56,3 +56,15 @@ Definition-of-done items that belong to **other** lanes (A1/A2/A4/A5) are
 
 Docs-kit only: no new likelihood, family, or export. No simulation
 recovery from this PR. Rose fence is the root-`LOOP/` non-touch.
+
+## 7. Resume sitting (same day, after USER-ABORT)
+
+Prior Grok sitting aborted mid-flight. This sitting did **not** rebuild the
+kit. It finished `#1127`:
+
+- Opus `156efab4` wrote only a root-`LOOP/` placeholder pointing at REPLACE;
+  that stub stays discarded.
+- `git diff --check` CI fail on `ultra-plan.md` trailing whitespace — stripped.
+- `arcs.md` IDs now match `ultra-plan.md` (A4 = L0, A5 = L1, A6 = this PR).
+- Launch-prompt owners commit `0f19b20d` is already on the branch; this sitting
+  adds the CI whitespace strip and the `arcs.md` ID align.

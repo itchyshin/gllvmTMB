@@ -114,34 +114,34 @@ Does **not** claim `R/`, `src/`, Design 125 body, or `docs/dev-log/decisions.md`
 | RECONCILE | Melissa | N/A this kit | campaign close | Other Models | later | plan-vs-actual when L1 lands | A5 |
 
 SEARCH: none (G0 already named the construction; NotebookLM not offered —
-internal Design pick).  
-SLICES: A0, A1, A2, A3✓, A4, A5, A6  
-PARALLEL: {A1, A2, A0} · {A4 ∥ A6} · A5 ← A4  
-SEQUENTIAL: A5 after A4 tape exists  
+internal Design pick).
+SLICES: A0, A1, A2, A3✓, A4, A5, A6
+PARALLEL: {A1, A2, A0} · {A4 ∥ A6} · A5 ← A4
+SEQUENTIAL: A5 after A4 tape exists
 FAN-OUT: sibling lanes already spawned by parent (decision, L0, L1, this kit,
-PR hygiene). This accelerator does **not** spawn further children.  
+PR hygiene). This accelerator does **not** spawn further children.
 FAN-OUT BUDGET: checkpoint=`g0-unlock-forkB-20260818` · new children=0/6 ·
-scout=this recon · build=0 (siblings) · ceiling=0 · reuse=parent siblings  
-SCOUT SUITABILITY: yes — recon + kit write are read/docs  
-ULTRA EFFORT: no  
-CONTEXT BRAKE: parent input=unknown · fresh-task trigger=not reached  
-COMPACTIONS: parent=0 · children max=0 · boundary=open  
+scout=this recon · build=0 (siblings) · ceiling=0 · reuse=parent siblings
+SCOUT SUITABILITY: yes — recon + kit write are read/docs
+ULTRA EFFORT: no
+CONTEXT BRAKE: parent input=unknown · fresh-task trigger=not reached
+COMPACTIONS: parent=0 · children max=0 · boundary=open
 LANE RECEIPT: **START A FRESH TASK** to *run* L0/L1 — this sitting is the
-kit. Next-task prompt = `checkpoint.md` RESUME.  
-AUTO-REVIEW: guardian calls unknown · action=none  
-D-43 PANEL: milestone=not a milestone (kit only) · status=not fired  
+kit. Next-task prompt = `checkpoint.md` RESUME.
+AUTO-REVIEW: guardian calls unknown · action=none
+D-43 PANEL: milestone=not a milestone (kit only) · status=not fired
 MODELS: Cursor Grok (this kit). L0/L1 stay on their Cursor lanes. Hand
-adversarial claim review to Claude Opus / Codex only if L1 will be cited.  
-ESTIMATE: kit ~30–45 min · campaign L0+L1 is sibling wall-clock, not this PR  
+adversarial claim review to Claude Opus / Codex only if L1 will be cited.
+ESTIMATE: kit ~30–45 min · campaign L0+L1 is sibling wall-clock, not this PR
 TWO BARS: Settings → Usage **not read** this sitting (subagent). This slice
 is Cursor Models / Grok as dispatched. Do not burn Other Models to even
 meters.
 
 REVIEW: Rose-on-plan — sweep receipt cites commands; root LOOP/ fence is
-the load-bearing scope check.  
+the load-bearing scope check.
 VERIFY: `test -f` kit files; `git diff --name-only` must not include
-`LOOP/GOAL.md` at repo root; `gh pr view 1077 --json isDraft` still true.  
-CONSOLIDATE: this folder + after-task + check-log prepend.  
+`LOOP/GOAL.md` at repo root; `gh pr view 1077 --json isDraft` still true.
+CONSOLIDATE: this folder + after-task + check-log prepend.
 RECONCILE: **N/A for this docs-kit sitting** (no campaign close yet).
 Campaign close (after A5) writes
 `docs/dev-log/plan-actual/2026-08-18-mspl-forkB-g0-unlock.md`.

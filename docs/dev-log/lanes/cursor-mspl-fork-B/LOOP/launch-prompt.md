@@ -34,10 +34,10 @@ RUN: goal skill — re-read GOAL each arc; verify by LOG not exit code;
 pause at OPEN GATE; overwrite this kit's checkpoint each arc; fresh chat
 at batch barriers.
 
-START ARC: A6 (open/merge this docs PR) if still open; otherwise track
-A1/A2 (decision), A4 (L0), A5 (L1). A3 is already done (#1100 CLOSED,
-#1124 MERGED).
-NEXT GATE: merge of non-docs PRs; Totoro / T* / undraft #1077 / public se
+START ARC: A6 (land PR #1127; do not merge). Track A1/A2 (decision),
+A4 (L0 #1126), A5 (L1 smoke). A0 and A3 are done. Arc IDs match
+`LOOP/ultra-plan.md` / `LOOP/arcs.md` — L0-verify is A4, not A1.
+NEXT GATE: merge of #1126/#1127; Totoro / T* / undraft #1077 / public se
 are HARD OUT (not-ready).
 
 FILE FENCE: this kit owns docs/dev-log/lanes/cursor-mspl-fork-B/ only.

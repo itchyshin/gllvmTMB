@@ -1,3 +1,18 @@
+## 2026-08-18 — Cursor: resume fork B `/goal` kit (CI whitespace + arc-ID align)
+
+Resumed after a USER-ABORT. Sibling Opus `156efab4` had only a REPLACE-shaped
+placeholder (already discarded). Finished the existing `#1127` kit: stripped
+trailing whitespace that failed `git diff --check`; aligned `arcs.md` IDs with
+`ultra-plan.md` (L0 = **A4**, not A1). Root `LOOP/` still untouched. `#1077`
+still draft. `0f19b20d` was already on the branch.
+
+```sh
+git diff --check origin/main -- docs/dev-log/lanes/cursor-mspl-fork-B/
+git diff --name-only origin/main -- LOOP/          # empty
+gh pr view 1077 --json isDraft                     # true
+# not run: Totoro, T* freeze, undraft #1077, public se, MSPL-04→covered
+```
+
 ## 2026-08-18 — Cursor: g0_unlock fork B `/goal` kit (does **not** reopen REPLACE)
 
 Docs-only kit at `docs/dev-log/lanes/cursor-mspl-fork-B/LOOP/`. New goal:

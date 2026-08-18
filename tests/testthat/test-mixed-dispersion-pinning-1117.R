@@ -35,14 +35,23 @@ make_nbinom2_poisson_fit <- function() {
 }
 
 make_student_gaussian_fit <- function() {
+  ## Strengthened per the #1121 CI follow-up (ubuntu pdHess FALSE, macOS
+  ## arm64 pdHess TRUE): larger n, a tamer df_true within 6-8, and explicit
+  ## per-trait residual signal (w_t/w_g) so the auto-Psi diag_B tier has
+  ## real between-site variance to estimate rather than sitting near a
+  ## boundary. This did not make pdHess robust across seeds locally (see
+  ## the note on test (b) below) -- kept anyway because it is a more
+  ## stable fixture for the entry-count/mapped assertions regardless.
   set.seed(4)
-  n <- 200L
+  n <- 400L
   u <- stats::rnorm(n, sd = 1.0)
+  w_t <- stats::rnorm(n, sd = 0.6)
+  w_g <- stats::rnorm(n, sd = 0.6)
   dat <- data.frame(
     site  = factor(rep(seq_len(n), 2)),
     trait = factor(rep(c("y_t", "y_g"), each = n), levels = c("y_t", "y_g")),
-    y = c(1.5 + 0.8 * u + stats::rt(n, df = 8),
-          1.0 + 0.6 * u + stats::rnorm(n, sd = 1.0)),
+    y = c(1.5 + 0.8 * u + w_t + stats::rt(n, df = 7),
+          1.0 + 0.6 * u + w_g + stats::rnorm(n, sd = 1.0)),
     ## Explicit factor levels in family-list order: an unordered character
     ## column gets re-sorted alphabetically ("gaussian" < "student") by the
     ## mixed-family alignment in R/fit-multi.R, which would silently swap
@@ -142,7 +151,19 @@ test_that("(b) student + gaussian mixed fit pins the gaussian trait's sigma/df",
   expect_true("log_sigma_student" %in% names(fit$tmb_map))
   expect_true("log_df_student" %in% names(fit$tmb_map))
 
-  expect_true(isTRUE(fit$sd_report$pdHess))
+  ## No pdHess assertion here: PR #1121 CI showed this exact fixture's
+  ## Hessian flips PD/non-PD across platforms (TRUE on macOS arm64, FALSE
+  ## on ubuntu) even after strengthening n/df/signal above and checking
+  ## three local seeds (4: TRUE, 5: TRUE, 6: FALSE) -- the student trait's
+  ## own residual (log_sigma_student) and the auto-Psi between-site
+  ## diagonal (theta_diag_B) are both additive noise on the SAME identity-
+  ## link scale with one observation per (site, trait) cell, so they are
+  ## only weakly separable; that is a genuine, platform-sensitive
+  ## identifiability property of this fixture, not a defect in the
+  ## pinning mechanism under test here. pdHess TRUE for a mixed fit with a
+  ## pinned dispersion vector is exercised by test (a) instead, on a
+  ## well-conditioned family pair (nbinom2 + poisson) that is robust on
+  ## CI.
 })
 
 test_that("(c) profile_targets() drops the phantom dispersion entry for the non-family trait", {

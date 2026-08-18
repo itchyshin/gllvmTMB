@@ -128,3 +128,8 @@ dev/va-gate3/results/campaign*.log
 dev/va-speed/0[6-9]-*.rds
 dev/va-speed/0[6-9]-*log*.txt
 dev/va-speed/1[0-9]-*.rds
+
+# Stale Dropbox / cloud-agent LOOP scratch — live LOOP is only in
+# local-scratch/lanes/gllvmTMB-mspl-profile-led-ci/LOOP/ (Design 125).
+/LOOP/
+docs/dev-log/lanes/

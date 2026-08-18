@@ -1,3 +1,83 @@
+## 2026-08-18 — `slope_sd_ci()` Slice 1 built, exported, adversarially reviewed and revised, DRAFT PR, needs Shinichi sign-off
+
+Lane `claude/slope-sd-ci-20260818` (worktree `/private/tmp/gllvmtmb-slopeci`
+off `origin/main`, deliberately NOT the `gllvmtmb-randslope` worktree, whose
+PR #1164 states "no new exports"). New export `slope_sd_ci(fit, level = 0.95,
+scale = c("sd", "variance"))` in `R/slope-sd-ci.R`, sibling of `loading_ci()`.
+Implements Design (Fable planning lens)
+`dev/fable-extractor-recommendation.md` Slice 1 ONLY: a transformed Wald CI
+on `theta_diag_B_slope` (the ordinary augmented random-slope diagonal Psi
+companion) via `sd = exp(theta)`, `se(sd) = exp(theta) * se(theta)`. Both
+cited design/feasibility `dev/` docs are now carried on this branch so their
+citations (including register row CI-15's) stay resolvable from `main`.
+
+**Kill-switch guard, revised after an adversarial review pass
+(`dev/S6-slope-sd-ci-review.md`).** `lower`/`upper` are forced to `NA` with an
+explanatory `status` and a `cli_warn()` whenever `sd_report$pdHess` is
+`FALSE`, `se_theta` is non-finite (including `Inf`, not just `NaN`), `se_theta
+> 10` (`status = "se_blowup"` -- renamed from "boundary": the review showed
+this checks SE explosion, not a collapsed point estimate), or -- a NEW,
+independent check the review's own measurement showed was missing -- `sd_hat`
+is at most 1% of this fit's largest other slope SD (`status =
+"near_zero_relative"`, mirroring `psi_rel_thresh` / `near_zero_psi_*` in
+`R/diagnose.R`). The review demonstrated the pre-revision guard passed
+`theta = -20, se = 0.5` (a genuine near-zero collapse) as `"ok"` with a clean,
+tight, wrong-looking-right interval; the new check catches it. Every branch
+has a deterministic mock-fit test proving the guard fires against the naive
+ungated computation, not passing vacuously.
+
+**Deferred routes refuse loudly, per the brief's explicit scope fence:**
+`theta_dep_chol` (`phylo_dep()`/`phylo_indep(1 + x | species)`) and a
+loadings-only `theta_rr_B_slope` (no diagonal companion) both abort with
+class `gllvmTMB_slope_sd_ci_unsupported_route`, naming the deferred slice.
+
+**Priority-1 fix from the review: the `rr_B_slope`-present caveat is now
+IN-BAND, not print-only.** The review measured that when a fit's random-slope
+term also carries a shared loadings block (the default `latent()`
+combination), the returned `estimate` (the unique/Psi component alone)
+understated the true total marginal slope SD by 17-45% on the recovery
+fixture -- and that the print-method-only caveat did not survive `$estimate`,
+`subset()`, or column selection. Fixed with two new columns, `component`
+(`"unique_psi"` / `"total"`) and `total_sd` (a point estimate of the true
+total, read from the already-`REPORT()`ed `fit$report$Sigma_B_slope`; no
+interval -- that still needs the deferred multivariate delta method), plus a
+`cli::cli_warn()` fired on the call itself, not only in `print()`. Register
+row CI-14 records this correction with the review's measured numbers.
+
+**Priority-4 fixes from the review, all now clean:**
+`pkgdown::check_pkgdown()` was hard-erroring (`slope_sd_ci` missing from
+`_pkgdown.yml`'s `reference:` index) -- fixed. The example's formula cited a
+non-working `indep(...)` augmented-slope syntax (three places, including the
+file-level scope comment) -- corrected to the working `unique(...)` syntax
+and verified end-to-end (`tools::Rd2ex()` + `source()`, zero warnings) before
+being kept wrapped in `\dontrun{}`, matching the house-consistent
+`loading_ci()` sibling (Curie's explicit call: house-consistency over the
+brief's "runnable" ask). `man/slope_sd_ci.Rd` was also failing the repo's
+`test-reader-facing-no-register-codes.R` guard (it cited "CI-14"/"CI-15" on a
+reader-facing surface) -- fixed by restating the meaning in plain words in
+the roxygen (the register-code citations stay in `##` source comments and
+`cli_abort()` internals, which that guard does not scan).
+
+Register rows: CI-14 (`partial`, diagonal route, revised) and CI-15
+(`blocked`, the deferred Cholesky/loadings routes) in
+`docs/design/35-validation-debt-register.md`.
+
+`devtools::document()` clean (pre-existing unrelated S3-tag warnings for
+`anova`/`BIC`/`AIC.gllvmTMB_multi` only, untouched by this PR).
+`tests/testthat/test-slope-sd-ci.R`: 71 pass, 0 fail, 0 warn (`NOT_CRAN=true`).
+`test-reader-facing-no-register-codes.R`: 1 pass. `pkgdown::check_pkgdown()`:
+no problems found. Full-package `devtools::test()` was run to completion
+twice in this session (once before the review fixes, once after); see the
+after-task report for the verbatim final tally -- the pre-fix run's one
+failure was this PR's own `man/*.Rd` register-code violation, now resolved.
+
+**No DESCRIPTION/NEWS bump (D-113), no `src/` change, no vignette
+advertisement**, per the brief's constraints. **This is a public export —
+high-risk under CLAUDE.md's merge rules — opened as a DRAFT PR; do not merge
+without Shinichi's explicit sign-off.**
+
+After-task report:
+`docs/dev-log/after-task/2026-08-18-slope-sd-ci-slice1.md`.
 ## 2026-08-18 — local L2 GOAL_MET (#1162 merged)
 
 Lane `cursor/mspl-forkB-L2-exec-20260818` (cursor). Sibling `6ee3da68`

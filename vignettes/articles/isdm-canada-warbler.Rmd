@@ -243,6 +243,30 @@ signature above is `convergence == 0` too. `iterations` in the dozens, as
 here, is the healthy shape; `iterations == 1` at a huge objective is the
 failure shape, and neither is visible from `convergence` alone.
 
+**One thing to notice about that formula before you copy it.** There is no
+column called `coords` in `dat`. The token to the right of the `|` in a
+`spatial_*()` term is **not read** — the geometry comes entirely from
+`mesh =`. Substituting any other name leaves the fit unchanged:
+
+```{r coords-token-inert}
+obj_for <- function(tok) {
+  f <- stats::as.formula(paste0(
+    "value ~ 0 + trait + trait:env + isdm_source + offset(log_effort) + ",
+    "spatial_latent(0 + trait | ", tok, ", d = 1)"))
+  m <- suppressMessages(suppressWarnings(gllvmTMB(
+    f, data = dat, trait = "trait", unit = "obs_id",
+    family = fam, mesh = mesh, silent = TRUE)))
+  m$opt$objective
+}
+c(coords = obj_for("coords"), banana = obj_for("banana"))
+```
+
+Identical, because neither name refers to anything. The direction that
+matters is the other one: writing `spatial_latent(0 + trait | site)` with a
+real `site` column and a real intention will *also* be ignored, and nothing
+will say so. Tracked as
+[issue #1163](https://github.com/itchyshin/gllvmTMB/issues/1163).
+
 ## A mesh that is not built by `make_mesh()` does nothing, without warning
 
 `gllvmTMB()` requires a mesh built by its own `make_mesh()`. Passed a raw
@@ -500,7 +524,7 @@ Both species come out of one fit and share one latent field, so they belong
 on one shared colour scale -- plotted separately they would invite a
 comparison the scales do not support.
 
-```{r map-plot, fig.width = 6.6, fig.height = 5.3, dpi = 200, out.width = "100%", fig.cap = "Relative intensity for both species across the prediction grid, from the integrated fit, on a shared log colour scale, plotted in projected UTM kilometres (equal aspect, no cartographic correction needed). The offset is set to zero, so these are relative-intensity surfaces rather than expected counts at any particular effort. They carry NO uncertainty: there is no interval construction behind these values, and none should be inferred from the smoothness of the surface. Grey cells are the grid cells outside the mesh hull, where the spatial field is exactly zero because fmesher returns an empty basis row -- not because the field was estimated to be small there. A caption stating this is simulated is repeated inside the figure itself because a PNG lifted out of this page keeps its pixels and loses this caption.", fig.alt = "Two side-by-side maps of UTM easting against northing (kilometres, zone 11N), one for Canada Warbler and one for Ovenbird, drawn on a shared viridis colour scale for relative intensity plotted on a log scale. Both panels show a similar smooth broad-scale pattern with the two species differing mainly in amplitude. Small white circles mark the opportunistic and survey locations, scattered independently across both panels with no shared points. A handful of grey cells sit near the map's corners, marking grid cells lying outside the mesh hull. Bold red text across the middle of the figure reads SIMULATED DATA -- no uncertainty shown, no real observations."}
+```{r map-plot, fig.width = 6.6, fig.height = 5.3, dpi = 200, out.width = "100%", fig.cap = "Relative intensity for both species across the prediction grid, from the integrated fit, on a shared log colour scale, plotted in projected UTM kilometres (equal aspect, no cartographic correction needed). The offset is set to zero, so these are relative-intensity surfaces rather than expected counts at any particular effort. They carry NO uncertainty: there is no interval construction behind these values, and none should be inferred from the smoothness of the surface. Hatched cells are the grid cells outside the mesh hull, where the spatial field is exactly zero because fmesher returns an empty basis row -- not because the field was estimated to be small there. A caption stating this is simulated is repeated inside the figure itself because a PNG lifted out of this page keeps its pixels and loses this caption.", fig.alt = "Two side-by-side maps of UTM easting against northing (kilometres, zone 11N), one for Canada Warbler and one for Ovenbird, drawn on a shared viridis colour scale for relative intensity plotted on a log scale. Both panels show a similar smooth broad-scale pattern with the two species differing mainly in amplitude. Small white circles mark the opportunistic and survey locations, scattered independently across both panels with no shared points. A handful of hatched cells sit near the map corners, marking grid cells lying outside the mesh hull. Bold red text across the middle of the figure reads SIMULATED DATA -- no uncertainty shown, no real observations."}
 nm  <- c(cawa = "Canada Warbler", oven = "Ovenbird")
 lz  <- log10(map$est)                    # intensity is skewed; log to read it
 brk <- seq(min(lz), max(lz), length.out = 65)
@@ -525,8 +549,14 @@ for (k in seq_along(spp)) {
   z <- matrix(lz[map$trait == spp[k]], nrow = length(gx), ncol = length(gy))
   image(gx, gy, z, col = pal, breaks = brk, asp = 1, xlim = xl, ylim = yl,
         xlab = "UTM easting (km)", ylab = if (k == 1) "UTM northing (km)" else "")
+  ## The hull mask must not be readable as a VALUE. A flat grey sits at
+  ## mid-luminance, so in greyscale it reads as elevated against the dark end
+  ## of viridis -- inverting the very thing this mask is here to say. Hatching
+  ## survives greyscale and photocopying, because it is not a tone.
   rect(g0$X[oo] - dx, g0$Y[oo] - dy, g0$X[oo] + dx, g0$Y[oo] + dy,
-       col = "grey80", border = NA)
+       col = "grey85", border = NA)
+  rect(g0$X[oo] - dx, g0$Y[oo] - dy, g0$X[oo] + dx, g0$Y[oo] + dy,
+       col = "grey35", border = NA, density = 26, angle = 45, lwd = 0.6)
   points(dat$X, dat$Y, pch = 21, bg = "white", col = "black", cex = 0.42,
          lwd = 0.5)
   box()
@@ -546,7 +576,7 @@ mtext("relative intensity (log scale)", side = 4, line = 2.3, cex = 0.75,
 box()
 mtext("open circles: opportunistic + survey locations (disjoint)", side = 1,
       outer = TRUE, line = -0.2, adj = 0.5, cex = 0.62, col = "grey30")
-mtext(paste("grey cells: outside the mesh hull, where the spatial field is",
+mtext(paste("hatched cells: outside the mesh hull, where the spatial field is",
             "exactly zero rather than estimated"),
       side = 1, outer = TRUE, line = 0.5, adj = 0.5, cex = 0.62,
       col = "grey30")
@@ -558,7 +588,7 @@ mtext("SIMULATED DATA -- no uncertainty shown, no real observations",
 par(op)
 ```
 
-The grey corners are the next section made visible.
+The hatched corners are the next section made visible.
 
 ## `predict()` will warn if your grid leaves the mesh
 
@@ -579,7 +609,7 @@ hull. Out there `fmesher` returns an all-zero basis row, so the spatial
 field is **exactly zero** -- indistinguishable, on the map, from a region
 where the field is genuinely near zero. A blank corner reads as a cold one.
 
-The map above greys those cells out instead of colouring them, and that
+The map above hatches those cells instead of colouring them, and that
 is a deliberate choice rather than something `predict()` did. Colour them
 like everywhere else, which is the default and what the previous version of
 this figure did, and nothing on the surface tells you they are there.

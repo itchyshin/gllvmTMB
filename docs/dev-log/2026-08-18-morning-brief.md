@@ -1,6 +1,6 @@
 # Morning brief — 2026-08-18
 
-## 🔴 Needs you FIRST: post the Ayumi replies (you said "tomorrow morning, remind me")
+## ✅ DONE — Ayumi replies POSTED (all three, evidence-based, 2026-08-18 morning)
 
 The three reply drafts to Ayumi-495/urbanisation_map **#24, #25, #23** are written,
 shown to you in full last night, and approved in principle — you held them to post this
@@ -12,8 +12,12 @@ morning. Every claim in them is now TRUE on `main`:
 - #23: analysis guidance + both package suggestions accepted (Slice 3 in the authorized
   chain).
 
-Drafts live in the session scratchpad (`ayumi-reply-drafts.md`) and verbatim in last
-night's chat. Post as-is, edit, or dictate changes. Posting is your act.
+Posted after a verification battery re-fit her actual models with the fixed package
+(all claims measured, not predicted; results: `/private/tmp/ayumi-verify/RESULTS.md`):
+#24 [issuecomment-5328441775] · #25 [issuecomment-5328444624] · #23
+[issuecomment-5328447533]. Two honest findings included in the replies: her ridged fit
+still has `pd_hessian FALSE` at tau=2 (convergence reporting fixed ≠ curvature healthy),
+and ridge_path verdicts are composition-dependent (her own point, quantified).
 
 ## The authorized overnight chain (self-merge on green, your authorization 2026-08-17)
 

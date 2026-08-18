@@ -11,6 +11,29 @@ This repository is shared by humans, Codex, and Claude Code. Read
 > current handover. Read it before any repository mutation. Milestone state is not in
 > either place and must be re-derived from `git`.
 
+- **2026-08-17 — iSDM OWED-1 EXECUTED: predict() probed; core CERTIFIED, map surface
+  SCOPED, article FENCED.** Lane `claude/isdm-predict-20260817` ran the handover's
+  ranked step 1 to its prescribed fork, then survived an Opus adversarial verify
+  (PASS-WITH-CORRECTIONS, all applied). Certified (16-assertion
+  `test-isdm-predict.R`): in-sample `predict()` == `report$eta` (offset + all REs;
+  the spatial/SPDE instance probe-measured only); **training-row**
+  `type = "response"` dispatches each row's own arm inverse link;
+  exact non-spatial `newdata` link-scale round-trip; in-sample `se.fit` + classed
+  newdata refusal. 🔴 **Measured and NOT fixed here (Design 126 + register ISDM-03),
+  three newdata defects in one function:** every RE tier except
+  `rr_B`/`diag_B`/`propto` silently dropped (spatial measured: dropped sd 0.381 vs
+  eta sd 0.949, an identity — reproduced on a non-isdm gaussian spatial fit) while
+  printing "random effects added"; `re_form` ignored in-sample and only literal
+  `~0` honoured on newdata; `newdata` + `response` applies a per-trait MODAL family
+  — the wrong arm on every isdm fit (detection "probabilities" up to 2.32); plus no
+  `A_proj` projection at new locations. **The map-making article is FENCED until those land** — issue texts
+  drafted in Design 126 §5, filed after maintainer review. OWED-2 advanced exactly
+  to its D-139 gate (`docs/dev-log/research/2026-08-17-isdm-interval-campaign-proposal.md`
+  — 🔴 needs approval; nothing launched, D-157 honoured) and OWED-3 to a candidate
+  list (`…isdm-flagship-candidates.md`, UNVERIFIED — 🔴 needs the taxon pick).
+  PR #1113 (the handover itself) merged on green by this lane.
+  **START HERE:** `docs/dev-log/after-task/2026-08-17-isdm-predict-probe.md`.
+
 - **2026-08-17 — EVIDENCE/DIAGNOSTICS LANE: two questions answered, nine families
   greened, one halt missed.** Merged #1050/#1066/#1074/#1085/#1086/#1089/#1091/#1093.
   **Non-Gaussian REML is CLOSED with a pre-registered negative** (Cox-Reid worsens bias;

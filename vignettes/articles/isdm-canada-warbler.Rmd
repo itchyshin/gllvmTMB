@@ -1,0 +1,232 @@
+---
+title: "An integrated SDM end to end, and the map at the end of it"
+description: "A two-arm integrated SDM for a boreal warbler: opportunistic counts plus a structured detection survey, a shared spatial field, and a relative-intensity map. Shows what the map does and does not carry, and where predict() will warn at you."
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{An integrated SDM end to end, and the map at the end of it}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+```
+
+# What this shows
+
+An integrated species distribution model fuses an opportunistic
+presence-only arm with a structured survey arm, letting the structured arm
+discipline the biased one. This article runs that end to end for a boreal
+songbird system and finishes with the thing the whole exercise is for: a
+relative-intensity map.
+
+The map step is new. Until recently `predict(newdata = )` silently dropped
+the spatial field, so a map drawn from it showed a field-free surface while
+claiming the field. That is fixed, and this article is partly a
+demonstration that it is.
+
+## About the data — read this before reading anything else
+
+**The data below are simulated.** They are shaped on a real study system —
+Canada Warbler (*Cardellina canadensis*) and a co-occurring boreal warbler
+in Alberta, an eBird-style opportunistic arm and an ABMI-style structured
+detection arm — but no real records are fitted here.
+
+Two reasons, both worth knowing if you plan the real analysis:
+
+1. **The structured arm is not freely available at usable precision.** ABMI
+   publishes public survey locations fuzzed to roughly 5.5 km, coarser for
+   species at risk; precise coordinates need a separate data agreement. Why
+   that matters enormously for an integrated model is the subject of a
+   companion article — the short version is that it attenuates the
+   environmental slope, and integrating a fuzzed arm can leave you further
+   from the truth than discarding it.
+2. **A vignette must not depend on the network.** The opportunistic arm
+   *is* freely available (GBIF holds ~4,200 coordinate-bearing Alberta
+   records for Canada Warbler, 98% of them from eBird), and `rgbif` will
+   fetch them — but a documentation build that phones an API is a
+   documentation build that breaks.
+
+So: simulated, to the real system's dimensions. Every number below is
+reproducible from this page.
+
+# The two arms
+
+```{r data}
+suppressMessages(library(gllvmTMB))
+set.seed(11)
+
+n_cell <- 120L
+cells <- paste0("c", seq_len(n_cell))
+lon <- runif(n_cell, -120, -110)
+lat <- runif(n_cell, 49, 60)
+
+## A smooth habitat covariate, and a latent spatial field the covariate
+## does not explain -- the thing the SPDE tier is there to capture.
+env <- as.numeric(scale(sin(lon / 2) + cos(lat / 3)))
+u <- as.numeric(scale(sin(lon) * cos(lat)))
+
+spp <- c("cawa", "oven")
+a0 <- c(-1.0, -0.6)     # species intercepts
+bt <- c(0.8, 0.4)       # environmental slopes -- the estimand of interest
+lm2 <- c(0.9, 0.5)      # loading on the shared spatial field
+
+mk <- function(src, kind, effort) {
+  do.call(rbind, lapply(seq_along(spp), function(j) {
+    d <- data.frame(cell_id = cells, trait = spp[j], lon = lon, lat = lat,
+                    env = env, isdm_source = src, effort = effort,
+                    stringsAsFactors = FALSE)
+    eta <- a0[j] + bt[j] * env + lm2[j] * u + log(effort)
+    d$value <- if (kind == "count") {
+      rpois(n_cell, exp(eta))
+    } else {
+      rbinom(n_cell, 1, -expm1(-exp(eta)))
+    }
+    d
+  }))
+}
+
+## Opportunistic arm: counts, high effort. Structured arm: detection /
+## non-detection, lower effort. Both see the SAME underlying intensity.
+dat <- rbind(mk("ebird", "count", 3.0), mk("survey", "pa", 0.8))
+dat$trait <- factor(dat$trait)
+dat$cell_id <- factor(dat$cell_id)
+dat$isdm_source <- factor(dat$isdm_source, levels = c("ebird", "survey"))
+dat$log_effort <- log(dat$effort)
+str(dat[, c("cell_id", "trait", "isdm_source", "value", "env")])
+```
+
+`isdm_sources()` is what tells the model the two arms are different
+observation processes on one shared intensity: a Poisson likelihood for the
+counts, a complementary-log-log Bernoulli for detection/non-detection.
+
+```{r fit}
+mesh <- make_mesh(dat, c("lon", "lat"), cutoff = 0.8)
+fam <- isdm_sources(ebird = poisson(), survey = binomial(link = "cloglog"))
+
+fit <- suppressMessages(suppressWarnings(gllvmTMB(
+  value ~ 0 + trait + trait:env + isdm_source + offset(log_effort) +
+    spatial_scalar(0 + trait | coords),
+  data = dat, trait = "trait", unit = "cell_id",
+  family = fam, mesh = mesh, silent = TRUE
+)))
+fit$opt$convergence
+```
+
+# The fitted output tells you which arm each row came from
+
+```{r arm-column}
+head(predict(fit), 4)
+```
+
+The `isdm_source` column matters more than it looks. On the response scale
+`est` **mixes scales by construction** — the count arm returns an expected
+count, the detection arm returns a probability — so without the arm label
+the column is two different quantities interleaved, distinguishable only by
+memory. `fitted()` carries it too.
+
+# The map
+
+Three things have to be right for a map to mean anything.
+
+**The spatial field must actually be in the prediction.** It is; this is the
+part that used to be silently dropped.
+
+**The scale must be effort-free.** `type = "response"` includes the row's
+offset, so it returns an expected count *at that effort* — fine for a
+training row, wrong for a map. Setting the offset to zero in `newdata` gives
+relative intensity, and it is exact rather than approximate because the
+offset is re-evaluated against `newdata`.
+
+**The grid must lie inside the mesh.** More on that below.
+
+```{r map}
+gx <- seq(min(lon), max(lon), length.out = 30)
+gy <- seq(min(lat), max(lat), length.out = 30)
+g0 <- expand.grid(lon = gx, lat = gy)
+g0$env <- as.numeric(scale(sin(g0$lon / 2) + cos(g0$lat / 3)))
+
+grid <- do.call(rbind, lapply(spp, function(sp) transform(g0, trait = sp)))
+grid$trait <- factor(grid$trait, levels = levels(dat$trait))
+grid$cell_id <- factor(cells[1], levels = levels(dat$cell_id))
+grid$isdm_source <- factor("ebird", levels = levels(dat$isdm_source))
+grid$log_effort <- 0     # relative intensity, NOT an expected count
+grid$value <- 0          # placeholder: the design matrix evaluates the LHS
+
+map <- suppressWarnings(suppressMessages(
+  predict(fit, newdata = grid, type = "response")
+))
+range(map$est)
+```
+
+```{r map-plot, fig.cap = "Relative intensity for one species across the prediction grid, from the integrated fit. The offset is set to zero, so this is a relative intensity surface rather than an expected count at any particular effort. It carries NO uncertainty: there is no interval construction behind these values, and none should be inferred from the smoothness of the surface.", fig.alt = "A smoothly varying colour surface over a rectangular longitude-latitude grid, with higher values concentrated in a broad diagonal band."}
+i <- map$trait == "cawa"
+z <- matrix(map$est[i], nrow = length(gx), ncol = length(gy))
+image(gx, gy, z, xlab = "longitude", ylab = "latitude",
+      main = "Canada Warbler: relative intensity")
+points(lon, lat, pch = 3, cex = 0.5)
+```
+
+## `predict()` will warn if your grid leaves the mesh
+
+The chunk above is wrapped in `suppressWarnings()`, which is a cheat worth
+exposing. Run it without:
+
+```{r hull-warning}
+w <- tryCatch(
+  suppressMessages(predict(fit, newdata = grid, type = "response")),
+  warning = function(w) class(w)[1]
+)
+w
+```
+
+A rectangular grid over a scattered set of survey points inevitably pokes
+outside the mesh hull. Out there `fmesher` returns an all-zero basis row, so
+the spatial field is **exactly zero** — indistinguishable, on the map, from
+a region where the field is genuinely near zero. A blank corner reads as a
+cold one.
+
+`make_mesh()` rejects such rows at *fit* time, so the honest thing is for
+`predict()` not to be quietly more permissive. Clip the grid to the meshed
+domain, or extend the mesh to cover it — do not suppress the warning, which
+is what this article did purely to keep the figure inline.
+
+# What this map does not carry
+
+Stated because a smooth colour surface is persuasive out of all proportion
+to the evidence behind it:
+
+- **No uncertainty, of any kind.** There is no interval on these values.
+  `se.fit` is deliberately refused with `newdata`, and that refusal is load
+  bearing: the available training-row standard error is conditional and
+  fixed-effect-only, and a 1,600-fit measurement put its coverage of the
+  true linear predictor at **0.23–0.82**, falling as the grid grows, because
+  the latent-field reconstruction error it ignores is exactly what dominates
+  on a map. Map-scale uncertainty needs an RE-aware construction that does
+  not exist yet.
+- **No claim about the environmental slopes' calibration beyond one
+  measured grid.** The Wald intervals on `trait:env` were measured as
+  calibrated (48/48 cell x species verdicts inside a [0.92, 0.98] band, at
+  n = 2000 replicates) — but on the simulation grid that campaign ran, not
+  here.
+- **No positional-error correction.** Everything above assumes both arms
+  know where they are. Real structured-survey data frequently does not, and
+  the consequences are not small — see the companion article on
+  spatial-precision mismatch before fusing real fuzzed data.
+- **No claim that this taxon is settled.** The real Canada Warbler /
+  ABMI pairing was assessed and came back **conditional**, pending exactly
+  the coordinate-precision question above.
+
+# Recap
+
+`isdm_sources()` for the observation processes, a `spatial_*()` term for the
+shared field, an offset for effort, and `predict(newdata = )` with the
+offset zeroed for a relative-intensity surface. The arm column tells you
+which scale each row is on; the hull warning tells you where the map stopped
+being informed by data.
+
+Point estimates and a surface — no intervals, and the article says so
+rather than letting the picture imply otherwise.

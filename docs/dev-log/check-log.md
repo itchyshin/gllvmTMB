@@ -21,6 +21,36 @@ NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(".", compile=FALSE, quiet=
 # deliberately not: Totoro, T*, public se, undraft #1077, MSPL-04 flip, git add -A
 ```
 
+## 2026-08-18 — silent-fallback diagnostics batch CLOSED (#1083, #1119, #1120) — Claude
+
+Three unclaimed defects fixed and merged: PR #1140 (#1083), #1141 (#1119), #1142 (#1120).
+After-task: `docs/dev-log/after-task/2026-08-18-silent-fallback-diagnostics-batch.md`.
+
+**Behaviour changes now on main — re-verify anything that asserts on these:**
+- `check_gllvmTMB()` boundary screen now sees `sd_spde_unique` / `sd_kernel_diag`; the spatial
+  psi row name was dead and returned zero rows (#1119).
+- The saturation warning covers gaussian/lognormal/**Gamma/Beta/student-t** (#1083).
+- Ambiguous unnamed mixed-family lists now **abort** instead of binding alphabetically (#1120).
+
+**Commands run:** `test_local(filter="mixed|family|sanity")`, `"diagnose|boundary|sanity|spatial|kernel"`
+(+ scoped `GLLVMTMB_HEAVY_TESTS=1`), `"predictive-diagnostics|saturat|residual"` — 0 failures each.
+Not run: the full heavy suite.
+
+**Two operational warnings for every lane.**
+
+1. **A filtered `devtools::test()` is scoped by FILENAME, not content.** #1083's local run used
+   `filter="saturat|residual|sanity|conditional"`, which never matched
+   `test-predictive-diagnostics.R` — where two tests pinned the warning string the PR had legitimately
+   changed. Green locally, failed in CI. **After changing any user-facing message or error class,
+   `grep -rn "<the old phrase>" tests/` before trusting a filtered run.**
+2. **A green check may belong to a superseded commit.** Six CI cancellations here from the concurrency
+   group under heavy lane traffic. Verify the run's `headSha` against the branch head before merging.
+
+**Ownership as understood today:** iSDM predict/intervals — `gllvmTMB_sdm3` (#1132/#1133/#1138);
+#1082 and possibly #813 — `gllvmTMB_main2`; MSPL — Cursor. #897/#1097 and #1134 are FREE
+(read `dev/ordinal-degeneracy/pass-criteria-curvature.md` §8.2a first — seven eliminated candidates).
+`claude/813-instrument-20260730` is DEAD: 0 ahead / 1022 behind, ending in a revert of its own work.
+
 ## 2026-08-18 — Cursor: g0_unlock fork B Melissa reconcile (GOAL_MET)
 
 - worktree: `~/local-scratch/lanes/gllvmTMB-mspl-forkB-g0-reconcile`

@@ -772,6 +772,21 @@ denominators only, as §6 already mandates. One open flag for the campaign:
 weakest-signal cell. Final scoping lives in
 `docs/dev-log/2026-08-16-design66-scoping-proposal.md`.
 
+> **2026-08-17 addendum (issue #1092).** The instrument correction above was
+> applied to TEST A only; the same raw gradient remained the source of the K1
+> gradient column and of `fit_health$max_gradient`, which is why K1's gradient
+> leg later read 100% of L2 fits as over-tolerance (see the independent
+> adjudication, `dev/design122-campaign/ADJUDICATION.md`). The root cause is
+> now fixed package-wide: `.gllvmTMB_penalised_gradient()` is the single
+> accessor for the gradient of the objective the optimiser actually minimised,
+> and `fit_health$max_gradient`, `sanity_multi()`, and the AGHQ engine's
+> stop-reason reporting all read it. Future campaigns that reuse
+> `fit_health$max_gradient` (per `dev/campaign-admission/RESULT-SCHEMA.md`)
+> record the penalised gradient automatically. The stored Design 122 rows are
+> NOT retro-correctable — the CSVs keep only the scalar — so the K1 question
+> for THIS campaign is a decision, not a recomputation:
+> `docs/dev-log/2026-08-17-design122-k1-reread-infeasible.md`.
+
 ## 16. Confirmatory campaign STAGED — measured cost, awaiting the D-139 go (2026-08-17)
 
 The campaign is built, **admitted through the Design 124 compute-admission

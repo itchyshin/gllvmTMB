@@ -242,10 +242,63 @@
   )
 }
 
+## THE blocks the R-level `aghq_ridge` penalty reaches. Single source of
+## truth: `run_one()` applies the penalty to exactly these, and every
+## instrument that reports on the penalised objective -- the gradient accessor
+## and `.gllvmTMB_objective_components()` -- must use the SAME set or it
+## describes a different function than the one minimised. Getting this list
+## wrong is #1092 one level down: the first fix for #1092 repaired one block
+## while the applier reached two, which the adversarial review caught by
+## measurement.
+##
+## MAINTAINER DECISION (Shinichi, 2026-08-17, PR #1106): the ridge is
+## `theta_rr_B` ONLY. `theta_rr_spde_lv` was briefly in this set because
+## 0d992c61 (LA-MSPL Lane B) added it to `run_one()` the same day ae340bdd
+## added the warning promising spatial terms are NOT silently penalised --
+## parallel branches, neither an ancestor of the other, merged into a
+## contradiction nobody chose. The admission gate keys on `theta_rr_B`, the
+## public warning promises the exemption, and every piece of ridge validation
+## evidence is ordinary-loading-specific, so the block set narrows to match
+## the documented contract rather than the accidental union. A negative test
+## (test-penalised-gradient-1092.R) now pins the exemption: on a
+## `latent() + spatial_latent()` ridged fit the spatial loadings carry NO
+## penalty pressure at the optimum.
+.gllvmTMB_ridge_block_names <- "theta_rr_B"
+
 .gllvmTMB_loading_ridge_applies <- function(ridge_tau, parameter_names) {
   is.numeric(ridge_tau) && length(ridge_tau) == 1L && !is.na(ridge_tau) &&
     is.finite(ridge_tau) && ridge_tau > 0 &&
     any(parameter_names == "theta_rr_B")
+}
+
+## Positions of the penalised blocks in a parameter vector, in `run_one()`'s
+## own order. Empty when the ridge reaches nothing.
+.gllvmTMB_ridge_block_index <- function(parameter_names) {
+  which(parameter_names %in% .gllvmTMB_ridge_block_names)
+}
+
+## THE gradient of the objective the optimiser actually minimised (#1092).
+## The `aghq_ridge` loading penalty is applied at the R level, OUTSIDE the TMB
+## template, so `obj$gr()` alone is the gradient of a function a ridged fit was
+## NOT minimising: at the penalised (MAP) optimum the raw gradient on the
+## `theta_rr_B` block equals `lambda / tau^2`, not ~0, and any gradient-based
+## convergence judgement built on it reads a perfectly converged fit as
+## unconverged (Design 122 SS15 found this for TEST A; issue #1092 records that
+## the same instrument is read everywhere else). Every reader that can see a
+## ridged fit must go through this accessor; `obj$gr()` itself stays reachable
+## and is the UNPENALISED gradient, mirroring how `.gllvmTMB_objective_
+## components()` keeps `obj$fn()` as the unpenalised likelihood and discloses
+## the split.
+##
+## `ridge_tau` is the scalar penalty scale (`fit$aghq$ridge_tau`; Inf or NULL
+## means unpenalised, when the gradient reduces to the raw `obj$gr(par)`).
+.gllvmTMB_penalised_gradient <- function(obj, par, ridge_tau) {
+  g <- as.numeric(obj$gr(par))
+  if (.gllvmTMB_loading_ridge_applies(ridge_tau, names(obj$par))) {
+    li <- .gllvmTMB_ridge_block_index(names(obj$par))
+    if (length(li)) g[li] <- g[li] + par[li] / (ridge_tau^2)
+  }
+  g
 }
 
 .gllvmTMB_objective_components <- function(obj, opt, aghq) {
@@ -266,7 +319,12 @@
        is.finite(ridge_tau) && ridge_tau > 0)
   ridge_penalty <- 0
   if (penalised) {
-    loading_index <- which(names(opt$par) == "theta_rr_B")
+    ## Every block `run_one()` penalises, not just `theta_rr_B` (#1092): on a
+    ## `latent()` + `spatial_latent()` fit the omitted `theta_rr_spde_lv` term
+    ## made this UNDERSTATE the penalty, so the logLik/AIC disclosure reported
+    ## a smaller gap between the likelihood and the optimised objective than
+    ## the optimiser actually opened.
+    loading_index <- .gllvmTMB_ridge_block_index(names(opt$par))
     if (length(loading_index)) {
       ridge_penalty <- 0.5 * sum(opt$par[loading_index]^2) / (ridge_tau^2)
     }
@@ -5657,8 +5715,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   run_one <- function(par_init, .obj = obj, .iter_cap = NULL, .ridge_tau = NULL) {
     obj <- .obj
     if (!is.null(.ridge_tau) && is.finite(.ridge_tau) && .ridge_tau > 0) {
-      lam_idx <- which(names(obj$par) %in%
-                         c("theta_rr_B", "theta_rr_spde_lv"))
+      lam_idx <- .gllvmTMB_ridge_block_index(names(obj$par))
       if (length(lam_idx)) {
         inv_t2 <- 1 / (.ridge_tau^2)
         base_fn <- obj$fn; base_gr <- obj$gr
@@ -5786,6 +5843,11 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       laplace_ridge_tau <- tau_req
     }
   }
+  ## RESOLVED (Shinichi, 2026-08-17): the contradiction the #1092 adversarial
+  ## review surfaced -- `run_one()` penalising `theta_rr_spde_lv` while this
+  ## message promises spatial terms are exempt -- is settled in the message's
+  ## favour: `.gllvmTMB_ridge_block_names` is `theta_rr_B` only, so the "i"
+  ## line below is now true unconditionally.
   if (!is.null(laplace_ridge_tau) &&
       !.gllvmTMB_loading_ridge_applies(laplace_ridge_tau, names(obj$par))) {
     cli::cli_warn(c(
@@ -6274,14 +6336,11 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         ## The fix is to test the gradient of the objective being minimised, NOT
         ## to loosen the tolerance -- a loosened tolerance would hide a genuine
         ## non-convergence just as effectively.
-        g_cur <- tryCatch({
-          g <- as.numeric(obj_try$gr(par_cur))
-          if (is.finite(aghq_ridge_tau) && aghq_ridge_tau > 0) {
-            li <- which(names(obj_try$par) == "theta_rr_B")
-            if (length(li)) g[li] <- g[li] + par_cur[li] / (aghq_ridge_tau^2)
-          }
-          max(abs(g))
-        }, error = function(e) NA_real_)
+        g_cur <- tryCatch(
+          max(abs(.gllvmTMB_penalised_gradient(obj_try, par_cur,
+                                               aghq_ridge_tau))),
+          error = function(e) NA_real_
+        )
         shift <- if (is.null(mode_prev)) Inf else max(abs(ad$mode - mode_prev))
         mode_prev <- ad$mode
         aghq_passes <- it
@@ -6336,7 +6395,16 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
             ## engine that made it IMPOSSIBLE to tell a genuine local-optimum stop
             ## from a real failure to descend, so a third of every campaign's fits
             ## were unclassifiable. One number fixes that.
-            g_last <- tryCatch(max(abs(obj_try$gr(par_cur))), error = function(e) NA_real_)
+            ##
+            ## #1092: the PENALISED gradient, or the number is meaningless on a
+            ## ridged fit -- this was the uncorrected sibling of the g_cur read
+            ## above, reporting |lambda|/tau^2 in the user-visible stop reason
+            ## while the corrected copy sat sixty lines earlier.
+            g_last <- tryCatch(
+              max(abs(.gllvmTMB_penalised_gradient(obj_try, par_cur,
+                                                   aghq_ridge_tau))),
+              error = function(e) NA_real_
+            )
             aghq_stop <- sprintf(
               paste0("stalled (no honest descent at cap 1 after backtracking); ",
                      "max |grad| = %.3g (relative %.3g) against tolerances of %.3g / %.3g"),

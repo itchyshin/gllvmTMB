@@ -2534,8 +2534,12 @@ predict.gllvmTMB_multi <- function(
         }
         added <- c(added, "diag_B")
       }
-      ## propto: per-species random effect, additive
-      if (object$use$propto && !is.na(sp_id[1])) {
+      ## propto: per-species random effect, additive.
+      ## The guard was `!is.na(sp_id[1])` -- row ONE only -- so a newdata
+      ## frame whose first row had an unseen species silently skipped the
+      ## tier for every other row too. Each row is now guarded on its own,
+      ## inside the loop, as rr_B and diag_B already were.
+      if (isTRUE(object$use$propto) && any(!is.na(sp_id))) {
         p_phy <- matrix(
           par[names(par) == "p_phy"],
           nrow = object$n_species,
@@ -2550,6 +2554,66 @@ predict.gllvmTMB_multi <- function(
         }
         added <- c(added, "propto")
       }
+      ## diag_species: per-(trait, species) random intercept.
+      ## src/gllvmTMB.cpp:2513 -- eta(o) += q_sp(t, species_id(o)). Note the
+      ## index order is (trait, species), the TRANSPOSE of p_phy above; that
+      ## is why each tier gets its own exact-identity test rather than a
+      ## shared one.
+      if (isTRUE(object$use$diag_species) && any(!is.na(sp_id))) {
+        q_sp <- matrix(
+          par[names(par) == "q_sp"],
+          nrow = object$n_traits,
+          ncol = object$n_species
+        )
+        ok <- !is.na(sp_id) & sp_id >= 0 & sp_id < object$n_species &
+          !is.na(tr_id)
+        eta[ok] <- eta[ok] + q_sp[cbind(tr_id[ok] + 1L, sp_id[ok] + 1L)]
+        added <- c(added, "diag_species")
+      }
+
+      ## Site-species (W) tiers. These are indexed by the unit-observation
+      ## column, which `newdata` need not carry at all -- so they are added
+      ## only when it is present and its levels resolve against training.
+      ss_col <- object$unit_obs_col
+      ss_id <- if (!is.null(ss_col) && ss_col %in% names(nd)) {
+        as.integer(factor(as.character(nd[[ss_col]]),
+                          levels = levels(object$data[[ss_col]]))) - 1L
+      } else {
+        NULL
+      }
+      if (!is.null(ss_id) && any(!is.na(ss_id))) {
+        ok_ss <- !is.na(ss_id) & ss_id >= 0 & ss_id < object$n_site_species &
+          !is.na(tr_id)
+        ## rr_W: src/gllvmTMB.cpp:2503-2507 --
+        ## eta(o) += sum_k Lambda_W(t, k) * z_W(k, ss).
+        if (isTRUE(object$use$rr_W)) {
+          z_W <- matrix(
+            par[names(par) == "z_W"],
+            nrow = object$d_W,
+            ncol = object$n_site_species
+          )
+          L_W <- object$report$Lambda_W
+          if (!is.null(L_W) && any(ok_ss)) {
+            eta[ok_ss] <- eta[ok_ss] + rowSums(
+              L_W[tr_id[ok_ss] + 1L, , drop = FALSE] *
+                t(z_W[, ss_id[ok_ss] + 1L, drop = FALSE])
+            )
+            added <- c(added, "rr_W")
+          }
+        }
+        ## diag_W: src/gllvmTMB.cpp:2509 -- eta(o) += s_W(t, ss).
+        if (isTRUE(object$use$diag_W) && any(ok_ss)) {
+          s_W <- matrix(
+            par[names(par) == "s_W"],
+            nrow = object$n_traits,
+            ncol = object$n_site_species
+          )
+          eta[ok_ss] <- eta[ok_ss] +
+            s_W[cbind(tr_id[ok_ss] + 1L, ss_id[ok_ss] + 1L)]
+          added <- c(added, "diag_W")
+        }
+      }
+
       ## Spatial (SPDE) field. Before #1132 this tier was dropped in silence
       ## -- at training locations too -- while the branch below reported that
       ## random effects had been added.

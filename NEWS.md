@@ -16,6 +16,26 @@
   residuals cover 13 families now, not the 4 it previously named. These
   are worked examples of point estimation and fitted diagnostics, not an
   evidence-tier promotion.
+* **`predict(newdata = )` now re-adds three more random-effect tiers, and
+  `propto` is no longer skipped for every row when the first row has an
+  unseen species (#1138, #1132).** `diag_species`, `rr_W` and `diag_W` are
+  reconstructed on the `newdata` path, each pinned by the same acceptance
+  test the SPDE tier had to meet: `predict(newdata = training rows)` must
+  reproduce `report$eta` **exactly**. That standard matters here because
+  `q_sp` is indexed `(trait, species)` -- the transpose of `p_phy` -- so a
+  swapped index would still yield a plausible non-zero contribution.
+  The `rr_W`/`diag_W` pair is keyed on the unit-observation column and is
+  added only when `newdata` carries it; otherwise the existing warning names
+  them as omitted. Also fixed: the `propto` re-add was gated on
+  `!is.na(sp_id[1])` -- row *one* only -- so a single unseen species in the
+  first row silently dropped the tier for the whole frame; each row is now
+  guarded on its own.
+  Still deliberately not re-added, and still warned about: `equalto` (indexed
+  by observation, so it has no meaning for new rows), `re_int` (its group
+  mapping is not a top-level field on the fit), and `diag_cluster2` / the
+  `*_slope` and phylo-diagonal blocks, whose reshape conventions are not
+  established (see `getREsd()`).
+
 * **Boundary screening now sees two spatial/kernel Psi companions it
   previously missed, and `check_gllvmTMB()`'s spatial psi row no longer
   returns zero rows (#1119).** ⚠️ **Behaviour change:** fits that previously

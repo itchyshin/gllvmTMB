@@ -425,3 +425,56 @@ Arms need not share locations, rows, or unit labels — the field lives on the
 to `gllvmTMB()` (the package checks `nrow(A) == n_obs` and errors if not).
 Say explicitly that a `mesh =` without a spatial term does nothing, because
 that trap is currently unguarded.
+
+---
+
+## Block 11 — the unprojected mesh is a real error, and the likelihood hides it (Pat #11, Shinichi)
+
+Both articles build the mesh on **unprojected lon/lat**. Shinichi and Pat
+flagged this independently. The arithmetic was never in doubt; what mattered
+was whether it changes the answer.
+
+**The anisotropy, measured** (`evidence-projection-anisotropy.R`, Alberta box
+near 54.5 N):
+
+| | km per degree |
+|---|---|
+| longitude | 67.0 |
+| latitude | 111.6 |
+| **ratio** | **1.666x** |
+
+A mesh built on degrees therefore treats a 67 km east-west step as equal to a
+112 km north-south one. `cutoff` and `max.edge` mean different distances along
+the two axes.
+
+**Whether it matters** (`evidence-projection-seeds.R`, 5 seeds, a field that is
+isotropic in true distance, `cutoff` tuned so node counts match):
+
+| | mean abs slope error | per seed |
+|---|---|---|
+| lon/lat mesh | 0.1251 | 0.083 0.181 0.082 0.144 0.135 |
+| UTM (km) mesh | **0.0541** | 0.047 0.084 0.047 0.049 0.043 |
+
+**UTM is better in 5 of 5 seeds — a 57% reduction in slope error.**
+
+**And the likelihood cannot diagnose it.** Mean objective is **1136.856** for
+lon/lat against **1136.956** for UTM: the *unprojected* mesh achieves a
+marginally **better** fit while being roughly twice as wrong on the quantity
+the model exists to estimate. A reader comparing log-likelihoods, AIC, or
+convergence would see nothing — and would be very slightly encouraged toward
+the wrong choice.
+
+**Caveat, stated.** The UTM meshes carry about 6% more nodes on average
+(210-232 vs 191-219) despite tuning. A 6% node advantage is not a plausible
+explanation for a 57% error reduction, but the comparison is not perfectly
+matched and this is 5 seeds, not a campaign.
+
+**Two things for the article.**
+
+1. Project before meshing — `add_utm_columns()` is in the package, and the
+   mesh, `cutoff` and `max.edge` should all be in kilometres.
+2. **Keep the domain inside one UTM zone.** Zones are 6 degrees wide, so even
+   a 2-degree box straddles one if it crosses a boundary: a box at
+   -114.5 to -112.5 crosses the zone 11/12 line at -114 and triggers
+   *"Coordinates span multiple UTM zones; using the most frequent zone."*
+   That warning is real and should not be talked past.

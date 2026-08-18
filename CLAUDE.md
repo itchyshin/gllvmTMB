@@ -36,6 +36,17 @@ This repository is shared by humans, Codex, and Claude Code. Read
   **START HERE:** `docs/dev-log/handover/2026-07-25-active-lane-split.md`, then
   `docs/dev-log/handover/2026-08-08-codex-handover.md` for this lane.
 
+- **2026-08-17 — iSDM PROGRAMME IS PUBLIC, DOCUMENTED, AND DEPLOYED; next arcs ranked.**
+  The 2026-08-15 "public front door" step is DONE (#1016/#1027/#1030 → main via #1031,
+  first CI green); the pkgdown Species Distribution Models collection (6 articles,
+  four-lens audited) is live; version 0.7.0; Paper × Items re-aimed around
+  ridge-vs-MSPL matched remedies. Register rows ISDM-01/02 stay `partial`; no
+  calibrated intervals. **Do NOT rehydrate iSDM from the 2026-08-15 handover — it
+  recommends work that already shipped.** Ranked next: predict()/maps probe,
+  calibrated-uncertainty campaign, real-data flagship (needs Shinichi's taxon pick).
+  **START HERE:** `docs/dev-log/handover/2026-08-17-claude-handover-isdm-next.md`,
+  then the lane map (other lanes keep their named handovers).
+
 - **2026-08-02 — DESIGN 108 GATE A IS CLOSED; 10,000 SPECIES IS NOW REACHABLE.**
   Stages **4** ([#896](https://github.com/itchyshin/gllvmTMB/pull/896) — tail-safe `log Phi` +
   binomial-probit, **verdict AD-SAFE**, adversarially established against a 3,744-cell break grid)

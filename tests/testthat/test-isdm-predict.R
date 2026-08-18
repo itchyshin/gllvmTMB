@@ -268,14 +268,18 @@ test_that("#1132 defect 1: a tier that cannot be re-added is named, not dropped 
     mean_species_per_site = 1, seed = 1
   )
   df <- sim$data
-  df$grp <- factor(rep(letters[1:5], length.out = nrow(df)))
+  df$x <- rnorm(nrow(df))
 
-  ## re_int is an active eta tier this path cannot reconstruct.
+  ## An augmented random-SLOPE tier. These have no established reshape
+  ## convention (getREsd() roxygen), so they are deliberately NOT re-added.
+  ## This test originally used `re_int` as its example -- until #1138 made
+  ## re_int reconstructible, at which point this test correctly began to
+  ## fail. Keep it pointed at something still genuinely unhandled.
   fit <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
-    value ~ 0 + trait + latent(0 + trait | site, d = 1) + (1 | grp),
+    value ~ 0 + trait + latent(1 + x | site, d = 1),
     data = df, silent = TRUE
   )))
-  expect_true(isTRUE(as.integer(fit$tmb_data$use_re_int) == 1L))
+  expect_true(isTRUE(as.integer(fit$tmb_data$use_rr_B_slope) == 1L))
 
   expect_warning(
     suppressMessages(predict(fit, newdata = df)),
@@ -522,4 +526,84 @@ test_that("#1133 item 2: zeroing the offset gives the effort-free scale, exactly
 
   ## On the link scale the difference is exactly the offset that was removed.
   expect_equal(with_effort$est - no_effort$est, log(dat$support))
+})
+
+test_that("#1154: predict(newdata=) works without the response column", {
+  skip_if_not_installed("TMB")
+  fit <- .isdm_pred_fx$fit
+  dat <- .isdm_pred_fx$dat
+
+  ## A prediction grid has no response by construction -- that is the point
+  ## of predicting on one. `model.matrix()` on a two-sided formula builds a
+  ## model.frame() first, which evaluates the LHS, so this used to fail with
+  ## `object 'value' not found` and force a dummy-column workaround that was
+  ## undiscoverable from the error.
+  nd <- dat
+  nd$value <- NULL
+  expect_false("value" %in% names(nd))
+
+  out <- suppressMessages(predict(fit, newdata = nd))
+  ## and it must agree exactly with the with-response result, so the fix is
+  ## a relaxation of an input requirement and not a change of answer.
+  expect_equal(out$est, suppressMessages(predict(fit, newdata = dat))$est)
+  expect_equal(out$est, suppressMessages(predict(fit))$est)
+
+  ## response scale too -- that path re-reads the family column, not the LHS.
+  expect_equal(
+    suppressMessages(predict(fit, newdata = nd, type = "response"))$est,
+    suppressMessages(predict(fit, type = "response"))$est
+  )
+})
+
+test_that("#1138: re_int is re-added on newdata, exactly, including several terms", {
+  skip_on_cran()
+  skip_if_not_installed("TMB")
+
+  ## #1138 originally recorded this tier as unreachable, on the grounds that
+  ## its group mapping was not a top-level field on the fit. That was wrong --
+  ## `fit$re_int` carries groups/n_groups/offsets. The two-term case is the
+  ## one worth pinning: the terms are packed end-to-end into a single
+  ## u_re_int vector via re_int_offsets, so an off-by-one in the offset would
+  ## still produce a plausible non-zero contribution for the first term and
+  ## silently wrong values for the second.
+  set.seed(1)
+  df <- gllvmTMB::simulate_site_trait(
+    n_sites = 25, n_species = 3, n_traits = 2,
+    mean_species_per_site = 3, seed = 1
+  )$data
+  df$grp <- factor(rep(letters[1:5], length.out = nrow(df)))
+  df$grp2 <- factor(rep(LETTERS[1:4], length.out = nrow(df)))
+
+  for (frm in list(
+    value ~ 0 + trait + latent(0 + trait | site, d = 1) + (1 | grp),
+    value ~ 0 + trait + latent(0 + trait | site, d = 1) + (1 | grp) + (1 | grp2)
+  )) {
+    fit <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+      frm, data = df, silent = TRUE
+    )))
+    expect_true(isTRUE(as.integer(fit$tmb_data$use_re_int) == 1L))
+    expect_equal(
+      suppressMessages(predict(fit, newdata = df))$est,
+      suppressMessages(predict(fit))$est
+    )
+    ## and the tier no longer reports itself as omitted
+    expect_no_warning(suppressMessages(predict(fit, newdata = df)))
+  }
+
+  ## An unseen level in a grouping factor ABORTS, and should: only the unit
+  ## and species columns are on the `allow_unseen` list, because for those a
+  ## fixed-effects-only fallback is a defined answer. For an arbitrary
+  ## grouping factor it is not -- there is no convention for the random
+  ## intercept of a group the model never saw -- so refusing beats guessing.
+  fit <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+    value ~ 0 + trait + latent(0 + trait | site, d = 1) + (1 | grp),
+    data = df, silent = TRUE
+  )))
+  nd <- df
+  nd$grp <- as.character(nd$grp)
+  nd$grp[1] <- "ZZZ"
+  expect_error(
+    suppressMessages(predict(fit, newdata = nd)),
+    regexp = "unseen level"
+  )
 })

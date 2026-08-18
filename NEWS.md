@@ -1,5 +1,30 @@
 # gllvmTMB 0.7.0 (development)
 
+* **`predict(newdata = )` now also re-adds ordinary `(1 | group)` random
+  intercepts (#1138).** This corrects an earlier entry, which recorded the
+  `re_int` tier as unreachable because "its group mapping is not a top-level
+  field on the fit". **That was wrong** -- `fit$re_int` carries `groups`,
+  `n_groups` and `offsets`, which is exactly what is needed. The tier is now
+  reconstructed and held to the same acceptance test as the others:
+  `predict(newdata = training rows)` reproduces `report$eta` exactly,
+  including with **several** `(1 | g)` terms, which is the case that
+  exercises the end-to-end packing via `re_int_offsets` -- an off-by-one
+  there would give a plausible value for the first term and a silently wrong
+  one for the second. An unseen level in a grouping factor still aborts, as
+  it did before: for an arbitrary grouping factor there is no defined
+  fixed-effects fallback, so refusing beats guessing.
+
+* **`predict(newdata = )` no longer requires the response column (#1154).**
+  A prediction grid has no response by construction -- that is the point of
+  predicting on one -- but the newdata path built its design matrix with
+  `model.matrix()` on the two-sided model formula, which constructs a
+  `model.frame()` first and so evaluates the left-hand side. Predicting on a
+  grid failed with `object '<response>' not found`, and the workaround (add
+  a dummy column) was undiscoverable from the error and left the reader
+  wondering whether the placeholder affected the prediction. The design is
+  now built from the right-hand side only. Predictions are unchanged where
+  the column was present.
+
 * **`predict()` and `fitted()` now return the family/source column on
   mixed-family fits, and the effort-free scale is documented (#1133).** On an
   `isdm_sources()` fit the `est` column mixes scales by design -- Poisson
@@ -48,9 +73,8 @@
   first row silently dropped the tier for the whole frame; each row is now
   guarded on its own.
   Still deliberately not re-added, and still warned about: `equalto` (indexed
-  by observation, so it has no meaning for new rows), `re_int` (its group
-  mapping is not a top-level field on the fit), and `diag_cluster2` / the
-  `*_slope` and phylo-diagonal blocks, whose reshape conventions are not
+  by observation, so it has no meaning for new rows), and `diag_cluster2` /
+  the `*_slope` and phylo-diagonal blocks, whose reshape conventions are not
   established (see `getREsd()`).
 
 * **Boundary screening now sees two spatial/kernel Psi companions it

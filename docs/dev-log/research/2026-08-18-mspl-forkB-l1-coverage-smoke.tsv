@@ -1,0 +1,801 @@
+cell	seed	rep	estimand	coord	truth	prevalence	outcome	covered	two_sided	lower	upper	estimate	detail
+anchor	818001	1	E1	1	0	0.5015625	returned	TRUE	TRUE	-0.425962820927991	0.541444405634509	0.0567642298532586	matched crossed crossed
+anchor	818001	1	E1	2	0.25	0.5015625	returned	TRUE	TRUE	-0.55413825040647	0.34539788240603	-0.10241705900022	matched crossed crossed
+anchor	818001	1	E1	3	-0.25	0.5015625	returned	TRUE	TRUE	-0.720914041431051	0.191927755443949	-0.259549295337301	matched crossed crossed
+anchor	818001	1	E1	4	0.1	0.5015625	returned	TRUE	TRUE	-0.145981049371928	0.891616606878072	0.366897368596822	matched crossed crossed
+anchor	818001	1	E1	5	0.15	0.5015625	returned	TRUE	TRUE	-0.0875556226166149	0.807585978945885	0.352813029727135	matched crossed crossed
+anchor	818001	1	E1	6	-0.15	0.5015625	returned	TRUE	TRUE	-0.502128016435513	0.397774327314487	-0.0511392469042632	matched crossed crossed
+anchor	818001	1	E1	7	0.05	0.5015625	returned	TRUE	TRUE	-0.468070939030866	0.467353865656634	-0.000358536687116038	matched crossed crossed
+anchor	818001	1	E1	8	-0.05	0.5015625	returned	TRUE	TRUE	-0.848358307218932	0.213287200593568	-0.312530670500182	matched crossed crossed
+anchor	818001	1	E2	1	0.9	0.5015625	R-ENV	NA	FALSE	NA	NA	0.720850547805587	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818001	1	E2	2	-0.6	0.5015625	R-ENV	NA	FALSE	NA	NA	-0.325953571691801	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818001	1	E2	3	0.45	0.5015625	R-ENV	NA	FALSE	NA	NA	0.388337817032937	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818001	1	E2	4	0.7	0.5015625	R-ENV	NA	FALSE	NA	NA	0.952731266591148	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818001	1	E2	5	-0.5	0.5015625	R-ENV	NA	FALSE	NA	NA	-0.0827467545938833	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818001	1	E2	6	0.55	0.5015625	R-ENV	NA	FALSE	NA	NA	0.337162223397389	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818001	1	E2	7	-0.4	0.5015625	R-ENV	NA	FALSE	NA	NA	-0.571417705428123	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818001	1	E2	8	0.65	0.5015625	R-ENV	NA	FALSE	NA	NA	1.0399255646849	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818002	2	E1	1	0	0.5	returned	TRUE	TRUE	-0.301068308044882	0.630572316955118	0.161883352111368	matched crossed crossed
+anchor	818002	2	E1	2	0.25	0.5	returned	TRUE	TRUE	-0.312737515954406	0.647589632483094	0.164496370764344	matched crossed crossed
+anchor	818002	2	E1	3	-0.25	0.5	returned	TRUE	TRUE	-0.933829700213771	0.0894857294737285	-0.415213977557521	matched crossed crossed
+anchor	818002	2	E1	4	0.1	0.5	returned	TRUE	TRUE	-0.348889912647229	0.562609110790271	0.104906474071521	matched crossed crossed
+anchor	818002	2	E1	5	0.15	0.5	returned	TRUE	TRUE	-0.0310392216692082	0.966885583018292	0.459988610362042	matched crossed crossed
+anchor	818002	2	E1	6	-0.15	0.5	returned	TRUE	TRUE	-0.809854767773901	0.143514372851099	-0.327249787305151	matched crossed crossed
+anchor	818002	2	E1	7	0.05	0.5	returned	TRUE	TRUE	-0.918988270898383	0.0824765728516166	-0.411358876367133	matched crossed crossed
+anchor	818002	2	E1	8	-0.05	0.5	returned	TRUE	TRUE	-0.23892272707699	0.64791809323551	0.20046936276676	matched crossed crossed
+anchor	818002	2	E2	1	0.9	0.5	R-ENV	NA	FALSE	NA	NA	0.542824900519678	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818002	2	E2	2	-0.6	0.5	R-ENV	NA	FALSE	NA	NA	-0.686666121206014	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818002	2	E2	3	0.45	0.5	R-ENV	NA	FALSE	NA	NA	0.899142892034164	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818002	2	E2	4	0.7	0.5	R-ENV	NA	FALSE	NA	NA	0.423842404473227	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818002	2	E2	5	-0.5	0.5	R-ENV	NA	FALSE	NA	NA	-0.785238077525813	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818002	2	E2	6	0.55	0.5	R-ENV	NA	FALSE	NA	NA	0.618407235053929	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818002	2	E2	7	-0.4	0.5	R-ENV	NA	FALSE	NA	NA	-0.818072923408143	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818002	2	E2	8	0.65	0.5	R-ENV	NA	FALSE	NA	NA	-0.115117220560918	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818003	3	E1	1	0	0.50625	returned	TRUE	TRUE	-0.263106614242602	0.753494948257398	0.240982741226148	matched crossed crossed
+anchor	818003	3	E1	2	0.25	0.50625	returned	TRUE	TRUE	0.170763254266424	1.09947419176642	0.621996164422674	matched crossed crossed
+anchor	818003	3	E1	3	-0.25	0.50625	returned	TRUE	TRUE	-1.06828142175368	-0.0883009530036801	-0.56797624597243	matched crossed crossed
+anchor	818003	3	E1	4	0.1	0.50625	returned	TRUE	TRUE	-0.347857843402029	0.749676336285471	0.197491277691721	matched crossed crossed
+anchor	818003	3	E1	5	0.15	0.50625	returned	TRUE	TRUE	-0.260515381372394	0.763166259252606	0.247358153783856	matched crossed crossed
+anchor	818003	3	E1	6	-0.15	0.50625	returned	TRUE	TRUE	-0.617073678999441	0.296866750688059	-0.157173776655691	matched crossed crossed
+anchor	818003	3	E1	7	0.05	0.50625	returned	TRUE	TRUE	-0.542820952744375	0.339259125380625	-0.099766753525625	matched crossed crossed
+anchor	818003	3	E1	8	-0.05	0.50625	returned	TRUE	TRUE	-0.953634699855545	0.296365300144455	-0.323446711574295	matched crossed crossed
+anchor	818003	3	E2	1	0.9	0.50625	R-ENV	NA	FALSE	NA	NA	0.967561076040842	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818003	3	E2	2	-0.6	0.50625	R-ENV	NA	FALSE	NA	NA	-0.194438313827363	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818003	3	E2	3	0.45	0.50625	R-ENV	NA	FALSE	NA	NA	0.700918678443917	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818003	3	E2	4	0.7	0.50625	R-ENV	NA	FALSE	NA	NA	1.27210677698874	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818003	3	E2	5	-0.5	0.50625	R-ENV	NA	FALSE	NA	NA	-0.999175338102856	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818003	3	E2	6	0.55	0.50625	R-ENV	NA	FALSE	NA	NA	0.452697918451761	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818003	3	E2	7	-0.4	0.50625	R-ENV	NA	FALSE	NA	NA	0.0774356202855291	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818003	3	E2	8	0.65	0.50625	R-ENV	NA	FALSE	NA	NA	1.73842141930176	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818004	4	E1	1	0	0.4890625	returned	TRUE	TRUE	-0.140640955299919	0.788924474387581	0.318160314231331	matched crossed crossed
+anchor	818004	4	E1	2	0.25	0.4890625	returned	TRUE	TRUE	-0.140718345806015	0.787260169818985	0.317350501850235	matched crossed crossed
+anchor	818004	4	E1	3	-0.25	0.4890625	returned	TRUE	TRUE	-0.73237630368905	0.261398110373449	-0.231704916970301	matched crossed crossed
+anchor	818004	4	E1	4	0.1	0.4890625	returned	TRUE	TRUE	-0.448134895855368	0.568222526019633	0.0590062174258825	matched crossed crossed
+anchor	818004	4	E1	5	0.15	0.4890625	returned	FALSE	TRUE	-0.757422672596025	0.138451350841475	-0.303382145252275	matched crossed crossed
+anchor	818004	4	E1	6	-0.15	0.4890625	returned	TRUE	TRUE	-0.606685191321973	0.374393910240527	-0.114314585853223	matched crossed crossed
+anchor	818004	4	E1	7	0.05	0.4890625	returned	TRUE	TRUE	-0.288765507900814	0.594291132724186	0.149772089755436	matched crossed crossed
+anchor	818004	4	E1	8	-0.05	0.4890625	returned	FALSE	TRUE	-1.10658211275843	-0.133681722133432	-0.608718343227182	matched crossed crossed
+anchor	818004	4	E2	1	0.9	0.4890625	R-ENV	NA	FALSE	NA	NA	0.478556519777677	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818004	4	E2	2	-0.6	0.4890625	R-ENV	NA	FALSE	NA	NA	-0.46957931333655	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818004	4	E2	3	0.45	0.4890625	R-ENV	NA	FALSE	NA	NA	0.805920120015968	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818004	4	E2	4	0.7	0.4890625	R-ENV	NA	FALSE	NA	NA	0.901074908405451	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818004	4	E2	5	-0.5	0.4890625	R-ENV	NA	FALSE	NA	NA	0.179474247760272	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818004	4	E2	6	0.55	0.4890625	R-ENV	NA	FALSE	NA	NA	0.768070623850047	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818004	4	E2	7	-0.4	0.4890625	R-ENV	NA	FALSE	NA	NA	-0.0539007019643367	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818004	4	E2	8	0.65	0.4890625	R-ENV	NA	FALSE	NA	NA	0.587049724858229	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818005	5	E1	1	0	0.5140625	returned	TRUE	TRUE	-0.302964480214514	0.631483761972986	0.161329953379236	matched crossed crossed
+anchor	818005	5	E1	2	0.25	0.5140625	returned	TRUE	TRUE	-0.0309102320389946	0.974460861711005	0.463901779679755	matched crossed crossed
+anchor	818005	5	E1	3	-0.25	0.5140625	returned	TRUE	TRUE	-0.59902573021231	0.29037856666269	-0.15133285911856	matched crossed crossed
+anchor	818005	5	E1	4	0.1	0.5140625	returned	TRUE	TRUE	-0.087540627437667	0.806380270999833	0.352217673343583	matched crossed crossed
+anchor	818005	5	E1	5	0.15	0.5140625	returned	TRUE	TRUE	-0.380709810058859	0.612820463378641	0.114224271972391	matched crossed crossed
+anchor	818005	5	E1	6	-0.15	0.5140625	returned	TRUE	TRUE	-1.16545412939337	-0.145556668455871	-0.644274930174621	matched crossed crossed
+anchor	818005	5	E1	7	0.05	0.5140625	returned	TRUE	TRUE	-0.196760800570656	0.742448183804344	0.268021914273094	matched crossed crossed
+anchor	818005	5	E1	8	-0.05	0.5140625	returned	TRUE	TRUE	-0.542774002228936	0.339061935271064	-0.0998418733226861	matched crossed crossed
+anchor	818005	5	E2	1	0.9	0.5140625	R-ENV	NA	FALSE	NA	NA	0.542168810602252	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818005	5	E2	2	-0.6	0.5140625	R-ENV	NA	FALSE	NA	NA	-0.792157902871132	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818005	5	E2	3	0.45	0.5140625	R-ENV	NA	FALSE	NA	NA	-0.196566676299349	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818005	5	E2	4	0.7	0.5140625	R-ENV	NA	FALSE	NA	NA	-0.000816433528794603	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818005	5	E2	5	-0.5	0.5140625	R-ENV	NA	FALSE	NA	NA	-0.805311196071914	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818005	5	E2	6	0.55	0.5140625	R-ENV	NA	FALSE	NA	NA	0.787876420816677	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818005	5	E2	7	-0.4	0.5140625	R-ENV	NA	FALSE	NA	NA	-0.545868759274984	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818005	5	E2	8	0.65	0.5140625	R-ENV	NA	FALSE	NA	NA	-0.0610329991686491	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818006	6	E1	1	0	0.525	returned	TRUE	TRUE	-1.05315305703147	0.0219201851560255	-0.507559795312725	matched crossed crossed
+anchor	818006	6	E1	2	0.25	0.525	returned	FALSE	TRUE	0.513718010611985	1.65190160436198	1.06419408483073	matched crossed crossed
+anchor	818006	6	E1	3	-0.25	0.525	returned	TRUE	TRUE	-0.820205921753654	0.0878751329338459	-0.359085316284904	matched crossed crossed
+anchor	818006	6	E1	4	0.1	0.525	returned	TRUE	TRUE	-0.18831408355257	0.69938122894743	0.25046765472868	matched crossed crossed
+anchor	818006	6	E1	5	0.15	0.525	returned	TRUE	TRUE	-0.246605583157275	0.672705940280225	0.209143928561475	matched crossed crossed
+anchor	818006	6	E1	6	-0.15	0.525	returned	TRUE	TRUE	-0.60823442021387	0.48466108759863	-0.0611763147451202	matched crossed crossed
+anchor	818006	6	E1	7	0.05	0.525	returned	TRUE	TRUE	-0.243036398082958	0.660528055042042	0.204778543323292	matched crossed crossed
+anchor	818006	6	E1	8	-0.05	0.525	returned	TRUE	TRUE	-0.300712261085037	0.632026996727463	0.162727680321213	matched crossed crossed
+anchor	818006	6	E2	1	0.9	0.525	R-ENV	NA	FALSE	NA	NA	1.08583885606324	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818006	6	E2	2	-0.6	0.525	R-ENV	NA	FALSE	NA	NA	-1.10875424784747	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818006	6	E2	3	0.45	0.525	R-ENV	NA	FALSE	NA	NA	0.29346492767084	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818006	6	E2	4	0.7	0.525	R-ENV	NA	FALSE	NA	NA	-0.0657382652068317	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818006	6	E2	5	-0.5	0.525	R-ENV	NA	FALSE	NA	NA	-0.461271600477376	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818006	6	E2	6	0.55	0.525	R-ENV	NA	FALSE	NA	NA	1.19128747500729	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818006	6	E2	7	-0.4	0.525	R-ENV	NA	FALSE	NA	NA	-0.338903482569901	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818006	6	E2	8	0.65	0.525	R-ENV	NA	FALSE	NA	NA	0.555205943991129	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818007	7	E1	1	0	0.5125	returned	TRUE	TRUE	-0.661221261082314	0.318759207667686	-0.168240304051064	matched crossed crossed
+anchor	818007	7	E1	2	0.25	0.5125	returned	TRUE	TRUE	-0.392288745499559	0.494674145125441	0.0501551021566909	matched crossed crossed
+anchor	818007	7	E1	3	-0.25	0.5125	returned	TRUE	TRUE	-0.614477060250434	0.297388174124566	-0.155553720406684	matched crossed crossed
+anchor	818007	7	E1	4	0.1	0.5125	returned	TRUE	TRUE	-0.254488760101487	0.734036630523513	0.235928720367263	matched crossed crossed
+anchor	818007	7	E1	5	0.15	0.5125	returned	TRUE	TRUE	-0.197207429041417	0.749447844396083	0.271115324864833	matched crossed crossed
+anchor	818007	7	E1	6	-0.15	0.5125	returned	TRUE	TRUE	-0.6285079634215	0.393830903766	-0.11538540482775	matched crossed crossed
+anchor	818007	7	E1	7	0.05	0.5125	returned	TRUE	TRUE	-0.278603229912167	0.776206340400333	0.244773234931583	matched crossed crossed
+anchor	818007	7	E1	8	-0.05	0.5125	returned	TRUE	TRUE	-0.364955954415035	0.600009865897465	0.115695901053715	matched crossed crossed
+anchor	818007	7	E2	1	0.9	0.5125	R-ENV	NA	FALSE	NA	NA	0.791811385089229	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818007	7	E2	2	-0.6	0.5125	R-ENV	NA	FALSE	NA	NA	-0.201500093751545	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818007	7	E2	3	0.45	0.5125	R-ENV	NA	FALSE	NA	NA	0.425255108429695	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818007	7	E2	4	0.7	0.5125	R-ENV	NA	FALSE	NA	NA	0.822202253977456	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818007	7	E2	5	-0.5	0.5125	R-ENV	NA	FALSE	NA	NA	-0.61297669389843	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818007	7	E2	6	0.55	0.5125	R-ENV	NA	FALSE	NA	NA	0.965247439125599	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818007	7	E2	7	-0.4	0.5125	R-ENV	NA	FALSE	NA	NA	-1.06901953263833	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818007	7	E2	8	0.65	0.5125	R-ENV	NA	FALSE	NA	NA	0.732334748649079	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818008	8	E1	1	0	0.5140625	returned	TRUE	TRUE	-0.570466902236679	0.354215714950821	-0.106172468642929	matched crossed crossed
+anchor	818008	8	E1	2	0.25	0.5140625	returned	TRUE	TRUE	-0.248255628090483	0.687169176597017	0.215550524253267	matched crossed crossed
+anchor	818008	8	E1	3	-0.25	0.5140625	returned	TRUE	TRUE	-0.943091513167378	0.216576455582622	-0.357459188948628	matched crossed crossed
+anchor	818008	8	E1	4	0.1	0.5140625	returned	TRUE	TRUE	-0.313459875977548	0.966569420897452	0.320756432616202	matched crossed crossed
+anchor	818008	8	E1	5	0.15	0.5140625	returned	TRUE	TRUE	-0.141147340632008	0.871792112492992	0.359279905461742	matched crossed crossed
+anchor	818008	8	E1	6	-0.15	0.5140625	returned	TRUE	TRUE	-0.59410211649067	0.28858831319683	-0.14970514383442	matched crossed crossed
+anchor	818008	8	E1	7	0.05	0.5140625	returned	TRUE	TRUE	-0.0874795212517121	0.809615205310788	0.353865693592038	matched crossed crossed
+anchor	818008	8	E1	8	-0.05	0.5140625	returned	TRUE	TRUE	-0.544248392501789	0.340028951248211	-0.100095560470539	matched crossed crossed
+anchor	818008	8	E2	1	0.9	0.5140625	R-ENV	NA	FALSE	NA	NA	0.528489655084388	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818008	8	E2	2	-0.6	0.5140625	R-ENV	NA	FALSE	NA	NA	-0.573361283686042	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818008	8	E2	3	0.45	0.5140625	R-ENV	NA	FALSE	NA	NA	1.42809509774094	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818008	8	E2	4	0.7	0.5140625	R-ENV	NA	FALSE	NA	NA	1.77225724748613	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818008	8	E2	5	-0.5	0.5140625	R-ENV	NA	FALSE	NA	NA	-0.915328904872119	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818008	8	E2	6	0.55	0.5140625	R-ENV	NA	FALSE	NA	NA	0.0307322309462822	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818008	8	E2	7	-0.4	0.5140625	R-ENV	NA	FALSE	NA	NA	-0.139864968234924	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818008	8	E2	8	0.65	0.5140625	R-ENV	NA	FALSE	NA	NA	0.139707530511742	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818009	9	E1	1	0	0.496875	returned	TRUE	TRUE	-0.640729936897837	0.308122602164663	-0.163373979866587	matched crossed crossed
+anchor	818009	9	E1	2	0.25	0.496875	returned	TRUE	TRUE	-0.403033028736017	0.507977713451483	0.0514957798577334	matched crossed crossed
+anchor	818009	9	E1	3	-0.25	0.496875	returned	TRUE	TRUE	-0.491034942371124	0.389336151378876	-0.0498117978398743	matched crossed crossed
+anchor	818009	9	E1	4	0.1	0.496875	returned	TRUE	TRUE	-0.44242816786131	0.44270366807619	0.000137750107440288	matched crossed crossed
+anchor	818009	9	E1	5	0.15	0.496875	returned	TRUE	TRUE	-0.354794092619739	0.752627782380261	0.195926122224011	matched crossed crossed
+anchor	818009	9	E1	6	-0.15	0.496875	returned	TRUE	TRUE	-0.73697957445593	0.452473550544069	-0.140238851799681	matched crossed crossed
+anchor	818009	9	E1	7	0.05	0.496875	returned	TRUE	TRUE	-0.346073569130023	0.554561196494977	0.102229653526227	matched crossed crossed
+anchor	818009	9	E1	8	-0.05	0.496875	returned	TRUE	TRUE	-0.579639582335879	0.360912175476621	-0.107410578429629	matched crossed crossed
+anchor	818009	9	E2	1	0.9	0.496875	R-ENV	NA	FALSE	NA	NA	0.64276710074523	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818009	9	E2	2	-0.6	0.496875	R-ENV	NA	FALSE	NA	NA	-0.432411291053053	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818009	9	E2	3	0.45	0.496875	R-ENV	NA	FALSE	NA	NA	0.0140142680071781	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818009	9	E2	4	0.7	0.496875	R-ENV	NA	FALSE	NA	NA	0.174336705468739	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818009	9	E2	5	-0.5	0.496875	R-ENV	NA	FALSE	NA	NA	-1.2350625314622	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818009	9	E2	6	0.55	0.496875	R-ENV	NA	FALSE	NA	NA	1.47426512559417	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818009	9	E2	7	-0.4	0.496875	R-ENV	NA	FALSE	NA	NA	-0.343885151335194	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818009	9	E2	8	0.65	0.496875	R-ENV	NA	FALSE	NA	NA	0.606662828339431	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818010	10	E1	1	0	0.4953125	returned	TRUE	TRUE	-0.42183895915043	0.54276065022457	0.0595453181933199	matched crossed crossed
+anchor	818010	10	E1	2	0.25	0.4953125	returned	TRUE	TRUE	-0.404340729287773	0.509111419149727	0.0514087824309767	matched crossed crossed
+anchor	818010	10	E1	3	-0.25	0.4953125	returned	TRUE	TRUE	-0.650288139231981	0.239482368580519	-0.201374565013231	matched crossed crossed
+anchor	818010	10	E1	4	0.1	0.4953125	returned	TRUE	TRUE	-1.0331978560587	0.156499409566296	-0.431452250589954	matched crossed crossed
+anchor	818010	10	E1	5	0.15	0.4953125	returned	TRUE	TRUE	-0.611585989147056	0.463609323352944	-0.0728286649283055	matched crossed crossed
+anchor	818010	10	E1	6	-0.15	0.4953125	returned	TRUE	TRUE	-0.739646578643516	0.351295804168984	-0.191123629424766	matched crossed crossed
+anchor	818010	10	E1	7	0.05	0.4953125	returned	TRUE	TRUE	-0.293274449983296	0.605040979704204	0.152953577360454	matched crossed crossed
+anchor	818010	10	E1	8	-0.05	0.4953125	returned	TRUE	TRUE	-0.137824861526626	0.770378263473374	0.310234220504624	matched crossed crossed
+anchor	818010	10	E2	1	0.9	0.4953125	R-ENV	NA	FALSE	NA	NA	0.74790620830123	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818010	10	E2	2	-0.6	0.4953125	R-ENV	NA	FALSE	NA	NA	-0.459641529600601	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818010	10	E2	3	0.45	0.4953125	R-ENV	NA	FALSE	NA	NA	0.182775283158582	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818010	10	E2	4	0.7	0.4953125	R-ENV	NA	FALSE	NA	NA	1.51186625553316	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818010	10	E2	5	-0.5	0.4953125	R-ENV	NA	FALSE	NA	NA	-1.18048133036172	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818010	10	E2	6	0.55	0.4953125	R-ENV	NA	FALSE	NA	NA	1.22648142400449	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818010	10	E2	7	-0.4	0.4953125	R-ENV	NA	FALSE	NA	NA	-0.315317327031271	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818010	10	E2	8	0.65	0.4953125	R-ENV	NA	FALSE	NA	NA	0.340060151925739	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818011	11	E1	1	0	0.4625	returned	TRUE	TRUE	-0.338821229842246	0.542282285782754	0.0997163678140039	matched crossed crossed
+anchor	818011	11	E1	2	0.25	0.4625	returned	TRUE	TRUE	-0.543980584773052	0.428187383976948	-0.0568590027418021	matched crossed crossed
+anchor	818011	11	E1	3	-0.25	0.4625	returned	FALSE	TRUE	-1.24711785234388	-0.252733086718879	-0.735948418750129	matched crossed crossed
+anchor	818011	11	E1	4	0.1	0.4625	returned	TRUE	TRUE	-0.729810551869167	0.193041010630833	-0.263440922962917	matched crossed crossed
+anchor	818011	11	E1	5	0.15	0.4625	returned	TRUE	TRUE	-0.2531642475318	0.7038670024682	0.22150616262445	matched crossed crossed
+anchor	818011	11	E1	6	-0.15	0.4625	returned	TRUE	TRUE	-0.828616383696224	0.142086741303776	-0.337466481352474	matched crossed crossed
+anchor	818011	11	E1	7	0.05	0.4625	returned	TRUE	TRUE	-0.594576916720865	0.288845934841635	-0.149813733127115	matched crossed crossed
+anchor	818011	11	E1	8	-0.05	0.4625	returned	TRUE	TRUE	-0.744422537222386	0.445152658090114	-0.147681814566136	matched crossed crossed
+anchor	818011	11	E2	1	0.9	0.4625	R-ENV	NA	FALSE	NA	NA	0.0198112567979668	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818011	11	E2	2	-0.6	0.4625	R-ENV	NA	FALSE	NA	NA	-0.754753784488955	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818011	11	E2	3	0.45	0.4625	R-ENV	NA	FALSE	NA	NA	0.638013174860634	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818011	11	E2	4	0.7	0.4625	R-ENV	NA	FALSE	NA	NA	0.466565831231288	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818011	11	E2	5	-0.5	0.4625	R-ENV	NA	FALSE	NA	NA	-0.669460569838836	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818011	11	E2	6	0.55	0.4625	R-ENV	NA	FALSE	NA	NA	0.708354982454813	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818011	11	E2	7	-0.4	0.4625	R-ENV	NA	FALSE	NA	NA	0.074001386695386	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818011	11	E2	8	0.65	0.4625	R-ENV	NA	FALSE	NA	NA	1.45450186489802	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818012	12	E1	1	0	0.5390625	returned	TRUE	TRUE	-0.0887716652863092	0.901706850338691	0.399570619869941	matched crossed crossed
+anchor	818012	12	E1	2	0.25	0.5390625	returned	TRUE	TRUE	-0.0833397014724017	0.907627095402598	0.405246724308848	matched crossed crossed
+anchor	818012	12	E1	3	-0.25	0.5390625	returned	TRUE	TRUE	-0.750159737216124	0.260948661221376	-0.240699287997374	matched crossed crossed
+anchor	818012	12	E1	4	0.1	0.5390625	returned	FALSE	TRUE	0.440119856856996	1.4165602865445	0.907588118575746	matched crossed crossed
+anchor	818012	12	E1	5	0.15	0.5390625	returned	FALSE	TRUE	-0.930890406761518	0.0328547104259816	-0.440961207542768	matched crossed crossed
+anchor	818012	12	E1	6	-0.15	0.5390625	returned	TRUE	TRUE	-0.347003568247959	0.555462252064541	0.102276216908291	matched crossed crossed
+anchor	818012	12	E1	7	0.05	0.5390625	returned	TRUE	TRUE	-0.721686175261013	0.192498395051487	-0.259589007292263	matched crossed crossed
+anchor	818012	12	E1	8	-0.05	0.5390625	returned	FALSE	TRUE	0.0309952367949657	1.05748449460747	0.535084592263716	matched crossed crossed
+anchor	818012	12	E2	1	0.9	0.5390625	R-ENV	NA	FALSE	NA	NA	0.769880629483325	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818012	12	E2	2	-0.6	0.5390625	R-ENV	NA	FALSE	NA	NA	-0.773374526784915	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818012	12	E2	3	0.45	0.5390625	R-ENV	NA	FALSE	NA	NA	0.884827278634787	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818012	12	E2	4	0.7	0.5390625	R-ENV	NA	FALSE	NA	NA	0.14097150885082	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818012	12	E2	5	-0.5	0.5390625	R-ENV	NA	FALSE	NA	NA	-0.630631452167925	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818012	12	E2	6	0.55	0.5390625	R-ENV	NA	FALSE	NA	NA	0.354563044540445	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818012	12	E2	7	-0.4	0.5390625	R-ENV	NA	FALSE	NA	NA	-0.400436076852908	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818012	12	E2	8	0.65	0.5390625	R-ENV	NA	FALSE	NA	NA	0.87727761983853	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818013	13	E1	1	0	0.49375	returned	TRUE	TRUE	-0.147649217338357	0.866633009224143	0.353754591255393	matched crossed crossed
+anchor	818013	13	E1	2	0.25	0.49375	returned	TRUE	TRUE	-0.0881417194761992	0.843743046148801	0.370781620367551	matched crossed crossed
+anchor	818013	13	E1	3	-0.25	0.49375	returned	TRUE	TRUE	-1.0930268476153	-0.168588371052801	-0.617624015584051	matched crossed crossed
+anchor	818013	13	E1	4	0.1	0.49375	returned	TRUE	TRUE	-0.365353846009178	0.588991857115822	0.109926915709572	matched crossed crossed
+anchor	818013	13	E1	5	0.15	0.49375	returned	FALSE	TRUE	-0.885091080053058	0.0884196621344422	-0.391499771459308	matched crossed crossed
+anchor	818013	13	E1	6	-0.15	0.49375	returned	TRUE	TRUE	-0.491030844533479	0.389340249216521	-0.0498077000022287	matched crossed crossed
+anchor	818013	13	E1	7	0.05	0.49375	returned	TRUE	TRUE	-0.441534748004209	0.441643962933291	5.4607464540714e-05	matched crossed crossed
+anchor	818013	13	E1	8	-0.05	0.49375	returned	TRUE	TRUE	-0.419015388940437	0.530203361059563	0.0546784587158131	matched crossed crossed
+anchor	818013	13	E2	1	0.9	0.49375	R-ENV	NA	FALSE	NA	NA	0.841278378712178	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818013	13	E2	2	-0.6	0.49375	R-ENV	NA	FALSE	NA	NA	-0.46104857114177	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818013	13	E2	3	0.45	0.49375	R-ENV	NA	FALSE	NA	NA	0.087234406255825	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818013	13	E2	4	0.7	0.49375	R-ENV	NA	FALSE	NA	NA	0.639227754861732	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818013	13	E2	5	-0.5	0.49375	R-ENV	NA	FALSE	NA	NA	-0.671933673809848	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818013	13	E2	6	0.55	0.49375	R-ENV	NA	FALSE	NA	NA	-0.0230858921829228	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818013	13	E2	7	-0.4	0.49375	R-ENV	NA	FALSE	NA	NA	-0.1293045522979	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818013	13	E2	8	0.65	0.49375	R-ENV	NA	FALSE	NA	NA	0.619887012255214	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818014	14	E1	1	0	0.475	returned	FALSE	TRUE	-1.03667725255282	-0.0764721744278247	-0.546259772084075	matched crossed crossed
+anchor	818014	14	E1	2	0.25	0.475	returned	TRUE	TRUE	0.14490735620755	1.38416516870755	0.7530006179263	matched crossed crossed
+anchor	818014	14	E1	3	-0.25	0.475	returned	TRUE	TRUE	-1.26524241294853	-0.173201397323529	-0.707564190292279	matched crossed crossed
+anchor	818014	14	E1	4	0.1	0.475	returned	TRUE	TRUE	-0.356082887861111	0.583614377763889	0.111751584795139	matched crossed crossed
+anchor	818014	14	E1	5	0.15	0.475	returned	TRUE	TRUE	-0.189914395173548	0.706203768888952	0.253139804045202	matched crossed crossed
+anchor	818014	14	E1	6	-0.15	0.475	returned	TRUE	TRUE	-0.643110988165569	0.311967136834431	-0.162703273321819	matched crossed crossed
+anchor	818014	14	E1	7	0.05	0.475	returned	TRUE	TRUE	-0.699672902474797	0.188510691275203	-0.250515187631047	matched crossed crossed
+anchor	818014	14	E1	8	-0.05	0.475	returned	TRUE	TRUE	-0.699598838704231	0.255845497233269	-0.218092491047981	matched crossed crossed
+anchor	818014	14	E2	1	0.9	0.475	R-ENV	NA	FALSE	NA	NA	0.572602562013673	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818014	14	E2	2	-0.6	0.475	R-ENV	NA	FALSE	NA	NA	-1.57036632809779	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818014	14	E2	3	0.45	0.475	R-ENV	NA	FALSE	NA	NA	1.10741597910221	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818014	14	E2	4	0.7	0.475	R-ENV	NA	FALSE	NA	NA	0.607403310368164	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818014	14	E2	5	-0.5	0.475	R-ENV	NA	FALSE	NA	NA	-0.236469531510093	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818014	14	E2	6	0.55	0.475	R-ENV	NA	FALSE	NA	NA	0.680134786659453	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818014	14	E2	7	-0.4	0.475	R-ENV	NA	FALSE	NA	NA	0.0795874653057131	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818014	14	E2	8	0.65	0.475	R-ENV	NA	FALSE	NA	NA	0.672632633043937	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818015	15	E1	1	0	0.465625	returned	TRUE	TRUE	-0.710792207417876	0.190208769144624	-0.255286836324126	matched crossed crossed
+anchor	818015	15	E1	2	0.25	0.465625	returned	TRUE	TRUE	-0.34289911078338	0.54931280327912	0.10125372124787	matched crossed crossed
+anchor	818015	15	E1	3	-0.25	0.465625	returned	TRUE	TRUE	-0.894740456149487	0.0348249735380125	-0.421901100680737	matched crossed crossed
+anchor	818015	15	E1	4	0.1	0.465625	returned	TRUE	TRUE	-0.476177766992148	0.601825162695352	0.0618471353516021	matched crossed crossed
+anchor	818015	15	E1	5	0.15	0.465625	returned	TRUE	TRUE	-0.389324990395286	0.490924033042214	0.0498229588234637	matched crossed crossed
+anchor	818015	15	E1	6	-0.15	0.465625	returned	TRUE	TRUE	-0.497183753378482	0.494881676309018	-0.00115103853473211	matched crossed crossed
+anchor	818015	15	E1	7	0.05	0.465625	returned	TRUE	TRUE	-0.760569592260539	0.199513415551961	-0.275645275854289	matched crossed crossed
+anchor	818015	15	E1	8	-0.05	0.465625	returned	TRUE	TRUE	-0.881075544670368	0.035794572517132	-0.414461775139118	matched crossed crossed
+anchor	818015	15	E2	1	0.9	0.465625	R-ENV	NA	FALSE	NA	NA	0.281092119885236	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818015	15	E2	2	-0.6	0.465625	R-ENV	NA	FALSE	NA	NA	-0.248886781331857	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818015	15	E2	3	0.45	0.465625	R-ENV	NA	FALSE	NA	NA	0.424562042145211	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818015	15	E2	4	0.7	0.465625	R-ENV	NA	FALSE	NA	NA	1.08402484757884	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818015	15	E2	5	-0.5	0.465625	R-ENV	NA	FALSE	NA	NA	-0.00936429612479607	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818015	15	E2	6	0.55	0.465625	R-ENV	NA	FALSE	NA	NA	0.805896465011794	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818015	15	E2	7	-0.4	0.465625	R-ENV	NA	FALSE	NA	NA	-0.648922660784008	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818015	15	E2	8	0.65	0.465625	R-ENV	NA	FALSE	NA	NA	0.326024119477109	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818016	16	E1	1	0	0.4796875	returned	TRUE	TRUE	-0.444631423869337	0.565378341755663	0.0593358612869127	matched crossed crossed
+anchor	818016	16	E1	2	0.25	0.4796875	returned	TRUE	TRUE	-0.142053634090356	0.814123123722144	0.330175369815894	matched crossed crossed
+anchor	818016	16	E1	3	-0.25	0.4796875	returned	FALSE	TRUE	-1.77911495887941	-0.690858122941908	-1.20935177528566	matched crossed crossed
+anchor	818016	16	E1	4	0.1	0.4796875	returned	TRUE	TRUE	-0.646240906977976	0.238280577397024	-0.199890809321726	matched crossed crossed
+anchor	818016	16	E1	5	0.15	0.4796875	returned	TRUE	TRUE	-0.518734585762644	0.518985140799856	0.000247347831106465	matched crossed crossed
+anchor	818016	16	E1	6	-0.15	0.4796875	returned	TRUE	TRUE	-0.646641045498585	0.309535712313915	-0.165745049404835	matched crossed crossed
+anchor	818016	16	E1	7	0.05	0.4796875	returned	TRUE	TRUE	-0.306168472499707	0.637923324375293	0.163008773594043	matched crossed crossed
+anchor	818016	16	E1	8	-0.05	0.4796875	returned	TRUE	TRUE	-0.243599862361699	0.664603262638301	0.206534414982051	matched crossed crossed
+anchor	818016	16	E2	1	0.9	0.4796875	R-ENV	NA	FALSE	NA	NA	0.898267251610387	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818016	16	E2	2	-0.6	0.4796875	R-ENV	NA	FALSE	NA	NA	-0.634540065595416	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818016	16	E2	3	0.45	0.4796875	R-ENV	NA	FALSE	NA	NA	0.694025685095543	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818016	16	E2	4	0.7	0.4796875	R-ENV	NA	FALSE	NA	NA	-0.00738898598404221	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818016	16	E2	5	-0.5	0.4796875	R-ENV	NA	FALSE	NA	NA	-0.99655911887561	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818016	16	E2	6	0.55	0.4796875	R-ENV	NA	FALSE	NA	NA	0.669619534851786	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818016	16	E2	7	-0.4	0.4796875	R-ENV	NA	FALSE	NA	NA	-0.610501453089645	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818016	16	E2	8	0.65	0.4796875	R-ENV	NA	FALSE	NA	NA	-0.37578234433961	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818017	17	E1	1	0	0.53125	returned	TRUE	TRUE	-0.580075786203846	0.556398823171154	-0.0121436572975957	matched crossed crossed
+anchor	818017	17	E1	2	0.25	0.53125	returned	TRUE	TRUE	0.0035011087219935	1.10018079622199	0.543357065753243	matched crossed crossed
+anchor	818017	17	E1	3	-0.25	0.53125	returned	TRUE	TRUE	-0.580683925190382	0.356694004497118	-0.110163905659132	matched crossed crossed
+anchor	818017	17	E1	4	0.1	0.53125	returned	TRUE	TRUE	-0.449474261104592	0.562854840457908	0.0554695865516584	matched crossed crossed
+anchor	818017	17	E1	5	0.15	0.53125	returned	TRUE	TRUE	-0.134457327772522	0.871768258164978	0.362796090196228	matched crossed crossed
+anchor	818017	17	E1	6	-0.15	0.53125	returned	TRUE	TRUE	-0.456243344714764	0.455621889660236	-0.000371762683513818	matched crossed crossed
+anchor	818017	17	E1	7	0.05	0.53125	returned	TRUE	TRUE	-0.250140044667069	0.716290619395431	0.229291107676681	matched crossed crossed
+anchor	818017	17	E1	8	-0.05	0.53125	returned	TRUE	TRUE	-0.313725267087696	0.656977857912304	0.168513502443554	matched crossed crossed
+anchor	818017	17	E2	1	0.9	0.53125	R-ENV	NA	FALSE	NA	NA	1.42042198347255	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818017	17	E2	2	-0.6	0.53125	R-ENV	NA	FALSE	NA	NA	-1.23398796665671	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818017	17	E2	3	0.45	0.53125	R-ENV	NA	FALSE	NA	NA	0.616812057481033	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818017	17	E2	4	0.7	0.53125	R-ENV	NA	FALSE	NA	NA	0.974111361178981	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818017	17	E2	5	-0.5	0.53125	R-ENV	NA	FALSE	NA	NA	-0.913672788697435	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818017	17	E2	6	0.55	0.53125	R-ENV	NA	FALSE	NA	NA	0.458883342750343	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818017	17	E2	7	-0.4	0.53125	R-ENV	NA	FALSE	NA	NA	-0.755128949226571	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818017	17	E2	8	0.65	0.53125	R-ENV	NA	FALSE	NA	NA	0.780999978509921	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818018	18	E1	1	0	0.515625	returned	TRUE	TRUE	-0.449344739470809	0.57946385427919	0.0638998894354407	matched crossed crossed
+anchor	818018	18	E1	2	0.25	0.515625	returned	TRUE	TRUE	-0.149345883205677	0.897651187106823	0.368293276950573	matched crossed crossed
+anchor	818018	18	E1	3	-0.25	0.515625	returned	TRUE	TRUE	-0.922024502498495	-0.0145537993734947	-0.458828701717245	matched crossed crossed
+anchor	818018	18	E1	4	0.1	0.515625	returned	TRUE	TRUE	-0.454334586855768	0.455821663144232	0.000682502987981664	matched crossed crossed
+anchor	818018	18	E1	5	0.15	0.515625	returned	FALSE	TRUE	0.188841383964189	1.33520368865169	0.750059645682939	matched crossed crossed
+anchor	818018	18	E1	6	-0.15	0.515625	returned	TRUE	TRUE	-0.861425731922983	0.0370117680770168	-0.403845165516733	matched crossed crossed
+anchor	818018	18	E1	7	0.05	0.515625	returned	TRUE	TRUE	-0.395633636536049	0.498531402526451	0.0504723204952008	matched crossed crossed
+anchor	818018	18	E1	8	-0.05	0.515625	returned	FALSE	TRUE	-0.0331175018504267	0.899377615337073	0.425073416118323	matched crossed crossed
+anchor	818018	18	E2	1	0.9	0.515625	R-ENV	NA	FALSE	NA	NA	0.9648819751032	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818018	18	E2	2	-0.6	0.515625	R-ENV	NA	FALSE	NA	NA	-0.998248358708802	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818018	18	E2	3	0.45	0.515625	R-ENV	NA	FALSE	NA	NA	-0.155023613515087	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818018	18	E2	4	0.7	0.515625	R-ENV	NA	FALSE	NA	NA	0.422963724305469	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818018	18	E2	5	-0.5	0.515625	R-ENV	NA	FALSE	NA	NA	-1.24070146953039	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818018	18	E2	6	0.55	0.515625	R-ENV	NA	FALSE	NA	NA	0.0172868666628774	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818018	18	E2	7	-0.4	0.515625	R-ENV	NA	FALSE	NA	NA	-0.284719533488506	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818018	18	E2	8	0.65	0.515625	R-ENV	NA	FALSE	NA	NA	0.454690210288844	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818019	19	E1	1	0	0.4921875	returned	TRUE	TRUE	-0.197735020600684	0.775653651274316	0.284015467680566	matched crossed crossed
+anchor	818019	19	E1	2	0.25	0.4921875	returned	TRUE	TRUE	-0.532049805711448	0.530206053663552	-0.000860840867697748	matched crossed crossed
+anchor	818019	19	E1	3	-0.25	0.4921875	returned	TRUE	TRUE	-0.780803851474285	0.139240093838215	-0.314800433505535	matched crossed crossed
+anchor	818019	19	E1	4	0.1	0.4921875	returned	TRUE	TRUE	-0.767920855801215	0.268334027011285	-0.245765094082465	matched crossed crossed
+anchor	818019	19	E1	5	0.15	0.4921875	returned	TRUE	TRUE	-0.573602735975849	0.355230271836651	-0.107233107069599	matched crossed crossed
+anchor	818019	19	E1	6	-0.15	0.4921875	returned	FALSE	TRUE	-0.0862116103169865	0.839813780308013	0.369782042026763	matched crossed crossed
+anchor	818019	19	E1	7	0.05	0.4921875	returned	TRUE	TRUE	-0.522558725415592	0.412133657396908	-0.054235971509342	matched crossed crossed
+anchor	818019	19	E1	8	-0.05	0.4921875	returned	TRUE	TRUE	-0.745073447247125	0.262739052752876	-0.237199912090874	matched crossed crossed
+anchor	818019	19	E2	1	0.9	0.4921875	R-ENV	NA	FALSE	NA	NA	0.746415412956879	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818019	19	E2	2	-0.6	0.4921875	R-ENV	NA	FALSE	NA	NA	-1.11171054329251	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818019	19	E2	3	0.45	0.4921875	R-ENV	NA	FALSE	NA	NA	0.432249203082947	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818019	19	E2	4	0.7	0.4921875	R-ENV	NA	FALSE	NA	NA	1.00772552970391	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818019	19	E2	5	-0.5	0.4921875	R-ENV	NA	FALSE	NA	NA	-0.547446440139759	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818019	19	E2	6	0.55	0.4921875	R-ENV	NA	FALSE	NA	NA	0.449066800298452	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818019	19	E2	7	-0.4	0.4921875	R-ENV	NA	FALSE	NA	NA	-0.585264365718226	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818019	19	E2	8	0.65	0.4921875	R-ENV	NA	FALSE	NA	NA	0.901088210688859	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818020	20	E1	1	0	0.49375	returned	FALSE	TRUE	-5.61235206839408	-0.664842302769082	-2.82225197073783	matched crossed crossed
+anchor	818020	20	E1	2	0.25	0.49375	returned	TRUE	TRUE	0.0388827774065291	0.953921839906529	0.487796351625279	matched crossed crossed
+anchor	818020	20	E1	3	-0.25	0.49375	returned	TRUE	TRUE	-0.754340497061297	0.141411456063703	-0.300544110342547	matched crossed crossed
+anchor	818020	20	E1	4	0.1	0.49375	returned	TRUE	TRUE	-0.431966550991327	0.451334230258673	0.00950073416492272	matched crossed crossed
+anchor	818020	20	E1	5	0.15	0.49375	returned	TRUE	TRUE	-0.283159703355237	0.600263148207263	0.155499964613513	matched crossed crossed
+anchor	818020	20	E1	6	-0.15	0.49375	returned	TRUE	TRUE	-0.810724440317389	0.088811692495111	-0.353998366098639	matched crossed crossed
+anchor	818020	20	E1	7	0.05	0.49375	returned	TRUE	TRUE	-0.302541454793493	0.592111865519007	0.143320361612757	matched crossed crossed
+anchor	818020	20	E1	8	-0.05	0.49375	returned	TRUE	TRUE	-0.382335328889728	0.500110960172772	0.0577891828290223	matched crossed crossed
+anchor	818020	20	E2	1	0.9	0.49375	R-ENV	NA	FALSE	NA	NA	17.5242117515127	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818020	20	E2	2	-0.6	0.49375	R-ENV	NA	FALSE	NA	NA	-0.675406203741879	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818020	20	E2	3	0.45	0.49375	R-ENV	NA	FALSE	NA	NA	0.396444341154473	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818020	20	E2	4	0.7	0.49375	R-ENV	NA	FALSE	NA	NA	0.291935238989231	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818020	20	E2	5	-0.5	0.49375	R-ENV	NA	FALSE	NA	NA	0.153866915550533	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818020	20	E2	6	0.55	0.49375	R-ENV	NA	FALSE	NA	NA	0.400585160384053	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818020	20	E2	7	-0.4	0.49375	R-ENV	NA	FALSE	NA	NA	-0.750435091611443	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818020	20	E2	8	0.65	0.49375	R-ENV	NA	FALSE	NA	NA	0.227425521998452	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818021	21	E1	1	0	0.503125	returned	TRUE	TRUE	-0.447869269236188	0.448248894826312	0.000189812795062309	matched crossed crossed
+anchor	818021	21	E1	2	0.25	0.503125	returned	TRUE	TRUE	0.0654418426383149	0.977307077013315	0.510693307482065	matched crossed crossed
+anchor	818021	21	E1	3	-0.25	0.503125	returned	TRUE	TRUE	-0.499161339420739	0.395736121516761	-0.0507360464519893	matched crossed crossed
+anchor	818021	21	E1	4	0.1	0.503125	returned	TRUE	TRUE	-0.635597096865186	0.493187082822314	-0.0703505148339359	matched crossed crossed
+anchor	818021	21	E1	5	0.15	0.503125	returned	TRUE	TRUE	-0.444371252066002	0.444666833871498	0.000147790902748078	matched crossed crossed
+anchor	818021	21	E1	6	-0.15	0.503125	returned	TRUE	TRUE	-0.483716209682337	0.484057227817663	0.000109473911413084	matched crossed crossed
+anchor	818021	21	E1	7	0.05	0.503125	returned	TRUE	TRUE	-0.485607444908632	0.485339820716368	-7.27769398823268e-05	matched crossed crossed
+anchor	818021	21	E1	8	-0.05	0.503125	returned	TRUE	TRUE	-0.990679275698847	0.146527755551153	-0.415667068667597	matched crossed crossed
+anchor	818021	21	E2	1	0.9	0.503125	R-ENV	NA	FALSE	NA	NA	0.313325917293776	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818021	21	E2	2	-0.6	0.503125	R-ENV	NA	FALSE	NA	NA	-0.127995550692611	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818021	21	E2	3	0.45	0.503125	R-ENV	NA	FALSE	NA	NA	0.296974505484603	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818021	21	E2	4	0.7	0.503125	R-ENV	NA	FALSE	NA	NA	1.3101482688144	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818021	21	E2	5	-0.5	0.503125	R-ENV	NA	FALSE	NA	NA	0.232288695650847	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818021	21	E2	6	0.55	0.503125	R-ENV	NA	FALSE	NA	NA	0.745058132182932	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818021	21	E2	7	-0.4	0.503125	R-ENV	NA	FALSE	NA	NA	-0.75988387495045	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818021	21	E2	8	0.65	0.503125	R-ENV	NA	FALSE	NA	NA	1.30933183177671	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818022	22	E1	1	0	0.490625	returned	TRUE	TRUE	-0.874038585884562	0.208725085990438	-0.327712902290812	matched crossed crossed
+anchor	818022	22	E1	2	0.25	0.490625	returned	TRUE	TRUE	-0.142144250612198	0.889594030637803	0.367926550169052	matched crossed crossed
+anchor	818022	22	E1	3	-0.25	0.490625	returned	TRUE	TRUE	-1.20840369652592	-0.164214243400922	-0.674895395744672	matched crossed crossed
+anchor	818022	22	E1	4	0.1	0.490625	returned	TRUE	TRUE	-0.428162881620057	0.543883016817443	0.0567614347861932	matched crossed crossed
+anchor	818022	22	E1	5	0.15	0.490625	returned	TRUE	TRUE	-0.527589705275504	0.415769669724496	-0.054872420119254	matched crossed crossed
+anchor	818022	22	E1	6	-0.15	0.490625	returned	TRUE	TRUE	-0.242881063757958	0.666786904992042	0.207985635460792	matched crossed crossed
+anchor	818022	22	E1	7	0.05	0.490625	returned	TRUE	TRUE	-0.196361799765034	0.759814958047466	0.276965836953716	matched crossed crossed
+anchor	818022	22	E1	8	-0.05	0.490625	returned	TRUE	TRUE	-0.708032286906749	0.189672791218251	-0.254113829875499	matched crossed crossed
+anchor	818022	22	E2	1	0.9	0.490625	R-ENV	NA	FALSE	NA	NA	1.16268428931154	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818022	22	E2	2	-0.6	0.490625	R-ENV	NA	FALSE	NA	NA	-0.975877245861462	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818022	22	E2	3	0.45	0.490625	R-ENV	NA	FALSE	NA	NA	0.936435572261748	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818022	22	E2	4	0.7	0.490625	R-ENV	NA	FALSE	NA	NA	0.768978600306081	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818022	22	E2	5	-0.5	0.490625	R-ENV	NA	FALSE	NA	NA	-0.63220092849351	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818022	22	E2	6	0.55	0.490625	R-ENV	NA	FALSE	NA	NA	0.39477489436776	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818022	22	E2	7	-0.4	0.490625	R-ENV	NA	FALSE	NA	NA	-0.666401649379434	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818022	22	E2	8	0.65	0.490625	R-ENV	NA	FALSE	NA	NA	0.256571071282048	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818023	23	E1	1	0	0.5125	returned	TRUE	TRUE	-0.286963641934889	0.614647686190111	0.160729229158861	matched crossed crossed
+anchor	818023	23	E1	2	0.25	0.5125	returned	TRUE	TRUE	-0.0875488536412996	0.8212646229212	0.35977780651495	matched crossed crossed
+anchor	818023	23	E1	3	-0.25	0.5125	returned	TRUE	TRUE	-0.410760515473661	0.606817609526339	0.0934509103075886	matched crossed crossed
+anchor	818023	23	E1	4	0.1	0.5125	returned	TRUE	TRUE	-0.234710018669891	0.668122012580109	0.212616641486359	matched crossed crossed
+anchor	818023	23	E1	5	0.15	0.5125	returned	TRUE	TRUE	-0.139271493064164	0.771495108498336	0.310130362404586	matched crossed crossed
+anchor	818023	23	E1	6	-0.15	0.5125	returned	TRUE	TRUE	-0.86254604430896	0.0377225103785399	-0.40411098571521	matched crossed crossed
+anchor	818023	23	E1	7	0.05	0.5125	returned	TRUE	TRUE	-0.520776399677126	0.396337858135374	-0.0609985676458763	matched crossed crossed
+anchor	818023	23	E1	8	-0.05	0.5125	returned	TRUE	TRUE	-3.43352523884692	1.13654312052808	-0.949943695878165	matched crossed crossed
+anchor	818023	23	E2	1	0.9	0.5125	R-ENV	NA	FALSE	NA	NA	0.402750453506115	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818023	23	E2	2	-0.6	0.5125	R-ENV	NA	FALSE	NA	NA	-0.355200531120219	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818023	23	E2	3	0.45	0.5125	R-ENV	NA	FALSE	NA	NA	1.28183084631186	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818023	23	E2	4	0.7	0.5125	R-ENV	NA	FALSE	NA	NA	0.394954533648412	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818023	23	E2	5	-0.5	0.5125	R-ENV	NA	FALSE	NA	NA	-0.420063071014181	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818023	23	E2	6	0.55	0.5125	R-ENV	NA	FALSE	NA	NA	0.126174988840857	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818023	23	E2	7	-0.4	0.5125	R-ENV	NA	FALSE	NA	NA	-0.568794928133633	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818023	23	E2	8	0.65	0.5125	R-ENV	NA	FALSE	NA	NA	12.525271169299	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818024	24	E1	1	0	0.484375	returned	TRUE	TRUE	-0.742158990425309	0.263334173637191	-0.235506158394059	matched crossed crossed
+anchor	818024	24	E1	2	0.25	0.484375	returned	TRUE	TRUE	-0.388133065398127	0.632618887726873	0.120350821320623	matched crossed crossed
+anchor	818024	24	E1	3	-0.25	0.484375	returned	TRUE	TRUE	-0.49727648278448	0.39420300940302	-0.0505601741907303	matched crossed crossed
+anchor	818024	24	E1	4	0.1	0.484375	returned	TRUE	TRUE	-0.458275831950767	0.582739793049233	0.0611943828929833	matched crossed crossed
+anchor	818024	24	E1	5	0.15	0.484375	returned	TRUE	TRUE	-0.409727174963572	0.518129270348928	0.0532244851926783	matched crossed crossed
+anchor	818024	24	E1	6	-0.15	0.484375	returned	TRUE	TRUE	-0.460932270816632	0.460698588558368	-5.58059728824286e-05	matched crossed crossed
+anchor	818024	24	E1	7	0.05	0.484375	returned	TRUE	TRUE	-0.499496976749696	0.395522554500304	-0.0509496134684464	matched crossed crossed
+anchor	818024	24	E1	8	-0.05	0.484375	returned	TRUE	TRUE	-0.86567434396624	0.0367914763462601	-0.40614065255999	matched crossed crossed
+anchor	818024	24	E2	1	0.9	0.484375	R-ENV	NA	FALSE	NA	NA	0.859108423237534	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818024	24	E2	2	-0.6	0.484375	R-ENV	NA	FALSE	NA	NA	-0.924937064170853	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818024	24	E2	3	0.45	0.484375	R-ENV	NA	FALSE	NA	NA	0.254296455881328	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818024	24	E2	4	0.7	0.484375	R-ENV	NA	FALSE	NA	NA	0.995863968436098	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818024	24	E2	5	-0.5	0.484375	R-ENV	NA	FALSE	NA	NA	-0.529346546746129	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818024	24	E2	6	0.55	0.484375	R-ENV	NA	FALSE	NA	NA	-0.494479193712235	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818024	24	E2	7	-0.4	0.484375	R-ENV	NA	FALSE	NA	NA	-0.292206510102501	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818024	24	E2	8	0.65	0.484375	R-ENV	NA	FALSE	NA	NA	0.153747429206811	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818025	25	E1	1	0	0.5125	returned	TRUE	TRUE	-0.600186459997955	0.365389711877045	-0.115506284216705	matched crossed crossed
+anchor	818025	25	E1	2	0.25	0.5125	returned	TRUE	TRUE	-0.542439162941481	0.338908493308519	-0.0997511746602307	matched crossed crossed
+anchor	818025	25	E1	3	-0.25	0.5125	returned	TRUE	TRUE	-0.692684901812198	0.247500645062802	-0.218746913530948	matched crossed crossed
+anchor	818025	25	E1	4	0.1	0.5125	returned	TRUE	TRUE	-0.466124755999531	0.751404540875469	0.140503661969219	matched crossed crossed
+anchor	818025	25	E1	5	0.15	0.5125	returned	TRUE	TRUE	-0.0366946829996184	0.865282856062882	0.405993305281632	matched crossed crossed
+anchor	818025	25	E1	6	-0.15	0.5125	returned	TRUE	TRUE	-0.295767448001387	0.611092903561113	0.154733040279863	matched crossed crossed
+anchor	818025	25	E1	7	0.05	0.5125	returned	TRUE	TRUE	-0.523127123245501	0.415959790816999	-0.0526071037142509	matched crossed crossed
+anchor	818025	25	E1	8	-0.05	0.5125	returned	TRUE	TRUE	-0.281984989057694	0.795773800004806	0.252744014848556	matched crossed crossed
+anchor	818025	25	E2	1	0.9	0.5125	R-ENV	NA	FALSE	NA	NA	0.734067901749584	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818025	25	E2	2	-0.6	0.5125	R-ENV	NA	FALSE	NA	NA	0.0435014230963089	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818025	25	E2	3	0.45	0.5125	R-ENV	NA	FALSE	NA	NA	0.592607936696761	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818025	25	E2	4	0.7	0.5125	R-ENV	NA	FALSE	NA	NA	1.56683470004024	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818025	25	E2	5	-0.5	0.5125	R-ENV	NA	FALSE	NA	NA	0.150171090318585	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818025	25	E2	6	0.55	0.5125	R-ENV	NA	FALSE	NA	NA	0.387302472778178	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818025	25	E2	7	-0.4	0.5125	R-ENV	NA	FALSE	NA	NA	-0.607327285591534	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818025	25	E2	8	0.65	0.5125	R-ENV	NA	FALSE	NA	NA	1.1455163234189	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818026	26	E1	1	0	0.478125	returned	TRUE	TRUE	-0.265423465277765	0.753375362847235	0.240008663628485	matched crossed crossed
+anchor	818026	26	E1	2	0.25	0.478125	returned	TRUE	TRUE	-0.0325721086022414	0.932393711710259	0.441976231241509	matched crossed crossed
+anchor	818026	26	E1	3	-0.25	0.478125	returned	TRUE	TRUE	-0.595420829283953	0.289222725403547	-0.150047294127703	matched crossed crossed
+anchor	818026	26	E1	4	0.1	0.478125	returned	TRUE	TRUE	-0.718710579478659	0.259316764271341	-0.225851692759909	matched crossed crossed
+anchor	818026	26	E1	5	0.15	0.478125	returned	TRUE	TRUE	-0.462807674873419	0.461630801689081	-0.000588436592168976	matched crossed crossed
+anchor	818026	26	E1	6	-0.15	0.478125	returned	TRUE	TRUE	-1.10800868057122	-0.0384286024462168	-0.564124403227467	matched crossed crossed
+anchor	818026	26	E1	7	0.05	0.478125	returned	TRUE	TRUE	-0.491271219880901	0.389710225431599	-0.0498039347246509	matched crossed crossed
+anchor	818026	26	E1	8	-0.05	0.478125	returned	TRUE	TRUE	-0.917488352259934	-0.0136797585099342	-0.456123606166184	matched crossed crossed
+anchor	818026	26	E2	1	0.9	0.478125	R-ENV	NA	FALSE	NA	NA	0.898148861783789	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818026	26	E2	2	-0.6	0.478125	R-ENV	NA	FALSE	NA	NA	-0.629861565255323	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818026	26	E2	3	0.45	0.478125	R-ENV	NA	FALSE	NA	NA	0.109223792769324	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818026	26	E2	4	0.7	0.478125	R-ENV	NA	FALSE	NA	NA	0.744690928704367	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818026	26	E2	5	-0.5	0.478125	R-ENV	NA	FALSE	NA	NA	-0.507265960430524	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818026	26	E2	6	0.55	0.478125	R-ENV	NA	FALSE	NA	NA	1.01348241907747	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818026	26	E2	7	-0.4	0.478125	R-ENV	NA	FALSE	NA	NA	0.0598947231584316	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818026	26	E2	8	0.65	0.478125	R-ENV	NA	FALSE	NA	NA	0.0411259707011299	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818027	27	E1	1	0	0.5359375	returned	TRUE	TRUE	-0.562598365375262	0.350487572124738	-0.104163306781512	matched crossed crossed
+anchor	818027	27	E1	2	0.25	0.5359375	returned	TRUE	TRUE	-0.0870747461947335	0.900107870992767	0.399680624899016	matched crossed crossed
+anchor	818027	27	E1	3	-0.25	0.5359375	returned	TRUE	TRUE	-0.577083440040283	0.358341364647217	-0.107417912696533	matched crossed crossed
+anchor	818027	27	E1	4	0.1	0.5359375	returned	TRUE	TRUE	-0.512165901393608	0.513102653293892	0.000590446262642448	matched crossed crossed
+anchor	818027	27	E1	5	0.15	0.5359375	returned	TRUE	TRUE	-0.239546767126061	0.650223740686439	0.201310166467689	matched crossed crossed
+anchor	818027	27	E1	6	-0.15	0.5359375	returned	TRUE	TRUE	-0.340946397783259	0.545772352216741	0.100398817060491	matched crossed crossed
+anchor	818027	27	E1	7	0.05	0.5359375	returned	TRUE	TRUE	0.0155780872306582	0.931471641918158	0.464125450511908	matched crossed crossed
+anchor	818027	27	E1	8	-0.05	0.5359375	returned	TRUE	TRUE	-0.205758116030649	0.808402040219351	0.296500184750601	matched crossed crossed
+anchor	818027	27	E2	1	0.9	0.5359375	R-ENV	NA	FALSE	NA	NA	0.427701625663228	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818027	27	E2	2	-0.6	0.5359375	R-ENV	NA	FALSE	NA	NA	-0.743394822132522	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818027	27	E2	3	0.45	0.5359375	R-ENV	NA	FALSE	NA	NA	-0.55962044065819	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818027	27	E2	4	0.7	0.5359375	R-ENV	NA	FALSE	NA	NA	-0.928545590832998	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818027	27	E2	5	-0.5	0.5359375	R-ENV	NA	FALSE	NA	NA	-0.173615040607944	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818027	27	E2	6	0.55	0.5359375	R-ENV	NA	FALSE	NA	NA	-0.176879435106993	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818027	27	E2	7	-0.4	0.5359375	R-ENV	NA	FALSE	NA	NA	0.268024139059424	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818027	27	E2	8	0.65	0.5359375	R-ENV	NA	FALSE	NA	NA	-0.869252647719588	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818028	28	E1	1	0	0.4859375	returned	TRUE	TRUE	-0.463399212996238	0.584818560441262	0.0597331112225118	matched crossed crossed
+anchor	818028	28	E1	2	0.25	0.4859375	returned	TRUE	TRUE	-0.338944710271913	0.542402945978087	0.0997149576968374	matched crossed crossed
+anchor	818028	28	E1	3	-0.25	0.4859375	returned	TRUE	TRUE	-0.68100631994678	0.24587356286572	-0.21366012854053	matched crossed crossed
+anchor	818028	28	E1	4	0.1	0.4859375	returned	TRUE	TRUE	-0.576826158078401	0.5677050919216	-0.00437742760965057	matched crossed crossed
+anchor	818028	28	E1	5	0.15	0.4859375	returned	TRUE	TRUE	-0.598986570426022	0.290539796761478	-0.151171629019772	matched crossed crossed
+anchor	818028	28	E1	6	-0.15	0.4859375	returned	TRUE	TRUE	-0.648511612173477	0.238817489389023	-0.200818741079727	matched crossed crossed
+anchor	818028	28	E1	7	0.05	0.4859375	returned	TRUE	TRUE	-0.843523955966495	0.290020965908505	-0.272417998935245	matched crossed crossed
+anchor	818028	28	E1	8	-0.05	0.4859375	returned	TRUE	TRUE	-0.300264858974886	0.623197055087614	0.158536410556364	matched crossed crossed
+anchor	818028	28	E2	1	0.9	0.4859375	R-ENV	NA	FALSE	NA	NA	1.0663106644084	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818028	28	E2	2	-0.6	0.4859375	R-ENV	NA	FALSE	NA	NA	0.0334136962552601	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818028	28	E2	3	0.45	0.4859375	R-ENV	NA	FALSE	NA	NA	0.516342001175407	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818028	28	E2	4	0.7	0.4859375	R-ENV	NA	FALSE	NA	NA	1.37426951234884	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818028	28	E2	5	-0.5	0.4859375	R-ENV	NA	FALSE	NA	NA	-0.206643077999319	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818028	28	E2	6	0.55	0.4859375	R-ENV	NA	FALSE	NA	NA	0.132261148271741	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818028	28	E2	7	-0.4	0.4859375	R-ENV	NA	FALSE	NA	NA	-1.32970610653349	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818028	28	E2	8	0.65	0.4859375	R-ENV	NA	FALSE	NA	NA	0.506160418213654	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818029	29	E1	1	0	0.53125	returned	TRUE	TRUE	-0.782267723590067	0.199543799847433	-0.286479149371317	matched crossed crossed
+anchor	818029	29	E1	2	0.25	0.53125	returned	TRUE	TRUE	0.0365449656911651	1.06376664537866	0.541000532097415	matched crossed crossed
+anchor	818029	29	E1	3	-0.25	0.53125	returned	TRUE	TRUE	-0.59398056646951	0.28858779290549	-0.149705664125759	matched crossed crossed
+anchor	818029	29	E1	4	0.1	0.53125	returned	TRUE	TRUE	-0.44050931616906	0.44047212914344	-1.85935128098564e-05	matched crossed crossed
+anchor	818029	29	E1	5	0.15	0.53125	returned	TRUE	TRUE	-0.18823032916028	0.69946498333972	0.25055140912097	matched crossed crossed
+anchor	818029	29	E1	6	-0.15	0.53125	returned	FALSE	TRUE	-0.0854097961359245	1.01517614136408	0.457619989020325	matched crossed crossed
+anchor	818029	29	E1	7	0.05	0.53125	returned	TRUE	TRUE	-0.34505442937739	0.55301685968511	0.10202809015386	matched crossed crossed
+anchor	818029	29	E1	8	-0.05	0.53125	returned	TRUE	TRUE	-0.210907850486782	0.838652696388218	0.308928575294468	matched crossed crossed
+anchor	818029	29	E2	1	0.9	0.53125	R-ENV	NA	FALSE	NA	NA	0.763745160955669	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818029	29	E2	2	-0.6	0.53125	R-ENV	NA	FALSE	NA	NA	-0.884165370994295	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818029	29	E2	3	0.45	0.53125	R-ENV	NA	FALSE	NA	NA	0.0195902159271024	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818029	29	E2	4	0.7	0.53125	R-ENV	NA	FALSE	NA	NA	0.0770553766261123	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818029	29	E2	5	-0.5	0.53125	R-ENV	NA	FALSE	NA	NA	0.0621482899067208	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818029	29	E2	6	0.55	0.53125	R-ENV	NA	FALSE	NA	NA	1.15760342446854	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818029	29	E2	7	-0.4	0.53125	R-ENV	NA	FALSE	NA	NA	0.315533919002634	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818029	29	E2	8	0.65	0.53125	R-ENV	NA	FALSE	NA	NA	1.01551577611454	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818030	30	E1	1	0	0.5015625	returned	TRUE	TRUE	-1.94754443205934	2.45150341950316	0.258083009346913	matched crossed crossed
+anchor	818030	30	E1	2	0.25	0.5015625	returned	FALSE	TRUE	-0.640923761864613	0.229559636572887	-0.199700617333363	matched crossed crossed
+anchor	818030	30	E1	3	-0.25	0.5015625	returned	TRUE	TRUE	-0.594922580884582	0.288256130052918	-0.150281467603332	matched crossed crossed
+anchor	818030	30	E1	4	0.1	0.5015625	returned	TRUE	TRUE	-0.238384105149586	0.646137379225414	0.199787281569164	matched crossed crossed
+anchor	818030	30	E1	5	0.15	0.5015625	returned	TRUE	TRUE	-0.238121482943163	0.646400001431837	0.200049903775587	matched crossed crossed
+anchor	818030	30	E1	6	-0.15	0.5015625	returned	TRUE	TRUE	-0.867865216646894	0.0314267755406061	-0.409918439303144	matched crossed crossed
+anchor	818030	30	E1	7	0.05	0.5015625	returned	TRUE	TRUE	-0.286252070742456	0.598025273007544	0.152773808163794	matched crossed crossed
+anchor	818030	30	E1	8	-0.05	0.5015625	returned	TRUE	TRUE	-0.337703930194247	0.545596851055753	0.101810229962003	matched crossed crossed
+anchor	818030	30	E2	1	0.9	0.5015625	R-ENV	NA	FALSE	NA	NA	16.8238643376457	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818030	30	E2	2	-0.6	0.5015625	R-ENV	NA	FALSE	NA	NA	-1.05103076957232	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818030	30	E2	3	0.45	0.5015625	R-ENV	NA	FALSE	NA	NA	-0.189222475142212	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818030	30	E2	4	0.7	0.5015625	R-ENV	NA	FALSE	NA	NA	0.0323695554384608	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818030	30	E2	5	-0.5	0.5015625	R-ENV	NA	FALSE	NA	NA	-0.031341856900311	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818030	30	E2	6	0.55	0.5015625	R-ENV	NA	FALSE	NA	NA	0.219539225344631	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818030	30	E2	7	-0.4	0.5015625	R-ENV	NA	FALSE	NA	NA	0.331813365879585	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818030	30	E2	8	0.65	0.5015625	R-ENV	NA	FALSE	NA	NA	0.365062568445899	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818031	31	E1	1	0	0.478125	returned	TRUE	TRUE	-0.757711863015524	0.457009816671976	-0.148153757546774	matched crossed crossed
+anchor	818031	31	E1	2	0.25	0.478125	returned	TRUE	TRUE	-0.570281855273047	0.443023808789453	-0.0625303904292966	matched crossed crossed
+anchor	818031	31	E1	3	-0.25	0.478125	returned	TRUE	TRUE	-0.542582992698501	0.339008804176499	-0.099772934104751	matched crossed crossed
+anchor	818031	31	E1	4	0.1	0.478125	returned	TRUE	TRUE	-0.589576447570619	0.465721403991881	-0.0610730296018693	matched crossed crossed
+anchor	818031	31	E1	5	0.15	0.478125	returned	TRUE	TRUE	-0.0865734292628665	0.837498836362134	0.368443660580884	matched crossed crossed
+anchor	818031	31	E1	6	-0.15	0.478125	returned	TRUE	TRUE	-0.81265083738148	0.20334037355602	-0.29965034910023	matched crossed crossed
+anchor	818031	31	E1	7	0.05	0.478125	returned	TRUE	TRUE	-0.597359469145117	0.289603421479883	-0.150887301176367	matched crossed crossed
+anchor	818031	31	E1	8	-0.05	0.478125	returned	TRUE	TRUE	-0.85207030356112	0.0859179776888795	-0.37605711996737	matched crossed crossed
+anchor	818031	31	E2	1	0.9	0.478125	R-ENV	NA	FALSE	NA	NA	1.6014526055212	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818031	31	E2	2	-0.6	0.478125	R-ENV	NA	FALSE	NA	NA	-0.952102400586411	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818031	31	E2	3	0.45	0.478125	R-ENV	NA	FALSE	NA	NA	-0.0468247923768834	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818031	31	E2	4	0.7	0.478125	R-ENV	NA	FALSE	NA	NA	1.10745018706213	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818031	31	E2	5	-0.5	0.478125	R-ENV	NA	FALSE	NA	NA	-0.439663024800535	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818031	31	E2	6	0.55	0.478125	R-ENV	NA	FALSE	NA	NA	0.93843280141343	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818031	31	E2	7	-0.4	0.478125	R-ENV	NA	FALSE	NA	NA	-0.166514174448821	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818031	31	E2	8	0.65	0.478125	R-ENV	NA	FALSE	NA	NA	0.534577509052616	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818032	32	E1	1	0	0.5125	returned	TRUE	TRUE	-0.791746292261286	0.201906051488714	-0.290098343042536	matched crossed crossed
+anchor	818032	32	E1	2	0.25	0.5125	returned	TRUE	TRUE	-0.395276210697694	0.499377109614806	0.0510738869585564	matched crossed crossed
+anchor	818032	32	E1	3	-0.25	0.5125	returned	TRUE	TRUE	-0.341197662376248	0.545887298561252	0.100391693092501	matched crossed crossed
+anchor	818032	32	E1	4	0.1	0.5125	returned	TRUE	TRUE	-0.0297565170567642	1.01516535794324	0.484830885286986	matched crossed crossed
+anchor	818032	32	E1	5	0.15	0.5125	returned	TRUE	TRUE	-0.087141666825822	0.853654231611678	0.376298274580428	matched crossed crossed
+anchor	818032	32	E1	6	-0.15	0.5125	returned	TRUE	TRUE	-0.492369059982564	0.390565510329936	-0.0499252123263138	matched crossed crossed
+anchor	818032	32	E1	7	0.05	0.5125	returned	FALSE	TRUE	-1.05269318013659	-0.0775955238865852	-0.554951480917835	matched crossed crossed
+anchor	818032	32	E1	8	-0.05	0.5125	returned	TRUE	TRUE	-0.142109433981472	0.790751894143528	0.318400819924778	matched crossed crossed
+anchor	818032	32	E2	1	0.9	0.5125	R-ENV	NA	FALSE	NA	NA	0.784773638469935	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818032	32	E2	2	-0.6	0.5125	R-ENV	NA	FALSE	NA	NA	-0.283885960043001	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818032	32	E2	3	0.45	0.5125	R-ENV	NA	FALSE	NA	NA	0.181707941172744	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818032	32	E2	4	0.7	0.5125	R-ENV	NA	FALSE	NA	NA	0.929559523260556	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818032	32	E2	5	-0.5	0.5125	R-ENV	NA	FALSE	NA	NA	-0.517791006273696	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818032	32	E2	6	0.55	0.5125	R-ENV	NA	FALSE	NA	NA	-0.122465737007126	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818032	32	E2	7	-0.4	0.5125	R-ENV	NA	FALSE	NA	NA	-0.620119009282914	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818032	32	E2	8	0.65	0.5125	R-ENV	NA	FALSE	NA	NA	0.493006265171663	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818033	33	E1	1	0	0.521875	returned	TRUE	TRUE	-0.51345117226128	0.40573828086372	-0.0529409183550304	matched crossed crossed
+anchor	818033	33	E1	2	0.25	0.521875	returned	TRUE	TRUE	-0.13879252215083	0.81445454816167	0.33197163800542	matched crossed crossed
+anchor	818033	33	E1	3	-0.25	0.521875	returned	TRUE	TRUE	-0.746143098304414	0.258251432945586	-0.240100617835664	matched crossed crossed
+anchor	818033	33	E1	4	0.1	0.521875	returned	TRUE	TRUE	-0.40417372600472	0.65832627399528	0.12481797321403	matched crossed crossed
+anchor	818033	33	E1	5	0.15	0.521875	returned	TRUE	TRUE	-0.293868353524193	0.608109185538307	0.154190728507057	matched crossed crossed
+anchor	818033	33	E1	6	-0.15	0.521875	returned	TRUE	TRUE	-1.01606857748182	0.138228297518176	-0.432267307950574	matched crossed crossed
+anchor	818033	33	E1	7	0.05	0.521875	returned	TRUE	TRUE	-0.0824483744919539	0.884226430195546	0.393931020039296	matched crossed crossed
+anchor	818033	33	E1	8	-0.05	0.521875	returned	TRUE	TRUE	-0.0825720842287058	0.915352720458794	0.409188169677544	matched crossed crossed
+anchor	818033	33	E2	1	0.9	0.521875	R-ENV	NA	FALSE	NA	NA	0.501843714245634	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818033	33	E2	2	-0.6	0.521875	R-ENV	NA	FALSE	NA	NA	-0.649772474972523	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818033	33	E2	3	0.45	0.521875	R-ENV	NA	FALSE	NA	NA	0.912629457677572	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818033	33	E2	4	0.7	0.521875	R-ENV	NA	FALSE	NA	NA	1.14208628650064	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818033	33	E2	5	-0.5	0.521875	R-ENV	NA	FALSE	NA	NA	-0.352870359406504	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818033	33	E2	6	0.55	0.521875	R-ENV	NA	FALSE	NA	NA	1.41805142450441	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818033	33	E2	7	-0.4	0.521875	R-ENV	NA	FALSE	NA	NA	-0.701387477625451	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818033	33	E2	8	0.65	0.521875	R-ENV	NA	FALSE	NA	NA	0.843042823202464	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818034	34	E1	1	0	0.4890625	returned	TRUE	TRUE	-0.453207622757102	0.453286517867898	0.000100482711647743	matched crossed crossed
+anchor	818034	34	E1	2	0.25	0.4890625	returned	TRUE	TRUE	-0.364698189530427	0.589281302657073	0.110338431563323	matched crossed crossed
+anchor	818034	34	E1	3	-0.25	0.4890625	returned	TRUE	TRUE	-0.647025698658024	0.396065121654476	-0.123527163501774	matched crossed crossed
+anchor	818034	34	E1	4	0.1	0.4890625	returned	TRUE	TRUE	-0.680162983539525	0.321546000835475	-0.176317768695775	matched crossed crossed
+anchor	818034	34	E1	5	0.15	0.4890625	returned	TRUE	TRUE	-0.308458458313859	0.644666541686141	0.165235389342391	matched crossed crossed
+anchor	818034	34	E1	6	-0.15	0.4890625	returned	TRUE	TRUE	-0.699250331163833	0.188200840711167	-0.250458827257583	matched crossed crossed
+anchor	818034	34	E1	7	0.05	0.4890625	returned	TRUE	TRUE	-0.628388138959432	0.386016157915568	-0.119293900678182	matched crossed crossed
+anchor	818034	34	E1	8	-0.05	0.4890625	returned	TRUE	TRUE	-0.440141556479395	0.440107466958105	-1.70447606453663e-05	matched crossed crossed
+anchor	818034	34	E2	1	0.9	0.4890625	R-ENV	NA	FALSE	NA	NA	0.396266955881595	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818034	34	E2	2	-0.6	0.4890625	R-ENV	NA	FALSE	NA	NA	-0.665603650428818	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818034	34	E2	3	0.45	0.4890625	R-ENV	NA	FALSE	NA	NA	1.01273062540069	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818034	34	E2	4	0.7	0.4890625	R-ENV	NA	FALSE	NA	NA	-0.860712351108307	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818034	34	E2	5	-0.5	0.4890625	R-ENV	NA	FALSE	NA	NA	-0.655322098882517	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818034	34	E2	6	0.55	0.4890625	R-ENV	NA	FALSE	NA	NA	-0.0444085362590016	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818034	34	E2	7	-0.4	0.4890625	R-ENV	NA	FALSE	NA	NA	0.913222659868878	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818034	34	E2	8	0.65	0.4890625	R-ENV	NA	FALSE	NA	NA	-0.0324271197582473	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818035	35	E1	1	0	0.5265625	returned	TRUE	TRUE	-0.690867956006732	0.249683801805768	-0.216685827100482	matched crossed crossed
+anchor	818035	35	E1	2	0.25	0.5265625	returned	TRUE	TRUE	-0.197354229643676	0.763461200043824	0.278170672700074	matched crossed crossed
+anchor	818035	35	E1	3	-0.25	0.5265625	returned	TRUE	TRUE	-0.491852811662195	0.389983125837805	-0.0498972452559453	matched crossed crossed
+anchor	818035	35	E1	4	0.1	0.5265625	returned	TRUE	TRUE	-0.345134332486706	0.745197698763294	0.196918890169544	matched crossed crossed
+anchor	818035	35	E1	5	0.15	0.5265625	returned	TRUE	TRUE	-0.188129975904712	0.699199125657788	0.250407621751538	matched crossed crossed
+anchor	818035	35	E1	6	-0.15	0.5265625	returned	TRUE	TRUE	-0.849318495143674	0.209031114231326	-0.315077772487424	matched crossed crossed
+anchor	818035	35	E1	7	0.05	0.5265625	returned	TRUE	TRUE	-0.0858908283952802	0.86784452316722	0.38401883957347	matched crossed crossed
+anchor	818035	35	E1	8	-0.05	0.5265625	returned	TRUE	TRUE	-0.0837668095913306	0.917698034158669	0.409946569314919	matched crossed crossed
+anchor	818035	35	E2	1	0.9	0.5265625	R-ENV	NA	FALSE	NA	NA	0.590991833301263	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818035	35	E2	2	-0.6	0.5265625	R-ENV	NA	FALSE	NA	NA	-0.682832037723748	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818035	35	E2	3	0.45	0.5265625	R-ENV	NA	FALSE	NA	NA	0.0945832066616298	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818035	35	E2	4	0.7	0.5265625	R-ENV	NA	FALSE	NA	NA	1.18470604960915	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818035	35	E2	5	-0.5	0.5265625	R-ENV	NA	FALSE	NA	NA	-0.0421241947687704	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818035	35	E2	6	0.55	0.5265625	R-ENV	NA	FALSE	NA	NA	1.06792653279858	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818035	35	E2	7	-0.4	0.5265625	R-ENV	NA	FALSE	NA	NA	-0.613633162608878	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818035	35	E2	8	0.65	0.5265625	R-ENV	NA	FALSE	NA	NA	0.834092107829076	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818036	36	E1	1	0	0.5390625	returned	TRUE	TRUE	-0.221718537088616	0.918051970723884	0.342673552755134	matched crossed crossed
+anchor	818036	36	E1	2	0.25	0.5390625	returned	FALSE	TRUE	0.543000534320044	1.64004643275754	1.07162602260129	matched crossed crossed
+anchor	818036	36	E1	3	-0.25	0.5390625	returned	TRUE	TRUE	-0.672415580561863	0.245431099125637	-0.209585990718113	matched crossed crossed
+anchor	818036	36	E1	4	0.1	0.5390625	returned	TRUE	TRUE	-0.245516300598028	0.675260066589472	0.210965632995722	matched crossed crossed
+anchor	818036	36	E1	5	0.15	0.5390625	returned	TRUE	TRUE	-0.0874293680803845	0.823215163169615	0.360751784263365	matched crossed crossed
+anchor	818036	36	E1	6	-0.15	0.5390625	returned	TRUE	TRUE	-0.655915374333932	0.312468414728568	-0.168915862615182	matched crossed crossed
+anchor	818036	36	E1	7	0.05	0.5390625	returned	TRUE	TRUE	-0.238943965156582	0.647896855155918	0.200448124687168	matched crossed crossed
+anchor	818036	36	E1	8	-0.05	0.5390625	returned	TRUE	TRUE	-0.775251801407183	0.199357573592817	-0.283125336563433	matched crossed crossed
+anchor	818036	36	E2	1	0.9	0.5390625	R-ENV	NA	FALSE	NA	NA	1.2973747899794	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818036	36	E2	2	-0.6	0.5390625	R-ENV	NA	FALSE	NA	NA	-0.91459423306998	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818036	36	E2	3	0.45	0.5390625	R-ENV	NA	FALSE	NA	NA	0.448727916306754	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818036	36	E2	4	0.7	0.5390625	R-ENV	NA	FALSE	NA	NA	0.467948024582691	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818036	36	E2	5	-0.5	0.5390625	R-ENV	NA	FALSE	NA	NA	-0.317075471474421	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818036	36	E2	6	0.55	0.5390625	R-ENV	NA	FALSE	NA	NA	0.728836108600244	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818036	36	E2	7	-0.4	0.5390625	R-ENV	NA	FALSE	NA	NA	-0.116478018000996	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818036	36	E2	8	0.65	0.5390625	R-ENV	NA	FALSE	NA	NA	0.737490711738525	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818037	37	E1	1	0	0.4921875	returned	TRUE	TRUE	-2.19015835099148	2.98867465682102	0.53390170760227	matched crossed crossed
+anchor	818037	37	E1	2	0.25	0.4921875	returned	TRUE	TRUE	-0.635062934023075	0.280098198789425	-0.175651312929325	matched crossed crossed
+anchor	818037	37	E1	3	-0.25	0.4921875	returned	TRUE	TRUE	-0.594621150477495	0.288191349522505	-0.150224177821245	matched crossed crossed
+anchor	818037	37	E1	4	0.1	0.4921875	returned	TRUE	TRUE	-0.230473775233674	0.695063334141326	0.225764017735076	matched crossed crossed
+anchor	818037	37	E1	5	0.15	0.4921875	returned	TRUE	TRUE	-0.335856332669992	0.581502065767508	0.122334585298758	matched crossed crossed
+anchor	818037	37	E1	6	-0.15	0.4921875	returned	TRUE	TRUE	-0.609933733717359	0.285207867845141	-0.159555315748609	matched crossed crossed
+anchor	818037	37	E1	7	0.05	0.4921875	returned	TRUE	TRUE	-0.389231554307566	0.497975476942434	0.0534564339736844	matched crossed crossed
+anchor	818037	37	E1	8	-0.05	0.4921875	returned	TRUE	TRUE	-0.596783925396053	0.287493418353947	-0.151654530864803	matched crossed crossed
+anchor	818037	37	E2	1	0.9	0.4921875	R-ENV	NA	FALSE	NA	NA	16.5277351929951	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818037	37	E2	2	-0.6	0.4921875	R-ENV	NA	FALSE	NA	NA	0.669338297219863	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818037	37	E2	3	0.45	0.4921875	R-ENV	NA	FALSE	NA	NA	0.0512547749316126	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818037	37	E2	4	0.7	0.4921875	R-ENV	NA	FALSE	NA	NA	0.803126536788478	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818037	37	E2	5	-0.5	0.4921875	R-ENV	NA	FALSE	NA	NA	-0.717866688889656	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818037	37	E2	6	0.55	0.4921875	R-ENV	NA	FALSE	NA	NA	0.392828706416367	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818037	37	E2	7	-0.4	0.4921875	R-ENV	NA	FALSE	NA	NA	-0.286897592697876	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818037	37	E2	8	0.65	0.4921875	R-ENV	NA	FALSE	NA	NA	0.139748806907522	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818038	38	E1	1	0	0.465625	returned	TRUE	TRUE	-0.555468774287465	0.439038061650035	-0.0572387938187152	matched crossed crossed
+anchor	818038	38	E1	2	0.25	0.465625	returned	TRUE	TRUE	-0.312411581142698	0.655239786044802	0.168484414951052	matched crossed crossed
+anchor	818038	38	E1	3	-0.25	0.465625	returned	TRUE	TRUE	-0.440026211212146	0.439978671600353	-2.37698058965097e-05	matched crossed crossed
+anchor	818038	38	E1	4	0.1	0.465625	returned	TRUE	TRUE	-0.85165083326321	0.20962846361179	-0.31594526685696	matched crossed crossed
+anchor	818038	38	E1	5	0.15	0.465625	returned	FALSE	TRUE	-0.961884927276044	0.0787644867864559	-0.434358071807294	matched crossed crossed
+anchor	818038	38	E1	6	-0.15	0.465625	returned	TRUE	TRUE	-0.804300481551258	0.203023737198741	-0.295694524520009	matched crossed crossed
+anchor	818038	38	E1	7	0.05	0.465625	returned	TRUE	TRUE	-0.526396073879154	0.413911543308346	-0.0552657027854037	matched crossed crossed
+anchor	818038	38	E1	8	-0.05	0.465625	returned	TRUE	TRUE	-0.808298560874266	0.140553978188234	-0.327890846030516	matched crossed crossed
+anchor	818038	38	E2	1	0.9	0.465625	R-ENV	NA	FALSE	NA	NA	0.87315411639472	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818038	38	E2	2	-0.6	0.465625	R-ENV	NA	FALSE	NA	NA	-0.747279855881971	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818038	38	E2	3	0.45	0.465625	R-ENV	NA	FALSE	NA	NA	0.0087732315759569	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818038	38	E2	4	0.7	0.465625	R-ENV	NA	FALSE	NA	NA	1.1002463399396	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818038	38	E2	5	-0.5	0.465625	R-ENV	NA	FALSE	NA	NA	-1.00339631082485	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818038	38	E2	6	0.55	0.465625	R-ENV	NA	FALSE	NA	NA	0.899165619901152	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818038	38	E2	7	-0.4	0.465625	R-ENV	NA	FALSE	NA	NA	-0.62148671974017	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818038	38	E2	8	0.65	0.465625	R-ENV	NA	FALSE	NA	NA	0.616193511289752	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818039	39	E1	1	0	0.5	returned	TRUE	TRUE	-0.594273886863413	0.288782753761587	-0.149754843894663	matched crossed crossed
+anchor	818039	39	E1	2	0.25	0.5	returned	TRUE	TRUE	-0.360167455764521	0.579285669235479	0.107667016891729	matched crossed crossed
+anchor	818039	39	E1	3	-0.25	0.5	returned	TRUE	TRUE	-0.650186606401003	0.239583901411497	-0.201273032182253	matched crossed crossed
+anchor	818039	39	E1	4	0.1	0.5	returned	TRUE	TRUE	-0.823663824362636	0.284612542824864	-0.265497320456386	matched crossed crossed
+anchor	818039	39	E1	5	0.15	0.5	returned	TRUE	TRUE	-0.308654922399805	0.643493515100195	0.164550644006445	matched crossed crossed
+anchor	818039	39	E1	6	-0.15	0.5	returned	TRUE	TRUE	-0.581559543539178	0.459578151773322	-0.0601362036954276	matched crossed crossed
+anchor	818039	39	E1	7	0.05	0.5	returned	TRUE	TRUE	0.017983399529622	0.946816407342122	0.473122559685872	matched crossed crossed
+anchor	818039	39	E1	8	-0.05	0.5	returned	TRUE	TRUE	-0.630697376394138	0.388955943918362	-0.119039661550388	matched crossed crossed
+anchor	818039	39	E2	1	0.9	0.5	R-ENV	NA	FALSE	NA	NA	0.0549192212954282	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818039	39	E2	2	-0.6	0.5	R-ENV	NA	FALSE	NA	NA	-0.601154829489929	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818039	39	E2	3	0.45	0.5	R-ENV	NA	FALSE	NA	NA	0.176860079327692	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818039	39	E2	4	0.7	0.5	R-ENV	NA	FALSE	NA	NA	1.2326307332525	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818039	39	E2	5	-0.5	0.5	R-ENV	NA	FALSE	NA	NA	-0.659531539988568	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818039	39	E2	6	0.55	0.5	R-ENV	NA	FALSE	NA	NA	1.02703091303486	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818039	39	E2	7	-0.4	0.5	R-ENV	NA	FALSE	NA	NA	-0.396954632818091	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818039	39	E2	8	0.65	0.5	R-ENV	NA	FALSE	NA	NA	0.947910079893218	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818040	40	E1	1	0	0.4828125	returned	TRUE	TRUE	-0.0364632829253091	0.866246678012191	0.406590916293441	matched crossed crossed
+anchor	818040	40	E1	2	0.25	0.4828125	returned	TRUE	TRUE	-0.0847155823821027	0.900147698867897	0.400697015274147	matched crossed crossed
+anchor	818040	40	E1	3	-0.25	0.4828125	returned	TRUE	TRUE	-0.948967461893488	-0.0186696103309878	-0.474541192362238	matched crossed crossed
+anchor	818040	40	E1	4	0.1	0.4828125	returned	TRUE	TRUE	-0.81410878558865	0.28122812847385	-0.2621678676199	matched crossed crossed
+anchor	818040	40	E1	5	0.15	0.4828125	returned	FALSE	TRUE	-1.07352939703311	0.148638571716892	-0.455060158751858	matched crossed crossed
+anchor	818040	40	E1	6	-0.15	0.4828125	returned	TRUE	TRUE	-0.805781347034947	0.140629785777553	-0.326594335316197	matched crossed crossed
+anchor	818040	40	E1	7	0.05	0.4828125	returned	TRUE	TRUE	-0.29563828196997	0.61207656178003	0.15522841724878	matched crossed crossed
+anchor	818040	40	E1	8	-0.05	0.4828125	returned	TRUE	TRUE	-0.65693202290851	0.24113926615399	-0.20386805806476	matched crossed crossed
+anchor	818040	40	E2	1	0.9	0.4828125	R-ENV	NA	FALSE	NA	NA	0.164196585191677	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818040	40	E2	2	-0.6	0.4828125	R-ENV	NA	FALSE	NA	NA	-0.767201220569861	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818040	40	E2	3	0.45	0.4828125	R-ENV	NA	FALSE	NA	NA	0.41066457208273	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818040	40	E2	4	0.7	0.4828125	R-ENV	NA	FALSE	NA	NA	1.20440850890615	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818040	40	E2	5	-0.5	0.4828125	R-ENV	NA	FALSE	NA	NA	-1.55629697803267	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818040	40	E2	6	0.55	0.4828125	R-ENV	NA	FALSE	NA	NA	0.596336150560776	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818040	40	E2	7	-0.4	0.4828125	R-ENV	NA	FALSE	NA	NA	-0.393887398354954	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818040	40	E2	8	0.65	0.4828125	R-ENV	NA	FALSE	NA	NA	0.287855458571517	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818041	41	E1	1	0	0.5046875	returned	TRUE	TRUE	-0.389465335082868	0.491027828979632	0.049804684448382	matched crossed crossed
+anchor	818041	41	E1	2	0.25	0.5046875	returned	TRUE	TRUE	-0.144768929793131	0.814825796769369	0.329169058488119	matched crossed crossed
+anchor	818041	41	E1	3	-0.25	0.5046875	returned	TRUE	TRUE	-0.346350771392499	0.556359189545001	0.103051084076251	matched crossed crossed
+anchor	818041	41	E1	4	0.1	0.5046875	returned	TRUE	TRUE	-0.654032003938644	0.240377175748856	-0.202799093782394	matched crossed crossed
+anchor	818041	41	E1	5	0.15	0.5046875	returned	TRUE	TRUE	-0.492084069851641	0.390240148898359	-0.0498843628203909	matched crossed crossed
+anchor	818041	41	E1	6	-0.15	0.5046875	returned	TRUE	TRUE	-0.876841901016307	0.222279192733693	-0.322459576797557	matched crossed crossed
+anchor	818041	41	E1	7	0.05	0.5046875	returned	TRUE	TRUE	-0.259775365712138	0.714223657725362	0.223439966319112	matched crossed crossed
+anchor	818041	41	E1	8	-0.05	0.5046875	returned	TRUE	TRUE	-0.44753965338335	0.44809022942915	0.000275288022900357	matched crossed crossed
+anchor	818041	41	E2	1	0.9	0.5046875	R-ENV	NA	FALSE	NA	NA	0.0300547600271014	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818041	41	E2	2	-0.6	0.5046875	R-ENV	NA	FALSE	NA	NA	0.626501658370465	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818041	41	E2	3	0.45	0.5046875	R-ENV	NA	FALSE	NA	NA	-0.346314131311767	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818041	41	E2	4	0.7	0.5046875	R-ENV	NA	FALSE	NA	NA	0.233884255997094	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818041	41	E2	5	-0.5	0.5046875	R-ENV	NA	FALSE	NA	NA	-0.106053822468151	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818041	41	E2	6	0.55	0.5046875	R-ENV	NA	FALSE	NA	NA	-1.11374411225918	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818041	41	E2	7	-0.4	0.5046875	R-ENV	NA	FALSE	NA	NA	0.711012827923153	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818041	41	E2	8	0.65	0.5046875	R-ENV	NA	FALSE	NA	NA	-0.292938868466135	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818042	42	E1	1	0	0.4984375	returned	TRUE	TRUE	-0.508131877844078	0.401414020593422	-0.0523823661253282	matched crossed crossed
+anchor	818042	42	E1	2	0.25	0.4984375	returned	TRUE	TRUE	-0.535021551492893	0.549206964132107	0.00715374147585735	matched crossed crossed
+anchor	818042	42	E1	3	-0.25	0.4984375	returned	TRUE	TRUE	-0.774798573300103	0.138897715762397	-0.311968983456353	matched crossed crossed
+anchor	818042	42	E1	4	0.1	0.4984375	returned	TRUE	TRUE	-0.64801268117402	0.38799806101348	-0.12817625539277	matched crossed crossed
+anchor	818042	42	E1	5	0.15	0.4984375	returned	TRUE	TRUE	-0.139436065756407	0.800505340493593	0.324614227212343	matched crossed crossed
+anchor	818042	42	E1	6	-0.15	0.4984375	returned	TRUE	TRUE	-0.982286502542691	-0.0246449009801912	-0.494432498636441	matched crossed crossed
+anchor	818042	42	E1	7	0.05	0.4984375	returned	TRUE	TRUE	-0.190052025505072	0.712413794807428	0.256176001838678	matched crossed crossed
+anchor	818042	42	E1	8	-0.05	0.4984375	returned	TRUE	TRUE	-0.1450752952519	0.8352713844356	0.33911659927935	matched crossed crossed
+anchor	818042	42	E2	1	0.9	0.4984375	R-ENV	NA	FALSE	NA	NA	0.418822034803418	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818042	42	E2	2	-0.6	0.4984375	R-ENV	NA	FALSE	NA	NA	-1.1568090174028	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818042	42	E2	3	0.45	0.4984375	R-ENV	NA	FALSE	NA	NA	0.378336018579864	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818042	42	E2	4	0.7	0.4984375	R-ENV	NA	FALSE	NA	NA	0.996931430378788	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818042	42	E2	5	-0.5	0.4984375	R-ENV	NA	FALSE	NA	NA	-0.553652047427961	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818042	42	E2	6	0.55	0.4984375	R-ENV	NA	FALSE	NA	NA	0.582909962942333	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818042	42	E2	7	-0.4	0.4984375	R-ENV	NA	FALSE	NA	NA	-0.305021359883404	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818042	42	E2	8	0.65	0.4984375	R-ENV	NA	FALSE	NA	NA	0.749428957231418	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818043	43	E1	1	0	0.4875	returned	TRUE	TRUE	-0.686047240342389	0.251941040907611	-0.213207884873639	matched crossed crossed
+anchor	818043	43	E1	2	0.25	0.4875	returned	TRUE	TRUE	-0.0370296069474048	0.866901057115095	0.406634943833845	matched crossed crossed
+anchor	818043	43	E1	3	-0.25	0.4875	returned	FALSE	TRUE	-1.47012154709053	-0.357816859590527	-0.899015590059277	matched crossed crossed
+anchor	818043	43	E1	4	0.1	0.4875	returned	TRUE	TRUE	-0.554616595858528	0.346872661953972	-0.101918841952278	matched crossed crossed
+anchor	818043	43	E1	5	0.15	0.4875	returned	TRUE	TRUE	-0.374125210016662	0.597676547795838	0.109944614202088	matched crossed crossed
+anchor	818043	43	E1	6	-0.15	0.4875	returned	TRUE	TRUE	-0.441867496331025	0.441555355231475	-0.00015607054977474	matched crossed crossed
+anchor	818043	43	E1	7	0.05	0.4875	returned	TRUE	TRUE	-0.648489208128796	0.238839893433704	-0.200796337035046	matched crossed crossed
+anchor	818043	43	E1	8	-0.05	0.4875	returned	TRUE	TRUE	-0.139355948332936	0.771776864167064	0.310167977448314	matched crossed crossed
+anchor	818043	43	E2	1	0.9	0.4875	R-ENV	NA	FALSE	NA	NA	0.541516477959388	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818043	43	E2	2	-0.6	0.4875	R-ENV	NA	FALSE	NA	NA	-0.173965757796408	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818043	43	E2	3	0.45	0.4875	R-ENV	NA	FALSE	NA	NA	1.00950976707405	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818043	43	E2	4	0.7	0.4875	R-ENV	NA	FALSE	NA	NA	0.332376707390295	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818043	43	E2	5	-0.5	0.4875	R-ENV	NA	FALSE	NA	NA	-0.706250001250389	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818043	43	E2	6	0.55	0.4875	R-ENV	NA	FALSE	NA	NA	-0.135074093382137	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818043	43	E2	7	-0.4	0.4875	R-ENV	NA	FALSE	NA	NA	-0.125538395998516	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818043	43	E2	8	0.65	0.4875	R-ENV	NA	FALSE	NA	NA	0.338237007129374	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818044	44	E1	1	0	0.515625	returned	TRUE	TRUE	-0.302724858269546	0.637094477667954	0.164255122199204	matched crossed crossed
+anchor	818044	44	E1	2	0.25	0.515625	returned	TRUE	TRUE	-0.314165904236116	0.658124134826384	0.169049427795134	matched crossed crossed
+anchor	818044	44	E1	3	-0.25	0.515625	returned	TRUE	TRUE	-0.391263555325557	0.493379999361943	0.0500816595181928	matched crossed crossed
+anchor	818044	44	E1	4	0.1	0.515625	returned	TRUE	TRUE	-0.532127602340736	0.540260092971764	0.00406624531551394	matched crossed crossed
+anchor	818044	44	E1	5	0.15	0.515625	returned	TRUE	TRUE	-0.558512276754088	0.434529715433412	-0.0610147181603385	matched crossed crossed
+anchor	818044	44	E1	6	-0.15	0.515625	returned	TRUE	TRUE	-0.798890411341166	0.140196502721334	-0.323365508997416	matched crossed crossed
+anchor	818044	44	E1	7	0.05	0.515625	returned	TRUE	TRUE	-0.212687000517275	0.865437999482725	0.321187511201475	matched crossed crossed
+anchor	818044	44	E1	8	-0.05	0.515625	returned	TRUE	TRUE	-0.196324431938978	0.784266388373522	0.289088165717272	matched crossed crossed
+anchor	818044	44	E2	1	0.9	0.515625	R-ENV	NA	FALSE	NA	NA	0.609119181206121	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818044	44	E2	2	-0.6	0.515625	R-ENV	NA	FALSE	NA	NA	-0.770126188626592	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818044	44	E2	3	0.45	0.515625	R-ENV	NA	FALSE	NA	NA	-0.163344823884421	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818044	44	E2	4	0.7	0.515625	R-ENV	NA	FALSE	NA	NA	1.16409251327327	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818044	44	E2	5	-0.5	0.515625	R-ENV	NA	FALSE	NA	NA	-0.869680918235882	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818044	44	E2	6	0.55	0.515625	R-ENV	NA	FALSE	NA	NA	0.561903801385647	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818044	44	E2	7	-0.4	0.515625	R-ENV	NA	FALSE	NA	NA	-1.1612950356761	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818044	44	E2	8	0.65	0.515625	R-ENV	NA	FALSE	NA	NA	0.789055347999484	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818045	45	E1	1	0	0.4859375	returned	TRUE	TRUE	-0.413991598464947	0.673044534347553	0.127451272628803	matched crossed crossed
+anchor	818045	45	E1	2	0.25	0.4859375	returned	TRUE	TRUE	-0.196789352008122	0.759509476116878	0.276538284710628	matched crossed crossed
+anchor	818045	45	E1	3	-0.25	0.4859375	returned	TRUE	TRUE	-0.975337743917713	-0.0650594236052133	-0.509578466573963	matched crossed crossed
+anchor	818045	45	E1	4	0.1	0.4859375	returned	TRUE	TRUE	-0.407108849899132	0.514644079788368	0.0527910524446184	matched crossed crossed
+anchor	818045	45	E1	5	0.15	0.4859375	returned	TRUE	TRUE	-0.201066819998583	0.793806226876417	0.291547926095167	matched crossed crossed
+anchor	818045	45	E1	6	-0.15	0.4859375	returned	TRUE	TRUE	-1.03712623075432	-0.077653574504318	-0.547074961223068	matched crossed crossed
+anchor	818045	45	E1	7	0.05	0.4859375	returned	TRUE	TRUE	-0.355586952949149	0.573123984550851	0.106876425957101	matched crossed crossed
+anchor	818045	45	E1	8	-0.05	0.4859375	returned	TRUE	TRUE	-0.697336319874449	0.251150008250551	-0.219247940968199	matched crossed crossed
+anchor	818045	45	E2	1	0.9	0.4859375	R-ENV	NA	FALSE	NA	NA	1.15275328003854	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818045	45	E2	2	-0.6	0.4859375	R-ENV	NA	FALSE	NA	NA	-0.651389730300483	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818045	45	E2	3	0.45	0.4859375	R-ENV	NA	FALSE	NA	NA	-0.0796475421862669	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818045	45	E2	4	0.7	0.4859375	R-ENV	NA	FALSE	NA	NA	0.498329891795674	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818045	45	E2	5	-0.5	0.4859375	R-ENV	NA	FALSE	NA	NA	-0.820204291895502	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818045	45	E2	6	0.55	0.4859375	R-ENV	NA	FALSE	NA	NA	0.558544215732887	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818045	45	E2	7	-0.4	0.4859375	R-ENV	NA	FALSE	NA	NA	-0.535404449220074	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818045	45	E2	8	0.65	0.4859375	R-ENV	NA	FALSE	NA	NA	0.624393905995695	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818046	46	E1	1	0	0.5265625	returned	TRUE	TRUE	-1.54243154582292	3.81071786823958	1.11729745808333	matched crossed crossed
+anchor	818046	46	E1	2	0.25	0.5265625	returned	TRUE	TRUE	-0.114612151119856	0.828625153567644	0.351269196536394	matched crossed crossed
+anchor	818046	46	E1	3	-0.25	0.5265625	returned	TRUE	TRUE	-0.527904738057374	0.395557176005126	-0.0653192888386244	matched crossed crossed
+anchor	818046	46	E1	4	0.1	0.5265625	returned	TRUE	TRUE	-0.401256313766751	0.495472201858249	0.0460703463894994	matched crossed crossed
+anchor	818046	46	E1	5	0.15	0.5265625	returned	TRUE	TRUE	-0.284956393336918	0.638505520725582	0.173966946506832	matched crossed crossed
+anchor	818046	46	E1	6	-0.15	0.5265625	returned	FALSE	TRUE	-0.088492099023348	0.821664150976652	0.359444912695402	matched crossed crossed
+anchor	818046	46	E1	7	0.05	0.5265625	returned	TRUE	TRUE	-0.764673779077778	0.140721728734722	-0.305872509546528	matched crossed crossed
+anchor	818046	46	E1	8	-0.05	0.5265625	returned	TRUE	TRUE	-0.24428817053336	0.65414932946664	0.20096329431039	matched crossed crossed
+anchor	818046	46	E2	1	0.9	0.5265625	R-ENV	NA	FALSE	NA	NA	14.0530060869623	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818046	46	E2	2	-0.6	0.5265625	R-ENV	NA	FALSE	NA	NA	-0.683697059266744	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818046	46	E2	3	0.45	0.5265625	R-ENV	NA	FALSE	NA	NA	0.61224079989035	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818046	46	E2	4	0.7	0.5265625	R-ENV	NA	FALSE	NA	NA	0.369057118951774	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818046	46	E2	5	-0.5	0.5265625	R-ENV	NA	FALSE	NA	NA	-0.593811268626195	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818046	46	E2	6	0.55	0.5265625	R-ENV	NA	FALSE	NA	NA	0.370593402355159	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818046	46	E2	7	-0.4	0.5265625	R-ENV	NA	FALSE	NA	NA	-0.356401016552349	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818046	46	E2	8	0.65	0.5265625	R-ENV	NA	FALSE	NA	NA	0.340043988787067	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818047	47	E1	1	0	0.49375	returned	TRUE	TRUE	-0.607828884997462	0.478596896252538	-0.0635783967162117	matched crossed crossed
+anchor	818047	47	E1	2	0.25	0.49375	returned	TRUE	TRUE	-0.609713049018088	0.294461755669412	-0.154695959174338	matched crossed crossed
+anchor	818047	47	E1	3	-0.25	0.49375	returned	TRUE	TRUE	-0.459150480910824	0.459672761276676	0.000261140182925772	matched crossed crossed
+anchor	818047	47	E1	4	0.1	0.49375	returned	TRUE	TRUE	-0.493448873761555	0.636433938738445	0.0704549348321955	matched crossed crossed
+anchor	818047	47	E1	5	0.15	0.49375	returned	TRUE	TRUE	-0.189301081975719	0.706084660211781	0.253386906305531	matched crossed crossed
+anchor	818047	47	E1	6	-0.15	0.49375	returned	TRUE	TRUE	-0.401915224762629	0.508363095549871	0.052247372893621	matched crossed crossed
+anchor	818047	47	E1	7	0.05	0.49375	returned	TRUE	TRUE	-0.424495827266634	0.537052024295866	0.0553015360146162	matched crossed crossed
+anchor	818047	47	E1	8	-0.05	0.49375	returned	TRUE	TRUE	-0.884214051196875	0.0349754019281247	-0.416379578540625	matched crossed crossed
+anchor	818047	47	E2	1	0.9	0.49375	R-ENV	NA	FALSE	NA	NA	1.16639630007989	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818047	47	E2	2	-0.6	0.49375	R-ENV	NA	FALSE	NA	NA	-0.361365174182012	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818047	47	E2	3	0.45	0.49375	R-ENV	NA	FALSE	NA	NA	0.48528847506423	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818047	47	E2	4	0.7	0.49375	R-ENV	NA	FALSE	NA	NA	1.29621335826928	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818047	47	E2	5	-0.5	0.49375	R-ENV	NA	FALSE	NA	NA	-0.223521308703552	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818047	47	E2	6	0.55	0.49375	R-ENV	NA	FALSE	NA	NA	0.425042599057678	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818047	47	E2	7	-0.4	0.49375	R-ENV	NA	FALSE	NA	NA	-0.710045718645872	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818047	47	E2	8	0.65	0.49375	R-ENV	NA	FALSE	NA	NA	0.356856965336692	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818048	48	E1	1	0	0.528125	returned	TRUE	TRUE	-0.143604917914044	0.822337464898456	0.333506898492206	matched crossed crossed
+anchor	818048	48	E1	2	0.25	0.528125	returned	TRUE	TRUE	-0.0860358420009245	0.869286423624076	0.384728318155326	matched crossed crossed
+anchor	818048	48	E1	3	-0.25	0.528125	returned	TRUE	TRUE	-0.416530778799288	0.525363752450712	0.0535009594819625	matched crossed crossed
+anchor	818048	48	E1	4	0.1	0.528125	returned	TRUE	TRUE	-0.339616648570926	0.716169484241574	0.185346730335324	matched crossed crossed
+anchor	818048	48	E1	5	0.15	0.528125	returned	TRUE	TRUE	-0.288830788434004	0.594836203753496	0.149950949847246	matched crossed crossed
+anchor	818048	48	E1	6	-0.15	0.528125	returned	FALSE	TRUE	-1.2159357872337	-0.2418146934837	-0.71477611926495	matched crossed crossed
+anchor	818048	48	E1	7	0.05	0.528125	returned	TRUE	TRUE	-0.4065615459094	0.5151913837781	0.0533383564343497	matched crossed crossed
+anchor	818048	48	E1	8	-0.05	0.528125	returned	FALSE	TRUE	0.0848376847095363	1.08166385658454	0.573057899553286	matched crossed crossed
+anchor	818048	48	E2	1	0.9	0.528125	R-ENV	NA	FALSE	NA	NA	0.676445147149988	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818048	48	E2	2	-0.6	0.528125	R-ENV	NA	FALSE	NA	NA	-0.608684868791347	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818048	48	E2	3	0.45	0.528125	R-ENV	NA	FALSE	NA	NA	0.605419084484983	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818048	48	E2	4	0.7	0.528125	R-ENV	NA	FALSE	NA	NA	1.03994594046603	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818048	48	E2	5	-0.5	0.528125	R-ENV	NA	FALSE	NA	NA	-0.0803324796768427	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818048	48	E2	6	0.55	0.528125	R-ENV	NA	FALSE	NA	NA	0.516753508825264	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818048	48	E2	7	-0.4	0.528125	R-ENV	NA	FALSE	NA	NA	-0.494886741717647	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818048	48	E2	8	0.65	0.528125	R-ENV	NA	FALSE	NA	NA	0.735229277003865	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818049	49	E1	1	0	0.4703125	returned	TRUE	TRUE	-0.705554553193668	0.255993298368832	-0.220874377412418	matched crossed crossed
+anchor	818049	49	E1	2	0.25	0.4703125	returned	TRUE	TRUE	-0.357287299392437	0.753064263107563	0.194897759201313	matched crossed crossed
+anchor	818049	49	E1	3	-0.25	0.4703125	returned	FALSE	TRUE	-1.2195562176613	-0.275708561411304	-0.731702213755054	matched crossed crossed
+anchor	818049	49	E1	4	0.1	0.4703125	returned	TRUE	TRUE	-0.29784444860041	0.61951394983709	0.15790506311834	matched crossed crossed
+anchor	818049	49	E1	5	0.15	0.4703125	returned	TRUE	TRUE	-0.241752869520952	0.657661192979048	0.203986876572798	matched crossed crossed
+anchor	818049	49	E1	6	-0.15	0.4703125	returned	TRUE	TRUE	-0.985891057158292	-0.0671898852832915	-0.515981389189542	matched crossed crossed
+anchor	818049	49	E1	7	0.05	0.4703125	returned	TRUE	TRUE	-0.508180054837842	0.401365843599658	-0.0524305431190923	matched crossed crossed
+anchor	818049	49	E1	8	-0.05	0.4703125	returned	TRUE	TRUE	-0.520104376815887	0.527747185684113	0.003760369277863	matched crossed crossed
+anchor	818049	49	E2	1	0.9	0.4703125	R-ENV	NA	FALSE	NA	NA	0.681073704787618	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818049	49	E2	2	-0.6	0.4703125	R-ENV	NA	FALSE	NA	NA	-1.20614439706447	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818049	49	E2	3	0.45	0.4703125	R-ENV	NA	FALSE	NA	NA	0.151489776708585	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818049	49	E2	4	0.7	0.4703125	R-ENV	NA	FALSE	NA	NA	0.453383331967818	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818049	49	E2	5	-0.5	0.4703125	R-ENV	NA	FALSE	NA	NA	-0.294931494161489	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818049	49	E2	6	0.55	0.4703125	R-ENV	NA	FALSE	NA	NA	-0.238930609605082	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818049	49	E2	7	-0.4	0.4703125	R-ENV	NA	FALSE	NA	NA	-0.414147080577821	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818049	49	E2	8	0.65	0.4703125	R-ENV	NA	FALSE	NA	NA	1.02270184094737	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818050	50	E1	1	0	0.49375	returned	TRUE	TRUE	-0.754280515866918	0.199210695070582	-0.272652097898168	matched crossed crossed
+anchor	818050	50	E1	2	0.25	0.49375	returned	TRUE	TRUE	0.174459513182552	1.11598783349505	0.632284220213802	matched crossed crossed
+anchor	818050	50	E1	3	-0.25	0.49375	returned	TRUE	TRUE	-0.957865788921433	0.157368586078567	-0.394328191265183	matched crossed crossed
+anchor	818050	50	E1	4	0.1	0.49375	returned	TRUE	TRUE	-0.0359605076166393	0.875904726758361	0.411732363477111	matched crossed crossed
+anchor	818050	50	E1	5	0.15	0.49375	returned	TRUE	TRUE	-0.647554806954116	0.238797732108384	-0.200350217110366	matched crossed crossed
+anchor	818050	50	E1	6	-0.15	0.49375	returned	TRUE	TRUE	-0.578579678757307	0.360873446242693	-0.106961026413557	matched crossed crossed
+anchor	818050	50	E1	7	0.05	0.49375	returned	FALSE	TRUE	-0.959609280616361	-0.0191795931163609	-0.480178128272611	matched crossed crossed
+anchor	818050	50	E1	8	-0.05	0.49375	returned	TRUE	TRUE	-0.343657170152372	0.551240290785128	0.101838435316378	matched crossed crossed
+anchor	818050	50	E2	1	0.9	0.49375	R-ENV	NA	FALSE	NA	NA	0.614175493835644	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818050	50	E2	2	-0.6	0.49375	R-ENV	NA	FALSE	NA	NA	-0.328290785597304	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818050	50	E2	3	0.45	0.49375	R-ENV	NA	FALSE	NA	NA	1.15579769735706	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818050	50	E2	4	0.7	0.49375	R-ENV	NA	FALSE	NA	NA	0.277399854289071	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818050	50	E2	5	-0.5	0.49375	R-ENV	NA	FALSE	NA	NA	0.10277190760488	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818050	50	E2	6	0.55	0.49375	R-ENV	NA	FALSE	NA	NA	0.573541073233901	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818050	50	E2	7	-0.4	0.49375	R-ENV	NA	FALSE	NA	NA	-0.460132997032514	The internal MSPL profile probe requires one resolved b_fix coordinate.
+anchor	818050	50	E2	8	0.65	0.49375	R-ENV	NA	FALSE	NA	NA	0.277408086773727	The internal MSPL profile probe requires one resolved b_fix coordinate.

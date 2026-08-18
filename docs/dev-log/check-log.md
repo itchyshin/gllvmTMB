@@ -1,3 +1,26 @@
+## 2026-08-18 — L1 coverage-gate harness + local 50-rep receipt (companion to #1128)
+
+Lane `cursor/mspl-forkB-l1-coverage-pr-20260818` (cursor). Rebased onto
+`origin/main` after [#1151](https://github.com/itchyshin/gllvmTMB/pull/1151)
+GOAL_MET (`74a7e841`) so #1143 is no longer CONFLICTING. Companion to the
+ADEMP first-trait harness: `dev/mspl-forkB-l1-lib.R`,
+`dev/mspl-forkB-l1-coverage-smoke.R`,
+`tests/testthat/test-zz-mspl-forkB-l1-gate.R`. Different files from #1128.
+Official L1 stays #1128. No `R/`, `src/`, `NAMESPACE`, `NEWS.md`, register.
+
+Local 50-rep walk (L0 worktree, `tape = "Q_0"`, 2026-08-18 06:50):
+anchor/E1 374/400, `cov_eff = 0.9350`, Wilson [0.9065, 0.9553], availability 1,
+refusal 0, L1 PASS; cluster bootstrap mean 0.9353, boot [0.9124, 0.9575],
+deff 0.991. anchor/E2 400/400 `R-ENV` → NOT-EVALUABLE (door refuses
+`theta_rr_B`; not a pass). L0 + ADEMP L1 + GOAL_MET are on `main`; the
+800-row walk itself was not re-run here. Not Totoro; T\* not frozen;
+MSPL-04 stays `blocked`; #1077 stays draft.
+
+```sh
+NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(".", compile=FALSE, quiet=TRUE); testthat::test_file("tests/testthat/test-zz-mspl-forkB-l1-gate.R")'
+# deliberately not: Totoro, T*, public se, undraft #1077, MSPL-04 flip, git add -A
+```
+
 ## 2026-08-18 — Cursor: g0_unlock fork B Melissa reconcile (GOAL_MET)
 
 - worktree: `~/local-scratch/lanes/gllvmTMB-mspl-forkB-g0-reconcile`
@@ -11,7 +34,7 @@
 - `gh pr view 1077 --json isDraft` → `true`
 - `git diff --name-only origin/main -- LOOP/` → empty (root LOOP/ untouched)
 - rg `MSPL-04` in register → still `blocked`
-- #1143 resolved in this sitting (companion harness or closed; official L1 stays #1128)
+- #1143 rebased as companion harness after this entry (official L1 stays #1128)
 - deliberately not: Totoro, T*, public se/vcov/confint, undraft #1077, NEWS covered,
   MSPL-04 flip, L2, git add -A, D-43 panel
 

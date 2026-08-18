@@ -101,3 +101,28 @@ lane is pushed and its state is described in its PR.
 Worth aggregating monthly if it recurs: the near-identical shape appeared **twice in one
 day in the same defect** — Design 122 §15 fixed TEST A and left the other readers; this
 lane fixed the readers and left the second block. Both passed their own tests.
+
+---
+
+# Addendum — the mixture ultra-plan (Arcs A + B), same day (Melissa)
+
+**Plan:** the approved A+B mixture plan. **Verdict:** delivered; one drift class
+RECURRED and is now ledger-worthy.
+
+- **Scope:** A complete (narrow pushed to #1106 with decisions + honest check chain;
+  #1103/#1105 merged; #1106 handed over unmerged). B complete through the repair cycle;
+  PR correctly withheld pending #1106 (the plan's own gate). DEFER fence held.
+- **Evidence:** fail-first honoured in B1/B2 and in the repair; B3's docs-only
+  exception stated. Full check deferred to PR-open with the contention reason recorded
+  — adaptive, not drift.
+- **Routing:** as planned (2 Haiku scouts, 1 reused Sonnet builder across 8 commits,
+  1 Opus ceiling refute). Budget 4/6 children, 1/1 ceiling.
+- **Safety gates:** preflight re-run; foreign lanes untouched; compiler-race
+  infrastructure failures were NOT pooled with estimator/test failures — twice.
+- **DRIFT (recurring class):** *"instrument fixed at one member of its class"* —
+  third instance in one day (TEST A/K1 · theta_rr_B/spde · sd_B/sd_W), the last
+  DESPITE the rule being verbatim in the builder brief. Route to Rose for
+  [[PLAN-DRIFT-LEDGER]] as a class: prose rules do not survive contact; require the
+  structural form (shared named constant/map) + adversarial refute for ANY instrument
+  fix. The refute stage caught it both times it ran — it is load-bearing, not
+  ceremonial.

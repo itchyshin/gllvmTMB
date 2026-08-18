@@ -487,6 +487,31 @@
 #' Schielzeth (2010) \emph{Biol. Rev.} 85: 935-956; Nakagawa, Johnson &
 #' Schielzeth (2017) \emph{J. R. Soc. Interface} 14: 20170213.
 #'
+#' @section Objective provenance: report\$joint_nll_* vs objective_components:
+#' A fitted object carries two different surfaces that both look like "the
+#' objective", and they answer different questions.
+#'
+#' `report$joint_nll_unpenalized` and `report$joint_nll_penalized` are
+#' **conditional joint** quantities computed on the TMB tape (the negative
+#' log-likelihood of the data and random effects at their current values,
+#' before and after TMB-side MSPL penalty terms are added). They see only
+#' penalties applied *inside* the C++ template -- the LA-MSPL penalties
+#' documented above -- and never see anything computed at the R level.
+#'
+#' `fit$objective_components` is the **marginal** surface: the value TMB's
+#' Laplace approximation integrates the random effects out of, decomposed
+#' into `likelihood_nll` (the unpenalised marginal negative log-likelihood),
+#' `ridge_penalty` (the R-level loading ridge from `aghq_ridge`, added
+#' *outside* the TMB objective -- see `.gllvmTMB_penalised_gradient()`),
+#' `optimization_nll` (their sum, the objective the optimiser actually
+#' minimised), and `optimizer_reported` (the value `nlminb()` / `optim()`
+#' returned). This is the **only** place the R-level loading ridge appears;
+#' `report$joint_nll_*` cannot see it because it never reaches the TMB tape.
+#'
+#' The two surfaces are **not expected to match**, on a ridged fit or
+#' otherwise, and a difference between them is not itself an error: they are
+#' conditional-joint and marginal quantities from different penalty regimes.
+#'
 #' @seealso [screen_gllvmTMB()] for the opt-in fixed-design separation
 #'   certificate; \code{vignette("mspl-binary-jsdm", package = "gllvmTMB")}
 #'   for the screen-first LA-MSPL workflow; [traits()] for wide data-frame formula input;

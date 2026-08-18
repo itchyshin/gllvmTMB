@@ -52407,6 +52407,44 @@ Design 122 compute.
 
 — Claude, OWED-items lane, finishing pass
 
+---
+
+## 2026-08-17 — Ayumi #25 slice built on `claude/ayumi-25-api-diagnostics` (Claude, stacked on #1106)
+
+Seven commits, `1c9704d4..86682aa4`, stacked on `ac82801d`. Branch PUSHED; **PR
+deliberately NOT opened** — one open implementation PR at a time, so it waits for
+#1106 to merge, then opens against `main`.
+
+**What it fixes (Ayumi #25, all three):** mapped-off Psi placeholders no longer fire
+`near_zero_sd_B` OR `near_zero_sd_W` (the shared helper keys masks by component name:
+`sd_B → diag_B_skip`, `sd_W → diag_W_skip` — the complete inventory, exactly two masks,
+both C++-length-guaranteed); `fitted.gllvmTMB_multi()` exists, forwards `...`, and is
+covered by a cross-class method-parity test; `report$joint_nll_*` vs
+`objective_components` provenance is documented as conditional-joint vs marginal, with
+the identity `joint_nll_penalized == joint_nll_unpenalized` on a ridged ML fit pinned
+as a structural test.
+
+**The instructive part:** the first B1 fix was REFUTED by adversarial review for the
+SAME shape #1092's first fix had — it fixed `sd_B` and left `sd_W`, with a false
+completeness claim in its audit, DESPITE the fix-at-every-reader rule being explicitly
+in the builder's brief. Third instance of the shape in one day. The rule alone does not
+survive contact; only the structural form does (the name→mask map both instruments now
+share). Repair evidence: real mixed-family fit, pre-fix `near_zero_sd_W` +
+`near_zero_psi_unit_obs WARN 1e-06` on a healthy converged fit; post-fix clean, PASS
+0.4843.
+
+**Also new:** `tests/testthat/test-ayumi-shaped-fixture.R` — the standing user-shaped
+guard (p=12 single-trial Bernoulli, ridge ON, 1.8 s) asserting truthful convergence,
+non-NULL `fitted()`, and no phantom boundary flags — the configuration our goldens
+deliberately avoid and the first real user hit within days.
+
+**Checks:** focused 48/0; wide blast-radius sweep
+(`boundary|psi|olre|check|heywood|fit-health|...`) 362/0; `document()` no new
+warnings; no trailing whitespace. Full `devtools::check` deferred to the PR-open step
+(CI serial) — local runs this session hit compiler races with a foreign lane's
+campaign eating cores; recorded honestly rather than re-run against contention.
+
+— Claude, Ayumi #25 lane (stacked; PR pending #1106 merge)
 ## 2026-08-17 — Cursor A4/A7 post-REPLACE verify (private /tmp install)
 
 Worktree `~/local-scratch/lanes/gllvmTMB-mspl-poisson-W-REPLACE`

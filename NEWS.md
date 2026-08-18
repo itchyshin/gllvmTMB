@@ -34,6 +34,14 @@ is still the default.
 
 ## New
 
+* **`fitted()` now works on the default `gllvmTMB_multi` fit (#25).**
+  `fitted` was only registered as an S3 method for the `gllvmTMB_julia` and
+  `gllvmTMB_va` engine classes, so `fitted(fit)` on an ordinary fit silently
+  returned `NULL` rather than erroring or dispatching. `fitted.gllvmTMB_multi()`
+  is a thin wrapper over `predict(object, newdata = NULL, type = )`, returning
+  the same long data frame (default `type = "response"`, matching the
+  `fitted()` convention; `predict()`'s own default remains `"link"`).
+
 * **Exact randomized-quantile residuals now cover nine more families.**
   `residuals(fit, type = "randomized_quantile")` and
   `predictive_check(fit, type = "rq_qq")` compute exact family-CDF
@@ -257,6 +265,21 @@ is still the default.
   parameters, and it never selects a penalized estimator automatically.
 
 ## Fixed
+
+* **`fit_health$boundary_flags` no longer flags the auto-Psi skip block's
+  mapped-off `sd_B` placeholders as `near_zero_sd_B` (#25).** The same
+  `skip_psi_b_t` pinning described in the `near_zero_psi_unit` fix below
+  (single-trial Bernoulli traits, and every multinomial contrast
+  pseudo-trait, pinned to `sd_B = 1e-6` and mapped off) was also read raw
+  by `.gllvmTMB_boundary_flags()`, which had no `diag_B_skip` filter of its
+  own, so it unconditionally flagged the pinned placeholder. A default
+  auto-skip fit and its explicit `latent(..., unique = FALSE)` mirror could
+  therefore disagree on `boundary_flags` for an otherwise identical model.
+  Both readers now share one helper, `.gllvmTMB_estimable_components()`,
+  which drops the mapped-off entries before either screen runs; a genuine
+  collapse among the remaining, estimable traits is still caught. This is a
+  **behaviour change**: fits with a mapped-off Psi trait that previously
+  carried a spurious `near_zero_sd_B` flag no longer do.
 
 * **`simulate()` now draws from each row's true family instead of silently
   substituting a Gaussian-on-link-scale number for nine families, and

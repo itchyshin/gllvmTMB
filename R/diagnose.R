@@ -136,6 +136,50 @@
   min(val) / max_val < rel_thresh
 }
 
+## `sd_B` (unit level) and `sd_W` (per-row / OLRE tier) are both REPORTed
+## for every trait, including ones R/fit-multi.R's auto-skip gates pin to
+## `log(1e-6)` and map off: `sd_B` for single-trial Bernoulli and
+## multinomial fid-16 contrasts (`skip_psi_b_t`, `diag_B_skip`,
+## src/gllvmTMB.cpp:1586), and `sd_W` for single-trial Bernoulli, ordinal
+## probit (fid 14), and multinomial fid-16 contrasts (`skip_olre_t`,
+## `diag_W_skip`, src/gllvmTMB.cpp:1646) -- the identical mapped-off
+## mechanism one tier over. Those pinned entries are plumbing residue, not
+## a fitted quantity, and their 1e-6 value fires an absolute near-zero
+## threshold unconditionally. Every raw reader of either quantity that
+## screens for near-zero must drop the mapped-off entries the same way, or
+## a default auto-skip fit and its explicit `latent(..., unique = FALSE)` /
+## row-level-diagonal mirror disagree on boundary diagnostics for a model
+## that is otherwise identical.
+##
+## Complete mask inventory (grep "_skip" across R/fit-multi.R and
+## src/gllvmTMB.cpp): `diag_B_skip` and `diag_W_skip` are the only two
+## per-trait skip masks the engine carries; there is no third. Both are
+## guaranteed length `n_traits` by a C++ hard error whenever their
+## component is actually REPORTed (`use_diag_B` / `use_diag_W`
+## respectively; src/gllvmTMB.cpp:1576-1577 and :1637-1638), so the
+## length-equality guard below is defensive, not load-bearing -- but it is
+## kept for both entries rather than assumed.
+.gllvmTMB_estimable_component_masks <- c(
+  sd_B = "diag_B_skip",
+  sd_W = "diag_W_skip"
+)
+
+.gllvmTMB_estimable_components <- function(object, name) {
+  val <- object$report[[name]]
+  if (is.null(val)) {
+    return(NULL)
+  }
+  val <- as.numeric(val)
+  mask_name <- unname(.gllvmTMB_estimable_component_masks[name])
+  if (!is.na(mask_name)) {
+    skip <- object$tmb_data[[mask_name]]
+    if (!is.null(skip) && length(skip) == length(val)) {
+      val <- val[skip != 1L]
+    }
+  }
+  val
+}
+
 .gllvmTMB_boundary_flags <- function(
   object,
   loading_thresh = 1e-3,
@@ -181,7 +225,7 @@
     ),
     names(rep)
   )) {
-    val <- as.numeric(rep[[nm]])
+    val <- .gllvmTMB_estimable_components(object, nm)
     val <- val[is.finite(val)]
     if (length(val) > 0L &&
         (any(val < sd_thresh) ||
@@ -1783,22 +1827,16 @@ check_gllvmTMB <- function(
     if (!nm %in% names(object$report)) {
       next
     }
-    val <- as.numeric(object$report[[nm]])
-    ## `sd_B` (unit level only) is REPORTed for every trait, including ones
-    ## R/fit-multi.R's auto-Psi skip block pins to `log(1e-6)` and maps off
-    ## (single-trial Bernoulli and multinomial fid-16 contrasts -- see
-    ## `skip_psi_b_t` there, and the `diag_B_skip` guard in
-    ## src/gllvmTMB.cpp:1586). Those pinned entries are plumbing residue, not
-    ## a fitted quantity, and their 1e-6 value fires the absolute threshold
-    ## unconditionally -- drop them before the finite filter, the minimum, and
-    ## the sibling set passed to `.gllvmTMB_relative_collapse()` so a
-    ## deliberately-suppressed Psi does not read as a collapsed one.
-    if (level == "unit") {
-      skip <- object$tmb_data$diag_B_skip
-      if (!is.null(skip) && length(skip) == length(val)) {
-        val <- val[skip != 1L]
-      }
-    }
+    ## `.gllvmTMB_estimable_components()` drops the mapped-off `sd_B` / `sd_W`
+    ## placeholders (see its own comment above) before the finite filter, the
+    ## minimum, and the sibling set passed to `.gllvmTMB_relative_collapse()`,
+    ## so a deliberately-suppressed Psi does not read as a collapsed one.
+    ## This screen and `.gllvmTMB_boundary_flags()` below share that FILTER
+    ## on the same reported quantity, not the verdict: this loop's
+    ## `psi_rel_thresh` (default 1e-2) and boundary_flags's `sd_rel_thresh`
+    ## (default 1e-3) are deliberately different thresholds, so the same
+    ## fit can PASS one screen and WARN the other.
+    val <- .gllvmTMB_estimable_components(object, nm)
     val <- val[is.finite(val)]
     if (length(val) == 0L) {
       next

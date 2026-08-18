@@ -3,47 +3,31 @@
 Do **not** read repo-root `LOOP/GOAL.md` first — that file is the closed
 REPLACE **GOAL_MET** kit.
 
-Worktree: `~/local-scratch/lanes/gllvmTMB-mspl-forkB-goal`
-Branch: `cursor/mspl-fork-B-goal-kit`
+This fork-B `/goal` is itself **GOAL_MET** (L0 #1130 + L1 #1128 on `main`).
+Do **not** re-run A0–A5. Do **not** start L2 without a new Shinichi G0.
+
 Kit: `docs/dev-log/lanes/cursor-mspl-fork-B/LOOP/`
 
 ---
 
-## COLD START
+## COLD START (historical — campaign already closed)
 
 ```markdown
 /goal
 
-Ultra-plan G0 approved (AskQuestion 2026-08-18, fork B reaffirmed twice).
-Run g0_unlock via this kit — a NEW goal. Do not reopen REPLACE GOAL_MET.
+This kit is GOAL_MET. Do not reopen REPLACE GOAL_MET at repo-root LOOP/.
+Do not re-scaffold. Do not start L2.
 
-LANE: cursor-mspl-fork-B
-REPO: ~/local-scratch/lanes/gllvmTMB-mspl-forkB-goal
-PLAN: docs/dev-log/lanes/cursor-mspl-fork-B/LOOP/ultra-plan.md
-
-READ FIRST (this kit, not repo-root LOOP/):
-  docs/dev-log/lanes/cursor-mspl-fork-B/LOOP/GOAL.md
+READ FIRST:
   docs/dev-log/lanes/cursor-mspl-fork-B/LOOP/checkpoint.md
-  docs/dev-log/lanes/cursor-mspl-fork-B/LOOP/ultra-plan.md
-  ./AGENTS.md
+  docs/dev-log/plan-actual/2026-08-18-mspl-forkB-g0-unlock.md
+  docs/dev-log/research/2026-08-18-mspl-forkB-l1-smoke.md
 
-SCAFFOLD: already written and committed. Do not recreate. Do not overwrite
-repo-root LOOP/.
-
-RUN: goal skill — re-read GOAL each arc; verify by LOG not exit code;
-pause at OPEN GATE; overwrite this kit's checkpoint each arc; fresh chat
-at batch barriers.
-
-START ARC: A6 (land PR #1127; do not merge). Track A1/A2 (decision),
-A4 (L0 #1126), A5 (L1 smoke). A0 and A3 are done. Arc IDs match
-`LOOP/ultra-plan.md` / `LOOP/arcs.md` — L0-verify is A4, not A1.
-NEXT GATE: merge of #1126/#1127; Totoro / T* / undraft #1077 / public se
-are HARD OUT (not-ready).
-
-FILE FENCE: this kit owns docs/dev-log/lanes/cursor-mspl-fork-B/ only.
-Design 125 / ADEMP / docs/dev-log/decisions.md → cursor/mspl-forkB-decision.
-R/ → cursor/mspl-forkB-l0-20260818.
-L1 smoke → cursor/mspl-forkB-l1-smoke-20260818.
+L0: #1130 d7f526d4
+L1: #1128 715326af — cov_eff 0.880 Wilson [0.762, 0.944] PASS (not calibrated)
+NEXT GATE: L2 needs an explicit Shinichi G0. If he signs it, open a NEW kit.
+HARD OUT: Totoro; T*; undraft #1077; public se/vcov/confint; MSPL-04→covered;
+NEWS covered; git add -A; overwrite root LOOP/.
 ```
 
 ---
@@ -53,17 +37,10 @@ L1 smoke → cursor/mspl-forkB-l1-smoke-20260818.
 ```markdown
 /goal
 
-RESUME g0_unlock fork B. Do not reopen repo-root LOOP/ (REPLACE GOAL_MET).
-Do not redo arcs marked done.
+RESUME is a no-op. g0_unlock fork B is GOAL_MET.
+Do not redo A0–A5. Do not start L2.
 
-WORKSPACE: reattach ~/local-scratch/lanes/gllvmTMB-mspl-forkB-goal
-on cursor/mspl-fork-B-goal-kit and pull. Do NOT recreate.
-
-READ FIRST: docs/dev-log/lanes/cursor-mspl-fork-B/LOOP/GOAL.md
-→ checkpoint.md → ultra-plan.md → ./AGENTS.md
-
-CONTINUE FROM: the NEXT line in checkpoint.md.
-PAUSE AT: the first OPEN GATE named there.
+READ: docs/dev-log/lanes/cursor-mspl-fork-B/LOOP/checkpoint.md
 PROHIBITED: Totoro; T*; undraft #1077; public se/vcov/confint; MSPL-04→covered;
 NEWS covered; rebuild #1090; git add -A; editing R/, src/, Design 125 body,
 or decisions.md from this kit.

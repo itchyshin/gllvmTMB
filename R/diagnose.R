@@ -177,6 +177,27 @@
       val <- val[skip != 1L]
     }
   }
+  ## `sd_kernel_diag` (src/gllvmTMB.cpp:1760-1861) does not fit the mask
+  ## table above: it is an `n_traits x n_kernel_tiers` matrix, not a
+  ## per-trait vector, and its companion `kernel_has_diag` uses the
+  ## OPPOSITE polarity from `diag_B_skip` / `diag_W_skip` -- `1` means the
+  ## tier's diag IS estimated (keep), not that it is mapped off (skip). As
+  ## of this writing the R-level multi-kernel grammar hard-blocks a fitted
+  ## kernel-tier Psi (`kernel_has_diag` is unconditionally 0 for every
+  ## tier; R/fit-multi.R:3456-3462, cli_abort at :3375-3381), so whenever
+  ## `sd_kernel_diag` is REPORTed at all it is currently an all-zero
+  ## placeholder -- screening it unfiltered would fire on every
+  ## 2+-named-kernel fit (issue #1119). Filter to the (currently empty) set
+  ## of tiers that actually carry a fitted diag, so the screen stays inert
+  ## today and starts working the day the R-level block above is lifted.
+  if (identical(name, "sd_kernel_diag")) {
+    has_diag <- object$tmb_data[["kernel_has_diag"]]
+    if (!is.null(has_diag) && length(has_diag) > 0L &&
+        length(val) %% length(has_diag) == 0L) {
+      keep <- rep(has_diag == 1L, each = length(val) / length(has_diag))
+      val <- val[keep]
+    }
+  }
   val
 }
 
@@ -212,9 +233,18 @@
     c(
       "sd_B",
       "sd_W",
-      "sd_phy",
       "sd_phy_diag",
-      "sd_spde",
+      ## `sd_spde_unique` is the spatial `*_unique()` Psi companion
+      ## (src/gllvmTMB.cpp:2150); `sd_kernel_diag` is its multi-kernel
+      ## analogue (src/gllvmTMB.cpp:1861). Neither was in this list before
+      ## issue #1119 -- a collapsed spatial or kernel Psi went unflagged.
+      ## (The bare literals `"sd_phy"` and `"sd_spde"` that used to sit here
+      ## never matched a REPORTed name -- src/gllvmTMB.cpp REPORTs
+      ## `sd_phy_diag` and `sd_spde_unique`, not those -- so they are
+      ## removed rather than corrected onto a real name that already has
+      ## its own entry above/below.)
+      "sd_spde_unique",
+      "sd_kernel_diag",
       ## Augmented random-slope variances (the dep/indep/`||` slope engines and
       ## the spatial slope). These are the cells most prone to a boundary
       ## (singular) fit -- weakly-identified per-trait intercept/slope variances,
@@ -1846,7 +1876,11 @@ check_gllvmTMB <- function(
     unit = "sd_B",
     unit_obs = "sd_W",
     phylo = "sd_phy_diag",
-    spatial = "sd_spde"
+    ## `"sd_spde"` was never a REPORTed name (src/gllvmTMB.cpp REPORTs
+    ## `sd_spde_unique`, not `sd_spde`), so this row's `nm %in%
+    ## names(object$report)` guard below always failed and produced zero
+    ## `near_zero_psi_spatial` rows on every spatial fixture -- issue #1119.
+    spatial = "sd_spde_unique"
   )
   for (level in names(psi_specs)) {
     nm <- psi_specs[[level]]

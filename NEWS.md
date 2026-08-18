@@ -1,5 +1,24 @@
 # gllvmTMB 0.7.0 (development)
 
+* **Boundary screening now sees two spatial/kernel Psi companions it
+  previously missed, and `check_gllvmTMB()`'s spatial psi row no longer
+  returns zero rows (#1119).** ⚠️ **Behaviour change:** fits that previously
+  passed clean may now emit new boundary flags / WARN rows. Two real,
+  non-trivial quantities were absent from `.gllvmTMB_boundary_flags()`'s
+  screening list entirely: `sd_spde_unique` (the spatial `*_unique()` Psi
+  companion) and `sd_kernel_diag` (its multi-kernel analogue) -- a
+  collapsed spatial or kernel Psi went unflagged. Both are now screened;
+  `sd_kernel_diag` is filtered to only the tiers that actually carry a
+  fitted diag, since the current multi-kernel grammar cannot request one
+  yet (it is otherwise always an all-zero placeholder that would false-fire
+  on every 2+-named-kernel fit). Separately, `check_gllvmTMB()`'s own
+  `spatial` psi row used the dead literal `"sd_spde"` -- no such name is
+  ever REPORTed (the real name is `sd_spde_unique`) -- so it silently
+  produced zero rows (no PASS, no WARN) for every spatial fixture; it now
+  reports correctly. The dead literals `"sd_phy"` / `"sd_spde"` are also
+  removed from `.gllvmTMB_boundary_flags()`'s own list (they never matched
+  a REPORTed name there either; `sd_phy_diag` and `sd_spde_b` were already
+  screened under their real names).
 * **`deviance()` no longer returns a silent `NULL` on a `gllvmTMB_multi`
   fit (#1118).** With no method registered, `deviance()` fell through to
   `stats:::deviance.default`, which reaches for `object$deviance` and

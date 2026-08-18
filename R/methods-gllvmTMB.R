@@ -2427,6 +2427,30 @@ fitted.gllvmTMB_multi <- function(object, type = c("response", "link"), ...) {
   predict(object, newdata = NULL, type = type, ...)
 }
 
+#' Deviance of a fitted gllvmTMB model
+#'
+#' `-2 * logLik(object)`, delegating through [logLik.gllvmTMB_multi()]
+#' rather than recomputing anything independently. This is deliberate: on a
+#' penalised (ridged) fit -- `aghq_ridge` set to a finite value --
+#' `logLik()` already discloses, with a warning, that the returned value is
+#' the unpenalised log-likelihood evaluated AT a penalised MAP point, not at
+#' its own maximum. Because `deviance()` is defined purely in terms of
+#' `logLik()` here, that same disclosure fires exactly once and is not
+#' repeated or re-derived.
+#'
+#' @param object A fit returned by [gllvmTMB()].
+#' @param ... Currently unused.
+#'
+#' @return A single numeric value, `-2 * as.numeric(logLik(object))`. On a
+#'   ridged fit this carries the same MAP-point caveat as `logLik()`: the
+#'   value is `-2` times the unpenalised likelihood at the penalised
+#'   estimate, not at its own maximum, and the warning issued by `logLik()`
+#'   is inherited unchanged.
+#' @export
+deviance.gllvmTMB_multi <- function(object, ...) {
+  -2 * as.numeric(logLik(object, ...))
+}
+
 ## Internal-only reconstruction-uncertainty helper for `predict_missing(se =
 ## TRUE)` (Design 119 Slice 1, the R1-quad route). GAUSSIAN FAMILIES ONLY in
 ## this slice; register status `heuristic_unvalidated` -- no coverage

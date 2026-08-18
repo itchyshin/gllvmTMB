@@ -1,5 +1,14 @@
 # gllvmTMB 0.7.0 (development)
 
+* **`deviance()` no longer returns a silent `NULL` on a `gllvmTMB_multi`
+  fit (#1118).** With no method registered, `deviance()` fell through to
+  `stats:::deviance.default`, which reaches for `object$deviance` and
+  returns `NULL` without error -- the same shape as the `fitted()` defect
+  fixed in #1114. `deviance.gllvmTMB_multi()` now returns
+  `-2 * logLik(object)`, delegating through `logLik()` so it inherits that
+  method's existing MAP-point disclosure warning on ridged
+  (`aghq_ridge`-penalised) fits rather than re-deriving it.
+
 * **Convergence diagnostics on ridged fits now judge the objective the fit
   actually optimised (#1092).** `aghq_ridge` applies a loading penalty in R,
   outside the TMB objective, so `fit_health$max_gradient` previously reported

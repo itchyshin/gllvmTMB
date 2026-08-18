@@ -105,13 +105,14 @@ cell**:
 # What happens
 
 **The headline number is a dose-response, not a single comparison.** Hold
-fuzz fixed at 0.5 × correlation length and grow only the fuzzed arm — 100
-rows, then 220, then 400 — and the integration penalty deepens in step:
+fuzz fixed at 0.5 × correlation length and grow the fuzzed arm's **share** of
+the data — 100 rows against 400, then 220 against 220, then 400 against 100 —
+and the integration penalty deepens in step:
 `integrated − precise` goes **−0.105 → −0.279 → −0.438**. A pure averaging
 artefact cannot produce that; it is exactly what attenuation propagating in
 proportion to the contaminated arm's share of the data predicts.
 
-```{r arm-weighting-figure, echo = FALSE, fig.width = 9.5, fig.height = 4.0, dpi = 200, out.width = "100%", fig.cap = "The attenuation penalty across three arm-size designs, each n(precise) / n(fuzzed): 220/220 (equal), 400/100 (presence-only four times the survey), 100/400 (survey four times the presence-only arm, a stress test). Pale symbols are all 135 replicate fits per design (15 per fuzz level per arm); solid symbols and lines are the design's arm means. The grey line marks the true slope 0.9. In every design the precise arm sits at truth and the fuzzed arm collapses toward zero; the integrated fit falls between them at a depth that depends on how much of the total data the fuzzed arm supplies.", fig.alt = "Three side-by-side panels, one per arm-size design, each plotting estimated slope against positional fuzz (0, 0.5 and 1.0 times the environmental correlation length) for three analyses: precise, fuzzed and integrated. A grey horizontal reference line marks the true slope 0.9 in every panel. In all three panels the precise series stays flat near 0.9 and the fuzzed series falls steeply toward 0.2 by fuzz 1.0. The integrated series falls least in the 400-precise/100-fuzzed panel (to about 0.74 at fuzz 1.0), more in the 220/220 panel (to about 0.52), and most in the 100-precise/400-fuzzed panel (to about 0.34): the more of the total data the fuzzed arm supplies, the deeper the integrated series falls."}
+```{r arm-weighting-figure, echo = FALSE, fig.width = 9.5, fig.height = 4.0, dpi = 200, out.width = "100%", fig.cap = "The attenuation penalty across three arm-size designs, each n(precise) / n(fuzzed), ordered left to right by the FUZZED arm's share of the data: 400/100 (fuzzed arm one fifth), 220/220 (equal), 100/400 (fuzzed arm four fifths, a stress test). Pale symbols are all 135 replicate fits per design (15 per fuzz level per arm); solid symbols and lines are the design's arm means. The dashed grey line, labelled in the first panel, marks the true slope 0.9. In every design the precise arm sits at truth and the fuzzed arm collapses toward zero; the integrated fit falls between them at a depth that depends on how much of the total data the fuzzed arm supplies.", fig.alt = "Three side-by-side panels, one per arm-size design, each plotting estimated slope against positional fuzz (0, 0.5 and 1.0 times the environmental correlation length) for three analyses: precise, fuzzed and integrated. A dashed grey horizontal reference line, labelled truth, marks the true slope 0.9 in every panel. In all three panels the precise series stays flat near 0.9 and the fuzzed series falls steeply toward 0.2 by fuzz 1.0. The integrated series falls least in the 400-precise/100-fuzzed panel (to about 0.74 at fuzz 1.0), more in the 220/220 panel (to about 0.52), and most in the 100-precise/400-fuzzed panel (to about 0.34): the more of the total data the fuzzed arm supplies, the deeper the integrated series falls."}
 f_arm <- "../../dev/isdm-precision/arm-weighting-results.rds"
 d_arm <- if (file.exists(f_arm)) readRDS(f_arm) else NULL
 
@@ -122,8 +123,12 @@ ltyv <- c(precise = 1, fuzzed = 3, integrated = 2)
 xlb  <- "positional fuzz  (× correlation length)"
 fz   <- c(0, 0.5, 1.0)
 off  <- c(precise = -0.025, fuzzed = 0, integrated = 0.025)
-designs <- list(c(220, 220), c(400, 100), c(100, 400))
-dtitle <- c("n(precise)=220, n(fuzzed)=220", "n(precise)=400, n(fuzzed)=100",
+## Panel order = increasing share of the data supplied by the FUZZED arm,
+## matching the tables, the prose, and the direction of the claim. Ordered
+## any other way the integrated series goes down-up-down and the reader has
+## to reassemble the dose-response by hand.
+designs <- list(c(400, 100), c(220, 220), c(100, 400))
+dtitle <- c("n(precise)=400, n(fuzzed)=100", "n(precise)=220, n(fuzzed)=220",
             "n(precise)=100, n(fuzzed)=400")
 
 ## Fallback means, from READER-BLOCKS.md Block 7, so the article always
@@ -141,17 +146,23 @@ mu_fallback <- list(
                      integrated = c(0.906, 0.474, 0.344))
 )
 
+ylim_arm <- if (!is.null(d_arm)) range(c(0, 1.05, d_arm$beta_hat)) else c(0, 1.05)
+
 op <- par(mfrow = c(1, 3), mar = c(3.4, 3.6, 2.2, 0.6),
-          oma = c(2.0, 0, 0, 0),
+          oma = c(2.0, 0, 1.6, 0),
           mgp = c(2.1, 0.6, 0), las = 1, cex.axis = 0.78, cex.lab = 0.82,
           tcl = -0.3)
 set.seed(1)
 for (k in seq_along(designs)) {
   key <- paste(designs[[k]], collapse = "_")
-  plot(NA, xlim = c(-0.06, 1.06), ylim = c(0.0, 1.05), xaxt = "n",
+  ## ylim must CONTAIN the replicates, because the caption says it shows all
+  ## of them. A fixed limit silently clips whatever a re-run pushes outside.
+  plot(NA, xlim = c(-0.06, 1.06), ylim = ylim_arm, xaxt = "n",
        xlab = xlb, ylab = expression("estimated slope  " * hat(beta)))
   axis(1, at = fz, labels = format(fz))
-  abline(h = 0.9, col = "grey45", lwd = 1)
+  abline(h = 0.9, col = "grey45", lwd = 1.1, lty = 2)
+  if (k == 1) text(1.045, 0.9, "truth", col = "grey35", cex = 0.62,
+                   adj = c(1, -0.45))
   if (!is.null(d_arm)) {
     sub <- d_arm[d_arm$n_po == designs[[k]][1] & d_arm$n_survey == designs[[k]][2], ]
     mu <- tapply(sub$beta_hat, list(sub$arm, sub$fuzz), mean)[arms, ]
@@ -169,9 +180,11 @@ for (k in seq_along(designs)) {
   }
   mtext(dtitle[k], side = 3, line = 0.5, cex = 0.72, font = 2)
   if (k == 1) {
+    ## seg.len: line type is the channel that carries this in greyscale, so
+    ## the key must be long enough to tell dashed from dotted.
     legend("bottomleft", legend = arms, col = col[arms], pch = pchv[arms],
-           lty = ltyv[arms], lwd = 1.6, bty = "n", cex = 0.68,
-           text.col = col[arms])
+           lty = ltyv[arms], lwd = 1.6, bty = "n", cex = 0.72,
+           seg.len = 3, text.col = col[arms])
   }
 }
 ## The fence travels with the PNG, not with the caption: a figure lifted into
@@ -180,7 +193,7 @@ mtext("SIMULATED DATA — point estimates only; no interval or coverage claim",
       side = 1, outer = TRUE, line = 0.6, cex = 0.66, col = "grey35")
 if (is.null(d_arm))
   mtext("FALLBACK MEANS — replicate file absent; re-run generate-arm-weighting-results.R",
-        side = 3, outer = TRUE, line = -1.1, cex = 0.66, col = "#D55E00", font = 2)
+        side = 3, outer = TRUE, line = 0.2, cex = 0.66, col = "#D55E00", font = 2)
 par(op)
 ```
 
@@ -203,9 +216,14 @@ if (!is.null(d_arm)) {
 
 Three things to read off it.
 
-**The control works.** At `fuzz = 0` every design and every arm sits within
-0.02 of 0.9. Whatever the integration machinery does, it is not the source
-of the bias — the bias appears only when positional error does.
+**The control works.** At `fuzz = 0` the *integrated* estimate sits within
+0.011 of 0.9 in all three designs, and eight of the nine arm means are within
+0.012. The exception is worth naming rather than rounding away: the fuzzed
+arm at 400/100 comes in at **0.966**, 0.066 high — it is the visibly elevated
+orange triangle in that panel, and it is the noisiest cell in the grid,
+15 replicates of the smallest arm (100 rows) with no fuzz to attenuate it.
+The point of the control survives: the bias appears only when positional
+error does, not from the integration machinery.
 
 **The precise arm is untouched.** In every design its estimate is fixed
 across fuzz levels (bias under 0.02 throughout), because nothing about the
@@ -293,19 +311,21 @@ autocorrelated field — chance, not confounding). The survey arm is
 observable in real analyses (road density, trail networks) even though the
 reporting *bias* it induces is not.
 
-```{r biased-po-figure, echo = FALSE, fig.width = 5.2, fig.height = 4.0, dpi = 200, out.width = "70%", fig.cap = "The same penalty, with a precise but sampling-biased opportunistic arm (400 rows, reporting intensity biased by accessibility) against an unbiased but fuzzed survey arm (100 rows). Pale symbols are all 45 replicate fits (15 per fuzz level per arm); solid symbols and lines are means. The bias is modelled with an `access` term in every fit. The integrated estimate still falls below the precise-arm-alone estimate at both non-zero fuzz levels.", fig.alt = "One panel plotting estimated slope against positional fuzz (0, 0.5 and 1.0 times the correlation length) for three analyses: precise (biased but unfuzzed), fuzzed (unbiased but positionally fuzzed), and integrated. A grey reference line marks the true slope 0.9. The precise series stays flat near 0.90 at every fuzz level. The fuzzed series falls from about 0.92 at zero fuzz to about 0.21 at fuzz 1.0. The integrated series falls from about 0.90 to about 0.80, below the precise series at both non-zero fuzz levels but by a smaller margin than in the unbiased design."}
+```{r biased-po-figure, echo = FALSE, fig.width = 5.2, fig.height = 4.0, dpi = 200, out.width = "70%", fig.cap = "The same penalty, with a precise but sampling-biased opportunistic arm (400 rows, reporting intensity biased by accessibility) against an unbiased but fuzzed survey arm (100 rows). Pale symbols are all 135 replicate fits (15 per fuzz level per arm, three arms, three fuzz levels); solid symbols and lines are means. The bias is modelled with an `access` term in every fit. The integrated estimate still falls below the precise-arm-alone estimate at both non-zero fuzz levels.", fig.alt = "One panel plotting estimated slope against positional fuzz (0, 0.5 and 1.0 times the correlation length) for three analyses: precise (biased but unfuzzed), fuzzed (unbiased but positionally fuzzed), and integrated. A dashed grey reference line, labelled truth, marks the true slope 0.9. The precise series stays flat near 0.90 at every fuzz level. The fuzzed series falls from about 0.92 at zero fuzz to about 0.21 at fuzz 1.0. The integrated series falls from about 0.90 to about 0.80, below the precise series at both non-zero fuzz levels but by a smaller margin than in the unbiased design."}
 f_bpo <- "../../dev/isdm-precision/biased-po-results.rds"
 d_bpo <- if (file.exists(f_bpo)) readRDS(f_bpo) else NULL
 mu_bpo_fallback <- rbind(precise = c(0.903, 0.903, 0.903),
                          fuzzed  = c(0.915, 0.363, 0.206),
                          integrated = c(0.904, 0.835, 0.798))
 
-par(mar = c(4.3, 3.6, 2.2, 0.6), mgp = c(2.1, 0.6, 0), las = 1,
+par(mar = c(5.3, 3.6, 2.2, 0.6), mgp = c(2.1, 0.6, 0), las = 1,
     cex.axis = 0.80, cex.lab = 0.85, tcl = -0.3)
-plot(NA, xlim = c(-0.06, 1.06), ylim = c(0.0, 1.05), xaxt = "n",
+ylim_bpo <- if (!is.null(d_bpo)) range(c(0, 1.05, d_bpo$beta_hat)) else c(0, 1.05)
+plot(NA, xlim = c(-0.06, 1.06), ylim = ylim_bpo, xaxt = "n",
      xlab = xlb, ylab = expression("estimated slope  " * hat(beta)))
 axis(1, at = fz, labels = format(fz))
-abline(h = 0.9, col = "grey45", lwd = 1)
+abline(h = 0.9, col = "grey45", lwd = 1.1, lty = 2)
+text(1.045, 0.9, "truth", col = "grey35", cex = 0.66, adj = c(1, -0.45))
 if (!is.null(d_bpo)) {
   mu_bpo <- tapply(d_bpo$beta_hat, list(d_bpo$arm, d_bpo$fuzz), mean)[arms, ]
 } else {
@@ -330,8 +350,8 @@ mtext("400 precise-but-biased / 100 unbiased-but-fuzzed", side = 3,
 mtext("SIMULATED DATA — point estimates only; no interval or coverage claim",
       side = 1, line = 3.0, cex = 0.68, col = "grey35")
 if (is.null(d_bpo))
-  mtext("FALLBACK MEANS — replicate file absent; re-run generate-biased-po-results.R",
-        side = 3, line = -1.1, cex = 0.68, col = "#D55E00", font = 2)
+  mtext("FALLBACK MEANS — re-run generate-biased-po-results.R",
+        side = 1, line = 3.9, cex = 0.68, col = "#D55E00", font = 2)
 ```
 
 ```{r biased-po-table, echo = FALSE}
@@ -373,6 +393,41 @@ coordinates are fuzzed, damages the slope while it repairs the bias. Both
 are true at once. An article that reported only one of them would be
 misleading, and this one is not resolving the trade-off for you — it is
 telling you the trade-off exists so you can weigh it against your own data.
+
+## Read this before you apply the result to your own data — the sign reverses
+
+Everything above is conditional on something the simulation quietly grants
+itself and **no real analysis has**: the accessibility surface is measured
+*exactly*, and modelled. Given that, the presence-only arm's environmental
+slope is already unbiased — so integrating a fuzzed arm can only cost, and
+the whole article measures a cost with no benefit to weigh it against.
+
+Relax that one assumption and the conclusion flips.
+`dev/isdm-precision/evidence-bias-surrogate-error.R` changes one thing at a
+time, 12 replicates at `fuzz = 1.0` — the worst case above:
+
+| what the analyst has | precise | integrated | integration **helped** |
+|---|---|---|---|
+| `access` independent of `env`, measured exactly *(the design above)* | 0.918 | 0.806 | 3 / 12 |
+| `access` confounded with `env` (ρ = 0.7), still measured exactly | 0.910 | 0.812 | **0 / 12** |
+| confounded, surrogate carries measurement error (sd 0.5) | 1.192 | 1.083 | **11 / 12** |
+| confounded, not modelled at all | 1.722 | 1.577 | **12 / 12** |
+
+**The switch is not confounding — it is whether your bias surrogate is
+exactly right.** Road density is not accessibility. Distance-to-trail is not
+detectability. Once the surrogate carries realistic error, the presence-only
+arm is no longer unbiased, and the structured arm — fuzzed coordinates and
+all — pulls the estimate back toward truth in 11 or 12 replicates out of 12.
+
+**And note what the last two rows also say: in that regime nothing recovers
+the truth.** Precise 1.72, integrated 1.58, against a true 0.9. The *ranking*
+flips; both answers are still bad. "Integration helped" there means "less
+wrong", not "right".
+
+So the decision this article supports is narrower than its headline:
+**positional precision is a cost you should measure, not a reason to discard
+a structured arm.** If your bias surrogate is imperfect — and it is — the
+structured arm is likely earning its place despite the fuzz.
 
 # The uncomfortable part
 
@@ -430,7 +485,14 @@ arithmetic step in adapting this article to your own data.
 
 ```{r cor-length-recipe}
 ## phi = distance at which the covariate's own correlation falls to 1/e.
-cor_length <- function(x, y, z, n_bin = 30) {
+## NOTE the n_sub argument: this builds a dense n x n distance matrix, so it
+## must be given a SUBSAMPLE of cells, never a whole raster (see below).
+cor_length <- function(x, y, z, n_bin = 30, n_sub = 2000, seed = 1) {
+  if (length(x) > n_sub) {
+    set.seed(seed)
+    i <- sample.int(length(x), n_sub)
+    x <- x[i]; y <- y[i]; z <- z[i]
+  }
   d   <- as.matrix(dist(cbind(x, y)))
   cp  <- outer(z - mean(z), z - mean(z)) / var(z)
   ut  <- upper.tri(d)
@@ -441,6 +503,20 @@ cor_length <- function(x, y, z, n_bin = 30) {
   approx(rho[ok], h[ok], xout = exp(-1))$y
 }
 ```
+
+**Do not hand this a whole raster, and do not coarsen one to make it fit.**
+Both halves of that matter:
+
+- It is $O(n^2)$ in memory. 22,500 cells already costs about 25 s and 4 GB;
+  a 1 km Alberta raster (~10⁶ cells) would need roughly **8 TB**. The
+  `n_sub` argument above takes a random subsample instead, and a subsample
+  is enough — 500 to 2,000 cells reproduce the full-raster answer to about
+  **±0.007** on the surfaces tested here.
+- **`terra::aggregate()` is the wrong fix, and it fails in the dangerous
+  direction.** Coarsening the raster inflates `phi_hat` monotonically
+  (0.128 → 0.176 at a factor of 6), which *shrinks* your fuzz-to-`phi` ratio
+  and makes the situation look safer than it is — the opposite of the
+  downward bias described below. Subsample cells; do not average them.
 
 **Verified against known truth**, on simulated exponential-correlation
 surfaces where `phi` is set by construction:

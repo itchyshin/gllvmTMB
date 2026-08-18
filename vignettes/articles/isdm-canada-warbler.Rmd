@@ -42,8 +42,8 @@ Three reasons, worth knowing if you plan the real analysis:
 1. **The structured arm is not freely available at usable precision.** ABMI
    publishes public survey locations fuzzed to roughly 5.5 km, coarser for
    species at risk; precise coordinates need a separate data agreement. Why
-   that matters enormously for an integrated model is the subject of a
-   companion article, `vignette("isdm-spatial-precision")` -- the short
+   that matters enormously for an integrated model is the subject of a companion article,
+   *"When one data source knows where it is and the other does not"* (`isdm-spatial-precision`, on the package website -- it is a pkgdown article, not an installed vignette, so `vignette()` will not find it) -- the short
    version is that it attenuates the environmental slope, and integrating a
    fuzzed arm can leave you further from the truth than discarding it.
 2. **A vignette must not depend on the network.** The opportunistic arm
@@ -267,6 +267,42 @@ real `site` column and a real intention will *also* be ignored, and nothing
 will say so. Tracked as
 [issue #1163](https://github.com/itchyshin/gllvmTMB/issues/1163).
 
+## Why `d = 1`, and how you would choose it
+
+`d` is the **rank** of the shared spatial structure: the number of
+independent latent fields the species draw on. `d = 1` fits *one* field on
+the mesh, with a per-species loading on it — the simplest structure in which
+species can share space at all, and the right default when you have no
+reason to expect two species to respond to distinct unmeasured gradients.
+
+Two species can support at most `d = 1` here in any useful sense. With
+twelve species you would have room for more, and the way to choose is to
+raise `d` only while it buys a real improvement in fit — bearing in mind
+that the article makes no claim about `AIC` being calibrated for this
+comparison, and that extra dimensions tend to arrive with near-zero
+loadings rather than announcing themselves.
+
+What that looks like is visible in this very fit:
+
+```{r loadings}
+## The per-trait loadings on the shared field live in theta_rr_spde_lv.
+setNames(round(fit$opt$par[names(fit$opt$par) == "theta_rr_spde_lv"], 4),
+         spp)
+```
+
+Compare those two numbers before reading the map. If one is much smaller
+than the other, the shared field is doing real work for one species and
+little for the other — in which case "the two panels share one latent
+field" is a true statement about the model's *structure* and a misleading
+explanation of why the two maps look alike. For a species with a
+near-zero loading the surface is close to `intercept + slope × env`, and
+the field barely enters.
+
+That is worth checking on your own fit rather than assuming, and it is
+also why the shared colour scale on the map below is justified by
+something simpler: both panels are relative intensities on the same
+response scale.
+
 ## A mesh that is not built by `make_mesh()` does nothing, without warning
 
 `gllvmTMB()` requires a mesh built by its own `make_mesh()`. Passed a raw
@@ -434,13 +470,35 @@ rather than paraphrased:
 ```{r po-quadrature-result}
 e_po <- get_env_slopes(fit_po)
 cat("true slopes:", bt, "  estimated:", round(e_po, 3), "\n")
+cat("relative error:", paste0(round(100 * (e_po - bt) / bt, 1), "%"), "\n")
 ```
 
-Increase the quadrature grid until the estimates stop moving -- the
-standard diagnostic for this device -- and the density above (roughly 20
-nodes per presence) is where a separate check found the estimates settle
-(`dev/isdm-precision/READER-BLOCKS.md` Block 6), not a rule to apply
-blindly.
+**Read that error before you copy the recipe.** These are not on top of the
+truth, and why they are not is the most instructive thing in this section.
+
+The standard diagnostic for this device is *increase the quadrature grid
+until the estimates stop moving*. Do it here and they **do** stop moving --
+and they stop moving at the wrong place. **Stability is not accuracy.** A
+well-converged quadrature approximation to a mis-specified integral is still
+wrong, and this diagnostic cannot see it.
+
+What is broken is upstream. The point pattern is thinned on an
+`nfine`-by-`nfine` lattice, so every simulated presence is **snapped to the
+nearest lattice node**. That is positional error -- precisely the mechanism
+the companion precision article is about -- injected by this example's own
+construction, and it attenuates the slopes exactly as that article predicts.
+Raising `nfine` moves the estimates; raising the *quadrature* density does
+not, because quadrature density is not the thing that is wrong.
+
+So the honest diagnostic is two checks, not one: raise the quadrature grid
+until the estimates stabilise, **and** confirm your presences carry their
+real coordinates rather than a rasterised version of them. This example
+fails the second by construction. Yours may fail it because the records
+arrived rounded to a grid -- which is common, and silent.
+
+The density used above is roughly 20 nodes per presence, where a separate
+check found estimates settle (`dev/isdm-precision/READER-BLOCKS.md` Block 6)
+-- a starting point, not a rule.
 
 **This does not plug into the two-arm fit above.** Tested directly: passing
 `weights =` to a `gllvmTMB()` call whose `family =` is an `isdm_sources()`
@@ -520,11 +578,14 @@ Pat's question from [`grid$cell_id`, or whatever your unit column is
 called] below before it is even asked: the column is **required by the
 design matrix, not used in the prediction**.
 
-Both species come out of one fit and share one latent field, so they belong
-on one shared colour scale -- plotted separately they would invite a
-comparison the scales do not support.
+Both species are plotted on one shared colour scale, because both are
+relative intensities on the same response scale -- plotted on separate
+scales they would invite a comparison the scales do not support. (They also
+come out of one fit sharing one latent field, but as the loadings above
+show, that is a structural fact rather than the reason the two surfaces
+resemble each other.)
 
-```{r map-plot, fig.width = 6.6, fig.height = 5.3, dpi = 200, out.width = "100%", fig.cap = "Relative intensity for both species across the prediction grid, from the integrated fit, on a shared log colour scale, plotted in projected UTM kilometres (equal aspect, no cartographic correction needed). The offset is set to zero, so these are relative-intensity surfaces rather than expected counts at any particular effort. They carry NO uncertainty: there is no interval construction behind these values, and none should be inferred from the smoothness of the surface. Hatched cells are the grid cells outside the mesh hull, where the spatial field is exactly zero because fmesher returns an empty basis row -- not because the field was estimated to be small there. A caption stating this is simulated is repeated inside the figure itself because a PNG lifted out of this page keeps its pixels and loses this caption.", fig.alt = "Two side-by-side maps of UTM easting against northing (kilometres, zone 11N), one for Canada Warbler and one for Ovenbird, drawn on a shared viridis colour scale for relative intensity plotted on a log scale. Both panels show a similar smooth broad-scale pattern with the two species differing mainly in amplitude. Small white circles mark the opportunistic and survey locations, scattered independently across both panels with no shared points. A handful of hatched cells sit near the map corners, marking grid cells lying outside the mesh hull. Bold red text across the middle of the figure reads SIMULATED DATA -- no uncertainty shown, no real observations."}
+```{r map-plot, fig.width = 6.6, fig.height = 5.3, dpi = 200, out.width = "100%", fig.cap = "Relative intensity for both species across the prediction grid, from the integrated fit, on a shared log colour scale, plotted in projected UTM kilometres (equal aspect, no cartographic correction needed). The offset is set to zero, so these are relative-intensity surfaces rather than expected counts at any particular effort. They carry NO uncertainty: there is no interval construction behind these values, and none should be inferred from the smoothness of the surface. Hatched cells are the grid cells outside the mesh hull, where the spatial field is exactly zero because fmesher returns an empty basis row -- not because the field was estimated to be small there. A caption stating this is simulated is repeated inside the figure itself because a PNG lifted out of this page keeps its pixels and loses this caption.", fig.alt = "Two side-by-side maps of UTM easting against northing (kilometres, zone 11N), one for Canada Warbler and one for Ovenbird, drawn on a shared viridis colour scale for relative intensity plotted on a log scale. Both panels show a similar smooth broad-scale pattern with the two species differing mainly in amplitude. Small white circles mark the opportunistic and survey locations; the same set of locations is drawn in both panels. The two ARMS share no coordinate with each other, which is a separate fact from the two panels sharing the same overlay. Nine hatched cells sit near the map corners, marking grid cells lying outside the mesh hull. Bold red text along the bottom of the figure reads SIMULATED DATA -- no uncertainty shown, no real observations."}
 nm  <- c(cawa = "Canada Warbler", oven = "Ovenbird")
 lz  <- log10(map$est)                    # intensity is skewed; log to read it
 brk <- seq(min(lz), max(lz), length.out = 65)
@@ -541,7 +602,7 @@ oo <- as.numeric(Matrix::rowSums(abs(A))) == 0
 
 op <- par(no.readonly = TRUE)
 layout(matrix(1:3, nrow = 1), widths = c(1, 1, 0.42))
-par(oma = c(2.2, 0, 0, 0), mar = c(3.2, 3.2, 2.0, 0.5),
+par(oma = c(3.6, 0, 0, 0), mar = c(3.2, 3.2, 2.0, 0.5),
     mgp = c(1.9, 0.5, 0), las = 1, cex.axis = 0.75, cex.lab = 0.85,
     tcl = -0.3, xaxs = "i", yaxs = "i")
 
@@ -574,16 +635,18 @@ axis(4, at = at[at >= min(brk) & at <= max(brk)],
 mtext("relative intensity (log scale)", side = 4, line = 2.3, cex = 0.75,
       las = 0)
 box()
-mtext("open circles: opportunistic + survey locations (disjoint)", side = 1,
-      outer = TRUE, line = -0.2, adj = 0.5, cex = 0.62, col = "grey30")
+mtext("white circles: all opportunistic + survey locations, repeated in both panels",
+      side = 1, outer = TRUE, line = 0.2, adj = 0.5, cex = 0.62, col = "grey30")
 mtext(paste("hatched cells: outside the mesh hull, where the spatial field is",
             "exactly zero rather than estimated"),
-      side = 1, outer = TRUE, line = 0.5, adj = 0.5, cex = 0.62,
+      side = 1, outer = TRUE, line = 1.1, adj = 0.5, cex = 0.62,
       col = "grey30")
 ## The fence travels with the PNG, not with the caption: a figure lifted
-## into a talk or a thesis loses its caption and keeps its pixels.
+## into a talk or a thesis loses its caption and keeps its pixels. Give it
+## real clearance -- at line 1.3 of a 2.2 oma its descenders sat on the last
+## pixel row of the canvas, which is exactly the element that must not clip.
 mtext("SIMULATED DATA -- no uncertainty shown, no real observations",
-      side = 1, outer = TRUE, line = 1.3, adj = 0.5, cex = 0.72,
+      side = 1, outer = TRUE, line = 2.2, adj = 0.5, cex = 0.72,
       col = "#B2182B", font = 2)
 par(op)
 ```
@@ -650,9 +713,12 @@ for (sp in spp) {
 
 The rank correlation is close to 1 for both species: the map's *pattern* --
 which cells are hottest -- survives almost untouched. The *values* do not:
-they move by tens of percent here in opposite directions for the two
-species, purely because the grid recentred `env` on its own mean instead of
-the training mean. Every check a reader would actually run on the map --
+they move by tens of percent here, purely because the grid recentred `env`
+on its own mean instead of the training mean. (On this seed both species
+move the same way; whether the two move together or apart depends on the
+signs of their slopes, and Block 5 below is a case where they move
+oppositely. Do not rely on a disagreement between species to reveal the
+bug -- there may not be one.) Every check a reader would actually run on the map --
 does it look reasonable, are the hotspots where they should be -- passes.
 `dev/isdm-precision/READER-BLOCKS.md` Block 5 measured a larger version of
 this same defect on a training region and a prediction map covering
@@ -737,7 +803,7 @@ to the evidence behind it:
   here.
 - **No positional-error correction.** Everything above assumes both arms
   know where they are. Real structured-survey data frequently does not, and
-  the consequences are not small -- see `vignette("isdm-spatial-precision")`
+  the consequences are not small -- see the companion article *"When one data source knows where it is and the other does not"* (`isdm-spatial-precision`, on the package website -- it is a pkgdown article, not an installed vignette, so `vignette()` will not find it)
   before fusing real fuzzed data.
 - **No claim that this taxon is settled.** The real Canada Warbler /
   ABMI pairing was assessed and came back **conditional**, pending exactly

@@ -1,3 +1,17 @@
+## SUPERSEDED -- do not cite this experiment.
+##
+## It compares side = 1, phi = r against side = 4, phi = 4r on the same
+## 30 x 30 lattice. Scaling side and phi together holds phi/cell-spacing
+## fixed as well as phi/side, so the two columns agreeing shows only that
+## the recipe is scale-equivariant in units -- trivially true of any
+## function of distances. It cannot attribute the bias to extent rather
+## than resolution, which is what its output claims.
+##
+## Replaced by generate-cor-length-grid.R, which crosses phi/side with the
+## lattice size and therefore separates the two. The article
+## (vignettes/articles/isdm-spatial-precision.Rmd) reads the grid it
+## produces, not this script.
+
 env_surface <- function(n_side, ell, seed, side = 1) {
   set.seed(seed)
   gx <- seq(0, side, length.out = n_side)

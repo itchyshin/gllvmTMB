@@ -1,5 +1,21 @@
 # gllvmTMB 0.7.0 (development)
 
+* **`vignette("response-families")` gains seven compact worked examples,
+  one per family-specific dispersion trap (#1082).** Gamma (`phi_gamma` is
+  a shape, not a dispersion), student (`sigma_student` is a scale, not the
+  response SD), Beta (`phi_beta` is a precision; boundary 0/1 values are
+  not Beta data), multi-trial binomial (`cbind()` vs `weights = n_trials`,
+  and a now-fixed `simulate()` gotcha for pre-2026-08-17 saved draws),
+  `ordinal_probit()` (cutpoints depend on which categories are actually
+  observed, per trait), the truncated count families (`phi_truncnb2` is
+  its own vector, separate from `phi_nbinom2`), and `delta_gamma()`
+  (`phi_gamma_delta` is a CV, the inverse-square of its near-identical
+  neighbor `phi_gamma`) each get a minimal runnable fit and the documented
+  route to reading its dispersion. The `residuals(type =
+  "randomized_quantile")` diagnostics comment is also corrected: exact
+  residuals cover 13 families now, not the 4 it previously named. These
+  are worked examples of point estimation and fitted diagnostics, not an
+  evidence-tier promotion.
 * **Boundary screening now sees two spatial/kernel Psi companions it
   previously missed, and `check_gllvmTMB()`'s spatial psi row no longer
   returns zero rows (#1119).** ⚠️ **Behaviour change:** fits that previously

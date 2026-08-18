@@ -1,3 +1,22 @@
+## 2026-08-18 — local L2 `/goal` kit (fork B; new lane; no smoke)
+
+Lane `cursor/mspl-forkB-L2-goal-20260818` (cursor). Worktree
+`~/local-scratch/lanes/gllvmTMB-mspl-forkB-L2-goal` from `origin/main`.
+NEW kit: `docs/dev-log/lanes/cursor-mspl-fork-B-L2/LOOP/`. Closed
+g0_unlock `docs/dev-log/lanes/cursor-mspl-fork-B/` **not edited**.
+Inherits official L1 #1128 cov_eff 0.880. No `R/`, `src/`, NEWS, register.
+
+```sh
+bash ~/shinichi-brain/tools/lane_preflight.sh "$PWD"
+git show origin/main:docs/dev-log/lanes/cursor-mspl-fork-B/LOOP/checkpoint.md | head
+rg -n "L2-hold|near_tail|cov_eff" \
+  docs/dev-log/research/2026-08-18-mspl-forkB-l1-smoke.md \
+  dev/mspl-forkB-l1-ademp.R \
+  docs/dev-log/research/2026-08-17-mspl-profile-led-prereg-ademp.md
+# deliberately not: Totoro, T*, public se, undraft #1077, MSPL-04 flip,
+# git add -A, isdm-package-recovery, L2 smoke (belongs to /goal)
+```
+
 ## 2026-08-18 — L1 coverage-gate harness + local 50-rep receipt (companion to #1128)
 
 Lane `cursor/mspl-forkB-l1-coverage-pr-20260818` (cursor). Rebased onto

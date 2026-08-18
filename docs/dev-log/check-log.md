@@ -52819,3 +52819,30 @@ Deliberately not done: minimal-subset discovery (combinatorial; stated in roxyge
 any efficacy claim for MSPL/ridge (targeting claims only, verified by the reviewer).
 
 — Claude, chain lane (PRs #1121, #1122 merged; this branch is the chain's last link)
+
+## 2026-08-12 — #855 response-unit scale Gate 0 (Codex)
+
+Branch `codex/scale-equivariance-gate0` started from `origin/main` at
+`cb312689` in an isolated worktree after `lane_preflight.sh` reported a foreign
+dirty Claude lane and multiple live Codex lanes.  This was a source-only
+architecture gate: no package code, tests, fits, compilation, simulation, or
+compute ran.
+
+**Verdict: NO-GO for unequal per-trait internal response scaling.**  The current
+Gaussian likelihood uses one deliberate pooled `sigma_eps`; exact scaling by
+trait would require `sigma_eps / s_t` for every trait.  The predecessor #856
+vector-residual proposal is explicitly marked halted as a false premise.  The
+full decision packet is `docs/dev-log/audits/2026-08-12-855-response-unit-scale-gate0.md`.
+
+Checks:
+
+```sh
+rg -n 'logLik\\.|AIC\\(|BIC\\(|anova\\(|extract_residual|residuals\\.|predict\\.gllvmTMB_multi|simulate\\.gllvmTMB_multi|tmb_data\\$y|report\\$eta|report\\$sigma_eps' R
+rg -n 'response[- ]unit scale|response standardi[sz]ation|scale equivariance' README.md NEWS.md ROADMAP.md docs/design docs/dev-log/known-limitations.md
+rg -n 'MIS-35|scale-equivariance|scale equivariance|scale-constant|scale constant|#855|851' docs/design/35-validation-debt-register.md docs/dev-log/check-log.md docs/dev-log/after-task docs/dev-log/handover
+```
+
+The first command yielded the high-risk public consumers (`predict`, `simulate`,
+residuals, diagnostics, covariance extractors, bootstrap).  The latter two
+confirmed no public claim required correction and preserved MIS-35's deliberately
+narrow common-scale/single-tier evidence boundary.

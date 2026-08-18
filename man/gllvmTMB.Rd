@@ -566,6 +566,33 @@ standard R arguments (\code{mu = exp(eta)} unless noted):\tabular{lll}{
 }
 }
 
+\section{Objective provenance}{
+ report\$joint_nll_* vs objective_components:
+A fitted object carries two different surfaces that both look like "the
+objective", and they answer different questions.
+
+\code{report$joint_nll_unpenalized} and \code{report$joint_nll_penalized} are
+\strong{conditional joint} quantities computed on the TMB tape (the negative
+log-likelihood of the data and random effects at their current values,
+before and after TMB-side MSPL penalty terms are added). They see only
+penalties applied \emph{inside} the C++ template -- the LA-MSPL penalties
+documented above -- and never see anything computed at the R level.
+
+\code{fit$objective_components} is the \strong{marginal} surface: the value TMB's
+Laplace approximation integrates the random effects out of, decomposed
+into \code{likelihood_nll} (the unpenalised marginal negative log-likelihood),
+\code{ridge_penalty} (the R-level loading ridge from \code{aghq_ridge}, added
+\emph{outside} the TMB objective -- see \code{.gllvmTMB_penalised_gradient()}),
+\code{optimization_nll} (their sum, the objective the optimiser actually
+minimised), and \code{optimizer_reported} (the value \code{nlminb()} / \code{optim()}
+returned). This is the \strong{only} place the R-level loading ridge appears;
+\verb{report$joint_nll_*} cannot see it because it never reaches the TMB tape.
+
+The two surfaces are \strong{not expected to match}, on a ridged fit or
+otherwise, and a difference between them is not itself an error: they are
+conditional-joint and marginal quantities from different penalty regimes.
+}
+
 \examples{
 \dontrun{
 set.seed(1)

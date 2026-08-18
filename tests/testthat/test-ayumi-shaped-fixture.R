@@ -68,4 +68,17 @@ test_that("#25: Ayumi-shaped fixture (p = 12, n = 60, d = 2, ridge on) is a cohe
   ## none of that plumbing residue may read as a boundary problem.
   expect_true(all(fit$tmb_data$diag_B_skip == 1L))
   expect_false("near_zero_sd_B" %in% fit$fit_health$boundary_flags)
+
+  ## (5) REPAIR (B1 W-tier): this fixture's formula (`latent(1 | site,
+  ## d = d)`) is B-tier only -- it deliberately has no per-row diagonal
+  ## (OLRE) term, matching the wide-format shape Ayumi's corpus actually
+  ## fits, so `use_diag_W` is off and `sd_W` is not even REPORTed. Adding
+  ## an OLRE term here would change this fixture's identity and runtime
+  ## rather than guard anything new; the real ridge-relevant W-tier case
+  ## (mixed-family + `indep(0 + trait | obs)`) already has its own
+  ## dedicated real-fit regression test in
+  ## test-mapped-off-boundary-flags.R. This assertion is the cheap
+  ## regression guard that this fixture's flags stay clean of
+  ## `near_zero_sd_W` too, trivially or otherwise.
+  expect_false("near_zero_sd_W" %in% fit$fit_health$boundary_flags)
 })

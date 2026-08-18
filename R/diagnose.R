@@ -136,24 +136,43 @@
   min(val) / max_val < rel_thresh
 }
 
-## `sd_B` (unit level only) is REPORTed for every trait, including ones
-## R/fit-multi.R's auto-Psi skip block pins to `log(1e-6)` and maps off
-## (single-trial Bernoulli and multinomial fid-16 contrasts -- see
-## `skip_psi_b_t` there, and the `diag_B_skip` guard in
-## src/gllvmTMB.cpp:1586). Those pinned entries are plumbing residue, not a
-## fitted quantity, and their 1e-6 value fires an absolute near-zero
-## threshold unconditionally. Every raw-`sd_B` reader that screens for
-## near-zero must drop the mapped-off entries the same way, or a default
-## auto-skip fit and its explicit `latent(..., unique = FALSE)` mirror
-## disagree on boundary diagnostics for a model that is otherwise identical.
+## `sd_B` (unit level) and `sd_W` (per-row / OLRE tier) are both REPORTed
+## for every trait, including ones R/fit-multi.R's auto-skip gates pin to
+## `log(1e-6)` and map off: `sd_B` for single-trial Bernoulli and
+## multinomial fid-16 contrasts (`skip_psi_b_t`, `diag_B_skip`,
+## src/gllvmTMB.cpp:1586), and `sd_W` for single-trial Bernoulli, ordinal
+## probit (fid 14), and multinomial fid-16 contrasts (`skip_olre_t`,
+## `diag_W_skip`, src/gllvmTMB.cpp:1646) -- the identical mapped-off
+## mechanism one tier over. Those pinned entries are plumbing residue, not
+## a fitted quantity, and their 1e-6 value fires an absolute near-zero
+## threshold unconditionally. Every raw reader of either quantity that
+## screens for near-zero must drop the mapped-off entries the same way, or
+## a default auto-skip fit and its explicit `latent(..., unique = FALSE)` /
+## row-level-diagonal mirror disagree on boundary diagnostics for a model
+## that is otherwise identical.
+##
+## Complete mask inventory (grep "_skip" across R/fit-multi.R and
+## src/gllvmTMB.cpp): `diag_B_skip` and `diag_W_skip` are the only two
+## per-trait skip masks the engine carries; there is no third. Both are
+## guaranteed length `n_traits` by a C++ hard error whenever their
+## component is actually REPORTed (`use_diag_B` / `use_diag_W`
+## respectively; src/gllvmTMB.cpp:1576-1577 and :1637-1638), so the
+## length-equality guard below is defensive, not load-bearing -- but it is
+## kept for both entries rather than assumed.
+.gllvmTMB_estimable_component_masks <- c(
+  sd_B = "diag_B_skip",
+  sd_W = "diag_W_skip"
+)
+
 .gllvmTMB_estimable_components <- function(object, name) {
   val <- object$report[[name]]
   if (is.null(val)) {
     return(NULL)
   }
   val <- as.numeric(val)
-  if (identical(name, "sd_B")) {
-    skip <- object$tmb_data$diag_B_skip
+  mask_name <- unname(.gllvmTMB_estimable_component_masks[name])
+  if (!is.na(mask_name)) {
+    skip <- object$tmb_data[[mask_name]]
     if (!is.null(skip) && length(skip) == length(val)) {
       val <- val[skip != 1L]
     }

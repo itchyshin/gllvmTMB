@@ -664,6 +664,25 @@ the multi-trait case):
 
 ## Cross-references
 
+### Opt-in LA-MSPL GLM-outer weights (Poisson REPLACE)
+
+`estimator = "mspl"` builds a GLM-outer Jeffreys atom from
+`gll_mspl_log_weight_glm` (not Laplace-marginal \(I(\beta)\)).
+
+- **Bernoulli** (`family_id == 1`): link-specific \(W\) via
+  `gll_mspl_log_weight(eta, link_id)`.
+- **Poisson** (`family_id == 2`, G0 SIGNED REPLACE 2026-08-17 / #1102):
+  live weight is working logistic \(W_*=\mu_*(1-\mu_*)\),
+  \(\mu_*=\operatorname{logit}^{-1}(\eta)\), via
+  `return gll_mspl_log_weight(eta, /*logit*/ 0)` (Tweedie
+  `family_id == 6` precedent; existence device, not true-model
+  Jeffreys). True Poisson \(W=\operatorname{diag}(\mu)\) /
+  `return eta` is one-sided (\(0/+\infty\)) and remains the
+  historical contrast only (#1064 W1/W2). Experimental point;
+  **no** public `se` / `vcov` / `confint`; **not** NEWS `covered`.
+- **Tweedie** (`family_id == 6`, planned): same working-logistic device;
+  true \(W=\mu^{2-p}/\phi\) rewards \(\phi\to 0\).
+
 ### Opt-in binary LA-MSPL objective
 
 `estimator = "mspl"` changes the outer objective, not the response family or

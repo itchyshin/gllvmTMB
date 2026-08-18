@@ -1,3 +1,59 @@
+## 2026-08-17 — Cursor: Poisson MSPL W_* REPLACE (#1102)
+
+- worktree: ~/local-scratch/lanes/gllvmTMB-mspl-poisson-W-REPLACE
+- branch: cursor/mspl-poisson-W-REPLACE-impl
+- A1: src/gllvmTMB.cpp family_id==2 → gll_mspl_log_weight(eta, 0)
+- A2–A4: W2/W7/W8 + atoms/A6 rematch + local recovery; 243/0 focused
+- A5: 03-likelihoods.md + tmb-review note
+- A6: family-door PREP note; #1077 stays draft
+- deliberately not: public se, undraft #1077, Totoro, Lane B, NEWS covered, git add -A
+- A7: `devtools::test(filter="mspl-api")` → 293/0; `--as-cran` deferred
+- A8: after-task present; PR #1111 open; merge when CI green
+
+## 2026-08-17 — REPLACE A5 docs polish: `03-likelihoods.md` \(W_*\) row + review checklist
+
+**Lane:** `cursor/mspl-poisson-W-REPLACE-impl` (#1111)
+A1 already landed (`e2b13651`). Sharpened Poisson MSPL weight bullet
+(logit \(\mu_*\), Tweedie `family_id==6` precedent, existence ≠ true Jeffreys,
+**not** NEWS `covered`). Expanded Gauss/Noether checklist in
+`docs/dev-log/research/2026-08-17-mspl-poisson-W-REPLACE-tmb-review.md`.
+After-task: `docs/dev-log/after-task/2026-08-17-mspl-poisson-W-REPLACE-A5-likelihood-docs.md`.
+
+```sh
+rg -n 'logit\^\{-1\}|/\*logit\*/ 0|not true-model|not NEWS' docs/design/03-likelihoods.md
+rg -n 'Gauss|Noether|Hard OUT' \
+  docs/dev-log/research/2026-08-17-mspl-poisson-W-REPLACE-tmb-review.md
+# deliberately not: NEWS covered; MSPL-04 flip; undraft #1077
+```
+
+## 2026-08-17 — Cursor unattended verify: W2/W7 + twin rematch green
+
+**Lane:** `~/local-scratch/lanes/gllvmTMB-mspl-poisson-W-REPLACE`
+branch `cursor/mspl-poisson-W-REPLACE-impl` (#1111). Out-of-tree
+`R CMD INSTALL` (in-tree clang `.o.tmp` rename race). Confirmed SO carries
+`G0 SIGNED REPLACE` + `return gll_mspl_log_weight(eta, 0)` for `family_id==2`.
+
+```sh
+# all perms; filters:
+devtools::test(filter="mspl-W-onesided|mspl-poisson-admit|mspl-poisson-phase4|mspl-registry|mspl-poisson-public")
+# → all pass (W2/W7/W8 + A6 twin + registry)
+devtools::test(filter="mspl-poisson|mspl-W-onesided|mspl-registry|mspl-api|zz-mspl-poisson")
+# → all pass incl. mspl-poisson-W-REPLACE-recovery + zz SE-feasibility fences
+# deliberately not: public se=TRUE; undraft #1077; Totoro; NEWS covered; git add -A
+```
+
+## 2026-08-17 — Cursor: KF2021 footnote + handover §4 align (post-#1102)
+
+**Lane:** `cursor/mspl-kf2021-footnote-post-1102`
+Residual from conflicting #1101 / closed #1096 after REPLACE signature #1102.
+No `src/`. #1077 stays draft.
+
+```sh
+rg -n 'MSPL footnote|footnote is landed|SIGNED — REPLACE'   docs/dev-log/research/2026-08-17-mspl-ci-wald-plus-profile.md   docs/dev-log/research/2026-08-17-kosmidis-firth-2021-profile-caveat.md   docs/dev-log/handover/2026-08-17-cursor-handover-mspl-se-ci.md   docs/dev-log/handover/2026-08-17-codex-handover-poisson-W-REPLACE.md
+git diff --check
+# deliberately not: src/ tape, undraft #1077, public se
+```
+
 ## 2026-08-17 — AUTHORITATIVE: Poisson W G0 is SIGNED — REPLACE (supersedes PARK)
 
 **Lane:** `cursor/mspl-poisson-W-REPLACE-signed`
@@ -52320,3 +52376,22 @@ any Ayumi reply (held by Shinichi until the fixes are established); any
 Design 122 compute.
 
 — Claude, OWED-items lane, finishing pass
+
+## 2026-08-17 — Cursor A4/A7 post-REPLACE verify (private /tmp install)
+
+Worktree `~/local-scratch/lanes/gllvmTMB-mspl-poisson-W-REPLACE`
+branch `cursor/mspl-poisson-W-REPLACE-impl` @ e2b13651 (+ notes commit).
+Installed to `/tmp/gllvmtmb-mspl-A4A7-lib-*` (rsync build; no Dropbox `src/` race).
+
+Commands / outcomes:
+
+- `devtools::test(filter="mspl-api")` → **293 pass / 0 fail / 0 skip**
+- `devtools::test(filter="mspl")` → **2079 pass / 0 fail / 19 skip**
+- `devtools::test(filter="mspl-poisson-W-REPLACE")` → **22 pass / 0 fail**
+- Multi-seed smoke (`dev/mspl-poisson-multiseed-point-smoke.R`, local, not Totoro):
+  64 arms; MSPL 32/32 conv0+finite; 0 err; 0 runaway; registry 32 admitted.
+  Script `OPERATIONAL_SMOKE` prints FAIL only because it still requires
+  `planned` status; REPLACE keeps experimental `admitted`. See research note.
+- `--as-cran` + vignettes: started / see follow-up line if finished
+
+Hard OUT audit: no NEWS covered flip; no public se/vcov/confint; no Totoro.

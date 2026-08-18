@@ -139,7 +139,8 @@
     status = "admitted",
     evidence = "admit_packet",
     notes = paste(
-      "Phase 4 GLM-outer W=diag(mu), not I_LA(beta);",
+      "Phase 4 GLM-outer working logistic W_* on eta (G0 REPLACE",
+      "2026-08-17 / #1102; true W=diag(mu) was one-sided); not I_LA(beta);",
       "c_P event-count rate + event-weighted loading atom (#1008);",
       "experimental point (G0 2026-08-16); #990 operational PASS /",
       "admit-evidence FAIL; not a covered campaign; no public SE"

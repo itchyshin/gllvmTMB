@@ -3,6 +3,35 @@
 This coordination note prevents a new session from treating this repository as
 a single writable lane.  It is a map, not a release/capability claim.
 
+**Refresh 2026-08-17 #5 (Codex to Claude): finish #1092 only; wider Ayumi programme deferred.**
+The implementation worktree `/private/tmp/gllvmtmb-1092-grad` is active and clean on
+`claude/fix-1092-penalised-gradient` at five pushed commits: `e51738c9`, `bb6d1bdc`,
+`a485dc01` (closure records), `a86b1734` (second penalised block found), and
+`dce409a6` (corrected after-task/plan-actual). PR
+[#1106](https://github.com/itchyshin/gllvmTMB/pull/1106) is open and replacement CI is
+in progress. **MERGE BLOCKER:** current code penalises `theta_rr_spde_lv` when an
+ordinary latent block opens the ridge gate, while the warning promises spatial terms
+are not silently penalised. Recommended: confine the ridge to `theta_rr_B`, then update
+the closure records and tests. Claude owns this resolution and CI for **#1092 only**,
+then must stop and hand back. Ayumi #25, Ayumi #23,
+Design 122 compute, and all replies to Ayumi remain deferred. All sibling lanes are
+**PROTECTED**. **START HERE:**
+`docs/dev-log/handover/2026-08-17-claude-handover-1092-finish.md`.
+
+**Refresh 2026-08-17 #4 (Codex to Claude): Ayumi #23-25 bug-fix programme assigned to Claude.**
+P0 is the confirmed loading-ridge objective/gradient mismatch, package
+[#1092](https://github.com/itchyshin/gllvmTMB/issues/1092) / Ayumi
+[#24](https://github.com/Ayumi-495/urbanisation_map/issues/24). Reuse the already-created
+clean branch `claude/fix-1092-penalised-gradient` at
+`/private/tmp/gllvmtmb-1092-grad`; do not create a duplicate implementation lane.
+Follow sequentially with Ayumi [#25](https://github.com/Ayumi-495/urbanisation_map/issues/25)
+(mapped-off Psi warning, native `fitted()`, objective provenance) and
+[#23](https://github.com/Ayumi-495/urbanisation_map/issues/23) (higher-order response
+dependencies, ridge-path teaching, low-loading selection correction). **No replies yet.**
+Other Claude/Cursor/Codex lanes below remain **PROTECTED** and are not superseded.
+**START HERE:**
+`docs/dev-log/handover/2026-08-17-claude-handover-ayumi-bugfix.md`.
+
 **Refresh 2026-08-17 #3 (Claude): the CATEGORICAL arc is CLOSED — lane retired.**
 Both PRs merged: [#1057](https://github.com/itchyshin/gllvmTMB/pull/1057)
 (`489162dc`, multinomial structured-dependency surface + fail-closed

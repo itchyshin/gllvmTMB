@@ -249,3 +249,68 @@ dose-response rather than the midpoint comparison.
 the penalty behaves when the PO arm carries accessibility-driven sampling bias
 — the reason anyone integrates in the first place, and Pat's blocking #2 — is
 the remaining half of S2 and depends on the S1 rebuild.
+
+---
+
+## Block 8 — disjoint arms work, and the mesh is why (Pat blocking #7)
+
+Pat's structural objection: every cell in both articles carries a count row
+*and* a detection row, at identical coordinates, sharing a `cell_id`. Real
+eBird and ABMI rows have **disjoint coordinates and no common unit**, and the
+articles never say whether that is allowed — "the first structural question
+anybody adapting it has".
+
+**Demonstrated** (`/tmp/disjoint.R`, 3 species, 180 PO sites and 90 survey
+sites drawn independently over the same region):
+
+```
+shared site ids between arms      : 0
+shared coordinates (x,y)          : 0
+mesh nodes                        : 341
+convergence 0 | iterations 21 | objective 1403 | 0.6 s
+true env slopes : 0.90  -0.40   0.50
+estimated       : 0.86  -0.319  0.566
+```
+
+**The mechanism, which is the part worth explaining.** The mesh is built over
+the **union of both arms' locations**, and each row is projected onto it
+through `A_proj`. Two arms therefore share a latent field without sharing a
+single row, coordinate, or unit label — the field lives on the mesh, not on
+the data. This is what makes an integrated SDM possible on real data at all,
+and it is currently invisible in both articles because their contrived design
+never exercises it.
+
+**One seed, so read it as a feasibility demonstration, not a recovery result.**
+What it establishes is that the fit runs, converges healthily, and lands near
+truth in 0.6 s — enough for a reader to build on. Recovery quality across
+seeds is S1's job, not this block's.
+
+**Note `iterations 21`.** A healthy spatial fit uses tens of outer iterations.
+Compare the false-convergence signature below.
+
+---
+
+## Block 9 — a spatial-path false green (narrowing measurement; issue pending)
+
+While rebuilding the simulation, a fit reported **`convergence == 0` with
+`iterations == 1` and `objective 1.9e25`**, with the spatial block frozen at
+its starting values. The trigger was large counts.
+
+**Measured narrowing** (`/tmp/falsegreen.R`, same family and structure, *no*
+spatial term):
+
+| max count | convergence | iterations |
+|---|---|---|
+| 21 | 0 | 18 |
+| 1.9e4 | 0 | 13 |
+| 7.8e6 | **1** | 12 |
+| 4.2e8 | **1** | 11 |
+
+Without a spatial term, large counts produce an **honest** `convergence = 1`.
+So the false green is **specific to the spatial path**, not a generic
+large-count failure. This is the sixth instance this session of the
+silent-fallback class (#1132, #1120, #1119, #1083, #1163): the code took a
+degenerate path and reported success.
+
+To be filed with a minimal reproduction once the rebuild lane confirms the
+mechanism. **Not an article claim** — recorded here so it is not lost.

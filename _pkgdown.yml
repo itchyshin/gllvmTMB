@@ -83,6 +83,8 @@ navbar:
         href: articles/gbif-joint-intensity.html
       - text: Integrating records with a designed survey
         href: articles/integrated-two-source-example.html
+      - text: When one data source knows where it is and the other does not
+        href: articles/isdm-spatial-precision.html
       - text: How much survey do you need?
         href: articles/integrated-survey-design.html
       - text: More than two sources
@@ -153,6 +155,7 @@ articles:
     contents:
     - articles/joint-sdm
     - articles/rare-species-jsdm
+    - articles/isdm-spatial-precision
     - articles/gbif-joint-intensity
     - articles/integrated-two-source-example
     - articles/integrated-repeated-visits

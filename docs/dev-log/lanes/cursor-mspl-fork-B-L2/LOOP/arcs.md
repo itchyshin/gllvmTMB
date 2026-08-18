@@ -14,7 +14,7 @@ re-run them. Do not edit `R/` or the closed folder.
 | K2b | Smoke-first 1-rep interior seed `20260819` | **done** | `/goal` | — |
 | K3 | Local L2 panel: seeds 20260819/20 × 50 + near-tail 20260821 × 50; inherit 20260818 | **done** | `/goal` | held: no Totoro |
 | K4 | Official L2 receipt — dual coverage + refusal pricing + Wilson + MCSE | **done** | `/goal` | held: no calibrated / public brand |
-| K5 | After-task + check-log + receipt PR | **done** | `/goal` | merge is a later human/CI gate |
+| K5 | After-task + check-log + receipt PR | **done** | [#1162](https://github.com/itchyshin/gllvmTMB/pull/1162) merged `93ea79bd` | — |
 | V1 | Mechanical fence verify (#1077 draft; MSPL-04 blocked; closed kits untouched) | **done** | `/goal` | — |
 | Rec | Melissa plan-vs-actual | **done** | `/goal` | — |
 | — | Totoro / T\* / undraft #1077 / public se / MSPL-04→covered | **blocked** | Shinichi G0 | **OPEN GATE — never auto-start** |

@@ -105,4 +105,7 @@ files landed on the same tree; 1-rep numbers match.
 
 L2 recorded, local only. Totoro / T\* / undraft #1077 / public se /
 MSPL-04→covered remain hard OUT. E2 still NOT-EVALUABLE on `b_fix`.
-Checkpoint NEXT = Totoro (blocked).
+
+**Close:** [#1162](https://github.com/itchyshin/gllvmTMB/pull/1162)
+squash-merged at `93ea79bd` after ubuntu-latest (release) green.
+Checkpoint is **GOAL_MET**. NEXT = Totoro (blocked; new G0 required).

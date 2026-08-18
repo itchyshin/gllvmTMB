@@ -1,5 +1,13 @@
 # gllvmTMB 0.7.0 (development)
 
+* **`deviance()` no longer returns a silent `NULL` on a `gllvmTMB_multi`
+  fit (#1118).** With no method registered, `deviance()` fell through to
+  `stats:::deviance.default`, which reaches for `object$deviance` and
+  returns `NULL` without error -- the same shape as the `fitted()` defect
+  fixed in #1114. `deviance.gllvmTMB_multi()` now returns
+  `-2 * logLik(object)`, delegating through `logLik()` so it inherits that
+  method's existing MAP-point disclosure warning on ridged
+  (`aghq_ridge`-penalised) fits rather than re-deriving it.
 * **Mixed-family fits with a dispersion family now have a valid Hessian and
   SEs (#1117).** Per-trait dispersion/shape parameter vectors
   (`log_phi_nbinom2`, `log_phi_nbinom1`, `log_phi_gamma`,

@@ -140,3 +140,80 @@ test_that("#25 B2: fitted() exists for every engine class (method-parity contrac
     )
   }
 })
+
+## #1118 (Rose P3 method-parity sweep): `deviance()` on a `gllvmTMB_multi`
+## fit dispatched to `stats:::deviance.default`, which reaches for
+## `object$deviance` -- absent on this fit object -- and returns NULL
+## silently. Same shape as the `fitted()` defect above (#25).
+## `deviance.gllvmTMB_multi()` is `-2 * as.numeric(logLik(object))`,
+## deliberately delegating THROUGH `logLik()` so it inherits its existing
+## MAP-point disclosure on ridged fits rather than re-deriving it.
+
+test_that("#1118: deviance() exists for gllvmTMB_multi (method-parity contract)", {
+  expect_true(
+    exists("deviance.gllvmTMB_multi"),
+    info = "missing deviance() method for class gllvmTMB_multi"
+  )
+})
+
+test_that("#1118: deviance() on a gllvmTMB_multi fit is not NULL and equals -2*logLik", {
+  skip_on_cran()
+  fit <- .ftm_binomial_fit()
+
+  dv <- deviance(fit)
+  expect_false(is.null(dv))
+  expect_equal(dv, -2 * as.numeric(logLik(fit)), tolerance = 1e-10)
+})
+
+test_that("#1118: deviance() on a penalised (ridged) fit inherits logLik()'s MAP-point warning", {
+  ## No fitting: same cheap synthetic-object pattern as
+  ## test-loading-ridge-disclosure.R's "penalised likelihood surfaces
+  ## disclose MAP semantics every time" -- what is being tested is that
+  ## deviance() reaches the SAME warning logLik() emits, not a second,
+  ## independent one.
+  fit <- structure(list(
+    opt = list(objective = 12, par = c(b_fix = 0)),
+    objective_components = list(
+      likelihood_nll = 11.5,
+      ridge_penalty = 0.5,
+      optimization_nll = 12,
+      optimizer_reported = 12
+    ),
+    REML = FALSE,
+    estimator = "ML",
+    aghq = list(used = FALSE, penalised = TRUE, ridge_tau = 2),
+    likelihood_weights = list(active = FALSE),
+    tmb_data = list(y = 1:3, is_y_observed = rep(1L, 3L)),
+    X_fix_names = "b_fix"
+  ), class = c("gllvmTMB_multi", "gllvmTMB"))
+
+  ## Exactly one warning, not two: deviance() must not add its own on top
+  ## of the one logLik() already gives.
+  warnings_seen <- character(0)
+  dv <- withCallingHandlers(
+    deviance(fit),
+    warning = function(w) {
+      warnings_seen <<- c(warnings_seen, conditionMessage(w))
+      invokeRestart("muffleWarning")
+    }
+  )
+  expect_equal(length(warnings_seen), 1L)
+  expect_match(warnings_seen[1], "MAP point")
+  expect_equal(dv, 2 * 11.5)
+})
+
+test_that("#1118: deviance() on a VA fit fails loudly, not a silent NULL or a number", {
+  ## gllvmTMB_va does not inherit gllvmTMB_multi (Design 85 s10 -- VA
+  ## deliberately excludes multi's likelihood-shaped methods), so this new
+  ## method must not accidentally catch VA fits. deviance.gllvmTMB_va()
+  ## already exists (R/va-methods.R) and fails loudly via .va_not_defined();
+  ## this pins that it continues to do so alongside the new multi method.
+  fit <- structure(
+    list(integration = "va", eval_method = "gh", family = "binomial",
+         link = "logit", q = 2L, p = 6L, n = 120L, calibrated = FALSE,
+         status = "healthy", objective_type = "ELBO_GH",
+         score = list(negative_elbo_gh = 123.45)),
+    class = c("gllvmTMB_va", "gllvmTMB")
+  )
+  expect_error(deviance(fit), "not defined for a variational fit")
+})

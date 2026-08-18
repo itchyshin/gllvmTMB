@@ -119,11 +119,44 @@ run_cell <- function(n_cells_f, eff_ratio, n_sources, amp, seed) {
     sefit_ok = sefit_ok))
 }
 
-grid <- expand.grid(n_cells_f = c(150L, 810L), eff_ratio = c(1, 10),
-                    n_sources = c(2L, 3L), amp = c(1, 2), seed = 1001:1100)
+## Seed block is parameterised (E1 pre-registration, 2026-08-18). Defaults
+## reproduce the approved feasibility run BIT-FOR-BIT: seed_base 1001,
+## n_rep 100 -> seeds 1001:1100, the same 1,600-fit grid. CAMPAIGN_SEED_BASE
+## lets a smoke run take a NON-OVERLAPPING block so it cannot accidentally
+## re-score fits already in the results file, and CAMPAIGN_NREP can now
+## exceed 100 (previously capped by the hard-coded seed vector).
+seed_base <- as.integer(Sys.getenv("CAMPAIGN_SEED_BASE", "1001"))
 n_rep <- as.integer(Sys.getenv("CAMPAIGN_NREP", "100"))
-grid <- grid[grid$seed < 1001 + n_rep, ]
-cat("fits:", nrow(grid), "\n")
+grid <- expand.grid(n_cells_f = c(150L, 810L), eff_ratio = c(1, 10),
+                    n_sources = c(2L, 3L), amp = c(1, 2),
+                    seed = seed_base + seq_len(n_rep) - 1L)
+## Optional cell subset. Two forms:
+##   CAMPAIGN_CELLS  = "n_cells:n_sources" pairs (implies eff_ratio 1, amp 1)
+##                     -- the smoke-run shorthand.
+##   CAMPAIGN_CELLS4 = "n_cells:eff_ratio:n_sources:amp" full tuples
+##                     -- used by the E1 escalation, which must address
+##                     exactly the cells the escalation rule names and no
+##                     others. Escalating a cell that did not trigger would
+##                     quietly change the pre-registered design.
+cell_filter <- Sys.getenv("CAMPAIGN_CELLS", "")
+if (nzchar(cell_filter)) {
+  want <- strsplit(strsplit(cell_filter, ",")[[1]], ":")
+  keep <- Reduce(`|`, lapply(want, function(w) {
+    grid$n_cells_f == as.integer(w[1]) & grid$n_sources == as.integer(w[2]) &
+      grid$eff_ratio == 1 & grid$amp == 1
+  }))
+  grid <- grid[keep, , drop = FALSE]
+}
+cell_filter4 <- Sys.getenv("CAMPAIGN_CELLS4", "")
+if (nzchar(cell_filter4)) {
+  want <- strsplit(strsplit(cell_filter4, ",")[[1]], ":")
+  keep <- Reduce(`|`, lapply(want, function(w) {
+    grid$n_cells_f == as.integer(w[1]) & grid$eff_ratio == as.numeric(w[2]) &
+      grid$n_sources == as.integer(w[3]) & grid$amp == as.numeric(w[4])
+  }))
+  grid <- grid[keep, , drop = FALSE]
+}
+cat("fits:", nrow(grid), " seeds:", min(grid$seed), "-", max(grid$seed), "\n")
 res <- do.call(rbind, mclapply(seq_len(nrow(grid)), function(i) {
   run_cell(grid$n_cells_f[i], grid$eff_ratio[i], grid$n_sources[i],
            grid$amp[i], grid$seed[i])

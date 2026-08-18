@@ -315,6 +315,264 @@ NB2 latent models at small sample sizes have documented dispersion failures;
 see [Current limitations and boundaries](current-limits.html) before reporting
 uncertainty statements from a fit like this one.
 
+## Gamma's `phi_gamma` is a shape, not a dispersion
+
+Reach for `Gamma(link = "log")` when a positive response has a roughly
+constant coefficient of variation as its mean changes. The trap:
+`fit$report$phi_gamma` is the **shape** of the mean-shape parameterization,
+not a variance or an SD, and a *larger* value means *less* relative
+variability. Convert with `scale = mu / phi_gamma` and
+`CV(y) = 1 / sqrt(phi_gamma)`.
+
+```{r two-trait-helper}
+# Shared plumbing for the compact fits below: two traits per unit in long
+# format, the `value ~ 0 + trait + latent(0 + trait | unit)` shape used
+# throughout this article.
+two_trait_long <- function(unit, trait_names, y_matrix, response = "value") {
+  out <- data.frame(
+    unit = rep(unit, each = 2),
+    trait = factor(rep(trait_names, times = length(unit)), levels = trait_names)
+  )
+  out[[response]] <- as.vector(t(y_matrix))
+  out
+}
+```
+
+```{r gamma-fit}
+set.seed(20260818)
+n_gam <- 150L
+gam_traits <- c("leaf_area", "root_mass")
+z_gam <- rnorm(n_gam, sd = 0.4)
+eta_gam <- cbind(leaf_area = 1.5 + 0.6 * z_gam, root_mass = 1.0 - 0.3 * z_gam)
+shape_true_gam <- c(leaf_area = 6, root_mass = 3)
+Y_gam <- matrix(
+  rgamma(length(eta_gam), shape = rep(shape_true_gam, each = n_gam),
+         scale = exp(eta_gam) / rep(shape_true_gam, each = n_gam)),
+  nrow = n_gam, dimnames = list(NULL, gam_traits)
+)
+gam_long <- two_trait_long(factor(seq_len(n_gam)), gam_traits, Y_gam)
+
+fit_gam <- gllvmTMB(
+  value ~ 0 + trait + latent(0 + trait | unit, d = 1),
+  data = gam_long, trait = "trait", unit = "unit",
+  family = Gamma(link = "log"), silent = TRUE
+)
+phi_gam_hat <- fit_gam$report$phi_gamma
+data.frame(trait = gam_traits, shape_true = shape_true_gam,
+           phi_hat = round(phi_gam_hat, 2),
+           cv_hat = round(1 / sqrt(phi_gam_hat), 2))
+```
+
+`leaf_area`'s larger `phi_hat` (about 7.8, shape simulated at 6) corresponds
+to the *smaller* CV (about 0.36); `root_mass`'s smaller `phi_hat` (about 3.2)
+has the *larger* CV (about 0.56). Report the CV, not `phi_hat` itself,
+whenever "more dispersed" is the claim you want to make.
+
+## Student-t's scale is not the response SD
+
+Reach for `student()` when a real-valued response has occasional genuine
+heavy-tailed observations that a Gaussian residual would under-predict. The
+trap: `fit$report$sigma_student` is the **scale** of the underlying
+\(t\)-distribution, not the response SD, and the two diverge as `df`
+shrinks: \(\mathrm{SD}(y) = \sigma \sqrt{df / (df - 2)}\), undefined for
+\(df \leq 2\). Leave `df = NULL` to estimate degrees of freedom, or fix them
+with `student(df = 3)`.
+
+```{r student-fit}
+set.seed(20260818)
+n_stu <- 150L
+stu_traits <- c("bill_len", "wing_len")
+z_stu <- rnorm(n_stu, sd = 0.4)
+eta_stu <- cbind(bill_len = 10 + 1.5 * z_stu, wing_len = 15 - 1.0 * z_stu)
+sigma_true_stu <- c(bill_len = 0.8, wing_len = 0.5)
+df_fix <- 5
+Y_stu <- matrix(
+  eta_stu + rt(length(eta_stu), df = df_fix) * rep(sigma_true_stu, each = n_stu),
+  nrow = n_stu, dimnames = list(NULL, stu_traits)
+)
+stu_long <- two_trait_long(factor(seq_len(n_stu)), stu_traits, Y_stu)
+
+fit_stu <- gllvmTMB(
+  value ~ 0 + trait + latent(0 + trait | unit, d = 1),
+  data = stu_long, trait = "trait", unit = "unit",
+  family = student(df = df_fix), silent = TRUE
+)
+sigma_stu_hat <- fit_stu$report$sigma_student
+data.frame(trait = stu_traits, sigma_true = sigma_true_stu,
+           sigma_hat = round(sigma_stu_hat, 2),
+           sd_hat = round(sigma_stu_hat * sqrt(df_fix / (df_fix - 2)), 2))
+```
+
+At `df = 5`, `bill_len`'s recovered scale (about 0.80) converts to an SD of
+about 1.03—29% larger than the scale itself, and the gap widens as `df`
+approaches 2 from above.
+
+## Beta's `phi_beta` is a precision, and boundary values are not Beta data
+
+Reach for `Beta()` when a response is a continuous proportion strictly
+inside `(0, 1)`. `fit$report$phi_beta` is a **precision**, not a variance:
+larger values mean *less* spread, via `shape1 = mu * phi_beta`,
+`shape2 = (1 - mu) * phi_beta` with `mu = plogis(eta)`. The other trap is at
+the boundary: genuine 0s or 1s are not Beta observations, and nudging them
+inward to make the likelihood accept them silently changes the measurement
+model rather than fixing a data-entry problem.
+
+```{r beta-fit}
+set.seed(20260818)
+n_bet <- 150L
+bet_traits <- c("cover_a", "cover_b")
+z_bet <- rnorm(n_bet, sd = 0.4)
+eta_bet <- cbind(cover_a = 0.2 + 0.8 * z_bet, cover_b = -0.3 - 0.5 * z_bet)
+mu_bet <- plogis(eta_bet)
+phi_true_bet <- c(cover_a = 12, cover_b = 20)
+Y_bet <- matrix(
+  rbeta(length(eta_bet), shape1 = mu_bet * rep(phi_true_bet, each = n_bet),
+        shape2 = (1 - mu_bet) * rep(phi_true_bet, each = n_bet)),
+  nrow = n_bet, dimnames = list(NULL, bet_traits)
+)
+bet_long <- two_trait_long(factor(seq_len(n_bet)), bet_traits, Y_bet)
+
+fit_bet <- gllvmTMB(
+  value ~ 0 + trait + latent(0 + trait | unit, d = 1),
+  data = bet_long, trait = "trait", unit = "unit",
+  family = Beta(), silent = TRUE
+)
+data.frame(trait = bet_traits, phi_true = phi_true_bet,
+           phi_hat = round(fit_bet$report$phi_beta, 2))
+```
+
+Both precisions recover within simulation noise of their targets (about
+10.9 against 12, and 22.2 against 20). If your data legitimately contain 0
+or 1, model the boundary process explicitly rather than reporting a Beta fit
+against nudged values.
+
+## Multi-trial binomial: `cbind()` vs `weights`, and a `simulate()` gotcha
+
+Reach for `binomial()` with a trial count whenever the response is
+successes out of known trials rather than a single 0/1 event. Two encodings
+fit *identically*: `cbind(successes, failures) ~ ...`, or a flat response of
+**raw success counts** with `weights = n_trials`—`weights` is the trial
+count, not a proportion, and passing `successes / n_trials` silently fits
+the wrong likelihood.
+
+```{r binomial-trial-fit}
+set.seed(20260818)
+n_trl <- 150L
+trl_traits <- c("infected", "damaged")
+n_trials <- 10L
+z_trl <- rnorm(n_trl, sd = 0.4)
+eta_trl <- cbind(infected = 0.1 + 0.7 * z_trl, damaged = -0.4 - 0.5 * z_trl)
+succ_trl <- matrix(
+  rbinom(length(eta_trl), size = n_trials, prob = plogis(eta_trl)),
+  nrow = n_trl, dimnames = list(NULL, trl_traits)
+)
+trl_long <- two_trait_long(factor(seq_len(n_trl)), trl_traits, succ_trl,
+                            "successes")
+trl_long$failures <- n_trials - trl_long$successes
+
+fit_trl_cbind <- gllvmTMB(
+  cbind(successes, failures) ~ 0 + trait + latent(0 + trait | unit, d = 1),
+  data = trl_long, trait = "trait", unit = "unit",
+  family = binomial(), silent = TRUE
+)
+fit_trl_weights <- gllvmTMB(
+  successes ~ 0 + trait + latent(0 + trait | unit, d = 1),
+  data = trl_long, trait = "trait", unit = "unit",
+  weights = rep(n_trials, nrow(trl_long)), family = binomial(), silent = TRUE
+)
+c(cbind_logLik = as.numeric(logLik(fit_trl_cbind)),
+  weights_logLik = as.numeric(logLik(fit_trl_weights)))
+```
+
+The two log-likelihoods match exactly (about -583.04). Separately:
+`simulate()` treated every multi-trial binomial response as Bernoulli
+regardless of trial count until it was fixed on 2026-08-17; any saved
+simulation output for a multi-trial binomial fit produced before that fix is
+suspect and should be regenerated.
+
+## Ordinal cutpoints depend on which categories appear
+
+Reach for `ordinal_probit()` when categories are ordered and coded as
+consecutive integers `1, ..., K`. `gllvmTMB` fixes \(\tau_1 = 0\) as its
+location convention, and `extract_cutpoints()` returns only
+\(\tau_2, \ldots, \tau_{K-1}\). The hazard: `K` is inferred **per trait**
+from the largest observed category, not declared, so a category that
+happens not to occur in the fitted data silently shrinks that trait's model.
+
+```{r ordinal-fit}
+set.seed(20260818)
+n_ord <- 150L
+ord_traits <- c("condition", "vigor")
+z_ord <- rnorm(n_ord, sd = 0.4)
+taus_true <- c(0, 1.0, 2.2) # tau_1 = 0, tau_2 = 1.0, tau_3 = 2.2 -> K = 4
+eta_ord <- cbind(condition = 0.5 + 0.9 * z_ord, vigor = 0.2 - 0.6 * z_ord)
+draw_ordinal <- function(eta, taus) {
+  ystar <- eta + rnorm(length(eta))
+  as.integer(cut(ystar, breaks = c(-Inf, taus, Inf), labels = FALSE))
+}
+Y_ord <- matrix(draw_ordinal(as.vector(eta_ord), taus_true), nrow = n_ord,
+                 dimnames = list(NULL, ord_traits))
+Y_ord[, "vigor"] <- pmin(Y_ord[, "vigor"], 3L) # category 4 never occurs here
+ord_long <- two_trait_long(factor(seq_len(n_ord)), ord_traits, Y_ord)
+
+fit_ord <- gllvmTMB(
+  value ~ 0 + trait + latent(0 + trait | unit, d = 1),
+  data = ord_long, trait = "trait", unit = "unit",
+  family = ordinal_probit(), silent = TRUE
+)
+extract_cutpoints(fit_ord, quiet = TRUE)[, c("trait", "cutpoint_label",
+                                              "tau_estimate")]
+```
+
+`condition` keeps all four simulated categories and returns both
+`cutpoint_2` and `cutpoint_3` (about 1.04 and 2.28, against 1.0 and 2.2).
+`vigor` was simulated the same way but its top category never appears after
+recoding; the fitted model has only three categories and `cutpoint_3` does
+not exist for it. `K` is a property of the observed data, not a declared
+setting.
+
+## Truncated counts condition on Y >= 1
+
+Reach for `truncated_poisson()` or `truncated_nbinom2()` only when the
+sampling process itself cannot produce or record a zero—not because zeros
+were removed during cleaning. The likelihood conditions on \(Y \geq 1\),
+renormalizing the count CDF by \(1 - F(0)\); every response must be a
+positive integer. `truncated_nbinom2()`'s dispersion lives in
+`fit$report$phi_truncnb2`, a vector kept **separate** from `phi_nbinom2`—
+fitting the untruncated family on the same data and reading its
+`phi_nbinom2` would be a different, wrong, parameter.
+
+```{r truncated-fit}
+set.seed(20260818)
+rtnbinom2 <- function(n, mu, size) {
+  p0 <- dnbinom(0, mu = mu, size = size)
+  qnbinom(runif(n, p0, 1), mu = mu, size = size)
+}
+n_trn <- 300L
+trn_traits <- c("visits", "clutch")
+z_trn <- rnorm(n_trn, sd = 0.4)
+eta_trn <- cbind(visits = 1.2 + 0.6 * z_trn, clutch = 1.4 - 0.4 * z_trn)
+phi_true_trn <- c(visits = 3, clutch = 2)
+Y_trn <- matrix(
+  rtnbinom2(length(eta_trn), mu = exp(eta_trn),
+            size = rep(phi_true_trn, each = n_trn)),
+  nrow = n_trn, dimnames = list(NULL, trn_traits)
+)
+trn_long <- two_trait_long(factor(seq_len(n_trn)), trn_traits, Y_trn)
+
+fit_trn <- gllvmTMB(
+  value ~ 0 + trait + latent(0 + trait | unit, d = 1),
+  data = trn_long, trait = "trait", unit = "unit",
+  family = truncated_nbinom2(), silent = TRUE
+)
+data.frame(trait = trn_traits, phi_true = phi_true_trn,
+           phi_hat = round(fit_trn$report$phi_truncnb2, 2))
+```
+
+Both traits recover their dispersion in the right neighborhood (about 2.3
+against 3, and 1.7 against 2), and every simulated value is at least 1—no
+zero ever enters the truncated likelihood, by construction of the process.
+
 ## Different families in one fit
 
 A mixed-family model needs long data because the family selector belongs to
@@ -450,6 +708,44 @@ covariance or correlation interpretation for hurdle fits, so do
 not describe fitted-tier correlations as correlations of total biomass,
 abundance, or another observed two-part response.
 
+`delta_gamma()`'s dispersion trap sits next to `Gamma()`'s and points the
+opposite way: `fit$report$phi_gamma_delta` is the positive part's
+coefficient of variation **directly**, not a shape—its near-identical
+neighbor `phi_gamma` is the inverse-square of the CV, so the two report
+names read alike but move oppositely for the same underlying spread.
+`delta_lognormal()`'s positive-part dispersion, `sigma_lognormal_delta`, is
+already a scale in the usual sense.
+
+```{r delta-gamma-fit}
+set.seed(20260818)
+n_hur <- 150L
+hur_traits <- c("biomass_a", "biomass_b")
+z_hur <- rnorm(n_hur, sd = 0.4)
+eta_hur <- cbind(biomass_a = 0.3 + 0.8 * z_hur, biomass_b = -0.2 - 0.5 * z_hur)
+cv_true_hur <- c(biomass_a = 0.5, biomass_b = 0.7)
+draw_delta_gamma <- function(p, mu, cv) {
+  occ <- rbinom(length(p), 1, p)
+  ifelse(occ == 1, rgamma(length(p), shape = 1 / cv^2, scale = mu * cv^2), 0)
+}
+Y_hur <- cbind(
+  biomass_a = draw_delta_gamma(plogis(eta_hur[, 1]), exp(eta_hur[, 1]), cv_true_hur[1]),
+  biomass_b = draw_delta_gamma(plogis(eta_hur[, 2]), exp(eta_hur[, 2]), cv_true_hur[2])
+)
+hur_long <- two_trait_long(factor(seq_len(n_hur)), hur_traits, Y_hur)
+
+fit_hur <- gllvmTMB(
+  value ~ 0 + trait + latent(0 + trait | unit, d = 1),
+  data = hur_long, trait = "trait", unit = "unit",
+  family = delta_gamma(), silent = TRUE
+)
+data.frame(trait = hur_traits, cv_true = cv_true_hur,
+           cv_hat = round(fit_hur$report$phi_gamma_delta, 2))
+```
+
+The recovered CVs (about 0.39 against 0.5, and 0.61 against 0.7) are read
+off directly; there is no shape-to-CV conversion here, unlike `Gamma()`
+above.
+
 ## Diagnose the fitted choice
 
 Family choice is provisional until the fitted model behaves sensibly.
@@ -457,8 +753,10 @@ Family choice is provisional until the fitted model behaves sensibly.
 ```{r diagnostics, eval = FALSE}
 check_gllvmTMB(fit_long)
 
-# Exact randomized-quantile residuals are currently available for
-# Gaussian, Poisson, NB1, and NB2 rows.
+# Exact randomized-quantile residuals are currently available for Gaussian,
+# binomial, Poisson, lognormal, Gamma, NB1, NB2, Beta, betabinomial, student,
+# truncated Poisson, truncated NB2, and ordinal_probit rows -- every family
+# above except tweedie, delta_lognormal, delta_gamma, and multinomial.
 residuals(fit_long, type = "randomized_quantile", seed = 1)
 
 # Rootograms currently support Poisson, NB1, and NB2 count rows.

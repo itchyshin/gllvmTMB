@@ -55,6 +55,41 @@
   mixed-family trait-identification path (`expand_multinomial_response()`,
   `R/gllvmTMB.R`, reachable before `.align_mixed_family_list()` runs) and is
   fixed the same way.
+* **`predict(newdata = )` no longer silently drops the spatial field,
+  ignores `re_form`, or applies the wrong arm's inverse link (#1132).**
+  Three defects in one function, all measured in Design 126 §3:
+  - The `newdata` branch re-added only the `rr_B`, `diag_B` and `propto`
+    tiers out of ~37, so a **spatial fit's SPDE field was absent from every
+    `newdata` prediction -- at training locations too** -- while the branch
+    reported that random effects had been added. Measured on a converged
+    spatial fit: dropped-piece sd 0.381 against a linear-predictor sd of
+    0.949, and reproduced independently on a plain `gaussian()` spatial fit
+    (sd 0.516 vs 0.786). The SPDE contribution is now re-added by rebuilding
+    the mesh projection with `fmesher::fm_basis()`, and any remaining active
+    tier this path cannot reconstruct now raises a warning **naming it**
+    rather than vanishing. `newdata = NULL` was always correct and is
+    unchanged.
+  - `re_form` was read only on the `newdata` path, and there only as the
+    literal `~ 0`. On the package's default calling convention
+    `predict(fit, re_form = ~ 0)` therefore returned the full conditional
+    predictor, contradicting the documentation; `NA` -- a documented form --
+    and numeric `0` were ignored on both paths. All three forms are now
+    honoured on both paths, and an unrecognised value warns instead of
+    silently including the random effects. **This changes the numbers
+    returned by existing `re_form = ~ 0` calls**, including
+    `fitted(object, re_form = ~ 0)`, which forwards to the same path.
+  - `type = "response"` on `newdata` reduced the per-row family/link ids to
+    a per-trait *modal* id, which cannot represent an `isdm_sources()` fit
+    (the family varies by source *within* trait). Detection-arm rows were
+    returned through the count arm's inverse link, giving "probabilities" in
+    [0.253, 2.32] -- above 1, silently. The ids are now recovered per row
+    from the fit's `family_var` column, keeping each `(family, link)` pair
+    together. Single-family and by-trait fits are unaffected.
+  - Also fixed in the same block: with an active `lv_B` score mean, the
+    `rr_B` re-add used the `z_B` innovation alone and dropped the
+    predictor-informed mean `X_lv_B alpha_lv_B`; it now uses the reported
+    `U_B_total`.
+
 * **`deviance()` no longer returns a silent `NULL` on a `gllvmTMB_multi`
   fit (#1118).** With no method registered, `deviance()` fell through to
   `stats:::deviance.default`, which reaches for `object$deviance` and

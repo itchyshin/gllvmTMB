@@ -1,8 +1,8 @@
 # After Task: Design 125 fork-B local L2 panel + receipt
 
-**Branch**: `cursor/mspl-forkB-L2-exec-20260818`  
-**Date**: `2026-08-18`  
-**Roles (engaged)**: Curie, Fisher, Rose, Melissa
+- **Branch**: `cursor/mspl-forkB-L2-exec-20260818`
+- **Date**: `2026-08-18`
+- **Roles (engaged)**: Curie, Fisher, Rose, Melissa
 
 ## 1. Goal
 
@@ -96,9 +96,9 @@ files landed on the same tree; 1-rep numbers match.
 
 ## 9. Team Learning (per AGENTS.md Standing Review Roles)
 
-**Curie.** Smoke-first must inspect the DLL, not only the row.  
-**Fisher.** Dual coverage recorded; no T\* band invented.  
-**Rose.** Headline stays inherited 0.880 plus new cells; 0.935 out of band.  
+**Curie.** Smoke-first must inspect the DLL, not only the row.
+**Fisher.** Dual coverage recorded; no T\* band invented.
+**Rose.** Headline stays inherited 0.880 plus new cells; 0.935 out of band.
 **Melissa.** Plan-vs-actual at `docs/dev-log/plan-actual/2026-08-18-mspl-forkB-L2.md`.
 
 ## 10. Known Limitations And Next Actions

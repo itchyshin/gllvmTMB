@@ -80,16 +80,16 @@ via [#1128](https://github.com/itchyshin/gllvmTMB/pull/1128) · L0
 
 - [x] **K0 — this sitting:** kit exists under `docs/dev-log/lanes/cursor-mspl-fork-B-L2/`
       on a branch from `origin/main` (docs PR; merge when CI green)
-- [ ] **K1 — L2 runner:** thin `dev/mspl-forkB-l2-smoke.R` reuses
+- [x] **K1 — L2 runner:** thin `dev/mspl-forkB-l2-smoke.R` reuses
       `dev/mspl-forkB-l1-ademp.R`; does not rewrite L1 history
-- [ ] **K2 — smoke-first:** 1-rep near-tail + 1-rep new interior seed inspected
-- [ ] **K3 — L2 panel (local):**
+- [x] **K2 — smoke-first:** 1-rep near-tail + 1-rep new interior seed inspected
+- [x] **K3 — L2 panel (local):**
       - inherit seed `20260818` / `L1-anchor-n80-T8` as **Seed A** (cov_eff 0.880)
       - new seed_bases `20260819` and `20260820` on the same interior cell, \(n_{\mathrm{rep}}=50\)
       - one near-tail cell `L1-neartail-n40-T4`, seed_base `20260821`, \(n_{\mathrm{rep}}=50\)
-- [ ] **K4 — official receipt:** dual coverage + refusal pricing + Wilson + MCSE;
+- [x] **K4 — official receipt:** dual coverage + refusal pricing + Wilson + MCSE;
       `calibrated: FALSE`; `public_confint: refused`; `coverage_claim: none`
-- [ ] **K5 — after-task + check-log + receipt PR**
-- [ ] **Reconcile:** Melissa plan-vs-actual; checkpoint NEXT = Totoro (blocked)
+- [x] **K5 — after-task + check-log + receipt PR**
+- [x] **Reconcile:** Melissa plan-vs-actual; checkpoint NEXT = Totoro (blocked)
 
 Campaign-level done is **L2 recorded**, not Totoro admitted.

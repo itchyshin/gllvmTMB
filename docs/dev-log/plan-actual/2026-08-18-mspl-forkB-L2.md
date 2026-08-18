@@ -1,8 +1,8 @@
 # Plan vs actual — Design 125 fork B local L2 (2026-08-18)
 
-**Plan:** `docs/dev-log/lanes/cursor-mspl-fork-B-L2/LOOP/ultra-plan.md`  
-**Lane LOOP:** `docs/dev-log/lanes/cursor-mspl-fork-B-L2/LOOP/`  
-**Reconciler:** Melissa (six materiality axes only)
+- **Plan:** `docs/dev-log/lanes/cursor-mspl-fork-B-L2/LOOP/ultra-plan.md`
+- **Lane LOOP:** `docs/dev-log/lanes/cursor-mspl-fork-B-L2/LOOP/`
+- **Reconciler:** Melissa (six materiality axes only)
 
 Campaign close after K5 / V1. L2 is **recorded**. Totoro stays blocked.
 

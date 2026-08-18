@@ -1,19 +1,18 @@
 # L2 local smoke receipt — Design 125 fork B
 
-**Date:** 2026-08-18 19:52:12 UTC  
-**Lane:** `cursor/mspl-forkB-L2-exec-20260818`  
-**Harness:** `dev/mspl-forkB-l1-ademp.R`  
-**Runner:** `dev/mspl-forkB-l2-smoke.R`  
-**Estimand:** E1 only (first-trait intercept / first `b_fix`). E2 is out: the probe still requires `b_fix`.  
-**Tape actually walked:** `Q_0` / Design 125 fork **B** on all 150 new rows (`nuisance_treatment = fixed_at_mspl`, `reference_is_maximum = FALSE`)  
-**L0/L1 source:** `R CMD INSTALL` of this tree @ `2a2a0450` (`origin/main`, includes [#1130](https://github.com/itchyshin/gllvmTMB/pull/1130) and official L1 [#1128](https://github.com/itchyshin/gllvmTMB/pull/1128)) into `/tmp/gllvmtmb-l2-rlib`. **Main-reproducible.**  
-**Elapsed:** 30.6 s for the three new 50-rep cells (local; no Totoro). Compile of the worktree was separate.
-
-**calibrated:** FALSE  
-**public_confint:** refused  
-**coverage_claim:** none  
-**Totoro:** not run  
-**MSPL-04:** still `blocked`
+- **Date:** 2026-08-18 19:52:12 UTC
+- **Lane:** `cursor/mspl-forkB-L2-exec-20260818`
+- **Harness:** `dev/mspl-forkB-l1-ademp.R`
+- **Runner:** `dev/mspl-forkB-l2-smoke.R`
+- **Estimand:** E1 only (first-trait intercept / first `b_fix`). E2 is out: the probe still requires `b_fix`.
+- **Tape actually walked:** `Q_0` / Design 125 fork **B** on all 150 new rows (`nuisance_treatment = fixed_at_mspl`, `reference_is_maximum = FALSE`)
+- **L0/L1 source:** `R CMD INSTALL` of this tree @ `2a2a0450` (`origin/main`, includes [#1130](https://github.com/itchyshin/gllvmTMB/pull/1130) and official L1 [#1128](https://github.com/itchyshin/gllvmTMB/pull/1128)) into `/tmp/gllvmtmb-l2-rlib`. **Main-reproducible.**
+- **Elapsed:** 30.6 s for the three new 50-rep cells (local; no Totoro). Compile of the worktree was separate.
+- **calibrated:** FALSE
+- **public_confint:** refused
+- **coverage_claim:** none
+- **Totoro:** not run
+- **MSPL-04:** still `blocked`
 
 L2 is a recording gate (ADEMP §P5). It does **not** freeze a T\* numeric band. Interior seeds are compared to inherited official L1 cov_eff **0.880** in prose only. The L1 Wilson-not-entirely-below-0.80 rule is **not** reapplied as an L2 pass/fail.
 

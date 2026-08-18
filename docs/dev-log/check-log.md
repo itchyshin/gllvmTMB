@@ -1,3 +1,18 @@
+## 2026-08-18 — local L2 receipt PR #1162 CI whitespace fix
+
+Lane `cursor/mspl-forkB-L2-exec-20260818` (cursor). Fast-path
+`git diff --check` failed on markdown two-space hard-breaks in the K4
+receipt, K2 notes, after-task, and plan-vs-actual. Converted those
+headers to lists / stripped trailing spaces. No panel re-run. Hard OUT
+held (#1077 draft; MSPL-04 `blocked`).
+
+```sh
+git diff --check origin/main...HEAD
+gh pr view 1077 --json isDraft
+# deliberately not: Totoro, T*, public se, undraft #1077, MSPL-04 flip,
+# git add -A, isdm-package-recovery, rewrite of official L1 0.880
+```
+
 ## 2026-08-18 — local L2 K3 50-rep panel + receipt (fork B)
 
 Lane `cursor/mspl-forkB-L2-exec-20260818` (cursor). Worktree

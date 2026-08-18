@@ -52530,3 +52530,109 @@ fp-attribution.R`, `fp-attribution-findings.md`) plus the structural note
 (`dev/heywood/fp-scale-dependence.md`) are committed.
 
 — Claude (Fisher), inference-machinery lens
+
+## 2026-08-17 — Claude (Fisher): D-43 ceiling-tier review addendum, PR #1110
+
+D-43 panel returned SOUND/CONFIRMED from two reviewers and SOUND-WITH-
+CAVEATS from the ceiling-tier reviewer, who found the root-cause mechanism
+was mislabelled. Full detail in the after-task report's §2 and its new
+D-43 addendum bullets in §8; recording the checks here per Definition-of-
+Done item 5.
+
+**What changed, in one line each**: (1) `dev/heywood/fp-scale-dependence.md`
+and `dev/heywood/fp-attribution-findings.md` corrected — the mechanism is
+regime/effect-size dependence (a hidden prior on plausible latent SD), NOT
+the #851/#855 response-scale/units-dependence class, because probit fixes
+the residual variance at 1 and has no free response scale for
+standardisation to absorb; filed as a NEGATIVE scoping result for
+#851/#855, not a to-do item. (2) Added an oracle exceedance derivation
+(`P(max|Lambda_true| >= c) = 1 - [2*Phi(c/sigma_lambda) - 1]^(p*q)`) to
+both files. (3) Promoted the `rel_frob<=0.5` robustness recheck (FPR still
+0.2156) out of the footnotes into its own subsection. (4) Added a probit-
+only caveat to the `R/diagnose.R` roxygen (regenerated `man/check_gllvmTMB.Rd`).
+(5) Softened four phrasings across `R/diagnose.R`, `NEWS.md`, and
+`docs/design/35-validation-debt-register.md` ("a value of 8 already
+implies" -> "a value of this size"; "a realistic loading-scale range" ->
+"sigma_lambda in c(0.7,3.0), chosen to hit #847's regime, not argued for
+realism"; "exact rather than inferred" -> "exact up to co-firing";
+"could not have found this" -> stated as a design gap in the original
+campaign's own scope, not bad luck). (6) Added an item-6 identifiability
+check to `fp-attribution-findings.md` and the after-task report.
+
+**Commands run:**
+
+```sh
+cd /private/tmp/gllvmtmb-1098-fp
+OPENBLAS_NUM_THREADS=1 Rscript --vanilla -e '
+pexceed <- function(c, sigma, pq) { z<-c/sigma; inside<-2*pnorm(z)-1; 1-inside^pq }
+for (p in c(12,27)) for (c in c(6,8)) cat(p, c, pexceed(c, 3.0, p*2), "\n")
+'
+```
+-> independently re-derived the exceedance arithmetic before writing it
+anywhere: `P(max>=6)` 0.6729 (p=12) / 0.9191 (p=27); `P(max>=8)` 0.1685
+(p=12) / 0.3398 (p=27) — confirms the coordinator's stated range without
+copying it.
+
+```sh
+OPENBLAS_NUM_THREADS=1 Rscript --vanilla -e '
+d <- read.csv(Sys.getenv("POOL2_CSV")); b <- d[d$family=="binomial_probit",]
+h <- b[b$rel_frob<=10,]; s3 <- h[h$sigma_lambda==3,]
+# measured extreme_magnitude-only rate by p, at c=6 and c=8, vs oracle
+'
+```
+-> measured `max_loading>=c` rate by `p`, compared against the oracle
+above: close match at threshold 8 (0.2420 vs 0.1685 at p=12; 0.3321 vs
+0.3398 at p=27), over-prediction at threshold 6 in the expected direction
+(oracle unconditional on recovery quality; measured FPR conditions on
+`rel_frob<=10`).
+
+```sh
+OPENBLAS_NUM_THREADS=1 Rscript --vanilla -e '
+d <- read.csv(Sys.getenv("POOL2_CSV")); b <- d[d$family=="binomial_probit",]
+h <- b[b$rel_frob<=10,]
+flagged <- h[h$check_status=="WARN",]; passed <- h[h$check_status=="PASS",]
+# convergence / pdHess rates for item 6
+'
+```
+-> flagged (n=232): convergence==0 98.71%, pdHess 97.84%; passed (n=696):
+convergence==0 99.43%, pdHess 87.50%. No SE column exists in this CSV
+(header checked directly) — contrary to the assumption in the request,
+SEs cannot be reported from this pool. Result inconclusive by design, not
+steered: reported as found.
+
+```sh
+OPENBLAS_NUM_THREADS=1 Rscript --vanilla -e '
+set.seed(1); n<-200000; B<-rnorm(n,0,0.3); Lam<-matrix(rnorm(n*2,0,3),n,2)
+prev <- pnorm(B/sqrt(1+rowSums(Lam^2)))
+cat(mean(prev), sd(prev), mean(prev>=0.9|prev<=0.1))
+'
+```
+-> Monte Carlo over the DGP's `(B, Lambda)` distribution at
+`sigma_lambda=3`, `q=2`: mean prevalence 0.5000, SD 0.044, `P(prevalence
+>= 0.9 or <= 0.1)` = 0/200,000. Used to ground the "exact up to co-firing"
+softening with a verified number rather than the coordinator's own
+back-of-envelope `sd ~ 0.065` (a related but not identical quantity — see
+the after-task report; the closed-form argument-only SD, `0.3/sqrt(19) =
+0.0688`, is closer to that figure than the full Monte Carlo is, and both
+are reported rather than only the one that matched).
+
+```sh
+OPENBLAS_NUM_THREADS=1 Rscript --vanilla -e 'devtools::document()'
+```
+-> `Writing 'check_gllvmTMB.Rd'`; same three pre-existing unrelated
+`aghq-report.R` warnings as the prior round, nothing new.
+
+```sh
+OPENBLAS_NUM_THREADS=1 Rscript --vanilla -e 'devtools::test(filter="runaway|diagnose|sanity")'
+```
+-> `[ FAIL 0 | WARN 0 | SKIP 0 | PASS 174 ]`, unchanged from the prior
+round (no test logic changed, only prose/roxygen).
+
+**Deliberately NOT run**: no new fitting (all of the above is closed-form
+arithmetic or CSV analysis on data already retrieved); full `devtools::check()`
+(no exported-function signature or behaviour changed, only documentation
+text); the PR body on GitHub was also corrected to match (not a repo file,
+so not part of this commit's `git diff`, but recorded here since a
+reviewer reading the PR page should see the corrected framing).
+
+— Claude (Fisher), inference-machinery lens

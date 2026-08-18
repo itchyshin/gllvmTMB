@@ -20,31 +20,100 @@ maintainer decided on a retune, the code/doc/test change implementing it.
   `runaway_loading` and the prevalence-gated branch contribute **zero**.
   This **inverts #1098's own stated prior**, which named the
   `extreme_prevalence & saturated_fit` conjunct as the likely culprit and
-  judged the runaway/absolute arms "unlikely."
+  judged the runaway/absolute arms "unlikely." The attribution is exact up
+  to co-firing (prevalence itself is unrecorded in pool 2, so the
+  prevalence branch's contribution is inferred by subtraction, not
+  observed directly) — safe here because the DGP's own probability model
+  keeps prevalence away from the 0.9/0.1 gate essentially always (a Monte
+  Carlo over the DGP's `(B, Lambda)` distribution at `sigma_lambda = 3`
+  gives mean prevalence 0.5000, SD 0.044, and 0/200,000 draws outside
+  `[0.1, 0.9]`).
 - `check_gllvmTMB()`'s `loading_absolute_thresh` default raised `6 -> 8`.
   On the 928-fit pool: FPR `0.2500 -> 0.1552`; sensitivity on the pool's
   272 degenerate fits `1.0000 -> 0.9963` (one additional missed fit).
-- Root cause established as scale-dependence, not miscalibration: FPR at
-  this arm's shipped threshold runs `3.85%` at a true loading scale
-  (`sigma_lambda`) of `0.7` versus `49.08%` at `3.0` — the same scale
-  `aghq_ridge = 2` is already known to struggle at (#847). `aghq_ridge = 2`
-  reduces but does not remove it (`46.0% -> 13.5%` at the larger scale).
-- **Why the original calibration missed this — the transferable lesson.**
-  The pool that originally justified `loading_absolute_thresh = 6`
-  (3,944 simulated binomial fits, NEWS.md's 0.6.0 entry) fixed its true
-  loading SD at 0.7-1.0 and never crossed `sigma_lambda = 3`. Re-scored
-  against the SAME `rel_frob <= 10` healthy cutoff used above, only **1 of
-  2,499** of its healthy fits exceeds the threshold at all. That pool could
-  not have found this failure mode because it never visited the regime
-  where the failure lives. **A threshold is only as trustworthy as the
-  widest regime its calibration pool spans** — a pool that never crosses
-  the failing regime will report a clean bill of health regardless of how
-  many fits it contains.
-- This is an interim retune, not a structural fix. No fixed link-scale
-  constant is correct across every loading scale a fit may have. The
-  structural fix (referencing the threshold against a scale-aware
-  quantity) belongs to the #851/#855 standardisation programme; the root
-  cause is filed there as `dev/heywood/fp-scale-dependence.md`.
+- **Root cause: regime/effect-size dependence, corrected after D-43
+  review.** A first draft of `dev/heywood/fp-scale-dependence.md` filed
+  this under the #851/#855 "latent standardisation pushes the response
+  scale into Lambda" class. **That framing is wrong for this arm and this
+  family** — probit fixes the residual (liability) variance at exactly 1
+  by construction, so a binomial loading is identified in absolute units
+  already; there is no free response scale for standardisation to absorb.
+  What actually varies is the DGP's true effect size (`sigma_lambda`): FPR
+  runs `3.85%` at `sigma_lambda = 0.7` versus `49.08%` at `3.0` (the same
+  scale `aghq_ridge = 2` is already known to struggle at, #847).
+  `aghq_ridge = 2` reduces but does not remove it (`46.0% -> 13.5%` at the
+  larger scale). This distinction changes the handoff to #851/#855: that
+  class's remedy (`tau -> tau * sd(y_t)`) has no Bernoulli analogue
+  (`sd(y)` for a 0/1 response carries no information about the latent
+  loading scale), and the other obvious device — a quantile of the fit's
+  own loading distribution — collapses into the already-existing
+  `loading_relative_thresh` ratio arm. `dev/heywood/fp-scale-dependence.md`
+  is revised to file this as a **negative scoping result** (the class's
+  device may not transfer here), not as one more instance the device will
+  fix.
+- **The mechanism is quantitative, not just correlational.** An oracle
+  exceedance calculation — `Lambda_true ~ N(0, sigma_lambda^2)` entrywise
+  over `p*q` independent entries, so `P(max|Lambda_true| >= c) = 1 - [2 *
+  Phi(c/sigma_lambda) - 1]^(p*q)` — predicted, independently of the
+  measured data, `P(max >= 6)` of `0.6729` (`p=12`) to `0.9191` (`p=27`) at
+  `sigma_lambda = 3`, falling to `0.1685`-`0.3398` at threshold 8. This
+  closely matches the measured FPR at threshold 8 (`0.2420` vs oracle
+  `0.1685` at `p=12`; `0.3321` vs oracle `0.3398` at `p=27`) and
+  over-predicts at threshold 6 in the expected direction (the oracle is
+  unconditional on recovery quality; the measured FPR conditions on
+  `rel_frob<=10`). Derived and verified independently this session, not
+  copied from the coordinator's stated range.
+- **Robustness recheck against the obvious alternative, promoted out of
+  the footnotes.** `rel_frob<=10` is a *relative* bound, and
+  `||Sigma_true||_F` itself grows ~9x from `sigma_lambda = 0.7` to `3.0`,
+  so the same relative bound admits absolutely larger error at large
+  scale — the competing hypothesis is that the "healthy" LABEL is the
+  scale-dependent thing, not the detector. Re-running the identical
+  attribution under `rel_frob <= 0.5` (ten times tighter) gives FPR
+  `0.2156` (n=422, WARN=91) — materially unchanged from `0.2500`. This
+  defuses the alternative rather than merely noting it in passing.
+- **Unmeasured caveat, now stated in the roxygen: probit-only evidence.**
+  The gate applies to `family_id == 1L` for every link, but both pools are
+  probit-only. Logit loadings run larger than probit loadings for the same
+  underlying model (the standard logistic/probit variance-matching ratio,
+  `~1.6-1.8`), so the same threshold is reached by a smaller true effect
+  on logit — the FPR measured here should be read as a **lower bound** for
+  logit fits, not a transportable number. No logit evidence exists in
+  either pool.
+- **Why the original calibration missed this — the transferable lesson,
+  stated as a design gap, not bad luck.** The pool that originally
+  justified `loading_absolute_thresh = 6` (3,944 simulated binomial fits,
+  NEWS.md's 0.6.0 entry) fixed its true loading SD at 0.7-1.0 and never
+  crossed `sigma_lambda = 3`. Re-scored against the SAME `rel_frob <= 10`
+  healthy cutoff used above, only **1 of 2,499** of its healthy fits
+  exceeds the threshold at all. **Loading SD is the one parameter this arm
+  thresholds directly** — omitting it from that campaign's calibration
+  grid was a design gap in that campaign's own scope, not misfortune; the
+  grid could have crossed it and did not. **A threshold is only as
+  trustworthy as the widest regime its calibration pool spans** — a pool
+  that never crosses the failing regime will report a clean bill of health
+  regardless of how many fits it contains.
+- This is an interim retune, not a structural fix. No fixed constant is
+  correct across every loading scale a fit may have, and — per the
+  corrected root cause above — the usual #851/#855 rescaling device may
+  not even be available for this arm. `dev/heywood/fp-scale-dependence.md`
+  is filed as a negative scoping result for that programme, not a to-do
+  item.
+- **Checked, not steered: does DIA-08's own "inference/identifiability
+  warning" framing change the false-positive story?** At `sigma_lambda=3`,
+  `q=2`, a trait's true per-entry latent contribution has SD `sqrt(2)*3 ~
+  4.24` on the probit scale — quasi-separation territory, where a WARN
+  could be *correct* even with `Sigma` well recovered. Pool 2 records
+  `convergence` and `pdHess` but **not** standard errors (no SE column
+  exists in this CSV, contrary to what was assumed when this check was
+  requested). For the 232 flagged vs 696 passed healthy fits: flagged
+  `convergence==0` 98.71% / `pdHess` 97.84%; passed `convergence==0`
+  99.43% / `pdHess` 87.50% — the flagged group's Hessians are, if
+  anything, cleaner than the passed group's, the opposite of "flagged
+  fits are more broken." This does not resolve the question: quasi-
+  separation converges cleanly by nature, so `convergence`/`pdHess` cannot
+  see the pathology an SE-based check would. **Reported as found, not
+  steered toward either conclusion** — see §10.
 
 ## 3. Files Changed
 
@@ -240,13 +309,16 @@ confirmed via `grep -n -i "897\|1098\|degenera\|heywood\|binomial_prevalence" RO
   the parent issue; this PR contributes evidence to its directive 2 but
   does not close it, since #897's other directives are untouched), #847
   (CLOSED — cited for the `sigma_lambda = 3` regime and the `aghq_ridge`
-  numbers), #851 (CLOSED — the scale-dependent-constants root cause this
-  finding is an instance of), #855 (OPEN — the structural-fix design
-  issue; `dev/heywood/fp-scale-dependence.md` is filed as evidence
-  toward it).
-- **Commented**: none by this closeout. PR #1110's own body already
-  documents the full attribution and links #897/#851/#855; a duplicate
-  standalone comment was judged unnecessary.
+  numbers), #851 (CLOSED — the scale-dependent-constants class this
+  finding was initially, and incorrectly, filed as an instance of; see
+  §2's D-43 correction — it is filed as a NEGATIVE scoping result instead),
+  #855 (OPEN — the structural-fix design issue;
+  `dev/heywood/fp-scale-dependence.md` is filed as a negative-result note
+  toward it, not a positive proposal).
+- **Commented**: none by this closeout. PR #1110's own body carries the
+  same pre-correction framing this report's §2 fixes; the PR body should
+  be updated to match before merge (see §8) rather than a duplicate
+  standalone comment being added.
 - **Closed**: none directly (closure happens on PR merge, not yet
   merged — item 1 below).
 - **Created**: none. The FAM-14 stale cross-reference (§3a, §10) was
@@ -276,6 +348,29 @@ confirmed via `grep -n -i "897\|1098\|degenera\|heywood\|binomial_prevalence" RO
   not the same discipline as a dedicated Rose pass, and a maintainer
   reviewing this PR should treat the consistency audit as self-checked,
   not independently verified.
+- **The D-43 ceiling-tier reviewer caught a real mechanism error this
+  session's own writing introduced** (see §2): `fp-scale-dependence.md`'s
+  first draft filed the binomial arm's regime-dependence under the
+  #851/#855 units-dependence class by pattern-matching to "this repo has a
+  known scale-dependent-constants class" without checking whether the
+  specific mechanism (a free response scale absorbed by standardisation)
+  actually applied to a fixed-residual-variance link. It does not, for
+  probit. Two reviewers confirming the numbers did not catch this — the
+  numbers were right, the causal story attached to them was wrong. This is
+  worth naming as a category of error the "verify the numbers"
+  discipline does not by itself catch: a correct measurement can still be
+  filed under an incorrect mechanism, and only a reviewer checking the
+  *mechanism* against first principles (here: what does the probit link
+  actually fix?) will find it.
+- **PR #1110's own description still carries the pre-correction framing**
+  ("a fixed link-scale constant cannot be correct when latent
+  standardisation pushes the response scale into Lambda" and "the
+  attribution is exact rather than inferred") at the time of this
+  addendum. Both claims are corrected in the committed files (§2); the PR
+  body was updated to match in this same session (not a repo file, so not
+  part of `git diff`, but recorded here since it is user-facing and a
+  reviewer reading the PR page should see the corrected framing, not the
+  stale one).
 
 ## 9. Team Learning (per AGENTS.md Standing Review Roles)
 
@@ -315,13 +410,31 @@ the changed code.
   cross-reference** (§3a, §8) awaits a maintainer call: annotate it
   in-place, or leave it as a frozen historical record with a forward
   pointer to this report.
-- **The structural fix belongs to #851/#855.** This PR is an interim
-  point-move on one ROC curve, explicitly not a resolution — see
-  `dev/heywood/fp-scale-dependence.md`, filed as evidence toward that
-  design issue. No fixed link-scale constant will be correct across every
-  loading scale a fit may carry; the next real fix needs a scale-aware
-  reference, not a better constant.
+- **The structural fix's ownership is now genuinely open, not settled as
+  "belongs to #851/#855."** This PR is an interim point-move on one ROC
+  curve, explicitly not a resolution — but `dev/heywood/fp-scale-dependence.md`
+  is filed as a **negative** scoping result: the #851/#855 class's usual
+  per-fit rescaling device has no Bernoulli analogue (no free response
+  scale on a fixed-residual-variance link), and the alternative (a
+  within-fit quantile) collapses into the existing `loading_relative_thresh`
+  ratio arm. A real fix likely needs information external to the single
+  fit being screened (a substantive prior on plausible effect sizes, or an
+  empirical-Bayes estimate across many fits) — a materially harder
+  proposition than #851/#855's per-fit rescaling, and not attempted here.
 - **No calibration evidence exists above `sigma_lambda = 3.0`** (the
   largest scale either pool tested). If a fit's true loading scale
   exceeds that, this retune's FPR/TPR numbers do not bound anything
   there.
+- **No logit evidence exists.** Both pools are probit-only; the measured
+  FPR should be read as a lower bound for logit fits (logit loadings run
+  ~1.6-1.8x larger than probit for the same model), stated in the roxygen
+  but not measured — a logit-arm calibration pool is the natural next
+  slice if this arm is revisited.
+- **Item 6 (is "false positive" the right frame?) is not resolved.**
+  Convergence/pdHess do not discriminate between "genuinely spurious WARN"
+  and "correct identifiability warning on a quasi-separated fit" — both
+  the flagged and passed groups report mostly clean optimizer signals.
+  Resolving it needs standard errors, which pool 2 does not record.
+  Refitting a sample of the 232 flagged fits with SE computation, and
+  checking whether those SEs are well-calibrated or blown up, is the
+  natural follow-up and was explicitly not attempted this session.

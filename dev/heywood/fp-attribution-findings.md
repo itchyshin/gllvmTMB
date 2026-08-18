@@ -43,9 +43,26 @@ This was verified empirically as well: reconstructing `runaway_loading |
 extreme_magnitude` from pool 2's raw columns and comparing against the real
 `check_status` recorded by an actual `check_gllvmTMB()` call
 (`laplace-silent-divergence.R:257-261`) gives **0 mismatches across all
-1,200 binomial_probit fits**. That match also confirms, as a side effect,
-that the prevalence-gated branch never independently contributes a WARN in
-pool 2 either (see below).
+1,200 binomial_probit fits**. This is exact **up to co-firing, not exact
+in the strong sense of directly observing every arm**: pool 2 does not
+record prevalence, so `extreme_prevalence` cannot be checked directly, only
+inferred by subtraction (any WARN unexplained by `runaway_loading` or
+`extreme_magnitude` must be the prevalence branch — and none is; see
+below). This inference is safe here for a DGP-level reason, not merely an
+absence of counterexamples: the DGP's intercept is `B ~ N(0, 0.3)`, and for
+a probit fit with latent contribution `Lambda . Z`, the marginal prevalence
+for a trait with realized loading vector `Lam` is `Phi(B / sqrt(1 +
+||Lam||^2))`. At `sigma_lambda = 3`, `q = 2`, `E[||Lam||^2] = 18`, so the
+argument's scale is `sqrt(19) ~ 4.36`; a Monte Carlo over the DGP's own
+`(B, Lam)` distribution (200,000 draws, matching `sigma_lambda = 3`,
+`q = 2`) gives prevalence mean 0.5000, SD 0.044, range `[0.14, 0.85]` —
+`P(prevalence >= 0.9 or <= 0.1)` was 0 in that simulation. This is *why*
+the subtraction inference is practically safe, not merely observed to hold
+in this one pool: `extreme_prevalence` (the 0.9/0.1 gate) is essentially
+unreachable under this DGP's own probability model, so co-firing with it
+is not a live confound. That match also confirms, as a side effect, that
+the prevalence-gated branch never independently contributes a WARN in
+pool 2 (see below).
 
 **Caveat on pool 1's own `row_status_now` column**: it is NOT used as
 ground truth. It reads "PASS" or `NA` for every one of 3,944 usable
@@ -104,7 +121,9 @@ integer-for-integer.
 
 Attribution within the 928 (subtraction method — `runaway_loading` and
 `extreme_magnitude` are exactly computable from `rl_max`/`max_loading`;
-anything left over is the prevalence branch):
+anything left over is attributed to the prevalence branch, which is exact
+up to co-firing since prevalence itself is unrecorded here — see the
+Fidelity check section above for why that inference is safe on this DGP):
 
 | | fires | fires ONLY | 
 |---|---|---|
@@ -133,17 +152,33 @@ from the 0.9/0.1 gate.
 
 `extreme_magnitude` is judged on an **absolute** link-scale value
 (`max_loading_unit >= 6`), with no reference to the DGP's true loading
-scale. At `sigma_lambda = 3`, the true loadings are genuinely large, so a
-correctly-recovered (`rel_frob<=10`) fit routinely produces a
-link-scale loading above 6 without any Heywood collapse — this is the same
-scale-dependent-constants failure mode already on file for this repo
-(`loading_absolute_thresh` is one of the instances named in the 2026-07-30
-scale-dependent-constants lane notes). The `aghq_ridge=2` remedy cuts the
-FPR roughly 3.4x (0.46 -> 0.135) but does not eliminate it.
+scale. At `sigma_lambda = 3`, the true loadings are genuinely large. This
+is regime/effect-size dependence, not a units problem in the #851/#855
+sense: the probit link fixes the residual (liability) scale at exactly 1
+by construction, so there is no free response scale for latent
+standardisation to push into Lambda here — see
+`dev/heywood/fp-scale-dependence.md` for the corrected mechanism note (an
+earlier draft mis-filed this under the #851/#855 units-dependence class;
+that framing does not hold for a fixed-residual-variance link). The
+`aghq_ridge=2` remedy cuts the FPR roughly 3.4x (0.46 -> 0.135) but does
+not eliminate it.
 
-Secondary check with pool 1's stricter `rel_frob<=0.5` cutoff: n=422,
-WARN=91, FPR=0.2156 — consistent with the native-cutoff number, so the
-25% figure is not an artefact of the `rel_frob<=10` boundary choice.
+**Ruling out the obvious alternative: is "healthy" itself the
+scale-dependent thing, not the detector?** `rel_frob <= 10` is a
+*relative* recovery-error bound, and `||Sigma_true||_F` itself grows
+roughly `sigma_lambda^2`-fold (~9x) from `sigma_lambda = 0.7` to `3.0`. A
+competing explanation for the whole finding above is that the SAME
+relative bound admits absolutely larger reconstruction error at large
+scale, so the population being labelled "healthy" is itself less
+accurately recovered there — making the false-positive story an artefact
+of a scale-dependent LABEL rather than evidence about the detector. This
+is checked directly, not merely asserted away: re-running the identical
+attribution under `rel_frob <= 0.5` — a band ten times tighter, chosen
+specifically to defuse this alternative — gives **n=422, WARN=91,
+FPR=0.2156**, essentially unchanged from the native-cutoff figure of
+0.2500. Tightening the health boundary by an order of magnitude does not
+make the false positives disappear, so the finding is not an artefact of
+where `rel_frob`'s cutoff is drawn.
 
 ## Do the two pools agree?
 
@@ -166,10 +201,14 @@ to a seventh of the value now known to break the absolute-magnitude arm.**
 ## What this implies for a fix
 
 **Target `extreme_magnitude` (`loading_absolute_thresh`)** — it is the
-sole driver of every false positive found in either pool, and the
-mechanism (an absolute link-scale cutoff blind to the DGP's true loading
-scale) is already a known instance of this repo's scale-dependent-constants
-class. `runaway_loading` and the prevalence branch contribute nothing to
+sole driver of every false positive found in either pool. The mechanism
+is a fixed absolute constant standing in for a hidden prior on plausible
+latent effect size, blind to the DGP's true loading scale — regime/
+effect-size dependence, not the response-scale/units-dependence this
+repo's #851/#855 scale-dependent-constants class otherwise describes (see
+`dev/heywood/fp-scale-dependence.md` for why that class's usual device
+does not transfer to a fixed-residual-variance link like probit).
+`runaway_loading` and the prevalence branch contribute nothing to
 the FP rate in either pool (though pool 1 cannot test the prevalence
 branch at all, and pool 2's degenerate subset shows `runaway_loading` does
 carry real signal there — 162/272 = 59.6% of pool 2's degenerate fits fire
@@ -202,11 +241,84 @@ these tau values trivially (FPR stays <=0.04% throughout, since its true
 loading scale never approached the failure regime) — pool 1 offers no
 useful constraint on where to set tau, only pool 2 does.
 
-**A single fixed absolute threshold cannot be made scale-free by
-re-tuning alone** — this sweep only trades one point on one ROC curve for
-another; it does not touch the underlying mechanism (an absolute cutoff
-applied to a scale that is not itself absolute across DGPs). A structural
-fix (e.g. referencing the threshold against a scale-aware quantity rather
-than a fixed link-scale constant) would need to be proposed and tested
-separately; this analysis only establishes which arm to target and what a
-pure threshold move costs.
+**A single fixed constant cannot be made regime-free by re-tuning alone**
+— this sweep only trades one point on one ROC curve for another; it does
+not touch the underlying mechanism (a fixed prior on plausible latent
+effect size, applied to a regime that is not itself fixed across DGPs). A
+structural fix is harder here than the usual #851/#855 device: this is
+effect-size dependence on a link (probit) whose residual scale is already
+fixed by construction, not response-scale dependence, so the class's
+per-fit rescaling (`tau -> tau * sd(y_t)`) has no Bernoulli analogue, and
+judging the loading against a quantile of the fit's own distribution
+collapses into the existing `loading_relative_thresh` ratio arm. See
+`dev/heywood/fp-scale-dependence.md`'s "What would actually fix it"
+section — this analysis establishes which arm to target and what a pure
+threshold move costs; it does not establish that a structural fix of the
+usual kind is even available for this arm.
+
+## Why: an oracle exceedance calculation, not just a correlation
+
+The `sigma_lambda` mechanism table above shows a correlation (FPR rises
+with true loading SD); `dev/heywood/fp-scale-dependence.md` derives an
+independent, falsifiable prediction for it and checks it against
+measurement. Summary (full derivation and the `pnorm()`-based computation
+there): pool 2 draws `Lambda_true` entrywise `N(0, sigma_lambda^2)` over a
+`p*q`-entry matrix (`q=2`; `p in {12,27}`, so 24 or 54 iid entries), so an
+**oracle** using the true (not fitted) loadings has exceedance probability
+`1 - [2*Phi(c/sigma_lambda) - 1]^(p*q)` at threshold `c`. At
+`sigma_lambda = 3`: `P(max|Lambda_true| >= 6)` is **0.6729 (p=12) to 0.9191
+(p=27)**, falling to **0.1685 to 0.3398** at threshold 8. This matches the
+measured FPR at threshold 8 closely (0.2420 vs oracle 0.1685 at `p=12`;
+0.3321 vs oracle 0.3398 at `p=27`) and over-predicts at threshold 6, which
+is expected — the oracle is unconditional on recovery quality while the
+measured FPR conditions on `rel_frob<=10`, and fitted loadings are not
+identical to their true values. The point is not decimal-place agreement;
+it is that a mechanism derived independently of the measured data predicts
+the same order of magnitude and the same qualitative shape (steep rise
+with `sigma_lambda` and `p`; roughly halves from threshold 6 to 8) that
+was actually measured.
+
+## An unmeasured caveat: probit-only evidence
+
+`extreme_magnitude` is gated on `family_id == 1L` (binomial) for every
+link, but both calibration pools here fit **probit exclusively**. Logit
+loadings run larger than probit loadings for the same underlying model
+(the standard logistic/probit variance-matching ratio, commonly cited as
+`~1.6-1.8`) — so a fixed threshold is reached by a *smaller* true effect
+size on the logit link than on probit, meaning **the FPR measured here
+should be read as a lower bound for logit fits**, not a transportable
+number. No logit evidence exists in either pool; see the roxygen caveat
+added alongside this retune.
+
+## Is "false positive" the right frame? (checking DIA-08's own framing)
+
+`docs/design/35-validation-debt-register.md`'s DIA-08 row treats this
+screen as an **inference/identifiability warning**, not a point-estimate
+correctness check. At `sigma_lambda = 3`, `q = 2`, a trait's true
+per-entry latent contribution has SD `sqrt(q) * sigma_lambda ~ 4.24` on
+the probit scale — deep into quasi-separation territory, where a WARN
+could be *correct* behaviour (flagging a genuinely fragile fit) even when
+the point estimate (`Sigma`) happens to recover well by the `rel_frob`
+metric. Pool 2 records `convergence` and `pdHess` (it does **not** record
+standard errors — no SE/`se` column exists in this CSV, so that half of
+the check cannot be answered here). Reporting what is available, for the
+232 flagged healthy fits versus the 696 passed healthy fits:
+
+| | n | convergence==0 | pdHess==TRUE | both |
+|---|---|---|---|---|
+| flagged (WARN) | 232 | 229 (98.71%) | 227 (97.84%) | 224 (96.55%) |
+| passed (PASS) | 696 | 692 (99.43%) | 609 (87.50%) | 605 (86.93%) |
+
+This does **not** resolve the question either way. Both groups report
+clean optimizer signals in the large majority of cases — if anything, the
+flagged group has a *higher* rate of positive-definite Hessians than the
+passed group, the opposite of what "flagged fits are more broken" would
+predict. That is not surprising: quasi-separation is exactly the regime
+where an optimizer converges cleanly and reports a PD Hessian while the
+information matrix is nonetheless poorly conditioned in a direction
+`convergence`/`pdHess` cannot see — which is precisely why `rel_frob`
+(point-estimate recovery) and an SE-based identifiability check are
+different questions, and why this pool's absence of an SE column leaves
+the DIA-08 framing question genuinely open rather than settled by this
+check. Resolving it would need refitting a sample of the 232 flagged
+fits with SE computation and checking calibration — not attempted here.

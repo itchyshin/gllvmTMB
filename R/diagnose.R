@@ -1381,29 +1381,40 @@
 #'   this supplies the absolute reference the ratio lacks. It is
 #'   meaningful because the latent scores are standard normal by
 #'   identification, so a binomial loading is the trait's latent standard
-#'   deviation in link units: a value of 8 already implies a fitted
-#'   probability indistinguishable from 0 or 1 across an ordinary swing
-#'   of the axis. Default 8, raised from 6 (issue #1098) after the earlier
-#'   calibration pool (3,944 simulated binomial fits, no healthy fit above
-#'   3.99) turned out to be unrepresentative: its true loading scale never
-#'   reached the regime where this arm misfires. A second pool built
-#'   specifically to cross a realistic loading-scale range (928 healthy /
-#'   272 degenerate binomial-probit fits, `sigma_lambda` in `c(0.7, 3.0)`)
+#'   deviation in link units: a value of this size already implies a
+#'   fitted probability indistinguishable from 0 or 1 across an ordinary
+#'   swing of the axis. Default 8, raised from 6 (issue #1098) after the
+#'   earlier calibration pool (3,944 simulated binomial fits, no healthy
+#'   fit above 3.99) turned out to be unrepresentative: its true loading
+#'   scale never reached the regime where this arm misfires. A second pool
+#'   built specifically to cross `sigma_lambda in c(0.7, 3.0)` (928 healthy
+#'   / 272 degenerate binomial-probit fits) -- 3.0 chosen to hit issue
+#'   #847's `aghq_ridge` ridge-failure regime, not argued for realism --
 #'   measured this arm as the SOLE source of every false positive found
 #'   (232/928 at threshold 6, all attributable to this arm alone). Raising
 #'   the threshold to 8 lowers the false-positive rate on that pool from
 #'   0.2500 to 0.1552 while sensitivity on its degenerate fits falls only
 #'   from 1.0000 to 0.9963 (one additional missed fit out of 272). This is
-#'   an interim improvement, not a fix: the arm is measurably
-#'   scale-dependent (false-positive rate 3.85% at a mild true loading
-#'   scale of `sigma_lambda = 0.7` versus 49.08% at `sigma_lambda = 3.0`,
-#'   the scale `aghq_ridge = 2` is already known to struggle at), so no
-#'   fixed link-scale constant is correct across loading scales, and this
-#'   default should not be read as calibrated against that regime.
-#'   `aghq_ridge = 2` reduces but does not remove the problem (46.0% ->
-#'   13.5% false positives at `sigma_lambda = 3.0`). Being a link-scale
-#'   quantity it does not transport to families whose response scale is
-#'   arbitrary, which is why this row is binomial-only.
+#'   an interim improvement, not a fix. The arm is regime/effect-size
+#'   dependent, not response-scale dependent (probit fixes the residual
+#'   variance at 1, so there is no free response scale here for a
+#'   `tau * sd(y)`-style rescale to absorb): false-positive rate 3.85% at
+#'   a mild true loading scale of `sigma_lambda = 0.7` versus 49.08% at
+#'   `sigma_lambda = 3.0`, so no fixed constant is correct across loading
+#'   scales, and this default should not be read as calibrated against
+#'   that regime. `aghq_ridge = 2` reduces but does not remove the problem
+#'   (46.0% -> 13.5% false positives at `sigma_lambda = 3.0`). Being a
+#'   link-scale quantity it does not transport to families whose response
+#'   scale is arbitrary, which is why this row is binomial-only. This gate
+#'   applies to every link (`family_id == 1L`), but the calibration above
+#'   is probit-only: logit loadings run larger than probit loadings for
+#'   the same underlying model (the standard logistic/probit
+#'   variance-matching ratio, commonly cited as ~1.6-1.8), so the same
+#'   fixed threshold is reached by a smaller true effect on the logit
+#'   link, and the false-positive rate measured here should be read as a
+#'   lower bound on logit fits, not a transportable number -- no logit
+#'   evidence exists in the calibration pool. See
+#'   `dev/heywood/fp-scale-dependence.md` for the full mechanism note.
 #' @param multinomial_collapse_floor Absolute floor on a `multinomial()`
 #'   (fid 16) contrast pseudo-trait's fitted loading energy
 #'   (`rowSums(Lambda^2)`), at or below which it is a collapsed contrast.

@@ -1,5 +1,22 @@
 # gllvmTMB 0.7.0 (development)
 
+* **`predict()` and `fitted()` now return the family/source column on
+  mixed-family fits, and the effort-free scale is documented (#1133).** On an
+  `isdm_sources()` fit the `est` column mixes scales by design -- Poisson
+  expected counts beside cloglog detection probabilities -- and the in-sample
+  path returned no column saying which row was which. The `newdata` path
+  always did (it returns all of `newdata`), so the **default** call, and
+  `fitted()` which wraps it, were the ones missing the label. The fit's
+  `family_var` column is now carried through; `est` remains the last column
+  and its values are unchanged. **Fits with no `family_var` column --
+  every single-family fit -- return exactly what they always did.**
+  Separately, `?predict.gllvmTMB_multi` now documents that `type =
+  "response"` includes the row's offset (so it is an expected count *at that
+  effort*), and that the effort-free / relative-intensity scale is obtained
+  by zeroing the offset variable in `newdata` -- exact, because the offset is
+  re-evaluated against `newdata`, which is why no new `type =` is needed.
+
+
 * **`vignette("response-families")` gains seven compact worked examples,
   one per family-specific dispersion trap (#1082).** Gamma (`phi_gamma` is
   a shape, not a dispersion), student (`sigma_student` is a scale, not the

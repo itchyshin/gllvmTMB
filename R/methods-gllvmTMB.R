@@ -2364,6 +2364,18 @@ sanity_multi <- function(object, gradient_thresh = 1e-2, se_thresh = 100) {
 #' @param newdata Optional new data frame. If `NULL`, predictions are
 #'   produced for the training rows.
 #' @param type One of `"link"` (default) or `"response"`.
+#'
+#'   `"response"` includes the row's **offset**, so on a fit with an effort
+#'   or support offset it returns an expected count *at that effort*, or a
+#'   detection probability *at that support* -- not a relative intensity. For
+#'   a map or any effort-free comparison, set the offset variable to zero in
+#'   `newdata` (e.g. `newdata$log_support <- 0`) and predict from that; the
+#'   offset is re-evaluated against `newdata`, so this is exact rather than
+#'   an approximation.
+#'
+#'   On a mixed-family fit the returned `est` column mixes scales by design
+#'   (expected counts beside probabilities). The fit's family/source column
+#'   is returned alongside it so each row's scale is identifiable.
 #' @param re_form Random-effect formula controlling which random
 #'   effects are *included* in the predicted linear predictor. The
 #'   default `~ .` includes them; `~ 0`, `NA`, and numeric `0` all
@@ -2463,6 +2475,19 @@ predict.gllvmTMB_multi <- function(
       stringsAsFactors = FALSE
     )
     names(out)[1:3] <- c(unit_lbl, species_lbl, trait_lbl)
+    ## Carry the arm/source label through (#1133 item 3). On a mixed-family
+    ## fit -- an isdm_sources() fit above all -- `est` mixes scales: Poisson
+    ## expected counts beside cloglog detection probabilities, in one numeric
+    ## column, distinguishable only by the reader's memory of which rows were
+    ## which. The `newdata` path already returns this column (it returns all
+    ## of `newdata`); the in-sample path did not, so the DEFAULT call -- and
+    ## `fitted()`, which wraps it -- was the one missing the label.
+    ## Single-family fits carry no `family_var` column and are unchanged.
+    fam_var <- attr(object$family_input, "family_var") %||% "family"
+    if (fam_var %in% names(object$data) && !fam_var %in% names(out)) {
+      out[[fam_var]] <- object$data[[fam_var]]
+      out <- out[, c(setdiff(names(out), "est"), "est"), drop = FALSE]
+    }
   } else {
     nd <- .gllvmTMB_restore_newdata_factor_levels(
       newdata,

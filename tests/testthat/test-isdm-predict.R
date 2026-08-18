@@ -453,3 +453,73 @@ test_that("#1132/#1138: propto is guarded per row, not on row 1 alone", {
   ## and the unseen row itself still falls back, as documented.
   expect_equal(with_re$est[1], fixed_only$est[1])
 })
+
+## ---------------------------------------------------------------------------
+## #1133 items 2 and 3 (Design 127 sections 4-5): arm attribution and scale
+## semantics. Item 1 (off-mesh projection) largely landed with #1132's
+## fm_basis() route; item 4 (RE-aware map uncertainty) is deliberately out of
+## scope and se.fit stays refused on newdata.
+## ---------------------------------------------------------------------------
+
+test_that("#1133 item 3: the in-sample path carries the arm/source column", {
+  skip_if_not_installed("TMB")
+  fit <- .isdm_pred_fx$fit
+  dat <- .isdm_pred_fx$dat
+  fam_var <- attr(fit$family_input, "family_var")
+  expect_identical(fam_var, "isdm_source")
+
+  out <- suppressMessages(predict(fit))
+  ## Without this column `est` mixes scales -- Poisson expected counts beside
+  ## cloglog detection probabilities -- with nothing to tell them apart. The
+  ## newdata path always returned it (it returns all of newdata); the
+  ## in-sample path, which is the DEFAULT and what fitted() wraps, did not.
+  expect_true(fam_var %in% names(out))
+  expect_identical(as.character(out[[fam_var]]), as.character(dat[[fam_var]]))
+
+  ## `est` stays the last column and its values are untouched.
+  expect_identical(names(out)[ncol(out)], "est")
+  expect_identical(out$est, as.numeric(fit$report$eta))
+
+  ## fitted() wraps the same path, so it inherits the label.
+  expect_true(fam_var %in% names(suppressMessages(fitted(fit, type = "link"))))
+})
+
+test_that("#1133 item 3: a single-family fit's output shape is unchanged", {
+  skip_on_cran()
+  skip_if_not_installed("TMB")
+  ## The column is added only where the ambiguity exists. A fit with no
+  ## family_var column must return exactly what it always did -- this is the
+  ## backward-compatibility half of the change.
+  set.seed(2)
+  df <- gllvmTMB::simulate_site_trait(
+    n_sites = 20, n_species = 1, n_traits = 2,
+    mean_species_per_site = 1, seed = 2
+  )$data
+  fit <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+    value ~ 0 + trait + latent(0 + trait | site, d = 1),
+    data = df, silent = TRUE
+  )))
+  expect_identical(
+    names(suppressMessages(predict(fit))),
+    c("site", "species", "trait", "est")
+  )
+})
+
+test_that("#1133 item 2: zeroing the offset gives the effort-free scale, exactly", {
+  skip_if_not_installed("TMB")
+  fit <- .isdm_pred_fx$fit
+  dat <- .isdm_pred_fx$dat
+
+  ## type = "response" includes the row's offset, so it is an expected count
+  ## AT THAT EFFORT. A map wants relative intensity; the documented idiom is
+  ## to zero the offset in newdata. The offset is re-evaluated against
+  ## newdata, so this is exact rather than approximate -- which is what makes
+  ## it documentable instead of needing a new `type =`.
+  nd0 <- dat
+  nd0$log_support <- 0
+  with_effort <- suppressMessages(predict(fit, newdata = dat, type = "link"))
+  no_effort <- suppressMessages(predict(fit, newdata = nd0, type = "link"))
+
+  ## On the link scale the difference is exactly the offset that was removed.
+  expect_equal(with_effort$est - no_effort$est, log(dat$support))
+})

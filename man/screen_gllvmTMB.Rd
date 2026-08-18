@@ -66,7 +66,10 @@ test is vacuously true against a constant and would not be genuine
 evidence); a member that is constant while other members of the same
 group are not is excluded from every pairwise comparison for the same
 reason. Each result is its own row in the \code{response_dependencies}
-table, independent of the automatic affine-rank screen below.
+table, independent of the automatic affine-rank screen below -- except
+that a declared one-hot block also counts toward that screen's
+\code{unresolved} affine-dependency count (a nesting relation never does:
+it is an inequality, not an exact affine relation among the columns).
 Screening is Bernoulli-only, matching the automatic screen.}
 }
 \value{

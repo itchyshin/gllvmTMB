@@ -1,5 +1,6 @@
-## Regression tests for a known_groups= defect reported by @Ayumi-495
-## against PR #1123 (screen_gllvmTMB()):
+## Regression tests for two known_groups= defects reported by @Ayumi-495
+## against PR #1123 (screen_gllvmTMB()), and a third found while fixing the
+## second:
 ##
 ## Defect 1 -- a declared group of 3+ traits whose containment relations
 ## form a PARTIAL order (one broad trait containing two mutually
@@ -7,11 +8,20 @@
 ## (declared order, or its reverse) and silently PASSED
 ## known_group_checked instead of FAILing known_nesting.
 ##
-## A second, related defect (the "unresolved" affine-dependency count
-## ignoring declared known_groups certificates) and a third defect found
-## while fixing it (a typo'd trait name silently accepted whenever the
-## check itself is infeasible for the data) are covered further down in
-## this file, added in a follow-up commit.
+## Defect 2 -- the automatic affine-rank screen's "N further exact affine
+## dependencies ... unresolved" count never subtracted the one-hot
+## certificates a user supplied via known_groups, even when every
+## remaining dependency was correctly declared and certified. The fix
+## takes the RANK of the pooled certified null-vector span rather than
+## subtracting row counts, so declaring the same dependency under two
+## names cannot under-report a genuinely unresolved dependency, and a
+## declared nesting relation (an inequality, not an exact affine relation)
+## never reduces the count.
+##
+## Correction C -- a typo'd trait name in known_groups was silently
+## accepted whenever the affine/known-group check itself was infeasible
+## for the data (info$ok == FALSE), because the name validation ran after
+## that early return.
 
 test_that("known_groups: declared pairwise, each FAILs known_nesting", {
   ## Her real case, one relation at a time: realm_water >= realm_freshwater
@@ -136,4 +146,194 @@ test_that("known_groups: an all-constant group of 3 still reports the degenerate
   kg <- kg[kg$scope == "known_group", ]
   expect_equal(kg$type, "known_group_degenerate")
   expect_equal(kg$status, "PASS")
+})
+
+## --- Data shared by the unresolved-count tests: three disjoint one-hot
+## blocks (A,B,C / D,E,F / G,H,I), each a genuinely independent 3-way
+## categorical variable. cbind(1, A..I) has deficiency exactly 3, and (per
+## the automatic search's own documented limitation) the automatic
+## certificate finder resolves NONE of them when all three are present
+## simultaneously -- so with no known_groups declared, "unresolved" is 3,
+## matching Ayumi-495's report.
+.three_one_hot_blocks_data <- function(n = 30) {
+  i <- 0:(n - 1)
+  b1 <- i %% 3
+  b2 <- (i %/% 3) %% 3
+  b3 <- (i %/% 9) %% 3
+  mkonehot <- function(idx, k) {
+    m <- matrix(0, nrow = length(idx), ncol = k)
+    for (j in seq_along(idx)) m[j, idx[j] + 1] <- 1
+    m
+  }
+  A <- mkonehot(b1, 3)
+  colnames(A) <- c("A", "B", "C")
+  D <- mkonehot(b2, 3)
+  colnames(D) <- c("D", "E", "F")
+  G <- mkonehot(b3, 3)
+  colnames(G) <- c("G", "H", "I")
+  Y <- cbind(A, D, G)
+  df <- data.frame(unit = factor(seq_len(n)))
+  for (cn in colnames(Y)) df[[cn]] <- Y[, cn]
+  df
+}
+
+test_that("known_groups: three disjoint one-hot blocks -- unresolved is 3 undeclared, 0 when all three are certified", {
+  df <- .three_one_hot_blocks_data()
+  fmla <- traits(A, B, C, D, E, F, G, H, I) ~ 1 + latent(1 | unit, d = 1)
+
+  scr_none <- suppressWarnings(screen_gllvmTMB(
+    fmla,
+    data = df, unit = "unit", family = binomial()
+  ))
+  deps_none <- screen_table(scr_none, "response_dependencies")
+  unresolved_none <- deps_none[deps_none$type == "unresolved", ]
+  expect_equal(nrow(unresolved_none), 1L)
+  expect_true(grepl("^3 further", unresolved_none$message))
+
+  scr_all <- suppressWarnings(screen_gllvmTMB(
+    fmla,
+    data = df, unit = "unit", family = binomial(),
+    known_groups = list(
+      g1 = c("A", "B", "C"),
+      g2 = c("D", "E", "F"),
+      g3 = c("G", "H", "I")
+    )
+  ))
+  deps_all <- screen_table(scr_all, "response_dependencies")
+  expect_equal(nrow(deps_all[deps_all$type == "unresolved", ]), 0L)
+  kg_all <- deps_all[deps_all$scope == "known_group", ]
+  expect_equal(nrow(kg_all), 3L)
+  expect_true(all(kg_all$type == "known_one_hot"))
+})
+
+test_that("known_groups: 2 declared one-hot blocks + 1 undeclared -- unresolved is exactly 1", {
+  df <- .three_one_hot_blocks_data()
+  fmla <- traits(A, B, C, D, E, F, G, H, I) ~ 1 + latent(1 | unit, d = 1)
+
+  scr <- suppressWarnings(screen_gllvmTMB(
+    fmla,
+    data = df, unit = "unit", family = binomial(),
+    known_groups = list(g1 = c("A", "B", "C"), g2 = c("D", "E", "F"))
+  ))
+  deps <- screen_table(scr, "response_dependencies")
+  unresolved <- deps[deps$type == "unresolved", ]
+  expect_equal(nrow(unresolved), 1L)
+  expect_true(grepl("^1 further", unresolved$message))
+})
+
+test_that("known_groups: the same one-hot block declared twice under two names does not go negative or hide dependencies", {
+  ## The rank-of-certified-span fix must not double-subtract a relation
+  ## declared (or covered) twice: a count-based
+  ## `unresolved <- deficiency - length(certs) - length(known_group_rows)`
+  ## would.
+  df <- .three_one_hot_blocks_data()
+  fmla <- traits(A, B, C, D, E, F, G, H, I) ~ 1 + latent(1 | unit, d = 1)
+
+  scr <- suppressWarnings(screen_gllvmTMB(
+    fmla,
+    data = df, unit = "unit", family = binomial(),
+    known_groups = list(
+      g1 = c("A", "B", "C"),
+      g1_dup = c("A", "B", "C"),
+      g2 = c("D", "E", "F"),
+      g3 = c("G", "H", "I")
+    )
+  ))
+  deps <- screen_table(scr, "response_dependencies")
+  expect_equal(nrow(deps[deps$type == "unresolved", ]), 0L)
+  kg <- deps[deps$scope == "known_group", ]
+  expect_equal(nrow(kg), 4L)
+  expect_true(all(kg$type == "known_one_hot"))
+})
+
+test_that("known_groups: a declared nesting group must NOT be credited against a genuine undeclared affine dependency", {
+  ## The dangerous case: a nesting/containment relation is an INEQUALITY,
+  ## not an exact affine (equality) relation, so it must contribute 0 to
+  ## the certified null-vector span. A naive fix that subtracts one unit
+  ## of deficiency per declared known_groups row (regardless of type)
+  ## would wrongly zero out the genuinely unresolved G/H/I block below.
+  n <- 36
+  i <- 0:(n - 1)
+
+  wf <- i %% 4
+  water <- ifelse(wf %in% c(0, 1, 2), 1, 0)
+  freshwater <- ifelse(wf == 0, 1, 0)
+  marine <- ifelse(wf == 1, 1, 0)
+
+  b1 <- i %% 3
+  b2 <- (i %/% 3) %% 3
+  b3 <- (i %/% 9) %% 3
+  mkonehot <- function(idx, k) {
+    m <- matrix(0, nrow = length(idx), ncol = k)
+    for (j in seq_along(idx)) m[j, idx[j] + 1] <- 1
+    m
+  }
+  A <- mkonehot(b1, 3)
+  colnames(A) <- c("A", "B", "C")
+  D <- mkonehot(b2, 3)
+  colnames(D) <- c("D", "E", "F")
+  G <- mkonehot(b3, 3)
+  colnames(G) <- c("G", "H", "I")
+
+  Y <- cbind(water = water, freshwater = freshwater, marine = marine, A, D, G)
+  df <- data.frame(unit = factor(seq_len(n)))
+  for (cn in colnames(Y)) df[[cn]] <- Y[, cn]
+
+  fmla <- traits(water, freshwater, marine, A, B, C, D, E, F, G, H, I) ~
+    1 + latent(1 | unit, d = 1)
+
+  scr <- suppressWarnings(screen_gllvmTMB(
+    fmla,
+    data = df, unit = "unit", family = binomial(),
+    known_groups = list(
+      realm = c("water", "freshwater", "marine"),
+      g1 = c("A", "B", "C"),
+      g2 = c("D", "E", "F")
+    )
+  ))
+  deps <- screen_table(scr, "response_dependencies")
+
+  realm_row <- deps[deps$scope == "known_group" & deps$group == "realm", ]
+  expect_equal(realm_row$type, "known_nesting")
+  expect_equal(realm_row$status, "FAIL")
+
+  unresolved <- deps[deps$type == "unresolved", ]
+  expect_equal(nrow(unresolved), 1L)
+  expect_true(grepl("^1 further", unresolved$message))
+})
+
+test_that("known_groups: a typo'd trait name aborts even when the check itself is infeasible for the data", {
+  ## Correction C -- validation of names must run BEFORE the info$ok gate.
+  ## Duplicate unit-trait rows make the affine/known-group check infeasible
+  ## (info$ok == FALSE) while leaving the trait column, and its levels,
+  ## intact.
+  n <- 20
+  df <- data.frame(
+    unit = factor(rep(seq_len(10), each = 2)),
+    x = rep(c(0, 1), length.out = n),
+    y = rep(c(1, 0), length.out = n)
+  )
+  fmla <- traits(x, y) ~ 1 + latent(1 | unit, d = 1)
+
+  ## A group naming only real traits is accepted (and reported
+  ## NOT_CHECKED, since the affine check itself is infeasible here).
+  scr_ok <- suppressWarnings(screen_gllvmTMB(
+    fmla,
+    data = df, unit = "unit", family = binomial(),
+    known_groups = list(g = c("x", "y"))
+  ))
+  deps_ok <- screen_table(scr_ok, "response_dependencies")
+  kg_ok <- deps_ok[deps_ok$scope == "known_group", ]
+  expect_equal(kg_ok$type, "not_checked")
+  expect_equal(kg_ok$status, "NOT_CHECKED")
+
+  ## A typo'd trait name must still abort.
+  expect_error(
+    suppressWarnings(screen_gllvmTMB(
+      fmla,
+      data = df, unit = "unit", family = binomial(),
+      known_groups = list(g = c("x", "z_typo"))
+    )),
+    class = "rlang_error"
+  )
 })

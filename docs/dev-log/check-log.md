@@ -41,26 +41,6 @@ rg -n 'D-148' docs/design/125-mspl-profile-led-intervals.md \
 ```
 
 After-task: `docs/dev-log/after-task/2026-08-18-mspl-design-125-g4c-fork-B.md`.
-=======
-## 2026-08-18 — Cursor: Design 125 fork B G0 + `objective=` selector (reconciles #1126)
-
-Signed G0 (fork B = unpenalized Laplace at fixed MSPL nuisance) plus
-authorising code on `.gllvmTMB_mspl_profile_feasibility()`:
-`objective = c("penalised", "unpenalized")`, default penalised.
-`tape = "Q_P"` / `"Q_0"` kept as the synonym so #1128 L1 callers still
-work. #1126 L0 (`tape=` only, weaker "not a fork pick" G0) is superseded
-rather than dual-merged. #1077 stays draft. No Totoro. No public se.
-
-```sh
-Rscript --vanilla -e 'devtools::load_all("."); testthat::test_file("tests/testthat/test-mspl-api.R")'
-gh pr view 1077 --json isDraft                     # true
-rg -n 'MSPL-04' docs/design/35-validation-debt-register.md
-# still blocked
-# not run: Totoro, T* freeze, undraft #1077, public se, NEWS covered, git add -A
-```
-
-After-task: `docs/dev-log/after-task/2026-08-18-mspl-forkB-g0-objective-selector.md`.
->>>>>>> a6bb6916 (feat(mspl): unlock fork B via objective= selector (Design 125 G0))
 
 ## 2026-08-18 — Cursor: resume fork B `/goal` kit (CI whitespace + arc-ID align)
 

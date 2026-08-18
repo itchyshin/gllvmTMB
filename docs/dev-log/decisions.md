@@ -44,10 +44,9 @@ not a validated one. `MSPL-04` stays **`blocked`**. Hard stops unchanged and
 explicitly **not** waived here: no public `se = TRUE` / `vcov()` / `confint()`;
 #1077 stays **draft** (undraft needs its own explicit ask); no Totoro/DRAC
 (D-50/D-139); no Design 118 or B1 reopen (D-157); no NEWS/article `covered`
-language; `codex/lane-b-mspl-interval-feasibility` stays **PROTECTED**. G3
-`WAIT` is **not** auto-lifted by this decision — local profile smoke still needs
-its own smoke G0, now unblocked on the fork axis alone. `R/` and `src/` are
-untouched by this sitting; the L0 plumbing arm is a separate lane.
+language; `codex/lane-b-mspl-interval-feasibility` stays **PROTECTED**. The
+docs sitting left `R/` untouched; L0 authorising code is the next entry
+(#1130), which lifts G3 `WAIT` for L0/L1 local compute only.
 
 **Ledger-citation correction shipped with this entry.** Vault decisions
 renumbered the MSPL-interval decision from `D-148` to

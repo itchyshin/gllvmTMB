@@ -1,5 +1,15 @@
 # Design 123 — the full multinomial() structured-dependency surface
 
+> ⚠ **T = 1 caveat (issue #1134, added 2026-08-18).** The univariate-PMM and
+> ordinal-phylo rows in the alignment table below encode "univariate" as a
+> `trait` factor with a single level. **That does not fit**: the single-trait
+> path reaches `stats::model.matrix()`, which cannot build contrasts for a
+> one-level factor, and no test in this repository exercises T = 1. The legacy
+> `phylo_vcv=` route fails the same way. Per `AGENTS.md` ("single-response
+> models belong in `glmmTMB`") this is read as a scope boundary rather than a
+> bug — but read those rows as requiring **T >= 2**, and see #1134.
+
+
 **Status: FINAL (post-Slice-4 consolidation, 2026-08-16).** Five build
 slices (0-4) plus signed recovery campaigns for every admitted cell are
 complete. `R/multinomial-fence.R`'s `.mn_admission_table` is the

@@ -1,3 +1,47 @@
+## 2026-08-18 — Cursor: L1 ADEMP 50-rep re-run on origin/main after #1130
+
+- worktree: `~/local-scratch/lanes/gllvmTMB-pr1128-l1-ademp`
+- branch: `cursor/mspl-forkB-l1-smoke-20260818` rebased onto `origin/main` @ `2f80d844`
+- L0: [#1130](https://github.com/itchyshin/gllvmTMB/pull/1130) `d7f526d4` is an ancestor of `origin/main`
+- `devtools::test(filter = "mspl-forkB-l1-ademp-harness")` → 27/0
+- `devtools::test(filter = "mspl-forkB-l1-dual-arm-smoke")` → 22/0 + 1 empty-test skip
+- 1-rep smoke-first on `L1-anchor-n80-T8`: two-sided `Q_0` interval, 2.3 s
+- 50-rep `--seed_base=20260818`: availability 1.000, refusal 0.000,
+  cov_eff 0.880 Wilson [0.7620, 0.9438], 50/0/44, all rows `tape=Q_0` fork B,
+  88.2 s, **L1-PASS**. Same counts as the superseded L0-WT walk.
+- receipt: `docs/dev-log/research/2026-08-18-mspl-forkB-l1-smoke.md` (now main-reproducible)
+- deliberately not: Totoro, T*, public se/vcov/confint, undraft #1077, NEWS covered,
+  MSPL-04 flip, L2, git add -A
+
+## 2026-08-18 — Cursor: orphan dual-arm L1 probe folded into #1128
+
+- worktree: `~/local-scratch/lanes/gllvmTMB-pr1128-l1-ademp`
+- branch: `cursor/mspl-forkB-l1-smoke-20260818`
+- rescued from: `~/local-scratch/lanes/gllvmTMB-g0-unlock-20260818` (orphan `.git`, tip `a6bb6916`, not ancestor of #1130)
+- rescued: `dev/mspl-fork-b-l1-smoke.R` + 6-rep T=4 dual-arm CSVs
+- not rescued: `a6bb6916` `R/mspl.R` (`objective=` lives on #1130)
+- live #1130 worktree `gllvmTMB-g0-unlock-1130` not edited
+- `devtools::test(filter = "mspl-forkB-l1-dual-arm-smoke")` → first run 1/22
+  (fence test treated the Hard-OUT comment `no NEWS covered` as a claim);
+  after tightening the assertion: FAIL 0 | WARN 0 | SKIP 0 | PASS 23
+- receipt: `docs/dev-log/research/2026-08-18-mspl-forkB-l1-dual-arm.md` (INCOMPLETE, not a gate)
+- rg: `se = TRUE|NEWS covered|MSPL-04|undraft` on runner + receipt + after-task — no public-claim hits
+- deliberately not: Totoro, T*, public se/vcov/confint, undraft #1077, NEWS covered,
+  git add -A, isdm-package-recovery, 100-rep dual-arm refit, rewrite of #1130
+
+## 2026-08-18 — Cursor: Design 125 fork-B L1 harness + local smoke
+
+- worktree: `~/local-scratch/lanes/gllvmTMB-mspl-forkB-L1`
+- branch: `cursor/mspl-forkB-l1-smoke-20260818`
+- harness: `dev/mspl-forkB-l1-ademp.R` (blocked-on-L0 on main; `tape = "Q_0"` when L0 loaded)
+- `devtools::test(filter = "mspl-forkB-l1-ademp-harness")` → 30/0
+- local smoke: 50-rep `L1-anchor-n80-T8` via L0 WT (PR #1126, not on main):
+  availability 1.000, refusal 0.000, cov_eff 0.880 Wilson [0.762, 0.944], L1 PASS
+- receipt: `docs/dev-log/research/2026-08-18-mspl-forkB-l1-smoke.md`
+- rg: `se = TRUE|NEWS covered|MSPL-04` on harness + receipt + after-task — no public-claim hits
+- deliberately not: Totoro, T*, public se/vcov/confint, undraft #1077, NEWS covered,
+  git add -A, isdm-package-recovery, E2, L2
+
 ## 2026-08-18 — Cursor: Design 125 fork B G0 + `objective=` selector (reconciles #1126)
 
 Signed G0 (fork B = unpenalized Laplace at fixed MSPL nuisance) plus
@@ -73,7 +117,6 @@ git diff --name-only origin/main -- LOOP/   # must be empty
 gh pr view 1077 --json isDraft              # true
 # not run: R CMD check, Totoro, L0/L1 impl, Design 125 body edit
 ```
-
 
 ## 2026-08-18 — Cursor: Poisson MSPL W_* REPLACE **MERGED** (closes the LOOP)
 

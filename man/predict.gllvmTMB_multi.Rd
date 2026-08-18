@@ -19,7 +19,19 @@
 \item{newdata}{Optional new data frame. If \code{NULL}, predictions are
 produced for the training rows.}
 
-\item{type}{One of \code{"link"} (default) or \code{"response"}.}
+\item{type}{One of \code{"link"} (default) or \code{"response"}.
+
+\code{"response"} includes the row's \strong{offset}, so on a fit with an effort
+or support offset it returns an expected count \emph{at that effort}, or a
+detection probability \emph{at that support} -- not a relative intensity. For
+a map or any effort-free comparison, set the offset variable to zero in
+\code{newdata} (e.g. \code{newdata$log_support <- 0}) and predict from that; the
+offset is re-evaluated against \code{newdata}, so this is exact rather than
+an approximation.
+
+On a mixed-family fit the returned \code{est} column mixes scales by design
+(expected counts beside probabilities). The fit's family/source column
+is returned alongside it so each row's scale is identifiable.}
 
 \item{re_form}{Random-effect formula controlling which random
 effects are \emph{included} in the predicted linear predictor. The

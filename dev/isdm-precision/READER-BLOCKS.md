@@ -314,3 +314,43 @@ degenerate path and reported success.
 
 To be filed with a minimal reproduction once the rebuild lane confirms the
 mechanism. **Not an article claim** — recorded here so it is not lost.
+
+---
+
+## Block 10 — the claim survives a BIASED presence-only arm (Pat blocking #2)
+
+Pat's most serious objection: the article's opportunistic arm has **no sampling
+bias**, so the entire reason anyone integrates is absent from the design. Read
+as written, she would "wrongly drop her survey arm".
+
+**Tested in the design she asked for** (`/tmp/biased.R`, 400 PO / 100 survey,
+15 replicates per cell). The presence-only arm is now *precise but sampling-
+biased*: reporting intensity carries `gamma = 1.2` on an accessibility surface
+drawn as an **independent** Gaussian field, so `env` and `access` are
+orthogonal by construction (realised sample correlation -0.14 on this seed —
+chance, in a strongly autocorrelated field). The survey arm is *unbiased but
+fuzzed*. The analyst models the bias, as a competent one would.
+
+| fuzz | precise | fuzzed | integrated | integrated - precise | replicates hurt |
+|---|---|---|---|---|---|
+| 0.00 | 0.903 | 0.915 | 0.904 | +0.001 | 10/15 |
+| 0.50 | 0.903 | 0.363 | 0.835 | **-0.069** | 14/15 |
+| 1.00 | 0.903 | 0.206 | 0.798 | **-0.105** | 14/15 |
+
+**The claim survives.** With the motivation for integration present and
+correctly modelled, integrating the fuzzed arm still moves the environmental
+slope away from truth in 14 of 15 replicates at both non-zero fuzz levels. The
+`fuzz = 0` control holds (10/15; two-sided binomial p = 0.30).
+
+**Do not compare these magnitudes to Block 7's.** That run fitted no `access`
+term, so the two are different models and only the *within-run* contrast
+(integrated vs precise, same data) is valid.
+
+**The honest framing for the article, which is narrower than it looks.** This
+says the penalty falls on the **environmental slope specifically**. It does
+not say the survey arm is worthless: an unbiased structured arm is exactly what
+identifies and corrects the reporting bias, and that is why it is in the model
+at all. The uncomfortable finding is that the *same* arm, if its coordinates
+are fuzzed, damages the slope while it repairs the bias. Both are true at once,
+and an article that reports only one of them is misleading. State the
+trade-off, do not resolve it.

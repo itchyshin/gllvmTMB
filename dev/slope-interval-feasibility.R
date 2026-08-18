@@ -41,6 +41,18 @@
 ## COMPUTABILITY only: are the slope-block SEs finite, and what would a
 ## delta-method back-transform require.
 
+## PROVENANCE (2026-08-18, adversarial review by Rose): the first version of
+## this script had an INDEXING BUG in Route A. It assumed theta_dep_chol packs
+## 3-entry (diag_int, diag_slope, offdiag) blocks per trait; the actual packing
+## (src/gllvmTMB.cpp:1909-1935, R/lambda-constraint.R's
+## dep_chol_crossblock_pins()) is ALL diagonals first, then the strictly-lower
+## triangle column-major. That bug also masked a deeper issue: even correctly
+## indexed, the slope diagonal alone is NOT the slope variance -- the marginal
+## slope variance is L21^2 + L22^2 (a function of the free within-block
+## off-diagonal too), needing a multivariate delta method, not a univariate
+## exp(). Both are fixed below; Route B, the structural-computability finding,
+## and the "no exported extractor" result were unaffected and are unchanged.
+
 devtools::load_all(".", quiet = TRUE)
 
 print_par_fixed_table <- function(fit, label) {
@@ -70,7 +82,11 @@ report_block <- function(fit, blk, label) {
     finite_se = is.finite(se_diag),
     positive_se = se_diag > 0
   ))
-  invisible(list(est = est, se = se_diag))
+  ## `ix` are the GLOBAL positions into sd_report$par.fixed / cov.fixed --
+  ## returned so callers needing an off-diagonal covariance (e.g. the
+  ## multivariate delta method for Route A's slope variance) can index
+  ## cov.fixed directly instead of only ever reading its diagonal.
+  invisible(list(est = est, se = se_diag, ix = ix))
 }
 
 ## =====================================================================
@@ -130,24 +146,63 @@ cat("\n")
 cat("Route A slope-variance parameter is theta_dep_chol (per\n")
 cat("tests/testthat/test-phylo-indep-slope-gaussian.R: phylo_indep desugars to\n")
 cat("phylo_slope's block-diagonal Cholesky engine, NOT theta_diag_B_slope /\n")
-cat("theta_rr_B_slope). theta_dep_chol packs, per trait, 2 diagonal Cholesky\n")
-cat("entries (log-scale int SD, log-scale slope SD) + 1 within-block\n")
-cat("off-diagonal -- 3 * n_traits entries total. The SLOPE variance for trait t\n")
-cat("is entry 2 of that trait's 3-entry block (index 3*(t-1)+2), on a LOG scale.\n\n")
+cat("theta_rr_B_slope).\n")
+cat("\n")
+cat("CORRECTED PACKING (an earlier version of this script had this wrong --\n")
+cat("see the results file's provenance note). Per src/gllvmTMB.cpp:1909-1935\n")
+cat("and R/lambda-constraint.R's dep_chol_crossblock_pins(), theta_dep_chol\n")
+cat("packs ALL C diagonal entries FIRST (log-scale), THEN the strictly-lower\n")
+cat("triangle in column-major order (raw/unconstrained scale). After the\n")
+cat("block-diagonal cross-block pins (Design 79/80), the 3*n_traits FREE\n")
+cat("entries are, in order: the 2*n_traits diagonals interleaved\n")
+cat("(int_1, slope_1, int_2, slope_2, ...), THEN the n_traits within-block\n")
+cat("off-diagonal entries (L21 per trait, raw scale) -- NOT 3-entry\n")
+cat("(int, slope, offdiag) blocks per trait as first assumed.\n")
+cat("\n")
+cat("Consequently the within-block Cholesky factor for trait t is\n")
+cat("  L_t = [[L11, 0], [L21, L22]],  L11 = exp(diag_int), L22 = exp(diag_slope)\n")
+cat("and Sigma_t = L_t %*% t(L_t) gives:\n")
+cat("  Var(intercept_t) = L11^2                    -- univariate log-SD, exp() suffices\n")
+cat("  Var(slope_t)      = L21^2 + L22^2            -- NOT exp(diag_slope)^2 alone\n")
+cat("So the slope variance depends on TWO parameters (diag_slope AND the raw\n")
+cat("off-diagonal L21) whenever the within-trait intercept-slope correlation is\n")
+cat("nonzero, and needs a MULTIVARIATE delta method / numerical Jacobian using\n")
+cat("the (diag_slope, L21) 2x2 cov.fixed submatrix -- the same treatment\n")
+cat("Route B's theta_rr_B_slope needed, not the univariate exp() shortcut.\n\n")
+
 routeA_res <- report_block(fit_A, "theta_dep_chol", "Route A")
 if (!is.null(routeA_res)) {
-  slope_idx_within_block <- seq(2L, 3L * n_traits_A, by = 3L)
+  diag_slope_pos <- seq(2L, 2L * n_traits_A, by = 2L)   # positions 2,4,6
+  offdiag_pos    <- seq(2L * n_traits_A + 1L, 3L * n_traits_A)  # positions 7,8,9
   cat(sprintf(
-    "\nRoute A slope-SD sub-entries (index %s within theta_dep_chol):\n",
-    paste(slope_idx_within_block, collapse = ", ")
+    "Route A diag_slope free-positions: %s | offdiag (L21) free-positions: %s\n",
+    paste(diag_slope_pos, collapse = ", "), paste(offdiag_pos, collapse = ", ")
   ))
-  print(data.frame(
-    trait = seq_len(n_traits_A),
-    theta_hat = routeA_res$est[slope_idx_within_block],
-    se_theta = routeA_res$se[slope_idx_within_block],
-    finite_se = is.finite(routeA_res$se[slope_idx_within_block]),
-    positive_se = routeA_res$se[slope_idx_within_block] > 0
-  ))
+
+  g_slope_sd <- function(theta_slope, L21) sqrt(exp(2 * theta_slope) + L21^2)
+
+  routeA_slope <- lapply(seq_len(n_traits_A), function(t) {
+    theta_slope <- routeA_res$est[diag_slope_pos[t]]
+    se_theta    <- routeA_res$se[diag_slope_pos[t]]
+    L21         <- routeA_res$est[offdiag_pos[t]]
+    se_L21      <- routeA_res$se[offdiag_pos[t]]
+    ## global cov.fixed indices for this trait's (diag_slope, L21) pair.
+    gix <- routeA_res$ix[c(diag_slope_pos[t], offdiag_pos[t])]
+    Sigma2 <- fit_A$sd_report$cov.fixed[gix, gix]
+    grad <- numDeriv::grad(function(p) g_slope_sd(p[1], p[2]), c(theta_slope, L21))
+    var_g <- as.numeric(t(grad) %*% Sigma2 %*% grad)
+    sd_hat <- g_slope_sd(theta_slope, L21)
+    list(
+      trait = t, theta_slope = theta_slope, se_theta = se_theta,
+      L21 = L21, se_L21 = se_L21,
+      naive_sd_hat = exp(theta_slope),
+      sd_hat = sd_hat,
+      se_sd_hat_multivariate = if (is.finite(var_g) && var_g >= 0) sqrt(var_g) else NA_real_
+    )
+  })
+
+  cat("\nRoute A per-trait slope SD -- correctly indexed, multivariate delta method:\n")
+  print(do.call(rbind, lapply(routeA_slope, as.data.frame)))
 }
 
 ## =====================================================================
@@ -251,9 +306,19 @@ cat(paste(
   "  sd_hat = exp(theta_hat); se(sd_hat) = exp(theta_hat) * se(theta_hat)",
   "  (delta method, d/dtheta exp(theta) = exp(theta)); CI = sd_hat +/- z*se(sd_hat),",
   "  or exponentiate a link-scale Wald interval directly for a positivity guarantee.",
-  "theta_dep_chol (Route A) diagonal Cholesky entries are ALSO log-SDs by the",
-  "  same construction (log-scale diagonal of a Cholesky factor), so the same",
-  "  univariate delta method applies to its slope sub-entries.",
+  "  Route B's theta_diag_B_slope IS a genuine univariate log-SD, unaffected by the",
+  "  correction below -- it does not sit inside a Cholesky block with a free",
+  "  off-diagonal partner the way Route A's slope diagonal does.",
+  "theta_dep_chol (Route A) diagonal Cholesky entries are log-SDs, but the SLOPE",
+  "  diagonal is NOT a standalone log-SD of the slope variance: within each",
+  "  trait's 2x2 Cholesky block L_t = [[L11,0],[L21,L22]] (L11=exp(diag_int),",
+  "  L22=exp(diag_slope), L21 = the free raw-scale off-diagonal), the marginal",
+  "  slope variance is Var(slope) = L21^2 + L22^2, NOT exp(diag_slope)^2 alone.",
+  "  (The intercept variance L11^2 IS a clean univariate log-SD -- only the",
+  "  slope coordinate is contaminated by the within-block correlation entry.)",
+  "  So Route A's slope SD needs the SAME multivariate delta method /",
+  "  numerical Jacobian treatment as theta_rr_B_slope below, using the 2x2",
+  "  (diag_slope, L21) cov.fixed submatrix -- not a two-line exp() computation.",
   "theta_rr_B_slope (Route B loadings, if present) packs the loadings matrix",
   "  Lambda_B_slope; Sigma_B_slope = Lambda_B_slope %*% t(Lambda_B_slope) is a",
   "  nonlinear function of MULTIPLE theta_rr_B_slope entries at once, so any",
@@ -291,10 +356,22 @@ cat("======================================================================\n")
 cat("Worked examples\n")
 cat("======================================================================\n")
 if (!is.null(routeA_res)) {
-  slope_idx_within_block <- seq(2L, 3L * n_traits_A, by = 3L)
-  worked_example(routeA_res$est[slope_idx_within_block],
-                  routeA_res$se[slope_idx_within_block],
-                  "Route A theta_dep_chol slope sub-entries")
+  cat("[Route A] slope SD worked example, multivariate delta method (trait 1):\n")
+  ex <- routeA_slope[[1L]]
+  z <- stats::qnorm(0.975)
+  if (is.finite(ex$se_sd_hat_multivariate)) {
+    lo <- max(0, ex$sd_hat - z * ex$se_sd_hat_multivariate)
+    hi <- ex$sd_hat + z * ex$se_sd_hat_multivariate
+    cat(sprintf("  diag_slope theta_hat = %.6f, se = %.6f\n", ex$theta_slope, ex$se_theta))
+    cat(sprintf("  L21 (raw off-diag)   = %.6f, se = %.6f\n", ex$L21, ex$se_L21))
+    cat(sprintf("  naive sd_hat = exp(diag_slope)        = %.6f  (WRONG shortcut, for contrast)\n",
+                ex$naive_sd_hat))
+    cat(sprintf("  correct sd_hat = sqrt(L21^2 + L22^2)  = %.6f\n", ex$sd_hat))
+    cat(sprintf("  multivariate delta-method se(sd_hat)  = %.6f\n", ex$se_sd_hat_multivariate))
+    cat(sprintf("  95%% CI (symmetric Wald, clipped at 0) = [%.6f, %.6f]\n", lo, hi))
+  } else {
+    cat("  multivariate delta-method SE not finite -- no CI computed.\n")
+  }
 }
 if (!is.null(routeB_diag)) {
   worked_example(routeB_diag$est, routeB_diag$se, "Route B theta_diag_B_slope")

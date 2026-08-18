@@ -4,6 +4,40 @@
 **Branch/worktree:** `claude/rand-slope-surface-20260818`, `/private/tmp/gllvmtmb-randslope`
 **Script:** `dev/slope-interval-feasibility.R` (log: `dev/slope-interval-feasibility-OUTPUT.log`, from the final clean run)
 
+## Provenance note -- an indexing bug was caught and fixed here
+
+**The first version of this file had a genuine bug in Route A**, caught by an
+adversarial review pass (Rose) and verified independently against
+`src/gllvmTMB.cpp:1909-1935`, `R/lambda-constraint.R`'s
+`dep_chol_crossblock_pins()`, and `R/fit-multi.R`'s wiring before any number
+below was changed. Two distinct problems, both in Route A only:
+
+1. **Indexing.** The first version assumed `theta_dep_chol`'s 9 free entries
+   (for `n_traits = 3`) pack as 3-entry `(diag_int, diag_slope, offdiag)`
+   blocks per trait, i.e. slope diagonals at positions 2, 5, 8. The actual
+   packing is ALL diagonals first, THEN the strictly-lower triangle
+   column-major -- so the slope diagonals are at positions **2, 4, 6**, and
+   position 5 is trait 3's *intercept*, not a slope. Position 8 is a
+   raw-scale off-diagonal Cholesky entry, and the first version wrongly
+   `exp()`-transformed it as if it were a log-SD.
+2. **A deeper issue survives correct indexing.** Under `phylo_indep(1+x|g)`
+   the within-trait intercept-slope Cholesky entry is FREE (uncorrelated
+   dep-slope pins keep the *within*-block correlation estimated; only
+   *cross*-block entries are pinned to 0 for the block-diagonal `indep`
+   variant). So the marginal slope variance is `L21^2 + L22^2`
+   (`L22 = exp(diag_slope)`, `L21` = the free raw off-diagonal), not
+   `exp(diag_slope)^2` alone. The first version's "theta_dep_chol diagonal
+   entries are all univariate log-SDs" claim was therefore wrong for the
+   slope coordinate (it remains true for the intercept coordinate, where
+   `Var(intercept) = L11^2` has no such contamination).
+
+**Route A's quantitative table below is fully recomputed** with the correct
+indices and a multivariate delta method (2x2 `(diag_slope, L21)` `cov.fixed`
+submatrix, gradient via `numDeriv::grad()`). Route B, the structural
+computability finding (`sd_report` non-NULL, blocks present by name), and the
+"no existing exported extractor" result were **not affected** by this bug and
+are unchanged from the first version.
+
 ## The question
 
 Random slopes enter gllvmTMB via TMB `PARAMETER_VECTOR`/`PARAMETER_MATRIX` blocks — i.e.
@@ -82,23 +116,44 @@ this holds regardless of whether a given fit's Hessian is PD.
 Both final runs: `opt$convergence == 0`, `fit$sd_report$pdHess == TRUE`, all reported SEs
 finite and positive.
 
-**Route A — `theta_dep_chol`, slope sub-entries** (index 2 of each trait's 3-entry
-(int-diag, slope-diag, off-diag) block, log-SD scale):
+**Route A — `theta_dep_chol` (CORRECTED; see the provenance note above).**
+The 9 free entries pack as: positions 1–6 are the 2*n_traits diagonals
+interleaved `(int_1, slope_1, int_2, slope_2, int_3, slope_3)` (log-SD scale),
+positions 7–9 are the n_traits within-block off-diagonal Cholesky entries
+`L21` (raw scale), one per trait in trait order. The slope diagonal alone is
+NOT the slope SD: `Var(slope_t) = L21_t^2 + exp(diag_slope_t)^2`, so the
+correct SD and its SE come from a **multivariate** delta method over the 2x2
+`(diag_slope, L21)` `cov.fixed` submatrix (gradient via `numDeriv::grad()`),
+not `exp()` of a single parameter:
 
-| trait | theta_hat | se(theta_hat) | sd_hat = exp(theta_hat) | true slope SD | ratio |
-|---|---|---|---|---|---|
-| 1 | -0.410418 | 0.151135 | 0.6634 | 0.5477 | 1.21 |
-| 2 | -0.452731 | 0.159720 | 0.6360 | 0.7071 | 0.90 |
-| 3 | -0.001243 | 0.121124 | 0.9988 | 0.4472 | 2.23 |
+| trait | diag_slope theta_hat | se | L21 (raw) | se(L21) | naive `exp(diag_slope)` | **correct** `sqrt(L21²+L22²)` | multivariate delta-method SE | true slope SD | ratio |
+|---|---|---|---|---|---|---|---|---|---|
+| 1 | -0.410418 | 0.151135 | 0.086342 | 0.155792 | 0.663373 (wrong) | **0.668968** | 0.100236 | 0.5477 | 1.22 |
+| 2 | -0.640056 | 0.175236 | -0.001243 | 0.121124 | 0.527263 (≈ correct here) | **0.527265** | 0.092396 | 0.7071 | 0.75 |
+| 3 | -0.589356 | 0.175386 | -0.009469 | 0.134129 | 0.554684 (≈ correct here) | **0.554765** | 0.097337 | 0.4472 | 1.24 |
 
-Worked example (trait 1, 95% CI):
+(The "naive" and "correct" columns are numerically close in this particular
+fit only because the fitted `L21` values happen to be small relative to
+`L22` — traits 2–3's true within-trait correlation was small/zero in the DGP.
+Trait 1's true `rho = 0.45` shows a larger, though still modest, naive/correct
+gap. The point is structural: whether the gap is large or small in a given
+fit, the CORRECT computation always requires the 2x2 covariance submatrix,
+not just the single diagonal SE.)
+
+Worked example (trait 1, 95% CI, multivariate delta method):
 ```
-theta_hat = -0.410418, se(theta_hat) = 0.151135
-sd_hat = exp(theta_hat) = 0.663373
-delta-method se(sd_hat) = sd_hat * se(theta_hat) = 0.100259
-95% CI (delta method, symmetric on SD scale)   = [0.466869, 0.859877]
-95% CI (exponentiated link-scale Wald, >0 guaranteed) = [0.493300, 0.892081]
+diag_slope theta_hat = -0.410418, se = 0.151135
+L21 (raw off-diag)   = 0.086342, se = 0.155792
+naive sd_hat = exp(diag_slope)        = 0.663373  (WRONG shortcut, for contrast)
+correct sd_hat = sqrt(L21^2 + L22^2)  = 0.668968
+multivariate delta-method se(sd_hat)  = 0.100236
+95% CI (symmetric Wald, clipped at 0) = [0.472509, 0.865427]
 ```
+There is no `exp()`-based positivity-guaranteed variant here (unlike the
+univariate log-SD case) because `g = sqrt(L21^2 + L22^2)` is not a
+monotonic transform of a single normally-approximated parameter; the
+symmetric Wald interval on the SD scale, clipped at 0, is the natural
+choice.
 
 **Route B — `theta_diag_B_slope`** (log-SD scale, true value 0.2 on all 6 entries by
 construction):
@@ -126,26 +181,37 @@ back-transformable per-element — see below): all 11 entries had finite, positi
 0.04–0.08 range at this N; estimates ranged -0.39 to 0.50.
 
 **Sanity signal (not a recovery claim):** Route B's `theta_diag_B_slope` recovers the true
-`psi_sd = 0.2` closely on a single seed (ratios 0.68–1.21 across 6 entries). Route A's slope SDs
-recover reasonably for traits 1–2 (ratios 1.21, 0.90) but trait 3 is off by >2x (ratio 2.23) on
-this single seed — expected single-seed noise, not evidence of a systematic bias (no averaging
-was done).
+`psi_sd = 0.2` closely on a single seed (ratios 0.68–1.21 across 6 entries). Route A's
+correctly-computed slope SDs land at ratios 1.22 / 0.75 / 1.24 across the 3 traits on this single
+seed — a wider spread than Route B's but not obviously pathological for one seed with no
+averaging; no claim of bias or unbiasedness is made either way.
 
 ## Delta-method back-transform requirement
 
-Both `theta_dep_chol` (Route A slope sub-entries) and `theta_diag_B_slope` (Route B) are
-**univariate log-SDs**: a natural-scale interval requires
-`sd_hat = exp(theta_hat)`, `se(sd_hat) = exp(theta_hat) * se(theta_hat)` (delta method,
+**Route B's `theta_diag_B_slope` is a genuine univariate log-SD**: a natural-scale interval
+requires `sd_hat = exp(theta_hat)`, `se(sd_hat) = exp(theta_hat) * se(theta_hat)` (delta method,
 `d/dtheta exp(theta) = exp(theta)`), giving either a symmetric-on-SD-scale Wald interval
 `sd_hat ± z*se(sd_hat)` or the exponentiated link-scale interval
 `exp(theta_hat ± z*se(theta_hat))` (strictly positive, generally preferable near the boundary).
+This is a two-line computation.
+
+**Route A's `theta_dep_chol` slope coordinate is NOT a univariate log-SD** (corrected from the
+first version of this file — see the provenance note above). Its intercept diagonal alone would
+be (`Var(intercept_t) = exp(diag_int_t)^2`), but the slope diagonal shares a Cholesky block with
+a free within-trait off-diagonal entry: `Var(slope_t) = L21_t^2 + exp(diag_slope_t)^2`. A
+natural-scale interval on the slope SD therefore needs the **same multivariate treatment** as
+`theta_rr_B_slope` below: the 2x2 `(diag_slope, L21)` `cov.fixed` submatrix propagated through
+`g(theta, L21) = sqrt(exp(2*theta) + L21^2)` via a delta method / numerical Jacobian (this file
+uses `numDeriv::grad()`). This is demonstrated above, not just described — but it is not a
+two-line computation.
 
 `theta_rr_B_slope` (Route B loadings, when the fit uses the reduced-rank route) has **no**
-simple per-element back-transform: `Sigma_B_slope = Lambda_B_slope %*% t(Lambda_B_slope)` is a
-nonlinear function of *multiple* `theta_rr_B_slope` entries at once. A CI on a derived quantity
-(e.g. a per-trait slope SD from the loadings alone, or any entry of `Sigma_B_slope`) needs the
-full relevant `cov.fixed` sub-block propagated through that quadratic form — a multivariate
-delta method / numerical Jacobian (e.g. `numDeriv::jacobian()`), not `exp()` per element.
+simple per-element back-transform either: `Sigma_B_slope = Lambda_B_slope %*% t(Lambda_B_slope)`
+is a nonlinear function of *multiple* `theta_rr_B_slope` entries at once. A CI on a derived
+quantity (e.g. a per-trait slope SD from the loadings alone, or any entry of `Sigma_B_slope`)
+needs the full relevant `cov.fixed` sub-block propagated through that quadratic form — a
+multivariate delta method / numerical Jacobian, not `exp()` per element. Unlike Route A's slope
+coordinate, this was described but not numerically demonstrated in this probe.
 
 ## Existing extractor check
 
@@ -170,14 +236,25 @@ plumbing (`sd_report$par.fixed` / `cov.fixed`) is there; the R-level extractor i
 
 ## VERDICT
 
-**Reachable (computability only) — for both routes, on a healthy fit.** `object$sd_report` is
-populated by default (`se = TRUE` is the `gllvmTMB()` default), the slope-variance parameters
-(`theta_dep_chol`'s slope sub-entries for Route A; `theta_diag_B_slope` for Route B) appear by
-name in `par.fixed`, and their `cov.fixed` diagonal gives finite, positive SEs **when the fit
-converges with a PD Hessian**. A univariate exp()-delta-method CI is then a two-line
-computation with no engine change required. `theta_rr_B_slope` (loadings) is reachable as raw
-numbers but requires a multivariate delta method for any derived natural-scale quantity — not
-a two-line computation.
+**Reachable (computability only) — for both routes, on a healthy fit, but the two routes need
+different arithmetic and the file previously overstated Route A's.**
+
+- **Route B (`theta_diag_B_slope`) — reachable via a two-line univariate delta method.**
+  `object$sd_report` is populated by default, `theta_diag_B_slope` appears by name in
+  `par.fixed`, its `cov.fixed` diagonal gives a finite positive SE on a healthy fit, and it is a
+  genuine log-SD: `sd_hat = exp(theta_hat)`, `se(sd_hat) = sd_hat * se(theta_hat)`. Demonstrated
+  above with a worked 95% CI.
+- **Route A (`theta_dep_chol` slope coordinate) — reachable, but only via a multivariate delta
+  method / numerical Jacobian, not a two-line computation.** The slope-variance parameter shares
+  its Cholesky block with a free within-trait off-diagonal entry, so
+  `Var(slope) = L21^2 + exp(diag_slope)^2` depends on two parameters and their covariance. This
+  probe demonstrates the correct computation (2x2 `cov.fixed` submatrix, `numDeriv::grad()`) and
+  reports a worked 95% CI, but it is materially more work than Route B's exp() shortcut — the
+  same order of effort as `theta_rr_B_slope`'s loadings block.
+- **`theta_rr_B_slope` (loadings)** is reachable as raw numbers with finite/positive per-element
+  SEs, but has no per-element back-transform at all; a natural-scale quantity needs the full
+  relevant `cov.fixed` sub-block through `Sigma = Lambda Lambda^T` — described here, not
+  numerically demonstrated.
 
 **Caveat that is itself a finding:** getting a healthy (PD-Hessian) fit was NOT automatic.
 Both routes' first attempts, at markedly smaller N, produced non-PD Hessians —
@@ -197,8 +274,8 @@ near the variance boundary, not just a probe-design artifact, since the package'
   interval built from these SEs would actually cover the true value 95% of the time. Design
   80's calibration arc and D-112 own that question; this probe is explicitly out of that scope.
 - **Single seed, no replication.** All numbers above come from one seed per route. The
-  "sanity signal" recovery ratios (0.68–2.23) are not evidence of unbiasedness or
-  finite-sample accuracy.
+  "sanity signal" recovery ratios (Route A: 1.22/0.75/1.24; Route B: 0.68-1.21) are not evidence
+  of unbiasedness or finite-sample accuracy.
 - **Gaussian only.** Both routes were fit under `family = gaussian()`. Non-Gaussian families are
   untested here; `R/profile-derived.R`'s own gate marks the analogous correlation-profile path
   Gaussian-only for exactly this reason, and there is no reason to assume it transfers.
@@ -229,3 +306,11 @@ near the variance boundary, not just a probe-design artifact, since the package'
    true Psi variance. Adding explicit `psi_sd = 0.2` idiosyncratic noise to the DGP and scaling
    to `n_ind=50, n_rep=6` produced a clean fit with `theta_diag_B_slope` recovering ~0.2 as
    expected.
+4. **Adversarial review (Rose) caught an indexing bug in Route A after this file's first
+   version was written and reported.** See the provenance note at the top of this file for the
+   full correction: the free-parameter packing of `theta_dep_chol` is diagonals-first, not
+   3-entry per-trait blocks, and the slope diagonal alone is not the slope variance because of
+   the free within-block off-diagonal Cholesky entry. Route A's quantitative table, worked
+   example, delta-method section, and verdict were all rewritten to reflect the correct
+   indexing and the multivariate delta method it requires. Route B and the structural/extractor
+   findings were independently re-verified and are unchanged.

@@ -18,8 +18,9 @@ NEWS covered / undraft #1077.
 
 - Smoke `se=FALSE`: class `gllvmTMB_mspl`, `convergence=0`, status admitted
 - `devtools::test(filter="mspl-W-onesided|mspl-poisson-admit|mspl-poisson-phase4|mspl-poisson-W-REPLACE")` → **243 pass / 0 fail**
-- `devtools::test(filter="mspl-api")` → **293 pass / 0 fail**
-- `--as-cran` + vignettes: **deferred** (cut order if late)
+- Private `/tmp` install re-verify: `filter="mspl-api"` → **293/0**; `filter="mspl"` → **2079/0/19skip**; A4 recovery → **22/0**
+- Local multi-seed point smoke (not Totoro): **32/32** MSPL conv0+finite; TSV+note `docs/dev-log/research/2026-08-17-mspl-poisson-W-REPLACE-point-smoke.*` (script `OPERATIONAL_SMOKE` still requires `planned`; REPLACE keeps experimental `admitted`)
+- `--as-cran` + vignettes: local run started (`/tmp/mspl-A4A7-ascran-*.log`); also covered by PR #1111 CI
 
 ## Hard OUT audit (untouched)
 

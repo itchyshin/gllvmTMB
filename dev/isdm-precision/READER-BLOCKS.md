@@ -525,3 +525,38 @@ intercept.
 **Not filed as an issue.** Nothing is silently wrong here; the model does the
 right thing. A note that an offset is exactly collinear with a fitted factor
 would be a kindness, not a bug fix.
+
+---
+
+## Block 13 — `grid$cell_id <- cells[1]` is harmless, and the package says so (Pat #9)
+
+Pat's question: every grid row is assigned to cell `c1`, and `cell_id` is the
+`unit =` argument, so does the whole map inherit one cell's unit-level effect?
+She could not tell, and "would not trust a map I could not tell about".
+
+**Measured** (`evidence-grid-cellid.R`, a model fitted WITH a real unit-level
+random intercept, so there is genuinely something that could leak):
+
+| comparison | max abs difference in linear predictor |
+|---|---|
+| grid on cell 1 vs cell 2 | **0** |
+| grid on cell 1 vs cell 50 | **0** |
+| (range of the predictions themselves) | 4.166 |
+
+Exactly zero against a prediction range of 4.166. **The `cell_id` value is
+ignored.** The map does not inherit any cell's unit effect.
+
+**And the package does not stay silent about it.** The call raises:
+
+> These terms are missing at training rows too, so the result is not comparable
+> with `predict(object)`. Use `newdata = NULL` for the full conditional
+> predictor, or `re_form = ~0` for the fixed-effects-only one.
+
+This is the *opposite* of the silent-fallback pattern found elsewhere this
+session: the random-effect tier is dropped, the user is told, and two correct
+alternatives are named.
+
+**Fix for the article:** use Pat's own wording — the column is *required by the
+design matrix, not used in the prediction* — and either show the warning or
+pass `re_form = ~0` explicitly so the intent is on the page. One line closes
+the item.

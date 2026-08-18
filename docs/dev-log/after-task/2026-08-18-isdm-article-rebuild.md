@@ -130,3 +130,47 @@ explicit file-level staging — not directory-level.
   `partial`.
 - #1161 (phylogeny on the trait axis), #1138's remaining tiers and #1133 item 4
   are deferred and fenced.
+
+## 9. The review round (added after §1–8)
+
+Both reviewers ran **before** merge. Full response:
+`dev/isdm-precision/REVIEW-2-RESPONSE.md`.
+
+**Pat moved from "No — the first thing I would try fails" to "Yes-but",**
+with four blockers, all now addressed. The most important, and the single
+most valuable finding of the arc:
+
+**The headline inverts in the case a real reader has.** The biased-arm design
+gave itself an accessibility surface **measured exactly** and modelled, which
+makes the presence-only arm already unbiased — so integration could only
+cost. Reproduced independently before acting, 12 replicates at `fuzz = 1.0`:
+
+| what the analyst has | integration helped |
+|---|---|
+| independent + measured exactly *(the design)* | 3/12 |
+| confounded ρ = 0.7, still measured exactly | **0/12** |
+| confounded, surrogate error sd 0.5 | **11/12** |
+| confounded, not modelled | **12/12** |
+
+The switch is not confounding but whether the bias surrogate is exactly
+right, and nobody's is. In the reversal regime *nothing* recovers truth
+(1.72 vs 1.58 against 0.9) — the ranking flips, both answers are bad.
+
+**Florence found a false claim in the prose**: "at `fuzz = 0` every design
+and every arm sits within 0.02 of 0.9" — the fuzzed arm at 400/100 is
+**0.9662**, verified. Plus six clipped replicates against captions saying
+"all", a caption saying 45 where the file holds 135, and the map's fence on
+the last pixel row of the canvas. She confirmed the greyscale hatching fix
+holds under luminance, deuteranopia and protanopia.
+
+**A fourth wrong claim of mine, caught by the render.** The `d = 1` section I
+wrote read a parameter that does not exist, returned `numeric(0)`, and the
+prose after it asserted the loadings differ — a claim with no evidence
+shown, which is exactly the failure this arc is about. Real name
+`theta_rr_spde_lv`; it prints 0.0515 / 0.0009, matching Florence's
+independent measurement.
+
+**Still open**, recorded rather than closed: Pat's friction list (dev-path
+references without hyperlinks, `species: placeholder` unexplained, no route
+to map uncertainty), her N4 (mild over-correction in section order), and
+Florence's polish tier.

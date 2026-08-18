@@ -254,18 +254,46 @@ Report, in either case: the certificate table, which route was fitted and why,
 the penalty scale (`summary(fit)$estimation` stores `c_n` for MSPL), and the
 convergence and gradient diagnostics — not just the finite number.
 
-## When the model has no measured fixed-effect target
+## What each remedy actually penalises
 
-Both remedies above target a specific place in the model, and neither is a
-general-purpose fix for a rare or unusual binary trait. The loading ridge
-targets a runaway *latent* loading; MSPL targets separation on a *measured
-fixed-effect covariate*. In an intercept-only model — no `design_score`, no
-covariate at all on the right-hand side — MSPL has no target: there is no
-fixed-effect slope for a straight line to separate, so the Jeffreys-prior
-penalty it adds has nothing to act on. A rare or skewed intercept-only item
-belongs to the marginal-support checks in
-[Screen binary traits before fitting](pre-fit-response-screening.html)
-(prevalence, minority count), not to MSPL.
+Neither remedy is a general-purpose fix for a rare or unusual binary trait, but
+the difference between them is not "loadings versus separation" — MSPL is a
+*family* of soft penalty atoms, and more than one of them can be active at once.
+For an ordinary-structure fit it adds:
+
+| Atom | Acts on | The pathology it addresses |
+|---|---|---|
+| Jeffreys | fixed effects, including intercepts | separation (a covariate slope, or a completely separated intercept-only item) |
+| `V_loading` (radial) | the loadings `Lambda` | runaway latent loadings — **the same target as the loading ridge** |
+| Hirose, `sum_j S_jj / psi_j` | the unique variances | a variance collapsing to the boundary (a Heywood case) |
+| `V_covariance` | spatial range and scale | range or amplitude drifting to an unidentified extreme |
+
+Two practical consequences follow. First, **the loading ridge and MSPL overlap**:
+both act on `Lambda`, so they are alternatives rather than complements, and the
+package refuses to stack them. Second, an intercept-only model is *not* outside
+MSPL's reach — its loading atom applies with or without a covariate, and a
+completely separated item gives the Jeffreys atom a target through the intercept.
+
+The remaining difference is how the penalty is scaled, and it decides which tool
+answers which question. MSPL's scale is fixed by the data — `c_n` is on the order
+of `sqrt(p / N)` and **vanishes as the sample grows**, which makes it a
+finite-sample correction that steps out of the way asymptotically. The ridge's
+`tau` is a number you choose, and it never stops acting.
+
+So the ridge is the weaker estimator and the better *instrument*: because you can
+weaken it deliberately, you can watch what an estimate does as the penalty
+recedes (see `ridge_path()`). MSPL has no such knob, so it cannot produce that
+evidence. Conversely, if a loading is not identified by the data at all — it
+keeps moving toward the boundary as the penalty weakens — then a penalty designed
+to vanish with information will not rescue it; it will return a finite,
+reasonable-looking number for a quantity the data cannot support. Diagnose first,
+and treat a rare or skewed intercept-only item as a marginal-support question
+([Screen binary traits before fitting](pre-fit-response-screening.html):
+prevalence, minority count) before reaching for either penalty.
+
+In this package MSPL remains **experimental and opt-in, and its interval
+inference is not calibrated** — that, not any absence of a target, is the reason
+not to reach for it in an applied analysis today.
 
 Neither remedy, in turn, makes an *exactly deterministic* response block a
 valid set of traits. If several binary columns sum to exactly 1 on every

@@ -24,8 +24,8 @@ prediction-surface probe (item 1, done this session; findings below).
 
 **Out of scope, probed and broken this session** (`dev/isdm-predict-probe/probe.R`,
 findings B2/B2b/B3): `newdata` prediction on the spatial arm silently drops the
-fitted SPDE field (max|diff| 0.966 vs eta sd 0.949, correlates 0.82 with the true
-field); new-coordinate kriging returns fixed-effects-only, no `A_proj` re-projection.
+fitted SPDE field (like-for-like: dropped-piece sd 0.381 vs eta sd 0.949,
+max|diff| 0.966; the dropped piece is the fit's only RE tier, an identity); new-coordinate kriging returns fixed-effects-only, no `A_proj` re-projection.
 No newdata/spatial SE can be calibrated before that machinery exists — an API gap,
 not an interval-design question, and not this campaign's job. Scope here is
 **training-row estimands only** (1, 2, 4, and 3 restricted to training-row pairs).
@@ -34,7 +34,9 @@ not an interval-design question, and not this campaign's job. Scope here is
 fence, calibrator, or `src/gllvmTMB.cpp`'s penalty machinery. It is a distinct
 estimand family (ISDM fixed effects and variance components, not penalised binary
 loadings) and would need its own pre-registration before any calibration launch.
-Design 118 stays closed.
+Design 118 stays closed. D-157's "no Totoro relaunch" clause is scoped to the
+Design 118 MSPL campaign, so §5's conditional Totoro authorisation for THIS
+distinct estimand family does not touch it.
 
 ---
 

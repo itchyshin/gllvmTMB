@@ -4,6 +4,8 @@ PROBE[A1b] arm attribution in output: has isdm_source col? FALSE
 PROBE[A2] count arm: response==exp(link)? TRUE; pa arm: response==1-exp(-exp(link))? TRUE
 PROBE[A2b] pa-arm response in [0,1]: TRUE; count-arm response >0: TRUE
 PROBE[A3] newdata==in-sample (link): max|diff|=0; cor(diff, log_support)=NA
+PROBE[A2c] newdata response == in-sample response? FALSE; max|diff|=1.42
+PROBE[A2c2] pa-arm newdata 'probabilities': range [0.253, 2.32]; equals exp(link) (WRONG arm)? TRUE
 PROBE[A4] re_form=~0: sd(RE contribution)=0.2921 (should be >0 if latent active)
 PROBE[A5] re_form=NA ran; equals ~0 (documented)? FALSE; equals ~. ? TRUE
 PROBE[A6] se.fit in-sample: col present TRUE; range [0.147, 0.372]; all finite TRUE

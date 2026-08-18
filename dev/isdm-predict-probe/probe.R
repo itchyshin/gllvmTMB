@@ -78,6 +78,18 @@ dif3 <- pA3$est - pA1$est
 say("A3", "newdata==in-sample (link): max|diff|=%.3g; cor(diff, log_support)=%.3f",
     max(abs(dif3)), suppressWarnings(cor(dif3, dat$log_support)))
 
+## A2c: newdata + type = "response" — the newdata branch reduces the per-row
+##      family/link vectors to a per-trait MODAL id (.modal_integer_id), which
+##      cannot represent an isdm fit (family varies by source WITHIN trait).
+##      Found by the adversarial verification (verify-report.md VER[C1]);
+##      re-measured here so the number has a reproducible source line.
+pA2c <- suppressMessages(predict(fitA, newdata = dat, type = "response"))
+say("A2c", "newdata response == in-sample response? %s; max|diff|=%.3g",
+    isTRUE(all.equal(pA2c$est, pA2$est)), max(abs(pA2c$est - pA2$est)))
+say("A2c2", "pa-arm newdata 'probabilities': range [%.3g, %.3g]; equals exp(link) (WRONG arm)? %s",
+    min(pA2c$est[i_pa]), max(pA2c$est[i_pa]),
+    isTRUE(all.equal(pA2c$est[i_pa], exp(pA3$est[i_pa]))))
+
 ## A4: re_form = ~0 — fixed-effects-only on newdata
 pA4 <- suppressMessages(predict(fitA, newdata = dat, re_form = ~0))
 say("A4", "re_form=~0: sd(RE contribution)=%.4g (should be >0 if latent active)",

@@ -52997,8 +52997,9 @@ Commands run (worktree `/private/tmp/gllvmtmb-isdm-predict`, off `main`
   `spatial_latent(1 | cell_id)` bar form; round 2 is the committed,
   reproducible version, output captured in
   `dev/isdm-predict-probe/probe-output.txt`).
-- `testthat::test_file("tests/testthat/test-isdm-predict.R")` — 15 pass /
-  0 fail / 0 skip.
+- `testthat::test_file("tests/testthat/test-isdm-predict.R")` — final run
+  16 pass / 0 fail / 0 skip (15 before the adversarial-verify correction pass
+  strengthened the `re_form = ~0` assertion to exact equality).
 - All `tests/testthat/test-isdm*.R` files via `test_file()` loop — 0 failures.
 - `gh pr merge 1113 --merge` after `mergeable: MERGEABLE`, CI SUCCESS
   (docs-class self-merge authority; unmergeable-PR-gets-no-CI gotcha checked
@@ -53015,8 +53016,11 @@ promises an actual predict()-based map yet — the fence in Design 126 §4 holds
 `grep -c "ISDM-03" docs/design/35-validation-debt-register.md` = 1.
 
 Key measured findings (full evidence `dev/isdm-predict-probe/findings.md`):
-in-sample predict() certified (est == report$eta, per-arm inverse links);
-`predict(newdata=)` on spatial fits silently drops the SPDE field even at
-training locations (dropped sd 0.381 vs eta sd 0.949, cor(-diff, u_true) 0.82);
-`re_form = NA` includes REs against its own roxygen; no A_proj projection for
-new locations. Map-making article fenced behind Design 126 §3–4.
+in-sample predict() certified (est == report$eta, per-arm inverse links on
+training rows); THREE newdata defects (Opus adversarial verify
+PASS-WITH-CORRECTIONS, `dev/isdm-predict-probe/verify-report.md`): all RE
+tiers except rr_B/diag_B/propto silently dropped (spatial measured, dropped
+sd 0.381 vs eta sd 0.949); `re_form` ignored in-sample, only literal `~0`
+honoured on newdata; `newdata` + response applies a per-trait modal family —
+wrong arm on every isdm fit (detection "probabilities" up to 2.32); no A_proj
+projection for new locations. Map-making article fenced behind Design 126 §3–4.

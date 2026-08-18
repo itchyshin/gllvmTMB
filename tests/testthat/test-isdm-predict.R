@@ -91,14 +91,21 @@ test_that("predict(newdata = training data) equals in-sample predictions on a no
   expect_equal(newdata_pred$est, in_sample$est)
 })
 
-test_that("re_form = ~0 drops the latent field relative to re_form = ~.", {
+test_that("re_form = ~0 on newdata is exactly fixed effects + offset", {
   skip_if_not_installed("TMB")
   fit <- .isdm_pred_fx$fit
   dat <- .isdm_pred_fx$dat
 
   with_re <- suppressMessages(predict(fit, newdata = dat, re_form = ~.))
   fixed_only <- suppressMessages(predict(fit, newdata = dat, re_form = ~0))
+  ## the fixture's latent field is non-degenerate, so ~. must differ from ~0
   expect_gt(sd(with_re$est - fixed_only$est), 0)
+  ## and ~0 must equal the fixed linear predictor plus the re-evaluated
+  ## offset EXACTLY (the same construction the newdata path uses)
+  eta_fixed <- .gllvmTMB_predict_fixed_eta(
+    fit, stats::model.matrix(fit$formula, dat)
+  ) + .gllvmTMB_offset_newdata(fit, dat)
+  expect_equal(fixed_only$est, as.numeric(eta_fixed))
 })
 
 test_that("se.fit = TRUE works in-sample and is refused with newdata", {

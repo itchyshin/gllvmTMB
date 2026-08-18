@@ -1,9 +1,9 @@
 # L1 local coverage smoke — Design 125 fork B (anchor cell)
 
 **Date:** 2026-08-18 06:50 local
-**Lane:** measured on `cursor/mspl-forkB-l1-coverage-gate-20260818` (L0 unlock + L1 harness); this receipt is being landed on a `main`-based PR that does **not** ship `R/mspl.R`.
+**Lane:** measured on `cursor/mspl-forkB-l1-coverage-gate-20260818` (L0 unlock + L1 harness); this PR lands the companion harness only and does **not** ship `R/mspl.R`.
 **Door used:** `.gllvmTMB_mspl_profile_feasibility` with a `tape` selector (`tape = "Q_0"`). Self-report: fork **B**, `objective_source = fit$mspl$unpenalized_tmb_obj (penalty-off Laplace at fixed MSPL nuisance)`, `reference_is_maximum = FALSE`.
-**Not on current `main`:** current `main` still has the fork-A-only probe (no `objective=` / `tape=` selector). Re-run after [#1130](https://github.com/itchyshin/gllvmTMB/pull/1130) merges so the receipt is `main`-reproducible. This is the same "measured against an L0 worktree" fence [#1128](https://github.com/itchyshin/gllvmTMB/pull/1128) used for its ADEMP smoke.
+**L0 on `main`:** [#1130](https://github.com/itchyshin/gllvmTMB/pull/1130) `d7f526d4` is on `origin/main`. The 800-row walk below was measured against the L0 worktree and was **not** re-run on this rebase (different estimand set from the #1128 first-trait ADEMP receipt, which *is* main-reproducible: 50/0/44, cov_eff 0.880).
 
 ## What was run
 
@@ -27,5 +27,5 @@ E2 is **not a pass**. The door structurally refuses every `theta_rr_B` target (`
 
 - Not a Totoro admission, not a T\* freeze, not a `covered` register flip, not MSPL-04 moving off `blocked`.
 - Not a public `se` / `vcov` / `confint`. `#1077` stays draft.
-- Not a claim that current `main` can reproduce the walk. The harness on this PR reports `L1_STATUS: NOT-RUN` against current `main` until #1130 (or an equivalent door) lands.
+- Not a claim that the 800-row E1-all-traits / E2 walk was re-run on `main`. The door is on `main`; the walk itself is the L0-worktree receipt.
 - Not the ADEMP harness in #1128 (`dev/mspl-forkB-l1-ademp.R`). Different files, and this receipt includes the E2 `R-ENV` half that #1128's E1-only smoke did not measure.

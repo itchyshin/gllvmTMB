@@ -2495,7 +2495,16 @@ predict.gllvmTMB_multi <- function(
       allow_unseen = stats::na.omit(c(object$unit_col, object$species_col))
     )
 
-    X_new <- stats::model.matrix(object$formula, nd)
+    ## Build the design from the RIGHT-HAND SIDE only (#1154). `model.matrix()`
+    ## on a two-sided formula constructs a `model.frame()` first, which
+    ## evaluates the LHS -- so `predict(newdata = )` used to fail with
+    ## `object '<response>' not found` unless the caller supplied a dummy
+    ## response column. A prediction grid has no response by construction;
+    ## that is the entire point of predicting on one.
+    X_new <- stats::model.matrix(
+      stats::delete.response(stats::terms(object$formula)),
+      nd
+    )
     ## `object$formula` is the offset-free fixed formula (the offset is held
     ## out of it so model.matrix cannot drop it), so the offset for the new
     ## rows is re-evaluated separately against `nd`.

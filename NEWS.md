@@ -1,5 +1,16 @@
 # gllvmTMB 0.7.0 (development)
 
+* **`predict(newdata = )` no longer requires the response column (#1154).**
+  A prediction grid has no response by construction -- that is the point of
+  predicting on one -- but the newdata path built its design matrix with
+  `model.matrix()` on the two-sided model formula, which constructs a
+  `model.frame()` first and so evaluates the left-hand side. Predicting on a
+  grid failed with `object '<response>' not found`, and the workaround (add
+  a dummy column) was undiscoverable from the error and left the reader
+  wondering whether the placeholder affected the prediction. The design is
+  now built from the right-hand side only. Predictions are unchanged where
+  the column was present.
+
 * **`predict()` and `fitted()` now return the family/source column on
   mixed-family fits, and the effort-free scale is documented (#1133).** On an
   `isdm_sources()` fit the `est` column mixes scales by design -- Poisson

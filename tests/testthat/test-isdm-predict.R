@@ -523,3 +523,30 @@ test_that("#1133 item 2: zeroing the offset gives the effort-free scale, exactly
   ## On the link scale the difference is exactly the offset that was removed.
   expect_equal(with_effort$est - no_effort$est, log(dat$support))
 })
+
+test_that("#1154: predict(newdata=) works without the response column", {
+  skip_if_not_installed("TMB")
+  fit <- .isdm_pred_fx$fit
+  dat <- .isdm_pred_fx$dat
+
+  ## A prediction grid has no response by construction -- that is the point
+  ## of predicting on one. `model.matrix()` on a two-sided formula builds a
+  ## model.frame() first, which evaluates the LHS, so this used to fail with
+  ## `object 'value' not found` and force a dummy-column workaround that was
+  ## undiscoverable from the error.
+  nd <- dat
+  nd$value <- NULL
+  expect_false("value" %in% names(nd))
+
+  out <- suppressMessages(predict(fit, newdata = nd))
+  ## and it must agree exactly with the with-response result, so the fix is
+  ## a relaxation of an input requirement and not a change of answer.
+  expect_equal(out$est, suppressMessages(predict(fit, newdata = dat))$est)
+  expect_equal(out$est, suppressMessages(predict(fit))$est)
+
+  ## response scale too -- that path re-reads the family column, not the LHS.
+  expect_equal(
+    suppressMessages(predict(fit, newdata = nd, type = "response"))$est,
+    suppressMessages(predict(fit, type = "response"))$est
+  )
+})

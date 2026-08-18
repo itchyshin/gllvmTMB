@@ -1,27 +1,34 @@
 # Checkpoint — OVERWRITTEN every arc (a pointer to truth, not a log)
 
 GOAL: see `LOOP/GOAL.md`.
-STATE: **kit scaffolded and committed; execution NOT started.**
+STATE: **kit written, committed, and pushed; docs PR #1127 open. Campaign execution belongs to the
+three sibling lanes and has not been claimed from here.**
 
-- **ARCS DONE (verified):** none. The kit itself is not an arc — it is the plan the arcs run from.
-  Verified by `git log` on `cursor/mspl-fork-B-goal-kit` showing the kit commit, and by reading the
-  four files back from `docs/dev-log/lanes/cursor-mspl-fork-B/LOOP/`.
-- **ARC IN PROGRESS:** none.
-- **NEXT:** **A0** — reattach the lane, read `GOAL → checkpoint → ultra-plan → AGENTS.md`, and
-  confirm the state of lane **L0** (`cursor/g0-unlock-design125-forkB`) *without editing its files*.
-  Then **A1**, the L0 plumbing verification.
+- **ARCS DONE (verified):**
+  - **A3** — docs staleness hygiene. Verified by PR state: [#1100](https://github.com/itchyshin/gllvmTMB/pull/1100) CLOSED, [#1124](https://github.com/itchyshin/gllvmTMB/pull/1124) MERGED.
+  - **A6 (first half)** — this kit exists in a ref, not just on disk. Verified by `git log` on
+    `cursor/mspl-fork-B-goal-kit` and by reading the six kit files back from
+    `docs/dev-log/lanes/cursor-mspl-fork-B/LOOP/`. PR [#1127](https://github.com/itchyshin/gllvmTMB/pull/1127) is **open**.
+- **ARC IN PROGRESS:** **A2** — the 2026-08-18 G0 entry is written but **still uncommitted**, on
+  `cursor/g0-unlock-design125-forkB`. It has to land on `cursor/mspl-forkB-decision` or be merged
+  from where it sits; until then the signed decision lives only in a dirty worktree.
+- **NEXT:** **A1** (Design 125 + ADEMP amendment note) and **A2** on the decision lane, then **A4a**
+  on the L0 lane. Nothing on this list is executed from this docs kit.
 - **OPEN GATES (need a human):**
-  1. **L2 and every Totoro/DRAC gate** — blocked, needs Shinichi G0. Never auto-start.
-  2. **push / merge of the docs PR** — denied by lane settings by design.
-  3. **L0 overlap with lane L0** — if A1/A2 cannot proceed without touching `R/` or `tests/`,
-     that is a lane-ownership question and it is **Shinichi's call** (D-87), not this loop's.
+  1. **L2 and every Totoro / DRAC gate** — blocked, needs Shinichi G0. Never auto-start.
+  2. **Merge of PR #1127** and of any sibling PR — merge is a human gate.
+  3. **T\* thresholds · undraft #1077 · public `se=TRUE` / `vcov()` / `confint()` · MSPL-04 off
+     `blocked`** — hard OUT, not questions.
 - **WHERE TRUTH LIVES:**
-  - branch `cursor/mspl-fork-B-goal-kit` @ `~/local-scratch/lanes/gllvmTMB-mspl-forkB-goal`
-    (base `origin/main` @ `25cfa0b7`)
-  - the kit: `docs/dev-log/lanes/cursor-mspl-fork-B/LOOP/`
-  - the G0: `docs/dev-log/decisions.md`, 2026-08-18 entry — **currently uncommitted on lane L0's
-    branch**, `cursor/g0-unlock-design125-forkB`
+  - this kit: `docs/dev-log/lanes/cursor-mspl-fork-B/LOOP/` on `cursor/mspl-fork-B-goal-kit` @
+    `~/local-scratch/lanes/gllvmTMB-mspl-forkB-goal` (PR #1127)
+  - siblings: `cursor/mspl-forkB-decision` · `cursor/mspl-forkB-l0-20260818` ·
+    `cursor/mspl-forkB-l1-smoke-20260818`
+  - the G0: `docs/dev-log/decisions.md`, 2026-08-18 entry — **uncommitted** on
+    `cursor/g0-unlock-design125-forkB`, which also carries the live `R/mspl.R` selector work
   - the construction: `docs/design/125-mspl-profile-led-intervals.md`
   - the gates: `docs/dev-log/research/2026-08-17-mspl-profile-led-prereg-ademp.md` §P5
-- **RESUME:** paste the block in `LOOP/launch-prompt.md` into a fresh Cursor chat opened in the
-  worktree. Do **not** recreate the worktree; reattach and pull.
+  - repo-root `LOOP/`: the **closed** Poisson \(W_*\) REPLACE `GOAL_MET` record — do not read it as
+    this lane's goal, do not overwrite it
+- **RESUME:** paste the block in `LOOP/launch-prompt.md` into a fresh Cursor chat. Reattach the
+  worktree and pull — do **not** recreate it, and do **not** re-scaffold the kit.

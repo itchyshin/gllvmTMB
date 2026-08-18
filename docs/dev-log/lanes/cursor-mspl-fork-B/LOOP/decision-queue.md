@@ -34,19 +34,21 @@ unlocks exactly what its row says and nothing adjacent.
 | Register row **MSPL-04** off `blocked` | **not-ready** | evidence path complete, then an explicit ask |
 | NEWS / README / article `covered` | **not-ready** | same |
 | Widening family / structure / estimand set | **not-ready** | a new G0 — the pre-reg envelope is frozen |
-| Editing `R/`, `src/`, `tests/`, `decisions.md` from **this** lane | **not-ready** | Shinichi resolves the L0 overlap (D-87) |
+| Editing `R/`, `src/`, `tests/`, `decisions.md`, Design 125 body from **this** kit | **never** | those belong to the sibling lanes; this kit is docs-only |
+| Overwriting repo-root `LOOP/` | **never** | it is the closed REPLACE `GOAL_MET` record (#1124) |
 
 ---
 
 ## Open questions for Shinichi (ask only when an arc actually reaches them)
 
-1. **Lane overlap.** L0 (`cursor/g0-unlock-design125-forkB`) is live and uncommitted on `R/mspl.R`
-   and `decisions.md` — the exact plumbing arc **A1** verifies. Should the two lanes merge, or does
-   this one stay docs-only and verify L0's work after it lands? *(Recommendation: stay docs-only;
-   verify after L0 lands. Safe default if you do not mind: docs-only.)*
-2. **A2 tests.** If L0 still holds `tests/testthat/`, A2 writes test **specifications** into the L0
-   receipt instead of test files. Acceptable, or should A2 wait for L0 to land? *(Recommendation:
-   write the specs — they are useful either way and cost nothing to move.)*
-3. **On an L1 PASS**, does the lane stop at the recorded verdict, or do you want the L2 G0 request
-   drafted in the same sitting? *(Recommendation: stop and record; drafting the ask is cheap later
-   and pre-drafting invites scope creep.)*
+1. **The signed G0 is still uncommitted.** The 2026-08-18 fork-B decision text sits in a dirty
+   worktree on `cursor/g0-unlock-design125-forkB`, alongside the live `R/mspl.R` selector. Should
+   `cursor/mspl-forkB-decision` cherry-pick the `decisions.md` hunk, or should that whole branch be
+   PR'd as one? *(Recommendation: PR the branch whole — splitting a decision from the code it
+   authorises is how the two drift. Safe default if you do not mind: PR it whole.)*
+2. **L0 test placement.** If the L0 lane is still holding `tests/testthat/` when A4b comes up, that
+   arc can write test **specifications** into the L0 receipt instead of test files. *(Recommendation:
+   write the specs — they are useful either way and cost nothing to move later.)*
+3. **On an L1 PASS**, does the campaign stop at the recorded verdict, or do you want the L2 G0
+   request drafted in the same sitting? *(Recommendation: stop and record. Drafting the ask is cheap
+   later, and pre-drafting it invites exactly the scope creep the pre-reg was written to prevent.)*

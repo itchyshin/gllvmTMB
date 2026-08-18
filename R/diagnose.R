@@ -1827,12 +1827,15 @@ check_gllvmTMB <- function(
     if (!nm %in% names(object$report)) {
       next
     }
-    ## `.gllvmTMB_estimable_components()` drops the mapped-off `sd_B`
-    ## placeholders (unit level only; see its own comment above) before the
-    ## finite filter, the minimum, and the sibling set passed to
-    ## `.gllvmTMB_relative_collapse()`, so a deliberately-suppressed Psi does
-    ## not read as a collapsed one -- and `.gllvmTMB_boundary_flags()` below
-    ## agrees with this screen on the same reported quantity.
+    ## `.gllvmTMB_estimable_components()` drops the mapped-off `sd_B` / `sd_W`
+    ## placeholders (see its own comment above) before the finite filter, the
+    ## minimum, and the sibling set passed to `.gllvmTMB_relative_collapse()`,
+    ## so a deliberately-suppressed Psi does not read as a collapsed one.
+    ## This screen and `.gllvmTMB_boundary_flags()` below share that FILTER
+    ## on the same reported quantity, not the verdict: this loop's
+    ## `psi_rel_thresh` (default 1e-2) and boundary_flags's `sd_rel_thresh`
+    ## (default 1e-3) are deliberately different thresholds, so the same
+    ## fit can PASS one screen and WARN the other.
     val <- .gllvmTMB_estimable_components(object, nm)
     val <- val[is.finite(val)]
     if (length(val) == 0L) {

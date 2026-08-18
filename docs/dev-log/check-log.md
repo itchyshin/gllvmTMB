@@ -1,3 +1,40 @@
+## 2026-08-18 — local L2 K3 50-rep panel + receipt (fork B)
+
+Lane `cursor/mspl-forkB-L2-exec-20260818` (cursor). Worktree
+`~/local-scratch/lanes/gllvmTMB-mspl-forkB-L2-goal` from `origin/main` @ `2a2a0450`.
+K2 object-inspected green, then K3: Seed B/C 20260819/20 × 50 on
+`L1-anchor-n80-T8` (cov_eff 0.900 / 0.900) and near-tail 20260821 × 50
+(cov_eff 0.780). Seed A 20260818 inherited 0.880, not re-walked.
+`calibrated: FALSE`; `public_confint: refused`. No `R/`, `src/`, NEWS, register.
+
+```sh
+# object: docs/dev-log/research/2026-08-18-mspl-forkB-l2-smoke.rds
+# 150 new rows tape=Q_0 fork=B; Seed A absent from walked seed_bases
+gh pr view 1077 --json isDraft
+rg -n "se = TRUE|NEWS covered|calibrated: TRUE" \
+  docs/dev-log/research/2026-08-18-mspl-forkB-l2-smoke.md
+# deliberately not: Totoro, T*, public se, undraft #1077, MSPL-04 flip,
+# git add -A, isdm-package-recovery, rewrite of official L1 0.880
+```
+
+## 2026-08-18 — local L2 K1 runner (fork B; no panel)
+
+Lane `cursor/mspl-forkB-L2-exec-20260818` (cursor). Worktree
+`~/local-scratch/lanes/gllvmTMB-mspl-forkB-L2-goal` from `origin/main` @ `2a2a0450`.
+Added `dev/mspl-forkB-l2-smoke.R` (reuses `dev/mspl-forkB-l1-ademp.R`; does not
+rewrite L1). Inherits official L1 #1128 cov_eff 0.880. No `R/`, `src/`, NEWS,
+register, root `LOOP/`, closed g0_unlock.
+
+```sh
+Rscript --vanilla -e 'parse("dev/mspl-forkB-l2-smoke.R")'
+Rscript --vanilla dev/mspl-forkB-l2-smoke.R --sourced
+Rscript --vanilla dev/mspl-forkB-l2-smoke.R \
+  --cell=L1-anchor-n80-T8 --seed_base=20260818 --n_rep=1 --no-write
+# log: stop at mspl_forkB_l2_guard_seed_a (inherited 0.880); no fit
+# deliberately not: Totoro, T*, public se, undraft #1077, MSPL-04 flip,
+# git add -A, isdm-package-recovery, K2/K3 panel
+```
+
 ## 2026-08-18 — local L2 `/goal` kit (fork B; new lane; no smoke)
 
 Lane `cursor/mspl-forkB-L2-goal-20260818` (cursor). Worktree

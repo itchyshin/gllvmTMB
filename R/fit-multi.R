@@ -5132,33 +5132,42 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     tmb_map$u_re_int         <- factor(rep(NA_integer_, length(tmb_params$u_re_int)))
     tmb_map$log_sigma_re_int <- factor(rep(NA_integer_, length(tmb_params$log_sigma_re_int)))
   }
-  ## NB2 / Gamma / Tweedie per-trait dispersion: only estimated when the corresponding
-  ## family appears in family_id_vec. For mixed-family fits (e.g., one trait
-  ## Gamma, another Gaussian) we still allocate n_traits parameters but rely on
-  ## the data not invoking the unused ones; mapping off only happens when the
-  ## family is entirely absent.
-  any_nbinom2 <- any(family_id_vec == 5L)
-  any_nbinom1 <- any(family_id_vec == 15L)
-  any_gamma   <- any(family_id_vec == 4L)
-  any_tweedie <- any(family_id_vec == 6L)
-  any_beta    <- any(family_id_vec == 7L)
-  any_betabinom <- any(family_id_vec == 8L)
-  any_delta_lognormal <- any(family_id_vec == 12L)
-  any_delta_gamma     <- any(family_id_vec == 13L)
-  if (!any_nbinom2)
-    tmb_map$log_phi_nbinom2 <- factor(rep(NA_integer_, n_traits))
-  if (!any_nbinom1)
-    tmb_map$log_phi_nbinom1 <- factor(rep(NA_integer_, n_traits))
-  if (!any_gamma)
-    tmb_map$log_phi_gamma <- factor(rep(NA_integer_, n_traits))
-  if (!any_tweedie) {
+  ## Per-trait dispersion parameter vectors: each is only ESTIMATED on the
+  ## traits that actually use the corresponding family (issue #1117). A
+  ## trait outside the family mask is pinned via `dispersion_trait_map()`
+  ## (map = NA at that trait's position) rather than left free -- the C++
+  ## per-row family dispatch (src/gllvmTMB.cpp) never reads the entry for a
+  ## non-matching row, so an unpinned entry was a free parameter with zero
+  ## gradient and a singular joint Hessian. `dispersion_trait_map()` returns
+  ## NULL (leave `tmb_map` untouched) when every trait uses the family, so
+  ## single-family fits are byte-identical to before this fix.
+  mask_nbinom2 <- dispersion_trait_family_mask(trait_id, family_id_vec, 5L, n_traits)
+  mask_nbinom1 <- dispersion_trait_family_mask(trait_id, family_id_vec, 15L, n_traits)
+  mask_gamma   <- dispersion_trait_family_mask(trait_id, family_id_vec, 4L, n_traits)
+  mask_tweedie <- dispersion_trait_family_mask(trait_id, family_id_vec, 6L, n_traits)
+  mask_beta    <- dispersion_trait_family_mask(trait_id, family_id_vec, 7L, n_traits)
+  mask_betabinom <- dispersion_trait_family_mask(trait_id, family_id_vec, 8L, n_traits)
+  mask_delta_lognormal <- dispersion_trait_family_mask(trait_id, family_id_vec, 12L, n_traits)
+  mask_delta_gamma     <- dispersion_trait_family_mask(trait_id, family_id_vec, 13L, n_traits)
+  m_nbinom2 <- dispersion_trait_map(mask_nbinom2)
+  if (!is.null(m_nbinom2)) tmb_map$log_phi_nbinom2 <- m_nbinom2
+  m_nbinom1 <- dispersion_trait_map(mask_nbinom1)
+  if (!is.null(m_nbinom1)) tmb_map$log_phi_nbinom1 <- m_nbinom1
+  m_gamma <- dispersion_trait_map(mask_gamma)
+  if (!is.null(m_gamma)) tmb_map$log_phi_gamma <- m_gamma
+  if (!any(mask_tweedie)) {
     tmb_map$log_phi_tweedie <- factor(rep(NA_integer_, n_traits))
     tmb_map$logit_p_tweedie <- factor(rep(NA_integer_, n_traits))
   } else {
+    m_phi_tweedie <- dispersion_trait_map(mask_tweedie)
+    if (!is.null(m_phi_tweedie)) tmb_map$log_phi_tweedie <- m_phi_tweedie
     ## If the user supplied a numeric `p` on the tweedie() family object
     ## (e.g. tweedie(p = 1.5)), pin logit_p_tweedie per trait that uses it.
     ## Parameterisation: p = 1 + plogis(logit_p_tweedie), so the pin value is
-    ## qlogis(p - 1). Mirrors the student(df = ...) per-trait pin above.
+    ## qlogis(p - 1). Mirrors the student(df = ...) per-trait pin below.
+    ## Combined with the family mask via `dispersion_trait_map()`'s
+    ## `user_pin_mask` so a mixed fit's non-tweedie traits AND a tweedie
+    ## trait's user-fixed p are pinned by the same map.
     p_pin <- rep(NA_real_, n_traits)
     for (t in seq_len(n_traits)) {
       rows_t <- which(trait_id == (t - 1L) & family_id_vec == 6L)
@@ -5172,29 +5181,39 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     if (any(!is.na(p_pin))) {
       tmb_params$logit_p_tweedie[!is.na(p_pin)] <-
         stats::qlogis(p_pin[!is.na(p_pin)] - 1)
-      p_map <- seq_len(n_traits)
-      p_map[!is.na(p_pin)] <- NA
-      tmb_map$logit_p_tweedie <- factor(p_map)
+      tmb_map$logit_p_tweedie <- dispersion_trait_map(mask_tweedie, !is.na(p_pin))
+    } else {
+      ## No trait has a user-supplied `p` -- still pin non-tweedie traits'
+      ## entries via the family mask alone. Mirrors the `else` branch below
+      ## for `log_df_student` (issue #1117 follow-up: this branch was
+      ## missing, so a default `tweedie()` mixed fit -- p = NULL on every
+      ## row -- never reached ANY logit_p_tweedie map and the non-tweedie
+      ## traits' entries stayed free).
+      m_p_tweedie <- dispersion_trait_map(mask_tweedie)
+      if (!is.null(m_p_tweedie)) tmb_map$logit_p_tweedie <- m_p_tweedie
     }
   }
-  if (!any_beta)
-    tmb_map$log_phi_beta <- factor(rep(NA_integer_, n_traits))
-  if (!any_betabinom)
-    tmb_map$log_phi_betabinom <- factor(rep(NA_integer_, n_traits))
+  m_beta <- dispersion_trait_map(mask_beta)
+  if (!is.null(m_beta)) tmb_map$log_phi_beta <- m_beta
+  m_betabinom <- dispersion_trait_map(mask_betabinom)
+  if (!is.null(m_betabinom)) tmb_map$log_phi_betabinom <- m_betabinom
   ## Student-t (fid 9) and truncated NB2 (fid 11): map per-trait dispersion
-  ## parameters off when the corresponding family is entirely absent.
-  any_student   <- any(family_id_vec == 9L)
-  any_truncnb2  <- any(family_id_vec == 11L)
-  if (!any_student) {
+  ## parameters off for traits that don't use the family.
+  mask_student  <- dispersion_trait_family_mask(trait_id, family_id_vec, 9L, n_traits)
+  mask_truncnb2 <- dispersion_trait_family_mask(trait_id, family_id_vec, 11L, n_traits)
+  if (!any(mask_student)) {
     tmb_map$log_sigma_student <- factor(rep(NA_integer_, n_traits))
     tmb_map$log_df_student    <- factor(rep(NA_integer_, n_traits))
   } else {
+    m_sigma_student <- dispersion_trait_map(mask_student)
+    if (!is.null(m_sigma_student)) tmb_map$log_sigma_student <- m_sigma_student
     ## If the user supplied numeric `df` on the student() family object
     ## (e.g. student(df = 3)), pin log_df_student per trait that uses it.
     ## Per-trait pinning: walk family_per_row and find which trait_id rows
     ## use a student family; if for a given trait the unique student `$df`
     ## values are all numeric (and equal), pin log_df_student[t] at
     ## log(df - 1). If df is NULL for any row, leave that trait estimable.
+    ## Combined with the family mask the same way as tweedie's p above.
     df_pin <- rep(NA_real_, n_traits)
     for (t in seq_len(n_traits)) {
       rows_t <- which(trait_id == (t - 1L) & family_id_vec == 9L)
@@ -5211,17 +5230,18 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     }
     if (any(!is.na(df_pin))) {
       tmb_params$log_df_student[!is.na(df_pin)] <- log(df_pin[!is.na(df_pin)] - 1)
-      df_map <- seq_len(n_traits)
-      df_map[!is.na(df_pin)] <- NA
-      tmb_map$log_df_student <- factor(df_map)
+      tmb_map$log_df_student <- dispersion_trait_map(mask_student, !is.na(df_pin))
+    } else {
+      m_df_student <- dispersion_trait_map(mask_student)
+      if (!is.null(m_df_student)) tmb_map$log_df_student <- m_df_student
     }
   }
-  if (!any_truncnb2)
-    tmb_map$log_phi_truncnb2 <- factor(rep(NA_integer_, n_traits))
-  if (!any_delta_lognormal)
-    tmb_map$log_sigma_lognormal_delta <- factor(rep(NA_integer_, n_traits))
-  if (!any_delta_gamma)
-    tmb_map$log_phi_gamma_delta <- factor(rep(NA_integer_, n_traits))
+  m_truncnb2 <- dispersion_trait_map(mask_truncnb2)
+  if (!is.null(m_truncnb2)) tmb_map$log_phi_truncnb2 <- m_truncnb2
+  m_delta_lognormal <- dispersion_trait_map(mask_delta_lognormal)
+  if (!is.null(m_delta_lognormal)) tmb_map$log_sigma_lognormal_delta <- m_delta_lognormal
+  m_delta_gamma <- dispersion_trait_map(mask_delta_gamma)
+  if (!is.null(m_delta_gamma)) tmb_map$log_phi_gamma_delta <- m_delta_gamma
   ## ordinal_probit: cutpoint log-increments. When no trait uses fid 14
   ## (or every ordinal trait is K = 2 with no free cutpoints) the
   ## parameter is a length-1 stub and must be mapped off.

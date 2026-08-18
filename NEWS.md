@@ -1,5 +1,20 @@
 # gllvmTMB 0.7.0 (development)
 
+* **Mixed-family fits with a dispersion family now have a valid Hessian and
+  SEs (#1117).** Per-trait dispersion/shape parameter vectors
+  (`log_phi_nbinom2`, `log_phi_nbinom1`, `log_phi_gamma`,
+  `log_phi_tweedie` + `logit_p_tweedie`, `log_phi_beta`,
+  `log_phi_betabinom`, `log_sigma_student` + `log_df_student`,
+  `log_phi_truncnb2`, `log_sigma_lognormal_delta`, `log_phi_gamma_delta`)
+  were previously gated WHOLE-VECTOR: mapped off only when the family was
+  absent from every trait. In a mixed-family fit where the family was
+  present on some traits but not others, the other traits' entries were
+  free parameters the likelihood never reads — a mechanically singular
+  Hessian (`pdHess = FALSE`), no valid `sdreport`/Wald/profile intervals,
+  and phantom entries enumerated by `profile_targets()`/`confint()`. Each
+  vector is now pinned per trait to the traits that actually use its
+  family. Single-family fits are unaffected (byte-identical).
+
 * **Convergence diagnostics on ridged fits now judge the objective the fit
   actually optimised (#1092).** `aghq_ridge` applies a loading penalty in R,
   outside the TMB objective, so `fit_health$max_gradient` previously reported

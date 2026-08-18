@@ -28,12 +28,27 @@ the bug fix.** `predict(newdata = )` at coordinates absent from the training
 set now projects the field rather than silently returning the fixed-effects
 prediction.
 
-🔴 **Fence.** That statement is established for *training* coordinates by the
-exact identity test (`predict(newdata = training) == report$eta`, max|diff|
-= 0). For *new* coordinates it is a code-reading claim plus a smoke check
-that the result is finite and varies with location — it is **not** certified
-against an independent oracle, and no accuracy or coverage claim attaches to
-it. Item 1 below is therefore reduced, not closed.
+🔴 **Fence, as measured** (`VERIFY-adversarial.md`, 2026-08-18):
+
+- **Established.** Across 16 configurations spanning all three `use_spde`
+  paths, `predict(newdata = training rows) == report$eta` to **≤ 8.9e-16**,
+  and the checks were shown to have *power*: a transposed `omega_spde` is
+  non-conformable and errors hard, a wrong trait column shifts eta by 2.35, a
+  transposed `Lambda_spde` at `d = 2` by 2.42. The rebuilt `fm_basis()`
+  projector equals the stored `A_st` at 0.000e+00, and shuffled `newdata` row
+  order stays exact.
+- **Established for new in-domain coordinates only as a smoke check**: 25/25
+  finite, non-zero, varying smoothly (sd 0.2224). No oracle, no accuracy or
+  coverage claim.
+- 🔴 **NOT established, and the exactness claim does NOT extend here:** the
+  *other two* spatial engines. A `spatial_*(1 + x | coords)` fit activates
+  `use_spde_slope` or `use_spde_latent_slope`, which are **not re-added at
+  all** — measured discrepancies of **3.30 and 3.75**. They are *declared*
+  failures (predict warns, naming the omitted tier) rather than silent ones,
+  but any statement of the form "the spatial field is re-added" must be read
+  as "the `use_spde` field is re-added". Tracked in #1138.
+
+Item 1 below is therefore reduced, not closed.
 
 ## 3. Item 1 — off-mesh projection (REDUCED by #1132)
 
@@ -44,13 +59,15 @@ it. Item 1 below is therefore reduced, not closed.
    bounding box or `sf` object and returns a `newdata` frame with the mesh's
    `xy_cols`, the trait factor at its training levels, and a zeroed offset
    column. This is where the offset trap (item 2) is most cheaply defused.
-2. **Extrapolation honesty.** `fm_basis()` returns an all-zero row for a
-   location outside the mesh hull, which silently becomes "field = 0" —
-   indistinguishable from "field genuinely near zero". The projector's row
-   sums must be checked and out-of-hull rows either flagged in an output
-   column or refused. **This is the single most likely way a map is quietly
-   wrong**, and it is a defect the #1132 fix did not introduce but does now
-   expose to users.
+2. ~~**Extrapolation honesty.**~~ **DONE in #1132** — found by the adversarial
+   verification and fixed in the same PR. `fm_basis()` returns an all-zero row
+   outside the mesh hull, so the field read as exactly 0: a blank patch of map
+   indistinguishable from a cold one, while `make_mesh()` rejects such rows at
+   *fit* time. `predict()` was quietly more permissive than the fit. It now
+   checks the projector's row masses and warns
+   (`gllvmTMB_predict_newdata_outside_mesh`), with a test pinning that
+   in-domain rows stay silent. A grid helper (item 1 above) should still
+   *filter* to the hull rather than relying on the warning.
 3. **An oracle for new coordinates.** The natural one: fit on a subset of
    locations, predict at the held-out ones, and compare against the
    simulated field. That is a recovery-style check, so it belongs with the
@@ -108,8 +125,7 @@ it is the only thing preventing a mis-calibrated interval being drawn on a map.
 
 ## 7. Suggested order
 
-1. Extrapolation honesty (§3.2) — a correctness gap that #1132 just made
-   reachable by users. Smallest, most urgent.
+1. ~~Extrapolation honesty (§3.2)~~ — done in #1132.
 2. Scale documentation (§4, route one) — documentation only.
 3. Arm column (§5) — needs the schema decision first.
 4. Grid helper (§3.1) — convenience, once the above are settled.

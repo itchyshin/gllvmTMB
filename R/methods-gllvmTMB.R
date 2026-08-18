@@ -2257,6 +2257,21 @@ sanity_multi <- function(object, gradient_thresh = 1e-2, se_thresh = 100) {
   )
   if (is.null(A) || nrow(A) != nrow(nd)) return(NULL)
 
+  ## fmesher returns an all-zero basis row for a location outside the mesh
+  ## hull, so the field silently becomes 0 there -- indistinguishable from a
+  ## field that is genuinely near zero, and the reader has no way to tell a
+  ## blank patch of map from a cold one. `make_mesh()` rejects such rows at
+  ## fit time, so predict() must not be quietly more permissive than the fit.
+  row_mass <- Matrix::rowSums(A)
+  n_outside <- sum(!is.finite(row_mass) | abs(row_mass) < 1e-8)
+  if (n_outside > 0L) {
+    cli::cli_warn(c(
+      "{n_outside} {.arg newdata} row{?s} fall outside the mesh hull.",
+      "x" = "The spatial field is exactly 0 there -- not estimated, and not distinguishable from a field that is genuinely near zero.",
+      "i" = "Restrict {.arg newdata} to the meshed domain, or rebuild the mesh to cover it."
+    ), class = "gllvmTMB_predict_newdata_outside_mesh")
+  }
+
   par <- object$tmb_obj$env$last.par.best
   n_mesh <- ncol(A)
   n_traits <- object$n_traits

@@ -56,8 +56,17 @@ names `re_int`. A warning that fires on correct output is worse than none.
   correlation-with-truth argument.
 - `devtools::document()` clean; `man/predict.gllvmTMB_multi.Rd` regenerated.
 - Full suite + `R CMD check --as-cran`: see `VERIFY-mechanical.md`.
-- Independent adversarial verification of the SPDE re-add across all three
-  spatial paths: see `VERIFY-adversarial.md`.
+- **Independent adversarial verification** (`VERIFY-adversarial.md`):
+  **CONFIRMED for the `use_spde` engine**, 16 configurations exact to
+  **<= 8.9e-16**, with the checks shown to have power (a transposed
+  `omega_spde` is non-conformable and errors; a wrong trait column shifts eta
+  by 2.35; a transposed `Lambda_spde` at d=2 by 2.42; using `z_B` instead of
+  `U_B_total` by 0.69). Rebuilt `fm_basis()` == stored `A_st` at 0.000e+00.
+  **PARTIAL overall**: `use_spde_slope` / `use_spde_latent_slope` (a
+  `spatial_*(1 + x | coords)` fit) are NOT re-added — discrepancies 3.30 and
+  3.75 — but they WARN naming the omitted tier, so they are declared, not
+  silent. Any "the spatial field is re-added" claim must be read as "the
+  `use_spde` field".
 
 ## Follow-up
 
@@ -75,9 +84,15 @@ names `re_int`. A warning that fires on correct output is worse than none.
 - **`propto` row-1-only guard** (`object$use$propto && !is.na(sp_id[1])`)
   gates the whole species loop on row 1. Adjacent, untouched, still present.
   Deserves its own issue.
-- **Extrapolation honesty** (Design 127 §3.2): `fm_basis()` returns an
-  all-zero row outside the mesh hull, which reads as "field = 0". The fix did
-  not introduce this, but it now exposes it to users predicting on a grid.
+- ~~Extrapolation honesty~~ — **found by the adversarial pass and FIXED in
+  this PR.** `fm_basis()` returns an all-zero row outside the mesh hull, so
+  the field read as exactly 0 with no warning, while `make_mesh()` rejects
+  such rows at *fit* time — `predict()` was quietly more permissive than the
+  fit. Now warns (`gllvmTMB_predict_newdata_outside_mesh`); a test pins that
+  in-domain rows stay silent. Tests 35 -> 37 assertions.
+- **The two other spatial engines** (`use_spde_slope`,
+  `use_spde_latent_slope`) remain un-re-added, now declared via the warning.
+  Folded into #1138 rather than attempted here.
 
 ## Register
 

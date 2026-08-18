@@ -314,3 +314,43 @@ test_that("#1132: a fully-handled fit does not raise a false alarm", {
   expect_true(isTRUE(fit$use$spatial_scalar))
   expect_no_warning(suppressMessages(predict(fit, newdata = df)))
 })
+
+test_that("#1132: coordinates outside the mesh hull warn instead of returning a silent zero field", {
+  skip_on_cran()
+  skip_if_not_installed("TMB")
+  skip_if_not_installed("fmesher")
+
+  ## Found by the adversarial verification of the SPDE re-add. fmesher returns
+  ## an all-zero basis row outside the hull, so the field reads as exactly 0 --
+  ## a blank patch of map indistinguishable from a cold one. make_mesh()
+  ## rejects such rows at FIT time, so predict() must not be quietly more
+  ## permissive than the fit was.
+  set.seed(1)
+  sim <- gllvmTMB::simulate_site_trait(
+    n_sites = 30, n_species = 1, n_traits = 2,
+    mean_species_per_site = 1,
+    spatial_range = 0.3, sigma2_spa = c(0.4, 0.4), seed = 1
+  )
+  df <- sim$data
+  mesh <- tryCatch(
+    gllvmTMB::make_mesh(df, c("lon", "lat"), cutoff = 0.1),
+    error = function(e) NULL
+  )
+  skip_if(is.null(mesh), "mesh build failed")
+  fit <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+    value ~ 0 + trait + spatial_scalar(0 + trait | coords),
+    data = df, mesh = mesh, silent = TRUE
+  )))
+
+  far <- df
+  far$lon <- df$lon + 500
+  far$lat <- df$lat + 500
+  expect_warning(
+    suppressMessages(predict(fit, newdata = far)),
+    class = "gllvmTMB_predict_newdata_outside_mesh"
+  )
+
+  ## In-domain rows must stay quiet -- a warning that fires on good input is
+  ## the failure mode this whole block exists to avoid.
+  expect_no_warning(suppressMessages(predict(fit, newdata = df)))
+})

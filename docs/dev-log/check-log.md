@@ -1,3 +1,29 @@
+## 2026-08-18 — Cursor L0: Design 125 fork B internal Q_0 profile plumbing
+
+Lane: `cursor/mspl-forkB-l0-20260818` @
+`~/local-scratch/lanes/gllvmTMB-mspl-forkB-L0`. Sibling Opus started the
+`R/mspl.R` unlock; this sitting finished tests + fence docs and ships.
+
+G0: unpenalised Laplace profile at fixed MSPL nuisance, INTERNAL only
+(`calibrated = FALSE`, public refuse). Default `tape = "Q_P"` unchanged.
+
+```sh
+# targeted
+Rscript -e 'devtools::load_all("."); testthat::test_file("tests/testthat/test-mspl-api.R")'
+# [ FAIL 0 | WARN 0 | SKIP 0 | PASS 330 ]
+# stale-wording / fence (verbatim)
+rg -n 'MSPL-04' docs/design/35-validation-debt-register.md
+rg -n 'calibrated = FALSE|public_confint = \"refused\"|coverage_claim = \"none\"' R/mspl.R
+rg -n 'conf\\.low|conf\\.high' R/mspl.R tests/testthat/test-mspl-api.R
+rg -n 'NEWS covered|#1077' docs/dev-log/after-task/2026-08-18-mspl-forkB-L0-plumbing.md
+gh pr view 1077 --json isDraft
+# deliberately not run / not done: public se=TRUE / vcov / confint, NEWS covered
+# flip, undraft #1077, Totoro, MSPL-04 covered, isdm-package-recovery, git add -A
+```
+
+After-task: `docs/dev-log/after-task/2026-08-18-mspl-forkB-L0-plumbing.md`.
+Decision: `docs/dev-log/decisions.md` 2026-08-18 G0.
+
 ## 2026-08-18 — Cursor: Poisson MSPL W_* REPLACE **MERGED** (closes the LOOP)
 
 PR [#1111](https://github.com/itchyshin/gllvmTMB/pull/1111) merged into `main`

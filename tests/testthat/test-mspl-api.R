@@ -480,9 +480,14 @@ test_that("internal MSPL profile feasibility traces the penalised objective only
   )
 
   expect_identical(probe$objective_source, "fit$tmb_obj (penalised LA-MSPL)")
+  expect_identical(probe$tape, "Q_P")
+  expect_identical(probe$design_125_fork, "A")
+  expect_identical(probe$nuisance_treatment, "reoptimized")
+  expect_true(probe$reference_is_maximum)
   expect_identical(probe$target_name, "b_fix")
   expect_true(all(probe$trace$finite))
   expect_true(all(probe$trace$convergence == 0L))
+  expect_true(all(probe$trace$nuisance_reoptimized))
   expect_identical(probe$centre_status, "matched")
   expect_identical(probe$lower_status, "crossed")
   expect_identical(probe$upper_status, "crossed")
@@ -695,6 +700,8 @@ test_that("the profile probe never claims coverage, and stays unexported", {
   expect_false(probe$calibrated)
   expect_identical(probe$public_confint, "refused")
   expect_identical(probe$coverage_claim, "none")
+  expect_identical(probe$tape, "Q_P")
+  expect_identical(probe$design_125_fork, "A")
 
   ## Endpoints must never be named like a tidy confidence interval.
   expect_false(any(c("conf.low", "conf.high") %in% names(probe)))
@@ -733,5 +740,117 @@ test_that("the profile probe is fenced to binomial, with a typed refusal", {
   expect_error(
     gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(gaussian_fit, which = 1L),
     class = "gllvmTMB_mspl_profile_family"
+  )
+  expect_error(
+    gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
+      gaussian_fit, which = 1L, tape = "Q_0"
+    ),
+    class = "gllvmTMB_mspl_profile_family"
+  )
+})
+
+## ---- Design 125 fork B (2026-08-18): Q_0 at fixed MSPL nuisance ----------
+##
+## G0 unlocks INTERNAL `tape = "Q_0"` computability only.  The walk is a
+## level-set of the penalty-off Laplace tape at the MSPL point, not an LR
+## profile, and the public doors stay closed.
+
+test_that("tape = Q_0 walks the penalty-off tape at fixed MSPL nuisance", {
+  fit <- .mspl_fit("logit", q = 1L)
+  checkpoint_penalised <- gllvmTMB:::.gllvmTMB_profile_tmb_checkpoint(fit$tmb_obj)
+  q0_fn <- fit$mspl$unpenalized_tmb_obj$fn
+  reference <- as.numeric(q0_fn(fit$opt$par))
+  expect_true(is.finite(reference))
+  ## After the reference evaluation: that is the Q_0 tape state the probe
+  ## will restore to, so a leak would fail this checkpoint, not the earlier one.
+  checkpoint_q0 <- gllvmTMB:::.gllvmTMB_profile_tmb_checkpoint(
+    fit$mspl$unpenalized_tmb_obj
+  )
+
+  penalised <- fit$tmb_obj
+  penalised$fn <- function(...) {
+    stop("penalised objective must not be profiled on tape = Q_0")
+  }
+  fit$tmb_obj <- penalised
+
+  testthat::local_mocked_bindings(
+    .gllvmTMB_mspl_nlminb = function(...) {
+      stop("nlminb must not run on tape = Q_0")
+    },
+    .package = "gllvmTMB"
+  )
+
+  probe <- gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
+    fit, which = 1L, step = 0.5, max_steps = 3L, tape = "Q_0"
+  )
+
+  expect_identical(
+    probe$objective_source,
+    "fit$mspl$unpenalized_tmb_obj (penalty-off Laplace at fixed MSPL nuisance)"
+  )
+  expect_identical(probe$tape, "Q_0")
+  expect_identical(probe$design_125_fork, "B")
+  expect_identical(probe$nuisance_treatment, "fixed_at_mspl")
+  expect_false(probe$reference_is_maximum)
+  expect_false(probe$calibrated)
+  expect_identical(probe$public_confint, "refused")
+  expect_identical(probe$coverage_claim, "none")
+  expect_false(any(c("conf.low", "conf.high") %in% names(probe)))
+  expect_identical(probe$centre_status, "matched")
+  expect_equal(probe$mle_objective, reference, tolerance = 1e-10)
+  expect_true(all(!probe$trace$nuisance_reoptimized))
+  expect_true(any(probe$trace$finite))
+  expect_identical(
+    gllvmTMB:::.gllvmTMB_profile_tmb_checkpoint(fit$tmb_obj),
+    checkpoint_penalised
+  )
+  expect_identical(
+    gllvmTMB:::.gllvmTMB_profile_tmb_checkpoint(fit$mspl$unpenalized_tmb_obj),
+    checkpoint_q0
+  )
+
+  finite_row <- probe$trace[probe$trace$finite, , drop = FALSE][1L, ]
+  par <- as.numeric(fit$opt$par)
+  par[as.integer(probe$target_index)] <- finite_row$target[[1L]]
+  expect_equal(
+    finite_row$objective[[1L]],
+    as.numeric(q0_fn(par)),
+    tolerance = 1e-8
+  )
+
+  diagnostic <- gllvmTMB:::.gllvmTMB_mspl_profile_threshold_diagnostic(probe)
+  expect_identical(diagnostic$tape, "Q_0")
+  expect_identical(diagnostic$design_125_fork, "B")
+  expect_identical(diagnostic$nuisance_treatment, "fixed_at_mspl")
+  expect_false(diagnostic$reference_is_maximum)
+  expect_false(diagnostic$calibrated)
+  expect_identical(diagnostic$public_confint, "refused")
+  expect_identical(diagnostic$coverage_claim, "none")
+  expect_false(any(c("conf.low", "conf.high") %in% names(diagnostic)))
+
+  expect_error(confint(fit), class = "gllvmTMB_mspl_inference_unsupported")
+})
+
+test_that("tape = Q_0 refuses a missing penalty-off tape and an unbuilt fork", {
+  fit <- .mspl_fit("logit", q = 1L)
+  expect_error(
+    gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
+      fit, which = 1L, tape = "Q_C"
+    ),
+    class = "gllvmTMB_mspl_profile_tape"
+  )
+  expect_error(
+    gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
+      fit, which = 1L, tape = 1L
+    ),
+    class = "gllvmTMB_mspl_profile_tape"
+  )
+
+  fit$mspl$unpenalized_tmb_obj <- NULL
+  expect_error(
+    gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
+      fit, which = 1L, tape = "Q_0"
+    ),
+    class = "gllvmTMB_mspl_profile_objective"
   )
 })

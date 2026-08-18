@@ -2,6 +2,35 @@
 
 Date-stamped one-paragraph design decisions. Append-only.
 
+## 2026-08-18  G0 SIGNED: Design 125 fork B — internal unpenalised Laplace profile at fixed MSPL nuisance
+
+Decision (Shinichi, unattended L0 sitting — explicit G0: *"fork B = unpenalized
+Laplace profile at fixed MSPL nuisance, INTERNAL only (calibrated=FALSE,
+public refuse)"*): `.gllvmTMB_mspl_profile_feasibility()` may measure Design
+125 fork **B** via `tape = "Q_0"`. The walk evaluates
+`fit$mspl$unpenalized_tmb_obj` (`estimator_id = 2`) at the MSPL point with
+the nuisance held fixed. Default remains `tape = "Q_P"` (fork A, penalised
+profile with nuisance re-optimised).
+
+This is a **computability unlock only**. It does not pick a fork for a
+campaign, does not license Totoro, and does not promote an interval.
+`calibrated = FALSE`, `public_confint = "refused"`, and
+`coverage_claim = "none"` stay mechanical on both tapes. `vcov()` /
+`confint()` / `se = TRUE` stay fail-closed. **MSPL-04 stays `blocked`.**
+**#1077 stays draft.** No NEWS `covered`. Fork C remains unimplemented.
+
+Honest asymmetries, returned as fields rather than left implicit:
+`reference_is_maximum = FALSE` (the MSPL point maximises \(Q_P\), not
+\(Q_0\), so `objective_delta` is not an LR statistic);
+`nuisance_treatment = "fixed_at_mspl"` (`nlminb` is never called);
+`centre_status = "matched"` is true by construction on this tape.
+
+Design 125 G4c ("no live profile impl / smoke until fork G0") is **waived
+for this internal, unexported, uncalibrated probe only** — the same shape
+as the 2026-08-17 waiver that landed fork A. D-149's Lane-B SE ownership
+and the PROTECTED marker on `codex/lane-b-mspl-interval-feasibility` are
+not reassigned: this is a computability instrument, not an SE route.
+
 ## 2026-08-17  G0 SIGNED: Poisson MSPL \(W\) — REPLACE with working \(W_*\) (supersedes PARK)
 
 Decision (Shinichi, chat — *"as you recommended"* after Cursor’s REPLACE

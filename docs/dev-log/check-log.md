@@ -52708,3 +52708,87 @@ so not part of this commit's `git diff`, but recorded here since a
 reviewer reading the PR page should see the corrected framing).
 
 — Claude (Fisher), inference-machinery lens
+
+## 2026-08-17 — Claude: Mizuno companion vignette (Lane C, PR #1112) checks
+
+**Lane:** `claude/1099-mizuno-vignette-20260817`. New
+`vignettes/articles/phylogenetic-categorical-pglmm.Rmd` +
+`dev/mizuno-vignette/fetch-mizuno-data.R` + two additive `_pkgdown.yml`
+lines. No `R/`/`src/`/`NAMESPACE`/`tests/testthat/` touched. Full detail:
+`docs/dev-log/after-task/2026-08-17-mizuno-companion-vignette.md`.
+
+Commands run, exact:
+
+```sh
+OPENBLAS_NUM_THREADS=1 Rscript --vanilla -e '
+  source("dev/mizuno-vignette/fetch-mizuno-data.R")
+  ex1 <- mizuno_load_ordinal(); ex2 <- mizuno_load_nominal()
+  stopifnot(!is.null(ex1), !is.null(ex2))'
+# -> ex1 136 species/136 tips exact match; ex2 173 species/173 tips exact
+#    match, 3 observed Primary.Lifestyle levels.
+
+OPENBLAS_NUM_THREADS=1 Rscript --vanilla -e '
+  devtools::load_all(quiet = TRUE); pkgdown::check_pkgdown()'
+# -> "No problems found."
+
+OPENBLAS_NUM_THREADS=1 Rscript --vanilla -e '
+  devtools::load_all(quiet = TRUE)
+  pkgdown::build_article("articles/phylogenetic-categorical-pglmm",
+    pkg = ".", lazy = FALSE, quiet = TRUE)'
+# -> built clean, network available.
+
+OPENBLAS_NUM_THREADS=1 \
+  GLLVMTMB_CACHE_DIR=<fresh empty tmp dir> \
+  http_proxy=http://127.0.0.1:1 https_proxy=http://127.0.0.1:1 \
+  Rscript --vanilla -e '
+    devtools::load_all(quiet = TRUE)
+    pkgdown::build_article("articles/phylogenetic-categorical-pglmm",
+      pkg = ".", lazy = FALSE, quiet = TRUE)'
+# -> FIRST run: "Quitting from phylogenetic-categorical-pglmm.Rmd:281-287
+#    [ex2-h2-plot] ... object 'ps2' not found" -- ex2-h2-plot's ggplot()
+#    chunk was missing eval = have_ex2. Fixed (added the guard); SECOND
+#    run of the identical command built clean. Rendered HTML text-checked:
+#    "Data unavailable in this build" note present, zero occurrences of
+#    "Wall clock (long fit): <number>" or "H2(migration), joint bivariate
+#    fit: 0." (only un-executed source text shown), no error.
+```
+
+Stale-wording / consistency grep patterns run against the new article only
+(exact patterns, exact verdicts):
+
+```sh
+rg -n "gllvmTMB\(" vignettes/articles/phylogenetic-categorical-pglmm.Rmd
+# -> every long-format call passes trait = "trait" explicitly; both
+#    traits(...) wide calls correctly omit trait =.
+
+rg -n "PHY-0|FAM-20|PA[1-4]\b|register row|covered\b|partial\b" \
+  vignettes/articles/phylogenetic-categorical-pglmm.Rmd
+# -> no matches: no register code/status word leaked to the reader-facing
+#    article.
+
+rg -n "S_B|S_W" vignettes/articles/phylogenetic-categorical-pglmm.Rmd
+# -> no matches.
+
+git status --porcelain
+# -> only the three intended files staged across both commits on this
+#    branch; zero data files (csv/nex/rds) ever staged.
+```
+
+**Deliberately NOT run, and why:**
+- `devtools::check()` / full `R CMD check --as-cran` — no `R/`, `src/`,
+  `NAMESPACE`, or generated `Rd` touched by this PR; the pkgdown-scoped
+  checks above are the relevant surface for a doc/article-only change.
+- `devtools::test()` — no `tests/testthat/` file added or modified.
+- An MCMCglmm comparator for Example 2 (nominal/categorical) — its
+  categorical family needs a from-scratch multi-response setup distinct
+  from the Example 1 ordinal comparator that WAS run; out of this task's
+  time budget, stated as qualitative-only in the article text instead of
+  approximated.
+- Any multi-seed recovery campaign for either fitted model — both
+  examples are single fits on the paper's own real (non-simulated) data;
+  no calibrated-coverage claim is made anywhere in the article.
+- CI on PR #1112 — not polled from this lane; the after-task report
+  states plainly that Definition-of-Done item 1 (CI green) is unverified
+  as of this entry.
+
+— Claude

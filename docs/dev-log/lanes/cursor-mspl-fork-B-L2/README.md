@@ -5,7 +5,7 @@
 Do **not** overwrite repo-root `LOOP/` (Poisson \(W_*\) REPLACE GOAL_MET).
 
 Worktree: `~/local-scratch/lanes/gllvmTMB-mspl-forkB-L2-goal`
-Branch: `cursor/mspl-forkB-L2-goal-20260818` from `origin/main`.
+Branch: `cursor/mspl-forkB-L2-exec-20260818` from `origin/main` (kit landed via #1155).
 
 | File | Role |
 |---|---|

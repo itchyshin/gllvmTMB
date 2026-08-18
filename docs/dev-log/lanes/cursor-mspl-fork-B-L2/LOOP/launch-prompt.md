@@ -28,7 +28,7 @@ READ FIRST, IN ORDER:
   docs/dev-log/lanes/cursor-mspl-fork-B-L2/LOOP/arcs.md
   ./AGENTS.md
 
-WORKSPACE: branch cursor/mspl-forkB-L2-goal-20260818 in
+WORKSPACE: branch cursor/mspl-forkB-L2-exec-20260818 in
 ~/local-scratch/lanes/gllvmTMB-mspl-forkB-L2-goal
 (reattach + pull; do NOT recreate; do NOT use the Dropbox cloud-agent baton)
 
@@ -36,7 +36,7 @@ RUN goal skill — re-read GOAL each arc; verify by LOG not exit code;
 conductor lean; pause at OPEN GATE; overwrite checkpoint each arc;
 fresh chat at batch barriers.
 
-START ARC: K1 (thin L2 runner reusing dev/mspl-forkB-l1-ademp.R).
+START ARC: none remaining in this kit. L2 is RECORDED. Do not start Totoro.
 NEXT GATE: Totoro / T* / undraft #1077 / public se / MSPL-04→covered — NEVER auto-start.
 
 INHERIT (do not rewrite): official L1 #1128 cov_eff 0.880 Wilson [0.7620, 0.9438]

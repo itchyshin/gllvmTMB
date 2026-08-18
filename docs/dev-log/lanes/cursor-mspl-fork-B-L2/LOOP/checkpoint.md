@@ -1,29 +1,38 @@
 # Checkpoint — OVERWRITTEN every arc (a pointer to truth, not a log)
 
 GOAL: see `LOOP/GOAL.md`.
-STATE: **K0 landing.** Ultra-plan + NEW kit written from `origin/main`. L2 compute has **not** started.
+STATE: **GOAL_MET. Local L2 recorded and merged. Totoro blocked.**
 
 - **ARCS DONE (verified):**
-  - **R0** — sweep receipt in `LOOP/ultra-plan.md`. Verified by reading closed
-    `docs/dev-log/lanes/cursor-mspl-fork-B/LOOP/checkpoint.md` (GOAL_MET) and
-    official L1 `docs/dev-log/research/2026-08-18-mspl-forkB-l1-smoke.md`
-    (cov_eff 0.880).
-- **ARC IN PROGRESS:** **K0** — this kit + docs PR.
-- **NEXT:** after K0 merges, a **fresh `/goal` chat** starts **K1** (thin L2 runner).
-  Do **not** start K1 in the planning sitting.
+  - **R0 / K0** — kit #1155.
+  - **K1** — `dev/mspl-forkB-l2-smoke.R` reuses L1 harness; Seed A guarded.
+  - **K2a / K2b** — 1-rep objects inspected (two-sided `Q_0` / fork B, `lo < hi`).
+  - **K3** — 150 new rows. Object inspected:
+    Seed B 20260819 cov_eff 0.900 (50/0/45);
+    Seed C 20260820 cov_eff 0.900 (50/0/45);
+    near-tail 20260821 cov_eff 0.780 (50/0/39);
+    all `Q_0` / B; Seed A 20260818 **not walked**.
+  - **K4** — official receipt
+    `docs/dev-log/research/2026-08-18-mspl-forkB-l2-smoke.md`:
+    inherit 0.880; `calibrated: FALSE`; `public_confint: refused`;
+    `coverage_claim: none`. Companion 0.935 not used.
+  - **K5 / Rec / V1** — after-task + check-log + Melissa in `e346c6b8`.
+    V1: #1077 draft; MSPL-04 `blocked`; root `LOOP/` and closed
+    g0_unlock untouched.
+  - **ship** — [#1162](https://github.com/itchyshin/gllvmTMB/pull/1162)
+    squash-merged at `93ea79bd` after ubuntu-latest (release) green
+    (16m6s). Receipt is on `origin/main`.
+- **ARC IN PROGRESS:** none. Lane closed.
+- **NEXT:** Totoro / T\* — **blocked**. Do not start. Needs a new G0.
 - **OPEN GATES (need a human):**
   1. **Totoro / DRAC / T\*** — blocked. Never auto-start.
   2. **Undraft #1077 · public `se=TRUE` / `vcov()` / `confint()` · MSPL-04 off
-     `blocked` · NEWS `covered`** — hard OUT, not questions.
+     `blocked` · NEWS `covered`** — hard OUT.
 - **WHERE TRUTH LIVES:**
-  - this kit: `docs/dev-log/lanes/cursor-mspl-fork-B-L2/LOOP/`
-  - worktree: `~/local-scratch/lanes/gllvmTMB-mspl-forkB-L2-goal`
-  - branch: `cursor/mspl-forkB-L2-goal-20260818` from `origin/main` @ `b6c50d28`
-  - closed g0_unlock (do not edit): `docs/dev-log/lanes/cursor-mspl-fork-B/LOOP/`
-  - L0: [#1130](https://github.com/itchyshin/gllvmTMB/pull/1130) @ `d7f526d4`
-  - official L1: [#1128](https://github.com/itchyshin/gllvmTMB/pull/1128) @ `715326af` — cov_eff 0.880
-  - ADEMP L2 rule: `docs/dev-log/research/2026-08-17-mspl-profile-led-prereg-ademp.md` §P5
-  - harness already holding the near-tail cell: `dev/mspl-forkB-l1-ademp.R` (`L1-neartail-n40-T4`, role `L2-hold`)
-  - repo-root `LOOP/`: closed Poisson \(W_*\) REPLACE — do not overwrite
-- **RESUME:** paste `LOOP/launch-prompt.md` into a fresh Cursor chat opened on
-  the scratch worktree. Continue from **K1**. Do not reopen g0_unlock.
+  - `origin/main` @ merge `93ea79bd` ([#1162](https://github.com/itchyshin/gllvmTMB/pull/1162))
+  - official L2: `docs/dev-log/research/2026-08-18-mspl-forkB-l2-smoke.md`
+  - official L1 inherit: #1128 cov_eff 0.880
+  - this checkpoint: GOAL_MET
+- **RESUME:** do not resume this kit. Local L2 is recorded. A Totoro /
+  T\* sitting needs a new G0 and a new lane. Do not re-run the 50-rep
+  panel. Do not undraft #1077.

@@ -607,6 +607,74 @@ drop the auto-Psi at parse time (`auto_unique_off_family`, `R/fit-multi.R`),
 so a pure-ordinal fit has no `report$sd_B` and every `near_zero_psi_*` row is
 dark by design.
 
+### 8.2a Detector-S2c (2026-08-17): two more candidates eliminated, curvature
+### and multi-start — SEVEN eliminated in total, not five
+
+`pass-criteria-ordinal.md`'s own "SEARCH STOPPED" section (§8.2 above)
+eliminated four loading/cutpoint statistics on the same 315-fit calibration,
+and named the dichotomisation-refit counterfactual (the S1 probe's
+measurement 3) as a fifth, separately eliminated once it was shown to fire
+on 86.3% of healthy fits — five candidate approaches tested and refused
+before this section. This subsection records **two more**, tested on a
+**different information source** (curvature, then multimodality) rather
+than a sixth variation on loading magnitude or cutpoint geometry, per
+`dev/ordinal-degeneracy/pass-criteria-curvature.md` (pre-registration frozen
+2026-08-17 18:07, scored 18:32; 450 `gllvmTMB()` calls, `status == "OK"`
+throughout; scored independently by an agent that did not design the
+campaign, per this project's D-43 discipline).
+
+| # | candidate | information source | outcome |
+|---|---|---|---|
+| 1 | `max_loading_unit` (absolute) | point estimate, loading magnitude | fails — does not transport across heterogeneous trait scales |
+| 2 | `relative_loading` (family-scoped) | point estimate, loading magnitude | fails — 28.6% FP at best sensitivity |
+| 3 | `loading / cutpoint_span` | point estimate, loading + cutpoint geometry | REFUSED on circularity (cor +0.546 with the degeneracy label) and fails empirically anyway |
+| 4 | `spike_ratio` (max/second-max loading) | point estimate, loading magnitude | independent of #1 (cor +0.242) but fails — 2.4% sensitivity at zero FP |
+| 5 | dichotomisation refit (binomial detector on a collapsed response) | refit counterfactual | ELIMINATED AS EVIDENCE — fires on 86.3% of healthy fits, discriminates nothing |
+| 6 | **curvature (Arm C)**: Schur complement of the `theta_rr_B` block within `sd_report$cov.fixed` — the loading-only curvature profiled over every other fixed effect (cutpoints, intercepts, dispersion), not the naive conditional block, which eigenvalue interlacing would hide a joint loading–cutpoint flat direction from | second-derivative structure of the fitted objective | **fails** — sensitivity 1.1–5.3% (reading-dependent on a scoring ambiguity that does not change the verdict; see below) against a ≥90% target |
+| 7 | **multi-start (Arm D)**: spread of the optimiser objective across `n_init = 5` restarts, scale-relative jitter (`0.5 × the cell's own DGP loading scale`, not a flat constant) | optimisation-surface multimodality | **fails** — sensitivity 7.3% against the same target |
+
+**Both new candidates were genuinely different information sources, not
+reruns of the same one.** Neither uses the fitted `Lambda_B` point estimate
+or the fitted cutpoints directly — Arm C uses the second-derivative
+structure TMB's own `sdreport()` already computes, and Arm D uses whether
+independently-perturbed optimisation runs agree, not any property of a
+single fitted matrix. The independence precondition each was
+pre-registered to clear (correlation against `max_loading_unit`, refusal
+bar `|r| >= 0.8`) **PASSES for both** — `cond_LL`: `r = 0.538`;
+`min_eig_scaled_per_obs`: `r = -0.452` — so this is not candidate #6 or #7
+being a disguised re-test of #1; both were measurably independent and
+still failed on their own terms. The exploratory `flag_C | flag_D`
+OR-combination (7.3%, identical to Arm D alone on the `n_init=5` subset)
+confirms Arm C adds nothing incremental even when paired with Arm D.
+
+**Scale of the failure, and why a genuine scoring-rule ambiguity found
+during independent scoring does not rescue it:** the independent scorer
+found the frozen document's threshold-selection rule under-specified in
+three ways (which comparison operator applies when a mechanically-derived
+threshold is scored against the very pool that defined it; whether `Inf`
+may define that threshold; how to treat a row where the statistic could
+not be computed at all) and reported all readings rather than picking one
+silently. Every reading puts Arm C's sensitivity between 1.1% and 5.3% and
+leaves Arm D's FP count between 0 and 1 out of 92 — the fail margin (83-89
+percentage points below target) is wider than any of these readings could
+close. The ambiguities are recorded as a post-hoc amendment in
+`pass-criteria-curvature.md` for a future campaign to specify explicitly;
+they are not a defect in this verdict.
+
+**Honest interpretation, stated precisely rather than overclaimed:** these
+two measurements say that **loading-block curvature (profiled over every
+other fixed effect) and multi-start objective disagreement do not
+characterise a degenerate ordinal optimum** on this evidence. This is NOT
+"no detector is possible" — it is a statement about these two specific,
+now-tested information sources. Both arms **remain disarmed**
+(`ordinal_liability_loading`'s `O1`/`O2` were never touched by this
+campaign and stay at `Inf`/`Inf`); this is documentation and evidence, not
+a behaviour change. A future attempt should not retry any of the seven
+candidates above on an overlapping fit pool without new information — per
+this programme's own multiple-testing discipline, a future campaign needs
+either a materially different information source again, or a fresh
+dataset.
+
 ### 8.3 Multinomial (`multinomial()`, fid 16) — `multinomial_contrast_degeneracy`
 
 Three arms over the `K-1` baseline-contrast pseudo-traits of one response
@@ -691,6 +759,13 @@ free partner trait.
   frozen calibration found no threshold meeting the sensitivity/FP
   conjunction, so both ordinal arms ship disarmed (§8.2); the multinomial
   FPR bound (~7.5%, 40 informative healthy fits) is unaffected.
+- **Ordinal curvature and multi-start disagreement (§8.2a, 2026-08-17)**:
+  measured and eliminated — sensitivity 1.1–5.3% and 7.3% respectively
+  against a ≥90% target, independence from the already-eliminated
+  `max_loading_unit` confirmed rather than assumed. Seven candidates now
+  eliminated in total; a working ordinal degeneracy detector remains an
+  open problem needing a genuinely new information source or a fresh
+  dataset, not a retry of any of the seven.
 
 ## See also
 

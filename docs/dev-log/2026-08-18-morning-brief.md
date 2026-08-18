@@ -23,8 +23,15 @@ night's chat. Post as-is, edit, or dictate changes. Posting is your act.
 3. **Slice 3 (#23)** — affine-rank response screen + ridge-path workflow + the
    MSPL-vs-ridge vignette sentence.
 
-Status at brief-writing: chain launched; each PR self-merges on green per your standing
-authority; anything estimand-visible stops and waits for you.
+Status as of ~07:00: **#1117 MERGED** (PR #1121; one CI-flake fixture honestly rescoped
+en route) · **#1118 MERGED** (PR #1122, plus the pkgdown index fix #1114 owed) ·
+**Slice 3 open as PR #1123**, CI running, self-merges on green. The adversarial-refute
+stage went **4-for-4** across the day — every producer, however briefed, shipped exactly
+one class-member short or one verdict-layer wrong, and the fresh-context refute caught
+every one. Two NEW issues filed from the Rose sweeps with measured evidence: **#1119**
+(spatial/kernel Psi never boundary-screened) and **#1120** (🔴 the nastiest: mixed-family
+fits silently SWAP trait↔family on unordered character columns — the silently-wrong-model
+class; worth prioritising).
 
 ## Also open for you (no rush)
 

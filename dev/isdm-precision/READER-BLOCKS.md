@@ -354,3 +354,74 @@ at all. The uncomfortable finding is that the *same* arm, if its coordinates
 are fuzzed, damages the slope while it repairs the bias. Both are true at once,
 and an article that reports only one of them is misleading. State the
 trade-off, do not resolve it.
+
+---
+
+## CORRECTION to Block 8 — my own demonstration did not demonstrate what I said
+
+**Block 8 above is wrong and must not be used as written.** It is left in place
+rather than deleted so the error is visible.
+
+The fit in Block 8 passed a raw `fmesher::fm_mesh_2d()` object as `mesh =` with
+a formula containing **no spatial term**. I then described a mechanism —
+"the mesh spans the union of both arms' locations, each row projected through
+`A_proj`" — that the fit never exercised. The fit converged and recovered
+sensible slopes because it was an ordinary non-spatial GLM.
+
+**How it was caught.** A mesh-resolution sweep returned slopes identical to
+three decimals across an 18-fold range of mesh nodes (59 to 1,081), which is
+not robustness but inertness. Direct test (`evidence-mesh-inert.R`):
+
+| fit | objective | npar |
+|---|---|---|
+| no mesh, no spatial term | 1403.424034 | 7 |
+| `mesh =` supplied, no spatial term | 1403.424034 | 7 |
+
+Identical to fifteen significant figures.
+
+### The defect this exposes (new; sibling of #1163)
+
+`gllvmTMB()` requires a mesh built by its own `make_mesh()`. Given a raw
+`fmesher` mesh:
+
+- **with** a spatial term -> a loud, correct error: *"Pass `mesh` as a result
+  of `make_mesh()`."*
+- **without** a spatial term -> **silently ignored**. No error, no warning.
+
+A reader who builds an `fm_mesh_2d()` (as every INLA tutorial teaches) and
+forgets the spatial term gets a converged, clean-looking, entirely
+**non-spatial** fit. This is the silent-fallback class again.
+
+### Block 8, redone properly
+
+`evidence-disjoint-arms-shared-field.R`: same disjoint design (0 shared site
+ids, 0 shared coordinates), mesh via `make_mesh(d, xy_cols = c("x","y"),
+cutoff = 0.4)` giving `A` of 810 rows x 220 nodes against 810 long rows — and
+this time **a real shared spatial field is present in the DGP**.
+
+| model | conv | iters | objective | npar | slopes (true 0.900 / -0.400 / 0.500) | mean abs err |
+|---|---|---|---|---|---|---|
+| no spatial term | 0 | 24 | 1691.782 | 7 | 1.063 / -0.530 / 0.469 | 0.108 |
+| `spatial_latent(d = 1)` | 0 | 54 | 1407.720 | 11 | 0.877 / -0.418 / 0.419 | **0.041** |
+| `spatial_dep` | 0 | 66 | 1407.720 | 14 | 0.877 / -0.418 / 0.419 | 0.041 |
+
+**delta logLik = 284.06** for 4 extra parameters. The field is emphatically
+detected, and omitting it biases the environmental slopes — mean absolute
+error falls 0.108 -> 0.041. Two of the three species improve substantially and
+one (C: 0.469 -> 0.419 against a true 0.500) gets slightly worse; report all
+three rather than the average alone.
+
+`spatial_dep` and `spatial_latent(d = 1)` reach the **same** objective here, so
+the 3 extra parameters of the unstructured field buy nothing on this DGP —
+which is expected, since the simulated field is rank-1 by construction.
+
+**One seed.** This is a feasibility-and-mechanism demonstration, not a recovery
+result.
+
+### What the article must say
+
+Arms need not share locations, rows, or unit labels — the field lives on the
+**mesh**, and `make_mesh()` must be built on the same long-format data passed
+to `gllvmTMB()` (the package checks `nrow(A) == n_obs` and errors if not).
+Say explicitly that a `mesh =` without a spatial term does nothing, because
+that trap is currently unguarded.

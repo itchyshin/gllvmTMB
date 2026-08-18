@@ -5182,6 +5182,15 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       tmb_params$logit_p_tweedie[!is.na(p_pin)] <-
         stats::qlogis(p_pin[!is.na(p_pin)] - 1)
       tmb_map$logit_p_tweedie <- dispersion_trait_map(mask_tweedie, !is.na(p_pin))
+    } else {
+      ## No trait has a user-supplied `p` -- still pin non-tweedie traits'
+      ## entries via the family mask alone. Mirrors the `else` branch below
+      ## for `log_df_student` (issue #1117 follow-up: this branch was
+      ## missing, so a default `tweedie()` mixed fit -- p = NULL on every
+      ## row -- never reached ANY logit_p_tweedie map and the non-tweedie
+      ## traits' entries stayed free).
+      m_p_tweedie <- dispersion_trait_map(mask_tweedie)
+      if (!is.null(m_p_tweedie)) tmb_map$logit_p_tweedie <- m_p_tweedie
     }
   }
   m_beta <- dispersion_trait_map(mask_beta)

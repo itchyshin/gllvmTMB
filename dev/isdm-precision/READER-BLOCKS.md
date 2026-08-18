@@ -478,3 +478,50 @@ matched and this is 5 seeds, not a campaign.
    -114.5 to -112.5 crosses the zone 11/12 line at -114 and triggers
    *"Coordinates span multiple UTM zones; using the most frequent zone."*
    That warning is real and should not be talked past.
+
+---
+
+## Block 12 — the offset confound is PEDAGOGICAL, not statistical (corrects my own severity rating)
+
+I listed `offset(log_effort)` being perfectly confounded with `isdm_source`
+(`cor = -1`, because effort is constant within arm) as a **high-severity**
+finding. **Measured, that rating is wrong.**
+
+**The slopes are unharmed** (`evidence-offset-confound.R`):
+
+| effort | cor(log_eff, arm) | conv | slopes (true 0.900 / -0.400 / 0.500) | mean abs err | warnings |
+|---|---|---|---|---|---|
+| constant within arm | +1.0000 | 0 | 0.881 / -0.402 / 0.489 | **0.0109** | none |
+| varies within arm | -0.0703 | 0 | 0.949 / -0.401 / 0.466 | 0.0284 | none |
+
+The confounded case is not worse — it is marginally better on this seed.
+
+**Why, proved directly:**
+
+| model | objective | slopes |
+|---|---|---|
+| `offset(log_eff)` + `src` | 1899.3262 | 0.8806 / -0.4022 / 0.4887 |
+| `src` only, **no offset** | **1899.3262** | 0.8806 / -0.4022 / 0.4887 |
+| offset only, no `src` | 1899.8430 | 0.8811 / -0.4022 / 0.4889 |
+
+The source intercept absorbs a constant-within-arm offset **exactly** —
+identical objective to eight significant figures. There is no identifiability
+problem because an offset carries **no free coefficient**: it is a known
+quantity, not something competing with the intercept for estimation. The
+environmental slopes are orthogonal to both.
+
+**So what IS wrong.** The article teaches the `offset(log_effort)` idiom in the
+one setting where the offset provably does nothing — a reader can delete it and
+get a bit-identical fit. They then carry the idiom to their own data, where
+effort *does* vary within arm and the offset is doing real work, having learned
+nothing about why. That is a pedagogical defect, and the reader cannot detect
+it, but it is not the statistical defect I claimed.
+
+**Fix for the article:** make effort vary within arm so the offset is doing
+visible work, and say in one line what an offset is (a known multiplier with no
+estimated coefficient) — which is exactly why it does not fight the arm
+intercept.
+
+**Not filed as an issue.** Nothing is silently wrong here; the model does the
+right thing. A note that an offset is exactly collinear with a fitted factor
+would be a kindness, not a bug fix.

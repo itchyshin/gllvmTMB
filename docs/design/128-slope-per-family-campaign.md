@@ -253,6 +253,34 @@ family is picked because (a) it is the cheapest of the three on structural groun
 `test-matrix-truncated.R`'s own header names it the "clean" pick, no dispersion parameter
 — and (b) its cited N is the smallest of the three open cells' floors.
 
+> **CORRECTION (2026-08-18, after attempting to run this spec).** The spec below is
+> **NOT EXECUTABLE AS WRITTEN**, and any future gate-removal campaign design must avoid
+> the same omission. `truncated_poisson` is `family_id` 10, deliberately ABSENT from
+> `.augmented_slope_family_contract()` (`R/fit-multi.R:453`) — that absence is the whole
+> reason this campaign exists. So the fit hard-errors at
+> `.augmented_slope_family_allowed()` (`R/fit-multi.R:2023`) *before TMB is ever reached*:
+> `phylo_indep() LHS richer than 0 + trait is not yet supported for this family`.
+> **A timing probe cannot measure a family the admission gate refuses to fit.**
+>
+> The fix is an explicit numbered step: a **temporary contract-table patch** (add
+> `family_id` 10 with `link_0 = TRUE`, marked in-code as measurement scaffolding and NOT
+> an admission), run the cell, then revert so `R/fit-multi.R` ends byte-identical to
+> `main`. Note that on 2026-08-18 the Claude Code auto-mode permission classifier blocked
+> *executing* R against a locally-modified `R/fit-multi.R`, so this step may need an
+> explicit Bash permission rule or a human-run session.
+>
+> **The wall-clock question was answered by proxy instead**
+> (`dev/prerun-truncated-poisson-RESULTS.md`): `poisson` — admitted, same log link, no
+> dispersion parameter, same augmented-slope route — on the identical fixture took
+> **9.216 s at `n_sp = 250`** and **15.277 s at `n_sp = 300`**, both `convergence = 0`,
+> `pdHess = TRUE`. **This refutes §5's framing:** the cited "~2.5–3.5 h" is the
+> betabinomial *arc* total (authoring, tests, review, CI), not fit time. These campaigns
+> are **authoring-bound, not compute-bound**, so §6's Totoro contingency is moot and a
+> multi-seed n-ladder — the actual bar for `partial` → ✓ — costs minutes, not hours.
+> Future slope cells should therefore be scoped richer than single-seed.
+> The proxy is NOT `truncated_poisson`'s own convergence evidence and creates no admission
+> claim for any family; `truncated_poisson` remains **ABORT/BLOCKED**, unmeasured.
+
 **Exact spec:**
 ```r
 devtools::load_all(quiet = TRUE)

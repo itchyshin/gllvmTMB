@@ -7,6 +7,20 @@ intervals. Soft scope **binary-first** (§3.1) is **APPROVED**. Companion ADEMP
 pre-reg is signed separately
 (`docs/dev-log/research/2026-08-17-mspl-profile-led-prereg-ademp.md`).
 
+**Amended 2026-08-18 — G4c is discharged: the profile fork is B.** The gate that
+this stub left open is now signed. **Fork B** (unpenalized Laplace at fixed MSPL
+nuisance) is the signature construction; **fork A** (profiling the penalised MSPL
+tape) is an **ablation arm only**; **fork C** (hybrid) is not picked. See §2.1 for
+the fork definitions and the measured reason. Recorded in
+`docs/dev-log/decisions.md` (2026-08-18). Also synced in this amendment: the
+Poisson \(W\) card is **SIGNED — REPLACE** and the tape change has **landed**
+([#1111](https://github.com/itchyshin/gllvmTMB/pull/1111), merge `3053fce3`), so
+every *"PARK SE doors"* reading below is historical (§3.1, §5); and MSPL-interval
+citations formerly written `D-148` now read **D-159** after the 2026-08-18 vault
+renumbering. What this amendment does **not** change: `MSPL-04` stays `blocked`,
+#1077 stays draft, no public `se=TRUE` / `vcov` / `confint`, no Totoro, no
+Design 118 recalibration, and SE-series family doors stay closed.
+
 This file opens the post–B1 construction path; it is **not** permission to run
 Totoro/DRAC, **not** permission to undraft [#1077](https://github.com/itchyshin/gllvmTMB/pull/1077),
 and **not** permission to ship public `confint` / `vcov` / `se=TRUE`.
@@ -26,7 +40,7 @@ commit that adds this file.
 | **D-157** | B1 PARK; later intervals = **new** construction + **new** pre-registration — not Design 118 recalibration, not \(n\to 2000\), no Totoro relaunch |
 | **D-12** | Profile = featured/hero CI; speed order Wald ≪ profile ≪ bootstrap |
 | **Triad Confirm SIGNED 2026-08-17** | Profile = signature; Wald(\(Q_0\)) = availability; Bootstrap = asymmetry (`docs/dev-log/research/2026-08-17-mspl-ci-wald-plus-profile.md`) |
-| **D-148 / D-149** | SE pins ≠ public CI; if/ever Wald SE → report \(Q_0\); public calibrated intervals withheld |
+| **D-159 / D-149** | **D-159** = MSPL-interval withhold / build-the-calibrated-route (vault; was mis-cited as D-148). **D-149** = SE pins ≠ public CI; if/ever Wald SE → report \(Q_0\). Public calibrated intervals still withheld. **D-148** is the never-ask-bare draft-reply rule — not this fence. |
 | **D-50 / D-139** | Campaign compute needs separate admission + G0; this stub authorises **docs only** |
 
 **Provenance for this stub:** R0 inventory
@@ -51,8 +65,11 @@ arm — without reusing the spent Design 118 / B1 Wald-calibrator.
 - Undrafting #1077 or wiring MSPL into public `confint`
 - Flipping register row **MSPL-04** off `blocked`
 - NEWS / article / README claims of `covered` intervals
-- Inventing Poisson \(W=\mathrm{diag}(\mu)\) KEEP / REPLACE (parallel G0 is
-  **SIGNED PARK SE doors** only — freeze, not tape edit)
+- Reopening Poisson \(W=\mathrm{diag}(\mu)\) KEEP (REPLACE is **SIGNED** and
+  landed on `main` as #1111 — tape change is done; SE-series family doors
+  stay closed)
+- Recalibrating Design 118 (a 2026-08-18 **D-148→D-159 numbering note** in
+  that file is the only authorised edit — not a protocol change)
 - Reopening Arc 1A LOOP (`docs/dev-log/lanes/cursor-mspl-arc-1a/` is historical)
 
 ---
@@ -75,7 +92,7 @@ arm — without reusing the spent Design 118 / B1 Wald-calibrator.
    (Design 125 §S2) must name refusal / fence rules explicitly.
 7. **MSPL-04 stays `blocked`** until this Design + pre-reg + evidence path
    succeeds.
-8. **Public doors stay closed** until separate G0s (D-148/D-149).
+8. **Public doors stay closed** until separate G0s (D-159/D-149).
 
 ---
 
@@ -89,6 +106,17 @@ arm — without reusing the spent Design 118 / B1 Wald-calibrator.
 
 Speed / cost order (D-12): **Wald → profile → bootstrap**.
 
+### 2.1 Profile fork (G4c SIGNED 2026-08-18 — fork B)
+
+The profile arm is **unpenalized Laplace at the fixed MSPL nuisance**.
+Fork A (penalised MSPL profile) is ablation only — the #1090 probe
+landing that tape must not be read as picking A. Fork C is not picked.
+This Design records the fork; the L0 lane implements it. Public
+`confint` stays refused. Reason: Kosmidis & Firth (2021) §2.2 — the
+finiteness-penalty coverage failure survives profiling, so a fork-A
+coverage programme is pre-refuted (`docs/dev-log/decisions.md`,
+2026-08-18).
+
 ---
 
 ## 3. Scope fence (stub defaults — S2 pre-reg may refine, not silently widen)
@@ -98,9 +126,9 @@ Speed / cost order (D-12): **Wald → profile → bootstrap**.
 **SIGNED soft G0 (2026-08-17) — G4a BINARY-FIRST:** **binary / Bernoulli
 LA-MSPL first** (logit / probit / cloglog as already admitted for MSPL point
 estimation). Poisson (and other count families) stay on the **point / SE-atom**
-track; with Poisson \(W\) now **SIGNED PARK SE doors** (not KEEP/REPLACE), they
-remain **out** of the first profile-led coverage claim set until a later widen
-G0.
+track. Poisson \(W\) is **SIGNED REPLACE** (#1111) — that is a tape fix, not
+a widen of this coverage claim. Count families remain **out** of the first
+profile-led coverage claim set until a later widen G0.
 
 ### 3.2 Estimands (narrow — refuse silent expansion)
 
@@ -122,10 +150,10 @@ targets, cross-family correlations, phylo/spatial tier parameters, model-level
 1. This stub (S1) — claim NN.
 2. ADEMP-style pre-registration (S2) — estimands, families, local-then-Totoro
    gates, refusal taxonomy frozen.
-3. Separate Shinichi G0 before any live profile implementation or undraft of
-   #1077.
-4. Local profile smoke only after that G0 (optional HANDS TO Codex; not this
-   docs arc).
+3. **2026-08-18:** G4c fork **B** is signed. L0 implements the unpenalized
+   profile path internally (`calibrated = FALSE`, public refuse). Undraft of
+   #1077 still needs a **separate** explicit G0.
+4. Local profile smoke (L1) only after L0 lands; not this docs arc.
 5. Totoro / claim-bearing campaign only after Design 124-style admission +
    D-50/D-139 G0 — **not authorised by this stub**.
 
@@ -157,7 +185,8 @@ messages, and which arms may still report diagnostics).
 | Register **MSPL-04** | Remains **`blocked`** |
 | Design **118** file | **Read-only**; no recalibration edits from this lane |
 | Public `se=TRUE` / `vcov` / Wald `confint` | **Closed** until separate G0 |
-| Poisson \(W\) card | **SIGNED PARK SE doors** (2026-08-17) — freeze new SE doors; tape unchanged; KEEP/REPLACE not invented |
+| Poisson \(W\) card | **SIGNED REPLACE** (2026-08-17; landed #1111) — working \(W_*\); SE-series family doors stay closed |
+| G4c profile fork | **SIGNED fork B** (2026-08-18) — unpenalized Laplace at fixed MSPL nuisance; A = ablation only |
 
 ---
 
@@ -183,11 +212,12 @@ This stub does **not**:
 - Authorise public `se=TRUE`.
 - Unblock MSPL-04.
 - Reopen Design 118, B1, Totoro, or Arc 1A.
-- Choose Poisson \(W\) KEEP / REPLACE (PARK SE doors is signed; tape stays).
+- Reopen Poisson \(W\) KEEP (REPLACE is signed and landed; SE doors stay closed).
 - Ship NEWS `covered` language.
 
-**Companions (2026-08-17):** ADEMP pre-reg
-`docs/dev-log/research/2026-08-17-mspl-profile-led-prereg-ademp.md`; Poisson W
-`docs/dev-log/research/2026-08-17-mspl-poisson-W-G0.md` (**PARK SE doors**);
-decision queue `LOOP/decision-queue.md`. Next: V1/C1; **not** undraft #1077.
+**Companions:** ADEMP pre-reg
+`docs/dev-log/research/2026-08-17-mspl-profile-led-prereg-ademp.md` (2026-08-18
+G4c + REPLACE sync in the same PR); Poisson W
+`docs/dev-log/research/2026-08-17-mspl-poisson-W-G0.md` (**SIGNED REPLACE**,
+#1111). Next: L0 plumbing (sibling lane); **not** undraft #1077.
 

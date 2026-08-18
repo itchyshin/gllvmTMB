@@ -3,7 +3,7 @@
 **Date:** 2026-08-17
 **Status:** research sketch only — **not** a Design number, **not** a pre-registration, **not** permission to run Totoro
 **Closes the “is SE-first OK?” question for intervals:** **re-aim**
-**Binding decisions:** D-157 (B1 PARKED), D-149 (pins ≠ public intervals), D-148 (public calibrated intervals withheld), **D-12** (profile = featured/hero CI)
+**Binding decisions:** D-157 (B1 PARKED), D-149 (pins ≠ public intervals), D-159 (public calibrated intervals withheld; was mis-cited as D-148), **D-12** (profile = featured/hero CI)
 **Triad amendment (same day):** `docs/dev-log/research/2026-08-17-mspl-ci-wald-plus-profile.md` — Profile = signature; Wald (\(Q_0\)) = quickest baseline; Bootstrap = asymmetry
 
 ---

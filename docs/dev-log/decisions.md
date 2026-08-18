@@ -2,6 +2,70 @@
 
 Date-stamped one-paragraph design decisions. Append-only.
 
+## 2026-08-18  G0 SIGNED: Design 125 G4c — MSPL profile fork **B** (unpenalized Laplace at fixed MSPL nuisance); fork A is ablation only
+
+Decision (Shinichi, chat, 2026-08-18 — explicit paste against the deferred G4c
+gate, not blanket lane approval): the Design 125 profile fork is **B**. The
+signature profile path for LA-MSPL intervals inverts a likelihood ratio built on
+the **unpenalized** Laplace-approximated marginal likelihood, evaluated at
+nuisance parameters **fixed at their MSPL values**. Fork **A** (profiling the
+penalised MSPL tape) is retained as an **ablation arm only** — measurable,
+reportable as a comparator, never the claim path. Fork **C** (hybrid) is **not
+picked** and is out of the v1 claim set.
+
+This **discharges G4c `FORK-DEFER`**, which had been `SIGNED` on 2026-08-17 as
+*"no live profile impl / smoke until fork G0"* and was the single gate blocking
+G3 smoke. `docs/design/125-mspl-profile-led-intervals.md`,
+`docs/dev-log/research/2026-08-17-mspl-profile-led-prereg-ademp.md` and
+`LOOP/decision-queue.md` are updated to read **FORK-B** rather than
+**FORK-DEFER**.
+
+**Why B and not A** — the reason is measured, not stylistic. Kosmidis & Firth
+(2021, *Biometrika* 108(1):71–82, §2.2 p. 5), read directly and verified
+2026-08-17 (`docs/dev-log/research/2026-08-17-kosmidis-firth-2021-profile-caveat.md`),
+state that the coverage failure under a finiteness penalty *"is also true when
+the penalized likelihood is profiled for the construction of confidence
+intervals"*. The mechanism rules out the obvious workaround: this is **not** a
+quadratic-approximation artefact — the one failure mode profiling repairs — but
+a consequence of their Corollary 1, that with binomial responses the penalised
+estimator takes only finitely many values with finite components while the true
+parameter is unbounded. Profiling changes the interval's shape, not the
+boundedness of what it is built from. **Fork A therefore profiles exactly the
+object the penalty's own authors say cannot be made to cover**, so a fork-A
+coverage programme would be pre-refuted; fork B profiles the unpenalized
+objective and is not reached by that argument. The transfer of the caveat from a
+fixed-design binomial GLM to a latent-variable GLLVM remains **AGENT-INFERRED,
+not established** — which is a reason to prefer B, not a licence to claim B
+covers.
+
+**What B still does not have.** No evidence that fork B's intervals cover: B is
+now the *named construction to be tested* under the SIGNED ADEMP pre-registration,
+not a validated one. `MSPL-04` stays **`blocked`**. Hard stops unchanged and
+explicitly **not** waived here: no public `se = TRUE` / `vcov()` / `confint()`;
+#1077 stays **draft** (undraft needs its own explicit ask); no Totoro/DRAC
+(D-50/D-139); no Design 118 or B1 reopen (D-157); no NEWS/article `covered`
+language; `codex/lane-b-mspl-interval-feasibility` stays **PROTECTED**. G3
+`WAIT` is **not** auto-lifted by this decision — local profile smoke still needs
+its own smoke G0, now unblocked on the fork axis alone. `R/` and `src/` are
+untouched by this sitting; the L0 plumbing arm is a separate lane.
+
+**Ledger-citation correction shipped with this entry.** Vault decisions
+renumbered the MSPL-interval decision from `D-148` to
+[`D-159`](../../../shinichi-brain/memory/DECISIONS.md) on 2026-08-18, because
+`D-148` had been reused hours later by the *never-ask-a-bare-question* rule and
+a Markdown anchor resolves to the first matching heading. Every gllvmTMB
+citation that meant *MSPL-interval withhold / calibrated route / jackknife
+rejected* now reads **D-159**; the two citations that genuinely meant
+*paste-ready draft answer* (`2026-08-17-mspl-b1-aftermath-G0.md`) still read
+**D-148**, correctly. **D-149** (SE pins ≠ public intervals; Lane B ownership) is
+unchanged throughout.
+
+**Poisson \(W\) PARK → REPLACE sync (same sitting, not a new G0).** Design 125
+and the ADEMP pre-reg still presented `G1 PARK SE doors` / "tape unchanged"
+as current. That freeze was superseded on 2026-08-17 and landed on `main`
+as #1111 (`3053fce3`). Those two files now say **SIGNED REPLACE**. SE-series
+family doors and public `se` stay closed.
+
 ## 2026-08-17  G0 SIGNED: Poisson MSPL \(W\) — REPLACE with working \(W_*\) (supersedes PARK)
 
 Decision (Shinichi, chat — *"as you recommended"* after Cursor’s REPLACE

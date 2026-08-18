@@ -163,7 +163,7 @@ survivor.
 
 `MSPL-04` `blocked` · \(Q_0\) the paper-aligned SE target, \(Q_P\) availability-only (D-149, #1061) ·
 no public `se=TRUE` / `vcov()` / `confint()` · Design 118 not reopened, B1 PARKED (D-157) · jackknife
-rejected (D-148) · **Codex Lane B remains the binomial SE owner** and
+rejected (D-159 — committed as `D-148`, renumbered 2026-08-18) · **Codex Lane B remains the binomial SE owner** and
 `codex/lane-b-mspl-interval-feasibility` is **PROTECTED** (*"No absorb/rebase/merge"*).
 
 ## 8. OWED — next immediate steps, narrow

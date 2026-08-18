@@ -105,8 +105,25 @@
 #'
 #' Supply a list of descriptors when response traits use different families.
 #' The data column `family` selects an element for each row. Set
-#' `attr(families, "family_var")` to select a differently named column. Names on
-#' the list are matched to selector levels; an unnamed list is matched by order.
+#' `attr(families, "family_var")` to select a differently named column.
+#'
+#' **Ordering contract.** Name the list to match the selector column's
+#' values, e.g. `list(gaussian = gaussian(), student = student())` --
+#' matching by name is unambiguous and always accepted. An *unnamed* list is
+#' matched positionally to the selector column's levels (`levels()` for a
+#' factor, alphabetical `sort(unique(...))` otherwise); this is validated,
+#' not merely assumed, by checking that reading against each family's own
+#' name (e.g. a `"student"` level naturally means `student()`) agrees with
+#' where the list put it. When the two readings agree -- which is true
+#' whenever the list is already written in level order -- the fit proceeds
+#' silently. When they disagree, that disagreement is precisely the
+#' silent-swap failure mode (issue #1120: `list(student(), gaussian())`
+#' against `family = rep(c("student","gaussian"), each = n)` used to pair
+#' the student rows with `gaussian()` and vice versa, with no warning and a
+#' converged fit), and the list is refused with an error showing both
+#' readings. A selector column whose values carry no name evidence at all
+#' (arbitrary labels such as `"count"`/`"binary"`) still uses list order,
+#' but the resolved pairing is reported once so it stays auditable.
 #'
 #' Ordinarily the family may vary *between* traits but not *within* one: all
 #' rows of a given trait must share one family and link, and a fit that mixes

@@ -96,22 +96,28 @@ screen_control <- function(
 #' really the dummy coding of one categorical variable and sum to exactly 1
 #' on every complete row (a review-type, geographic-scope, or temporal-scope
 #' set is a typical source). It works by an affine-rank check on the
-#' augmented response matrix `cbind(1, Y)` over complete Bernoulli rows
+#' augmented response matrix `M = cbind(1, Y)` over complete Bernoulli rows
 #' (rows where every screened trait is observed), using base R's [qr()] with
-#' a dimension-scaled tolerance. A rank deficiency means at least one exact
-#' affine dependency exists among the traits; the screen reports that count
-#' and, where cheaply recoverable from the matrix's null space, a
-#' human-readable certificate naming the traits and the relation (for
-#' example `"A + B + C = 1"`). This is a best-effort report, not exhaustive
+#' tolerance `sqrt(.Machine$double.eps) * max(dim(M))` (the usual
+#' dimension-scaled machine-precision rule, so the check tightens
+#' automatically on a larger response matrix rather than using one fixed
+#' constant regardless of size). The `$design` table's
+#' `response_affine_rank` row reports the matrix's rank (`value`) and its
+#' column count (`threshold`, `= ncol(M)`); a rank deficiency --
+#' `threshold - value` -- means at least one exact affine dependency exists
+#' among the traits. The `$response_dependencies` table then adds, where
+#' cheaply recoverable from the matrix's null space, a human-readable
+#' certificate naming the traits and the relation (for example
+#' `"A + B + C = 1"`). This is a best-effort report, not exhaustive
 #' minimal-subset discovery: with more than one simultaneous exact
 #' dependency the automatic search can fail to decompose the null space into
-#' individually clean certificates, in which case the row records the
-#' deficiency without a certificate. Declaring known structure via
-#' `known_groups` sidesteps that limitation with an exact, deterministic,
-#' per-group check. An exact one-hot block is not itself a bug to silently
-#' filter -- it is one categorical variable, and belongs in
-#' [multinomial()] or a deliberate reference-level coding, not in several
-#' unconstrained binary traits.
+#' individually clean certificates, in which case the remaining deficiency
+#' is reported without a certificate (`type = "unresolved"`), never silently
+#' dropped. Declaring known structure via `known_groups` sidesteps that
+#' limitation with an exact, deterministic, per-group check. An exact
+#' one-hot block is not itself a bug to silently filter -- it is one
+#' categorical variable, and belongs in [multinomial()] or a deliberate
+#' reference-level coding, not in several unconstrained binary traits.
 #'
 #' With `screen_control(separation = "fixed")`, the screen uses the optional
 #' `detectseparation` package to classify the observed fixed design. This
@@ -142,16 +148,22 @@ screen_control <- function(
 #'   normalized against the expanded fixed-effect columns as in [gllvmTMB()].
 #'   This argument is used by the opt-in fixed-design separation screen.
 #' @param known_groups Optional named list of character vectors of trait
-#'   names. Each element declares a set of traits the user believes forms an
-#'   exact one-hot (simplex) block or a nesting/containment chain -- for
-#'   example the dummy columns of one categorical review-type or
-#'   geographic-scope variable, or a broad-realm indicator together with a
-#'   narrower nested realm. Each declared group is checked against the
-#'   observed complete rows with an exact deterministic test (row sums for a
-#'   one-hot block; a containment chain in the order the group is written for
-#'   nesting) and reported as its own row in the `response_dependencies`
-#'   table, independent of the automatic affine-rank screen below. Screening
-#'   is Bernoulli-only, matching the automatic screen.
+#'   names, each with at least two distinct names (duplicated names within
+#'   one group are an error). Each element declares a set of traits the
+#'   user believes forms an exact one-hot (simplex) block or a
+#'   nesting/containment chain -- for example the dummy columns of one
+#'   categorical review-type or geographic-scope variable, or a broad-realm
+#'   indicator together with a narrower nested realm. Each declared group is
+#'   checked against the observed complete rows with an exact deterministic
+#'   test: row sums for a one-hot block, or a containment chain checked in
+#'   BOTH the order written and its reverse for nesting (so it does not
+#'   matter which end of a real chain the group happens to name first). A
+#'   group whose members are all constant on the complete rows is reported
+#'   separately (not as a nesting chain: the chain condition is vacuously
+#'   true for two constants and would not be genuine evidence). Each result
+#'   is its own row in the `response_dependencies` table, independent of the
+#'   automatic affine-rank screen below. Screening is Bernoulli-only,
+#'   matching the automatic screen.
 #' @param control A [screen_control()] object.
 #' @return A `gllvmTMB_screen` object. Use [screen_table()] to extract
 #'   report-ready tables.
@@ -1380,8 +1392,22 @@ print.gllvmTMB_screen <- function(x, ...) {
 
 ## Exact, deterministic checks for a user-declared known_groups entry: does
 ## it sum to exactly 1 on every complete row (one-hot), or does it form an
-## exact containment chain in the order it was written (nesting)? Unlike the
-## automatic affine-rank search, this never has to guess a decomposition.
+## exact containment chain (nesting)? Unlike the automatic affine-rank
+## search, this never has to guess a decomposition. Two guards keep the
+## check honest:
+##
+## - A group where every member is CONSTANT on the complete rows makes the
+##   nesting chain condition (`col[j] >= col[j+1]`) vacuously TRUE (e.g. two
+##   all-zero traits: 0 >= 0 on every row) without the traits being
+##   genuinely nested -- and each constant member is already reported on
+##   its own (as a $traits FAIL / a deflated_constant row), so reporting a
+##   "known_nesting" FAIL on top would be misleading, not additional
+##   evidence. Degenerate (all-constant) groups are reported PASS with a
+##   distinguishing message instead.
+## - Nesting is checked in BOTH the declared order and its reverse, since a
+##   real containment chain does not depend on which end the user happened
+##   to write first; the certificate reports whichever direction actually
+##   holds.
 .screen_known_group_rows <- function(info, known_groups) {
   rows <- list()
   for (gname in names(known_groups)) {
@@ -1389,6 +1415,11 @@ print.gllvmTMB_screen <- function(x, ...) {
     if (!is.character(group) || length(group) < 2L) {
       cli::cli_abort(
         "{.arg known_groups[[{gname}]]} must be a character vector of at least two trait names."
+      )
+    }
+    if (anyDuplicated(group) > 0L) {
+      cli::cli_abort(
+        "{.arg known_groups[[{gname}]]} names the same trait more than once."
       )
     }
     if (!isTRUE(info$ok)) {
@@ -1415,12 +1446,21 @@ print.gllvmTMB_screen <- function(x, ...) {
     }
     Yg <- info$Y[, group, drop = FALSE]
     tol <- 1e-8
-    one_hot_ok <- all(abs(rowSums(Yg) - 1) < tol)
-    nesting_ok <- all(vapply(
-      seq_len(ncol(Yg) - 1L),
-      function(j) all(Yg[, j] >= Yg[, j + 1L]),
+    degenerate <- all(vapply(
+      seq_len(ncol(Yg)),
+      function(j) length(unique(Yg[, j])) <= 1L,
       logical(1L)
     ))
+    one_hot_ok <- !degenerate && all(abs(rowSums(Yg) - 1) < tol)
+    is_chain <- function(order_idx) {
+      all(vapply(
+        seq_len(length(order_idx) - 1L),
+        function(j) all(Yg[, order_idx[[j]]] >= Yg[, order_idx[[j + 1L]]]),
+        logical(1L)
+      ))
+    }
+    nesting_fwd <- !degenerate && is_chain(seq_len(ncol(Yg)))
+    nesting_rev <- !degenerate && !nesting_fwd && is_chain(rev(seq_len(ncol(Yg))))
     if (one_hot_ok) {
       rows[[length(rows) + 1L]] <- .screen_response_dependency_row(
         "known_group",
@@ -1440,7 +1480,9 @@ print.gllvmTMB_screen <- function(x, ...) {
           length(group)
         )
       )
-    } else if (nesting_ok) {
+    } else if (nesting_fwd || nesting_rev) {
+      chain_order <- if (nesting_fwd) group else rev(group)
+      reversed_note <- if (nesting_rev) " (reversed from the order given)" else ""
       rows[[length(rows) + 1L]] <- .screen_response_dependency_row(
         "known_group",
         gname,
@@ -1448,14 +1490,31 @@ print.gllvmTMB_screen <- function(x, ...) {
         "FAIL",
         "exact_dependency",
         paste(group, collapse = ", "),
-        paste(group, collapse = " >= "),
+        paste(chain_order, collapse = " >= "),
         info$n_rows,
         "inspect",
         sprintf(
-          "declared group '%s' forms an exact nesting/containment chain on every complete row (%d rows), in the order written (%s): the narrower trait is never present without its declared broader trait",
+          "declared group '%s' forms an exact nesting/containment chain on every complete row (%d rows)%s: %s: the narrower trait is never present without its broader trait",
           gname,
           info$n_rows,
-          paste(group, collapse = " contains ")
+          reversed_note,
+          paste(chain_order, collapse = " contains ")
+        )
+      )
+    } else if (degenerate) {
+      rows[[length(rows) + 1L]] <- .screen_response_dependency_row(
+        "known_group",
+        gname,
+        "known_group_degenerate",
+        "PASS",
+        "none",
+        paste(group, collapse = ", "),
+        NA_character_,
+        info$n_rows,
+        "keep",
+        sprintf(
+          "declared group '%s' is not checked for nesting or a one-hot sum: every member is constant on the complete rows, which would make a chain condition vacuously true without evidence of a genuine relationship; see each trait's own constant-response row instead",
+          gname
         )
       )
     } else {
@@ -1470,7 +1529,7 @@ print.gllvmTMB_screen <- function(x, ...) {
         info$n_rows,
         "keep",
         sprintf(
-          "declared group '%s' did not show an exact one-hot sum or a nesting containment chain on the observed rows",
+          "declared group '%s' did not show an exact one-hot sum or a nesting containment chain (either direction) on the observed rows",
           gname
         )
       )

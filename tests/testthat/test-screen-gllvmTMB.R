@@ -534,3 +534,75 @@ test_that("screen_gllvmTMB() certificate survives a one-hot block plus a duplica
 
   expect_equal(nrow(deps[deps$type == "unresolved", ]), 0L)
 })
+
+test_that("screen_gllvmTMB() rejects a known_groups entry with a duplicated trait name", {
+  n <- 20
+  set.seed(3)
+  df <- data.frame(
+    unit = factor(seq_len(n)),
+    a = rbinom(n, 1, 0.5),
+    b = rbinom(n, 1, 0.5)
+  )
+  expect_error(
+    screen_gllvmTMB(
+      traits(a, b) ~ 1 + latent(1 | unit, d = 1),
+      data = df,
+      unit = "unit",
+      family = binomial(),
+      known_groups = list(g = c("a", "a"))
+    ),
+    class = "rlang_error"
+  )
+})
+
+test_that("screen_gllvmTMB() does not report a nesting certificate for two constant traits", {
+  n <- 20
+  set.seed(4)
+  df <- data.frame(
+    unit = factor(seq_len(n)),
+    c0 = 0,
+    c1 = 0,
+    other = rbinom(n, 1, 0.5)
+  )
+  scr <- suppressWarnings(screen_gllvmTMB(
+    traits(c0, c1, other) ~ 1 + latent(1 | unit, d = 1),
+    data = df,
+    unit = "unit",
+    family = binomial(),
+    known_groups = list(g = c("c0", "c1"))
+  ))
+  deps <- screen_table(scr, "response_dependencies")
+  kg <- deps[deps$scope == "known_group", ]
+  expect_false(identical(kg$type, "known_nesting"))
+})
+
+test_that("screen_gllvmTMB() known_groups nesting check works in either declared order", {
+  n <- 20
+  df <- data.frame(
+    unit = factor(seq_len(n)),
+    A = rep(c(1, 1, 0), length.out = n),
+    B = rep(c(1, 0, 0), length.out = n)
+  )
+  scr_fwd <- screen_gllvmTMB(
+    traits(A, B) ~ 1 + latent(1 | unit, d = 1),
+    data = df,
+    unit = "unit",
+    family = binomial(),
+    known_groups = list(g = c("A", "B"))
+  )
+  scr_rev <- screen_gllvmTMB(
+    traits(A, B) ~ 1 + latent(1 | unit, d = 1),
+    data = df,
+    unit = "unit",
+    family = binomial(),
+    known_groups = list(g = c("B", "A"))
+  )
+  kg_fwd <- screen_table(scr_fwd, "response_dependencies")
+  kg_fwd <- kg_fwd[kg_fwd$scope == "known_group", ]
+  kg_rev <- screen_table(scr_rev, "response_dependencies")
+  kg_rev <- kg_rev[kg_rev$scope == "known_group", ]
+  expect_equal(kg_fwd$type, "known_nesting")
+  expect_equal(kg_fwd$status, "FAIL")
+  expect_equal(kg_rev$type, "known_nesting")
+  expect_equal(kg_rev$status, "FAIL")
+})

@@ -51807,7 +51807,6 @@ decision recorded in the after-task, not silently skipped).
 
 After-task: `docs/dev-log/after-task/2026-08-16-model2-multisource.md`.
 
->>>>>>> 251e9b9b (docs(release): record post-deployment 0.6 artifact)
 ## 2026-08-12 — post-deployment exact 0.6 artifact
 
 At merged `origin/main` commit `cb3126893883ff9fb0c6114129c158fe0e649be8`,
@@ -52903,11 +52902,9 @@ TMPDIR=/tmp Rscript --vanilla -e 'Sys.setenv(GLLVMTMB_CRAN07_RECERTIFY = "true")
 git diff --check
 # PASS
 ```
-<<<<<<< HEAD
 
 No package source, public documentation, validation-register status, NEWS,
 version, CI, artifact, tag, or GitHub issue state changed. The results retain
 the no-remedy fence: no warning, convergence criterion, optimizer-control
 change, or release claim is admitted.
 
-=======

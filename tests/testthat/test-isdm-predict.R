@@ -138,3 +138,219 @@ test_that("newdata with an unseen unit level falls back to the fixed-only predic
   fixed_only_pred <- suppressMessages(predict(fit, newdata = nd_new, re_form = ~0))
   expect_equal(unseen_pred$est, fixed_only_pred$est)
 })
+
+## ---------------------------------------------------------------------------
+## #1132 regression tests. Three defects in predict.gllvmTMB_multi's newdata
+## path, each measured in Design 126 section 3. Defects 2 and 3 reuse the
+## fixture above at no extra fitting cost; defect 1 needs a spatial fit and
+## builds one lazily, inside the block, so an SPDE fit never enters a routine
+## CRAN run (the file-level fixture above is NOT skip_on_cran()-protected).
+## ---------------------------------------------------------------------------
+
+test_that("#1132 defect 3: newdata response uses each ROW's own arm, not the trait's modal family", {
+  skip_if_not_installed("TMB")
+  fit <- .isdm_pred_fx$fit
+  dat <- .isdm_pred_fx$dat
+  i_pa <- which(dat$isdm_source == "survey")
+
+  in_sample <- suppressMessages(predict(fit, type = "response"))
+  on_newdata <- suppressMessages(predict(fit, newdata = dat, type = "response"))
+
+  ## The in-sample response is the certified baseline (block 2 above). At
+  ## newdata == training data the two must agree exactly. Before the fix the
+  ## per-trait modal reduction gave max|diff| = 1.42.
+  expect_equal(on_newdata$est, in_sample$est)
+
+  ## The measured symptom: the cloglog detection arm was pushed through the
+  ## Poisson arm's exp(), returning "probabilities" in [0.253, 2.32].
+  expect_true(all(on_newdata$est[i_pa] >= 0 & on_newdata$est[i_pa] <= 1))
+
+  ## And it is the RIGHT inverse link, not merely an in-range one.
+  link_out <- suppressMessages(predict(fit, newdata = dat, type = "link"))
+  expect_equal(
+    on_newdata$est[i_pa],
+    -expm1(-exp(link_out$est[i_pa]))
+  )
+})
+
+test_that("#1132 defect 2: re_form is honoured in-sample, and for NA / numeric 0", {
+  skip_if_not_installed("TMB")
+  fit <- .isdm_pred_fx$fit
+
+  ## The reference: fixed effects + offset on the training rows.
+  eta_fixed <- .gllvmTMB_predict_fixed_eta(fit, .gllvmTMB_training_X_fix(fit)) +
+    .gllvmTMB_offset_vec(fit)
+
+  default <- suppressMessages(predict(fit))
+  zero <- suppressMessages(predict(fit, re_form = ~0))
+
+  ## Before the fix the in-sample branch never read re_form: this returned
+  ## report$eta, i.e. the full conditional predictor, on the package's
+  ## DEFAULT calling convention.
+  expect_equal(zero$est, as.numeric(eta_fixed))
+  expect_gt(sd(default$est - zero$est), 0)
+
+  ## NA is a documented form; numeric 0 is the obvious slip. Both were
+  ## silently ignored on BOTH paths.
+  expect_equal(suppressMessages(predict(fit, re_form = NA))$est, zero$est)
+  expect_equal(suppressMessages(predict(fit, re_form = 0))$est, zero$est)
+
+  ## fitted() forwards ... to the same in-sample path (Ayumi #25, PR #1114),
+  ## so its roxygen claim that re_form "works here too" is now true.
+  expect_equal(
+    suppressMessages(fitted(fit, type = "link", re_form = ~0))$est,
+    zero$est
+  )
+
+  ## An unsupported form must be loud, not silently full-RE (how ~1 passed).
+  expect_warning(
+    suppressMessages(predict(fit, re_form = ~1)),
+    class = "gllvmTMB_predict_re_form_unsupported"
+  )
+})
+
+test_that("#1132 defect 1: a spatial fit's SPDE field survives the newdata path", {
+  skip_on_cran()
+  skip_if_not_installed("TMB")
+  skip_if_not_installed("fmesher")
+
+  ## Cheap gaussian spatial fixture, matching the shape used across the suite
+  ## (test-spatial-mode-dispatch.R) and the configuration the adversarial
+  ## verification used to reproduce this defect on a NON-isdm fit.
+  set.seed(1)
+  sim <- gllvmTMB::simulate_site_trait(
+    n_sites = 30, n_species = 1, n_traits = 2,
+    mean_species_per_site = 1,
+    spatial_range = 0.3, sigma2_spa = c(0.4, 0.4),
+    seed = 1
+  )
+  df <- sim$data
+  mesh <- tryCatch(
+    gllvmTMB::make_mesh(df, c("lon", "lat"), cutoff = 0.1),
+    error = function(e) NULL
+  )
+  skip_if(is.null(mesh), "mesh build failed")
+
+  fit <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+    value ~ 0 + trait + spatial_scalar(0 + trait | coords),
+    data = df, mesh = mesh, silent = TRUE
+  )))
+  expect_equal(fit$opt$convergence, 0L)
+  expect_true(isTRUE(fit$use$spde))
+
+  in_sample <- suppressMessages(predict(fit))
+  on_newdata <- suppressMessages(predict(fit, newdata = df))
+
+  ## The strong identity (verify-report.md VER[D4]): at training rows the
+  ## rebuilt predictor must reproduce report$eta EXACTLY. Before the fix the
+  ## field was absent, giving a dropped piece of sd 0.516 against eta sd
+  ## 0.786 -- and newdata ~. equalled ~0, because nothing was re-added.
+  expect_equal(on_newdata$est, in_sample$est)
+
+  fixed_only <- suppressMessages(predict(fit, newdata = df, re_form = ~0))
+  expect_gt(sd(on_newdata$est - fixed_only$est), 0)
+
+  ## This fit's ONLY random tier is the field, so the difference from the
+  ## fixed-only prediction is the whole random-effect contribution.
+  expect_equal(
+    on_newdata$est - fixed_only$est,
+    in_sample$est - fixed_only$est
+  )
+})
+
+test_that("#1132 defect 1: a tier that cannot be re-added is named, not dropped in silence", {
+  skip_on_cran()
+  skip_if_not_installed("TMB")
+
+  set.seed(1)
+  sim <- gllvmTMB::simulate_site_trait(
+    n_sites = 30, n_species = 1, n_traits = 2,
+    mean_species_per_site = 1, seed = 1
+  )
+  df <- sim$data
+  df$grp <- factor(rep(letters[1:5], length.out = nrow(df)))
+
+  ## re_int is an active eta tier this path cannot reconstruct.
+  fit <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+    value ~ 0 + trait + latent(0 + trait | site, d = 1) + (1 | grp),
+    data = df, silent = TRUE
+  )))
+  expect_true(isTRUE(as.integer(fit$tmb_data$use_re_int) == 1L))
+
+  expect_warning(
+    suppressMessages(predict(fit, newdata = df)),
+    class = "gllvmTMB_predict_newdata_re_dropped"
+  )
+
+  ## re_form = ~0 makes no such claim, so it must stay quiet.
+  expect_no_warning(suppressMessages(predict(fit, newdata = df, re_form = ~0)))
+})
+
+test_that("#1132: a fully-handled fit does not raise a false alarm", {
+  skip_on_cran()
+  skip_if_not_installed("TMB")
+  skip_if_not_installed("fmesher")
+
+  ## fit$use carries MODE DESCRIPTORS (spatial_scalar) alongside the engine
+  ## flag (spde) that actually adds the term. Warning on those would flag a
+  ## prediction that is exactly right -- worse than useless, because it
+  ## teaches the reader to ignore the warning.
+  set.seed(1)
+  sim <- gllvmTMB::simulate_site_trait(
+    n_sites = 30, n_species = 1, n_traits = 2,
+    mean_species_per_site = 1,
+    spatial_range = 0.3, sigma2_spa = c(0.4, 0.4), seed = 1
+  )
+  df <- sim$data
+  mesh <- tryCatch(
+    gllvmTMB::make_mesh(df, c("lon", "lat"), cutoff = 0.1),
+    error = function(e) NULL
+  )
+  skip_if(is.null(mesh), "mesh build failed")
+  fit <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+    value ~ 0 + trait + spatial_scalar(0 + trait | coords),
+    data = df, mesh = mesh, silent = TRUE
+  )))
+  expect_true(isTRUE(fit$use$spatial_scalar))
+  expect_no_warning(suppressMessages(predict(fit, newdata = df)))
+})
+
+test_that("#1132: coordinates outside the mesh hull warn instead of returning a silent zero field", {
+  skip_on_cran()
+  skip_if_not_installed("TMB")
+  skip_if_not_installed("fmesher")
+
+  ## Found by the adversarial verification of the SPDE re-add. fmesher returns
+  ## an all-zero basis row outside the hull, so the field reads as exactly 0 --
+  ## a blank patch of map indistinguishable from a cold one. make_mesh()
+  ## rejects such rows at FIT time, so predict() must not be quietly more
+  ## permissive than the fit was.
+  set.seed(1)
+  sim <- gllvmTMB::simulate_site_trait(
+    n_sites = 30, n_species = 1, n_traits = 2,
+    mean_species_per_site = 1,
+    spatial_range = 0.3, sigma2_spa = c(0.4, 0.4), seed = 1
+  )
+  df <- sim$data
+  mesh <- tryCatch(
+    gllvmTMB::make_mesh(df, c("lon", "lat"), cutoff = 0.1),
+    error = function(e) NULL
+  )
+  skip_if(is.null(mesh), "mesh build failed")
+  fit <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+    value ~ 0 + trait + spatial_scalar(0 + trait | coords),
+    data = df, mesh = mesh, silent = TRUE
+  )))
+
+  far <- df
+  far$lon <- df$lon + 500
+  far$lat <- df$lat + 500
+  expect_warning(
+    suppressMessages(predict(fit, newdata = far)),
+    class = "gllvmTMB_predict_newdata_outside_mesh"
+  )
+
+  ## In-domain rows must stay quiet -- a warning that fires on good input is
+  ## the failure mode this whole block exists to avoid.
+  expect_no_warning(suppressMessages(predict(fit, newdata = df)))
+})

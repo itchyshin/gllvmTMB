@@ -53085,3 +53085,45 @@ eta-coverage 0.23–0.82 (measured negative; falls with grid size); E2 Lambda
 never ADREPORTed with SE; E3 not computable. No register row moved; no
 public claim; next campaign needs its own pre-registration + approval.
 Deliberately not run: `devtools::check()` (no package code touched).
+
+## 2026-08-18 — Claude #1132 predict(newdata=) defect fixes (`claude/isdm-1132-predict-defects`)
+
+Fixed the three Design 126 §3 defects in `predict.gllvmTMB_multi`, plus a
+fourth found in the same block. (1) SPDE field re-added on the `newdata` path
+via `fmesher::fm_basis()` on the stored mesh, mirroring
+`src/gllvmTMB.cpp:2418-2423` / `2518-2528` across the per-trait, low-rank and
+`unique` paths; every other active engine tier now warns naming itself
+(class `gllvmTMB_predict_newdata_re_dropped`). (2) `re_form` honoured on BOTH
+paths for `~0`, `NA` and numeric `0`; unsupported forms warn
+(`gllvmTMB_predict_re_form_unsupported`) instead of silently including REs.
+(3) `newdata` + `type = "response"` recovers per-row `(family, link)` from the
+fit's `family_var` column, keeping each pair together; single-family and
+by-trait fits unaffected. (4) NOT in the issue: with an active `lv_B` the
+`rr_B` re-add used the `z_B` innovation alone, dropping
+`X_lv_B alpha_lv_B`; now uses the reported `U_B_total`.
+
+Acceptance evidence: the exact identity `predict(newdata = training rows) ==
+report$eta`, measured `max|diff| = 0` on a gaussian `spatial_scalar` fit —
+the form `verify-report.md` recommended over correlation-with-truth. Tests
+`test-isdm-predict.R` **16 -> 35** assertions, all passing; 16 baseline
+unchanged.
+
+Caught before shipping: keying the unhandled-tier warning on `fit$use`
+raised a FALSE ALARM on an exactly-correct spatial prediction, because
+`fit$use` mixes engine flags with mode descriptors (`spatial_scalar` rides
+alongside `spde`). Now reads `tmb_data`'s `use_*` switches. A warning that
+fires on correct output is worse than no warning.
+
+NOT done, deliberately: the all-tiers RE re-add (`getREsd()` roxygen records
+no established reshape convention for `omega_spde*`, `g_kernel*`, `s_B_slope`,
+`s_W_slope`, `r_c2`, `g_phy`, `g_phy_diag` and the augmented-slope blocks — a
+silently wrong number is worse than a loudly absent one). Follow-up issue owed.
+Flagged, not fixed: `vignettes/articles/rare-species-jsdm.Rmd:163` calls
+`predict(..., re_form = ~0)` with no `newdata` and labels the result
+population-level — its numbers move under fix (2) and its prose needs a
+re-read. Also untouched: the `propto` row-1-only guard (`!is.na(sp_id[1])`).
+
+Design 127 written (implementation design for #1133). Register ISDM-03 stays
+`partial`: the newdata spatial path moves broken -> covered **for training
+coordinates**; off-mesh projection is a code-reading claim only and the map
+claim stays fenced.

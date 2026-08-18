@@ -2142,6 +2142,217 @@ sanity_multi <- function(object, gradient_thresh = 1e-2, se_thresh = 100) {
 }
 
 
+## ---- predict(newdata=) support helpers (#1132) ------------------------------
+
+#' Is `re_form` a request to drop the random effects?
+#'
+#' The roxygen for [predict.gllvmTMB_multi()] promises that `~ 0` *or* `NA`
+#' gives the fixed-effects-only prediction. Before #1132 only the literal
+#' `~0` was recognised, so `NA` -- a documented form -- and numeric `0`
+#' silently returned the full conditional predictor. Anything else is not a
+#' supported form; warn rather than silently including the random effects,
+#' which is how `~1` used to pass unnoticed.
+#'
+#' @keywords internal
+#' @noRd
+.gllvmTMB_re_form_is_zero <- function(re_form) {
+  if (inherits(re_form, "formula")) {
+    flat <- gsub("[[:space:]]", "", paste(deparse(re_form), collapse = ""))
+    if (identical(flat, "~0")) return(TRUE)
+    if (identical(flat, "~.")) return(FALSE)
+    cli::cli_warn(c(
+      "{.arg re_form} value {.code {flat}} is not a supported form.",
+      "i" = "Supported: {.code ~.} (all random effects), {.code ~0} or {.val NA} (fixed effects only).",
+      "!" = "Including all random effects."
+    ), class = "gllvmTMB_predict_re_form_unsupported")
+    return(FALSE)
+  }
+  if (is.null(re_form)) return(FALSE)
+  if (length(re_form) == 1L && is.na(re_form)) return(TRUE)
+  if (is.numeric(re_form) && length(re_form) == 1L && isTRUE(re_form == 0)) {
+    return(TRUE)
+  }
+  cli::cli_warn(c(
+    "{.arg re_form} must be a formula or {.val NA}; got {.cls {class(re_form)}}.",
+    "i" = "Supported: {.code ~.} (all random effects), {.code ~0} or {.val NA} (fixed effects only).",
+    "!" = "Including all random effects."
+  ), class = "gllvmTMB_predict_re_form_unsupported")
+  FALSE
+}
+
+#' Per-row (family, link) ids for `newdata`
+#'
+#' `family_id_vec` / `link_id_vec` are a deterministic function of the fit's
+#' `family_var` column (see `gllvmTMB()`), never of the trait. Reducing them
+#' to a per-trait modal id -- the pre-#1132 behaviour -- cannot represent an
+#' [isdm_sources()] fit, where the family varies by *source within* trait: the
+#' detection arm silently received the count arm's inverse link.
+#'
+#' Returns `NULL` (caller falls back to the per-trait route) whenever the
+#' mapping cannot be established exactly, so single-family and by-trait fits
+#' are untouched.
+#'
+#' @keywords internal
+#' @noRd
+.gllvmTMB_newdata_family_ids <- function(object, nd) {
+  fid_vec <- object$tmb_data$family_id_vec
+  lid_vec <- object$tmb_data$link_id_vec
+  if (is.null(fid_vec) || is.null(lid_vec)) return(NULL)
+  fam_var <- attr(object$family_input, "family_var") %||% "family"
+  if (!fam_var %in% names(nd) || !fam_var %in% names(object$data)) return(NULL)
+  train_lvl <- as.character(object$data[[fam_var]])
+  if (length(train_lvl) != length(fid_vec)) return(NULL)
+  lvls <- unique(train_lvl)
+  key <- match(train_lvl, lvls)
+  fid_by <- integer(length(lvls))
+  lid_by <- integer(length(lvls))
+  for (k in seq_along(lvls)) {
+    rows <- which(key == k)
+    ## The (family, link) pair must be unique within a level, and is taken
+    ## together -- reducing family and link separately can synthesise a
+    ## combination that never occurred in the data.
+    if (length(unique(fid_vec[rows])) != 1L ||
+          length(unique(lid_vec[rows])) != 1L) {
+      return(NULL)
+    }
+    fid_by[k] <- as.integer(fid_vec[rows[1L]])
+    lid_by[k] <- as.integer(lid_vec[rows[1L]])
+  }
+  idx <- match(as.character(nd[[fam_var]]), lvls)
+  if (anyNA(idx)) return(NULL)
+  list(fid = fid_by[idx], lid = lid_by[idx])
+}
+
+#' SPDE field contribution at `newdata` rows
+#'
+#' Mirrors the template's spatial block: the projected field is
+#' `A_omega(o, t) = (A_proj %*% omega_spde)(o, t)` (src/gllvmTMB.cpp:2418-2423),
+#' entering eta per row at src/gllvmTMB.cpp:2518-2528 -- the per-trait field
+#' when `spde_lv_k == 0`, the low-rank `sum_k Lambda_spde(t, k) * A_omega_lv(o, k)`
+#' when `spde_lv_k >= 1`, and both when `spde_lv_unique == 1`.
+#'
+#' The projector is rebuilt with `fmesher::fm_basis()` on the stored mesh --
+#' the same call that built `A_st` in the first place (R/mesh.R) -- so training
+#' coordinates reproduce the fitted projection exactly, and new coordinates
+#' project off-mesh for free.
+#'
+#' Returns `NULL` when the field cannot be projected (no mesh, coordinates
+#' absent from `newdata`), leaving the caller to report the omission.
+#'
+#' @keywords internal
+#' @noRd
+.gllvmTMB_spde_newdata_contrib <- function(object, nd, tr_id) {
+  if (!isTRUE(object$use$spde)) return(NULL)
+  mesh <- object$mesh
+  if (is.null(mesh) || is.null(mesh$mesh) || is.null(mesh$xy_cols)) return(NULL)
+  if (!all(mesh$xy_cols %in% names(nd))) return(NULL)
+  loc <- tryCatch(
+    .gllvm_mesh_coordinates(nd, mesh$xy_cols),
+    error = function(e) NULL
+  )
+  if (is.null(loc)) return(NULL)
+  A <- tryCatch(
+    fmesher::fm_basis(mesh$mesh, loc = loc),
+    error = function(e) NULL
+  )
+  if (is.null(A) || nrow(A) != nrow(nd)) return(NULL)
+
+  ## fmesher returns an all-zero basis row for a location outside the mesh
+  ## hull, so the field silently becomes 0 there -- indistinguishable from a
+  ## field that is genuinely near zero, and the reader has no way to tell a
+  ## blank patch of map from a cold one. `make_mesh()` rejects such rows at
+  ## fit time, so predict() must not be quietly more permissive than the fit.
+  row_mass <- Matrix::rowSums(A)
+  n_outside <- sum(!is.finite(row_mass) | abs(row_mass) < 1e-8)
+  if (n_outside > 0L) {
+    cli::cli_warn(c(
+      "{n_outside} {.arg newdata} row{?s} fall outside the mesh hull.",
+      "x" = "The spatial field is exactly 0 there -- not estimated, and not distinguishable from a field that is genuinely near zero.",
+      "i" = "Restrict {.arg newdata} to the meshed domain, or rebuild the mesh to cover it."
+    ), class = "gllvmTMB_predict_newdata_outside_mesh")
+  }
+
+  par <- object$tmb_obj$env$last.par.best
+  n_mesh <- ncol(A)
+  n_traits <- object$n_traits
+  lv_k <- as.integer(object$tmb_data$spde_lv_k %||% 0L)
+  lv_unique <- as.integer(object$tmb_data$spde_lv_unique %||% 0L)
+
+  contrib <- numeric(nrow(nd))
+  t1 <- tr_id + 1L
+  ok <- !is.na(t1) & t1 >= 1L & t1 <= n_traits
+  if (!any(ok)) return(contrib)
+
+  if (lv_k == 0L || lv_unique == 1L) {
+    om <- par[names(par) == "omega_spde"]
+    if (length(om) != n_mesh * n_traits) return(NULL)
+    A_omega <- as.matrix(A %*% matrix(om, nrow = n_mesh, ncol = n_traits))
+    contrib[ok] <- contrib[ok] + A_omega[cbind(which(ok), t1[ok])]
+  }
+  if (lv_k > 0L) {
+    om_lv <- par[names(par) == "omega_spde_lv"]
+    lam <- object$report$Lambda_spde
+    if (length(om_lv) != n_mesh * lv_k || is.null(lam)) return(NULL)
+    lam <- matrix(as.numeric(lam), nrow = n_traits, ncol = lv_k)
+    A_lv <- as.matrix(A %*% matrix(om_lv, nrow = n_mesh, ncol = lv_k))
+    contrib[ok] <- contrib[ok] +
+      rowSums(lam[t1[ok], , drop = FALSE] * A_lv[ok, , drop = FALSE])
+  }
+  contrib
+}
+
+#' The training fixed-effect design matrix, with column names
+#'
+#' `.gllvmTMB_predict_fixed_eta()` aligns coefficients by column name, so the
+#' stored design matrix needs its `X_fix_names` restored when it carries none.
+#'
+#' @keywords internal
+#' @noRd
+.gllvmTMB_training_X_fix <- function(object) {
+  X <- object$X_fix %||% object$tmb_data$X_fix
+  if (is.null(X)) {
+    cli::cli_abort(c(
+      "Cannot build the fixed-effects-only prediction.",
+      "x" = "The fitted object stores no fixed-effect design matrix."
+    ))
+  }
+  X <- as.matrix(X)
+  if (is.null(colnames(X))) colnames(X) <- object$X_fix_names
+  X
+}
+
+#' Active random-effect tiers this predict path cannot re-add
+#'
+#' `predict(newdata=)` rebuilds eta in R and re-adds a named subset of the
+#' template's random-effect tiers. Before #1132 every other active tier was
+#' dropped in silence -- at training rows too -- while the branch reported
+#' that random effects had been added. Naming them is the honest minimum;
+#' re-adding the rest is tracked separately, because several parameter blocks
+#' have no established reshape convention (see `getREsd()`).
+#'
+#' The active set is read from the template's own `use_*` switches in
+#' `tmb_data`, NOT from `fit$use`. `fit$use` mixes engine flags with
+#' *mode descriptors* -- `spatial_scalar`, `spatial_latent`, `dep_B` and
+#' friends record which syntax produced a term, and ride alongside the engine
+#' flag that actually adds it to eta. Warning on those would raise a false
+#' alarm on a prediction that is exactly right, which is worse than useless:
+#' it teaches the reader to ignore the warning.
+#'
+#' @keywords internal
+#' @noRd
+.gllvmTMB_predict_unhandled_re_tiers <- function(object, handled) {
+  td <- object$tmb_data
+  if (!is.list(td)) return(character(0))
+  ## `use_aghq` selects the integrator, not a random-effect tier.
+  flags <- setdiff(grep("^use_", names(td), value = TRUE), "use_aghq")
+  is_on <- vapply(flags, function(n) {
+    v <- td[[n]]
+    length(v) == 1L && !is.na(v) && isTRUE(as.integer(v) == 1L)
+  }, logical(1))
+  sort(setdiff(sub("^use_", "", flags[is_on]), handled))
+}
+
+
 #' Predict from a fitted gllvmTMB model
 #'
 #' Returns the linear predictor or inverse-link response at each observation
@@ -2154,13 +2365,23 @@ sanity_multi <- function(object, gradient_thresh = 1e-2, se_thresh = 100) {
 #'   produced for the training rows.
 #' @param type One of `"link"` (default) or `"response"`.
 #' @param re_form Random-effect formula controlling which random
-#'   effects are *included* in the predicted linear predictor. Use
-#'   the default `~ .` to include all random effects when predicting
-#'   on training rows; pass `~ 0` (or `NA`) to predict the fixed-
-#'   effects-only / population-mean prediction. For `newdata` with
-#'   sites/species not present in the training data the random
-#'   effects cannot be drawn, so the prediction is fixed-effects-only
+#'   effects are *included* in the predicted linear predictor. The
+#'   default `~ .` includes them; `~ 0`, `NA`, and numeric `0` all
+#'   request the fixed-effects-only / population-mean prediction. Any
+#'   other value is not a supported form and warns rather than silently
+#'   including the random effects. Honoured on **both** the training-row
+#'   and the `newdata` path (before 0.7.1 it was read only on the
+#'   `newdata` path, and there only as the literal `~ 0`). For `newdata`
+#'   with sites/species not present in the training data the random
+#'   effects cannot be drawn, so those rows are fixed-effects-only
 #'   regardless of `re_form`.
+#'
+#'   On `newdata`, `predict()` rebuilds the linear predictor in R and can
+#'   re-add only some of the model's random-effect tiers (the unit-level
+#'   `rr`/`diag` terms, `propto`, and the spatial SPDE field). A fit
+#'   carrying any other active tier gets a warning naming exactly what was
+#'   omitted; `newdata = NULL` always returns the full conditional
+#'   predictor.
 #' @param se.fit Logical, default `FALSE`. If `TRUE`, add an `se.fit`
 #'   column: a **conditional, fixed-effect-only, delta-method (Wald)**
 #'   standard error of `est`. "Conditional" means the random-effect
@@ -2214,8 +2435,18 @@ predict.gllvmTMB_multi <- function(
     }
     return(.predict_multinomial(object, type))
   }
+  ## #1132: `re_form` is normalised once, for BOTH branches. It used to be
+  ## read only on the newdata path, and there only as the literal `~0`, so on
+  ## the package's DEFAULT calling convention `predict(fit, re_form = ~0)`
+  ## silently returned the full conditional predictor.
+  re_zero <- .gllvmTMB_re_form_is_zero(re_form)
   if (is.null(newdata)) {
-    eta <- as.numeric(object$report$eta)
+    eta <- if (re_zero) {
+      .gllvmTMB_predict_fixed_eta(object, .gllvmTMB_training_X_fix(object)) +
+        .gllvmTMB_offset_vec(object)
+    } else {
+      as.numeric(object$report$eta)
+    }
     ## Use the user's actual column names (not hard-coded sdmTMB ecology labels)
     unit_lbl <- if (!is.null(object$unit_col)) object$unit_col else "site"
     species_lbl <- if (!is.null(object$species_col)) {
@@ -2247,9 +2478,9 @@ predict.gllvmTMB_multi <- function(
       .gllvmTMB_offset_newdata(object, nd)
 
     ## Random-effect contributions for KNOWN sites / species ----------------
-    re_zero <- inherits(re_form, "formula") && identical(deparse(re_form), "~0")
     if (!re_zero) {
       par <- object$tmb_obj$env$last.par.best
+      added <- character(0)
       ## Build per-row indices on the training factor scales
       tr_id <- as.integer(nd[[object$trait_col]]) - 1L
       st_id <- as.integer(nd[[object$unit_col]]) - 1L
@@ -2260,11 +2491,24 @@ predict.gllvmTMB_multi <- function(
       }
       ## Add rr_B + diag_B if active
       if (object$use$rr_B) {
-        z_B <- matrix(
-          par[names(par) == "z_B"],
-          nrow = object$d_B,
-          ncol = object$n_sites
-        )
+        ## When lv_B is active the `z_B` PARAMETER is only the zero-mean
+        ## innovation e_i; the score entering eta is
+        ## U_B_total = X_lv_B alpha_lv_B + z_B (src/gllvmTMB.cpp:1518-1543).
+        ## Using z_B alone would drop the predictor-informed score mean.
+        z_B <- if (isTRUE(object$use$lv_B) &&
+                     !is.null(object$report$U_B_total)) {
+          t(matrix(
+            as.numeric(object$report$U_B_total),
+            nrow = object$n_sites,
+            ncol = object$d_B
+          ))
+        } else {
+          matrix(
+            par[names(par) == "z_B"],
+            nrow = object$d_B,
+            ncol = object$n_sites
+          )
+        }
         L_B <- object$report$Lambda_B
         for (i in seq_along(eta)) {
           s <- st_id[i]
@@ -2273,6 +2517,7 @@ predict.gllvmTMB_multi <- function(
             eta[i] <- eta[i] + sum(L_B[t + 1L, ] * z_B[, s + 1L])
           }
         }
+        added <- c(added, "rr_B")
       }
       if (object$use$diag_B) {
         s_B <- matrix(
@@ -2287,6 +2532,7 @@ predict.gllvmTMB_multi <- function(
             eta[i] <- eta[i] + s_B[t + 1L, s + 1L]
           }
         }
+        added <- c(added, "diag_B")
       }
       ## propto: per-species random effect, additive
       if (object$use$propto && !is.na(sp_id[1])) {
@@ -2302,10 +2548,33 @@ predict.gllvmTMB_multi <- function(
             eta[i] <- eta[i] + p_phy[sp + 1L, t + 1L]
           }
         }
+        added <- c(added, "propto")
       }
-      cli::cli_inform(c(
-        "i" = "Random effects for the rr|site / diag|site / propto|species terms have been added (when site / species levels matched the training factors)."
-      ))
+      ## Spatial (SPDE) field. Before #1132 this tier was dropped in silence
+      ## -- at training locations too -- while the branch below reported that
+      ## random effects had been added.
+      spde_contrib <- .gllvmTMB_spde_newdata_contrib(object, nd, tr_id)
+      if (!is.null(spde_contrib)) {
+        eta <- eta + spde_contrib
+        added <- c(added, "spde")
+      }
+      ## `lv_B` carries no eta term of its own: it is the score mean, already
+      ## inside U_B_total above, so it counts as handled whenever rr_B is.
+      handled <- c(added, if (isTRUE(object$use$lv_B)) "lv_B")
+      unhandled <- .gllvmTMB_predict_unhandled_re_tiers(object, handled)
+      if (length(added)) {
+        cli::cli_inform(c(
+          "i" = "Random effects re-added on {.arg newdata} for: {.val {added}} (where site / species levels matched the training factors)."
+        ))
+      }
+      if (length(unhandled)) {
+        cli::cli_warn(c(
+          "{.fn predict} cannot re-add every active random-effect tier on {.arg newdata}.",
+          "x" = "Omitted from the returned prediction: {.val {unhandled}}.",
+          "!" = "These terms are missing at training rows too, so the result is not comparable with {.code predict(object)}.",
+          "i" = "Use {.code newdata = NULL} for the full conditional predictor, or {.code re_form = ~0} for the fixed-effects-only one."
+        ), class = "gllvmTMB_predict_newdata_re_dropped")
+      }
     }
     out <- data.frame(nd, est = eta, stringsAsFactors = FALSE)
   }
@@ -2330,10 +2599,22 @@ predict.gllvmTMB_multi <- function(
         out$est <- object$family$linkinv(out$est)
       }
     } else {
-      ## newdata rows: map each row's trait to that trait's (modal) family /
-      ## link id from the training vectors, then dispatch per row.
+      ## newdata rows. The per-row (family, link) is recovered from the fit's
+      ## `family_var` column when `newdata` carries it -- the ids are a
+      ## function of that column, never of the trait. The per-trait modal
+      ## fallback below cannot represent a family that varies WITHIN a trait,
+      ## which is exactly an isdm_sources() fit: the detection arm silently
+      ## received the count arm's inverse link (#1132).
+      per_row <- .gllvmTMB_newdata_family_ids(object, nd)
       tids_train <- object$tmb_data$trait_id
-      if (!is.null(fid_vec) && !is.null(tids_train) &&
+      if (!is.null(per_row)) {
+        out$est <- .apply_linkinv_per_row(
+          out$est,
+          per_row$fid,
+          per_row$lid,
+          sigma_eps = object$report$sigma_eps
+        )
+      } else if (!is.null(fid_vec) && !is.null(tids_train) &&
             object$trait_col %in% names(out)) {
         n_tr <- nlevels(object$data[[object$trait_col]])
         fid_by_trait <- integer(n_tr)

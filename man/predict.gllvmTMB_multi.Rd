@@ -22,13 +22,23 @@ produced for the training rows.}
 \item{type}{One of \code{"link"} (default) or \code{"response"}.}
 
 \item{re_form}{Random-effect formula controlling which random
-effects are \emph{included} in the predicted linear predictor. Use
-the default \code{~ .} to include all random effects when predicting
-on training rows; pass \code{~ 0} (or \code{NA}) to predict the fixed-
-effects-only / population-mean prediction. For \code{newdata} with
-sites/species not present in the training data the random
-effects cannot be drawn, so the prediction is fixed-effects-only
-regardless of \code{re_form}.}
+effects are \emph{included} in the predicted linear predictor. The
+default \code{~ .} includes them; \code{~ 0}, \code{NA}, and numeric \code{0} all
+request the fixed-effects-only / population-mean prediction. Any
+other value is not a supported form and warns rather than silently
+including the random effects. Honoured on \strong{both} the training-row
+and the \code{newdata} path (before 0.7.1 it was read only on the
+\code{newdata} path, and there only as the literal \code{~ 0}). For \code{newdata}
+with sites/species not present in the training data the random
+effects cannot be drawn, so those rows are fixed-effects-only
+regardless of \code{re_form}.
+
+On \code{newdata}, \code{predict()} rebuilds the linear predictor in R and can
+re-add only some of the model's random-effect tiers (the unit-level
+\code{rr}/\code{diag} terms, \code{propto}, and the spatial SPDE field). A fit
+carrying any other active tier gets a warning naming exactly what was
+omitted; \code{newdata = NULL} always returns the full conditional
+predictor.}
 
 \item{se.fit}{Logical, default \code{FALSE}. If \code{TRUE}, add an \code{se.fit}
 column: a \strong{conditional, fixed-effect-only, delta-method (Wald)}

@@ -134,3 +134,6 @@ dev/isdm-package-recovery/results/
 dev/va-speed/0[6-9]-*.rds
 dev/va-speed/0[6-9]-*log*.txt
 dev/va-speed/1[0-9]-*.rds
+
+# campaign intermediate: exactly rbind() of the two committed CSVs
+dev/isdm-intervals/e1-final-results.csv

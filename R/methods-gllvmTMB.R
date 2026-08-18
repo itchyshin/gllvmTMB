@@ -2648,6 +2648,39 @@ predict.gllvmTMB_multi <- function(
         }
       }
 
+      ## re_int: ordinary `(1 | group)` random intercepts.
+      ## src/gllvmTMB.cpp:2609 -- eta(o) += u_re_int(re_int_offsets(term) + gid),
+      ## where gid indexes the term's own grouping factor and the terms are
+      ## packed end-to-end into one vector via re_int_offsets.
+      ##
+      ## #1138 originally recorded this tier as unreachable, on the grounds
+      ## that its group mapping was not a top-level field on the fit. That was
+      ## wrong: `fit$re_int` carries `groups`, `n_groups` and `offsets`
+      ## (R/fit-multi.R:7217), which is exactly what is needed. Levels are
+      ## rebuilt the way the fit built them -- `factor()` on the training
+      ## column (R/fit-multi.R:2385-2387).
+      if (isTRUE(object$use$re_int) && is.list(object$re_int) &&
+            length(object$re_int$groups)) {
+        u_re <- par[names(par) == "u_re_int"]
+        grps <- as.character(object$re_int$groups)
+        offs <- as.integer(object$re_int$offsets)
+        ngr <- as.integer(object$re_int$n_groups)
+        hit <- FALSE
+        for (k in seq_along(grps)) {
+          gcol <- grps[k]
+          if (!gcol %in% names(nd) || !gcol %in% names(object$data)) next
+          lv <- levels(factor(object$data[[gcol]]))
+          gid <- as.integer(factor(as.character(nd[[gcol]]), levels = lv)) - 1L
+          okg <- !is.na(gid) & gid >= 0L & gid < ngr[k]
+          if (!any(okg)) next
+          idx <- offs[k] + gid[okg] + 1L
+          if (max(idx) > length(u_re)) next
+          eta[okg] <- eta[okg] + u_re[idx]
+          hit <- TRUE
+        }
+        if (hit) added <- c(added, "re_int")
+      }
+
       ## Spatial (SPDE) field. Before #1132 this tier was dropped in silence
       ## -- at training locations too -- while the branch below reported that
       ## random effects had been added.

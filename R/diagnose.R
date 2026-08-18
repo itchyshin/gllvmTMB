@@ -17,9 +17,21 @@
     cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
   }
 
-  grad <- tryCatch(object$tmb_obj$gr(object$opt$par), error = function(e) {
-    NA_real_
-  })
+  ## #1092: judge the objective the fit actually optimised. On a ridged fit
+  ## the raw `tmb_obj$gr()` is missing the R-level loading penalty, so it sits
+  ## at |lambda|/tau^2 (>> gtol) at a perfectly converged MAP optimum, and
+  ## every downstream reader of `max_gradient` -- the `converged` conjunction
+  ## below first -- misread ridged fits until routed through the penalised
+  ## accessor. The raw gradient stays reachable via `tmb_obj$gr()`;
+  ## `gradient_is_penalised` in the list below discloses which objective this
+  ## number describes.
+  ridge_tau <- object$aghq$ridge_tau %||% Inf
+  grad <- tryCatch(
+    .gllvmTMB_penalised_gradient(object$tmb_obj, object$opt$par, ridge_tau),
+    error = function(e) {
+      NA_real_
+    }
+  )
   se <- if (!is.null(object$sd_report)) {
     tryCatch(
       .gllvmTMB_b_fix_se(object),
@@ -75,6 +87,9 @@
     message = object$opt$message %||% "",
     objective = obj_val,
     max_gradient = max_grad_val,
+    gradient_is_penalised = .gllvmTMB_loading_ridge_applies(
+      ridge_tau, names(object$tmb_obj$par)
+    ),
     scaled_gradient = scaled_gradient,
     stationary_by_scaled_gradient = stationary_by_scaled_gradient,
     stationary_by_gradient = stationary_by_gradient,

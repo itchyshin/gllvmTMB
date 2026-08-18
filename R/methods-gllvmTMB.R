@@ -2029,14 +2029,19 @@ sanity_multi <- function(object, gradient_thresh = 1e-2, se_thresh = 100) {
     if (flags$converged) "PASS" else "FAIL"
   ))
 
-  ## 2. Max gradient
-  g <- object$tmb_obj$gr(object$opt$par)
+  ## 2. Max gradient. #1092: on a ridged fit the raw `tmb_obj$gr()` reports
+  ## the UNPENALISED gradient at the PENALISED optimum (|lambda|/tau^2, not
+  ## ~0), so this check must judge the objective the fit actually optimised.
+  g <- .gllvmTMB_penalised_gradient(
+    object$tmb_obj, object$opt$par, object$aghq$ridge_tau %||% Inf
+  )
   flags$max_gradient <- max(abs(g))
   cat(sprintf(
-    "%-44s %s (max |gr| = %.3g)\n",
+    "%-44s %s (max |gr| = %.3g%s)\n",
     sprintf("Max |gradient| < %.1e:", gradient_thresh),
     if (flags$max_gradient < gradient_thresh) "PASS" else "WARN",
-    flags$max_gradient
+    flags$max_gradient,
+    if (isTRUE(object$aghq$penalised)) ", penalised objective" else ""
   ))
 
   ## 3. Hessian PD-ness

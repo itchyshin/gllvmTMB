@@ -52516,3 +52516,195 @@ tests OK ~17 min). Notes were CRAN-incoming feasibility + hidden files
 Hard OUT untouched: no NEWS `covered`; no public `se`.
 Logs: `/tmp/mspl-A4A7-ascran-build3.log`, `/tmp/mspl-A4A7-ascran-check3.log`,
 `/tmp/gllvmTMB.Rcheck/00check.log`.
+
+## 2026-08-17 — Claude (Fisher): binomial screen FP attribution, `loading_absolute_thresh` retune (#1098, PR #1110)
+
+Full after-task report:
+`docs/dev-log/after-task/2026-08-17-binomial-screen-fp-attribution.md`.
+Recording here per Definition-of-Done item 5 (AGENTS.md): exact commands,
+exact stale-wording scan patterns, and what was deliberately not run.
+
+**Commands run, verbatim, with outcomes:**
+
+```sh
+cd /private/tmp/gllvmtmb-1098-fp
+OPENBLAS_NUM_THREADS=1 Rscript --vanilla dev/heywood/fp-attribution.R
+```
+-> reproduces `n=928, WARN=232, FPR=0.2500` exactly against #897's own
+figure; `runaway_loading` fires 0/928, `extreme_magnitude` fires 232/232
+(100% of the healthy pool's false positives); prevalence branch fires 0
+(subtraction check: `WARN & !runaway & !magnitude` = 0, and the
+reconstructed rule matches the real recorded `check_status` with 0
+mismatches across all 1,200 binomial_probit fits, both healthy and
+degenerate).
+
+```sh
+OPENBLAS_NUM_THREADS=1 Rscript --vanilla -e 'devtools::document()'
+```
+-> `Writing 'check_gllvmTMB.Rd'`; three pre-existing unrelated
+`aghq-report.R` S3-export warnings emitted (not introduced by, not fixed
+by, this PR).
+
+```sh
+OPENBLAS_NUM_THREADS=1 Rscript --vanilla -e 'devtools::test(filter="runaway|diagnose|sanity")'
+```
+-> `[ FAIL 0 | WARN 0 | SKIP 0 | PASS 174 ]`, run twice with identical
+results (immediately after the code+test edit, and again after all
+doc/register edits landed). Filter match verified by direct enumeration
+(`ls tests/testthat/test-*.R | sed 's#.*/test-##;s#\.R$##' | grep -E
+"runaway|diagnose|sanity"` -> 5 files:
+`gllvmTMB-diagnose`, `runaway-warning`, `sanity-categorical`,
+`sanity-multi`, `scale-free-runaway-detector`); the last of those was
+additionally confirmed standalone (`13 pass, 0 fail`) since its filename
+match on "runaway" is non-obvious at a glance. Coordinator's independent
+re-run after PR #1110 opened: `0 failures / 0 errors / 174 passing / 13
+environment-gated skips` (the skip-count delta is `skip_on_cran()` guards
+on real-fit tests behaving differently across invocation contexts; pass
+and fail counts agree exactly with the runs above).
+
+**Exact stale-wording / cascade grep patterns used** (AGENTS.md rule 10 /
+`docs/design/10-after-task-protocol.md` Convention-Change Cascade):
+
+```sh
+grep -rn "loading_absolute_thresh" --include="*.R" --include="*.Rd" --include="*.Rmd" --include="*.md" .
+grep -rn "3,944\|3944" --include="*.R" --include="*.Rd" --include="*.Rmd" --include="*.md" .
+grep -rn "3\.99" --include="*.R" --include="*.Rd" --include="*.Rmd" --include="*.md" .
+grep -n "loading_absolute_thresh\|3,944\|3\.99\b" README.md
+grep -rln "loading_absolute_thresh|3,944" vignettes/
+grep -rln "loading_absolute_thresh" docs/design/
+grep -n -i "897\|1098\|degenera\|heywood\|binomial_prevalence" ROADMAP.md
+```
+
+Verdicts: every live `R/diagnose.R` and `man/check_gllvmTMB.Rd` site reads
+the new default (8); ~30 historical mentions of the old value (6) and the
+old calibration figures (3,944 / 3.99) survive untouched in
+`docs/dev-log/handover/*`, `docs/dev-log/audits/*`, and `check-log.md`
+itself — deliberately left alone as append-only session history, not live
+documentation. `docs/design/35-validation-debt-register.md`'s FAM-14 row
+carries one stale cross-reference to "binomial's own threshold of 6"
+inside its own frozen ordinal-campaign record — flagged, not silently
+edited (would misrepresent what that campaign was actually scored
+against; see the after-task report §3a/§10 for the reasoning). Zero hits
+in `README.md`, zero hits in `vignettes/`, zero `ROADMAP.md` row for this
+issue.
+
+**Deliberately NOT run**: full `devtools::check()` / `rcmdcheck(args =
+"--as-cran")` (one diagnostic-row default changed, not a build/packaging
+concern; 3-OS CI is already running on the open PR — Definition-of-Done
+item 1 is explicitly recorded as NOT yet met in the after-task report);
+the `GLLVMTMB_HEAVY_TESTS=1` heavy suite (no family/likelihood/grammar
+code touched); `pkgdown::build_articles()` (zero vignette hits, nothing to
+re-render). Pool 2's 3,600-fit CSV (Totoro-generated) was deliberately
+never committed to this repo, per D-50 — the attribution script reads it
+from its Totoro-retrieved path outside the repo via the `POOL2_CSV` env
+var, and only the two derived analysis files (`dev/heywood/
+fp-attribution.R`, `fp-attribution-findings.md`) plus the structural note
+(`dev/heywood/fp-scale-dependence.md`) are committed.
+
+— Claude (Fisher), inference-machinery lens
+
+## 2026-08-17 — Claude (Fisher): D-43 ceiling-tier review addendum, PR #1110
+
+D-43 panel returned SOUND/CONFIRMED from two reviewers and SOUND-WITH-
+CAVEATS from the ceiling-tier reviewer, who found the root-cause mechanism
+was mislabelled. Full detail in the after-task report's §2 and its new
+D-43 addendum bullets in §8; recording the checks here per Definition-of-
+Done item 5.
+
+**What changed, in one line each**: (1) `dev/heywood/fp-scale-dependence.md`
+and `dev/heywood/fp-attribution-findings.md` corrected — the mechanism is
+regime/effect-size dependence (a hidden prior on plausible latent SD), NOT
+the #851/#855 response-scale/units-dependence class, because probit fixes
+the residual variance at 1 and has no free response scale for
+standardisation to absorb; filed as a NEGATIVE scoping result for
+#851/#855, not a to-do item. (2) Added an oracle exceedance derivation
+(`P(max|Lambda_true| >= c) = 1 - [2*Phi(c/sigma_lambda) - 1]^(p*q)`) to
+both files. (3) Promoted the `rel_frob<=0.5` robustness recheck (FPR still
+0.2156) out of the footnotes into its own subsection. (4) Added a probit-
+only caveat to the `R/diagnose.R` roxygen (regenerated `man/check_gllvmTMB.Rd`).
+(5) Softened four phrasings across `R/diagnose.R`, `NEWS.md`, and
+`docs/design/35-validation-debt-register.md` ("a value of 8 already
+implies" -> "a value of this size"; "a realistic loading-scale range" ->
+"sigma_lambda in c(0.7,3.0), chosen to hit #847's regime, not argued for
+realism"; "exact rather than inferred" -> "exact up to co-firing";
+"could not have found this" -> stated as a design gap in the original
+campaign's own scope, not bad luck). (6) Added an item-6 identifiability
+check to `fp-attribution-findings.md` and the after-task report.
+
+**Commands run:**
+
+```sh
+cd /private/tmp/gllvmtmb-1098-fp
+OPENBLAS_NUM_THREADS=1 Rscript --vanilla -e '
+pexceed <- function(c, sigma, pq) { z<-c/sigma; inside<-2*pnorm(z)-1; 1-inside^pq }
+for (p in c(12,27)) for (c in c(6,8)) cat(p, c, pexceed(c, 3.0, p*2), "\n")
+'
+```
+-> independently re-derived the exceedance arithmetic before writing it
+anywhere: `P(max>=6)` 0.6729 (p=12) / 0.9191 (p=27); `P(max>=8)` 0.1685
+(p=12) / 0.3398 (p=27) — confirms the coordinator's stated range without
+copying it.
+
+```sh
+OPENBLAS_NUM_THREADS=1 Rscript --vanilla -e '
+d <- read.csv(Sys.getenv("POOL2_CSV")); b <- d[d$family=="binomial_probit",]
+h <- b[b$rel_frob<=10,]; s3 <- h[h$sigma_lambda==3,]
+# measured extreme_magnitude-only rate by p, at c=6 and c=8, vs oracle
+'
+```
+-> measured `max_loading>=c` rate by `p`, compared against the oracle
+above: close match at threshold 8 (0.2420 vs 0.1685 at p=12; 0.3321 vs
+0.3398 at p=27), over-prediction at threshold 6 in the expected direction
+(oracle unconditional on recovery quality; measured FPR conditions on
+`rel_frob<=10`).
+
+```sh
+OPENBLAS_NUM_THREADS=1 Rscript --vanilla -e '
+d <- read.csv(Sys.getenv("POOL2_CSV")); b <- d[d$family=="binomial_probit",]
+h <- b[b$rel_frob<=10,]
+flagged <- h[h$check_status=="WARN",]; passed <- h[h$check_status=="PASS",]
+# convergence / pdHess rates for item 6
+'
+```
+-> flagged (n=232): convergence==0 98.71%, pdHess 97.84%; passed (n=696):
+convergence==0 99.43%, pdHess 87.50%. No SE column exists in this CSV
+(header checked directly) — contrary to the assumption in the request,
+SEs cannot be reported from this pool. Result inconclusive by design, not
+steered: reported as found.
+
+```sh
+OPENBLAS_NUM_THREADS=1 Rscript --vanilla -e '
+set.seed(1); n<-200000; B<-rnorm(n,0,0.3); Lam<-matrix(rnorm(n*2,0,3),n,2)
+prev <- pnorm(B/sqrt(1+rowSums(Lam^2)))
+cat(mean(prev), sd(prev), mean(prev>=0.9|prev<=0.1))
+'
+```
+-> Monte Carlo over the DGP's `(B, Lambda)` distribution at
+`sigma_lambda=3`, `q=2`: mean prevalence 0.5000, SD 0.044, `P(prevalence
+>= 0.9 or <= 0.1)` = 0/200,000. Used to ground the "exact up to co-firing"
+softening with a verified number rather than the coordinator's own
+back-of-envelope `sd ~ 0.065` (a related but not identical quantity — see
+the after-task report; the closed-form argument-only SD, `0.3/sqrt(19) =
+0.0688`, is closer to that figure than the full Monte Carlo is, and both
+are reported rather than only the one that matched).
+
+```sh
+OPENBLAS_NUM_THREADS=1 Rscript --vanilla -e 'devtools::document()'
+```
+-> `Writing 'check_gllvmTMB.Rd'`; same three pre-existing unrelated
+`aghq-report.R` warnings as the prior round, nothing new.
+
+```sh
+OPENBLAS_NUM_THREADS=1 Rscript --vanilla -e 'devtools::test(filter="runaway|diagnose|sanity")'
+```
+-> `[ FAIL 0 | WARN 0 | SKIP 0 | PASS 174 ]`, unchanged from the prior
+round (no test logic changed, only prose/roxygen).
+
+**Deliberately NOT run**: no new fitting (all of the above is closed-form
+arithmetic or CSV analysis on data already retrieved); full `devtools::check()`
+(no exported-function signature or behaviour changed, only documentation
+text); the PR body on GitHub was also corrected to match (not a repo file,
+so not part of this commit's `git diff`, but recorded here since a
+reviewer reading the PR page should see the corrected framing).
+
+— Claude (Fisher), inference-machinery lens

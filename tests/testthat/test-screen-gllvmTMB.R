@@ -347,3 +347,125 @@ test_that("screen_gllvmTMB() returns NOT_CHECKED for unsupported families", {
   expect_equal(screen_table(scr, "traits")$status, "NOT_CHECKED")
   expect_equal(screen_table(scr, "recommendations")$action, "unsupported")
 })
+
+test_that("screen_gllvmTMB() catches an exact one-hot response block", {
+  n <- 30
+  df <- data.frame(
+    unit = factor(seq_len(n)),
+    A = rep(c(1, 0, 0), length.out = n),
+    B = rep(c(0, 1, 0), length.out = n),
+    C = rep(c(0, 0, 1), length.out = n),
+    D = rep(c(0, 1), length.out = n)
+  )
+  scr <- suppressWarnings(screen_gllvmTMB(
+    traits(A, B, C, D) ~ 1 + latent(1 | unit, d = 2),
+    data = df,
+    unit = "unit",
+    family = binomial()
+  ))
+
+  expect_true("response_dependencies" %in% names(scr))
+
+  design <- screen_table(scr, "design")
+  affine_row <- design[design$component == "response_affine_rank", ]
+  expect_equal(nrow(affine_row), 1L)
+  expect_equal(affine_row$status, "FAIL")
+  expect_equal(affine_row$value, 4)
+  expect_equal(affine_row$threshold, 5)
+
+  deps <- screen_table(scr, "response_dependencies")
+  one_hot <- deps[deps$type == "one_hot_block", ]
+  expect_equal(nrow(one_hot), 1L)
+  expect_equal(one_hot$status, "FAIL")
+  expect_true(grepl("A", one_hot$traits))
+  expect_true(grepl("B", one_hot$traits))
+  expect_true(grepl("C", one_hot$traits))
+  expect_false(grepl("D", one_hot$traits))
+  expect_true(grepl("= 1", one_hot$certificate, fixed = TRUE))
+})
+
+test_that("screen_gllvmTMB() response-affine check PASSes with no exact dependency", {
+  n <- 30
+  set.seed(11)
+  df <- data.frame(
+    unit = factor(seq_len(n)),
+    x = rbinom(n, 1, 0.5),
+    y = rbinom(n, 1, 0.5)
+  )
+  scr <- screen_gllvmTMB(
+    traits(x, y) ~ 1 + latent(1 | unit, d = 1),
+    data = df,
+    unit = "unit",
+    family = binomial()
+  )
+  design <- screen_table(scr, "design")
+  affine_row <- design[design$component == "response_affine_rank", ]
+  expect_equal(affine_row$status, "PASS")
+
+  deps <- screen_table(scr, "response_dependencies")
+  expect_equal(deps$status, "PASS")
+  expect_equal(deps$type, "none")
+})
+
+test_that("screen_gllvmTMB() known_groups certifies a declared one-hot set", {
+  n <- 30
+  df <- data.frame(
+    unit = factor(seq_len(n)),
+    A = rep(c(1, 0, 0), length.out = n),
+    B = rep(c(0, 1, 0), length.out = n),
+    C = rep(c(0, 0, 1), length.out = n)
+  )
+  scr <- suppressWarnings(screen_gllvmTMB(
+    traits(A, B, C) ~ 1 + latent(1 | unit, d = 1),
+    data = df,
+    unit = "unit",
+    family = binomial(),
+    known_groups = list(region = c("A", "B", "C"))
+  ))
+  deps <- screen_table(scr, "response_dependencies")
+  kg <- deps[deps$scope == "known_group", ]
+  expect_equal(nrow(kg), 1L)
+  expect_equal(kg$status, "FAIL")
+  expect_equal(kg$group, "region")
+  expect_true(grepl("= 1", kg$certificate, fixed = TRUE))
+})
+
+test_that("screen_gllvmTMB() known_groups certifies a declared nesting chain", {
+  n <- 12
+  df <- data.frame(
+    unit = factor(seq_len(n)),
+    parent = rep(c(1, 1, 0), length.out = n),
+    child = rep(c(1, 0, 0), length.out = n)
+  )
+  scr <- screen_gllvmTMB(
+    traits(parent, child) ~ 1 + latent(1 | unit, d = 1),
+    data = df,
+    unit = "unit",
+    family = binomial(),
+    known_groups = list(realm = c("parent", "child"))
+  )
+  deps <- screen_table(scr, "response_dependencies")
+  kg <- deps[deps$scope == "known_group", ]
+  expect_equal(kg$status, "FAIL")
+  expect_equal(kg$type, "known_nesting")
+})
+
+test_that("screen_gllvmTMB() known_groups PASSes when the declared group is not exact", {
+  n <- 30
+  set.seed(22)
+  df <- data.frame(
+    unit = factor(seq_len(n)),
+    x = rbinom(n, 1, 0.5),
+    y = rbinom(n, 1, 0.5)
+  )
+  scr <- screen_gllvmTMB(
+    traits(x, y) ~ 1 + latent(1 | unit, d = 1),
+    data = df,
+    unit = "unit",
+    family = binomial(),
+    known_groups = list(guess = c("x", "y"))
+  )
+  deps <- screen_table(scr, "response_dependencies")
+  kg <- deps[deps$scope == "known_group", ]
+  expect_equal(kg$status, "PASS")
+})

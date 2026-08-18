@@ -13,7 +13,8 @@ screen_gllvmTMB(
   weights = NULL,
   missing = miss_control(),
   control = screen_control(),
-  Xcoef_fixed = NULL
+  Xcoef_fixed = NULL,
+  known_groups = NULL
 )
 }
 \arguments{
@@ -42,6 +43,18 @@ semantics as \code{\link[=gllvmTMB]{gllvmTMB()}} for long-format binomial fits.}
 \item{Xcoef_fixed}{Optional named structural-zero fixed-effect constraints,
 normalized against the expanded fixed-effect columns as in \code{\link[=gllvmTMB]{gllvmTMB()}}.
 This argument is used by the opt-in fixed-design separation screen.}
+
+\item{known_groups}{Optional named list of character vectors of trait
+names. Each element declares a set of traits the user believes forms an
+exact one-hot (simplex) block or a nesting/containment chain -- for
+example the dummy columns of one categorical review-type or
+geographic-scope variable, or a broad-realm indicator together with a
+narrower nested realm. Each declared group is checked against the
+observed complete rows with an exact deterministic test (row sums for a
+one-hot block; a containment chain in the order the group is written for
+nesting) and reported as its own row in the \code{response_dependencies}
+table, independent of the automatic affine-rank screen below. Screening
+is Bernoulli-only, matching the automatic screen.}
 }
 \value{
 A \code{gllvmTMB_screen} object. Use \code{\link[=screen_table]{screen_table()}} to extract
@@ -66,6 +79,29 @@ interpretation. In systematic maps, a \code{trait} may be a content item or
 indicator. In a binary JSDM, a \code{trait} may be a species presence-absence
 response. Rare or constant species are flagged for inspection and possible
 sensitivity analysis, not automatically removed.
+
+The screen also checks the response side for exact higher-order
+dependencies that the pairwise duplicate/complement check cannot see --
+most commonly a one-hot/simplex block, where several trait columns are
+really the dummy coding of one categorical variable and sum to exactly 1
+on every complete row (a review-type, geographic-scope, or temporal-scope
+set is a typical source). It works by an affine-rank check on the
+augmented response matrix \code{cbind(1, Y)} over complete Bernoulli rows
+(rows where every screened trait is observed), using base R's \code{\link[=qr]{qr()}} with
+a dimension-scaled tolerance. A rank deficiency means at least one exact
+affine dependency exists among the traits; the screen reports that count
+and, where cheaply recoverable from the matrix's null space, a
+human-readable certificate naming the traits and the relation (for
+example \code{"A + B + C = 1"}). This is a best-effort report, not exhaustive
+minimal-subset discovery: with more than one simultaneous exact
+dependency the automatic search can fail to decompose the null space into
+individually clean certificates, in which case the row records the
+deficiency without a certificate. Declaring known structure via
+\code{known_groups} sidesteps that limitation with an exact, deterministic,
+per-group check. An exact one-hot block is not itself a bug to silently
+filter -- it is one categorical variable, and belongs in
+\code{\link[=multinomial]{multinomial()}} or a deliberate reference-level coding, not in several
+unconstrained binary traits.
 
 With \code{screen_control(separation = "fixed")}, the screen uses the optional
 \code{detectseparation} package to classify the observed fixed design. This

@@ -1,3 +1,20 @@
+## 2026-08-18 — Cursor: g0_unlock fork B Melissa reconcile (GOAL_MET)
+
+- worktree: `~/local-scratch/lanes/gllvmTMB-mspl-forkB-g0-reconcile`
+- branch: `cursor/mspl-forkB-g0-unlock-reconcile-20260818` from `origin/main` @ `715326af`
+- L0 on main: [#1130](https://github.com/itchyshin/gllvmTMB/pull/1130) `d7f526d4`
+- L1 on main: [#1128](https://github.com/itchyshin/gllvmTMB/pull/1128) `715326af` —
+  cov_eff 0.880 Wilson [0.7620, 0.9438] PASS (not calibrated, not public)
+- Melissa: `docs/dev-log/plan-actual/2026-08-18-mspl-forkB-g0-unlock.md`
+- kit: `checkpoint.md` / `arcs.md` / `decision-queue.md` / `launch-prompt.md` → GOAL_MET;
+  next gate L2 needs Shinichi G0
+- `gh pr view 1077 --json isDraft` → `true`
+- `git diff --name-only origin/main -- LOOP/` → empty (root LOOP/ untouched)
+- rg `MSPL-04` in register → still `blocked`
+- #1143 resolved in this sitting (companion harness or closed; official L1 stays #1128)
+- deliberately not: Totoro, T*, public se/vcov/confint, undraft #1077, NEWS covered,
+  MSPL-04 flip, L2, git add -A, D-43 panel
+
 ## 2026-08-18 — Cursor: L1 ADEMP 50-rep re-run on origin/main after #1130
 
 - worktree: `~/local-scratch/lanes/gllvmTMB-pr1128-l1-ademp`

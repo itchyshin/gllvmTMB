@@ -13,7 +13,11 @@ Repo-root `LOOP/` on `main` is the closed Poisson \(W_*\) REPLACE
 | `LOOP/checkpoint.md` | Resume pointer (overwrite as arcs land) |
 | `LOOP/decision-queue.md` | Signed G0 + remaining hard OUTs |
 
-**This docs-kit lane owns only this folder.** Sibling worktrees own
-implementation: `gllvmTMB-mspl-forkB-decision` (Design 125 / ADEMP /
-`decisions.md`), `gllvmTMB-mspl-forkB-L0` (`R/`), `gllvmTMB-mspl-forkB-L1`
-(local smoke).
+**STATE: GOAL_MET** (2026-08-18). L0 [#1130](https://github.com/itchyshin/gllvmTMB/pull/1130)
+`d7f526d4` and L1 [#1128](https://github.com/itchyshin/gllvmTMB/pull/1128) `715326af` are on
+`main`. Official L1: cov_eff 0.880 Wilson [0.762, 0.944] PASS — not calibrated, not public.
+Melissa: `docs/dev-log/plan-actual/2026-08-18-mspl-forkB-g0-unlock.md`. Next gate is **L2**
+and needs Shinichi G0; do not auto-start.
+
+**This docs-kit lane owns only this folder.** Sibling worktrees owned
+implementation: decision (#1129), L0 (#1130), L1 ADEMP (#1128).

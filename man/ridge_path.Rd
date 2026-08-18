@@ -23,11 +23,10 @@ ridge_path(
 directly. \code{unit} defaults to \code{"site"}, matching \code{\link[=gllvmTMB]{gllvmTMB()}}'s own
 default.}
 
-\item{tau}{Numeric vector of ridge scales to sweep, in ascending
-penalty-weakening order is not required (the function sorts internally
-for the printed slope criterion). Every entry must be a positive
-number; \code{Inf} is allowed and requests plain ML. Default
-\code{c(0.5, 1, 2, 4, 8, Inf)}.}
+\item{tau}{Numeric vector of ridge scales to sweep. Order does not
+matter: the function sorts internally, both for refitting and for the
+printed classification. Every entry must be a positive number; \code{Inf}
+is allowed and requests plain ML. Default \code{c(0.5, 1, 2, 4, 8, Inf)}.}
 
 \item{control}{A \code{\link[=gllvmTMBcontrol]{gllvmTMBcontrol()}} object providing every OTHER setting
 (\code{n_init}, \code{se}, \code{warn_runaway}, ...). Its own \code{loading_ridge} /
@@ -74,9 +73,42 @@ cannot: a trait whose loading and communality settle down as the penalty
 weakens is behaving like an ordinary, data-determined estimate; a trait
 that keeps moving toward the boundary as the penalty weakens is one
 whose finite estimate under any single \code{tau} is being determined by the
-penalty, not by the data. \code{print()} reports this contrast using a
-simple, documented slope rule on the last two finite-\code{tau} grid points
-(see Details); it is a heuristic, not a formal test.
+penalty, not by the data.
+
+Every grid point is a COLD refit: each \code{tau} starts from the model's own
+default initial values, not from the previous grid point's solution.
+This trades some speed for comparability across \code{tau} -- a warm-started
+path could stay near one local optimum across the whole grid and never
+reveal that a later \code{tau} has a different, better optimum, which would
+understate exactly the instability this function exists to detect.
+
+\code{print()} classifies each trait using a SIGNED statistic -- a shrinking
+or flat loading is always \code{"interior"}, regardless of magnitude; only a
+substantial POSITIVE move counts as \code{"penalty-determined"}. Two
+comparisons are possible, chosen automatically per trait:
+\describe{
+\item{A converged \code{tau = Inf} point is available}{The largest
+finite-\code{tau} loading is compared directly to the \code{Inf} loading
+(the plain signed relative change). A blow-up there -- exactly what
+the paragraph above calls "moving toward boundary" -- is compared
+against \code{boundary_rel_thresh} (default \code{0.10}, i.e. a >10\% increase
+from the last finite \code{tau} to \code{Inf}). This comparison is never
+skipped when a converged \code{Inf} point exists: it is the diagnostic
+the previous paragraph promises.}
+\item{No converged \code{tau = Inf} point is available}{The last two
+finite-\code{tau} grid points are compared using the log-log slope
+(elasticity) \verb{d(log loading) / d(log tau)}, not the raw relative
+change. The raw relative change decays like \code{1/tau} for a fixed
+absolute grid spacing even when a trait is genuinely still
+moving -- a \code{tau = c(2000, 2100)} pair (a 1.05x ratio) gives a
+still-growing trait only a 5\% raw change, an artifact of the grid
+geometry rather than the trait's behaviour. The elasticity is
+invariant to that spacing (for \code{loading ~ tau^k} it recovers \code{k}
+exactly at any two grid points) and is compared against
+\code{elasticity_thresh} (default \code{0.10}).}
+}
+Both are heuristics, not formal tests; see \code{print.gllvmTMB_ridge_path}'s
+arguments to adjust either threshold.
 
 \code{tau = Inf} requests a plain maximum-likelihood refit with no ridge at
 all. That refit can legitimately fail to converge, or converge to an
@@ -84,7 +116,8 @@ extreme loading, for exactly the traits this function exists to flag --
 that failure or extremity is itself part of the diagnostic evidence, not
 a bug to work around. \code{fit_error} records the message when a grid point's
 refit errors outright, and the row's other columns are \code{NA} for that
-point.
+point; the classifier then falls back to the finite-\code{tau} elasticity
+comparison, since a failed \code{Inf} refit contributes no loading to compare.
 }
 \examples{
 \dontrun{

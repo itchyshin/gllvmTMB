@@ -81,10 +81,27 @@ evidence-based and posted by Shinichi's explicit approval, one at a time.
 ## Next immediate steps (OWED, in order)
 
 1. **Merge #1157** on green CI (verify `headSha` first). Nothing in it needs a decision.
-2. **#1080's remaining halves** — items 1 and 2 shipped in #1108. Still owed: **item 3**, the
-   rename (`shape_gamma`/`cv_gamma_delta`/`scale_student`, a breaking change), and **item 4**,
-   the `sigma_eps` gaussian/lognormal sharing, which is an **estimand question, not naming**.
-   Both need Shinichi. Do not implement unilaterally.
+2. **#1080's remaining half** — items 1 and 2 shipped in #1108. Still owed: **item 3**, the
+   rename (`shape_gamma`/`cv_gamma_delta`/`scale_student`) — a breaking change, needs Shinichi.
+
+   🔴 **#1080 item 4 is NOT open — do not re-open it.** The pooled `sigma_eps` shared across
+   gaussian and lognormal is **DELIBERATE**, settled by Shinichi on 2026-07-31 (gllvmTMB #856,
+   closed as *"filed on a false premise"*). It is documented (`man/diag_re.Rd`), the per-trait
+   role is already served by `theta_diag_B`/`theta_diag_W`, and `sd_g[t]^2 + sigma_eps^2` is
+   identified only as a sum. There is **measured evidence against** changing it: an exploratory
+   per-trait branch collapsed a trait's residual SD to the zero boundary in **13 of 20 seeds**
+   (0 of 20 before), every collapse with `convergence = 0` AND `pdHess = TRUE`, and
+   `check_gllvmTMB()` missed 11 of the 13. The pooling is empirically protective. Full record:
+   `~/shinichi-brain/memory/2026-07-31-gllvmTMB-856-pooled-sigma-eps-is-deliberate.md`.
+   (An earlier draft of this handover listed item 4 as an open estimand question. That was a
+   dated prior, corrected here — exactly the failure `protocols/handoff.md` warns about.)
+
+   Two genuine leftovers from that same record, both still live and neither claimed:
+   `R/unique-keyword.R:127` says "Gaussian / lognormal / **Gamma**" share one `sigma_eps` —
+   **false since `dff9b363` (2026-07-05)** gave Gamma its own `log_phi_gamma`; and the
+   replicated-design case (>=2 rows per unit x trait) where auto-suppression does not fire and
+   the shared scalar fits the RMS compromise (1.4292 against true 0.2 / 2.0) is recorded as
+   information only, with the trade judged unfavourable.
 3. **#1082's residual half** — the capability-board pip promotion. The article work is done
    (#1146); the pips are gated on *evidence*, not prose. Check `docs/design/35-...` before
    moving anything.

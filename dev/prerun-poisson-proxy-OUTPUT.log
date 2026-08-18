@@ -1,0 +1,37 @@
+gllvmTMB is EXPERIMENTAL (lifecycle: experimental). Use at your own risk: the package is not complete, is not fully human-verified, and needs extensive further validation. Point estimates are the primary inferential output, but evidence is route- and regime-specific. Broad interval coverage is not certified. One narrow two-sided Gaussian total-variance profile regime has a documented 0.94 floor. See the Current limitations and boundaries page for scope.
+================ PROXY TIMING (poisson(), admitted family) ================
+
+---------------- n_sp = 250 ----------------
+elapsed: 9.215847 secs
+elapsed (numeric, seconds): 9.216
+fit$opt$convergence: 0
+fit$report$sd_b:
+[1] 0.5921594 0.6701364 0.5545762 0.6708016 0.5765288 0.3867963
+sd_b all finite: TRUE
+sd_b all positive: TRUE
+pdHess: TRUE
+slope_sd_hat (even entries):
+[1] 0.6701364 0.6708016 0.3867963
+true slope SD (sqrt(s2_slope)):
+[1] 0.5477226 0.7071068 0.4472136
+pooled ratio mean(slope_sd_hat)/mean(true_slope_sd): 1.0151
+
+---------------- n_sp = 300 ----------------
+elapsed: 15.27687 secs
+elapsed (numeric, seconds): 15.277
+fit$opt$convergence: 0
+fit$report$sd_b:
+[1] 0.4798991 0.6157481 0.8596862 0.8241753 0.6159231 0.3457311
+sd_b all finite: TRUE
+sd_b all positive: TRUE
+pdHess: TRUE
+slope_sd_hat (even entries):
+[1] 0.6157481 0.8241753 0.3457311
+true slope SD (sqrt(s2_slope)):
+[1] 0.5477226 0.7071068 0.4472136
+pooled ratio mean(slope_sd_hat)/mean(true_slope_sd): 1.0491
+
+================ SUMMARY ================
+n_sp=250: elapsed=9.216s convergence=0 pdHess=TRUE sd_b_finite=TRUE sd_b_positive=TRUE ratio=1.0151
+n_sp=300: elapsed=15.277s convergence=0 pdHess=TRUE sd_b_finite=TRUE sd_b_positive=TRUE ratio=1.0491
+===========================================

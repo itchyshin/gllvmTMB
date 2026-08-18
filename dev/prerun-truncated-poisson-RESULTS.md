@@ -161,10 +161,119 @@ any family absent from `.augmented_slope_family_contract()`. §4 needs an explic
 together with the recovery-cell test) — and that step should be scheduled in a session/
 environment where such a scoped, temporary source edit is not blocked outright.
 
+## PROXY timing — poisson() (family_id 2, admitted), same route, same fixture
+
+**This section measures `poisson()`, not `truncated_poisson()`.** No `R/` edit, no
+permission escalation. `poisson()` is already a row in
+`.augmented_slope_family_contract()` (`admission_basis = "route_specific"`), so the
+admission gate does not fire and the fit reaches TMB normally.
+
+**Why it is a defensible proxy for `truncated_poisson`:** same log link, no dispersion
+parameter, same augmented-slope route (`phylo_indep(1 + x | species)`), identical design
+matrix and random-effect structure as the blocked cell. The zero-truncated Poisson pmf
+is `dpois(y, mu) / (1 - dpois(0, mu))` for `y >= 1` — it adds one scalar per-observation
+normalising term to the log-likelihood (an `exp(-mu)`/`log1p` correction), not a new
+parameter and not a new random-effect dimension. The Laplace inner solve's cost is
+governed by the size and sparsity of the random-effect precision matrix, which is
+unchanged between the two families.
+
+**Script:** `dev/prerun-poisson-proxy.R` — `make_family_slope_mu()` copied verbatim
+(same provenance as the ABORT script above), ordinary `rpois()` response (no
+zero-truncation rejection loop), `family = poisson()`, and the **in-keyword**
+`phylo_indep(1 + x | species, tree = fx$tree)` form (not the deprecated global
+`phylo_tree =` argument — the deprecation warning itself names the silent index/order
+mismatch risk, and this repo already has a same-day incident of exactly that class of
+indexing bug in a sibling probe). Two cells: `n_sp = 250` (this design's originally cited
+floor) and `n_sp = 300` (`truncated_nbinom2`'s cited floor, Design 128 §2.2), so the
+result is two points, not one number extrapolated blind.
+
+**Results** (full console output: `dev/prerun-poisson-proxy-OUTPUT.log`):
+
+| `n_sp` | elapsed (s) | `convergence` | `sd_b` finite & positive | `pdHess` | pooled ratio |
+|---|---|---|---|---|---|
+| 250 | 9.216 | 0 | TRUE / TRUE | TRUE | 1.0151 |
+| 300 | 15.277 | 0 | TRUE / TRUE | TRUE | 1.0491 |
+
+(`pdHess` is read from `fit$sd_report$pdHess`; `fit$opt` and `fit$sdr` do not carry this
+field on this fit object — confirmed by inspecting `names(fit)`, which exposes
+`sd_report` but no `sdr`.)
+
+Both cells: converged (`convergence == 0`), positive-definite Hessian, all six `sd_b`
+entries finite and positive, pooled slope-SD ratio inside the C1 plausibility band
+`(0.5, 1.7)` used throughout this design (1.015 and 1.049 — close to 1, i.e. good
+recovery for this admitted family at this N, for what that is worth on a single seed).
+Going from `n_sp = 250` to `n_sp = 300` (a 1.2x increase in species, 1.2x increase in
+rows) roughly 1.67x'd the wall-clock (9.2s to 15.3s) — consistent with the fit cost
+growing faster than linearly in `n_sp` on this two-point read, but two points cannot
+distinguish a mechanism (e.g. more nlminb outer iterations at the larger N vs. genuine
+superlinear per-iteration cost) — do not extrapolate a scaling law from this alone.
+
+**What this DOES and does NOT establish:**
+- **DOES** give a defensible order-of-magnitude wall-clock basis for costing the
+  campaign — this is exactly the number D-139 flagged as absent from every document in
+  this repo (Design 128 §4's own words: "No cited per-fit wall-clock exists anywhere in
+  the documents this design was built from"). A `phylo_indep(1 + x | species)` C1 slope
+  fit at this fixture's size is a **single-digit-to-teens-of-seconds** operation on this
+  machine for an admitted family with the identical route/design/RE structure, not a
+  multi-minute one. That materially changes the campaign's cost profile from "unknown,
+  possibly the documented tweedie multi-minute hang risk" to "cheap enough that seed
+  count, not per-fit time, is the campaign's real cost driver" — but only as an
+  order-of-magnitude prior, not a certified number for the target family.
+- **DOES NOT** establish `truncated_poisson`'s own convergence behaviour at `n_sp = 250`
+  or `n_sp = 300`. Truncation can change the optimisation landscape in ways a proxy
+  cannot see — e.g. weaker identifiability of `mu` near the truncation boundary, more
+  outer nlminb iterations, or convergence failures that a structurally identical but
+  untruncated likelihood would never hit. This is precisely what the blocked
+  gate-removal run (see the Addendum above) would have measured directly, and it remains
+  genuinely unmeasured.
+- **IS NOT** recovery evidence and creates **NO admission claim** for any family,
+  including `poisson()` itself (which is already admitted on other grounds) — this is a
+  timing/feasibility proxy only, single seed, and must not be cited as a coverage or
+  calibration result for anything.
+
+**Reasoning (not measurement) — how much slower is `truncated_poisson` likely to be?**
+My best guess is a **small constant factor over the poisson proxy, on the order of
+1.2x-2x per fit, not an order of magnitude** — reasoning: the extra likelihood term is
+one scalar normalising correction per observation (`exp(-mu)`/`log1p`), evaluated and
+differentiated through TMB's existing AD tape; it adds negligible per-evaluation cost
+next to the shared cost of building and factorising the same-sized sparse random-effect
+precision matrix at every inner Laplace step, which is identical between the two
+families. The channel this reasoning cannot rule out is a change in the **number of
+outer optimisation iterations** to reach convergence (truncation can flatten or bias the
+likelihood surface near small `mu`, as already documented for `truncated_nbinom2`'s
+`phi` in Design 128 §2.2) — if that channel dominates, the multiplier could be larger
+than 2x, and only a direct measurement (the blocked gate-removal run) would catch it.
+This estimate should not be used to set a hard timeout for the eventual campaign; it is
+a sizing prior only.
+
+## Overall verdict for `truncated_poisson`: unchanged — ABORT / BLOCKED
+
+The proxy section above does not convert the ABORT into a PASS. `truncated_poisson`'s
+`phylo_indep(1 + x | species)` route at `n_sp = 250` (or any N) remains genuinely
+untested in this session. The three findings together:
+
+1. **Design 128 §4 is unexecutable as literally written** against current `main` —
+   `truncated_poisson` is absent from `.augmented_slope_family_contract()`, so the fit
+   never reaches TMB. The design doc needs an explicit "temporarily lift the admission
+   gate for this probe, then revert" step written into its spec (mirroring how the
+   betabinomial admission PR actually did it — contract-row edit landed together with
+   the recovery-cell test).
+2. **The gate-removal remediation is blocked by this session's own permission layer**,
+   independent of maintainer/lane authorization questions — confirmed by the
+   stash/unstash test in the Addendum above. This needs Shinichi's decision (a
+   differently-permissioned session, or an explicit settings change) before it can be
+   attempted again; it is not something to retry from here.
+3. **The poisson() proxy gives an order-of-magnitude wall-clock basis** (single-digit to
+   teens of seconds per fit at `n_sp` 250-300) for costing the campaign, but it is a
+   sibling-family measurement, not truncated_poisson's own convergence evidence, and it
+   creates no admission claim for anything.
+
 ## Files
 
-- Script: `dev/prerun-truncated-poisson.R`
-- Console output: `dev/prerun-truncated-poisson-OUTPUT.log`
+- ABORT probe script: `dev/prerun-truncated-poisson.R`
+- ABORT console output: `dev/prerun-truncated-poisson-OUTPUT.log`
+- PROXY probe script: `dev/prerun-poisson-proxy.R`
+- PROXY console output: `dev/prerun-poisson-proxy-OUTPUT.log`
 - This report: `dev/prerun-truncated-poisson-RESULTS.md`
 - Orphaned stash (unapplied, contains the attempted temporary patch for reference):
   `stash@{0}` — "WIP on claude/rand-slope-surface-20260818"

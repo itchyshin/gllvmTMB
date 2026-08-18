@@ -52792,3 +52792,30 @@ git status --porcelain
   as of this entry.
 
 — Claude
+
+---
+
+## 2026-08-18 — Slice 3 (Ayumi #23): response-dependency screen + ridge_path() (Claude, chain lane)
+
+Branch `claude/slice3-screening-ridgepath`, closing the authorized #1117→#1118→Slice-3
+chain. Commands: fail-first tests recorded pre-implementation for every sub-slice AND
+every refute repair; `NOT_CRAN=true devtools::test(filter = "screen|ridge-path|
+lambda-constraint")` → 235 assertions, 0 failures; both touched articles re-rendered;
+`document()` (3 known warnings only); `check_pkgdown()` clean after #1122's index fix.
+
+**The refute cycle (4-for-4 today):** the fresh-context adversarial review refuted the
+first version twice over — (1) `ridge_path()`'s classifier printed a DIRECTIONAL verdict
+from an unsigned, grid-spacing-dependent statistic (2/3 traits mislabelled on the natural
+runaway fixture; a converged tau=Inf blow-up printed "interior"); (2) the one-hot
+certificate collapsed whenever an all-ones or duplicated column joined the null space
+(near-certain on real systematic-map data). Repairs: signed **log-log elasticity**
+(grid-invariant by construction) with the converged-Inf comparison never skipped;
+**deflation** of already-known constant/duplicate/complement directions before the
+certificate search; tolerance documented; known_groups degeneracy guards; both-direction
+nesting; the tautological test replaced with direction-pinning tests that fail against
+the old classifier.
+
+Deliberately not done: minimal-subset discovery (combinatorial; stated in roxygen);
+any efficacy claim for MSPL/ridge (targeting claims only, verified by the reviewer).
+
+— Claude, chain lane (PRs #1121, #1122 merged; this branch is the chain's last link)

@@ -543,6 +543,29 @@ Schielzeth (2010) \emph{Biol. Rev.} 85: 935-956; Nakagawa, Johnson &
 Schielzeth (2017) \emph{J. R. Soc. Interface} 14: 20170213.
 }
 }
+\section{Dispersion parameters in the report slot}{
+
+The fitted object's \verb{$report} carries per-family dispersion quantities on
+the natural scale, each a vector of length \code{n_traits} indexed by trait
+(except \code{sigma_eps}, a single scalar). Their names follow the engine's
+internal parameterisation, \strong{not} standard R distribution arguments —
+several are easy to misread. What each one IS, and how it maps to
+standard R arguments (\code{mu = exp(eta)} unless noted):\tabular{lll}{
+   Family (report name) \tab What it is \tab Standard-R conversion \cr
+   gaussian, lognormal (\code{sigma_eps}) \tab residual SD / sdlog; \strong{one scalar shared} by all gaussian \emph{and} lognormal traits \tab \code{pnorm(y, mean = eta, sd = sigma_eps)}; \code{plnorm(y, meanlog = eta, sdlog = sigma_eps)} \cr
+   Gamma (\code{phi_gamma}) \tab the \strong{shape}, not a dispersion \tab \code{pgamma(y, shape = phi, scale = mu / phi)}; \code{CV(y) = 1 / sqrt(phi)} \cr
+   nbinom2 (\code{phi_nbinom2}) \tab the NB \code{size} \tab \code{pnbinom(y, size = phi, mu = mu)}; \code{Var(y) = mu + mu^2 / phi} \cr
+   nbinom1 (\code{phi_nbinom1}) \tab linear overdispersion, \code{Var(y) = mu * (1 + phi)} \tab \code{pnbinom(y, size = mu / phi, mu = mu)} — the size is mean-dependent \cr
+   tweedie (\code{phi_tweedie}, \code{p_tweedie}) \tab dispersion and power \code{p} in (1, 2) \tab no base-R CDF; \code{tweedie::ptweedie(y, mu = mu, phi = phi, power = p)} \cr
+   Beta (\code{phi_beta}) \tab the precision \tab \code{pbeta(y, shape1 = mu * phi, shape2 = (1 - mu) * phi)} with \code{mu = plogis(eta)} \cr
+   betabinomial (\code{phi_betabinom}) \tab precision of the Beta mixing \tab \code{a = mu * phi}, \code{b = (1 - mu) * phi} with \code{mu = plogis(eta)}; no base-R CDF \cr
+   student (\code{sigma_student}, \code{df_student}) \tab the \strong{scale}, not the SD \tab \code{pt((y - eta) / sigma, df)}; \code{SD(y) = sigma * sqrt(df / (df - 2))}, undefined for \code{df <= 2} \cr
+   truncated_nbinom2 (\code{phi_truncnb2}) \tab the NB \code{size}; a \strong{separate} vector from \code{phi_nbinom2} \tab \code{pnbinom(y, size = phi, mu = mu)} renormalised by \code{1 - pnbinom(0, ...)} \cr
+   delta_lognormal (\code{sigma_lognormal_delta}) \tab sdlog of the positive part \tab \code{plnorm(y, meanlog = eta, sdlog = sigma)} for \code{y > 0}; \code{P(y > 0) = plogis(eta)} \cr
+   delta_gamma (\code{phi_gamma_delta}) \tab the \strong{CV} of the positive part, not a shape \tab \code{pgamma(y, shape = 1 / phi^2, scale = mu * phi^2)} for \code{y > 0}; \code{P(y > 0) = plogis(eta)} \cr
+}
+}
+
 \section{Objective provenance}{
  report\$joint_nll_* vs objective_components:
 A fitted object carries two different surfaces that both look like "the

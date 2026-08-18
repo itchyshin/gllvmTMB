@@ -342,6 +342,28 @@
 #'   corrected first, then the two methods were added, which is why the
 #'   promise now holds.
 #'
+#' @section Dispersion parameters in the report slot:
+#' The fitted object's `$report` carries per-family dispersion quantities on
+#' the natural scale, each a vector of length `n_traits` indexed by trait
+#' (except `sigma_eps`, a single scalar). Their names follow the engine's
+#' internal parameterisation, **not** standard R distribution arguments —
+#' several are easy to misread. What each one IS, and how it maps to
+#' standard R arguments (`mu = exp(eta)` unless noted):
+#'
+#' | Family (report name) | What it is | Standard-R conversion |
+#' |---|---|---|
+#' | gaussian, lognormal (`sigma_eps`) | residual SD / sdlog; **one scalar shared** by all gaussian *and* lognormal traits | `pnorm(y, mean = eta, sd = sigma_eps)`; `plnorm(y, meanlog = eta, sdlog = sigma_eps)` |
+#' | Gamma (`phi_gamma`) | the **shape**, not a dispersion | `pgamma(y, shape = phi, scale = mu / phi)`; `CV(y) = 1 / sqrt(phi)` |
+#' | nbinom2 (`phi_nbinom2`) | the NB `size` | `pnbinom(y, size = phi, mu = mu)`; `Var(y) = mu + mu^2 / phi` |
+#' | nbinom1 (`phi_nbinom1`) | linear overdispersion, `Var(y) = mu * (1 + phi)` | `pnbinom(y, size = mu / phi, mu = mu)` — the size is mean-dependent |
+#' | tweedie (`phi_tweedie`, `p_tweedie`) | dispersion and power `p` in (1, 2) | no base-R CDF; `tweedie::ptweedie(y, mu = mu, phi = phi, power = p)` |
+#' | Beta (`phi_beta`) | the precision | `pbeta(y, shape1 = mu * phi, shape2 = (1 - mu) * phi)` with `mu = plogis(eta)` |
+#' | betabinomial (`phi_betabinom`) | precision of the Beta mixing | `a = mu * phi`, `b = (1 - mu) * phi` with `mu = plogis(eta)`; no base-R CDF |
+#' | student (`sigma_student`, `df_student`) | the **scale**, not the SD | `pt((y - eta) / sigma, df)`; `SD(y) = sigma * sqrt(df / (df - 2))`, undefined for `df <= 2` |
+#' | truncated_nbinom2 (`phi_truncnb2`) | the NB `size`; a **separate** vector from `phi_nbinom2` | `pnbinom(y, size = phi, mu = mu)` renormalised by `1 - pnbinom(0, ...)` |
+#' | delta_lognormal (`sigma_lognormal_delta`) | sdlog of the positive part | `plnorm(y, meanlog = eta, sdlog = sigma)` for `y > 0`; `P(y > 0) = plogis(eta)` |
+#' | delta_gamma (`phi_gamma_delta`) | the **CV** of the positive part, not a shape | `pgamma(y, shape = 1 / phi^2, scale = mu * phi^2)` for `y > 0`; `P(y > 0) = plogis(eta)` |
+#'
 #' @references
 #' Sterzinger, P. and Kosmidis, I. (2023). Maximum softly-penalized
 #' likelihood for mixed effects logistic regression. *Statistics and

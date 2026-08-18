@@ -337,3 +337,331 @@ test_that("known_groups: a typo'd trait name aborts even when the check itself i
     class = "rlang_error"
   )
 })
+
+## Issue #1154 -- the one-hot test was WHOLE-GROUP only: a declared group
+## containing a genuine one-hot subset plus an unrelated member reported
+## PASS / known_group_checked, the identical "declaring a slightly-too-large
+## group weakens the verdict" shape as the nesting defect fixed above.
+## Fixed by a bounded exhaustive subset search (see SUBSET_MAX below).
+
+## {A, B, C} is a genuine 3-way one-hot block; D is unrelated (varies
+## independently of the A/B/C block by construction, and never sums with
+## it to a constant).
+.one_hot_subset_plus_unrelated_data <- function(n = 24) {
+  i <- 0:(n - 1)
+  b <- i %% 3
+  A <- as.integer(b == 0)
+  B <- as.integer(b == 1)
+  C <- as.integer(b == 2)
+  D <- as.integer(((i %/% 3) %% 2) == 1)
+  data.frame(unit = factor(seq_len(n)), A = A, B = B, C = C, D = D)
+}
+
+test_that("known_groups: one-hot subset {A,B,C} plus unrelated D is certified (was silently PASS pre-fix)", {
+  df <- .one_hot_subset_plus_unrelated_data()
+  fmla <- traits(A, B, C, D) ~ 1 + latent(1 | unit, d = 1)
+
+  ## Sanity: the WHOLE group does not sum to 1 (D breaks it), so the
+  ## pre-fix whole-group-only test correctly reports FALSE here -- the
+  ## defect is that it then falls through to PASS instead of finding the
+  ## {A,B,C} subset.
+  expect_false(all(abs(df$A + df$B + df$C + df$D - 1) < 1e-8))
+  expect_true(all(abs(df$A + df$B + df$C - 1) < 1e-8))
+
+  scr <- suppressWarnings(screen_gllvmTMB(
+    fmla,
+    data = df, unit = "unit", family = binomial(),
+    known_groups = list(g = c("A", "B", "C", "D"))
+  ))
+  deps <- screen_table(scr, "response_dependencies")
+  kg <- deps[deps$scope == "known_group", ]
+
+  ## Must FAIL with a certified {A,B,C} = 1 subset, not PASS as
+  ## known_group_checked.
+  expect_true(any(kg$status == "FAIL"))
+  expect_false(any(kg$type == "known_group_checked"))
+  subset_rows <- kg[kg$type == "known_one_hot_subset", ]
+  expect_equal(nrow(subset_rows), 1L)
+  expect_true(grepl("A + B + C = 1", subset_rows$certificate, fixed = TRUE))
+  expect_false(grepl("D", subset_rows$certificate, fixed = TRUE))
+})
+
+test_that("known_groups: two disjoint one-hot subsets inside one declared group are both certified and both minimal", {
+  n <- 24
+  i <- 0:(n - 1)
+  ab <- i %% 2
+  A <- as.integer(ab == 0)
+  B <- as.integer(ab == 1)
+  cde <- (i %/% 2) %% 3
+  Cc <- as.integer(cde == 0)
+  Dd <- as.integer(cde == 1)
+  Ee <- as.integer(cde == 2)
+  spare <- as.integer(((i %/% 6) %% 2) == 1)
+  df <- data.frame(
+    unit = factor(seq_len(n)),
+    A = A, B = B, C = Cc, D = Dd, E = Ee, F = spare
+  )
+  fmla <- traits(A, B, C, D, E, F) ~ 1 + latent(1 | unit, d = 1)
+
+  ## Sanity: whole group never sums to 1 (A+B=1, C+D+E=1, so the whole
+  ## group sums to 2 + F), and neither the pair nor the triple alone
+  ## equals the whole declared group.
+  expect_false(all(abs(df$A + df$B + df$C + df$D + df$E + df$F - 1) < 1e-8))
+
+  scr <- suppressWarnings(screen_gllvmTMB(
+    fmla,
+    data = df, unit = "unit", family = binomial(),
+    known_groups = list(g = c("A", "B", "C", "D", "E", "F"))
+  ))
+  deps <- screen_table(scr, "response_dependencies")
+  kg <- deps[deps$scope == "known_group", ]
+  subset_rows <- kg[kg$type == "known_one_hot_subset", ]
+
+  expect_equal(nrow(subset_rows), 2L)
+  certs <- sort(subset_rows$certificate)
+  expect_true(any(grepl("A + B = 1", certs, fixed = TRUE)))
+  expect_true(any(grepl("C + D + E = 1", certs, fixed = TRUE)))
+  ## Neither certificate names F or bleeds into the other block.
+  expect_false(any(grepl("F", certs, fixed = TRUE)))
+})
+
+test_that("known_groups: minimality -- a one-hot subset's superset is not also reported", {
+  df <- .one_hot_subset_plus_unrelated_data()
+  fmla <- traits(A, B, C, D) ~ 1 + latent(1 | unit, d = 1)
+
+  scr <- suppressWarnings(screen_gllvmTMB(
+    fmla,
+    data = df, unit = "unit", family = binomial(),
+    known_groups = list(g = c("A", "B", "C", "D"))
+  ))
+  deps <- screen_table(scr, "response_dependencies")
+  kg <- deps[deps$scope == "known_group", ]
+  subset_rows <- kg[kg$type == "known_one_hot_subset", ]
+
+  ## Exactly one certificate (the minimal {A,B,C}); the superset
+  ## {A,B,C,D} -- which does NOT sum to 1 here, but the point of this test
+  ## is that even when a superset happens to also test true it must not
+  ## be reported once a smaller subset already covers it.
+  expect_equal(nrow(subset_rows), 1L)
+  expect_true(grepl("A + B + C = 1", subset_rows$certificate, fixed = TRUE))
+  ## No certificate lists all four traits.
+  expect_false(any(vapply(
+    strsplit(subset_rows$traits, ", "),
+    function(tr) setequal(tr, c("A", "B", "C", "D")),
+    logical(1L)
+  )))
+})
+
+test_that("known_groups: whole-group one-hot still reports known_one_hot exactly as before (regression guard)", {
+  df <- .three_one_hot_blocks_data()
+  fmla <- traits(A, B, C, D, E, F, G, H, I) ~ 1 + latent(1 | unit, d = 1)
+
+  scr <- suppressWarnings(screen_gllvmTMB(
+    fmla,
+    data = df, unit = "unit", family = binomial(),
+    known_groups = list(g1 = c("A", "B", "C"))
+  ))
+  deps <- screen_table(scr, "response_dependencies")
+  kg <- deps[deps$scope == "known_group", ]
+  expect_equal(nrow(kg), 1L)
+  expect_equal(kg$type, "known_one_hot")
+  expect_equal(kg$status, "FAIL")
+  expect_equal(kg$certificate, "A + B + C = 1")
+  expect_equal(
+    kg$message,
+    sprintf(
+      "declared group '%s' (%s) sums to exactly 1 on every complete row (%d rows): this is one categorical variable, not %d independent binary traits",
+      "g1", "A, B, C", nrow(df), 3L
+    )
+  )
+})
+
+test_that("known_groups: a declared group larger than SUBSET_MAX gets an explicit not-attempted message, not a silent PASS", {
+  ## 13 mutually independent, non-constant, non-nested binary traits (no
+  ## whole-group one-hot, no pairwise containment) -- constructed once with
+  ## a fixed seed and verified analytically below.
+  set.seed(42)
+  n <- 60
+  k <- 13
+  Y <- matrix(0L, n, k)
+  for (j in seq_len(k)) {
+    Y[, j] <- rbinom(n, 1, 0.3 + 0.03 * j)
+  }
+  colnames(Y) <- paste0("t", seq_len(k))
+  ## Sanity: not whole-group one-hot, no pairwise nesting, none constant.
+  expect_false(all(abs(rowSums(Y) - 1) < 1e-8))
+  expect_true(all(apply(Y, 2, function(x) length(unique(x))) > 1))
+  for (a in seq_len(k)) {
+    for (b in seq_len(k)) {
+      if (a != b) expect_false(all(Y[, a] >= Y[, b]))
+    }
+  }
+
+  df <- data.frame(unit = factor(seq_len(n)))
+  for (cn in colnames(Y)) df[[cn]] <- Y[, cn]
+  fmla <- as.formula(paste0(
+    "traits(", paste(colnames(Y), collapse = ", "), ") ~ 1 + latent(1 | unit, d = 1)"
+  ))
+
+  scr <- suppressWarnings(screen_gllvmTMB(
+    fmla,
+    data = df, unit = "unit", family = binomial(),
+    known_groups = list(g = colnames(Y))
+  ))
+  deps <- screen_table(scr, "response_dependencies")
+  kg <- deps[deps$scope == "known_group", ]
+
+  expect_false(any(kg$type == "known_group_checked"))
+  expect_true(any(kg$type == "known_group_subset_not_attempted"))
+  not_attempted <- kg[kg$type == "known_group_subset_not_attempted", ]
+  expect_true(grepl("not attempted", not_attempted$message, fixed = TRUE))
+  expect_true(grepl("13", not_attempted$message, fixed = TRUE))
+})
+
+test_that("known_groups: a subset that is one-hot only because its members are constant is not certified (degenerate guard)", {
+  n <- 20
+  df <- data.frame(
+    unit = factor(seq_len(n)),
+    const1 = 1,
+    const0 = 0,
+    other = rep(c(0, 1), length.out = n)
+  )
+  fmla <- traits(const1, const0, other) ~ 1 + latent(1 | unit, d = 1)
+
+  ## const1 + const0 == 1 on every row, but only because both are
+  ## constant -- not a genuine relationship.
+  expect_true(all(abs(df$const1 + df$const0 - 1) < 1e-8))
+
+  scr <- suppressWarnings(screen_gllvmTMB(
+    fmla,
+    data = df, unit = "unit", family = binomial(),
+    known_groups = list(g = c("const1", "const0", "other"))
+  ))
+  deps <- screen_table(scr, "response_dependencies")
+  kg <- deps[deps$scope == "known_group", ]
+  expect_false(any(kg$type == "known_one_hot_subset"))
+  expect_false(any(kg$type == "known_one_hot"))
+})
+
+## Extends .three_one_hot_blocks_data() with an unrelated tenth trait X, so
+## a subset one-hot certificate inside a padded declared group can be
+## tested against a matrix the AUTOMATIC search cannot resolve alone: with
+## three simultaneous one-hot blocks present, .screen_response_affine_certificates()
+## documented-ly resolves NONE of them (see the "three disjoint one-hot
+## blocks" test above) -- so `unresolved` reaching 0 here can only happen
+## via the known_groups certification path, not as a side effect of the
+## automatic per-matrix search.
+.three_one_hot_blocks_plus_spare_data <- function(n = 30) {
+  df <- .three_one_hot_blocks_data(n)
+  i <- 0:(n - 1)
+  df$X <- as.integer(((i %/% 5) %% 2) == 1)
+  df
+}
+
+test_that("known_groups: unresolved count integration -- a one-hot subset inside a larger declared group resolves it to 0", {
+  ## The three blocks A/B/C, D/E/F, G/H/I are the only affine dependencies
+  ## (deficiency 3); X is unrelated. g1 is declared TOO LARGE (padded with
+  ## X, so it is not itself whole-group one-hot); the {A,B,C} subset must
+  ## still be found and credited so unresolved reaches 0 -- pre-fix it does
+  ## not, because .screen_known_group_rows() never emits a vector for a
+  ## subset of a declared group that fails the whole-group one-hot test.
+  df <- .three_one_hot_blocks_plus_spare_data()
+  fmla <- traits(A, B, C, D, E, F, G, H, I, X) ~ 1 + latent(1 | unit, d = 1)
+
+  scr <- suppressWarnings(screen_gllvmTMB(
+    fmla,
+    data = df, unit = "unit", family = binomial(),
+    known_groups = list(
+      g1 = c("A", "B", "C", "X"),
+      g2 = c("D", "E", "F"),
+      g3 = c("G", "H", "I")
+    )
+  ))
+  deps <- screen_table(scr, "response_dependencies")
+  unresolved <- deps[deps$type == "unresolved", ]
+  expect_equal(nrow(unresolved), 0L)
+  kg <- deps[deps$scope == "known_group", ]
+  expect_equal(sum(kg$type == "known_one_hot_subset"), 1L)
+  expect_equal(sum(kg$type == "known_one_hot"), 2L)
+})
+
+test_that("known_groups: a subset certificate and a whole-group certificate of the SAME dependency do not double-credit rank", {
+  ## g1 declares the whole {A,B,C} block (known_one_hot); g1_padded
+  ## declares the identical relation padded with the unrelated X
+  ## (known_one_hot_subset). Both describe the SAME null vector -- the
+  ## rank-of-span computation must not credit it twice, and unresolved
+  ## must not go negative.
+  df <- .three_one_hot_blocks_plus_spare_data()
+  fmla <- traits(A, B, C, D, E, F, G, H, I, X) ~ 1 + latent(1 | unit, d = 1)
+
+  scr <- suppressWarnings(screen_gllvmTMB(
+    fmla,
+    data = df, unit = "unit", family = binomial(),
+    known_groups = list(
+      g1 = c("A", "B", "C"),
+      g1_padded = c("A", "B", "C", "X"),
+      g2 = c("D", "E", "F"),
+      g3 = c("G", "H", "I")
+    )
+  ))
+  deps <- screen_table(scr, "response_dependencies")
+  unresolved <- deps[deps$type == "unresolved", ]
+  expect_equal(nrow(unresolved), 0L)
+  kg <- deps[deps$scope == "known_group", ]
+  expect_equal(sum(kg$type == "known_one_hot"), 3L)
+  expect_equal(sum(kg$type == "known_one_hot_subset"), 1L)
+})
+
+test_that("known_groups: the nesting-vs-undeclared-dependency trap test still passes unchanged (rank credit regression guard)", {
+  ## Re-run of the existing trap test above to confirm the subset-search
+  ## change does not disturb it: a declared nesting group must still
+  ## contribute nothing to the certified null-vector span.
+  n <- 36
+  i <- 0:(n - 1)
+
+  wf <- i %% 4
+  water <- ifelse(wf %in% c(0, 1, 2), 1, 0)
+  freshwater <- ifelse(wf == 0, 1, 0)
+  marine <- ifelse(wf == 1, 1, 0)
+
+  b1 <- i %% 3
+  b2 <- (i %/% 3) %% 3
+  b3 <- (i %/% 9) %% 3
+  mkonehot <- function(idx, k) {
+    m <- matrix(0, nrow = length(idx), ncol = k)
+    for (j in seq_along(idx)) m[j, idx[j] + 1] <- 1
+    m
+  }
+  A <- mkonehot(b1, 3)
+  colnames(A) <- c("A", "B", "C")
+  D <- mkonehot(b2, 3)
+  colnames(D) <- c("D", "E", "F")
+  G <- mkonehot(b3, 3)
+  colnames(G) <- c("G", "H", "I")
+
+  Y <- cbind(water = water, freshwater = freshwater, marine = marine, A, D, G)
+  df <- data.frame(unit = factor(seq_len(n)))
+  for (cn in colnames(Y)) df[[cn]] <- Y[, cn]
+
+  fmla <- traits(water, freshwater, marine, A, B, C, D, E, F, G, H, I) ~
+    1 + latent(1 | unit, d = 1)
+
+  scr <- suppressWarnings(screen_gllvmTMB(
+    fmla,
+    data = df, unit = "unit", family = binomial(),
+    known_groups = list(
+      realm = c("water", "freshwater", "marine"),
+      g1 = c("A", "B", "C"),
+      g2 = c("D", "E", "F")
+    )
+  ))
+  deps <- screen_table(scr, "response_dependencies")
+
+  realm_row <- deps[deps$scope == "known_group" & deps$group == "realm", ]
+  expect_equal(realm_row$type, "known_nesting")
+  expect_equal(realm_row$status, "FAIL")
+
+  unresolved <- deps[deps$type == "unresolved", ]
+  expect_equal(nrow(unresolved), 1L)
+  expect_true(grepl("^1 further", unresolved$message))
+})

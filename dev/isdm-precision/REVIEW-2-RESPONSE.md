@@ -117,3 +117,67 @@ what to look for rather than to assert a result.
   the white strip inside the map frame.
 - The `n_sub` default and the `terra::aggregate()` figures come from Pat's
   measurements, reported as hers; I did not re-run them.
+
+---
+
+# Round 3 — and B3 was made WORSE by round 2
+
+Pat's third verdict is again **"Yes-but"**: B1 partly, **B2 fixed**,
+**B3 not fixed — wrong in the other direction**, B4 partly.
+
+## The finding that matters, and the chain of errors behind it
+
+**Her round-2 quadrature ladder was run on a single seed.** The rows agreed
+because the random draw was fixed, not because the estimator had converged
+to a biased value. She reported that as evidence of a biased-but-stable
+estimate; I wrote it into the article as a diagnosed defect, complete with a
+mechanism.
+
+**Both steps were wrong, and the mechanism was wrong on its face.** The
+presence's `env` is read at the very lattice node whose intensity generated
+it, so there is no measurement error to have. Her checks confirm it: raising
+`nfine` to 300 makes the estimate *worse* (−5.5%), and adding genuine
+positional error by jittering presences inside their cells changes nothing
+(+0.5%).
+
+**The estimator is not detectably biased.** Her 30 seeds: cawa 0.8188,
+95% CI [0.782, 0.856] against 0.8 (p = 0.325); oven 0.4099, CI [0.375,
+0.445] against 0.4 (p = 0.583). My own Block 6 data, tested rather than
+eyeballed, agrees: 1.1099 (sd 0.093) vs 1.10, t = 0.24, p = 0.82; −0.6405
+(sd 0.065) vs −0.70, t = 2.06, p = 0.11 — both CIs contain the truth.
+
+The printed 0.687 / 0.291 is one seed sitting about 1.3 sd out, with ~160
+presences giving a Monte Carlo sd near 0.08–0.10.
+
+**Fixed** by reporting the single fit as one draw, giving the across-seed
+evidence, and deleting the invented mechanism and the "stability is not
+accuracy" lesson built on it. The section now says the useful thing instead:
+do not diagnose an estimator from one replicate — naming that this article
+did exactly that.
+
+## Two silent hazards my own round-2 fixes introduced
+
+Both are precisely the class these articles exist to warn about.
+
+1. **`cor_length()` clobbered the caller's RNG.** The `n_sub` fix put a bare
+   `set.seed()` inside the function. Demonstrated: `rnorm(1)` after
+   `set.seed(99)` returns 0.2140 without the call and 0.6166 with it. Now
+   saves and restores `.Random.seed`, with a comment saying why.
+2. **The `d = 1` loadings chunk mislabelled at any `d > 1`.** A reduced-rank
+   loading matrix for P traits at rank d holds `P*d − d(d−1)/2` free values,
+   not P. At `d = 2` with 12 species `setNames(..., spp)` would paste 12
+   names onto 23 numbers and pad with `NA` — in the section written for
+   readers with more than two species. Now guarded.
+
+## Where she corrected the article in the article's favour
+
+**AIC picks `d = 2` correctly** with 12 species and true rank 2 (7695.0 vs
+8228.3 and 7714.4) — the instrument the section disowned is the one that
+works. The tell it offered instead ("extra dimensions arrive with near-zero
+loadings") holds at P = 2 and **fails** at P = 12.
+
+## Still open after round 3
+
+Her friction list (dev-path references, `species: placeholder`, no route to
+map uncertainty), Florence's polish tier, and the `d` guidance, which should
+be rewritten around AIC rather than around the loading-magnitude tell.

@@ -1,6 +1,6 @@
 ---
 title: "When one data source knows where it is and the other does not"
-description: "Integrated SDMs fuse a precise presence-only arm with a survey arm whose coordinates are deliberately fuzzed for privacy. That mismatch is covariate measurement error in disguise: it attenuates the environmental slope, and the penalty survives across arm-size designs and a biased opportunistic arm."
+description: "Integrated SDMs fuse a precise presence-only arm with a survey arm whose coordinates are deliberately fuzzed for privacy. That mismatch is covariate measurement error in disguise: it attenuates the environmental slope, and the penalty survives across arm-size designs and a biased opportunistic arm. It is a cost to measure, not a reason to discard a structured arm — once your sampling-bias surrogate carries realistic error, the sign reverses and integration helps."
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -461,6 +461,15 @@ None of this is an argument against integrated SDMs. It is an argument that
 fusing two sources**, alongside detection probability, sampling effort, and
 sampling bias — and it currently is not on that list.
 
+**And it is a cost to measure, not a verdict to act on.** Every result above
+holds the sampling-bias surrogate *exactly right*, which is the one condition
+no real analysis meets. Give that surrogate realistic measurement error and
+the sign reverses — integration then moves the slope **toward** truth in 11
+of 12 replicates at `fuzz = 1.0`. See
+[Read this before you apply the result to your own data — the sign reverses].
+If you take one thing from this article, take the ratio in
+[Get the ratio right first], not a decision to drop your survey arm.
+
 # What to do about it
 
 `gllvmTMB` does not implement a fix, and this article does not claim one.
@@ -489,8 +498,16 @@ arithmetic step in adapting this article to your own data.
 ## must be given a SUBSAMPLE of cells, never a whole raster (see below).
 cor_length <- function(x, y, z, n_bin = 30, n_sub = 2000, seed = 1) {
   if (length(x) > n_sub) {
+    ## Take the subsample reproducibly WITHOUT clobbering the caller's RNG
+    ## stream. A bare set.seed() here would silently change every random
+    ## draw the user makes afterwards -- the same species of invisible
+    ## damage this article is about.
+    old <- if (exists(".Random.seed", .GlobalEnv))
+      get(".Random.seed", .GlobalEnv) else NULL
     set.seed(seed)
     i <- sample.int(length(x), n_sub)
+    if (is.null(old)) rm(".Random.seed", envir = .GlobalEnv) else
+      assign(".Random.seed", old, envir = .GlobalEnv)
     x <- x[i]; y <- y[i]; z <- z[i]
   }
   d   <- as.matrix(dist(cbind(x, y)))

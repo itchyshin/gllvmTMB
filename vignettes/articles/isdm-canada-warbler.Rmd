@@ -45,7 +45,11 @@ Three reasons, worth knowing if you plan the real analysis:
    that matters enormously for an integrated model is the subject of a companion article,
    *"When one data source knows where it is and the other does not"* (`isdm-spatial-precision`, on the package website -- it is a pkgdown article, not an installed vignette, so `vignette()` will not find it) -- the short
    version is that it attenuates the environmental slope, and integrating a
-   fuzzed arm can leave you further from the truth than discarding it.
+   fuzzed arm can leave you further from the truth than discarding it --
+   **but only when your sampling-bias surrogate is exactly right, which no
+   real analysis manages.** Once it carries realistic error the sign
+   reverses and the fuzzed arm earns its place. Treat positional precision
+   as a cost to measure, not a reason to drop a structured arm.
 2. **A vignette must not depend on the network.** The opportunistic arm
    *is* freely available (GBIF holds ~4,200 coordinate-bearing Alberta
    records for Canada Warbler, 98% of them from eBird), and `rgbif` will
@@ -285,9 +289,13 @@ loadings rather than announcing themselves.
 What that looks like is visible in this very fit:
 
 ```{r loadings}
-## The per-trait loadings on the shared field live in theta_rr_spde_lv.
-setNames(round(fit$opt$par[names(fit$opt$par) == "theta_rr_spde_lv"], 4),
-         spp)
+## The loadings on the shared field live in theta_rr_spde_lv. NOTE the
+## length: a reduced-rank loading matrix for P traits at rank d is stored as
+## P*d - d(d-1)/2 free values, NOT P. Naming it with the species vector is
+## only valid at d = 1 -- at d = 2 with 12 species it would paste 12 names
+## onto 23 numbers and pad the rest with NA.
+lam <- fit$opt$par[names(fit$opt$par) == "theta_rr_spde_lv"]
+if (length(lam) == length(spp)) setNames(round(lam, 4), spp) else round(lam, 4)
 ```
 
 Compare those two numbers before reading the map. If one is much smaller
@@ -473,32 +481,36 @@ cat("true slopes:", bt, "  estimated:", round(e_po, 3), "\n")
 cat("relative error:", paste0(round(100 * (e_po - bt) / bt, 1), "%"), "\n")
 ```
 
-**Read that error before you copy the recipe.** These are not on top of the
-truth, and why they are not is the most instructive thing in this section.
+**That error is one seed's worth of noise, and it is worth saying why
+rather than hiding it.** A single run of this recipe can land several
+percent off the truth in either direction; this one does. Across replicates
+the estimator shows **no detectable bias**: repeating the same construction
+on independent seeds gives means of 1.110 (sd 0.093) and −0.641 (sd 0.065)
+against true values of 1.10 and −0.70 — neither differs significantly from
+truth (t = 0.24, p = 0.82; t = 2.06, p = 0.11), and both confidence
+intervals contain it. The measurement is in
+`dev/isdm-precision/evidence-presence-only-quadrature.R`.
 
-The standard diagnostic for this device is *increase the quadrature grid
-until the estimates stop moving*. Do it here and they **do** stop moving --
-and they stop moving at the wrong place. **Stability is not accuracy.** A
-well-converged quadrature approximation to a mis-specified integral is still
-wrong, and this diagnostic cannot see it.
+**So read the number above as one draw, not as a diagnosis.** With around
+160 presences the Monte Carlo standard deviation of a single slope estimate
+is roughly 0.08–0.10, which is the size of the discrepancy you see. Judging
+an estimator from one replicate is how you conclude it is broken when it is
+not — and that mistake was made here, in an earlier draft of this very
+section, complete with a confident and entirely wrong explanation of the
+cause.
 
-What is broken is upstream. The point pattern is thinned on an
-`nfine`-by-`nfine` lattice, so every simulated presence is **snapped to the
-nearest lattice node**. That is positional error -- precisely the mechanism
-the companion precision article is about -- injected by this example's own
-construction, and it attenuates the slopes exactly as that article predicts.
-Raising `nfine` moves the estimates; raising the *quadrature* density does
-not, because quadrature density is not the thing that is wrong.
+If you want to know whether the recipe is working on *your* data, run it on
+several simulated realisations of a known truth and look at the spread, not
+at one number.
 
-So the honest diagnostic is two checks, not one: raise the quadrature grid
-until the estimates stabilise, **and** confirm your presences carry their
-real coordinates rather than a rasterised version of them. This example
-fails the second by construction. Yours may fail it because the records
-arrived rounded to a grid -- which is common, and silent.
-
-The density used above is roughly 20 nodes per presence, where a separate
-check found estimates settle (`dev/isdm-precision/READER-BLOCKS.md` Block 6)
--- a starting point, not a rule.
+The one real knob is quadrature density. Increase it until the estimates
+stop moving; the density used above is roughly 20 nodes per presence, where
+a separate check found them settle
+(`dev/isdm-precision/READER-BLOCKS.md` Block 6) — a starting point, not a
+rule. Note that this diagnostic tests the *numerical integration*, not the
+model: a converged quadrature approximation to the wrong model is still the
+wrong model, so it belongs alongside your usual checks rather than in place
+of them.
 
 **This does not plug into the two-arm fit above.** Tested directly: passing
 `weights =` to a `gllvmTMB()` call whose `family =` is an `isdm_sources()`

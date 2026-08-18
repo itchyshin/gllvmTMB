@@ -313,6 +313,8 @@ reference:
     - print.summary.gllvmTMB_multi
     - gllvmTMB_va-methods
     - logLik.gllvmTMB_multi
+    - fitted.gllvmTMB_multi
+    - deviance.gllvmTMB_multi
     - gllvmTMB_multi-vcov
     - confint.gllvmTMB_multi
     - tidy.gllvmTMB_multi

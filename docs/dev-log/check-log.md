@@ -28,6 +28,50 @@ Coordination note: `LOOP/` is shared, and the foreign lane
 UNSIGNED"* `LOOP/GOAL.md` / `arcs.md` / `checkpoint.md`. Stale against `main`,
 but not this lane's to rewrite — needs its owner, or Shinichi.
 
+## 2026-08-18 — DIRECTED TO ALL LANES: main moved; one behaviour change (Claude, categorical follow-ups + stale-PR cleanup)
+
+**Read this if your branch predates 2026-08-18.**
+
+Merged in quick succession: #1115 (ordinal curvature/multi-start ELIMINATED),
+#1110 (binomial screen arm attribution + retune), #1112 (Mizuno companion
+vignette), #958 (#855 response-unit scale Gate-0 no-go), #960 (#872
+mapped-point prevalence fence). #957 (AA-03) queued behind them.
+
+**BEHAVIOUR CHANGE — `check_gllvmTMB()`:** `loading_absolute_thresh` default
+6 -> 8 (#1110). Binomial fits that previously WARNed may now PASS. Re-verify
+anything asserting on the `binomial_prevalence_loading` row, or reading
+`check_gllvmTMB()` output in a test or article. #897's measured 25%
+false-positive rate is **100%** attributable to that one arm; the prevalence
+branch and `runaway_loading` contribute zero on the two pools measured.
+
+**For the #851/#855 programme:** the binomial instance is NOT the
+"standardisation absorbs the response scale" class. Probit fixes residual
+variance at 1, so loadings are in absolute units — this is effect-size/regime
+dependence, and `tau -> tau * sd(y)` has **no Bernoulli analogue**. Recorded as
+a negative scoping result in `dev/heywood/fp-scale-dependence.md`. #958's
+independent Gate-0 no-go (pooled `sigma_eps`) corroborates it from another
+direction.
+
+**For anyone touching `ordinal_probit` diagnostics:** the eliminated-candidate
+count is now SEVEN, not five. `dev/ordinal-degeneracy/pass-criteria-curvature.md`
+records what not to retry and why.
+
+**Operational warning — `docs/dev-log/check-log.md` is a collision point.** With
+many concurrent lanes, every open branch conflicts here within minutes of any
+merge. Resolution is always **keep both entries**; never overwrite another
+lane's block. If you automate that resolution, grep
+`^<<<<<<<|^=======$|^>>>>>>>` before pushing: my own resolver mishandled an
+overlapping conflict on #957 and left orphaned markers, which I pushed before
+catching and then repaired. `main` was verified clean afterwards.
+
+**Lane ownership as understood on 2026-08-18** (correct me if wrong): the iSDM
+`predict()`-on-`isdm_sources()` probe is held by another Claude session; the
+MSPL programme (`R/mspl*`, `tests/testthat/test-mspl-*`) by a Cursor lane. Note
+also that the 2026-08-15 iSDM handover is SUPERSEDED by #1113 — the public
+front door shipped on 8-16. I re-recommended building it from the stale doc;
+that is the second time that trap has fired. Rehydrate from
+`docs/dev-log/handover/2026-08-17-claude-handover-isdm-next.md`.
+
 ## 2026-08-17 — Cursor: Poisson MSPL W_* REPLACE (#1102)
 
 - worktree: ~/local-scratch/lanes/gllvmTMB-mspl-poisson-W-REPLACE

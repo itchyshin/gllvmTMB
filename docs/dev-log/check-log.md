@@ -1,3 +1,33 @@
+## 2026-08-18 — Cursor: Poisson MSPL W_* REPLACE **MERGED** (closes the LOOP)
+
+PR [#1111](https://github.com/itchyshin/gllvmTMB/pull/1111) merged into `main`
+at merge commit **`3053fce3`**, 2026-08-18 00:36 UTC, `R-CMD-check`
+ubuntu-latest (release) SUCCESS. This supersedes the *"PR #1111 open; merge
+when CI green"* line in the entry below. LOOP state is **GOAL_MET**, arcs
+A0–A8 DONE.
+
+Re-verified against the merged tree, not against the earlier claim:
+
+```sh
+git rev-parse --short origin/main                  # 3053fce3
+sed -n '293,300p' src/gllvmTMB.cpp                 # family_id==2 → gll_mspl_log_weight(eta, 0)
+rg -o 'W[278]\b' tests/testthat/test-mspl-W-onesided-oracles.R   # W2 W7 W8 present
+sed -n '673,677p' docs/design/03-likelihoods.md    # working-logistic W_* row
+gh pr view 1077 --json isDraft                     # true — still draft, untouched
+# deliberately not run / not done: public se=TRUE / vcov / confint, NEWS covered
+# flip, undraft #1077, Totoro, Design 118 / Lane B, isdm-package-recovery, git add -A
+```
+
+Files present as claimed: `R/mspl-poisson-atoms.R`, `R/mspl-registry.R`,
+`tests/testthat/test-mspl-poisson-W-REPLACE-recovery.R`,
+`docs/dev-log/research/2026-08-17-mspl-family-door-PREP-after-REPLACE.md`.
+After-task: `docs/dev-log/after-task/2026-08-17-mspl-poisson-W-REPLACE.md`.
+
+Coordination note: `LOOP/` is shared, and the foreign lane
+`claude/lane-mspl-profile-led-ci` still carries a pre-#1102 *"Poisson W
+UNSIGNED"* `LOOP/GOAL.md` / `arcs.md` / `checkpoint.md`. Stale against `main`,
+but not this lane's to rewrite — needs its owner, or Shinichi.
+
 ## 2026-08-17 — Cursor: Poisson MSPL W_* REPLACE (#1102)
 
 - worktree: ~/local-scratch/lanes/gllvmTMB-mspl-poisson-W-REPLACE
@@ -52295,6 +52325,25 @@ Commands / outcomes:
   64 arms; MSPL 32/32 conv0+finite; 0 err; 0 runaway; registry 32 admitted.
   Script `OPERATIONAL_SMOKE` prints FAIL only because it still requires
   `planned` status; REPLACE keeps experimental `admitted`. See research note.
-- `--as-cran` + vignettes: started / see follow-up line if finished
+- `--as-cran` + vignettes: **Status: 2 NOTEs** (see entry below)
 
 Hard OUT audit: no NEWS covered flip; no public se/vcov/confint; no Totoro.
+
+## 2026-08-17 — Cursor local `--as-cran` + vignettes (REPLACE lane)
+
+Worktree `cursor/mspl-poisson-W-REPLACE-impl`. Tarball built with vignettes
+from private `/tmp` rsync of the worktree; then:
+
+```sh
+R CMD build --md5 <rsync-build>
+R CMD check --as-cran --no-manual gllvmTMB_0.7.0.tar.gz
+```
+
+**Result: Status: 2 NOTEs** (0 ERROR / 0 WARNING). Vignettes OK
+(`creating vignettes ... OK`; `re-building of vignette outputs ... OK`;
+tests OK ~17 min). Notes were CRAN-incoming feasibility + hidden files
+(pre-existing class; not introduced by REPLACE).
+
+Hard OUT untouched: no NEWS `covered`; no public `se`.
+Logs: `/tmp/mspl-A4A7-ascran-build3.log`, `/tmp/mspl-A4A7-ascran-check3.log`,
+`/tmp/gllvmTMB.Rcheck/00check.log`.

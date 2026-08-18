@@ -46,8 +46,9 @@ Upstream authority: `docs/dev-log/decisions.md` (2026-08-18 G0) ·
 4. **Compute is LOCAL.** Totoro and DRAC need their own G0 (D-50 / D-139 / D-157). Not this lane.
 5. **Fail closed.** A refusal prices into effective coverage as non-coverage. Never substitute an
    uncalibrated Wald interval for an unavailable profile.
-6. **Never push, merge, or publish.** Those are human gates; settings deny them deliberately. Do not
-   work around it — surface instead.
+6. **Never merge or publish.** Pushing a lane branch and opening a PR is how work becomes visible
+   and is expected; **merging it is a human gate**, as is any outward-facing claim. Do not work
+   around a denied action — surface it instead.
 7. **A surprise that invalidates the plan sends you back to G0**, not into a mid-loop patch.
 8. **Close every arc honestly** — record what it did *not* cover.
 

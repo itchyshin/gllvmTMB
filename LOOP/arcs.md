@@ -10,4 +10,8 @@
 | A5 | tmb-likelihood-review + 03-likelihoods.md | done | — |
 | A6 | Fence docs / #1077 draft / family-door PREP | done | soft defaults |
 | A7 | mspl-api 293/0; as-cran deferred | done | — |
-| A8 | after-task + PR #1111; merge when CI green | doing | preapproved ship |
+| A8 | after-task + PR #1111; merged at `3053fce3` (CI green) | done | preapproved ship |
+
+**STATE: GOAL_MET** — PR [#1111](https://github.com/itchyshin/gllvmTMB/pull/1111)
+merged into `main` at `3053fce3` on 2026-08-18 00:36 UTC.
+

@@ -1,8 +1,8 @@
-# Checkpoint — overwritten every arc
+# Checkpoint
 
-- DONE: A0 worktree; A1 cpp edit; A2/A3 oracle+atoms drafts; A5 docs row + after-task DRAFT checklist committed with A1–A3
-- IN PROGRESS: TMB rebuild + verify A1–A3 tests green
-- NEXT: A4 recovery → tick Gauss/Noether checklist → A6–A8 PR/merge
-- OPEN GATE: none (hard OUT still absolute; soft gates use plan defaults)
-- WHERE TRUTH LIVES: this worktree branch `cursor/mspl-poisson-W-REPLACE-impl`
-- RESUME: read LOOP/GOAL.md → checkpoint → arcs → continue NEXT
+- DONE: A0–A7 (rematch+recovery+mspl/mspl-api; multi-seed smoke note landed)
+- IN PROGRESS: A8 — PR #1111 CI; optional local `--as-cran`+vignettes; merge when green
+- NEXT: wait CI; merge (preapproved); do not cross hard OUT
+- OPEN GATE: none (hard OUT absolute; soft defaults applied)
+- WHERE TRUTH LIVES: cursor/mspl-poisson-W-REPLACE-impl @ this worktree; PR https://github.com/itchyshin/gllvmTMB/pull/1111
+- RESUME: if CI red, fix narrowly; never NEWS covered / public se

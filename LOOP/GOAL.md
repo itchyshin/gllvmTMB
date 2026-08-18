@@ -21,4 +21,4 @@ On this local-scratch worktree from origin/main, implement SIGNED G0 REPLACE: Po
 - [x] A0 worktree
 - [x] A1–A5 rematch/recovery/review green
 - [x] A6–A7 fence/tests; A8 PR open (#1111)
-- [ ] PR pushed + merge when CI green
+- [x] PR pushed (#1111); merge when CI green

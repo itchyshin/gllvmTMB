@@ -735,3 +735,258 @@ test_that("the profile probe is fenced to binomial, with a typed refusal", {
     class = "gllvmTMB_mspl_profile_family"
   )
 })
+
+## ---- Design 125 fork B (G0 SIGNED 2026-08-18) --------------------------
+##
+## `objective = "unpenalized"` walks fit$mspl$unpenalized_tmb_obj with the
+## nuisance coordinates pinned at the MSPL estimate. `tape = "Q_0"` is the
+## synonym used by the parallel L0/L1 callers. Fork A ("penalised" / "Q_P",
+## the default) is retained as the ablation arm and must be untouched.
+
+test_that("fork B walks the unpenalized tape with the nuisance held fixed", {
+  fit <- .mspl_fit("logit", q = 1L)
+  penalised_checkpoint <- gllvmTMB:::.gllvmTMB_profile_tmb_checkpoint(
+    fit$tmb_obj
+  )
+  q0_fn <- fit$mspl$unpenalized_tmb_obj$fn
+  checkpoint_q0 <- gllvmTMB:::.gllvmTMB_profile_tmb_checkpoint(
+    fit$mspl$unpenalized_tmb_obj
+  )
+
+  penalised <- fit$tmb_obj
+  penalised$fn <- function(...) {
+    stop("penalised objective must not be profiled on fork B")
+  }
+  fit$tmb_obj <- penalised
+  testthat::local_mocked_bindings(
+    .gllvmTMB_mspl_nlminb = function(...) {
+      stop("nlminb must not run on fork B")
+    },
+    .package = "gllvmTMB"
+  )
+
+  probe <- gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
+    fit, which = 1L, step = 0.5, max_steps = 6L, objective = "unpenalized"
+  )
+
+  expect_identical(
+    probe$objective_source,
+    "fit$mspl$unpenalized_tmb_obj (unpenalized Laplace at fixed MSPL nuisance)"
+  )
+  expect_identical(probe$objective, "unpenalized")
+  expect_identical(probe$tape, "Q_0")
+  expect_identical(probe$design_125_fork, "B")
+  expect_identical(probe$nuisance_treatment, "fixed_at_mspl")
+  expect_false(probe$reference_is_maximum)
+
+  ## Fixed nuisance means no inner optimisation anywhere in the trace. If a
+  ## future edit reintroduces re-optimisation under fork B this fails.
+  expect_true(all(!probe$trace$nuisance_reoptimized))
+
+  ## The centre is the unpenalized objective at the MSPL estimate, which is a
+  ## DIFFERENT number from fit$opt$objective (that one carries the penalty).
+  ## Using the penalised value would put the centre off its own curve.
+  expect_equal(
+    probe$mle_objective, fit$mspl$unpenalized_nll_at_estimate,
+    tolerance = 1e-8
+  )
+  expect_gt(fit$mspl$unpenalized_nll_at_estimate, fit$opt$objective)
+  expect_identical(probe$centre_status, "matched")
+  expect_true(any(probe$trace$finite))
+
+  ## Fork B must leave both tapes' restored state alone.
+  expect_identical(
+    gllvmTMB:::.gllvmTMB_profile_tmb_checkpoint(fit$tmb_obj),
+    penalised_checkpoint
+  )
+  expect_identical(
+    gllvmTMB:::.gllvmTMB_profile_tmb_checkpoint(fit$mspl$unpenalized_tmb_obj),
+    checkpoint_q0
+  )
+
+  finite_row <- probe$trace[probe$trace$finite, , drop = FALSE][1L, ]
+  par <- as.numeric(fit$opt$par)
+  par[as.integer(probe$target_index)] <- finite_row$target[[1L]]
+  expect_equal(
+    finite_row$objective[[1L]],
+    as.numeric(q0_fn(par)),
+    tolerance = 1e-8
+  )
+
+  ## Fences survive the new arm.
+  expect_false(probe$calibrated)
+  expect_identical(probe$public_confint, "refused")
+  expect_identical(probe$coverage_claim, "none")
+  expect_false(any(c("conf.low", "conf.high") %in% names(probe)))
+
+  diagnostic <- gllvmTMB:::.gllvmTMB_mspl_profile_threshold_diagnostic(probe)
+  expect_identical(diagnostic$design_125_fork, "B")
+  expect_identical(diagnostic$objective, "unpenalized")
+  expect_identical(diagnostic$tape, "Q_0")
+  expect_identical(diagnostic$objective_source, probe$objective_source)
+  expect_false(diagnostic$reference_is_maximum)
+  expect_false(diagnostic$calibrated)
+  expect_identical(diagnostic$coverage_claim, "none")
+  expect_error(confint(fit), class = "gllvmTMB_mspl_inference_unsupported")
+})
+
+test_that("tape = Q_0 is the synonym for objective = unpenalized", {
+  fit <- .mspl_fit("logit", q = 1L)
+  by_objective <- gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
+    fit, which = 1L, step = 0.5, max_steps = 6L, objective = "unpenalized"
+  )
+  by_tape <- gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
+    fit, which = 1L, step = 0.5, max_steps = 6L, tape = "Q_0"
+  )
+  expect_identical(by_objective$trace, by_tape$trace)
+  expect_identical(by_objective$lower_endpoint, by_tape$lower_endpoint)
+  expect_identical(by_objective$upper_endpoint, by_tape$upper_endpoint)
+  expect_identical(by_objective$objective, "unpenalized")
+  expect_identical(by_tape$tape, "Q_0")
+  expect_identical(by_objective$design_125_fork, by_tape$design_125_fork)
+})
+
+test_that("fork B is a different measurement from fork A, not a relabelling", {
+  fit <- .mspl_fit("logit", q = 1L)
+  fork_a <- gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
+    fit, which = 1L, step = 0.5, max_steps = 6L
+  )
+  fork_b <- gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
+    fit, which = 1L, step = 0.5, max_steps = 6L, objective = "unpenalized"
+  )
+
+  expect_identical(fork_a$design_125_fork, "A")
+  expect_identical(fork_b$design_125_fork, "B")
+  expect_identical(fork_a$mle, fork_b$mle)
+  expect_identical(fork_a$threshold, fork_b$threshold)
+  expect_identical(fork_a$target_index, fork_b$target_index)
+
+  expect_false(isTRUE(all.equal(
+    fork_a$upper_endpoint, fork_b$upper_endpoint, tolerance = 1e-6
+  )))
+  expect_false(isTRUE(all.equal(
+    fork_a$lower_endpoint, fork_b$lower_endpoint, tolerance = 1e-6
+  )))
+
+  expect_equal(fork_a$mle_objective, as.numeric(fit$opt$objective),
+               tolerance = 1e-10)
+  expect_equal(fork_b$mle_objective,
+               as.numeric(fit$mspl$unpenalized_nll_at_estimate),
+               tolerance = 1e-8)
+  expect_false(isTRUE(all.equal(fork_a$mle_objective, fork_b$mle_objective)))
+})
+
+test_that("fork A stays the default and is unchanged by the fork B selector", {
+  fit <- .mspl_fit("logit", q = 1L)
+
+  implicit <- gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
+    fit, which = 1L, step = 0.5, max_steps = 6L
+  )
+  explicit <- gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
+    fit, which = 1L, step = 0.5, max_steps = 6L, objective = "penalised"
+  )
+  by_tape <- gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
+    fit, which = 1L, step = 0.5, max_steps = 6L, tape = "Q_P"
+  )
+
+  expect_identical(implicit$design_125_fork, "A")
+  expect_identical(implicit$objective, "penalised")
+  expect_identical(implicit$tape, "Q_P")
+  expect_identical(implicit$nuisance_treatment, "reoptimized")
+  expect_true(implicit$reference_is_maximum)
+  expect_identical(implicit$objective_source, "fit$tmb_obj (penalised LA-MSPL)")
+  expect_identical(implicit$trace, explicit$trace)
+  expect_identical(implicit$trace, by_tape$trace)
+  expect_identical(implicit$lower_endpoint, explicit$lower_endpoint)
+  expect_identical(implicit$upper_endpoint, explicit$upper_endpoint)
+})
+
+test_that("fork B refuses a missing or mislabelled unpenalized tape", {
+  fit <- .mspl_fit("logit", q = 1L)
+  fit$mspl$unpenalized_tmb_obj <- NULL
+
+  expect_error(
+    gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
+      fit, which = 1L, objective = "unpenalized"
+    ),
+    class = "gllvmTMB_mspl_profile_objective"
+  )
+  expect_error(
+    gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
+      fit, which = 1L, tape = "Q_0"
+    ),
+    class = "gllvmTMB_mspl_profile_objective"
+  )
+
+  ## Fork A does not need that tape and must still run on the same fit.
+  expect_identical(
+    gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
+      fit, which = 1L, step = 0.5, max_steps = 6L
+    )$design_125_fork,
+    "A"
+  )
+
+  fit <- .mspl_fit("logit", q = 1L)
+  fit$mspl$unpenalized_tmb_obj <- list(
+    fn = function(...) 0, gr = function(...) 0,
+    env = list(data = list(estimator_id = 1L))
+  )
+  expect_error(
+    gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
+      fit, which = 1L, objective = "unpenalized"
+    ),
+    class = "gllvmTMB_mspl_profile_objective"
+  )
+})
+
+test_that("the fork selector admits only the two registered arms", {
+  fit <- .mspl_fit("logit", q = 1L)
+  expect_error(
+    gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
+      fit, which = 1L, objective = "hybrid"
+    ),
+    class = "gllvmTMB_mspl_profile_objective"
+  )
+  expect_error(
+    gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
+      fit, which = 1L, tape = "Q_C"
+    ),
+    class = "gllvmTMB_mspl_profile_tape"
+  )
+  expect_error(
+    gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
+      fit, which = 1L, tape = 1L
+    ),
+    class = "gllvmTMB_mspl_profile_tape"
+  )
+  expect_error(
+    gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
+      fit, which = 1L, objective = "unpenalized", tape = "Q_P"
+    ),
+    class = "gllvmTMB_mspl_profile_objective"
+  )
+})
+
+test_that("the threshold diagnostic accepts two sources, not anything", {
+  fit <- .mspl_fit("logit", q = 1L)
+  probe <- gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
+    fit, which = 1L, step = 0.5, max_steps = 6L, objective = "unpenalized"
+  )
+  expect_no_error(
+    gllvmTMB:::.gllvmTMB_mspl_profile_threshold_diagnostic(probe)
+  )
+
+  foreign <- probe
+  foreign$objective_source <- "some other likelihood"
+  expect_error(
+    gllvmTMB:::.gllvmTMB_mspl_profile_threshold_diagnostic(foreign),
+    class = "gllvmTMB_mspl_profile_threshold_input"
+  )
+
+  incomplete <- probe
+  incomplete$tape <- NULL
+  expect_error(
+    gllvmTMB:::.gllvmTMB_mspl_profile_threshold_diagnostic(incomplete),
+    class = "gllvmTMB_mspl_profile_threshold_input"
+  )
+})

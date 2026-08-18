@@ -44,10 +44,9 @@ not a validated one. `MSPL-04` stays **`blocked`**. Hard stops unchanged and
 explicitly **not** waived here: no public `se = TRUE` / `vcov()` / `confint()`;
 #1077 stays **draft** (undraft needs its own explicit ask); no Totoro/DRAC
 (D-50/D-139); no Design 118 or B1 reopen (D-157); no NEWS/article `covered`
-language; `codex/lane-b-mspl-interval-feasibility` stays **PROTECTED**. G3
-`WAIT` is **not** auto-lifted by this decision — local profile smoke still needs
-its own smoke G0, now unblocked on the fork axis alone. `R/` and `src/` are
-untouched by this sitting; the L0 plumbing arm is a separate lane.
+language; `codex/lane-b-mspl-interval-feasibility` stays **PROTECTED**. The
+docs sitting left `R/` untouched; L0 authorising code is the next entry
+(#1130), which lifts G3 `WAIT` for L0/L1 local compute only.
 
 **Ledger-citation correction shipped with this entry.** Vault decisions
 renumbered the MSPL-interval decision from `D-148` to
@@ -65,6 +64,63 @@ and the ADEMP pre-reg still presented `G1 PARK SE doors` / "tape unchanged"
 as current. That freeze was superseded on 2026-08-17 and landed on `main`
 as #1111 (`3053fce3`). Those two files now say **SIGNED REPLACE**. SE-series
 family doors and public `se` stay closed.
+
+## 2026-08-18  Authorising code: `objective=` selector for Design 125 fork B (L0; supersedes #1126)
+
+Decision (Shinichi, this sitting, given once and then reaffirmed twice
+explicitly when the lane paused to confirm):
+
+> G0 Design 125 fork: B — profile the unpenalized Laplace objective at fixed
+> MSPL nuisance coordinates. Fork A retained as ablation only. This unlocks L0
+> plumbing + L1 local smoke (local compute only). Still NOT: Totoro, T\*
+> thresholds, undraft #1077, public `se=TRUE`/`vcov`/`confint`, MSPL-04 off
+> blocked.
+
+This closes **G4c FORK-DEFER**, the gate that had blocked every downstream item
+in `docs/design/125-mspl-profile-led-intervals.md` and its ADEMP pre-registration
+(`docs/dev-log/research/2026-08-17-mspl-profile-led-prereg-ademp.md`). G3 **WAIT**
+is lifted **for local compute only**: gates **L0** (plumbing) and **L1** (small
+local coverage smoke) in the pre-reg's §P5 are now runnable. **L2 onward, and
+every Totoro/DRAC gate, stay blocked.**
+
+What fork B *is*, stated so no later reader over-reads it: the walked objective
+is `fit$mspl$unpenalized_tmb_obj` (the ordinary Laplace tape, `estimator_id = 2`)
+and the nuisance coordinates are **held fixed** at the MSPL point estimate
+\(\tilde\theta\). It is therefore a fixed-nuisance one-dimensional slice, **not**
+a nuisance-maximised profile, and a threshold crossing on it is a computability
+observable. Fork **A** (walk the penalised tape, re-optimising nuisance) stays in
+the code as the **ablation** arm so the two can be measured on the same fit; it
+is not the construction.
+
+Why B rather than A: the Kosmidis & Firth (2021, *Biometrika* 108(1) §2.2)
+caveat verified under [#1090](https://github.com/itchyshin/gllvmTMB/pull/1090)
+bites fork A directly — regions built from the finiteness-penalised objective
+fail to cover *including when the penalised likelihood is profiled*. Fork B
+walks an objective that carries no finiteness penalty, so the KF2021 mechanism
+does not apply to the curve itself. That is a reason to prefer B as the
+construction to *measure*; it is **not** a coverage claim, and none is made here.
+
+Consequences recorded in the same sitting: the `#1090` probe
+(`.gllvmTMB_mspl_profile_feasibility()`) previously **hard-refused** the
+penalty-off tape and so structurally could not run fork B. That refusal is
+replaced by an explicit `objective = c("penalised", "unpenalized")` selector,
+default `"penalised"` (fork A, byte-identical to prior behaviour). `tape =
+c("Q_P", "Q_0")` is accepted as the existing curvature-pin synonym so the
+parallel L0 (#1126) and L1 (#1128) callers keep working; disagreeing
+`objective`/`tape` pairs are a typed refusal. Both arms keep
+`calibrated = FALSE`, `public_confint = "refused"`, `coverage_claim = "none"`,
+stay unexported, and stay binomial logit/probit/cloglog fenced.
+
+This sitting ships the signed G0 **and** the authorising code together. The
+parallel L0 PR #1126 implemented the same estimand under `tape = "Q_0"` only
+and recorded a weaker "computability unlock, not a fork pick" G0; that API is
+retained as the synonym, and that PR is superseded rather than dual-merged.
+
+Unchanged hard stops: **`MSPL-04` stays `blocked`**; no public `se = TRUE` /
+`vcov()` / `confint()`; [#1077](https://github.com/itchyshin/gllvmTMB/pull/1077)
+stays **draft**; no Totoro/DRAC campaign; **T\* thresholds are not frozen** (that
+needs its own G0); no NEWS/README/article `covered` claim; Design 118 / B1 stay
+parked under D-157.
 
 ## 2026-08-17  G0 SIGNED: Poisson MSPL \(W\) — REPLACE with working \(W_*\) (supersedes PARK)
 

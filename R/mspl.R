@@ -114,12 +114,100 @@
 ## `src/` `mspl_c_n_multiplier` hook, which these functions do not use (they
 ## read only `obj$env$data$estimator_id`).
 ##
-## Relation to Design 125: this probe profiles the PENALISED tape only (enforced
-## below), i.e. it implements that pre-registration's fork **A** and
-## structurally refuses fork B (`unpenalized_tmb_obj`) and fork C.  Design 125's
-## G4c is FORK-DEFER and states "no live profile impl / smoke until fork G0", so
-## this is NOT neutral machinery for choosing among the forks.
+## Relation to Design 125 (UPDATED 2026-08-18, fork G0 SIGNED): `objective`
+## selects the tape.  `tape` is the existing Q_P / Q_0 synonym so the
+## parallel L0 / L1 callers keep working.
+##
+##   "penalised"   / tape "Q_P" -- fork **A**: walk `fit$tmb_obj` (the
+##                    penalised LA-MSPL objective), re-optimising the nuisance
+##                    coordinates at each target.  Default; retained as the
+##                    **ablation** arm.
+##   "unpenalized" / tape "Q_0" -- fork **B**: walk
+##                    `fit$mspl$unpenalized_tmb_obj` (the ordinary Laplace
+##                    objective, `estimator_id = 2`) with the nuisance
+##                    coordinates HELD FIXED at the MSPL point estimate
+##                    \tilde\theta.  This is the arm Design 125's G4c picked.
+##
+## Fork B is the signed construction; fork A stays available so the two can be
+## measured against each other on the same fit.  Neither is calibrated: the
+## Kosmidis & Firth caveat above bites fork A directly, and fork B's slice is a
+## *fixed-nuisance* one-dimensional curve, not a profile in the nuisance-maximised
+## sense -- so its threshold crossing is a computability observable, not a
+## coverage statement.  Both arms keep `calibrated = FALSE`,
+## `public_confint = "refused"`, `coverage_claim = "none"`; both are internal and
+## unexported; `MSPL-04` stays `blocked`.
+##
+## Three honest asymmetries of fork B, each surfaced as a returned field:
+##   1. `reference_is_maximum = FALSE` -- the MSPL point maximises Q_P, not Q_0,
+##      so `objective_delta` is not an LR statistic.
+##   2. `nuisance_treatment = "fixed_at_mspl"` -- `nlminb` is never called.
+##   3. `centre_status = "matched"` is true by construction on this tape.
 ## ---------------------------------------------------------------------------
+.gllvmTMB_mspl_resolve_profile_selector <- function(
+  objective,
+  tape,
+  objective_supplied = FALSE
+) {
+  map_objective <- function(value) {
+    if (identical(value, "unpenalized")) "Q_0" else "Q_P"
+  }
+  map_tape <- function(value) {
+    if (identical(value, "Q_0")) "unpenalized" else "penalised"
+  }
+  if (!is.null(tape)) {
+    if (!is.character(tape) || !length(tape)) {
+      .gllvmTMB_mspl_abort(
+        "The internal MSPL profile probe requires {.arg tape} to be {.val Q_P} or {.val Q_0}.",
+        class = "gllvmTMB_mspl_profile_tape"
+      )
+    }
+    tape <- tape[[1L]]
+    if (!(tape %in% c("Q_P", "Q_0"))) {
+      .gllvmTMB_mspl_abort(
+        "The internal MSPL profile probe requires {.arg tape} to be {.val Q_P} or {.val Q_0}.",
+        "x" = "Received {.val {tape}}.",
+        "i" = "{.val Q_P} is the penalised profile (Design 125 fork A); {.val Q_0} is the unpenalized Laplace tape at fixed MSPL nuisance (fork B). Fork C is not implemented.",
+        class = "gllvmTMB_mspl_profile_tape"
+      )
+    }
+    mapped <- map_tape(tape)
+    if (isTRUE(objective_supplied)) {
+      if (!is.character(objective) || !length(objective)) {
+        .gllvmTMB_mspl_abort(
+          "The internal MSPL profile probe requires {.arg objective} to be {.val penalised} or {.val unpenalized}.",
+          class = "gllvmTMB_mspl_profile_objective"
+        )
+      }
+      explicit <- objective[[1L]]
+      if (explicit %in% c("penalised", "unpenalized") &&
+          !identical(explicit, mapped)) {
+        .gllvmTMB_mspl_abort(
+          "The internal MSPL profile probe received disagreeing {.arg objective} and {.arg tape} selectors.",
+          "x" = "{.arg objective} = {.val {explicit}}; {.arg tape} = {.val {tape}}.",
+          class = "gllvmTMB_mspl_profile_objective"
+        )
+      }
+    }
+    return(list(objective = mapped, tape = tape))
+  }
+  if (!is.character(objective) || !length(objective)) {
+    .gllvmTMB_mspl_abort(
+      "The internal MSPL profile probe requires {.arg objective} to be {.val penalised} or {.val unpenalized}.",
+      class = "gllvmTMB_mspl_profile_objective"
+    )
+  }
+  objective <- objective[[1L]]
+  if (!(objective %in% c("penalised", "unpenalized"))) {
+    .gllvmTMB_mspl_abort(
+      "The internal MSPL profile probe requires {.arg objective} to be {.val penalised} or {.val unpenalized}.",
+      "x" = "Received {.val {objective}}.",
+      "i" = "{.val penalised} is Design 125 fork A; {.val unpenalized} is fork B. The {.arg tape} synonyms are {.val Q_P} and {.val Q_0}.",
+      class = "gllvmTMB_mspl_profile_objective"
+    )
+  }
+  list(objective = objective, tape = map_objective(objective))
+}
+
 .gllvmTMB_mspl_profile_feasibility <- function(
   fit,
   which = 1L,
@@ -129,14 +217,23 @@
   control = list(eval.max = 100L, iter.max = 100L),
   refinement_steps = 12L,
   bracket_tolerance = 1.25e-4,
-  max_widen_rounds = 0L
+  max_widen_rounds = 0L,
+  objective = c("penalised", "unpenalized"),
+  tape = NULL
 ) {
+  objective_supplied <- !missing(objective)
   if (!.gllvmTMB_is_mspl(fit)) {
     .gllvmTMB_mspl_abort(
       "The internal MSPL profile probe requires an {.code estimator = \"mspl\"} fit.",
       class = "gllvmTMB_mspl_profile_input"
     )
   }
+  resolved <- .gllvmTMB_mspl_resolve_profile_selector(
+    objective, tape, objective_supplied = objective_supplied
+  )
+  objective <- resolved$objective
+  tape <- resolved$tape
+  nuisance_fixed <- identical(objective, "unpenalized")
   ## Family fence, enforced not merely documented -- mirrors
   ## `.gllvmTMB_mspl_curvature_pin()`.  Binomial only: it is the only family with
   ## evidence here, and the Kosmidis & Firth authority cited in the header is
@@ -198,27 +295,91 @@
     )
   }
 
-  obj <- fit$tmb_obj
+  penalised <- fit$tmb_obj
   penalty_off <- fit$mspl$unpenalized_tmb_obj
+  ## The penalised tape is verified in BOTH forks: fork B's centre value and
+  ## its fixed nuisance coordinates are read off the MSPL fit, so a fit whose
+  ## penalised tape cannot be identified is not a usable fork-B origin either.
   if (
-    is.null(obj) ||
-      identical(obj, penalty_off) ||
-      !identical(as.integer(obj$env$data$estimator_id), 1L)
+    is.null(penalised) ||
+      identical(penalised, penalty_off) ||
+      !identical(as.integer(penalised$env$data$estimator_id), 1L)
   ) {
     .gllvmTMB_mspl_abort(
       "The internal MSPL profile probe could not verify the active penalised TMB objective.",
       class = "gllvmTMB_mspl_profile_objective"
     )
   }
+  if (nuisance_fixed && (
+    is.null(penalty_off) ||
+      !identical(as.integer(penalty_off$env$data$estimator_id), 2L)
+  )) {
+    .gllvmTMB_mspl_abort(
+      "The internal MSPL profile probe could not verify the unpenalized Laplace TMB objective.",
+      "i" = "{.code objective = \"unpenalized\"} (Design 125 fork B) needs {.field fit$mspl$unpenalized_tmb_obj} with {.code estimator_id = 2}.",
+      class = "gllvmTMB_mspl_profile_objective"
+    )
+  }
+  obj <- if (nuisance_fixed) penalty_off else penalised
   checkpoint <- .gllvmTMB_profile_tmb_checkpoint(obj)
   on.exit(.gllvmTMB_restore_profile_tmb_checkpoint(obj, checkpoint), add = TRUE)
 
   mle_par <- as.numeric(fit$opt$par)
-  mle_objective <- as.numeric(fit$opt$objective)
+  ## Fork A compares against the penalised optimum already recorded by the
+  ## fitter.  Fork B must compare against the UNPENALIZED objective evaluated at
+  ## the same \tilde\theta -- `fit$opt$objective` is the penalised value and
+  ## would put the centre off its own curve by the whole penalty.
+  mle_objective <- if (nuisance_fixed) {
+    centre_value <- tryCatch(as.numeric(obj$fn(mle_par)), error = identity)
+    if (inherits(centre_value, "error") || !is.finite(centre_value)) {
+      .gllvmTMB_mspl_abort(
+        "The internal MSPL profile probe could not evaluate the unpenalized objective at the MSPL estimate.",
+        class = "gllvmTMB_mspl_profile_objective"
+      )
+    }
+    centre_value
+  } else {
+    as.numeric(fit$opt$objective)
+  }
   nuisance_index <- setdiff(seq_along(mle_par), as.integer(which))
   threshold <- stats::qchisq(level, df = 1L) / 2
 
-  evaluate_point <- function(target, start, side, stage) {
+  ## Fork B (`objective = "unpenalized"`): the nuisance coordinates stay pinned
+  ## at \tilde\theta, so there is no inner optimisation -- the walk is a plain
+  ## evaluation of the unpenalized objective along one coordinate.  Recorded as
+  ## `nuisance_reoptimized = FALSE`, which is what distinguishes this slice from
+  ## a nuisance-maximised profile in any stored trace.
+  evaluate_fixed <- function(target, start, side, stage) {
+    par <- mle_par
+    par[as.integer(which)] <- target
+    value <- tryCatch(as.numeric(obj$fn(par)), error = identity)
+    if (inherits(value, "error")) {
+      return(list(
+        row = data.frame(
+          target = target, objective = NA_real_, objective_delta = NA_real_,
+          convergence = NA_integer_, message = conditionMessage(value),
+          finite = FALSE, nuisance_reoptimized = FALSE, side = side,
+          stage = stage, stringsAsFactors = FALSE
+        ),
+        nuisance = start
+      ))
+    }
+    finite <- length(value) == 1L && is.finite(value)
+    list(
+      row = data.frame(
+        target = target,
+        objective = if (finite) value else NA_real_,
+        objective_delta = if (finite) value - mle_objective else NA_real_,
+        convergence = if (finite) 0L else NA_integer_,
+        message = "", finite = finite,
+        nuisance_reoptimized = FALSE, side = side, stage = stage,
+        stringsAsFactors = FALSE
+      ),
+      nuisance = start
+    )
+  }
+
+  evaluate_reoptimized <- function(target, start, side, stage) {
     objective <- function(nuisance) {
       par <- mle_par
       par[nuisance_index] <- nuisance
@@ -275,6 +436,8 @@
       nuisance = as.numeric(ans$par)
     )
   }
+
+  evaluate_point <- if (nuisance_fixed) evaluate_fixed else evaluate_reoptimized
 
   successful <- function(point) {
     is.list(point) && is.data.frame(point$row) &&
@@ -451,7 +614,16 @@
     finite_stable = identical(centre_status, "matched") &&
       identical(lower$status, "crossed") &&
       identical(upper$status, "crossed"),
-    objective_source = "fit$tmb_obj (penalised LA-MSPL)",
+    objective_source = if (nuisance_fixed) {
+      "fit$mspl$unpenalized_tmb_obj (unpenalized Laplace at fixed MSPL nuisance)"
+    } else {
+      "fit$tmb_obj (penalised LA-MSPL)"
+    },
+    objective = objective,
+    tape = tape,
+    design_125_fork = if (nuisance_fixed) "B" else "A",
+    nuisance_treatment = if (nuisance_fixed) "fixed_at_mspl" else "reoptimized",
+    reference_is_maximum = !nuisance_fixed,
     ## Computability != coverage.  These fields exist so that no caller, and no
     ## future reader of a stored probe, can mistake a finite bracket for a
     ## calibrated interval.  Kosmidis & Firth (2021, Biometrika 108(1), s2.2
@@ -469,21 +641,29 @@
 }
 
 ## Private profile candidate only. The feasibility helper supplies endpoints
-## from a bounded bisection of a finite, converged penalised-objective bracket.
-## These are not confidence-interval endpoints.
+## from a bounded bisection of a finite, converged bracket -- on the penalised
+## objective (fork A) or on the unpenalized Laplace objective at fixed MSPL
+## nuisance (fork B). These are not confidence-interval endpoints under either
+## fork.
+.gllvmTMB_mspl_profile_sources <- c(
+  "fit$tmb_obj (penalised LA-MSPL)",
+  "fit$mspl$unpenalized_tmb_obj (unpenalized Laplace at fixed MSPL nuisance)"
+)
+
 .gllvmTMB_mspl_profile_threshold_diagnostic <- function(probe) {
-  if (!is.list(probe) || !identical(
-    probe$objective_source, "fit$tmb_obj (penalised LA-MSPL)"
-  )) {
+  if (!is.list(probe) ||
+      !isTRUE(probe$objective_source %in% .gllvmTMB_mspl_profile_sources)) {
     .gllvmTMB_mspl_abort(
-      "The internal MSPL profile-threshold diagnostic requires a penalised profile probe.",
+      "The internal MSPL profile-threshold diagnostic requires an MSPL profile probe.",
+      "i" = "Admitted objective sources are the penalised tape (fork A) and the unpenalized Laplace tape at fixed MSPL nuisance (fork B).",
       class = "gllvmTMB_mspl_profile_threshold_input"
     )
   }
   required <- c(
     "trace", "mle", "threshold", "centre_status", "lower_status",
     "upper_status", "lower_endpoint", "upper_endpoint", "lower_bracket",
-    "upper_bracket"
+    "upper_bracket", "objective", "tape", "nuisance_treatment",
+    "reference_is_maximum"
   )
   if (!all(required %in% names(probe)) || !is.data.frame(probe$trace)) {
     .gllvmTMB_mspl_abort(
@@ -504,7 +684,12 @@
     diagnostic_upper = probe$upper_endpoint,
     lower_bracket = probe$lower_bracket,
     upper_bracket = probe$upper_bracket,
-    objective_source = "fit$tmb_obj (penalised LA-MSPL)",
+    objective_source = probe$objective_source,
+    objective = probe$objective,
+    tape = probe$tape,
+    design_125_fork = probe$design_125_fork,
+    nuisance_treatment = probe$nuisance_treatment,
+    reference_is_maximum = probe$reference_is_maximum,
     calibrated = FALSE,
     public_confint = "refused",
     coverage_claim = "none"

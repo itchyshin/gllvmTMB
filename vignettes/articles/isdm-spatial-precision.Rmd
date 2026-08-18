@@ -1,0 +1,178 @@
+---
+title: "When one data source knows where it is and the other does not"
+description: "Integrated SDMs fuse a precise presence-only arm with a survey arm whose coordinates are deliberately fuzzed for privacy. That mismatch is covariate measurement error in disguise: it attenuates the environmental slope, and integrating the fuzzed arm can leave you further from the truth than discarding it."
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{When one data source knows where it is and the other does not}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+```
+
+# The situation
+
+An integrated species distribution model fuses data sources with different
+sampling protocols: a large, messy, presence-only arm (GBIF, eBird) and a
+smaller, structured survey arm (a monitoring programme). The whole design
+rests on the two arms measuring the same underlying process, so that the
+structured arm can discipline the biased one.
+
+They usually differ in one respect nobody puts in the model. **The
+presence-only arm knows where it is; the survey arm often does not.**
+
+This is not sloppiness — it is policy. Monitoring programmes routinely
+publish coordinates degraded on purpose, to protect site access agreements
+and to avoid disclosing the locations of species at risk. The Alberta
+Biodiversity Monitoring Institute publishes public survey locations
+**fuzzed to roughly 5.5 km**, and coarser still for sensitive species;
+precise coordinates require a separate data agreement. Meanwhile an eBird
+checklist in the same landscape carries a GPS fix.
+
+So the two arms are fused as though both located their observations equally
+well, and one of them did not.
+
+# Why this is easy to wave away
+
+The intuition that makes this feel harmless goes: *the model has a spatial
+random field; positional error is spatial noise; the field will absorb it.*
+
+That intuition is about the **response**. The damage is to the
+**covariate**.
+
+Environmental predictors in an SDM are almost never measured at the site.
+They are extracted from a raster at the recorded coordinate. If the recorded
+coordinate is wrong by 5.5 km, you read temperature, elevation, or canopy
+cover **from the wrong place** — and you then regress the species' response,
+which happened at the *true* location, on the covariate value from a
+different one.
+
+That is textbook errors-in-variables. Its signature is **attenuation**: the
+estimated slope is biased toward zero. And it lands on exactly the quantity
+an SDM exists to produce — the environmental response curve.
+
+How bad it is depends on one ratio: the positional error relative to the
+**correlation length of the environment**, not its size in kilometres. Fuzz
+of 5.5 km is nearly harmless across a smooth continental temperature
+gradient and severe across a patchy canopy-cover layer.
+
+# Measuring it
+
+The claim above is checkable, so it should be checked rather than asserted.
+
+The simulation is in `dev/isdm-precision/precision-sim.R`. Both arms observe
+the same landscape and the same truth: counts are generated from the
+environment at each site's **true** location, with a shared slope
+$\beta = 0.9$. The arms differ in one respect only — the presence-only arm
+records its coordinates exactly, and the survey arm's recorded coordinates
+are displaced by Gaussian noise with standard deviation `fuzz` × the
+environmental correlation length. The covariate handed to the model is read
+at each arm's *recorded* location, which is what an analyst would do.
+
+Three analyses of the identical world:
+
+- **`precise_only`** — fit the presence-only arm alone.
+- **`fuzzed_only`** — fit the survey arm alone.
+- **`integrated`** — fit both together, the thing an iSDM actually does.
+
+40 replicates at each of four fuzz levels.
+
+# What happens
+
+Mean estimated slope (true value **0.9**), with attenuation as a percentage
+of truth:
+
+| fuzz (× corr. length) | `precise_only` | `fuzzed_only` | `integrated` |
+|---|---|---|---|
+| **0.00** | 0.895 (0.6%) | 0.910 (−1.2%) | 0.902 (−0.2%) |
+| **0.25** | 0.902 (−0.2%) | 0.579 (**35.7%**) | 0.741 (**17.6%**) |
+| **0.50** | 0.907 (−0.8%) | 0.403 (**55.2%**) | 0.652 (**27.6%**) |
+| **1.00** | 0.902 (−0.2%) | 0.216 (**76.0%**) | 0.545 (**39.4%**) |
+
+Three things to read off it.
+
+**The control works.** At `fuzz = 0` all three analyses agree on 0.90. Whatever
+the integration machinery does, it is not the source of the bias — the bias
+appears only when positional error does.
+
+**The precise arm is untouched.** Across every row it sits at 0.895–0.907,
+bias under 0.01. Adding fuzz to the *other* arm cannot hurt it, which is
+what makes the last column so awkward.
+
+**Attenuation is severe and it survives integration.** At displacement equal
+to the environmental correlation length the fuzzed arm retains less than a
+quarter of the true slope. Integration dilutes that damage — 39.4% rather
+than 76.0% — but does not remove it. The structured arm does not get
+disciplined by the precise one; it drags the precise one down.
+
+# The uncomfortable part
+
+Compare the first and last columns.
+
+At every non-zero fuzz level, **the integrated estimate is further from the
+truth than the presence-only arm alone**. At `fuzz = 0.5`, discarding the
+survey data entirely gives 0.907 against a true 0.9; fusing it gives 0.652.
+
+That inverts the premise of the method. Integrated SDMs are motivated by the
+structured arm correcting the opportunistic one. Here the structured arm
+carries a defect the opportunistic arm does not have, and integration
+propagates it — so more data yields a worse answer, with narrower intervals
+around it, because the model has no way to know that one arm's covariates
+are mismeasured.
+
+None of this is an argument against integrated SDMs. It is an argument that
+**positional precision belongs in the list of things you check before fusing
+two sources**, alongside detection probability and sampling effort — and it
+currently is not on that list.
+
+# What to do about it
+
+`gllvmTMB` does not implement a fix, and this article does not claim one.
+What the measurement supports:
+
+1. **Check the ratio before fusing.** Compare each arm's positional
+   uncertainty to the correlation length of your covariates — a variogram
+   on the raster, not a glance at the map. Fuzz well below the correlation
+   length is benign; the table above starts biting around a quarter of it.
+2. **Fit the arms separately first.** If the precise-arm-alone and
+   integrated slopes disagree materially, that gap is evidence, not noise.
+   It is cheap and it is the diagnostic the table above is built on.
+3. **Aggregate to the fuzz scale.** If survey coordinates are fuzzed to
+   5.5 km, covariates extracted at 5.5 km resolution are read at
+   approximately the right place; a 30 m raster read at a fuzzed coordinate
+   is not. Matching covariate resolution to positional precision is the
+   cheapest available mitigation, and it costs the fine-scale signal.
+4. **Ask for the precise coordinates.** Most fuzzing regimes, ABMI's
+   included, have a data-agreement route to exact locations. For an analysis
+   that turns on an environmental slope, that request is worth making before
+   the analysis rather than after.
+
+The general fix — an errors-in-variables layer with a per-arm positional
+prior — is a real modelling option and is not implemented here. Treat this
+article as a reason to measure your own case, not as a solution to it.
+
+# Scope and limits
+
+Stated plainly, because the table is more persuasive than the evidence
+behind it warrants if these are omitted:
+
+- **Simulation only.** No real ABMI or GBIF data was fitted here. The 5.5 km
+  figure is documented ABMI policy and motivates the design; it is not a
+  measurement of bias in any real dataset.
+- **One error model.** Isotropic Gaussian displacement. Administrative
+  fuzzing is often uniform-within-a-cell or grid-snapped, which will not
+  behave identically.
+- **One covariate structure.** A single smooth exponential-correlation
+  surface. Patchier or anisotropic covariates will attenuate differently,
+  and the fuzz-to-correlation-length ratio is the axis that matters.
+- **Fixed effects only.** No latent field is fitted, so this isolates the
+  covariate channel. Positional error also corrupts the estimated spatial
+  field; that is not measured here.
+- **No coverage claim.** Point estimates only. Whether intervals around
+  these attenuated slopes retain nominal coverage is a separate question and
+  is not answered.

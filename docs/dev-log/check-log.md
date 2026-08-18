@@ -1,3 +1,61 @@
+## 2026-08-18 — `slope_sd_ci()` Slice 1 built, exported, DRAFT PR, needs Shinichi sign-off
+
+Lane `claude/slope-sd-ci-20260818` (worktree `/private/tmp/gllvmtmb-slopeci`
+off `origin/main`, deliberately NOT the `gllvmtmb-randslope` worktree, whose
+PR #1164 states "no new exports"). New export `slope_sd_ci(fit, level = 0.95,
+scale = c("sd", "variance"))` in `R/slope-sd-ci.R`, sibling of `loading_ci()`.
+Implements Design (Fable planning lens)
+`dev/fable-extractor-recommendation.md` Slice 1 ONLY: a transformed Wald CI
+on `theta_diag_B_slope` (the ordinary augmented random-slope diagonal Psi
+companion) via `sd = exp(theta)`, `se(sd) = exp(theta) * se(theta)`.
+
+**Kill-switch guard implemented and tested first per the brief:** point
+estimates always returned; `lower`/`upper` forced to `NA` with an explanatory
+`status` and a `cli_warn()` whenever `sd_report$pdHess` is `FALSE`,
+`se_theta` is non-finite, or `se_theta > 10` (boundary/Heywood collapse).
+Each branch has a deterministic mock-fit test that first shows the naive
+uncalibrated computation WOULD produce a finite (or plausible-looking)
+number, then shows the guard suppresses it — see
+`tests/testthat/test-slope-sd-ci.R`.
+
+**Deferred routes refuse loudly, per the brief's explicit scope fence:**
+`theta_dep_chol` (`phylo_dep()`/`phylo_indep(1 + x | species)`) and a
+loadings-only `theta_rr_B_slope` (no diagonal companion) both abort with
+class `gllvmTMB_slope_sd_ci_unsupported_route`, naming the deferred slice.
+Both need a multivariate delta method against the TMB Cholesky/loadings
+packing — the class of bug caught in
+`dev/slope-interval-feasibility-RESULTS.md`'s provenance note (wrong indices
+2/5/8 vs correct 2/4/6). No hand-indexed Jacobian was written for either.
+
+**One resolved tension against the design doc**, recorded here for the
+record: the design's "Slice-1 scope" bullet reads literally as "diag_B_slope
+AND NOT rr_B_slope", but its own cited verification numbers
+(`theta_hat=-1.993085 ... true 0.2`) come from a fixture where BOTH flags
+are TRUE (the default `latent()` combination). `slope_sd_ci()` therefore
+computes whenever `diag_B_slope` is TRUE regardless of `rr_B_slope`, and
+labels the returned quantity explicitly as the per-trait UNIQUE (Psi)
+component only when a shared loadings block also exists (print method +
+roxygen), rather than refusing the demonstrated case. Register row CI-14
+records this explicitly.
+
+Register rows added: CI-14 (`partial`, diagonal route) and CI-15 (`blocked`,
+the deferred Cholesky/loadings routes) in
+`docs/design/35-validation-debt-register.md`.
+
+`devtools::document()` clean (pre-existing unrelated S3-tag warnings for
+`anova`/`BIC`/`AIC.gllvmTMB_multi` only). `tests/testthat/test-slope-sd-ci.R`:
+49 pass, 0 fail, 0 warn (`NOT_CRAN=true`, one `skip_on_cran()`-guarded fit
+test runs under that flag). Full-package `devtools::test()` was also run;
+see the after-task report for its result.
+
+**No DESCRIPTION/NEWS bump (D-113), no `src/` change, no vignette
+advertisement**, per the brief's constraints. **This is a public export —
+high-risk under CLAUDE.md's merge rules — opened as a DRAFT PR; do not merge
+without Shinichi's explicit sign-off.**
+
+After-task report:
+`docs/dev-log/after-task/2026-08-18-slope-sd-ci-slice1.md`.
+
 ## 2026-08-18 — local L2 `/goal` kit (fork B; new lane; no smoke)
 
 Lane `cursor/mspl-forkB-L2-goal-20260818` (cursor). Worktree

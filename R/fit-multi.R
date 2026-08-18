@@ -99,10 +99,112 @@
   )
 }
 
+## Issue #1120: a mixed-family `list()` pairs its i-th entry with the i-th
+## LEVEL of the selector column (`levels()` for a factor, `sort(unique(...))`
+## for anything else). When the list is unnamed there are two candidate
+## readings of "i-th": the order the user wrote the list in (POSITIONAL), and
+## the order implied by each family object's OWN name matching a level's text
+## (NAME-RESOLVED, e.g. a `"student"` level naturally means `student()`). They
+## coincide whenever the user's list order already matches level order --
+## which is most of the time, including every case in this package's own test
+## suite -- so gating on "is this named" alone (an earlier draft of this fix)
+## would error on a lot of code that was never wrong. What is never safe to
+## guess is a level whose name-evidence DISAGREES with where the list put it:
+## that disagreement is exactly the #1120 defect (`list(student(), gaussian())`
+## against `family = rep(c("student","gaussian"), each = n)` silently paired
+## the student rows with `gaussian()` and vice versa). So: compute both
+## readings, proceed silently when they agree (nothing was ever ambiguous),
+## and abort loudly -- showing both readings -- when they disagree. When no
+## level has any name evidence at all (arbitrary labels like "count" /
+## "binary"), positional is the only available reading; take it, but report
+## the resolved pairing once so it is auditable rather than assumed. A level
+## whose text matches more than one family object's own name, or a family
+## list where some levels have name evidence and others don't, is refused as
+## ambiguous rather than partially guessed.
+.gllvmTMB_family_own_name <- function(f) {
+  if (inherits(f, "family") && !isTRUE(f$delta) &&
+      !is.null(f$family) && length(f$family) == 1L) {
+    return(tolower(f$family))
+  }
+  NA_character_
+}
+
+.gllvmTMB_resolve_unnamed_family_list <- function(family, fam_levels, fam_var) {
+  own_names <- vapply(family, .gllvmTMB_family_own_name, character(1))
+  level_lc  <- tolower(fam_levels)
+  pos_idx   <- seq_along(fam_levels)
+
+  match_counts <- vapply(level_lc, function(L) sum(own_names == L, na.rm = TRUE),
+                          integer(1), USE.NAMES = FALSE)
+
+  if (any(match_counts > 1L)) {
+    bad <- fam_levels[match_counts > 1L]
+    cli::cli_abort(c(
+      "Mixed-family {.arg family} list is unnamed and ambiguous.",
+      "x" = "Level(s) {.val {bad}} of {.var {fam_var}} match more than one family \\
+             object's own name.",
+      "i" = "Name the list explicitly: {.code list(<level> = <family>(), ...)}."
+    ), class = "gllvmTMB_mixed_family_unnamed_ambiguous")
+  }
+
+  n_with_evidence <- sum(match_counts == 1L)
+
+  if (n_with_evidence > 0L && n_with_evidence < length(fam_levels)) {
+    with_ev    <- fam_levels[match_counts == 1L]
+    without_ev <- fam_levels[match_counts == 0L]
+    cli::cli_abort(c(
+      "Mixed-family {.arg family} list is unnamed and ambiguous.",
+      "x" = "Level(s) {.val {with_ev}} of {.var {fam_var}} match a family object's own \\
+             name; level(s) {.val {without_ev}} match none.",
+      "i" = "Name the list explicitly so every level resolves the same way: \\
+             {.code list(<level> = <family>(), ...)}."
+    ), class = "gllvmTMB_mixed_family_unnamed_ambiguous")
+  }
+
+  if (n_with_evidence == 0L) {
+    ## No level's text matches any family object's own name (e.g. "count" /
+    ## "binary" labels): positional is the only available reading. Not an
+    ## error, but report the resolved pairing so it stays auditable.
+    resolved <- paste(
+      sprintf("%s -> %s()", fam_levels,
+               ifelse(is.na(own_names[pos_idx]), "<unnamed family>", own_names[pos_idx])),
+      collapse = ", "
+    )
+    cli::cli_inform(c(
+      "i" = "Unnamed mixed-family {.arg family} list has no name evidence for {.var {fam_var}}; \\
+             using list order: {resolved}."
+    ))
+    out <- family
+    attr(out, "family_var") <- fam_var
+    return(out)
+  }
+
+  ## Every level has exactly one name match: compare the two readings.
+  name_idx <- vapply(level_lc, function(L) which(own_names == L)[1L], integer(1),
+                      USE.NAMES = FALSE)
+
+  if (identical(name_idx, pos_idx)) {
+    ## Agreement -- nothing was ever ambiguous here. Proceed silently.
+    out <- family
+    attr(out, "family_var") <- fam_var
+    return(out)
+  }
+
+  pos_desc  <- paste(sprintf("%s -> %s()", fam_levels, own_names[pos_idx]), collapse = ", ")
+  name_desc <- paste(sprintf("%s -> %s()", fam_levels, own_names[name_idx]), collapse = ", ")
+  cli::cli_abort(c(
+    "Mixed-family {.arg family} list order does not match what the level names imply.",
+    "x" = "Your list order implies: {pos_desc}",
+    "x" = "The level names of {.var {fam_var}} imply: {name_desc}",
+    "i" = "Name the list explicitly to say which you mean: \\
+           {.code list(<level> = <family>(), ...)}."
+  ), class = "gllvmTMB_mixed_family_unnamed_ambiguous")
+}
+
 .align_mixed_family_list <- function(family, fam_levels, fam_var) {
   family_names <- names(family)
   if (is.null(family_names)) {
-    return(family)
+    return(.gllvmTMB_resolve_unnamed_family_list(family, fam_levels, fam_var))
   }
 
   if (any(!nzchar(family_names))) {

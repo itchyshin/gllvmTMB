@@ -19,6 +19,42 @@
   removed from `.gllvmTMB_boundary_flags()`'s own list (they never matched
   a REPORTed name there either; `sd_phy_diag` and `sd_spde_b` were already
   screened under their real names).
+
+* **Unnamed mixed-family `family = list(...)` lists no longer silently
+  swap which family fits which trait (#1120).** `.align_mixed_family_list()`
+  left an unnamed family list unchanged, while the selector column's levels
+  for a character column were built via `sort(unique(...))` -- alphabetical,
+  not the user's list order. A fit such as `family = list(student(),
+  gaussian())` against a plain character `family` column
+  `rep(c("student", "gaussian"), each = n)` silently fit the student data as
+  Gaussian and the Gaussian data as Student-t: zero warnings, a converged
+  fit, every downstream quantity wrong. This belongs to a recurring class in
+  this package -- **the code chose a fallback and then reported success** --
+  alongside `fitted()`'s and `deviance()`'s silent `NULL` (#1114, #1118);
+  the reassuring-message variants (a converged fit, a clean summary) are the
+  dangerous form, because nothing about the output signals that a guess was
+  made.
+  **This is a behaviour change, but not a blanket one**: an unnamed list is
+  now validated by computing BOTH the order the list was written in and the
+  order implied by each family object's own name (e.g. a `"student"` level
+  naturally means `student()`). When they agree, nothing was ever
+  ambiguous and the fit proceeds exactly as before -- most existing code,
+  including every other mixed-family test in this package's own suite,
+  already writes list order to match level order and is unaffected. When
+  they disagree, that disagreement IS the #1120 defect firing, and the fit
+  now errors (class `gllvmTMB_mixed_family_unnamed_ambiguous`) showing both
+  readings explicitly and telling the user to name the list
+  (`list(student = student(), gaussian = gaussian())`) or supply an
+  explicit factor. Selector columns with no name evidence at all (e.g.
+  arbitrary labels like `"count"`/`"binary"`) still use list order, but the
+  resolved pairing is now reported once so it is auditable rather than
+  assumed. A level whose text matches more than one family object's name,
+  or a list where some levels have name evidence and others don't, is
+  refused as ambiguous rather than partially guessed. The same defect
+  pattern existed a second time, independently, in the multinomial
+  mixed-family trait-identification path (`expand_multinomial_response()`,
+  `R/gllvmTMB.R`, reachable before `.align_mixed_family_list()` runs) and is
+  fixed the same way.
 * **`deviance()` no longer returns a silent `NULL` on a `gllvmTMB_multi`
   fit (#1118).** With no method registered, `deviance()` fell through to
   `stats:::deviance.default`, which reaches for `object$deviance` and

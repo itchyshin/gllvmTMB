@@ -1194,11 +1194,17 @@ expand_multinomial_response <- function(formula, data, family, trait_col) {
     }
     ## Identify the multinomial family level, matching the fit's family_var ->
     ## list alignment (named lists by name; unnamed lists in family_var-level
-    ## order).
+    ## order). This runs BEFORE `.align_mixed_family_list()` (R/fit-multi.R),
+    ## so it repeats the same disagreement-keyed ambiguity guard
+    ## (`.gllvmTMB_resolve_unnamed_family_list()`) rather than inheriting it
+    ## -- see issue #1120.
     fam_col    <- data[[fam_var]]
     fam_levels <- if (is.factor(fam_col)) levels(fam_col) else sort(unique(as.character(fam_col)))
     fam_names  <- names(fams)
     mn_pos     <- which(fam_is_mn)[1L]
+    if (is.null(fam_names)) {
+      .gllvmTMB_resolve_unnamed_family_list(fams, fam_levels, fam_var)
+    }
     mn_level   <- if (!is.null(fam_names) && all(nzchar(fam_names))) fam_names[mn_pos] else fam_levels[mn_pos]
     mn_rows    <- which(as.character(fam_col) == as.character(mn_level))
     if (length(mn_rows) == 0L) {

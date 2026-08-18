@@ -159,32 +159,59 @@ is authorised; slice-2 ADREPORT work stays out of `src/`).
 - **Kill-switch guards, each proven to fire, not assumed** -- per
   deterministic `mock_slope_ci_fit()` fixtures (no TMB call, exact
   `cov.fixed`/`opt$par`, the house pattern from `test-loading-ci.R`'s
-  `mock_loading_delta_fit()`):
+  `mock_loading_delta_fit()`). **Revised after an adversarial review pass**
+  (`dev/S6-slope-sd-ci-review.md`); the current, final set is four checks,
+  not three:
   - **non-PD Hessian**: before asserting the guard, the test computes the
     naive `exp(theta -/+ z*se)` from the SAME `se_theta` values and shows
     it IS finite -- i.e. the guard is the only thing standing between this
     input and a plausible-looking published interval. Then confirms
     `slope_sd_ci()` warns "not positive-definite", every row's `status ==
     "no_pd_hessian"`, every interval is `NA`, and every point estimate is
-    still finite.
-  - **non-finite `se_theta`**: uses `se_theta = NaN` on one trait's slope
-    coordinate (embedded via the mock's interleaved packing, exercising the
-    SAME extraction path a real fit uses); confirms the naive computation
-    propagates `NaN` (not silently resolved), then confirms the guard
-    catches exactly that row (`status = "se_nonfinite"`) while leaving the
-    other trait's row `"ok"`.
-  - **boundary collapse** (`se_theta > 10`): uses values in the ballpark of
-    the task brief's cited observed degenerate fit
-    (`theta = -13.548, se = 61883.69`); confirms the naive interval would
-    be a finite-but-astronomically-wide (or exactly-zero-lower) numeric
-    range -- the "plausible-looking garbage" failure mode named in the
-    brief -- then confirms the guard suppresses it (`status = "boundary"`)
-    while the healthy row stays `"ok"`.
-  All three guard tests are genuine failure-before-fix demonstrations: each
-  first shows what the ungated computation would produce from the exact
-  same inputs, then shows the shipped guard intercepts it. None is a
-  fixture that would pass "for the wrong reason" -- each degenerate value
-  is chosen so the naive path visibly misbehaves.
+    still finite. **Genuinely discriminating** (confirmed by the review).
+  - **non-finite `se_theta`, two sub-cases.** `se_theta = NaN`: the naive
+    computation propagates `NaN` (not silently resolved), so this sub-case
+    is **honestly weak as a failure-before-fix demonstration** -- the
+    review noted, and the test comment already conceded, that `NaN` is not
+    a "plausible-looking" naive number either with or without the guard;
+    the guard's contribution here is the `status` label and warning, not
+    suppressing a plausible number. `se_theta = Inf` (added per the
+    review): `exp(theta - z*Inf) = 0`, a FINITE, publishable-looking naive
+    zero -- this sub-case IS a genuine failure-before-fix demonstration,
+    and is the one that makes the guard's suppression meaningful. Both
+    sub-cases confirm `status = "se_nonfinite"` on exactly the affected
+    row, `NA` intervals, finite point estimate, healthy sibling row
+    untouched.
+  - **`se_theta > 10`, renamed `se_blowup`** (was `"boundary"` in the first
+    version of this PR): uses values in the ballpark of the task brief's
+    cited observed degenerate fit (`theta = -13.548, se = 61883.69`);
+    confirms the naive interval would be a finite-but-astronomically-wide
+    (or exactly-zero-lower) numeric range -- the "plausible-looking
+    garbage" failure mode named in the brief -- then confirms the guard
+    suppresses it while the healthy row stays `"ok"`. The review showed
+    this status name mischaracterised what the check tests (SE explosion,
+    not a collapsed point estimate); renamed accordingly.
+  - **`near_zero_relative` (NEW, added per the review)**: the review
+    demonstrated the pre-revision guard set passed `theta = -20, se = 0.5`
+    (an unambiguous collapsed slope SD, at an entirely ordinary,
+    well-identified SE) as `status = "ok"` with a clean, tight interval --
+    the guard never inspected `theta` itself, only `se_theta`. The test
+    constructs exactly that case (alongside two healthy sibling traits),
+    confirms the naive `se_blowup` check alone would call it `"ok"`
+    (`0.5 <= 10`), then confirms `slope_sd_ci()` catches it via the new
+    relative-to-siblings check and suppresses the interval. A companion
+    assertion confirms a single-trait fit has no siblings to compare
+    against, so the check does not (cannot) fire there and `se_blowup`
+    alone governs -- documenting the boundary of the new check rather than
+    overclaiming it.
+  Of the five test cases across these four `status` categories, four
+  (non-PD Hessian, `se_theta = Inf`, `se_blowup`, `near_zero_relative`) are
+  genuine failure-before-fix demonstrations: each first shows what the
+  ungated computation would produce from the exact same inputs, then shows
+  the shipped guard intercepts it. The `se_theta = NaN` sub-case is
+  intentionally NOT claimed as one -- see above; it is tested because the
+  guard must still label that case correctly, not because the naive number
+  it replaces was ever plausible-looking.
 - **Deferred routes error, not approximate**: one test per deferred route
   (`phylo_dep_slope = TRUE`; `diag_B_slope = FALSE` + `rr_B_slope = TRUE`),
   asserting both the error class `gllvmTMB_slope_sd_ci_unsupported_route`
@@ -276,6 +303,99 @@ rr_B_slope scope bullet, and the `interval_status` value for suppressed
 rows) is recorded rather than silently resolved in either document's
 favour.
 
+## 10a. Adversarial Review Round (dev/S6-slope-sd-ci-review.md) and Fixes Applied
+
+An adversarial review pass against the initial PR (`dev/S6-slope-sd-ci-review.md`,
+independently re-derived the packing and re-verified the numbers) returned
+**CHANGES REQUIRED**, not on the arithmetic but on four points, all fixed in
+this branch before the after-task's final state:
+
+1. **Priority 1 (the load-bearing one): `estimate` understated the total
+   marginal slope SD by 17-45% on the happy-path fixture** whenever the fit's
+   augmented random-slope term also carries a shared loadings block
+   (`theta_rr_B_slope`, the default `latent()` combination), and the
+   print-method-only caveat did not survive `$estimate`, `subset()`, or
+   column selection -- a reader who did any of those three ordinary
+   operations lost the caveat entirely. **Fixed**: two new in-band columns,
+   `component` (`"unique_psi"` / `"total"`) and `total_sd` (a point estimate
+   of the true total, read from `fit$report$Sigma_B_slope`, which the C++
+   already `REPORT()`s -- no new machinery), plus a `cli::cli_warn()` fired
+   on the call itself, not only in `print()`. The review's own independently
+   computed `total_sd` numbers (0.3878717, 0.2924811, 0.3294379 on the
+   happy-path fixture) now match this implementation's output to 1e-5 and
+   are asserted in the test file.
+2. **Priority 2: the `se_theta > 10` guard did not detect a genuine
+   near-zero collapse at an ordinary, well-identified SE.** The review
+   demonstrated `theta = -20, se = 0.5` (an unambiguous collapsed slope SD)
+   passed as `status = "ok"` with a clean, tight, wrong-looking-right
+   interval -- the exact "plausible-looking garbage" failure mode the guard
+   exists to prevent, undetected because the guard only ever inspected
+   `se_theta`, never `theta` itself. **Fixed**: a second, independent check,
+   `near_zero_relative` (an `sd_hat` at most 1% of this fit's other slope
+   SDs, evaluated only when `n_traits > 1`), mirroring the package's
+   existing relative-to-siblings convention (`psi_rel_thresh` /
+   `near_zero_psi_*`, `R/diagnose.R`) rather than an absolute threshold on a
+   scale-dependent quantity (this repo's own documented
+   scale-dependent-constants hazard, `CLAUDE.md`). The `se_theta > 10`
+   status was renamed `se_blowup` to describe what it actually tests (SE
+   explosion, not a collapsed point estimate); the review also asked for an
+   `se_theta = Inf` test case (distinct from `NaN`: `exp(-Inf) = 0` is a
+   *finite*, publishable-looking naive number, unlike `NaN`) -- added.
+3. **Priority 4, `pkgdown`:** `pkgdown::check_pkgdown()` hard-errored
+   (`slope_sd_ci` missing from `_pkgdown.yml`'s `reference:` index, which has
+   no catch-all). **Fixed** -- added next to its sibling `loading_ci`.
+4. **Priority 4, provenance:** both cited `dev/` design documents
+   (`dev/fable-extractor-recommendation.md`,
+   `dev/slope-interval-feasibility-RESULTS.md`) existed only in the sibling
+   `gllvmtmb-randslope` worktree/branch and would never reach `main` through
+   this PR, leaving register rows CI-14/CI-15's citations (including CI-15's
+   load-bearing provenance note) dangling for any future reader. **Fixed**
+   -- both files copied (read-only) into this branch's `dev/` directory,
+   tracked, so the citations resolve once this PR lands.
+
+**Example scope, and a defect found and fixed along the way.** The original
+task brief asked for a runnable example; this session initially replaced the
+`\dontrun{}` block with one. Curie's follow-up correction overrides that:
+`loading_ci()`, the named house sibling, also ships `\dontrun{}`, and
+house-consistency wins here -- the example is **kept `\dontrun{}`**, matching
+the sibling. While the example was briefly runnable, a real defect surfaced
+and stayed fixed regardless of the wrapper: it (and the roxygen's own
+file-level scope comment, in three places) claimed `indep(0 + trait + (0 +
+trait):x | unit)` was a valid alternate syntax for the standalone
+diagonal-only augmented route. That formula does not work -- plain `indep()`
+refuses any augmented (slope) LHS (`R/brms-sugar.R`'s
+`.assert_no_augmented_lhs()`); the only working syntax for that route is the
+soft-deprecated `unique()`. All three mentions are corrected to `unique()`
+(with `options(gllvmTMB.quiet_grammar_notes = TRUE)` in the example to
+silence its one-time notice); the example was verified end-to-end via
+`tools::Rd2ex()` + `source()`, zero warnings, before being re-wrapped in
+`\dontrun{}`.
+
+Also fixed while addressing the review: `man/slope_sd_ci.Rd` was failing this
+repo's own `test-reader-facing-no-register-codes.R` guard (the roxygen cited
+"CI-14"/"CI-15" register codes on a reader-facing surface) -- restated in
+plain words per that guard's own stated remedy ("restate the MEANING in
+plain words; do not simply delete a scope caveat"); `slope_col` now aborts
+rather than silently falling back to the literal string `"x"` when neither
+`diag_B_slope_col` nor `rr_B_slope_col` is set; `fit$sd_report$cov.fixed`'s
+row names are now asserted (not merely assumed) to align with
+`names(fit$opt$par)`; `sqrt()` of a possibly-negative `cov.fixed` diagonal is
+now wrapped in `suppressWarnings()` so the (already-handled-downstream)
+base-R "NaNs produced" warning does not leak to the caller; `attr(out,
+"level")` is now documented in `@return`.
+
+Two items from the review were read and consciously NOT auto-implemented:
+tightening the `se_blowup` cutoff below 10 (a calibration call, not a
+correctness defect, left for the maintainer); and hardening the `Inf`-guard
+mock test's duplication of the packing-position assumption (`slope_ix <-
+... [c(2L, 4L)]`) into something that derives the position independently --
+left as a nit, since the happy-path test already exercises the real
+extraction path end-to-end on a genuine fit.
+
+Full re-verification after all fixes: `tests/testthat/test-slope-sd-ci.R`
+71 pass / 0 fail / 0 warn; `test-reader-facing-no-register-codes.R` 1 pass;
+`pkgdown::check_pkgdown()` no problems found; example runs clean.
+
 ## 10. Known Limitations And Next Actions
 
 **What this does NOT cover** (do not read a green PR here as covering any
@@ -296,23 +416,24 @@ of this):
   codebase (`R/fit-multi.R` ~2203-2209), so this is consistent with
   existing scope, not a new gap -- but it means no non-Gaussian recovery
   evidence exists for this extractor either.
-- **The `rr_B_slope`-present caveat is a documentation/print-method
-  mitigation, not a numeric correction.** When both blocks are active,
-  `estimate` genuinely excludes the shared loadings contribution to
-  marginal slope variance; nothing here computes or bounds that omitted
-  contribution.
+- **`total_sd` is a point estimate only, deliberately without an interval.**
+  A calibrated interval on the total marginal slope SD needs the same
+  multivariate delta method as the deferred `theta_dep_chol` /
+  `theta_rr_B_slope` routes (CI-15) -- this was the review's Priority-1
+  fix's own stated boundary, not left implicit.
 - **This is an ADDED PUBLIC EXPORT.** Per `CLAUDE.md`'s merge rules this is
   a high-risk API change requiring explicit maintainer sign-off before
   merge. The PR is opened as **DRAFT** for exactly this reason; do not
   merge without Shinichi's go-ahead.
-- **Full-package `devtools::test()` was launched but this session did not
-  block on its multi-hundred-file completion**, per the DoD's "at least
-  your new file plus anything touching NAMESPACE" bar and the additive
-  nature of the NAMESPACE delta (one new export, one new S3 method under a
-  novel class, no existing symbol touched). If that run surfaces any
-  unrelated failure, it is not attributable to this change by construction
-  (no existing file was edited), but it has not been independently
-  re-confirmed pass/fail in this report.
+- **Full-package `devtools::test()` was run to completion twice in this
+  session** (once before the review-driven fixes, once after). The first
+  run's one failure (`test-reader-facing-no-register-codes.R`, this PR's own
+  `man/*.Rd` register-code citation) is now fixed; see the check-log entry
+  for the final verbatim tally. The 9 warnings observed in the first run
+  were all in pre-existing, unrelated test files
+  (`test-aghq-missing-response.R`, `test-comparator-gllvm.R`,
+  `test-link-residual-multinomial.R`) -- not attributable to this change,
+  which touches no existing file's behaviour.
 
 Next slice (not started, not scoped in this task): the `ADREPORT()` route
 for `theta_dep_chol` / `theta_rr_B_slope`, with the cross-check test G3

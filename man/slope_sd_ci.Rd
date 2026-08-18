@@ -15,7 +15,8 @@ random-slope diagonal companion (\code{theta_diag_B_slope}).}
 \item{scale}{\code{"sd"} (default) returns the standard deviation scale;
 \code{"variance"} returns the variance scale (\code{estimate^2}, bounds
 \verb{exp(2 * (theta +/- z * se(theta)))}). Both scales are computed from
-the identical \code{theta} / \code{se_theta}, so they agree by construction.}
+the identical \code{theta} / \code{se_theta}, so they agree by construction.
+\code{total_sd} is always reported on the SD scale regardless of \code{scale}.}
 }
 \value{
 A data frame of class \code{gllvmTMB_slope_ci}, one row per trait,
@@ -25,23 +26,31 @@ with columns:
 \item{\code{term}}{The slope covariate name (the \code{x} in \code{(0 + trait):x}).}
 \item{\code{estimate}, \code{lower}, \code{upper}}{On the requested \code{scale}. \code{lower}
 / \code{upper} are \code{NA} whenever \code{status != "ok"}.}
+\item{\code{component}}{\code{"unique_psi"} when the fit also carries a
+shared loadings block (\code{theta_rr_B_slope}), so \code{estimate} is only
+part of the marginal slope SD; \code{"total"} when there is no shared
+loadings block, so \code{estimate} already is the total.}
+\item{\code{total_sd}}{Point estimate (no interval) of the TOTAL marginal
+slope SD, on the SD scale regardless of \code{scale}. Equal to
+\code{estimate} when \code{component == "total"}.}
 \item{\code{theta}, \code{se_theta}}{The raw log-SD estimate and its
 \code{sdreport()} standard error, for auditability.}
 \item{\code{method}}{Always \code{"wald_log_scale"}.}
 \item{\code{interval_status}}{Always \code{"wald_uncalibrated"} -- the
 claim-boundary marker used elsewhere in the package (see
 \code{extract_correlations()}).}
-\item{\code{status}}{\code{"ok"}, \code{"no_pd_hessian"}, \code{"se_nonfinite"}, or
-\code{"boundary"} -- see Kill-switch guard below.}
+\item{\code{status}}{\code{"ok"}, \code{"no_pd_hessian"}, \code{"se_nonfinite"},
+\code{"se_blowup"}, or \code{"near_zero_relative"} -- see Kill-switch guard
+below.}
 \item{\code{scale}}{The requested scale, \code{"sd"} or \code{"variance"}.}
 }
 The returned object also carries a hard-coded attribute
 \code{calibrated = FALSE} (never an argument; only a future coverage
-certificate can flip this in the source).
+certificate can flip this in the source), and the requested \code{level}.
 }
 \description{
 Per-trait confidence intervals on the standard deviation of an ordinary
-augmented random-slope term -- a \code{latent(0 + trait + (0 + trait):x | unit, d = K)} or \code{indep(0 + trait + (0 + trait):x | unit)} covariance
+augmented random-slope term -- a \code{latent(0 + trait + (0 + trait):x | unit, d = K)} or \code{unique(0 + trait + (0 + trait):x | unit)} covariance
 structure. The interval is a delta-method Wald interval on the log-SD
 scale: \code{theta_diag_B_slope} is a genuine univariate log-SD
 (\code{sd = exp(theta)}), so \code{se(sd) = exp(theta) * se(theta)} and the bounds
@@ -54,8 +63,8 @@ the same inferential instrument as \code{\link[=loading_ci]{loading_ci()}} and
 \code{\link[=confint_inspect]{confint_inspect()}}: it uses the asymptotic normal approximation for
 \code{theta} and propagates it through the monotone transform \code{exp()}. It is
 \strong{not a calibrated coverage statement} -- no repeated-sampling coverage
-campaign has been run for this estimand, and \code{interval_status = "wald_uncalibrated"} marks every row as such. See register row CI-14
-(\code{partial}) in \code{docs/design/35-validation-debt-register.md}.
+campaign has been run for this estimand, and \code{interval_status = "wald_uncalibrated"} marks every row as such -- the package's
+validation-debt ledger records this as tested-but-not-coverage-certified.
 
 Slice 1 covers only the ordinary augmented \strong{diagonal} route
 (\code{theta_diag_B_slope}). It does \strong{not} cover, and will error rather
@@ -64,15 +73,24 @@ route (\code{phylo_dep()} / \code{phylo_indep(1 + x | species)}, \code{theta_dep
 or a loadings-only augmented random slope with no diagonal companion
 (\code{theta_rr_B_slope} alone, e.g. \code{latent(..., unique = FALSE)}). Both
 need a multivariate delta method against the TMB Cholesky/loadings
-packing and are deferred to a slice-2 \code{ADREPORT()} route (register row
-CI-15, \code{blocked}).
+packing and are deferred to a slice-2 \code{ADREPORT()} route, tracked as a
+deliberately blocked capability in the package's validation-debt ledger.
 
 When the fit's random-slope term also carries a shared loadings
 component (\code{theta_rr_B_slope}, the default alongside
-\code{theta_diag_B_slope} for ordinary \code{latent()}), \code{estimate} here is the
+\code{theta_diag_B_slope} for ordinary \code{latent()}), \code{estimate} is the
 per-trait \strong{unique (Psi) diagonal component of slope variance only} --
 it excludes the shared loadings contribution to the marginal slope
-variance. The print method flags this explicitly.
+variance, and can understate the total marginal slope SD substantially
+(measured up to ~45\% on a recovery fixture with a rank-2 loadings term).
+This restriction travels with the \strong{data}, not only the print method:
+the \code{component} column reads \code{"unique_psi"} in that case (\code{"total"}
+when there is no shared loadings block, i.e. the unique component IS
+the total), and \code{total_sd} reports the corresponding total marginal
+slope SD as a \strong{point estimate only} (\verb{sqrt(shared loadings variance + unique Psi variance)}, read from \code{fit$report$Sigma_B_slope}; no interval
+-- that needs the same multivariate delta method as the deferred routes
+above). A \code{cli::cli_warn()} fires on the call itself whenever the
+shared loadings block is present, not only when the result is printed.
 }
 
 \section{Kill-switch guard -- point estimates always, intervals never from a fit that cannot support one}{
@@ -83,9 +101,19 @@ variance. The print method flags this explicitly.
 \item \code{fit$sd_report$pdHess} is \code{FALSE} (\code{status = "no_pd_hessian"},
 applies to every row);
 \item \code{se_theta} is non-finite (\code{status = "se_nonfinite"});
-\item \code{se_theta > 10} on the log scale -- a boundary/Heywood collapse;
-an SE of 10 on the log scale means the interval would span
-\eqn{e^{40}}, i.e. no information (\code{status = "boundary"}).
+\item \code{se_theta > 10} on the log scale -- essentially information-free
+(an SE of 10 on the log scale means the interval would span
+\eqn{e^{40}}); \code{status = "se_blowup"}. This tests SE explosion, not
+a collapsed point estimate -- a well-identified \code{theta} with a huge
+\code{se_theta} and a genuinely near-zero \code{theta} are different failure
+modes, so there is a second, independent check for the latter;
+\item \code{sd_hat} is at most 1\% of the largest \code{sd_hat} among this fit's
+OTHER augmented slope coordinates (only evaluated when the fit has
+more than one trait -- nothing to compare against otherwise);
+\code{status = "near_zero_relative"}. This mirrors the package's
+relative-to-siblings convention for detecting a collapsed variance
+component (\code{psi_rel_thresh} / \verb{near_zero_psi_*}, \code{R/diagnose.R})
+rather than an absolute threshold on a scale-dependent quantity.
 }
 The point estimate (\code{estimate}, \code{theta}) is always returned, following
 the house line that a non-PD Hessian disqualifies standard errors but
@@ -94,12 +122,45 @@ not point estimates (\code{R/bootstrap-sigma.R}, \code{R/cv-internal.R}).
 
 \examples{
 \dontrun{
+set.seed(1)
+n_ind <- 30L
+n_traits <- 2L
+trait_levels <- paste0("t", seq_len(n_traits))
+individuals <- paste0("id", seq_len(n_ind))
+df <- expand.grid(
+  individual = factor(individuals, levels = individuals),
+  rep = 1:5,
+  trait = factor(trait_levels, levels = trait_levels)
+)
+df$x <- stats::rnorm(nrow(df))
+alpha <- c(0.2, -0.1)
+beta <- c(0.3, -0.2)
+## idiosyncratic (intercept, slope) x trait noise -- the diagonal Psi
+## companion this example recovers.
+psi_noise <- matrix(stats::rnorm(4L * n_ind, sd = 0.25), nrow = 4L)
+eta <- numeric(nrow(df))
+for (o in seq_len(nrow(df))) {
+  tt <- as.integer(df$trait[o])
+  ii <- as.integer(df$individual[o])
+  base <- 2L * (tt - 1L)
+  eta[o] <- alpha[tt] + beta[tt] * df$x[o] +
+    psi_noise[base + 1L, ii] + psi_noise[base + 2L, ii] * df$x[o]
+}
+df$value <- eta + stats::rnorm(nrow(df), sd = 0.3)
+
+## `unique()` is the current (soft-deprecated but functional) entry
+## point for a STANDALONE augmented diagonal random-slope term (no
+## shared loadings block); the option below only silences its one-time
+## deprecation notice for this example.
+options(gllvmTMB.quiet_grammar_notes = TRUE)
 fit <- gllvmTMB(
   value ~ 0 + trait + (0 + trait):x +
-    latent(0 + trait + (0 + trait):x | individual, d = 2L),
-  data = df_long,
+    unique(0 + trait + (0 + trait):x | individual),
+  data = df,
   trait = "trait",
-  unit  = "individual"
+  unit  = "individual",
+  control = gllvmTMBcontrol(se = TRUE, optimizer = "optim",
+                             optArgs = list(method = "BFGS"))
 )
 slope_sd_ci(fit)
 slope_sd_ci(fit, level = 0.90, scale = "variance")

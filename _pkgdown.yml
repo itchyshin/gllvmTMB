@@ -385,6 +385,7 @@ reference:
     - flag_unreliable_loadings
     - plot_loadings_confidence_eye
     - plot.profile_loadings
+    - slope_sd_ci
 
   - title: Profile-likelihood confidence intervals
     desc: Target-specific likelihood-profile routes and fallbacks; inspect each target and do not assume universal calibration

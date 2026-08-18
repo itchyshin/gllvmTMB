@@ -354,3 +354,102 @@ test_that("#1132: coordinates outside the mesh hull warn instead of returning a 
   ## the failure mode this whole block exists to avoid.
   expect_no_warning(suppressMessages(predict(fit, newdata = df)))
 })
+
+## ---------------------------------------------------------------------------
+## #1138: the random-effect tiers whose reshape convention is reconstructible
+## for newdata. Each is pinned by the SAME acceptance criterion the SPDE tier
+## had to meet -- predict(newdata = training rows) == report$eta EXACTLY --
+## because a non-zero contribution proves nothing about a transposed reshape.
+##
+## Deliberately still NOT re-added, and still warned about: `equalto` (indexed
+## by observation, so it has no meaning for arbitrary new rows), `re_int` (its
+## group mapping is not a top-level field on the fit), `diag_cluster2` / the
+## `*_slope` and phylo-diagonal blocks (no established reshape convention --
+## see getREsd()'s roxygen). See #1138.
+## ---------------------------------------------------------------------------
+
+.pred_tier_df <- function(seed = 4L) {
+  set.seed(seed)
+  gllvmTMB::simulate_site_trait(
+    n_sites = 25, n_species = 3, n_traits = 2,
+    mean_species_per_site = 3, seed = seed
+  )$data
+}
+
+test_that("#1138: diag_species is re-added on newdata, exactly", {
+  skip_on_cran()
+  skip_if_not_installed("TMB")
+  df <- .pred_tier_df()
+  fit <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+    value ~ 0 + trait + indep(0 + trait | species),
+    data = df, silent = TRUE
+  )))
+  expect_true(isTRUE(as.integer(fit$tmb_data$use_diag_species) == 1L))
+
+  ## q_sp is indexed (trait, species) -- the TRANSPOSE of p_phy. A swapped
+  ## index would still produce a plausible non-zero contribution, so the
+  ## exact identity is what actually tests it.
+  expect_equal(
+    suppressMessages(predict(fit, newdata = df))$est,
+    suppressMessages(predict(fit))$est
+  )
+  expect_no_warning(suppressMessages(predict(fit, newdata = df)))
+})
+
+test_that("#1138: the site-species tiers (rr_W, diag_W) are re-added exactly", {
+  skip_on_cran()
+  skip_if_not_installed("TMB")
+  df <- .pred_tier_df()
+  fit <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+    value ~ 0 + trait + latent(0 + trait | site_species, d = 1),
+    data = df, silent = TRUE
+  )))
+  expect_true(isTRUE(as.integer(fit$tmb_data$use_rr_W) == 1L))
+
+  expect_equal(
+    suppressMessages(predict(fit, newdata = df))$est,
+    suppressMessages(predict(fit))$est
+  )
+
+  ## These tiers are keyed on the unit-observation column. If newdata does
+  ## not carry it they cannot be reconstructed, and that must be reported
+  ## rather than silently omitted.
+  nd_drop <- df[, setdiff(names(df), fit$unit_obs_col), drop = FALSE]
+  expect_warning(
+    suppressMessages(predict(fit, newdata = nd_drop)),
+    class = "gllvmTMB_predict_newdata_re_dropped"
+  )
+})
+
+test_that("#1132/#1138: propto is guarded per row, not on row 1 alone", {
+  skip_on_cran()
+  skip_if_not_installed("TMB")
+  df <- .pred_tier_df()
+  sp <- levels(factor(df$species))
+  V <- diag(length(sp))
+  dimnames(V) <- list(sp, sp)
+  V[1, 2] <- V[2, 1] <- 0.4
+  fit <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+    value ~ 0 + trait + propto(0 + trait | species),
+    data = df, phylo_vcv = V, silent = TRUE
+  )))
+
+  expect_equal(
+    suppressMessages(predict(fit, newdata = df))$est,
+    suppressMessages(predict(fit))$est
+  )
+
+  ## The old guard was `!is.na(sp_id[1])` -- row ONE only -- so an unseen
+  ## species in the first row silently dropped the tier for EVERY row.
+  nd <- df
+  nd$species <- as.character(nd$species)
+  nd$species[1] <- "GHOST"
+  with_re <- suppressWarnings(suppressMessages(predict(fit, newdata = nd)))
+  fixed_only <- suppressWarnings(suppressMessages(
+    predict(fit, newdata = nd, re_form = ~0)
+  ))
+  rest <- seq(2L, nrow(nd))
+  expect_gt(sd(with_re$est[rest] - fixed_only$est[rest]), 0)
+  ## and the unseen row itself still falls back, as documented.
+  expect_equal(with_re$est[1], fixed_only$est[1])
+})

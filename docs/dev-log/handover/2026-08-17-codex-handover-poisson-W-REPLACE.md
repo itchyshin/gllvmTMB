@@ -1,6 +1,6 @@
 # Codex handover — Poisson \(W\) REPLACE
 
-**Status:** G0 **SIGNED — REPLACE** on `main` (#1102). Implementation **not started**.
+**Status:** G0 **SIGNED — REPLACE** on `main` (#1102). Implementation **in progress on `cursor/mspl-poisson-W-REPLACE-impl`** (Cursor-owned `src/`).
 
 **Build contract (authoritative):** `docs/dev-log/research/2026-08-17-mspl-poisson-W-G0.md` (SIGNED paste) and `docs/dev-log/decisions.md` (2026-08-17 REPLACE entry).
 

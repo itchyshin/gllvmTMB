@@ -84,6 +84,40 @@ git diff --check
 # deliberately not: src/ tape, undraft #1077, public se
 ```
 
+## 2026-08-17 — Detector-S2c CLOSED: curvature + multi-start eliminated, #897 still open
+
+**Lane:** `claude/1097-ordinal-curvature-20260817`. Pre-registration
+(`dev/ordinal-degeneracy/pass-criteria-curvature.md`) **frozen 18:07**,
+before any scored fit ran. Full grid **scored run started 18:19**, 450/450
+`gllvmTMB()` calls `status == "OK"` (12.68 min wall-clock), coverage
+verified to match the frozen Grid table exactly. **Scored by an
+independent agent with no design-discussion context**
+(`dev/ordinal-degeneracy/results/scoring-verdict.md`).
+
+**Verdict: both arms FAIL; ship-disarmed fallback applies.** Arm C
+(loading-block curvature, the Schur complement of `theta_rr_B` within
+`sd_report$cov.fixed`) sensitivity 1.1–5.3% (reading-dependent on a
+scoring-rule ambiguity, recorded as a post-hoc amendment, not a frozen-text
+edit); Arm D (multi-start objective disagreement, `n_init = 5`)
+sensitivity 7.3%; exploratory `flag_C | flag_D` = 7.3% (Arm C adds nothing
+incremental). Target was >=90%; fail margin 83–89 points under every
+reading. **Independence precondition PASSES for both** (correlation
+against the already-eliminated `max_loading_unit`: 0.538 / -0.452, refusal
+bar 0.8) — this is not a circularity artefact; two genuinely new
+information sources were tested and genuinely do not distinguish
+degenerate ordinal optima from healthy ones.
+
+**No behaviour change.** `ordinal_liability_loading`'s `O1`/`O2` stay at
+`Inf`/`Inf`, untouched. Seven candidate statistics are now eliminated for
+ordinal degeneracy detection (four loading/cutpoint statistics + the
+dichotomisation refit, both pre-existing; plus these two) — see
+`docs/design/123-multinomial-structured-surface.md` §8.2a for the full
+list and what a future attempt should not retry. #897 stays OPEN; a
+working detector needs a genuinely different information source again, or
+a fresh dataset. Full report:
+`docs/dev-log/after-task/2026-08-17-ordinal-curvature-multistart-eliminated.md`.
+— Claude, doc/evidence lane
+
 ## 2026-08-17 — AUTHORITATIVE: Poisson W G0 is SIGNED — REPLACE (supersedes PARK)
 
 **Lane:** `cursor/mspl-poisson-W-REPLACE-signed`

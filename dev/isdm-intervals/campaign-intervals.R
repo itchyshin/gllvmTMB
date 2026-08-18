@@ -17,6 +17,32 @@ suppressMessages(library(gllvmTMB))
 suppressMessages(library(parallel))
 suppressMessages(library(TMB))
 
+## ---------------------------------------------------------------------------
+## Version guard. A campaign pre-registered against one package version and
+## silently RUN against another produces numbers that are quietly off-version
+## and look completely normal: no error, no warning, plausible magnitudes.
+##
+## This is not hypothetical. On 2026-08-18 the E1 campaign was one step from
+## running against gllvmTMB 0.6.0 from a shared library while the deployment's
+## own DESCRIPTION said 0.7.0 -- the source tree and the LOADED package were
+## different things, and only the loaded one affects the answer.
+##
+## So: measure the loaded version, never infer it from the deployment tree,
+## and fail CLOSED when the caller states an expectation.
+## ---------------------------------------------------------------------------
+.gllvm_version <- as.character(utils::packageVersion("gllvmTMB"))
+.gllvm_libpath <- dirname(find.package("gllvmTMB"))
+cat("gllvmTMB:", .gllvm_version, "from", .gllvm_libpath, "\n")
+.expect <- Sys.getenv("CAMPAIGN_EXPECT_VERSION", "")
+if (nzchar(.expect) && !identical(.expect, .gllvm_version)) {
+  stop(sprintf(
+    paste0("campaign version guard: expected gllvmTMB %s but LOADED %s from %s.\n",
+           "  The deployment's DESCRIPTION is not evidence of what gets loaded.\n",
+           "  Install into a campaign-private library and set R_LIBS to it."),
+    .expect, .gllvm_version, .gllvm_libpath
+  ), call. = FALSE)
+}
+
 run_cell <- function(n_cells_f, eff_ratio, n_sources, amp, seed) {
   set.seed(seed)
   n_cell <- n_cells_f
@@ -162,6 +188,9 @@ res <- do.call(rbind, mclapply(seq_len(nrow(grid)), function(i) {
            grid$amp[i], grid$seed[i])
 }, mc.cores = as.integer(Sys.getenv("CAMPAIGN_CORES", "100"))))
 out <- Sys.getenv("CAMPAIGN_OUT", "campaign-intervals-results.csv")
+## Carry the MEASURED version with the data, so a results file can never be
+## separated from the package that produced it.
+res$gllvmtmb_version <- .gllvm_version
 write.csv(res, out, row.names = FALSE)
 cat("wrote", out, "rows", nrow(res), "\n")
 cat("errors:", sum(is.na(res$conv)), " conv0:", sum(res$conv == 0, na.rm = TRUE),

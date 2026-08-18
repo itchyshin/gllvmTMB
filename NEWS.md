@@ -522,6 +522,29 @@ is still the default.
   column, non-Bernoulli rows, duplicate unit-trait rows, too few complete
   units); trait names are now validated before that feasibility check, so
   a typo always aborts.
+* **`screen_gllvmTMB()`'s `known_groups` one-hot test was whole-group
+  only and is now a bounded exhaustive subset search (#1154, reported by
+  @Ayumi-495).** `known_groups = list(g = c("A", "B", "C", "D"))`, where
+  `{A, B, C}` is a genuine one-hot block and `D` is an unrelated trait
+  declared in the same group, previously reported `known_group_checked`
+  PASS -- the same "declaring a slightly-too-large group weakens the
+  verdict" shape as the nesting defect fixed just above, since the test
+  was `all(abs(rowSums(Yg) - 1) < tol)` over the *whole* declared group.
+  A declared group of `k <= 12` members now gets an exhaustive search
+  over every subset of size 2 or more (at most `2^12 - 13 = 4083`
+  row-sum checks, microseconds), and every MINIMAL one-hot subset found
+  is reported as its own `known_one_hot_subset` certificate -- `A + B +
+  C = 1` once, never also as a redundant larger superset -- and
+  contributes to the `unresolved` affine-dependency count exactly like a
+  whole-group `known_one_hot` certificate. `k > 12` is never silently
+  skipped: the whole-group one-hot and pairwise nesting checks still
+  run, but an explicit `known_group_subset_not_attempted` row records
+  that the subset search itself was not attempted at that size, rather
+  than folding into a silent PASS. A subset that sums to 1 only because
+  every one of its members is constant is not certified (the same guard
+  the whole-group check already had). Nesting was not affected: its
+  pairwise scan already covers every pair within a declared group
+  regardless of unrelated members, so it had no equivalent blindness.
 
 * **`fit_health$boundary_flags` no longer flags the auto-Psi skip block's
   mapped-off `sd_B` placeholders as `near_zero_sd_B` (#25).** The same

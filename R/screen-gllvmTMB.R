@@ -168,12 +168,30 @@ screen_control <- function(
 #'   test is vacuously true against a constant and would not be genuine
 #'   evidence); a member that is constant while other members of the same
 #'   group are not is excluded from every pairwise comparison for the same
-#'   reason. Each result is its own row in the `response_dependencies`
+#'   reason. The one-hot test is not whole-group only: when the WHOLE
+#'   declared group does not sum to 1 (for example a genuine one-hot block
+#'   declared together with one unrelated trait), a bounded exhaustive
+#'   search checks every subset of size 2 or more, smallest first, and
+#'   reports each MINIMAL one-hot subset found as its own certificate --
+#'   `A + B + C = 1` is reported once even inside a larger declared group,
+#'   never also as a redundant superset. This search is attempted only
+#'   when the declared group has at most 12 members (`2^12 - 13 = 4083`
+#'   subset checks, microseconds even for many rows; declared groups are
+#'   small by construction -- one categorical variable's dummy columns or
+#'   one nesting relation). A group larger than that bound is never
+#'   silently reported PASS: the whole-group one-hot and pairwise nesting
+#'   checks still run, but an explicit `known_group_subset_not_attempted`
+#'   row records that the subset search itself was skipped for size, so a
+#'   "no subset found" result can be told apart from "not looked for". A
+#'   subset that sums to 1 only because every one of its members is
+#'   constant is not reported (the same guard as the whole-group case).
+#'   Each result is its own row in the `response_dependencies`
 #'   table, independent of the automatic affine-rank screen below -- except
-#'   that a declared one-hot block also counts toward that screen's
-#'   `unresolved` affine-dependency count (a nesting relation never does:
-#'   it is an inequality, not an exact affine relation among the columns).
-#'   Screening is Bernoulli-only, matching the automatic screen.
+#'   that a declared one-hot block, including a certified subset, also
+#'   counts toward that screen's `unresolved` affine-dependency count (a
+#'   nesting relation never does: it is an inequality, not an exact affine
+#'   relation among the columns). Screening is Bernoulli-only, matching the
+#'   automatic screen.
 #' @param control A [screen_control()] object.
 #' @return A `gllvmTMB_screen` object. Use [screen_table()] to extract
 #'   report-ready tables.

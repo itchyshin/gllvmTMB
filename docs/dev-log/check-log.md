@@ -1,3 +1,19 @@
+## 2026-08-18 — Cursor: orphan dual-arm L1 probe folded into #1128
+
+- worktree: `~/local-scratch/lanes/gllvmTMB-pr1128-l1-ademp`
+- branch: `cursor/mspl-forkB-l1-smoke-20260818`
+- rescued from: `~/local-scratch/lanes/gllvmTMB-g0-unlock-20260818` (orphan `.git`, tip `a6bb6916`, not ancestor of #1130)
+- rescued: `dev/mspl-fork-b-l1-smoke.R` + 6-rep T=4 dual-arm CSVs
+- not rescued: `a6bb6916` `R/mspl.R` (`objective=` lives on #1130)
+- live #1130 worktree `gllvmTMB-g0-unlock-1130` not edited
+- `devtools::test(filter = "mspl-forkB-l1-dual-arm-smoke")` → first run 1/22
+  (fence test treated the Hard-OUT comment `no NEWS covered` as a claim);
+  after tightening the assertion: FAIL 0 | WARN 0 | SKIP 0 | PASS 23
+- receipt: `docs/dev-log/research/2026-08-18-mspl-forkB-l1-dual-arm.md` (INCOMPLETE, not a gate)
+- rg: `se = TRUE|NEWS covered|MSPL-04|undraft` on runner + receipt + after-task — no public-claim hits
+- deliberately not: Totoro, T*, public se/vcov/confint, undraft #1077, NEWS covered,
+  git add -A, isdm-package-recovery, 100-rep dual-arm refit, rewrite of #1130
+
 ## 2026-08-18 — Cursor: Design 125 fork-B L1 harness + local smoke
 
 - worktree: `~/local-scratch/lanes/gllvmTMB-mspl-forkB-L1`

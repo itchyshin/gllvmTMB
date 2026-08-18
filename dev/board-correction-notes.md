@@ -64,22 +64,39 @@ any of these edits — every changed cell uses the `partial` tag class
   betabinomial large-N multi-trial regime).
 
 ### ID 14 — ordinal_probit (line ~447)
-- **Old:** `<td class="no">— <span style="font-size:10px">ordinal RE not implemented</span></td>`
-- **New:** `<td class="no">— <span style="font-size:10px">PHY-16: 3/6 converged PD-Hessian fits (min_good=4) — recovery not admissible</span></td>`
-- **Why the old text was false:** family id 14 (ordinal_probit) IS present in
+- **Old (original board):** `<td class="no">— <span style="font-size:10px">ordinal RE not implemented</span></td>`
+- **Intermediate (this session, first pass):** `<td class="no">— <span style="font-size:10px">PHY-16: 3/6 converged PD-Hessian fits (min_good=4) — recovery not admissible</span></td>`
+- **Final (after Rose's adversarial review):** `<td><span class="tag t-avail">partial</span> <span style="font-size:10px">phylo_indep (PHY-16): 3/6 PD-Hessian fits vs min_good=4</span></td>`
+- **Why the original text was false:** family id 14 (ordinal_probit) IS present in
   `.augmented_slope_family_contract()` (link_0 = TRUE, `route_specific`
   basis) and augmented slopes construct and fit for it — the runtime feature
   exists.
-- **Licensing register row:** PHY-16 — the `phylo_indep(1 + x | sp)`
-  augmented slope under ordinal_probit is `partial`. The `2T` structural
-  route, `3T` free-parameter count, and cross-block-zero contract are
-  exercised, but the frozen fixture records only 3/6 converged
-  positive-definite-Hessian fits against `min_good = 4`, so the test
-  deliberately skips recovery. No ordinal variance or within-trait-correlation
-  recovery claim is admissible. The `no`/`—` cell class is kept (not upgraded
-  to `partial`) because PHY-16's evidence is weaker than the other four cells
-  fixed here — it does not even clear the register's own convergence
-  threshold — so a `partial` tag would overstate it.
+- **Why the intermediate fix was itself corrected (post-Rose review):**
+  the first pass wrote a blanket "recovery not admissible" clause scoped to
+  the whole ordinal-slope capability, but that only holds for the
+  `phylo_indep` route (PHY-16, 3/6 PD-Hessian fits against `min_good = 4`).
+  Ordinal_probit's `route_specific` contract basis carries strictly MORE
+  evidence than the C1 single-seed basis that just earned lognormal/student
+  their `partial` cells: RE-02 `covered` (real-API recovery test file
+  `test-matrix-slope-ordinal.R` is one of RE-02's cited files), and PHY-18
+  `covered` — `tests/testthat/test-matrix-slope-phylo-dep.R:767`
+  ("`phylo_dep(1 + x | sp) x ordinal_probit VALIDATION (PHY-18)`") fits the
+  real API, requires `conv == 0` and a PD Hessian, and asserts the recovered
+  ordinal slope variances from `Sigma_b_dep` fall within a 2.5x band of the
+  simulated truth — i.e. it DOES recover ordinal slope variances, contradicting
+  the intermediate annotation's blanket claim. PHY-17 and SPA-09/SPA-10 also
+  list ordinal-probit among their `covered` family-by-route cells (excluding
+  only lognormal/student, which stay `partial` under RE-14). Since the board's
+  Rand. slope cell is family-scoped, not route-scoped, and ordinal_probit's
+  overall evidence exceeds the single-seed C1 bar already accepted for
+  lognormal/student in this same review, ordinal_probit is raised to `partial`
+  too — with the annotation narrowed to name the one route (`phylo_indep`)
+  where the evidence is weaker (3/6 PD-Hessian fits, below `min_good = 4`),
+  dropping the false general "recovery not admissible" clause.
+  **This correction was made after, and in response to, Rose's adversarial
+  review** — the review caught both the mis-scoped judgment call (family- vs
+  route-scoped reading of the column) and the factually false clause in the
+  first-pass annotation.
 
 ## Cells deliberately NOT changed
 
@@ -97,9 +114,30 @@ to these four rows.
 
 ## No ✓ created
 
-Verified: none of the five edits above introduces a `<span class="yes">✓</span>`
-element. Every changed cell uses `t-avail`/`partial` or the existing `no`
-class with a corrected annotation.
+Verified: none of the changes above (the original five, nor the post-review
+correction to ID 14) introduces a `<span class="yes">✓</span>` element. Every
+changed Rand. slope cell uses `t-avail`/`partial`, or (nowhere, after the
+ID 14 correction) the `no` class. The `✓` characters that appear near the
+ID 14 diff line belong to the unchanged, adjacent Diagnostics column, not to
+the Rand. slope cell.
+
+## Post-review correction (ID 14, ordinal_probit)
+
+Rose's adversarial review found the first-pass ID 14 annotation
+mis-scoped a route-level fact (PHY-16, `phylo_indep`, 3/6 PD-Hessian fits)
+into a family-level "recovery not admissible" claim, and ruled that the
+Rand. slope column is family-scoped, not route-scoped — meaning
+ordinal_probit's strictly stronger overall evidence (RE-02 `covered`,
+PHY-17/PHY-18/SPA-09/SPA-10 `covered`) entitles it to the same `partial`
+status already granted to lognormal/student on a weaker (C1 single-seed)
+basis. Verified directly against `tests/testthat/test-matrix-slope-phylo-dep.R:767`
+(the PHY-18 `ordinal_probit` VALIDATION test), which fits the real API,
+requires `conv == 0` and a PD Hessian, and asserts recovered ordinal slope
+variances from `Sigma_b_dep` fall within a 2.5x band of simulated truth —
+i.e. it does recover ordinal slopes under `phylo_dep`, contradicting the
+first-pass annotation's blanket claim. The cell and its annotation were
+corrected accordingly (see the ID 14 entry above for old/intermediate/final
+values), and the truth ledger's mismatch 8 entry was updated to match.
 
 ## Also fixed: `docs/design/61-capability-status.md`
 

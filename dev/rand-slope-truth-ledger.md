@@ -98,9 +98,10 @@ Rows where the three columns (CODED, VALIDATED, ADVERTISED) disagree:
 
 8. **ID 14, ordinal_probit:**
    - CODED: `route_specific`
-   - VALIDATED: RE-02 `covered`, PHY-16 `partial`; others `partial`
+   - VALIDATED: RE-02 `covered`, PHY-17 `covered`, PHY-18 `covered`, SPA-09 `covered`, SPA-10 `covered`, PHY-16 `partial` (phylo_indep route only, 3/6 PD-Hessian fits vs `min_good = 4`); others `partial`
    - ADVERTISED: `— ordinal RE not implemented`
-   - **Disagreement:** CODED `route_specific` + VALIDATED `covered` for RE-02, but ADVERTISED advertises nothing with annotation that feature is not implemented
+   - **Disagreement:** CODED `route_specific` + VALIDATED mostly `covered` (RE-02, PHY-17, PHY-18, SPA-09, SPA-10 — strictly more evidence than the C1 single-seed basis that licenses lognormal/student's `partial`), but ADVERTISED advertises nothing, with a false annotation claiming the feature is not implemented.
+   - **RESOLUTION (post-Rose adversarial review):** raised to `partial` (family-scoped reading of the column: ordinal_probit's overall evidence exceeds lognormal/student's C1 bar, which already earned `partial`). Annotation corrected to name the one route where evidence is weak (`phylo_indep`, PHY-16, 3/6 PD-Hessian fits) rather than a blanket, and now-disproven, "recovery not admissible" claim — `test-matrix-slope-phylo-dep.R:767` (PHY-18) demonstrates real ordinal slope-variance recovery from `Sigma_b_dep` under the `phylo_dep` route.
 
 9. **ID 15, nbinom1:**
    - CODED: `route_specific`

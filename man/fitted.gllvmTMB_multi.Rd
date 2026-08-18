@@ -12,17 +12,22 @@
 \item{type}{One of \code{"response"} (default, the \code{fitted()} convention) or
 \code{"link"}.}
 
-\item{...}{Unused.}
+\item{...}{Forwarded to \code{\link[=predict.gllvmTMB_multi]{predict.gllvmTMB_multi()}} (e.g. \code{se.fit},
+\code{re_form}); see its documentation for what each accepts.}
 }
 \value{
 A data frame with the original row identifiers (unit, species,
 trait columns) plus an \code{est} column on the requested scale -- identical
-in shape to \code{predict(object, newdata = NULL, type = type)}.
+in shape to \code{predict(object, newdata = NULL, type = type, ...)}. \strong{For a
+\code{multinomial()} fit} this is \code{.predict_multinomial()}'s output: K rows
+per observation (one per category, including the baseline), not one.
 }
 \description{
 A thin wrapper over \code{\link[=predict.gllvmTMB_multi]{predict.gllvmTMB_multi()}} at the training rows
 (\code{newdata = NULL}). Returns the same long data frame \code{predict()} returns
 -- one row per training observation, carrying its unit/species/trait
 identifiers alongside the fitted value -- rather than a bare vector, so
-row identity against the original data is preserved.
+row identity against the original data is preserved. \code{...} is forwarded
+to \code{predict()} unchanged, so its other arguments (\code{se.fit}, \code{re_form})
+work here too.
 }

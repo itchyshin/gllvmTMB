@@ -27,6 +27,27 @@
   )))
 }
 
+.ftm_binomial_fit_se <- function(seed = 604L, n = 30L, p = 3L) {
+  set.seed(seed)
+  L <- matrix(stats::rnorm(p), p, 1L)
+  u <- stats::rnorm(n)
+  eta <- outer(u, as.numeric(L))
+  Y <- matrix(stats::rbinom(n * p, 1, stats::plogis(eta)), n, p)
+  colnames(Y) <- paste0("sp", seq_len(p))
+  dat <- as.data.frame(Y)
+  dat$site <- factor(seq_len(n))
+  lhs <- paste(colnames(Y), collapse = ", ")
+  form <- stats::as.formula(sprintf(
+    "traits(%s) ~ 1 + latent(1 | site, d = 1)", lhs
+  ))
+  suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+    form,
+    data = dat,
+    family = stats::binomial(),
+    control = gllvmTMB::gllvmTMBcontrol(se = TRUE, warn_runaway = FALSE)
+  )))
+}
+
 .ftm_multinomial_fit <- function(seed = 700L, n = 90L, K = 3L) {
   set.seed(seed)
   x <- stats::rnorm(n)
@@ -82,6 +103,21 @@ test_that("#25 B2: default type is \"response\", the fitted() convention", {
   skip_on_cran()
   fit <- .ftm_binomial_fit(seed = 603L)
   expect_identical(fitted(fit)$est, fitted(fit, type = "response")$est)
+})
+
+test_that("#25 B2 REPAIR: fitted(fit, se.fit = TRUE) forwards ... to predict()", {
+  ## REPAIR (adversarial review): `fitted.gllvmTMB_multi()` used to silently
+  ## swallow `...`, so `se.fit` / `re_form` never reached predict(). Verified
+  ## first (not assumed): `predict(fit, se.fit = TRUE)` adds an `se.fit`
+  ## column (plus `se.fit.scale` / `se.fit.conditional` attributes) to the
+  ## same long data frame -- this test checks fitted() reproduces exactly
+  ## that, not a guessed column name.
+  skip_on_cran()
+  fit <- .ftm_binomial_fit_se()
+  pr <- predict(fit, newdata = NULL, type = "response", se.fit = TRUE)
+  ft <- fitted(fit, type = "response", se.fit = TRUE)
+  expect_true("se.fit" %in% names(ft))
+  expect_identical(ft, pr)
 })
 
 test_that("#25 B2: fitted() on a multinomial fit routes through .predict_multinomial", {

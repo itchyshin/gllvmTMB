@@ -28,6 +28,50 @@ Coordination note: `LOOP/` is shared, and the foreign lane
 UNSIGNED"* `LOOP/GOAL.md` / `arcs.md` / `checkpoint.md`. Stale against `main`,
 but not this lane's to rewrite — needs its owner, or Shinichi.
 
+## 2026-08-18 — DIRECTED TO ALL LANES: main moved; one behaviour change (Claude, categorical follow-ups + stale-PR cleanup)
+
+**Read this if your branch predates 2026-08-18.**
+
+Merged in quick succession: #1115 (ordinal curvature/multi-start ELIMINATED),
+#1110 (binomial screen arm attribution + retune), #1112 (Mizuno companion
+vignette), #958 (#855 response-unit scale Gate-0 no-go), #960 (#872
+mapped-point prevalence fence). #957 (AA-03) queued behind them.
+
+**BEHAVIOUR CHANGE — `check_gllvmTMB()`:** `loading_absolute_thresh` default
+6 -> 8 (#1110). Binomial fits that previously WARNed may now PASS. Re-verify
+anything asserting on the `binomial_prevalence_loading` row, or reading
+`check_gllvmTMB()` output in a test or article. #897's measured 25%
+false-positive rate is **100%** attributable to that one arm; the prevalence
+branch and `runaway_loading` contribute zero on the two pools measured.
+
+**For the #851/#855 programme:** the binomial instance is NOT the
+"standardisation absorbs the response scale" class. Probit fixes residual
+variance at 1, so loadings are in absolute units — this is effect-size/regime
+dependence, and `tau -> tau * sd(y)` has **no Bernoulli analogue**. Recorded as
+a negative scoping result in `dev/heywood/fp-scale-dependence.md`. #958's
+independent Gate-0 no-go (pooled `sigma_eps`) corroborates it from another
+direction.
+
+**For anyone touching `ordinal_probit` diagnostics:** the eliminated-candidate
+count is now SEVEN, not five. `dev/ordinal-degeneracy/pass-criteria-curvature.md`
+records what not to retry and why.
+
+**Operational warning — `docs/dev-log/check-log.md` is a collision point.** With
+many concurrent lanes, every open branch conflicts here within minutes of any
+merge. Resolution is always **keep both entries**; never overwrite another
+lane's block. If you automate that resolution, grep
+`^<<<<<<<|^=======$|^>>>>>>>` before pushing: my own resolver mishandled an
+overlapping conflict on #957 and left orphaned markers, which I pushed before
+catching and then repaired. `main` was verified clean afterwards.
+
+**Lane ownership as understood on 2026-08-18** (correct me if wrong): the iSDM
+`predict()`-on-`isdm_sources()` probe is held by another Claude session; the
+MSPL programme (`R/mspl*`, `tests/testthat/test-mspl-*`) by a Cursor lane. Note
+also that the 2026-08-15 iSDM handover is SUPERSEDED by #1113 — the public
+front door shipped on 8-16. I re-recommended building it from the stale doc;
+that is the second time that trap has fired. Rehydrate from
+`docs/dev-log/handover/2026-08-17-claude-handover-isdm-next.md`.
+
 ## 2026-08-17 — Cursor: Poisson MSPL W_* REPLACE (#1102)
 
 - worktree: ~/local-scratch/lanes/gllvmTMB-mspl-poisson-W-REPLACE
@@ -51806,6 +51850,7 @@ the affected surface; the Totoro R CMD check covers the suite at the PR); no art
 decision recorded in the after-task, not silently skipped).
 
 After-task: `docs/dev-log/after-task/2026-08-16-model2-multisource.md`.
+
 ## 2026-08-12 — post-deployment exact 0.6 artifact
 
 At merged `origin/main` commit `cb3126893883ff9fb0c6114129c158fe0e649be8`,
@@ -52834,6 +52879,25 @@ trait would require `sigma_eps / s_t` for every trait.  The predecessor #856
 vector-residual proposal is explicitly marked halted as a false premise.  The
 full decision packet is `docs/dev-log/audits/2026-08-12-855-response-unit-scale-gate0.md`.
 
+## 2026-08-12 — AA-03 Gaussian latent n=240 conditional evidence
+
+On `codex/aa03-gaussian-latent-admission`, the approved Totoro batch used a
+fresh archive with SHA-256
+`0c862fa607622c11645aa5cf42d40020abe2a563c20256814745f4b34ea13430`.
+For the exact ordinary native-Laplace, three-trait complete-data Gaussian
+rank-1 `latent(unique = TRUE)` design at 240 units, 1,600 expected, attempted,
+and terminal fits were retained (1,598 usable; two retained unusable false
+positives; 1,600 positive-definite Hessians). The exact current
+`glmmTMB::rr() + diag()` comparator also passed. The retained packet is
+`docs/dev-log/simulation-artifacts/2026-08-12-aa03-production/`.
+
+This earns only the conditional point-estimation statement for fixed effects
+and rotation-invariant shared/total covariance including diagonal Psi targets.
+`CRAN07-AA-03` remains `partial`: this is not evidence for raw loading
+orientation, intervals, fit-health detection, n=60, correlation-stress or
+boundary/Psi regimes, other ranks/families, alternative estimators, or release
+readiness. No package API, version, release, or artifact/platform ladder changed.
+
 Checks:
 
 ```sh
@@ -52875,6 +52939,10 @@ rg "#872|two-tier|flatness|park/research" \
   docs/dev-log/after-task/2026-08-13-872-two-tier-flatness-admission.md
 # PASS: MIS-35 remains single-tier #851 evidence; #872 remains park/research.
 
+TMPDIR=/tmp Rscript --vanilla -e 'Sys.setenv(GLLVMTMB_CRAN07_RECERTIFY = "true"); testthat::test_file("tests/testthat/test-cran07-core-comparators.R", reporter = "summary")'
+# PASS: comparator suite completed; six individual exact rows intentionally
+# skip because the fail-closed recertification ledger owns those executions.
+
 git diff --check
 # PASS
 ```
@@ -52883,3 +52951,4 @@ No package source, public documentation, validation-register status, NEWS,
 version, CI, artifact, tag, or GitHub issue state changed. The results retain
 the no-remedy fence: no warning, convergence criterion, optimizer-control
 change, or release claim is admitted.
+

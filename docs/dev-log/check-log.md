@@ -53024,3 +53024,19 @@ sd 0.381 vs eta sd 0.949); `re_form` ignored in-sample, only literal `~0`
 honoured on newdata; `newdata` + response applies a per-trait modal family —
 wrong arm on every isdm fit (detection "probabilities" up to 2.32); no A_proj
 projection for new locations. Map-making article fenced behind Design 126 §3–4.
+
+## 2026-08-18 — Claude iSDM interval feasibility grid (`claude/isdm-intervals-20260818`)
+
+Approved campaign (decisions.md 2026-08-18): D-139 smoke locally (12 reps;
+12/12 conv, pd 10/12, all PD reps pass c1–c5; `dev/isdm-intervals/smoke-output.txt`),
+remote 1-rep×16-cell invocation smoke on Totoro (`smoke-remote.csv`, 16/16
+valid rows), then the full grid: `campaign-intervals.R`, **Totoro, 100 cores,
+OPENBLAS single-thread, 1,600 fits, 56.5 s wall** (a-priori estimate 5–30 min).
+1,600/1,600 conv; pd 0.888. Analysis local (Wilson 90% bands, per-cell
+per-species/per-arm, never pooled). Results:
+`dev/isdm-intervals/2026-08-18-feasibility-results.md` — E1 all-INDET by
+design but 43/48 point coverages in [0.90,0.98], K3 not fired; E4 `se.fit`
+eta-coverage 0.23–0.82 (measured negative; falls with grid size); E2 Lambda
+never ADREPORTed with SE; E3 not computable. No register row moved; no
+public claim; next campaign needs its own pre-registration + approval.
+Deliberately not run: `devtools::check()` (no package code touched).

@@ -2812,3 +2812,26 @@ freezes new SE-series doors; tape unchanged; KEEP/REPLACE remain future choices 
 Hard stops unchanged: #1077 stays draft; MSPL-04 blocked; no public `se=TRUE`; no Totoro
 from this sign.
 
+
+## 2026-08-18 -- iSDM: campaign approved+run, flagship taxon PICKED, #1125 merge authorized
+
+Shinichi (chat, 2026-08-18): *"1 approve 2 do it and 3 merge"* against the three
+🔴 asks in PR #1125.
+
+1. **Interval-campaign proposal APPROVED as scoped** (§5 of
+   `docs/dev-log/research/2026-08-17-isdm-interval-campaign-proposal.md`):
+   smoke ran (12/12 conv, all PD reps pass), estimate came in far under the
+   30-minute line, and the 16-cell x 100-rep feasibility grid ran on Totoro
+   same-day (1,600 fits, 56.5 s wall, 100 cores). Results:
+   `dev/isdm-intervals/2026-08-18-feasibility-results.md` — E1 near-nominal
+   (full pre-registered campaign justified), E4 `se.fit` measured NON-viable
+   as an eta interval (0.23-0.82 coverage), E2 amplitude interval = new
+   construction, E3 not computable. No register row moves; no public claim.
+2. **Flagship taxon: Canada Warbler (Cardellina canadensis), ABMI + GBIF**,
+   adopting Jason's pick from
+   `docs/dev-log/research/2026-08-17-isdm-flagship-candidates.md`
+   (runner-up Wood Thrush/BBS). Candidates remain UNVERIFIED until data are
+   actually pulled; verification is the flagship arc's first slice.
+3. **PR #1125 merge authorized** (probe + tests + Design 126 + ISDM-03), and
+   with it the Design 126 §5 issue filings (A: three predict-newdata defects;
+   B: prediction-map API).

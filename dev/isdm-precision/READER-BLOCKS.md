@@ -560,3 +560,33 @@ alternatives are named.
 design matrix, not used in the prediction* — and either show the warning or
 pass `re_form = ~0` explicitly so the intent is on the page. One line closes
 the item.
+
+---
+
+## CORRECTION to Block 6 — the quadrature route does NOT combine with `isdm_sources()`
+
+Block 6 shows the Berman-Turner quadrature device working in `gllvmTMB()` via
+`weights =`, and that stands: 5/5 fits converge and recover the truth in a
+**single-family** model.
+
+**What was wrong was the implied next step.** The rewrite brief assumed the
+technique would plug straight into the two-arm integrated fit. It does not.
+`gllvmTMB()` **rejects `weights =` outright** for any `isdm_sources()` model
+(`R/fit-multi.R:2642`), and the refusal is deliberate and well-reasoned:
+
+> `weights` is not admitted for the integrated multi-source model.
+> Across this model's arms `weights` would mean two different things: a
+> binomial trial count on the detection rows and a likelihood multiplier on
+> the count rows.
+
+So the presence-only quadrature construction is currently available as a
+**standalone single-family demonstration only**. It cannot be combined with
+the structured detection arm in one joint model.
+
+This is a genuine capability gap, not a bug — the error is loud, correct, and
+explains itself, which is the opposite of the silent-fallback class. The
+article states it plainly and shows the combination failing live rather than
+implying a route that does not exist.
+
+**Found by testing an assumption in the brief rather than trusting it.** The
+brief was mine and it was wrong.

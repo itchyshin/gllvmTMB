@@ -455,7 +455,7 @@ test_that("exact residuals retain non-finite and unsupported rows", {
       type = "randomized_quantile",
       seed = 105L
     ),
-    "Exact conditional Gaussian residuals are not informative"
+    "Exact conditional residuals are not informative"
   )
 
   expect_equal(nrow(res), length(fit$tmb_data$y))
@@ -474,7 +474,7 @@ test_that("exact residuals retain non-finite and unsupported rows", {
       type = "randomized_quantile",
       seed = 106L
     ),
-    "Exact conditional Gaussian residuals are not informative"
+    "Exact conditional residuals are not informative"
   )
   expect_equal(res_unsupported$status[1], "unsupported_family")
   expect_true(is.na(res_unsupported$residual[1]))

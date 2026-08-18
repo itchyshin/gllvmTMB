@@ -168,12 +168,30 @@ screen_control <- function(
 #'   test is vacuously true against a constant and would not be genuine
 #'   evidence); a member that is constant while other members of the same
 #'   group are not is excluded from every pairwise comparison for the same
-#'   reason. Each result is its own row in the `response_dependencies`
+#'   reason. The one-hot test is not whole-group only: when the WHOLE
+#'   declared group does not sum to 1 (for example a genuine one-hot block
+#'   declared together with one unrelated trait), a bounded exhaustive
+#'   search checks every subset of size 2 or more, smallest first, and
+#'   reports each MINIMAL one-hot subset found as its own certificate --
+#'   `A + B + C = 1` is reported once even inside a larger declared group,
+#'   never also as a redundant superset. This search is attempted only
+#'   when the declared group has at most 12 members (`2^12 - 13 = 4083`
+#'   subset checks, microseconds even for many rows; declared groups are
+#'   small by construction -- one categorical variable's dummy columns or
+#'   one nesting relation). A group larger than that bound is never
+#'   silently reported PASS: the whole-group one-hot and pairwise nesting
+#'   checks still run, but an explicit `known_group_subset_not_attempted`
+#'   row records that the subset search itself was skipped for size, so a
+#'   "no subset found" result can be told apart from "not looked for". A
+#'   subset that sums to 1 only because every one of its members is
+#'   constant is not reported (the same guard as the whole-group case).
+#'   Each result is its own row in the `response_dependencies`
 #'   table, independent of the automatic affine-rank screen below -- except
-#'   that a declared one-hot block also counts toward that screen's
-#'   `unresolved` affine-dependency count (a nesting relation never does:
-#'   it is an inequality, not an exact affine relation among the columns).
-#'   Screening is Bernoulli-only, matching the automatic screen.
+#'   that a declared one-hot block, including a certified subset, also
+#'   counts toward that screen's `unresolved` affine-dependency count (a
+#'   nesting relation never does: it is an inequality, not an exact affine
+#'   relation among the columns). Screening is Bernoulli-only, matching the
+#'   automatic screen.
 #' @param control A [screen_control()] object.
 #' @return A `gllvmTMB_screen` object. Use [screen_table()] to extract
 #'   report-ready tables.
@@ -1469,6 +1487,50 @@ print.gllvmTMB_screen <- function(x, ...) {
 ## name must abort regardless of whether the check itself turns out to be
 ## feasible for this data.
 ##
+## Whole-group one-hot blindness (issue #1154): the one-hot test above is
+## WHOLE-GROUP only -- a declared group containing a genuine one-hot
+## subset plus one unrelated member (e.g. a review/scope/temporal one-hot
+## block declared together with an unrelated indicator) fails `one_hot_ok`
+## and previously fell all the way through to `known_group_checked` PASS,
+## the identical "declaring a slightly-too-large group weakens the
+## verdict" shape as the nesting defect fixed above. Unlike nesting (an
+## O(k^2) PAIRWISE scan that is naturally immune to this: an unrelated
+## member simply appears in no relation), a one-hot sum is a property of
+## the WHOLE subset at once, so there is no pairwise reformulation --
+## finding it requires searching subsets.
+##
+## The fix is a bounded EXHAUSTIVE subset search, not a heuristic: for a
+## declared group of size k <= SUBSET_MAX, every subset of size >= 2 is
+## checked directly (2^k - k - 1 row-sum tests, each O(n_rows)), smallest
+## first, and a subset is reported only if no already-found smaller
+## one-hot subset is contained in it (minimality -- a size-3 one-hot block
+## is reported once, not again as every larger superset it happens to sum
+## to 1 inside). `SUBSET_MAX = 12`: 2^12 - 13 = 4083 row-sum checks is
+## microseconds even for large n_rows, comfortably above any block that
+## occurs in practice (the motivating real dataset's largest declared
+## block is 6), while unbounded exhaustive search is combinatorial (2^20
+## is over a million subsets) and not worth the cost for declared groups,
+## which are small by construction. `k > SUBSET_MAX` is never silently
+## skipped: an explicit `known_group_subset_not_attempted` row says so, so
+## a user can tell "no subset found" from "not looked for" (this repo's
+## recurring silent-fallback failure class). Each minimal subset gets its
+## own `known_one_hot_subset` certificate row, exactly like a fully
+## whole-group one-hot block, and contributes the identical canonical null
+## vector (see .screen_one_hot_null_vector()) to the certified-span rank
+## computation below -- so it is credited toward `unresolved` exactly
+## once, the same way a whole-group certificate and a subset certificate
+## of the SAME relation (declared under two different, overlapping
+## groups) collapse to one unit of rank rather than being double-counted.
+##
+## The degenerate guard applies per-subset, not just to the whole group: a
+## subset that sums to 1 only because ALL its members are constant on the
+## complete rows (e.g. an always-1 column plus an always-0 column) is
+## skipped, for the same reason the whole-group degenerate check exists --
+## constants summing to a constant is not evidence of a genuine
+## relationship. Nesting is UNCHANGED by this fix: it is already exhaustive
+## over every pair within the declared group (see above), so it has no
+## subset blindness to begin with.
+##
 ## Returns list(rows = <data.frame>, one_hot_vectors = <list of numeric
 ## vectors>): a declared one-hot block's canonical null vector (see
 ## .screen_one_hot_null_vector()) is collected alongside its row so
@@ -1476,6 +1538,43 @@ print.gllvmTMB_screen <- function(x, ...) {
 ## null-vector span used for the "unresolved" affine-dependency count. A
 ## nesting relation contributes no vector -- it is an inequality holding on
 ## the observed rows, not an exact affine relation among the columns.
+.screen_known_group_subset_max <- 12L
+
+## Bounded exhaustive search for MINIMAL one-hot subsets of a declared
+## known_groups entry (see the discussion above
+## .screen_known_group_rows()). Only meaningful, and only called, when the
+## WHOLE group already failed the one-hot test and `k <=
+## .screen_known_group_subset_max`. Returns a list of character vectors
+## (each the trait names of one minimal one-hot subset, in `group` order).
+.screen_known_group_one_hot_subsets <- function(Yg, group, non_const, tol) {
+  k <- ncol(Yg)
+  found <- list()
+  found_idx <- list()
+  for (size in 2:k) {
+    combos <- utils::combn(k, size)
+    for (col in seq_len(ncol(combos))) {
+      idx <- combos[, col]
+      if (!any(non_const[idx])) {
+        next ## degenerate: every member of this subset is constant
+      }
+      covered <- vapply(
+        found_idx,
+        function(fi) all(fi %in% idx),
+        logical(1L)
+      )
+      if (any(covered)) {
+        next ## a smaller minimal one-hot subset already covers this one
+      }
+      row_sums <- rowSums(Yg[, idx, drop = FALSE])
+      if (all(abs(row_sums - 1) < tol)) {
+        found_idx[[length(found_idx) + 1L]] <- idx
+        found[[length(found) + 1L]] <- group[idx]
+      }
+    }
+  }
+  found
+}
+
 .screen_known_group_rows <- function(info, prep, known_groups) {
   rows <- list()
   one_hot_vectors <- list()
@@ -1544,6 +1643,20 @@ print.gllvmTMB_screen <- function(x, ...) {
     }
     n_relations <- sum(rel)
 
+    ## Bounded exhaustive one-hot SUBSET search: only meaningful, and only
+    ## run, when the whole group failed the whole-group one-hot test and
+    ## has at least one non-constant member. See the discussion above
+    ## .screen_known_group_rows() for SUBSET_MAX's justification and the
+    ## minimality/degenerate guards .screen_known_group_one_hot_subsets()
+    ## applies.
+    subset_attempted <- !one_hot_ok && !degenerate &&
+      k <= .screen_known_group_subset_max
+    subset_certs <- if (subset_attempted) {
+      .screen_known_group_one_hot_subsets(Yg, group, non_const, tol)
+    } else {
+      list()
+    }
+
     if (one_hot_ok) {
       rows[[length(rows) + 1L]] <- .screen_response_dependency_row(
         "known_group",
@@ -1564,120 +1677,174 @@ print.gllvmTMB_screen <- function(x, ...) {
         )
       )
       one_hot_vectors[[length(one_hot_vectors) + 1L]] <- .screen_one_hot_null_vector(info, group)
-    } else if (n_relations > 0L) {
-      ## A "full chain" is a total order: every pair of non-degenerate
-      ## members is comparable in one direction or the other. Pointwise
-      ## containment is already transitive on binary data, so totality is
-      ## exactly the condition under which the pairwise relations collapse
-      ## into one chain; a genuine partial order (e.g. one broad member
-      ## containing two mutually incomparable narrower ones) fails it.
-      is_full_chain <- all(non_const) && k >= 2L
-      if (is_full_chain) {
-        for (a in seq_len(k - 1L)) {
-          for (b in seq.int(a + 1L, k)) {
-            if (!rel[a, b] && !rel[b, a]) {
-              is_full_chain <- FALSE
-            }
-          }
-        }
-      }
-      if (is_full_chain) {
-        ## Order members from widest (contains the most others) to
-        ## narrowest via the row sums of the relation matrix; this
-        ## recovers the chain regardless of which order -- forward,
-        ## reverse, or any other permutation -- the user declared it in.
-        chain_order <- group[order(-rowSums(rel))]
-        reversed_note <- if (identical(chain_order, group)) {
-          ""
-        } else if (identical(chain_order, rev(group))) {
-          " (reversed from the order given)"
-        } else {
-          " (reordered from the order given)"
-        }
-        rows[[length(rows) + 1L]] <- .screen_response_dependency_row(
-          "known_group",
-          gname,
-          "known_nesting",
-          "FAIL",
-          "exact_dependency",
-          paste(group, collapse = ", "),
-          paste(chain_order, collapse = " >= "),
-          info$n_rows,
-          "inspect",
-          sprintf(
-            "declared group '%s' forms an exact nesting/containment chain on every complete row (%d rows)%s: %s: the narrower trait is never present without its broader trait",
-            gname,
-            info$n_rows,
-            reversed_note,
-            paste(chain_order, collapse = " contains ")
-          )
-        )
-      } else {
-        ## Not a single chain: report every pairwise containment relation
-        ## found, in declared-member order, so a partial order (e.g. a
-        ## broad member with two incomparable narrower ones) still FAILs
-        ## known_nesting and names each relation, rather than silently
-        ## passing through to known_group_checked the way a chain-only
-        ## scan would.
-        relation_strings <- character(0)
-        for (a in seq_len(k)) {
-          for (b in seq_len(k)) {
-            if (rel[a, b]) {
-              relation_strings <- c(relation_strings, paste(group[[a]], ">=", group[[b]]))
-            }
-          }
-        }
-        relation_text <- paste(relation_strings, collapse = "; ")
-        rows[[length(rows) + 1L]] <- .screen_response_dependency_row(
-          "known_group",
-          gname,
-          "known_nesting",
-          "FAIL",
-          "exact_dependency",
-          paste(group, collapse = ", "),
-          relation_text,
-          info$n_rows,
-          "inspect",
-          sprintf(
-            "declared group '%s' forms exact containment relation(s) on every complete row (%d rows), but not a single total chain: %s: the narrower trait is never present without its broader trait",
-            gname,
-            info$n_rows,
-            relation_text
-          )
-        )
-      }
-    } else if (degenerate) {
-      rows[[length(rows) + 1L]] <- .screen_response_dependency_row(
-        "known_group",
-        gname,
-        "known_group_degenerate",
-        "PASS",
-        "none",
-        paste(group, collapse = ", "),
-        NA_character_,
-        info$n_rows,
-        "keep",
-        sprintf(
-          "declared group '%s' is not checked for nesting or a one-hot sum: every member is constant on the complete rows, which would make a chain condition vacuously true without evidence of a genuine relationship; see each trait's own constant-response row instead",
-          gname
-        )
-      )
     } else {
-      rows[[length(rows) + 1L]] <- .screen_response_dependency_row(
-        "known_group",
-        gname,
-        "known_group_checked",
-        "PASS",
-        "none",
-        paste(group, collapse = ", "),
-        NA_character_,
-        info$n_rows,
-        "keep",
-        sprintf(
-          "declared group '%s' did not show an exact one-hot sum or a nesting containment chain (either direction) on the observed rows",
-          gname
+      ## The whole declared group is not itself one-hot -- report every
+      ## MINIMAL one-hot subset found (issue #1154), each its own
+      ## certificate row exactly like a fully-declared one-hot block.
+      for (cert_traits in subset_certs) {
+        rows[[length(rows) + 1L]] <- .screen_response_dependency_row(
+          "known_group",
+          gname,
+          "known_one_hot_subset",
+          "FAIL",
+          "exact_dependency",
+          paste(cert_traits, collapse = ", "),
+          paste0(paste(cert_traits, collapse = " + "), " = 1"),
+          info$n_rows,
+          "collapse_or_recode",
+          sprintf(
+            "declared group '%s' contains a one-hot subset (%s) that sums to exactly 1 on every complete row (%d rows), even though the whole declared group does not: this is one categorical variable, not %d independent binary traits",
+            gname,
+            paste(cert_traits, collapse = ", "),
+            info$n_rows,
+            length(cert_traits)
+          )
         )
-      )
+        one_hot_vectors[[length(one_hot_vectors) + 1L]] <- .screen_one_hot_null_vector(info, cert_traits)
+      }
+
+      if (n_relations > 0L) {
+        ## A "full chain" is a total order: every pair of non-degenerate
+        ## members is comparable in one direction or the other. Pointwise
+        ## containment is already transitive on binary data, so totality is
+        ## exactly the condition under which the pairwise relations collapse
+        ## into one chain; a genuine partial order (e.g. one broad member
+        ## containing two mutually incomparable narrower ones) fails it.
+        is_full_chain <- all(non_const) && k >= 2L
+        if (is_full_chain) {
+          for (a in seq_len(k - 1L)) {
+            for (b in seq.int(a + 1L, k)) {
+              if (!rel[a, b] && !rel[b, a]) {
+                is_full_chain <- FALSE
+              }
+            }
+          }
+        }
+        if (is_full_chain) {
+          ## Order members from widest (contains the most others) to
+          ## narrowest via the row sums of the relation matrix; this
+          ## recovers the chain regardless of which order -- forward,
+          ## reverse, or any other permutation -- the user declared it in.
+          chain_order <- group[order(-rowSums(rel))]
+          reversed_note <- if (identical(chain_order, group)) {
+            ""
+          } else if (identical(chain_order, rev(group))) {
+            " (reversed from the order given)"
+          } else {
+            " (reordered from the order given)"
+          }
+          rows[[length(rows) + 1L]] <- .screen_response_dependency_row(
+            "known_group",
+            gname,
+            "known_nesting",
+            "FAIL",
+            "exact_dependency",
+            paste(group, collapse = ", "),
+            paste(chain_order, collapse = " >= "),
+            info$n_rows,
+            "inspect",
+            sprintf(
+              "declared group '%s' forms an exact nesting/containment chain on every complete row (%d rows)%s: %s: the narrower trait is never present without its broader trait",
+              gname,
+              info$n_rows,
+              reversed_note,
+              paste(chain_order, collapse = " contains ")
+            )
+          )
+        } else {
+          ## Not a single chain: report every pairwise containment relation
+          ## found, in declared-member order, so a partial order (e.g. a
+          ## broad member with two incomparable narrower ones) still FAILs
+          ## known_nesting and names each relation, rather than silently
+          ## passing through to known_group_checked the way a chain-only
+          ## scan would.
+          relation_strings <- character(0)
+          for (a in seq_len(k)) {
+            for (b in seq_len(k)) {
+              if (rel[a, b]) {
+                relation_strings <- c(relation_strings, paste(group[[a]], ">=", group[[b]]))
+              }
+            }
+          }
+          relation_text <- paste(relation_strings, collapse = "; ")
+          rows[[length(rows) + 1L]] <- .screen_response_dependency_row(
+            "known_group",
+            gname,
+            "known_nesting",
+            "FAIL",
+            "exact_dependency",
+            paste(group, collapse = ", "),
+            relation_text,
+            info$n_rows,
+            "inspect",
+            sprintf(
+              "declared group '%s' forms exact containment relation(s) on every complete row (%d rows), but not a single total chain: %s: the narrower trait is never present without its broader trait",
+              gname,
+              info$n_rows,
+              relation_text
+            )
+          )
+        }
+      } else if (degenerate) {
+        rows[[length(rows) + 1L]] <- .screen_response_dependency_row(
+          "known_group",
+          gname,
+          "known_group_degenerate",
+          "PASS",
+          "none",
+          paste(group, collapse = ", "),
+          NA_character_,
+          info$n_rows,
+          "keep",
+          sprintf(
+            "declared group '%s' is not checked for nesting or a one-hot sum: every member is constant on the complete rows, which would make a chain condition vacuously true without evidence of a genuine relationship; see each trait's own constant-response row instead",
+            gname
+          )
+        )
+      } else if (length(subset_certs) == 0L) {
+        ## No whole-group one-hot, no one-hot subset (found or, if
+        ## `k > SUBSET_MAX`, not searched), no nesting, not degenerate.
+        ## `subset_attempted` distinguishes an exhaustive negative result
+        ## from a search that was never run -- the group must NEVER be
+        ## silently reported PASS when the subset search was skipped for
+        ## size, hence the distinct known_group_subset_not_attempted row.
+        if (subset_attempted) {
+          rows[[length(rows) + 1L]] <- .screen_response_dependency_row(
+            "known_group",
+            gname,
+            "known_group_checked",
+            "PASS",
+            "none",
+            paste(group, collapse = ", "),
+            NA_character_,
+            info$n_rows,
+            "keep",
+            sprintf(
+              "declared group '%s' did not show an exact one-hot sum (including every subset of size 2 or more, up to the %d declared members) or a nesting containment chain (either direction) on the observed rows",
+              gname,
+              k
+            )
+          )
+        } else {
+          rows[[length(rows) + 1L]] <- .screen_response_dependency_row(
+            "known_group",
+            gname,
+            "known_group_subset_not_attempted",
+            "WARN",
+            "not_exhaustive",
+            paste(group, collapse = ", "),
+            NA_character_,
+            info$n_rows,
+            "inspect",
+            sprintf(
+              "declared group '%s' has %d members, above SUBSET_MAX = %d: the whole-group one-hot sum and pairwise nesting were checked and found nothing, but exhaustive one-hot SUBSET search was not attempted at this size; split the declaration into smaller known_groups entries to search subsets, or inspect manually",
+              gname,
+              k,
+              .screen_known_group_subset_max
+            )
+          )
+        }
+      }
     }
   }
   list(

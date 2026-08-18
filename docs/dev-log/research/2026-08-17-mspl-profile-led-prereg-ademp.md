@@ -20,7 +20,7 @@ historical; current state is the sync table that follows it.
 
 | Gate | Paste | Meaning |
 |---|---|---|
-| G1 | **PARK SE doors** | Freeze new SE-series doors; Poisson tape unchanged; KEEP/REPLACE not invented |
+| G1 | **PARK SE doors** *(2026-08-17)* → **REPLACE** *(signed 2026-08-17, landed #1111)* | Was: freeze SE-series doors, tape unchanged. **Now:** working \(W_*\) is on `main`; SE-series family doors still closed |
 | G2 | **OPEN-READY-PR** | Non-draft docs PR of this lane’s kit to `main` (does **not** undraft #1077) |
 | G3 | **WAIT** | No local profile smoke yet |
 | G4a | **BINARY-FIRST** | Bernoulli LA-MSPL first; Poisson off coverage claim |

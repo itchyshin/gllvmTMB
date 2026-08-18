@@ -93,11 +93,28 @@ No relevant open issue for this docs ledger sync; no new issue created.
 
 ## 8. What Did Not Go Smoothly
 
-Sibling Opus `0d79ea81` was given the same lane six minutes earlier and
-did not open a PR (transcript stalled after preflight). This Grok
-accelerator took the existing worktree. Several stale branches still
-carry PARK / UNSIGNED Design 125 wording; they are not `main` and were
-not merged in.
+**Two agents were dispatched on this same G0 and wrote into the same
+worktree concurrently.** An Opus lane created
+`~/local-scratch/lanes/gllvmTMB-mspl-forkB-decision` and began editing
+`decisions.md` and Design 125; a Grok accelerator, believing that lane had
+stalled after its 118-second preflight, adopted the same worktree and edited
+the same files minutes later. It had **not** stalled. The overlap produced one
+real defect — a duplicated *"2026-08-18 sync"* paragraph in the Design 125
+header, both writers having added the same amendment note — which was
+consolidated into a single block before commit. The two versions did not
+otherwise contradict each other, so nothing had to be discarded on the merits;
+this was luck, not process. **Lesson:** a worktree is the lane boundary (D-146),
+so adopting another agent's worktree defeats the mechanism that is supposed to
+keep lanes apart. The correct move on finding a live worktree is a new one, or a
+handoff — never a silent co-write. Surfaced to the maintainer per D-87/D-88
+rather than resolved unilaterally.
+
+Separately: several stale branches (`claude/lane-mspl-profile-led-ci`,
+`claude/mspl-interval-computable-pin`) still carry Design 125 wording that walks
+Poisson \(W\) *backwards* to **UNSIGNED / operational PARK**. That reading is
+refuted by `main` (#1102 signed REPLACE; #1111 landed the tape), and those
+branches have no open PR. They were **not** merged in, and they should not
+re-land that wording over this sync.
 
 ## 9. Team Learning (per AGENTS.md Standing Review Roles)
 
@@ -108,9 +125,14 @@ public-interval ship. L0 owns code.
 duplicates: the first heading wins, so the live MSPL docs were pointing
 at the wrong rule. Fix the live cites; leave draft-reply D-148 alone.
 
-**Shannon.** Named lane `cursor/mspl-forkB-decision`. Did not touch
-`R/` / `src/` (L0 `cursor/mspl-forkB-l0-20260818`) or `LOOP/` (goal-kit
-sibling).
+**Shannon.** Named lane `cursor/mspl-forkB-decision`. Did not touch `R/` or
+`src/` — the L0 plumbing arm is a separate lane. `LOOP/decision-queue.md` **is**
+in this PR, because that file is where the G4c gate state is recorded and
+leaving it reading `FORK-DEFER` would have contradicted every other surface;
+`LOOP/GOAL.md` and `LOOP/checkpoint.md` were deliberately left alone, as
+[#1124](https://github.com/itchyshin/gllvmTMB/pull/1124) owns those two. Six
+open PRs also touch `docs/dev-log/check-log.md`, so a textual conflict there is
+expected for whichever merges second.
 
 ## 10. Known Limitations And Next Actions
 

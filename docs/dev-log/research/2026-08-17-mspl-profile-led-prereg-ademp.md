@@ -8,24 +8,30 @@
 **Form:** Morris et al. (2019) ADEMP, future tense.  
 **Sources:** `LOOP/GOAL.md`, `LOOP/ultra-plan.md`, Design 125 stub, R1 lessons (`2026-08-17-mspl-profile-led-r1-lessons.md`), profile-bootstrap sketch (`2026-08-17-mspl-profile-bootstrap-ci-next.md`), triad card (`2026-08-17-mspl-ci-wald-plus-profile.md`). Negative lessons from Design 118 / B1 are **read-only**; this is **not** Design 118 recalibration.
 
+**2026-08-18 sync (this file):** G4c **FORK-DEFER → fork B** (unpenalized
+Laplace at fixed MSPL nuisance; A = ablation only). Poisson \(W\)
+**PARK SE doors → SIGNED REPLACE** (#1111). Vault MSPL-interval cites
+that said D-148 now say **D-159**. The 2026-08-17 sign table below is
+historical; current state is the sync table that follows it.
+
 ---
 
 ## What was approved (SIGNED 2026-08-17)
 
 | Gate | Paste | Meaning |
 |---|---|---|
-| G1 | **PARK SE doors** | Freeze new SE-series doors; Poisson tape unchanged; KEEP/REPLACE not invented |
+| G1 | **PARK SE doors** *(2026-08-17)* → **REPLACE** *(signed 2026-08-17, landed #1111)* | Was: freeze SE-series doors, tape unchanged. **Now:** working \(W_*\) is on `main`; SE-series family doors still closed |
 | G2 | **OPEN-READY-PR** | Non-draft docs PR of this lane’s kit to `main` (does **not** undraft #1077) |
 | G3 | **WAIT** | No local profile smoke yet |
 | G4a | **BINARY-FIRST** | Bernoulli LA-MSPL first; Poisson off coverage claim |
 | G4b | **E1-E2-ONLY** | Estimands E1 intercept + E2 loading; E3 = Wald(\(Q_0\)) availability diagnostic only |
-| G4c | **FORK-DEFER** | MSPL profile fork A/B/C left open; blocks smoke / live profile until picked |
+| G4c | **FORK-DEFER** *(2026-08-17)* → **fork B** *(2026-08-18)* | Was: A/B/C open. **Now:** B = unpenalized Laplace at fixed MSPL nuisance; A = ablation only |
 | G4d | **THRESHOLDS-SIGN-NOW** | Freeze ADEMP proposed **local** gate numbers below; T\* still need explicit numbers before Totoro |
 | G4e | **BOOT-PARAMETRIC** | Asymmetry arm = parametric bootstrap for v1 DGP; percentile; BCa ablation-only |
 
-**Still NOT approved:** undraft #1077 · Totoro / B1 · public `se=TRUE` · Design 118 reopen · invent KEEP/REPLACE for Poisson \(W\).
+**Still NOT approved:** undraft #1077 · Totoro / B1 · public `se=TRUE` · Design 118 reopen / recalibration. Poisson \(W\) REPLACE is signed and landed (#1111) — that does **not** open SE-series family doors.
 
-**Ada/Ranga defaults used where the card needed a choice:** binary-first (Ada §3.1); PARK SE doors (Ranga/ultra-plan silent default, now explicit paste); thresholds = draft proposed L\* numbers; fork deferred (blocks premature smoke); bootstrap = parametric.
+**Ada/Ranga defaults used where the card needed a choice (2026-08-17):** binary-first (Ada §3.1); PARK SE doors (then the silent default; **superseded** by SIGNED REPLACE #1111); thresholds = draft proposed L\* numbers; fork deferred (**superseded** 2026-08-18 by fork B); bootstrap = parametric.
 
 ---
 
@@ -34,9 +40,9 @@
 | Item | State |
 |---|---|
 | Design stub | `docs/design/125-mspl-profile-led-intervals.md` @ `b68b20b4` — **APPROVED** |
-| This pre-reg | **SIGNED** under Design **125**; G4a–G4e frozen as above |
-| Poisson W | **SIGNED PARK SE doors** — `2026-08-17-mspl-poisson-W-G0.md` |
-| Follow-up | V1 mechanical verify → C1 after-task; **H1 smoke blocked** (G3 WAIT + G4c FORK-DEFER) |
+| This pre-reg | **SIGNED** under Design **125**; G4a/G4b/G4d/G4e frozen as 2026-08-17; **G4c now fork B** |
+| Poisson W | **SIGNED REPLACE** — `2026-08-17-mspl-poisson-W-G0.md`; landed #1111 (`3053fce3`) |
+| Follow-up | L0 plumbing (sibling) may implement fork B internally; **H1 campaign smoke** still needs L1 + later G0s |
 
 ---
 
@@ -45,12 +51,12 @@
 This signed pre-reg alone does **not**:
 
 1. Recalibrate, amend, or reopen **Design 118** / B1 / Totoro (D-157 PARK).
-2. Unlock public `se=TRUE` / `vcov` / user-facing Wald or profile `confint` (needs **separate** G0s; D-148/D-149).
+2. Unlock public `se=TRUE` / `vcov` / user-facing Wald or profile `confint` (needs **separate** G0s; D-159/D-149).
 3. Flip register row **MSPL-04** off `blocked`, or write NEWS `covered`.
 4. Undraft **#1077** (`fb44d7b5`) or implement live MSPL `confint(method="profile")`.
-5. Choose Poisson \(W=\mathrm{diag}(\mu)\) KEEP or REPLACE (only **PARK SE doors** is signed).
+5. Reopen Poisson \(W=\mathrm{diag}(\mu)\) KEEP (REPLACE is signed and landed; SE-series family doors stay closed).
 6. Authorize Totoro/DRAC compute (D-50 / D-139 / D-157 — separate campaign G0; T\* numbers still open).
-7. Pick MSPL profile fork A/B/C (G4c **FORK-DEFER**).
+7. Re-pick the profile fork (G4c is **SIGNED fork B** — A is ablation only).
 
 ---
 
@@ -65,7 +71,7 @@ This signed pre-reg alone does **not**:
 ### D — Data-generating mechanisms (v1 envelope)
 
 **Family (v1):** complete, unweighted, single-trial **Bernoulli** under `estimator = "mspl"`, links among {logit, probit, cloglog} as already admitted for MSPL **point** estimation (Design 125 §3.1).  
-**SIGNED G4a:** binary profile-led first; **Poisson stays off the coverage campaign** (PARK SE doors does not widen claim set).
+**SIGNED G4a:** binary profile-led first; **Poisson stays off the coverage campaign** (REPLACE of \(W\) is a tape fix, not a widen of this claim set).
 
 | Axis | In envelope (frozen) | Outside ⇒ refuse / out of claim |
 |---|---|---|
@@ -96,11 +102,11 @@ Roles locked by triad Confirm SIGNED under D-157 + D-12 + Design 125 §2:
 
 | Method | Role | Construction (sign state) |
 |---|---|---|
-| **Profile** | **Signature / primary claim path** | Likelihood-ratio inversion along one coordinate, others profiled. **MSPL fork: G4c FORK-DEFER** — A (penalised MSPL), B (unpenalized Laplace at fixed MSPL nuisance), or C (hybrid) **not picked**; no live profile impl / smoke until fork G0. Fail closed on bracket non-closure / one-sided-only. Do **not** claim ordinary Laplace profile calibration transfers to MSPL. |
+| **Profile** | **Signature / primary claim path** | Likelihood-ratio inversion along one coordinate, others profiled. **MSPL fork: G4c SIGNED B** — unpenalized Laplace at fixed MSPL nuisance. Fork A (penalised MSPL) is **ablation only**. Fail closed on bracket non-closure / one-sided-only. Do **not** claim ordinary Laplace profile calibration transfers to MSPL. Public `confint` stays refused; L0 implements the internal path. |
 | **Wald(\(Q_0\))** | **Quickest baseline / availability** | One unpenalized observed information \(Q_0\) at MSPL \(\tilde\theta\); \(\pm z\cdot\mathrm{se}\). Diagnostic widths and PD triage only — **not** the coverage brand; **not** a second B1 calibrator. |
 | **Bootstrap** | **Asymmetry arm** | **SIGNED G4e BOOT-PARAMETRIC:** parametric bootstrap for v1 DGP; percentile; BCa ablation-only. **Refuse** on saturated / deep-separation coordinates (Design 118 A1b). Bootstrap is **not** a repair for Wald undercoverage on a misspecified centre. |
 
-**Plumbing fence:** #1077 stays **draft** scaffold until fork is picked **and** tests exist **and** Shinichi explicitly undrafts; public `confint` remains refused via `.gllvmTMB_mspl_assert_inference`.
+**Plumbing fence:** fork B is picked. #1077 stays **draft** until tests exist **and** Shinichi explicitly undrafts; public `confint` remains refused via `.gllvmTMB_mspl_assert_inference`. L0 may add an internal, unexported, `calibrated = FALSE` path.
 
 ### P — Performance measures (with refusal pricing)
 
@@ -160,7 +166,7 @@ Freeze of Design 125 §4 sketches into measurable rules:
 | **T1** | Totoro (after separate G0) | Hold-out cells declared in advance; Wilson / PASS-FAIL thresholds **must be filled before launch** (not frozen by this sign) | Campaign FAIL; MSPL-04 stays blocked; no NEWS covered |
 | **T2** | Totoro | Availability ≥0.95 on non-refused envelope cells; refusal floor on anchors | Same |
 
-**Hard rule:** no Totoro until L1–L2 recorded **and** fork picked **and** Shinichi signs Totoro G0 + Design 124-style admission. No \(n\to2000\) “fix” of Design 118.
+**Hard rule:** no Totoro until L1–L2 recorded **and** Shinichi signs Totoro G0 + Design 124-style admission. Fork is picked (B). No \(n\to2000\) “fix” of Design 118.
 
 ---
 
@@ -172,10 +178,10 @@ Inside the named envelope, for estimates that pass refusal rules, profile interv
 
 ## Remaining G0 items (human — still blocked)
 
-1. Pick MSPL profile fork A/B/C (G4c deferred).
+1. ~~Pick MSPL profile fork A/B/C~~ — **SIGNED fork B** (2026-08-18).
 2. Freeze T\* numeric thresholds + Totoro \(n_{\mathrm{rep}}\) before any campaign.
 3. Undraft #1077 only after Design + this pre-reg + fork + tests — **not-ready** now.
-4. KEEP or REPLACE Poisson \(W\) (PARK only is signed).
+4. ~~KEEP or REPLACE Poisson \(W\)~~ — **SIGNED REPLACE** (#1111). SE-series family doors stay closed.
 5. Separate G0 for public `se=TRUE`.
 6. Separate G0 for Totoro / B1 reopen (default: no reopen).
 
@@ -185,8 +191,8 @@ Inside the named envelope, for estimates that pass refusal rules, profile interv
 
 - Morris TP, White IR, Crowther MJ (2019). Using simulation studies to evaluate statistical methods. *Stat Med*.
 - Design 125 stub `docs/design/125-mspl-profile-led-intervals.md` (claim `b68b20b4`).
-- D-12, D-148, D-149, D-157; triad Confirm SIGNED `2026-08-17-mspl-ci-wald-plus-profile.md`.
+- D-12, **D-159** (MSPL-interval withhold; was mis-cited as D-148), D-149, D-157; triad Confirm SIGNED `2026-08-17-mspl-ci-wald-plus-profile.md`.
 - R1 lessons `2026-08-17-mspl-profile-led-r1-lessons.md`.
 - Sketch `2026-08-17-mspl-profile-bootstrap-ci-next.md`.
-- Poisson W G0 `2026-08-17-mspl-poisson-W-G0.md` (**PARK SE doors**).
+- Poisson W G0 `2026-08-17-mspl-poisson-W-G0.md` (**SIGNED REPLACE**, #1111).
 - Design 118 (parked) — negative lessons only; do not edit from this lane for recalibration.

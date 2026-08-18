@@ -21,7 +21,7 @@
 5. **Availability ≠ coverage.** G3 availability failures and G2 location failures are distinct; Wald(Q₀) in the triad is **availability / quick baseline**, not a coverage claim.
 6. **Refusal rules matter.** G4 anchor refusal was the rare PASS — new pre-reg must name refusal / fence rules explicitly.
 7. **MSPL-04 stays blocked** until a **new** Design + pre-reg + evidence path succeeds; NEWS must not say `covered` from this docs sitting.
-8. **Public doors stay closed:** `confint` / `vcov` / `se=TRUE` withheld (D-148/D-149) until separate G0s.
+8. **Public doors stay closed:** `confint` / `vcov` / `se=TRUE` withheld (D-159/D-149) until separate G0s.
 
 ## What this extract is NOT
 

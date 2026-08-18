@@ -1,3 +1,26 @@
+## 2026-08-18 — Cursor: Design 125 G4c fork B + D-159 citation + Poisson W REPLACE sync
+
+Lane `cursor/mspl-forkB-decision` @ `~/local-scratch/lanes/gllvmTMB-mspl-forkB-decision`.
+Docs only. Records Shinichi G0 **g0_unlock**: Design 125 profile fork **B**
+(unpenalized Laplace at fixed MSPL nuisance; A = ablation only). Syncs
+Design 125 / ADEMP PARK wording to **SIGNED REPLACE** (#1111). Rewrites
+MSPL-interval **D-148 → D-159** where the cite meant the vault interval
+decision, not the never-ask-bare rule.
+
+```sh
+rg -n 'G4c|fork B|D-159|SIGNED REPLACE' \
+  docs/design/125-mspl-profile-led-intervals.md \
+  docs/dev-log/research/2026-08-17-mspl-profile-led-prereg-ademp.md \
+  docs/dev-log/decisions.md
+rg -n 'D-148' docs/design/125-mspl-profile-led-intervals.md \
+  docs/design/118-mspl-interval-calibration-protocol.md \
+  docs/dev-log/research/2026-08-17-mspl-profile-led-prereg-ademp.md
+# leftover D-148 in those three should only be the numbering-note / never-ask-bare disambiguation
+# deliberately not: R/ src/ public se undraft #1077 Totoro git add -A
+```
+
+After-task: `docs/dev-log/after-task/2026-08-18-mspl-design-125-g4c-fork-B.md`.
+
 ## 2026-08-18 — Cursor: resume fork B `/goal` kit (CI whitespace + arc-ID align)
 
 Resumed after a USER-ABORT. Sibling Opus `156efab4` had only a REPLACE-shaped
@@ -29,6 +52,7 @@ git diff --name-only origin/main -- LOOP/   # must be empty
 gh pr view 1077 --json isDraft              # true
 # not run: R CMD check, Totoro, L0/L1 impl, Design 125 body edit
 ```
+
 
 ## 2026-08-18 — Cursor: Poisson MSPL W_* REPLACE **MERGED** (closes the LOOP)
 

@@ -34,7 +34,7 @@ DISCIPLINE: verify=docs fences + #1077 still draft + Poisson W UNSIGNED until pa
 
 - **D-157** (accepted): B1 PARK; later intervals = **new construction + new pre-registration**, not Design 118 recalibration, not \(n\to 2000\); no Totoro relaunch; `MSPL-04` blocked.
 - **D-12** (accepted): profile = featured/hero CI; speed order Wald ≪ profile ≪ bootstrap.
-- **D-149 / D-148:** SE pins ≠ public CI; public calibrated intervals withheld; if/ever Wald SE → report \(Q_0\).
+- **D-149 / D-159:** SE pins ≠ public CI; public calibrated intervals withheld (D-159 is the MSPL-interval decision, renumbered from a colliding D-148); if/ever Wald SE → report \(Q_0\).
 - **Triad Confirm SIGNED 2026-08-17** (this sitting): Profile = signature; Wald(\(Q_0\)) = quickest baseline/availability; Bootstrap = asymmetry. No new D-.
 - **Poisson \(W=\mathrm{diag}(\mu)\)** G0 still **UNSIGNED** (KEEP/REPLACE/PARK) — Ranga one-sided flag (#1064).
 - Draft **#1077** fenced scaffold only; public `confint` still refused.

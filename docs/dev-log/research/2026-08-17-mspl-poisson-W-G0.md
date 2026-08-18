@@ -79,7 +79,7 @@ row: true \(W\) is \(0/+\infty\); default replacement is working logistic \(W_*\
 - Tweedie live tape already uses \(W_*\); public door still closed.
 - nbinom2 saturates (\(W\to\varphi\)); same E3 class; #1065 is packet-only,
   still `planned`.
-- Public `se=TRUE` / `vcov` / `confint` withheld (D-149 / D-148). B1 PARKED
+- Public `se=TRUE` / `vcov` / `confint` withheld (D-149 / D-159). B1 PARKED
   (D-157).
 - No NEWS `covered`. No un-admit from this card.
 

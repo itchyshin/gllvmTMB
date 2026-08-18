@@ -34,7 +34,7 @@ binary campaign. Where this note uses a gllvmTMB word (`Q_P`,
 **Our binding split (not a paper claim).** Brain **D-149** (2026-08-16):
 internal \(Q_P\)/\(Q_0\) availability+PD pins are authorised for the
 non-binomial cascade; public calibrated intervals stay binary-only
-(MSPL-interval D-148; MSPL-04 blocked; no public `vcov` / `confint` /
+(MSPL-interval D-159; MSPL-04 blocked; no public `vcov` / `confint` /
 `sdreport`). This extract does not change that split.
 
 ---

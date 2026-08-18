@@ -9,7 +9,11 @@
 #' Lambda in a fit returned by [gllvmTMB()] or in a formula-data pair that will
 #' be passed to [gllvmTMB()]. The matrix is returned in the format expected by
 #' the `lambda_constraint` argument: `NA` in free entries, numeric values in
-#' pinned entries.
+#' pinned entries. This function supplies an identification convention -- an
+#' orientation/scale scaffold that resolves rotational ambiguity -- and does
+#' not discover biological factor structure; a low or pinned loading is a
+#' constraint choice or a result to interpret, not by itself grounds to
+#' exclude a trait.
 #'
 #' @param fit_or_formula Either a fitted multivariate model returned by
 #'   [gllvmTMB()] or a formula. If a formula, `data` must also be supplied.

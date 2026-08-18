@@ -254,6 +254,31 @@ Report, in either case: the certificate table, which route was fitted and why,
 the penalty scale (`summary(fit)$estimation` stores `c_n` for MSPL), and the
 convergence and gradient diagnostics — not just the finite number.
 
+## When the model has no measured fixed-effect target
+
+Both remedies above target a specific place in the model, and neither is a
+general-purpose fix for a rare or unusual binary trait. The loading ridge
+targets a runaway *latent* loading; MSPL targets separation on a *measured
+fixed-effect covariate*. In an intercept-only model — no `design_score`, no
+covariate at all on the right-hand side — MSPL has no target: there is no
+fixed-effect slope for a straight line to separate, so the Jeffreys-prior
+penalty it adds has nothing to act on. A rare or skewed intercept-only item
+belongs to the marginal-support checks in
+[Screen binary traits before fitting](pre-fit-response-screening.html)
+(prevalence, minority count), not to MSPL.
+
+Neither remedy, in turn, makes an *exactly deterministic* response block a
+valid set of traits. If several binary columns sum to exactly 1 on every
+row — a review-type, geographic-scope, or temporal-scope dummy set is a
+common source — that is one categorical variable recorded across several
+columns, not several independent binary traits. Loading shrinkage does not
+change that structure, and neither does a finite MSPL slope: the fix is to
+recode the block as [`multinomial()`](multinomial.html) or to fix a
+deliberate reference level, not to penalise the fit around it.
+`screen_gllvmTMB()`'s response-dependency check (see
+[Screen binary traits before fitting](pre-fit-response-screening.html))
+flags this before either remedy is reached.
+
 # See also
 
 - [Joint species distribution model](joint-sdm.html) — the same latent

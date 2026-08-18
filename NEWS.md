@@ -494,6 +494,35 @@ is still the default.
 
 ## Fixed
 
+* **`screen_gllvmTMB()`'s `known_groups` argument no longer misses a
+  partial-order nesting declaration or a certified one-hot block in its
+  unresolved-dependency count (reported by @Ayumi-495,
+  `urbanisation_map#23`).** Two related defects in the `known_groups`
+  feature shipped in #1123: (1) a group of three or more traits whose
+  containment relations form a partial order rather than a single total
+  chain -- for example a broad realm indicator ("water") containing two
+  mutually incomparable narrower ones ("freshwater", "marine") --
+  previously fell through the chain-only check (which tested only the
+  declared order and its reverse) and silently PASSed
+  `known_group_checked` instead of FAILing `known_nesting`; the check now
+  tests every pairwise containment among the declared members and names
+  every relation it finds. (2) `$response_dependencies`' `unresolved`
+  affine-dependency count never subtracted the one-hot certificates a
+  user declared via `known_groups`, so a correctly certified dependency
+  could still be reported as "N further exact affine dependencies ...
+  could not be automatically resolved". The count is now the RANK of the
+  pooled certified null-vector span (automatic certificates + declared
+  one-hot blocks), not a subtraction of row counts, so declaring the same
+  dependency under two names -- or via two overlapping groups -- cannot
+  under-report a genuinely unresolved dependency. A nesting/containment
+  relation is an inequality, not an exact affine relation, and still
+  contributes nothing toward `unresolved`. Also fixed in the same pass: a
+  typo'd trait name in `known_groups` was silently accepted whenever the
+  affine/known-group check itself was infeasible for the data (no unit
+  column, non-Bernoulli rows, duplicate unit-trait rows, too few complete
+  units); trait names are now validated before that feasibility check, so
+  a typo always aborts.
+
 * **`fit_health$boundary_flags` no longer flags the auto-Psi skip block's
   mapped-off `sd_B` placeholders as `near_zero_sd_B` (#25).** The same
   `skip_psi_b_t` pinning described in the `near_zero_psi_unit` fix below

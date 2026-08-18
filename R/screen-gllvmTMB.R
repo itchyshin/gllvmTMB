@@ -150,20 +150,30 @@ screen_control <- function(
 #' @param known_groups Optional named list of character vectors of trait
 #'   names, each with at least two distinct names (duplicated names within
 #'   one group are an error). Each element declares a set of traits the
-#'   user believes forms an exact one-hot (simplex) block or a
-#'   nesting/containment chain -- for example the dummy columns of one
-#'   categorical review-type or geographic-scope variable, or a broad-realm
-#'   indicator together with a narrower nested realm. Each declared group is
-#'   checked against the observed complete rows with an exact deterministic
-#'   test: row sums for a one-hot block, or a containment chain checked in
-#'   BOTH the order written and its reverse for nesting (so it does not
-#'   matter which end of a real chain the group happens to name first). A
-#'   group whose members are all constant on the complete rows is reported
-#'   separately (not as a nesting chain: the chain condition is vacuously
-#'   true for two constants and would not be genuine evidence). Each result
-#'   is its own row in the `response_dependencies` table, independent of the
-#'   automatic affine-rank screen below. Screening is Bernoulli-only,
-#'   matching the automatic screen.
+#'   user believes forms an exact one-hot (simplex) block or one or more
+#'   exact pairwise containment (nesting) relations -- for example the
+#'   dummy columns of one categorical review-type or geographic-scope
+#'   variable, or a broad-realm indicator together with one or more
+#'   narrower nested realms. Each declared group is checked against the
+#'   observed complete rows with an exact deterministic test: row sums for
+#'   a one-hot block, or, for nesting, EVERY pairwise containment among the
+#'   declared members (so it does not matter which order -- or how many
+#'   mutually incomparable narrower members -- the group happens to be
+#'   written in). When the relations found form a single total chain, the
+#'   certificate reports that chain; when they form a partial order instead
+#'   (for example one broad member containing two mutually incomparable
+#'   narrower ones), every relation found is named and the group still
+#'   fails as nesting. A group whose members are all constant on the
+#'   complete rows is reported separately (not as nesting: a containment
+#'   test is vacuously true against a constant and would not be genuine
+#'   evidence); a member that is constant while other members of the same
+#'   group are not is excluded from every pairwise comparison for the same
+#'   reason. Each result is its own row in the `response_dependencies`
+#'   table, independent of the automatic affine-rank screen below -- except
+#'   that a declared one-hot block also counts toward that screen's
+#'   `unresolved` affine-dependency count (a nesting relation never does:
+#'   it is an inequality, not an exact affine relation among the columns).
+#'   Screening is Bernoulli-only, matching the automatic screen.
 #' @param control A [screen_control()] object.
 #' @return A `gllvmTMB_screen` object. Use [screen_table()] to extract
 #'   report-ready tables.
@@ -1298,7 +1308,8 @@ print.gllvmTMB_screen <- function(x, ...) {
       deflated[[length(deflated) + 1L]] <- list(
         type = known$types[[j]],
         traits = known$traits[[j]],
-        certificate = known$certificates[[j]]
+        certificate = known$certificates[[j]],
+        vector = v
       )
     }
   }
@@ -1339,7 +1350,15 @@ print.gllvmTMB_screen <- function(x, ...) {
       group_traits <- traits_reduced[group_idx]
       certs[[length(certs) + 1L]] <- list(
         traits = group_traits,
-        certificate = paste0(paste(group_traits, collapse = " + "), " = 1")
+        certificate = paste0(paste(group_traits, collapse = " + "), " = 1"),
+        ## Rebuilt canonically from group_traits (intercept -1, +1 on each
+        ## member) rather than reusing the raw SVD vector `v`: the
+        ## certificate's claimed relation IS that one-hot form, and the
+        ## canonical form is what .screen_known_group_rows() also builds
+        ## for a declared one-hot block, so the two pool into one
+        ## consistent rank computation in
+        ## .screen_response_dependencies_table().
+        vector = .screen_one_hot_null_vector(info, group_traits)
       )
     }
   }
@@ -1390,26 +1409,77 @@ print.gllvmTMB_screen <- function(x, ...) {
   )
 }
 
+## Canonical null vector of cbind(1, Y) asserted by a one-hot certificate
+## "sum_{j in group_traits} Y[,j] = 1": intercept coefficient -1, +1 on each
+## trait in group_traits, 0 elsewhere. Used both for the automatic
+## one-hot-block certificates and for a declared known_groups one-hot
+## block, so their contributions to the affine null space can be pooled
+## into one rank computation (see .screen_response_dependencies_table()).
+.screen_one_hot_null_vector <- function(info, group_traits) {
+  v <- rep(0, info$n_col)
+  v[[1L]] <- -1
+  v[1L + match(group_traits, info$traits)] <- 1
+  v
+}
+
 ## Exact, deterministic checks for a user-declared known_groups entry: does
-## it sum to exactly 1 on every complete row (one-hot), or does it form an
-## exact containment chain (nesting)? Unlike the automatic affine-rank
-## search, this never has to guess a decomposition. Two guards keep the
-## check honest:
+## it sum to exactly 1 on every complete row (one-hot), or does it contain
+## one or more exact pairwise containment (nesting) relations? Unlike the
+## automatic affine-rank search, this never has to guess a decomposition.
 ##
-## - A group where every member is CONSTANT on the complete rows makes the
-##   nesting chain condition (`col[j] >= col[j+1]`) vacuously TRUE (e.g. two
-##   all-zero traits: 0 >= 0 on every row) without the traits being
-##   genuinely nested -- and each constant member is already reported on
-##   its own (as a $traits FAIL / a deflated_constant row), so reporting a
-##   "known_nesting" FAIL on top would be misleading, not additional
-##   evidence. Degenerate (all-constant) groups are reported PASS with a
-##   distinguishing message instead.
-## - Nesting is checked in BOTH the declared order and its reverse, since a
-##   real containment chain does not depend on which end the user happened
-##   to write first; the certificate reports whichever direction actually
-##   holds.
-.screen_known_group_rows <- function(info, known_groups) {
+## Nesting is checked PAIRWISE, not just as a single total order: for every
+## ordered pair (i, j) of declared members with i != j, the check tests
+## `Yg[, i] >= Yg[, j]` on every complete row. A group of k > 2 traits that
+## does not reduce to one chain -- for example a broad indicator containing
+## two mutually exclusive narrower ones ("water" contains both "freshwater"
+## and "marine", but freshwater and marine are themselves incomparable) --
+## is a genuine partial order, not a total order, and the single-chain scan
+## this replaced would test only the declared order and its reverse and
+## silently fall through to PASS. The pairwise scan is O(k^2) on a declared
+## group, which is fine: known_groups entries are small by construction
+## (they name one categorical variable's dummies or one nesting relation,
+## not the whole trait set). When every pair of (non-degenerate) members
+## turns out to be comparable, the relations form one total chain and the
+## more informative chain wording is kept; otherwise every relation found
+## is named individually and the group still FAILs known_nesting.
+##
+## Two guards keep the check honest:
+##
+## - A group where every member is CONSTANT on the complete rows makes any
+##   containment test vacuously TRUE (e.g. two all-zero traits: 0 >= 0 on
+##   every row) without the traits being genuinely nested -- and each
+##   constant member is already reported on its own (as a $traits FAIL / a
+##   deflated_constant row), so reporting a "known_nesting" FAIL on top
+##   would be misleading, not additional evidence. Degenerate (all-constant)
+##   groups are reported PASS with a distinguishing message instead.
+## - The same vacuousness threatens the pairwise scan one column at a time:
+##   a constant-1 column is `>=` every other column regardless of any real
+##   relationship (1 >= anything), and every column is `>=` a constant-0
+##   column regardless of any real relationship (anything >= 0). A member
+##   that is constant on the complete rows is therefore excluded from every
+##   pairwise comparison, not just skipped when the whole group is
+##   degenerate -- a group that mixes a constant member with genuinely
+##   nested non-constant members is still checked correctly among the
+##   non-constant members.
+##
+## Trait names are validated against the full set the formula screens
+## BEFORE the info$ok gate below, not after: info$ok can be FALSE (no unit
+## column, non-Bernoulli rows, duplicate unit-trait rows, too few complete
+## units) for reasons that leave info$traits undefined, and a typo'd trait
+## name must abort regardless of whether the check itself turns out to be
+## feasible for this data.
+##
+## Returns list(rows = <data.frame>, one_hot_vectors = <list of numeric
+## vectors>): a declared one-hot block's canonical null vector (see
+## .screen_one_hot_null_vector()) is collected alongside its row so
+## .screen_response_dependencies_table() can pool it into the certified
+## null-vector span used for the "unresolved" affine-dependency count. A
+## nesting relation contributes no vector -- it is an inequality holding on
+## the observed rows, not an exact affine relation among the columns.
+.screen_known_group_rows <- function(info, prep, known_groups) {
   rows <- list()
+  one_hot_vectors <- list()
+  all_traits <- levels(prep$data[[prep$trait_col]])
   for (gname in names(known_groups)) {
     group <- known_groups[[gname]]
     if (!is.character(group) || length(group) < 2L) {
@@ -1421,6 +1491,13 @@ print.gllvmTMB_screen <- function(x, ...) {
       cli::cli_abort(
         "{.arg known_groups[[{gname}]]} names the same trait more than once."
       )
+    }
+    missing_traits <- setdiff(group, all_traits)
+    if (length(missing_traits) > 0L) {
+      cli::cli_abort(c(
+        "{.arg known_groups[[{gname}]]} names trait(s) that were not screened.",
+        "x" = "Not found: {.val {missing_traits}}."
+      ))
     }
     if (!isTRUE(info$ok)) {
       rows[[length(rows) + 1L]] <- .screen_response_dependency_row(
@@ -1437,30 +1514,36 @@ print.gllvmTMB_screen <- function(x, ...) {
       )
       next
     }
-    missing_traits <- setdiff(group, info$traits)
-    if (length(missing_traits) > 0L) {
-      cli::cli_abort(c(
-        "{.arg known_groups[[{gname}]]} names trait(s) that were not screened.",
-        "x" = "Not found: {.val {missing_traits}}."
-      ))
-    }
     Yg <- info$Y[, group, drop = FALSE]
     tol <- 1e-8
-    degenerate <- all(vapply(
-      seq_len(ncol(Yg)),
-      function(j) length(unique(Yg[, j])) <= 1L,
+    k <- ncol(Yg)
+    non_const <- vapply(
+      seq_len(k),
+      function(j) length(unique(Yg[, j])) > 1L,
       logical(1L)
-    ))
+    )
+    degenerate <- !any(non_const)
     one_hot_ok <- !degenerate && all(abs(rowSums(Yg) - 1) < tol)
-    is_chain <- function(order_idx) {
-      all(vapply(
-        seq_len(length(order_idx) - 1L),
-        function(j) all(Yg[, order_idx[[j]]] >= Yg[, order_idx[[j + 1L]]]),
-        logical(1L)
-      ))
+
+    ## Pairwise containment matrix: rel[a, b] is TRUE iff Yg[, a] >= Yg[, b]
+    ## on every complete row, restricted to non-degenerate members (see the
+    ## second guard above). O(k^2) comparisons of length-n_rows vectors.
+    rel <- matrix(FALSE, nrow = k, ncol = k)
+    if (!degenerate) {
+      for (a in seq_len(k)) {
+        if (!non_const[[a]]) {
+          next
+        }
+        for (b in seq_len(k)) {
+          if (a == b || !non_const[[b]]) {
+            next
+          }
+          rel[a, b] <- all(Yg[, a] >= Yg[, b])
+        }
+      }
     }
-    nesting_fwd <- !degenerate && is_chain(seq_len(ncol(Yg)))
-    nesting_rev <- !degenerate && !nesting_fwd && is_chain(rev(seq_len(ncol(Yg))))
+    n_relations <- sum(rel)
+
     if (one_hot_ok) {
       rows[[length(rows) + 1L]] <- .screen_response_dependency_row(
         "known_group",
@@ -1480,27 +1563,89 @@ print.gllvmTMB_screen <- function(x, ...) {
           length(group)
         )
       )
-    } else if (nesting_fwd || nesting_rev) {
-      chain_order <- if (nesting_fwd) group else rev(group)
-      reversed_note <- if (nesting_rev) " (reversed from the order given)" else ""
-      rows[[length(rows) + 1L]] <- .screen_response_dependency_row(
-        "known_group",
-        gname,
-        "known_nesting",
-        "FAIL",
-        "exact_dependency",
-        paste(group, collapse = ", "),
-        paste(chain_order, collapse = " >= "),
-        info$n_rows,
-        "inspect",
-        sprintf(
-          "declared group '%s' forms an exact nesting/containment chain on every complete row (%d rows)%s: %s: the narrower trait is never present without its broader trait",
+      one_hot_vectors[[length(one_hot_vectors) + 1L]] <- .screen_one_hot_null_vector(info, group)
+    } else if (n_relations > 0L) {
+      ## A "full chain" is a total order: every pair of non-degenerate
+      ## members is comparable in one direction or the other. Pointwise
+      ## containment is already transitive on binary data, so totality is
+      ## exactly the condition under which the pairwise relations collapse
+      ## into one chain; a genuine partial order (e.g. one broad member
+      ## containing two mutually incomparable narrower ones) fails it.
+      is_full_chain <- all(non_const) && k >= 2L
+      if (is_full_chain) {
+        for (a in seq_len(k - 1L)) {
+          for (b in seq.int(a + 1L, k)) {
+            if (!rel[a, b] && !rel[b, a]) {
+              is_full_chain <- FALSE
+            }
+          }
+        }
+      }
+      if (is_full_chain) {
+        ## Order members from widest (contains the most others) to
+        ## narrowest via the row sums of the relation matrix; this
+        ## recovers the chain regardless of which order -- forward,
+        ## reverse, or any other permutation -- the user declared it in.
+        chain_order <- group[order(-rowSums(rel))]
+        reversed_note <- if (identical(chain_order, group)) {
+          ""
+        } else if (identical(chain_order, rev(group))) {
+          " (reversed from the order given)"
+        } else {
+          " (reordered from the order given)"
+        }
+        rows[[length(rows) + 1L]] <- .screen_response_dependency_row(
+          "known_group",
           gname,
+          "known_nesting",
+          "FAIL",
+          "exact_dependency",
+          paste(group, collapse = ", "),
+          paste(chain_order, collapse = " >= "),
           info$n_rows,
-          reversed_note,
-          paste(chain_order, collapse = " contains ")
+          "inspect",
+          sprintf(
+            "declared group '%s' forms an exact nesting/containment chain on every complete row (%d rows)%s: %s: the narrower trait is never present without its broader trait",
+            gname,
+            info$n_rows,
+            reversed_note,
+            paste(chain_order, collapse = " contains ")
+          )
         )
-      )
+      } else {
+        ## Not a single chain: report every pairwise containment relation
+        ## found, in declared-member order, so a partial order (e.g. a
+        ## broad member with two incomparable narrower ones) still FAILs
+        ## known_nesting and names each relation, rather than silently
+        ## passing through to known_group_checked the way a chain-only
+        ## scan would.
+        relation_strings <- character(0)
+        for (a in seq_len(k)) {
+          for (b in seq_len(k)) {
+            if (rel[a, b]) {
+              relation_strings <- c(relation_strings, paste(group[[a]], ">=", group[[b]]))
+            }
+          }
+        }
+        relation_text <- paste(relation_strings, collapse = "; ")
+        rows[[length(rows) + 1L]] <- .screen_response_dependency_row(
+          "known_group",
+          gname,
+          "known_nesting",
+          "FAIL",
+          "exact_dependency",
+          paste(group, collapse = ", "),
+          relation_text,
+          info$n_rows,
+          "inspect",
+          sprintf(
+            "declared group '%s' forms exact containment relation(s) on every complete row (%d rows), but not a single total chain: %s: the narrower trait is never present without its broader trait",
+            gname,
+            info$n_rows,
+            relation_text
+          )
+        )
+      }
     } else if (degenerate) {
       rows[[length(rows) + 1L]] <- .screen_response_dependency_row(
         "known_group",
@@ -1535,11 +1680,23 @@ print.gllvmTMB_screen <- function(x, ...) {
       )
     }
   }
-  do.call(rbind, rows)
+  list(
+    rows = do.call(rbind, rows),
+    one_hot_vectors = one_hot_vectors
+  )
 }
 
 .screen_response_dependencies_table <- function(prep, response, known_groups = NULL) {
   info <- .screen_response_affine_info(prep, response)
+  ## Computed up front (rather than after the affine block below) so its
+  ## declared one-hot vectors are available for the certified-span rank
+  ## computation; .screen_known_group_rows() already handles !info$ok
+  ## itself, per group, so calling it here regardless of info$ok is safe.
+  known_group_result <- if (!is.null(known_groups)) {
+    .screen_known_group_rows(info, prep, known_groups)
+  } else {
+    NULL
+  }
   rows <- list()
   if (!isTRUE(info$ok)) {
     rows[[length(rows) + 1L]] <- .screen_response_dependency_row(
@@ -1616,7 +1773,49 @@ print.gllvmTMB_screen <- function(x, ...) {
           )
         )
       }
-      unresolved <- deficiency - length(certs) - length(deflated)
+      ## Rank of the certified null-vector span: pool the automatic
+      ## one-hot-block certs, the deflated constant/duplicate/complement
+      ## vectors, and any declared known_groups one-hot vectors into one
+      ## matrix and take its RANK, rather than subtracting row COUNTS.
+      ## Counting rows double-subtracts a dependency the user certifies
+      ## under two names (or via two overlapping declared groups covering
+      ## the same relation) -- a worse bug than the one this replaces,
+      ## since over-subtracting hides a genuinely unresolved dependency.
+      ## Every vector pooled here is a genuine null vector of info$M (the
+      ## automatic ones are verified against info$M already; a declared
+      ## one-hot vector is exact because .screen_known_group_rows() only
+      ## emits it when rowSums(Yg) == 1 to 1e-8 on every complete row), so
+      ## the pooled span is always a SUBSPACE of info$M's null space -- its
+      ## rank can never exceed `deficiency`, and `unresolved` cannot go
+      ## negative by construction; the check below is a should-never-fire
+      ## integrity guard, not a correctness dependency.
+      ##
+      ## A nesting/containment relation contributes NO vector here: it is
+      ## an inequality holding on the observed rows, not an exact affine
+      ## (equality) relation among the columns, so a declared nesting group
+      ## must never reduce the affine rank deficiency, even when correctly
+      ## identified as known_nesting.
+      cert_vectors <- lapply(certs, function(cert) cert$vector)
+      deflated_vectors <- lapply(deflated, function(defl) defl$vector)
+      known_one_hot_vectors <- known_group_result$one_hot_vectors
+      all_vectors <- c(cert_vectors, deflated_vectors, known_one_hot_vectors)
+      certified_rank <- if (length(all_vectors) > 0L) {
+        V <- do.call(cbind, all_vectors)
+        tol_v <- sqrt(.Machine$double.eps) * max(dim(V))
+        qr(V, tol = tol_v)$rank
+      } else {
+        0L
+      }
+      if (certified_rank > deficiency) {
+        cli::cli_warn(
+          paste0(
+            "Internal inconsistency in screen_gllvmTMB(): the certified ",
+            "null-vector span (rank {certified_rank}) exceeds the measured ",
+            "affine rank deficiency ({deficiency}); please report this as a bug."
+          )
+        )
+      }
+      unresolved <- max(0L, deficiency - certified_rank)
       if (unresolved > 0L) {
         rows[[length(rows) + 1L]] <- .screen_response_dependency_row(
           "affine",
@@ -1637,8 +1836,8 @@ print.gllvmTMB_screen <- function(x, ...) {
       }
     }
   }
-  if (!is.null(known_groups)) {
-    rows <- c(rows, list(.screen_known_group_rows(info, known_groups)))
+  if (!is.null(known_group_result)) {
+    rows <- c(rows, list(known_group_result$rows))
   }
   do.call(rbind, rows)
 }

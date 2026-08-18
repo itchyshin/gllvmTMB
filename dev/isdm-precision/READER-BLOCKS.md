@@ -205,3 +205,47 @@ weights that this is a weighted objective, so `logLik()`, AIC/BIC, and ordinary
 Hessian/Wald intervals are **not validated** for such a fit. Point estimates
 are what this route delivers. Quote that warning in the article rather than
 paraphrasing it — it is exactly the right fence and it arrives automatically.
+
+---
+
+## Block 7 — the midpoint objection is right about the DESIGN and wrong about the RESULT (Pat blocking #3)
+
+Pat's objection: with arms weighted 50/50 the integrated estimate is the exact
+midpoint of the two single-arm means at every fuzz level, so the article's
+headline is arithmetic rather than a finding. **Tested directly**
+(`/tmp/unequal.R`, 15 replicates per cell, same estimator as the article):
+
+| design (precise / fuzzed) | fuzz | integrated - precise | replicates hurt | distance from exact midpoint |
+|---|---|---|---|---|
+| 220 / 220 | 0.5 | -0.279 | 15/15 | **0.023** |
+| 220 / 220 | 1.0 | -0.376 | 15/15 | **0.041** |
+| 400 / 100 | 0.5 | -0.105 | 15/15 | 0.149 |
+| 400 / 100 | 1.0 | -0.155 | 15/15 | 0.197 |
+| 100 / 400 | 0.5 | -0.438 | 15/15 | 0.165 |
+| 100 / 400 | 1.0 | -0.567 | 15/15 | 0.215 |
+
+**She is right about the design.** At 220/220 the integrated estimate sits
+within 0.023-0.041 of the exact midpoint — close enough that the result reads
+as averaging, which is a fair thing to distrust. The midpoint identity is an
+artefact **of the balanced design specifically**: at 400/100 and 100/400 the
+gap is 0.149-0.215 and the identity is gone.
+
+**She is wrong that the claim depends on it.** The penalty survives in every
+design, including the one most favourable to integration — a fuzzed arm of
+only 100 rows against 400 precise rows still loses in **15 of 15** replicates.
+
+**And the rebuild makes the evidence stronger, not weaker.** The penalty now
+shows a clean dose-response in the fuzzed arm's weight
+(-0.105 -> -0.279 -> -0.438 at fuzz 0.5 as that arm goes from 100 to 220 to
+400 rows), which is what the attenuation mechanism predicts and what a pure
+averaging artefact could not produce. The `fuzz = 0` control holds in all
+three designs (6, 9 and 8 of 15 below zero — a coin flip, as it must be).
+
+**Article consequence.** Replace the single balanced cell with the three-design
+table, state n per arm explicitly (Pat's other half of #3), and lead with the
+dose-response rather than the midpoint comparison.
+
+**NOT established here.** This is still an *unbiased* presence-only arm. How
+the penalty behaves when the PO arm carries accessibility-driven sampling bias
+— the reason anyone integrates in the first place, and Pat's blocking #2 — is
+the remaining half of S2 and depends on the S1 rebuild.

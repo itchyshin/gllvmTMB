@@ -29,6 +29,7 @@ test_that("gllvmTMBcontrol consumers use declared or intentional fields", {
   ## pipeline, not user arguments to gllvmTMBcontrol(). Keep the list explicit
   ## so a new undeclared public-control read fails this test.
   internal <- c(
+    ".internal_continuation",
     "aghq_ridge_explicit",
     "aghq_start_par",
     "vgh_warm_start",

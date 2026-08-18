@@ -128,7 +128,7 @@ No `gllvmTMB()` call behaves differently after this PR than before it.
   null. Carving out `scale_boundary` as reported-but-unscored is what keeps
   the eventual null result honest and interpretable rather than manufactured
   by an impossible target. Rejected alternative: score `scale_boundary` in
-  the FP pool anyway and accept a nonzero-FP-by-construction result — 
+  the FP pool anyway and accept a nonzero-FP-by-construction result —
   rejected because it would have made this task's own null indistinguishable
   from a design artefact, precisely the failure mode the coordinator's
   review process exists to catch.

@@ -126,6 +126,33 @@
     predictor-informed mean `X_lv_B alpha_lv_B`; it now uses the reported
     `U_B_total`.
 
+* **BEHAVIOUR CHANGE: `gllvmTMB_conditional_residual_saturated` now also
+  warns for Gamma, Beta, and student-t fits (#1083).** A diagonal random
+  effect indexed at the observed (unit x trait) resolution
+  (`latent(0 + trait | unit, d = 1)` with the default `unique = TRUE`)
+  perfectly interpolates every observation, driving the family's
+  dispersion/scale parameter toward a degenerate confound: `sigma_eps -> 0`
+  for gaussian/lognormal, Gamma's shape -> Inf, Beta's precision -> Inf,
+  student's `sigma -> 0`. `residuals(fit, type = "randomized_quantile")`
+  already warned about this for gaussian and (as of the previous entry
+  below) lognormal fits, but Gamma/Beta/student fits with the identical
+  structure were silent. A 15-seed sweep found Gamma's `phi_gamma` running
+  away past `1e6` (true 6) in 9/15 seeds and student's `sigma_student`
+  collapsing below 0.1 (true 0.4) in 6/15 seeds under this structure;
+  Poisson, swept the same way, showed no such collapse (it has no
+  continuous dispersion parameter to degenerate, so it is deliberately
+  **not** included, along with binomial, NB1/NB2, tweedie, and
+  beta-binomial -- all discrete-pmf families bounded by probability 1
+  rather than continuous densities that can diverge to infinity). Models
+  that previously fit silently under this structure will now warn; the fit
+  itself is unchanged, only the residuals-time diagnostic.
+* **`gllvmTMB_conditional_residual_saturated` now also warns for lognormal
+  fits (#1083).** The warning was gated to `family_id == 0L` (gaussian)
+  even though gaussian and lognormal share one literal `sigma_eps` and are
+  auto-suppressed identically at fit time
+  (`any_sigma_eps <- any(family_id_vec %in% c(0L, 3L))`,
+  `R/fit-multi.R:5177`) under a per-row diagonal random effect. The gate
+  now matches that fit-time decision.
 * **`deviance()` no longer returns a silent `NULL` on a `gllvmTMB_multi`
   fit (#1118).** With no method registered, `deviance()` fell through to
   `stats:::deviance.default`, which reaches for `object$deviance` and

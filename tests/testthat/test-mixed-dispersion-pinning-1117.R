@@ -46,11 +46,53 @@ make_student_gaussian_fit <- function() {
     ## Explicit factor levels in family-list order: an unordered character
     ## column gets re-sorted alphabetically ("gaussian" < "student") by the
     ## mixed-family alignment in R/fit-multi.R, which would silently swap
-    ## which trait gets which family.
+    ## which trait gets which family. Filed as its own issue (see the PR
+    ## thread for the issue number); this `levels =` is the workaround.
     family = factor(rep(c("student", "gaussian"), each = n),
                      levels = c("student", "gaussian"))
   )
   family_list <- list(student(), gaussian())
+  attr(family_list, "family_var") <- "family"
+  suppressMessages(suppressWarnings(gllvmTMB(
+    y ~ 0 + trait + latent(0 + trait | site, d = 1),
+    data = dat, unit = "site", trait = "trait",
+    family = family_list, silent = TRUE
+  )))
+}
+
+## Tweedie's compound-Poisson-gamma density has no base-R sampler; this
+## small simulator matches gllvmTMB's own dtweedie parameterisation
+## (mu, phi, p) via the Poisson-sum-of-gammas representation.
+sim_tweedie <- function(n, mu, phi = 1.5, p = 1.5) {
+  lambda <- mu^(2 - p) / (phi * (2 - p))
+  alpha <- (2 - p) / (1 - p)
+  gam_scale <- phi * (p - 1) * mu^(p - 1)
+  N <- stats::rpois(n, lambda)
+  y <- numeric(n)
+  for (i in seq_len(n)) {
+    if (N[i] > 0) y[i] <- sum(stats::rgamma(N[i], shape = -alpha, scale = gam_scale))
+  }
+  y
+}
+
+make_tweedie_gaussian_fit <- function() {
+  ## No user-supplied `p` on tweedie() anywhere -- the regression case for
+  ## the follow-up fix: `logit_p_tweedie`'s per-trait pin previously lived
+  ## ONLY inside the `any(!is.na(p_pin))` branch (user-supplied `p`), so a
+  ## DEFAULT tweedie() mixed with another family never reached ANY map for
+  ## this vector (p is NULL on every row -> p_pin all NA).
+  set.seed(2)
+  n <- 200L
+  u <- stats::rnorm(n, sd = 1.0)
+  dat <- data.frame(
+    site  = factor(rep(seq_len(n), 2)),
+    trait = factor(rep(c("y_tw", "y_g"), each = n), levels = c("y_tw", "y_g")),
+    y = c(sim_tweedie(n, exp(1.5 + 0.8 * u), phi = 1.2, p = 1.4),
+          1.0 + 0.6 * u + stats::rnorm(n, sd = 1.0)),
+    family = factor(rep(c("tweedie", "gaussian"), each = n),
+                     levels = c("tweedie", "gaussian"))
+  )
+  family_list <- list(tweedie(), gaussian())
   attr(family_list, "family_var") <- "family"
   suppressMessages(suppressWarnings(gllvmTMB(
     y ~ 0 + trait + latent(0 + trait | site, d = 1),
@@ -127,4 +169,27 @@ test_that("(d) a single-family (all-nbinom2) fit leaves every trait's log_phi_nb
   ## (dispersion_trait_map() returns NULL and R/fit-multi.R leaves
   ## tmb_map untouched -- TMB's identity default).
   expect_false("log_phi_nbinom2" %in% names(fit$tmb_map))
+})
+
+test_that("(e) tweedie (no user p=) + gaussian mixed fit pins the gaussian trait's phi/p", {
+  skip_on_cran()
+  fit <- make_tweedie_gaussian_fit()
+
+  nm <- names(fit$tmb_obj$par)
+  expect_length(which(nm == "log_phi_tweedie"), 1L)
+  expect_length(which(nm == "logit_p_tweedie"), 1L)
+  expect_true("log_phi_tweedie" %in% names(fit$tmb_map))
+  expect_true("logit_p_tweedie" %in% names(fit$tmb_map))
+
+  expect_true(isTRUE(fit$sd_report$pdHess))
+
+  tg <- profile_targets(fit)
+  p_rows <- tg[tg$tmb_parameter == "logit_p_tweedie", , drop = FALSE]
+  ## Exactly one row (the real tweedie trait). Pre-repair this enumerated
+  ## TWO rows -- p_tweedie[1] (real) and p_tweedie[2] (the gaussian trait's
+  ## phantom entry, estimate == 1.5 == 1 + plogis(0), the untouched init).
+  expect_equal(nrow(p_rows), 1L)
+  expect_false(any(grepl("\\[2\\]$", p_rows$parm)))
+
+  expect_no_error(confint(fit))
 })

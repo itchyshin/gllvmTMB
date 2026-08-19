@@ -237,8 +237,8 @@ share a latent field: the field lives on the mesh, not on the data.
 **`convergence == 0` is not the check.** This package has a silent failure
 ([issue #1167](https://github.com/itchyshin/gllvmTMB/issues/1167)) in which
 an SPDE fit at large counts returns `convergence == 0` after a **single**
-iteration at an objective around 1e21, every spatial parameter still at its
-start value. `cawa12_fit()` therefore rejects a fit unless **all three** hold:
+iteration at an astronomically large objective, every spatial parameter still
+at its start value -- the sweep below shows the magnitudes. `cawa12_fit()` therefore rejects a fit unless **all three** hold:
 `convergence == 0`, `iterations > 1`, and a finite objective. Iteration
 counts in the dozens or hundreds are the healthy shape.
 

@@ -986,9 +986,19 @@ stretched by that factor in one direction -- an artefact of the coordinate
 system, not a property of the birds.
 
 The instinct is to check this the way one checks any modelling choice: fit
-both and compare. **That does not work.** Measured across five seeds with node
-counts matched, the projected mesh recovered the slopes better in five of five
-seeds, while the paired objective differences (lon/lat minus UTM) were
+both and compare. **That does not work.**
+
+**One disclosure before the numbers.** These five values are the only
+measurement on this page that does **not** come from the twelve-species design
+above. They were taken on a separate, smaller model — three species on a
+different landscape — and are quoted rather than recomputed here, so unlike
+everything else in this article you cannot reproduce them from the chunks on
+this page. They are kept because the qualitative point is robust and worth
+knowing; read the magnitudes as belonging to that model, not this one.
+
+Measured there across five seeds with node counts matched, the projected mesh
+recovered the slopes better in five of five seeds, while the paired objective
+differences (lon/lat minus UTM) were
 
 ```
 -0.014   -0.396   +1.167   -0.759   -0.493      mean -0.099, SE 0.338
@@ -1111,8 +1121,12 @@ data.frame(nodes = sd_$n_nodes,
            pct_of_MC_sd = paste0(round(100 * sd_$mean_abs_shift_vs_finest / mc), "%"))
 ```
 
-Estimates approach the truth **from below, monotonically**, at a rate close to
-`1/nq`. Judged against the only scale that matters to a reader -- the Monte
+Estimates approach the truth **from below, monotonically**, and sub-linearly in
+the number of quadrature nodes: fitting the shift against node count on this
+sweep gives an exponent of about **-0.58**, not the **-1** that "the error
+halves when you double the nodes" would imply. Doubling the nodes buys roughly
+a third off the shift, not a half — so budget accordingly. Judged against the
+only scale that matters to a reader -- the Monte
 Carlo SD of a single estimate, `r f2(mc, 4)` -- they are stable for practical
 purposes from about
 `r sd_$n_nodes[which(sd_$mean_abs_shift_vs_finest / mc < 0.10)[1]]` nodes,

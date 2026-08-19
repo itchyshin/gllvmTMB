@@ -1049,33 +1049,46 @@ whatsoever -- which is the direction that matters. Writing
 `spatial_latent(0 + trait | site)` with a real `site` column and a real
 intention will *also* be ignored, and nothing will say so.
 
-## 4. A mesh passed without a spatial term is ignored
+## 4. A mesh passed without a spatial term does nothing
 
 `mesh =` is consumed by the `spatial_*()` term and by nothing else. With no
-such term in the formula, passing a mesh -- of either kind -- changes nothing:
+such term in the formula, a mesh built with `make_mesh()` changes nothing --
+the fit runs, converges, and is entirely non-spatial:
 
 ```{r mesh-ignored}
-raw_bnd  <- fmesher::fm_extensions(cbind(sub$X, sub$Y), convex = c(30, 60))
-raw_mesh <- fmesher::fm_mesh_2d(loc = cbind(sub$X, sub$Y), boundary = raw_bnd,
-                                max.edge = c(40, 120))
 m <- c(no_mesh   = FIT(value ~ 0 + trait + trait:env + isdm_source +
                          offset(log_effort))$opt$objective,
-       raw_mesh  = FIT(value ~ 0 + trait + trait:env + isdm_source +
-                         offset(log_effort), mesh = raw_mesh)$opt$objective,
-       make_mesh = FIT(value ~ 0 + trait + trait:env + isdm_source +
+       with_mesh = FIT(value ~ 0 + trait + trait:env + isdm_source +
                          offset(log_effort), mesh = msh)$opt$objective)
 m
-cat("largest difference:", max(m) - min(m), "\n")
+cat("difference:", abs(diff(m)), "\n")
 ```
 
-Build a mesh, forget the `spatial_*()` term, and you get a converged,
-ordinary-looking, entirely non-spatial fit with no error and no warning. Check
-that the term is in your formula rather than trusting the absence of a
-complaint.
+The package gained a warning for this case (issue
+[#1165](https://github.com/itchyshin/gllvmTMB/issues/1165)). Whether it reaches
+you depends on the path -- when this page was built, the integrated fit above
+produced no warning:
+
+```{r mesh-ignored-warn}
+cat(warn_of(gllvmTMB(
+  value ~ 0 + trait + trait:env + isdm_source + offset(log_effort),
+  data = sub, trait = "trait", unit = "cell_id", family = fam,
+  silent = TRUE, mesh = msh)))
+```
+
+So check that the `spatial_*()` term is in your formula rather than trusting a
+complaint to arrive. The objectives above are the reliable evidence: identical
+to the last decimal means the mesh did nothing.
 
 The *other* raw-mesh case is loud and correct -- a raw `fm_mesh_2d()` object
 *with* a spatial term is refused, which matters because most `fmesher` and
 INLA tutorials teach you to build one by hand:
+
+```{r raw-mesh-build}
+raw_bnd  <- fmesher::fm_extensions(cbind(sub$X, sub$Y), convex = c(30, 60))
+raw_mesh <- fmesher::fm_mesh_2d(loc = cbind(sub$X, sub$Y), boundary = raw_bnd,
+                                max.edge = c(40, 120))
+```
 
 ```{r raw-mesh-error}
 cat(err_of(FIT(value ~ 0 + trait + trait:env + isdm_source + offset(log_effort) +
@@ -1432,7 +1445,8 @@ slopes come back shrunk.
 - The inert grouping token on a `spatial_*()` term:
   [#1163](https://github.com/itchyshin/gllvmTMB/issues/1163).
 - A mesh silently ignored when no `spatial_*()` term is present:
-  [#1165](https://github.com/itchyshin/gllvmTMB/issues/1165).
+  [#1165](https://github.com/itchyshin/gllvmTMB/issues/1165) — **fixed**; the
+  package now warns, as shown in section 4 above.
 
 ## References
 

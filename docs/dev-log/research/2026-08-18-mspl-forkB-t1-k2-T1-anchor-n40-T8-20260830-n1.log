@@ -1,4 +1,4 @@
-- hold-out-nT | T1-anchor-n40-T8 | seed 20260830 | n_rep=1 | avail=1.0000 | refuse=0.0000 | cov_ret=1.0000 (MCSE 0.0000) Wilson [0.2065, 1.0000] | cov_eff=1.0000 (MCSE 0.0000) Wilson [0.2065, 1.0000] | n_ret/n_ref/n_cov=1/0/1 | T1-RECORDED | tstar=NOT-FROZEN 
+- hold-out-nT | T1-anchor-n40-T8 | seed 20260830 | n_rep=1 | avail=1.0000 | refuse=0.0000 | cov_ret=1.0000 (MCSE 0.0000) Wilson [0.2065, 1.0000] | cov_eff=1.0000 (MCSE 0.0000) Wilson [0.2065, 1.0000] | n_ret/n_ref/n_cov=1/0/1 | T1-RECORDED | tstar=NOT-FROZEN
 elapsed_s: 0.7 smoke_ok: TRUE
            cell_id rep     seed pi_mean   status reason available returned
 1 T1-anchor-n40-T8   1 20260831 0.50625 returned   <NA>      TRUE     TRUE

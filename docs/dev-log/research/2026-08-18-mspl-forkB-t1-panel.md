@@ -15,4 +15,3 @@
 - n-expansion | T1-anchor-n160-T8 | seed 20260831 | n_rep=200 | avail=1.0000 | refuse=0.0000 | cov_ret=0.9750 (MCSE 0.0110) Wilson [0.9428, 0.9893] | cov_eff=0.9750 (MCSE 0.0110) Wilson [0.9428, 0.9893] | n_ret/n_ref/n_cov=200/0/195 | T1-RECORDED | tstar=NOT-FROZEN
 - prev-x-n | T1-neartail-n80-T8 | seed 20260832 | n_rep=200 | avail=0.9950 | refuse=0.0050 | cov_ret=0.7136 (MCSE 0.0320) Wilson [0.6472, 0.7719] | cov_eff=0.7100 (MCSE 0.0321) Wilson [0.6436, 0.7685] | n_ret/n_ref/n_cov=199/1/142 | T1-RECORDED | tstar=NOT-FROZEN
 - far-tail | T1-fartail-n40-T4 | seed 20260833 | n_rep=200 | avail=0.9300 | refuse=0.0700 | cov_ret=0.6237 (MCSE 0.0355) Wilson [0.5522, 0.6901] | cov_eff=0.5800 (MCSE 0.0349) Wilson [0.5107, 0.6463] | n_ret/n_ref/n_cov=186/14/116 | T1-RECORDED | tstar=NOT-FROZEN
-

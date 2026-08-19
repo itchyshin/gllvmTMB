@@ -7,8 +7,8 @@
 slope_sd_ci(fit, level = 0.95, scale = c("sd", "variance"))
 }
 \arguments{
-\item{fit}{A multivariate \code{gllvmTMB()} fit with an augmented ordinary
-random-slope diagonal companion (\code{theta_diag_B_slope}).}
+\item{fit}{A multi-trait \code{gllvmTMB()} fit with at least one augmented
+random-slope structure covered above.}
 
 \item{level}{Confidence level. Defaults to 0.95.}
 
@@ -16,29 +16,41 @@ random-slope diagonal companion (\code{theta_diag_B_slope}).}
 \code{"variance"} returns the variance scale (\code{estimate^2}, bounds
 \verb{exp(2 * (theta +/- z * se(theta)))}). Both scales are computed from
 the identical \code{theta} / \code{se_theta}, so they agree by construction.
-\code{total_sd} is always reported on the SD scale regardless of \code{scale}.}
+\code{total_sd} is always reported on the SD scale regardless of \code{scale};
+\code{total_lower} / \code{total_upper} follow \code{scale} like \code{lower} / \code{upper}.}
 }
 \value{
-A data frame of class \code{gllvmTMB_slope_ci}, one row per trait,
-with columns:
+A data frame of class \code{gllvmTMB_slope_ci}, one row per slope SD
+(trait x slope term), with columns:
 \describe{
 \item{\code{trait}}{Trait factor level.}
-\item{\code{term}}{The slope covariate name (the \code{x} in \code{(0 + trait):x}).}
+\item{\code{term}}{The slope covariate name.}
 \item{\code{estimate}, \code{lower}, \code{upper}}{On the requested \code{scale}. \code{lower}
 / \code{upper} are \code{NA} whenever \code{status != "ok"}.}
-\item{\code{component}}{\code{"unique_psi"} when the fit also carries a
-shared loadings block (\code{theta_rr_B_slope}), so \code{estimate} is only
-part of the marginal slope SD; \code{"total"} when there is no shared
-loadings block, so \code{estimate} already is the total.}
-\item{\code{total_sd}}{Point estimate (no interval) of the TOTAL marginal
-slope SD, on the SD scale regardless of \code{scale}. Equal to
-\code{estimate} when \code{component == "total"}.}
-\item{\code{theta}, \code{se_theta}}{The raw log-SD estimate and its
-\code{sdreport()} standard error, for auditability.}
-\item{\code{method}}{Always \code{"wald_log_scale"}.}
-\item{\code{interval_status}}{Always \code{"wald_uncalibrated"} -- the
-claim-boundary marker used elsewhere in the package (see
-\code{extract_correlations()}).}
+\item{\code{component}}{\code{"unique_psi"} when the diagonal route's fit also
+carries a shared loadings block, so \code{estimate} is only part of the
+marginal slope SD; \code{"total"} otherwise, meaning \code{estimate} already
+is the total marginal slope SD.}
+\item{\code{total_sd}}{Point estimate of the TOTAL marginal slope SD, on
+the SD scale regardless of \code{scale}. Equal to \code{estimate} when
+\code{component == "total"}.}
+\item{\code{total_lower}, \code{total_upper}}{Interval on \code{total_sd}, on the
+requested \code{scale}. \code{NA} whenever \code{total_status != "ok"} or the
+supporting ADREPORT is unavailable.}
+\item{\code{total_status}}{Kill-switch status for the \code{total_sd}
+interval; see below. \code{"unavailable"} when no supporting ADREPORT
+exists (only possible for the diagonal route on a stale cached
+fit).}
+\item{\code{theta}, \code{se_theta}}{The log-SD estimate and its standard
+error, for auditability. For the diagonal route these are the raw
+fixed-effect parameter and its \code{cov.fixed} SE (unchanged from
+slice 1); for the phylogenetic and loadings-only routes these are
+derived from an ADREPORTed natural-scale quantity via the delta
+method \code{se(log(X)) = se(X) / X}.}
+\item{\code{method}}{\code{"wald_log_scale"} for the diagonal route (direct
+parameter read), \code{"wald_log_scale_adreport"} for the phylogenetic
+and loadings-only routes (ADREPORT delta method).}
+\item{\code{interval_status}}{Always \code{"wald_uncalibrated"}.}
 \item{\code{status}}{\code{"ok"}, \code{"no_pd_hessian"}, \code{"se_nonfinite"},
 \code{"se_blowup"}, or \code{"near_zero_relative"} -- see Kill-switch guard
 below.}
@@ -49,71 +61,88 @@ The returned object also carries a hard-coded attribute
 certificate can flip this in the source), and the requested \code{level}.
 }
 \description{
-Per-trait confidence intervals on the standard deviation of an ordinary
-augmented random-slope term -- a \code{latent(0 + trait + (0 + trait):x | unit, d = K)} or \code{unique(0 + trait + (0 + trait):x | unit)} covariance
-structure. The interval is a delta-method Wald interval on the log-SD
-scale: \code{theta_diag_B_slope} is a genuine univariate log-SD
-(\code{sd = exp(theta)}), so \code{se(sd) = exp(theta) * se(theta)} and the bounds
-are \verb{exp(theta +/- z * se(theta))}.
+Per-trait confidence intervals on the standard deviation of an augmented
+random-slope term. All intervals are delta-method Wald intervals built on
+the log-SD scale so the bounds stay positive by construction. Three
+underlying routes are covered, dispatched automatically from the fit's
+structure:
+\itemize{
+\item The ordinary augmented \strong{diagonal} (Psi) route
+(\code{theta_diag_B_slope}, from \code{latent(0 + trait + (0 + trait):x | unit, d = K)} or \code{unique(...)}). \code{theta_diag_B_slope} is a genuine
+univariate log-SD (\code{sd = exp(theta)}), so the interval is read
+directly off \code{sdreport()}'s \code{cov.fixed} -- no Jacobian.
+\item The \strong{phylogenetic Cholesky} augmented-slope route
+(\code{theta_dep_chol}, from \code{phylo_dep(1 + x1 + ... + xs | species)} /
+\code{phylo_indep(1 + x | species)}). The marginal slope SD is a
+nonlinear function of several packed Cholesky entries (
+\code{Var(slope_t) = L21_t^2 + exp(diag_slope_t)^2} for a single slope),
+so its standard error comes from an \code{ADREPORT()}ed quantity in the
+C++ template (\code{sd_b}), letting \code{sdreport()} run the multivariate
+delta method against the authoritative packing.
+\item The \strong{loadings-only} augmented random-slope route
+(\code{theta_rr_B_slope} with no diagonal companion, e.g.
+\code{latent(..., unique = FALSE)}). The marginal slope variance is a
+quadratic form in several loading entries
+(\verb{Lambda_B_slope \\\%*\\\% t(Lambda_B_slope)}), again handled via an
+\code{ADREPORT()}ed quantity (\code{sd_rr_B_slope}).
+}
 }
 \section{Scope boundary -- what this interval IS and IS NOT}{
 
-This is a \strong{transformed Wald interval read off \code{sdreport()}}, exactly
-the same inferential instrument as \code{\link[=loading_ci]{loading_ci()}} and
-\code{\link[=confint_inspect]{confint_inspect()}}: it uses the asymptotic normal approximation for
-\code{theta} and propagates it through the monotone transform \code{exp()}. It is
-\strong{not a calibrated coverage statement} -- no repeated-sampling coverage
-campaign has been run for this estimand, and \code{interval_status = "wald_uncalibrated"} marks every row as such -- the package's
-validation-debt ledger records this as tested-but-not-coverage-certified.
+Every interval returned by this function is a \strong{transformed Wald
+interval read off \code{sdreport()}}, the same inferential instrument as
+\code{\link[=loading_ci]{loading_ci()}} and \code{\link[=confint_inspect]{confint_inspect()}}: it uses the asymptotic normal
+approximation and propagates it through a monotone log/exp transform.
+It is \strong{not a calibrated coverage statement} -- no repeated-sampling
+coverage campaign has been run for any of these estimands, and
+\code{interval_status = "wald_uncalibrated"} marks every row as such. The
+package's validation-debt ledger records this as tested-but-not-
+coverage-certified (see the ledger for the current status).
 
-Slice 1 covers only the ordinary augmented \strong{diagonal} route
-(\code{theta_diag_B_slope}). It does \strong{not} cover, and will error rather
-than silently approximate, the phylogenetic Cholesky augmented-slope
-route (\code{phylo_dep()} / \code{phylo_indep(1 + x | species)}, \code{theta_dep_chol})
-or a loadings-only augmented random slope with no diagonal companion
-(\code{theta_rr_B_slope} alone, e.g. \code{latent(..., unique = FALSE)}). Both
-need a multivariate delta method against the TMB Cholesky/loadings
-packing and are deferred to a slice-2 \code{ADREPORT()} route, tracked as a
-deliberately blocked capability in the package's validation-debt ledger.
-
-When the fit's random-slope term also carries a shared loadings
-component (\code{theta_rr_B_slope}, the default alongside
-\code{theta_diag_B_slope} for ordinary \code{latent()}), \code{estimate} is the
-per-trait \strong{unique (Psi) diagonal component of slope variance only} --
-it excludes the shared loadings contribution to the marginal slope
-variance, and can understate the total marginal slope SD substantially
-(measured up to ~45\% on a recovery fixture with a rank-2 loadings term).
-This restriction travels with the \strong{data}, not only the print method:
-the \code{component} column reads \code{"unique_psi"} in that case (\code{"total"}
-when there is no shared loadings block, i.e. the unique component IS
-the total), and \code{total_sd} reports the corresponding total marginal
-slope SD as a \strong{point estimate only} (\verb{sqrt(shared loadings variance + unique Psi variance)}, read from \code{fit$report$Sigma_B_slope}; no interval
--- that needs the same multivariate delta method as the deferred routes
-above). A \code{cli::cli_warn()} fires on the call itself whenever the
-shared loadings block is present, not only when the result is printed.
+When the fit's random-slope term carries BOTH a diagonal Psi companion
+and a shared loadings component (\code{theta_rr_B_slope}, the default
+alongside \code{theta_diag_B_slope} for ordinary \code{latent()}), \code{estimate} for
+that route is the per-trait UNIQUE (Psi) component of slope variance
+only -- it excludes the shared loadings contribution to the marginal
+slope variance, and can understate the total marginal slope SD
+substantially (measured up to ~45\% on a recovery fixture). This
+restriction travels with the \strong{data}, not only the print method: the
+\code{component} column reads \code{"unique_psi"} in that case (\code{"total"}
+otherwise -- including for the phylogenetic and loadings-only routes,
+where the reported quantity already IS the total marginal slope SD).
+\code{total_sd} always reports the total marginal slope SD as a point
+estimate. \code{total_lower} / \code{total_upper} report a genuine interval on
+that total wherever the C++ template \code{ADREPORT()}s the combined
+expression directly (both routes as of this version); \code{total_status}
+names the same kill-switch statuses as \code{status} when that support is
+present, or \code{"unavailable"} when it is not (e.g. a fit refit under an
+older package version whose ADREPORT does not yet exist). A
+\code{cli::cli_warn()} fires on the call itself whenever the shared loadings
+block is present alongside the diagonal route, not only when the result
+is printed.
 }
 
 \section{Kill-switch guard -- point estimates always, intervals never from a fit that cannot support one}{
 
-\code{lower}/\code{upper} are set to \code{NA} (with \code{status} explaining why and a
-\code{cli::cli_warn()}) whenever any of:
+Applied identically to every route. \code{lower}/\code{upper} (and, where
+supported, \code{total_lower}/\code{total_upper}) are set to \code{NA} (with \code{status}
+explaining why and a \code{cli::cli_warn()}) whenever any of:
 \itemize{
 \item \code{fit$sd_report$pdHess} is \code{FALSE} (\code{status = "no_pd_hessian"},
 applies to every row);
-\item \code{se_theta} is non-finite (\code{status = "se_nonfinite"});
+\item the log-SD estimate or its standard error is non-finite
+(\code{status = "se_nonfinite"}) -- for the ADREPORT-based routes this
+also covers a non-positive natural-scale estimate, which cannot be
+logged;
 \item \code{se_theta > 10} on the log scale -- essentially information-free
 (an SE of 10 on the log scale means the interval would span
-\eqn{e^{40}}); \code{status = "se_blowup"}. This tests SE explosion, not
-a collapsed point estimate -- a well-identified \code{theta} with a huge
-\code{se_theta} and a genuinely near-zero \code{theta} are different failure
-modes, so there is a second, independent check for the latter;
+\eqn{e^{40}}); \code{status = "se_blowup"};
 \item \code{sd_hat} is at most 1\% of the largest \code{sd_hat} among this fit's
-OTHER augmented slope coordinates (only evaluated when the fit has
-more than one trait -- nothing to compare against otherwise);
-\code{status = "near_zero_relative"}. This mirrors the package's
-relative-to-siblings convention for detecting a collapsed variance
-component (\code{psi_rel_thresh} / \verb{near_zero_psi_*}, \code{R/diagnose.R})
-rather than an absolute threshold on a scale-dependent quantity.
+OTHER slope coordinates on the SAME route (only evaluated when there
+is more than one to compare against); \code{status = "near_zero_relative"},
+mirroring the package's relative-to-siblings convention for a
+collapsed variance component (\code{psi_rel_thresh} / \verb{near_zero_psi_*},
+\code{R/diagnose.R}).
 }
 The point estimate (\code{estimate}, \code{theta}) is always returned, following
 the house line that a non-PD Hessian disqualifies standard errors but
@@ -135,8 +164,6 @@ df <- expand.grid(
 df$x <- stats::rnorm(nrow(df))
 alpha <- c(0.2, -0.1)
 beta <- c(0.3, -0.2)
-## idiosyncratic (intercept, slope) x trait noise -- the diagonal Psi
-## companion this example recovers.
 psi_noise <- matrix(stats::rnorm(4L * n_ind, sd = 0.25), nrow = 4L)
 eta <- numeric(nrow(df))
 for (o in seq_len(nrow(df))) {
@@ -148,10 +175,6 @@ for (o in seq_len(nrow(df))) {
 }
 df$value <- eta + stats::rnorm(nrow(df), sd = 0.3)
 
-## `unique()` is the current (soft-deprecated but functional) entry
-## point for a STANDALONE augmented diagonal random-slope term (no
-## shared loadings block); the option below only silences its one-time
-## deprecation notice for this example.
 options(gllvmTMB.quiet_grammar_notes = TRUE)
 fit <- gllvmTMB(
   value ~ 0 + trait + (0 + trait):x +
@@ -169,6 +192,6 @@ slope_sd_ci(fit, level = 0.90, scale = "variance")
 }
 \seealso{
 \code{\link[=loading_ci]{loading_ci()}} for the equivalent interval on Lambda entries;
-\code{\link[=extract_Sigma]{extract_Sigma()}} with \code{level = "unit_slope"} for the full augmented
-\verb{2T x 2T} covariance (point estimates only).
+\code{\link[=extract_Sigma]{extract_Sigma()}} with \code{level = "unit_slope"} or \code{level = "phy"} for
+the full augmented covariance (point estimates only).
 }

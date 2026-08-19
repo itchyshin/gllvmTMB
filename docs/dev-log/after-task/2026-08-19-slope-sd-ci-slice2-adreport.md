@@ -1,0 +1,321 @@
+# After Task: `slope_sd_ci()` -- Slice 2 (ADREPORT, phylo + loadings routes)
+
+**Branch**: `claude/slope-ci-adreport-20260819`
+**Date**: `2026-08-19`
+**Roles (engaged)**: Curie (implementation)
+
+## 1. Goal
+
+Extend `slope_sd_ci()` to the two routes Slice 1 deliberately refused
+(register row CI-15, `blocked`): the phylogenetic Cholesky augmented-slope
+route (`theta_dep_chol`, `fit$use$phylo_dep_slope`) and the loadings-only
+augmented random-slope route (`theta_rr_B_slope` with no diagonal
+companion). Both need a multivariate delta method, and the design
+(`dev/fable-extractor-recommendation.md` G3, `dev/S6-slope-sd-ci-review.md`)
+requires it be built via `ADREPORT()` in the C++ template, never a
+hand-indexed R-side Jacobian -- the exact failure mode a first attempt at
+the phylo route already hit once (indexed `theta_dep_chol` entries 2/5/8
+instead of the correct 2/4/6, and exponentiated a raw off-diagonal entry
+as if it were a log-SD; `dev/slope-interval-feasibility-RESULTS.md`).
+
+This touches `src/gllvmTMB.cpp` -- the highest-risk area of this repo --
+so the brief required measuring, not assuming: the `sdreport()` runtime
+cost of the added `ADREPORT()`s, and whether any existing consumer of
+`fit$sd_report` indexes its ADREPORT ("report") block by position rather
+than by name (which the new rows could silently break).
+
+## 2. Implemented
+
+### `src/gllvmTMB.cpp` -- additive only
+
+- **`sd_b` in the `theta_dep_chol` (phylo_dep/phylo_indep slope) branch**
+  (~line 1944): already `REPORT()`ed; now also `ADREPORT()`ed. `sd_b(j) =
+  sqrt(Sigma_b_dep(j,j))` is a nonlinear function of multiple packed
+  `theta_dep_chol` entries whenever coordinate `j` has off-diagonal `L`
+  entries below it, so its SE needs the delta method run against the exact
+  packed expression -- which `ADREPORT()` + `sdreport()` now does.
+- **`sd_rr_B_slope`** (new vector, alongside the existing `Lambda_B_slope`
+  / `Sigma_B_slope` block, ~line 1587): `sqrt(diag(Sigma_B_slope))`, the
+  marginal per-augmented-coordinate SD from the shared loadings block
+  alone. `REPORT()`ed and `ADREPORT()`ed. Serves the loadings-only route
+  (`theta_rr_B_slope`, no diagonal companion).
+- **`sd_B_slope_total`** (new vector, after the `diag_B_slope` block, ~line
+  1654): `sqrt(diag(Sigma_B_slope) + diag(Sigma_B_unique_slope))`, i.e. the
+  TRUE total marginal slope SD when both the shared-loadings and diagonal
+  Psi blocks are active on the same fit (the default `latent()`
+  combination). `REPORT()`ed and `ADREPORT()`ed. Computing this as ONE
+  combined C++ expression -- rather than summing two separately-ADREPORTed
+  SEs in R -- lets `sdreport()`'s delta method account for any correlation
+  between `theta_rr_B_slope` and `theta_diag_B_slope` in the Hessian, which
+  an R-side sum could not.
+- Two local variables (`Sigma_B_slope`, `Sigma_B_unique_slope`) were
+  hoisted from block-local scope to function scope so the new
+  `sd_B_slope_total` code (which runs after both blocks) can read both
+  diagonals. No existing computation, likelihood term, or `REPORT()` was
+  altered; the hoisted matrices are identical zero-valued placeholders
+  when their governing flag is off, exactly as before.
+
+### `R/slope-sd-ci.R` -- route dispatch, same guards on every route
+
+- Added `.slope_ci_adreport_lookup()`: reads an ADREPORTed vector from
+  `summary(fit$sd_report, "report")` by NAME
+  (`rownames(tab) == name`), never by position.
+- Added `.slope_ci_natural_to_log()`: delta-method transform from a
+  natural-scale ADREPORT estimate/SE to the log-SD scale
+  (`se(log(X)) = se(X) / X`) so every route's interval is built the same
+  way Slice 1 built it (`exp(theta +/- z*se(theta))`, positive by
+  construction).
+- Factored the shared kill-switch guard + interval-building logic that
+  Slice 1 wrote inline into `.slope_ci_rows()` / `.slope_ci_emit_guard_warnings()`,
+  and now call it from THREE routes instead of one, so non-PD Hessian,
+  non-finite SE, SE blow-up, and near-zero-relative-to-siblings apply
+  identically everywhere.
+- New `.slope_sd_ci_phylo_dep()` and `.slope_sd_ci_loadings_only()`
+  route handlers, dispatched from the top of `slope_sd_ci()` in place of
+  Slice 1's two `cli_abort()` refusals. Each cross-checks its ADREPORT
+  point estimate against the corresponding already-`REPORT()`ed quantity
+  (`all.equal(..., tolerance = 1e-6)`) and `cli_abort()`s on an internal
+  packing mismatch rather than silently returning a wrong number.
+- The diagonal route (Slice 1) is otherwise byte-identical: same
+  `theta`/`se_theta` computation from `fit$opt$par` /
+  `fit$sd_report$cov.fixed`, same `estimate`/`lower`/`upper`. The only
+  addition is that `total_sd` -- a point estimate only in Slice 1 -- now
+  also gets `total_lower`/`total_upper`/`total_status` wherever
+  `fit$report$sd_B_slope_total` is present (falls back to Slice 1's
+  point-estimate-only formula, with `total_status = "unavailable"`, for a
+  stale cached fit predating this slice).
+- New columns on the returned `data.frame`: `total_lower`, `total_upper`,
+  `total_status`. New `method` value `"wald_log_scale_adreport"` for the
+  two ADREPORT-based routes (vs `"wald_log_scale"` for the direct-parameter
+  diagonal route), so a reader can tell which mechanism produced a row.
+
+## 3. Files Changed
+
+- `src/gllvmTMB.cpp` (additive: 2 new `ADREPORT()`ed vectors + 1 existing
+  quantity newly `ADREPORT()`ed; 2 variables hoisted to wider scope; no
+  existing computation altered)
+- `R/slope-sd-ci.R` (route dispatch + two new route handlers + shared
+  helpers; Slice 1's diagonal route logic preserved)
+- `tests/testthat/test-slope-sd-ci.R` (new mocks + guard tests + two real
+  recovery/cross-check tests; three Slice-1 tests that asserted the OLD
+  refusal behaviour rewritten for the new behaviour)
+- `docs/design/35-validation-debt-register.md` (CI-14 updated note; CI-15
+  moved `blocked` -> `partial`)
+- `docs/dev-log/check-log.md` (dated entry, this file)
+- `docs/dev-log/after-task/2026-08-19-slope-sd-ci-slice2-adreport.md` (this
+  file)
+
+No `NAMESPACE` change (no new exports; the two new route functions and
+both helpers are internal, `@noRd`). No `DESCRIPTION` or `NEWS.md` change,
+per the brief's constraints.
+
+## 4. The Two Things The Brief Said To Measure
+
+### 4a. `sdreport()` runtime cost
+
+Measured with an alternating-build A/B comparison, not a single before/after
+pair (a single pair on this shared, heavily-loaded development Mac showed a
+LARGE apparent slowdown -- baseline median 0.45s vs slice-2 median 0.10s --
+that vanished and reversed under a fair, back-to-back comparison; it was
+confounded by other concurrent lanes' CPU load on this shared machine, not a
+property of the code). Method: built the package twice (baseline =
+`src/gllvmTMB.cpp` reverted via `git checkout`, no new `ADREPORT()`s;
+slice-2 = this branch), saved both compiled `.so` files, then alternated
+which one was live in the R library and re-fit + re-timed `TMB::sdreport()`
+on the same representative fixture (`n_ind = 50`, `n_traits = 3`, `n_rep =
+6`, `latent(0 + trait + (0 + trait):temperature | individual, d = 2)` --
+activates BOTH new ADREPORTs, `sd_rr_B_slope` and `sd_B_slope_total`, 12
+new report rows on top of the pre-existing 7), 4 rounds, 5 reps/round,
+median per round:
+
+```
+round 1: baseline 0.066s | slice2 0.070s
+round 2: baseline 0.068s | slice2 0.063s
+round 3: baseline 0.107s | slice2 0.084s
+round 4: baseline 0.073s | slice2 0.098s
+```
+
+**No measurable slowdown.** The two builds are indistinguishable within
+this machine's noise floor (both ~0.06-0.11s); slice-2 is faster in half
+the rounds. This is the expected result architecturally: the added
+ADREPORT vectors are length `O(n_traits)` (2 or `(1+s)*n_traits`), not
+`O(n_obs)` or `O(n_species)` -- they do not grow with dataset size, only
+with the number of traits in the model, which is small for realistic
+fits. `sdreport()`'s cost here is dominated by the fixed-effect Hessian
+factorization (`cov.fixed`, unaffected by ADREPORT count at all) rather
+than by the report-block reverse sweeps.
+
+### 4b. Position-based consumers of `fit$sd_report`
+
+Grepped every `R/` file that touches `sd_report` (30 files) for any use of
+the `"report"` (ADREPORT) component of `summary(fit$sd_report, ...)`.
+Found exactly four call sites in the whole package:
+
+- `R/extract-cutpoints.R:101` -- `grep("^ordinal_cutpoints$", rownames(adr))`
+- `R/extractors.R:798` (`.lv_sdreport_effect_se`) --
+  `which(rownames(table) == row_name)`
+- `R/methods-gllvmTMB.R:214` -- uses `summary(fit$sd_report, "fixed")`
+  only, never touches the "report" component at all
+- `R/slope-sd-ci.R` (this file, both Slice 1 and the new Slice 2 routes)
+  -- `which(rownames(tab) == name)`
+
+**Every one filters by name** (`rownames(...) == "..."` or `grep(...)`),
+never by numeric position. Also checked `tests/testthat/*.R` for the same
+pattern: `test-lv-gaussian-recovery.R` and `test-lv-parser-guard.R` also
+read `summary(fit$sd_report, "report")` and filter by
+`rownames(report) == "B_lv_unit"` -- name-based, and on fixtures that never
+activate `use_rr_B_slope` / `use_diag_B_slope` / `use_phylo_dep_slope`, so
+their ADREPORT vector is unchanged in content by this slice regardless.
+
+**Everything else that touches `fit$sd_report`** (26 of the 30 files) uses
+`$cov.fixed` or `$par.fixed` -- the fixed-effect covariance/point-estimate
+block, whose dimension and ordering depend only on the number of FIXED
+PARAMETERS (`fit$opt$par`), not on how many `ADREPORT()`ed quantities
+exist. These are structurally unaffected by this slice's changes.
+
+**Conclusion: no position-based consumer found anywhere in the package.**
+The added ADREPORT rows cannot silently misalign an existing extractor.
+
+### 4c. `sd_b` consistency with `fit$report$sd_b`
+
+Confirmed two ways: (1) architecturally, `ADREPORT(sd_b)` was added
+immediately after the existing `REPORT(sd_b)` line with no intervening
+edit to `sd_b`'s computation, so both read the identical C++ variable;
+(2) empirically, both new recovery tests (Section 6) assert
+`all.equal(adr$estimate, fit$report$sd_b, tolerance = 1e-6)` (and the
+`sd_rr_B_slope` / `sd_B_slope_total` equivalents) inside
+`slope_sd_ci()` itself -- `cli_abort()`s loudly on any mismatch rather
+than silently proceeding -- and this passed on every real-fit test.
+
+## 5. Checks Run
+
+- `pkgbuild::compile_dll(force = TRUE)` -- clean recompile, 4 pre-existing
+  unrelated compiler warnings (Eigen `SparseLU`/`TriangularSolver` unused
+  variables, one unused function in `lane_b_jeffreys_maxvol_atomic_v8.h`),
+  **no new warnings** from this change's `src/` edits.
+- `devtools::document()` -- clean; regenerated `man/slope_sd_ci.Rd` only.
+  Pre-existing unrelated `@export`/`@exportS3Method` notes for
+  `anova`/`BIC`/`AIC.gllvmTMB_multi` (not touched by this change).
+- `NOT_CRAN=true GLLVMTMB_HEAVY_TESTS=1 devtools::load_all(); testthat::test_file("tests/testthat/test-slope-sd-ci.R")`
+  -- **all pass, 0 fail** (including the heavy-gated phylo_dep recovery
+  test).
+- `NOT_CRAN=true devtools::load_all(); testthat::test_file("tests/testthat/test-slope-sd-ci.R")`
+  (no `GLLVMTMB_HEAVY_TESTS`) -- all pass, 1 skip (the heavy-gated phylo
+  test, matching house convention for every other `phylo_dep` model fit in
+  this package -- `test-phylo-dep-slope-gaussian.R` gates all of its tests
+  the same way).
+- `testthat::test_file("tests/testthat/test-reader-facing-no-register-codes.R")`
+  -- 1 pass. `man/slope_sd_ci.Rd` carries no `CI-1x` register codes (the
+  module-header `##` comments in `R/slope-sd-ci.R` do, but those are plain
+  comments, not roxygen `#'` lines, so they never reach the generated
+  `.Rd`).
+- `pkgdown::check_pkgdown()` -- "No problems found." (`slope_sd_ci` is
+  already in `_pkgdown.yml`'s reference index from Slice 1).
+- `NOT_CRAN=true OPENBLAS_NUM_THREADS=1 devtools::test()` (full package,
+  run to completion, not backgrounded-and-abandoned) -- see Section 7 for
+  the verbatim tail.
+
+## 6. Tests of the Tests
+
+- **New mock builders**: `mock_phylo_dep_slope_fit()` and
+  `mock_rr_only_slope_fit()` hand-build an `sd_report` with `value` / `sd`
+  fields (named/ordered by ADREPORT variable name) plus `pdHess`, which
+  dispatches through the REAL `TMB:::summary.sdreport` S3 method (verified:
+  it only reads `object$value` and `object$sd` for the `"report"` select)
+  -- these mocks exercise the same code path a real fit does, not a
+  hand-simplified stand-in.
+- **Guard tests, both new routes, four each** (non-PD Hessian, non-finite
+  SE, SE blow-up, near-zero-relative collapse) -- same structure as Slice
+  1's guard tests, now proven to fire identically on the ADREPORT-based
+  routes.
+- **Phylo_dep route real recovery + cross-check** (heavy-gated,
+  `GLLVMTMB_HEAVY_TESTS=1`, following house convention -- every other
+  `phylo_dep` model-fit test in this package is heavy-gated too): fits
+  `phylo_dep(0 + trait + (0 + trait):x | species)` on a 70-species,
+  2-trait, known-`L` fixture (the same `L` as
+  `test-phylo-dep-slope-gaussian.R`'s `.dep_Ltrue()`); asserts both slope
+  CIs cover their true SDs, `component == "total"`,
+  `total_sd/lower/upper == estimate/lower/upper` (no separate split for
+  this route), **and the cross-check the review demanded**: the
+  ADREPORTed `sd_b`, as read by `slope_sd_ci()`, equals (tolerance
+  `1e-6`) an INDEPENDENTLY constructed `sqrt(diag(Sigma_b_dep))` computed
+  directly from `fit$report`, outside `slope_sd_ci()`'s own code path --
+  exactly the test shape that would have caught the 2/5/8-vs-2/4/6 packing
+  bug on day one.
+- **Loadings-only route real recovery + cross-check** (NOT heavy-gated --
+  a plain Gaussian `latent(..., unique = FALSE)` fit, no phylogeny; runs
+  in the default suite): same structure, `sqrt(diag(Sigma_B_slope))`
+  cross-check.
+- **Updated Slice-1 test**: `"slope_sd_ci() refuses a fit with no augmented
+  random-slope term at all"` now asserts the new message text (the old
+  message named only the diagonal route; the new one names all three).
+
+## 7. Full Suite Result
+
+`NOT_CRAN=true OPENBLAS_NUM_THREADS=1 Rscript -e 'devtools::test()'`, run
+to completion (not backgrounded-and-abandoned). Verbatim tail:
+
+```
+<<FULL_SUITE_TAIL>>
+```
+
+## 8. Register Update
+
+- **CI-14** (`partial`, unchanged status): appended a 2026-08-19 note --
+  `total_sd` now also carries a genuine interval
+  (`total_lower`/`total_upper`/`total_status`) wherever both
+  `theta_diag_B_slope` and `theta_rr_B_slope` are present, via the new
+  `sd_B_slope_total` ADREPORT. `estimate`/`lower`/`upper` for this route
+  are byte-identical to Slice 1.
+- **CI-15** moved `blocked` -> `partial`. **Not `covered`**: single-seed
+  recovery evidence only (one cell per route), `interval_status =
+  "wald_uncalibrated"` on every row, no repeated-sampling coverage
+  campaign (gated by CI-08/CI-10, same framing as CI-14). The row now
+  documents the ADREPORT mechanism, the two recovery cells, the
+  cross-check tests, and the cost/compatibility findings from Section 4.
+
+## 9. What Did Not Go Smoothly
+
+- The first `devtools::install()` attempt after the C++ rebuild failed
+  with a stale `00LOCK-gllvmTMB` directory in the shared
+  `~/Library/R/arm64/4.6/library` -- a leftover from an earlier
+  auto-backgrounded install whose foreground call had been killed at the
+  120s tool timeout before its own cleanup ran. No other process held the
+  lock (`ps aux` confirmed), so it was safe to clear; `R CMD INSTALL
+  --no-lock` was used as a workaround for the timing-comparison rebuilds.
+  This machine is shared with several other concurrent lanes' active R
+  sessions (confirmed via `ps aux` during this task -- `isdm-precision`
+  campaigns, another package's own install), which is also why the FIRST
+  sdreport-cost measurement (single before/after pair) was misleading; see
+  Section 4a.
+- `pkgbuild::compile_dll(force = TRUE)` reported "make: Nothing to be done
+  for `all`" once even after `git checkout -- src/gllvmTMB.cpp` reverted
+  the file; verified this was NOT stale by checking `.o`/`.so` mtimes
+  against the reverted `.cpp`'s mtime (the `.so` was newer, confirming a
+  real recompile had occurred) before trusting the "baseline" timing.
+
+## 10. Known Limitations And Next Actions
+
+**What this does NOT cover** (do not read a green PR here as covering any
+of this):
+
+- **No repeated-sampling coverage evidence**, same as Slice 1 and every
+  other Wald route in this package. `interval_status = "wald_uncalibrated"`
+  on every row, all three routes. Gated by CI-08/CI-10; unblocking needs
+  Design 80 Bar 3 / the REML-AGHQ coverage arc, not this slice.
+  D-112 remains in force.
+- **Non-Gaussian families untested for all three routes.** The phylo_dep
+  and loadings-only recovery cells built here are both Gaussian, matching
+  the existing Gaussian-gating of the augmented diagonal/loadings slope
+  engines elsewhere in the codebase.
+- **Multi-slope phylo_dep (`s >= 2`) is supported by the R-side dispatch
+  code (it derives `stride = 1 + n_phy_slope` and labels each term by its
+  own covariate name) but has NO test evidence in this slice** -- the
+  recovery cell built here is single-slope (`s = 1`). The dispatch logic
+  was written generically because the C++ `sd_b` computation is already
+  dimension-general; a future test extending the recovery cell to `s = 2`
+  would close this gap cheaply, reusing
+  `test-phylo-dep-slope-s2-gaussian.R`'s fixture pattern.
+- **This is a `src/` change to the `sdreport` payload.** Per CLAUDE.md's
+  merge rules this needs explicit maintainer sign-off before merge; the PR
+  is opened as **DRAFT** for exactly this reason.

@@ -75,6 +75,8 @@ navbar:
     sdm:
       text: Species Distribution Models
       menu:
+      - text: "Start here: which SDM do your data allow?"
+        href: articles/sdm-start-here.html
       - text: Joint species distribution model
         href: articles/joint-sdm.html
       - text: When a rare species breaks the JSDM
@@ -98,6 +100,8 @@ navbar:
     concepts:
       text: Concepts
       menu:
+      - text: What is a site? The unit of analysis
+        href: articles/unit-of-analysis.html
       - text: Plain-English vocabulary
         href: articles/gllvm-vocabulary.html
       - text: Covariance and correlation
@@ -155,6 +159,7 @@ articles:
       opportunistic records with designed surveys. The integrated route is
       experimental.
     contents:
+    - articles/sdm-start-here
     - articles/joint-sdm
     - articles/rare-species-jsdm
     - articles/isdm-canada-warbler
@@ -167,6 +172,7 @@ articles:
 
   - title: Concepts
     contents:
+    - articles/unit-of-analysis
     - articles/gllvm-vocabulary
     - articles/covariance-correlation
     - articles/cross-family-correlations

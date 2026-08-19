@@ -268,6 +268,10 @@ Two things about the columns are worth saying out loud.
 longitude and a degree of latitude are different physical distances everywhere
 except the equator, so a model built on raw longitude/latitude treats
 unequal distances as equal. `add_utm_columns()` will do the conversion.
+(Both `add_utm_columns()` and `make_mesh()` follow the interface established by
+[sdmTMB](https://pbs-assess.github.io/sdmTMB/), the single-species spatial
+package this one's spatial helpers descend from — so if you have met them
+there, they behave as you expect.)
 
 **The site label is bookkeeping.** It has to be there, and it has to be
 distinct per unit, but it carries no meaning of its own — the coordinates and

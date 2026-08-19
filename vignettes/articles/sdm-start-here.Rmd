@@ -96,6 +96,26 @@ articles are specific about what that rules out.
 
 Some questions are better answered elsewhere. Saying so is part of the routing.
 
+**One species, not many.** Everything on this site is built for *many species
+at once* — that is the whole point of the shared surfaces and the latent
+gradients. If you have a single species, you are paying for machinery you do
+not need. Use [sdmTMB](https://pbs-assess.github.io/sdmTMB/), which fits
+single-response spatial and spatiotemporal models with the same underlying
+technology (TMB with SPDE meshes), is on CRAN, and — unlike this package
+today — gives you uncertainty on its predictions. It is also the package this
+one's mesh and coordinate helpers descend from: `make_mesh()` and
+`add_utm_columns()` will look familiar because they are, by lineage
+(see [`inst/COPYRIGHTS`](https://github.com/itchyshin/gllvmTMB/blob/main/inst/COPYRIGHTS)).
+The dividing line is simple: **one response, use sdmTMB; several responses
+sharing structure, come back here.**
+
+**Integrated models in the INLA tradition.** The integration on this site is
+one way of doing it. [PointedSDMs](https://cran.r-project.org/package=PointedSDMs)
+and [intSDM](https://cran.r-project.org/package=intSDM) build integrated
+species distribution models on `INLA`/`inlabru` instead, and are the better
+starting point if your lab already works that way or you want a single-species
+integrated fit.
+
 **Occupancy models.** These are in the *same family* as the binary joint SDM
 above, with one extra layer: a **detection submodel**, a second process that
 says how often you find the species given that it is there. That extra layer

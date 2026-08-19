@@ -350,8 +350,10 @@ cat("\naccepted:", f$ok, " convergence:", f$convergence,
 per-species loadings on it; `d = 2` is the number of gradients, the subject of
 the next section. The mesh is built from `dat` -- the union of both arms'
 locations -- and every row from either arm is projected onto it. The
-`cutoff` in `make_mesh()` is the minimum spacing between mesh nodes, **in the
-units of your coordinates** -- kilometres here, because the coordinates were
+`cutoff` in `make_mesh()` -- an interface inherited from
+[sdmTMB](https://pbs-assess.github.io/sdmTMB/), the single-species spatial
+package these helpers descend from -- is the minimum spacing between mesh
+nodes, **in the units of your coordinates** -- kilometres here, because the coordinates were
 projected first. This page uses `cutoff = 40` on a domain roughly 225 by
 443 km, giving `r cawa12_mesh(dat)$mesh$n` nodes: about a tenth of the
 domain's shorter side is a reasonable starting point. A smaller cutoff means

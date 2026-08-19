@@ -53596,3 +53596,45 @@ to build a slope-interval extractor now that computability is demonstrated.
 
 **Stale-wording scan:** `rg 'GOAL_MET|NOT-FROZEN|#893' docs/dev-log/research/2026-08-19-mspl-forkB-tstar-discussion-packet.md lanes/design108-stage2/LOOP/`
 
+
+---
+
+## 2026-08-19 — Fix #1188: augmented-LHS guard honours the resolved trait column (claude)
+
+**Lane:** `claude/fix-1188-trait-literal-20260819`
+**Worktree:** `/private/tmp/gllvmtmb-1188`
+**Scope:** `.assert_no_augmented_lhs()` in `R/brms-sugar.R` compared the LHS
+symbol against the string literal `"trait"`, never the resolved `trait =`
+argument — a confirmed bug that blocked an external user (@iwogross) from
+writing a correct long-format model and led to a wrong published analysis
+(29 per-item intercepts collapsed to 1 shared intercept; LV1 loadings
+correlated with item prevalence at R² = 0.78 as a result).
+
+**Fix:** threaded `trait_col` through `desugar_brms_sugar()` ->
+`rewrite_canonical_aliases()` -> `.assert_no_augmented_lhs()` (six call
+sites). The guard now accepts either the resolved trait column or the
+literal `"trait"`; the abort message interpolates the user's own column.
+
+**Tests:** `tests/testthat/test-1188-trait-col-augmented-lhs-guard.R` (5
+cases, 3 call sites: `latent`, `indep`, `scalar`). Test 1 (the actual
+regression, a full `gllvmTMB()` fit with `trait = "variable"`) verified to
+fail pre-fix (`git stash`) and pass post-fix.
+
+**Checks:** `devtools::document()` (no `man/`/`NAMESPACE` diff);
+`NOT_CRAN=true devtools::test()` run to completion — `[ FAIL 3 | WARN 9 |
+SKIP 877 | PASS 16319 ]`, all 3 failures pre-existing/unrelated
+(`test-paper1-spde-slope-gauge-nofit-v2-materializer.R` hardcodes an
+absolute path to a different lane's worktree,
+`/private/tmp/gllvmtmb-isdm-paper1-qfixed-matched-spde/...`); `pkgdown::
+check_pkgdown()` clean; no `man/` diff so no register-code risk.
+
+**Files:** `R/brms-sugar.R`, `NEWS.md`,
+`tests/testthat/test-1188-trait-col-augmented-lhs-guard.R`.
+
+**Not touched:** `src/`, `R/gllvmTMB.R` (owned by a sibling lane this
+session), `DESCRIPTION`.
+
+After-task:
+`docs/dev-log/after-task/2026-08-19-fix-1188-trait-literal-lhs-guard.md`.
+PR: **DRAFT**, https://github.com/itchyshin/gllvmTMB/pull/1193 — not merged,
+maintainer review requested.

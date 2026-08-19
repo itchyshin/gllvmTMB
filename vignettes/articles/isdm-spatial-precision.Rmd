@@ -1,6 +1,6 @@
 ---
 title: "When one data source knows where it is and the other does not"
-description: "Integrated SDMs fuse a precise presence-only arm with a survey arm whose coordinates are deliberately fuzzed for privacy. That mismatch is covariate measurement error in disguise: it attenuates the environmental slope, and integrating the fuzzed arm can leave you further from the truth than discarding it."
+description: "Integrated SDMs fuse a precise presence-only arm with a survey arm whose coordinates are deliberately fuzzed for privacy. That mismatch is covariate measurement error in disguise: it attenuates the environmental slope by 57-79% in the fuzzed arm, and the pooled fit inherits that attenuation in proportion to the arm's share of the data - the swamping effect Fletcher et al. (2019) describe, here carrying a positional defect. Whether it matters is decided by one ratio, computed here from your own raster. And the conclusion reverses when your sampling-bias surrogate is BOTH imperfect and correlated with the environment - the conjunction, not either alone."
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -13,166 +13,761 @@ vignette: >
 
 ```{r, include = FALSE}
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+
+## The replicate-level result files are tracked in the repository and this
+## article is built from them. If one is missing the build STOPS: a page that
+## quietly substitutes stale hard-coded means for measurements is the exact
+## failure mode this article is about.
+f_arm  <- "../../dev/isdm-precision/arm-weighting-results.rds"
+f_bpo  <- "../../dev/isdm-precision/biased-po-results.rds"
+f_rev  <- "../../dev/isdm-precision/surrogate-error-results.rds"
+f_grid <- "../../dev/isdm-precision/cor-length-grid.rds"
+for (f in c(f_arm, f_bpo, f_rev, f_grid))
+  if (!file.exists(f)) stop("missing evidence file: ", f,
+    " -- re-run the matching dev/isdm-precision/generate-*.R script")
+d_arm  <- readRDS(f_arm)
+d_bpo  <- readRDS(f_bpo)
+d_rev  <- readRDS(f_rev)
+d_grid <- readRDS(f_grid)
+
+## Every load-bearing number in the prose below is pulled from these objects
+## by an inline expression, so no sentence can drift from the table above it.
+wide <- function(s) {
+  w <- reshape(s, idvar = "rep", timevar = "arm", direction = "wide")
+  names(w) <- sub("beta_hat\\.", "", names(w)); w
+}
+cell <- function(np, ns, fz)
+  wide(d_arm[d_arm$n_po == np & d_arm$n_survey == ns & d_arm$fuzz == fz, ])
+fmt <- function(x, d = 3) formatC(x, format = "f", digits = d)
 ```
 
 # The situation
 
-An integrated species distribution model fuses data sources with different
-sampling protocols: a large, messy, presence-only arm (GBIF, eBird) and a
-smaller, structured survey arm (a monitoring programme). The whole design
-rests on the two arms measuring the same underlying process, so that the
-structured arm can discipline the biased one.
+An integrated species distribution model fuses sources with different sampling
+protocols: a large, messy, presence-only arm (GBIF, eBird) and a structured
+survey arm (a monitoring programme). The design rests on both arms measuring
+the same underlying process, so that the structured arm can discipline the
+biased one.
 
 They usually differ in one respect nobody puts in the model. **The
 presence-only arm knows where it is; the survey arm often does not.**
 
-This is not sloppiness — it is policy. Monitoring programmes routinely
-publish coordinates degraded on purpose, to protect site access agreements
-and to avoid disclosing the locations of species at risk. The Alberta
-Biodiversity Monitoring Institute publishes public survey locations
-**fuzzed to roughly 5.5 km**, and coarser still for sensitive species;
-precise coordinates require a separate data agreement. Meanwhile an eBird
-checklist in the same landscape carries a GPS fix.
+This is not sloppiness — it is policy. Monitoring programmes routinely publish
+coordinates degraded on purpose, to protect site access agreements and to avoid
+disclosing the locations of species at risk. The Alberta Biodiversity
+Monitoring Institute publishes public survey locations **fuzzed to roughly
+5.5 km**, and coarser still for sensitive species; precise coordinates require
+a separate data agreement. An eBird checklist in the same landscape carries a
+GPS fix. The two arms are then fused as though both located their observations
+equally well, and one of them did not.
 
-So the two arms are fused as though both located their observations equally
-well, and one of them did not.
+That deliberate obscuration has analytical consequences is already documented
+rather than hypothetical: work on iNaturalist's obscured-geoprivacy setting
+reports that obscured locations change the environmental values attached to a
+record — elevation, habitat type, extracted covariates — and change the
+resulting estimated distributions. Gábor et al. (2022) likewise find that SDM
+performance degrades as positional error in occurrence records grows.
 
-# Why this is easy to wave away
+The reason this still feels harmless in an *integrated* model is an intuition
+about the wrong half of it: *there is a spatial random field, positional error
+is spatial noise, the field will absorb it.* That is a statement about the
+**response**. The damage is to the **covariate**.
 
-The intuition that makes this feel harmless goes: *the model has a spatial
-random field; positional error is spatial noise; the field will absorb it.*
+Environmental predictors in an SDM are almost never measured at the site. They
+are extracted from a raster at the recorded coordinate. If the recorded
+coordinate is wrong by 5.5 km you read temperature, elevation or canopy cover
+**from the wrong place**, and then regress the species' response — which
+happened at the *true* location — on a covariate value from a different one.
 
-That intuition is about the **response**. The damage is to the
-**covariate**.
+That is classical errors-in-variables, and its signature is long established:
+**attenuation**, the estimated slope biased toward zero. Nothing in the
+mechanism is new here. What this article measures is what happens to it inside
+a two-arm integrated fit, and what decides whether you should care.
 
-Environmental predictors in an SDM are almost never measured at the site.
-They are extracted from a raster at the recorded coordinate. If the recorded
-coordinate is wrong by 5.5 km, you read temperature, elevation, or canopy
-cover **from the wrong place** — and you then regress the species' response,
-which happened at the *true* location, on the covariate value from a
-different one.
+Because that last part is not decided by the fuzz in kilometres. It is decided
+by the fuzz relative to the **correlation length of the covariate**. Five and a
+half kilometres is nearly nothing across a smooth continental temperature
+gradient and severe across a patchy canopy-cover layer. So that ratio comes
+first, before any simulation.
 
-That is textbook errors-in-variables. Its signature is **attenuation**: the
-estimated slope is biased toward zero. And it lands on exactly the quantity
-an SDM exists to produce — the environmental response curve.
+# The number that decides it
 
-How bad it is depends on one ratio: the positional error relative to the
-**correlation length of the environment**, not its size in kilometres. Fuzz
-of 5.5 km is nearly harmless across a smooth continental temperature
-gradient and severe across a patchy canopy-cover layer.
+Your survey arm's positional uncertainty, divided by the correlation length of
+the covariate you care about. Getting it wrong by a factor of three is enough
+to flip the recommendation — and a factor of three is exactly what sits between
+the two things software calls "range".
 
-# Measuring it
+**The definition used here involves no convention.** For a covariate whose
+spatial correlation behaves like `exp(-d / phi)`, `phi` is the distance at
+which the covariate's own correlation falls to **1/e ≈ 0.368**. That is
+computable directly from a raster. Variogram software commonly reports instead
+the *practical range*, conventionally about `3 * phi`, the distance at which
+correlation falls to 0.05. **Dividing a reported practical range by 3 before
+comparing it to your positional fuzz is the single most important arithmetic
+step in applying this article to your own data.**
 
-The claim above is checkable, so it should be checked rather than asserted.
+## The recipe
 
-The simulation is in `dev/isdm-precision/precision-sim.R`. Both arms observe
-the same landscape and the same truth: counts are generated from the
-environment at each site's **true** location, with a shared slope
-$\beta = 0.9$. The arms differ in one respect only — the presence-only arm
-records its coordinates exactly, and the survey arm's recorded coordinates
-are displaced by Gaussian noise with standard deviation `fuzz` × the
-environmental correlation length. The covariate handed to the model is read
-at each arm's *recorded* location, which is what an analyst would do.
+```{r cor-length-recipe}
+## phi = the distance at which the covariate's own spatial correlation falls
+## to 1/e. NOTE n_sub: this builds a dense n x n distance matrix, so it takes
+## a SUBSAMPLE of cells, never a whole raster.
+cor_length <- function(x, y, z, n_bin = 30, n_sub = 2000, seed = 1) {
+  if (length(x) > n_sub) {
+    ## Subsample reproducibly WITHOUT clobbering the caller's RNG stream. A
+    ## bare set.seed() here would silently change every random draw the user
+    ## makes afterwards -- the same species of invisible damage this article
+    ## is about.
+    old <- if (exists(".Random.seed", .GlobalEnv))
+      get(".Random.seed", .GlobalEnv) else NULL
+    set.seed(seed)
+    i <- sample.int(length(x), n_sub)
+    if (is.null(old)) rm(".Random.seed", envir = .GlobalEnv) else
+      assign(".Random.seed", old, envir = .GlobalEnv)
+    x <- x[i]; y <- y[i]; z <- z[i]
+  }
+  d   <- as.matrix(dist(cbind(x, y)))
+  cp  <- outer(z - mean(z), z - mean(z)) / var(z)
+  ut  <- upper.tri(d)
+  brk <- seq(0, quantile(d[ut], 0.5), length.out = n_bin + 1)
+  rho <- tapply(cp[ut], cut(d[ut], brk, include.lowest = TRUE), mean)
+  h   <- (brk[-1] + brk[-length(brk)]) / 2
+  ok  <- !is.na(rho); rho <- rho[ok]; h <- h[ok]
 
-Three analyses of the identical world:
+  ## Walk outward to the FIRST crossing of 1/e and interpolate there.
+  ## approx(rho, h, xout = 1/e) would sort on the correlations, and an
+  ## empirical correlogram is not monotone -- that silently re-pairs
+  ## distances with correlations they did not come from.
+  below <- which(rho < exp(-1))
+  if (!length(below))
+    stop("cor_length(): the correlogram never falls to 1/e within half the ",
+         "maximum inter-point distance. phi is too long to measure on this ",
+         "extent -- your covariate is smoother than your map is wide. ",
+         "Use a larger region, and do not substitute the largest distance ",
+         "you can see.", call. = FALSE)
+  k <- below[1]
+  if (k == 1L)
+    stop("cor_length(): correlation is already below 1/e in the first ",
+         "distance bin, so phi is shorter than the spacing between the cells ",
+         "supplied. Supply finer cells; do NOT read the returned bin ",
+         "midpoint as phi.", call. = FALSE)
+  h[k - 1] + (rho[k - 1] - exp(-1)) / (rho[k - 1] - rho[k]) * (h[k] - h[k - 1])
+}
+```
 
-- **`precise_only`** — fit the presence-only arm alone.
-- **`fuzzed_only`** — fit the survey arm alone.
-- **`integrated`** — fit both together, the thing an iSDM actually does.
+**Do not hand it a whole raster, and do not coarsen one to make it fit.** Both
+halves matter. It is $O(n^2)$ in memory, and that arithmetic is unforgiving:
+`n` cells cost `8 * n^2` bytes per matrix, so 22,500 cells is
+`r fmt(8 * 22500^2 / 2^30, 1)` GB and a 1 km Alberta raster (~10⁶ cells) would
+need `r fmt(8 * 1e6^2 / 2^40, 0)` TB. The `n_sub` argument takes a random
+subsample instead, and a subsample is enough.
+**`terra::aggregate()` is the wrong fix and it fails in the dangerous
+direction**: coarsening inflates `phi_hat`, which *shrinks* your fuzz-to-`phi`
+ratio and makes the situation look safer than it is. Subsample cells; do not
+average them. (Coarsening is also not a remedy for the underlying problem — see
+[What to do](#what-to-do).)
 
-40 replicates at each of four fuzz levels.
+Working, on a surface whose `phi` is known by construction, and then refusing
+to answer on one it cannot measure:
 
-# What happens
+```{r cor-length-demo}
+sim_surface <- function(n_side, phi, seed) {
+  set.seed(seed)
+  gx <- seq(0, 1, length.out = n_side)
+  g  <- expand.grid(lon = gx, lat = gx)
+  S  <- exp(-as.matrix(dist(g)) / phi)
+  g$z <- as.numeric(scale(as.numeric(
+    t(chol(S + diag(1e-6, nrow(S)))) %*% rnorm(nrow(g)))))
+  g
+}
 
-Mean estimated slope (true value **0.9**), with attenuation as a percentage
-of truth:
+g <- sim_surface(41, phi = 0.05, seed = 1)     # cell spacing 1/40 = 0.025
+cor_length(g$lon, g$lat, g$z)                  # true phi = 0.05
 
-| fuzz (× corr. length) | `precise_only` | `fuzzed_only` | `integrated` |
-|---|---|---|---|
-| **0.00** | 0.895 (0.6%) | 0.910 (−1.2%) | 0.902 (−0.2%) |
-| **0.25** | 0.902 (−0.2%) | 0.579 (**35.7%**) | 0.741 (**17.6%**) |
-| **0.50** | 0.907 (−0.8%) | 0.403 (**55.2%**) | 0.652 (**27.6%**) |
-| **1.00** | 0.902 (−0.2%) | 0.216 (**76.0%**) | 0.545 (**39.4%**) |
+g_coarse <- sim_surface(21, phi = 0.02, seed = 1)   # cell spacing 0.05 > phi
+try(cor_length(g_coarse$lon, g_coarse$lat, g_coarse$z))
+```
 
-Three things to read off it.
+That second call is the important one. The correlogram never rises above 1/e,
+so there is nothing to interpolate. An earlier version of this recipe returned
+`NA` there without comment; it now says which of the two ways it failed,
+because a silent `NA` in the one number the whole decision turns on is worse
+than no recipe at all.
 
-**The control works.** At `fuzz = 0` all three analyses agree on 0.90. Whatever
-the integration machinery does, it is not the source of the bias — the bias
-appears only when positional error does.
+## What it can and cannot do
 
-**The precise arm is untouched.** Across every row it sits at 0.895–0.907,
-bias under 0.01. Adding fuzz to the *other* arm cannot hurt it, which is
-what makes the last column so awkward.
+Two things can go wrong, and they are different: `phi` can be long relative to
+your **map**, or short relative to your **cells**. An earlier experiment here
+varied both at once — it scaled the domain and `phi` together on a fixed
+lattice — so it could not tell them apart. This one crosses them:
 
-**Attenuation is severe and it survives integration.** At displacement equal
-to the environmental correlation length the fuzzed arm retains less than a
-quarter of the true slope. Integration dilutes that damage — 39.4% rather
-than 76.0% — but does not remove it. The structured arm does not get
-disciplined by the precise one; it drags the precise one down.
+```{r cor-length-grid, echo = FALSE}
+## Drift guard: the grid was measured with the copy of the recipe stored in
+## dev/isdm-precision/cor-length-recipe.R. If the function shipped above has
+## since diverged from it, say so on the page rather than quietly reporting
+## one function's accuracy as another's.
+rec <- attr(d_grid, "recipe")
+if (!is.null(rec) &&
+    !identical(paste(deparse(cor_length), collapse = "\n"), rec))
+  warning("The recipe shipped above differs from the one used to build this ",
+          "table. Re-run dev/isdm-precision/generate-cor-length-grid.R.")
 
-# The uncomfortable part
+d_grid$ratio <- d_grid$phi_hat / d_grid$phi
+gtab <- do.call(rbind, lapply(
+  split(d_grid, list(d_grid$n_side, d_grid$phi), drop = TRUE), function(s)
+    data.frame(
+      `phi / map width`    = s$phi[1],
+      `phi / cell spacing` = round(s$phi_over_spacing[1], 1),
+      `refused (of 12)`    = sum(is.na(s$phi_hat)),
+      `mean phi_hat / phi` = if (all(is.na(s$phi_hat))) NA else
+                               mean(s$ratio, na.rm = TRUE),
+      `sd over surfaces`   = if (sum(!is.na(s$phi_hat)) < 2) NA else
+                               sd(s$ratio, na.rm = TRUE),
+      `above truth`        = paste0(sum(s$ratio > 1, na.rm = TRUE), " / ",
+                                    sum(!is.na(s$ratio))),
+      check.names = FALSE)))
+gtab <- gtab[order(gtab$`phi / map width`, gtab$`phi / cell spacing`), ]
+knitr::kable(gtab, digits = 3, row.names = FALSE)
+```
 
-Compare the first and last columns.
+```{r cor-length-derived, include = FALSE}
+## "The region where the recipe is recommended" = the operational advice
+## given below: phi under a tenth of the map AND comfortably above the cell
+## spacing. Both halves, or the summary silently includes cells the advice
+## already tells the reader to stay out of.
+benign <- d_grid[d_grid$phi <= 0.10 & d_grid$phi_over_spacing >= 2 &
+                 !is.na(d_grid$phi_hat), ]
+benign_above <- sum(benign$ratio > 1)
+benign_n     <- nrow(benign)
+sds <- tapply(benign$ratio, list(benign$n_side, benign$phi),
+              function(z) sd(z, na.rm = TRUE))
+sd_lo <- min(sds, na.rm = TRUE); sd_hi <- max(sds, na.rm = TRUE)
+r040 <- mean(d_grid$ratio[d_grid$phi == 0.40], na.rm = TRUE)
+r025 <- mean(d_grid$ratio[d_grid$phi == 0.25], na.rm = TRUE)
+## The one cell that answers while barely resolving phi: phi/spacing = 1.2.
+r_edge <- mean(d_grid$ratio[abs(d_grid$phi_over_spacing - 1.2) < 1e-8],
+               na.rm = TRUE)
+```
 
-At every non-zero fuzz level, **the integrated estimate is further from the
-truth than the presence-only arm alone**. At `fuzz = 0.5`, discarding the
-survey data entirely gives 0.907 against a true 0.9; fusing it gives 0.652.
+Read down the table and then across it.
 
-That inverts the premise of the method. Integrated SDMs are motivated by the
-structured arm correcting the opportunistic one. Here the structured arm
-carries a defect the opportunistic arm does not have, and integration
-propagates it — so more data yields a worse answer, with narrower intervals
-around it, because the model has no way to know that one arm's covariates
-are mismeasured.
+**Down — the bias belongs to the map's width.** As `phi` grows relative to the
+map, the recipe reads low: about `r fmt(r025, 2)` × truth at `phi` a quarter of
+the map's width, `r fmt(r040, 2)` × at four tenths. Read *across* at a fixed
+`phi / map width` and the three lattice resolutions give essentially the same
+answer, which is what makes this a finite-extent effect rather than a
+resolution one — a correlation longer than your map cannot be seen on your map.
+The earlier design could not have shown that; this one does.
 
-None of this is an argument against integrated SDMs. It is an argument that
-**positional precision belongs in the list of things you check before fusing
-two sources**, alongside detection probability and sampling effort — and it
-currently is not on that list.
+**Across — the resolution decides whether you get an answer at all.** Once
+`phi` falls to about the spacing between your cells, the recipe refuses on
+every surface or nearly every one. The row that answers at
+`phi / cell spacing = 1.2` should be read as a warning rather than a success:
+it returns a number, and the number is `r fmt(100 * (1 - r_edge), 0)`% low.
 
-# What to do about it
+**And "the error is always downward" was wrong.** It is a statement about a
+mean, applied by readers to a single raster. In the region where the recipe is
+recommended — `phi` at or under a tenth of the map and at least twice the cell
+spacing — the per-surface standard deviation of `phi_hat / phi` is
+`r fmt(sd_lo, 2)`–`r fmt(sd_hi, 2)`, and `r benign_above` of `r benign_n`
+individual surfaces (`r fmt(100 * benign_above / benign_n, 0)`%) return a value
+**above** truth. So the safety argument that used to be built on "always
+downward" does not hold for one raster run once. Use the recipe on several
+covariate layers or several subsamples, and do not read the third significant
+figure.
 
-`gllvmTMB` does not implement a fix, and this article does not claim one.
-What the measurement supports:
+**So, operationally.** Trust it when `phi` sits comfortably below a tenth of
+your study region's width and comfortably above your cell spacing. Outside that
+window it either refuses or reads low, and reading low inflates your computed
+`fuzz / phi` ratio — which for this article's decision errs toward looking more
+carefully, but is not a licence to treat the number as exact.
 
-1. **Check the ratio before fusing.** Compare each arm's positional
-   uncertainty to the correlation length of your covariates — a variogram
-   on the raster, not a glance at the map. Fuzz well below the correlation
-   length is benign; the table above starts biting around a quarter of it.
-2. **Fit the arms separately first.** If the precise-arm-alone and
-   integrated slopes disagree materially, that gap is evidence, not noise.
-   It is cheap and it is the diagnostic the table above is built on.
-3. **Aggregate to the fuzz scale.** If survey coordinates are fuzzed to
-   5.5 km, covariates extracted at 5.5 km resolution are read at
-   approximately the right place; a 30 m raster read at a fuzzed coordinate
-   is not. Matching covariate resolution to positional precision is the
-   cheapest available mitigation, and it costs the fine-scale signal.
-4. **Ask for the precise coordinates.** Most fuzzing regimes, ABMI's
-   included, have a data-agreement route to exact locations. For an analysis
-   that turns on an environmental slope, that request is worth making before
-   the analysis rather than after.
+# What actually happens
 
-The general fix — an errors-in-variables layer with a per-arm positional
-prior — is a real modelling option and is not implemented here. Treat this
-article as a reason to measure your own case, not as a solution to it.
+## The design
+
+Two species share a landscape with a single smooth exponential-correlation
+surface. Counts are generated from the environment at each site's **true**
+location with a shared slope $\beta = 0.9$. The presence-only arm records its
+coordinates exactly; the survey arm's recorded coordinates are displaced by
+noise with standard deviation `fuzz` × the correlation length. The covariate
+handed to the model is read at each arm's *recorded* location, which is what an
+analyst would do. Three analyses of the identical world — `precise` (the
+presence-only arm alone), `fuzzed` (the survey arm alone) and `integrated`
+(both, the thing an iSDM does) — at three fuzz levels and three arm-size
+designs, 15 replicates each. Scripts:
+`dev/isdm-precision/generate-arm-weighting-results.R` and
+`generate-biased-po-results.R`.
+
+Three properties of the design a reader should know before reading the numbers:
+
+- **No spatial field is fitted.** Fixed effects only. This isolates the
+  covariate channel cleanly, and it means the article does **not** measure how
+  much of the damage a fitted field would absorb — the intuition named at the
+  top is set aside here, not tested.
+- **The precise arm is generated before `fuzz` is used**, so its estimate is
+  bit-identical across the three fuzz levels
+  (`r fmt(mean(cell(100, 400, 0)$precise), 8)` at all three in the 100/400
+  design). Its flatness in the figure is an identity, not a finding. It gives
+  perfect pairing, which is the point.
+- **The three designs share their 15 landscapes** (the same replicate seeds).
+  They are three designs on one set of landscapes, not 45 independent trials.
+
+## The measurement
+
+```{r arm-weighting-figure, echo = FALSE, fig.width = 9.5, fig.height = 4.0, dpi = 200, out.width = "100%", fig.cap = "The attenuation penalty across three arm-size designs, each n(precise) / n(fuzzed), ordered left to right by the FUZZED arm's share of the data: 400/100 (fuzzed arm one fifth), 220/220 (equal), 100/400 (fuzzed arm four fifths, a stress test). Pale symbols are the 105 distinct fits behind each design - 15 precise (generated before fuzz is applied, so the same 15 are drawn at each fuzz level), 45 fuzzed and 45 integrated. Solid symbols and lines are the design's arm means. The dashed grey line, labelled in the first panel, marks the true slope 0.9. In every design the precise arm sits at truth and the fuzzed arm collapses toward zero; the integrated fit falls between them at a depth set by how much of the pooled data the fuzzed arm supplies.", fig.alt = "Three side-by-side panels, one per arm-size design, each plotting estimated slope against positional fuzz (0, 0.5 and 1.0 times the environmental correlation length) for three analyses: precise, fuzzed and integrated. A dashed grey horizontal reference line, labelled truth, marks the true slope 0.9 in every panel. In all three panels the precise series stays flat near 0.9 and the fuzzed series falls steeply toward 0.2 by fuzz 1.0. The integrated series falls least in the 400-precise/100-fuzzed panel (to about 0.74 at fuzz 1.0), more in the 220/220 panel (to about 0.52), and most in the 100-precise/400-fuzzed panel (to about 0.34): the more of the pooled data the fuzzed arm supplies, the deeper the integrated series falls."}
+arms <- c("precise", "fuzzed", "integrated")
+col  <- c(precise = "#0072B2", fuzzed = "#D55E00", integrated = "#009E73")
+pchv <- c(precise = 16, fuzzed = 17, integrated = 15)
+ltyv <- c(precise = 1, fuzzed = 3, integrated = 2)
+xlb  <- "positional fuzz  (× correlation length)"
+fz   <- c(0, 0.5, 1.0)
+off  <- c(precise = -0.025, fuzzed = 0, integrated = 0.025)
+## Panel order = increasing share of the data supplied by the FUZZED arm,
+## matching the tables, the prose, and the direction of the claim. Ordered
+## any other way the integrated series goes down-up-down and the reader has
+## to reassemble the dose-response by hand.
+designs <- list(c(400, 100), c(220, 220), c(100, 400))
+dtitle <- c("n(precise)=400, n(fuzzed)=100", "n(precise)=220, n(fuzzed)=220",
+            "n(precise)=100, n(fuzzed)=400")
+## ylim must CONTAIN the replicates, because the caption says it shows all of
+## them. A fixed limit silently clips whatever a re-run pushes outside.
+ylim_arm <- range(c(0, 1.05, d_arm$beta_hat))
+
+op <- par(mfrow = c(1, 3), mar = c(3.4, 3.6, 2.2, 0.6),
+          oma = c(2.0, 0, 1.6, 0),
+          mgp = c(2.1, 0.6, 0), las = 1, cex.axis = 0.78, cex.lab = 0.82,
+          tcl = -0.3)
+set.seed(1)
+for (k in seq_along(designs)) {
+  plot(NA, xlim = c(-0.06, 1.06), ylim = ylim_arm, xaxt = "n",
+       xlab = xlb, ylab = expression("estimated slope  " * hat(beta)))
+  axis(1, at = fz, labels = format(fz))
+  abline(h = 0.9, col = "grey45", lwd = 1.1, lty = 2)
+  if (k == 1) text(1.045, 0.9, "truth", col = "grey35", cex = 0.62,
+                   adj = c(1, -0.45))
+  sub <- d_arm[d_arm$n_po == designs[[k]][1] &
+               d_arm$n_survey == designs[[k]][2], ]
+  mu <- tapply(sub$beta_hat, list(sub$arm, sub$fuzz), mean)[arms, ]
+  for (a in arms) {
+    s <- sub[sub$arm == a, ]
+    points(s$fuzz + off[a] + runif(nrow(s), -0.010, 0.010), s$beta_hat,
+           pch = pchv[a], cex = 0.42, col = adjustcolor(col[a], 0.30))
+    lines(fz + off[a], mu[a, ], col = col[a], lwd = 2, lty = ltyv[a])
+    points(fz + off[a], mu[a, ], pch = pchv[a], cex = 1.0, col = col[a])
+  }
+  mtext(dtitle[k], side = 3, line = 0.5, cex = 0.72, font = 2)
+  if (k == 1) {
+    ## seg.len: line type is the channel that carries this in greyscale, so
+    ## the key must be long enough to tell dashed from dotted.
+    legend("bottomleft", legend = arms, col = col[arms], pch = pchv[arms],
+           lty = ltyv[arms], lwd = 1.6, bty = "n", cex = 0.72,
+           seg.len = 3, text.col = col[arms])
+  }
+}
+## The fence travels with the PNG, not with the caption: a figure lifted into
+## a talk or a thesis loses its caption and keeps its pixels.
+mtext("SIMULATED DATA — point estimates only; no interval or coverage claim",
+      side = 1, outer = TRUE, line = 0.6, cex = 0.66, col = "grey35")
+par(op)
+```
+
+The same numbers, because a figure is read and a table is checked. Mean
+estimated slope (true value **0.9**), with the arm-size-weighted average of the
+two single-arm means alongside the integrated fit:
+
+```{r arm-weighting-table, echo = FALSE}
+agg <- aggregate(beta_hat ~ n_po + n_survey + fuzz + arm, d_arm, mean)
+tab <- reshape(agg, idvar = c("n_po", "n_survey", "fuzz"),
+               timevar = "arm", direction = "wide")
+names(tab) <- sub("beta_hat\\.", "", names(tab))
+tab$nwavg <- (tab$n_po * tab$precise + tab$n_survey * tab$fuzzed) /
+             (tab$n_po + tab$n_survey)
+tab <- tab[order(-tab$n_po, tab$fuzz),
+           c("n_po", "n_survey", "fuzz", "precise", "fuzzed", "integrated",
+             "nwavg")]
+names(tab) <- c("n(precise)", "n(fuzzed)", "fuzz", "precise", "fuzzed",
+                "integrated", "n-weighted avg")
+knitr::kable(tab, digits = 3, row.names = FALSE)
+```
+
+```{r arm-weighting-derived, include = FALSE}
+att <- agg[agg$arm == "fuzzed" & agg$fuzz > 0, ]
+att_pct <- 100 * (1 - att$beta_hat / 0.9)
+att_lo <- min(att_pct); att_hi <- max(att_pct)
+att05 <- att_pct[att$fuzz == 0.5]; att10 <- att_pct[att$fuzz == 1]
+nw_gap <- sapply(designs, function(de) sapply(c(0.5, 1.0), function(fv) {
+  w  <- cell(de[1], de[2], fv)
+  nw <- (de[1] * w$precise + de[2] * w$fuzzed) / sum(de)
+  mean(abs(w$integrated - nw))
+}))
+pen <- sapply(designs, function(de) {
+  w <- cell(de[1], de[2], 0.5); mean(w$integrated - w$precise) })
+pen_ci <- sapply(designs, function(de) {
+  w <- cell(de[1], de[2], 0.5); t.test(w$integrated - w$precise)$conf.int })
+ctl <- d_arm[d_arm$n_po == 400 & d_arm$n_survey == 100 &
+             d_arm$fuzz == 0 & d_arm$arm == "fuzzed", "beta_hat"]
+ctl_t <- t.test(ctl, mu = 0.9)
+## The zero-fuzz arm means, so "eight of nine within X" is measured, not
+## remembered. The ninth is the cell tested above.
+z0 <- agg[agg$fuzz == 0, ]
+z0_dev <- sort(abs(z0$beta_hat - 0.9))
+z0_ok  <- z0_dev[length(z0_dev) - 1]      # the largest of the other eight
+sign_cnt <- sapply(designs, function(de) sapply(c(0.5, 1.0), function(fv) {
+  w <- cell(de[1], de[2], fv); sum(w$integrated - w$precise < 0) }))
+err_cnt <- sapply(designs, function(de) sapply(c(0.5, 1.0), function(fv) {
+  w <- cell(de[1], de[2], fv)
+  sum(abs(w$integrated - 0.9) > abs(w$precise - 0.9)) }))
+```
+
+**The fuzzed arm is gutted.** At half the correlation length it has already
+lost `r fmt(min(att05), 0)`–`r fmt(max(att05), 0)`% of the true slope; at a
+displacement equal to the correlation length,
+`r fmt(min(att10), 0)`–`r fmt(max(att10), 0)`%. Across all six non-zero cells
+the attenuation is **`r fmt(att_lo, 0)`–`r fmt(att_hi, 0)`%**. That is the
+finding. Everything else follows from it.
+
+**Pooling is an information-weighted average — and saying so is the strongest
+form of the argument, not a concession.** A fair reader's first reaction is
+that the integrated estimate is bound to land between the two single-arm
+estimates, because that is what averaging does. Correct: the last column of the
+table is the arm-size-weighted average of the two single-arm means, and it
+tracks the integrated fit to within
+`r fmt(min(nw_gap), 3)`–`r fmt(max(nw_gap), 3)` **within each replicate**, in
+every design including the unbalanced ones. Pooling behaves exactly as pooling
+should.
+
+What is not arithmetic is **what is being averaged in**. The fuzzed arm arrives
+carrying `r fmt(att_lo, 0)`–`r fmt(att_hi, 0)`% attenuation, and the pooled
+estimate inherits it in proportion to that arm's share of the data. Hold fuzz
+at 0.5 and grow the fuzzed arm's share — 100 rows against 400, then 220 against
+220, then 400 against 100 — and `integrated − precise` deepens in step:
+**`r fmt(pen[1])` → `r fmt(pen[2])` → `r fmt(pen[3])`**, with disjoint
+confidence intervals
+(`r sprintf("[%.3f, %.3f]", pen_ci[1,1], pen_ci[2,1])`,
+`r sprintf("[%.3f, %.3f]", pen_ci[1,2], pen_ci[2,2])`,
+`r sprintf("[%.3f, %.3f]", pen_ci[1,3], pen_ci[2,3])`).
+
+**This is a known effect, and naming it is the point.** Fletcher et al. (2019)
+describe exactly this in integrated SDMs: without explicit weighting, estimates
+are largely driven by the abundant presence-only data, and the effect worsens
+as that arm grows — the ISDM's parameters shrink toward the presence-only
+model's. That is *swamping*, and it is established. This article adds one
+narrower thing: **positional error is a defect that gets swamped in**, the
+attenuation it causes is severe well before the fuzz reaches the covariate's
+correlation length, and the ratio in the previous section is what tells you
+whether your case is in that regime. If you already know about swamping, the
+new information is what the swamped-in defect is and how to size it.
+
+**The zero-fuzz control mostly works, and where it does not, the mechanism has
+a name.** Eight of the nine arm means at `fuzz = 0` sit within
+`r fmt(z0_ok)` of truth. The ninth is the fuzzed arm in the 400/100 design, at
+`r fmt(mean(ctl))` — `r fmt(ctl_t$statistic, 2)` standard errors above 0.9,
+*p* = `r fmt(ctl_t$p.value, 3)`. That is not noise, and calling it noise while
+treating small *p*-values elsewhere as findings would be having it both ways.
+It is the smallest arm in the grid (100 sites) at log-scale intercepts of −0.3
+and 0.1, i.e. counts of order one — the regime where the Poisson
+maximum-likelihood slope is upward-biased in small samples. The control's
+purpose still holds, since the *large* bias appears only when positional error
+does; but this cell is a known small-sample effect, not a fluke.
+
+**Within each replicate, integration loses.** The two analyses saw the same
+landscape and the same truth, so they can be paired. Counting by *sign*, the
+integrated estimate is lower than the precise-arm estimate in
+`r min(sign_cnt)` of 15 replicates in every design at both non-zero fuzz
+levels. Counting by *distance from the truth* — the quantity that actually
+matters, and the one the prose used to claim while the code counted signs — it
+is worse in `r min(err_cnt)` of 15 in the 400/100 design at `fuzz = 0.5` and in
+15 of 15 everywhere else. The two counts differ in one cell out of six, and the
+smaller one is the one to quote.
+
+## With a biased opportunistic arm
+
+Everything above shares one property that removes the reason anyone integrates:
+the opportunistic arm is **unbiased**. Nobody fuses a structured survey with an
+opportunistic one for fun — they do it because the opportunistic arm is biased
+by accessibility, effort and detectability, and the structured arm is what
+corrects that. A reader who took the result above at face value could wrongly
+conclude their survey arm is not worth keeping.
+
+So the design is repeated with the opportunistic arm **precise but
+sampling-biased**: reporting intensity carries a coefficient of 1.2 on an
+accessibility surface drawn independently of the environmental covariate. The
+survey arm is **unbiased but fuzzed**, as before. The analyst models the bias
+with an `access` term, as a competent one would — accessibility is observable
+in real analyses (road density, trail networks) even though the reporting bias
+it induces is not.
+
+```{r access-cor, echo = FALSE}
+env_surface <- function(ns = 26, ell = 0.25, seed = 1) {
+  set.seed(seed)
+  gx <- seq(0, 1, length.out = ns); g <- expand.grid(lon = gx, lat = gx)
+  S <- exp(-as.matrix(dist(g)) / ell)
+  z <- as.numeric(t(chol(S + diag(1e-6, nrow(S)))) %*% rnorm(nrow(g)))
+  as.numeric(scale(z))
+}
+acc_r <- sapply(1:15, function(s)
+  cor(env_surface(seed = 3000 + s), env_surface(seed = 3000 + s + 500L)))
+```
+
+Independent by construction, but each replicate draws its own pair of surfaces,
+so the *realised* correlation varies: across the 15 landscapes it runs from
+`r fmt(min(acc_r), 2)` to `r fmt(max(acc_r), 2)` (mean `r fmt(mean(acc_r), 2)`,
+sd `r fmt(sd(acc_r), 2)`). Quoting one seed's value would invite the reader to
+think the design pins it.
+
+```{r biased-po-figure, echo = FALSE, fig.width = 5.2, fig.height = 4.0, dpi = 200, out.width = "70%", fig.cap = "The same penalty with a precise but sampling-biased opportunistic arm (400 rows, reporting intensity biased by accessibility) against an unbiased but fuzzed survey arm (100 rows). Pale symbols are the 105 distinct fits (15 precise, generated before fuzz is applied and so drawn at each fuzz level; 45 fuzzed; 45 integrated); solid symbols and lines are means. The bias is modelled with an access term in every fit. The integrated estimate still falls below the precise-arm-alone estimate at both non-zero fuzz levels, by a smaller margin than in the unbiased design.", fig.alt = "One panel plotting estimated slope against positional fuzz (0, 0.5 and 1.0 times the correlation length) for three analyses: precise (biased but unfuzzed), fuzzed (unbiased but positionally fuzzed), and integrated. A dashed grey reference line, labelled truth, marks the true slope 0.9. The precise series stays flat near 0.90 at every fuzz level. The fuzzed series falls from about 0.92 at zero fuzz to about 0.21 at fuzz 1.0. The integrated series falls from about 0.90 to about 0.80, below the precise series at both non-zero fuzz levels."}
+par(mar = c(5.3, 3.6, 2.2, 0.6), mgp = c(2.1, 0.6, 0), las = 1,
+    cex.axis = 0.80, cex.lab = 0.85, tcl = -0.3)
+plot(NA, xlim = c(-0.06, 1.06), ylim = range(c(0, 1.05, d_bpo$beta_hat)),
+     xaxt = "n", xlab = xlb,
+     ylab = expression("estimated slope  " * hat(beta)))
+axis(1, at = fz, labels = format(fz))
+abline(h = 0.9, col = "grey45", lwd = 1.1, lty = 2)
+text(1.045, 0.9, "truth", col = "grey35", cex = 0.66, adj = c(1, -0.45))
+mu_bpo <- tapply(d_bpo$beta_hat, list(d_bpo$arm, d_bpo$fuzz), mean)[arms, ]
+set.seed(3)
+for (a in arms) {
+  s <- d_bpo[d_bpo$arm == a, ]
+  points(s$fuzz + off[a] + runif(nrow(s), -0.010, 0.010), s$beta_hat,
+         pch = pchv[a], cex = 0.42, col = adjustcolor(col[a], 0.30))
+  lines(fz + off[a], mu_bpo[a, ], col = col[a], lwd = 2, lty = ltyv[a])
+  points(fz + off[a], mu_bpo[a, ], pch = pchv[a], cex = 1.0, col = col[a])
+}
+legend("bottomleft", legend = arms, col = col[arms], pch = pchv[arms],
+       lty = ltyv[arms], lwd = 1.6, bty = "n", cex = 0.72,
+       text.col = col[arms])
+mtext("400 precise-but-biased / 100 unbiased-but-fuzzed", side = 3,
+      line = 0.5, cex = 0.75, font = 2)
+## The fence travels with the PNG, not with the caption.
+mtext("SIMULATED DATA — point estimates only; no interval or coverage claim",
+      side = 1, line = 3.0, cex = 0.68, col = "grey35")
+```
+
+```{r biased-po-table, echo = FALSE}
+agg3 <- aggregate(beta_hat ~ fuzz + arm, d_bpo, mean)
+w3 <- reshape(agg3, idvar = "fuzz", timevar = "arm", direction = "wide")
+names(w3) <- sub("beta_hat\\.", "", names(w3))
+w3$penalty <- w3$integrated - w3$precise
+bpo_cnt <- t(sapply(w3$fuzz, function(fv) {
+  s <- wide(d_bpo[d_bpo$fuzz == fv, ])
+  c(sum(s$integrated - s$precise < 0),
+    sum(abs(s$integrated - 0.9) > abs(s$precise - 0.9)))
+}))
+w3$lower <- bpo_cnt[, 1]; w3$worse <- bpo_cnt[, 2]
+w3 <- w3[, c("fuzz", "precise", "fuzzed", "integrated", "penalty",
+             "lower", "worse")]
+names(w3) <- c("fuzz", "precise (biased)", "fuzzed (unbiased)", "integrated",
+               "integrated - precise", "lower (of 15)",
+               "further from truth (of 15)")
+knitr::kable(w3, digits = 3, row.names = FALSE)
+```
+
+**The penalty survives the realistic design.** With the motivation for
+integration present and correctly modelled, integrating the fuzzed arm still
+moves the environmental slope further from truth in
+`r min(bpo_cnt[w3$fuzz > 0, 2])` of 15 replicates at both non-zero fuzz levels.
+It is smaller than in the unbiased design — but **do not compare the magnitudes
+across the two runs**: this one fits an `access` term the other does not, so
+they are different models, and only the within-run contrast is valid in each.
+
+The finding is narrower than it sounds, though: the penalty falls on the
+**environmental slope specifically**. The *same* arm, once its coordinates are
+fuzzed, damages the slope while it repairs the reporting bias. Both are true at
+once, and which one dominates is the next section — not a rhetorical question,
+because the answer changes sign.
+
+# When the conclusion reverses
+
+Everything above grants the simulation something no real analysis has: the
+accessibility surface is measured **exactly**, and modelled. Given that, the
+presence-only arm's environmental slope is already unbiased — so integrating a
+fuzzed arm can only cost, and the whole measurement above is a cost with no
+benefit to weigh against it.
+
+Relax that and the ranking flips. `generate-surrogate-error-results.R` changes
+one thing at a time, 12 replicates at `fuzz = 1.0`, the worst case above. Note
+the second row: it is the cell that identifies the mechanism, and the earlier
+version of this table did not have it.
+
+```{r reversal-table, echo = FALSE}
+rev_tab <- do.call(rbind, lapply(sort(unique(d_rev$order)), function(o) {
+  s <- d_rev[d_rev$order == o, ]
+  data.frame(
+    `what the analyst has` = s$cond[1],
+    `cor(access, env)`     = s$rho[1],
+    `surrogate error sd`   = s$err_sd[1],
+    precise                = mean(s$precise),
+    `precise-arm bias t`   = unname(t.test(s$precise - 0.9)$statistic),
+    integrated             = mean(s$integrated),
+    `integration helped`   = paste0(
+      sum(abs(s$integrated - 0.9) < abs(s$precise - 0.9)), " / 12"),
+    check.names = FALSE, row.names = NULL)
+}))
+knitr::kable(rev_tab, digits = c(0, 1, 1, 3, 2, 3, 0), row.names = FALSE)
+```
+
+```{r reversal-derived, include = FALSE}
+hlp <- function(o) { s <- d_rev[d_rev$order == o, ]
+  sum(abs(s$integrated - 0.9) < abs(s$precise - 0.9)) }
+p_flip <- fisher.test(matrix(c(hlp(4), 12 - hlp(4),
+                               hlp(3), 12 - hlp(3)), 2))$p.value
+p_err  <- fisher.test(matrix(c(hlp(2), 12 - hlp(2),
+                               hlp(1), 12 - hlp(1)), 2))$p.value
+ci_str <- function(k) { ci <- binom.test(k, 12)$conf.int
+  sprintf("%d/12 is [%.3f, %.3f]", k, ci[1], ci[2]) }
+```
+
+**The flip needs the conjunction, not either ingredient alone.** Surrogate
+error *by itself*, with accessibility independent of the environment, leaves
+the presence-only slope unbiased (row 2, bias *t* below 2 in absolute value)
+and integration helps in `r hlp(2)` of 12 — indistinguishable from the
+`r hlp(1)` of 12 baseline (Fisher *p* = `r fmt(p_err, 2)`). Confounding by
+itself, with the surrogate measured exactly, helps in `r hlp(3)` of 12. Only
+when the surrogate is **both imperfect and correlated with the environmental
+covariate** does the ranking reverse, to `r hlp(4)` of 12
+(*p* = `r format.pval(p_flip, digits = 2)` against confounding alone).
+
+That is what errors-in-variables predicts: measurement error in one regressor
+spills into another's coefficient only through their covariance. It is also a
+much more useful instruction, because the condition is one you can *check*
+rather than assume. Compute `cor(env, surrogate)` on your own data. Road
+density is correlated with almost every environmental layer, so in practice the
+warning usually applies — but now you can tell.
+
+**Read the table as one contrast, not four ordered results.** With 12
+replicates the proportions carry wide intervals (`r ci_str(hlp(4))`;
+`r ci_str(hlp(1))`). Rows 1 and 2 are not distinguishable from each other, and
+rows 4 and 5 are not either. The single informative comparison is
+confounding-alone against confounding-plus-error.
+
+**And note what the bottom two rows also say: in that regime nothing recovers
+the truth.** Precise `r fmt(rev_tab$precise[4], 2)`, integrated
+`r fmt(rev_tab$integrated[4], 2)`, against a true 0.9. The *ranking* flips;
+both answers are still bad. "Integration helped" there means "less wrong", not
+"right".
+
+So the decision this article supports is narrower than the measurement that
+drives it. **Positional precision is a cost to measure, not a reason to discard
+a structured arm.** If your bias surrogate is imperfect *and* correlated with
+your environment — and for road-density-style surrogates it usually is — the
+structured arm is probably earning its place despite the fuzz.
+
+# What to do
+
+`gllvmTMB` does not implement a fix and this article does not claim one. The
+general remedy is an errors-in-variables layer with a per-arm positional prior;
+that is a real modelling option and it is not implemented here.
+
+1. **Compute the ratio, do not eyeball the map.** Run
+   [the recipe](#the-recipe) on your own raster, divide any reported *practical
+   range* by 3 first, and compare the result to your survey arm's positional
+   uncertainty. Fuzz well below the correlation length is benign; by half the
+   correlation length the tables above already show
+   `r fmt(min(att05), 0)`%+ attenuation in the affected arm.
+2. **Check `cor(env, surrogate)`.** It decides which way the previous section
+   points for you. Independent surrogate: the fuzzed arm is a net cost.
+   Correlated and imperfect: it is probably a net gain.
+3. **Weight the arms, or at least know what the unweighted fit is doing.** The
+   penalty tracks the fuzzed arm's share of the pooled data, so an integrated
+   fit that lets the larger arm dominate is making that choice implicitly.
+   Fletcher et al. (2019) reach the same conclusion from the swamping side.
+4. **Fit the arms separately first.** If the precise-arm-alone and integrated
+   slopes disagree materially, that gap is evidence rather than noise. In real
+   data it can reflect positional error, sampling bias, detection differences,
+   or a genuine scale difference all at once, and these clean simulations
+   cannot tell you which.
+5. **Ask for the precise coordinates.** Most fuzzing regimes, ABMI's included,
+   have a data-agreement route to exact locations. For an analysis that turns
+   on an environmental slope, that request is worth making before the analysis
+   rather than after.
+
+**And do not reach for the obvious mitigation, because it has been tested and
+it does not work.** The intuitive fix is to match covariate resolution to
+positional precision — if coordinates are fuzzed to 5.5 km, extract covariates
+at 5.5 km, so they are read at approximately the right place. An earlier
+version of this article recommended it. **Gábor et al. (2022) tested it
+directly and the answer is in their title: positional errors in species
+distribution modelling are not overcome by the coarser grains of analysis.**
+Moudrý et al. (2023) restate the same finding. Coarsening destroys fine-scale
+signal and does not buy back what positional error took, so it costs twice.
+Measure the ratio, and treat the positional error as a property of the data
+rather than something a resolution choice can absorb.
+
+**A related defect worth checking while you are there.** Positional error
+corrupts the covariate at *fit* time; scaling it separately on the training
+data and on a prediction grid corrupts it at *prediction* time. That error is
+affine, so it preserves the map's rank order **exactly** — every hotspot stays
+a hotspot, nothing warns — while the predicted values move by an amount that
+depends on the two datasets' moments. The companion `isdm-canada-warbler`
+article shows the fix; a worked case with measured magnitudes is in
+`dev/isdm-precision/READER-BLOCKS.md` (Block 5).
 
 # Scope and limits
 
-Stated plainly, because the table is more persuasive than the evidence
-behind it warrants if these are omitted:
+- **Simulation only, and that is a hard boundary, not a caveat.** No real ABMI
+  or GBIF data was fitted anywhere here. The 5.5 km figure is documented ABMI
+  policy and motivates the design; it is not a measurement of bias in any real
+  dataset.
+```{r truncation, include = FALSE}
+## The simulations apply pmin(pmax(coord + rnorm(n, 0, fuzz * ell), 0), 1),
+## so displacement is clipped at the domain boundary. Measure what that
+## actually does rather than describing the intended mechanism.
+set.seed(11); n <- 5e5; ell <- 0.25
+trunc <- t(sapply(c(0.5, 1.0), function(fzz) {
+  lo <- runif(n); la <- runif(n)
+  ex <- rnorm(n, 0, fzz * ell); ey <- rnorm(n, 0, fzz * ell)
+  lf <- pmin(pmax(lo + ex, 0), 1); af <- pmin(pmax(la + ey, 0), 1)
+  c(clipped  = mean(lo + ex < 0 | lo + ex > 1 | la + ey < 0 | la + ey > 1),
+    realised = mean(sqrt((lf - lo)^2 + (af - la)^2)) /
+               mean(sqrt(ex^2 + ey^2)))
+}))
+rownames(trunc) <- c("0.5", "1.0")
+```
 
-- **Simulation only.** No real ABMI or GBIF data was fitted here. The 5.5 km
-  figure is documented ABMI policy and motivates the design; it is not a
-  measurement of bias in any real dataset.
-- **One error model.** Isotropic Gaussian displacement. Administrative
-  fuzzing is often uniform-within-a-cell or grid-snapped, which will not
-  behave identically.
+- **The displacement is a truncated Gaussian, not the isotropic Gaussian the
+  fuzz axis names.** Coordinates are clipped to the unit domain, so at
+  `fuzz = 1.0` about `r fmt(100 * trunc["1.0", "clipped"], 0)`% of survey rows
+  are clipped on at least one axis and the realised mean displacement is about
+  `r fmt(100 * trunc["1.0", "realised"], 0)`% of nominal
+  (`r fmt(100 * trunc["0.5", "clipped"], 0)`% and
+  `r fmt(100 * trunc["0.5", "realised"], 0)`% at `fuzz = 0.5`). The fuzz axis
+  is therefore mislabelled by roughly 10–15%, in the conservative direction —
+  the fuzzed arm is if anything less damaged than the label implies.
+  Administrative fuzzing is often uniform-within-a-cell or grid-snapped, which
+  will behave differently again.
 - **One covariate structure.** A single smooth exponential-correlation
-  surface. Patchier or anisotropic covariates will attenuate differently,
-  and the fuzz-to-correlation-length ratio is the axis that matters.
-- **Fixed effects only.** No latent field is fitted, so this isolates the
-  covariate channel. Positional error also corrupts the estimated spatial
+  surface. Patchier or anisotropic covariates attenuate differently.
+- **The simulated landscape sits where the recipe reads low.** Its `phi` is
+  0.25 of the domain side, so a reader applying this article's own recipe to
+  this article's own landscape would get about `r fmt(0.25 * r025, 2)` rather
+  than 0.25, and would read the `fuzz = 1.0` cell as a ratio near
+  `r fmt(1 / r025, 1)` rather than 1.0. That is exactly the arithmetic the
+  article asks readers to perform, so it is stated rather than left to be
+  discovered.
+- **Fixed effects only.** No latent field is fitted in either design, which
+  isolates the covariate channel and means the field-absorption intuition is
+  set aside, not tested. Positional error also corrupts an estimated spatial
   field; that is not measured here.
-- **No coverage claim.** Point estimates only. Whether intervals around
-  these attenuated slopes retain nominal coverage is a separate question and
-  is not answered.
+- **One bias mechanism.** One accessibility surface, one bias coefficient.
+  Real reporting bias may be multi-causal, non-linear, or itself measured with
+  error.
+- **Fifteen replicates, and three designs on one set of landscapes.** The
+  effects reported are large relative to their confidence intervals, but the
+  three designs are not three independent confirmations, and no result here is
+  a precision estimate.
+- **No coverage claim.** Point estimates only. Whether intervals around these
+  attenuated slopes retain nominal coverage is a separate question and is not
+  answered.
+
+## References
+
+- Fletcher, R. J. Jr., et al. (2019). *A practical guide for combining data to
+  model species distributions.* Establishes that unweighted integrated models
+  are driven by the abundant presence-only arm, increasingly so as that arm
+  grows.
+- Gábor, L., Jetz, W., Lu, M., et al. (2022). *Positional errors in species
+  distribution modelling are not overcome by the coarser grains of analysis.*
+  Also reports SDM performance declining as positional error grows.
+- Moudrý, V., et al. (2023). Restates the Gábor et al. result in a review of
+  spatial-resolution choices in species distribution modelling.

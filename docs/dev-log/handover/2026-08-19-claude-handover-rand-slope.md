@@ -118,3 +118,50 @@ eliminated), **#1134**, **#1149**, **#813**.
 2. **#1080 item 3** — the `shape_gamma`/`cv_gamma_delta`/`scale_student` rename (breaking).
    🔴 **#1080 item 4 is SETTLED — do not re-open** (gllvmTMB #856, 2026-07-31).
 3. The two collaborator-name mentions in PRs #1150/#1157.
+
+---
+
+## 🔴 ADDENDUM — Rose's adversarial verdict on #1175: **CHANGES REQUIRED**
+
+Landed after the body above was written. **No defect in `src/`** — the hoist and the
+dimension assumption were independently confirmed safe (and `origin/main` was rebuilt
+side-by-side: 4 compiler warnings each, byte-identical, all in Eigen). But **do not merge
+#1175 until these are fixed**:
+
+1. **The headline capability is UNTESTED.** `total_lower` / `total_upper` / `total_status`
+   are asserted only where they trivially equal `lower`/`upper`. The `adr_tot$ok == FALSE`
+   branch degrades silently to `"unavailable"` + NA and no test would notice. Rose verified
+   the path works (C++ `sd_B_slope_total` matches an R-side reconstruction to max abs diff
+   **0**), so this is a missing guard, not a bug.
+2. **The "INDEPENDENTLY constructed" cross-check claim is FALSE as written** — in CI-15,
+   the after-task §6/§4c, AND in the coordinator's own report to Shinichi. `sd_b(j) =
+   sqrt(Sigma_b_dep(j,j))` are the SAME C++ quantity, so that assertion is an algebraic
+   restatement guarding R-side position selection, not C++ packing. **The packing IS tested
+   — by the ground-truth recovery assertion** (known `L`, slope SDs chosen off-diagonal-
+   dependent). Credit the right assertion; the claim "would have caught the 2/5/8 bug on
+   day one" is false as attached.
+3. **Rename the loadings-only test** — titled "recovers a known-truth slope SD" but asserts
+   no truth, only `estimate > 0.01 & < 1` (under `unique = FALSE` the fit is misspecified
+   against the Psi-generated fixture, so there is no clean truth). Soften "recovery cell"
+   for that route in CI-15.
+4. **`<<FULL_SUITE_TAIL>>` is still a literal placeholder** in after-task §7 while §5 claims
+   the suite was run to completion. Real tail: `[ FAIL 0 | WARN 9 | SKIP 877 | PASS 16305 ]`.
+5. **The consumer audit under-counted.** `summary.sdreport` defaults to `select = "all"`,
+   which INCLUDES the report block; four test files use the bare form
+   (`test-matrix-slope-{poisson,phylo-dep,phylo-latent,spatial-latent}.R`), and the
+   phylo-dep one is exactly a fit that gains `sd_b` rows. All four filter by name and no
+   name collides, **so the conclusion survives — but by luck of the grep, not by the stated
+   coverage.** The layout shift is real: `b_fix` moved 12 rows.
+6. **Soften the cost claim**; drop the mtime argument. "`cov.fixed` unaffected by ADREPORT
+   count at all" overreaches — evidence supports "not measurably affected at this scale".
+   And §9's "the `.so` was newer than the `.cpp`, so the baseline was fresh" is backwards:
+   that is exactly when `make` SKIPS the rebuild. (`compile_dll(force = TRUE)` does not
+   clean `.o` — rebuild independently.)
+7. *(Optional)* Revert the `Sigma_B_unique_slope` hoist — its only reader sits INSIDE the
+   `if (use_diag_B_slope == 1)` block it was already local to, so the hoist buys nothing and
+   widens the diff in the repo's highest-risk file.
+
+**Process lesson for the next session:** two agents shared the slice-2 worktree; the builder
+rebased over the coordinator's commits (nothing lost, but verified rather than assumed), and
+Rose spent part of her audit on a moving tree. **Stop an agent explicitly rather than
+trusting its "done" report.**

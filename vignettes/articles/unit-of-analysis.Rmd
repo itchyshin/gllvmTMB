@@ -34,6 +34,38 @@ and model vocabulary — trait, unit, latent variable, loading — see
 library(gllvmTMB)
 ```
 
+<!-- The toy landscape is built here, hidden, so the figure in the next section
+     can use it; the code itself is shown to the reader further down, from this
+     same chunk, via ref.label. Keep `toy-build-mesh` in step with the visible
+     `make_mesh()` call in the `toy-fit` chunk. -->
+
+```{r toy-build-data, include = FALSE}
+set.seed(20260818)
+
+n_site <- 12
+sites <- data.frame(
+  site    = sprintf("checklist_%02d", seq_len(n_site)),
+  X       = runif(n_site, 0, 20),          # projected coordinates, in km
+  Y       = runif(n_site, 0, 20),
+  minutes = sample(c(20, 45, 60, 90), n_site, replace = TRUE)
+)
+sites$log_effort <- log(sites$minutes / 60)  # effort, on the log scale
+
+species   <- c("warbler", "vireo", "thrush")
+abundance <- c(warbler = 0.6, vireo = 0.0, thrush = -1.2)  # thrush is scarce
+
+dat <- do.call(rbind, lapply(species, function(s) transform(
+  sites, trait = s,
+  value = rpois(n_site, exp(abundance[[s]] + 0.08 * sites$X + sites$log_effort))
+)))
+dat$trait <- factor(dat$trait)
+dat$site  <- factor(dat$site)
+```
+
+```{r toy-build-mesh, include = FALSE}
+mesh <- make_mesh(dat, c("X", "Y"), cutoff = 3)
+```
+
 # A count is a number of birds and an amount of looking
 
 Write down a single observation: *three Canada Warblers*. On its own that
@@ -82,33 +114,122 @@ from a finite number of numbers: the surface is stored at the mesh vertices,
 and each observation's exact coordinate is expressed as a weighted blend of
 the nearby vertices. Your coordinates stay exactly where they are.
 
+The figure below draws all three over the same toy landscape used in the rest
+of this page: the same twelve records as events, as grid cells, and under a
+mesh.
+
+```{r fig-three-ways, echo = FALSE, fig.width = 9, fig.height = 4.35, out.width = "100%", fig.alt = "Three square map panels sharing one coordinate frame. Panel A, 'A counting unit', shows twelve dark points, each surrounded by a ring whose size gives that checklist's duration; a key below the panel shows rings for 20, 45 and 90 minutes. Panel B, 'A choice', shows the same twelve points, now faint grey, with a dotted five-kilometre grid across the whole frame; a short line runs from each point to a filled orange square at the centre of its cell, and each occupied cell is lightly shaded and carries the pooled bird count in bold. Three cells receive two checklists each. Panel C, 'Scaffolding, not data', shows a grey triangular mesh of thirty-four vertices spanning the frame and extending past the data, with the same twelve dark ringed points drawn on top, in exactly the positions they occupy in panel A."}
+op <- par(mfrow = c(1, 3), mar = c(0.5, 0.5, 2.7, 0.5), oma = c(4.4, 0, 0, 0))
+
+ink <- "#222222"; moved <- "#D55E00"; scaf <- "#9A9A9A"; ghost <- "#C8C8C8"
+
+mv <- mesh$mesh$loc
+xl <- range(c(mv[, 1], sites$X)) + c(-1, 1)
+yl <- range(c(mv[, 2], sites$Y)) + c(-1, 1)
+
+circ <- function(x, y, r, col, lwd = 1.3) {
+  th <- seq(0, 2 * pi, length.out = 60)
+  for (i in seq_along(x))
+    lines(x[i] + r[i] * cos(th), y[i] + r[i] * sin(th), col = col, lwd = lwd)
+}
+er <- function(minutes) 1.4 * sqrt(minutes / 60)   # ring radius encodes effort
+
+panel <- function(main, sub) {
+  plot(NA, xlim = xl, ylim = yl, asp = 1, xlab = "", ylab = "",
+       axes = FALSE, xaxs = "i", yaxs = "i")
+  box(col = "#D5D5D5")
+  mtext(main, side = 3, line = 1.15, adj = 0, font = 2, cex = 0.92)
+  mtext(sub,  side = 3, line = 0.15, adj = 0, cex = 0.72, col = "#555555")
+}
+
+## A -- the observation events themselves
+panel("A. A counting unit", "one place, one amount of looking")
+circ(sites$X, sites$Y, er(sites$minutes), ink)
+points(sites$X, sites$Y, pch = 19, cex = 0.55, col = ink)
+par(xpd = NA)   # effort key sits outside the frame, never a 13th checklist
+u  <- par("usr")            # asp = 1 expands the limits; anchor to what was drawn
+ky <- u[3] - (er(90) + 1.1)   # one row, so nothing can fall off the canvas
+kx <- u[1] + c(0.44, 0.62, 0.80) * (u[2] - u[1])
+km <- c(20, 45, 90)
+circ(kx, rep(ky, 3), er(km), ink)
+points(kx, rep(ky, 3), pch = 19, cex = 0.55, col = ink)
+text(kx + er(km) + 0.5, ky, km, cex = 0.78, col = "#555555", adj = c(0, 0.5))
+text(u[1] + 0.02 * (u[2] - u[1]), ky, "ring size =\nminutes of looking",
+     cex = 0.78, col = "#555555", adj = c(0, 0.5))
+par(xpd = FALSE)
+
+## B -- the same records, assigned to a 5 km grid
+cell <- 5; brk <- seq(0, 20, by = cell)
+cx <- brk[findInterval(sites$X, brk, rightmost.closed = TRUE)] + cell / 2
+cy <- brk[findInterval(sites$Y, brk, rightmost.closed = TRUE)] + cell / 2
+tot <- with(dat, tapply(value, site, sum))[as.character(sites$site)]
+agg <- aggregate(cbind(count = tot, mins = sites$minutes) ~ cx + cy,
+                 data.frame(cx, cy, tot, minutes = sites$minutes), FUN = sum)
+
+panel("B. A choice", "gridded: every record moves to a cell centre")
+rect(agg$cx - cell / 2, agg$cy - cell / 2, agg$cx + cell / 2,
+     agg$cy + cell / 2, col = "#FBEBE1", border = NA)
+gr <- seq(-25, 45, by = cell)
+abline(v = gr, col = "#CFCFCF", lty = 3); abline(h = gr, col = "#CFCFCF", lty = 3)
+circ(sites$X, sites$Y, er(sites$minutes), ghost, lwd = 1)
+segments(sites$X, sites$Y, cx, cy, col = moved, lwd = 1.1)
+points(sites$X, sites$Y, pch = 1, cex = 0.5, col = "#999999")
+points(agg$cx, agg$cy, pch = 15, cex = 1.3, col = moved)
+
+# pooled count in whichever corner of its cell no mark reaches into
+ox <- c(sites$X, agg$cx); oy <- c(sites$Y, agg$cy)
+orad <- c(er(sites$minutes), rep(0.8, nrow(agg))) + 0.3
+sx <- c(-1, 1, -1, 1); sy <- c(1, 1, -1, -1)
+for (i in seq_len(nrow(agg))) {
+  L <- as.character(agg$count[i])
+  w <- strwidth(L, cex = 1.05, font = 2) + 0.2; h <- 1.4
+  x0 <- y1 <- hit <- numeric(4)
+  for (j in 1:4) {
+    ax <- agg$cx[i] + sx[j] * (cell / 2 - 0.35)
+    ay <- agg$cy[i] + sy[j] * (cell / 2 - 0.35)
+    x0[j] <- if (sx[j] < 0) ax else ax - w
+    y1[j] <- if (sy[j] < 0) ay + h else ay
+    dx <- pmax(0, pmax(x0[j] - ox, ox - x0[j] - w))
+    dy <- pmax(0, pmax(y1[j] - h - oy, oy - y1[j]))
+    hit[j] <- sum(sqrt(dx^2 + dy^2) < orad)
+  }
+  j <- which.min(hit)
+  text(x0[j], y1[j], L, cex = 1.05, font = 2, col = moved, adj = c(0, 1))
+}
+
+## C -- the mesh this article actually builds, with the data unmoved
+tv <- mesh$mesh$graph$tv
+panel("C. Scaffolding, not data", "the mesh: the data never snap to it")
+for (k in 1:3) {
+  a <- tv[, k]; b <- tv[, k %% 3 + 1]
+  segments(mv[a, 1], mv[a, 2], mv[b, 1], mv[b, 2], col = scaf, lwd = 0.6)
+}
+points(mv[, 1], mv[, 2], pch = 19, cex = 0.32, col = scaf)
+circ(sites$X, sites$Y, er(sites$minutes), ink)
+points(sites$X, sites$Y, pch = 19, cex = 0.55, col = ink)
+
+par(op)
+```
+
+*The same twelve records, three ways.* **A** — each record is one place and
+one amount of looking; the ring size is the checklist's duration. **B** — the
+same records assigned to a 5-km grid: every point is displaced to a cell
+centre (squares), and the bold number is the cell's pooled count. Where two
+faint rings run into one square, two checklists have been merged — in the
+top-left cell a 20-minute and a 90-minute visit become a single cell with
+110 minutes behind it. **C** — the mesh `make_mesh()` builds for these data: a
+scaffold for the density surface, denser and wider than the data, and the
+twelve records stay exactly where they were in **A**.
+
 # What counts as a "site" in your data frame
 
 Whatever unit carries one location and one effort. Here are twelve of them —
 twelve checklists, three species, one row per species per checklist.
 
-```{r toy-data}
-set.seed(20260818)
+```{r toy-data, ref.label = "toy-build-data", eval = FALSE}
+```
 
-n_site <- 12
-sites <- data.frame(
-  site    = sprintf("checklist_%02d", seq_len(n_site)),
-  X       = runif(n_site, 0, 20),          # projected coordinates, in km
-  Y       = runif(n_site, 0, 20),
-  minutes = sample(c(20, 45, 60, 90), n_site, replace = TRUE)
-)
-sites$log_effort <- log(sites$minutes / 60)  # effort, on the log scale
-
-species   <- c("warbler", "vireo", "thrush")
-abundance <- c(warbler = 0.6, vireo = 0.0, thrush = -1.2)  # thrush is scarce
-
-dat <- do.call(rbind, lapply(species, function(s) transform(
-  sites, trait = s,
-  value = rpois(n_site, exp(abundance[[s]] + 0.08 * sites$X + sites$log_effort))
-)))
-dat$trait <- factor(dat$trait)
-dat$site  <- factor(dat$site)
-
+```{r toy-str}
 str(dat[, c("site", "X", "Y", "log_effort", "trait", "value")])
 ```
 
@@ -211,6 +332,40 @@ c(rows = nrow(dat), sites = nlevels(dat$site), species = nlevels(dat$trait),
 
 table(species = dat$trait, absent = dat$value == 0)
 ```
+
+The whole table fits in one picture, with the zeros left open.
+
+```{r fig-crossing, echo = FALSE, fig.width = 7.5, fig.height = 2.1, out.width = "100%", fig.alt = "A grid of counts three rows deep and twelve columns wide: one row per species, one column per checklist. Every cell holds a number, so the rectangle is complete with no gaps. Cells whose count is one or more are shaded grey with the count in bold; cells holding a zero are left white with a plain 0. To the right of each row a note gives how many of the twelve are zero: warbler one, vireo four, thrush six."}
+m  <- with(dat, tapply(value, list(trait, site), identity))
+m  <- m[c("warbler", "vireo", "thrush"), ]
+ns <- ncol(m); nr <- nrow(m)
+
+op <- par(mar = c(2.1, 5.4, 2.6, 6.4), xpd = NA)
+plot(NA, xlim = c(0, ns), ylim = c(0, nr), asp = 1, axes = FALSE,
+     xlab = "", ylab = "", xaxs = "i", yaxs = "i")
+
+for (i in seq_len(nr)) for (j in seq_len(ns)) {
+  v <- m[i, j]; y <- nr - i
+  rect(j - 1, y, j, y + 1, col = if (v > 0) "#E4E4E4" else "white",
+       border = "#B0B0B0", lwd = 0.7)
+  text(j - 0.5, y + 0.5, v, cex = 0.85, font = if (v > 0) 2 else 1,
+       col = "#222222")
+}
+text(-0.25, rev(seq_len(nr)) - 0.5, rownames(m), adj = 1, cex = 0.85)
+text(seq_len(ns) - 0.5, nr + 0.22, sub("checklist_", "", colnames(m)),
+     adj = c(0.5, 0), cex = 0.7, col = "#555555")
+text(ns / 2, nr + 0.62, "checklist", adj = c(0.5, 0), cex = 0.78, col = "#555555")
+text(ns + 0.3, rev(seq_len(nr)) - 0.5, paste0(rowSums(m == 0), " of ", ns,
+     " zero"), adj = 0, cex = 0.75, col = "#555555")
+text(0, -0.55, "open cell = a zero: we looked here and did not find it",
+     adj = c(0, 1), cex = 0.78, col = "#555555")
+par(op)
+```
+
+*Every species has a row at every checklist, including where it was not
+found.* The rectangle is complete — no gaps — and the open cells are the
+zeros. Each one is a record of looking and not finding, and the scarcer the
+species, the more of its evidence lives in those open cells.
 
 Those zeros are not padding. Each one says *we looked here and did not find
 this species*, which is genuine evidence about where the species is not. A

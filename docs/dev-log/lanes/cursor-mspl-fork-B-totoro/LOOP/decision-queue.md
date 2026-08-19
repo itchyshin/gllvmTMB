@@ -44,5 +44,9 @@ An empty or OPEN row here **does not waive** a `LOOP/GOAL.md` hard stop.
 
 ## Open questions for Shinichi
 
-**None that block T1 recording.** Do not freeze T\* from this kit
-unless he asks after the 800-row receipt is read.
+1. **T\* option A / B / C** — read
+   `docs/dev-log/research/2026-08-19-mspl-forkB-tstar-discussion-packet.md`
+   (landing PR for items 2–4, 2026-08-19). **Not frozen** by that file.
+2. **DRAC confirm `/goal`?** — kit at
+   `docs/dev-log/lanes/cursor-mspl-fork-B-drac-confirm/LOOP/` (recommended if
+   Option A or B).

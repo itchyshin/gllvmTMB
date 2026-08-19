@@ -1,3 +1,51 @@
+## 2026-08-19 — `slope_sd_ci()` Slice 2: ADREPORT unblocks the phylo + loadings routes (CI-15 partial), DRAFT PR, needs Shinichi sign-off
+
+Lane `claude/slope-ci-adreport-20260819` (worktree `/private/tmp/gllvmtmb-slice2`,
+off `origin/main`, which already carries Slice 1). Extends `slope_sd_ci()` to
+the two routes Slice 1 refused (register row CI-15): the phylogenetic
+Cholesky augmented-slope route (`theta_dep_chol`) and the loadings-only
+augmented random-slope route (`theta_rr_B_slope` alone). **Touches `src/`**:
+`ADREPORT()`s the existing `sd_b` in the `theta_dep_chol` branch and two new
+vectors, `sd_rr_B_slope` and `sd_B_slope_total`, additively (no existing
+computation, likelihood term, or `REPORT()` altered). `R/slope-sd-ci.R` reads
+these by NAME from `summary(fit$sd_report, "report")`, never by position --
+this is the design's explicit fix for the 2/5/8-vs-2/4/6 hand-indexing bug a
+first attempt hit (`dev/slope-interval-feasibility-RESULTS.md`).
+
+**Measured, not assumed, per the brief.** (1) `sdreport()` runtime cost: an
+alternating-build A/B comparison (baseline `.so` vs slice-2 `.so`, swapped
+in place, 4 rounds) found no measurable slowdown (~0.06-0.11s both builds;
+a naive single before/after pair had shown an apparent 4-5x slowdown that
+was pure noise from other concurrent lanes' CPU load on this shared
+machine -- see the after-task Section 4a/9 for the full story). (2)
+position-based `sd_report` consumers: grepped all 30 `R/` files touching
+`sd_report`; the only four call sites reading the ADREPORT ("report")
+block all filter by `rownames(...) == name`, never by position -- the
+added rows cannot silently misalign an existing extractor. (3) `sd_b`
+consistency: both new recovery tests assert `all.equal(ADREPORT estimate,
+fit$report$sd_b, tolerance = 1e-6)` inside `slope_sd_ci()` itself, `abort`ing
+loudly on mismatch.
+
+CI-15 moved `blocked` -> `partial` (not `covered`: single-seed recovery
+per route, `interval_status = "wald_uncalibrated"` throughout, no coverage
+campaign, gated by CI-08/CI-10 same as CI-14). CI-14 gains an interval on
+`total_sd` (`total_lower`/`total_upper`/`total_status`) via the new
+`sd_B_slope_total` ADREPORT; `estimate`/`lower`/`upper` for the diagonal
+route are byte-identical to Slice 1.
+
+Full checks: `pkgbuild::compile_dll` clean (no new compiler warnings),
+`devtools::document()` clean, `pkgdown::check_pkgdown()` no problems,
+`test-reader-facing-no-register-codes.R` passes (module-header `##`
+comments cite CI-14/CI-15; roxygen `#'` lines do not), full-package
+`devtools::test()` run to completion (see after-task Section 7 for the
+verbatim tail). After-task:
+`docs/dev-log/after-task/2026-08-19-slope-sd-ci-slice2-adreport.md`.
+**NOT claimed**: repeated-sampling coverage/calibration for any of the
+three routes (D-112 unchanged); multi-slope (`s >= 2`) phylo_dep recovery
+evidence (dispatch code is dimension-general but untested beyond `s = 1`);
+non-Gaussian evidence for any route. This is a `src/` + `sdreport` payload
+change -- PR opened as **DRAFT**, not merged, needs Shinichi's explicit
+sign-off per CLAUDE.md's high-risk merge rule.
 ## 2026-08-18 — Totoro T1 panel recorded (fork B; T* NOT-FROZEN)
 
 Lane `cursor/mspl-fork-B-totoro-20260818`. Deploy

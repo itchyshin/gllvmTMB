@@ -177,6 +177,20 @@ test_that("slope_sd_ci() recovers a known-truth slope SD with a finite interval"
   ## fit$report$Sigma_B_slope without going through slope_sd_ci()).
   expect_equal(ci$total_sd, c(0.3878717, 0.2924811, 0.3294379), tolerance = 1e-5)
 
+  ## The headline Slice-2 capability on THIS route: total_sd now carries a
+  ## genuine interval via the combined sd_B_slope_total ADREPORT (which
+  ## differentiates through BOTH theta_rr_B_slope and theta_diag_B_slope
+  ## jointly). This is the non-trivial case -- unlike the phylo_dep and
+  ## loadings-only routes below, where component == "total" makes
+  ## total_lower/total_upper identical to lower/upper by construction, here
+  ## total_sd != estimate, so a real, separately-computed interval is the
+  ## only thing that could appear in these columns.
+  expect_identical(ci$total_status, rep("ok", fx$n_traits))
+  expect_true(all(is.finite(ci$total_lower) & is.finite(ci$total_upper)))
+  expect_true(all(ci$total_lower < ci$total_sd & ci$total_sd < ci$total_upper))
+  expect_true(all(ci$total_lower != ci$lower))
+  expect_true(all(ci$total_upper != ci$upper))
+
   ## scale = "variance" is consistent with scale = "sd" (same fit);
   ## total_sd stays on the SD scale regardless of `scale`.
   ci_var <- suppressWarnings(slope_sd_ci(fit, scale = "variance"))
@@ -199,6 +213,60 @@ test_that("slope_sd_ci() recovers a known-truth slope SD with a finite interval"
   sub <- subset(ci, status == "ok")
   expect_true(all(c("component", "total_sd") %in% names(sub)))
   expect_true(all(sub$component == "unique_psi"))
+})
+
+## ---- (a2) total_sd interval degrades to "unavailable" rather than a
+## silently wrong number when the combined sd_B_slope_total ADREPORT is
+## missing (R/slope-sd-ci.R:594-599) -- e.g. a fit REPORT()ed (so
+## fit$report$sd_B_slope_total exists) under an older package version whose
+## sdreport() "report" table predates this slice's ADREPORT() call. Without
+## this guard, mismatched estimate/se vectors could be paired up by
+## position and silently returned as a plausible-looking interval.
+
+test_that("slope_sd_ci() total_sd interval degrades to 'unavailable' (not a silently wrong number) when sd_B_slope_total's ADREPORT is missing", {
+  n_traits <- 2L
+  slope_theta <- c(-1.6, -1.2) # log-SD, unique (Psi) component
+  slope_se    <- c(0.30, 0.28)
+  total_full <- numeric(2L * n_traits)
+  total_full[seq(2L, 2L * n_traits, by = 2L)] <- c(0.55, 0.62) # slope positions
+
+  fit <- mock_slope_ci_fit(
+    slope_theta = slope_theta, slope_se = slope_se,
+    rr_present = TRUE, rr_shared_var_slope = c(0.20, 0.25)
+  )
+  ## fit$report$sd_B_slope_total is REPORT()ed (non-NULL, correct length),
+  ## as it would be on a real fit -- but this mock's sd_report carries no
+  ## "report" (ADREPORT) table at all, so .slope_ci_adreport_lookup() for
+  ## "sd_B_slope_total" cannot succeed. This is the case
+  ## `adr_tot$ok == FALSE` at R/slope-sd-ci.R:595.
+  fit$report$sd_B_slope_total <- total_full
+
+  ## Two warnings fire on this call: slope_sd_ci()'s own "shared loadings
+  ## component" notice (fires whenever rr_B_slope is present, regardless of
+  ## the degrade), and TMB's own summary.sdreport() warning that the
+  ## "report" table has nothing to select -- an expected side effect of
+  ## this mock's deliberately absent ADREPORT table, not a bug.
+  expect_warning(
+    expect_warning(
+      ci <- slope_sd_ci(fit),
+      "shared random-slope loadings component"
+    ),
+    "no or empty summary selected"
+  )
+  expect_true(all(ci$component == "unique_psi"))
+  ## The per-row unique-Psi estimate/interval is unaffected -- the degrade
+  ## is isolated to the total_* columns, not the whole row.
+  expect_true(all(ci$status == "ok"))
+  expect_true(all(is.finite(ci$lower)) && all(is.finite(ci$upper)))
+
+  ## The degrade itself: NA bounds, explicit "unavailable" status -- never
+  ## a finite-looking but wrong interval.
+  expect_identical(ci$total_status, rep("unavailable", n_traits))
+  expect_true(all(is.na(ci$total_lower)))
+  expect_true(all(is.na(ci$total_upper)))
+  ## The point estimate still comes from the REPORT()ed (not ADREPORTed)
+  ## quantity, so it is not silently dropped even though the interval is.
+  expect_equal(ci$total_sd, total_full[seq(2L, 2L * n_traits, by = 2L)])
 })
 
 ## ---- (b) Kill-switch guards: each must FAIL before it exists ---------
@@ -341,34 +409,311 @@ test_that("slope_sd_ci() guard: near-zero SD relative to siblings -> NA interval
   expect_identical(ci1$status, "ok")
 })
 
-## ---- (c) Deferred routes ERROR rather than returning a number --------
+## ---- (c) Slice 2: previously-deferred routes now RETURN intervals ----
+## via ADREPORT()ed quantities read off sdreport() (src/gllvmTMB.cpp:
+## `sd_b` in the theta_dep_chol branch, `sd_rr_B_slope`,
+## `sd_B_slope_total`). See R/slope-sd-ci.R's module header and
+## dev/S6-slope-sd-ci-review.md for why a hand-indexed R-side Jacobian
+## was rejected in favour of this route.
 
-test_that("slope_sd_ci() refuses the phylogenetic Cholesky route (theta_dep_chol)", {
-  fit <- mock_slope_ci_fit(
-    slope_theta = c(-1.6, -1.55),
-    slope_se    = c(0.32, 0.31),
-    phylo_dep_slope = TRUE
+## ---- Mock builders for the two ADREPORT-based routes. TMB's own
+## `summary.sdreport(object, "report")` only reads `object$value` /
+## `object$sd` (both named/ordered by the ADREPORT variable name), so a
+## hand-built `sd_report` with those two fields plus `pdHess` dispatches
+## through the REAL `TMB:::summary.sdreport` method -- these mocks
+## exercise the same code path a real fit does, not a hand-simplified
+## stand-in.
+
+mock_phylo_dep_slope_fit <- function(slope_est, slope_se, pdHess = TRUE,
+                                      n_traits = length(slope_est),
+                                      slope_cols = "x") {
+  stopifnot(length(slope_est) == n_traits, length(slope_se) == n_traits)
+  trait_names <- paste0("t", seq_len(n_traits))
+  stride <- 2L # s = 1 (single slope)
+  C <- stride * n_traits
+  est_full <- se_full <- numeric(C)
+  for (t in seq_len(n_traits)) {
+    est_full[stride * (t - 1L) + 1L] <- 0.4 # intercept coordinate (unused)
+    se_full[stride * (t - 1L) + 1L]  <- 0.1
+    est_full[stride * (t - 1L) + 2L] <- slope_est[t]
+    se_full[stride * (t - 1L) + 2L]  <- slope_se[t]
+  }
+  structure(
+    list(
+      use = list(
+        diag_B_slope = FALSE,
+        rr_B_slope = FALSE,
+        phylo_dep_slope = TRUE,
+        phylo_dep_slope_cols = slope_cols
+      ),
+      data = data.frame(trait = factor(trait_names, levels = trait_names)),
+      trait_col = "trait",
+      opt = list(par = numeric(0)),
+      report = list(sd_b = est_full),
+      sd_report = structure(
+        list(
+          pdHess = pdHess,
+          value = stats::setNames(est_full, rep("sd_b", C)),
+          sd = se_full
+        ),
+        class = "sdreport"
+      )
+    ),
+    class = "gllvmTMB_multi"
   )
-  expect_error(
-    slope_sd_ci(fit),
-    class = "gllvmTMB_slope_sd_ci_unsupported_route"
+}
+
+mock_rr_only_slope_fit <- function(slope_est, slope_se, pdHess = TRUE,
+                                    n_traits = length(slope_est),
+                                    slope_col = "x") {
+  stopifnot(length(slope_est) == n_traits, length(slope_se) == n_traits)
+  trait_names <- paste0("t", seq_len(n_traits))
+  n_lhs <- 2L * n_traits
+  est_full <- se_full <- numeric(n_lhs)
+  for (t in seq_len(n_traits)) {
+    est_full[2L * t - 1L] <- 0.4
+    se_full[2L * t - 1L]  <- 0.1
+    est_full[2L * t]      <- slope_est[t]
+    se_full[2L * t]       <- slope_se[t]
+  }
+  structure(
+    list(
+      use = list(
+        diag_B_slope = FALSE,
+        rr_B_slope = TRUE,
+        rr_B_slope_col = slope_col,
+        phylo_dep_slope = FALSE
+      ),
+      data = data.frame(trait = factor(trait_names, levels = trait_names)),
+      trait_col = "trait",
+      opt = list(par = numeric(0)),
+      report = list(sd_rr_B_slope = est_full),
+      sd_report = structure(
+        list(
+          pdHess = pdHess,
+          value = stats::setNames(est_full, rep("sd_rr_B_slope", n_lhs)),
+          sd = se_full
+        ),
+        class = "sdreport"
+      )
+    ),
+    class = "gllvmTMB_multi"
   )
-  expect_error(slope_sd_ci(fit), "phylogenetic Cholesky")
+}
+
+## ---- (c.1) Phylogenetic Cholesky route: guards (mock-based) ----------
+
+test_that("slope_sd_ci() phylo_dep route: non-PD Hessian -> NA interval", {
+  fit <- mock_phylo_dep_slope_fit(c(0.25, 0.30), c(0.06, 0.07), pdHess = FALSE)
+  expect_warning(ci <- slope_sd_ci(fit), "not positive-definite")
+  expect_true(all(ci$status == "no_pd_hessian"))
+  expect_true(all(is.na(ci$lower)) && all(is.na(ci$upper)))
+  expect_true(all(is.finite(ci$estimate)))
+  expect_identical(ci$method, rep("wald_log_scale_adreport", 2L))
 })
 
-test_that("slope_sd_ci() refuses a loadings-only augmented slope (theta_rr_B_slope alone)", {
-  fit <- mock_slope_ci_fit(
-    slope_theta = c(-1.6, -1.55),
-    slope_se    = c(0.32, 0.31)
-  )
-  fit$use$diag_B_slope <- FALSE
-  fit$use$rr_B_slope <- TRUE
+test_that("slope_sd_ci() phylo_dep route: non-finite se -> NA interval", {
+  fit <- mock_phylo_dep_slope_fit(c(0.25, 0.30), c(NaN, 0.07))
+  expect_warning(ci <- slope_sd_ci(fit), "non-finite")
+  expect_identical(ci$status, c("se_nonfinite", "ok"))
+  expect_true(is.na(ci$lower[1]) && is.na(ci$upper[1]))
+  expect_false(is.na(ci$lower[2]) || is.na(ci$upper[2]))
+})
 
-  expect_error(
-    slope_sd_ci(fit),
-    class = "gllvmTMB_slope_sd_ci_unsupported_route"
+test_that("slope_sd_ci() phylo_dep route: se_blowup -> NA interval", {
+  fit <- mock_phylo_dep_slope_fit(c(1.5e-6, 0.30), c(9200, 0.07))
+  expect_warning(ci <- slope_sd_ci(fit), "exceeds 10")
+  expect_identical(ci$status, c("se_blowup", "ok"))
+  expect_true(is.na(ci$lower[1]) && is.na(ci$upper[1]))
+})
+
+test_that("slope_sd_ci() phylo_dep route: near-zero-relative collapse -> NA interval", {
+  fit <- mock_phylo_dep_slope_fit(
+    c(1e-9, 0.30, 0.28), c(4e-10, 0.07, 0.06)
   )
-  expect_error(slope_sd_ci(fit), "loadings-only")
+  expect_warning(ci <- slope_sd_ci(fit), "1% of this fit's largest")
+  expect_identical(ci$status, c("near_zero_relative", "ok", "ok"))
+})
+
+## ---- (c.2) Phylogenetic Cholesky route: real recovery + ADREPORT
+## cross-check. Heavy-gated (GLLVMTMB_HEAVY_TESTS=1) following the house
+## convention for every other phylo_dep model fit in this package
+## (test-phylo-dep-slope-gaussian.R).
+
+test_that("slope_sd_ci() phylo_dep route recovers a known-truth slope SD, and its ADREPORT matches an independently constructed sqrt(diag(Sigma_b_dep))", {
+  skip_if_not_heavy()
+  testthat::skip_on_cran()
+  testthat::skip_if_not_installed("ape")
+
+  set.seed(778L)
+  n_sp <- 70L
+  T_tr <- 2L
+  n_rep <- 6L
+  C <- 2L * T_tr
+  tree <- ape::rcoal(n_sp)
+  tree$tip.label <- paste0("sp", seq_len(n_sp))
+  ## Same L as test-phylo-dep-slope-gaussian.R's .dep_Ltrue(): slope SDs
+  ## (diagonal entries at positions 2 and 4) are sqrt(0.2^2 + 0.6^2) and
+  ## 0.45 respectively -- i.e. genuinely off-diagonal-dependent for trait 1.
+  L <- matrix(0, C, C)
+  L[lower.tri(L, diag = TRUE)] <- c(
+    0.8, 0.2, -0.1, 0.15,
+    0.6, 0.1, -0.05,
+    0.5, 0.1,
+    0.45
+  )
+  Sigma_b_true <- L %*% t(L)
+  slope_sd_true <- sqrt(diag(Sigma_b_true))[c(2L, 4L)]
+
+  Cphy <- ape::vcv(tree, corr = TRUE)
+  LA <- t(chol(Cphy + diag(1e-8, n_sp)))
+  B <- (LA %*% matrix(stats::rnorm(n_sp * C), n_sp, C)) %*% chol(Sigma_b_true)
+  rownames(B) <- tree$tip.label
+
+  sr <- expand.grid(
+    species = factor(tree$tip.label, levels = tree$tip.label),
+    rep = seq_len(n_rep)
+  )
+  sr$x <- stats::rnorm(nrow(sr))
+  trait_levels <- paste0("t", seq_len(T_tr))
+  df_long <- merge(
+    sr, data.frame(trait = factor(trait_levels, levels = trait_levels)),
+    all = TRUE
+  )
+  df_long <- df_long[order(df_long$species, df_long$rep, df_long$trait), ]
+  ti <- as.integer(df_long$trait)
+  si <- match(as.character(df_long$species), tree$tip.label)
+  mu_t <- seq(1, by = -0.5, length.out = T_tr)[ti]
+  alpha <- B[cbind(si, 2L * (ti - 1L) + 1L)]
+  beta <- B[cbind(si, 2L * (ti - 1L) + 2L)]
+  df_long$value <- mu_t + alpha + beta * df_long$x +
+    stats::rnorm(nrow(df_long), sd = 0.3)
+
+  fit <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+    value ~ 0 + trait + phylo_dep(0 + trait + (0 + trait):x | species),
+    data = df_long, phylo_tree = tree, unit = "species",
+    control = gllvmTMBcontrol(se = TRUE)
+  )))
+  expect_true(isTRUE(fit$use$phylo_dep_slope))
+  expect_true(isTRUE(fit$sd_report$pdHess))
+
+  ci <- slope_sd_ci(fit)
+  expect_s3_class(ci, "gllvmTMB_slope_ci")
+  expect_identical(nrow(ci), T_tr)
+  expect_true(all(ci$status == "ok"))
+  expect_identical(ci$method, rep("wald_log_scale_adreport", T_tr))
+  expect_true(all(ci$component == "total"))
+  expect_equal(ci$total_sd, ci$estimate)
+  expect_equal(ci$total_lower, ci$lower)
+  expect_equal(ci$total_upper, ci$upper)
+
+  ## Recovery: the true slope SDs fall inside the reported CIs. THIS is the
+  ## assertion that actually tests the C++ packing -- slope_sd_true comes
+  ## from the simulated L matrix, wholly outside slope_sd_ci()'s code path,
+  ## so a wrong position (e.g. the 2/5/8-vs-2/4/6 packing bug a first
+  ## attempt hit) would show up here as a failed-to-cover interval.
+  expect_true(all(ci$lower <= slope_sd_true & slope_sd_true <= ci$upper))
+
+  ## A second, narrower check: the ADREPORTed sd_b, as read by
+  ## slope_sd_ci(), equals sqrt(diag(Sigma_b_dep)) computed directly from
+  ## fit$report. This is NOT an independent construction -- sd_b(j) and
+  ## Sigma_b_dep(j,j) are the SAME C++ quantity (sd_b is defined as
+  ## sqrt(Sigma_b_dep(j,j)) in src/gllvmTMB.cpp) -- so it is an algebraic
+  ## restatement that guards R-side position selection (did slope_sd_ci()
+  ## pick out the right rows of the ADREPORT table?), not a check on the
+  ## C++ packing itself.
+  Sigma_b_dep_hat <- as.matrix(fit$report$Sigma_b_dep)
+  independent_sd_b <- sqrt(diag(Sigma_b_dep_hat))
+  slope_positions <- seq(2L, C, by = 2L)
+  expect_equal(ci$estimate, independent_sd_b[slope_positions], tolerance = 1e-6)
+})
+
+## ---- (c.3) Loadings-only route: guards (mock-based) -------------------
+
+test_that("slope_sd_ci() loadings-only route: non-PD Hessian -> NA interval", {
+  fit <- mock_rr_only_slope_fit(c(0.25, 0.30), c(0.06, 0.07), pdHess = FALSE)
+  expect_warning(ci <- slope_sd_ci(fit), "not positive-definite")
+  expect_true(all(ci$status == "no_pd_hessian"))
+  expect_true(all(is.na(ci$lower)) && all(is.na(ci$upper)))
+  expect_identical(ci$component, rep("total", 2L))
+})
+
+test_that("slope_sd_ci() loadings-only route: non-finite se -> NA interval", {
+  fit <- mock_rr_only_slope_fit(c(0.25, 0.30), c(NaN, 0.07))
+  expect_warning(ci <- slope_sd_ci(fit), "non-finite")
+  expect_identical(ci$status, c("se_nonfinite", "ok"))
+})
+
+test_that("slope_sd_ci() loadings-only route: se_blowup -> NA interval", {
+  fit <- mock_rr_only_slope_fit(c(1.5e-6, 0.30), c(9200, 0.07))
+  expect_warning(ci <- slope_sd_ci(fit), "exceeds 10")
+  expect_identical(ci$status, c("se_blowup", "ok"))
+})
+
+test_that("slope_sd_ci() loadings-only route: near-zero-relative collapse -> NA interval", {
+  fit <- mock_rr_only_slope_fit(c(1e-9, 0.30, 0.28), c(4e-10, 0.07, 0.06))
+  expect_warning(ci <- slope_sd_ci(fit), "1% of this fit's largest")
+  expect_identical(ci$status, c("near_zero_relative", "ok", "ok"))
+})
+
+## ---- (c.4) Loadings-only route: real fit (misspecified against its own
+## fixture, so no known-truth recovery claim) + ADREPORT agreement check.
+## NOT heavy (a plain Gaussian latent() fit, matching the fixture already
+## used for the diagonal route's recovery test above) -- runs in the
+## default suite.
+
+test_that("slope_sd_ci() loadings-only route returns a plausible finite interval on a misspecified fit, and its ADREPORT agrees with the REPORT()ed Sigma_B_slope diagonal", {
+  testthat::skip_on_cran()
+  withr::local_options(gllvmTMB.quiet_grammar_notes = TRUE)
+  fx <- make_slope_ci_fixture(seed = 9101L, n_ind = 60L, n_traits = 3L, n_rep = 6L)
+
+  fit <- suppressMessages(suppressWarnings(gllvmTMB(
+    value ~ 0 +
+      trait +
+      (0 + trait):temperature +
+      latent(0 + trait + (0 + trait):temperature | individual, d = 2, unique = FALSE),
+    data = fx$data,
+    trait = "trait",
+    unit = "individual",
+    unit_obs = "session_id",
+    control = gllvmTMBcontrol(
+      se = TRUE, optimizer = "optim", optArgs = list(method = "BFGS")
+    )
+  )))
+  expect_true(isTRUE(fit$use$rr_B_slope))
+  expect_false(isTRUE(fit$use$diag_B_slope))
+  expect_true(isTRUE(fit$sd_report$pdHess))
+
+  ci <- slope_sd_ci(fit)
+  expect_s3_class(ci, "gllvmTMB_slope_ci")
+  expect_identical(nrow(ci), fx$n_traits)
+  expect_true(all(ci$status == "ok"))
+  expect_identical(ci$method, rep("wald_log_scale_adreport", fx$n_traits))
+  expect_true(all(ci$component == "total"))
+  expect_equal(ci$total_sd, ci$estimate)
+
+  ## Cross-check: ADREPORTed sd_rr_B_slope (as read by slope_sd_ci()) equals
+  ## sqrt(diag(Sigma_B_slope)) computed directly from fit$report. As with
+  ## the phylo route above, this is NOT an independent construction --
+  ## sd_rr_B_slope(j) is defined in src/gllvmTMB.cpp as
+  ## sqrt(Sigma_B_slope(j,j)), the same C++ quantity -- so it guards R-side
+  ## position selection (did slope_sd_ci() pick out the right rows?), not
+  ## the C++ packing itself.
+  Sigma_B_slope_hat <- as.matrix(fit$report$Sigma_B_slope)
+  independent_sd <- sqrt(diag(Sigma_B_slope_hat))
+  n_lhs <- 2L * fx$n_traits
+  slope_positions <- seq(2L, n_lhs, by = 2L)
+  expect_equal(ci$estimate, independent_sd[slope_positions], tolerance = 1e-6)
+
+  ## NOT a recovery assertion: this fixture's DGP (make_slope_ci_fixture())
+  ## generates data under a rank-2 shared-loadings term PLUS idiosyncratic
+  ## Psi noise on every augmented coordinate, but this fit is `unique =
+  ## FALSE` -- loadings-only, no diagonal Psi companion -- so the fitted
+  ## model is misspecified against the fixture and there is no single
+  ## "true" slope SD for it to recover. This only checks the estimate lands
+  ## in a plausible, finite order of magnitude, not that it is close to any
+  ## particular known value.
+  expect_true(all(ci$estimate > 0.01 & ci$estimate < 1))
 })
 
 test_that("slope_sd_ci() refuses a fit with no augmented random-slope term at all", {
@@ -379,7 +724,7 @@ test_that("slope_sd_ci() refuses a fit with no augmented random-slope term at al
   fit$use$diag_B_slope <- FALSE
   fit$use$rr_B_slope <- FALSE
 
-  expect_error(slope_sd_ci(fit), "no augmented ordinary random-slope")
+  expect_error(slope_sd_ci(fit), "no augmented random-slope structure")
 })
 
 ## ---- (d) Argument validation ------------------------------------------

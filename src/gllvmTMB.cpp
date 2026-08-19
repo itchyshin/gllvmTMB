@@ -1554,6 +1554,12 @@ Type objective_function<Type>::operator()()
   // byte-stable and so the new path can have C = 2*n_traits rows.
   matrix<Type> Lambda_B_slope(n_lhs_cols_B_lat, std::max(d_B_slope, 1));
   Lambda_B_slope.setZero();
+  // Hoisted out of the `if (use_rr_B_slope == 1)` block (previously local)
+  // so the combined-total block below (after the diag_B_slope section) can
+  // read its diagonal when both the loadings and diagonal Psi companions
+  // are active. Additive only: still zero / unused when use_rr_B_slope == 0.
+  matrix<Type> Sigma_B_slope(n_lhs_cols_B_lat, n_lhs_cols_B_lat);
+  Sigma_B_slope.setZero();
   if (use_rr_B_slope == 1) {
     if (n_lhs_cols_B_lat < 1)
       error("gllvmTMB_multi: n_lhs_cols_B_lat must be >= 1");
@@ -1569,8 +1575,20 @@ Type objective_function<Type>::operator()()
       nll -= dnorm(col_s, Type(0), Type(1), true).sum();
     }
     REPORT(Lambda_B_slope);
-    matrix<Type> Sigma_B_slope = Lambda_B_slope * Lambda_B_slope.transpose();
+    Sigma_B_slope = Lambda_B_slope * Lambda_B_slope.transpose();
     REPORT(Sigma_B_slope);
+    // Marginal per-augmented-coordinate SD from the loadings block alone
+    // (Sigma_B_slope(j,j) = sum_k Lambda_B_slope(j,k)^2, a quadratic form
+    // in MULTIPLE theta_rr_B_slope entries -- exactly the "loadings route"
+    // slope_sd_ci() slice 1 refuses because a univariate Wald read on a
+    // single parameter cannot cover it). ADREPORT so sdreport() runs the
+    // delta method against this expression directly; see register row
+    // CI-15 and dev/S6-slope-sd-ci-review.md.
+    vector<Type> sd_rr_B_slope(n_lhs_cols_B_lat);
+    for (int j = 0; j < n_lhs_cols_B_lat; j++)
+      sd_rr_B_slope(j) = sqrt(Sigma_B_slope(j, j));
+    REPORT(sd_rr_B_slope);
+    ADREPORT(sd_rr_B_slope);
   }
 
   // -------- diag_B contribution ----------------------------------------
@@ -1616,6 +1634,28 @@ Type objective_function<Type>::operator()()
         nll -= dnorm(s_B_slope(j, s), Type(0), sd_B_slope(j), true);
       }
     }
+
+    // Combined TOTAL marginal slope SD, i.e. the quantity slope_sd_ci()'s
+    // `total_sd` column reports as a point estimate only in slice 1
+    // (R/slope-sd-ci.R): sqrt(diag(Sigma_B_slope) + diag(Sigma_B_unique_slope)).
+    // When use_rr_B_slope == 1 the shared loadings block is active on the
+    // SAME 2*n_traits interleaved augmented coordinates (n_lhs_cols_B_lat ==
+    // n_lhs_cols_B_diag whenever both are on -- R/fit-multi.R:2185-2237), so
+    // indexing both by j is safe; when use_rr_B_slope == 0, Sigma_B_slope is
+    // the untouched zero placeholder above and this reduces to sd_B_slope
+    // itself. ADREPORTing this single combined expression (rather than
+    // combining two separately-ADREPORTed pieces in R) lets sdreport() take
+    // the delta method over the joint covariance of theta_rr_B_slope and
+    // theta_diag_B_slope, including any correlation between them -- an R-side
+    // sum of two independently-computed SEs could not do that correctly.
+    vector<Type> sd_B_slope_total(n_lhs_cols_B_diag);
+    for (int j = 0; j < n_lhs_cols_B_diag; j++) {
+      Type var_total = Sigma_B_unique_slope(j, j);
+      if (use_rr_B_slope == 1) var_total += Sigma_B_slope(j, j);
+      sd_B_slope_total(j) = sqrt(var_total);
+    }
+    REPORT(sd_B_slope_total);
+    ADREPORT(sd_B_slope_total);
   }
 
   // -------- Construct Lambda_W (n_traits x d_W), lower-triangular -------
@@ -1942,6 +1982,18 @@ Type objective_function<Type>::operator()()
       vector<Type> sd_b(C);
       for (int j = 0; j < C; j++) sd_b(j) = sqrt(Sigma_b_dep(j, j));
       REPORT(sd_b);
+      // ADREPORT so sdreport() runs the delta method against the
+      // authoritative theta_dep_chol packing itself (sd_b(j) = sqrt(sum_k
+      // Lb(j,k)^2) is a nonlinear function of MULTIPLE theta_dep_chol
+      // entries whenever j has off-diagonal L entries below it -- e.g. for
+      // C = 2*n_traits interleaved (intercept, slope) per trait, a slope
+      // coordinate's marginal SD can depend on more than one packed entry).
+      // This is deliberately additive: it changes nothing about sd_b's
+      // value or REPORT, only adds it to the sdreport payload so the R-side
+      // slope_sd_ci() extractor can read a name instead of hand-indexing
+      // cov.fixed against this packing (see dev/S6-slope-sd-ci-review.md
+      // and register row CI-15).
+      ADREPORT(sd_b);
       matrix<Type> cor_b_mat(C, C);
       for (int a = 0; a < C; a++)
         for (int bcol = 0; bcol < C; bcol++)

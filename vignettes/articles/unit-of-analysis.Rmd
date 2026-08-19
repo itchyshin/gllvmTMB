@@ -30,6 +30,11 @@ This page is about the *decision*. For definitions of the package's formula
 and model vocabulary — trait, unit, latent variable, loading — see
 [Plain-English vocabulary](gllvm-vocabulary.html).
 
+```{r install, eval = FALSE}
+# install.packages("remotes")
+remotes::install_github("itchyshin/gllvmTMB")
+```
+
 ```{r setup, message = FALSE}
 library(gllvmTMB)
 ```
@@ -243,6 +248,20 @@ observation unit, `X` and `Y` are its projected coordinates, `log_effort` is
 the log of however you measure looking, `trait` is the species, and `value` is
 the count.
 
+If your own data start as a **wide site × species matrix** — one row per
+site, one column per species, which is how most community datasets arrive —
+the reshape to this long format is one call:
+
+```{r wide-to-long, eval = FALSE}
+long <- tidyr::pivot_longer(wide, cols = -c(site, X, Y, log_effort),
+                            names_to = "trait", values_to = "value")
+```
+
+The package can also take the wide frame directly through its `traits()`
+formula grammar (`traits(sp1, sp2, ...) ~ ...`); both roads lead to the same
+fit. This article stays in long format because every integrated-data example
+needs it.
+
 Two things about the columns are worth saying out loud.
 
 **Project your coordinates before you do anything spatial.** A degree of
@@ -433,14 +452,16 @@ insects than for birds: insect-relevant covariates (microhabitat, host
 plants) change over short distances, which shrinks the cell sizes that count
 as harmless.
 
-# Counts on both arms are fine
+# Counts from both sources are fine
 
 One thing people do unnecessarily when combining an opportunistic source with
 a designed survey: binarise. If your structured survey recorded *how many*,
 not merely *whether*, keep the counts. Declaring both sources Poisson is
-accepted.
+accepted. (In integrated-model language each source is called an **arm**; the
+other articles use that word throughout.)
 
 ```{r isdm-both-poisson}
+# an invented split of the toy data, purely to exercise the syntax
 dat$isdm_source <- factor(rep(c("checklist", "station"),
                               each = n_site / 2, length.out = nrow(dat)))
 

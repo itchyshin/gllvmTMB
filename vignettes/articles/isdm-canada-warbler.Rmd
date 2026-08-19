@@ -160,12 +160,12 @@ and what repeat visits buy you
 
 ## The data are simulated
 
-**No real GBIF or ABMI data were analysed for this article.** Everything below
+**No real GBIF or [ABMI](https://abmi.ca) (Alberta Biodiversity Monitoring
+Institute) data were analysed for this article.** Everything below
 describes a simulated boreal songbird community shaped on a real system --
 Canada Warbler (*Cardellina canadensis*) and eleven co-occurring species in
-Alberta, an eBird-style opportunistic arm and an [ABMI](https://abmi.ca)-style
-structured detection arm (the Alberta Biodiversity Monitoring Institute, a
-standardised provincial survey programme) -- and no number here is a measurement about any real taxon.
+Alberta, an eBird-style opportunistic arm and an ABMI-style structured detection arm
+(a standardised provincial survey programme) -- and no number here is a measurement about any real taxon.
 
 Three reasons, all of which you would meet on the way to the real analysis:
 
@@ -175,7 +175,7 @@ Three reasons, all of which you would meet on the way to the real analysis:
    would measure the fuzz as much as the birds -- the subject of the companion
    article
    [*When one data source knows where it is and the other does not*](isdm-spatial-precision.html).
-2. **A vignette must not depend on the network.** `rgbif` will fetch the
+2. **A vignette must not depend on the network.** [rgbif](https://docs.ropensci.org/rgbif/) will fetch the
    opportunistic arm, but a documentation build that phones an API is a
    documentation build that breaks.
 3. **Real integration needs cleaning and matching work** that would swamp
@@ -373,7 +373,9 @@ optimiser never moved**. `cawa12_fit()` accepts a fit only when all three of
 
 **Keep the counts moderate.** That failure arrives when the counts get large,
 and *large* is not a feeling, so it was measured: the opportunistic arm's
-overall intensity was raised step by step, three datasets per step.
+overall intensity -- the same $\kappa$ the model formula above carries as that
+arm's intercept, here set in the simulation -- was raised step by step, three
+datasets per step. `kappa` in the table below is the value it was set to.
 
 ```{r ceiling-short, echo = FALSE}
 excerpt <- agg[agg$kappa %in% c(1, 2.3, 2.4, 3),
@@ -385,7 +387,7 @@ excerpt
 Two things to take from that. The cliff is **not far off** -- fits are healthy
 up to a mean cell count near `r f2(max(sw$mean_count[sw$kappa == 2.3]), 1)`
 and all three seeds fail one step later -- and a cap on the largest single
-cell is a **weak gate**, because the largest count overlaps across the cliff
+cell is a **poor early-warning sign**, because the largest count overlaps across the cliff
 (`r pr$envelope$max_cell_count_healthy` in a healthy fit against
 `r pr$envelope$min_cell_count_failing` in a rejected one); what controls it is
 the *mean* cell intensity. So *keep your largest cell count under about
@@ -453,7 +455,8 @@ Fitting too few gradients is expensive -- `d = 1` costs
 units of log-likelihood on average -- while each gradient past the truth buys
 almost nothing and pays about 20 AIC for the privilege. That asymmetry is why
 AIC lands on the right answer so consistently here. One caveat on the
-comparison itself: at a superfluous rank the extra loading column sits on the
+comparison itself: at a superfluous rank (a number of gradients `d` above the truth) the extra
+loading column sits on the
 boundary of its parameter space, so AIC's nominal penalty is conservative in
 the direction that flatters this 10-of-10 -- the same boundary problem noted
 for `Psi` in [For the record].
@@ -620,8 +623,8 @@ coin flip dressed up as a diagnostic.
 data.frame(
   quantity = c("median |change| in env slope, in base SEs",
                "median SE ratio, unique / base",
-               "95% Wald coverage of the true slope, base",
-               "95% Wald coverage of the true slope, unique",
+               "95% coverage of the true slope (est ± 1.96 SE), base",
+               "95% coverage of the true slope (est ± 1.96 SE), unique",
                "bias, base", "bias, unique", "RMSE, base", "RMSE, unique"),
   value = round(c(so$median_abs_d_est_in_se, so$se_ratio_median,
                   so$coverage_base, so$coverage_uniq,
@@ -794,7 +797,7 @@ detectably from its true value, and a pooled test for uniform attenuation gave
 that test could and could not have detected, and how dense the quadrature grid
 needs to be, are in [For the record].
 
-The package fences such a fit, in its own words:
+The package warns about such a fit, in its own words:
 
 ```{r po-warning, echo = FALSE, comment = ""}
 cat(qd$fence$weights_warning)
@@ -891,7 +894,7 @@ consistent downward pull. Do not describe estimates from this machinery as
 unbiased, and do not build an effect-size claim on their magnitude without
 running your own recovery check.
 
-**The map carries no uncertainty at all.** Not a credible interval, not a
+**The map carries no uncertainty at all.** Not a confidence interval, not a
 standard error, not a coefficient of variation. A smooth colourful surface
 implies precision it does not have, and this one has none to report.
 
@@ -1148,7 +1151,7 @@ data.frame(kappa = ss$kappa,
 ```
 
 Accuracy is already decaying two rungs before the optimiser breaks, while
-every fit still reports itself healthy. The numerical gate tells you when to
+every fit still reports itself healthy. The numerical check tells you when to
 stop trusting the optimiser; nothing tells you when to stop trusting the
 estimate except a recovery check of your own.
 $\kappa = `r f2(pr$envelope$chosen_kappa, 1)`$ was chosen on this evidence, at
@@ -1440,12 +1443,13 @@ Renner, I. W., Elith, J., Baddeley, A., Fithian, W., Hastie, T., Phillips,
 S. J., Popovic, G., & Warton, D. I. (2015). Point process models for
 presence-only analysis. *Methods in Ecology and Evolution*, **6**, 366--379.
 
-Warton, D. I., & Shepherd, L. C. (2010). Poisson point process models solve
-the "pseudo-absence problem" for presence-only data in ecology. *Annals of
-Applied Statistics*, **4**, 1383--1402.
-
 Sólymos, P., Matsuoka, S. M., Bayne, E. M., Lele, S. R., Fontaine, P.,
 Cumming, S. G., Stralberg, D., Schmiegelow, F. K. A., & Song, S. J. (2013).
 Calibrating indices of avian density from non-standardized survey data: making
 the most of a messy situation. *Methods in Ecology and Evolution*, **4**,
 1047--1058.
+
+Warton, D. I., & Shepherd, L. C. (2010). Poisson point process models solve
+the "pseudo-absence problem" for presence-only data in ecology. *Annals of
+Applied Statistics*, **4**, 1383--1402.
+

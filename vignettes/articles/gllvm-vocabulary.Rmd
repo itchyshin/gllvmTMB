@@ -308,6 +308,56 @@ Hessian. It is not a conditional mean, a multiple-imputation draw, a Bayesian
 posterior summary, or a calibrated interval. See [Handling missing
 data](missing-data.html).
 
+## Species distribution and integrated-data terms
+
+These terms appear across the species-distribution articles (see
+[Start here](sdm-start-here.html) for the map of those pages).
+
+### Intensity
+
+The **intensity** is the expected number of individuals or records per unit of
+area and effort — the "surface of expected abundance" those articles are built
+around. The models there return it up to an unknown overall constant
+(**relative** intensity), which is enough for maps and habitat effects but not
+for absolute abundance.
+
+### Arm
+
+An **arm** is one data source inside an integrated model. A model fed eBird
+checklists and a structured survey is a two-arm model: one shared surface,
+each arm keeping its own effort, distortion, and observation type.
+
+### Offset
+
+An **offset** is a predictor whose coefficient is fixed at 1 rather than
+estimated, used for known scalings: `offset(log_effort)` tells a count model
+that doubling the effort doubles the expected count, instead of asking it to
+discover that.
+
+### Point process and quadrature points
+
+A **point process** models the *locations* of records in continuous space
+rather than counts in predefined units — the natural shape for presence-only
+data. Fitting one in practice lays **quadrature points** (also called
+background or dummy points) over the region so the likelihood can be computed
+as a weighted regression.
+
+### cloglog
+
+The **cloglog** (complementary log-log) link makes a detection probability
+consistent with an underlying intensity: if individuals are found at Poisson
+rate $\mu$, the chance of seeing at least one is $1 - \exp(-\mu)$, which is
+exactly what a binomial model with a cloglog link fits. It is the hinge that
+lets detection/non-detection data share a surface with count data.
+
+### Mesh
+
+A **mesh** is a triangulation of the study area on which a smooth spatial
+field is represented: the field gets a value at each mesh node and is
+interpolated between them. Built once with `make_mesh()` from projected
+coordinates; the articles' rule of thumb sets the `cutoff` near one tenth of
+the domain's shorter side.
+
 ## Where to go next
 
 - [Get started](../articles/gllvmTMB.html): fit and interpret the first model.

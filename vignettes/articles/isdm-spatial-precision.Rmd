@@ -45,19 +45,22 @@ fmt <- function(x, d = 3) formatC(x, format = "f", digits = d)
 
 You have two kinds of data on the same species. One is a large, messy pile of
 opportunistic records — [eBird](https://ebird.org) checklists,
-[GBIF](https://www.gbif.org) occurrences — with no survey
+[GBIF](https://www.gbif.org) (Global Biodiversity Information Facility)
+occurrences — with no survey
 design behind it. The other is a structured monitoring programme: fewer sites,
 but a protocol. An integrated species distribution model (iSDM) fits both at
-once, on the reasoning that the structured arm can discipline the biased one.
+once, on the reasoning that the structured arm can discipline the biased one
+(each data source inside an integrated model is called an **arm** -- the word
+appears throughout these articles).
 
 The two arms usually differ in one respect that nobody puts in the model. **The
 opportunistic arm knows where it is; the survey arm often does not.**
 
 This is not sloppiness — it is policy. Monitoring programmes routinely publish
 coordinates degraded on purpose, to protect site access agreements and to avoid
-disclosing the locations of species at risk. The Alberta Biodiversity
-Monitoring Institute publishes public survey locations **blurred to roughly
-5.5 km**, and coarser still for sensitive species; precise coordinates require
+disclosing the locations of species at risk. [ABMI](https://abmi.ca), the
+Alberta Biodiversity Monitoring Institute, publishes public survey locations
+**blurred to roughly 5.5 km**, and coarser still for sensitive species; precise coordinates require
 a separate data agreement. An eBird checklist in the same landscape carries a
 GPS fix. The two arms are then fused as though both located their observations
 equally well, and one of them did not.
@@ -69,7 +72,8 @@ become the whole point below.
 This is a documented problem, not a hypothetical one. Work on [iNaturalist](https://www.inaturalist.org)'s
 obscured-geoprivacy setting reports that obscured locations change the
 environmental values attached to a record — elevation, habitat type, extracted
-covariates — and change the resulting estimated distributions. Gábor et al.
+covariates — and change the resulting estimated distributions (Koo et al.
+2025). Gábor et al.
 (2022) likewise find that SDM performance degrades as positional error in
 occurrence records grows.
 
@@ -114,8 +118,9 @@ one is meant.
 For a covariate whose spatial correlation behaves like `exp(-d / phi)`, `phi` is
 the distance at which the covariate's correlation with itself falls to
 **1/e ≈ 0.368**. That is what "correlation length" means here, and it is
-computable directly from a raster. Variogram software commonly reports instead
-the *practical range*, conventionally about `3 * phi`, the distance at which
+computable directly from a raster. Software that fits a **variogram** -- the
+standard geostatistical plot of how similarity between raster values decays
+with distance -- commonly reports instead the *practical range*, conventionally about `3 * phi`, the distance at which
 correlation falls to 0.05. **Dividing a reported practical range by 3 before
 comparing it to your positional fuzz is the single most important arithmetic
 step in applying this article to your own data.**
@@ -728,8 +733,7 @@ a real modelling option, and not implemented here.
    data it can reflect positional error, sampling bias, detection differences,
    or a genuine scale difference all at once, and these clean simulations
    cannot tell you which.
-5. **Ask for the precise coordinates.** Most fuzzing regimes -- including that of [ABMI](https://abmi.ca), the
-   Alberta Biodiversity Monitoring Institute --
+5. **Ask for the precise coordinates.** Most fuzzing regimes, ABMI's included,
    have a data-agreement route to exact locations. For an analysis that turns
    on a habitat slope, that request is worth making before the analysis rather
    than after.
@@ -817,6 +821,11 @@ rownames(trunc) <- c("0.5", "1.0")
   data to model species distributions.* Ecology, **100**(6), e02710. Establishes that unweighted integrated models
   are driven by the abundant presence-only arm, increasingly so as that arm
   grows.
+- Koo, K. S., Lee, K.-H., Lee, D., & Jang, Y. (2025). *Impact of obscured
+  data on species distribution models.* Conservation Biology, **39**, e70050.
+  The direct test of iNaturalist's obscured-geoprivacy setting: obscuring
+  changed the environmental values attached to records and the estimated
+  distributions of three endangered species.
 - Gábor, L., Jetz, W., Lu, M., et al. (2022). *Positional errors in species
   distribution modelling are not overcome by the coarser grains of analysis.*
   Methods in Ecology and Evolution, **13**, 2289--2302. Also reports SDM performance declining as positional error grows.

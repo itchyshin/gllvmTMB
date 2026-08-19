@@ -512,6 +512,8 @@ distribution modelling are not overcome by the coarser grains of analysis*
 
 # Where to go next
 
+- Not sure which model your data allow? Start at the front door:
+  [Start here: which SDM do your data allow?](sdm-start-here.html).
 - Definitions of the package's model vocabulary:
   [Plain-English vocabulary](gllvm-vocabulary.html).
 - A full worked model on species records, with a map at the end:

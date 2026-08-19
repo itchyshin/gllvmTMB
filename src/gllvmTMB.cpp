@@ -1612,11 +1612,6 @@ Type objective_function<Type>::operator()()
   }
 
   // -------- augmented diag_B slope contribution ------------------------
-  // Sigma_B_unique_slope hoisted to outer scope (previously local to this
-  // block) so the combined-total block immediately below can read its
-  // diagonal. Additive only: still zero / unused when use_diag_B_slope == 0.
-  matrix<Type> Sigma_B_unique_slope(n_lhs_cols_B_diag, n_lhs_cols_B_diag);
-  Sigma_B_unique_slope.setZero();
   if (use_diag_B_slope == 1) {
     if (n_lhs_cols_B_diag < 1)
       error("gllvmTMB_multi: n_lhs_cols_B_diag must be >= 1");
@@ -1628,6 +1623,8 @@ Type objective_function<Type>::operator()()
       error("gllvmTMB_multi: s_B_slope must be n_lhs_cols_B_diag x n_sites");
     vector<Type> sd_B_slope = exp(theta_diag_B_slope);
     REPORT(sd_B_slope);
+    matrix<Type> Sigma_B_unique_slope(n_lhs_cols_B_diag, n_lhs_cols_B_diag);
+    Sigma_B_unique_slope.setZero();
     for (int j = 0; j < n_lhs_cols_B_diag; j++) {
       Sigma_B_unique_slope(j, j) = sd_B_slope(j) * sd_B_slope(j);
     }

@@ -177,6 +177,20 @@ test_that("slope_sd_ci() recovers a known-truth slope SD with a finite interval"
   ## fit$report$Sigma_B_slope without going through slope_sd_ci()).
   expect_equal(ci$total_sd, c(0.3878717, 0.2924811, 0.3294379), tolerance = 1e-5)
 
+  ## The headline Slice-2 capability on THIS route: total_sd now carries a
+  ## genuine interval via the combined sd_B_slope_total ADREPORT (which
+  ## differentiates through BOTH theta_rr_B_slope and theta_diag_B_slope
+  ## jointly). This is the non-trivial case -- unlike the phylo_dep and
+  ## loadings-only routes below, where component == "total" makes
+  ## total_lower/total_upper identical to lower/upper by construction, here
+  ## total_sd != estimate, so a real, separately-computed interval is the
+  ## only thing that could appear in these columns.
+  expect_identical(ci$total_status, rep("ok", fx$n_traits))
+  expect_true(all(is.finite(ci$total_lower) & is.finite(ci$total_upper)))
+  expect_true(all(ci$total_lower < ci$total_sd & ci$total_sd < ci$total_upper))
+  expect_true(all(ci$total_lower != ci$lower))
+  expect_true(all(ci$total_upper != ci$upper))
+
   ## scale = "variance" is consistent with scale = "sd" (same fit);
   ## total_sd stays on the SD scale regardless of `scale`.
   ci_var <- suppressWarnings(slope_sd_ci(fit, scale = "variance"))
@@ -199,6 +213,60 @@ test_that("slope_sd_ci() recovers a known-truth slope SD with a finite interval"
   sub <- subset(ci, status == "ok")
   expect_true(all(c("component", "total_sd") %in% names(sub)))
   expect_true(all(sub$component == "unique_psi"))
+})
+
+## ---- (a2) total_sd interval degrades to "unavailable" rather than a
+## silently wrong number when the combined sd_B_slope_total ADREPORT is
+## missing (R/slope-sd-ci.R:594-599) -- e.g. a fit REPORT()ed (so
+## fit$report$sd_B_slope_total exists) under an older package version whose
+## sdreport() "report" table predates this slice's ADREPORT() call. Without
+## this guard, mismatched estimate/se vectors could be paired up by
+## position and silently returned as a plausible-looking interval.
+
+test_that("slope_sd_ci() total_sd interval degrades to 'unavailable' (not a silently wrong number) when sd_B_slope_total's ADREPORT is missing", {
+  n_traits <- 2L
+  slope_theta <- c(-1.6, -1.2) # log-SD, unique (Psi) component
+  slope_se    <- c(0.30, 0.28)
+  total_full <- numeric(2L * n_traits)
+  total_full[seq(2L, 2L * n_traits, by = 2L)] <- c(0.55, 0.62) # slope positions
+
+  fit <- mock_slope_ci_fit(
+    slope_theta = slope_theta, slope_se = slope_se,
+    rr_present = TRUE, rr_shared_var_slope = c(0.20, 0.25)
+  )
+  ## fit$report$sd_B_slope_total is REPORT()ed (non-NULL, correct length),
+  ## as it would be on a real fit -- but this mock's sd_report carries no
+  ## "report" (ADREPORT) table at all, so .slope_ci_adreport_lookup() for
+  ## "sd_B_slope_total" cannot succeed. This is the case
+  ## `adr_tot$ok == FALSE` at R/slope-sd-ci.R:595.
+  fit$report$sd_B_slope_total <- total_full
+
+  ## Two warnings fire on this call: slope_sd_ci()'s own "shared loadings
+  ## component" notice (fires whenever rr_B_slope is present, regardless of
+  ## the degrade), and TMB's own summary.sdreport() warning that the
+  ## "report" table has nothing to select -- an expected side effect of
+  ## this mock's deliberately absent ADREPORT table, not a bug.
+  expect_warning(
+    expect_warning(
+      ci <- slope_sd_ci(fit),
+      "shared random-slope loadings component"
+    ),
+    "no or empty summary selected"
+  )
+  expect_true(all(ci$component == "unique_psi"))
+  ## The per-row unique-Psi estimate/interval is unaffected -- the degrade
+  ## is isolated to the total_* columns, not the whole row.
+  expect_true(all(ci$status == "ok"))
+  expect_true(all(is.finite(ci$lower)) && all(is.finite(ci$upper)))
+
+  ## The degrade itself: NA bounds, explicit "unavailable" status -- never
+  ## a finite-looking but wrong interval.
+  expect_identical(ci$total_status, rep("unavailable", n_traits))
+  expect_true(all(is.na(ci$total_lower)))
+  expect_true(all(is.na(ci$total_upper)))
+  ## The point estimate still comes from the REPORT()ed (not ADREPORTed)
+  ## quantity, so it is not silently dropped even though the interval is.
+  expect_equal(ci$total_sd, total_full[seq(2L, 2L * n_traits, by = 2L)])
 })
 
 ## ---- (b) Kill-switch guards: each must FAIL before it exists ---------
@@ -539,13 +607,21 @@ test_that("slope_sd_ci() phylo_dep route recovers a known-truth slope SD, and it
   expect_equal(ci$total_lower, ci$lower)
   expect_equal(ci$total_upper, ci$upper)
 
-  ## Recovery: the true slope SDs fall inside the reported CIs.
+  ## Recovery: the true slope SDs fall inside the reported CIs. THIS is the
+  ## assertion that actually tests the C++ packing -- slope_sd_true comes
+  ## from the simulated L matrix, wholly outside slope_sd_ci()'s code path,
+  ## so a wrong position (e.g. the 2/5/8-vs-2/4/6 packing bug a first
+  ## attempt hit) would show up here as a failed-to-cover interval.
   expect_true(all(ci$lower <= slope_sd_true & slope_sd_true <= ci$upper))
 
-  ## THE cross-check the review demanded: the ADREPORTed sd_b, as read by
-  ## slope_sd_ci(), must equal an INDEPENDENTLY constructed
-  ## sqrt(diag(Sigma_b_dep)) computed directly from fit$report -- exactly
-  ## the test shape that would have caught the 2/5/8-vs-2/4/6 packing bug.
+  ## A second, narrower check: the ADREPORTed sd_b, as read by
+  ## slope_sd_ci(), equals sqrt(diag(Sigma_b_dep)) computed directly from
+  ## fit$report. This is NOT an independent construction -- sd_b(j) and
+  ## Sigma_b_dep(j,j) are the SAME C++ quantity (sd_b is defined as
+  ## sqrt(Sigma_b_dep(j,j)) in src/gllvmTMB.cpp) -- so it is an algebraic
+  ## restatement that guards R-side position selection (did slope_sd_ci()
+  ## pick out the right rows of the ADREPORT table?), not a check on the
+  ## C++ packing itself.
   Sigma_b_dep_hat <- as.matrix(fit$report$Sigma_b_dep)
   independent_sd_b <- sqrt(diag(Sigma_b_dep_hat))
   slope_positions <- seq(2L, C, by = 2L)
@@ -580,12 +656,13 @@ test_that("slope_sd_ci() loadings-only route: near-zero-relative collapse -> NA 
   expect_identical(ci$status, c("near_zero_relative", "ok", "ok"))
 })
 
-## ---- (c.4) Loadings-only route: real recovery + ADREPORT cross-check.
+## ---- (c.4) Loadings-only route: real fit (misspecified against its own
+## fixture, so no known-truth recovery claim) + ADREPORT agreement check.
 ## NOT heavy (a plain Gaussian latent() fit, matching the fixture already
 ## used for the diagonal route's recovery test above) -- runs in the
 ## default suite.
 
-test_that("slope_sd_ci() loadings-only route recovers a known-truth slope SD, and its ADREPORT matches an independently constructed sqrt(diag(Sigma_B_slope))", {
+test_that("slope_sd_ci() loadings-only route returns a plausible finite interval on a misspecified fit, and its ADREPORT agrees with the REPORT()ed Sigma_B_slope diagonal", {
   testthat::skip_on_cran()
   withr::local_options(gllvmTMB.quiet_grammar_notes = TRUE)
   fx <- make_slope_ci_fixture(seed = 9101L, n_ind = 60L, n_traits = 3L, n_rep = 6L)
@@ -615,18 +692,27 @@ test_that("slope_sd_ci() loadings-only route recovers a known-truth slope SD, an
   expect_true(all(ci$component == "total"))
   expect_equal(ci$total_sd, ci$estimate)
 
-  ## Cross-check: ADREPORTed sd_rr_B_slope (as read by slope_sd_ci()) must
-  ## equal an INDEPENDENTLY constructed sqrt(diag(Sigma_B_slope)) from
-  ## fit$report -- the same test shape as the phylo route above.
+  ## Cross-check: ADREPORTed sd_rr_B_slope (as read by slope_sd_ci()) equals
+  ## sqrt(diag(Sigma_B_slope)) computed directly from fit$report. As with
+  ## the phylo route above, this is NOT an independent construction --
+  ## sd_rr_B_slope(j) is defined in src/gllvmTMB.cpp as
+  ## sqrt(Sigma_B_slope(j,j)), the same C++ quantity -- so it guards R-side
+  ## position selection (did slope_sd_ci() pick out the right rows?), not
+  ## the C++ packing itself.
   Sigma_B_slope_hat <- as.matrix(fit$report$Sigma_B_slope)
   independent_sd <- sqrt(diag(Sigma_B_slope_hat))
   n_lhs <- 2L * fx$n_traits
   slope_positions <- seq(2L, n_lhs, by = 2L)
   expect_equal(ci$estimate, independent_sd[slope_positions], tolerance = 1e-6)
 
-  ## The fixture's shared-loadings-only DGP (Route B's Lambda_aug block,
-  ## no idiosyncratic Psi noise on this path) puts the recovered slope SD
-  ## in a similar order of magnitude to the diagonal-route fixture.
+  ## NOT a recovery assertion: this fixture's DGP (make_slope_ci_fixture())
+  ## generates data under a rank-2 shared-loadings term PLUS idiosyncratic
+  ## Psi noise on every augmented coordinate, but this fit is `unique =
+  ## FALSE` -- loadings-only, no diagonal Psi companion -- so the fitted
+  ## model is misspecified against the fixture and there is no single
+  ## "true" slope SD for it to recover. This only checks the estimate lands
+  ## in a plausible, finite order of magnitude, not that it is close to any
+  ## particular known value.
   expect_true(all(ci$estimate > 0.01 & ci$estimate < 1))
 })
 

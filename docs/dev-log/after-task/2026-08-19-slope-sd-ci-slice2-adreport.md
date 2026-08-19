@@ -135,15 +135,17 @@ round 3: baseline 0.107s | slice2 0.084s
 round 4: baseline 0.073s | slice2 0.098s
 ```
 
-**No measurable slowdown.** The two builds are indistinguishable within
-this machine's noise floor (both ~0.06-0.11s); slice-2 is faster in half
-the rounds. This is the expected result architecturally: the added
-ADREPORT vectors are length `O(n_traits)` (2 or `(1+s)*n_traits`), not
-`O(n_obs)` or `O(n_species)` -- they do not grow with dataset size, only
-with the number of traits in the model, which is small for realistic
-fits. `sdreport()`'s cost here is dominated by the fixed-effect Hessian
-factorization (`cov.fixed`, unaffected by ADREPORT count at all) rather
-than by the report-block reverse sweeps.
+**No measurable slowdown at this scale.** The two builds are
+indistinguishable within this machine's noise floor (both ~0.06-0.11s);
+slice-2 is faster in half the rounds. This is the expected result
+architecturally: the added ADREPORT vectors are length `O(n_traits)` (2 or
+`(1+s)*n_traits`), not `O(n_obs)` or `O(n_species)` -- they do not grow
+with dataset size, only with the number of traits in the model, which is
+small for realistic fits. `sdreport()`'s cost here is dominated by the
+fixed-effect Hessian factorization (`cov.fixed`) rather than by the
+report-block reverse sweeps -- "not measurably affected at this scale" is
+the supported claim; "`cov.fixed` unaffected by ADREPORT count at all"
+overreaches beyond what a 4-round A/B on one fixture size can show.
 
 ### 4b. Position-based consumers of `fit$sd_report`
 
@@ -167,21 +169,40 @@ read `summary(fit$sd_report, "report")` and filter by
 activate `use_rr_B_slope` / `use_diag_B_slope` / `use_phylo_dep_slope`, so
 their ADREPORT vector is unchanged in content by this slice regardless.
 
-**Everything else that touches `fit$sd_report`** (26 of the 30 files) uses
-`$cov.fixed` or `$par.fixed` -- the fixed-effect covariance/point-estimate
-block, whose dimension and ordering depend only on the number of FIXED
-PARAMETERS (`fit$opt$par`), not on how many `ADREPORT()`ed quantities
-exist. These are structurally unaffected by this slice's changes.
+**Everything else that touches `fit$sd_report`** (26 of the 30 `R/` files)
+uses `$cov.fixed` or `$par.fixed` -- the fixed-effect covariance/point-
+estimate block, whose dimension and ordering depend only on the number of
+FIXED PARAMETERS (`fit$opt$par`), not on how many `ADREPORT()`ed
+quantities exist. These are structurally unaffected by this slice's
+changes.
+
+**Correction (adversarial review, Rose): this audit under-counted.**
+`summary.sdreport()` defaults to `select = "all"`, which INCLUDES the
+report/ADREPORT block, not only the two explicit `select = "report"` call
+sites named above. Four test files call the bare form
+(`summary(fit$sd_report)`, no `select` argument):
+`test-matrix-slope-poisson.R:153`, `test-matrix-slope-phylo-dep.R:166`,
+`test-matrix-slope-phylo-latent.R:226`, `test-matrix-slope-spatial-
+latent.R:180` (`.aug_wald_ci()`'s `sdr <- summary(fit$sd_report)`), each
+then filtering `rownames(sdr) == entry_name` for `entry_name` in
+`"log_sd_b"` / `"atanh_cor_b"` -- names that do not collide with this
+slice's `"sd_b"` / `"sd_rr_B_slope"` / `"sd_B_slope_total"` rows, and the
+phylo-dep file is exactly a fit that gains `sd_b` rows under this slice.
+**The conclusion below survives, but by luck of the grep (all four filter
+by name and none collide), not because the audit as originally stated
+checked them.**
 
 **Conclusion: no position-based consumer found anywhere in the package.**
-The added ADREPORT rows cannot silently misalign an existing extractor.
+The added ADREPORT rows cannot silently misalign an existing extractor --
+verified across every `R/` consumer (30 files) AND, on the corrected
+count, all four bare-`summary()` test call sites.
 
 ### 4c. `sd_b` consistency with `fit$report$sd_b`
 
 Confirmed two ways: (1) architecturally, `ADREPORT(sd_b)` was added
 immediately after the existing `REPORT(sd_b)` line with no intervening
 edit to `sd_b`'s computation, so both read the identical C++ variable;
-(2) empirically, both new recovery tests (Section 6) assert
+(2) empirically, both new real-fit tests (Section 6) assert
 `all.equal(adr$estimate, fit$report$sd_b, tolerance = 1e-6)` (and the
 `sd_rr_B_slope` / `sd_B_slope_total` equivalents) inside
 `slope_sd_ci()` itself -- `cli_abort()`s loudly on any mismatch rather
@@ -236,19 +257,52 @@ than silently proceeding -- and this passed on every real-fit test.
   `test-phylo-dep-slope-gaussian.R`'s `.dep_Ltrue()`); asserts both slope
   CIs cover their true SDs, `component == "total"`,
   `total_sd/lower/upper == estimate/lower/upper` (no separate split for
-  this route), **and the cross-check the review demanded**: the
-  ADREPORTed `sd_b`, as read by `slope_sd_ci()`, equals (tolerance
-  `1e-6`) an INDEPENDENTLY constructed `sqrt(diag(Sigma_b_dep))` computed
-  directly from `fit$report`, outside `slope_sd_ci()`'s own code path --
-  exactly the test shape that would have caught the 2/5/8-vs-2/4/6 packing
-  bug on day one.
-- **Loadings-only route real recovery + cross-check** (NOT heavy-gated --
+  this route). **Correction (adversarial review, Rose): the earlier text
+  here credited the WRONG assertion as the packing guard.** The
+  ground-truth recovery assertion (`ci$lower <= slope_sd_true &
+  slope_sd_true <= ci$upper`, with `slope_sd_true` derived from the
+  simulated `L` matrix wholly outside `slope_sd_ci()`'s own code path) is
+  what actually tests the C++ packing -- a wrong position (the
+  2/5/8-vs-2/4/6 hazard) would show up here as a failed-to-cover interval.
+  The test also carries a second, narrower check: the ADREPORTed `sd_b`,
+  as read by `slope_sd_ci()`, equals (tolerance `1e-6`)
+  `sqrt(diag(Sigma_b_dep))` computed directly from `fit$report`. This is
+  **not** an independent construction -- `sd_b(j)` and `Sigma_b_dep(j,j)`
+  are the same C++ quantity (`sd_b` is defined as `sqrt(Sigma_b_dep(j,j))`
+  in `src/gllvmTMB.cpp`) -- so it is an algebraic restatement guarding
+  R-side position selection (did `slope_sd_ci()` read the right ADREPORT
+  rows?), not a check on the C++ packing itself. The claim that this
+  cross-check "would have caught the 2/5/8 bug on day one" is retracted;
+  the ground-truth recovery assertion is what would have.
+- **Loadings-only route real fit + agreement check** (NOT heavy-gated --
   a plain Gaussian `latent(..., unique = FALSE)` fit, no phylogeny; runs
-  in the default suite): same structure, `sqrt(diag(Sigma_B_slope))`
-  cross-check.
+  in the default suite): same `sqrt(diag(Sigma_B_slope))` agreement check
+  as above, same "not independent" caveat. **Correction: this is not a
+  recovery test** and the underlying test was renamed
+  (`"...recovers a known-truth slope SD..."` -> `"...returns a plausible
+  finite interval on a misspecified fit..."`) -- under `unique = FALSE`
+  the fit has no diagonal Psi companion, but the fixture's DGP simulates
+  one, so the fit is misspecified against its own fixture and there is no
+  known truth to recover; the test only checks the estimate lands in a
+  plausible, finite order of magnitude.
 - **Updated Slice-1 test**: `"slope_sd_ci() refuses a fit with no augmented
   random-slope term at all"` now asserts the new message text (the old
   message named only the diagonal route; the new one names all three).
+- **New: `total_lower`/`total_upper`/`total_status` coverage** (adversarial
+  review, Rose -- these columns were previously untested except where they
+  trivially equal `lower`/`upper`). Two additions: (1) the real mixed-route
+  fixture (diagonal Psi + shared loadings both present, the default
+  `latent()` combination) now also asserts `total_status == "ok"`,
+  `total_lower`/`total_upper` finite, bracket `total_sd`, and differ from
+  `lower`/`upper` -- the genuinely non-trivial case, since `component ==
+  "unique_psi"` there; (2) a new mock-based test exercises the
+  `adr_tot$ok == FALSE` degrade branch (`R/slope-sd-ci.R:594-599`) that was
+  previously reachable by no test at all, confirming it sets
+  `total_status = "unavailable"` and NA bounds rather than silently
+  returning a wrong number. Both were verified to FAIL against a
+  temporarily broken version of the branch they guard (see this branch's
+  git history / the S0a report for the proof), then the break was
+  reverted.
 
 ## 7. Full Suite Result
 
@@ -402,9 +456,19 @@ passed silently within the full run.
   Section 4a.
 - `pkgbuild::compile_dll(force = TRUE)` reported "make: Nothing to be done
   for `all`" once even after `git checkout -- src/gllvmTMB.cpp` reverted
-  the file; verified this was NOT stale by checking `.o`/`.so` mtimes
-  against the reverted `.cpp`'s mtime (the `.so` was newer, confirming a
-  real recompile had occurred) before trusting the "baseline" timing.
+  the file. **Correction (adversarial review, Rose): the mtime argument
+  originally given here for trusting that "baseline" build was backwards
+  and is retracted, not merely softened.** The original text reasoned that
+  because the `.so` was newer than the reverted `.cpp`, a real recompile
+  had occurred -- but a newer `.so` is exactly the condition under which
+  `make` SKIPS a rebuild (nothing looks out of date), so it is evidence
+  FOR the "nothing to be done" message, not against it; `compile_dll(force
+  = TRUE)` does not clean stale `.o` files, so a `force = TRUE` call can
+  still no-op against an `.o` built from different source content if the
+  build system's own staleness check is satisfied by mtime alone. This
+  slice's `sdreport()` cost comparison (Section 4a) was NOT re-verified
+  against a clean (`.o`-deleted) rebuild of the baseline; treat the
+  "baseline" arm of that A/B as unconfirmed-clean, not confirmed-fresh.
 
 ## 10. Known Limitations And Next Actions
 

@@ -95,8 +95,6 @@ navbar:
         href: articles/integrated-multi-source-example.html
       - text: What do repeated visits add?
         href: articles/integrated-repeated-visits.html
-      - text: Multivariate spatial models
-        href: articles/spatial-models.html
     concepts:
       text: Concepts
       menu:

@@ -352,6 +352,41 @@ text(50, 1.4, "solid box = an article on this site        dashed box = a better 
 par(op)
 ```
 
+# What this is built on
+
+None of this is new from nothing. The pieces this package stands on, and what
+each of them gave it:
+
+- **[TMB](https://github.com/kaskr/adcomp)** (Kristensen et al. 2016) —
+  automatic differentiation and the Laplace approximation. Every fit on this
+  site is a TMB fit; without it none of these models would be practical in R.
+- **[glmmTMB](https://cran.r-project.org/package=glmmTMB)** (Brooks et al.
+  2017) — the mixed-model formula grammar and family machinery that this
+  package's interface follows, so that a user who knows `glmmTMB` already
+  knows most of this.
+- **[sdmTMB](https://pbs-assess.github.io/sdmTMB/)** (Anderson et al. 2025) —
+  the SPDE and mesh layer. `make_mesh()`, `add_utm_columns()` and the spatial
+  interface here descend directly from sdmTMB's GPL-3 implementation, with the
+  provenance recorded in
+  [`inst/COPYRIGHTS`](https://github.com/itchyshin/gllvmTMB/blob/main/inst/COPYRIGHTS).
+  It remains the right package for single-species spatial models, and it does
+  things this one does not — prediction uncertainty and spatiotemporal fields
+  among them.
+- **[gllvm](https://cran.r-project.org/package=gllvm)** (Niku et al. 2019) —
+  the generalised linear latent variable model for community ecology, the
+  statistical idea this package extends rather than invents.
+- **[fmesher](https://cran.r-project.org/package=fmesher)** and the **INLA/SPDE
+  literature** (Lindgren, Rue and Lindström 2011) — the representation of a
+  continuous spatial field on a triangulated mesh.
+- **The point-process tradition in ecology** — Warton and Shepherd (2010) and
+  Renner et al. (2015), who established that presence-only data are point
+  patterns and that fitting them as a weighted Poisson regression is both
+  principled and practical.
+
+Where this package differs from its predecessors, it says so; where it borrows,
+it says that too. Building on other people's work is how the field moves, and
+the borrowing is worth naming rather than hiding.
+
 # References
 
 van Strien, A.J., van Swaay, C.A.M. and Termaat, T. (2013). Opportunistic

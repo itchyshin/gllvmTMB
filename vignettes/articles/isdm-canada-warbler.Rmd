@@ -132,10 +132,21 @@ you will meet on your own data.
    [Decision 2: overdispersion in an arm with no dispersion parameter]
    measures the option this package offers.
 
-**You need the repository to run this code, not just the installed package.**
-The simulator and the saved campaign results live in `dev/isdm-precision/` in
-the [gllvmTMB source tree](https://github.com/itchyshin/gllvmTMB); copying
-chunks into a fresh session will not work on its own.
+**Getting the package.** gllvmTMB is not on CRAN; install it from GitHub:
+
+``` r
+# install.packages("remotes")
+remotes::install_github("itchyshin/gllvmTMB")
+library(gllvmTMB)
+```
+
+**And note: you need the repository to run this page's code, not just the
+installed package.** The simulator and the saved campaign results live in
+`dev/isdm-precision/` in the
+[gllvmTMB source tree](https://github.com/itchyshin/gllvmTMB); copying chunks
+into a fresh session will not work on its own. Everything you need for *your
+own* data — `isdm_sources()`, `make_mesh()`, `gllvmTMB()`, `predict()` — is in
+the installed package.
 
 Two neighbouring questions have articles of their own rather than a paragraph
 here: how much survey you need
@@ -247,6 +258,43 @@ cells <- attr(dat, "cells")
 str(dat[, c("cell_id", "trait", "isdm_source", "env", "log_effort", "value")])
 ```
 
+**This `str()` is the shape your own data has to reach, so read it as a
+target.** One row per species per location. `cell_id` labels the location
+(give every location its own label — it is bookkeeping here, and
+[the reference section](#reference-four-things-that-do-not-do-what-you-would-guess)
+shows it never enters the prediction). `trait` is the species. `isdm_source`
+says which dataset the row came from. `value` is the count on the
+opportunistic rows and detected/not-detected (1/0) on the survey rows.
+`log_effort` is the log of whatever measures how hard that row was looked for
+— checklist duration, point-count minutes — and any known detectability
+corrections you already compute (QPAD-style offsets for time of day, date,
+distance) are added into it. Building this frame from an eBird download plus
+your own survey table — stacking the two, agreeing on the covariate columns,
+constructing `log_effort` for each arm — is real work this page does not show;
+it is ordinary `rbind()` and `dplyr` work, but budget time for it.
+
+**What counts as a "site"?** Whatever unit carries one location and one
+effort. In this simulation a site is a randomly placed point — despite the
+`cell_id` name, **nothing here is a grid cell, and no gridding is required**:
+the model works on exact coordinates, the spatial field is a continuous
+surface, and the mesh is a computational device for estimating it, not a grid
+your data must live on. In your own data an eBird checklist is a natural site
+(one place, one duration); pooling checklists into grid cells and summing
+their effort is a *choice* you may make, never a requirement. A survey
+station is a site as it stands. The whole question — sites, cells,
+checklists, and why the mesh is none of them — has its own short article:
+[*What is a site? The unit of analysis*](unit-of-analysis.html). And the table is a **complete crossing**:
+every site has a row for every species, *zeros included*. Those zeros are
+data — "we looked here and did not find this species" — and they exist in
+eBird only for **complete checklists**, where the observer reported everything
+detected. A raw presence-only download has no zeros to give, which is exactly
+why the [presence-only section](#if-your-opportunistic-arm-has-no-counts)
+treats it as a different problem.
+
+**If your survey records counts rather than detections, keep them.** Declare
+both arms Poisson — `isdm_sources(ebird = poisson(), survey = poisson())` is
+accepted — and do not binarise your abundances.
+
 ```{r arms}
 tab <- table(cells$arm)
 cat("opportunistic cells:", tab[["ebird"]],
@@ -295,7 +343,14 @@ cat("\naccepted:", f$ok, " convergence:", f$convergence,
 `spatial_latent(0 + trait | coords, d = 2)` is the shared field, with
 per-species loadings on it; `d = 2` is the number of gradients, the subject of
 the next section. The mesh is built from `dat` -- the union of both arms'
-locations -- and every row from either arm is projected onto it.
+locations -- and every row from either arm is projected onto it. The
+`cutoff` in `make_mesh()` is the minimum spacing between mesh nodes, **in the
+units of your coordinates** -- kilometres here, because the coordinates were
+projected first. This page uses `cutoff = 40` on a domain roughly 225 by
+443 km, giving `r cawa12_mesh(dat)$mesh$n` nodes: about a tenth of the
+domain's shorter side is a reasonable starting point. A smaller cutoff means
+more nodes, a finer field, and a slower fit; if your conclusions change when
+you halve it, the mesh was too coarse.
 
 This is a **small example**: `r nrow(cells)` sampled locations, a
 `r cawa12_mesh(dat)$mesh$n`-node mesh, about a minute per fit. Nothing on this
@@ -512,8 +567,11 @@ space, and your slopes are estimated conditionally on it -- which is how
 overdispersion you ignored comes back as bias in the slopes you care about.
 
 `spatial_latent(..., unique = TRUE)` adds a per-species tier of its own,
-called `Psi`, alongside the shared field, to play the role the
-observation-level random effect plays in a GLMM. It has to be asked for:
+called `Psi`, alongside the shared field, to play a role **similar to** the
+observation-level random effect in a GLMM -- similar, not identical: `Psi` is
+itself spatially structured rather than independent noise per row, which is
+part of why its behaviour below is odd, and the record section says more. It
+has to be asked for:
 
 ```{r unique-formula, eval = FALSE}
 value ~ 0 + trait + trait:env + isdm_source + offset(log_effort) +
@@ -747,6 +805,58 @@ If your opportunistic arm is genuinely presence-only, fit it with the
 quadrature device **on its own**, the way the standalone
 [*Joint ecological intensity from opportunistic records*](gbif-joint-intensity.html)
 article does.
+
+# Do you need grid cells? No — and here is what they would cost
+
+Nothing on this page was gridded. Every observation sits at its exact
+coordinates, the spatial field is a continuous surface, and the mesh is the
+computer's scaffolding for that surface, not a grid the data live on. What a
+"site" is, why a count needs an observation event rather than a map square,
+and why the mesh is not a grid are untangled properly in
+[*What is a site? The unit of analysis*](unit-of-analysis.html).
+
+But gridding is what many workflows are used to, so the cost of doing it
+anyway was measured rather than argued: the same twelve-species datasets were
+refitted with every location snapped to the centre of its grid cell and the
+habitat value re-read there — which is what gridding does to your data. Six
+datasets per cell size:
+
+```{r gridding}
+gr <- readRDS("../../dev/isdm-precision/cawa12-gridding.rds")$summary
+data.frame(cell = c("exact points", "6 x 11 km", "12 x 22 km", "25 x 44 km"),
+           mean_cor = gr$cor.1, sd_cor = gr$cor.2,
+           mean_abs_err = gr$mae.1, sd = gr$mae.2)
+```
+
+Two things to read off it.
+
+**Cells of typical atlas sizes cost nothing here.** At 6 × 11 km and even
+12 × 22 km, slope recovery is indistinguishable from exact coordinates.
+
+**The damage starts when displacement approaches the habitat's own scale —
+and it looks like shrinkage, not scrambling.** At 25 × 44 km cells a record
+can move ~25 km from where it was, the typical slope error rises from
+`r gr$mae.1[1]` to `r gr$mae.1[4]` — about
+`r round(100 * (gr$mae.1[4] / gr$mae.1[1] - 1))`% worse — while the species
+*ranking* barely moves (correlation `r gr$cor.1[4]`). Gridding too coarsely
+does not make your results look wrong; it quietly pulls the habitat effects
+toward zero. That is the same positional-error mechanism the companion
+article
+[*When one data source knows where it is and the other does not*](isdm-spatial-precision.html)
+measures in depth, and the same number decides it: **displacement relative to
+the distance over which your habitat layer changes**. This landscape's
+habitat changes over ~100 km, so small cells are harmless; on a patchy
+10-km-scale habitat layer the free zone would shrink accordingly — compute
+the ratio for your own raster with that article's recipe rather than reusing
+these cell sizes.
+
+One honest limit: this measured only the *positional* cost of gridding — the
+records moved, but each site kept its own row. Pooling many checklists into
+one cell row (summing counts and effort) changes the data in additional ways
+not measured here. And the choice of cell size is a genuine model choice:
+analyses of the same data on different grids can disagree with each other,
+which is a documented problem in spatial statistics, not a rounding
+curiosity.
 
 # Before you use this on real data
 

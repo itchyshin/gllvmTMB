@@ -45,7 +45,9 @@ In `gllvmTMB()`, `unit` identifies the between-unit level, `unit_obs` identifies
 within-unit replicate cells, `cluster` supplies a further ordinary or structured
 grouping, and optional `cluster2` supplies an additional plain-diagonal grouping.
 These are modelling roles rather than fixed biological meanings: the columns
-that fill them depend on the study design.
+that fill them depend on the study design. Deciding *which* column of your own
+data should play the unit role — a checklist, a station, a grid cell — is the
+subject of [*What is a site? The unit of analysis*](unit-of-analysis.html).
 
 ### Long and wide data
 

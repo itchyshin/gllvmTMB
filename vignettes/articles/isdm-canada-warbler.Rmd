@@ -106,8 +106,12 @@ msg_of <- function(expr) {
 # What this shows
 
 You have two kinds of data on the same birds. One is **opportunistic** --
-eBird checklists, GBIF records -- with counts, wildly uneven effort and no
-sampling design. The other is a **structured survey**: a protocol, fixed
+[eBird](https://ebird.org) checklists, [GBIF](https://www.gbif.org) records --
+with counts, wildly uneven effort and no sampling design. (If those names are
+new: eBird is a global bird-recording platform built on checklists, and GBIF,
+the Global Biodiversity Information Facility, is the portal where species
+records from museums, surveys and citizen science are aggregated and
+downloaded.) The other is a **structured survey**: a protocol, fixed
 stations, detection or non-detection, and far fewer sites. An **integrated
 species distribution model** fits both at once.
 
@@ -159,8 +163,9 @@ and what repeat visits buy you
 **No real GBIF or ABMI data were analysed for this article.** Everything below
 describes a simulated boreal songbird community shaped on a real system --
 Canada Warbler (*Cardellina canadensis*) and eleven co-occurring species in
-Alberta, an eBird-style opportunistic arm and an ABMI-style structured
-detection arm -- and no number here is a measurement about any real taxon.
+Alberta, an eBird-style opportunistic arm and an [ABMI](https://abmi.ca)-style
+structured detection arm (the Alberta Biodiversity Monitoring Institute, a
+standardised provincial survey programme) -- and no number here is a measurement about any real taxon.
 
 Three reasons, all of which you would meet on the way to the real analysis:
 
@@ -216,8 +221,9 @@ which is how a community model differs from twelve separate SDMs.
 **$\log(\text{effort}_i)$ -- the offset.** A known multiplier with no fitted
 coefficient: doubling the effort doubles the expected count, and the model is
 told that rather than asked to discover it. Any other *known* adjustment goes
-in the same place. If you carry QPAD-style detectability offsets for time of
-day, date and distance, add them into this term rather than modelling them
+in the same place. If you carry [QPAD](https://github.com/borealbirds/QPAD)-style
+detectability offsets for time of day, date and distance (Sólymos et al.
+2013), add them into this term rather than modelling them
 separately.
 
 **$\kappa$ -- the arm indicator.** The two sources report on different overall
@@ -895,7 +901,7 @@ ABMI locations are displaced by kilometres -- and the consequences are not
 small. Read
 [*When one data source knows where it is and the other does not*](isdm-spatial-precision.html)
 before fusing real fuzzed data. In particular, do **not** expect coarsening
-your raster to fix it: Gabor et al. (2022) is the direct test of that
+your raster to fix it: Gábor et al. (2022) is the direct test of that
 intuition, and the intuition does not survive it.
 
 **The specific numbers are properties of this design.** AIC's 10 of 10, the
@@ -1425,13 +1431,21 @@ slopes come back shrunk.
 
 ## References
 
-Gabor, L., et al. (2022). Positional errors in species distribution modelling
-are not overcome by the coarser grains of analysis.
+Gábor, L., Jetz, W., Lu, M., Rocchini, D., Cord, A. F., Malavasi, M.,
+Zarzo-Arias, A., Barták, V., & Moudrý, V. (2022). Positional errors in species
+distribution modelling are not overcome by the coarser grains of analysis.
+*Methods in Ecology and Evolution*, **13**, 2289--2302.
 
 Renner, I. W., Elith, J., Baddeley, A., Fithian, W., Hastie, T., Phillips,
 S. J., Popovic, G., & Warton, D. I. (2015). Point process models for
-presence-only analysis. *Methods in Ecology and Evolution.*
+presence-only analysis. *Methods in Ecology and Evolution*, **6**, 366--379.
 
 Warton, D. I., & Shepherd, L. C. (2010). Poisson point process models solve
 the "pseudo-absence problem" for presence-only data in ecology. *Annals of
-Applied Statistics.*
+Applied Statistics*, **4**, 1383--1402.
+
+Sólymos, P., Matsuoka, S. M., Bayne, E. M., Lele, S. R., Fontaine, P.,
+Cumming, S. G., Stralberg, D., Schmiegelow, F. K. A., & Song, S. J. (2013).
+Calibrating indices of avian density from non-standardized survey data: making
+the most of a messy situation. *Methods in Ecology and Evolution*, **4**,
+1047--1058.

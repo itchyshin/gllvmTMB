@@ -44,7 +44,8 @@ fmt <- function(x, d = 3) formatC(x, format = "f", digits = d)
 # The situation
 
 You have two kinds of data on the same species. One is a large, messy pile of
-opportunistic records — eBird checklists, GBIF occurrences — with no survey
+opportunistic records — [eBird](https://ebird.org) checklists,
+[GBIF](https://www.gbif.org) occurrences — with no survey
 design behind it. The other is a structured monitoring programme: fewer sites,
 but a protocol. An integrated species distribution model (iSDM) fits both at
 once, on the reasoning that the structured arm can discipline the biased one.
@@ -65,7 +66,7 @@ Throughout this article that deliberate blurring is called **fuzz**, and it is
 measured not in kilometres but relative to the habitat layer — for reasons that
 become the whole point below.
 
-This is a documented problem, not a hypothetical one. Work on iNaturalist's
+This is a documented problem, not a hypothetical one. Work on [iNaturalist](https://www.inaturalist.org)'s
 obscured-geoprivacy setting reports that obscured locations change the
 environmental values attached to a record — elevation, habitat type, extracted
 covariates — and change the resulting estimated distributions. Gábor et al.
@@ -727,7 +728,8 @@ a real modelling option, and not implemented here.
    data it can reflect positional error, sampling bias, detection differences,
    or a genuine scale difference all at once, and these clean simulations
    cannot tell you which.
-5. **Ask for the precise coordinates.** Most fuzzing regimes, ABMI's included,
+5. **Ask for the precise coordinates.** Most fuzzing regimes -- including that of [ABMI](https://abmi.ca), the
+   Alberta Biodiversity Monitoring Institute --
    have a data-agreement route to exact locations. For an analysis that turns
    on a habitat slope, that request is worth making before the analysis rather
    than after.
@@ -810,15 +812,20 @@ rownames(trunc) <- c("0.5", "1.0")
 
 ## References
 
-- Fletcher, R. J. Jr., et al. (2019). *A practical guide for combining data to
-  model species distributions.* Establishes that unweighted integrated models
+- Fletcher, R. J. Jr., Hefley, T. J., Robertson, E. P., Zuckerberg, B.,
+  McCleery, R. A., & Dorazio, R. M. (2019). *A practical guide for combining
+  data to model species distributions.* Ecology, **100**(6), e02710. Establishes that unweighted integrated models
   are driven by the abundant presence-only arm, increasingly so as that arm
   grows.
 - Gábor, L., Jetz, W., Lu, M., et al. (2022). *Positional errors in species
   distribution modelling are not overcome by the coarser grains of analysis.*
-  Also reports SDM performance declining as positional error grows.
-- Moudrý, V., et al. (2023). Restates the Gábor et al. result in a review of
-  spatial-resolution choices in species distribution modelling.
+  Methods in Ecology and Evolution, **13**, 2289--2302. Also reports SDM performance declining as positional error grows.
+- Moudrý, V., Keil, P., Gábor, L., et al. (2023). *Scale mismatches between
+  predictor and response variables in species distribution modelling: A review
+  of practices for appropriate grain selection.* Progress in Physical
+  Geography: Earth and Environment, **47**, 467--482. Restates the Gábor et al.
+  result in a review of spatial-resolution choices in species distribution
+  modelling.
 
 ## For the record
 

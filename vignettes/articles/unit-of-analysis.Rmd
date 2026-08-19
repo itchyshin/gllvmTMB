@@ -76,7 +76,7 @@ pieces of evidence about the same place.
 So a usable observation needs two things: **where**, and **how much looking**.
 The pair is the unit. Everything else in this article follows from that.
 
-An eBird checklist already is such a unit. One outing, one place, 45 minutes,
+An [eBird](https://ebird.org) checklist already is such a unit. One outing, one place, 45 minutes,
 three warblers — the checklist *is* the counting window, and its duration is
 the effort. That is why effort enters a model as `offset(log_effort)`: the
 offset says the expected count scales with how long you looked, without
@@ -381,7 +381,9 @@ exist only for **complete checklists** — the ones where the observer reported
 everything they detected. On an incomplete checklist, a missing species means
 nothing at all, and treating it as a zero invents evidence.
 
-A raw presence-only download from GBIF has no zeros to give. That is not a
+A raw presence-only download from [GBIF](https://www.gbif.org) (the Global
+Biodiversity Information Facility, the portal where species records from
+museums, surveys and citizen science are aggregated) has no zeros to give. That is not a
 defect to be patched by writing zeros where records are absent; it is a
 different data type with its own route. Fit it with the point-process
 quadrature device shown in [Joint ecological intensity from opportunistic
@@ -397,7 +399,7 @@ you. A quick tour of the common cases:
 | taxon | the common data | what one record is | the natural unit |
 |---|---|---|---|
 | **birds** | eBird checklists; point counts; atlas schemes | a count, with duration and (on complete checklists) inferable zeros | the checklist or station — the luxury case this site's Warbler article uses |
-| **insects** | iNaturalist photos; museum specimens; moth traps; butterfly transects | usually **one photo at one point** — no effort, no zeros; traps and transects are the exception, with real counts per trap-night or walk | the record itself (presence-only), or the trap/transect where one exists |
+| **insects** | [iNaturalist](https://www.inaturalist.org) photos; museum specimens; moth traps; butterfly transects | usually **one photo at one point** — no effort, no zeros; traps and transects are the exception, with real counts per trap-night or walk | the record itself (presence-only), or the trap/transect where one exists |
 | **plants** | vegetation plots; herbarium specimens; iNaturalist | a plot gives cover or presence per quadrat — effort is the plot itself; a specimen is a presence with often-vague locality | the plot; specimens behave like museum insects |
 | **mammals** | camera traps; sign surveys; opportunistic records | detections per camera-deployment — effort is trap-nights, built in | the camera deployment |
 | **amphibians** | call surveys; iNaturalist | detection within a timed listening period | the survey visit |
@@ -524,3 +526,15 @@ distribution modelling are not overcome by the coarser grains of analysis*
   [When one data source knows where it is and the other does not](isdm-spatial-precision.html).
 - How much structured survey you need alongside opportunistic records:
   [How much survey do you need?](integrated-survey-design.html).
+
+# References
+
+Gábor, L., Jetz, W., Lu, M., Rocchini, D., Cord, A. F., Malavasi, M.,
+Zarzo-Arias, A., Barták, V., & Moudrý, V. (2022). Positional errors in species
+distribution modelling are not overcome by the coarser grains of analysis.
+*Methods in Ecology and Evolution*, **13**, 2289--2302.
+
+van Strien, A. J., van Swaay, C. A. M., & Termaat, T. (2013). Opportunistic
+citizen science data of animal species produce reliable estimates of
+distribution trends if analysed with occupancy models. *Journal of Applied
+Ecology*, **50**, 1450--1458.

@@ -76,7 +76,7 @@ The tree routes on data alone. Your question splits the destinations further:
 | **detection / non-detection** <br> one visit per place | [binary joint SDM](joint-sdm.html) · or its [survey arm](integrated-two-source-example.html) | [binary joint SDM](joint-sdm.html) · [if a species is too rare](rare-species-jsdm.html) | not possible from one visit — the occupancy model collapses into this one |
 | **detection histories** <br> repeat visits | [what repeat visits add](integrated-repeated-visits.html) — but read the exit first | possible, same fit | **spOccupancy territory** — see [the honest exits](#the-honest-exits) |
 | **presence-only** <br> one photo, one point | [joint intensity from records](gbif-joint-intensity.html) — the point-process route | the same fit | **the occupancy-trend tradition** — see [the honest exits](#the-honest-exits) |
-| **mixed sources** <br> eBird plus your own survey | **[the integrated model, end to end](isdm-canada-warbler.html)** · [start smaller](integrated-two-source-example.html) · [go wider](integrated-multi-source-example.html) | yes, and it is the same fit | only as far as the survey arm's visits allow |
+| **mixed sources** <br> [eBird](https://ebird.org) plus your own survey | **[the integrated model, end to end](isdm-canada-warbler.html)** · [start smaller](integrated-two-source-example.html) · [go wider](integrated-multi-source-example.html) | yes, and it is the same fit | only as far as the survey arm's visits allow |
 
 Two honesty notes about that table. There is no article here devoted to
 counts from a *single designed* survey; the machinery for it lives inside the

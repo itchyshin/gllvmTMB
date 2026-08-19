@@ -75,6 +75,8 @@ navbar:
     sdm:
       text: Species Distribution Models
       menu:
+      - text: "Start here: which SDM do your data allow?"
+        href: articles/sdm-start-here.html
       - text: Joint species distribution model
         href: articles/joint-sdm.html
       - text: When a rare species breaks the JSDM
@@ -157,6 +159,7 @@ articles:
       opportunistic records with designed surveys. The integrated route is
       experimental.
     contents:
+    - articles/sdm-start-here
     - articles/joint-sdm
     - articles/rare-species-jsdm
     - articles/isdm-canada-warbler

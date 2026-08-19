@@ -98,6 +98,8 @@ navbar:
     concepts:
       text: Concepts
       menu:
+      - text: What is a site? The unit of analysis
+        href: articles/unit-of-analysis.html
       - text: Plain-English vocabulary
         href: articles/gllvm-vocabulary.html
       - text: Covariance and correlation
@@ -167,6 +169,7 @@ articles:
 
   - title: Concepts
     contents:
+    - articles/unit-of-analysis
     - articles/gllvm-vocabulary
     - articles/covariance-correlation
     - articles/cross-family-correlations

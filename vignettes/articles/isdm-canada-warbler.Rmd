@@ -1,6 +1,6 @@
 ---
 title: "An integrated SDM for twelve species, end to end"
-description: "Twelve boreal songbirds, an opportunistic count arm and a structured detection arm at disjoint locations, and one shared spatial field. Twelve species make two decisions real that two species cannot: how many latent spatial axes to fit (AIC does it; the near-zero-loading rule of thumb does not), and what to do about overdispersion in a Poisson arm that has no dispersion parameter. Ends in a relative-intensity map, and in what the map does not carry."
+description: "How to combine eBird-style opportunistic counts with a structured detection survey for a twelve-species songbird community when the two sources share no locations, and how to make a map out of the result. Covers the two decisions you will actually face -- how many shared spatial gradients to fit, and what to do about overdispersion -- and is honest about what the map does not carry."
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -38,112 +38,204 @@ us <- un$summary
 
 f2 <- function(x, d = 2) formatC(x, format = "f", digits = d)
 
-## Capture a warning without letting its ABSENCE break the build. A vignette
+## Derived objects are built ONCE, here, so that a section can be moved
+## without breaking an inline reference somewhere else on the page.
+sw  <- pr$sweep              # count-ceiling sweep, 3 seeds per rung
+ss  <- pr$sweep_summary      # recovery envelope, 12 seeds per rung
+ff  <- ai$fits; sel <- ai$selection; ts <- ai$tell_summary
+so  <- us$slope_overall
+dl  <- us$dloglik
+v   <- us$vmr[order(us$vmr$sigma_od), ]
+ps  <- us$psi[order(us$psi$sigma_od), ]
+hi  <- ps$sigma_od >= 0.55
+psi_ratio_hi <- ps$psi_median[hi] / ps$sigma2[hi]
+rp  <- qd$replicates
+sd_ <- qd$sweep_decoupled$summary
+npp <- qd$nodes_per_presence
+mc  <- mean(qd$replicates$sd)
+big_beta <- abs(rp$truth) > 0.4
+nll_gain <- t(sapply(split(ff, ff$seed), function(z) c(
+  `2->3` = z$objective[z$k == 2] - z$objective[z$k == 3],
+  `3->4` = z$objective[z$k == 3] - z$objective[z$k == 4])))
+k3l <- ai$loadings[ai$loadings$k == 3, ]
+smallest_col <- sapply(split(k3l, k3l$seed),
+                       function(z) z$column[which.min(z$col_rms)])
+nz3 <- ai$near_zero_tell[ai$near_zero_tell$k == 3, ]
+nz4 <- ai$near_zero_tell[ai$near_zero_tell$k == 4, ]
+sv3_nonzero <- nz3$sv_rel_3[nz3$sv_rel_3 > 1e-6]
+
+## One aggregation of the count-ceiling sweep, used at two densities: a short
+## excerpt in the main path, the whole thing in the record at the end.
+short_reason <- c("convergence != 0" = "no convergence",
+                  "iterations <= 1 (#1167 silent failure)" = "1 iteration",
+                  "error: All 1 restarts failed." = "optimiser error")
+agg <- do.call(rbind, lapply(split(sw, sw$kappa), function(z) data.frame(
+  kappa      = z$kappa[1],
+  mean_ct    = round(mean(z$mean_count), 2),
+  max_ct     = paste(range(z$max_count), collapse = "-"),
+  iters      = if (all(is.na(z$iterations))) "-"
+               else paste(range(z$iterations, na.rm = TRUE), collapse = "-"),
+  objective  = if (all(is.na(z$objective))) "-"
+               else format(mean(z$objective), digits = 2, scientific = TRUE),
+  ok         = paste0(sum(z$ok), "/", nrow(z)),
+  verdict    = if (all(z$ok)) "healthy"
+               else unname(short_reason[unique(z$reason[!z$ok])[1]]))))
+rownames(agg) <- NULL
+
+## Capture a condition without letting its ABSENCE break the build. A vignette
 ## that calls conditionMessage() on whatever tryCatch() hands back will die
-## with an unrelated error the day the package stops warning -- a change worth
-## noticing, but not one that should take the whole website down with it.
+## with an unrelated error the day the package stops signalling -- a change
+## worth noticing, but not one that should take the whole website down.
 warn_of <- function(expr) {
   w <- tryCatch({ force(expr); NULL }, warning = function(w) w)
-  if (is.null(w)) "(no warning was emitted -- behaviour has changed)"
+  if (is.null(w)) "(behaviour has changed: no warning was emitted)"
   else paste0("<", class(w)[1], ">\n", conditionMessage(w))
 }
 err_of <- function(expr) {
   e <- tryCatch({ force(expr); NULL }, error = function(e) e)
-  if (is.null(e)) "(no error was raised -- behaviour has changed)"
+  if (is.null(e)) "(behaviour has changed: no error was raised)"
   else paste0("<", class(e)[1], ">\n", conditionMessage(e))
+}
+msg_of <- function(expr) {
+  m <- tryCatch({ force(expr); NULL }, message = function(m) m)
+  if (is.null(m)) "(behaviour has changed: no message was emitted)"
+  else conditionMessage(m)
 }
 ```
 
-# What this article is
+# What this shows
 
-An **integrated species distribution model** fuses an opportunistic arm --
-eBird checklists, GBIF records -- with a structured survey arm, so the
-designed sample can discipline the messy one. This article runs one end to
-end for a community of **twelve boreal songbirds**, with the two arms at
-locations that share nothing, and finishes with the thing the exercise is
-for: a relative-intensity map for all twelve.
+You have two kinds of data on the same birds. One is **opportunistic** --
+eBird checklists, GBIF records -- with counts, wildly uneven effort and no
+sampling design. The other is a **structured survey**: a protocol, fixed
+stations, detection or non-detection, and far fewer sites. An **integrated
+species distribution model** fits both at once.
 
-Twelve species is the point, not decoration. With two species there is one
-sensible latent structure and no dispersion question worth asking. With
-twelve, two decisions become real, and neither has an obvious answer:
+The motivation, in one line, is that the designed sample should discipline the
+messy one -- though note up front that this article does not *test* that: it
+never compares an opportunistic-only fit, a survey-only fit and the integrated
+one. What it does is run one integrated model end to end for **twelve boreal
+songbirds**, with the two sources at locations that share nothing at all, and
+finish with the thing the exercise is for: a map of relative intensity for all
+twelve species.
 
-1. **How many latent spatial axes?** The shared field has a rank `d`, and
-   the model will fit any `d` you name. Section
-   [Decision 1: the rank of the shared field] measures what happens when you
-   ask AIC (it works, in 10 replicate datasets out of 10) and what happens
-   when you use the rule of thumb everyone reaches for instead -- *stop when
-   a loading column goes near zero* -- which gets the answer right in 1 of
-   10, for two separate reasons.
-2. **What absorbs overdispersion in a Poisson arm?** Poisson has no
-   dispersion parameter. Section
+Twelve species rather than two, because twelve makes two decisions real that
+you will meet on your own data.
+
+1. **How many shared spatial gradients should the model fit?** The species
+   are tied together by unmeasured surfaces they all respond to, and you have
+   to say how many. [Decision 1: how many shared gradients?] settles it with
+   AIC, and shows why the rule of thumb most people reach for instead points
+   one gradient too high.
+2. **What do you do about overdispersion?** The count arm is Poisson, and
+   Poisson has no dispersion parameter, so extra noise has to go somewhere.
    [Decision 2: overdispersion in an arm with no dispersion parameter]
-   measures `spatial_latent(..., unique = TRUE)` as the mechanism, and the
-   answer is the opposite of the one most people would predict.
+   measures the option this package offers.
 
-Everything else here -- the two arms, the mesh, the offset, the map, the
-presence-only route -- is machinery in service of those two.
+**You need the repository to run this code, not just the installed package.**
+The simulator and the saved campaign results live in `dev/isdm-precision/` in
+the [gllvmTMB source tree](https://github.com/itchyshin/gllvmTMB); copying
+chunks into a fresh session will not work on its own.
 
-## Where the numbers come from
+Two neighbouring questions have articles of their own rather than a paragraph
+here: how much survey you need
+([*How big does an integrated survey design need to be?*](integrated-survey-design.html))
+and what repeat visits buy you
+([*What do repeated survey visits add to an integrated model?*](integrated-repeated-visits.html)).
 
-One fit runs live on this page. Everything replicated is read from a saved
-campaign, listed here so each claim can be weighed against the design behind
-it:
+## The data are simulated
 
-```{r provenance, echo = FALSE}
-data.frame(
-  campaign = c("intensity ceiling + recovery envelope", "rank selection",
-               "overdispersion (unique = TRUE)", "presence-only quadrature",
-               "map surfaces"),
-  fits = c(nrow(pr$sweep) + nrow(pr$timing) + sum(pr$sweep_summary$n_rep),
-           nrow(ai$fits), 2L * us$n_seeds_fitted,
-           nrow(qd$replicate_fit_health) +
-             nrow(qd$sweep_decoupled$long) / nrow(qd$replicates) +
-             nrow(qd$sweep_coincident$long) / nrow(qd$replicates),
-           length(md$ok_seeds)),
-  file = c("cawa12-probe.rds", "cawa12-aic.rds", "cawa12-unique.rds",
-           "cawa12-quadrature.rds", "cawa12-mapdata.rds"),
-  row.names = NULL)
-```
-
-Each has its generating script beside it (`generate-<name>.R`), and each ran
-against gllvmTMB `r ai$package_version`.
-
-## The data are simulated, and that is a scope decision
-
-**No real GBIF or ABMI data were analysed for this article.** Everything
-below describes a simulated boreal songbird community shaped on a real
-system -- Canada Warbler (*Cardellina canadensis*) and eleven co-occurring
-species in Alberta, an eBird-style opportunistic arm and an ABMI-style
-structured detection arm -- and no number here is a measurement about any
-real taxon.
+**No real GBIF or ABMI data were analysed for this article.** Everything below
+describes a simulated boreal songbird community shaped on a real system --
+Canada Warbler (*Cardellina canadensis*) and eleven co-occurring species in
+Alberta, an eBird-style opportunistic arm and an ABMI-style structured
+detection arm -- and no number here is a measurement about any real taxon.
 
 Three reasons, all of which you would meet on the way to the real analysis:
 
 1. **The structured arm is not freely available at usable precision.** ABMI
-   publishes public survey locations fuzzed to roughly 5.5 km, coarser for
-   species at risk; precise coordinates require a **separate data
-   agreement**. Fitting real ABMI locations here would need that agreement,
-   and fitting the fuzzed public ones would measure the fuzz as much as the
-   birds -- the subject of the companion article
-   [*When one data source knows where it is and the other does not*](isdm-spatial-precision.html)
-   (a pkgdown article, not an installed vignette, so `vignette()` will not
-   find it).
-2. **A vignette must not depend on the network.** The opportunistic arm *is*
-   freely available and `rgbif` will fetch it, but a documentation build that
-   phones an API is a documentation build that breaks.
+   publishes public survey locations fuzzed to roughly 5.5 km; precise
+   coordinates need a **separate data agreement**, and fitting the fuzzed ones
+   would measure the fuzz as much as the birds -- the subject of the companion
+   article
+   [*When one data source knows where it is and the other does not*](isdm-spatial-precision.html).
+2. **A vignette must not depend on the network.** `rgbif` will fetch the
+   opportunistic arm, but a documentation build that phones an API is a
+   documentation build that breaks.
 3. **Real integration needs cleaning and matching work** that would swamp
    everything this page is trying to show.
 
 Simulating also buys the one thing real data cannot: a known truth, against
 which *did the model recover it* is a question with an answer.
 
-# The two arms
+**This simulation is the easy version of the problem**, in two specific ways
+that matter for whether any of it transfers: the opportunistic records are
+scattered at random rather than clustered along roads, and the environmental
+covariate is uncorrelated with the unmeasured spatial structure by
+construction. Neither holds on real data.
+[Before you use this on real data] spells out what that leaves untested.
 
-Real opportunistic and structured arms almost never share a location, a grid
-cell, or a unit label -- an eBird checklist and an ABMI station land wherever
-their own protocol put them. The simulator draws them **independently** over
-one landscape, so nothing here quietly assumes a convenience the real data
-will not have.
+# The two arms, and the one field they share
+
+Everything here rests on a single idea: the two data sources are two ways of
+observing **the same underlying abundance**. Write the log of that abundance
+for species $j$ at location $i$ as
+
+$$\eta_{ij} \;=\; \alpha_j \;+\; \beta_j\,\mathrm{env}_i
+  \;+\; \lambda_{1j} f_{1i} \;+\; \lambda_{2j} f_{2i}
+  \;+\; \log(\text{effort}_i)
+  \;+\; \kappa\,\mathbf{1}\{\text{arm}_i = \text{opportunistic}\},$$
+
+and read it one piece at a time.
+
+**$\alpha_j + \beta_j\,\mathrm{env}_i$ -- the habitat part.** Each species
+has its own intercept and its own slope on the environmental covariate,
+exactly as it would in a per-species GLM. These slopes are what most people
+came for.
+
+**$\lambda_{1j} f_{1i} + \lambda_{2j} f_{2i}$ -- the shared unmeasured
+gradients.** A **latent spatial field** is everything spatial you did not
+measure, estimated as a smooth surface: soil, moisture, disturbance history,
+whatever else organises the community. There are two of them here, estimated
+rather than supplied, and each species carries its own pair of **loadings** on
+them. A species with a large positive loading on the first surface is common
+where that surface runs high, and species with similar loadings co-occur --
+which is how a community model differs from twelve separate SDMs.
+
+**$\log(\text{effort}_i)$ -- the offset.** A known multiplier with no fitted
+coefficient: doubling the effort doubles the expected count, and the model is
+told that rather than asked to discover it. Any other *known* adjustment goes
+in the same place. If you carry QPAD-style detectability offsets for time of
+day, date and distance, add them into this term rather than modelling them
+separately.
+
+**$\kappa$ -- the arm indicator.** The two sources report on different overall
+scales, and one intercept per source absorbs that difference so the shared
+parts do not have to.
+
+Counts and detections then come off that same $\eta$ by different routes:
+$y_{ij}\sim\text{Poisson}(e^{\eta_{ij}})$ on the opportunistic arm, and
+$y_{ij}\sim\text{Bernoulli}(1-e^{-e^{\eta_{ij}}})$ -- a **complementary
+log-log** link -- on the structured one. The cloglog link is not a taste: it
+is exactly the probability that a Poisson count with that same mean is at
+least one, so "at least one bird detected here" and "this many birds counted
+there" become statements about one abundance rather than two. `isdm_sources()`
+is what tells the model which rows follow which process.
+
+**The mesh, and why your two sources need not share a single site.** A
+**mesh** is a triangulated grid laid over the study area. The latent field is
+estimated at the mesh nodes, and any location -- from either arm -- takes its
+value as a weighted average of the nodes around it. That is the whole
+mechanism by which two data sources sharing no row, no coordinate and no
+label share a field: **the field lives on the mesh, not on the data.**
+
+That is the question that stops most people before they start. You do not need
+to match an eBird checklist to an ABMI station, grid both onto a common
+raster, or throw away the source with fewer sites. Build the mesh over the
+union of both, and project every row onto it.
+
+The simulator draws the two arms **independently** over one landscape, so
+nothing here quietly assumes a convenience the real data will not have:
 
 ```{r data}
 suppressMessages(source("../../dev/isdm-precision/generate-cawa12.R"))
@@ -154,25 +246,6 @@ cells <- attr(dat, "cells")
 
 str(dat[, c("cell_id", "trait", "isdm_source", "env", "log_effort", "value")])
 ```
-
-The simulator is one file, sourced rather than retyped, so the fit below is
-the same object every campaign in this article measured. Its data-generating
-process is
-
-$$\eta_{ij} \;=\; \alpha_j \;+\; \beta_j\,\mathrm{env}_i
-  \;+\; \lambda_{1j} f_{1i} \;+\; \lambda_{2j} f_{2i}
-  \;+\; \log(\text{effort}_i)
-  \;+\; \kappa\,\mathbf{1}\{\text{arm}_i = \text{opportunistic}\},$$
-
-with counts $y_{ij}\sim\text{Poisson}(e^{\eta_{ij}})$ on the opportunistic
-arm and detections $y_{ij}\sim\text{Bernoulli}(1-e^{-e^{\eta_{ij}}})$ --
-cloglog -- on the structured one. **The truth is rank 2**: two latent
-spatial axes, each species carrying its own loading on each. Both axes are
-residualised against `env` at the sampled locations, and $f_2$ against
-$f_1$, so the covariate and the latent field are not two competing spatial
-terms fighting over one pool of variance. Skipping that step is not a
-subtlety: it drives the estimated slopes to about +21 against a true mean
-near +1.3.
 
 ```{r arms}
 tab <- table(cells$arm)
@@ -192,25 +265,19 @@ cat("sd(log effort) within arm:", f2(sd(po$log_effort), 3), "/",
     " cor(log effort, arm):",
     f2(cor(cells$log_effort, cells$arm == "ebird"), 3), "\n")
 
-## Projected to UTM km BEFORE anything is meshed, inside a single zone.
-cat("UTM zones spanned:", length(unique(floor((cells$lon + 180) / 6) + 1)),
-    " X range (km):", paste(round(range(cells$X)), collapse = "-"),
-    " Y range (km):", paste(round(range(cells$Y)), collapse = "-"), "\n")
-
 cat("largest opportunistic count:", max(dat$value[dat$isdm_source == "ebird"]),
-    " mean:", f2(mean(dat$value[dat$isdm_source == "ebird"]), 2),
     " detection rate, structured arm:",
     f2(mean(dat$value[dat$isdm_source == "abmi"]), 3), "\n")
 ```
 
-Coordinates are projected to UTM kilometres before anything is meshed,
-because a degree of longitude and a degree of latitude are different physical
-distances everywhere but the equator, and an isotropic SPDE built on degrees
-treats them as equal. Section [The one thing the likelihood cannot tell you]
-returns to that, because the usual way of checking such a choice does not
-work.
+One thing to do before you mesh anything: **project your coordinates**. A
+degree of longitude and a degree of latitude are different physical distances
+everywhere but the equator, and a mesh built on degrees treats them as equal.
+These coordinates are in UTM kilometres inside a single zone. The
+[For the record] section returns to this, because the obvious way of checking
+such a choice -- fit both and compare -- does not work.
 
-# One fit, and the check that it is a fit
+# Fit it, and check that it is really a fit
 
 ```{r fit}
 t0 <- proc.time()[["elapsed"]]
@@ -225,94 +292,48 @@ cat("\naccepted:", f$ok, " convergence:", f$convergence,
     " mesh nodes:", cawa12_mesh(dat)$mesh$n, "\n")
 ```
 
-`isdm_sources()` is what tells the model the two arms are different
-observation processes on one shared intensity: a Poisson likelihood for the
-counts, a complementary-log-log Bernoulli for detection / non-detection.
 `spatial_latent(0 + trait | coords, d = 2)` is the shared field, with
-per-species loadings on it. The mesh is built from `dat` -- the union of both
-arms' locations -- and every row from either arm is projected onto it. That
-is the whole mechanism by which two arms sharing no row, coordinate or label
-share a latent field: the field lives on the mesh, not on the data.
+per-species loadings on it; `d = 2` is the number of gradients, the subject of
+the next section. The mesh is built from `dat` -- the union of both arms'
+locations -- and every row from either arm is projected onto it.
 
-**`convergence == 0` is not the check.** This package has a silent failure
-([issue #1167](https://github.com/itchyshin/gllvmTMB/issues/1167)) in which
-an SPDE fit at large counts returns `convergence == 0` after a **single**
-iteration at an astronomically large objective, every spatial parameter still
-at its start value -- the sweep below shows the magnitudes. `cawa12_fit()` therefore rejects a fit unless **all three** hold:
-`convergence == 0`, `iterations > 1`, and a finite objective. Iteration
-counts in the dozens or hundreds are the healthy shape.
+This is a **small example**: `r nrow(cells)` sampled locations, a
+`r cawa12_mesh(dat)$mesh$n`-node mesh, about a minute per fit. Nothing on this
+page measures how any of it scales to tens of thousands of checklists or a
+mesh an order of magnitude larger.
 
-## How large can the counts get?
+**`convergence == 0` is not the check.** This package can return
+`convergence == 0` after a **single** iteration, at an astronomically large
+objective, with every spatial parameter still sitting at its starting value:
+a fit that never happened, reporting success. So look at `iterations` as
+well. Counts in the tens or hundreds are the healthy shape; **1 means the
+optimiser never moved**. `cawa12_fit()` accepts a fit only when all three of
+`convergence == 0`, `iterations > 1` and a finite objective hold.
 
-Measured, because *large* is not a feeling. The opportunistic arm's intensity
-offset $\kappa$ was swept, three seeds per rung, every rung unanimous across
-its three seeds:
+**Keep the counts moderate.** That failure arrives when the counts get large,
+and *large* is not a feeling, so it was measured: the opportunistic arm's
+overall intensity was raised step by step, three datasets per step.
 
-```{r envelope, echo = FALSE}
-sw  <- pr$sweep
-agg <- do.call(rbind, lapply(split(sw, sw$kappa), function(z) data.frame(
-  kappa           = z$kappa[1],
-  mean_cell_count = round(mean(z$mean_count), 2),
-  max_cell_count  = paste(range(z$max_count), collapse = "-"),
-  iterations      = if (all(is.na(z$iterations))) "-"
-                    else paste(range(z$iterations, na.rm = TRUE), collapse = "-"),
-  mean_objective  = if (all(is.na(z$objective))) "-"
-                    else format(mean(z$objective), digits = 3, scientific = TRUE),
-  accepted        = paste0(sum(z$ok), "/", nrow(z)),
-  verdict         = if (all(z$ok)) "healthy" else unique(z$reason[!z$ok])[1])))
-rownames(agg) <- NULL
-agg
+```{r ceiling-short, echo = FALSE}
+excerpt <- agg[agg$kappa %in% c(1, 2.3, 2.4, 3),
+               c("kappa", "mean_ct", "max_ct", "iters", "ok", "verdict")]
+rownames(excerpt) <- NULL
+excerpt
 ```
 
-Three things in that table are worth taking away rather than skimming.
+Two things to take from that. The cliff is **not far off** -- fits are healthy
+up to a mean cell count near `r f2(max(sw$mean_count[sw$kappa == 2.3]), 1)`
+and all three seeds fail one step later -- and a cap on the largest single
+cell is a **weak gate**, because the largest count overlaps across the cliff
+(`r pr$envelope$max_cell_count_healthy` in a healthy fit against
+`r pr$envelope$min_cell_count_failing` in a rejected one); what controls it is
+the *mean* cell intensity. So *keep your largest cell count under about
+`r pr$envelope$safe_max_cell_count_recommended`* is a recommendation with
+margin, not a measured threshold.
 
-**The cliff is real and it is not far off.** At
-$\kappa = `r f2(pr$envelope$last_healthy_kappa, 1)`$ all three seeds fit
-healthily; at `r f2(pr$envelope$first_failing_kappa, 1)` all three fail,
-stopping after about a dozen iterations at an objective near 1e14. At
-`r f2(pr$envelope$silent_1iter_kappa, 1)` the failure goes **silent** -- one
-iteration, objective near 1e24, `convergence == 0` -- the exact #1167
-signature. Beyond that the optimiser errors outright.
-
-**A per-cell cap is a weak gate.** The largest single-cell count *overlaps*
-across the cliff: `r pr$envelope$max_cell_count_healthy` in a healthy fit
-against `r pr$envelope$min_cell_count_failing` in a rejected one. The
-controlling quantity is the **mean** cell intensity, not the maximum. So the
-figure worth carrying -- *keep your largest cell count under about
-`r pr$envelope$safe_max_cell_count_recommended`* -- is a recommendation with
-margin, not a measured threshold. The measured facts are the two overlapping
-numbers.
-
-**The statistical envelope is tighter than the numerical one.** Recovery of
-the environmental slopes, four rungs, 12 replicate seeds each, all accepted:
-
-```{r recovery-envelope, echo = FALSE}
-ss <- pr$sweep_summary
-data.frame(kappa = ss$kappa,
-           mean_cell_count = round(sapply(ss$kappa, function(k)
-             mean(sw$mean_count[sw$kappa == k])), 2),
-           accepted        = paste0(ss$n_ok, "/", ss$n_rep),
-           cor_est_truth   = paste0(f2(ss$mean_cor, 3),
-                                    " (sd ", f2(ss$sd_cor, 3), ")"),
-           mean_abs_err    = f2(ss$mean_abs_err, 3),
-           mean_signed_err = f2(ss$mean_signed_err, 3))
-```
-
-Accuracy is already decaying two rungs before the optimiser breaks, while
-every fit still reports itself healthy. That is the more useful of the two
-warnings: the numerical gate tells you when to stop trusting the optimiser,
-and nothing tells you when to stop trusting the estimate except a recovery
-check of your own. $\kappa = `r f2(pr$envelope$chosen_kappa, 1)`$ was chosen
-on this evidence -- best mean correlation, tightest spread -- at a median
-`r f2(pr$envelope$secs_per_fit_median_serial, 1)` s per fit
-(`r f2(pr$envelope$secs_per_fit_range_serial[1], 1)`--`r f2(pr$envelope$secs_per_fit_range_serial[2], 1)` s
-across five serial fits on a shared machine).
-
-**And there is a bias in that table that was not removed.** The signed error
-is negative at every rung, averaging
-`r f2(mean(ss$mean_signed_err), 3)` against a true slope SD of
-`r f2(sd(truth$beta), 3)`. Slopes come back shrunk. This article makes no
-claim that these estimates are unbiased, here or anywhere below.
+Accuracy starts decaying two steps **before** the optimiser breaks, while
+every fit still reports itself healthy. The full sweep, and the recovery
+numbers behind that sentence, are in [For the record].
 
 ## What this one fit recovered
 
@@ -327,28 +348,32 @@ cat("cor(estimate, truth):", f2(cor(cmp$estimate, cmp$truth), 3),
     " mean signed error:", f2(mean(cmp$error), 3), "\n")
 ```
 
-One seed. Read it against the 12-seed envelope above
-(`cor` `r f2(ss$mean_cor[ss$kappa == 1], 3)`, sd
-`r f2(ss$sd_cor[ss$kappa == 1], 3)`), not on its own: a single replicate
-scatters, and judging an estimator from one is how people conclude it is
-broken when it is not.
+That is **one** dataset, and a single replicate scatters. Read it against the
+12-seed envelope instead: correlation with truth
+`r f2(ss$mean_cor[ss$kappa == 1], 3)`, sd
+`r f2(ss$sd_cor[ss$kappa == 1], 3)`. Judging an estimator from one replicate
+is how people conclude it is broken when it is not.
 
-# Decision 1: the rank of the shared field
+**The slopes do come back shrunk**, here and in every replicate: the mean
+signed error across the campaign is
+`r f2(mean(ss$mean_signed_err), 3)` against a true slope SD of
+`r f2(sd(truth$beta), 3)`. This article makes no claim that these estimates
+are unbiased.
 
-`d` is the **rank** of the shared spatial structure -- the number of
-independent latent surfaces the community draws on, each species carrying its
-own loading on each. `d = 1` says one unmeasured gradient organises the whole
-community; `d = 4` says four do. With two species the question barely exists.
-With twelve it is the first real modelling decision, and the model will fit
-whichever `d` you write.
+# Decision 1: how many shared gradients?
 
-## AIC decides it
+**Verdict: fit `d = 1, 2, 3, 4`, and take the lowest AIC.** On ten replicate
+datasets whose true number of gradients is 2, AIC picked 2 in
+**`r sum(sel$aic_pick == 2)` of `r nrow(sel)`**. The rule of thumb you would
+otherwise reach for -- fit a generous number, then stop where a loading column
+goes near zero -- got it right in **1 of 10**, and no threshold rescues it.
 
-Ten replicate datasets, each fitted at `d = 1, 2, 3, 4`, true rank 2:
+`d` is the number of independent unmeasured gradients the community responds
+to. `d = 1` says one hidden surface organises all twelve species; `d = 4` says
+four do. The model will fit whichever number you write, without complaint,
+which is why this is a decision and not a setting.
 
 ```{r aic-table, echo = FALSE}
-ff  <- ai$fits
-sel <- ai$selection
 by_k <- do.call(rbind, lapply(split(ff, ff$k), function(z) data.frame(
   d = z$k[1], df = z$df[1],
   mean_AIC       = round(mean(z$AIC), 1),
@@ -356,29 +381,30 @@ by_k <- do.call(rbind, lapply(split(ff, ff$k), function(z) data.frame(
   median_secs    = round(median(z$secs), 1))))
 by_k$mean_delta_AIC <- round(c(mean(sel$delta_aic_1), mean(sel$delta_aic_2),
                                mean(sel$delta_aic_3), mean(sel$delta_aic_4)), 2)
-by_k$delta_AIC_range <- c(
-  paste(round(range(sel$delta_aic_1), 1), collapse = " - "), "0 - 0",
-  paste(round(range(sel$delta_aic_3), 1), collapse = " - "),
-  paste(round(range(sel$delta_aic_4), 1), collapse = " - "))
 rownames(by_k) <- NULL
 by_k
 cat("AIC picks d = 2 in", sum(sel$aic_pick == 2), "of", nrow(sel),
-    "replicates; BIC picks d = 2 in", sum(sel$bic_pick == 2), "of",
-    nrow(sel), "\n")
-## per-replicate gain in negative log-likelihood bought by each extra column
-nll_gain <- t(sapply(split(ff, ff$seed), function(z) c(
-  `2->3` = z$objective[z$k == 2] - z$objective[z$k == 3],
-  `3->4` = z$objective[z$k == 3] - z$objective[z$k == 4])))
+    "replicates; BIC picks d = 2 in", sum(sel$bic_pick == 2), "\n")
 ```
 
-```{r rank-fig, echo = FALSE, fig.width = 6.6, fig.height = 3.6, dpi = 200, out.width = "100%", fig.cap = "Choosing the rank of the shared spatial field on ten replicate datasets whose true rank is 2. Panel A plots each replicate's AIC relative to its own best rank: the minimum falls at d = 2 in every replicate, under-fitting at d = 1 costs 114 to 175 AIC units, and each axis beyond the truth costs about 20 AIC for almost no gain in fit. Panel B tests the rule of thumb AIC is competing against. Each replicate was fitted at rank 3, one axis too many, and the three loading columns' root-mean-square values are plotted relative to the largest, the digit giving the column number. A reader stopping when a column falls below a near-zero cut reads the rank correctly in one replicate of ten: the smallest of the three columns runs from 0.00 to 0.34 of the largest, with only one replicate below a 0.05 cut, and the SMALLEST column is column 2 rather than the last in five of the ten replicates, because the loading matrix is identified only up to rotation. No uncertainty is shown anywhere in this figure.", fig.alt = "Two panels. Panel A: ten grey lines, one per replicate dataset, plotting AIC minus the best AIC against fitted rank 1 to 4. All ten start high at rank 1, between about 114 and 175, drop to exactly zero at rank 2, marked by a red point labelled true rank 2, then rise gently to roughly 15 to 20 at rank 3 and 32 to 38 at rank 4. Panel B: ten horizontal rows, one per replicate seed, each carrying three bold digits 1, 2 and 3 placed along a horizontal axis from 0 to 1 giving each loading column's root-mean-square relative to the largest column. Digit 1 sits at 1.0 in every row by construction. The other two digits scatter between about 0.02 and 0.8, and in half the rows digit 3 lies to the right of digit 2. A red dashed vertical line at 0.05 marks a near-zero cut; only one row has any digit to the left of it."}
+Fitting too few gradients is expensive -- `d = 1` costs
+`r f2(mean(ff$objective[ff$k == 1]) - mean(ff$objective[ff$k == 2]), 1)`
+units of log-likelihood on average -- while each gradient past the truth buys
+almost nothing and pays about 20 AIC for the privilege. That asymmetry is why
+AIC lands on the right answer so consistently here. One caveat on the
+comparison itself: at a superfluous rank the extra loading column sits on the
+boundary of its parameter space, so AIC's nominal penalty is conservative in
+the direction that flatters this 10-of-10 -- the same boundary problem noted
+for `Psi` in [For the record].
+
+```{r rank-fig, echo = FALSE, fig.width = 6.6, fig.height = 3.6, dpi = 200, out.width = "100%", fig.cap = "Choosing the number of shared gradients on ten replicate datasets whose true number is 2. Panel A plots each replicate's AIC relative to its own best value: the minimum falls at d = 2 in every replicate, fitting too few at d = 1 costs 114 to 175 AIC units, and each gradient beyond the truth costs about 20 AIC for almost no gain in fit. Panel B tests the rule of thumb AIC is competing against. Each replicate was fitted with one gradient too many, and the three loading columns' root-mean-square values are plotted relative to the largest, the digit giving the column number. A reader stopping when a column falls below a near-zero cut reads the answer correctly in one replicate of ten: the smallest of the three columns runs from 0.00 to 0.34 of the largest, with only one replicate below a 0.05 cut, and the SMALLEST column is column 2 rather than the last in five of the ten replicates, because the fitted columns get mixed among themselves. No uncertainty is shown anywhere in this figure.", fig.alt = "Two panels. Panel A: ten grey lines, one per replicate dataset, plotting AIC minus the best AIC against the number of gradients fitted, 1 to 4. All ten start high at 1, between about 114 and 175, drop to exactly zero at 2, marked by a red point labelled true rank 2, then rise gently to roughly 15 to 20 at 3 and 32 to 38 at 4. Panel B: ten horizontal rows, one per replicate seed, each carrying three bold digits 1, 2 and 3 placed along a horizontal axis from 0 to 1 giving each loading column's root-mean-square relative to the largest column. Digit 1 sits at 1.0 in every row by construction. The other two digits scatter between about 0.02 and 0.8, and in half the rows digit 3 lies to the right of digit 2. A red dashed vertical line at 0.05 marks a near-zero cut; only one row has any digit to the left of it."}
 op <- par(no.readonly = TRUE)
 par(mfrow = c(1, 2), mar = c(3.6, 3.6, 2.2, 0.6), oma = c(2.6, 0, 1.2, 0),
     mgp = c(2.1, 0.55, 0), las = 1, cex.axis = 0.72, cex.lab = 0.8, tcl = -0.3)
 
 DD <- as.matrix(sel[, paste0("delta_aic_", 1:4)])
 plot(NA, xlim = c(0.8, 4.2), ylim = c(-14, max(DD) * 1.06), xaxt = "n",
-     xlab = "rank d fitted", ylab = "AIC - AIC(best rank)")
+     xlab = "gradients fitted (d)", ylab = "AIC - AIC(best d)")
 axis(1, at = 1:4, cex.axis = 0.72); abline(h = 0, col = "grey85")
 for (i in seq_len(nrow(DD)))
   lines(1:4, DD[i, ], col = adjustcolor("grey35", 0.5), lwd = 1)
@@ -387,9 +413,9 @@ points(rep(1:4, each = nrow(DD)), as.vector(DD), pch = 16, cex = 0.5,
 points(rep(2, nrow(DD)), DD[, 2], pch = 21, bg = "#B2182B", col = "white",
        cex = 1, lwd = 0.6)
 text(2, -9, "true rank 2", cex = 0.68, col = "#B2182B", font = 2)
-text(4.15, max(DD) * 0.62, "extra axes cost\n~20 AIC each and\nbuy almost no fit",
+text(4.15, max(DD) * 0.62, "extra gradients cost\n~20 AIC each and\nbuy almost no fit",
      cex = 0.6, col = "grey30", adj = 1)
-mtext("A. AIC picks the true rank, 10 of 10", side = 3, line = 0.4,
+mtext("A. AIC picks the true number, 10 of 10", side = 3, line = 0.4,
       cex = 0.78, font = 2, adj = 0)
 
 k3    <- ai$loadings[ai$loadings$k == 3, ]
@@ -411,7 +437,7 @@ text(0.075, length(seeds) + 0.85, "a 0.05 \"near zero\" cut", cex = 0.6,
 mtext("B. the near-zero column: 1 of 10", side = 3, line = 0.4, cex = 0.78,
       font = 2, adj = 0)
 
-mtext("Ten replicate datasets; true rank 2. B is fitted at rank 3; digits are column numbers.",
+mtext("Ten replicate datasets; true number of gradients 2. B is fitted with three; digits are column numbers.",
       side = 1, outer = TRUE, line = 0.3, cex = 0.6, col = "grey30")
 mtext("The smallest column is column 2, not the last, in 5 of 10 replicates.",
       side = 1, outer = TRUE, line = 1.2, cex = 0.6, col = "grey30")
@@ -420,81 +446,25 @@ mtext("SIMULATED DATA -- no uncertainty shown", side = 3, outer = TRUE,
 par(op)
 ```
 
-The mechanism is worth understanding, because it is what makes the comparison
-trustworthy rather than lucky. Degrees of freedom rise by
-`r ff$df[ff$k == 2][1] - ff$df[ff$k == 1][1]`,
-`r ff$df[ff$k == 3][1] - ff$df[ff$k == 2][1]` and
-`r ff$df[ff$k == 4][1] - ff$df[ff$k == 3][1]` across `d = 1 -> 2 -> 3 -> 4`.
-Under-fitting at `d = 1` costs
-`r f2(mean(ff$objective[ff$k == 1]) - mean(ff$objective[ff$k == 2]), 1)` units
-of negative log-likelihood on average, so rank 2 wins by a wide margin.
-**Past the true rank the likelihood is essentially flat**: across the ten
-replicates the third column buys at most
-`r f2(max(nll_gain[, 1]), 2)` nll units against a 20-AIC charge, and the
-fourth at most `r f2(max(nll_gain[, 2]), 3)` against an 18-AIC charge -- which is why `delta`-AIC(4) minus `delta`-AIC(3) sits close
-to the bare df penalty in nearly every replicate.
+## Why the near-zero-loading rule fails
 
-None of this is start-value luck. Refitting one dataset at `d = 2` and
-`d = 3` under eight different RNG states gave an AIC range of exactly
-`r f2(ai$optimiser_noise_summary$aic_range[1], 3)`: given the data, these
-fits are deterministic.
+It fails for a reason worth knowing, because it is not specific to this
+package. The fitted loading columns are **not pinned to particular
+gradients**: any rotation of them describes the same model equally well, so
+the columns come out mixed among themselves. "The extra column" is therefore
+not the last column. Fitted with three gradients, the *smallest* column is
+column 2 rather than column 3 in `r sum(smallest_col == 2)` of
+`r length(smallest_col)` replicates. A reader following the recipe inspects
+the third column, finds a substantial value, and concludes the third gradient
+is real. Panel B above is that fact drawn.
 
-## The near-zero-loading rule of thumb does not work at twelve species
-
-The natural alternative is to skip the model comparison -- fit a generous
-rank, look at the loading matrix, stop where a column goes near zero. Made
-falsifiable as *"a column is spent when its rms falls below `thr` times the
-largest column's"*, and applied to the same ten replicates:
-
-```{r tell-sweep, echo = FALSE}
-ts <- ai$tell_summary
-data.frame(fitted_rank = ts$fitted_k, threshold = ts$thr,
-           by_columns = paste0(ts$n_correct_colrms, "/", ts$n),
-           by_singular_values = paste0(ts$n_correct_sv, "/", ts$n),
-           modal_rank = ts$modal_rank_colrms)
-nz3 <- ai$near_zero_tell[ai$near_zero_tell$k == 3, ]
-nz4 <- ai$near_zero_tell[ai$near_zero_tell$k == 4, ]
-sv3_nonzero  <- nz3$sv_rel_3[nz3$sv_rel_3 > 1e-6]
-k3l <- ai$loadings[ai$loadings$k == 3, ]
-smallest_col <- sapply(split(k3l, k3l$seed),
-                       function(z) z$column[which.min(z$col_rms)])
-```
-
-Reading the columns -- the version a reader actually applies -- gives the
-right rank in **1 of 10** replicates at every threshold from 0.005 to 0.10.
-The modal answer is 3, not 2: the heuristic **over-counts by one**. Loosening
-the threshold does not rescue it, so this is not a tuning problem.
-
-Two distinct mechanisms are at work, and they are worth separating.
-
-**Column order is not magnitude order.** The packed lower-triangular loading
-matrix is identified only up to rotation, so "the extra column" is not the
-last column. Fitted at rank 3, the *smallest* column is column 2 rather than
-column 3 in `r sum(smallest_col == 2)` of the `r length(smallest_col)`
-replicates. A reader following the recipe inspects the third column, sees
-a substantial value, and concludes the third axis is real. Panel B above is
-that fact drawn.
-
-**Even as an unordered set, the gap is not there.** Fitted at rank 4, the
-smallest singular value drops below a millionth of the leading one in
-`r sum(nz4$sv_rel_4 < 1e-6)` of `r nrow(nz4)` replicates -- so one axis does
-collapse -- but the *third* singular value still carries
-`r f2(100 * min(sv3_nonzero), 0)` to `r f2(100 * max(sv3_nonzero), 0)` per
-cent of the leading one in `r length(sv3_nonzero)` of `r nrow(nz3)`
-replicates. Nothing inside a single fit separates "a tenth of the leading
-axis" from a weak real axis without a reference distribution, and a
-reference distribution is precisely what AIC supplies and eyeballing does
-not.
-
-The rotation-invariant version -- threshold the **singular values** of the
-loading matrix instead of its columns -- is better and still not good:
-`r ts$n_correct_sv[ts$thr == 0.10 & ts$fitted_k == 3][1]` of 10 at a 0.10
-cut, and 1 of 10 at every tighter cut in the table.
-
-**So compare ranks by AIC.** If you want a loading-based sanity check, take
-singular values rather than columns, quote your threshold, and treat the
-answer as a hint. Here is that matrix on the live fit -- worth seeing for how
-little it settles on its own:
+Even ignoring the ordering, the gap is not there to find: an unneeded
+direction does not always collapse to zero, and nothing inside a single fit
+separates "a tenth of the leading gradient" from a weak real one. **So compare
+by AIC.** If you want a loading-based sanity check anyway, use the singular
+values of the loading matrix rather than its columns -- they are at least
+immune to the mixing -- quote your threshold, and treat the answer as a hint.
+Here is that matrix for the live fit:
 
 ```{r loadings-live}
 L <- fit$report$Lambda_spde          # 12 x d -- use this, not the packed vector
@@ -503,10 +473,9 @@ round(sqrt(colMeans(L^2)), 4)        # per-column rms
 round(svd(L)$d / max(svd(L)$d), 4)   # singular values, relative to the largest
 ```
 
-Use `fit$report$Lambda_spde` rather than the packed parameter vector: a
-rank-`d` loading matrix for `P` traits is stored as `P*d - d(d-1)/2` free
-values, so at 12 species and `d = 2` the vector holds 23 entries against a
-12-by-2 matrix, and naming it with the species vector mislabels silently.
+Use `fit$report$Lambda_spde` rather than the packed parameter vector: the
+packed version holds `P*d - d(d-1)/2` values rather than `P` by `d`, so naming
+it with your species vector mislabels silently.
 
 ## What it costs
 
@@ -515,227 +484,132 @@ data.frame(d = by_k$d, median_secs_per_fit = by_k$median_secs,
            fits_in_this_campaign = as.integer(table(ff$k)))
 ```
 
-Fitting four ranks on one dataset is a few minutes at this size. Fitting them
-on ten datasets is the campaign that produced the table above -- and you do
-not have to repeat it. Fit your own `d = 1..4` once and read the AIC.
+Fitting four values of `d` on one dataset is a few minutes at this size. You
+do not have to repeat the ten-dataset campaign -- fit your own `d = 1..4`
+once and read the AIC.
 
 # Decision 2: overdispersion in an arm with no dispersion parameter
 
-The opportunistic arm is Poisson, and **Poisson has no dispersion
-parameter**. Counts more variable than Poisson have nowhere to go except into
-the terms that do carry parameters, and in this model the term with the most
-freedom is the shared spatial field. A field busy absorbing extra-Poisson
-noise is not estimating space -- and the environmental slopes are estimated
-conditionally on it.
+**Verdict.** In this simulation, `spatial_latent(..., unique = TRUE)`
+substantially improved the **point estimates** -- RMSE in the environmental
+slopes fell from `r f2(so$rmse_base, 3)` to `r f2(so$rmse_uniq, 3)` -- but by
+a mechanism that looks more like **regularisation than like estimating the
+overdispersion**: how far a slope moved tracked the base model's own error
+(`r f2(so$cor_move_vs_base_error, 2)`) far more closely than it tracked the
+species' simulated overdispersion (`r f2(so$cor_move_vs_sigma2, 2)`). Do not
+read `Psi` as a measurement of how overdispersed your counts are, and do not
+expect your intervals to improve. It costs about
+`r f2(us$timing$uniq_median_secs / us$timing$base_median_secs, 1)` times the
+runtime and makes fits less stable. And you cannot tell from a
+variance-to-mean ratio whether you need it.
 
-`spatial_latent(..., unique = TRUE)` adds a per-trait tier, `Psi`, alongside
-the shared rank-`d` field:
+Here is the problem in terms you already have. With an overdispersed Poisson
+GLMM you would add an **observation-level random effect** and let it soak up
+the extra noise. This model has no such tier by default, so extra-Poisson
+variation goes to the term with the most freedom to absorb it: the shared
+spatial field. A field busy mopping up observation noise is not estimating
+space, and your slopes are estimated conditionally on it -- which is how
+overdispersion you ignored comes back as bias in the slopes you care about.
+
+`spatial_latent(..., unique = TRUE)` adds a per-species tier of its own,
+called `Psi`, alongside the shared field, to play the role the
+observation-level random effect plays in a GLMM. It has to be asked for:
 
 ```{r unique-formula, eval = FALSE}
 value ~ 0 + trait + trait:env + isdm_source + offset(log_effort) +
   spatial_latent(0 + trait | coords, d = 2, unique = TRUE)
 ```
 
-It is **not** the default for a source-tier latent term; it has to be asked
-for. Whether it earns its keep was measured rather than argued.
+It was measured rather than argued: overdispersion was added to the
+opportunistic arm only, the twelve species carrying a ladder of severity from
+`r f2(min(un$design$sigma_od), 2)` (none at all) to
+`r f2(max(un$design$sigma_od), 2)`, and both models were fitted to identical
+data on an identical mesh.
 
-## How it was measured
+## Your counts will look overdispersed even when they are not
 
-Genuine overdispersion was added to the opportunistic arm only, as a
-species-specific observation-level effect
-$u_{ij}\sim N(-\sigma_j^2/2,\ \sigma_j^2)$ on the log scale -- mean-centred
-on the intensity scale, so $\sigma_j$ alone is manipulated and not abundance.
-The twelve species carry a ladder of $\sigma$ from
-`r f2(min(un$design$sigma_od), 2)` (an exact null cell) to
-`r f2(max(un$design$sigma_od), 2)`. Both models, with and without
-`unique = TRUE`, were fitted to identical data on an identical mesh.
-
-```{r unique-design, echo = FALSE}
-h <- us$health
-data.frame(
-  quantity = c("seeds offered", "screened out on the count cap",
-               "seeds fitted", "base model accepted", "unique model accepted",
-               "healthy pairs", "pairs with SEs on both models",
-               "pairs with a PD Hessian on the unique model",
-               "median seconds, base", "median seconds, unique"),
-  value = c(as.character(c(length(un$design$seeds_offered),
-            length(un$design$seeds_screened_out),
-            us$n_seeds_fitted, sum(h$base_ok), sum(h$uniq_ok),
-            us$n_pairs_healthy, us$n_pairs_se_complete,
-            us$robustness$pdHess$n_pdHess_true)),
-            f2(us$timing$base_median_secs, 1),
-            f2(us$timing$uniq_median_secs, 1)))
-```
-
-The screen matters: any seed whose largest opportunistic count reached
-`r un$design$count_cap` was rejected **before** fitting, because that is the
-#1167 boundary from the first section. Iteration counts on the unique model
-run in the hundreds, so no silent failure occurred -- the rejected fits
-failed loudly, on `convergence != 0`.
-
-## Can you see the overdispersion before fitting?
-
-Only by contrast, and this is where the obvious diagnostic misleads. The
-variance-to-mean ratio of the raw counts was computed alongside a matched
-**equidispersed counterfactual**: same linear predictor, $\sigma = 0$, same
-seed.
+The obvious pre-fit check is the variance-to-mean ratio, and it misleads. The
+table puts the observed VMR beside a **matched counterfactual** -- same
+landscape, same effort, same species, simulated with no overdispersion at all.
 
 ```{r vmr, echo = FALSE}
-v <- us$vmr[order(us$vmr$sigma_od), ]
 data.frame(species = v$trait, sigma = v$sigma_od,
-           mean = round(v$mean_count, 2),
            VMR = round(v$vmr_mean, 2),
-           VMR_equi = round(v$vmr_equi_mean, 2),
+           VMR_no_overdisp = round(v$vmr_equi_mean, 2),
            frac_above = round(v$frac_gt_equi, 2))
-cat("cor(VMR, sigma^2): observed", f2(us$vmr_cor_sigma2[["observed"]], 3),
-    "-- equidispersed counterfactual",
-    f2(us$vmr_cor_sigma2[["equidispersed_counterfactual"]], 3), "\n")
 ```
 
-**The counterfactual column runs from `r f2(min(v$vmr_equi_mean), 1)` to
-`r f2(max(v$vmr_equi_mean), 1)` with no overdispersion at all.** The shared
-rank-2 field, the environmental gradient and the varying effort all inflate
-it. So "VMR much greater than 1" does not demonstrate overdispersion in a
-model like this one; only the contrast against a counterfactual you have to
-simulate does, and on real data you do not have one. At the top of the ladder
-the signal is unambiguous -- the observed VMR exceeds its own counterfactual
-in every replicate at $\sigma \ge 0.75$ -- while at
-$\sigma \le 0.45$ that fraction runs
+**That counterfactual column runs from `r f2(min(v$vmr_equi_mean), 1)` to
+`r f2(max(v$vmr_equi_mean), 1)` with no overdispersion at all**: the shared
+spatial field, the environmental gradient and the varying effort inflate it on
+their own. So "VMR far above 1" does not demonstrate overdispersion in a model
+like this one -- and on real data you have no counterfactual to compare it
+against. Only at the top of the ladder is the contrast clear; at
+$\sigma \le 0.45$ the observed VMR beats its own counterfactual in
 `r f2(min(v$frac_gt_equi[v$sigma_od <= 0.45]), 2)` to
-`r f2(max(v$frac_gt_equi[v$sigma_od <= 0.45]), 2)`, which is a coin flip
-dressed up as a diagnostic.
+`r f2(max(v$frac_gt_equi[v$sigma_od <= 0.45]), 2)` of replicates, which is a
+coin flip dressed up as a diagnostic.
 
-## What `Psi` recovers
-
-`Psi` is reported as $1/\tau^2$ in the base precision matrix's units; the
-table below converts it to the variance scale numerically.
-
-```{r psi, echo = FALSE}
-ps <- us$psi[order(us$psi$sigma_od), ]
-data.frame(species = ps$trait, sigma = ps$sigma_od,
-           true_var = round(ps$sigma2, 3),
-           psi_median = signif(ps$psi_median, 2),
-           frac_nonzero = round(ps$frac_nonzero, 2))
-hi <- ps$sigma_od >= 0.55
-psi_ratio_hi <- ps$psi_median[hi] / ps$sigma2[hi]
-cat("species-replicates with Psi > 1e-3:",
-    f2(us$psi_detection$frac_nonzero_low_sigma, 3), "at",
-    us$psi_detection$low_sigma_defined, "vs",
-    f2(us$psi_detection$frac_nonzero_high_sigma, 3), "at",
-    us$psi_detection$high_sigma_defined, "\n")
-```
-
-`Psi` is a **threshold detector, not a measurement**. Below
-$\sigma \approx 0.5$ it sits numerically on the boundary at zero; above it,
-it fires in most replicates, but its median lands at only
-`r f2(100 * min(psi_ratio_hi), 0)` to `r f2(100 * max(psi_ratio_hi), 0)` per
-cent of the true variance.
-
-The attenuation is a mechanism mismatch rather than a tuning failure, and it
-is visible in the source: `spatial_latent(unique = TRUE)`'s `Psi` is a
-per-trait **spatially structured** field on the same base precision as the
-shared field (`src/gllvmTMB.cpp`, the `SCALE(GMRF(Q_base), 1/tau)` prior),
-not an i.i.d. observation-level nugget. It can only partly represent i.i.d.
-overdispersion. Whether a genuine observation-level tier -- something shaped
-like `latent(0 + trait | cell_id, unique = TRUE)` -- would recover
-$\sigma^2$ at the right magnitude is the honest next measurement, and this
-campaign did not run it.
-
-The collapse at the low end has a price. The unique model's Hessian was not
-positive-definite in
-`r us$robustness$pdHess$n_total - us$robustness$pdHess$n_pdHess_true` of the
-`r us$n_pairs_se_complete` SE-complete pairs, and
-`r us$n_pairs_healthy - us$n_pairs_se_complete` of the
-`r us$n_pairs_healthy` healthy pairs returned no fixed-effect standard errors
-at all. Boundary estimates are where variance components misbehave.
-
-## The result is the opposite of the expected one
-
-The expected story is: ignoring overdispersion makes your intervals too
-narrow, and the fix widens them. **That is the wrong way round here.**
+## What turning it on actually did
 
 ```{r unique-slopes, echo = FALSE}
-so <- us$slope_overall
 data.frame(
   quantity = c("median |change| in env slope, in base SEs",
                "median SE ratio, unique / base",
                "95% Wald coverage of the true slope, base",
                "95% Wald coverage of the true slope, unique",
-               "bias, base", "bias, unique", "RMSE, base", "RMSE, unique",
-               "cor(slope movement, simulated sigma^2)",
-               "cor(slope movement, base model's own error)"),
+               "bias, base", "bias, unique", "RMSE, base", "RMSE, unique"),
   value = round(c(so$median_abs_d_est_in_se, so$se_ratio_median,
                   so$coverage_base, so$coverage_uniq,
-                  so$bias_base, so$bias_uniq, so$rmse_base, so$rmse_uniq,
-                  so$cor_move_vs_sigma2, so$cor_move_vs_base_error), 3))
+                  so$bias_base, so$bias_uniq, so$rmse_base, so$rmse_uniq), 3))
 ```
 
-The environmental slopes **move** -- about
-`r f2(so$median_abs_d_est_in_se, 2)` of a base standard error at the median
--- and the standard errors move **down**, not up: median ratio
-`r f2(so$se_ratio_median, 3)`, and much the same at high $\sigma$
-(`r f2(so$se_ratio_median_high_sigma, 3)`) as at low
-(`r f2(so$se_ratio_median_low_sigma, 3)`).
+The expected story is that ignoring overdispersion makes your intervals too
+narrow and the fix widens them. **That is the wrong way round here.** The
+slopes move -- about `r f2(so$median_abs_d_est_in_se, 2)` of a standard error
+at the median -- and the standard errors move **down**, not up (median ratio
+`r f2(so$se_ratio_median, 3)`). The plausible reading is that the base model's
+coverage failure was **bias** rather than understated uncertainty: freeing the
+shared field from having to absorb observation noise de-attenuates the slopes
+and tightens them at once. Take that as the likely direction rather than a
+settled result -- the coverage figures come from `r us$n_pairs_healthy`
+replicate pairs, twelve species inside each sharing one estimated field, and
+carry no uncertainty of their own. Coverage rises from
+`r f2(so$coverage_base, 3)` to `r f2(so$coverage_uniq, 3)`, **overshooting**
+the nominal 0.95, so this is no route to well-calibrated intervals either.
 
-So the base model's coverage failure is **not** understated uncertainty; it
-is **bias**. Freeing the shared field from having to absorb extra-Poisson
-noise de-attenuates the slopes *and* tightens them. Coverage rises from
-`r f2(so$coverage_base, 3)` to `r f2(so$coverage_uniq, 3)`, which
-**overshoots** nominal -- so `unique = TRUE` is not a calibration fix either.
-In both models the mean standard error exceeds the across-replicate SD of the
-estimate, so the standard errors were already conservative.
+`Psi` itself is a **threshold detector, not a measurement**: below about
+$\sigma = 0.5$ it sits at zero, and above it, it fires in most replicates but
+recovers only `r f2(100 * min(psi_ratio_hi), 0)` to
+`r f2(100 * max(psi_ratio_hi), 0)` per cent of the true variance.
 
-And the correction is not targeted. Movement correlates only weakly with the
-simulated $\sigma^2$ (`r f2(so$cor_move_vs_sigma2, 2)`) and strongly and
-negatively with the base model's own error
-(`r f2(so$cor_move_vs_base_error, 2)`): `unique = TRUE` pulls whichever
-slopes the base model got wrong, including species with almost no simulated
-overdispersion at all.
-
-## Whether to turn it on
+**And it costs stability.** The unique model failed to produce a usable
+curvature matrix -- the thing standard errors are computed from -- in
+`r us$robustness$pdHess$n_total - us$robustness$pdHess$n_pdHess_true` of the
+`r us$n_pairs_se_complete` pairs where both models returned standard errors.
+Variance components pinned at zero are where that happens.
 
 ```{r unique-selection, echo = FALSE}
-dl <- us$dloglik
-cat("delta logLik (unique - base) over", dl$n, "pairs: median",
-    f2(dl$median, 2), " mean", f2(dl$mean, 2),
-    " range", f2(dl$range[1], 2), "to", f2(dl$range[2], 2),
-    "\nextra parameters:", dl$extra_params,
-    "  median delta AIC:", f2(dl$dAIC_median, 2),
-    "  replicates favouring unique:", dl$n_favouring_unique, "of", dl$n, "\n")
+cat("over", dl$n, "pairs -- median delta logLik (unique - base):",
+    f2(dl$median, 2), "\nextra parameters:", dl$extra_params,
+    " median delta AIC:", f2(dl$dAIC_median, 2),
+    "\nreplicates favouring unique:", dl$n_favouring_unique, "of", dl$n, "\n")
 ```
 
-By likelihood it clearly fits better; by AIC it barely pays, and only in
-about half the replicates. Do not read a plain $\chi^2_{12}$ off that delta
-log-likelihood: the null puts variance parameters on a boundary, so the
-reference distribution is a mixture, not a chi-square.
-
-**The practical reading.** `unique = TRUE` here is worth having for the
-**point estimates** -- it cuts RMSE from `r f2(so$rmse_base, 3)` to
-`r f2(so$rmse_uniq, 3)` and removes most of the attenuation -- and is not a
-route to better-calibrated intervals. It costs about
-`r f2(us$timing$uniq_median_secs / us$timing$base_median_secs, 1)` times the
-runtime and a materially worse-behaved Hessian. Restricting to the
-`r us$robustness$pdHess$n_pdHess_true` pairs with a positive-definite Hessian
-reproduces every number above -- SE ratio
-`r f2(us$robustness$pdHess$se_ratio_median, 3)`, coverage
-`r f2(us$robustness$pdHess$coverage_base, 3)` to
-`r f2(us$robustness$pdHess$coverage_uniq, 3)`, RMSE
-`r f2(us$robustness$pdHess$rmse_base, 3)` to
-`r f2(us$robustness$pdHess$rmse_uniq, 3)` -- so none of it is an artefact of
-the selected subset.
-
-One thing this campaign could **not** test: whether any of it holds at counts
-above the `r un$design$count_cap` screen. Detection of `Psi` should improve
-with counts, and the #1167 ceiling is exactly what forbids looking.
+By likelihood it fits clearly better; by AIC it barely pays, and only in about
+half the replicates. Restricting the comparison to the pairs with a
+well-behaved curvature matrix reproduces every number above, so none of it is
+an artefact of that subset -- details, and one caveat about testing the
+log-likelihood difference, in [For the record].
 
 # The map
 
 Three things have to be right before a surface means anything.
 
-**The spatial field must be in the prediction.** It is. Before gllvmTMB 0.7.0
-(development), `predict(newdata = )` silently dropped it, so a map drawn that
-way showed a field-free surface while claiming the field. On an older install,
-check your version before trusting a map made this way.
+**The spatial field must be in the prediction.** It is, from gllvmTMB 0.7.0
+onwards. On an older install, `predict(newdata = )` silently dropped it, and a
+map drawn that way shows a field-free surface while claiming the field. Check
+your version before trusting a map made on an old install.
 
 **The scale must be effort-free.** `type = "response"` includes the row's
 offset, so it returns an expected count *at that effort* -- right for a
@@ -744,10 +618,10 @@ relative intensity, exactly rather than approximately, because the offset is
 re-evaluated against `newdata`.
 
 **The covariate must be on the scale it was fitted on.** `env` was
-standardised once, on the training data, and the grid reuses those same two
-numbers. Re-standardising the grid on its own mean and SD silently changes
-what the covariate means: the map's *pattern* survives almost untouched while
-its *values* do not, so no visual check catches it.
+standardised once, on the training data, and the grid must reuse those same
+two numbers. Re-standardise the grid on its own mean and SD and the map's
+*pattern* survives almost untouched while its *values* do not -- so no visual
+check will catch it.
 
 ```{r map-grid}
 grid <- md$grid[, c("X", "Y", "env")]     # already on the TRAINING scale
@@ -766,77 +640,190 @@ E <- matrix(p$est, ncol = nlevels(dat$trait),
 cat("grid cells:", nrow(grid), " species:", ncol(E),
     " relative intensity:", f2(min(E), 3), "to", f2(max(E), 2), "\n")
 
-## The saved map surfaces came from this same fit on this same grid.
-cat("max |live prediction - saved surface|:", max(abs(E - md$est)), "\n")
+## The saved surfaces the figure is drawn from came from this same fit.
+agree <- max(abs(E - md$est))
+cat("max |live prediction - saved surface|:", signif(agree, 3), "\n")
 ```
 
-Exactly zero: the figure below is this fit, not a stored approximation of it.
+The figure below is drawn from those saved surfaces. The line above is the
+check that the fit you have just run reproduces them: the largest disagreement
+anywhere on the grid is `r signif(agree, 2)`, against surface values running
+from `r f2(min(E), 3)` to `r f2(max(E), 2)`.
 
-```{r map-plot, echo = FALSE, fig.width = 6.6, fig.height = 7.5, dpi = 200, out.width = "100%", fig.cap = "Relative intensity for all twelve species from one integrated fit, on a shared logarithmic colour scale. Canada Warbler is drawn large, carrying the axes in projected UTM kilometres, the sampled locations and the labelled scale; the other eleven are thumbnails ordered by the correlation of each surface with the flagship's, so the grid reads as a gradient from most like it to opposite rather than as an arbitrary sequence. Colour is never the only channel: isolines at the same levels as the colour-bar ticks are drawn on every panel, and the rail under each panel places that species' 5th to 95th percentile and median on the shared scale, because a shared ramp is exactly what compresses amplitude away. Cells outside the mesh hull are hatched rather than coloured: there the spatial field is exactly zero because fmesher returns an empty basis row, not because it was estimated to be small. The surfaces carry NO uncertainty of any kind. The simulated-data fence is drawn inside the canvas because a PNG lifted into a talk keeps its pixels and loses its caption.", fig.alt = "A large map panel for Canada Warbler beside a four-by-three grid of eleven smaller maps, one per species, all on a shared viridis colour scale for relative intensity on a log scale. The flagship panel carries UTM easting and northing axes in kilometres, white isolines, and small white circles marking all 360 sampled locations. The broad pattern is a bright high-intensity region in the north and a dark low-intensity region in the south-west. The eleven thumbnails show the same landscape expressed through different loadings, running from surfaces closely resembling the flagship to one close to its inverse. A short horizontal rail under each panel marks that species' fifth to ninety-fifth percentile with a notch at the median. A few cross-hatched cells sit in the corners, outside the mesh hull. Red text at the foot reads SIMULATED DATA, no uncertainty shown, no real observations."}
-source("../../dev/isdm-precision/cawa12-map.R")
-invisible(cawa12_map_plot(md))
-```
+## What the map does not carry -- read this before the picture
 
-The map is drawn from one seed. Across `r length(md$ok_seeds)` replicate
-datasets on the same fixed landscape the drawn quantity replicates well --
-median within-species correlation of the log surfaces
-`r f2(median(md$stability$median_cor), 3)`, lowest single pairing
-`r f2(min(md$stability$min_cor), 3)` -- which is a statement about the
-surface's **stability**, not about its uncertainty.
-
-## What the map does not carry
-
-**No uncertainty, of any kind.** There is no interval behind any value in
-the figure. `se.fit` is refused outright with `newdata`, and the refusal is
-load-bearing rather than an oversight:
+**No uncertainty, of any kind.** There is no interval behind any value in the
+figure below. `se.fit` is refused outright with `newdata`, and the refusal is
+deliberate rather than an oversight:
 
 ```{r se-fit-refusal}
 cat(err_of(predict(fit, newdata = newd, type = "link", se.fit = TRUE)))
 ```
 
-The training-row standard error that *is* available is conditional and
-fixed-effect-only, and the latent-field reconstruction error it ignores is
-exactly what dominates on a map. Map-scale uncertainty needs a
-random-effect-aware construction that this package does not have yet.
+The standard error that *is* available at training rows ignores the error in
+reconstructing the latent field, which is exactly what dominates on a map.
+Map-scale uncertainty needs machinery this package does not have yet.
 
-**Nothing outside the mesh.** The grid deliberately extends 6 per cent
-beyond the sampled extent, the way a real prediction map would, and
-`predict()` says so:
+**Nothing outside the mesh.** The grid deliberately extends 6 per cent beyond
+the sampled extent, the way a real prediction map would, and `predict()` says
+so:
 
 ```{r hull-warning}
 cat(warn_of(suppressMessages(predict(fit, newdata = newd, type = "response"))))
 ```
 
-Out there `fmesher` returns an all-zero basis row, so the field is **exactly
-zero** -- indistinguishable, on a coloured surface, from a region where the
-field is genuinely near zero. A blank corner reads as a cold one.
-`r sum(md$out_of_hull)` of `r nrow(md$grid)` cells are in that state here,
-and the figure hatches them instead of colouring them. `make_mesh()` rejects
-such rows at *fit* time, so the honest thing is for `predict()` not to be
-quietly more permissive. Clip the grid, or extend the mesh -- do not suppress
-the warning, which is what the chunk above did purely to keep the figure
-inline.
+Out there the mesh basis is all zeros, so the field is **exactly zero** --
+indistinguishable, on a coloured surface, from a region where the field is
+genuinely near zero. A blank corner reads as a cold one.
+`r sum(md$out_of_hull)` of `r nrow(md$grid)` cells are in that state here, and
+the figure hatches them rather than colouring them. Clip your grid, or extend
+your mesh; do not suppress the warning, which is what the chunk above did
+purely to keep the figure inline.
 
 **A little extrapolation in the covariate.**
 `r md$env_grid_cells_outside_training_range` of `r nrow(md$grid)` grid cells
-carry an `env` value outside the training range, a consequence of that same 6
-per cent padding.
+carry an `env` value outside the training range, a consequence of that same
+padding.
 
-**No claim that the slopes behind it are unbiased.** The recovery envelope
-earlier shows a consistent downward bias, and
-[What this article does not establish] carries that caveat with the right
-statistics attached.
+**No claim that the slopes behind it are unbiased.** They come back shrunk, as
+the recovery table above showed.
 
-# Four things that look like modelling choices and are not
+```{r map-plot, echo = FALSE, fig.width = 6.6, fig.height = 7.5, dpi = 200, out.width = "100%", fig.cap = "Relative intensity for all twelve species from one integrated fit, on a shared logarithmic colour scale. Canada Warbler is drawn large, carrying the axes in projected UTM kilometres, the sampled locations and the labelled scale; the other eleven are thumbnails ordered by the correlation of each surface with the flagship's, so the grid reads as a gradient from most like it to opposite rather than as an arbitrary sequence. Colour is never the only channel: isolines at the same levels as the colour-bar ticks are drawn on every panel, and the rail under each panel places that species' 5th to 95th percentile and median on the shared scale, because a shared ramp is exactly what compresses amplitude away. Cells outside the mesh hull are hatched rather than coloured: there the spatial field is exactly zero because the mesh basis is empty, not because it was estimated to be small. The surfaces carry NO uncertainty of any kind. The simulated-data fence is drawn inside the canvas because a PNG lifted into a talk keeps its pixels and loses its caption.", fig.alt = "A large map panel for Canada Warbler beside a four-by-three grid of eleven smaller maps, one per species, all on a shared viridis colour scale for relative intensity on a log scale. The flagship panel carries UTM easting and northing axes in kilometres, white isolines, and small white circles marking all 360 sampled locations. The broad pattern is a bright high-intensity region in the north and a dark low-intensity region in the south-west. The eleven thumbnails show the same landscape expressed through different loadings, running from surfaces closely resembling the flagship to one close to its inverse. A short horizontal rail under each panel marks that species' fifth to ninety-fifth percentile with a notch at the median. A few cross-hatched cells sit in the corners, outside the mesh hull. Red text at the foot reads SIMULATED DATA, no uncertainty shown, no real observations."}
+source("../../dev/isdm-precision/cawa12-map.R")
+invisible(cawa12_map_plot(md))
+```
 
-Each of the following is an **algebraic identity**, not a tendency measured
-on a sample. It holds exactly, for the reason given, and no number of
-replicates would make it more or less true. They are collected here because
-each has cost somebody an afternoon.
+The map is drawn from one dataset. Across `r length(md$ok_seeds)` replicates
+on the same landscape the drawn quantity replicates well -- median
+within-species correlation of the log surfaces
+`r f2(median(md$stability$median_cor), 3)`, lowest single pairing
+`r f2(min(md$stability$min_cor), 3)`. That is a statement about the surface's
+**stability**, not about its uncertainty.
+
+# If your opportunistic arm has no counts
+
+eBird checklists carry counts. Many opportunistic downloads do not: a raw GBIF
+export is often **presence-only** -- a location, a species, and nothing to put
+in `value`.
+
+The standard route (Warton & Shepherd 2010; Renner et al. 2015) is to fit an
+inhomogeneous Poisson process as a **weighted Poisson GLM**: each presence
+record becomes a row with a tiny weight `w` and response `y = 1/w`, and a grid
+of background *quadrature* nodes covering the study area becomes rows with
+weight equal to their cell area and response `y = 0`. Fitted that way, the
+GLM's likelihood is the point-process likelihood. `gllvmTMB()` accepts exactly
+that through `weights =`:
+
+```{r po-recipe, eval = FALSE}
+po <- rbind(
+  data.frame(trait = sp, env = env_at_presences, y = 1e6, w = 1e-6),
+  data.frame(trait = sp, env = env_at_nodes,     y = 0,   w = cell_area)
+)
+gllvmTMB(y ~ 0 + trait + trait:env, data = po, trait = "trait",
+         unit = "obs_id", family = poisson(), weights = po$w)
+```
+
+The device recovers the true environmental slopes in this setting: over
+`r nrow(qd$replicates)` species and 20 replicate datasets no species differed
+detectably from its true value, and a pooled test for uniform attenuation gave
+`r f2(qd$pooled_power$attenuation_mean, 4)` against a true value of 1. What
+that test could and could not have detected, and how dense the quadrature grid
+needs to be, are in [For the record].
+
+The package fences such a fit, in its own words:
+
+```{r po-warning, echo = FALSE, comment = ""}
+cat(qd$fence$weights_warning)
+```
+
+**It does not combine with the two-arm model.** Passing weights into an
+`isdm_sources()` fit is refused:
+
+```{r po-refusal, echo = FALSE, comment = ""}
+cat(qd$fence$isdm_refusal_unit$msg)
+```
+
+If your opportunistic arm is genuinely presence-only, fit it with the
+quadrature device **on its own**, the way the standalone
+[*Joint ecological intensity from opportunistic records*](gbif-joint-intensity.html)
+article does.
+
+# Before you use this on real data
+
+**This simulation lives in the friendly regime, and that is the biggest
+caveat on the page.** Two things are true here by construction and are false
+almost everywhere else. First, the latent surfaces are residualised against
+`env`, so the environmental covariate and the unmeasured spatial structure are
+uncorrelated; on real data habitat and unmeasured spatial structure are
+correlated in essentially every dataset, and the price of getting that wrong
+is not small -- in this same simulator, removing the residualisation drives
+the estimated slopes to about +21 against a true mean near +1.3. How the model
+behaves under realistic covariate-field correlation is measured nowhere on
+this page, and it is the first thing to establish before trusting a slope from
+real data. Second, the opportunistic arm's bias is a single constant, so its
+sampling is spatially uniform: **preferential sampling** -- birders on roads,
+near towns and trailheads -- is untested here, and it is the failure mode this
+literature worries about most.
+
+**Nothing here shows that integrating helped.** This page never fits the
+opportunistic arm alone, the survey alone, and the two together and compares
+them. That comparison is the standard one in this field, and it is the obvious
+next thing to run on your own data.
+
+**The slopes come back shrunk.** Every recovery table on this page shows a
+consistent downward pull. Do not describe estimates from this machinery as
+unbiased, and do not build an effect-size claim on their magnitude without
+running your own recovery check.
+
+**The map carries no uncertainty at all.** Not a credible interval, not a
+standard error, not a coefficient of variation. A smooth colourful surface
+implies precision it does not have, and this one has none to report.
+
+**Your survey coordinates are probably fuzzed, and that matters.** Real
+structured-survey data frequently does not know exactly where it is -- public
+ABMI locations are displaced by kilometres -- and the consequences are not
+small. Read
+[*When one data source knows where it is and the other does not*](isdm-spatial-precision.html)
+before fusing real fuzzed data. In particular, do **not** expect coarsening
+your raster to fix it: Gabor et al. (2022) is the direct test of that
+intuition, and the intuition does not survive it.
+
+**The specific numbers are properties of this design.** AIC's 10 of 10, the
+loading rule's 1 of 10, the overdispersion results: all measured at twelve
+species, one landscape, one true number of gradients, moderate counts, and a
+small mesh. The *mechanisms* generalise; the hit rates do not.
+
+# Recap
+
+`isdm_sources()` names the two observation processes. The arms sit at disjoint
+locations and still share one field, because the field lives on a mesh built
+over the union of both and every row is projected onto it. Project your
+coordinates before meshing. Check `iterations`, not just `convergence`, and
+keep your counts well under the ceiling. Choose the number of shared gradients
+by AIC, not by hunting for a small loading column. Consider `unique = TRUE`
+when a count arm may be overdispersed -- in this simulation it clearly helped
+the point estimates, by a mechanism that looks more like regularisation than
+like estimating the overdispersion, so do not read `Psi` as a measurement and
+do not expect your intervals to improve. Zero the offset on the prediction
+grid, keep the covariate on its training scale, and hatch whatever falls
+outside the mesh.
+
+Point estimates and a surface. No intervals -- and this page says so, rather
+than letting a smooth picture imply otherwise.
+
+**A first-time reader can stop here.** What follows is reference material:
+four behaviours to know about on the day something does not work, and the
+audit trail behind every number above.
+
+# Reference: four things that do not do what you would guess
+
+Each of these is an **algebraic identity**, not a tendency measured on a
+sample: it holds exactly, for the reason given, and no number of replicates
+would make it more or less true. They are collected here because each has cost
+somebody an afternoon.
 
 They are demonstrated on a deliberately small model -- three of the twelve
-species -- because the size of a fit cannot change an identity, and a faster
-page is a page more people read.
+species -- because the size of a fit cannot change an identity.
 
 ```{r small}
 sub <- droplevels(dat[dat$trait %in% c("CAWA", "OVEN", "TEWA"), ])
@@ -847,12 +834,12 @@ FIT <- function(f, ...) suppressMessages(suppressWarnings(gllvmTMB(
   silent = TRUE, ...)))
 ```
 
-## 1. An offset constant within an arm is absorbed by the source intercept
+## 1. An offset that never varies within an arm does nothing
 
-An `offset()` is a known multiplier with no estimated coefficient -- data,
-not a parameter -- so it cannot compete with anything for fit. But if it
-never varies within an arm, the arm's own intercept reproduces it exactly,
-and adding it changes nothing:
+An `offset()` is a known multiplier with no estimated coefficient -- data, not
+a parameter -- so it cannot compete with anything for fit. If it never varies
+*within* an arm, the arm's own intercept reproduces it exactly, and adding it
+changes nothing:
 
 ```{r offset-absorbed}
 sub$const_off <- ifelse(sub$isdm_source == "ebird", 1.0, 0)   # constant per arm
@@ -866,34 +853,33 @@ cat("relative difference, constant offset vs none:",
     format((o_const - o_none) / o_none, digits = 3), "\n")
 ```
 
-Identical to well inside the optimiser's own tolerance -- the two models are
-the same model. The real `log_effort` offset varies *within* each arm, which
-is why the simulation was built that way and why removing it changes the
-objective. If your own effort is one number per source, your offset is a
-relabelling of your source indicator, and an article teaching the offset
-idiom is teaching you something you are not using.
+The first two are the same model to well inside the optimiser's own tolerance.
+The real `log_effort` offset varies *within* each arm, which is why removing
+it does change the objective. If your own effort is one number per source,
+your offset is a relabelling of your source indicator, and the offset idiom is
+not doing anything for you.
 
-## 2. The unit column of a prediction grid does not enter the prediction
+## 2. The unit column of a prediction grid, and when it stops being inert
 
-The design matrix requires *some* valid factor level there; this model's only
-random effect is the spatial field, projected through `(X, Y)`. So the choice
-is arbitrary, and provably so:
+The design matrix requires *some* valid factor level in the unit column. In
+this model the only random effect is the spatial field, keyed on `(X, Y)`, so
+the choice is arbitrary -- provably so:
 
 ```{r unit-column}
 alt <- newd; alt$cell_id <- factor("sv060", levels = levels(dat$cell_id))
 p_alt <- suppressWarnings(suppressMessages(
   predict(fit, newdata = alt, type = "response")))
-cat("max |difference| between two different unit levels:",
+cat("max |difference| between the two unit levels:",
     max(abs(p$est - p_alt$est)),
-    " over a prediction range of", f2(diff(range(p$est)), 2), "\n")
+    "\nover a prediction range of", f2(diff(range(p$est)), 2), "\n")
 ```
 
-Exactly zero -- an opportunistic cell's label and a survey station's, same
-answer. **This stops being true the moment your model has a genuine
-unit-level random effect**, and then the package tells you rather than
-guessing:
+Exactly zero -- an opportunistic cell's label and a survey station's give the
+same answer. **This stops being true the moment your model has a genuine
+unit-level random effect.** Then the label you wrote on the grid is used:
+`predict()` re-adds the matching random effect and tells you it has done so.
 
-```{r unit-re-warning}
+```{r unit-re-message}
 set.seed(3)
 n <- 150; ev <- rnorm(n); site_eff <- rnorm(n, 0, 0.8)
 toy <- do.call(rbind, lapply(1:2, function(j) data.frame(
@@ -906,21 +892,26 @@ toy_fit <- suppressWarnings(suppressMessages(gllvmTMB(
 toy_grid <- expand.grid(env = seq(-2, 2, length.out = 10),
                         trait = levels(toy$trait))
 toy_grid$value <- 0
-toy_grid$site  <- factor(levels(toy$site)[1], levels = levels(toy$site))
-cat(warn_of(predict(toy_fit, newdata = toy_grid, type = "link")))
+g1 <- transform(toy_grid, site = factor("1",  levels = levels(toy$site)))
+g2 <- transform(toy_grid, site = factor("77", levels = levels(toy$site)))
+cat(msg_of(predict(toy_fit, newdata = g1, type = "link")))
+
+q1 <- suppressMessages(predict(toy_fit, newdata = g1, type = "link"))
+q2 <- suppressMessages(predict(toy_fit, newdata = g2, type = "link"))
+cat("\nsite \"1\" vs site \"77\":", f2(max(abs(q1$est - q2$est)), 3),
+    "on the link scale\n")
 ```
 
-It names the tier it dropped and offers two correct alternatives:
-`newdata = NULL` for the full conditional predictor, or `re_form = ~0` for
-fixed effects only. **Neither is what this article's map uses**, deliberately:
-`re_form = ~0` would zero the spatial field too, and that field is the entire
-point of the map.
+So pick that level deliberately, or ask for a prediction with no site effect
+in it at all using `re_form = ~0`. **Neither is what this article's map uses**,
+and on purpose: `re_form = ~0` would zero the spatial field too, and that
+field is the entire point of the map.
 
-## 3. The grouping token on a `spatial_*()` term is inert
+## 3. The name after the `|` in a spatial term is ignored
 
-There is no column called `coords` in the data, and there does not need to
-be. The geometry comes entirely from `mesh =`; the token to the right of the
-`|` is never read.
+There is no column called `coords` in the data, and there does not need to be.
+The geometry comes entirely from `mesh =`; the token to the right of the `|`
+is never read.
 
 ```{r token-inert}
 sp_obj <- function(tok) FIT(stats::as.formula(paste0(
@@ -935,14 +926,12 @@ cat("largest difference:", max(o) - min(o), "\n")
 `cell_id` is a real column with a real meaning, and it makes no difference
 whatsoever -- which is the direction that matters. Writing
 `spatial_latent(0 + trait | site)` with a real `site` column and a real
-intention will *also* be ignored, and nothing will say so. Tracked as
-[issue #1163](https://github.com/itchyshin/gllvmTMB/issues/1163).
+intention will *also* be ignored, and nothing will say so.
 
 ## 4. A mesh passed without a spatial term is ignored
 
 `mesh =` is consumed by the `spatial_*()` term and by nothing else. With no
-such term in the formula, passing a mesh -- of either kind -- changes
-nothing:
+such term in the formula, passing a mesh -- of either kind -- changes nothing:
 
 ```{r mesh-ignored}
 raw_bnd  <- fmesher::fm_extensions(cbind(sub$X, sub$Y), convex = c(30, 60))
@@ -958,15 +947,13 @@ m
 cat("largest difference:", max(m) - min(m), "\n")
 ```
 
-A reader who builds a mesh and then forgets to add the `spatial_*()` term
-gets a converged, ordinary-looking, entirely non-spatial fit, with no error
-and no warning. Tracked as
-[issue #1165](https://github.com/itchyshin/gllvmTMB/issues/1165). Check that
-a `spatial_*()` term is actually in your formula rather than trusting the
-absence of a complaint.
+Build a mesh, forget the `spatial_*()` term, and you get a converged,
+ordinary-looking, entirely non-spatial fit with no error and no warning. Check
+that the term is in your formula rather than trusting the absence of a
+complaint.
 
 The *other* raw-mesh case is loud and correct -- a raw `fm_mesh_2d()` object
-*with* a spatial term is refused. That matters because most `fmesher` and
+*with* a spatial term is refused, which matters because most `fmesher` and
 INLA tutorials teach you to build one by hand:
 
 ```{r raw-mesh-error}
@@ -974,19 +961,260 @@ cat(err_of(FIT(value ~ 0 + trait + trait:env + isdm_source + offset(log_effort) 
                  spatial_latent(0 + trait | coords, d = 1), mesh = raw_mesh)))
 ```
 
-# The one thing the likelihood cannot tell you
+# For the record
 
-Those four are things the model absorbs silently and correctly. Here is one
-it absorbs silently and **wrongly**.
+This section is the audit trail: the campaigns behind the numbers above, the
+measurements that did not make the main path, and the places where the
+evidence is weaker than a plain sentence would suggest. It is here so the
+claims can be checked, not because a first-time reader needs it.
 
-The mesh must be built on projected coordinates. At this domain's latitude a
-degree of latitude is about 1.7 times a degree of longitude in kilometres, so
-an isotropic SPDE fitted on `lon`/`lat` imposes a correlation structure
-stretched by that factor in one direction -- an artefact of the coordinate
-system, not a property of the birds.
+## Where the numbers come from
 
-The instinct is to check this the way one checks any modelling choice: fit
-both and compare. **That does not work.**
+One fit runs live on this page. Everything replicated is read from a saved
+campaign:
+
+```{r provenance, echo = FALSE}
+data.frame(
+  campaign = c("intensity ceiling + recovery envelope", "rank selection",
+               "overdispersion (unique = TRUE)", "presence-only quadrature",
+               "map surfaces"),
+  fits = c(nrow(pr$sweep) + nrow(pr$timing) + sum(pr$sweep_summary$n_rep),
+           nrow(ai$fits), 2L * us$n_seeds_fitted,
+           nrow(qd$replicate_fit_health) +
+             nrow(qd$sweep_decoupled$long) / nrow(qd$replicates) +
+             nrow(qd$sweep_coincident$long) / nrow(qd$replicates),
+           length(md$ok_seeds)),
+  file = c("cawa12-probe.rds", "cawa12-aic.rds", "cawa12-unique.rds",
+           "cawa12-quadrature.rds", "cawa12-mapdata.rds"),
+  row.names = NULL)
+```
+
+Each has its generating script beside it in `dev/isdm-precision/`
+(`generate-<name>.R`), and each ran against gllvmTMB `r ai$package_version`.
+
+## How the simulated field was built
+
+Both latent surfaces are residualised against `env` at the sampled locations,
+and the second against the first, so that the covariate and the latent field
+are not two spatial terms fighting over one pool of variance. That step is not
+a subtlety: skipping it drives the estimated slopes to about +21 against a
+true mean near +1.3. It is also the assumption that makes this simulation
+friendlier than real data, as [Before you use this on real data] says.
+
+## The full count-ceiling sweep
+
+Fourteen rungs of the opportunistic arm's overall intensity, three seeds each,
+every rung unanimous across its three seeds:
+
+```{r ceiling-full, echo = FALSE}
+agg
+```
+
+At $\kappa = `r f2(pr$envelope$last_healthy_kappa, 1)`$ all three seeds fit
+healthily; at `r f2(pr$envelope$first_failing_kappa, 1)` all three fail after
+about a dozen iterations at an objective near 1e14. At
+`r f2(pr$envelope$silent_1iter_kappa, 1)` the failure goes **silent** -- one
+iteration, objective near 1e24, `convergence == 0`. Beyond that the optimiser
+errors outright.
+
+Recovery of the environmental slopes, four rungs, 12 replicate seeds each, all
+accepted:
+
+```{r recovery-envelope, echo = FALSE}
+data.frame(kappa = ss$kappa,
+           mean_cell_count = round(sapply(ss$kappa, function(k)
+             mean(sw$mean_count[sw$kappa == k])), 2),
+           accepted        = paste0(ss$n_ok, "/", ss$n_rep),
+           cor_est_truth   = paste0(f2(ss$mean_cor, 3),
+                                    " (sd ", f2(ss$sd_cor, 3), ")"),
+           mean_abs_err    = f2(ss$mean_abs_err, 3),
+           mean_signed_err = f2(ss$mean_signed_err, 3))
+```
+
+Accuracy is already decaying two rungs before the optimiser breaks, while
+every fit still reports itself healthy. The numerical gate tells you when to
+stop trusting the optimiser; nothing tells you when to stop trusting the
+estimate except a recovery check of your own.
+$\kappa = `r f2(pr$envelope$chosen_kappa, 1)`$ was chosen on this evidence, at
+a median `r f2(pr$envelope$secs_per_fit_median_serial, 1)` s per fit
+(`r f2(pr$envelope$secs_per_fit_range_serial[1], 1)`--`r f2(pr$envelope$secs_per_fit_range_serial[2], 1)` s
+across five serial fits on a shared machine).
+
+## The near-zero-loading rule, in full
+
+Made falsifiable as *"a column is spent when its root-mean-square falls below
+`thr` times the largest column's"*, and applied to the same ten replicates at
+two fitted ranks:
+
+```{r tell-sweep, echo = FALSE}
+data.frame(fitted_rank = ts$fitted_k, threshold = ts$thr,
+           by_columns = paste0(ts$n_correct_colrms, "/", ts$n),
+           by_singular_values = paste0(ts$n_correct_sv, "/", ts$n),
+           modal_rank = ts$modal_rank_colrms)
+```
+
+Reading the columns gives the right answer in 1 of 10 at every threshold from
+0.005 to 0.10, with a modal answer of 3: the heuristic over-counts by one, and
+loosening the threshold does not rescue it. The rotation-invariant version --
+threshold the singular values instead -- reaches
+`r ts$n_correct_sv[ts$thr == 0.10 & ts$fitted_k == 3][1]` of 10 at a 0.10 cut
+and 1 of 10 at every tighter cut.
+
+Fitted with four gradients, the smallest singular value drops below a
+millionth of the leading one in `r sum(nz4$sv_rel_4 < 1e-6)` of
+`r nrow(nz4)` replicates -- so one direction does collapse -- but with three
+gradients the third singular value still carries
+`r f2(100 * min(sv3_nonzero), 0)` to `r f2(100 * max(sv3_nonzero), 0)` per
+cent of the leading one in `r length(sv3_nonzero)` of `r nrow(nz3)`
+replicates.
+
+Degrees of freedom rise by `r ff$df[ff$k == 2][1] - ff$df[ff$k == 1][1]`,
+`r ff$df[ff$k == 3][1] - ff$df[ff$k == 2][1]` and
+`r ff$df[ff$k == 4][1] - ff$df[ff$k == 3][1]` across `d = 1 -> 2 -> 3 -> 4`.
+Past the true number the likelihood is essentially flat: across the ten
+replicates the third column buys at most `r f2(max(nll_gain[, 1]), 2)` units
+of log-likelihood against a 20-AIC charge, and the fourth at most
+`r f2(max(nll_gain[, 2]), 3)` against an 18-AIC charge. Two caveats on the
+comparison. Refitting one dataset at `d = 2` and `d = 3` under eight different
+RNG states gave an AIC range of exactly
+`r f2(ai$optimiser_noise_summary$aic_range[1], 3)` -- which establishes that
+these fits do not depend on the RNG state, and nothing more; the starts are a
+deterministic function of the data, so it does not rule out all ten replicates
+sharing one local optimum. And at a superfluous rank the extra loading column
+sits on the boundary of its parameter space, where AIC's nominal penalty is
+conservative -- in the direction that flatters the 10-of-10 result.
+
+## The overdispersion campaign
+
+Overdispersion was added to the opportunistic arm only, as a species-specific
+observation-level effect $u_{ij}\sim N(-\sigma_j^2/2,\ \sigma_j^2)$ on the log
+scale -- mean-centred on the intensity scale, so that $\sigma_j$ alone is
+manipulated and not abundance.
+
+```{r unique-design, echo = FALSE}
+h <- us$health
+data.frame(
+  quantity = c("seeds offered", "screened out on the count cap",
+               "seeds fitted", "base model accepted", "unique model accepted",
+               "healthy pairs", "pairs with SEs on both models",
+               "pairs with a usable curvature matrix (unique)",
+               "median seconds, base", "median seconds, unique"),
+  value = c(as.character(c(length(un$design$seeds_offered),
+            length(un$design$seeds_screened_out),
+            us$n_seeds_fitted, sum(h$base_ok), sum(h$uniq_ok),
+            us$n_pairs_healthy, us$n_pairs_se_complete,
+            us$robustness$pdHess$n_pdHess_true)),
+            f2(us$timing$base_median_secs, 1),
+            f2(us$timing$uniq_median_secs, 1)))
+```
+
+Any seed whose largest opportunistic count reached `r un$design$count_cap` was
+rejected **before** fitting, because that is the ceiling from the first
+section. Iteration counts on the unique model run in the hundreds, so no
+silent failure occurred -- the rejected fits failed loudly.
+
+Restricting the comparison to the
+`r us$robustness$pdHess$n_pdHess_true` pairs with a well-behaved curvature
+matrix reproduces everything: SE ratio
+`r f2(us$robustness$pdHess$se_ratio_median, 3)`, coverage
+`r f2(us$robustness$pdHess$coverage_base, 3)` to
+`r f2(us$robustness$pdHess$coverage_uniq, 3)`, RMSE
+`r f2(us$robustness$pdHess$rmse_base, 3)` to
+`r f2(us$robustness$pdHess$rmse_uniq, 3)`.
+
+Three caveats on the analysis itself.
+
+**Do not test that log-likelihood difference against a $\chi^2$.** Under the
+null the extra variance parameters sit on the boundary of their range (they
+cannot be negative), and the usual reference distribution does not apply
+there; the correct one is a mixture. The AIC comparison in the main path
+avoids the question.
+
+**`Psi` is not an i.i.d. observation-level tier.** It is a per-species
+*spatially structured* field sharing the base precision of the shared field
+(`src/gllvmTMB.cpp`), so it can only partly represent i.i.d. overdispersion --
+which is the likeliest explanation for the attenuation above. Whether a
+genuine observation-level tier, shaped like
+`latent(0 + trait | cell_id, unique = TRUE)`, would recover $\sigma^2$ at the
+right magnitude is the honest next measurement, and this campaign did not run
+it.
+
+**Nothing here was tested above the count screen**, which is exactly where
+detection of `Psi` would improve. The count ceiling forbids looking.
+
+## Presence-only: power, and how dense the grid must be
+
+```{r po-recovery, echo = FALSE}
+data.frame(species = rp$species, truth = round(rp$truth, 3),
+           mean_est = round(rp$mean, 3), bias = round(rp$bias, 4),
+           t = round(rp$t, 2), p = round(rp$p, 3))
+```
+
+The smallest *p* is `r f2(min(rp$p), 3)`, uncorrected, and every 95 per cent
+interval contains the truth. The pooled test -- a per-seed regression through
+the origin of the twelve estimates on the twelve truths, which equals 1 under
+no uniform bias -- gives `r f2(qd$pooled_power$attenuation_mean, 5)`, 95 per
+cent CI [`r f2(qd$pooled_power$ci[1], 4)`, `r f2(qd$pooled_power$ci[2], 4)`],
+*p* = `r f2(qd$pooled_power$p, 3)`. That design would have detected a uniform
+multiplicative distortion of `r f2(qd$pooled_power$mde_80_pct, 1)` per cent or
+more, and detected nothing.
+
+Two things it does not establish. First, **it certifies the device and the
+optimiser, not the quadrature**: at these settings the quadrature grid
+coincides with the lattice the point pattern was thinned from, so the
+objective there is the exact likelihood of the generating model -- verified
+against a direct `glm()` on the lattice counts to a maximum absolute
+difference of
+`r format(max(sapply(qd$exactness, function(z) z$max_abs_diff)), digits = 2)`.
+Second, **the smallest bias this design could have detected** is
+`r f2(min(rp$mde_80), 3)` to `r f2(max(rp$mde_80), 3)` on the slope scale --
+`r f2(min(rp$mde_80_pct[big_beta]), 1)` to
+`r f2(max(rp$mde_80_pct[big_beta]), 1)` per cent of truth for the
+`r sum(big_beta)` species with `|beta| > 0.4`, but
+`r f2(min(rp$mde_80_pct[!big_beta]), 0)` to
+`r f2(max(rp$mde_80_pct[!big_beta]), 0)` per cent for the `r sum(!big_beta)`
+whose true slope sits near zero, which is to say no power there at all. Quote
+absolute numbers for those species, not percentages.
+
+Grid density, measured with the grids **decoupled** from the generating
+lattice so that what is measured is genuine quadrature error; 12 seeds per
+rung:
+
+```{r po-density, echo = FALSE}
+data.frame(nodes = sd_$n_nodes,
+           nodes_per_presence = paste0(round(npp$min, 1), "-", round(npp$max, 1)),
+           mean_bias = round(sd_$mean_bias, 4),
+           shift_vs_finest = round(sd_$mean_abs_shift_vs_finest, 4),
+           pct_of_MC_sd = paste0(round(100 * sd_$mean_abs_shift_vs_finest / mc), "%"))
+```
+
+```{r quad-exponent}
+## Fit the shift against node count on the log scale, and report the interval
+## rather than the point -- with six rungs the slope is not well determined.
+ex <- lm(log(sd_$mean_abs_shift_vs_finest[-nrow(sd_)]) ~ log(sd_$n_nodes[-nrow(sd_)]))
+c(exponent = round(unname(coef(ex)[2]), 3),
+  round(setNames(confint(ex)[2, ], c("lo", "hi")), 3))
+```
+
+Estimates approach the truth from below, monotonically. How fast is not
+something six rungs can pin down -- the interval above includes -1 -- so do
+not plan around a rate. Judged against the only scale that matters to a reader
+(the Monte Carlo scatter of a single estimate, `r f2(mc, 4)`) they are stable
+for practical purposes from about
+`r sd_$n_nodes[which(sd_$mean_abs_shift_vs_finest / mc < 0.10)[1]]` nodes.
+"Nodes per presence" is the right currency and it varies across species --
+from `r f2(npp$min[npp$n_nodes == 3600], 1)` to
+`r f2(npp$max[npp$n_nodes == 3600], 1)` per presence at 3,600 nodes here,
+because rare species get more nodes per presence than common ones. And the
+sweep never flattens: "increase the density until the estimates stop moving"
+really means *until they move less than your Monte Carlo noise*.
+
+## Projection: the likelihood has an opinion, and it is not the one you want
+
+At this latitude a degree of latitude is about 1.7 times a degree of longitude
+in kilometres, so a mesh built on `lon`/`lat` imposes a correlation structure
+stretched by that factor in one direction. The instinct is to check the choice
+by fitting both and comparing. That does not work.
 
 ```{r projection-null}
 pj <- readRDS("../../dev/isdm-precision/cawa12-projection.rds")
@@ -999,283 +1227,91 @@ c(mean_d_obj = round(pj$mean_d_obj, 2), se = round(pj$se_d_obj, 2),
 ```
 
 Six seeds, the same twelve-species design as everything else on this page, and
-the two meshes matched at **`r pj$per_seed$nodes_lonlat[1]`** and
-**`r pj$per_seed$nodes_utm[1]`** nodes so neither is handed extra latent
-dimensions.
+the two meshes matched at `r pj$per_seed$nodes_lonlat[1]` and
+`r pj$per_seed$nodes_utm[1]` nodes so neither is handed extra latent
+dimensions. The likelihood has a strong, consistent opinion -- the unprojected
+mesh wins by `r abs(round(pj$mean_d_obj, 1))` objective units, SE
+`r round(pj$se_d_obj, 1)`, same sign in all `r pj$n_seeds` seeds -- while on
+accuracy six seeds cannot tell: the projected mesh recovers the slopes better
+in `r pj$utm_better_n` of `r pj$n_seeds` seeds, mean absolute errors
+`r round(pj$mean_err_lonlat, 3)` and `r round(pj$mean_err_utm, 3)` (paired
+*t* = 0.78, *p* = 0.47). That comparison could only have detected a gap of
+about 0.065, some 30 per cent of the error level itself, so it is underpowered
+rather than a demonstrated tie.
 
-Read those two rows together, because separately each is misleading.
-
-**The likelihood has a strong and consistent opinion.** The unprojected mesh
-wins by `r abs(round(pj$mean_d_obj, 1))` objective units, SE
-`r round(pj$se_d_obj, 1)`, with the sign the same in **all
-`r pj$n_seeds` seeds**. This is not a close call and it is not noise.
-
-**On accuracy, six seeds cannot tell.** The projected mesh recovers the slopes
-better in `r pj$utm_better_n` of `r pj$n_seeds` seeds, with mean absolute
-errors of `r round(pj$mean_err_lonlat, 3)` and `r round(pj$mean_err_utm, 3)`
-(paired *t* = 0.78, *p* = 0.47). Resist reading that as "no difference": with
-six seeds this comparison could only have detected a gap of about 0.065, which
-is **30% of the error level itself**. It is an underpowered comparison, not a
-demonstrated tie.
-
-**And here the worked example undercuts the lesson, which is worth saying
-rather than hiding.** The latent axes in this simulation are built as functions
-of **longitude and latitude**, not of the projected kilometres — look at
-`.f1_raw(lon, lat)` in `generate-cawa12.R`. Measured on the landscape, `f1`'s
-east-to-north anisotropy is about **1.0 in degrees and 1.7 in kilometres**. So
-for *this* data-generating process the field really is closer to isotropic in
+And here the worked example undercuts the lesson, which is worth saying rather
+than hiding. The latent surfaces in this simulation are built as functions of
+**longitude and latitude**, not of projected kilometres, and `f1`'s
+east-to-north stretch measures about 1.0 in degrees and 1.7 in kilometres. So
+for *this* generating process the field really is closer to isotropic in
 degrees, the unprojected mesh really is the better-specified model, and the
-likelihood is **not** being fooled. It is preferring the model that matches the
-truth, correctly and by a wide margin.
+likelihood is not being fooled -- it is preferring the model that matches the
+truth.
 
-That makes this example a demonstration of something narrower than intended,
-and it changes what you should take from it:
-
-- **What is demonstrated.** The likelihood tracks the *geometry of the truth*.
-  Holding both meshes fixed and varying only how anisotropic the simulated
-  field is in kilometres, the gap moves with it — about −35 objective units
-  when the field's km-anisotropy is 1.81, −25 at 1.37, and only −8 at 1.18,
-  where the projected mesh starts winning seeds. Monotone, *r* = −0.93. With
-  the meshes identical across those runs, nothing about discretisation can
-  explain it: the likelihood is responding to the truth.
+- **What is demonstrated.** The likelihood tracks the geometry of the truth.
+  Holding both meshes fixed and varying only how stretched the simulated field
+  is in kilometres, the gap moves with it: about -35 objective units at a
+  km-stretch of 1.81, -25 at 1.37, and only -8 at 1.18, where the projected
+  mesh starts winning seeds. Monotone, *r* = -0.93. With the meshes identical
+  across those runs, nothing about the discretisation can explain it.
 - **What is not demonstrated.** That the likelihood is blind to a projection
-  error. It is not blind here; it is right, because this field really is
-  closer to isotropic in degrees.
+  error. It is not blind here; it is right.
 - **Why you still cannot use it to choose.** The likelihood answers *which
-  mesh matches my field's anisotropy* — not *which coordinate system is
-  physically correct*. Those coincide only when you already know the
-  anisotropy, which is the thing you are trying to model. A field defined in
-  kilometres pushes the same comparison the other way, as the sweep above
-  shows.
+  mesh matches my field's stretch* -- not *which coordinate system is
+  physically correct*. Those coincide only when you already know the stretch,
+  which is the thing you are trying to model.
 
-**Project first because degrees are not a distance** — a degree of longitude is
+Project first because degrees are not a distance -- a degree of longitude is
 `r round(111*cos(56*pi/180))` km at this latitude against 111 km for a degree
 of latitude. The likelihood will express a firm view about your mesh, and that
-view is informative about your field's shape rather than about your projection.
-Do not read one as the other.
+view is informative about your field's shape rather than about your
+projection. Do not read one as the other.
 
 `add_utm_columns()` warns rather than fails when a domain straddles a UTM zone
-boundary, which is a real risk for any study area wider than six degrees:
+boundary, a real risk for any study area wider than six degrees:
 
 ```{r zone-warning}
 straddling <- data.frame(lon = c(-114.5, -112.5), lat = c(53.6, 55.4))
 cat(warn_of(add_utm_columns(straddling, ll_names = c("lon", "lat"))))
+cat("\nUTM zones spanned by this article's data:",
+    length(unique(floor((cells$lon + 180) / 6) + 1)), "\n")
 ```
 
-This domain stays on the zone-11 side of that line, which is why the zone
-count printed above is 1.
+## The bias question, and a correction
 
-# If your opportunistic arm has no counts
-
-The arm above models counts, which eBird checklists do carry. Many
-opportunistic downloads do not: a raw GBIF export is often **presence-only**
--- a location, a species, and nothing to put in `value`. There is no natural
-count to invent, and fitting one as if it were a count is not an option.
-
-The standard route (Warton & Shepherd 2010; Renner et al. 2015) is the
-Berman-Turner quadrature device: an inhomogeneous Poisson process fitted as a
-**weighted Poisson GLM**, in which presence rows carry a tiny weight `w` with
-response `y = 1/w`, and a grid of background quadrature nodes carries weight
-equal to its cell area with response `y = 0`. `gllvmTMB()` accepts exactly
-that through `weights =`:
-
-```{r po-recipe, eval = FALSE}
-po <- rbind(
-  data.frame(trait = sp, env = env_at_presences, y = 1e6, w = 1e-6),
-  data.frame(trait = sp, env = env_at_nodes,     y = 0,   w = cell_area)
-)
-gllvmTMB(y ~ 0 + trait + trait:env, data = po, trait = "trait",
-         unit = "obs_id", family = poisson(), weights = po$w)
-```
-
-The package's own fence on such a fit, captured at runtime rather than
-paraphrased:
-
-```{r po-warning, echo = FALSE, comment = ""}
-cat(qd$fence$weights_warning)
-```
-
-## Does the device recover the truth?
-
-Twenty replicate datasets at these settings, `r nrow(qd$replicates)` species,
-all `r sum(qd$replicate_fit_health$ok)` fits accepted under the #1167 rule:
-
-```{r po-recovery, echo = FALSE}
-rp <- qd$replicates
-data.frame(species = rp$species, truth = round(rp$truth, 3),
-           mean_est = round(rp$mean, 3), bias = round(rp$bias, 4),
-           mc_sd_of_one = round(rp$sd, 4),
-           t = round(rp$t, 2), p = round(rp$p, 3))
-big_beta <- abs(rp$truth) > 0.4
-```
-
-No species differs detectably from its true value: the smallest *p* is
-`r f2(min(rp$p), 3)`, uncorrected, and every 95 per cent interval contains
-the truth. The pooled test is far more powerful, and it is the right test for
-the failure people actually fear -- a per-seed regression through the origin
-of the twelve estimates on the twelve truths, which equals 1 under no uniform
-bias: `r f2(qd$pooled_power$attenuation_mean, 5)`, 95 per cent CI
-[`r f2(qd$pooled_power$ci[1], 4)`, `r f2(qd$pooled_power$ci[2], 4)`],
-*p* = `r f2(qd$pooled_power$p, 3)`. That design would have detected a uniform
-multiplicative distortion of `r f2(qd$pooled_power$mde_80_pct, 1)` per cent
-or more. It detected nothing.
-
-Two things it does **not** establish, both worth stating plainly.
-
-**It certifies the device and the optimiser, not the quadrature.** At these
-settings the quadrature grid *coincides* with the lattice the point pattern
-was thinned from, so the Berman-Turner objective there is the exact likelihood
-of the generating model -- verified against a direct `glm()` on the lattice
-counts to a maximum absolute difference of
-`r format(max(sapply(qd$exactness, function(z) z$max_abs_diff)), digits = 2)`.
-There is no quadrature error there to find. The sweep below is what measures
-quadrature error, on grids deliberately decoupled from that lattice.
-
-**Relative-bias power is worthless where the true slope is near zero.** The
-minimum bias this design could detect is `r f2(min(rp$mde_80), 3)` to
-`r f2(max(rp$mde_80), 3)` on the slope scale. For the `r sum(big_beta)`
-species with `|beta| > 0.4` that is
-`r f2(min(rp$mde_80_pct[big_beta]), 1)` to
-`r f2(max(rp$mde_80_pct[big_beta]), 1)` per cent of truth; for the
-`r sum(!big_beta)` whose true slope sits near zero it is
-`r f2(min(rp$mde_80_pct[!big_beta]), 0)` to
-`r f2(max(rp$mde_80_pct[!big_beta]), 0)` per cent, which is another way of
-saying this design has no relative-bias power there at all. Quote absolute
-numbers for those species, not percentages.
-
-## How dense should the quadrature grid be?
-
-Measured with the grids **decoupled** from the generating lattice, so that
-what is measured is genuine quadrature error; 12 seeds per rung:
-
-```{r po-density, echo = FALSE}
-sd_ <- qd$sweep_decoupled$summary
-npp <- qd$nodes_per_presence
-mc  <- mean(qd$replicates$sd)
-data.frame(nodes = sd_$n_nodes,
-           nodes_per_presence = paste0(round(npp$min, 1), "-", round(npp$max, 1)),
-           mean_bias = round(sd_$mean_bias, 4),
-           mean_shift_vs_finest = round(sd_$mean_abs_shift_vs_finest, 4),
-           pct_of_MC_sd = paste0(round(100 * sd_$mean_abs_shift_vs_finest / mc), "%"))
-```
-
-```{r quad-exponent}
-## Fit the shift against node count on the log scale, and report the interval
-## rather than the point -- with six rungs the slope is not well determined.
-ex <- lm(log(sd_$mean_abs_shift_vs_finest[-nrow(sd_)]) ~ log(sd_$n_nodes[-nrow(sd_)]))
-c(exponent = round(unname(coef(ex)[2]), 3),
-  round(setNames(confint(ex)[2, ], c("lo", "hi")), 3))
-```
-
-Estimates approach the truth **from below, monotonically**. How fast is not
-something six rungs can pin down: the fitted exponent above carries a
-confidence interval that **includes -1**, so this sweep cannot distinguish
-"the error halves when you double the nodes" from anything appreciably slower.
-Do not plan around a rate. Judged against the
-only scale that matters to a reader -- the Monte
-Carlo SD of a single estimate, `r f2(mc, 4)` -- they are stable for practical
-purposes from about
-`r sd_$n_nodes[which(sd_$mean_abs_shift_vs_finest / mc < 0.10)[1]]` nodes,
-and further movement past about
-`r sd_$n_nodes[which(sd_$mean_abs_shift_vs_finest / mc < 0.05)[1]]` nodes is
-under 4 per cent of one estimate's noise.
-
-Two caveats rather than one rule. **"Nodes per presence" is the right currency
-and it varies across species** -- from
-`r f2(npp$min[npp$n_nodes == 3600], 1)` to
-`r f2(npp$max[npp$n_nodes == 3600], 1)` per presence at 3,600 nodes here,
-because rare species get more nodes per presence than common ones. And **the
-sweep never flattens**: it converges asymptotically, so "increase the density
-until the estimates stop moving" really means *"until they move less than your
-Monte Carlo noise"*.
-
-## It does not combine with the two-arm fit
-
-```{r po-refusal, echo = FALSE, comment = ""}
-cat(qd$fence$isdm_refusal_unit$msg)
-```
-
-Confirmed at runtime on this exact model, with unit weights and with genuinely
-non-unit ones -- both abort, so it is not a special case for one of them. If
-your opportunistic arm is genuinely presence-only, fit it with the quadrature
-device **on its own**, the way the standalone
-[`gbif-joint-intensity`](gbif-joint-intensity.html) article does. Combining a
-quadrature-weighted arm with a structured arm inside `isdm_sources()` is not
-supported.
-
-# What this article does not establish
-
-**No real data.** No GBIF and no ABMI records were fitted here. The structured
-arm at usable coordinate precision needs a data agreement, and this page is
-not a stand-in for that analysis.
-
-**No positional-error correction.** Everything above assumes both arms know
-where they are. Real structured-survey data frequently does not, and the
-consequences are not small -- see the companion article
-[*When one data source knows where it is and the other does not*](isdm-spatial-precision.html)
-before fusing real fuzzed data. In particular, do not expect coarsening your
-raster to fix it: Gabor et al. (2022), *Positional errors in species
-distribution modelling are not overcome by the coarser grains of analysis*,
-is the direct test of that intuition and it does not survive.
-
-**No unbiasedness claim -- and the previous version of this caveat was
-wrong.** A separate 30-replicate, 12-species recovery campaign against this
-same machinery reported a positive mean error at *t* = 4.17, and an earlier
-version of this article called it "small but statistically real". It is not
-statistically real: that test treated 360 errors as independent when all
-twelve species within a replicate share one estimated field.
+A separate 30-replicate, 12-species recovery campaign against this same
+machinery reported a positive mean error at *t* = 4.17, and an earlier version
+of this article called it "small but statistically real". It is not: that test
+treated 360 errors as independent when all twelve species within a replicate
+share one estimated field.
 
 ```{r bias-clustering}
 err      <- gt$results$err                  # 30 replicates x 12 species
 rep_mean <- tapply(err, gt$results$rep, mean)
 naive <- t.test(err); clustered <- t.test(rep_mean)
-cat("as 360 independent errors:  mean", f2(mean(err), 4),
-    " t", f2(naive$statistic, 2), " p", format(naive$p.value, digits = 2),
-    "\nby replicate (the resampling unit):  mean", f2(mean(rep_mean), 4),
-    " t", f2(clustered$statistic, 2), " p", f2(clustered$p.value, 3), "\n")
-cat("between-replicate SD of the mean error:", f2(sd(rep_mean), 4),
-    "-- were species independent within a replicate it would be",
-    f2(sd(err) / sqrt(12), 4), "\n")
+data.frame(
+  treating = c("360 errors as independent", "30 replicate means"),
+  mean = c(f2(mean(err), 4), f2(mean(rep_mean), 4)),
+  t    = c(f2(naive$statistic, 2), f2(clustered$statistic, 2)),
+  p    = c(format(naive$p.value, digits = 2), f2(clustered$p.value, 3)))
+cat("SD of replicate means:", f2(sd(rep_mean), 4),
+    "  if species were independent:", f2(sd(err) / sqrt(12), 4), "\n")
 ```
 
 The correct test does not reject. The signed bias is also a property of
 **one** landscape and one draw of species truths, both fixed across those
-replicates, so it has not been shown to be a mechanism rather than noise.
-What remains true, and is visible in this article's own recovery table, is
-that the slopes come back **shrunk**; nothing here entitles anyone to call
-them unbiased.
+replicates, so it has not been shown to be a mechanism rather than noise. What
+remains true, and is visible in this article's own recovery table, is that the
+slopes come back shrunk.
 
-**No interval calibration for anything on the map.** Coverage was measured for
-`unique = TRUE` against the base model on the *training* rows above, where it
-overshoots. Nothing here measures coverage of a mapped surface, and `se.fit`
-is refused with `newdata` for that reason.
+## Known issues behind this page
 
-**The rank result is measured at twelve species, on one design.** AIC's 10/10
-and the loading heuristic's 1/10 are properties of this landscape, this
-rank-2 truth and this species count. The mechanism behind the heuristic's
-failure -- rotational non-identifiability of the loading columns -- is
-general; the hit rates are not.
-
-**The overdispersion result is capped by issue #1167.** It could not be tested
-at count magnitudes above the screen, which is exactly where detection of
-`Psi` would improve.
-
-# Recap
-
-`isdm_sources()` names the two observation processes. The arms sit at disjoint
-locations and still share one field, because the field lives on a mesh built
-over the union of both and every row is projected onto it. Project the
-coordinates before meshing, and do not expect the likelihood to tell you
-whether you did. Check `iterations`, not just `convergence`, and keep the
-counts well under the ceiling. Choose the rank of the shared field by AIC, not
-by hunting for a small loading column. Reach for `unique = TRUE` when an arm
-is Poisson and plainly overdispersed -- for the point estimates rather than
-the intervals, and expect it to cost you Hessians. Zero the offset on the
-prediction grid, keep the covariate on its training scale, and hatch whatever
-falls outside the mesh.
-
-Point estimates and a surface. No intervals -- and the article says so, rather
-than letting a smooth picture imply otherwise.
+- The one-iteration silent failure at large counts:
+  [#1167](https://github.com/itchyshin/gllvmTMB/issues/1167).
+- The inert grouping token on a `spatial_*()` term:
+  [#1163](https://github.com/itchyshin/gllvmTMB/issues/1163).
+- A mesh silently ignored when no `spatial_*()` term is present:
+  [#1165](https://github.com/itchyshin/gllvmTMB/issues/1165).
 
 ## References
 

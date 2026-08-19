@@ -2082,7 +2082,7 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL) {
 ## anything other than `1` or `0 + trait`, abort with a Stage-3 redirect.
 ## If the first arg is not a bar at all (e.g. legacy `unique(grp)` bare-
 ## name form), this helper is a no-op.
-.assert_no_augmented_lhs <- function(fn, e) {
+.assert_no_augmented_lhs <- function(fn, e, trait_col = "trait") {
   if (!is.call(e) || length(e) < 2L) {
     return(invisible(NULL))
   }
@@ -2094,11 +2094,18 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL) {
   }
   lhs <- .strip_lhs_parens(bar[[2L]])
   ## Match exactly the same shape detection the phylo()/spatial() wrappers
-  ## use (df76c705 / 8b1ddc92): `1` (intercept-only) or `0 + trait`
+  ## use (df76c705 / 8b1ddc92): `1` (intercept-only) or `0 + <trait col>`
   ## (per-trait intercepts). Anything else is augmented LHS, not yet
   ## supported by the engine. Enclosing parens around the LHS (e.g.
   ## `indep((0 + trait) | site)`) are stripped first so they don't cause
   ## a false-positive augmented-LHS classification (#626).
+  ##
+  ## #1188: the resolved `trait =` column name is the primary spelling to
+  ## accept -- comparing only against the literal `"trait"` rejected a
+  ## user's OWN correct `0 + <their trait column> | g` form whenever they
+  ## named the column something other than `"trait"`. The literal `"trait"`
+  ## is still accepted regardless of `trait_col` so existing code (and every
+  ## fixture that writes the LHS as literal `trait`) keeps working.
   is_intercept_only <- (is.numeric(lhs) && length(lhs) == 1L && lhs == 1) ||
     (is.symbol(lhs) && identical(as.character(lhs), "1"))
   is_zero_plus_trait <- is.call(lhs) &&
@@ -2107,14 +2114,14 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL) {
     is.numeric(lhs[[2L]]) &&
     lhs[[2L]] == 0 &&
     is.symbol(lhs[[3L]]) &&
-    identical(as.character(lhs[[3L]]), "trait")
+    as.character(lhs[[3L]]) %in% c(trait_col, "trait")
   if (is_intercept_only || is_zero_plus_trait) {
     return(invisible(NULL))
   }
   cli::cli_abort(c(
     "{.fn {fn}} augmented LHS is not yet supported.",
     "i" = "You wrote {.code {fn}({deparse(bar)})}.",
-    "x" = "This wrapper accepts only intercept-only {.code 0 + trait | g} or {.code 1 | g} forms.",
+    "x" = "This wrapper accepts only intercept-only {.code 0 + {trait_col} | g} or {.code 1 | g} forms.",
     ">" = "Use the source-specific {.fn *_indep}, {.fn *_latent}, or {.fn *_dep} keyword when you need a supported intercept-and-slope covariance."
   ))
 }
@@ -2301,7 +2308,7 @@ normalise_spatial_orientation <- function(e) {
 ## rename. The pre-0.1.4 orientation `coords | trait` triggers a one-shot
 ## lifecycle deprecation warning per keyword per session; the engine
 ## itself reads neither side of the bar so the flip is purely cosmetic.
-rewrite_canonical_aliases <- function(formula) {
+rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
   ## Phase L (May 2026): per-term `tree = ...`, `vcv = ...`,
   ## `coords = ...`, `mesh = ...` arguments inside phylo_*() / spatial_*()
   ## keywords must survive the rewrite to the canonical engine kinds
@@ -3364,7 +3371,7 @@ rewrite_canonical_aliases <- function(formula) {
               )
             )))
           }
-          .assert_no_augmented_lhs(fn, e)
+          .assert_no_augmented_lhs(fn, e, trait_col)
         }
         ## Design 56 Sec. 9.5a: augmented phylo_latent random regression.
         ## `phylo_latent` normally renames straight to `phylo_rr`, which reads
@@ -3655,7 +3662,7 @@ rewrite_canonical_aliases <- function(formula) {
           }
         }
         ## Remaining augmented LHS forms are still unsupported.
-        .assert_no_augmented_lhs(fn, e)
+        .assert_no_augmented_lhs(fn, e, trait_col)
         new_call <- e
         new_call[[1L]] <- as.name("diag")
         return(new_call)
@@ -3987,7 +3994,7 @@ rewrite_canonical_aliases <- function(formula) {
       ## over-parameterisation guard.
       if (fn == "indep") {
         ## Stage 2.5: fail-loud against augmented LHS.
-        .assert_no_augmented_lhs(fn, e)
+        .assert_no_augmented_lhs(fn, e, trait_col)
         extras <- list(.indep = TRUE)
         common_arg <- .named_or_positional_arg(
           e, "common", 3L, default = NULL
@@ -4006,7 +4013,7 @@ rewrite_canonical_aliases <- function(formula) {
       ## fail loud rather than silently drop or malform it.
       if (fn == "scalar") {
         .gllvmTMB_warn_scalar_family_deprecated(fn)
-        .assert_no_augmented_lhs(fn, e)
+        .assert_no_augmented_lhs(fn, e, trait_col)
         new_call <- as.call(c(
           list(as.name("diag"), e[[2L]]),
           list(.indep = TRUE, common = TRUE)
@@ -4192,7 +4199,7 @@ rewrite_canonical_aliases <- function(formula) {
       ## d = n_traits resolution pattern.
       if (fn == "dep") {
         ## Stage 2.5: fail-loud against augmented LHS.
-        .assert_no_augmented_lhs(fn, e)
+        .assert_no_augmented_lhs(fn, e, trait_col)
         new_call <- as.call(c(
           list(as.name("rr"), e[[2L]]),
           list(d = as.name(".deferred_n_traits"), .dep = TRUE)
@@ -4318,7 +4325,7 @@ rewrite_canonical_aliases <- function(formula) {
         ## Stage 2.5: fail-loud against any OTHER augmented LHS (multi-covariate
         ## or richer per-trait slope forms). Intercept-only `0 + trait | coords`
         ## passes through to the spatial_latent(d = T) engine path below.
-        .assert_no_augmented_lhs(fn, e)
+        .assert_no_augmented_lhs(fn, e, trait_col)
         extras <- .pass_through_extras(e, c("coords", "mesh"))
         new_call <- as.call(c(
           list(as.name("spde"), e[[2L]]),
@@ -4475,7 +4482,7 @@ desugar_brms_sugar <- function(
   ## / phylo_scalar / spatial / meta_V / meta_known_V) to engine-internal names.
   ## Done before the legacy brms desugaring below so e.g. phylo_scalar
   ## becomes phylo() which then becomes propto().
-  formula <- rewrite_canonical_aliases(formula)
+  formula <- rewrite_canonical_aliases(formula, trait_col = trait_col)
 
   walk <- function(e) {
     if (is.call(e)) {

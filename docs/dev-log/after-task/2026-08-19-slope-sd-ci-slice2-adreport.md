@@ -256,8 +256,120 @@ than silently proceeding -- and this passed on every real-fit test.
 to completion (not backgrounded-and-abandoned). Verbatim tail:
 
 ```
-<<FULL_SUITE_TAIL>>
+health-gate marginal (ran fine, accounting correct, status != healthy): betabinomial_logit, delta_gamma_log
+18-cell wall time: 28.4 s
+Warning: 39 external pointers will be removed
+using C++ compiler: 'Apple clang version 21.0.0 (clang-2100.1.1.101)'
+using SDK: 'MacOSX26.5.sdk'
+clang++ -arch arm64 -std=gnu++20 -I"/Library/Frameworks/R.framework/Resources/include" -DNDEBUG -I"/Users/z3437171/Library/R/arm64/4.6/library/TMB/include" -I"/Users/z3437171/Library/R/arm64/4.6/library/RcppEigen/include"  -DTMB_SAFEBOUNDS -DTMB_EIGEN_DISABLE_WARNINGS -DLIB_UNLOAD=R_unload_gllvmTMB_va_r3  -DTMB_LIB_INIT=R_init_gllvmTMB_va_r3  -DCPPAD_FRAMEWORK  -I/opt/R/arm64/include    -fPIC  -O2  -c gllvmTMB_va_r3.cpp -o gllvmTMB_va_r3.o
+clang++ -arch arm64 -std=gnu++20 -dynamiclib -Wl,-headerpad_max_install_names -undefined dynamic_lookup -L/Library/Frameworks/R.framework/Resources/lib -L/opt/R/arm64/lib -o gllvmTMB_va_r3.so gllvmTMB_va_r3.o -F/Library/Frameworks/R.framework/.. -framework R
+
+-- Design 108 Stage 4 AD-safety, H = 15 (extreme node 6.3639 SD of eta) --
+cell                      dE/dmu AD      dE/dmu FD        rel       dE/dv AD       dE/dv FD        rel  min eta
+bulk bernoulli            0.7337576      0.7337576   2.69e-13     -0.2666131     -0.2666131   2.68e-12     -6.1
+bulk binomial n=10       -0.5251462     -0.5251462   3.45e-12      -2.790678      -2.790678   5.16e-12     -5.4
+left tail mu=-30            30.0333        30.0333   6.86e-13     -0.4994463     -0.4994463   1.22e-09    -36.4
+deep tail mu=-40           40.02498       40.02498   1.48e-12     -0.4996881     -0.4996881   2.89e-09    -46.4
+huge v=100                 4.059181       4.059181   6.50e-12     -0.2516668     -0.2516668   4.78e-13    -63.6
+right tail mu=+30          -30.0333       -30.0333   5.23e-13     -0.4994463     -0.4994463   1.36e-11     23.6
+both tails                 100.2678       100.2678   1.69e-12      -2.492238      -2.492238   2.14e-11    -51.8
+
+-- Design 108 Stage 4 AD-safety, H = 61 (extreme node 14.4985 SD of eta) --
+cell                      dE/dmu AD      dE/dmu FD        rel       dE/dv AD       dE/dv FD        rel  min eta
+bulk bernoulli            0.7337576      0.7337576   2.27e-13     -0.2666131     -0.2666131   2.49e-12    -14.2
+bulk binomial n=10       -0.5251462     -0.5251462   3.22e-11      -2.790678      -2.790678   1.65e-12    -11.7
+left tail mu=-30            30.0333        30.0333   4.96e-14     -0.4994463     -0.4994463   5.56e-10    -44.5
+deep tail mu=-40           40.02498       40.02498   1.83e-12     -0.4996881     -0.4996881   3.46e-09    -54.5
+huge v=100                 4.121156       4.121156   2.24e-12     -0.2520039     -0.2520039   2.16e-12   -145.0
+right tail mu=+30          -30.0333       -30.0333   3.71e-13     -0.4994463     -0.4994463   4.61e-10     15.5
+both tails                 100.2678       100.2678   4.77e-13      -2.492234      -2.492234   2.25e-11    -92.5
+
+-- Stage 4 toy: max|log Sigma_B ratio| vs Laplace probit 0.1696, vs Laplace logit 0.9653
+SKIP: 'test-warm-nlminb-restart.R:515:3' ----------
+Reason: Heavy recovery/matrix test -- set GLLVMTMB_HEAVY_TESTS=1 to run
+
+SKIP: 'test-warm-nlminb-restart.R:594:3' ----------
+Reason: Heavy recovery/matrix test -- set GLLVMTMB_HEAVY_TESTS=1 to run
+
+SKIP: 'test-warm-nlminb-restart.R:629:3' ----------
+Reason: Heavy recovery/matrix test -- set GLLVMTMB_HEAVY_TESTS=1 to run
+
+SKIP: 'test-warm-nlminb-restart.R:668:3' ----------
+Reason: Heavy recovery/matrix test -- set GLLVMTMB_HEAVY_TESTS=1 to run
+
+SKIP: 'test-warm-nlminb-restart.R:688:3' ----------
+Reason: Heavy recovery/matrix test -- set GLLVMTMB_HEAVY_TESTS=1 to run
+
+SKIP: 'test-warm-nlminb-restart.R:702:3' ----------
+Reason: Heavy recovery/matrix test -- set GLLVMTMB_HEAVY_TESTS=1 to run
+
+i Auto-suppressing `sigma_eps`: `indep(0 + trait | site)` is at the per-row level, so it already absorbs the observation residual.
+* Fixed at 0.000939 (~1/1000 of sd(y)) to keep the Gaussian density well-defined; the row-level residual variance is fully captured by the per-row diagonal term.
+i Auto-suppressing `sigma_eps`: `indep(0 + trait | site)` is at the per-row level, so it already absorbs the observation residual.
+* Fixed at 0.000939 (~1/1000 of sd(y)) to keep the Gaussian density well-defined; the row-level residual variance is fully captured by the per-row diagonal term.
+SKIP: 'test-zz-mspl-rest-families-se-feasibility.R:186:5' ----------
+Reason: internal curvature pin is still fenced from Gamma
+
+SKIP: 'test-zz-mspl-rest-families-se-feasibility.R:206:7' ----------
+Reason: Gamma MSPL family door is missing
+
+SKIP: 'test-zz-mspl-rest-families-se-feasibility.R:232:7' ----------
+Reason: Gamma MSPL family door is missing
+
+SKIP: 'test-zz-mspl-rest-families-se-feasibility.R:206:7' ----------
+Reason: lognormal MSPL family door is missing
+
+SKIP: 'test-zz-mspl-rest-families-se-feasibility.R:232:7' ----------
+Reason: lognormal MSPL family door is missing
+
+SKIP: 'test-zz-mspl-rest-families-se-feasibility.R:206:7' ----------
+Reason: student MSPL family door is missing
+
+SKIP: 'test-zz-mspl-rest-families-se-feasibility.R:232:7' ----------
+Reason: student MSPL family door is missing
+
+SKIP: 'test-zz-mspl-rest-families-se-feasibility.R:206:7' ----------
+Reason: ordinal_probit MSPL family door is missing
+
+SKIP: 'test-zz-mspl-rest-families-se-feasibility.R:232:7' ----------
+Reason: ordinal_probit MSPL family door is missing
+
+SKIP: 'test-zz-mspl-rest-families-se-feasibility.R:206:7' ----------
+Reason: delta_lognormal MSPL family door is missing
+
+SKIP: 'test-zz-mspl-rest-families-se-feasibility.R:232:7' ----------
+Reason: delta_lognormal MSPL family door is missing
+
+SKIP: 'test-zz-mspl-rest-families-se-feasibility.R:206:7' ----------
+Reason: delta_gamma MSPL family door is missing
+
+SKIP: 'test-zz-mspl-rest-families-se-feasibility.R:232:7' ----------
+Reason: delta_gamma MSPL family door is missing
+
+SKIP: 'test-zz-mspl-tweedie-beta-se-feasibility.R:175:3' ----------
+Reason: tweedie MSPL family door is missing
+
+SKIP: 'test-zz-mspl-tweedie-beta-se-feasibility.R:181:3' ----------
+Reason: tweedie MSPL family door is missing
+
+SKIP: 'test-zz-mspl-tweedie-beta-se-feasibility.R:199:3' ----------
+Reason: Beta Q_P/Q_0 NLLs match on this cell; tapes are named but nll-difference is not informative
+
+[ FAIL 0 | WARN 9 | SKIP 877 | PASS 16305 ]
 ```
+
+**0 failures, 16,305 passes.** The 9 warnings are all in
+`test-aghq-missing-response.R` (6), `test-comparator-gllvm.R` (2), and
+`test-link-residual-multinomial.R` (1) -- none touch `slope-sd-ci`,
+`gllvmTMB.cpp`'s slope routes, or any file this slice edited; the same
+three files' warnings were already noted as pre-existing/unrelated in
+Slice 1's after-task report. `grep -n "slope-sd-ci"` on the full log
+shows exactly one line: `SKIP: 'test-slope-sd-ci.R:476:3'` (the
+heavy-gated phylo_dep recovery test, `GLLVMTMB_HEAVY_TESTS` unset for
+this run, matching house convention -- separately confirmed passing under
+`GLLVMTMB_HEAVY_TESTS=1` in Section 6). No other line from
+`test-slope-sd-ci.R` appears, confirming every other test in that file
+passed silently within the full run.
 
 ## 8. Register Update
 

@@ -1,3 +1,45 @@
+## 2026-08-18 — Totoro T1 panel recorded (fork B; T* NOT-FROZEN)
+
+Lane `cursor/mspl-fork-B-totoro-20260818`. Deploy
+`totoro:~/gllvmtmb-mspl-forkB-t1-20260818` @ `7187b7d` + rsynced
+`dev/mspl-forkB-t1-smoke.R`. Smoke `T1-anchor-n40-T8` / 20260830 PASS
+(RDS 724 bytes, LOG 698 bytes, `Q_0` / fork B, `lo < hi`). Panel 4 × 200
+= 800 at 16 cores, 15.3 s, 800 unique-seed rows, no empty cell. Anchor
+cov_eff 0.940 / 0.975; near-tail 0.710 (1 `R-NAVL`); far-tail 0.580
+(14 `R-NAVL`). `tstar_status: NOT-FROZEN`. `calibrated: FALSE`.
+`public_confint: refused`. #1077 stays draft (`gh pr view 1077 --json isDraft`
+→ true).
+
+rg: `se = TRUE|calibrated: TRUE|coverage_claim: covered|tstar_status: FROZEN`
+on the T1 runner + receipt — no hits. Closed L2 / g0_unlock / root `LOOP/`
+/ `R/` / `src/` / `NEWS.md` untouched. Deliberately not: T* freeze, public
+se/vcov/confint, undraft #1077, NEWS `covered`, `git add -A`,
+isdm-package-recovery.
+
+Receipt: `docs/dev-log/research/2026-08-18-mspl-forkB-t1-receipt.md`.
+After-task: `docs/dev-log/after-task/2026-08-18-mspl-forkB-t1-totoro.md`.
+
+## 2026-08-18 — Totoro T1 `/goal` kit (fork B; locked 800-fit grid; no smoke)
+
+Lane `cursor/mspl-fork-B-totoro-20260818` (cursor). Worktree
+`~/local-scratch/lanes/gllvmTMB-mspl-fork-B-totoro` from `origin/main`.
+NEW kit: `docs/dev-log/lanes/cursor-mspl-fork-B-totoro/LOOP/`. Closed
+L2 `docs/dev-log/lanes/cursor-mspl-fork-B-L2/` **not edited**.
+Inherits official L1 #1128 cov_eff 0.880 and L2 #1162 Seed B/C 0.900 /
+near-tail 0.780. Locked grid: 4 cells × 200 = 800, seeds `20260830`–
+`20260833`, RECORD only, `tstar_status: NOT-FROZEN`. No `R/`, `src/`,
+NEWS, register.
+
+```sh
+bash ~/shinichi-brain/tools/lane_preflight.sh "$PWD"
+gh pr view 1077 --json isDraft
+rg -n "T1-anchor-n40-T8|20260833|NOT-FROZEN|RECORD-ONLY" \
+  docs/dev-log/lanes/cursor-mspl-fork-B-totoro/LOOP/ \
+  docs/dev-log/research/2026-08-18-mspl-forkB-totoro-grid-proposal.md
+# deliberately not: Totoro 800, T* freeze, public se, undraft #1077,
+# MSPL-04 flip, git add -A, isdm-package-recovery, T1 smoke (belongs to /goal)
+```
+
 ## 2026-08-18 — `slope_sd_ci()` Slice 1 built, exported, adversarially reviewed and revised, DRAFT PR, needs Shinichi sign-off
 
 Lane `claude/slope-sd-ci-20260818` (worktree `/private/tmp/gllvmtmb-slopeci`

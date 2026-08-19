@@ -222,7 +222,9 @@ separately-scoped evidence; AGHQ and \code{REML = TRUE} cannot be combined.}
 
 \item{mesh}{Optional mesh object from \code{\link[=make_mesh]{make_mesh()}}. Required for any
 \verb{spatial_*()} or \code{spatial()} term unless that term supplies its own
-\verb{mesh =} argument; ignored only when the model has no spatial term.}
+\verb{mesh =} argument. A supplied mesh with no spatial term is unused:
+the fit warns, and a raw fmesher/INLA mesh is rejected, rather than
+being silently ignored.}
 
 \item{phylo_vcv}{(legacy global) Optional tip-only \verb{n_species × n_species} phylogenetic correlation matrix. The canonical syntax
 is \verb{vcv =} inside each \verb{phylo_*()} keyword. \strong{\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#superseded}{\figure{lifecycle-superseded.svg}{options: alt='[Superseded]'}}}{\strong{[Superseded]}}} —

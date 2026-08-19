@@ -46,6 +46,36 @@ evidence (dispatch code is dimension-general but untested beyond `s = 1`);
 non-Gaussian evidence for any route. This is a `src/` + `sdreport` payload
 change -- PR opened as **DRAFT**, not merged, needs Shinichi's explicit
 sign-off per CLAUDE.md's high-risk merge rule.
+
+## 2026-08-19 — unused `mesh=` no longer silently ignored (#1165)
+
+Lane `cursor/fix-unused-mesh-1165-b646`. Confirmed the issue hypothesis:
+`.gllvm_normalize_mesh()` ran only under
+`use_spde || use_spde_slope || use_spde_latent_slope` in `R/fit-multi.R`.
+A non-`NULL` mesh with no spatial term now warns
+(`gllvmTMB_unused_mesh`, both mistakes named) and is still normalized, so
+a raw fmesher mesh errors with the existing `make_mesh()` message.
+
+```sh
+gh pr list --state open --limit 30
+git log --all --oneline --since="6 hours ago"
+NOT_CRAN=true Rscript --vanilla -e '
+  pkgload::load_all(quiet = TRUE)
+  testthat::test_file("tests/testthat/test-mesh-unused-1165.R")
+  testthat::test_file("tests/testthat/test-mesh.R")
+  testthat::test_file("tests/testthat/test-gllvmTMB-args.R")
+'
+# unused-mesh 0F/0W/0S/15P; mesh 0F/0W/0S/41P; args 0F/0W/7S/25P
+Rscript --vanilla -e 'devtools::document(quiet = TRUE)'
+# reverted NAMESPACE + DESCRIPTION roxygen-version churn
+rg -n "ignored only when the model has no spatial|gllvmTMB_unused_mesh|no spatial term, so the mesh is unused" R tests NEWS.md man
+rg "\\bS_B\\b|\\bS_W\\b|\\\\bf S" R/fit-multi.R R/gllvmTMB.R NEWS.md tests/testthat/test-mesh-unused-1165.R man/gllvmTMB.Rd
+rg "meta_known_V|gllvmTMB_wide|in prep|in preparation" NEWS.md
+# deliberately not: full test(), check(), pkgdown, article render, MSPL
+```
+
+After-task: `docs/dev-log/after-task/2026-08-19-unused-mesh-1165.md`.
+
 ## 2026-08-18 — Totoro T1 panel recorded (fork B; T* NOT-FROZEN)
 
 Lane `cursor/mspl-fork-B-totoro-20260818`. Deploy

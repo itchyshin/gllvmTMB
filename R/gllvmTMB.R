@@ -221,7 +221,9 @@
 #'   separately-scoped evidence; AGHQ and `REML = TRUE` cannot be combined.
 #' @param mesh Optional mesh object from [make_mesh()]. Required for any
 #'   `spatial_*()` or `spatial()` term unless that term supplies its own
-#'   `mesh =` argument; ignored only when the model has no spatial term.
+#'   `mesh =` argument. A supplied mesh with no spatial term is unused:
+#'   the fit warns, and a raw fmesher/INLA mesh is rejected, rather than
+#'   being silently ignored.
 #' @param phylo_tree (legacy global) Optional `ape::phylo` tree. The current
 #'   syntax is to pass `tree =` inside
 #'   each `phylo_*()` keyword (e.g. `phylo_latent(species, d = K, tree =

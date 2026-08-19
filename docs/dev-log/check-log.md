@@ -1,3 +1,24 @@
+## 2026-08-18 — Totoro T1 `/goal` kit (fork B; locked 800-fit grid; no smoke)
+
+Lane `cursor/mspl-fork-B-totoro-20260818` (cursor). Worktree
+`~/local-scratch/lanes/gllvmTMB-mspl-fork-B-totoro` from `origin/main`.
+NEW kit: `docs/dev-log/lanes/cursor-mspl-fork-B-totoro/LOOP/`. Closed
+L2 `docs/dev-log/lanes/cursor-mspl-fork-B-L2/` **not edited**.
+Inherits official L1 #1128 cov_eff 0.880 and L2 #1162 Seed B/C 0.900 /
+near-tail 0.780. Locked grid: 4 cells × 200 = 800, seeds `20260830`–
+`20260833`, RECORD only, `tstar_status: NOT-FROZEN`. No `R/`, `src/`,
+NEWS, register.
+
+```sh
+bash ~/shinichi-brain/tools/lane_preflight.sh "$PWD"
+gh pr view 1077 --json isDraft
+rg -n "T1-anchor-n40-T8|20260833|NOT-FROZEN|RECORD-ONLY" \
+  docs/dev-log/lanes/cursor-mspl-fork-B-totoro/LOOP/ \
+  docs/dev-log/research/2026-08-18-mspl-forkB-totoro-grid-proposal.md
+# deliberately not: Totoro 800, T* freeze, public se, undraft #1077,
+# MSPL-04 flip, git add -A, isdm-package-recovery, T1 smoke (belongs to /goal)
+```
+
 ## 2026-08-18 — `slope_sd_ci()` Slice 1 built, exported, adversarially reviewed and revised, DRAFT PR, needs Shinichi sign-off
 
 Lane `claude/slope-sd-ci-20260818` (worktree `/private/tmp/gllvmtmb-slopeci`

@@ -1,3 +1,48 @@
+## 2026-08-19 — `unit_obs` / `cluster` default to `NULL`, not `"site_species"` / `"species"` (DRAFT PR, needs Shinichi sign-off)
+
+Lane `claude/null-tier-defaults-20260819` (worktree
+`/private/tmp/gllvmtmb-nulldefaults`, off `origin/main`). Small
+API-signalling fix: `gllvmTMB()`'s `unit_obs` and `cluster` arguments were
+defaulting to concrete ecology-noun strings (`"site_species"`,
+`"species"`), which reads as "required, and here is the name we expect"
+rather than "optional". An external systematic-map user (iwogross, paper x
+item design, no sites, no species) manufactured meaningless columns to
+satisfy the defaults and hit an unhelpful `"Column site not found in
+data"` error that never said which argument wanted the column.
+
+**Change:** both now default to `NULL`, resolved internally at the top of
+the function body via the package's existing `%||%`
+(`unit_obs <- unit_obs %||% "site_species"`, `cluster <- cluster %||%
+"species"`) -- so passing `NULL` explicitly, omitting the argument, and
+passing the old string default are all bit-identical. Fixed the
+`sprintf("Column %s not found in data", col)` error to name the argument
+(`trait` or `unit`) via `cli::cli_abort`, matching the style already used
+for the `unit_obs`-not-found message. `unit`'s own default (`"site"`) is
+untouched (it is genuinely required; renaming it is a separate design
+decision).
+
+**Bit-identical proof:** fit the same gaussian model on the same
+RNG-seeded site x trait fixture (no `species`/`site_species` columns) in
+two worktrees -- `origin/main` HEAD `147da385` with the old explicit
+defaults, and this branch with both omitted and with both passed as
+`NULL` -- `identical()` TRUE on `logLik` (`-47.057686517392817`) and
+`fit$opt$par` across all three.
+
+**Tests added:** `tests/testthat/test-null-tier-defaults.R` (5
+`test_that()` blocks) -- NULL/omitted/old-default equivalence, the
+no-`species`-no-`site_species` systematic-map shape fits cleanly, the new
+error names `trait`/`unit`, and the existing non-default-`unit_obs`-absent
+error still fires. `pkgdown::check_pkgdown()` clean;
+`test-reader-facing-no-register-codes.R` passes (no register codes in the
+updated roxygen). Full `NOT_CRAN=true devtools::test()` run detached to
+completion; see the after-task report for the tail.
+
+**No `src/` change, no `DESCRIPTION` bump, no capability headline** (per
+brief). Docs:
+`docs/dev-log/after-task/2026-08-19-null-tier-defaults.md`.
+**Needs Shinichi:** review + merge decision on the DRAFT PR -- it changes
+`gllvmTMB()`'s public signature.
+
 ## 2026-08-19 — `slope_sd_ci()` Slice 2: ADREPORT unblocks the phylo + loadings routes (CI-15 partial), DRAFT PR, needs Shinichi sign-off
 
 Lane `claude/slope-ci-adreport-20260819` (worktree `/private/tmp/gllvmtmb-slice2`,

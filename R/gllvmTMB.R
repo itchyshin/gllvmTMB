@@ -82,26 +82,29 @@
 #'   Examples: `"site"` for site × species data, `"individual"` for
 #'   behavioural-syndrome data, `"species"` for PGLLVM, `"paper"` for
 #'   systematic mapping. Default `"site"`.
-#' @param unit_obs Name of the column holding the **within-unit**
+#' @param unit_obs Optional. Name of the column holding the **within-unit**
 #'   grouping factor — one level per (unit, replicate) cell — used by
 #'   `latent(0 + trait | unit_obs, ...)` and
 #'   `indep(0 + trait | unit_obs)` for the W-tier covariance.
-#'   Default `"site_species"` (the conventional name in joint species
-#'   distribution modelling; safe for site × species data). For other
-#'   domains pass e.g. `unit_obs = "obs"` for behavioural syndromes.
+#'   Default `NULL`, which resolves to `"site_species"` (the conventional
+#'   name in joint species distribution modelling; safe for site × species
+#'   data). If your data has no such column, omit `unit_obs`; the engine
+#'   synthesises it from `unit` × `cluster`. For other domains pass e.g.
+#'   `unit_obs = "obs"` for behavioural syndromes.
 #' @param site (deprecated) alias for `unit`. Kept for backward
 #'   compatibility. Use `unit = ...` in new code.
-#' @param cluster Name of the column holding the **third grouping**
-#'   factor (the "cluster" slot). When the column name matches the
-#'   row/column names of `phylo_vcv` (or the tip labels of
+#' @param cluster Optional. Name of the column holding the **third
+#'   grouping** factor (the "cluster" slot). When the column name matches
+#'   the row/column names of `phylo_vcv` (or the tip labels of
 #'   `phylo_tree`), this slot also drives the phylogenetic random
 #'   effects (`phylo_latent`, `phylo_scalar`, `phylo_indep`,
 #'   `phylo_slope`). When the column does **not** match a phylogenetic
 #'   correlation, the slot still functions as a regular crossed/nested
 #'   third grouping (e.g. `cluster = "population"` for 3-level
 #'   personality data, `cluster = "study"` for multi-study
-#'   meta-analysis). Default `"species"`. For datasets with no third
-#'   grouping the column may be absent from `data`; the engine will
+#'   meta-analysis). Default `NULL`, which resolves to `"species"`. For
+#'   datasets with no third grouping the column may be absent from `data`
+#'   entirely (with or without passing `cluster`); the engine will
 #'   synthesise a placeholder.
 #'
 #'   The engine does **not** enforce nesting between `unit_obs`,
@@ -567,8 +570,8 @@ gllvmTMB <- function(
   data,
   trait = "trait",
   unit = "site",
-  unit_obs = "site_species",
-  cluster = "species",
+  unit_obs = NULL,
+  cluster = NULL,
   cluster2 = NULL,
   family = gaussian(),
   weights = NULL,
@@ -593,6 +596,18 @@ gllvmTMB <- function(
   estimator = c("ml", "mspl")
 ) {
   # deprecated alias for `cluster`
+
+  ## ---- Resolve optional slot defaults ------------------------------------
+  ## `unit_obs` and `cluster` are OPTIONAL grouping slots: most callers have
+  ## no reason to supply them and should not have to invent columns just to
+  ## satisfy a signature that looked mandatory. `NULL` (the new default)
+  ## resolves here, immediately, to the historical concrete defaults so
+  ## every downstream consumer -- and the wide-format recursion below, whose
+  ## recursive call re-resolves independently -- sees exactly the values it
+  ## always did. Passing `unit_obs = NULL` / `cluster = NULL` explicitly is
+  ## therefore equivalent to omitting them.
+  unit_obs <- unit_obs %||% "site_species"
+  cluster <- cluster %||% "species"
 
   estimator_missing <- missing(estimator)
   estimator <- match.arg(estimator)
@@ -851,11 +866,17 @@ gllvmTMB <- function(
 
   ## ---- Validate input ----------------------------------------------------
   assertthat::assert_that(is.data.frame(data))
-  for (col in c(trait, site)) {
-    assertthat::assert_that(
-      col %in% names(data),
-      msg = sprintf("Column %s not found in data", col)
-    )
+  if (!trait %in% names(data)) {
+    cli::cli_abort(c(
+      "{.arg trait = {.val {trait}}} is not a column in {.arg data}.",
+      "i" = "Pass the name of the column that identifies which trait each row belongs to."
+    ))
+  }
+  if (!site %in% names(data)) {
+    cli::cli_abort(c(
+      "{.arg unit = {.val {site}}} is not a column in {.arg data}.",
+      "i" = "Pass the name of the column that identifies the between-unit grouping (site, individual, paper, ...)."
+    ))
   }
   if (!is.factor(data[[trait]])) {
     data[[trait]] <- factor(data[[trait]])

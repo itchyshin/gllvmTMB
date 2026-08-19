@@ -3831,7 +3831,20 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   spde_M2 <- Matrix::Matrix(0, nrow = 1, ncol = 1, sparse = TRUE)
   ## The base SPDE slope engine (use_spde_slope) reuses the same mesh / Q_base
   ## machinery (A_proj, spde_M0/M1/M2, n_mesh), so build it on that path too.
-  if (use_spde || use_spde_slope || use_spde_latent_slope) {
+  ##
+  ## #1165: mesh validation used to run only on this branch. A supplied
+  ## mesh with no spatial term was dropped with no signal -- a clean
+  ## non-spatial fit, including when the object was a raw fmesher mesh.
+  has_spatial_term <- isTRUE(use_spde) || isTRUE(use_spde_slope) ||
+    isTRUE(use_spde_latent_slope)
+  if (!is.null(mesh) && !has_spatial_term) {
+    cli::cli_warn(c(
+      "!" = "{.arg mesh} was supplied but the formula has no spatial term, so the mesh is unused.",
+      "i" = "Either add a {.fn spatial_indep}/{.fn spatial_scalar}/{.fn spatial_latent} term, or drop {.arg mesh} if it was left over from a term that was removed."
+    ), class = "gllvmTMB_unused_mesh")
+    mesh <- .gllvm_normalize_mesh(mesh)
+  }
+  if (has_spatial_term) {
     if (is.null(mesh))
       cli::cli_abort("{.fn spatial_indep}/{.fn spatial_scalar}/{.fn spatial_latent} found in formula but {.arg mesh} is NULL.")
     mesh <- .gllvm_normalize_mesh(mesh)

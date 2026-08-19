@@ -1,5 +1,19 @@
 # gllvmTMB 0.7.0 (development)
 
+* **`mesh=` with no spatial term is no longer silently ignored (#1165).**
+  Mesh validation used to run only when a `spatial_*()` term was present,
+  so `gllvmTMB(mesh = <raw fmesher mesh>)` with an ordinary non-spatial
+  formula fitted identically to the no-mesh call -- a clean converged
+  fit, and no signal that the spatial mechanism never ran. ⚠️
+  **Behaviour change:** a supplied mesh and no spatial term now warns,
+  naming both possible mistakes (the formula is missing a
+  `spatial_*()` term, or `mesh` was left over from a term that was
+  removed). A raw fmesher/INLA mesh is then rejected with the existing
+  `make_mesh()` error -- the check that already ran when a spatial term
+  *was* present. A valid `make_mesh()` object still fits as a
+  non-spatial model after the warning. Fits with a spatial term, and
+  fits with `mesh = NULL`, are unchanged.
+
 * **`predict(newdata = )` now also re-adds ordinary `(1 | group)` random
   intercepts (#1138).** This corrects an earlier entry, which recorded the
   `re_int` tier as unreachable because "its group mapping is not a top-level

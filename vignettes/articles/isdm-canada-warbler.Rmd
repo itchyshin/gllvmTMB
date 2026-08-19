@@ -988,33 +988,52 @@ system, not a property of the birds.
 The instinct is to check this the way one checks any modelling choice: fit
 both and compare. **That does not work.**
 
-**One disclosure before the numbers.** These five values are the only
-measurement on this page that does **not** come from the twelve-species design
-above. They were taken on a separate, smaller model — three species on a
-different landscape — and are quoted rather than recomputed here, so unlike
-everything else in this article you cannot reproduce them from the chunks on
-this page. They are kept because the qualitative point is robust and worth
-knowing; read the magnitudes as belonging to that model, not this one.
-
-Measured there across five seeds with node counts matched, the projected mesh
-recovered the slopes better in five of five seeds, while the paired objective
-differences (lon/lat minus UTM) were
-
-```
--0.014   -0.396   +1.167   -0.759   -0.493      mean -0.099, SE 0.338
+```{r projection-null}
+pj <- readRDS("../../dev/isdm-precision/cawa12-projection.rds")
+data.frame(seed        = pj$per_seed$seed,
+           d_objective = round(pj$per_seed$d_obj, 2),
+           err_lonlat  = round(pj$per_seed$err_lonlat, 4),
+           err_utm     = round(pj$per_seed$err_utm, 4))
+c(mean_d_obj = round(pj$mean_d_obj, 2), se = round(pj$se_d_obj, 2),
+  sign_flips = pj$sign_flips, utm_better = pj$utm_better_n, seeds = pj$n_seeds)
 ```
 
--- a mean of about a tenth of a unit in an objective near 1,137, with the sign
-flipping in one seed of five. That is a **null**: the likelihood cannot tell
-the right mesh from the wrong one at all. It could not even in principle,
-since the two meshes carry different numbers of latent nodes and the
-comparison is therefore between Laplace approximations to integrals of
-different dimension.
+Six seeds, the same twelve-species design as everything else on this page, and
+the two meshes matched at **`r pj$per_seed$nodes_lonlat[1]`** and
+**`r pj$per_seed$nodes_utm[1]`** nodes so neither is handed extra latent
+dimensions.
 
-That is a stronger warning than "the wrong mesh fits slightly better" would
-have been. Comparing log-likelihoods or AIC will not catch a projection
-mistake. Project first because the geometry is otherwise wrong -- not because
-the fit will tell you.
+Read those two rows together, because separately each is misleading.
+
+**The likelihood has a strong and consistent opinion.** The unprojected mesh
+wins by `r abs(round(pj$mean_d_obj, 1))` objective units, SE
+`r round(pj$se_d_obj, 1)`, with the sign the same in **all
+`r pj$n_seeds` seeds**. This is not a close call and it is not noise.
+
+**Its opinion does not track accuracy.** On the quantity the model exists to
+estimate, the two meshes are indistinguishable: the projected mesh recovers the
+slopes better in `r pj$utm_better_n` of `r pj$n_seeds` seeds, with mean
+absolute errors of `r round(pj$mean_err_lonlat, 3)` and
+`r round(pj$mean_err_utm, 3)`. A coin flip.
+
+So the warning is not that the likelihood is uninformative. **It is that the
+likelihood is confident about a choice it has no business deciding.** Two
+meshes are two discretisations of the same continuous field; they carry
+different latent dimensions and are not nested, so their objectives are not on
+a common scale. A 35-unit gap that never changes sign is the signature of a
+number measuring the discretisation rather than the fit to the data.
+
+Comparing log-likelihoods or AIC across meshes will therefore not catch a
+projection mistake — and worse, it will answer confidently. Project first
+because the geometry is otherwise wrong, not because the fit will tell you.
+
+**An honest disagreement between designs, left unresolved.** The companion
+precision article measures a clear recovery advantage for the projected mesh
+(five seeds of five, on a three-species design whose field is isotropic in true
+distance). This twelve-species design does not reproduce that advantage. Both
+measurements are reported as run; which one resembles your data depends on
+whether your latent structure is isotropic in kilometres, and neither article
+resolves it for you.
 
 `add_utm_columns()` warns rather than fails when a domain straddles a UTM zone
 boundary, which is a real risk for any study area wider than six degrees:

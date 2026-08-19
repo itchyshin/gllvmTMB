@@ -1016,24 +1016,36 @@ slopes better in `r pj$utm_better_n` of `r pj$n_seeds` seeds, with mean
 absolute errors of `r round(pj$mean_err_lonlat, 3)` and
 `r round(pj$mean_err_utm, 3)`. A coin flip.
 
-So the warning is not that the likelihood is uninformative. **It is that the
-likelihood is confident about a choice it has no business deciding.** Two
-meshes are two discretisations of the same continuous field; they carry
-different latent dimensions and are not nested, so their objectives are not on
-a common scale. A 35-unit gap that never changes sign is the signature of a
-number measuring the discretisation rather than the fit to the data.
+**And here the worked example undercuts the lesson, which is worth saying
+rather than hiding.** The latent axes in this simulation are built as functions
+of **longitude and latitude**, not of the projected kilometres — look at
+`.f1_raw(lon, lat)` in `generate-cawa12.R`. Measured on the landscape, `f1`'s
+east-to-north anisotropy is about **1.0 in degrees and 1.7 in kilometres**. So
+for *this* data-generating process the field really is closer to isotropic in
+degrees, the unprojected mesh really is the better-specified model, and the
+likelihood is **not** being fooled. It is preferring the model that matches the
+truth, correctly and by a wide margin.
 
-Comparing log-likelihoods or AIC across meshes will therefore not catch a
-projection mistake — and worse, it will answer confidently. Project first
-because the geometry is otherwise wrong, not because the fit will tell you.
+That makes this example a demonstration of something narrower than intended,
+and it changes what you should take from it:
 
-**An honest disagreement between designs, left unresolved.** The companion
-precision article measures a clear recovery advantage for the projected mesh
-(five seeds of five, on a three-species design whose field is isotropic in true
-distance). This twelve-species design does not reproduce that advantage. Both
-measurements are reported as run; which one resembles your data depends on
-whether your latent structure is isotropic in kilometres, and neither article
-resolves it for you.
+- **What is demonstrated.** The likelihood will confidently tell you which mesh
+  matches the *geometry of your latent field*. Six seeds, no sign flips, a
+  35-unit margin.
+- **What is not demonstrated, here.** That the likelihood is blind to a
+  projection error. It is not blind in this example; it is right.
+- **Why the advice still stands.** What the likelihood reports is which mesh
+  suits the field's anisotropy — and that is not the same question as which
+  coordinate system is physically correct. You do not know your field's
+  anisotropy in advance; that is the thing you were trying to model. So a
+  likelihood comparison cannot be used to *choose* a projection, even when, as
+  here, it happens to point somewhere defensible.
+
+**Project first because degrees are not a distance** — a degree of longitude is
+`r round(111*cos(56*pi/180))` km at this latitude against 111 km for a degree
+of latitude — **not because the fit will adjudicate it.** A simulation whose
+own field were defined in kilometres would push the likelihood the other way,
+which is precisely why the likelihood is the wrong instrument for the question.
 
 `add_utm_columns()` warns rather than fails when a domain straddles a UTM zone
 boundary, which is a real risk for any study area wider than six degrees:

@@ -53491,3 +53491,30 @@ non-clean verdict — 0 drift, 0 unclear): `docs/dev-log/plan-actual/2026-08-18-
 PR opened against `main`, marked needs maintainer review, NOT merged. Two open questions
 for Shinichi in the PR body: campaign ordering (truncated_poisson vs tweedie) and whether
 to build a slope-interval extractor now that computability is demonstrated.
+
+---
+
+## 2026-08-19 — MSPL T\* discussion packet + DRAC confirm kit + Design 108 stale (cursor)
+
+**Lane:** `cursor/mspl-tstar-drac-next-20260819`  
+**Worktree:** `~/local-scratch/lanes/gllvmTMB-mspl-fork-B-totoro`  
+**Scope:** docs-only items 2–4 after T1 GOAL_MET (#1173)
+
+**Commands run:**
+- `lane_preflight.sh gllvmTMB`
+- `git checkout -B cursor/mspl-tstar-drac-next-20260819 origin/main`
+- wrote T\* packet, DRAC confirm LOOP kit, Design 108 stale banners
+
+**Files touched:**
+- `docs/dev-log/research/2026-08-19-mspl-forkB-tstar-discussion-packet.md`
+- `docs/dev-log/research/2026-08-19-mspl-forkB-drac-confirm-grid-proposal.md`
+- `docs/dev-log/lanes/cursor-mspl-fork-B-drac-confirm/LOOP/*`
+- `docs/dev-log/lanes/cursor-mspl-fork-B-totoro/LOOP/decision-queue.md` (pointer only)
+- `lanes/design108-stage2/LOOP/{GOAL,checkpoint}.md`
+- `docs/dev-log/after-task/2026-08-19-mspl-tstar-drac-design108-stale.md`
+
+**Deliberately not run:** Totoro/DRAC compute; T\* freeze; `R CMD check` (docs-only);
+`git add -A`; any `R/` / `src/` edit.
+
+**Stale-wording scan:** `rg 'GOAL_MET|NOT-FROZEN|#893' docs/dev-log/research/2026-08-19-mspl-forkB-tstar-discussion-packet.md lanes/design108-stage2/LOOP/`
+

@@ -130,15 +130,31 @@ Wilson 95% / MCSE at \(n=200\) (planning arithmetic only):
 | 0.88 | ≈ [0.828, 0.918] | 0.023 |
 | 0.78 | ≈ [0.718, 0.832] | 0.029 |
 
-## Cores
+## Compute target (revised 2026-08-18 — use the DRAC fleet)
 
-**16 workers**, `OMP_NUM_THREADS=1`, `OPENBLAS_NUM_THREADS=1`. Host
-`totoro.biology.ualberta.ca`. Lane GOAL cap is 16 on a shared box. D-143
-allows \(\le 150\); this job does not need it. Do not take 100 cores for
-800 fits.
+Shinichi asked to take advantage of the many DRAC machines
+([[COMPUTE-PLAYBOOK]], hub `AGENTS.md` § Compute, [[drac-setup]]). Same
+locked grid; **where** it runs changes.
 
-DRAC is fallback only if Totoro BatchMode SSH is dead. Not GitHub Actions
-(D-50).
+| Step | Machine | Why |
+|---|---|---|
+| Local 1-rep × 4 | laptop ≤10 cores | fixture / runner proof |
+| Optional smoke | **Totoro** ≤16 cores | standing go; D-143 binds 150 |
+| **Primary 800** | **DRAC SLURM job arrays** | multi-seed coverage → arrays |
+
+**DRAC fan-out:** one cell per GP cluster, or one `--array` over
+`params.csv` with `$SLURM_ARRAY_TASK_ID` = seed/rep chunk. Prefer
+**Fir + Nibi + Rorqual** (+ **Narval** if useful). Skip Killarney /
+Vulcan / tamIA (GPU/AI — wrong for this CPU Bernoulli panel).
+
+Per-task defaults: `--cpus-per-task=1`, `OMP_NUM_THREADS=1`,
+`OPENBLAS_NUM_THREADS=1`, `--time` ≤ 3 h when possible, `--account` from
+live associations. Install `gcc`+`r`+package on **login**; never compute
+on login. Keepers off `/scratch` → `/project` or pull home (D-50).
+Attach via live `ControlMaster` sockets only (D-64).
+
+Totoro is **smoke / fallback**, not the home of the 800. Not GitHub
+Actions (D-50).
 
 ## Wall estimate
 
@@ -159,25 +175,24 @@ Scale from the n80-T8 clock (Laplace + profile roughly tracks \(n\)):
 | `T1-fartail-n40-T4` | 0.08 | 0.70 | 0.3 min / 2.3 min |
 | **Primary 800** | — | — | **~3 min / ~25 min serial** |
 
-At **16 cores**, the 200-rep panel itself is **~1–3 min** optimistic,
-**~2–5 min** conservative, plus I/O.
+On **DRAC arrays** (1 core × many tasks), wall ≈ slowest cell + queue
+start. Budget **first deploy** honestly; fit work per task stays short.
 
 **Sitting wall (honest):**
 
 | Step | Wall |
 |---|---|
 | Local 1-rep × 4 cells | ~10–30 s after a compiled DLL |
-| Totoro BatchMode + deploy + `R CMD INSTALL` | **5–15 min** (dominates) |
-| Totoro 1-rep × 4, inspect objects | ~30 s |
-| Totoro 200-rep panel, 16 cores | **2–5 min** (conservative serial 25 min if workers fail) |
-| **Smoke-to-receipt** | **~20–40 min** including first deploy |
+| Totoro optional smoke | **5–15 min** if used |
+| DRAC login install + `sbatch` × 3–4 hosts | **15–45 min** first time |
+| DRAC array run (800 tasks throttled) | minutes–hours (queue-dominated) |
+| Pull + receipt | ~10–20 min |
 
 Abort the moment the first new cell is empty, `blocked-on-L0`, or returns
 an untyped row. Cold TMB compile is **outside** the fit timer.
 
-Optional confirm +400 (`T1-confirm-n80-T8`) or +400 (3-seed on n160) adds
-about **1–4 min** at 16 cores. Still well under a D-139 30-minute
-compute-ask once deploy is done.
+Optional confirm +400 stays **out** of the primary 800 until hold-out
+1-rep objects are inspected.
 
 ## Smoke-first order (binding)
 

@@ -12,11 +12,11 @@ Do **not** reopen `docs/dev-log/lanes/cursor-mspl-fork-B-L2/` (L2
 ```
 🎯 GOAL
 Solo platform: Cursor (this session; read, not inferred)
-Deliverable: T1 recorded on Totoro — locked 4-cell × 200 = 800 hold-out; dual coverage + refusal pricing; official receipt. Kit on docs/dev-log/lanes/cursor-mspl-fork-B-totoro/LOOP/
-HEADLINE: Inherit L1 0.880 and L2 0.900 / 0.780; run locked 800-fit RECORD-only grid on Totoro; T* stays NOT-FROZEN
-IN PARALLEL: kit docs (this sitting) · later /goal: local 1-rep × 4 then Totoro 1-rep × 4 (then sequential 800)
-DEFER: T* freeze · undraft #1077 · public se/vcov/confint · MSPL-04→covered · NEWS covered · reopen L2/g0_unlock · E2 · any family beyond binomial logit · optional confirm 20260834
-DISCIPLINE: verify=read LOG + object, never exit code · compute=Totoro (DRAC fallback only) · closure=T1 receipt recorded, not calibrated
+Deliverable: T1 recorded on DRAC job arrays (Fir/Nibi/Rorqual ± Narval) — locked 4-cell × 200 = 800 hold-out; dual coverage + refusal pricing; official receipt. Kit on docs/dev-log/lanes/cursor-mspl-fork-B-totoro/LOOP/
+HEADLINE: Inherit L1 0.880 and L2 0.900 / 0.780; run locked 800-fit RECORD-only grid on the DRAC fleet; Totoro = smoke only; T* stays NOT-FROZEN
+IN PARALLEL: kit docs · later /goal: local 1-rep × 4 → smoke → sbatch arrays across GP clusters
+DEFER: T* freeze · undraft #1077 · public se/vcov/confint · MSPL-04→covered · NEWS covered · reopen L2/g0_unlock · E2 · any family beyond binomial logit · optional confirm 20260834 · AI GPU clusters
+DISCIPLINE: verify=read LOG + object, never exit code · compute=DRAC arrays (Totoro smoke/fallback) · closure=T1 receipt recorded, not calibrated
 ```
 
 LANE TAKEN: **`cursor-mspl-fork-B-totoro`** — new kit only. Foreign

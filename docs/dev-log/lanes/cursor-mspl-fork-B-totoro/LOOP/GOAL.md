@@ -1,4 +1,4 @@
-# GOAL — Design 125 fork B, Totoro T1 (IMMUTABLE for this run)
+# GOAL — Design 125 fork B, DRAC T1 (IMMUTABLE for this run)
 
 **Re-read this file at the top of EVERY arc, before anything else.** Chat history is disposable;
 this file and `checkpoint.md` are the truth.
@@ -6,24 +6,26 @@ this file and `checkpoint.md` are the truth.
 ## Mission
 
 Run **ADEMP / Design 125 gate T1** for fork B (unpenalized Laplace at fixed
-MSPL nuisance) on **Totoro**: the **locked** four-cell hold-out grid
-(800 fits), dual coverage and refusal pricing, **RECORD only**. Smoke-first
-(local 1-rep × 4, then Totoro deploy + 1-rep × 4) **before** the full 800.
+MSPL nuisance) on the **DRAC fleet** (Fir / Nibi / Rorqual, optional Narval):
+the **locked** four-cell hold-out grid (800 fits) as **SLURM job arrays**,
+dual coverage and refusal pricing, **RECORD only**. Smoke-first (local
+1-rep × 4, then Totoro or one-cluster 1-rep) **before** the full 800.
 Stop after the T1 receipt. Do **not** freeze T\*. Do not open public
 interval doors.
 
-This `/goal` **owns** the T1 runner, the Totoro deploy, the T1 receipt, and
-this kit. Reuse `dev/mspl-forkB-l1-ademp.R`. Do not edit `R/`, `src/`,
-Design 125 body, ADEMP body, `decisions.md`,
+This `/goal` **owns** the T1 runner, DRAC `sbatch` deploy, the T1 receipt,
+and this kit. Totoro is **smoke / fallback only**. Reuse
+`dev/mspl-forkB-l1-ademp.R`. Do not edit `R/`, `src/`, Design 125 body,
+ADEMP body, `decisions.md`,
 `docs/dev-log/lanes/cursor-mspl-fork-B-L2/**`, or
 `docs/dev-log/lanes/cursor-mspl-fork-B/**`.
 
 ## Headline
 
-An honest T1 receipt on Totoro: locked 800-fit hold-out + RECORD-only
-candidates + dual coverage + refusal pricing + Wilson + MCSE. Inherit L1
-0.880 and L2 0.900 / 0.780. `calibrated: FALSE`. `public_confint: refused`.
-`tstar_status: NOT-FROZEN`.
+An honest T1 receipt from **DRAC arrays**: locked 800-fit hold-out +
+RECORD-only candidates + dual coverage + refusal pricing + Wilson + MCSE.
+Inherit L1 0.880 and L2 0.900 / 0.780. `calibrated: FALSE`.
+`public_confint: refused`. `tstar_status: NOT-FROZEN`.
 
 ## Authoritative WHAT
 

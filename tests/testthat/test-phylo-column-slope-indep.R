@@ -30,6 +30,38 @@
   ))
 }
 
+## Symbolic <-> implementation alignment for the retained recovery cell:
+##
+## | Symbol | Formula term | DGP draw | Extractor | Truth |
+## |--------|--------------|----------|-----------|-------|
+## | B[,lat] | phylo_indep(0 + lat + temp | trait) | L_A z_lat * .60 | extract_Sigma(level = "column_slope") | .60^2 |
+## | B[,temp] | phylo_indep(0 + lat + temp | trait) | L_A z_temp * .35 | extract_Sigma(level = "column_slope") | .35^2 |
+##
+## Here L_A L_A' = A, so Cov(vec(B)) = A x diag(.60^2, .35^2).
+.make_column_slope_recovery_fixture <- function(
+    seed, n_traits = 20L, n_unit = 50L,
+    sd_slope = c(lat = 0.60, temp = 0.35), residual_sd = 0.25) {
+  set.seed(seed)
+  trait_levels <- paste0("t", seq_len(n_traits))
+  A <- exp(-abs(outer(seq_len(n_traits), seq_len(n_traits), "-")) / 3)
+  dimnames(A) <- list(trait_levels, trait_levels)
+  B <- t(chol(A + diag(1e-8, n_traits))) %*%
+    matrix(stats::rnorm(n_traits * length(sd_slope)), n_traits, length(sd_slope))
+  B <- sweep(B, 2L, sd_slope, "*")
+  dat <- expand.grid(
+    unit = factor(paste0("u", seq_len(n_unit))),
+    trait = factor(trait_levels, levels = trait_levels),
+    KEEP.OUT.ATTRS = FALSE
+  )
+  dat$cluster <- factor(rep(c("c1", "c2"), length.out = nrow(dat)))
+  dat$lat <- stats::rnorm(nrow(dat))
+  dat$temp <- stats::rnorm(nrow(dat))
+  trait_id <- as.integer(dat$trait)
+  dat$value <- 0.15 * trait_id + B[trait_id, 1L] * dat$lat +
+    B[trait_id, 2L] * dat$temp + stats::rnorm(nrow(dat), sd = residual_sd)
+  list(data = dat, A = A, B = B, sd_slope = sd_slope)
+}
+
 test_that("column slopes use predictor-only design and the RHS trait map", {
   fx <- .make_column_slope_fixture()
   fit <- .fit_column_slope(fx)
@@ -87,7 +119,7 @@ test_that("column slopes reject transformed, factor, and non-finite predictors",
     value ~ 0 + trait + phylo_indep(0 + I(lat^2) | trait, vcv = fx$A)
   ), common)), "LHS richer")
   fx$data$method <- factor(rep(c("a", "b"), length.out = nrow(fx$data)))
-  suppressWarnings(expect_error(gllvmTMB::gllvmTMB(
+  expect_error(gllvmTMB::gllvmTMB(
     value ~ 0 + trait + phylo_indep(0 + method | trait, vcv = fx$A),
     data = fx$data, trait = "trait", unit = "unit", cluster = "cluster",
     control = gllvmTMB::gllvmTMBcontrol(se = FALSE)
@@ -104,11 +136,45 @@ test_that("column slopes refuse a second phylogenetic indexing axis", {
   fx <- .make_column_slope_fixture()
   A_cluster <- diag(2L)
   dimnames(A_cluster) <- list(levels(fx$data$cluster), levels(fx$data$cluster))
-  expect_error(gllvmTMB::gllvmTMB(
-    value ~ 0 + trait +
-      phylo_indep(0 + lat | trait, vcv = fx$A) +
-      phylo_indep(0 + trait | cluster, vcv = A_cluster),
-    data = fx$data, trait = "trait", unit = "unit", cluster = "cluster",
-    control = gllvmTMB::gllvmTMBcontrol(se = FALSE)
-  ), "cannot yet be combined"))
+  suppressWarnings(
+    expect_error(gllvmTMB::gllvmTMB(
+      value ~ 0 + trait +
+        phylo_indep(0 + lat | trait, vcv = fx$A) +
+        phylo_indep(0 + trait | cluster, vcv = A_cluster),
+      data = fx$data, trait = "trait", unit = "unit", cluster = "cluster",
+      control = gllvmTMB::gllvmTMBcontrol(se = FALSE)
+    ), "cannot yet be combined")
+  )
+})
+
+test_that("Gaussian column slopes recover diagonal predictor covariance", {
+  skip_if_not_heavy()
+  seeds <- c(1196L, 2201L, 3301L, 4401L)
+  estimates <- matrix(NA_real_, nrow = length(seeds), ncol = 2L,
+                      dimnames = list(NULL, c("lat", "temp")))
+
+  for (i in seq_along(seeds)) {
+    fx <- .make_column_slope_recovery_fixture(seeds[[i]])
+    fit <- .fit_column_slope(fx)
+    expect_equal(fit$opt$convergence, 0L)
+    Sigma <- extract_Sigma(fit, level = "column_slope")$Sigma
+    ## Matrix oracle: the reported predictor matrix is diagonal, hence the
+    ## full coefficient covariance has source blocks sigma_j^2 A and zero
+    ## cross-predictor blocks: A kronecker diag(sigma^2).
+    coefficient_cov <- kronecker(Sigma, fx$A)
+    n_traits <- nrow(fx$A)
+    expect_equal(coefficient_cov[seq_len(n_traits), n_traits + seq_len(n_traits)],
+                 matrix(0, n_traits, n_traits), tolerance = 1e-12)
+    expect_equal(unname(coefficient_cov[seq_len(n_traits), seq_len(n_traits)]),
+                 unname(Sigma[1L, 1L] * fx$A), tolerance = 1e-12)
+    estimates[i, ] <- sqrt(diag(Sigma))
+  }
+
+  ratio <- colMeans(estimates) / fx$sd_slope
+  ## Calibrated by the four fixed draws above: mean ratios were ~0.91 for
+  ## both slopes. The [0.70, 1.30] band is deliberately broad enough for
+  ## platform rounding but would reject a zeroed or substantially mis-scaled
+  ## covariance route.
+  expect_true(all(is.finite(ratio)))
+  expect_true(all(ratio >= 0.70 & ratio <= 1.30))
 })

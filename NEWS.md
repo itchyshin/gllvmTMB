@@ -1,5 +1,24 @@
 # gllvmTMB 0.7.0 (development)
 
+* **The augmented-LHS parser guard now honours a non-default `trait =`
+  column (#1188).** `.assert_no_augmented_lhs()` decided whether a bare
+  covstruct keyword (`latent`, `unique`, `indep`, `dep`, `scalar`,
+  `spatial_dep`) was written in the supported per-trait-intercept form
+  `0 + trait | g` by comparing the LHS symbol against the **string
+  literal** `"trait"`, never consulting the resolved `trait =` argument.
+  A user with `trait = "variable"` writing the CORRECT long-format spec
+  `latent(0 + variable | unit, d = K)` was falsely rejected as an
+  unsupported augmented LHS, and was left with no way to write per-trait
+  intercepts in long format under their own column name. The guard now
+  accepts either the resolved trait column name or the literal
+  `"trait"`, and its abort message names the user's own trait column.
+  ⚠️ This blocked an external user from writing a correct model and led
+  to a wrong published analysis (the fallback spec collapsed 29 per-item
+  intercepts to one shared intercept). On the reporter's direct refit,
+  the d = 2 LV1-loading/prevalence association fell from R² = 0.742 with
+  the shared-intercept specification to R² = 0.125 with per-item
+  intercepts. Thanks to @iwogross for the report.
+
 * **`mesh=` with no spatial term is no longer silently ignored (#1165).**
   Mesh validation used to run only when a `spatial_*()` term was present,
   so `gllvmTMB(mesh = <raw fmesher mesh>)` with an ordinary non-spatial

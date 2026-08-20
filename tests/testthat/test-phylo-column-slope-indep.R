@@ -37,7 +37,9 @@
 ## | B[,lat] | phylo_indep(0 + lat + temp | trait) | L_A z_lat * .60 | extract_Sigma(level = "column_slope") | .60^2 |
 ## | B[,temp] | phylo_indep(0 + lat + temp | trait) | L_A z_temp * .35 | extract_Sigma(level = "column_slope") | .35^2 |
 ##
-## Here L_A L_A' = A, so Cov(vec(B)) = A x diag(.60^2, .35^2).
+## With b = vec(t(B)) (trait-major), L_A L_A' = A, so
+## Cov(b) = A x diag(.60^2, .35^2). The native predictor-major storage is
+## the corresponding permutation of this same covariance.
 .make_column_slope_recovery_fixture <- function(
     seed, n_traits = 20L, n_unit = 50L,
     sd_slope = c(lat = 0.60, temp = 0.35), residual_sd = 0.25) {
@@ -158,15 +160,30 @@ test_that("Gaussian column slopes recover diagonal predictor covariance", {
     fit <- .fit_column_slope(fx)
     expect_equal(fit$opt$convergence, 0L)
     Sigma <- extract_Sigma(fit, level = "column_slope")$Sigma
-    ## Matrix oracle: the reported predictor matrix is diagonal, hence the
-    ## full coefficient covariance has source blocks sigma_j^2 A and zero
-    ## cross-predictor blocks: A kronecker diag(sigma^2).
-    coefficient_cov <- kronecker(Sigma, fx$A)
+    ## Matrix oracle in public trait-major ordering: covariance blocks are
+    ## A[t,t'] * Sigma, so each predictor has source covariance A and every
+    ## cross-predictor element is structurally zero.
+    coefficient_cov <- kronecker(fx$A, Sigma)
     n_traits <- nrow(fx$A)
-    expect_equal(coefficient_cov[seq_len(n_traits), n_traits + seq_len(n_traits)],
+    expect_equal(as.matrix(fit$tmb_data$Ainv_phy_slope),
+                 solve(fx$A + diag(1e-8, n_traits)), tolerance = 1e-8)
+    expect_equal(fit$tmb_data$phylo_slope_aug_id,
+                 as.integer(fx$data$trait) - 1L)
+    expect_equal(coefficient_cov[seq(2L, 2L * n_traits, by = 2L),
+                                 seq(1L, 2L * n_traits - 1L, by = 2L)],
                  matrix(0, n_traits, n_traits), tolerance = 1e-12)
-    expect_equal(unname(coefficient_cov[seq_len(n_traits), seq_len(n_traits)]),
+    expect_equal(unname(coefficient_cov[seq(1L, 2L * n_traits - 1L, by = 2L),
+                                         seq(1L, 2L * n_traits - 1L, by = 2L)]),
                  unname(Sigma[1L, 1L] * fx$A), tolerance = 1e-12)
+    ## Negative control: the same correlated-source draw fits materially worse
+    ## when the RHS source is forcibly replaced by an identity matrix.
+    if (i == 1L) {
+      fx_identity <- fx
+      fx_identity$A <- diag(n_traits)
+      dimnames(fx_identity$A) <- dimnames(fx$A)
+      fit_identity <- .fit_column_slope(fx_identity)
+      expect_gt(fit_identity$opt$objective, fit$opt$objective + 1)
+    }
     estimates[i, ] <- sqrt(diag(Sigma))
   }
 

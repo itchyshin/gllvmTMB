@@ -21,10 +21,13 @@ slope-only response-column form \code{0 + x1 + ... | trait}.}
 \item{tree}{An \code{ape::phylo} object. \strong{Canonical.}}
 
 \item{vcv}{A tip-only phylogenetic correlation matrix
-(\verb{n_species x n_species}). Legacy alias of \verb{A =}.}
+(\verb{n_species x n_species}) for the ordinary forms. For the slope-only
+response-column form it is instead \verb{n_traits x n_traits}, with row names
+matching the resolved RHS \code{trait} levels. Legacy alias of \verb{A =}.}
 
-\item{A}{Tip-level relatedness matrix (\verb{n_species x n_species})
--- alias of \verb{vcv =}, aligned with the \verb{animal_*} family's
+\item{A}{Tip-level relatedness matrix (\verb{n_species x n_species}) for the
+ordinary forms; for the slope-only response-column form, the corresponding
+trait-level matrix. Alias of \verb{vcv =}, aligned with the \verb{animal_*} family's
 argument naming.}
 
 \item{Ainv}{Sparse precision matrix (inverse of \code{A}).}
@@ -79,12 +82,17 @@ For a long-format Gaussian model, \code{phylo_indep(0 + lat + temp | trait)}
 adds response-column deviations to the fixed slopes without adding a random
 intercept. The phylogeny is indexed by the response-column factor on the
 right of \code{|}; \code{indep} makes the covariance among \code{lat} and \code{temp} slopes
-diagonal. With slope coefficient matrix eqn{mathbf B}, this is
-eqn{\mathrm{Cov}(\mathrm{vec}\,\mathbf B) = \mathbf A_{\mathrm{phy}}
+diagonal. With slope coefficient matrix \eqn{\mathbf B} (rows are
+response columns and columns are predictors), let
+\eqn{\mathbf b=\mathrm{vec}(\mathbf B^\mathsf{T})} order coefficients by
+response column: \code{lat}, \code{temp} for column 1, then \code{lat}, \code{temp} for column
+2, and so on. Then
+\eqn{\mathrm{Cov}(\mathbf b) = \mathbf A_{\mathrm{phy}}
 \otimes \mathrm{diag}(\sigma^2_{\mathrm{lat}},
-\sigma^2_{\mathrm{temp}})}. Retrieve that predictor-basis covariance with
+\sigma^2_{\mathrm{temp}})}. (The native implementation stores the
+permutation-equivalent column-major vector.) Retrieve that predictor-basis covariance with
 \code{extract_Sigma(fit, level = "column_slope")}. It is not a trait-level
-eqn{\boldsymbol\Sigma}. This V1 route requires bare finite numeric
+\eqn{\boldsymbol\Sigma}. This V1 route requires bare finite numeric
 predictors, exactly the resolved \code{trait} column on the RHS, and Gaussian
 responses; wide-format and non-Gaussian column slopes are planned work.
 

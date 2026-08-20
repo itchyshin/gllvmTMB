@@ -1,7 +1,7 @@
 # PR-1 diagonal column slopes — recovery checkpoint
 
 - **Branch:** `codex/1196-column-slopes-diagonal`
-- **HEAD:** `a270336b` (`test(1196): silence expected cofit preflight warning`)
+- **HEAD:** `fc3d65e7` before the uncommitted review follow-up.
 - **Worktree:** `/private/tmp/gllvmtmb-1196-column-slopes-diagonal`
 - **Status:** pushed, no pull request opened.
 
@@ -21,7 +21,8 @@ different indexing axis.
 
 ## Evidence run
 
-- `devtools::test(filter = "phylo-column-slope-indep|phylo-slope-rhs-routing", reporter = "summary")`: pass.
+- `GLLVMTMB_HEAVY_TESTS=1 devtools::test(filter = "phylo-column-slope-indep", reporter = "summary")`: pass. The retained four-seed Gaussian cell checks both mean SD recovery and the nonidentity trait-source matrix; its identity-source negative control has a worse objective.
+- `devtools::test(filter = "phylo-column-slope-indep|phylo-slope-rhs-routing", reporter = "summary")`: pass with the heavy recovery cell correctly skipped.
 - `devtools::test(filter = "phylo-indep-slope-gaussian", reporter = "summary")`: no failures; two heavy recovery tests skipped without `GLLVMTMB_HEAVY_TESTS=1`.
 - `pkgdown::check_pkgdown()`: pass (13 pre-existing/non-blocking warnings reported by pkgdown).
 - `git diff --check`: pass before the commits.
@@ -35,9 +36,10 @@ different indexing axis.
    Design 130 contract files (`docs/design/01-formula-grammar.md`,
    `03-likelihoods.md`, `06-extractors-contract.md`) or the maintainer assigns
    their ownership.
-2. With an approved campaign plan, run the multi-seed Gaussian matrix-oracle
-   and recovery campaign. The user requires a measured pre-run and explicit
-   approval before Totoro; do not use GitHub Actions for it.
+2. With an approved campaign plan, run the broader multi-seed Gaussian
+   campaign on Totoro if claim-bearing coverage, rather than the retained
+   regression gate, is needed. The user requires a measured pre-run and
+   explicit approval before Totoro; do not use GitHub Actions for it.
 3. Add the resulting validation-debt row, check-log entry, design docs,
    after-task report, and PR review before readiness.
 4. PR-2 (`phylo_dep`, `phylo_slope(|/||)`, animal parity) stays sequential;

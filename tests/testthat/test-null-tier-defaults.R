@@ -14,7 +14,7 @@
 .null_tier_fixture <- function(seed = 20260819, n_site = 12, n_trait = 4) {
   set.seed(seed)
   dat <- expand.grid(
-    site  = factor(seq_len(n_site)),
+    site = factor(seq_len(n_site)),
     trait = factor(paste0("sp", seq_len(n_trait))),
     KEEP.OUT.ATTRS = FALSE
   )
@@ -30,20 +30,75 @@ test_that("unit_obs = NULL / cluster = NULL explicit gives the same fit as omitt
 
   fit_old_explicit <- suppressMessages(suppressWarnings(gllvmTMB(
     .null_tier_formula,
-    data = dat, family = gaussian(),
-    unit = "site", unit_obs = "site_species", cluster = "species"
+    data = dat,
+    family = gaussian(),
+    unit = "site",
+    unit_obs = "site_species",
+    cluster = "species"
   )))
   fit_omitted <- suppressMessages(suppressWarnings(gllvmTMB(
     .null_tier_formula,
-    data = dat, family = gaussian(),
+    data = dat,
+    family = gaussian(),
     unit = "site"
   )))
   fit_explicit_null <- suppressMessages(suppressWarnings(gllvmTMB(
     .null_tier_formula,
-    data = dat, family = gaussian(),
-    unit = "site", unit_obs = NULL, cluster = NULL
+    data = dat,
+    family = gaussian(),
+    unit = "site",
+    unit_obs = NULL,
+    cluster = NULL
   )))
 
+  expect_identical(logLik(fit_omitted), logLik(fit_old_explicit))
+  expect_identical(logLik(fit_explicit_null), logLik(fit_old_explicit))
+  expect_identical(fit_omitted$opt$par, fit_old_explicit$opt$par)
+  expect_identical(fit_explicit_null$opt$par, fit_old_explicit$opt$par)
+})
+
+test_that("NULL tier defaults preserve active unit_obs and cluster routes", {
+  dat <- gllvmTMB::simulate_site_trait(
+    n_sites = 16,
+    n_species = 4,
+    n_traits = 3,
+    mean_species_per_site = 4,
+    seed = 1191
+  )$data
+  form <- value ~ 0 +
+    trait +
+    indep(0 + trait | site_species) +
+    indep(0 + trait | species)
+  ctrl <- gllvmTMBcontrol(n_init = 1, init_jitter = 0, se = FALSE)
+
+  fit_old_explicit <- suppressMessages(suppressWarnings(gllvmTMB(
+    form,
+    data = dat,
+    family = gaussian(),
+    unit = "site",
+    unit_obs = "site_species",
+    cluster = "species",
+    control = ctrl
+  )))
+  fit_omitted <- suppressMessages(suppressWarnings(gllvmTMB(
+    form,
+    data = dat,
+    family = gaussian(),
+    unit = "site",
+    control = ctrl
+  )))
+  fit_explicit_null <- suppressMessages(suppressWarnings(gllvmTMB(
+    form,
+    data = dat,
+    family = gaussian(),
+    unit = "site",
+    unit_obs = NULL,
+    cluster = NULL,
+    control = ctrl
+  )))
+
+  expect_true(isTRUE(fit_omitted$use$diag_W))
+  expect_true(isTRUE(fit_omitted$use$diag_species))
   expect_identical(logLik(fit_omitted), logLik(fit_old_explicit))
   expect_identical(logLik(fit_explicit_null), logLik(fit_old_explicit))
   expect_identical(fit_omitted$opt$par, fit_old_explicit$opt$par)
@@ -57,7 +112,8 @@ test_that("a data frame with no `site_species` and no `species` column fits with
 
   fit <- suppressMessages(suppressWarnings(gllvmTMB(
     .null_tier_formula,
-    data = dat, family = gaussian(),
+    data = dat,
+    family = gaussian(),
     unit = "site"
   )))
   expect_s3_class(fit, "gllvmTMB")

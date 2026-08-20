@@ -14,8 +14,9 @@ phylo_indep(
 )
 }
 \arguments{
-\item{formula}{Intercept-only \code{0 + trait | species}, or the supported
-one-covariate intercept-and-slope form described above.}
+\item{formula}{Intercept-only \code{0 + trait | species}, the supported
+intercept-and-slope form described above, or the Gaussian long-format
+slope-only response-column form \code{0 + x1 + ... | trait}.}
 
 \item{tree}{An \code{ape::phylo} object. \strong{Canonical.}}
 
@@ -67,7 +68,25 @@ parser raises a \code{cli::cli_abort()}.
 A single-covariate random regression uses
 \code{phylo_indep(1 + x | species)} in wide syntax or
 \code{phylo_indep(0 + trait + (0 + trait):x | species)} in explicit long syntax.
-It estimates an intercept--slope block with their correlation fixed to zero.
+It estimates independent trait-specific intercept--slope blocks. The
+intercept--slope correlation is estimated within each trait; cross-trait
+blocks are structurally zero.
+}
+
+\subsection{Slope-only response-column form}{
+
+For a long-format Gaussian model, \code{phylo_indep(0 + lat + temp | trait)}
+adds response-column deviations to the fixed slopes without adding a random
+intercept. The phylogeny is indexed by the response-column factor on the
+right of \code{|}; \code{indep} makes the covariance among \code{lat} and \code{temp} slopes
+diagonal. With slope coefficient matrix eqn{mathbf B}, this is
+eqn{\mathrm{Cov}(\mathrm{vec}\,\mathbf B) = \mathbf A_{\mathrm{phy}}
+\otimes \mathrm{diag}(\sigma^2_{\mathrm{lat}},
+\sigma^2_{\mathrm{temp}})}. Retrieve that predictor-basis covariance with
+\code{extract_Sigma(fit, level = "column_slope")}. It is not a trait-level
+eqn{\boldsymbol\Sigma}. This V1 route requires bare finite numeric
+predictors, exactly the resolved \code{trait} column on the RHS, and Gaussian
+responses; wide-format and non-Gaussian column slopes are planned work.
 
 Pass the phylogeny via \code{tree = phylo} (canonical, sparse \eqn{\mathbf{A}^{-1}}) or
 \code{vcv = Cphy} (\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#superseded}{\figure{lifecycle-superseded.svg}{options: alt='[Superseded]'}}}{\strong{[Superseded]}}, dense). See

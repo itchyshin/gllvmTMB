@@ -682,6 +682,7 @@ extract_Sigma <- function(
     "unit_obs",
     "phy",
     "phy_slope",
+    "column_slope",
     "spatial",
     "spde_slope",
     "cluster",
@@ -885,6 +886,35 @@ extract_Sigma <- function(
       level = "unit_slope",
       part = part,
       note = notes
+    ))
+  }
+
+  ## ---- slope-only response-column coefficient basis --------------------
+  if (isTRUE(fit$use$phylo_column_slope) && identical(level, "column_slope")) {
+    Sigma <- fit$report$Sigma_b_dep
+    if (is.null(Sigma)) {
+      cli::cli_abort(
+        "Column-slope fit has no reported {.code Sigma_b_dep}."
+      )
+    }
+    Sigma <- as.matrix(Sigma)
+    slope_cols <- fit$use$phylo_dep_slope_cols
+    if (is.null(slope_cols) || length(slope_cols) != nrow(Sigma)) {
+      slope_cols <- paste0("slope", seq_len(nrow(Sigma)))
+    }
+    rownames(Sigma) <- colnames(Sigma) <- slope_cols
+    return(list(
+      Sigma = Sigma,
+      R = .safe_cov2cor(Sigma, slope_cols),
+      level = "column_slope",
+      part = "indep",
+      source = "phylo",
+      predictors = slope_cols,
+      note = paste0(
+        "phylo_indep(0 + x1 + ... + xP | trait): covariance among ",
+        "the slope-predictor coefficients. The response-column tree supplies ",
+        "the other Kronecker factor; this is not a trait-level Sigma."
+      )
     ))
   }
 

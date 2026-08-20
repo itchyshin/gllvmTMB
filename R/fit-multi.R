@@ -2029,6 +2029,14 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   phylo_slope_cs <- if (use_phylo_slope) {
     parsed$covstructs[[phylo_slope_idx[1L]]]
   } else NULL
+  ## A slope-only response-column coefficient matrix. Unlike the
+  ## historical helper or augmented intercept+slope terms, its RHS is the
+  ## resolved response-column factor and its covariance source acts across
+  ## those columns. Keep this as a dedicated engine flag: neither existing
+  ## slope path may silently acquire these parameters.
+  use_phylo_column_slope <- use_phylo_slope && isTRUE(
+    phylo_slope_cs$extra$.column_slope_indep
+  )
   use_phylo_slope_correlated <- isTRUE(
     phylo_slope_cs$extra$.phylo_unique_augmented
   )
@@ -2040,7 +2048,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## dep-specific overrides below expand n_lhs_cols to 2T, build the
   ## interleaved Z, free theta_dep_chol, and map off log_sd_b / atanh_cor_b
   ## (the unstructured Sigma_b replaces the closed-form 2x2 parameters).
-  use_phylo_dep_slope <- isTRUE(phylo_slope_cs$extra$.phylo_dep_augmented)
+  use_phylo_dep_slope <- isTRUE(phylo_slope_cs$extra$.phylo_dep_augmented) ||
+    use_phylo_column_slope
   ## indep(1 + x | g) per-trait: rides the dep 2T-wide engine but with the
   ## cross-block Cholesky entries pinned to 0 (block-diagonal Sigma_b = T
   ## independent 2x2 blocks). Design 79/80.
@@ -2063,10 +2072,23 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     isTRUE(phylo_slope_cs$extra$.uncorrelated)
   use_phylo_slope_correlated <- use_phylo_slope_correlated ||
     use_phylo_dep_slope
+  ## `trait` is reserved as the RHS only for the explicit slope-only column
+  ## contract.  Without that marker an intercept-plus-slope random regression
+  ## would silently re-enter the historical cluster-tier engine.
+  if (use_phylo_slope_correlated && !use_phylo_column_slope &&
+      is.name(phylo_slope_cs$group) &&
+      identical(as.character(phylo_slope_cs$group), trait)) {
+    cli::cli_abort(c(
+      "Column-predictor slopes must use a predictor-only {.code 0 + <predictor>} basis.",
+      "i" = "The RHS {.var {trait}} is reserved for {.code phylo_indep(0 + x1 + ... | trait)}.",
+      ">" = "Remove the intercept and {.var {trait}} from the structured basis, or use a species-grouped intercept-plus-slope term."
+    ))
+  }
   ## The legacy slope-only term is the first structured phylogenetic route
   ## whose RHS is authoritative.  The augmented routes still share the
   ## established cluster-tier engine and are deliberately outside PR-0.
-  phylo_slope_group <- if (use_phylo_slope && !use_phylo_slope_correlated) {
+  phylo_slope_group <- if (use_phylo_slope &&
+      (!use_phylo_slope_correlated || use_phylo_column_slope)) {
     if (!is.name(phylo_slope_cs$group)) {
       cli::cli_abort(c(
         "{.fn phylo_slope} requires a bare grouping column on the right of {.code |}.",
@@ -2085,6 +2107,22 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     }
     if (!is.factor(data[[phylo_slope_group]])) {
       data[[phylo_slope_group]] <- factor(data[[phylo_slope_group]])
+    }
+  }
+  if (use_phylo_column_slope) {
+    if (!identical(phylo_slope_group, trait)) {
+      cli::cli_abort(c(
+        "Column-predictor phylogenetic slopes must group on the resolved response-column variable.",
+        "i" = "The model uses {.var {trait}}, but {.fn phylo_indep} used {.var {phylo_slope_group}}.",
+        ">" = "Write {.code phylo_indep(0 + lat + temp | {trait}, tree = tree)}."
+      ))
+    }
+    if (any(family_id_vec != 0L)) {
+      cli::cli_abort(c(
+        "Multi-predictor column slopes are currently available for Gaussian responses only.",
+        "i" = "The requested term is {.code phylo_indep(0 + x1 + x2 | {trait})}.",
+        ">" = "Use {.fn gaussian} for this V1 route; non-Gaussian recovery is planned separately."
+      ))
     }
   }
   ## phylo_indep(1 + x | species) is a Design 79/80 specialisation of the
@@ -2151,7 +2189,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     phylo_slope_cs$extra$lhs_form %||% "unsupported"
   } else "legacy_slope"
   phylo_slope_xcol <- if (use_phylo_slope) {
-    if (use_phylo_slope_correlated) {
+    if (use_phylo_column_slope) {
+      NA_character_
+    } else if (use_phylo_slope_correlated) {
       slope_col <- phylo_slope_cs$extra$slope_col
       if (is.null(slope_col) || !nzchar(slope_col)) {
         cli::cli_abort("Internal: augmented phylogenetic random regression is missing {.code slope_col}.")
@@ -2162,6 +2202,14 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     }
   } else NA_character_
 
+  phylo_column_slope_cols <- if (use_phylo_column_slope) {
+    cols <- phylo_slope_cs$extra$column_slope_cols
+    if (is.null(cols) || length(cols) < 1L || !all(nzchar(cols))) {
+      cli::cli_abort("Internal: column-slope phylo_indep term is missing its predictor columns.")
+    }
+    as.character(cols)
+  } else character(0L)
+
   ## RE-03 multi-slope: the ordered slope-covariate VECTOR for the phylo_dep
   ## augmented path (`phylo_dep(1 + x1 + ... + xs | sp)`, s >= 1). Threaded
   ## from the parser as `extra$slope_cols`; falls back to the scalar
@@ -2170,7 +2218,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## (1+s)T column count and the (1+s)-wide Z fill below. For the legacy
   ## one-column `phylo_slope(x | sp)` and the non-augmented paths it is the
   ## single `phylo_slope_xcol` (s == 1), preserving the existing behaviour.
-  phylo_slope_xcols <- if (use_phylo_dep_slope) {
+  phylo_slope_xcols <- if (use_phylo_column_slope) {
+    phylo_column_slope_cols
+  } else if (use_phylo_dep_slope) {
     sc <- phylo_slope_cs$extra$slope_cols %||% phylo_slope_cs$extra$slope_col
     if (is.null(sc) || length(sc) < 1L || !all(nzchar(sc))) {
       cli::cli_abort("Internal: augmented phylo_dep random regression is missing {.code slope_cols}.")
@@ -2988,6 +3038,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       if (use_spde_slope) spde_slope_xcol,
       if (use_spde_latent_slope) spde_latent_slope_xcol,
       if (use_phylo_slope) phylo_slope_xcol,
+      phylo_column_slope_cols,
       if (use_phylo_latent_slope) phylo_latent_slope_xcol
     )
     if (mi_var %in% structured_slope_cols) {
@@ -3695,8 +3746,17 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## from the same species tree). Including use_mi_phylo here makes the existing
   ## Stage-40 builder construct the sparse precision even when the RESPONSE side
   ## has no phylo term (design 69 sec.2.2).
+  if (use_phylo_column_slope &&
+      (use_phylo_rr || use_phylo_diag || use_phylo_latent_slope || use_mi_phylo)) {
+    cli::cli_abort(c(
+      "A slope-only response-column phylogenetic term cannot yet be combined with another phylogenetic tier.",
+      "i" = "The column-slope term indexes its tree by {.var {trait}}, while the existing phylogenetic tiers index it by {.var {species}} / {.arg cluster}.",
+      ">" = "Fit the column-slope term on its own for now, or use one common grouping axis. A multi-term term-local precision contract is planned before this combination is admitted."
+    ))
+  }
   use_shared_phy_term <- use_phylo_rr || use_phylo_diag ||
-    use_phylo_slope_correlated || use_phylo_latent_slope || use_mi_phylo
+    (use_phylo_slope_correlated && !use_phylo_column_slope) ||
+    use_phylo_latent_slope || use_mi_phylo
   use_any_phy_term <- use_shared_phy_term || use_phylo_slope
   ## ---- Guard: a supplied tree/vcv with nothing in the formula to consume it --
   ## `phylo_tree =` / `phylo_vcv =` can be supplied globally to gllvmTMB(), or
@@ -3798,7 +3858,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   Ainv_phy_slope <- Matrix::Matrix(1, 1, 1, sparse = TRUE)
   log_det_A_phy_slope <- 0
   phylo_slope_aug_id <- integer(nrow(data))
-  if (use_phylo_slope && !use_phylo_slope_correlated) {
+  if (use_phylo_column_slope ||
+      (use_phylo_slope && !use_phylo_slope_correlated)) {
     slope_phy <- .resolve_phylo_slope_precision(
       phylo_tree = phylo_tree,
       phylo_vcv = phylo_vcv,
@@ -4068,13 +4129,48 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   re_int_id_mat_dat <- if (use_re_int) re_int_id_mat
                         else matrix(0L, nrow = nrow(data), ncol = 1L)
   u_re_int_len <- if (use_re_int) sum(re_int_n_groups) else 1L
-  x_phy_slope_dat <- if (use_phylo_slope) {
+  x_phy_slope_dat <- if (use_phylo_slope && !use_phylo_column_slope) {
     if (!phylo_slope_xcol %in% names(data))
       cli::cli_abort(c(
         "{.arg phylo_slope({phylo_slope_xcol} | {species})} references column {.val {phylo_slope_xcol}}, which is not in {.arg data}.",
         "i" = "Add the covariate column to the data frame."))
     as.numeric(data[[phylo_slope_xcol]])
   } else rep(0.0, n_obs)
+  ## Design 130: predictor design for slope-only response-column fields.
+  ## Deliberately raw numeric columns: transforms and factor expansions are
+  ## rejected at grammar time, while non-finite values fail here before TMB.
+  n_phylo_column_slope <- length(phylo_column_slope_cols)
+  Z_phylo_column_slope <- if (use_phylo_column_slope) {
+    missing_cols <- setdiff(phylo_column_slope_cols, names(data))
+    if (length(missing_cols)) {
+      cli::cli_abort(c(
+        "Column-slope predictor{?s} {.val {missing_cols}} not found in {.arg data}.",
+        ">" = "Add the named numeric predictor column{?s}, then refit."
+      ))
+    }
+    bad_type <- phylo_column_slope_cols[!vapply(
+      data[phylo_column_slope_cols], is.numeric, logical(1)
+    )]
+    if (length(bad_type)) {
+      cli::cli_abort(c(
+        "Column-slope predictors must be numeric columns.",
+        "i" = "Non-numeric predictor{?s}: {.val {bad_type}}.",
+        ">" = "Convert the predictor before fitting; factor and transformed bases are not in this V1 grammar."
+      ))
+    }
+    z <- vapply(phylo_column_slope_cols, function(col) {
+      as.numeric(data[[col]])
+    }, numeric(n_obs))
+    z <- matrix(z, nrow = n_obs, ncol = n_phylo_column_slope,
+                dimnames = list(NULL, phylo_column_slope_cols))
+    if (any(!is.finite(z))) {
+      cli::cli_abort(c(
+        "Column-slope predictors must be finite after row filtering.",
+        ">" = "Remove or impute missing/infinite predictor values before fitting."
+      ))
+    }
+    z
+  } else matrix(0.0, nrow = n_obs, ncol = 1L)
   ## RE-03 multi-slope: the n_obs x s matrix of the s phylo_dep slope
   ## covariates (column j = the j-th covariate in source order). Only the dep
   ## path builds/uses it; for s == 1 its single column equals x_phy_slope_dat.
@@ -4106,14 +4202,22 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## generalising the validated s == 1 dep core; Z routes each row's intercept
   ## and s slopes into its own trait's run of (1+s) columns. The C++ dep path is
   ## dimension-general in `C = n_lhs_cols`, so s >= 2 needs ZERO new C++.
-  n_lhs_cols <- if (use_phylo_dep_slope) {
+  n_lhs_cols <- if (use_phylo_column_slope) {
+    n_phylo_column_slope
+  } else if (use_phylo_dep_slope) {
     (1L + n_phy_slope) * n_traits
   } else if (use_phylo_slope_correlated) {
     2L
   } else 1L
   n_phy_aug_blocks <- 1L
   Z_phy_aug <- array(0.0, dim = c(n_obs, n_lhs_cols, n_phy_aug_blocks))
-  if (use_phylo_dep_slope) {
+  if (use_phylo_column_slope) {
+    ## The response-column tree lives on the RHS `trait` factor.  The basis is
+    ## predictor-only: no leading column of ones and no trait expansion.
+    for (j in seq_len(n_phylo_column_slope)) {
+      Z_phy_aug[, j, 1L] <- Z_phylo_column_slope[, j]
+    }
+  } else if (use_phylo_dep_slope) {
     if (
       !phylo_slope_lhs_form %in%
         c("wide_intercept_slope", "long_intercept_slope")
@@ -4360,6 +4464,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     Ainv_phy_slope   = Ainv_phy_slope,
     log_det_A_phy_slope = as.numeric(log_det_A_phy_slope),
     phylo_slope_aug_id = as.integer(phylo_slope_aug_id),
+    ## Slope-only response-column submode of the shared matrix-normal engine.
+    use_phylo_column_slope = as.integer(use_phylo_column_slope),
     use_phylo_slope_correlated = as.integer(use_phylo_slope_correlated),
     n_lhs_cols       = as.integer(n_lhs_cols),
     Z_phy_aug        = Z_phy_aug,
@@ -4605,7 +4711,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     ## Q6: phylo_slope params
     b_phy_slope     = rep(0.0, n_aug_phy_slope),
     log_sigma_slope = 0.0,
-    b_phy_aug       = array(0.0, dim = c(n_aug_phy, n_lhs_cols, n_phy_aug_blocks)),
+    b_phy_aug       = array(0.0, dim = c(
+      if (use_phylo_column_slope) n_aug_phy_slope else n_aug_phy,
+      n_lhs_cols, n_phy_aug_blocks
+    )),
     log_sd_b        = rep(0.0, n_lhs_cols),
     atanh_cor_b     = numeric(n_lhs_cols * (n_lhs_cols - 1L) / 2L),
     ## Design 56 Sec. 9.5a: augmented phylo_latent (block-diagonal RR slope).
@@ -5208,7 +5317,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     tmb_map$log_sd_kernel_diag <- factor(rep(NA_integer_, length(tmb_params$log_sd_kernel_diag)))
     tmb_map$g_kernel_diag   <- factor(rep(NA_integer_, length(tmb_params$g_kernel_diag)))
   }
-  if (!use_phylo_slope || use_phylo_slope_correlated) {
+  if (!use_phylo_slope || use_phylo_slope_correlated || use_phylo_column_slope) {
     tmb_map$b_phy_slope     <- factor(rep(NA_integer_, length(tmb_params$b_phy_slope)))
     tmb_map$log_sigma_slope <- factor(NA_integer_)
   }
@@ -5281,6 +5390,18 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   if (!use_phylo_dep_slope) {
     tmb_map$theta_dep_chol <-
       factor(rep(NA_integer_, length(tmb_params$theta_dep_chol)))
+  } else if (use_phylo_column_slope) {
+    ## The slope basis is diagonal: retain only the P log-Cholesky diagonal
+    ## entries and pin every strictly-lower element exactly at zero.
+    pins <- if (length(tmb_params$theta_dep_chol) > n_lhs_cols) {
+      seq.int(n_lhs_cols + 1L, length(tmb_params$theta_dep_chol))
+    } else integer(0L)
+    if (length(pins) > 0L) {
+      m <- seq_along(tmb_params$theta_dep_chol)
+      m[pins] <- NA
+      tmb_params$theta_dep_chol[pins] <- 0
+      tmb_map$theta_dep_chol <- factor(m)
+    }
   } else if (use_phylo_indep_blockdiag) {
     ## Block-diagonal: pin the cross-block strictly-lower Cholesky entries to 0
     ## so Sigma_b = L L^T is block-diagonal (T independent (intercept, slope)
@@ -7295,6 +7416,11 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                           ## 79/80 block-diagonal phylo_indep from full dep.
                           phylo_dep_slope = isTRUE(use_phylo_dep_slope),
                           phylo_indep_slope = isTRUE(use_phylo_indep_blockdiag),
+                          ## Slope-only covariance across response columns.
+                          ## This is a predictor-basis matrix, not a trait
+                          ## covariance tier, and is therefore extracted only
+                          ## with level = "column_slope".
+                          phylo_column_slope = isTRUE(use_phylo_column_slope),
                           ## RE-03 multi-slope: the ordered slope-covariate
                           ## names (length s) so extract_Sigma() can label the
                           ## (1+s)T interleaved Sigma_b_dep rows as

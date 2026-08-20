@@ -14,9 +14,10 @@
   `"trait"`, and its abort message names the user's own trait column.
   ⚠️ This blocked an external user from writing a correct model and led
   to a wrong published analysis (the fallback spec collapsed 29 per-item
-  intercepts to one shared intercept, and the reported latent axis
-  correlated with item prevalence at r = 0.88 as a result). Thanks to
-  @iwogross for the report.
+  intercepts to one shared intercept). On the reporter's direct refit,
+  the d = 2 LV1-loading/prevalence association fell from R² = 0.742 with
+  the shared-intercept specification to R² = 0.125 with per-item
+  intercepts. Thanks to @iwogross for the report.
 
 * **`mesh=` with no spatial term is no longer silently ignored (#1165).**
   Mesh validation used to run only when a `spatial_*()` term was present,

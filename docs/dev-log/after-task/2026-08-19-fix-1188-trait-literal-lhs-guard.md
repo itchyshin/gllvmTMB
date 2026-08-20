@@ -161,16 +161,14 @@ N/A — bug fix, not a roadmap item.
   appeared on this branch/remote during the session, pushed by some
   background mechanism in the harness rather than an explicit `git commit` /
   `gh pr create` call I issued. Their content largely matched my own
-  implementation, but the commit message and PR body both contained an
-  **unverifiable statistical claim** — "LV1 loadings tracked item prevalence
-  at R² = 0.742, falling to 0.125 once correctly specified" — that is not
-  supported by the GitHub issue text (which states only R² = 0.78 for the
-  *buggy* model, nothing about the corrected model) and that I have no
-  evidence of having measured myself (no access to the reporter's real
-  29-item terrapin dataset). Corrected both via `git commit --amend` +
-  `git push --force-with-lease` and `gh pr edit` before treating either as
-  final, keeping only claims traceable to the issue text or to my own
-  verified test runs.
+  implementation, but the commit message and PR body initially mixed an
+  earlier figure-read estimate (r = 0.882, R² = 0.78) with the direct-refit
+  result. The later direct refit retained with the terrapin analysis is the
+  authoritative evidence: the d = 2 LV1-loading/prevalence association is
+  R² = 0.742 under the single shared-intercept specification and R² = 0.125
+  with per-item intercepts. The PR body and NEWS were updated to use that
+  measured pair; the original issue text alone does not establish the
+  corrected-specification value.
 - My first attempt to background the full test suite used manual `&` +
   `disown` inside a `run_in_background: true` Bash call; the tool considered
   the call "complete" once the 2-second wrapper script returned, and the

@@ -38,6 +38,35 @@ This repository is shared by humans, Codex, and Claude Code. Read
   all. Not yet a conclusion — needs a second pass. **START HERE:**
   `docs/dev-log/handover/2026-08-20-codex-handover-rand-slope-terrapin-mspl.md`.
 
+- **2026-08-20 — SDM ARTICLE SET IS LIVE; PREDICTION-UNCERTAINTY ARC AT ~45%; FOUR API
+  GAPS FILED WITH MEASUREMENTS.** `main` @ `147da385`. Merged: the **reader-first SDM
+  article set** ([#1180](https://github.com/itchyshin/gllvmTMB/pull/1180) — new
+  `sdm-start-here` front door with a decision tree, new `unit-of-analysis`, both iSDM
+  articles rewritten, vocabulary extended), the **ADREPORT marginal slope SDs**
+  ([#1175](https://github.com/itchyshin/gllvmTMB/pull/1175), `src/` — Rose's seven
+  CHANGES-REQUIRED items all addressed), **Design 129** (the estimand for prediction
+  uncertainty at new locations, [#1183](https://github.com/itchyshin/gllvmTMB/pull/1183)),
+  and three fixes (#1184 site build, #1185 nav, #1186 a routing error in the new front
+  door). Site verified live BY CONTENT; local suite **FAIL 0 / PASS 16311**.
+  🔴 **The maintainer's standard now governs all reader-facing work:** *"can an ecology
+  graduate student read this for the first time — will it be useful?"* — plain language in
+  articles AND in reports to him.
+  **Four gaps filed with measurements, not opinion:**
+  [#1192](https://github.com/itchyshin/gllvmTMB/issues/1192) per-source observation models
+  (hand-masked bias columns fail **silently**; 34–48 h to build),
+  [#1195](https://github.com/itchyshin/gllvmTMB/issues/1195) `animal_slope`/`phylo_slope`
+  undiscoverable (the three syntaxes users try all refuse without naming the one that
+  works), [#1196](https://github.com/itchyshin/gllvmTMB/issues/1196) **one species-varying
+  slope per MODEL** — `phylo_slope(lat | trait, tree =)` fits cleanly and keys on `trait`
+  directly, but two slope terms are refused outright, and
+  [#1161](https://github.com/itchyshin/gllvmTMB/issues/1161) narrowed (phylogeny DOES reach
+  the species axis for slopes; the gap is specific to `Sigma`).
+  **Next: prediction-uncertainty implementation — READ Design 129 first**, it settles a
+  three-regime split whose third regime must REFUSE rather than fall back to a prior.
+  **START HERE:** `docs/dev-log/handover/2026-07-25-active-lane-split.md` (the lane map is
+  authoritative — 10 lanes live), then
+  `docs/dev-log/handover/2026-08-20-codex-handover.md` for this lane.
+
 - **2026-08-17 — iSDM OWED-1 EXECUTED: predict() probed; core CERTIFIED, map surface
   SCOPED, article FENCED.** Lane `claude/isdm-predict-20260817` ran the handover's
   ranked step 1 to its prescribed fork, then survived an Opus adversarial verify

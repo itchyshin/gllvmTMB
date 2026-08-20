@@ -6,8 +6,8 @@
 \usage{
 extract_Sigma(
   fit,
-  level = c("unit", "unit_slope", "unit_obs", "phy", "phy_slope", "spatial",
-    "spde_slope", "cluster", "cluster2", "B", "B_slope", "W", "spde"),
+  level = c("unit", "unit_slope", "unit_obs", "phy", "phy_slope", "column_slope",
+    "spatial", "spde_slope", "cluster", "cluster2", "B", "B_slope", "W", "spde"),
   part = c("total", "shared", "unique", "psi"),
   link_residual = c("auto", "none"),
   .skip_warn = FALSE

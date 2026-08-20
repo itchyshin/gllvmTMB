@@ -863,6 +863,10 @@ Type objective_function<Type>::operator()()
   // 0, so the legacy b_phy_slope path above remains active and byte-identical
   // for non-augmented fits; the parser/R design-matrix routes set it to 1.
   DATA_INTEGER(use_phylo_slope_correlated);
+  // Slope-only response-column submode.  It reuses the augmented
+  // matrix-normal likelihood below, but its precision and row map are the
+  // term-local RHS-resolved fields above rather than the shared cluster tier.
+  DATA_INTEGER(use_phylo_column_slope);
   DATA_INTEGER(n_lhs_cols);           // block-local LHS columns: 1 or 2 (unique/indep);
                                       // C = 2*n_traits for the phylo_dep slope path
   DATA_ARRAY(Z_phy_aug);              // n_obs x n_lhs_cols x n_phy_aug_blocks
@@ -1951,8 +1955,21 @@ Type objective_function<Type>::operator()()
       error("gllvmTMB_multi: n_lhs_cols must be >= 1 in the phylo_dep slope path");
     if (b_phy_aug.dim.size() != 3 || Z_phy_aug.dim.size() != 3)
       error("gllvmTMB_multi: b_phy_aug and Z_phy_aug must be 3D arrays");
-    if (b_phy_aug.dim[0] != n_aug_phy)
-      error("gllvmTMB_multi: b_phy_aug first dimension must equal n_aug_phy");
+    int n_aug_phy_aug = use_phylo_column_slope == 1 ?
+      n_aug_phy_slope : n_aug_phy;
+    if (use_phylo_column_slope == 1) {
+      if (n_aug_phy_slope < 1 ||
+          Ainv_phy_slope.rows() != n_aug_phy_slope ||
+          Ainv_phy_slope.cols() != n_aug_phy_slope ||
+          phylo_slope_aug_id.size() != y.size())
+        error("gllvmTMB_multi: column-slope phylogenetic source dimensions are inconsistent");
+      for (int o = 0; o < y.size(); ++o)
+        if (phylo_slope_aug_id(o) < 0 ||
+            phylo_slope_aug_id(o) >= n_aug_phy_slope)
+          error("gllvmTMB_multi: column-slope RHS map is out of bounds");
+    }
+    if (b_phy_aug.dim[0] != n_aug_phy_aug)
+      error("gllvmTMB_multi: b_phy_aug first dimension has wrong phylogenetic source size");
     if (b_phy_aug.dim[1] != n_lhs_cols || Z_phy_aug.dim[1] != n_lhs_cols)
       error("gllvmTMB_multi: n_lhs_cols does not match augmented phylo arrays");
     if (Z_phy_aug.dim[0] != y.size())
@@ -2020,19 +2037,20 @@ Type objective_function<Type>::operator()()
       //                        + C*logdet(A) + tr(Sigma_b^{-1} B' A^{-1} B) ].
       for (int k = 0; k < b_phy_aug.dim[2]; k++) {
         // Q(j,l) = b_j' A^{-1} b_l, C x C.
-        matrix<Type> Bmat(n_aug_phy, C);
+        matrix<Type> Bmat(n_aug_phy_aug, C);
         for (int j = 0; j < C; j++)
-          for (int i = 0; i < n_aug_phy; i++) Bmat(i, j) = b_phy_aug(i, j, k);
-        matrix<Type> AinvB = Ainv_phy_rr * Bmat;        // n_aug_phy x C
+          for (int i = 0; i < n_aug_phy_aug; i++) Bmat(i, j) = b_phy_aug(i, j, k);
+        matrix<Type> AinvB = use_phylo_column_slope == 1 ?
+          Ainv_phy_slope * Bmat : Ainv_phy_rr * Bmat;
         matrix<Type> Q = Bmat.transpose() * AinvB;      // C x C
         // tr(Sigma_b^{-1} Q) = sum_{j,l} Sigma_b_inv(j,l) * Q(l,j).
         Type quad = Type(0);
         for (int j = 0; j < C; j++)
           for (int l = 0; l < C; l++)
             quad += Sigma_b_inv(j, l) * Q(l, j);
-        nll += Type(0.5) * (Type(n_aug_phy * C) * log(2.0 * M_PI)
-                            + Type(n_aug_phy) * logdet_Sigma_b
-                            + Type(C) * log_det_A_phy_rr
+        nll += Type(0.5) * (Type(n_aug_phy_aug * C) * log(2.0 * M_PI)
+                            + Type(n_aug_phy_aug) * logdet_Sigma_b
+                            + Type(C) * (use_phylo_column_slope == 1 ? log_det_A_phy_slope : log_det_A_phy_rr)
                             + quad);
       }
     } else {
@@ -2651,7 +2669,10 @@ Type objective_function<Type>::operator()()
       Type contrib_aug = 0;
       for (int k = 0; k < b_phy_aug.dim[2]; k++)
         for (int j = 0; j < n_lhs_cols; j++)
-          contrib_aug += b_phy_aug(species_aug_id(o), j, k) * Z_phy_aug(o, j, k);
+          contrib_aug += b_phy_aug(
+            use_phylo_column_slope == 1 ? phylo_slope_aug_id(o) : species_aug_id(o),
+            j, k
+          ) * Z_phy_aug(o, j, k);
       eta(o) += contrib_aug;
     } else if (use_phylo_slope == 1) {
       // Per-species slope on x, shared across traits.

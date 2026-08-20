@@ -786,9 +786,10 @@ phylo_latent <- function(
 #'         phylo_slope(x | species)        # phylo random slope on x
 #' ```
 #'
-#' Reuses the same \eqn{\mathbf A_{\text{phy}}^{-1}} as
-#' [phylo_latent()] (sparse via `phylo_tree =`, dense via
-#' `phylo_vcv =`); only one tree / VCV is needed even with both terms.
+#' Shares the supplied tree / VCV with [phylo_latent()] when both terms are
+#' present, but constructs its own RHS-indexed precision and row map (sparse
+#' via `phylo_tree =`, dense via `phylo_vcv =`). This lets the slope grouping
+#' differ safely from the top-level `cluster`.
 #'
 #' ## Scope
 #'

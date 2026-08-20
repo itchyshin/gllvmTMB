@@ -87,7 +87,7 @@ test_that("column slopes reject transformed, factor, and non-finite predictors",
     value ~ 0 + trait + phylo_indep(0 + I(lat^2) | trait, vcv = fx$A)
   ), common)), "LHS richer")
   fx$data$method <- factor(rep(c("a", "b"), length.out = nrow(fx$data)))
-  expect_error(gllvmTMB::gllvmTMB(
+  suppressWarnings(expect_error(gllvmTMB::gllvmTMB(
     value ~ 0 + trait + phylo_indep(0 + method | trait, vcv = fx$A),
     data = fx$data, trait = "trait", unit = "unit", cluster = "cluster",
     control = gllvmTMB::gllvmTMBcontrol(se = FALSE)
@@ -110,5 +110,5 @@ test_that("column slopes refuse a second phylogenetic indexing axis", {
       phylo_indep(0 + trait | cluster, vcv = A_cluster),
     data = fx$data, trait = "trait", unit = "unit", cluster = "cluster",
     control = gllvmTMB::gllvmTMBcontrol(se = FALSE)
-  ), "cannot yet be combined")
+  ), "cannot yet be combined"))
 })

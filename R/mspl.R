@@ -1156,13 +1156,13 @@
       mspl_N_units <- length(unique(as.integer(unit_id)))
     } else if (is_nbinom2) {
       ## Free per-trait phi is an outer block. C++ p_free still excludes it
-      ## (Jeffreys rate is unpinned c=1, same as the planned nbinom door).
+      ## (Jeffreys-on-phi DROPPED; rate uses data-plugin I_NB2, not c=1).
       expected_outer <- c(expected_outer, "log_phi_nbinom2")
     } else if (is_nbinom1) {
       expected_outer <- c(expected_outer, "log_phi_nbinom1")
     } else if (is_tweedie) {
       ## Free per-trait phi and power. C++ p_free still excludes them
-      ## (Jeffreys rate is unpinned c=1, same as the planned nbinom door).
+      ## (Jeffreys rate is unpinned c=1; not an nbinom transplant).
       expected_outer <- c(expected_outer, "log_phi_tweedie", "logit_p_tweedie")
     } else if (is_beta) {
       expected_outer <- c(expected_outer, "log_phi_beta")
@@ -1251,7 +1251,8 @@
     )
   }
 
-  ## Poisson c_P uses event count, not N_rows or N_units, and not c = 1.
+  ## Poisson c_P uses event count. nbinom uses a family data-plugin
+  ## information size (not N_rows, not sum(y), not c = 1).
   rate <- if (is_gaussian) {
     sqrt(2 / mspl_N_units)
   } else if (is_poisson) {
@@ -1259,7 +1260,21 @@
       p_free,
       .gllvmTMB_mspl_poisson_event_count(y)
     )
-  } else if (is_nbinom || is_tweedie || is_beta) {
+  } else if (is_nbinom2) {
+    if (is.null(trait_id)) {
+      .gllvmTMB_mspl_abort(
+        "nbinom2 LA-MSPL rate requires trait ids for the data-plugin information size."
+      )
+    }
+    .gllvmTMB_mspl_nbinom2_rate(p_free, y, trait_id)
+  } else if (is_nbinom1) {
+    if (is.null(trait_id)) {
+      .gllvmTMB_mspl_abort(
+        "nbinom1 LA-MSPL rate requires trait ids for the data-plugin information size."
+      )
+    }
+    .gllvmTMB_mspl_nbinom1_rate(p_free, y, trait_id)
+  } else if (is_tweedie || is_beta) {
     1
   } else {
     2 * sqrt(p_free / N_eff)
@@ -1306,14 +1321,17 @@
         "complete nbinom2 log; ordinary latent q=",
         d_B,
         "; GLM-outer W=mu*phi/(phi+mu) candidate (not I_LA(beta)); ",
-        "unpinned c=1; planned tape, not admitted; Laplace"
+        "c_NB2=2*sqrt(p_free/max(I_NB2,1)) data-plugin tr(W); ",
+        "information-weighted loading atom; Jeffreys-on-phi dropped; ",
+        "planned tape, not admitted; Laplace"
       )
     } else if (is_nbinom1) {
       paste0(
         "complete nbinom1 log; ordinary latent q=",
         d_B,
         "; GLM-outer PMF-summed exact I (not quasi W=mu/(1+phi)); ",
-        "unpinned c=1; planned tape, not admitted; Laplace"
+        "c_NB1=2*sqrt(p_free/max(I_NB1,1)) data-plugin exact I_eta; ",
+        "information-weighted loading atom; planned tape, not admitted; Laplace"
       )
     } else if (is_tweedie) {
       paste0(

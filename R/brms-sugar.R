@@ -1543,12 +1543,17 @@ scalar <- function(formula) {
 #' adds response-column deviations to the fixed slopes without adding a random
 #' intercept. The phylogeny is indexed by the response-column factor on the
 #' right of `|`; `indep` makes the covariance among `lat` and `temp` slopes
-#' diagonal. With slope coefficient matrix eqn{mathbf B}, this is
-#' eqn{\mathrm{Cov}(\mathrm{vec}\,\mathbf B) = \mathbf A_{\mathrm{phy}}
+#' diagonal. With slope coefficient matrix \eqn{\mathbf B} (rows are
+#' response columns and columns are predictors), let
+#' \eqn{\mathbf b=\mathrm{vec}(\mathbf B^\mathsf{T})} order coefficients by
+#' response column: `lat`, `temp` for column 1, then `lat`, `temp` for column
+#' 2, and so on. Then
+#' \eqn{\mathrm{Cov}(\mathbf b) = \mathbf A_{\mathrm{phy}}
 #' \otimes \mathrm{diag}(\sigma^2_{\mathrm{lat}},
-#' \sigma^2_{\mathrm{temp}})}. Retrieve that predictor-basis covariance with
+#' \sigma^2_{\mathrm{temp}})}. (The native implementation stores the
+#' permutation-equivalent column-major vector.) Retrieve that predictor-basis covariance with
 #' `extract_Sigma(fit, level = "column_slope")`. It is not a trait-level
-#' eqn{\boldsymbol\Sigma}. This V1 route requires bare finite numeric
+#' \eqn{\boldsymbol\Sigma}. This V1 route requires bare finite numeric
 #' predictors, exactly the resolved `trait` column on the RHS, and Gaussian
 #' responses; wide-format and non-Gaussian column slopes are planned work.
 #'
@@ -1561,9 +1566,12 @@ scalar <- function(formula) {
 #'   slope-only response-column form `0 + x1 + ... | trait`.
 #' @param tree An `ape::phylo` object. **Canonical.**
 #' @param vcv A tip-only phylogenetic correlation matrix
-#'   (`n_species x n_species`). Legacy alias of `A =`.
-#' @param A Tip-level relatedness matrix (`n_species x n_species`)
-#'   -- alias of `vcv =`, aligned with the `animal_*` family's
+#'   (`n_species x n_species`) for the ordinary forms. For the slope-only
+#'   response-column form it is instead `n_traits x n_traits`, with row names
+#'   matching the resolved RHS `trait` levels. Legacy alias of `A =`.
+#' @param A Tip-level relatedness matrix (`n_species x n_species`) for the
+#'   ordinary forms; for the slope-only response-column form, the corresponding
+#'   trait-level matrix. Alias of `vcv =`, aligned with the `animal_*` family's
 #'   argument naming.
 #' @param Ainv Sparse precision matrix (inverse of `A`).
 #' @param common `FALSE` (default) for a separate phylogenetic variance per

@@ -19,6 +19,23 @@
   the shared-intercept specification to R² = 0.125 with per-item
   intercepts. Thanks to @iwogross for the report.
 
+* **`gllvmTMB()`'s `unit_obs` and `cluster` arguments now default to
+  `NULL` instead of the concrete strings `"site_species"` / `"species"`.**
+  Both slots are optional -- most callers have no reason to supply them --
+  but a default that reads as a required column name invites callers to
+  manufacture columns just to satisfy the signature. An external systematic
+  map user (paper x item design, no sites, no species) wrote
+  `site_species = paste(study_ID, variable, sep = "_")` purely because
+  `unit_obs` defaulted to `"site_species"`, and set `cluster = "variable"`;
+  neither column had any meaning in the design or any effect on the fit.
+  ⚠️ **API/signature change; fitting behaviour preserved.** The visible
+  defaults are now `NULL`, while omitted and explicit-`NULL` calls still
+  resolve internally to `"site_species"` / `"species"`. Existing calls
+  that relied on or explicitly supplied those historical names fit
+  bit-identically. Also fixed: the "Column %s not found in data" error,
+   which never said which argument wanted the column, now names the argument
+   (`trait`, `unit`, or `unit_obs`) and the value that was looked for.
+
 * **`mesh=` with no spatial term is no longer silently ignored (#1165).**
   Mesh validation used to run only when a `spatial_*()` term was present,
   so `gllvmTMB(mesh = <raw fmesher mesh>)` with an ordinary non-spatial

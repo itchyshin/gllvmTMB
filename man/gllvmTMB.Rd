@@ -9,8 +9,8 @@ gllvmTMB(
   data,
   trait = "trait",
   unit = "site",
-  unit_obs = "site_species",
-  cluster = "species",
+  unit_obs = NULL,
+  cluster = NULL,
   cluster2 = NULL,
   family = gaussian(),
   weights = NULL,
@@ -80,25 +80,28 @@ Examples: \code{"site"} for site × species data, \code{"individual"} for
 behavioural-syndrome data, \code{"species"} for PGLLVM, \code{"paper"} for
 systematic mapping. Default \code{"site"}.}
 
-\item{unit_obs}{Name of the column holding the \strong{within-unit}
+\item{unit_obs}{Optional. Name of the column holding the \strong{within-unit}
 grouping factor — one level per (unit, replicate) cell — used by
 \code{latent(0 + trait | unit_obs, ...)} and
 \code{indep(0 + trait | unit_obs)} for the W-tier covariance.
-Default \code{"site_species"} (the conventional name in joint species
-distribution modelling; safe for site × species data). For other
-domains pass e.g. \code{unit_obs = "obs"} for behavioural syndromes.}
+Default \code{NULL}, which resolves to \code{"site_species"} (the conventional
+name in joint species distribution modelling; safe for site × species
+data). If your data has no such column, omit \code{unit_obs}; the engine
+synthesises it from \code{unit} × \code{cluster}. For other domains pass e.g.
+\code{unit_obs = "obs"} for behavioural syndromes.}
 
-\item{cluster}{Name of the column holding the \strong{third grouping}
-factor (the "cluster" slot). When the column name matches the
-row/column names of \code{phylo_vcv} (or the tip labels of
+\item{cluster}{Optional. Name of the column holding the \strong{third
+grouping} factor (the "cluster" slot). When the column name matches
+the row/column names of \code{phylo_vcv} (or the tip labels of
 \code{phylo_tree}), this slot also drives the phylogenetic random
 effects (\code{phylo_latent}, \code{phylo_scalar}, \code{phylo_indep},
 \code{phylo_slope}). When the column does \strong{not} match a phylogenetic
 correlation, the slot still functions as a regular crossed/nested
 third grouping (e.g. \code{cluster = "population"} for 3-level
 personality data, \code{cluster = "study"} for multi-study
-meta-analysis). Default \code{"species"}. For datasets with no third
-grouping the column may be absent from \code{data}; the engine will
+meta-analysis). Default \code{NULL}, which resolves to \code{"species"}. For
+datasets with no third grouping the column may be absent from \code{data}
+entirely (with or without passing \code{cluster}); the engine will
 synthesise a placeholder.
 
 The engine does \strong{not} enforce nesting between \code{unit_obs},

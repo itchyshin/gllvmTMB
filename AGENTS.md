@@ -285,7 +285,8 @@ package contributors.
 - For tutorials and error-message docs, tell the reader what to try
   next when a model or syntax is unsupported.
 - When demonstrating how to fit a `gllvmTMB` model in user-facing
-  prose -- README, vignettes, and Tier-1 articles -- show **both**
+  prose -- README, vignettes, Tier-1 articles, and the primary
+  `gllvmTMB()` help topic -- show **both**
   long-format and wide-format calls side by side, through the single
   `gllvmTMB()` entry point. The long form
   (`gllvmTMB(value ~ ..., data = df_long)`) is canonical; the wide

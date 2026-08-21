@@ -37,9 +37,10 @@ Used inside a \code{gllvmTMB()} formula:
         phylo_slope(x | species)        # phylo random slope on x
 }\if{html}{\out{</div>}}
 
-Reuses the same \eqn{\mathbf A_{\text{phy}}^{-1}} as
-\code{\link[=phylo_latent]{phylo_latent()}} (sparse via \verb{phylo_tree =}, dense via
-\verb{phylo_vcv =}); only one tree / VCV is needed even with both terms.
+Shares the supplied tree / VCV with \code{\link[=phylo_latent]{phylo_latent()}} when both terms are
+present, but constructs its own RHS-indexed precision and row map (sparse
+via \verb{phylo_tree =}, dense via \verb{phylo_vcv =}). This lets the slope grouping
+differ safely from the top-level \code{cluster}.
 \subsection{Scope}{
 
 This helper supports:

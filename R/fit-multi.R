@@ -4784,16 +4784,13 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     ## Slice 0 established that a scalar phylogenetic/pedigree contrast term is
     ## a real structured tier on the multinomial contrast liabilities and was
     ## leaking through this exemption.
-    ## `use_any_phy_term` is a pure logical-OR aggregate of use_phylo_rr /
-    ## use_phylo_diag / use_phylo_slope / use_phylo_latent_slope / use_mi_phylo
-    ## (see its definition above) -- every one of those five is ALREADY
-    ## checked here individually (use_phylo_rr admitted; the other four are
-    ## not, and independently trip this scan when active). Moving this scan
-    ## past that definition (Slice 0, so use_mi_* is in scope) means the
-    ## aggregate is now also visible to `ls()`; it carries no information its
-    ## constituents don't already carry, so it stays exempt rather than
-    ## double-counting a legitimate phylo_latent() fit as unsupported.
-    .mn_non_tier      <- c("use_equalto", "use_any_phy_term")
+    ## `use_any_phy_term` and `use_shared_phy_term` are pure logical-OR
+    ## aggregates. Their constituents are already checked here individually:
+    ## `use_phylo_rr` is admitted, while every unsupported constituent trips
+    ## this scan in its own right. Neither aggregate denotes an engine tier,
+    ## so keep both outside the fail-closed scan rather than double-counting a
+    ## legitimate phylo_latent() fit.
+    .mn_non_tier      <- c("use_equalto", "use_any_phy_term", "use_shared_phy_term")
     .mn_use_flags <- setdiff(ls(envir = .mn_env, pattern = "^use_"),
                              c(.mn_allowed_tiers, .mn_non_tier))
     .mn_vals <- mget(.mn_use_flags, envir = .mn_env, inherits = FALSE)

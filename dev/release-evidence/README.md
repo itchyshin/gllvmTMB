@@ -35,10 +35,14 @@ single command above.
 
 ## 2026-08-20 stop receipt
 
-The full frozen smoke was run at repository revision
-`379a54472bef95f1e4c3b66c552a6b0acddbc714`.  The retained
-`slope-smoke-results.csv` and `slope-smoke-results-summary.csv` record 12
-attempts (98.01 seconds total; 15.45-second p90).  Seven cells were healthy:
+The retained `slope-smoke-results.csv` and `slope-smoke-results-summary.csv`
+record 12 attempts (98.01 seconds total; 15.45-second p90).  The earlier
+runner recorded Git revision `379a54472bef95f1e4c3b66c552a6b0acddbc714` but
+did not prove that it loaded that checkout rather than an installed package.
+That code provenance is therefore **unverified**; this receipt is fit-health
+evidence only and is not a release claim.  The revised runner now loads the
+source checkout explicitly and records both the checkout and loaded namespace
+path for any future, separately approved smoke.  Seven cells were healthy:
 Gaussian, lognormal, Gamma, Beta, beta-binomial, Student-t, and negative
 binomial 1.  Five were not: binomial-logit had a non-positive-definite Hessian;
 binomial-probit had convergence, Hessian, and gradient failures; Poisson had a

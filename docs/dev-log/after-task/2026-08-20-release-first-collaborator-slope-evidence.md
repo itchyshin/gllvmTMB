@@ -1,7 +1,7 @@
 # After-task report: 0.7 release-first collaborator repair and slope smoke
 
-**Date:** 2026-08-20/21 MDT  
-**Branch:** `codex/release-slope-evidence-20260820`  
+**Date:** 2026-08-20/21 MDT
+**Branch:** `codex/release-slope-evidence-20260820`
 **Scope:** collaborator repair closure, one primary-help long/wide example,
 retained random-slope fit-health smoke, and an explicit 0.7 MSPL park.
 
@@ -40,7 +40,7 @@ interval coverage, structured-route recovery, or an MSPL family admission.
   matrix wrapper.
 - `dev/release-evidence/README.md`, `run-slope-smoke.R`, frozen manifest, raw
   CSV records, and summaries: 12-cell augmented phylogenetic random-slope
-  smoke and its explicit stop receipt.
+  smoke, explicit provenance guard for future runs, and its stop receipt.
 - `docs/dev-log/after-task/2026-08-20-release-first-collaborator-slope-evidence.md`:
   this report.
 
@@ -64,7 +64,13 @@ validation-debt status, articles, pkgdown navigation, and public MSPL claims.
   regenerated `man/gllvmTMB.Rd`; the only reported `checkRd` warning is the
   pre-existing escaped-dollar sign at `man/gllvmTMB.Rd:572`
   (`report$joint_nll_*`), outside the example.
-- `git diff --check origin/main...HEAD`: PASS.
+- `git diff --check origin/main...HEAD`: rerun after the review corrections;
+  PASS after removing Markdown hard-break whitespace.  The prior report
+  incorrectly claimed it passed while that whitespace remained.
+- `GLLVMTMB_SLOPE_SMOKE_MAX_CELLS=1 GLLVMTMB_SLOPE_SMOKE_OUTPUT=/private/tmp/slope-source-provenance-smoke.csv Rscript --vanilla dev/release-evidence/run-slope-smoke.R`:
+  PASS in 2.18 seconds.  The result records both `source_checkout` and
+  `package_path` as `/private/tmp/gllvmtmb-release-slope`, proving that the
+  revised runner loads the intended source checkout.
 - `rg -n 'gllvmTMB_wide\\(' README.md NEWS.md docs vignettes R/gllvmTMB.R man/gllvmTMB.Rd`:
   intentional compatibility/deprecation and historical references only; no new
   primary wide API was introduced.
@@ -81,7 +87,9 @@ fixture, and asserted equality of the two fitted log likelihoods.  The raw
 smoke CSV retains all 12 attempts and records five unhealthy cells rather than
 dropping them.  Its summary is `n_healthy = 7`, `smoke_pass = FALSE`, p90
 15.4482 seconds, and total 98.0146 seconds; that fails the pre-registered
-all-healthy local-smoke gate.
+all-healthy local-smoke gate.  The legacy smoke did not prove that its stamped
+revision was the loaded package; its code provenance is unverified and no
+release or promotion claim rests on it.
 
 ## What did not go smoothly
 
@@ -90,17 +98,21 @@ wrapper ceiling during retry chunks.  The retained complete result nevertheless
 exists and was validated from its CSV summary; no additional remote run was
 started.  GitHub API rate limiting temporarily prevented status polling, so
 #1191 was merged only after a later direct check confirmed both the exact SHA
-and SUCCESS result.  `check-log.md` is currently present in 226 foreign refs;
-the lane check forbids a blind append.
+and SUCCESS result.  The original smoke runner stamped `git HEAD` while using
+an installed package namespace; the revised runner loads and records its source
+checkout, but the legacy run is deliberately downgraded rather than rerun.
+`check-log.md` is currently present in 226 foreign refs; the lane check forbids
+a blind append.
 
 ## Team learning
 
 - **Boole:** the useful roxygen scope is the primary `gllvmTMB()` help topic,
   not every extractor or keyword Rd page.  The code example must demonstrate
   actual long/wide equivalence, not merely name both formats.
-- **Curie:** a smoke gate is informative only when every attempted fit and its
-  health fields are retained.  The 7/12 result closes the remote-compute gate;
-  it is not a reason to cherry-pick the seven passing families.
+- **Curie:** a smoke gate is informative only when every attempted fit, its
+  health fields, and its code provenance are retained.  The 7/12 result closes
+  the remote-compute gate; it is not a reason to cherry-pick the seven passing
+  families.
 - **Rose:** concurrent-lane risk is material.  The unique after-task report is
   safe, but the shared check-log must be merge-and-retry coordinated rather
   than overwritten.
@@ -125,9 +137,8 @@ new package capability.
 - PR #1193: merged trait-column parser repair.
 - PR #1191: merged optional `unit_obs` / `cluster` default repair after exact
   successful CI.
-- Issue #1187: inspected; this branch implements the narrow maintainer scope
-  decision (primary `gllvmTMB()` help only; no mass `man/` rewrite).  A closure
-  comment is due with the documentation PR.
+- Issue #1187: inspected and commented with the narrow maintainer scope
+  decision (primary `gllvmTMB()` help only; no mass `man/` rewrite).
 - `iwogross/terrapin-systematic-map#1`: posted the approved educational reply
   after both repairs merged.
 - No new issue created: the smoke has an explicit retained stop receipt and

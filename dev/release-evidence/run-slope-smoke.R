@@ -14,6 +14,10 @@ options(warn = 1)
 script_arg <- sub("^--file=", "", grep("^--file=", commandArgs(), value = TRUE)[1L] %||% "dev/release-evidence/run-slope-smoke.R")
 script_dir <- dirname(normalizePath(script_arg, mustWork = FALSE))
 if (!dir.exists(script_dir)) script_dir <- "dev/release-evidence"
+repo_root <- normalizePath(file.path(script_dir, "..", ".."), mustWork = TRUE)
+if (!file.exists(file.path(repo_root, "DESCRIPTION"))) {
+  stop("Could not locate the package source checkout from: ", script_dir)
+}
 manifest_path <- file.path(script_dir, "slope-smoke-manifest.csv")
 out_path <- Sys.getenv("GLLVMTMB_SLOPE_SMOKE_OUTPUT", file.path(script_dir, "slope-smoke-results.csv"))
 summary_path <- sub("\\.csv$", "-summary.csv", out_path)
@@ -34,7 +38,12 @@ if (!is.finite(first_cell) || first_cell < 1L || first_cell > nrow(manifest)) {
 manifest <- manifest[seq.int(first_cell, min(max_cells, nrow(manifest))), , drop = FALSE]
 
 if (!requireNamespace("ape", quietly = TRUE)) stop("Package 'ape' is required.")
-if (!requireNamespace("gllvmTMB", quietly = TRUE)) stop("Package 'gllvmTMB' is required.")
+if (!requireNamespace("pkgload", quietly = TRUE)) stop("Package 'pkgload' is required to load the source checkout.")
+pkgload::load_all(repo_root, quiet = TRUE, export_all = FALSE)
+package_path <- normalizePath(getNamespaceInfo(asNamespace("gllvmTMB"), "path"), mustWork = TRUE)
+if (!identical(package_path, repo_root)) {
+  stop("Loaded gllvmTMB namespace is not the requested source checkout: ", package_path)
+}
 
 repo_revision <- tryCatch(
   system2("git", c("rev-parse", "HEAD"), stdout = TRUE, stderr = FALSE),
@@ -113,11 +122,11 @@ one <- function(cell, started) {
     setTimeLimit(elapsed = per_fit_limit, transient = TRUE)
     on.exit(setTimeLimit(cpu = Inf, elapsed = Inf, transient = FALSE), add = TRUE)
     fit <- tryCatch(withCallingHandlers(
-      gllvmTMB::gllvmTMB(form, data = d, unit = "species", family = family_object(cell$family, cell$link)),
+  gllvmTMB::gllvmTMB(form, data = d, trait = "trait", unit = "species", family = family_object(cell$family, cell$link)),
       warning = function(w) { warning_text <<- c(warning_text, conditionMessage(w)); invokeRestart("muffleWarning") }),
       error = function(e) e)
   })[["elapsed"]]
-  base <- data.frame(repo_revision = repo_revision, cell_id = cell$cell_id, family = cell$family, link = cell$link, seed = cell$seed,
+  base <- data.frame(repo_revision = repo_revision, source_checkout = repo_root, package_path = package_path, cell_id = cell$cell_id, family = cell$family, link = cell$link, seed = cell$seed,
     n_species = cell$n_species, n_rep = cell$n_rep, elapsed_seconds = elapsed,
     total_elapsed_seconds = as.numeric(difftime(Sys.time(), started, units = "secs")),
     status = "error", error = NA_character_, warnings = paste(unique(warning_text), collapse = " | "),
@@ -159,7 +168,7 @@ one <- function(cell, started) {
 started <- Sys.time(); rows <- list()
 for (i in seq_len(nrow(manifest))) {
   if (as.numeric(difftime(Sys.time(), started, units = "secs")) >= total_limit) {
-    rows[[length(rows) + 1L]] <- data.frame(repo_revision = repo_revision, cell_id = manifest$cell_id[[i]], family = manifest$family[[i]], link = manifest$link[[i]], seed = manifest$seed[[i]], n_species = manifest$n_species[[i]], n_rep = manifest$n_rep[[i]], elapsed_seconds = NA_real_, total_elapsed_seconds = total_limit, status = "not_run_total_stop", error = "20-minute total stop rule reached", warnings = NA_character_, convergence = NA_integer_, pd_hessian = NA, max_abs_gradient = NA_real_, fixed_truth = NA_character_, fixed_estimate = NA_character_, fixed_max_abs_error = NA_real_, sd_truth = NA_character_, sd_estimate = NA_character_, sd_max_relative_error = NA_real_, cor_truth = NA_character_, cor_estimate = NA_character_, cor_max_abs_error = NA_real_, healthy = FALSE, healthy_reason = "total stop")
+    rows[[length(rows) + 1L]] <- data.frame(repo_revision = repo_revision, source_checkout = repo_root, package_path = package_path, cell_id = manifest$cell_id[[i]], family = manifest$family[[i]], link = manifest$link[[i]], seed = manifest$seed[[i]], n_species = manifest$n_species[[i]], n_rep = manifest$n_rep[[i]], elapsed_seconds = NA_real_, total_elapsed_seconds = total_limit, status = "not_run_total_stop", error = "20-minute total stop rule reached", warnings = NA_character_, convergence = NA_integer_, pd_hessian = NA, max_abs_gradient = NA_real_, fixed_truth = NA_character_, fixed_estimate = NA_character_, fixed_max_abs_error = NA_real_, sd_truth = NA_character_, sd_estimate = NA_character_, sd_max_relative_error = NA_real_, cor_truth = NA_character_, cor_estimate = NA_character_, cor_max_abs_error = NA_real_, healthy = FALSE, healthy_reason = "total stop")
     next
   }
   rows[[length(rows) + 1L]] <- one(manifest[i, ], started)
@@ -172,6 +181,8 @@ done <- result$elapsed_seconds[result$status == "completed" & is.finite(result$e
 smoke_pass <- nrow(result) == 12L && all(result$healthy)
 summary <- data.frame(
   repo_revision = repo_revision,
+  source_checkout = repo_root,
+  package_path = package_path,
   n_cells = nrow(result),
   n_healthy = sum(result$healthy),
   smoke_pass = smoke_pass,

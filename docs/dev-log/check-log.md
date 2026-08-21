@@ -53683,3 +53683,62 @@ After-task:
 `docs/dev-log/after-task/2026-08-19-fix-1188-trait-literal-lhs-guard.md`.
 PR: **DRAFT**, https://github.com/itchyshin/gllvmTMB/pull/1193 — not merged,
 maintainer review requested.
+
+---
+
+## 2026-08-21 — Release-first collaborator closure, paired help, and random-slope smoke stop (Codex)
+
+**Lane:** `codex/release-slope-evidence-20260820`
+**Worktree:** `/private/tmp/gllvmtmb-release-slope`
+**PR:** #1200 (draft; CI and Rose review pending this correction batch)
+
+**Collaborator repairs:** #1193 (resolved non-literal trait-column parser) and
+#1191 (optional `unit_obs` / `cluster` defaults) are merged.  After confirming
+their exact successful CI heads, posted the educational reply to
+`iwogross/terrapin-systematic-map#1`: corrected long formula, Laplace plus
+inspected loading-ridge workflow, and VA-probit sensitivity only.  No MSPL
+claim appears in that reply.
+
+**#1187 scope decision:** the primary `gllvmTMB()` help now gives a paired
+long/wide `traits(...)` example; worked tutorials were already paired.
+Keyword, control, and extractor Rd topics remain single-form unless their API
+intrinsically depends on data shape.  This is not a blanket `man/` rewrite.
+Issue #1187 carries the decision comment.
+
+**Slope smoke:** the retained 12-cell result has 7/12 healthy fits and
+`smoke_pass = FALSE`; all five unhealthy attempts remain in the CSV.  It does
+not justify Totoro/DRAC, a family admission, interval-coverage claims, or MSPL
+promotion.  The legacy result's stamped Git revision did not prove the loaded
+package path, so its code provenance is explicitly unverified.  The revised
+driver loads the requested source checkout with `pkgload::load_all()`, checks
+the namespace path, records both paths, and passes an isolated one-cell
+provenance smoke (2.18 seconds).  The long fit now passes `trait = "trait"`
+explicitly.
+
+**Commands and outcomes:**
+
+```sh
+Rscript --vanilla /private/tmp/verify_traits_example.R
+# PASS: exact long and wide help calls both logLik = -679.4454
+Rscript --vanilla -e 'pkgdown::check_pkgdown()'
+# PASS: No problems found.
+GLLVMTMB_SLOPE_SMOKE_MAX_CELLS=1 \
+  GLLVMTMB_SLOPE_SMOKE_OUTPUT=/private/tmp/slope-source-provenance-smoke.csv \
+  Rscript --vanilla dev/release-evidence/run-slope-smoke.R
+# PASS: source_checkout and package_path both equal this worktree.
+Rscript --vanilla -e 'parse("dev/release-evidence/run-slope-smoke.R"); cat("parse-ok\\n")'
+# PASS: parse-ok
+git diff --check origin/main...HEAD
+# PASS after review corrections.
+rg -n 'gllvmTMB_wide\(' README.md NEWS.md docs vignettes R/gllvmTMB.R man/gllvmTMB.Rd
+# Intentional compatibility/deprecation or historical references only.
+rg -n 'traits\(trait_1, trait_2, trait_3\)|site_species' R/gllvmTMB.R man/gllvmTMB.Rd dev/release-evidence
+# Source and generated help agree on the paired example.
+rg -n 'MSPL|Totoro|DRAC|smoke_pass|n_healthy' dev/release-evidence
+# Stop receipt retains smoke_pass = FALSE and no-remote/no-promotion boundary.
+```
+
+**Deliberately not run:** a full rerun of the legacy 12-cell smoke (it has
+already failed its all-healthy gate), Totoro/DRAC, any MSPL family/inference
+work, or a broad roxygen rewrite.  After-task:
+`docs/dev-log/after-task/2026-08-20-release-first-collaborator-slope-evidence.md`.

@@ -24,6 +24,11 @@
 #' @keywords internal
 #' @export
 extract_Sigma_B <- function(fit) {
+  lifecycle::deprecate_soft(
+    "0.7.0",
+    "extract_Sigma_B()",
+    "extract_Sigma(level = \"unit\")"
+  )
   out <- extract_Sigma(
     fit,
     level = "unit",
@@ -49,6 +54,11 @@ extract_Sigma_B <- function(fit) {
 #' @keywords internal
 #' @export
 extract_Sigma_W <- function(fit) {
+  lifecycle::deprecate_soft(
+    "0.7.0",
+    "extract_Sigma_W()",
+    "extract_Sigma(level = \"unit_obs\")"
+  )
   out <- extract_Sigma(
     fit,
     level = "unit_obs",

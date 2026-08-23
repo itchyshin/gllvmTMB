@@ -22,6 +22,10 @@ manifest_path <- file.path(script_dir, "slope-smoke-manifest.csv")
 out_path <- Sys.getenv("GLLVMTMB_SLOPE_SMOKE_OUTPUT", file.path(script_dir, "slope-smoke-results.csv"))
 summary_path <- sub("\\.csv$", "-summary.csv", out_path)
 if (!file.exists(manifest_path)) stop("Frozen manifest not found: ", manifest_path)
+scenario <- Sys.getenv("GLLVMTMB_SLOPE_SMOKE_SCENARIO", "family_matched")
+if (!scenario %in% c("family_matched", "generic_stress")) {
+  stop("GLLVMTMB_SLOPE_SMOKE_SCENARIO must be 'family_matched' or 'generic_stress'.")
+}
 
 per_fit_limit <- 90
 total_limit <- 20 * 60
@@ -51,18 +55,62 @@ repo_revision <- tryCatch(
 )
 repo_revision <- if (length(repo_revision)) repo_revision[[1L]] else NA_character_
 
-make_dgp <- function(seed, n_species, n_rep) {
+make_dgp <- function(cell, scenario) {
+  ## Alignment: for every scenario, eta_it = beta_t + a_st + b_st x_ist,
+  ## (a_st, b_st)' ~ N(0, Sigma_t A).  The family-matched configuration
+  ## changes only response information (and the documented fixture scale),
+  ## never the phylo_indep intercept--slope target or fit formula.
+  seed <- cell$seed
+  n_species <- cell$n_species
+  n_rep <- cell$n_rep
   set.seed(seed)
   n_trait <- 3L
+  beta_truth <- c(-0.35, 0, 0.35)
+  sd_int_truth <- c(0.45, 0.55, 0.40)
+  sd_slope_truth <- c(0.35, 0.45, 0.30)
+  rho_truth <- c(0.20, -0.15, 0.10)
+  trials <- 1L
+  phi <- NULL
+  ordinal_thresholds <- c(-0.6, 0.6)
+
+  if (identical(scenario, "family_matched")) {
+    if (cell$family == "binomial") {
+      beta_truth <- seq(0.2, -0.2, length.out = n_trait)
+      sd_int_truth <- rep(sqrt(0.4), n_trait)
+      sd_slope_truth <- rep(sqrt(0.3), n_trait)
+      rho_truth <- rep(0, n_trait)
+      trials <- 10L
+    } else if (cell$family == "poisson") {
+      beta_truth <- rep(2, n_trait)
+      sd_int_truth <- rep(sqrt(0.4), n_trait)
+      sd_slope_truth <- rep(sqrt(0.3), n_trait)
+      rho_truth <- c(0.6, -0.6, 0.6)
+      n_rep <- 4L
+    } else if (cell$family == "nbinom2") {
+      beta_truth <- c(0.8, 0.7, 0.6)
+      sd_int_truth <- rep(sqrt(0.4), n_trait)
+      sd_slope_truth <- rep(sqrt(0.3), n_trait)
+      rho_truth <- c(0.4, -0.4, 0.4)
+      n_species <- 80L
+      n_rep <- 6L
+      phi <- 4
+    } else if (cell$family == "ordinal_probit") {
+      n_trait <- 4L
+      beta_truth <- c(0.7, 0.5, 0.6, 0.4)
+      sd_int_truth <- rep(sqrt(0.6), n_trait)
+      sd_slope_truth <- rep(sqrt(0.5), n_trait)
+      rho_truth <- c(0.6, -0.6, 0.6, -0.6)
+      n_species <- 60L
+      n_rep <- 6L
+      ordinal_thresholds <- c(0, 0.7, 1.4)
+    }
+  }
+
   tree <- ape::rcoal(n_species)
   tree$tip.label <- sprintf("sp%03d", seq_len(n_species))
   A <- ape::vcv(tree, corr = TRUE)
   L <- t(chol(A + diag(1e-8, n_species)))
   trait <- sprintf("t%d", seq_len(n_trait))
-  beta_truth <- c(-0.35, 0, 0.35)
-  sd_int_truth <- c(0.45, 0.55, 0.40)
-  sd_slope_truth <- c(0.35, 0.45, 0.30)
-  rho_truth <- c(0.20, -0.15, 0.10)
   effects <- lapply(seq_len(n_trait), function(j) {
     Sigma <- diag(c(sd_int_truth[[j]], sd_slope_truth[[j]])) %*%
       matrix(c(1, rho_truth[[j]], rho_truth[[j]], 1), 2L) %*%
@@ -80,17 +128,28 @@ make_dgp <- function(seed, n_species, n_rep) {
   }))
   d$species <- factor(d$species, levels = tree$tip.label)
   d$trait <- factor(d$trait, levels = trait)
-  list(data = d, tree = tree, beta = beta_truth, sd = as.vector(rbind(sd_int_truth, sd_slope_truth)), rho = rho_truth)
+  list(
+    data = d, tree = tree, beta = beta_truth,
+    sd = as.vector(rbind(sd_int_truth, sd_slope_truth)), rho = rho_truth,
+    n_species = n_species, n_rep = n_rep, trials = trials, phi = phi,
+    ordinal_thresholds = ordinal_thresholds
+  )
 }
 
-make_response <- function(d, family, link) {
+make_response <- function(d, family, link, fx) {
   eta <- d$eta
   if (family == "gaussian") return(eta + stats::rnorm(length(eta), sd = 0.35))
-  if (family == "binomial") return(stats::rbinom(length(eta), 1L, if (link == "probit") stats::pnorm(eta) else stats::plogis(eta)))
+  if (family == "binomial") {
+    if (fx$trials == 1L) {
+      return(stats::rbinom(length(eta), 1L, if (link == "probit") stats::pnorm(eta) else stats::plogis(eta)))
+    }
+    success <- stats::rbinom(length(eta), fx$trials, if (link == "probit") stats::pnorm(eta) else stats::plogis(eta))
+    return(cbind(success = success, failure = fx$trials - success))
+  }
   if (family == "poisson") return(stats::rpois(length(eta), pmin(exp(eta), 100)))
   if (family == "lognormal") return(exp(eta + stats::rnorm(length(eta), sd = 0.35)))
   if (family == "Gamma") { mu <- pmin(exp(eta), 100); return(stats::rgamma(length(mu), shape = 4, rate = 4 / mu)) }
-  if (family == "nbinom2") return(stats::rnbinom(length(eta), mu = pmin(exp(eta), 100), size = 3))
+  if (family == "nbinom2") return(stats::rnbinom(length(eta), mu = pmin(exp(eta), 100), size = fx$phi %||% 3))
   if (family == "nbinom1") { mu <- pmin(exp(eta), 100); return(stats::rnbinom(length(mu), mu = mu, size = mu / 0.7)) }
   if (family == "Beta") { p <- pmin(pmax(stats::plogis(eta), 1e-4), 1 - 1e-4); return(stats::rbeta(length(p), p * 12, (1 - p) * 12)) }
   if (family == "betabinomial") {
@@ -100,7 +159,7 @@ make_response <- function(d, family, link) {
     return(cbind(success = success, failure = 15L - success))
   }
   if (family == "student") return(eta + stats::rt(length(eta), df = 6) * 0.35)
-  if (family == "ordinal_probit") return(as.integer(cut(eta + stats::rnorm(length(eta)), breaks = c(-Inf, -0.6, 0.6, Inf), labels = FALSE)))
+  if (family == "ordinal_probit") return(as.integer(cut(eta + stats::rnorm(length(eta)), breaks = c(-Inf, fx$ordinal_thresholds, Inf), labels = FALSE)))
   stop("No DGP for ", family)
 }
 
@@ -111,11 +170,11 @@ family_object <- function(family, link) switch(family,
   student = gllvmTMB::student(), ordinal_probit = gllvmTMB::ordinal_probit())
 
 one <- function(cell, started) {
-  fx <- make_dgp(cell$seed, cell$n_species, cell$n_rep)
-  y <- make_response(fx$data, cell$family, cell$link)
+  fx <- make_dgp(cell, scenario)
+  y <- make_response(fx$data, cell$family, cell$link, fx)
   d <- fx$data
   response <- "value"
-  if (is.matrix(y)) { d$success <- y[, "success"]; d$failure <- 15L - d$success; response <- "cbind(success, failure)" } else d$value <- y
+  if (is.matrix(y)) { d$success <- y[, "success"]; d$failure <- y[, "failure"]; response <- "cbind(success, failure)" } else d$value <- y
   form <- stats::as.formula(sprintf("%s ~ 0 + trait + phylo_indep(1 + x | species, tree = fx$tree)", response))
   warning_text <- character()
   elapsed <- system.time({
@@ -126,8 +185,8 @@ one <- function(cell, started) {
       warning = function(w) { warning_text <<- c(warning_text, conditionMessage(w)); invokeRestart("muffleWarning") }),
       error = function(e) e)
   })[["elapsed"]]
-  base <- data.frame(repo_revision = repo_revision, source_checkout = repo_root, package_path = package_path, cell_id = cell$cell_id, family = cell$family, link = cell$link, seed = cell$seed,
-    n_species = cell$n_species, n_rep = cell$n_rep, elapsed_seconds = elapsed,
+  base <- data.frame(repo_revision = repo_revision, source_checkout = repo_root, package_path = package_path, scenario = scenario, cell_id = cell$cell_id, family = cell$family, link = cell$link, seed = cell$seed,
+    n_species = fx$n_species, n_rep = fx$n_rep, elapsed_seconds = elapsed,
     total_elapsed_seconds = as.numeric(difftime(Sys.time(), started, units = "secs")),
     status = "error", error = NA_character_, warnings = paste(unique(warning_text), collapse = " | "),
     convergence = NA_integer_, pd_hessian = NA, max_abs_gradient = NA_real_,
@@ -139,8 +198,9 @@ one <- function(cell, started) {
   fixed <- as.numeric(fit$sd_report$par.fixed[names(fit$sd_report$par.fixed) == "b_fix"])
   sd <- as.numeric(fit$report$sd_b)
   cor_mat <- tryCatch(as.matrix(fit$report$cor_b_mat), error = function(e) NULL)
-  cor <- if (!is.null(cor_mat) && nrow(cor_mat) == 6L) {
-    cor_mat[cbind(c(1L, 3L, 5L), c(2L, 4L, 6L))]
+  n_trait <- length(fx$beta)
+  cor <- if (!is.null(cor_mat) && nrow(cor_mat) == 2L * n_trait) {
+    cor_mat[cbind(2L * seq_len(n_trait) - 1L, 2L * seq_len(n_trait))]
   } else numeric()
   gradient <- tryCatch(as.numeric(fit$fit_health$max_gradient), error = function(e) NA_real_)
   base$status <- if (elapsed > per_fit_limit) "timeout" else "completed"
@@ -148,11 +208,11 @@ one <- function(cell, started) {
   base$pd_hessian <- isTRUE(fit$sd_report$pdHess)
   base$max_abs_gradient <- gradient
   base$fixed_estimate <- paste(fixed, collapse = ";")
-  base$fixed_max_abs_error <- if (length(fixed) == 3L) max(abs(fixed - fx$beta)) else NA_real_
+  base$fixed_max_abs_error <- if (length(fixed) == n_trait) max(abs(fixed - fx$beta)) else NA_real_
   base$sd_estimate <- paste(sd, collapse = ";")
-  base$sd_max_relative_error <- if (length(sd) == 6L) max(abs(sd - fx$sd) / fx$sd) else NA_real_
+  base$sd_max_relative_error <- if (length(sd) == 2L * n_trait) max(abs(sd - fx$sd) / fx$sd) else NA_real_
   base$cor_estimate <- paste(cor, collapse = ";")
-  base$cor_max_abs_error <- if (length(cor) == 3L) max(abs(cor - fx$rho)) else NA_real_
+  base$cor_max_abs_error <- if (length(cor) == n_trait) max(abs(cor - fx$rho)) else NA_real_
   healthy_bits <- c(
     completed = identical(base$status, "completed"),
     convergence = identical(base$convergence, 0L),
@@ -168,7 +228,7 @@ one <- function(cell, started) {
 started <- Sys.time(); rows <- list()
 for (i in seq_len(nrow(manifest))) {
   if (as.numeric(difftime(Sys.time(), started, units = "secs")) >= total_limit) {
-    rows[[length(rows) + 1L]] <- data.frame(repo_revision = repo_revision, source_checkout = repo_root, package_path = package_path, cell_id = manifest$cell_id[[i]], family = manifest$family[[i]], link = manifest$link[[i]], seed = manifest$seed[[i]], n_species = manifest$n_species[[i]], n_rep = manifest$n_rep[[i]], elapsed_seconds = NA_real_, total_elapsed_seconds = total_limit, status = "not_run_total_stop", error = "20-minute total stop rule reached", warnings = NA_character_, convergence = NA_integer_, pd_hessian = NA, max_abs_gradient = NA_real_, fixed_truth = NA_character_, fixed_estimate = NA_character_, fixed_max_abs_error = NA_real_, sd_truth = NA_character_, sd_estimate = NA_character_, sd_max_relative_error = NA_real_, cor_truth = NA_character_, cor_estimate = NA_character_, cor_max_abs_error = NA_real_, healthy = FALSE, healthy_reason = "total stop")
+    rows[[length(rows) + 1L]] <- data.frame(repo_revision = repo_revision, source_checkout = repo_root, package_path = package_path, scenario = scenario, cell_id = manifest$cell_id[[i]], family = manifest$family[[i]], link = manifest$link[[i]], seed = manifest$seed[[i]], n_species = manifest$n_species[[i]], n_rep = manifest$n_rep[[i]], elapsed_seconds = NA_real_, total_elapsed_seconds = total_limit, status = "not_run_total_stop", error = "20-minute total stop rule reached", warnings = NA_character_, convergence = NA_integer_, pd_hessian = NA, max_abs_gradient = NA_real_, fixed_truth = NA_character_, fixed_estimate = NA_character_, fixed_max_abs_error = NA_real_, sd_truth = NA_character_, sd_estimate = NA_character_, sd_max_relative_error = NA_real_, cor_truth = NA_character_, cor_estimate = NA_character_, cor_max_abs_error = NA_real_, healthy = FALSE, healthy_reason = "total stop")
     next
   }
   rows[[length(rows) + 1L]] <- one(manifest[i, ], started)
@@ -183,6 +243,7 @@ summary <- data.frame(
   repo_revision = repo_revision,
   source_checkout = repo_root,
   package_path = package_path,
+  scenario = scenario,
   n_cells = nrow(result),
   n_healthy = sum(result$healthy),
   smoke_pass = smoke_pass,

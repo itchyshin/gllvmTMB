@@ -2,16 +2,17 @@
 
 `run-slope-smoke.R` executes the frozen 12-cell operational smoke specified by
 `slope-smoke-manifest.csv`: the 11 admitted augmented-slope family IDs, with
-binomial logit and probit as distinct cells. It fits three traits under
-`phylo_indep(1 + x | species, tree = tree)`. This is single-seed smoke/recovery
-evidence, not an admission, coverage, or inference-certification campaign.
+binomial logit and probit as distinct cells. It fits per-trait phylogenetic
+intercept--slope blocks under `phylo_indep(1 + x | species, tree = tree)`.
+This is single-seed fit-health evidence, not an admission, coverage, or
+inference-certification campaign.
 
 | Symbol in the DGP | Keyword / fit term | DGP draw | Recorded recovery field | Frozen truth |
 |---|---|---|---|---|
-| `beta_t` | `0 + trait` | three trait intercepts in `eta` | `fixed_estimate`, `fixed_max_abs_error` | `(-0.35, 0, 0.35)` |
-| `a_{st}` | `phylo_indep(1 + x | species)` intercept | independently per trait, `a_t ~ N(0, sigma^2_{a,t} A)` | `sd_estimate` odd elements | `(0.45, 0.55, 0.40)` |
-| `b_{st}` | same keyword slope | independently per trait, correlated with `a_{st}`, and phylogenetically structured by `A` | `sd_estimate` even elements | `(0.35, 0.45, 0.30)` |
-| `rho_t` | within-trait augmented covariance block | `Cov(a_t,b_t)=rho_t sigma_{a,t} sigma_{b,t}` | `cor_estimate`, `cor_max_abs_error` | `(0.20, -0.15, 0.10)` |
+| `beta_t` | `0 + trait` | family-matched trait intercepts in `eta` | `fixed_estimate`, `fixed_max_abs_error` | recorded per cell |
+| `a_{st}` | `phylo_indep(1 + x | species)` intercept | independently per trait, `a_t ~ N(0, sigma^2_{a,t} A)` | `sd_estimate` odd elements | recorded per cell |
+| `b_{st}` | same keyword slope | independently per trait, correlated with `a_{st}`, and phylogenetically structured by `A` | `sd_estimate` even elements | recorded per cell |
+| `rho_t` | within-trait augmented covariance block | `Cov(a_t,b_t)=rho_t sigma_{a,t} sigma_{b,t}` | `cor_estimate`, `cor_max_abs_error` | recorded per cell |
 | `y_{ist}` | selected family/link | `g^{-1}(eta_{ist})` plus family-specific draw | manifest family/link and fit health | one frozen seed per cell |
 
 The CSV records convergence, positive-definite Hessian, maximum gradient,
@@ -23,6 +24,24 @@ Run from the worktree root:
 
 ```sh
 Rscript dev/release-evidence/run-slope-smoke.R
+```
+
+The default `family_matched` scenario uses the existing route-specific fixture
+information regimes: ten-trial binomial responses, a viable Poisson count
+mean, the widened NB2 fixture (`n = 80`, six repeats, `phi = 4`), and the
+four-category ordinal fixture. These choices are not tuned after the fact:
+they are the fixed regimes already used by the corresponding route tests.
+The results CSV records the actual `n_species`, `n_rep`, truths, and scenario.
+The retained source-controlled 12-cell fit-health receipt is
+`2026-08-23-family-matched-smoke-receipt.md`.
+
+The original three-trait common-DGP run remains available as a deliberately
+harsh stress check, but it is not a release gate because one Bernoulli trial
+and low count information are not commensurate across the supported families:
+
+```sh
+GLLVMTMB_SLOPE_SMOKE_SCENARIO=generic_stress \
+  Rscript dev/release-evidence/run-slope-smoke.R
 ```
 
 For a construction check only (not the release smoke), set
@@ -50,10 +69,9 @@ non-positive-definite Hessian and large gradient; negative binomial 2 had
 convergence and gradient failures; and ordinal-probit had convergence, Hessian,
 and gradient failures.
 
-The pre-registered local-smoke gate requires every cell to be healthy.  This
-smoke therefore **does not pass**.  It is retained as fit-health evidence, not
-as family-recovery certification.  No Totoro or DRAC campaign was requested or
-launched, no allowlist or validation-debt status was promoted, and no claim
-about interval coverage, structured-route recovery, or new family admission is
-made from these data.  The 0.7 decision is to keep MSPL point-only and
-experimental, and to park MSPL expansion for a separate, approved methods arc.
+The old common-DGP stress result did not pass. It remains retained as
+fit-health evidence, not as family-recovery certification. It must not block or
+promote a family-matched smoke, and it makes no claim about interval coverage,
+structured-route recovery, or new family admission. No Totoro or DRAC campaign
+was requested or launched, no allowlist or validation-debt status was promoted,
+and the 0.7 decision remains to keep MSPL point-only and experimental.

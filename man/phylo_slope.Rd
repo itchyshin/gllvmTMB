@@ -51,6 +51,14 @@ This helper supports:
 for every trait of species \eqn{i}).
 }
 
+A separate multi-predictor long-format alias is available when the RHS is
+the response-column factor: \code{phylo_slope(lat + temp | trait, tree = tree)}
+means \code{phylo_dep(0 + lat + temp | trait, tree = tree)}, so the two slope
+deviations have a full covariance. Use \code{||} instead of \code{|} for the
+diagonal \code{phylo_indep()} route. This alias is Gaussian-only, has no random
+intercept, and is intentionally outside the 5 x 3 trait-covariance grid.
+It does not change the one-predictor helper described above.
+
 For trait-specific intercept-and-slope covariance, use the corresponding
 augmented \code{phylo_indep()}, \code{phylo_latent()}, or \code{phylo_dep()} syntax.
 }

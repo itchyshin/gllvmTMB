@@ -912,7 +912,7 @@ extract_Sigma <- function(
       Sigma = Sigma,
       R = .safe_cov2cor(Sigma, slope_cols),
       level = "column_slope",
-      part = "indep",
+      part = fit$use$phylo_column_slope_mode %||% "indep",
       source = list(
         type = "phylo",
         grouping = fit$trait_col,

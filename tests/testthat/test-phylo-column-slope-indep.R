@@ -64,6 +64,33 @@
   list(data = dat, A = A, B = B, sd_slope = sd_slope)
 }
 
+.make_column_slope_dep_recovery_fixture <- function(
+    seed, n_traits = 20L, n_unit = 50L,
+    Sigma_slope = matrix(c(0.36, 0.105, 0.105, 0.1225), 2L,
+                         dimnames = list(c("lat", "temp"), c("lat", "temp"))),
+    residual_sd = 0.25) {
+  set.seed(seed)
+  trait_levels <- paste0("t", seq_len(n_traits))
+  A <- exp(-abs(outer(seq_len(n_traits), seq_len(n_traits), "-")) / 3)
+  dimnames(A) <- list(trait_levels, trait_levels)
+  ## B has Cov(vec(t(B))) = A %x% Sigma_slope in the public trait-major
+  ## ordering. This is the full-covariance counterpart of the diagonal DGP.
+  B <- t(chol(A + diag(1e-8, n_traits))) %*%
+    matrix(stats::rnorm(n_traits * 2L), n_traits, 2L) %*% chol(Sigma_slope)
+  dat <- expand.grid(
+    unit = factor(paste0("u", seq_len(n_unit))),
+    trait = factor(trait_levels, levels = trait_levels),
+    KEEP.OUT.ATTRS = FALSE
+  )
+  dat$cluster <- factor(rep(c("c1", "c2"), length.out = nrow(dat)))
+  dat$lat <- stats::rnorm(nrow(dat))
+  dat$temp <- stats::rnorm(nrow(dat))
+  trait_id <- as.integer(dat$trait)
+  dat$value <- 0.15 * trait_id + B[trait_id, 1L] * dat$lat +
+    B[trait_id, 2L] * dat$temp + stats::rnorm(nrow(dat), sd = residual_sd)
+  list(data = dat, A = A, B = B, Sigma_slope = Sigma_slope)
+}
+
 test_that("column slopes use predictor-only design and the RHS trait map", {
   fx <- .make_column_slope_fixture()
   fit <- .fit_column_slope(fx)
@@ -93,6 +120,50 @@ test_that("column slopes use predictor-only design and the RHS trait map", {
   expect_equal(ext$Sigma[1L, 2L], 0, tolerance = 1e-12)
   expect_error(extract_Sigma(fit, level = "phy"), "column_slope")
   expect_error(slope_sd_ci(fit), "does not yet provide intervals")
+})
+
+test_that("full column-slope covariance and helpers preserve their contracts", {
+  fx <- .make_column_slope_fixture(1201L)
+  canonical <- .fit_column_slope(
+    fx,
+    value ~ 0 + trait + phylo_dep(0 + lat + temp | trait, vcv = fx$A)
+  )
+  helper_full <- .fit_column_slope(
+    fx,
+    value ~ 0 + trait + phylo_slope(lat + temp | trait, vcv = fx$A)
+  )
+  helper_indep <- .fit_column_slope(
+    fx,
+    value ~ 0 + trait + phylo_slope(lat + temp || trait, vcv = fx$A)
+  )
+
+  expect_identical(canonical$use$phylo_column_slope_mode, "dep")
+  expect_identical(helper_full$use$phylo_column_slope_mode, "dep")
+  expect_identical(helper_indep$use$phylo_column_slope_mode, "indep")
+  ## A 2 x 2 full Cholesky has three free entries; the diagonal alias has two.
+  expect_identical(sum(names(canonical$opt$par) == "theta_dep_chol"), 3L)
+  expect_identical(sum(names(helper_indep$opt$par) == "theta_dep_chol"), 2L)
+  expect_equal(canonical$opt$objective, helper_full$opt$objective, tolerance = 1e-9)
+  ext <- extract_Sigma(canonical, level = "column_slope")
+  expect_identical(ext$part, "dep")
+  expect_true(all(eigen(ext$Sigma, symmetric = TRUE, only.values = TRUE)$values > 0))
+
+  animal_A <- .fit_column_slope(
+    fx,
+    value ~ 0 + trait + animal_slope(lat + temp | trait, A = fx$A)
+  )
+  animal_Ainv <- .fit_column_slope(
+    fx,
+    value ~ 0 + trait + animal_slope(lat + temp || trait, Ainv = solve(fx$A))
+  )
+  ped <- data.frame(id = fx$traits, sire = NA_character_, dam = NA_character_)
+  animal_ped <- .fit_column_slope(
+    fx,
+    value ~ 0 + trait + animal_slope(lat + temp | trait, pedigree = ped)
+  )
+  expect_identical(animal_A$use$phylo_column_slope_mode, "dep")
+  expect_identical(animal_Ainv$use$phylo_column_slope_mode, "indep")
+  expect_identical(animal_ped$use$phylo_column_slope_mode, "dep")
 })
 
 test_that("column slope grammar rejects an intercept, trait basis, and wrong RHS", {
@@ -200,4 +271,34 @@ test_that("Gaussian column slopes recover diagonal predictor covariance", {
   ## covariance route.
   expect_true(all(is.finite(ratio)))
   expect_true(all(ratio >= 0.70 & ratio <= 1.30))
+})
+
+test_that("Gaussian column slopes recover a full predictor covariance", {
+  skip_if_not_heavy()
+  seeds <- c(1202L, 2302L, 3402L, 4502L)
+  estimates <- array(NA_real_, dim = c(2L, 2L, length(seeds)))
+  for (i in seq_along(seeds)) {
+    fx <- .make_column_slope_dep_recovery_fixture(seeds[[i]])
+    fit <- .fit_column_slope(
+      fx,
+      value ~ 0 + trait + phylo_dep(0 + lat + temp | trait, vcv = fx$A)
+    )
+    expect_equal(fit$opt$convergence, 0L)
+    Sigma <- extract_Sigma(fit, level = "column_slope")$Sigma
+    expect_identical(extract_Sigma(fit, level = "column_slope")$part, "dep")
+    expect_true(all(eigen(Sigma, symmetric = TRUE, only.values = TRUE)$values > 0))
+    coefficient_cov <- kronecker(fx$A, Sigma)
+    expect_equal(unname(coefficient_cov[seq(1L, 2L * nrow(fx$A) - 1L, by = 2L),
+                                         seq(1L, 2L * nrow(fx$A) - 1L, by = 2L)]),
+                 unname(Sigma[1L, 1L] * fx$A), tolerance = 1e-12)
+    estimates[, , i] <- Sigma
+  }
+  mean_Sigma <- apply(estimates, c(1L, 2L), mean)
+  ## The four fixed draws recover mean variance ratios of 1.30 (lat) and
+  ## 1.48 (temp); the deliberately broad [0.65, 1.60] band rejects a zeroed
+  ## or materially mis-scaled route without treating finite-draw variation as
+  ## a platform failure.
+  expect_true(all(diag(mean_Sigma) / diag(fx$Sigma_slope) >= 0.65))
+  expect_true(all(diag(mean_Sigma) / diag(fx$Sigma_slope) <= 1.60))
+  expect_gt(mean_Sigma[1L, 2L], 0)
 })

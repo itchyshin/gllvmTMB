@@ -230,7 +230,10 @@ The source rows go from finest-grained (individual pedigree) to
 broadest (geographic distance), with the Design 65 generic dense kernel
 as the fifth row. Plus the random-slope keywords
 `phylo_slope(x | species)` and `animal_slope(x | id)` for per-group
-random regression slopes — see
+random-regression slopes. Their two-or-more-predictor long-format aliases
+`phylo_slope(x1 + x2 | trait)` / `animal_slope(x1 + x2 | trait)` are full
+response-column slope covariance, while `||` is diagonal; they remain helpers
+outside the grid — see
 [`14-known-relatedness-keywords.md`](14-known-relatedness-keywords.md)
 for the team-ratified convention.
 
@@ -796,8 +799,9 @@ target shape.
 - `weights = w` argument on `gllvmTMB()` — glmmTMB-style row-
   weights; post-CRAN. Must coexist cleanly with `meta_V(type =
   "exact")` per the drmTMB Phase 2b discipline.
-- `phylo_slope(...)` / `spatial_slope(...)` — phylogenetic and
-  spatial random slopes; post-M1.
+- spatial slope-only response-column helpers — a later design slice. The
+  phylogenetic and animal helpers are live; kernel and spatial extensions are
+  deliberately deferred.
 - `latent_interact(0 + trait | unit, d = K, by = x)` — galamm-style
   loadings that vary as a function of a covariate; post-CRAN
   (see vision doc).

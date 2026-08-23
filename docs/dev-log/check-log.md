@@ -53742,3 +53742,38 @@ rg -n 'MSPL|Totoro|DRAC|smoke_pass|n_healthy' dev/release-evidence
 already failed its all-healthy gate), Totoro/DRAC, any MSPL family/inference
 work, or a broad roxygen rewrite.  After-task:
 `docs/dev-log/after-task/2026-08-20-release-first-collaborator-slope-evidence.md`.
+
+---
+
+## 2026-08-23 — Full phylogenetic/animal column-slope covariance (Codex)
+
+**Lane:** `codex/1196-column-slopes-full`
+**Worktree:** `/private/tmp/gllvmtmb-1196-column-slopes-full`
+
+Added the Gaussian long-format full predictor covariance route
+`phylo_dep(0 + lat + temp | trait, ...)`, plus multi-predictor helper aliases:
+`phylo_slope(lat + temp | trait)` is the full route and `||` is diagonal.
+The same aliases route through `animal_indep()` / `animal_dep()` with
+`pedigree =`, `A =`, or `Ainv =`. Existing one-predictor helpers remain on
+their original path. The term has no random intercept; `0 + trait` remains the
+column-intercept model term. Wide, spatial/kernel, and non-Gaussian extensions
+remain deferred.
+
+**Commands and outcomes:**
+
+```sh
+GLLVMTMB_HEAVY_TESTS=1 Rscript --vanilla -e \
+  'devtools::load_all(quiet=TRUE); testthat::test_file("tests/testthat/test-phylo-column-slope-indep.R", reporter="summary")'
+# PASS: full diagonal and full-covariance matrix-oracle/recovery tests.
+Rscript --vanilla -e \
+  'devtools::load_all(quiet=TRUE); testthat::test_file("tests/testthat/test-phylo-slope-rhs-routing.R", reporter="summary")'
+# PASS: 12 RHS-routing checks.
+Rscript --vanilla -e 'pkgdown::check_pkgdown()'
+# PASS: No problems found.
+Rscript --vanilla -e 'devtools::document(quiet = TRUE)'
+# PASS: regenerated animal_slope.Rd, phylo_dep.Rd, phylo_slope.Rd.
+```
+
+**Deliberately not run:** full package check / three-OS CI (reserved for the
+PR), a Totoro/DRAC campaign (local four-seed recovery finished in under
+20 seconds), iSDM source formulas, or any wide/non-Gaussian slope claim.

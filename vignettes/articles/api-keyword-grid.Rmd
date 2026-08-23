@@ -280,6 +280,27 @@ structured routes. They are not additional covariance modes and should not be
 confused with an augmented intercept-and-slope covariance such as
 `animal_dep(1 + x | id, ...)` or `spatial_latent(1 + x | site, ...)`.
 
+For a **long-format column-predictor** question, the helpers have a distinct,
+multi-predictor spelling. Here the tree or pedigree links the response columns,
+not the sampling units:
+
+```r
+value ~ 0 + trait + group:lat + group:temp +
+  phylo_slope(lat + temp | trait, tree = tree)   # correlated slope deviations
+
+value ~ 0 + trait + group:lat + group:temp +
+  phylo_slope(lat + temp || trait, tree = tree)  # separate slope variances
+```
+
+The first is shorthand for `phylo_dep(0 + lat + temp | trait, tree = tree)`;
+the second is shorthand for `phylo_indep(...)`. `0 + trait` estimates the
+column intercepts, while the structured term adds no random intercept. These
+Gaussian-only forms return the predictor covariance from
+`extract_Sigma(fit, level = "column_slope")`; they are not trait-level
+covariance matrices. The parallel animal forms accept `pedigree =`, `A =`, or
+`Ainv =`. Wide-format column-predictor syntax, spatial/kernel variants, and
+non-Gaussian multi-slope claims remain deliberately deferred.
+
 An augmented random-slope term describes deviations around a fixed
 population-average slope. Include that fixed slope separately:
 

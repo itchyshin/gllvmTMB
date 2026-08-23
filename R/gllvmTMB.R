@@ -556,14 +556,34 @@
 #' set.seed(1)
 #' sim <- simulate_site_trait(n_sites = 50, n_species = 8, n_traits = 3,
 #'                            mean_species_per_site = 5)
-#' fit <- gllvmTMB(
+#' # Long format: one response value per site-species-trait row.
+#' fit_long <- gllvmTMB(
 #'   value ~ 0 + trait + (0 + trait):env_1 + (0 + trait):env_2,
 #'   data   = sim$data,
 #'   family = gaussian(),
 #'   trait  = "trait",
-#'   unit   = "site"
+#'   unit   = "site_species"
 #' )
-#' summary(fit)
+#'
+#' # Wide format: one row per site-species, with the same three traits.
+#' # `traits()` expands `1 + env_1 + env_2` to the explicit long terms above.
+#' wide_values <- stats::reshape(
+#'   sim$data[c("site_species", "trait", "value")],
+#'   idvar = "site_species", timevar = "trait", direction = "wide"
+#' )
+#' wide <- merge(
+#'   unique(sim$data[c("site_species", "env_1", "env_2")]), wide_values,
+#'   by = "site_species", sort = FALSE
+#' )
+#' names(wide) <- sub("^value[.]", "", names(wide))
+#' fit_wide <- gllvmTMB(
+#'   traits(trait_1, trait_2, trait_3) ~ 1 + env_1 + env_2,
+#'   data   = wide,
+#'   family = gaussian(),
+#'   unit   = "site_species"
+#' )
+#' summary(fit_long)
+#' summary(fit_wide)
 #' }
 gllvmTMB <- function(
   formula,

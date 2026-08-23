@@ -235,6 +235,7 @@ reference:
       current reader-facing boundary.
     contents:
     - Families
+    - isdm_source
     - isdm_sources
     - Beta
     - lognormal

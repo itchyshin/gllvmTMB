@@ -25,6 +25,39 @@
   NULL
 }
 
+#' Declare one iSDM source observation model
+#'
+#' Wraps an admitted observation law with the source-specific fixed-effects
+#' formula that describes recording effort or observation bias. The ecological
+#' formula remains in [gllvmTMB()]; `observation` contributes columns only on
+#' rows from this declared source. It is therefore not a second ecological
+#' process and does not turn relative intensity into abundance, occupancy, or
+#' detectability.
+#'
+#' @param family An admitted family law, currently [poisson()] with its log
+#'   link or [binomial()] with `link = "cloglog"`.
+#' @param observation A one-sided formula for source-specific observation
+#'   effects, for example `~ access + popdens` or `~ 0 + observer + method`.
+#' @return An internal source declaration accepted by [isdm_sources()].
+#' @examples
+#' isdm_source(poisson(link = "log"), observation = ~ access + popdens)
+#' @export
+isdm_source <- function(family, observation) {
+  if (!inherits(family, "family")) {
+    cli::cli_abort("{.arg family} must be an R {.cls family} object, such as {.code poisson(link = \"log\")}.")
+  }
+  if (!inherits(observation, "formula") || length(observation) != 2L) {
+    cli::cli_abort(c(
+      "{.arg observation} must be a one-sided formula.",
+      ">" = "Use {.code observation = ~ access + popdens} or {.code observation = ~ 0 + observer + method}."
+    ))
+  }
+  structure(
+    list(family = family, observation = observation),
+    class = "gllvmTMB_isdm_source"
+  )
+}
+
 #' Declare the sources of a multi-source integrated model
 #'
 #' `r lifecycle::badge("experimental")`
@@ -35,7 +68,8 @@
 #' share one ecological linear predictor while each source keeps its own
 #' observation law.
 #'
-#' Each argument is named for a source and gives its observation law. Two laws
+#' Each argument is named for a source and gives either a bare observation law
+#' or [isdm_source()] with its source-specific observation formula. Two laws
 #' are admitted, because both express the observation as a thinning of one
 #' shared intensity: `poisson()` (a count stream; the offset is log effort) and
 #' `binomial("cloglog")` (detection/non-detection; the offset is log support,
@@ -52,9 +86,9 @@
 #' This interface is experimental and may change.
 #'
 #' @param ... Two or more named arguments; each name is a source label and each
-#'   value its observation law (`poisson()` or `binomial("cloglog")`). At least
-#'   one source must be a count stream: the detection arm's offset is admitted
-#'   only alongside a count arm sharing the same intensity, so an
+#'   value is a bare admitted observation law or an [isdm_source()] declaration.
+#'   At least one source must be a count stream: the detection arm's offset is
+#'   admitted only alongside a count arm sharing the same intensity, so an
 #'   all-detection declaration is refused here rather than failing later.
 #' @return A mixed-family list understood by [gllvmTMB()], with
 #'   `family_var = "isdm_source"`. (The `isdm_source_laws` attribute is
@@ -62,9 +96,8 @@
 #'   list's names and laws, which survive reordering; the attribute does not.)
 #' @examples
 #' fam <- isdm_sources(
-#'   gbif       = poisson(),
-#'   literature = poisson(),
-#'   survey     = binomial("cloglog")
+#'   gbif = isdm_source(poisson(), observation = ~ access + popdens),
+#'   survey = isdm_source(binomial("cloglog"), observation = ~ 0 + observer)
 #' )
 #' names(fam)
 #' \dontrun{
@@ -78,7 +111,13 @@
 #' }
 #' @export
 isdm_sources <- function(...) {
-  laws <- list(...)
+  declarations <- list(...)
+  laws <- lapply(declarations, function(x) {
+    if (inherits(x, "gllvmTMB_isdm_source")) x$family else x
+  })
+  observations <- lapply(declarations, function(x) {
+    if (inherits(x, "gllvmTMB_isdm_source")) x$observation else NULL
+  })
   nms <- names(laws)
   if (length(laws) < 2L || is.null(nms) || any(!nzchar(nms))) {
     cli::cli_abort(c(
@@ -117,7 +156,96 @@ isdm_sources <- function(...) {
   out <- laws
   attr(out, "family_var") <- "isdm_source"
   attr(out, "isdm_source_laws") <- do.call(rbind, ids)
+  if (any(vapply(observations, Negate(is.null), logical(1L)))) {
+    attr(out, "isdm_observation") <- observations
+  }
   out
+}
+
+## Build source-masked fixed-effect columns after the ordinary long-format
+## design is assembled. Each formula is evaluated only on its source rows:
+## covariates that are absent/NA outside that source cannot contaminate the
+## design, and every generated column is identically zero elsewhere.
+.gll_isdm_observation_design <- function(X_fix, data, source, family_input) {
+  observations <- attr(family_input, "isdm_observation", exact = TRUE)
+  if (is.null(observations)) return(X_fix)
+  if (any(grepl("(^|:)isdm_source", colnames(X_fix)))) {
+    cli::cli_abort(c(
+      "Top-level {.var isdm_source} fixed effects duplicate an {.fn isdm_source} observation formula.",
+      "i" = "The wrapper owns source-specific observation effects and masks them to its declared source rows.",
+      ">" = "Remove {.var isdm_source} from the main ecological formula, or use bare laws in {.fn isdm_sources} and write the source effects manually."
+    ))
+  }
+  source_names <- names(family_input)
+  if (is.null(names(observations)) || !identical(names(observations), source_names)) {
+    cli::cli_abort("Internal: iSDM observation formulas are not aligned with declared sources.")
+  }
+  source_blocks <- list()
+  for (src in source_names) {
+    form <- observations[[src]]
+    if (is.null(form)) next
+    rows <- which(as.character(source) == src)
+    if (!length(rows)) {
+      cli::cli_abort("Internal: declared iSDM source {.val {src}} has no rows after filtering.")
+    }
+    vars <- all.vars(form)
+    missing_vars <- setdiff(vars, names(data))
+    if (length(missing_vars)) {
+      cli::cli_abort(c(
+        "Observation formula for source {.val {src}} uses variable{?s} not found in {.arg data}.",
+        "x" = "Missing: {.val {missing_vars}}.",
+        ">" = "Add those source covariates before fitting, or revise {.arg observation}."
+      ))
+    }
+    mf <- stats::model.frame(form, data = data[rows, , drop = FALSE],
+                             na.action = stats::na.pass)
+    mm <- stats::model.matrix(form, mf)
+    if (anyNA(mm)) {
+      cli::cli_abort(c(
+        "Observation formula for source {.val {src}} has missing values after source filtering.",
+        ">" = "Remove or impute missing observation covariates for that source before fitting."
+      ))
+    }
+    law <- family_input[[src]]
+    if (identical(law$family, "poisson") && !"(Intercept)" %in% colnames(mm)) {
+      cli::cli_abort(c(
+        "A Poisson iSDM source needs a reporting-rate intercept in {.arg observation}.",
+        "i" = "Source {.val {src}} used {.code {deparse(form)}}.",
+        ">" = "Use {.code observation = ~ access + popdens}; reserve {.code ~ 0 + ...} for a source with a scientifically justified no-intercept observation model."
+      ))
+    }
+    colnames(mm) <- paste0("isdm_source:", src, ":", colnames(mm))
+    source_design <- matrix(0, nrow = nrow(data), ncol = ncol(mm),
+                            dimnames = list(NULL, colnames(mm)))
+    source_design[rows, ] <- mm
+    source_blocks[[src]] <- source_design
+  }
+  source_design <- do.call(cbind, source_blocks)
+  ## `0 + trait` already spans the global intercept. A collection of
+  ## source-masked intercept columns can span it again (notably when a survey
+  ## uses `~ 0 + observer + method`). Keep the user’s ecological design first,
+  ## then retain source columns only when they add rank. This is deterministic
+  ## reference coding of the observation process, rather than an optimizer
+  ## failure or a silent change to the ecological intercepts.
+  keep <- logical(ncol(source_design))
+  current <- X_fix
+  rank_current <- qr(current)$rank
+  for (j in seq_len(ncol(source_design))) {
+    candidate <- cbind(current, source_design[, j, drop = FALSE])
+    rank_candidate <- qr(candidate)$rank
+    if (rank_candidate > rank_current) {
+      keep[j] <- TRUE
+      current <- candidate
+      rank_current <- rank_candidate
+    }
+  }
+  if (any(!keep)) {
+    cli::cli_inform(c(
+      "i" = "Dropped aliased source-observation column{?s}: {.val {colnames(source_design)[!keep]}}.",
+      "i" = "The retained columns are source-specific effects relative to the ecological `0 + trait` intercepts."
+    ))
+  }
+  cbind(X_fix, source_design[, keep, drop = FALSE])
 }
 
 ## The shared validation core, at any number of sources. `map` is the declared

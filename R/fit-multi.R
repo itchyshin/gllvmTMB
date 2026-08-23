@@ -229,6 +229,10 @@
 
   out <- family[match(fam_levels, family_names)]
   attr(out, "family_var") <- fam_var
+  observation <- attr(family, "isdm_observation", exact = TRUE)
+  if (!is.null(observation)) {
+    attr(out, "isdm_observation") <- observation[names(out)]
+  }
   out
 }
 
@@ -2704,6 +2708,14 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## We use the full data env so that 0 + trait + (0+trait):env etc. parses.
   mf <- stats::model.frame(parsed$fixed, data = data, na.action = stats::na.pass)
   X_fix <- stats::model.matrix(parsed$fixed, mf)
+  if (!is.null(attr(family_input, "isdm_observation", exact = TRUE))) {
+    X_fix <- .gll_isdm_observation_design(
+      X_fix = X_fix,
+      data = data,
+      source = data[["isdm_source"]],
+      family_input = family_input
+    )
+  }
 
   ## The offset is evaluated against the SAME `data` the model frame was built
   ## from, so the two stay row-aligned after any upstream row dropping. It is

@@ -102,10 +102,9 @@ With reference coding `gamma[1,j] = 0`:
 
 ```r
 fam <- isdm_sources(
-  gbif       = poisson(),
-  literature = poisson(),
-  checklist  = poisson(),
-  survey     = binomial("cloglog")
+  gbif = isdm_source(poisson(), observation = ~ access + popdens),
+  literature = isdm_source(poisson(), observation = ~ access + popdens),
+  survey = isdm_source(binomial("cloglog"), observation = ~ 0 + observer + method)
 )
 fit <- gllvmTMB(
   value ~ 0 + trait + trait:env + trait:src + offset(log_support) +
@@ -128,6 +127,15 @@ fit <- gllvmTMB(
 
 The predicate then validates a **declared** contract instead of pattern-matching two
 magic strings. Declaration-first is what makes the admission auditable at any `n`.
+
+`isdm_source(family, observation = ~ ...)` is the optional per-source wrapper.
+It evaluates its one-sided formula after row filtering for that source and masks
+the resulting columns to zero outside that source. Poisson wrappers require a
+reporting-rate intercept; `~ access + popdens` supplies one. A survey may use
+`~ 0 + observer + method`. Where source intercept contrasts are aliased with the
+ecological `0 + trait` intercepts, the observation design uses deterministic
+reference coding and retains only linearly independent source columns. Bare
+`poisson()` / `binomial("cloglog")` declarations retain their existing behaviour.
 
 ## 5. What stays refused (every Model 1 fence generalises; none relaxes)
 

@@ -574,7 +574,8 @@ link_residual_per_trait <- function(fit) {
 #'   no-op convention. `unit_obs`, structured tiers, and augmented-slope tiers
 #'   remain gated for Julia bridge extractors.
 #' @param level One of `"unit"` (between-unit), `"unit_obs"` (within-unit),
-#'   `"phy"` (phylogenetic), `"spatial"`, `"cluster"`, or `"cluster2"` (a
+#'   `"phy"` (phylogenetic), `"column_slope"` (the predictor-basis covariance
+#'   from `phylo_indep(0 + x1 + ... + xP | trait)`), `"spatial"`, `"cluster"`, or `"cluster2"` (a
 #'   second, independent diagonal grouping alongside `"cluster"` -- see the
 #'   `cluster2` argument to [gllvmTMB()]). Legacy aliases
 #'   `"B"`, `"W"`, and `"spde"` are accepted with a soft-deprecation
@@ -903,13 +904,22 @@ extract_Sigma <- function(
       slope_cols <- paste0("slope", seq_len(nrow(Sigma)))
     }
     rownames(Sigma) <- colnames(Sigma) <- slope_cols
+    column_labels <- fit$use$phylo_column_slope_labels
+    if (is.null(column_labels) || !length(column_labels)) {
+      column_labels <- levels(fit$data[[fit$trait_col]])
+    }
     return(list(
       Sigma = Sigma,
       R = .safe_cov2cor(Sigma, slope_cols),
       level = "column_slope",
       part = "indep",
-      source = "phylo",
+      source = list(
+        type = "phylo",
+        grouping = fit$trait_col,
+        labels = column_labels
+      ),
       predictors = slope_cols,
+      column_labels = column_labels,
       note = paste0(
         "phylo_indep(0 + x1 + ... + xP | trait): covariance among ",
         "the slope-predictor coefficients. The response-column tree supplies ",
@@ -937,7 +947,15 @@ extract_Sigma <- function(
   ## extract_Sigma_W() wrappers -- and the print()/summary() path that
   ## calls them -- correctly see NO between/within-unit term for a
   ## dep-only fit (they return NULL) rather than this phylogenetic block.
-  if (isTRUE(fit$use$phylo_dep_slope) && identical(level, "phy")) {
+  if (isTRUE(fit$use$phylo_column_slope) && identical(level, "phy")) {
+    cli::cli_abort(c(
+      "This fit has a slope-only response-column covariance, not a phylogenetic trait-level {.code Sigma}.",
+      "i" = "Use {.code extract_Sigma(fit, level = \"column_slope\")} for the covariance among predictor slopes.",
+      "i" = "Its {.code column_labels} and {.code source} fields identify the response-column phylogenetic axis."
+    ))
+  }
+  if (isTRUE(fit$use$phylo_dep_slope) && !isTRUE(fit$use$phylo_column_slope) &&
+      identical(level, "phy")) {
     is_indep_slope <- isTRUE(fit$use$phylo_indep_slope)
     Sigma <- fit$report$Sigma_b_dep
     if (is.null(Sigma)) {

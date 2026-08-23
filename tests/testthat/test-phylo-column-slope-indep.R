@@ -85,8 +85,14 @@ test_that("column slopes use predictor-only design and the RHS trait map", {
 
   ext <- extract_Sigma(fit, level = "column_slope")
   expect_identical(ext$predictors, c("lat", "temp"))
+  expect_identical(ext$column_labels, fx$traits)
+  expect_identical(ext$source$type, "phylo")
+  expect_identical(ext$source$grouping, "trait")
+  expect_identical(ext$source$labels, fx$traits)
   expect_identical(dim(ext$Sigma), c(2L, 2L))
   expect_equal(ext$Sigma[1L, 2L], 0, tolerance = 1e-12)
+  expect_error(extract_Sigma(fit, level = "phy"), "column_slope")
+  expect_error(slope_sd_ci(fit), "does not yet provide intervals")
 })
 
 test_that("column slope grammar rejects an intercept, trait basis, and wrong RHS", {

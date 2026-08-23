@@ -100,7 +100,7 @@ link-residual / OLRE caveats.
 
 ### 1. Covariance family
 
-#### `extract_Sigma(fit, level = c("unit", "unit_slope", "unit_obs", "cluster", "cluster2", "phy", "phy_slope", "spatial", "spde_slope"), part = c("total", "shared", "unique"))`
+#### `extract_Sigma(fit, level = c("unit", "unit_slope", "unit_obs", "cluster", "cluster2", "phy", "phy_slope", "column_slope", "spatial", "spde_slope"), part = c("total", "shared", "unique"))`
 
 **Return**: ordinary covariance levels return a `T x T` symmetric
 positive-semidefinite matrix with row and column names equal to trait labels.
@@ -112,6 +112,7 @@ Augmented random-regression levels are explicit shape exceptions:
 | legacy/shared `phylo_unique(1 + x \| species)` | shared `2 x 2` intercept-slope block | `level = "phy_unique_slope"` |
 | current `phylo_indep(1 + x \| species)` | interleaved `2T x 2T`, `T` independent within-trait blocks | `level = "phy_indep_slope"`, `part = "indep"` |
 | `phylo_dep(1 + x1 + ... + xs \| species)` | full interleaved `(1+s)T x (1+s)T` | `level = "phy_dep"`, `part = "dep"` |
+| Gaussian `phylo_indep(0 + x1 + ... + xP \| trait)` | named `P x P` predictor-slope covariance; source labels identify the response-column phylogenetic axis | `level = "column_slope"`, `part = "indep"`; return `source` (`type`, `grouping`, `labels`) and `column_labels` |
 | legacy/shared `spatial_unique(1 + x \| coords)` | shared `2 x 2` SPDE field block | `level = "spde_base_slope"` |
 | current `spatial_indep(1 + x \| coords)` | interleaved `2T x 2T`, `T` independent within-trait field blocks | `level = "spde_indep_slope"`, `part = "indep"` |
 | `spatial_dep(1 + x \| coords)` | full interleaved `2T x 2T` field covariance | `level = "spde_dep"`, `part = "dep"` |

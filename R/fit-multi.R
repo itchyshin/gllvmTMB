@@ -7421,6 +7421,12 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                           ## covariance tier, and is therefore extracted only
                           ## with level = "column_slope".
                           phylo_column_slope = isTRUE(use_phylo_column_slope),
+                          ## Labels of the source-matrix axis for the
+                          ## slope-only response-column route.
+                          phylo_column_slope_labels =
+                            if (use_phylo_column_slope) {
+                              levels(data[[phylo_slope_group]])
+                            } else NULL,
                           ## RE-03 multi-slope: the ordered slope-covariate
                           ## names (length s) so extract_Sigma() can label the
                           ## (1+s)T interleaved Sigma_b_dep rows as

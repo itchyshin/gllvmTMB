@@ -490,6 +490,16 @@ slope_sd_ci <- function(fit, level = 0.95, scale = c("sd", "variance")) {
     cli::cli_abort("{.arg level} must be a single number in (0, 1).")
   scale <- match.arg(scale)
 
+  ## This route has a predictor-basis covariance but no interval contract yet;
+  ## redirect before asking for an irrelevant sdreport payload.
+  if (isTRUE(fit$use$phylo_column_slope)) {
+    cli::cli_abort(c(
+      "{.fun slope_sd_ci} does not yet provide intervals for slope-only response-column covariance.",
+      "i" = "Use {.code extract_Sigma(fit, level = \"column_slope\")} for the Gaussian point-estimate predictor covariance.",
+      ">" = "Interval support for this parameterisation is deferred until a dedicated ADREPORT recovery slice."
+    ))
+  }
+
   if (is.null(fit$sd_report) || !inherits(fit$sd_report, "sdreport"))
     cli::cli_abort(c(
       "Fit does not carry a TMB {.code sdreport}.",

@@ -1,5 +1,11 @@
 # gllvmTMB 0.7.0 (development)
 
+* **`extract_Sigma_B()` / `extract_Sigma_W()` now warn on call (#1194).**
+  The wrappers stay exported and still return the historical `Sigma_B` /
+  `R_B` and `Sigma_W` / `R_W` names. Callers of the old spelling now see
+  `lifecycle::deprecate_soft()` pointing at `extract_Sigma(fit, level =
+  "unit")` / `level = "unit_obs"`. Runtime warning only; no unexport.
+
 * **The augmented-LHS parser guard now honours a non-default `trait =`
   column (#1188).** `.assert_no_augmented_lhs()` decided whether a bare
   covstruct keyword (`latent`, `unique`, `indep`, `dep`, `scalar`,

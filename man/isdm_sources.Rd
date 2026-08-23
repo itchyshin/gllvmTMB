@@ -49,7 +49,7 @@ This interface is experimental and may change.
 \examples{
 fam <- isdm_sources(
   gbif = isdm_source(poisson(), observation = ~ access + popdens),
-  survey = isdm_source(binomial("cloglog"), observation = ~ 0 + observer)
+  survey = isdm_source(poisson(), observation = ~ 0 + observer + method)
 )
 names(fam)
 \dontrun{

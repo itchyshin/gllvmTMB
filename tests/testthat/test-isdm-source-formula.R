@@ -16,7 +16,7 @@
   isdm_sources(
     gbif = isdm_source(poisson(link = "log"), observation = ~ access + popdens),
     inat = isdm_source(poisson(), observation = ~ access + popdens),
-    survey = isdm_source(binomial("cloglog"), observation = ~ 0 + observer + method)
+    survey = isdm_source(poisson(), observation = ~ 0 + observer + method)
   )
 }
 
@@ -25,30 +25,34 @@
   cells <- paste0("c", seq_len(n_cell))
   traits <- c("sp1", "sp2")
   env <- as.numeric(scale(stats::runif(n_cell)))
-  make_source <- function(source, law) {
+  make_source <- function(source) {
     d <- expand.grid(cell_id = cells, trait = traits, stringsAsFactors = FALSE)
     cell_id <- match(d$cell_id, cells)
     trait_id <- match(d$trait, traits)
     d$isdm_source <- source
     d$env <- env[cell_id]
-    d$support <- if (identical(law, "poisson")) 1.5 else 0.9
+    d$support <- 1.5
     d$access <- stats::rnorm(nrow(d))
+    d$observer <- NA_character_
+    d$method <- NA_character_
     eta <- c(-0.2, 0.15)[trait_id] + c(0.3, -0.2)[trait_id] * d$env
     if (identical(source, "gbif")) eta <- eta + 0.25 + 0.5 * d$access
-    d$value <- if (identical(law, "poisson")) {
-      stats::rpois(nrow(d), d$support * exp(eta))
-    } else {
-      stats::rbinom(nrow(d), 1L, -expm1(-d$support * exp(eta)))
+    if (identical(source, "survey")) {
+      d$observer <- sample(c("o1", "o2"), nrow(d), replace = TRUE)
+      d$method <- sample(c("walk", "point"), nrow(d), replace = TRUE)
+      eta <- eta + ifelse(d$observer == "o2", 0.2, 0) +
+        ifelse(d$method == "point", -0.15, 0)
     }
+    d$value <- stats::rpois(nrow(d), d$support * exp(eta))
     d
   }
-  dat <- rbind(make_source("gbif", "poisson"),
-               make_source("inat", "poisson"),
-               make_source("survey", "survey"))
+  dat <- rbind(make_source("gbif"), make_source("inat"), make_source("survey"))
   dat$trait <- factor(dat$trait)
   dat$cell_id <- factor(dat$cell_id)
   dat$isdm_source <- factor(dat$isdm_source,
                             levels = c("gbif", "inat", "survey"))
+  dat$observer <- factor(dat$observer)
+  dat$method <- factor(dat$method)
   dat$log_support <- log(dat$support)
   dat
 }
@@ -86,22 +90,47 @@ test_that("iSDM observation designs are source-masked after filtering", {
   expect_false(anyNA(out))
 })
 
+test_that("iSDM observation formulas accept source-specific intercept or 0 + bases", {
+  dat <- .isdm_source_formula_fixture()
+  X <- stats::model.matrix(~ 0 + trait, data = dat)
+  no_intercept <- .gll_isdm_observation_design(
+    X, dat, dat$isdm_source,
+    isdm_sources(gbif = isdm_source(poisson(), observation = ~ 0 + access),
+                 inat = poisson(), survey = poisson())
+  )
+  expect_true("isdm_source:gbif:access" %in% colnames(no_intercept))
+  expect_equal(unname(no_intercept[dat$isdm_source != "gbif", "isdm_source:gbif:access"]),
+               rep(0, sum(dat$isdm_source != "gbif")))
+
+  ## A Poisson survey may likewise use a no-intercept observer/method basis.
+  ## This crossed fixture makes the source levels estimable beyond `0 + trait`.
+  survey_dat <- data.frame(
+    trait = factor(rep(c("sp1", "sp2"), 6L)),
+    isdm_source = factor(rep(c("gbif", "survey"), each = 6L),
+                            levels = c("gbif", "survey")),
+    observer = factor(c(rep(NA_character_, 6L), "o1", "o1", "o2", "o2", "o1", "o2")),
+    method = factor(c(rep(NA_character_, 6L), "walk", "point", "point", "walk", "walk", "point"))
+  )
+  survey_X <- stats::model.matrix(~ 0 + trait, data = survey_dat)
+  survey_basis <- .gll_isdm_observation_design(
+    survey_X, survey_dat, survey_dat$isdm_source,
+    isdm_sources(gbif = poisson(),
+                 survey = isdm_source(poisson(), observation = ~ 0 + observer + method))
+  )
+  survey_cols <- grep("^isdm_source:survey:", colnames(survey_basis), value = TRUE)
+  expect_gt(length(survey_cols), 0L)
+  expect_equal(unname(survey_basis[survey_dat$isdm_source != "survey", survey_cols, drop = FALSE]),
+               matrix(0, sum(survey_dat$isdm_source != "survey"), length(survey_cols)))
+})
+
 test_that("iSDM observation formulas fail where the user can repair them", {
   dat <- .isdm_source_formula_fixture()
   X <- stats::model.matrix(~ 0 + trait, data = dat)
   expect_error(
     .gll_isdm_observation_design(
       X, dat, dat$isdm_source,
-      isdm_sources(gbif = isdm_source(poisson(), observation = ~ 0 + access),
-                   inat = poisson(), survey = binomial("cloglog"))
-    ),
-    "reporting-rate intercept"
-  )
-  expect_error(
-    .gll_isdm_observation_design(
-      X, dat, dat$isdm_source,
       isdm_sources(gbif = isdm_source(poisson(), observation = ~ unavailable),
-                   inat = poisson(), survey = binomial("cloglog"))
+                   inat = poisson(), survey = poisson())
     ),
     "not found"
   )
@@ -116,12 +145,12 @@ test_that("iSDM observation formulas fail where the user can repair them", {
                "duplicate")
 })
 
-test_that("a source-masked observation slope recovers on its own source rows", {
+test_that("all-Poisson source formulas fit and recover a source-masked observation slope", {
   dat <- .isdm_source_recovery_fixture()
   fam <- isdm_sources(
     gbif = isdm_source(poisson(), observation = ~ access),
     inat = poisson(),
-    survey = binomial("cloglog")
+    survey = isdm_source(poisson(), observation = ~ 0 + observer + method)
   )
   fit <- suppressMessages(gllvmTMB(
     value ~ 0 + trait + trait:env + offset(log_support),
@@ -134,4 +163,7 @@ test_that("a source-masked observation slope recovers on its own source rows", {
   expect_equal(unname(estimate), 0.5, tolerance = 0.15)
   expect_equal(unname(fit$tmb_data$X_fix[dat$isdm_source != "gbif", access_col]),
                rep(0, sum(dat$isdm_source != "gbif")))
+  survey_cols <- grep("^isdm_source:survey:", fit$X_fix_names, value = TRUE)
+  expect_gt(length(survey_cols), 0L)
+  expect_false(anyNA(fit$opt$par[names(fit$opt$par) == "b_fix"]))
 })

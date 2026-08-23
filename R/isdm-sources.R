@@ -97,7 +97,7 @@ isdm_source <- function(family, observation) {
 #' @examples
 #' fam <- isdm_sources(
 #'   gbif = isdm_source(poisson(), observation = ~ access + popdens),
-#'   survey = isdm_source(binomial("cloglog"), observation = ~ 0 + observer)
+#'   survey = isdm_source(poisson(), observation = ~ 0 + observer + method)
 #' )
 #' names(fam)
 #' \dontrun{
@@ -206,14 +206,6 @@ isdm_sources <- function(...) {
         ">" = "Remove or impute missing observation covariates for that source before fitting."
       ))
     }
-    law <- family_input[[src]]
-    if (identical(law$family, "poisson") && !"(Intercept)" %in% colnames(mm)) {
-      cli::cli_abort(c(
-        "A Poisson iSDM source needs a reporting-rate intercept in {.arg observation}.",
-        "i" = "Source {.val {src}} used {.code {deparse(form)}}.",
-        ">" = "Use {.code observation = ~ access + popdens}; reserve {.code ~ 0 + ...} for a source with a scientifically justified no-intercept observation model."
-      ))
-    }
     colnames(mm) <- paste0("isdm_source:", src, ":", colnames(mm))
     source_design <- matrix(0, nrow = nrow(data), ncol = ncol(mm),
                             dimnames = list(NULL, colnames(mm)))
@@ -222,11 +214,11 @@ isdm_sources <- function(...) {
   }
   source_design <- do.call(cbind, source_blocks)
   ## `0 + trait` already spans the global intercept. A collection of
-  ## source-masked intercept columns can span it again (notably when a survey
-  ## uses `~ 0 + observer + method`). Keep the user’s ecological design first,
-  ## then retain source columns only when they add rank. This is deterministic
-  ## reference coding of the observation process, rather than an optimizer
-  ## failure or a silent change to the ecological intercepts.
+  ## source-masked intercept or factor-level columns can span it again (notably
+  ## when a source uses `~ 0 + observer + method`). Keep the user's ecological
+  ## design first, then retain source columns only when they add rank. This is
+  ## deterministic reference coding of the observation process, rather than an
+  ## optimizer failure or a silent change to the ecological intercepts.
   keep <- logical(ncol(source_design))
   current <- X_fix
   rank_current <- qr(current)$rank

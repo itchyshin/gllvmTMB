@@ -6,8 +6,8 @@
 \usage{
 extract_Sigma(
   fit,
-  level = c("unit", "unit_slope", "unit_obs", "phy", "phy_slope", "spatial",
-    "spde_slope", "cluster", "cluster2", "B", "B_slope", "W", "spde"),
+  level = c("unit", "unit_slope", "unit_obs", "phy", "phy_slope", "column_slope",
+    "spatial", "spde_slope", "cluster", "cluster2", "B", "B_slope", "W", "spde"),
   part = c("total", "shared", "unique", "psi"),
   link_residual = c("auto", "none"),
   .skip_warn = FALSE
@@ -23,7 +23,8 @@ no-op convention. \code{unit_obs}, structured tiers, and augmented-slope tiers
 remain gated for Julia bridge extractors.}
 
 \item{level}{One of \code{"unit"} (between-unit), \code{"unit_obs"} (within-unit),
-\code{"phy"} (phylogenetic), \code{"spatial"}, \code{"cluster"}, or \code{"cluster2"} (a
+\code{"phy"} (phylogenetic), \code{"column_slope"} (the predictor-basis covariance
+from \code{phylo_indep(0 + x1 + ... + xP | trait)}), \code{"spatial"}, \code{"cluster"}, or \code{"cluster2"} (a
 second, independent diagonal grouping alongside \code{"cluster"} -- see the
 \code{cluster2} argument to \code{\link[=gllvmTMB]{gllvmTMB()}}). Legacy aliases
 \code{"B"}, \code{"W"}, and \code{"spde"} are accepted with a soft-deprecation

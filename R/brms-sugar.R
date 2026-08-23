@@ -1533,19 +1533,45 @@ scalar <- function(formula) {
 #' A single-covariate random regression uses
 #' `phylo_indep(1 + x | species)` in wide syntax or
 #' `phylo_indep(0 + trait + (0 + trait):x | species)` in explicit long syntax.
-#' It estimates an intercept--slope block with their correlation fixed to zero.
+#' It estimates independent trait-specific intercept--slope blocks. The
+#' intercept--slope correlation is estimated within each trait; cross-trait
+#' blocks are structurally zero.
+#'
+#' ## Slope-only response-column form
+#'
+#' For a long-format Gaussian model, `phylo_indep(0 + lat + temp | trait)`
+#' adds response-column deviations to the fixed slopes without adding a random
+#' intercept. The phylogeny is indexed by the response-column factor on the
+#' right of `|`; `indep` makes the covariance among `lat` and `temp` slopes
+#' diagonal. With slope coefficient matrix \eqn{\mathbf B} (rows are
+#' response columns and columns are predictors), let
+#' \eqn{\mathbf b=\mathrm{vec}(\mathbf B^\mathsf{T})} order coefficients by
+#' response column: `lat`, `temp` for column 1, then `lat`, `temp` for column
+#' 2, and so on. Then
+#' \eqn{\mathrm{Cov}(\mathbf b) = \mathbf A_{\mathrm{phy}}
+#' \otimes \mathrm{diag}(\sigma^2_{\mathrm{lat}},
+#' \sigma^2_{\mathrm{temp}})}. (The native implementation stores the
+#' permutation-equivalent column-major vector.) Retrieve that predictor-basis covariance with
+#' `extract_Sigma(fit, level = "column_slope")`. It is not a trait-level
+#' \eqn{\boldsymbol\Sigma}. This V1 route requires bare finite numeric
+#' predictors, exactly the resolved `trait` column on the RHS, and Gaussian
+#' responses; wide-format and non-Gaussian column slopes are planned work.
 #'
 #' Pass the phylogeny via `tree = phylo` (canonical, sparse \eqn{\mathbf{A}^{-1}}) or
 #' `vcv = Cphy` (`r lifecycle::badge("superseded")`, dense). See
 #' [phylo_latent()] for the full discussion of the two paths.
 #'
-#' @param formula Intercept-only `0 + trait | species`, or the supported
-#'   one-covariate intercept-and-slope form described above.
+#' @param formula Intercept-only `0 + trait | species`, the supported
+#'   intercept-and-slope form described above, or the Gaussian long-format
+#'   slope-only response-column form `0 + x1 + ... | trait`.
 #' @param tree An `ape::phylo` object. **Canonical.**
 #' @param vcv A tip-only phylogenetic correlation matrix
-#'   (`n_species x n_species`). Legacy alias of `A =`.
-#' @param A Tip-level relatedness matrix (`n_species x n_species`)
-#'   -- alias of `vcv =`, aligned with the `animal_*` family's
+#'   (`n_species x n_species`) for the ordinary forms. For the slope-only
+#'   response-column form it is instead `n_traits x n_traits`, with row names
+#'   matching the resolved RHS `trait` levels. Legacy alias of `A =`.
+#' @param A Tip-level relatedness matrix (`n_species x n_species`) for the
+#'   ordinary forms; for the slope-only response-column form, the corresponding
+#'   trait-level matrix. Alias of `vcv =`, aligned with the `animal_*` family's
 #'   argument naming.
 #' @param Ainv Sparse precision matrix (inverse of `A`).
 #' @param common `FALSE` (default) for a separate phylogenetic variance per
@@ -2063,6 +2089,30 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL) {
     ))
   }
   list(lhs_form = "unsupported", slope_col = NULL, slope_cols = NULL)
+}
+
+## Column-slope grammar is deliberately distinct from the existing augmented
+## intercept-and-slope grammar. It accepts only a slope-only bare-variable
+## basis, e.g. `0 + lat + temp`: no intercept, trait indicator, transform, or
+## factor expansion can enter this first matrix-normal route by accident.
+.gllvmTMB_column_slope_cols <- function(lhs) {
+  terms <- .flatten_lhs_plus(.strip_lhs_parens(lhs))
+  if (length(terms) < 2L ||
+      !is.numeric(terms[[1L]]) || length(terms[[1L]]) != 1L ||
+      terms[[1L]] != 0 ||
+      !all(vapply(terms[-1L], is.name, logical(1)))) {
+    return(NULL)
+  }
+  cols <- vapply(terms[-1L], as.character, character(1))
+  if ("trait" %in% cols) {
+    cli::cli_abort(c(
+      "A column-slope basis cannot include {.code trait}.",
+      "i" = "The response-column intercept belongs in the main formula, e.g. {.code 0 + trait}.",
+      ">" = "Use {.code phylo_indep(0 + lat + temp | trait, tree = tree)}."
+    ))
+  }
+  .assert_distinct_slope_cols(cols)
+  cols
 }
 
 ## Design 07 Stage 2.5 (May 2026): fail-loud guard against augmented LHS
@@ -4048,6 +4098,31 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
             "i" = "Got RHS: {.code {deparse(species_arg)}}.",
             ">" = "Use {.code phylo_indep(0 + trait | species)}."
           ))
+        }
+        ## Column-predictor slope-only route (Design 130): the RHS is the
+        ## response-column factor, while the tree / A matrix supplies its
+        ## dependence. The random coefficient basis is deliberately `0 + x`
+        ## rather than `0 + trait + trait:x`: fixed trait intercepts remain in
+        ## the main formula and this term never gains a random intercept.
+        column_slope_cols <- .gllvmTMB_column_slope_cols(lhs_bar)
+        if (!is.null(column_slope_cols)) {
+          if (isTRUE(.read_common_flag(e, fn))) {
+            cli::cli_abort(c(
+              "{.code common = TRUE} is not defined for column-predictor slopes.",
+              "i" = "Each predictor has its own slope variance in {.code phylo_indep(0 + x1 + x2 | trait)}.",
+              ">" = "Drop {.code common = TRUE}, or use an intercept-only {.code phylo_indep(0 + trait | species, common = TRUE)} term."
+            ))
+          }
+          extras <- .pass_through_extras(e, c("tree", "vcv", "A", "Ainv"))
+          new_call <- as.call(c(
+            list(as.name("phylo_slope"), bar),
+            list(
+              .column_slope_indep = TRUE,
+              column_slope_cols = column_slope_cols
+            ),
+            extras
+          ))
+          return(new_call)
         }
         ## `common = TRUE` (Design 79 scalar-collapse): tie the T per-trait
         ## phylogenetic variances to ONE shared variance -- byte-identical to the

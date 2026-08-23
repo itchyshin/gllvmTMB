@@ -844,14 +844,21 @@ Type objective_function<Type>::operator()()
   DATA_INTEGER(use_phylo_diag);
 
   // Phylogenetic random slope (Q6):
-  //   eta(o) += b_phy_slope(species_aug_id(o)) * x_phy_slope(o)
+  //   eta(o) += b_phy_slope(phylo_slope_aug_id(o)) * x_phy_slope(o)
   //   b_phy_slope ~ N(0, sigma_slope^2 * A_phy)
   // Slopes are shared across traits (one per species, applied uniformly to
-  // every trait). Reuses Ainv_phy_rr / n_aug_phy / species_aug_id from the
-  // phylo_rr machinery. When use_phylo_slope == 0, b_phy_slope is mapped
+  // every trait). Its precision and map are resolved from the term RHS, not
+  // from the global cluster tier. When use_phylo_slope == 0, b_phy_slope is mapped
   // off and x_phy_slope is unused.
   DATA_INTEGER(use_phylo_slope);
   DATA_VECTOR(x_phy_slope);          // length n_obs; covariate values
+  // PR-0: legacy slope-only terms have their own RHS-controlled grouping
+  // map and precision.  This keeps the global cluster-tier phylogenetic
+  // fields independent when `phylo_slope(x | g)` uses a different `g`.
+  DATA_INTEGER(n_aug_phy_slope);
+  DATA_SPARSE_MATRIX(Ainv_phy_slope);
+  DATA_SCALAR(log_det_A_phy_slope);
+  DATA_IVECTOR(phylo_slope_aug_id);
   // Augmented-LHS random-regression path (live). The default R-side flag is
   // 0, so the legacy b_phy_slope path above remains active and byte-identical
   // for non-augmented fits; the parser/R design-matrix routes set it to 1.
@@ -1126,7 +1133,7 @@ Type objective_function<Type>::operator()()
   PARAMETER_VECTOR(log_sd_kernel_diag);          // optional Psi log-SDs
   PARAMETER_VECTOR(g_kernel_diag);               // optional Psi fields
   // phylo_slope params (Q6)
-  PARAMETER_VECTOR(b_phy_slope);                 // length n_aug_phy; per-species slopes
+  PARAMETER_VECTOR(b_phy_slope);                 // length n_aug_phy_slope; per-group slopes
   PARAMETER(log_sigma_slope);                    // scalar; log slope sd
   PARAMETER_ARRAY(b_phy_aug);                     // n_aug_phy x n_lhs_cols x n_phy_aug_blocks
   PARAMETER_VECTOR(log_sd_b);                     // length n_lhs_cols
@@ -1906,17 +1913,26 @@ Type objective_function<Type>::operator()()
   // through the sparse Ainv. The augmented path below is live (parser
   // activation has landed); keeping this branch active preserves current
   // phylo_slope() fits and parameter names byte-for-byte.
-  // -log p(b) = 0.5 * (n_aug_phy * log(2pi) + 2 n_aug_phy log_sigma_slope
-  //                    + log_det_A_phy_rr
+  // -log p(b) = 0.5 * (n_aug_phy_slope * log(2pi)
+  //                    + 2 n_aug_phy_slope log_sigma_slope
+  //                    + log_det_A_phy_slope
   //                    + b' Ainv b / sigma_slope^2)
   if (use_phylo_slope == 1 && use_phylo_slope_correlated == 0) {
+    if (b_phy_slope.size() != n_aug_phy_slope ||
+        Ainv_phy_slope.rows() != n_aug_phy_slope ||
+        Ainv_phy_slope.cols() != n_aug_phy_slope ||
+        phylo_slope_aug_id.size() != y.size())
+      error("gllvmTMB_multi: legacy phylo_slope dimensions are inconsistent");
+    for (int o = 0; o < y.size(); ++o)
+      if (phylo_slope_aug_id(o) < 0 || phylo_slope_aug_id(o) >= n_aug_phy_slope)
+        error("gllvmTMB_multi: legacy phylo_slope RHS map is out of bounds");
     Type sigma_slope = exp(log_sigma_slope);
     Type sigma_slope2 = sigma_slope * sigma_slope;
     vector<Type> b = b_phy_slope;
-    Type quad = (b.matrix().transpose() * Ainv_phy_rr * b.matrix())(0, 0);
-    nll += 0.5 * (Type(n_aug_phy) * log(2.0 * M_PI)
-                  + Type(2) * Type(n_aug_phy) * log_sigma_slope
-                  + log_det_A_phy_rr
+    Type quad = (b.matrix().transpose() * Ainv_phy_slope * b.matrix())(0, 0);
+    nll += 0.5 * (Type(n_aug_phy_slope) * log(2.0 * M_PI)
+                  + Type(2) * Type(n_aug_phy_slope) * log_sigma_slope
+                  + log_det_A_phy_slope
                   + quad / sigma_slope2);
     REPORT(sigma_slope);
   }
@@ -2639,7 +2655,7 @@ Type objective_function<Type>::operator()()
       eta(o) += contrib_aug;
     } else if (use_phylo_slope == 1) {
       // Per-species slope on x, shared across traits.
-      eta(o) += b_phy_slope(species_aug_id(o)) * x_phy_slope(o);
+      eta(o) += b_phy_slope(phylo_slope_aug_id(o)) * x_phy_slope(o);
     }
     if (use_phylo_latent_slope == 1) {
       // Block-diagonal reduced-rank random regression: per LHS column k,

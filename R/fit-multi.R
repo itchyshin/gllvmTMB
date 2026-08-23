@@ -676,6 +676,69 @@
   )
 }
 
+## Build the precision and row map for the legacy slope-only phylogenetic
+## random-regression path.  This deliberately does not reuse `species`: a
+## slope term's RHS is part of its public formula contract and can differ from
+## the top-level `cluster` used by other phylogenetic tiers.
+.resolve_phylo_slope_precision <- function(phylo_tree, phylo_vcv, data, group) {
+  levs <- levels(data[[group]])
+  group_id <- as.integer(data[[group]]) - 1L
+
+  if (!is.null(phylo_tree)) {
+    if (!inherits(phylo_tree, "phylo")) {
+      cli::cli_abort("The {.arg tree} supplied to {.fn phylo_slope} must be an {.cls ape::phylo} tree.")
+    }
+    .gllvm_abort_uncovered_species_levels(
+      levs, phylo_tree$tip.label, data, group,
+      "{.arg tree} tip labels for {.fn phylo_slope}"
+    )
+    phy_prec <- .gllvm_phylo_tree_precision(phylo_tree, correlation = TRUE)
+    tip_to_aug <- match(levs, rownames(phy_prec$precision))
+    if (anyNA(tip_to_aug)) {
+      cli::cli_abort("Internal: phylo_slope() group labels were not found in the tree precision row names.")
+    }
+    return(list(
+      Ainv = phy_prec$precision,
+      log_det = -phy_prec$log_det_precision,
+      n_aug = nrow(phy_prec$precision),
+      aug_id = as.integer(tip_to_aug[group_id + 1L] - 1L)
+    ))
+  }
+
+  if (is.null(phylo_vcv)) {
+    cli::cli_abort(c(
+      "{.fn phylo_slope} found in the formula but no {.arg tree} or {.arg vcv} was supplied.",
+      ">" = "Supply {.code tree = ...} or {.code vcv = ...} inside {.fn phylo_slope}()."
+    ))
+  }
+  if (inherits(phylo_vcv, "sparseMatrix")) {
+    sparse_phy <- .resolve_sparse_phylo_precision(
+      phylo_vcv, levs = levs, species_id = group_id
+    )
+    return(list(
+      Ainv = sparse_phy$Ainv_phy_rr,
+      log_det = sparse_phy$log_det_A_phy_rr,
+      n_aug = sparse_phy$n_aug_phy,
+      aug_id = as.integer(sparse_phy$species_aug_id)
+    ))
+  }
+  if (is.null(rownames(phylo_vcv))) {
+    cli::cli_abort("{.arg vcv} for {.fn phylo_slope} must have row names matching levels of {.var {group}}.")
+  }
+  .gllvm_abort_uncovered_species_levels(
+    levs, rownames(phylo_vcv), data, group,
+    "{.arg vcv} rownames for {.fn phylo_slope}"
+  )
+  Aphy <- phylo_vcv[levs, levs, drop = FALSE]
+  Aphy <- Aphy + diag(1e-8, nrow(Aphy))
+  list(
+    Ainv = Matrix::Matrix(solve(Aphy), sparse = TRUE),
+    log_det = as.numeric(determinant(Aphy, logarithm = TRUE)$modulus),
+    n_aug = nrow(Aphy),
+    aug_id = as.integer(group_id)
+  )
+}
+
 #' Fit a long-format multivariate stacked-trait model (Stage 2 internal)
 #'
 #' Called by [gllvmTMB()] when the formula contains `latent()` or `indep()`
@@ -1954,9 +2017,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       d_req
     }
   } else 1L
-  ## Phylogenetic random slope (Q6): phylo_slope(x | species). Reuses
-  ## the Ainv_phy_rr from phylo_rr; only one tree / VCV needed even when
-  ## both terms appear. Initial release: ONE continuous covariate, ONE
+  ## Phylogenetic random slope (Q6): phylo_slope(x | species). It can share a
+  ## supplied tree / VCV with other phylogenetic terms, but owns an RHS-indexed
+  ## precision and row map. Initial release: ONE continuous covariate, ONE
   ## shared slope variance, slopes shared across traits.
   phylo_slope_idx <- which(kinds == "phylo_slope")
   use_phylo_slope <- length(phylo_slope_idx) > 0L
@@ -2000,6 +2063,30 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     isTRUE(phylo_slope_cs$extra$.uncorrelated)
   use_phylo_slope_correlated <- use_phylo_slope_correlated ||
     use_phylo_dep_slope
+  ## The legacy slope-only term is the first structured phylogenetic route
+  ## whose RHS is authoritative.  The augmented routes still share the
+  ## established cluster-tier engine and are deliberately outside PR-0.
+  phylo_slope_group <- if (use_phylo_slope && !use_phylo_slope_correlated) {
+    if (!is.name(phylo_slope_cs$group)) {
+      cli::cli_abort(c(
+        "{.fn phylo_slope} requires a bare grouping column on the right of {.code |}.",
+        "i" = "Got {.code {deparse(phylo_slope_cs$group)}}.",
+        ">" = "Use a column name, for example {.code phylo_slope(lat | trait, tree = tree)}."
+      ))
+    }
+    as.character(phylo_slope_cs$group)
+  } else NA_character_
+  if (!is.na(phylo_slope_group)) {
+    if (!phylo_slope_group %in% names(data)) {
+      cli::cli_abort(c(
+        "{.fn phylo_slope} groups on column {.var {phylo_slope_group}}, but that column is not in {.arg data}.",
+        ">" = "Use an existing grouping column on the right of {.code |}."
+      ))
+    }
+    if (!is.factor(data[[phylo_slope_group]])) {
+      data[[phylo_slope_group]] <- factor(data[[phylo_slope_group]])
+    }
+  }
   ## phylo_indep(1 + x | species) is a Design 79/80 specialisation of the
   ## phylo_dep 2T engine. `.indep_blockdiag` pins only cross-trait Cholesky
   ## entries below, leaving one free 2x2 intercept/slope block per trait.
@@ -3608,8 +3695,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## from the same species tree). Including use_mi_phylo here makes the existing
   ## Stage-40 builder construct the sparse precision even when the RESPONSE side
   ## has no phylo term (design 69 sec.2.2).
-  use_any_phy_term <- use_phylo_rr || use_phylo_diag || use_phylo_slope ||
-    use_phylo_latent_slope || use_mi_phylo
+  use_shared_phy_term <- use_phylo_rr || use_phylo_diag ||
+    use_phylo_slope_correlated || use_phylo_latent_slope || use_mi_phylo
+  use_any_phy_term <- use_shared_phy_term || use_phylo_slope
   ## ---- Guard: a supplied tree/vcv with nothing in the formula to consume it --
   ## `phylo_tree =` / `phylo_vcv =` can be supplied globally to gllvmTMB(), or
   ## harvested above from an in-keyword `tree =` / `vcv =` on a phylo_rr /
@@ -3628,7 +3716,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ">" = "Add a {.code phylo_*()} term (e.g. {.code phylo_latent(species, d = 2, tree = tree)}), or drop {.arg {supplied_arg}} if you did not mean to fit a phylogenetic model."
     ))
   }
-  if (use_any_phy_term) {
+  if (use_shared_phy_term) {
     if (!is.null(phylo_tree)) {
       ## --- Stage 40: TRUE Hadfield sparse-A^-1 trick ----------------------
       ## A^-1 is built over tips + internal nodes directly from the tree via
@@ -3701,6 +3789,26 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       n_aug_phy        <- n_species
       species_aug_id   <- species_id    # tip-only path: identity
     }
+  }
+
+  ## PR-0: do not let the legacy slope-only field borrow the top-level
+  ## cluster index.  It has its own precision and augmented-node map, while
+  ## all existing phylo_rr/diag/augmented routes above retain theirs.
+  n_aug_phy_slope <- 1L
+  Ainv_phy_slope <- Matrix::Matrix(1, 1, 1, sparse = TRUE)
+  log_det_A_phy_slope <- 0
+  phylo_slope_aug_id <- integer(nrow(data))
+  if (use_phylo_slope && !use_phylo_slope_correlated) {
+    slope_phy <- .resolve_phylo_slope_precision(
+      phylo_tree = phylo_tree,
+      phylo_vcv = phylo_vcv,
+      data = data,
+      group = phylo_slope_group
+    )
+    Ainv_phy_slope <- slope_phy$Ainv
+    log_det_A_phy_slope <- slope_phy$log_det
+    n_aug_phy_slope <- slope_phy$n_aug
+    phylo_slope_aug_id <- slope_phy$aug_id
   }
 
   ## Phase 3: build the species-latent -> augmented-A-node map for the covariate
@@ -4248,6 +4356,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     ## Q6: phylo_slope data
     use_phylo_slope  = as.integer(use_phylo_slope),
     x_phy_slope      = x_phy_slope_dat,
+    n_aug_phy_slope  = as.integer(n_aug_phy_slope),
+    Ainv_phy_slope   = Ainv_phy_slope,
+    log_det_A_phy_slope = as.numeric(log_det_A_phy_slope),
+    phylo_slope_aug_id = as.integer(phylo_slope_aug_id),
     use_phylo_slope_correlated = as.integer(use_phylo_slope_correlated),
     n_lhs_cols       = as.integer(n_lhs_cols),
     Z_phy_aug        = Z_phy_aug,
@@ -4491,7 +4603,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                               n_kernel_levels * n_traits)
                       } else numeric(0L),
     ## Q6: phylo_slope params
-    b_phy_slope     = rep(0.0, n_aug_phy),  # one slope per augmented A row
+    b_phy_slope     = rep(0.0, n_aug_phy_slope),
     log_sigma_slope = 0.0,
     b_phy_aug       = array(0.0, dim = c(n_aug_phy, n_lhs_cols, n_phy_aug_blocks)),
     log_sd_b        = rep(0.0, n_lhs_cols),
@@ -4672,16 +4784,13 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     ## Slice 0 established that a scalar phylogenetic/pedigree contrast term is
     ## a real structured tier on the multinomial contrast liabilities and was
     ## leaking through this exemption.
-    ## `use_any_phy_term` is a pure logical-OR aggregate of use_phylo_rr /
-    ## use_phylo_diag / use_phylo_slope / use_phylo_latent_slope / use_mi_phylo
-    ## (see its definition above) -- every one of those five is ALREADY
-    ## checked here individually (use_phylo_rr admitted; the other four are
-    ## not, and independently trip this scan when active). Moving this scan
-    ## past that definition (Slice 0, so use_mi_* is in scope) means the
-    ## aggregate is now also visible to `ls()`; it carries no information its
-    ## constituents don't already carry, so it stays exempt rather than
-    ## double-counting a legitimate phylo_latent() fit as unsupported.
-    .mn_non_tier      <- c("use_equalto", "use_any_phy_term")
+    ## `use_any_phy_term` and `use_shared_phy_term` are pure logical-OR
+    ## aggregates. Their constituents are already checked here individually:
+    ## `use_phylo_rr` is admitted, while every unsupported constituent trips
+    ## this scan in its own right. Neither aggregate denotes an engine tier,
+    ## so keep both outside the fail-closed scan rather than double-counting a
+    ## legitimate phylo_latent() fit.
+    .mn_non_tier      <- c("use_equalto", "use_any_phy_term", "use_shared_phy_term")
     .mn_use_flags <- setdiff(ls(envir = .mn_env, pattern = "^use_"),
                              c(.mn_allowed_tiers, .mn_non_tier))
     .mn_vals <- mget(.mn_use_flags, envir = .mn_env, inherits = FALSE)

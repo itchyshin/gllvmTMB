@@ -7425,6 +7425,17 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                           ## with level = "column_slope".
                           phylo_column_slope = isTRUE(use_phylo_column_slope),
                           phylo_column_slope_mode = phylo_column_slope_mode,
+                          ## The shared matrix-normal core is entered through
+                          ## the phylo parser, but animal_* terms supply a
+                          ## pedigree/A/Ainv source matrix. Preserve that
+                          ## identity for public extraction and reporting.
+                          phylo_column_slope_source =
+                            if (use_phylo_column_slope &&
+                                isTRUE(phylo_slope_cs$extra$.animal_source)) {
+                              "animal"
+                            } else if (use_phylo_column_slope) {
+                              "phylo"
+                            } else NULL,
                           ## Labels of the source-matrix axis for the
                           ## slope-only response-column route.
                           phylo_column_slope_labels =

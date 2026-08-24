@@ -164,6 +164,9 @@ test_that("full column-slope covariance and helpers preserve their contracts", {
   expect_identical(animal_A$use$phylo_column_slope_mode, "dep")
   expect_identical(animal_Ainv$use$phylo_column_slope_mode, "indep")
   expect_identical(animal_ped$use$phylo_column_slope_mode, "dep")
+  expect_identical(extract_Sigma(animal_A, level = "column_slope")$source$type, "animal")
+  expect_identical(extract_Sigma(animal_Ainv, level = "column_slope")$source$type, "animal")
+  expect_identical(extract_Sigma(animal_ped, level = "column_slope")$source$type, "animal")
 })
 
 test_that("column slope grammar rejects an intercept, trait basis, and wrong RHS", {

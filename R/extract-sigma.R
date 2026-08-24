@@ -575,7 +575,8 @@ link_residual_per_trait <- function(fit) {
 #'   remain gated for Julia bridge extractors.
 #' @param level One of `"unit"` (between-unit), `"unit_obs"` (within-unit),
 #'   `"phy"` (phylogenetic), `"column_slope"` (the predictor-basis covariance
-#'   from `phylo_indep(0 + x1 + ... + xP | trait)`), `"spatial"`, `"cluster"`, or `"cluster2"` (a
+#'   from `phylo_indep(0 + x1 + ... + xP | trait)` or
+#'   `animal_indep(0 + x1 + ... + xP | trait)`), `"spatial"`, `"cluster"`, or `"cluster2"` (a
 #'   second, independent diagonal grouping alongside `"cluster"` -- see the
 #'   `cluster2` argument to [gllvmTMB()]). Legacy aliases
 #'   `"B"`, `"W"`, and `"spde"` are accepted with a soft-deprecation
@@ -908,20 +909,21 @@ extract_Sigma <- function(
     if (is.null(column_labels) || !length(column_labels)) {
       column_labels <- levels(fit$data[[fit$trait_col]])
     }
+    source_type <- fit$use$phylo_column_slope_source %||% "phylo"
     return(list(
       Sigma = Sigma,
       R = .safe_cov2cor(Sigma, slope_cols),
       level = "column_slope",
       part = fit$use$phylo_column_slope_mode %||% "indep",
       source = list(
-        type = "phylo",
+        type = source_type,
         grouping = fit$trait_col,
         labels = column_labels
       ),
       predictors = slope_cols,
       column_labels = column_labels,
       note = paste0(
-        "phylo_indep(0 + x1 + ... + xP | trait): covariance among ",
+        source_type, "_indep(0 + x1 + ... + xP | trait): covariance among ",
         "the slope-predictor coefficients. The response-column tree supplies ",
         "the other Kronecker factor; this is not a trait-level Sigma."
       )

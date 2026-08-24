@@ -24,7 +24,8 @@ remain gated for Julia bridge extractors.}
 
 \item{level}{One of \code{"unit"} (between-unit), \code{"unit_obs"} (within-unit),
 \code{"phy"} (phylogenetic), \code{"column_slope"} (the predictor-basis covariance
-from \code{phylo_indep(0 + x1 + ... + xP | trait)}), \code{"spatial"}, \code{"cluster"}, or \code{"cluster2"} (a
+from \code{phylo_indep(0 + x1 + ... + xP | trait)} or
+\code{animal_indep(0 + x1 + ... + xP | trait)}), \code{"spatial"}, \code{"cluster"}, or \code{"cluster2"} (a
 second, independent diagonal grouping alongside \code{"cluster"} -- see the
 \code{cluster2} argument to \code{\link[=gllvmTMB]{gllvmTMB()}}). Legacy aliases
 \code{"B"}, \code{"W"}, and \code{"spde"} are accepted with a soft-deprecation

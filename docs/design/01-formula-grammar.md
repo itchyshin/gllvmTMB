@@ -228,14 +228,17 @@ the two must not drift.
 
 The source rows go from finest-grained (individual pedigree) to
 broadest (geographic distance), with the Design 65 generic dense kernel
-as the fifth row. Plus the random-slope keywords
-`phylo_slope(x | species)` and `animal_slope(x | id)` for per-group
-random-regression slopes. Their two-or-more-predictor long-format aliases
-`phylo_slope(x1 + x2 | trait)` / `animal_slope(x1 + x2 | trait)` are full
-response-column slope covariance, while `||` is diagonal; they remain helpers
-outside the grid — see
-[`14-known-relatedness-keywords.md`](14-known-relatedness-keywords.md)
-for the team-ratified convention.
+as the fifth row. The paired response-column slope helpers sit outside the
+grid: `slope()`, `phylo_slope()`, `animal_slope()`, `kernel_slope()`, and the
+designed-but-not-yet-implemented `spatial_slope()`. With the declared trait
+column on the right, `||` is public sugar for the matching
+`source_indep(0 + predictors | trait)` cell and `|` is sugar for
+`source_dep(0 + predictors | trait)`. They add no random intercept, and the
+two bars are identical when there is one predictor. See
+[`130-response-column-slope-family.md`](130-response-column-slope-family.md).
+Historical `phylo_slope()` / `animal_slope()` calls whose RHS is not the
+declared trait column remain compatibility behaviour rather than the new
+teaching model.
 
 ### `scalar` and `unique` are modifiers, not modes
 
@@ -799,9 +802,10 @@ target shape.
 - `weights = w` argument on `gllvmTMB()` — glmmTMB-style row-
   weights; post-CRAN. Must coexist cleanly with `meta_V(type =
   "exact")` per the drmTMB Phase 2b discipline.
-- spatial slope-only response-column helpers — a later design slice. The
-  phylogenetic and animal helpers are live; kernel and spatial extensions are
-  deliberately deferred.
+- `spatial_slope()` implementation — its public response-column grammar,
+  trait-level coordinate alignment, projected-SPDE normalization, and
+  permutation tests are locked by Design 130, but the dedicated engine and
+  evidence slice has not landed.
 - `latent_interact(0 + trait | unit, d = K, by = x)` — galamm-style
   loadings that vary as a function of a covariate; post-CRAN
   (see vision doc).

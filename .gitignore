@@ -141,3 +141,7 @@ dev/isdm-intervals/e1-final-results.csv
 # stray commit-message scratch files (content lands in the real commit message,
 # not durable evidence; sandbox could not rm the existing one so it is ignored)
 dev/.commit-msg-tmp.txt
+
+# Local acceptance-ledger runtime (ultra-plan / unlazy); never ship or track.
+.unlazy/
+.unlazy-hook-state.json

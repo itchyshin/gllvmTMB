@@ -49,17 +49,17 @@ $$
 \eta_{cs} = \alpha_s + x_c\,\beta_s + u_c\,\lambda_s,
 $$
 
-and each source $d$ adds only its own recording level $\gamma_{ds}$ (with
-source 1 as the reference, $\gamma_{1s} = 0$) and its own known support
+and each source $d$ adds only its own recording level $\gamma_d$ (with
+source 1 as the reference, $\gamma_1 = 0$) and its own known support
 $a_{cd}$:
 
 $$
 N^{(d)}_{cs} \sim \text{Poisson}\!\left[a_{cd}\,
-  e^{\eta_{cs} + \gamma_{ds}}\right]
+  e^{\eta_{cs} + \gamma_d}\right]
 \quad\text{(count sources)},
 \qquad
 Y^{(d)}_{cs} \sim \text{Bernoulli}\!\left[1 -
-  e^{-a_{cd}\, e^{\eta_{cs} + \gamma_{ds}}}\right]
+  e^{-a_{cd}\, e^{\eta_{cs} + \gamma_d}}\right]
 \quad\text{(detection source)}.
 $$
 
@@ -90,12 +90,8 @@ u <- as.numeric(scale(sin(seq_len(n_cell) / 6))) # unmeasured shared gradient
 alpha  <- c(-0.2,  0.2,  0.0)
 beta   <- c( 0.5, -0.3,  0.4)
 lambda <- c( 0.8,  0.5, -0.4)
-## per-source recording effects, reference-coded on the portal
-gamma  <- rbind(portal = c(0, 0, 0),   # reference source
-                atlas  = c(-0.8, -0.5, -1.1),
-                survey = c(0, 0, 0))   # zero by simulation choice, not a
-                                       # second reference; its level rides
-                                       # on its support
+## source recording levels; source covariates add further recording bias
+gamma <- c(portal = 0, atlas = -0.7, survey = -0.2)
 support <- c(portal = 2.0, atlas = 0.8, survey = 0.9)
 
 dat <- expand.grid(cell_id = cells, trait = species, isdm_source = sources,
@@ -103,8 +99,23 @@ dat <- expand.grid(cell_id = cells, trait = species, isdm_source = sources,
 ci <- match(dat$cell_id, cells)
 si <- match(dat$trait, species)
 di <- match(dat$isdm_source, sources)
-eta <- alpha[si] + x[ci] * beta[si] + u[ci] * lambda[si] +
-  gamma[cbind(di, si)]
+## Harmless off-source placeholders keep upstream row filtering independent of
+## variables that the source wrapper will never evaluate on those rows.
+dat$access  <- 0
+dat$popdens <- 0
+dat$observer <- "A"
+dat$method <- "walk"
+count_rows <- dat$isdm_source %in% c("portal", "atlas")
+survey_rows <- dat$isdm_source == "survey"
+dat$access[count_rows] <- as.numeric(scale(rnorm(sum(count_rows))))
+dat$popdens[count_rows] <- as.numeric(scale(rnorm(sum(count_rows))))
+dat$observer[survey_rows] <- sample(c("A", "B"), sum(survey_rows), replace = TRUE)
+dat$method[survey_rows] <- sample(c("walk", "point"), sum(survey_rows), replace = TRUE)
+eta <- alpha[si] + x[ci] * beta[si] + u[ci] * lambda[si] + gamma[di] +
+  ifelse(dat$isdm_source == "portal", 0.45 * dat$access, 0) +
+  ifelse(dat$isdm_source == "atlas", 0.30 * dat$popdens, 0) +
+  ifelse(dat$observer == "B", 0.20, 0) +
+  ifelse(dat$method == "point", -0.15, 0)
 dat$support <- support[di]
 dat$value <- ifelse(
   dat$isdm_source == "survey",
@@ -113,9 +124,11 @@ dat$value <- ifelse(
 )
 dat$trait       <- factor(dat$trait)
 dat$cell_id     <- factor(dat$cell_id)
+dat$isdm_source <- factor(dat$isdm_source, levels = sources)
 dat$log_support <- log(dat$support)
 dat$env         <- x[ci]
-dat$src         <- factor(dat$isdm_source, levels = sources)
+dat$observer    <- factor(dat$observer)
+dat$method      <- factor(dat$method)
 table(dat$isdm_source, dat$value > 0)
 ```
 
@@ -125,30 +138,28 @@ effects.
 
 # Declare the sources, then fit
 
-The declaration is the whole interface: name every source and state its
-observation law. Two laws are admitted — `poisson()` for a count stream and
-`binomial("cloglog")` for detection/non-detection — because both observe a
-thinning of the same shared intensity. A logit detection model, a
-dispersion-carrying family, or an all-detection declaration is refused at
-this line, with the reason.
+The declaration is the whole interface: name every source, state its
+observation law, and (when needed) give its own observation formula. Source
+covariates are evaluated only on the rows of their named source.
 
 ```{r declare}
 fam <- isdm_sources(
-  portal = poisson(),
-  atlas  = poisson(),
-  survey = binomial(link = "cloglog")
+  portal = isdm_source(poisson(link = "log"),
+                       observation = ~ access + popdens),
+  atlas  = isdm_source(poisson(),
+                       observation = ~ access + popdens),
+  survey = isdm_source(binomial(link = "cloglog"),
+                       observation = ~ observer + method)
 )
 ```
 
 The data need an `isdm_source` column naming each row's source (built above),
-and every species must be observed by every declared source. The per-source
-recording effects enter the formula as an ordinary interaction with the
-source factor — because `portal` is the first level, it is the reference and
-the fitted terms are `atlas` and `survey` effects *relative to the portal*:
+and every species must be observed by every declared source. The wrapper owns
+the source-observation effects, so the main formula stays ecological:
 
 ```{r fit}
 fit <- gllvmTMB(
-  value ~ 0 + trait + trait:env + trait:src + offset(log_support) +
+  value ~ 0 + trait + trait:env + offset(log_support) +
     latent(0 + trait | cell_id, d = 1),
   data   = dat,
   trait  = "trait",
@@ -158,6 +169,12 @@ fit <- gllvmTMB(
 )
 fit$opt$convergence
 ```
+
+There is deliberately no `0 +` inside the survey formula.
+`isdm_source()` keeps `0 + trait` first, then automatically reference-codes
+any observation intercept or factor contrast that is redundant. Write normal
+R syntax such as `~ observer + method`; you do not need to memorise an
+identifiability workaround.
 
 `0` means the optimizer reached a point it judges stationary. That is not the
 same as trustworthy curvature, so run the package's own check rather than
@@ -177,30 +194,18 @@ than hidden.
 
 # What the integration bought
 
-The per-source recording effects are the quantities only integration gives
-you: with the portal as reference, the fitted `trait:src` terms say how much
-each species' atlas and survey records depart from its portal recording
-level, on the log scale, after the shared gradient is accounted for.
+The fitted fixed-effect names beginning `isdm_source:` identify the
+source-masked observation columns that the wrapper added:
 
-```{r gamma-figure, fig.cap = "Per-source recording effects, truth against estimate, for the atlas source (the survey's simulated departures are zero by construction). Estimates come from one fit on one simulated draw; the spread you see is sampling noise at this design size, not bias.", fig.alt = "Scatterplot of three labelled species points near a dashed 45-degree identity line, axes on equal scales."}
-idx <- grep(":srcatlas", fit$X_fix_names)
-est <- unname(fit$opt$par[idx])
-truth <- gamma["atlas", match(levels(dat$trait), species)]
-plot(truth, est, pch = 19, cex = 1.3,
-     xlim = range(c(truth, est)) + c(-0.15, 0.15),
-     ylim = range(c(truth, est)) + c(-0.15, 0.15),
-     xlab = "true atlas recording effect (log scale)",
-     ylab = "estimated",
-     main = "")
-abline(0, 1, lty = 2)
-text(truth, est, labels = levels(dat$trait), pos = 3, cex = 0.85)
+```{r source-columns}
+fit$X_fix_names[grepl("^isdm_source:", fit$X_fix_names)]
 ```
 
-The estimates track the simulated truths along the identity line. In a real
-analysis you would read these as each source's species-specific recording
-tendency — which species a source over- or under-records relative to the
-portal — and, per the relative-intensity boundary, nothing more absolute
-than that.
+For example, the portal accessibility coefficient describes a portal
+recording gradient after the shared ecological gradient is accounted for; it
+is not a survey or atlas effect. These are recording-process terms on the
+log-relative-intensity scale, not estimates of abundance, occupancy, or
+detection probability.
 
 # How large does a design like this need to be?
 
@@ -227,7 +232,7 @@ stricter design requirements — see
 **Covered here:** any number of named sources declared with `isdm_sources()`,
 each a Poisson count stream or a cloglog detection stream, sharing one
 ecological process through the ordinary `gllvmTMB()` call, with per-source
-recording effects via an ordinary source-factor interaction.
+observation covariates through `isdm_source()`.
 
 **Works but not certified:** the estimates themselves. The route is
 contract-tested and the recovery evidence above is real but nonspatial, at
@@ -236,10 +241,8 @@ until your own design has been checked against the design article's
 guidance.
 
 **Not available:** an all-detection declaration (refused when you build it —
-the detection arm's offset is only admitted alongside a count arm);
-per-source bias *covariates* beyond the recording level (expressible by hand
-as source-gated interaction columns, as the two-source article shows, but
-not yet packaged); weighting one source against another; calibrated
+the detection arm's offset is only admitted alongside a count arm); weighting
+one source against another; calibrated
 confidence intervals for this route; and anything absolute — abundance,
 occupancy, detectability — from any number of presence-only sources.
 

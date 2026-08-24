@@ -8,9 +8,9 @@ isdm_sources(...)
 }
 \arguments{
 \item{...}{Two or more named arguments; each name is a source label and each
-value its observation law (\code{poisson()} or \code{binomial("cloglog")}). At least
-one source must be a count stream: the detection arm's offset is admitted
-only alongside a count arm sharing the same intensity, so an
+value is a bare admitted observation law or an \code{\link[=isdm_source]{isdm_source()}} declaration.
+At least one source must be a count stream: the detection arm's offset is
+admitted only alongside a count arm sharing the same intensity, so an
 all-detection declaration is refused here rather than failing later.}
 }
 \value{
@@ -29,7 +29,8 @@ stream, digitised literature records, checklists, a structured survey --
 share one ecological linear predictor while each source keeps its own
 observation law.
 
-Each argument is named for a source and gives its observation law. Two laws
+Each argument is named for a source and gives either a bare observation law
+or \code{\link[=isdm_source]{isdm_source()}} with its source-specific observation formula. Two laws
 are admitted, because both express the observation as a thinning of one
 shared intensity: \code{poisson()} (a count stream; the offset is log effort) and
 \code{binomial("cloglog")} (detection/non-detection; the offset is log support,
@@ -47,16 +48,15 @@ This interface is experimental and may change.
 }
 \examples{
 fam <- isdm_sources(
-  gbif       = poisson(),
-  literature = poisson(),
-  survey     = binomial("cloglog")
+  gbif = isdm_source(poisson(), observation = ~ access + popdens),
+  survey = isdm_source(poisson(), observation = ~ observer + method)
 )
 names(fam)
 \dontrun{
 ## `dat` is long, one row per (cell, species, source), with an isdm_source
 ## column naming each row's source and log_support its known effort/area.
 fit <- gllvmTMB(
-  value ~ 0 + trait + trait:env + trait:isdm_source +
+  value ~ 0 + trait + trait:env +
     offset(log_support) + latent(0 + trait | cell_id, d = 1),
   data = dat, trait = "trait", unit = "cell_id", family = fam
 )

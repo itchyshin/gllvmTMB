@@ -739,14 +739,25 @@ Slope-slope correlation coverage (which would test the 2-slope
 or 3-slope regime) is deferred to the post-RE-12 slice that adds
 2 random slopes, IF that slice ships.
 
-### Slope-only random effects (planned, post-RE-12)
+### Slope-only response-column effects (structured Gaussian route)
 
-The current design assumes random slopes accompany a random
-intercept (the `(0 + trait + (0 + trait):x | g)` pattern). Pure
-slope-only random effects (`(0 + (0 + trait):x | g)`, no
-intercept) are **`planned (post-RE-12)`**. The use case (slope
-varies across levels, but no per-level intercept offset) is
-rare; comes back as a follow-up slice after RE-12 closes.
+The ordinary RE-12 path still concerns an intercept-plus-slope random
+regression. Separately, the phylogenetic and animal structured routes now
+admit **Gaussian slope-only response-column effects**:
+
+```r
+phylo_indep(0 + lat + temp | trait, tree = tree) # diagonal Sigma_slope
+phylo_dep(0 + lat + temp | trait, tree = tree)   # full Sigma_slope
+phylo_slope(lat + temp || trait, tree = tree)    # helper for indep
+phylo_slope(lat + temp | trait, tree = tree)     # helper for dep
+```
+
+`0 + trait` remains the fixed column-intercept term. These structured terms
+add no random intercept: their coefficient vector has covariance
+`K_phylo %x% Sigma_slope`. The `animal_*()` equivalents use a pedigree, `A`,
+or `Ainv` for `K`. This is deliberately a long-format-only, Gaussian-first
+route. Wide column-predictor grammar, spatial/kernel and latent slope-only
+variants, and non-Gaussian multi-predictor claims remain deferred.
 
 ### Other 4 × 3 cells
 
@@ -758,8 +769,10 @@ slice. Current public status is:
 2. Ordinary non-Gaussian augmented `unique(1 + x | unit)` / diagonal Psi: guarded.
 3. Structured `phylo_*()` / `spatial_*()` single-slope cells:
    covered where PHY-11..PHY-18 and SPA-08..SPA-10 say covered.
-4. Gaussian `phylo_dep(..., s = 2)`: covered under RE-03.
-5. Non-Gaussian `phylo_dep(..., s >= 2)`: partial and guarded.
+4. Gaussian slope-only `phylo_indep()` / `phylo_dep()` and their
+   `phylo_slope()` / `animal_slope()` helpers: covered under RE-03.
+5. Non-Gaussian multi-predictor structured slopes: not advertised; a
+   separate recovery campaign is required before admission.
 
 ## Crossed-vs-nested encoding
 

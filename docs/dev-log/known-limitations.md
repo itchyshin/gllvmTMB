@@ -173,11 +173,13 @@ These are intentional design boundaries of the sugar layer, not bugs:
 - **Random slopes outside the structured keyword contract.** One structured
   slope (`s = 1`) is implemented for the named RE-02 routes and core-family
   cells; lognormal, Student-t, and betabinomial additions remain C1-partial
-  under RE-14. For `s = 2`, only Gaussian
-  `phylo_dep(1 + x1 + x2 | species)` has recovery evidence. Non-Gaussian
-  `s >= 2` is rejected, and `s >= 3` is mechanically available on the same
-  dimension-general path but has no gating test. Bare `(1 + x | g)` does not
-  provide a first-class trait-stacked slope API.
+  under RE-14. Gaussian long-format, slope-only response-column effects now
+  support two predictors through `phylo_indep(0 + x1 + x2 | trait)`
+  (diagonal) or `phylo_dep(...)` (full), with `phylo_slope()` /
+  `animal_slope()` helpers. This does not admit non-Gaussian multi-predictor
+  slopes, wide column-predictor grammar, or spatial/kernel/latent slope-only
+  variants. Bare `(1 + x | g)` does not provide a first-class trait-stacked
+  slope API.
 - **Zero-inflated families** (ZINB / ZIP). Cut from the 0.2.0 family
   list; planned for a later phase.
 - **SPDE barrier path** (`add_barrier_mesh`) for coastal data. A future barrier

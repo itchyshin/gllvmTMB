@@ -218,7 +218,7 @@ isdm_sources <- function(...) {
   source_design <- do.call(cbind, source_blocks)
   ## `0 + trait` already spans the global intercept. A collection of
   ## source-masked intercept or factor-level columns can span it again (notably
-  ## when a source uses `~ 0 + observer + method`). Keep the user's ecological
+  ## when a source uses a full observer/method factor basis). Keep the user's ecological
   ## design first, then retain source columns only when they add rank. This is
   ## deterministic reference coding of the observation process, rather than an
   ## optimizer failure or a silent change to the ecological intercepts.

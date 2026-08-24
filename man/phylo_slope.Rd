@@ -2,93 +2,69 @@
 % Please edit documentation in R/brms-sugar.R
 \name{phylo_slope}
 \alias{phylo_slope}
-\title{Phylogenetic random slope on a continuous covariate}
+\title{Phylogenetic response-column slopes}
 \usage{
-phylo_slope(formula)
+phylo_slope(formula, tree = NULL, vcv = NULL, A = NULL, Ainv = NULL)
 }
 \arguments{
-\item{formula}{\code{x | species} for the historical shared-slope route, or a
-slope-only \code{x1 + ... + xP | trait} / \verb{|| trait} response-column formula.}
+\item{formula}{A slope-only \code{x1 + ... + xP | trait} or \verb{|| trait} formula.}
+
+\item{tree}{An \code{ape::phylo} object whose tip labels match the resolved
+response-column levels. \strong{Canonical.}}
+
+\item{vcv}{A labelled response-column covariance/correlation matrix. Legacy
+alias of \verb{A =}.}
+
+\item{A}{A labelled response-column relatedness matrix; alias of \verb{vcv =}.}
+
+\item{Ainv}{A labelled response-column precision matrix (inverse of \code{A}).
+Sparse inputs are preserved.}
 }
 \value{
 A formula marker; never evaluated.
 }
 \description{
-Adds a per-species random slope on a continuous covariate \code{x}, with
-species-level slopes correlated according to the supplied phylogeny.
-Mathematically:
+Adds slope-only predictor deviations across response columns, with a tree
+relating those columns. If \code{B} is the response-column by predictor
+coefficient matrix, the model is
+\deqn{\mathrm{Cov}(\mathrm{vec}(B^\mathsf{T})) =
+K_\mathrm{phy} \otimes \Sigma_\mathrm{predictor}.}
+The RHS must be the response-column factor resolved from \verb{trait =}, and the
+tree's tips must match its levels. A single \code{|} estimates a full predictor
+covariance; \code{||} gives separate predictor variances with zero covariance.
+Both bars are identical with one predictor. The term never adds a random
+intercept; put column intercepts in the main formula with \code{0 + trait}.
 }
 \details{
-\deqn{\eta_{it} \;\mathrel{{+}{=}}\; \beta_{\text{phy}}(i)\, x_{io}, \qquad
-      \boldsymbol\beta_{\text{phy}} \sim \mathcal{N}\bigl(\mathbf 0, \,
-      \sigma^2_{\text{slope}}\,\mathbf A_{\text{phy}}\bigr).}
-
-The slope vector \eqn{\boldsymbol\beta_{\text{phy}}} has length
-\eqn{n_{\text{species}}} (one slope per species). It is shared
-across traits -- the same \eqn{\beta_{\text{phy}}(i)} multiplies
-\eqn{x_{io}} for every trait \eqn{t} of species \eqn{i}. This is
-the "random regression" pattern from quantitative genetics, with the
-phylogenetic A-matrix as the slope-covariance prior.
-
-Used inside a \code{gllvmTMB()} formula:
-
-\if{html}{\out{<div class="sourceCode r">}}\preformatted{value ~ 0 + trait + (0 + trait):x +     # fixed-effect of x per trait
-        phylo_latent(species, d = 2) +  # main phylogenetic random effect
-        phylo_slope(x | species)        # phylo random slope on x
-}\if{html}{\out{</div>}}
-
-Shares the supplied tree / VCV with \code{\link[=phylo_latent]{phylo_latent()}} when both terms are
-present, but constructs its own RHS-indexed precision and row map (sparse
-via \verb{phylo_tree =}, dense via \verb{phylo_vcv =}). This lets the slope grouping
-differ safely from the top-level \code{cluster}.
 \subsection{Scope}{
 
-This helper supports:
-\itemize{
-\item \strong{One} continuous covariate \code{x} (a single column name).
-\item \strong{One} shared slope variance \eqn{\sigma^2_{\text{slope}}}.
-\item \strong{Slopes shared across traits} (same \eqn{\beta_{\text{phy}}}(i)
-for every trait of species \eqn{i}).
-}
-
-A distinct long-format route is selected when the RHS is exactly the
-resolved response-column factor. For example,
-\code{phylo_slope(lat + temp | trait, tree = tree)} means
-\code{phylo_dep(0 + lat + temp | trait, tree = tree)}, so the two slope
-deviations have a full covariance. Use \code{||} instead of \code{|} for the
-diagonal \code{phylo_indep()} route. The same routing rule applies to one
-predictor: \code{phylo_slope(lat | trait, tree = tree)} enters the column-slope
-core, while \code{phylo_slope(lat | species, tree = tree)} retains the historical
-shared-across-traits helper above. With one predictor, \code{|} and \code{||} have the
-same objective and fitted \verb{1 x 1} covariance. The response-column route is
-Gaussian-only, has no random intercept, and is intentionally outside the
-5 x 3 trait-covariance grid.
+This route is covered for Gaussian long-format data with one or more bare,
+finite numeric predictors. Wide-format column slopes, non-Gaussian
+responses, transformed/factor bases, latent predictor covariance, and
+intervals are not supported in this release. Use
+\code{extract_Sigma(fit, level = "column_slope")} for
+\eqn{\Sigma_\mathrm{predictor}}.
 
 For trait-specific intercept-and-slope covariance, use the corresponding
 augmented \code{phylo_indep()}, \code{phylo_latent()}, or \code{phylo_dep()} syntax.
+
+A historical non-trait RHS route remains accepted to preserve existing
+fits. It is compatibility behaviour, not the teaching API; new code puts
+the resolved response-column factor on the RHS.
 }
 }
 \examples{
-\dontrun{
-  tree <- ape::rcoal(20); tree$tip.label <- paste0("sp", seq_len(20))
-  sim <- simulate_site_trait(
-    n_sites = 10, n_species = 20, n_traits = 3,
-    mean_species_per_site = 10,
-    Cphy = ape::vcv(tree, corr = TRUE),
-    sigma2_phy = rep(0.3, 3), seed = 1
-  )
-  sim$data$species <- factor(sim$data$species, levels = tree$tip.label)
-  sim$data$x <- rnorm(nrow(sim$data))
-  fit <- gllvmTMB(
-    value ~ 0 + trait + (0 + trait):x + phylo_slope(x | species),
-    data       = sim$data,
-    trait      = "trait",
-    unit       = "species",
-    cluster    = "species",
-    phylo_tree = tree
-  )
-}
+\dontrun{if (requireNamespace("ape", quietly = TRUE)) {
+  set.seed(1); tree <- ape::rcoal(6); tree$tip.label <- paste0("sp", 1:6)
+  dat <- expand.grid(site = factor(paste0("s", 1:12)), trait = factor(tree$tip.label))
+  dat$elevation <- rnorm(nrow(dat)); dat$forest_cover <- rnorm(nrow(dat))
+  dat$value <- rnorm(nrow(dat))
+  fit <- gllvmTMB(value ~ 0 + trait + phylo_slope(elevation + forest_cover | trait, tree = tree),
+    data = dat, trait = "trait", unit = "site", family = gaussian())
+  extract_Sigma(fit, level = "column_slope")
+}}
 }
 \seealso{
-\code{\link[=phylo_latent]{phylo_latent()}}, \code{\link[=phylo_scalar]{phylo_scalar()}}.
+\code{\link[=slope]{slope()}}, \code{\link[=animal_slope]{animal_slope()}}, \code{\link[=kernel_slope]{kernel_slope()}}, \code{\link[=spatial_slope]{spatial_slope()}},
+\code{\link[=phylo_dep]{phylo_dep()}}, \code{\link[=phylo_indep]{phylo_indep()}}, \code{\link[=extract_Sigma]{extract_Sigma()}}.
 }

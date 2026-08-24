@@ -41,11 +41,12 @@ inside this term are not supported in this release.
 }
 \examples{
 \dontrun{
-K <- diag(nlevels(df_long$trait))
-dimnames(K) <- list(levels(df_long$trait), levels(df_long$trait))
+set.seed(1); dat <- expand.grid(unit = factor(1:12), trait = factor(paste0("sp", 1:4)))
+dat$lat <- rnorm(nrow(dat)); dat$temp <- rnorm(nrow(dat)); dat$value <- rnorm(nrow(dat))
+K <- diag(nlevels(dat$trait)); dimnames(K) <- list(levels(dat$trait), levels(dat$trait))
 fit <- gllvmTMB(
   value ~ 0 + trait + kernel_slope(lat + temp | trait, K = K),
-  data = df_long, trait = "trait", unit = "unit",
+  data = dat, trait = "trait", unit = "unit",
   family = gaussian()
 )
 extract_Sigma(fit, level = "column_slope")

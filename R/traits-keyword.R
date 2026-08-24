@@ -222,6 +222,7 @@ is_traits_lhs <- function(formula) {
   "kernel_dep",
   "kernel_scalar",
   "kernel_slope",
+  "spatial_slope",
   "propto",
   "equalto",
   "meta_V",
@@ -236,7 +237,7 @@ is_traits_lhs <- function(formula) {
 .traits_has_column_slope <- function(expr, trait_col = "trait") {
   if (!is.call(expr)) return(FALSE)
   fn <- .traits_call_name(expr)
-  if (!is.null(fn) && fn %in% c("slope", "kernel_slope")) return(TRUE)
+  if (!is.null(fn) && fn %in% c("slope", "kernel_slope", "spatial_slope")) return(TRUE)
   if (!is.null(fn) &&
       fn %in% c("phylo_slope", "animal_slope", "phylo_indep", "phylo_dep",
                 "animal_indep", "animal_dep") &&

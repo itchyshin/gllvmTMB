@@ -86,6 +86,40 @@ test_that("ordinary column slopes use a trait-major slope-only design oracle", {
                rep(0, nrow(coefficient_cov)^2 - nrow(coefficient_cov)))
 })
 
+test_that("column-slope helpers resolve a custom response-column name", {
+  fx <- .make_fixed_column_slope_fixture(seed = 1301L, n_traits = 4L)
+  fx$data$response_column <- fx$data$trait
+  ## A numeric predictor literally named `trait` is valid when the declared
+  ## response-column factor has another name.
+  fx$data$trait <- stats::rnorm(nrow(fx$data))
+  fit <- suppressMessages(gllvmTMB::gllvmTMB(
+    value ~ 0 + response_column + slope(trait + x || response_column),
+    data = fx$data,
+    trait = "response_column",
+    unit = "unit",
+    family = stats::gaussian(),
+    control = gllvmTMB::gllvmTMBcontrol(se = FALSE)
+  ))
+
+  expect_equal(fit$opt$convergence, 0L)
+  expect_identical(fit$tmb_data$n_lhs_cols, 2L)
+  expect_equal(fit$tmb_data$Z_phy_aug[, , 1L],
+               cbind(trait = fx$data$trait, x = fx$data$x),
+               ignore_attr = TRUE)
+  expect_identical(
+    rownames(extract_Sigma(fit, level = "column_slope")$Sigma),
+    c("trait", "x")
+  )
+
+  expect_error(
+    gllvmTMB::gllvmTMB(
+      value ~ 0 + response_column + slope(response_column | response_column),
+      data = fx$data, trait = "response_column", unit = "unit"
+    ),
+    "response-column factor"
+  )
+})
+
 test_that("one-predictor bars are objective- and extractor-equivalent by source", {
   fx <- .make_fixed_column_slope_fixture(seed = 131L, n_traits = 3L)
   forms <- list(
@@ -149,6 +183,26 @@ test_that("identity kernel is exactly the ordinary column source", {
   expect_identical(ext$source$type, "kernel")
   expect_identical(ext$source$name, "identity")
   expect_identical(ext$source$scale, "as_supplied")
+})
+
+test_that("multi-predictor kernel double bars pin predictor covariance", {
+  fx <- .make_fixed_column_slope_fixture(seed = 1321L, n_traits = 5L)
+  full <- .fit_fixed_column_slope(
+    fx, value ~ 0 + trait + kernel_slope(x + z | trait, K = fx$K)
+  )
+  diagonal <- .fit_fixed_column_slope(
+    fx, value ~ 0 + trait + kernel_slope(x + z || trait, K = fx$K)
+  )
+
+  expect_identical(sum(names(full$opt$par) == "theta_dep_chol"), 3L)
+  expect_identical(sum(names(diagonal$opt$par) == "theta_dep_chol"), 2L)
+  Sigma_diagonal <- extract_Sigma(diagonal, level = "column_slope")$Sigma
+  expect_equal(Sigma_diagonal[1L, 2L], 0, tolerance = 1e-12)
+  expect_equal(Sigma_diagonal[2L, 1L], 0, tolerance = 1e-12)
+  expect_identical(
+    extract_Sigma(diagonal, level = "column_slope")$source$type,
+    "kernel"
+  )
 })
 
 test_that("kernel labels, not storage order, control the response-column map", {

@@ -37,15 +37,14 @@ term are not supported in this release.
 }
 \examples{
 \dontrun{
-fit <- gllvmTMB(
-  value ~ 0 + trait + slope(lat + temp | trait),
-  data = df_long, trait = "trait", unit = "unit",
-  family = gaussian()
-)
+set.seed(1); dat <- expand.grid(unit = factor(1:12), trait = factor(paste0("sp", 1:4)))
+dat$lat <- rnorm(nrow(dat)); dat$temp <- rnorm(nrow(dat)); dat$value <- rnorm(nrow(dat))
+fit <- gllvmTMB(value ~ 0 + trait + slope(lat + temp | trait), data = dat,
+  trait = "trait", unit = "unit", family = gaussian())
 extract_Sigma(fit, level = "column_slope")
 }
 }
 \seealso{
-\code{\link[=phylo_slope]{phylo_slope()}}, \code{\link[=animal_slope]{animal_slope()}}, \code{\link[=kernel_slope]{kernel_slope()}},
+\code{\link[=phylo_slope]{phylo_slope()}}, \code{\link[=animal_slope]{animal_slope()}}, \code{\link[=kernel_slope]{kernel_slope()}}, \code{\link[=spatial_slope]{spatial_slope()}},
 \code{\link[=extract_Sigma]{extract_Sigma()}}.
 }

@@ -4,9 +4,10 @@
 who need one authoritative contract for predictors whose coefficients vary
 across response columns.
 **Status:** Active grammar and model contract, 2026-08-24. The ordinary,
-phylogenetic, animal, and dense-kernel helpers are the first implementation
-slice. The spatial helper has the same locked public grammar, but its
-column-coordinate engine and recovery evidence remain a separate slice.
+phylogenetic, animal, and dense-kernel helpers form the fixed-source slice.
+The dedicated spatial slice now implements the same locked grammar and has
+local Gaussian point-recovery, projection, alignment, and extraction evidence.
+This is not evidence for the deferred non-Gaussian or interval regimes.
 **Supersedes:** the deprecation and replacement proposals in Design 55 §6 and
 Design 56 §§8, 9.6, and 10.2. Those sections remain in place as historical
 records. This design does not supersede their intercept-plus-slope
@@ -171,10 +172,22 @@ projection `A_st` (`R/mesh.R`; `tests/testthat/test-mesh.R`). A response-column
 spatial slope needs a different alignment: coordinates describe response
 columns, not sites or observation rows.
 
-The spatial column slice must therefore use a `gllvmTMBmesh` built from a
+The spatial column slice therefore uses a labelled `gllvmTMBmesh` built from a
 trait-level table containing exactly one finite coordinate pair for every
-declared trait level. The mesh object must retain those trait labels. After
-alignment, its projection is
+declared trait level, for example
+
+```r
+column_mesh <- make_mesh(
+  column_locations,
+  xy_cols = c("x", "y"),
+  id_col = "trait"
+)
+```
+
+The optional `id_col` records one character label for each projection row.
+It is opt-in: ordinary `make_mesh()` calls and the shape of their returned
+objects remain unchanged. `spatial_slope()` requires the mesh's `id_col` to
+equal the resolved trait-column name. After label alignment, the projection is
 
 ```text
 A_column: T x n_mesh.
@@ -185,10 +198,10 @@ duplicated trait labels and duplicated coordinate pairs fail before fitting.
 An ordinary observation-aligned mesh cannot be guessed or recycled by row
 count.
 
-Alignment is label-based. The spatial leaf must prove that permuting the
-trait-coordinate table and its labelled projection leaves `K_column`, the
-objective, and extracted `Sigma_predictor` unchanged after realignment. It
-must also prove that a missing label, an extra label, a duplicate label, or a
+Alignment is label-based. The spatial gate proves that permuting the
+trait-coordinate table and its labelled projection leaves the objective and
+extracted `Sigma_predictor` unchanged after realignment. It also proves that
+an unlabelled mesh, a missing or extra label, a duplicate label, or a
 duplicated coordinate pair fails before optimization.
 
 `make_mesh()` currently passes numeric coordinates to `fmesher` without
@@ -216,11 +229,21 @@ describe spatial correlation range, and leaves marginal coefficient variance
 in `Sigma_predictor`. Design 64 remains authoritative for observation-spatial
 GMRF field scaling; this section is the distinct response-column contract.
 
+The implementation factorizes sparse `Q(kappa)` once and solves the `T`
+right-hand sides in `A_column'`. It therefore does not materialize the full
+dense mesh inverse. It forms only the required projected `T x T` covariance,
+normalizes it to exact unit diagonal, and reports that `K_column`. The positive
+range parameter is `kappa = exp(log_kappa_spde)` and the extractor reports the
+isotropic practical range `sqrt(8) / kappa` in the supplied coordinate units.
+For `P` predictors, `||` leaves exactly the `P` log-Cholesky diagonal entries
+of `Sigma_predictor` free and pins all `P(P - 1) / 2` lower entries; `|` leaves
+the full log-Cholesky parameterization free. This mapping depends on `P`, not
+on the number of response columns `T`.
+
 ## 7. Extraction contract
 
-The four first-slice helpers use
-`extract_Sigma(fit, level = "column_slope")`; `spatial_slope()` must use the
-same level when its dedicated implementation lands. The returned object
+All five helpers use `extract_Sigma(fit, level = "column_slope")`. The returned
+object
 contains:
 
 - `Sigma`: named `P x P` `Sigma_predictor`;
@@ -232,11 +255,26 @@ contains:
 - `source`: at least `type`, `grouping`, and `labels`, plus the kernel name,
   matrix-scale provenance, or spatial coordinate/range metadata when relevant.
 
+For `source$type = "spatial"`, the source metadata additionally contains the
+label-aligned coordinate matrix and coordinate-column names,
+`coordinate_units = "as_supplied"`, fitted `kappa`, `practical_range`,
+`normalization = "exact_projected_unit_diagonal"`, and the normalized
+`K_column`.
+
 The extractor reports predictor covariance, not the full `TP x TP`
 coefficient covariance. A method developer reconstructs the latter as
 `kronecker(K_column, Sigma)` in trait-major order. `extract_Sigma(level =
 "phy")`, `"spatial"`, or another intercept-tier level must not silently return
 this object.
+
+An ordinary `slope()` term may coexist with a separate species-axis
+phylogenetic covariance. In that model, `extract_Sigma(level =
+"column_slope")` returns `Sigma_predictor` for the identity-linked response
+columns, while `extract_Sigma(level = "phy")` returns the distinct species
+phylogenetic covariance. The two extractors must never substitute for one
+another. Structured column sources (`phylo_slope()`, `animal_slope()`, and
+`kernel_slope()`) remain refused beside another phylogenetic tier until the
+global source-harvesting path is replaced by fully term-local source objects.
 
 ## 8. Validation and scope boundary
 
@@ -252,7 +290,30 @@ tests extend that evidence rather than reinterpret it.
 `tests/testthat/test-fixed-column-slope-family.R` is the first fixed-source
 alignment gate: it checks the ordinary trait-major design, one-predictor bar
 identity, dense-kernel permutation invariance and scale metadata, malformed
-sources, Gaussian recovery, and historical phylogenetic/animal compatibility.
+sources, Gaussian recovery, multi-predictor kernel `||`, a custom resolved
+response-column name with a numeric predictor literally named `trait`, and
+historical phylogenetic/animal compatibility. The phylogenetic gate also
+compares a non-identity pedigree with its equivalent dense `A` and sparse
+`Ainv` inputs.
+`tests/testthat/test-ordinary-column-slope-phylo-coexistence.R` proves the
+two-axis comparative model: `slope(x | trait)` uses `Ainv_phy_slope = I_T`, a
+predictor-only design, and the `b_phy_aug` block, while the separate
+`phylo_latent(0 + trait | species, ...)` term uses the species tree and its own
+random block. Both covariance extractors are exercised, all fitted gradients
+are finite, and the structured-source combinations that still share global
+source harvesting fail loudly.
+`tests/testthat/test-spatial-column-slope.R` is the dedicated spatial gate. It
+checks opt-in mesh labels without changing ordinary mesh objects; a `P = 2`,
+`T = 6` diagonal parameter map; no intercept; exact agreement with an
+independent projected-covariance oracle; exact unit diagonal; a finite
+automatic-differentiation gradient for `log_kappa_spde`; source metadata; `P = 1`
+bar identity; label-permutation invariance; malformed meshes; the Gaussian
+boundary; and a small `T = 25`, `P = 2` known-DGP recovery. The local fail-closed
+gate passed 39 assertions with no failures, warnings, or skips. A regression
+filter covering the full response-column slope family, RHS routing, article
+formal checks, and existing spatial slope tests passed 221 assertions with no
+failures or warnings; six legacy recovery tests remained skipped by their own
+explicit heavy-test environment gates.
 
 Deferred and unadvertised:
 
@@ -260,9 +321,7 @@ Deferred and unadvertised:
 - reduced-rank or `latent()` covariance among predictor coefficients;
 - non-Gaussian and mixed-family response-column slopes;
 - confidence intervals, bootstrap coverage, or calibrated covariance tests;
-- multiple response-column slope sources in one model; and
-- the spatial helper until its trait-coordinate projection, normalization,
-  recovery, and extractor metadata pass their own gates.
+- multiple response-column slope sources in one model.
 
 These limits do not retract the separate, older intercept-plus-slope
 random-regression routes in Designs 55, 56, 60, and 64.
@@ -275,13 +334,22 @@ random-regression routes in Designs 55, 56, 60, and 64.
 - `tests/testthat/test-fixed-column-slope-family.R` extends that oracle to the
   ordinary and dense-kernel sources and locks one-predictor public-object
   identity plus RHS-not-trait compatibility.
+- `tests/testthat/test-ordinary-column-slope-phylo-coexistence.R` locks the
+  independent response-column-slope and species-phylogeny blocks used by the
+  comparative worked example.
 - `R/fit-multi.R` stores a dedicated column-slope source, labels, mode, and
   predictor list; `R/extract-sigma.R` returns the current
   `level = "column_slope"` object.
+- `R/mesh.R` provides the opt-in `id_col` / `row_labels` alignment contract for
+  response-column coordinates without changing ordinary mesh objects.
+- `src/gllvmTMB.cpp` evaluates the dedicated response-column SPDE block by
+  sparse factorization and projected solves, normalizes `K_column` exactly,
+  and keeps marginal predictor covariance in `Sigma_predictor`.
+- `tests/testthat/test-spatial-column-slope.R` locks the spatial design,
+  normalization, mapping, permutation, malformed-input, extraction, gradient,
+  and small known-DGP recovery oracles.
 - `R/phylo-tree-precision.R` constructs tree covariance on a correlation
   scale by default.
-- `R/mesh.R` shows that mesh coordinates are finite numeric values used in
-  their supplied units, and that the present projection is row-aligned.
 - Design 64 derives the existing observation-spatial SPDE normalization; it
   does not define response-column coordinates.
 - Designs 55 and 56 proposed deprecating slope helpers in favour of augmented

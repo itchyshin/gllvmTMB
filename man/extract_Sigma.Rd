@@ -24,8 +24,9 @@ remain gated for Julia bridge extractors.}
 
 \item{level}{One of \code{"unit"} (between-unit), \code{"unit_obs"} (within-unit),
 \code{"phy"} (phylogenetic), \code{"column_slope"} (the predictor-basis covariance
-from \code{\link[=slope]{slope()}}, \code{\link[=phylo_slope]{phylo_slope()}}, \code{\link[=animal_slope]{animal_slope()}}, \code{\link[=kernel_slope]{kernel_slope()}}, or
-the corresponding \verb{*_indep()} / \verb{*_dep()} canonical form), \code{"spatial"},
+from \code{\link[=slope]{slope()}}, \code{\link[=phylo_slope]{phylo_slope()}}, \code{\link[=animal_slope]{animal_slope()}}, \code{\link[=kernel_slope]{kernel_slope()}},
+\code{\link[=spatial_slope]{spatial_slope()}}, or the corresponding \verb{*_indep()} / \verb{*_dep()} canonical
+form), \code{"spatial"},
 \code{"cluster"}, or \code{"cluster2"} (a
 second, independent diagonal grouping alongside \code{"cluster"} -- see the
 \code{cluster2} argument to \code{\link[=gllvmTMB]{gllvmTMB()}}). Legacy aliases
@@ -65,9 +66,15 @@ vector of unique variances), \code{level}, \code{part}, \code{note}.
 For \code{level = "column_slope"}: a list with the named \verb{1 x 1} or \verb{P x P}
 predictor covariance \code{Sigma}, its correlation matrix \code{R}, \code{level},
 \code{part}, \code{predictors}, \code{column_labels}, \code{source}, and \code{note}. \code{source}
-contains \code{type} (\code{"ordinary"}, \code{"phylo"}, \code{"animal"}, or \code{"kernel"}),
+contains \code{type} (\code{"ordinary"}, \code{"phylo"}, \code{"animal"}, \code{"kernel"}, or
+\code{"spatial"}),
 the response-column \code{grouping}, and its aligned \code{labels}; kernel sources
-additionally report \code{name} and \code{scale = "as_supplied"}. The fitted
+additionally report \code{name} and \code{scale = "as_supplied"}. Spatial sources
+additionally report aligned coordinates, coordinate-column names and
+supplied units, \code{kappa}, practical range, projected-normalization method,
+and \code{K_column}. Use only \code{level = "column_slope"} for a
+\code{\link[=spatial_slope]{spatial_slope()}} fit; \code{level = "spatial"} is reserved for the separate
+observation-space SPDE covariance and fails clearly for this model. The fitted
 coefficient contract is
 \eqn{\mathrm{Cov}(\mathrm{vec}(B^\mathsf{T})) = K_\mathrm{column}
   \otimes \Sigma}. For \code{P = 1}, full and diagonal bars are the same model

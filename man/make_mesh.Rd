@@ -15,7 +15,8 @@ make_mesh(
   fmesher_func = fmesher::fm_rcdt_2d_inla,
   convex = NULL,
   concave = convex,
-  ...
+  ...,
+  id_col = NULL
 )
 }
 \arguments{
@@ -44,11 +45,17 @@ state is restored before this function returns.}
 \code{\link[fmesher:fm_nonconvex_hull]{fmesher::fm_nonconvex_hull()}}.}
 
 \item{...}{Additional arguments passed to \code{fmesher_func}.}
+
+\item{id_col}{Optional name of a column containing one unique, non-missing
+label per projection row. The labels are retained for formula terms, such
+as \code{\link[=spatial_slope]{spatial_slope()}}, that align mesh locations to response columns. The
+default \code{NULL} preserves the ordinary observation-aligned mesh contract.}
 }
 \value{
 A \code{gllvmTMBmesh} object containing \code{loc_xy}, \code{xy_cols}, \code{mesh}, the
 finite-element matrices in \code{spde}, mesh centres in \code{loc_centers}, and the
-observation-to-mesh projection matrix \code{A_st}.
+observation-to-mesh projection matrix \code{A_st}. When \code{id_col} is supplied,
+the object also contains \code{id_col} and \code{row_labels}.
 }
 \description{
 Construct a triangular mesh and the finite-element quantities used by the

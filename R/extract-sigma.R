@@ -582,8 +582,9 @@ link_residual_per_trait <- function(fit) {
 #'   remain gated for Julia bridge extractors.
 #' @param level One of `"unit"` (between-unit), `"unit_obs"` (within-unit),
 #'   `"phy"` (phylogenetic), `"column_slope"` (the predictor-basis covariance
-#'   from [slope()], [phylo_slope()], [animal_slope()], [kernel_slope()], or
-#'   the corresponding `*_indep()` / `*_dep()` canonical form), `"spatial"`,
+#'   from [slope()], [phylo_slope()], [animal_slope()], [kernel_slope()],
+#'   [spatial_slope()], or the corresponding `*_indep()` / `*_dep()` canonical
+#'   form), `"spatial"`,
 #'   `"cluster"`, or `"cluster2"` (a
 #'   second, independent diagonal grouping alongside `"cluster"` -- see the
 #'   `cluster2` argument to [gllvmTMB()]). Legacy aliases
@@ -618,9 +619,15 @@ link_residual_per_trait <- function(fit) {
 #'   For `level = "column_slope"`: a list with the named `1 x 1` or `P x P`
 #'   predictor covariance `Sigma`, its correlation matrix `R`, `level`,
 #'   `part`, `predictors`, `column_labels`, `source`, and `note`. `source`
-#'   contains `type` (`"ordinary"`, `"phylo"`, `"animal"`, or `"kernel"`),
+#'   contains `type` (`"ordinary"`, `"phylo"`, `"animal"`, `"kernel"`, or
+#'   `"spatial"`),
 #'   the response-column `grouping`, and its aligned `labels`; kernel sources
-#'   additionally report `name` and `scale = "as_supplied"`. The fitted
+#'   additionally report `name` and `scale = "as_supplied"`. Spatial sources
+#'   additionally report aligned coordinates, coordinate-column names and
+#'   supplied units, `kappa`, practical range, projected-normalization method,
+#'   and `K_column`. Use only `level = "column_slope"` for a
+#'   [spatial_slope()] fit; `level = "spatial"` is reserved for the separate
+#'   observation-space SPDE covariance and fails clearly for this model. The fitted
 #'   coefficient contract is
 #'   \eqn{\mathrm{Cov}(\mathrm{vec}(B^\mathsf{T})) = K_\mathrm{column}
 #'   \otimes \Sigma}. For `P = 1`, full and diagonal bars are the same model
@@ -912,10 +919,15 @@ extract_Sigma <- function(
 
   ## ---- slope-only response-column coefficient basis --------------------
   if (isTRUE(fit$use$phylo_column_slope) && identical(level, "column_slope")) {
-    Sigma <- fit$report$Sigma_b_dep
+    source_type <- fit$use$phylo_column_slope_source %||% "phylo"
+    Sigma <- if (identical(source_type, "spatial")) {
+      fit$report$Sigma_field
+    } else {
+      fit$report$Sigma_b_dep
+    }
     if (is.null(Sigma)) {
       cli::cli_abort(
-        "Column-slope fit has no reported {.code Sigma_b_dep}."
+        "Column-slope fit has no reported predictor covariance matrix."
       )
     }
     Sigma <- as.matrix(Sigma)
@@ -928,7 +940,6 @@ extract_Sigma <- function(
     if (is.null(column_labels) || !length(column_labels)) {
       column_labels <- levels(fit$data[[fit$trait_col]])
     }
-    source_type <- fit$use$phylo_column_slope_source %||% "phylo"
     source <- list(
       type = source_type,
       grouping = fit$trait_col,
@@ -937,6 +948,22 @@ extract_Sigma <- function(
     if (identical(source_type, "kernel")) {
       source$name <- fit$use$phylo_column_slope_name %||% "kernel"
       source$scale <- "as_supplied"
+    } else if (identical(source_type, "spatial")) {
+      if (is.null(fit$mesh$row_labels) || is.null(fit$mesh$loc_xy)) {
+        cli::cli_abort("Spatial column-slope fit is missing labelled mesh metadata.")
+      }
+      coordinate_order <- match(column_labels, fit$mesh$row_labels)
+      coordinates <- fit$mesh$loc_xy[coordinate_order, , drop = FALSE]
+      rownames(coordinates) <- column_labels
+      colnames(coordinates) <- fit$mesh$xy_cols
+      kappa <- as.numeric(fit$report$kappa_s %||% fit$report$kappa)
+      source$coordinates <- coordinates
+      source$coordinate_columns <- fit$mesh$xy_cols
+      source$coordinate_units <- "as_supplied"
+      source$kappa <- kappa
+      source$practical_range <- sqrt(8) / kappa
+      source$normalization <- "exact_projected_unit_diagonal"
+      source$K_column <- fit$report$spatial_column_K
     }
     requested_mode <- fit$use$phylo_column_slope_mode %||% "indep"
     ## In one dimension full and diagonal are the same covariance model.  Use
@@ -954,7 +981,7 @@ extract_Sigma <- function(
       note = paste0(
         "Slope-only response-column coefficients from the ", source_type,
         " source with a ", if (identical(mode, "dep")) "full" else "diagonal",
-        " predictor covariance. The fixed response-column covariance supplies ",
+        " predictor covariance. The response-column source covariance supplies ",
         "the other Kronecker factor; this is not a trait-level Sigma."
       )
     ))
@@ -979,11 +1006,21 @@ extract_Sigma <- function(
   ## extract_Sigma_W() wrappers -- and the print()/summary() path that
   ## calls them -- correctly see NO between/within-unit term for a
   ## dep-only fit (they return NULL) rather than this phylogenetic block.
-  if (isTRUE(fit$use$phylo_column_slope) && identical(level, "phy")) {
+  has_species_phy_sigma <- isTRUE(fit$use$phylo_rr) ||
+    isTRUE(fit$use$phylo_diag)
+  if (isTRUE(fit$use$phylo_column_slope) && identical(level, "phy") &&
+      !has_species_phy_sigma) {
     cli::cli_abort(c(
       "This fit has a slope-only response-column covariance, not a phylogenetic trait-level {.code Sigma}.",
       "i" = "Use {.code extract_Sigma(fit, level = \"column_slope\")} for the covariance among predictor slopes.",
-      "i" = "Its {.code column_labels} and {.code source} fields identify the response-column phylogenetic axis."
+      "i" = "Its {.code column_labels} and {.code source} fields identify the response-column source axis."
+    ))
+  }
+
+  if (isTRUE(fit$use$spatial_column_slope) && identical(level, "spde")) {
+    cli::cli_abort(c(
+      "This fit has a spatial response-column slope covariance, not an observation-space spatial covariance.",
+      "i" = "Use {.code extract_Sigma(fit, level = \"column_slope\")} for the covariance among predictor slopes."
     ))
   }
   if (isTRUE(fit$use$phylo_dep_slope) && !isTRUE(fit$use$phylo_column_slope) &&

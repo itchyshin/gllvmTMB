@@ -53805,3 +53805,37 @@ The after-task report is
 
 **Deliberately not run:** a new Totoro/DRAC recovery campaign, a wide-format
 column-predictor implementation, or any non-Gaussian multi-predictor claim.
+
+---
+
+## 2026-08-24 — Trait-axis bridge article (Codex)
+
+**Lane:** `codex/trait-axis-bridge`
+**Worktree:** `/private/tmp/gllvmTMB-trait-axis-bridge`
+
+Added the Tier-1 article *What does the tree relate?* with a seeded montane-bird fixture and four visually reviewed figures. It distinguishes a tree on comparative species units, a tree on Gaussian response columns, and iSDM source labels as an observation axis. No public API, likelihood, formula grammar, family, roxygen, or generated Rd change is made.
+
+```sh
+Rscript --vanilla dev/trait-axis-bridge/verify-formulas.R --pcm
+# PASS: PCM_FORMULA_GATE_OK
+Rscript --vanilla dev/trait-axis-bridge/verify-formulas.R --column-slope
+# PASS: COLUMN_SLOPE_FORMULA_GATE_OK
+Rscript --vanilla dev/trait-axis-bridge/verify-formulas.R --isdm-source
+# PASS: ISDM_SOURCE_GATE_OK
+Rscript --vanilla dev/trait-axis-bridge/verify-scope.R
+# PASS: SCOPE SCAN PASS
+Rscript --vanilla -e 'devtools::test(filter = "phylo-column-slope-indep")'
+# PASS: 39 tests; 0 failures and warnings; 2 intentional heavy-test skips.
+Rscript --vanilla dev/trait-axis-bridge/verify-article.R
+# PASS: pkgdown::check_pkgdown() says "No problems found"; ARTICLE BUILD PASS.
+git diff --check
+# PASS: no whitespace errors.
+rg -n 'phylo_slope\(.*\| trait|Gaussian only|non-Gaussian multi-predictor|0 \+ observer|po_source\(' vignettes/articles/where-does-the-tree-go.Rmd
+# PASS: only the covered helper and its honest boundary are present.
+rg -n 'FG-[0-9]|FAM-[0-9]|RE-[0-9]|ISDM-[0-9]' vignettes/articles/where-does-the-tree-go.Rmd
+# PASS: no internal validation IDs on the reader surface.
+```
+
+**Visual receipt:** Florence inspected the four rendered PNGs after a first render exposed clipping and trait-scale conflation. The revised direct-flow figures, per-column PCM small multiples, covariance matrix, and source flow all pass at rendered article size.
+
+**Deliberately not run:** full package check / recovery campaign; Totoro/DRAC; non-Gaussian multi-predictor fits; or implementation work for wide, spatial/kernel/latent slope-only variants. After-task: `docs/dev-log/after-task/2026-08-24-trait-axis-bridge-article.md`.

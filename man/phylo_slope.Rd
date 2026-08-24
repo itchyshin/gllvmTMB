@@ -7,8 +7,8 @@
 phylo_slope(formula)
 }
 \arguments{
-\item{formula}{\code{x | species} style formula (LHS is the continuous
-covariate column name; RHS must be the species factor).}
+\item{formula}{\code{x | species} for the historical shared-slope route, or a
+slope-only \code{x1 + ... + xP | trait} / \verb{|| trait} response-column formula.}
 }
 \value{
 A formula marker; never evaluated.
@@ -51,13 +51,18 @@ This helper supports:
 for every trait of species \eqn{i}).
 }
 
-A separate multi-predictor long-format alias is available when the RHS is
-the response-column factor: \code{phylo_slope(lat + temp | trait, tree = tree)}
-means \code{phylo_dep(0 + lat + temp | trait, tree = tree)}, so the two slope
+A distinct long-format route is selected when the RHS is exactly the
+resolved response-column factor. For example,
+\code{phylo_slope(lat + temp | trait, tree = tree)} means
+\code{phylo_dep(0 + lat + temp | trait, tree = tree)}, so the two slope
 deviations have a full covariance. Use \code{||} instead of \code{|} for the
-diagonal \code{phylo_indep()} route. This alias is Gaussian-only, has no random
-intercept, and is intentionally outside the 5 x 3 trait-covariance grid.
-It does not change the one-predictor helper described above.
+diagonal \code{phylo_indep()} route. The same routing rule applies to one
+predictor: \code{phylo_slope(lat | trait, tree = tree)} enters the column-slope
+core, while \code{phylo_slope(lat | species, tree = tree)} retains the historical
+shared-across-traits helper above. With one predictor, \code{|} and \code{||} have the
+same objective and fitted \verb{1 x 1} covariance. The response-column route is
+Gaussian-only, has no random intercept, and is intentionally outside the
+5 x 3 trait-covariance grid.
 
 For trait-specific intercept-and-slope covariance, use the corresponding
 augmented \code{phylo_indep()}, \code{phylo_latent()}, or \code{phylo_dep()} syntax.

@@ -582,8 +582,9 @@ link_residual_per_trait <- function(fit) {
 #'   remain gated for Julia bridge extractors.
 #' @param level One of `"unit"` (between-unit), `"unit_obs"` (within-unit),
 #'   `"phy"` (phylogenetic), `"column_slope"` (the predictor-basis covariance
-#'   from `phylo_indep(0 + x1 + ... + xP | trait)` or
-#'   `animal_indep(0 + x1 + ... + xP | trait)`), `"spatial"`, `"cluster"`, or `"cluster2"` (a
+#'   from [slope()], [phylo_slope()], [animal_slope()], [kernel_slope()], or
+#'   the corresponding `*_indep()` / `*_dep()` canonical form), `"spatial"`,
+#'   `"cluster"`, or `"cluster2"` (a
 #'   second, independent diagonal grouping alongside `"cluster"` -- see the
 #'   `cluster2` argument to [gllvmTMB()]). Legacy aliases
 #'   `"B"`, `"W"`, and `"spde"` are accepted with a soft-deprecation
@@ -613,6 +614,17 @@ link_residual_per_trait <- function(fit) {
 #'
 #'   For `part = "unique"`: a list with `s` (length-T named numeric
 #'   vector of unique variances), `level`, `part`, `note`.
+#'
+#'   For `level = "column_slope"`: a list with the named `1 x 1` or `P x P`
+#'   predictor covariance `Sigma`, its correlation matrix `R`, `level`,
+#'   `part`, `predictors`, `column_labels`, `source`, and `note`. `source`
+#'   contains `type` (`"ordinary"`, `"phylo"`, `"animal"`, or `"kernel"`),
+#'   the response-column `grouping`, and its aligned `labels`; kernel sources
+#'   additionally report `name` and `scale = "as_supplied"`. The fitted
+#'   coefficient contract is
+#'   \eqn{\mathrm{Cov}(\mathrm{vec}(B^\mathsf{T})) = K_\mathrm{column}
+#'   \otimes \Sigma}. For `P = 1`, full and diagonal bars are the same model
+#'   and return the same object with canonical `part = "dep"`.
 #'
 #'   For a `phylo_dep(1 + x1 + ... + xs | species)` fit with one or more
 #'   slopes, call with `level = "phy"`: the result is the single full
@@ -917,21 +929,32 @@ extract_Sigma <- function(
       column_labels <- levels(fit$data[[fit$trait_col]])
     }
     source_type <- fit$use$phylo_column_slope_source %||% "phylo"
+    source <- list(
+      type = source_type,
+      grouping = fit$trait_col,
+      labels = column_labels
+    )
+    if (identical(source_type, "kernel")) {
+      source$name <- fit$use$phylo_column_slope_name %||% "kernel"
+      source$scale <- "as_supplied"
+    }
+    requested_mode <- fit$use$phylo_column_slope_mode %||% "indep"
+    ## In one dimension full and diagonal are the same covariance model.  Use
+    ## one canonical extractor label so `x | trait` and `x || trait` return
+    ## byte-identical public objects as well as identical objectives.
+    mode <- if (nrow(Sigma) == 1L) "dep" else requested_mode
     return(list(
       Sigma = Sigma,
       R = .safe_cov2cor(Sigma, slope_cols),
       level = "column_slope",
-      part = fit$use$phylo_column_slope_mode %||% "indep",
-      source = list(
-        type = source_type,
-        grouping = fit$trait_col,
-        labels = column_labels
-      ),
+      part = mode,
+      source = source,
       predictors = slope_cols,
       column_labels = column_labels,
       note = paste0(
-        source_type, "_indep(0 + x1 + ... + xP | trait): covariance among ",
-        "the slope-predictor coefficients. The response-column tree supplies ",
+        "Slope-only response-column coefficients from the ", source_type,
+        " source with a ", if (identical(mode, "dep")) "full" else "diagonal",
+        " predictor covariance. The fixed response-column covariance supplies ",
         "the other Kronecker factor; this is not a trait-level Sigma."
       )
     ))

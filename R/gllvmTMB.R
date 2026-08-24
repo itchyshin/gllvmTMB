@@ -738,6 +738,13 @@ gllvmTMB <- function(
   ## (`0 + trait`, `(0 + trait):x`, latent(0 + trait | g), ...), and
   ## recurse into gllvmTMB() with the long-format data + formula.
   if (is_traits_lhs(formula)) {
+    if (.traits_has_column_slope(formula[[3L]])) {
+      cli::cli_abort(c(
+        "Response-column slope helpers currently require long-format data.",
+        "i" = "The slope term is indexed by the explicit response-column factor in the long data.",
+        ">" = "Pivot to one row per (unit, trait) observation, then use {.code value ~ 0 + trait + slope(x | trait)} or the corresponding fixed-source helper."
+      ), class = "gllvmTMB_column_slope_wide_unsupported")
+    }
     .call_wide <- match.call()
     rewrite <- rewrite_traits_lhs(
       formula = formula,

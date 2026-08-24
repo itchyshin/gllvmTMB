@@ -799,19 +799,24 @@ phylo_latent <- function(
 #' * **Slopes shared across traits** (same \eqn{\beta_{\text{phy}}}(i)
 #'   for every trait of species \eqn{i}).
 #'
-#' A separate multi-predictor long-format alias is available when the RHS is
-#' the response-column factor: `phylo_slope(lat + temp | trait, tree = tree)`
-#' means `phylo_dep(0 + lat + temp | trait, tree = tree)`, so the two slope
+#' A distinct long-format route is selected when the RHS is exactly the
+#' resolved response-column factor. For example,
+#' `phylo_slope(lat + temp | trait, tree = tree)` means
+#' `phylo_dep(0 + lat + temp | trait, tree = tree)`, so the two slope
 #' deviations have a full covariance. Use `||` instead of `|` for the
-#' diagonal `phylo_indep()` route. This alias is Gaussian-only, has no random
-#' intercept, and is intentionally outside the 5 x 3 trait-covariance grid.
-#' It does not change the one-predictor helper described above.
+#' diagonal `phylo_indep()` route. The same routing rule applies to one
+#' predictor: `phylo_slope(lat | trait, tree = tree)` enters the column-slope
+#' core, while `phylo_slope(lat | species, tree = tree)` retains the historical
+#' shared-across-traits helper above. With one predictor, `|` and `||` have the
+#' same objective and fitted `1 x 1` covariance. The response-column route is
+#' Gaussian-only, has no random intercept, and is intentionally outside the
+#' 5 x 3 trait-covariance grid.
 #'
 #' For trait-specific intercept-and-slope covariance, use the corresponding
 #' augmented `phylo_indep()`, `phylo_latent()`, or `phylo_dep()` syntax.
 #'
-#' @param formula `x | species` style formula (LHS is the continuous
-#'   covariate column name; RHS must be the species factor).
+#' @param formula `x | species` for the historical shared-slope route, or a
+#'   slope-only `x1 + ... + xP | trait` / `|| trait` response-column formula.
 #' @return A formula marker; never evaluated.
 #' @seealso [phylo_latent()], [phylo_scalar()].
 #' @examples
@@ -836,6 +841,89 @@ phylo_latent <- function(
 #' }
 #' @export
 phylo_slope <- function(formula) {
+  invisible(NULL)
+}
+
+#' Ordinary response-column slopes
+#'
+#' Adds slope-only deviations across the response columns of a long-format
+#' Gaussian model.  If `B` is the response-column by predictor coefficient
+#' matrix and `Sigma` is the fitted covariance among its predictor columns,
+#' this helper uses
+#' \deqn{\mathrm{Cov}(\mathrm{vec}(B^\mathsf{T})) = I \otimes \Sigma.}
+#' Write `x1 + x2 | trait` for a full predictor covariance or
+#' `x1 + x2 || trait` for a diagonal predictor covariance.  Both spellings
+#' give the same one-variance model when there is only one predictor.  The
+#' term never adds a random intercept; keep response-column intercepts in the
+#' main formula with `0 + trait`.
+#'
+#' ## Scope
+#'
+#' This route is covered for Gaussian long-format data with one or more bare,
+#' finite numeric predictors. Wide-format column slopes, non-Gaussian
+#' responses, transformed/factor bases, and a random intercept inside this
+#' term are not supported in this release.
+#'
+#' @param formula A slope-only bar formula with bare numeric predictor names
+#'   on the left and the resolved response-column factor on the right, for
+#'   example `x | trait` or `x1 + x2 || trait`.
+#' @return A formula marker; never evaluated.
+#' @seealso [phylo_slope()], [animal_slope()], [kernel_slope()],
+#'   [extract_Sigma()].
+#' @examples
+#' \dontrun{
+#' fit <- gllvmTMB(
+#'   value ~ 0 + trait + slope(lat + temp | trait),
+#'   data = df_long, trait = "trait", unit = "unit",
+#'   family = gaussian()
+#' )
+#' extract_Sigma(fit, level = "column_slope")
+#' }
+#' @export
+slope <- function(formula) {
+  invisible(NULL)
+}
+
+#' Fixed-kernel response-column slopes
+#'
+#' Adds slope-only response-column deviations coupled by a supplied labelled
+#' covariance matrix `K`.  With response-column by predictor coefficient
+#' matrix `B`, the model is
+#' \deqn{\mathrm{Cov}(\mathrm{vec}(B^\mathsf{T})) = K \otimes \Sigma.}
+#' A single `|` estimates a full predictor covariance `Sigma`; `||` makes it
+#' diagonal.  For one predictor these are the same model.  `K` must be finite,
+#' symmetric, positive definite, and have row and column names matching the
+#' levels of the response-column factor.  Its storage order need not match the
+#' factor order because labels are used for alignment.
+#'
+#' ## Scope
+#'
+#' This route is covered for one labelled positive-definite kernel, Gaussian
+#' long-format data, and one or more bare, finite numeric predictors. The
+#' supplied matrix is used on its original scale. Wide-format column slopes,
+#' non-Gaussian responses, transformed/factor bases, and a random intercept
+#' inside this term are not supported in this release.
+#'
+#' @param formula A slope-only bar formula with bare numeric predictor names
+#'   on the left and the resolved response-column factor on the right.
+#' @param K A labelled positive-definite covariance matrix for the response
+#'   columns.
+#' @param name A non-empty label retained in extractor source metadata.
+#' @return A formula marker; never evaluated.
+#' @seealso [slope()], [phylo_slope()], [animal_slope()], [extract_Sigma()].
+#' @examples
+#' \dontrun{
+#' K <- diag(nlevels(df_long$trait))
+#' dimnames(K) <- list(levels(df_long$trait), levels(df_long$trait))
+#' fit <- gllvmTMB(
+#'   value ~ 0 + trait + kernel_slope(lat + temp | trait, K = K),
+#'   data = df_long, trait = "trait", unit = "unit",
+#'   family = gaussian()
+#' )
+#' extract_Sigma(fit, level = "column_slope")
+#' }
+#' @export
+kernel_slope <- function(formula, K, name = "kernel") {
   invisible(NULL)
 }
 
@@ -2135,12 +2223,12 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL) {
 }
 
 ## The memorable slope helper deliberately has a smaller, unambiguous grammar:
-## `phylo_slope(x1 + x2 | trait)` (or `||`) is only a multi-predictor
-## response-column alias.  A single `phylo_slope(x | species)` remains the
-## established shared-across-traits helper and must not be reinterpreted.
+## one or more bare predictor names.  Whether a one-predictor phylo/animal
+## helper means this column route is decided from its RHS: only the resolved
+## response-column factor opts in, preserving `phylo_slope(x | species)`.
 .gllvmTMB_column_slope_helper_cols <- function(lhs) {
   terms <- .flatten_lhs_plus(.strip_lhs_parens(lhs))
-  if (length(terms) < 2L || !all(vapply(terms, is.name, logical(1)))) {
+  if (length(terms) < 1L || !all(vapply(terms, is.name, logical(1)))) {
     return(NULL)
   }
   cols <- vapply(terms, as.character, character(1))
@@ -2450,7 +2538,8 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
     "spatial_latent", "spatial_dep", "spde",
     "animal_scalar", "animal_unique", "animal_indep",
     "animal_latent", "animal_dep", "animal_slope",
-    "kernel_latent", "kernel_unique", "kernel_indep", "kernel_dep"
+    "kernel_latent", "kernel_unique", "kernel_indep", "kernel_dep",
+    "slope", "kernel_slope"
   )
   .has_named_arg <- function(e, arg) {
     nm <- names(e)
@@ -2592,15 +2681,66 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
   rewrite <- function(e) {
     if (is.call(e)) {
       fn <- as.character(e[[1L]])
-      ## Multi-predictor helper aliases. `phylo_slope(x | species)` is the
-      ## long-standing one-slope helper, so only a bare two-or-more-predictor
-      ## LHS can enter this response-column route.  Canonicalise before the
-      ## general `||` handling so animal relation arguments follow the normal
-      ## animal_indep()/animal_dep() validation path.
+      ## Fixed-source response-column helpers.  They all reduce to the proven
+      ## matrix-normal phylo_slope core; the marker controls the source
+      ## precision and public metadata without changing the C++ likelihood.
+      if (
+        length(fn) == 1L && fn %in% c("slope", "kernel_slope") &&
+          length(e) >= 2L && is.call(e[[2L]]) &&
+          as.character(e[[2L]][[1L]]) %in% c("|", "||")
+      ) {
+        bar <- e[[2L]]
+        if (!is.name(bar[[3L]]) ||
+            !identical(as.character(bar[[3L]]), trait_col)) {
+          cli::cli_abort(c(
+            "{.fn {fn}} must use the resolved response-column factor on the right of the bar.",
+            "i" = "This model resolves the response-column factor as {.var {trait_col}}.",
+            ">" = "Write {.code {fn}(x | {trait_col})} (full) or {.code {fn}(x || {trait_col})} (diagonal)."
+          ))
+        }
+        helper_cols <- .gllvmTMB_column_slope_helper_cols(bar[[2L]])
+        if (is.null(helper_cols)) {
+          cli::cli_abort(c(
+            "{.fn {fn}} requires one or more bare predictor names and no intercept.",
+            ">" = "Use {.code {fn}(x1 + x2 | {trait_col})}; keep {.code 0 + {trait_col}} in the main formula."
+          ))
+        }
+        mode <- if (identical(as.character(bar[[1L]]), "||")) "indep" else "dep"
+        bar[[1L]] <- as.name("|")
+        bar[[2L]] <- Reduce(function(acc, col) call("+", acc, as.name(col)),
+                           helper_cols, init = 0)
+        marks <- list(
+          .column_slope_mode = mode,
+          column_slope_cols = helper_cols,
+          .column_slope_source = if (identical(fn, "slope")) "ordinary" else "kernel"
+        )
+        if (identical(fn, "kernel_slope")) {
+          nm <- names(e)
+          if (is.null(nm) || !"K" %in% nm) {
+            cli::cli_abort(c(
+              "{.fn kernel_slope} requires a named {.arg K} matrix.",
+              ">" = "Use {.code kernel_slope(x | trait, K = K_matrix)}."
+            ))
+          }
+          marks$vcv <- e[[which(nm == "K")[[1L]]]]
+          marks$.kernel_name <- if ("name" %in% nm) {
+            e[[which(nm == "name")[[1L]]]]
+          } else {
+            "kernel"
+          }
+        }
+        return(as.call(c(list(as.name("phylo_slope"), bar), marks)))
+      }
+      ## `phylo_slope()` / `animal_slope()` opt into column semantics only
+      ## when their RHS is exactly the resolved response-column factor.  This
+      ## is the compatibility boundary: every other one-predictor call follows
+      ## the historical scalar slope route byte-for-byte.
       if (
         length(fn) == 1L && fn %in% c("phylo_slope", "animal_slope") &&
           length(e) >= 2L && is.call(e[[2L]]) &&
-          identical(e[[2L]][[1L]], as.name("|"))
+          identical(e[[2L]][[1L]], as.name("|")) &&
+          is.name(e[[2L]][[3L]]) &&
+          identical(as.character(e[[2L]][[3L]]), trait_col)
       ) {
         helper_cols <- .gllvmTMB_column_slope_helper_cols(e[[2L]][[2L]])
         if (!is.null(helper_cols)) {
@@ -2629,11 +2769,13 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
           is.call(e[[2L]]) &&
           identical(e[[2L]][[1L]], as.name("||"))
       ) {
-        ## Multi-predictor response-column helper aliases use `||` for a
+        ## Response-column helper aliases use `||` for a
         ## diagonal predictor covariance. Convert them to the canonical
         ## `*_indep(0 + x1 + x2 | trait)` spelling before the ordinary
         ## intercept--slope `||` route below.
-        if (fn %in% c("phylo_slope", "animal_slope")) {
+        if (fn %in% c("phylo_slope", "animal_slope") &&
+            is.name(e[[2L]][[3L]]) &&
+            identical(as.character(e[[2L]][[3L]]), trait_col)) {
           helper_cols <- .gllvmTMB_column_slope_helper_cols(e[[2L]][[2L]])
           if (!is.null(helper_cols)) {
             bar <- e[[2L]]

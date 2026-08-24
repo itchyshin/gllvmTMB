@@ -8,10 +8,10 @@ animal_slope(formula, pedigree = NULL, A = NULL, Ainv = NULL)
 }
 \arguments{
 \item{formula}{An lme4-bar formula. \code{x | id} retains the established
-one-predictor shared-slope helper. With two or more bare predictors and
-the response-column factor on the RHS, \code{x1 + x2 | trait} is the full
-column-slope covariance alias and \code{x1 + x2 || trait} is its diagonal
-alias.}
+one-predictor shared-slope helper. With one or more bare predictors and
+the resolved response-column factor on the RHS, \code{x1 + x2 | trait} is the
+full column-slope covariance alias and \code{x1 + x2 || trait} is its diagonal
+alias. For one predictor the two bars fit the same \verb{1 x 1} covariance.}
 
 \item{pedigree, A, Ainv}{One relatedness input for the column-slope aliases:
 a pedigree, additive-genetic covariance matrix, or its precision.}
@@ -33,6 +33,11 @@ This is the canonical \strong{quantitative-genetic random-regression}
 environmental gradient. Mathematical parallel to \code{\link[=phylo_slope]{phylo_slope()}};
 the engine recycles the same \eqn{\mathbf A^{-1}} prepared by
 \code{\link[=animal_scalar]{animal_scalar()}} / \code{\link[=animal_latent]{animal_latent()}}.
+
+The response-column form is covered for Gaussian long-format data with bare
+finite numeric predictors and no random intercept inside the term. Wide and
+non-Gaussian response-column slopes are not supported in this release. The
+established non-trait RHS route retains its existing family support.
 }
 \examples{
 \dontrun{

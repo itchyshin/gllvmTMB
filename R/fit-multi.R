@@ -743,6 +743,62 @@
   )
 }
 
+## Exact fixed covariance for ordinary / kernel response-column slopes.  This
+## path deliberately avoids the legacy phylogenetic 1e-8 ridge: an identity
+## kernel must be exactly objective-equivalent to the ordinary K_column = I
+## route, and a malformed user kernel must fail before TMB construction.
+.resolve_fixed_column_slope_precision <- function(K, data, group, source_name) {
+  levs <- levels(data[[group]])
+  group_id <- as.integer(data[[group]]) - 1L
+  if (!is.matrix(K) || !is.numeric(K) || length(dim(K)) != 2L ||
+      nrow(K) != ncol(K)) {
+    cli::cli_abort(c(
+      "{.arg K} for {.fn kernel_slope} must be a square numeric matrix.",
+      "i" = "Source {.val {source_name}} is indexed by {length(levs)} response-column level{?s}."
+    ), class = "gllvmTMB_column_slope_kernel_invalid")
+  }
+  if (any(!is.finite(K))) {
+    cli::cli_abort("{.arg K} for {.fn kernel_slope} must contain only finite values.",
+                   class = "gllvmTMB_column_slope_kernel_invalid")
+  }
+  rn <- rownames(K)
+  cn <- colnames(K)
+  if (is.null(rn) || is.null(cn) || any(!nzchar(rn)) || any(!nzchar(cn)) ||
+      anyDuplicated(rn) || anyDuplicated(cn)) {
+    cli::cli_abort(c(
+      "{.arg K} for {.fn kernel_slope} must have unique, non-empty row and column names.",
+      ">" = "Use the response-column levels on both dimensions."
+    ), class = "gllvmTMB_column_slope_kernel_invalid")
+  }
+  if (!setequal(rn, levs) || !setequal(cn, levs) ||
+      length(rn) != length(levs) || length(cn) != length(levs)) {
+    cli::cli_abort(c(
+      "{.arg K} labels for {.fn kernel_slope} must match the response-column levels exactly.",
+      "i" = "Expected {.val {levs}}; row labels are {.val {rn}} and column labels are {.val {cn}}."
+    ), class = "gllvmTMB_column_slope_kernel_labels")
+  }
+  A <- K[levs, levs, drop = FALSE]
+  symmetry_tol <- sqrt(.Machine$double.eps) * max(1, max(abs(A)))
+  if (max(abs(A - t(A))) > symmetry_tol) {
+    cli::cli_abort("{.arg K} for {.fn kernel_slope} must be symmetric.",
+                   class = "gllvmTMB_column_slope_kernel_invalid")
+  }
+  A <- (A + t(A)) / 2
+  R <- tryCatch(chol(A), error = function(e) NULL)
+  if (is.null(R)) {
+    cli::cli_abort("{.arg K} for {.fn kernel_slope} must be positive definite.",
+                   class = "gllvmTMB_column_slope_kernel_invalid")
+  }
+  Ainv <- chol2inv(R)
+  dimnames(Ainv) <- list(levs, levs)
+  list(
+    Ainv = Matrix::Matrix(Ainv, sparse = TRUE),
+    log_det = 2 * sum(log(diag(R))),
+    n_aug = nrow(A),
+    aug_id = as.integer(group_id)
+  )
+}
+
 #' Fit a long-format multivariate stacked-trait model (Stage 2 internal)
 #'
 #' Called by [gllvmTMB()] when the formula contains `latent()` or `indep()`
@@ -2044,6 +2100,22 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     phylo_column_slope_mode %in% c("indep", "dep")
   )
   use_phylo_column_slope_indep <- identical(phylo_column_slope_mode, "indep")
+  phylo_column_slope_source <- if (use_phylo_column_slope) {
+    phylo_slope_cs$extra$.column_slope_source %||%
+      if (isTRUE(phylo_slope_cs$extra$.animal_source)) "animal" else "phylo"
+  } else NULL
+  if (use_phylo_column_slope &&
+      !phylo_column_slope_source %in% c("ordinary", "phylo", "animal", "kernel")) {
+    cli::cli_abort("Internal: unknown response-column slope source {.val {phylo_column_slope_source}}.")
+  }
+  phylo_column_slope_name <- if (use_phylo_column_slope &&
+      identical(phylo_column_slope_source, "kernel")) {
+    nm <- phylo_slope_cs$extra$.kernel_name %||% "kernel"
+    if (!is.character(nm) || length(nm) != 1L || is.na(nm) || !nzchar(nm)) {
+      cli::cli_abort("{.arg name} in {.fn kernel_slope} must be one non-empty string.")
+    }
+    nm
+  } else NULL
   use_phylo_slope_correlated <- isTRUE(
     phylo_slope_cs$extra$.phylo_unique_augmented
   )
@@ -3875,12 +3947,33 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   phylo_slope_aug_id <- integer(nrow(data))
   if (use_phylo_column_slope ||
       (use_phylo_slope && !use_phylo_slope_correlated)) {
-    slope_phy <- .resolve_phylo_slope_precision(
-      phylo_tree = phylo_tree,
-      phylo_vcv = phylo_vcv,
-      data = data,
-      group = phylo_slope_group
-    )
+    slope_phy <- if (use_phylo_column_slope &&
+        identical(phylo_column_slope_source, "ordinary")) {
+      levs <- levels(data[[phylo_slope_group]])
+      identity_precision <- Matrix::Diagonal(length(levs), x = 1)
+      dimnames(identity_precision) <- list(levs, levs)
+      list(
+        Ainv = identity_precision,
+        log_det = 0,
+        n_aug = length(levs),
+        aug_id = as.integer(data[[phylo_slope_group]]) - 1L
+      )
+    } else if (use_phylo_column_slope &&
+        identical(phylo_column_slope_source, "kernel")) {
+      .resolve_fixed_column_slope_precision(
+        K = phylo_vcv,
+        data = data,
+        group = phylo_slope_group,
+        source_name = phylo_column_slope_name
+      )
+    } else {
+      .resolve_phylo_slope_precision(
+        phylo_tree = phylo_tree,
+        phylo_vcv = phylo_vcv,
+        data = data,
+        group = phylo_slope_group
+      )
+    }
     Ainv_phy_slope <- slope_phy$Ainv
     log_det_A_phy_slope <- slope_phy$log_det
     n_aug_phy_slope <- slope_phy$n_aug
@@ -7442,12 +7535,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                           ## pedigree/A/Ainv source matrix. Preserve that
                           ## identity for public extraction and reporting.
                           phylo_column_slope_source =
-                            if (use_phylo_column_slope &&
-                                isTRUE(phylo_slope_cs$extra$.animal_source)) {
-                              "animal"
-                            } else if (use_phylo_column_slope) {
-                              "phylo"
-                            } else NULL,
+                            phylo_column_slope_source,
+                          phylo_column_slope_name =
+                            phylo_column_slope_name,
                           ## Labels of the source-matrix axis for the
                           ## slope-only response-column route.
                           phylo_column_slope_labels =

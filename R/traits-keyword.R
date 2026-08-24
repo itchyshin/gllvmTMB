@@ -212,6 +212,7 @@ is_traits_lhs <- function(formula) {
   "phylo_latent",
   "phylo_rr",
   "phylo_slope",
+  "slope",
   "animal_scalar",
   "animal_unique",
   "animal_slope",
@@ -220,12 +221,34 @@ is_traits_lhs <- function(formula) {
   "kernel_indep",
   "kernel_dep",
   "kernel_scalar",
+  "kernel_slope",
   "propto",
   "equalto",
   "meta_V",
   "meta_known_V",
   "meta"
 )
+
+## Column-slope coefficients are indexed by the response-column factor itself,
+## which is explicit only in the long formula grammar.  Detect those calls
+## before a traits(...) pivot can manufacture a synthetic `trait` column and
+## accidentally make an unsupported wide call look like a supported long one.
+.traits_has_column_slope <- function(expr, trait_col = "trait") {
+  if (!is.call(expr)) return(FALSE)
+  fn <- .traits_call_name(expr)
+  if (!is.null(fn) && fn %in% c("slope", "kernel_slope")) return(TRUE)
+  if (!is.null(fn) &&
+      fn %in% c("phylo_slope", "animal_slope", "phylo_indep", "phylo_dep",
+                "animal_indep", "animal_dep") &&
+      length(expr) >= 2L && is.call(expr[[2L]]) &&
+      as.character(expr[[2L]][[1L]]) %in% c("|", "||") &&
+      length(expr[[2L]]) == 3L && is.name(expr[[2L]][[3L]]) &&
+      identical(as.character(expr[[2L]][[3L]]), trait_col)) {
+    return(TRUE)
+  }
+  any(vapply(as.list(expr)[-1L], .traits_has_column_slope, logical(1L),
+             trait_col = trait_col))
+}
 
 .traits_expand_covstruct_call <- function(expr) {
   if (!is.call(expr) || length(expr) < 2L) {

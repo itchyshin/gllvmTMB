@@ -313,11 +313,16 @@ animal_dep <- function(formula, pedigree = NULL, A = NULL, Ainv = NULL) {
 #' the engine recycles the same \eqn{\mathbf A^{-1}} prepared by
 #' [animal_scalar()] / [animal_latent()].
 #'
+#' The response-column form is covered for Gaussian long-format data with bare
+#' finite numeric predictors and no random intercept inside the term. Wide and
+#' non-Gaussian response-column slopes are not supported in this release. The
+#' established non-trait RHS route retains its existing family support.
+#'
 #' @param formula An lme4-bar formula. `x | id` retains the established
-#'   one-predictor shared-slope helper. With two or more bare predictors and
-#'   the response-column factor on the RHS, `x1 + x2 | trait` is the full
-#'   column-slope covariance alias and `x1 + x2 || trait` is its diagonal
-#'   alias.
+#'   one-predictor shared-slope helper. With one or more bare predictors and
+#'   the resolved response-column factor on the RHS, `x1 + x2 | trait` is the
+#'   full column-slope covariance alias and `x1 + x2 || trait` is its diagonal
+#'   alias. For one predictor the two bars fit the same `1 x 1` covariance.
 #' @param pedigree,A,Ainv One relatedness input for the column-slope aliases:
 #'   a pedigree, additive-genetic covariance matrix, or its precision.
 #' @return See [animal_scalar()].

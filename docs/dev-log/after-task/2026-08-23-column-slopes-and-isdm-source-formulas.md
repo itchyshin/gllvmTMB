@@ -1,7 +1,7 @@
 # After Task: Column slopes and iSDM source formulas
 
-**Branch**: merged feature work #1199–#1204; closure `codex/column-slopes-isdm-closure`  
-**Date**: 2026-08-23  
+**Branch**: merged feature work #1199–#1204; closure `codex/column-slopes-isdm-closure`
+**Date**: 2026-08-23
 **Roles (engaged)**: Ada, Boole, Curie, Gauss, Pat, Rose, Grace
 
 ## 1. Goal

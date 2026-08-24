@@ -15,13 +15,16 @@ if (!mode %in% c("validate", "smoke")) stop("mode must be validate or smoke", ca
 if (is.null(root_arg)) stop("--output=<result-root> is required", call. = FALSE)
 root <- normalizePath(if (grepl("^/", root_arg)) root_arg else file.path(getwd(), root_arg), mustWork = FALSE)
 script_arg <- grep("^--file=", commandArgs(trailingOnly = FALSE), value = TRUE)
-runner_file <- normalizePath(sub("^--file=", "", script_arg[[1L]]), mustWork = TRUE)
+runner_file <- normalizePath(
+  gsub("~+~", " ", sub("^--file=", "", script_arg[[1L]]), fixed = TRUE),
+  mustWork = TRUE
+)
 source(file.path(dirname(runner_file), "g2e-support-fixture.R"), local = TRUE)
 protocol_file <- file.path(dirname(runner_file), "2026-08-11-g2e-information-diagnostic-protocol.md")
 decision_file <- file.path(dirname(runner_file), "2026-08-11-g2e-information-diagnostic-decision.md")
 `%||%` <- function(x, y) if (is.null(x)) y else x
 hash_file <- function(path) unname(tools::md5sum(path))[[1L]]
-package_commit <- function() system2("git", c("-C", pkg, "rev-parse", "HEAD"), stdout = TRUE, stderr = FALSE)[[1L]]
+package_commit <- function() system2("git", c("-C", shQuote(pkg), "rev-parse", "HEAD"), stdout = TRUE, stderr = FALSE)[[1L]]
 assert_campaign_sha <- function() {
   if (is.null(campaign_sha) || !grepl("^[0-9a-f]{40}$", campaign_sha) || !identical(campaign_sha, package_commit())) {
     stop("--campaign-sha must be the current 40-hex package commit", call. = FALSE)

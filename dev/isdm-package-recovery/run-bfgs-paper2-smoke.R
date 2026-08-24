@@ -23,10 +23,13 @@ source_gate <- if (identical(paper, "paper1")) {
 if (!mode %in% c("validate", "preflight", "smoke") || is.null(root_arg)) {
   stop("require --mode=validate|preflight|smoke and --output=PATH", call. = FALSE)
 }
-script <- normalizePath(
-  sub("^--file=", "", grep("^--file=", commandArgs(FALSE), value = TRUE)[[1L]]),
-  mustWork = TRUE
+script_arg <- sub(
+  "^--file=", "", grep("^--file=", commandArgs(FALSE), value = TRUE)[[1L]]
 )
+## R 4.6 system2() protects spaces in an Rscript --file path as `~+~`.
+## Decode that transport spelling before resolving the actual script path.
+script <- normalizePath(gsub("~+~", " ", script_arg, fixed = TRUE),
+  mustWork = TRUE)
 base <- dirname(script)
 core_runner_file <- file.path(base, "run-bfgs-paper2-smoke.R")
 fixture_file <- file.path(
@@ -49,9 +52,11 @@ hash_object <- function(x) {
   saveRDS(x, path, version = 3)
   hash_file(path)
 }
-commit <- function() system2("git", c("-C", pkg, "rev-parse", "HEAD"), stdout = TRUE)[[1L]]
+commit <- function() system2(
+  "git", c("-C", shQuote(pkg), "rev-parse", "HEAD"), stdout = TRUE
+)[[1L]]
 dirty <- function() length(system2(
-  "git", c("-C", pkg, "status", "--porcelain", "--untracked-files=normal"),
+  "git", c("-C", shQuote(pkg), "status", "--porcelain", "--untracked-files=normal"),
   stdout = TRUE
 )) > 0L
 atomic_rds <- function(value, path) {

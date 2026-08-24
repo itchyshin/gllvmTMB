@@ -1,5 +1,5 @@
 ---
-title: "What does the tree relate?"
+title: "Traits along gradients: where does the tree go?"
 description: "Choose the axis of a phylogeny before fitting: species units in a comparative model, Gaussian response columns in a community-gradient model, or observation sources in a compact iSDM declaration."
 tier: 1
 output:
@@ -7,7 +7,7 @@ output:
     toc: true
     toc_depth: 2
 vignette: >
-  %\VignetteIndexEntry{What does the tree relate?}
+  %\VignetteIndexEntry{Traits along gradients: where does the tree go?}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---

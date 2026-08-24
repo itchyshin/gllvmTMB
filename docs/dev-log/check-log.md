@@ -53872,3 +53872,68 @@ as this release. No tag, CRAN action, or public release is authorized.
 The active 0.7 release claim matrix was reconciled to the same 0.7.1 identity.
 Older dated 0.7.0 authorization, preflight, and component-inventory records
 remain historical evidence and were not rewritten.
+
+## 2026-08-24 — 0.7.1 reader-surface remediation
+
+The frozen candidate's reader-surface guard initially found 47 pre-existing
+internal identifiers or unshipped `docs/` paths on NEWS, generated help,
+one vignette, and runtime messages. Under explicit maintainer authorization,
+this bounded remediation replaced only those internal references with plain
+reader-facing wording. It did not change an estimator, likelihood, formula,
+default, admitted capability, or validation boundary. In particular, MSPL
+remains experimental, VA remains opt-in and uncalibrated, and no random-slope
+claim was added.
+
+`R/diagnose.R`, `R/multinomial-fence.R`, and related runtime messages now name
+the concrete failure mechanism rather than internal phase labels. Roxygen was
+updated at source and `devtools::document()` regenerated the affected Rd
+files. The surviving package-repository references are absolute GitHub links,
+which remain usable in an installed package.
+
+Commands and results:
+
+```sh
+Rscript --vanilla -e 'devtools::document(quiet = TRUE)'
+# regenerated dot-gllvmTMB_multinomial_degeneracy_row.Rd, multinomial.Rd,
+# predict_missing.Rd, and getLV.Rd; existing aghq-report.R S3 diagnostics remain
+bash tools/check-reader-surface.sh
+# PASS
+Rscript --vanilla -e 'devtools::test_active_file("tests/testthat/test-multinomial-fence.R")'
+# 79 passes, 2 expected warnings
+Rscript --vanilla -e 'devtools::test_active_file("tests/test-gllvmTMB-diagnose.R")'
+# 10 passes
+Rscript --vanilla -e 'devtools::test_active_file("tests/test-eva-gate1.R")'
+# 23 passes
+Rscript --vanilla -e 'devtools::test_active_file("tests/test-va-r3-separation.R")'
+# 6 passes
+Rscript --vanilla -e 'devtools::test_active_file("tests/test-slope-sd-ci.R")'
+# 116 passes, 1 intentional heavy skip
+```
+
+The next candidate hash must rerun the full suite and every artifact gate;
+the earlier 25464264 evidence is retained as superseded pre-remediation
+evidence and is not reused.
+
+## 2026-08-24 — 0.7.1 reader-surface remediation test alignment
+
+The first full local suite after the reader-surface wording remediation ran to
+completion in 2225.9 s and found one homogeneous stale-test defect:
+`tests/testthat/test-sanity-categorical.R` still asserted the removed internal
+multinomial labels `M1`, `M2`, and `M3`. Runtime messages correctly use the
+approved plain-language mechanisms: `variance collapse`, `contrast rail`, and
+`spatial range collapse`.
+
+The repair changes only the affected test descriptions, comments, and eight
+message expectations. It does not alter the multinomial detector, TMB code,
+formula grammar, or the approved claim fence. The focused repaired test file
+passes:
+
+```sh
+Rscript --vanilla -e 'devtools::test_active_file("tests/testthat/test-sanity-categorical.R")'
+# 0 failures, 0 warnings, 69 passes
+```
+
+The interrupted-candidate full-suite result is retained, not rewritten:
+`FAIL 8 | WARN 49 | SKIP 879 | PASS 16445`; all eight failures were those stale
+label expectations. A fresh full-suite result after this repair is still
+required and will be bound only to the eventual committed candidate SHA.

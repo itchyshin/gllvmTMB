@@ -3850,8 +3850,7 @@ deviance.gllvmTMB_multi <- function(object, ...) {
 #' `q_lo_pred`/`q_hi_pred` at nominal 95%, and their `*90` companions at
 #' nominal 90%) that a normal-quantile route cannot produce. It still holds
 #' every parameter at its estimate (a plug-in simulation), so it does not
-#' address hyperparameter uncertainty -- see
-#' `docs/design/119-predict-missing-uncertainty.md` sec.3/sec.7c/sec.7d.
+#' address hyperparameter uncertainty.
 #' `"boot"` (sec.3 R3, sec.7d) is a parametric bootstrap: it simulates a
 #' complete dataset at the fitted parameters (fresh latent scores AND a
 #' fresh family draw for every cell), masks the same cells, and REFITS the

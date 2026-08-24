@@ -144,7 +144,7 @@ extract_loadings <- function(
 #' For a `gllvmTMB_va` (variational) fit, `se` is instead the per-unit
 #' **variational posterior SD** read from the fit's own variational
 #' distribution at its optimum -- not a Wald standard error, and not
-#' calibrated (Design 85 s10; the returned matrix carries a
+#' calibrated (the returned matrix carries a
 #' `"uncertainty_basis"` and `"calibrated"` attribute making this explicit in
 #' the object itself, not only here -- though those attributes are silently
 #' dropped by `se[i, ]`, `head(se)` and `as.data.frame(se)`).
@@ -156,7 +156,7 @@ extract_loadings <- function(
 #' per unit while containing no per-unit information. That degeneracy is
 #' provable under `"ac"` (Albert-Chib) and was *measured* on a Gaussian fit
 #' (coefficient of variation 1.6e-15) which the tier gate alone did not
-#' catch. See `docs/design/va-latent-uncertainty.md`.
+#' catch.
 #'
 #' @seealso [extract_ordination()] for scores and loadings together.
 #' @keywords internal

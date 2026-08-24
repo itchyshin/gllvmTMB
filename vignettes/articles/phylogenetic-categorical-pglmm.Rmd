@@ -360,9 +360,8 @@ models this article uses.
 | A.1-A.9 | Contrast-matrix reparameterisation of the softmax | n/a | no action needed — `gllvmTMB` already fits the equivalent baseline-category-logit softmax directly |
 
 The full table (20 rows, every mode/source combination, with the
-recovery-campaign evidence behind each verdict) is in
-`docs/design/123-multinomial-structured-surface.md` inside the package
-repository, alongside the register rows it feeds.
+recovery-campaign evidence behind each verdict) is available in the
+[package repository](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/123-multinomial-structured-surface.md).
 
 ## What this article does *not* claim
 

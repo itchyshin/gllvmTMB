@@ -17,7 +17,7 @@
 
 \item{multinomial_collapse_floor}{Absolute floor on a contrast's fitted
 loading energy (\code{rowSums(Lambda^2)}), at or below which it is a
-collapsed (M1) contrast. Default \code{1e-10}, the campaign code's own guard;
+collapsed contrast. Default \code{1e-10}, the campaign code's own guard;
 labeled evidence: 7/20 \code{phylo_indep} seeds at or below \code{1e-9}, every one
 reporting \code{convergence = 0} and a positive-definite Hessian.
 \strong{Calibrated} (2026-08-17): sensitivity \strong{6/7} on the labeled
@@ -31,7 +31,7 @@ indistinguishable, which is what the row's action text addresses.}
 \item{multinomial_collapse_rel_thresh}{Threshold on the ratio of the
 smallest to the largest fitted contrast loading energy within one
 response's K-1 contrasts, below which the smallest is flagged as
-collapsed relative to its siblings (the M1 sibling arm). Default \code{Inf}
+collapsed relative to its siblings. Default \code{Inf}
 (disarmed): the K-1 contrasts of one multinomial response are
 \code{pi^2/6}-correlated siblings through their shared baseline category,
 not the independent siblings \code{psi_rel_thresh} (0.01) was calibrated on,
@@ -40,7 +40,7 @@ so this arm is provisional pending the S3 calibration campaign.}
 \item{multinomial_rail_thresh}{Threshold on the largest absolute
 off-diagonal correlation of the implied contrast-level covariance
 (\code{Lambda \%*\% t(Lambda)}) within one response's contrasts, at or above
-which two contrasts are reported as rail-correlated (M2). Only
+which two contrasts are reported as rail-correlated. Only
 evaluated at tiers with rank \code{d >= 2} (see Details). Default \code{0.99},
 \strong{calibrated} (2026-08-17, 128 refits of labeled cells): sensitivity
 \strong{8/8} on the labeled \code{phylo_dep} rail seeds, plus 4/4 on individually
@@ -59,7 +59,7 @@ practical range (\code{sqrt(8) / kappa}) relative to the coordinate-domain
 diameter (the ratio, when the fit's mesh coordinates are reachable via
 \code{object$mesh$loc_xy}), or on the practical range itself in absolute
 coordinate units (the fallback, when they are not), at or below which
-the spatial field is reported as collapsed (M3). Default \code{0.02};
+the spatial field is reported as collapsed. Default \code{0.02};
 labeled evidence: collapsed ratios 7e-5 to 3.4e-4. This arm measured
 \strong{0/3} in the first calibration pass for a scope reason rather than a
 threshold one -- it gated on \code{Lambda_spde}, which the engine reports
@@ -82,15 +82,18 @@ failure mechanisms are specific to that expansion and invisible to the
 generic weak-axis/near-zero-psi rows, which screen every trait's loadings
 pooled together rather than a single categorical response's own K-1
 contrasts against each other:
-M1 (\code{contrast_variance_collapse}) one contrast's loading energy
+The variance-collapse screen (\code{contrast_variance_collapse}) flags one
+contrast whose loading energy
 (\code{rowSums(Lambda^2)}) collapses to ~0, absolutely or relative to its
 sibling contrasts.
-M2 (\code{contrast_rail}) two contrasts of the same response load almost
+The contrast-rail screen (\code{contrast_rail}) flags two contrasts of the
+same response that load almost
 perfectly on the same axis (\verb{|rho| ~ 1} in the implied contrast-level
 covariance), a rank collapse that only shows up when the tier carries
 \code{d >= 2} -- at \code{d = 1} every healthy fit reaches \code{rho = +-1} by row
 proportionality, so \code{d = 1} is exempt by construction.
-M3 (\code{spatial_range_collapse}) the fitted spatial practical range
+The spatial-range screen (\code{spatial_range_collapse}) flags a fitted spatial
+practical range that
 (\code{sqrt(8) / kappa}) collapses relative to the coordinate domain the
 multinomial response was fit over.
 Lambda matrices are read directly from \code{object$report} rather than

@@ -1,7 +1,8 @@
 # Tests for the multinomial K-1 contrast pseudo-trait degeneracy row
 # (`.gllvmTMB_multinomial_degeneracy_row()`, component
 # "multinomial_contrast_degeneracy") added beside the binomial detector row in
-# `check_gllvmTMB()`. See R/diagnose.R for the M1/M2/M3 arm definitions.
+# `check_gllvmTMB()`. See R/diagnose.R for the variance-collapse,
+# contrast-rail, and spatial-range-collapse arm definitions.
 
 ## Hand-built `gllvmTMB_multi`-classed fixture, mirroring the `mk()` fixtures
 ## in test-sanity-multi.R. One multinomial response "cat" with `K` categories
@@ -97,7 +98,7 @@ test_that("a fit with no multinomial contrasts has no degeneracy row", {
   )
 })
 
-test_that("a healthy d = 2 multinomial fit PASSes both M1 and M2", {
+test_that("a healthy d = 2 multinomial fit passes both contrast checks", {
   lam <- matrix(
     c(0.8, -0.6, 0.5, 0.4),
     nrow = 2, dimnames = list(paste0("cat:", LETTERS[2:3]), c("LV1", "LV2"))
@@ -110,9 +111,10 @@ test_that("a healthy d = 2 multinomial fit PASSes both M1 and M2", {
   expect_match(row$value, "d=2")
 })
 
-test_that("a collapsed contrast fires M1 and not M2", {
+test_that("a collapsed contrast fires variance collapse and not contrast rail", {
   ## One contrast's loading energy collapses to ~1e-12/1e-14 (well below the
-  ## 1e-10 floor); the two contrasts remain orthogonal (rho ~ 0), so M2 must
+  ## 1e-10 floor); the two contrasts remain orthogonal (rho ~ 0), so the
+  ## contrast-rail arm must
   ## not fire.
   lam <- matrix(
     c(0.8, 1e-6, 0.5, 1e-7),
@@ -122,12 +124,12 @@ test_that("a collapsed contrast fires M1 and not M2", {
   row <- mn_row(fit)
 
   expect_equal(row$status, "WARN")
-  expect_match(row$message, "M1")
-  expect_false(grepl("M2", row$message))
+  expect_match(row$message, "variance collapse")
+  expect_false(grepl("contrast rail", row$message))
   expect_match(row$action, "intentionally mapped off, boundary-pinned, or genuinely collapsed")
 })
 
-test_that("a railed d = 2 fit fires M2 and not M1", {
+test_that("a railed d = 2 fit fires contrast rail and not variance collapse", {
   ## The two contrasts load proportionally on the same two-axis tier
   ## (column 2 is exactly 2x column 1), which drives the implied
   ## contrast-level correlation to +-1 without any collapse in magnitude.
@@ -139,12 +141,12 @@ test_that("a railed d = 2 fit fires M2 and not M1", {
   row <- mn_row(fit)
 
   expect_equal(row$status, "WARN")
-  expect_match(row$message, "M2")
-  expect_false(grepl("M1", row$message))
+  expect_match(row$message, "contrast rail")
+  expect_false(grepl("variance collapse", row$message))
   expect_match(row$value, "max_rail_rho=1")
 })
 
-test_that("a seed-202-shaped fit (collapse + rail) fires both M1 and M2", {
+test_that("a seed-202-shaped fit fires both collapse and rail arms", {
   lam <- matrix(
     c(0.8, 1.6e-6, 0.5, 1.0e-6),
     nrow = 2, dimnames = list(paste0("cat:", LETTERS[2:3]), c("LV1", "LV2"))
@@ -153,15 +155,15 @@ test_that("a seed-202-shaped fit (collapse + rail) fires both M1 and M2", {
   row <- mn_row(fit)
 
   expect_equal(row$status, "WARN")
-  expect_match(row$message, "M1")
-  expect_match(row$message, "M2")
+  expect_match(row$message, "variance collapse")
+  expect_match(row$message, "contrast rail")
 })
 
-test_that("a healthy d = 1 fit does NOT fire M2 (the row-proportionality suppression)", {
+test_that("a healthy d = 1 fit does not fire contrast rail", {
   ## At d = 1 every fit -- healthy or not -- has an implied contrast
   ## correlation of exactly +-1 by row proportionality (one shared loading
-  ## column). The HARD PRECONDITION restricts M2 to tiers with rank >= 2, so
-  ## this fixture must PASS despite the same rho that would fire M2 at d >= 2.
+  ## column). The rank precondition restricts contrast rail to tiers with
+  ## rank >= 2, so this fixture must PASS despite the same rho at d >= 2.
   lam <- matrix(
     c(0.8, 1.6),
     nrow = 2, dimnames = list(paste0("cat:", LETTERS[2:3]), "LV1")
@@ -174,10 +176,10 @@ test_that("a healthy d = 1 fit does NOT fire M2 (the row-proportionality suppres
   expect_match(row$value, "max_rail_rho=NA")
 })
 
-test_that("a huge SPDE loading fires no absolute arm (M1/M2 stay scale-free)", {
+test_that("a huge SPDE loading fires no absolute arm", {
   ## Mirrors the binomial row's 6.5e6-vs-66 unit-tier hazard: SPDE loadings
   ## are far outside link-scale units, so they must never trip a fixed
-  ## absolute-magnitude threshold. M1 and M2 are themselves scale-free
+  ## absolute-magnitude threshold. The collapse and rail checks are scale-free
   ## (a variance floor, and a correlation), so an enormous but orthogonal,
   ## non-collapsed SPDE loading matrix must PASS both.
   lam_spde <- matrix(
@@ -194,10 +196,10 @@ test_that("a huge SPDE loading fires no absolute arm (M1/M2 stay scale-free)", {
   row <- mn_row(fit)
 
   expect_equal(row$status, "PASS")
-  expect_false(grepl("M1|M2", row$message))
+  expect_false(grepl("variance collapse|contrast rail", row$message))
 })
 
-test_that("a collapsed spatial practical range fires M3", {
+test_that("a collapsed spatial practical range fires its range-collapse arm", {
   lam_spde <- matrix(
     c(6.5e6, 0, 0, 6.5e6 * 0.6),
     nrow = 2, dimnames = list(paste0("cat:", LETTERS[2:3]), c("LV1", "LV2"))
@@ -215,16 +217,16 @@ test_that("a collapsed spatial practical range fires M3", {
   row <- mn_row(fit)
 
   expect_equal(row$status, "WARN")
-  expect_match(row$message, "M3")
+  expect_match(row$message, "spatial range collapse")
   expect_match(row$action, "spatial practical range")
 })
 
-test_that("M3 is skipped for a block that does not load on the spatial tier, even under a collapsed kappa", {
+test_that("spatial range collapse is skipped for a block that does not load on the spatial tier", {
   ## use$spde = TRUE with a Lambda_spde present, but the multinomial block's
   ## own rows are all-zero -- it does not load on the spatial field, so the
-  ## collapsed kappa (4000, same as the M3-fires fixture above) must not add
-  ## an M3 finding for this response. The all-zero rows ARE a true-zero
-  ## variance, though, and M1 fires on that by design (documented
+  ## collapsed kappa (4000, same as the range-collapse fixture above) must not
+  ## add a range-collapse finding for this response. The all-zero rows ARE a
+  ## true-zero variance, though, and the variance-collapse arm fires by design
   ## null-semantics): the row's action text carries the house wording
   ## rather than asserting pathology outright.
   lam_spde <- matrix(
@@ -241,8 +243,8 @@ test_that("M3 is skipped for a block that does not load on the spatial tier, eve
   row <- mn_row(fit)
 
   expect_equal(row$status, "WARN")
-  expect_match(row$message, "M1")
-  expect_false(grepl("M3", row$message))
+  expect_match(row$message, "variance collapse")
+  expect_false(grepl("spatial range collapse", row$message))
   expect_match(row$action, "intentionally mapped off, boundary-pinned, or genuinely collapsed")
 })
 
@@ -250,7 +252,7 @@ test_that("mixed multinomial + gaussian: contrast stats ignore the partner trait
   ## A gaussian partner trait "g1" shares the same tier with a huge, healthy
   ## loading. The multinomial contrasts on their own are healthy (same as
   ## the "healthy d = 2" fixture above); the partner's scale must not leak
-  ## into the multinomial-only M1/M2 statistics.
+  ## into the multinomial-only collapse/rail statistics.
   lam <- matrix(
     c(0.8, -0.6, 300, 0.5, 0.4, 280),
     nrow = 3,
@@ -264,11 +266,11 @@ test_that("mixed multinomial + gaussian: contrast stats ignore the partner trait
   expect_false(grepl("g1", row$value))
 })
 
-test_that("multinomial_collapse_floor brackets the M1 absolute arm", {
+test_that("multinomial_collapse_floor brackets the variance-collapse arm", {
   mk_floor <- function(min_energy) {
     ## column 1 carries the near-zero contrast so rowSums(Lambda^2) for
     ## contrast 2 is exactly min_energy; column 2 keeps both contrasts
-    ## orthogonal so M2 never fires here.
+    ## orthogonal so contrast rail never fires here.
     lam <- matrix(
       c(0.8, sqrt(min_energy), 0.5, 0),
       nrow = 2, dimnames = list(paste0("cat:", LETTERS[2:3]), c("LV1", "LV2"))
@@ -284,9 +286,9 @@ test_that("multinomial_collapse_floor brackets the M1 absolute arm", {
 
 test_that("multinomial_collapse_rel_thresh is disarmed by default (Inf)", {
   ## Siblings 100x apart in loading ENERGY (rowSums(Lambda^2): 0.64 vs
-  ## 0.0064), on ORTHOGONAL directions so M2's rail arm cannot fire and
+  ## 0.0064), on ORTHOGONAL directions so the rail arm cannot fire and
   ## confound the read -- at a finite rel_thresh (e.g. 0.1) this trips the
-  ## sibling arm; at the Inf default it must not, because M1's absolute
+  ## sibling arm; at the Inf default it must not, because the absolute
   ## floor (1e-10) is nowhere near this scale.
   lam <- matrix(
     c(0.8, 0, 0, 0.08),
@@ -299,8 +301,8 @@ test_that("multinomial_collapse_rel_thresh is disarmed by default (Inf)", {
 
   armed_row <- mn_row(fit, multinomial_collapse_rel_thresh = 0.1)
   expect_equal(armed_row$status, "WARN")
-  expect_match(armed_row$message, "M1")
-  expect_false(grepl("M2", armed_row$message))
+  expect_match(armed_row$message, "variance collapse")
+  expect_false(grepl("contrast rail", armed_row$message))
 })
 
 # ---------------------------------------------------------------------------
@@ -614,7 +616,7 @@ test_that("a K = 2 ordinal trait's cutpoint span is NA, not an error", {
   expect_match(row$value, "cutpoint_span=NA")
 })
 
-test_that("multinomial_rail_thresh brackets the M2 arm", {
+test_that("multinomial_rail_thresh brackets the contrast-rail arm", {
   ## Two unit-norm contrast rows separated by angle 0.1 rad give an exact
   ## rho = cos(0.1) = 0.995004..., independent of magnitude. Bracket the
   ## threshold on the SAME fixture, the house convention used for
@@ -629,6 +631,6 @@ test_that("multinomial_rail_thresh brackets the M2 arm", {
   above <- mn_row(fit, multinomial_rail_thresh = 0.999)
 
   expect_equal(below$status, "WARN")
-  expect_match(below$message, "M2")
+  expect_match(below$message, "contrast rail")
   expect_equal(above$status, "PASS")
 })

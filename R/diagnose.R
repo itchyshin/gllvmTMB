@@ -780,15 +780,18 @@
 #' generic weak-axis/near-zero-psi rows, which screen every trait's loadings
 #' pooled together rather than a single categorical response's own K-1
 #' contrasts against each other:
-#'   M1 (`contrast_variance_collapse`) one contrast's loading energy
+#'   The variance-collapse screen (`contrast_variance_collapse`) flags one
+#'   contrast whose loading energy
 #'     (`rowSums(Lambda^2)`) collapses to ~0, absolutely or relative to its
 #'     sibling contrasts.
-#'   M2 (`contrast_rail`) two contrasts of the same response load almost
+#'   The contrast-rail screen (`contrast_rail`) flags two contrasts of the
+#'   same response that load almost
 #'     perfectly on the same axis (`|rho| ~ 1` in the implied contrast-level
 #'     covariance), a rank collapse that only shows up when the tier carries
 #'     `d >= 2` -- at `d = 1` every healthy fit reaches `rho = +-1` by row
 #'     proportionality, so `d = 1` is exempt by construction.
-#'   M3 (`spatial_range_collapse`) the fitted spatial practical range
+#'   The spatial-range screen (`spatial_range_collapse`) flags a fitted spatial
+#'   practical range that
 #'     (`sqrt(8) / kappa`) collapses relative to the coordinate domain the
 #'     multinomial response was fit over.
 #' Lambda matrices are read directly from `object$report` rather than
@@ -800,7 +803,7 @@
 #' @param object A fit returned by [gllvmTMB()].
 #' @param multinomial_collapse_floor Absolute floor on a contrast's fitted
 #'   loading energy (`rowSums(Lambda^2)`), at or below which it is a
-#'   collapsed (M1) contrast. Default `1e-10`, the campaign code's own guard;
+#'   collapsed contrast. Default `1e-10`, the campaign code's own guard;
 #'   labeled evidence: 7/20 `phylo_indep` seeds at or below `1e-9`, every one
 #'   reporting `convergence = 0` and a positive-definite Hessian.
 #'   **Calibrated** (2026-08-17): sensitivity **6/7** on the labeled
@@ -813,7 +816,7 @@
 #' @param multinomial_collapse_rel_thresh Threshold on the ratio of the
 #'   smallest to the largest fitted contrast loading energy within one
 #'   response's K-1 contrasts, below which the smallest is flagged as
-#'   collapsed relative to its siblings (the M1 sibling arm). Default `Inf`
+#'   collapsed relative to its siblings. Default `Inf`
 #'   (disarmed): the K-1 contrasts of one multinomial response are
 #'   `pi^2/6`-correlated siblings through their shared baseline category,
 #'   not the independent siblings `psi_rel_thresh` (0.01) was calibrated on,
@@ -821,7 +824,7 @@
 #' @param multinomial_rail_thresh Threshold on the largest absolute
 #'   off-diagonal correlation of the implied contrast-level covariance
 #'   (`Lambda %*% t(Lambda)`) within one response's contrasts, at or above
-#'   which two contrasts are reported as rail-correlated (M2). Only
+#'   which two contrasts are reported as rail-correlated. Only
 #'   evaluated at tiers with rank `d >= 2` (see Details). Default `0.99`,
 #'   **calibrated** (2026-08-17, 128 refits of labeled cells): sensitivity
 #'   **8/8** on the labeled `phylo_dep` rail seeds, plus 4/4 on individually
@@ -839,7 +842,7 @@
 #'   diameter (the ratio, when the fit's mesh coordinates are reachable via
 #'   `object$mesh$loc_xy`), or on the practical range itself in absolute
 #'   coordinate units (the fallback, when they are not), at or below which
-#'   the spatial field is reported as collapsed (M3). Default `0.02`;
+#'   the spatial field is reported as collapsed. Default `0.02`;
 #'   labeled evidence: collapsed ratios 7e-5 to 3.4e-4. This arm measured
 #'   **0/3** in the first calibration pass for a scope reason rather than a
 #'   threshold one -- it gated on `Lambda_spde`, which the engine reports
@@ -1027,9 +1030,9 @@
   any_m3 <- !is.null(m3_tab) && any(m3_tab$m3)
   status <- if (any_m1 || any_m2 || any_m3) "WARN" else "PASS"
   arms <- c(
-    if (any_m1) "M1" else NULL,
-    if (any_m2) "M2" else NULL,
-    if (any_m3) "M3" else NULL
+    if (any_m1) "variance collapse" else NULL,
+    if (any_m2) "contrast rail" else NULL,
+    if (any_m3) "spatial range collapse" else NULL
   )
 
   ## The worst cell drives the reported value/message, mirroring the
@@ -1096,10 +1099,10 @@
     paste(worst_line, collapse = "; "),
     paste0(
       "variance <= ", multinomial_collapse_floor,
-      " (M1 absolute) or sibling ratio < ", multinomial_collapse_rel_thresh,
-      " (M1 relative); rail |rho| >= ", multinomial_rail_thresh,
-      " at tier rank d >= 2 (M2); spatial range/domain (or absolute range) < ",
-      multinomial_range_collapse_thresh, " (M3)"
+      " (absolute) or sibling ratio < ", multinomial_collapse_rel_thresh,
+      " (relative); rail |rho| >= ", multinomial_rail_thresh,
+      " at tier rank d >= 2; spatial range/domain (or absolute range) < ",
+      multinomial_range_collapse_thresh
     ),
     msg,
     action

@@ -4,10 +4,17 @@
 \alias{animal_slope}
 \title{Animal-model random slope on a continuous covariate}
 \usage{
-animal_slope(formula)
+animal_slope(formula, pedigree = NULL, A = NULL, Ainv = NULL)
 }
 \arguments{
-\item{formula}{An lme4-bar formula of the form \code{x | id}.}
+\item{formula}{An lme4-bar formula. \code{x | id} retains the established
+one-predictor shared-slope helper. With two or more bare predictors and
+the response-column factor on the RHS, \code{x1 + x2 | trait} is the full
+column-slope covariance alias and \code{x1 + x2 || trait} is its diagonal
+alias.}
+
+\item{pedigree, A, Ainv}{One relatedness input for the column-slope aliases:
+a pedigree, additive-genetic covariance matrix, or its precision.}
 }
 \value{
 See \code{\link[=animal_scalar]{animal_scalar()}}.

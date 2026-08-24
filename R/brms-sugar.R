@@ -799,6 +799,14 @@ phylo_latent <- function(
 #' * **Slopes shared across traits** (same \eqn{\beta_{\text{phy}}}(i)
 #'   for every trait of species \eqn{i}).
 #'
+#' A separate multi-predictor long-format alias is available when the RHS is
+#' the response-column factor: `phylo_slope(lat + temp | trait, tree = tree)`
+#' means `phylo_dep(0 + lat + temp | trait, tree = tree)`, so the two slope
+#' deviations have a full covariance. Use `||` instead of `|` for the
+#' diagonal `phylo_indep()` route. This alias is Gaussian-only, has no random
+#' intercept, and is intentionally outside the 5 x 3 trait-covariance grid.
+#' It does not change the one-predictor helper described above.
+#'
 #' For trait-specific intercept-and-slope covariance, use the corresponding
 #' augmented `phylo_indep()`, `phylo_latent()`, or `phylo_dep()` syntax.
 #'
@@ -1767,6 +1775,16 @@ dep <- function(formula) {
 #' phylogenetic decomposition. Use
 #' `phylo_indep()` for the marginal-only per-trait variance fit.
 #'
+#' ## Slope-only response-column form
+#'
+#' In a Gaussian long-format model, `phylo_dep(0 + lat + temp | trait)` gives
+#' response-column slope deviations with a full positive-definite covariance
+#' among predictors. Fixed column intercepts remain `0 + trait` in the main
+#' formula; this term never adds a random intercept. Retrieve the predictor
+#' covariance with `extract_Sigma(fit, level = "column_slope")`. Use
+#' `phylo_indep()` for a diagonal predictor covariance. The helper
+#' `phylo_slope(lat + temp | trait)` is an alias for this full route.
+#'
 #' ## Mutual exclusion with `phylo_latent()` / `phylo_indep()`
 #'
 #' Combining `phylo_dep(0 + trait | species)` with `phylo_latent` is
@@ -1779,8 +1797,9 @@ dep <- function(formula) {
 #' `vcv = Cphy` (`r lifecycle::badge("superseded")`, dense). See
 #' [phylo_latent()] for the full discussion of the two paths.
 #'
-#' @param formula `0 + trait | species` style formula. The LHS must be
-#'   `0 + trait` (the trait factor); the RHS is the species column.
+#' @param formula `0 + trait | species` style formula, an admitted
+#'   intercept-and-slope form, or the Gaussian slope-only response-column form
+#'   `0 + x1 + ... | trait`.
 #' @param tree An `ape::phylo` object. **Canonical.**
 #' @param vcv A tip-only phylogenetic correlation matrix
 #'   (`n_species x n_species`). Legacy alias of `A =`.
@@ -2110,6 +2129,23 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL) {
       "i" = "The response-column intercept belongs in the main formula, e.g. {.code 0 + trait}.",
       ">" = "Use {.code phylo_indep(0 + lat + temp | trait, tree = tree)}."
     ))
+  }
+  .assert_distinct_slope_cols(cols)
+  cols
+}
+
+## The memorable slope helper deliberately has a smaller, unambiguous grammar:
+## `phylo_slope(x1 + x2 | trait)` (or `||`) is only a multi-predictor
+## response-column alias.  A single `phylo_slope(x | species)` remains the
+## established shared-across-traits helper and must not be reinterpreted.
+.gllvmTMB_column_slope_helper_cols <- function(lhs) {
+  terms <- .flatten_lhs_plus(.strip_lhs_parens(lhs))
+  if (length(terms) < 2L || !all(vapply(terms, is.name, logical(1)))) {
+    return(NULL)
+  }
+  cols <- vapply(terms, as.character, character(1))
+  if ("trait" %in% cols) {
+    return(NULL)
   }
   .assert_distinct_slope_cols(cols)
   cols
@@ -2556,6 +2592,28 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
   rewrite <- function(e) {
     if (is.call(e)) {
       fn <- as.character(e[[1L]])
+      ## Multi-predictor helper aliases. `phylo_slope(x | species)` is the
+      ## long-standing one-slope helper, so only a bare two-or-more-predictor
+      ## LHS can enter this response-column route.  Canonicalise before the
+      ## general `||` handling so animal relation arguments follow the normal
+      ## animal_indep()/animal_dep() validation path.
+      if (
+        length(fn) == 1L && fn %in% c("phylo_slope", "animal_slope") &&
+          length(e) >= 2L && is.call(e[[2L]]) &&
+          identical(e[[2L]][[1L]], as.name("|"))
+      ) {
+        helper_cols <- .gllvmTMB_column_slope_helper_cols(e[[2L]][[2L]])
+        if (!is.null(helper_cols)) {
+          bar <- e[[2L]]
+          lhs <- Reduce(function(acc, col) call("+", acc, as.name(col)),
+                        helper_cols, init = 0)
+          bar[[2L]] <- lhs
+          target <- if (identical(fn, "phylo_slope")) "phylo_dep" else "animal_dep"
+          e[[1L]] <- as.name(target)
+          e[[2L]] <- bar
+          return(rewrite(e))
+        }
+      }
       ## `||` uncorrelated intercept-slope coupling (Design 79 §3-4):
       ## `mode(1 + x || g)` == `mode(1|g) + mode(0+x|g)` -- intercept and slope
       ## get their own variances with NO intercept-slope covariance. In R the bar
@@ -2571,6 +2629,22 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
           is.call(e[[2L]]) &&
           identical(e[[2L]][[1L]], as.name("||"))
       ) {
+        ## Multi-predictor response-column helper aliases use `||` for a
+        ## diagonal predictor covariance. Convert them to the canonical
+        ## `*_indep(0 + x1 + x2 | trait)` spelling before the ordinary
+        ## intercept--slope `||` route below.
+        if (fn %in% c("phylo_slope", "animal_slope")) {
+          helper_cols <- .gllvmTMB_column_slope_helper_cols(e[[2L]][[2L]])
+          if (!is.null(helper_cols)) {
+            bar <- e[[2L]]
+            bar[[1L]] <- as.name("|")
+            bar[[2L]] <- Reduce(function(acc, col) call("+", acc, as.name(col)),
+                                  helper_cols, init = 0)
+            e[[1L]] <- as.name(if (identical(fn, "phylo_slope")) "phylo_indep" else "animal_indep")
+            e[[2L]] <- bar
+            return(rewrite(e))
+          }
+        }
         .uncorr_marked <- c("phylo_indep", "animal_indep",
                              "phylo_dep", "animal_dep",
                              "kernel_indep", "kernel_dep",
@@ -3072,6 +3146,24 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
             ))
           }
           species_arg <- bar[[3L]]
+          column_slope_cols <- .gllvmTMB_column_slope_cols(bar[[2L]])
+          if (!is.null(column_slope_cols)) {
+            if (isTRUE(.read_common_flag(e, fn))) {
+              cli::cli_abort(c(
+                "{.code common = TRUE} is not defined for column-predictor slopes.",
+                ">" = "Use {.code animal_indep(0 + x1 + x2 | trait, pedigree = ped)} without {.code common = TRUE}."
+              ))
+            }
+            return(as.call(c(
+              list(as.name("phylo_slope"), bar),
+              list(
+                .column_slope_mode = "indep",
+                column_slope_cols = column_slope_cols,
+                .animal_source = TRUE
+              ),
+              list(vcv = vcv_expr)
+            )))
+          }
           ## Augmented intercept+slope LHS (`1 + x | id` or the long form
           ## `0 + trait + (0 + trait):x | id`). animal_indep means the
           ## intercept-slope correlation is FIXED at 0, i.e. the SAME
@@ -3144,6 +3236,18 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
             ))
           }
           species_arg <- bar[[3L]]
+          column_slope_cols <- .gllvmTMB_column_slope_cols(bar[[2L]])
+          if (!is.null(column_slope_cols)) {
+            return(as.call(c(
+              list(as.name("phylo_slope"), bar),
+              list(
+                .column_slope_mode = "dep",
+                column_slope_cols = column_slope_cols,
+                .animal_source = TRUE
+              ),
+              list(vcv = vcv_expr)
+            )))
+          }
           lhs_form <- .gllvmTMB_lhs_form(bar[[2L]])
           ## Augmented intercept+slope LHS: route via the dep-slope engine.
           if (
@@ -4117,7 +4221,7 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
           new_call <- as.call(c(
             list(as.name("phylo_slope"), bar),
             list(
-              .column_slope_indep = TRUE,
+              .column_slope_mode = "indep",
               column_slope_cols = column_slope_cols
             ),
             extras
@@ -4308,6 +4412,22 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
             "i" = "Got RHS: {.code {deparse(species_arg)}}.",
             ">" = "Use {.code phylo_dep(0 + trait | species)}."
           ))
+        }
+        ## Slope-only response-column route: same predictor-only design as
+        ## phylo_indep(), but leave the lower Cholesky entries free so the
+        ## predictor slopes have a full positive-definite covariance.
+        column_slope_cols <- .gllvmTMB_column_slope_cols(lhs_bar)
+        if (!is.null(column_slope_cols)) {
+          extras <- .pass_through_extras(e, c("tree", "vcv", "A", "Ainv"))
+          new_call <- as.call(c(
+            list(as.name("phylo_slope"), bar),
+            list(
+              .column_slope_mode = "dep",
+              column_slope_cols = column_slope_cols
+            ),
+            extras
+          ))
+          return(new_call)
         }
         ## Stage 3 (Design 56 Sec. 9.5c) + RE-03 multi-slope: the augmented
         ## intercept+slope LHS (`1 + x1 + ... + xs | species` wide, or

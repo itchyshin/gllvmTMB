@@ -7,8 +7,9 @@
 phylo_dep(formula, tree = NULL, vcv = NULL, A = NULL, Ainv = NULL)
 }
 \arguments{
-\item{formula}{\code{0 + trait | species} style formula. The LHS must be
-\code{0 + trait} (the trait factor); the RHS is the species column.}
+\item{formula}{\code{0 + trait | species} style formula, an admitted
+intercept-and-slope form, or the Gaussian slope-only response-column form
+\code{0 + x1 + ... | trait}.}
 
 \item{tree}{An \code{ape::phylo} object. \strong{Canonical.}}
 
@@ -41,6 +42,17 @@ cross-trait phylogenetic covariance fit. Use
 \code{phylo_latent(..., unique = TRUE)} for the rank-reduced paired
 phylogenetic decomposition. Use
 \code{phylo_indep()} for the marginal-only per-trait variance fit.
+\subsection{Slope-only response-column form}{
+
+In a Gaussian long-format model, \code{phylo_dep(0 + lat + temp | trait)} gives
+response-column slope deviations with a full positive-definite covariance
+among predictors. Fixed column intercepts remain \code{0 + trait} in the main
+formula; this term never adds a random intercept. Retrieve the predictor
+covariance with \code{extract_Sigma(fit, level = "column_slope")}. Use
+\code{phylo_indep()} for a diagonal predictor covariance. The helper
+\code{phylo_slope(lat + temp | trait)} is an alias for this full route.
+}
+
 \subsection{Mutual exclusion with \code{phylo_latent()} / \code{phylo_indep()}}{
 
 Combining \code{phylo_dep(0 + trait | species)} with \code{phylo_latent} is

@@ -2034,9 +2034,12 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## resolved response-column factor and its covariance source acts across
   ## those columns. Keep this as a dedicated engine flag: neither existing
   ## slope path may silently acquire these parameters.
+  phylo_column_slope_mode <- phylo_slope_cs$extra$.column_slope_mode %||%
+    if (isTRUE(phylo_slope_cs$extra$.column_slope_indep)) "indep" else NULL
   use_phylo_column_slope <- use_phylo_slope && isTRUE(
-    phylo_slope_cs$extra$.column_slope_indep
+    phylo_column_slope_mode %in% c("indep", "dep")
   )
+  use_phylo_column_slope_indep <- identical(phylo_column_slope_mode, "indep")
   use_phylo_slope_correlated <- isTRUE(
     phylo_slope_cs$extra$.phylo_unique_augmented
   )
@@ -2113,14 +2116,14 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     if (!identical(phylo_slope_group, trait)) {
       cli::cli_abort(c(
         "Column-predictor phylogenetic slopes must group on the resolved response-column variable.",
-        "i" = "The model uses {.var {trait}}, but {.fn phylo_indep} used {.var {phylo_slope_group}}.",
-        ">" = "Write {.code phylo_indep(0 + lat + temp | {trait}, tree = tree)}."
+      "i" = "The model uses {.var {trait}}, but the structured term used {.var {phylo_slope_group}}.",
+      ">" = "Write {.code phylo_indep(0 + lat + temp | {trait}, tree = tree)} or {.code phylo_dep(0 + lat + temp | {trait}, tree = tree)}."
       ))
     }
     if (any(family_id_vec != 0L)) {
       cli::cli_abort(c(
         "Multi-predictor column slopes are currently available for Gaussian responses only.",
-        "i" = "The requested term is {.code phylo_indep(0 + x1 + x2 | {trait})}.",
+      "i" = "The requested term is a slope-only {.fn phylo_indep} or {.fn phylo_dep} column-predictor term.",
         ">" = "Use {.fn gaussian} for this V1 route; non-Gaussian recovery is planned separately."
       ))
     }
@@ -2205,7 +2208,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   phylo_column_slope_cols <- if (use_phylo_column_slope) {
     cols <- phylo_slope_cs$extra$column_slope_cols
     if (is.null(cols) || length(cols) < 1L || !all(nzchar(cols))) {
-      cli::cli_abort("Internal: column-slope phylo_indep term is missing its predictor columns.")
+      cli::cli_abort("Internal: column-slope term is missing its predictor columns.")
     }
     as.character(cols)
   } else character(0L)
@@ -5390,7 +5393,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   if (!use_phylo_dep_slope) {
     tmb_map$theta_dep_chol <-
       factor(rep(NA_integer_, length(tmb_params$theta_dep_chol)))
-  } else if (use_phylo_column_slope) {
+  } else if (use_phylo_column_slope && use_phylo_column_slope_indep) {
     ## The slope basis is diagonal: retain only the P log-Cholesky diagonal
     ## entries and pin every strictly-lower element exactly at zero.
     pins <- if (length(tmb_params$theta_dep_chol) > n_lhs_cols) {
@@ -7421,6 +7424,18 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                           ## covariance tier, and is therefore extracted only
                           ## with level = "column_slope".
                           phylo_column_slope = isTRUE(use_phylo_column_slope),
+                          phylo_column_slope_mode = phylo_column_slope_mode,
+                          ## The shared matrix-normal core is entered through
+                          ## the phylo parser, but animal_* terms supply a
+                          ## pedigree/A/Ainv source matrix. Preserve that
+                          ## identity for public extraction and reporting.
+                          phylo_column_slope_source =
+                            if (use_phylo_column_slope &&
+                                isTRUE(phylo_slope_cs$extra$.animal_source)) {
+                              "animal"
+                            } else if (use_phylo_column_slope) {
+                              "phylo"
+                            } else NULL,
                           ## Labels of the source-matrix axis for the
                           ## slope-only response-column route.
                           phylo_column_slope_labels =

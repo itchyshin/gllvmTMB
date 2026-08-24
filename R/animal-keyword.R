@@ -313,7 +313,13 @@ animal_dep <- function(formula, pedigree = NULL, A = NULL, Ainv = NULL) {
 #' the engine recycles the same \eqn{\mathbf A^{-1}} prepared by
 #' [animal_scalar()] / [animal_latent()].
 #'
-#' @param formula An lme4-bar formula of the form `x | id`.
+#' @param formula An lme4-bar formula. `x | id` retains the established
+#'   one-predictor shared-slope helper. With two or more bare predictors and
+#'   the response-column factor on the RHS, `x1 + x2 | trait` is the full
+#'   column-slope covariance alias and `x1 + x2 || trait` is its diagonal
+#'   alias.
+#' @param pedigree,A,Ainv One relatedness input for the column-slope aliases:
+#'   a pedigree, additive-genetic covariance matrix, or its precision.
 #' @return See [animal_scalar()].
 #' @seealso [animal_scalar()], [animal_latent()], [phylo_slope()].
 #' @examples
@@ -340,7 +346,7 @@ animal_dep <- function(formula, pedigree = NULL, A = NULL, Ainv = NULL) {
 #' )
 #' }
 #' @export
-animal_slope <- function(formula) {
+animal_slope <- function(formula, pedigree = NULL, A = NULL, Ainv = NULL) {
   invisible(NULL)
 }
 

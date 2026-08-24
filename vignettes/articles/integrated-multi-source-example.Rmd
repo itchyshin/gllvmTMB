@@ -38,9 +38,9 @@ Real integration problems rarely stop at two sources. For a **simulated guild
 of three boreal-wetland dragonflies**, suppose you hold three records of the
 same landscape: an opportunistic portal stream (abundant, biased toward
 accessible water), a digitised regional atlas (sparser counts, older effort,
-its own recording habits), and a small structured count survey. The question
-this article walks through: **can all three enter one likelihood, each keeping
-its own observation formula, while estimating one shared
+its own recording habits), and a small designed detection/non-detection
+survey. The question this article walks through: **can all three enter one
+likelihood, each keeping its own observation law, while estimating one shared
 ecological gradient?**
 
 Every source sees the same ecological state for species $s$ in cell $c$,
@@ -55,12 +55,19 @@ $a_{cd}$:
 
 $$
 N^{(d)}_{cs} \sim \text{Poisson}\!\left[a_{cd}\,
-  e^{\eta_{cs} + \gamma_d}\right].
+  e^{\eta_{cs} + \gamma_d}\right]
+\quad\text{(count sources)},
+\qquad
+Y^{(d)}_{cs} \sim \text{Bernoulli}\!\left[1 -
+  e^{-a_{cd}\, e^{\eta_{cs} + \gamma_d}}\right]
+\quad\text{(detection source)}.
 $$
 
-All three sources use the Poisson log link. This keeps the worked example on
-the currently verified source-formula route; mixed Poisson/cloglog source
-formulas remain planned rather than advertised here.
+The complementary log-log link is what makes the detection source consistent
+with the count sources: $1 - e^{-a e^{\eta}}$ is exactly the probability that
+a Poisson draw with mean $a e^{\eta}$ is non-zero, so every source observes a
+thinning of one shared intensity. That argument is per-source, which is why
+it does not weaken as sources are added.
 
 Everything here is **relative intensity**: no absolute abundance, occupancy,
 or detectability claim is available from data like these, however many
@@ -110,7 +117,11 @@ eta <- alpha[si] + x[ci] * beta[si] + u[ci] * lambda[si] + gamma[di] +
   ifelse(dat$observer == "B", 0.20, 0) +
   ifelse(dat$method == "point", -0.15, 0)
 dat$support <- support[di]
-dat$value <- rpois(nrow(dat), dat$support * exp(eta))
+dat$value <- ifelse(
+  dat$isdm_source == "survey",
+  rbinom(nrow(dat), 1, -expm1(-dat$support * exp(eta))),
+  rpois(nrow(dat), dat$support * exp(eta))
+)
 dat$trait       <- factor(dat$trait)
 dat$cell_id     <- factor(dat$cell_id)
 dat$isdm_source <- factor(dat$isdm_source, levels = sources)
@@ -137,7 +148,7 @@ fam <- isdm_sources(
                        observation = ~ access + popdens),
   atlas  = isdm_source(poisson(),
                        observation = ~ access + popdens),
-  survey = isdm_source(poisson(),
+  survey = isdm_source(binomial(link = "cloglog"),
                        observation = ~ observer + method)
 )
 ```
@@ -218,9 +229,9 @@ stricter design requirements — see
 
 # What this route does and does not cover
 
-**Covered here:** any number of named Poisson count sources declared with
-`isdm_sources()`, sharing one ecological process through the ordinary
-`gllvmTMB()` call, with per-source
+**Covered here:** any number of named sources declared with `isdm_sources()`,
+each a Poisson count stream or a cloglog detection stream, sharing one
+ecological process through the ordinary `gllvmTMB()` call, with per-source
 observation covariates through `isdm_source()`.
 
 **Works but not certified:** the estimates themselves. The route is
@@ -229,8 +240,9 @@ one design size, on balanced sources. Read fitted numbers as illustration
 until your own design has been checked against the design article's
 guidance.
 
-**Not available:** mixed Poisson/cloglog source formulas; weighting one source
-against another; calibrated
+**Not available:** an all-detection declaration (refused when you build it —
+the detection arm's offset is only admitted alongside a count arm); weighting
+one source against another; calibrated
 confidence intervals for this route; and anything absolute — abundance,
 occupancy, detectability — from any number of presence-only sources.
 

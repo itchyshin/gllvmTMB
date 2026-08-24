@@ -167,3 +167,34 @@ test_that("all-Poisson source formulas fit and recover a source-masked observati
   expect_gt(length(survey_cols), 0L)
   expect_false(anyNA(fit$opt$par[names(fit$opt$par) == "b_fix"]))
 })
+
+test_that("mixed Poisson and cloglog source formulas fit with source-masked designs", {
+  dat <- .isdm_source_recovery_fixture(n_cell = 60L)
+  survey_rows <- dat$isdm_source == "survey"
+  ## Off-source placeholders make ordinary upstream row filtering independent
+  ## of the source-specific formula that will be evaluated later.
+  dat$observer[!survey_rows] <- "o1"
+  dat$method[!survey_rows] <- "walk"
+  dat$observer <- factor(dat$observer)
+  dat$method <- factor(dat$method)
+  set.seed(92)
+  dat$value[survey_rows] <- stats::rbinom(sum(survey_rows), size = 1L, prob = 0.35)
+  fam <- isdm_sources(
+    gbif = isdm_source(poisson(), observation = ~ access),
+    inat = poisson(),
+    survey = isdm_source(binomial(link = "cloglog"),
+                         observation = ~ observer + method)
+  )
+  fit <- suppressMessages(gllvmTMB(
+    value ~ 0 + trait + trait:env + offset(log_support),
+    data = dat, trait = "trait", unit = "cell_id", family = fam,
+    silent = TRUE
+  ))
+  expect_identical(fit$opt$convergence, 0L)
+  survey_cols <- grep("^isdm_source:survey:", fit$X_fix_names, value = TRUE)
+  expect_gt(length(survey_cols), 0L)
+  expect_equal(
+    unname(fit$tmb_data$X_fix[!survey_rows, survey_cols, drop = FALSE]),
+    matrix(0, sum(!survey_rows), length(survey_cols))
+  )
+})

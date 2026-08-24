@@ -23,7 +23,7 @@ test_that("compiled 22-coordinate fixture preserves the full sign orbit and call
   cpp <- testthat::test_path("fixtures", "spde_slope_gauge_random.cpp")
   expect_true(file.copy(cpp, scratch))
   compiled <- file.path(scratch, basename(cpp))
-  expect_equal(TMB::compile(compiled), 0L)
+  expect_equal(.compile_tmb_fixture(compiled), 0L)
   dll <- TMB::dynlib(file.path(scratch, "spde_slope_gauge_random"))
   dyn.load(dll)
   on.exit({

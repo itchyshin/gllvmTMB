@@ -370,7 +370,7 @@ test_that("compiled cloglog objective, gradient, and Hessian stay finite in both
   file.copy(c(file.path(fixture_dir, files[[1L]]),
               header), scratch)
   cpp <- file.path(scratch, files[[1L]])
-  expect_equal(TMB::compile(cpp), 0L)
+  expect_equal(.compile_tmb_fixture(cpp), 0L)
   dll <- TMB::dynlib(file.path(scratch, "gllvmTMB_cloglog_tail"))
   dyn.load(dll)
   on.exit(dyn.unload(dll), add = TRUE)

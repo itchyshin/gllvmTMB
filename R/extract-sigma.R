@@ -432,6 +432,13 @@ link_residual_per_trait <- function(fit) {
 #' decomposition the behavioural-syndromes / phenotypic-integration literature
 #' uses (Bartholomew et al. 2011).
 #'
+#' ## Legacy covariance wrappers
+#'
+#' `extract_Sigma_B()` and `extract_Sigma_W()` are soft-deprecated
+#' compatibility wrappers. They still return their historical `Sigma_B` /
+#' `R_B` and `Sigma_W` / `R_W` field names, respectively, but new code should
+#' call this function with `level = "unit"` or `level = "unit_obs"`.
+#'
 #' ## When a fit has no Psi component
 #'
 #' If the formula deliberately uses

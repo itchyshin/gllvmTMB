@@ -796,8 +796,8 @@ summary.gllvmTMB_multi <- function(object, ...) {
     }
     out$fixef <- df
   }
-  out$Sigma_B <- extract_Sigma_B(object)
-  out$Sigma_W <- extract_Sigma_W(object)
+  out$Sigma_B <- .extract_Sigma_legacy_payload(object, level = "unit")
+  out$Sigma_W <- .extract_Sigma_legacy_payload(object, level = "unit_obs")
   out$ICC_site <- extract_ICC_site(object)
   out$communality_B <- extract_communality(object, "unit")
   out$communality_W <- extract_communality(object, "unit_obs")
@@ -1286,7 +1286,7 @@ tidy.gllvmTMB_multi <- function(
       )
     }
     if (x$use$rr_B) {
-      Sigma_B <- extract_Sigma_B(x)$Sigma_B
+      Sigma_B <- .extract_Sigma_legacy_payload(x, level = "unit")$Sigma_B
       diag_sd <- sqrt(diag(Sigma_B))
       rows[[length(rows) + 1L]] <- data.frame(
         term = paste0("sd_global[", levels(x$data[[x$trait_col]]), "]"),
@@ -1295,7 +1295,7 @@ tidy.gllvmTMB_multi <- function(
       )
     }
     if (x$use$rr_W) {
-      Sigma_W <- extract_Sigma_W(x)$Sigma_W
+      Sigma_W <- .extract_Sigma_legacy_payload(x, level = "unit_obs")$Sigma_W
       diag_sd <- sqrt(diag(Sigma_W))
       rows[[length(rows) + 1L]] <- data.frame(
         term = paste0("sd_local[", levels(x$data[[x$trait_col]]), "]"),

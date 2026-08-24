@@ -36,6 +36,28 @@ test_that("extract_Sigma accepts canonical and legacy level names", {
   expect_equal(S_canon$s,     S_legacy$s,     tolerance = 0)
 })
 
+test_that("Sigma_B/W wrappers warn for direct calls but internal helpers stay quiet", {
+  set.seed(1194)
+  sim <- simulate_site_trait(
+    n_sites = 16, n_species = 1, n_traits = 3,
+    mean_species_per_site = 1,
+    Lambda_B = matrix(rnorm(3, sd = 0.5), 3, 1),
+    psi_B = rep(0.3, 3)
+  )
+  fit <- suppressMessages(gllvmTMB(
+    value ~ 0 + trait + latent(0 + trait | site, d = 1),
+    data = sim$data, unit = "site"
+  ))
+
+  withr::local_options(lifecycle_verbosity = "warning")
+  dep_env <- get("deprecation_env", envir = asNamespace("lifecycle"))
+  rlang::env_unbind(dep_env, rlang::env_names(dep_env))
+  expect_warning(extract_Sigma_B(fit), "deprecated")
+
+  expect_silent(getResidualCov(fit, level = "unit"))
+  expect_silent(summary(fit))
+})
+
 test_that("extract_communality accepts canonical and legacy level names", {
   skip_if_not_installed("gllvmTMB")
   set.seed(1)

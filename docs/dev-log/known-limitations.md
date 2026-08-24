@@ -6,8 +6,8 @@ support. The `after-task-audit` skill greps this file for terms like
 this file in the same PR that changes the supported surface, so the
 durable record never lags the code.
 
-Last refreshed 2026-08-09 (exact-aa production reconciliation; package remains
-0.6.0).
+Last refreshed 2026-08-24 (0.7.1 trust-release boundary review; this is a
+status fence, not a new validation claim).
 
 ## Exact-aa production boundary
 
@@ -96,6 +96,17 @@ structured tiers are not admitted.
   Wald and Fisher-z Wald routes. Standardized profile intervals are not
   implemented, and empirical coverage of standardized-loading intervals is
   not certified.
+
+### Variational approximation
+
+Variational approximation (VA) is an opt-in experimental integration route;
+native Laplace remains the default. Its present evidence is limited to the
+named routes and regimes recorded in the validation register and the Current
+limitations and boundaries article. It is not a general estimator or an
+inference/calibration claim: VA standard errors, confidence intervals, and
+posterior standard deviations are not frequentist calibration certificates.
+No MSPL work, low-prevalence expansion, or broad variance-approximation claim
+is part of the 0.7.1 trust-release candidate.
 
 ### Data shapes
 

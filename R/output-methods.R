@@ -295,7 +295,10 @@ getLV <- function(
 getResidualCov <- function(fit, level = "unit") {
   level <- match.arg(level, c("unit", "unit_obs", "B", "W"))
   level <- .normalise_level(level, arg_name = "level")
-  out <- if (level == "B") extract_Sigma_B(fit) else extract_Sigma_W(fit)
+  out <- .extract_Sigma_legacy_payload(
+    fit,
+    level = if (level == "B") "unit" else "unit_obs"
+  )
   if (is.null(out)) {
     return(NULL)
   }
@@ -308,7 +311,10 @@ getResidualCov <- function(fit, level = "unit") {
 getResidualCor <- function(fit, level = "unit") {
   level <- match.arg(level, c("unit", "unit_obs", "B", "W"))
   level <- .normalise_level(level, arg_name = "level")
-  out <- if (level == "B") extract_Sigma_B(fit) else extract_Sigma_W(fit)
+  out <- .extract_Sigma_legacy_payload(
+    fit,
+    level = if (level == "B") "unit" else "unit_obs"
+  )
   if (is.null(out)) {
     return(NULL)
   }

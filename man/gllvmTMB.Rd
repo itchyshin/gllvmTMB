@@ -88,7 +88,9 @@ Default \code{NULL}, which resolves to \code{"site_species"} (the conventional
 name in joint species distribution modelling; safe for site × species
 data). If your data has no such column, omit \code{unit_obs}; the engine
 synthesises it from \code{unit} × \code{cluster}. For other domains pass e.g.
-\code{unit_obs = "obs"} for behavioural syndromes.}
+\code{unit_obs = "obs"} for behavioural syndromes. If supplied but no
+covariance keyword uses that column, \code{\link[=gllvmTMB]{gllvmTMB()}} warns; omit the
+argument or use the column in the intended covariance keyword.}
 
 \item{cluster}{Optional. Name of the column holding the \strong{third
 grouping} factor (the "cluster" slot). When the column name matches
@@ -102,7 +104,9 @@ personality data, \code{cluster = "study"} for multi-study
 meta-analysis). Default \code{NULL}, which resolves to \code{"species"}. For
 datasets with no third grouping the column may be absent from \code{data}
 entirely (with or without passing \code{cluster}); the engine will
-synthesise a placeholder.
+synthesise a placeholder. If supplied but no covariance keyword uses
+that column, \code{\link[=gllvmTMB]{gllvmTMB()}} warns; omit the argument or use the column in
+the intended covariance keyword.
 
 The engine does \strong{not} enforce nesting between \code{unit_obs},
 \code{unit}, and \code{cluster} — crossed and nested designs both fit. Two

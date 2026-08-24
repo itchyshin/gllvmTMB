@@ -106,6 +106,14 @@ decomposition the behavioural-syndromes / phenotypic-integration literature
 uses (Bartholomew et al. 2011).
 }
 \details{
+\subsection{Legacy covariance wrappers}{
+
+\code{extract_Sigma_B()} and \code{extract_Sigma_W()} are soft-deprecated
+compatibility wrappers. They still return their historical \code{Sigma_B} /
+\code{R_B} and \code{Sigma_W} / \code{R_W} field names, respectively, but new code should
+call this function with \code{level = "unit"} or \code{level = "unit_obs"}.
+}
+
 \subsection{When a fit has no Psi component}{
 
 If the formula deliberately uses

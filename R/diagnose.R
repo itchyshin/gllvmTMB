@@ -2058,8 +2058,14 @@ gllvmTMB_diagnose <- function(
   }
 
   ## ---- Pillar 3: biological summaries ------------------------------
-  out_Sigma_B <- tryCatch(extract_Sigma_B(object), error = function(e) NULL)
-  out_Sigma_W <- tryCatch(extract_Sigma_W(object), error = function(e) NULL)
+  out_Sigma_B <- tryCatch(
+    .extract_Sigma_legacy_payload(object, level = "unit"),
+    error = function(e) NULL
+  )
+  out_Sigma_W <- tryCatch(
+    .extract_Sigma_legacy_payload(object, level = "unit_obs"),
+    error = function(e) NULL
+  )
   ICC_site <- tryCatch(extract_ICC_site(object), error = function(e) NULL)
   comm_B <- tryCatch(extract_communality(object, "unit"), error = function(e) {
     NULL

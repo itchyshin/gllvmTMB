@@ -53971,3 +53971,98 @@ rg -n 'FG-[0-9]|FAM-[0-9]|RE-[0-9]|ISDM-[0-9]' vignettes/articles/where-does-the
 **Visual receipt:** Florence inspected the four rendered PNGs after a first render exposed clipping and trait-scale conflation. The revised direct-flow figures, per-column PCM small multiples, covariance matrix, and source flow all pass at rendered article size.
 
 **Deliberately not run:** full package check / recovery campaign; Totoro/DRAC; non-Gaussian multi-predictor fits; or implementation work for wide, spatial/kernel/latent slope-only variants. After-task: `docs/dev-log/after-task/2026-08-24-trait-axis-bridge-article.md`.
+
+---
+
+## 2026-08-24 — Response-column slope family and corrected tree-axis bridge (Codex)
+
+**Lane:** `codex/column-slope-family`
+**Worktree:** `/Users/z3437171/Dropbox/Github Local/gllvmTMB/.worktrees/codex-column-slope-family`
+
+Completed the Gaussian long-format response-column helper family:
+`slope()`, `phylo_slope()`, `animal_slope()`, `kernel_slope()`, and
+`spatial_slope()`. Every helper is predictor-only, uses the resolved response
+column on the RHS, adds no random intercept, and exposes named predictor
+covariance through `extract_Sigma(level = "column_slope")`. `|` is full and
+`||` diagonal. The visual bridge article now separates ordinary measured-trait
+column deviations from a species-axis phylogenetic term.
+
+```sh
+Rscript --vanilla -e 'devtools::test(filter = "article-prescribed-calls|fixed-column-slope-family|ordinary-column-slope-phylo-coexistence|phylo-column-slope-indep|phylo-slope-rhs-routing|animal-slope-recovery|spatial-column-slope", stop_on_failure = TRUE)'
+# PASS 227; FAIL 0; WARN 0; six explicit heavy-test skips.
+GLLVMTMB_HEAVY_TESTS=1 Rscript --vanilla -e 'devtools::test(filter = "spatial-indep-slope-gaussian|spde-slope-base-engine", stop_on_failure = TRUE)'
+# PASS 30; FAIL 0; WARN 0; SKIP 0; legacy observation-space spatial slopes protected.
+Rscript --vanilla -e 'devtools::test(stop_on_failure = TRUE)'
+# PASS 16,608; FAIL 0; WARN 76; SKIP 879 on the final integrated candidate.
+Rscript --vanilla -e 'devtools::test(filter = "paper1-spde-slope-gauge-nofit-v2-materializer", stop_on_failure = TRUE)'
+# PASS 47; FAIL 0; WARN 0; SKIP 0 after adopting the local portable forensic fixture.
+Rscript --vanilla dev/trait-axis-bridge/source-current-smoke.R
+# PASS: PCM 3416.127; column 1844.128; iSDM 126.3114.
+Rscript --vanilla dev/trait-axis-bridge/verify-article.R
+# PASS: ARTICLE BUILD PASS; pkgdown no problems.
+Rscript --vanilla -e 'devtools::document(quiet = TRUE)'
+# PASS; pre-existing aghq S3-export notices only.
+Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'
+# 0 errors, 0 warnings, 4 pre-existing/environmental notes in 18m53s;
+# the task-local .unlazy packaging note was removed through .Rbuildignore.
+git diff --check
+# PASS.
+rg -n '\bS_B\b|\bS_W\b|\\bf S' NEWS.md R/animal-keyword.R R/brms-sugar.R R/extract-sigma.R R/gllvmTMB.R R/mesh.R vignettes/articles/api-keyword-grid.Rmd vignettes/articles/where-does-the-tree-go.Rmd docs/design/130-response-column-slope-family.md
+# PASS: no stale notation in touched surfaces.
+rg -n '\bphylo\(|\bgr\(|\bmeta\(|block_V\(|phylo_rr\(' vignettes/articles/api-keyword-grid.Rmd vignettes/articles/where-does-the-tree-go.Rmd
+# PASS: no deprecated helper taught in changed articles.
+rg -n 'gllvmTMB_wide|meta_known_V|non-Gaussian|planned|deferred|blocked' NEWS.md vignettes/articles/api-keyword-grid.Rmd vignettes/articles/where-does-the-tree-go.Rmd docs/design/130-response-column-slope-family.md
+# PASS: compatibility and deferred boundaries only.
+rg -n 'gllvmTMB\(' R/animal-keyword.R R/brms-sugar.R R/gllvmTMB.R R/mesh.R vignettes/articles/api-keyword-grid.Rmd vignettes/articles/where-does-the-tree-go.Rmd NEWS.md docs/design/130-response-column-slope-family.md
+# PASS after manual review: changed long examples pass trait = explicitly.
+```
+
+Rose pre-publish: PASS. Pat reader review: PASS. Noether/Gauss mathematical
+and spatial parameterisation review: PASS. Shannon: WARN—GitHub DNS was
+unavailable, local `origin/main` is stale, and
+`origin/codex/0701-trust-release` contains the same portable V2 test repair.
+No stale-ref rebase or remote mutation was attempted.
+
+The connected GitHub app later verified live `main` at
+`872ae85672d54896882c5678db52eb6b5e44d71b`; its tree
+`e93e8f54bd3af8f40a08e134af76d53584fe9100` exactly equals local starting
+commit `e47ca88c`'s tree. It found no live `codex/0701-trust-release` branch.
+App writes were unavailable under the task's non-interactive approval policy,
+while shell Git remained DNS-blocked and the local `gh` token invalid. No
+remote branch or PR was created; publication and three-OS CI remain OWED.
+
+**Deliberately not run:** Totoro/DRAC, wide response-column grammar,
+non-Gaussian/mixed response-column recovery, simultaneous column-slope
+sources, or interval calibration. After-task:
+`docs/dev-log/after-task/2026-08-24-response-column-slope-family.md`.
+
+---
+
+## 2026-08-25 — Response-column slope PR closure (Codex)
+
+Rebased the five-commit response-column slope family series from the
+content-identical `e47ca88c` base onto `origin/main` `872ae856`, then pushed
+`codex/column-slope-family` with a lease. PR
+[#1208](https://github.com/itchyshin/gllvmTMB/pull/1208) is open and unmerged
+at `2ad0238a`. The explicit `full_matrix = true` R-CMD-check workflow run
+[#32790567062](https://github.com/itchyshin/gllvmTMB/actions/runs/32790567062)
+passed macOS at 00:08 UTC, Ubuntu at 00:22 UTC, and Windows at 00:24 UTC.
+This explicit matrix was required because routine PR CI is Ubuntu-only.
+
+```sh
+git fetch origin main
+# PASS: origin/main remained 872ae856; its tree equals the original e47ca88c base.
+git rebase --onto origin/main e47ca88c codex/column-slope-family
+# PASS: five commits replayed without conflicts.
+git push --force-with-lease=refs/heads/codex/column-slope-family:dbeb3146 origin codex/column-slope-family
+# PASS: remote head 2ad0238a.
+gh api '/repos/itchyshin/gllvmTMB/commits/2ad0238a/check-runs?per_page=100'
+# PASS: explicit macOS, Ubuntu, and Windows checks all concluded success.
+git diff --check
+# PASS.
+```
+
+**Deliberately not run:** no local campaign rerun (the rebase was
+content-conflict-free), Totoro/DRAC, wide grammar, latent predictor covariance,
+non-Gaussian/mixed response-column slope work, simultaneous column sources, or
+interval calibration. Next: maintainer review of #1208; do not self-merge.

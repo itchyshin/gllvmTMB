@@ -53777,3 +53777,31 @@ Rscript --vanilla -e 'devtools::document(quiet = TRUE)'
 **Deliberately not run:** full package check / three-OS CI (reserved for the
 PR), a Totoro/DRAC campaign (local four-seed recovery finished in under
 20 seconds), iSDM source formulas, or any wide/non-Gaussian slope claim.
+
+---
+
+## 2026-08-23 — #1196/#1192 release closeout (Codex)
+
+Merged: #1203 (`ea42c058`) supplies Gaussian long-format full column-slope
+covariance and `phylo_slope()` / `animal_slope()` helpers; #1204 (`c50ec325`)
+supplies `isdm_source()` source-masked observation formulas. #1196, #1192,
+and #1195 are closed with resolution comments. The closure audit corrected a
+stale “planned slope-only” statement in Design 04 while preserving the wide,
+spatial/kernel/latent, and non-Gaussian boundaries.
+
+```sh
+git diff --check
+# PASS
+Rscript --vanilla -e 'pkgdown::check_pkgdown()'
+# PASS: No problems found.
+rg -n 'Slope-only random effects \(planned|phylo_slope\(x1 \+ x2 \| trait\).*full|0 \+ observer|po_source\(' docs vignettes R man README.md NEWS.md ROADMAP.md
+# PASS: only intentional current helper wording and historical handover text.
+```
+
+Three-OS evidence: #1203 macOS 25m55s / Ubuntu 37m53s / Windows 42m47s;
+#1204 workflow 32690414532 macOS 26m39s / Ubuntu 33m07s / Windows 52m16s.
+The after-task report is
+`docs/dev-log/after-task/2026-08-23-column-slopes-and-isdm-source-formulas.md`.
+
+**Deliberately not run:** a new Totoro/DRAC recovery campaign, a wide-format
+column-predictor implementation, or any non-Gaussian multi-predictor claim.

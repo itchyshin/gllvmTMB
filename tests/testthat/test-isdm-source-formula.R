@@ -16,7 +16,7 @@
   isdm_sources(
     gbif = isdm_source(poisson(link = "log"), observation = ~ access + popdens),
     inat = isdm_source(poisson(), observation = ~ access + popdens),
-    survey = isdm_source(poisson(), observation = ~ 0 + observer + method)
+    survey = isdm_source(poisson(), observation = ~ observer + method)
   )
 }
 
@@ -102,8 +102,8 @@ test_that("iSDM observation formulas accept source-specific intercept or 0 + bas
   expect_equal(unname(no_intercept[dat$isdm_source != "gbif", "isdm_source:gbif:access"]),
                rep(0, sum(dat$isdm_source != "gbif")))
 
-  ## A Poisson survey may likewise use a no-intercept observer/method basis.
-  ## This crossed fixture makes the source levels estimable beyond `0 + trait`.
+  ## A Poisson survey uses ordinary R syntax; the wrapper handles reference
+  ## coding against `0 + trait` rather than requiring the user to remember `0 +`.
   survey_dat <- data.frame(
     trait = factor(rep(c("sp1", "sp2"), 6L)),
     isdm_source = factor(rep(c("gbif", "survey"), each = 6L),
@@ -115,7 +115,7 @@ test_that("iSDM observation formulas accept source-specific intercept or 0 + bas
   survey_basis <- .gll_isdm_observation_design(
     survey_X, survey_dat, survey_dat$isdm_source,
     isdm_sources(gbif = poisson(),
-                 survey = isdm_source(poisson(), observation = ~ 0 + observer + method))
+                 survey = isdm_source(poisson(), observation = ~ observer + method))
   )
   survey_cols <- grep("^isdm_source:survey:", colnames(survey_basis), value = TRUE)
   expect_gt(length(survey_cols), 0L)
@@ -150,7 +150,7 @@ test_that("all-Poisson source formulas fit and recover a source-masked observati
   fam <- isdm_sources(
     gbif = isdm_source(poisson(), observation = ~ access),
     inat = poisson(),
-    survey = isdm_source(poisson(), observation = ~ 0 + observer + method)
+    survey = isdm_source(poisson(), observation = ~ observer + method)
   )
   fit <- suppressMessages(gllvmTMB(
     value ~ 0 + trait + trait:env + offset(log_support),

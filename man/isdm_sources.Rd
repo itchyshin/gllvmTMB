@@ -49,14 +49,14 @@ This interface is experimental and may change.
 \examples{
 fam <- isdm_sources(
   gbif = isdm_source(poisson(), observation = ~ access + popdens),
-  survey = isdm_source(poisson(), observation = ~ 0 + observer + method)
+  survey = isdm_source(poisson(), observation = ~ observer + method)
 )
 names(fam)
 \dontrun{
 ## `dat` is long, one row per (cell, species, source), with an isdm_source
 ## column naming each row's source and log_support its known effort/area.
 fit <- gllvmTMB(
-  value ~ 0 + trait + trait:env + trait:isdm_source +
+  value ~ 0 + trait + trait:env +
     offset(log_support) + latent(0 + trait | cell_id, d = 1),
   data = dat, trait = "trait", unit = "cell_id", family = fam
 )

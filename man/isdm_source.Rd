@@ -11,7 +11,10 @@ isdm_source(family, observation)
 link or \code{\link[=binomial]{binomial()}} with \code{link = "cloglog"}.}
 
 \item{observation}{A one-sided formula for source-specific observation
-effects, for example \code{~ access + popdens} or \code{~ 0 + observer + method}.}
+effects, for example \code{~ access + popdens} or \code{~ observer + method}.
+Do not add \verb{0 +} merely to make source formulas identifiable: the wrapper
+keeps the ecological design first and automatically reference-codes any
+aliased source-observation columns.}
 }
 \value{
 An internal source declaration accepted by \code{\link[=isdm_sources]{isdm_sources()}}.

@@ -1,4 +1,37 @@
-# gllvmTMB 0.7.0 (development)
+# gllvmTMB 0.7.1 (release candidate)
+
+This candidate is a narrow trust-release closure. It adds no new response
+family, likelihood, integration engine, random-slope capability, iSDM route,
+or broad `predict(newdata = )` claim. No CRAN submission, tag, or public
+release accompanies this candidate.
+
+## Changed
+
+* **Explicitly unused optional grouping slots now warn (#1190).** Supplying
+  `unit_obs` or `cluster` is useful only when a covariance keyword consumes
+  that column. If no keyword does, `gllvmTMB()` now warns and tells the caller
+  to omit the slot or use its column in the intended keyword. Omitted and
+  explicit-`NULL` slots remain silent; the warning does not change the model,
+  likelihood, or parameterisation.
+
+* **`extract_Sigma_B()` and `extract_Sigma_W()` remain soft-deprecated
+  compatibility wrappers (#1194).** They stay exported and retain their
+  historical return names. Their help now gives the direct migration to
+  `extract_Sigma(fit, level = "unit")` or `extract_Sigma(fit, level =
+  "unit_obs")`; ordinary package summaries and residual helpers do not emit
+  the wrapper warning.
+
+* **Variational approximation remains an opt-in experimental route (#1189).**
+  Native Laplace remains the default. This candidate makes no VA calibration,
+  standard-error, confidence-interval, low-prevalence, or MSPL claim.
+
+## Scope boundary
+
+Existing random-slope documentation and existing MSPL material are retained.
+They are not new 0.7.1 capability claims: MSPL remains opt-in experimental,
+and this candidate neither expands nor promotes either topic.
+
+# gllvmTMB 0.7.0 (development history retained for provenance)
 
 * **`extract_Sigma_B()` / `extract_Sigma_W()` now warn on call (#1194).**
   The wrappers stay exported and still return the historical `Sigma_B` /

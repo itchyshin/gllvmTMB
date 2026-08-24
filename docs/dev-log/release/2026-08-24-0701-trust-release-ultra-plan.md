@@ -9,8 +9,8 @@ tarball, cross-platform, and reader-surface evidence.
 HEADLINE: earn trust through three narrow closures, then prove one frozen artifact.
 IN PARALLEL: Codex read-only reviews and mechanical verification only; production
 changes and integration are serial.
-DEFER: MSPL; calibration/coverage; iSDM expansion; broad predict(newdata=);
-public random-slope claims; tags; CRAN upload; release announcement.
+DEFER: MSPL expansion; calibration/coverage; iSDM expansion; broad predict(newdata=);
+new public random-slope claims; tags; CRAN upload; release announcement.
 DISCIPLINE: candidate hash controls all evidence; no old receipt is reused; one
 candidate push at a time; done means validated RC, not submitted.
 ```
@@ -38,8 +38,10 @@ lease stops the arc.
 | #1194 | Keep `extract_Sigma_B()` and `extract_Sigma_W()` exported as soft-deprecated compatibility wrappers with a visible migration path. | Removal, rename, semantic change, or package-wide vocabulary rewrite. |
 | #1189 | State a conservative VA boundary: Laplace default, VA opt-in and uncalibrated. | Promoting VA/MSPL, standard errors, confidence intervals, or a default estimator. |
 
-Random slopes remain internal evidence only. No release text may imply broad
-recovery, interval calibration, source-tier support, or family-wide admission.
+Existing random-slope documentation is retained. New 0.7.1 prose must not
+imply broad recovery, interval calibration, source-tier support, or family-wide
+admission. Existing MSPL material is likewise retained as opt-in experimental
+documentation; no new 0.7.1 prose expands or promotes it.
 Candidate evidence may be described only as `source-clean`, `tarball-clean`,
 and `platform-clean` once the exact gates pass; it is never CRAN-ready,
 submitted, accepted, or released.
@@ -73,3 +75,11 @@ is refused, a direct-to-main change overlaps a planned file, #1190 needs a
 likelihood/parameter change, #1194 needs removal or semantic change, #1189
 needs new empirical VA/MSPL work, the source changes after claim-bearing
 evidence, or a review identifies a claim outside this contract.
+
+## 2026-08-24 fence amendment
+
+Shinichi resolved the reader-surface gate after the initial sweep: retain the
+existing MSPL and random-slope reader surfaces. The 0.7.1 fence applies only
+to new 0.7.1 release prose. MSPL remains explicitly opt-in experimental and
+outside this release's feature scope; existing random-slope documentation is
+not recast as a new candidate claim.

@@ -64,17 +64,16 @@ lane held a renewed narrow lease for all edited paths. GitHub PR enumeration
 could not run because the API connection was unavailable. No merge, push, or
 external CI action occurred.
 
-## 8. Known blockers
+## 8. Resolved scope gate and remaining blockers
 
-The acceptance ledger retains G4 blocked: the baseline already has public MSPL
-and random-slope reader surfaces that conflict with the approved internal-only
-candidate fence. Their disposition is a maintainer decision, not a narrow
-closure edit. The baseline also has three unavailable-source materializer test
-errors and existing `aghq-report.R` roxygen S3-export diagnostics.
+Shinichi resolved G4 on 2026-08-24: retain existing public MSPL and
+random-slope reader surfaces, but apply the 0.7.1 fence only to new 0.7.1
+prose. MSPL remains opt-in experimental and is not expanded or promoted by
+this candidate. The baseline still has three unavailable-source materializer
+test errors and existing `aghq-report.R` roxygen S3-export diagnostics.
 
 ## 9. Next safest action
 
-Do not integrate or publish a candidate until the public-surface disposition
-is decided. On resumption: re-run lane preflight and a path lease, decide the
-fence scope, then version/integrate, freeze a new source SHA, and rerun all
-candidate gates from that SHA.
+On resumption: re-run lane preflight and a path lease, integrate the versioned
+candidate, freeze a new source SHA, and rerun all candidate gates from that
+SHA. Do not publish a candidate.

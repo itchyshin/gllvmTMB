@@ -53856,3 +53856,15 @@ Reader-surface hard stop retained in `.unlazy/0701-trust-release/GATES.md`:
 the baseline contains public MSPL and random-slope material beyond the three
 narrow closures. Candidate integration waits for an explicit disposition; no
 candidate evidence is reused from this pre-integration run.
+
+## 2026-08-24 — 0.7.1 candidate scope amendment and version integration
+
+Shinichi resolved the reader-surface fence: retain existing MSPL and
+random-slope documentation. The 0.7.1 boundary applies only to **new** 0.7.1
+release prose. MSPL remains opt-in experimental and neither it nor random
+slopes receives a new feature, inference, calibration, or promotion claim.
+
+`DESCRIPTION` now identifies the candidate as 0.7.1. `NEWS.md` starts a
+separate 0.7.1 candidate section for #1190, #1194, and #1189 and preserves the
+older 0.7.0 development record as provenance rather than silently rebadging it
+as this release. No tag, CRAN action, or public release is authorized.

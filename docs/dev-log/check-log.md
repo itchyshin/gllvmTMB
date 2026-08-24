@@ -53868,3 +53868,7 @@ slopes receives a new feature, inference, calibration, or promotion claim.
 separate 0.7.1 candidate section for #1190, #1194, and #1189 and preserves the
 older 0.7.0 development record as provenance rather than silently rebadging it
 as this release. No tag, CRAN action, or public release is authorized.
+
+The active 0.7 release claim matrix was reconciled to the same 0.7.1 identity.
+Older dated 0.7.0 authorization, preflight, and component-inventory records
+remain historical evidence and were not rewritten.

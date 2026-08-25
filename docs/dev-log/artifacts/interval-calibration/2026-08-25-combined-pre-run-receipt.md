@@ -174,6 +174,25 @@ post-guard fit before launch. The successful local smoke timings still imply
 approximately 17, 29, 22, 8, and 23 minutes wall time for PVT-02, CI-09,
 CI-13, CI-14, and CI-15 respectively at 96 workers. CI-10 is not retried.
 
+The post-guard used PVT-02 cell 1, replicate 50001, which is inside the frozen
+campaign manifest. It completed first with a valid environment and the
+scientific outcome `fit_failed`; the running sequence then repeated the same
+identity. Both executions are retained. Adjudication imports the first
+post-guard result as the sole canonical scientific row and marks the later
+execution `duplicate_excluded`. The original missing-dependency execution is
+`infrastructure_excluded`. No result is selected by favourability, and the
+scientific denominator still contains exactly one row for each frozen
+identity. Future sequence launchers reject a post-guard receipt unless an
+in-manifest identity is explicitly imported or an out-of-manifest identity is
+marked `preflight_only`.
+
+Before CI-15, the exact active retry library was checked for the complete
+campaign dependency set. It contains `Matrix` 1.7-5 and `ape` 5.8-1 as well as
+the ten dependencies already listed in the preparation receipt. Totoro retains
+the immutable audit at
+`2026-08-25-r2/deployment/runtime-dependency-audit.tsv` and the canonical-import
+decision at `2026-08-25-r2/deployment/post-guard-receipt.rds`.
+
 ## Approval and dispatch-readiness checkpoint
 
 Shinichi explicitly approved the exact envelope above on 2026-08-25. That

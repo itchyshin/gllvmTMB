@@ -39,7 +39,6 @@ base_root=$(dirname "$deploy_root")
 bundle=$deploy_root/gllvmTMB-interval-dispatch.bundle
 spec=$deploy_root/approved-dispatch.tsv
 checksums=$deploy_root/remote-payload-checksums.sha256
-orchestrator_root=$base_root/orchestrator
 branch=codex/interval-calibration-release
 
 cd "$deploy_root"
@@ -64,6 +63,11 @@ if [ "$schema" != "INTERVAL_CALIBRATION_APPROVED_DISPATCH_V1" ] || \
   echo "approved dispatch schema or branch is invalid" >&2
   exit 65
 fi
+if [ "$host_class" = fir ]; then
+  orchestrator_root=$base_root/orchestrators/$expected_sha
+else
+  orchestrator_root=$base_root/orchestrator
+fi
 
 bundle_sha=$(git ls-remote "$bundle" "refs/heads/$branch" | awk '{print $1}')
 if [ "$bundle_sha" != "$expected_sha" ]; then
@@ -71,6 +75,7 @@ if [ "$bundle_sha" != "$expected_sha" ]; then
   exit 65
 fi
 
+mkdir -p "$(dirname "$orchestrator_root")"
 if [ ! -e "$orchestrator_root" ]; then
   git clone --quiet --branch "$branch" --single-branch \
     "$bundle" "$orchestrator_root"

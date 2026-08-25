@@ -433,6 +433,11 @@ test_that("remote launchers enforce frozen sources, sequential-wave limits, and 
     fixed = TRUE
   )
   expect_match(prepare_host, "git ls-remote", fixed = TRUE)
+  expect_match(
+    prepare_host,
+    'orchestrators/$expected_sha',
+    fixed = TRUE
+  )
   expect_match(prepare_host, "--detach", fixed = TRUE)
   expect_match(prepare_host, "install-packet-library.sh", fixed = TRUE)
   expect_match(
@@ -449,6 +454,11 @@ test_that("remote launchers enforce frozen sources, sequential-wave limits, and 
   expect_match(
     deploy,
     ". /cvmfs/soft.computecanada.ca/custom/software/lmod/lmod/init/bash; module load StdEnv/2023 gcc/12.3 r/4.5.0",
+    fixed = TRUE
+  )
+  expect_match(
+    deploy,
+    "fir_orchestrator='$fir_base/orchestrators/'",
     fixed = TRUE
   )
 

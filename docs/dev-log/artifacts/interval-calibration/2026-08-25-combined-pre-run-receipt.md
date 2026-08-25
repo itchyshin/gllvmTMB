@@ -273,3 +273,12 @@ pinned stack and R 4.5.0 successfully. The Fir scripts now run under Bash and
 source that exact initializer; the launch command also loads the stack before
 its first `Rscript` call. V4 is retained by versioned rename and contains no
 package library, campaign row, or submitted job.
+
+The fifth Fir preparation attempt passed the V5 runtime checks but refused the
+existing singleton orchestration checkout because it correctly contained the
+earlier V3 commit. This exposed an architectural mismatch: immutable recovery
+packets cannot safely share one mutable `orchestrator` path. Fir orchestration
+checkouts are now keyed by the approved orchestration SHA, matching the
+existing source-SHA-keyed scientific and library roots. Totoro remains on its
+already prepared singleton checkout. V5 is retained by versioned rename and
+contains no CI-10 campaign row or submitted job.

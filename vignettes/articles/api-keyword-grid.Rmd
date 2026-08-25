@@ -1,7 +1,7 @@
 ---
 title: "Formula keyword grid"
 description: "Choose a correlation source and covariance mode, then translate the intended model into matching long and traits(...) wide formulas."
-tier: 2
+tier: 2 # Technical lookup; worked tree examples live in where-does-the-tree-go.
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -61,9 +61,10 @@ There are **three fundamental cross-trait structures**, from simplest to richest
   companion.
 
 **`scalar` and `unique` are modifiers, not separate modes.** `scalar` is
-`indep` with the variances tied to one shared value; `unique` is `latent` with
-its diagonal-\(\Psi\) companion. This mirrors how the deprecated `unique()`
-keyword now lives as `latent(unique = TRUE)`. The named `scalar()`,
+`indep` with the variances tied to one shared value; `unique = TRUE` adds the
+diagonal-\(\Psi\) companion to a `latent` term. The standalone deprecated
+`unique()` keyword remains compatibility syntax for the plain diagonal case.
+The named `scalar()`,
 `phylo_scalar()`, `animal_scalar()`, `spatial_scalar()`, and `kernel_scalar()`
 keywords fit exactly this model but are **soft-deprecated compatibility syntax**
 (they emit a one-time warning); write `indep(..., common = TRUE)` in new code.
@@ -271,111 +272,51 @@ or reciprocal process. When more than one named kernel is fitted, use
 collapse indistinguishable kernels rather than assigning them separate
 biological stories.
 
-## Other formula markers
+## What sits outside the grid
 
-### Random slopes
+### Slope variation by response column
 
-The five slope helpers—`slope()`, `phylo_slope()`, `animal_slope()`,
-`kernel_slope()`, and `spatial_slope()`—are Gaussian long-format,
-predictor-only response-column terms. Their RHS must be the resolved `trait`
-factor; they add no random intercept and are not extra covariance modes.
+<div class="slope-chooser">
+
+The 5 × 3 grid describes **trait covariance for random effects**. The slope
+helpers answer a separate question: *how do fixed-predictor coefficients vary
+across the response columns?* They are not a new grid row, column, or mode.
+
+<div class="table-responsive">
+
+| Column relationship | Use |
+|---|---|
+| no supplied relationship | `slope(x | trait)` |
+| a phylogenetic tree | `phylo_slope(x | trait, tree = tree)` |
+| a pedigree or relationship matrix | `animal_slope(x | trait, A = A)` |
+| a labelled covariance matrix | `kernel_slope(x | trait, K = K)` |
+| one coordinate pair per column | `spatial_slope(x | trait, mesh = column_mesh)` |
+
+</div>
+
+For this helper family, the right side must be the variable that labels the
+response columns, supplied through `trait =` and usually named `trait`. The
+helper adds no random intercept. With
+two or more predictors, `|` estimates their full covariance and `||` keeps
+their predictor variances but fixes their covariance to zero.
+Retrieve that predictor-by-predictor matrix with
+`extract_Sigma(fit, level = "column_slope")`.
 
 ```r
-value ~ 0 + trait + slope(lat + temp | trait)
-value ~ 0 + trait + phylo_slope(lat + temp | trait, tree = tree)
-value ~ 0 + trait + animal_slope(lat + temp | trait, A = A)
-value ~ 0 + trait + kernel_slope(lat + temp | trait, K = K)
-value ~ 0 + trait + spatial_slope(lat + temp | trait, mesh = column_mesh)
+value ~ 0 + trait + moisture + canopy +
+  phylo_slope(moisture + canopy | trait, tree = tree)
 ```
 
-The relationship source links response columns, not sampling units. A single
-bar estimates a full predictor covariance; `||` is diagonal. Extract it with
-`extract_Sigma(fit, level = "column_slope")`; it is not trait-level Sigma.
+This is Gaussian long-format point estimation only. Wide column-slope grammar,
+non-Gaussian responses, latent predictor covariance, several helpers in one
+model, and intervals are deliberately deferred. The older
+group-indexed `phylo_slope(x | species)` and `animal_slope(x | id)` routes are
+retained for compatibility, but they are not the teaching API described here.
 
-The following is the phylogenetic form:
+For a worked comparison of a tree among sampled species and a tree among
+response columns, read [Where does the phylogeny belong?](where-does-the-tree-go.html).
 
-```r
-value ~ 0 + trait + group:lat + group:temp +
-  phylo_slope(lat + temp | trait, tree = tree)   # correlated slope deviations
-
-value ~ 0 + trait + group:lat + group:temp +
-  phylo_slope(lat + temp || trait, tree = tree)  # separate slope variances
-```
-
-The first is shorthand for `phylo_dep(0 + lat + temp | trait, tree = tree)`;
-the second is shorthand for `phylo_indep(...)`. `0 + trait` estimates the
-column intercepts, while the structured term adds no random intercept. These
-Gaussian-only forms return the predictor covariance from
-`extract_Sigma(fit, level = "column_slope")`; they are not trait-level
-covariance matrices. The animal form accepts `pedigree =`, `A =`, or
-`Ainv =`; `kernel_slope()` accepts a labelled `K`, and `spatial_slope()` uses
-one labelled coordinate pair per response column. Wide-format column slopes,
-non-Gaussian responses, latent predictor covariance, and intervals remain
-deliberately deferred.
-
-An augmented random-slope term describes deviations around a fixed
-population-average slope. Include that fixed slope separately:
-
-```{r structured-slope-syntax, eval = FALSE}
-# Long form
-value ~ 0 + trait + (0 + trait):x +
-  phylo_indep(0 + trait + (0 + trait):x | species)
-
-# Equivalent wide form
-traits(t1, t2, t3) ~ 1 + x +
-  phylo_indep(1 + x | species)
-```
-
-The three structured modes do not merely represent increasing computational
-complexity. They estimate different covariance objects (for a single slope `x`
-and \(T\) traits):
-
-- `*_indep(1 + x | g)` estimates **\(T\) independent per-trait \(2 \times 2\)
-  (intercept, slope) blocks** -- each trait gets its own intercept variance,
-  slope variance, and intercept--slope correlation, with no covariance across
-  traits. Extract it at `level = "phy"` / `"spatial"`; a `kernel_` tier is
-  addressed by the `name` you gave it, so a tier declared
-  `kernel_indep(..., name = "known")` is extracted at `level = "known"`.
-- `*_dep(1 + x | g)` estimates a **full interleaved \(2T \times 2T\)** covariance
-  across all trait intercepts and slopes. Same extraction levels.
-- `*_latent(1 + x | g, d = K)` estimates **separate reduced-rank cross-trait
-  covariance matrices** for the intercept and slope columns; it does not
-  estimate intercept--slope covariance. Extract the per-column matrices at
-  `level = "phy_slope"` or `level = "spde_slope"`.
-
-#### Correlated and uncorrelated slopes: `|` and `||`
-
-There is one more choice for a random slope -- whether the intercept and slope
-are **correlated** -- and it is set by the number of bars, matching lme4/glmmTMB:
-
-- A **single bar**, `mode(1 + x | g)`, **estimates the intercept--slope
-  correlation** (the default).
-- A **double bar**, `mode(1 + x || g)`, drops it: the intercept and slope are
-  **uncorrelated**. It is exactly `mode(1 | g) + mode(0 + x | g)`.
-
-The bar count sets only the intercept--slope coupling; the mode still sets the
-cross-trait structure. For \(T\) traits:
-
-| mode | `1 + x \| g` (correlated) | `1 + x \|\| g` (uncorrelated) |
-|---|---|---|
-| `indep` | a separate \(2 \times 2\) per trait | a per-trait intercept variance + slope variance (fully diagonal) |
-| `dep` | full \(2T \times 2T\) across all trait intercepts and slopes | a full intercept covariance and a full slope covariance, with intercepts \(\perp\) slopes (\(\boldsymbol\Sigma_{\text{int}} \oplus \boldsymbol\Sigma_{\text{slope}}\)) |
-| `latent` | separate reduced-rank \(\boldsymbol\Lambda\) per column block (already uncorrelated) | the same -- `\|\|` is the explicit spelling |
-
-Both bar forms are available for the `phylo_` and `animal_` sources, for
-`spatial_indep()` / `spatial_dep()` / `spatial_latent()`, and for
-`kernel_indep()` / `kernel_dep()`. `kernel_latent()` currently takes the single
-`|` only: a `||` there stops with a message rather than silently fitting the
-correlated form you wrote `||` to avoid.
-
-Choose the mode from the scientific covariance assumption, not as an automatic
-fallback after a difficult fit. Centre and scale `x`, retain the transformation,
-and confirm repeated, overlapping within-unit coverage before fitting a random
-slope. The [behavioural reaction-norm guide](random-regression-reaction-norms.html)
-shows those design checks for the ordinary Gaussian case. Family-specific
-response requirements still apply; changing `family =` is not the only change
-needed when moving from continuous traits to counts, proportions, trials, or
-ordered categories.
+</div>
 
 ### Known sampling covariance
 

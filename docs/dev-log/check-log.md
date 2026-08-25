@@ -54066,3 +54066,45 @@ git diff --check
 content-conflict-free), Totoro/DRAC, wide grammar, latent predictor covariance,
 non-Gaussian/mixed response-column slope work, simultaneous column sources, or
 interval calibration. Next: maintainer review of #1208; do not self-merge.
+
+---
+
+## 2026-08-24 — Reader-first tree-axis and 5 × 3 grid repair (Codex)
+
+The published teaching surface was reset after reader and visual review: the
+tree article now has two small alpine-plant examples, one for sampled-species
+phylogenetic covariance and one for species response-column slope covariance.
+The bird fixture and unrelated integrated-model section were removed. The
+5 × 3 lookup now states that response-column slope helpers are outside the
+grid, corrects the standalone `unique()` compatibility wording, and uses a
+separate responsive callout. Navigation and table/TOC CSS were tightened after
+the supplied screenshot showed clipping.
+
+```sh
+Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); rmarkdown::render("vignettes/articles/where-does-the-tree-go.Rmd", output_dir = "/private/tmp/tree-article-render", quiet = TRUE); rmarkdown::render("vignettes/articles/api-keyword-grid.Rmd", output_dir = "/private/tmp/grid-article-render", quiet = TRUE)'
+# PASS: both standalone HTML articles rendered.
+Rscript --vanilla dev/trait-axis-bridge/verify-scope.R
+# PASS: SCOPE SCAN PASS.
+Rscript --vanilla dev/trait-axis-bridge/verify-article.R
+# PASS: ARTICLE BUILD PASS.
+Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::check_pkgdown()'
+# PASS: no problems found.
+Rscript --vanilla -e 'pkg <- pkgdown:::section_init(".", "articles"); for (nm in c("articles/api-keyword-grid", "articles/where-does-the-tree-go")) pkgdown::build_article(nm, pkg = pkg, lazy = FALSE, quiet = FALSE)'
+# PASS: actual pkgdown pages built for both changed articles.
+git diff --check
+# PASS.
+rg -n 'What does the tree relate|Response- column|iSDM|observation model|occupancy' vignettes/articles/where-does-the-tree-go.Rmd vignettes/articles/api-keyword-grid.Rmd dev/trait-axis-bridge/verify-scope.R
+# PASS: no stale title, broken wording, or old integrated-model teaching.
+rg -n 'gllvmTMB\\(' vignettes/articles/where-does-the-tree-go.Rmd vignettes/articles/api-keyword-grid.Rmd
+# PASS after manual review: taught long-format fits pass trait = explicitly.
+rg -n 'gllvmTMB_wide|meta_known_V|non-Gaussian|deferred|intervals' vignettes/articles/where-does-the-tree-go.Rmd vignettes/articles/api-keyword-grid.Rmd
+# PASS: only intentional compatibility or deferred-scope language remains.
+```
+
+Sol reader reviews: Boole—PASS after reset; Rose—PASS after `unique()` and
+scope correction; Pat—pedagogy PASS, visual layout REVISE then addressed with
+explicit responsive wrappers. Visual screenshot inspection remained limited by
+the unavailable in-app browser; no pixel-perfect claim is made. GitHub DNS
+failed for the shared-document pre-edit PR-list check, and this worktree's
+shared Git metadata rejected `index.lock` creation, so remote-state claims and
+a commit/push remain deliberately absent.

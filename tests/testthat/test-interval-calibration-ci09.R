@@ -427,7 +427,11 @@ test_that("remote launchers enforce frozen sources, sequential-wave limits, and 
     collapse = "\n"
   )
   expect_match(prepare_host, "totoro:totoro.biology.ualberta.ca", fixed = TRUE)
-  expect_match(prepare_host, "fir:fir.alliancecan.ca", fixed = TRUE)
+  expect_match(
+    prepare_host,
+    "fir:login[0-9]*.int.fir.alliancecan.ca",
+    fixed = TRUE
+  )
   expect_match(prepare_host, "git ls-remote", fixed = TRUE)
   expect_match(prepare_host, "--detach", fixed = TRUE)
   expect_match(prepare_host, "install-packet-library.sh", fixed = TRUE)

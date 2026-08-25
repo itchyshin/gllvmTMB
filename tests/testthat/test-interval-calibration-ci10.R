@@ -355,3 +355,31 @@ test_that("CI-10 Fir dispatch uses the backed-up home root when project file quo
   expect_true(all(grepl(fir_root, text, fixed = TRUE)))
   expect_false(any(grepl("/project/def-snakagaw", text, fixed = TRUE)))
 })
+
+test_that("CI-10 Fir guards accept canonical numbered login hosts", {
+  remote_root <- testthat::test_path(
+    "..", "..", "dev", "interval-calibration", "remote"
+  )
+  prepare_host <- paste(
+    readLines(file.path(remote_root, "prepare-remote-host.sh"), warn = FALSE),
+    collapse = "\n"
+  )
+  prepare_array <- paste(
+    readLines(
+      file.path(remote_root, "prepare-ci10-cost-array.sh"),
+      warn = FALSE
+    ),
+    collapse = "\n"
+  )
+
+  expect_match(
+    prepare_host,
+    "fir:login[0-9]*.int.fir.alliancecan.ca",
+    fixed = TRUE
+  )
+  expect_match(
+    prepare_array,
+    "login[0-9]*.int.fir.alliancecan.ca",
+    fixed = TRUE
+  )
+})

@@ -11,10 +11,13 @@ out_root=$3
 library_root=$4
 expected_root=/home/snakagaw/gllvmTMB-interval-calibration/2026-08-25/ci10-cost-array
 host=$(hostname -f)
-if [ "$host" != fir.alliancecan.ca ] || [ "$out_root" != "$expected_root" ]; then
-  echo "CI-10 cost array is pinned to Fir and the approved backed-up home root" >&2
-  exit 65
-fi
+case "$host:$out_root" in
+  login[0-9]*.int.fir.alliancecan.ca:$expected_root) ;;
+  *)
+    echo "CI-10 cost array is pinned to a numbered Fir login host and the approved backed-up home root" >&2
+    exit 65
+    ;;
+esac
 export OPENBLAS_NUM_THREADS=1
 export OMP_NUM_THREADS=1
 export MKL_NUM_THREADS=1

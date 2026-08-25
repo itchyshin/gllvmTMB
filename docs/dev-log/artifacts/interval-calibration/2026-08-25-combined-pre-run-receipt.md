@@ -243,3 +243,13 @@ was observed failing against the old project root and then passed, together
 with all other CI-10 focused assertions, after the four hard-coded paths were
 changed. The failed preparation remains an operational attempt in this
 receipt; it created no campaign row and submitted no job.
+
+The second Fir preparation attempt transferred and checksummed the revised
+packet at the home root, then failed closed before package installation because
+`hostname -f` returned the canonical numbered login host
+`login2.int.fir.alliancecan.ca` while the guard expected the public SSH alias.
+The guard now accepts only `login[0-9]*.int.fir.alliancecan.ca`; arbitrary hosts
+and the public alias remain refused inside the remote script. The existing
+socket still targets `fir.alliancecan.ca`. The failed deployment directory is
+retained by timestamped rename before retry, and no SLURM job was submitted.
+Both focused deployment test files were observed green after this correction.

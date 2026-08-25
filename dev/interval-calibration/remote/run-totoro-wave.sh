@@ -10,7 +10,12 @@ packet=$1
 task_tsv=$2
 out_root=$3
 source_root=$4
-campaign_base=/home/snakagaw/gllvmTMB-interval-calibration/2026-08-25
+campaign_base=$(dirname "$out_root")
+case "$campaign_base" in
+  /home/snakagaw/gllvmTMB-interval-calibration/2026-08-25|\
+  /home/snakagaw/gllvmTMB-interval-calibration/2026-08-25-r2) ;;
+  *) echo "Totoro campaign root is outside the approved original/retry envelope" >&2; exit 65 ;;
+esac
 
 case "$packet" in
   PVT02)
@@ -60,7 +65,8 @@ export OPENBLAS_NUM_THREADS=1
 export OMP_NUM_THREADS=1
 export MKL_NUM_THREADS=1
 : "${INTERVAL_LIBRARY_ROOT:?INTERVAL_LIBRARY_ROOT is required}"
-export R_LIBS_USER=$INTERVAL_LIBRARY_ROOT
+: "${INTERVAL_DEPENDENCY_LIBRARY_ROOT:?INTERVAL_DEPENDENCY_LIBRARY_ROOT is required}"
+export R_LIBS_USER=$INTERVAL_LIBRARY_ROOT:$INTERVAL_DEPENDENCY_LIBRARY_ROOT
 
 cd "$source_root"
 Rscript --vanilla dev/interval-calibration/remote/validate-task-manifest.R \

@@ -388,6 +388,16 @@ test_that("remote launchers enforce frozen sources, sequential-wave limits, and 
   expect_match(wave, "xargs -n 4 -P 96", fixed = TRUE)
   expect_match(wave, "--kill-after=60s 2h", fixed = TRUE)
   expect_match(wave, "OPENBLAS_NUM_THREADS=1", fixed = TRUE)
+  expect_match(
+    wave,
+    "INTERVAL_DEPENDENCY_LIBRARY_ROOT",
+    fixed = TRUE
+  )
+  expect_match(
+    wave,
+    "R_LIBS_USER=$INTERVAL_LIBRARY_ROOT:$INTERVAL_DEPENDENCY_LIBRARY_ROOT",
+    fixed = TRUE
+  )
   expect_match(wave, "validate-task-manifest.R", fixed = TRUE)
   expect_match(wave, "write-session-receipt.R", fixed = TRUE)
   expect_match(wave, "record-wave-timeouts.R", fixed = TRUE)
@@ -420,6 +430,13 @@ test_that("remote launchers enforce frozen sources, sequential-wave limits, and 
   expect_match(deploy, "totoro-launch.log", fixed = TRUE)
   expect_match(deploy, "totoro-sequence.log", fixed = TRUE)
   expect_match(deploy, "totoro-sequence-lock", fixed = TRUE)
+  expect_match(deploy, "prepare-totoro-retry", fixed = TRUE)
+  expect_match(deploy, "launch-totoro-retry", fixed = TRUE)
+  expect_match(
+    deploy,
+    "/home/snakagaw/gllvmTMB-interval-calibration/2026-08-25-r2/deployment",
+    fixed = TRUE
+  )
   expect_false(grepl("n_sim=5000.*CI10", deploy))
 
   prepare_host <- paste(
@@ -465,6 +482,11 @@ test_that("remote launchers enforce frozen sources, sequential-wave limits, and 
   expect_match(prepare_host, "required <- c(", fixed = TRUE)
   expect_match(
     prepare_host,
+    "/home/snakagaw/R/x86_64-pc-linux-gnu-library/4.5",
+    fixed = TRUE
+  )
+  expect_match(
+    prepare_host,
     "dependency_libraries=${R_LIBS_USER-}",
     fixed = TRUE
   )
@@ -504,8 +526,31 @@ test_that("remote launchers enforce frozen sources, sequential-wave limits, and 
     collapse = "\n"
   )
   expect_match(sequence, "for packet in PVT02 CI09 CI13 CI14 CI15", fixed = TRUE)
+  expect_match(
+    sequence,
+    "INTERVAL_DEPENDENCY_LIBRARY_ROOT",
+    fixed = TRUE
+  )
   expect_match(sequence, "mkdir \"$lock\"", fixed = TRUE)
   expect_match(sequence, "INTERVAL_CALIBRATION_TOTORO_SEQUENCE_FAILED_V1", fixed = TRUE)
+})
+
+test_that("runtime dependency preflight fails closed with exact missing packages", {
+  remote_root <- testthat::test_path(
+    "..", "..", "dev", "interval-calibration", "remote"
+  )
+  source(file.path(remote_root, "shard-io.R"), local = TRUE)
+  available <- function(package, quietly = TRUE) package != "assertthat"
+  expect_error(
+    interval_assert_runtime_dependencies(available = available),
+    "missing campaign runtime dependencies: assertthat",
+    fixed = TRUE
+  )
+  expect_silent(interval_assert_runtime_dependencies(
+    required = c("cli", "rlang"),
+    available = function(package, quietly = TRUE) TRUE,
+    version = function(package) "test-version"
+  ))
 })
 
 test_that("task-manifest validator refuses a truncated or altered campaign", {

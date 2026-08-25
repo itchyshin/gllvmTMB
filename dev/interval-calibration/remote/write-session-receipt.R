@@ -29,6 +29,7 @@ interval_session_receipt <- function(packet, task_tsv, source_root, output_root)
   interval_assert_clean_checkout(source_root)
   approved_source_sha <- interval_approved_source(packet)
   installed_package <- interval_assert_installed_package(approved_source_sha)
+  runtime_dependencies <- interval_assert_runtime_dependencies()
   list(
     schema = "INTERVAL_CALIBRATION_SESSION_RECEIPT_V1",
     packet = packet,
@@ -52,6 +53,7 @@ interval_session_receipt <- function(packet, task_tsv, source_root, output_root)
     checkout_sha = trimws(interval_git_output(c("rev-parse", "HEAD"), source_root)[[1L]]),
     checkout_status = "clean",
     installed_package = installed_package,
+    runtime_dependencies = runtime_dependencies,
     installed_tree_sha256 = interval_directory_sha256(
       installed_package$package_path
     ),

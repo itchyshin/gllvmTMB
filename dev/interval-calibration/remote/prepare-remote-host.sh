@@ -13,7 +13,17 @@ dependency_libraries=${R_LIBS_USER-}
 
 case "$host_class:$host" in
   totoro:totoro.biology.ualberta.ca)
-    expected_deploy=/home/snakagaw/gllvmTMB-interval-calibration/2026-08-25/deployment
+    case "$deploy_root" in
+      /home/snakagaw/gllvmTMB-interval-calibration/2026-08-25/deployment|\
+      /home/snakagaw/gllvmTMB-interval-calibration/2026-08-25-r2/deployment)
+        expected_deploy=$deploy_root
+        ;;
+      *)
+        echo "Totoro deployment root is outside the approved original/retry envelope" >&2
+        exit 65
+        ;;
+    esac
+    dependency_libraries=/home/snakagaw/R/x86_64-pc-linux-gnu-library/4.5
     packets="PVT02 CI09 CI13 CI14 CI15"
     ;;
   fir:login[0-9]*.int.fir.alliancecan.ca)
@@ -95,6 +105,14 @@ if [ "$(git -C "$orchestrator_root" rev-parse HEAD)" != "$expected_sha" ] || \
    [ -n "$(git -C "$orchestrator_root" status --porcelain --untracked-files=all)" ]; then
   echo "orchestration checkout is not the exact clean approved commit" >&2
   exit 65
+fi
+
+if [ "$host_class" = totoro ]; then
+  test -d "$dependency_libraries"
+  R_LIBS_USER=$dependency_libraries Rscript --vanilla -e '
+    source(commandArgs(TRUE)[1])
+    interval_assert_runtime_dependencies()
+  ' "$orchestrator_root/dev/interval-calibration/remote/shard-io.R"
 fi
 
 mkdir -p "$base_root/scientific" "$base_root/libraries"

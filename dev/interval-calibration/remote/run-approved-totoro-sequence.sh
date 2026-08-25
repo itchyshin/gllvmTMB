@@ -1,7 +1,14 @@
 #!/bin/sh
 set -eu
 
-base=/home/snakagaw/gllvmTMB-interval-calibration/2026-08-25
+: "${INTERVAL_CAMPAIGN_BASE:=/home/snakagaw/gllvmTMB-interval-calibration/2026-08-25}"
+base=$INTERVAL_CAMPAIGN_BASE
+case "$base" in
+  /home/snakagaw/gllvmTMB-interval-calibration/2026-08-25|\
+  /home/snakagaw/gllvmTMB-interval-calibration/2026-08-25-r2) ;;
+  *) echo "Totoro sequence root is outside the approved original/retry envelope" >&2; exit 65 ;;
+esac
+export INTERVAL_DEPENDENCY_LIBRARY_ROOT=/home/snakagaw/R/x86_64-pc-linux-gnu-library/4.5
 deploy=$base/deployment
 orchestrator=$base/orchestrator
 prepared=$deploy/prepared-totoro.tsv

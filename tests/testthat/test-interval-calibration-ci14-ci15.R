@@ -361,4 +361,23 @@ test_that("generic production path delegates CI-14/15 to the validated adapter",
   expect_match(text, "ci1415_run_campaign_shard", fixed = TRUE)
   expect_match(text, "inner$shard$outer_attempt", fixed = TRUE)
   expect_match(text, "ci1415_adapter_schema", fixed = TRUE)
+  expect_match(text, "ci1415_failure", fixed = TRUE)
+  expect_match(text, "ci1415_fit_health", fixed = TRUE)
+})
+
+test_that("CI-14/15 empty eligible denominators are not reported as zero MCSE", {
+  manifest <- ci1415_attempt_manifest(
+    "CI14", source_sha = "test-source-sha", rep_ids = 1L
+  )
+  attempts <- lapply(manifest$expected, function(identity) {
+    ci1415_outer_attempt(
+      manifest,
+      identity$cell_id,
+      identity$rep,
+      "base_fit_failed"
+    )
+  })
+  summary <- ci1415_summarise(ci1415_merge_attempts(manifest, attempts))
+  expect_true(all(is.na(summary$coverage)))
+  expect_true(all(is.na(summary$mcse)))
 })

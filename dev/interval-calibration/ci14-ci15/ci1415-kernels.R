@@ -804,7 +804,10 @@ ci1415_merge_attempts <- function(manifest, attempts) {
 
 .ci1415_clustered_mcse <- function(covered) {
   covered <- as.numeric(covered)
-  if (length(covered) <= 1L) {
+  if (!length(covered)) {
+    return(NA_real_)
+  }
+  if (length(covered) == 1L) {
     return(0)
   }
   stats::sd(covered) / sqrt(length(covered))

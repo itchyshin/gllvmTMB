@@ -152,6 +152,28 @@ The full CI-10 campaign is **not** recommended for immediate launch from the
 remain at their existing limited/blocked states, CI-11/12 remain refused, and
 no new certificate is claimed.
 
+## Post-run infrastructure incident and bounded retry
+
+The first approved Totoro sequence completed all 85,000 identities but was
+invalidated after independent retained-output review. The worker launcher had
+dropped Totoro's user dependency library, so every shard failed before model
+optimisation on a missing runtime package. The immutable archive is retained
+with SHA-256
+`0402b3e1484f56c92fa40cf362c4bb30b5c1de7feba221250261ad907d89c396`;
+it is operational history, not calibration evidence. Exact findings and the
+all-attempt reclassification are recorded in
+`2026-08-25-totoro-invalid-deployment-incident.md`.
+
+The approved infrastructure-retry rule applies: repeat the same identities
+and seeds after fixing the environment, preserve the failed deployment in
+full, and do not widen the scientific envelope. The retry uses the new
+immutable root
+`/home/snakagaw/gllvmTMB-interval-calibration/2026-08-25-r2`, keeps the same
+96-worker sequential waves and two-hour hard stops, and must pass one
+post-guard fit before launch. The successful local smoke timings still imply
+approximately 17, 29, 22, 8, and 23 minutes wall time for PVT-02, CI-09,
+CI-13, CI-14, and CI-15 respectively at 96 workers. CI-10 is not retried.
+
 ## Approval and dispatch-readiness checkpoint
 
 Shinichi explicitly approved the exact envelope above on 2026-08-25. That

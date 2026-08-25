@@ -3,7 +3,7 @@ set -eu
 
 if [ "$#" -ne 2 ]; then
   echo "usage: deploy-approved-envelope.sh ACTION DISPATCH_ROOT" >&2
-  echo "actions: prepare-totoro prepare-fir launch-totoro launch-fir status-totoro status-fir" >&2
+  echo "actions: prepare-totoro prepare-totoro-retry prepare-fir launch-totoro launch-totoro-retry launch-fir status-totoro status-totoro-retry status-fir" >&2
   exit 64
 fi
 
@@ -14,6 +14,7 @@ fir_host=snakagaw@fir.alliancecan.ca
 totoro_socket=/Users/z3437171/.ssh/cm-snakagaw@totoro.biology.ualberta.ca:22
 fir_socket=/Users/z3437171/.ssh/cm-snakagaw@fir.alliancecan.ca:22
 totoro_deploy=/home/snakagaw/gllvmTMB-interval-calibration/2026-08-25/deployment
+totoro_retry_deploy=/home/snakagaw/gllvmTMB-interval-calibration/2026-08-25-r2/deployment
 fir_deploy=/home/snakagaw/gllvmTMB-interval-calibration/2026-08-25/deployment
 fir_dependency_library=/home/snakagaw/R/lane_b_4.5
 
@@ -88,12 +89,20 @@ case "$action" in
   prepare-totoro)
     prepare_host totoro "$totoro_socket" "$totoro_host" "$totoro_deploy"
     ;;
+  prepare-totoro-retry)
+    prepare_host totoro "$totoro_socket" "$totoro_host" "$totoro_retry_deploy"
+    ;;
   prepare-fir)
     prepare_host fir "$fir_socket" "$fir_host" "$fir_deploy"
     ;;
   launch-totoro)
     ssh_reuse "$totoro_socket" "$totoro_host" \
       "set -eu; test -f '$totoro_deploy/prepared-totoro.tsv'; cd '$(dirname "$totoro_deploy")/orchestrator'; nohup sh dev/interval-calibration/remote/run-approved-totoro-sequence.sh >>'$totoro_deploy/totoro-launch.log' 2>&1 </dev/null & echo \$!"
+    ;;
+  launch-totoro-retry)
+    retry_base=$(dirname "$totoro_retry_deploy")
+    ssh_reuse "$totoro_socket" "$totoro_host" \
+      "set -eu; test -f '$totoro_retry_deploy/prepared-totoro.tsv'; cd '$retry_base/orchestrator'; INTERVAL_CAMPAIGN_BASE='$retry_base' nohup sh dev/interval-calibration/remote/run-approved-totoro-sequence.sh >>'$totoro_retry_deploy/totoro-launch.log' 2>&1 </dev/null & echo \$!"
     ;;
   launch-fir)
     fir_base=$(dirname "$fir_deploy")
@@ -103,6 +112,10 @@ case "$action" in
   status-totoro)
     ssh_reuse "$totoro_socket" "$totoro_host" \
       "set -eu; ls -ld '$totoro_deploy/totoro-sequence-lock' 2>/dev/null || true; ls -l '$totoro_deploy'/*sequence*.tsv 2>/dev/null || true; echo TOTORO_LAUNCH_LOG; tail -n 80 '$totoro_deploy/totoro-launch.log' 2>/dev/null || true; echo TOTORO_SEQUENCE_LOG; tail -n 80 '$totoro_deploy/totoro-sequence.log' 2>/dev/null || true"
+    ;;
+  status-totoro-retry)
+    ssh_reuse "$totoro_socket" "$totoro_host" \
+      "set -eu; ls -ld '$totoro_retry_deploy/totoro-sequence-lock' 2>/dev/null || true; ls -l '$totoro_retry_deploy'/*sequence*.tsv 2>/dev/null || true; echo TOTORO_RETRY_LAUNCH_LOG; tail -n 80 '$totoro_retry_deploy/totoro-launch.log' 2>/dev/null || true; echo TOTORO_RETRY_SEQUENCE_LOG; tail -n 80 '$totoro_retry_deploy/totoro-sequence.log' 2>/dev/null || true"
     ;;
   status-fir)
     ssh_reuse "$fir_socket" "$fir_host" \

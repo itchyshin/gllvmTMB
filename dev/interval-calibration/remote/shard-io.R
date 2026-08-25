@@ -3,6 +3,38 @@
 
 interval_stop <- function(...) stop(..., call. = FALSE)
 
+interval_runtime_packages <- c(
+  "assertthat", "cli", "fmesher", "generics", "lifecycle",
+  "rlang", "tidyselect", "TMB", "BH", "RcppEigen"
+)
+
+interval_assert_runtime_dependencies <- function(
+  required = interval_runtime_packages,
+  available = requireNamespace,
+  version = utils::packageVersion
+) {
+  required <- unique(as.character(required))
+  if (!length(required) || any(!nzchar(required))) {
+    interval_stop("runtime dependency list must contain package names")
+  }
+  present <- vapply(
+    required,
+    function(package) isTRUE(available(package, quietly = TRUE)),
+    logical(1)
+  )
+  missing <- required[!present]
+  if (length(missing)) {
+    interval_stop(
+      "missing campaign runtime dependencies: ",
+      paste(missing, collapse = ", ")
+    )
+  }
+  stats::setNames(
+    vapply(required, function(package) as.character(version(package)), character(1)),
+    required
+  )
+}
+
 interval_scalar_integer <- function(x, name, lower = 1L) {
   value <- suppressWarnings(as.integer(x))
   if (length(value) != 1L || is.na(value) || value < lower) {

@@ -89,6 +89,7 @@ interval_atomic_save_rds(
   operation_started_path
 )
 result <- tryCatch({
+  runtime_dependencies <- interval_assert_runtime_dependencies()
   scientific <- interval_assert_frozen_source(scientific_sha, paths)
   scientific$installed_package <- interval_assert_installed_package(scientific_sha)
   if (identical(packet, "PVT02")) {
@@ -168,7 +169,10 @@ result <- tryCatch({
     seed <- inner$shard$seed
     provenance <- inner$shard$provenance
     provenance$ci1415_adapter_schema <- inner$shard$shard_schema_version
+    provenance$ci1415_failure <- inner$shard$failure
+    provenance$ci1415_fit_health <- inner$shard$fit_health
   }
+  provenance$runtime_dependencies <- runtime_dependencies
   payload <- interval_canonical_payload(
     packet = packet,
     cell_id = cell_id,

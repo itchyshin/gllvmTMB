@@ -12,6 +12,7 @@ export INTERVAL_DEPENDENCY_LIBRARY_ROOT=/home/snakagaw/R/x86_64-pc-linux-gnu-lib
 deploy=$base/deployment
 orchestrator=$base/orchestrator
 prepared=$deploy/prepared-totoro.tsv
+post_guard=$deploy/post-guard-receipt.rds
 started=$deploy/totoro-sequence-started.tsv
 completed=$deploy/totoro-sequence-completed.tsv
 failed=$deploy/totoro-sequence-failed.tsv
@@ -19,7 +20,7 @@ log=$deploy/totoro-sequence.log
 lock=$deploy/totoro-sequence-lock
 
 if [ "$(hostname -f)" != "totoro.biology.ualberta.ca" ] || \
-   [ ! -f "$prepared" ]; then
+   [ ! -f "$prepared" ] || [ ! -f "$post_guard" ]; then
   echo "Totoro sequence requires the approved prepared host" >&2
   exit 65
 fi
@@ -32,6 +33,9 @@ if [ -z "$expected_sha" ] || \
   echo "Totoro orchestration checkout differs from the approved clean commit" >&2
   exit 65
 fi
+Rscript --vanilla \
+  "$orchestrator/dev/interval-calibration/remote/validate-post-guard-receipt.R" \
+  PVT02 "$deploy/manifests/pvt02-tasks.tsv" "$post_guard"
 if [ -e "$started" ] || [ -e "$completed" ] || [ -e "$failed" ]; then
   echo "Totoro sequence already has an operational receipt" >&2
   exit 65

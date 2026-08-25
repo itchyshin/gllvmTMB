@@ -26,6 +26,23 @@ source(testthat::test_path(
   "campaign-shard.R"
 ))
 
+test_that("CI-15 dependency guard treats missing ape as infrastructure failure", {
+  remote_root <- testthat::test_path(
+    "..",
+    "..",
+    "dev",
+    "interval-calibration",
+    "remote"
+  )
+  source(file.path(remote_root, "shard-io.R"), local = TRUE)
+  available <- function(package, quietly = TRUE) package != "ape"
+  expect_error(
+    interval_assert_runtime_dependencies(available = available),
+    "missing campaign runtime dependencies: ape",
+    fixed = TRUE
+  )
+})
+
 test_that("CI-14 freezes separate unique-Psi and total marginal slope targets", {
   spec <- ci1415_campaign_spec("CI14")
   expect_identical(spec$n_sim, 5000L)

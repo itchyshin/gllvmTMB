@@ -5,7 +5,7 @@ interval_stop <- function(...) stop(..., call. = FALSE)
 
 interval_runtime_packages <- c(
   "assertthat", "cli", "fmesher", "generics", "lifecycle",
-  "rlang", "tidyselect", "TMB", "BH", "RcppEigen"
+  "rlang", "tidyselect", "TMB", "BH", "RcppEigen", "Matrix", "ape"
 )
 
 interval_assert_runtime_dependencies <- function(
@@ -32,6 +32,124 @@ interval_assert_runtime_dependencies <- function(
   stats::setNames(
     vapply(required, function(package) as.character(version(package)), character(1)),
     required
+  )
+}
+
+interval_validate_post_guard_receipt <- function(receipt, task_manifest) {
+  required_fields <- c(
+    "schema",
+    "packet",
+    "cell_id",
+    "rep",
+    "seed",
+    "scientific_source_sha",
+    "environment_valid",
+    "runtime_dependencies",
+    "scientific_outcome",
+    "canonical_action"
+  )
+  if (!is.list(receipt) || any(!required_fields %in% names(receipt))) {
+    interval_stop("post-guard receipt is incomplete")
+  }
+  if (
+    !identical(
+      receipt$schema,
+      "INTERVAL_CALIBRATION_POST_GUARD_RECEIPT_V1"
+    )
+  ) {
+    interval_stop("post-guard receipt has the wrong schema")
+  }
+  if (
+    !is.data.frame(task_manifest) ||
+      any(!c("packet", "cell_id", "rep", "seed") %in% names(task_manifest))
+  ) {
+    interval_stop("post-guard validation requires a task manifest")
+  }
+  packet <- toupper(interval_scalar_string(receipt$packet, "packet"))
+  cell_id <- interval_scalar_integer(receipt$cell_id, "cell_id")
+  rep <- interval_scalar_integer(receipt$rep, "rep")
+  seed <- interval_scalar_integer(receipt$seed, "seed")
+  if (
+    !identical(receipt$environment_valid, TRUE) ||
+      !all(interval_runtime_packages %in% names(receipt$runtime_dependencies))
+  ) {
+    interval_stop(
+      "post-guard receipt did not pass the complete environment gate"
+    )
+  }
+  if (
+    !identical(
+      receipt$scientific_source_sha,
+      interval_approved_source(packet)
+    )
+  ) {
+    interval_stop("post-guard receipt uses an unapproved scientific source")
+  }
+  interval_scalar_string(receipt$scientific_outcome, "scientific_outcome")
+  action <- interval_scalar_string(receipt$canonical_action, "canonical_action")
+  hit <-
+    task_manifest$packet == packet &
+    task_manifest$cell_id == cell_id &
+    task_manifest$rep == rep
+  if (any(hit)) {
+    if (
+      sum(hit) != 1L || !identical(as.integer(task_manifest$seed[hit]), seed)
+    ) {
+      interval_stop("post-guard campaign identity conflicts with its manifest")
+    }
+    if (!identical(action, "import")) {
+      interval_stop(
+        "post-guard campaign identity must be imported as canonical"
+      )
+    }
+  } else if (!identical(action, "preflight_only")) {
+    interval_stop("out-of-manifest post-guard identity must be preflight_only")
+  }
+  invisible(TRUE)
+}
+
+interval_reconcile_cross_root_attempts <- function(attempts) {
+  required <- c(
+    "packet",
+    "cell_id",
+    "rep",
+    "seed",
+    "root_class",
+    "environment_valid",
+    "completed_at"
+  )
+  if (!is.data.frame(attempts) || any(!required %in% names(attempts))) {
+    interval_stop("cross-root attempts lack required provenance columns")
+  }
+  if (!nrow(attempts)) {
+    interval_stop("cross-root attempt ledger cannot be empty")
+  }
+  keys <- paste(
+    attempts$packet,
+    attempts$cell_id,
+    attempts$rep,
+    attempts$seed,
+    sep = "::"
+  )
+  valid <- !is.na(attempts$environment_valid) & attempts$environment_valid
+  canonical <- rep(FALSE, nrow(attempts))
+  for (key in unique(keys)) {
+    candidates <- which(keys == key & valid)
+    if (length(candidates)) {
+      first <- candidates[which.min(attempts$completed_at[candidates])]
+      canonical[first] <- TRUE
+    }
+  }
+  disposition <- ifelse(
+    !valid,
+    "infrastructure_excluded",
+    ifelse(canonical, "canonical", "duplicate_excluded")
+  )
+  operational <- attempts
+  operational$disposition <- disposition
+  list(
+    operational = operational,
+    canonical = operational[canonical, , drop = FALSE]
   )
 }
 

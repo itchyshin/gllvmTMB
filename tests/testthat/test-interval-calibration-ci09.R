@@ -532,6 +532,7 @@ test_that("remote launchers enforce frozen sources, sequential-wave limits, and 
     fixed = TRUE
   )
   expect_match(sequence, "mkdir \"$lock\"", fixed = TRUE)
+  expect_match(sequence, "validate-post-guard-receipt.R", fixed = TRUE)
   expect_match(sequence, "INTERVAL_CALIBRATION_TOTORO_SEQUENCE_FAILED_V1", fixed = TRUE)
 })
 
@@ -551,6 +552,109 @@ test_that("runtime dependency preflight fails closed with exact missing packages
     available = function(package, quietly = TRUE) TRUE,
     version = function(package) "test-version"
   ))
+})
+
+test_that("runtime dependency preflight covers package and phylogenetic requirements", {
+  remote_root <- testthat::test_path(
+    "..",
+    "..",
+    "dev",
+    "interval-calibration",
+    "remote"
+  )
+  source(file.path(remote_root, "shard-io.R"), local = TRUE)
+  expect_true(all(c("Matrix", "ape") %in% interval_runtime_packages))
+  available <- function(package, quietly = TRUE) package != "ape"
+  expect_error(
+    interval_assert_runtime_dependencies(available = available),
+    "missing campaign runtime dependencies: ape",
+    fixed = TRUE
+  )
+})
+
+test_that("post-guard receipts bind the environment and canonical identity policy", {
+  remote_root <- testthat::test_path(
+    "..",
+    "..",
+    "dev",
+    "interval-calibration",
+    "remote"
+  )
+  source(file.path(remote_root, "shard-io.R"), local = TRUE)
+  source(file.path(remote_root, "build-task-manifests.R"), local = TRUE)
+  expect_true(exists("interval_validate_post_guard_receipt", mode = "function"))
+  if (!exists("interval_validate_post_guard_receipt", mode = "function")) {
+    return(invisible())
+  }
+  manifest <- interval_build_task_manifest("PVT02")
+  receipt <- list(
+    schema = "INTERVAL_CALIBRATION_POST_GUARD_RECEIPT_V1",
+    packet = "PVT02",
+    cell_id = 1L,
+    rep = 50001L,
+    seed = 800050001L,
+    scientific_source_sha = interval_approved_source("PVT02"),
+    environment_valid = TRUE,
+    runtime_dependencies = stats::setNames(
+      rep("test-version", length(interval_runtime_packages)),
+      interval_runtime_packages
+    ),
+    scientific_outcome = "fit_failed",
+    canonical_action = "import"
+  )
+  expect_silent(interval_validate_post_guard_receipt(receipt, manifest))
+  receipt$canonical_action <- "preflight_only"
+  expect_error(
+    interval_validate_post_guard_receipt(receipt, manifest),
+    "campaign identity must be imported",
+    fixed = TRUE
+  )
+  receipt$rep <- 49999L
+  receipt$seed <- 800049999L
+  expect_silent(interval_validate_post_guard_receipt(receipt, manifest))
+})
+
+test_that("cross-root reconciliation retains attempts and chooses the first valid canonical row", {
+  remote_root <- testthat::test_path(
+    "..",
+    "..",
+    "dev",
+    "interval-calibration",
+    "remote"
+  )
+  source(file.path(remote_root, "shard-io.R"), local = TRUE)
+  expect_true(exists(
+    "interval_reconcile_cross_root_attempts",
+    mode = "function"
+  ))
+  if (!exists("interval_reconcile_cross_root_attempts", mode = "function")) {
+    return(invisible())
+  }
+  attempts <- data.frame(
+    packet = rep("PVT02", 3L),
+    cell_id = rep(1L, 3L),
+    rep = rep(50001L, 3L),
+    seed = rep(800050001L, 3L),
+    root_class = c("invalid", "post_guard", "campaign"),
+    environment_valid = c(FALSE, TRUE, TRUE),
+    completed_at = as.POSIXct(
+      c(
+        "2026-08-25 16:00:00",
+        "2026-08-25 16:30:00",
+        "2026-08-25 16:45:00"
+      ),
+      tz = "UTC"
+    ),
+    stringsAsFactors = FALSE
+  )
+  reconciled <- interval_reconcile_cross_root_attempts(attempts)
+  expect_identical(nrow(reconciled$operational), 3L)
+  expect_identical(nrow(reconciled$canonical), 1L)
+  expect_identical(reconciled$canonical$root_class, "post_guard")
+  expect_identical(
+    reconciled$operational$disposition,
+    c("infrastructure_excluded", "canonical", "duplicate_excluded")
+  )
 })
 
 test_that("task-manifest validator refuses a truncated or altered campaign", {

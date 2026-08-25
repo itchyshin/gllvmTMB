@@ -141,6 +141,7 @@ ci13_smoke_one_replicate <- function(cell_id = 2L, rep = 1L, source_sha) {
       value ~ 0 + trait + latent(0 + trait | unit, d = cell$d, unique = TRUE),
       data = data_long,
       family = stats::gaussian(),
+      unit = "unit",
       lambda_constraint = list(unit = constraint)
     ),
     error = identity

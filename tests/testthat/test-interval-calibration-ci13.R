@@ -322,6 +322,8 @@ test_that("CI-13 smoke helper only accepts native pinned Lambda_B semantics", {
   expect_error(ci13_extract_native_pinned_loadings(rotated), "rotated")
   expect_true(is.function(ci13_smoke_one_replicate))
   expect_true("source_sha" %in% names(formals(ci13_smoke_one_replicate)))
+  runner_source <- paste(deparse(body(ci13_smoke_one_replicate)), collapse = " ")
+  expect_match(runner_source, 'unit = "unit"', fixed = TRUE)
 
   unhealthy <- structure(
     list(

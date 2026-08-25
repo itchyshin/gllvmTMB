@@ -54145,3 +54145,35 @@ column-slope grammar, non-Gaussian or mixed-family slopes, latent predictor
 covariance, simultaneous slope sources, interval calibration, or a full local
 package check. This is a reader-facing article-only revision; the existing
 three-OS implementation matrix remains the feature-level evidence.
+
+---
+
+## 2026-08-25 — Response-column slope closure handover refresh (Codex)
+
+Updated the programme handover after the reader-first article and data-layout
+figure commits. The handover now identifies PR #1208's current feature/article
+parent, the rewritten plant examples, the repaired 5 × 3 grid, the authorised
+merge procedure, the final exact-head CI requirement, the live article target,
+and the maintainer-owned boundary around the separate main-lane follow-up. No R
+code, tests, article source, generated site file, or model claim changed.
+
+```sh
+gh pr list --repo itchyshin/gllvmTMB --state open --limit 20
+git log --all --oneline --since="6 hours ago"
+gh pr view 1209 --repo itchyshin/gllvmTMB --json files,headRefName,url
+# PASS: PR #1209 edits a different handover file; no shared-file collision.
+git diff --check
+# PASS.
+rg -n '2ad0238a|open and unmerged|Do not self-merge|visual bridge article|5 x 3' docs/dev-log/handover/2026-08-24-codex-column-slope-family.md
+# PASS when empty: stale pre-article SHA, merge status, article wording, and grid typography are absent.
+```
+
+**External CI receipt before this handover-only commit:** routine Ubuntu PR run
+[32852625158](https://github.com/itchyshin/gllvmTMB/actions/runs/32852625158)
+passed at `fa58e054`. The final exact-head routine run and explicitly dispatched
+macOS/Ubuntu/Windows matrix are PR-level receipts and must be terminal green
+before merge.
+
+**Deliberately not run:** local simulation, recovery, package, article-render,
+or pkgdown checks. This commit changes only internal closure records and does
+not alter the already verified implementation or reader article.

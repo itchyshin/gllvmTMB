@@ -2,7 +2,7 @@
 ## gllvmTMB(). These compute the manuscript's Sigma_B, Sigma_W, ICCs,
 ## communalities, and ordination scores from $report and $opt$par.
 
-#' Between-site covariance matrix Sigma_B (backward-compat wrapper)
+#' Between-site covariance matrix Sigma_B (soft-deprecated compatibility wrapper)
 #'
 #' Returns the implied between-unit trait covariance
 #' \eqn{\Sigma_B = \Lambda_B \Lambda_B^\top + \boldsymbol\Psi_B} and its correlation
@@ -15,6 +15,11 @@
 #' for the rr-only `"shared"` component or the diag-only `"unique"`
 #' component, exposes the binomial-link implicit-residual option, and
 #' will be the entry point for 3+ rr tiers when the engine adds them.
+#'
+#' @section Lifecycle:
+#' Soft-deprecated in 0.7.0. Existing calls continue to return the historical
+#' `Sigma_B` / `R_B` names, but new code should use
+#' `extract_Sigma(fit, level = "unit")`.
 #'
 #' @param fit A fit returned by [gllvmTMB()].
 #' @return A list with `Sigma_B` (T x T covariance), `R_B` (correlation),
@@ -29,23 +34,28 @@ extract_Sigma_B <- function(fit) {
     "extract_Sigma_B()",
     "extract_Sigma(level = \"unit\")"
   )
-  out <- extract_Sigma(
-    fit,
-    level = "unit",
-    part = "total",
-    link_residual = "none"
-  )
+  .extract_Sigma_legacy_payload(fit, level = "unit")
+}
+
+.extract_Sigma_legacy_payload <- function(fit, level) {
+  out <- extract_Sigma(fit, level = level, part = "total", link_residual = "none")
   if (is.null(out)) {
     return(NULL)
   }
-  list(Sigma_B = out$Sigma, R_B = out$R)
+  suffix <- if (identical(level, "unit")) "B" else "W"
+  stats::setNames(list(out$Sigma, out$R), c(paste0("Sigma_", suffix), paste0("R_", suffix)))
 }
 
-#' Within-site covariance matrix Sigma_W (backward-compat wrapper)
+#' Within-site covariance matrix Sigma_W (soft-deprecated compatibility wrapper)
 #'
 #' Returns \eqn{\Sigma_W = \Lambda_W \Lambda_W^\top + \boldsymbol\Psi_W} and the
 #' correlation. Thin wrapper around [extract_Sigma()] with
 #' `level = "unit_obs"`. Prefer the unified interface for new code.
+#'
+#' @section Lifecycle:
+#' Soft-deprecated in 0.7.0. Existing calls continue to return the historical
+#' `Sigma_W` / `R_W` names, but new code should use
+#' `extract_Sigma(fit, level = "unit_obs")`.
 #'
 #' @inheritParams extract_Sigma_B
 #' @return A list with `Sigma_W` and `R_W`, or `NULL`.
@@ -59,16 +69,7 @@ extract_Sigma_W <- function(fit) {
     "extract_Sigma_W()",
     "extract_Sigma(level = \"unit_obs\")"
   )
-  out <- extract_Sigma(
-    fit,
-    level = "unit_obs",
-    part = "total",
-    link_residual = "none"
-  )
-  if (is.null(out)) {
-    return(NULL)
-  }
-  list(Sigma_W = out$Sigma, R_W = out$R)
+  .extract_Sigma_legacy_payload(fit, level = "unit_obs")
 }
 
 #' Site / individual-level ICC per trait

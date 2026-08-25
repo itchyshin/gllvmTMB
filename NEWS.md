@@ -1,4 +1,37 @@
-# gllvmTMB 0.7.0 (development)
+# gllvmTMB 0.7.1 (release candidate)
+
+This candidate is a narrow trust-release closure. It adds no new response
+family, likelihood, integration engine, random-slope capability, iSDM route,
+or broad `predict(newdata = )` claim. No CRAN submission, tag, or public
+release accompanies this candidate.
+
+## Changed
+
+* **Explicitly unused optional grouping slots now warn (#1190).** Supplying
+  `unit_obs` or `cluster` is useful only when a covariance keyword consumes
+  that column. If no keyword does, `gllvmTMB()` now warns and tells the caller
+  to omit the slot or use its column in the intended keyword. Omitted and
+  explicit-`NULL` slots remain silent; the warning does not change the model,
+  likelihood, or parameterisation.
+
+* **`extract_Sigma_B()` and `extract_Sigma_W()` remain soft-deprecated
+  compatibility wrappers (#1194).** They stay exported and retain their
+  historical return names. Their help now gives the direct migration to
+  `extract_Sigma(fit, level = "unit")` or `extract_Sigma(fit, level =
+  "unit_obs")`; ordinary package summaries and residual helpers do not emit
+  the wrapper warning.
+
+* **Variational approximation remains an opt-in experimental route (#1189).**
+  Native Laplace remains the default. This candidate makes no VA calibration,
+  standard-error, confidence-interval, low-prevalence, or MSPL claim.
+
+## Scope boundary
+
+Existing random-slope documentation and existing MSPL material are retained.
+They are not new 0.7.1 capability claims: MSPL remains opt-in experimental,
+and this candidate neither expands nor promotes either topic.
+
+# gllvmTMB 0.7.0 (development history retained for provenance)
 
 * **`extract_Sigma_B()` / `extract_Sigma_W()` now warn on call (#1194).**
   The wrappers stay exported and still return the historical `Sigma_B` /
@@ -395,24 +428,25 @@ is still the default.
   addition only -- **no fit-time warning**, no new export, no behaviour
   change to any existing fit.
 
-  Three arms ship armed at calibrated defaults: `multinomial_collapse_floor
-  = 1e-10` (M1, contrast variance collapse), `multinomial_rail_thresh =
-  0.99` (M2, two contrasts railed onto one axis), and
-  `multinomial_range_collapse_thresh = 0.02` (M3, spatial range collapse).
+  Three screens ship armed at calibrated defaults: `multinomial_collapse_floor
+  = 1e-10` (contrast variance collapse), `multinomial_rail_thresh =
+  0.99` (two contrasts railed onto one axis), and
+  `multinomial_range_collapse_thresh = 0.02` (spatial range collapse).
   `multinomial_collapse_rel_thresh` stays disarmed (`Inf`) -- untested.
   Measured against pre-registered labels (128 fits, 122 converged with a PD
-  Hessian): M1 6/7 labeled collapses **plus 7/7 on a later, entirely
-  out-of-sample cell**; M2 8/8 labeled rails, **plus four individually
+  Hessian): the variance-collapse screen detected 6/7 labeled collapses
+  **plus 7/7 on a later, entirely out-of-sample cell**; the contrast-rail
+  screen detected 8/8 labeled rails, **plus four individually
   railed fits hidden inside a cell whose aggregate gate had passed**
   (refitting confirms |rho| = 1.00000, against controls at 0.49 and
-  -0.15); M3 3/3. Zero false positives on 40 informative healthy fits, and
+  -0.15); the spatial-range screen detected 3/3. Zero false positives on 40 informative healthy fits, and
   the denominator is stated honestly: fits with no loading tier emit no row
   at all and cannot evidence specificity, so the rule-of-three bound is
-  **about 7.5%, not a verified zero**. M2 is deliberately silent on rank-1
+  **about 7.5%, not a verified zero**. The contrast-rail screen is deliberately silent on rank-1
   tiers, where |rho| = 1 holds on every healthy fit by construction
   (verified 0/20 out-of-sample).
 
-  M3 was fixed before arming: it originally read the low-rank loading
+  The spatial-range screen was fixed before arming: it originally read the low-rank loading
   matrix `Lambda_spde`, which the engine reports only for
   `spatial_latent()`/`spatial_dep()` fits, so on `spatial_indep()` fits --
   exactly the ones it was built for -- it produced no row at all. It now
@@ -718,16 +752,14 @@ is still the default.
   with a shared classed condition (`gllvmTMB_multinomial_structured_not_admitted`)
   on every path.
 
-* **The `multinomial()` structured-term surface (Design 123, Slices 1-4,
-  2026-08-16) now admits a bounded set of among-category and grouping
+* **The `multinomial()` structured-term surface now admits a bounded set of among-category and grouping
   structures, each gated on a signed, pre-registered recovery campaign
   rather than construction alone.** Every admission below is enforced by
   the same fail-closed classifier (`R/multinomial-fence.R`); anything not
   named below still aborts typed
-  (`gllvmTMB_multinomial_structured_not_admitted`). See
-  `docs/design/123-multinomial-structured-surface.md` for the full per-cell
-  table and `docs/design/35-validation-debt-register.md`'s FAM-20C/D/E/F
-  rows for the underlying evidence.
+  (`gllvmTMB_multinomial_structured_not_admitted`). The full per-cell table
+  and supporting evidence are available in the
+  [package repository](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/123-multinomial-structured-surface.md).
 
   **Admitted:** the phylogenetic/relatedness surface -- intercept-only
   `phylo_latent()`/`animal_latent()`/single-name `kernel_latent()`

@@ -90,7 +90,9 @@
 #'   name in joint species distribution modelling; safe for site × species
 #'   data). If your data has no such column, omit `unit_obs`; the engine
 #'   synthesises it from `unit` × `cluster`. For other domains pass e.g.
-#'   `unit_obs = "obs"` for behavioural syndromes.
+#'   `unit_obs = "obs"` for behavioural syndromes. If supplied but no
+#'   covariance keyword uses that column, [gllvmTMB()] warns; omit the
+#'   argument or use the column in the intended covariance keyword.
 #' @param site (deprecated) alias for `unit`. Kept for backward
 #'   compatibility. Use `unit = ...` in new code.
 #' @param cluster Optional. Name of the column holding the **third
@@ -105,7 +107,9 @@
 #'   meta-analysis). Default `NULL`, which resolves to `"species"`. For
 #'   datasets with no third grouping the column may be absent from `data`
 #'   entirely (with or without passing `cluster`); the engine will
-#'   synthesise a placeholder.
+#'   synthesise a placeholder. If supplied but no covariance keyword uses
+#'   that column, [gllvmTMB()] warns; omit the argument or use the column in
+#'   the intended covariance keyword.
 #'
 #'   The engine does **not** enforce nesting between `unit_obs`,
 #'   `unit`, and `cluster` — crossed and nested designs both fit. Two
@@ -626,6 +630,12 @@ gllvmTMB <- function(
   ## recursive call re-resolves independently -- sees exactly the values it
   ## always did. Passing `unit_obs = NULL` / `cluster = NULL` explicitly is
   ## therefore equivalent to omitting them.
+  ## Record actual caller intent before resolving the historical defaults.
+  ## This distinction is needed for the unused-slot warning below and must
+  ## survive the traits()-wide recursion: a default we forward internally is
+  ## not an argument the caller supplied.
+  unit_obs_supplied <- !missing(unit_obs) && !is.null(unit_obs)
+  cluster_supplied <- !missing(cluster) && !is.null(cluster)
   unit_obs <- unit_obs %||% "site_species"
   cluster <- cluster %||% "species"
 
@@ -741,8 +751,6 @@ gllvmTMB <- function(
       data = rewrite$data_long,
       trait = trait,
       unit = unit,
-      unit_obs = unit_obs,
-      cluster = cluster,
       cluster2 = cluster2,
       family = family,
       weights = rewrite$weights_long,
@@ -765,6 +773,11 @@ gllvmTMB <- function(
       site = site,
       species = species
     )
+    ## Keep genuinely omitted / NULL optional slots omitted in the recursive
+    ## long-format call. Otherwise their resolved defaults would incorrectly
+    ## appear to have been explicitly supplied by the caller.
+    if (unit_obs_supplied) recurse_args$unit_obs <- unit_obs
+    if (cluster_supplied) recurse_args$cluster <- cluster
     ## Preserve missing(estimator) through the wide-to-long recursion.  This is
     ## load-bearing for the legacy REML route: passing the default "ml"
     ## explicitly would turn an omitted estimator into an API conflict.
@@ -971,6 +984,28 @@ gllvmTMB <- function(
   ## spatial = "off"; that path is removed in 0.2.0 because the
   ## single-response sdmTMB() engine is no longer bundled.
   parsed <- parse_multi_formula(formula)
+  ## An explicitly named optional grouping slot is useful only when a
+  ## covariance keyword routes through it.  Warn at the R boundary rather than
+  ## changing the assembled TMB inputs: unused slots remain exactly the same
+  ## harmless historical defaults they were before this diagnostic.
+  ## Most covariance keywords consume their grouping column on the right of
+  ## `|`, but kernel / phylogenetic terms can carry it on the parsed left-hand
+  ## side (for example, `kernel_indep(species, K = K)`).  Both sides therefore
+  ## count as use of an explicitly supplied optional slot.
+  covstruct_columns <- unique(unlist(lapply(parsed$covstructs, function(cs) {
+    c(all.vars(cs$lhs), all.vars(cs$group))
+  }), use.names = FALSE))
+  unused_slots <- c(
+    if (unit_obs_supplied && !unit_obs %in% covstruct_columns) "unit_obs",
+    if (cluster_supplied && !cluster %in% covstruct_columns) "cluster"
+  )
+  if (length(unused_slots) > 0L) {
+    cli::cli_warn(c(
+      "Unused optional grouping argument(s): {.field {unused_slots}}.",
+      "i" = "No formula covariance keyword uses {cli::cli_vec(unused_slots)}.",
+      ">" = "Remove the unused optional grouping argument(s), or use its column in a covariance keyword."
+    ))
+  }
   ## ---- Phase 2a: validate mi() BEFORE any model.frame on parsed$fixed ----
   ## drop_missing_response_rows() (below) builds a model.frame on parsed$fixed.
   ## For an invalid mi() term (e.g. mi(log(x)), mi(x):z) the parser leaves the

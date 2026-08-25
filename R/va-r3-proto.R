@@ -307,8 +307,8 @@
   tight <- marginal_eta(200L, 1e-12)
   if (is.null(loose) || is.null(tight)) {
     stop("Binomial R3 refuses this design: the marginal logistic regression ",
-         "y ~ X - 1 has no finite fit, which indicates separation. Design 85 ",
-         "admits only non-separated fixtures.", call. = FALSE)
+         "y ~ X - 1 has no finite fit, which indicates separation. This ",
+         "route requires non-separated data.", call. = FALSE)
   }
   drift <- tight$max_abs_eta - loose$max_abs_eta
   if (drift > drift_limit || tight$max_abs_eta > eta_limit) {
@@ -319,8 +319,8 @@
          format(drift, digits = 6), ", drift limit ", drift_limit,
          ", magnitude limit ", eta_limit,
          "). A coefficient that moves with the tolerance has no finite ",
-         "maximum-likelihood value. Design 85 admits only non-separated ",
-         "fixtures; this guard reads the marginal design only and is ",
+         "maximum-likelihood value. This route requires non-separated data; ",
+         "this guard reads the marginal design only and is ",
          "deliberately conservative.", call. = FALSE)
   }
   invisible(list(max_abs_eta = tight$max_abs_eta, drift = drift,

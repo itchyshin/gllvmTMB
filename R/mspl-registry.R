@@ -99,7 +99,7 @@
   )
   admitted_binom$status <- "admitted"
   admitted_binom$evidence <- "partial_b2_incomplete"
-  admitted_binom$notes <- "Design 88 live surface; B2 shards incomplete; not a covered claim"
+  admitted_binom$notes <- "Experimental surface; supporting evidence remains incomplete and this is not a covered claim"
   admitted_binom$cell_id <- .gllvmTMB_mspl_registry_cell_id(
     admitted_binom$family,
     admitted_binom$link,

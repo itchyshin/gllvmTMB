@@ -156,7 +156,7 @@ tree <- pcm$tree
 fit_pcm <- gllvmTMB(
   value ~ 0 + trait + column_domain:elevation +
     phylo_indep(0 + trait | species, tree = tree) +
-    phylo_slope(elevation | species, tree = tree),
+    phylo_slope(elevation | species),
   data = pcm_data,
   trait = "trait",
   unit = "record_id",
@@ -208,7 +208,7 @@ tree <- column$tree
 
 fit_column <- gllvmTMB(
   value ~ 0 + trait +
-    phylo_slope(elevation + forest_cover | trait, tree = tree),
+    phylo_dep(0 + elevation + forest_cover | trait, tree = tree),
   data = column_data,
   trait = "trait",
   unit = "site_id",
@@ -220,7 +220,7 @@ Sigma_slope <- extract_Sigma(fit_column, level = "column_slope")$Sigma
 Sigma_slope
 ```
 
-`phylo_slope(elevation + forest_cover | trait, tree = tree)` is a
+`phylo_dep(0 + elevation + forest_cover | trait, tree = tree)` is a
 predictor-only response-column route. It has no random intercept and is
 Gaussian only. The returned `Sigma_slope` is the covariance of the two
 predictor slopes, not a trait-level `Sigma`: it asks whether elevation and

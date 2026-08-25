@@ -32,6 +32,25 @@ spde_slope_gauge_nofit_v2_materializer_env <- function() {
   env
 }
 
+# The forensic-seal unit tests exercise terminalization with synthetic
+# validators.  Give them an entirely local, hashable inventory rather than
+# asking the production source resolver to locate its separately retained
+# historical worktree.
+spde_slope_gauge_nofit_v2_forensic_test_sources <- function() {
+  c(
+    child_runner = isdm_dev_path("run-paper1-spde-slope-gauge-nofit-v2.R"),
+    pure_contract = isdm_dev_path("spde-slope-gauge-contract.R"),
+    nofit_contract = isdm_dev_path("spde-slope-gauge-nofit-contract.R"),
+    historical_contract = isdm_dev_path("spde-slope-gauge-nofit-contract.R"),
+    design = isdm_dev_path(
+      "2026-08-15-paper1-spde-slope-gauge-coordinate-design.md"
+    ),
+    materializer = isdm_dev_path(
+      "materialize-paper1-spde-slope-gauge-nofit-v2-gate.R"
+    )
+  )
+}
+
 test_that("V2 materializer can be loaded without dispatching a child process", {
   materializer <- spde_slope_gauge_nofit_v2_materializer_env()
   expect_true(is.function(materializer$.spde_slope_gauge_nofit_v2_launch_child))
@@ -171,7 +190,7 @@ test_that("V2 forensic sealing promotes retained child bytes without relaunch", 
     "child stderr",
     file.path(stage, "child-stderr.txt")
   )
-  sources <- materializer$.spde_slope_gauge_nofit_v2_sources()
+  sources <- spde_slope_gauge_nofit_v2_forensic_test_sources()
   process <- list(
     schema = materializer$.spde_slope_gauge_nofit_v2_process_schema(),
     command = R.home("bin/Rscript"),
@@ -242,7 +261,7 @@ test_that("V2 forensic sealing retains the parent error without child bytes", {
   on.exit(unlink(base, recursive = TRUE), add = TRUE)
   token <- materializer$.spde_slope_gauge_nofit_v2_stage_token(stage, 31003L)
   saveRDS(token, file.path(stage, ".parent-stage.rds"))
-  sources <- materializer$.spde_slope_gauge_nofit_v2_sources()
+  sources <- spde_slope_gauge_nofit_v2_forensic_test_sources()
   verdict <- materializer$.spde_slope_gauge_nofit_v2_forensic_seal(
     stage,
     root,
@@ -299,7 +318,7 @@ test_that("V2 forensic validation failure retains the post-launch stage", {
   on.exit(unlink(base, recursive = TRUE), add = TRUE)
   token <- materializer$.spde_slope_gauge_nofit_v2_stage_token(stage, 31004L)
   saveRDS(token, file.path(stage, ".parent-stage.rds"))
-  sources <- materializer$.spde_slope_gauge_nofit_v2_sources()
+  sources <- spde_slope_gauge_nofit_v2_forensic_test_sources()
   expect_error(
     materializer$.spde_slope_gauge_nofit_v2_forensic_seal(
       stage,

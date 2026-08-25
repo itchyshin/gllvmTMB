@@ -53805,6 +53805,138 @@ The after-task report is
 
 **Deliberately not run:** a new Totoro/DRAC recovery campaign, a wide-format
 column-predictor implementation, or any non-Gaussian multi-predictor claim.
+## 2026-08-24 — 0.7.1 trust-release narrow closures (#1190, #1194, #1189; not a release candidate)
+
+Isolated Codex lane `codex/0701-trust-release`, initially from
+`a94a156fa2522319ba7ab3625648109300128ecc`. This commit deliberately closes
+only the approved narrow contracts; it does not tag, submit, publish, claim
+CRAN readiness, promote VA/MSPL, expand iSDM or `predict(newdata = )`, or
+promote random-slope evidence.
+
+- **#1190:** an explicitly supplied non-`NULL` `unit_obs` or `cluster` now
+  warns only when no covariance keyword consumes its column. Consumption is
+  detected from both parsed sides of a covariance term so a `kernel_*` term
+  such as `kernel_unique(species, K = K)` counts correctly. New tests cover
+  unused unit-observation, cluster, and both slots; ordinary consumed slots;
+  consumed kernel slots; explicit `NULL`; omission; and the wide recursion.
+- **#1194:** `extract_Sigma_B()` and `extract_Sigma_W()` remain exported,
+  soft-deprecated compatibility wrappers with their historical return names.
+  The canonical `extract_Sigma()` help and the wrapper help teach the
+  migration. Internal callers now use an unexported payload helper so ordinary
+  summaries and residual helpers do not emit a user-facing deprecation warning.
+- **#1189:** `known-limitations.md` now says only that VA is opt-in,
+  experimental, and uncalibrated while native Laplace remains the default; it
+  makes no new empirical, inference, MSPL, or low-prevalence claim.
+
+Commands and results:
+
+```sh
+Rscript --vanilla -e 'devtools::test_active_file("tests/testthat/test-unused-grouping-slots.R")'
+# 0 failures, 0 warnings, 13 passes
+Rscript --vanilla -e 'devtools::test_active_file("tests/testthat/test-sigma-rename.R")'
+# 0 failures, 0 warnings, 24 passes
+Rscript --vanilla -e 'devtools::test_active_file("tests/testthat/test-coevolution-two-kernel.R")'
+# 0 failures, 0 warnings, 123 passes, 21 intentional heavy skips
+Rscript --vanilla -e 'devtools::document(quiet = TRUE)'
+# regenerated gllvmTMB and extract_Sigma wrapper Rd; existing aghq-report.R
+# S3-export diagnostics remain
+NOT_CRAN=true Rscript --vanilla -e 'devtools::test()'
+# 16,428 passes, 879 skips, 60 warnings, 4 failures
+```
+
+The full suite found one #1190 false positive in the `kernel_unique()`
+negative control; the parsed-left-side repair above and its focused regression
+file pass. The other three full-suite errors are the existing
+`test-paper1-spde-slope-gauge-nofit-v2-materializer.R` failures: historical
+V2 no-fit sources are unavailable or the validator drifted. A complete
+post-repair full-suite rerun belongs to the frozen-candidate gate, not this
+pre-integration closure.
+
+Reader-surface hard stop retained in `.unlazy/0701-trust-release/GATES.md`:
+the baseline contains public MSPL and random-slope material beyond the three
+narrow closures. Candidate integration waits for an explicit disposition; no
+candidate evidence is reused from this pre-integration run.
+
+## 2026-08-24 — 0.7.1 candidate scope amendment and version integration
+
+Shinichi resolved the reader-surface fence: retain existing MSPL and
+random-slope documentation. The 0.7.1 boundary applies only to **new** 0.7.1
+release prose. MSPL remains opt-in experimental and neither it nor random
+slopes receives a new feature, inference, calibration, or promotion claim.
+
+`DESCRIPTION` now identifies the candidate as 0.7.1. `NEWS.md` starts a
+separate 0.7.1 candidate section for #1190, #1194, and #1189 and preserves the
+older 0.7.0 development record as provenance rather than silently rebadging it
+as this release. No tag, CRAN action, or public release is authorized.
+
+The active 0.7 release claim matrix was reconciled to the same 0.7.1 identity.
+Older dated 0.7.0 authorization, preflight, and component-inventory records
+remain historical evidence and were not rewritten.
+
+## 2026-08-24 — 0.7.1 reader-surface remediation
+
+The frozen candidate's reader-surface guard initially found 47 pre-existing
+internal identifiers or unshipped `docs/` paths on NEWS, generated help,
+one vignette, and runtime messages. Under explicit maintainer authorization,
+this bounded remediation replaced only those internal references with plain
+reader-facing wording. It did not change an estimator, likelihood, formula,
+default, admitted capability, or validation boundary. In particular, MSPL
+remains experimental, VA remains opt-in and uncalibrated, and no random-slope
+claim was added.
+
+`R/diagnose.R`, `R/multinomial-fence.R`, and related runtime messages now name
+the concrete failure mechanism rather than internal phase labels. Roxygen was
+updated at source and `devtools::document()` regenerated the affected Rd
+files. The surviving package-repository references are absolute GitHub links,
+which remain usable in an installed package.
+
+Commands and results:
+
+```sh
+Rscript --vanilla -e 'devtools::document(quiet = TRUE)'
+# regenerated dot-gllvmTMB_multinomial_degeneracy_row.Rd, multinomial.Rd,
+# predict_missing.Rd, and getLV.Rd; existing aghq-report.R S3 diagnostics remain
+bash tools/check-reader-surface.sh
+# PASS
+Rscript --vanilla -e 'devtools::test_active_file("tests/testthat/test-multinomial-fence.R")'
+# 79 passes, 2 expected warnings
+Rscript --vanilla -e 'devtools::test_active_file("tests/test-gllvmTMB-diagnose.R")'
+# 10 passes
+Rscript --vanilla -e 'devtools::test_active_file("tests/test-eva-gate1.R")'
+# 23 passes
+Rscript --vanilla -e 'devtools::test_active_file("tests/test-va-r3-separation.R")'
+# 6 passes
+Rscript --vanilla -e 'devtools::test_active_file("tests/test-slope-sd-ci.R")'
+# 116 passes, 1 intentional heavy skip
+```
+
+The next candidate hash must rerun the full suite and every artifact gate;
+the earlier 25464264 evidence is retained as superseded pre-remediation
+evidence and is not reused.
+
+## 2026-08-24 — 0.7.1 reader-surface remediation test alignment
+
+The first full local suite after the reader-surface wording remediation ran to
+completion in 2225.9 s and found one homogeneous stale-test defect:
+`tests/testthat/test-sanity-categorical.R` still asserted the removed internal
+multinomial labels `M1`, `M2`, and `M3`. Runtime messages correctly use the
+approved plain-language mechanisms: `variance collapse`, `contrast rail`, and
+`spatial range collapse`.
+
+The repair changes only the affected test descriptions, comments, and eight
+message expectations. It does not alter the multinomial detector, TMB code,
+formula grammar, or the approved claim fence. The focused repaired test file
+passes:
+
+```sh
+Rscript --vanilla -e 'devtools::test_active_file("tests/testthat/test-sanity-categorical.R")'
+# 0 failures, 0 warnings, 69 passes
+```
+
+The interrupted-candidate full-suite result is retained, not rewritten:
+`FAIL 8 | WARN 49 | SKIP 879 | PASS 16445`; all eight failures were those stale
+label expectations. A fresh full-suite result after this repair is still
+required and will be bound only to the eventual committed candidate SHA.
 
 ---
 

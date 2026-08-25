@@ -22,6 +22,12 @@ ci09_smoke_plan <- function(source_sha) {
   ci09_attempt_manifest(cell_ids = 1L, rep_ids = 1L, source_sha = source_sha)
 }
 
+ci09_smoke_formula <- function() {
+  formula <- value ~ 0 + trait + dep(0 + trait | site)
+  environment(formula) <- asNamespace("gllvmTMB")
+  formula
+}
+
 ## This is intentionally an executable single-replicate end-to-end runner, not
 ## an auto-executing script. The fitted surface is the public ordinary Gaussian
 ## direct-covariance route, dep(0 + trait | site). The realised n_eff follows
@@ -53,7 +59,7 @@ ci09_smoke_once <- function(cell_id = 1L, rep = 1L, source_sha) {
   started <- proc.time()[["elapsed"]]
   fit <- tryCatch(
     gllvmTMB::gllvmTMB(
-      value ~ 0 + trait + gllvmTMB::dep(0 + trait | site),
+      ci09_smoke_formula(),
       data = data,
       silent = TRUE
     ),

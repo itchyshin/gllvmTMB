@@ -18,6 +18,17 @@ ci09_smoke <- testthat::test_path(
 )
 source(ci09_smoke, local = TRUE)
 
+test_that("CI-09 smoke gives the parser an unqualified dep formula", {
+  has_formula_helper <- exists("ci09_smoke_formula", mode = "function")
+  expect_true(has_formula_helper)
+  if (!has_formula_helper) {
+    return(invisible())
+  }
+  smoke_formula <- ci09_smoke_formula()
+  expect_false(grepl("::dep", paste(deparse(smoke_formula), collapse = " ")))
+  expect_silent(parse_multi_formula(smoke_formula))
+})
+
 test_that("CI-09 smoke health requires convergence and a positive Hessian", {
   healthy <- structure(
     list(

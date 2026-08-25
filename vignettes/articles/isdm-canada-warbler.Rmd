@@ -255,7 +255,12 @@ The simulator draws the two arms **independently** over one landscape, so
 nothing here quietly assumes a convenience the real data will not have:
 
 ```{r data}
-suppressMessages(source("../../dev/isdm-precision/generate-cawa12.R"))
+local({
+  article_dir <- getwd()
+  on.exit(setwd(article_dir), add = TRUE)
+  setwd(normalizePath("../.."))
+  suppressMessages(source("dev/isdm-precision/generate-cawa12.R"))
+})
 
 dat   <- sim_cawa12(seed = 1L)
 truth <- attr(dat, "truth")
@@ -1468,4 +1473,3 @@ the most of a messy situation. *Methods in Ecology and Evolution*, **4**,
 Warton, D. I., & Shepherd, L. C. (2010). Poisson point process models solve
 the "pseudo-absence problem" for presence-only data in ecology. *Annals of
 Applied Statistics*, **4**, 1383--1402.
-

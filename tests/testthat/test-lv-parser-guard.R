@@ -758,8 +758,8 @@ test_that("latent lv preflight rejects unsupported model regimes", {
     ),
     regexp = "fixed-effect RHS|X \\+ X_lv|Design 73"
   )
-  ## Gaussian lv + REML is now admitted (test-lv-reml-gaussian.R); non-Gaussian
-  ## lv + REML stays rejected.
+  ## Predictor-informed lv + REML is rejected for every family, including
+  ## Gaussian; the current REML restriction does not include alpha_lv_B.
   expect_error(
     lv_preflight_setup(
       y_bin ~ 0 + trait + latent(0 + trait | unit, d = 1, lv = ~x),

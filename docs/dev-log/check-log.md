@@ -53619,8 +53619,8 @@ to build a slope-interval extractor now that computability is demonstrated.
 
 ## 2026-08-19 — MSPL T\* discussion packet + DRAC confirm kit + Design 108 stale (cursor)
 
-**Lane:** `cursor/mspl-tstar-drac-next-20260819`  
-**Worktree:** `~/local-scratch/lanes/gllvmTMB-mspl-fork-B-totoro`  
+**Lane:** `cursor/mspl-tstar-drac-next-20260819`
+**Worktree:** `~/local-scratch/lanes/gllvmTMB-mspl-fork-B-totoro`
 **Scope:** docs-only items 2–4 after T1 GOAL_MET (#1173)
 
 **Commands run:**
@@ -54032,3 +54032,140 @@ GitHub Actions science job, Totoro/DRAC job, push, PR, or GLLVM.jl mutation ran.
 The frozen four-fit raw-retention pre-run is estimated at 8--20 minutes locally
 but requires a new explicit owner decision for a clean GLLVM.jl worktree and
 was not launched.
+
+---
+
+## 2026-08-25 — Design 73 C1 predictor-informed LV closeout
+
+**Lane:** `codex/lv-family-evidence-reconcile`
+**Starting HEAD:** `93020c790728462c4f27f86a82fc6b9e80d370ec`
+**Exact base / audited origin/main:**
+`482c9d372c7dc100f988f41f80d1b4cc3ce8a8e4`
+**Sister-evidence verdict:**
+`LV_COMMON_FAMILY_HOLD__RAW_OR_LINEAGE_GAP`
+
+The maintainer explicitly approved release of the stale
+`codex:interval-calibration-release` lease. The lane released only that lease,
+reran preflight/PR/history checks, and claimed the complete approved exact-path
+lease as `codex-lv-design73-c1` before touching shared files. GLLVM.jl remained
+strictly read-only.
+
+### Fit and runtime receipt
+
+The approved local projection was 10--25 minutes. Before the only new article
+fit, the one-fit smoke was estimated at 1--3 minutes. It completed in 0.912
+seconds with optimizer convergence 0, positive-definite Hessian, finite
+labelled trait-scale `B_lv`, and score-decomposition error
+`2.22e-16`. The evaluated two-fit article render completed in 2.659 seconds
+and wrote a 33,564-byte HTML file. The focused test batch completed in 55.837
+seconds. No run approached the 30-minute stop line.
+
+### Commands and outcomes
+
+```sh
+Rscript --vanilla -e 'devtools::test(filter = "^(lv-parser-guard|lv-gaussian-recovery|lv-bernoulli-depth|lv-family-boundary-guard|lv-native-nongaussian-guard|lv-factor-runtime|lv-missing-response|lv-reml-boundary-guard|lv-reml-gaussian|lv-source-specific-guard|lv-effects-rotation|lv-wald-coverage-harness|profile-ci-lv-effects|bootstrap-lv-effects|julia-bridge)$")'
+# PASS in 55.837 s with GLLVM_JL_PATH unset; expected heavy/live-Julia skips;
+# two pre-existing deprecated-extractor warnings retained.
+
+Rscript --vanilla -e 'pkgdown::check_pkgdown()'
+# PASS in 7.772 s: No problems found.
+
+git diff --check
+# PASS after every material edit.
+
+# Source-pinned GLLVM.jl negative controls, run through git show only.
+# POISSON_GENERATOR_NEGATIVE_CONTROL_PASS
+# FD_HESSIAN_NEGATIVE_CONTROL_PASS
+
+# Retained native artifact audit.
+# ARTIFACT_DENOMINATOR_MCSE_PASS gaussian_attempts=2000
+# gaussian_eligible=479,487,500 binomial_attempts=1500
+# binomial_exclusions=0
+
+# Public/internal boundary and status topology scans.
+# ARTICLE_INTERNAL_ID_PASS
+# LV_STATIC_INTEGRITY_PASS
+# LV_REGISTER_TOPOLOGY_PASS
+
+node '/Users/z3437171/Dropbox/Github Local/Shinichi/skills/unlazy/scripts/gate-check.mjs' --reverify --root . --cwd . .unlazy/lv-design73-c1-closeout/GATES.md .unlazy/lv-design73-c1-closeout/gates/leaf-s1-recon.md .unlazy/lv-design73-c1-closeout/gates/leaf-s2-science.md .unlazy/lv-design73-c1-closeout/gates/leaf-s3-receipt.md .unlazy/lv-design73-c1-closeout/gates/leaf-s4-article.md .unlazy/lv-design73-c1-closeout/gates/leaf-s5-status.md .unlazy/lv-design73-c1-closeout/gates/leaf-s6-verify.md
+# All 10 runnable pre-closeout oracles PASS; exit 1 only because manual
+# closeout G6 was deliberately still unmet before the completion panel.
+```
+
+Fresh completion panel:
+
+- Gauss + Emmy (Terra high): PASS.
+- Rose + Grace (Terra high): PASS.
+- Noether + Fisher (Sol xhigh): PASS with one non-blocking P2 wording nuance.
+
+The first frozen staged tree was
+`7efb5d08045e3c15d92d99a6ac5c01c3becf7992`, binary diff SHA-256
+`0fabcf487fd378b66900aec2c52ab4b76256b4fd358b7072c8c3b2fb99ed5505`.
+The P2 noted that explicit `unique = FALSE` is canonical but not literally the
+only accepted Julia spelling: default ordinary `latent()` warning-demotes to
+the same loadings-only fitted model. The receipt and Design 73 were corrected.
+All three reviewers returned REVERIFY PASS on repaired tree
+`83cf6d4af3b12654339e951511e97f22685b2602`, binary diff SHA-256
+`8bcaceb37cd1eb060e2eb7eef7fbe2bf262e2675a2f13bcfe18d8622c2bc52ac`.
+No P0--P3 finding remained.
+
+The rendered article was also inspected from the reader's seat at
+`/private/tmp/lv-article.png`; the full page and plain-language boundary box
+were readable and unclipped.
+
+### Failed attempts retained
+
+- The first durable plan file was a condensed plan, not the complete approved
+  Markdown; it was replaced by the full 389-line plan before implementation.
+- The first Unlazy leaf claim incorrectly added `--cwd` to a pipeline action;
+  the corrected claim passed.
+- The first Unlazy approval used the wrong CWD and could not write the external
+  approval store; the approved repo-root rerun passed.
+- The first artifact audit requested nonexistent `n_pd` and `n_ci` columns;
+  the retained headers were inspected and the correct
+  `n_pd_hessian` / `n_ci_available` audit passed.
+- One large Design 73 patch failed atomically on stale context; smaller exact
+  patches passed with no partial edit.
+- The first headless Chrome call exited 134 inside the sandbox; the approved
+  local invocation wrote the screenshot.
+- The first after-task validator exposed an obsolete draft shape; the current
+  12-section contract was applied and the shape check passed.
+- The first S3 oracle lacked the literal `n_attempted` machine field; the
+  receipt was corrected and the oracle passed.
+- The first final topology loop put Markdown backticks inside a double-quoted
+  shell pattern, so zsh tried to execute `blocked`; explicit single-quoted row
+  checks replaced it and passed.
+- The first staged `git diff --cached --check` exposed trailing Markdown
+  hard-break spaces in the new plan and receipt; the two owned files were
+  whitespace-cleaned and the staged check passed.
+- The first panel's non-blocking P2 was repaired rather than waived; all three
+  reviewers reverified the new exact tree and diff hash.
+
+### Deliberately not run
+
+No new recovery/coverage campaign, 500-replicate rerun, live Julia fit,
+GLLVM.jl mutation/worktree/branch operation, Totoro or DRAC job, GitHub Actions
+science compute, full package test/check, push, PR, merge, release, or public
+announcement ran. No implementation, likelihood, grammar, export, roxygen,
+Rd, NAMESPACE, family, mask, source-tier, profile, or bootstrap route changed.
+
+Post-commit closeout receipt:
+
+```sh
+git rev-list --count 93020c790728462c4f27f86a82fc6b9e80d370ec..HEAD
+# 1
+
+node '/Users/z3437171/Dropbox/Github Local/Shinichi/skills/unlazy/scripts/gate-check.mjs' --reverify --root . --cwd . .unlazy/lv-design73-c1-closeout/GATES.md .unlazy/lv-design73-c1-closeout/gates/leaf-s1-recon.md .unlazy/lv-design73-c1-closeout/gates/leaf-s2-science.md .unlazy/lv-design73-c1-closeout/gates/leaf-s3-receipt.md .unlazy/lv-design73-c1-closeout/gates/leaf-s4-article.md .unlazy/lv-design73-c1-closeout/gates/leaf-s5-status.md .unlazy/lv-design73-c1-closeout/gates/leaf-s6-verify.md .unlazy/lv-design73-c1-closeout/gates/leaf-s9-closeout.md
+# PASS: ALL MET (13 met, 12 runnable gates reverified).
+
+Rscript --vanilla '/Users/z3437171/Dropbox/Github Local/Shinichi/tools/check-after-task.R' 'docs/dev-log/after-task/2026-08-25-lv-design73-c1-closeout.md'
+# PASS: after-task structure check passed; acceptance ledger: 9 file(s),
+# every gate satisfied.
+
+/Users/z3437171/Dropbox/Github\ Local/Shinichi/tools/handoff_gate.sh /Users/z3437171/.codex/worktrees/9a08/gllvmTMB
+# Expected exit 1: no uncommitted files; this lane's local commit and foreign
+# branches are unpushed. The local-only state is declared in the handover.
+
+LANE_ID=codex-lv-design73-c1 /Users/z3437171/Dropbox/Github\ Local/Shinichi/tools/lane_lease.sh --release gllvmTMB
+# PASS: released.
+```

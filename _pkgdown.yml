@@ -58,6 +58,8 @@ navbar:
         href: articles/random-regression-reaction-norms.html
       - text: Choosing latent rank
         href: articles/model-selection-latent-rank.html
+      - text: Explaining latent ecological axes with predictors
+        href: articles/explaining-latent-ecological-axes.html
       - text: Explore loading constraints
         href: articles/lambda-constraint-suggest.html
       - text: Rare items and runaway estimates
@@ -145,6 +147,7 @@ articles:
     - articles/behavioural-syndromes
     - articles/random-regression-reaction-norms
     - articles/model-selection-latent-rank
+    - articles/explaining-latent-ecological-axes
     - articles/lambda-constraint-suggest
     - articles/mspl-binary-jsdm
     - articles/spatial-models

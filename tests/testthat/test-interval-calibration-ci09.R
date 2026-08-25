@@ -43,6 +43,18 @@ test_that("CI-09 smoke health requires convergence and a positive Hessian", {
   expect_false(ci09_smoke_fit_healthy(healthy))
 })
 
+test_that("CI-09 smoke records n_eff only for eligible fits", {
+  has_n_eff_helper <- exists("ci09_smoke_n_eff", mode = "function")
+  expect_true(has_n_eff_helper)
+  if (!has_n_eff_helper) {
+    return(invisible())
+  }
+  fit <- list(n_sites = 150L)
+  expect_identical(ci09_smoke_n_eff(fit, fit_error = FALSE, converged = TRUE), 150L)
+  expect_true(is.na(ci09_smoke_n_eff(fit, fit_error = FALSE, converged = FALSE)))
+  expect_true(is.na(ci09_smoke_n_eff(NULL, fit_error = TRUE, converged = FALSE)))
+})
+
 test_that("CI-09 freezes six Gaussian Fisher-z cells and seed windows", {
   spec <- ci09_campaign_spec()
   expect_equal(nrow(spec$cells), 6L)

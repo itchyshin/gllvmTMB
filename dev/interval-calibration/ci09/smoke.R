@@ -28,6 +28,14 @@ ci09_smoke_formula <- function() {
   formula
 }
 
+ci09_smoke_n_eff <- function(fit, fit_error, converged) {
+  if (!isTRUE(fit_error) && isTRUE(converged) && !is.null(fit$n_sites)) {
+    as.integer(fit$n_sites)
+  } else {
+    NA_integer_
+  }
+}
+
 ## This is intentionally an executable single-replicate end-to-end runner, not
 ## an auto-executing script. The fitted surface is the public ordinary Gaussian
 ## direct-covariance route, dep(0 + trait | site). The realised n_eff follows
@@ -68,11 +76,7 @@ ci09_smoke_once <- function(cell_id = 1L, rep = 1L, source_sha) {
   elapsed_seconds <- unname(proc.time()[["elapsed"]] - started)
   fit_error <- inherits(fit, "error")
   converged <- !fit_error && ci09_smoke_fit_healthy(fit)
-  n_eff <- if (!fit_error && !is.null(fit$n_sites)) {
-    as.integer(fit$n_sites)
-  } else {
-    NA_integer_
-  }
+  n_eff <- ci09_smoke_n_eff(fit, fit_error, converged)
 
   if (!isTRUE(converged)) {
     outcome <- "base_fit_failed"

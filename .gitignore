@@ -130,6 +130,11 @@ dev/va-gate3/results/campaign*.log
 # Developer-only two-source iSDM known-truth recovery artifacts (local/Totoro).
 dev/isdm-package-recovery/results/
 
+# Local interval-calibration pre-runs and campaign payloads. Tracked evidence
+# lives under docs/dev-log/artifacts; raw RDS/log payloads never enter git.
+dev/interval-calibration/results/
+dev/pvt02/results/
+
 # mature-VA arc: measurement outputs stay LOCAL (D-50)
 dev/va-speed/0[6-9]-*.rds
 dev/va-speed/0[6-9]-*log*.txt

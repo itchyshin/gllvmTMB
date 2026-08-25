@@ -6,9 +6,10 @@ Solo platform: Codex
 
 Deliverable: a reproducible, fail-closed PVT-02 packet for exactly one new
 cell: ordinary Gaussian unit-tier `latent(..., unique = TRUE)`, `d = 2`,
-`n_units = 400`, targeting `V_t = (Lambda Lambda^T)[t,t] + psi_t^2` with a
-two-sided 95% likelihood-ratio profile on `log(V_t)` and every nuisance
-parameter re-optimised.
+`n_units = 400`, targeting both `V_1` and `V_2`, where
+`V_t = (Lambda Lambda^T)[t,t] + psi_t^2`, with a two-sided 95%
+likelihood-ratio profile on each `log(V_t)` and every nuisance parameter
+re-optimised.
 
 HEADLINE: replace the broad `n_units >= 150` *regime* label with evidence that
 distinguishes the two measured `n = 150` cells from this unmeasured `n = 400`
@@ -71,15 +72,16 @@ decision.
 | Item | PVT-02 value |
 | --- | --- |
 | Cell | Gaussian; ordinary unit tier; `latent(..., unique = TRUE)`; `d = 2`; `n_units = 400` |
-| Target | `V_t = sum_k Lambda[t,k]^2 + psi_t^2`, diagonal of `Sigma_unit` |
+| Targets | `V_t = sum_k Lambda[t,k]^2 + psi_t^2`, diagonal of `Sigma_unit`, for traits 1 and 2 in every replicate |
 | Profile | genuine one-df LR inversion on `q_t = log(V_t)`; two-sided `level = 0.95`; nuisance coordinates reoptimised at every fixed `q_t` |
 | Target gradient | analytic `d q_t / d theta`, checked against central finite differences; no numeric-gradient substitution in the campaign |
 | Profile acceptance | both endpoints finite, ordered, and contain the profile estimate; a failed/missing endpoint is `ci_failed`, not a dropped row |
-| Seed window | replicate indices `50001:55000`, exactly 5,000; no pooled historical rows; check index and realised-seed disjointness before launch |
+| Seed window | replicate indices `50001:55000`, exactly 5,000; frozen realised seeds `800050001:800055000` via `800000000 + rep_index`; no pooled historical rows; check index and realised-seed disjointness before launch |
+| Provenance | each manifest, outer attempt, and immutable receipt carries the explicit nonempty source SHA and a manifest fingerprint; a changed SHA or fingerprint is rejected |
 | Primary denominator | converged outer fits; profile failures among them are counted as coverage misses (`covered = FALSE`) |
-| All-attempt ledger | one retained row per attempted replicate and target, including fit failures, endpoint failures, and reason codes |
-| Uncertainty | replicate-clustered MCSE over eligible replicate means; report all-attempt failure fraction separately |
-| Promotion | only exact cell, 5,000 retained attempts, zero seed overlap, coverage `>= 0.94`, and `coverage - 2 * MCSE >= 0.94` |
+| All-attempt ledger | exactly one retained canonical **outer** row per attempted replicate/seed (5,000 at full scale); an eligible outer row contains both trait payloads, while a fit failure contains none; endpoint failures stay as nested target misses and every infrastructure retry stays in operational history |
+| Uncertainty | replicate-clustered MCSE over eligible replicate means, separately for traits 1 and 2; report all-attempt failure fraction separately |
+| Promotion | only exact cell, 5,000 retained replicates for both targets, zero seed overlap, and for **every** target: coverage `>= 0.94` and `coverage - 2 * MCSE >= 0.94` |
 
 ## Slice table
 
@@ -97,11 +99,11 @@ work couples statistical arithmetic to a real TMB profile and is Terra-high.
 
 ## Estimate and compute gate
 
-The local smoke runs two frozen-window replicates (not 5,000), each retaining
-all profile rows. Based on the retained v2 campaign's roughly 2 h 50 min for
-20,000 parallel replicates on 90 Totoro cores, the conservative local estimate
-is **10 minutes**, with a **25-minute hard stop**. It is below the 30-minute
-threshold, so it may run after pure-contract checks and receipt validation.
+The prior local smoke timed trait 1 only. That timing is invalid for this
+two-target campaign because each replicate now requires both profile inversions
+and two retained target rows. A **fresh timed two-target pre-run**, explicitly
+estimated to remain at or below 30 minutes, is required before any campaign
+launch. It may run only after pure-contract checks and receipt validation.
 
 The full `n_sim = 5000` cell is intentionally estimated as **more than
 30 minutes** and needs a measured local pre-run receipt plus explicit user

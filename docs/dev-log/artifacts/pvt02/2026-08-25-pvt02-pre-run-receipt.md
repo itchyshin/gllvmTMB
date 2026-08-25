@@ -1,14 +1,15 @@
-# PVT-02 measured local pre-run receipt
+# PVT-02 measured local pre-run receipt — superseded for two-target timing
 
 Date: 2026-08-25
 
 ## Frozen smoke
 
 - Cell: Gaussian ordinary unit tier, `latent(0 + trait | unit, d = 2,
-  unique = TRUE)`, `n_units = 400`, target trait 1.
+  unique = TRUE)`, `n_units = 400`, target trait 1 only.
 - Estimand: `V_t = (Lambda Lambda^T)[t,t] + psi_t^2`; two-sided 95% profile
   on `log(V_t)`.
-- Seed indices: 50001 and 50002; realised seeds 152002 and 152003.
+- Seed indices: 50001 and 50002; realised seeds 152002 and 152003 under
+  the now-retired PVT mapping.
 - Command:
 
 ```sh
@@ -24,9 +25,22 @@ times were 10.996 s and 9.787 s; wall time was 21.3 s. The CSV receipt retains
 both rows and their `fit_converged`, `ci_failed`, `covered`, endpoint reason,
 truth, estimate, bounds, seed, and runtime fields.
 
-This verifies target plumbing, profile inversion, and receipt retention. It
+This verifies trait-1 plumbing, profile inversion, and receipt retention. It
 does **not** estimate coverage: both rows happened to cover and the sample is
 two, not 5,000.
+
+## Supersession for the two-target packet
+
+PVT-02 now requires target traits 1 **and** 2 in every replicate. This
+trait-1-only timing is therefore invalid for estimating the two-target campaign
+or authorising its compute. Before any 5,000-replicate launch, run a fresh,
+timed pre-run that retains both target rows and is explicitly estimated at
+**30 minutes or less**. Until that receipt exists, the campaign remains
+unavailable; no promotion or compute authorisation follows from this document.
+The fresh packet also replaces the old realised-seed formula, whose
+`152002:157001` range overlaps historical programme bands: it reserves
+`800050001:800055000` via `800000000 + rep_index` while retaining replicate
+indices `50001:55000`.
 
 ## Timed full-run projection and stop
 

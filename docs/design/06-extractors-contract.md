@@ -112,9 +112,11 @@ Augmented random-regression levels are explicit shape exceptions:
 | legacy/shared `phylo_unique(1 + x \| species)` | shared `2 x 2` intercept-slope block | `level = "phy_unique_slope"` |
 | current `phylo_indep(1 + x \| species)` | interleaved `2T x 2T`, `T` independent within-trait blocks | `level = "phy_indep_slope"`, `part = "indep"` |
 | `phylo_dep(1 + x1 + ... + xs \| species)` | full interleaved `(1+s)T x (1+s)T` | `level = "phy_dep"`, `part = "dep"` |
-| Gaussian `phylo_indep(0 + x1 + ... + xP \| trait)` / `phylo_slope(x1 + ... + xP \|\| trait)` | named diagonal `P x P` predictor-slope covariance; source labels identify the response-column phylogenetic axis | `level = "column_slope"`, `part = "indep"`; return `source` (`type`, `grouping`, `labels`) and `column_labels` |
-| Gaussian `phylo_dep(0 + x1 + ... + xP \| trait)` / `phylo_slope(x1 + ... + xP \| trait)` | named full positive-definite `P x P` predictor-slope covariance; source labels identify the response-column phylogenetic axis | `level = "column_slope"`, `part = "dep"`; return `source` (`type`, `grouping`, `labels`) and `column_labels` |
-| Gaussian `animal_indep` / `animal_dep` / `animal_slope` with the same predictor-only basis | the matching diagonal or full `P x P` predictor-slope covariance; pedigree, `A`, or `Ainv` supplies the response-column animal axis | `level = "column_slope"`; `source$type = "animal"` and `column_labels` identify that axis |
+| Gaussian `slope(x1 + ... + xP \|\| trait)` / `slope(x1 + ... + xP \| trait)` | named diagonal / full `P x P` `Sigma_predictor`; `K_column = I` | `level = "column_slope"`; `source$type = "ordinary"`; return `Sigma`, `R`, `part`, `predictors`, and `column_labels` |
+| Gaussian `phylo_slope(x1 + ... + xP \|\| trait)` / single-bar form | matching diagonal / full `P x P` `Sigma_predictor`; tree / labelled matrix supplies `K_column` | same level; `source$type = "phylo"`, with grouping and aligned response-column labels |
+| Gaussian `animal_slope(x1 + ... + xP \|\| trait)` / single-bar form | matching diagonal / full `P x P` `Sigma_predictor`; pedigree, `A`, or `Ainv` supplies `K_column` | same level; `source$type = "animal"`, with grouping and aligned response-column labels |
+| Gaussian `kernel_slope(x1 + ... + xP \|\| trait, K = K, name = name)` / single-bar form | matching diagonal / full `P x P` `Sigma_predictor`; labelled dense `K` supplies `K_column` | same level; `source$type = "kernel"`, aligned labels, source name, and matrix-scale provenance |
+| Designed `spatial_slope(x1 + ... + xP \|\| trait, mesh = column_mesh)` / single-bar form | matching diagonal / full `P x P` `Sigma_predictor`; unit-diagonal projected-SPDE `K_column` at one unique coordinate pair per response column | same level after implementation; `source$type = "spatial"`, aligned labels, coordinate units, range, and normalization metadata; currently no shipped extractor route |
 | legacy/shared `spatial_unique(1 + x \| coords)` | shared `2 x 2` SPDE field block | `level = "spde_base_slope"` |
 | current `spatial_indep(1 + x \| coords)` | interleaved `2T x 2T`, `T` independent within-trait field blocks | `level = "spde_indep_slope"`, `part = "indep"` |
 | `spatial_dep(1 + x \| coords)` | full interleaved `2T x 2T` field covariance | `level = "spde_dep"`, `part = "dep"` |
@@ -122,6 +124,9 @@ Augmented random-regression levels are explicit shape exceptions:
 The SPDE augmented matrices are on the fitted field-covariance scale; the
 returned note gives the marginal-scale conversion. Current Design 79/80
 `*_indep` must not be relabelled as the legacy shared `2 x 2` channel.
+Response-column `spatial_slope()` is a separate Design 130 contract: its
+projected `K_column` has unit diagonal and `Sigma_predictor` owns marginal
+coefficient variance.
 
 The `level` argument accepts two conceptually distinct
 classes of value. The engine treats both uniformly as

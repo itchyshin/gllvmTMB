@@ -33,11 +33,14 @@ suppressMessages(devtools::load_all(pkg, quiet = TRUE))
 `%||%` <- function(x, y) if (is.null(x)) y else x
 hash_file <- function(path) unname(tools::md5sum(path))[[1L]]
 script_arg <- grep("^--file=", commandArgs(trailingOnly = FALSE), value = TRUE)
-runner_file <- normalizePath(sub("^--file=", "", script_arg[[1L]]), mustWork = TRUE)
+runner_file <- normalizePath(
+  gsub("~+~", " ", sub("^--file=", "", script_arg[[1L]]), fixed = TRUE),
+  mustWork = TRUE
+)
 protocol_file <- file.path(dirname(runner_file), "2026-08-10-g2c-replicated-pa-protocol.md")
 decision_file <- file.path(dirname(runner_file), "2026-08-10-g2c-replicated-pa-decision.md")
 package_commit <- function() {
-  out <- suppressWarnings(system2("git", c("-C", pkg, "rev-parse", "HEAD"), stdout = TRUE, stderr = FALSE))
+  out <- suppressWarnings(system2("git", c("-C", shQuote(pkg), "rev-parse", "HEAD"), stdout = TRUE, stderr = FALSE))
   if (length(out) != 1L || !grepl("^[0-9a-f]{40}$", out)) stop("cannot resolve package HEAD", call. = FALSE)
   out
 }

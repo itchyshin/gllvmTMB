@@ -637,6 +637,12 @@ Type objective_function<Type>::operator()()
   DATA_INTEGER(n_mesh);
   (void)n_mesh;                    // retained in the data contract for mesh sanity checks in R
   DATA_SPARSE_MATRIX(A_proj);      // n_obs x n_mesh
+  // Dedicated response-column SPDE projection. Unlike A_proj, A_column has
+  // one row per response column and is used to normalize the projected field
+  // to unit marginal variance at those exact coordinates. It is a 1x1 zero
+  // stub unless use_spatial_column_slope == 1.
+  DATA_INTEGER(use_spatial_column_slope);
+  DATA_MATRIX(A_column);           // n_traits x n_mesh when active
   DATA_SPARSE_MATRIX(spde_M0);     // n_mesh x n_mesh
   DATA_SPARSE_MATRIX(spde_M1);
   DATA_SPARSE_MATRIX(spde_M2);
@@ -2252,10 +2258,13 @@ Type objective_function<Type>::operator()()
   //   nll = GMRF(Q)(om0) + GMRF(Q)(om1)               // gives 2n log2pi - 2 logdetQ + q00 + q11
   //       + 0.5 * n_mesh * logdet(Sigma_field)
   //       + 0.5 * [ (Sinv00 - 1) q00 + (Sinv11 - 1) q11 + 2 Sinv01 q01 ]
-  // where qij = om_i' Q om_j (sparse Q via GMRF::Quadform / Q*x). This uses
-  // ONLY the sparse SPDE machinery already exercised by the per-trait path
-  // above; no new atomic / sparse-solve op is introduced. Validated against a
-  // dense Sigma_field (x) Q^-1 MVN density to < 1e-9 (see tests).
+  // where qij = om_i' Q om_j (sparse Q via GMRF::Quadform / Q*x). The field
+  // prior uses the sparse machinery already exercised by the per-trait path.
+  // The response-column submode below additionally factorizes Q once and
+  // solves only the T projection right-hand sides to obtain its exact
+  // projected unit-diagonal normalization.
+  vector<Type> spatial_column_inv_sd(n_traits);
+  spatial_column_inv_sd.setOnes();
   if (use_spde_slope == 1) {
     // Closed-form Sigma_field paths (base unique / indep) require
     // n_lhs_cols_spde in {1, 2}. The spatial_dep slope path
@@ -2278,6 +2287,35 @@ Type objective_function<Type>::operator()()
     Eigen::SparseMatrix<Type> Q_slope =
       kappa_s4 * spde_M0 + Type(2.0) * kappa_s2 * spde_M1 + spde_M2;
     density::GMRF_t<Type> gmrf_slope(Q_slope);
+
+    if (use_spatial_column_slope == 1) {
+      if (A_column.rows() != n_traits || A_column.cols() != Q_slope.rows())
+        error("gllvmTMB_multi: A_column must be n_traits x n_mesh");
+      // Exact projected covariance without forming dense Q^{-1}: factor the
+      // sparse Q once and solve only the T right-hand sides A_column'.
+      // C_raw = A Q^{-1} A'; K = D^{-1/2} C_raw D^{-1/2}.
+      Eigen::SimplicialLDLT< Eigen::SparseMatrix<Type> > column_ldlt(Q_slope);
+      matrix<Type> Qinv_At = column_ldlt.solve(A_column.transpose());
+      matrix<Type> C_raw = A_column * Qinv_At;
+      vector<Type> spatial_column_variance_raw(n_traits);
+      for (int t = 0; t < n_traits; t++) {
+        Type variance_t = C_raw(t, t);
+        double variance_value = asDouble(variance_t);
+        if (!R_FINITE(variance_value) || variance_value <= 0.0)
+          error("gllvmTMB_multi: projected spatial column variance must be finite and positive");
+        spatial_column_variance_raw(t) = variance_t;
+        spatial_column_inv_sd(t) = Type(1.0) / sqrt(variance_t);
+      }
+      matrix<Type> spatial_column_K(n_traits, n_traits);
+      for (int t = 0; t < n_traits; t++) {
+        for (int u = 0; u < n_traits; u++) {
+          spatial_column_K(t, u) = (t == u) ? Type(1.0) :
+            C_raw(t, u) * spatial_column_inv_sd(t) * spatial_column_inv_sd(u);
+        }
+      }
+      REPORT(spatial_column_variance_raw);
+      REPORT(spatial_column_K);
+    }
 
     if (use_spde_dep_slope == 1) {
       // ---- spatial_dep slope: full unstructured C x C Sigma_field = L L^T ----
@@ -2527,7 +2565,10 @@ Type objective_function<Type>::operator()()
       vector<Type> omega_j(omega_spde_aug.dim[0]);
       for (int i = 0; i < omega_spde_aug.dim[0]; i++) omega_j(i) = omega_spde_aug(i, j);
       vector<Type> Ao_j = A_proj * omega_j;
-      for (int o = 0; o < y.size(); o++) A_omega_aug(o, j) = Ao_j(o);
+      for (int o = 0; o < y.size(); o++) {
+        A_omega_aug(o, j) = use_spatial_column_slope == 1 ?
+          Ao_j(o) * spatial_column_inv_sd(trait_id(o)) : Ao_j(o);
+      }
     }
   }
 

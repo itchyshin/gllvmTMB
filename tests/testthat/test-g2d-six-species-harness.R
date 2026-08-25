@@ -5,7 +5,11 @@ test_that("G2d six-species fixture contract validates without fitting", {
   out <- tempfile("g2d-validate-")
   result <- system2(
     file.path(R.home("bin"), "Rscript"),
-    c("--vanilla", script, "--mode=validate", paste0("--output=", out), paste0("--pkg=", pkg_root)),
+    c(
+      "--vanilla", shQuote(script), "--mode=validate",
+      shQuote(paste0("--output=", out)),
+      shQuote(paste0("--pkg=", pkg_root))
+    ),
     stdout = TRUE, stderr = TRUE
   )
   expect_true(is.null(attr(result, "status")) || identical(attr(result, "status"), 0L))
@@ -19,8 +23,12 @@ test_that("G2d preflight seals a writable root without fitting", {
   script <- file.path(pkg_root, "dev", "isdm-package-recovery", "run-g2d-six-species-recovery.R")
   out_abs <- file.path(pkg_root, "dev", "isdm-package-recovery", "results", paste0("testthat-g2d-preflight-", Sys.getpid()))
   on.exit(unlink(out_abs, recursive = TRUE, force = TRUE), add = TRUE)
-  sha <- system2("git", c("-C", pkg_root, "rev-parse", "HEAD"), stdout = TRUE)
-  result <- system2(file.path(R.home("bin"), "Rscript"), c("--vanilla", script, "--mode=preflight", paste0("--output=", out_abs), paste0("--pkg=", pkg_root), paste0("--campaign-sha=", sha)), stdout = TRUE, stderr = TRUE)
+  sha <- system2("git", c("-C", shQuote(pkg_root), "rev-parse", "HEAD"), stdout = TRUE)
+  result <- system2(file.path(R.home("bin"), "Rscript"), c(
+    "--vanilla", shQuote(script), "--mode=preflight",
+    shQuote(paste0("--output=", out_abs)),
+    shQuote(paste0("--pkg=", pkg_root)), paste0("--campaign-sha=", sha)
+  ), stdout = TRUE, stderr = TRUE)
   expect_true(is.null(attr(result, "status")) || identical(attr(result, "status"), 0L))
   expect_true(any(grepl("G2D_PREFLIGHT_PASS (no fit)", result, fixed = TRUE)))
   expect_true(all(file.exists(file.path(out_abs, c("root-receipt.rds", "root-receipt.md", "preflight-sentinel.rds", "preflight-file-manifest.csv", "preflight-receipt.md")))))
@@ -33,8 +41,13 @@ test_that("G2d smoke-boundary diagnostic proves the shared pre-fit path", {
   script <- file.path(pkg_root, "dev", "isdm-package-recovery", "run-g2d-six-species-recovery.R")
   out_abs <- file.path(pkg_root, "dev", "isdm-package-recovery", "results", paste0("testthat-g2d-smoke-boundary-", Sys.getpid()))
   on.exit(unlink(out_abs, recursive = TRUE, force = TRUE), add = TRUE)
-  sha <- system2("git", c("-C", pkg_root, "rev-parse", "HEAD"), stdout = TRUE)
-  result <- system2(file.path(R.home("bin"), "Rscript"), c("--vanilla", script, "--mode=smoke_boundary", "--scenario=ordinary", "--replicate=1", paste0("--output=", out_abs), paste0("--pkg=", pkg_root), paste0("--campaign-sha=", sha)), stdout = TRUE, stderr = TRUE)
+  sha <- system2("git", c("-C", shQuote(pkg_root), "rev-parse", "HEAD"), stdout = TRUE)
+  result <- system2(file.path(R.home("bin"), "Rscript"), c(
+    "--vanilla", shQuote(script), "--mode=smoke_boundary",
+    "--scenario=ordinary", "--replicate=1",
+    shQuote(paste0("--output=", out_abs)),
+    shQuote(paste0("--pkg=", pkg_root)), paste0("--campaign-sha=", sha)
+  ), stdout = TRUE, stderr = TRUE)
   expect_true(is.null(attr(result, "status")) || identical(attr(result, "status"), 0L))
   expect_true(any(grepl("G2D_SMOKE_BOUNDARY_PASS (no fit)", result, fixed = TRUE)))
   expect_true(all(file.exists(file.path(out_abs, c("root-receipt.rds", "truth.rds", "paired-map.rds", "smoke-boundary.rds", "smoke-boundary-receipt.md", "smoke-stage-ledger.csv", "file-manifest.csv")))))

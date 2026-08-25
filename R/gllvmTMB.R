@@ -7,7 +7,7 @@
 #' the same trait covariance, pairwise correlations, shared latent axes,
 #' and trait-specific variance. The formula syntax also supports fixed
 #' effects plus covariance-structure keywords organised by
-#' \emph{correlation source} (none / animal / phylo / spatial) and
+#' \emph{correlation source} (none / animal / phylo / spatial / kernel) and
 #' three \emph{modes} (independent / dependent / latent). The `common = TRUE`
 #' modifier on `*_indep()` gives the one-shared-variance special case:
 #'
@@ -17,6 +17,7 @@
 #'   \emph{animal}  \tab [animal_indep()]  \tab [animal_dep()]  \tab [animal_latent()]  \cr
 #'   \emph{phylo}   \tab [phylo_indep()]   \tab [phylo_dep()]   \tab [phylo_latent()]   \cr
 #'   \emph{spatial} \tab [spatial_indep()] \tab [spatial_dep()] \tab [spatial_latent()] \cr
+#'   \emph{kernel}  \tab [kernel_indep()]  \tab [kernel_dep()]  \tab [kernel_latent()]  \cr
 #' }
 #'
 #' The three covariance modes (`indep` / `dep` / `latent`) encode
@@ -34,8 +35,10 @@
 #' * `dep` — the **full unstructured** mode: \eqn{\boldsymbol\Sigma}
 #'   is free with \eqn{T(T+1)/2} parameters via a Cholesky factor.
 #'
-#' Plus the supporting [phylo_slope()] / [animal_slope()] (random
-#' slopes), [meta_V()] (known-V meta-analytic; [meta_known_V()] is a
+#' The five Gaussian long-format response-column slope helpers are [slope()],
+#' [phylo_slope()], [animal_slope()], [kernel_slope()], and [spatial_slope()].
+#' Their RHS is the resolved response-column factor, so they are not extra
+#' grid modes. Plus [meta_V()] (known-V meta-analytic; [meta_known_V()] is a
 #' deprecated alias), and the engine-internal `propto()` /
 #' `equalto()` covstructs (used by the canonical keywords above; not
 #' typically called directly). See the
@@ -45,7 +48,8 @@
 #' @param formula A glmmTMB-style formula, e.g.
 #'   `value ~ 0 + trait + (0 + trait):env_temp + (0 + trait):env_precip`.
 #'   Fixed effects and any of the three-mode grid covstructs above are
-#'   supported (plus [phylo_slope()], [animal_slope()], and [meta_V()]).
+#'   supported (plus [slope()], [phylo_slope()], [animal_slope()],
+#'   [kernel_slope()], [spatial_slope()], and [meta_V()]).
 #'
 #'   An `offset()` term is supported for **count responses only** — `poisson()`,
 #'   `nbinom1()`, `nbinom2()`, `truncated_poisson()`, and
@@ -100,7 +104,10 @@
 #'   the row/column names of `phylo_vcv` (or the tip labels of
 #'   `phylo_tree`), this slot also drives the phylogenetic random
 #'   effects (`phylo_latent`, `phylo_scalar`, `phylo_indep`,
-#'   `phylo_slope`). When the column does **not** match a phylogenetic
+#'   and the historical non-trait-RHS `phylo_slope` route). The
+#'   response-column form `phylo_slope(x | trait, tree = tree)` instead takes
+#'   its column axis from the parsed RHS and does not use `cluster`. When the
+#'   column does **not** match a phylogenetic
 #'   correlation, the slot still functions as a regular crossed/nested
 #'   third grouping (e.g. `cluster = "population"` for 3-level
 #'   personality data, `cluster = "study"` for multi-study
@@ -738,6 +745,13 @@ gllvmTMB <- function(
   ## (`0 + trait`, `(0 + trait):x`, latent(0 + trait | g), ...), and
   ## recurse into gllvmTMB() with the long-format data + formula.
   if (is_traits_lhs(formula)) {
+    if (.traits_has_column_slope(formula[[3L]])) {
+      cli::cli_abort(c(
+        "Response-column slope helpers currently require long-format data.",
+        "i" = "The slope term is indexed by the explicit response-column factor in the long data.",
+        ">" = "Pivot to one row per (unit, trait) observation, then use {.code value ~ 0 + trait + slope(x | trait)} or the corresponding fixed-source helper."
+      ), class = "gllvmTMB_column_slope_wide_unsupported")
+    }
     .call_wide <- match.call()
     rewrite <- rewrite_traits_lhs(
       formula = formula,

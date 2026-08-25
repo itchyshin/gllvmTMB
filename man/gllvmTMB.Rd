@@ -39,7 +39,8 @@ gllvmTMB(
 \item{formula}{A glmmTMB-style formula, e.g.
 \code{value ~ 0 + trait + (0 + trait):env_temp + (0 + trait):env_precip}.
 Fixed effects and any of the three-mode grid covstructs above are
-supported (plus \code{\link[=phylo_slope]{phylo_slope()}}, \code{\link[=animal_slope]{animal_slope()}}, and \code{\link[=meta_V]{meta_V()}}).
+supported (plus \code{\link[=slope]{slope()}}, \code{\link[=phylo_slope]{phylo_slope()}}, \code{\link[=animal_slope]{animal_slope()}},
+\code{\link[=kernel_slope]{kernel_slope()}}, \code{\link[=spatial_slope]{spatial_slope()}}, and \code{\link[=meta_V]{meta_V()}}).
 
 An \code{offset()} term is supported for \strong{count responses only} — \code{poisson()},
 \code{nbinom1()}, \code{nbinom2()}, \code{truncated_poisson()}, and
@@ -97,7 +98,10 @@ grouping} factor (the "cluster" slot). When the column name matches
 the row/column names of \code{phylo_vcv} (or the tip labels of
 \code{phylo_tree}), this slot also drives the phylogenetic random
 effects (\code{phylo_latent}, \code{phylo_scalar}, \code{phylo_indep},
-\code{phylo_slope}). When the column does \strong{not} match a phylogenetic
+and the historical non-trait-RHS \code{phylo_slope} route). The
+response-column form \code{phylo_slope(x | trait, tree = tree)} instead takes
+its column axis from the parsed RHS and does not use \code{cluster}. When the
+column does \strong{not} match a phylogenetic
 correlation, the slot still functions as a regular crossed/nested
 third grouping (e.g. \code{cluster = "population"} for 3-level
 personality data, \code{cluster = "study"} for multi-study
@@ -380,7 +384,7 @@ data with one row per \verb{(unit, trait)} observation. Both routes estimate
 the same trait covariance, pairwise correlations, shared latent axes,
 and trait-specific variance. The formula syntax also supports fixed
 effects plus covariance-structure keywords organised by
-\emph{correlation source} (none / animal / phylo / spatial) and
+\emph{correlation source} (none / animal / phylo / spatial / kernel) and
 three \emph{modes} (independent / dependent / latent). The \code{common = TRUE}
 modifier on \verb{*_indep()} gives the one-shared-variance special case:
 }
@@ -391,6 +395,7 @@ modifier on \verb{*_indep()} gives the one-shared-variance special case:
 \emph{animal}  \tab \code{\link[=animal_indep]{animal_indep()}}  \tab \code{\link[=animal_dep]{animal_dep()}}  \tab \code{\link[=animal_latent]{animal_latent()}}  \cr
 \emph{phylo}   \tab \code{\link[=phylo_indep]{phylo_indep()}}   \tab \code{\link[=phylo_dep]{phylo_dep()}}   \tab \code{\link[=phylo_latent]{phylo_latent()}}   \cr
 \emph{spatial} \tab \code{\link[=spatial_indep]{spatial_indep()}} \tab \code{\link[=spatial_dep]{spatial_dep()}} \tab \code{\link[=spatial_latent]{spatial_latent()}} \cr
+\emph{kernel}  \tab \code{\link[=kernel_indep]{kernel_indep()}}  \tab \code{\link[=kernel_dep]{kernel_dep()}}  \tab \code{\link[=kernel_latent]{kernel_latent()}}  \cr
 }
 
 The three covariance modes (\code{indep} / \code{dep} / \code{latent}) encode
@@ -409,8 +414,10 @@ variance, no cross-trait covariance.
 is free with \eqn{T(T+1)/2} parameters via a Cholesky factor.
 }
 
-Plus the supporting \code{\link[=phylo_slope]{phylo_slope()}} / \code{\link[=animal_slope]{animal_slope()}} (random
-slopes), \code{\link[=meta_V]{meta_V()}} (known-V meta-analytic; \code{\link[=meta_known_V]{meta_known_V()}} is a
+The five Gaussian long-format response-column slope helpers are \code{\link[=slope]{slope()}},
+\code{\link[=phylo_slope]{phylo_slope()}}, \code{\link[=animal_slope]{animal_slope()}}, \code{\link[=kernel_slope]{kernel_slope()}}, and \code{\link[=spatial_slope]{spatial_slope()}}.
+Their RHS is the resolved response-column factor, so they are not extra
+grid modes. Plus \code{\link[=meta_V]{meta_V()}} (known-V meta-analytic; \code{\link[=meta_known_V]{meta_known_V()}} is a
 deprecated alias), and the engine-internal \code{propto()} /
 \code{equalto()} covstructs (used by the canonical keywords above; not
 typically called directly). See the

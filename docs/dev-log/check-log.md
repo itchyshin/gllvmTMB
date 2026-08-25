@@ -53971,3 +53971,209 @@ rg -n 'FG-[0-9]|FAM-[0-9]|RE-[0-9]|ISDM-[0-9]' vignettes/articles/where-does-the
 **Visual receipt:** Florence inspected the four rendered PNGs after a first render exposed clipping and trait-scale conflation. The revised direct-flow figures, per-column PCM small multiples, covariance matrix, and source flow all pass at rendered article size.
 
 **Deliberately not run:** full package check / recovery campaign; Totoro/DRAC; non-Gaussian multi-predictor fits; or implementation work for wide, spatial/kernel/latent slope-only variants. After-task: `docs/dev-log/after-task/2026-08-24-trait-axis-bridge-article.md`.
+
+---
+
+## 2026-08-24 — Response-column slope family and corrected tree-axis bridge (Codex)
+
+**Lane:** `codex/column-slope-family`
+**Worktree:** `/Users/z3437171/Dropbox/Github Local/gllvmTMB/.worktrees/codex-column-slope-family`
+
+Completed the Gaussian long-format response-column helper family:
+`slope()`, `phylo_slope()`, `animal_slope()`, `kernel_slope()`, and
+`spatial_slope()`. Every helper is predictor-only, uses the resolved response
+column on the RHS, adds no random intercept, and exposes named predictor
+covariance through `extract_Sigma(level = "column_slope")`. `|` is full and
+`||` diagonal. The visual bridge article now separates ordinary measured-trait
+column deviations from a species-axis phylogenetic term.
+
+```sh
+Rscript --vanilla -e 'devtools::test(filter = "article-prescribed-calls|fixed-column-slope-family|ordinary-column-slope-phylo-coexistence|phylo-column-slope-indep|phylo-slope-rhs-routing|animal-slope-recovery|spatial-column-slope", stop_on_failure = TRUE)'
+# PASS 227; FAIL 0; WARN 0; six explicit heavy-test skips.
+GLLVMTMB_HEAVY_TESTS=1 Rscript --vanilla -e 'devtools::test(filter = "spatial-indep-slope-gaussian|spde-slope-base-engine", stop_on_failure = TRUE)'
+# PASS 30; FAIL 0; WARN 0; SKIP 0; legacy observation-space spatial slopes protected.
+Rscript --vanilla -e 'devtools::test(stop_on_failure = TRUE)'
+# PASS 16,608; FAIL 0; WARN 76; SKIP 879 on the final integrated candidate.
+Rscript --vanilla -e 'devtools::test(filter = "paper1-spde-slope-gauge-nofit-v2-materializer", stop_on_failure = TRUE)'
+# PASS 47; FAIL 0; WARN 0; SKIP 0 after adopting the local portable forensic fixture.
+Rscript --vanilla dev/trait-axis-bridge/source-current-smoke.R
+# PASS: PCM 3416.127; column 1844.128; iSDM 126.3114.
+Rscript --vanilla dev/trait-axis-bridge/verify-article.R
+# PASS: ARTICLE BUILD PASS; pkgdown no problems.
+Rscript --vanilla -e 'devtools::document(quiet = TRUE)'
+# PASS; pre-existing aghq S3-export notices only.
+Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'
+# 0 errors, 0 warnings, 4 pre-existing/environmental notes in 18m53s;
+# the task-local .unlazy packaging note was removed through .Rbuildignore.
+git diff --check
+# PASS.
+rg -n '\bS_B\b|\bS_W\b|\\bf S' NEWS.md R/animal-keyword.R R/brms-sugar.R R/extract-sigma.R R/gllvmTMB.R R/mesh.R vignettes/articles/api-keyword-grid.Rmd vignettes/articles/where-does-the-tree-go.Rmd docs/design/130-response-column-slope-family.md
+# PASS: no stale notation in touched surfaces.
+rg -n '\bphylo\(|\bgr\(|\bmeta\(|block_V\(|phylo_rr\(' vignettes/articles/api-keyword-grid.Rmd vignettes/articles/where-does-the-tree-go.Rmd
+# PASS: no deprecated helper taught in changed articles.
+rg -n 'gllvmTMB_wide|meta_known_V|non-Gaussian|planned|deferred|blocked' NEWS.md vignettes/articles/api-keyword-grid.Rmd vignettes/articles/where-does-the-tree-go.Rmd docs/design/130-response-column-slope-family.md
+# PASS: compatibility and deferred boundaries only.
+rg -n 'gllvmTMB\(' R/animal-keyword.R R/brms-sugar.R R/gllvmTMB.R R/mesh.R vignettes/articles/api-keyword-grid.Rmd vignettes/articles/where-does-the-tree-go.Rmd NEWS.md docs/design/130-response-column-slope-family.md
+# PASS after manual review: changed long examples pass trait = explicitly.
+```
+
+Rose pre-publish: PASS. Pat reader review: PASS. Noether/Gauss mathematical
+and spatial parameterisation review: PASS. Shannon: WARN—GitHub DNS was
+unavailable, local `origin/main` is stale, and
+`origin/codex/0701-trust-release` contains the same portable V2 test repair.
+No stale-ref rebase or remote mutation was attempted.
+
+The connected GitHub app later verified live `main` at
+`872ae85672d54896882c5678db52eb6b5e44d71b`; its tree
+`e93e8f54bd3af8f40a08e134af76d53584fe9100` exactly equals local starting
+commit `e47ca88c`'s tree. It found no live `codex/0701-trust-release` branch.
+App writes were unavailable under the task's non-interactive approval policy,
+while shell Git remained DNS-blocked and the local `gh` token invalid. No
+remote branch or PR was created; publication and three-OS CI remain OWED.
+
+**Deliberately not run:** Totoro/DRAC, wide response-column grammar,
+non-Gaussian/mixed response-column recovery, simultaneous column-slope
+sources, or interval calibration. After-task:
+`docs/dev-log/after-task/2026-08-24-response-column-slope-family.md`.
+
+---
+
+## 2026-08-25 — Response-column slope PR closure (Codex)
+
+Rebased the five-commit response-column slope family series from the
+content-identical `e47ca88c` base onto `origin/main` `872ae856`, then pushed
+`codex/column-slope-family` with a lease. PR
+[#1208](https://github.com/itchyshin/gllvmTMB/pull/1208) is open and unmerged
+at `2ad0238a`. The explicit `full_matrix = true` R-CMD-check workflow run
+[#32790567062](https://github.com/itchyshin/gllvmTMB/actions/runs/32790567062)
+passed macOS at 00:08 UTC, Ubuntu at 00:22 UTC, and Windows at 00:24 UTC.
+This explicit matrix was required because routine PR CI is Ubuntu-only.
+
+```sh
+git fetch origin main
+# PASS: origin/main remained 872ae856; its tree equals the original e47ca88c base.
+git rebase --onto origin/main e47ca88c codex/column-slope-family
+# PASS: five commits replayed without conflicts.
+git push --force-with-lease=refs/heads/codex/column-slope-family:dbeb3146 origin codex/column-slope-family
+# PASS: remote head 2ad0238a.
+gh api '/repos/itchyshin/gllvmTMB/commits/2ad0238a/check-runs?per_page=100'
+# PASS: explicit macOS, Ubuntu, and Windows checks all concluded success.
+git diff --check
+# PASS.
+```
+
+**Deliberately not run:** no local campaign rerun (the rebase was
+content-conflict-free), Totoro/DRAC, wide grammar, latent predictor covariance,
+non-Gaussian/mixed response-column slope work, simultaneous column sources, or
+interval calibration. Next: maintainer review of #1208; do not self-merge.
+
+---
+
+## 2026-08-24 — Reader-first tree-axis and 5 × 3 grid repair (Codex)
+
+The published teaching surface was reset after reader and visual review: the
+tree article now has two small alpine-plant examples, one for sampled-species
+phylogenetic covariance and one for species response-column slope covariance.
+The bird fixture and unrelated integrated-model section were removed. The
+5 × 3 lookup now states that response-column slope helpers are outside the
+grid, corrects the standalone `unique()` compatibility wording, and uses a
+separate responsive callout. Navigation and table/TOC CSS were tightened after
+the supplied screenshot showed clipping.
+
+```sh
+Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); rmarkdown::render("vignettes/articles/where-does-the-tree-go.Rmd", output_dir = "/private/tmp/tree-article-render", quiet = TRUE); rmarkdown::render("vignettes/articles/api-keyword-grid.Rmd", output_dir = "/private/tmp/grid-article-render", quiet = TRUE)'
+# PASS: both standalone HTML articles rendered.
+Rscript --vanilla dev/trait-axis-bridge/verify-scope.R
+# PASS: SCOPE SCAN PASS.
+Rscript --vanilla dev/trait-axis-bridge/verify-article.R
+# PASS: ARTICLE BUILD PASS.
+Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::check_pkgdown()'
+# PASS: no problems found.
+Rscript --vanilla -e 'pkg <- pkgdown:::section_init(".", "articles"); for (nm in c("articles/api-keyword-grid", "articles/where-does-the-tree-go")) pkgdown::build_article(nm, pkg = pkg, lazy = FALSE, quiet = FALSE)'
+# PASS: actual pkgdown pages built for both changed articles.
+git diff --check
+# PASS.
+rg -n 'What does the tree relate|Response- column|iSDM|observation model|occupancy' vignettes/articles/where-does-the-tree-go.Rmd vignettes/articles/api-keyword-grid.Rmd dev/trait-axis-bridge/verify-scope.R
+# PASS: no stale title, broken wording, or old integrated-model teaching.
+rg -n 'gllvmTMB\\(' vignettes/articles/where-does-the-tree-go.Rmd vignettes/articles/api-keyword-grid.Rmd
+# PASS after manual review: taught long-format fits pass trait = explicitly.
+rg -n 'gllvmTMB_wide|meta_known_V|non-Gaussian|deferred|intervals' vignettes/articles/where-does-the-tree-go.Rmd vignettes/articles/api-keyword-grid.Rmd
+# PASS: only intentional compatibility or deferred-scope language remains.
+```
+
+Sol reader reviews: Boole—PASS after reset; Rose—PASS after `unique()` and
+scope correction; Pat—pedagogy PASS, visual layout REVISE then addressed with
+explicit responsive wrappers. Visual screenshot inspection remained limited by
+the unavailable in-app browser; no pixel-perfect claim is made. GitHub DNS
+failed for the shared-document pre-edit PR-list check, and this worktree's
+shared Git metadata rejected `index.lock` creation, so remote-state claims and
+a commit/push remain deliberately absent.
+
+---
+
+## 2026-08-25 — Final data figures for the phylogeny article (Codex)
+
+At the maintainer's request, replaced the two model-object diagrams in
+`where-does-the-tree-go.Rmd` with four data-layout figures: observed long and
+summarised wide views for both plant examples. The morphology wide matrix is
+explicitly a standardised species-mean summary across its five population
+observations. The community wide matrix separates moisture/canopy predictor
+columns from selected species response columns and orders sites from dry to
+wet. No R API, likelihood, formula grammar, or scope boundary changed.
+
+```sh
+Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); rmarkdown::render("vignettes/articles/where-does-the-tree-go.Rmd", output_dir = "/private/tmp/tree-article-wide-render", quiet = TRUE)'
+# PASS: runnable article and all four figures rendered.
+Rscript --vanilla -e 'pkg <- pkgdown:::section_init(".", "articles"); pkgdown::build_article("articles/where-does-the-tree-go", pkg = pkg, lazy = FALSE, quiet = TRUE)'
+# PASS: final pkgdown article and figure PNGs written.
+Rscript --vanilla -e 'pkgdown::check_pkgdown()'
+# PASS: no problems found.
+Rscript --vanilla dev/trait-axis-bridge/verify-scope.R
+# PASS: SCOPE SCAN PASS.
+rg -n 'morphology-correlation|planted-column-deviations|Fitted correlation among|coefficient deviations behind' vignettes/articles/where-does-the-tree-go.Rmd pkgdown-site/articles/where-does-the-tree-go.html
+# PASS: superseded figure code and wording absent.
+git diff --check
+# PASS.
+```
+
+Florence/Tufte inspected the four actual rendered pkgdown images—not
+preview mock-ups—and returned PASS for each: `morphology-data`,
+`morphology-wide`, `community-data`, and `community-wide`.
+
+**Deliberately not run:** another simulation/recovery campaign, wide
+column-slope grammar, non-Gaussian or mixed-family slopes, latent predictor
+covariance, simultaneous slope sources, interval calibration, or a full local
+package check. This is a reader-facing article-only revision; the existing
+three-OS implementation matrix remains the feature-level evidence.
+
+---
+
+## 2026-08-25 — Response-column slope closure handover refresh (Codex)
+
+Updated the programme handover after the reader-first article and data-layout
+figure commits. The handover now identifies PR #1208's current feature/article
+parent, the rewritten plant examples, the repaired 5 × 3 grid, the authorised
+merge procedure, the final exact-head CI requirement, the live article target,
+and the maintainer-owned boundary around the separate main-lane follow-up. No R
+code, tests, article source, generated site file, or model claim changed.
+
+```sh
+gh pr list --repo itchyshin/gllvmTMB --state open --limit 20
+git log --all --oneline --since="6 hours ago"
+gh pr view 1209 --repo itchyshin/gllvmTMB --json files,headRefName,url
+# PASS: PR #1209 edits a different handover file; no shared-file collision.
+git diff --check
+# PASS.
+rg -n '2ad0238a|open and unmerged|Do not self-merge|visual bridge article|5 x 3' docs/dev-log/handover/2026-08-24-codex-column-slope-family.md
+# PASS when empty: stale pre-article SHA, merge status, article wording, and grid typography are absent.
+```
+
+**External CI receipt before this handover-only commit:** routine Ubuntu PR run
+[32852625158](https://github.com/itchyshin/gllvmTMB/actions/runs/32852625158)
+passed at `fa58e054`. The final exact-head routine run and explicitly dispatched
+macOS/Ubuntu/Windows matrix are PR-level receipts and must be terminal green
+before merge.
+
+**Deliberately not run:** local simulation, recovery, package, article-render,
+or pkgdown checks. This commit changes only internal closure records and does
+not alter the already verified implementation or reader article.

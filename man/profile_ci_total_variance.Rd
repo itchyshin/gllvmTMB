@@ -39,7 +39,7 @@ membership}; it does not certify the individual interval.}
 }
 \description{
 Genuine chi-square_1 profile intervals (via fix-and-refit on \verb{log V_t}) for
-the per-trait total variance \verb{V_t = (Lambda Lambda')[t,t] + psi[t]}, the
+the per-trait total variance \verb{V_t = (Lambda Lambda')[t,t] + psi[t]^2}, the
 diagonal of the requested covariance tier. This is the same functional
 \code{\link[=extract_Sigma]{extract_Sigma()}} returns on its diagonal, and the same one
 \code{\link[=bootstrap_Sigma]{bootstrap_Sigma()}} resamples.
@@ -48,7 +48,7 @@ diagonal of the requested covariance tier. This is the same functional
 
 One regime of this function has measured frequentist coverage. Under
 simulation from a known Gaussian data-generating process, using an
-unpenalised native-Laplace fit with \code{n_units >= 150} and \code{d <= 2}, the
+unpenalised native-Laplace fit with \code{n_units = 150} and \code{d} in \verb{\{1, 2\}}, the
 two-sided intervals met a \strong{pre-registered \verb{>= 0.94} gate}
 (0.9467 in both cells, 20,000 replicates each, computed among converged fits
 only). \strong{That gate is 0.94, not nominal 95\%} -- both cells sit roughly 3.3
@@ -60,7 +60,7 @@ The evidence is one simulated DGP, not a claim about any real dataset.
 
 Everything else the arguments admit is an uncertified computed route: every
 AGHQ fit, any loading-ridge fit, every non-Gaussian family, every tier other
-than \code{"unit"}, \code{d > 2}, \code{d = 0}, \code{n_units < 150}, any \code{level} other than
+than \code{"unit"}, \code{d > 2}, \code{d = 0}, any \code{n_units} other than 150, any \code{level} other than
 0.95, and the off-diagonal and \code{psi} targets (the \code{psi} target was measured
 on the same run and \strong{failed}).
 Rather than refuse those calls -- they are legitimately useful for

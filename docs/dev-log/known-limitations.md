@@ -81,8 +81,10 @@ structured tiers are not admitted.
 - Direct or target-specific profile machinery remains available for fixed
   effects, direct scale parameters, `Lambda` entries, the supported
   phylogenetic-signal cases, and `profile_ci_total_variance()`. The last route
-  has a narrow unpenalised native-Laplace Gaussian `certified-0.94` regime; it
-  is not a package-wide interval certificate.
+  has a narrow unpenalised native-Laplace Gaussian `certified-0.94` regime at
+  exactly `n_units = 150`, `d` in `{1, 2}`, and `level = 0.95`; larger samples
+  are separate unmeasured cells and remain `route-only`. It is not a
+  package-wide interval certificate.
 - The former nonlinear profile routes for canonical repeatability,
   communality, correlations, and variance proportions are withdrawn. Explicit
   requests stop with a typed explanation rather than returning bounds.

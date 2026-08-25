@@ -95,10 +95,13 @@ coverage calibration**. `pdHess = TRUE` is not calibration evidence.
   `nsim`, `seed`). Parametric bootstrap is the intended calibration engine, but
   no coverage study promotes any cell here; treat as route existence only.
 
-**No cell in this matrix is empirical-coverage-calibrated.** Every status is
-route existence plus focused-test evidence. The empirical coverage gates are
-`CI-08` and `CI-10` in the validation register, which remain open/failing; a
-cell may not be described as calibrated on the strength of this matrix.
+**No status in this matrix is itself empirical-coverage evidence.** Every
+matrix status records route existence plus focused-test evidence. Separately,
+`CI-08` has a narrow certificate for the two exact ordinary Gaussian unit-tier
+cells with `n_units = 150` and `d` in `{1, 2}`; no other sample size, rank,
+family, tier, target, or interval route inherits that result. `CI-08` therefore
+remains partial outside those cells, and `CI-10` remains open/failing. A cell
+may not be described as calibrated on the strength of this matrix alone.
 `docs/design/61-capability-status.md` records the same separation (interval
 calibration is distinct from point-estimate recovery).
 

@@ -133,13 +133,14 @@ but these routes do not share one package-wide calibration claim.
 
 The narrow exception is `profile_ci_total_variance()`: an unpenalised
 native-Laplace, two-sided ordinary Gaussian unit-tier fit with
-`n_units >= 150`, `d <= 2`, and `level = 0.95`. AGHQ and loading-ridge fits do
-not inherit this label. Two cells met the package's `certified-0.94` floor, conditional
-on convergence and only as a marginal average. The smallest-total-variance
-ventile failed its gate. This is not a nominal 95% certificate, does not
-guarantee an individual interval, and does not transfer to communality,
-correlation, repeatability, proportions, structured covariance, one-sided
-routes, or fits outside those conditions.
+exactly `n_units = 150`, `d` in `{1, 2}`, and `level = 0.95`. AGHQ,
+loading-ridge, smaller-sample, and larger-sample fits do not inherit this
+label. Those two exact cells met the package's `certified-0.94` floor,
+conditional on convergence and only as a marginal average. The
+smallest-total-variance ventile failed its gate. This is not a nominal 95%
+certificate, does not guarantee an individual interval, and does not transfer
+to communality, correlation, repeatability, proportions, structured
+covariance, one-sided routes, or fits outside those conditions.
 
 For spatial and `phylo_diag` models, current simulation and bootstrap fallbacks
 may condition on fitted random effects. The returned intervals can therefore

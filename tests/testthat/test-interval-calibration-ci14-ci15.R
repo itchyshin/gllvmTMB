@@ -251,6 +251,19 @@ test_that("timing smokes are real routes but require explicit provenance and rem
     function(x) grepl("slope_sd_ci", x$fit_formula, fixed = TRUE),
     logical(1)
   )))
+  expect_match(requests[[2L]]$fit_formula, "tree = phy$tree", fixed = TRUE)
+  fit_runner_source <- gsub(
+    "[[:space:]]+",
+    " ",
+    paste(deparse(body(.ci1415_fit_smoke)), collapse = " ")
+  )
+  expect_false(grepl("unit_obs =", fit_runner_source, fixed = TRUE))
+  expect_false(grepl("phylo_tree =", fit_runner_source, fixed = TRUE))
+  expect_match(
+    fit_runner_source,
+    "phylo_dep(0 + trait + (0 + trait):x | species, tree = phy$tree)",
+    fixed = TRUE
+  )
 
   unhealthy <- structure(
     list(

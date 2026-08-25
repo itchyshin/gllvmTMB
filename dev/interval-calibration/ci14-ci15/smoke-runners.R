@@ -19,7 +19,7 @@ if (!exists("ci1415_attempt_manifest", mode = "function")) {
     ),
     CI15_PHYLO = paste(
       "gllvmTMB(value ~ 0 + trait + phylo_dep(0 + trait +",
-      "(0 + trait):x | species)); slope_sd_ci(fit)"
+      "(0 + trait):x | species, tree = phy$tree)); slope_sd_ci(fit)"
     ),
     CI15_LOADINGS = paste(
       "gllvmTMB(value ~ 0 + trait + (0 + trait):x +",
@@ -177,7 +177,6 @@ ci1415_smoke_request <- function(
       data = data,
       trait = "trait",
       unit = "individual",
-      unit_obs = "session_id",
       control = gllvmTMB::gllvmTMBcontrol(
         se = TRUE,
         optimizer = "optim",
@@ -199,7 +198,6 @@ ci1415_smoke_request <- function(
       data = data,
       trait = "trait",
       unit = "individual",
-      unit_obs = "session_id",
       control = gllvmTMB::gllvmTMBcontrol(
         se = TRUE,
         optimizer = "optim",
@@ -210,9 +208,9 @@ ci1415_smoke_request <- function(
     truth <- spec$truth$CI15_PHYLO
     phy <- .ci1415_phylo_data(truth, cell$n_sp)
     fit <- gllvmTMB::gllvmTMB(
-      value ~ 0 + trait + phylo_dep(0 + trait + (0 + trait):x | species),
+      value ~ 0 + trait +
+        phylo_dep(0 + trait + (0 + trait):x | species, tree = phy$tree),
       data = phy$data,
-      phylo_tree = phy$tree,
       unit = "species",
       control = gllvmTMB::gllvmTMBcontrol(se = TRUE)
     )

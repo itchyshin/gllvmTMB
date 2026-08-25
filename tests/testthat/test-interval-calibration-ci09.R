@@ -26,7 +26,8 @@ test_that("CI-09 smoke gives the parser an unqualified dep formula", {
   }
   smoke_formula <- ci09_smoke_formula()
   expect_false(grepl("::dep", paste(deparse(smoke_formula), collapse = " ")))
-  expect_silent(parse_multi_formula(smoke_formula))
+  parser <- getFromNamespace("parse_multi_formula", "gllvmTMB")
+  expect_silent(parser(smoke_formula))
 })
 
 test_that("CI-09 smoke health requires convergence and a positive Hessian", {

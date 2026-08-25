@@ -136,8 +136,9 @@ No remote job has been submitted. The recommended approval envelope is:
   16060769, 17060772, 18060775` in cell order 1–18. Submit only through
   `sbatch --account=def-snakagaw --time=00:30:00 --cpus-per-task=1
   --mem=8G`; fail closed if that account is unavailable rather than
-  substituting another account. The immutable output root is
-  `/project/def-snakagaw/snakagaw/gllvmTMB-interval-calibration/2026-08-25/ci10-cost-array`.
+  substituting another account. After the first preparation attempt measured
+  the project file-count quota at its hard limit, the immutable output root is
+  `/home/snakagaw/gllvmTMB-interval-calibration/2026-08-25/ci10-cost-array`.
   Any task reaching 30 minutes stops. If the full campaign is later approved,
   these exact rep-3 rows are its canonical rows and are not rerun; every
   operational attempt remains in the receipt.
@@ -222,3 +223,23 @@ commit for recovery without falsely advancing the original worktree's branch
 reference. A second reuse-only socket check still returned `Operation not
 permitted` for both existing control sockets, so neither Totoro nor Fir
 received a submission.
+
+## Post-approval operational update
+
+Escalated reuse of the existing `cm-` sockets subsequently became available.
+Totoro preparation completed successfully: all four distinct packet libraries
+installed and loaded with their exact scientific source-SHA markers. No
+simulation had started at that point.
+
+The first Fir preparation attempt failed before package installation or SLURM
+submission. `diskusage_report` measured `/project/def-snakagaw` at
+`500K/500K` files while using only `195GiB/954GiB`; the root cause was the
+project file-count quota, not storage capacity or connectivity. The backed-up
+Fir home filesystem measured `110K/500K` files and `11GiB/48GiB`. The Fir-only
+dispatch was therefore revised to use the immutable backed-up home root shown
+above. This changes no account, task identity, seed, source SHA, resource
+request, timeout, estimator, or scientific denominator. A path-contract test
+was observed failing against the old project root and then passed, together
+with all other CI-10 focused assertions, after the four hard-coded paths were
+changed. The failed preparation remains an operational attempt in this
+receipt; it created no campaign row and submitted no job.

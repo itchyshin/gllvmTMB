@@ -9,10 +9,10 @@ source_root=$1
 task_tsv=$2
 out_root=$3
 library_root=$4
-expected_root=/project/def-snakagaw/snakagaw/gllvmTMB-interval-calibration/2026-08-25/ci10-cost-array
+expected_root=/home/snakagaw/gllvmTMB-interval-calibration/2026-08-25/ci10-cost-array
 host=$(hostname -f)
 if [ "$host" != fir.alliancecan.ca ] || [ "$out_root" != "$expected_root" ]; then
-  echo "CI-10 cost array is pinned to Fir and the approved project root" >&2
+  echo "CI-10 cost array is pinned to Fir and the approved backed-up home root" >&2
   exit 65
 fi
 export OPENBLAS_NUM_THREADS=1

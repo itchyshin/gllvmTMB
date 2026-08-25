@@ -334,3 +334,24 @@ test_that("CI-10 production wrapper is cost-array only and binds adjacent proven
     fixed = TRUE
   )
 })
+
+test_that("CI-10 Fir dispatch uses the backed-up home root when project file quota is full", {
+  remote_root <- testthat::test_path(
+    "..", "..", "dev", "interval-calibration", "remote"
+  )
+  scripts <- c(
+    "deploy-approved-envelope.sh",
+    "prepare-remote-host.sh",
+    "prepare-ci10-cost-array.sh",
+    "ci10-cost-array.sbatch"
+  )
+  text <- vapply(
+    file.path(remote_root, scripts),
+    function(path) paste(readLines(path, warn = FALSE), collapse = "\n"),
+    character(1)
+  )
+  fir_root <- "/home/snakagaw/gllvmTMB-interval-calibration/2026-08-25"
+
+  expect_true(all(grepl(fir_root, text, fixed = TRUE)))
+  expect_false(any(grepl("/project/def-snakagaw", text, fixed = TRUE)))
+})

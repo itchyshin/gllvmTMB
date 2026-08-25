@@ -16,7 +16,7 @@ case "$host_class:$host" in
     packets="PVT02 CI09 CI13 CI14 CI15"
     ;;
   fir:fir.alliancecan.ca)
-    expected_deploy=/project/def-snakagaw/snakagaw/gllvmTMB-interval-calibration/2026-08-25/deployment
+    expected_deploy=/home/snakagaw/gllvmTMB-interval-calibration/2026-08-25/deployment
     packets="CI10_COST"
     ;;
   *)

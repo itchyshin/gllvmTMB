@@ -5,8 +5,8 @@
 #SBATCH --mem=8G
 #SBATCH --array=1-18%18
 #SBATCH --job-name=gllvmtmb-ci10-cost
-#SBATCH --output=/project/def-snakagaw/snakagaw/gllvmTMB-interval-calibration/2026-08-25/ci10-cost-array/slurm/%A_%a.out
-#SBATCH --error=/project/def-snakagaw/snakagaw/gllvmTMB-interval-calibration/2026-08-25/ci10-cost-array/slurm/%A_%a.err
+#SBATCH --output=/home/snakagaw/gllvmTMB-interval-calibration/2026-08-25/ci10-cost-array/slurm/%A_%a.out
+#SBATCH --error=/home/snakagaw/gllvmTMB-interval-calibration/2026-08-25/ci10-cost-array/slurm/%A_%a.err
 
 set -eu
 export OPENBLAS_NUM_THREADS=1
@@ -19,7 +19,7 @@ export MKL_NUM_THREADS=1
 : "${INTERVAL_SESSION_RECEIPT:?INTERVAL_SESSION_RECEIPT is required}"
 export R_LIBS_USER=$INTERVAL_LIBRARY_ROOT
 
-out_root=/project/def-snakagaw/snakagaw/gllvmTMB-interval-calibration/2026-08-25/ci10-cost-array
+out_root=/home/snakagaw/gllvmTMB-interval-calibration/2026-08-25/ci10-cost-array
 test -f "$INTERVAL_SESSION_RECEIPT"
 cd "$INTERVAL_SOURCE_ROOT"
 Rscript --vanilla dev/interval-calibration/remote/validate-task-manifest.R \

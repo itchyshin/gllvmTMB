@@ -14,7 +14,7 @@ fir_host=snakagaw@fir.alliancecan.ca
 totoro_socket=/Users/z3437171/.ssh/cm-snakagaw@totoro.biology.ualberta.ca:22
 fir_socket=/Users/z3437171/.ssh/cm-snakagaw@fir.alliancecan.ca:22
 totoro_deploy=/home/snakagaw/gllvmTMB-interval-calibration/2026-08-25/deployment
-fir_deploy=/project/def-snakagaw/snakagaw/gllvmTMB-interval-calibration/2026-08-25/deployment
+fir_deploy=/home/snakagaw/gllvmTMB-interval-calibration/2026-08-25/deployment
 
 ssh_reuse() {
   socket=$1

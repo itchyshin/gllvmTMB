@@ -852,6 +852,51 @@ test_that("cross-root reconciliation retains attempts and chooses the first vali
   )
 })
 
+test_that("terminal evidence retains every attempt and exact target disposition", {
+  artifact_root <- testthat::test_path(
+    "..", "..", "docs", "dev-log", "artifacts", "interval-calibration"
+  )
+  attempts <- utils::read.csv(
+    gzfile(file.path(
+      artifact_root,
+      "2026-08-25-all-attempt-ledger.csv.gz"
+    )),
+    stringsAsFactors = FALSE
+  )
+  expect_identical(nrow(attempts), 150019L)
+  expect_identical(sum(attempts$canonical), 55018L)
+  expect_identical(
+    sum(attempts$disposition == "infrastructure_excluded"),
+    85000L
+  )
+  expect_identical(
+    sum(attempts$disposition == "duplicate_excluded"),
+    1L
+  )
+  expect_identical(
+    sum(attempts$disposition == "blocked_provenance"),
+    10000L
+  )
+  duplicate_identity <- attempts$packet == "PVT02" &
+    attempts$cell_id == 1L &
+    attempts$rep == 50001L &
+    attempts$seed == 800050001L
+  expect_identical(sum(duplicate_identity), 3L)
+  expect_identical(sum(duplicate_identity & attempts$canonical), 1L)
+
+  targets <- utils::read.csv(
+    file.path(artifact_root, "2026-08-25-target-recomputation.csv"),
+    stringsAsFactors = FALSE
+  )
+  expect_identical(nrow(targets), 18L)
+  expect_true(all(targets$target_pass[targets$packet == "PVT02"]))
+  expect_false(any(targets$target_pass[targets$packet == "CI09"]))
+  expect_identical(
+    sum(targets$target_pass[targets$packet == "CI13"]),
+    8L
+  )
+})
+
 test_that("task-manifest validator refuses a truncated or altered campaign", {
   remote_root <- testthat::test_path(
     "..", "..", "dev", "interval-calibration", "remote"

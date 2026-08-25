@@ -7,6 +7,16 @@ release accompanies this candidate.
 
 ## Changed
 
+* **Added an evaluated guide to predictor-informed latent ecological axes.**
+  The guide teaches the ordinary native Gaussian route through the
+  rotation-invariant trait-scale effect `B_lv = Lambda alpha^T`, alongside
+  the decomposition of each latent score into its predictor-informed mean and
+  innovation. Existing interval evidence remains limited to the named native
+  Gaussian cells and rank-1 multi-trial binomial logit, probit, and cloglog
+  cells. The Julia bridge remains a complete-response, loadings-only point
+  route with optional uncalibrated Wald plumbing; broader families, masks,
+  tiers, REML, profile, and bootstrap inference are outside this guide.
+
 * **Explicitly unused optional grouping slots now warn (#1190).** Supplying
   `unit_obs` or `cluster` is useful only when a covariance keyword consumes
   that column. If no keyword does, `gllvmTMB()` now warns and tells the caller

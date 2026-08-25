@@ -1,0 +1,249 @@
+---
+title: "Explaining Latent Ecological Axes With Predictors"
+description: "Relate an observed environmental gradient to a shared latent ecological axis, then interpret the rotation-invariant trait-scale effect."
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{Explaining Latent Ecological Axes With Predictors}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  cache = FALSE,
+  eval = TRUE,
+  message = FALSE,
+  warning = FALSE
+)
+```
+
+## Scientific question
+
+Suppose an ecologist has measured three continuous community traits at each
+site. Does a moisture gradient accompany a coordinated change across those
+traits, beyond the unexplained site-to-site position on the same shared
+ecological axis?
+
+This article fits a **predictor-informed latent variable**: moisture shifts the
+mean of a latent ecological score, while a standard-normal innovation retains
+unexplained differences among sites. The target for interpretation is the
+trait-scale effect $B_{lv}$, not the arbitrary orientation of a fitted latent
+axis. The result describes an association between moisture and community
+traits; the model and these simulated data do not identify a causal effect.
+
+## Simulate one healthy teaching example
+
+The example has 72 sites, three Gaussian responses, and one latent axis. We
+simulate this fixture directly because its known $B_{lv}$ and score components
+are the quantities that this article needs to explain. The seed, factor levels,
+and predictor values are fixed, so the long and wide data frames contain the
+same observations.
+
+```{r setup}
+library(gllvmTMB)
+
+set.seed(7301)
+
+n_sites <- 72L
+trait_names <- c("leaf_area", "wood_density", "seed_mass")
+site_names <- sprintf("site_%02d", seq_len(n_sites))
+moisture <- as.numeric(scale(seq(-1.5, 1.5, length.out = n_sites)))
+
+Lambda <- matrix(c(0.70, -0.45, 0.55), ncol = 1,
+                 dimnames = list(trait_names, "LV1"))
+alpha <- 0.65
+trait_intercept <- c(0.10, -0.05, 0.08)
+psi <- c(0.18, 0.14, 0.16)
+
+score_innovation <- rnorm(n_sites)
+score_mean <- moisture * alpha
+score_total <- score_mean + score_innovation
+
+mu <- outer(score_total, Lambda[, 1])
+mu <- sweep(mu, 2, trait_intercept, "+")
+Y <- mu + matrix(
+  rnorm(n_sites * length(trait_names),
+        sd = rep(psi, each = n_sites)),
+  nrow = n_sites,
+  dimnames = list(site_names, trait_names)
+)
+
+df_wide <- data.frame(
+  site = factor(site_names, levels = site_names),
+  moisture = moisture,
+  Y,
+  check.names = FALSE
+)
+
+df_long <- data.frame(
+  site = factor(rep(site_names, each = length(trait_names)),
+                levels = site_names),
+  trait = factor(rep(trait_names, times = n_sites),
+                 levels = trait_names),
+  moisture = rep(moisture, each = length(trait_names)),
+  value = as.vector(t(Y))
+)
+
+head(df_long, 6)
+head(df_wide, 3)
+```
+
+For site $i$, the score model is
+
+\[
+z_i = M_i\alpha + e_i, \qquad e_i \sim N(0,1).
+\]
+
+Here $M_i$ is the site's numeric moisture value. The loading matrix
+$\Lambda$ maps the score to the three response traits. The ordinary native
+`latent()` model includes a diagonal unique-variance companion $\Psi$ by
+default, so its unit-tier covariance is
+
+\[
+\Sigma = \Lambda\Lambda^\top + \Psi.
+\]
+
+The moisture association on the trait linear-predictor scale is
+
+\[
+B_{lv} = \Lambda\alpha^\top.
+\]
+
+Unlike the separate fitted values of $\Lambda$ and $\alpha$, $B_{lv}$ does
+not change under an orthogonal rotation of the latent axis. It is therefore
+the appropriate quantity for comparing the scientific association across
+fits.
+
+## Fit the same model from long or wide data
+
+Both calls use `gllvmTMB()`. The long formula names each response row with
+`trait`; the compact wide formula names the three response columns with
+`traits()`. Moisture appears only in `lv = ~ moisture`. It is deliberately not
+also included as an ordinary fixed effect, because the combined fixed-effect
+and latent-score route is outside the supported model taught here.
+
+```{r fit-long}
+fit_long <- gllvmTMB(
+  value ~ 0 + trait +
+    latent(0 + trait | site, d = 1, lv = ~ moisture),
+  data = df_long,
+  unit = "site",
+  trait = "trait",
+  control = gllvmTMBcontrol(
+    se = TRUE,
+    optimizer = "optim",
+    optArgs = list(method = "BFGS")
+  )
+)
+```
+
+```{r fit-wide}
+fit_wide <- gllvmTMB(
+  traits(leaf_area, wood_density, seed_mass) ~ 1 +
+    latent(1 | site, d = 1, lv = ~ moisture),
+  data = df_wide,
+  unit = "site",
+  control = gllvmTMBcontrol(
+    se = TRUE,
+    optimizer = "optim",
+    optArgs = list(method = "BFGS")
+  )
+)
+```
+
+The remainder of the article uses `fit_long`. The two calls are equivalent
+data shapes for the same model; they are not two independent analyses.
+
+## Interpret the trait-scale association
+
+`extract_lv_effects(type = "trait_effect")` returns $B_{lv}$, with one row
+per trait and LV predictor. For this native Gaussian route, `method = "wald"`
+requests delta-method standard errors and Wald bounds from the fitted model.
+
+```{r trait-effect}
+B_hat <- extract_lv_effects(
+  fit_long,
+  type = "trait_effect",
+  method = "wald",
+  conf.level = 0.95
+)
+
+B_hat[c("trait", "predictor", "estimate", "std.error", "lower", "upper")]
+```
+
+Because Gaussian responses use the identity link, an estimate is the fitted
+change in that trait's mean for a one-unit increase in the standardized
+moisture gradient through the shared latent axis. A positive estimate means
+the trait increases along the moisture-associated component; a negative
+estimate means it decreases. The signs and magnitudes belong to the named
+traits and remain interpretable even if the fitted latent axis is rotated or
+sign-flipped.
+
+These are Wald summaries, not a promise that every fitted model has calibrated
+95% coverage. Retained simulation evidence supports the named complete-response
+Gaussian regime, with failed Hessian or unavailable-interval attempts counted
+separately. Do not transfer that evidence to a different family, rank, missing
+data pattern, or covariance tier.
+
+## Decompose each fitted score
+
+The total fitted score is the sum of the moisture-informed mean and the
+site-specific innovation. `extract_ordination()` exposes all three components
+on the same fitted axis.
+
+```{r score-decomposition}
+ord_total <- extract_ordination(fit_long, level = "unit", component = "total")
+ord_mean <- extract_ordination(fit_long, level = "unit", component = "mean")
+ord_innovation <- extract_ordination(
+  fit_long,
+  level = "unit",
+  component = "innovation"
+)
+
+score_check <- max(abs(
+  ord_total$scores - ord_mean$scores - ord_innovation$scores
+))
+score_check
+
+head(data.frame(
+  site = rownames(ord_total$scores),
+  total = ord_total$scores[, 1],
+  mean = ord_mean$scores[, 1],
+  innovation = ord_innovation$scores[, 1]
+))
+```
+
+The identity `total = mean + innovation` checks the score decomposition. The
+mean component answers how moisture is associated with the shared axis; the
+innovation records remaining site-to-site position after that association.
+Neither component, by itself, makes moisture a causal exposure.
+
+> **Current boundary.** This article teaches the native, ordinary unit-tier,
+> complete-response Gaussian model. Retained native evidence covers named
+> Gaussian rank-1 and rank-2 cells; interval evidence for pure binomial models
+> is limited to rank-1, multi-trial logit, probit, and cloglog cells.
+> Factor-valued LV predictors have point-estimate and recovery evidence, but
+> their intervals are not calibrated. The Julia bridge provides
+> complete-response, loadings-only (`unique = FALSE`) point estimates with
+> optional uncalibrated Wald plumbing; native ordinary `latent()` instead uses
+> $\Lambda\Lambda^\top + \Psi$ by default. This article does not support REML,
+> an ordinary fixed predictor combined with the same `lv` predictor, Julia
+> interval calibration, broader response masks, unlisted native families or
+> ranks, mixed-family LV models, extra grouping tiers, structured phylogenetic,
+> spatial, animal, or kernel sources, missing LV predictors, or profile and
+> bootstrap intervals. Fit one of the named native ordinary models, or choose a
+> simpler supported model, rather than interpreting output from one of these
+> gated combinations.
+
+## What to report
+
+For an applied analysis, report the response family and link, latent rank,
+unit tier, the exact `lv` predictor, the trait-scale $B_{lv}$ estimates, and
+the interval method. State that $B_{lv}$ is rotation-invariant, describe the
+score innovation, and keep the conclusion associational unless the study
+design supplies a separate causal argument.

@@ -17,6 +17,13 @@ and "gllvmTMB phylo grammar/bridge", both `blocked`; validation-debt row
 next step is a maintainer authorization decision (Section 7), not
 implementation.
 
+**Current inference boundary (2026-08-25):** the public
+`extract_lv_effects()` route admits experimental Wald output only and
+rejects profile/bootstrap requests. Historical rank-1 Gaussian orthogonal
+Model-A profile results remain evidence for `LV-09` only; they do not admit
+the structured grammar above, transfer to current ML-only ordinary C1, or
+calibrate Julia bridge intervals.
+
 This document is the pre-implementation target map that Design 73 requires of
 any structured-source `lv` extension, and that AGENTS.md Design rule 5 requires
 of any new variance-share axis (simulation recovery on a known DGP + design-doc
@@ -550,19 +557,34 @@ which is exactly the "pdHess≠failure → route CIs through profile/bootstrap" 
 > parameters span the null space before accepting any causal story for `pdHess = FALSE`.
 > Evidence: `docs/dev-log/after-task/2026-07-08-diag-tier-alias-fix.md`.
 
-### Implementation status (2026-07-06, branch `claude/blv-profile-ci`)
+### Historical implementation status (2026-07-06, branch `claude/blv-profile-ci`)
 
-The honest-interval deliverable is built and validated (branch, pre-merge):
+> **Superseding public-route note (2026-08-25).** The section below records
+> historical Model-A development and is not the current public inference
+> surface. Current `extract_lv_effects()` admits `method = "wald"` only;
+> `method = "profile"` and `"bootstrap"` fail with
+> `gllvmTMB_lv_interval_withdrawn`. Current predictor-informed `lv` also
+> rejects `REML = TRUE`. The retained rank-1 Gaussian campaign is historical
+> orthogonal Model-A evidence for `LV-09`: ordinary $B_{lv}$ with a
+> separate `phylo_latent()` term. It does not support structured
+> `phylo_latent(..., lv = ~ x)`, current ML-only ordinary C1,
+> non-Gaussian intervals, rank-2 profile/bootstrap, or Julia bridge
+> calibration.
+
+The historical honest-interval prototype was built and validated on that
+branch:
 
 - **REML boundary:** predictor-informed Gaussian `lv`/Model A is not admitted under
   the current REML path. That path restricts `b_fix` but not `alpha_lv_B`; it fails
   loudly until a full restriction and recovery study are available. Non-Gaussian
   `lv` REML is likewise blocked.
-- **`profile_ci_lv_effects()`** — the featured/hero `B_lv` CI (invert the LR test via
+- **`profile_ci_lv_effects()`** — the historical featured `B_lv` CI (invert the LR test via
   constrained refit) with a **t reference** (`df = n_units − d − 1`) and an analytic-gradient
   fast path (~9×). `bootstrap_ci_lv_effects()` — the calibration/fallback leg (this also fixed
   `simulate()`'s unconditional RE redraw for the `lv_B`/`phylo_rr`/`diag_species` tiers).
-  Reachable via `extract_lv_effects(type = "trait_effect", method = "profile"/"bootstrap"/"wald")`.
+  These prototype functions remain internal and are not reachable through the
+  current public extractor; the current public route is experimental Wald
+  output only.
 - **Coverage — production gate PASSED (rank-1 Gaussian).** The compute-gated ≥500-rep/cell
   campaign (`dev/lv-effects-ci-coverage.{R,-slurm.sh}`; per-rep artifacts + `SUMMARY.txt` under
   `docs/dev-log/artifacts/lv-effects-ci-coverage/`) ran on Totoro and gives **nominal profile

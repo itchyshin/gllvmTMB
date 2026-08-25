@@ -1,11 +1,13 @@
 # Codex handover: response-column slope family
 
-**Date:** 2026-08-25 (closure refresh)
-**Branch:** `codex/column-slope-family`
-**Feature and article SHA before this handover-only refresh:** `fa58e05477258ecb35247a74008c0f62e34eccc3`
+**Date:** 2026-08-25 (post-merge semantic-article closure)
+**Implementation branch:** `codex/column-slope-family` (merged)
+**Documentation follow-up branch:** `codex/column-slope-visual-closure`
+**Feature head:** `52fb00ff7d69ab2b96b99fefb8a9434ecd5b304e`
+**Merge commit:** `efc4cffc02f3804222f304c22aceb2084e8a47e8`
 **Publishing checkout:** `/private/tmp/gllvmTMB-article-final`
 **PR:** [#1208](https://github.com/itchyshin/gllvmTMB/pull/1208)
-**Rebased remote base:** `main` at `482c9d372c7dc100f988f41f80d1b4cc3ce8a8e4`
+**Live article:** <https://itchyshin.github.io/gllvmTMB/articles/where-does-the-tree-go.html>
 
 ## First read
 
@@ -13,19 +15,23 @@
 2. `docs/dev-log/after-task/2026-08-24-response-column-slope-family.md`
 3. the final entry in `docs/dev-log/check-log.md`
 4. `.unlazy/column-slope-family/GATES.md` in this worktree (ignored, local acceptance ledger)
+5. `docs/dev-log/after-task/2026-08-25-column-slope-postmerge-visual-closure.md`
 
 ## Landing State
 
-**MERGE AUTHORISED; FINAL PUBLICATION GATES APPLY:** the slope implementation
-was cleanly replayed onto `origin/main`, then the reader article was rewritten
-and visually checked in the same PR. The maintainer subsequently authorised
-merging PR #1208. Merge only from the exact tested branch head after routine PR
-CI and an explicitly dispatched macOS, Ubuntu, and Windows matrix are terminal
-green. After merge, verify the `main` check and the live pkgdown article before
-declaring this lane closed. The PR, Actions run, and deployed page are the
-authoritative time-varying closure receipts; this file records the durable
-scope and procedure because a file cannot name the SHA of the commit that
-contains it.
+PR #1208 is merged. Its exact feature head passed macOS, Ubuntu, and Windows;
+the post-merge `main` check and pkgdown deployment also passed. A focused
+post-merge article correction is being published from the documentation branch
+above. It changes no R API, formula grammar, likelihood, TMB code, or existing
+fit. Its only purpose is to make the public worked example teach the shipped
+model correctly.
+
+Authoritative receipts are the exact feature-head three-OS run
+[32877165018](https://github.com/itchyshin/gllvmTMB/actions/runs/32877165018),
+post-merge `main` run
+[32883168239](https://github.com/itchyshin/gllvmTMB/actions/runs/32883168239),
+and pkgdown deployment
+[32887954319](https://github.com/itchyshin/gllvmTMB/actions/runs/32887954319).
 
 ## DONE
 
@@ -42,10 +48,18 @@ contains it.
   observation-space spatial random slopes.
 - Rebuilt the Tier-1 article, *Where does the phylogeny belong?*, around two
   contrasting plant examples: species as sampled units with morphology as
-  response columns, and species as community response columns. It now includes
-  readable model-axis diagrams plus long- and wide-data visuals for both
-  examples. The article teaches `slope()` for the first axis and
-  `phylo_slope()` for the second, without an integrated-model detour.
+  response columns, and species as community response columns. It includes
+  readable long- and wide-data visuals for both examples.
+- Corrected the community example after the post-merge reader audit. The
+  response is Gaussian log-biomass intensity; `latitude:pathway` estimates C3
+  and C4 mean gradients; `phylo_slope(latitude | trait)` estimates
+  phylogenetically structured residual species slope deviations; and
+  `latent(0 + trait | site_id, d = 2, unique = FALSE)` adjusts for remaining
+  within-site species association.
+- Made the simulation/data construction visible and hid plotting mechanics,
+  printed the descriptive C4-minus-C3 fitted contrast, labelled planted figure
+  lines as simulated-by-design, and added a verifier that refuses the
+  superseded moisture/canopy teaching story.
 - Reworked the 5 × 3 keyword-grid article and its responsive styling so the
   live keyword table remains legible rather than clipping or mis-rendering.
 - Added matrix, malformed-input, permutation, one-predictor parity, Gaussian
@@ -77,16 +91,13 @@ contains it.
 
 ## OWED AT THIS HANDOVER REFRESH
 
-- Let the active explicit three-OS run finish before pushing this handover-only
-  commit, then run routine PR CI and one final exact-head macOS, Ubuntu, and
-  Windows matrix. Do not overlap pushes with active runs.
-- Merge PR #1208 only when those exact-head checks are terminal green and the
-  PR remains mergeable. The maintainer has authorised the repository-default
-  merge and normal remote-branch cleanup.
-- Verify the post-merge `main` check, pkgdown deployment, and the live article
-  at <https://itchyshin.github.io/gllvmTMB/articles/where-does-the-tree-go.html>.
-- Do not enter the random-slope health or any other main-lane follow-up; the
-  maintainer owns what comes next there.
+- Publish the focused article/verifier/handover follow-up as one PR.
+- Wait for its routine PR check. Do not repeat the completed full local
+  implementation campaign unless CI exposes a relevant failure.
+- Merge only when the follow-up PR is green and mergeable, then verify the
+  `main` check, pkgdown deployment, and the live article text and figures.
+- Do not enter the random-slope health, future intercept-plus-slope API design,
+  or any other main-lane follow-up.
 
 ## RETRACTED
 
@@ -98,6 +109,18 @@ contains it.
 - Retract the idea that `*_indep(0 + ...)` should be the only public teaching
   surface. It remains valid underlying machinery; `*_slope()` names the user
   task.
+- Retract the moisture/canopy story as the primary response-column example.
+  It was algebraically valid but did not answer the reader's column-metadata
+  question.
+- Retract any wording that puts `pathway` inside `phylo_slope()`. `pathway` is
+  response-column metadata and belongs in a fixed fourth-corner interaction
+  such as `latitude:pathway`.
+- Retract the claim that site rows remain independent in the community
+  example; the ordinary `latent(... | site_id)` term models remaining joint
+  species association.
+- Retract any implication that `0 + trait` supplies phylogenetically
+  correlated random intercepts. It supplies separate fixed species
+  intercepts.
 
 ## PROTECTED
 
@@ -109,11 +132,15 @@ contains it.
   simultaneous response-column sources, and intervals are not advertised.
 - A tree/pedigree/space/kernel supplied to `*_slope()` relates response columns;
   a relationship among row-wise species belongs in a separate row-level term.
+- A future response-column intercept-plus-slope coefficient block is a
+  separate design lane. It must not widen or rename `*_slope()` during this
+  closure.
 - No Totoro/DRAC campaign and no GitHub Actions compute campaign was run.
 
 ## Resume
 
-Close [PR #1208](https://github.com/itchyshin/gllvmTMB/pull/1208) only through
-the exact-head gate above. Preserve the stated API and deferred boundaries.
-After merge, verify the post-merge check and deployed article, then close this
-lane without starting the separate main-lane follow-up.
+From `/private/tmp/gllvmTMB-article-final`, inspect `git status --short`, run
+`Rscript --vanilla dev/trait-axis-bridge/verify-article.R`, then continue the
+single documentation PR through CI, merge, and live pkgdown verification.
+Preserve the stated API and deferred boundaries and do not start the separate
+intercept-plus-slope design in this lane.

@@ -46,13 +46,18 @@ species, or the response columns?** The answer changes the model.
 | Your data question | The tree relates | Use |
 |---|---|---|
 | Do related species have similar leaf and seed traits? | sampled species | a phylogenetic intercept term |
-| Do related species show similar responses to moisture and canopy cover? | species response columns | `phylo_slope(... | trait)` |
+| Do related species have similar deviations from a C3/C4 latitude gradient? | species response columns | `phylo_slope(... | trait)` |
 
 </div>
 
 The two examples below use simulated Gaussian data and a fixed tree. They show
 which variable the tree connects, not uncertainty calibration. Start with the
 row whose tree tips match the variable on the right of the model term.
+
+```{r packages, message = FALSE}
+library(gllvmTMB)
+library(ape)
+```
 
 ## Example 1: a tree among sampled species
 
@@ -73,10 +78,7 @@ species. Therefore the tree belongs to `species`, not to `trait`.
 
 </div>
 
-```{r species-axis-data, include = FALSE}
-library(gllvmTMB)
-library(ape)
-
+```{r species-axis-data}
 set.seed(24)
 species <- sprintf("plant_%02d", 1:12)
 traits <- c("leaf_area", "leaf_mass", "seed_mass", "stem_height")
@@ -124,7 +126,7 @@ together across phylogenetically related species: positive diagonal entries are
 trait-specific variation, while off-diagonal entries are cross-trait
 association. It is not a model of species-specific elevation slopes.
 
-```{r morphology-data, fig.width = 8.4, fig.height = 6.8, fig.cap = "Example 1 in the observed long-data layout. Grey points are five population measurements within each sampled species; amber points are species means. The four panels are the morphology response columns, while the tree belongs to the sampled-species axis.", fig.alt = "Four panels showing leaf area, leaf mass, seed mass, and stem height. Each panel has five pale grey population observations for each of twelve plant species and one amber species mean."}
+```{r morphology-data, echo = FALSE, fig.width = 8.4, fig.height = 6.8, fig.cap = "Example 1 in the observed long-data layout. Grey points are five population measurements within each sampled species; amber points are species means. The four panels are the morphology response columns, while the tree belongs to the sampled-species axis.", fig.alt = "Four panels showing leaf area, leaf mass, seed mass, and stem height. Each panel has five pale grey population observations for each of twelve plant species and one amber species mean."}
 morphology_plot <- transform(
   morphology,
   trait_label = factor(
@@ -143,7 +145,7 @@ ggplot(morphology_plot, aes(x = species, y = value)) +
   facet_wrap(~ trait_label, ncol = 2, scales = "free_y") +
   labs(
     title = "Morphology is observed repeatedly within sampled species",
-    subtitle = "Grey points: five populations per species; amber circles: species means",
+    subtitle = "Grey points: five populations per species;\namber circles: species means",
     x = "Sampled plant species", y = "Simulated morphology value"
   ) +
   theme_article +
@@ -155,7 +157,7 @@ ggplot(morphology_plot, aes(x = species, y = value)) +
   )
 ```
 
-```{r morphology-wide, fig.width = 8.4, fig.height = 6.5, fig.cap = "The same Example 1 data after a wide-data summary: each row is a sampled species and each morphology trait is a response column. Cells show standardised species means across the five population measurements; the plot is a data-layout guide, not the fitted model input.", fig.alt = "A twelve by four heatmap. Rows are sampled plant species and columns are leaf area, leaf mass, seed mass, and stem height. Each labelled tile gives a standardised species mean."}
+```{r morphology-wide, echo = FALSE, fig.width = 8.4, fig.height = 6.5, fig.cap = "The same Example 1 data after a wide-data summary: each row is a sampled species and each morphology trait is a response column. Cells show standardised species means across the five population measurements; the plot is a data-layout guide, not the fitted model input.", fig.alt = "A twelve by four heatmap. Rows are sampled plant species and columns are leaf area, leaf mass, seed mass, and stem height. Each labelled tile gives a standardised species mean."}
 morphology_means <- aggregate(value ~ species + trait, data = morphology, FUN = mean)
 morphology_wide <- reshape(
   morphology_means, idvar = "species", timevar = "trait", direction = "wide"
@@ -188,7 +190,7 @@ ggplot(morphology_wide_plot, aes(x = trait, y = species, fill = value)) +
   scale_colour_identity() +
   labs(
     title = "Morphology data in wide form",
-    subtitle = "Each row is one sampled plant species; the four trait measurements are response columns",
+    subtitle = "Each row is one sampled plant species;\nthe four trait measurements are response columns",
     x = "Response columns: morphology traits", y = "Rows: sampled plant species"
   ) +
   theme_article +
@@ -206,13 +208,25 @@ If instead species name the response columns, use the next model.
 
 ## Example 2: a tree among species response columns
 
-**Question.** At a set of vegetation plots, how do I model tree-aligned
-differences in plant-species moisture and canopy-cover responses?
+**Question.** Across a latitude gradient, how can I estimate different average
+responses for C3 and C4 plant species while allowing related species to have
+similar species-specific deviations from those averages?
 
-Now each plot is a sampling unit, and each species is one Gaussian response
-column. The same tree tips must therefore match `trait`. The phylogeny relates
-the **coefficient deviations across species columns**, while the rows remain
-independent plots.
+Each site is now a row of the community matrix and each plant species is a
+response column. To stay inside the currently tested scope, the response is a
+continuous Gaussian intensity: a simulated log-biomass index. Presence–absence
+and count responses need the deferred non-Gaussian column-slope extension.
+
+The example separates three different jobs. C3 and C4 are photosynthetic
+pathways; contrasting their latitude responses is a simple way to ask whether
+two ecological strategies follow different environmental gradients.
+`latitude` changes among sites. `pathway` is species-column metadata copied
+down the long data for each species. The package calls its response-column
+identifier `trait`; here each `trait` level is a plant species. The fixed
+`latitude:pathway` term estimates the two pathway mean gradients.
+`phylo_slope(latitude | trait)` then lets the latitude coefficient vary among
+species columns, with related species receiving correlated deviations from
+their pathway mean.
 
 <div class="table-responsive">
 
@@ -220,149 +234,175 @@ independent plots.
 |---|---|---|
 | `site_id` | one vegetation plot | no |
 | `trait` | the plant species response column | **yes** |
-| `moisture`, `canopy` | plot-level predictors | no |
+| `latitude` | a site-level predictor, repeated for every species at that site | no |
+| `pathway` | a C3/C4 attribute of each species column | no — it groups tips, but does not identify them |
 
 </div>
 
-```{r column-axis-data, include = FALSE}
+```{r column-axis-data}
 set.seed(25)
 sites <- data.frame(
   site_id = sprintf("site_%02d", 1:50),
-  moisture = rnorm(50),
-  canopy = rnorm(50)
+  latitude = as.numeric(scale(seq(38, 62, length.out = 50) + rnorm(50, sd = 0.7)))
 )
-Sigma_predictor_truth <- matrix(
-  c(0.35^2, -0.45 * 0.35 * 0.25,
-    -0.45 * 0.35 * 0.25, 0.25^2),
-  nrow = 2,
-  dimnames = list(c("moisture", "canopy"), c("moisture", "canopy"))
+species_info <- data.frame(
+  trait = factor(species, levels = species),
+  pathway = factor(rep(c("C3", "C4"), each = 6), levels = c("C3", "C4"))
 )
-slope_deviation <- t(chol(A)) %*%
-  matrix(rnorm(length(species) * 2), nrow = length(species)) %*%
-  chol(Sigma_predictor_truth)
-slope_deviation <- sweep(slope_deviation, 2, colMeans(slope_deviation), FUN = "-")
-moisture_deviation <- slope_deviation[, "moisture"]
-canopy_deviation <- slope_deviation[, "canopy"]
+pathway_slope <- c(C3 = -0.30, C4 = 0.55)
+latitude_deviation <- 0.18 * as.numeric(
+  t(chol(A)) %*% rnorm(length(species))
+)
+species_intercept <- 0.7 + rnorm(length(species), sd = 0.18)
+
+site_scores <- matrix(rnorm(nrow(sites) * 2), ncol = 2)
+species_loadings <- matrix(rnorm(length(species) * 2, sd = 0.18), ncol = 2)
 
 community <- do.call(rbind, lapply(seq_along(species), function(j) {
+  pathway_j <- as.character(species_info$pathway[[j]])
   data.frame(
     site_id = sites$site_id,
-    moisture = sites$moisture,
-    canopy = sites$canopy,
+    latitude = sites$latitude,
     trait = factor(species[[j]], levels = species),
-    value = 0.4 + (0.60 + moisture_deviation[[j]]) * sites$moisture +
-      (-0.25 + canopy_deviation[[j]]) * sites$canopy + rnorm(nrow(sites), sd = 0.35)
+    pathway = factor(pathway_j, levels = c("C3", "C4")),
+    log_biomass = species_intercept[[j]] +
+      (pathway_slope[[pathway_j]] + latitude_deviation[[j]]) * sites$latitude +
+      as.numeric(site_scores %*% species_loadings[j, ]) +
+      rnorm(nrow(sites), sd = 0.25)
   )
 }))
+
+head(species_info, 4)
+head(community[c("site_id", "trait", "pathway", "latitude", "log_biomass")], 6)
 ```
 
 ```{r column-axis-fit}
 fit_columns <- gllvmTMB(
-  value ~ 0 + trait + moisture + canopy +
-    phylo_slope(moisture + canopy | trait, tree = tree),
+  log_biomass ~ 0 + trait + latitude:pathway +
+    phylo_slope(latitude | trait, tree = tree) +
+    latent(0 + trait | site_id, d = 2, unique = FALSE),
   data = community, trait = "trait", unit = "site_id", family = gaussian(),
   silent = TRUE
 )
+fixed_pathway_slopes <- coef(fit_columns)[
+  grepl("^latitude:pathway", names(coef(fit_columns)))
+]
+pathway_difference <- unname(
+  fixed_pathway_slopes[["latitude:pathwayC4"]] -
+    fixed_pathway_slopes[["latitude:pathwayC3"]]
+)
+round(c(fixed_pathway_slopes, `C4 minus C3` = pathway_difference), 2)
+
 Sigma_predictor <- extract_Sigma(fit_columns, level = "column_slope")$Sigma
-round(Sigma_predictor, 2)
+round(sqrt(Sigma_predictor["latitude", "latitude"]), 2)
 ```
 
-`phylo_slope()` is a response-column helper, not a fourth covariance mode in
-the 5 × 3 grid. The tree supplies the relationship among species columns;
-`extract_Sigma(..., level = "column_slope")` returns the two-by-two covariance
-of the **moisture and canopy coefficient deviations**. It is neither a
-species-by-species covariance matrix nor trait-level `Sigma`.
+The first two fixed coefficients are the average latitude slopes for C3 and C4
+species. The printed `C4 minus C3` value is their fitted difference in this
+simulated sample. That number is descriptive: this article does not calculate
+a test or interval for the contrast. The extracted standard deviation describes the residual
+species-specific latitude slopes after those pathway means have been fitted.
+The tree determines how those deviations covary across species.
 
-The two diagonal entries say how much the moisture and canopy responses vary
-across species columns. The off-diagonal entry says whether species with a
-larger-than-average moisture response also tend to have a larger-than-average
-canopy response. It does not describe covariance of the observed responses.
-In this simulation, the planted predictor covariance is negative, so the
-points in the next figure tend downward.
+`latent(0 + trait | site_id, d = 2, unique = FALSE)` has a separate job: its
+two latent variables model remaining association among species within sites.
+The explicit `unique = FALSE` leaves independent observation noise to the
+Gaussian residual. This term does not turn `pathway` into a random slope and it
+does not replace the phylogenetic latitude-slope term. Here it is a nuisance
+adjustment rather than a second estimand interpreted in the article.
 
-```{r community-data, fig.width = 8.4, fig.height = 5.8, fig.cap = "Example 2 in long-data form for four selected species. Each point is a site-by-species observation; each line is the planted moisture response at average canopy cover. Here plant species are response columns, so the tree aligns with the `trait` variable.", fig.alt = "A scatterplot of site-by-species observations against soil moisture for four plant species. Pale points surround four directly labelled coloured lines with different slopes."}
-focal_species <- c("plant_01", "plant_04", "plant_08", "plant_12")
+```{r community-data, echo = FALSE, fig.width = 8.4, fig.height = 5.8, fig.cap = "Example 2 for six selected species. Pale points are observed site-by-species log-biomass values. Thin lines are the planted species-specific latitude responses; thick lines are the C3 and C4 pathway means. The phylogenetic slope term models the deviations of thin lines from their pathway mean.", fig.alt = "Two panels labelled C3 and C4. Each contains site-by-species observations, thin species-specific trend lines, and one thick pathway-average line. The C3 mean decreases with latitude and the C4 mean increases."}
+focal_species <- c("plant_01", "plant_03", "plant_05", "plant_07", "plant_09", "plant_11")
 community_focus <- subset(community, trait %in% focal_species)
 community_focus$trait <- factor(as.character(community_focus$trait), levels = focal_species)
 species_effects <- data.frame(
   trait = factor(focal_species, levels = focal_species),
-  intercept = 0.4,
-  moisture = 0.60 + moisture_deviation[match(focal_species, species)],
-  canopy = -0.25 + canopy_deviation[match(focal_species, species)]
+  pathway = species_info$pathway[match(focal_species, species)],
+  intercept = species_intercept[match(focal_species, species)],
+  latitude_slope = pathway_slope[
+    as.character(species_info$pathway[match(focal_species, species)])
+  ] + latitude_deviation[match(focal_species, species)]
 )
-moisture_grid <- seq(min(sites$moisture), max(sites$moisture), length.out = 150)
+latitude_grid <- seq(min(sites$latitude), max(sites$latitude), length.out = 150)
 community_lines <- do.call(rbind, lapply(seq_len(nrow(species_effects)), function(i) {
   data.frame(
-    trait = species_effects$trait[i], moisture = moisture_grid,
-    value = species_effects$intercept[i] + species_effects$moisture[i] * moisture_grid +
-      species_effects$canopy[i] * mean(sites$canopy)
+    trait = species_effects$trait[i], pathway = species_effects$pathway[i],
+    latitude = latitude_grid,
+    log_biomass = species_effects$intercept[i] +
+      species_effects$latitude_slope[i] * latitude_grid
   )
 }))
-community_ends <- do.call(rbind, lapply(split(community_lines, community_lines$trait), function(x) x[nrow(x), ]))
-community_ends$label_y <- community_ends$value + c(0.14, -0.11, 0.14, -0.13)
-species_colours <- c(plant_01 = "#0072B2", plant_04 = "#D55E00", plant_08 = "#009E73", plant_12 = "#7A5195")
+pathway_lines <- do.call(rbind, lapply(levels(species_info$pathway), function(p) {
+  data.frame(
+    pathway = factor(p, levels = levels(species_info$pathway)),
+    latitude = latitude_grid,
+    log_biomass = mean(species_intercept[species_info$pathway == p]) +
+      pathway_slope[[p]] * latitude_grid
+  )
+}))
+pathway_colours <- c(C3 = "#0072B2", C4 = "#D55E00")
 
-ggplot(community_focus, aes(x = moisture, y = value, colour = trait)) +
+ggplot(community_focus, aes(x = latitude, y = log_biomass)) +
   geom_hline(yintercept = 0, linewidth = 0.3, colour = "#C8CDD2") +
-  geom_point(alpha = 0.36, size = 1.6) +
-  geom_line(data = community_lines, aes(group = trait), linewidth = 1.05) +
-  geom_segment(
-    data = community_ends,
-    aes(x = max(moisture_grid), xend = max(moisture_grid) + 0.14, y = value, yend = label_y),
-    inherit.aes = FALSE, linewidth = 0.45
+  geom_point(colour = "#7A8FA0", alpha = 0.30, size = 1.25) +
+  geom_line(
+    data = community_lines, aes(group = trait),
+    colour = "#667788", linewidth = 0.55, alpha = 0.75
   ) +
-  geom_text(
-    data = community_ends,
-    aes(x = max(moisture_grid) + 0.18, y = label_y, label = trait, colour = trait),
-    inherit.aes = FALSE, hjust = 0, size = 3.7, fontface = "bold", show.legend = FALSE
+  geom_line(
+    data = pathway_lines, aes(colour = pathway),
+    linewidth = 1.6, show.legend = FALSE
   ) +
-  scale_colour_manual(values = species_colours) +
-  coord_cartesian(xlim = c(min(moisture_grid), max(moisture_grid) + 0.75), clip = "off") +
+  facet_wrap(~ pathway, nrow = 1) +
+  scale_colour_manual(values = pathway_colours) +
   labs(
-    title = "Species are response columns",
-    subtitle = "Points are site-by-species observations; lines are planted moisture responses at average canopy cover",
-    x = "Soil moisture", y = "Simulated species response"
+    title = "The simulated C3 and C4 gradients differ by design",
+    subtitle = "Thin lines: species-specific responses;\nthick lines: pathway means",
+    x = "Latitude (centred and scaled)", y = "Simulated log-biomass index"
   ) +
   theme_article +
   theme(
     plot.title = element_text(face = "bold", colour = "#173B5E"),
     plot.subtitle = element_text(colour = "#4B5563"),
     panel.grid.minor = element_blank(), panel.grid.major.x = element_blank(),
-    legend.position = "none", plot.margin = margin(5.5, 105, 5.5, 5.5)
+    legend.position = "none"
   )
 ```
 
-```{r community-wide, fig.width = 8.4, fig.height = 7.2, fig.cap = "The same Example 2 layout in wide form. Each row is a site, the first two columns are predictors, and the next four are selected species response columns. Sites are ordered from dry to wet; colours are standardised within columns solely to make the data orientation visible.", fig.alt = "A heatmap with forty-eight sites as rows. Columns are moisture, canopy, and four selected plant species. Moisture changes from blue to red down the rows because sites are ordered from dry to wet."}
+```{r community-wide, echo = FALSE, fig.width = 8.4, fig.height = 7.2, fig.cap = "The same Example 2 data in wide form for eight selected species. Each row is a site, latitude is the row-level predictor, and the remaining columns are species responses. C3/C4 pathway labels belong to species columns, not to sites. Values are standardised within columns only to reveal the data layout.", fig.alt = "A heatmap with sites as rows and nine columns. The first column is latitude; the other eight are plant species labelled C3 or C4. Sites are ordered from low to high latitude."}
+wide_species <- c("plant_01", "plant_02", "plant_04", "plant_06", "plant_07", "plant_08", "plant_10", "plant_12")
+community_wide_source <- subset(community, trait %in% wide_species)
 community_wide <- reshape(
-  community_focus[, c("site_id", "moisture", "canopy", "trait", "value")],
-  idvar = c("site_id", "moisture", "canopy"), timevar = "trait", direction = "wide"
+  community_wide_source[, c("site_id", "latitude", "trait", "log_biomass")],
+  idvar = c("site_id", "latitude"), timevar = "trait", direction = "wide"
 )
-community_wide <- community_wide[order(community_wide$moisture), ]
-community_columns <- c("moisture", "canopy", paste0("value.", focal_species))
+community_wide <- community_wide[order(community_wide$latitude), ]
+community_columns <- c("latitude", paste0("log_biomass.", wide_species))
 community_standardised <- as.data.frame(scale(community_wide[community_columns]))
-names(community_standardised) <- c("moisture", "canopy", focal_species)
+names(community_standardised) <- c("latitude", wide_species)
 community_standardised$site_id <- factor(community_wide$site_id, levels = rev(community_wide$site_id))
 community_wide_plot <- reshape(
   community_standardised,
-  varying = c("moisture", "canopy", focal_species), v.names = "value",
-  timevar = "column", times = c("moisture", "canopy", focal_species), direction = "long"
+  varying = c("latitude", wide_species), v.names = "value",
+  timevar = "column", times = c("latitude", wide_species), direction = "long"
 )
+wide_pathway <- as.character(species_info$pathway[match(wide_species, species)])
 community_wide_plot$column <- factor(
   community_wide_plot$column,
-  levels = c("moisture", "canopy", focal_species),
-  labels = c("moisture\n(predictor)", "canopy\n(predictor)", focal_species)
+  levels = c("latitude", wide_species),
+  labels = c("latitude\n(site predictor)", paste0(wide_species, "\n", wide_pathway))
 )
 
 ggplot(community_wide_plot, aes(x = column, y = site_id, fill = value)) +
   geom_tile(colour = "white", linewidth = 0.25) +
-  geom_vline(xintercept = 2.5, colour = "#173B5E", linewidth = 0.7) +
+  geom_vline(xintercept = 1.5, colour = "#173B5E", linewidth = 0.8) +
   scale_fill_gradient2(
     low = "#2166AC", mid = "white", high = "#B2182B", midpoint = 0,
     name = "Standardised\nvalue"
   ) +
   labs(
-    title = "Community data in wide form",
-    subtitle = "Each row is a site (ordered from dry to wet); predictors sit beside four species response columns",
+    title = "Sites are rows; plant species are response columns",
+    subtitle = "Rows run from low to high latitude;\nC3/C4 is metadata attached to species columns",
     x = "Columns", y = "Rows: sites"
   ) +
   theme_article +
@@ -376,12 +416,18 @@ ggplot(community_wide_plot, aes(x = column, y = site_id, fill = value)) +
   )
 ```
 
-With several predictors, `|` estimates their full covariance and `||` fixes
-their covariance to zero while retaining one variance per predictor. This
-response-column route is currently Gaussian and long-format only. Wide
-column-slope grammar, non-Gaussian or mixed-family slopes, latent predictor
-covariance, simultaneous column-slope sources, and intervals are deliberately
-deferred.
+The current helper's coefficient block contains slopes but no phylogenetic
+random intercept. `0 + trait` supplies a separate fixed intercept for every
+species; it does **not** estimate phylogenetically correlated random intercepts
+among species columns. A future intercept-plus-slope coefficient block needs
+its own design rather than a silent change to `phylo_slope()`.
+
+With several site-level predictors, `|` estimates their full coefficient
+covariance and `||` fixes their covariance to zero while retaining one variance
+per predictor. This response-column route is currently Gaussian and
+long-format only. Wide column-slope grammar, non-Gaussian or mixed-family
+slopes, latent predictor covariance, simultaneous column-slope sources, and
+intervals are deliberately deferred.
 
 ## Choose the axis before the helper
 
@@ -391,11 +437,14 @@ The name after the bar is the practical check:
 # Tree among sampled species: species is the grouping axis
 phylo_latent(0 + trait | species, tree = tree, d = 1, unique = TRUE)
 
-# Tree among response columns: species are the trait levels
-phylo_slope(moisture + canopy | trait, tree = tree)
+# Tree among response columns: latitude varies by site,
+# while its coefficient varies by species column
+phylo_slope(latitude | trait, tree = tree)
 ```
 
 If your scientific question is about trait covariance among sampled species,
 begin with the first form. If it is about environmental-response coefficients
-varying across species columns, begin with the second. For the source ×
-trait-covariance lookup, see the [Formula keyword grid](api-keyword-grid.html).
+varying across species columns, begin with the second. A species attribute such
+as C3/C4 pathway belongs in a fixed interaction such as `latitude:pathway`, not
+inside `phylo_slope()`. For the source × trait-covariance lookup, see the
+[Formula keyword grid](api-keyword-grid.html).

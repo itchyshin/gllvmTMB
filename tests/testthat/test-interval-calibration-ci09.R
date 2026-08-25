@@ -853,6 +853,28 @@ test_that("cross-root reconciliation retains attempts and chooses the first vali
 })
 
 test_that("terminal evidence retains every attempt and exact target disposition", {
+  replay_builder <- paste(
+    readLines(testthat::test_path(
+      "..", "..", "dev", "interval-calibration", "remote",
+      "build-terminal-target-evidence.R"
+    )),
+    collapse = "\n"
+  )
+  expect_match(
+    replay_builder,
+    "interval_validate_post_guard_receipt",
+    fixed = TRUE
+  )
+  expect_match(replay_builder, "interval_apply_post_guard_import", fixed = TRUE)
+  expect_match(replay_builder, "ci09_summarise", fixed = TRUE)
+  expect_match(replay_builder, "ci13_summarise", fixed = TRUE)
+  expect_match(replay_builder, "length(ci14_failed) != 10000L", fixed = TRUE)
+  expect_match(
+    replay_builder,
+    "dir.exists(file.path(root, \"ci15\"))",
+    fixed = TRUE
+  )
+
   artifact_root <- testthat::test_path(
     "..", "..", "docs", "dev-log", "artifacts", "interval-calibration"
   )

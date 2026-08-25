@@ -19,9 +19,23 @@ the all-attempt ledger but do not masquerade as scientific misses.
 The corrected archive was verified both remotely and after local mirroring. Its
 tar member scan found no absolute or parent-traversal path. The adjudicated
 PVT-02 evidence object has SHA-256
-`22933f7eb3edafd39d309320c76c52680f04d21aca5cd9b8530be415bb019c95`.
+`a01298e4869be570bc7f6c6cd702651302309f03fa7b1e673d081fc1f353c4a3`.
 It validates the V2 post-guard receipt against the mirrored shard, replaces the
 later duplicate, and contains exactly 5,000 canonical rows.
+
+The exact replay command is:
+
+```sh
+Rscript --vanilla dev/interval-calibration/remote/build-terminal-target-evidence.R \
+  dev/interval-calibration/results/2026-08-25-retained-campaigns/totoro-r2/2026-08-25-r2 \
+  dev/interval-calibration/results/2026-08-25-retained-campaigns/totoro-r2/derived/interval-adjudicated-evidence.rds \
+  docs/dev-log/artifacts/interval-calibration/2026-08-25-target-recomputation.csv
+```
+
+A clean replay produced a byte-identical target CSV and a numerically identical
+adjudicated object. The replay builder loads the packet-specific frozen source
+trees from the archive and fails closed on the V2 binding, PVT overlay, stored
+aggregate mismatch, CI-14 receipt count/message, or unexpected CI-15 output.
 
 ## All attempts
 
@@ -58,17 +72,20 @@ as misses. Availability is reported but is not a promotion threshold.
 
 | Packet | Exact result | Campaign-level gate |
 | --- | --- | --- |
-| PVT-02 / CI-08 | Trait 1: 1,032/1,081 covered, coverage 0.954672, MCSE 0.006330, lower band 0.942012. Trait 2: 1,037/1,081 covered, coverage 0.959297, MCSE 0.006013, lower band 0.947271. Availability 1,081/5,000 = 0.2162; 3,919 base-fit failures; zero CI failures. | Both exact targets pass. `MEASURED, CERTIFICATE CANDIDATE` pending the independent panel. |
-| CI-09 | Six cells retained 5,000 rows each. Coverage is 0, 0.302215, 0, 0, 0.319953, and 0; lower bands are 0, 0.276372, 0, 0, 0.297280, and 0. Availability ranges from 0.2528 to 0.3886. | All six cells fail. No certificate. |
-| CI-13 | Cell 1 targets have coverage/lower bands 0.941081/0.934367 and 0.931735/0.924545. The other eight targets pass both thresholds. Cell availability is 0.9844, 0.9882, 0.9338, and 0.9618. | Exact campaign fails because every target must pass. No certificate. |
+| PVT-02 / CI-08 | Trait 1: 1,032/1,081 covered, coverage 0.954672, MCSE 0.006330, lower band 0.942012. Trait 2: 1,037/1,081 covered, coverage 0.959297, MCSE 0.006013, lower band 0.947271. Availability 1,081/5,000 = 0.2162; 3,919 base-fit failures; zero CI failures. | Numerical gates pass, but `MEASURED, NOT CERTIFIED -- EXACT PROFILE CONTRACT UNVERIFIED`. The production penalty profile can accept a non-converged constrained refit, permits `abs(achieved-requested) <= 0.05` on `log(V_t)`, and may interpolate after failed interior refits. Retained endpoints lack the diagnostics needed to audit those cases. The public `n=400` status remains `route-only`. |
+| CI-09 | Six cells retained 5,000 rows each. Coverage is 0, 0.302215, 0, 0, 0.319953, and 0; lower bands are 0, 0.276372, 0, 0, 0.297280, and 0. Availability ranges from 0.2528 to 0.3886. | `BLOCKED -- DGP/ESTIMAND IDENTIFIABILITY`. One Gaussian pair per site identifies `Sigma_B + sigma_eps^2 I`, not the scored unit-tier `Sigma_B` correlation. The extreme pattern is invalid calibration evidence, not six clean Fisher-z failures. |
+| CI-13 | Cell 1 (`n=150,d=1`) targets have coverage/lower bands 0.941081/0.934367 and 0.931735/0.924545. The other eight targets pass both thresholds: cell 2 (`n=150,d=2`), cell 3 (`n=400,d=1`), and cell 4 (`n=400,d=2`). Cell availability is 0.9844, 0.9882, 0.9338, and 0.9618. | Cell 1 is a measured failure. Cells 2--4 are `MEASURED, CELL-SPECIFIC CERTIFICATE CANDIDATES`; the route remains globally limited and no result transfers to rotated or unconstrained loadings. |
 | CI-10 | All 18 valid-environment rep-3 base fits failed before the 499-bootstrap stage. | Successful nested-bootstrap cost remains unmeasured; the full campaign was not authorised or run. |
 | CI-14 | The exact 10,000-row manifest produced 10,000 identical frozen-source guard failures, zero canonical scientific rows, and no aggregate. | `BLOCKED -- PROVENANCE`; no calibration estimate. |
 | CI-15 | The corrected sequence stopped after CI-14. No CI-15 root or scientific attempt exists. | `BLOCKED -- PREDECESSOR`; no calibration estimate. |
 
 Stored and recomputed packet summaries were identical for PVT-02, CI-09, and
-CI-13. PVT-02's corrected campaign verdict is `TRUE`; CI-09 and CI-13 are
-`FALSE`. CI-14 and CI-15 are not scored as coverage failures because no valid
-scientific campaign ran.
+CI-13. The mechanical PVT verdict is `TRUE`, but Noether's profile-fidelity
+review blocks promotion of that value to an exact LR certificate. CI-09's
+mechanical verdict is `FALSE`, but Fisher/Noether classify the campaign itself
+as invalid for its claimed estimand. CI-13's global verdict is `FALSE`; its
+cell-specific target results remain explicit. CI-14 and CI-15 are not scored as
+coverage failures because no valid scientific campaign ran.
 
 ## Claim boundary
 

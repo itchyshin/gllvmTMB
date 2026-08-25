@@ -106,7 +106,12 @@ The active retry library was checked before CI-15: `Matrix` 1.7-5 and `ape`
 5.8-1 were both present, alongside the ten previously checked dependencies.
 The immutable audit receipts are
 `2026-08-25-r2/deployment/runtime-dependency-audit.tsv` and
-`2026-08-25-r2/deployment/post-guard-receipt.rds` on Totoro. This closes the
+`2026-08-25-r2/deployment/post-guard-receipt-v2.rds` on Totoro. The V2 receipt
+binds the canonical shard by its true SHA-256,
+`9088ed70f21c9884f098bc403d51dfee2709c0217d5159d060721b1b4d9aadac`.
+The earlier `post-guard-receipt.rds`, whose field was populated with an MD5
+rather than a SHA-256, is preserved but explicitly superseded and cannot pass
+the launcher gate. This closes the
 specific risk that a missing phylogenetic dependency could be misclassified as
 a CI-15 scientific failure; it does not promote any interval route.
 

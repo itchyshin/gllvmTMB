@@ -191,7 +191,9 @@ campaign dependency set. It contains `Matrix` 1.7-5 and `ape` 5.8-1 as well as
 the ten dependencies already listed in the preparation receipt. Totoro retains
 the immutable audit at
 `2026-08-25-r2/deployment/runtime-dependency-audit.tsv` and the canonical-import
-decision at `2026-08-25-r2/deployment/post-guard-receipt.rds`.
+decision at `2026-08-25-r2/deployment/post-guard-receipt-v2.rds`. The V2
+receipt binds the imported shard by its true SHA-256; the retained V1 receipt
+used an MD5 in that field, is superseded, and is rejected by the current gate.
 
 ## Approval and dispatch-readiness checkpoint
 

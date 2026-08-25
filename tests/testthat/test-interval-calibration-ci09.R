@@ -306,6 +306,7 @@ test_that("remote orchestration writes immutable shards and freezes exact task g
   remote_root <- testthat::test_path(
     "..", "..", "dev", "interval-calibration", "remote"
   )
+  remote_root <- normalizePath(remote_root)
   source(file.path(remote_root, "shard-io.R"), local = TRUE)
   source(file.path(remote_root, "build-task-manifests.R"), local = TRUE)
 
@@ -534,6 +535,12 @@ test_that("remote launchers enforce frozen sources, sequential-wave limits, and 
   expect_match(sequence, "mkdir \"$lock\"", fixed = TRUE)
   expect_match(sequence, "validate-post-guard-receipt.R", fixed = TRUE)
   expect_match(sequence, "INTERVAL_CALIBRATION_TOTORO_SEQUENCE_FAILED_V1", fixed = TRUE)
+  wave <- paste(
+    readLines(file.path(remote_root, "run-totoro-wave.sh"), warn = FALSE),
+    collapse = "\n"
+  )
+  expect_match(wave, "import-post-guard-receipt.R", fixed = TRUE)
+  expect_match(wave, "remaining-task-manifest.tsv", fixed = TRUE)
 })
 
 test_that("runtime dependency preflight fails closed with exact missing packages", {
@@ -587,8 +594,23 @@ test_that("post-guard receipts bind the environment and canonical identity polic
     return(invisible())
   }
   manifest <- interval_build_task_manifest("PVT02")
+  shard_path <- tempfile("post-guard-shard-", fileext = ".rds")
+  on.exit(unlink(shard_path), add = TRUE)
+  shard <- list(
+    schema = "INTERVAL_CALIBRATION_CANONICAL_SHARD_V1",
+    packet = "PVT02",
+    cell_id = 1L,
+    rep = 50001L,
+    seed = 800050001L,
+    scientific_provenance = list(
+      scientific_source_sha = interval_approved_source("PVT02")
+    ),
+    attempt = data.frame(endpoint_reason = "fit_failed"),
+    runner_provenance = list()
+  )
+  saveRDS(shard, shard_path, version = 3L)
   receipt <- list(
-    schema = "INTERVAL_CALIBRATION_POST_GUARD_RECEIPT_V1",
+    schema = "INTERVAL_CALIBRATION_POST_GUARD_RECEIPT_V2",
     packet = "PVT02",
     cell_id = 1L,
     rep = 50001L,
@@ -600,9 +622,40 @@ test_that("post-guard receipts bind the environment and canonical identity polic
       interval_runtime_packages
     ),
     scientific_outcome = "fit_failed",
-    canonical_action = "import"
+    canonical_action = "import",
+    shard_path = shard_path,
+    shard_sha256 = interval_sha256_file(shard_path)
   )
   expect_silent(interval_validate_post_guard_receipt(receipt, manifest))
+
+  mirrored_receipt <- receipt
+  mirrored_receipt$shard_path <- "/remote/immutable/post-guard-shard.rds"
+  expect_error(
+    interval_validate_post_guard_receipt(mirrored_receipt, manifest),
+    "readable SHA-256-bound shard",
+    fixed = TRUE
+  )
+  expect_silent(
+    interval_validate_post_guard_receipt(
+      mirrored_receipt,
+      manifest,
+      shard_path_override = shard_path
+    )
+  )
+  bad_hash <- receipt
+  bad_hash$shard_sha256 <- paste(rep("0", 64L), collapse = "")
+  expect_error(
+    interval_validate_post_guard_receipt(bad_hash, manifest),
+    "post-guard shard SHA-256 does not match",
+    fixed = TRUE
+  )
+  expect_true(exists("interval_post_guard_import_plan", mode = "function"))
+  if (exists("interval_post_guard_import_plan", mode = "function")) {
+    plan <- interval_post_guard_import_plan(receipt, manifest)
+    expect_identical(nrow(plan$remaining_tasks), 4999L)
+    expect_identical(plan$imported_task$rep, 50001L)
+    expect_false(any(plan$remaining_tasks$rep == 50001L))
+  }
   receipt$canonical_action <- "preflight_only"
   expect_error(
     interval_validate_post_guard_receipt(receipt, manifest),
@@ -611,7 +664,149 @@ test_that("post-guard receipts bind the environment and canonical identity polic
   )
   receipt$rep <- 49999L
   receipt$seed <- 800049999L
+  shard$rep <- receipt$rep
+  shard$seed <- receipt$seed
+  saveRDS(shard, shard_path, version = 3L)
+  receipt$shard_sha256 <- interval_sha256_file(shard_path)
   expect_silent(interval_validate_post_guard_receipt(receipt, manifest))
+  if (exists("interval_post_guard_import_plan", mode = "function")) {
+    plan <- interval_post_guard_import_plan(receipt, manifest)
+    expect_identical(nrow(plan$remaining_tasks), 5000L)
+    expect_identical(nrow(plan$imported_task), 0L)
+  }
+})
+
+test_that("post-guard import replaces the campaign duplicate before adjudication", {
+  remote_root <- testthat::test_path(
+    "..", "..", "dev", "interval-calibration", "remote"
+  )
+  source(file.path(remote_root, "shard-io.R"), local = TRUE)
+  expect_true(exists("interval_apply_post_guard_import", mode = "function"))
+  if (!exists("interval_apply_post_guard_import", mode = "function")) {
+    return(invisible())
+  }
+  canonical <- data.frame(
+    packet = "PVT02",
+    cell_id = 1L,
+    rep = 50001L,
+    seed = 800050001L,
+    origin = "campaign",
+    stringsAsFactors = FALSE
+  )
+  imported <- canonical
+  imported$origin <- "post_guard"
+  receipt <- list(
+    packet = "PVT02",
+    cell_id = 1L,
+    rep = 50001L,
+    seed = 800050001L,
+    canonical_action = "import"
+  )
+  out <- interval_apply_post_guard_import(canonical, receipt, imported)
+  expect_identical(nrow(out), 1L)
+  expect_identical(out$origin, "post_guard")
+})
+
+test_that("post-guard import CLI copies the signed shard and removes its task", {
+  remote_root <- testthat::test_path(
+    "..", "..", "dev", "interval-calibration", "remote"
+  )
+  remote_root <- normalizePath(remote_root)
+  repo_root <- normalizePath(file.path(remote_root, "..", "..", ".."))
+  source(file.path(remote_root, "shard-io.R"), local = TRUE)
+  source(file.path(remote_root, "build-task-manifests.R"), local = TRUE)
+  scratch <- tempfile("post-guard-import-")
+  dir.create(scratch)
+  on.exit(unlink(scratch, recursive = TRUE), add = TRUE)
+  guard_root <- file.path(scratch, "guard")
+  out_root <- file.path(scratch, "campaign")
+  dir.create(file.path(guard_root, "canonical"), recursive = TRUE)
+  dir.create(file.path(guard_root, "operations"))
+  dir.create(file.path(out_root, "canonical"), recursive = TRUE)
+  dir.create(file.path(out_root, "operations"))
+  manifest <- interval_build_task_manifest("PVT02")[1L, , drop = FALSE]
+  manifest_path <- file.path(scratch, "manifest.tsv")
+  utils::write.table(
+    manifest,
+    manifest_path,
+    sep = "\t",
+    row.names = FALSE,
+    quote = FALSE
+  )
+  shard_path <- file.path(
+    guard_root,
+    "canonical",
+    "pvt02-c01-r50001.rds"
+  )
+  shard <- list(
+    schema = "INTERVAL_CALIBRATION_CANONICAL_SHARD_V1",
+    packet = "PVT02",
+    cell_id = 1L,
+    rep = 50001L,
+    seed = 800050001L,
+    attempt_version = 1L,
+    scientific_provenance = list(
+      scientific_source_sha = interval_approved_source("PVT02")
+    ),
+    attempt = data.frame(endpoint_reason = "fit_failed"),
+    runner_provenance = list(runtime_dependencies = character())
+  )
+  saveRDS(shard, shard_path, version = 3L)
+  for (state in c("started", "completed")) {
+    saveRDS(
+      list(state = state),
+      file.path(
+        guard_root,
+        "operations",
+        sprintf("pvt02-c01-r50001-a01-%s.rds", state)
+      ),
+      version = 3L
+    )
+  }
+  receipt <- list(
+    schema = "INTERVAL_CALIBRATION_POST_GUARD_RECEIPT_V2",
+    packet = "PVT02",
+    cell_id = 1L,
+    rep = 50001L,
+    seed = 800050001L,
+    scientific_source_sha = interval_approved_source("PVT02"),
+    environment_valid = TRUE,
+    runtime_dependencies = stats::setNames(
+      rep("test", length(interval_runtime_packages)),
+      interval_runtime_packages
+    ),
+    scientific_outcome = "fit_failed",
+    canonical_action = "import",
+    shard_path = shard_path,
+    shard_sha256 = interval_sha256_file(shard_path)
+  )
+  receipt_path <- file.path(scratch, "receipt.rds")
+  remaining_path <- file.path(out_root, "remaining.tsv")
+  saveRDS(receipt, receipt_path, version = 3L)
+  command <- c(
+    "--vanilla",
+    file.path(remote_root, "import-post-guard-receipt.R"),
+    "PVT02",
+    manifest_path,
+    receipt_path,
+    out_root,
+    remaining_path
+  )
+  output <- withr::with_dir(
+    repo_root,
+    system2(
+      file.path(R.home("bin"), "Rscript"),
+      shQuote(command),
+      stdout = TRUE,
+      stderr = TRUE
+    )
+  )
+  expect_null(attr(output, "status"))
+  expect_match(output, "INTERVAL_POST_GUARD_IMPORT_READY", fixed = TRUE)
+  expect_true(file.exists(file.path(out_root, "canonical", basename(shard_path))))
+  expect_true(file.exists(file.path(out_root, "import", "post-guard-import.rds")))
+  remaining <- utils::read.delim(remaining_path, stringsAsFactors = FALSE)
+  expect_identical(nrow(remaining), 0L)
 })
 
 test_that("cross-root reconciliation retains attempts and chooses the first valid canonical row", {

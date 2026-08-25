@@ -35,7 +35,11 @@ interval_assert_runtime_dependencies <- function(
   )
 }
 
-interval_validate_post_guard_receipt <- function(receipt, task_manifest) {
+interval_validate_post_guard_receipt <- function(
+  receipt,
+  task_manifest,
+  shard_path_override = NULL
+) {
   required_fields <- c(
     "schema",
     "packet",
@@ -46,7 +50,9 @@ interval_validate_post_guard_receipt <- function(receipt, task_manifest) {
     "environment_valid",
     "runtime_dependencies",
     "scientific_outcome",
-    "canonical_action"
+    "canonical_action",
+    "shard_path",
+    "shard_sha256"
   )
   if (!is.list(receipt) || any(!required_fields %in% names(receipt))) {
     interval_stop("post-guard receipt is incomplete")
@@ -54,7 +60,7 @@ interval_validate_post_guard_receipt <- function(receipt, task_manifest) {
   if (
     !identical(
       receipt$schema,
-      "INTERVAL_CALIBRATION_POST_GUARD_RECEIPT_V1"
+      "INTERVAL_CALIBRATION_POST_GUARD_RECEIPT_V2"
     )
   ) {
     interval_stop("post-guard receipt has the wrong schema")
@@ -87,6 +93,57 @@ interval_validate_post_guard_receipt <- function(receipt, task_manifest) {
   }
   interval_scalar_string(receipt$scientific_outcome, "scientific_outcome")
   action <- interval_scalar_string(receipt$canonical_action, "canonical_action")
+  receipt_shard_path <- interval_scalar_string(receipt$shard_path, "shard_path")
+  shard_path <- if (is.null(shard_path_override)) {
+    receipt_shard_path
+  } else {
+    interval_scalar_string(shard_path_override, "shard_path_override")
+  }
+  shard_sha256 <- interval_scalar_string(receipt$shard_sha256, "shard_sha256")
+  if (!grepl("^[0-9a-f]{64}$", shard_sha256) || !file.exists(shard_path)) {
+    interval_stop("post-guard receipt lacks a readable SHA-256-bound shard")
+  }
+  if (!identical(interval_sha256_file(shard_path), shard_sha256)) {
+    interval_stop("post-guard shard SHA-256 does not match")
+  }
+  shard <- readRDS(shard_path)
+  shard_outcome <- if (
+    is.data.frame(shard$attempt) &&
+      "endpoint_reason" %in% names(shard$attempt) &&
+      nrow(shard$attempt) == 1L
+  ) {
+    shard$attempt$endpoint_reason[[1L]]
+  } else {
+    NA_character_
+  }
+  if (
+    !is.list(shard) ||
+      !identical(shard$schema, "INTERVAL_CALIBRATION_CANONICAL_SHARD_V1") ||
+      !identical(shard$packet, packet) ||
+      !identical(shard$cell_id, cell_id) ||
+      !identical(shard$rep, rep) ||
+      !identical(shard$seed, seed) ||
+      !identical(
+        shard$scientific_provenance$scientific_source_sha,
+        receipt$scientific_source_sha
+      ) ||
+      !identical(shard_outcome, receipt$scientific_outcome)
+  ) {
+    interval_stop("post-guard receipt conflicts with its bound shard")
+  }
+  shard_dependencies <- shard$runner_provenance$runtime_dependencies
+  if (
+    length(shard_dependencies) &&
+      (
+        any(!names(shard_dependencies) %in% names(receipt$runtime_dependencies)) ||
+          !identical(
+            unname(receipt$runtime_dependencies[names(shard_dependencies)]),
+            unname(shard_dependencies)
+          )
+      )
+  ) {
+    interval_stop("post-guard dependency versions conflict with its bound shard")
+  }
   hit <-
     task_manifest$packet == packet &
     task_manifest$cell_id == cell_id &
@@ -106,6 +163,64 @@ interval_validate_post_guard_receipt <- function(receipt, task_manifest) {
     interval_stop("out-of-manifest post-guard identity must be preflight_only")
   }
   invisible(TRUE)
+}
+
+interval_post_guard_import_plan <- function(receipt, task_manifest) {
+  interval_validate_post_guard_receipt(receipt, task_manifest)
+  hit <-
+    task_manifest$packet == receipt$packet &
+    task_manifest$cell_id == receipt$cell_id &
+    task_manifest$rep == receipt$rep &
+    task_manifest$seed == receipt$seed
+  imported <- task_manifest[FALSE, , drop = FALSE]
+  remaining <- task_manifest
+  if (identical(receipt$canonical_action, "import")) {
+    if (sum(hit) != 1L) {
+      interval_stop("post-guard import identity is absent or duplicated")
+    }
+    imported <- task_manifest[hit, , drop = FALSE]
+    remaining <- task_manifest[!hit, , drop = FALSE]
+  }
+  rownames(imported) <- NULL
+  rownames(remaining) <- NULL
+  list(imported_task = imported, remaining_tasks = remaining)
+}
+
+interval_apply_post_guard_import <- function(canonical, receipt, imported) {
+  if (
+    !is.data.frame(canonical) ||
+      !is.data.frame(imported) ||
+      nrow(imported) != 1L
+  ) {
+    interval_stop("post-guard adjudication requires one imported canonical row")
+  }
+  if (!identical(receipt$canonical_action, "import")) {
+    interval_stop("post-guard adjudication receipt is not an import")
+  }
+  if (!identical(names(imported), names(canonical))) {
+    interval_stop("post-guard imported row has a different schema")
+  }
+  identity_columns <- intersect(
+    c("packet", "cell_id", "rep", "seed"),
+    names(canonical)
+  )
+  if (!all(c("rep", "seed") %in% identity_columns)) {
+    interval_stop("canonical rows lack the post-guard identity columns")
+  }
+  hit <- rep(TRUE, nrow(canonical))
+  for (column in identity_columns) {
+    value <- if (column %in% names(receipt)) {
+      receipt[[column]]
+    } else {
+      imported[[column]][[1L]]
+    }
+    hit <- hit & canonical[[column]] == value
+  }
+  if (sum(hit) != 1L) {
+    interval_stop("post-guard canonical identity is absent or duplicated")
+  }
+  canonical[hit, ] <- imported
+  canonical
 }
 
 interval_reconcile_cross_root_attempts <- function(attempts) {

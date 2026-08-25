@@ -80,11 +80,21 @@ cp "$task_tsv" "$out_root/task-manifest.tsv"
 Rscript --vanilla dev/interval-calibration/remote/write-session-receipt.R \
   "$packet" "$out_root/task-manifest.tsv" "$source_root" "$out_root" \
   "$out_root/session/environment.rds"
+remaining_tsv=$out_root/remaining-task-manifest.tsv
+if [ "$packet" = "PVT02" ]; then
+  Rscript --vanilla dev/interval-calibration/remote/import-post-guard-receipt.R \
+    "$packet" "$task_tsv" \
+    "$campaign_base/deployment/post-guard-receipt-v2.rds" \
+    "$out_root" "$remaining_tsv"
+else
+  cp "$task_tsv" "$remaining_tsv"
+fi
 task_args=$(mktemp)
-tail -n +2 "$task_tsv" |
+tail -n +2 "$remaining_tsv" |
   awk -F '\t' -v p="$packet" '$1 == p {print $2, $3, $4, $5}' > "$task_args"
-expected=$(wc -l < "$task_args" | tr -d ' ')
-if [ "$expected" -eq 0 ]; then
+expected=$(($(wc -l < "$task_tsv") - 1))
+to_run=$(wc -l < "$task_args" | tr -d ' ')
+if [ "$expected" -eq 0 ] || [ "$to_run" -eq 0 ]; then
   echo "empty task manifest for $packet" >&2
   exit 65
 fi

@@ -68,7 +68,7 @@ navbar:
         href: articles/spatial-models.html
       - text: Phylogenetic covariance among traits
         href: articles/phylogenetic-gllvm.html
-      - text: "Traits along gradients: where does the tree go?"
+      - text: "Where does the phylogeny belong?"
         href: articles/where-does-the-tree-go.html
       - text: Phylogenetic ordinal and nominal PGLMMs
         href: articles/phylogenetic-categorical-pglmm.html
@@ -426,8 +426,7 @@ reference:
       Only the functions listed here are deprecated; the broader animal, phylogenetic, spatial and
       kernel APIs remain current. The scalar family (one shared variance) was soft-deprecated as of
       0.5.0 and is now indep(..., common = TRUE). The *_unique diagonal companion was soft-deprecated
-      earlier, as of 0.2.0, and folds into latent(). The standalone slope keywords are superseded by
-      the reduced-rank latent / indep / dep slope forms. Existing calls keep working and warn once
+      earlier, as of 0.2.0, and folds into latent(). Existing compatibility calls keep working and warn once
       per session.
     contents:
     - scalar
@@ -440,8 +439,15 @@ reference:
     - phylo_unique
     - spatial_unique
     - kernel_unique
-    - animal_slope
+
+  - title: Response-column slope helpers
+    desc: Gaussian long-format predictor-only slope covariance; the response-column factor on the right of | is the relationship axis.
+    contents:
+    - slope
     - phylo_slope
+    - animal_slope
+    - kernel_slope
+    - spatial_slope
 
   - title: Deprecated and compatibility aliases
     desc: Soft-deprecated spellings and gllvm-style accessors retained for migration; new code should prefer the canonical keywords and extract_*() functions

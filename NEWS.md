@@ -43,6 +43,12 @@ and this candidate neither expands nor promotes either topic.
 
 # gllvmTMB 0.7.0 (development history retained for provenance)
 
+* **Response-column slope helpers.** `slope()`, `phylo_slope()`,
+  `animal_slope()`, `kernel_slope()`, and `spatial_slope()` support Gaussian
+  long-format, predictor-only slopes when the RHS is the resolved response
+  column. Wide-data syntax, non-Gaussian column slopes, and uncertainty
+  intervals for the predictor covariance remain deferred.
+
 * **`extract_Sigma_B()` / `extract_Sigma_W()` now warn on call (#1194).**
   The wrappers stay exported and still return the historical `Sigma_B` /
   `R_B` and `Sigma_W` / `R_W` names. Callers of the old spelling now see

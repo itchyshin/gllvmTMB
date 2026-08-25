@@ -1,5 +1,6 @@
 ^\.agents$
 ^\.codex$
+^\.unlazy$
 ^results$
 ^\.github$
 ^\.git$

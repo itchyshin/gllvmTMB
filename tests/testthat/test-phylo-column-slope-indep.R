@@ -152,21 +152,70 @@ test_that("full column-slope covariance and helpers preserve their contracts", {
     fx,
     value ~ 0 + trait + animal_slope(lat + temp | trait, A = fx$A)
   )
+  animal_Ainv_full <- .fit_column_slope(
+    fx,
+    value ~ 0 + trait + animal_slope(lat + temp | trait, Ainv = solve(fx$A))
+  )
   animal_Ainv <- .fit_column_slope(
     fx,
     value ~ 0 + trait + animal_slope(lat + temp || trait, Ainv = solve(fx$A))
   )
-  ped <- data.frame(id = fx$traits, sire = NA_character_, dam = NA_character_)
+  ped <- data.frame(
+    id = fx$traits,
+    sire = c(NA_character_, NA_character_,
+      rep(fx$traits[[1L]], length(fx$traits) - 2L)),
+    dam = c(NA_character_, NA_character_,
+      rep(fx$traits[[2L]], length(fx$traits) - 2L))
+  )
+  ped_Ainv <- gllvmTMB::pedigree_to_Ainv_sparse(ped)
+  ped_A <- solve(as.matrix(ped_Ainv))
   animal_ped <- .fit_column_slope(
     fx,
     value ~ 0 + trait + animal_slope(lat + temp | trait, pedigree = ped)
   )
+  animal_ped_A <- .fit_column_slope(
+    fx,
+    value ~ 0 + trait + animal_slope(lat + temp | trait, A = ped_A)
+  )
+  animal_ped_Ainv <- .fit_column_slope(
+    fx,
+    value ~ 0 + trait + animal_slope(lat + temp | trait, Ainv = ped_Ainv)
+  )
   expect_identical(animal_A$use$phylo_column_slope_mode, "dep")
+  expect_identical(animal_Ainv_full$use$phylo_column_slope_mode, "dep")
   expect_identical(animal_Ainv$use$phylo_column_slope_mode, "indep")
   expect_identical(animal_ped$use$phylo_column_slope_mode, "dep")
+  expect_equal(animal_A$opt$objective, animal_Ainv_full$opt$objective,
+               tolerance = 1e-8)
+  expect_equal(
+    extract_Sigma(animal_A, level = "column_slope")$Sigma,
+    extract_Sigma(animal_Ainv_full, level = "column_slope")$Sigma,
+    tolerance = 1e-8
+  )
   expect_identical(extract_Sigma(animal_A, level = "column_slope")$source$type, "animal")
+  expect_identical(extract_Sigma(animal_Ainv_full, level = "column_slope")$source$type, "animal")
   expect_identical(extract_Sigma(animal_Ainv, level = "column_slope")$source$type, "animal")
   expect_identical(extract_Sigma(animal_ped, level = "column_slope")$source$type, "animal")
+  expect_equal(animal_ped$opt$objective, animal_ped_A$opt$objective,
+               tolerance = 1e-8)
+  expect_equal(animal_ped$opt$objective, animal_ped_Ainv$opt$objective,
+               tolerance = 1e-8)
+  expect_equal(
+    as.matrix(animal_ped$tmb_data$Ainv_phy_slope),
+    as.matrix(animal_ped_A$tmb_data$Ainv_phy_slope),
+    ## Dense A inputs retain the protected 1e-8 covariance ridge.
+    tolerance = 1e-7
+  )
+  expect_equal(
+    as.matrix(animal_ped$tmb_data$Ainv_phy_slope),
+    as.matrix(animal_ped_Ainv$tmb_data$Ainv_phy_slope),
+    tolerance = 1e-8
+  )
+  expect_equal(
+    extract_Sigma(animal_ped, level = "column_slope")$Sigma,
+    extract_Sigma(animal_ped_Ainv, level = "column_slope")$Sigma,
+    tolerance = 1e-8
+  )
 })
 
 test_that("column slope grammar rejects an intercept, trait basis, and wrong RHS", {

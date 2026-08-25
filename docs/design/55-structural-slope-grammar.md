@@ -8,6 +8,13 @@ coordination).
 + Rose lenses applied throughout. Reviewers: Ada (maintainer) +
 Codex.
 **Status:** Active design contract, drafted 2026-05-26.
+**2026-08-24 reconciliation:** Design 130 supersedes this document's
+`phylo_slope()` / `animal_slope()` deprecation and replacement plan, especially
+§6 and the corresponding Phase A close gates. The helpers remain public.
+RHS-equals-declared-trait calls now belong to the response-column slope family;
+historical RHS-not-trait calls remain runtime-compatible. This document stays
+authoritative for the distinct intercept-plus-slope random-regression engine
+and retains the superseded text below as project history.
 **Backed by:** the approved plan at
 [`please-have-a-robust-elephant.md`](../../) (2026-05-26),
 Design 04 (4 × 3 keyword grid plus modifiers), Design 14 (`animal_*` ↔
@@ -304,7 +311,12 @@ Each APPLICABLE cell requires:
 - A pkgdown render of the relevant article if the article uses
   the cell as a teaching example.
 
-## 6. Soft-deprecation pathway
+## 6. Superseded soft-deprecation pathway (historical)
+
+**Not normative after 2026-08-24.** Design 130 replaces this whole section.
+Do not emit the proposed deprecation warnings, remove either helper, or teach
+the augmented intercept-plus-slope forms below as replacements for
+response-column slope models.
 
 ### 6.1 `phylo_slope(x | sp)`
 
@@ -497,8 +509,8 @@ Phase A close (A7) gates:
 2. Recovery test passes for every APPLICABLE cell in §5.
 3. Byte-identity contract §3 passes on at least one
    representative cell per structural family.
-4. `phylo_slope()` and `animal_slope()` soft-deprecated per
-   §6.1 / §6.2.
+4. **Superseded by Design 130:** preserve the public helpers and verify both
+   the response-column route and historical RHS-not-trait compatibility.
 5. Six articles in §6.4 updated to new syntax.
 6. Validation-debt rows RE-02 / FG-15 / PHY-06 / ANI-06 walked
    to `covered (Gaussian)` with evidence paths.

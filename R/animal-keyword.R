@@ -298,52 +298,48 @@ animal_dep <- function(formula, pedigree = NULL, A = NULL, Ainv = NULL) {
   invisible(NULL)
 }
 
-#' Animal-model random slope on a continuous covariate
+#' Animal response-column slopes
 #'
-#' Adds a per-individual random slope on a continuous covariate `x`,
-#' with individual-level slopes correlated according to the additive-
-#' genetic relatedness matrix \eqn{\mathbf A}. Mathematically:
-#' \deqn{\eta_{io} \;\mathrel{{+}{=}}\; \beta_{\text{a}}(i)\, x_{io}, \qquad
-#'       \boldsymbol\beta_{\text{a}} \sim \mathcal{N}\bigl(\mathbf 0,\,
-#'       \sigma^2_{\text{slope}}\,\mathbf A\bigr).}
+#' Adds slope-only predictor deviations across response columns, with an
+#' additive-genetic relationship matrix \eqn{A} relating those columns. If
+#' `B` is the response-column by predictor coefficient matrix, the model is
+#' \deqn{\mathrm{Cov}(\mathrm{vec}(B^\mathsf{T})) =
+#' A \otimes \Sigma_\mathrm{predictor}.}
+#' The RHS must be the response-column factor resolved from `trait =`, and the
+#' pedigree or matrix labels must match its levels. A single `|` estimates a
+#' full predictor covariance; `||` gives separate predictor variances with
+#' zero covariance. The term never adds a random intercept.
 #'
-#' This is the canonical **quantitative-genetic random-regression**
-#' (reaction-norm) model -- heritable variation in the slope on an
-#' environmental gradient. Mathematical parallel to [phylo_slope()];
-#' the engine recycles the same \eqn{\mathbf A^{-1}} prepared by
-#' [animal_scalar()] / [animal_latent()].
+#' This route is covered for Gaussian long-format data with bare finite numeric
+#' predictors. Wide-format column slopes, non-Gaussian responses, transformed
+#' or factor bases, latent predictor covariance, and intervals are not
+#' supported in this release. Use
+#' `extract_Sigma(fit, level = "column_slope")` for
+#' \eqn{\Sigma_\mathrm{predictor}}.
 #'
-#' @param formula An lme4-bar formula. `x | id` retains the established
-#'   one-predictor shared-slope helper. With two or more bare predictors and
-#'   the response-column factor on the RHS, `x1 + x2 | trait` is the full
-#'   column-slope covariance alias and `x1 + x2 || trait` is its diagonal
-#'   alias.
+#' Historical non-trait RHS forms remain accepted to preserve existing fits.
+#' They are compatibility behaviour, not the teaching API; new code uses the
+#' resolved response-column factor on the RHS.
+#'
+#' @param formula An lme4-bar formula. With one or more bare predictors and
+#'   the resolved response-column factor on the RHS, `x1 + x2 | trait` is the
+#'   full column-slope covariance alias and `x1 + x2 || trait` is its diagonal
+#'   alias. For one predictor the two bars fit the same `1 x 1` covariance.
 #' @param pedigree,A,Ainv One relatedness input for the column-slope aliases:
 #'   a pedigree, additive-genetic covariance matrix, or its precision.
-#' @return See [animal_scalar()].
-#' @seealso [animal_scalar()], [animal_latent()], [phylo_slope()].
+#' @return A formula marker; never evaluated.
+#' @seealso [slope()], [phylo_slope()], [kernel_slope()], [spatial_slope()],
+#'   [animal_dep()], [animal_indep()], [extract_Sigma()].
 #' @examples
 #' \dontrun{
-#' # Additive-genetic random regression: one heritable slope variance on a
-#' # continuous covariate x, slopes correlated by the relatedness matrix A.
-#' # Grounded in test-animal-slope-recovery.R.
-#' ped <- data.frame(
-#'   id   = paste0("i", 1:12),
-#'   sire = c(rep(NA, 4), rep(c("i1", "i2"), length.out = 8)),
-#'   dam  = c(rep(NA, 4), rep(c("i3", "i4"), length.out = 8))
-#' )
-#' A <- pedigree_to_A(ped)
-#' df <- expand.grid(
-#'   species = factor(rownames(A), levels = rownames(A)),
-#'   trait   = factor(c("t1", "t2", "t3")),
-#'   rep     = 1:5
-#' )
-#' df$x <- rnorm(nrow(df))
-#' df$value <- rnorm(nrow(df))
-#' fit <- gllvmTMB(
-#'   value ~ 0 + trait + animal_slope(x | species, A = A),
-#'   data = df, unit = "species", cluster = "species"
-#' )
+#' set.seed(1); ids <- paste0("sp", 1:4); A <- diag(4); dimnames(A) <- list(ids, ids)
+#' dat <- expand.grid(unit = factor(1:12), trait = factor(ids, levels = ids))
+#' dat$elevation <- rnorm(nrow(dat))
+#' dat$forest_cover <- rnorm(nrow(dat))
+#' dat$value <- rnorm(nrow(dat))
+#' fit <- gllvmTMB(value ~ 0 + trait + animal_slope(elevation + forest_cover | trait, A = A),
+#'   data = dat, trait = "trait", unit = "unit", family = gaussian())
+#' extract_Sigma(fit, level = "column_slope")
 #' }
 #' @export
 animal_slope <- function(formula, pedigree = NULL, A = NULL, Ainv = NULL) {

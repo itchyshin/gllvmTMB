@@ -739,25 +739,34 @@ Slope-slope correlation coverage (which would test the 2-slope
 or 3-slope regime) is deferred to the post-RE-12 slice that adds
 2 random slopes, IF that slice ships.
 
-### Slope-only response-column effects (structured Gaussian route)
+### Slope-only response-column effects (Gaussian-first route)
 
 The ordinary RE-12 path still concerns an intercept-plus-slope random
-regression. Separately, the phylogenetic and animal structured routes now
-admit **Gaussian slope-only response-column effects**:
+regression. Separately, Design 130 defines **Gaussian-first, slope-only
+response-column effects** across the five correlation sources:
 
 ```r
-phylo_indep(0 + lat + temp | trait, tree = tree) # diagonal Sigma_slope
-phylo_dep(0 + lat + temp | trait, tree = tree)   # full Sigma_slope
+phylo_indep(0 + lat + temp | trait, tree = tree) # diagonal Sigma_predictor
+phylo_dep(0 + lat + temp | trait, tree = tree)   # full Sigma_predictor
 phylo_slope(lat + temp || trait, tree = tree)    # helper for indep
 phylo_slope(lat + temp | trait, tree = tree)     # helper for dep
+slope(lat + temp || trait)                       # ordinary identity source
+animal_slope(lat + temp | trait, A = A)          # additive source
+kernel_slope(lat + temp | trait, K = K)          # dense-kernel source
+# spatial_slope(... | trait, mesh = column_mesh) # designed; not implemented
 ```
 
 `0 + trait` remains the fixed column-intercept term. These structured terms
-add no random intercept: their coefficient vector has covariance
-`K_phylo %x% Sigma_slope`. The `animal_*()` equivalents use a pedigree, `A`,
-or `Ainv` for `K`. This is deliberately a long-format-only, Gaussian-first
-route. Wide column-predictor grammar, spatial/kernel and latent slope-only
-variants, and non-Gaussian multi-predictor claims remain deferred.
+add no random intercept. In trait-major order their coefficient vector has
+covariance `K_column %x% Sigma_predictor`; `K_column` describes response-column
+dependence and `Sigma_predictor` describes covariance among predictor slopes.
+`||` selects diagonal `Sigma_predictor`, `|` selects full
+`Sigma_predictor`, and the bars are numerically identical for one predictor.
+The `animal_*()` equivalents use a pedigree, `A`, or `Ainv`; `kernel_*()` uses
+a labelled dense matrix; ordinary `slope()` uses the identity. The spatial
+public contract is locked but remains unimplemented. Wide column-predictor
+grammar, latent predictor covariance, non-Gaussian models, and intervals are
+deferred.
 
 ### Other 4 × 3 cells
 
@@ -769,8 +778,9 @@ slice. Current public status is:
 2. Ordinary non-Gaussian augmented `unique(1 + x | unit)` / diagonal Psi: guarded.
 3. Structured `phylo_*()` / `spatial_*()` single-slope cells:
    covered where PHY-11..PHY-18 and SPA-08..SPA-10 say covered.
-4. Gaussian slope-only `phylo_indep()` / `phylo_dep()` and their
-   `phylo_slope()` / `animal_slope()` helpers: covered under RE-03.
+4. Gaussian slope-only ordinary / phylogenetic / animal / dense-kernel
+   `indep()` / `dep()` cores and helpers move under Design 130 and RE-03;
+   spatial remains a designed, unimplemented cell.
 5. Non-Gaussian multi-predictor structured slopes: not advertised; a
    separate recovery campaign is required before admission.
 

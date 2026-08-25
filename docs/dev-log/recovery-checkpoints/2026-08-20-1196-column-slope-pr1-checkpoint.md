@@ -32,6 +32,15 @@ different indexing axis.
 
 ## Gates still owed
 
+**2026-08-24 design-record reconciliation:** the phrase “Design 130 contract
+files” below referred to an unnumbered future contract when this checkpoint
+was written. It now resolves to
+`docs/design/130-response-column-slope-family.md`. Design 130 supersedes the
+old helper-deprecation proposals in Designs 55 and 56 and records the spatial
+column-coordinate contract separately from the first fixed-source
+implementation slice. The numbered gate list is retained as historical lane
+state.
+
 1. Do not open/merge PR-1 until the active foreign lanes release the shared
    Design 130 contract files (`docs/design/01-formula-grammar.md`,
    `03-likelihoods.md`, `06-extractors-contract.md`) or the maintainer assigns

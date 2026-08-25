@@ -743,6 +743,62 @@
   )
 }
 
+## Exact fixed covariance for ordinary / kernel response-column slopes.  This
+## path deliberately avoids the legacy phylogenetic 1e-8 ridge: an identity
+## kernel must be exactly objective-equivalent to the ordinary K_column = I
+## route, and a malformed user kernel must fail before TMB construction.
+.resolve_fixed_column_slope_precision <- function(K, data, group, source_name) {
+  levs <- levels(data[[group]])
+  group_id <- as.integer(data[[group]]) - 1L
+  if (!is.matrix(K) || !is.numeric(K) || length(dim(K)) != 2L ||
+      nrow(K) != ncol(K)) {
+    cli::cli_abort(c(
+      "{.arg K} for {.fn kernel_slope} must be a square numeric matrix.",
+      "i" = "Source {.val {source_name}} is indexed by {length(levs)} response-column level{?s}."
+    ), class = "gllvmTMB_column_slope_kernel_invalid")
+  }
+  if (any(!is.finite(K))) {
+    cli::cli_abort("{.arg K} for {.fn kernel_slope} must contain only finite values.",
+                   class = "gllvmTMB_column_slope_kernel_invalid")
+  }
+  rn <- rownames(K)
+  cn <- colnames(K)
+  if (is.null(rn) || is.null(cn) || any(!nzchar(rn)) || any(!nzchar(cn)) ||
+      anyDuplicated(rn) || anyDuplicated(cn)) {
+    cli::cli_abort(c(
+      "{.arg K} for {.fn kernel_slope} must have unique, non-empty row and column names.",
+      ">" = "Use the response-column levels on both dimensions."
+    ), class = "gllvmTMB_column_slope_kernel_invalid")
+  }
+  if (!setequal(rn, levs) || !setequal(cn, levs) ||
+      length(rn) != length(levs) || length(cn) != length(levs)) {
+    cli::cli_abort(c(
+      "{.arg K} labels for {.fn kernel_slope} must match the response-column levels exactly.",
+      "i" = "Expected {.val {levs}}; row labels are {.val {rn}} and column labels are {.val {cn}}."
+    ), class = "gllvmTMB_column_slope_kernel_labels")
+  }
+  A <- K[levs, levs, drop = FALSE]
+  symmetry_tol <- sqrt(.Machine$double.eps) * max(1, max(abs(A)))
+  if (max(abs(A - t(A))) > symmetry_tol) {
+    cli::cli_abort("{.arg K} for {.fn kernel_slope} must be symmetric.",
+                   class = "gllvmTMB_column_slope_kernel_invalid")
+  }
+  A <- (A + t(A)) / 2
+  R <- tryCatch(chol(A), error = function(e) NULL)
+  if (is.null(R)) {
+    cli::cli_abort("{.arg K} for {.fn kernel_slope} must be positive definite.",
+                   class = "gllvmTMB_column_slope_kernel_invalid")
+  }
+  Ainv <- chol2inv(R)
+  dimnames(Ainv) <- list(levs, levs)
+  list(
+    Ainv = Matrix::Matrix(Ainv, sparse = TRUE),
+    log_det = 2 * sum(log(diag(R))),
+    n_aug = nrow(A),
+    aug_id = as.integer(group_id)
+  )
+}
+
 #' Fit a long-format multivariate stacked-trait model (Stage 2 internal)
 #'
 #' Called by [gllvmTMB()] when the formula contains `latent()` or `indep()`
@@ -2044,6 +2100,57 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     phylo_column_slope_mode %in% c("indep", "dep")
   )
   use_phylo_column_slope_indep <- identical(phylo_column_slope_mode, "indep")
+  phylo_column_slope_source <- if (use_phylo_column_slope) {
+    phylo_slope_cs$extra$.column_slope_source %||%
+      if (isTRUE(phylo_slope_cs$extra$.animal_source)) "animal" else "phylo"
+  } else NULL
+  if (use_phylo_column_slope &&
+      !phylo_column_slope_source %in% c("ordinary", "phylo", "animal", "kernel", "spatial")) {
+    cli::cli_abort("Internal: unknown response-column slope source {.val {phylo_column_slope_source}}.")
+  }
+  ## The spatial response-column helper has the same public predictor-basis
+  ## contract, but it cannot use the fixed Ainv matrix-normal implementation:
+  ## its source precision and projected normalization both depend on kappa.
+  ## Route it through the dedicated sparse SPDE field below while retaining the
+  ## common column-slope metadata/extractor surface.
+  use_spatial_column_slope <- use_phylo_column_slope &&
+    identical(phylo_column_slope_source, "spatial")
+  use_fixed_column_slope <- use_phylo_column_slope &&
+    !use_spatial_column_slope
+  use_phylo_slope_engine <- use_phylo_slope &&
+    !use_spatial_column_slope
+  if (use_spatial_column_slope && !all(family_id_vec == 0L)) {
+    cli::cli_abort(c(
+      "{.fn spatial_slope} is currently Gaussian-only.",
+      "i" = "The projected-SPDE column-slope route has recovery evidence only for {.fn gaussian} responses.",
+      ">" = "Use {.code family = gaussian()}, or remove {.fn spatial_slope} from this model."
+    ), class = "gllvmTMB_spatial_column_slope_family")
+  }
+  if (use_spatial_column_slope &&
+      (any(kinds == "spde") || isTRUE(use_spde_latent_slope))) {
+    cli::cli_abort(c(
+      "{.fn spatial_slope} cannot yet share a fit with another spatial term.",
+      "i" = "The response-column field and observation-space field require different projection axes and potentially different meshes.",
+      ">" = "Fit one spatial axis at a time; term-local multiple SPDE sources are planned separately."
+    ), class = "gllvmTMB_spatial_column_slope_multiple_axes")
+  }
+  if (use_spatial_column_slope) {
+    use_spde_slope <- TRUE
+    use_spde_dep_slope <- TRUE
+    use_spde_indep_blockdiag <- use_phylo_column_slope_indep
+    use_spde_indep_uncorrelated <- use_phylo_column_slope_indep
+    use_spde_dep_uncorrelated <- FALSE
+    spde_slope_lhs_form <- "column_slope"
+    spde_slope_xcol <- NA_character_
+  }
+  phylo_column_slope_name <- if (use_phylo_column_slope &&
+      identical(phylo_column_slope_source, "kernel")) {
+    nm <- phylo_slope_cs$extra$.kernel_name %||% "kernel"
+    if (!is.character(nm) || length(nm) != 1L || is.na(nm) || !nzchar(nm)) {
+      cli::cli_abort("{.arg name} in {.fn kernel_slope} must be one non-empty string.")
+    }
+    nm
+  } else NULL
   use_phylo_slope_correlated <- isTRUE(
     phylo_slope_cs$extra$.phylo_unique_augmented
   )
@@ -2056,7 +2163,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## interleaved Z, free theta_dep_chol, and map off log_sd_b / atanh_cor_b
   ## (the unstructured Sigma_b replaces the closed-form 2x2 parameters).
   use_phylo_dep_slope <- isTRUE(phylo_slope_cs$extra$.phylo_dep_augmented) ||
-    use_phylo_column_slope
+    use_fixed_column_slope
   ## indep(1 + x | g) per-trait: rides the dep 2T-wide engine but with the
   ## cross-block Cholesky entries pinned to 0 (block-diagonal Sigma_b = T
   ## independent 2x2 blocks). Design 79/80.
@@ -3538,6 +3645,11 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       mesh_inkey <- cs$extra$mesh
       if (!is.null(mesh_inkey) && is.null(mesh)) mesh <- mesh_inkey
     }
+    if (cs$kind == "phylo_slope" &&
+        identical(cs$extra$.column_slope_source, "spatial")) {
+      mesh_inkey <- cs$extra$mesh
+      if (!is.null(mesh_inkey) && is.null(mesh)) mesh <- mesh_inkey
+    }
   }
   if (has_kernel_term &&
       !use_kernel_multi &&
@@ -3761,18 +3873,19 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## from the same species tree). Including use_mi_phylo here makes the existing
   ## Stage-40 builder construct the sparse precision even when the RESPONSE side
   ## has no phylo term (design 69 sec.2.2).
-  if (use_phylo_column_slope &&
+  if (use_fixed_column_slope &&
+      !identical(phylo_column_slope_source, "ordinary") &&
       (use_phylo_rr || use_phylo_diag || use_phylo_latent_slope || use_mi_phylo)) {
     cli::cli_abort(c(
-      "A slope-only response-column phylogenetic term cannot yet be combined with another phylogenetic tier.",
-      "i" = "The column-slope term indexes its tree by {.var {trait}}, while the existing phylogenetic tiers index it by {.var {species}} / {.arg cluster}.",
+      "A structured response-column slope source cannot yet be combined with another phylogenetic tier.",
+      "i" = "The column-slope source indexes {.var {trait}}, while the existing phylogenetic tiers index {.var {species}} / {.arg cluster}.",
       ">" = "Fit the column-slope term on its own for now, or use one common grouping axis. A multi-term term-local precision contract is planned before this combination is admitted."
     ))
   }
   use_shared_phy_term <- use_phylo_rr || use_phylo_diag ||
     (use_phylo_slope_correlated && !use_phylo_column_slope) ||
     use_phylo_latent_slope || use_mi_phylo
-  use_any_phy_term <- use_shared_phy_term || use_phylo_slope
+  use_any_phy_term <- use_shared_phy_term || use_phylo_slope_engine
   ## ---- Guard: a supplied tree/vcv with nothing in the formula to consume it --
   ## `phylo_tree =` / `phylo_vcv =` can be supplied globally to gllvmTMB(), or
   ## harvested above from an in-keyword `tree =` / `vcv =` on a phylo_rr /
@@ -3873,14 +3986,35 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   Ainv_phy_slope <- Matrix::Matrix(1, 1, 1, sparse = TRUE)
   log_det_A_phy_slope <- 0
   phylo_slope_aug_id <- integer(nrow(data))
-  if (use_phylo_column_slope ||
-      (use_phylo_slope && !use_phylo_slope_correlated)) {
-    slope_phy <- .resolve_phylo_slope_precision(
-      phylo_tree = phylo_tree,
-      phylo_vcv = phylo_vcv,
-      data = data,
-      group = phylo_slope_group
-    )
+  if (use_fixed_column_slope ||
+      (use_phylo_slope_engine && !use_phylo_slope_correlated)) {
+    slope_phy <- if (use_fixed_column_slope &&
+        identical(phylo_column_slope_source, "ordinary")) {
+      levs <- levels(data[[phylo_slope_group]])
+      identity_precision <- Matrix::Diagonal(length(levs), x = 1)
+      dimnames(identity_precision) <- list(levs, levs)
+      list(
+        Ainv = identity_precision,
+        log_det = 0,
+        n_aug = length(levs),
+        aug_id = as.integer(data[[phylo_slope_group]]) - 1L
+      )
+    } else if (use_fixed_column_slope &&
+        identical(phylo_column_slope_source, "kernel")) {
+      .resolve_fixed_column_slope_precision(
+        K = phylo_vcv,
+        data = data,
+        group = phylo_slope_group,
+        source_name = phylo_column_slope_name
+      )
+    } else {
+      .resolve_phylo_slope_precision(
+        phylo_tree = phylo_tree,
+        phylo_vcv = phylo_vcv,
+        data = data,
+        group = phylo_slope_group
+      )
+    }
     Ainv_phy_slope <- slope_phy$Ainv
     log_det_A_phy_slope <- slope_phy$log_det
     n_aug_phy_slope <- slope_phy$n_aug
@@ -4010,6 +4144,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## ---- SPDE preparation -------------------------------------------------
   n_mesh <- 1L
   A_proj <- Matrix::Matrix(0, nrow = 1, ncol = 1, sparse = TRUE)
+  A_column <- matrix(0, nrow = 1, ncol = 1)
   spde_M0 <- Matrix::Matrix(0, nrow = 1, ncol = 1, sparse = TRUE)
   spde_M1 <- Matrix::Matrix(0, nrow = 1, ncol = 1, sparse = TRUE)
   spde_M2 <- Matrix::Matrix(0, nrow = 1, ncol = 1, sparse = TRUE)
@@ -4030,15 +4165,53 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   }
   if (has_spatial_term) {
     if (is.null(mesh))
-      cli::cli_abort("{.fn spatial_indep}/{.fn spatial_scalar}/{.fn spatial_latent} found in formula but {.arg mesh} is NULL.")
+      cli::cli_abort("A spatial term was found in the formula but {.arg mesh} is NULL.")
     mesh <- .gllvm_normalize_mesh(mesh)
-    if (!isTRUE(nrow(mesh$A_st) == n_obs))
-      cli::cli_abort(c(
-        "make_mesh() projection has {nrow(mesh$A_st)} rows but the long-format data has {n_obs}.",
-        "i" = "Build the mesh on the same long-format data passed to gllvmTMB()."
-      ))
+    if (use_spatial_column_slope) {
+      trait_labels <- levels(data[[trait]])
+      if (is.null(mesh$id_col) || is.null(mesh$row_labels)) {
+        cli::cli_abort(c(
+          "{.fn spatial_slope} requires a labelled response-column mesh.",
+          "i" = "This mesh has no {.field id_col}/{.field row_labels} metadata.",
+          ">" = "Build it from one row per response column with {.code make_mesh(column_locations, c(\"x\", \"y\"), ..., id_col = \"{trait}\")}."
+        ), class = "gllvmTMB_spatial_column_slope_mesh_labels")
+      }
+      if (!identical(mesh$id_col, trait)) {
+        cli::cli_abort(c(
+          "The labelled mesh uses {.var {mesh$id_col}}, but this model resolves the response-column factor as {.var {trait}}.",
+          ">" = "Rebuild the mesh with {.code id_col = \"{trait}\"}."
+        ), class = "gllvmTMB_spatial_column_slope_mesh_labels")
+      }
+      missing_labels <- setdiff(trait_labels, mesh$row_labels)
+      extra_labels <- setdiff(mesh$row_labels, trait_labels)
+      if (length(missing_labels) || length(extra_labels)) {
+        cli::cli_abort(c(
+          "The labelled mesh rows must match the response-column levels exactly.",
+          "x" = "Missing label{?s}: {.val {missing_labels}}.",
+          "x" = "Extra label{?s}: {.val {extra_labels}}."
+        ), class = "gllvmTMB_spatial_column_slope_mesh_labels")
+      }
+      if (anyDuplicated(as.data.frame(mesh$loc_xy))) {
+        cli::cli_abort(c(
+          "{.fn spatial_slope} requires a unique coordinate pair for every response column.",
+          "x" = "At least two labelled response columns share the same coordinates."
+        ), class = "gllvmTMB_spatial_column_slope_coordinates")
+      }
+      label_order <- match(trait_labels, mesh$row_labels)
+      A_column_sparse <- mesh$A_st[label_order, , drop = FALSE]
+      A_column <- as.matrix(A_column_sparse)
+      ## The likelihood projection is observation-aligned, but every row is a
+      ## label-based lookup into the one-row-per-column projection above.
+      A_proj <- A_column_sparse[trait_id + 1L, , drop = FALSE]
+    } else {
+      if (!isTRUE(nrow(mesh$A_st) == n_obs))
+        cli::cli_abort(c(
+          "make_mesh() projection has {nrow(mesh$A_st)} rows but the long-format data has {n_obs}.",
+          "i" = "Build the mesh on the same long-format data passed to gllvmTMB()."
+        ))
+      A_proj <- mesh$A_st
+    }
     n_mesh   <- ncol(mesh$A_st)
-    A_proj   <- mesh$A_st
     spde_M0  <- mesh$spde$c0
     spde_M1  <- mesh$spde$g1
     spde_M2  <- mesh$spde$g2
@@ -4061,11 +4234,43 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## INTERLEAVED -- (alpha_t0, beta_t0, alpha_t1, beta_t1, ...) -- matching the
   ## validated phylo_dep core; Z routes each row's intercept and slope into its
   ## own trait's pair of columns.
-  n_lhs_cols_spde <- if (use_spde_dep_slope) {
+  n_lhs_cols_spde <- if (use_spatial_column_slope) {
+    length(phylo_column_slope_cols)
+  } else if (use_spde_dep_slope) {
     2L * n_traits
   } else if (use_spde_slope) 2L else 1L
   Z_spde_aug      <- array(0.0, dim = c(n_obs, n_lhs_cols_spde))
-  if (use_spde_slope) {
+  if (use_spatial_column_slope) {
+    missing_cols <- setdiff(phylo_column_slope_cols, names(data))
+    if (length(missing_cols)) {
+      cli::cli_abort(c(
+        "Column-slope predictor{?s} {.val {missing_cols}} not found in {.arg data}.",
+        ">" = "Add the named numeric predictor column{?s}, then refit."
+      ))
+    }
+    bad_type <- phylo_column_slope_cols[!vapply(
+      data[phylo_column_slope_cols], is.numeric, logical(1)
+    )]
+    if (length(bad_type)) {
+      cli::cli_abort(c(
+        "Column-slope predictors must be numeric columns.",
+        "i" = "Non-numeric predictor{?s}: {.val {bad_type}}."
+      ))
+    }
+    Z_spde_aug <- vapply(phylo_column_slope_cols, function(col) {
+      as.numeric(data[[col]])
+    }, numeric(n_obs))
+    Z_spde_aug <- matrix(
+      Z_spde_aug, nrow = n_obs, ncol = n_lhs_cols_spde,
+      dimnames = list(NULL, phylo_column_slope_cols)
+    )
+    if (any(!is.finite(Z_spde_aug))) {
+      cli::cli_abort(c(
+        "Column-slope predictors must be finite after row filtering.",
+        ">" = "Remove or impute missing/infinite predictor values before fitting."
+      ))
+    }
+  } else if (use_spde_slope) {
     if (
       !spde_slope_lhs_form %in%
         c("wide_intercept_slope", "long_intercept_slope")
@@ -4414,6 +4619,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     spde_lv_unique   = as.integer(use_spde_latent_diag),
     n_mesh           = as.integer(n_mesh),
     A_proj           = A_proj,
+    ## One projection row per response column for spatial_slope(). A 1 x 1
+    ## zero stub preserves every existing observation-space spatial fit.
+    use_spatial_column_slope = as.integer(use_spatial_column_slope),
+    A_column         = A_column,
     spde_M0          = spde_M0,
     spde_M1          = spde_M1,
     spde_M2          = spde_M2,
@@ -4473,14 +4682,14 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     ## (psi_phy diag)
     use_phylo_diag   = as.integer(use_phylo_diag),
     ## Q6: phylo_slope data
-    use_phylo_slope  = as.integer(use_phylo_slope),
+    use_phylo_slope  = as.integer(use_phylo_slope_engine),
     x_phy_slope      = x_phy_slope_dat,
     n_aug_phy_slope  = as.integer(n_aug_phy_slope),
     Ainv_phy_slope   = Ainv_phy_slope,
     log_det_A_phy_slope = as.numeric(log_det_A_phy_slope),
     phylo_slope_aug_id = as.integer(phylo_slope_aug_id),
     ## Slope-only response-column submode of the shared matrix-normal engine.
-    use_phylo_column_slope = as.integer(use_phylo_column_slope),
+    use_phylo_column_slope = as.integer(use_fixed_column_slope),
     use_phylo_slope_correlated = as.integer(use_phylo_slope_correlated),
     n_lhs_cols       = as.integer(n_lhs_cols),
     Z_phy_aug        = Z_phy_aug,
@@ -5454,6 +5663,21 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   if (!use_spde_dep_slope) {
     tmb_map$theta_spde_dep_chol <-
       factor(rep(NA_integer_, length(tmb_params$theta_spde_dep_chol)))
+  } else if (use_spatial_column_slope && use_phylo_column_slope_indep) {
+    ## Response-column `||`: keep the P unconstrained log-Cholesky diagonals
+    ## and pin every strictly-lower entry. This basis is predictor-sized, not
+    ## trait-interleaved, so the observation-space block-size rule below does
+    ## not apply (P and T need not be equal).
+    pins <- if (length(tmb_params$theta_spde_dep_chol) > n_lhs_cols_spde) {
+      seq.int(n_lhs_cols_spde + 1L,
+              length(tmb_params$theta_spde_dep_chol))
+    } else integer(0L)
+    if (length(pins) > 0L) {
+      m <- seq_along(tmb_params$theta_spde_dep_chol)
+      m[pins] <- NA
+      tmb_params$theta_spde_dep_chol[pins] <- 0
+      tmb_map$theta_spde_dep_chol <- factor(m)
+    }
   } else if (use_spde_indep_blockdiag) {
     ## Block-diagonal spatial slope: pin the cross-block Cholesky entries so
     ## Sigma_field = L L^T is block-diagonal (T independent (intercept, slope)
@@ -5915,7 +6139,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   }
   if (use_phylo_slope_correlated) {
     random <- c(random, "b_phy_aug")
-  } else if (use_phylo_slope) {
+  } else if (use_phylo_slope_engine) {
     random <- c(random, "b_phy_slope")
   }
   if (use_phylo_latent_slope) random <- c(random, "g_phy_slope")
@@ -7436,18 +7660,16 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                           ## covariance tier, and is therefore extracted only
                           ## with level = "column_slope".
                           phylo_column_slope = isTRUE(use_phylo_column_slope),
+                          spatial_column_slope = isTRUE(use_spatial_column_slope),
                           phylo_column_slope_mode = phylo_column_slope_mode,
                           ## The shared matrix-normal core is entered through
                           ## the phylo parser, but animal_* terms supply a
                           ## pedigree/A/Ainv source matrix. Preserve that
                           ## identity for public extraction and reporting.
                           phylo_column_slope_source =
-                            if (use_phylo_column_slope &&
-                                isTRUE(phylo_slope_cs$extra$.animal_source)) {
-                              "animal"
-                            } else if (use_phylo_column_slope) {
-                              "phylo"
-                            } else NULL,
+                            phylo_column_slope_source,
+                          phylo_column_slope_name =
+                            phylo_column_slope_name,
                           ## Labels of the source-matrix axis for the
                           ## slope-only response-column route.
                           phylo_column_slope_labels =
@@ -7460,7 +7682,11 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                           ## intercept.<t>, slope.<x1>.<t>, ... NULL off the dep
                           ## path.
                           phylo_dep_slope_cols =
-                            if (use_phylo_dep_slope) phylo_slope_xcols else NULL,
+                            if (use_phylo_column_slope) {
+                              phylo_column_slope_cols
+                            } else if (use_phylo_dep_slope) {
+                              phylo_slope_xcols
+                            } else NULL,
                           kernel = isTRUE(has_kernel_term),
                           ## Augmented SPDE random slopes (Design 64). DISTINCT
                           ## from the intercept-only spatial_dep / spatial_latent

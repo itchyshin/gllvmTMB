@@ -17,6 +17,14 @@ source(testthat::test_path(
   "ci14-ci15",
   "smoke-runners.R"
 ))
+source(testthat::test_path(
+  "..",
+  "..",
+  "dev",
+  "interval-calibration",
+  "ci14-ci15",
+  "campaign-shard.R"
+))
 
 test_that("CI-14 freezes separate unique-Psi and total marginal slope targets", {
   spec <- ci1415_campaign_spec("CI14")
@@ -291,4 +299,66 @@ test_that("timing smokes are real routes but require explicit provenance and rem
     class = "gllvmTMB_multi"
   )
   expect_false(.ci1415_fit_is_healthy(unhealthy))
+})
+
+test_that("campaign shard parses one frozen identity and writes it immutably", {
+  parsed <- ci1415_parse_shard_args(c(
+    "CI14", "1", "1", "test-source-sha",
+    file.path(tempdir(), "ci1415-shard-test.rds")
+  ))
+  expect_identical(parsed$packet, "CI14")
+  expect_identical(parsed$cell_id, 1L)
+  expect_identical(parsed$rep, 1L)
+  expect_error(ci1415_parse_shard_args(c("CI14", "1")), "exactly five")
+
+  request <- ci1415_smoke_request("CI14", 1L, 1L, "test-source-sha")
+  fake_runner <- function(cell_id, rep, source_sha) {
+    run_request <- ci1415_smoke_request("CI14", cell_id, rep, source_sha)
+    list(
+      outer_attempt = ci1415_outer_attempt(
+        run_request$manifest, cell_id, rep, "base_fit_failed"
+      ),
+      runtime_seconds = 0.25,
+      source_sha = source_sha,
+      seed = run_request$seed,
+      truth_fingerprint = run_request$truth_fingerprint,
+      provenance = run_request$provenance,
+      fit_health = FALSE,
+      failure = "synthetic test failure"
+    )
+  }
+  out_path <- tempfile("ci1415-shard-", fileext = ".rds")
+  result <- ci1415_run_campaign_shard(
+    "CI14", 1L, 1L, "test-source-sha", out_path, runner = fake_runner
+  )
+  expect_identical(result$status, "written")
+  expect_true(file.exists(out_path))
+  shard <- readRDS(out_path)
+  expect_identical(shard$identity$seed, request$seed)
+  expect_identical(shard$outer_attempt$outcome, "base_fit_failed")
+  expect_identical(shard$source_sha, "test-source-sha")
+  expect_true(is.finite(shard$runtime_seconds))
+  expect_identical(
+    ci1415_run_campaign_shard(
+      "CI14", 1L, 1L, "test-source-sha", out_path, runner = fake_runner
+    )$status,
+    "already_present"
+  )
+  expect_error(
+    ci1415_run_campaign_shard(
+      "CI14", 1L, 1L, "different-source-sha", out_path, runner = fake_runner
+    ),
+    "conflicting shard"
+  )
+})
+
+test_that("generic production path delegates CI-14/15 to the validated adapter", {
+  production <- testthat::test_path(
+    "..", "..", "dev", "interval-calibration", "remote", "run-shard.R"
+  )
+  text <- paste(readLines(production, warn = FALSE), collapse = "\n")
+  expect_match(text, "source(\"dev/interval-calibration/ci14-ci15/campaign-shard.R\")", fixed = TRUE)
+  expect_match(text, "ci1415_run_campaign_shard", fixed = TRUE)
+  expect_match(text, "inner$shard$outer_attempt", fixed = TRUE)
+  expect_match(text, "ci1415_adapter_schema", fixed = TRUE)
 })

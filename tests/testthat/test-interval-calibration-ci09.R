@@ -301,3 +301,193 @@ test_that("CI-09 retry history preserves infrastructure provenance and rejects s
     "base-fit state"
   )
 })
+
+test_that("remote orchestration writes immutable shards and freezes exact task grids", {
+  remote_root <- testthat::test_path(
+    "..", "..", "dev", "interval-calibration", "remote"
+  )
+  source(file.path(remote_root, "shard-io.R"), local = TRUE)
+  source(file.path(remote_root, "build-task-manifests.R"), local = TRUE)
+
+  path <- tempfile("interval-shard-", fileext = ".rds")
+  payload <- list(schema = "test", value = 1L)
+  expect_silent(interval_atomic_save_rds(payload, path))
+  expect_identical(readRDS(path), payload)
+  expect_error(interval_atomic_save_rds(payload, path), "refusing to overwrite")
+
+  grids <- lapply(
+    c("PVT02", "CI09", "CI13", "CI14", "CI15", "CI10_COST"),
+    interval_build_task_manifest
+  )
+  expect_identical(
+    unname(vapply(grids, nrow, integer(1))),
+    c(5000L, 30000L, 20000L, 10000L, 20000L, 18L)
+  )
+  expect_true(all(grids[[6L]]$rep == 3L))
+  expect_identical(grids[[6L]]$cell_id, 1:18)
+  expect_identical(
+    grids[[6L]]$seed,
+    c(
+      1060724L, 2060727L, 3060730L, 4060733L, 5060736L, 6060739L,
+      7060742L, 8060745L, 9060748L, 10060751L, 11060754L, 12060757L,
+      13060760L, 14060763L, 15060766L, 16060769L, 17060772L, 18060775L
+    )
+  )
+  expect_identical(
+    unique(grids[[6L]]$scientific_source_sha),
+    "328d8abc9125ce1e7edbcdcdcb1a41f043488431"
+  )
+})
+
+test_that("remote launchers enforce frozen sources, sequential-wave limits, and parse cleanly", {
+  remote_root <- testthat::test_path(
+    "..", "..", "dev", "interval-calibration", "remote"
+  )
+  source(file.path(remote_root, "shard-io.R"), local = TRUE)
+  repo_root <- normalizePath(file.path(remote_root, "..", "..", ".."))
+  clean_root <- tempfile("interval-clean-checkout-")
+  on.exit(unlink(clean_root, recursive = TRUE, force = TRUE), add = TRUE)
+  clone_status <- system2(
+    "git",
+    c("clone", "--quiet", "--no-checkout", repo_root, clean_root),
+    stdout = FALSE,
+    stderr = FALSE
+  )
+  expect_identical(clone_status, 0L)
+  checkout_status <- system2(
+    "git",
+    c(
+      "-C", clean_root, "checkout", "--quiet",
+      "822024b1bd31a90a9dbe211ad09e1b26b2030ac8"
+    ),
+    stdout = FALSE,
+    stderr = FALSE
+  )
+  expect_identical(checkout_status, 0L)
+  expect_silent(interval_assert_frozen_source(
+    "822024b1bd31a90a9dbe211ad09e1b26b2030ac8",
+    c(
+      "R",
+      "dev/interval-calibration/ci09/ci09-kernels.R",
+      "dev/interval-calibration/ci09/smoke.R"
+    ),
+    source_root = clean_root
+  ))
+  writeLines("dirty", file.path(clean_root, "dirty-untracked-file"))
+  expect_error(
+    interval_assert_clean_checkout(clean_root),
+    "orchestration checkout is not clean"
+  )
+  expect_silent(parse(file.path(remote_root, "run-shard.R")))
+  expect_silent(parse(file.path(remote_root, "aggregate-campaign.R")))
+  expect_silent(parse(file.path(remote_root, "write-session-receipt.R")))
+  wave <- paste(
+    readLines(file.path(remote_root, "run-totoro-wave.sh"), warn = FALSE),
+    collapse = "\n"
+  )
+  expect_match(wave, "xargs -n 4 -P 96", fixed = TRUE)
+  expect_match(wave, "--kill-after=60s 2h", fixed = TRUE)
+  expect_match(wave, "OPENBLAS_NUM_THREADS=1", fixed = TRUE)
+  expect_match(wave, "validate-task-manifest.R", fixed = TRUE)
+  expect_match(wave, "write-session-receipt.R", fixed = TRUE)
+  expect_match(wave, "record-wave-timeouts.R", fixed = TRUE)
+  expect_match(wave, "finalize-campaign.sh", fixed = TRUE)
+
+  deploy <- paste(
+    readLines(
+      file.path(remote_root, "deploy-approved-envelope.sh"),
+      warn = FALSE
+    ),
+    collapse = "\n"
+  )
+  expect_match(
+    deploy,
+    "/Users/z3437171/.ssh/cm-snakagaw@totoro.biology.ualberta.ca:22",
+    fixed = TRUE
+  )
+  expect_match(
+    deploy,
+    "/Users/z3437171/.ssh/cm-snakagaw@fir.alliancecan.ca:22",
+    fixed = TRUE
+  )
+  expect_match(deploy, "ssh -S \"$socket\" -O check", fixed = TRUE)
+  expect_match(deploy, "PreferredAuthentications=none", fixed = TRUE)
+  expect_match(deploy, "PubkeyAuthentication=no", fixed = TRUE)
+  expect_match(deploy, "remote-payload-checksums.sha256", fixed = TRUE)
+  expect_match(deploy, "mkdir -p '$base'", fixed = TRUE)
+  expect_match(deploy, "test ! -e '$deploy'", fixed = TRUE)
+  expect_match(deploy, "prepare-ci10-cost-array.sh", fixed = TRUE)
+  expect_match(deploy, "totoro-launch.log", fixed = TRUE)
+  expect_match(deploy, "totoro-sequence.log", fixed = TRUE)
+  expect_match(deploy, "totoro-sequence-lock", fixed = TRUE)
+  expect_false(grepl("n_sim=5000.*CI10", deploy))
+
+  prepare_host <- paste(
+    readLines(file.path(remote_root, "prepare-remote-host.sh"), warn = FALSE),
+    collapse = "\n"
+  )
+  expect_match(prepare_host, "totoro:totoro.biology.ualberta.ca", fixed = TRUE)
+  expect_match(prepare_host, "fir:fir.alliancecan.ca", fixed = TRUE)
+  expect_match(prepare_host, "git ls-remote", fixed = TRUE)
+  expect_match(prepare_host, "--detach", fixed = TRUE)
+  expect_match(prepare_host, "install-packet-library.sh", fixed = TRUE)
+
+  sequence <- paste(
+    readLines(
+      file.path(remote_root, "run-approved-totoro-sequence.sh"),
+      warn = FALSE
+    ),
+    collapse = "\n"
+  )
+  expect_match(sequence, "for packet in PVT02 CI09 CI13 CI14 CI15", fixed = TRUE)
+  expect_match(sequence, "mkdir \"$lock\"", fixed = TRUE)
+  expect_match(sequence, "INTERVAL_CALIBRATION_TOTORO_SEQUENCE_FAILED_V1", fixed = TRUE)
+})
+
+test_that("task-manifest validator refuses a truncated or altered campaign", {
+  remote_root <- testthat::test_path(
+    "..", "..", "dev", "interval-calibration", "remote"
+  )
+  source(file.path(remote_root, "shard-io.R"), local = TRUE)
+  source(file.path(remote_root, "build-task-manifests.R"), local = TRUE)
+  source(file.path(remote_root, "validate-task-manifest.R"), local = TRUE)
+  path <- tempfile("ci09-task-manifest-", fileext = ".tsv")
+  full <- interval_build_task_manifest("CI09")
+  utils::write.table(
+    full[-nrow(full), ],
+    path,
+    sep = "\t",
+    row.names = FALSE,
+    quote = FALSE
+  )
+  expect_error(
+    interval_validate_task_manifest("CI09", path),
+    "complete frozen"
+  )
+})
+
+test_that("production receipts bind package source, checksums, and operation pairs", {
+  remote_root <- testthat::test_path(
+    "..", "..", "dev", "interval-calibration", "remote"
+  )
+  io <- paste(
+    readLines(file.path(remote_root, "shard-io.R"), warn = FALSE),
+    collapse = "\n"
+  )
+  aggregate <- paste(
+    readLines(file.path(remote_root, "aggregate-campaign.R"), warn = FALSE),
+    collapse = "\n"
+  )
+  session <- paste(
+    readLines(file.path(remote_root, "write-session-receipt.R"), warn = FALSE),
+    collapse = "\n"
+  )
+  expect_match(io, ".interval-scientific-source-sha", fixed = TRUE)
+  expect_match(io, "canonical-checksums.sha256", fixed = TRUE)
+  expect_match(aggregate, "started", fixed = TRUE)
+  expect_match(aggregate, "completed", fixed = TRUE)
+  expect_match(aggregate, "interval_validate_checksum_manifest", fixed = TRUE)
+  expect_match(session, "installed_package", fixed = TRUE)
+  expect_match(session, "thread_environment", fixed = TRUE)
+  expect_match(session, "output_root", fixed = TRUE)
+})

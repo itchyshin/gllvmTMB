@@ -271,3 +271,66 @@ test_that("CI-10's one-replicate preflight wrapper is parse-only under test", {
   expect_match(text, "n_boot", fixed = TRUE)
   expect_match(text, "outer-attempt.rds", fixed = TRUE)
 })
+
+test_that("CI-10 production wrapper is cost-array only and binds adjacent provenance", {
+  remote_root <- testthat::test_path(
+    "..", "..", "dev", "interval-calibration", "remote"
+  )
+  runner <- paste(
+    readLines(file.path(remote_root, "run-shard.R"), warn = FALSE),
+    collapse = "\n"
+  )
+  batch <- paste(
+    readLines(file.path(remote_root, "ci10-cost-array.sbatch"), warn = FALSE),
+    collapse = "\n"
+  )
+  prepare <- paste(
+    readLines(
+      file.path(remote_root, "prepare-ci10-cost-array.sh"),
+      warn = FALSE
+    ),
+    collapse = "\n"
+  )
+  expect_match(runner, "rep != 3L", fixed = TRUE)
+  expect_match(runner, "n_boot = 499L", fixed = TRUE)
+  expect_match(runner, "reps = 5L", fixed = TRUE)
+  expect_match(runner, "adjacent runtime/provenance checks", fixed = TRUE)
+  expect_match(batch, "#SBATCH --array=1-18%18", fixed = TRUE)
+  expect_match(batch, "#SBATCH --time=00:30:00", fixed = TRUE)
+  expect_match(batch, "#SBATCH --account=def-snakagaw", fixed = TRUE)
+  expect_match(batch, "timeout --signal=TERM --kill-after=30s 28m", fixed = TRUE)
+  expect_match(batch, 'cell_id" -ne "$SLURM_ARRAY_TASK_ID', fixed = TRUE)
+  expect_match(batch, "attempt\" -ne 1", fixed = TRUE)
+  expect_match(batch, "328d8abc9125ce1e7edbcdcdcb1a41f043488431", fixed = TRUE)
+  expect_match(batch, "record-operational-timeout.R", fixed = TRUE)
+  expect_match(batch, "INTERVAL_SESSION_RECEIPT", fixed = TRUE)
+  expect_match(prepare, "sbatch --parsable", fixed = TRUE)
+  expect_match(prepare, "INTERVAL_CALIBRATION_CI10_SUBMITTED_V1", fixed = TRUE)
+  expect_match(
+    prepare,
+    "INTERVAL_CALIBRATION_CI10_SUBMISSION_FAILED_V1",
+    fixed = TRUE
+  )
+  expect_match(
+    prepare,
+    "INTERVAL_CALIBRATION_CI10_SUBMISSION_AMBIGUOUS_V1",
+    fixed = TRUE
+  )
+  expect_match(prepare, "task_manifest_sha256", fixed = TRUE)
+  expect_match(prepare, "immutable root retained for review", fixed = TRUE)
+  aggregate <- paste(
+    readLines(
+      file.path(remote_root, "aggregate-campaign.R"),
+      warn = FALSE
+    ),
+    collapse = "\n"
+  )
+  expect_match(aggregate, "ci10-cost-array-submitted.tsv", fixed = TRUE)
+  expect_match(aggregate, "submission-failed.tsv", fixed = TRUE)
+  expect_match(aggregate, "submission-ambiguous.tsv", fixed = TRUE)
+  expect_match(
+    aggregate,
+    "INTERVAL_CALIBRATION_CI10_SUBMITTED_V1",
+    fixed = TRUE
+  )
+})

@@ -299,3 +299,22 @@ test_that("PVT-02 smoke retains timing and provenance under the ignored results 
   expect_match(text, "manifest_fingerprint", fixed = TRUE)
   expect_match(text, "PVT02_SOURCE_SHA", fixed = TRUE)
 })
+
+test_that("PVT-02 remote runner reuses the frozen one-replicate function body", {
+  remote_root <- testthat::test_path(
+    "..", "..", "dev", "interval-calibration", "remote"
+  )
+  source(file.path(remote_root, "shard-io.R"), local = TRUE)
+  env <- new.env(parent = globalenv())
+  interval_extract_assignment(
+    testthat::test_path("..", "..", "dev", "pvt02", "pvt02-smoke.R"),
+    "pvt02_smoke_one",
+    env
+  )
+  expect_true(is.function(env$pvt02_smoke_one))
+  expect_match(
+    paste(deparse(body(env$pvt02_smoke_one)), collapse = " "),
+    "profile_ci_total_variance",
+    fixed = TRUE
+  )
+})

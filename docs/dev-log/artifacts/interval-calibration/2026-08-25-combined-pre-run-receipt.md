@@ -150,3 +150,75 @@ The full CI-10 campaign is **not** recommended for immediate launch from the
 39-draw extrapolation alone. Until explicit approval, the campaign routes
 remain at their existing limited/blocked states, CI-11/12 remain refused, and
 no new certificate is claimed.
+
+## Approval and dispatch-readiness checkpoint
+
+Shinichi explicitly approved the exact envelope above on 2026-08-25. That
+approval covers the five sequential Totoro waves and the 18-task CI-10 DRAC
+cost array only. It does not cover the full CI-10 campaign or any widened
+resource, estimand, cell, or retry policy.
+
+The first post-approval deployment audit found that the frozen scientific
+commits had no production shard/launcher layer. The lane therefore added an
+orchestration-only layer under `dev/interval-calibration/remote/` plus a
+packet-local CI-14/15 shard validator before submission. The approved
+scientific files (`R/`, the packet kernels/runners, and the existing DGP
+helpers) remain byte-identical to their packet-specific frozen SHAs. Every
+remote shard checks that fact with `git diff --quiet <frozen-sha> --
+<scientific-paths>` before fitting.
+
+The production layer now provides:
+
+- exact 5,000-replicate task manifests (18 rep-3 rows only for CI-10);
+- one identity per independent R process, with all thread counts pinned to one;
+- immutable start/completion/failure operational receipts and an atomic
+  canonical RDS shard;
+- duplicate/conflicting-identity refusal;
+- a 96-process, whole-wave two-hour Totoro hard stop and exact shard-count
+  check;
+- the frozen 18-task, 30-minute, `def-snakagaw` CI-10 SLURM array;
+- environment/session receipts and fail-closed campaign aggregators.
+
+Local negative controls verified that a source SHA outside the approved packet
+is refused before an operational attempt, that an approved source paired with
+an unmarked installed library retains start/failure receipts without starting
+a fit, and that an incomplete campaign root refuses aggregation. The six
+generated task manifests contain exactly
+5,000, 30,000, 20,000, 10,000, 20,000, and 18 data rows for PVT-02, CI-09,
+CI-13, CI-14, CI-15, and CI-10 respectively.
+
+No remote job was submitted at this checkpoint. Existing reuse-only sockets
+were present for Totoro and the DRAC clusters, but this Codex task's managed
+sandbox denied the local Unix-socket connection with `Operation not
+permitted`; escalation is disabled. The same managed profile grants only read
+access to this worktree's external Git metadata, so the verified
+production-dispatch diff cannot yet be staged or committed (`index.lock:
+Operation not permitted`). The files remain on the leased branch and the
+worktree is intentionally left uncommitted rather than misreported as landed.
+The DRAC execution host is frozen to **Fir**, using the existing
+`cm-snakagaw@fir.alliancecan.ca:22` socket and the already-approved
+`def-snakagaw` account. A verified git bundle, rather than a shared-tree
+`rsync`, is the required source transport.
+
+Grace's final read-only deployment review returned **PASS** after two
+fail-closed repairs: exact output-root creation is now atomic on both Totoro
+and Fir, and tracked or untracked orchestration drift is rejected before every
+shard, session receipt, and aggregation. Independent R parsing, shell syntax,
+focused packet tests, and `git diff --check` passed after the repairs. The
+preserved dispatch packet is under the gitignored
+`dev/interval-calibration/results/2026-08-25-approved-dispatch/` root. Its
+`dispatch-checksums.sha256` ledger binds the base git bundle, current overlay,
+tracked patch, and all six complete task manifests. This packet is a recovery
+artefact only: the overlay must first be committed into a clean orchestration
+checkout, and no launcher may run from the intentionally dirty lane checkout.
+
+Because the managed sandbox cannot update the lane's external Git index, the
+same checksummed overlay was also applied to an independent clean clone at the
+exact `dd4410155980cfc9a8a0e8f1c91d3cfc03bd95c5` base and committed there on
+`codex/interval-calibration-release`. The complete-history portable branch
+bundle is retained as `gllvmTMB-interval-dispatch.bundle` in the dispatch root
+and covered by the checksum ledger. This preserves a clean, reverified landed
+commit for recovery without falsely advancing the original worktree's branch
+reference. A second reuse-only socket check still returned `Operation not
+permitted` for both existing control sockets, so neither Totoro nor Fir
+received a submission.

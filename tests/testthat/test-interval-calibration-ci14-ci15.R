@@ -252,6 +252,23 @@ test_that("timing smokes are real routes but require explicit provenance and rem
     logical(1)
   )))
   expect_match(requests[[2L]]$fit_formula, "tree = phy$tree", fixed = TRUE)
+  failed_attempt <- ci1415_outer_attempt(
+    requests[[2L]]$manifest,
+    requests[[2L]]$cell_id,
+    requests[[2L]]$rep,
+    "base_fit_failed"
+  )
+  retained_result <- .ci1415_smoke_result(
+    requests[[2L]],
+    failed_attempt,
+    runtime_seconds = 0,
+    fit_health = FALSE
+  )
+  expect_identical(retained_result$fit_formula, requests[[2L]]$fit_formula)
+  expect_identical(
+    retained_result$provenance$fit_formula,
+    requests[[2L]]$fit_formula
+  )
   fit_runner_source <- gsub(
     "[[:space:]]+",
     " ",

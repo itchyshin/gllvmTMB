@@ -306,15 +306,18 @@ ci1415_smoke_request <- function(
   fit_health,
   failure = NULL
 ) {
+  provenance <- request$provenance
+  provenance$fit_formula <- request$fit_formula
   list(
     outer_attempt = outer_attempt,
     runtime_seconds = as.numeric(runtime_seconds),
     source_sha = request$source_sha,
     seed = request$seed,
     truth_fingerprint = request$truth_fingerprint,
+    fit_formula = request$fit_formula,
     fit_health = fit_health,
     failure = failure,
-    provenance = request$provenance
+    provenance = provenance
   )
 }
 

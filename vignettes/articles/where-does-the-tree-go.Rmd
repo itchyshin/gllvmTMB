@@ -1,0 +1,335 @@
+---
+title: "Traits along gradients: where does the tree go?"
+description: "Choose the axis of a phylogeny before fitting: species units in a comparative model, Gaussian response columns in a community-gradient model, or observation sources in a compact iSDM declaration."
+tier: 1
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 2
+vignette: >
+  %\VignetteIndexEntry{Traits along gradients: where does the tree go?}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 7,
+  fig.height = 4.8,
+  fig.align = "center",
+  cache = FALSE,
+  message = FALSE,
+  warning = FALSE
+)
+```
+
+> **Evidence boundary.** This is one simulated Gaussian teaching example.
+> The comparative and response-column fits use the supplied, fixed trees.
+> The iSDM section declares observation models only; it does not fit an iSDM
+> or identify abundance, occupancy, or detectability.
+
+## What does the tree relate?
+
+A phylogeny is not a switch that makes a model ``phylogenetic''. It is a
+relationship matrix whose rows and columns must match one particular axis of
+the data. Before choosing a keyword, ask one concrete question: **which
+labels are the tree tips?**
+
+This article follows a simulated montane-bird study through three superficially
+similar uses of a tree. First, the tips are the species *units* in a
+comparative model: each species has repeated observations along elevation.
+Second, the tips are the Gaussian *response columns* in a community-gradient
+model: the tree relates the bird columns while sites supply observations.
+Finally, three observation sources enter a compact iSDM declaration. They are
+not a phylogenetic axis at all.
+
+```{r setup}
+library(gllvmTMB)
+library(ggplot2)
+```
+
+```{r figure-theme, include = FALSE}
+theme_article <- theme_minimal(base_size = 12, base_family = "sans") +
+  theme(
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_blank(),
+    plot.title.position = "plot",
+    legend.position = "bottom",
+    strip.text = element_text(face = "bold"),
+    axis.title = element_text(face = "bold")
+  )
+bird_palette <- c("#0072B2", "#D55E00", "#009E73", "#CC79A7")
+```
+
+## One prepared teaching dataset
+
+The article begins with an installed fixture, rather than asking you to rebuild
+the simulation. It contains separate data frames for the three questions and
+their fixed trees. The data are simulated to make the axes visible; they are
+not evidence about a real bird assemblage.
+
+```{r data}
+bridge_path <- system.file(
+  "extdata", "examples", "trait-axis-bridge.rds", package = "gllvmTMB"
+)
+bridge_path <- c(
+  file.path("inst", "extdata", "examples", "trait-axis-bridge.rds"),
+  file.path("..", "inst", "extdata", "examples", "trait-axis-bridge.rds"),
+  file.path("..", "..", "inst", "extdata", "examples", "trait-axis-bridge.rds"),
+  bridge_path
+)
+bridge_path <- bridge_path[nzchar(bridge_path) & file.exists(bridge_path)][1]
+stopifnot(!is.na(bridge_path))
+bridge <- readRDS(bridge_path)
+
+pcm <- bridge$pcm
+column <- bridge$column
+isdm <- bridge$isdm
+```
+
+```{r axis-map, fig.width=10, fig.height=3.6, fig.cap="The front-door decision: only the first two questions put a tree in the model. In a comparative model the tree joins species units; in a community-gradient model it joins species response columns; source labels instead select observation processes.", fig.alt="A three-panel axis map. Comparative: a species tree is linked to species units, then to repeated elevation records. Community: a species tree is linked to bird response columns, then to site records. iSDM: GBIF, iNaturalist, and survey labels select observation models that feed one ecological process; no tree connects the sources."}
+axis_nodes <- data.frame(
+  panel = rep(c("Comparative PCM", "Gaussian community", "Three-source iSDM"), each = 3),
+  x = rep(c(1, 3, 5), 3),
+  y = 2,
+  label = c(
+    "tree tips", "species units", "repeated\nelevation records",
+    "tree tips", "bird response\ncolumns", "site records",
+    "source labels", "observation\nmodels", "shared\necology"
+  ),
+  kind = c("tree", "data", "data", "tree", "data", "data", "source", "source", "data")
+)
+axis_edges <- data.frame(
+  panel = rep(c("Comparative PCM", "Gaussian community", "Three-source iSDM"), each = 2),
+  x = c(1.45, 3.45, 1.45, 3.45, 1.45, 3.45),
+  xend = c(2.55, 4.55, 2.55, 4.55, 2.55, 4.55),
+  y = 2,
+  yend = 2
+)
+
+ggplot(axis_nodes, aes(x, y)) +
+  geom_segment(
+    data = axis_edges,
+    aes(x = x, y = y, xend = xend, yend = yend),
+    inherit.aes = FALSE, linewidth = 0.8, colour = "#4D4D4D",
+    arrow = grid::arrow(length = grid::unit(2, "mm"))
+  ) +
+  geom_label(aes(label = label, fill = kind), colour = "#1A1A1A", size = 3.2,
+             label.size = 0.25, show.legend = FALSE) +
+  facet_wrap(~ panel) +
+  scale_fill_manual(values = c(tree = "#B8D8E8", data = "#F4D6A0", source = "#C9E5C5")) +
+  coord_cartesian(xlim = c(0.35, 5.65), ylim = c(1.2, 2.8), clip = "off") +
+  labs(x = NULL, y = NULL) +
+  theme_article +
+  theme(axis.text = element_blank(), axis.ticks = element_blank(), panel.grid = element_blank())
+```
+
+## A PCM tree among species units
+
+Suppose field teams repeatedly measure four morphological and life-history
+traits for each
+simulated montane bird species across an elevational gradient. Here a tree tip
+is a **species unit**. The repeated rows for a species do not become tips: they
+are observations of that species at an elevation and in a domain.
+
+The fixed `column_domain:elevation` term gives each domain its own mean
+elevation trend. `phylo_indep()` gives each domain a separate phylogenetic
+intercept variance. The final term is a different object: it gives every
+species one elevation-slope deviation, correlated across species by `tree`.
+
+$$
+b_s \sim \mathcal N(0,\, \sigma^2_{\mathrm{slope}} A_{\mathrm{tree}}).
+$$
+
+There is one shared phylogenetic elevation-slope variance
+\(\sigma^2_{\mathrm{slope}}\), not four domain-specific intercept--slope
+covariance blocks. If your scientific question needs those per-domain random
+covariances, this compact helper is the wrong model and the formula must be
+expanded deliberately.
+
+```{r pcm-fit}
+pcm_data <- pcm$data
+tree <- pcm$tree
+
+fit_pcm <- gllvmTMB(
+  value ~ 0 + trait + column_domain:elevation +
+    phylo_indep(0 + trait | species, tree = tree) +
+    phylo_slope(elevation | species, tree = tree),
+  data = pcm_data,
+  trait = "trait",
+  unit = "record_id",
+  cluster = "species",
+  family = gaussian(),
+  silent = TRUE
+)
+fit_pcm$fit_health[c("convergence", "pd_hessian", "converged")]
+```
+
+```{r pcm-trajectories, fig.width=10, fig.height=3.7, fig.cap="Simulated montane-bird records by elevation. Each small multiple is one response column; thin lines join repeated records for a species and the heavier line is its column-domain mean. The fitted model adds one phylogenetically structured elevation-slope deviation per species, shared across the four columns.", fig.alt="Four small-multiple line plots, one each for body mass, bill length, clutch size, and laying date. In each plot, faint species trajectories run across elevation and a coloured average trajectory summarizes the corresponding morphology or life-history domain. The horizontal elevation scale is shared."}
+pcm_plot_data <- pcm_data
+pcm_plot_data$value_z <- ave(
+  pcm_plot_data$value, pcm_plot_data$trait,
+  FUN = function(x) as.numeric(scale(x))
+)
+pcm_plot_data$trait_label <- paste(
+  gsub("_", " ", pcm_plot_data$trait),
+  "—", gsub("_", " ", pcm_plot_data$column_domain)
+)
+
+ggplot(pcm_plot_data, aes(elevation, value_z, group = interaction(species, trait))) +
+  geom_line(alpha = 0.22, colour = "#5C5C5C", linewidth = 0.45) +
+  geom_smooth(aes(colour = column_domain, group = 1), method = "lm", se = FALSE,
+              linewidth = 1.1, show.legend = FALSE) +
+  facet_wrap(~ trait_label, nrow = 1) +
+  scale_colour_manual(values = c(morphology = "#0072B2", life_history = "#D55E00")) +
+  labs(x = "Elevation (standardised)", y = "Response (within-column SD)") +
+  theme_article
+```
+
+The `cluster = "species"` argument identifies the ordinary species-level
+grouping in this example; the tree-aware terms also state their own RHS
+species axis. Keeping the RHS visible is useful: it tells the next reader
+exactly what the tree labels must match.
+
+## A Gaussian tree among community response columns
+
+Now change the question. At each montane site we measure a Gaussian response
+for several bird species and record elevation and forest cover. The tree tips
+now label the **species response columns**—the levels of `trait`—rather than
+the units at which observations were repeatedly made.
+
+The covered response-column model is:
+
+```{r column-fit}
+column_data <- column$data
+tree <- column$tree
+
+fit_column <- gllvmTMB(
+  value ~ 0 + trait +
+    phylo_slope(elevation + forest_cover | trait, tree = tree),
+  data = column_data,
+  trait = "trait",
+  unit = "site_id",
+  family = gaussian(),
+  silent = TRUE
+)
+
+Sigma_slope <- extract_Sigma(fit_column, level = "column_slope")$Sigma
+Sigma_slope
+```
+
+`phylo_slope(elevation + forest_cover | trait, tree = tree)` is a
+predictor-only response-column route. It has no random intercept and is
+Gaussian only. The returned `Sigma_slope` is the covariance of the two
+predictor slopes, not a trait-level `Sigma`: it asks whether elevation and
+forest-cover deviations co-vary while the tree relates the bird columns.
+
+```{r community-slopes, fig.width=10, fig.height=4.4, fig.cap="The same simulated community data viewed two ways: species-specific Gaussian response trends across elevation (left) and the fitted predictor-basis covariance returned by `extract_Sigma(fit_column, level = \"column_slope\")$Sigma` (right). The covariance panel is about elevation and forest-cover slopes, not covariance among bird response columns.", fig.alt="Left panel: coloured species-specific Gaussian response lines across elevation, with points. Right panel: a clearly labelled two by two heatmap for elevation and forest-cover slope covariance, using a diverging scale centred at zero and showing each numeric covariance."}
+slope_plot_data <- subset(
+  column_data,
+  trait %in% levels(column_data$trait)[seq(1L, nlevels(column_data$trait), length.out = 12L)]
+)
+sigma_plot_data <- as.data.frame(as.table(Sigma_slope), stringsAsFactors = FALSE)
+names(sigma_plot_data) <- c("predictor_row", "predictor_column", "covariance")
+pretty_predictor <- c(elevation = "Elevation", forest_cover = "Forest cover")
+sigma_plot_data$predictor_row <- factor(
+  pretty_predictor[as.character(sigma_plot_data$predictor_row)],
+  levels = rev(unname(pretty_predictor))
+)
+sigma_plot_data$predictor_column <- factor(
+  pretty_predictor[as.character(sigma_plot_data$predictor_column)],
+  levels = unname(pretty_predictor)
+)
+
+p_slopes <- ggplot(slope_plot_data, aes(elevation, value, colour = guild)) +
+  geom_point(alpha = 0.55, size = 1.4) +
+  geom_smooth(aes(group = trait), method = "lm", se = FALSE, linewidth = 0.8) +
+  scale_colour_manual(values = bird_palette) +
+  labs(x = "Elevation (standardised)", y = "Gaussian response", colour = "Guild") +
+  theme_article
+
+p_covariance <- ggplot(sigma_plot_data, aes(predictor_column, predictor_row, fill = covariance)) +
+  geom_tile(colour = "white", linewidth = 0.8) +
+  geom_text(aes(label = sprintf("%.2f", covariance)), colour = "#1A1A1A", size = 4) +
+  scale_fill_gradient2(low = "#2166AC", mid = "white", high = "#B2182B", midpoint = 0,
+                       guide = "none") +
+  coord_equal() +
+  labs(x = NULL, y = NULL) +
+  theme_article +
+  theme(panel.grid = element_blank(), axis.text = element_text(size = 10))
+
+grid::grid.newpage()
+layout <- grid::grid.layout(1, 2, widths = grid::unit(c(1.7, 0.8), "null"))
+grid::pushViewport(grid::viewport(layout = layout))
+print(p_slopes, vp = grid::viewport(layout.pos.row = 1, layout.pos.col = 1))
+print(p_covariance, vp = grid::viewport(layout.pos.row = 1, layout.pos.col = 2))
+```
+
+The two panels use only base R's grid system, so the covariance display is
+never silently omitted. Do not transfer this syntax to non-Gaussian responses or
+claim a combined non-Gaussian, multi-predictor slope model: that capability is
+not covered here.
+
+## Three sources are an observation axis, not a tree axis
+
+A final dataset records the same simulated bird community through a portal,
+an atlas, and a designed survey. This is an observation problem. The source
+label says which observation law applies to a row; it is not an evolutionary
+relationship and should not be supplied as a tree grouping.
+
+```{r isdm-declare}
+isdm_data <- isdm$data
+
+source_family <- isdm_sources(
+  gbif = isdm_source(poisson(link = "log"), observation = ~ access + popdens),
+  inat = isdm_source(poisson(link = "log"), observation = ~ access + popdens),
+  survey = isdm_source(binomial(link = "cloglog"),
+                       observation = ~ observer + method)
+)
+source_family
+```
+
+The declaration intentionally uses ordinary R syntax, `~ observer + method`.
+It is not a recipe for a full iSDM fit, and the compact source panel below
+does not establish abundance, occupancy, or detectability. It simply keeps
+the source-specific observation layer separate from the ecological and
+phylogenetic questions above.
+
+```{r isdm-sources, fig.width=9, fig.height=3.7, fig.cap="Three simulated observation sources enter separate observation models. GBIF and iNaturalist rows use Poisson-log laws with access and population density; survey rows use a complementary-log-log detection law with observer and method. The source labels are not phylogenetic tips.", fig.alt="A source-flow diagram. Separate GBIF, iNaturalist, and survey observation-model boxes each point to one shared ecological process. A direct annotation says that no tree is defined on sources."}
+source_panel <- data.frame(
+  source = c("GBIF", "iNaturalist", "Survey"),
+  observation = c("GBIF\nPoisson log\naccess + popdens", "iNaturalist\nPoisson log\naccess + popdens", "Survey\nBinomial cloglog\nobserver + method"),
+  x = 1.25,
+  y = c(2.5, 1.45, 0.4)
+)
+
+ggplot(source_panel, aes(x, y)) +
+  geom_label(aes(label = observation, fill = source), size = 4, label.size = 0.3,
+             colour = "#1A1A1A", show.legend = FALSE) +
+  geom_segment(aes(x = 1.95, y = y, xend = 3.25, yend = 1.45),
+               arrow = grid::arrow(length = grid::unit(2, "mm")), linewidth = 0.8,
+               colour = "#4D4D4D") +
+  annotate("label", x = 4.25, y = 1.45, label = "shared ecological\nprocess", fill = "white", size = 4) +
+  annotate("text", x = 2.65, y = 3.05, label = "No tree on sources", colour = "#6A3D9A", fontface = "bold") +
+  scale_fill_manual(values = c(GBIF = "#B8D8E8", iNaturalist = "#F4D6A0", Survey = "#C9E5C5")) +
+  coord_cartesian(xlim = c(0.35, 5.2), ylim = c(-0.1, 3.4), clip = "off") +
+  labs(x = NULL, y = NULL) +
+  theme_article +
+  theme(axis.text = element_blank(), axis.ticks = element_blank(), panel.grid = element_blank())
+```
+
+## Carry this question into the next model
+
+Before fitting a tree-aware term, write down the answer to “what does the tree
+relate?” If it relates species units with replicated records, use the
+comparative species axis. If it relates Gaussian response columns, use the
+predictor-only column-slope route and interpret `column_slope` covariance in
+the predictor basis. If a label names an observation source, declare its
+observation law instead: a source is not automatically a phylogenetic axis.
+
+These examples cover the two fitted Gaussian routes shown here and the
+three-source declaration. They do not cover a full iSDM analysis, tree
+uncertainty, abundance or occupancy inference, or non-Gaussian multi-predictor
+response-column slopes.

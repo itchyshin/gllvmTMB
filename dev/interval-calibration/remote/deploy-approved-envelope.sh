@@ -15,6 +15,7 @@ totoro_socket=/Users/z3437171/.ssh/cm-snakagaw@totoro.biology.ualberta.ca:22
 fir_socket=/Users/z3437171/.ssh/cm-snakagaw@fir.alliancecan.ca:22
 totoro_deploy=/home/snakagaw/gllvmTMB-interval-calibration/2026-08-25/deployment
 fir_deploy=/home/snakagaw/gllvmTMB-interval-calibration/2026-08-25/deployment
+fir_dependency_library=/home/snakagaw/R/lane_b_4.5
 
 ssh_reuse() {
   socket=$1
@@ -97,7 +98,7 @@ case "$action" in
   launch-fir)
     fir_base=$(dirname "$fir_deploy")
     ssh_reuse "$fir_socket" "$fir_host" \
-      "set -eu; . /cvmfs/soft.computecanada.ca/custom/software/lmod/lmod/init/bash; module load StdEnv/2023 gcc/12.3 r/4.5.0; test -f '$fir_deploy/prepared-fir.tsv'; cd '$fir_deploy'; sha256sum -c remote-payload-checksums.sha256; expected_sha=\$(awk -F '\t' '\$1 == \"orchestrator_sha\" {print \$2}' approved-dispatch.tsv); test -n \"\$expected_sha\"; fir_orchestrator='$fir_base/orchestrators/'\$expected_sha; test \"\$(git -C \"\$fir_orchestrator\" rev-parse HEAD)\" = \"\$expected_sha\"; test -z \"\$(git -C \"\$fir_orchestrator\" status --porcelain --untracked-files=all)\"; source_sha=\$(Rscript --vanilla -e 'source(commandArgs(TRUE)[1]); cat(interval_approved_source(\"CI10_COST\"))' \"\$fir_orchestrator/dev/interval-calibration/remote/shard-io.R\"); bash \"\$fir_orchestrator/dev/interval-calibration/remote/prepare-ci10-cost-array.sh\" \"\$fir_orchestrator\" '$fir_deploy/manifests/ci10_cost-tasks.tsv' '$fir_base/ci10-cost-array' '$fir_base/libraries/'\$source_sha"
+      "set -eu; . /cvmfs/soft.computecanada.ca/custom/software/lmod/lmod/init/bash; module load StdEnv/2023 gcc/12.3 r/4.5.0; test -f '$fir_deploy/prepared-fir.tsv'; cd '$fir_deploy'; sha256sum -c remote-payload-checksums.sha256; expected_sha=\$(awk -F '\t' '\$1 == \"orchestrator_sha\" {print \$2}' approved-dispatch.tsv); test -n \"\$expected_sha\"; fir_orchestrator='$fir_base/orchestrators/'\$expected_sha; test \"\$(git -C \"\$fir_orchestrator\" rev-parse HEAD)\" = \"\$expected_sha\"; test -z \"\$(git -C \"\$fir_orchestrator\" status --porcelain --untracked-files=all)\"; source_sha=\$(Rscript --vanilla -e 'source(commandArgs(TRUE)[1]); cat(interval_approved_source(\"CI10_COST\"))' \"\$fir_orchestrator/dev/interval-calibration/remote/shard-io.R\"); fir_libraries='$fir_base/libraries/'\$source_sha':$fir_dependency_library'; bash \"\$fir_orchestrator/dev/interval-calibration/remote/prepare-ci10-cost-array.sh\" \"\$fir_orchestrator\" '$fir_deploy/manifests/ci10_cost-tasks.tsv' '$fir_base/ci10-cost-array' \"\$fir_libraries\""
     ;;
   status-totoro)
     ssh_reuse "$totoro_socket" "$totoro_host" \

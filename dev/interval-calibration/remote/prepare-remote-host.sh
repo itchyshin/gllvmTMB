@@ -9,6 +9,7 @@ fi
 host_class=$1
 deploy_root=$2
 host=$(hostname -f)
+dependency_libraries=${R_LIBS_USER-}
 
 case "$host_class:$host" in
   totoro:totoro.biology.ualberta.ca)
@@ -28,6 +29,16 @@ esac
 if [ "$host_class" = fir ]; then
   . /cvmfs/soft.computecanada.ca/custom/software/lmod/lmod/init/bash
   module load StdEnv/2023 gcc/12.3 r/4.5.0
+  dependency_libraries=/home/snakagaw/R/lane_b_4.5
+  test -d "$dependency_libraries"
+  R_LIBS_USER=$dependency_libraries Rscript --vanilla -e '
+    required <- c(
+      "assertthat", "cli", "fmesher", "generics", "lifecycle",
+      "rlang", "tidyselect", "TMB", "BH", "RcppEigen"
+    )
+    missing <- required[!vapply(required, requireNamespace, logical(1), quietly = TRUE)]
+    if (length(missing)) stop("missing pinned Fir dependencies: ", paste(missing, collapse = ", "))
+  '
 fi
 
 if [ "$deploy_root" != "$expected_deploy" ]; then
@@ -104,10 +115,15 @@ for packet in $packets; do
     exit 65
   fi
   if [ ! -e "$library_root" ]; then
-    sh "$orchestrator_root/dev/interval-calibration/remote/install-packet-library.sh" \
+    R_LIBS_USER=$dependency_libraries \
+      sh "$orchestrator_root/dev/interval-calibration/remote/install-packet-library.sh" \
       "$packet" "$scientific_root" "$library_root" "$orchestrator_root"
   else
-    R_LIBS_USER=$library_root Rscript --vanilla -e \
+    campaign_libraries=$library_root
+    if [ -n "$dependency_libraries" ]; then
+      campaign_libraries=$campaign_libraries:$dependency_libraries
+    fi
+    R_LIBS_USER=$campaign_libraries Rscript --vanilla -e \
       'source(commandArgs(TRUE)[1]); interval_assert_installed_package(commandArgs(TRUE)[2])' \
       "$orchestrator_root/dev/interval-calibration/remote/shard-io.R" "$source_sha"
   fi

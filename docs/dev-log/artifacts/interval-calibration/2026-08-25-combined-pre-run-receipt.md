@@ -282,3 +282,15 @@ checkouts are now keyed by the approved orchestration SHA, matching the
 existing source-SHA-keyed scientific and library roots. Totoro remains on its
 already prepared singleton checkout. V5 is retained by versioned rename and
 contains no CI-10 campaign row or submitted job.
+
+The sixth Fir preparation attempt passed the SHA-keyed checkout contract and
+reached `R CMD INSTALL`, which failed because the new isolated library did not
+contain gllvmTMB's ten imported/linking packages. A full read-only audit then
+verified the existing Fir R 4.5 dependency library
+`/home/snakagaw/R/lane_b_4.5`: all ten packages were available, including TMB
+1.9.23, BH 1.90.0.1, and RcppEigen 0.3.4.0.2. The preparation contract now
+checks the full dependency set before compiling and uses a two-level library
+path: the new source-marked packet library first, the validated dependency
+library second. No package download or upgrade is performed. V6 and its failed
+packet-library directory are retained by versioned rename; no campaign row or
+SLURM job exists.

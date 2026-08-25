@@ -426,6 +426,13 @@ test_that("remote launchers enforce frozen sources, sequential-wave limits, and 
     readLines(file.path(remote_root, "prepare-remote-host.sh"), warn = FALSE),
     collapse = "\n"
   )
+  install_library <- paste(
+    readLines(
+      file.path(remote_root, "install-packet-library.sh"),
+      warn = FALSE
+    ),
+    collapse = "\n"
+  )
   expect_match(prepare_host, "totoro:totoro.biology.ualberta.ca", fixed = TRUE)
   expect_match(
     prepare_host,
@@ -450,6 +457,27 @@ test_that("remote launchers enforce frozen sources, sequential-wave limits, and 
     "/cvmfs/soft.computecanada.ca/custom/software/lmod/lmod/init/bash",
     fixed = TRUE
   )
+  expect_match(
+    prepare_host,
+    "/home/snakagaw/R/lane_b_4.5",
+    fixed = TRUE
+  )
+  expect_match(prepare_host, "required <- c(", fixed = TRUE)
+  expect_match(
+    prepare_host,
+    "dependency_libraries=${R_LIBS_USER-}",
+    fixed = TRUE
+  )
+  expect_match(
+    install_library,
+    "dependency_libraries=${R_LIBS_USER-}",
+    fixed = TRUE
+  )
+  expect_match(
+    install_library,
+    "campaign_libraries=$library_root:$dependency_libraries",
+    fixed = TRUE
+  )
   expect_match(deploy, "bash '$deploy/prepare-remote-host.sh'", fixed = TRUE)
   expect_match(
     deploy,
@@ -461,6 +489,12 @@ test_that("remote launchers enforce frozen sources, sequential-wave limits, and 
     "fir_orchestrator='$fir_base/orchestrators/'",
     fixed = TRUE
   )
+  expect_match(
+    deploy,
+    "fir_dependency_library=/home/snakagaw/R/lane_b_4.5",
+    fixed = TRUE
+  )
+  expect_match(deploy, "fir_libraries=", fixed = TRUE)
 
   sequence <- paste(
     readLines(

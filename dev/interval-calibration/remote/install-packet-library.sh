@@ -9,6 +9,7 @@ packet=$1
 scientific_root=$2
 library_root=$3
 orchestrator_root=$4
+dependency_libraries=${R_LIBS_USER-}
 
 source_sha=$(Rscript --vanilla -e \
   'source(commandArgs(TRUE)[1]); cat(interval_approved_source(commandArgs(TRUE)[2]))' \
@@ -40,6 +41,10 @@ package_path=$(Rscript --vanilla -e \
   '.libPaths(commandArgs(TRUE)[1]); cat(find.package("gllvmTMB"))' \
   "$library_root")
 printf '%s\n' "$source_sha" > "$package_path/.interval-scientific-source-sha"
-R_LIBS_USER="$library_root" Rscript --vanilla -e \
+campaign_libraries=$library_root
+if [ -n "$dependency_libraries" ]; then
+  campaign_libraries=$library_root:$dependency_libraries
+fi
+R_LIBS_USER="$campaign_libraries" Rscript --vanilla -e \
   'source(commandArgs(TRUE)[1]); interval_assert_installed_package(commandArgs(TRUE)[2]); cat("INTERVAL_LIBRARY_OK\n")' \
   "$orchestrator_root/dev/interval-calibration/remote/shard-io.R" "$source_sha"

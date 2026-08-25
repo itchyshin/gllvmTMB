@@ -1,8 +1,11 @@
 # Totoro interval-campaign infrastructure incident
 
-Date: 2026-08-25  
-Lane: `codex/interval-calibration-release`  
-Original immutable root: `/home/snakagaw/gllvmTMB-interval-calibration/2026-08-25`  
+Date: 2026-08-25
+
+Lane: `codex/interval-calibration-release`
+
+Original immutable root: `/home/snakagaw/gllvmTMB-interval-calibration/2026-08-25`
+
 Original archive SHA-256: `0402b3e1484f56c92fa40cf362c4bb30b5c1de7feba221250261ad907d89c396`
 
 ## Disposition

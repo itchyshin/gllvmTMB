@@ -435,6 +435,11 @@ test_that("remote launchers enforce frozen sources, sequential-wave limits, and 
   expect_match(prepare_host, "git ls-remote", fixed = TRUE)
   expect_match(prepare_host, "--detach", fixed = TRUE)
   expect_match(prepare_host, "install-packet-library.sh", fixed = TRUE)
+  expect_match(
+    prepare_host,
+    "module load StdEnv/2023 gcc/12.3 r/4.5.0",
+    fixed = TRUE
+  )
 
   sequence <- paste(
     readLines(

@@ -298,6 +298,11 @@ test_that("CI-10 production wrapper is cost-array only and binds adjacent proven
   expect_match(batch, "#SBATCH --array=1-18%18", fixed = TRUE)
   expect_match(batch, "#SBATCH --time=00:30:00", fixed = TRUE)
   expect_match(batch, "#SBATCH --account=def-snakagaw", fixed = TRUE)
+  expect_match(
+    batch,
+    "module load StdEnv/2023 gcc/12.3 r/4.5.0",
+    fixed = TRUE
+  )
   expect_match(batch, "timeout --signal=TERM --kill-after=30s 28m", fixed = TRUE)
   expect_match(batch, 'cell_id" -ne "$SLURM_ARRAY_TASK_ID', fixed = TRUE)
   expect_match(batch, "attempt\" -ne 1", fixed = TRUE)
@@ -317,6 +322,11 @@ test_that("CI-10 production wrapper is cost-array only and binds adjacent proven
     fixed = TRUE
   )
   expect_match(prepare, "task_manifest_sha256", fixed = TRUE)
+  expect_match(
+    prepare,
+    "module load StdEnv/2023 gcc/12.3 r/4.5.0",
+    fixed = TRUE
+  )
   expect_match(prepare, "immutable root retained for review", fixed = TRUE)
   aggregate <- paste(
     readLines(

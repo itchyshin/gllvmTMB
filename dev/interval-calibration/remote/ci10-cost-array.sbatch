@@ -9,6 +9,8 @@
 #SBATCH --error=/home/snakagaw/gllvmTMB-interval-calibration/2026-08-25/ci10-cost-array/slurm/%A_%a.err
 
 set -eu
+. /etc/profile.d/modules.sh
+module load StdEnv/2023 gcc/12.3 r/4.5.0
 export OPENBLAS_NUM_THREADS=1
 export OMP_NUM_THREADS=1
 export MKL_NUM_THREADS=1

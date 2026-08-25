@@ -253,3 +253,13 @@ and the public alias remain refused inside the remote script. The existing
 socket still targets `fir.alliancecan.ca`. The failed deployment directory is
 retained by timestamped rename before retry, and no SLURM job was submitted.
 Both focused deployment test files were observed green after this correction.
+
+The third Fir preparation attempt passed all payload checks and the numbered
+host guard, then failed closed before package installation because `Rscript`
+was absent from the non-interactive shell PATH. A live read-only module probe
+verified `StdEnv/2023`, `gcc/12.3`, and `r/4.5.0` on Fir and returned R 4.5.0.
+Preparation, submission, and the SLURM task now load that exact module stack
+explicitly after sourcing `/etc/profile.d/modules.sh`. The focused tests were
+again observed failing before this fix and green afterwards. The V3 deployment
+is retained by versioned rename; it contains no package library, campaign row,
+or submitted job.

@@ -18,6 +18,8 @@ case "$host:$out_root" in
     exit 65
     ;;
 esac
+. /etc/profile.d/modules.sh
+module load StdEnv/2023 gcc/12.3 r/4.5.0
 export OPENBLAS_NUM_THREADS=1
 export OMP_NUM_THREADS=1
 export MKL_NUM_THREADS=1

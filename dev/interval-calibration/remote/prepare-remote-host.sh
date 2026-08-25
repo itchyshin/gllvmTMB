@@ -25,6 +25,11 @@ case "$host_class:$host" in
     ;;
 esac
 
+if [ "$host_class" = fir ]; then
+  . /etc/profile.d/modules.sh
+  module load StdEnv/2023 gcc/12.3 r/4.5.0
+fi
+
 if [ "$deploy_root" != "$expected_deploy" ]; then
   echo "deployment root differs from the approved immutable root" >&2
   exit 65

@@ -53971,3 +53971,64 @@ rg -n 'FG-[0-9]|FAM-[0-9]|RE-[0-9]|ISDM-[0-9]' vignettes/articles/where-does-the
 **Visual receipt:** Florence inspected the four rendered PNGs after a first render exposed clipping and trait-scale conflation. The revised direct-flow figures, per-column PCM small multiples, covariance matrix, and source flow all pass at rendered article size.
 
 **Deliberately not run:** full package check / recovery campaign; Totoro/DRAC; non-Gaussian multi-predictor fits; or implementation work for wide, spatial/kernel/latent slope-only variants. After-task: `docs/dev-log/after-task/2026-08-24-trait-axis-bridge-article.md`.
+
+---
+
+## 2026-08-25 — predictor-informed LV common-family evidence reconciliation
+
+**Lane:** `codex/lv-family-evidence-reconcile`
+**Exact base:** `482c9d372c7dc100f988f41f80d1b4cc3ce8a8e4` = local `origin/main` when branched
+**Verdict:** `LV_COMMON_FAMILY_HOLD__RAW_OR_LINEAGE_GAP`
+
+The read-only sister-repository audit pinned the supported GLLVM.jl candidate
+to local `origin/main@8c9acc76c5b81e40a228ba11060394cbac5cf13c`.
+The candidate exposes the complete-response `latent(..., unique = FALSE)`
+`X_lv` bridge and corrected Poisson generator/Hessian stencil, but the
+historical common-family evidence retains no seed-level result rows, failed
+attempts, earned MCSEs, predeclared denominator policy, or all-family K=2
+driver. Design 73, the validation-debt register, and capability status were
+therefore not edited.
+
+Commands and exact outcomes:
+
+```sh
+git -C '/Users/z3437171/Dropbox/Github Local/GLLVM.jl' rev-parse origin/main
+# 8c9acc76c5b81e40a228ba11060394cbac5cf13c
+
+git -C '/Users/z3437171/Dropbox/Github Local/GLLVM.jl' merge-base --is-ancestor 6c96b758 origin/main
+git -C '/Users/z3437171/Dropbox/Github Local/GLLVM.jl' merge-base --is-ancestor 2ce6e29f origin/main
+# both exit 0
+
+git -C '/Users/z3437171/Dropbox/Github Local/GLLVM.jl' show origin/main:src/bridge.jl | rg -n 'function bridge_fit|X_lv|lv_effects|confint_lv_effects'
+# PASS: endpoint, X_lv argument, B_lv payload, and Wald helper are present
+
+git -C '/Users/z3437171/Dropbox/Github Local/GLLVM.jl' show origin/main:bench/lv_coverage.jl | Rscript --vanilla -e 'x <- paste(readLines(file("stdin"), warn = FALSE), collapse = "\n"); broken <- "Poisson(exp(eta_matrix(Ystar)))"; stopifnot(grepl("Poisson(exp(eta_matrix", broken, fixed = TRUE), !grepl("Poisson(exp(eta_matrix", x, fixed = TRUE), grepl("eta = eta_matrix", x, fixed = TRUE)); cat("POISSON_GENERATOR_NEGATIVE_CONTROL_PASS\n")'
+# POISSON_GENERATOR_NEGATIVE_CONTROL_PASS
+
+git -C '/Users/z3437171/Dropbox/Github Local/GLLVM.jl' show origin/main:src/confint_family.jl | Rscript --vanilla -e 'x <- paste(readLines(file("stdin"), warn = FALSE), collapse = "\n"); broken <- "f(xp) - 2f0 + f(xm)"; stopifnot(grepl("f(xp) - 2f0 + f(xm)", broken, fixed = TRUE), !grepl("f(xp) - 2f0 + f(xm)", x, fixed = TRUE), grepl("f(xp) - 2 * f0 + f(xm)", x, fixed = TRUE)); cat("FD_HESSIAN_NEGATIVE_CONTROL_PASS\n")'
+# FD_HESSIAN_NEGATIVE_CONTROL_PASS
+
+git diff --name-only -- docs/design/73-predictor-informed-latent-scores.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md
+# no output: HOLD-only freeze confirmed
+
+git diff --check
+# no output
+```
+
+Failed attempts were retained rather than smoothed over:
+
+- the first Unlazy G2 oracle used an invalid R escape (`'\\.'`) and failed;
+- the repaired G2 first saw Git's collapsed untracked directory instead of the
+  receipt path and failed, so it was strengthened with
+  `--untracked-files=all`;
+- the first Poisson static detector repeated the same R regex-escape mistake;
+  the fixed-string detector replaced it;
+- the pre-handover landing gate correctly failed on this lane's uncommitted
+  files and reported other lanes' unpushed branches; this lane does not own or
+  alter those foreign branches.
+
+No fit, simulation, benchmark, package test, package check, article render,
+GitHub Actions science job, Totoro/DRAC job, push, PR, or GLLVM.jl mutation ran.
+The frozen four-fit raw-retention pre-run is estimated at 8--20 minutes locally
+but requires a new explicit owner decision for a clean GLLVM.jl worktree and
+was not launched.

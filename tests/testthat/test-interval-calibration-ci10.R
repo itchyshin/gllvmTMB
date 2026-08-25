@@ -303,6 +303,11 @@ test_that("CI-10 production wrapper is cost-array only and binds adjacent proven
     "module load StdEnv/2023 gcc/12.3 r/4.5.0",
     fixed = TRUE
   )
+  expect_match(
+    batch,
+    "/cvmfs/soft.computecanada.ca/custom/software/lmod/lmod/init/bash",
+    fixed = TRUE
+  )
   expect_match(batch, "timeout --signal=TERM --kill-after=30s 28m", fixed = TRUE)
   expect_match(batch, 'cell_id" -ne "$SLURM_ARRAY_TASK_ID', fixed = TRUE)
   expect_match(batch, "attempt\" -ne 1", fixed = TRUE)
@@ -325,6 +330,11 @@ test_that("CI-10 production wrapper is cost-array only and binds adjacent proven
   expect_match(
     prepare,
     "module load StdEnv/2023 gcc/12.3 r/4.5.0",
+    fixed = TRUE
+  )
+  expect_match(
+    prepare,
+    "/cvmfs/soft.computecanada.ca/custom/software/lmod/lmod/init/bash",
     fixed = TRUE
   )
   expect_match(prepare, "immutable root retained for review", fixed = TRUE)

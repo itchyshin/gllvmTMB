@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 set -eu
 
 if [ "$#" -ne 2 ]; then
@@ -26,7 +26,7 @@ case "$host_class:$host" in
 esac
 
 if [ "$host_class" = fir ]; then
-  . /etc/profile.d/modules.sh
+  . /cvmfs/soft.computecanada.ca/custom/software/lmod/lmod/init/bash
   module load StdEnv/2023 gcc/12.3 r/4.5.0
 fi
 

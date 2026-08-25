@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #SBATCH --account=def-snakagaw
 #SBATCH --time=00:30:00
 #SBATCH --cpus-per-task=1
@@ -9,7 +9,7 @@
 #SBATCH --error=/home/snakagaw/gllvmTMB-interval-calibration/2026-08-25/ci10-cost-array/slurm/%A_%a.err
 
 set -eu
-. /etc/profile.d/modules.sh
+. /cvmfs/soft.computecanada.ca/custom/software/lmod/lmod/init/bash
 module load StdEnv/2023 gcc/12.3 r/4.5.0
 export OPENBLAS_NUM_THREADS=1
 export OMP_NUM_THREADS=1

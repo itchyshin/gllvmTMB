@@ -80,7 +80,7 @@ prepare_host() {
     scp_reuse "$socket" "$manifest" "$host:$staging/manifests/"
   done
   ssh_reuse "$socket" "$host" \
-    "set -eu; cd '$staging'; sha256sum -c remote-payload-checksums.sha256; mv '$staging' '$deploy'; sh '$deploy/prepare-remote-host.sh' '$host_class' '$deploy'"
+    "set -eu; cd '$staging'; sha256sum -c remote-payload-checksums.sha256; mv '$staging' '$deploy'; bash '$deploy/prepare-remote-host.sh' '$host_class' '$deploy'"
 }
 
 case "$action" in
@@ -97,7 +97,7 @@ case "$action" in
   launch-fir)
     fir_base=$(dirname "$fir_deploy")
     ssh_reuse "$fir_socket" "$fir_host" \
-      "set -eu; test -f '$fir_deploy/prepared-fir.tsv'; cd '$fir_deploy'; sha256sum -c remote-payload-checksums.sha256; expected_sha=\$(awk -F '\t' '\$1 == \"orchestrator_sha\" {print \$2}' approved-dispatch.tsv); test -n \"\$expected_sha\"; test \"\$(git -C '$fir_base/orchestrator' rev-parse HEAD)\" = \"\$expected_sha\"; test -z \"\$(git -C '$fir_base/orchestrator' status --porcelain --untracked-files=all)\"; source_sha=\$(Rscript --vanilla -e 'source(\"$fir_base/orchestrator/dev/interval-calibration/remote/shard-io.R\"); cat(interval_approved_source(\"CI10_COST\"))'); sh '$fir_base/orchestrator/dev/interval-calibration/remote/prepare-ci10-cost-array.sh' '$fir_base/orchestrator' '$fir_deploy/manifests/ci10_cost-tasks.tsv' '$fir_base/ci10-cost-array' '$fir_base/libraries/'\$source_sha"
+      "set -eu; . /cvmfs/soft.computecanada.ca/custom/software/lmod/lmod/init/bash; module load StdEnv/2023 gcc/12.3 r/4.5.0; test -f '$fir_deploy/prepared-fir.tsv'; cd '$fir_deploy'; sha256sum -c remote-payload-checksums.sha256; expected_sha=\$(awk -F '\t' '\$1 == \"orchestrator_sha\" {print \$2}' approved-dispatch.tsv); test -n \"\$expected_sha\"; test \"\$(git -C '$fir_base/orchestrator' rev-parse HEAD)\" = \"\$expected_sha\"; test -z \"\$(git -C '$fir_base/orchestrator' status --porcelain --untracked-files=all)\"; source_sha=\$(Rscript --vanilla -e 'source(\"$fir_base/orchestrator/dev/interval-calibration/remote/shard-io.R\"); cat(interval_approved_source(\"CI10_COST\"))'); bash '$fir_base/orchestrator/dev/interval-calibration/remote/prepare-ci10-cost-array.sh' '$fir_base/orchestrator' '$fir_deploy/manifests/ci10_cost-tasks.tsv' '$fir_base/ci10-cost-array' '$fir_base/libraries/'\$source_sha"
     ;;
   status-totoro)
     ssh_reuse "$totoro_socket" "$totoro_host" \

@@ -263,3 +263,13 @@ explicitly after sourcing `/etc/profile.d/modules.sh`. The focused tests were
 again observed failing before this fix and green afterwards. The V3 deployment
 is retained by versioned rename; it contains no package library, campaign row,
 or submitted job.
+
+The fourth Fir preparation attempt passed the V4 payload and hostname checks
+but failed before module loading because Fir has no
+`/etc/profile.d/modules.sh`. A clean-shell probe identified and exercised the
+actual Lmod initializer at
+`/cvmfs/soft.computecanada.ca/custom/software/lmod/lmod/init/bash`, loading the
+pinned stack and R 4.5.0 successfully. The Fir scripts now run under Bash and
+source that exact initializer; the launch command also loads the stack before
+its first `Rscript` call. V4 is retained by versioned rename and contains no
+package library, campaign row, or submitted job.

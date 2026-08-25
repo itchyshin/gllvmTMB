@@ -440,6 +440,17 @@ test_that("remote launchers enforce frozen sources, sequential-wave limits, and 
     "module load StdEnv/2023 gcc/12.3 r/4.5.0",
     fixed = TRUE
   )
+  expect_match(
+    prepare_host,
+    "/cvmfs/soft.computecanada.ca/custom/software/lmod/lmod/init/bash",
+    fixed = TRUE
+  )
+  expect_match(deploy, "bash '$deploy/prepare-remote-host.sh'", fixed = TRUE)
+  expect_match(
+    deploy,
+    ". /cvmfs/soft.computecanada.ca/custom/software/lmod/lmod/init/bash; module load StdEnv/2023 gcc/12.3 r/4.5.0",
+    fixed = TRUE
+  )
 
   sequence <- paste(
     readLines(

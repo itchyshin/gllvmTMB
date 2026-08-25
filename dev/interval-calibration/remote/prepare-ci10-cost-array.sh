@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 set -eu
 
 if [ "$#" -ne 4 ]; then
@@ -18,7 +18,7 @@ case "$host:$out_root" in
     exit 65
     ;;
 esac
-. /etc/profile.d/modules.sh
+. /cvmfs/soft.computecanada.ca/custom/software/lmod/lmod/init/bash
 module load StdEnv/2023 gcc/12.3 r/4.5.0
 export OPENBLAS_NUM_THREADS=1
 export OMP_NUM_THREADS=1

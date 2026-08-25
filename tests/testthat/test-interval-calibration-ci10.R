@@ -403,3 +403,102 @@ test_that("CI-10 Fir guards accept canonical numbered login hosts", {
     fixed = TRUE
   )
 })
+
+test_that("CI-10 sbatch parser accepts one numeric line and rejects ambiguity", {
+  parser <- testthat::test_path(
+    "..", "..", "dev", "interval-calibration", "remote",
+    "parse-sbatch-job-id.R"
+  )
+  expect_true(file.exists(parser))
+  if (!file.exists(parser)) {
+    return(invisible())
+  }
+  env <- new.env(parent = baseenv())
+  sys.source(parser, envir = env)
+
+  note <- paste(
+    "sbatch: NOTE: Your memory request of 8192.0M was likely submitted as 8.0G.",
+    "56784475",
+    sep = "\n"
+  )
+  expect_identical(env$interval_parse_sbatch_job_id(note), "56784475")
+  expect_error(
+    env$interval_parse_sbatch_job_id("sbatch: warning only"),
+    "exactly one numeric job-id line",
+    fixed = TRUE
+  )
+  expect_error(
+    env$interval_parse_sbatch_job_id("123\n456"),
+    "exactly one numeric job-id line",
+    fixed = TRUE
+  )
+})
+
+test_that("CI-10 submission reconciliation preserves ambiguity and binds sacct", {
+  script <- testthat::test_path(
+    "..", "..", "dev", "interval-calibration", "remote",
+    "reconcile-ci10-submission.R"
+  )
+  expect_true(file.exists(script))
+  if (!file.exists(script)) {
+    return(invisible())
+  }
+  env <- new.env(parent = baseenv())
+  sys.source(
+    testthat::test_path(
+      "..", "..", "dev", "interval-calibration", "remote",
+      "parse-sbatch-job-id.R"
+    ),
+    envir = env
+  )
+  sys.source(script, envir = env)
+
+  root <- tempfile("ci10-reconcile-")
+  dir.create(file.path(root, "operations"), recursive = TRUE)
+  dir.create(file.path(root, "slurm"))
+  output <- file.path(root, "slurm", "submission-output.txt")
+  writeLines(c("sbatch: harmless note", "56784475"), output)
+  ambiguous <- file.path(
+    root,
+    "operations",
+    "ci10-cost-array-submission-ambiguous.tsv"
+  )
+  writeLines(c(
+    "schema\tINTERVAL_CALIBRATION_CI10_SUBMISSION_AMBIGUOUS_V1",
+    "packet\tCI10_COST",
+    "source_sha\t328d8abc9125ce1e7edbcdcdcb1a41f043488431",
+    paste0("task_manifest_sha256\t", paste(rep("a", 64L), collapse = "")),
+    paste0("output_root\t", normalizePath(root)),
+    "submission_exit_status\t0",
+    "job_id\tsbatch: harmless note",
+    paste0("submission_output\t", output),
+    "recorded_at_utc\t2026-08-25T22:01:33Z"
+  ), ambiguous)
+
+  receipt <- env$interval_reconcile_ci10_submission(
+    root,
+    "56784475|gllvmtmb-ci10-cost|PENDING|2026-08-25T15:01:33|Unknown|00:00:00|0:0"
+  )
+  expect_true(file.exists(ambiguous))
+  expect_true(file.exists(receipt))
+  values <- utils::read.delim(
+    receipt,
+    header = FALSE,
+    col.names = c("key", "value"),
+    quote = "",
+    stringsAsFactors = FALSE
+  )
+  expect_identical(
+    values$value[values$key == "schema"],
+    "INTERVAL_CALIBRATION_CI10_SUBMISSION_RECONCILED_V1"
+  )
+  expect_identical(values$value[values$key == "job_id"], "56784475")
+  expect_error(
+    env$interval_reconcile_ci10_submission(
+      root,
+      "56784475|gllvmtmb-ci10-cost|PENDING"
+    ),
+    "reconciliation receipt already exists",
+    fixed = TRUE
+  )
+})

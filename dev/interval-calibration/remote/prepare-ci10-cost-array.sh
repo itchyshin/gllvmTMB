@@ -71,8 +71,14 @@ write_receipt() {
 if sbatch --parsable \
   dev/interval-calibration/remote/ci10-cost-array.sbatch \
   > "$submission_output" 2>&1; then
-  raw_job_id=$(sed -n '1p' "$submission_output")
-  job_id=${raw_job_id%%;*}
+  raw_job_id=$(tr '\n' ' ' < "$submission_output")
+  if job_id=$(Rscript --vanilla \
+    dev/interval-calibration/remote/parse-sbatch-job-id.R \
+    "$submission_output"); then
+    :
+  else
+    job_id=
+  fi
   case "$job_id" in
     ''|*[!0-9]*)
       write_receipt \

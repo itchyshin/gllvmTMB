@@ -294,3 +294,20 @@ path: the new source-marked packet library first, the validated dependency
 library second. No package download or upgrade is performed. V6 and its failed
 packet-library directory are retained by versioned rename; no campaign row or
 SLURM job exists.
+
+V7 then completed Fir preparation successfully. gllvmTMB 0.7.1 loaded from the
+source-marked packet library at scientific SHA
+`328d8abc9125ce1e7edbcdcdcb1a41f043488431`, and
+`prepared-fir.tsv` was written. The approved Totoro sequence launched as remote
+PID `2522287`; the approved Fir array submission returned exit status zero and
+created job `56784475`.
+
+Fir prefixed the numeric job ID with a memory-unit note, so the original
+first-line parser wrote the required ambiguous-submission receipt even though
+`squeue` and `sacct` independently showed the single 18-task array. No
+resubmission occurred. A pure parser now accepts exactly one numeric line
+anywhere in `sbatch` output and refuses zero or multiple numeric lines. A
+separate reconciliation helper binds the untouched ambiguous receipt, raw
+`sbatch` output hashes, and exactly one matching `sacct` array record; it never
+rewrites the original operational receipt. This infrastructure reconciliation
+does not change any scientific attempt identity or denominator.

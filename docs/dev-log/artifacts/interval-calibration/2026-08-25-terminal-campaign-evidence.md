@@ -74,7 +74,7 @@ as misses. Availability is reported but is not a promotion threshold.
 | --- | --- | --- |
 | PVT-02 / CI-08 | Trait 1: 1,032/1,081 covered, coverage 0.954672, MCSE 0.006330, lower band 0.942012. Trait 2: 1,037/1,081 covered, coverage 0.959297, MCSE 0.006013, lower band 0.947271. Availability 1,081/5,000 = 0.2162; 3,919 base-fit failures; zero CI failures. | Numerical gates pass, but `MEASURED, NOT CERTIFIED -- EXACT PROFILE CONTRACT UNVERIFIED`. The production penalty profile can accept a non-converged constrained refit, permits `abs(achieved-requested) <= 0.05` on `log(V_t)`, and may interpolate after failed interior refits. Retained endpoints lack the diagnostics needed to audit those cases. The public `n=400` status remains `route-only`. |
 | CI-09 | Six cells retained 5,000 rows each. Coverage is 0, 0.302215, 0, 0, 0.319953, and 0; lower bands are 0, 0.276372, 0, 0, 0.297280, and 0. Availability ranges from 0.2528 to 0.3886. | `BLOCKED -- DGP/ESTIMAND IDENTIFIABILITY`. One Gaussian pair per site identifies `Sigma_B + sigma_eps^2 I`, not the scored unit-tier `Sigma_B` correlation. The extreme pattern is invalid calibration evidence, not six clean Fisher-z failures. |
-| CI-13 | Cell 1 (`n=150,d=1`) targets have coverage/lower bands 0.941081/0.934367 and 0.931735/0.924545. The other eight targets pass both thresholds: cell 2 (`n=150,d=2`), cell 3 (`n=400,d=1`), and cell 4 (`n=400,d=2`). Cell availability is 0.9844, 0.9882, 0.9338, and 0.9618. | Cell 1 is a measured failure. Cells 2--4 are `MEASURED, CELL-SPECIFIC CERTIFICATE CANDIDATES`; the route remains globally limited and no result transfers to rotated or unconstrained loadings. |
+| CI-13 | Cell 1 (`n=150,d=1`) targets have coverage/lower bands 0.941081/0.934367 and 0.931735/0.924545. The other eight targets pass both thresholds: cell 2 (`n=150,d=2`), cell 3 (`n=400,d=1`), and cell 4 (`n=400,d=2`). Cell availability is 0.9844, 0.9882, 0.9338, and 0.9618. | Cell 1 is a measured failure. The independent D-43 panel certifies cells 2--4 exactly; the route remains globally limited and no result transfers to rotated, unconstrained, or neighbouring cells. |
 | CI-10 | All 18 valid-environment rep-3 base fits failed before the 499-bootstrap stage. | Successful nested-bootstrap cost remains unmeasured; the full campaign was not authorised or run. |
 | CI-14 | The exact 10,000-row manifest produced 10,000 identical frozen-source guard failures, zero canonical scientific rows, and no aggregate. | `BLOCKED -- PROVENANCE`; no calibration estimate. |
 | CI-15 | The corrected sequence stopped after CI-14. No CI-15 root or scientific attempt exists. | `BLOCKED -- PREDECESSOR`; no calibration estimate. |
@@ -86,6 +86,17 @@ mechanical verdict is `FALSE`, but Fisher/Noether classify the campaign itself
 as invalid for its claimed estimand. CI-13's global verdict is `FALSE`; its
 cell-specific target results remain explicit. CI-14 and CI-15 are not scored as
 coverage failures because no valid scientific campaign ran.
+
+## Independent completion verdict
+
+Fisher and Noether verified the estimands, coverage arithmetic, and
+replicate-clustered MCSE. Grace reproduced the target evidence from a clean
+temporary output path and obtained byte-identical CSV and RDS artefacts. Rose
+verified the attempt denominators and claim boundaries. A fresh Sol-high D-43
+review then returned `PASS, narrowly`: it authorised certificates for only
+the native pinned CI-13 cells `(n=150,d=2)`, `(n=400,d=1)`, and
+`(n=400,d=2)`. It kept `(n=150,d=1)` and the global CI-13 route limited and
+confirmed the separate PVT-02, CI-09, CI-14, and CI-15 blocks above.
 
 ## Claim boundary
 

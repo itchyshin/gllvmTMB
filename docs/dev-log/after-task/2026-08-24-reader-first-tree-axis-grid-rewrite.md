@@ -120,12 +120,37 @@ tick:** N/A; no capability or roadmap status changed.
 
 ## 11. GitHub issue ledger and next action
 
-No issue was created or closed. `gh pr list --state open --limit 20` was
-attempted before the shared-document edit but failed at DNS resolution; no
-conclusion about other open work was drawn from it. The current worktree's
-shared Git metadata is also read-only here (`index.lock: Operation not
-permitted`), so this verified docs-only diff is deliberately uncommitted. The
-next safe external action is to commit and push it to PR #1208 from a checkout
-with writable Git metadata, await the required CI matrix, and inspect the
-deployed/pkgdown page in a real browser before merging. Do not merge
-automatically.
+No issue was created or closed. PR
+[#1208](https://github.com/itchyshin/gllvmTMB/pull/1208) remains open and
+unmerged. The reader-first article reset is already on its branch at
+`bedb90f5`; its routine Ubuntu check completed successfully in run
+[#32843450879](https://github.com/itchyshin/gllvmTMB/actions/runs/32843450879).
+This final data-figure follow-up is committed from an isolated writable
+checkout and must receive its own PR check before the PR can be handed back.
+The feature-level macOS, Ubuntu, and Windows matrix remains the earlier green
+implementation evidence. Do not merge automatically.
+
+## 12. Visual completion, 2026-08-25
+
+The maintainer asked for data views rather than model-object diagrams and
+approved four companion figures before they were inserted. The final article
+uses its own simulated data, not preview-only data: two long-data plots make
+the repeated-observation and site-by-species layouts visible, while two wide
+matrices show the corresponding row/column orientations. The morphology matrix
+is explicitly a standardised species-mean summary across five populations; the
+community matrix labels predictor columns, response columns, and the dry-to-wet
+site ordering. Florence/Tufte visually reviewed all four *actual pkgdown PNGs*
+and returned PASS with no publication blockers.
+
+```sh
+Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); rmarkdown::render("vignettes/articles/where-does-the-tree-go.Rmd", output_dir = "/private/tmp/tree-article-wide-render", quiet = TRUE)'
+# PASS: article and four figure chunks rendered from the runnable examples.
+Rscript --vanilla -e 'pkg <- pkgdown:::section_init(".", "articles"); pkgdown::build_article("articles/where-does-the-tree-go", pkg = pkg, lazy = FALSE, quiet = TRUE)'
+# PASS: final pkgdown article and PNGs written.
+Rscript --vanilla -e 'pkgdown::check_pkgdown()'
+# PASS: no problems found.
+Rscript --vanilla dev/trait-axis-bridge/verify-scope.R
+# PASS: SCOPE SCAN PASS.
+git diff --check
+# PASS.
+```

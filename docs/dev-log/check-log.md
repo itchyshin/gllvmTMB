@@ -54108,3 +54108,40 @@ the unavailable in-app browser; no pixel-perfect claim is made. GitHub DNS
 failed for the shared-document pre-edit PR-list check, and this worktree's
 shared Git metadata rejected `index.lock` creation, so remote-state claims and
 a commit/push remain deliberately absent.
+
+---
+
+## 2026-08-25 — Final data figures for the phylogeny article (Codex)
+
+At the maintainer's request, replaced the two model-object diagrams in
+`where-does-the-tree-go.Rmd` with four data-layout figures: observed long and
+summarised wide views for both plant examples. The morphology wide matrix is
+explicitly a standardised species-mean summary across its five population
+observations. The community wide matrix separates moisture/canopy predictor
+columns from selected species response columns and orders sites from dry to
+wet. No R API, likelihood, formula grammar, or scope boundary changed.
+
+```sh
+Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); rmarkdown::render("vignettes/articles/where-does-the-tree-go.Rmd", output_dir = "/private/tmp/tree-article-wide-render", quiet = TRUE)'
+# PASS: runnable article and all four figures rendered.
+Rscript --vanilla -e 'pkg <- pkgdown:::section_init(".", "articles"); pkgdown::build_article("articles/where-does-the-tree-go", pkg = pkg, lazy = FALSE, quiet = TRUE)'
+# PASS: final pkgdown article and figure PNGs written.
+Rscript --vanilla -e 'pkgdown::check_pkgdown()'
+# PASS: no problems found.
+Rscript --vanilla dev/trait-axis-bridge/verify-scope.R
+# PASS: SCOPE SCAN PASS.
+rg -n 'morphology-correlation|planted-column-deviations|Fitted correlation among|coefficient deviations behind' vignettes/articles/where-does-the-tree-go.Rmd pkgdown-site/articles/where-does-the-tree-go.html
+# PASS: superseded figure code and wording absent.
+git diff --check
+# PASS.
+```
+
+Florence/Tufte inspected the four actual rendered pkgdown images—not
+preview mock-ups—and returned PASS for each: `morphology-data`,
+`morphology-wide`, `community-data`, and `community-wide`.
+
+**Deliberately not run:** another simulation/recovery campaign, wide
+column-slope grammar, non-Gaussian or mixed-family slopes, latent predictor
+covariance, simultaneous slope sources, interval calibration, or a full local
+package check. This is a reader-facing article-only revision; the existing
+three-OS implementation matrix remains the feature-level evidence.

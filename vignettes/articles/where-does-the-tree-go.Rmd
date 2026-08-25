@@ -14,6 +14,16 @@ vignette: >
 
 ```{r, include = FALSE}
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+library(ggplot2)
+
+theme_article <- theme_minimal(base_size = 12) +
+  theme(
+    panel.grid = element_blank(),
+    strip.text = element_text(face = "bold", colour = "#17324D"),
+    plot.title = element_text(face = "bold", colour = "#17324D"),
+    plot.caption = element_text(hjust = 0, colour = "#555555"),
+    axis.title = element_text(colour = "#17324D")
+  )
 ```
 
 <style>
@@ -114,6 +124,83 @@ together across phylogenetically related species: positive diagonal entries are
 trait-specific variation, while off-diagonal entries are cross-trait
 association. It is not a model of species-specific elevation slopes.
 
+```{r morphology-data, fig.width = 8.4, fig.height = 6.8, fig.cap = "Example 1 in the observed long-data layout. Grey points are five population measurements within each sampled species; amber points are species means. The four panels are the morphology response columns, while the tree belongs to the sampled-species axis.", fig.alt = "Four panels showing leaf area, leaf mass, seed mass, and stem height. Each panel has five pale grey population observations for each of twelve plant species and one amber species mean."}
+morphology_plot <- transform(
+  morphology,
+  trait_label = factor(
+    tools::toTitleCase(gsub("_", " ", trait)),
+    levels = tools::toTitleCase(gsub("_", " ", traits))
+  )
+)
+
+ggplot(morphology_plot, aes(x = species, y = value)) +
+  geom_hline(yintercept = 0, linewidth = 0.3, colour = "#AAB7C4") +
+  geom_point(colour = "#7A8FA0", alpha = 0.55, size = 1.7) +
+  stat_summary(
+    fun = mean, geom = "point", shape = 21, size = 3.3, stroke = 0.7,
+    fill = "#E9A34F", colour = "#173B5E"
+  ) +
+  facet_wrap(~ trait_label, ncol = 2, scales = "free_y") +
+  labs(
+    title = "Morphology is observed repeatedly within sampled species",
+    subtitle = "Grey points: five populations per species; amber circles: species means",
+    x = "Sampled plant species", y = "Simulated morphology value"
+  ) +
+  theme_article +
+  theme(
+    plot.title = element_text(face = "bold", colour = "#173B5E"),
+    plot.subtitle = element_text(colour = "#4B5563"),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    strip.text = element_text(face = "bold", colour = "#173B5E")
+  )
+```
+
+```{r morphology-wide, fig.width = 8.4, fig.height = 6.5, fig.cap = "The same Example 1 data after a wide-data summary: each row is a sampled species and each morphology trait is a response column. Cells show standardised species means across the five population measurements; the plot is a data-layout guide, not the fitted model input.", fig.alt = "A twelve by four heatmap. Rows are sampled plant species and columns are leaf area, leaf mass, seed mass, and stem height. Each labelled tile gives a standardised species mean."}
+morphology_means <- aggregate(value ~ species + trait, data = morphology, FUN = mean)
+morphology_wide <- reshape(
+  morphology_means, idvar = "species", timevar = "trait", direction = "wide"
+)
+morphology_wide <- morphology_wide[, c("species", paste0("value.", traits))]
+names(morphology_wide)[-1] <- traits
+morphology_standardised <- as.data.frame(scale(morphology_wide[-1]))
+morphology_standardised$species <- morphology_wide$species
+morphology_wide_plot <- reshape(
+  morphology_standardised, varying = traits, v.names = "value",
+  timevar = "trait", times = traits, direction = "long"
+)
+morphology_wide_plot$trait <- factor(
+  morphology_wide_plot$trait, levels = traits,
+  labels = tools::toTitleCase(gsub("_", " ", traits))
+)
+morphology_wide_plot$species <- factor(morphology_wide_plot$species, levels = rev(species))
+morphology_wide_plot$text_colour <- ifelse(abs(morphology_wide_plot$value) >= 1.45, "white", "#102A43")
+
+ggplot(morphology_wide_plot, aes(x = trait, y = species, fill = value)) +
+  geom_tile(colour = "white", linewidth = 0.8) +
+  geom_text(
+    aes(label = sprintf("%.1f", value), colour = text_colour),
+    size = 3.1, show.legend = FALSE
+  ) +
+  scale_fill_gradient2(
+    low = "#2166AC", mid = "white", high = "#B2182B", midpoint = 0,
+    name = "Standardised\nspecies mean"
+  ) +
+  scale_colour_identity() +
+  labs(
+    title = "Morphology data in wide form",
+    subtitle = "Each row is one sampled plant species; the four trait measurements are response columns",
+    x = "Response columns: morphology traits", y = "Rows: sampled plant species"
+  ) +
+  theme_article +
+  theme(
+    plot.title = element_text(face = "bold", colour = "#173B5E"),
+    plot.subtitle = element_text(colour = "#4B5563"),
+    panel.grid = element_blank(),
+    axis.text.x = element_text(face = "bold"),
+    legend.title = element_text(face = "bold")
+  )
+```
+
 Use this form when the data table contains species as repeated sampling units.
 If instead species name the response columns, use the next model.
 
@@ -144,8 +231,18 @@ sites <- data.frame(
   moisture = rnorm(50),
   canopy = rnorm(50)
 )
-moisture_deviation <- drop(t(chol(A)) %*% rnorm(length(species), sd = 0.35))
-canopy_deviation <- drop(t(chol(A)) %*% rnorm(length(species), sd = 0.25))
+Sigma_predictor_truth <- matrix(
+  c(0.35^2, -0.45 * 0.35 * 0.25,
+    -0.45 * 0.35 * 0.25, 0.25^2),
+  nrow = 2,
+  dimnames = list(c("moisture", "canopy"), c("moisture", "canopy"))
+)
+slope_deviation <- t(chol(A)) %*%
+  matrix(rnorm(length(species) * 2), nrow = length(species)) %*%
+  chol(Sigma_predictor_truth)
+slope_deviation <- sweep(slope_deviation, 2, colMeans(slope_deviation), FUN = "-")
+moisture_deviation <- slope_deviation[, "moisture"]
+canopy_deviation <- slope_deviation[, "canopy"]
 
 community <- do.call(rbind, lapply(seq_along(species), function(j) {
   data.frame(
@@ -180,6 +277,104 @@ The two diagonal entries say how much the moisture and canopy responses vary
 across species columns. The off-diagonal entry says whether species with a
 larger-than-average moisture response also tend to have a larger-than-average
 canopy response. It does not describe covariance of the observed responses.
+In this simulation, the planted predictor covariance is negative, so the
+points in the next figure tend downward.
+
+```{r community-data, fig.width = 8.4, fig.height = 5.8, fig.cap = "Example 2 in long-data form for four selected species. Each point is a site-by-species observation; each line is the planted moisture response at average canopy cover. Here plant species are response columns, so the tree aligns with the `trait` variable.", fig.alt = "A scatterplot of site-by-species observations against soil moisture for four plant species. Pale points surround four directly labelled coloured lines with different slopes."}
+focal_species <- c("plant_01", "plant_04", "plant_08", "plant_12")
+community_focus <- subset(community, trait %in% focal_species)
+community_focus$trait <- factor(as.character(community_focus$trait), levels = focal_species)
+species_effects <- data.frame(
+  trait = factor(focal_species, levels = focal_species),
+  intercept = 0.4,
+  moisture = 0.60 + moisture_deviation[match(focal_species, species)],
+  canopy = -0.25 + canopy_deviation[match(focal_species, species)]
+)
+moisture_grid <- seq(min(sites$moisture), max(sites$moisture), length.out = 150)
+community_lines <- do.call(rbind, lapply(seq_len(nrow(species_effects)), function(i) {
+  data.frame(
+    trait = species_effects$trait[i], moisture = moisture_grid,
+    value = species_effects$intercept[i] + species_effects$moisture[i] * moisture_grid +
+      species_effects$canopy[i] * mean(sites$canopy)
+  )
+}))
+community_ends <- do.call(rbind, lapply(split(community_lines, community_lines$trait), function(x) x[nrow(x), ]))
+community_ends$label_y <- community_ends$value + c(0.14, -0.11, 0.14, -0.13)
+species_colours <- c(plant_01 = "#0072B2", plant_04 = "#D55E00", plant_08 = "#009E73", plant_12 = "#7A5195")
+
+ggplot(community_focus, aes(x = moisture, y = value, colour = trait)) +
+  geom_hline(yintercept = 0, linewidth = 0.3, colour = "#C8CDD2") +
+  geom_point(alpha = 0.36, size = 1.6) +
+  geom_line(data = community_lines, aes(group = trait), linewidth = 1.05) +
+  geom_segment(
+    data = community_ends,
+    aes(x = max(moisture_grid), xend = max(moisture_grid) + 0.14, y = value, yend = label_y),
+    inherit.aes = FALSE, linewidth = 0.45
+  ) +
+  geom_text(
+    data = community_ends,
+    aes(x = max(moisture_grid) + 0.18, y = label_y, label = trait, colour = trait),
+    inherit.aes = FALSE, hjust = 0, size = 3.7, fontface = "bold", show.legend = FALSE
+  ) +
+  scale_colour_manual(values = species_colours) +
+  coord_cartesian(xlim = c(min(moisture_grid), max(moisture_grid) + 0.75), clip = "off") +
+  labs(
+    title = "Species are response columns",
+    subtitle = "Points are site-by-species observations; lines are planted moisture responses at average canopy cover",
+    x = "Soil moisture", y = "Simulated species response"
+  ) +
+  theme_article +
+  theme(
+    plot.title = element_text(face = "bold", colour = "#173B5E"),
+    plot.subtitle = element_text(colour = "#4B5563"),
+    panel.grid.minor = element_blank(), panel.grid.major.x = element_blank(),
+    legend.position = "none", plot.margin = margin(5.5, 105, 5.5, 5.5)
+  )
+```
+
+```{r community-wide, fig.width = 8.4, fig.height = 7.2, fig.cap = "The same Example 2 layout in wide form. Each row is a site, the first two columns are predictors, and the next four are selected species response columns. Sites are ordered from dry to wet; colours are standardised within columns solely to make the data orientation visible.", fig.alt = "A heatmap with forty-eight sites as rows. Columns are moisture, canopy, and four selected plant species. Moisture changes from blue to red down the rows because sites are ordered from dry to wet."}
+community_wide <- reshape(
+  community_focus[, c("site_id", "moisture", "canopy", "trait", "value")],
+  idvar = c("site_id", "moisture", "canopy"), timevar = "trait", direction = "wide"
+)
+community_wide <- community_wide[order(community_wide$moisture), ]
+community_columns <- c("moisture", "canopy", paste0("value.", focal_species))
+community_standardised <- as.data.frame(scale(community_wide[community_columns]))
+names(community_standardised) <- c("moisture", "canopy", focal_species)
+community_standardised$site_id <- factor(community_wide$site_id, levels = rev(community_wide$site_id))
+community_wide_plot <- reshape(
+  community_standardised,
+  varying = c("moisture", "canopy", focal_species), v.names = "value",
+  timevar = "column", times = c("moisture", "canopy", focal_species), direction = "long"
+)
+community_wide_plot$column <- factor(
+  community_wide_plot$column,
+  levels = c("moisture", "canopy", focal_species),
+  labels = c("moisture\n(predictor)", "canopy\n(predictor)", focal_species)
+)
+
+ggplot(community_wide_plot, aes(x = column, y = site_id, fill = value)) +
+  geom_tile(colour = "white", linewidth = 0.25) +
+  geom_vline(xintercept = 2.5, colour = "#173B5E", linewidth = 0.7) +
+  scale_fill_gradient2(
+    low = "#2166AC", mid = "white", high = "#B2182B", midpoint = 0,
+    name = "Standardised\nvalue"
+  ) +
+  labs(
+    title = "Community data in wide form",
+    subtitle = "Each row is a site (ordered from dry to wet); predictors sit beside four species response columns",
+    x = "Columns", y = "Rows: sites"
+  ) +
+  theme_article +
+  theme(
+    plot.title = element_text(face = "bold", colour = "#173B5E"),
+    plot.subtitle = element_text(colour = "#4B5563"),
+    panel.grid = element_blank(),
+    axis.text.x = element_text(face = "bold"),
+    axis.text.y = element_blank(), axis.ticks.y = element_blank(),
+    legend.title = element_text(face = "bold")
+  )
+```
 
 With several predictors, `|` estimates their full covariance and `||` fixes
 their covariance to zero while retaining one variance per predictor. This

@@ -86,8 +86,11 @@ compute or campaign output used GitHub Actions.
 - `seed-registry.csv` is the frozen pre-run reservation registry. Its
   `reserved; not executed` rows are reservations, not a claim that every packet
   was launched.
-- Final Rose, Grace, after-task validation, and Unlazy evidence are recorded in
-  the closure report/ledger before the final local closure commit.
+- The after-task structure validator and handoff gate returned exit 0.
+- Final Unlazy `--reverify` returned `ALL MET`: 15 packet/provenance gates, six
+  claim/closeout gates, both integration nodes, 21 root leaf gates, and both
+  root gates. No required gate is abandoned or unmet, and the exact lane lease
+  was released before the root replay.
 
 ## 5. Commits and files to read first
 
@@ -110,6 +113,7 @@ Load-bearing commits include:
 - `eacbdc88` bind interval reviews to current claim surfaces
 - `7cff7e16` narrow CI-13 certificates to tested regimes
 - `c86968ab` bind final interval claim fences
+- `54c54f07` close interval calibration programme
 
 ## 6. Landing state
 

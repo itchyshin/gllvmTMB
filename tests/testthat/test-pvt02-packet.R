@@ -1,4 +1,10 @@
-source(testthat::test_path("..", "..", "dev", "pvt02", "pvt02-contract.R"))
+.pvt02_packet_contract_path <- testthat::test_path(
+  "..", "..", "dev", "pvt02", "pvt02-contract.R"
+)
+.pvt02_packet_contract_available <- file.exists(.pvt02_packet_contract_path)
+
+if (.pvt02_packet_contract_available) {
+  source(.pvt02_packet_contract_path)
 
 pvt02_test_sha <- "0123456789abcdef"
 pvt02_test_cell <- function() {
@@ -318,3 +324,8 @@ test_that("PVT-02 remote runner reuses the frozen one-replicate function body", 
     fixed = TRUE
   )
 })
+} else {
+  test_that("PVT-02 packet checks are source-checkout only", {
+    skip("dev/pvt02 is absent from the built package")
+  })
+}

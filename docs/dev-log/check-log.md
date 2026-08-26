@@ -54659,3 +54659,54 @@ The post-commit handoff gate found the intentional unpushed branch and then its
 declaration checker required an explicit findings line. The handover now says
 `FINDINGS-OF-RECORD: none`: this landing created no new scientific finding
 beyond the source programme's already durable terminal interval findings.
+
+---
+
+## 2026-08-26 — Interval-calibration approved merge gate (Codex)
+
+The maintainer authorized merging the completed interval-calibration landing.
+The verified bundle imported at
+`fb15c13fe7d9e828ddfa5d05015d5ef93c2ea49c`; refreshed `origin/main` was
+`1bacee9a808b4106ce681502463baa317dcb9d9b`, which is the exact merge base, so
+the landing branch was 37 commits ahead and zero behind. The first global
+exact-path lease claim was refused on the one shared Design 35 path. The LV
+owner froze and checkpointed that append-only delta, narrowed it out of the LV
+lease, and the interval merge lane then acquired all 110 exact paths. No LV or
+random-slope file was reverted.
+
+Fresh pre-push checks exposed and retained one real integration failure:
+
+```sh
+Rscript --vanilla -e 'options(crayon.enabled=FALSE); devtools::document(quiet=TRUE); pkgdown::build_article("articles/current-limits", lazy=FALSE); pkgdown::build_article("articles/profile-likelihood-ci", lazy=FALSE); pkgdown::check_pkgdown(); devtools::check(args="--no-manual", quiet=TRUE)'
+# Articles rendered and check_pkgdown() passed.
+# R CMD check: 20m24.2s; FAIL 14 | WARN 64 | SKIP 1146 | PASS 14758.
+```
+
+All 14 failures came from eight interval/PVT test files sourcing repository-only
+`dev/` or `docs/` paths at file top level. Both trees are deliberately excluded
+by `.Rbuildignore`, so the tests passed from a source checkout but errored from
+the built package. The repair follows the existing developer-contract pattern:
+each file conditionally sources its repository-only contract, runs every
+substantive test in a source checkout, and registers one explicit skip when the
+developer tree is absent from the built package.
+
+```sh
+# Synthetic built-package layout with dev/ and docs/ absent:
+Rscript --vanilla -e 'testthat::test_dir(<temporary-tests-only-root>, reporter="summary", stop_on_failure=TRUE)'
+# PASS: eight explicit source-checkout-only skips; zero failures or warnings.
+
+Rscript --vanilla -e 'devtools::load_all(quiet=TRUE); fs <- c("tests/testthat/test-pvt02-contract.R", "tests/testthat/test-pvt02-packet.R", Sys.glob("tests/testthat/test-interval-calibration-*.R"), "tests/testthat/test-profile-ci-total-variance-export.R"); for (f in unique(fs)) testthat::test_file(f, reporter="stop", stop_on_failure=TRUE); cat("LANDING_FOCUSED_TESTS_OK\n")'
+# LANDING_FOCUSED_TESTS_OK; all substantive source-checkout tests executed.
+
+Rscript --vanilla -e 'options(crayon.enabled=FALSE); devtools::check(args="--no-manual", quiet=TRUE); cat("LANDING_R_CMD_CHECK_OK\n")'
+# 19m53.2s; 0 errors, 0 warnings, 4 pre-existing/environmental notes.
+# LANDING_R_CMD_CHECK_OK.
+
+git diff --check
+# PASS.
+```
+
+No fit, simulation, benchmark, campaign, workflow edit, or scientific claim was
+added. The next gate is one pushed PR with the full pull-request CI matrix; it
+must be green before merge, and the merge run must then be observed before the
+exact-path lease is released.

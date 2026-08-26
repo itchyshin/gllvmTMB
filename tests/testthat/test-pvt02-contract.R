@@ -1,4 +1,10 @@
-source(testthat::test_path("..", "..", "dev", "pvt02", "pvt02-contract.R"))
+.pvt02_contract_path <- testthat::test_path(
+  "..", "..", "dev", "pvt02", "pvt02-contract.R"
+)
+.pvt02_contract_available <- file.exists(.pvt02_contract_path)
+
+if (.pvt02_contract_available) {
+  source(.pvt02_contract_path)
 
 test_that("PVT-02 target is the total unit-tier diagonal", {
   spec <- pvt02_target_spec(
@@ -124,3 +130,8 @@ test_that("promotion fails closed on wrong cell, insufficient attempts, and weak
   )
   expect_false(pvt02_promotion_verdict(cell, good, FALSE)$promote)
 })
+} else {
+  test_that("PVT-02 developer contract is source-checkout only", {
+    skip("dev/pvt02 is absent from the built package")
+  })
+}

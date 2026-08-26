@@ -230,3 +230,34 @@ public terminal claim ledger. It does NOT cover new interval estimators,
 alternative DGPs, another family/rank/sample-size/rotation cell, MSPL,
 prediction or missing-data intervals, random-slope recovery, LV expansion,
 three-OS CI, merge readiness, or release readiness.
+
+## 13. Post-approval merge verification (2026-08-26)
+
+After the maintainer explicitly authorized merge, the bundle was imported into
+the shared repository and refreshed against current `origin/main` at
+`1bacee9a808b4106ce681502463baa317dcb9d9b`. The branch was 37 commits ahead,
+zero behind, with that exact SHA as its merge base. The global exact-path lease
+initially refused the integration because the active LV lane still owned
+`docs/design/35-validation-debt-register.md`. The LV owner froze and
+checkpointed its append-only delta, removed Design 35 from its lease, and the
+interval lane then acquired all 110 exact paths. No foreign-lane work was
+reverted.
+
+The fresh full pre-push check found a package-build-only defect that the earlier
+source-checkout suite could not expose: eight interval/PVT tests sourced
+repository-only `dev/` or `docs/` paths, but both trees are excluded by
+`.Rbuildignore`. The failed attempt is retained at 20m24.2s with 14 test
+failures. The narrow repair conditionally sources those developer contracts,
+runs the full substantive suite in a source checkout, and emits one explicit
+skip per file in a built package. A synthetic built-package layout produced
+eight intended skips with no errors or warnings; the complete focused interval
+suite still passed in the source checkout. The final
+`devtools::check(args = "--no-manual")` completed in 19m53.2s with zero errors,
+zero warnings, and four pre-existing/environmental notes. Both affected
+articles rendered and `pkgdown::check_pkgdown()` reported no problems.
+
+This supersedes the earlier residual statement that no fresh full local check
+had run. Three-OS PR CI remains required and is not inferred from the macOS
+result. The repair changes only development-test packaging guards; estimators,
+exports, likelihoods, formula grammar, terminal route states, retained
+denominators, and scientific claims are unchanged.

@@ -6,7 +6,10 @@ ci13_kernel <- testthat::test_path(
   "ci13",
   "ci13-kernels.R"
 )
-source(ci13_kernel, local = TRUE)
+.ci13_dev_sources_available <- file.exists(ci13_kernel)
+
+if (.ci13_dev_sources_available) {
+  source(ci13_kernel, local = TRUE)
 
 test_that("CI-13 freezes the four pinned, unrotated Gaussian cells", {
   spec <- ci13_campaign_spec()
@@ -348,3 +351,8 @@ test_that("CI-13 smoke helper only accepts native pinned Lambda_B semantics", {
     logical(1)
   )))
 })
+} else {
+  test_that("CI-13 developer calibration contract is source-checkout only", {
+    skip("dev/interval-calibration is absent from the built package")
+  })
+}

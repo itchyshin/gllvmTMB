@@ -5,8 +5,6 @@ seed_contract <- testthat::test_path(
   "interval-calibration",
   "seed-registry-contract.R"
 )
-source(seed_contract, local = TRUE)
-
 registry_path <- testthat::test_path(
   "..",
   "..",
@@ -16,6 +14,13 @@ registry_path <- testthat::test_path(
   "interval-calibration",
   "seed-registry.csv"
 )
+.interval_seed_sources_available <- all(file.exists(c(
+  seed_contract,
+  registry_path
+)))
+
+if (.interval_seed_sources_available) {
+  source(seed_contract, local = TRUE)
 
 test_that("the frozen programme expands to 175000 pairwise-disjoint seeds", {
   registry <- ic_read_seed_registry(registry_path)
@@ -111,3 +116,8 @@ test_that("current programme evidence is not reclassified as seed history", {
   expect_equal(out$seed, 18065153L)
   expect_equal(out$source, historical)
 })
+} else {
+  test_that("interval seed registry checks are source-checkout only", {
+    skip("dev/interval-calibration and docs/ are absent from the built package")
+  })
+}

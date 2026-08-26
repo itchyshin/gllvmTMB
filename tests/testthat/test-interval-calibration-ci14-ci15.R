@@ -1,30 +1,40 @@
 ## CI-14/15 campaign-packet contract.  These tests exercise only pure R
 ## bookkeeping; they never simulate, fit, compile, or contact remote compute.
 
-source(testthat::test_path(
+.ci1415_kernel <- testthat::test_path(
   "..",
   "..",
   "dev",
   "interval-calibration",
   "ci14-ci15",
   "ci1415-kernels.R"
-))
-source(testthat::test_path(
+)
+.ci1415_smoke_runners <- testthat::test_path(
   "..",
   "..",
   "dev",
   "interval-calibration",
   "ci14-ci15",
   "smoke-runners.R"
-))
-source(testthat::test_path(
+)
+.ci1415_campaign_shard <- testthat::test_path(
   "..",
   "..",
   "dev",
   "interval-calibration",
   "ci14-ci15",
   "campaign-shard.R"
-))
+)
+.ci1415_dev_sources_available <- all(file.exists(c(
+  .ci1415_kernel,
+  .ci1415_smoke_runners,
+  .ci1415_campaign_shard
+)))
+
+if (.ci1415_dev_sources_available) {
+  source(.ci1415_kernel)
+  source(.ci1415_smoke_runners)
+  source(.ci1415_campaign_shard)
 
 test_that("CI-15 dependency guard treats missing ape as infrastructure failure", {
   remote_root <- testthat::test_path(
@@ -398,3 +408,8 @@ test_that("CI-14/15 empty eligible denominators are not reported as zero MCSE", 
   expect_true(all(is.na(summary$coverage)))
   expect_true(all(is.na(summary$mcse)))
 })
+} else {
+  test_that("CI-14/15 developer calibration contract is source-checkout only", {
+    skip("dev/interval-calibration is absent from the built package")
+  })
+}

@@ -6,8 +6,11 @@ ci10_kernel <- testthat::test_path(
   "ci10",
   "ci10-kernels.R"
 )
-source(ci10_kernel, local = TRUE)
-.ci10_source_sha <- "TEST-SOURCE-SHA"
+.ci10_dev_sources_available <- file.exists(ci10_kernel)
+
+if (.ci10_dev_sources_available) {
+  source(ci10_kernel, local = TRUE)
+  .ci10_source_sha <- "TEST-SOURCE-SHA"
 
 .ci10_all_covered <- function(manifest) {
   ci10_target_results(
@@ -502,3 +505,8 @@ test_that("CI-10 submission reconciliation preserves ambiguity and binds sacct",
     fixed = TRUE
   )
 })
+} else {
+  test_that("CI-10 developer calibration contract is source-checkout only", {
+    skip("dev/interval-calibration is absent from the built package")
+  })
+}

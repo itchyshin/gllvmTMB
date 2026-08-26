@@ -6,8 +6,6 @@ ci09_kernel <- testthat::test_path(
   "ci09",
   "ci09-kernels.R"
 )
-source(ci09_kernel, local = TRUE)
-
 ci09_smoke <- testthat::test_path(
   "..",
   "..",
@@ -16,7 +14,11 @@ ci09_smoke <- testthat::test_path(
   "ci09",
   "smoke.R"
 )
-source(ci09_smoke, local = TRUE)
+.ci09_dev_sources_available <- all(file.exists(c(ci09_kernel, ci09_smoke)))
+
+if (.ci09_dev_sources_available) {
+  source(ci09_kernel, local = TRUE)
+  source(ci09_smoke, local = TRUE)
 
 test_that("CI-09 smoke gives the parser an unqualified dep formula", {
   has_formula_helper <- exists("ci09_smoke_formula", mode = "function")
@@ -966,3 +968,8 @@ test_that("production receipts bind package source, checksums, and operation pai
   expect_match(session, "thread_environment", fixed = TRUE)
   expect_match(session, "output_root", fixed = TRUE)
 })
+} else {
+  test_that("CI-09 developer calibration contract is source-checkout only", {
+    skip("dev/interval-calibration is absent from the built package")
+  })
+}

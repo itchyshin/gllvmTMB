@@ -12,6 +12,12 @@ claims_contract <- testthat::test_path(
   "interval-calibration",
   "claim-contract.R"
 )
+.interval_claim_sources_available <- all(file.exists(c(
+  claims_verifier,
+  claims_contract
+)))
+
+if (.interval_claim_sources_available) {
 
 test_that("interval claim verification passes on the synchronized surfaces", {
   expect_true(file.exists(claims_verifier))
@@ -197,3 +203,8 @@ test_that("the release-wide CI-13 boundary retains the unrotated fence", {
 })
 
 `%||%` <- function(x, y) if (is.null(x)) y else x
+} else {
+  test_that("interval claim evidence checks are source-checkout only", {
+    skip("dev/interval-calibration and docs/ are absent from the built package")
+  })
+}

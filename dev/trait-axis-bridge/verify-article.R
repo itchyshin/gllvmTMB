@@ -7,6 +7,9 @@ required_column_example <- c(
   "phylo_slope(latitude | trait, tree = tree)",
   "latent(0 + trait | site_id, d = 2, unique = FALSE)",
   "pathway_difference",
+  "`latitude:pathway` is a **fixed effect**",
+  "There is no `column_coef()`",
+  "`*_slope()` supplies random response-column deviations",
   "The simulated C3 and C4 gradients differ by design",
   "{r community-data, echo = FALSE",
   "{r community-wide, echo = FALSE"

@@ -228,6 +228,12 @@ identifier `trait`; here each `trait` level is a plant species. The fixed
 species columns, with related species receiving correlated deviations from
 their pathway mean.
 
+These are different model components. `latitude:pathway` is a **fixed effect**;
+`phylo_slope(latitude | trait)` is a **random-effect distribution** for the
+remaining species-specific slope deviations. There is no `column_coef()`
+helper in the current API. Response-column metadata such as `pathway` enters
+the fixed-effects formula directly.
+
 <div class="table-responsive">
 
 | Long-data variable | Meaning | Does the tree tip match it? |
@@ -446,5 +452,7 @@ If your scientific question is about trait covariance among sampled species,
 begin with the first form. If it is about environmental-response coefficients
 varying across species columns, begin with the second. A species attribute such
 as C3/C4 pathway belongs in a fixed interaction such as `latitude:pathway`, not
-inside `phylo_slope()`. For the source × trait-covariance lookup, see the
+inside `phylo_slope()`. Thus the ordinary formula supplies the fixed group
+contrast, while `*_slope()` supplies random response-column deviations around
+that contrast. For the source × trait-covariance lookup, see the
 [Formula keyword grid](api-keyword-grid.html).

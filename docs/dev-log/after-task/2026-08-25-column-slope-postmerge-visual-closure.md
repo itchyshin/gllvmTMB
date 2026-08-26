@@ -34,6 +34,10 @@ response-column random intercept, and rejects widening this documentation PR
 into the deferred coefficient-block design. Species metadata such as C3/C4
 pathway therefore enters the fixed `latitude:pathway` interaction, while
 `phylo_slope(latitude | trait)` supplies the residual species slope deviations.
+The public article now labels this fixed-versus-random split explicitly. It
+also states that `column_coef()` is not a current API helper, so a future
+random-coefficient block cannot be mistaken for either an existing helper or
+an ordinary fixed-effect term.
 
 The simulation uses the exact draw
 `b = 0.18 * t(chol(A)) %*% z`, `z ~ N(0, I)`. Post-draw standardisation was

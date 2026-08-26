@@ -128,6 +128,11 @@ and pkgdown deployment
   maps, and extraction remain unchanged.
 - Existing wide workflows remain supported, but new wide column-slope grammar
   is deferred rather than guessed.
+- The current API has no `column_coef()` helper. The article uses ordinary
+  formula terms for fixed response-column metadata and reserves `*_slope()`
+  for random response-column slope deviations. A future `column_coef()` is a
+  candidate ordinary-IID random-coefficient block, but needs a separate grammar
+  and identifiability design before it is advertised.
 - Non-Gaussian/mixed multi-predictor slopes, latent predictor covariance,
   simultaneous response-column sources, and intervals are not advertised.
 - A tree/pedigree/space/kernel supplied to `*_slope()` relates response columns;

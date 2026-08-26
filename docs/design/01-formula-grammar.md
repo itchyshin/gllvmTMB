@@ -415,7 +415,13 @@ The current runtime supports the original ordinary unit-tier C1 surface and
 the exact family-wide programme allow-list. The original Gaussian and pure
 binomial cells retain their existing rank, `Psi`, mask, and interval evidence.
 The family-wide cells are restricted to rank one, `unique = FALSE`, complete
-responses, canonical links, and the named pure/mixed combinations. All routes
+responses, canonical links, and the exact logical-response shapes of the named
+pure/mixed combinations. Two-response anchors and the three-response sentinel
+do not admit duplicate-family traits. The one named multinomial anchor counts
+its verified $K-1$ expansion contrasts as one categorical response; raw or
+malformed duplicate family-16 traits and noncontiguous/incomplete contrast
+groups do not receive that collapse. Pre-drop missingness is still missingness
+for this complete-response route. All routes
 store the formula as `extra$lv_formula` on the reduced-rank term, build
 unit-level `X_lv_B`, estimate `alpha_lv_B`, preserve the zero-mean innovation,
 and report the trait-scale `B_lv_unit` point estimate. Retained r200 point

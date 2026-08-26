@@ -1,8 +1,8 @@
 # Codex Handover: Family-Wide Mixed-Family Predictor-Informed LV
 
-Status: **REVIEW REPAIRS IN PROGRESS — retained campaigns are adjudicated;
-the first frozen panel found bounded guard, provenance-test, and receipt
-defects that must pass re-review before landing.**
+Status: **FINAL CANDIDATE — review repairs are integrated on verified `main`,
+exact-head tests/docs/check are green, and only final panel, reverify,
+validators, closeout commit, and lease release remain.**
 
 ## Goal
 
@@ -22,6 +22,10 @@ mixtures or any deferred Design 73 surface.
 ## Current state
 
 - Branch: `codex/lv-mixed-family-all-native`.
+- Verified base:
+  `499cc3f901f5b5d02962a3c5fb665bf69f2fc796`.
+- Rebased candidate before closeout-only edits:
+  `4a93d008da1006809e4a840b846886915c298702`.
 - Campaign source HEAD:
   `7dd5eec733c42c722fe94be4c0e5a2efe1f4a3c3`.
 - Final transfer bundle:
@@ -33,9 +37,25 @@ mixtures or any deferred Design 73 surface.
 - Mixed r500 calibration: complete, 4,000/4,000 retained, 3,999 interval
   eligible, all eight target-wise Wald gates pass.
 - Final-candidate full tests: exit 0, testthat `DONE`.
-- Local package check: 0 errors, 0 warnings, 4 explicit notes.
-- Evaluated article and pkgdown checks: pass.
-- No mixed-LV commit, push, PR, merge, or release yet.
+- Authoritative final structural-source local package check: 20m31.59s wall,
+  0 errors, 0 warnings, 4 explicit notes. The earlier 82.56-second interrupted
+  attempt and 20m54.71s intermediate repaired-source pass are retained
+  separately.
+- Final evaluated article and pkgdown checks: pass.
+- Post-panel exact-shape and pre-drop missing-response repairs pass the live
+  mixed-LV, complete LV, traits, and neighbouring missing-response suites.
+- The retained Gaussian--multinomial cell now counts its complete $K-1$
+  contrast expansion as one logical response; a live public canary and the
+  neighbouring cross-family multinomial suite pass, while unexpanded duplicate
+  family-16 traits remain rejected.
+- Pre-expanded multinomial groups must also be contiguous and contain each
+  contrast exactly once in a common order; planted duplicate-contrast and
+  noncontiguous-group inputs now fail before fitting.
+- Incidental columns named like multinomial metadata are ignored when no
+  family-16 response is present; a planted Gaussian + Poisson control protects
+  that namespace boundary.
+- Two narrow mixed-LV local commits exist; no mixed-LV push, PR, merge, or
+  release has occurred.
 
 ## Resolved remote blocker
 
@@ -73,14 +93,12 @@ DRAC, or a duplicate local campaign.
 
 ## Final landing sequence
 
-1. Run lane preflight and confirm no exact-path collision. The lease registry
-   may still be unwritable from a managed sandbox; record that honestly.
-2. Reconcile `origin/main` without changing the historical campaign source
-   receipt. Re-run affected focused tests, docs, pkgdown, local package check,
-   stale scans, and exact-head CI as required.
-3. Run final Unlazy `--reverify`, the exact 2-Terra/1-Sol panel, Rose/Grace
-   review, after-task validator, Melissa reconciliation, `handoff_gate.sh`, a
-   narrow local commit, clean-tree proof, and lease release.
+1. Run the exact 2-Terra/1-Sol frozen-candidate panel and Rose/Grace review.
+2. Run final Unlazy `--reverify`, after-task validator, Melissa reconciliation,
+   and `handoff_gate.sh`.
+3. Amend the implementation commit with the closeout-only receipt, prove a
+   clean tree, and release the exact-path lease. Do not push this local-only
+   lane.
 
 ## Protected boundaries
 
@@ -97,8 +115,8 @@ DRAC, or a duplicate local campaign.
   r200, pure r200, mixed r500 calibration, long/wide reader repair,
   focused/full tests, article, pkgdown, local check, current status cascade,
   and preparatory reviews.
-- **CARRIED-OVER**: origin/main integration, exact-head verification,
-  completion panel, reverify, validators, commit, and lease release.
+- **CARRIED-OVER**: completion panel, reverify, validators, closeout commit,
+  clean-tree proof, and lease release.
 - **REJECTED**: duplicate campaigns, evidence-by-canary, arbitrary mixtures,
   remote compute above the approved envelope, GitHub Actions science compute,
   GLLVM.jl mutation, or umbrella Design 73 promotion.

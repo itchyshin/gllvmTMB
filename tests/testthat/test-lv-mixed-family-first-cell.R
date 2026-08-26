@@ -54,6 +54,74 @@ make_mixed_lv_wide_gaussian_poisson <- function(n_units = 60L, seed = 73102L) {
   )
 }
 
+make_mixed_lv_gaussian_multinomial <- function(
+  n_units = 60L,
+  n_repeats = 4L,
+  seed = 73103L
+) {
+  set.seed(seed)
+  x <- stats::rnorm(n_units)
+  score <- 0.55 * x + stats::rnorm(n_units)
+  rows <- vector("list", n_units * n_repeats * 2L)
+  at <- 0L
+  for (i in seq_len(n_units)) {
+    probabilities <- exp(c(0, 0.25 + 0.65 * score[[i]], -0.35 - 0.55 * score[[i]]))
+    probabilities <- probabilities / sum(probabilities)
+    for (repeat_id in seq_len(n_repeats)) {
+      at <- at + 1L
+      rows[[at]] <- data.frame(
+        unit = sprintf("u%03d", i), trait = "gaussian_trait",
+        family = "g", x = x[[i]],
+        value = stats::rnorm(1L, 0.15 + 0.70 * score[[i]], 0.30)
+      )
+      at <- at + 1L
+      rows[[at]] <- data.frame(
+        unit = sprintf("u%03d", i), trait = "category_trait",
+        family = "m", x = x[[i]],
+        value = sample.int(3L, 1L, prob = probabilities)
+      )
+    }
+  }
+  dat <- do.call(rbind, rows)
+  dat$unit <- factor(dat$unit)
+  dat$trait <- factor(dat$trait)
+  dat$family <- factor(dat$family, levels = c("g", "m"))
+  dat
+}
+
+make_preexpanded_mixed_lv_gaussian_multinomial <- function(n_units = 6L) {
+  rows <- vector("list", n_units * 3L)
+  at <- 0L
+  for (i in seq_len(n_units)) {
+    x <- seq(-1, 1, length.out = n_units)[[i]]
+    category <- 1L + (i %% 3L)
+    for (trait_name in c(
+      "gaussian_trait", "category_trait:2", "category_trait:3"
+    )) {
+      at <- at + 1L
+      is_gaussian <- identical(trait_name, "gaussian_trait")
+      contrast <- if (is_gaussian) 0L else as.integer(sub(".*:", "", trait_name))
+      rows[[at]] <- data.frame(
+        unit = sprintf("u%03d", i),
+        trait = trait_name,
+        family = if (is_gaussian) "g" else "m",
+        x = x,
+        value = if (is_gaussian) 0.2 + x else as.numeric(category == contrast),
+        .multinom_group_ = if (is_gaussian) -1L else i - 1L,
+        .multinom_L_ = if (is_gaussian) 0L else 2L,
+        stringsAsFactors = FALSE
+      )
+    }
+  }
+  dat <- do.call(rbind, rows)
+  dat$unit <- factor(dat$unit)
+  dat$trait <- factor(dat$trait, levels = c(
+    "gaussian_trait", "category_trait:2", "category_trait:3"
+  ))
+  dat$family <- factor(dat$family, levels = c("g", "m"))
+  dat
+}
+
 fit_mixed_lv_wide_gaussian_poisson <- function(dat, families) {
   suppressWarnings(suppressMessages(gllvmTMB(
     traits(gaussian, poisson) ~ 1 +
@@ -174,7 +242,7 @@ test_that("the mixed programme keeps unregistered links and pairings gated", {
       family_id_vec = mixed_binomial_ids,
       link_id_vec = mixed_binomial_links
     ),
-    regexp = "one binomial link|named.*link|canonical admitted link"
+    regexp = "one family and one link|one binomial link|named.*link|canonical admitted link"
   )
 })
 
@@ -324,11 +392,18 @@ test_that("the family-wide programme admits only its frozen pure and mixed cells
     family_id_vec = rep(c(2L, 3L), length.out = nrow(dat)),
     link_id_vec = rep(0L, nrow(dat))
   )$enabled))
+  sentinel <- dat
+  third <- dat[as.character(dat$trait) == "b", , drop = FALSE]
+  third$trait <- "b2"
+  sentinel <- rbind(sentinel, third)
+  sentinel$trait <- factor(sentinel$trait, levels = c("g", "b", "b2"))
+  sentinel <- sentinel[order(sentinel$unit, sentinel$trait), , drop = FALSE]
+  sentinel_ids <- c(g = 2L, b = 4L, b2 = 7L)
   expect_true(isTRUE(mixed_lv_first_cell_preflight(
     formula,
-    data = dat,
-    family_id_vec = rep(c(2L, 4L, 7L), length.out = nrow(dat)),
-    link_id_vec = rep(0L, nrow(dat))
+    data = sentinel,
+    family_id_vec = unname(sentinel_ids[as.character(sentinel$trait)]),
+    link_id_vec = rep(0L, nrow(sentinel))
   )$enabled))
 
   for (ids in list(c(0L, 3L), c(0L, 1L, 2L), c(4L, 5L))) {
@@ -339,9 +414,209 @@ test_that("the family-wide programme admits only its frozen pure and mixed cells
         family_id_vec = rep(ids, length.out = nrow(dat)),
         link_id_vec = rep(0L, nrow(dat))
       ),
-      regexp = "named|programme|gated"
+      regexp = "one family and one link|named|programme|gated"
     )
   }
+})
+
+test_that("named mixed cells reject duplicate family traits", {
+  dat <- make_mixed_lv_first_cell_data()
+  duplicate <- dat[as.character(dat$trait) == "b", , drop = FALSE]
+  duplicate$trait <- "b2"
+  dat <- rbind(dat, duplicate)
+  dat$trait <- factor(dat$trait, levels = c("g", "b", "b2"))
+  dat <- dat[order(dat$unit, dat$trait), , drop = FALSE]
+  formula <- value ~ 0 + trait +
+    latent(0 + trait | unit, d = 1, unique = FALSE, lv = ~x)
+
+  duplicate_poisson <- c(g = 0L, b = 2L, b2 = 2L)
+  expect_error(
+    mixed_lv_first_cell_preflight(
+      formula,
+      data = dat,
+      family_id_vec = unname(duplicate_poisson[as.character(dat$trait)]),
+      link_id_vec = rep(0L, nrow(dat))
+    ),
+    regexp = "exact named|one trait|programme cell"
+  )
+
+  duplicate_gaussian <- c(g = 0L, b = 0L, b2 = 2L)
+  expect_error(
+    mixed_lv_first_cell_preflight(
+      formula,
+      data = dat,
+      family_id_vec = unname(duplicate_gaussian[as.character(dat$trait)]),
+      link_id_vec = rep(0L, nrow(dat))
+    ),
+    regexp = "exact named|one trait|programme cell"
+  )
+})
+
+test_that("the public Gaussian plus multinomial programme cell counts one logical categorical response", {
+  skip_on_cran()
+  dat <- make_mixed_lv_gaussian_multinomial()
+  families <- list(g = stats::gaussian(), m = multinomial())
+  attr(families, "family_var") <- "family"
+
+  fit <- suppressWarnings(suppressMessages(gllvmTMB(
+    value ~ 0 + trait +
+      latent(0 + trait | unit, d = 1, unique = FALSE, lv = ~x),
+    data = dat,
+    unit = "unit",
+    trait = "trait",
+    family = families,
+    silent = TRUE,
+    control = gllvmTMBcontrol(se = FALSE)
+  )))
+
+  expect_identical(fit$opt$convergence, 0L)
+  expect_equal(sort(unique(fit$tmb_data$family_id_vec)), c(0L, 16L))
+  expect_setequal(levels(fit$data$trait), c(
+    "gaussian_trait", "category_trait:2", "category_trait:3"
+  ))
+  expect_true(all(is.finite(fit$report$B_lv_unit)))
+})
+
+test_that("unexpanded duplicate multinomial traits are not collapsed", {
+  dat <- make_mixed_lv_first_cell_data()
+  duplicate <- dat[as.character(dat$trait) == "b", , drop = FALSE]
+  duplicate$trait <- "b2"
+  dat <- rbind(dat, duplicate)
+  dat$trait <- factor(dat$trait, levels = c("g", "b", "b2"))
+  dat <- dat[order(dat$unit, dat$trait), , drop = FALSE]
+  ids <- c(g = 0L, b = 16L, b2 = 16L)
+
+  expect_error(
+    mixed_lv_first_cell_preflight(
+      value ~ 0 + trait +
+        latent(0 + trait | unit, d = 1, unique = FALSE, lv = ~x),
+      data = dat,
+      family_id_vec = unname(ids[as.character(dat$trait)]),
+      link_id_vec = rep(0L, nrow(dat))
+    ),
+    regexp = "exact named|one trait|programme cell"
+  )
+})
+
+test_that("malformed pre-expanded multinomial contrast groups fail closed", {
+  formula <- value ~ 0 + trait +
+    latent(0 + trait | unit, d = 1, unique = FALSE, lv = ~x)
+  dat <- make_preexpanded_mixed_lv_gaussian_multinomial()
+  family_ids <- ifelse(dat$family == "g", 0L, 16L)
+
+  duplicate_contrast <- dat
+  first_group <- which(duplicate_contrast$.multinom_group_ == 0L)
+  duplicate_contrast$trait[first_group[[2L]]] <- "category_trait:2"
+  expect_error(
+    mixed_lv_first_cell_preflight(
+      formula,
+      data = duplicate_contrast,
+      family_id_vec = family_ids,
+      link_id_vec = rep(0L, nrow(duplicate_contrast))
+    ),
+    regexp = "multinomial.*expansion|contrast.*group|contiguous"
+  )
+
+  noncontiguous <- dat[c(2L, 1L, 3L, seq.int(4L, nrow(dat))), , drop = FALSE]
+  family_ids_noncontiguous <- ifelse(noncontiguous$family == "g", 0L, 16L)
+  expect_error(
+    mixed_lv_first_cell_preflight(
+      formula,
+      data = noncontiguous,
+      family_id_vec = family_ids_noncontiguous,
+      link_id_vec = rep(0L, nrow(noncontiguous))
+    ),
+    regexp = "multinomial.*expansion|contrast.*group|contiguous"
+  )
+})
+
+test_that("incidental multinomial metadata names do not affect non-multinomial cells", {
+  dat <- make_mixed_lv_first_cell_data()
+  dat$.multinom_group_ <- seq_len(nrow(dat))
+  dat$.multinom_L_ <- 99L
+
+  setup <- mixed_lv_first_cell_preflight(
+    value ~ 0 + trait +
+      latent(0 + trait | unit, d = 1, unique = FALSE, lv = ~x),
+    data = dat,
+    family_id_vec = rep(c(0L, 2L), length.out = nrow(dat)),
+    link_id_vec = rep(0L, nrow(dat))
+  )
+
+  expect_true(isTRUE(setup$enabled))
+})
+
+test_that("public mixed programme routes reject missing responses before dropping", {
+  long <- make_mixed_lv_first_cell_fit_data(n_units = 20L)
+  long$value[[4L]] <- NA_real_
+  long_families <- list(
+    continuous = stats::gaussian(),
+    presence = stats::binomial(link = "logit")
+  )
+  attr(long_families, "family_var") <- "family"
+  long_formula <- value ~ 0 + trait +
+    latent(0 + trait | unit, d = 1, unique = FALSE, lv = ~x)
+
+  expect_error(
+    gllvmTMB(
+      long_formula,
+      data = long,
+      unit = "unit",
+      trait = "trait",
+      family = long_families,
+      weights = rep(c(1L, 20L), nrow(long) / 2L),
+      silent = TRUE,
+      control = gllvmTMBcontrol(se = FALSE)
+    ),
+    regexp = "complete response|missing response"
+  )
+  expect_error(
+    gllvmTMB(
+      long_formula,
+      data = long,
+      unit = "unit",
+      trait = "trait",
+      family = long_families,
+      weights = rep(c(1L, 20L), nrow(long) / 2L),
+      missing = miss_control(response = "include"),
+      silent = TRUE,
+      control = gllvmTMBcontrol(se = FALSE)
+    ),
+    regexp = "complete response|missing response"
+  )
+
+  wide <- make_mixed_lv_wide_gaussian_poisson(n_units = 20L)
+  wide$gaussian[[1L]] <- NA_real_
+  wide_families <- list(
+    gaussian = stats::gaussian(),
+    poisson = stats::poisson()
+  )
+  wide_formula <- traits(gaussian, poisson) ~ 1 +
+    latent(1 | unit, d = 1, unique = FALSE, lv = ~x)
+
+  expect_error(
+    gllvmTMB(
+      wide_formula,
+      data = wide,
+      unit = "unit",
+      family = wide_families,
+      silent = TRUE,
+      control = gllvmTMBcontrol(se = FALSE)
+    ),
+    regexp = "complete response|missing response"
+  )
+  expect_error(
+    gllvmTMB(
+      wide_formula,
+      data = wide,
+      unit = "unit",
+      family = wide_families,
+      missing = miss_control(response = "include"),
+      silent = TRUE,
+      control = gllvmTMBcontrol(se = FALSE)
+    ),
+    regexp = "complete response|missing response"
+  )
 })
 
 test_that("traits wide data maps a named family list to the mixed LV traits", {

@@ -54785,3 +54785,280 @@ No fit, simulation, benchmark, campaign, workflow edit, or scientific claim was
 added. The next gate is one pushed PR with the full pull-request CI matrix; it
 must be green before merge, and the merge run must then be observed before the
 exact-path lease is released.
+
+---
+
+## 2026-08-26 — Mixed-family predictor-informed LV exact-main verification (Codex)
+
+**Lane:** `codex:lv-mixed-family-all-native`
+
+**Verified base:** `499cc3f901f5b5d02962a3c5fb665bf69f2fc796`
+**Rebased candidate before closeout-only edits:**
+`4a93d008da1006809e4a840b846886915c298702`
+
+The interval-calibration lane released all 110 paths only after PR #1215,
+Ubuntu/macOS/Windows PR checks, the exact-SHA post-merge `main` check, and its
+final Unlazy reverify passed. The two mixed-LV commits then rebased once and
+without conflict onto that exact `main` SHA. The append-only interval entries
+above and its Design 35 changes were preserved.
+
+Retained science evidence was not rerun during integration:
+
+- mixed/sentinel r200: 3,800/3,800 attempts retained, 3,789 strict point-
+  eligible fits, 19/19 point gates PASS;
+- pure r200: 3,800/3,800 attempts retained, 17/19 point gates PASS, with Beta
+  and ordinal-probit retained as HOLD;
+- eight named Gaussian-anchor archetypes at r500: 4,000/4,000 attempts
+  retained, 3,999 interval-eligible fits, all eight target-wise `B_lv` Wald
+  gates PASS, and one Gamma non-PD/CI-unavailable attempt retained.
+
+Exact-main verification receipts:
+
+```sh
+Rscript --vanilla -e 'devtools::load_all(quiet=TRUE); fs <- c("tests/testthat/test-lv-family-boundary-guard.R", "tests/testthat/test-lv-native-nongaussian-guard.R", "tests/testthat/test-lv-mixed-family-first-cell.R", "tests/testthat/test-mixed-lv-family-harness.R"); for (f in fs) testthat::test_file(f, reporter="summary", stop_on_failure=TRUE)'
+# PASS: all four focused files; the three CRAN-conditional live-fit examples
+# were skipped in this direct CRAN-like invocation.
+
+Rscript --vanilla -e 'devtools::load_all(quiet=TRUE); fs <- list.files("tests/testthat", pattern="^test-lv.*[.]R$", full.names=TRUE); for (f in fs) testthat::test_file(f, reporter="summary", stop_on_failure=TRUE)'
+# PASS: all 13 LV files; expected skips only for one heavy recovery test, two
+# opt-in Wald smoke tests, and three CRAN-conditional live mixed-fit examples.
+
+NOT_CRAN=true Rscript --vanilla -e 'devtools::load_all(quiet=TRUE); testthat::test_file("tests/testthat/test-lv-mixed-family-first-cell.R", reporter="summary", stop_on_failure=TRUE)'
+# PASS: the actual long/wide mixed-family construction and equality fits ran;
+# zero skips and zero failures.
+
+Rscript --vanilla -e 'devtools::document(quiet=TRUE)'
+# PASS with the three pre-existing AIC/BIC/anova S3 documentation diagnostics.
+
+NOT_CRAN=true Rscript --vanilla -e 'devtools::load_all(quiet=TRUE); pkgdown::build_article("articles/explaining-latent-ecological-axes", lazy=FALSE, new_process=FALSE)'
+# PASS: evaluated source-loaded article written to
+# docs/articles/explaining-latent-ecological-axes.html.
+
+Rscript --vanilla -e 'pkgdown::check_pkgdown()'
+# PASS: No problems found.
+
+Rscript --vanilla -e 'options(crayon.enabled=FALSE); devtools::check(args="--no-manual", quiet=TRUE)'
+# 23m40.45s wall; R CMD check 19m59.6s; 0 errors, 0 warnings, 4 notes:
+# unverifiable system clock, pre-existing logLik global note, escaped LaTeX
+# dollar in gllvmTMB.Rd, and xcrun_db temp detritus.
+
+git diff --check
+# PASS.
+```
+
+One failed exact-main documentation attempt is retained. A default
+`pkgdown::build_article(..., new_process = TRUE)` subprocess loaded an older
+installed package and rejected the Gaussian + Poisson article cell with the
+superseded Gaussian/pure-binomial guard. Source inspection proved the rebased
+function contained the named family-wide programme, the `NOT_CRAN=true` live
+fit test passed, and a source-loaded evaluated render passed. No implementation
+change or evidence threshold was made to hide the failure.
+
+No exact mixed-LV three-OS CI was run because the approved Ultra Plan ends in
+a local commit and explicitly forbids push/PR/merge for this lane. The verified
+base itself has protected three-OS and post-merge CI receipts, but those are not
+misrepresented as exact mixed-LV-head CI. No new fit campaign, GitHub Actions
+science compute, remote compute, GLLVM.jl mutation, push, PR, merge, release,
+or public announcement occurred in this integration step.
+
+### Post-panel exact-shape and pre-drop missingness repair
+
+The fresh Gauss/Emmy panel found two fail-open variants. Admission classified
+only unique family IDs, so a three-trait `0 + 2 + 2` or `0 + 0 + 2` fit could
+masquerade as the retained two-trait Gaussian + Poisson cell. Public long and
+wide default-drop routes could also remove an `NA` response before the
+programme's complete-response check saw it.
+
+Four new controls failed before the repair: duplicate Poisson traits,
+duplicate Gaussian traits, a long-format default-drop missing response, and a
+wide `traits()` default-drop missing response. The public include-mode long and
+wide controls already failed correctly and remain explicit tests. The repair
+classifies the per-trait `(family_id, link_id)` shape, requires exactly two
+traits for named anchors and exactly three for the sentinel, and carries the
+wide pre-drop missing-cell count into the long-fit preflight without changing
+the public signature.
+
+```sh
+NOT_CRAN=true Rscript --vanilla -e 'devtools::load_all(quiet=TRUE); testthat::test_file("tests/testthat/test-lv-mixed-family-first-cell.R", reporter="summary", stop_on_failure=FALSE)'
+# RED: four expected failures on the pre-repair source; both duplicate-family
+# shapes and both default-drop public missing-response routes were admitted.
+
+NOT_CRAN=true Rscript --vanilla -e 'devtools::load_all(quiet=TRUE); testthat::test_file("tests/testthat/test-lv-mixed-family-first-cell.R", reporter="summary", stop_on_failure=TRUE)'
+# GREEN: zero failures and zero skips, including long/wide live fits.
+
+NOT_CRAN=true Rscript --vanilla -e 'devtools::load_all(quiet=TRUE); fs <- c("tests/testthat/test-lv-family-boundary-guard.R", "tests/testthat/test-lv-native-nongaussian-guard.R", "tests/testthat/test-lv-mixed-family-first-cell.R", "tests/testthat/test-mixed-lv-family-harness.R"); for (f in fs) testthat::test_file(f, reporter="summary", stop_on_failure=TRUE)'
+# MIXED_LV_POST_PANEL_FOCUSED_OK; zero failures and zero skips.
+
+NOT_CRAN=true Rscript --vanilla -e 'devtools::load_all(quiet=TRUE); fs <- list.files("tests/testthat", pattern="^test-lv.*[.]R$", full.names=TRUE); for (f in fs) testthat::test_file(f, reporter="summary", stop_on_failure=TRUE)'
+# LV_POST_PANEL_SUITE_OK; all 13 files passed, with one declared heavy-recovery
+# and two opt-in Wald-smoke skips.
+
+NOT_CRAN=true Rscript --vanilla -e 'devtools::load_all(quiet=TRUE); fs <- c("tests/testthat/test-traits-keyword.R", "tests/testthat/test-missing-response.R", "tests/testthat/test-missing-response-cellwise.R", "tests/testthat/test-missing-response-traits.R", "tests/testthat/test-lv-missing-response.R"); for (f in fs) testthat::test_file(f, reporter="summary", stop_on_failure=TRUE)'
+# LV_MISSING_TRAITS_NEIGHBOURS_OK; zero failures. Seven pre-existing heavy
+# wide-missing recovery tests remained skipped by their explicit guard.
+```
+
+No evidence grid, seed, denominator, threshold, likelihood, C++ path, family
+constructor, exported signature, or public claim was widened by this repair.
+
+### Post-panel multinomial logical-response repair
+
+The next frozen-diff Gauss/Emmy and Noether/Fisher review found that exact raw
+trait arity had accidentally rejected the retained
+`m16-gaussian__multinomial` cell. `gllvmTMB()` expands one three-category
+multinomial response into two baseline-contrast pseudo-traits before the LV
+preflight, so the candidate saw three physical traits even though the named
+cell still has exactly two logical responses. A post-repair full package check
+was stopped after 82.56 seconds as soon as this contradiction was confirmed;
+that interrupted attempt is retained and was not counted as a package-check
+pass.
+
+A public Gaussian-plus-multinomial canary failed before repair at the arbitrary-
+mixture/duplicate-shape gate, reproducing the panel finding before any
+optimization. The repair collapses family-16 pseudo-traits to one logical
+categorical response only when `.multinom_group_` and `.multinom_L_` prove a
+complete upstream $K-1$ expansion. Unexpanded or malformed duplicate family-16
+traits still count separately and fail closed.
+
+```sh
+NOT_CRAN=true Rscript --vanilla -e 'devtools::load_all(quiet=TRUE); testthat::test_file("tests/testthat/test-lv-mixed-family-first-cell.R", reporter="summary")'
+# RED before repair: the public Gaussian + three-category multinomial canary
+# was rejected by the exact-shape gate; all earlier expectations passed.
+
+NOT_CRAN=true Rscript --vanilla -e 'devtools::load_all(quiet=TRUE); testthat::test_file("tests/testthat/test-lv-mixed-family-first-cell.R", reporter="summary", stop_on_failure=TRUE)'
+# GREEN after repair: zero failures, including the live multinomial fit and the
+# unexpanded duplicate-family-16 negative control.
+
+NOT_CRAN=true Rscript --vanilla -e 'devtools::load_all(quiet=TRUE); fs <- c("tests/testthat/test-lv-family-boundary-guard.R", "tests/testthat/test-lv-native-nongaussian-guard.R", "tests/testthat/test-lv-mixed-family-first-cell.R", "tests/testthat/test-mixed-lv-family-harness.R"); for (f in fs) testthat::test_file(f, reporter="summary", stop_on_failure=TRUE)'
+# MIXED_LV_M16_FOCUSED_OK; zero failures.
+
+NOT_CRAN=true Rscript --vanilla -e 'devtools::load_all(quiet=TRUE); fs <- list.files("tests/testthat", pattern="^test-lv.*[.]R$", full.names=TRUE); for (f in fs) testthat::test_file(f, reporter="summary", stop_on_failure=TRUE)'
+# LV_M16_POST_PANEL_SUITE_OK; all 13 files passed, with the declared one heavy
+# recovery and two opt-in Wald-smoke skips.
+
+NOT_CRAN=true Rscript --vanilla -e 'devtools::load_all(quiet=TRUE); testthat::test_file("tests/testthat/test-cross-family-multinomial.R", reporter="summary", stop_on_failure=TRUE)'
+# LV_M16_CROSS_FAMILY_OK; the neighbouring expansion and extractor suite passed.
+```
+
+This repair changes no retained science result, likelihood, family
+parameterisation, estimand, campaign denominator, exported signature, or
+programme allow-list. It restores one already-retained named cell while
+preserving exact logical-response admission.
+
+Final package verification after the logical-response repair:
+
+```sh
+/usr/bin/time -p Rscript --vanilla -e 'options(crayon.enabled=FALSE); devtools::check(args="--no-manual", quiet=TRUE); cat("MIXED_LV_FINAL_R_CMD_CHECK_OK\n")'
+# 20m54.71s wall; R CMD check 17m56.4s; 0 errors, 0 warnings, 4 notes:
+# unverifiable system clock, pre-existing logLik global note, escaped LaTeX
+# dollar in gllvmTMB.Rd, and xcrun_db temp detritus.
+# MIXED_LV_FINAL_R_CMD_CHECK_OK.
+
+NOT_CRAN=true Rscript --vanilla -e 'devtools::load_all(quiet=TRUE); pkgdown::build_article("articles/explaining-latent-ecological-axes", lazy=FALSE, new_process=FALSE); cat("MIXED_LV_FINAL_ARTICLE_OK\n")'
+# PASS: evaluated source-loaded article rendered from the final source.
+
+Rscript --vanilla -e 'pkgdown::check_pkgdown(); cat("MIXED_LV_FINAL_PKGDOWN_OK\n")'
+# PASS: No problems found.
+```
+
+The frozen implementation patch (relative to committed `HEAD` `4a93d008da1006809e4a840b846886915c298702`)
+is limited to `R/fit-multi.R`, `R/gllvmTMB.R`, `R/lv-predictor.R`, and
+`tests/testthat/test-lv-mixed-family-first-cell.R`; after the final structural
+multinomial repair, its binary-diff SHA-256 is
+`2bdb4926766a8a47229401125e3f1c1b4f43e99d8da37ff385ab542bbde9097e`.
+The complete final-candidate path census is:
+
+```text
+R/fit-multi.R
+R/gllvmTMB.R
+R/lv-predictor.R
+docs/design/01-formula-grammar.md
+docs/design/73-predictor-informed-latent-scores.md
+docs/dev-log/after-task/2026-08-25-lv-mixed-family-all-native.md
+docs/dev-log/artifacts/methods-superarc/lv-mixed-family-all-native-source-contract.md
+docs/dev-log/check-log.md
+docs/dev-log/handover/2026-08-25-lv-mixed-family-all-native.md
+docs/dev-log/plan-actual/2026-08-25-lv-mixed-family-all-native.md
+tests/testthat/test-lv-mixed-family-first-cell.R
+```
+
+Closeout receipts may add prose within this same census, but any change to the
+four implementation/test paths invalidates the hash and requires a fresh
+focused replay and panel review.
+
+### Final malformed multinomial-metadata fence
+
+Noether/Fisher demonstrated that the first logical-response repair still
+trusted global group sizes: forged pre-expanded data could repeat one contrast
+within a group or separate a group's rows, despite the grouped TMB softmax
+assuming one contiguous block. Two new controls both failed before repair by
+being admitted. The final validator now requires both metadata columns, one
+row for every contrast in every group, contiguous group blocks, and a common
+contrast order. The valid public auto-expansion remains admitted.
+
+```sh
+NOT_CRAN=true Rscript --vanilla -e 'devtools::load_all(quiet=TRUE); testthat::test_file("tests/testthat/test-lv-mixed-family-first-cell.R", reporter="summary", stop_on_failure=FALSE)'
+# RED before repair: duplicate-contrast and noncontiguous-group inputs were
+# both admitted; every earlier expectation passed.
+
+NOT_CRAN=true Rscript --vanilla -e 'devtools::load_all(quiet=TRUE); testthat::test_file("tests/testthat/test-lv-mixed-family-first-cell.R", reporter="summary", stop_on_failure=TRUE)'
+# MIXED_LV_M16_STRUCTURE_OK; both malformed controls reject and the live public
+# Gaussian + multinomial auto-expansion still converges.
+
+NOT_CRAN=true Rscript --vanilla -e 'devtools::load_all(quiet=TRUE); fs <- c("tests/testthat/test-lv-family-boundary-guard.R", "tests/testthat/test-lv-native-nongaussian-guard.R", "tests/testthat/test-lv-mixed-family-first-cell.R", "tests/testthat/test-mixed-lv-family-harness.R"); for (f in fs) testthat::test_file(f, reporter="summary", stop_on_failure=TRUE)'
+# MIXED_LV_STRUCTURAL_FOCUSED_OK.
+
+NOT_CRAN=true Rscript --vanilla -e 'devtools::load_all(quiet=TRUE); fs <- list.files("tests/testthat", pattern="^test-lv.*[.]R$", full.names=TRUE); for (f in fs) testthat::test_file(f, reporter="summary", stop_on_failure=TRUE)'
+# LV_STRUCTURAL_POST_PANEL_SUITE_OK; all 13 LV files passed with the same one
+# declared heavy-recovery and two opt-in Wald-smoke skips.
+
+NOT_CRAN=true Rscript --vanilla -e 'devtools::load_all(quiet=TRUE); testthat::test_file("tests/testthat/test-cross-family-multinomial.R", reporter="summary", stop_on_failure=TRUE)'
+# LV_STRUCTURAL_CROSS_FAMILY_OK.
+```
+
+The same review found two stale historical-status sentences. Design 73 now
+states the final 17/19 pure PASS plus two-HOLD result, and the source contract
+labels its no-retained-evidence conclusion explicitly as pre-campaign and
+superseded by the retained r200/r500 verdicts.
+
+Final verification after the structural metadata fence:
+
+```sh
+/usr/bin/time -p Rscript --vanilla -e 'options(crayon.enabled=FALSE); devtools::check(args="--no-manual", quiet=TRUE); cat("MIXED_LV_STRUCTURAL_FINAL_R_CMD_CHECK_OK\n")'
+# 20m31.59s wall; R CMD check 17m50.6s; 0 errors, 0 warnings, 4 notes:
+# unverifiable system clock, pre-existing logLik global note, escaped LaTeX
+# dollar in gllvmTMB.Rd, and xcrun_db temp detritus.
+
+NOT_CRAN=true Rscript --vanilla -e 'devtools::load_all(quiet=TRUE); pkgdown::build_article("articles/explaining-latent-ecological-axes", lazy=FALSE, new_process=FALSE); cat("MIXED_LV_STRUCTURAL_FINAL_ARTICLE_OK\n")'
+# PASS: evaluated source-loaded article rendered from the final structural source.
+
+Rscript --vanilla -e 'pkgdown::check_pkgdown(); cat("MIXED_LV_STRUCTURAL_FINAL_PKGDOWN_OK\n")'
+# PASS: No problems found.
+```
+
+The 20m54.71s check remains a genuine pass after the first logical-response
+repair, but it is superseded—not erased—by this final structural-source check.
+
+### Final incidental-metadata namespace repair
+
+Gauss/Emmy found that an unrelated non-multinomial data frame containing
+columns named `.multinom_group_` or `.multinom_L_` could enter the structural
+multinomial validator despite having no family-16 rows. The planted Gaussian +
+Poisson control failed before repair. Metadata validation is now conditional on
+an actual family-16 trait; once family 16 is present, the strict two-column,
+complete-membership, contiguous-block, and common-order checks are unchanged.
+
+```sh
+NOT_CRAN=true Rscript --vanilla -e 'devtools::load_all(quiet=TRUE); testthat::test_file("tests/testthat/test-lv-mixed-family-first-cell.R", reporter="summary", stop_on_failure=FALSE)'
+# RED before repair: one incidental-column non-multinomial control errored at
+# the incomplete multinomial expansion gate.
+
+NOT_CRAN=true Rscript --vanilla -e 'devtools::load_all(quiet=TRUE); testthat::test_file("tests/testthat/test-lv-mixed-family-first-cell.R", reporter="summary", stop_on_failure=TRUE)'
+# MIXED_LV_M16_NAMESPACE_OK.
+
+NOT_CRAN=true Rscript --vanilla -e 'devtools::load_all(quiet=TRUE); fs <- list.files("tests/testthat", pattern="^test-lv.*[.]R$", full.names=TRUE); for (f in fs) testthat::test_file(f, reporter="summary", stop_on_failure=TRUE)'
+# LV_NAMESPACE_POST_PANEL_SUITE_OK.
+
+NOT_CRAN=true Rscript --vanilla -e 'devtools::load_all(quiet=TRUE); testthat::test_file("tests/testthat/test-cross-family-multinomial.R", reporter="summary", stop_on_failure=TRUE)'
+# LV_NAMESPACE_CROSS_FAMILY_OK.
+```

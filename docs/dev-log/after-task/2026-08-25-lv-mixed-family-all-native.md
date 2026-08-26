@@ -1,8 +1,8 @@
 # After Task: Family-Wide Mixed-Family Predictor-Informed LV
 
-Status: **REVIEW REPAIRS IN PROGRESS — all three retained campaigns are
-adjudicated; final frozen-diff review found bounded defects that are being
-repaired before exact-head verification and landing.**
+Status: **FINAL CANDIDATE — all retained campaigns are adjudicated, review
+repairs are integrated on verified `main`, and exact-head local verification
+is green; final frozen-diff review and closeout gates remain.**
 
 ## 1. Goal
 
@@ -90,6 +90,7 @@ or calibration for arbitrary mixtures.
 ### Implementation and generated help
 
 - `R/lv-predictor.R`
+- `R/fit-multi.R`
 - `R/gllvmTMB.R`
 - `R/traits-keyword.R`
 - `R/brms-sugar.R`
@@ -138,14 +139,16 @@ or calibration for arbitrary mixtures.
 
 - `vignettes/articles/explaining-latent-ecological-axes.Rmd`
 - `docs/dev-log/plans/2026-08-25-lv-mixed-family-all-native-ultra-plan.md`
+- `docs/dev-log/check-log.md`
 - `docs/dev-log/after-task/2026-08-25-lv-mixed-family-all-native.md`
 - `docs/dev-log/plan-actual/2026-08-25-lv-mixed-family-all-native.md`
 - `docs/dev-log/handover/2026-08-25-lv-mixed-family-all-native.md`
 
 `README.md`, `ROADMAP.md`, `_pkgdown.yml`, `AGENTS.md`, `CLAUDE.md`,
 `NAMESPACE`, `src/gllvmTMB.cpp`, and Design 76 were inspected or classified as
-unchanged. `NEWS.md` and `docs/dev-log/check-log.md` were released to the
-interval-calibration lane and are not edited in this draft.
+unchanged. `NEWS.md` remains unchanged. The interval-calibration lane released
+`docs/dev-log/check-log.md` after its protected merge; this lane then appended
+only its exact-main mixed-LV verification receipt.
 
 ## 5. Checks Run
 
@@ -165,17 +168,26 @@ Completed checks:
   exit 0; testthat terminus `DONE`.
 - Evaluated Tier-1 article render from development source: passed; the Gaussian
   + Poisson long/wide estimates were identical.
-- Final post-campaign focused suite passed all four mixed-LV files, including
-  the live long/wide equality fit and negative boundary controls. The first
-  single-page rerender command, `pkgdown::build_article()` with the article
-  slug, failed because pkgdown did not find this repository's nested
-  `vignettes/articles/` page; the failure is retained. Direct evaluated
-  `rmarkdown::render()` from development source then passed and wrote a
-  non-empty HTML page. `pkgdown::check_pkgdown()` also passed.
+- Final post-campaign focused suite passed all four mixed-LV files. The
+  exact-main CRAN-like invocation skipped the three live construction tests as
+  declared; a separate `NOT_CRAN=true` replay ran every long/wide mixed fit and
+  boundary control with zero skips and zero failures. A default new-process
+  article render loaded an older installed package and failed on its
+  superseded family guard; that failure is retained. The source-loaded
+  evaluated render then passed and wrote the article HTML.
 - `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`: passed.
-- `Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE, error_on = "never")'`:
-  20 minutes 56.6 seconds; 0 errors, 0 warnings, 4 explicit pre-existing or
-  environment notes.
+- The pre-panel exact-main `devtools::check(args = "--no-manual", quiet =
+  TRUE)` completed in 23 minutes 40.45 seconds wall time (`R CMD check`: 19
+  minutes 59.6 seconds), with 0 errors, 0 warnings, and 4 explicit pre-existing
+  or environmental notes. After the panel repairs, a new attempt was stopped
+  at 82.56 seconds when the multinomial logical-response defect was found.
+  The first repaired-source check then completed in 20 minutes 54.71 seconds
+  wall time (`R CMD check`: 17 minutes 56.4 seconds), again with 0 errors, 0
+  warnings, and the same 4 notes. After the structural metadata repair, the
+  authoritative final check passed in 20 minutes 31.59 seconds wall time (`R
+  CMD check`: 17 minutes 50.6 seconds), with 0 errors, 0 warnings, and the same
+  4 notes. The final evaluated article render and `pkgdown::check_pkgdown()`
+  also passed from that structural source.
 - `git diff --check`: passed after the final local edits.
 - Independent retained-evidence recheck: `shasum -a 256 -c` verified all
   7,622 entries in the mixed/sentinel raw/source manifest. Direct CSV reads
@@ -200,9 +212,9 @@ Completed checks:
   bundle. Its log SHA-256 is
   `5a3debc8f7bcca2ba93c48ff00bbed8dfa6b01a4f36b7c6a73735a4f2f0b4d75`.
 
-Still required before closure: affected focused reruns, final `--reverify`,
-the frozen-candidate completion panel, final local landing checks, and the
-closeout validators.
+Still required before closure: final `--reverify`, the frozen-candidate
+completion panel, closeout validators, the final local commit, clean-tree
+proof, handoff validation, and lease release.
 
 The first frozen completion panel returned `FAIL`. Gauss/Emmy found that an
 explicit ordinary unit-tier `indep()` or compatibility `unique()` companion
@@ -232,6 +244,45 @@ pure-binomial link repairs. A proposed duplicate within-trait route check was
 not added because the public fit path already rejects that condition in the
 ordinary family-scale validator.
 
+The fresh exact-main Gauss/Emmy panel found two additional public-path
+variants. Mixed admission used unique family IDs rather than the per-trait
+shape, so duplicate Gaussian or duplicate non-Gaussian traits could resemble a
+named two-trait anchor. Long and wide default-drop paths could also remove a
+missing response before the complete-response fence. Four new negative
+controls failed on the pre-repair source. Admission now validates one
+family/link pair per trait, exact two-trait anchors and the exact three-trait
+sentinel; the wide rewrite carries pre-drop missing-cell counts into the
+internal fit metadata. Live long/wide controls and the neighbouring traits and
+missing-response suites pass. No campaign or likelihood code was rerun or
+widened.
+
+The next frozen-diff review found one interaction between exact trait arity and
+the established multinomial expansion. A three-category response becomes two
+baseline-contrast pseudo-traits before LV admission, so raw trait counting
+rejected the retained Gaussian--multinomial cell. A public canary reproduced
+the rejection before repair. Admission now counts those contrasts as one
+logical categorical response only when complete upstream expansion metadata
+is present; an unexpanded duplicate-family-16 negative control remains
+rejected. The focused, complete LV, and neighbouring cross-family multinomial
+suites pass. A newly started full check was stopped after 82.56 seconds when
+the defect was found and is retained as an interrupted attempt, not a pass.
+
+Noether/Fisher then demonstrated that global group-size checks alone still
+trusted malformed pre-expanded multinomial data. Duplicate contrasts within a
+group and noncontiguous group rows were both admitted before the final repair.
+The admission fence now requires one contiguous row for every contrast in a
+common order within each group. Both planted defects fail, while the public
+auto-expanded named cell and the neighbouring cross-family suite pass. The
+same review converted two stale pre-campaign evidence sentences to explicit
+historical wording; final pure status remains 17 PASS and two HOLDs.
+
+Gauss/Emmy's final namespace sweep found that incidental columns named like
+multinomial expansion metadata could reject a non-multinomial named cell. A
+planted Gaussian + Poisson control failed before repair. Structural metadata
+validation is now entered only when family 16 is actually present; every strict
+multinomial group check remains in force. The complete LV and neighbouring
+cross-family suites pass after this repair.
+
 ## 6. Tests of the Tests
 
 - Failure-before-fix: the wide mixed-family equality test first failed because
@@ -240,6 +291,16 @@ ordinary family-scale validator.
 - Failure-before-fix and boundary: an unrelated ambient `family` column first
   collided with the internal selector; its regression test proves the generated
   selector is collision-safe.
+- Failure-before-fix: the public Gaussian-plus-multinomial canary was rejected
+  by the raw three-trait shape gate. It now fits after verified $K-1$ contrasts
+  are counted as one logical response, while the companion unexpanded-
+  duplicate negative control still fails.
+- Failure-before-fix: forged pre-expanded multinomial groups with a duplicated
+  contrast or noncontiguous rows were admitted. Both now fail at the structural
+  expansion fence before fitting.
+- Failure-before-fix: a valid Gaussian + Poisson cell carrying unrelated
+  columns named like multinomial metadata was rejected. The validator now
+  ignores those names unless family 16 is present.
 - Failure-before-fix and boundary: an explicit misspelled selector was first
   silently overridden; its regression test now proves explicit user intent
   fails loudly.
@@ -357,8 +418,10 @@ failed path is retained here and was not used as evidence.
   network-blocked. Three recent interval-calibration commits touched shared
   status files, but an exact `HEAD..origin/main` comparison showed this branch's
   committed tree already contains their design/register/NEWS state; only the
-  append-only `docs/dev-log/check-log.md` differs upstream, and this draft does
-  not edit it. Final integration must preserve that 84-line upstream append.
+  append-only `docs/dev-log/check-log.md` initially differed upstream. The
+  interval lane then merged and released its lease at exact `main` SHA
+  `499cc3f901f5b5d02962a3c5fb665bf69f2fc796`; this branch rebased once,
+  preserved that append, and added only later mixed-LV receipts.
 
 ## 10. Known Residuals
 
@@ -368,12 +431,12 @@ failed path is retained here and was not used as evidence.
 - **HOLD**: pure ordinal-probit point recovery did not meet its frozen shared-
   Sigma gate despite healthy `B_lv` targets. This closeout does not redefine
   the estimand or remove the Sigma oracle.
-- Reconcile current `origin/main` without changing the campaign source receipt,
-  then rerun affected tests, docs, pkgdown, local package checks, and exact-head
-  CI as required by the final landing route.
 - Run the final 2-Terra/1-Sol frozen-diff panel, Unlazy `--reverify`, after-task
   validator, Melissa plan-vs-actual, handoff gate, narrow local commit, clean
   tree proof, and lease release.
+- Exact mixed-LV three-OS CI is not part of this local-only Ultra Plan. The
+  verified base has its own protected three-OS and exact-SHA post-merge
+  receipts; those are not claimed as mixed-LV-head CI.
 - Does **not** cover arbitrary mixtures, rank above one, default `+ Psi`, masks,
   missing/factor LV predictors, fixed `X + X_lv`, REML, source tiers, Julia,
   VA/AGHQ/MSPL, profile/bootstrap, simultaneous mixed-family interval coverage,

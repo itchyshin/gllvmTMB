@@ -4,9 +4,9 @@ Date: 2026-08-25
 Plan: `docs/dev-log/plans/2026-08-25-lv-mixed-family-all-native-ultra-plan.md`
 Branch: `codex/lv-mixed-family-all-native`
 Reviewer lens: Melissa
-Status: **REVIEW REPAIRS IN PROGRESS — retained compute and status
-reconciliation are complete; the first frozen review returned bounded FAIL
-findings before landing**
+Status: **FINAL CANDIDATE — retained compute, review repairs, verified-main
+integration, and exact-head local checks are complete; the final panel and
+closeout gates remain**
 
 ## Summary
 
@@ -52,7 +52,7 @@ single local commit pass.
 | S8 API/docs | Long/wide mixed-family repair, generated help, Design 01/02/03/05/35/57/61/73, and Tier-1 article completed | adaptive and aligned |
 | S9 inference | All eight frozen mixed archetypes pass target-wise Wald calibration; simultaneous coverage remains unclaimed | aligned and complete |
 | S10 verification | Focused/full tests, article, pkgdown, stale scans, and local check green | aligned |
-| S11/S12 panel and closeout | Preparatory reviews pass; final frozen panel, reverify, validators, commit, and handover remain open | correctly deferred |
+| S11/S12 panel and closeout | Preparatory reviews pass; exact-main candidate is frozen for the final panel, reverify, validators, closeout commit, and handover | correctly sequenced |
 
 ## Safety and compute reconciliation
 
@@ -66,8 +66,14 @@ single local commit pass.
 - Totoro ran only the two explicitly approved production campaigns at 40
   one-thread workers each. No DRAC job, GitHub Actions science compute,
   duplicate campaign, or GLLVM.jl mutation occurred.
-- Local package check completed inside estimate at 20m56.6s with 0 errors and
-  0 warnings.
+- The pre-panel exact-main local package check completed inside estimate at
+  23m40.45s wall time (`R CMD check`: 19m59.6s), with 0 errors and 0 warnings.
+  After preserving an 82.56-second interrupted attempt when the multinomial
+  defect was found, the first repaired-source check passed in 20m54.71s wall
+  time (`R CMD check`: 17m56.4s). The later structural metadata repair was
+  followed by the authoritative final check at 20m31.59s wall (`R CMD check`:
+  17m50.6s), with 0 errors, 0 warnings, and the same four notes. The final
+  evaluated article and pkgdown check also passed from that source.
 
 Safety classification: **aligned; approved remote execution completed within
 the 40-worker and 30-minute envelopes**.
@@ -105,6 +111,29 @@ Public-claim classification: **aligned with currently earned evidence**.
   single-link fence. Both were repaired test-first. The already effective
   public-path family validator remains the single owner of within-trait
   family/link consistency.
+- The exact-main API panel found two further fail-open shapes: duplicated
+  family traits could mimic a named anchor, and default missing-response
+  dropping could occur before the programme's complete-response guard. The
+  repair moved admission to exact per-trait family/link shapes and propagated
+  pre-drop wide missingness through internal metadata. Four red controls and
+  the full neighbouring missing/traits suites now protect the boundary.
+- The next frozen-diff review caught a distinct adaptive repair: the retained
+  Gaussian--multinomial cell expands one logical categorical response into
+  $K-1$ physical contrast traits before admission. The public canary failed on
+  the raw-arity fence. The final fence now collapses only complete, metadata-
+  verified multinomial expansions and still rejects raw duplicate family-16
+  traits. The interrupted 82.56-second package-check attempt and the red canary
+  are preserved.
+- A subsequent mathematical review found the initial metadata check did not
+  verify one-of-each contrast membership or contiguous group blocks. Two red
+  malformed pre-expanded controls led to a stricter structural fence; the
+  valid auto-expansion and neighbouring multinomial suite remain green. The
+  same review repaired two historical pre-campaign status sentences without
+  changing any final verdict.
+- The final API sweep found an incidental-column collision for
+  non-multinomial cells. One red Gaussian + Poisson control led to gating the
+  structural metadata validator on actual family-16 rows; all strict family-16
+  checks remain unchanged.
 - A full package check was added because exported reader behavior changed. It
   completed within the local gate.
 - The managed sandbox initially denied 285/285 exact-socket probes. Explicitly
@@ -135,7 +164,8 @@ tree, and lease release. Final mode will be `--reverify`, never `--status`.
 
 ## Landing reconciliation
 
-Not landed. No commit, push, PR, merge, release, external message, or public
-announcement has been made for this mixed-LV branch. The branch remains ahead
-1 and behind the current local `origin/main`; integration waits until the
-source-pinned campaign receipts exist.
+Integrated locally on exact verified base
+`499cc3f901f5b5d02962a3c5fb665bf69f2fc796`. The branch has two narrow local
+commits and no longer trails `origin/main`; closeout-only edits remain
+uncommitted while the final panel reviews their frozen diff. No mixed-LV push,
+PR, merge, release, external message, or public announcement has occurred.

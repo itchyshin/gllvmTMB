@@ -801,6 +801,10 @@ gllvmTMB <- function(
         }
       }
     }
+    attr(
+      rewrite$data_long,
+      ".gllvmTMB_traits_n_dropped_response"
+    ) <- rewrite$n_dropped
     recurse_args <- list(
       formula = rewrite$formula_long,
       data = rewrite$data_long,
@@ -1120,6 +1124,12 @@ gllvmTMB <- function(
   invisible(gll_prepare_mi_setup(parsed$mi_rhs, impute, missing))
   ## Snapshot the pre-drop data so the fit can report original-row accounting
   ## (fit$data_original) regardless of the response mode.
+  traits_n_dropped_response <- attr(
+    data,
+    ".gllvmTMB_traits_n_dropped_response",
+    exact = TRUE
+  ) %||% 0L
+  attr(data, ".gllvmTMB_traits_n_dropped_response") <- NULL
   data_original <- data
   observed_response <- drop_missing_response_rows(
     fixed_formula = parsed$fixed,
@@ -1193,7 +1203,8 @@ gllvmTMB <- function(
       predictor = missing$predictor,
       engine = missing$engine,
       original_row = observed_response$original_row,
-      n_missing_response = observed_response$n_missing_response,
+      n_missing_response = observed_response$n_missing_response +
+        as.integer(traits_n_dropped_response),
       data_original = data_original
     ),
     estimator = estimator,

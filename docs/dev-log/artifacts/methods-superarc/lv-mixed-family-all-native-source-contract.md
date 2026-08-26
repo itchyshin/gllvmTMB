@@ -337,15 +337,19 @@ The retained tables live under ignored
 payload health only. They do not replace the frozen r200 recovery denominators
 or justify interval claims.
 
-## Independent audit conclusion
+## Historical pre-campaign independent audit conclusion
 
-The current code contains the family-neutral `B_lv` algebra and family-aware
-row likelihoods needed to attempt a bounded R-side admission. It does not yet
-contain retained recovery evidence for any mixed predictor-informed LV claim.
-The route may proceed without a TMB edit. Truncated targets remain parent-scale,
-delta targets use the constrained shared-eta interpretation above, and
-multinomial targets remain labelled baseline-category contrasts; none is a
-blanket reason to stop coherent families.
+Before the retained campaigns, the audited code contained the family-neutral
+`B_lv` algebra and family-aware row likelihoods needed to attempt a bounded
+R-side admission, but no retained recovery evidence yet supported a mixed
+predictor-informed LV claim. That pre-campaign finding justified proceeding
+without a TMB edit. The later retained r200 and r500 sections below supersede
+the evidence-status sentence: all 19 named mixed/sentinel point cells passed,
+17/19 pure cells passed with two explicit HOLDs, and eight named Gaussian-
+anchor archetypes passed target-wise Wald calibration. Truncated targets
+remain parent-scale, delta targets use the constrained shared-eta
+interpretation above, and multinomial targets remain labelled baseline-
+category contrasts; none is a blanket reason to stop coherent families.
 
 ## Retained r200 recovery verdict
 
@@ -418,20 +422,34 @@ tracked harness advances to v2.
 
 The final admission path is not asserted to be byte-identical to that r200
 snapshot. A direct seven-file comparison shows that `R/families.R`,
-`R/fit-multi.R`, `R/extractors.R`, `R/extract-sigma.R`, and
-`src/gllvmTMB.cpp` are byte-identical. The only final-code differences are:
+`R/extractors.R`, `R/extract-sigma.R`, and `src/gllvmTMB.cpp` are
+byte-identical. The final-code differences are:
 
 - `R/gllvmTMB.R` adds the tested named-family `traits(...)` pre-pivot before
-  dispatching the same long-format core route; and
+  dispatching the same long-format core route and carries the count of response
+  cells removed by that pivot into the recursive fit metadata;
+- `R/fit-multi.R` forwards that pre-drop missing-response count to the LV
+  admission preflight. Its final MD5 is
+  `366cd3e671e8baf588579774bf4e185a`, rather than the retained r200 MD5
+  `e0b0edb758b39a2ebf35c46f90114c20`; this is fail-closed admission plumbing,
+  not a likelihood, nuisance-parameter, TMB-data, or C++ change; and
 - `R/lv-predictor.R` tightens the evidence fence: it rejects every ordinary
   unit-tier intercept-only diagonal companion (including explicit `indep()`
   and compatibility `unique()`), factor/transformed/multi-column LV designs,
-  multiple binomial links within one fit, and any extra covariance term.
+  multiple binomial links within one fit, any extra covariance term, pre-drop
+  missing responses, and duplicate-family response shapes. A verified complete
+  $K-1$ multinomial contrast expansion counts as its one original logical
+  categorical response only when every group is contiguous and contains each
+  contrast exactly once in a common order, preserving the retained Gaussian--
+  multinomial cell without trusting malformed pre-expanded metadata.
 
-Neither difference changes the r200 estimand, likelihood, family/link
+None of these differences changes the r200 estimand, likelihood, family/link
 parameterisation, TMB data, extractor, or admitted long-format formula used by
 the campaign. The first is covered by the live long/wide equality test; the
-second only closes routes that the retained formula did not use. Therefore
+second and third only carry or enforce fail-closed admission metadata around
+routes that the retained complete-response formula did not use. The public
+Gaussian--multinomial canary additionally proves that the retained logical
+response remains admitted after upstream contrast expansion. Therefore
 the r200 rows are evidence for the unchanged named long-format core cells, not
 evidence that the final Git SHA itself was executed on Totoro.
 

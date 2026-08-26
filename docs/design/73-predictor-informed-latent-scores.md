@@ -35,7 +35,15 @@ TMB Gaussian fits, including response masks when `lv` predictors are
 observed and complete, native TMB pure-binomial standard-link fits, and the
 exact native family-wide programme allow-list at rank one with
 `unique = FALSE` and complete responses. All 19 named mixed/sentinel cells have
-retained point-recovery evidence. Seventeen pure cells also pass point recovery;
+retained point-recovery evidence. Admission matches the logical-response
+family/link shape: named anchors have exactly two responses, the sentinel has
+exactly three, and duplicate-family traits do not inherit a named-cell verdict.
+For the named Gaussian--multinomial anchor, the upstream $K-1$ baseline-
+contrast pseudo-traits count as one logical categorical response only when the
+complete multinomial expansion metadata is present; unexpanded duplicate
+family-16 traits and malformed/noncontiguous contrast groups remain rejected.
+Missing responses are refused before either long- or wide-format default-drop
+handling can remove them. Seventeen pure cells also pass point recovery;
 pure Beta and pure ordinal-probit retain their cell-specific HOLD verdicts.
 Eight named Gaussian-anchor mixed cells have target-wise Wald calibration
 evidence. The implementation also has a
@@ -261,8 +269,9 @@ family-wide native allow-list is also implemented; its 19 named
 mixed/sentinel cells have retained point-recovery evidence for `B_lv`, shared
 `Lambda Lambda^T`, intercepts, and score identity. Their r200 run used
 `se = FALSE`, so no interval claim follows. Pure non-Gaussian programme
-recovery, broader rank/mask/factor-interval/tier/source surfaces remain
-outside the earned boundary.
+recovery passed 17/19 named cells; pure Beta and pure ordinal-probit retain
+their explicit HOLD verdicts. Broader rank/mask/factor-interval/tier/source
+surfaces remain outside the earned boundary.
 
 - Add data flags and matrices: `use_lv_B`, `n_lv_B`, `X_lv_B`.
 - Add parameter matrix `alpha_lv_B[p_lv, d_B]`, unconstrained and

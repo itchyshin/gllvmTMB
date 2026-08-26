@@ -223,8 +223,115 @@ mean component answers how moisture is associated with the shared axis; the
 innovation records remaining site-to-site position after that association.
 Neither component, by itself, makes moisture a causal exposure.
 
+## Use one latent axis across two response families
+
+A named mixed-response route can place a continuous trait and a count trait on
+the same predictor-informed axis. Here temperature is associated with both
+responses through that axis. The Gaussian response uses an identity link; the
+Poisson response uses a log link. The shared $B_{lv}$ estimates therefore live
+on each response's linear-predictor scale, not on one common response scale.
+
+```{r mixed-data}
+set.seed(7302)
+
+temperature <- as.numeric(scale(seq(-1.4, 1.4, length.out = n_sites)))
+mixed_score <- 0.60 * temperature + rnorm(n_sites)
+continuous <- rnorm(n_sites, 0.15 + 0.70 * mixed_score, 0.30)
+abundance <- rpois(n_sites, exp(log(4) - 0.55 * mixed_score))
+
+mixed_wide <- data.frame(
+  site = factor(site_names, levels = site_names),
+  temperature = temperature,
+  continuous = continuous,
+  abundance = abundance
+)
+
+mixed_long <- data.frame(
+  site = factor(rep(site_names, each = 2L), levels = site_names),
+  trait = factor(
+    rep(c("continuous", "abundance"), n_sites),
+    levels = c("continuous", "abundance")
+  ),
+  family = factor(
+    rep(c("continuous", "abundance"), n_sites),
+    levels = c("continuous", "abundance")
+  ),
+  temperature = rep(temperature, each = 2L),
+  value = as.vector(rbind(continuous, abundance))
+)
+
+mixed_families_long <- list(
+  continuous = gaussian(),
+  abundance = poisson()
+)
+attr(mixed_families_long, "family_var") <- "family"
+
+mixed_families_wide <- list(
+  continuous = gaussian(),
+  abundance = poisson()
+)
+```
+
+The long call uses an explicit `family` selector column. In the `traits()`
+call, the names of the family list match the selected response columns, so the
+wide-to-long rewrite supplies the same selector internally.
+
+```{r mixed-fit-long}
+fit_mixed_long <- gllvmTMB(
+  value ~ 0 + trait +
+    latent(0 + trait | site, d = 1, unique = FALSE,
+           lv = ~ temperature),
+  data = mixed_long,
+  unit = "site",
+  trait = "trait",
+  family = mixed_families_long,
+  control = gllvmTMBcontrol(se = FALSE)
+)
+```
+
+```{r mixed-fit-wide}
+fit_mixed_wide <- gllvmTMB(
+  traits(continuous, abundance) ~ 1 +
+    latent(1 | site, d = 1, unique = FALSE,
+           lv = ~ temperature),
+  data = mixed_wide,
+  unit = "site",
+  family = mixed_families_wide,
+  control = gllvmTMBcontrol(se = FALSE)
+)
+```
+
+```{r mixed-effects}
+B_mixed_long <- extract_lv_effects(
+  fit_mixed_long,
+  type = "trait_effect"
+)
+B_mixed_wide <- extract_lv_effects(
+  fit_mixed_wide,
+  type = "trait_effect"
+)
+
+data.frame(
+  trait = B_mixed_long$trait,
+  predictor = B_mixed_long$predictor,
+  long_estimate = B_mixed_long$estimate,
+  wide_estimate = B_mixed_wide$estimate
+)
+```
+
+For `continuous`, the estimate is an associated change in the Gaussian mean
+per one-unit increase in standardized temperature through the shared axis. For
+`abundance`, it is a change in the log expected count; exponentiating it gives
+the corresponding multiplicative change. This named rank-1,
+`unique = FALSE`, complete-response route has retained point-recovery evidence.
+The example deliberately requests no standard errors so the teaching path does
+not turn a family-specific calibration result into a general interval claim.
+Separately retained simulation evidence supports target-wise `B_lv` Wald
+coverage for this exact Gaussian + Poisson archetype.
+
 > **Current boundary.** This article teaches the native, ordinary unit-tier,
-> complete-response Gaussian model. Retained native evidence covers named
+> complete-response Gaussian model and one named Gaussian + Poisson,
+> rank-1, loadings-only mixed route. Retained native evidence covers named
 > Gaussian rank-1 and rank-2 cells; interval evidence for pure binomial models
 > is limited to rank-1, multi-trial logit, probit, and cloglog cells.
 > Factor-valued LV predictors have point-estimate and recovery evidence, but
@@ -233,12 +340,18 @@ Neither component, by itself, makes moisture a causal exposure.
 > optional uncalibrated Wald plumbing; native ordinary `latent()` instead uses
 > $\Lambda\Lambda^\top + \Psi$ by default. This article does not support REML,
 > an ordinary fixed predictor combined with the same `lv` predictor, Julia
-> interval calibration, broader response masks, unlisted native families or
-> ranks, mixed-family LV models, extra grouping tiers, structured phylogenetic,
-> spatial, animal, or kernel sources, missing LV predictors, or profile and
-> bootstrap intervals. Fit one of the named native ordinary models, or choose a
-> simpler supported model, rather than interpreting output from one of these
-> gated combinations.
+> interval calibration, broader response masks, unlisted native family/link
+> combinations or programme ranks, extra grouping tiers, structured
+> phylogenetic, spatial, animal, or
+> kernel sources, missing LV predictors, or profile and bootstrap intervals.
+> Separately named mixed-response cells have rank-1, loadings-only
+> point-recovery evidence. Eight preregistered Gaussian-anchor archetypes also
+> have target-wise Wald calibration evidence, including the Gaussian + Poisson
+> example shown here; this is not a simultaneous all-target or arbitrary-mixture
+> interval claim. Pure Beta and pure ordinal-probit retain separate point-
+> recovery HOLDs. This article shows only the Gaussian + Poisson member of the
+> fixed allow-list; consult the family-specific boundary before interpreting a
+> different admitted programme cell.
 
 ## What to report
 

@@ -312,49 +312,42 @@ These two-stage families combine a binary occurrence component
 (`hu` = hurdle probability) with a positive-continuous component.
 The `delta_*` prefix matches the `sdmTMB` convention.
 
-**Resolution** (maintainer, 2026-07-05 — supersedes the 2026-05-16 deferral):
+**Source correction (2026-08-25; supersedes the positive-part-only wording
+recorded on 2026-07-05).** The native likelihood does not have a separate
+occurrence predictor. It sends the same linear predictor `eta` to both delta
+components. For the currently implemented families,
 
-The two-scale obstruction is removed by a modelling **constraint**: the latent
-(random-effect) structure attaches **only to the main / positive-continuous
-submodel**; the binary **occurrence (hurdle) submodel is fixed-effects only** and
-carries no random effects. A delta trait therefore contributes **one** latent
-scale — the positive part's — so cross-family latent correlations are
-well-defined, and the "defensible single latent-residual value" the deferral
-waited on is simply the **positive-part residual** (`sigma^2` on the log scale
-for `delta_lognormal`; `trigamma(shape)` for `delta_gamma`). The occurrence
-`pi^2/3` baseline lives on a scale with no shared latent and does **not** enter
-the correlation diagonal.
+\[
+\Pr(Y_{it}>0\mid u_i)=\operatorname{logit}^{-1}(\eta_{it}),
+\qquad
+\eta_{it}=\beta_t+\lambda_tu_i,
+\]
 
-Note the resulting correlation is on the positive-continuous latent scale, i.e.
-**conditional on occurrence** — label it as such; it is not an unconditional
-response correlation.
+and the positive-part log mean uses that same `eta`. Thus an ordinary
+predictor-informed latent effect
+\(B_{lv,t}=\lambda_t\alpha\) is one constrained coefficient that acts
+simultaneously on occurrence log-odds and positive-part log mean. It is not a
+positive-part-only effect and it is not an unconditional response-mean effect.
+The compiled family-ID 12/13 likelihoods and the public family help are the
+source of truth for this contract.
 
-Two residuals must therefore be distinguished for a delta trait:
+The bounded family-wide LV evidence covers this shared-`eta` model only for
+native ML, rank one, ordinary unit tier, `unique = FALSE`, complete responses,
+one numeric LV predictor, and `link_residual = "none"`. In that scope the
+rotation-invariant covariance target is the shared loading covariance
+`Lambda %*% t(Lambda)`; no diagonal Psi or occurrence/positive-part residual
+correlation is added. The positive-part scale/dispersion remains an observation
+parameter, not a second shared LV covariance. Response-scale marginal effects,
+automatic delta link residuals, separate occurrence and positive-part
+predictors, masks, higher ranks, and structured tiers require separate
+derivation and evidence.
 
-- **correlation / latent-scale context:** positive-part residual only (above);
-- **total-variance / repeatability context:** the two-component
-  `sigma^2_positive + pi^2/3` (law of total variance) currently in
-  `extract-sigma.R` stays correct for its own purpose.
-
-**Scope (0.2.0 arc, maintainer 2026-07-05).** Latent-on-main + the
-fixed-effects-only-occurrence constraint is buildable in this arc (live wiring is
-Codex lane): admit `latent()` random *intercepts* on a delta trait's positive
-part, **guard** against random effects on the occurrence submodel (random
-*slopes* are already blocked at `fit-multi.R:1495`), and use the positive-part
-residual in `extract_correlations()`. The resulting correlations carry
-`interval_status = "route-only"` (coverage unestablished, CI-08 / CI-10) until
-calibrated. **Post-CRAN:** allowing random effects on the *occurrence* part too
-(the genuine two-latent-scale case) needs a separate derivation — a
-2-dimensional latent contribution per delta trait, or a principled per-scale
-reporting scheme — and stays deferred.
-
-**Correction (2026-07-05).** Earlier notes said cross-family correlation on a
-delta mixed-family fit is "rejected by `check_auto_residual()`." That is
-inaccurate: `check_auto_residual()` is an `@export`ed **manual** diagnostic, is
-never auto-invoked by `gllvmTMB()` / `extract_*()`, and only aborts *within-trait*
-family mixing (class `gllvmTMB_auto_residual_incoherent`). There is **no**
-`gllvmTMB_auto_residual_delta_undefined` class and no automatic delta rejection.
-Under the resolution above, delta is **handled** (route-only), not rejected.
+Earlier notes also said cross-family correlation on a delta mixed-family fit
+was rejected by `check_auto_residual()`. That was inaccurate:
+`check_auto_residual()` is an exported manual diagnostic, is not invoked by
+`gllvmTMB()` or the extractors, and only aborts within-trait family mixing
+(class `gllvmTMB_auto_residual_incoherent`). There is no
+`gllvmTMB_auto_residual_delta_undefined` class.
 
 | Family | R constructor (engine has it) | Components | Public status |
 |--------|------------------------------|------------|---------------|
@@ -438,16 +431,13 @@ link_residual = "auto")` on a `family = list(...)` fit is a
 These are family-related directions captured for the roadmap but
 NOT in the registry today:
 
-- **Mixed-family fits combining a delta/hurdle family with another
-  family** — e.g. `family = list(gaussian, delta_lognormal)` is
-  **not a supported configuration in 0.2.0**. `check_auto_residual()`
-  rejects these with `class = "gllvmTMB_auto_residual_delta_undefined"`
-  (planned safeguard; Phase 0B writes the test). Reason: the
-  latent-scale correlation contract is undefined for two-stage
-  families (see "Hurdle / delta families" section above).
-- **Latent-scale correlations on single-family delta fits** —
-  even a fit with `family = list(delta_lognormal, delta_lognormal)`
-  has no defined per-row link residual. Deferred to post-CRAN.
+- **Broader mixed-family delta fits and automatic link residuals.** The bounded
+  predictor-informed LV programme admits only its named complete-response,
+  rank-1, loadings-only Gaussian + delta-lognormal and Gaussian + delta-Gamma
+  cells, with `link_residual = "none"` and the shared-`eta` interpretation
+  above. It does not establish arbitrary delta mixtures, default `+ Psi`,
+  response masks, response-scale marginal effects, or an automatic per-row
+  delta link residual.
 - **Zero-inflated count families on multi-trait fits** (planned;
   post-CRAN). Single-trait zero-inflated count via the delta-*
   hurdle path is in the engine but its multi-trait correlation

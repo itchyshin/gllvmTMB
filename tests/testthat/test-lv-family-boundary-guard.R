@@ -65,7 +65,7 @@ test_that("latent lv top-level fit keeps the binomial/ordinal boundary loud", {
       family = ordinal_probit(),
       control = gllvmTMBcontrol(se = FALSE)
     ),
-    regexp = "only Gaussian and pure binomial|standard links|LV-05"
+    regexp = "loadings-only|unique = FALSE|diagonal Psi"
   )
 
   family_list <- list(gaussian(), binomial(), poisson())
@@ -81,6 +81,6 @@ test_that("latent lv top-level fit keeps the binomial/ordinal boundary loud", {
       family = family_list,
       control = gllvmTMBcontrol(se = FALSE)
     ),
-    regexp = "only Gaussian and pure binomial|standard links|LV-05"
+    regexp = "programme cells|Arbitrary mixed-family|standard links"
   )
 })

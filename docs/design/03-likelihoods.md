@@ -123,9 +123,11 @@ When `family = list(f_1, f_2, ..., f_T)` is passed, `R/fit-multi.R`:
 4. Passes the per-row family code to `src/gllvmTMB.cpp` as an
    integer column in the data block. The TMB template
    dispatches at the row level via a `switch` on this code.
-5. Rejects configurations that include a delta/hurdle family in
-   a mixed-family fit (see `docs/design/02-family-registry.md`
-   "Hurdle / delta families — DEFERRED to post-CRAN").
+5. Routes the standard delta families through the same per-row dispatch. Their
+   native likelihood uses one shared `eta` for occurrence and positive-part
+   log mean. Automatic delta link-residual correlation is not implied by fit
+   admission; the bounded predictor-informed LV cells use
+   `link_residual = "none"`.
 
 ## Random-effects integration
 
@@ -166,22 +168,30 @@ need their own named recovery evidence before a certificate claim.
 
 - **Predictor-informed latent-score means** from the
   `latent(..., lv = ~ x)` surface (Design 73): for ordinary unit-tier
-  C1 fits, currently Gaussian and pure binomial logit/probit/cloglog only, the score
-  is split as
+  fits, the score is split as
   $\mathbf{z}_i = M_i\alpha + \mathbf{e}_i$ with
   $\mathbf{e}_i \sim \mathcal{N}(0, I_K)$. The TMB change is a mean
   shift inside the existing reduced-rank contribution,
   $\eta_{it} = \mu_{it} + \boldsymbol\lambda_t^\top
   (M_i\alpha + \mathbf{e}_i) + q_{it}$. The innovation prior remains
-  centred at zero, and the diagonal $\Psi$ companion remains the
-  ordinary `latent()` companion. Current support is C1 partial: R
+  centred at zero. The default ordinary `latent()` model retains its diagonal
+  $\Psi$ companion, but the family-wide named programme cells are explicitly
+  rank one and loadings-only (`unique = FALSE`). Current support remains
+  partial: R
   validates the `lv` formula, builds unit-level `X_lv_B`, estimates
   `alpha_lv_B`, reports `B_lv_unit`, and tests focused native Gaussian
   recovery plus pure-binomial standard-link trait-scale `B_lv`
-  recovery/algebra fits. This is not yet interval evidence;
-  `REML = TRUE`, unsupported non-Gaussian families,
-  unsupported tiers, and fixed/LV predictor overlap remain rejected
-  until the corresponding validation rows move.
+  recovery/algebra fits. A retained 19-cell mixed/sentinel r200 campaign adds
+  point-recovery evidence for the frozen native ML, rank-1, loadings-only,
+  complete-response allow-list: all 3,800 attempts are retained, and the
+  cross-fit targets are rotation-invariant `B_lv` and shared
+  $\Lambda\Lambda^\top$, not raw axes. That campaign used `se = FALSE`, so it
+  supports no interval conclusion. The separate pure r200 passes 17/19 cells;
+  pure Beta and ordinal-probit retain HOLDs. Eight preregistered mixed
+  Gaussian-anchor cells pass target-wise `B_lv` Wald calibration, without a
+  simultaneous-coverage or arbitrary-mixture claim. `REML = TRUE`, unlisted family
+  combinations, unsupported tiers, and fixed/LV predictor overlap remain
+  rejected until the corresponding validation rows move.
 
 - **Ordinary augmented Gaussian random regression** from
   `latent(0 + trait + (0 + trait):x | unit, d = K)` or the equivalent
@@ -419,11 +429,13 @@ the implied trait covariance before correlation conversion.
   warned; the probit latent residual is already $1$ by
   construction, so the auto path over-counts. Users should set
   `link_residual = "none"` for clarity. See PR #104.
-- **Delta/hurdle families in mixed-family fits**: handled route-only
-  as of 2026-07-05 (latent on the positive submodel only; see
-  `02-family-registry.md` §Hurdle/delta). The earlier "rejected" +
-  planned `class = "gllvmTMB_auto_residual_delta_undefined"` were never
-  built (no such class exists); delta is not auto-rejected.
+- **Delta/hurdle families in mixed-family fits**: the compiled standard delta
+  likelihoods use one shared `eta` for occurrence log-odds and positive-part
+  log mean; they do not implement the historical positive-part-only design.
+  The bounded predictor-informed LV programme targets only the shared loading
+  covariance with `link_residual = "none"`. Automatic delta link-residual
+  correlation remains a separate, uncalibrated surface. The earlier planned
+  `gllvmTMB_auto_residual_delta_undefined` class was never built.
 
 ## Per-family likelihood subsections
 
@@ -633,12 +645,18 @@ verification runs):
 
 ### Delta / hurdle families
 
-**Status: `planned (post-CRAN)`** — see
-`docs/design/02-family-registry.md` "Hurdle / delta families —
-DEFERRED to post-CRAN" for the two-scales rationale. The engine
-has the constructors and densities; the deferral is to the
-public-API surface (latent-scale correlations across delta and
-other families is not yet defined).
+**Status: `covered` for the standard fixed-effect family routes; `partial` for
+the bounded predictor-informed LV cells.** The engine wires
+`delta_lognormal()` and `delta_gamma()` with one shared `eta` controlling
+occurrence log-odds and positive-part log mean. Point-recovery evidence covers
+the named mixed/sentinel delta cells and the pure delta-lognormal and
+delta-Gamma cells in the native rank-1, loadings-only, complete-response
+programme; their targets are `B_lv` and `Lambda %*% t(Lambda)` with
+`link_residual = "none"`. The Gaussian + delta-Gamma archetype also passes its
+target-wise Wald calibration gate. This evidence does not
+establish an unconditional response-mean effect, an automatic delta
+link-residual correlation, default `+ Psi`, or the constructor-only delta
+families. See Design 02 for the exact contract.
 
 ## Boundary conditions and edge cases
 

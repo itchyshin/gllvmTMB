@@ -25,17 +25,21 @@ traits. Only applies when \code{unique = TRUE}.}
 
 \item{lv}{One-sided formula for predictor-informed latent-score means.
 Runtime support is limited to ordinary unit-tier
-\code{latent(..., lv = ~ x)}, and only Gaussian and pure binomial
-(logit/probit/cloglog) fits are currently admitted (partial coverage,
-supported for the ordinary-latent case). Source-specific \verb{*_latent(..., lv = ~ x)} forms are
+\code{latent(..., lv = ~ x)}. It includes the original Gaussian and pure
+binomial (logit/probit/cloglog) cells plus an exact family-wide programme
+allow-list restricted to rank one, \code{unique = FALSE}, and complete
+responses. The named mixed-response programme cells have point-recovery
+evidence. Seventeen of 19 pure programme cells pass point-recovery gates;
+pure Beta and pure ordinal-probit remain on HOLD. No pure programme
+interval claim is earned. Source-specific \verb{*_latent(..., lv = ~ x)} forms are
 parsed and then fail loud (not yet fittable). Where it is admitted, the
 fit is experimental and exploratory: extract the coefficients with
 \code{\link[=extract_lv_effects]{extract_lv_effects()}}, whose default \code{type = "axis_effect"} output is
 rotation-dependent (an intrinsic latent-axis indeterminacy, not a
 defect -- see \code{\link[=extract_lv_effects]{extract_lv_effects()}} for the rotation-invariant
-\code{type = "trait_effect"} alternative), and whose standard errors and
-intervals are Wald approximations with no established repeated-sampling
-coverage; do not treat them as calibrated.}
+\code{type = "trait_effect"} alternative). Repeated-sampling interval evidence
+is cell-specific; do not infer an interval claim for the mixed-response
+programme from its point-recovery evidence.}
 }
 \value{
 A formula marker; never evaluated.

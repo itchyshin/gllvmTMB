@@ -773,13 +773,45 @@ gllvmTMB <- function(
       eval_env = environment(formula),
       missing = missing
     )
+    family_long <- family
+    if (is.list(family_long) && !inherits(family_long, "family")) {
+      explicit_family_var <- attr(
+        family_long,
+        "family_var",
+        exact = TRUE
+      )
+      if (is.null(explicit_family_var)) {
+        family_names <- names(family_long)
+        names_match_traits <-
+          !is.null(family_names) &&
+          length(family_names) == length(rewrite$trait_cols) &&
+          !anyNA(family_names) &&
+          all(nzchar(family_names)) &&
+          setequal(family_names, rewrite$trait_cols)
+        if (names_match_traits) {
+          family_var <- ".family_wide_"
+          while (family_var %in% names(rewrite$data_long)) {
+            family_var <- paste0(".", family_var)
+          }
+          rewrite$data_long[[family_var]] <- factor(
+            as.character(rewrite$data_long$trait),
+            levels = rewrite$trait_cols
+          )
+          attr(family_long, "family_var") <- family_var
+        }
+      }
+    }
+    attr(
+      rewrite$data_long,
+      ".gllvmTMB_traits_n_dropped_response"
+    ) <- rewrite$n_dropped
     recurse_args <- list(
       formula = rewrite$formula_long,
       data = rewrite$data_long,
       trait = trait,
       unit = unit,
       cluster2 = cluster2,
-      family = family,
+      family = family_long,
       weights = rewrite$weights_long,
       REML = REML,
       mesh = mesh,
@@ -1092,6 +1124,12 @@ gllvmTMB <- function(
   invisible(gll_prepare_mi_setup(parsed$mi_rhs, impute, missing))
   ## Snapshot the pre-drop data so the fit can report original-row accounting
   ## (fit$data_original) regardless of the response mode.
+  traits_n_dropped_response <- attr(
+    data,
+    ".gllvmTMB_traits_n_dropped_response",
+    exact = TRUE
+  ) %||% 0L
+  attr(data, ".gllvmTMB_traits_n_dropped_response") <- NULL
   data_original <- data
   observed_response <- drop_missing_response_rows(
     fixed_formula = parsed$fixed,
@@ -1165,7 +1203,8 @@ gllvmTMB <- function(
       predictor = missing$predictor,
       engine = missing$engine,
       original_row = observed_response$original_row,
-      n_missing_response = observed_response$n_missing_response,
+      n_missing_response = observed_response$n_missing_response +
+        as.integer(traits_n_dropped_response),
       data_original = data_original
     ),
     estimator = estimator,

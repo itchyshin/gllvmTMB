@@ -1,7 +1,8 @@
 ## Design 73 parser/API preflight for predictor-informed latent scores.
 ## This file validates and prepares the unit-level X_lv_B design. The first
-## TMB path is ordinary unit-tier latent(); non-Gaussian admission starts with
-## pure binomial fits under the three standard admitted binary links.
+## TMB path is ordinary unit-tier latent(). The original non-Gaussian routes
+## are pure binomial fits under the three standard admitted binary links; the
+## family-wide programme adds only its exact rank-one, loadings-only cells.
 
 gll_lv_covstruct_indices <- function(covstructs) {
   which(vapply(
@@ -57,6 +58,7 @@ gll_prepare_lv_predictor_setup <- function(
   site,
   family_id_vec,
   link_id_vec,
+  n_missing_response = 0L,
   REML = FALSE
 ) {
   lv_idx <- gll_lv_covstruct_indices(parsed$covstructs)
@@ -120,14 +122,211 @@ gll_prepare_lv_predictor_setup <- function(
       "i" = "This should be reported as a gllvmTMB bug."
     ))
   }
+  if (!trait %in% names(data) || length(family_id_vec) != nrow(data)) {
+    cli::cli_abort(c(
+      "Internal error: family/link rows must align with the trait-stacked data.",
+      "i" = "This should be reported as a gllvmTMB bug."
+    ))
+  }
+  trait_rows <- split(
+    seq_len(nrow(data)),
+    as.character(data[[trait]]),
+    drop = TRUE
+  )
+  family_by_trait <- lapply(
+    trait_rows,
+    function(idx) unique(as.integer(family_id_vec[idx]))
+  )
+  link_by_trait <- lapply(
+    trait_rows,
+    function(idx) unique(as.integer(link_id_vec[idx]))
+  )
+  if (
+    any(lengths(family_by_trait) != 1L) ||
+      any(lengths(link_by_trait) != 1L)
+  ) {
+    cli::cli_abort(c(
+      "Each trait in a predictor-informed {.arg lv} fit must use one family and one link.",
+      "x" = "At least one trait maps to multiple family/link values.",
+      "i" = "Split the response into exact, internally consistent trait routes."
+    ))
+  }
+  family_by_trait <- as.integer(unlist(family_by_trait, use.names = FALSE))
+  n_response_traits <- length(family_by_trait)
+  ## A multinomial response is expanded upstream into K - 1 baseline-contrast
+  ## pseudo-traits.  Those contrasts are one logical categorical response for
+  ## the frozen Gaussian-anchor programme cell, not duplicate family traits.
+  ## Collapse them only when the expansion metadata proves that every retained
+  ## contrast group is complete.  Hand-built duplicate family-16 traits without
+  ## that contract continue to count separately and therefore fail closed.
+  multinomial_trait_idx <- which(family_by_trait == 16L)
+  has_multinomial_expansion_metadata <-
+    length(multinomial_trait_idx) > 0L &&
+    any(c(".multinom_group_", ".multinom_L_") %in% names(data))
+  is_complete_multinomial_expansion <- FALSE
+  if (has_multinomial_expansion_metadata) {
+    multinomial_rows <- which(as.integer(family_id_vec) == 16L)
+    has_both_metadata_columns <- all(
+      c(".multinom_group_", ".multinom_L_") %in% names(data)
+    )
+    if (!has_both_metadata_columns || length(multinomial_rows) == 0L) {
+      cli::cli_abort(c(
+        "Pre-expanded {.fn multinomial} data have incomplete expansion metadata.",
+        "x" = "Both {.var .multinom_group_} and {.var .multinom_L_} must describe the family-16 rows.",
+        "i" = "Supply the original categorical response and let {.fn gllvmTMB} create its contrast rows."
+      ))
+    }
+    multinomial_L <- unique(as.integer(data$.multinom_L_[multinomial_rows]))
+    multinomial_groups <- as.integer(
+      data$.multinom_group_[multinomial_rows]
+    )
+    multinomial_traits <- as.character(data[[trait]][multinomial_rows])
+    metadata_scalars_ok <-
+      length(multinomial_L) == 1L &&
+      !is.na(multinomial_L) &&
+      multinomial_L >= 2L &&
+      length(multinomial_trait_idx) == multinomial_L &&
+      length(multinomial_groups) > 0L &&
+      !anyNA(multinomial_groups) &&
+      all(multinomial_groups >= 0L)
+    if (metadata_scalars_ok) {
+      group_levels <- unique(multinomial_groups)
+      contrast_levels <- unique(multinomial_traits)
+      group_factor <- factor(multinomial_groups, levels = group_levels)
+      contrast_factor <- factor(multinomial_traits, levels = contrast_levels)
+      membership <- table(group_factor, contrast_factor)
+      rows_by_group <- split(multinomial_rows, group_factor, drop = TRUE)
+      traits_by_group <- split(multinomial_traits, group_factor, drop = TRUE)
+      reference_order <- traits_by_group[[1L]]
+      is_complete_multinomial_expansion <-
+        length(contrast_levels) == multinomial_L &&
+        all(membership == 1L) &&
+        all(vapply(
+          rows_by_group,
+          function(idx) length(idx) == multinomial_L && all(diff(idx) == 1L),
+          logical(1L)
+        )) &&
+        all(vapply(
+          traits_by_group,
+          identical,
+          logical(1L),
+          y = reference_order
+        ))
+    }
+    if (!is_complete_multinomial_expansion) {
+      cli::cli_abort(c(
+        "Pre-expanded {.fn multinomial} contrast groups are malformed.",
+        "x" = "Each group must be one contiguous block with exactly one row for every contrast, in the same order.",
+        "i" = "Supply the original categorical response and let {.fn gllvmTMB} create its contrast rows."
+      ))
+    }
+  }
+  n_logical_response_traits <- n_response_traits
+  if (is_complete_multinomial_expansion) {
+    n_logical_response_traits <-
+      n_response_traits - length(multinomial_trait_idx) + 1L
+  }
   is_gaussian <- all(family_id_vec == 0L)
   is_pure_binomial <- all(family_id_vec == 1L)
   is_binomial_standard_link <- all(link_id_vec %in% c(0L, 1L, 2L))
-  if (!is_gaussian && !(is_pure_binomial && is_binomial_standard_link)) {
+  family_ids <- sort(unique(family_by_trait))
+  is_programme_pure <-
+    length(family_ids) == 1L && family_ids[[1L]] %in% 2:16
+  is_gaussian_anchor <-
+    n_logical_response_traits == 2L &&
+    length(family_ids) == 2L &&
+    0L %in% family_ids &&
+    setdiff(family_ids, 0L) %in% c(1L, 2L, 4:16)
+  is_lognormal_anchor <-
+    n_logical_response_traits == 2L && identical(family_ids, c(2L, 3L))
+  is_nongaussian_sentinel <-
+    n_logical_response_traits == 3L && identical(family_ids, c(2L, 4L, 7L))
+  is_programme_cell <-
+    is_programme_pure ||
+    is_gaussian_anchor ||
+    is_lognormal_anchor ||
+    is_nongaussian_sentinel
+  programme_links_ok <-
+    all(link_id_vec[family_id_vec != 1L] == 0L) &&
+    all(link_id_vec[family_id_vec == 1L] %in% c(0L, 1L, 2L))
+
+  binomial_links <- unique(link_id_vec[family_id_vec == 1L])
+  if ((is_programme_cell || is_pure_binomial) && length(binomial_links) > 1L) {
     cli::cli_abort(c(
-      "{.arg lv} currently admits only Gaussian and pure binomial fits with standard links.",
-      "x" = "Found at least one row outside {.code gaussian()} or {.code binomial(link = \"logit\" / \"probit\" / \"cloglog\")}.",
-      "i" = "Other non-Gaussian predictor-informed latent scores are not yet supported."
+      "Each named predictor-informed {.arg lv} cell uses one binomial link.",
+      "x" = "A single fit cannot mix logit, probit, and cloglog binomial traits.",
+      "i" = "Fit one exact named family/link cell at a time."
+    ))
+  }
+
+  if (is_programme_cell) {
+    if (!programme_links_ok) {
+      cli::cli_abort(c(
+        "The family-wide {.arg lv} programme requires each family's canonical admitted link.",
+        "x" = "Binomial rows may use logit, probit, or cloglog; every other programme family uses its registered canonical link."
+      ))
+    }
+    lv_rank <- as.integer(cs$extra[["d"]] %||% NA_integer_)
+    if (length(lv_rank) != 1L || is.na(lv_rank) || lv_rank != 1L) {
+      cli::cli_abort(c(
+        "The family-wide {.arg lv} programme requires rank one ({.code d = 1}).",
+        "x" = "Higher-rank family-wide predictor-informed latent scores remain gated."
+      ))
+    }
+
+    has_unit_diag_companion <- any(vapply(
+      parsed$covstructs,
+      function(candidate) {
+        identical(candidate$kind, "diag") &&
+          identical(deparse(candidate$group), site) &&
+          identical(candidate$extra[["lhs_form"]] %||% "intercept_only",
+            "intercept_only")
+      },
+      logical(1L)
+    ))
+    if (has_unit_diag_companion) {
+      cli::cli_abort(c(
+        "The family-wide {.arg lv} programme is loadings-only.",
+        "x" = "A unit-tier diagonal Psi companion is not admitted for these cells, whether added by the default or written explicitly with {.fn indep} or compatibility {.fn unique}.",
+        ">" = "Use {.code latent(..., d = 1, unique = FALSE, lv = ~ x)}."
+      ))
+    }
+    if (length(parsed$covstructs) != 1L) {
+      cli::cli_abort(c(
+        "The predictor-informed {.fn latent} block must be the only covariance term in a family-wide programme cell.",
+        "x" = "Extra ordinary, source-specific, kernel, or grouping-tier covariance terms have no programme evidence.",
+        "i" = "Fit the exact ordinary unit-tier loadings-only cell before considering a separate combination programme."
+      ))
+    }
+
+    response_vars_programme <- if (length(parsed$fixed) == 3L) {
+      all.vars(parsed$fixed[[2L]])
+    } else {
+      character(0L)
+    }
+    if (
+      isTRUE(as.integer(n_missing_response) > 0L) ||
+        (
+          length(response_vars_programme) > 0L &&
+            anyNA(data[response_vars_programme])
+        )
+    ) {
+      cli::cli_abort(c(
+        "The family-wide {.arg lv} programme requires a complete response.",
+        "x" = "At least one response value is missing.",
+        "i" = "Response-mask support remains gated pending separate recovery evidence."
+      ))
+    }
+  }
+  if (
+    !is_gaussian &&
+      !(is_pure_binomial && is_binomial_standard_link) &&
+      !is_programme_cell
+  ) {
+    cli::cli_abort(c(
+      "{.arg lv} admits existing C1 routes and exact named family-wide programme cells only.",
+      "x" = "Arbitrary mixtures and duplicate-family trait shapes are not admitted.",
+      "i" = "Existing C1 keeps Gaussian and pure binomial standard links; other routes require a named programme cell with rank one, {.code unique = FALSE}, and a complete response."
     ))
   }
 
@@ -207,6 +406,22 @@ gll_prepare_lv_predictor_setup <- function(
       "x" = "Missing column(s): {.var {missing_vars}}."
     ))
   }
+  if (
+    is_programme_cell &&
+      (
+        length(lv_vars) != 1L ||
+          !is.name(lv_formula[[2L]]) ||
+          !is.numeric(data[[lv_vars[[1L]]]]) ||
+          is.factor(data[[lv_vars[[1L]]]]) ||
+          !is.null(dim(data[[lv_vars[[1L]]]]))
+      )
+  ) {
+    cli::cli_abort(c(
+      "The family-wide {.arg lv} programme requires one untransformed numeric unit predictor.",
+      "x" = "Factors, transformations, interactions, and multi-column designs are outside the retained evidence.",
+      ">" = "Use {.code lv = ~ x} where {.var x} is one numeric column."
+    ))
+  }
 
   fixed_rhs_vars <- if (length(parsed$fixed) == 3L) {
     setdiff(all.vars(parsed$fixed[[3L]]), c(response_vars, trait))
@@ -247,6 +462,13 @@ gll_prepare_lv_predictor_setup <- function(
     cli::cli_abort(c(
       "{.arg lv} must contain at least one predictor column after intercept removal.",
       ">" = "Use {.code lv = ~ x}, not {.code lv = ~ 1}."
+    ))
+  }
+  if (is_programme_cell && ncol(X_row) != 1L) {
+    cli::cli_abort(c(
+      "The family-wide {.arg lv} programme requires one untransformed numeric unit predictor.",
+      "x" = "The predictor formula expanded to {ncol(X_row)} columns.",
+      ">" = "Use {.code lv = ~ x} where {.code x} is one numeric vector."
     ))
   }
   if (anyNA(X_row) || any(!is.finite(X_row))) {

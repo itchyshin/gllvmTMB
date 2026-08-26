@@ -78,6 +78,10 @@
 #'   Ordinary missing predictors, grouping variables, and design-matrix values
 #'   still error; explicitly modelled missing predictors use `mi(x)` with
 #'   `missing = miss_control(predictor = "model")` and `impute = list(...)`.
+#' @param column_data Optional keyed response-column metadata. Arc 1 validates
+#'   and joins this data internally for fixed-effect parsing; its key column
+#'   must have the same name as `trait` and exactly match the response columns.
+#'   This foundation is not yet a public `*_coef()` fitting route.
 #' @param trait Name of the column holding the trait factor (the
 #'   "trait" dimension of the unit × trait response matrix). Default
 #'   `"trait"`.
@@ -624,7 +628,8 @@ gllvmTMB <- function(
   ci_seed = 0L,
   site = NULL, # deprecated alias for `unit`
   species = NULL,
-  estimator = c("ml", "mspl")
+  estimator = c("ml", "mspl"),
+  column_data = NULL
 ) {
   # deprecated alias for `cluster`
 
@@ -745,6 +750,13 @@ gllvmTMB <- function(
   ## (`0 + trait`, `(0 + trait):x`, latent(0 + trait | g), ...), and
   ## recurse into gllvmTMB() with the long-format data + formula.
   if (is_traits_lhs(formula)) {
+    if (!identical(trait, "trait")) {
+      cli::cli_abort(c(
+        "Wide {.fn traits} input uses the synthetic response-column key {.field trait}.",
+        "x" = "A non-default {.arg trait = {.val {trait}}} was supplied.",
+        "i" = "Omit {.arg trait} for wide input and key {.arg column_data} by a column named {.field trait}."
+      ), class = "gllvmTMB_traits_custom_trait_unsupported")
+    }
     if (.traits_has_column_slope(formula[[3L]])) {
       cli::cli_abort(c(
         "Response-column slope helpers currently require long-format data.",
@@ -756,6 +768,7 @@ gllvmTMB <- function(
     rewrite <- rewrite_traits_lhs(
       formula = formula,
       data = data,
+      column_data = column_data,
       weights = weights,
       eval_env = environment(formula),
       missing = missing
@@ -928,6 +941,30 @@ gllvmTMB <- function(
   if (!is.factor(data[[trait]])) {
     data[[trait]] <- factor(data[[trait]])
   }
+  inherited_column_vars <- attr(data, "gllvmTMB_column_vars") %||% character()
+  prepared_column_data <- .column_data_prepare(
+    column_data = column_data,
+    trait_col = trait,
+    trait_levels = levels(data[[trait]]),
+    row_data_names = names(data)
+  )
+  if (!is.null(prepared_column_data)) {
+    data <- .column_data_join(data, prepared_column_data, trait)
+  }
+  column_vars <- unique(c(
+    inherited_column_vars,
+    attr(data, "gllvmTMB_column_vars") %||% character()
+  ))
+  reserved_column_vars <- intersect(
+    column_vars,
+    unique(stats::na.omit(c(site, unit_obs, species, cluster2)))
+  )
+  if (length(reserved_column_vars)) {
+    .column_data_abort(c(
+      "{.arg column_data} fields cannot be grouping columns: {.field {reserved_column_vars}}.",
+      "i" = "Response-column metadata are fixed-effect metadata only; rename these fields."
+    ))
+  }
   if (!is.factor(data[[site]])) {
     data[[site]] <- factor(data[[site]])
   }
@@ -957,6 +994,31 @@ gllvmTMB <- function(
   }
   if (!is.factor(data[[unit_obs]])) {
     data[[unit_obs]] <- factor(data[[unit_obs]])
+  }
+
+  ## Design 131 Arc 1: validate and unwrap shared fixed effects, then parse
+  ## response-column coefficient markers.  A valid marker reaches a deliberate
+  ## engine fence before desugaring, TMB data assembly, or optimisation.
+  .column_data_assert_fixed_only(formula[[3L]], column_vars)
+  if (.shared_marker_active(environment(formula))) {
+    formula[[3L]] <- .shared_rewrite(
+      formula[[3L]],
+      row_vars = setdiff(names(data), column_vars),
+      column_vars = column_vars,
+      response_vars = all.vars(formula[[2L]]),
+      unwrap = TRUE
+    )
+  }
+  column_coef_spec <- .parse_column_coef_formula(
+    formula = formula,
+    trait_col = trait,
+    row_vars = setdiff(names(data), column_vars),
+    column_vars = column_vars,
+    response_vars = all.vars(formula[[2L]])
+  )
+  if (!is.null(column_coef_spec)) {
+    .column_coef_assert_no_overlap(formula, data, trait, column_coef_spec)
+    .column_coef_engine_fence(column_coef_spec)
   }
 
   ## ---- Multinomial response expansion (Design 83) ----------------------

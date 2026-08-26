@@ -1545,6 +1545,7 @@ Rscript --vanilla -e 'devtools::test(filter = "paper1-spatial-c1-topology|paper2
 
 git diff --check
 # PASS.
+
 ```
 
 **Deliberately not run:** compilation, objective construction, optimiser,
@@ -54502,6 +54503,80 @@ would not test this internal receipt-only edit. Wide column-slope grammar,
 latent predictor covariance, non-Gaussian multi-predictor slopes, simultaneous
 response-column sources, intervals, and the future `*_coef()` family remain
 outside this closure lane.
+
+## 2026-08-26 — Response-column coefficient Arc 1 foundation
+
+Built an inert, fail-closed foundation for future response-column coefficient
+helpers. This entry records a live trailing `column_data` argument and internal
+parser contracts only. It does not claim a coefficient likelihood, export,
+extractor, interval method, public tutorial, or changed existing fit.
+
+```sh
+python3 '/Users/z3437171/Dropbox/Github Local/Shinichi/tools/lane_preflight.sh' \
+  /Users/z3437171/.codex/worktrees/0733/gllvmTMB
+# PASS/WARN: active article edits existed in the original checkout; work was
+# isolated instead of editing that lane.
+
+git checkout -b codex/response-column-coef-arc1 \
+  1bacee9a808b4106ce681502463baa317dcb9d9b
+# PASS in /private/tmp/gllvmTMB-column-coef-arc1-exact.IdLrx2, using the
+# locally recorded origin/main snapshot because network refresh was blocked.
+
+Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_dir("tests/testthat", filter = "^(column-coef-foundation|traits-keyword|fixed-column-slope-family)$", reporter = "summary", stop_on_failure = TRUE)'
+# PASS. Two pre-existing CRAN-gated skips.
+
+Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_dir("tests/testthat", filter = "^(phylo-slope-rhs-routing|ordinary-column-slope-phylo-coexistence|spatial-column-slope|animal-slope-recovery|phylo-column-slope-indep)$", reporter = "summary", stop_on_failure = TRUE)'
+# PASS. Heavy recovery cells remained behind their existing opt-in gates;
+# pre-existing unused-cluster warnings were unchanged.
+
+Rscript --vanilla -e 'devtools::document(quiet = TRUE)'
+# PASS: man/gllvmTMB.Rd regenerated; three pre-existing S3 export reminders.
+
+Rscript --vanilla -e 'pkgdown::check_pkgdown()'
+# PASS: No problems found.
+
+Rscript --vanilla -e 'pkgdown::build_articles(lazy = FALSE)'
+# BASELINE FAILURE after the other articles rendered: unchanged
+# where-does-the-tree-go.Rmd calls extract_Sigma(level = "column_slope"),
+# which the released extractor rejects. The source was byte-identical to the
+# Arc 1 baseline and belongs to the separate slope/article lane.
+
+rg -n 'export\((column_coef|phylo_coef|animal_coef|kernel_coef|spatial_coef|shared)\)' NAMESPACE
+# PASS when empty: no internal marker exported.
+
+git diff 1bacee9a...HEAD -- NAMESPACE _pkgdown.yml src
+# PASS when empty: no export, navigation, or TMB change.
+
+rg -n 'column_data|shared\(|column_coef|phylo_coef|animal_coef|kernel_coef|spatial_coef' R tests docs/design man/gllvmTMB.Rd README.md NEWS.md vignettes _pkgdown.yml NAMESPACE
+# PASS after classification: internal implementation/tests/design boundaries,
+# the gllvmTMB argument help, and existing not-current-API prose only.
+
+rg -n 'column_slope_wide_unsupported|traits_has_column_slope' R tests
+# PASS: released slope-only wide guard remains present.
+
+rg -n 'vec\(B|K_\\rho|rho.*variance share|response-column' docs/design/131-response-column-coefficient-foundation.md
+# PASS: matrix ordering, rho blend, and scope boundary are explicit.
+
+rg -n 'column_data|column_coef|phylo_coef|animal_coef|kernel_coef|spatial_coef' README.md ROADMAP.md NEWS.md docs/dev-log/known-limitations.md _pkgdown.yml
+# PASS after classification: no public status/navigation claim added.
+
+Rscript --vanilla \
+  '/Users/z3437171/Dropbox/Github Local/Shinichi/tools/check-after-task.R' \
+  docs/dev-log/after-task/2026-08-26-response-column-coefficient-foundation.md
+# PASS: after-task structure check passed, including explicit negative space.
+
+git diff --check
+# PASS.
+```
+
+The full `devtools::test()` run was deliberately stopped after independent
+review found parser defects; it is not claimed. The repaired focused suites
+were rerun. No simulation/recovery campaign was appropriate because the engine
+fence prevents every coefficient marker from reaching a likelihood. The Node
+unlazy checker was unavailable; G1-G15 were manually re-verified from the
+ledger with the commands above. GitHub API access was unavailable, so no issue,
+PR, or live remote state was changed or inferred.
+
 ---
 
 ## 2026-08-25 — Release-complete interval calibration (Codex)

@@ -54418,3 +54418,87 @@ spaces already present in PR #1208's committed snapshot fixture. Those lines
 are owned by the merged lane and are not part of PR #1210's diff against
 current main. They were preserved unchanged; the correct post-merge PR-diff
 check is run against `origin/main` after the merge commit.
+
+---
+
+## 2026-08-26 — Response-column slope publication closure receipts (Codex)
+
+Closed the response-column slope programme after PR #1211's corrected article
+landed on `main`. This entry changes internal closure records only. It does not
+change the R API, formula grammar, likelihood, TMB implementation, tests,
+article source, generated site, or any existing fit.
+
+```sh
+gh run view 32919449668 --repo itchyshin/gllvmTMB \
+  --json databaseId,workflowName,status,conclusion,headSha,event,createdAt,updatedAt,url,jobs
+# PASS: exact article merge SHA 633085edf47bf2575652283ea25140de17608c91;
+# Ubuntu R-CMD-check completed successfully in 39m45s.
+
+gh run watch 32921933388 --repo itchyshin/gllvmTMB --exit-status
+# PASS: pkgdown build and GitHub Pages deploy completed successfully.
+
+curl -sS -L --fail \
+  https://itchyshin.github.io/gllvmTMB/articles/where-does-the-tree-go.html \
+  -o /private/tmp/where-does-the-tree-go-live.html
+rg -n 'Across a latitude gradient|latitude:pathway|random-effect distribution|column_coef|IID-versus-phylogenetic signal mixture|0 \+ trait|within-site species association|long-format only' \
+  /private/tmp/where-does-the-tree-go-live.html
+# PASS: corrected question, formula, fixed/random distinction, current-API
+# boundary, supplied-tree limitation, intercept explanation, latent role, and
+# deferred long-only boundary are live.
+rg -n 'moisture|canopy|phylo_slope\(moisture|while the rows remain independent plots' \
+  /private/tmp/where-does-the-tree-go-live.html
+# PASS when empty: superseded community teaching story is absent.
+
+curl -sS -L --fail \
+  https://itchyshin.github.io/gllvmTMB/articles/where-does-the-tree-go_files/figure-html/morphology-data-1.png \
+  -o /private/tmp/live-morphology-data-1.png
+curl -sS -L --fail \
+  https://itchyshin.github.io/gllvmTMB/articles/where-does-the-tree-go_files/figure-html/morphology-wide-1.png \
+  -o /private/tmp/live-morphology-wide-1.png
+curl -sS -L --fail \
+  https://itchyshin.github.io/gllvmTMB/articles/where-does-the-tree-go_files/figure-html/community-data-1.png \
+  -o /private/tmp/live-community-data-1.png
+curl -sS -L --fail \
+  https://itchyshin.github.io/gllvmTMB/articles/where-does-the-tree-go_files/figure-html/community-wide-1.png \
+  -o /private/tmp/live-community-wide-1.png
+file /private/tmp/live-*.png
+sips -g pixelWidth -g pixelHeight /private/tmp/live-*.png
+# PASS: morphology-data 1612x1305, morphology-wide 1612x1248,
+# community-data 1612x1113, and community-wide 1612x1382.
+# PASS: all four deployed PNGs inspected at native resolution; headings,
+# subtitles, panels, axes, heatmap labels, legends, and C3/C4 annotations are
+# legible with no clipping or escaped-newline artefact.
+
+gh pr list --repo itchyshin/gllvmTMB --state open \
+  --json number,title,headRefName,author,updatedAt,url
+gh pr view 1209 --repo itchyshin/gllvmTMB \
+  --json number,title,headRefName,files,url
+git log --all --oneline --since='6 hours ago' -- \
+  docs/dev-log/handover/2026-08-24-codex-column-slope-family.md \
+  docs/dev-log/after-task/2026-08-25-column-slope-postmerge-visual-closure.md
+# PASS: PR #1209 edits a different handover file; no shared-file collision.
+
+Rscript --vanilla \
+  '/Users/z3437171/Dropbox/Github Local/Shinichi/tools/check-after-task.R' \
+  docs/dev-log/after-task/2026-08-25-column-slope-postmerge-visual-closure.md
+# PASS: after-task structure check passed.
+git diff --check
+# PASS.
+```
+
+Feature-level three-OS evidence remains exact-head run
+[32877165018](https://github.com/itchyshin/gllvmTMB/actions/runs/32877165018).
+The corrected article head passed routine PR run
+[32916653930](https://github.com/itchyshin/gllvmTMB/actions/runs/32916653930),
+the merge commit passed `main` run
+[32919449668](https://github.com/itchyshin/gllvmTMB/actions/runs/32919449668),
+and the live site came from pkgdown run
+[32921933388](https://github.com/itchyshin/gllvmTMB/actions/runs/32921933388).
+
+**Deliberately not run:** another local simulation/recovery campaign, full
+package check, article render, or pkgdown build. The implementation and article
+source are unchanged from their already green heads; rerunning those campaigns
+would not test this internal receipt-only edit. Wide column-slope grammar,
+latent predictor covariance, non-Gaussian multi-predictor slopes, simultaneous
+response-column sources, intervals, and the future `*_coef()` family remain
+outside this closure lane.

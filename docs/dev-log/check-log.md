@@ -54621,14 +54621,16 @@ delta, so current random-slope and LV work remains intact.
 Verification receipts:
 
 ```sh
-Rscript --vanilla .unlazy/interval-calibration-landing/verify-lineage.R
+cd /Users/z3437171/.codex/worktrees/d899/gllvmTMB/.unlazy/interval-calibration-landing/repo
+
+Rscript --vanilla /Users/z3437171/.codex/worktrees/d899/gllvmTMB/.unlazy/interval-calibration-landing/repo/.unlazy/interval-calibration-landing/verify-lineage.R
 # LANDING_LINEAGE_OK commits=34 paths=103
 
-Rscript --vanilla .unlazy/interval-calibration-landing/verify-shared-reconciliation.R
+Rscript --vanilla /Users/z3437171/.codex/worktrees/d899/gllvmTMB/.unlazy/interval-calibration-landing/repo/.unlazy/interval-calibration-landing/verify-shared-reconciliation.R
 # SHARED_RECONCILIATION_RECEIPT_OK rows=5
 
-Rscript --vanilla .unlazy/interval-calibration-landing/verify-foreign-leases.R
-# FOREIGN_LANE_PATHS_CLEAR lanes=2 delta=107
+Rscript --vanilla /Users/z3437171/.codex/worktrees/d899/gllvmTMB/.unlazy/interval-calibration-landing/repo/.unlazy/interval-calibration-landing/verify-foreign-leases.R
+# FOREIGN_LANE_PATHS_CLEAR lanes=2 delta=110 at the final receipt tip
 
 Rscript --vanilla dev/interval-calibration/verify-claims.R
 # INTERVAL_CLAIMS_OK
@@ -54647,3 +54649,13 @@ and 18 target rows at SHA-256
 The route census remains 19 rows with exactly three CI-13 certificates. No fit,
 simulation, benchmark, remote compute, workflow edit, push, PR, merge, release,
 or public message occurred.
+
+The first closure commit's staged whitespace check found Markdown hard-break
+spaces in the new receipts, but the newline-separated shell continued into the
+commit. The permitted final reverify commit removes only those formatting
+defects and records the failed check instead of hiding it.
+
+The post-commit handoff gate found the intentional unpushed branch and then its
+declaration checker required an explicit findings line. The handover now says
+`FINDINGS-OF-RECORD: none`: this landing created no new scientific finding
+beyond the source programme's already durable terminal interval findings.

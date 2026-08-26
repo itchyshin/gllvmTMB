@@ -1,7 +1,7 @@
 # After Task: Interval-calibration landing
 
-**Branch**: `codex/interval-calibration-landing`  
-**Date**: 2026-08-25  
+**Branch**: `codex/interval-calibration-landing`
+**Date**: 2026-08-25
 **Roles (engaged)**: Ada, Fisher, Grace, Rose, Shannon, Melissa
 
 ## 1. Goal
@@ -80,13 +80,17 @@ alternative:** take the source side wholesale or manually widen the replay.
 
 ## 5. Checks Run
 
-- `Rscript --vanilla .unlazy/interval-calibration-landing/verify-local-lease.R`
+The verifier commands below ran with working directory
+`/Users/z3437171/.codex/worktrees/d899/gllvmTMB/.unlazy/interval-calibration-landing/repo`.
+The scripts are intentionally untracked lane controls inside that clone.
+
+- `Rscript --vanilla /Users/z3437171/.codex/worktrees/d899/gllvmTMB/.unlazy/interval-calibration-landing/repo/.unlazy/interval-calibration-landing/verify-local-lease.R`
   -> `LANDING_LEASE_RECEIPT_OK paths=110`.
-- `Rscript --vanilla .unlazy/interval-calibration-landing/verify-foreign-leases.R`
-  -> `FOREIGN_LANE_PATHS_CLEAR lanes=2 delta=107`.
-- `Rscript --vanilla .unlazy/interval-calibration-landing/verify-lineage.R`
+- `Rscript --vanilla /Users/z3437171/.codex/worktrees/d899/gllvmTMB/.unlazy/interval-calibration-landing/repo/.unlazy/interval-calibration-landing/verify-foreign-leases.R`
+  -> `FOREIGN_LANE_PATHS_CLEAR lanes=2 delta=110` at the final receipt tip.
+- `Rscript --vanilla /Users/z3437171/.codex/worktrees/d899/gllvmTMB/.unlazy/interval-calibration-landing/repo/.unlazy/interval-calibration-landing/verify-lineage.R`
   -> `LANDING_LINEAGE_OK commits=34 paths=103`.
-- `Rscript --vanilla .unlazy/interval-calibration-landing/verify-shared-reconciliation.R`
+- `Rscript --vanilla /Users/z3437171/.codex/worktrees/d899/gllvmTMB/.unlazy/interval-calibration-landing/repo/.unlazy/interval-calibration-landing/verify-shared-reconciliation.R`
   -> `SHARED_RECONCILIATION_RECEIPT_OK rows=5`.
 - Unlazy branch leaf `--reverify` -> `ALL MET (6 met)`.
 - Unlazy evidence leaf `--reverify` -> `ALL MET (4 met)`; route census,
@@ -172,6 +176,11 @@ the sandbox, so the lane used a verified local exact-path lease, four Unlazy
 ownership locks, a frozen foreign-lease snapshot, and a fail-closed delta
 oracle. These are recorded as fallback controls, not as evidence that the
 global registry was written.
+
+The first closure commit command continued after `git diff --cached --check`
+reported Markdown hard-break whitespace. That failed check remains part of the
+attempt record; the final reverify commit removes only those receipt-formatting
+defects and reruns `git diff --check`.
 
 ## 11. Team Learning
 

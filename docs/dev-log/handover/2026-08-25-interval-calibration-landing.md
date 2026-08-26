@@ -1,9 +1,9 @@
 # Handover: interval-calibration landing
 
-Date: 2026-08-25  
-Platform: Codex  
-Repository: `gllvmTMB`  
-Branch: `codex/interval-calibration-landing`  
+Date: 2026-08-25
+Platform: Codex
+Repository: `gllvmTMB`
+Branch: `codex/interval-calibration-landing`
 Exact base: `1bacee9a808b4106ce681502463baa317dcb9d9b`
 
 ## 1. Goal and result
@@ -32,6 +32,12 @@ An importable bundle is produced outside the nested repository at:
 Verify the bundle before import with `git bundle verify <path>`. No remote
 landing branch or upstream is configured.
 
+The expected final branch/bundle tip and bundle SHA-256 are pinned after the
+final commit in
+`/Users/z3437171/.codex/worktrees/d899/gllvmTMB/.unlazy/interval-calibration-landing/bundle-receipt.md`.
+The receipt is deliberately post-commit: a commit cannot truthfully embed its
+own as-yet-unknown object id.
+
 ## 3. Read first
 
 1. `docs/dev-log/artifacts/interval-calibration/landing-commit-map.csv`
@@ -51,7 +57,8 @@ is `c342c5e2`.
 - Integration leaf: three gates met and reverified.
 - `LANDING_LINEAGE_OK commits=34 paths=103`.
 - `SHARED_RECONCILIATION_RECEIPT_OK rows=5`.
-- `FOREIGN_LANE_PATHS_CLEAR lanes=2 delta=107`.
+- `FOREIGN_LANE_PATHS_CLEAR lanes=2 delta=110` at the final receipt tip (the
+  three additional paths are the tracked landing closure documents).
 - `LANDING_ROUTE_CENSUS_OK`: 19 routes, three certified.
 - `LANDING_EVIDENCE_HASHES_OK`: 150,019 all-attempt rows and 18 target rows
   at the source hashes.
@@ -98,6 +105,10 @@ Push, PR, merge, or release requires new explicit maintainer authority.
 deliberately unpushed and unmerged. The next safe action is import-and-review,
 not further interval science. Random-slope and LV work remain with their
 existing lanes.
+
+FINDINGS-OF-RECORD: none. This landing adds no scientific finding beyond the
+terminal CI-08--CI-15 findings already recorded in the source programme's
+after-task report and handover.
 
 The pre-closure handoff gate correctly returned non-zero while the three
 closure documents and check-log entry were uncommitted; it also could not find

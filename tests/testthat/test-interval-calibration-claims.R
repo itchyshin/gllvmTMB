@@ -55,7 +55,7 @@ test_that("every public-route census row has a live repository evidence pointer"
   )
 })
 
-test_that("route-census promotion fails closed on states and exact cells", {
+test_that("route-census promotion fails closed on the exact route/state map", {
   env <- new.env(parent = globalenv())
   source(claims_contract, local = env)
   census <- read.csv(
@@ -86,7 +86,25 @@ test_that("route-census promotion fails closed on states and exact cells", {
   ] <- "certified"
   expect_error(
     env$validate_interval_route_census(widened),
-    "exact certified route set"
+    "exact route/state map"
+  )
+
+  renamed <- census
+  renamed$route_id[
+    renamed$route_id == "CI14-ordinary-slope-sd"
+  ] <- "CI14-arbitrary-route"
+  expect_error(
+    env$validate_interval_route_census(renamed),
+    "exact route/state map"
+  )
+
+  pvt_promoted <- census
+  pvt_promoted$terminal_state[
+    pvt_promoted$route_id == "CI08-PVT02-n400-d2"
+  ] <- "limited"
+  expect_error(
+    env$validate_interval_route_census(pvt_promoted),
+    "exact route/state map"
   )
 })
 

@@ -56,7 +56,8 @@ require_fixed(
   "docs/design/75-inference-route-truth-matrix.md",
   c(
     "No status in this matrix is itself empirical-coverage evidence.",
-    "`CI-08` is limited everywhere",
+    "no `CI-08` cell is certified",
+    "the exact PVT-02 campaign is blocked",
     "structurally free strict-lower targets"
   )
 )
@@ -98,15 +99,25 @@ ci08 <- census[census$route_id == "CI08-PV-profile", , drop = FALSE]
 ci08_exact <- census[census$route_id %in% c(
   "CI08-PV-n150-d1", "CI08-PV-n150-d2"
 ), , drop = FALSE]
+ci08_pvt <- census[
+  census$route_id == "CI08-PVT02-n400-d2",
+  ,
+  drop = FALSE
+]
 if (
   nrow(ci08) != 1L ||
     !identical(ci08$terminal_state, "limited") ||
     nrow(ci08_exact) != 2L ||
     any(ci08_exact$terminal_state != "limited") ||
+    nrow(ci08_pvt) != 1L ||
+    !identical(ci08_pvt$terminal_state, "blocked") ||
     !grepl("route-only everywhere", ci08$current_evidence, fixed = TRUE)
 ) {
   stop(
-    "CI-08 route census must remain limited in every profile cell",
+    paste(
+      "CI-08 route census must keep callable and historical rows limited",
+      "and the PVT-02 campaign blocked"
+    ),
     call. = FALSE
   )
 }

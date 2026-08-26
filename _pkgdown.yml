@@ -17,10 +17,11 @@ home:
           human-verified, needs extensive further validation. CRAN availability
           is not scientific maturity. Point estimates are the primary
           inferential output, but their evidence is route- and regime-specific.
-          Broad package-wide interval coverage is not certified; one
-          narrow two-sided Gaussian total-variance profile regime has a
-          documented 0.94 coverage floor. Read [Current limitations and
-          boundaries](articles/current-limits.html) before choosing a model.
+          Broad package-wide interval coverage is not certified. Three exact
+          native pinned ordinary-Gaussian standardized-loading Wald cells have
+          target-specific certificates; total-variance penalty profiles remain
+          route-only. Read [Current limitations and boundaries](articles/current-limits.html)
+          before choosing a model.
 template:
   bootstrap: 5
   bootswatch: flatly

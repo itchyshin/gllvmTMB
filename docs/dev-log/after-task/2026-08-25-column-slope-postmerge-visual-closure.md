@@ -188,13 +188,22 @@ R library.
 - The latent term is a nuisance adjustment in this article; its covariance is
   not interpreted.
 
-### Next actions
+### Closure receipts
 
-1. Publish this focused documentation correction in one PR.
-2. Wait for routine CI, merge only when green, and verify the post-merge main
-   check plus pkgdown deployment.
-3. Inspect the live article text and all four figures.
-4. Keep any intercept-plus-slope response-column API design in a fresh lane.
+PR [#1211](https://github.com/itchyshin/gllvmTMB/pull/1211) merged the focused
+documentation correction at article head `10b8b046` and merge commit
+`633085ed`. Its final routine PR check
+[32916653930](https://github.com/itchyshin/gllvmTMB/actions/runs/32916653930),
+post-merge `main` check
+[32919449668](https://github.com/itchyshin/gllvmTMB/actions/runs/32919449668),
+and pkgdown deployment
+[32921933388](https://github.com/itchyshin/gllvmTMB/actions/runs/32921933388)
+all passed. The live article text and all four native-resolution figure assets
+were inspected after deployment. No action remains in this article lane.
+
+The future intercept-plus-slope response-column coefficient block remains a
+fresh design lane, now tracked in
+[#1212](https://github.com/itchyshin/gllvmTMB/issues/1212).
 
 ## 11. Team Learning
 

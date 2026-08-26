@@ -1,12 +1,15 @@
 # Codex handover: response-column slope family
 
-**Date:** 2026-08-25 (post-merge semantic-article closure)
+**Date:** 2026-08-26 (final published closure)
 **Implementation branch:** `codex/column-slope-family` (merged)
-**Documentation follow-up branch:** `codex/column-slope-visual-closure`
+**Documentation follow-up branch:** `codex/column-slope-visual-closure` (merged)
 **Feature head:** `52fb00ff7d69ab2b96b99fefb8a9434ecd5b304e`
 **Merge commit:** `efc4cffc02f3804222f304c22aceb2084e8a47e8`
+**Article head:** `10b8b0464045f777d4f7acd37afc7e5a1794ebee`
+**Article merge commit:** `633085edf47bf2575652283ea25140de17608c91`
 **Publishing checkout:** `/private/tmp/gllvmTMB-article-final`
-**PR:** [#1208](https://github.com/itchyshin/gllvmTMB/pull/1208)
+**PRs:** [#1208](https://github.com/itchyshin/gllvmTMB/pull/1208) and
+[#1211](https://github.com/itchyshin/gllvmTMB/pull/1211)
 **Live article:** <https://itchyshin.github.io/gllvmTMB/articles/where-does-the-tree-go.html>
 
 ## First read
@@ -19,19 +22,23 @@
 
 ## Landing State
 
-PR #1208 is merged. Its exact feature head passed macOS, Ubuntu, and Windows;
-the post-merge `main` check and pkgdown deployment also passed. A focused
-post-merge article correction is being published from the documentation branch
-above. It changes no R API, formula grammar, likelihood, TMB code, or existing
-fit. Its only purpose is to make the public worked example teach the shipped
-model correctly.
+PRs #1208 and #1211 are merged. The implementation feature head passed macOS,
+Ubuntu, and Windows. The article follow-up head passed its routine PR check,
+and its exact merge commit passed the post-merge `main` check and pkgdown
+deployment. The public page was then inspected directly: the corrected model
+and fixed-versus-random explanation are live, the superseded moisture/canopy
+story is absent, and all four deployed figures load at native 1612-pixel width
+and pass visual inspection. The follow-up changed no R API, formula grammar,
+likelihood, TMB code, or existing fit.
 
 Authoritative receipts are the exact feature-head three-OS run
 [32877165018](https://github.com/itchyshin/gllvmTMB/actions/runs/32877165018),
-post-merge `main` run
-[32883168239](https://github.com/itchyshin/gllvmTMB/actions/runs/32883168239),
-and pkgdown deployment
-[32887954319](https://github.com/itchyshin/gllvmTMB/actions/runs/32887954319).
+article-head PR run
+[32916653930](https://github.com/itchyshin/gllvmTMB/actions/runs/32916653930),
+article post-merge `main` run
+[32919449668](https://github.com/itchyshin/gllvmTMB/actions/runs/32919449668),
+and final pkgdown deployment
+[32921933388](https://github.com/itchyshin/gllvmTMB/actions/runs/32921933388).
 
 ## DONE
 
@@ -88,16 +95,23 @@ and pkgdown deployment
   [32852625158](https://github.com/itchyshin/gllvmTMB/actions/runs/32852625158)
   passed at `fa58e054`. Its first attempt was cancelled after a confirmed
   checkout-infrastructure stall; the single retry completed the package check.
+- PR #1211 merged the corrected article at `10b8b046`; its final routine check
+  [32916653930](https://github.com/itchyshin/gllvmTMB/actions/runs/32916653930)
+  passed before merge. Exact merge commit `633085ed` then passed `main` run
+  [32919449668](https://github.com/itchyshin/gllvmTMB/actions/runs/32919449668)
+  and pkgdown run
+  [32921933388](https://github.com/itchyshin/gllvmTMB/actions/runs/32921933388).
+- The live article was downloaded after deployment and checked for the
+  corrected C3/C4 question, `latitude:pathway`, the response-column
+  `phylo_slope(latitude | trait)` term, the latent site-association term, the
+  fixed-versus-random explanation, the direct-tree-covariance limitation, and
+  every deferred boundary. All four live PNGs returned successfully and were
+  visually inspected at native resolution.
 
-## OWED AT THIS HANDOVER REFRESH
+## OWED
 
-- Publish the focused article/verifier/handover follow-up as one PR.
-- Wait for its routine PR check. Do not repeat the completed full local
-  implementation campaign unless CI exposes a relevant failure.
-- Merge only when the follow-up PR is green and mergeable, then verify the
-  `main` check, pkgdown deployment, and the live article text and figures.
-- Do not enter the random-slope health, future intercept-plus-slope API design,
-  or any other main-lane follow-up.
+- None for this lane. Random-slope health and the future intercept-plus-slope
+  coefficient-block design remain separate work and are not closure debt.
 
 ## RETRACTED
 
@@ -145,10 +159,10 @@ and pkgdown deployment
   closure.
 - No Totoro/DRAC campaign and no GitHub Actions compute campaign was run.
 
-## Resume
+## Closure
 
-From `/private/tmp/gllvmTMB-article-final`, inspect `git status --short`, run
-`Rscript --vanilla dev/trait-axis-bridge/verify-article.R`, then continue the
-single documentation PR through CI, merge, and live pkgdown verification.
-Preserve the stated API and deferred boundaries and do not start the separate
-intercept-plus-slope design in this lane.
+This lane is complete and has no resume command. Preserve the stated API and
+deferred boundaries. Future structured response-column intercept-plus-slope
+work, including an estimable structured-versus-IID signal parameter, belongs
+to the separate design tracked in
+[#1212](https://github.com/itchyshin/gllvmTMB/issues/1212).

@@ -79,6 +79,9 @@ support from end-to-end verification:
 | --- | --- | --- |
 | `gllvmTMB(value ~ ..., data = df_long)` | **covered** | Canonical long-format entry point. One row per `(unit, trait)`. Test evidence: `tests/testthat/test-canonical-keywords.R`, `test-keyword-grid.R` (validation-debt register FG-02; Phase 0B promotion 2026-05-16). |
 | `gllvmTMB(traits(t1, t2, ...) ~ ..., data = df_wide)` | **covered** | Wide-format entry point. The `traits(...)` LHS marker triggers internal pivot to long; long+wide `logLik` agreement is part of the contract. Test evidence: `test-traits-keyword.R`, `test-wide-weights-matrix.R` (validation-debt register FG-01, FG-03; Phase 0B promotion 2026-05-16). |
+| `gllvmTMB(..., column_data = metadata)` | **claimed / fixed-metadata foundation** | Exact-keyed response-column metadata are admitted for fixed effects only. Long data key on the resolved `trait` column; wide `traits(...)` data key on a literal `trait` column and reject a non-default `trait =`. Metadata cannot enter grouping, covariance, offset, or future coefficient-helper terms. The coefficient likelihood is not implemented (validation-debt register FG-20; Design 131). |
+| `shared(expr)` inside wide `traits(...)` formulas | **claimed / internal parser foundation** | A top-level additive fixed-effect marker that keeps row-data terms common instead of expanding them by response column. It is not exported or advertised; a user-defined `shared()` in the formula environment retains its ordinary meaning (validation-debt register FG-20; Design 131). |
+| `column_coef()` / `phylo_coef()` / `animal_coef()` / `kernel_coef()` / `spatial_coef()` | **reserved / engine-blocked** | Internal parsers validate the proposed response-column coefficient grammar, then a classed fence stops before likelihood construction. No helper is exported, documented as available, or routed to TMB (validation-debt register FG-20; Design 131). |
 | `gllvmTMB_wide(Y, ...)` | **partial / soft-deprecated in 0.2.0** | Legacy matrix-in wrapper. It remains exported for migration and matrix-first workflows, but new examples use `gllvmTMB(traits(...) ~ ..., data = df_wide)` instead. |
 | `0 + trait` and `(0 + trait):x` | **covered** | Long-form trait-stacked fixed-effect grammar. Test evidence: `test-stage1-stacked-fixed-effects.R`, `test-canonical-keywords.R` (via validation-debt register FG-02; Phase 0B promotion 2026-05-16). |
 | `latent(0 + trait \| g, d = K)` | **covered / ordinary Psi folded** | Reduced-rank loadings plus the default diagonal $\boldsymbol\Psi$ companion for $T$ traits across grouping factor `g`, rank $K \le T$. Use `unique = FALSE` for the old no-residual subset; use `common = TRUE` for one shared ordinary $\psi$ across traits. Test evidence: `test-stage2-rr-diag.R`, `test-keyword-grid.R`, `test-canonical-keywords.R`, `test-unique-family-deprecation.R` (validation-debt register FG-04 / FG-06; Phase 0B promotion 2026-05-16; ordinary latent-Psi fold and common-Psi re-home slices 2026-06-18). |
@@ -181,6 +184,8 @@ The compact RHS shorthand is:
 | `latent(1 + env \| g, d = K)` | `latent(0 + trait + (0 + trait):env \| g, d = K)` |
 | `indep(1 \| g)` | `indep(0 + trait \| g)` |
 | `dep(1 \| g)` | `dep(0 + trait \| g)` |
+| `shared(1 + env)` | `1 + env` (common fixed effects, with no trait expansion) |
+| a fixed term containing a `column_data` field | Preserved as written; the keyed metadata value varies across response columns after stacking. |
 | `phylo_*` and `spatial_*` keywords | Pass through unchanged. |
 | `(1 \| group)` ordinary RE | Pass through unchanged. |
 
@@ -190,6 +195,15 @@ trait names supplied to `traits(...)` become the factor levels of
 the new `trait` column. Per the persona-active discipline, the
 parser test suite is owned by Curie; the parser implementation is
 owned by Boole.
+
+When `column_data` is supplied, it must contain exactly one row for every
+response column and no missing, duplicate, or extra keys. In long form its key
+column has the resolved `trait` name. In wide form the synthetic stacked key is
+always named `trait`; supplying another `trait =` name is rejected rather than
+silently misaligning metadata. Non-key metadata names cannot collide with row
+data, grouping names, or reserved internal carrier names. Metadata remain a
+fixed-effect surface in this foundation: covariance, grouping, offset, and
+coefficient-helper uses fail before engine construction.
 
 User-facing examples in README, vignettes, and Tier-1 articles
 should pair the long and wide forms side-by-side with a `logLik`

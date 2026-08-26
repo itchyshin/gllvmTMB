@@ -59,6 +59,8 @@ parser recognition is not evidence that a model can be fitted.
 
 ## 4. Files Touched
 
+- `AGENTS.md`: refreshed the active response-column coefficient lane pointer
+  while retaining the canonical multi-lane handover as the start surface.
 - `R/column-coef-foundation.R`: exact-key metadata preparation, internal
   coefficient parsers, overlap oracle, `shared()` rewrite, and engine fence.
 - `R/gllvmTMB.R`: trailing `column_data` argument, long/wide integration,
@@ -75,6 +77,10 @@ parser recognition is not evidence that a model can be fitted.
 - `docs/dev-log/check-log.md`: exact command and outcome receipt.
 - `docs/dev-log/after-task/2026-08-26-response-column-coefficient-foundation.md`:
   this report.
+- `docs/dev-log/handover/2026-07-25-active-lane-split.md`: added the Arc 1
+  ownership boundary without superseding or absorbing sibling lanes.
+- `docs/dev-log/handover/2026-08-26-codex-handover.md`: recorded the exact
+  carried-over PR, CI, merge, and next-task gates for the Codex continuation.
 - `docs/dev-log/handover/2026-08-26-response-column-coefficient-arc2.md`:
   bounded continuation contract.
 

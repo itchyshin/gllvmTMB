@@ -2105,6 +2105,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     phylo_slope_cs$extra$.column_slope_source %||%
       if (isTRUE(phylo_slope_cs$extra$.animal_source)) "animal" else "phylo"
   } else NULL
+  use_response_column_coef <- use_phylo_column_slope && isTRUE(
+    phylo_slope_cs$extra$.response_column_coef
+  )
   if (use_phylo_column_slope &&
       !phylo_column_slope_source %in% c("ordinary", "phylo", "animal", "kernel", "spatial")) {
     cli::cli_abort("Internal: unknown response-column slope source {.val {phylo_column_slope_source}}.")
@@ -2233,11 +2236,19 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ))
     }
     if (any(family_id_vec != 0L)) {
-      cli::cli_abort(c(
-        "Multi-predictor column slopes are currently available for Gaussian responses only.",
-      "i" = "The requested term is a slope-only {.fn phylo_indep} or {.fn phylo_dep} column-predictor term.",
-        ">" = "Use {.fn gaussian} for this V1 route; non-Gaussian recovery is planned separately."
-      ))
+      if (use_response_column_coef) {
+        cli::cli_abort(c(
+          "Response-column coefficients are currently available for Gaussian responses only.",
+          "i" = "The requested internal term is {.fn column_coef}.",
+          ">" = "Use {.fn gaussian}; non-Gaussian coefficient engines are not admitted."
+        ))
+      } else {
+        cli::cli_abort(c(
+          "Multi-predictor column slopes are currently available for Gaussian responses only.",
+          "i" = "The requested term is a slope-only {.fn phylo_indep} or {.fn phylo_dep} column-predictor term.",
+          ">" = "Use {.fn gaussian} for this V1 route; non-Gaussian recovery is planned separately."
+        ))
+      }
     }
   }
   ## phylo_indep(1 + x | species) is a Design 79/80 specialisation of the
@@ -4362,15 +4373,16 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## rejected at grammar time, while non-finite values fail here before TMB.
   n_phylo_column_slope <- length(phylo_column_slope_cols)
   Z_phylo_column_slope <- if (use_phylo_column_slope) {
-    missing_cols <- setdiff(phylo_column_slope_cols, names(data))
+    data_cols <- setdiff(phylo_column_slope_cols, "(Intercept)")
+    missing_cols <- setdiff(data_cols, names(data))
     if (length(missing_cols)) {
       cli::cli_abort(c(
         "Column-slope predictor{?s} {.val {missing_cols}} not found in {.arg data}.",
         ">" = "Add the named numeric predictor column{?s}, then refit."
       ))
     }
-    bad_type <- phylo_column_slope_cols[!vapply(
-      data[phylo_column_slope_cols], is.numeric, logical(1)
+    bad_type <- data_cols[!vapply(
+      data[data_cols], is.numeric, logical(1)
     )]
     if (length(bad_type)) {
       cli::cli_abort(c(
@@ -4380,7 +4392,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ))
     }
     z <- vapply(phylo_column_slope_cols, function(col) {
-      as.numeric(data[[col]])
+      if (identical(col, "(Intercept)")) rep(1, n_obs) else as.numeric(data[[col]])
     }, numeric(n_obs))
     z <- matrix(z, nrow = n_obs, ncol = n_phylo_column_slope,
                 dimnames = list(NULL, phylo_column_slope_cols))
@@ -4398,16 +4410,23 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## The legacy `x_phy_slope` TMB data arg (read only on the single-slope
   ## C++ branch) keeps carrying the FIRST covariate for back-compat.
   x_phy_slope_mat <- if (use_phylo_dep_slope) {
-    missing_cols <- setdiff(phylo_slope_xcols, names(data))
-    if (length(missing_cols) > 0L) {
-      cli::cli_abort(c(
-        "{.fn phylo_dep} slope covariate{?s} {.val {missing_cols}} not found in {.arg data}.",
-        "i" = "Add the covariate column{?s} to the data frame."))
+    if (use_response_column_coef) {
+      ## This matrix is not read by the response-column engine (Z_phy_aug is
+      ## authoritative), but keep its dimensions/data coherent without making
+      ## the synthetic intercept label look like a missing data column.
+      Z_phylo_column_slope
+    } else {
+      missing_cols <- setdiff(phylo_slope_xcols, names(data))
+      if (length(missing_cols) > 0L) {
+        cli::cli_abort(c(
+          "{.fn phylo_dep} slope covariate{?s} {.val {missing_cols}} not found in {.arg data}.",
+          "i" = "Add the covariate column{?s} to the data frame."))
+      }
+      matrix(
+        as.numeric(unlist(lapply(phylo_slope_xcols, function(col) as.numeric(data[[col]])))),
+        nrow = n_obs, ncol = n_phy_slope
+      )
     }
-    matrix(
-      as.numeric(unlist(lapply(phylo_slope_xcols, function(col) as.numeric(data[[col]])))),
-      nrow = n_obs, ncol = n_phy_slope
-    )
   } else matrix(0.0, nrow = n_obs, ncol = max(n_phy_slope, 1L))
   ## Phase 56.3: parser activation for the augmented-LHS phylogenetic
   ## random-regression path. Legacy phylo_slope(x | species) keeps the
@@ -4434,7 +4453,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   Z_phy_aug <- array(0.0, dim = c(n_obs, n_lhs_cols, n_phy_aug_blocks))
   if (use_phylo_column_slope) {
     ## The response-column tree lives on the RHS `trait` factor.  The basis is
-    ## predictor-only: no leading column of ones and no trait expansion.
+    ## already assembled without trait expansion. Released slopes are
+    ## predictor-only; the internal column_coef route may prepend ones.
     for (j in seq_len(n_phylo_column_slope)) {
       Z_phy_aug[, j, 1L] <- Z_phylo_column_slope[, j]
     }
@@ -7661,6 +7681,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                           ## covariance tier, and is therefore extracted only
                           ## with level = "column_slope".
                           phylo_column_slope = isTRUE(use_phylo_column_slope),
+                          response_column_coef = isTRUE(use_response_column_coef),
                           spatial_column_slope = isTRUE(use_spatial_column_slope),
                           phylo_column_slope_mode = phylo_column_slope_mode,
                           ## The shared matrix-normal core is entered through
@@ -7687,6 +7708,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                               phylo_column_slope_cols
                             } else if (use_phylo_dep_slope) {
                               phylo_slope_xcols
+                            } else NULL,
+                          response_column_coef_basis =
+                            if (use_response_column_coef) {
+                              phylo_column_slope_cols
                             } else NULL,
                           kernel = isTRUE(has_kernel_term),
                           ## Augmented SPDE random slopes (Design 64). DISTINCT

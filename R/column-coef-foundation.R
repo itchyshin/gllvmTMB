@@ -144,6 +144,11 @@
     .column_coef_abort("Coefficient predictors must be bare row-data column names; transformations and interactions are not admitted.")
   predictors <- vapply(predictor_expr, as.character, character(1L))
   if (anyDuplicated(predictors)) .column_coef_abort("Coefficient predictors must be distinct.")
+  if ("(Intercept)" %in% predictors)
+    .column_coef_abort(c(
+      "{.field (Intercept)} is reserved for the response-column coefficient intercept.",
+      "i" = "Use an explicit {.code 1} to include that intercept; rename a data column with this literal name."
+    ))
   bad_column <- intersect(predictors, column_vars)
   if (length(bad_column))
     .column_coef_abort("Response-column metadata cannot be a coefficient basis: {.field {bad_column}}.")
@@ -282,6 +287,32 @@
     "i" = "The parser and metadata contract are available only for internal validation.",
     ">" = "Continue using the released response-column slope helpers until the coefficient engine is validated."
   ), class = "gllvmTMB_column_coef_engine_not_admitted")
+}
+
+## Arc 2 IID admission. Rewrite to a canonical internal single-bar call before
+## the ordinary sugar pass so a public `||` coefficient basis cannot be
+## mistaken for an augmented random-slope coupling. The internal metadata, not
+## the rewritten LHS, feeds the ordered coefficient basis into the existing
+## response-column matrix-normal engine.
+.column_coef_rewrite_iid <- function(expr, spec) {
+  if (!is.call(expr)) return(expr)
+  fn <- if (is.symbol(expr[[1L]])) as.character(expr[[1L]]) else ""
+  if (identical(fn, "column_coef")) {
+    bar <- call("|", 0, as.name(spec$group))
+    args <- list(
+      bar,
+      .column_slope_mode = if (isTRUE(spec$correlated)) "dep" else "indep",
+      column_slope_cols = spec$basis,
+      .column_slope_source = "ordinary",
+      .response_column_coef = TRUE
+    )
+    return(as.call(c(list(as.name("phylo_slope")), args)))
+  }
+  out <- expr
+  for (i in seq_along(out)[-1L]) {
+    out[[i]] <- .column_coef_rewrite_iid(out[[i]], spec)
+  }
+  out
 }
 
 .column_data_assert_fixed_only <- function(expr, column_vars) {

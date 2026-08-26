@@ -1,8 +1,9 @@
 # After Task: Family-Wide Mixed-Family Predictor-Informed LV
 
-Status: **FINAL CANDIDATE — all retained campaigns are adjudicated, review
-repairs are integrated on verified `main`, and exact-head local verification
-is green; final frozen-diff review and closeout gates remain.**
+Status: **PANEL-PASSED CHECKPOINT — all retained campaigns are adjudicated,
+the 2-Terra/1-Sol frozen-diff panel passes implementation hash `2bdb4926...`,
+and exact-source local verification is green. Ordered PR #1214 integration,
+final rebase/reverify, validators, and lease release remain.**
 
 ## 1. Goal
 
@@ -184,10 +185,12 @@ Completed checks:
   The first repaired-source check then completed in 20 minutes 54.71 seconds
   wall time (`R CMD check`: 17 minutes 56.4 seconds), again with 0 errors, 0
   warnings, and the same 4 notes. After the structural metadata repair, the
-  authoritative final check passed in 20 minutes 31.59 seconds wall time (`R
-  CMD check`: 17 minutes 50.6 seconds), with 0 errors, 0 warnings, and the same
-  4 notes. The final evaluated article render and `pkgdown::check_pkgdown()`
-  also passed from that structural source.
+  structural-source check passed in 20 minutes 31.59 seconds wall time (`R CMD
+  check`: 17 minutes 50.6 seconds). After the incidental-metadata namespace
+  repair, the authoritative final check passed in 22 minutes 56.90 seconds
+  wall time (`R CMD check`: 20 minutes 2 seconds), with 0 errors, 0 warnings,
+  and the same 4 notes. The final evaluated article render and
+  `pkgdown::check_pkgdown()` also passed from that exact source.
 - `git diff --check`: passed after the final local edits.
 - Independent retained-evidence recheck: `shasum -a 256 -c` verified all
   7,622 entries in the mixed/sentinel raw/source manifest. Direct CSV reads
@@ -212,9 +215,13 @@ Completed checks:
   bundle. Its log SHA-256 is
   `5a3debc8f7bcca2ba93c48ff00bbed8dfa6b01a4f36b7c6a73735a4f2f0b4d75`.
 
-Still required before closure: final `--reverify`, the frozen-candidate
-completion panel, closeout validators, the final local commit, clean-tree
-proof, handoff validation, and lease release.
+The final completion panel is PASS: Gauss/Emmy found no parameterisation,
+TMB, nuisance-routing, or allow-list blocker; Noether/Fisher reproduced the
+estimand, denominators, MCSEs, and bounded claims; Rose/Grace verified the
+checkpoint hash, path census, attempt history, and final checks. Still required
+before closure: ordered PR #1214 integration, rebase onto its returned main
+SHA, final `--reverify`, closeout validators, clean-tree proof, handoff
+validation, and lease release.
 
 The first frozen completion panel returned `FAIL`. Gauss/Emmy found that an
 explicit ordinary unit-tier `indep()` or compatibility `unique()` companion
@@ -431,9 +438,10 @@ failed path is retained here and was not used as evidence.
 - **HOLD**: pure ordinal-probit point recovery did not meet its frozen shared-
   Sigma gate despite healthy `B_lv` targets. This closeout does not redefine
   the estimand or remove the Sigma oracle.
-- Run the final 2-Terra/1-Sol frozen-diff panel, Unlazy `--reverify`, after-task
-  validator, Melissa plan-vs-actual, handoff gate, narrow local commit, clean
-  tree proof, and lease release.
+- After ordered PR #1214 integration, rebase once onto the returned exact main
+  SHA, append the frozen check-log receipt, run Unlazy `--reverify`, the
+  after-task validator, Melissa plan-vs-actual, handoff gate, clean-tree proof,
+  and lease release. The final 2-Terra/1-Sol panel already passes.
 - Exact mixed-LV three-OS CI is not part of this local-only Ultra Plan. The
   verified base has its own protected three-OS and exact-SHA post-merge
   receipts; those are not claimed as mixed-LV-head CI.

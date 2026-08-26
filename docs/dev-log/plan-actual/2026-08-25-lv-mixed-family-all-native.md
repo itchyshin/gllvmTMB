@@ -4,9 +4,9 @@ Date: 2026-08-25
 Plan: `docs/dev-log/plans/2026-08-25-lv-mixed-family-all-native-ultra-plan.md`
 Branch: `codex/lv-mixed-family-all-native`
 Reviewer lens: Melissa
-Status: **FINAL CANDIDATE — retained compute, review repairs, verified-main
-integration, and exact-head local checks are complete; the final panel and
-closeout gates remain**
+Status: **PANEL-PASSED CHECKPOINT — retained compute, review repairs, exact-
+source local checks, and the final 2-Terra/1-Sol panel are complete; ordered PR
+#1214 integration and final closeout gates remain**
 
 ## Summary
 
@@ -16,8 +16,8 @@ package check are complete locally. The exact family-wide allow-list is live
 without changing TMB likelihood code or widening arbitrary mixtures. The pure
 r200 passed 17/19 cells and retained two honest HOLDs; all eight preregistered
 mixed r500 archetypes passed target-wise Wald calibration. This report does not
-declare landing complete until the frozen panel, reverify, validators, and
-single local commit pass.
+declare landing complete until ordered integration, reverify, validators, and
+the final clean checkpoint pass.
 
 ## Scope reconciliation
 
@@ -52,7 +52,7 @@ single local commit pass.
 | S8 API/docs | Long/wide mixed-family repair, generated help, Design 01/02/03/05/35/57/61/73, and Tier-1 article completed | adaptive and aligned |
 | S9 inference | All eight frozen mixed archetypes pass target-wise Wald calibration; simultaneous coverage remains unclaimed | aligned and complete |
 | S10 verification | Focused/full tests, article, pkgdown, stale scans, and local check green | aligned |
-| S11/S12 panel and closeout | Preparatory reviews pass; exact-main candidate is frozen for the final panel, reverify, validators, closeout commit, and handover | correctly sequenced |
+| S11/S12 panel and closeout | Final 2-Terra/1-Sol panel PASS at implementation hash `2bdb4926...`; ordered PR #1214 integration, reverify, validators, and handover remain | adaptively sequenced around ordered integration |
 
 ## Safety and compute reconciliation
 
@@ -71,9 +71,11 @@ single local commit pass.
   After preserving an 82.56-second interrupted attempt when the multinomial
   defect was found, the first repaired-source check passed in 20m54.71s wall
   time (`R CMD check`: 17m56.4s). The later structural metadata repair was
-  followed by the authoritative final check at 20m31.59s wall (`R CMD check`:
-  17m50.6s), with 0 errors, 0 warnings, and the same four notes. The final
-  evaluated article and pkgdown check also passed from that source.
+  followed by a 20m31.59s structural-source pass (`R CMD check`: 17m50.6s).
+  After the incidental-metadata namespace repair, the authoritative final check
+  passed at 22m56.90s wall (`R CMD check`: 20m02s), with 0 errors, 0 warnings,
+  and the same four notes. The final evaluated article and pkgdown check also
+  passed from that exact source.
 
 Safety classification: **aligned; approved remote execution completed within
 the 40-worker and 30-minute envelopes**.
@@ -157,10 +159,11 @@ Public-claim classification: **aligned with currently earned evidence**.
 
 ## Acceptance-ledger reconciliation
 
-G1--G10 are supported by current evidence, including independent verification
-of all 15,614 pure/calibration raw-manifest entries. G11 and G12 remain open for
-the final exact-candidate panel, after-task validation, handover, commit, clean
-tree, and lease release. Final mode will be `--reverify`, never `--status`.
+G1--G11 are supported by current evidence, including independent verification
+of all 15,614 pure/calibration raw-manifest entries and a passing 2-Terra/1-Sol
+panel. G12 remains open for ordered PR #1214 integration, after-task
+validation, handover, final clean tree, and lease release. Final mode will be
+`--reverify`, never `--status`.
 
 ## Landing reconciliation
 

@@ -1,8 +1,9 @@
 # Codex Handover: Family-Wide Mixed-Family Predictor-Informed LV
 
-Status: **FINAL CANDIDATE — review repairs are integrated on verified `main`,
-exact-head tests/docs/check are green, and only final panel, reverify,
-validators, closeout commit, and lease release remain.**
+Status: **PANEL-PASSED CHECKPOINT — review repairs and exact-source checks are
+green at local checkpoint `312598984...`; the final 2-Terra/1-Sol panel passes.
+Ordered PR #1214 integration, final reverify/validators, and lease release
+remain.**
 
 ## Goal
 
@@ -37,10 +38,10 @@ mixtures or any deferred Design 73 surface.
 - Mixed r500 calibration: complete, 4,000/4,000 retained, 3,999 interval
   eligible, all eight target-wise Wald gates pass.
 - Final-candidate full tests: exit 0, testthat `DONE`.
-- Authoritative final structural-source local package check: 20m31.59s wall,
+- Authoritative final namespace-source local package check: 22m56.90s wall,
   0 errors, 0 warnings, 4 explicit notes. The earlier 82.56-second interrupted
-  attempt and 20m54.71s intermediate repaired-source pass are retained
-  separately.
+  attempt, 20m54.71s logical-source pass, and 20m31.59s structural-source pass
+  are retained separately.
 - Final evaluated article and pkgdown checks: pass.
 - Post-panel exact-shape and pre-drop missing-response repairs pass the live
   mixed-LV, complete LV, traits, and neighbouring missing-response suites.
@@ -93,12 +94,13 @@ DRAC, or a duplicate local campaign.
 
 ## Final landing sequence
 
-1. Run the exact 2-Terra/1-Sol frozen-candidate panel and Rose/Grace review.
-2. Run final Unlazy `--reverify`, after-task validator, Melissa reconciliation,
-   and `handoff_gate.sh`.
-3. Amend the implementation commit with the closeout-only receipt, prove a
-   clean tree, and release the exact-path lease. Do not push this local-only
-   lane.
+1. Wait for the ordered PR #1214 merge lane to return the exact merged-main SHA
+   and shared-file lease receipt; do not edit or rebase before it arrives.
+2. Rebase once, preserve both append-only check-log histories, and append the
+   frozen 22m56.90s final-check receipt.
+3. Run final Unlazy `--reverify`, after-task validator, Melissa reconciliation,
+   and `handoff_gate.sh`; prove a clean tree and release the exact-path lease.
+   Do not push this local-only lane.
 
 ## Protected boundaries
 
@@ -111,12 +113,16 @@ DRAC, or a duplicate local campaign.
 
 ## Landing classification
 
+FINDINGS-OF-RECORD: none — the durable scientific and operational findings are
+source-pinned in this repository's Design 73, source contract, retained
+artifacts, after-task report, and check-log rather than a separate vault note.
+
 - **DONE**: source contract, exact allow-list implementation, mixed/sentinel
   r200, pure r200, mixed r500 calibration, long/wide reader repair,
   focused/full tests, article, pkgdown, local check, current status cascade,
-  and preparatory reviews.
-- **CARRIED-OVER**: completion panel, reverify, validators, closeout commit,
-  clean-tree proof, and lease release.
+  and the final 2-Terra/1-Sol panel.
+- **CARRIED-OVER**: ordered PR #1214 integration, final reverify, validators,
+  check-log receipt, clean-tree proof, and lease release.
 - **REJECTED**: duplicate campaigns, evidence-by-canary, arbitrary mixtures,
   remote compute above the approved envelope, GitHub Actions science compute,
   GLLVM.jl mutation, or umbrella Design 73 promotion.

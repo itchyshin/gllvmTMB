@@ -20,7 +20,7 @@ coverage rule to each frozen target and cell rather than to a pooled average.
 | CI-10 | Mixed-family Sigma/correlation Wald route | Heuristic route only; nonlinear mixed-family profile remains withdrawn. | limited / blocked profile |
 | CI-10 | Cross-family `multiple_r` bootstrap and contrast-correlation profile | Family-preserving plumbing exists. All 18 approved cost-preflight base fits failed before the 499-bootstrap stage, so successful nested-bootstrap cost remains unmeasured and no promotional campaign ran. The two methods are not interchangeable. | limited; full campaign blocked |
 | CI-11/12 | Nonlinear repeatability, communality, correlation, and proportion profiles | Typed public refusals; internal curves are regression machinery only. | refused |
-| CI-13 | Confirmatory mapped-free standardized loading `Lambda[t,k] / sqrt(Sigma[t,t])` | All structurally free strict-lower targets in `n=150,d=1` failed the lower-band gate. Every such target in `n=150,d=2`, `n=400,d=1`, and `n=400,d=2` passed and cleared the independent D-43 panel. These are symmetric joint-delta Wald intervals in native, pinned, unrotated lower-triangular cells only; pinned diagnostic rows are not promotional targets. | three exact cells certified; limited globally |
+| CI-13 | Confirmatory mapped-free standardized loading `Lambda[t,k] / sqrt(Sigma[t,t])` | All structurally free strict-lower targets in `n=150,d=1` failed the lower-band gate. Every such target in `n=150,d=2`, `n=400,d=1`, and `n=400,d=2` passed and cleared the independent D-43 panel. These are symmetric joint-delta Wald intervals in native, pinned, unrotated lower-triangular cells only, for one frozen DGP, conditional on eligible fits; pinned diagnostic rows are not promotional targets. | three exact tested-regime cells certified; limited globally |
 | CI-14 | Unique-Psi slope SD and separately labelled total marginal slope SD | The corrected exact manifest retained 10,000 source-guard failures and zero scientific rows. | blocked -- source provenance |
 | CI-15 | Phylogenetic Cholesky marginal slope SD | The corrected sequence stopped after CI-14; CI-15 did not run. | blocked -- predecessor |
 | CI-15 | Ordinary loadings-only marginal slope SD with `Psi=0` in DGP and fit | The corrected sequence stopped after CI-14; CI-15 did not run. The former positive-Psi fixture remains a negative control, not recovery evidence. | blocked -- predecessor |
@@ -34,7 +34,12 @@ coverage rule to each frozen target and cell rather than to a pooled average.
 - CI-10: the retained 18-cell XFI grid; 5,000 attempts per cell and 499 inner
   bootstrap draws for `multiple_r`.
 - CI-13: `n_units={150,400}` by `d={1,2}`; only lower-triangular coordinates
-  left free after the confirmatory diagonal-anchor map are promotional.
+  left free after the confirmatory diagonal-anchor map are promotional. The
+  frozen DGP fixes trait intercepts `(-0.20, 0.10, 0.25)`, unique SDs
+  `(0.70, 0.80, 0.90)`, and loading vector `(0.80, 0.45, -0.35)` for `d=1`,
+  with second column `(0, 0.70, 0.40)` for `d=2`. Coverage is conditional on
+  eligible fits; base-fit failures remain in the all-attempt and availability
+  denominators rather than inheriting certification.
 - CI-14: `n_ind={50,100}` with six repeats; unique and total slope SDs remain
   separate targets.
 - CI-15: phylogenetic Cholesky at `n_sp={70,140}` and ordinary loadings-only at
@@ -68,6 +73,7 @@ recomputed target rows in `2026-08-25-target-recomputation.csv`.
   free strict-lower targets. Pinned anchor rows remain diagnostic. Cell-specific
   results remain separate; no Fisher-z Wald, arbitrary constraint, rotated,
   unconstrained, or neighbouring cell inherits them. The independent D-43
-  panel certified exactly `(n=150,d=2)`,
+  panel certified exactly the frozen-DGP, eligible-fit-conditional regimes
+  `(n=150,d=2)`,
   `(n=400,d=1)`, and `(n=400,d=2)`; `(n=150,d=1)` remains a measured failure.
 - CI-14 and CI-15 are terminal operational blocks, not coverage failures.

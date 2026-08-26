@@ -15,7 +15,8 @@
     "extensive further validation. Point estimates are the primary inferential ",
     "output, but evidence is route- and regime-specific. Broad interval ",
     "coverage is not certified. Three exact native pinned unrotated ordinary-Gaussian ",
-    "standardized-loading Wald cells have target-specific certificates; ",
+    "standardized-loading Wald cells have target-specific certificates only ",
+    "in one frozen DGP, conditional on eligible fits; ",
     "total-variance penalty profiles remain route-only. ",
     "See the Current limitations and boundaries page for scope."
   )

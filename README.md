@@ -13,7 +13,8 @@
 > primary inferential output, but their evidence is route- and regime-specific.
 > Broad package-wide interval coverage is not certified. Three exact native,
 > pinned, unrotated ordinary-Gaussian standardized-loading Wald cells have
-> target-specific certificates; neighbouring cells do not inherit them.
+> target-specific certificates only in one frozen DGP, conditional on eligible fits;
+> other parameter regimes and neighbouring cells do not inherit them.
 > Total-variance penalty profiles remain `route-only`, including historically
 > measured cells, because exact constrained-refit fidelity was not retained.
 

@@ -369,10 +369,10 @@ test_that(".qchisq_threshold() rejects out-of-range or non-scalar level", {
 })
 
 ## ---- 9. Total-variance V_t: profile (Route A) + delta-Wald (Route B) ------
-## V_t = (Lambda Lambda^T)_tt + psi_t = diag(Sigma_unit)_tt, the loadings-
+## V_t = (Lambda Lambda^T)_tt + psi_t^2 = diag(Sigma_unit)_tt, the loadings-
 ## inclusive per-trait total variance. `.profile_ci_total_variance()` is the
-## certificate candidate (genuine chi-square_1 profile via `.profile_ci_via_refit`)
-## and `.wald_ci_total_variance_logsd()` is a log-SD delta-Wald DIAGNOSTIC. Both
+## penalty-profile route and `.wald_ci_total_variance_logsd()` is a log-SD
+## delta-Wald DIAGNOSTIC. Both
 ## flow through the single `.total_variance_spec()` builder so they target the
 ## identical functional. NOTE: these are dev/re-score internals; they do NOT
 ## touch the public confint bootstrap-fallback path asserted above -- do not

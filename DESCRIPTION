@@ -29,7 +29,8 @@ Description: Fits multivariate models for data where each site,
     evidence is route- and regime-specific. Broad package-wide interval
     coverage is not certified. Three exact native, pinned, unrotated
     ordinary-Gaussian standardized-loading Wald cells have target-specific
-    certificates; total-variance penalty profiles remain route-only.
+    certificates only in one frozen DGP, conditional on eligible fits;
+    total-variance penalty profiles remain route-only.
 License: GPL-3
 Language: en-GB
 Copyright: inst/COPYRIGHTS

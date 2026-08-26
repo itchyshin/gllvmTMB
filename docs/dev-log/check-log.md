@@ -54515,9 +54515,10 @@ public API, likelihood, formula-grammar, NAMESPACE, or C++ change. The tracked
 150,019-row all-attempt ledger retains the invalid first Totoro deployment,
 every canonical science attempt, CI-14 provenance failures, and all 18 CI-10
 cost-preflight outcomes. The terminal route census has 19 exact identities and
-exactly three certificate cells, all CI-13 standardized-loading Wald:
+exactly three certificate regimes, all CI-13 standardized-loading Wald:
 `(n=150,d=2)`, `(n=400,d=1)`, and `(n=400,d=2)`, restricted to structurally
-free strict-lower targets. CI-08 total-variance output is fail-closed to
+free strict-lower targets in one frozen DGP, conditional on eligible fits.
+CI-08 total-variance output is fail-closed to
 `route-only`; the PVT-02 campaign is blocked. CI-09/14/15 are blocked, CI-10 is
 limited/blocked by route, and CI-11/12 remain typed refusals.
 
@@ -54555,3 +54556,43 @@ on GitHub Actions. The invalid Totoro archive, corrected r2 archive, Fir
 archive, all-attempt ledger, and target recomputation checksums are recorded in
 `docs/dev-log/artifacts/interval-calibration/2026-08-25-terminal-campaign-evidence.md`.
 No push, PR, merge, release, or public issue message was performed.
+
+### Post-Sol claim-scope repair
+
+A fresh Sol-high rebind withheld at
+`eacbdc881cf9c74d2e692bb82f5c5c7a3e8cb48e`: the public CI-13 wording named
+`n`, `d`, family, tier, and target but omitted that the 5,000-replicate campaign
+used one frozen truth-parameter regime and computed coverage conditional on
+eligible fits. It also found a stale `test-profile-ci.R` comment that wrote
+`+ psi_t` and called the withdrawn CI-08 penalty profile a certificate
+candidate. The repair names the exact intercept, unique-SD, and loading regime;
+reports the three availability rates; narrows every source/generated/reader/
+release surface; and makes both the claim verifier and route-census contract
+fail when the boundary is removed.
+
+```sh
+Rscript --vanilla -e 'devtools::load_all(quiet=TRUE); testthat::test_file("tests/testthat/test-interval-calibration-claims.R", reporter="summary", stop_on_failure=TRUE)'
+# PASS: 18 expectations; the new DGP/eligibility and census-row mutations were
+# observed failing before the repair and passing after it.
+
+NOT_CRAN=true Rscript --vanilla -e 'devtools::load_all(quiet=TRUE); fs <- c("tests/testthat/test-interval-calibration-claims.R", "tests/testthat/test-loading-ci.R", "tests/testthat/test-profile-ci-total-variance-export.R", "tests/testthat/test-profile-ci.R"); for (f in fs) testthat::test_file(f, reporter="summary", stop_on_failure=TRUE); cat("POST_SOL_SCOPE_FOCUSED_OK\n")'
+# POST_SOL_SCOPE_FOCUSED_OK; FAIL 0 | WARN 0 | SKIP 35 | PASS 97.
+
+Rscript --vanilla -e 'devtools::document(quiet=TRUE); cat("DOCUMENT_CLAIM_SURFACES_OK\n")'
+# DOCUMENT_CLAIM_SURFACES_OK; only the pre-existing AIC/BIC/anova S3 warnings.
+
+Rscript --vanilla -e 'pkgdown::build_article("articles/current-limits", lazy=FALSE); pkgdown::build_article("articles/profile-likelihood-ci", lazy=FALSE); pkgdown::check_pkgdown(); cat("POST_SOL_DOCS_OK\n")'
+# POST_SOL_DOCS_OK; No problems found.
+
+Rscript --vanilla dev/interval-calibration/verify-claims.R
+# INTERVAL_CLAIMS_OK
+
+git diff --check
+# PASS: no whitespace errors.
+```
+
+The prior 523-file ordinary-suite receipt remains the behavioral package
+receipt. All later changes are roxygen/prose/startup text, generated help,
+dev-only claim/census contracts, tests, and closure documents; the final
+focused replay above covers those changed contracts. No estimator, exported
+signature, NAMESPACE, likelihood, formula grammar, or C++ path changed.

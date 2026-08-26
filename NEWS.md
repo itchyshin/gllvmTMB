@@ -1603,7 +1603,14 @@ bridge remains experimental and is not required for the main workflow.
   pinned unrotated ordinary-Gaussian standardized-loading Wald cells have target-specific
   certificates: `(n_units=150,d=2)`, `(n_units=400,d=1)`, and
   `(n_units=400,d=2)`, restricted to structurally free strict-lower targets.
-  The `n_units=150,d=1` cell failed. Pinned diagnostics, Fisher-z Wald,
+  This is one frozen DGP: trait intercepts `(-0.20, 0.10, 0.25)`, unique
+  standard deviations `(0.70, 0.80, 0.90)`, and loading vector
+  `(0.80, 0.45, -0.35)` for `d=1`, with second column `(0, 0.70, 0.40)` for
+  `d=2`. Coverage is conditional on eligible fits (optimizer convergence,
+  converged fit health, available `sdreport()`, and a positive-definite
+  Hessian); availability was 98.82%, 93.38%, and 96.18% in the three certified
+  cells. The `n_units=150,d=1` cell failed. No other truth-parameter regime
+  inherits the result. Pinned diagnostics, Fisher-z Wald,
   arbitrary constraints, rotated or neighbouring regimes, and the global
   loading route remain uncalibrated. `profile_ci_total_variance()` now labels
   every computed penalty-profile approximation `route-only`; its former

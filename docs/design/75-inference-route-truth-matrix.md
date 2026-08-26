@@ -108,10 +108,11 @@ one-pair-per-site DGP does not identify the scored unit-tier correlation, so
 its extreme coverage is invalid calibration evidence, not a method
 certificate or clean failure. CI-13 earned exact certificates for the
 structurally free strict-lower targets in native pinned unrotated symmetric-Wald
-cells `(n=150,d=2)`, `(n=400,d=1)`, and `(n=400,d=2)`; pinned diagnostic rows,
-Fisher-z Wald, arbitrary constraints, `(n=150,d=1)`, and the global route remain
-limited. See the terminal target ledger rather than inferring a claim from this
-route matrix. Historical and callable `CI-08` routes remain limited, while
+cells `(n=150,d=2)`, `(n=400,d=1)`, and `(n=400,d=2)`, for one frozen DGP,
+conditional on eligible fits. Other truth-parameter regimes, pinned diagnostic
+rows, Fisher-z Wald, arbitrary constraints, `(n=150,d=1)`, and the global route
+remain limited. See the terminal target ledger rather than inferring a claim
+from this route matrix. Historical and callable `CI-08` routes remain limited, while
 the exact PVT-02 campaign is blocked because its constrained-refit fidelity
 cannot be audited from retained endpoints. `CI-10` remains
 open/failing.

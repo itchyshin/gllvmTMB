@@ -19,8 +19,9 @@ home:
           inferential output, but their evidence is route- and regime-specific.
           Broad package-wide interval coverage is not certified. Three exact
           native pinned unrotated ordinary-Gaussian standardized-loading Wald cells have
-          target-specific certificates; total-variance penalty profiles remain
-          route-only. Read [Current limitations and boundaries](articles/current-limits.html)
+          target-specific certificates only in one frozen DGP, conditional on eligible fits;
+          total-variance penalty profiles remain route-only. Read
+          [Current limitations and boundaries](articles/current-limits.html)
           before choosing a model.
 template:
   bootstrap: 5

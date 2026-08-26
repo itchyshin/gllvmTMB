@@ -65,7 +65,10 @@ require_fixed(
   "vignettes/articles/current-limits.Rmd",
   c(
     "withdrawn until the mechanism is repaired and recalibrated",
-    "structurally free strict-lower"
+    "structurally free strict-lower",
+    "frozen DGP",
+    "conditional on eligible fits",
+    "(0.70, 0.80, 0.90)"
   )
 )
 require_fixed(
@@ -79,14 +82,18 @@ require_fixed(
   "R/loading-ci.R",
   c(
     "structurally free strict-lower targets",
-    "Pinned diagnostic rows, Fisher-z Wald"
+    "Pinned diagnostic rows, Fisher-z Wald",
+    "frozen DGP",
+    "conditional on eligible fits",
+    "(0.80, 0.45, -0.35)"
   )
 )
 require_fixed(
   "docs/dev-log/known-limitations.md",
   c(
     "The former exact-cell certificate is therefore withdrawn.",
-    "structurally free strict-lower targets"
+    "structurally free strict-lower targets",
+    "frozen DGP, conditional on eligible fits"
   )
 )
 require_fixed(
@@ -96,21 +103,62 @@ require_fixed(
     "The former profile-total certificate is withdrawn",
     "CI-09 calibration addendum (2026-08-25)",
     "CI-14 calibration addendum (2026-08-25)",
-    "CI-15 calibration addendum (2026-08-25)"
+    "CI-15 calibration addendum (2026-08-25)",
+    "frozen DGP, conditional on eligible fits"
   )
 )
+
+require_fixed(
+  "NEWS.md",
+  c(
+    "frozen DGP",
+    "conditional on eligible fits",
+    "(-0.20, 0.10, 0.25)",
+    "(0.70, 0.80, 0.90)"
+  )
+)
+require_fixed(
+  "docs/dev-log/release/2026-08-08-0.7-release-claim-matrix.md",
+  c("frozen DGP", "conditional on eligible fits")
+)
+require_fixed(
+  "docs/dev-log/artifacts/interval-calibration/interval-target-ledger.md",
+  c("frozen DGP", "conditional on eligible fits")
+)
+require_fixed(
+  "docs/dev-log/artifacts/interval-calibration/2026-08-25-terminal-campaign-evidence.md",
+  c("frozen DGP", "conditional on eligible fits")
+)
+for (claim_surface in c(
+  "DESCRIPTION",
+  "README.md",
+  "man/gllvmTMB-package.Rd",
+  "man/loading_ci.Rd",
+  "docs/design/75-inference-route-truth-matrix.md"
+)) {
+  require_fixed(
+    claim_surface,
+    c("frozen DGP", "conditional on eligible fits")
+  )
+}
 
 for (claim_surface in c("_pkgdown.yml", "cran-comments.md")) {
   require_fixed(
     claim_surface,
-    c("pinned unrotated ordinary-Gaussian standardized-loading Wald cells")
+    c(
+      "pinned unrotated ordinary-Gaussian standardized-loading Wald cells",
+      "frozen DGP",
+      "conditional on eligible fits"
+    )
   )
 }
 require_fixed(
   "R/zzz.R",
   c(
     "pinned unrotated ordinary-Gaussian",
-    "standardized-loading Wald cells"
+    "standardized-loading Wald cells",
+    "frozen DGP",
+    "conditional on eligible fits"
   )
 )
 
@@ -133,11 +181,45 @@ if (any(vapply(
   )
 }
 
+profile_test_source <- read_text("tests/testthat/test-profile-ci.R")
+if (
+  grepl("certificate candidate", profile_test_source, fixed = TRUE) ||
+    !grepl("+ psi_t^2", profile_test_source, fixed = TRUE)
+) {
+  stop(
+    "tests/testthat/test-profile-ci.R retains a stale CI-08 estimand or certificate comment",
+    call. = FALSE
+  )
+}
+
 census <- utils::read.csv(
   "docs/dev-log/artifacts/interval-calibration/public-route-census.csv",
   stringsAsFactors = FALSE
 )
 validate_interval_route_census(census)
+ci13_certified <- census[
+  census$route_id %in% c(
+    "CI13-loading-n150-d2",
+    "CI13-loading-n400-d1",
+    "CI13-loading-n400-d2"
+  ),
+  ,
+  drop = FALSE
+]
+if (
+  nrow(ci13_certified) != 3L ||
+    any(!grepl("frozen DGP", ci13_certified$current_evidence, fixed = TRUE)) ||
+    any(!grepl(
+      "conditional on eligible fits",
+      ci13_certified$current_evidence,
+      fixed = TRUE
+    ))
+) {
+  stop(
+    "CI-13 certified census rows must name the frozen-DGP eligible-fit condition",
+    call. = FALSE
+  )
+}
 ci08 <- census[census$route_id == "CI08-PV-profile", , drop = FALSE]
 ci08_exact <- census[census$route_id %in% c(
   "CI08-PV-n150-d1", "CI08-PV-n150-d2"

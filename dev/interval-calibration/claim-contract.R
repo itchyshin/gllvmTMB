@@ -52,5 +52,20 @@ validate_interval_route_census <- function(census) {
   if (!identical(observed_states, expected_states)) {
     stop("interval route census changed the exact route/state map", call. = FALSE)
   }
+  certified <- census[census$terminal_state == "certified", , drop = FALSE]
+  if (
+    nrow(certified) != 3L ||
+      any(!grepl("frozen DGP", certified$current_evidence, fixed = TRUE)) ||
+      any(!grepl(
+        "conditional on eligible fits",
+        certified$current_evidence,
+        fixed = TRUE
+      ))
+  ) {
+    stop(
+      "CI-13 certified rows must retain the frozen-DGP eligible-fit condition",
+      call. = FALSE
+    )
+  }
   invisible(TRUE)
 }

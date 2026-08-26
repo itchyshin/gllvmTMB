@@ -100,7 +100,11 @@ structured tiers are not admitted.
   implemented. Symmetric joint-delta Wald intervals are certified only for the
   structurally free strict-lower targets in native pinned unrotated ordinary
   Gaussian three-trait cells `(n_units=150,d=2)`, `(n_units=400,d=1)`, and
-  `(n_units=400,d=2)`. The `n_units=150,d=1` cell failed. Pinned diagnostic
+  `(n_units=400,d=2)`. This is one frozen DGP, conditional on eligible fits:
+  intercepts `(-0.20, 0.10, 0.25)`, unique SDs `(0.70, 0.80, 0.90)`, and
+  loading vector `(0.80, 0.45, -0.35)` for `d=1`, with second column
+  `(0, 0.70, 0.40)` for `d=2`. The `n_units=150,d=1` cell failed. No other
+  truth-parameter regime inherits the result. Pinned diagnostic
   rows, Fisher-z Wald, arbitrary constraints, other rotations, and every
   neighbouring cell remain uncalibrated.
 

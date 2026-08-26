@@ -74,7 +74,7 @@ as misses. Availability is reported but is not a promotion threshold.
 | --- | --- | --- |
 | PVT-02 / CI-08 | Trait 1: 1,032/1,081 covered, coverage 0.954672, MCSE 0.006330, lower band 0.942012. Trait 2: 1,037/1,081 covered, coverage 0.959297, MCSE 0.006013, lower band 0.947271. Availability 1,081/5,000 = 0.2162; 3,919 base-fit failures; zero CI failures. | Numerical gates pass, but `MEASURED, NOT CERTIFIED -- EXACT PROFILE CONTRACT UNVERIFIED`. The production penalty profile can accept a non-converged constrained refit, permits `abs(achieved-requested) <= 0.05` on `log(V_t)`, and may interpolate after failed interior refits. Retained endpoints lack the diagnostics needed to audit those cases. The same mechanism and evidentiary gap apply to the historical `n=150,d=1/2` campaigns, so every public row is now `route-only`. |
 | CI-09 | Six cells retained 5,000 rows each. Coverage is 0, 0.302215, 0, 0, 0.319953, and 0; lower bands are 0, 0.276372, 0, 0, 0.297280, and 0. Availability ranges from 0.2528 to 0.3886. | `BLOCKED -- DGP/ESTIMAND IDENTIFIABILITY`. One Gaussian pair per site identifies `Sigma_B + sigma_eps^2 I`, not the scored unit-tier `Sigma_B` correlation. The extreme pattern is invalid calibration evidence, not six clean Fisher-z failures. |
-| CI-13 | Cell 1 (`n=150,d=1`) structurally free strict-lower targets have coverage/lower bands 0.941081/0.934367 and 0.931735/0.924545. The other eight structurally free strict-lower targets pass both thresholds: cell 2 (`n=150,d=2`), cell 3 (`n=400,d=1`), and cell 4 (`n=400,d=2`). Cell availability is 0.9844, 0.9882, 0.9338, and 0.9618. | Cell 1 is a measured failure. The independent D-43 panel certifies the symmetric joint-delta Wald targets in cells 2--4 exactly; pinned diagnostic rows, Fisher-z Wald, arbitrary constraints, and rotated, unconstrained, or neighbouring cells do not inherit the result. |
+| CI-13 | Cell 1 (`n=150,d=1`) structurally free strict-lower targets have coverage/lower bands 0.941081/0.934367 and 0.931735/0.924545. The other eight structurally free strict-lower targets pass both thresholds: cell 2 (`n=150,d=2`), cell 3 (`n=400,d=1`), and cell 4 (`n=400,d=2`). Cell availability is 0.9844, 0.9882, 0.9338, and 0.9618. | Cell 1 is a measured failure. The independent D-43 panel certifies the symmetric joint-delta Wald targets in cells 2--4 exactly for one frozen DGP, conditional on eligible fits; pinned diagnostic rows, Fisher-z Wald, arbitrary constraints, other truth-parameter regimes, and rotated, unconstrained, or neighbouring cells do not inherit the result. |
 | CI-10 | All 18 valid-environment rep-3 base fits failed before the 499-bootstrap stage. | Successful nested-bootstrap cost remains unmeasured; the full campaign was not authorised or run. |
 | CI-14 | The exact 10,000-row manifest produced 10,000 identical frozen-source guard failures, zero canonical scientific rows, and no aggregate. | `BLOCKED -- PROVENANCE`; no calibration estimate. |
 | CI-15 | The corrected sequence stopped after CI-14. No CI-15 root or scientific attempt exists. | `BLOCKED -- PREDECESSOR`; no calibration estimate. |
@@ -88,30 +88,41 @@ as invalid for its claimed estimand. CI-13's global verdict is `FALSE`; its
 cell-specific target results remain explicit. CI-14 and CI-15 are not scored as
 coverage failures because no valid scientific campaign ran.
 
+The CI-13 frozen DGP fixes trait intercepts `(-0.20, 0.10, 0.25)`, unique SDs
+`(0.70, 0.80, 0.90)`, and loading vector `(0.80, 0.45, -0.35)` for `d=1`, with
+second column `(0, 0.70, 0.40)` for `d=2`. Its coverage calculation is
+conditional on eligible fits: optimizer convergence, converged fit health,
+available `sdreport()`, and a positive-definite Hessian. Base-fit failures
+remain in the 150,019-row all-attempt ledger and in the cell availability
+rates; they are not silently promoted into the tested-regime certificate.
+
 ## Independent completion verdict
 
 Fisher and Noether verified the estimands, coverage arithmetic, and
 replicate-clustered MCSE. Grace reproduced the target evidence from a clean
 temporary output path and obtained byte-identical CSV and RDS artefacts. Rose
-verified the attempt denominators and claim boundaries. A fresh Sol-high D-43
-review then returned `PASS, narrowly`: it authorised certificates for only
-the native pinned CI-13 cells `(n=150,d=2)`, `(n=400,d=1)`, and
-`(n=400,d=2)`. It kept `(n=150,d=1)` and the global CI-13 route limited and
-confirmed the separate PVT-02, CI-09, CI-14, and CI-15 blocks above.
+verified the attempt denominators and claim boundaries. The initial D-43 panel
+accepted the science arithmetic for only the native pinned CI-13 cells
+`(n=150,d=2)`, `(n=400,d=1)`, and `(n=400,d=2)`, but the final Sol rebind
+withheld release closure because the public wording did not yet name the frozen
+DGP and eligible-fit condition. The repaired wording above preserves
+`(n=150,d=1)` and the global CI-13 route as limited and does not change the
+separate PVT-02, CI-09, CI-14, and CI-15 blocks.
 
 The final fresh D-43 completion panel is recorded explicitly:
 
-- Terra-high statistical/status review: `PASS` at `f68e6bba`; the callable
-  CI-08 `route-only`, historical/callable `limited`, and PVT-02 campaign
-  `blocked` distinction resolved its prior P1.
-- Terra-high release/claim review: `PASS` at `884f0184` for the then-enumerated
-  reader/release surfaces and exact 19-route/state oracle. Rose subsequently
-  found stale CI-08 technical comments and row-local register history, so this
-  release-wide verdict is superseded pending a post-repair candidate review.
-- Sol-high load-bearing science review: `PASS -- narrowly scoped` at full SHA
-  `884f01847848a698ccc1713cf042328c8456e228`; it independently recomputed the
-  ledger/target arithmetic and authorized only the three exact CI-13 cells.
-  Final claim-surface closure is rebound to the post-repair candidate below.
+- Terra-high statistical/status and release/claim reviews: `PASS` at full SHA
+  `eacbdc881cf9c74d2e692bb82f5c5c7a3e8cb48e`. Those verdicts confirmed the
+  19-route oracle, CI-08/PVT distinction, arithmetic, and then-enumerated claim
+  surfaces, but are superseded for final binding by the later CI-13 scope
+  repair.
+- Sol-high load-bearing review: `WITHHOLD` at the same full SHA. It independently
+  reproduced the arithmetic and route states, then found two remaining claim
+  defects: CI-13's three-cell wording omitted the one frozen DGP and
+  eligible-fit denominator, and `test-profile-ci.R` retained stale
+  `+ psi_t`/`certificate candidate` wording. The source, generated help,
+  reader/release surfaces, census contract, and regression tests now repair
+  both defects. A fresh exact-SHA panel rebind is required before closure.
 
 None of these verdicts widens the scope enumerated in the route census.
 

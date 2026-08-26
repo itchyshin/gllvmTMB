@@ -143,7 +143,14 @@ There is one exact loading-interval exception. Standardized symmetric
 joint-delta Wald intervals are certified for the structurally free strict-lower
 targets in native pinned unrotated ordinary Gaussian three-trait cells
 `(n_units=150,d=2)`, `(n_units=400,d=1)`, and `(n_units=400,d=2)`, at 95%.
-The `(n_units=150,d=1)` cell failed. Pinned diagnostic rows, Fisher-z Wald,
+This is one frozen DGP: trait intercepts `(-0.20, 0.10, 0.25)`, unique standard
+deviations `(0.70, 0.80, 0.90)`, and loading vector `(0.80, 0.45, -0.35)` for
+`d=1`, with second column `(0, 0.70, 0.40)` for `d=2`. Coverage is conditional on eligible fits
+(optimizer convergence, converged fit health, available
+`sdreport()`, and a positive-definite Hessian); availability was 98.82%,
+93.38%, and 96.18% in the three certified cells. The `(n_units=150,d=1)` cell
+failed. No other loading, unique-variance, or intercept regime inherits the
+result. Pinned diagnostic rows, Fisher-z Wald,
 arbitrary constraints, rotated fits, and every neighbouring family, tier,
 rank, sample size, or confidence level remain uncalibrated.
 

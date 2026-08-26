@@ -82,7 +82,15 @@ certificate only for the structurally free strict-lower targets in native
 Laplace, pinned, unrotated, lower-triangular ordinary Gaussian unit-tier
 three-trait cells \verb{(n_units=150,d=2)}, \verb{(n_units=400,d=1)}, and
 \verb{(n_units=400,d=2)}, at \code{conf_level = 0.95}. The \verb{(n_units=150,d=1)} cell
-failed its lower-band gate. Pinned diagnostic rows, Fisher-z Wald
+failed its lower-band gate. This is one frozen DGP: trait intercepts
+\verb{(-0.20, 0.10, 0.25)}, unique standard deviations
+\verb{(0.70, 0.80, 0.90)}, and loading vector \verb{(0.80, 0.45, -0.35)} for \code{d=1},
+with the second column \verb{(0, 0.70, 0.40)} added for \code{d=2}. Coverage is
+conditional on eligible fits (optimizer convergence, converged fit health,
+an available \code{sdreport()}, and a positive-definite Hessian); availability
+was 98.82\%, 93.38\%, and 96.18\% in the three certified cells, respectively.
+The certificate does not extend to another loading, unique-variance, or
+intercept regime. Pinned diagnostic rows, Fisher-z Wald
 (\code{method = "wald_asym"}), arbitrary confirmatory constraints, raw-loading
 intervals, profiles, bootstraps, other rotations, and every neighbouring
 family, tier, rank, sample size, or confidence level remain exploratory.

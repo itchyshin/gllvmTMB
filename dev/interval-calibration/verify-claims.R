@@ -6,6 +6,7 @@ file_arg <- sub("^--file=", "", argv[grepl("^--file=", argv)])
 script <- normalizePath(file_arg[[1L]], mustWork = TRUE)
 repo <- normalizePath(file.path(dirname(script), "..", ".."), mustWork = TRUE)
 setwd(repo)
+source("dev/interval-calibration/claim-contract.R")
 
 read_text <- function(path) {
   paste(readLines(path, warn = FALSE), collapse = "\n")
@@ -37,51 +38,54 @@ forbid_fixed <- function(path, needles) {
   }
 }
 
-scoped_claim_files <- c(
-  "R/profile-derived.R",
-  "man/profile_ci_total_variance.Rd",
-  "vignettes/articles/current-limits.Rmd",
-  "vignettes/articles/profile-likelihood-ci.Rmd",
-  "docs/design/75-inference-route-truth-matrix.md"
-)
-for (path in scoped_claim_files) {
-  forbid_fixed(path, c("n_units >= 150", "n_units >=150"))
-}
-
 require_fixed(
   "R/profile-derived.R",
   c(
-    "identical(as.integer(fit$n_sites), 150L)",
-    "any `n_units` other than 150"
+    'status <- rep("route-only", length(lower))',
+    "Every computed row"
   )
 )
 require_fixed(
   "tests/testthat/test-profile-ci-total-variance-export.R",
   c(
-    "certified_stub(n_sites = 400L)",
-    '"route-only"'
+    "historically measured total-variance cells fail closed to route-only",
+    'status_of(certified_stub()), "route-only"'
   )
 )
 require_fixed(
   "docs/design/75-inference-route-truth-matrix.md",
   c(
     "No status in this matrix is itself empirical-coverage evidence.",
-    "n_units = 150",
-    "no other sample size"
+    "`CI-08` is limited everywhere",
+    "structurally free strict-lower targets"
   )
 )
 require_fixed(
   "vignettes/articles/current-limits.Rmd",
   c(
-    "exactly `n_units = 150`",
-    "larger-sample fits do not inherit this"
+    "withdrawn until the mechanism is repaired and recalibrated",
+    "structurally free strict-lower"
   )
 )
 require_fixed(
   "vignettes/articles/profile-likelihood-ci.Rmd",
   c(
-    "exactly `n_units = 150`",
-    "larger-sample"
+    "Every computed interval is labelled `route-only`",
+    "exact constrained-refit convergence"
+  )
+)
+require_fixed(
+  "R/loading-ci.R",
+  c(
+    "structurally free strict-lower targets",
+    "Pinned diagnostic rows, Fisher-z Wald"
+  )
+)
+require_fixed(
+  "docs/dev-log/known-limitations.md",
+  c(
+    "The former exact-cell certificate is therefore withdrawn.",
+    "structurally free strict-lower targets"
   )
 )
 
@@ -89,14 +93,20 @@ census <- utils::read.csv(
   "docs/dev-log/artifacts/interval-calibration/public-route-census.csv",
   stringsAsFactors = FALSE
 )
+validate_interval_route_census(census)
 ci08 <- census[census$route_id == "CI08-PV-profile", , drop = FALSE]
+ci08_exact <- census[census$route_id %in% c(
+  "CI08-PV-n150-d1", "CI08-PV-n150-d2"
+), , drop = FALSE]
 if (
   nrow(ci08) != 1L ||
     !identical(ci08$terminal_state, "limited") ||
-    !grepl("n_units=150 and d=1/2", ci08$current_evidence, fixed = TRUE)
+    nrow(ci08_exact) != 2L ||
+    any(ci08_exact$terminal_state != "limited") ||
+    !grepl("route-only everywhere", ci08$current_evidence, fixed = TRUE)
 ) {
   stop(
-    "CI-08 route census must remain limited outside its exact two-cell certificate",
+    "CI-08 route census must remain limited in every profile cell",
     call. = FALSE
   )
 }

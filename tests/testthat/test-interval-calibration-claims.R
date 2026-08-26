@@ -5,6 +5,13 @@ claims_verifier <- testthat::test_path(
   "interval-calibration",
   "verify-claims.R"
 )
+claims_contract <- testthat::test_path(
+  "..",
+  "..",
+  "dev",
+  "interval-calibration",
+  "claim-contract.R"
+)
 
 test_that("interval claim verification passes on the synchronized surfaces", {
   expect_true(file.exists(claims_verifier))
@@ -45,6 +52,41 @@ test_that("every public-route census row has a live repository evidence pointer"
   expect_true(
     all(file.exists(evidence)),
     info = paste(evidence[!file.exists(evidence)], collapse = "\n")
+  )
+})
+
+test_that("route-census promotion fails closed on states and exact cells", {
+  env <- new.env(parent = globalenv())
+  source(claims_contract, local = env)
+  census <- read.csv(
+    testthat::test_path(
+      "..",
+      "..",
+      "docs",
+      "dev-log",
+      "artifacts",
+      "interval-calibration",
+      "public-route-census.csv"
+    ),
+    stringsAsFactors = FALSE
+  )
+
+  expect_silent(env$validate_interval_route_census(census))
+
+  bad_state <- census
+  bad_state$terminal_state[[1L]] <- "available"
+  expect_error(
+    env$validate_interval_route_census(bad_state),
+    "terminal state"
+  )
+
+  widened <- census
+  widened$terminal_state[
+    widened$route_id == "CI13-standardized-loading"
+  ] <- "certified"
+  expect_error(
+    env$validate_interval_route_census(widened),
+    "exact certified route set"
   )
 })
 

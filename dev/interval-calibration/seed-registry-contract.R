@@ -178,8 +178,10 @@ ic_validate_seed_registry <- function(
   )
 }
 
-ic_collect_historical_seeds <- function(paths) {
+ic_collect_historical_seeds <- function(paths, exclude_paths = character()) {
   paths <- unique(paths[file.exists(paths)])
+  exclude_paths <- unique(as.character(exclude_paths))
+  paths <- setdiff(paths, exclude_paths)
   pieces <- lapply(paths, function(path) {
     header <- tryCatch(
       names(utils::read.csv(path, nrows = 0L, check.names = FALSE)),

@@ -312,10 +312,10 @@ decision** with three named candidates. **This document does not choose
 between them, and no lane may swap them by fiat.**
 
 - **(a) Profile primary / bootstrap secondary.** Gates on P-V; reports
-  bootstrap alongside. Buys the only route with a pre-registered
-  certificate, at a 0.94 floor, and buys it only on the axis where the
-  certificate is silent (3.3). Requires the structured-tier extension as
-  in-scope work.
+  bootstrap alongside. This option no longer inherits the former
+  pre-registered certificate: the retained campaign did not establish exact
+  constrained-refit fidelity. Requires an exact-profile repair, recalibration,
+  and the structured-tier extension as in-scope work.
 - **(b) Bootstrap primary at `n_boot >= 200`.** Keeps PR #364's
   assignment and the single route that amortises across all estimands
   from one refit set (section 8). Costs the `(1 + n_boot)` factor
@@ -589,8 +589,8 @@ public design note.
     certificate carries six live fences plus a total absence of evidence
     on the RE-structure axis -- **all of them restated in section 3.2 and
     3.3 and all of them binding on any capstone use.** The function marks
-    every returned row `certified-0.94` / `route-only` / `none` in its
-    `interval_status` column (`R/profile-derived.R:953, :957`); a
+    every returned row `route-only` / `none` in its `interval_status` column;
+    a
     claim-bearing campaign should record that column per row rather than
     infer regime membership. Unlike Route B this route does **not**
     amortise: it is a separate `uniroot` bisection per scalar quantity

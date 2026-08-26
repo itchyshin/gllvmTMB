@@ -77,11 +77,17 @@ fits and points the user at \code{\link[=confirmatory_lambda]{confirmatory_lambd
 }
 \section{Interval calibration}{
 
-The point estimates are the supported claim. The interval methods here are
-provided for exploration: their empirical coverage is not certified for this
-estimand (the worked example below is a binomial-probit fit), so treat the
-intervals as exploratory rather than coverage-calibrated. See \code{NEWS.md} for
-the current coverage status.
+Standardized symmetric joint-delta Wald intervals have an exact empirical
+certificate only for the structurally free strict-lower targets in native
+Laplace, pinned, unrotated, lower-triangular ordinary Gaussian unit-tier
+three-trait cells \verb{(n_units=150,d=2)}, \verb{(n_units=400,d=1)}, and
+\verb{(n_units=400,d=2)}, at \code{conf_level = 0.95}. The \verb{(n_units=150,d=1)} cell
+failed its lower-band gate. Pinned diagnostic rows, Fisher-z Wald
+(\code{method = "wald_asym"}), arbitrary confirmatory constraints, raw-loading
+intervals, profiles, bootstraps, other rotations, and every neighbouring
+family, tier, rank, sample size, or confidence level remain exploratory.
+The worked example below is binomial-probit and is outside the certified
+cells. See \code{NEWS.md} for the current coverage status.
 }
 
 \examples{

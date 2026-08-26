@@ -14,8 +14,14 @@ tracked_csv <- system2(
   stdout = TRUE,
   stderr = TRUE
 )
+current_programme_seed_evidence <- c(
+  "docs/dev-log/artifacts/interval-calibration/2026-08-25-pvt02-r50001-cross-root-ledger.csv"
+)
 tracked_csv <- setdiff(tracked_csv, registry_path)
-history <- ic_collect_historical_seeds(tracked_csv)
+history <- ic_collect_historical_seeds(
+  tracked_csv,
+  exclude_paths = current_programme_seed_evidence
+)
 collisions <- ic_historical_seed_collisions(expanded, history)
 known_historical <- data.frame(
   seed = 18065153L,

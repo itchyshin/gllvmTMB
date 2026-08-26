@@ -1,10 +1,12 @@
 ## Fencing on the exported total-variance profile route.
 ##
 ## `profile_ci_total_variance()` accepts five tiers, any family and any level,
-## but the D-43 certificate (docs/dev-log/2026-07-29-certificate-disposition.md)
-## covers exactly one regime: unpenalised native Laplace, Gaussian, tier "unit",
-## d in {1,2}, n_units = 150, level 0.95, converged. The `interval_status` column is what keeps the
-## difference machine-visible, so it is what these tests pin.
+## The 2026-07-29 campaign measured the implemented penalty-profile
+## approximation, but did not retain the constrained-refit convergence and
+## target-fidelity details needed to call it an exact LR profile. Every computed
+## interval therefore remains `route-only` until that mechanism is repaired and
+## recalibrated. The `interval_status` column keeps this fail-closed boundary
+## machine-visible.
 ##
 ## Deliberately fit-free: the labelling is a pure function of a handful of fit
 ## fields, and heavy tests are invisible to CI (798 skipped in a green run), so
@@ -33,12 +35,9 @@ status_of <- function(fit, tier = "unit", level = 0.95) {
   )
 }
 
-test_that("the certified regime is labelled certified-0.94", {
-  expect_identical(status_of(certified_stub()), "certified-0.94")
-  ## d = 1 is the other certified cell.
-  expect_identical(status_of(certified_stub(d_B = 1L)), "certified-0.94")
-  ## A larger sample is a different, unmeasured cell; monotonic extrapolation
-  ## is not calibration evidence.
+test_that("historically measured total-variance cells fail closed to route-only", {
+  expect_identical(status_of(certified_stub()), "route-only")
+  expect_identical(status_of(certified_stub(d_B = 1L)), "route-only")
   expect_identical(status_of(certified_stub(n_sites = 400L)), "route-only")
   expect_identical(status_of(certified_stub(n_sites = 4000L)), "route-only")
 })
@@ -105,10 +104,8 @@ test_that("each uncertified axis on its own flips the row to route-only", {
   )
 })
 
-test_that("the legacy tier alias 'B' is the unit tier and stays certified", {
-  ## "B" is soft-deprecated input, not a different tier -- it must not silently
-  ## drop out of the regime, and it must not warn from inside the predicate.
-  expect_identical(status_of(certified_stub(), tier = "B"), "certified-0.94")
+test_that("the legacy tier alias 'B' cannot revive the withdrawn certificate", {
+  expect_identical(status_of(certified_stub(), tier = "B"), "route-only")
 })
 
 test_that("a row with no interval is 'none', not an uncertified interval", {
@@ -119,7 +116,7 @@ test_that("a row with no interval is 'none', not an uncertified interval", {
     lower = c(0.5, NA_real_),
     upper = c(1.5, NA_real_)
   )
-  expect_identical(st, c("certified-0.94", "none"))
+  expect_identical(st, c("route-only", "none"))
 })
 
 test_that("profile_ci_total_variance is exported from the installed namespace", {

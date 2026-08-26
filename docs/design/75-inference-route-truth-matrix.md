@@ -97,20 +97,22 @@ coverage calibration**. `pdHess = TRUE` is not calibration evidence.
 
 **No status in this matrix is itself empirical-coverage evidence.** Every
 matrix status records route existence plus focused-test evidence. Separately,
-`CI-08` retains its historical narrow certificate for the two exact ordinary
-Gaussian unit-tier cells with `n_units = 150` and `d` in `{1, 2}`; no other sample size,
-rank, family, tier, target, or interval route inherits that
-result. The 2026-08-25 `n_units=400,d=2` PVT-02 campaign passed its numerical
-coverage gates but did not earn a certificate: retained endpoints cannot
-verify constrained-refit convergence or exact target attainment for the
-implemented penalty profile. The same campaign programme found the CI-09
+`CI-08` is limited everywhere. The historical ordinary Gaussian unit-tier
+cells with `n_units = 150` and `d` in `{1, 2}` and the 2026-08-25
+`n_units=400,d=2` PVT-02 cell passed their numerical coverage gates, but all
+used the same implemented penalty-profile approximation. Retained endpoints
+cannot verify constrained-refit convergence or exact target attainment, so
+the former exact-cell certificates are withdrawn fail-closed. The same
+campaign programme found the CI-09
 one-pair-per-site DGP does not identify the scored unit-tier correlation, so
 its extreme coverage is invalid calibration evidence, not a method
-certificate or clean failure. CI-13 earned exact certificates for the native
-pinned cells `(n=150,d=2)`, `(n=400,d=1)`, and `(n=400,d=2)`; `(n=150,d=1)`
-failed and the route remains globally limited. See the terminal target ledger
-rather than inferring a claim from this route matrix. `CI-08` remains
-partial outside its historical exact cells, and `CI-10` remains open/failing.
+certificate or clean failure. CI-13 earned exact certificates for the
+structurally free strict-lower targets in native pinned unrotated symmetric-Wald
+cells `(n=150,d=2)`, `(n=400,d=1)`, and `(n=400,d=2)`; pinned diagnostic rows,
+Fisher-z Wald, arbitrary constraints, `(n=150,d=1)`, and the global route remain
+limited. See the terminal target ledger rather than inferring a claim from this
+route matrix. `CI-08` remains limited in every cell, and `CI-10` remains
+open/failing.
 A cell may not be described as calibrated on the strength of this matrix
 alone. `docs/design/61-capability-status.md` records the same separation
 (interval calibration is distinct from point-estimate recovery).

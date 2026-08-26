@@ -131,16 +131,21 @@ rotation convention; do not treat an arbitrary raw orientation as biology.
 The package provides Wald, bootstrap, and profile machinery for named targets,
 but these routes do not share one package-wide calibration claim.
 
-The narrow exception is `profile_ci_total_variance()`: an unpenalised
-native-Laplace, two-sided ordinary Gaussian unit-tier fit with
-exactly `n_units = 150`, `d` in `{1, 2}`, and `level = 0.95`. AGHQ,
-loading-ridge, smaller-sample, and larger-sample fits do not inherit this
-label. Those two exact cells met the package's `certified-0.94` floor,
-conditional on convergence and only as a marginal average. The
-smallest-total-variance ventile failed its gate. This is not a nominal 95%
-certificate, does not guarantee an individual interval, and does not transfer
-to communality, correlation, repeatability, proportions, structured
-covariance, one-sided routes, or fits outside those conditions.
+`profile_ci_total_variance()` is a penalty-profile approximation, not a
+certified exact likelihood-ratio profile. Historical ordinary Gaussian
+`n_units = 150`, `d` in `{1, 2}` cells and the newer `n_units = 400`, `d = 2`
+cell passed their numerical coverage gates, but the retained endpoints do not
+prove constrained-refit convergence and exact target attainment. Every
+computed row is therefore `route-only`; the former `certified-0.94` labels are
+withdrawn until the mechanism is repaired and recalibrated.
+
+There is one exact loading-interval exception. Standardized symmetric
+joint-delta Wald intervals are certified for the structurally free strict-lower
+targets in native pinned unrotated ordinary Gaussian three-trait cells
+`(n_units=150,d=2)`, `(n_units=400,d=1)`, and `(n_units=400,d=2)`, at 95%.
+The `(n_units=150,d=1)` cell failed. Pinned diagnostic rows, Fisher-z Wald,
+arbitrary constraints, rotated fits, and every neighbouring family, tier,
+rank, sample size, or confidence level remain uncalibrated.
 
 For spatial and `phylo_diag` models, current simulation and bootstrap fallbacks
 may condition on fitted random effects. The returned intervals can therefore

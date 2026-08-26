@@ -94,3 +94,20 @@ test_that("historical seed collection reads only seed-valued columns", {
   expect_false(900L %in% out$seed)
   expect_true(all(out$source == good))
 })
+
+test_that("current programme evidence is not reclassified as seed history", {
+  td <- tempfile("seed-current-evidence-")
+  dir.create(td)
+  historical <- file.path(td, "historical.csv")
+  current <- file.path(td, "current-programme.csv")
+  write.csv(data.frame(seed = 18065153L), historical, row.names = FALSE)
+  write.csv(data.frame(seed = 800050001L), current, row.names = FALSE)
+
+  out <- ic_collect_historical_seeds(
+    c(historical, current),
+    exclude_paths = current
+  )
+
+  expect_equal(out$seed, 18065153L)
+  expect_equal(out$source, historical)
+})

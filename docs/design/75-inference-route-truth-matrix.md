@@ -1,6 +1,6 @@
 # Design 75 -- Inference Route Truth Matrix (estimand x tier x method)
 
-Date: 2026-07-05; release-boundary revision 2026-07-20
+Date: 2026-07-05; release-boundary revisions 2026-07-20 and 2026-08-25
 
 Owner: Fisher, with Rose, Noether, Boole, Curie, and Ada review roles.
 
@@ -95,12 +95,30 @@ coverage calibration**. `pdHess = TRUE` is not calibration evidence.
   `nsim`, `seed`). Parametric bootstrap is the intended calibration engine, but
   no coverage study promotes any cell here; treat as route existence only.
 
-**No cell in this matrix is empirical-coverage-calibrated.** Every status is
-route existence plus focused-test evidence. The empirical coverage gates are
-`CI-08` and `CI-10` in the validation register, which remain open/failing; a
-cell may not be described as calibrated on the strength of this matrix.
-`docs/design/61-capability-status.md` records the same separation (interval
-calibration is distinct from point-estimate recovery).
+**No status in this matrix is itself empirical-coverage evidence.** Every
+matrix status records route existence plus focused-test evidence. Separately,
+no `CI-08` cell is certified. The historical ordinary Gaussian unit-tier
+cells with `n_units = 150` and `d` in `{1, 2}` and the 2026-08-25
+`n_units=400,d=2` PVT-02 cell passed their numerical coverage gates, but all
+used the same implemented penalty-profile approximation. Retained endpoints
+cannot verify constrained-refit convergence or exact target attainment, so
+the former exact-cell certificates are withdrawn fail-closed. The same
+campaign programme found the CI-09
+one-pair-per-site DGP does not identify the scored unit-tier correlation, so
+its extreme coverage is invalid calibration evidence, not a method
+certificate or clean failure. CI-13 earned exact certificates for the
+structurally free strict-lower targets in native pinned unrotated symmetric-Wald
+cells `(n=150,d=2)`, `(n=400,d=1)`, and `(n=400,d=2)`, for one frozen DGP,
+conditional on eligible fits. Other truth-parameter regimes, pinned diagnostic
+rows, Fisher-z Wald, arbitrary constraints, `(n=150,d=1)`, and the global route
+remain limited. See the terminal target ledger rather than inferring a claim
+from this route matrix. Historical and callable `CI-08` routes remain limited, while
+the exact PVT-02 campaign is blocked because its constrained-refit fidelity
+cannot be audited from retained endpoints. `CI-10` remains
+open/failing.
+A cell may not be described as calibrated on the strength of this matrix
+alone. `docs/design/61-capability-status.md` records the same separation
+(interval calibration is distinct from point-estimate recovery).
 
 ## Matrix -- peer tiers
 

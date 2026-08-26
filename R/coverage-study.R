@@ -3,9 +3,9 @@
 ## This retained developer helper is not exported, does not retain all
 ## attempted refits in its denominator, and must not be used as evidence that
 ## broad package-wide interval coverage or publication readiness. The separate
-## `profile_ci_total_variance()` route has one narrowly scoped two-sided
-## ordinary-Gaussian regime labelled `certified-0.94`; this withdrawn helper is
-## not its evidence source and cannot extend that certificate.
+## `profile_ci_total_variance()` penalty route is `route-only` in every cell;
+## this withdrawn helper is not its evidence source and cannot revive the
+## former exact-cell certificate.
 
 #' @keywords internal
 #' @noRd

@@ -11,11 +11,12 @@
 > not fully human-verified, and needs extensive further validation. CRAN
 > availability is not a statement of scientific maturity. Point estimates are the
 > primary inferential output, but their evidence is route- and regime-specific.
-> Broad package-wide interval coverage is not certified;
-> one narrowly scoped two-sided Gaussian total-variance profile regime has a
-> documented 0.94 coverage floor. This is not nominal 95% certification or a
-> guarantee for an individual fit. Covariance routes otherwise have cell-specific
-> evidence only.
+> Broad package-wide interval coverage is not certified. Three exact native,
+> pinned, unrotated ordinary-Gaussian standardized-loading Wald cells have
+> target-specific certificates only in one frozen DGP, conditional on eligible fits;
+> other parameter regimes and neighbouring cells do not inherit them.
+> Total-variance penalty profiles remain `route-only`, including historically
+> measured cells, because exact constrained-refit fidelity was not retained.
 
 `gllvmTMB` fits multivariate models for data where each site,
 individual, species, or study has several responses: body traits,

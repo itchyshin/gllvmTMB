@@ -58,15 +58,16 @@ expect_native_nongaussian_lv_rejects <- function(
       family = family,
       control = gllvmTMBcontrol(se = FALSE)
     )),
-    regexp = "only Gaussian and pure binomial|LV-05|non-Gaussian",
+    regexp = "loadings-only|unique = FALSE|diagonal Psi",
     info = kind
   )
 }
 
-test_that("native TMB latent lv rejects non-binomial non-Gaussian families", {
+test_that("family-wide native lv keeps default Psi gated for non-Gaussian families", {
   ## The Julia bridge has narrow point routes for some non-Gaussian X_lv rows,
-  ## but native TMB C1 support remains Gaussian plus pure binomial standard
-  ## links. These top-level fit calls protect that claim boundary.
+  ## while the native family-wide programme is rank-one and loadings-only.
+  ## These top-level calls protect the default-Psi exclusion for every newly
+  ## admitted pure family route.
   cases <- list(
     poisson = stats::poisson(),
     nbinom1 = nbinom1(),

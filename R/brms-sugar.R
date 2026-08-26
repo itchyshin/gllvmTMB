@@ -565,17 +565,21 @@ meta <- function(value, sampling_var) {
 #'   traits. Only applies when `unique = TRUE`.
 #' @param lv One-sided formula for predictor-informed latent-score means.
 #'   Runtime support is limited to ordinary unit-tier
-#'   `latent(..., lv = ~ x)`, and only Gaussian and pure binomial
-#'   (logit/probit/cloglog) fits are currently admitted (partial coverage,
-#'   supported for the ordinary-latent case). Source-specific `*_latent(..., lv = ~ x)` forms are
+#'   `latent(..., lv = ~ x)`. It includes the original Gaussian and pure
+#'   binomial (logit/probit/cloglog) cells plus an exact family-wide programme
+#'   allow-list restricted to rank one, `unique = FALSE`, and complete
+#'   responses. The named mixed-response programme cells have point-recovery
+#'   evidence. Seventeen of 19 pure programme cells pass point-recovery gates;
+#'   pure Beta and pure ordinal-probit remain on HOLD. No pure programme
+#'   interval claim is earned. Source-specific `*_latent(..., lv = ~ x)` forms are
 #'   parsed and then fail loud (not yet fittable). Where it is admitted, the
 #'   fit is experimental and exploratory: extract the coefficients with
 #'   [extract_lv_effects()], whose default `type = "axis_effect"` output is
 #'   rotation-dependent (an intrinsic latent-axis indeterminacy, not a
 #'   defect -- see [extract_lv_effects()] for the rotation-invariant
-#'   `type = "trait_effect"` alternative), and whose standard errors and
-#'   intervals are Wald approximations with no established repeated-sampling
-#'   coverage; do not treat them as calibrated.
+#'   `type = "trait_effect"` alternative). Repeated-sampling interval evidence
+#'   is cell-specific; do not infer an interval claim for the mixed-response
+#'   programme from its point-recovery evidence.
 #' @return A formula marker; never evaluated.
 #' @seealso [indep()], [phylo_latent()], [diag_re], [extract_Sigma()],
 #'   [extract_lv_effects()] for predictor-informed latent-score coefficients.
@@ -2625,7 +2629,7 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
     cli::cli_abort(c(
       "{.arg lv} is reserved for ordinary {.fn latent} only.",
       "x" = "{.fn {fn}} does not support predictor-informed latent-score means.",
-      "i" = "Predictor-informed latent-score means are limited to ordinary unit-tier {.code latent(..., lv = ~ x)} with Gaussian or pure binomial logit/probit/cloglog responses.",
+      "i" = "Predictor-informed latent-score means are limited to ordinary unit-tier {.code latent(..., lv = ~ x)}. Beyond the original Gaussian and pure-binomial cells, only the exact rank-one, loadings-only family-programme allow-list is admitted.",
       ">" = "Remove {.arg lv} from {.fn {fn}}; predictor-informed latent scores are not implemented for this covariance source."
     ))
   }

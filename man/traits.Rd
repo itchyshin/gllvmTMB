@@ -83,10 +83,11 @@ per-cell identity and original-row accounting in \code{fit$missing_data}. Users
 who want strict listwise drop should pre-filter the wide data before
 calling.
 
-Mixed-family fits (\code{family = list(...)} keyed by trait) use the same
-family handling after internal stacking; \code{traits()} does not
-intercept the family argument. Per-row weight vectors of length
-\code{nrow(data)} are also replicated across traits automatically. For
+For a mixed-family wide fit, pass a named \code{family = list(...)} whose names
+exactly match the response columns selected by \code{traits()}. The internal
+stacking step creates the corresponding per-row family selector; long data
+may instead continue to provide an explicit \code{family_var} column. Per-row
+weight vectors of length \code{nrow(data)} are replicated across traits. For
 per-cell weight matrices, pivot to long format and pass a \code{weights}
 column aligned with \verb{(unit, trait)} rows. The legacy matrix wrapper
 \code{\link[=gllvmTMB_wide]{gllvmTMB_wide()}} still accepts matrix weights for migration code.

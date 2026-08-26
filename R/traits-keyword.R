@@ -80,10 +80,11 @@
 #' who want strict listwise drop should pre-filter the wide data before
 #' calling.
 #'
-#' Mixed-family fits (`family = list(...)` keyed by trait) use the same
-#' family handling after internal stacking; `traits()` does not
-#' intercept the family argument. Per-row weight vectors of length
-#' `nrow(data)` are also replicated across traits automatically. For
+#' For a mixed-family wide fit, pass a named `family = list(...)` whose names
+#' exactly match the response columns selected by `traits()`. The internal
+#' stacking step creates the corresponding per-row family selector; long data
+#' may instead continue to provide an explicit `family_var` column. Per-row
+#' weight vectors of length `nrow(data)` are replicated across traits. For
 #' per-cell weight matrices, pivot to long format and pass a `weights`
 #' column aligned with `(unit, trait)` rows. The legacy matrix wrapper
 #' [gllvmTMB_wide()] still accepts matrix weights for migration code.

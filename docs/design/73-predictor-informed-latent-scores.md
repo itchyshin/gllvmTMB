@@ -5,6 +5,16 @@ rank-1/rank-2 recovery and Wald evidence, plus native rank-1 multi-trial
 binomial logit/probit/cloglog recovery and Wald evidence. Gaussian response
 masks remain a separate compatibility cell, and factor-valued `lv`
 predictors remain point/recovery-supported without interval calibration. The
+family-wide extension now has retained point-recovery evidence for its exact
+19 named mixed/sentinel native ML, rank-1, loadings-only, complete-response
+cells. All 3,800 r200 attempts are retained; the run used `se = FALSE`, so it
+adds no interval conclusion. A separate pure r200 campaign retained all 3,800
+attempts: 17 of 19 pure family/link cells passed point recovery, while pure
+Beta is held for sub-threshold convergence and pure ordinal-probit is held for
+shared-covariance bias. An eight-archetype mixed r500 campaign retained all
+4,000 attempts and 3,999 interval-eligible fits; every named archetype passed
+its target-wise `B_lv` Wald gate, with coverage 0.920--0.966. This is not a
+simultaneous all-target or arbitrary-mixture interval claim. The
 R-to-Julia bridge has complete-response, loadings-only point-estimate support
 with optional uncalibrated Wald plumbing for selected common families. The
 overall Design 73 programme remains partial: broader families, ranks, masks,
@@ -22,7 +32,13 @@ latent scores. It is not a random-effects formula, not a loading model,
 and not a replacement for trait-specific fixed effects. The current
 implementation admits only the C1 ordinary unit-tier surface: native
 TMB Gaussian fits, including response masks when `lv` predictors are
-observed and complete, native TMB pure-binomial standard-link fits, and a
+observed and complete, native TMB pure-binomial standard-link fits, and the
+exact native family-wide programme allow-list at rank one with
+`unique = FALSE` and complete responses. All 19 named mixed/sentinel cells have
+retained point-recovery evidence. Seventeen pure cells also pass point recovery;
+pure Beta and pure ordinal-probit retain their cell-specific HOLD verdicts.
+Eight named Gaussian-anchor mixed cells have target-wise Wald calibration
+evidence. The implementation also has a
 narrow R-to-Julia bridge point route, with optional uncalibrated Wald plumbing,
 for complete-response Gaussian, Poisson, NB2, Gamma, Beta, and binomial
 standard-link fits. All other rows remain planned or blocked as listed below.
@@ -45,16 +61,23 @@ single-family `binomial()` with one of the package's three supported
 binary links (`"logit"`, `"probit"`, or `"cloglog"`) and the same
 ordinary unit-tier score-mean model. Bridge-only Poisson, NB2, Gamma, and
 Beta point routes are also admitted for complete-response `engine = "julia"`
-fits as loadings-only reduced-rank models. Explicit `unique = FALSE` is the
-canonical spelling; default ordinary `latent()` is warning-demoted to that
-same loadings-only fitted model. The route admits no fixed-effect `X` and no
-response mask. A
+fits as loadings-only reduced-rank models. For that bridge route, explicit
+`unique = FALSE` is the canonical spelling; a default ordinary `latent()` is
+warning-demoted to the same loadings-only fitted model. The bridge admits no
+fixed-effect `X` and no response mask. Native family-programme cells instead
+reject the automatic default Psi companion and require explicit
+`unique = FALSE`. A
 retained Julia Wald payload may be exposed as uncalibrated reader plumbing; no
 profile, bootstrap, or calibrated bridge-interval claim is admitted. Native
-TMB count-family support, nonstandard binomial links, ordinal, NB1,
-mixed-family, response-mask bridge, and delta/hurdle bridge rows remain blocked
-until their own validation rows move. Unsupported native family/link calls fail
-loudly; that guard is not support for those families.
+programme support is not arbitrary: unlisted family combinations,
+nonstandard binomial links, response masks, ranks above one, default `+ Psi`,
+and every source/tier expansion remain blocked. The native mixed/sentinel r200
+run used `se = FALSE`, so it supplies no Wald, profile, or bootstrap claim.
+The separate r500 interval conclusion applies only to its eight preregistered
+Gaussian-anchor archetypes and individual trait-scale `B_lv` targets.
+Response-mask bridge, NB1 bridge, ordinal bridge, multinomial bridge, and
+delta/hurdle bridge rows remain blocked. Unsupported calls fail loudly; that
+guard is not support for those rows.
 
 ## Model Contract
 
@@ -130,8 +153,13 @@ and latent-variable modelling, not evidence that this specific
 
 ## Non-Negotiable Decisions
 
-- C1 native TMB support covers **ordinary unit-tier Gaussian and pure
-  binomial logit/probit/cloglog `latent()` only**. The R-to-Julia bridge
+- Native TMB support covers the original **ordinary unit-tier Gaussian and
+  pure binomial logit/probit/cloglog C1 cells**, plus the exact rank-1,
+  loadings-only, complete-response family-wide programme allow-list. Retained
+  point-recovery evidence covers all 19 named mixed/sentinel cells and 17 of
+  19 pure cells; pure Beta and pure ordinal-probit retain their frozen HOLD
+  verdicts. Target-wise Wald evidence covers eight preregistered mixed
+  Gaussian-anchor archetypes. The R-to-Julia bridge
   additionally admits complete-response Poisson, NB2, Gamma, and Beta point
   routes under the bridge restrictions in Section 4a.
 - `lv` accepts a one-sided fixed-effect formula only.
@@ -151,12 +179,12 @@ and latent-variable modelling, not evidence that this specific
 - `REML = TRUE` with `lv` is rejected by a top-level guard test. REML /
   AI-REML language remains Gaussian-only and needs a separate derivation even
   for this Gaussian C1 surface.
-- Other non-Gaussian families, native count-family `lv`, nonstandard binomial
-  links, ordinal `lv`, and mixed-family `lv` fits are rejected until their own
-  validation rows move. The native fail-loud guards currently cover binomial
-  cauchit, ordinal-probit, mixed Gaussian/binomial/Poisson family lists,
-  Poisson, NB1, NB2, lognormal, Gamma, Beta, Tweedie, Student-t, truncated
-  Poisson, truncated NB2, beta-binomial, delta-lognormal, and delta-Gamma.
+- Nonstandard binomial links, arbitrary mixtures, ranks above one for the
+  programme cells, default `+ Psi`, response masks, and every source/tier
+  expansion remain rejected. The allow-list admits pure family/link routes and
+  named mixed/sentinel cells only; admission is not evidence. Pure Beta and
+  pure ordinal-probit remain held, and mixed-family Wald evidence remains
+  limited to the eight individually passing preregistered archetypes.
 - C1 supports at most one ordinary unit-tier `latent()` term carrying
   `lv`.
 - `extract_Sigma()` keeps its current meaning:
@@ -174,7 +202,7 @@ but C1 exposes only ordinary unit-tier support.
 
 | Tier / source | Eventual target | C1 behaviour |
 |---|---|---|
-| `latent(... | unit, lv = ~ x_unit)` | Unit-level latent-score mean | Named C1 cells closed: native ordinary Gaussian rank 1/rank 2 and native rank-1 multi-trial binomial logit/probit/cloglog. The wider row remains partial because factor intervals, masks beyond the named Gaussian compatibility cell, broader native families/ranks, and bridge calibration remain open. The narrow complete-response `engine = "julia"` route is loadings-only point support with optional uncalibrated Wald plumbing. |
+| `latent(... | unit, lv = ~ x_unit)` | Unit-level latent-score mean | Named C1 cells closed: native ordinary Gaussian rank 1/rank 2 and native rank-1 multi-trial binomial logit/probit/cloglog. The frozen 19-cell native mixed/sentinel rank-1, `unique = FALSE`, complete-response allow-list has retained point-recovery evidence from all 3,800 r200 attempts; `se = FALSE` means no interval conclusion. A separate pure r200 passed 17/19 cells, with Beta and ordinal-probit HOLDs. Eight named Gaussian-anchor archetypes passed target-wise `B_lv` Wald calibration across 4,000 retained attempts; simultaneous coverage and arbitrary mixtures remain outside the claim. Factor intervals, broader masks/ranks, and bridge calibration remain open. The narrow complete-response `engine = "julia"` route is loadings-only point support with optional uncalibrated Wald plumbing. |
 | `latent(... | unit_obs, lv = ~ x_obs)` | Within-unit/session latent-score mean | Reject as planned |
 | `latent(... | cluster, lv = ~ x_cluster)` | Cluster latent-score mean if a reduced-rank cluster slot is added | Reject as planned |
 | `latent(... | cluster2, lv = ~ x_cluster2)` | Not valid today; `cluster2` is diagonal-only | Reject |
@@ -209,7 +237,7 @@ navigation.
 - Validate one-sided formulas, predictor availability, intercept
   dropping (`lv = ~ x` equals `lv = ~ 0 + x`), factor expansion,
   within-unit constancy, rank, fixed-RHS overlap, unsupported terms,
-  unsupported tiers/sources, unsupported native-TMB non-Gaussian families,
+  unsupported tiers/sources, unlisted native programme family/link cells,
   unsupported bridge families, unsupported binary links, and `REML = TRUE`.
 - Reject augmented random-regression combinations such as
   `latent(1 + x | unit, d = K, lv = ~ z)` until a separate design
@@ -217,17 +245,24 @@ navigation.
 - At that stage, runtime still aborted before TMB construction. Later
   C1 slices added `alpha_lv_B`, ADREPORT output, point-estimate
   extractors, and `ADREPORT(B_lv_unit)` standard-error extraction for
-  positive-definite `sdreport()` fits; focused Gaussian recovery is now
-  partial, and interval evidence remains pending.
+  positive-definite `sdreport()` fits. The later family-wide slice added the
+  frozen rank-1 loadings-only allow-list and retained mixed/sentinel point
+  recovery. The final retained campaigns add 17/19 pure point PASS verdicts,
+  two pure HOLD verdicts, and target-wise Wald calibration for eight named
+  mixed Gaussian-anchor archetypes.
 
 ### 3. TMB PR
 
 Status: landed for the C1 ordinary Gaussian unit-tier smoke/algebra and
 rank-1/rank-2 recovery cells, plus pure-binomial logit/probit/cloglog
 trait-scale `B_lv` recovery/algebra. Production-size Wald evidence closes
-the named Gaussian cells and the three rank-1 multi-trial binomial cells.
-Broader family, rank, mask, factor-interval, tier, and source recovery remains
-outside this bounded closure.
+the named Gaussian cells and the three rank-1 multi-trial binomial cells. The
+family-wide native allow-list is also implemented; its 19 named
+mixed/sentinel cells have retained point-recovery evidence for `B_lv`, shared
+`Lambda Lambda^T`, intercepts, and score identity. Their r200 run used
+`se = FALSE`, so no interval claim follows. Pure non-Gaussian programme
+recovery, broader rank/mask/factor-interval/tier/source surfaces remain
+outside the earned boundary.
 
 - Add data flags and matrices: `use_lv_B`, `n_lv_B`, `X_lv_B`.
 - Add parameter matrix `alpha_lv_B[p_lv, d_B]`, unconstrained and
@@ -245,12 +280,19 @@ eta(o) += sum_k Lambda_B(t, k) * score_k;
 
 ### 4. Extractor PR
 
-Status: landed as C1 extractors for the admitted Gaussian and
-pure-binomial standard-link R-side fits. Trait-scale `B_lv` standard
+Status: landed for the C1 Gaussian and pure-binomial standard-link R-side
+fits and for point extraction from the frozen family-wide programme cells.
+Trait-scale `B_lv` standard
 errors are returned only when `se = TRUE` produces a positive-definite
 `sdreport()` for `ADREPORT(B_lv_unit)`. Interval claims are limited to
-the named native Gaussian and rank-1 multi-trial standard-link binomial cells;
-other cells remain uncalibrated.
+the named native Gaussian cells, rank-1 multi-trial standard-link binomial
+cells, and eight preregistered rank-1 loadings-only mixed Gaussian-anchor
+archetypes: binomial-logit, Poisson, NB2, Gamma, Beta, ordinal-probit,
+delta-Gamma, and multinomial. The mixed/sentinel r200 programme used
+`se = FALSE`, so its evidence says only point recovery; its interval boundary
+comes from the separate r500 campaign. That campaign supports individual
+target-wise `B_lv` Wald coverage only, not simultaneous all-target coverage or
+transfer to arbitrary mixtures.
 
 - Add `extract_lv_effects(fit, level = "unit",
   type = "trait_effect")`.
@@ -378,9 +420,11 @@ header-only because no replicate failed convergence, Hessian, `sdreport()`, or
 CI availability checks. The `wald_t_unit` comparator improved four of nine
 paired target rows by 0.002, tied the other five, and was never worse. This
 promotes the narrow native binomial interval subclaim for the three rank-1
-multi-trial standard-link cells only; `LV-05` remains partial for native
-count-family, nonstandard binomial-link, ordinal, mixed-family, response-mask,
-source/tier-expanded, and Julia-bridge interval support.
+multi-trial standard-link cells. Separately, the retained mixed r500 promotes
+target-wise `B_lv` Wald coverage for the eight named Gaussian-anchor archetypes
+listed above. `LV-05` remains partial for pure-family intervals, nonstandard
+binomial links, arbitrary mixtures, simultaneous all-target coverage, response
+masks, source/tier expansion, and Julia-bridge interval support.
 
 ### 5. Public docs/article PR
 
@@ -390,9 +434,14 @@ Status: delivered by
 The Tier-1 article **Explaining Latent Ecological Axes With Predictors** shows
 long and `traits(...)` wide calls side by side, uses a numeric LV predictor
 without a fixed-effect `X`, interprets rotation-invariant $B_{lv}$, and
-states the score decomposition and interval boundary. Its scope box keeps
-native broader families, mixed-family rows, factor intervals, Julia
-calibration, `unit_obs`, clusters, structured sources, REML, and
+states the score decomposition and interval boundary. It additionally works
+through the one named Gaussian + Poisson rank-1, loadings-only route in both
+long and `traits(...)` wide form, with point extraction in the teaching code
+and a plain-language note that this exact archetype has target-wise Wald
+calibration evidence. The scope box does not generalise that example beyond the fixed
+mixed-response allow-list. It also keeps the two pure HOLD cells (Beta and
+ordinal-probit), pure-family intervals, factor intervals, Julia calibration, `unit_obs`, clusters,
+structured sources, REML, and
 profile/bootstrap outside the article claim.
 
 ## Test Contract
@@ -404,14 +453,18 @@ CRAN-safe tests for the parser/API PR:
 - Random-effect syntax, offsets, `mi()`, smooths, missing predictors,
   response/trait columns, rank-deficient designs, nonconstant
   within-unit predictors, exact fixed-RHS overlap, `REML = TRUE`,
-  unsupported native-TMB non-Gaussian families, unsupported bridge
-  families, unsupported tiers/sources, and augmented random-regression
-  combinations fail loudly.
+  unlisted native programme family/link combinations, unsupported bridge
+  families, programme ranks above one, default `+ Psi`, masks, unsupported
+  tiers/sources, and augmented random-regression combinations fail loudly.
 - Small Gaussian rank-1 fit reaches finite reports and correct
   extractor dimensions.
 - Pure binomial logit/probit/cloglog rank-1 fits reach finite reports,
   recover trait-scale `B_lv` on small multi-trial fixtures, and preserve
   `total = innovation + mean`.
+- The frozen programme allow-list has exact positive and negative parser
+  tests, and its named mixed/sentinel r200 harness retains every attempt and
+  separately adjudicates `B_lv`, shared `Sigma`, intercept, and score-identity
+  targets. Pure-route and interval evidence are separate campaign gates.
 
 Heavy tests under `GLLVMTMB_HEAVY_TESTS=1`:
 
@@ -457,7 +510,7 @@ must move row by row. Named Julia bridge rows now exist only for the
 complete-response Gaussian, Poisson, NB2, Gamma, Beta, and binomial
 logit/probit/cloglog point routes, with optional uncalibrated Wald plumbing,
 described above. Public docs must not imply
-native count-family support, NB1, ordinal, mixed-family `X_lv`, Julia bridge
+arbitrary native family support, Julia NB1/ordinal/mixed-family `X_lv`, Julia bridge
 response masks with `X_lv`, fixed-effect `X` plus `X_lv`, calibrated
 interval, profile/bootstrap support, or broad native-vs-Julia parity until
 those rows are implemented and validated. Current parser guards reject

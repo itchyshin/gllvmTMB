@@ -38,7 +38,7 @@ advertised claims.
    per row (M2 work for the mixed-family case).
 5. **Snapshot tests for clear user-facing errors** — Banned
    syntax (e.g. `(1 | g1/g2)` slash form, $\ge 2$ random
-   slopes in M1, mixed-family with delta) errors with a
+   slopes in M1, unlisted delta mixtures or default-Psi delta LV calls) errors with a
    specific message; the message is snapshot-pinned so prose
    changes are caught.
 6. **Boundary-case tests** — Variance components near zero;
@@ -143,12 +143,15 @@ grid and either validation or a deliberate design rejection for non-Gaussian
 augmented diagonal Psi.
 
 Design 73 predictor-informed latent scores (`latent(..., lv = ~ x)`)
-are C1 partial for ordinary unit-tier Gaussian and pure binomial
-logit/probit/cloglog fits. The first implementation adds parser
-acceptance/rejection tests, small TMB smokes, and narrow standard-link
-binary trait-effect recovery gate. Focused native TMB Gaussian recovery
-is now covered by `test-lv-gaussian-recovery.R`, but interval coverage
-and broad family recovery remain separate gates. The minimum C1 contract is: long
+remain partial. The original C1 evidence covers ordinary unit-tier Gaussian
+and pure binomial logit/probit/cloglog fits. The family-wide extension adds a
+frozen allow-list of 19 named mixed/sentinel native ML, rank-1,
+`unique = FALSE`, complete-response cells. Its retained r200 campaign keeps
+all 3,800 attempts and evaluates rotation-invariant `B_lv`, shared
+`Sigma = Lambda Lambda^T`, intercepts, and the score-decomposition identity;
+it deliberately used `se = FALSE`, so it establishes point recovery and no
+interval conclusion. Pure non-Gaussian programme routes and the selected Wald
+archetypes remain separate evidence gates. The minimum contract is: long
 and `traits(...)` wide ordinary unit-tier Gaussian acceptance; pure
 binomial logit/probit/cloglog long-form acceptance; `lv = ~ x` equivalence to
 `lv = ~ 0 + x`; rejection
@@ -158,8 +161,10 @@ within-unit predictors, exact fixed/LV overlap, `REML = TRUE`,
 unsupported non-Gaussian families, unsupported tiers/sources, and
 augmented random-regression combinations; a small Gaussian rank-1 smoke
 with finite reports and extractor dimensions; pure-binomial
-multi-trial `B_lv` recovery/algebra gates; and heavy recovery for
-`B_lv`, `Sigma`, and `Psi`. Raw `alpha` and raw `Lambda` are not
+multi-trial `B_lv` recovery/algebra gates; exact positive and negative tests
+for the frozen pure/mixed allow-list; retained all-attempt mixed/sentinel
+recovery for `B_lv`, shared `Sigma`, intercepts, and score identity; and heavy
+Gaussian recovery for `B_lv`, `Sigma`, and `Psi`. Raw `alpha` and raw `Lambda` are not
 primary pass/fail targets for `K > 1` because they are
 rotation-dependent.
 

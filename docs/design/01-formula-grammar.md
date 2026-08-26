@@ -85,7 +85,7 @@ support from end-to-end verification:
 | `gllvmTMB_wide(Y, ...)` | **partial / soft-deprecated in 0.2.0** | Legacy matrix-in wrapper. It remains exported for migration and matrix-first workflows, but new examples use `gllvmTMB(traits(...) ~ ..., data = df_wide)` instead. |
 | `0 + trait` and `(0 + trait):x` | **covered** | Long-form trait-stacked fixed-effect grammar. Test evidence: `test-stage1-stacked-fixed-effects.R`, `test-canonical-keywords.R` (via validation-debt register FG-02; Phase 0B promotion 2026-05-16). |
 | `latent(0 + trait \| g, d = K)` | **covered / ordinary Psi folded** | Reduced-rank loadings plus the default diagonal $\boldsymbol\Psi$ companion for $T$ traits across grouping factor `g`, rank $K \le T$. Use `unique = FALSE` for the old no-residual subset; use `common = TRUE` for one shared ordinary $\psi$ across traits. Test evidence: `test-stage2-rr-diag.R`, `test-keyword-grid.R`, `test-canonical-keywords.R`, `test-unique-family-deprecation.R` (validation-debt register FG-04 / FG-06; Phase 0B promotion 2026-05-16; ordinary latent-Psi fold and common-Psi re-home slices 2026-06-18). |
-| `latent(..., lv = ~ x)` | **partial / C1** | Predictor-informed latent-score means. Design 73 now admits ordinary unit-tier `latent()` fits for Gaussian and pure binomial logit/probit/cloglog responses with unit-level `X_lv_B`, TMB `alpha_lv_B`, the zero-mean innovation retained, and point-estimate `B_lv_unit = Lambda alpha^T` extractor support. This is smoke/algebra evidence plus focused native Gaussian recovery and small standard-link binary `B_lv` recovery gates, not interval calibration or broad recovery. Random terms, offsets, `mi()`, smooths, response/trait columns, exact fixed-RHS overlap, nonconstant within-unit predictors, rank-deficient designs, `REML = TRUE`, unsupported non-Gaussian families, unsupported tiers, augmented random-regression combinations, and source-specific / kernel forms still reject until their validation rows move (validation-debt register FG-18 / RE-13 / EXT-31 / LV-01..LV-07). |
+| `latent(..., lv = ~ x)` | **partial / C1** | Predictor-informed latent-score means. Design 73 admits ordinary unit-tier `latent()` fits for Gaussian and pure binomial logit/probit/cloglog responses, plus an exact family-wide programme allow-list restricted to rank one, `unique = FALSE`, complete responses, canonical links, and named pure/mixed cells. All routes use unit-level `X_lv_B`, TMB `alpha_lv_B`, the zero-mean innovation, and point-estimate `B_lv_unit = Lambda alpha^T` extraction. Retained point evidence covers all 19 named mixed/sentinel cells and 17/19 pure cells; pure Beta and ordinal-probit retain HOLDs. Eight preregistered Gaussian-anchor archetypes have target-wise `B_lv` Wald calibration evidence; simultaneous coverage and arbitrary mixtures remain outside the claim. Random terms, offsets, `mi()`, smooths, response/trait columns, exact fixed-RHS overlap, nonconstant within-unit predictors, rank-deficient designs, `REML = TRUE`, unlisted family/link combinations, programme ranks above one, default `+ Psi`, response masks, unsupported tiers, augmented random-regression combinations, and source-specific / kernel forms still reject until their validation rows move (validation-debt register FG-18 / RE-13 / EXT-31 / LV-01..LV-07). |
 | `latent(1 + x \| unit, d = K)` / long-form equivalents | **partial / Gaussian covered** | Ordinary individual-level Gaussian random-regression decomposition over the augmented `(intercept, slope) x trait` coefficient vector. The Gaussian engine reports `Lambda_aug Lambda_aug^T`, the default augmented diagonal `Psi_B,aug`, and their total through `extract_Sigma(level = "unit_slope", part = "shared" / "unique" / "total")`. Explicit `+ unique(1 + x \| unit)` remains accepted as compatibility syntax, and standalone augmented `unique()` remains the diagonal-only compatibility mode. Test evidence: `test-ordinary-latent-random-regression.R` (parser, long fit, `traits(...)` wide fit, Gaussian default composition and recovery, explicit compatibility composition, explicit compatibility diagonal fit, Poisson latent-only smoke, rank / unit_obs / mismatched-slope / Gaussian-only guards). Non-Gaussian augmented `unique()` remains guarded, and non-Gaussian augmented `latent()` stays low-rank-only. |
 | `unique(0 + trait \| g)` | **covered / soft-deprecated compatibility** | Trait-diagonal $\boldsymbol\Psi$ on grouping factor `g`. New standalone diagonal code should use `indep(0 + trait \| g)`, with `common = TRUE` when one shared marginal variance is intended. Test evidence: `test-stage2-rr-diag.R`, `test-cross-sectional-unique.R`, `test-unique-family-deprecation.R` (validation-debt register FG-05; Phase 0B promotion 2026-05-16; lifecycle warning slice 2026-06-18). |
 | `latent + unique` paired | **covered / soft-deprecated compatibility** | The explicit-Psi spelling remains accepted, but ordinary `latent()` now auto-emits $\boldsymbol\Psi$ by default. This compatibility pair should be migrated to `latent()` alone; paired legacy `unique(..., common = TRUE)` should migrate to ordinary intercept-only `latent(..., common = TRUE)`. Test evidence: `test-stage2-rr-diag.R`, `test-mixed-response-sigma.R`, `test-canonical-keywords.R`, `test-unique-family-deprecation.R` (validation-debt register FG-06; Phase 0B promotion 2026-05-16; lifecycle warning, ordinary fold, and common-Psi re-home slices 2026-06-18). |
@@ -411,14 +411,19 @@ $B_\text{lv} = \Lambda\alpha^\top$. The outer `latent()` term still
 supplies the latent-score innovation `e_i`; `lv` does not replace the
 innovation with a mean-only reduced-rank model.
 
-The current runtime supports the ordinary unit-tier C1 surface:
-it stores the formula as `extra$lv_formula` on the reduced-rank term,
-keeps the auto-added diagonal `Psi` companion free of `lv` metadata,
-builds unit-level `X_lv_B`, estimates `alpha_lv_B`, preserves the
-zero-mean innovation, and reports the trait-scale `B_lv_unit` point
-estimate. Focused native TMB Gaussian recovery now exists for `B_lv`
-and `Sigma`, but interval calibration and broad family recovery remain
-gated. The following stay rejected or planned:
+The current runtime supports the original ordinary unit-tier C1 surface and
+the exact family-wide programme allow-list. The original Gaussian and pure
+binomial cells retain their existing rank, `Psi`, mask, and interval evidence.
+The family-wide cells are restricted to rank one, `unique = FALSE`, complete
+responses, canonical links, and the named pure/mixed combinations. All routes
+store the formula as `extra$lv_formula` on the reduced-rank term, build
+unit-level `X_lv_B`, estimate `alpha_lv_B`, preserve the zero-mean innovation,
+and report the trait-scale `B_lv_unit` point estimate. Retained r200 point
+evidence covers all 19 named mixed/sentinel cells and 17/19 pure cells. Pure
+Beta and ordinal-probit retain their frozen HOLDs. All eight selected mixed
+Gaussian-anchor archetypes pass target-wise `B_lv` Wald calibration; this is
+not simultaneous all-target or arbitrary-mixture evidence.
+The following stay rejected or planned:
 
 - random terms, offsets, `mi()`, smooth terms, response columns, or
   trait columns inside `lv`;
@@ -426,8 +431,9 @@ gated. The following stay rejected or planned:
   `latent()` term;
 - exact overlap between fixed-effect RHS predictors and `lv`
   predictors;
-- `REML = TRUE`, unsupported non-Gaussian families, augmented random-regression
-  combinations, `unit_obs`, `cluster`, `cluster2`, `phylo_*`,
+- `REML = TRUE`, unlisted family/link combinations, programme ranks above one,
+  default `+ Psi`, response masks, augmented random-regression combinations,
+  `unit_obs`, `cluster`, `cluster2`, `phylo_*`,
   `animal_*`, `spatial_*`, and `kernel_*` forms.
 
 See `docs/design/73-predictor-informed-latent-scores.md` for the

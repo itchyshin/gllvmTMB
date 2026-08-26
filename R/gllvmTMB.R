@@ -773,13 +773,41 @@ gllvmTMB <- function(
       eval_env = environment(formula),
       missing = missing
     )
+    family_long <- family
+    if (is.list(family_long) && !inherits(family_long, "family")) {
+      explicit_family_var <- attr(
+        family_long,
+        "family_var",
+        exact = TRUE
+      )
+      if (is.null(explicit_family_var)) {
+        family_names <- names(family_long)
+        names_match_traits <-
+          !is.null(family_names) &&
+          length(family_names) == length(rewrite$trait_cols) &&
+          !anyNA(family_names) &&
+          all(nzchar(family_names)) &&
+          setequal(family_names, rewrite$trait_cols)
+        if (names_match_traits) {
+          family_var <- ".family_wide_"
+          while (family_var %in% names(rewrite$data_long)) {
+            family_var <- paste0(".", family_var)
+          }
+          rewrite$data_long[[family_var]] <- factor(
+            as.character(rewrite$data_long$trait),
+            levels = rewrite$trait_cols
+          )
+          attr(family_long, "family_var") <- family_var
+        }
+      }
+    }
     recurse_args <- list(
       formula = rewrite$formula_long,
       data = rewrite$data_long,
       trait = trait,
       unit = unit,
       cluster2 = cluster2,
-      family = family,
+      family = family_long,
       weights = rewrite$weights_long,
       REML = REML,
       mesh = mesh,

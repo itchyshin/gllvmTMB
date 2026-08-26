@@ -54502,3 +54502,56 @@ would not test this internal receipt-only edit. Wide column-slope grammar,
 latent predictor covariance, non-Gaussian multi-predictor slopes, simultaneous
 response-column sources, intervals, and the future `*_coef()` family remain
 outside this closure lane.
+---
+
+## 2026-08-25 — Release-complete interval calibration (Codex)
+
+**Lane:** `codex:interval-calibration-release`
+**Branch:** `codex/interval-calibration-release`
+**Base:** `f5ba7bdb2e454f3d3cda34936f0bb9b746459e68`
+
+Completed the CI-08--CI-15 target-by-target calibration programme without a
+public API, likelihood, formula-grammar, NAMESPACE, or C++ change. The tracked
+150,019-row all-attempt ledger retains the invalid first Totoro deployment,
+every canonical science attempt, CI-14 provenance failures, and all 18 CI-10
+cost-preflight outcomes. The terminal route census has 19 exact identities and
+exactly three certificate cells, all CI-13 standardized-loading Wald:
+`(n=150,d=2)`, `(n=400,d=1)`, and `(n=400,d=2)`, restricted to structurally
+free strict-lower targets. CI-08 total-variance output is fail-closed to
+`route-only`; the PVT-02 campaign is blocked. CI-09/14/15 are blocked, CI-10 is
+limited/blocked by route, and CI-11/12 remain typed refusals.
+
+Checks and receipts:
+
+```sh
+Rscript --vanilla dev/interval-calibration/verify-claims.R
+# INTERVAL_CLAIMS_OK
+
+Rscript --vanilla -e 'devtools::test(filter = "interval-calibration-claims|profile-ci-total-variance-export|loading-ci", stop_on_failure = TRUE)'
+# FAIL 0 | WARN 0 | SKIP 35 | PASS 89
+
+Rscript --vanilla -e 'pkgdown::check_pkgdown()'
+# No problems found.
+
+# Five deterministic ordinary-suite shards on f68e6bba:
+# ORDINARY_SHARD_AF_OK files=112
+# ORDINARY_SHARD_GL_OK files=79
+# ORDINARY_SHARD_MR_OK files=223
+# ORDINARY_SHARD_SZ_OK files=108
+# ORDINARY_SHARD_NUM_OK files=1
+# Total configured ordinary files: 523; no failures.
+```
+
+The initially estimated 12--25 minute monolithic `devtools::test()` overran
+while still in `m1-*` and was stopped under D-139; it had no observed failure
+but is not counted as a full pass. The deterministic five-shard replay is the
+complete ordinary-suite result. `devtools::document(quiet = TRUE)` succeeded;
+its existing AIC/BIC/anova S3 export warnings were retained. Both affected
+articles rendered locally after correcting their registered `articles/` names.
+`pkgdown::check_pkgdown()` passed again after independent-review repairs.
+
+Remote science ran only after explicit approval on Totoro and Fir/DRAC, never
+on GitHub Actions. The invalid Totoro archive, corrected r2 archive, Fir
+archive, all-attempt ledger, and target recomputation checksums are recorded in
+`docs/dev-log/artifacts/interval-calibration/2026-08-25-terminal-campaign-evidence.md`.
+No push, PR, merge, release, or public issue message was performed.

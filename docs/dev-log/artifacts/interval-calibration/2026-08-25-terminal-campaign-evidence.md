@@ -46,7 +46,7 @@ It was regenerated from the immutable roots by
 `dev/interval-calibration/remote/build-terminal-attempt-ledger.R` and then
 read back successfully.
 
-| Attempt class | Rows | Canonical scientific rows |
+| Attempt class | Rows | Canonical retained rows |
 | --- | ---: | ---: |
 | Original Totoro infrastructure-excluded | 85,000 | 0 |
 | Corrected PVT-02, CI-09, and CI-13 | 55,001, including one excluded duplicate | 55,000 |
@@ -98,6 +98,22 @@ review then returned `PASS, narrowly`: it authorised certificates for only
 the native pinned CI-13 cells `(n=150,d=2)`, `(n=400,d=1)`, and
 `(n=400,d=2)`. It kept `(n=150,d=1)` and the global CI-13 route limited and
 confirmed the separate PVT-02, CI-09, CI-14, and CI-15 blocks above.
+
+The final fresh D-43 completion panel is recorded explicitly:
+
+- Terra-high statistical/status review: `PASS` at `f68e6bba`; the callable
+  CI-08 `route-only`, historical/callable `limited`, and PVT-02 campaign
+  `blocked` distinction resolved its prior P1.
+- Terra-high release/claim review: `PASS` at `884f0184` for the then-enumerated
+  reader/release surfaces and exact 19-route/state oracle. Rose subsequently
+  found stale CI-08 technical comments and row-local register history, so this
+  release-wide verdict is superseded pending a post-repair candidate review.
+- Sol-high load-bearing science review: `PASS -- narrowly scoped` at full SHA
+  `884f01847848a698ccc1713cf042328c8456e228`; it independently recomputed the
+  ledger/target arithmetic and authorized only the three exact CI-13 cells.
+  Final claim-surface closure is rebound to the post-repair candidate below.
+
+None of these verdicts widens the scope enumerated in the route census.
 
 ## Claim boundary
 

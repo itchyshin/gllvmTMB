@@ -19,7 +19,7 @@ This is a **new submission** — `gllvmTMB` is not yet on CRAN.
 deliberate honesty label, not a defect report: the package is early, point
 estimates are its primary inferential output, and their evidence is route- and
 regime-specific. Broad package-wide interval coverage is not certified. Three
-exact native pinned ordinary-Gaussian standardized-loading Wald cells have
+exact native pinned unrotated ordinary-Gaussian standardized-loading Wald cells have
 target-specific certificates; total-variance penalty profiles remain
 route-only. The boundary appears on the startup message, the README/pkgdown,
 and this DESCRIPTION.

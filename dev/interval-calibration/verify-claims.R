@@ -89,6 +89,49 @@ require_fixed(
     "structurally free strict-lower targets"
   )
 )
+require_fixed(
+  "docs/design/35-validation-debt-register.md",
+  c(
+    "CI-08 withdrawal addendum (2026-08-25)",
+    "The former profile-total certificate is withdrawn",
+    "CI-09 calibration addendum (2026-08-25)",
+    "CI-14 calibration addendum (2026-08-25)",
+    "CI-15 calibration addendum (2026-08-25)"
+  )
+)
+
+for (claim_surface in c("_pkgdown.yml", "cran-comments.md")) {
+  require_fixed(
+    claim_surface,
+    c("pinned unrotated ordinary-Gaussian standardized-loading Wald cells")
+  )
+}
+require_fixed(
+  "R/zzz.R",
+  c(
+    "pinned unrotated ordinary-Gaussian",
+    "standardized-loading Wald cells"
+  )
+)
+
+profile_source <- read_text("R/profile-derived.R")
+forbidden_profile_claims <- c(
+  "the certificate candidate",
+  "CERTIFICATE CANDIDATE",
+  "Route B is never the certificate"
+)
+if (any(vapply(
+  forbidden_profile_claims,
+  grepl,
+  logical(1),
+  x = profile_source,
+  fixed = TRUE
+))) {
+  stop(
+    "R/profile-derived.R retains a withdrawn total-variance certificate comment",
+    call. = FALSE
+  )
+}
 
 census <- utils::read.csv(
   "docs/dev-log/artifacts/interval-calibration/public-route-census.csv",

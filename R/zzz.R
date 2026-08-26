@@ -14,7 +14,7 @@
     "the package is not complete, is not fully human-verified, and needs ",
     "extensive further validation. Point estimates are the primary inferential ",
     "output, but evidence is route- and regime-specific. Broad interval ",
-    "coverage is not certified. Three exact native pinned ordinary-Gaussian ",
+    "coverage is not certified. Three exact native pinned unrotated ordinary-Gaussian ",
     "standardized-loading Wald cells have target-specific certificates; ",
     "total-variance penalty profiles remain route-only. ",
     "See the Current limitations and boundaries page for scope."

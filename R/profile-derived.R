@@ -696,8 +696,8 @@ profile_ci_communality <- function(
 ## variance at a covariance tier -- the rotation-INVARIANT, bounded, right-
 ## skewed location-axis variance component whose percentile-bootstrap interval
 ## under-covers (misses are "truth above upper"). `.total_variance_spec()` is the
-## SINGLE source of truth for V_t and its exact gradient, so the profile route
-## (`.profile_ci_total_variance`, the certificate candidate) and the delta-method
+## SINGLE source of truth for V_t and its exact gradient, so the penalty-profile
+## route (`.profile_ci_total_variance`, always route-only) and the delta-method
 ## log-SD Wald (`.wald_ci_total_variance_logsd`, a diagnostic companion) target
 ## the IDENTICAL functional. psi is reconstructed through `.expand_mapped_diag`
 ## so mapped-off single-trial-binary psi (issue #717) is handled, not misindexed;
@@ -865,7 +865,7 @@ profile_ci_communality <- function(
   )
 }
 
-## Route A -- CERTIFICATE CANDIDATE. Genuine per-trait profile on log(V_t).
+## Route A -- ROUTE-ONLY PENALTY-PROFILE APPROXIMATION on log(V_t).
 ## Profiled on the LOG scale (transformation-invariant, so an identical interval
 ## to profiling V_t directly) which makes the fixed `.fix_and_refit_nll`
 ## constraint tolerance act as a relative tolerance and maps V_t -> 0 to
@@ -1083,7 +1083,7 @@ profile_ci_total_variance <- function(
     ## component is barely identified (e.g. a collapsed binomial loading) and the
     ## interval spans many orders of magnitude -- uninformative, and it would
     ## spuriously "cover" everything. Emit NA rather than a garbage-wide bound;
-    ## the NA rate is itself a diagnostic. (Route B is never the certificate.)
+    ## the NA rate is itself a diagnostic. Route B is also uncalibrated.
     if (se_g > 2.5) {
       return(na_row(t, V, "wide_na"))
     }

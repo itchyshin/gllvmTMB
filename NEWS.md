@@ -1600,7 +1600,7 @@ bridge remains experimental and is not required for the main workflow.
   package's primary inferential output, but their evidence is route- and
   regime-specific.
   Broad package-wide interval coverage is not certified. Three exact native
-  pinned ordinary-Gaussian standardized-loading Wald cells have target-specific
+  pinned unrotated ordinary-Gaussian standardized-loading Wald cells have target-specific
   certificates: `(n_units=150,d=2)`, `(n_units=400,d=1)`, and
   `(n_units=400,d=2)`, restricted to structurally free strict-lower targets.
   The `n_units=150,d=1` cell failed. Pinned diagnostics, Fisher-z Wald,

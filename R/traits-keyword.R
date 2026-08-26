@@ -223,6 +223,11 @@ is_traits_lhs <- function(formula) {
   "kernel_scalar",
   "kernel_slope",
   "spatial_slope",
+  "column_coef",
+  "phylo_coef",
+  "animal_coef",
+  "kernel_coef",
+  "spatial_coef",
   "propto",
   "equalto",
   "meta_V",
@@ -277,7 +282,7 @@ is_traits_lhs <- function(formula) {
     length(expr[[2L]]) == 3L
 }
 
-.traits_expand_rhs <- function(expr) {
+.traits_expand_rhs <- function(expr, column_vars = character()) {
   if (.traits_is_zero(expr)) {
     return(expr)
   }
@@ -286,22 +291,25 @@ is_traits_lhs <- function(formula) {
   }
   if (is.call(expr)) {
     fn <- .traits_call_name(expr)
+    if (identical(fn, "shared") && length(expr) == 2L) {
+      return(expr[[2L]])
+    }
     if (identical(fn, "+") && length(expr) == 3L) {
       return(call(
         "+",
-        .traits_expand_rhs(expr[[2L]]),
-        .traits_expand_rhs(expr[[3L]])
+        .traits_expand_rhs(expr[[2L]], column_vars),
+        .traits_expand_rhs(expr[[3L]], column_vars)
       ))
     }
     if (identical(fn, "-") && length(expr) == 3L) {
       return(call(
         "-",
-        .traits_expand_rhs(expr[[2L]]),
-        .traits_expand_rhs_subtract(expr[[3L]])
+        .traits_expand_rhs(expr[[2L]], column_vars),
+        .traits_expand_rhs_subtract(expr[[3L]], column_vars)
       ))
     }
     if (identical(fn, "-") && length(expr) == 2L) {
-      return(call("-", .traits_expand_rhs_subtract(expr[[2L]])))
+      return(call("-", .traits_expand_rhs_subtract(expr[[2L]], column_vars)))
     }
     if (!is.null(fn) && fn %in% .traits_covstruct_keywords) {
       return(.traits_expand_covstruct_call(expr))
@@ -326,6 +334,12 @@ is_traits_lhs <- function(formula) {
     }
   }
   if (.traits_contains_symbol(expr, "trait")) {
+    return(expr)
+  }
+  ## A term involving response-column metadata already varies on the column
+  ## axis. Preserve it as written (for example latitude:pathway) rather than
+  ## expanding it to one unconstrained effect per response column.
+  if (length(intersect(all.vars(expr), column_vars))) {
     return(expr)
   }
   call(":", .traits_trait_term(), expr)
@@ -406,11 +420,11 @@ is_traits_lhs <- function(formula) {
                                   ncol = length(trait_cols)))
 }
 
-.traits_expand_rhs_subtract <- function(expr) {
+.traits_expand_rhs_subtract <- function(expr, column_vars = character()) {
   if (.traits_is_zero(expr) || .traits_is_one(expr)) {
     return(expr)
   }
-  .traits_expand_rhs(expr)
+  .traits_expand_rhs(expr, column_vars)
 }
 
 ## ---- Internal: rewrite a `traits(...)` LHS formula to long format -------
@@ -426,6 +440,7 @@ is_traits_lhs <- function(formula) {
 rewrite_traits_lhs <- function(
   formula,
   data,
+  column_data = NULL,
   weights = NULL,
   eval_env = environment(formula),
   missing = miss_control()
@@ -486,6 +501,15 @@ rewrite_traits_lhs <- function(
       "i" = "Check the tidyselect expression matches at least one column in {.arg data}."
     ))
   }
+
+  prepared_column_data <- .column_data_prepare(
+    column_data = column_data,
+    trait_col = "trait",
+    trait_levels = trait_cols,
+    row_data_names = names(data)
+  )
+  column_vars <- if (is.null(prepared_column_data)) character() else
+    prepared_column_data$variables
 
   ## Collapse a per-trait `offset(e1, e2, ...)` into one synthetic column now,
   ## so its arity is checked against `traits()` before any pivoting happens and
@@ -553,6 +577,7 @@ rewrite_traits_lhs <- function(
   ## (assertthat::assert_that(is.data.frame), [[<- assignments) are
   ## tibble-agnostic but plain df is the conservative default.
   data_long <- as.data.frame(data_long, stringsAsFactors = FALSE)
+  data_long <- .column_data_join(data_long, prepared_column_data, "trait")
   ## Map each stacked cell back to the row of the user-supplied wide data.
   ## pivot_longer() uses row-major order here (traits vary within source row).
   ## Under response = "drop", remove the same NA cells as the pivot.
@@ -590,7 +615,14 @@ rewrite_traits_lhs <- function(
   ## returns a `call` object; we wrap it via stats::as.formula() to obtain
   ## a proper "formula" class object (sdmTMB's downstream assertthat check
   ## requires class(formula) %in% c("formula", "list")).
-  rhs <- .traits_expand_rhs(offset_rw$rhs)
+  shared_rhs <- .shared_rewrite(
+    offset_rw$rhs,
+    row_vars = names(data),
+    column_vars = column_vars,
+    response_vars = trait_cols,
+    unwrap = FALSE
+  )
+  rhs <- .traits_expand_rhs(shared_rhs, column_vars = column_vars)
   formula_long <- stats::as.formula(
     bquote(.y_wide_ ~ .(rhs), splice = TRUE),
     env = eval_env
@@ -601,6 +633,7 @@ rewrite_traits_lhs <- function(
     data_long = data_long,
     weights_long = weights_long,
     trait_cols = trait_cols,
+    column_vars = column_vars,
     source_row = as.integer(source_row),
     ## Under response = "include" no cell is dropped (NA cells are kept and
     ## masked); n_dropped reflects the cells actually removed from the stack.

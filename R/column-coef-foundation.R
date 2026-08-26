@@ -1,0 +1,288 @@
+## Design 131, Arc 1: response-column coefficient front-end foundation.
+## Marker names are parsed as language objects, remain unexported, and always
+## stop before likelihood assembly.
+
+.column_coef_helpers <- c(
+  "column_coef", "phylo_coef", "animal_coef", "kernel_coef", "spatial_coef"
+)
+.column_coef_source <- c(
+  column_coef = "iid", phylo_coef = "phylo", animal_coef = "animal",
+  kernel_coef = "kernel", spatial_coef = "spatial"
+)
+
+.column_data_abort <- function(message) {
+  cli::cli_abort(message, class = "gllvmTMB_column_data_invalid",
+                 .envir = parent.frame())
+}
+
+.column_data_prepare <- function(column_data, trait_col, trait_levels,
+                                 row_data_names) {
+  if (is.null(column_data)) return(NULL)
+  if (!is.data.frame(column_data))
+    .column_data_abort("{.arg column_data} must be a data frame.")
+  trait_levels <- as.character(trait_levels)
+  if (!length(trait_levels) || anyNA(trait_levels) ||
+      any(!nzchar(trait_levels)) || anyDuplicated(trait_levels))
+    .column_data_abort("The resolved response-column levels are not a unique, non-empty key set.")
+  if (!trait_col %in% names(column_data))
+    .column_data_abort(c(
+      "{.arg column_data} has no key column named {.field {trait_col}}.",
+      "i" = "Its key column must have the same name as {.arg trait}."
+    ))
+  key <- as.character(column_data[[trait_col]])
+  if (anyNA(key)) .column_data_abort("{.arg column_data}${trait_col} contains missing keys.")
+  if (any(!nzchar(key))) .column_data_abort("{.arg column_data}${trait_col} contains empty keys.")
+  if (anyDuplicated(key)) {
+    dup <- unique(key[duplicated(key)])
+    .column_data_abort("{.arg column_data}${trait_col} contains duplicate key{?s}: {.val {dup}}.")
+  }
+  missing_keys <- setdiff(trait_levels, key)
+  extra_keys <- setdiff(key, trait_levels)
+  if (length(missing_keys) || length(extra_keys))
+    .column_data_abort(c(
+      "{.arg column_data} keys do not exactly match the response columns.",
+      "x" = if (length(missing_keys)) "Missing: {.val {missing_keys}}." else NULL,
+      "x" = if (length(extra_keys)) "Extra: {.val {extra_keys}}." else NULL
+    ))
+  variables <- setdiff(names(column_data), trait_col)
+  collisions <- intersect(variables, row_data_names)
+  if (length(collisions))
+    .column_data_abort(c(
+      "{.arg column_data} names collide with row-data columns: {.field {collisions}}.",
+      "i" = "Rename the metadata fields; silent overwriting is not allowed."
+    ))
+  aligned <- column_data[match(trait_levels, key), , drop = FALSE]
+  rownames(aligned) <- NULL
+  aligned[[trait_col]] <- as.character(aligned[[trait_col]])
+  list(data = as.data.frame(aligned, stringsAsFactors = FALSE),
+       trait_levels = trait_levels, variables = variables)
+}
+
+.column_data_join <- function(data, prepared, trait_col) {
+  if (is.null(prepared)) return(data)
+  if (!trait_col %in% names(data))
+    .column_data_abort("Cannot join {.arg column_data}: {.field {trait_col}} is absent from row data.")
+  idx <- match(as.character(data[[trait_col]]), prepared$trait_levels)
+  if (anyNA(idx))
+    .column_data_abort("Row data contain response-column keys absent from prepared {.arg column_data}.")
+  out <- data
+  for (nm in prepared$variables) out[[nm]] <- prepared$data[[nm]][idx]
+  attr(out, "gllvmTMB_column_vars") <- prepared$variables
+  as.data.frame(out, stringsAsFactors = FALSE)
+}
+
+.find_call_named <- function(expr, name) {
+  if (!is.call(expr)) return(list())
+  fn <- if (is.symbol(expr[[1L]])) as.character(expr[[1L]]) else ""
+  c(if (identical(fn, name)) list(expr) else list(),
+    unlist(lapply(as.list(expr)[-1L], .find_call_named, name = name),
+           recursive = FALSE))
+}
+
+.column_coef_calls <- function(expr) {
+  if (!is.call(expr)) return(list())
+  fn <- if (is.symbol(expr[[1L]])) as.character(expr[[1L]]) else ""
+  c(if (fn %in% .column_coef_helpers) list(expr) else list(),
+    unlist(lapply(as.list(expr)[-1L], .column_coef_calls), recursive = FALSE))
+}
+
+.column_coef_abort <- function(message, class = "gllvmTMB_column_coef_invalid_syntax") {
+  cli::cli_abort(message, class = class, .envir = parent.frame())
+}
+
+.column_coef_parse_basis <- function(expr, row_vars, column_vars, response_vars) {
+  flatten_plus <- function(x) {
+    if (is.call(x) && identical(x[[1L]], as.name("+")) && length(x) == 3L)
+      return(c(flatten_plus(x[[2L]]), flatten_plus(x[[3L]])))
+    list(x)
+  }
+  parts <- flatten_plus(expr)
+  is_control <- vapply(parts, function(x)
+    is.numeric(x) && length(x) == 1L && as.numeric(x) %in% c(0, 1), logical(1L))
+  controls <- vapply(parts[is_control], as.numeric, numeric(1L))
+  if (!length(controls))
+    .column_coef_abort(c(
+      "A response-column coefficient basis must state its intercept explicitly.",
+      "i" = "Use {.code 1 + x} or {.code 0 + x}; a bare {.code x} is ambiguous."
+    ))
+  if (length(controls) != 1L)
+    .column_coef_abort("The coefficient basis contains repeated or conflicting intercept controls.")
+  intercept <- identical(controls[[1L]], 1)
+  predictor_expr <- parts[!is_control]
+  if (!intercept && !length(predictor_expr))
+    .column_coef_abort("{.code 0} selects no response-column coefficients.")
+  if (length(predictor_expr) && !all(vapply(predictor_expr, is.symbol, logical(1L))))
+    .column_coef_abort("Coefficient predictors must be bare row-data column names; transformations and interactions are not admitted.")
+  predictors <- vapply(predictor_expr, as.character, character(1L))
+  if (anyDuplicated(predictors)) .column_coef_abort("Coefficient predictors must be distinct.")
+  bad_column <- intersect(predictors, column_vars)
+  if (length(bad_column))
+    .column_coef_abort("Response-column metadata cannot be a coefficient basis: {.field {bad_column}}.")
+  bad_response <- intersect(predictors, response_vars)
+  if (length(bad_response))
+    .column_coef_abort("Response variables cannot be a coefficient basis: {.field {bad_response}}.")
+  absent <- setdiff(predictors, row_vars)
+  if (length(absent))
+    .column_coef_abort("Coefficient predictors are not row-data columns: {.field {absent}}.")
+  list(intercept = intercept, predictors = predictors,
+       basis = c(if (intercept) "(Intercept)", predictors))
+}
+
+.parse_column_coef_formula <- function(formula, trait_col, row_vars,
+                                       column_vars = character(),
+                                       response_vars = character()) {
+  calls <- .column_coef_calls(formula[[length(formula)]])
+  if (!length(calls)) return(NULL)
+  if (length(calls) > 1L)
+    .column_coef_abort("A model may contain at most one response-column coefficient source.",
+                       class = "gllvmTMB_column_coef_multiple_sources")
+  marker <- calls[[1L]]
+  helper <- as.character(marker[[1L]])
+  if (length(marker) < 2L)
+    .column_coef_abort("{.fn {helper}} requires a coefficient basis and response-column factor separated by a bar.")
+  bar_call <- marker[[2L]]
+  if (!is.call(bar_call) || length(bar_call) != 3L ||
+      !as.character(bar_call[[1L]]) %in% c("|", "||"))
+    .column_coef_abort("The first argument to {.fn {helper}} must have form {.code 1 + x | {trait_col}} or {.code 1 + x || {trait_col}}.")
+  bar <- as.character(bar_call[[1L]])
+  group <- bar_call[[3L]]
+  if (!is.symbol(group) || !identical(as.character(group), trait_col))
+    .column_coef_abort(c(
+      "The right side of {.fn {helper}} must be the response-column factor {.field {trait_col}}.",
+      "x" = "Found {.code {deparse(group)}}."
+    ))
+  basis <- .column_coef_parse_basis(bar_call[[2L]], row_vars, column_vars,
+                                    response_vars)
+  arg_names <- names(as.list(marker))[-1L]
+  arg_names[is.na(arg_names)] <- ""
+  rho_pos <- which(arg_names == "rho") + 1L
+  if (length(rho_pos) > 1L)
+    .column_coef_abort("{.arg rho} may be supplied only once.")
+  if (identical(helper, "column_coef") && length(rho_pos))
+    .column_coef_abort("{.fn column_coef} is IID and has no {.arg rho} argument.")
+  if (identical(helper, "column_coef")) {
+    rho_mode <- "none"
+    rho <- NULL
+  } else if (length(rho_pos)) {
+    rho_expr <- marker[[rho_pos]]
+    if (is.null(rho_expr)) {
+      rho_mode <- "estimated"
+      rho <- NULL
+    } else if (is.numeric(rho_expr) && length(rho_expr) == 1L &&
+               is.finite(rho_expr) && rho_expr >= 0 && rho_expr <= 1) {
+      rho_mode <- "fixed"
+      rho <- as.numeric(rho_expr)
+    } else {
+      .column_coef_abort("{.arg rho} must be {.code NULL} or one numeric value in [0, 1].")
+    }
+  } else if (identical(helper, "spatial_coef")) {
+    rho_mode <- "fixed"
+    rho <- 1
+  } else {
+    rho_mode <- "estimated"
+    rho <- NULL
+  }
+  list(helper = helper, source = unname(.column_coef_source[[helper]]),
+       call = marker, bar = bar, correlated = identical(bar, "|"),
+       intercept = basis$intercept, predictors = basis$predictors,
+       basis = basis$basis, group = trait_col, column_vars = column_vars,
+       rho_mode = rho_mode, rho = rho,
+       map_range_off = identical(helper, "spatial_coef") &&
+         identical(rho_mode, "fixed") && identical(rho, 0))
+}
+
+.column_coef_drop_nonfixed <- function(expr) {
+  if (!is.call(expr)) return(expr)
+  fn <- if (is.symbol(expr[[1L]])) as.character(expr[[1L]]) else ""
+  if (fn %in% c(.column_coef_helpers, .traits_covstruct_keywords)) return(NULL)
+  if (identical(fn, "(") && length(expr) == 2L && is.call(expr[[2L]]) &&
+      as.character(expr[[2L]][[1L]]) %in% c("|", "||")) return(NULL)
+  if (fn %in% c("+", "-") && length(expr) == 3L) {
+    left <- .column_coef_drop_nonfixed(expr[[2L]])
+    right <- .column_coef_drop_nonfixed(expr[[3L]])
+    if (is.null(left)) return(right)
+    if (is.null(right)) return(left)
+    return(call(fn, left, right))
+  }
+  expr
+}
+
+.column_coef_assert_no_overlap <- function(formula, data, trait_col, spec) {
+  if (is.null(spec)) return(invisible(TRUE))
+  rhs <- .column_coef_drop_nonfixed(formula[[3L]])
+  if (is.null(rhs)) rhs <- 0
+  fixed <- stats::as.formula(call("~", rhs), env = environment(formula))
+  X <- stats::model.matrix(fixed, data = data)
+  tr <- factor(data[[trait_col]], levels = levels(factor(data[[trait_col]])))
+  Tmat <- stats::model.matrix(~ 0 + tr)
+  blocks <- list()
+  labels <- character()
+  if (isTRUE(spec$intercept)) {
+    blocks[[length(blocks) + 1L]] <- Tmat
+    labels <- c(labels, "response-column intercepts")
+  }
+  for (nm in spec$predictors) {
+    if (!is.numeric(data[[nm]]))
+      .column_coef_abort("Coefficient predictor {.field {nm}} must be numeric.")
+    blocks[[length(blocks) + 1L]] <- Tmat * as.numeric(data[[nm]])
+    labels <- c(labels, paste0("response-column slopes for `", nm, "`"))
+  }
+  rank_x <- qr(X)$rank
+  saturated <- vapply(blocks, function(z) qr(cbind(X, z))$rank == rank_x,
+                      logical(1L))
+  if (any(saturated))
+    cli::cli_abort(c(
+      "Fixed effects already span the response-column coefficient space requested by {.fn {spec$helper}}.",
+      "x" = "Duplicated space: {labels[saturated]}.",
+      "i" = "Keep a coarser fixed mean, or remove the duplicate random coefficient."
+    ), class = "gllvmTMB_column_coef_fixed_overlap")
+  invisible(TRUE)
+}
+
+.column_coef_engine_fence <- function(spec) {
+  cli::cli_abort(c(
+    "{.fn {spec$helper}} passed Arc 1 parsing, but its likelihood engine is not yet admitted.",
+    "i" = "The parser and metadata contract are available only for internal validation.",
+    ">" = "Continue using the released response-column slope helpers until the coefficient engine is validated."
+  ), class = "gllvmTMB_column_coef_engine_not_admitted")
+}
+
+.shared_rewrite <- function(expr, row_vars, column_vars = character(),
+                            response_vars = character(), unwrap = TRUE) {
+  if (!is.call(expr)) return(expr)
+  fn <- if (is.symbol(expr[[1L]])) as.character(expr[[1L]]) else ""
+  if (fn %in% .column_coef_helpers) {
+    if (length(.find_call_named(expr, "shared")))
+      cli::cli_abort("{.fn shared} cannot be nested inside a response-column coefficient helper.",
+                     class = "gllvmTMB_shared_invalid")
+    return(expr)
+  }
+  if (identical(fn, "shared")) {
+    if (length(expr) != 2L)
+      cli::cli_abort("{.fn shared} requires exactly one ordinary fixed-effect expression.",
+                     class = "gllvmTMB_shared_invalid")
+    inner <- expr[[2L]]
+    bad_calls <- c(.column_coef_helpers, .traits_covstruct_keywords,
+                   "offset", "|", "||")
+    present <- bad_calls[vapply(bad_calls, function(nm)
+      length(.find_call_named(inner, nm)) > 0L, logical(1L))]
+    if (length(present))
+      cli::cli_abort("{.fn shared} accepts fixed effects only; found {.fn {present}}.",
+                     class = "gllvmTMB_shared_invalid")
+    vars <- all.vars(inner)
+    invalid <- union(intersect(vars, column_vars), intersect(vars, response_vars))
+    absent <- setdiff(vars, row_vars)
+    if (length(invalid) || length(absent))
+      cli::cli_abort(c(
+        "{.fn shared} may use ordinary row-data predictors only.",
+        "x" = if (length(invalid)) "Response or response-column metadata: {.field {invalid}}." else NULL,
+        "x" = if (length(absent)) "Not found in row data: {.field {absent}}." else NULL
+      ), class = "gllvmTMB_shared_invalid")
+    return(if (isTRUE(unwrap)) inner else call("shared", inner))
+  }
+  out <- expr
+  for (i in seq_along(out)[-1L])
+    out[[i]] <- .shared_rewrite(out[[i]], row_vars, column_vars, response_vars,
+                                unwrap = unwrap)
+  out
+}

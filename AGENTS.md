@@ -19,6 +19,10 @@ Model Builder.
 > `docs/dev-log/handover/2026-08-12-codex-handover.md`. It succeeds the 0.6
 > artifact evidence phase and starts a read-first 0.7 integration intake; it
 > does not supersede the multi-lane map or authorise a version bump/release.
+> **Snapshot refresh (2026-08-26):** `START HERE` remains the multi-lane split
+> above. The response-column coefficient foundation and next-arc baton are at
+> `docs/dev-log/handover/2026-08-26-codex-handover.md`; read it alongside every
+> active lane row, never as a replacement for the ownership map.
 
 ## Core Scope
 

@@ -3,6 +3,16 @@
 This coordination note prevents a new session from treating this repository as
 a single writable lane.  It is a map, not a release/capability claim.
 
+**Refresh 2026-08-26 (Codex to Codex): response-column coefficient foundation awaiting PR integration.**
+Branch `codex/response-column-coef-arc1` contains the fail-closed Arc 1 parser/data
+foundation and its reviewed closure record. `*_slope()` is still the current
+warning-free API; soft deprecation is a future migration gate only after proven
+`*_coef()` replacements preserve existing fits. The next Codex first monitors the
+open Arc 1 PR and changes only failures attributable to this lane; after human merge,
+it starts a fresh Ultra Plan for the IID `column_coef()` engine before structured
+sources. The dirty article checkout and every lane below remain **PROTECTED**.
+**START HERE:** `docs/dev-log/handover/2026-08-26-codex-handover.md`.
+
 **Refresh 2026-08-17 #5 (Codex to Claude): finish #1092 only; wider Ayumi programme deferred.**
 The implementation worktree `/private/tmp/gllvmtmb-1092-grad` is active and clean on
 `claude/fix-1092-penalised-gradient` at five pushed commits: `e51738c9`, `bb6d1bdc`,

@@ -119,7 +119,11 @@ require_fixed(
 )
 require_fixed(
   "docs/dev-log/release/2026-08-08-0.7-release-claim-matrix.md",
-  c("frozen DGP", "conditional on eligible fits")
+  c(
+    "frozen DGP",
+    "conditional on eligible fits",
+    "native pinned unrotated ordinary-Gaussian standardized-loading"
+  )
 )
 require_fixed(
   "docs/dev-log/artifacts/interval-calibration/interval-target-ledger.md",

@@ -105,31 +105,33 @@ verified the attempt denominators and claim boundaries. The initial D-43 panel
 accepted the science arithmetic for only the native pinned CI-13 cells
 `(n=150,d=2)`, `(n=400,d=1)`, and `(n=400,d=2)`, but the final Sol rebind
 withheld release closure because the public wording did not yet name the frozen
-DGP and eligible-fit condition. The repaired wording above preserves
+DGP and eligible-fit condition. The repair at
+`7cff7e16662fbca1a67deda50e9783eab213bb0d` names both boundaries and preserves
 `(n=150,d=1)` and the global CI-13 route as limited and does not change the
 separate PVT-02, CI-09, CI-14, and CI-15 blocks.
 
 The final fresh D-43 completion panel is recorded explicitly:
 
-- Terra-high statistical/status and release/claim reviews: `PASS` at full SHA
-  `eacbdc881cf9c74d2e692bb82f5c5c7a3e8cb48e`. Those verdicts confirmed the
-  19-route oracle, CI-08/PVT distinction, arithmetic, and then-enumerated claim
-  surfaces, but are superseded for final binding by the later CI-13 scope
-  repair.
-- Sol-high load-bearing review: `WITHHOLD` at the same full SHA. It independently
-  reproduced the arithmetic and route states, then found two remaining claim
-  defects: CI-13's three-cell wording omitted the one frozen DGP and
-  eligible-fit denominator, and `test-profile-ci.R` retained stale
-  `+ psi_t`/`certificate candidate` wording. The source, generated help,
-  reader/release surfaces, census contract, and regression tests now repair
-  both defects. A fresh exact-SHA panel rebind is required before closure.
+- Terra-high statistical/status review: `PASS` at full SHA
+  `7cff7e16662fbca1a67deda50e9783eab213bb0d`; the frozen DGP, eligibility
+  definition, availability, coverage, clustered MCSE, lower bands, and exact
+  route states all reproduce.
+- Terra-high release/claim review: `PASS` at the same full SHA; every source,
+  generated-help, reader, release, register, ledger, and census surface retains
+  the DGP and eligible-fit fences, and dropping either fence from any certified
+  census row fails closed.
+- Sol-high load-bearing review: `PASS` at the same full SHA with no P0--P3
+  findings. It independently reproduced the 150,019-row and 18-target evidence,
+  confirmed the exact 19-route map, verified the repaired `psi_t^2` comment,
+  and found no API, C++, NAMESPACE, formula-grammar, or regime widening.
 
 None of these verdicts widens the scope enumerated in the route census.
 
 ## Claim boundary
 
-This evidence can support only the exact enumerated cells and targets. It does
-not certify a neighbouring sample size, rank, tier, family, slope construction,
-rotated loading, bootstrap method, or nonlinear profile. CI-11/12 remain typed
+This evidence can support only the exact enumerated tested regimes and targets.
+It does not certify another truth-parameter value, neighbouring sample size,
+rank, tier, family, slope construction, rotated loading, bootstrap method, or
+nonlinear profile. CI-11/12 remain typed
 refusals. Prediction, missing-data, MSPL, and new interval APIs remain outside
 this programme.

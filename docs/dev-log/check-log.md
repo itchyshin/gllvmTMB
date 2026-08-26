@@ -54596,3 +54596,10 @@ receipt. All later changes are roxygen/prose/startup text, generated help,
 dev-only claim/census contracts, tests, and closure documents; the final
 focused replay above covers those changed contracts. No estimator, exported
 signature, NAMESPACE, likelihood, formula grammar, or C++ path changed.
+
+Rose's final stale scan then found one remaining word-level scope leak: the
+release-wide claim matrix named native pinned ordinary-Gaussian loading cells
+but omitted `unrotated`. A failing regression was added first, the fence was
+restored, and both `verify-claims.R` and the focused claim test passed. This
+changes claim wording only; the route map, arithmetic, and certificate regime
+are unchanged.

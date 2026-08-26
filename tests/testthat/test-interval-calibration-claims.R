@@ -179,4 +179,21 @@ test_that("the CI-08 profile test comment uses the live total-variance contract"
   expect_true(grepl("+ psi_t^2", text, fixed = TRUE))
 })
 
+test_that("the release-wide CI-13 boundary retains the unrotated fence", {
+  path <- testthat::test_path(
+    "..",
+    "..",
+    "docs",
+    "dev-log",
+    "release",
+    "2026-08-08-0.7-release-claim-matrix.md"
+  )
+  text <- paste(readLines(path, warn = FALSE), collapse = "\n")
+  expect_true(grepl(
+    "native pinned unrotated ordinary-Gaussian standardized-loading",
+    text,
+    fixed = TRUE
+  ))
+})
+
 `%||%` <- function(x, y) if (is.null(x)) y else x

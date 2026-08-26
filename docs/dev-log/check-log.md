@@ -54576,3 +54576,212 @@ fence prevents every coefficient marker from reaching a likelihood. The Node
 unlazy checker was unavailable; G1-G15 were manually re-verified from the
 ledger with the commands above. GitHub API access was unavailable, so no issue,
 PR, or live remote state was changed or inferred.
+
+---
+
+## 2026-08-25 — Release-complete interval calibration (Codex)
+
+**Lane:** `codex:interval-calibration-release`
+**Branch:** `codex/interval-calibration-release`
+**Base:** `f5ba7bdb2e454f3d3cda34936f0bb9b746459e68`
+
+Completed the CI-08--CI-15 target-by-target calibration programme without a
+public API, likelihood, formula-grammar, NAMESPACE, or C++ change. The tracked
+150,019-row all-attempt ledger retains the invalid first Totoro deployment,
+every canonical science attempt, CI-14 provenance failures, and all 18 CI-10
+cost-preflight outcomes. The terminal route census has 19 exact identities and
+exactly three certificate regimes, all CI-13 standardized-loading Wald:
+`(n=150,d=2)`, `(n=400,d=1)`, and `(n=400,d=2)`, restricted to structurally
+free strict-lower targets in one frozen DGP, conditional on eligible fits.
+CI-08 total-variance output is fail-closed to
+`route-only`; the PVT-02 campaign is blocked. CI-09/14/15 are blocked, CI-10 is
+limited/blocked by route, and CI-11/12 remain typed refusals.
+
+Checks and receipts:
+
+```sh
+Rscript --vanilla dev/interval-calibration/verify-claims.R
+# INTERVAL_CLAIMS_OK
+
+Rscript --vanilla -e 'devtools::test(filter = "interval-calibration-claims|profile-ci-total-variance-export|loading-ci", stop_on_failure = TRUE)'
+# FAIL 0 | WARN 0 | SKIP 35 | PASS 89
+
+Rscript --vanilla -e 'pkgdown::check_pkgdown()'
+# No problems found.
+
+# Five deterministic ordinary-suite shards on f68e6bba:
+# ORDINARY_SHARD_AF_OK files=112
+# ORDINARY_SHARD_GL_OK files=79
+# ORDINARY_SHARD_MR_OK files=223
+# ORDINARY_SHARD_SZ_OK files=108
+# ORDINARY_SHARD_NUM_OK files=1
+# Total configured ordinary files: 523; no failures.
+```
+
+The initially estimated 12--25 minute monolithic `devtools::test()` overran
+while still in `m1-*` and was stopped under D-139; it had no observed failure
+but is not counted as a full pass. The deterministic five-shard replay is the
+complete ordinary-suite result. `devtools::document(quiet = TRUE)` succeeded;
+its existing AIC/BIC/anova S3 export warnings were retained. Both affected
+articles rendered locally after correcting their registered `articles/` names.
+`pkgdown::check_pkgdown()` passed again after independent-review repairs.
+
+Remote science ran only after explicit approval on Totoro and Fir/DRAC, never
+on GitHub Actions. The invalid Totoro archive, corrected r2 archive, Fir
+archive, all-attempt ledger, and target recomputation checksums are recorded in
+`docs/dev-log/artifacts/interval-calibration/2026-08-25-terminal-campaign-evidence.md`.
+No push, PR, merge, release, or public issue message was performed.
+
+### Post-Sol claim-scope repair
+
+A fresh Sol-high rebind withheld at
+`eacbdc881cf9c74d2e692bb82f5c5c7a3e8cb48e`: the public CI-13 wording named
+`n`, `d`, family, tier, and target but omitted that the 5,000-replicate campaign
+used one frozen truth-parameter regime and computed coverage conditional on
+eligible fits. It also found a stale `test-profile-ci.R` comment that wrote
+`+ psi_t` and called the withdrawn CI-08 penalty profile a certificate
+candidate. The repair names the exact intercept, unique-SD, and loading regime;
+reports the three availability rates; narrows every source/generated/reader/
+release surface; and makes both the claim verifier and route-census contract
+fail when the boundary is removed.
+
+```sh
+Rscript --vanilla -e 'devtools::load_all(quiet=TRUE); testthat::test_file("tests/testthat/test-interval-calibration-claims.R", reporter="summary", stop_on_failure=TRUE)'
+# PASS: 18 expectations; the new DGP/eligibility and census-row mutations were
+# observed failing before the repair and passing after it.
+
+NOT_CRAN=true Rscript --vanilla -e 'devtools::load_all(quiet=TRUE); fs <- c("tests/testthat/test-interval-calibration-claims.R", "tests/testthat/test-loading-ci.R", "tests/testthat/test-profile-ci-total-variance-export.R", "tests/testthat/test-profile-ci.R"); for (f in fs) testthat::test_file(f, reporter="summary", stop_on_failure=TRUE); cat("POST_SOL_SCOPE_FOCUSED_OK\n")'
+# POST_SOL_SCOPE_FOCUSED_OK; FAIL 0 | WARN 0 | SKIP 35 | PASS 97.
+
+Rscript --vanilla -e 'devtools::document(quiet=TRUE); cat("DOCUMENT_CLAIM_SURFACES_OK\n")'
+# DOCUMENT_CLAIM_SURFACES_OK; only the pre-existing AIC/BIC/anova S3 warnings.
+
+Rscript --vanilla -e 'pkgdown::build_article("articles/current-limits", lazy=FALSE); pkgdown::build_article("articles/profile-likelihood-ci", lazy=FALSE); pkgdown::check_pkgdown(); cat("POST_SOL_DOCS_OK\n")'
+# POST_SOL_DOCS_OK; No problems found.
+
+Rscript --vanilla dev/interval-calibration/verify-claims.R
+# INTERVAL_CLAIMS_OK
+
+git diff --check
+# PASS: no whitespace errors.
+```
+
+The prior 523-file ordinary-suite receipt remains the behavioral package
+receipt. All later changes are roxygen/prose/startup text, generated help,
+dev-only claim/census contracts, tests, and closure documents; the final
+focused replay above covers those changed contracts. No estimator, exported
+signature, NAMESPACE, likelihood, formula grammar, or C++ path changed.
+
+Rose's final stale scan then found one remaining word-level scope leak: the
+release-wide claim matrix named native pinned ordinary-Gaussian loading cells
+but omitted `unrotated`. A failing regression was added first, the fence was
+restored, and both `verify-claims.R` and the focused claim test passed. This
+changes claim wording only; the route map, arithmetic, and certificate regime
+are unchanged.
+
+---
+
+## 2026-08-25 — Interval-calibration landing (Codex)
+
+**Lane:** `codex:interval-calibration-landing`
+**Exact base:** `1bacee9a808b4106ce681502463baa317dcb9d9b`
+**Completed source:** `4ba533949d7dae264268ae55f3c7fc801ee87da5`
+
+Replayed and accounted for all 34 interval-calibration commits and all 103
+source-delta paths on current main. Ninety-eight paths are exact source blob
+matches; five shared status/history surfaces have a structured reconciliation
+receipt. The frozen two-lane foreign-path oracle passes with a 107-path landing
+delta, so current random-slope and LV work remains intact.
+
+Verification receipts:
+
+```sh
+cd /Users/z3437171/.codex/worktrees/d899/gllvmTMB/.unlazy/interval-calibration-landing/repo
+
+Rscript --vanilla /Users/z3437171/.codex/worktrees/d899/gllvmTMB/.unlazy/interval-calibration-landing/repo/.unlazy/interval-calibration-landing/verify-lineage.R
+# LANDING_LINEAGE_OK commits=34 paths=103
+
+Rscript --vanilla /Users/z3437171/.codex/worktrees/d899/gllvmTMB/.unlazy/interval-calibration-landing/repo/.unlazy/interval-calibration-landing/verify-shared-reconciliation.R
+# SHARED_RECONCILIATION_RECEIPT_OK rows=5
+
+Rscript --vanilla /Users/z3437171/.codex/worktrees/d899/gllvmTMB/.unlazy/interval-calibration-landing/repo/.unlazy/interval-calibration-landing/verify-foreign-leases.R
+# FOREIGN_LANE_PATHS_CLEAR lanes=2 delta=110 at the final receipt tip
+
+Rscript --vanilla dev/interval-calibration/verify-claims.R
+# INTERVAL_CLAIMS_OK
+
+# Unlazy --reverify leaves:
+# branch: ALL MET (6 met)
+# evidence: ALL MET (4 met)
+# integration: ALL MET (3 met)
+# LANDING_FOCUSED_TESTS_OK
+```
+
+The terminal evidence remains byte-identical: 150,019 all-attempt rows at
+SHA-256 `f8c1f33308b0ccb9bed684a99a746f415d79f090875756a6eba752e577dfbe4a`
+and 18 target rows at SHA-256
+`3d204c754d9cada7858c656341a7d8234c018af9a7c874772b666632018f9047`.
+The route census remains 19 rows with exactly three CI-13 certificates. No fit,
+simulation, benchmark, remote compute, workflow edit, push, PR, merge, release,
+or public message occurred.
+
+The first closure commit's staged whitespace check found Markdown hard-break
+spaces in the new receipts, but the newline-separated shell continued into the
+commit. The permitted final reverify commit removes only those formatting
+defects and records the failed check instead of hiding it.
+
+The post-commit handoff gate found the intentional unpushed branch and then its
+declaration checker required an explicit findings line. The handover now says
+`FINDINGS-OF-RECORD: none`: this landing created no new scientific finding
+beyond the source programme's already durable terminal interval findings.
+
+---
+
+## 2026-08-26 — Interval-calibration approved merge gate (Codex)
+
+The maintainer authorized merging the completed interval-calibration landing.
+The verified bundle imported at
+`fb15c13fe7d9e828ddfa5d05015d5ef93c2ea49c`; refreshed `origin/main` was
+`1bacee9a808b4106ce681502463baa317dcb9d9b`, which is the exact merge base, so
+the landing branch was 37 commits ahead and zero behind. The first global
+exact-path lease claim was refused on the one shared Design 35 path. The LV
+owner froze and checkpointed that append-only delta, narrowed it out of the LV
+lease, and the interval merge lane then acquired all 110 exact paths. No LV or
+random-slope file was reverted.
+
+Fresh pre-push checks exposed and retained one real integration failure:
+
+```sh
+Rscript --vanilla -e 'options(crayon.enabled=FALSE); devtools::document(quiet=TRUE); pkgdown::build_article("articles/current-limits", lazy=FALSE); pkgdown::build_article("articles/profile-likelihood-ci", lazy=FALSE); pkgdown::check_pkgdown(); devtools::check(args="--no-manual", quiet=TRUE)'
+# Articles rendered and check_pkgdown() passed.
+# R CMD check: 20m24.2s; FAIL 14 | WARN 64 | SKIP 1146 | PASS 14758.
+```
+
+All 14 failures came from eight interval/PVT test files sourcing repository-only
+`dev/` or `docs/` paths at file top level. Both trees are deliberately excluded
+by `.Rbuildignore`, so the tests passed from a source checkout but errored from
+the built package. The repair follows the existing developer-contract pattern:
+each file conditionally sources its repository-only contract, runs every
+substantive test in a source checkout, and registers one explicit skip when the
+developer tree is absent from the built package.
+
+```sh
+# Synthetic built-package layout with dev/ and docs/ absent:
+Rscript --vanilla -e 'testthat::test_dir(<temporary-tests-only-root>, reporter="summary", stop_on_failure=TRUE)'
+# PASS: eight explicit source-checkout-only skips; zero failures or warnings.
+
+Rscript --vanilla -e 'devtools::load_all(quiet=TRUE); fs <- c("tests/testthat/test-pvt02-contract.R", "tests/testthat/test-pvt02-packet.R", Sys.glob("tests/testthat/test-interval-calibration-*.R"), "tests/testthat/test-profile-ci-total-variance-export.R"); for (f in unique(fs)) testthat::test_file(f, reporter="stop", stop_on_failure=TRUE); cat("LANDING_FOCUSED_TESTS_OK\n")'
+# LANDING_FOCUSED_TESTS_OK; all substantive source-checkout tests executed.
+
+Rscript --vanilla -e 'options(crayon.enabled=FALSE); devtools::check(args="--no-manual", quiet=TRUE); cat("LANDING_R_CMD_CHECK_OK\n")'
+# 19m53.2s; 0 errors, 0 warnings, 4 pre-existing/environmental notes.
+# LANDING_R_CMD_CHECK_OK.
+
+git diff --check
+# PASS.
+```
+
+No fit, simulation, benchmark, campaign, workflow edit, or scientific claim was
+added. The next gate is one pushed PR with the full pull-request CI matrix; it
+must be green before merge, and the merge run must then be observed before the
+exact-path lease is released.

@@ -81,8 +81,11 @@ structured tiers are not admitted.
 - Direct or target-specific profile machinery remains available for fixed
   effects, direct scale parameters, `Lambda` entries, the supported
   phylogenetic-signal cases, and `profile_ci_total_variance()`. The last route
-  has a narrow unpenalised native-Laplace Gaussian `certified-0.94` regime; it
-  is not a package-wide interval certificate.
+  is a penalty-profile approximation and every returned interval is
+  `route-only`. Historical `n_units = 150`, `d` in `{1, 2}` and new
+  `n_units = 400`, `d = 2` numerical coverage gates passed, but the retained
+  endpoints do not prove constrained-refit convergence and exact target
+  attainment. The former exact-cell certificate is therefore withdrawn.
 - The former nonlinear profile routes for canonical repeatability,
   communality, correlations, and variance proportions are withdrawn. Explicit
   requests stop with a typed explanation rather than returning bounds.
@@ -94,8 +97,16 @@ structured tiers are not admitted.
   `Lambda` supports Wald, profile, and bootstrap routes; standardized
   `rho[t,k] = Lambda[t,k] / sqrt(Sigma_total[t,t])` supports joint-delta
   Wald and Fisher-z Wald routes. Standardized profile intervals are not
-  implemented, and empirical coverage of standardized-loading intervals is
-  not certified.
+  implemented. Symmetric joint-delta Wald intervals are certified only for the
+  structurally free strict-lower targets in native pinned unrotated ordinary
+  Gaussian three-trait cells `(n_units=150,d=2)`, `(n_units=400,d=1)`, and
+  `(n_units=400,d=2)`. This is one frozen DGP, conditional on eligible fits:
+  intercepts `(-0.20, 0.10, 0.25)`, unique SDs `(0.70, 0.80, 0.90)`, and
+  loading vector `(0.80, 0.45, -0.35)` for `d=1`, with second column
+  `(0, 0.70, 0.40)` for `d=2`. The `n_units=150,d=1` cell failed. No other
+  truth-parameter regime inherits the result. Pinned diagnostic
+  rows, Fisher-z Wald, arbitrary constraints, other rotations, and every
+  neighbouring cell remain uncalibrated.
 
 ### Variational approximation
 

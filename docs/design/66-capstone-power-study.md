@@ -114,7 +114,7 @@ by #346 / CI-08 / CI-10).
 | **A**ims | Falsifiable claims (section 2) about coverage, bias, and power across the capability matrix. |
 | **D**ata-generating mechanisms | Tiered factorial grid (section 4): family x RE-structure x source x d x n x signal x replication. |
 | **E**stimands | Rotation-invariant targets (section 5): `Sigma_unit_diag`, total off-diagonal correlation; raw `psi`/loadings are diagnostic only. |
-| **M**ethods | TMB Laplace ML; TWO distinct interval routes -- the certified chi-square_1 profile on `log V_t` (`profile_ci_total_variance()`) and the parametric bootstrap (`bootstrap_Sigma()`) -- whose primary/diagnostic assignment is an OPEN maintainer decision (section 3); convergence + PD-Hessian filtering (section 6). |
+| **M**ethods | TMB Laplace ML; TWO distinct interval routes -- the route-only penalty profile on `log V_t` (`profile_ci_total_variance()`) and the parametric bootstrap (`bootstrap_Sigma()`) -- whose primary/diagnostic assignment is an OPEN maintainer decision (section 3); convergence + PD-Hessian filtering (section 6). |
 | **P**erformance measures | Coverage, bias, relative bias, empirical SE, RMSE, CI width, power, Type-I error -- each with an MCSE formula (section 7). |
 
 The M3 grid is already reported in ADEMP terms (Design 42 sec.1) and
@@ -228,27 +228,35 @@ regression check.
 
 ### 3.1 Two different profile routes -- do not confuse them (2026-08-02)
 
+**2026-08-25 correction.** The historical P-V campaign numbers below remain
+measured evidence, but the certificate is withdrawn. The implementation is a
+penalty-profile approximation, and retained endpoints do not establish exact
+constrained-refit convergence or target attainment. Every computed
+`profile_ci_total_variance()` row is therefore `route-only`; the exact PVT-02
+campaign is terminally blocked. References below to a P-V “certificate” describe
+the superseded 2026-07-29 disposition and must not be used as a current claim.
+
 Everything this document said about "the profile" before 2026-08-02 meant
 **route P-psi**. A second and unrelated profile route now exists. They
 target different quantities, have opposite rotation properties, and carry
 opposite evidence.
 
-| | **P-psi** (the demoted diagnostic) | **P-V** (the certified route) |
+| | **P-psi** (the demoted diagnostic) | **P-V** (route-only approximation) |
 |---|---|---|
 | Target | per-trait unique variance `psi[t]` (`theta_diag_B`) | per-trait TOTAL variance `V_t = (Lambda Lambda')[t,t] + psi[t]` |
 | Rotation | **variant** -- not an estimand | **invariant** -- the canonical target |
 | Reference | chi-square_1 profile | chi-square_1 profile on `log V_t` |
-| Entry point | M3 legacy `"psi"` target in `dev/m3-grid.R` | `profile_ci_total_variance()`, `NAMESPACE:174`, wrapper `R/profile-derived.R:1010` -> certified internal `:856` |
-| Standing | **DEMOTED by PR #364** -- reported, never gated | **CERTIFIED** under a pre-registered gate; see below |
-| Measured | 0.9384 (d1) / 0.8653 (d2) -- FAILS | 0.9467 / 0.9467 -- clears the 0.94 gate |
+| Entry point | M3 legacy `"psi"` target in `dev/m3-grid.R` | `profile_ci_total_variance()` penalty-profile approximation |
+| Standing | **DEMOTED by PR #364** -- reported, never gated | **ROUTE-ONLY**; historical certificate withdrawn |
+| Measured | 0.9384 (d1) / 0.8653 (d2) -- FAILS | 0.9467 / 0.9467 -- numerical gate passed, exact profile contract unverified |
 
 `psi` remains a diagnostic and PR #364's demotion of **P-psi** stands
 untouched. Nothing below reinstates it. Wherever this document says
 "profile", it now means **P-V** unless it says `psi`.
 
-### 3.2 What the P-V certificate does and does not cover
+### 3.2 What the superseded P-V disposition measured
 
-The certificate (`docs/dev-log/2026-07-29-certificate-disposition.md`,
+The superseded certificate (`docs/dev-log/2026-07-29-certificate-disposition.md`,
 pre-registration `docs/dev-log/2026-07-29-certificate-gate-preregistration.md`)
 records 0.9467 in both cells on a fresh-seed 20,000-replicate campaign
 and passed a 3-lens D-43 panel 3-0. It arrives with fences that travel
@@ -312,10 +320,10 @@ decision** with three named candidates. **This document does not choose
 between them, and no lane may swap them by fiat.**
 
 - **(a) Profile primary / bootstrap secondary.** Gates on P-V; reports
-  bootstrap alongside. Buys the only route with a pre-registered
-  certificate, at a 0.94 floor, and buys it only on the axis where the
-  certificate is silent (3.3). Requires the structured-tier extension as
-  in-scope work.
+  bootstrap alongside. This option no longer inherits the former
+  pre-registered certificate: the retained campaign did not establish exact
+  constrained-refit fidelity. Requires an exact-profile repair, recalibration,
+  and the structured-tier extension as in-scope work.
 - **(b) Bootstrap primary at `n_boot >= 200`.** Keeps PR #364's
   assignment and the single route that amortises across all estimands
   from one refit set (section 8). Costs the `(1 + n_boot)` factor
@@ -581,16 +589,13 @@ public design note.
     lever 2, for why this is arithmetic and not a tuning preference
     (`R/bootstrap-sigma.R:227-241`). One refit set yields every requested
     summary at once (`R/bootstrap-sigma.R:346-375`).
-  - **Route P-V -- chi-square_1 profile on `log V_t`**,
+  - **Route P-V -- penalty-profile approximation on `log V_t`**,
     `profile_ci_total_variance()` (`NAMESPACE:174`; wrapper
-    `R/profile-derived.R:1010` delegating to the certified internal at
-    `:856`). This is the ONLY route with a pre-registered certificate
-    (0.9467, both cells, 20,000 reps, D-43 panel 3-0), and that
-    certificate carries six live fences plus a total absence of evidence
-    on the RE-structure axis -- **all of them restated in section 3.2 and
-    3.3 and all of them binding on any capstone use.** The function marks
-    every returned row `certified-0.94` / `route-only` / `none` in its
-    `interval_status` column (`R/profile-derived.R:953, :957`); a
+    `R/profile-derived.R`). Historical numerical gates passed (0.9467 in
+    both `n=150` cells), but the former certificate is withdrawn because
+    exact constrained-refit fidelity is not retained. The function marks
+    every returned row `route-only` / `none` in its `interval_status` column;
+    a
     claim-bearing campaign should record that column per row rather than
     infer regime membership. Unlike Route B this route does **not**
     amortise: it is a separate `uniroot` bisection per scalar quantity
@@ -599,7 +604,7 @@ public design note.
   - **Route P-psi -- profile likelihood on per-trait `psi`**
     (`theta_diag_B`) -- reported, not gated (PR #364 demotion). This is a
     DIFFERENT route from P-V and its demotion is unaffected by P-V's
-    certificate (section 3.1).
+    historical numerical result (section 3.1).
   - Wald / Fisher-z intervals exist for some family paths (register
     FAM-02, CI-10) and may be reported as a further diagnostic where
     cheap. They are not certificate-bearing on any cell.
@@ -1150,14 +1155,11 @@ bear on them.
      `n_boot = 25` (ceiling 0.9231). Reporting both gates requires
      `n_boot >= 200` on any claim-bearing cell, plus the
      `coverage_ceiling >= conf` assertion.
-  2. **The one certified route is certified at 0.94, not at 0.95.** Route
-     P-V's pre-registration fixes the gate at `coverage >= 0.94` and
-     explicitly prohibits restating the result as nominal or
-     unconditional 95 % coverage; both certified cells sit roughly 3.3
-     clustered SEs below 0.95 (section 3.2, fence 4). So if section 3.4
-     resolves toward P-V, this row's 95 % column remains a **reported
-     descriptive number** and must not be read as a gate that route has
-     ever cleared. Nothing here relaxes the 94 % gate or tightens it.
+  2. **P-V has no current certificate.** Its historical pre-registration
+     fixed `coverage >= 0.94`, but the retained endpoints do not establish
+     exact constrained-refit fidelity. If section 3.4 resolves toward P-V,
+     both the 94 % and 95 % columns remain descriptive until an exact-profile
+     repair and new calibration campaign succeed.
 - **L-d (n_sim target) -- pilot ~= 200, core = 2000 (resolves Q-d; folded
   into L-a).** The proposed pilot uses `n_sim ~= 200` for sizing; the intended
   core uses `n_sim = 2000` for gate adjudication at MCSE < 0.5 pp. The

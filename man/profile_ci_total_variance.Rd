@@ -19,8 +19,8 @@ soft-deprecated legacy aliases \code{"B"} / \code{"W"}. Default \code{"unit"}.}
 
 \item{trait_idx}{Integer indices of traits, or \code{NULL} for all.}
 
-\item{level}{Confidence level. Default 0.95. Only 0.95 carries coverage
-evidence.}
+\item{level}{Confidence level. Default 0.95. No level currently carries an
+exact-profile coverage certificate.}
 }
 \value{
 A data frame with one row per trait and columns:
@@ -31,40 +31,31 @@ A data frame with one row per trait and columns:
 could not be computed.}
 \item{\code{method}}{Always \code{"profile"}.}
 \item{\code{interval_status}}{Claim-boundary marker:
-\code{"certified-0.94"} when the row falls inside the certified regime above,
-\code{"route-only"} for a computed but uncertified interval, and \code{"none"}
-for a point-only row with no interval. \code{"certified-0.94"} marks \emph{regime
-membership}; it does not certify the individual interval.}
+\code{"route-only"} for a computed but uncertified interval and \code{"none"}
+for a point-only row with no interval.}
 }
 }
 \description{
-Genuine chi-square_1 profile intervals (via fix-and-refit on \verb{log V_t}) for
-the per-trait total variance \verb{V_t = (Lambda Lambda')[t,t] + psi[t]}, the
+Penalty-based chi-square_1 profile approximations (via fix-and-refit on
+\verb{log V_t}) for
+the per-trait total variance \verb{V_t = (Lambda Lambda')[t,t] + psi[t]^2}, the
 diagonal of the requested covariance tier. This is the same functional
 \code{\link[=extract_Sigma]{extract_Sigma()}} returns on its diagonal, and the same one
 \code{\link[=bootstrap_Sigma]{bootstrap_Sigma()}} resamples.
 }
 \section{What the coverage evidence does and does not cover}{
 
-One regime of this function has measured frequentist coverage. Under
-simulation from a known Gaussian data-generating process, using an
-unpenalised native-Laplace fit with \code{n_units >= 150} and \code{d <= 2}, the
-two-sided intervals met a \strong{pre-registered \verb{>= 0.94} gate}
-(0.9467 in both cells, 20,000 replicates each, computed among converged fits
-only). \strong{That gate is 0.94, not nominal 95\%} -- both cells sit roughly 3.3
-cluster standard errors below 0.95, so do not describe these as 95\%
-intervals. Coverage is a \emph{marginal average} over the simulated \code{V_t}
-distribution and does \strong{not} hold in the smallest-\code{V_t} ventile (0.926 at
-\code{d = 1}). The interval is not equal-tailed, so \strong{one-sided use is invalid}.
-The evidence is one simulated DGP, not a claim about any real dataset.
-
-Everything else the arguments admit is an uncertified computed route: every
-AGHQ fit, any loading-ridge fit, every non-Gaussian family, every tier other
-than \code{"unit"}, \code{d > 2}, \code{d = 0}, \code{n_units < 150}, any \code{level} other than
-0.95, and the off-diagonal and \code{psi} targets (the \code{psi} target was measured
-on the same run and \strong{failed}).
-Rather than refuse those calls -- they are legitimately useful for
-exploration -- the returned \code{interval_status} column marks each row.
+The 2026-07-29 Gaussian \code{n_units = 150}, \code{d} in \verb{\{1, 2\}} campaign and the
+2026-08-25 PVT-02 \code{n_units = 400}, \code{d = 2} campaign both measured the
+implemented penalty-profile approximation. The numerical coverage gates
+passed in those cells, but the retained endpoints do not establish that
+every constrained refit converged and attained its requested \code{log(V_t)}
+exactly. The implementation can accept target mismatch up to its numerical
+tolerance and interpolate after failed interior refits. Those campaigns are
+therefore \strong{measured, not exact-profile certificates}. Every computed row
+is labelled \code{"route-only"}; a row with no interval is labelled \code{"none"}.
+This route must be repaired and recalibrated before any coverage certificate
+is restored.
 }
 
 \seealso{

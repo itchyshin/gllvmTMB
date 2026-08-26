@@ -14,8 +14,10 @@
     "the package is not complete, is not fully human-verified, and needs ",
     "extensive further validation. Point estimates are the primary inferential ",
     "output, but evidence is route- and regime-specific. Broad interval ",
-    "coverage is not certified. One narrow two-sided ",
-    "Gaussian total-variance profile regime has a documented 0.94 floor. ",
+    "coverage is not certified. Three exact native pinned unrotated ordinary-Gaussian ",
+    "standardized-loading Wald cells have target-specific certificates only ",
+    "in one frozen DGP, conditional on eligible fits; ",
+    "total-variance penalty profiles remain route-only. ",
     "See the Current limitations and boundaries page for scope."
   )
 }

@@ -692,12 +692,12 @@ profile_ci_communality <- function(
 }
 
 ## ---- Total unit variance: shared builder + profile + delta-Wald -----------
-## V_t = (Lambda Lambda^T)_tt + psi_t = diag(Sigma_unit)_t, the per-trait total
+## V_t = (Lambda Lambda^T)_tt + psi_t^2 = diag(Sigma_unit)_t, the per-trait total
 ## variance at a covariance tier -- the rotation-INVARIANT, bounded, right-
 ## skewed location-axis variance component whose percentile-bootstrap interval
 ## under-covers (misses are "truth above upper"). `.total_variance_spec()` is the
-## SINGLE source of truth for V_t and its exact gradient, so the profile route
-## (`.profile_ci_total_variance`, the certificate candidate) and the delta-method
+## SINGLE source of truth for V_t and its exact gradient, so the penalty-profile
+## route (`.profile_ci_total_variance`, always route-only) and the delta-method
 ## log-SD Wald (`.wald_ci_total_variance_logsd`, a diagnostic companion) target
 ## the IDENTICAL functional. psi is reconstructed through `.expand_mapped_diag`
 ## so mapped-off single-trial-binary psi (issue #717) is handled, not misindexed;
@@ -733,17 +733,17 @@ profile_ci_communality <- function(
       "Total-variance intervals at tier {.val {tier}} need a latent and/or diagonal component in the fit."
     )
   }
-  ## V_t is CONTRACTUALLY (Lambda Lambda^T)_tt + psi_t. When the tier carries
-  ## loadings but no diagonal component there is no psi_t to add, and every psi
+  ## V_t is CONTRACTUALLY (Lambda Lambda^T)_tt + psi_t^2. When the tier carries
+  ## loadings but no diagonal component there is no psi_t^2 to add, and every psi
   ## term below silently evaluates to zero -- so both routes keep reporting, but
   ## they report Sigma_tt under the name V_t. That silent substitution produced a
   ## confidently wrong coverage curve (0.517 -> 0.300 -> 0.096) whose
-  ## point-estimate gaps tracked the planted psi_t almost exactly. Refuse the fit
+  ## point-estimate gaps tracked the planted psi_t^2 almost exactly. Refuse the fit
   ## rather than quietly change the estimand.
   if (length(ix_diag) == 0L) {
     cli::cli_abort(c(
       "Total-variance intervals at tier {.val {tier}} need the diagonal component {.val {diag_name}}, which this fit does not carry.",
-      "x" = "V_t = (Lambda Lambda^T)_tt + psi_t; without {.val {diag_name}} the psi_t term is identically zero, so V_t would silently reduce to Sigma_tt.",
+      "x" = "V_t = (Lambda Lambda^T)_tt + psi_t^2; without {.val {diag_name}} the psi_t^2 term is identically zero, so V_t would silently reduce to Sigma_tt.",
       "i" = "Fit the tier with {.code unique = TRUE} so psi_t is estimated, or target Sigma_tt directly if that is the intended estimand."
     ))
   }
@@ -865,7 +865,7 @@ profile_ci_communality <- function(
   )
 }
 
-## Route A -- CERTIFICATE CANDIDATE. Genuine per-trait profile on log(V_t).
+## Route A -- ROUTE-ONLY PENALTY-PROFILE APPROXIMATION on log(V_t).
 ## Profiled on the LOG scale (transformation-invariant, so an identical interval
 ## to profiling V_t directly) which makes the fixed `.fix_and_refit_nll`
 ## constraint tolerance act as a relative tolerance and maps V_t -> 0 to
@@ -926,69 +926,14 @@ profile_ci_communality <- function(
   do.call(rbind, out_list)
 }
 
-## Is this (fit, tier, level) inside the ONE regime the D-43 panel certified?
-##
-## The certificate (2026-07-29; docs/dev-log/2026-07-29-certificate-disposition.md)
-## covers an unpenalised native-Laplace fit simulated from a known Gaussian DGP,
-## tier "unit", the diagonal
-## V_t = (Lambda Lambda')[t,t] + psi[t], d in {1,2}, n_units >= 150, two-sided,
-## nominal-95% input, among converged fits. Everything else the signature admits
-## -- every other family, tier, rank, sample size and level -- was NOT measured.
-## Keep this predicate conservative: d = 0 (a diagonal-only unit tier) and every
-## n between 50 and 150 are unmeasured, so they are uncertified, not "close
-## enough".
-.total_variance_in_certified_regime <- function(fit, tier, level) {
-  ## Engine/estimand: the campaign fitted the ordinary unpenalised native
-  ## Laplace likelihood. AGHQ changes the integration objective, while an
-  ## explicit loading ridge targets a penalised MAP point. Neither route
-  ## inherits the certificate. Require all three machine fields so an older or
-  ## incomplete fit object fails closed to "route-only".
-  ridge_tau <- fit$aghq$ridge_tau
-  if (
-    !identical(fit$aghq$used, FALSE) ||
-      !identical(fit$aghq$penalised, FALSE) ||
-      !is.numeric(ridge_tau) || length(ridge_tau) != 1L ||
-      !is.infinite(ridge_tau) || ridge_tau < 0
-  ) {
-    return(FALSE)
-  }
-  ## Family: every observation Gaussian (family id 0).
-  if (any((fit$tmb_data$family_id_vec %||% 0L) != 0L)) {
-    return(FALSE)
-  }
-  ## Tier: the ordinary unit tier only ("unit" normalises to internal "B").
-  norm_tier <- .normalise_level(tier, arg_name = "tier", .skip_warn = TRUE)
-  if (!identical(norm_tier, "B")) {
-    return(FALSE)
-  }
-  ## Rank: a unit-tier latent of rank 1 or 2 (the two certified cells).
-  if (!isTRUE(fit$use$rr_B) || !(as.integer(fit$d_B) %in% c(1L, 2L))) {
-    return(FALSE)
-  }
-  ## Sample size: n_units >= 150.
-  if (!isTRUE(as.integer(fit$n_sites) >= 150L)) {
-    return(FALSE)
-  }
-  ## Level: the gate was measured for the nominal-95% interval and no other.
-  if (!isTRUE(all.equal(level, 0.95))) {
-    return(FALSE)
-  }
-  ## Conditional on convergence -- the certificate is among converged fits only.
-  health <- fit$fit_health %||% .gllvmTMB_build_fit_health(fit)
-  isTRUE(health$converged)
-}
-
 ## Claim-boundary marker for the rows profile_ci_total_variance() returns.
 ##
-## The failure mode this repo keeps hitting is a true-but-narrow number restated
-## more broadly, and prose does not survive restatement -- so the boundary rides
-## on the row, machine-visible, the way extract_correlations() already does it.
+## The 2026-07-29 and 2026-08-25 campaigns measured the implemented penalty
+## approximation, but neither retained enough endpoint detail to establish an
+## exact constrained-refit LR contract. Every computed row therefore remains
+## route-only until the mechanism is repaired and recalibrated.
 .total_variance_interval_status <- function(fit, tier, level, lower, upper) {
-  in_regime <- .total_variance_in_certified_regime(fit, tier = tier, level = level)
-  status <- rep(
-    if (in_regime) "certified-0.94" else "route-only",
-    length(lower)
-  )
+  status <- rep("route-only", length(lower))
   ## A row with no interval is point-only, not an uncertified interval.
   status[is.na(lower) & is.na(upper)] <- "none"
   status
@@ -996,39 +941,32 @@ profile_ci_communality <- function(
 
 #' Profile-likelihood CI for per-trait total variance
 #'
-#' Genuine chi-square_1 profile intervals (via fix-and-refit on `log V_t`) for
-#' the per-trait total variance `V_t = (Lambda Lambda')[t,t] + psi[t]`, the
+#' Penalty-based chi-square_1 profile approximations (via fix-and-refit on
+#' `log V_t`) for
+#' the per-trait total variance `V_t = (Lambda Lambda')[t,t] + psi[t]^2`, the
 #' diagonal of the requested covariance tier. This is the same functional
 #' [extract_Sigma()] returns on its diagonal, and the same one
 #' [bootstrap_Sigma()] resamples.
 #'
 #' @section What the coverage evidence does and does not cover:
-#' One regime of this function has measured frequentist coverage. Under
-#' simulation from a known Gaussian data-generating process, using an
-#' unpenalised native-Laplace fit with `n_units >= 150` and `d <= 2`, the
-#' two-sided intervals met a **pre-registered `>= 0.94` gate**
-#' (0.9467 in both cells, 20,000 replicates each, computed among converged fits
-#' only). **That gate is 0.94, not nominal 95%** -- both cells sit roughly 3.3
-#' cluster standard errors below 0.95, so do not describe these as 95%
-#' intervals. Coverage is a *marginal average* over the simulated `V_t`
-#' distribution and does **not** hold in the smallest-`V_t` ventile (0.926 at
-#' `d = 1`). The interval is not equal-tailed, so **one-sided use is invalid**.
-#' The evidence is one simulated DGP, not a claim about any real dataset.
-#'
-#' Everything else the arguments admit is an uncertified computed route: every
-#' AGHQ fit, any loading-ridge fit, every non-Gaussian family, every tier other
-#' than `"unit"`, `d > 2`, `d = 0`, `n_units < 150`, any `level` other than
-#' 0.95, and the off-diagonal and `psi` targets (the `psi` target was measured
-#' on the same run and **failed**).
-#' Rather than refuse those calls -- they are legitimately useful for
-#' exploration -- the returned `interval_status` column marks each row.
+#' The 2026-07-29 Gaussian `n_units = 150`, `d` in `{1, 2}` campaign and the
+#' 2026-08-25 PVT-02 `n_units = 400`, `d = 2` campaign both measured the
+#' implemented penalty-profile approximation. The numerical coverage gates
+#' passed in those cells, but the retained endpoints do not establish that
+#' every constrained refit converged and attained its requested `log(V_t)`
+#' exactly. The implementation can accept target mismatch up to its numerical
+#' tolerance and interpolate after failed interior refits. Those campaigns are
+#' therefore **measured, not exact-profile certificates**. Every computed row
+#' is labelled `"route-only"`; a row with no interval is labelled `"none"`.
+#' This route must be repaired and recalibrated before any coverage certificate
+#' is restored.
 #'
 #' @param fit A fit returned by [gllvmTMB()].
 #' @param tier Covariance tier: `"unit"`, `"unit_obs"`, `"phy"`, or the
 #'   soft-deprecated legacy aliases `"B"` / `"W"`. Default `"unit"`.
 #' @param trait_idx Integer indices of traits, or `NULL` for all.
-#' @param level Confidence level. Default 0.95. Only 0.95 carries coverage
-#'   evidence.
+#' @param level Confidence level. Default 0.95. No level currently carries an
+#'   exact-profile coverage certificate.
 #' @return A data frame with one row per trait and columns:
 #' \describe{
 #'   \item{`trait`, `tier`}{Trait name and the canonical tier name.}
@@ -1037,10 +975,8 @@ profile_ci_communality <- function(
 #'     could not be computed.}
 #'   \item{`method`}{Always `"profile"`.}
 #'   \item{`interval_status`}{Claim-boundary marker:
-#'     `"certified-0.94"` when the row falls inside the certified regime above,
-#'     `"route-only"` for a computed but uncertified interval, and `"none"`
-#'     for a point-only row with no interval. `"certified-0.94"` marks *regime
-#'     membership*; it does not certify the individual interval.}
+#'     `"route-only"` for a computed but uncertified interval and `"none"`
+#'     for a point-only row with no interval.}
 #' }
 #' @seealso [extract_Sigma()] for the point estimate, [bootstrap_Sigma()] for
 #'   the resampling route to the same estimand.
@@ -1147,7 +1083,7 @@ profile_ci_total_variance <- function(
     ## component is barely identified (e.g. a collapsed binomial loading) and the
     ## interval spans many orders of magnitude -- uninformative, and it would
     ## spuriously "cover" everything. Emit NA rather than a garbage-wide bound;
-    ## the NA rate is itself a diagnostic. (Route B is never the certificate.)
+    ## the NA rate is itself a diagnostic. Route B is also uncalibrated.
     if (se_g > 2.5) {
       return(na_row(t, V, "wide_na"))
     }

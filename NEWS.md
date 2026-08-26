@@ -1599,15 +1599,24 @@ bridge remains experimental and is not required for the main workflow.
 * **Variance components: what is and is not claimed.** Point estimates are the
   package's primary inferential output, but their evidence is route- and
   regime-specific.
-  Broad package-wide interval coverage is not certified. The only current
-  exception is the narrowly scoped unpenalised native-Laplace, two-sided
-  ordinary-Gaussian total-variance regime returned by
-  `profile_ci_total_variance()` with
-  `interval_status = "certified-0.94"`. That label marks a documented 0.94
-  coverage floor under its preregistered conditions, not nominal 95% coverage
-  or a guarantee for an individual interval. Other covariance routes have
-  cell-specific evidence only. Intervals are route output, not a coverage
-  guarantee.
+  Broad package-wide interval coverage is not certified. Three exact native
+  pinned unrotated ordinary-Gaussian standardized-loading Wald cells have target-specific
+  certificates: `(n_units=150,d=2)`, `(n_units=400,d=1)`, and
+  `(n_units=400,d=2)`, restricted to structurally free strict-lower targets.
+  This is one frozen DGP: trait intercepts `(-0.20, 0.10, 0.25)`, unique
+  standard deviations `(0.70, 0.80, 0.90)`, and loading vector
+  `(0.80, 0.45, -0.35)` for `d=1`, with second column `(0, 0.70, 0.40)` for
+  `d=2`. Coverage is conditional on eligible fits (optimizer convergence,
+  converged fit health, available `sdreport()`, and a positive-definite
+  Hessian); availability was 98.82%, 93.38%, and 96.18% in the three certified
+  cells. The `n_units=150,d=1` cell failed. No other truth-parameter regime
+  inherits the result. Pinned diagnostics, Fisher-z Wald,
+  arbitrary constraints, rotated or neighbouring regimes, and the global
+  loading route remain uncalibrated. `profile_ci_total_variance()` now labels
+  every computed penalty-profile approximation `route-only`; its former
+  `certified-0.94` labels are withdrawn because retained endpoints do not prove
+  exact constrained-refit convergence or target attainment. Intervals are
+  route output, not a coverage guarantee.
 * Interval support is target-specific. A route that returns bounds is not, by
   itself, evidence of nominal repeated-sampling coverage.
 * The previous public `check_identifiability()` and `coverage_study()` prototypes

@@ -44,11 +44,25 @@
 #' [extract_Sigma()] for rotation-invariant summaries.
 #'
 #' @section Interval calibration:
-#' The point estimates are the supported claim. The interval methods here are
-#' provided for exploration: their empirical coverage is not certified for this
-#' estimand (the worked example below is a binomial-probit fit), so treat the
-#' intervals as exploratory rather than coverage-calibrated. See `NEWS.md` for
-#' the current coverage status.
+#' Standardized symmetric joint-delta Wald intervals have an exact empirical
+#' certificate only for the structurally free strict-lower targets in native
+#' Laplace, pinned, unrotated, lower-triangular ordinary Gaussian unit-tier
+#' three-trait cells `(n_units=150,d=2)`, `(n_units=400,d=1)`, and
+#' `(n_units=400,d=2)`, at `conf_level = 0.95`. The `(n_units=150,d=1)` cell
+#' failed its lower-band gate. This is one frozen DGP: trait intercepts
+#' `(-0.20, 0.10, 0.25)`, unique standard deviations
+#' `(0.70, 0.80, 0.90)`, and loading vector `(0.80, 0.45, -0.35)` for `d=1`,
+#' with the second column `(0, 0.70, 0.40)` added for `d=2`. Coverage is
+#' conditional on eligible fits (optimizer convergence, converged fit health,
+#' an available `sdreport()`, and a positive-definite Hessian); availability
+#' was 98.82%, 93.38%, and 96.18% in the three certified cells, respectively.
+#' The certificate does not extend to another loading, unique-variance, or
+#' intercept regime. Pinned diagnostic rows, Fisher-z Wald
+#' (`method = "wald_asym"`), arbitrary confirmatory constraints, raw-loading
+#' intervals, profiles, bootstraps, other rotations, and every neighbouring
+#' family, tier, rank, sample size, or confidence level remain exploratory.
+#' The worked example below is binomial-probit and is outside the certified
+#' cells. See `NEWS.md` for the current coverage status.
 #'
 #' @param fit A multivariate `gllvmTMB()` fit object.
 #' @param level Which loading matrix to summarise: `"unit"` (default)

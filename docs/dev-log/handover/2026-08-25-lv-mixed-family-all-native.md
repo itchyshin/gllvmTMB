@@ -1,9 +1,9 @@
 # Codex Handover: Family-Wide Mixed-Family Predictor-Informed LV
 
-Status: **PANEL-PASSED CHECKPOINT — review repairs and exact-source checks are
-green at local checkpoint `312598984...`; the final 2-Terra/1-Sol panel passes.
-Ordered PR #1214 integration, final reverify/validators, and lease release
-remain.**
+Status: **INTEGRATED CLOSEOUT CANDIDATE — review repairs and exact-source
+checks are green, PR #1214 is merged, and this lane is rebased onto exact main
+`5a202fc8...` at candidate `595c9dfc...`. Final reverify/validators, one narrow
+local closeout commit, clean-tree proof, and lease release remain.**
 
 ## Goal
 
@@ -23,10 +23,11 @@ mixtures or any deferred Design 73 surface.
 ## Current state
 
 - Branch: `codex/lv-mixed-family-all-native`.
-- Verified base:
-  `499cc3f901f5b5d02962a3c5fb665bf69f2fc796`.
-- Rebased candidate before closeout-only edits:
-  `4a93d008da1006809e4a840b846886915c298702`.
+- Verified base after ordered PR #1214 integration:
+  `5a202fc8154a8e0c50c41ebb76932b0d805bdee8`.
+- Rebased candidate before final closeout-only edits:
+  `595c9dfc228f582f0e987fd0bbce02f32a9934b9` (tree
+  `0d22ea2e32765b32afb517a0638e44799f667be2`).
 - Campaign source HEAD:
   `7dd5eec733c42c722fe94be4c0e5a2efe1f4a3c3`.
 - Final transfer bundle:
@@ -55,8 +56,8 @@ mixtures or any deferred Design 73 surface.
 - Incidental columns named like multinomial metadata are ignored when no
   family-16 response is present; a planted Gaussian + Poisson control protects
   that namespace boundary.
-- Two narrow mixed-LV local commits exist; no mixed-LV push, PR, merge, or
-  release has occurred.
+- Four rebased mixed-LV local commits exist before the final closeout commit;
+  no mixed-LV push, PR, merge, or release has occurred.
 
 ## Resolved remote blocker
 
@@ -94,13 +95,10 @@ DRAC, or a duplicate local campaign.
 
 ## Final landing sequence
 
-1. Wait for the ordered PR #1214 merge lane to return the exact merged-main SHA
-   and shared-file lease receipt; do not edit or rebase before it arrives.
-2. Rebase once, preserve both append-only check-log histories, and append the
-   frozen 22m56.90s final-check receipt.
-3. Run final Unlazy `--reverify`, after-task validator, Melissa reconciliation,
-   and `handoff_gate.sh`; prove a clean tree and release the exact-path lease.
-   Do not push this local-only lane.
+1. Run final Unlazy `--reverify`, the after-task validator, Melissa
+   reconciliation, and `handoff_gate.sh` on the integrated candidate.
+2. Create one narrow local closeout commit, prove the tree clean, and release
+   the exact-path leases. Do not push this local-only lane.
 
 ## Protected boundaries
 
@@ -121,8 +119,8 @@ artifacts, after-task report, and check-log rather than a separate vault note.
   r200, pure r200, mixed r500 calibration, long/wide reader repair,
   focused/full tests, article, pkgdown, local check, current status cascade,
   and the final 2-Terra/1-Sol panel.
-- **CARRIED-OVER**: ordered PR #1214 integration, final reverify, validators,
-  check-log receipt, clean-tree proof, and lease release.
+- **CARRIED-OVER**: final reverify, validators, local closeout commit,
+  clean-tree proof, and lease release.
 - **REJECTED**: duplicate campaigns, evidence-by-canary, arbitrary mixtures,
   remote compute above the approved envelope, GitHub Actions science compute,
   GLLVM.jl mutation, or umbrella Design 73 promotion.

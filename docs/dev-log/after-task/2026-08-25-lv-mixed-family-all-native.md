@@ -1,9 +1,10 @@
 # After Task: Family-Wide Mixed-Family Predictor-Informed LV
 
-Status: **PANEL-PASSED CHECKPOINT — all retained campaigns are adjudicated,
-the 2-Terra/1-Sol frozen-diff panel passes implementation hash `2bdb4926...`,
-and exact-source local verification is green. Ordered PR #1214 integration,
-final rebase/reverify, validators, and lease release remain.**
+Status: **INTEGRATED CLOSEOUT CANDIDATE — all retained campaigns are
+adjudicated, the 2-Terra/1-Sol frozen-diff panel passes implementation hash
+`2bdb4926...`, exact-source local verification is green, and the branch is
+rebased onto verified post-merge main `5a202fc8...`. Final reverify,
+validators, local closeout commit, clean-tree proof, and lease release remain.**
 
 ## 1. Goal
 
@@ -215,13 +216,17 @@ Completed checks:
   bundle. Its log SHA-256 is
   `5a3debc8f7bcca2ba93c48ff00bbed8dfa6b01a4f36b7c6a73735a4f2f0b4d75`.
 
-The final completion panel is PASS: Gauss/Emmy found no parameterisation,
+The pre-integration completion panel is PASS: Gauss/Emmy found no parameterisation,
 TMB, nuisance-routing, or allow-list blocker; Noether/Fisher reproduced the
 estimand, denominators, MCSEs, and bounded claims; Rose/Grace verified the
 checkpoint hash, path census, attempt history, and final checks. Still required
-before closure: ordered PR #1214 integration, rebase onto its returned main
-SHA, final `--reverify`, closeout validators, clean-tree proof, handoff
-validation, and lease release.
+before closure: final `--reverify`, closeout validators, local closeout commit,
+clean-tree proof, handoff validation, and lease release. PR #1214 merged without
+bypass at `5a202fc8154a8e0c50c41ebb76932b0d805bdee8`; this branch rebased once
+without conflict to candidate `595c9dfc228f582f0e987fd0bbce02f32a9934b9`
+(tree `0d22ea2e32765b32afb517a0638e44799f667be2`). The focused eight-file
+post-rebase replay passed in 29.13 seconds, and the refreshed Gauss/Emmy review
+found no semantic LV-route change.
 
 The first frozen completion panel returned `FAIL`. Gauss/Emmy found that an
 explicit ordinary unit-tier `indep()` or compatibility `unique()` companion
@@ -438,10 +443,10 @@ failed path is retained here and was not used as evidence.
 - **HOLD**: pure ordinal-probit point recovery did not meet its frozen shared-
   Sigma gate despite healthy `B_lv` targets. This closeout does not redefine
   the estimand or remove the Sigma oracle.
-- After ordered PR #1214 integration, rebase once onto the returned exact main
-  SHA, append the frozen check-log receipt, run Unlazy `--reverify`, the
-  after-task validator, Melissa plan-vs-actual, handoff gate, clean-tree proof,
-  and lease release. The final 2-Terra/1-Sol panel already passes.
+- PR #1214 integration and the one-time rebase are complete. Final closeout is
+  limited to Unlazy `--reverify`, the after-task validator, Melissa
+  plan-vs-actual, handoff gate, one narrow local closeout commit, clean-tree
+  proof, and lease release.
 - Exact mixed-LV three-OS CI is not part of this local-only Ultra Plan. The
   verified base has its own protected three-OS and exact-SHA post-merge
   receipts; those are not claimed as mixed-LV-head CI.

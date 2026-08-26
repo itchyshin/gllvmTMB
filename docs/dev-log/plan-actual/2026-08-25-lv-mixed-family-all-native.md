@@ -4,9 +4,9 @@ Date: 2026-08-25
 Plan: `docs/dev-log/plans/2026-08-25-lv-mixed-family-all-native-ultra-plan.md`
 Branch: `codex/lv-mixed-family-all-native`
 Reviewer lens: Melissa
-Status: **PANEL-PASSED CHECKPOINT — retained compute, review repairs, exact-
-source local checks, and the final 2-Terra/1-Sol panel are complete; ordered PR
-#1214 integration and final closeout gates remain**
+Status: **INTEGRATED CLOSEOUT CANDIDATE — retained compute, review repairs,
+exact-source local checks, the final 2-Terra/1-Sol panel, ordered PR #1214
+integration, and the one-time rebase are complete; final closeout gates remain**
 
 ## Summary
 
@@ -16,8 +16,8 @@ package check are complete locally. The exact family-wide allow-list is live
 without changing TMB likelihood code or widening arbitrary mixtures. The pure
 r200 passed 17/19 cells and retained two honest HOLDs; all eight preregistered
 mixed r500 archetypes passed target-wise Wald calibration. This report does not
-declare landing complete until ordered integration, reverify, validators, and
-the final clean checkpoint pass.
+declare landing complete until reverify, validators, the narrow local closeout
+commit, and the final clean checkpoint pass.
 
 ## Scope reconciliation
 
@@ -52,7 +52,7 @@ the final clean checkpoint pass.
 | S8 API/docs | Long/wide mixed-family repair, generated help, Design 01/02/03/05/35/57/61/73, and Tier-1 article completed | adaptive and aligned |
 | S9 inference | All eight frozen mixed archetypes pass target-wise Wald calibration; simultaneous coverage remains unclaimed | aligned and complete |
 | S10 verification | Focused/full tests, article, pkgdown, stale scans, and local check green | aligned |
-| S11/S12 panel and closeout | Final 2-Terra/1-Sol panel PASS at implementation hash `2bdb4926...`; ordered PR #1214 integration, reverify, validators, and handover remain | adaptively sequenced around ordered integration |
+| S11/S12 panel and closeout | Final 2-Terra/1-Sol panel PASS at implementation hash `2bdb4926...`; PR #1214 merged at `5a202fc8...`, the one-time rebase and focused replay passed, and only final reverify, validators, local closeout commit, and lease release remain | adaptively sequenced around ordered integration |
 
 ## Safety and compute reconciliation
 
@@ -161,14 +161,17 @@ Public-claim classification: **aligned with currently earned evidence**.
 
 G1--G11 are supported by current evidence, including independent verification
 of all 15,614 pure/calibration raw-manifest entries and a passing 2-Terra/1-Sol
-panel. G12 remains open for ordered PR #1214 integration, after-task
-validation, handover, final clean tree, and lease release. Final mode will be
+panel. G12 remains open for after-task validation, handover validation, the
+local closeout commit, final clean tree, and lease release. Final mode will be
 `--reverify`, never `--status`.
 
 ## Landing reconciliation
 
-Integrated locally on exact verified base
-`499cc3f901f5b5d02962a3c5fb665bf69f2fc796`. The branch has two narrow local
-commits and no longer trails `origin/main`; closeout-only edits remain
-uncommitted while the final panel reviews their frozen diff. No mixed-LV push,
-PR, merge, release, external message, or public announcement has occurred.
+PR #1214 merged normally at exact verified main
+`5a202fc8154a8e0c50c41ebb76932b0d805bdee8`. The LV branch rebased once
+without conflict from checkpoint `5185a96500a598147fe4c8fb6f50f0e26ada85cc`
+to candidate `595c9dfc228f582f0e987fd0bbce02f32a9934b9` (tree
+`0d22ea2e32765b32afb517a0638e44799f667be2`). Both append-only histories and
+the PR #1214 formula/status rows are preserved; the eight-file focused replay
+passed in 29.13 seconds. No mixed-LV push, PR, merge, release, external
+message, or public announcement has occurred.

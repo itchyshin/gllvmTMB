@@ -55062,3 +55062,39 @@ NOT_CRAN=true Rscript --vanilla -e 'devtools::load_all(quiet=TRUE); fs <- list.f
 NOT_CRAN=true Rscript --vanilla -e 'devtools::load_all(quiet=TRUE); testthat::test_file("tests/testthat/test-cross-family-multinomial.R", reporter="summary", stop_on_failure=TRUE)'
 # LV_NAMESPACE_CROSS_FAMILY_OK.
 ```
+
+## 2026-08-26 — Mixed-family LV ordered integration and one-time rebase
+
+- PR #1214 reviewed head `1cefce04e6256392390e4e3dc3e9fec18d623bf1`
+  passed routine Ubuntu run `32994788670` and manual exact-head three-OS run
+  `32994709650`, then merged normally without bypass at exact main
+  `5a202fc8154a8e0c50c41ebb76932b0d805bdee8`. Post-merge exact-main run
+  `33001159527` passed; Ubuntu job `98283058187` completed in 49m55s.
+- The IID coefficient lane froze separately at commit
+  `ecdb25955b9a4f89a7d7c779bda84b8c0e69d603`, tree
+  `ce177b54123964385dab9bdf70f28735b90f042c`, PR #1216, and temporarily
+  released the five shared paths. This LV lane does not claim the unmerged
+  internal IID `column_coef()` slice.
+- The clean pre-rebase LV checkpoint was
+  `5185a96500a598147fe4c8fb6f50f0e26ada85cc` (tree
+  `ec99335dd0652fcb53f8bd239bf76f1a7b9ea019`). One `git rebase origin/main`
+  completed without conflict. The integrated candidate is
+  `595c9dfc228f582f0e987fd0bbce02f32a9934b9` (tree
+  `0d22ea2e32765b32afb517a0638e44799f667be2`). Design 01 retains the PR #1214
+  `column_data`, `shared`, and reserved `*_coef()` rows; Design 35 retains
+  FG-20; both check-log histories remain append-only.
+- The pre-rebase implementation/test binary-diff hash remains the reviewed
+  `2bdb4926766a8a47229401125e3f1c1b4f43e99d8da37ff385ab542bbde9097e` when
+  measured between its original frozen checkpoints. A newly generated diff
+  across rebased commit IDs differs because Git index/context metadata changed,
+  so the integrated candidate received a fresh focused replay and review.
+- Estimate before the post-rebase replay: 8--15 minutes locally, no simulation
+  or campaign. Actual wall time was 29.13 seconds. The source-loaded eight-file
+  suite covering LV family boundaries, non-Gaussian guards, the mixed proof
+  cell, retained harness, missing response, response-column foundation,
+  `traits()` parsing, and fixed column slopes passed with zero failures and
+  printed `LV_POST_1214_REBASE_FOCUSED_OK`.
+- `git diff --check origin/main...HEAD` passed. Refreshed Gauss/Emmy review
+  found no semantic LV-route change and no new likelihood, nuisance, or payload
+  route. Rose/Grace found only stale closeout prose, repaired in the final
+  closeout commit; no source blocker was found.

@@ -137,6 +137,9 @@ and pkgdown deployment
   simultaneous response-column sources, and intervals are not advertised.
 - A tree/pedigree/space/kernel supplied to `*_slope()` relates response columns;
   a relationship among row-wise species belongs in a separate row-level term.
+- `phylo_slope()` uses the supplied tree covariance directly. It does not
+  estimate the IID-versus-phylogenetic mixture used by gllvm's signal model;
+  that belongs to a future coefficient-block design.
 - A future response-column intercept-plus-slope coefficient block is a
   separate design lane. It must not widen or rename `*_slope()` during this
   closure.

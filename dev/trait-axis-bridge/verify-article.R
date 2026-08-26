@@ -10,6 +10,7 @@ required_column_example <- c(
   "`latitude:pathway` is a **fixed effect**",
   "There is no `column_coef()`",
   "`*_slope()` supplies random response-column deviations",
+  "it does not estimate a separate IID-versus-phylogenetic",
   "The simulated C3 and C4 gradients differ by design",
   "{r community-data, echo = FALSE",
   "{r community-wide, echo = FALSE"

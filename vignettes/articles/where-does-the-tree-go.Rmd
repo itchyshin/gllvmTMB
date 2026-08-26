@@ -232,7 +232,9 @@ These are different model components. `latitude:pathway` is a **fixed effect**;
 `phylo_slope(latitude | trait)` is a **random-effect distribution** for the
 remaining species-specific slope deviations. There is no `column_coef()`
 helper in the current API. Response-column metadata such as `pathway` enters
-the fixed-effects formula directly.
+the fixed-effects formula directly. `phylo_slope()` uses the supplied tree
+covariance directly; it does not estimate a separate IID-versus-phylogenetic
+signal mixture.
 
 <div class="table-responsive">
 

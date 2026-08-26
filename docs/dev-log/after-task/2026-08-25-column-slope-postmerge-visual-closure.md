@@ -37,7 +37,9 @@ pathway therefore enters the fixed `latitude:pathway` interaction, while
 The public article now labels this fixed-versus-random split explicitly. It
 also states that `column_coef()` is not a current API helper, so a future
 random-coefficient block cannot be mistaken for either an existing helper or
-an ordinary fixed-effect term.
+an ordinary fixed-effect term. It also makes the implemented covariance
+boundary explicit: `phylo_slope()` uses the supplied tree covariance directly
+and does not estimate gllvm's IID-versus-phylogenetic signal mixture.
 
 The simulation uses the exact draw
 `b = 0.18 * t(chol(A)) %*% z`, `z ~ N(0, I)`. Post-draw standardisation was

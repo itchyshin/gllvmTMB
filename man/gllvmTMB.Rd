@@ -32,7 +32,8 @@ gllvmTMB(
   ci_seed = 0L,
   site = NULL,
   species = NULL,
-  estimator = c("ml", "mspl")
+  estimator = c("ml", "mspl"),
+  column_data = NULL
 )
 }
 \arguments{
@@ -347,6 +348,11 @@ all-zero offsets; and the native Laplace engine. Unsupported
 structures fail before optimisation.
 MSPL does not activate automatically after a separation warning and never
 changes the default ML fit.}
+
+\item{column_data}{Optional keyed response-column metadata. Arc 1 validates
+and joins this data internally for fixed-effect parsing; its key column
+must have the same name as \code{trait} and exactly match the response columns.
+This foundation is not yet a public \verb{*_coef()} fitting route.}
 }
 \value{
 A \code{gllvmTMB} object. With no covariance-structure terms in

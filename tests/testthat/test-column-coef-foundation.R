@@ -81,6 +81,33 @@ test_that("column_data rejects every malformed key shape before fitting", {
                class = "gllvmTMB_column_data_invalid")
   expect_error(prepare(meta, c(names(long), "pathway")), "collid|row",
                class = "gllvmTMB_column_data_invalid")
+
+  internal <- meta
+  internal$.y_wide_ <- seq_len(nrow(internal))
+  expect_error(prepare(internal), "reserved internal",
+               class = "gllvmTMB_column_data_invalid")
+  names(internal)[names(internal) == ".y_wide_"] <- ".offset_wide_"
+  expect_error(prepare(internal), "reserved internal",
+               class = "gllvmTMB_column_data_invalid")
+  names(internal)[names(internal) == ".offset_wide_"] <- ".multinom_group_"
+  expect_error(prepare(internal), "reserved internal",
+               class = "gllvmTMB_column_data_invalid")
+  names(internal)[names(internal) == ".multinom_group_"] <- ".multinom_L_"
+  expect_error(prepare(internal), "reserved internal",
+               class = "gllvmTMB_column_data_invalid")
+
+  reserved <- meta
+  reserved$species <- paste0("metadata_", seq_len(nrow(reserved)))
+  expect_error(
+    gllvmTMB(
+      value ~ latitude,
+      data = long,
+      column_data = reserved,
+      trait = "trait", unit = "site", family = gaussian()
+    ),
+    "grouping|fixed-effect metadata only",
+    class = "gllvmTMB_column_data_invalid"
+  )
 })
 
 test_that("long and wide column metadata prepare to the same stacked rows", {
@@ -99,6 +126,22 @@ test_that("long and wide column metadata prepare to the same stacked rows", {
 
   keep <- c("site", "trait", "latitude", "pathway", "leaf_area")
   expect_identical(joined_long[keep], rewrite$data_long[keep])
+})
+
+test_that("wide column metadata uses one explicit synthetic trait key", {
+  skip_if_not_installed("tidyr")
+  meta <- .coef_foundation_column_data()
+  names(meta)[names(meta) == "trait"] <- "species"
+  expect_error(
+    gllvmTMB(
+      traits(sp_a, sp_b, sp_c) ~ latitude,
+      data = .coef_foundation_wide(),
+      column_data = meta,
+      trait = "species", unit = "site", family = gaussian()
+    ),
+    "synthetic response-column key|Omit.*trait",
+    class = "gllvmTMB_traits_custom_trait_unsupported"
+  )
 })
 
 test_that("shared fixed effects are common while ordinary wide effects stay trait-specific", {
@@ -124,6 +167,18 @@ test_that("shared fixed effects are common while ordinary wide effects stay trai
   expect_identical(colnames(X_common), c("(Intercept)", "latitude"))
   expect_equal(unname(X_common[, "latitude"]), common$data_long$latitude)
   expect_true(all(grepl("trait", colnames(X_ordinary))))
+})
+
+test_that("an existing user-defined shared() transformation is preserved", {
+  skip_if_not_installed("tidyr")
+  shared <- function(x) x^2
+  formula <- traits(sp_a, sp_b, sp_c) ~ shared(latitude)
+  environment(formula) <- environment()
+  rewrite <- rewrite_traits_lhs(
+    formula, data = .coef_foundation_wide(), eval_env = environment(formula)
+  )
+  rendered <- paste(deparse(rewrite$formula_long), collapse = " ")
+  expect_match(rendered, "trait.*shared\\(latitude\\)")
 })
 
 test_that("shared has the same common fixed-effect meaning in long preprocessing", {
@@ -182,6 +237,11 @@ test_that("shared rejects expressions that are not common row-data fixed effects
       traits(sp_a, sp_b, sp_c) ~ shared(pathway),
       data = wide, column_data = meta
     ), class = "gllvmTMB_shared_invalid"
+  )
+  expect_error(
+    rewrite_traits_lhs(
+      traits(sp_a, sp_b, sp_c) ~ latent(shared(1) | site), data = wide
+    ), "top-level additive", class = "gllvmTMB_shared_invalid"
   )
   expect_error(
     .parse_column_coef_formula(
@@ -360,6 +420,36 @@ test_that("coefficient parser rejects malformed bases, groups, and sources", {
     parse(value ~ column_coef(0 + latitude | trait) +
       phylo_coef(0 + latitude | trait, tree = tree)),
     class = "gllvmTMB_column_coef_multiple_sources"
+  )
+  expect_error(
+    parse(value ~ I(column_coef(0 + latitude | trait))),
+    "top-level additive",
+    class = "gllvmTMB_column_coef_invalid_syntax"
+  )
+})
+
+test_that("fixed rho resolves in the formula environment", {
+  rho_fixed <- 0.25
+  spec <- .parse_column_coef_formula(
+    value ~ phylo_coef(0 + latitude | trait, rho = rho_fixed),
+    "trait", c("site", "trait", "latitude", "value"),
+    response_vars = "value"
+  )
+  expect_identical(spec$rho_mode, "fixed")
+  expect_identical(spec$rho, 0.25)
+})
+
+test_that("column metadata cannot become covariance or grouping data", {
+  skip_if_not_installed("tidyr")
+  expect_error(
+    gllvmTMB(
+      traits(sp_a, sp_b, sp_c) ~ latitude + latent(1 | pathway, d = 1),
+      data = .coef_foundation_wide(),
+      column_data = .coef_foundation_column_data(),
+      unit = "site", family = gaussian()
+    ),
+    "fixed-effect metadata only",
+    class = "gllvmTMB_column_data_invalid"
   )
 })
 

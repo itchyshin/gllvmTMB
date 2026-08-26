@@ -282,7 +282,8 @@ is_traits_lhs <- function(formula) {
     length(expr[[2L]]) == 3L
 }
 
-.traits_expand_rhs <- function(expr, column_vars = character()) {
+.traits_expand_rhs <- function(expr, column_vars = character(),
+                               shared_marker = TRUE) {
   if (.traits_is_zero(expr)) {
     return(expr)
   }
@@ -291,25 +292,29 @@ is_traits_lhs <- function(formula) {
   }
   if (is.call(expr)) {
     fn <- .traits_call_name(expr)
-    if (identical(fn, "shared") && length(expr) == 2L) {
+    if (isTRUE(shared_marker) && identical(fn, "shared") && length(expr) == 2L) {
       return(expr[[2L]])
     }
     if (identical(fn, "+") && length(expr) == 3L) {
       return(call(
         "+",
-        .traits_expand_rhs(expr[[2L]], column_vars),
-        .traits_expand_rhs(expr[[3L]], column_vars)
+        .traits_expand_rhs(expr[[2L]], column_vars, shared_marker),
+        .traits_expand_rhs(expr[[3L]], column_vars, shared_marker)
       ))
     }
     if (identical(fn, "-") && length(expr) == 3L) {
       return(call(
         "-",
-        .traits_expand_rhs(expr[[2L]], column_vars),
-        .traits_expand_rhs_subtract(expr[[3L]], column_vars)
+        .traits_expand_rhs(expr[[2L]], column_vars, shared_marker),
+        .traits_expand_rhs_subtract(expr[[3L]], column_vars, shared_marker)
       ))
     }
     if (identical(fn, "-") && length(expr) == 2L) {
-      return(call("-", .traits_expand_rhs_subtract(expr[[2L]], column_vars)))
+      return(call(
+        "-", .traits_expand_rhs_subtract(
+          expr[[2L]], column_vars, shared_marker
+        )
+      ))
     }
     if (!is.null(fn) && fn %in% .traits_covstruct_keywords) {
       return(.traits_expand_covstruct_call(expr))
@@ -420,11 +425,12 @@ is_traits_lhs <- function(formula) {
                                   ncol = length(trait_cols)))
 }
 
-.traits_expand_rhs_subtract <- function(expr, column_vars = character()) {
+.traits_expand_rhs_subtract <- function(expr, column_vars = character(),
+                                        shared_marker = TRUE) {
   if (.traits_is_zero(expr) || .traits_is_one(expr)) {
     return(expr)
   }
-  .traits_expand_rhs(expr, column_vars)
+  .traits_expand_rhs(expr, column_vars, shared_marker)
 }
 
 ## ---- Internal: rewrite a `traits(...)` LHS formula to long format -------
@@ -615,14 +621,21 @@ rewrite_traits_lhs <- function(
   ## returns a `call` object; we wrap it via stats::as.formula() to obtain
   ## a proper "formula" class object (sdmTMB's downstream assertthat check
   ## requires class(formula) %in% c("formula", "list")).
-  shared_rhs <- .shared_rewrite(
-    offset_rw$rhs,
-    row_vars = names(data),
-    column_vars = column_vars,
-    response_vars = trait_cols,
-    unwrap = FALSE
+  shared_marker <- .shared_marker_active(eval_env)
+  shared_rhs <- if (isTRUE(shared_marker)) {
+    .shared_rewrite(
+      offset_rw$rhs,
+      row_vars = names(data),
+      column_vars = column_vars,
+      response_vars = trait_cols,
+      unwrap = FALSE
+    )
+  } else {
+    offset_rw$rhs
+  }
+  rhs <- .traits_expand_rhs(
+    shared_rhs, column_vars = column_vars, shared_marker = shared_marker
   )
-  rhs <- .traits_expand_rhs(shared_rhs, column_vars = column_vars)
   formula_long <- stats::as.formula(
     bquote(.y_wide_ ~ .(rhs), splice = TRUE),
     env = eval_env

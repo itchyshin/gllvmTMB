@@ -45,6 +45,15 @@
       "x" = if (length(extra_keys)) "Extra: {.val {extra_keys}}." else NULL
     ))
   variables <- setdiff(names(column_data), trait_col)
+  reserved_internal <- intersect(
+    variables,
+    c(".y_wide_", ".offset_wide_", ".multinom_group_", ".multinom_L_")
+  )
+  if (length(reserved_internal))
+    .column_data_abort(c(
+      "{.arg column_data} uses reserved internal field{?s}: {.field {reserved_internal}}.",
+      "i" = "Rename these metadata fields before fitting."
+    ))
   collisions <- intersect(variables, row_data_names)
   if (length(collisions))
     .column_data_abort(c(
@@ -90,6 +99,26 @@
   cli::cli_abort(message, class = class, .envir = parent.frame())
 }
 
+.column_coef_assert_additive_placement <- function(expr) {
+  walk <- function(e) {
+    if (!is.call(e)) return(invisible(NULL))
+    fn <- if (is.symbol(e[[1L]])) as.character(e[[1L]]) else ""
+    if (identical(fn, "+") && length(e) == 3L) {
+      walk(e[[2L]])
+      walk(e[[3L]])
+      return(invisible(NULL))
+    }
+    if (fn %in% .column_coef_helpers) return(invisible(NULL))
+    if (length(.column_coef_calls(e)))
+      .column_coef_abort(
+        "Response-column coefficient helpers must be top-level additive formula terms."
+      )
+    invisible(NULL)
+  }
+  walk(expr)
+  invisible(TRUE)
+}
+
 .column_coef_parse_basis <- function(expr, row_vars, column_vars, response_vars) {
   flatten_plus <- function(x) {
     if (is.call(x) && identical(x[[1L]], as.name("+")) && length(x) == 3L)
@@ -131,6 +160,7 @@
 .parse_column_coef_formula <- function(formula, trait_col, row_vars,
                                        column_vars = character(),
                                        response_vars = character()) {
+  .column_coef_assert_additive_placement(formula[[length(formula)]])
   calls <- .column_coef_calls(formula[[length(formula)]])
   if (!length(calls)) return(NULL)
   if (length(calls) > 1L)
@@ -168,12 +198,19 @@
     if (is.null(rho_expr)) {
       rho_mode <- "estimated"
       rho <- NULL
-    } else if (is.numeric(rho_expr) && length(rho_expr) == 1L &&
-               is.finite(rho_expr) && rho_expr >= 0 && rho_expr <= 1) {
-      rho_mode <- "fixed"
-      rho <- as.numeric(rho_expr)
     } else {
-      .column_coef_abort("{.arg rho} must be {.code NULL} or one numeric value in [0, 1].")
+      rho_value <- tryCatch(
+        eval(rho_expr, envir = environment(formula)),
+        error = function(e) .column_coef_abort(c(
+          "{.arg rho} could not be evaluated in the formula environment.",
+          "x" = conditionMessage(e)
+        ))
+      )
+      if (!is.numeric(rho_value) || length(rho_value) != 1L ||
+          !is.finite(rho_value) || rho_value < 0 || rho_value > 1)
+        .column_coef_abort("{.arg rho} must be {.code NULL} or one numeric value in [0, 1].")
+      rho_mode <- "fixed"
+      rho <- as.numeric(rho_value)
     }
   } else if (identical(helper, "spatial_coef")) {
     rho_mode <- "fixed"
@@ -247,8 +284,57 @@
   ), class = "gllvmTMB_column_coef_engine_not_admitted")
 }
 
+.column_data_assert_fixed_only <- function(expr, column_vars) {
+  if (!length(column_vars)) return(invisible(TRUE))
+  walk <- function(e) {
+    if (!is.call(e)) return(invisible(NULL))
+    fn <- if (is.symbol(e[[1L]])) as.character(e[[1L]]) else ""
+    if (fn %in% c(.traits_covstruct_keywords, .column_coef_helpers,
+                  "|", "||", "offset")) {
+      used <- intersect(all.vars(e), column_vars)
+      if (length(used))
+        .column_data_abort(c(
+          "Response-column metadata are fixed-effect metadata only.",
+          "x" = "Covariance, grouping, or offset term uses: {.field {used}}.",
+          "i" = "Use these fields in ordinary fixed-effect terms instead."
+        ))
+      return(invisible(NULL))
+    }
+    for (i in seq_along(e)[-1L]) walk(e[[i]])
+    invisible(NULL)
+  }
+  walk(expr)
+  invisible(TRUE)
+}
+
+.shared_assert_additive_placement <- function(expr) {
+  walk <- function(e) {
+    if (!is.call(e)) return(invisible(NULL))
+    fn <- if (is.symbol(e[[1L]])) as.character(e[[1L]]) else ""
+    if (identical(fn, "+") && length(e) == 3L) {
+      walk(e[[2L]])
+      walk(e[[3L]])
+      return(invisible(NULL))
+    }
+    if (identical(fn, "shared")) return(invisible(NULL))
+    if (length(.find_call_named(e, "shared")))
+      cli::cli_abort(
+        "{.fn shared} must be a top-level additive fixed-effect term.",
+        class = "gllvmTMB_shared_invalid"
+      )
+    invisible(NULL)
+  }
+  walk(expr)
+  invisible(TRUE)
+}
+
+.shared_marker_active <- function(eval_env) {
+  !exists("shared", envir = eval_env, inherits = TRUE, mode = "function")
+}
+
 .shared_rewrite <- function(expr, row_vars, column_vars = character(),
                             response_vars = character(), unwrap = TRUE) {
+  .shared_assert_additive_placement(expr)
   if (!is.call(expr)) return(expr)
   fn <- if (is.symbol(expr[[1L]])) as.character(expr[[1L]]) else ""
   if (fn %in% .column_coef_helpers) {

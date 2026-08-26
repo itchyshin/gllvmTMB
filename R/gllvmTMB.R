@@ -750,6 +750,13 @@ gllvmTMB <- function(
   ## (`0 + trait`, `(0 + trait):x`, latent(0 + trait | g), ...), and
   ## recurse into gllvmTMB() with the long-format data + formula.
   if (is_traits_lhs(formula)) {
+    if (!identical(trait, "trait")) {
+      cli::cli_abort(c(
+        "Wide {.fn traits} input uses the synthetic response-column key {.field trait}.",
+        "x" = "A non-default {.arg trait = {.val {trait}}} was supplied.",
+        "i" = "Omit {.arg trait} for wide input and key {.arg column_data} by a column named {.field trait}."
+      ), class = "gllvmTMB_traits_custom_trait_unsupported")
+    }
     if (.traits_has_column_slope(formula[[3L]])) {
       cli::cli_abort(c(
         "Response-column slope helpers currently require long-format data.",
@@ -948,6 +955,16 @@ gllvmTMB <- function(
     inherited_column_vars,
     attr(data, "gllvmTMB_column_vars") %||% character()
   ))
+  reserved_column_vars <- intersect(
+    column_vars,
+    unique(stats::na.omit(c(site, unit_obs, species, cluster2)))
+  )
+  if (length(reserved_column_vars)) {
+    .column_data_abort(c(
+      "{.arg column_data} fields cannot be grouping columns: {.field {reserved_column_vars}}.",
+      "i" = "Response-column metadata are fixed-effect metadata only; rename these fields."
+    ))
+  }
   if (!is.factor(data[[site]])) {
     data[[site]] <- factor(data[[site]])
   }
@@ -982,13 +999,16 @@ gllvmTMB <- function(
   ## Design 131 Arc 1: validate and unwrap shared fixed effects, then parse
   ## response-column coefficient markers.  A valid marker reaches a deliberate
   ## engine fence before desugaring, TMB data assembly, or optimisation.
-  formula[[3L]] <- .shared_rewrite(
-    formula[[3L]],
-    row_vars = setdiff(names(data), column_vars),
-    column_vars = column_vars,
-    response_vars = all.vars(formula[[2L]]),
-    unwrap = TRUE
-  )
+  .column_data_assert_fixed_only(formula[[3L]], column_vars)
+  if (.shared_marker_active(environment(formula))) {
+    formula[[3L]] <- .shared_rewrite(
+      formula[[3L]],
+      row_vars = setdiff(names(data), column_vars),
+      column_vars = column_vars,
+      response_vars = all.vars(formula[[2L]]),
+      unwrap = TRUE
+    )
+  }
   column_coef_spec <- .parse_column_coef_formula(
     formula = formula,
     trait_col = trait,

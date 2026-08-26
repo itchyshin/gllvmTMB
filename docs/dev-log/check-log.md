@@ -54603,3 +54603,47 @@ but omitted `unrotated`. A failing regression was added first, the fence was
 restored, and both `verify-claims.R` and the focused claim test passed. This
 changes claim wording only; the route map, arithmetic, and certificate regime
 are unchanged.
+
+---
+
+## 2026-08-25 — Interval-calibration landing (Codex)
+
+**Lane:** `codex:interval-calibration-landing`
+**Exact base:** `1bacee9a808b4106ce681502463baa317dcb9d9b`
+**Completed source:** `4ba533949d7dae264268ae55f3c7fc801ee87da5`
+
+Replayed and accounted for all 34 interval-calibration commits and all 103
+source-delta paths on current main. Ninety-eight paths are exact source blob
+matches; five shared status/history surfaces have a structured reconciliation
+receipt. The frozen two-lane foreign-path oracle passes with a 107-path landing
+delta, so current random-slope and LV work remains intact.
+
+Verification receipts:
+
+```sh
+Rscript --vanilla .unlazy/interval-calibration-landing/verify-lineage.R
+# LANDING_LINEAGE_OK commits=34 paths=103
+
+Rscript --vanilla .unlazy/interval-calibration-landing/verify-shared-reconciliation.R
+# SHARED_RECONCILIATION_RECEIPT_OK rows=5
+
+Rscript --vanilla .unlazy/interval-calibration-landing/verify-foreign-leases.R
+# FOREIGN_LANE_PATHS_CLEAR lanes=2 delta=107
+
+Rscript --vanilla dev/interval-calibration/verify-claims.R
+# INTERVAL_CLAIMS_OK
+
+# Unlazy --reverify leaves:
+# branch: ALL MET (6 met)
+# evidence: ALL MET (4 met)
+# integration: ALL MET (3 met)
+# LANDING_FOCUSED_TESTS_OK
+```
+
+The terminal evidence remains byte-identical: 150,019 all-attempt rows at
+SHA-256 `f8c1f33308b0ccb9bed684a99a746f415d79f090875756a6eba752e577dfbe4a`
+and 18 target rows at SHA-256
+`3d204c754d9cada7858c656341a7d8234c018af9a7c874772b666632018f9047`.
+The route census remains 19 rows with exactly three CI-13 certificates. No fit,
+simulation, benchmark, remote compute, workflow edit, push, PR, merge, release,
+or public message occurred.

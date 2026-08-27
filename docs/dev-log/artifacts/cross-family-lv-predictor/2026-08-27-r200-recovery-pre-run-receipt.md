@@ -67,3 +67,39 @@ and load imbalance gives a conservative **10--20 minute wall-time projection**.
 Requested launch: Totoro, 40 one-thread workers, 400 attempts, never GitHub
 Actions, capped well below the 150-core ceiling. If the campaign exceeds 30
 minutes, stop and re-report rather than silently extending it.
+
+## Frozen source candidate
+
+The source candidate was committed locally after the pre-run and focused
+verification:
+
+- commit: `1cb4d33a4080e251073bc864086651b535b2d028`;
+- tree: `4cf7d95c1f0a2fe6d54b1488f9f0a8964a9f1553`;
+- `recovery-campaign.R` SHA-256:
+  `ac21ebe93c6b9ad5b1aea528345b002d2669ba2deaf9c8beab4a5a1ae7f73200`;
+- `summarise-recovery.R` SHA-256:
+  `1c266a8b2a503b4543fe3dc36255232f3985faf8f37610be3600dc55e6986c90`;
+- `src/gllvmTMB.cpp` SHA-256:
+  `ad020630271e452e7e6813d5312c6f1553808cf33171d828525607118c4d75f3`;
+- `R/fit-multi.R` SHA-256:
+  `f3af32440bf36d09c06e754cbfaa49a4ec5f5882319d342c8af4b8f2079aa178`;
+- `R/lv-predictor.R` SHA-256:
+  `1fbdbec253510087c78bb38a7cb75b6eef22e910c4d3a9c24942d8c60539ad52`.
+
+Every retained r200 attempt must receive
+`CROSS_FAMILY_LV_PINNED_SHA=1cb4d33a4080e251073bc864086651b535b2d028`
+and refuses a different checkout before fitting.
+
+## Launch disposition at bounded milestone landing
+
+The retained r200 production campaign was **not launched** for this bounded
+milestone. Its production denominator is therefore 400 planned, 0 started,
+0 attempted, and 400 planned-not-started; the two measured pre-run attempts
+above remain feasibility checks and are not counted as production attempts.
+No remote compute was used.
+
+The implementation may land on route-health and focused fit evidence, but
+general rank-2/rank-3 recovery remains `partial`. None of the frozen recovery
+gates above is marked met, and no public recovery or interval claim is earned
+from this receipt. A future campaign must start from this exact source pin or
+write a new pre-run receipt for a changed source candidate.

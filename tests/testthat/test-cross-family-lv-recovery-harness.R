@@ -1,13 +1,36 @@
-campaign_file <- test_path(
-  "..", "..", "dev", "cross-family-lv-predictor", "recovery-campaign.R"
-)
-summary_file <- test_path(
-  "..", "..", "dev", "cross-family-lv-predictor", "summarise-recovery.R"
-)
+cross_family_recovery_files <- function() {
+  workspace <- Sys.getenv("GITHUB_WORKSPACE", unset = NA_character_)
+  roots <- c(".", file.path("..", ".."), workspace)
+  root <- roots[vapply(roots, function(x) {
+    !is.na(x) && file.exists(file.path(
+      x, "dev", "cross-family-lv-predictor", "recovery-campaign.R"
+    ))
+  }, logical(1L))][1L]
+  testthat::skip_if(
+    is.na(root),
+    "cross-family LV recovery harness unavailable in source tarball"
+  )
+  c(
+    campaign = file.path(
+      root, "dev", "cross-family-lv-predictor", "recovery-campaign.R"
+    ),
+    summary = file.path(
+      root, "dev", "cross-family-lv-predictor", "summarise-recovery.R"
+    )
+  )
+}
+
+source_cross_family_recovery <- function(env, include_summary = FALSE) {
+  files <- cross_family_recovery_files()
+  sys.source(files[["campaign"]], envir = env)
+  if (isTRUE(include_summary)) {
+    sys.source(files[["summary"]], envir = env)
+  }
+}
 
 test_that("cross-family recovery plan freezes two r200 denominators", {
   env <- new.env(parent = globalenv())
-  sys.source(campaign_file, envir = env)
+  source_cross_family_recovery(env)
   plan <- env$cross_family_lv_plan()
 
   expect_equal(nrow(plan), 400L)
@@ -21,7 +44,7 @@ test_that("cross-family recovery plan freezes two r200 denominators", {
 
 test_that("continuous fixture plants unequal family scales and valid targets", {
   env <- new.env(parent = globalenv())
-  sys.source(campaign_file, envir = env)
+  source_cross_family_recovery(env)
   fixture <- env$cross_family_lv_continuous_fixture(
     seed = 11L, n_units = 20L, reps = 2L
   )
@@ -36,7 +59,7 @@ test_that("continuous fixture plants unequal family scales and valid targets", {
 
 test_that("retained attempt writes are immutable", {
   env <- new.env(parent = globalenv())
-  sys.source(campaign_file, envir = env)
+  source_cross_family_recovery(env)
   path <- tempfile("cross-family-attempt-", fileext = ".rds")
 
   expect_invisible(env$cross_family_lv_atomic_save(list(ok = TRUE), path))
@@ -48,7 +71,7 @@ test_that("retained attempt writes are immutable", {
 
 test_that("retained r200 tasks require an exact source pin before fitting", {
   env <- new.env(parent = globalenv())
-  sys.source(campaign_file, envir = env)
+  source_cross_family_recovery(env)
   withr::local_envvar(CROSS_FAMILY_LV_PINNED_SHA = NA_character_)
 
   expect_error(
@@ -61,8 +84,7 @@ test_that("retained r200 tasks require an exact source pin before fitting", {
 
 test_that("reconciliation preserves planned and started denominators", {
   env <- new.env(parent = globalenv())
-  sys.source(campaign_file, envir = env)
-  sys.source(summary_file, envir = env)
+  source_cross_family_recovery(env, include_summary = TRUE)
   out <- tempfile("cross-family-ledger-")
   dir.create(file.path(out, "started"), recursive = TRUE)
   saveRDS(

@@ -593,7 +593,7 @@ standard R arguments (\code{mu = exp(eta)} unless noted):\tabular{lll}{
 }
 
 \section{Objective provenance}{
- report\$joint_nll_* vs objective_components:
+ joint_nll report fields vs objective_components:
 A fitted object carries two different surfaces that both look like "the
 objective", and they answer different questions.
 

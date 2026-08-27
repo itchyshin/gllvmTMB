@@ -533,7 +533,7 @@
 #' Schielzeth (2010) \emph{Biol. Rev.} 85: 935-956; Nakagawa, Johnson &
 #' Schielzeth (2017) \emph{J. R. Soc. Interface} 14: 20170213.
 #'
-#' @section Objective provenance: report\$joint_nll_* vs objective_components:
+#' @section Objective provenance: joint_nll report fields vs objective_components:
 #' A fitted object carries two different surfaces that both look like "the
 #' objective", and they answer different questions.
 #'

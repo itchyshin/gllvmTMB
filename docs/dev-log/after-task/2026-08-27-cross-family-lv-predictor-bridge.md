@@ -1,13 +1,20 @@
 # After Task: Cross-Family Predictor-Informed Latent Correlations
 
-Status: **PRE-LANDING REPAIRED CANDIDATE.** Candidate
+Status: **PRE-LANDING EXACT IMPLEMENTATION CANDIDATE.** Superseded candidate
 `2350c5d0cd3c0a705a7fc0f1b01be06a19be9eff` passed the Gauss/Emmy and
-Rose/Grace reviews, but Noether/Fisher found that its saturated automatic-`Psi`
-rank-3 route was over-parameterised. The repaired tree adds the necessary
-parameter-dimension guard, preserves specific formula-error priority, narrows
-the article to the identified loadings-only rank-3 model, and passes the exact
-current-source full package check. All three reviewers must now assess the new
-frozen commit before protected landing.
+Rose/Grace reviews. A covariance-only Noether/Fisher concern prompted repaired
+candidate
+`354940e3ac02eb60671954336aa2413454a8d2e0`, tree
+`436767e45acd920b70fbad8f0b71e37f23f48f77`, from verified base
+`870944744ff090fe8676e853ebc03957204571c0`. Its exact review found that the
+guard omitted the predictor mean and physical multinomial contrasts, wrongly
+rejecting an existing covered Gaussian rank-2 route. Exact repair commit
+`5b31329e9aa53957c6da6a54b6dfce414124fba6`, tree
+`8e9dd878f25539b636076bfe4dbd8f3f148a81c5`, uses
+the joint observable pair `(B_lv, Sigma)`, retains the logical-response count
+only for the public rank cap, and passes fresh focused, article, pkgdown, and
+full-package verification. Fresh exact-candidate reviewer signatures remain
+required before protected landing.
 
 ## 1. Goal
 
@@ -40,8 +47,10 @@ and individual latent scores are not cross-fit acceptance targets.
 Registered native family/link rows now compose in one predictor-informed
 ordinary unit-tier block. Loadings-only `unique = FALSE` admits ranks through
 the number of logical responses. Automatic diagonal `Psi` additionally
-requires that rotation-adjusted free loadings plus the diagonal slots actually
-estimated by the engine do not exceed the available covariance moments.
+requires that physical loading rows, latent-predictor coefficients, and the
+diagonal slots actually estimated by the engine pass a necessary joint
+mean-covariance dimension screen. Passing that screen is not local/global
+identification, stable recovery, or interval-calibration evidence.
 Admission remains bounded to complete responses, one untransformed numeric
 unit predictor, no fixed RHS, no extra covariance tier, no response mask, no
 REML, canonical links, and native TMB. Source-specific terms, Julia
@@ -172,9 +181,11 @@ parameter shape, not the formula spelling or exported API.
   the DGP-corrected third attempt passed in 9.21 seconds with separate finite
   scale slots.
 - Loadings-only rank-2/rank-3 five-family and all-family route-health fits
-  passed. A rank-3 automatic-`Psi` fit also converged, but independent review
-  revoked it as evidence because the decomposition was over-parameterised; the
-  failed scientific attempt remains in its receipt. The all-family RDS is 924 bytes with SHA-256
+  passed. A rank-3 automatic-`Psi` fit also converged. An initial
+  covariance-only review incorrectly revoked it; the corrected physical-row
+  joint mean-covariance screen retains it as route-health evidence only. The
+  complete correction and failed review are preserved in its receipt. The
+  all-family RDS is 924 bytes with SHA-256
   `7ab904...c15` as recorded in its receipt.
 - The earlier automatic-`Psi` article render passed numerically in about 2.5
   minutes and produced 92,886 bytes but was superseded by the identifiability
@@ -206,7 +217,17 @@ parameter shape, not the formula spelling or exported API.
   warnings, 3 notes (environmental clock, pre-existing `logLik` namespace
   note, temporary `xcrun_db`). This is the claim-bearing local package gate.
 - `git diff --check 870944744...2350c5d`: passed after Rose/Grace identified
-  and the lane removed 10 trailing spaces in four new Markdown records.
+  and the lane removed 10 trailing spaces in four new Markdown records on the
+  superseded candidate.
+- `git diff --check 870944744...354940e`: passed for the frozen repaired
+  candidate, tree `436767e45acd920b70fbad8f0b71e37f23f48f77`.
+- `git diff --check` before repair commit `5b31329e9`: passed. The attributable
+  exact-source replay recorded 563 successful expectations and one declared
+  heavy skip. The third evaluated article wrote 93,589 bytes with convergence
+  0, `pdHess = TRUE`, finite labelled outputs, and the intended ordinal
+  refusal. `pkgdown::check_pkgdown()` passed. The exact-current-source package
+  check completed in 19m37.3s reported check duration (22m55.9s wall) with 0
+  errors, 0 warnings, and the same 3 notes.
 - Public register-code test passed. Generated Rd spot checks found zero
   `\\keyword` entries in each changed help file, as intended.
 
@@ -241,8 +262,8 @@ single quotes as shown above.
 - Feature combination: five-family predictor-informed tests combine registered
   response likelihoods, rank 3, `B_lv`, shared covariance, and multinomial
   expansion in one fit.
-- Boundary: tests reject ranks above logical responses, over-parameterised
-  automatic-`Psi` ranks, noncanonical links,
+- Boundary: tests reject ranks above logical responses, shapes that fail the
+  necessary joint mean-covariance automatic-`Psi` screen, noncanonical links,
   explicit extra unit-tier diagonal companions, nonconstant predictors,
   response masks, REML, extra tiers, and malformed multinomial expansion.
 - Failure-before-fix: unequal Gaussian/lognormal scales exposed the one-slot

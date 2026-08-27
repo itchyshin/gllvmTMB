@@ -55282,3 +55282,129 @@ candidate adds exact engine-free-Psi counting, rejects the saturated shapes,
 and narrows the article to `unique = FALSE`; all three reviewers must re-sign
 the new exact candidate before landing. Protected exact-head three-OS CI, normal
 merge, exact-main verification, and lease release remain outstanding.
+
+### 2026-08-27 — Cross-family LV repaired candidate freeze receipt
+
+The exact repaired candidate is
+`354940e3ac02eb60671954336aa2413454a8d2e0`, tree
+`436767e45acd920b70fbad8f0b71e37f23f48f77`, from verified base
+`870944744ff090fe8676e853ebc03957204571c0`. Its base-to-candidate
+`git diff --check` passed. Claim-bearing local verification on the exact source
+comprised the 341/341 formula/error-precedence replay; the attributable suite
+at 560 pass, 0 fail, 0 warnings, and 1 declared heavy skip; the corrected
+93,452-byte evaluated article with convergence 0, positive-definite Hessian,
+finite labelled `B_lv` and correlations, and the intended ordinal refusal;
+`pkgdown::check_pkgdown()` PASS; and `devtools::check(args = "--no-manual",
+quiet = TRUE)` in 20m12.3s with 0 errors, 0 warnings, and the same three
+environmental/pre-existing notes. Production r200 remains 400 planned, 0
+started, 0 attempted, and 400 planned-not-started, so broad recovery remains
+PARTIAL.
+
+Rose/Grace's first review of this exact commit FAILED only because the closeout
+records did not bind those results to the repaired SHA/tree. This append-only
+receipt and the paired after-task, plan-vs-actual, and handover corrections
+repair that provenance gap without rewriting any earlier failed or superseded
+attempt. Fresh exact-candidate reviewer re-signatures, protected CI/merge,
+exact-main verification, and lease release remain outstanding.
+
+### 2026-08-27 — Joint mean-covariance guard repair and exact implementation freeze
+
+Exact review of `354940e3ac02eb60671954336aa2413454a8d2e0` produced three
+FAIL verdicts before any push. Gauss/Emmy and Noether/Fisher found that the
+automatic-Psi guard used logical response count for the engine's physical
+multinomial loading rows and omitted the predictor mean from the observable
+map. It therefore wrongly rejected the retained four-Gaussian rank-2 route.
+Rose/Grace separately found that the closeout records still pinned a
+superseded SHA. Family-scale dispatch, `B_lv = Lambda alpha^T`, mapped-off Psi
+slots, the 400/0/0/400 r200 boundary, and the public PARTIAL claim otherwise
+passed review.
+
+The symbolic repair uses physical post-expansion response count `P`, logical
+count `L` only for `K <= L`, predictor rank `Q`, and exact engine-free Psi count:
+
+```text
+p_Lambda = P K - K(K - 1)/2
+p_alpha = K Q
+p_observable = P Q + P(P + 1)/2
+p_Lambda + p_alpha + p_Psi <= p_observable
+```
+
+This is a necessary joint mean-covariance dimension screen only. It is not a
+generic local/global identification, stable-recovery, or interval-calibration
+certificate.
+
+Test-driven repair attempts and exact outcomes:
+
+```sh
+Rscript --vanilla -e 'devtools::test(filter = "lv-cross-family-predictor-bridge", reporter = "summary", stop_on_failure = FALSE)'
+# RED before production repair: two expected failures. The existing
+# four-Gaussian rank-2 and verified expanded-multinomial rank-2 shapes were
+# both rejected by the covariance-only guard.
+
+Rscript --vanilla -e 'devtools::test(filter = "lv-cross-family-predictor-bridge", reporter = "summary", stop_on_failure = FALSE)'
+# GREEN after repair: 15 test blocks/expectation groups shown by the summary,
+# zero failures. The expanded P=5/K=4 rejection reports 21 joint parameters
+# versus 20 observable coordinates; Gaussian P=3/K=3 reports 12 versus 9.
+
+Rscript --vanilla -e 'devtools::test(filter = "^(lv-cross-family-predictor-bridge|lv-mixed-family-first-cell|lv-parser-guard|lv-family-boundary-guard|lv-native-nongaussian-guard|lv-gaussian-recovery|lv-bernoulli-depth|mixed-gaussian-lognormal-scale|family-cdf-args|sanity-multi)$", stop_on_failure = TRUE, reporter = "summary")'
+# PASS in 28 seconds; one declared heavy Gaussian recovery skip.
+
+Rscript --vanilla -e 'res <- devtools::test(..., reporter = "silent"); print(table(as.data.frame(res)$result, useNA = "ifany"))'
+# FAILED after the tests ran: result is a list-column and table() cannot order
+# it. Preserved as a mechanical counting failure; no test result was removed.
+
+Rscript --vanilla -e 'res <- devtools::test(..., reporter = "silent"); df <- as.data.frame(res); kinds <- unlist(lapply(df$result, function(xs) vapply(xs, function(x) class(x)[1L], character(1L)))); print(table(kinds))'
+# PASS: 563 expectation_success, 1 expectation_skip, zero failures/errors.
+
+Rscript --vanilla -e 'devtools::document(quiet = TRUE)'
+# PASS; latent.Rd regenerated; three pre-existing aghq S3-tag messages.
+
+Rscript --vanilla -e 'pkgdown::check_pkgdown()'
+# PASS: No problems found.
+
+Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); rmarkdown::render("vignettes/articles/cross-family-correlations.Rmd", output_dir = "/private/tmp/gllvmtmb-cross-family-article-joint-gate", quiet = TRUE)'
+# PASS in about two minutes: 93,589 bytes, convergence 0, pdHess TRUE, six
+# finite labelled B_lv rows, shared correlations, ordinal refusal, and finite
+# non-ordinal reference-invariant summary.
+
+git diff --check
+# PASS before implementation commit.
+
+/usr/bin/time -p Rscript --vanilla -e 'Sys.setenv(NOT_CRAN="true"); devtools::check(args = "--no-manual", quiet = TRUE)'
+# PASS on exact current source: check duration 19m37.3s; wall 22m55.94s;
+# 0 errors, 0 warnings, 3 unchanged notes (clock, pre-existing logLik
+# namespace, xcrun_db).
+```
+
+The source/test/article/design/evidence repair is frozen at exact commit
+`5b31329e9aa53957c6da6a54b6dfce414124fba6`, tree
+`8e9dd878f25539b636076bfe4dbd8f3f148a81c5`, from base
+`870944744ff090fe8676e853ebc03957204571c0`. Only the four closeout records
+remain to commit. Fresh exact-candidate reviewer re-signatures, Unlazy,
+protected PR/CI/merge, exact-main verification, and lease release remain
+outstanding.
+
+### 2026-08-27 — Closeout commit and final stale-summary repair
+
+Closeout-only commit `bdc79624a739c3b5181ca32cd63a790fa2a68298`, tree
+`c0a87990372b203e997d5704aaac11a790ac172a`, committed the four records that
+the preceding implementation-freeze receipt correctly described as pending at
+that time. Unlazy `--approve --reverify` then reported ALL MET (8/8), freshly
+rerunning G3, G4, and G8; the first attempt was an infrastructure-only EPERM
+while writing `~/.unlazy/approved`, and the escalated repeat succeeded.
+
+On exact closeout head `bdc79624a`, Gauss/Emmy PASSed engine/API alignment and
+Rose/Grace PASSed provenance, reproducibility, and scope. Noether/Fisher PASSed
+the implementation and evidence boundary but FAILED three stale closeout
+sentences that still described the superseded covariance-only rule and two
+then-current lines saying closeout was not committed. The paired plan and
+handover corrections now state the necessary joint screen
+
+```text
+P K - K(K - 1)/2 + K Q + p_Psi <= P Q + P(P + 1)/2
+```
+
+and its necessary-only limitation. The handover now treats `bdc79624a` as the
+historical closeout commit and removes already-completed commit/Unlazy steps
+from the remaining sequence. Fresh exact-SHA re-signatures remain required
+before the CI-paced push.

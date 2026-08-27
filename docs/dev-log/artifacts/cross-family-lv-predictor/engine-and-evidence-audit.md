@@ -21,9 +21,16 @@ verification.
 
 This does **not** establish arbitrary all-family composition. Gaussian and
 lognormal responses currently use the same scalar `sigma_eps`; that equality
-must remain an explicit constrained model or be replaced by separately
-identified family/trait scales before a general joint Gaussian-plus-lognormal
-claim is allowed.
+must remain an explicit constrained model or be replaced by separate Gaussian
+and lognormal family-scale slots before a general joint claim is allowed.
+
+The integration adjudication selects the smallest backward-compatible repair:
+`log_sigma_eps` remains the parameter name but becomes length two only when
+Gaussian and lognormal coexist. Slot 1 is the Gaussian raw-scale SD and slot 2
+is the lognormal log-scale SD. Pure-family and other mixed fits retain the
+existing length-one contract, and repeated traits within one family retain the
+package's existing shared within-family observation-scale parameter. This lane
+does not claim a new per-trait residual-variance model.
 
 ## Symbolic contract
 
@@ -46,6 +53,20 @@ targets. If ordinary `latent()` carries its diagonal companion, then total
 unit-tier covariance is `Sigma_shared + Psi`; this does not change the
 definition of either target above.
 
+## Unequal-scale sentinel alignment
+
+| Symbol in prose | R/TMB route | DGP draw | Recovery surface | Truth |
+|---|---|---|---|---|
+| `u_i = M_i alpha + e_i` | `latent(..., d = 2, unique = FALSE, lv = ~ x)` / `U_B_total` | `outer(x, alpha) + E`, `E_ik ~ N(0,1)` | total, mean, and innovation from `extract_ordination()` | exact score identity; raw signed axes are route-health only |
+| `B_lv = Lambda alpha^T` | `B_lv_unit` | planted `Lambda` and `alpha` | `extract_lv_effects()` / `B_lv_unit` | planted rotation-invariant trait effects |
+| `Sigma_shared = Lambda Lambda^T` | existing ordinary unit `latent()` | planted `Lambda` | `extract_Sigma(part = "shared", link_residual = "none")` | planted shared covariance and `R_shared` |
+| `y_g | eta_g ~ Normal(eta_g, sigma_g)` | Gaussian rows, `log_sigma_eps[1]` in joint 0+3 fits | raw-scale Gaussian residual draw | joint `sigma_eps["gaussian"]` | `sigma_g`, deliberately unequal to `sigma_l` |
+| `log(y_l) | eta_l ~ Normal(eta_l, sigma_l)` | lognormal rows, `log_sigma_eps[2]` in joint 0+3 fits | log-scale lognormal residual draw | joint `sigma_eps["lognormal"]` | `sigma_l`, deliberately unequal to `sigma_g` |
+
+The equal-scale parity control evaluates the old and new density calculations
+at the same parameter value. The unequal-scale sentinel is the acceptance test;
+the parity control alone cannot prove that the pooled compromise is gone.
+
 ## Source pins
 
 | Claim | Pinned source on audited base | Finding |
@@ -60,17 +81,22 @@ definition of either target above.
 
 ## Independent review synthesis
 
-- **Gauss + Emmy:** no C++ change is justified for the first bridge. Start with
-  rank 2/3, complete response, one numeric predictor, ordinary unit-tier
-  `latent()`, and existing family/link routing. Preserve the existing fences on
-  masks, extra covariance blocks, fixed `X + X_lv`, transformed/multiple LV
-  predictors, and mixed binomial links. Add a logical-response-rank check rather
-  than counting expanded multinomial pseudo-traits.
+- **Gauss + Emmy:** the rank bridge itself needs no C++ change, but the final
+  all-family composition needs a backward-compatible length-one-or-two
+  `log_sigma_eps` vector. Start with rank 2/3, complete response, one numeric
+  predictor, ordinary unit-tier `latent()`, and existing family/link routing.
+  Preserve the existing fences on masks, extra covariance blocks, fixed
+  `X + X_lv`, transformed/multiple LV predictors, and mixed binomial links. Add
+  a logical-response-rank check rather than counting expanded multinomial
+  pseudo-traits.
 - **Noether + Fisher:** old cross-family correlation evidence and old rank-1
   `B_lv` evidence do not prove joint recovery. The smallest new evidence must
   evaluate both `R_shared` and `B_lv` in the same retained attempts. Correlation
   intervals are not required for a point-estimate claim and should not be
-  reopened.
+  reopened. They preferred per-trait observation scales; integration retained
+  the package's established within-family sharing contract because the stated
+  goal changes family composition, not residual-variance saturation. The
+  Gaussian/lognormal cross-family tie is still removed.
 - **Rose + Grace:** until the ordered PR #1216/random-slope integration releases
   shared paths, only additive plan, test, driver, and artifact paths may change.
 

@@ -1,6 +1,7 @@
-## Design 131, Arc 1: response-column coefficient front-end foundation.
-## Marker names are parsed as language objects, remain unexported, and always
-## stop before likelihood assembly.
+## Design 131: response-column coefficient front-end and private engine hooks.
+## Marker names remain unexported and public gllvmTMB() calls stop before
+## likelihood assembly. Narrow internal tests may explicitly rewrite admitted
+## IID and fixed-rho phylogenetic terms after the public fence is checked.
 
 .column_coef_helpers <- c(
   "column_coef", "phylo_coef", "animal_coef", "kernel_coef", "spatial_coef"
@@ -311,6 +312,77 @@
   out <- expr
   for (i in seq_along(out)[-1L]) {
     out[[i]] <- .column_coef_rewrite_iid(out[[i]], spec)
+  }
+  out
+}
+
+## Internal fixed-rho phylogenetic admission. The public gllvmTMB() entry
+## point keeps phylo_coef() behind .column_coef_engine_fence(); tests enter
+## this rewrite explicitly until the estimated-rho/public slice is earned.
+.column_coef_rewrite_fixed_phylo <- function(expr, spec, data = NULL,
+                                              envir = parent.frame()) {
+  if (!is.call(expr)) return(expr)
+  fn <- if (is.symbol(expr[[1L]])) as.character(expr[[1L]]) else ""
+  if (identical(fn, "phylo_coef")) {
+    if (!identical(spec$helper, "phylo_coef") ||
+        !identical(spec$rho_mode, "fixed") || is.null(spec$rho)) {
+      .column_coef_abort(c(
+        "The internal fixed-rho {.fn phylo_coef} engine requires one numeric {.arg rho} in [0, 1].",
+        "i" = "Estimated {.arg rho = NULL} belongs to a later engine slice."
+      ))
+    }
+
+    marker <- spec$call
+    extras <- as.list(marker)[-(1:2)]
+    extras$rho <- NULL
+
+    ## Exact released identity: a no-intercept rho=1 call becomes precisely
+    ## the corresponding phylo_slope() call before existing sugar is applied.
+    if (!isTRUE(spec$intercept) && identical(spec$rho, 1)) {
+      if (is.null(data)) {
+        cli::cli_abort(
+          "Internal: fixed-rho {.fn phylo_coef} validation requires fitted data."
+        )
+      }
+      eval_source <- function(name) {
+        if (!name %in% names(extras)) return(NULL)
+        eval(extras[[name]], envir = envir)
+      }
+      ## Validate the source before entering the protected legacy endpoint;
+      ## the released dense slope route itself predates these typed guards.
+      .resolve_phylo_coef_precision(
+        phylo_tree = eval_source("tree"),
+        phylo_vcv = eval_source("vcv"),
+        data = data,
+        group = spec$group,
+        rho = 1
+      )
+      lhs <- Reduce(
+        function(acc, predictor) call("+", acc, as.name(predictor)),
+        spec$predictors[-1L],
+        init = as.name(spec$predictors[[1L]])
+      )
+      bar <- call(spec$bar, lhs, as.name(spec$group))
+      return(as.call(c(list(as.name("phylo_slope"), bar), extras)))
+    }
+
+    ## Interior rho, plus intercept-bearing rho=1, reuses the response-column
+    ## matrix-normal engine with a covariance-scale precision built in R.
+    bar <- call("|", 0, as.name(spec$group))
+    marks <- list(
+      .column_slope_mode = if (isTRUE(spec$correlated)) "dep" else "indep",
+      column_slope_cols = spec$basis,
+      .column_slope_source = "phylo",
+      .response_column_coef = TRUE,
+      .column_coef_fixed_rho = spec$rho
+    )
+    return(as.call(c(list(as.name("phylo_slope"), bar), marks, extras)))
+  }
+  out <- expr
+  for (i in seq_along(out)[-1L]) {
+    out[[i]] <- .column_coef_rewrite_fixed_phylo(
+      out[[i]], spec, data = data, envir = envir
+    )
   }
   out
 }

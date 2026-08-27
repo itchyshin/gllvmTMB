@@ -2,11 +2,13 @@
 
 **Reader:** formula/API contributors, statistical-method developers, and
 reviewers preparing the successor to the response-column `*_slope()` family.
-**Status:** Arc 2 internal IID engine contract, 2026-08-26. The Arc 1 parser,
-metadata, and fixed-effect groundwork now admits fitted Gaussian
+**Status:** Arc 3 internal fixed-rho phylogenetic engine contract, 2026-08-27.
+The Arc 1 parser, metadata, and fixed-effect groundwork admits fitted Gaussian
 `column_coef()` point models through the existing matrix-normal coefficient
-engine. Structured `*_coef()` engines, exported helpers, public teaching, and
-interval claims remain unadmitted.
+engine. A private test entry now also admits fixed numeric `rho` for
+`phylo_coef()` with tree, dense covariance, or sparse precision sources.
+Estimated `rho`, exported helpers, public teaching, and interval claims remain
+unadmitted.
 **Relationship to Design 130:** Design 130 remains the active contract for the
 released slope-only helpers. The future `*_coef()` family generalises their
 coefficient basis to include response-column intercepts. Existing fits and
@@ -106,14 +108,34 @@ between-column correlation.
   argument.
 - `phylo_coef()`, `animal_coef()`, and `kernel_coef()` will use `rho = NULL`
   for an estimated value and a numeric scalar in `[0, 1]` for a fixed value.
+  The internal phylogenetic engine currently admits only the latter. It forms
+  `K_rho` on the covariance scale and derives its precision and log determinant
+  only after the mixture is complete; it never mixes source precisions.
 - `spatial_coef()` has the stable first-release default `rho = 1`. The
   estimable `rho = NULL` route is admitted only after a joint `rho`-range
   identifiability gate. A fixed `rho = 0` must map the spatial range parameter
   off because the likelihood is then independent of range.
 
-The IID `column_coef()` route now estimates the `K_rho = I` case. The
-structured helpers continue to store and validate their source and `rho`
-intentions but remain fenced before optimisation.
+The IID `column_coef()` route estimates the `K_rho = I` case. The internal
+fixed-rho phylogenetic route validates and label-aligns the supplied source,
+requires a symmetric positive-definite source covariance, preserves its raw
+marginal scale, and fits the resulting `K_rho`. At `rho = 1`, a no-intercept
+basis dispatches through the released `phylo_slope()` route and must be exactly
+identical in design, map, objective, gradient, report, and fitted values.
+Interior fixed values and intercept-bearing bases use the same released
+matrix-normal coefficient arithmetic with the mixed covariance. The public
+`phylo_coef()` marker remains fenced, as do all animal, kernel, and spatial
+coefficient engines.
+
+One protected compatibility seam is explicit. The released dense-VCV
+`phylo_slope()` route conditions its covariance as `K0 = K + 1e-8 I` before
+inversion. Therefore a no-intercept dense-VCV `phylo_coef(..., rho = 1)` uses
+`K0`, not raw `K`, because exact slope-route identity is the endpoint contract.
+Tree sources retain their released tree precision. Interior `rho < 1` and
+intercept-bearing `rho = 1` use the raw-scale `K_rho` equation without a ridge.
+This internal slice does not claim continuity across that legacy dense
+endpoint; the public-interface slice must resolve or disclose the
+compatibility choice.
 
 ## 4. Keyed response-column metadata
 
@@ -206,17 +228,19 @@ Coarser fixed means, including pathway-group contrasts, are allowed because
 they do not span all response-column coefficients. The eventual random block
 represents residual response-column deviations around those means.
 
-## 7. Parser and IID-engine state
+## 7. Parser and internal engine state
 
 The parser recognises all five marker names, validates the bar,
 response-column factor, basis, source count, metadata restrictions, and
 fixed/random overlap, and requires every marker to be a top-level additive RHS
 term. A valid `column_coef()` term continues into the existing matrix-normal
-coefficient engine with identity response-column covariance. A valid
-`phylo_coef()`, `animal_coef()`, `kernel_coef()`, or `spatial_coef()` term still
-stops with class `gllvmTMB_column_coef_engine_not_admitted` before optimisation
-or TMB assembly. Malformed syntax uses narrower validation classes and must
-not be disguised as the engine fence.
+coefficient engine with identity response-column covariance. A private test
+rewrite admits `phylo_coef()` only when `rho` is one fixed finite scalar in
+`[0, 1]`; the ordinary public `gllvmTMB()` path still stops with class
+`gllvmTMB_column_coef_engine_not_admitted`. A valid `animal_coef()`,
+`kernel_coef()`, or `spatial_coef()` term also remains fenced before
+optimisation or TMB assembly. Malformed syntax uses narrower validation classes
+and must not be disguised as the engine fence.
 
 The literal predictor name `(Intercept)` is reserved. Users request the
 synthetic intercept with `1`; accepting the literal name would make the design
@@ -249,16 +273,35 @@ The IID-engine slice adds independent gates for:
 5. a known-DGP Gaussian intercept/slope recovery fit with finite gradients at
    both truth and optimum.
 
-This slice reuses the released matrix-normal coefficient arithmetic and does
-not change TMB code. Source-specific implementation, public extractor
-contracts, and the three-OS public release gate remain required before any
-helper is exported or taught.
+The fixed-rho phylogenetic slice adds independent gates for:
+
+1. covariance-scale oracles at `rho = 0`, an interior value, and a value close
+   to one, including non-unit source diagonals and a no-snapping check;
+2. exact tree-tip, permuted dense-covariance, and sparse-precision alignment,
+   with typed failures for missing labels, asymmetry, and non-positive-definite
+   sources;
+3. exact fitted-object identity between no-intercept `phylo_coef(..., rho = 1)`
+   and released `phylo_slope()` for tree and dense sources under both bars;
+   the dense-source oracle explicitly checks the inherited `K + 1e-8 I`
+   endpoint rather than silently comparing it with raw `K`;
+4. full and diagonal intercept/slope coefficient bases at an interior fixed
+   `rho`, including exact precision and log-determinant checks and finite
+   gradients; and
+5. deterministic known-DGP Gaussian recovery under a non-unit-scale source
+   covariance.
+
+These internal slices reuse the released matrix-normal coefficient arithmetic
+and do not change TMB code. Estimated-rho implementation, public extractor
+contracts, matched long/wide examples, and the three-OS public release gate
+remain required before `phylo_coef()` is exported or taught.
 
 ## 9. Explicitly deferred
 
-This slice defers structured `*_coef()` likelihood routing, fixed and estimated
-`rho`, TMB edits, public exports, extractors, wide parser advertisement,
+This slice defers estimated `rho`, all animal/kernel/spatial coefficient
+engines, TMB edits, public exports, extractors, wide parser advertisement,
 interval inference, non-Gaussian multi-predictor recovery, latent predictor
-covariance, and the public `col_data`/`column_data` tutorial. The general `rho`
-extension for the existing 5 x 3 grid remains a separate model-family decision,
-not a side effect of this coefficient programme.
+covariance, and the public `col_data`/`column_data` tutorial. The fixed-rho
+phylogenetic admission is internal and Gaussian only; it is not a public API
+claim. The general `rho` extension for the existing 5 x 3 grid remains a
+separate model-family decision, not a side effect of this coefficient
+programme.

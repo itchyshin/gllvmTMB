@@ -55424,3 +55424,98 @@ and substance but requested this explicit amended-head receipt plus a handover
 state update. The child commit containing this receipt is necessarily identified
 externally by the final exact-SHA review and PR head, because a commit cannot
 contain its own hash. No further implementation or claim change is introduced.
+
+### 2026-08-27 — Internal fixed-rho `phylo_coef()` candidate
+
+After PR #1218 merged and its exact-main check succeeded at
+`0d442ce7b0ab0b5901ccbde08426f9d9c4923287`, the fixed-rho plan branch rebased
+exactly once and acquired the narrow `codex:phylo-coef-fixed-rho` lease. The
+private Gaussian engine now resolves labelled tree, dense covariance, and
+sparse precision sources; validates the source covariance; forms
+`K_rho = rho K + (1 - rho) diag(K)`; and derives the precision and determinant
+only after covariance-scale mixing. Public `phylo_coef()` calls remain fenced.
+
+Test-driven and focused evidence:
+
+```sh
+Rscript --vanilla -e 'devtools::test(filter = "column-coef-phylo-fixed-rho", stop_on_failure = TRUE); cat("PHYLO_COEF_FIXED_RHO_FOCUSED_OK\n")'
+# Initial RED: two expected missing-helper failures. Post-review PASS: 99
+# expectations, zero failures or warnings.
+
+Rscript --vanilla dev/phylo-coef-fixed-rho/verify-rho-one-identity.R
+# PASS: PHYLO_COEF_RHO_ONE_IDENTITY_OK.
+
+Rscript --vanilla dev/phylo-coef-fixed-rho/verify-fixed-rho-recovery.R
+# PASS: PHYLO_COEF_FIXED_RHO_RECOVERY_OK.
+
+Rscript --vanilla dev/phylo-coef-fixed-rho/verify-internal-boundary.R
+# PASS: PHYLO_COEF_INTERNAL_BOUNDARY_OK.
+
+Rscript --vanilla -e 'devtools::test(filter = "column-coef-engine-iid|fixed-column-slope-family|phylo-column-slope-indep|phylo-slope|column-coef-phylo-fixed-rho", stop_on_failure = TRUE); cat("PHYLO_COEF_REGRESSION_OK\n")'
+# Post-review PASS: 306 expectations, zero failures; two declared heavy skips and 17
+# pre-existing unused-cluster warnings in neighbouring fixtures. New clean
+# phylo_slope() identity calls are protected by expect_no_warning().
+
+git diff --check
+# PASS after implementation and contract edits.
+```
+
+Validation row FG-20 remains `partial`. It now covers internal IID and fixed
+numeric-rho phylogenetic Gaussian point engines, while estimated rho, public
+helpers, extractors, articles, other structured sources, intervals, and
+non-Gaussian regimes remain unclaimed. Exact-candidate review, full local
+package/pkgdown checks, Unlazy, protected CI/merge, and exact-main receipts are
+still pending and must be appended before terminal closure.
+
+Rose's first exact-tree review failed the closeout contract because it omitted
+the protected dense-VCV endpoint seam: released `phylo_slope()` uses
+`K + 1e-8 I`, so exact no-intercept `phylo_coef(..., rho = 1)` identity does as
+well. Gauss/Noether also reproduced that this hard dispatch bypassed typed
+dense-source validation, and Rose/Grace found that malformed augmented sparse
+precisions could reach an untyped base inversion error. Design 131, FG-20, the
+closeout packet, the source header, the pre-dispatch guard, and the focused
+tests now disclose and verify the endpoint exception plus full sparse
+finite/symmetry/positive-definiteness validation. Interior rho and
+intercept-bearing `rho = 1` retain the raw-scale no-ridge mixture; no public
+continuity claim is made.
+
+The first broad `devtools::test()` run became invalid when exact review changed
+the private rewrite signature while that already-loaded R process was still
+running. When the suite reached the newly edited focused file it reported
+`unused arguments (data = data, envir = environment(formula))`; this was a
+stale loaded-package/process mismatch, not candidate evidence. The run was
+interrupted and excluded. Focused and broader regression gates were restarted
+from a fresh R process after the repair; the full exact-candidate package gate
+must also restart from fresh R.
+
+Fresh frozen-candidate local gates then passed:
+
+```sh
+Rscript --vanilla -e 'devtools::test(stop_on_failure = TRUE); pkgdown::check_pkgdown(); cat("PHYLO_COEF_LOCAL_PACKAGE_OK\n")'
+# PASS: 17,811 passes, 52 existing warnings, 879 declared skips, zero failures;
+# pkgdown::check_pkgdown() reported "No problems found".
+
+Rscript --vanilla -e 'Sys.setenv(NOT_CRAN="true"); devtools::check(args = "--no-manual", quiet = TRUE); cat("PHYLO_COEF_R_CMD_CHECK_OK\n")'
+# PASS in 19m43.9s: 0 errors, 0 warnings, 3 unchanged notes (clock verification,
+# pre-existing logLik namespace note, xcrun_db detritus).
+```
+
+Gauss/Noether terminal re-review PASSed covariance mixing, endpoint identity,
+maps, sparse validation, and numerical alignment. Rose terminal re-review
+PASSed the amended 99-expectation focused gate, 306-expectation regression
+gate, standalone verifiers, closeout consistency, and slope lifecycle. Grace
+PASSed source and portability after the local full/package and R CMD check
+receipts; exact-head three-OS and exact-main remain deliberately pending.
+
+Unlazy's duplicate execution of the same full package/pkgdown command was
+stopped when it crossed the declared 30-minute ceiling without a terminal
+marker. It emitted no failure before interruption, but it is not counted as a
+pass. G6 was narrowed to a deterministic receipt verifier that requires the
+fresh direct full-suite marker and counts, pkgdown success, the local
+R-CMD-check marker and 0-error/0-warning result, and a fresh `git diff --check`.
+This preserves the already-earned exact evidence without silently extending a
+duplicate fit-heavy replay.
+
+The revised Unlazy G6 receipt check passed and the ledger now reports 8/9 met.
+G1--G8 are satisfied; G9 remains intentionally pending exact-head routine and
+manual three-OS CI, normal merge without bypass, and exact-main R-CMD-check.

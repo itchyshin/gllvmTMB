@@ -167,21 +167,22 @@ route.
    call, use a coefficient basis with the agreed intercept/slope semantics,
    explain `rho`, and retain the distinction between fixed column metadata
    interactions and random coefficient deviations.
-2. **`phylogenetic-gllvm.Rmd` — Tier 1 conceptual bridge.** Keep its central
-   `phylo_latent(..., unique = TRUE)` trait-covariance worked example intact.
-   Add a brief, runnable cross-reference explaining that `phylo_coef()` models
-   a tree among response-column *coefficients*, not the phylogenetic trait
-   covariance treated by this article. Do not blur these estimands or recast
-   coefficient variation as a fourth grid mode.
-3. **`api-keyword-grid.Rmd` — Tier 2 reference boundary.** Keep the 5 × 3
+2. **`api-keyword-grid.Rmd` — Tier 2 reference boundary.** Keep the 5 × 3
    source-by-trait-covariance grid unchanged. Update its outside-the-grid
    response-column section to distinguish the retained `*_slope()` APIs from
    the admitted `column_coef()` / `phylo_coef()` coefficient bases, with a
    direct link to the Tier-1 tree-placement example.
+3. **Protect `phylogenetic-gllvm.Rmd`.** This Tier-1 article already has a
+   coherent, runnable long/wide `phylo_latent(..., unique = TRUE)`
+   trait-covariance story. The maintainer decided on 2026-08-27 that it does not
+   need a coefficient bridge now. Verify it remains internally consistent, but
+   do not edit or render it merely to mention `phylo_coef()`. Reopen that choice
+   only if the landed public API creates a concrete contradiction.
 
-Before publishing, run the article-tier and prose reviews, render all three
-articles with `pkgdown::build_articles(lazy = FALSE)`, inspect rendered HTML at
-desktop and mobile widths, run `pkgdown::check_pkgdown()`, and scan every
-reader-facing surface for stale claims. The rendered public site must be
-checked after the normal protected merge; neither article is updated in the
-fixed-rho internal PR.
+Before publishing, run the article-tier and prose reviews, render every article
+actually changed with `pkgdown::build_articles(lazy = FALSE)`, inspect rendered
+HTML at desktop and mobile widths, run `pkgdown::check_pkgdown()`, and scan every
+reader-facing surface for stale claims. Confirm separately that
+`phylogenetic-gllvm.Rmd` is unchanged. The rendered public site must be checked
+after the normal protected merge; no article is updated in the fixed-rho
+internal PR.

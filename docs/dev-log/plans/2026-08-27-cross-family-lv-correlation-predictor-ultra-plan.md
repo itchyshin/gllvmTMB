@@ -45,10 +45,14 @@ targets.
   `U_B_total` for every axis, and reports `B_lv_unit`; rank 2/3 is therefore an
   R admission/evidence gap unless failing tests expose an engine defect.
 - Gaussian and lognormal currently share one scalar `sigma_eps`. A joint route
-  cannot be advertised as general until that equality is either made explicit
-  as a constrained model or replaced by separately identified scales. This is
-  a likelihood change and requires its own TMB review and tests; it is not
-  hidden inside a guard relaxation.
+  cannot be advertised as general until that equality is replaced by separate
+  **family-scale slots**: Gaussian SD in raw response units and lognormal SD on
+  `log(y)`. Tying those unlike scales makes the fit depend on arbitrary
+  measurement units. Within each family, the existing shared observation-scale
+  contract remains unchanged; this lane does not invent a new per-trait
+  residual-variance model. This is a likelihood change and requires its own TMB
+  review, pure-family parity controls, and planted unequal-scale recovery; it is
+  not hidden inside a guard relaxation.
 - Ask-Brain (`search_all_projects=true`) retrieved `[[02-family-registry]]`,
   `[[03-likelihoods]]`, and `[[05-testing-strategy]]`: they confirm that
   cross-family dependence is already a package headline and that new work must
@@ -73,8 +77,10 @@ all-route evidence campaign but is not a substitute for it:
 4. Test `unique = TRUE` separately. Promote it only if identified partner Psi
    components and the mapped-off nominal component behave as the existing
    correlation route specifies.
-5. Keep Gaussian + lognormal jointly gated until separate-scale likelihood
-   work passes TMB review and planted-scale recovery.
+5. Keep Gaussian + lognormal jointly gated until separate family-scale
+   likelihood
+   work passes TMB review, pure-family/equal-scale parity, and planted unequal-
+   scale recovery.
 
 This milestone does not add a new correlation extractor. The existing
 `extract_Sigma()` and `extract_correlations()` contracts remain authoritative.
@@ -87,7 +93,7 @@ This milestone does not add a new correlation extractor. The existing
 | S1 engine audit | Gauss + Emmy | guard-only versus TMB-gap map | G0 |
 | S2 estimand/evidence audit | Noether + Fisher | smallest honest recovery/calibration grid | G0 |
 | S3 TDD bridge | Ada/Gauss | failing then passing rank-2/3 joint-fit tests | S1 |
-| S4 scale repair | Gauss | separate Gaussian/lognormal scale path if required | S3 |
+| S4 scale repair | Gauss | separate Gaussian/lognormal family-scale slots, backward-compatible pure-family parity, downstream extractor/simulation alignment | S3 |
 | S5 evidence canaries | Curie + Grace | measured pre-run receipt | S3/S4 |
 | S6 retained evidence | Curie + Fisher | all-attempt artifacts and verdicts | explicit >30 min approval |
 | S7 reader/status cascade | Boole + Pat + Rose | existing article updated at earned scope | retained evidence |
@@ -105,8 +111,10 @@ the measured receipt for explicit approval.
 The old 3,800/4,000-attempt campaigns are immutable inputs. New claim-bearing
 work is limited to:
 
-- a rank-2 and rank-3 five-family joint recovery cell;
-- one all-admitted-route stress cell after every incompatibility is resolved;
+- a rank-2 unequal-scale sentinel with Gaussian and lognormal traits;
+- a rank-3 five-family joint recovery cell;
+- one all-registered-family stress cell after every incompatibility is resolved,
+  including both Gaussian and lognormal with unequal planted family scales;
 - pure Beta and ordinal-probit repair/confirmation without changing old
   verdicts or denominators;
 - mechanism-stratified correlation and `B_lv` calibration only where public
@@ -115,6 +123,13 @@ work is limited to:
 Every campaign retains planned, started, failed, point-eligible,
 interval-eligible, non-PD, and CI-unavailable denominators, plus target-specific
 MCSE and artifact hashes. GitHub Actions is never used for science compute.
+
+The minimum claim-bearing point campaign is 200 immutable attempts per retained
+cell, subject to a measured pre-run. Required targets are `B_lv`,
+`Sigma_shared`, off-diagonal `R_shared`, and every active Gaussian/lognormal
+residual scale. Correlation intervals remain out of scope. If `B_lv` intervals
+are advertised, that cell requires at least 500 attempts, 475 interval-eligible
+fits, target-wise coverage 0.92--0.98, and MCSE no greater than 0.01.
 
 ## Stop conditions
 

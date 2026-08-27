@@ -311,11 +311,10 @@
   n <- length(eta)
   out <- eta
   sigma_eps <- as.numeric(sigma_eps %||% 0)
-  sigma_eps <- if (length(sigma_eps) && is.finite(sigma_eps[1L])) {
-    sigma_eps[1L]
-  } else {
-    0
-  }
+  sigma_eps[!is.finite(sigma_eps)] <- 0
+  sigma_lognormal <- if (length(sigma_eps) >= 2L) {
+    sigma_eps[[2L]]
+  } else if (length(sigma_eps)) sigma_eps[[1L]] else 0
   for (i in seq_len(n)) {
     fid <- family_id[i]
     lid <- link_id[i]
@@ -339,7 +338,7 @@
     } else if (fid == 3L) {
       ## lognormal: eta is the mean on the log scale, so exp(eta) is the
       ## median; the conditional response mean includes sigma_eps^2 / 2.
-      out[i] <- exp(e + 0.5 * sigma_eps^2)
+      out[i] <- exp(e + 0.5 * sigma_lognormal^2)
     } else {
       ## log-link families (poisson, Gamma, nbinom1/2, tweedie,
       ## truncated, delta): the conditional mean is exp(eta).
@@ -360,11 +359,10 @@
   n <- length(eta)
   out <- eta
   sigma_eps <- as.numeric(sigma_eps %||% 0)
-  sigma_eps <- if (length(sigma_eps) && is.finite(sigma_eps[1L])) {
-    sigma_eps[1L]
-  } else {
-    0
-  }
+  sigma_eps[!is.finite(sigma_eps)] <- 0
+  sigma_lognormal <- if (length(sigma_eps) >= 2L) {
+    sigma_eps[[2L]]
+  } else if (length(sigma_eps)) sigma_eps[[1L]] else 0
   for (i in seq_len(n)) {
     fid <- family_id[i]
     lid <- link_id[i]
@@ -388,7 +386,7 @@
     } else if (fid == 3L) {
       ## lognormal: out was exp(e + 0.5 * sigma_eps^2); sigma_eps does not
       ## depend on e, so the derivative keeps the same multiplier.
-      out[i] <- exp(e + 0.5 * sigma_eps^2)
+      out[i] <- exp(e + 0.5 * sigma_lognormal^2)
     } else {
       ## log-link families (poisson, Gamma, nbinom1/2, tweedie,
       ## truncated, delta): d/de exp(e) = exp(e).
@@ -1456,10 +1454,7 @@ simulate.gllvmTMB_multi <- function(
       ## is M2/M3 work (needs a per-row family extractor from newdata).
       pp <- predict(object, newdata = newdata)
       eta <- pp$est
-      sigma <- as.numeric(object$report$sigma_eps)
-      if (is.null(sigma) || length(sigma) == 0L) {
-        sigma <- exp(unname(object$opt$par["log_sigma_eps"]))
-      }
+      sigma <- .gllvmTMB_sigma_eps(object)
       cache_key <- "gllvmTMB.warned_simulate_newdata_gaussian_fallback"
       if (is.null(getOption(cache_key))) {
         cli::cli_warn(
@@ -1546,14 +1541,10 @@ simulate.gllvmTMB_multi <- function(
   n <- length(eta)
   y <- numeric(n)
 
-  ## sigma_eps is scalar for Gaussian/lognormal traits. Ordinary Gamma uses
-  ## per-trait phi_gamma shape below.
-  sigma_eps <- as.numeric(fit$report$sigma_eps)
-  if (is.null(sigma_eps) || length(sigma_eps) == 0L) {
-    sigma_eps <- exp(unname(fit$opt$par["log_sigma_eps"]))
-    if (is.na(sigma_eps)) sigma_eps <- 1
-  }
-  sigma_eps <- sigma_eps[1L]
+  ## Pure fits retain one scalar. Joint Gaussian-lognormal fits carry a raw-
+  ## scale Gaussian slot and a log-scale lognormal slot.
+  sigma_eps_gaussian <- .gllvmTMB_sigma_eps_for_family(fit, 0L)
+  sigma_eps_lognormal <- .gllvmTMB_sigma_eps_for_family(fit, 3L)
   phi_gamma <- as.numeric(fit$report$phi_gamma %||% numeric(0L))
   phi_nbinom2 <- fit$report$phi_nbinom2 # length n_traits
   phi_nbinom1 <- fit$report$phi_nbinom1 # length n_traits
@@ -1627,7 +1618,7 @@ simulate.gllvmTMB_multi <- function(
 
     if (fid == 0L) {
       ## Gaussian, identity link
-      y[i] <- eta_i + stats::rnorm(1L, sd = sigma_eps)
+      y[i] <- eta_i + stats::rnorm(1L, sd = sigma_eps_gaussian)
     } else if (fid == 1L) {
       ## Binomial, dispatched on link_id_vec exactly as src/gllvmTMB.cpp
       ## fid == 1 does. size is the row's actual n_trials (cbind(succ, fail)
@@ -1650,7 +1641,7 @@ simulate.gllvmTMB_multi <- function(
       y[i] <- stats::rpois(1L, lambda = exp(eta_i))
     } else if (fid == 3L) {
       ## Lognormal — y = exp(eta + N(0, sigma_eps))
-      y[i] <- exp(eta_i + stats::rnorm(1L, sd = sigma_eps))
+      y[i] <- exp(eta_i + stats::rnorm(1L, sd = sigma_eps_lognormal))
     } else if (fid == 4L) {
       ## Gamma, log link with per-trait shape phi_gamma.
       ## scale = mu / shape; E(y) = mu.

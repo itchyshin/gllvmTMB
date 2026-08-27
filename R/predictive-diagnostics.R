@@ -368,7 +368,8 @@ residuals.gllvmTMB_multi <- function(
   residual <- rep(NA_real_, n)
   status <- rep("ok", n)
 
-  sigma_eps <- .gllvmTMB_sigma_eps(object)
+  sigma_eps_gaussian <- .gllvmTMB_sigma_eps_for_family(object, 0L)
+  sigma_eps_lognormal <- .gllvmTMB_sigma_eps_for_family(object, 3L)
   phi_nbinom2 <- object$report$phi_nbinom2
   phi_nbinom1 <- object$report$phi_nbinom1
   phi_gamma <- object$report$phi_gamma
@@ -477,7 +478,9 @@ residuals.gllvmTMB_multi <- function(
     }
 
     if (fid == 0L) {
-      lower[i] <- stats::pnorm(y_i, mean = eta[i], sd = sigma_eps)
+      lower[i] <- stats::pnorm(
+        y_i, mean = eta[i], sd = sigma_eps_gaussian
+      )
       upper[i] <- lower[i]
       u[i] <- lower[i]
     } else if (fid == 1L) {
@@ -516,14 +519,15 @@ residuals.gllvmTMB_multi <- function(
       u[i] <- stats::runif(1L, min = lower[i], max = upper[i])
     } else if (fid == 3L) {
       ## Lognormal, log(y) ~ Normal(eta, sigma_eps). eta is the mean of
-      ## log(y) directly (src/gllvmTMB.cpp fid == 3); sigma_eps is the SAME
-      ## shared scalar Gaussian rows use (any_sigma_eps gates on
-      ## family_id %in% c(0L, 3L) in R/fit-multi.R), not a per-trait phi.
+      ## log(y) directly (src/gllvmTMB.cpp fid == 3). Joint Gaussian-
+      ## lognormal fits use a distinct log-scale slot, shared within family.
       if (y_i <= 0) {
         status[i] <- "invalid_observed"
         next
       }
-      lower[i] <- stats::plnorm(y_i, meanlog = eta[i], sdlog = sigma_eps)
+      lower[i] <- stats::plnorm(
+        y_i, meanlog = eta[i], sdlog = sigma_eps_lognormal
+      )
       upper[i] <- lower[i]
       u[i] <- lower[i]
     } else if (fid == 4L) {
@@ -1408,17 +1412,32 @@ residuals.gllvmTMB_multi <- function(
   as.integer(out)
 }
 
+.gllvmTMB_sigma_eps_vector <- function(object) {
+  sigma_eps <- as.numeric(object$report$sigma_eps %||% numeric(0L))
+  if (!length(sigma_eps) || any(!is.finite(sigma_eps))) {
+    par <- object$opt$par %||% numeric(0L)
+    idx <- which(names(par) == "log_sigma_eps")
+    sigma_eps <- if (length(idx)) exp(unname(par[idx])) else numeric(0L)
+  }
+  if (!length(sigma_eps)) sigma_eps <- 1
+  sigma_eps[!is.finite(sigma_eps) | sigma_eps <= 0] <- 1
+  sigma_eps
+}
+
+.gllvmTMB_sigma_eps_for_family <- function(object, family_id) {
+  family_id <- as.integer(family_id)
+  sigma_eps <- .gllvmTMB_sigma_eps_vector(object)
+  fitted_families <- unique(as.integer(
+    object$tmb_data$family_id_vec %||% integer(0L)
+  ))
+  has_split <-
+    length(sigma_eps) >= 2L && all(c(0L, 3L) %in% fitted_families)
+  slot <- if (has_split && identical(family_id, 3L)) 2L else 1L
+  sigma_eps[[slot]]
+}
+
 .gllvmTMB_sigma_eps <- function(object) {
-  sigma_eps <- as.numeric(object$report$sigma_eps)
-  if (
-    is.null(sigma_eps) || length(sigma_eps) == 0L || !is.finite(sigma_eps[1])
-  ) {
-    sigma_eps <- exp(unname(object$opt$par["log_sigma_eps"]))
-  }
-  if (is.na(sigma_eps[1]) || sigma_eps[1] <= 0) {
-    sigma_eps <- 1
-  }
-  sigma_eps[1L]
+  .gllvmTMB_sigma_eps_for_family(object, 0L)
 }
 
 .gllvmTMB_clip_unit_interval <- function(u) {

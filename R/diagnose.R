@@ -1938,27 +1938,36 @@ check_gllvmTMB <- function(
   sigma_eps <- as.numeric(object$report$sigma_eps %||% numeric(0L))
   sigma_eps <- sigma_eps[is.finite(sigma_eps)]
   if (length(sigma_eps) > 0L) {
-    sigma_eps <- sigma_eps[1L]
     mapped_off <- .gllvmTMB_sigma_eps_mapped_off(object)
-    rows <- c(
-      rows,
-      list(.gllvmTMB_check_row(
-        "boundary_sigma_eps",
-        if (isTRUE(mapped_off) || sigma_eps >= sigma_eps_thresh) {
-          "PASS"
-        } else {
-          "WARN"
-        },
-        .gllvmTMB_fmt_num(sigma_eps, digits = 4L),
-        sigma_eps_thresh,
-        if (isTRUE(mapped_off)) {
-          "sigma_eps is mapped off by the fitted model/family path"
-        } else {
-          "estimated continuous-family residual scale"
-        },
-        "if estimated near zero, check row-level unique terms or residual-scale identifiability"
-      ))
-    )
+    scale_names <- if (length(sigma_eps) >= 2L) {
+      c("gaussian", "lognormal")
+    } else "continuous"
+    for (j in seq_along(sigma_eps)) {
+      check_id <- if (length(sigma_eps) >= 2L) {
+        paste0("boundary_sigma_eps_", scale_names[[j]])
+      } else {
+        "boundary_sigma_eps"
+      }
+      rows <- c(
+        rows,
+        list(.gllvmTMB_check_row(
+          check_id,
+          if (isTRUE(mapped_off) || sigma_eps[[j]] >= sigma_eps_thresh) {
+            "PASS"
+          } else {
+            "WARN"
+          },
+          .gllvmTMB_fmt_num(sigma_eps[[j]], digits = 4L),
+          sigma_eps_thresh,
+          if (isTRUE(mapped_off)) {
+            "sigma_eps is mapped off by the fitted model/family path"
+          } else {
+            paste0("estimated ", scale_names[[j]], " residual scale")
+          },
+          "if estimated near zero, check row-level unique terms or residual-scale identifiability"
+        ))
+      )
+    }
   }
 
   out <- do.call(rbind, rows)

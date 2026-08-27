@@ -1118,6 +1118,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     site = site,
     family_id_vec = family_id_vec,
     link_id_vec = link_id_vec,
+    weights = weights,
     n_missing_response = missing_meta$n_missing_response %||% 0L,
     REML = REML
   )
@@ -3605,6 +3606,34 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   }
   resid_init <- fit_lm$residuals
   log_sigma_eps_init <- .gllvmTMB_log_sigma_eps_start(resid_init)
+  ## Gaussian residual SD is on the raw response scale, whereas lognormal
+  ## residual SD is on log(y). A single scalar is therefore meaningful only
+  ## within either family. Preserve the historical length-one parameter for
+  ## every pure/non-joint fit; allocate two slots only when both families are
+  ## present, with separate working-scale starts.
+  has_gaussian_rows <- any(family_id_vec == 0L)
+  has_lognormal_rows <- any(family_id_vec == 3L)
+  if (has_gaussian_rows && has_lognormal_rows) {
+    gaussian_rows <- which(family_id_vec == 0L)
+    lognormal_rows <- which(family_id_vec == 3L)
+    gaussian_resid <- tryCatch(
+      stats::lm.fit(
+        X_fix[gaussian_rows, , drop = FALSE], y[gaussian_rows]
+      )$residuals,
+      error = function(e) y[gaussian_rows] - mean(y[gaussian_rows])
+    )
+    lognormal_y <- log(y[lognormal_rows])
+    lognormal_resid <- tryCatch(
+      stats::lm.fit(
+        X_fix[lognormal_rows, , drop = FALSE], lognormal_y
+      )$residuals,
+      error = function(e) lognormal_y - mean(lognormal_y)
+    )
+    log_sigma_eps_init <- c(
+      gaussian = .gllvmTMB_log_sigma_eps_start(gaussian_resid),
+      lognormal = .gllvmTMB_log_sigma_eps_start(lognormal_resid)
+    )
+  }
 
   ## ---- Phase L: harvest per-term `tree = ...` / `vcv = ...` overrides -------
   ## Phase L (May 2026): users can now write
@@ -5865,8 +5894,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   cell_B <- paste(trait_id, site_id, sep = "_")
   per_row_diag_B <- use_diag_B && length(unique(cell_B)) == n_obs
   if (!any_sigma_eps) {
-    tmb_map$log_sigma_eps <- factor(NA_integer_)
-    tmb_params$log_sigma_eps <- 0
+    tmb_map$log_sigma_eps <- factor(rep(NA_integer_, length(tmb_params$log_sigma_eps)))
+    tmb_params$log_sigma_eps[] <- 0
   } else {
     ## Q7: auto-suppress sigma_eps when a diagonal term is at the per-row
     ## level, i.e. the diagonal random effects index the same atoms as the
@@ -5881,8 +5910,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       level_lab <- if (per_row_diag_W) ss_name else site
       data_sd  <- stats::sd(y)
       small_eps <- max(1e-3 * data_sd, 1e-6)
-      tmb_params$log_sigma_eps <- log(small_eps)
-      tmb_map$log_sigma_eps    <- factor(NA_integer_)
+      tmb_params$log_sigma_eps[] <- log(small_eps)
+      tmb_map$log_sigma_eps <- factor(
+        rep(NA_integer_, length(tmb_params$log_sigma_eps))
+      )
       cli::cli_inform(c(
         "i" = paste0(
           "Auto-suppressing {.code sigma_eps}: ",

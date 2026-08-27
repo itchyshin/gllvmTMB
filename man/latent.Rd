@@ -25,13 +25,17 @@ traits. Only applies when \code{unique = TRUE}.}
 
 \item{lv}{One-sided formula for predictor-informed latent-score means.
 Runtime support is limited to ordinary unit-tier
-\code{latent(..., lv = ~ x)}. It includes the original Gaussian and pure
-binomial (logit/probit/cloglog) cells plus an exact family-wide programme
-allow-list restricted to rank one, \code{unique = FALSE}, and complete
-responses. The named mixed-response programme cells have point-recovery
-evidence. Seventeen of 19 pure programme cells pass point-recovery gates;
-pure Beta and pure ordinal-probit remain on HOLD. No pure programme
-interval claim is earned. Source-specific \verb{*_latent(..., lv = ~ x)} forms are
+\code{latent(..., lv = ~ x)}. Registered native family/link rows compose in one
+complete-response ordinary unit-tier block. The loadings-only
+\code{unique = FALSE} form admits ranks through the number of logical responses;
+automatic \code{Psi} additionally requires that its physical loading,
+latent-predictor, and engine-free diagonal parameters pass a necessary
+joint mean-covariance dimension screen. Passing that screen is not a
+recovery or interval-calibration certificate. Bounded
+rank-2/rank-3 canaries exercise every registered family, but broad
+composition recovery and interval calibration remain partial. Retained
+recovery and interval claims remain limited to their named cells.
+Source-specific \verb{*_latent(..., lv = ~ x)} forms are
 parsed and then fail loud (not yet fittable). Where it is admitted, the
 fit is experimental and exploratory: extract the coefficients with
 \code{\link[=extract_lv_effects]{extract_lv_effects()}}, whose default \code{type = "axis_effect"} output is

@@ -491,7 +491,7 @@ non-negative.
 "Residual" in a mixed-effects model is \strong{scale-relative}: what
 counts as residual variance shifts as you add levels to the model.
 In a Gaussian fit without a per-row diagonal term, the residual is row-level
-noise captured by a single shared \code{sigma_eps}. Once you add a per-row
+noise captured by a within-family shared \code{sigma_eps}. Once you add a per-row
 \code{indep(0 + trait | obs)} term,
 the \emph{row-level} residual is now T per-trait random-effect variances and
 \code{sigma_eps} is auto-suppressed to avoid double-counting. If you also add a
@@ -500,15 +500,18 @@ the \code{site}-level term is now an additional, \emph{higher-level} random effe
 a residual at all. The dispatch table below records this explicitly for the
 configurations the engine supports today.
 
-Gaussian and lognormal responses have one residual scale parameter,
-\code{sigma_eps}. Ordinary Gamma responses instead carry a per-trait shape
+Gaussian and lognormal responses each have a residual scale parameter,
+\code{sigma_eps}, shared within family. Pure fits retain one slot; a joint
+Gaussian-lognormal fit has separate raw- and log-scale slots. Ordinary
+Gamma responses instead carry a per-trait shape
 \code{phi_gamma} (CV = \code{1 / sqrt(phi_gamma)}). Per-trait residual variances
 only appear if you explicitly add a per-row \code{indep(...)} term.
 The dispatch is automatic:
 
 \describe{
-\item{No per-row \code{indep}, Gaussian/lognormal present}{One
-shared \code{sigma_eps} across Gaussian/lognormal rows. \emph{Not} per-trait.}
+\item{No per-row \code{indep}, Gaussian/lognormal present}{One slot in a
+pure fit; separate Gaussian raw-scale and lognormal log-scale slots when
+both coexist. Each slot is shared within family, \emph{not} per-trait.}
 \item{No per-row \code{indep}, no Gaussian/lognormal rows}{\code{sigma_eps}
 is mapped off; the family's intrinsic dispersion handles the residual
 (for ordinary Gamma, \code{phi_gamma}).}
@@ -531,7 +534,7 @@ selection" below).}
 }
 
 Mnemonic: Gaussian/lognormal \code{sigma_eps} is the default; ordinary Gamma uses
-\code{phi_gamma}; per-row \code{indep} replaces the Gaussian/lognormal scalar residual
+\code{phi_gamma}; per-row \code{indep} replaces the Gaussian/lognormal family residual
 with T per-trait residuals; non-per-row \code{indep} adds a higher-level random
 effect on top of the family residual;
 non-continuous families never carry \code{sigma_eps} regardless.
@@ -569,12 +572,13 @@ Schielzeth (2017) \emph{J. R. Soc. Interface} 14: 20170213.
 
 The fitted object's \verb{$report} carries per-family dispersion quantities on
 the natural scale, each a vector of length \code{n_traits} indexed by trait
-(except \code{sigma_eps}, a single scalar). Their names follow the engine's
+(except \code{sigma_eps}, which has one slot normally and two slots only when
+Gaussian and lognormal responses coexist). Their names follow the engine's
 internal parameterisation, \strong{not} standard R distribution arguments —
 several are easy to misread. What each one IS, and how it maps to
 standard R arguments (\code{mu = exp(eta)} unless noted):\tabular{lll}{
    Family (report name) \tab What it is \tab Standard-R conversion \cr
-   gaussian, lognormal (\code{sigma_eps}) \tab residual SD / sdlog; \strong{one scalar shared} by all gaussian \emph{and} lognormal traits \tab \code{pnorm(y, mean = eta, sd = sigma_eps)}; \code{plnorm(y, meanlog = eta, sdlog = sigma_eps)} \cr
+   gaussian, lognormal (\code{sigma_eps}) \tab residual SD / sdlog; one within-family shared slot in pure fits, or separate Gaussian raw-scale and lognormal log-scale slots when both coexist \tab \code{pnorm(y, mean = eta, sd = sigma_eps[1])}; \code{plnorm(y, meanlog = eta, sdlog = sigma_eps[2])} in a joint fit \cr
    Gamma (\code{phi_gamma}) \tab the \strong{shape}, not a dispersion \tab \code{pgamma(y, shape = phi, scale = mu / phi)}; \code{CV(y) = 1 / sqrt(phi)} \cr
    nbinom2 (\code{phi_nbinom2}) \tab the NB \code{size} \tab \code{pnbinom(y, size = phi, mu = mu)}; \code{Var(y) = mu + mu^2 / phi} \cr
    nbinom1 (\code{phi_nbinom1}) \tab linear overdispersion, \code{Var(y) = mu * (1 + phi)} \tab \code{pnbinom(y, size = mu / phi, mu = mu)} — the size is mean-dependent \cr
@@ -589,7 +593,7 @@ standard R arguments (\code{mu = exp(eta)} unless noted):\tabular{lll}{
 }
 
 \section{Objective provenance}{
- report\$joint_nll_* vs objective_components:
+ joint_nll report fields vs objective_components:
 A fitted object carries two different surfaces that both look like "the
 objective", and they answer different questions.
 

@@ -1,8 +1,10 @@
 ## Design 73 parser/API preflight for predictor-informed latent scores.
 ## This file validates and prepares the unit-level X_lv_B design. The first
-## TMB path is ordinary unit-tier latent(). The original non-Gaussian routes
-## are pure binomial fits under the three standard admitted binary links; the
-## family-wide programme adds only its exact rank-one, loadings-only cells.
+## TMB path is ordinary unit-tier latent(). Registered native family/link rows
+## now compose in this one complete-response block. Loadings-only rank is
+## bounded by logical responses; automatic Psi also passes a necessary
+## parameter-dimension gate. Retained
+## recovery and interval evidence remains cell-specific.
 
 gll_lv_covstruct_indices <- function(covstructs) {
   which(vapply(
@@ -58,6 +60,7 @@ gll_prepare_lv_predictor_setup <- function(
   site,
   family_id_vec,
   link_id_vec,
+  weights = NULL,
   n_missing_response = 0L,
   REML = FALSE
 ) {
@@ -229,33 +232,27 @@ gll_prepare_lv_predictor_setup <- function(
   is_gaussian <- all(family_id_vec == 0L)
   is_pure_binomial <- all(family_id_vec == 1L)
   is_binomial_standard_link <- all(link_id_vec %in% c(0L, 1L, 2L))
-  family_ids <- sort(unique(family_by_trait))
-  is_programme_pure <-
-    length(family_ids) == 1L && family_ids[[1L]] %in% 2:16
-  is_gaussian_anchor <-
-    n_logical_response_traits == 2L &&
-    length(family_ids) == 2L &&
-    0L %in% family_ids &&
-    setdiff(family_ids, 0L) %in% c(1L, 2L, 4:16)
-  is_lognormal_anchor <-
-    n_logical_response_traits == 2L && identical(family_ids, c(2L, 3L))
-  is_nongaussian_sentinel <-
-    n_logical_response_traits == 3L && identical(family_ids, c(2L, 4L, 7L))
+  ## Existing Gaussian and pure-binomial C1 routes retain their historical
+  ## admission.  Every other registered family composition uses the bounded
+  ## family-wide contract below: canonical links, complete responses, one
+  ## ordinary unit-tier latent block, and one numeric unit predictor.  The
+  ## likelihood itself is already row-wise family-dispatched; admission is
+  ## therefore compositional rather than an enumerated list of family cells.
   is_programme_cell <-
-    is_programme_pure ||
-    is_gaussian_anchor ||
-    is_lognormal_anchor ||
-    is_nongaussian_sentinel
+    !is_gaussian && !(is_pure_binomial && is_binomial_standard_link)
   programme_links_ok <-
     all(link_id_vec[family_id_vec != 1L] == 0L) &&
     all(link_id_vec[family_id_vec == 1L] %in% c(0L, 1L, 2L))
 
-  binomial_links <- unique(link_id_vec[family_id_vec == 1L])
-  if ((is_programme_cell || is_pure_binomial) && length(binomial_links) > 1L) {
+  lv_rank <- as.integer(cs$extra[["d"]] %||% NA_integer_)
+  if (
+    length(lv_rank) != 1L || is.na(lv_rank) || lv_rank < 1L ||
+      lv_rank > n_logical_response_traits
+  ) {
     cli::cli_abort(c(
-      "Each named predictor-informed {.arg lv} cell uses one binomial link.",
-      "x" = "A single fit cannot mix logit, probit, and cloglog binomial traits.",
-      "i" = "Fit one exact named family/link cell at a time."
+      "Predictor-informed {.arg lv} rank cannot exceed the number of logical responses.",
+      "x" = "Found {.code d = {lv_rank}} for {n_logical_response_traits} logical response(s).",
+      ">" = "Choose {.code d} between 1 and the number of logical responses."
     ))
   }
 
@@ -266,18 +263,11 @@ gll_prepare_lv_predictor_setup <- function(
         "x" = "Binomial rows may use logit, probit, or cloglog; every other programme family uses its registered canonical link."
       ))
     }
-    lv_rank <- as.integer(cs$extra[["d"]] %||% NA_integer_)
-    if (length(lv_rank) != 1L || is.na(lv_rank) || lv_rank != 1L) {
-      cli::cli_abort(c(
-        "The family-wide {.arg lv} programme requires rank one ({.code d = 1}).",
-        "x" = "Higher-rank family-wide predictor-informed latent scores remain gated."
-      ))
-    }
-
     has_unit_diag_companion <- any(vapply(
       parsed$covstructs,
       function(candidate) {
         identical(candidate$kind, "diag") &&
+          !isTRUE(candidate$extra[[".auto_unique"]]) &&
           identical(deparse(candidate$group), site) &&
           identical(candidate$extra[["lhs_form"]] %||% "intercept_only",
             "intercept_only")
@@ -286,16 +276,21 @@ gll_prepare_lv_predictor_setup <- function(
     ))
     if (has_unit_diag_companion) {
       cli::cli_abort(c(
-        "The family-wide {.arg lv} programme is loadings-only.",
-        "x" = "A unit-tier diagonal Psi companion is not admitted for these cells, whether added by the default or written explicitly with {.fn indep} or compatibility {.fn unique}.",
-        ">" = "Use {.code latent(..., d = 1, unique = FALSE, lv = ~ x)}."
+        "An explicit unit-tier diagonal Psi companion is not admitted with predictor-informed {.arg lv}.",
+        "x" = "Write the diagonal only through {.fn latent}'s {.arg unique} modifier, not as a second covariance term.",
+        ">" = "Use {.code latent(..., d = K, lv = ~ x)} or the loadings-only {.code unique = FALSE} form."
       ))
     }
-    if (length(parsed$covstructs) != 1L) {
+    non_auto_covstructs <- vapply(
+      parsed$covstructs,
+      function(candidate) !isTRUE(candidate$extra[[".auto_unique"]]),
+      logical(1L)
+    )
+    if (sum(non_auto_covstructs) != 1L) {
       cli::cli_abort(c(
-        "The predictor-informed {.fn latent} block must be the only covariance term in a family-wide programme cell.",
-        "x" = "Extra ordinary, source-specific, kernel, or grouping-tier covariance terms have no programme evidence.",
-        "i" = "Fit the exact ordinary unit-tier loadings-only cell before considering a separate combination programme."
+        "The predictor-informed {.fn latent} block must be the only covariance term in the family-wide route.",
+        "x" = "Extra ordinary, source-specific, kernel, or grouping-tier covariance terms have no composition evidence.",
+        "i" = "Fit one ordinary unit-tier predictor-informed latent block."
       ))
     }
 
@@ -318,18 +313,6 @@ gll_prepare_lv_predictor_setup <- function(
       ))
     }
   }
-  if (
-    !is_gaussian &&
-      !(is_pure_binomial && is_binomial_standard_link) &&
-      !is_programme_cell
-  ) {
-    cli::cli_abort(c(
-      "{.arg lv} admits existing C1 routes and exact named family-wide programme cells only.",
-      "x" = "Arbitrary mixtures and duplicate-family trait shapes are not admitted.",
-      "i" = "Existing C1 keeps Gaussian and pure binomial standard links; other routes require a named programme cell with rank one, {.code unique = FALSE}, and a complete response."
-    ))
-  }
-
   lv_formula <- gll_lv_formula(cs)
   if (!inherits(lv_formula, "formula")) {
     cli::cli_abort(c(
@@ -518,6 +501,73 @@ gll_prepare_lv_predictor_setup <- function(
       "x" = "Rank {qr(X_lv_B)$rank} for {ncol(X_lv_B)} column(s).",
       "i" = "Remove aliased columns or empty factor levels before using {.arg lv}."
     ))
+  }
+
+  ## Run the covariance-dimension gate only after the lv formula and its unit
+  ## design have passed their more specific validation. This preserves typed
+  ## errors for malformed formulas, offsets, missing predictors, and aliases.
+  auto_psi <- parsed$covstructs[vapply(
+    parsed$covstructs,
+    function(candidate) {
+      identical(candidate$kind, "diag") &&
+        isTRUE(candidate$extra[[".auto_unique"]]) &&
+        identical(deparse(candidate$group), site)
+    },
+    logical(1L)
+  )]
+  if (length(auto_psi) > 0L) {
+    psi_is_common <- isTRUE(auto_psi[[1L]]$extra[["common"]])
+    n_trials <- rep(1, nrow(data))
+    response_frame <- tryCatch(
+      stats::model.frame(parsed$fixed, data = data, na.action = stats::na.pass),
+      error = function(e) NULL
+    )
+    if (!is.null(response_frame)) {
+      response_value <- stats::model.response(response_frame)
+      if (is.matrix(response_value) && ncol(response_value) == 2L) {
+        n_trials <- rowSums(response_value)
+      } else if (
+        any(family_id_vec == 1L) && is.numeric(weights) &&
+          length(weights) == nrow(data)
+      ) {
+        n_trials <- as.numeric(weights)
+      }
+    }
+    trait_values <- as.character(data[[trait]])
+    trait_levels <- unique(trait_values)
+    psi_is_free <- vapply(trait_levels, function(trait_level) {
+      rows <- which(trait_values == trait_level)
+      family_rows <- family_id_vec[rows]
+      if (all(family_rows == 16L)) return(FALSE)
+      if (all(family_rows == 1L) && all(n_trials[rows] == 1L)) return(FALSE)
+      TRUE
+    }, logical(1L))
+    if (all(family_id_vec %in% c(12L, 13L, 14L))) {
+      psi_is_free[] <- FALSE
+    }
+    n_physical_response_traits <- n_response_traits
+    n_lv_predictors <- ncol(X_lv_B)
+    n_loading_free <-
+      n_physical_response_traits * lv_rank -
+        lv_rank * (lv_rank - 1L) / 2L
+    n_alpha_free <- lv_rank * n_lv_predictors
+    n_psi_free <- if (psi_is_common) {
+      as.integer(any(psi_is_free))
+    } else {
+      sum(psi_is_free)
+    }
+    n_mean_covariance_coordinates <-
+      n_physical_response_traits * n_lv_predictors +
+        n_physical_response_traits * (n_physical_response_traits + 1L) / 2L
+    n_joint_parameters <- n_loading_free + n_alpha_free + n_psi_free
+    if (n_joint_parameters > n_mean_covariance_coordinates) {
+      cli::cli_abort(c(
+        "Predictor-informed {.fn latent} with automatic Psi fails the necessary joint mean-covariance dimension screen at this rank.",
+        "x" = "{n_physical_response_traits} physical response row(s), {n_logical_response_traits} logical response(s), {.code d = {lv_rank}}, and {n_lv_predictors} LV predictor(s) give {n_joint_parameters} free joint parameter(s) but only {n_mean_covariance_coordinates} mean-covariance coordinate(s).",
+        "i" = "The parameter count includes {n_loading_free} rotation-adjusted loading, {n_alpha_free} latent-predictor, and {n_psi_free} engine-free automatic-Psi parameter(s). Multinomial contrasts count as physical loading rows, while their Psi slots and single-trial binomial Psi slots are mapped off.",
+        ">" = "Lower {.code d}, use {.code common = TRUE} when one shared Psi variance is scientifically appropriate, or use {.code unique = FALSE} for the loadings-only model."
+      ))
+    }
   }
 
   list(

@@ -143,7 +143,7 @@ make_mixed_mock <- function() {
   )
 }
 
-test_that("sigma_eps is one scalar shared by gaussian and lognormal traits", {
+test_that("legacy scalar sigma_eps remains a joint-fit fallback", {
   skip_on_cran()
   fit <- make_mixed_mock()
   g <- gllvmTMB:::.gllvmTMB_family_cdf_args(fit, 1)
@@ -153,7 +153,7 @@ test_that("sigma_eps is one scalar shared by gaussian and lognormal traits", {
   expect_equal(g$args$sd, 0.7)
   expect_equal(ln$args$sdlog, 0.7)
   expect_identical(g$args$sd, ln$args$sdlog)
-  expect_match(g$note, "SHARED")
+  expect_match(g$note, "Gaussian|shared")
 })
 
 test_that("student accessor returns scale + df and converts to the SD", {

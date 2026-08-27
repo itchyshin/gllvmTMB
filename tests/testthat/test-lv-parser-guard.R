@@ -38,6 +38,17 @@ lv_preflight_setup <- function(
   )
   f <- gllvmTMB:::desugar_brms_sugar(formula)
   p <- gllvmTMB:::parse_multi_formula(f)
+  ## These two-trait fixtures test lv-formula validation, not trait-specific
+  ## Psi. Tie the auto-added diagonal to one common variance so the helper's
+  ## covariance decomposition is identified (2 loadings + 1 Psi = 3 moments).
+  for (i in seq_along(p$covstructs)) {
+    if (
+      identical(p$covstructs[[i]]$kind, "diag") &&
+        isTRUE(p$covstructs[[i]]$extra[[".auto_unique"]])
+    ) {
+      p$covstructs[[i]]$extra[["common"]] <- TRUE
+    }
+  }
   gllvmTMB:::gll_prepare_lv_predictor_setup(
     parsed = p,
     data = data,
@@ -784,9 +795,9 @@ test_that("latent lv preflight rejects unsupported model regimes", {
       family_id_vec = rep(1L, nrow(make_lv_preflight_data())),
       link_id_vec = rep(3L, nrow(make_lv_preflight_data()))
     ),
-    regexp = "standard links|LV-05"
+    regexp = "canonical admitted link|canonical link"
   )
-  expect_error(
+  expect_silent(
     lv_preflight_setup(
       y_bin ~ 0 + trait + latent(0 + trait | unit, d = 1, lv = ~x),
       family_id_vec = rep(
@@ -794,8 +805,7 @@ test_that("latent lv preflight rejects unsupported model regimes", {
         length.out = nrow(make_lv_preflight_data())
       ),
       link_id_vec = rep(0L, nrow(make_lv_preflight_data()))
-    ),
-    regexp = "standard links|LV-05"
+    )
   )
   expect_error(
     lv_preflight_setup(

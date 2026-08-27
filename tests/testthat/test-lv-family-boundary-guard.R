@@ -37,7 +37,7 @@ expect_lv_family_boundary_rejects <- function(expr, regexp) {
   )
 }
 
-test_that("latent lv top-level fit keeps the binomial/ordinal boundary loud", {
+test_that("latent lv keeps invalid links loud and admits registered compositions", {
   df <- make_lv_family_boundary_data()
 
   expect_lv_family_boundary_rejects(
@@ -54,33 +54,36 @@ test_that("latent lv top-level fit keeps the binomial/ordinal boundary loud", {
     regexp = "binomial: link|not supported|logit|probit|cloglog"
   )
 
-  expect_lv_family_boundary_rejects(
-    gllvmTMB(
-      ord ~ 0 +
-        trait +
-        latent(0 + trait | unit, d = 1, lv = ~x),
-      data = df,
-      unit = "unit",
-      trait = "trait",
-      family = ordinal_probit(),
-      control = gllvmTMBcontrol(se = FALSE)
-    ),
-    regexp = "loadings-only|unique = FALSE|diagonal Psi"
+  ordinal_formula <- ord ~ 0 + trait +
+    latent(0 + trait | unit, d = 1, lv = ~x)
+  ordinal_parsed <- gllvmTMB:::parse_multi_formula(
+    gllvmTMB:::desugar_brms_sugar(ordinal_formula)
   )
+  expect_no_error(ordinal_setup <- gllvmTMB:::gll_prepare_lv_predictor_setup(
+    parsed = ordinal_parsed,
+    data = df,
+    trait = "trait",
+    site = "unit",
+    family_id_vec = rep(14L, nrow(df)),
+    link_id_vec = rep(0L, nrow(df)),
+    REML = FALSE
+  ))
+  expect_true(isTRUE(ordinal_setup$enabled))
 
-  family_list <- list(gaussian(), binomial(), poisson())
-  attr(family_list, "family_var") <- "family"
-  expect_lv_family_boundary_rejects(
-    gllvmTMB(
-      value ~ 0 +
-        trait +
-        latent(0 + trait | unit, d = 1, lv = ~x),
-      data = df,
-      unit = "unit",
-      trait = "trait",
-      family = family_list,
-      control = gllvmTMBcontrol(se = FALSE)
-    ),
-    regexp = "programme cells|Arbitrary mixed-family|standard links"
+  mixed_formula <- value ~ 0 + trait +
+    latent(0 + trait | unit, d = 1, lv = ~x)
+  mixed_parsed <- gllvmTMB:::parse_multi_formula(
+    gllvmTMB:::desugar_brms_sugar(mixed_formula)
   )
+  mixed_ids <- c(gaussian = 0L, binomial = 1L, poisson = 2L)
+  expect_no_error(mixed_setup <- gllvmTMB:::gll_prepare_lv_predictor_setup(
+    parsed = mixed_parsed,
+    data = df,
+    trait = "trait",
+    site = "unit",
+    family_id_vec = unname(mixed_ids[as.character(df$family)]),
+    link_id_vec = rep(0L, nrow(df)),
+    REML = FALSE
+  ))
+  expect_true(isTRUE(mixed_setup$enabled))
 })

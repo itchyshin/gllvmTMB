@@ -7,6 +7,22 @@ release accompanies this candidate.
 
 ## Changed
 
+* **Predictor-informed latent axes now compose across registered native
+  response families.** One complete-response ordinary unit-tier `latent(...,
+  lv = ~ x)` block may combine registered family/link rows. The loadings-only
+  `unique = FALSE` form admits ranks through the number of logical responses;
+  the ordinary automatic `Psi` form additionally requires that its free
+  loading and diagonal parameters do not exceed the available covariance
+  moments. The existing cross-family correlation route
+  is unchanged; the upgraded article now shows that same fit reporting both
+  shared correlations and rotation-invariant `B_lv = Lambda alpha^T` effects.
+  Gaussian and lognormal responses use separate within-family residual-scale
+  slots when they coexist because one is on the raw scale and the other on
+  `log(y)`. Live canaries cover every registered native family, but broad
+  arbitrary-composition recovery and interval calibration remain partial.
+  Missing responses or LV predictors, fixed `X + X_lv`, REML, extra covariance
+  tiers, and structured-source `lv` remain unsupported.
+
 * **Added an evaluated guide to predictor-informed latent ecological axes.**
   The guide teaches the ordinary native Gaussian route through the
   rotation-invariant trait-scale effect `B_lv = Lambda alpha^T`, alongside

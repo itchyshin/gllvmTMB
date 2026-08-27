@@ -11,8 +11,10 @@ Date: 2026-08-27
 - Superseded covariance-only repair: `354940e3ac02eb60671954336aa2413454a8d2e0`
 - Exact joint-screen implementation candidate: `5b31329e9aa53957c6da6a54b6dfce414124fba6`
 - Exact implementation tree: `8e9dd878f25539b636076bfe4dbd8f3f148a81c5`
-- Working state at draft: implementation is frozen and locally verified;
-  closeout provenance and reviewer re-signatures are in progress
+- Reviewed amended closeout head: `73905ff9d90a6e087977a07bdfe7aa358af88004`
+- Reviewed amended closeout tree: `e9035c242ce93a1efccc36c1a689b2702c41349c`
+- Working state at draft: implementation and closeout provenance are committed;
+  final receipt-only-child re-signatures are pending
 - Remote state: no push, PR, merge, or release claim yet
 
 ## What is now true
@@ -72,7 +74,8 @@ Read first:
 
 ## Remaining landing sequence
 
-1. Record the three exact-SHA re-signatures for the amended closeout head.
+1. Record the three exact-SHA re-signatures for the receipt-only child of
+   amended closeout head `73905ff9d90a6e087977a07bdfe7aa358af88004`.
 2. Re-run the after-task and handover validators; Unlazy is already 8/8 after
    fresh G3/G4/G8 execution.
 3. Push one milestone branch and open one focused PR.

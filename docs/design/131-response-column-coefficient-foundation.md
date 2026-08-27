@@ -2,9 +2,11 @@
 
 **Reader:** formula/API contributors, statistical-method developers, and
 reviewers preparing the successor to the response-column `*_slope()` family.
-**Status:** Arc 1 foundation contract, 2026-08-26. This design admits parser,
-metadata, and fixed-effect groundwork only. It does not admit a coefficient
-likelihood, a new TMB route, exported helpers, public teaching, or a fit claim.
+**Status:** Arc 2 internal IID engine contract, 2026-08-26. The Arc 1 parser,
+metadata, and fixed-effect groundwork now admits fitted Gaussian
+`column_coef()` point models through the existing matrix-normal coefficient
+engine. Structured `*_coef()` engines, exported helpers, public teaching, and
+interval claims remain unadmitted.
 **Relationship to Design 130:** Design 130 remains the active contract for the
 released slope-only helpers. The future `*_coef()` family generalises their
 coefficient basis to include response-column intercepts. Existing fits and
@@ -14,7 +16,7 @@ coefficient basis to include response-column intercepts. Existing fits and
 
 Let rows `i = 1, ..., N` be sampled units and response columns
 `t = 1, ..., T` be species or traits. Let `z_i` be a `P`-vector selected by a
-coefficient helper. The future contribution is
+coefficient helper. The coefficient contribution is
 
 ```text
 eta_it,coef = z_i^T b_t,
@@ -42,7 +44,7 @@ group differences remain ordinary formula terms.
 
 ## 2. Locked family and grammar
 
-The future family is:
+The locked coefficient-family contract is:
 
 ```r
 column_coef(1 + latitude | trait)
@@ -71,15 +73,18 @@ Single bar `|` estimates a full positive-definite `Sigma_coef`. Double bar
 models coincide, but the parser retains the written bar so diagnostics can
 report user intent.
 
-The future equivalence is exact:
+The admitted IID equivalence is exact:
 
 ```text
-source_slope(x | trait, ...)  == source_coef(0 + x | trait, ..., rho = 1)
-source_slope(x || trait, ...) == source_coef(0 + x || trait, ..., rho = 1)
+slope(x | trait)  == column_coef(0 + x | trait)
+slope(x || trait) == column_coef(0 + x || trait)
 ```
 
-The released `*_slope()` grammar omits the explicit `0 +`; that spelling stays
-supported without a warning. Arc 1 does not reroute or alias it.
+Each structured extension must pass the corresponding
+`source_slope(...) == source_coef(..., rho = 1)` gate before admission. The
+released `*_slope()` grammar omits the explicit `0 +`; that spelling stays
+supported without a warning. The IID route reuses its engine without aliasing,
+deprecating, or rerouting the released helper.
 
 ## 3. Structured source mixture
 
@@ -106,7 +111,9 @@ between-column correlation.
   identifiability gate. A fixed `rho = 0` must map the spatial range parameter
   off because the likelihood is then independent of range.
 
-Arc 1 stores and validates these intentions but estimates none of them.
+The IID `column_coef()` route now estimates the `K_rho = I` case. The
+structured helpers continue to store and validate their source and `rho`
+intentions but remain fenced before optimisation.
 
 ## 4. Keyed response-column metadata
 
@@ -199,19 +206,26 @@ Coarser fixed means, including pathway-group contrasts, are allowed because
 they do not span all response-column coefficients. The eventual random block
 represents residual response-column deviations around those means.
 
-## 7. Arc 1 parser state and failure contract
+## 7. Parser and IID-engine state
 
-Arc 1 recognises all five marker names, validates the bar, response-column
-factor, basis, source count, metadata restrictions, and fixed/random overlap,
-and requires every marker to be a top-level additive RHS term. It then stops with class
-`gllvmTMB_column_coef_engine_not_admitted`. This deliberate stop must occur
-before model optimisation or TMB assembly. Malformed syntax uses narrower
-validation classes and must not be disguised as the engine fence.
+The parser recognises all five marker names, validates the bar,
+response-column factor, basis, source count, metadata restrictions, and
+fixed/random overlap, and requires every marker to be a top-level additive RHS
+term. A valid `column_coef()` term continues into the existing matrix-normal
+coefficient engine with identity response-column covariance. A valid
+`phylo_coef()`, `animal_coef()`, `kernel_coef()`, or `spatial_coef()` term still
+stops with class `gllvmTMB_column_coef_engine_not_admitted` before optimisation
+or TMB assembly. Malformed syntax uses narrower validation classes and must
+not be disguised as the engine fence.
+
+The literal predictor name `(Intercept)` is reserved. Users request the
+synthetic intercept with `1`; accepting the literal name would make the design
+column ambiguous.
 
 The marker names remain absent from `NAMESPACE`, `_pkgdown.yml`, reference
 topics, and public articles. Internal tests may call parser helpers directly.
 
-## 8. Independent Arc 1 oracles
+## 8. Independent oracles
 
 Arc 1 evidence is pure data/parser evidence:
 
@@ -221,18 +235,30 @@ Arc 1 evidence is pure data/parser evidence:
 4. `shared()` common-effect model matrices and invalid-expression failures;
 5. exact coefficient bases for every source and both bars;
 6. matrix-rank overlap rejection with a coarser pathway exception;
-7. deliberate engine-fence failure for syntactically valid fits;
+7. deliberate structured-engine fence failure for syntactically valid fits;
 8. existing `traits()` and `*_slope()` regression tests.
 
-No simulation recovery is claimed because no likelihood is admitted. Arc 2
-must supply symbolic-to-TMB alignment, source-specific implementation,
-simulation recovery, malformed source tests, extractor contracts, and the
-three-OS release gate before any helper is exported or taught.
+The IID-engine slice adds independent gates for:
+
+1. exact intercept-first design construction for `1`, `0 + x`, and `1 + x`;
+2. full versus diagonal coefficient covariance under `|` and `||`;
+3. exact objective, parameter-map, covariance-report, and fitted-value
+   equivalence between `column_coef(0 + x | trait)` and the released
+   identity-source `slope(x | trait)` route;
+4. exact long/wide fitted-object parity; and
+5. a known-DGP Gaussian intercept/slope recovery fit with finite gradients at
+   both truth and optimum.
+
+This slice reuses the released matrix-normal coefficient arithmetic and does
+not change TMB code. Source-specific implementation, public extractor
+contracts, and the three-OS public release gate remain required before any
+helper is exported or taught.
 
 ## 9. Explicitly deferred
 
-Arc 1 defers active `*_coef()` likelihood routing, TMB edits, public exports,
-wide parser advertisement, interval inference, non-Gaussian multi-predictor
-recovery, latent predictor covariance, and a public `col_data`/`column_data`
-tutorial. It also defers the general `rho` extension for the existing 5 x 3
-grid. That is a separate model-family decision, not a side effect of this arc.
+This slice defers structured `*_coef()` likelihood routing, fixed and estimated
+`rho`, TMB edits, public exports, extractors, wide parser advertisement,
+interval inference, non-Gaussian multi-predictor recovery, latent predictor
+covariance, and the public `col_data`/`column_data` tutorial. The general `rho`
+extension for the existing 5 x 3 grid remains a separate model-family decision,
+not a side effect of this coefficient programme.

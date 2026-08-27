@@ -55098,3 +55098,80 @@ NOT_CRAN=true Rscript --vanilla -e 'devtools::load_all(quiet=TRUE); testthat::te
   found no semantic LV-route change and no new likelihood, nuisance, or payload
   route. Rose/Grace found only stale closeout prose, repaired in the final
   closeout commit; no source blocker was found.
+
+---
+
+## 2026-08-26 — Internal IID `column_coef()` engine (Codex)
+
+**Lane:** `codex:response-column-coef-iid`
+**Branch:** `codex/column-coef-iid-engine`
+**Exact base:** `5a202fc8154a8e0c50c41ebb76932b0d805bdee8`
+
+Admitted only the internal Gaussian IID `column_coef()` point route. The term
+is rewritten before ordinary sugar into the existing response-column
+matrix-normal coefficient block with identity response-column covariance. The
+ordered basis may contain a synthetic `(Intercept)` followed by numeric row
+predictors; `|` retains a full coefficient covariance and `||` maps its strict
+lower triangle to zero. Structured `*_coef()` helpers remain fenced. No C++,
+export, Rd, NAMESPACE, NEWS, README, article, pkgdown-navigation, or
+`*_slope()` lifecycle change occurred.
+
+Verification receipts:
+
+```sh
+Rscript --vanilla -e 'devtools::load_all(quiet=TRUE); testthat::test_file("tests/testthat/test-column-coef-engine-iid.R", reporter="summary", stop_on_failure=TRUE)'
+# PASS: 49 expectations after Rose review, including all four structured
+# fences, Gaussian-only failure, both-bar exact slope equivalence, fitted-value
+# long/wide parity, and explicit fixed-effect truth-gradient construction.
+
+Rscript --vanilla -e 'devtools::load_all(quiet=TRUE); testthat::test_dir("tests/testthat", filter="^(column-coef-foundation|column-coef-engine-iid|traits-keyword|fixed-column-slope-family|phylo-slope-rhs-routing|ordinary-column-slope-phylo-coexistence)$", reporter="summary", stop_on_failure=TRUE)'
+# Post-Rose-fix PASS in 27.8 seconds. Three existing optional-cluster warnings
+# and two explicit CRAN skips only; no slope lifecycle warning. Rose
+# independently reran the same command with the same result.
+
+Rscript --vanilla -e 'devtools::test(stop_on_failure = TRUE)'
+# Stopped at the declared 20-minute ceiling. Every file through
+# test-extractors-extra.R passed; interrupt occurred in unrelated
+# test-extractors.R with no test failure. This is not claimed as a full-suite
+# pass.
+
+Rscript --vanilla -e 'pkgdown::check_pkgdown(); pkgdown::build_article("articles/where-does-the-tree-go", lazy = FALSE)'
+# check_pkgdown PASS. The unchanged article reproduced its baseline failure at
+# column-axis-fit: extract_Sigma(level = "column_slope") is unsupported by the
+# loaded public extractor. Article repair remains a later earned-capability
+# slice.
+
+git diff --check
+# PASS.
+```
+
+Consistency scans and verdicts:
+
+```sh
+rg -n "column_coef|phylo_coef|animal_coef|kernel_coef|spatial_coef" README.md NEWS.md vignettes _pkgdown.yml NAMESPACE man
+# No public teaching except the article's still-correct statement that
+# column_coef() is not publicly available.
+
+rg -n -i "deprecat.*(_slope|slope\\()|(_slope|slope\\().*deprecat" R README.md NEWS.md vignettes man docs/design
+# No runtime or public-doc slope deprecation added; current Design 130 and
+# FG-15/PHY-06 retain the explicit no-deprecation contract.
+
+rg -n "reserved / engine-blocked|coefficient engine blocked|then stop before engine|No helper is exported or routed" docs/design README.md ROADMAP.md NEWS.md docs/dev-log/known-limitations.md
+# The stale blanket Design 01 row was reconciled after explicit coordination
+# with the LV owner; structured helpers remain blocked.
+
+rg -n "column_coef|response-column coefficient" ROADMAP.md NEWS.md docs/dev-log/known-limitations.md _pkgdown.yml README.md
+# No public status surface advertises the internal IID route.
+```
+
+Issue #1212 was inspected and remains open: this slice supplies an IID
+prerequisite but implements no structured-source `rho`. The main post-merge
+run `33001159527` on exact base SHA was still active at the first closeout
+draft, so the IID branch was not pushed during that run.
+
+Rose's terminal read-only re-review returned PASS after the 49-expectation
+focused replay and independent 27.8-second six-file replay. The review confirms
+that Design 01, Design 131, and FG-20 agree; both bars are exactly
+slope-equivalent and warning-free; all four structured helpers remain fenced;
+and no export, TMB, article, or slope-lifecycle surface changed. Exact-head PR
+CI and final G10 closure remain outstanding.

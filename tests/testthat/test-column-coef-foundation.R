@@ -414,6 +414,15 @@ test_that("coefficient parser rejects malformed bases, groups, and sources", {
   )
   expect_error(parse(value ~ column_coef(0 + value | trait)),
                class = "gllvmTMB_column_coef_invalid_syntax")
+  expect_error(
+    .parse_column_coef_formula(
+      value ~ column_coef(0 + `(Intercept)` | trait),
+      "trait",
+      c("site", "trait", "latitude", "pathway", "value", "(Intercept)"),
+      response_vars = "value"
+    ),
+    class = "gllvmTMB_column_coef_invalid_syntax"
+  )
   expect_error(parse(value ~ column_coef(0 + latitude | site)),
                class = "gllvmTMB_column_coef_invalid_syntax")
   expect_error(
@@ -511,10 +520,10 @@ test_that("wide saturated fixed coefficients fail before the engine fence", {
   )
 })
 
-test_that("valid coefficient syntax reaches the deliberate Arc 1 engine fence", {
+test_that("valid structured coefficient syntax retains the engine fence", {
   expect_error(
     gllvmTMB(
-      value ~ latitude + column_coef(0 + latitude | trait),
+      value ~ latitude + phylo_coef(0 + latitude | trait, rho = 1),
       data = .coef_foundation_long(),
       trait = "trait", unit = "site", family = gaussian()
     ), class = "gllvmTMB_column_coef_engine_not_admitted"

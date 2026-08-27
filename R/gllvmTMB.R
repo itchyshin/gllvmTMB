@@ -1028,9 +1028,10 @@ gllvmTMB <- function(
     data[[unit_obs]] <- factor(data[[unit_obs]])
   }
 
-  ## Design 131 Arc 1: validate and unwrap shared fixed effects, then parse
-  ## response-column coefficient markers.  A valid marker reaches a deliberate
-  ## engine fence before desugaring, TMB data assembly, or optimisation.
+  ## Design 131: validate and unwrap shared fixed effects, then parse
+  ## response-column coefficient markers. The internal IID marker is rewritten
+  ## below into the existing matrix-normal engine; structured markers retain
+  ## the deliberate pre-engine fence.
   .column_data_assert_fixed_only(formula[[3L]], column_vars)
   if (.shared_marker_active(environment(formula))) {
     formula[[3L]] <- .shared_rewrite(
@@ -1050,7 +1051,9 @@ gllvmTMB <- function(
   )
   if (!is.null(column_coef_spec)) {
     .column_coef_assert_no_overlap(formula, data, trait, column_coef_spec)
-    .column_coef_engine_fence(column_coef_spec)
+    if (!identical(column_coef_spec$helper, "column_coef")) {
+      .column_coef_engine_fence(column_coef_spec)
+    }
   }
 
   ## ---- Multinomial response expansion (Design 83) ----------------------
@@ -1062,6 +1065,11 @@ gllvmTMB <- function(
   family <- .mn_expand$family
 
   ## ---- Desugar brms-style sugar (phylo / gr / meta) ---------------------
+  if (!is.null(column_coef_spec)) {
+    formula[[3L]] <- .column_coef_rewrite_iid(
+      formula[[3L]], column_coef_spec
+    )
+  }
   formula <- desugar_brms_sugar(formula, trait_col = trait)
 
   ## ---- Detect covariance-structure terms (Stages 2-4) --------------------

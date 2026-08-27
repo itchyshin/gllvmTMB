@@ -743,6 +743,145 @@
   )
 }
 
+## Build the fixed-rho response-column precision on the covariance scale.
+## K_rho = rho K + (1-rho) diag(K); precision and log determinant are derived
+## only after mixing. This is deliberately distinct from the protected dense
+## phylo_slope() endpoint, which retains its historical 1e-8 ridge.
+.resolve_phylo_coef_precision <- function(phylo_tree, phylo_vcv, data,
+                                          group, rho) {
+  if (!is.numeric(rho) || length(rho) != 1L || !is.finite(rho) ||
+      rho < 0 || rho > 1) {
+    cli::cli_abort(
+      "{.arg rho} for the internal fixed {.fn phylo_coef} route must be one finite numeric value in [0, 1].",
+      class = "gllvmTMB_column_coef_invalid_syntax"
+    )
+  }
+  levs <- levels(data[[group]])
+  group_id <- as.integer(data[[group]]) - 1L
+
+  if (!is.null(phylo_tree)) {
+    if (!inherits(phylo_tree, "phylo")) {
+      cli::cli_abort(
+        "The {.arg tree} supplied to {.fn phylo_coef} must be an {.cls ape::phylo} tree.",
+        class = "gllvmTMB_column_coef_source_invalid"
+      )
+    }
+    .gllvm_abort_uncovered_species_levels(
+      levs, phylo_tree$tip.label, data, group,
+      "{.arg tree} tip labels for {.fn phylo_coef}"
+    )
+    tree_precision <- .gllvm_phylo_tree_precision(
+      phylo_tree, correlation = TRUE
+    )
+    K_full <- solve(as.matrix(tree_precision$precision))
+    tip_index <- unname(tree_precision$tip_node_index[levs])
+    if (anyNA(tip_index)) {
+      cli::cli_abort(
+        "Internal: {.fn phylo_coef} response-column labels did not map to tree tips."
+      )
+    }
+    K <- K_full[tip_index, tip_index, drop = FALSE]
+    dimnames(K) <- list(levs, levs)
+  } else {
+    if (is.null(phylo_vcv)) {
+      cli::cli_abort(c(
+        "{.fn phylo_coef} found no {.arg tree} or {.arg vcv} source.",
+        ">" = "Supply a named {.arg tree} or {.arg vcv} argument."
+      ), class = "gllvmTMB_column_coef_source_invalid")
+    }
+    if (inherits(phylo_vcv, "sparseMatrix")) {
+      sparse <- .resolve_sparse_phylo_precision(
+        phylo_vcv, levs = levs, species_id = group_id
+      )
+      Q <- sparse$Ainv_phy_rr
+      Q_dense <- as.matrix(Q)
+      q_finite <- abs(Q_dense[is.finite(Q_dense)])
+      q_scale <- if (length(q_finite)) max(q_finite) else 1
+      q_tol <- sqrt(.Machine$double.eps) * max(1, q_scale)
+      if (any(!is.finite(Q_dense)) ||
+          max(abs(Q_dense - t(Q_dense)), na.rm = TRUE) > q_tol) {
+        cli::cli_abort(
+          "The sparse precision for {.fn phylo_coef} must be finite and symmetric.",
+          class = "gllvmTMB_column_coef_source_invalid"
+        )
+      }
+      Q_dense <- (Q_dense + t(Q_dense)) / 2
+      Q_chol <- tryCatch(chol(Q_dense), error = function(e) NULL)
+      if (is.null(Q_chol)) {
+        cli::cli_abort(
+          "The sparse precision for {.fn phylo_coef} must be positive definite before inversion.",
+          class = "gllvmTMB_column_coef_source_invalid"
+        )
+      }
+      K_full <- chol2inv(Q_chol)
+      tip_index <- match(levs, rownames(Q))
+      if (anyNA(tip_index)) {
+        cli::cli_abort(
+          "Internal: sparse {.arg vcv} did not map every response-column level."
+        )
+      }
+      K <- K_full[tip_index, tip_index, drop = FALSE]
+      dimnames(K) <- list(levs, levs)
+    } else {
+      if (!is.matrix(phylo_vcv) || !is.numeric(phylo_vcv) ||
+          nrow(phylo_vcv) != ncol(phylo_vcv) ||
+          any(!is.finite(phylo_vcv))) {
+        cli::cli_abort(
+          "{.arg vcv} for {.fn phylo_coef} must be a finite square numeric matrix.",
+          class = "gllvmTMB_column_coef_source_invalid"
+        )
+      }
+      rn <- rownames(phylo_vcv)
+      cn <- colnames(phylo_vcv)
+      if (is.null(rn) || is.null(cn) || anyDuplicated(rn) ||
+          anyDuplicated(cn) || !setequal(rn, levs) ||
+          !setequal(cn, levs)) {
+        cli::cli_abort(
+          "{.arg vcv} labels for {.fn phylo_coef} must match the response-column levels exactly.",
+          class = "gllvmTMB_column_coef_source_labels"
+        )
+      }
+      K <- phylo_vcv[levs, levs, drop = FALSE]
+    }
+  }
+
+  symmetry_tol <- sqrt(.Machine$double.eps) * max(1, max(abs(K)))
+  if (max(abs(K - t(K))) > symmetry_tol) {
+    cli::cli_abort(
+      "The response-column covariance for {.fn phylo_coef} must be symmetric.",
+      class = "gllvmTMB_column_coef_source_invalid"
+    )
+  }
+  K <- (K + t(K)) / 2
+  if (is.null(tryCatch(chol(K), error = function(e) NULL))) {
+    cli::cli_abort(
+      "The source covariance for {.fn phylo_coef} must be positive definite before mixing.",
+      class = "gllvmTMB_column_coef_source_invalid"
+    )
+  }
+  K_diag <- diag(diag(K), nrow(K))
+  dimnames(K_diag) <- dimnames(K)
+  K_rho <- rho * K + (1 - rho) * K_diag
+  K_rho <- (K_rho + t(K_rho)) / 2
+  R <- tryCatch(chol(K_rho), error = function(e) NULL)
+  if (is.null(R)) {
+    cli::cli_abort(
+      "The mixed response-column covariance for {.fn phylo_coef} must be positive definite.",
+      class = "gllvmTMB_column_coef_source_invalid"
+    )
+  }
+  Q_rho <- chol2inv(R)
+  dimnames(Q_rho) <- dimnames(K_rho)
+  list(
+    Ainv = Matrix::Matrix(Q_rho, sparse = TRUE),
+    log_det = 2 * sum(log(diag(R))),
+    n_aug = nrow(K_rho),
+    aug_id = group_id,
+    K_rho = K_rho,
+    rho = as.numeric(rho)
+  )
+}
+
 ## Exact fixed covariance for ordinary / kernel response-column slopes.  This
 ## path deliberately avoids the legacy phylogenetic 1e-8 ridge: an identity
 ## kernel must be exactly objective-equivalent to the ordinary K_column = I
@@ -2109,6 +2248,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   use_response_column_coef <- use_phylo_column_slope && isTRUE(
     phylo_slope_cs$extra$.response_column_coef
   )
+  phylo_coef_fixed_rho <- if (use_response_column_coef &&
+      identical(phylo_column_slope_source, "phylo")) {
+    phylo_slope_cs$extra$.column_coef_fixed_rho %||% NULL
+  } else NULL
   if (use_phylo_column_slope &&
       !phylo_column_slope_source %in% c("ordinary", "phylo", "animal", "kernel", "spatial")) {
     cli::cli_abort("Internal: unknown response-column slope source {.val {phylo_column_slope_source}}.")
@@ -4039,6 +4182,16 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         log_det = 0,
         n_aug = length(levs),
         aug_id = as.integer(data[[phylo_slope_group]]) - 1L
+      )
+    } else if (use_fixed_column_slope &&
+        identical(phylo_column_slope_source, "phylo") &&
+        !is.null(phylo_coef_fixed_rho)) {
+      .resolve_phylo_coef_precision(
+        phylo_tree = phylo_tree,
+        phylo_vcv = phylo_vcv,
+        data = data,
+        group = phylo_slope_group,
+        rho = phylo_coef_fixed_rho
       )
     } else if (use_fixed_column_slope &&
         identical(phylo_column_slope_source, "kernel")) {
@@ -7743,6 +7896,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                           response_column_coef_basis =
                             if (use_response_column_coef) {
                               phylo_column_slope_cols
+                            } else NULL,
+                          response_column_coef_rho =
+                            if (use_response_column_coef) {
+                              phylo_coef_fixed_rho
                             } else NULL,
                           kernel = isTRUE(has_kernel_term),
                           ## Augmented SPDE random slopes (Design 64). DISTINCT

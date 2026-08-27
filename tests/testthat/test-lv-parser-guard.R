@@ -38,6 +38,17 @@ lv_preflight_setup <- function(
   )
   f <- gllvmTMB:::desugar_brms_sugar(formula)
   p <- gllvmTMB:::parse_multi_formula(f)
+  ## These two-trait fixtures test lv-formula validation, not trait-specific
+  ## Psi. Tie the auto-added diagonal to one common variance so the helper's
+  ## covariance decomposition is identified (2 loadings + 1 Psi = 3 moments).
+  for (i in seq_along(p$covstructs)) {
+    if (
+      identical(p$covstructs[[i]]$kind, "diag") &&
+        isTRUE(p$covstructs[[i]]$extra[[".auto_unique"]])
+    ) {
+      p$covstructs[[i]]$extra[["common"]] <- TRUE
+    }
+  }
   gllvmTMB:::gll_prepare_lv_predictor_setup(
     parsed = p,
     data = data,

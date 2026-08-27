@@ -7,7 +7,8 @@ Candidate: dirty working tree above checkpoint `78530fcc78878a8c1234448f95dab119
 ## Work and estimate
 
 The evaluated article performs two related local fits: a five-family
-Gaussian/binomial/Poisson/ordinal/multinomial rank-3 predictor-informed model
+Gaussian/binomial/Poisson/ordinal/multinomial rank-3 loadings-only
+predictor-informed model
 with 500 units and six observations per unit, followed by the same model
 without the ordinal response for the reference-invariant nominal summary.
 
@@ -31,6 +32,11 @@ The render passes only if:
 The render is documentation verification, not a recovery or calibration
 campaign. Every failed attempt is retained in the lane check record.
 
+The first render used the automatic-Psi spelling. A later identifiability
+review showed that saturated rank-3 decomposition was over-parameterised, so
+that render is preserved as a failed scientific attempt. The corrected article
+uses `unique = FALSE`; it requires a fresh evaluated render before landing.
+
 ## Result
 
 PASS. The evaluated render completed in approximately 2.5 minutes, well below
@@ -42,3 +48,14 @@ labelled (`g`, `b`, `p`, `o`, `cat:2`, `cat:3`); the covariance comparison was
 finite; the ordinal automatic-summary refusal appeared verbatim; and the
 non-ordinal reference-invariant summary returned finite values for Gaussian,
 binomial, and Poisson partners.
+
+## Corrected loadings-only rerender
+
+After the automatic-Psi identifiability repair, the corrected evaluated render
+completed in approximately 1.5 minutes and wrote
+`/private/tmp/gllvmtmb-cross-family-article-repair/cross-family-correlations.html`
+(93,452 bytes). The main fit again reported convergence 0 and `pdHess = TRUE`.
+The six labelled `B_lv` rows, shared correlations, ordinal refusal, and
+non-ordinal reference-invariant summary were present and finite. This
+loadings-only render supersedes the earlier automatic-Psi render for landing;
+the earlier attempt remains recorded above rather than being erased.

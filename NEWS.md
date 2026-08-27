@@ -9,9 +9,11 @@ release accompanies this candidate.
 
 * **Predictor-informed latent axes now compose across registered native
   response families.** One complete-response ordinary unit-tier `latent(...,
-  lv = ~ x)` block may combine registered family/link rows at rank 1 through
-  the number of logical responses, using the ordinary automatic `Psi`
-  companion or `unique = FALSE`. The existing cross-family correlation route
+  lv = ~ x)` block may combine registered family/link rows. The loadings-only
+  `unique = FALSE` form admits ranks through the number of logical responses;
+  the ordinary automatic `Psi` form additionally requires that its free
+  loading and diagonal parameters do not exceed the available covariance
+  moments. The existing cross-family correlation route
   is unchanged; the upgraded article now shows that same fit reporting both
   shared correlations and rotation-invariant `B_lv = Lambda alpha^T` effects.
   Gaussian and lognormal responses use separate within-family residual-scale

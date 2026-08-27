@@ -3,6 +3,40 @@
 Date: 2026-08-27
 Audited base: `a7b75f75dac2b5c23525afdfec26abbaf59aab16`
 Lane checkpoint: `6500ea624`
+
+## Automatic-Psi rank-identifiability alignment
+
+For `T` logical responses and latent rank `K`, the lower-triangular loading
+constraint leaves
+
+\[
+p_\Lambda = TK - K(K-1)/2
+\]
+
+free loading parameters after removing rotational degrees of freedom. The
+observable symmetric covariance has
+
+\[
+p_\Sigma = T(T+1)/2
+\]
+
+distinct moments. An automatic trait-specific diagonal companion contributes
+one parameter for each Psi slot the engine actually estimates (`p_Psi = 1`
+when `common = TRUE` and at least one slot is free). Single-trial binomial and
+multinomial slots are mapped off; pure ordinal/delta fits drop the automatic
+companion. A necessary condition is therefore
+`p_Lambda + p_Psi <= p_Sigma`.
+
+| Symbol in prose | Keyword / covstruct | DGP draw | Recovery extractor | Truth / gate |
+|---|---|---|---|---|
+| `Lambda` | `latent(..., d = K)` | `e_i` enters through `Lambda e_i` | `extract_Sigma(part = "shared")` | `p_Lambda = TK - K(K-1)/2` |
+| `Psi` | automatic `latent(..., unique = TRUE)` companion | trait diagonal innovation | `extract_Sigma(part = "unique")` | one per engine-free slot, or 1 with `common = TRUE`; structural binary/multinomial slots are excluded |
+| `Sigma` | automatic-Psi total | `Lambda e_i + epsilon_i` | `extract_Sigma(part = "total")` | necessary gate `p_Lambda + p_Psi <= p_Sigma` |
+| `B_lv` | `lv = ~ x` | `M_i alpha` | `extract_lv_effects(type = "trait_effect")` | `B_lv = Lambda alpha^T`; raw axes are not cross-fit targets |
+
+The loadings-only `unique = FALSE` route has `p_Psi = 0` and retains the
+existing rank bound `K <= T`. Passing this necessary dimension gate is not a
+general identifiability, recovery, or interval-calibration certificate.
 Status: pre-implementation receipt; no scientific fit was run
 
 ## Verdict

@@ -2,9 +2,10 @@
 
 **Status:** Native ordinary unit-tier predictor-informed `latent()` now admits
 compositions of all registered response families under the complete-response
-family-wide contract. Rank may range from one to the number of logical
-responses; both the ordinary automatic `Psi` companion and
-`unique = FALSE` loadings-only form are admitted. Construction tests cover
+family-wide contract. Loadings-only `unique = FALSE` admits rank from one to
+the number of logical responses. The ordinary automatic `Psi` companion is
+admitted only when rotation-adjusted free loadings plus engine-free diagonal
+slots do not exceed the available covariance moments. Construction tests cover
 family IDs 0--16 and repeated-family traits. Live route-health fits cover a
 five-family rank-2/rank-3 composition including ordinal and multinomial rows,
 and one rank-3 fit containing IDs 0--15; multinomial ID 16 is covered by the
@@ -35,9 +36,10 @@ fits, including the named response-mask compatibility cell, native pure
 binomial standard-link fits, and complete-response compositions of registered
 native families. Each trait must map to one family and one link; repeated
 families across traits are allowed. Rank cannot exceed the number of logical
-responses. The default automatic `Psi` companion and `unique = FALSE`
-loadings-only form are both supported, but an extra explicit unit-tier
-diagonal covariance term remains rejected.
+responses for loadings-only `unique = FALSE`. The default automatic `Psi`
+companion additionally passes a necessary parameter-dimension gate based on
+the slots the engine estimates. An extra explicit unit-tier diagonal covariance
+term remains rejected.
 For the named Gaussian--multinomial anchor, the upstream $K-1$ baseline-
 contrast pseudo-traits count as one logical categorical response only when the
 complete multinomial expansion metadata is present; malformed/noncontiguous
@@ -215,7 +217,7 @@ but C1 exposes only ordinary unit-tier support.
 
 | Tier / source | Eventual target | C1 behaviour |
 |---|---|---|
-| `latent(... | unit, lv = ~ x_unit)` | Unit-level latent-score mean | Registered native families compose at rank 1 through the number of logical responses, with automatic `Psi` or `unique = FALSE`, complete responses, one numeric unit predictor, no fixed RHS, and no extra covariance tier. Route-health covers all family IDs 0--16; retained recovery and Wald evidence remain limited to the previously named cells. Factor intervals, broader masks, structured tiers, and bridge calibration remain open. The narrow complete-response `engine = "julia"` route is loadings-only point support with optional uncalibrated Wald plumbing. |
+| `latent(... | unit, lv = ~ x_unit)` | Unit-level latent-score mean | Registered native families compose with complete responses, one numeric unit predictor, no fixed RHS, and no extra covariance tier. Loadings-only `unique = FALSE` admits rank through logical responses; automatic `Psi` also requires that rotation-adjusted loadings plus engine-free diagonal slots do not exceed covariance moments. Route-health covers all family IDs 0--16; retained recovery and Wald evidence remain limited to the previously named cells. Factor intervals, broader masks, structured tiers, and bridge calibration remain open. The narrow complete-response `engine = "julia"` route is loadings-only point support with optional uncalibrated Wald plumbing. |
 | `latent(... | unit_obs, lv = ~ x_obs)` | Within-unit/session latent-score mean | Reject as planned |
 | `latent(... | cluster, lv = ~ x_cluster)` | Cluster latent-score mean if a reduced-rank cluster slot is added | Reject as planned |
 | `latent(... | cluster2, lv = ~ x_cluster2)` | Not valid today; `cluster2` is diagonal-only | Reject |

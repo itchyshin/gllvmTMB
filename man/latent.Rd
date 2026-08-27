@@ -26,8 +26,10 @@ traits. Only applies when \code{unique = TRUE}.}
 \item{lv}{One-sided formula for predictor-informed latent-score means.
 Runtime support is limited to ordinary unit-tier
 \code{latent(..., lv = ~ x)}. Registered native family/link rows compose in one
-complete-response ordinary unit-tier block at rank 1 through the number of
-logical responses, with automatic \code{Psi} or \code{unique = FALSE}. Bounded
+complete-response ordinary unit-tier block. The loadings-only
+\code{unique = FALSE} form admits ranks through the number of logical responses;
+automatic \code{Psi} additionally requires that its free loading and diagonal
+parameters do not exceed the available covariance moments. Bounded
 rank-2/rank-3 canaries exercise every registered family, but broad
 composition recovery and interval calibration remain partial. Retained
 recovery and interval claims remain limited to their named cells.

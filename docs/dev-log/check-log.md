@@ -55175,3 +55175,110 @@ that Design 01, Design 131, and FG-20 agree; both bars are exactly
 slope-equivalent and warning-free; all four structured helpers remain fenced;
 and no export, TMB, article, or slope-lifecycle surface changed. Exact-head PR
 CI and final G10 closure remain outstanding.
+
+---
+
+## 2026-08-27 — Cross-family predictor-informed LV bridge
+
+**Lane:** `codex:cross-family-lv-predictor-bridge`
+**Verified base:** `870944744ff090fe8676e853ebc03957204571c0`
+**Reviewed pre-closeout candidate:** `2350c5d0cd3c0a705a7fc0f1b01be06a19be9eff`
+(tree `6db28e1fc169783a59da2aaa903bff036e9bd793`)
+
+Implemented a compositional complete-response ordinary unit-tier
+predictor-informed `latent()` route across registered native family/link rows.
+Loadings-only rank extends through the number of logical responses; automatic
+`Psi` also passes a free-parameter-versus-covariance-moment guard. Joint Gaussian/lognormal fits
+now use separate family-shared observation-scale slots; all prediction,
+simulation, CDF, diagnostic, profile, and variance consumers select the
+correct slot. Scientific cross-fit targets remain
+`B_lv = Lambda alpha^T` and `Sigma_shared = Lambda Lambda^T`.
+
+Fit/compute receipts:
+
+- continuous canary attempts 1 and 2 failed/diagnosed an identification-poor
+  fixture; the DGP-only repair added shared innovation and attempt 3 passed in
+  9.21 seconds;
+- loadings-only five-family rank-2/rank-3 canaries passed; a saturated rank-3
+  automatic-`Psi` fit converged but was revoked as evidence after the
+  Noether/Fisher identifiability review and remains preserved as a failed
+  scientific attempt;
+- one rank-3 fit containing family IDs 0--15 passed in 12.48 seconds; family 16
+  remained in the coupled five-family multinomial route;
+- the first automatic-`Psi` article render passed numerically in about 2.5
+  minutes and produced 92,886 bytes, but was superseded by the identifiability
+  review; the corrected loadings-only render passed in about 1.5 minutes,
+  produced 93,452 bytes, converged with positive-definite Hessian, and retained
+  finite labelled `B_lv`, correlations, and the intended ordinal refusal;
+- r200 pre-run measured 3.99 seconds and 79.20 seconds for the two frozen
+  cells, projecting 10--20 minutes on 40 one-thread Totoro workers;
+- production r200 was not launched: 400 planned, 0 started, 0 attempted, 400
+  planned-not-started. No Totoro, DRAC, or Actions science compute ran.
+
+Verification attempts and exact outcomes:
+
+```sh
+Rscript --vanilla -e 'devtools::test(filter = "cross-family-lv-recovery-harness", reporter = "summary")'
+# PASS: 19 expectations in source checkout.
+
+Rscript --vanilla -e 'testthat::test_file("test-cross-family-lv-recovery-harness.R", reporter = "summary")'
+# Synthetic built-package absence control outside the repo: five intentional skips, zero failures.
+
+Rscript --vanilla -e 'Sys.setenv(NOT_CRAN="true"); devtools::check(args="--no-manual", quiet=FALSE)'
+# Attempt 1: 20m44.4s, ERROR. 15,149 pass; five new harness tests failed because dev/ is absent from the built package. Preserved.
+# Attempt 2 after source-checkout guard: 20m26.9s, 0 errors, 0 warnings, 3 notes (clock, pre-existing logLik namespace, xcrun_db).
+
+Rscript --vanilla -e 'devtools::document(quiet = TRUE)'
+# PASS; three pre-existing aghq S3-tag messages; gllvmTMB.Rd and latent.Rd regenerated.
+
+Rscript --vanilla -e 'pkgdown::check_pkgdown()'
+# PASS.
+
+Rscript --vanilla -e 'devtools::test(filter = "^(lv-cross-family-predictor-bridge|lv-mixed-family-first-cell|lv-parser-guard|lv-family-boundary-guard|lv-native-nongaussian-guard|lv-gaussian-recovery|lv-bernoulli-depth|mixed-gaussian-lognormal-scale|family-cdf-args|sanity-multi)$", stop_on_failure = TRUE)'
+# PASS: 560 pass, 0 fail, 0 warning, 1 declared heavy skip.
+
+Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'
+# Identifiability-repair attempt 1: 20m36.8s, ERROR after 15,143 passes.
+# Three rotation tests and one offset-guard test used unrelated saturated
+# automatic-Psi fixtures; preserved and repaired to explicit unique = FALSE.
+
+Rscript --vanilla -e 'devtools::test(filter = "^(lv-effects-rotation|offset-guard)$", stop_on_failure = TRUE)'
+# PASS: 16 pass, 0 fail, 0 warning, 0 skip.
+
+Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'
+# Identifiability-repair attempt 2: 21m23.1s, 0 errors, 0 warnings, 3 notes
+# (environmental clock, pre-existing logLik namespace, xcrun_db).
+
+# Completion audit then moved the dimension gate after lv-formula validation
+# so typed offset/malformed-formula errors retain priority. The affected
+# bridge/parser/offset/rotation/mixed focused replay passed 341/341 assertions.
+
+git diff --check
+Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'
+# Exact-current-source attempt 3: static diff PASS; 20m12.3s, 0 errors,
+# 0 warnings, 3 notes (environmental clock, pre-existing logLik namespace,
+# xcrun_db). This is the claim-bearing local package gate.
+
+git diff --check 870944744ff090fe8676e853ebc03957204571c0...2350c5d0cd3c0a705a7fc0f1b01be06a19be9eff
+# PASS after Rose/Grace found and the lane removed 10 trailing spaces in four new Markdown records.
+```
+
+One parser-guard run failed on a stale cauchit error regexp and passed after a
+test-only correction. The campaign-harness focused test had two earlier
+contract/path failures before its 19-pass result. One consistency scan used
+shell-interpreted backticks; it was retained and rerun with literal-safe
+single quotes. No failed attempt was removed from the denominator or history.
+
+Consistency commands and verdicts are recorded verbatim in
+`docs/dev-log/after-task/2026-08-27-cross-family-lv-predictor-bridge.md`.
+Public register-code guard passed; touched long calls use `trait = "trait"`,
+wide calls use `traits(...)`, and no stale S/U covariance notation was found.
+
+Completion panel: Gauss/Emmy PASSed TMB and family-scale dispatch; Rose/Grace
+initially FAILed only the full-diff whitespace gate, then PASSed candidate
+`2350c5d`. Noether/Fisher FAILED that candidate because its automatic-`Psi`
+rank rule admitted more free covariance parameters than moments. The repaired
+candidate adds exact engine-free-Psi counting, rejects the saturated shapes,
+and narrows the article to `unique = FALSE`; all three reviewers must re-sign
+the new exact candidate before landing. Protected exact-head three-OS CI, normal
+merge, exact-main verification, and lease release remain outstanding.

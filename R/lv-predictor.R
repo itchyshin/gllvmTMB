@@ -1,8 +1,9 @@
 ## Design 73 parser/API preflight for predictor-informed latent scores.
 ## This file validates and prepares the unit-level X_lv_B design. The first
 ## TMB path is ordinary unit-tier latent(). Registered native family/link rows
-## now compose in this one complete-response block at admissible rank, with
-## either the ordinary automatic Psi companion or unique = FALSE. Retained
+## now compose in this one complete-response block. Loadings-only rank is
+## bounded by logical responses; automatic Psi also passes a necessary
+## parameter-dimension gate. Retained
 ## recovery and interval evidence remains cell-specific.
 
 gll_lv_covstruct_indices <- function(covstructs) {
@@ -59,6 +60,7 @@ gll_prepare_lv_predictor_setup <- function(
   site,
   family_id_vec,
   link_id_vec,
+  weights = NULL,
   n_missing_response = 0L,
   REML = FALSE
 ) {
@@ -499,6 +501,67 @@ gll_prepare_lv_predictor_setup <- function(
       "x" = "Rank {qr(X_lv_B)$rank} for {ncol(X_lv_B)} column(s).",
       "i" = "Remove aliased columns or empty factor levels before using {.arg lv}."
     ))
+  }
+
+  ## Run the covariance-dimension gate only after the lv formula and its unit
+  ## design have passed their more specific validation. This preserves typed
+  ## errors for malformed formulas, offsets, missing predictors, and aliases.
+  auto_psi <- parsed$covstructs[vapply(
+    parsed$covstructs,
+    function(candidate) {
+      identical(candidate$kind, "diag") &&
+        isTRUE(candidate$extra[[".auto_unique"]]) &&
+        identical(deparse(candidate$group), site)
+    },
+    logical(1L)
+  )]
+  if (length(auto_psi) > 0L) {
+    psi_is_common <- isTRUE(auto_psi[[1L]]$extra[["common"]])
+    n_trials <- rep(1, nrow(data))
+    response_frame <- tryCatch(
+      stats::model.frame(parsed$fixed, data = data, na.action = stats::na.pass),
+      error = function(e) NULL
+    )
+    if (!is.null(response_frame)) {
+      response_value <- stats::model.response(response_frame)
+      if (is.matrix(response_value) && ncol(response_value) == 2L) {
+        n_trials <- rowSums(response_value)
+      } else if (
+        any(family_id_vec == 1L) && is.numeric(weights) &&
+          length(weights) == nrow(data)
+      ) {
+        n_trials <- as.numeric(weights)
+      }
+    }
+    trait_values <- as.character(data[[trait]])
+    trait_levels <- unique(trait_values)
+    psi_is_free <- vapply(trait_levels, function(trait_level) {
+      rows <- which(trait_values == trait_level)
+      family_rows <- family_id_vec[rows]
+      if (all(family_rows == 16L)) return(FALSE)
+      if (all(family_rows == 1L) && all(n_trials[rows] == 1L)) return(FALSE)
+      TRUE
+    }, logical(1L))
+    if (all(family_id_vec %in% c(12L, 13L, 14L))) {
+      psi_is_free[] <- FALSE
+    }
+    n_loading_free <-
+      n_logical_response_traits * lv_rank - lv_rank * (lv_rank - 1L) / 2L
+    n_psi_free <- if (psi_is_common) {
+      as.integer(any(psi_is_free))
+    } else {
+      sum(psi_is_free)
+    }
+    n_covariance_moments <-
+      n_logical_response_traits * (n_logical_response_traits + 1L) / 2L
+    if (n_loading_free + n_psi_free > n_covariance_moments) {
+      cli::cli_abort(c(
+        "Predictor-informed {.fn latent} with automatic Psi is not identified at this rank.",
+        "x" = "{n_logical_response_traits} logical response(s), {.code d = {lv_rank}}, {n_loading_free} free loading parameter(s), and {n_psi_free} free automatic-Psi parameter(s) exceed {n_covariance_moments} covariance moment(s).",
+        "i" = "The rank gate counts only Psi slots the engine estimates; single-trial binomial and multinomial Psi slots are mapped off.",
+        ">" = "Lower {.code d}, use {.code common = TRUE} when one shared Psi variance is scientifically appropriate, or use {.code unique = FALSE} for the loadings-only model."
+      ))
+    }
   }
 
   list(

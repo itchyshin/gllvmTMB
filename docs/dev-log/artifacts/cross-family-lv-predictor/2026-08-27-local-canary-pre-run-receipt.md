@@ -1,7 +1,8 @@
 # Local five-family LV predictor canary: pre-run receipt
 
 Date: 2026-08-27
-Status: complete; three bounded route-health fits passed
+Status: complete; three bounded fits ran, with one automatic-Psi result later
+revoked as identifiability evidence
 Driver: `dev/cross-family-lv-predictor/five-family-canary.R`
 
 ## Intended run
@@ -74,8 +75,18 @@ GREEN before fitting.
 |---|---:|---:|---:|---|
 | rank 3, loadings-only | 8.58 s | 0 | 0.001523585 | all six checks passed |
 | rank 2, loadings-only | part of 18.76 s pair | 0 | 0.0007440824 | all six checks passed |
-| rank 3, automatic Psi | part of 18.76 s pair | 0 | 0.00006971072 | all six checks passed |
+| rank 3, automatic Psi | part of 18.76 s pair | 0 | 0.00006971072 | numerical checks passed, but the model is over-parameterised; preserved as a failed scientific attempt, not route evidence |
 
 Every fit returned finite, labelled `Sigma_shared` and `R_shared`, finite
 `B_lv_unit`, and the exact total = mean + innovation score identity. These are
 route-health results only. They do not promote recovery or interval coverage.
+
+## Superseding identifiability verdict
+
+The automatic-Psi rank-3 fit above has 15 rotation-adjusted free loadings and
+four engine-free diagonal parameters but only 15 covariance moments. Its small
+gradient therefore does not prove an identified decomposition. The later
+Noether/Fisher review revoked that row as evidence and added a fail-loud
+parameter-dimension gate. The loadings-only rank-2/rank-3 fits remain valid
+route-health evidence; an identified five-response rank-2 automatic-Psi
+construction cell replaces the revoked claim.

@@ -22,7 +22,8 @@ prepare_lv_cross_family_bridge <- function(
     formula,
     data = make_lv_cross_family_bridge_data(),
     family_id_vec = NULL,
-    link_id_vec = NULL) {
+    link_id_vec = NULL,
+    weights = NULL) {
   withr::local_options(
     gllvmTMB.quiet_grammar_notes = TRUE,
     lifecycle_verbosity = "quiet"
@@ -44,6 +45,7 @@ prepare_lv_cross_family_bridge <- function(
     site = "unit",
     family_id_vec = family_id_vec,
     link_id_vec = link_id_vec,
+    weights = weights,
     n_missing_response = 0L,
     REML = FALSE
   )
@@ -84,12 +86,43 @@ test_that("the existing core cross-family block admits a rank-two LV predictor",
   expect_equal(dim(setup$X_lv_B), c(8L, 1L))
 })
 
-test_that("the existing core cross-family block admits rank three with auto Psi", {
+test_that("automatic Psi rejects a rank that underidentifies the covariance decomposition", {
+  expect_error(
+    prepare_lv_cross_family_bridge(
+      value ~ 0 + trait + latent(0 + trait | unit, d = 3, lv = ~x)
+    ),
+    regexp = "automatic.*Psi|identif|unique = FALSE|logical responses"
+  )
+})
+
+test_that("automatic Psi admits a conservative rank-two five-response block", {
+  contract <- make_lv_registered_family_contract_data(0:4)
   setup <- prepare_lv_cross_family_bridge(
-    value ~ 0 + trait + latent(0 + trait | unit, d = 3, lv = ~x)
+    value ~ 0 + trait + latent(0 + trait | unit, d = 2, lv = ~x),
+    data = contract$data,
+    family_id_vec = contract$family_id_vec
   )
 
   expect_true(isTRUE(setup$enabled))
+})
+
+test_that("automatic Psi counts multi-trial binomial diagonal slots from weights", {
+  contract <- make_lv_registered_family_contract_data(c(0L, 1L))
+
+  expect_no_error(prepare_lv_cross_family_bridge(
+    value ~ 0 + trait + latent(0 + trait | unit, d = 1, lv = ~x),
+    data = contract$data,
+    family_id_vec = contract$family_id_vec
+  ))
+  expect_error(
+    prepare_lv_cross_family_bridge(
+      value ~ 0 + trait + latent(0 + trait | unit, d = 1, lv = ~x),
+      data = contract$data,
+      family_id_vec = contract$family_id_vec,
+      weights = rep(2, nrow(contract$data))
+    ),
+    regexp = "automatic.*Psi|identif|covariance moment"
+  )
 })
 
 test_that("the cross-family predictor bridge still rejects an explicit Psi companion", {

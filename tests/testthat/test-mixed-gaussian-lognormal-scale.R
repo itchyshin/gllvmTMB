@@ -99,3 +99,63 @@ test_that("family CDF arguments use the matching continuous scale", {
   expect_match(gaussian$note, "Gaussian|raw-scale")
   expect_match(lognormal$note, "lognormal|log-scale")
 })
+
+test_that("a joint native fit reports and dispatches two continuous scales", {
+  skip_on_cran()
+  n_units <- 30L
+  units <- sprintf("u%02d", seq_len(n_units))
+  x <- as.numeric(scale(seq(-1, 1, length.out = n_units)))
+  shared <- 0.7 * x + sin(seq_len(n_units) * 0.63)
+  data <- rbind(
+    data.frame(
+      unit = units, trait = "g", family = "g", x = x,
+      value = 1 + 0.9 * shared + 0.18 * cos(seq_len(n_units) * 0.36)
+    ),
+    data.frame(
+      unit = units, trait = "l", family = "l", x = x,
+      value = exp(
+        0.2 - 0.7 * shared + 0.45 * cos(seq_len(n_units) * 0.41)
+      )
+    )
+  )
+  data$unit <- factor(data$unit, levels = units)
+  data$trait <- factor(data$trait, levels = c("g", "l"))
+  data$family <- factor(data$family, levels = c("g", "l"))
+  data <- data[order(data$unit, data$trait), , drop = FALSE]
+  families <- list(g = stats::gaussian(), l = lognormal())
+  attr(families, "family_var") <- "family"
+
+  fit <- suppressWarnings(suppressMessages(gllvmTMB(
+    value ~ 0 + trait +
+      latent(0 + trait | unit, d = 1, unique = FALSE, lv = ~x),
+    data = data,
+    family = families,
+    unit = "unit",
+    trait = "trait",
+    silent = TRUE,
+    control = gllvmTMBcontrol(se = FALSE)
+  )))
+
+  expect_identical(fit$opt$convergence, 0L)
+  expect_length(fit$report$sigma_eps, 2L)
+  expect_true(all(is.finite(fit$report$sigma_eps)))
+  expect_true(all(fit$report$sigma_eps > 0))
+  expect_equal(
+    gllvmTMB:::.gllvmTMB_sigma_eps_for_family(fit, 0L),
+    fit$report$sigma_eps[[1L]]
+  )
+  expect_equal(
+    gllvmTMB:::.gllvmTMB_sigma_eps_for_family(fit, 3L),
+    fit$report$sigma_eps[[2L]]
+  )
+  expect_true(all(is.finite(fit$report$B_lv_unit)))
+
+  targets <- profile_targets(fit)
+  expect_true(all(c("sigma_eps[1]", "sigma_eps[2]") %in% targets$parm))
+
+  diagnostics <- check_gllvmTMB(fit)
+  expect_true(all(
+    c("boundary_sigma_eps_gaussian", "boundary_sigma_eps_lognormal") %in%
+      diagnostics$component
+  ))
+})

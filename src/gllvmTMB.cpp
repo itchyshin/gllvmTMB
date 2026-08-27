@@ -1015,7 +1015,7 @@ Type objective_function<Type>::operator()()
 
   // -------- PARAMETERS --------------------------------------------------
   PARAMETER_VECTOR(b_fix);                       // fixed-effects coefficients (p)
-  PARAMETER(log_sigma_eps);                      // residual log-SD
+  PARAMETER_VECTOR(log_sigma_eps);               // residual log-SD slot(s)
 
   // Missing-predictor (Phase 2a): Gaussian covariate-model coefficients,
   // log residual SD, and the latent missing UNIT-level x values (random).
@@ -2742,7 +2742,22 @@ Type objective_function<Type>::operator()()
   }
 
   // -------- Observation likelihood --------------------------------------
-  Type sigma_eps = exp(log_sigma_eps);
+  bool has_gaussian_rows = false;
+  bool has_lognormal_rows = false;
+  for (int o = 0; o < family_id_vec.size(); o++) {
+    has_gaussian_rows = has_gaussian_rows || family_id_vec(o) == 0;
+    has_lognormal_rows = has_lognormal_rows || family_id_vec(o) == 3;
+  }
+  int expected_sigma_slots =
+    has_gaussian_rows && has_lognormal_rows ? 2 : 1;
+  if (log_sigma_eps.size() != expected_sigma_slots)
+    error("gllvmTMB_multi: log_sigma_eps shape does not match active Gaussian/lognormal families");
+  vector<Type> sigma_eps(log_sigma_eps.size());
+  for (int j = 0; j < log_sigma_eps.size(); j++)
+    sigma_eps(j) = exp(log_sigma_eps(j));
+  Type sigma_eps_gaussian = sigma_eps(0);
+  Type sigma_eps_lognormal =
+    log_sigma_eps.size() == 2 ? sigma_eps(1) : sigma_eps(0);
   REPORT(sigma_eps);
   // Per-row response log-density log p(y(o) | eta_o), factored out of the
   // family-dispatch loop so the SAME kernels can be evaluated at a STATE-
@@ -2757,7 +2772,7 @@ Type objective_function<Type>::operator()()
     Type ll = Type(0.0);
     if (fid == 0) {
       // Gaussian, identity link
-      ll += dnorm(y(o), eta_o, sigma_eps, true);
+      ll += dnorm(y(o), eta_o, sigma_eps_gaussian, true);
     } else if (fid == 1) {
       // Bernoulli / binomial(k-of-n). Link depends on link_id_vec(o):
       //   0 = logit:    p = 1 / (1 + exp(-eta))
@@ -2802,7 +2817,9 @@ Type objective_function<Type>::operator()()
     } else if (fid == 3) {
       // Lognormal, log link
       // y > 0 strictly. log(y) ~ Normal(eta, sigma_eps); add Jacobian -log(y).
-      ll += dnorm(log(y(o)), eta_o, sigma_eps, true) - log(y(o));
+      ll += dnorm(
+        log(y(o)), eta_o, sigma_eps_lognormal, true
+      ) - log(y(o));
     } else if (fid == 4) {
       // Gamma, log link, mean-shape parametrization
       // mu = exp(eta); per-trait shape phi = exp(log_phi_gamma(t)).

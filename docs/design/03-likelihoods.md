@@ -68,6 +68,14 @@ drmTMB convention.
 | `student()` | `sigma`, `nu` | scale + d.o.f. | larger `sigma` ⇒ wider core; larger `nu` ⇒ lighter tails |
 | `lognormal()` | `sigma` | SD of $\log y$ | larger `sigma` ⇒ wider distribution of $y$ |
 
+Gaussian and lognormal scales do not share numerical units. Pure fits retain
+the historical length-one `log_sigma_eps` parameter. When the two families
+coexist, the native TMB route allocates exactly two slots in fixed order:
+Gaussian raw-scale residual SD, then lognormal log-scale residual SD. Each slot
+is shared among traits of its own family; this change does not create a
+per-trait residual-variance model. The likelihood, simulation, residual-CDF,
+prediction, and variance-partition consumers select the slot by family.
+
 ## Notation
 
 In mathematical prose, $\mathcal{N}(a, b)$ uses variance as the

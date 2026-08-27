@@ -365,14 +365,15 @@
 #' @section Dispersion parameters in the report slot:
 #' The fitted object's `$report` carries per-family dispersion quantities on
 #' the natural scale, each a vector of length `n_traits` indexed by trait
-#' (except `sigma_eps`, a single scalar). Their names follow the engine's
+#' (except `sigma_eps`, which has one slot normally and two slots only when
+#' Gaussian and lognormal responses coexist). Their names follow the engine's
 #' internal parameterisation, **not** standard R distribution arguments —
 #' several are easy to misread. What each one IS, and how it maps to
 #' standard R arguments (`mu = exp(eta)` unless noted):
 #'
 #' | Family (report name) | What it is | Standard-R conversion |
 #' |---|---|---|
-#' | gaussian, lognormal (`sigma_eps`) | residual SD / sdlog; **one scalar shared** by all gaussian *and* lognormal traits | `pnorm(y, mean = eta, sd = sigma_eps)`; `plnorm(y, meanlog = eta, sdlog = sigma_eps)` |
+#' | gaussian, lognormal (`sigma_eps`) | residual SD / sdlog; one within-family shared slot in pure fits, or separate Gaussian raw-scale and lognormal log-scale slots when both coexist | `pnorm(y, mean = eta, sd = sigma_eps[1])`; `plnorm(y, meanlog = eta, sdlog = sigma_eps[2])` in a joint fit |
 #' | Gamma (`phi_gamma`) | the **shape**, not a dispersion | `pgamma(y, shape = phi, scale = mu / phi)`; `CV(y) = 1 / sqrt(phi)` |
 #' | nbinom2 (`phi_nbinom2`) | the NB `size` | `pnbinom(y, size = phi, mu = mu)`; `Var(y) = mu + mu^2 / phi` |
 #' | nbinom1 (`phi_nbinom1`) | linear overdispersion, `Var(y) = mu * (1 + phi)` | `pnbinom(y, size = mu / phi, mu = mu)` — the size is mean-dependent |
@@ -456,7 +457,7 @@
 #' "Residual" in a mixed-effects model is **scale-relative**: what
 #' counts as residual variance shifts as you add levels to the model.
 #' In a Gaussian fit without a per-row diagonal term, the residual is row-level
-#' noise captured by a single shared `sigma_eps`. Once you add a per-row
+#' noise captured by a within-family shared `sigma_eps`. Once you add a per-row
 #' `indep(0 + trait | obs)` term,
 #' the *row-level* residual is now T per-trait random-effect variances and
 #' `sigma_eps` is auto-suppressed to avoid double-counting. If you also add a
@@ -465,15 +466,18 @@
 #' a residual at all. The dispatch table below records this explicitly for the
 #' configurations the engine supports today.
 #'
-#' Gaussian and lognormal responses have one residual scale parameter,
-#' `sigma_eps`. Ordinary Gamma responses instead carry a per-trait shape
+#' Gaussian and lognormal responses each have a residual scale parameter,
+#' `sigma_eps`, shared within family. Pure fits retain one slot; a joint
+#' Gaussian-lognormal fit has separate raw- and log-scale slots. Ordinary
+#' Gamma responses instead carry a per-trait shape
 #' `phi_gamma` (CV = `1 / sqrt(phi_gamma)`). Per-trait residual variances
 #' only appear if you explicitly add a per-row `indep(...)` term.
 #' The dispatch is automatic:
 #'
 #' \describe{
-#'   \item{No per-row `indep`, Gaussian/lognormal present}{One
-#'     shared `sigma_eps` across Gaussian/lognormal rows. *Not* per-trait.}
+#'   \item{No per-row `indep`, Gaussian/lognormal present}{One slot in a
+#'     pure fit; separate Gaussian raw-scale and lognormal log-scale slots when
+#'     both coexist. Each slot is shared within family, *not* per-trait.}
 #'   \item{No per-row `indep`, no Gaussian/lognormal rows}{`sigma_eps`
 #'     is mapped off; the family's intrinsic dispersion handles the residual
 #'     (for ordinary Gamma, `phi_gamma`).}
@@ -496,7 +500,7 @@
 #' }
 #'
 #' Mnemonic: Gaussian/lognormal `sigma_eps` is the default; ordinary Gamma uses
-#' `phi_gamma`; per-row `indep` replaces the Gaussian/lognormal scalar residual
+#' `phi_gamma`; per-row `indep` replaces the Gaussian/lognormal family residual
 #' with T per-trait residuals; non-per-row `indep` adds a higher-level random
 #' effect on top of the family residual;
 #' non-continuous families never carry `sigma_eps` regardless.

@@ -45,7 +45,7 @@
     transformation = "linear_predictor"
   ),
 
-  ## Gaussian residual SD ----------------------------------------
+  ## Continuous-family residual SD slot(s) ----------------------
   list(
     tmb_parameter = "log_sigma_eps",
     label_prefix = "sigma_eps",

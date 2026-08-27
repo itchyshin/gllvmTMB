@@ -528,8 +528,8 @@ VP <- function(fit) {
   out <- numeric(Tn)
   names(out) <- trait_names
 
-  sigma_eps <- as.numeric(fit$report$sigma_eps %||% numeric(0))
-  if (!length(sigma_eps) || !is.finite(sigma_eps[1L]) || sigma_eps[1L] <= 0) {
+  sigma_eps <- .gllvmTMB_sigma_eps_vector(fit)
+  if (!length(sigma_eps)) {
     return(out)
   }
 
@@ -547,7 +547,7 @@ VP <- function(fit) {
     tab <- tabulate(match(as.integer(fams_t), fams_uniq))
     fid <- fams_uniq[which.max(tab)]
     if (fid %in% c(0L, 3L)) {
-      out[t] <- sigma_eps[1L]^2
+      out[t] <- .gllvmTMB_sigma_eps_for_family(fit, fid)^2
     }
   }
   out

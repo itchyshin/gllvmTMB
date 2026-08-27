@@ -36,9 +36,9 @@ make_lv_native_nongaussian_guard_data <- function(kind) {
   df
 }
 
-expect_native_nongaussian_lv_rejects <- function(
+expect_native_nongaussian_lv_admitted <- function(
   kind,
-  family,
+  family_id,
   response = "value"
 ) {
   withr::local_options(
@@ -49,52 +49,46 @@ expect_native_nongaussian_lv_rejects <- function(
     response,
     "~ 0 + trait + latent(0 + trait | unit, d = 1, lv = ~x)"
   ))
-  expect_error(
-    suppressWarnings(gllvmTMB(
-      formula,
-      data = make_lv_native_nongaussian_guard_data(kind),
-      unit = "unit",
-      trait = "trait",
-      family = family,
-      control = gllvmTMBcontrol(se = FALSE)
-    )),
-    regexp = "loadings-only|unique = FALSE|diagonal Psi",
-    info = kind
+  data <- make_lv_native_nongaussian_guard_data(kind)
+  parsed <- gllvmTMB:::parse_multi_formula(
+    gllvmTMB:::desugar_brms_sugar(formula)
   )
+  expect_no_error(
+    setup <- gllvmTMB:::gll_prepare_lv_predictor_setup(
+      parsed = parsed,
+      data = data,
+      trait = "trait",
+      site = "unit",
+      family_id_vec = rep(as.integer(family_id), nrow(data)),
+      link_id_vec = rep(0L, nrow(data)),
+      REML = FALSE
+    )
+  )
+  expect_true(isTRUE(setup$enabled), info = kind)
 }
 
-test_that("family-wide native lv keeps default Psi gated for non-Gaussian families", {
-  ## The Julia bridge has narrow point routes for some non-Gaussian X_lv rows,
-  ## while the native family-wide programme is rank-one and loadings-only.
-  ## These top-level calls protect the default-Psi exclusion for every newly
-  ## admitted pure family route.
+test_that("family-wide native lv admits default Psi for registered families", {
   cases <- list(
-    poisson = stats::poisson(),
-    nbinom1 = nbinom1(),
-    nbinom2 = nbinom2(),
-    lognormal = lognormal(),
-    gamma = stats::Gamma(link = "log"),
-    beta = Beta(),
-    tweedie = tweedie(),
-    student = suppressMessages(student(df = 3)),
-    truncated_poisson = truncated_poisson(),
-    truncated_nbinom2 = truncated_nbinom2(),
-    betabinomial = list(
-      family = betabinomial(),
-      response = "cbind(value, failure)"
-    ),
-    delta_lognormal = delta_lognormal(),
-    delta_gamma = delta_gamma()
+    poisson = list(id = 2L),
+    nbinom1 = list(id = 15L),
+    nbinom2 = list(id = 5L),
+    lognormal = list(id = 3L),
+    gamma = list(id = 4L),
+    beta = list(id = 7L),
+    tweedie = list(id = 6L),
+    student = list(id = 9L),
+    truncated_poisson = list(id = 10L),
+    truncated_nbinom2 = list(id = 11L),
+    betabinomial = list(id = 8L, response = "cbind(value, failure)"),
+    delta_lognormal = list(id = 12L),
+    delta_gamma = list(id = 13L)
   )
 
   for (kind in names(cases)) {
     case <- cases[[kind]]
-    if (inherits(case, "family")) {
-      case <- list(family = case)
-    }
-    expect_native_nongaussian_lv_rejects(
+    expect_native_nongaussian_lv_admitted(
       kind,
-      case$family,
+      case$id,
       response = case$response %||% "value"
     )
   }

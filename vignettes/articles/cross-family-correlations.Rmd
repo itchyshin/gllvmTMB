@@ -1,13 +1,13 @@
 ---
-title: "Cross-family trait correlations, including nominal responses"
-description: "Fit the partially-validated ordinary-unit cross-family route, recover latent correlations across five response families, and compute the reference-invariant nominal summary on its admitted non-ordinal partner set."
-tier: 2 # worked demonstration of the multi-family latent factor and the reference-invariant nominal summary
+title: "Cross-family correlations and environmental predictors"
+description: "Fit one predictor-informed latent model across five response families, recover shared correlations, and interpret rotation-invariant trait effects."
+tier: 1
 output:
   rmarkdown::html_vignette:
     toc: true
     toc_depth: 3
 vignette: >
-  %\VignetteIndexEntry{Cross-family trait correlations, including nominal responses}
+  %\VignetteIndexEntry{Cross-family correlations and environmental predictors}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -26,19 +26,44 @@ knitr::opts_chunk$set(
 options(cli.num_colors = 1, crayon.enabled = FALSE)
 ```
 
+Can one environmental gradient explain a shared biological axis while the
+responses use different distributions? Yes: one ordinary `latent()` block can
+couple continuous, binary, count, ordered, and unordered traits, while
+`lv = ~ x` associates the shared axes with a unit-level predictor.
+
+The long-data call is the canonical form; the equivalent wide-data formula
+uses `traits(...)` through the same `gllvmTMB()` entry point:
+
+```{r first-look, eval=FALSE}
+fit_long <- gllvmTMB(
+  value ~ 0 + trait + latent(0 + trait | unit, d = 3, lv = ~ x),
+  data = dat, family = family, trait = "trait", unit = "unit"
+)
+fit_wide <- gllvmTMB(
+  traits(g, b, p, o, cat) ~ 1 + latent(1 | unit, d = 3, lv = ~ x),
+  data = dat_wide,
+  family = list(g = gaussian(), b = binomial(), p = poisson(),
+                o = ordinal_probit(), cat = multinomial()),
+  unit = "unit"
+)
+```
+
 Traits do not arrive on one scale. A single organism carries continuous
 measurements, presence/absence marks, counts, ordered scores, and unordered
 categories at once; a single site records abundance, occupancy, and a dominant
 class. The question this article answers is narrow and concrete: can a
 **Gaussian, a binary, a count, an ordinal, and a nominal trait** sit on **one
-shared latent factor** in a single `gllvmTMB()` fit, and can the model report
-the correlations *between* those families — including the categorical one?
+shared latent model**, can an observed gradient be associated with its axes,
+and can the model report the correlations *between* those families?
 
-This page covers only the **partially-validated ordinary-unit cross-family route**: one
+This page covers only the **ordinary-unit cross-family route**: one
 `multinomial()` trait and its non-nominal partners share
-`latent(0 + trait | unit, d)`. A single powered simulation demonstrates point
-recovery on that route. It does not admit multiple nominal traits, structured
-tiers, augmented slopes, or calibrated intervals. The five-family latent
+`latent(0 + trait | unit, d, lv = ~ x)`. A powered simulation demonstrates
+point recovery for the shared covariance and predictor effect. Separate
+route-health canaries exercise every registered native family, but they are not
+recovery or interval studies. This page does not admit multiple nominal traits,
+structured tiers, augmented slopes, fixed `X + X_lv`, missing responses or LV
+predictors, REML, or calibrated arbitrary-composition intervals. The five-family latent
 covariance is valid, but the one-number observation-scale nominal summary is
 shown on a non-ordinal subset because the current automatic residual convention
 is not coherent for an ordinal-probit partner.
@@ -61,12 +86,18 @@ scale keeps the coupling in the model where it belongs.
 
 ## The model
 
-For unit $i$ and pseudo-trait $t$, a $d$-dimensional shared factor
-$\mathbf u_i \sim \mathcal N(\mathbf 0, \mathbf I_d)$ drives every family through
-its own linear predictor and link:
+For unit $i$, predictors $\mathbf M_i$ shift the mean of a $d$-dimensional
+latent score, while $\mathbf e_i$ records remaining unit-to-unit innovation:
 
 $$
-\eta_{it} = \mu_t + \boldsymbol\lambda_t^{\!\top}\mathbf u_i,
+\mathbf z_i = \mathbf M_i\boldsymbol\alpha + \mathbf e_i,
+\qquad \mathbf e_i \sim \mathcal N(\mathbf 0, \mathbf I_d).
+$$
+
+Each pseudo-trait $t$ uses its own response family and link:
+
+$$
+\eta_{it} = \mu_t + \boldsymbol\lambda_t^{\!\top}\mathbf z_i,
 \qquad
 y_{it} \mid \mathbf u_i \sim \text{family}_t(\,g_t^{-1}(\eta_{it})\,).
 $$
@@ -81,6 +112,16 @@ covariance among all pseudo-traits is
 $\boldsymbol\Lambda\boldsymbol\Lambda^{\!\top}$, and the cross-family
 correlations are its standardised off-diagonals — rotation-invariant, and the
 quantity to report.
+
+The predictor effect on each trait's linear-predictor scale is also
+rotation-invariant:
+
+$$
+\mathbf B_{lv} = \boldsymbol\Lambda\boldsymbol\alpha^\top.
+$$
+
+Raw `alpha` and `Lambda` entries depend on the chosen latent-axis orientation;
+`B_lv` and `Lambda %*% t(Lambda)` are the cross-fit scientific targets.
 
 `latent()` carries a **between-unit** trait-specific variance $\boldsymbol\Psi$
 by default (`unique = TRUE`), so the full tier covariance is
@@ -97,7 +138,8 @@ assessed below live in $\boldsymbol\Lambda\boldsymbol\Lambda^\top$.
 ## A five-family worked example
 
 We simulate `r 500` units, each observed `r 6` times, with five traits sharing
-one 3-dimensional factor:
+one 3-dimensional factor. A standardised environmental gradient shifts the
+mean of all three axes; unit innovations create the remaining correlation:
 
 | trait | family | value column holds |
 |---|---|---|
@@ -141,10 +183,15 @@ Lambda <- rbind(
 mu  <- c(g = 0, b = 0, p = log(2), o = 0, `cat:2` = 0, `cat:3` = 0)
 tau <- c(-1.6, -0.2, 1.2)   # 3 thresholds -> Ko = 4 ordered categories
 
-# One latent position per unit, shared across that unit's replicates.
-U   <- matrix(rnorm(N * d), N, d)
-Eta <- U %*% t(Lambda)                 # N x 6 unit-level linear predictors
+# One predictor-informed latent position per unit, shared across replicates.
+x <- as.numeric(scale(seq(-1, 1, length.out = N)))
+alpha <- c(0.55, -0.30, 0.20)
+E <- matrix(rnorm(N * d), N, d)
+U_mean <- outer(x, alpha)
+U_total <- U_mean + E
+Eta <- U_total %*% t(Lambda)           # N x 6 unit-level predictors
 colnames(Eta) <- rownames(Lambda)
+B_lv_true <- drop(Lambda %*% alpha)
 
 sim_one_rep <- function(rep_id) {
   g_val <- mu["g"] + Eta[, "g"] + rnorm(N)                      # Gaussian
@@ -156,11 +203,11 @@ sim_one_rep <- function(rep_id) {
   P  <- cbind(1, exp(e2), exp(e3)); P <- P / rowSums(P)         # softmax
   cat_val <- apply(P, 1L, function(pr) sample.int(3L, 1L, prob = pr))
   rbind(
-    data.frame(unit = units, trait = "g",   family = "g", value = g_val),
-    data.frame(unit = units, trait = "b",   family = "b", value = b_val),
-    data.frame(unit = units, trait = "p",   family = "p", value = p_val),
-    data.frame(unit = units, trait = "o",   family = "o", value = o_val),
-    data.frame(unit = units, trait = "cat", family = "m", value = cat_val)
+    data.frame(unit = units, replicate = rep_id, trait = "g",   family = "g", x = x, value = g_val),
+    data.frame(unit = units, replicate = rep_id, trait = "b",   family = "b", x = x, value = b_val),
+    data.frame(unit = units, replicate = rep_id, trait = "p",   family = "p", x = x, value = p_val),
+    data.frame(unit = units, replicate = rep_id, trait = "o",   family = "o", x = x, value = o_val),
+    data.frame(unit = units, replicate = rep_id, trait = "cat", family = "m", x = x, value = cat_val)
   )
 }
 
@@ -170,6 +217,12 @@ dat$trait  <- factor(dat$trait,  levels = c("g", "b", "p", "o", "cat"))
 dat$family <- factor(dat$family, levels = c("g", "b", "p", "o", "m"))
 
 table(dat$trait)
+
+dat_wide <- reshape(
+  dat[c("unit", "replicate", "x", "trait", "value")],
+  idvar = c("unit", "replicate", "x"), timevar = "trait", direction = "wide"
+)
+names(dat_wide) <- sub("^value\\.", "", names(dat_wide))
 ```
 
 The `family` column maps each row to its response family; the nominal trait is
@@ -190,7 +243,7 @@ family <- list(
 attr(family, "family_var") <- "family"
 
 fit <- gllvmTMB(
-  value ~ 0 + trait + latent(0 + trait | unit, d = 3),  # unique = TRUE (default)
+  value ~ 0 + trait + latent(0 + trait | unit, d = 3, lv = ~ x),
   data   = dat,
   family = family,
   trait  = "trait",
@@ -200,6 +253,31 @@ fit <- gllvmTMB(
 
 c(convergence = fit$opt$convergence, pdHess = isTRUE(fit$sd_report$pdHess))
 ```
+
+The default `unique = TRUE` retains each identified partner trait's fitted
+diagonal $\Psi$ companion. Use `unique = FALSE` only when the intended model is
+the loadings-only covariance.
+
+### Recover the predictor effect
+
+`extract_lv_effects(type = "trait_effect")` returns $B_{lv}$ rather than raw
+axis coefficients. Each row is an association with `x` on that response's
+linear-predictor scale.
+
+```{r recover-predictor}
+B_hat <- extract_lv_effects(fit, type = "trait_effect")
+B_compare <- data.frame(
+  trait = B_hat$trait,
+  true = unname(B_lv_true[B_hat$trait]),
+  recovered = B_hat$estimate
+)
+B_compare
+```
+
+For Gaussian traits this is an associated mean change. For Poisson traits it
+is a log expected-count change; exponentiate it for a multiplicative contrast.
+For ordinal and nominal rows it remains a latent linear-predictor association.
+The model is associational: changing `x` is not interpreted as an intervention.
 
 ### Recover the cross-family correlations
 
@@ -276,7 +354,7 @@ family_summary <- family[c("g", "b", "p", "m")]
 attr(family_summary, "family_var") <- "family"
 
 fit_summary <- gllvmTMB(
-  value ~ 0 + trait + latent(0 + trait | unit, d = 3),
+  value ~ 0 + trait + latent(0 + trait | unit, d = 3, lv = ~ x),
   data   = dat_summary,
   family = family_summary,
   trait  = "trait",
@@ -337,10 +415,16 @@ These are limits of the capability as it stands at 0.6, not incidental notes.
   makes the recovery above possible; do not expect the same at one observation
   per unit.
 
-- **Intervals are not yet calibrated.** This is a 0.6 capability. Coverage of
-  the cross-family correlations has not been certified; treat the recovered
-  numbers and any interval outputs as recovery-oriented, not as calibrated
-  confidence statements.
+- **Intervals are cell-specific, not universal.** Existing evidence calibrates
+  selected rank-1 Gaussian-anchor `B_lv` cells. It does not calibrate the
+  rank-3 arbitrary composition shown here or cross-family correlation
+  intervals. Treat these outputs as point/recovery-oriented.
+
+- **Gaussian and lognormal residual scales are separate when they coexist.**
+  Gaussian residual SD uses raw response units; lognormal residual SD uses
+  `log(y)`. A joint fit therefore reports two `sigma_eps` slots, shared within
+  family rather than across these incomparable scales. Pure fits retain the
+  historical one-slot contract.
 
 - **One multinomial trait per fit.** The current implementation supports a single
   `multinomial()` trait in a fit. Two nominal responses on one shared factor is

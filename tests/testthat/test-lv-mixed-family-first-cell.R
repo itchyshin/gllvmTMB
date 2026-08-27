@@ -169,21 +169,14 @@ test_that("the named Gaussian plus binomial-logit loadings-only cell is admitted
   expect_equal(nrow(setup$X_lv_B), 6L)
 })
 
-test_that("the mixed first cell keeps default Psi and K greater than one gated", {
-  expect_error(
-    mixed_lv_first_cell_preflight(
-      value ~ 0 + trait + latent(0 + trait | unit, d = 1, lv = ~x)
-    ),
-    regexp = "unique = FALSE|loadings-only"
-  )
-
-  expect_error(
-    mixed_lv_first_cell_preflight(
-      value ~ 0 + trait +
-        latent(0 + trait | unit, d = 2, unique = FALSE, lv = ~x)
-    ),
-    regexp = "d = 1|rank one"
-  )
+test_that("the mixed first cell admits default Psi and identified higher rank", {
+  expect_true(isTRUE(mixed_lv_first_cell_preflight(
+    value ~ 0 + trait + latent(0 + trait | unit, d = 1, lv = ~x)
+  )$enabled))
+  expect_true(isTRUE(mixed_lv_first_cell_preflight(
+    value ~ 0 + trait +
+      latent(0 + trait | unit, d = 2, unique = FALSE, lv = ~x)
+  )$enabled))
 })
 
 test_that("the family-wide programme rejects explicit unit-tier diagonal companions", {
@@ -222,15 +215,14 @@ test_that("the mixed programme keeps unregistered links and pairings gated", {
     regexp = "canonical admitted link|logit.*probit.*cloglog"
   )
 
-  expect_error(
+  expect_true(isTRUE(
     mixed_lv_first_cell_preflight(
       value ~ 0 + trait +
         latent(0 + trait | unit, d = 1, unique = FALSE, lv = ~x),
       data = dat,
       family_id_vec = rep(c(4L, 5L), times = nrow(dat) / 2L)
-    ),
-    regexp = "programme cells|Arbitrary mixed-family"
-  )
+    )$enabled
+  ))
 
   mixed_binomial_links <- rep(c(0L, 0L, 1L), times = nrow(dat) / 3L)
   mixed_binomial_ids <- rep(c(0L, 1L, 1L), times = nrow(dat) / 3L)
@@ -246,19 +238,17 @@ test_that("the mixed programme keeps unregistered links and pairings gated", {
   )
 })
 
-test_that("a pure-binomial predictor-informed fit keeps one exact link", {
+test_that("a pure-binomial predictor-informed fit permits one link per trait", {
   dat <- make_mixed_lv_first_cell_data()
 
-  expect_error(
-    mixed_lv_first_cell_preflight(
+  setup <- mixed_lv_first_cell_preflight(
       value ~ 0 + trait +
         latent(0 + trait | unit, d = 1, unique = FALSE, lv = ~x),
       data = dat,
       family_id_vec = rep(1L, nrow(dat)),
       link_id_vec = rep(c(0L, 1L), length.out = nrow(dat))
-    ),
-    regexp = "one binomial link|one exact named family.*link cell"
   )
+  expect_true(isTRUE(setup$enabled))
 })
 
 test_that("the family-wide programme keeps the one numeric predictor contract exact", {
@@ -344,7 +334,7 @@ test_that("the named mixed first cell constructs and reports its invariants", {
   )
 })
 
-test_that("the family-wide programme admits only its frozen pure and mixed cells", {
+test_that("the family-wide programme composes registered family cells", {
   dat <- make_mixed_lv_first_cell_data()
   formula <- value ~ 0 + trait +
     latent(0 + trait | unit, d = 1, unique = FALSE, lv = ~x)
@@ -406,20 +396,18 @@ test_that("the family-wide programme admits only its frozen pure and mixed cells
     link_id_vec = rep(0L, nrow(sentinel))
   )$enabled))
 
-  for (ids in list(c(0L, 3L), c(0L, 1L, 2L), c(4L, 5L))) {
-    expect_error(
-      mixed_lv_first_cell_preflight(
-        formula,
-        data = dat,
-        family_id_vec = rep(ids, length.out = nrow(dat)),
-        link_id_vec = rep(0L, nrow(dat))
-      ),
-      regexp = "one family and one link|named|programme|gated"
+  for (ids in list(c(0L, 3L), c(4L, 5L))) {
+    setup <- mixed_lv_first_cell_preflight(
+      formula,
+      data = dat,
+      family_id_vec = rep(ids, length.out = nrow(dat)),
+      link_id_vec = rep(0L, nrow(dat))
     )
+    expect_true(isTRUE(setup$enabled))
   }
 })
 
-test_that("named mixed cells reject duplicate family traits", {
+test_that("compositional mixed routes admit duplicate family traits", {
   dat <- make_mixed_lv_first_cell_data()
   duplicate <- dat[as.character(dat$trait) == "b", , drop = FALSE]
   duplicate$trait <- "b2"
@@ -430,26 +418,24 @@ test_that("named mixed cells reject duplicate family traits", {
     latent(0 + trait | unit, d = 1, unique = FALSE, lv = ~x)
 
   duplicate_poisson <- c(g = 0L, b = 2L, b2 = 2L)
-  expect_error(
+  expect_true(isTRUE(
     mixed_lv_first_cell_preflight(
       formula,
       data = dat,
       family_id_vec = unname(duplicate_poisson[as.character(dat$trait)]),
       link_id_vec = rep(0L, nrow(dat))
-    ),
-    regexp = "exact named|one trait|programme cell"
-  )
+    )$enabled
+  ))
 
   duplicate_gaussian <- c(g = 0L, b = 0L, b2 = 2L)
-  expect_error(
+  expect_true(isTRUE(
     mixed_lv_first_cell_preflight(
       formula,
       data = dat,
       family_id_vec = unname(duplicate_gaussian[as.character(dat$trait)]),
       link_id_vec = rep(0L, nrow(dat))
-    ),
-    regexp = "exact named|one trait|programme cell"
-  )
+    )$enabled
+  ))
 })
 
 test_that("the public Gaussian plus multinomial programme cell counts one logical categorical response", {
@@ -477,7 +463,7 @@ test_that("the public Gaussian plus multinomial programme cell counts one logica
   expect_true(all(is.finite(fit$report$B_lv_unit)))
 })
 
-test_that("unexpanded duplicate multinomial traits are not collapsed", {
+test_that("unexpanded duplicate multinomial traits count as separate responses", {
   dat <- make_mixed_lv_first_cell_data()
   duplicate <- dat[as.character(dat$trait) == "b", , drop = FALSE]
   duplicate$trait <- "b2"
@@ -486,16 +472,15 @@ test_that("unexpanded duplicate multinomial traits are not collapsed", {
   dat <- dat[order(dat$unit, dat$trait), , drop = FALSE]
   ids <- c(g = 0L, b = 16L, b2 = 16L)
 
-  expect_error(
+  expect_true(isTRUE(
     mixed_lv_first_cell_preflight(
       value ~ 0 + trait +
         latent(0 + trait | unit, d = 1, unique = FALSE, lv = ~x),
       data = dat,
       family_id_vec = unname(ids[as.character(dat$trait)]),
       link_id_vec = rep(0L, nrow(dat))
-    ),
-    regexp = "exact named|one trait|programme cell"
-  )
+    )$enabled
+  ))
 })
 
 test_that("malformed pre-expanded multinomial contrast groups fail closed", {

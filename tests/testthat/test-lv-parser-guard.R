@@ -784,9 +784,9 @@ test_that("latent lv preflight rejects unsupported model regimes", {
       family_id_vec = rep(1L, nrow(make_lv_preflight_data())),
       link_id_vec = rep(3L, nrow(make_lv_preflight_data()))
     ),
-    regexp = "standard links|LV-05"
+    regexp = "canonical admitted link|canonical link"
   )
-  expect_error(
+  expect_silent(
     lv_preflight_setup(
       y_bin ~ 0 + trait + latent(0 + trait | unit, d = 1, lv = ~x),
       family_id_vec = rep(
@@ -794,8 +794,7 @@ test_that("latent lv preflight rejects unsupported model regimes", {
         length.out = nrow(make_lv_preflight_data())
       ),
       link_id_vec = rep(0L, nrow(make_lv_preflight_data()))
-    ),
-    regexp = "standard links|LV-05"
+    )
   )
   expect_error(
     lv_preflight_setup(

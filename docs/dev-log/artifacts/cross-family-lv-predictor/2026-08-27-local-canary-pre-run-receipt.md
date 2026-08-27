@@ -1,7 +1,7 @@
 # Local five-family LV predictor canary: pre-run receipt
 
 Date: 2026-08-27  
-Status: frozen before execution  
+Status: complete; three bounded route-health fits passed
 Driver: `dev/cross-family-lv-predictor/five-family-canary.R`
 
 ## Intended run
@@ -63,3 +63,19 @@ The fit may start locally only after:
 
 Stop and re-report if the fit exceeds 10 minutes or projects beyond 30 minutes.
 Do not start a multi-seed or retained campaign from this receipt.
+
+## Execution receipt
+
+All prerequisites above were satisfied. The branch was rebased once onto
+`870944744ff090fe8676e853ebc03957204571c0`; construction and scale tests were
+GREEN before fitting.
+
+| Cell | Wall time | Convergence | Max absolute gradient | Result |
+|---|---:|---:|---:|---|
+| rank 3, loadings-only | 8.58 s | 0 | 0.001523585 | all six checks passed |
+| rank 2, loadings-only | part of 18.76 s pair | 0 | 0.0007440824 | all six checks passed |
+| rank 3, automatic Psi | part of 18.76 s pair | 0 | 0.00006971072 | all six checks passed |
+
+Every fit returned finite, labelled `Sigma_shared` and `R_shared`, finite
+`B_lv_unit`, and the exact total = mean + innovation score identity. These are
+route-health results only. They do not promote recovery or interval coverage.

@@ -331,7 +331,12 @@ coverage for this exact Gaussian + Poisson archetype.
 
 > **Current boundary.** This article teaches the native, ordinary unit-tier,
 > complete-response Gaussian model and one named Gaussian + Poisson,
-> rank-1, loadings-only mixed route. Retained native evidence covers named
+> rank-1, loadings-only mixed example. Registered native family/link rows now
+> compose in this ordinary predictor-informed block at rank 1 through the
+> number of logical responses, with automatic $\Psi$ or `unique = FALSE`;
+> bounded rank-2/rank-3 canaries exercise every registered family. Those
+> canaries establish route health, not general recovery or interval
+> calibration. Retained native evidence covers named
 > Gaussian rank-1 and rank-2 cells; interval evidence for pure binomial models
 > is limited to rank-1, multi-trial logit, probit, and cloglog cells.
 > Factor-valued LV predictors have point-estimate and recovery evidence, but
@@ -340,18 +345,17 @@ coverage for this exact Gaussian + Poisson archetype.
 > optional uncalibrated Wald plumbing; native ordinary `latent()` instead uses
 > $\Lambda\Lambda^\top + \Psi$ by default. This article does not support REML,
 > an ordinary fixed predictor combined with the same `lv` predictor, Julia
-> interval calibration, broader response masks, unlisted native family/link
-> combinations or programme ranks, extra grouping tiers, structured
+> interval calibration, broader response masks, non-canonical links, ranks
+> above the number of logical responses, extra grouping tiers, structured
 > phylogenetic, spatial, animal, or
 > kernel sources, missing LV predictors, or profile and bootstrap intervals.
-> Separately named mixed-response cells have rank-1, loadings-only
+> Separately named mixed-response cells have retained rank-1, loadings-only
 > point-recovery evidence. Eight preregistered Gaussian-anchor archetypes also
 > have target-wise Wald calibration evidence, including the Gaussian + Poisson
 > example shown here; this is not a simultaneous all-target or arbitrary-mixture
 > interval claim. Pure Beta and pure ordinal-probit retain separate point-
-> recovery HOLDs. This article shows only the Gaussian + Poisson member of the
-> fixed allow-list; consult the family-specific boundary before interpreting a
-> different admitted programme cell.
+> recovery HOLDs. Consult the family-specific boundary before interpreting a
+> different admitted composition.
 
 ## What to report
 

@@ -1,9 +1,9 @@
 # Ultra Plan — Cross-family LV correlation + predictor bridge
 
-Date: 2026-08-27  
-Platform: Codex  
-Branch: `codex/cross-family-lv-predictor-bridge`  
-Initial base: `a7b75f75dac2b5c23525afdfec26abbaf59aab16` (verified post-PR #1217 main)  
+Date: 2026-08-27
+Platform: Codex
+Branch: `codex/cross-family-lv-predictor-bridge`
+Initial base: `a7b75f75dac2b5c23525afdfec26abbaf59aab16` (verified post-PR #1217 main)
 Required integration base: the eventual verified main SHA after PR #1216 and the ordered random-slope release merge.
 
 ## Goal

@@ -1,6 +1,6 @@
 # Local five-family LV predictor canary: pre-run receipt
 
-Date: 2026-08-27  
+Date: 2026-08-27
 Status: complete; three bounded route-health fits passed
 Driver: `dev/cross-family-lv-predictor/five-family-canary.R`
 

@@ -1,8 +1,8 @@
 # Cross-family LV predictor bridge: engine and evidence audit
 
-Date: 2026-08-27  
-Audited base: `a7b75f75dac2b5c23525afdfec26abbaf59aab16`  
-Lane checkpoint: `6500ea624`  
+Date: 2026-08-27
+Audited base: `a7b75f75dac2b5c23525afdfec26abbaf59aab16`
+Lane checkpoint: `6500ea624`
 Status: pre-implementation receipt; no scientific fit was run
 
 ## Verdict

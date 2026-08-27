@@ -1,7 +1,7 @@
 # Gaussian/lognormal scale consumer map
 
-Date: 2026-08-27  
-Source pin: `origin/main` at `870944744ff090fe8676e853ebc03957204571c0`  
+Date: 2026-08-27
+Source pin: `origin/main` at `870944744ff090fe8676e853ebc03957204571c0`
 Status: pre-implementation checklist
 
 The joint Gaussian/lognormal repair keeps `log_sigma_eps` length one for every

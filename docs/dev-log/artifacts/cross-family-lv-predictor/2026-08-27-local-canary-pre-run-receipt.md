@@ -1,8 +1,9 @@
 # Local five-family LV predictor canary: pre-run receipt
 
 Date: 2026-08-27
-Status: complete; three bounded fits ran, with one automatic-Psi result later
-revoked as identifiability evidence
+Status: complete; three bounded fits ran, with one automatic-Psi result first
+misclassified and then restored as route-health evidence by the superseding
+joint mean-covariance audit below
 Driver: `dev/cross-family-lv-predictor/five-family-canary.R`
 
 ## Intended run
@@ -75,18 +76,21 @@ GREEN before fitting.
 |---|---:|---:|---:|---|
 | rank 3, loadings-only | 8.58 s | 0 | 0.001523585 | all six checks passed |
 | rank 2, loadings-only | part of 18.76 s pair | 0 | 0.0007440824 | all six checks passed |
-| rank 3, automatic Psi | part of 18.76 s pair | 0 | 0.00006971072 | numerical checks passed, but the model is over-parameterised; preserved as a failed scientific attempt, not route evidence |
+| rank 3, automatic Psi | part of 18.76 s pair | 0 | 0.00006971072 | numerical checks passed; an initial covariance-only review misclassified this cell, and the superseding joint mean-covariance accounting below retains it as route-health evidence only |
 
 Every fit returned finite, labelled `Sigma_shared` and `R_shared`, finite
 `B_lv_unit`, and the exact total = mean + innovation score identity. These are
 route-health results only. They do not promote recovery or interval coverage.
 
-## Superseding identifiability verdict
+## Superseding joint mean-covariance verdict
 
-The automatic-Psi rank-3 fit above has 15 rotation-adjusted free loadings and
-four engine-free diagonal parameters but only 15 covariance moments. Its small
-gradient therefore does not prove an identified decomposition. The later
-Noether/Fisher review revoked that row as evidence and added a fail-loud
-parameter-dimension gate. The loadings-only rank-2/rank-3 fits remain valid
-route-health evidence; an identified five-response rank-2 automatic-Psi
-construction cell replaces the revoked claim.
+The first review counted only five logical covariance rows and omitted the
+predictor mean. That was incorrect for the engine's six physical response rows
+(including two multinomial contrasts). The corrected necessary screen counts
+15 rotation-adjusted free loadings, 3 latent-predictor coefficients, and 3—not
+4—engine-free diagonal parameters against 6 trait-scale predictor effects plus
+21 covariance coordinates: 21 parameters <= 27 observable coordinates. The
+cell therefore passes the necessary screen and its numerical checks remain
+route-health evidence. This does not establish generic local/global
+identification, stable recovery, or interval calibration. The loadings-only
+rank-2/rank-3 fits also remain valid route-health evidence.

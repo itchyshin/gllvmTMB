@@ -545,20 +545,26 @@ gll_prepare_lv_predictor_setup <- function(
     if (all(family_id_vec %in% c(12L, 13L, 14L))) {
       psi_is_free[] <- FALSE
     }
+    n_physical_response_traits <- n_response_traits
+    n_lv_predictors <- ncol(X_lv_B)
     n_loading_free <-
-      n_logical_response_traits * lv_rank - lv_rank * (lv_rank - 1L) / 2L
+      n_physical_response_traits * lv_rank -
+        lv_rank * (lv_rank - 1L) / 2L
+    n_alpha_free <- lv_rank * n_lv_predictors
     n_psi_free <- if (psi_is_common) {
       as.integer(any(psi_is_free))
     } else {
       sum(psi_is_free)
     }
-    n_covariance_moments <-
-      n_logical_response_traits * (n_logical_response_traits + 1L) / 2L
-    if (n_loading_free + n_psi_free > n_covariance_moments) {
+    n_mean_covariance_coordinates <-
+      n_physical_response_traits * n_lv_predictors +
+        n_physical_response_traits * (n_physical_response_traits + 1L) / 2L
+    n_joint_parameters <- n_loading_free + n_alpha_free + n_psi_free
+    if (n_joint_parameters > n_mean_covariance_coordinates) {
       cli::cli_abort(c(
-        "Predictor-informed {.fn latent} with automatic Psi is not identified at this rank.",
-        "x" = "{n_logical_response_traits} logical response(s), {.code d = {lv_rank}}, {n_loading_free} free loading parameter(s), and {n_psi_free} free automatic-Psi parameter(s) exceed {n_covariance_moments} covariance moment(s).",
-        "i" = "The rank gate counts only Psi slots the engine estimates; single-trial binomial and multinomial Psi slots are mapped off.",
+        "Predictor-informed {.fn latent} with automatic Psi fails the necessary joint mean-covariance dimension screen at this rank.",
+        "x" = "{n_physical_response_traits} physical response row(s), {n_logical_response_traits} logical response(s), {.code d = {lv_rank}}, and {n_lv_predictors} LV predictor(s) give {n_joint_parameters} free joint parameter(s) but only {n_mean_covariance_coordinates} mean-covariance coordinate(s).",
+        "i" = "The parameter count includes {n_loading_free} rotation-adjusted loading, {n_alpha_free} latent-predictor, and {n_psi_free} engine-free automatic-Psi parameter(s). Multinomial contrasts count as physical loading rows, while their Psi slots and single-trial binomial Psi slots are mapped off.",
         ">" = "Lower {.code d}, use {.code common = TRUE} when one shared Psi variance is scientifically appropriate, or use {.code unique = FALSE} for the loadings-only model."
       ))
     }

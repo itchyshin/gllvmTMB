@@ -32,10 +32,13 @@ The render passes only if:
 The render is documentation verification, not a recovery or calibration
 campaign. Every failed attempt is retained in the lane check record.
 
-The first render used the automatic-Psi spelling. A later identifiability
-review showed that saturated rank-3 decomposition was over-parameterised, so
-that render is preserved as a failed scientific attempt. The corrected article
-uses `unique = FALSE`; it requires a fresh evaluated render before landing.
+The first render used the automatic-Psi spelling. An initial covariance-only
+review classified that shape as over-parameterised, so the lane conservatively
+rerendered the article with `unique = FALSE`. A later joint mean-covariance
+audit corrected the classification: the six-physical-row shape passes the
+necessary dimension screen, but that screen is not recovery or calibration
+evidence. Both render attempts remain preserved; the loadings-only article is
+retained because its scientific target is the shared covariance.
 
 ## Result
 
@@ -49,13 +52,27 @@ finite; the ordinal automatic-summary refusal appeared verbatim; and the
 non-ordinal reference-invariant summary returned finite values for Gaussian,
 binomial, and Poisson partners.
 
-## Corrected loadings-only rerender
+## Conservative loadings-only rerender
 
-After the automatic-Psi identifiability repair, the corrected evaluated render
+After the initial automatic-Psi review, the loadings-only evaluated render
 completed in approximately 1.5 minutes and wrote
 `/private/tmp/gllvmtmb-cross-family-article-repair/cross-family-correlations.html`
 (93,452 bytes). The main fit again reported convergence 0 and `pdHess = TRUE`.
 The six labelled `B_lv` rows, shared correlations, ordinal refusal, and
 non-ordinal reference-invariant summary were present and finite. This
-loadings-only render supersedes the earlier automatic-Psi render for landing;
-the earlier attempt remains recorded above rather than being erased.
+loadings-only render remains the landing article because it isolates the shared
+covariance; the earlier attempt remains recorded above rather than being erased.
+
+## Joint-screen wording rerender
+
+After correcting the parser to count the joint observable pair `(B_lv,
+Sigma)`, the exact-current-source article rendered again in approximately two
+minutes to
+`/private/tmp/gllvmtmb-cross-family-article-joint-gate/cross-family-correlations.html`
+(93,589 bytes). The main fit reported convergence 0 and `pdHess = TRUE`; all
+six labelled `B_lv` rows were finite, shared correlations were present, the
+ordinal refusal was retained, and the non-ordinal reference-invariant summary
+remained finite. The rendered prose now says the automatic-`Psi` shape passes
+only a necessary dimension screen and deliberately retains the loadings-only
+teaching fit. This third attempt supersedes the wording of the two earlier
+renders without deleting their receipts.

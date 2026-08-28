@@ -55618,3 +55618,56 @@ main `badb45147f982c2ec34d948c7118261995485576` on
 then passed on that exact SHA from 2026-08-28T03:36:53Z to 04:16:39Z. The
 terminal documentation closeout is the only remaining repository write; the
 coefficient lease is released immediately after it lands.
+
+## 2026-08-28 -- pathway means with response-column random coefficients
+
+Example 2 in `where-does-the-tree-go.Rmd` now fits separate C3/C4 fixed
+intercepts and latitude slopes plus plant-species random intercepts and slopes:
+`0 + pathway + latitude:pathway + *_coef(1 + latitude | trait)`. The long and
+`traits(...)` wide IID forms are protected by exact TMB-data, map, objective,
+parameter, fitted-value, covariance, and convergence identities under `|` and
+`||`. FG-20 remains `partial`: this is Gaussian point estimation only.
+
+Checks:
+
+```sh
+Rscript --vanilla -e 'devtools::test(filter = "column-coef-(public-api|phylo-estimated-rho)", reporter = "summary")'
+# PASS: public pathway long/wide combination (52 public-API expectations) and
+# estimated-rho suite.
+
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); pkgdown::build_article("articles/where-does-the-tree-go", pkg = ".", lazy = FALSE, new_process = FALSE, quiet = TRUE)'
+# PASS: source-current article rendered.
+
+Rscript --vanilla -e 'pkgdown::check_pkgdown()'
+# PASS: No problems found.
+
+Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'
+# PASS in 20m37s: 0 errors, 0 warnings, 3 non-attributable notes (clock
+# verification, existing logLik global note, macOS xcrun_db detritus).
+
+git diff --check
+# PASS.
+```
+
+Exact stale-surface scans:
+
+```sh
+rg -n "phylo_coef\\(0 \\+ latitude|column_coef\\(0 \\+ latitude|species-specific fixed intercept|slope-only|traits\\(\\.\\.\\.\\) ~ 1" vignettes/articles/where-does-the-tree-go.Rmd pkgdown-site/articles/where-does-the-tree-go.html
+rg -n "shared\\(" vignettes/articles/where-does-the-tree-go.Rmd
+rg -n "non-Gaussian|interval|Gaussian|point estimates|point models|animal|kernel|spatial|\\*_slope" vignettes/articles/where-does-the-tree-go.Rmd
+rg -n "gllvmTMB\\(" vignettes/articles/where-does-the-tree-go.Rmd
+rg -n "\\bS_B\\b|\\bS_W\\b|\\\\bf S|\\bphylo\\(|\\bgr\\(|\\bmeta\\(|block_V\\(|phylo_rr\\(" vignettes/articles/where-does-the-tree-go.Rmd
+```
+
+Verdict: no stale slope-only formula or public `shared()` claim; long/wide
+argument naming is correct; Gaussian point-only scope and all deferred regimes
+remain explicit. Rose/Pat terminal pre-publish review PASSed after three narrow
+wording repairs. Rendered pathway/species figures were inspected at original
+resolution and matched the DGP.
+
+```sh
+Rscript --vanilla -e 'source("/Users/z3437171/Dropbox/Github Local/Shinichi/tools/check-after-task.R"); check_after_task("docs/dev-log/after-task/2026-08-28-column-coef-pathway-article.md")'
+# PASS: after-task report structure. The full wrapper additionally found two
+# unmet historical `.unlazy` ledgers (`pr1214-closeout` and
+# `response-column-coef-iid`); this lane preserved them as unrelated ownership.
+```

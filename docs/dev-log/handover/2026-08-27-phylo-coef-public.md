@@ -2,7 +2,8 @@
 
 **Branch:** `codex/phylo-coef-public`
 **Base:** `e431f7890a425d76f29cff072682ec0514226801`
-**State:** local implementation and review complete; protected landing pending.
+**State:** implementation merged normally and exact-main verification passed;
+terminal documentation closeout and lease release remain.
 
 ## Goal
 
@@ -25,14 +26,21 @@ All G1--G14 evidence is complete: symbolic/API/engine/recovery/equivalence,
 pkgdown, installed-package check, and terminal Gauss/Noether, Grace, Rose/Pat
 reviews. The full local candidate verifier passed in about 18 minutes.
 
+## Protected landing receipt
+
+Reviewed head `0cdc8ec90cf9eb89e146eb22039abb5127a75dc9` passed routine
+run `33135276600` and manual three-OS run `33137341941` (macOS job
+`98740165239`, Windows job `98740165303`, Ubuntu job `98740165342`). PR
+#1220 merged normally without bypass at exact main
+`badb45147f982c2ec34d948c7118261995485576`. Exact-main run `33139404505`,
+Ubuntu job `98746636282`, passed on that SHA at 2026-08-28T04:16:39Z.
+
 ## Next safest action
 
-Freeze and commit the current tree, push once under CI pacing, open one focused
-PR, link issue #1212 without closing it, wait for routine CI, then dispatch one
-manual exact-head Ubuntu/macOS/Windows matrix. Merge normally without bypass
-only when exact-head checks are green. Verify exact merged main, release
-`codex:phylo-coef-public`, notify dependent lanes, and delete the programme
-heartbeat.
+Land this terminal documentation-only receipt, release
+`codex:phylo-coef-public`, notify dependent lanes, link the bounded IID/phylo
+completion on issue #1212 without closing its broader structured-source scope,
+and delete the programme heartbeat.
 
 ## Boundaries
 

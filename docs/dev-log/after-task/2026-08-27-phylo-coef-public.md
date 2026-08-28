@@ -93,7 +93,17 @@ dense-VCV `K + 1e-8 I` seam is disclosed rather than hidden.
   test suite, had zero errors and warnings.
 - `git diff --check`: passed.
 
-Exact CI, merge, and exact-main receipts are appended after landing.
+Protected landing receipts (terminal exact-main status is updated before this
+closeout branch lands):
+
+- Reviewed source head `0cdc8ec90cf9eb89e146eb22039abb5127a75dc9`.
+- Routine exact-head run `33135276600`, Ubuntu job `98733730071`: **SUCCESS**.
+- Manual exact-head run `33137341941`: macOS job `98740165239`, Windows job
+  `98740165303`, and Ubuntu job `98740165342`: **SUCCESS** on all three OSes.
+- PR #1220 merged normally without bypass at
+  `badb45147f982c2ec34d948c7118261995485576`.
+- Exact-main run `33139404505`, Ubuntu job `98746636282`: **SUCCESS** on that
+  exact merge SHA (2026-08-28T03:36:53Z--04:16:39Z).
 
 ## 6. Tests of the Tests
 
@@ -157,10 +167,10 @@ estimation, not broad calibration or intervals.
 
 Only Gaussian point models are covered. Interval inference, non-Gaussian
 coefficient models, latent coefficient covariance, broad recovery/calibration,
-and animal/kernel/spatial coefficient helpers remain deferred. The immediate
-action is one CI-paced push, exact-head routine and three-OS matrix checks,
-normal protected merge, exact-main verification, lease release, and heartbeat
-deletion. No `*_slope()` deprecation follows from this work.
+and animal/kernel/spatial coefficient helpers remain deferred. Exact-head
+routine and three-OS checks passed, PR #1220 merged normally, and exact-main
+run `33139404505` passed. Lease release and heartbeat deletion are operational
+closeout actions. No `*_slope()` deprecation follows from this work.
 
 ## 12. Cross-Product Coverage
 
@@ -168,8 +178,9 @@ The covered cross-product is Gaussian point estimation × long/wide input × IID
 or phylogenetic response-column source × intercept/slope basis × `|`/`||`, with
 fixed and estimated rho for identifiable phylogenetic sources. Implementation,
 recovery tests, public help, runnable articles, check-log/FG-20 records,
-independent review, and local package gates are complete. Protected landing
-evidence is the only terminal gate still pending.
+independent review, and local package gates are complete. The exact-head matrix
+normal protected merge, and exact-main success are complete. The lease-release
+receipt is recorded immediately after this closeout lands.
 
 This slice **does NOT cover** animal, kernel, or spatial coefficient sources;
 non-Gaussian families; interval inference; latent coefficient covariance;

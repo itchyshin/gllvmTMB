@@ -55605,3 +55605,16 @@ terminal review PASSed cross-file status, raw-tree article DGP, long/wide reader
 path, narrow-width rendering, and slope lifecycle; Darwin's audience review
 PASSed the biological question and interpretation. Protected exact-head CI,
 normal merge, exact-main verification, and lease release remain pending.
+
+## 2026-08-27 -- public coefficient protected landing
+
+The reviewed source head was
+`0cdc8ec90cf9eb89e146eb22039abb5127a75dc9`. Routine PR run `33135276600`
+(Ubuntu job `98733730071`) passed. Manually dispatched exact-head run
+`33137341941` passed on macOS (`98740165239`), Windows (`98740165303`), and
+Ubuntu (`98740165342`). PR #1220 then merged normally without bypass at exact
+main `badb45147f982c2ec34d948c7118261995485576` on
+2026-08-28T03:36:47Z. Exact-main run `33139404505`, Ubuntu job `98746636282`,
+then passed on that exact SHA from 2026-08-28T03:36:53Z to 04:16:39Z. The
+terminal documentation closeout is the only remaining repository write; the
+coefficient lease is released immediately after it lands.

@@ -12,7 +12,7 @@
 | Articles | Repaired and rendered `where-does-the-tree-go` plus API grid; left unrelated phylogenetic article unchanged | DONE |
 | Local verification | Focused gates, slope regressions, article builds, pkgdown, and installed-package check passed | DONE |
 | Independent review | Gauss/Noether, Grace, Rose/Pat terminal PASS after repairs | DONE |
-| Protected landing | One push, exact-head CI, normal merge, exact-main verification, lease release | OWED |
+| Protected landing | One push; routine and manual three-OS exact-head CI green; PR #1220 merged normally at `badb45147`; exact-main run `33139404505` green; terminal lease release follows this closeout | DONE |
 
 The implementation stayed inside the approved boundary. No animal, kernel, or
 spatial coefficient helper was admitted; no non-Gaussian or interval claim was

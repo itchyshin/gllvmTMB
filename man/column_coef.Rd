@@ -23,8 +23,8 @@ covariance across the coefficient basis.
 This point-model route is covered for Gaussian multivariate data in long or
 \code{traits(...)} wide form, with bare numeric row predictors. Non-Gaussian
 coefficient models and interval inference are not available in this
-release. \code{\link[=phylo_coef]{phylo_coef()}} is the only supported structured source; animal,
-kernel, and spatial coefficient sources remain planned.
+release. \code{\link[=phylo_coef]{phylo_coef()}} and \code{\link[=animal_coef]{animal_coef()}} are the supported structured
+sources; kernel and spatial coefficient sources remain planned.
 }
 \examples{
 set.seed(1)

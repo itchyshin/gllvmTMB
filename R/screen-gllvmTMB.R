@@ -501,7 +501,7 @@ print.gllvmTMB_screen <- function(x, ...) {
 
   ## Keep the pre-fit screen on the same public coefficient grammar as the
   ## fitter. Markers must be parsed and rewritten before model.frame() sees
-  ## them; otherwise R attempts to evaluate column_coef()/phylo_coef() as
+  ## them; otherwise R attempts to evaluate the public coefficient markers as
   ## ordinary variables. The screen has no column_data argument, so only
   ## row-data coefficient predictors are in scope here.
   column_coef_spec <- .parse_column_coef_formula(
@@ -512,11 +512,17 @@ print.gllvmTMB_screen <- function(x, ...) {
   )
   if (!is.null(column_coef_spec)) {
     .column_coef_assert_no_overlap(formula, data, trait, column_coef_spec)
-    if (!column_coef_spec$helper %in% c("column_coef", "phylo_coef")) {
+    if (!column_coef_spec$helper %in%
+        c("column_coef", "phylo_coef", "animal_coef")) {
       .column_coef_engine_fence(column_coef_spec)
     }
     formula[[3L]] <- if (identical(column_coef_spec$helper, "column_coef")) {
       .column_coef_rewrite_iid(formula[[3L]], column_coef_spec)
+    } else if (identical(column_coef_spec$helper, "animal_coef")) {
+      .column_coef_rewrite_fixed_animal(
+        formula[[3L]], column_coef_spec, data = data,
+        envir = environment(formula)
+      )
     } else if (identical(column_coef_spec$rho_mode, "fixed")) {
       .column_coef_rewrite_fixed_phylo(
         formula[[3L]], column_coef_spec, data = data,

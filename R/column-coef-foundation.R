@@ -10,8 +10,8 @@
 #' This point-model route is covered for Gaussian multivariate data in long or
 #' `traits(...)` wide form, with bare numeric row predictors. Non-Gaussian
 #' coefficient models and interval inference are not available in this
-#' release. [phylo_coef()] is the only supported structured source; animal,
-#' kernel, and spatial coefficient sources remain planned.
+#' release. [phylo_coef()] and [animal_coef()] are the supported structured
+#' sources; kernel and spatial coefficient sources remain planned.
 #'
 #' @param formula A coefficient-basis bar expression such as
 #'   `1 + x | trait`, `0 + x | trait`, or `1 + x || trait`.
@@ -41,7 +41,7 @@ column_coef <- function(formula) invisible(NULL)
 #' `traits(...)` wide form, with a labelled positive-definite tree covariance
 #' source and bare numeric row predictors. Numeric `rho` and one estimated
 #' interior `rho` are supported. Interval inference, non-Gaussian coefficient
-#' models, and animal, kernel, or spatial coefficient helpers remain planned.
+#' models, and kernel or spatial coefficient helpers remain planned.
 #' Existing `phylo_slope()` remains current and warning-free.
 #'
 #' For exact compatibility with the released slope engine, a no-intercept
@@ -76,6 +76,53 @@ column_coef <- function(formula) invisible(NULL)
 #' extract_Sigma(fit, level = "column_coef")
 #' @export
 phylo_coef <- function(formula, tree = NULL, vcv = NULL, rho = NULL) {
+  invisible(NULL)
+}
+
+#' Animal response-column coefficients
+#'
+#' Fit response-column-specific random intercepts and/or slopes with an animal
+#' covariance supplied as a pedigree, relationship covariance `A`, or inverse
+#' relationship matrix `Ainv`. The fitted covariance across the coefficient
+#' basis is full for `|` and diagonal for `||`.
+#'
+#' This point-model route is covered for Gaussian multivariate data in long or
+#' `traits(...)` wide form. The first public version accepts a fixed numeric
+#' `rho` in `[0, 1]`. Estimated source strength, interval inference, and
+#' non-Gaussian coefficient models are not available. Existing
+#' [animal_slope()] remains current and warning-free.
+#'
+#' For exact compatibility with the released slope engine, a no-intercept
+#' dense-`A` fit with `rho = 1` uses the existing [animal_slope()] conditioning
+#' seam, `A + 1e-8 I`. Pedigree and sparse-`Ainv` endpoints use their released
+#' sparse precision. Interior `rho` and intercept-bearing `rho = 1` fits use
+#' the raw covariance-scale mixture.
+#'
+#' @param formula A coefficient-basis bar expression such as
+#'   `1 + x | trait`, `0 + x | trait`, or `1 + x || trait`.
+#' @param pedigree A pedigree accepted by the animal covariance helpers.
+#'   Mutually exclusive with `A` and `Ainv`.
+#' @param A A labelled animal relationship covariance matrix. Mutually
+#'   exclusive with `pedigree` and `Ainv`.
+#' @param Ainv A labelled animal relationship precision matrix. Mutually
+#'   exclusive with `pedigree` and `A`.
+#' @param rho One numeric value in `[0, 1]` fixing the animal source mixture.
+#' @return A formula marker; never evaluated directly.
+#' @seealso [animal_slope()], [column_coef()], [phylo_coef()], [extract_Sigma()]
+#' @examples
+#' set.seed(3)
+#' dat <- expand.grid(unit = factor(1:12), trait = factor(paste0("sp", 1:3)))
+#' dat$x <- rnorm(12)[dat$unit]
+#' dat$value <- rnorm(nrow(dat))
+#' A <- 0.4 ^ abs(outer(1:3, 1:3, "-"))
+#' dimnames(A) <- list(levels(dat$trait), levels(dat$trait))
+#' fit <- gllvmTMB(value ~ 1 + animal_coef(1 + x | trait, A = A, rho = 0.5),
+#'   data = dat, trait = "trait", unit = "unit", family = gaussian(),
+#'   control = gllvmTMBcontrol(se = FALSE), silent = TRUE)
+#' extract_Sigma(fit, level = "column_coef")
+#' @export
+animal_coef <- function(formula, pedigree = NULL, A = NULL, Ainv = NULL,
+                        rho = 1) {
   invisible(NULL)
 }
 
@@ -252,9 +299,9 @@ phylo_coef <- function(formula, tree = NULL, vcv = NULL, rho = NULL) {
   helper <- as.character(marker[[1L]])
   ## Formula markers are parsed as language objects and are never evaluated,
   ## so they do not receive ordinary R formal-argument matching automatically.
-  ## Apply it explicitly for the two public helpers: unknown, duplicated, or
+  ## Apply it explicitly for the public helpers: unknown, duplicated, or
   ## over-supplied arguments must fail rather than disappear into `extra`.
-  if (helper %in% c("column_coef", "phylo_coef")) {
+  if (helper %in% c("column_coef", "phylo_coef", "animal_coef")) {
     definition <- get(helper, mode = "function", inherits = TRUE)
     marker <- tryCatch(
       match.call(
@@ -293,6 +340,16 @@ phylo_coef <- function(formula, tree = NULL, vcv = NULL, rho = NULL) {
       "i" = "Supply exactly one tree or labelled covariance/precision source."
     ), class = "gllvmTMB_column_coef_source_invalid")
   }
+  if (identical(helper, "animal_coef")) {
+    source_names <- intersect(arg_names, c("pedigree", "A", "Ainv"))
+    source_pos <- match(source_names, arg_names) + 1L
+    if (length(source_names) != 1L || is.null(marker[[source_pos]])) {
+      .column_coef_abort(c(
+        "{.fn animal_coef} requires exactly one non-NULL animal source.",
+        "i" = "Supply one of {.arg pedigree}, {.arg A}, or {.arg Ainv}."
+      ), class = "gllvmTMB_column_coef_source_invalid")
+    }
+  }
   rho_pos <- which(arg_names == "rho") + 1L
   if (length(rho_pos) > 1L)
     .column_coef_abort("{.arg rho} may be supplied only once.")
@@ -304,6 +361,12 @@ phylo_coef <- function(formula, tree = NULL, vcv = NULL, rho = NULL) {
   } else if (length(rho_pos)) {
     rho_expr <- marker[[rho_pos]]
     if (is.null(rho_expr)) {
+      if (identical(helper, "animal_coef")) {
+        .column_coef_abort(c(
+          "Estimated {.arg rho = NULL} is not yet available for {.fn animal_coef}.",
+          "i" = "Use one fixed numeric value in [0, 1]; the default is {.code rho = 1}."
+        ), class = "gllvmTMB_column_coef_rho_not_admitted")
+      }
       rho_mode <- "estimated"
       rho <- NULL
     } else {
@@ -320,6 +383,9 @@ phylo_coef <- function(formula, tree = NULL, vcv = NULL, rho = NULL) {
       rho_mode <- "fixed"
       rho <- as.numeric(rho_value)
     }
+  } else if (identical(helper, "animal_coef")) {
+    rho_mode <- "fixed"
+    rho <- 1
   } else if (identical(helper, "spatial_coef")) {
     rho_mode <- "fixed"
     rho <- 1
@@ -387,9 +453,35 @@ phylo_coef <- function(formula, tree = NULL, vcv = NULL, rho = NULL) {
 .column_coef_engine_fence <- function(spec) {
   cli::cli_abort(c(
     "{.fn {spec$helper}} is reserved but is not yet available for fitting.",
-    "i" = "Only {.fn column_coef} and {.fn phylo_coef} currently have admitted Gaussian point-model engines.",
+    "i" = "Only {.fn column_coef}, {.fn phylo_coef}, and {.fn animal_coef} currently have admitted Gaussian point-model engines.",
     ">" = "Use the corresponding current response-column slope helper when a slope-only model answers the question."
   ), class = "gllvmTMB_column_coef_engine_not_admitted")
+}
+
+.column_coef_assert_gaussian_family <- function(family, helper) {
+  families <- if (is.list(family) && !inherits(family, "family")) {
+    unname(family)
+  } else {
+    list(family)
+  }
+  is_gaussian <- vapply(
+    families,
+    function(x) {
+      inherits(x, "family") &&
+        is.character(x$family) &&
+        length(x$family) == 1L &&
+        identical(tolower(x$family), "gaussian")
+    },
+    logical(1)
+  )
+  if (length(is_gaussian) == 0L || !all(is_gaussian)) {
+    cli::cli_abort(c(
+      "Response-column coefficients are currently available for Gaussian responses only.",
+      "x" = "The requested term is {.fn {helper}}.",
+      ">" = "Use {.fn gaussian} for this coefficient route; non-Gaussian coefficient recovery is not yet covered."
+    ), class = "gllvmTMB_column_coef_family_unsupported")
+  }
+  invisible(TRUE)
 }
 
 ## Arc 2 IID admission. Rewrite to a canonical internal single-bar call before
@@ -483,6 +575,88 @@ phylo_coef <- function(formula, tree = NULL, vcv = NULL, rho = NULL) {
   out <- expr
   for (i in seq_along(out)[-1L]) {
     out[[i]] <- .column_coef_rewrite_fixed_phylo(
+      out[[i]], spec, data = data, envir = envir
+    )
+  }
+  out
+}
+
+## Translate the three public animal source spellings to the covariance/precision
+## expression already understood by the released animal helper family.
+.column_coef_animal_source_expr <- function(marker) {
+  extras <- as.list(marker)[-(1:2)]
+  source_name <- intersect(names(extras), c("pedigree", "A", "Ainv"))
+  switch(
+    source_name,
+    pedigree = bquote(gllvmTMB::pedigree_to_Ainv_sparse(.(extras[[source_name]]))),
+    A = extras[[source_name]],
+    Ainv = bquote(
+      (function(.Ainv) {
+        if (inherits(.Ainv, "sparseMatrix")) .Ainv else solve(as.matrix(.Ainv))
+      })(.(extras[[source_name]]))
+    )
+  )
+}
+
+## The protected animal endpoint is the released animal_slope() spelling
+## itself. This keeps pedigree/A/Ainv normalization, sparse Ainv routing, TMB
+## data, parameter maps, and warning behaviour byte-identical at rho = 1.
+.column_coef_rewrite_fixed_animal <- function(expr, spec, data = NULL,
+                                               envir = parent.frame()) {
+  if (!is.call(expr)) return(expr)
+  fn <- if (is.symbol(expr[[1L]])) as.character(expr[[1L]]) else ""
+  if (identical(fn, "animal_coef")) {
+    if (!identical(spec$helper, "animal_coef") ||
+        !identical(spec$rho_mode, "fixed") || is.null(spec$rho)) {
+      .column_coef_abort(
+        "Internal: fixed {.fn animal_coef} rewrite received a non-fixed specification."
+      )
+    }
+    if (!isTRUE(spec$intercept) && identical(spec$rho, 1)) {
+      marker <- spec$call
+      if (!is.null(data)) {
+        source_value <- eval(
+          .column_coef_animal_source_expr(marker), envir = envir
+        )
+        .resolve_phylo_coef_precision(
+          phylo_tree = NULL,
+          phylo_vcv = source_value,
+          data = data,
+          group = spec$group,
+          rho = 1,
+          allow_label_superset = TRUE,
+          helper = "animal_coef"
+        )
+      }
+      extras <- as.list(marker)[-(1:2)]
+      extras$rho <- NULL
+      lhs <- Reduce(
+        function(acc, predictor) call("+", acc, as.name(predictor)),
+        spec$predictors[-1L],
+        init = as.name(spec$predictors[[1L]])
+      )
+      bar <- call(spec$bar, lhs, as.name(spec$group))
+      return(as.call(c(list(as.name("animal_slope"), bar), extras)))
+    }
+
+    marker <- spec$call
+    extras <- as.list(marker)[-(1:2)]
+    source_expr <- .column_coef_animal_source_expr(marker)
+    extras[c("pedigree", "A", "Ainv", "rho")] <- NULL
+    bar <- call("|", 0, as.name(spec$group))
+    marks <- list(
+      .column_slope_mode = if (isTRUE(spec$correlated)) "dep" else "indep",
+      column_slope_cols = spec$basis,
+      .column_slope_source = "animal",
+      .response_column_coef = TRUE,
+      .column_coef_fixed_rho = spec$rho,
+      vcv = source_expr
+    )
+    return(as.call(c(list(as.name("phylo_slope"), bar), marks, extras)))
+  }
+  out <- expr
+  for (i in seq_along(out)[-1L]) {
+    out[[i]] <- .column_coef_rewrite_fixed_animal(
       out[[i]], spec, data = data, envir = envir
     )
   }

@@ -8,18 +8,22 @@ release accompanies this candidate.
 ## Changed
 
 * **Public response-column coefficient models.** `column_coef()` fits IID
-  response-column random intercepts and slopes, while `phylo_coef()` uses
+  response-column random intercepts and slopes. `phylo_coef()` uses
   `K_rho = rho K + (1-rho) diag(K)` with fixed numeric `rho` or one estimated
-  interior value. Both use the ordinary `gllvmTMB()` entry point with long or
-  `traits(...)` wide data, and `extract_Sigma(level = "column_coef")` returns
-  the ordered coefficient covariance, source, and fitted `rho`. This is
-  Gaussian point estimation only: intervals, non-Gaussian responses, and
-  animal, kernel, or spatial coefficient helpers remain unavailable. The
+  interior value; `animal_coef()` uses the same covariance-scale mixture from
+  exactly one pedigree, relationship covariance `A`, or precision `Ainv`, with
+  fixed numeric `rho`. All three use the ordinary `gllvmTMB()` entry point with
+  long or `traits(...)` wide data, and
+  `extract_Sigma(level = "column_coef")` returns the ordered coefficient
+  covariance, source, and `rho`. This is Gaussian point estimation only:
+  intervals, non-Gaussian responses, and kernel or spatial coefficient helpers
+  remain unavailable. The
   existing `*_slope()` family remains current, warning-free, and
   non-deprecated. Exact compatibility is preserved at the no-intercept
   dense-`vcv`, `rho = 1` endpoint through the released `phylo_slope()`
-  conditioning `K + 1e-8 I`; other coefficient routes use the raw
-  covariance-scale mixture.
+  conditioning `K + 1e-8 I`; the matching no-intercept dense-`A` animal
+  endpoint inherits `A + 1e-8 I` from `animal_slope()`. Other coefficient
+  routes use the raw covariance-scale mixture.
 
 * **Predictor-informed latent axes now compose across registered native
   response families.** One complete-response ordinary unit-tier `latent(...,

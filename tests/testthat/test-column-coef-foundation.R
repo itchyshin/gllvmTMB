@@ -335,7 +335,7 @@ test_that("coefficient sources retain fixed and estimated rho intentions", {
     class = "gllvmTMB_column_coef_invalid_syntax"
   )
 
-  for (helper in c("phylo_coef", "animal_coef", "kernel_coef")) {
+  for (helper in c("phylo_coef", "kernel_coef")) {
     omitted_call <- call(
       helper, quote(0 + latitude | trait)
     )
@@ -356,6 +356,20 @@ test_that("coefficient sources retain fixed and estimated rho intentions", {
     expect_identical(fixed$rho, 0.25)
     expect_false(fixed$map_range_off)
   }
+
+  animal_default <- parse(
+    value ~ animal_coef(0 + latitude | trait, A = diag(2))
+  )
+  expect_identical(animal_default$rho_mode, "fixed")
+  expect_identical(animal_default$rho, 1)
+  expect_false(animal_default$map_range_off)
+
+  animal_fixed <- parse(
+    value ~ animal_coef(0 + latitude | trait, A = diag(2), rho = 0.25)
+  )
+  expect_identical(animal_fixed$rho_mode, "fixed")
+  expect_identical(animal_fixed$rho, 0.25)
+  expect_false(animal_fixed$map_range_off)
 
   spatial_default <- parse(
     value ~ spatial_coef(0 + latitude | trait, mesh = column_mesh)

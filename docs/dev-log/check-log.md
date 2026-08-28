@@ -55671,3 +55671,78 @@ Rscript --vanilla -e 'source("/Users/z3437171/Dropbox/Github Local/Shinichi/tool
 # unmet historical `.unlazy` ledgers (`pr1214-closeout` and
 # `response-column-coef-iid`); this lane preserved them as unrelated ownership.
 ```
+
+## 2026-08-28 -- public fixed-rho `animal_coef()` candidate
+
+Branch `codex/structured-column-coef-family` started from exact main
+`1a3b0d161781468a3e647cb9b717eb1635e20730`. The candidate exports
+`animal_coef()` for Gaussian long and `traits(...)` wide response-column random
+intercepts and slopes. It accepts exactly one pedigree, labelled `A`, or
+labelled `Ainv`, and fixed numeric `rho`; `rho = NULL`, non-Gaussian responses,
+intervals, kernel coefficients, and spatial coefficients remain deferred.
+Every `*_slope()` helper remains current, warning-free, and non-deprecated.
+
+Focused evidence:
+
+```sh
+Rscript --vanilla -e 'devtools::test(filter = "column-coef|animal-slope-recovery|fixed-column-slope-family", stop_on_failure = TRUE)'
+# PASS: 779 assertions, zero failures/warnings; four existing opt-in heavy skips.
+
+Rscript --vanilla -e 'devtools::document(quiet = TRUE)'
+# PASS: animal_coef export and generated Rd cascade; three pre-existing
+# AIC/BIC/anova S3-tag notices retained.
+
+Rscript --vanilla -e 'pkgdown::check_pkgdown(); pkgdown::build_article("articles/api-keyword-grid", pkg = ".", lazy = FALSE, new_process = FALSE, quiet = TRUE)'
+# PASS: no pkgdown problems; affected article rendered from source.
+
+git diff --check
+# PASS.
+```
+
+Exact stale-surface scans:
+
+```sh
+rg -n -i "animal(_coef)?[^\\n]{0,80}(planned|fenced|unavailable|not exported)|(?:planned|fenced|unavailable|not exported)[^\\n]{0,80}animal(_coef)?" R man NEWS.md vignettes/articles docs/design
+rg -n -i "deprecat[^\\n]{0,80}(_slope|slope\\()|(_slope|slope\\()[^\\n]{0,80}deprecat" R man NEWS.md vignettes/articles docs/design
+rg -n "animal_coef|column_coef|phylo_coef" R man NEWS.md _pkgdown.yml vignettes/articles/api-keyword-grid.Rmd docs/design/01-formula-grammar.md docs/design/131-response-column-coefficient-foundation.md docs/design/35-validation-debt-register.md
+rg -n "gllvmTMB\\(" R/column-coef-foundation.R vignettes/articles/api-keyword-grid.Rmd
+```
+
+Verdict: current reader surfaces agree on the public animal fixed-rho Gaussian
+scope and deferred regimes. Design 55/56 deprecation proposals are explicitly
+marked superseded historical text; current Design 130, NEWS, help, article, and
+register wording preserve all slope helpers. Long and wide example argument
+shapes are correct.
+
+The independent Noether review initially found installed-namespace source
+evaluation, animal screen dispatch, dense-`A` endpoint disclosure, extra
+pedigree-level alignment, and helper-specific diagnostic gaps. Each received a
+regression; the final review returned APPROVE with no P0--P3 findings. Rose
+returned terminal pre-publish PASS. Exact-head CI, protected merge, exact-main
+CI, live pkgdown, and lease-release receipts remain pending.
+
+Full local package evidence on exact source commit
+`a6670472bb34f1d27c579a7ed0f4dfcbf6034af7`:
+
+```sh
+Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'
+# PASS: 0 errors, 0 warnings, 1 note. The animal coefficient candidate
+# introduced no package-check error or warning.
+```
+
+Routine Ubuntu run `33204220861` on PR #1223 head `b5ff04888` failed one
+new structural assertion after 16,058 passes: the pure-noise intercept+slope
+fixture returned `nlminb` convergence code 1 on Ubuntu instead of the exact
+code 0 seen locally. The manual matrix `33204245822` retained green macOS job
+`98961121239` and Windows job `98961121287`; GitHub cancelled its Ubuntu job
+after the routine failure. No engine or API failure was present.
+
+The structural test now checks a finite objective, nonempty finite optimized
+parameters, and a finite analytic gradient. It does not whitelist convergence
+code 1 or impose an arbitrary gradient threshold. The separate known-DGP
+recovery test continues to require convergence zero, and the endpoint test
+continues exact objective, parameter, gradient, report, and fitted-value
+identity with `animal_slope()`. Critical re-review returned APPROVE with no
+P0--P2 finding. The repaired equivalence file passed 122/122 and the full
+coefficient/released-slope replay passed 780 assertions with zero failures or
+warnings and the same four opt-in heavy skips.

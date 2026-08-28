@@ -41,7 +41,8 @@ gllvmTMB(
 \code{value ~ 0 + trait + (0 + trait):env_temp + (0 + trait):env_precip}.
 Fixed effects and any of the three-mode grid covstructs above are
 supported (plus \code{\link[=slope]{slope()}}, \code{\link[=phylo_slope]{phylo_slope()}}, \code{\link[=animal_slope]{animal_slope()}},
-\code{\link[=kernel_slope]{kernel_slope()}}, \code{\link[=spatial_slope]{spatial_slope()}}, \code{\link[=column_coef]{column_coef()}}, \code{\link[=phylo_coef]{phylo_coef()}}, and
+\code{\link[=kernel_slope]{kernel_slope()}}, \code{\link[=spatial_slope]{spatial_slope()}}, \code{\link[=column_coef]{column_coef()}}, \code{\link[=phylo_coef]{phylo_coef()}},
+\code{\link[=animal_coef]{animal_coef()}}, and
 \code{\link[=meta_V]{meta_V()}}).
 
 An \code{offset()} term is supported for \strong{count responses only} — \code{poisson()},
@@ -435,9 +436,11 @@ for a one-paragraph tour of each cell.
 Response-column coefficient helpers are also outside the grid.
 \code{\link[=column_coef]{column_coef()}} fits IID random intercept/slope bases across response
 columns; \code{\link[=phylo_coef]{phylo_coef()}} fits the same bases with fixed or estimated
-phylogenetic correlation strength. Both support Gaussian point models in
-long and \code{traits(...)} wide form. Other structured coefficient sources,
-non-Gaussian coefficient models, and interval inference remain unavailable.
+phylogenetic correlation strength; \code{\link[=animal_coef]{animal_coef()}} fits them from a pedigree,
+relationship covariance, or relationship precision with fixed correlation
+strength. All three support Gaussian point models in long and \code{traits(...)}
+wide form. Kernel and spatial coefficient sources, non-Gaussian coefficient
+models, and interval inference remain unavailable.
 
 \code{gllvmTMB()} parses the glmmTMB-style formula, converts wide
 \code{\link[=traits]{traits()}} input to the same internal stacked-trait representation as

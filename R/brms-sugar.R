@@ -2720,7 +2720,7 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
       ## block in `R/fit-multi.R` detects sparse input and uses it
       ## directly as Ainv_phy_rr (mirroring the phylo_tree route at
       ## `R/fit-multi.R:1037`).
-      return(bquote(pedigree_to_Ainv_sparse(.(ped_expr))))
+      return(bquote(gllvmTMB::pedigree_to_Ainv_sparse(.(ped_expr))))
     }
     if ("A" %in% nm) {
       return(e[[which(nm == "A")]])
@@ -2731,7 +2731,11 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
       ## unchanged so fit-multi.R's sparse-Ainv path detects it.
       ## Dense Ainv inputs are inverted to dense A for the legacy
       ## dense path (preserves backward compatibility).
-      return(bquote(.gllvmTMB_maybe_keep_sparse_ainv(.(Ainv_expr))))
+      return(bquote(
+        (function(.Ainv) {
+          if (inherits(.Ainv, "sparseMatrix")) .Ainv else solve(as.matrix(.Ainv))
+        })(.(Ainv_expr))
+      ))
     }
     if (fn == "animal_slope") {
       return(NULL)
@@ -2743,7 +2747,10 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
   }
   rewrite <- function(e) {
     if (is.call(e)) {
-      fn <- as.character(e[[1L]])
+      ## A source expression may contain a namespaced call (`pkg::fun(x)`) or
+      ## an inline normaliser. Those are ordinary argument expressions, not
+      ## covariance keywords, so only a symbol head can name a keyword here.
+      fn <- if (is.symbol(e[[1L]])) as.character(e[[1L]]) else ""
       ## Fixed-source response-column helpers.  They all reduce to the proven
       ## matrix-normal phylo_slope core; the marker controls the source
       ## precision and public metadata without changing the C++ likelihood.

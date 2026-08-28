@@ -2,8 +2,8 @@
 
 Reviewer: Sol/high method gate  
 Date: 2026-08-28  
-Verdict: model routes pass; evidence design fails until the five amendments
-below are explicitly approved and frozen.
+Verdict: model routes pass; the five evidence-design amendments below were
+explicitly approved by the maintainer on 2026-08-28 and are now frozen.
 
 1. **Target availability.** The original plan could pass recovery on a selected
    extractable subset. Every named target now needs availability at least 0.85
@@ -33,6 +33,5 @@ Additional freezes:
   uncertainty at preregistered in-hull sentinels.
 
 No fit was run for this review. These corrections do not change the likelihood,
-formula grammar, or public scope. They do change the approved adjudication
-contract, so production remains blocked pending maintainer acceptance.
-
+formula grammar, or public scope. Maintainer acceptance is complete. Production
+remains blocked only by the post-coefficient source and ownership gates.

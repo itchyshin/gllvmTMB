@@ -1,4 +1,4 @@
-## Internal fixed-rho phylogenetic response-column coefficients.
+## Fixed-rho phylogenetic response-column coefficients.
 ##
 ## Symbolic <-> implementation alignment:
 ##
@@ -105,16 +105,20 @@
   )
 }
 
-test_that("public phylo_coef remains behind the engine fence", {
+test_that("public fixed-rho phylo_coef enters the admitted engine", {
   fx <- .make_phylo_coef_fixture()
-  expect_error(
-    gllvmTMB::gllvmTMB(
-      value ~ 1 + phylo_coef(1 + x | trait, vcv = fx$K, rho = 0.37),
-      data = fx$data, trait = "trait", unit = "unit",
-      family = stats::gaussian(),
-      control = gllvmTMB::gllvmTMBcontrol(se = FALSE), silent = TRUE
-    ),
-    class = "gllvmTMB_column_coef_engine_not_admitted"
+  fit <- suppressMessages(gllvmTMB::gllvmTMB(
+    value ~ 1 + phylo_coef(1 + x | trait, vcv = fx$K, rho = 0.37),
+    data = fx$data, trait = "trait", unit = "unit",
+    family = stats::gaussian(),
+    control = gllvmTMB::gllvmTMBcontrol(se = FALSE), silent = TRUE
+  ))
+  expect_true(isTRUE(fit$use$response_column_coef))
+  expect_identical(fit$use$response_column_coef_source, "phylo")
+  expect_identical(fit$use$response_column_coef_rho_status, "fixed")
+  expect_identical(
+    gllvmTMB::extract_Sigma(fit, level = "column_coef")$rho,
+    0.37
   )
 })
 

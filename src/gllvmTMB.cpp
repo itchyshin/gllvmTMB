@@ -873,6 +873,11 @@ Type objective_function<Type>::operator()()
   // matrix-normal likelihood below, but its precision and row map are the
   // term-local RHS-resolved fields above rather than the shared cluster tier.
   DATA_INTEGER(use_phylo_column_slope);
+  DATA_INTEGER(use_column_coef_estimated_rho);
+  DATA_MATRIX(column_coef_source_U);
+  DATA_VECTOR(column_coef_source_lambda);
+  DATA_VECTOR(column_coef_source_inv_d);
+  DATA_SCALAR(column_coef_source_logdet_D2);
   DATA_INTEGER(n_lhs_cols);           // block-local LHS columns: 1 or 2 (unique/indep);
                                       // C = 2*n_traits for the phylo_dep slope path
   DATA_ARRAY(Z_phy_aug);              // n_obs x n_lhs_cols x n_phy_aug_blocks
@@ -1163,6 +1168,7 @@ Type objective_function<Type>::operator()()
   // (and mapped off) for the legacy / unique / indep paths (C in {1,2}),
   // so those fits are byte-identical. See Sigma_b construction below.
   PARAMETER_VECTOR(theta_dep_chol);               // length C(C+1)/2 when use_phylo_dep_slope; else 0
+  PARAMETER(eta_column_coef_rho);                 // outer fixed parameter; never Laplace-random
 
   // Generic random intercepts: flat vector across all (1|g) terms.
   PARAMETER_VECTOR(u_re_int);                    // length sum(re_int_n_groups) (or 1 if unused)
@@ -1973,6 +1979,12 @@ Type objective_function<Type>::operator()()
         if (phylo_slope_aug_id(o) < 0 ||
             phylo_slope_aug_id(o) >= n_aug_phy_slope)
           error("gllvmTMB_multi: column-slope RHS map is out of bounds");
+      if (use_column_coef_estimated_rho == 1 &&
+          (column_coef_source_U.rows() != n_aug_phy_slope ||
+           column_coef_source_U.cols() != n_aug_phy_slope ||
+           column_coef_source_lambda.size() != n_aug_phy_slope ||
+           column_coef_source_inv_d.size() != n_aug_phy_slope))
+        error("gllvmTMB_multi: estimated-rho spectral source dimensions are inconsistent");
     }
     if (b_phy_aug.dim[0] != n_aug_phy_aug)
       error("gllvmTMB_multi: b_phy_aug first dimension has wrong phylogenetic source size");
@@ -2039,6 +2051,19 @@ Type objective_function<Type>::operator()()
           cor_b_mat(a, bcol) = Sigma_b_dep(a, bcol) / (sd_b(a) * sd_b(bcol));
       REPORT(cor_b_mat);
       REPORT(Sigma_b_dep);
+      Type column_coef_rho = invlogit(eta_column_coef_rho);
+      Type column_coef_logdet_K_rho = log_det_A_phy_slope;
+      if (use_column_coef_estimated_rho == 1) {
+        column_coef_logdet_K_rho = column_coef_source_logdet_D2;
+        for (int i = 0; i < n_aug_phy_slope; ++i) {
+          Type s_i = Type(1) - column_coef_rho +
+            column_coef_rho * column_coef_source_lambda(i);
+          column_coef_logdet_K_rho += log(s_i);
+        }
+        REPORT(column_coef_rho);
+        ADREPORT(column_coef_rho);
+        REPORT(column_coef_logdet_K_rho);
+      }
       // -log p(vec(B)) = 0.5 [ n*C*log(2pi) + n*logdet(Sigma_b)
       //                        + C*logdet(A) + tr(Sigma_b^{-1} B' A^{-1} B) ].
       for (int k = 0; k < b_phy_aug.dim[2]; k++) {
@@ -2046,9 +2071,28 @@ Type objective_function<Type>::operator()()
         matrix<Type> Bmat(n_aug_phy_aug, C);
         for (int j = 0; j < C; j++)
           for (int i = 0; i < n_aug_phy_aug; i++) Bmat(i, j) = b_phy_aug(i, j, k);
-        matrix<Type> AinvB = use_phylo_column_slope == 1 ?
-          Ainv_phy_slope * Bmat : Ainv_phy_rr * Bmat;
-        matrix<Type> Q = Bmat.transpose() * AinvB;      // C x C
+        matrix<Type> Q(C, C);
+        if (use_column_coef_estimated_rho == 1) {
+          matrix<Type> W(n_aug_phy_aug, C);
+          W.setZero();
+          for (int j = 0; j < C; ++j)
+            for (int r = 0; r < n_aug_phy_aug; ++r)
+              for (int i = 0; i < n_aug_phy_aug; ++i)
+                W(r, j) += column_coef_source_U(i, r) *
+                  column_coef_source_inv_d(i) * Bmat(i, j);
+          Q.setZero();
+          for (int j = 0; j < C; ++j)
+            for (int l = 0; l < C; ++l)
+              for (int r = 0; r < n_aug_phy_aug; ++r) {
+                Type s_r = Type(1) - column_coef_rho +
+                  column_coef_rho * column_coef_source_lambda(r);
+                Q(j, l) += W(r, j) * W(r, l) / s_r;
+              }
+        } else {
+          matrix<Type> AinvB = use_phylo_column_slope == 1 ?
+            Ainv_phy_slope * Bmat : Ainv_phy_rr * Bmat;
+          Q = Bmat.transpose() * AinvB;
+        }
         // tr(Sigma_b^{-1} Q) = sum_{j,l} Sigma_b_inv(j,l) * Q(l,j).
         Type quad = Type(0);
         for (int j = 0; j < C; j++)
@@ -2056,7 +2100,9 @@ Type objective_function<Type>::operator()()
             quad += Sigma_b_inv(j, l) * Q(l, j);
         nll += Type(0.5) * (Type(n_aug_phy_aug * C) * log(2.0 * M_PI)
                             + Type(n_aug_phy_aug) * logdet_Sigma_b
-                            + Type(C) * (use_phylo_column_slope == 1 ? log_det_A_phy_slope : log_det_A_phy_rr)
+                            + Type(C) * (use_column_coef_estimated_rho == 1 ?
+                              column_coef_logdet_K_rho :
+                              (use_phylo_column_slope == 1 ? log_det_A_phy_slope : log_det_A_phy_rr))
                             + quad);
       }
     } else {

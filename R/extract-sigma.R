@@ -581,7 +581,8 @@ link_residual_per_trait <- function(fit) {
 #'   no-op convention. `unit_obs`, structured tiers, and augmented-slope tiers
 #'   remain gated for Julia bridge extractors.
 #' @param level One of `"unit"` (between-unit), `"unit_obs"` (within-unit),
-#'   `"phy"` (phylogenetic), `"column_slope"` (the predictor-basis covariance
+#'   `"phy"` (phylogenetic), `"column_coef"` (the response-column coefficient
+#'   basis covariance), `"column_slope"` (the predictor-basis covariance
 #'   from [slope()], [phylo_slope()], [animal_slope()], [kernel_slope()],
 #'   [spatial_slope()], or the corresponding `*_indep()` / `*_dep()` canonical
 #'   form), `"spatial"`,
@@ -632,6 +633,12 @@ link_residual_per_trait <- function(fit) {
 #'   \eqn{\mathrm{Cov}(\mathrm{vec}(B^\mathsf{T})) = K_\mathrm{column}
 #'   \otimes \Sigma}. For `P = 1`, full and diagonal bars are the same model
 #'   and return the same object with canonical `part = "dep"`.
+#'
+#'   For `level = "column_coef"`: a list with coefficient-basis covariance
+#'   `Sigma`, correlation `R`, ordered `basis`, aligned response-column
+#'   `source`, `rho_status`, `rho`, and (for [phylo_coef()] fits) the effective
+#'   source covariance `K_rho`. IID [column_coef()] fits report
+#'   `rho_status = "not_applicable"`, `rho = NULL`, and `K_rho = NULL`.
 #'
 #'   For a `phylo_dep(1 + x1 + ... + xs | species)` fit with one or more
 #'   slopes, call with `level = "phy"`: the result is the single full
@@ -710,6 +717,7 @@ extract_Sigma <- function(
     "unit_obs",
     "phy",
     "phy_slope",
+    "column_coef",
     "column_slope",
     "spatial",
     "spde_slope",
@@ -917,8 +925,80 @@ extract_Sigma <- function(
     ))
   }
 
+  ## ---- public response-column coefficient basis -------------------------
+  if (isTRUE(fit$use$response_column_coef) && identical(level, "column_coef")) {
+    Sigma <- as.matrix(fit$report$Sigma_b_dep)
+    basis <- fit$use$response_column_coef_basis
+    if (is.null(basis) || length(basis) != nrow(Sigma)) {
+      cli::cli_abort("Coefficient fit is missing its ordered basis metadata.")
+    }
+    rownames(Sigma) <- colnames(Sigma) <- basis
+    source_type <- fit$use$response_column_coef_source %||%
+      fit$use$phylo_column_slope_source %||% "iid"
+    rho_status <- fit$use$response_column_coef_rho_status %||%
+      if (identical(source_type, "iid")) "not_applicable" else "fixed"
+    rho <- if (identical(rho_status, "estimated")) {
+      as.numeric(fit$report$column_coef_rho)
+    } else if (identical(rho_status, "fixed")) {
+      as.numeric(fit$use$response_column_coef_rho)
+    } else NULL
+    K_rho <- NULL
+    if (identical(source_type, "phylo")) {
+      if (identical(rho_status, "estimated")) {
+        U <- fit$tmb_data$column_coef_source_U
+        lambda <- fit$tmb_data$column_coef_source_lambda
+        d <- 1 / fit$tmb_data$column_coef_source_inv_d
+        s <- (1 - rho) + rho * lambda
+        K_rho <- diag(d) %*% U %*% diag(s) %*% t(U) %*% diag(d)
+      } else {
+        K_full <- solve(as.matrix(fit$tmb_data$Ainv_phy_slope))
+        labels <- fit$use$phylo_column_slope_labels %||%
+          levels(fit$data[[fit$trait_col]])
+        trait_value <- as.character(fit$data[[fit$trait_col]])
+        row_for_label <- match(labels, trait_value)
+        source_index <- fit$tmb_data$phylo_slope_aug_id[row_for_label] + 1L
+        K_rho <- K_full[source_index, source_index, drop = FALSE]
+      }
+      labels <- fit$use$phylo_column_slope_labels %||%
+        levels(fit$data[[fit$trait_col]])
+      dimnames(K_rho) <- list(labels, labels)
+    }
+    return(list(
+      Sigma = Sigma,
+      R = .safe_cov2cor(Sigma, basis),
+      level = "column_coef",
+      part = fit$use$phylo_column_slope_mode %||% "dep",
+      basis = basis,
+      source = list(
+        type = source_type,
+        grouping = fit$trait_col,
+        labels = fit$use$phylo_column_slope_labels %||%
+          levels(fit$data[[fit$trait_col]])
+      ),
+      rho = rho,
+      rho_status = rho_status,
+      K_rho = K_rho,
+      note = "Response-column coefficient covariance; the response-column source supplies the other Kronecker factor."
+    ))
+  }
+  if (isTRUE(fit$use$response_column_coef) &&
+      identical(level, "column_slope")) {
+    cli::cli_abort(c(
+      "This fit contains a response-column coefficient basis, not a slope-only basis.",
+      "i" = "Use {.code extract_Sigma(fit, level = \"column_coef\")} to retain intercept and slope labels."
+    ))
+  }
+  if (!isTRUE(fit$use$response_column_coef) &&
+      identical(level, "column_coef")) {
+    cli::cli_abort(
+      "The fitted model has no {.fn column_coef} or {.fn phylo_coef} term."
+    )
+  }
+
   ## ---- slope-only response-column coefficient basis --------------------
-  if (isTRUE(fit$use$phylo_column_slope) && identical(level, "column_slope")) {
+  if (isTRUE(fit$use$phylo_column_slope) &&
+      !isTRUE(fit$use$response_column_coef) &&
+      identical(level, "column_slope")) {
     source_type <- fit$use$phylo_column_slope_source %||% "phylo"
     Sigma <- if (identical(source_type, "spatial")) {
       fit$report$Sigma_field

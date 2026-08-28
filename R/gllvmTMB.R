@@ -45,11 +45,19 @@
 #' [formula keyword grid article](https://itchyshin.github.io/gllvmTMB/articles/api-keyword-grid.html)
 #' for a one-paragraph tour of each cell.
 #'
+#' Response-column coefficient helpers are also outside the grid.
+#' [column_coef()] fits IID random intercept/slope bases across response
+#' columns; [phylo_coef()] fits the same bases with fixed or estimated
+#' phylogenetic correlation strength. Both support Gaussian point models in
+#' long and `traits(...)` wide form. Other structured coefficient sources,
+#' non-Gaussian coefficient models, and interval inference remain unavailable.
+#'
 #' @param formula A glmmTMB-style formula, e.g.
 #'   `value ~ 0 + trait + (0 + trait):env_temp + (0 + trait):env_precip`.
 #'   Fixed effects and any of the three-mode grid covstructs above are
 #'   supported (plus [slope()], [phylo_slope()], [animal_slope()],
-#'   [kernel_slope()], [spatial_slope()], and [meta_V()]).
+#'   [kernel_slope()], [spatial_slope()], [column_coef()], [phylo_coef()], and
+#'   [meta_V()]).
 #'
 #'   An `offset()` term is supported for **count responses only** — `poisson()`,
 #'   `nbinom1()`, `nbinom2()`, `truncated_poisson()`, and
@@ -78,10 +86,11 @@
 #'   Ordinary missing predictors, grouping variables, and design-matrix values
 #'   still error; explicitly modelled missing predictors use `mi(x)` with
 #'   `missing = miss_control(predictor = "model")` and `impute = list(...)`.
-#' @param column_data Optional keyed response-column metadata. Arc 1 validates
-#'   and joins this data internally for fixed-effect parsing; its key column
+#' @param column_data Optional keyed response-column metadata. Its key column
 #'   must have the same name as `trait` and exactly match the response columns.
-#'   This foundation is not yet a public `*_coef()` fitting route.
+#'   Joined fields are available to fixed effects but cannot be coefficient
+#'   bases, grouping columns, or covariance sources. In wide input, key this
+#'   table by the synthetic column name `trait` and omit the `trait` argument.
 #' @param trait Name of the column holding the trait factor (the
 #'   "trait" dimension of the unit × trait response matrix). Default
 #'   `"trait"`.
@@ -1055,7 +1064,7 @@ gllvmTMB <- function(
   )
   if (!is.null(column_coef_spec)) {
     .column_coef_assert_no_overlap(formula, data, trait, column_coef_spec)
-    if (!identical(column_coef_spec$helper, "column_coef")) {
+    if (!column_coef_spec$helper %in% c("column_coef", "phylo_coef")) {
       .column_coef_engine_fence(column_coef_spec)
     }
   }
@@ -1070,9 +1079,16 @@ gllvmTMB <- function(
 
   ## ---- Desugar brms-style sugar (phylo / gr / meta) ---------------------
   if (!is.null(column_coef_spec)) {
-    formula[[3L]] <- .column_coef_rewrite_iid(
-      formula[[3L]], column_coef_spec
-    )
+    formula[[3L]] <- if (identical(column_coef_spec$helper, "column_coef")) {
+      .column_coef_rewrite_iid(formula[[3L]], column_coef_spec)
+    } else if (identical(column_coef_spec$rho_mode, "fixed")) {
+      .column_coef_rewrite_fixed_phylo(
+        formula[[3L]], column_coef_spec, data = data,
+        envir = environment(formula)
+      )
+    } else {
+      .column_coef_rewrite_estimated_phylo(formula[[3L]], column_coef_spec)
+    }
   }
   formula <- desugar_brms_sugar(formula, trait_col = trait)
 
@@ -1226,6 +1242,23 @@ gllvmTMB <- function(
     .gllvmTMB_fit_aghq_auto_ridge(fit_once, control)
   } else {
     fit_once(control)
+  }
+  ## Public coefficient provenance is attached after fitting. In particular,
+  ## no-intercept phylo_coef(..., rho = 1) deliberately hard-dispatches through
+  ## the released phylo_slope() TMB bytes; post-fit metadata preserves that
+  ## exact engine identity while still giving the coefficient extractor the
+  ## user's basis and source semantics.
+  if (!is.null(column_coef_spec)) {
+    .fit$use$response_column_coef <- TRUE
+    .fit$use$response_column_coef_basis <- column_coef_spec$basis
+    .fit$use$response_column_coef_source <- column_coef_spec$source
+    .fit$use$response_column_coef_rho_status <- switch(
+      column_coef_spec$rho_mode,
+      none = "not_applicable",
+      fixed = "fixed",
+      estimated = "estimated"
+    )
+    .fit$use$response_column_coef_rho <- column_coef_spec$rho
   }
   ## Attach multinomial category metadata (baseline label + category order) so
   ## predict(type = "response") can reconstruct per-category softmax

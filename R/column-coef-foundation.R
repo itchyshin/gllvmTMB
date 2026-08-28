@@ -1,7 +1,83 @@
-## Design 131: response-column coefficient front-end and private engine hooks.
-## Marker names remain unexported and public gllvmTMB() calls stop before
-## likelihood assembly. Narrow internal tests may explicitly rewrite admitted
-## IID and fixed-rho phylogenetic terms after the public fence is checked.
+## Design 131: response-column coefficient front-end and engine hooks.
+
+#' IID response-column coefficients
+#'
+#' Fit response-column-specific random intercepts and/or slopes with an IID
+#' source across response columns. The coefficient matrix has covariance
+#' `I` across response columns and a fitted full (`|`) or diagonal (`||`)
+#' covariance across the coefficient basis.
+#'
+#' This point-model route is covered for Gaussian multivariate data in long or
+#' `traits(...)` wide form, with bare numeric row predictors. Non-Gaussian
+#' coefficient models and interval inference are not available in this
+#' release. [phylo_coef()] is the only supported structured source; animal,
+#' kernel, and spatial coefficient sources remain planned.
+#'
+#' @param formula A coefficient-basis bar expression such as
+#'   `1 + x | trait`, `0 + x | trait`, or `1 + x || trait`.
+#' @return A formula marker; never evaluated directly.
+#' @seealso [phylo_coef()], [extract_Sigma()]
+#' @examples
+#' set.seed(1)
+#' dat <- expand.grid(unit = factor(1:10), trait = factor(paste0("sp", 1:3)))
+#' dat$x <- rnorm(10)[dat$unit]
+#' dat$value <- rnorm(nrow(dat))
+#' fit <- gllvmTMB(value ~ 1 + column_coef(0 + x | trait), data = dat,
+#'   trait = "trait", unit = "unit", family = gaussian(),
+#'   control = gllvmTMBcontrol(se = FALSE), silent = TRUE)
+#' extract_Sigma(fit, level = "column_coef")
+#' @export
+column_coef <- function(formula) invisible(NULL)
+
+#' Phylogenetic response-column coefficients
+#'
+#' Fit response-column-specific random intercepts and/or slopes with source
+#' covariance `K_rho = rho * K + (1 - rho) * diag(diag(K))`. Supply a numeric
+#' `rho` in `[0, 1]` to fix the mixture or use `rho = NULL` (the default) to
+#' estimate one interior value. The fitted covariance across the coefficient
+#' basis is full for `|` and diagonal for `||`.
+#'
+#' This point-model route is covered for Gaussian multivariate data in long or
+#' `traits(...)` wide form, with a labelled positive-definite tree covariance
+#' source and bare numeric row predictors. Numeric `rho` and one estimated
+#' interior `rho` are supported. Interval inference, non-Gaussian coefficient
+#' models, and animal, kernel, or spatial coefficient helpers remain planned.
+#' Existing `phylo_slope()` remains current and warning-free.
+#'
+#' For exact compatibility with the released slope engine, a no-intercept
+#' dense-`vcv` fit with `rho = 1` uses the existing [phylo_slope()]
+#' conditioning seam, `K + 1e-8 I`. Tree sources use their released sparse
+#' precision. Interior fixed `rho`, estimated `rho`, and intercept-bearing
+#' `rho = 1` fits use the raw covariance-scale mixture shown above.
+#' Estimating `rho` requires genuine between-column correlation contrast in
+#' the standardized source; a diagonal source cannot identify the mixture and
+#' is rejected. Supply exactly one of `tree` or `vcv`, never both.
+#'
+#' @param formula A coefficient-basis bar expression such as
+#'   `1 + x | trait`, `0 + x | trait`, or `1 + x || trait`.
+#' @param tree An `ape::phylo` tree whose tip labels match the response columns.
+#'   Mutually exclusive with `vcv`.
+#' @param vcv A labelled positive-definite covariance matrix, or a labelled
+#'   sparse precision matrix, for the response columns. Mutually exclusive
+#'   with `tree`.
+#' @param rho `NULL` to estimate an interior phylogenetic mixture, or one
+#'   numeric value in `[0, 1]` to fix it.
+#' @return A formula marker; never evaluated directly.
+#' @seealso [column_coef()], [phylo_slope()], [extract_Sigma()]
+#' @examples
+#' set.seed(2)
+#' dat <- expand.grid(unit = factor(1:12), trait = factor(paste0("sp", 1:4)))
+#' dat$x <- rnorm(12)[dat$unit]
+#' dat$value <- rnorm(nrow(dat))
+#' K <- diag(4); dimnames(K) <- list(levels(dat$trait), levels(dat$trait))
+#' fit <- gllvmTMB(value ~ 1 + phylo_coef(0 + x | trait, vcv = K, rho = 0.5),
+#'   data = dat, trait = "trait", unit = "unit", family = gaussian(),
+#'   control = gllvmTMBcontrol(se = FALSE), silent = TRUE)
+#' extract_Sigma(fit, level = "column_coef")
+#' @export
+phylo_coef <- function(formula, tree = NULL, vcv = NULL, rho = NULL) {
+  invisible(NULL)
+}
 
 .column_coef_helpers <- c(
   "column_coef", "phylo_coef", "animal_coef", "kernel_coef", "spatial_coef"
@@ -174,6 +250,25 @@
                        class = "gllvmTMB_column_coef_multiple_sources")
   marker <- calls[[1L]]
   helper <- as.character(marker[[1L]])
+  ## Formula markers are parsed as language objects and are never evaluated,
+  ## so they do not receive ordinary R formal-argument matching automatically.
+  ## Apply it explicitly for the two public helpers: unknown, duplicated, or
+  ## over-supplied arguments must fail rather than disappear into `extra`.
+  if (helper %in% c("column_coef", "phylo_coef")) {
+    definition <- get(helper, mode = "function", inherits = TRUE)
+    marker <- tryCatch(
+      match.call(
+        definition = definition,
+        call = marker,
+        expand.dots = FALSE,
+        envir = environment(formula)
+      ),
+      error = function(e) .column_coef_abort(c(
+        "Invalid argument list for {.fn {helper}}.",
+        "x" = conditionMessage(e)
+      ))
+    )
+  }
   if (length(marker) < 2L)
     .column_coef_abort("{.fn {helper}} requires a coefficient basis and response-column factor separated by a bar.")
   bar_call <- marker[[2L]]
@@ -191,6 +286,13 @@
                                     response_vars)
   arg_names <- names(as.list(marker))[-1L]
   arg_names[is.na(arg_names)] <- ""
+  if (identical(helper, "phylo_coef") &&
+      all(c("tree", "vcv") %in% arg_names)) {
+    .column_coef_abort(c(
+      "{.fn phylo_coef} accepts one response-column source, not both {.arg tree} and {.arg vcv}.",
+      "i" = "Supply exactly one tree or labelled covariance/precision source."
+    ), class = "gllvmTMB_column_coef_source_invalid")
+  }
   rho_pos <- which(arg_names == "rho") + 1L
   if (length(rho_pos) > 1L)
     .column_coef_abort("{.arg rho} may be supplied only once.")
@@ -284,9 +386,9 @@
 
 .column_coef_engine_fence <- function(spec) {
   cli::cli_abort(c(
-    "{.fn {spec$helper}} passed Arc 1 parsing, but its likelihood engine is not yet admitted.",
-    "i" = "The parser and metadata contract are available only for internal validation.",
-    ">" = "Continue using the released response-column slope helpers until the coefficient engine is validated."
+    "{.fn {spec$helper}} is reserved but is not yet available for fitting.",
+    "i" = "Only {.fn column_coef} and {.fn phylo_coef} currently have admitted Gaussian point-model engines.",
+    ">" = "Use the corresponding current response-column slope helper when a slope-only model answers the question."
   ), class = "gllvmTMB_column_coef_engine_not_admitted")
 }
 
@@ -316,9 +418,9 @@
   out
 }
 
-## Internal fixed-rho phylogenetic admission. The public gllvmTMB() entry
-## point keeps phylo_coef() behind .column_coef_engine_fence(); tests enter
-## this rewrite explicitly until the estimated-rho/public slice is earned.
+## Phylogenetic admission. The protected fixed-rho endpoint is unchanged;
+## estimated rho carries a non-NULL boolean marker because parse_covstruct_call
+## drops list elements assigned NULL.
 .column_coef_rewrite_fixed_phylo <- function(expr, spec, data = NULL,
                                               envir = parent.frame()) {
   if (!is.call(expr)) return(expr)
@@ -383,6 +485,36 @@
     out[[i]] <- .column_coef_rewrite_fixed_phylo(
       out[[i]], spec, data = data, envir = envir
     )
+  }
+  out
+}
+
+.column_coef_rewrite_estimated_phylo <- function(expr, spec) {
+  if (!is.call(expr)) return(expr)
+  fn <- if (is.symbol(expr[[1L]])) as.character(expr[[1L]]) else ""
+  if (identical(fn, "phylo_coef")) {
+    if (!identical(spec$helper, "phylo_coef") ||
+        !identical(spec$rho_mode, "estimated")) {
+      .column_coef_abort(
+        "Internal: estimated {.fn phylo_coef} rewrite received a non-estimated specification."
+      )
+    }
+    marker <- spec$call
+    extras <- as.list(marker)[-(1:2)]
+    extras$rho <- NULL
+    bar <- call("|", 0, as.name(spec$group))
+    marks <- list(
+      .column_slope_mode = if (isTRUE(spec$correlated)) "dep" else "indep",
+      column_slope_cols = spec$basis,
+      .column_slope_source = "phylo",
+      .response_column_coef = TRUE,
+      .column_coef_estimated_rho = TRUE
+    )
+    return(as.call(c(list(as.name("phylo_slope")), list(bar), marks, extras)))
+  }
+  out <- expr
+  for (i in seq_along(out)[-1L]) {
+    out[[i]] <- .column_coef_rewrite_estimated_phylo(out[[i]], spec)
   }
   out
 }

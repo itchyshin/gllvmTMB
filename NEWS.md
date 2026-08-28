@@ -7,6 +7,20 @@ release accompanies this candidate.
 
 ## Changed
 
+* **Public response-column coefficient models.** `column_coef()` fits IID
+  response-column random intercepts and slopes, while `phylo_coef()` uses
+  `K_rho = rho K + (1-rho) diag(K)` with fixed numeric `rho` or one estimated
+  interior value. Both use the ordinary `gllvmTMB()` entry point with long or
+  `traits(...)` wide data, and `extract_Sigma(level = "column_coef")` returns
+  the ordered coefficient covariance, source, and fitted `rho`. This is
+  Gaussian point estimation only: intervals, non-Gaussian responses, and
+  animal, kernel, or spatial coefficient helpers remain unavailable. The
+  existing `*_slope()` family remains current, warning-free, and
+  non-deprecated. Exact compatibility is preserved at the no-intercept
+  dense-`vcv`, `rho = 1` endpoint through the released `phylo_slope()`
+  conditioning `K + 1e-8 I`; other coefficient routes use the raw
+  covariance-scale mixture.
+
 * **Predictor-informed latent axes now compose across registered native
   response families.** One complete-response ordinary unit-tier `latent(...,
   lv = ~ x)` block may combine registered family/link rows. The loadings-only

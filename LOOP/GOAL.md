@@ -1,25 +1,57 @@
-# GOAL — overnight Poisson MSPL W_* REPLACE (Cursor · ~10–12 h)
+# GOAL — admit the first structured response-column coefficient source
 
-**IMMUTABLE for this run.** Re-read at the top of EVERY arc.
-**Authority:** G0 SIGNED REPLACE — `docs/dev-log/research/2026-08-17-mspl-poisson-W-G0.md` (#1102).
-**Owner:** Cursor owns `src/` (Codex override). Shinichi 2026-08-17: **"I preapprove all"** → push PR + merge when CI green allowed; hard OUT still absolute.
+**IMMUTABLE for this lane.** Re-read this file before every arc.
 
-## Mission
-On this local-scratch worktree from origin/main, implement SIGNED G0 REPLACE: Poisson MSPL live weight `family_id==2` from `return eta` / `W=diag(mu)` → working logistic `W_* = gll_mspl_log_weight(eta, 0)` (Tweedie precedent). Rewrite #1064 W2/W7 (+ W8), rematch `R/mspl-poisson-atoms.R` + A6, update `03-likelihoods.md`, tmb-likelihood-review + simulation recovery. Secondary after rematch green: fence docs, #1077 draft-only, family-door PREP notes, mspl-api tests.
+## Deliverable
 
-## Soft-gate defaults (preapproved)
-- Admit: keep experimental `admitted` if rematch green; else park `planned`
-- #1077 stays draft; no Design 125 fork smoke; SE doors PREP notes only
-
-## Hard OUT (absolute even under preapprove)
-- public se=TRUE / vcov / confint / NEWS covered
-- undraft #1077 for public confint
-- Totoro / Design 118 / Lane B / rebuild #1090
-- KF2021 beyond binomial; git add -A; isdm-package-recovery
+Implement, document, verify, and normally merge public Gaussian point-model
+`animal_coef()` support in long and `traits(...)` wide formats, building on the
+current warning-free `animal_slope()` endpoint. This is the first serial arc of
+the approved animal -> kernel -> spatial coefficient programme.
 
 ## Definition of done
-- [x] A0 worktree
-- [x] A1–A5 rematch/recovery/review green
-- [x] A6–A7 fence/tests; A8 PR open (#1111)
-- [x] PR pushed (#1111); CI green; **MERGED** into `main` at `3053fce3`
-- [x] Docs closeout (#1116); LOOP **GOAL_MET**; hard OUT held in full
+
+- `animal_coef()` accepts exactly one of `pedigree`, `A`, or `Ainv`.
+- Fixed numeric `rho` in `[0, 1]` is supported with public default `rho = 1`;
+  estimated `rho = NULL` remains fenced for a later evidence slice.
+- Long `animal_coef(0 + x | trait, rho = 1)` is byte-equivalent to long
+  `animal_slope(x | trait)` for `|` and `||`.
+- Wide `animal_coef()` is byte-equivalent to its matched long fit.
+- Intercept and intercept-plus-slope bases, recovery, labels, malformed inputs,
+  extractors, documentation, pkgdown, and regression gates pass.
+- Existing `*_slope()` helpers remain current, warning-free, and unchanged.
+- The PR is reviewed, green on Ubuntu/macOS/Windows, merged normally without
+  bypass, exact-main verification succeeds, pkgdown is live, and leases release.
+
+## Invariants
+
+- Preserve all unrelated gllvmTMB lanes and never revert their work.
+- No blanket `*_slope()` deprecation or warning.
+- No wide `*_slope()` admission; prove replacement through the two-link gate.
+- No intervals, non-Gaussian claim, estimated animal `rho`, `*_latent()` rho,
+  kernel, spatial, article expansion, release, or version bump in this lane.
+- No new TMB likelihood unless exact R-side reuse is proven insufficient and a
+  scope-changing review gate is reopened.
+- Do not push while another CI run is active; never bypass branch protection.
+
+## Pre-authorisation
+
+- Continue routine scoped edits, tests, builds, local fits under 30 minutes,
+  documentation, checkpoints, local commits, one branch push, PR creation,
+  CI-paced attributable repairs, and normal protected merge after exact-head
+  three-OS success.
+- Stop for a protection bypass, release/version bump, external compute campaign,
+  destructive action outside this worktree, genuine cross-lane conflict, or
+  evidence that changes the approved model contract.
+
+## Compute boundary
+
+Focused deterministic fits are expected to take under 30 minutes each. A larger
+recovery campaign requires a pre-run timing result, explicit target, and fresh
+approval before Totoro or DRAC use.
+
+## Later serial lanes
+
+After exact-main animal closure: `kernel_coef()`. After kernel closure:
+`spatial_coef()` with `rho = 1`. Estimated spatial rho and general `*_latent()`
+rho remain separate future programmes.

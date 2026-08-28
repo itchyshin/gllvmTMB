@@ -72,13 +72,19 @@ test_that("IID column_coef reaches the existing matrix-normal engine", {
   expect_true(all(is.finite(fit$tmb_obj$gr(fit$opt$par))))
 })
 
-test_that("structured coefficient helpers remain behind the Arc 1 engine fence", {
+test_that("phylo coefficients are public while later structured helpers remain fenced", {
   fx <- .make_iid_column_coef_fixture()
   K <- diag(length(fx$traits))
   dimnames(K) <- list(fx$traits, fx$traits)
 
+  phylo_fit <- .fit_iid_column_coef(
+    fx,
+    value ~ 1 + phylo_coef(0 + x | trait, vcv = K, rho = 1)
+  )
+  expect_true(isTRUE(phylo_fit$use$response_column_coef))
+  expect_identical(phylo_fit$use$response_column_coef_source, "phylo")
+
   formulas <- list(
-    value ~ 1 + phylo_coef(0 + x | trait, vcv = K, rho = 1),
     value ~ 1 + animal_coef(0 + x | trait, pedigree = K, rho = 1),
     value ~ 1 + kernel_coef(0 + x | trait, K = K, rho = 1),
     value ~ 1 + spatial_coef(0 + x | trait, mesh = K, rho = 1)

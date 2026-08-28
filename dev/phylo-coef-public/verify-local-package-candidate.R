@@ -1,0 +1,6 @@
+source("dev/phylo-coef-public/helpers.R")
+pkgdown::check_pkgdown()
+res <- devtools::check(args = "--no-manual", quiet = TRUE, error_on = "warning")
+assert(length(res$errors) == 0L, "local package check has errors")
+assert(length(res$warnings) == 0L, "local package check has warnings")
+cat("local package candidate verified\n")

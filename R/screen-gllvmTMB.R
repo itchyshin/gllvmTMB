@@ -499,6 +499,34 @@ print.gllvmTMB_screen <- function(x, ...) {
     trait <- "trait"
   }
 
+  ## Keep the pre-fit screen on the same public coefficient grammar as the
+  ## fitter. Markers must be parsed and rewritten before model.frame() sees
+  ## them; otherwise R attempts to evaluate column_coef()/phylo_coef() as
+  ## ordinary variables. The screen has no column_data argument, so only
+  ## row-data coefficient predictors are in scope here.
+  column_coef_spec <- .parse_column_coef_formula(
+    formula = formula,
+    trait_col = trait,
+    row_vars = names(data),
+    response_vars = all.vars(formula[[2L]])
+  )
+  if (!is.null(column_coef_spec)) {
+    .column_coef_assert_no_overlap(formula, data, trait, column_coef_spec)
+    if (!column_coef_spec$helper %in% c("column_coef", "phylo_coef")) {
+      .column_coef_engine_fence(column_coef_spec)
+    }
+    formula[[3L]] <- if (identical(column_coef_spec$helper, "column_coef")) {
+      .column_coef_rewrite_iid(formula[[3L]], column_coef_spec)
+    } else if (identical(column_coef_spec$rho_mode, "fixed")) {
+      .column_coef_rewrite_fixed_phylo(
+        formula[[3L]], column_coef_spec, data = data,
+        envir = environment(formula)
+      )
+    } else {
+      .column_coef_rewrite_estimated_phylo(formula[[3L]], column_coef_spec)
+    }
+  }
+
   formula <- desugar_brms_sugar(formula, trait_col = trait)
   parsed <- parse_multi_formula(formula)
   observed_response <- drop_missing_response_rows(

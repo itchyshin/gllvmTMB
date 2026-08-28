@@ -882,6 +882,50 @@
   )
 }
 
+## Fixed eigensystem used by the estimated-rho TMB objective. Calling the
+## validated fixed resolver at rho=1 recovers the aligned raw source K without
+## the protected phylo_slope ridge; all rho dependence remains inside TMB.
+.resolve_phylo_coef_spectral_source <- function(phylo_tree, phylo_vcv, data,
+                                                 group) {
+  raw <- .resolve_phylo_coef_precision(
+    phylo_tree = phylo_tree,
+    phylo_vcv = phylo_vcv,
+    data = data,
+    group = group,
+    rho = 1
+  )
+  K <- raw$K_rho
+  d <- sqrt(diag(K))
+  R <- K / outer(d, d)
+  R <- (R + t(R)) / 2
+  eig <- eigen(R, symmetric = TRUE)
+  tol <- sqrt(.Machine$double.eps) * max(1, max(abs(eig$values)))
+  if (any(!is.finite(eig$values)) || any(eig$values <= tol)) {
+    cli::cli_abort(
+      "The standardized response-column covariance for {.fn phylo_coef} must be positive definite.",
+      class = "gllvmTMB_column_coef_source_invalid"
+    )
+  }
+  if (nrow(R) < 2L || max(abs(eig$values - 1)) <= tol) {
+    cli::cli_abort(c(
+      "{.arg rho} is not identifiable from this {.fn phylo_coef} source.",
+      "x" = "After marginal-scale standardisation, the source has no between-column correlation contrast.",
+      "i" = "Fix {.arg rho} to a numeric value, or use {.fn column_coef} for an IID source."
+    ), class = "gllvmTMB_column_coef_rho_unidentified")
+  }
+  list(
+    U = unname(eig$vectors),
+    lambda = unname(eig$values),
+    d = unname(d),
+    labels = rownames(K),
+    K = K,
+    Ainv = Matrix::Diagonal(nrow(K), x = 1),
+    log_det = 0,
+    n_aug = nrow(K),
+    aug_id = raw$aug_id
+  )
+}
+
 ## Exact fixed covariance for ordinary / kernel response-column slopes.  This
 ## path deliberately avoids the legacy phylogenetic 1e-8 ridge: an identity
 ## kernel must be exactly objective-equivalent to the ordinary K_column = I
@@ -2252,6 +2296,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       identical(phylo_column_slope_source, "phylo")) {
     phylo_slope_cs$extra$.column_coef_fixed_rho %||% NULL
   } else NULL
+  use_column_coef_estimated_rho <- use_response_column_coef &&
+    identical(phylo_column_slope_source, "phylo") &&
+    isTRUE(phylo_slope_cs$extra$.column_coef_estimated_rho)
   if (use_phylo_column_slope &&
       !phylo_column_slope_source %in% c("ordinary", "phylo", "animal", "kernel", "spatial")) {
     cli::cli_abort("Internal: unknown response-column slope source {.val {phylo_column_slope_source}}.")
@@ -2383,7 +2430,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       if (use_response_column_coef) {
         cli::cli_abort(c(
           "Response-column coefficients are currently available for Gaussian responses only.",
-          "i" = "The requested internal term is {.fn column_coef}.",
+          "i" = "The requested term is {.fn column_coef} or {.fn phylo_coef}.",
           ">" = "Use {.fn gaussian}; non-Gaussian coefficient engines are not admitted."
         ))
       } else {
@@ -3157,6 +3204,13 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         "{.arg integration} = {.val {integration_route}} is not routed.",
         ">" = "Use {.code integration = \"laplace\"} (the default)."
       ))
+    }
+    if (use_response_column_coef) {
+      cli::cli_abort(c(
+        "Response-column coefficient terms are not implemented for variational integration.",
+        "i" = "The admitted {.fn column_coef} and {.fn phylo_coef} engines use native Laplace integration.",
+        ">" = "Use {.code integration = \"laplace\"} (the default)."
+      ), class = "gllvmTMB_column_coef_integration_unsupported")
     }
     return(.gllvmTMB_va_route(
       parsed         = parsed,
@@ -4170,9 +4224,27 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   Ainv_phy_slope <- Matrix::Matrix(1, 1, 1, sparse = TRUE)
   log_det_A_phy_slope <- 0
   phylo_slope_aug_id <- integer(nrow(data))
+  column_coef_source_U <- matrix(0, 1L, 1L)
+  column_coef_source_lambda <- 1
+  column_coef_source_inv_d <- 1
+  column_coef_source_logdet_D2 <- 0
+  column_coef_source_K <- NULL
   if (use_fixed_column_slope ||
       (use_phylo_slope_engine && !use_phylo_slope_correlated)) {
-    slope_phy <- if (use_fixed_column_slope &&
+    slope_phy <- if (use_column_coef_estimated_rho) {
+      spectral <- .resolve_phylo_coef_spectral_source(
+        phylo_tree = phylo_tree,
+        phylo_vcv = phylo_vcv,
+        data = data,
+        group = phylo_slope_group
+      )
+      column_coef_source_U <- spectral$U
+      column_coef_source_lambda <- spectral$lambda
+      column_coef_source_inv_d <- 1 / spectral$d
+      column_coef_source_logdet_D2 <- 2 * sum(log(spectral$d))
+      column_coef_source_K <- spectral$K
+      spectral
+    } else if (use_fixed_column_slope &&
         identical(phylo_column_slope_source, "ordinary")) {
       levs <- levels(data[[phylo_slope_group]])
       identity_precision <- Matrix::Diagonal(length(levs), x = 1)
@@ -4893,6 +4965,11 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     phylo_slope_aug_id = as.integer(phylo_slope_aug_id),
     ## Slope-only response-column submode of the shared matrix-normal engine.
     use_phylo_column_slope = as.integer(use_fixed_column_slope),
+    use_column_coef_estimated_rho = as.integer(use_column_coef_estimated_rho),
+    column_coef_source_U = column_coef_source_U,
+    column_coef_source_lambda = as.numeric(column_coef_source_lambda),
+    column_coef_source_inv_d = as.numeric(column_coef_source_inv_d),
+    column_coef_source_logdet_D2 = as.numeric(column_coef_source_logdet_D2),
     use_phylo_slope_correlated = as.integer(use_phylo_slope_correlated),
     n_lhs_cols       = as.integer(n_lhs_cols),
     Z_phy_aug        = Z_phy_aug,
@@ -5167,6 +5244,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                         td[seq_len(n_lhs_cols)] <- log(0.5)
                         td
                       } else numeric(0L),
+    eta_column_coef_rho = 0,
     u_re_int       = rep(0.0, u_re_int_len),
     log_sigma_re_int = if (use_re_int) rep(0.0, n_re_int_terms) else 0.0,
     ## NB2 / NB1 / Gamma / Tweedie per-trait dispersion. log(phi) starts at 0
@@ -5860,6 +5938,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       tmb_params$theta_dep_chol[pins] <- 0
       tmb_map$theta_dep_chol <- factor(m)
     }
+  }
+  if (!use_column_coef_estimated_rho) {
+    tmb_map$eta_column_coef_rho <- factor(NA)
   }
   ## theta_spde_dep_chol is active only on the current spatial dep/indep 2T
   ## engine; it is mapped off elsewhere.
@@ -7901,6 +7982,14 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                             if (use_response_column_coef) {
                               phylo_coef_fixed_rho
                             } else NULL,
+                          response_column_coef_rho_status = if (
+                            use_column_coef_estimated_rho
+                          ) "estimated" else if (!is.null(phylo_coef_fixed_rho)) {
+                            "fixed"
+                          } else if (use_response_column_coef) {
+                            "not_applicable"
+                          } else NULL,
+                          response_column_coef_K = column_coef_source_K,
                           kernel = isTRUE(has_kernel_term),
                           ## Augmented SPDE random slopes (Design 64). DISTINCT
                           ## from the intercept-only spatial_dep / spatial_latent

@@ -309,9 +309,38 @@ value ~ 0 + trait + moisture + canopy +
 
 This is Gaussian long-format point estimation only. Wide column-slope grammar,
 non-Gaussian responses, latent predictor covariance, several helpers in one
-model, and intervals are deliberately deferred. The older
-group-indexed `phylo_slope(x | species)` and `animal_slope(x | id)` routes are
-retained for compatibility, but they are not the teaching API described here.
+model, and intervals are deliberately deferred. Group-indexed
+`phylo_slope(x | species)` and `animal_slope(x | id)` remain current and
+warning-free for models whose coefficients vary across sampled units. They
+answer a different grouping-axis question from the response-column slope
+helpers described here.
+
+### Intercepts and slopes by response column
+
+`column_coef()` and `phylo_coef()` extend the coefficient basis to an explicit
+random intercept, a slope, or both. They are also outside the 5 × 3 grid: their
+covariance is across coefficient-basis columns, not a new trait-covariance mode.
+
+```r
+# IID response-column intercepts and slopes
+value ~ 1 + column_coef(1 + moisture | trait)
+
+# Tree-correlated response-column intercepts and slopes; estimate rho
+value ~ 1 + phylo_coef(1 + moisture | trait, tree = tree, rho = NULL)
+```
+
+Use `|` for a full coefficient covariance and `||` for a diagonal one. Retrieve
+the ordered basis covariance and source metadata with
+`extract_Sigma(fit, level = "column_coef")`. Both helpers support Gaussian
+point models through long or `traits(...)` wide input. Numeric `rho` fixes the
+phylogenetic mixture; `rho = NULL` estimates one interior value. Animal,
+kernel, and spatial coefficient helpers, non-Gaussian responses, and intervals
+remain unavailable. The existing slope-only helpers above remain current,
+warning-free, and non-deprecated.
+
+For exact compatibility, a no-intercept dense-`vcv` `phylo_coef(..., rho = 1)`
+call uses the released `phylo_slope()` conditioning `K + 1e-8 I`. Other
+fixed/estimated coefficient routes use the raw covariance-scale mixture.
 
 For a worked comparison of a tree among sampled species and a tree among
 response columns, read [Where does the phylogeny belong?](where-does-the-tree-go.html).

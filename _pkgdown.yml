@@ -451,6 +451,12 @@ reference:
     - kernel_slope
     - spatial_slope
 
+  - title: Response-column coefficient helpers
+    desc: Gaussian long- and wide-format random intercept/slope bases across response columns; IID or phylogenetically correlated sources.
+    contents:
+    - column_coef
+    - phylo_coef
+
   - title: Deprecated and compatibility aliases
     desc: Soft-deprecated spellings and gllvm-style accessors retained for migration; new code should prefer the canonical keywords and extract_*() functions
     contents:

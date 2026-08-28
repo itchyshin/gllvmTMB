@@ -520,12 +520,12 @@ test_that("wide saturated fixed coefficients fail before the engine fence", {
   )
 })
 
-test_that("valid structured coefficient syntax retains the engine fence", {
+test_that("public phylo coefficient syntax requires an explicit source", {
   expect_error(
     gllvmTMB(
       value ~ latitude + phylo_coef(0 + latitude | trait, rho = 1),
       data = .coef_foundation_long(),
       trait = "trait", unit = "site", family = gaussian()
-    ), class = "gllvmTMB_column_coef_engine_not_admitted"
+    ), class = "gllvmTMB_column_coef_source_invalid"
   )
 })

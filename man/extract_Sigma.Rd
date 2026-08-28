@@ -6,8 +6,9 @@
 \usage{
 extract_Sigma(
   fit,
-  level = c("unit", "unit_slope", "unit_obs", "phy", "phy_slope", "column_slope",
-    "spatial", "spde_slope", "cluster", "cluster2", "B", "B_slope", "W", "spde"),
+  level = c("unit", "unit_slope", "unit_obs", "phy", "phy_slope", "column_coef",
+    "column_slope", "spatial", "spde_slope", "cluster", "cluster2", "B", "B_slope", "W",
+    "spde"),
   part = c("total", "shared", "unique", "psi"),
   link_residual = c("auto", "none"),
   .skip_warn = FALSE
@@ -23,7 +24,8 @@ no-op convention. \code{unit_obs}, structured tiers, and augmented-slope tiers
 remain gated for Julia bridge extractors.}
 
 \item{level}{One of \code{"unit"} (between-unit), \code{"unit_obs"} (within-unit),
-\code{"phy"} (phylogenetic), \code{"column_slope"} (the predictor-basis covariance
+\code{"phy"} (phylogenetic), \code{"column_coef"} (the response-column coefficient
+basis covariance), \code{"column_slope"} (the predictor-basis covariance
 from \code{\link[=slope]{slope()}}, \code{\link[=phylo_slope]{phylo_slope()}}, \code{\link[=animal_slope]{animal_slope()}}, \code{\link[=kernel_slope]{kernel_slope()}},
 \code{\link[=spatial_slope]{spatial_slope()}}, or the corresponding \verb{*_indep()} / \verb{*_dep()} canonical
 form), \code{"spatial"},
@@ -79,6 +81,12 @@ coefficient contract is
 \eqn{\mathrm{Cov}(\mathrm{vec}(B^\mathsf{T})) = K_\mathrm{column}
   \otimes \Sigma}. For \code{P = 1}, full and diagonal bars are the same model
 and return the same object with canonical \code{part = "dep"}.
+
+For \code{level = "column_coef"}: a list with coefficient-basis covariance
+\code{Sigma}, correlation \code{R}, ordered \code{basis}, aligned response-column
+\code{source}, \code{rho_status}, \code{rho}, and (for \code{\link[=phylo_coef]{phylo_coef()}} fits) the effective
+source covariance \code{K_rho}. IID \code{\link[=column_coef]{column_coef()}} fits report
+\code{rho_status = "not_applicable"}, \code{rho = NULL}, and \code{K_rho = NULL}.
 
 For a \code{phylo_dep(1 + x1 + ... + xs | species)} fit with one or more
 slopes, call with \code{level = "phy"}: the result is the single full

@@ -55519,3 +55519,89 @@ duplicate fit-heavy replay.
 The revised Unlazy G6 receipt check passed and the ledger now reports 8/9 met.
 G1--G8 are satisfied; G9 remains intentionally pending exact-head routine and
 manual three-OS CI, normal merge without bypass, and exact-main R-CMD-check.
+
+## 2026-08-27 — public `column_coef()` / `phylo_coef()` candidate
+
+Branch `codex/phylo-coef-public` started from exact verified main
+`e431f7890a425d76f29cff072682ec0514226801`. The bounded public result exports
+Gaussian point-model `column_coef()` and `phylo_coef()` for ordinary long and
+`traits(...)` wide calls, including fixed numeric and estimated interior rho,
+coefficient-specific extraction, and runnable articles. Animal/kernel/spatial
+coefficient helpers, non-Gaussian models, intervals, and latent coefficient
+covariance remain deferred. Every released `*_slope()` API remains current,
+warning-free, and non-deprecated.
+
+Fresh candidate gates:
+
+```sh
+Rscript --vanilla dev/phylo-coef-public/verify-symbolic-alignment.R
+# PASS: symbolic alignment verified.
+
+Rscript --vanilla dev/phylo-coef-public/verify-public-api.R
+# PASS: 35 assertions; public coefficient API verified.
+
+Rscript --vanilla dev/phylo-coef-public/verify-estimated-rho-engine.R
+# PASS: 83 assertions; estimated rho engine verified.
+
+Rscript --vanilla dev/phylo-coef-public/verify-slope-equivalence.R
+# PASS: 235 assertions; released slope equivalence verified.
+
+Rscript --vanilla dev/phylo-coef-public/verify-long-wide-parity.R
+# PASS: 118 assertions; long wide coefficient parity verified.
+
+Rscript --vanilla dev/phylo-coef-public/verify-estimated-rho-recovery.R
+# PASS: 83 assertions; deterministic rho, Sigma, and coefficient-effect
+# recovery plus finite/small optimum gradient verified.
+
+Rscript --vanilla dev/phylo-coef-public/verify-focused-tests.R
+# PASS: 487 assertions, zero failures/warnings/skips.
+
+Rscript --vanilla dev/phylo-coef-public/verify-released-slope-regressions.R
+# PASS: 222 assertions, zero failures; 17 existing unused-cluster warnings and
+# two declared heavy skips; no lifecycle/deprecation warning.
+
+Rscript --vanilla -e 'devtools::document(quiet = TRUE)'
+# PASS: generated column_coef.Rd and phylo_coef.Rd; three pre-existing
+# AIC/BIC/anova S3-tag notices retained.
+
+Rscript --vanilla dev/phylo-coef-public/verify-documentation-contract.R
+# PASS: public coefficient documentation verified.
+
+Rscript --vanilla dev/phylo-coef-public/verify-articles.R
+# PASS: both affected articles built from source; coefficient articles
+# verified. Desktop and 390-pixel captures were inspected and readable.
+
+Rscript --vanilla -e 'pkgdown::check_pkgdown()'
+# PASS: No problems found.
+
+Rscript --vanilla dev/phylo-coef-public/verify-local-package-candidate.R
+# PASS in about 18 minutes: pkgdown clean and installed-package R CMD check,
+# including the complete test suite, returned zero errors/warnings.
+
+git diff --check
+# PASS.
+```
+
+Stale-surface scans used:
+
+```sh
+rg -n "There is no .*column_coef|internal-only.*column_coef" \
+  R man NEWS.md vignettes/articles docs/design tests/testthat
+rg -n -i "deprecat.*(_slope|slope\\()|(_slope|slope\\().*deprecat" \
+  R man NEWS.md vignettes/articles docs/design
+rg -n "animal_coef|kernel_coef|spatial_coef" \
+  R man NEWS.md vignettes/articles docs/design tests/testthat
+```
+
+Verdict: no stale public denial of `column_coef()`/`phylo_coef()`, no new slope
+deprecation/warning claim, and every deferred structured coefficient helper
+remains fenced. Design 01 still places coefficients outside the 5 x 3 grid.
+
+Gauss/Noether terminal re-review PASSed covariance-scale mixing, spectral AD
+math, TMB maps/random blocks, extraction, recovery, source semantics, and exact
+rho-one slope identity. Grace terminal review PASSed source/portability,
+dependencies, generated docs, pkgdown, and local package gates. Rose/Pat
+terminal review PASSed cross-file status, raw-tree article DGP, long/wide reader
+path, narrow-width rendering, and slope lifecycle; Darwin's audience review
+PASSed the biological question and interpretation. Protected exact-head CI,
+normal merge, exact-main verification, and lease release remain pending.

@@ -95,6 +95,124 @@ test_that("public IID column_coef has matched long and wide entry points", {
   )
 })
 
+test_that("pathway means with random intercepts and slopes match long and wide", {
+  set.seed(860951)
+  trait_names <- paste0("t", 1:12)
+  n_unit <- 32L
+  wide <- data.frame(
+    unit = factor(paste0("u", seq_len(n_unit))),
+    latitude = as.numeric(scale(seq_len(n_unit)))
+  )
+  column_data <- data.frame(
+    trait = trait_names,
+    pathway = factor(
+      rep(c("C3", "C4"), each = 6L), levels = c("C3", "C4")
+    )
+  )
+  pathway_intercept <- c(C3 = 0.4, C4 = -0.2)
+  pathway_slope <- c(C3 = 0.7, C4 = -0.4)
+  random_intercept <- stats::rnorm(length(trait_names), sd = 0.2)
+  random_slope <- stats::rnorm(length(trait_names), sd = 0.15)
+  for (j in seq_along(trait_names)) {
+    pathway_j <- as.character(column_data$pathway[[j]])
+    wide[[trait_names[[j]]]] <-
+      pathway_intercept[[pathway_j]] + random_intercept[[j]] +
+      (pathway_slope[[pathway_j]] + random_slope[[j]]) * wide$latitude +
+      stats::rnorm(n_unit, sd = 0.12)
+  }
+  long <- tidyr::pivot_longer(
+    wide,
+    cols = tidyselect::all_of(trait_names),
+    names_to = "trait",
+    values_to = "value"
+  )
+  long <- as.data.frame(long)
+  long$trait <- factor(long$trait, levels = trait_names)
+
+  fit_pathway <- function(data, formula, trait = NULL) {
+    args <- list(
+      formula = formula,
+      data = data,
+      column_data = column_data,
+      unit = "unit",
+      family = stats::gaussian(),
+      control = gllvmTMB::gllvmTMBcontrol(se = FALSE),
+      silent = TRUE
+    )
+    if (!is.null(trait)) args$trait <- trait
+    suppressMessages(do.call(gllvmTMB::gllvmTMB, args))
+  }
+  compare_entry_points <- function(long_fit, wide_fit) {
+    expect_identical(wide_fit$tmb_data, long_fit$tmb_data)
+    expect_identical(
+      lapply(wide_fit$tmb_obj$env$map, as.integer),
+      lapply(long_fit$tmb_obj$env$map, as.integer)
+    )
+    expect_identical(wide_fit$opt$objective, long_fit$opt$objective)
+    expect_identical(wide_fit$opt$par, long_fit$opt$par)
+    expect_identical(
+      suppressMessages(stats::fitted(wide_fit)),
+      suppressMessages(stats::fitted(long_fit))
+    )
+    expect_identical(
+      gllvmTMB::extract_Sigma(wide_fit, level = "column_coef")$Sigma,
+      gllvmTMB::extract_Sigma(long_fit, level = "column_coef")$Sigma
+    )
+    expect_identical(
+      c(long_fit$opt$convergence, wide_fit$opt$convergence), c(0L, 0L)
+    )
+  }
+
+  formulas <- list(
+    single = list(
+      long = value ~ 0 + pathway + latitude:pathway +
+        column_coef(1 + latitude | trait),
+      wide = traits(
+        t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12
+      ) ~ 0 + pathway + latitude:pathway +
+        column_coef(1 + latitude | trait)
+    ),
+    double = list(
+      long = value ~ 0 + pathway + latitude:pathway +
+        column_coef(1 + latitude || trait),
+      wide = traits(
+        t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12
+      ) ~ 0 + pathway + latitude:pathway +
+        column_coef(1 + latitude || trait)
+    )
+  )
+
+  fits <- lapply(formulas, function(formula_pair) {
+    list(
+      long = fit_pathway(long, formula_pair$long, trait = "trait"),
+      wide = fit_pathway(wide, formula_pair$wide)
+    )
+  })
+  for (fit_pair in fits) {
+    compare_entry_points(fit_pair$long, fit_pair$wide)
+  }
+
+  expect_identical(
+    fits$single$wide$X_fix_names,
+    c(
+      "pathwayC3", "pathwayC4",
+      "pathwayC3:latitude", "pathwayC4:latitude"
+    )
+  )
+  expect_identical(
+    gllvmTMB::extract_Sigma(
+      fits$single$wide, level = "column_coef"
+    )$basis,
+    c("(Intercept)", "latitude")
+  )
+  expect_identical(
+    unname(gllvmTMB::extract_Sigma(
+      fits$double$wide, level = "column_coef"
+    )$Sigma[1, 2]),
+    0
+  )
+})
+
 test_that("screen_gllvmTMB recognises public coefficient formulas", {
   fx <- .make_public_column_coef_fixture(n_traits = 3L)
   K <- diag(length(fx$traits))

@@ -55717,6 +55717,15 @@ shapes are correct.
 The independent Noether review initially found installed-namespace source
 evaluation, animal screen dispatch, dense-`A` endpoint disclosure, extra
 pedigree-level alignment, and helper-specific diagnostic gaps. Each received a
-regression; the final review returned APPROVE with no P0--P3 findings. Rose,
-full local package check, exact-head CI, protected merge, exact-main CI, live
-pkgdown, and lease-release receipts remain pending.
+regression; the final review returned APPROVE with no P0--P3 findings. Rose
+returned terminal pre-publish PASS. Exact-head CI, protected merge, exact-main
+CI, live pkgdown, and lease-release receipts remain pending.
+
+Full local package evidence on exact source commit
+`a6670472bb34f1d27c579a7ed0f4dfcbf6034af7`:
+
+```sh
+Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'
+# PASS: 0 errors, 0 warnings, 1 note. The animal coefficient candidate
+# introduced no package-check error or warning.
+```

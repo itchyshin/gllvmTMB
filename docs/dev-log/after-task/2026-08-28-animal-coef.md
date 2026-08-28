@@ -81,9 +81,12 @@ exact `animal_slope()` objective, gradient, map, report, and fitted values.
 - `devtools::document(quiet = TRUE)`: generated the export/help cascade; only
   the three pre-existing AIC/BIC/anova S3-tag notices appeared.
 - `git diff --check`: PASS.
+- `devtools::check(args = "--no-manual", quiet = TRUE)`: PASS on exact source
+  commit `a6670472bb34f1d27c579a7ed0f4dfcbf6034af7`, with zero errors, zero
+  warnings, and one note.
 
-Local full package check, exact-head three-OS CI, merge, exact-main check, and
-live pkgdown verification remain pending and will be appended before closure.
+Exact-head three-OS CI, merge, exact-main check, and live pkgdown verification
+remain pending and will be appended before closure.
 
 ## 6. Tests of the Tests
 
@@ -146,10 +149,10 @@ endpoint assertions. **Curie** supplied covariance-scale, malformed-source,
 long/wide, and planted-covariance oracles. **Emmy**'s installed-namespace check
 prevented export-all visibility from becoming an accidental API dependency.
 **Pat**'s reader path keeps the C3/C4 fixed means separate from response-column
-random intercepts and slopes. **Rose** is performing the terminal cross-file
-pre-publish audit. **Grace** still owns pkgdown, local package, three-OS, and
-exact-main landing evidence. **Shannon** confirmed exclusive lane ownership
-before edits.
+random intercepts and slopes. **Rose** returned terminal pre-publish PASS.
+**Grace** confirmed clean pkgdown and the local package check and still owns
+three-OS and exact-main landing evidence. **Shannon** confirmed exclusive lane
+ownership before edits.
 
 ### Documentation and pkgdown
 
@@ -164,10 +167,9 @@ not broadened merely to mention the new animal source.
 
 Estimated animal `rho`, interval inference, non-Gaussian coefficient models,
 latent coefficient covariance, `kernel_coef()`, and `spatial_coef()` remain
-outside this arc. Next: finish Rose/Grace and Unlazy gates, run the full local
-package check, then CI-paced protected PR, exact-head three-OS checks, normal
-merge, exact-main check, live pkgdown verification, and lease release before a
-fresh kernel lane.
+outside this arc. Next: run the CI-paced protected PR, exact-head three-OS
+checks, normal merge, exact-main check, live pkgdown verification, and lease
+release before a fresh kernel lane.
 
 ## 12. Cross-Product Coverage
 

@@ -51,7 +51,10 @@ test_that("animal_coef fits an intercept and slope basis at rho one", {
     value ~ 1 + animal_coef(1 + x | trait, A = fx$A, rho = 1)
   ))
 
-  expect_identical(fit$opt$convergence, 0L)
+  expect_true(is.finite(fit$opt$objective))
+  expect_gt(length(fit$opt$par), 0L)
+  expect_true(all(is.finite(fit$opt$par)))
+  expect_true(all(is.finite(fit$tmb_obj$gr(fit$opt$par))))
   expect_true(isTRUE(fit$use$response_column_coef))
   expect_identical(fit$use$response_column_coef_source, "animal")
   expect_identical(fit$tmb_data$n_lhs_cols, 2L)

@@ -55729,3 +55729,20 @@ Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'
 # PASS: 0 errors, 0 warnings, 1 note. The animal coefficient candidate
 # introduced no package-check error or warning.
 ```
+
+Routine Ubuntu run `33204220861` on PR #1223 head `b5ff04888` failed one
+new structural assertion after 16,058 passes: the pure-noise intercept+slope
+fixture returned `nlminb` convergence code 1 on Ubuntu instead of the exact
+code 0 seen locally. The manual matrix `33204245822` retained green macOS job
+`98961121239` and Windows job `98961121287`; GitHub cancelled its Ubuntu job
+after the routine failure. No engine or API failure was present.
+
+The structural test now checks a finite objective, nonempty finite optimized
+parameters, and a finite analytic gradient. It does not whitelist convergence
+code 1 or impose an arbitrary gradient threshold. The separate known-DGP
+recovery test continues to require convergence zero, and the endpoint test
+continues exact objective, parameter, gradient, report, and fitted-value
+identity with `animal_slope()`. Critical re-review returned APPROVE with no
+P0--P2 finding. The repaired equivalence file passed 122/122 and the full
+coefficient/released-slope replay passed 780 assertions with zero failures or
+warnings and the same four opt-in heavy skips.

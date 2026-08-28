@@ -84,6 +84,11 @@ exact `animal_slope()` objective, gradient, map, report, and fitted values.
 - `devtools::check(args = "--no-manual", quiet = TRUE)`: PASS on exact source
   commit `a6670472bb34f1d27c579a7ed0f4dfcbf6034af7`, with zero errors, zero
   warnings, and one note.
+- PR #1223 routine Ubuntu run `33204220861` exposed one platform-sensitive
+  exact convergence-code assertion in a pure-noise structural fixture after
+  16,058 passes. The repaired structural contract passed 122/122; the complete
+  coefficient/released-slope replay passed 780 assertions with zero failures
+  or warnings and four existing opt-in heavy skips.
 
 Exact-head three-OS CI, merge, exact-main check, and live pkgdown verification
 remain pending and will be appended before closure.
@@ -136,7 +141,11 @@ installed-package evaluation of internal source helpers, missing animal screen
 dispatch, the inherited dense-`A` ridge seam, and relationship matrices with
 valid extra pedigree levels. A broader coefficient sweep also found one stale
 foundation test that still expected source-free, estimated-`rho` animal syntax.
-All were repaired with focused regressions rather than exceptions.
+All were repaired with focused regressions rather than exceptions. The first
+Ubuntu PR run then showed that a routing test's exact `nlminb` convergence code
+was platform-sensitive. The test now checks finite optimizer state and analytic
+gradient, while the separate recovery test retains the strict convergence gate;
+critical re-review approved this boundary with no P0--P2 finding.
 
 ## 11. Team Learning
 

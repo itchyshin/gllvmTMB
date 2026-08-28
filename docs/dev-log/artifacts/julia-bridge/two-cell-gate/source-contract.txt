@@ -1,0 +1,25 @@
+list(status = "terminal", terminal_code = "NO_RUN_SOURCE_CONTRACT",
+    fit_started = FALSE, reason = "Totoro direct GLLVM.jl loading admitted Gaussian and Poisson, but the JuliaCall embedding required by gllvmTMB(engine='julia') terminated with exit 139 under both Julia 1.12.6 and Julia 1.10.10 before any fit started.",
+    gllvmtmb_sha = "86e95fff170767b23980152b7d6fce9bb2207718",
+    gllvmtmb_tree = "4393be7730b306e310843c7621b4517cc3ad86fb",
+    gllvmjl_sha = "00a2d7b7024b21f55cb124bee2d2e4cf8a546b40",
+    gllvmjl_tree = "8a243605516a0d660d703135acb0b1bd9a0e4f15",
+    gllvmtmb_archive_sha256 = "03053140ff39ef0945c51577acd74a1cfd87e5733cf697c7f231fb420a67d594",
+    gllvmjl_archive_sha256 = "515ae818a0c66b2dddda4306ade9643310e7531c504183e352ac598b8d1bd4b7",
+    project_sha256 = "bd85aa8977102a28872fa34b019dce1ad96e50171ad52907f2f34f37d06f0128",
+    manifest_status = "absent_in_source_generated_at_runtime",
+    resolved_manifest_sha256 = "225213ebd8b329f1d39890c954a561f7350469d90fd86d6c3bbde44b948fd1fe",
+    runtime_manifest_sha256 = c(`1.12.6` = "c019e07f5f83f6c85492b0da8760ef3870c68c3ddebef2984ac3041776d47bd9",
+    `1.10.10` = "225213ebd8b329f1d39890c954a561f7350469d90fd86d6c3bbde44b948fd1fe"
+    ), runtime_manifest_files = c(`1.12.6` = "GLLVM-Manifest-julia-1.12.6.toml",
+    `1.10.10` = "GLLVM-Manifest-julia-1.10.10.toml"), installed_dll_sha256 = "e9a7763d0ef01cbf566829f9044a0709c7de5599d0662a3cb0ef6e15139724b4",
+    capability_status = "eligible_static_runtime_embedding_failed",
+    gllvmtmb_version = "0.7.1", juliacall_version = "0.17.6",
+    r_version = "R version 4.5.3 (2026-03-11)", julia_direct_versions = c("1.12.6",
+    "1.10.10"), julia_embedding_exit = c(`1.12.6` = 139L, `1.10.10` = 139L
+    ), qualification_receipts = c(`1.12.6` = "process/julia-1_12_6.receipt",
+    `1.10.10` = "process/julia-1_10_10.receipt"), qualification_receipt_sha256 = c(`1.12.6` = "9e3b6dea458e7fcc3695e1065a7a7299c2ba6d3868007e5303e0573c38deb194",
+    `1.10.10` = "696cd060c66d1fb7ac0b00832186afd3b3d73ec34a75081e6ff24e7cf46bdaf7"
+    ), installed_package_path = "/home/snakagaw/gllvm_work/engine-julia-two-cell-gate-20260828/Rlib/gllvmTMB",
+    installed_dll_path = "/home/snakagaw/gllvm_work/engine-julia-two-cell-gate-20260828/Rlib/gllvmTMB/libs/gllvmTMB.so",
+    qualified_at = "2026-08-28 17:30:44 UTC")

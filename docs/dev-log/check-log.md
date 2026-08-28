@@ -55671,3 +55671,23 @@ Rscript --vanilla -e 'source("/Users/z3437171/Dropbox/Github Local/Shinichi/tool
 # unmet historical `.unlazy` ledgers (`pr1214-closeout` and
 # `response-column-coef-iid`); this lane preserved them as unrelated ownership.
 ```
+
+## 2026-08-28 — exact two-cell `engine = "julia"` terminal gate
+
+Frozen sources: gllvmTMB `86e95fff170767b23980152b7d6fce9bb2207718`; GLLVM.jl `00a2d7b7024b21f55cb124bee2d2e4cf8a546b40`. Direct GLLVM qualification passed under Julia 1.12.6 and 1.10.10; JuliaCall 0.17.6 embedding exited 139 under both before fitting. Exactly four planned records remain: 0 started, 4 unavailable, 0 replacements. This is a host/runtime terminal receipt, not a parity verdict.
+
+```sh
+Rscript --vanilla -e 'x <- testthat::test_file("tests/testthat/test-julia-bridge-two-cell-gate.R", reporter = "silent"); stopifnot(testthat:::all_passed(x)); cat("HARNESS_TESTS_PASS\n")'
+for check in source denominator verdict manifest reviews closeout scope; do Rscript --vanilla dev/julia-bridge-gate/verify-two-cell-gate.R docs/dev-log/artifacts/julia-bridge/two-cell-gate "$check"; done
+git diff --check
+```
+
+Final markers: `HARNESS_TESTS_PASS`, G2 through G8 success markers, and no whitespace output. Exact scans:
+
+```sh
+rg -n 'engine = ["'"']julia["'"']|NO_RUN_SOURCE_CONTRACT|JuliaCall|GLLVM\.jl' LOOP dev/julia-bridge-gate tests/testthat/test-julia-bridge-two-cell-gate.R docs/dev-log/artifacts/julia-bridge/two-cell-gate docs/dev-log/after-task/2026-08-28-engine-julia-two-cell-gate.md docs/dev-log/plan-actual/2026-08-28-engine-julia-two-cell-gate.md
+rg -n 'X_lv|offset|mask|missing|structured|Psi|interval|coverage|recovery|performance|public' LOOP dev/julia-bridge-gate tests/testthat/test-julia-bridge-two-cell-gate.R docs/dev-log/artifacts/julia-bridge/two-cell-gate docs/dev-log/after-task/2026-08-28-engine-julia-two-cell-gate.md docs/dev-log/plan-actual/2026-08-28-engine-julia-two-cell-gate.md
+git diff --name-only origin/main
+```
+
+Verdict: intended terminal evidence only; deferred terms occur only in fences, tests, and claim restraints; all paths are lane-owned. Reader-facing stale-wording and pkgdown checks are N/A. Issue #488 was inspected and left unchanged. No fit, package check, CI, push, PR, merge, release, or public promotion ran.

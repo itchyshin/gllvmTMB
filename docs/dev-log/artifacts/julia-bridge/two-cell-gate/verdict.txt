@@ -1,0 +1,2 @@
+list(outcome = "NO_RUN_SOURCE_CONTRACT", fit_started = FALSE,
+    thresholds_frozen = TRUE, replacement_attempts = 0L, reason = "Totoro direct GLLVM.jl loading admitted Gaussian and Poisson, but the JuliaCall embedding required by gllvmTMB(engine='julia') terminated with exit 139 under both Julia 1.12.6 and Julia 1.10.10 before any fit started.")

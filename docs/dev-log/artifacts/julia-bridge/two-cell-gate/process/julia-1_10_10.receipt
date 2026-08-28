@@ -1,0 +1,16 @@
+schema=bridge-source-qualification-v1
+version=1.10.10
+julia_home=/home/snakagaw/hsq_work/julia-1.10.10/bin
+julia_depot=/home/snakagaw/gllvm_work/engine-julia-two-cell-gate-20260828/julia-depot-1.10
+gllvm_path=/home/snakagaw/gllvm_work/engine-julia-two-cell-gate-20260828/sources-1.10/GLLVM.jl
+started_at=2026-08-28T17:29:31Z
+finished_at=2026-08-28T17:29:37Z
+direct_command=env JULIA_DEPOT_PATH=/home/snakagaw/gllvm_work/engine-julia-two-cell-gate-20260828/julia-depot-1.10 /home/snakagaw/hsq_work/julia-1.10.10/bin/julia --startup-file=no --project=/home/snakagaw/gllvm_work/engine-julia-two-cell-gate-20260828/sources-1.10/GLLVM.jl -e using_GLLVM_bridge_capabilities
+direct_stdout=process/julia-1_10_10-direct.stdout.log
+direct_stderr=process/julia-1_10_10-direct.stderr.log
+direct_exit_status=0
+bridge_command=env R_LIBS_USER=/home/snakagaw/gllvm_work/engine-julia-two-cell-gate-20260828/Rlib:/home/snakagaw/R/lib JULIA_DEPOT_PATH=/home/snakagaw/gllvm_work/engine-julia-two-cell-gate-20260828/julia-depot-1.10 JULIA_HOME=/home/snakagaw/hsq_work/julia-1.10.10/bin OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 Rscript --vanilla /home/snakagaw/gllvm_work/engine-julia-two-cell-gate-20260828/qualify-two-cell-source.R /home/snakagaw/gllvm_work/engine-julia-two-cell-gate-20260828/artifacts /home/snakagaw/gllvm_work/engine-julia-two-cell-gate-20260828 /home/snakagaw/gllvm_work/engine-julia-two-cell-gate-20260828/sources-1.10/GLLVM.jl
+bridge_stdout=process/julia-1_10_10-bridge.stdout.log
+bridge_stderr=process/julia-1_10_10-bridge.stderr.log
+bridge_exit_status=139
+fit_started=false

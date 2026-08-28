@@ -1,25 +1,20 @@
-# GOAL — overnight Poisson MSPL W_* REPLACE (Cursor · ~10–12 h)
+# GOAL — <one sentence: what "done" looks like>
 
-**IMMUTABLE for this run.** Re-read at the top of EVERY arc.
-**Authority:** G0 SIGNED REPLACE — `docs/dev-log/research/2026-08-17-mspl-poisson-W-G0.md` (#1102).
-**Owner:** Cursor owns `src/` (Codex override). Shinichi 2026-08-17: **"I preapprove all"** → push PR + merge when CI green allowed; hard OUT still absolute.
-
-## Mission
-On this local-scratch worktree from origin/main, implement SIGNED G0 REPLACE: Poisson MSPL live weight `family_id==2` from `return eta` / `W=diag(mu)` → working logistic `W_* = gll_mspl_log_weight(eta, 0)` (Tweedie precedent). Rewrite #1064 W2/W7 (+ W8), rematch `R/mspl-poisson-atoms.R` + A6, update `03-likelihoods.md`, tmb-likelihood-review + simulation recovery. Secondary after rematch green: fence docs, #1077 draft-only, family-door PREP notes, mspl-api tests.
-
-## Soft-gate defaults (preapproved)
-- Admit: keep experimental `admitted` if rematch green; else park `planned`
-- #1077 stays draft; no Design 125 fork smoke; SE doors PREP notes only
-
-## Hard OUT (absolute even under preapprove)
-- public se=TRUE / vcov / confint / NEWS covered
-- undraft #1077 for public confint
-- Totoro / Design 118 / Lane B / rebuild #1090
-- KF2021 beyond binomial; git add -A; isdm-package-recovery
+**IMMUTABLE for this run.** Re-read this file at the top of EVERY arc, before anything else.
 
 ## Definition of done
-- [x] A0 worktree
-- [x] A1–A5 rematch/recovery/review green
-- [x] A6–A7 fence/tests; A8 PR open (#1111)
-- [x] PR pushed (#1111); CI green; **MERGED** into `main` at `3053fce3`
-- [x] Docs closeout (#1116); LOOP **GOAL_MET**; hard OUT held in full
+- [ ] <the observable end state, not the activity>
+
+## Invariants (never violate, even to finish faster)
+- Never push, merge, or publish — those are HUMAN GATES. Land work on this branch only.
+- Verification means reading the LOG and inspecting the ARTEFACT, never the exit code.
+- A narrow or negative search is not proof. "No X exists" usually means the query missed X.
+- Destructive or irreversible ⇒ STOP and surface, even if it feels urgent.
+
+## Pre-authorisation (copied from approved ultra-plan)
+- Routine scoped edits, local commands, tests, builds, checkpoints, local commits, and listed checks: CONTINUE.
+- Optional remote authority: <none | push named branch | create named draft PR; never merge or release>.
+- Must stop: merge/release/public message or claim; credentials/security changes; destructive work outside this worktree; new compute/cost beyond the estimate; scope-changing evidence.
+
+## Out of scope (the fence — do NOT drift here)
+- <...>

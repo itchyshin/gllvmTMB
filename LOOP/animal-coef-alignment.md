@@ -28,7 +28,7 @@ above.
 | `x_it^T beta` | pathway fixed means such as `0 + pathway + latitude:pathway` | multiply the fixed design by `beta` | `coef(fit)` | declared pathway intercepts and slopes |
 | `A` and `K_rho` | `animal_coef(..., pedigree/A/Ainv, rho = rho)` | resolve labelled `A`, then form `rho * A + (1-rho) * diag(A)` | `extract_Sigma(fit, level = "column_coef")` source metadata | supplied `A` and fixed `rho` |
 | `Sigma_coef` | `1 + latitude | trait` or `1 + latitude || trait` | declared coefficient covariance | `extract_Sigma(fit, level = "column_coef")$Sigma` | declared intercept variance, slope variance, and covariance (zero under `||`) |
-| `B` | `animal_coef(1 + latitude | trait, ...)` | `chol(K_rho) %*% Z %*% t(chol(Sigma_coef))` with iid standard-normal `Z` | fitted random coefficient contribution and `Sigma_coef` | one intercept and slope deviation per response column |
+| `B` | `animal_coef(1 + latitude | trait, ...)` | `t(chol(K_rho)) %*% Z %*% chol(Sigma_coef)` with iid standard-normal `Z` | fitted random coefficient contribution and `Sigma_coef` | one intercept and slope deviation per response column |
 | `epsilon_it` | `family = gaussian()` | iid `N(0, sigma_e^2)` | Gaussian dispersion from the fitted object | declared residual variance |
 
 ## Admission oracles

@@ -749,11 +749,12 @@
 ## phylo_slope() endpoint, which retains its historical 1e-8 ridge.
 .resolve_phylo_coef_precision <- function(phylo_tree, phylo_vcv, data,
                                           group, rho,
-                                          allow_label_superset = FALSE) {
+                                          allow_label_superset = FALSE,
+                                          helper = "phylo_coef") {
   if (!is.numeric(rho) || length(rho) != 1L || !is.finite(rho) ||
       rho < 0 || rho > 1) {
     cli::cli_abort(
-      "{.arg rho} for the internal fixed {.fn phylo_coef} route must be one finite numeric value in [0, 1].",
+      "{.arg rho} for the internal fixed {.fn {helper}} route must be one finite numeric value in [0, 1].",
       class = "gllvmTMB_column_coef_invalid_syntax"
     )
   }
@@ -763,13 +764,13 @@
   if (!is.null(phylo_tree)) {
     if (!inherits(phylo_tree, "phylo")) {
       cli::cli_abort(
-        "The {.arg tree} supplied to {.fn phylo_coef} must be an {.cls ape::phylo} tree.",
+        "The {.arg tree} supplied to {.fn {helper}} must be an {.cls ape::phylo} tree.",
         class = "gllvmTMB_column_coef_source_invalid"
       )
     }
     .gllvm_abort_uncovered_species_levels(
       levs, phylo_tree$tip.label, data, group,
-      "{.arg tree} tip labels for {.fn phylo_coef}"
+      "{.arg tree} tip labels for {.fn {helper}}"
     )
     tree_precision <- .gllvm_phylo_tree_precision(
       phylo_tree, correlation = TRUE
@@ -778,7 +779,7 @@
     tip_index <- unname(tree_precision$tip_node_index[levs])
     if (anyNA(tip_index)) {
       cli::cli_abort(
-        "Internal: {.fn phylo_coef} response-column labels did not map to tree tips."
+        "Internal: {.fn {helper}} response-column labels did not map to tree tips."
       )
     }
     K <- K_full[tip_index, tip_index, drop = FALSE]
@@ -786,8 +787,12 @@
   } else {
     if (is.null(phylo_vcv)) {
       cli::cli_abort(c(
-        "{.fn phylo_coef} found no {.arg tree} or {.arg vcv} source.",
-        ">" = "Supply a named {.arg tree} or {.arg vcv} argument."
+        "{.fn {helper}} found no usable structured source.",
+        ">" = if (identical(helper, "animal_coef")) {
+          "Supply exactly one non-NULL {.arg pedigree}, {.arg A}, or {.arg Ainv} argument."
+        } else {
+          "Supply a named non-NULL {.arg tree} or {.arg vcv} argument."
+        }
       ), class = "gllvmTMB_column_coef_source_invalid")
     }
     if (inherits(phylo_vcv, "sparseMatrix")) {
@@ -802,7 +807,7 @@
       if (any(!is.finite(Q_dense)) ||
           max(abs(Q_dense - t(Q_dense)), na.rm = TRUE) > q_tol) {
         cli::cli_abort(
-          "The sparse precision for {.fn phylo_coef} must be finite and symmetric.",
+          "The sparse precision for {.fn {helper}} must be finite and symmetric.",
           class = "gllvmTMB_column_coef_source_invalid"
         )
       }
@@ -810,7 +815,7 @@
       Q_chol <- tryCatch(chol(Q_dense), error = function(e) NULL)
       if (is.null(Q_chol)) {
         cli::cli_abort(
-          "The sparse precision for {.fn phylo_coef} must be positive definite before inversion.",
+          "The sparse precision for {.fn {helper}} must be positive definite before inversion.",
           class = "gllvmTMB_column_coef_source_invalid"
         )
       }
@@ -818,7 +823,7 @@
       tip_index <- match(levs, rownames(Q))
       if (anyNA(tip_index)) {
         cli::cli_abort(
-          "Internal: sparse {.arg vcv} did not map every response-column level."
+          "Internal: the sparse source for {.fn {helper}} did not map every response-column level."
         )
       }
       K <- K_full[tip_index, tip_index, drop = FALSE]
@@ -828,7 +833,7 @@
           nrow(phylo_vcv) != ncol(phylo_vcv) ||
           any(!is.finite(phylo_vcv))) {
         cli::cli_abort(
-          "{.arg vcv} for {.fn phylo_coef} must be a finite square numeric matrix.",
+          "The source for {.fn {helper}} must be a finite square numeric matrix.",
           class = "gllvmTMB_column_coef_source_invalid"
         )
       }
@@ -845,7 +850,7 @@
           if (isTRUE(allow_label_superset)) {
             "The source labels must cover every response-column level."
           } else {
-            "{.arg vcv} labels for {.fn phylo_coef} must match the response-column levels exactly."
+            "The source labels for {.fn {helper}} must match the response-column levels exactly."
           },
           class = "gllvmTMB_column_coef_source_labels"
         )
@@ -857,14 +862,14 @@
   symmetry_tol <- sqrt(.Machine$double.eps) * max(1, max(abs(K)))
   if (max(abs(K - t(K))) > symmetry_tol) {
     cli::cli_abort(
-      "The response-column covariance for {.fn phylo_coef} must be symmetric.",
+      "The response-column covariance for {.fn {helper}} must be symmetric.",
       class = "gllvmTMB_column_coef_source_invalid"
     )
   }
   K <- (K + t(K)) / 2
   if (is.null(tryCatch(chol(K), error = function(e) NULL))) {
     cli::cli_abort(
-      "The source covariance for {.fn phylo_coef} must be positive definite before mixing.",
+      "The source covariance for {.fn {helper}} must be positive definite before mixing.",
       class = "gllvmTMB_column_coef_source_invalid"
     )
   }
@@ -875,7 +880,7 @@
   R <- tryCatch(chol(K_rho), error = function(e) NULL)
   if (is.null(R)) {
     cli::cli_abort(
-      "The mixed response-column covariance for {.fn phylo_coef} must be positive definite.",
+      "The mixed response-column covariance for {.fn {helper}} must be positive definite.",
       class = "gllvmTMB_column_coef_source_invalid"
     )
   }
@@ -4275,7 +4280,12 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         data = data,
         group = phylo_slope_group,
         rho = column_coef_fixed_rho,
-        allow_label_superset = identical(phylo_column_slope_source, "animal")
+        allow_label_superset = identical(phylo_column_slope_source, "animal"),
+        helper = if (identical(phylo_column_slope_source, "animal")) {
+          "animal_coef"
+        } else {
+          "phylo_coef"
+        }
       )
     } else if (use_fixed_column_slope &&
         identical(phylo_column_slope_source, "kernel")) {

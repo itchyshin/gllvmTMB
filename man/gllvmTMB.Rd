@@ -436,9 +436,11 @@ for a one-paragraph tour of each cell.
 Response-column coefficient helpers are also outside the grid.
 \code{\link[=column_coef]{column_coef()}} fits IID random intercept/slope bases across response
 columns; \code{\link[=phylo_coef]{phylo_coef()}} fits the same bases with fixed or estimated
-phylogenetic correlation strength. Both support Gaussian point models in
-long and \code{traits(...)} wide form. Other structured coefficient sources,
-non-Gaussian coefficient models, and interval inference remain unavailable.
+phylogenetic correlation strength; \code{\link[=animal_coef]{animal_coef()}} fits them from a pedigree,
+relationship covariance, or relationship precision with fixed correlation
+strength. All three support Gaussian point models in long and \code{traits(...)}
+wide form. Kernel and spatial coefficient sources, non-Gaussian coefficient
+models, and interval inference remain unavailable.
 
 \code{gllvmTMB()} parses the glmmTMB-style formula, converts wide
 \code{\link[=traits]{traits()}} input to the same internal stacked-trait representation as

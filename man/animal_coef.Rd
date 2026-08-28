@@ -48,7 +48,8 @@ set.seed(3)
 dat <- expand.grid(unit = factor(1:12), trait = factor(paste0("sp", 1:3)))
 dat$x <- rnorm(12)[dat$unit]
 dat$value <- rnorm(nrow(dat))
-A <- diag(3); dimnames(A) <- list(levels(dat$trait), levels(dat$trait))
+A <- 0.4 ^ abs(outer(1:3, 1:3, "-"))
+dimnames(A) <- list(levels(dat$trait), levels(dat$trait))
 fit <- gllvmTMB(value ~ 1 + animal_coef(1 + x | trait, A = A, rho = 0.5),
   data = dat, trait = "trait", unit = "unit", family = gaussian(),
   control = gllvmTMBcontrol(se = FALSE), silent = TRUE)

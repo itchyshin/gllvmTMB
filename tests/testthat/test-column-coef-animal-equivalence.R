@@ -117,6 +117,15 @@ test_that("animal source rewrites do not require internal helpers in formula env
 
 test_that("rho-one animal endpoint validates its source before hard routing", {
   fx <- .make_animal_coef_fixture(seed = 13148L)
+  A_null <- NULL
+  expect_error(
+    .fit_animal_coef_test(
+      fx,
+      value ~ 0 + trait + animal_coef(0 + x | trait, A = A_null, rho = 1)
+    ),
+    "animal_coef",
+    class = "gllvmTMB_column_coef_source_invalid"
+  )
   expect_error(
     .fit_animal_coef_test(
       fx,
@@ -134,6 +143,7 @@ test_that("rho-one animal endpoint validates its source before hard routing", {
       value ~ 0 + trait +
         animal_coef(0 + x | trait, A = nonsymmetric, rho = 1)
     ),
+    "animal_coef",
     class = "gllvmTMB_column_coef_source_invalid"
   )
 

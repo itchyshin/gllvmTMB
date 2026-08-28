@@ -48,9 +48,11 @@
 #' Response-column coefficient helpers are also outside the grid.
 #' [column_coef()] fits IID random intercept/slope bases across response
 #' columns; [phylo_coef()] fits the same bases with fixed or estimated
-#' phylogenetic correlation strength. Both support Gaussian point models in
-#' long and `traits(...)` wide form. Other structured coefficient sources,
-#' non-Gaussian coefficient models, and interval inference remain unavailable.
+#' phylogenetic correlation strength; [animal_coef()] fits them from a pedigree,
+#' relationship covariance, or relationship precision with fixed correlation
+#' strength. All three support Gaussian point models in long and `traits(...)`
+#' wide form. Kernel and spatial coefficient sources, non-Gaussian coefficient
+#' models, and interval inference remain unavailable.
 #'
 #' @param formula A glmmTMB-style formula, e.g.
 #'   `value ~ 0 + trait + (0 + trait):env_temp + (0 + trait):env_precip`.

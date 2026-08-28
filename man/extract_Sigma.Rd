@@ -84,8 +84,8 @@ and return the same object with canonical \code{part = "dep"}.
 
 For \code{level = "column_coef"}: a list with coefficient-basis covariance
 \code{Sigma}, correlation \code{R}, ordered \code{basis}, aligned response-column
-\code{source}, \code{rho_status}, \code{rho}, and (for \code{\link[=phylo_coef]{phylo_coef()}} fits) the effective
-source covariance \code{K_rho}. IID \code{\link[=column_coef]{column_coef()}} fits report
+\code{source}, \code{rho_status}, \code{rho}, and (for \code{\link[=phylo_coef]{phylo_coef()}} or \code{\link[=animal_coef]{animal_coef()}}
+fits) the effective source covariance \code{K_rho}. IID \code{\link[=column_coef]{column_coef()}} fits report
 \code{rho_status = "not_applicable"}, \code{rho = NULL}, and \code{K_rho = NULL}.
 
 For a \code{phylo_dep(1 + x1 + ... + xs | species)} fit with one or more

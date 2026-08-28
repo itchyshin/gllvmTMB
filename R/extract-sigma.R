@@ -636,8 +636,8 @@ link_residual_per_trait <- function(fit) {
 #'
 #'   For `level = "column_coef"`: a list with coefficient-basis covariance
 #'   `Sigma`, correlation `R`, ordered `basis`, aligned response-column
-#'   `source`, `rho_status`, `rho`, and (for [phylo_coef()] fits) the effective
-#'   source covariance `K_rho`. IID [column_coef()] fits report
+#'   `source`, `rho_status`, `rho`, and (for [phylo_coef()] or [animal_coef()]
+#'   fits) the effective source covariance `K_rho`. IID [column_coef()] fits report
 #'   `rho_status = "not_applicable"`, `rho = NULL`, and `K_rho = NULL`.
 #'
 #'   For a `phylo_dep(1 + x1 + ... + xs | species)` fit with one or more

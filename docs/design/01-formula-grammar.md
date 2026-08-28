@@ -204,10 +204,10 @@ always named `trait`; supplying another `trait =` name is rejected rather than
 silently misaligning metadata. Non-key metadata names cannot collide with row
 data, grouping names, or reserved internal carrier names. Metadata remain a
 fixed-effect surface in this foundation: covariance, grouping, offset, and
-coefficient-helper uses fail validation. The public `column_coef()` and
-`phylo_coef()` engines therefore accept row-data coefficient bases only;
-animal, kernel, and spatial coefficient helpers still fail before engine
-construction.
+coefficient-helper uses fail validation. The public `column_coef()`,
+`phylo_coef()`, and `animal_coef()` engines therefore accept row-data
+coefficient bases only; kernel and spatial coefficient helpers still fail
+before engine construction.
 
 User-facing examples in README, vignettes, and Tier-1 articles
 should pair the long and wide forms side-by-side with a `logLik`

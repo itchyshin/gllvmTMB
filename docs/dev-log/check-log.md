@@ -55671,3 +55671,52 @@ Rscript --vanilla -e 'source("/Users/z3437171/Dropbox/Github Local/Shinichi/tool
 # unmet historical `.unlazy` ledgers (`pr1214-closeout` and
 # `response-column-coef-iid`); this lane preserved them as unrelated ownership.
 ```
+
+## 2026-08-28 -- public fixed-rho `animal_coef()` candidate
+
+Branch `codex/structured-column-coef-family` started from exact main
+`1a3b0d161781468a3e647cb9b717eb1635e20730`. The candidate exports
+`animal_coef()` for Gaussian long and `traits(...)` wide response-column random
+intercepts and slopes. It accepts exactly one pedigree, labelled `A`, or
+labelled `Ainv`, and fixed numeric `rho`; `rho = NULL`, non-Gaussian responses,
+intervals, kernel coefficients, and spatial coefficients remain deferred.
+Every `*_slope()` helper remains current, warning-free, and non-deprecated.
+
+Focused evidence:
+
+```sh
+Rscript --vanilla -e 'devtools::test(filter = "column-coef|animal-slope-recovery|fixed-column-slope-family", stop_on_failure = TRUE)'
+# PASS: 779 assertions, zero failures/warnings; four existing opt-in heavy skips.
+
+Rscript --vanilla -e 'devtools::document(quiet = TRUE)'
+# PASS: animal_coef export and generated Rd cascade; three pre-existing
+# AIC/BIC/anova S3-tag notices retained.
+
+Rscript --vanilla -e 'pkgdown::check_pkgdown(); pkgdown::build_article("articles/api-keyword-grid", pkg = ".", lazy = FALSE, new_process = FALSE, quiet = TRUE)'
+# PASS: no pkgdown problems; affected article rendered from source.
+
+git diff --check
+# PASS.
+```
+
+Exact stale-surface scans:
+
+```sh
+rg -n -i "animal(_coef)?[^\\n]{0,80}(planned|fenced|unavailable|not exported)|(?:planned|fenced|unavailable|not exported)[^\\n]{0,80}animal(_coef)?" R man NEWS.md vignettes/articles docs/design
+rg -n -i "deprecat[^\\n]{0,80}(_slope|slope\\()|(_slope|slope\\()[^\\n]{0,80}deprecat" R man NEWS.md vignettes/articles docs/design
+rg -n "animal_coef|column_coef|phylo_coef" R man NEWS.md _pkgdown.yml vignettes/articles/api-keyword-grid.Rmd docs/design/01-formula-grammar.md docs/design/131-response-column-coefficient-foundation.md docs/design/35-validation-debt-register.md
+rg -n "gllvmTMB\\(" R/column-coef-foundation.R vignettes/articles/api-keyword-grid.Rmd
+```
+
+Verdict: current reader surfaces agree on the public animal fixed-rho Gaussian
+scope and deferred regimes. Design 55/56 deprecation proposals are explicitly
+marked superseded historical text; current Design 130, NEWS, help, article, and
+register wording preserve all slope helpers. Long and wide example argument
+shapes are correct.
+
+The independent Noether review initially found installed-namespace source
+evaluation, animal screen dispatch, dense-`A` endpoint disclosure, extra
+pedigree-level alignment, and helper-specific diagnostic gaps. Each received a
+regression; the final review returned APPROVE with no P0--P3 findings. Rose,
+full local package check, exact-head CI, protected merge, exact-main CI, live
+pkgdown, and lease-release receipts remain pending.

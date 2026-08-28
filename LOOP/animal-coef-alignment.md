@@ -17,6 +17,12 @@ a covariance matrix `A`, or a precision matrix `Ainv`. The supplied diagonal is
 preserved. `|` estimates a full lower-Cholesky `Sigma_coef`; `||` maps its
 off-diagonal entries to zero.
 
+One released compatibility endpoint is explicit: a no-intercept dense-`A`,
+`rho = 1` call inherits `animal_slope()` conditioning and uses
+`A + 1e-8 I`. Pedigree and sparse-`Ainv` endpoints retain their released
+precision. Interior `rho` and intercept-bearing fits use the raw equation
+above.
+
 | Symbol in prose | Keyword / formula term | DGP draw | Recovery extractor | Truth |
 |---|---|---|---|---|
 | `x_it^T beta` | pathway fixed means such as `0 + pathway + latitude:pathway` | multiply the fixed design by `beta` | `coef(fit)` | declared pathway intercepts and slopes |
@@ -29,7 +35,8 @@ off-diagonal entries to zero.
 
 1. At `rho = 1` with no intercept, long
    `animal_coef(0 + latitude | trait, ...)` must hard-route to and be
-   byte-identical to released long `animal_slope(latitude | trait, ...)`.
+   byte-identical to released long `animal_slope(latitude | trait, ...)`; the
+   dense-`A` oracle expects `A + 1e-8 I` rather than raw `A`.
 2. The matched wide `traits(...)` coefficient model must be byte-identical to
    the long coefficient model. The released slope helper remains deliberately
    long-only.

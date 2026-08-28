@@ -2,17 +2,19 @@
 
 **Reader:** formula/API contributors, statistical-method developers, and
 reviewers maintaining the bounded response-column coefficient family.
-**Status:** public IID and phylogenetic Gaussian point-model contract,
-2026-08-27. `column_coef()` and `phylo_coef()` are exported through the ordinary
-`gllvmTMB()` entry point for matched long and `traits(...)` wide data.
+**Status:** public IID, phylogenetic, and animal Gaussian point-model contract,
+2026-08-28. `column_coef()`, `phylo_coef()`, and `animal_coef()` are exported
+through the ordinary `gllvmTMB()` entry point for matched long and
+`traits(...)` wide data.
 `phylo_coef()` admits fixed numeric `rho` and one estimated interior value.
-Interval claims, non-Gaussian regimes, and animal/kernel/spatial coefficient
-engines remain unadmitted.
+`animal_coef()` admits fixed numeric `rho`. Interval claims, non-Gaussian
+regimes, and kernel/spatial coefficient engines remain unadmitted.
 **Relationship to Design 130:** Design 130 remains the active contract for the
-released slope-only helpers. The current public `column_coef()` and
-`phylo_coef()` helpers generalise their coefficient basis to include
-response-column intercepts. Animal, kernel, and spatial coefficient extensions
-remain deferred. Existing fits and `*_slope()` spellings remain unchanged.
+released slope-only helpers. The current public `column_coef()`,
+`phylo_coef()`, and `animal_coef()` helpers generalise their coefficient basis
+to include response-column intercepts. Kernel and spatial coefficient
+extensions remain deferred. Existing fits and `*_slope()` spellings remain
+unchanged.
 
 ## 1. Scientific question and coefficient block
 
@@ -110,15 +112,16 @@ between-column correlation.
   numeric scalar in `[0, 1]` for a fixed value. It forms
   `K_rho` on the covariance scale and derives its precision and log determinant
   only after the mixture is complete; it never mixes source precisions.
-  `animal_coef()` and `kernel_coef()` retain the same planned syntax but remain
-  fenced.
+  `animal_coef()` accepts exactly one pedigree, relationship covariance `A`,
+  or relationship precision `Ainv`, and a fixed numeric `rho`. `kernel_coef()`
+  retains the same planned syntax but remains fenced.
 - `spatial_coef()` has the stable first-release default `rho = 1`. The
   estimable `rho = NULL` route is admitted only after a joint `rho`-range
   identifiability gate. A fixed `rho = 0` must map the spatial range parameter
   off because the likelihood is then independent of range.
 
-The IID `column_coef()` route estimates the `K_rho = I` case. The public
-fixed-rho phylogenetic route validates and label-aligns the supplied source,
+The IID `column_coef()` route estimates the `K_rho = I` case. The public fixed-
+rho phylogenetic and animal routes validate and label-align their sources,
 requires a symmetric positive-definite source covariance, preserves its raw
 marginal scale, and fits the resulting `K_rho`. At `rho = 1`, a no-intercept
 basis dispatches through the released `phylo_slope()` route and must be exactly
@@ -133,8 +136,9 @@ for every unrelated fit. Estimation requires genuine off-diagonal correlation
 contrast in the standardized source: a diagonal positive-definite source makes
 `rho` unidentified and is rejected with a typed error. Public `phylo_coef()`
 calls supply exactly one of `tree` or `vcv`; supplying both or neither is a
-typed grammar error. Animal, kernel, and spatial coefficient engines remain
-fenced.
+typed grammar error. `animal_coef()` accepts exactly one of `pedigree`, `A`, or
+`Ainv`; its no-intercept `rho = 1` endpoint dispatches through the released
+`animal_slope()` route. Kernel and spatial coefficient engines remain fenced.
 
 One protected compatibility seam is explicit. The released dense-VCV
 `phylo_slope()` route conditions its covariance as `K0 = K + 1e-8 I` before
@@ -144,6 +148,13 @@ Tree sources retain their released tree precision. Interior `rho < 1` and
 intercept-bearing `rho = 1` use the raw-scale `K_rho` equation without a ridge.
 The public help and article disclose this endpoint seam rather than claiming
 exact continuity across it.
+
+The released dense-`A` `animal_slope()` endpoint has the same conditioning
+seam. A no-intercept dense-`A` `animal_coef(..., rho = 1)` therefore uses
+`A + 1e-8 I`; pedigree and sparse-`Ainv` endpoints use their released sparse
+precision. Interior `rho` and intercept-bearing `rho = 1` animal fits use the
+raw `K_rho` equation. This exception is tested and disclosed rather than
+described as exact raw-`A` mixing.
 
 ## 4. Keyed response-column metadata
 
@@ -244,18 +255,19 @@ fixed/random overlap, and requires every marker to be a top-level additive RHS
 term. A valid `column_coef()` term continues into the existing matrix-normal
 coefficient engine with identity response-column covariance. A valid
 `phylo_coef()` term admits fixed or estimated `rho` through the public
-`gllvmTMB()` path. A valid `animal_coef()`,
-`kernel_coef()`, or `spatial_coef()` term also remains fenced before
-optimisation or TMB assembly. Malformed syntax uses narrower validation classes
-and must not be disguised as the engine fence.
+`gllvmTMB()` path. A valid `animal_coef()` term admits fixed numeric `rho`
+through the same matrix-normal engine. Valid `kernel_coef()` and
+`spatial_coef()` terms remain fenced before optimisation or TMB assembly.
+Malformed syntax uses narrower validation classes and must not be disguised as
+the engine fence.
 
 The literal predictor name `(Intercept)` is reserved. Users request the
 synthetic intercept with `1`; accepting the literal name would make the design
 column ambiguous.
 
-The two admitted marker names are exported, indexed by pkgdown, documented in
-reference topics, and taught in the response-column article. The three deferred
-marker names remain absent from the export surface.
+The three admitted marker names are exported, indexed by pkgdown, and
+documented in reference topics. The two deferred marker names remain absent
+from the export surface.
 
 ## 8. Independent oracles
 
@@ -298,6 +310,19 @@ The fixed-rho phylogenetic slice adds independent gates for:
 5. deterministic known-DGP Gaussian recovery under a non-unit-scale source
    covariance.
 
+The animal slice adds independent gates for:
+
+1. exact no-intercept `rho = 1` identity with released `animal_slope()` under
+   both bars and for pedigree, dense `A`, and sparse `Ainv` inputs;
+2. exact covariance-scale mixing for non-unit diagonals at an interior fixed
+   `rho`, with agreement among pedigree, `A`, and `Ainv` routes;
+3. typed failures for missing, multiple, unlabelled, mismatched, asymmetric,
+   non-finite, or non-positive-definite sources;
+4. exact long/wide parity for C3/C4 fixed intercepts and slopes with
+   response-column random intercepts and slopes under both bars; and
+5. deterministic Gaussian intercept/slope covariance recovery with finite
+   gradients.
+
 The public slice adds spectral estimated-rho TMB plumbing, a dedicated
 `extract_Sigma(level = "column_coef")` contract, matched long/wide examples,
 and fixed-versus-estimated objective and automatic-differentiation oracles.
@@ -306,7 +331,7 @@ a mathematical assumption.
 
 ## 9. Explicitly deferred
 
-This slice defers animal/kernel/spatial coefficient engines, interval
+This slice defers kernel/spatial coefficient engines, interval
 inference, non-Gaussian multi-predictor recovery, latent predictor covariance,
 and a broader `column_data` tutorial. The general `rho` extension for the
 existing 5 x 3 grid remains a separate model-family decision, not a side

@@ -49,8 +49,10 @@ test_that("public coefficient markers are exported formula helpers", {
   exports <- getNamespaceExports("gllvmTMB")
   expect_true("column_coef" %in% exports)
   expect_true("phylo_coef" %in% exports)
+  expect_true("animal_coef" %in% exports)
   expect_true(is.function(gllvmTMB::column_coef))
   expect_true(is.function(gllvmTMB::phylo_coef))
+  expect_true(is.function(gllvmTMB::animal_coef))
 })
 
 test_that("public IID column_coef fits and has a coefficient extractor", {
@@ -238,24 +240,37 @@ test_that("screen_gllvmTMB recognises public coefficient formulas", {
     trait = "trait",
     family = stats::gaussian()
   ))
+  long_animal <- suppressWarnings(gllvmTMB::screen_gllvmTMB(
+    value ~ 1 + animal_coef(0 + x | trait, A = K, rho = 1),
+    data = fx$long,
+    unit = "unit",
+    trait = "trait",
+    family = stats::gaussian()
+  ))
 
   expect_s3_class(long_iid, "gllvmTMB_screen")
   expect_s3_class(wide_iid, "gllvmTMB_screen")
   expect_s3_class(long_phylo, "gllvmTMB_screen")
+  expect_s3_class(long_animal, "gllvmTMB_screen")
   expect_identical(long_iid$settings$source_shape, "long")
   expect_identical(wide_iid$settings$source_shape, "wide_traits")
-  for (screen in list(long_iid, wide_iid, long_phylo)) {
+  for (screen in list(long_iid, wide_iid, long_phylo, long_animal)) {
     expect_true(all(screen$traits$response_mode == "unsupported"))
     expect_true(all(screen$traits$status == "NOT_CHECKED"))
   }
 })
 
-test_that("deferred structured coefficient helpers remain fenced", {
+test_that("animal coefficients are public while kernel and spatial remain fenced", {
   fx <- .make_public_column_coef_fixture()
   K <- diag(length(fx$traits))
   dimnames(K) <- list(fx$traits, fx$traits)
+  animal_fit <- .fit_public_iid_coef(
+    fx$long,
+    value ~ 1 + animal_coef(1 + x | trait, A = K)
+  )
+  expect_identical(animal_fit$use$response_column_coef_source, "animal")
+
   formulas <- list(
-    value ~ 1 + animal_coef(1 + x | trait, pedigree = K),
     value ~ 1 + kernel_coef(1 + x | trait, K = K),
     value ~ 1 + spatial_coef(1 + x | trait, mesh = K)
   )

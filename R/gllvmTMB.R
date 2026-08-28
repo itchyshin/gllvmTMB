@@ -56,7 +56,8 @@
 #'   `value ~ 0 + trait + (0 + trait):env_temp + (0 + trait):env_precip`.
 #'   Fixed effects and any of the three-mode grid covstructs above are
 #'   supported (plus [slope()], [phylo_slope()], [animal_slope()],
-#'   [kernel_slope()], [spatial_slope()], [column_coef()], [phylo_coef()], and
+#'   [kernel_slope()], [spatial_slope()], [column_coef()], [phylo_coef()],
+#'   [animal_coef()], and
 #'   [meta_V()]).
 #'
 #'   An `offset()` term is supported for **count responses only** — `poisson()`,
@@ -1063,8 +1064,10 @@ gllvmTMB <- function(
     response_vars = all.vars(formula[[2L]])
   )
   if (!is.null(column_coef_spec)) {
+    .column_coef_assert_gaussian_family(family, column_coef_spec$helper)
     .column_coef_assert_no_overlap(formula, data, trait, column_coef_spec)
-    if (!column_coef_spec$helper %in% c("column_coef", "phylo_coef")) {
+    if (!column_coef_spec$helper %in%
+        c("column_coef", "phylo_coef", "animal_coef")) {
       .column_coef_engine_fence(column_coef_spec)
     }
   }
@@ -1081,6 +1084,11 @@ gllvmTMB <- function(
   if (!is.null(column_coef_spec)) {
     formula[[3L]] <- if (identical(column_coef_spec$helper, "column_coef")) {
       .column_coef_rewrite_iid(formula[[3L]], column_coef_spec)
+    } else if (identical(column_coef_spec$helper, "animal_coef")) {
+      .column_coef_rewrite_fixed_animal(
+        formula[[3L]], column_coef_spec, data = data,
+        envir = environment(formula)
+      )
     } else if (identical(column_coef_spec$rho_mode, "fixed")) {
       .column_coef_rewrite_fixed_phylo(
         formula[[3L]], column_coef_spec, data = data,

@@ -41,7 +41,8 @@ gllvmTMB(
 \code{value ~ 0 + trait + (0 + trait):env_temp + (0 + trait):env_precip}.
 Fixed effects and any of the three-mode grid covstructs above are
 supported (plus \code{\link[=slope]{slope()}}, \code{\link[=phylo_slope]{phylo_slope()}}, \code{\link[=animal_slope]{animal_slope()}},
-\code{\link[=kernel_slope]{kernel_slope()}}, \code{\link[=spatial_slope]{spatial_slope()}}, \code{\link[=column_coef]{column_coef()}}, \code{\link[=phylo_coef]{phylo_coef()}}, and
+\code{\link[=kernel_slope]{kernel_slope()}}, \code{\link[=spatial_slope]{spatial_slope()}}, \code{\link[=column_coef]{column_coef()}}, \code{\link[=phylo_coef]{phylo_coef()}},
+\code{\link[=animal_coef]{animal_coef()}}, and
 \code{\link[=meta_V]{meta_V()}}).
 
 An \code{offset()} term is supported for \strong{count responses only} — \code{poisson()},

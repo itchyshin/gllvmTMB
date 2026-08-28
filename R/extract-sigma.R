@@ -943,7 +943,7 @@ extract_Sigma <- function(
       as.numeric(fit$use$response_column_coef_rho)
     } else NULL
     K_rho <- NULL
-    if (identical(source_type, "phylo")) {
+    if (source_type %in% c("phylo", "animal")) {
       if (identical(rho_status, "estimated")) {
         U <- fit$tmb_data$column_coef_source_U
         lambda <- fit$tmb_data$column_coef_source_lambda
@@ -991,7 +991,7 @@ extract_Sigma <- function(
   if (!isTRUE(fit$use$response_column_coef) &&
       identical(level, "column_coef")) {
     cli::cli_abort(
-      "The fitted model has no {.fn column_coef} or {.fn phylo_coef} term."
+      "The fitted model has no {.fn column_coef}, {.fn phylo_coef}, or {.fn animal_coef} term."
     )
   }
 

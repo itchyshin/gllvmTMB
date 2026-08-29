@@ -4,6 +4,11 @@ qualify_path <- testthat::test_path(
 verify_path <- testthat::test_path(
   "..", "..", "dev", "isdm-requalification", "verify-source-contract.R"
 )
+if (!all(file.exists(c(qualify_path, verify_path)))) {
+  test_that("developer-only iSDM qualification sources are available", {
+    skip("dev/isdm-requalification is absent from the built package")
+  })
+} else {
 source(qualify_path, local = TRUE, chdir = TRUE)
 source(verify_path, local = TRUE, chdir = TRUE)
 
@@ -104,3 +109,4 @@ test_that("unreadable qualification inputs fail closed", {
   writeLines("not RDS", path)
   expect_error(isdm_read_qualification_receipt(path, "CI"), "unreadable")
 })
+}

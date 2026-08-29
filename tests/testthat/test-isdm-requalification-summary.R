@@ -1,6 +1,11 @@
 summary_path <- testthat::test_path(
   "..", "..", "dev", "isdm-requalification", "summarise.R"
 )
+if (!file.exists(summary_path)) {
+  test_that("developer-only iSDM summary source is available", {
+    skip("dev/isdm-requalification is absent from the built package")
+  })
+} else {
 source(summary_path, local = TRUE, chdir = TRUE)
 
 test_that("denominators preserve errors, interruptions, and unavailability", {
@@ -225,3 +230,4 @@ test_that("eligible denominator requires a provenance-valid terminal", {
   expect_identical(ledger$status, "invalid_terminal")
   expect_false(ledger$eligible)
 })
+}

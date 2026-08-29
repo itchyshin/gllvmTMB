@@ -1,6 +1,11 @@
 runner_path <- testthat::test_path(
   "..", "..", "dev", "isdm-requalification", "runner.R"
 )
+if (!file.exists(runner_path)) {
+  test_that("developer-only iSDM runner source is available", {
+    skip("dev/isdm-requalification is absent from the built package")
+  })
+} else {
 source(runner_path, local = TRUE)
 
 test_that("retained records are atomic and never overwritten", {
@@ -116,3 +121,4 @@ test_that("tampered structural pairing fields invalidate a terminal record", {
   record$task_spec$structure_seed <- 999L
   expect_false(.isdm_terminal_valid(record, 1L, 10L, as.list(plan[1, ])))
 })
+}

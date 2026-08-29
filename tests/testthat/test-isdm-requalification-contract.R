@@ -1,6 +1,11 @@
 contract_path <- testthat::test_path(
   "..", "..", "dev", "isdm-requalification", "contract.R"
 )
+if (!file.exists(contract_path)) {
+  test_that("developer-only iSDM contract source is available", {
+    skip("dev/isdm-requalification is absent from the built package")
+  })
+} else {
 source(contract_path, local = TRUE)
 
 test_that("point plans preserve exact denominators and registered seeds", {
@@ -96,3 +101,4 @@ test_that("fixed target applicability is frozen before observing fits", {
                    c("isdm_source:source2:(Intercept)",
                      "isdm_source:source3:bias_x"))
 })
+}

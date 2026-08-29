@@ -1,6 +1,11 @@
 fixture_path <- testthat::test_path(
   "..", "..", "dev", "isdm-requalification", "fixture.R"
 )
+if (!file.exists(fixture_path)) {
+  test_that("developer-only iSDM fixture source is available", {
+    skip("dev/isdm-requalification is absent from the built package")
+  })
+} else {
 source(fixture_path, local = TRUE)
 
 test_that("nonspatial fixture freezes mixed laws and source-masked bias", {
@@ -99,3 +104,4 @@ test_that("spatial fixture withholds whole coordinates and uses effort-free newd
   expect_equal(nrow(fixture$mesh$A_st), nrow(fixture$data))
   expect_identical(fixture$design$mesh_domain, "training coordinates only")
 })
+}

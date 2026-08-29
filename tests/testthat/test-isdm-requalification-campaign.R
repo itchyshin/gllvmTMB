@@ -1,10 +1,15 @@
 campaign_path <- testthat::test_path(
   "..", "..", "dev", "isdm-requalification", "campaign.R"
 )
-source(campaign_path, local = TRUE, chdir = TRUE)
 summary_path <- testthat::test_path(
   "..", "..", "dev", "isdm-requalification", "summarise.R"
 )
+if (!all(file.exists(c(campaign_path, summary_path)))) {
+  test_that("developer-only iSDM campaign sources are available", {
+    skip("dev/isdm-requalification is absent from the built package")
+  })
+} else {
+source(campaign_path, local = TRUE, chdir = TRUE)
 source(summary_path, local = TRUE, chdir = TRUE)
 
 .mock_identity <- function() list(
@@ -276,3 +281,4 @@ test_that("tiny public spatial route exercises the typed out-of-hull oracle", {
   expect_true(result$estimate$out_of_hull_warning_ok)
   expect_true(all(is.finite(result$estimate$heldout_surface)))
 })
+}

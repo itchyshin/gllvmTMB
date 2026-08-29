@@ -47,6 +47,14 @@ and the typed unseen-level refusal.
   spatial/heavy tests were reported separately.
 - Independent adversarial re-review: PASS after the all-Poisson, source-label,
   typed-refusal, and three-source public-path findings were repaired.
+- Full `devtools::test()`: PASS.
+- `pkgdown::check_pkgdown()`: PASS with no problems.
+- `devtools::check(args = "--no-manual")`: PASS in 21m01s with 0 errors,
+  0 warnings, and 3 non-blocking notes (system-clock verification, the existing
+  `logLik` global-definition note, and macOS `xcrun_db` temp detritus).
+- Built-tarball boundary: the six developer-harness suites register explicit
+  skips because `dev/` is intentionally excluded, while the same suites run
+  fully and pass in the source checkout.
 
 This is a repair receipt, not source qualification. It creates no production or
 pre-run attempt and changes no evidence denominator. Claim-bearing fits remain

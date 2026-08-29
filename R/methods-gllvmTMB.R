@@ -2488,10 +2488,13 @@ predict.gllvmTMB_multi <- function(
     isdm_observation <- attr(
       object$family_input, "isdm_observation", exact = TRUE
     )
-    isdm_family_var <- attr(
+    isdm_family_attr <- attr(
       object$family_input, "family_var", exact = TRUE
-    ) %||% "isdm_source"
-    if (!is.null(isdm_observation)) {
+    )
+    isdm_family_var <- isdm_family_attr %||% "isdm_source"
+    is_integrated_source <- identical(isdm_family_attr, "isdm_source")
+    observation_data <- as.data.frame(newdata)
+    if (is_integrated_source) {
       if (!isdm_family_var %in% names(newdata)) {
         cli::cli_abort(c(
           "Integrated-source prediction needs source column {.arg {isdm_family_var}} in {.arg newdata}.",
@@ -2513,14 +2516,19 @@ predict.gllvmTMB_multi <- function(
         ), class = "gllvmTMB_predict_isdm_source_unknown")
       }
     }
+    observation_vars <- unique(unlist(
+      lapply(isdm_observation %||% list(), all.vars),
+      use.names = FALSE
+    ))
+    fixed_vars <- all.vars(stats::delete.response(stats::terms(object$formula)))
+    observation_only_vars <- setdiff(observation_vars, fixed_vars)
     nd <- .gllvmTMB_restore_newdata_factor_levels(
       newdata,
       object$data,
-      allow_unseen = stats::na.omit(c(object$unit_col, object$species_col)),
-      typed_observation = unique(unlist(
-        lapply(isdm_observation %||% list(), all.vars),
-        use.names = FALSE
-      ))
+      allow_unseen = stats::na.omit(c(
+        object$unit_col, object$species_col, observation_only_vars
+      )),
+      typed_observation = observation_vars
     )
 
     ## Build the design from the RIGHT-HAND SIDE only (#1154). `model.matrix()`
@@ -2536,11 +2544,12 @@ predict.gllvmTMB_multi <- function(
     if (!is.null(isdm_observation)) {
       X_new <- .gll_isdm_observation_prediction_design(
         X_fix = X_new,
-        data = nd,
-        source = nd[[isdm_family_var]],
+        data = observation_data,
+        source = source_raw,
         family_input = object$family_input,
         training_data = object$data,
-        target_columns = object$X_fix_names
+        target_columns = object$X_fix_names,
+        basis = object$isdm_observation_basis
       )
     }
     ## `object$formula` is the offset-free fixed formula (the offset is held

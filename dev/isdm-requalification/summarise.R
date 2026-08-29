@@ -321,6 +321,52 @@ isdm_adjudicate_ordinary <- function(records,
                  is.finite(med) && med <= gates$psi_relative_error_median_max)
   }))
 
+  overlap_availability <- do.call(rbind, lapply(c("full", "weak"), function(overlap) {
+    overlap_records <- promotion[vapply(promotion, function(x) {
+      identical(x$task_spec$overlap %||% NA_character_, overlap)
+    }, logical(1L))]
+    availability_row <- function(target, applicable, available) {
+      planned_n <- sum(applicable)
+      available_n <- sum(available[applicable])
+      rate <- if (planned_n) available_n / planned_n else 0
+      data.frame(
+        target = target, overlap = overlap, planned = planned_n,
+        available = available_n, availability = rate,
+        pass = rate >= gates$target_availability_min,
+        stringsAsFactors = FALSE
+      )
+    }
+    fixed <- do.call(rbind, lapply(coefficient_names, function(name) {
+      applicable <- vapply(overlap_records, function(x) {
+        name %in% isdm_expected_fixed_targets(x$task_spec$n_sources)
+      }, logical(1L))
+      available <- vapply(overlap_records, function(x) {
+        .isdm_fit_eligible(x) && name %in% names(x$truth$fixed) &&
+          name %in% names(x$estimate$fixed) &&
+          is.finite(x$truth$fixed[[name]]) &&
+          is.finite(x$estimate$fixed[[name]])
+      }, logical(1L))
+      availability_row(name, applicable, available)
+    }))
+    common_targets <- do.call(rbind, lapply(c("Sigma", "surface"), function(target) {
+      applicable <- rep(TRUE, length(overlap_records))
+      available <- vapply(overlap_records, .isdm_available_pair,
+                          logical(1L), target)
+      availability_row(target, applicable, available)
+    }))
+    psi_targets <- do.call(rbind, lapply(trait_names, function(name) {
+      applicable <- rep(TRUE, length(overlap_records))
+      available <- vapply(overlap_records, function(x) {
+        .isdm_available_pair(x, "Psi") && name %in% rownames(x$truth$Psi) &&
+          name %in% rownames(x$estimate$Psi) &&
+          is.finite(x$truth$Psi[name, name]) &&
+          is.finite(x$estimate$Psi[name, name])
+      }, logical(1L))
+      availability_row(paste0("Psi:", name), applicable, available)
+    }))
+    rbind(fixed, common_targets, psi_targets)
+  }))
+
   surface_available <- vapply(promotion, .isdm_available_pair, logical(1L),
                               "surface")
   surface_rows <- do.call(rbind, lapply(promotion[surface_available], function(x) {
@@ -349,9 +395,11 @@ isdm_adjudicate_ordinary <- function(records,
   pass <- complete && all(diagnostics$pass) && nrow(coefficients) > 0L &&
     all(coefficients$pass) && nrow(paired_rmse) > 0L && all(paired_rmse$pass) &&
     isTRUE(sigma_summary$pass) &&
-    nrow(psi) > 0L && all(psi$pass) && isTRUE(surface$pass)
+    nrow(psi) > 0L && all(psi$pass) && isTRUE(surface$pass) &&
+    nrow(overlap_availability) > 0L && all(overlap_availability$pass)
   list(verdict = if (pass) "PASS" else "FAIL", complete = complete,
        diagnostics = diagnostics, coefficients = coefficients,
+       availability_by_overlap = overlap_availability,
        weak_full_coefficient_rmse = paired_rmse,
        Sigma = sigma_summary, Psi = psi, surface = surface,
        stress = isdm_stress_summary(records[stress_i]))
@@ -372,6 +420,17 @@ isdm_adjudicate_spatial <- function(records,
       is.finite(x$estimate$training_identity_error %||% NA_real_) &&
       is.finite(x$estimate$source_dispatch_error %||% NA_real_)
   }, logical(1L))
+  eligible <- vapply(records, .isdm_fit_eligible, logical(1L))
+  oracle_records <- records[eligible]
+  training_identity <- vapply(oracle_records, function(x)
+    x$estimate$training_identity_error %||% NA_real_, numeric(1L))
+  source_dispatch <- vapply(oracle_records, function(x)
+    x$estimate$source_dispatch_error %||% NA_real_, numeric(1L))
+  training_identity_all <- length(oracle_records) > 0L &&
+    all(is.finite(training_identity)) &&
+    all(training_identity <= gates$training_identity_max)
+  source_dispatch_all <- length(oracle_records) > 0L &&
+    all(is.finite(source_dispatch)) && all(source_dispatch <= 1e-10)
   metric_rows <- do.call(rbind, lapply(records[available], function(x)
     isdm_centered_surface_metrics(x$estimate$heldout_surface,
                                   x$truth$heldout_surface,
@@ -379,13 +438,17 @@ isdm_adjudicate_spatial <- function(records,
   if (is.null(metric_rows)) metric_rows <- data.frame()
   summary <- data.frame(
     availability = sum(available) / planned,
-    training_identity_max = if (any(available)) max(vapply(records[available],
-      function(x) x$estimate$training_identity_error, numeric(1L))) else NA_real_,
-    source_dispatch_max = if (any(available)) max(vapply(records[available],
-      function(x) x$estimate$source_dispatch_error, numeric(1L))) else NA_real_,
-    zero_offset_all = any(available) && all(vapply(records[available],
+    oracle_eligible = as.integer(sum(eligible)),
+    training_identity_max = if (any(is.finite(training_identity)))
+      max(training_identity[is.finite(training_identity)]) else NA_real_,
+    training_identity_all = training_identity_all,
+    source_dispatch_max = if (any(is.finite(source_dispatch)))
+      max(source_dispatch[is.finite(source_dispatch)]) else NA_real_,
+    source_dispatch_all = source_dispatch_all,
+    zero_offset_all = length(oracle_records) > 0L && all(vapply(oracle_records,
       function(x) isTRUE(x$estimate$zero_offset_ok), logical(1L))),
-    out_of_hull_warning_all = any(available) && all(vapply(records[available],
+    out_of_hull_warning_all = length(oracle_records) > 0L &&
+      all(vapply(oracle_records,
       function(x) isTRUE(x$estimate$out_of_hull_warning_ok), logical(1L))),
     median_correlation = if (nrow(metric_rows))
       stats::median(metric_rows$correlation, na.rm = TRUE) else NA_real_,
@@ -393,8 +456,8 @@ isdm_adjudicate_spatial <- function(records,
       stats::median(metric_rows$nrmse, na.rm = TRUE) else NA_real_
   )
   pass <- complete && summary$availability >= gates$target_availability_min &&
-    summary$training_identity_max <= gates$training_identity_max &&
-    summary$source_dispatch_max <= 1e-10 && summary$zero_offset_all &&
+    summary$training_identity_all && summary$source_dispatch_all &&
+    summary$zero_offset_all &&
     summary$out_of_hull_warning_all &&
     summary$median_correlation >= gates$heldout_surface_correlation_median_min &&
     summary$median_nrmse <= gates$heldout_surface_nrmse_median_max

@@ -22,7 +22,9 @@ test_that("source-observation newdata design reproduces training and one-source 
     base, training, training$isdm_source, family_input,
     training_data = training, target_columns = colnames(fitted)
   )
-  expect_equal(rebuilt, fitted, tolerance = 1e-14)
+  fitted_values <- fitted
+  attr(fitted_values, "isdm_observation_basis") <- NULL
+  expect_equal(rebuilt, fitted_values, tolerance = 1e-14)
 
   one_source <- training[
     training$isdm_source == "source1" & training$method == "visual",
@@ -174,6 +176,74 @@ test_that("public three-source prediction preserves fitted observation bases", {
   expect_error(
     predict(fit, newdata = unseen, re_form = ~0),
     class = "gllvmTMB_predict_isdm_observation_level"
+  )
+
+  ## A source-specific factor is irrelevant on rows from another source.  Its
+  ## value must not be validated globally before source masking is applied.
+  portal_only <- response_free[portal, , drop = FALSE]
+  portal_only$method <- "not-a-checklist-level"
+  expect_no_error(
+    predict(fit, newdata = portal_only, re_form = ~0)
+  )
+
+  ## Prediction uses the basis frozen when the model was fitted, not whatever
+  ## contrast option happens to be active later in the R session.
+  old_contrasts <- getOption("contrasts")
+  on.exit(options(contrasts = old_contrasts), add = TRUE)
+  options(contrasts = c("contr.sum", "contr.poly"))
+  fit_roundtrip <- unserialize(serialize(fit, NULL))
+  contrast_out <- suppressMessages(
+    predict(fit_roundtrip, newdata = response_free, re_form = ~0)
+  )
+  expect_equal(contrast_out$est, as.numeric(fit$report$eta), tolerance = 1e-10)
+})
+
+test_that("public integrated prediction always requires declared source labels", {
+  skip_if_not_installed("TMB")
+  dat <- expand.grid(
+    cell = factor(paste0("c", seq_len(8L))),
+    trait = factor(c("sp1", "sp2")),
+    isdm_source = factor(c("portal", "survey")),
+    KEEP.OUT.ATTRS = FALSE
+  )
+  eta <- ifelse(dat$trait == "sp1", -0.2, 0.15)
+  dat$value <- ifelse(
+    dat$isdm_source == "portal",
+    stats::rpois(nrow(dat), exp(eta)),
+    stats::rbinom(nrow(dat), 1L, -expm1(-exp(eta)))
+  )
+  fit <- suppressMessages(gllvmTMB(
+    value ~ 0 + trait, data = dat, trait = "trait", unit = "cell",
+    family = isdm_sources(
+      portal = poisson(), survey = binomial("cloglog")
+    ),
+    silent = TRUE
+  ))
+  response_free <- dat[setdiff(names(dat), c("value", "isdm_source"))]
+  expect_error(
+    predict(fit, newdata = response_free, re_form = ~0),
+    class = "gllvmTMB_predict_isdm_source_missing"
+  )
+
+  valid <- dat[setdiff(names(dat), "value")]
+  link <- suppressMessages(predict(
+    fit, newdata = valid, re_form = ~0, type = "link"
+  ))
+  response <- suppressMessages(predict(
+    fit, newdata = valid, re_form = ~0, type = "response"
+  ))
+  expected <- ifelse(
+    valid$isdm_source == "portal",
+    exp(link$est),
+    -expm1(-exp(link$est))
+  )
+  expect_equal(response$est, expected, tolerance = 1e-12)
+
+  unknown <- valid
+  unknown$isdm_source <- "undeclared"
+  expect_error(
+    predict(fit, newdata = unknown, re_form = ~0),
+    class = "gllvmTMB_predict_isdm_source_unknown"
   )
 })
 

@@ -150,6 +150,39 @@ test_that("ordinary adjudication separates promotion and stress denominators", {
   )$verdict, "FAIL")
 })
 
+test_that("ordinary availability is reported and gated by overlap regime", {
+  ordinary_plan <- isdm_point_plan("ordinary")
+  attack_plan <- isdm_point_plan("attack")
+  attack_plan$pair_id <- NA_integer_
+  attack_plan$structure_seed <- attack_plan$seed
+  plan <- rbind(ordinary_plan, attack_plan[names(ordinary_plan)])
+  records <- lapply(seq_len(nrow(plan)), function(i)
+    .passing_ordinary_record(plan[i, , drop = FALSE]))
+
+  weak <- vapply(records, function(x) {
+    identical(x$programme, "ordinary") &&
+      identical(x$task_spec$overlap, "weak")
+  }, logical(1L))
+  records[weak] <- lapply(records[weak], function(x) {
+    x$estimate$Sigma[] <- NA_real_
+    x
+  })
+  gates <- isdm_frozen_gates()$ordinary
+  gates$target_availability_min <- 0.50
+  result <- isdm_adjudicate_ordinary(
+    records, gates = gates, source_contract = .summary_contract
+  )
+  sigma <- result$availability_by_overlap[
+    result$availability_by_overlap$target == "Sigma", , drop = FALSE
+  ]
+
+  expect_equal(sigma$availability[sigma$overlap == "full"], 1)
+  expect_equal(sigma$availability[sigma$overlap == "weak"], 0)
+  expect_true(sigma$pass[sigma$overlap == "full"])
+  expect_false(sigma$pass[sigma$overlap == "weak"])
+  expect_identical(result$verdict, "FAIL")
+})
+
 .passing_spatial_record <- function(task) .with_summary_identity(list(
   schema = ISDM_RECEIPT_SCHEMA,
   task_id = task$task_id[[1L]], seed = task$seed[[1L]],
@@ -181,6 +214,22 @@ test_that("spatial adjudication requires every deterministic oracle", {
   expect_identical(isdm_adjudicate_spatial(
     records, source_contract = .summary_contract
   )$verdict, "FAIL")
+})
+
+test_that("spatial deterministic oracles cover every eligible fit", {
+  plan <- isdm_point_plan("spatial")
+  records <- lapply(seq_len(nrow(plan)), function(i)
+    .passing_spatial_record(plan[i, , drop = FALSE]))
+  records[[1L]]$estimate$heldout_surface[] <- NA_real_
+  records[[1L]]$estimate$training_identity_error <- 1e-3
+
+  result <- isdm_adjudicate_spatial(
+    records, source_contract = .summary_contract
+  )
+  expect_equal(result$summary$availability, 799 / 800)
+  expect_identical(result$summary$oracle_eligible, 800L)
+  expect_false(result$summary$training_identity_all)
+  expect_identical(result$verdict, "FAIL")
 })
 
 test_that("duplicate tasks or wrong registered seeds cannot satisfy completeness", {

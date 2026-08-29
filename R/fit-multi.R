@@ -3079,6 +3079,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## We use the full data env so that 0 + trait + (0+trait):env etc. parses.
   mf <- stats::model.frame(parsed$fixed, data = data, na.action = stats::na.pass)
   X_fix <- stats::model.matrix(parsed$fixed, mf)
+  isdm_observation_basis <- NULL
   if (!is.null(attr(family_input, "isdm_observation", exact = TRUE))) {
     X_fix <- .gll_isdm_observation_design(
       X_fix = X_fix,
@@ -3086,6 +3087,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       source = data[["isdm_source"]],
       family_input = family_input
     )
+    isdm_observation_basis <- attr(
+      X_fix, "isdm_observation_basis", exact = TRUE
+    )
+    attr(X_fix, "isdm_observation_basis") <- NULL
   }
 
   ## The offset is evaluated against the SAME `data` the model frame was built
@@ -8167,6 +8172,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       phylo_tree   = phylo_tree,
       X_fix        = X_fix,
       X_fix_names  = colnames(X_fix),
+      isdm_observation_basis = isdm_observation_basis,
       ## The offset expression, kept so predict(newdata = ) can re-evaluate it
       ## for rows the fit never saw. NULL when the formula carried no offset.
       offset_expr  = parsed$offset_expr,

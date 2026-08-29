@@ -2,9 +2,10 @@
 
 This directory is the isolated preparation surface for public-route
 integrated-JSDM evidence. It does not certify a capability by itself. Production
-fits may start only after the coefficient series releases its shared paths and
-one green `origin/main` commit, tree, installed package, loaded DLL, and relevant
-source hashes have been frozen together.
+fits may start only after one green `origin/main` commit, tree, installed
+package, loaded DLL, and relevant source hashes have been frozen together. The
+coefficient series has released its shared paths; source qualification remains
+a separate gate and has not been implied by preparation work.
 
 The lane calls `gllvmTMB(..., family = isdm_sources(...))` only. Historical
 private `.gll_isdm_fit()` and direct `TMB::MakeADFun()` campaigns remain negative
@@ -32,7 +33,13 @@ but retain distinct registered attempt seeds and observation draws.
 
 ## Current boundary
 
-Preparation code and tests are safe to develop under the disjoint lease. The
-source qualification, public wording repairs, claim-bearing fits, interval API,
-shared validation register, package documentation, and closeout remain blocked
-by the coefficient lease or by their preceding scientific gates.
+The public point route accepts response-free `newdata`, reconstructs fitted
+source-observation formulas, retains row-specific source/link dispatch, and
+refuses an all-missing declared source-by-trait arm before fitting. These are
+deterministic API and safety properties, not a recovery certificate.
+
+Truth synchronization and source qualification now follow the released
+coefficient lane. Claim-bearing point fits remain gated by exact-source
+qualification and the retained pre-run timing decision. SPDE map uncertainty
+remains gated by the held-out spatial point verdict and its own calibration
+campaign.

@@ -105,8 +105,38 @@ isdm_campaign_task <- function(programme, task_id) {
   task
 }
 
-isdm_prepare_task <- function(task) {
+isdm_interval_route_available <- function(predict_method = NULL) {
+  if (is.null(predict_method)) {
+    predict_method <- tryCatch(
+      getS3method("predict", "gllvmTMB_multi", optional = TRUE),
+      error = function(e) NULL
+    )
+  }
+  is.function(predict_method) &&
+    all(c("interval", "level", "nsim", "seed") %in%
+          names(formals(predict_method)))
+}
+
+.isdm_predict_marginal_interval <- function(fit, newdata, seed,
+                                             predict_fn = stats::predict) {
+  predict_fn(
+    fit, newdata = newdata, type = "link", interval = "marginal",
+    level = 0.95, nsim = 1000L, seed = as.integer(seed)
+  )
+}
+
+isdm_prepare_task <- function(task,
+                              interval_capability_fn = isdm_interval_route_available) {
   programme <- task$programme[[1L]]
+  if (identical(programme, "interval") && !isTRUE(interval_capability_fn())) {
+    stop(.isdm_condition(
+      paste0(
+        "marginal SPDE map intervals are unavailable at this source pin; ",
+        "the retained pre-run cannot estimate uncertainty runtime"
+      ),
+      "isdm_interval_route_unavailable"
+    ))
+  }
   if (programme %in% c("ordinary", "attack")) {
     fixture <- isdm_nonspatial_fixture(
       seed = task$structure_seed[[1L]] %||% task$seed[[1L]],
@@ -166,7 +196,8 @@ isdm_prepare_task <- function(task) {
 
 isdm_fit_public_task <- function(prepared) {
   fixture <- prepared$fixture
-  spatial <- prepared$task$programme[[1L]] %in% c("spatial", "interval")
+  programme <- prepared$task$programme[[1L]]
+  spatial <- programme %in% c("spatial", "interval")
   fit <- suppressMessages(gllvmTMB::gllvmTMB(
     prepared$formula, data = fixture$data, trait = "trait", unit = "cell_id",
     family = fixture$families, mesh = if (spatial) fixture$mesh else NULL,
@@ -175,6 +206,7 @@ isdm_fit_public_task <- function(prepared) {
   diagnostics <- .isdm_fit_diagnostics(fit)
   fixed <- .isdm_named_fixed(fit)
   fixed_truth <- .isdm_bind_fixed_truth(fit, fixture$data$truth_fixed)
+  interval_evidence <- NULL
   if (!spatial) {
     total <- gllvmTMB::extract_Sigma(
       fit, level = "unit", part = "total", link_residual = "none"
@@ -231,16 +263,27 @@ isdm_fit_public_task <- function(prepared) {
         length(unique(fixture$map_newdata$isdm_source)) == 1L,
       out_of_hull_warning_ok = out_of_hull_warning
     )
+    interval_evidence <- if (identical(programme, "interval")) {
+      list(
+        route = "marginal", level = 0.95, nsim = 1000L,
+        seed = as.integer(prepared$task$seed[[1L]]),
+        result = .isdm_predict_marginal_interval(
+          fit, fixture$map_newdata, prepared$task$seed[[1L]]
+        )
+      )
+    } else NULL
   }
   truth <- fixture$truth
   truth$fixed <- fixed_truth
-  list(diagnostics = diagnostics, estimate = estimate,
+  result <- list(diagnostics = diagnostics, estimate = estimate,
        truth = truth, design = fixture$design,
        optimizer_start = fit$tmb_obj$par,
        extraction_status = list(
          fixed = all(is.finite(fixed)),
          point = all(vapply(estimate, function(x) all(is.finite(x)), logical(1L)))
        ))
+  if (!is.null(interval_evidence)) result$interval <- interval_evidence
+  result
 }
 
 isdm_run_task <- function(programme, task_id, output_dir,
@@ -360,6 +403,13 @@ isdm_run_task <- function(programme, task_id, output_dir,
     runtime_s = as.numeric(difftime(Sys.time(), start, units = "secs")),
     payload = payload %||% list(), condition = condition
   )
+  if (identical(task$programme[[1L]], "interval")) {
+    record$uncertainty_runtime_eligible <- isTRUE(
+      identical(record$status, "fit_returned") &&
+        identical(record$interval$route, "marginal") &&
+        identical(record$interval$nsim, 1000L)
+    )
+  }
   record$session_info <- capture.output(utils::sessionInfo())
   isdm_atomic_save(record, file.path(output_dir, "attempts", leaf))
   record

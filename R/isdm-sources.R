@@ -184,6 +184,7 @@ isdm_sources <- function(...) {
     cli::cli_abort("Internal: iSDM observation formulas are not aligned with declared sources.")
   }
   source_blocks <- list()
+  source_basis <- list()
   for (src in source_names) {
     form <- observations[[src]]
     if (is.null(form)) next
@@ -202,14 +203,22 @@ isdm_sources <- function(...) {
     }
     mf <- stats::model.frame(form, data = data[rows, , drop = FALSE],
                              na.action = stats::na.pass)
-    mm <- stats::model.matrix(form, mf)
+    source_terms <- stats::terms(mf)
+    mm <- stats::model.matrix(source_terms, mf)
     if (anyNA(mm)) {
       cli::cli_abort(c(
         "Observation formula for source {.val {src}} has missing values after source filtering.",
         ">" = "Remove or impute missing observation covariates for that source before fitting."
       ))
     }
-    colnames(mm) <- paste0("isdm_source:", src, ":", colnames(mm))
+    raw_columns <- colnames(mm)
+    colnames(mm) <- paste0("isdm_source:", src, ":", raw_columns)
+    source_basis[[src]] <- list(
+      terms = source_terms,
+      xlevels = stats::.getXlevels(source_terms, mf),
+      contrasts = attr(mm, "contrasts"),
+      columns = colnames(mm)
+    )
     source_design <- matrix(0, nrow = nrow(data), ncol = ncol(mm),
                             dimnames = list(NULL, colnames(mm)))
     source_design[rows, ] <- mm
@@ -250,7 +259,9 @@ isdm_sources <- function(...) {
       "i" = "The retained columns are source-specific effects relative to the ecological `0 + trait` intercepts."
     ))
   }
-  cbind(X_fix, source_design[, keep, drop = FALSE])
+  out <- cbind(X_fix, source_design[, keep, drop = FALSE])
+  attr(out, "isdm_observation_basis") <- source_basis
+  out
 }
 
 ## Rebuild the source-observation part of a fitted fixed-effect design for
@@ -259,7 +270,8 @@ isdm_sources <- function(...) {
 ## differ from the training rows.  Declared sources absent from `newdata` get
 ## zero columns, which permits neutral one-source ecological grids.
 .gll_isdm_observation_prediction_design <- function(
-    X_fix, data, source, family_input, training_data, target_columns) {
+    X_fix, data, source, family_input, training_data, target_columns,
+    basis = NULL) {
   observations <- attr(family_input, "isdm_observation", exact = TRUE)
   target_source <- target_columns[
     startsWith(target_columns, "isdm_source:")
@@ -305,17 +317,26 @@ isdm_sources <- function(...) {
     if (!length(training_rows)) {
       cli::cli_abort("Internal: fitted iSDM source {.val {src}} has no training rows.")
     }
-    reference <- stats::model.frame(
-      form, data = training_data[training_rows, , drop = FALSE],
-      na.action = stats::na.pass
-    )
+    frozen <- basis[[src]] %||% NULL
+    if (is.null(frozen)) {
+      reference <- stats::model.frame(
+        form, data = training_data[training_rows, , drop = FALSE],
+        na.action = stats::na.pass
+      )
+      source_terms <- stats::terms(reference)
+      source_xlevels <- stats::.getXlevels(source_terms, reference)
+      reference_mm <- stats::model.matrix(source_terms, reference)
+      source_contrasts <- attr(reference_mm, "contrasts")
+      reference_columns <- paste0(
+        "isdm_source:", src, ":", colnames(reference_mm)
+      )
+    } else {
+      source_terms <- frozen$terms
+      source_xlevels <- frozen$xlevels
+      source_contrasts <- frozen$contrasts
+      reference_columns <- frozen$columns
+    }
     prediction_data <- data[rows, , drop = FALSE]
-    source_terms <- stats::terms(reference)
-    source_xlevels <- stats::.getXlevels(source_terms, reference)
-    reference_mm <- stats::model.matrix(source_terms, reference)
-    reference_columns <- paste0(
-      "isdm_source:", src, ":", colnames(reference_mm)
-    )
     prediction_frame <- tryCatch(
       stats::model.frame(
         source_terms, data = prediction_data, xlev = source_xlevels,
@@ -331,7 +352,7 @@ isdm_sources <- function(...) {
     )
     mm <- stats::model.matrix(
       source_terms, prediction_frame,
-      contrasts.arg = attr(reference_mm, "contrasts")
+      contrasts.arg = source_contrasts
     )
     if (anyNA(mm)) {
       cli::cli_abort(c(

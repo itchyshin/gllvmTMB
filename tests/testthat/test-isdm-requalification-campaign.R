@@ -82,6 +82,50 @@ test_that("the retained pre-run plan dispatches every registered route", {
   expect_true(all(plan$programme %in% c("ordinary", "attack", "spatial", "interval")))
 })
 
+test_that("marginal interval invocation freezes the registered route and draws", {
+  captured <- NULL
+  fake_predict <- function(object, ...) {
+    captured <<- list(...)
+    data.frame(lower = 0, upper = 1, est = 0.5)
+  }
+  out <- .isdm_predict_marginal_interval(
+    fit = structure(list(), class = "mock_fit"),
+    newdata = data.frame(x = 0), seed = 202608025L,
+    predict_fn = fake_predict
+  )
+  expect_s3_class(out, "data.frame")
+  expect_identical(captured$type, "link")
+  expect_identical(captured$interval, "marginal")
+  expect_identical(captured$level, 0.95)
+  expect_identical(captured$nsim, 1000L)
+  expect_identical(captured$seed, 202608025L)
+})
+
+test_that("interval pre-runs fail closed before fitting when route is absent", {
+  task <- isdm_prerun_plan()
+  task <- task[task$programme == "interval", , drop = FALSE][1L, ]
+  expect_error(
+    isdm_prepare_task(task, interval_capability_fn = function() FALSE),
+    class = "isdm_interval_route_unavailable"
+  )
+
+  root <- tempfile("isdm-campaign-")
+  called <- FALSE
+  record <- isdm_run_task(
+    "prerun", task$task_id[[1L]], root,
+    source_contract = .mock_contract(), identity_fn = .mock_identity,
+    prepare_fn = function(task) {
+      isdm_prepare_task(task, interval_capability_fn = function() FALSE)
+    },
+    fit_fn = function(prepared) called <<- TRUE
+  )
+  expect_false(called)
+  expect_identical(record$status, "unavailable")
+  expect_identical(record$failure_phase, "preparation")
+  expect_false(record$uncertainty_runtime_eligible)
+  expect_true("isdm_interval_route_unavailable" %in% record$error_class)
+})
+
 test_that("source mismatch is terminal unavailable and never fitted", {
   root <- tempfile("isdm-campaign-")
   called <- FALSE

@@ -7,6 +7,19 @@ release accompanies this candidate.
 
 ## Changed
 
+* **Integrated-SDM point prediction now preserves fitted source-observation
+  effects on prepared `newdata`.** The public `gllvmTMB(..., family =
+  isdm_sources(...))` route reconstructs each source formula from its fitted
+  terms, factor levels, contrasts, and retained columns. Prediction grids no
+  longer need a dummy response column. Unknown sources, missing source
+  covariates, unseen factor levels on rows where that source is active, and
+  ambiguous encoded source-column names fail with typed errors; an all-missing
+  declared source-by-trait arm is also
+  refused before fitting. This is a point-prediction and safety repair, not a
+  recovery promotion: held-out spatial accuracy and calibrated map intervals
+  remain unverified, spatial slopes remain outside the admitted prediction
+  tier, and users continue to supply their own prepared `newdata` grids.
+
 * **Public response-column coefficient models.** `column_coef()` fits IID
   response-column random intercepts and slopes. `phylo_coef()` uses
   `K_rho = rho K + (1-rho) diag(K)` with fixed numeric `rho` or one estimated
@@ -949,8 +962,10 @@ bridge remains experimental and is not required for the main workflow.
   nuisance adjustment unless the design is large. Estimator accuracy at the
   advertised scope is not certified, and the spatial arm in particular rests
   on development experience rather than a cleared recovery gate. **Not
-  included:** more than two sources, calibrated intervals for this route, and
-  weighted joint likelihoods. Expect the interface to change.
+  included in this legacy two-source spelling:** declarations with more than
+  two sources; use the experimental `isdm_sources()` route described above.
+  Calibrated intervals and weighted joint likelihoods remain unavailable on
+  either spelling. Expect the interface to change.
 
 * **The exact-aa confirmation completed 44,800 production fits and returned
   aggregate HOLD.** Gaussian `indep()`, Gaussian `dep()`,

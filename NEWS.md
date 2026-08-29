@@ -12,13 +12,15 @@ release accompanies this candidate.
   `K_rho = rho K + (1-rho) diag(K)` with fixed numeric `rho` or one estimated
   interior value; `animal_coef()` uses the same covariance-scale mixture from
   exactly one pedigree, relationship covariance `A`, or precision `Ainv`, with
-  fixed numeric `rho`; and `kernel_coef()` uses one labelled dense kernel with
+  fixed numeric `rho`; `kernel_coef()` uses one labelled dense kernel with
   fixed numeric `rho` or one estimated interior value, retaining its supplied
-  marginal scale. All four use the ordinary `gllvmTMB()` entry point with
+  marginal scale; and `spatial_coef()` uses one labelled response-column mesh
+  with fixed `rho = 1`, jointly estimating the projected-SPDE range and the
+  coefficient-basis covariance. All five use the ordinary `gllvmTMB()` entry point with
   long or `traits(...)` wide data, and
   `extract_Sigma(level = "column_coef")` returns the ordered coefficient
   covariance, source, and `rho`. This is Gaussian point estimation only:
-  intervals, non-Gaussian responses, and spatial coefficient helpers remain
+  intervals, non-Gaussian responses, and spatial IID mixtures remain
   unavailable. The
   existing `*_slope()` family remains current, warning-free, and
   non-deprecated. Exact compatibility is preserved at the no-intercept
@@ -28,6 +30,10 @@ release accompanies this candidate.
   routes use the raw covariance-scale mixture. The no-intercept
   `kernel_coef(..., rho = 1)` endpoint is exactly the released
   `kernel_slope()` route and uses raw `K` without either ridge.
+  The matching no-intercept `spatial_coef(..., rho = 1)` endpoint is exactly
+  the released `spatial_slope()` projected-SPDE route. Intercept-bearing
+  spatial fits add an all-ones coefficient-basis column without changing the
+  spatial source normalization.
 
 * **Predictor-informed latent axes now compose across registered native
   response families.** One complete-response ordinary unit-tier `latent(...,

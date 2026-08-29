@@ -10,14 +10,15 @@
 #' This point-model route is covered for Gaussian multivariate data in long or
 #' `traits(...)` wide form, with bare numeric row predictors. Non-Gaussian
 #' coefficient models and interval inference are not available in this
-#' release. [phylo_coef()] and [animal_coef()] are the supported structured
-#' sources; [kernel_coef()] supplies a labelled dense kernel. Spatial
-#' coefficient sources remain planned.
+#' release. [phylo_coef()] and [animal_coef()] are the pedigree/tree sources;
+#' [kernel_coef()] supplies a labelled dense kernel; and [spatial_coef()]
+#' supplies a labelled response-column mesh.
 #'
 #' @param formula A coefficient-basis bar expression such as
 #'   `1 + x | trait`, `0 + x | trait`, or `1 + x || trait`.
 #' @return A formula marker; never evaluated directly.
-#' @seealso [phylo_coef()], [animal_coef()], [kernel_coef()], [extract_Sigma()]
+#' @seealso [phylo_coef()], [animal_coef()], [kernel_coef()], [spatial_coef()],
+#'   [extract_Sigma()]
 #' @examples
 #' set.seed(1)
 #' dat <- expand.grid(unit = factor(1:10), trait = factor(paste0("sp", 1:3)))
@@ -42,8 +43,8 @@ column_coef <- function(formula) invisible(NULL)
 #' `traits(...)` wide form, with a labelled positive-definite tree covariance
 #' source and bare numeric row predictors. Numeric `rho` and one estimated
 #' interior `rho` are supported. Interval inference and non-Gaussian coefficient
-#' models remain unavailable; [animal_coef()] and [kernel_coef()] cover their
-#' bounded public source regimes, while spatial coefficients remain planned.
+#' models remain unavailable; [animal_coef()], [kernel_coef()], and
+#' [spatial_coef()] cover their bounded public source regimes.
 #' Existing `phylo_slope()` remains current and warning-free.
 #'
 #' For exact compatibility with the released slope engine, a no-intercept
@@ -168,6 +169,57 @@ animal_coef <- function(formula, pedigree = NULL, A = NULL, Ainv = NULL,
 #' extract_Sigma(fit, level = "column_coef")
 #' @export
 kernel_coef <- function(formula, K, name = "kernel", rho = NULL) invisible(NULL)
+
+#' Spatial response-column coefficients
+#'
+#' Fit response-column-specific random intercepts and/or slopes whose source
+#' covariance is induced by a labelled SPDE mesh over response-column
+#' locations. The fitted covariance across the coefficient basis is full for
+#' `|` and diagonal for `||`.
+#'
+#' This point-model route is covered for Gaussian multivariate data in long or
+#' `traits(...)` wide form, with one labelled [make_mesh()] object and bare
+#' numeric row predictors. The first public version fixes the spatial source
+#' strength at `rho = 1`; IID mixtures, estimated source strength, interval
+#' inference, non-Gaussian coefficient models, and simultaneous spatial axes
+#' are not available. Existing [spatial_slope()] remains current and
+#' warning-free.
+#'
+#' A no-intercept `rho = 1` fit uses the released [spatial_slope()] route
+#' exactly. Intercept-bearing fits use the same projected-SPDE likelihood with
+#' an intercept column added to the coefficient basis.
+#'
+#' @param formula A coefficient-basis bar expression such as
+#'   `1 + x | trait`, `0 + x | trait`, or `1 + x || trait`.
+#' @param mesh A labelled `gllvmTMBmesh` built with one location per response
+#'   column and `id_col` equal to the response-column factor.
+#' @param rho The fixed spatial source strength. The first public version
+#'   accepts only `1`.
+#' @return A formula marker; never evaluated directly.
+#' @seealso [spatial_slope()], [column_coef()], [phylo_coef()], [extract_Sigma()]
+#' @examples
+#' set.seed(12)
+#' locations <- expand.grid(x = 0:3, y = 0:3, KEEP.OUT.ATTRS = FALSE)
+#' locations$trait <- paste0("sp", seq_len(nrow(locations)))
+#' locations <- locations[c("trait", "x", "y")]
+#' column_mesh <- make_mesh(locations, c("x", "y"), cutoff = 0.1,
+#'   id_col = "trait")
+#' dat <- expand.grid(unit = factor(1:24), trait = factor(locations$trait,
+#'   levels = locations$trait))
+#' site_moisture <- seq(-1, 1, length.out = 24)
+#' dat$moisture <- rep(site_moisture, times = nrow(locations))
+#' trait_id <- as.integer(dat$trait)
+#' intercept_deviation <- 0.18 * scale(locations$x + locations$y)[, 1]
+#' slope_deviation <- 0.25 * scale(locations$x - locations$y)[, 1]
+#' dat$value <- 0.4 + intercept_deviation[trait_id] +
+#'   (0.15 + slope_deviation[trait_id]) * dat$moisture +
+#'   rnorm(nrow(dat), sd = 0.15)
+#' fit <- gllvmTMB(value ~ 1 + spatial_coef(1 + moisture | trait,
+#'     mesh = column_mesh), data = dat, trait = "trait", unit = "unit",
+#'   family = gaussian(), control = gllvmTMBcontrol(se = FALSE), silent = TRUE)
+#' extract_Sigma(fit, level = "column_coef")
+#' @export
+spatial_coef <- function(formula, mesh, rho = 1) invisible(NULL)
 
 .column_coef_helpers <- c(
   "column_coef", "phylo_coef", "animal_coef", "kernel_coef", "spatial_coef"
@@ -344,7 +396,8 @@ kernel_coef <- function(formula, K, name = "kernel", rho = NULL) invisible(NULL)
   ## so they do not receive ordinary R formal-argument matching automatically.
   ## Apply it explicitly for the public helpers: unknown, duplicated, or
   ## over-supplied arguments must fail rather than disappear into `extra`.
-  if (helper %in% c("column_coef", "phylo_coef", "animal_coef", "kernel_coef")) {
+  if (helper %in% c("column_coef", "phylo_coef", "animal_coef", "kernel_coef",
+                    "spatial_coef")) {
     definition <- get(helper, mode = "function", inherits = TRUE)
     marker <- tryCatch(
       match.call(
@@ -419,6 +472,15 @@ kernel_coef <- function(formula, K, name = "kernel", rho = NULL) invisible(NULL)
       }
     }
   }
+  if (identical(helper, "spatial_coef")) {
+    mesh_pos <- which(arg_names == "mesh") + 1L
+    if (length(mesh_pos) != 1L || is.null(marker[[mesh_pos]])) {
+      .column_coef_abort(c(
+        "{.fn spatial_coef} requires one non-NULL labelled {.arg mesh}.",
+        "i" = "Build it with one row per response column and {.arg id_col} equal to the response-column factor."
+      ), class = "gllvmTMB_column_coef_source_invalid")
+    }
+  }
   rho_pos <- which(arg_names == "rho") + 1L
   if (length(rho_pos) > 1L)
     .column_coef_abort("{.arg rho} may be supplied only once.")
@@ -430,10 +492,14 @@ kernel_coef <- function(formula, K, name = "kernel", rho = NULL) invisible(NULL)
   } else if (length(rho_pos)) {
     rho_expr <- marker[[rho_pos]]
     if (is.null(rho_expr)) {
-      if (identical(helper, "animal_coef")) {
+      if (helper %in% c("animal_coef", "spatial_coef")) {
         .column_coef_abort(c(
-          "Estimated {.arg rho = NULL} is not yet available for {.fn animal_coef}.",
-          "i" = "Use one fixed numeric value in [0, 1]; the default is {.code rho = 1}."
+          "Estimated {.arg rho = NULL} is not yet available for {.fn {helper}}.",
+          "i" = if (identical(helper, "spatial_coef")) {
+            "The first public spatial route accepts only {.code rho = 1}."
+          } else {
+            "Use one fixed numeric value in [0, 1]; the default is {.code rho = 1}."
+          }
         ), class = "gllvmTMB_column_coef_rho_not_admitted")
       }
       rho_mode <- "estimated"
@@ -446,11 +512,36 @@ kernel_coef <- function(formula, K, name = "kernel", rho = NULL) invisible(NULL)
           "x" = conditionMessage(e)
         ))
       )
-      if (!is.numeric(rho_value) || length(rho_value) != 1L ||
-          !is.finite(rho_value) || rho_value < 0 || rho_value > 1)
-        .column_coef_abort("{.arg rho} must be {.code NULL} or one numeric value in [0, 1].")
-      rho_mode <- "fixed"
-      rho <- as.numeric(rho_value)
+      if (is.null(rho_value)) {
+        if (helper %in% c("animal_coef", "spatial_coef")) {
+          .column_coef_abort(c(
+            "Estimated {.arg rho = NULL} is not yet available for {.fn {helper}}.",
+            "i" = if (identical(helper, "spatial_coef")) {
+              "The first public spatial route accepts only {.code rho = 1}."
+            } else {
+              "Use one fixed numeric value in [0, 1]; the default is {.code rho = 1}."
+            }
+          ), class = "gllvmTMB_column_coef_rho_not_admitted")
+        }
+        rho_mode <- "estimated"
+        rho <- NULL
+      } else {
+        if (!is.numeric(rho_value) || length(rho_value) != 1L ||
+            !is.finite(rho_value) || rho_value < 0 || rho_value > 1) {
+          .column_coef_abort(
+            "{.arg rho} must be {.code NULL} or one numeric value in [0, 1]."
+          )
+        }
+        if (identical(helper, "spatial_coef") &&
+            !identical(as.numeric(rho_value), 1)) {
+          .column_coef_abort(c(
+            "{.fn spatial_coef} currently accepts only {.code rho = 1}.",
+            "i" = "IID mixtures and estimated spatial source strength require a separate identifiability and engine slice."
+          ), class = "gllvmTMB_column_coef_rho_not_admitted")
+        }
+        rho_mode <- "fixed"
+        rho <- as.numeric(rho_value)
+      }
     }
   } else if (identical(helper, "animal_coef")) {
     rho_mode <- "fixed"
@@ -466,9 +557,7 @@ kernel_coef <- function(formula, K, name = "kernel", rho = NULL) invisible(NULL)
        call = marker, bar = bar, correlated = identical(bar, "|"),
        intercept = basis$intercept, predictors = basis$predictors,
        basis = basis$basis, group = trait_col, column_vars = column_vars,
-       rho_mode = rho_mode, rho = rho,
-       map_range_off = identical(helper, "spatial_coef") &&
-         identical(rho_mode, "fixed") && identical(rho, 0))
+       rho_mode = rho_mode, rho = rho, map_range_off = FALSE)
 }
 
 .column_coef_drop_nonfixed <- function(expr) {
@@ -572,6 +661,49 @@ kernel_coef <- function(formula, K, name = "kernel", rho = NULL) invisible(NULL)
   out <- expr
   for (i in seq_along(out)[-1L]) {
     out[[i]] <- .column_coef_rewrite_kernel(out[[i]], spec)
+  }
+  out
+}
+
+## Spatial admission. The no-intercept rho=1 route is rewritten literally to
+## spatial_slope(), preserving the released endpoint byte-for-byte. An
+## intercept-bearing basis uses the same internal projected-SPDE marker with a
+## literal `(Intercept)` design column added downstream.
+.column_coef_rewrite_spatial <- function(expr, spec) {
+  if (!is.call(expr)) return(expr)
+  fn <- if (is.symbol(expr[[1L]])) as.character(expr[[1L]]) else ""
+  if (identical(fn, "spatial_coef")) {
+    if (!identical(spec$helper, "spatial_coef") ||
+        !identical(spec$rho_mode, "fixed") || !identical(spec$rho, 1)) {
+      .column_coef_abort(
+        "Internal: {.fn spatial_coef} rewrite received a non-spatial or non-endpoint specification."
+      )
+    }
+    marker <- spec$call
+    extras <- as.list(marker)[-(1:2)]
+    extras$rho <- NULL
+    if (!isTRUE(spec$intercept)) {
+      lhs <- Reduce(
+        function(acc, predictor) call("+", acc, as.name(predictor)),
+        spec$predictors[-1L], init = as.name(spec$predictors[[1L]])
+      )
+      bar <- call(spec$bar, lhs, as.name(spec$group))
+      return(as.call(c(list(as.name("spatial_slope"), bar), extras)))
+    }
+    bar <- call("|", 0, as.name(spec$group))
+    marks <- list(
+      .column_slope_mode = if (isTRUE(spec$correlated)) "dep" else "indep",
+      column_slope_cols = spec$basis,
+      .column_slope_source = "spatial",
+      .response_column_coef = TRUE,
+      mesh = extras$mesh,
+      .column_coef_fixed_rho = 1
+    )
+    return(as.call(c(list(as.name("phylo_slope"), bar), marks)))
+  }
+  out <- expr
+  for (i in seq_along(out)[-1L]) {
+    out[[i]] <- .column_coef_rewrite_spatial(out[[i]], spec)
   }
   out
 }

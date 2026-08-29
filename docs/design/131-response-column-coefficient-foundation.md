@@ -2,20 +2,21 @@
 
 **Reader:** formula/API contributors, statistical-method developers, and
 reviewers maintaining the bounded response-column coefficient family.
-**Status:** public IID, phylogenetic, animal, and dense-kernel Gaussian point-model contract,
-2026-08-28. `column_coef()`, `phylo_coef()`, `animal_coef()`, and `kernel_coef()` are exported
+**Status:** public IID, phylogenetic, animal, dense-kernel, and spatial Gaussian point-model contract,
+2026-08-29. `column_coef()`, `phylo_coef()`, `animal_coef()`, `kernel_coef()`, and `spatial_coef()` are exported
 through the ordinary `gllvmTMB()` entry point for matched long and
 `traits(...)` wide data.
 `phylo_coef()` admits fixed numeric `rho` and one estimated interior value.
 `animal_coef()` admits fixed numeric `rho`; `kernel_coef()` admits fixed numeric
-`rho` and one estimated interior value. Interval claims, non-Gaussian regimes,
-and the spatial coefficient engine remain unadmitted.
+`rho` and one estimated interior value. `spatial_coef()` admits the projected-
+SPDE endpoint `rho = 1`. Interval claims, non-Gaussian regimes, and spatial IID
+mixtures remain unadmitted.
 **Relationship to Design 130:** Design 130 remains the active contract for the
 released slope-only helpers. The current public `column_coef()`,
-`phylo_coef()`, `animal_coef()`, and `kernel_coef()` helpers generalise their
-coefficient basis to include response-column intercepts. The spatial
-extension remains deferred. Existing fits and `*_slope()` spellings remain
-unchanged.
+`phylo_coef()`, `animal_coef()`, `kernel_coef()`, and `spatial_coef()` helpers
+generalise their coefficient basis to include response-column intercepts.
+Design 133 locks the bounded spatial extension. Existing fits and `*_slope()`
+spellings remain unchanged.
 
 ## 1. Scientific question and coefficient block
 
@@ -117,10 +118,11 @@ between-column correlation.
   or relationship precision `Ainv`, and a fixed numeric `rho`. `kernel_coef()`
   accepts one labelled dense covariance and fixed numeric `rho` or an estimated
   interior value, preserving the supplied diagonal scale.
-- `spatial_coef()` has the stable first-release default `rho = 1`. The
-  estimable `rho = NULL` route is admitted only after a joint `rho`-range
-  identifiability gate. A fixed `rho = 0` must map the spatial range parameter
-  off because the likelihood is then independent of range.
+- `spatial_coef()` has the stable first-release default and only admitted value
+  `rho = 1`. It uses the normalized projected-SPDE correlation
+  `K_spatial(kappa)` from Design 130. `rho = NULL` and every numeric value below
+  one reject before likelihood construction because a spatial-plus-IID mixture
+  needs a separate engine and joint `rho`-range identifiability evidence.
 
 The IID `column_coef()` route estimates the `K_rho = I` case. The public fixed-
 rho phylogenetic, animal, and kernel routes validate and label-align their sources,
@@ -140,7 +142,11 @@ contrast in the standardized source: a diagonal positive-definite source makes
 calls supply exactly one of `tree` or `vcv`; supplying both or neither is a
 typed grammar error. `animal_coef()` accepts exactly one of `pedigree`, `A`, or
 `Ainv`; its no-intercept `rho = 1` endpoint dispatches through the released
-`animal_slope()` route. The spatial coefficient engine remains fenced.
+`animal_slope()` route. The spatial route uses the released
+`spatial_slope()` projected-SPDE engine; a no-intercept `rho = 1` basis is an
+exact literal rewrite, while an intercept-bearing basis adds one all-ones
+column to the same coefficient design. Design 133 records the engine and
+evidence boundary.
 
 One protected compatibility seam is explicit. The released dense-VCV
 `phylo_slope()` route conditions its covariance as `K0 = K + 1e-8 I` before
@@ -259,8 +265,8 @@ coefficient engine with identity response-column covariance. A valid
 `phylo_coef()` term admits fixed or estimated `rho` through the public
 `gllvmTMB()` path. A valid `animal_coef()` term admits fixed numeric `rho`, and
 a valid `kernel_coef()` term admits fixed or estimated `rho` through the same
-matrix-normal engine. Valid `spatial_coef()` terms remain fenced before
-optimisation or TMB assembly.
+matrix-normal engine. A valid `spatial_coef()` term admits only `rho = 1`
+and routes through the projected-SPDE coefficient engine before optimisation.
 Malformed syntax uses narrower validation classes and must not be disguised as
 the engine fence.
 
@@ -268,8 +274,8 @@ The literal predictor name `(Intercept)` is reserved. Users request the
 synthetic intercept with `1`; accepting the literal name would make the design
 column ambiguous.
 
-The four admitted marker names are exported, indexed by pkgdown, and documented
-in reference topics. The deferred spatial marker remains absent from exports.
+All five admitted marker names are exported, indexed by pkgdown, and documented
+in reference topics.
 
 ## 8. Independent oracles
 
@@ -325,6 +331,20 @@ The animal slice adds independent gates for:
 5. deterministic Gaussian intercept/slope covariance recovery with finite
    gradients.
 
+The spatial slice adds independent gates for:
+
+1. exact no-intercept `rho = 1` identity with released `spatial_slope()` under
+   both bars, including TMB data, random block, map, objective, gradient,
+   optimum, report, fitted values, and warning behaviour;
+2. an intercept-first projected-SPDE design and full/diagonal coefficient maps;
+3. exact long/wide parity for C3/C4 grand intercepts and slopes with
+   response-column random intercepts and slopes;
+4. label permutation, strict labelled-mesh validation, fixed-space overlap,
+   missing-response, and simultaneous-spatial-axis gates; and
+5. deterministic Gaussian recovery of the C3/C4 fixed effects,
+   intercept/slope covariance, correlation sign, and practical range with
+   finite gradients.
+
 The public slice adds spectral estimated-rho TMB plumbing, a dedicated
 `extract_Sigma(level = "column_coef")` contract, matched long/wide examples,
 and fixed-versus-estimated objective and automatic-differentiation oracles.
@@ -333,9 +353,9 @@ a mathematical assumption.
 
 ## 9. Explicitly deferred
 
-This slice defers the spatial coefficient engine, interval
-inference, non-Gaussian multi-predictor recovery, latent predictor covariance,
-and a broader `column_data` tutorial. The general `rho` extension for the
-existing 5 x 3 grid remains a separate model-family decision, not a side
-effect of this coefficient programme. Current `*_slope()` helpers remain
-warning-free and are not deprecated.
+This slice defers spatial `rho < 1` or estimated `rho`, interval inference,
+non-Gaussian multi-predictor recovery, latent predictor covariance, and a
+broader `column_data` tutorial. The general `rho` extension for the existing
+5 x 3 grid remains a separate model-family decision, not a side effect of
+this coefficient programme. Current `*_slope()` helpers remain warning-free
+and are not deprecated.

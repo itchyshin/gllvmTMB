@@ -72,7 +72,7 @@ test_that("IID column_coef reaches the existing matrix-normal engine", {
   expect_true(all(is.finite(fit$tmb_obj$gr(fit$opt$par))))
 })
 
-test_that("structured coefficients are public while spatial remains fenced", {
+test_that("fixed and dense structured coefficient sources remain public", {
   fx <- .make_iid_column_coef_fixture()
   K <- diag(length(fx$traits))
   dimnames(K) <- list(fx$traits, fx$traits)
@@ -98,13 +98,6 @@ test_that("structured coefficients are public while spatial remains fenced", {
   expect_true(isTRUE(kernel_fit$use$response_column_coef))
   expect_identical(kernel_fit$use$response_column_coef_source, "kernel")
 
-  formulas <- list(value ~ 1 + spatial_coef(0 + x | trait, mesh = K, rho = 1))
-  for (formula in formulas) {
-    expect_error(
-      .fit_iid_column_coef(fx, formula),
-      class = "gllvmTMB_column_coef_engine_not_admitted"
-    )
-  }
 })
 
 test_that("IID coefficients fail clearly outside the admitted Gaussian regime", {

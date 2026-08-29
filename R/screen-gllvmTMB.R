@@ -513,7 +513,8 @@ print.gllvmTMB_screen <- function(x, ...) {
   if (!is.null(column_coef_spec)) {
     .column_coef_assert_no_overlap(formula, data, trait, column_coef_spec)
     if (!column_coef_spec$helper %in%
-        c("column_coef", "phylo_coef", "animal_coef", "kernel_coef")) {
+        c("column_coef", "phylo_coef", "animal_coef", "kernel_coef",
+          "spatial_coef")) {
       .column_coef_engine_fence(column_coef_spec)
     }
     formula[[3L]] <- if (identical(column_coef_spec$helper, "column_coef")) {
@@ -525,6 +526,8 @@ print.gllvmTMB_screen <- function(x, ...) {
       )
     } else if (identical(column_coef_spec$helper, "kernel_coef")) {
       .column_coef_rewrite_kernel(formula[[3L]], column_coef_spec)
+    } else if (identical(column_coef_spec$helper, "spatial_coef")) {
+      .column_coef_rewrite_spatial(formula[[3L]], column_coef_spec)
     } else if (identical(column_coef_spec$rho_mode, "fixed")) {
       .column_coef_rewrite_fixed_phylo(
         formula[[3L]], column_coef_spec, data = data,

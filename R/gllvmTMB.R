@@ -51,16 +51,17 @@
 #' phylogenetic correlation strength; [animal_coef()] fits them from a pedigree,
 #' relationship covariance, or relationship precision with fixed correlation
 #' strength; [kernel_coef()] uses one labelled dense kernel with fixed or
-#' estimated strength. All four support Gaussian point models in long and
-#' `traits(...)` wide form. Spatial coefficient sources, non-Gaussian
-#' coefficient models, and interval inference remain unavailable.
+#' estimated strength; and [spatial_coef()] uses one labelled response-column
+#' mesh with `rho = 1`. All five support Gaussian point models in long and
+#' `traits(...)` wide form. Non-Gaussian coefficient models, spatial IID
+#' mixtures, and interval inference remain unavailable.
 #'
 #' @param formula A glmmTMB-style formula, e.g.
 #'   `value ~ 0 + trait + (0 + trait):env_temp + (0 + trait):env_precip`.
 #'   Fixed effects and any of the three-mode grid covstructs above are
 #'   supported (plus [slope()], [phylo_slope()], [animal_slope()],
 #'   [kernel_slope()], [spatial_slope()], [column_coef()], [phylo_coef()],
-#'   [animal_coef()], [kernel_coef()], and
+#'   [animal_coef()], [kernel_coef()], [spatial_coef()], and
 #'   [meta_V()]).
 #'
 #'   An `offset()` term is supported for **count responses only** — `poisson()`,
@@ -1046,9 +1047,9 @@ gllvmTMB <- function(
   }
 
   ## Design 131: validate and unwrap shared fixed effects, then parse
-  ## response-column coefficient markers. The internal IID marker is rewritten
-  ## below into the existing matrix-normal engine; structured markers retain
-  ## the deliberate pre-engine fence.
+  ## response-column coefficient markers. All five public sources are rewritten
+  ## below into their admitted matrix-normal / projected-SPDE engine routes;
+  ## any future reserved source still meets the fail-closed engine fence.
   .column_data_assert_fixed_only(formula[[3L]], column_vars)
   if (.shared_marker_active(environment(formula))) {
     formula[[3L]] <- .shared_rewrite(
@@ -1070,7 +1071,8 @@ gllvmTMB <- function(
     .column_coef_assert_gaussian_family(family, column_coef_spec$helper)
     .column_coef_assert_no_overlap(formula, data, trait, column_coef_spec)
     if (!column_coef_spec$helper %in%
-        c("column_coef", "phylo_coef", "animal_coef", "kernel_coef")) {
+        c("column_coef", "phylo_coef", "animal_coef", "kernel_coef",
+          "spatial_coef")) {
       .column_coef_engine_fence(column_coef_spec)
     }
   }
@@ -1094,6 +1096,8 @@ gllvmTMB <- function(
       )
     } else if (identical(column_coef_spec$helper, "kernel_coef")) {
       .column_coef_rewrite_kernel(formula[[3L]], column_coef_spec)
+    } else if (identical(column_coef_spec$helper, "spatial_coef")) {
+      .column_coef_rewrite_spatial(formula[[3L]], column_coef_spec)
     } else if (identical(column_coef_spec$rho_mode, "fixed")) {
       .column_coef_rewrite_fixed_phylo(
         formula[[3L]], column_coef_spec, data = data,

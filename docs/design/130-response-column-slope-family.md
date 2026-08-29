@@ -8,6 +8,9 @@ phylogenetic, animal, and dense-kernel helpers form the fixed-source slice.
 The dedicated spatial slice now implements the same locked grammar and has
 local Gaussian point-recovery, projection, alignment, and extraction evidence.
 This is not evidence for the deferred non-Gaussian or interval regimes.
+Design 133 reuses this exact projected-SPDE source for the bounded public
+`spatial_coef(..., rho = 1)` intercept/slope basis; it does not deprecate or
+alter the slope-only helper.
 **Supersedes:** the deprecation and replacement proposals in Design 55 §6 and
 Design 56 §§8, 9.6, and 10.2. Those sections remain in place as historical
 records. This design does not supersede their intercept-plus-slope

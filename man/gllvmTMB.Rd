@@ -42,7 +42,7 @@ gllvmTMB(
 Fixed effects and any of the three-mode grid covstructs above are
 supported (plus \code{\link[=slope]{slope()}}, \code{\link[=phylo_slope]{phylo_slope()}}, \code{\link[=animal_slope]{animal_slope()}},
 \code{\link[=kernel_slope]{kernel_slope()}}, \code{\link[=spatial_slope]{spatial_slope()}}, \code{\link[=column_coef]{column_coef()}}, \code{\link[=phylo_coef]{phylo_coef()}},
-\code{\link[=animal_coef]{animal_coef()}}, \code{\link[=kernel_coef]{kernel_coef()}}, and
+\code{\link[=animal_coef]{animal_coef()}}, \code{\link[=kernel_coef]{kernel_coef()}}, \code{\link[=spatial_coef]{spatial_coef()}}, and
 \code{\link[=meta_V]{meta_V()}}).
 
 An \code{offset()} term is supported for \strong{count responses only} — \code{poisson()},
@@ -439,9 +439,10 @@ columns; \code{\link[=phylo_coef]{phylo_coef()}} fits the same bases with fixed 
 phylogenetic correlation strength; \code{\link[=animal_coef]{animal_coef()}} fits them from a pedigree,
 relationship covariance, or relationship precision with fixed correlation
 strength; \code{\link[=kernel_coef]{kernel_coef()}} uses one labelled dense kernel with fixed or
-estimated strength. All four support Gaussian point models in long and
-\code{traits(...)} wide form. Spatial coefficient sources, non-Gaussian
-coefficient models, and interval inference remain unavailable.
+estimated strength; and \code{\link[=spatial_coef]{spatial_coef()}} uses one labelled response-column
+mesh with \code{rho = 1}. All five support Gaussian point models in long and
+\code{traits(...)} wide form. Non-Gaussian coefficient models, spatial IID
+mixtures, and interval inference remain unavailable.
 
 \code{gllvmTMB()} parses the glmmTMB-style formula, converts wide
 \code{\link[=traits]{traits()}} input to the same internal stacked-trait representation as

@@ -199,7 +199,12 @@ isdm_diag_plan <- function(nonspatial, spatial) {
   spatial_plan <- .isdm_diag_expand(
     spatial, c("default", "bfgs_continuation", "nlminb5"), "spatial", 17L
   )
-  plan <- rbind(nonsp, spatial_plan)
+  combined_names <- union(names(nonsp), names(spatial_plan))
+  for (name in setdiff(combined_names, names(nonsp))) nonsp[[name]] <- NA
+  for (name in setdiff(combined_names, names(spatial_plan))) {
+    spatial_plan[[name]] <- NA
+  }
+  plan <- rbind(nonsp[combined_names], spatial_plan[combined_names])
   plan$optimizer_seed <- seq.int(
     ISDM_DIAG_OPTIMIZER_SEED_FIRST, length.out = nrow(plan)
   )

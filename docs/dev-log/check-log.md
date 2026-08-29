@@ -55746,3 +55746,74 @@ identity with `animal_slope()`. Critical re-review returned APPROVE with no
 P0--P2 finding. The repaired equivalence file passed 122/122 and the full
 coefficient/released-slope replay passed 780 assertions with zero failures or
 warnings and the same four opt-in heavy skips.
+
+## 2026-08-28 -- public fixed/estimated-rho `kernel_coef()` candidate
+
+Branch `codex/kernel-column-coef` is based on exact verified animal main
+`2d4c275b069d24f47f444b1e21677d994a6e0cea`. The candidate exports
+`kernel_coef()` for Gaussian long and `traits(...)` wide response-column random
+intercepts and slopes from one labelled dense positive-definite covariance.
+Numeric `rho` fixes `K_rho = rho K + (1-rho) diag(K)`; `rho = NULL` estimates
+one value through the spectral matrix-normal engine. No-intercept `rho = 1`
+hard-rewrites to the warning-free raw-`K` `kernel_slope()` endpoint.
+
+Focused evidence:
+
+```sh
+Rscript --vanilla -e 'devtools::test(filter = "column-coef|fixed-column-slope-family", reporter = "summary", stop_on_failure = TRUE)'
+# PASS: IID, phylogenetic, animal, kernel, public API, and released slope-family
+# blocks; zero failures/warnings.
+
+Rscript --vanilla -e 'devtools::test(filter = "column-coef-kernel-(edge|recovery|wide)", reporter = "summary", stop_on_failure = TRUE)'
+# PASS: variance 0.01/100, correlation 0/+0.8/-0.8, missing response, rare
+# pathway, full covariance/grand mean, and fixed/estimated long-wide gates.
+
+Rscript --vanilla data-raw/kernel-coef-recovery.R
+# PASS in 25.3 s: rho truth/estimate .58/.53063, .05/3.14e-8, .80/.66375;
+# max gradient 4.05e-4; coefficient RMSE .02304; every stopifnot gate TRUE.
+
+Rscript --vanilla -e 'devtools::document(quiet = TRUE)'
+# PASS: export/help cascade; only three pre-existing AIC/BIC/anova S3 notices.
+
+Rscript --vanilla -e 'pkgdown::check_pkgdown()'
+# PASS: no problems.
+
+Rscript --vanilla -e 'pkgdown::build_article("articles/api-keyword-grid", lazy = FALSE)'
+# PASS.
+
+Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/where-does-the-tree-go", lazy = FALSE, new_process = FALSE)'
+# PASS: source-current worked fits executed and HTML written.
+
+git diff --check
+# PASS.
+```
+
+The complete article build rendered the edited API grid, then stopped in the
+unchanged `cross-family-correlations.Rmd` non-Gaussian predictor-informed LV
+fit. This is classified as an unrelated main-branch article failure, not a
+kernel failure. The two affected articles both render from current source.
+
+Critical reviews: Gauss/Noether engine PASS; Curie initially failed the
+oversized routine recovery and missing edge evidence, then returned PASS after
+the `data-raw` split and bounded edge cells; Rose/Boole initially failed an
+invalid wide fixed/random-intercept overlap plus three stale capability
+surfaces, then returned terminal PASS after the C3/C4 model and cascade repair.
+
+Exact stale-surface scans and verdicts are recorded in
+`docs/dev-log/after-task/2026-08-28-kernel-coef.md`. Validation-debt row FG-20
+remains `partial`: spatial coefficients, intervals, non-Gaussian regimes,
+simultaneous sources, latent coefficient covariance, and broad calibration are
+unclaimed. Every current `*_slope()` helper remains warning-free and
+non-deprecated.
+
+The frozen-candidate local package check then passed:
+
+```sh
+Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'
+# PASS in 20m 7.2s: 0 errors, 0 warnings, 3 notes.
+```
+
+The notes were unavailable remote clock verification, the pre-existing
+unqualified `logLik` diagnostic, and external `xcrun_db` temp detritus. No note
+was attributable to `kernel_coef()`. Exact-head CI, protected merge,
+exact-main CI/site, and lease release remain pending.

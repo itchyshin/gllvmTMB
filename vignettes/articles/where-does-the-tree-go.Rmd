@@ -520,11 +520,14 @@ overlap guard rejects that unidentified model.
 
 With several site-level predictors, `|` estimates their full coefficient
 covariance and `||` fixes their covariance to zero while retaining one variance
-per predictor. `column_coef()` and `phylo_coef()` are covered here for Gaussian
-point models in long and `traits(...)` wide form. Non-Gaussian or mixed-family
-coefficients, latent coefficient covariance, simultaneous coefficient sources,
-animal/kernel/spatial coefficient helpers, and intervals are deliberately
-deferred. Current `*_slope()` helpers remain available and warning-free.
+per predictor. This article demonstrates `column_coef()` and `phylo_coef()` for
+Gaussian point models in long and `traits(...)` wide form. The parallel
+`animal_coef()` fixed-strength and dense-`kernel_coef()` fixed/estimated-strength
+point routes are public but are not worked examples here; the API keyword grid
+shows their syntax. Non-Gaussian or mixed-family coefficients, latent
+coefficient covariance, simultaneous coefficient sources, spatial coefficient
+helpers, and intervals are deliberately deferred. Current `*_slope()` helpers
+remain available and warning-free.
 
 One numerical compatibility seam is deliberate. A no-intercept dense-`vcv`
 call with `rho = 1` dispatches through the released `phylo_slope()` engine and

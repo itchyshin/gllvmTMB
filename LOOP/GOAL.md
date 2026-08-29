@@ -1,24 +1,25 @@
-# GOAL — admit the first structured response-column coefficient source
+# GOAL — admit dense-kernel response-column coefficients
 
 **IMMUTABLE for this lane.** Re-read this file before every arc.
 
 ## Deliverable
 
 Implement, document, verify, and normally merge public Gaussian point-model
-`animal_coef()` support in long and `traits(...)` wide formats, building on the
-current warning-free `animal_slope()` endpoint. This is the first serial arc of
-the approved animal -> kernel -> spatial coefficient programme.
+`kernel_coef()` support in long and `traits(...)` wide formats, building on the
+current warning-free `kernel_slope()` endpoint and admitted coefficient engine.
 
 ## Definition of done
 
-- `animal_coef()` accepts exactly one of `pedigree`, `A`, or `Ainv`.
-- Fixed numeric `rho` in `[0, 1]` is supported with public default `rho = 1`;
-  estimated `rho = NULL` remains fenced for a later evidence slice.
-- Long `animal_coef(0 + x | trait, rho = 1)` is byte-equivalent to long
-  `animal_slope(x | trait)` for `|` and `||`.
-- Wide `animal_coef()` is byte-equivalent to its matched long fit.
+- `kernel_coef(formula, K, name = "kernel", rho = NULL)` accepts one labelled
+  dense positive-definite kernel, fixed numeric `rho` in `[0, 1]`, or one
+  estimated interior `rho` when `NULL`.
+- `K_rho = rho K + (1-rho) diag(K)` preserves the supplied marginal scale.
+- Long `kernel_coef(0 + x <bar> trait, rho = 1)` is exactly equivalent to
+  long `kernel_slope(x <bar> trait)` for both bars without a ridge or warning.
+- Wide `kernel_coef()` is exactly equivalent to its matched long fit.
 - Intercept and intercept-plus-slope bases, recovery, labels, malformed inputs,
-  extractors, documentation, pkgdown, and regression gates pass.
+  fixed/estimated source strength, extractors, documentation, pkgdown, and
+  regression gates pass.
 - Existing `*_slope()` helpers remain current, warning-free, and unchanged.
 - The PR is reviewed, green on Ubuntu/macOS/Windows, merged normally without
   bypass, exact-main verification succeeds, pkgdown is live, and leases release.
@@ -27,9 +28,9 @@ the approved animal -> kernel -> spatial coefficient programme.
 
 - Preserve all unrelated gllvmTMB lanes and never revert their work.
 - No blanket `*_slope()` deprecation or warning.
-- No wide `*_slope()` admission; prove replacement through the two-link gate.
-- No intervals, non-Gaussian claim, estimated animal `rho`, `*_latent()` rho,
-  kernel, spatial, article expansion, release, or version bump in this lane.
+- No wide `kernel_slope()` admission; prove replacement through the two-link gate.
+- No intervals, non-Gaussian claim, multiple coefficient sources,
+  `*_latent()` rho, spatial implementation, release, or version bump.
 - No new TMB likelihood unless exact R-side reuse is proven insufficient and a
   scope-changing review gate is reopened.
 - Do not push while another CI run is active; never bypass branch protection.
@@ -46,12 +47,10 @@ the approved animal -> kernel -> spatial coefficient programme.
 
 ## Compute boundary
 
-Focused deterministic fits are expected to take under 30 minutes each. A larger
-recovery campaign requires a pre-run timing result, explicit target, and fresh
-approval before Totoro or DRAC use.
+Focused deterministic fits are expected to take under 30 minutes each. No
+campaign is planned; anything larger requires a timing pre-run and approval.
 
 ## Later serial lanes
 
-After exact-main animal closure: `kernel_coef()`. After kernel closure:
-`spatial_coef()` with `rho = 1`. Estimated spatial rho and general `*_latent()`
-rho remain separate future programmes.
+After exact-main kernel closure: `spatial_coef()` with `rho = 1`. Estimated
+spatial rho and general `*_latent()` rho remain separate future programmes.

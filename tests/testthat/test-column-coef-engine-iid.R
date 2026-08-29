@@ -72,7 +72,7 @@ test_that("IID column_coef reaches the existing matrix-normal engine", {
   expect_true(all(is.finite(fit$tmb_obj$gr(fit$opt$par))))
 })
 
-test_that("phylo and animal coefficients are public while later helpers remain fenced", {
+test_that("structured coefficients are public while spatial remains fenced", {
   fx <- .make_iid_column_coef_fixture()
   K <- diag(length(fx$traits))
   dimnames(K) <- list(fx$traits, fx$traits)
@@ -91,10 +91,14 @@ test_that("phylo and animal coefficients are public while later helpers remain f
   expect_true(isTRUE(animal_fit$use$response_column_coef))
   expect_identical(animal_fit$use$response_column_coef_source, "animal")
 
-  formulas <- list(
-    value ~ 1 + kernel_coef(0 + x | trait, K = K, rho = 1),
-    value ~ 1 + spatial_coef(0 + x | trait, mesh = K, rho = 1)
+  kernel_fit <- .fit_iid_column_coef(
+    fx,
+    value ~ 1 + kernel_coef(0 + x | trait, K = K, rho = 1)
   )
+  expect_true(isTRUE(kernel_fit$use$response_column_coef))
+  expect_identical(kernel_fit$use$response_column_coef_source, "kernel")
+
+  formulas <- list(value ~ 1 + spatial_coef(0 + x | trait, mesh = K, rho = 1))
   for (formula in formulas) {
     expect_error(
       .fit_iid_column_coef(fx, formula),

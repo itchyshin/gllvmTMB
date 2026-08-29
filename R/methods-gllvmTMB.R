@@ -153,7 +153,8 @@
 }
 
 .gllvmTMB_restore_newdata_factor_levels <- function(newdata, training_data,
-                                                    allow_unseen = character()) {
+                                                    allow_unseen = character(),
+                                                    typed_observation = character()) {
   nd <- as.data.frame(newdata)
   common <- intersect(names(nd), names(training_data))
   for (nm in common) {
@@ -173,7 +174,11 @@
         "New data contains unseen level(s) in factor {.arg {nm}}.",
         "x" = "Unseen level(s): {.val {unseen}}.",
         "i" = "Use levels present in the training data or refit the model with the expanded factor scale."
-      ))
+      ), class = if (nm %in% typed_observation) {
+        "gllvmTMB_predict_isdm_observation_level"
+      } else {
+        NULL
+      })
     }
     nd[[nm]] <- restored
   }
@@ -2480,10 +2485,42 @@ predict.gllvmTMB_multi <- function(
       out <- out[, c(setdiff(names(out), "est"), "est"), drop = FALSE]
     }
   } else {
+    isdm_observation <- attr(
+      object$family_input, "isdm_observation", exact = TRUE
+    )
+    isdm_family_var <- attr(
+      object$family_input, "family_var", exact = TRUE
+    ) %||% "isdm_source"
+    if (!is.null(isdm_observation)) {
+      if (!isdm_family_var %in% names(newdata)) {
+        cli::cli_abort(c(
+          "Integrated-source prediction needs source column {.arg {isdm_family_var}} in {.arg newdata}.",
+          "i" = "Use a declared source name on every prediction row."
+        ), class = "gllvmTMB_predict_isdm_source_missing")
+      }
+      source_raw <- as.character(newdata[[isdm_family_var]])
+      if (anyNA(source_raw)) {
+        cli::cli_abort(
+          "Integrated-source prediction does not allow missing source labels in {.arg newdata}.",
+          class = "gllvmTMB_predict_isdm_source_missing"
+        )
+      }
+      unknown_source <- setdiff(unique(source_raw), names(object$family_input))
+      if (length(unknown_source)) {
+        cli::cli_abort(c(
+          "New data names undeclared integrated source{?s}: {.val {unknown_source}}.",
+          "i" = "Use the source names supplied to {.fn isdm_sources} when fitting."
+        ), class = "gllvmTMB_predict_isdm_source_unknown")
+      }
+    }
     nd <- .gllvmTMB_restore_newdata_factor_levels(
       newdata,
       object$data,
-      allow_unseen = stats::na.omit(c(object$unit_col, object$species_col))
+      allow_unseen = stats::na.omit(c(object$unit_col, object$species_col)),
+      typed_observation = unique(unlist(
+        lapply(isdm_observation %||% list(), all.vars),
+        use.names = FALSE
+      ))
     )
 
     ## Build the design from the RIGHT-HAND SIDE only (#1154). `model.matrix()`
@@ -2496,6 +2533,16 @@ predict.gllvmTMB_multi <- function(
       stats::delete.response(stats::terms(object$formula)),
       nd
     )
+    if (!is.null(isdm_observation)) {
+      X_new <- .gll_isdm_observation_prediction_design(
+        X_fix = X_new,
+        data = nd,
+        source = nd[[isdm_family_var]],
+        family_input = object$family_input,
+        training_data = object$data,
+        target_columns = object$X_fix_names
+      )
+    }
     ## `object$formula` is the offset-free fixed formula (the offset is held
     ## out of it so model.matrix cannot drop it), so the offset for the new
     ## rows is re-evaluated separately against `nd`.

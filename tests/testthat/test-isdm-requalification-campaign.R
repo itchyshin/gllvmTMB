@@ -272,6 +272,7 @@ test_that("tiny public spatial route exercises the typed out-of-hull oracle", {
   task$n_cells <- 64L
   result <- isdm_fit_public_task(isdm_prepare_task(task))
   expect_identical(result$diagnostics$convergence, 0L)
+  expect_lte(result$estimate$training_identity_error, 1e-10)
   expect_true(result$estimate$out_of_hull_warning_ok)
   expect_true(all(is.finite(result$estimate$heldout_surface)))
 })

@@ -216,6 +216,16 @@ isdm_sources <- function(...) {
     source_blocks[[src]] <- source_design
   }
   source_design <- do.call(cbind, source_blocks)
+  duplicated_design <- duplicated(colnames(source_design)) |
+    duplicated(colnames(source_design), fromLast = TRUE)
+  if (any(duplicated_design)) {
+    collision <- unique(colnames(source_design)[duplicated_design])
+    cli::cli_abort(c(
+      "Source labels and observation terms produce ambiguous fixed-effect columns.",
+      "x" = "Colliding column{?s}: {.val {collision}}.",
+      "i" = "Rename the source label or the interacting observation variable so each source-observation column is unique."
+    ), class = "gllvmTMB_isdm_observation_name_collision")
+  }
   ## `0 + trait` already spans the global intercept. A collection of
   ## source-masked intercept or factor-level columns can span it again (notably
   ## when a source uses a full observer/method factor basis). Keep the user's ecological
@@ -241,6 +251,110 @@ isdm_sources <- function(...) {
     ))
   }
   cbind(X_fix, source_design[, keep, drop = FALSE])
+}
+
+## Rebuild the source-observation part of a fitted fixed-effect design for
+## `predict(newdata=)`.  The fitted column names are authoritative: fit-time QR
+## alias removal must not be repeated on a prediction grid, whose source mix can
+## differ from the training rows.  Declared sources absent from `newdata` get
+## zero columns, which permits neutral one-source ecological grids.
+.gll_isdm_observation_prediction_design <- function(
+    X_fix, data, source, family_input, training_data, target_columns) {
+  observations <- attr(family_input, "isdm_observation", exact = TRUE)
+  target_source <- target_columns[
+    startsWith(target_columns, "isdm_source:")
+  ]
+  if (is.null(observations)) {
+    if (length(target_source)) {
+      cli::cli_abort("Internal: fitted source-observation columns lack their declaration.")
+    }
+    return(X_fix)
+  }
+  if (any(startsWith(colnames(X_fix), "isdm_source:"))) {
+    cli::cli_abort("Internal: prediction design already contains iSDM source columns.")
+  }
+  source_names <- names(family_input)
+  if (is.null(names(observations)) || !identical(names(observations), source_names)) {
+    cli::cli_abort("Internal: iSDM observation formulas are not aligned with declared sources.")
+  }
+  source_chr <- as.character(source)
+  unknown <- setdiff(unique(source_chr[!is.na(source_chr)]), source_names)
+  if (length(unknown)) {
+    cli::cli_abort(c(
+      "New data names undeclared integrated source{?s}: {.val {unknown}}.",
+      "i" = "Use the source names supplied to {.fn isdm_sources} when fitting."
+    ), class = "gllvmTMB_predict_isdm_source_unknown")
+  }
+  out <- matrix(0, nrow = nrow(data), ncol = length(target_source),
+                dimnames = list(NULL, target_source))
+  for (src in source_names) {
+    form <- observations[[src]]
+    if (is.null(form)) next
+    rows <- which(source_chr == src)
+    if (!length(rows)) next
+    vars <- all.vars(form)
+    missing_vars <- setdiff(vars, names(data))
+    if (length(missing_vars)) {
+      cli::cli_abort(c(
+        "Observation formula for source {.val {src}} uses variable{?s} absent from {.arg newdata}.",
+        "x" = "Missing: {.val {missing_vars}}.",
+        ">" = "Add those source covariates before predicting."
+      ), class = "gllvmTMB_predict_isdm_observation_missing")
+    }
+    training_rows <- which(as.character(training_data$isdm_source) == src)
+    if (!length(training_rows)) {
+      cli::cli_abort("Internal: fitted iSDM source {.val {src}} has no training rows.")
+    }
+    reference <- stats::model.frame(
+      form, data = training_data[training_rows, , drop = FALSE],
+      na.action = stats::na.pass
+    )
+    prediction_data <- data[rows, , drop = FALSE]
+    source_terms <- stats::terms(reference)
+    source_xlevels <- stats::.getXlevels(source_terms, reference)
+    reference_mm <- stats::model.matrix(source_terms, reference)
+    reference_columns <- paste0(
+      "isdm_source:", src, ":", colnames(reference_mm)
+    )
+    prediction_frame <- tryCatch(
+      stats::model.frame(
+        source_terms, data = prediction_data, xlev = source_xlevels,
+        na.action = stats::na.pass
+      ),
+      error = function(e) {
+        cli::cli_abort(c(
+          "Cannot evaluate the fitted source-observation basis for source {.val {src}}.",
+          "x" = conditionMessage(e),
+          "i" = "Use observation-covariate values and factor levels admitted by the fitted source."
+        ), class = "gllvmTMB_predict_isdm_observation_level", parent = e)
+      }
+    )
+    mm <- stats::model.matrix(
+      source_terms, prediction_frame,
+      contrasts.arg = attr(reference_mm, "contrasts")
+    )
+    if (anyNA(mm)) {
+      cli::cli_abort(c(
+        "Observation formula for source {.val {src}} has missing values in {.arg newdata}.",
+        ">" = "Remove or impute missing observation covariates before predicting."
+      ), class = "gllvmTMB_predict_isdm_observation_missing")
+    }
+    colnames(mm) <- paste0("isdm_source:", src, ":", colnames(mm))
+    ## Match complete columns from this source's frozen training basis.
+    ## Prefix matching is ambiguous when one valid source label prefixes
+    ## another (for example `a` and `a:b`). Fit construction has already
+    ## refused the rarer complete-name collision with an interaction term.
+    wanted <- intersect(target_source, reference_columns)
+    absent <- setdiff(wanted, colnames(mm))
+    if (length(absent)) {
+      cli::cli_abort(c(
+        "Cannot reconstruct fitted source-observation columns from {.arg newdata}.",
+        "x" = "Missing fitted column(s): {.val {absent}}."
+      ), class = "gllvmTMB_predict_isdm_observation_design")
+    }
+    out[rows, wanted] <- mm[, wanted, drop = FALSE]
+  }
+  cbind(X_fix, out)
 }
 
 ## The shared validation core, at any number of sources. `map` is the declared
@@ -270,13 +384,46 @@ isdm_sources <- function(...) {
   ## EVERY trait must carry EVERY declared source. The two-source form of this
   ## rule closed a real fence bypass (an ordinary between-trait mixed-family
   ## fit satisfying a data-frame-global predicate); the generalised rule closes
-  ## the same class at any n. Two honest limits, inherited from the two-source
-  ## form and recorded in Design 120 section 5: this checks PRESENCE, not
-  ## balance (one row of a source inside a trait satisfies it), and it counts
-  ## ROWS, not observed responses (under miss_control(response = "include") an
-  ## all-NA arm passes while contributing nothing to the likelihood).
+  ## the same class at any n. This structural predicate checks row PRESENCE,
+  ## not balance; observed-response completeness is checked after the
+  ## missing-data mask is constructed.
   if (is.null(trait_labels) || length(trait_labels) != data_n) return(FALSE)
   by_trait <- split(sel, as.character(trait_labels), drop = TRUE)
   isTRUE(length(by_trait) > 0L) &&
     all(vapply(by_trait, function(s) all(nms %in% s), logical(1L)))
+}
+
+## Every declared source-by-trait arm must contribute at least one observed
+## response. Row presence alone is insufficient under
+## miss_control(response = "include"), where an all-NA arm otherwise survives
+## admission but contributes no likelihood information.
+.gllvmTMB_assert_isdm_observed_arms <- function(
+    source, trait, is_observed, declared_sources) {
+  source <- as.character(source)
+  trait <- as.character(trait)
+  is_observed <- as.integer(is_observed)
+  if (length(source) != length(trait) ||
+      length(source) != length(is_observed)) {
+    cli::cli_abort("Internal: integrated-source observation mask is misaligned.")
+  }
+  arms <- expand.grid(
+    source = declared_sources,
+    trait = unique(trait),
+    KEEP.OUT.ATTRS = FALSE,
+    stringsAsFactors = FALSE
+  )
+  available <- vapply(seq_len(nrow(arms)), function(i) {
+    rows <- source == arms$source[[i]] & trait == arms$trait[[i]]
+    any(rows & is_observed == 1L)
+  }, logical(1L))
+  if (any(!available)) {
+    bad <- paste0(arms$source[!available], " x ", arms$trait[!available])
+    cli::cli_abort(c(
+      "Every declared integrated source-trait arm needs an observed response.",
+      "x" = "No observed response in: {.val {bad}}.",
+      "i" = "An all-missing arm contributes no likelihood information and cannot identify its source-trait relationship.",
+      ">" = "Supply at least one observed response in every declared arm, or remove that source/trait from this fit."
+    ), class = "gllvmTMB_isdm_observed_source_incomplete")
+  }
+  invisible(TRUE)
 }

@@ -188,8 +188,11 @@ isdm_fit_public_task <- function(prepared) {
     estimate <- list(fixed = fixed, Sigma = total, Psi = diag(unique),
                      surface = predicted)
   } else {
+    training_newdata <- fixture$data[
+      setdiff(names(fixture$data), "value")
+    ]
     training <- suppressMessages(stats::predict(
-      fit, newdata = fixture$data, type = "link"
+      fit, newdata = training_newdata, type = "link"
     ))$est
     in_sample <- suppressMessages(stats::predict(fit, type = "link"))$est
     heldout <- suppressMessages(stats::predict(

@@ -3079,6 +3079,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## We use the full data env so that 0 + trait + (0+trait):env etc. parses.
   mf <- stats::model.frame(parsed$fixed, data = data, na.action = stats::na.pass)
   X_fix <- stats::model.matrix(parsed$fixed, mf)
+  isdm_observation_basis <- NULL
   if (!is.null(attr(family_input, "isdm_observation", exact = TRUE))) {
     X_fix <- .gll_isdm_observation_design(
       X_fix = X_fix,
@@ -3086,6 +3087,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       source = data[["isdm_source"]],
       family_input = family_input
     )
+    isdm_observation_basis <- attr(
+      X_fix, "isdm_observation_basis", exact = TRUE
+    )
+    attr(X_fix, "isdm_observation_basis") <- NULL
   }
 
   ## The offset is evaluated against the SAME `data` the model frame was built
@@ -3199,6 +3204,31 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         "Internal error: {.code is_y_observed} length mismatch.",
         "i" = "Got length {length(is_y_observed)}; expected {n_obs}."
       ))
+  }
+  ## `.align_mixed_family_list()` deliberately drops constructor metadata
+  ## while preserving the declaration's names, laws, and `family_var` (the
+  ## same durable contract rebuilt by `.gllvmTMB_integrated_sources_contract`).
+  ## Recognise both mixed-law and all-count declarations from that surviving
+  ## contract; `isdm_admitted` alone excludes the supported all-count route.
+  isdm_declared <-
+    is.list(family_input) && !inherits(family_input, "family") &&
+    identical(attr(family_input, "family_var", exact = TRUE), "isdm_source") &&
+    !is.null(names(family_input)) && all(nzchar(names(family_input))) &&
+    all(vapply(
+      lapply(family_input, .isdm_admitted_law_id),
+      Negate(is.null), logical(1L)
+    ))
+  if (isTRUE(isdm_declared)) {
+    family_var <- attr(family_input, "family_var", exact = TRUE)
+    if (is.null(family_var) || !family_var %in% names(data)) {
+      cli::cli_abort("Internal: declared integrated-source selector is unavailable.")
+    }
+    .gllvmTMB_assert_isdm_observed_arms(
+      source = data[[family_var]],
+      trait = data[[trait]],
+      is_observed = is_y_observed,
+      declared_sources = names(family_input)
+    )
   }
   masked_response <- is_y_observed == 0L
   if (any(masked_response)) {
@@ -8142,6 +8172,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       phylo_tree   = phylo_tree,
       X_fix        = X_fix,
       X_fix_names  = colnames(X_fix),
+      isdm_observation_basis = isdm_observation_basis,
       ## The offset expression, kept so predict(newdata = ) can re-evaluate it
       ## for rows the fit never saw. NULL when the formula carried no offset.
       offset_expr  = parsed$offset_expr,

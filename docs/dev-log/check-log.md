@@ -55922,3 +55922,74 @@ that no broader local package/pkgdown rerun is required because production and
 reader-facing surfaces are byte-identical. One CI-paced fix push, replacement
 three-OS matrix, protected merge, exact-main verification, live-site
 verification, and lease releases remain pending.
+
+## 2026-08-29 -- public-route iJSDM point-prediction repair
+
+The approved integrated-JSDM evidence lane resumed from exact green
+post-coefficient main `ef12dbf497469393745581fcc7029a78016f2b30`. A retained
+spatial feasibility probe had entered fitting but exposed a public prediction defect:
+source-observation columns were omitted from `predict(newdata = )`, producing a
+maximum training-row identity error of `1.10123482841`.
+
+The candidate now retains the fitted source-observation basis and reconstructs
+it under the exact training terms, levels, contrasts, and columns. The public
+route returns training identity error `0`, dispatch error `0`, and needs no
+response column. It handles three sources, transformed/factor/aliased terms,
+changed global contrasts, serialized fits, neutral off-source factor values,
+and bare-law source/link dispatch. Missing/unknown sources, active-source unseen
+levels, and all-missing source-by-trait arms receive typed refusals.
+
+The retained harness now gates every target separately under full and weak
+overlap, scores spatial deterministic oracles across every eligible fit, and
+cannot label point prediction as an uncertainty timing run. Designs 120/126/127,
+ISDM-01/02/03, NEWS, the developer README, stale test commentary, and the
+Warbler article now agree: ordinary intercept-only SPDE point maps exist;
+held-out point accuracy and calibrated marginal map intervals remain owed; the
+fixed-only map-SE coverage of 0.23--0.82 remains negative evidence.
+
+Checks:
+
+```sh
+Rscript --vanilla -e 'devtools::test(filter = "isdm", stop_on_failure = TRUE)'
+# PASS: 565 assertions, one deliberate heavy skip, zero failures/warnings.
+
+Rscript --vanilla -e 'devtools::test(stop_on_failure = TRUE)'
+# PASS: 18,652 assertions, 52 expected warnings, 879 skips, zero failures.
+# Duration 2,332.3 s (38m52s): retained overrun of the 30-minute estimate.
+
+R_USER_CACHE_DIR=/private/tmp/gllvmtmb-r-cache Rscript --vanilla -e 'pkgdown::build_article("articles/isdm-canada-warbler", lazy = FALSE)'
+# PASS.
+
+Rscript --vanilla -e 'pkgdown::check_pkgdown()'
+# PASS: no problems.
+
+Rscript --vanilla -e 'devtools::document(quiet = TRUE)'
+# PASS: only three pre-existing AIC/BIC/anova S3 notices; no generated diff.
+
+Rscript --vanilla -e 'devtools::check(args = "--no-manual", error_on = "warning", quiet = TRUE)'
+# PASS in 19m52s: 0 errors, 0 warnings, 3 notes (remote clock,
+# pre-existing unqualified logLik diagnostic, macOS xcrun_db detritus).
+
+rg -n 'more than two|any number of sources|not implemented|dummy response|all-NA|all-missing|held-out|0\.23|0\.82|22,200|SPDE slope|response-free' NEWS.md dev/isdm-requalification/README.md docs/design/120-multi-source-isdm-contract.md docs/design/126-isdm-prediction-api.md docs/design/127-isdm-prediction-map-implementation.md docs/design/35-validation-debt-register.md tests/testthat/test-isdm-predict.R vignettes/articles/isdm-canada-warbler.Rmd
+rg -n 're_int|fixed-only|interval = "marginal"|newdata.*response' NEWS.md dev/isdm-requalification/README.md docs/design/120-multi-source-isdm-contract.md docs/design/126-isdm-prediction-api.md docs/design/127-isdm-prediction-map-implementation.md docs/design/35-validation-debt-register.md tests/testthat/test-isdm-predict.R vignettes/articles/isdm-canada-warbler.Rmd
+# PASS: current iJSDM capability and limitation wording is aligned; unrelated
+# historical/register matches were inspected.
+
+git diff --check
+# PASS.
+```
+
+Manual three-OS run `33255953258` passed Ubuntu, macOS, and Windows at stale
+pre-repair head `7b1a281c42821a0b6315fa6a832df54a829f2786`. It cannot qualify
+the final source. Replacement exact-head CI, merge, exact-main CI, installed
+package/DLL qualification, the 14 point pre-runs, and every claim-bearing
+attempt remain pending. Production and pre-run denominators are still zero.
+Terminal API/method, reproducibility, and Rose pre-publish reviews passed with
+no unresolved P0--P2 finding. Shannon's remaining block is procedural: commit,
+push once, and pass replacement exact-head CI before merge.
+The final active-source/feasibility-probe prose clarifications were followed by
+fresh `devtools::document()`, `pkgdown::check_pkgdown()`, Warbler article render,
+and `git diff --check` passes. Exact-final-source package coverage remains the
+replacement three-OS CI gate.
+Full detail and tests-of-tests are in
+`docs/dev-log/after-task/2026-08-29-isdm-point-prediction-repair.md`.

@@ -680,10 +680,14 @@ log-likelihood difference, in [For the record].
 
 Three things have to be right before a surface means anything.
 
-**The spatial field must be in the prediction.** It is, from gllvmTMB 0.7.0
-onwards. On an older install, `predict(newdata = )` silently dropped it, and a
-map drawn that way shows a field-free surface while claiming the field. Check
-your version before trusting a map made on an old install.
+**The spatial field must be in the prediction.** The current gllvmTMB 0.7.1
+source contains the ordinary SPDE prediction repair. Early 0.7.0 development
+builds did not all contain it; this saved map was reproduced from a worktree
+that did. A version string alone is therefore not sufficient provenance.
+Before trusting an older saved map, reproduce the training-row identity
+`predict(fit, newdata = training_rows) == predict(fit)`. The current public
+route covers the ordinary intercept-only SPDE point predictor, not spatial
+slopes.
 
 **The scale must be effort-free.** `type = "response"` includes the row's
 offset, so it returns an expected count *at that effort* -- right for a
@@ -705,7 +709,6 @@ newd$trait       <- factor(newd$trait, levels = levels(dat$trait))
 newd$cell_id     <- factor("po001", levels = levels(dat$cell_id))
 newd$isdm_source <- factor("ebird", levels = levels(dat$isdm_source))
 newd$log_effort  <- 0                     # relative intensity, NOT a count
-newd$value       <- 0                     # the design matrix evaluates the LHS
 
 p <- suppressWarnings(suppressMessages(
   predict(fit, newdata = newd, type = "response")))
@@ -724,6 +727,11 @@ check that the fit you have just run reproduces them: the largest disagreement
 anywhere on the grid is `r signif(agree, 2)`, against surface values running
 from `r f2(min(E), 3)` to `r f2(max(E), 2)`.
 
+`newd` deliberately has no response column. A prediction grid describes the
+locations and covariates at which to evaluate the fitted model; current
+`predict()` builds its design from the right-hand side and does not require a
+dummy outcome.
+
 ## What the map does not carry -- read this before the picture
 
 **No uncertainty, of any kind.** There is no interval behind any value in the
@@ -736,7 +744,16 @@ cat(err_of(predict(fit, newdata = newd, type = "link", se.fit = TRUE)))
 
 The standard error that *is* available at training rows ignores the error in
 reconstructing the latent field, which is exactly what dominates on a map.
-Map-scale uncertainty needs machinery this package does not have yet.
+Map-scale uncertainty needs random-effect-aware machinery that is not
+calibrated here. In a retained 1,600-fit negative control, the fixed-only
+standard error covered the true linear predictor only 0.23--0.82 of the time.
+That is why the refusal remains. A separate 22,200-fit campaign for a fixed
+`trait:env` coefficient passed its narrow coverage gates, but fixed-coefficient
+coverage does not transfer to a reconstructed spatial surface.
+
+These maps also lack a held-out point-accuracy certificate. Training-row
+identity proves that the fitted field is reconstructed and packed correctly;
+it does not show how accurately the model predicts withheld locations.
 
 **Nothing outside the mesh.** The grid deliberately extends 6 per cent beyond
 the sampled extent, the way a real prediction map would, and `predict()` says
@@ -1129,7 +1146,10 @@ data.frame(
 ```
 
 Each has its generating script beside it in `dev/isdm-precision/`
-(`generate-<name>.R`), and each ran against gllvmTMB `r ai$package_version`.
+(`generate-<name>.R`), and each records gllvmTMB `r ai$package_version`.
+For the map artefact, that operational statement means the development source
+with the ordinary SPDE prediction repair, not every build that happened to
+report version 0.7.0.
 
 ## How the simulated field was built
 

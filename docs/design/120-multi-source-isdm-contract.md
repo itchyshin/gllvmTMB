@@ -1,8 +1,8 @@
 # Design 120 — the multi-source integrated-SDM contract (Model 2)
 
-**Status: ACTIVE.** Lane `claude/isdm-model2-multisource-20260816`, off
-`codex/isdm-range-amplitude-orthogonal` @ `bdaf24d4`. Supersedes the stub that claimed
-this number. Companion register row: `ISDM-02` (this lane). Umbrella issue: #941.
+**Status: ACTIVE / PARTIAL.** The public constructor and contract are shipped;
+the 2026-08-29 requalification programme still owes weak-overlap and spatial
+recovery evidence. Companion register row: `ISDM-02`. Umbrella issue: #941.
 
 ## 1. What this is
 
@@ -146,10 +146,11 @@ columns. Bare
 - a trait missing any declared source (the per-trait both-arms rule becomes a
   per-trait **all-declared-sources** rule). Two honest limits of this rule: it checks
   **presence, not balance** — a single row of a source inside a trait satisfies it, as
-  it did in the two-source form — and it counts **rows, not observed responses**, so
-  under `miss_control(response = "include")` an all-`NA` detection column passes the
-  check while contributing nothing to the likelihood. Both are inherited from Model 1
-  and recorded rather than silently claimed away;
+  it did in the two-source form — but it now checks observed responses rather than row
+  presence alone. Under `miss_control(response = "include")`, an all-`NA`
+  source-by-trait arm is refused before fitting with
+  `gllvmTMB_isdm_observed_source_incomplete`; this applies to mixed-law and
+  all-Poisson declarations made with `isdm_sources()`;
 - an `isdm_source` value not in the declaration, or a declared source absent from
   the data;
 - `weights` (two incompatible meanings across arms — Gauss blocker, unchanged);

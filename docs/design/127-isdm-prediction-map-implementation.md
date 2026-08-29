@@ -1,19 +1,20 @@
 # Design 127 — Implementing the prediction-map API (#1133)
 
-Status: DESIGN (no implementation in this lane). Owner: unassigned.
-Depends on: [#1132](https://github.com/itchyshin/gllvmTMB/issues/1132) — same
-function, and its RE re-add must exist before off-mesh projection means
-anything. Scoping parent: `docs/design/126-isdm-prediction-api.md` §4.
+Status: IMPLEMENTED POINT ROUTE / PARTIAL EVIDENCE. Owner: iSDM requalification.
+Foundation: [#1132](https://github.com/itchyshin/gllvmTMB/issues/1132), which
+landed the ordinary SPDE random-effect re-add and off-mesh projection.
+Boundary parent: `docs/design/126-isdm-prediction-api.md`.
 Register: ISDM-03 (`partial`).
 
 ## 1. Why this document exists
 
-Design 126 §4 named four gaps between what `predict()` returns and what a
-prediction map needs. It scoped them; it did not say how to build them. This
-document does, so the work can be picked up without re-deriving the shape.
+The original Design 126 named four gaps between what `predict()` returned and
+what a prediction map needed. This document records which implementation
+items landed and which scientific evidence remains owed.
 
-**Nothing here is implemented.** The map-making article stays fenced until
-items 1 and 2 land.
+The ordinary intercept-only SPDE point route is implemented. The remaining
+fences concern held-out accuracy, unsupported spatial slopes, and calibrated
+map uncertainty rather than basic point-map construction.
 
 ## 2. What #1132 already delivered (read before re-planning item 1)
 
@@ -48,17 +49,18 @@ prediction.
   but any statement of the form "the spatial field is re-added" must be read
   as "the `use_spde` field is re-added". Tracked in #1138.
 
-Item 1 below is therefore reduced, not closed.
+Item 1's projection machinery is complete for the ordinary `use_spde` tier;
+its held-out accuracy evidence remains open.
 
-## 3. Item 1 — off-mesh projection (REDUCED by #1132)
+## 3. Item 1 — off-mesh projection (IMPLEMENTED; ACCURACY OWED)
 
-**Remaining work, not delivered by #1132:**
+**Current route and remaining evidence:**
 
-1. **A grid helper.** Users build a prediction grid by hand today. A small
-   `predict_grid()` / `expand_grid_for()` helper that takes a fit and a
-   bounding box or `sf` object and returns a `newdata` frame with the mesh's
-   `xy_cols`, the trait factor at its training levels, and a zeroed offset
-   column. This is where the offset trap (item 2) is most cheaply defused.
+1. **Prepared `newdata`, not an exported grid helper.** Users build a
+   prediction grid with the fitted coordinate, trait, source, covariate, and
+   offset columns. The route accepts response-free `newdata`, so a dummy
+   outcome is neither needed nor recommended. No exported grid-building
+   helper is planned in the requalification programme.
 2. ~~**Extrapolation honesty.**~~ **DONE in #1132** — found by the adversarial
    verification and fixed in the same PR. `fm_basis()` returns an all-zero row
    outside the mesh hull, so the field read as exactly 0: a blank patch of map
@@ -66,9 +68,9 @@ Item 1 below is therefore reduced, not closed.
    *fit* time. `predict()` was quietly more permissive than the fit. It now
    checks the projector's row masses and warns
    (`gllvmTMB_predict_newdata_outside_mesh`), with a test pinning that
-   in-domain rows stay silent. A grid helper (item 1 above) should still
-   *filter* to the hull rather than relying on the warning.
-3. **An oracle for new coordinates.** The natural one: fit on a subset of
+   in-domain rows stay silent. User-prepared grids should filter to the hull
+   rather than relying on the warning.
+3. **An oracle for new coordinates remains owed.** Fit on a subset of
    locations, predict at the held-out ones, and compare against the
    simulated field. That is a recovery-style check, so it belongs with the
    validation harness rather than the unit suite.
@@ -90,21 +92,12 @@ Two routes, and the recommendation is the first:
   for every one of the 16 families — for a Bernoulli-cloglog arm it is not
   an intensity at all. **Not recommended without a per-family contract.**
 
-## 5. Item 3 — arm attribution
+## 5. Item 3 — arm attribution (DONE)
 
-In-sample output carries no source column, so a mixed-scale `est` invites
-misreading: Poisson counts and detection probabilities in one numeric column,
-distinguishable only by the reader's memory of which rows were which.
-
-Carry the `family_var` column through to the output on both paths. #1132
-already recovers `fam_var <- attr(fit$family_input, "family_var")` inside
-`.gllvmTMB_newdata_family_ids()`, so the lookup exists; this is a matter of
-adding the column, and deciding whether it is unconditional (a schema change
-for every mixed-family caller) or opt-in.
-
-**Needs a decision:** adding a column changes the returned data frame's shape.
-`test-fitted-multi.R` asserts `expect_identical(fitted(...), predict(...))`,
-which survives a shape change only if both paths change together.
+`predict()` and `fitted()` carry the fitted `family_var` column on
+mixed-family fits. This labels each `est` as an expected count or a detection
+probability on the appropriate source/link scale. Single-family output keeps
+its previous shape, and `est` remains the final column.
 
 ## 6. Item 4 — uncertainty (the one with a measured obstacle)
 
@@ -115,9 +108,14 @@ of the true linear predictor, and coverage *falls with grid size* — because
 the latent/field reconstruction error it ignores is exactly what dominates on
 a map.
 
-So map-scale uncertainty needs an RE-aware construction: joint-precision (as
-in the MIS-37 wave-1b machinery) or sample-based. Both are substantially more
-work than items 1–3 and neither is scoped here.
+So map-scale uncertainty needs a random-effect-aware construction based on
+joint precision and simulation. That work belongs to the separate gated
+uncertainty slice; it does not follow from the point-map implementation.
+
+The completed E1 campaign does not close this gap. Its 22,200 fits passed
+48/48 cells for one fixed `trait:env` coefficient (coverage 0.939--0.959;
+positive-definite-Hessian availability 0.858--0.947). Those fixed-coefficient
+intervals do not include uncertainty in reconstructing the SPDE field.
 
 `.gllvmTMB_predict_se_guard()` currently hard-refuses `se.fit` with `newdata`.
 **That refusal is correct and should stay** until an RE-aware route exists —
@@ -126,10 +124,13 @@ it is the only thing preventing a mis-calibrated interval being drawn on a map.
 ## 7. Suggested order
 
 1. ~~Extrapolation honesty (§3.2)~~ — done in #1132.
-2. Scale documentation (§4, route one) — documentation only.
-3. Arm column (§5) — needs the schema decision first.
-4. Grid helper (§3.1) — convenience, once the above are settled.
-5. RE-aware uncertainty (§6) — its own arc, gated on the E1 campaign.
+2. ~~Scale documentation (§4, route one)~~ — done; zero the offset in
+   `newdata` for effort-free relative intensity.
+3. ~~Arm column (§5)~~ — done on mixed-family fits.
+4. Held-out in-hull point recovery (§3.3) — owed before an accuracy claim.
+5. RE-aware uncertainty (§6) — its own gated implementation and calibration
+   slice.
 
-The map-making article unfences after 1 and 2, **with an explicit statement
-that the map carries no interval**.
+The map-making article may demonstrate the implemented point route only with
+an explicit statement that the surfaces have neither calibrated intervals nor
+a held-out point-accuracy certificate.

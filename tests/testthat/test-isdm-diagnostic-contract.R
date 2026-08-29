@@ -9,6 +9,8 @@ if (!file.exists(diagnostic_contract_path)) {
   })
 } else {
 source(diagnostic_contract_path, local = TRUE)
+source(file.path(dirname(diagnostic_contract_path), "verify-contract.R"),
+       local = TRUE)
 
 .diagnostic_test_index <- function() {
   ordinary <- do.call(rbind, lapply(c(150L, 810L), function(n_cells) {
@@ -191,5 +193,15 @@ test_that("plan verification detects identity corruption", {
   plan$optimizer_seed[[2L]] <- plan$optimizer_seed[[1L]]
   expect_error(isdm_diag_validate_plan(plan),
                class = "isdm_diag_plan_identity_invalid")
+})
+
+test_that("no-argument static verification proves frozen task counts", {
+  verified <- isdm_diag_verify_static_contract()
+  expect_identical(verified$schema,
+                   "isdm-identifiability-static-verification-v1")
+  expect_identical(verified$planned_n, 52L)
+  expect_identical(verified$smoke_n, 4L)
+  expect_identical(verified$nonspatial_n, 16L)
+  expect_identical(verified$spatial_n, 36L)
 })
 }

@@ -4,13 +4,82 @@
   current <- tryCatch(sys.frame(1)$ofile, error = function(e) NULL)
   if (is.null(current) || !nzchar(current)) {
     script <- grep("^--file=", commandArgs(trailingOnly = FALSE), value = TRUE)
-    current <- if (length(script) == 1L)
-      sub("^--file=", "", script) else "verify-contract.R"
+    candidates <- c(
+      if (length(script) == 1L) sub("^--file=", "", script) else character(),
+      file.path("dev", "isdm-requalification", "diagnostic-rescue",
+                "verify-contract.R"),
+      file.path("..", "..", "dev", "isdm-requalification",
+                "diagnostic-rescue", "verify-contract.R"),
+      "verify-contract.R"
+    )
+    existing <- candidates[file.exists(candidates)]
+    current <- if (length(existing)) existing[[1L]] else "verify-contract.R"
   }
   normalizePath(current, mustWork = TRUE)
 })
 .ISDM_DIAG_VERIFY_DIR <- dirname(.ISDM_DIAG_VERIFY_FILE)
 source(file.path(.ISDM_DIAG_VERIFY_DIR, "select-seeds.R"), local = TRUE)
+
+.isdm_diag_static_index <- function() {
+  ordinary <- isdm_point_plan("ordinary")
+  ordinary$status <- "fit_returned"
+  ordinary$convergence <- 0L
+  ordinary$pd_hessian <- TRUE
+  ordinary$source_sha <- ISDM_DIAG_PRODUCTION_SOURCE_SHA
+  ordinary$source_tree <- ISDM_DIAG_PRODUCTION_SOURCE_TREE
+  ordinary$record_sha256 <- strrep("0", 64L)
+  nonspatial <- isdm_diag_select_nonspatial(ordinary)
+
+  spatial_native <- isdm_point_plan("spatial")
+  spatial_rows <- do.call(rbind, lapply(c(2L, 3L), function(n_sources) {
+    do.call(rbind, lapply(c("full", "weak"), function(overlap) {
+      cell <- spatial_native[
+        spatial_native$n_sources == n_sources &
+          spatial_native$overlap == overlap, , drop = FALSE
+      ]
+      cell[seq_len(3L), , drop = FALSE]
+    }))
+  }))
+  spatial_rows$pair_id <- NA_integer_
+  spatial_rows$structure_seed <- NA_integer_
+  spatial_rows$status <- "fit_returned"
+  spatial_rows$convergence <- rep(c(0L, 0L, 1L), times = 4L)
+  spatial_rows$pd_hessian <- rep(c(TRUE, FALSE, FALSE), times = 4L)
+  spatial_rows$source_sha <- ISDM_DIAG_PRODUCTION_SOURCE_SHA
+  spatial_rows$source_tree <- ISDM_DIAG_PRODUCTION_SOURCE_TREE
+  spatial_rows$record_sha256 <- strrep("1", 64L)
+  list(nonspatial = nonspatial,
+       spatial = isdm_diag_select_spatial(spatial_rows))
+}
+
+isdm_diag_verify_static_contract <- function() {
+  contract <- isdm_diag_contract()
+  if (!identical(contract$schema, ISDM_DIAG_CONTRACT_SCHEMA) ||
+      !identical(contract$production_source_sha,
+                 ISDM_DIAG_PRODUCTION_SOURCE_SHA) ||
+      !identical(contract$production_source_tree,
+                 ISDM_DIAG_PRODUCTION_SOURCE_TREE) ||
+      !identical(contract$planned_tasks, 52L) ||
+      !identical(contract$smoke_tasks, 4L)) {
+    .isdm_diag_abort("frozen diagnostic contract constants changed",
+                     "isdm_diag_static_contract_invalid")
+  }
+  selected <- .isdm_diag_static_index()
+  manifest <- list(
+    schema = ISDM_DIAG_SEED_MANIFEST_SCHEMA,
+    nonspatial = selected$nonspatial,
+    spatial = selected$spatial
+  )
+  plan <- diagnostic_plan(manifest)
+  smoke <- diagnostic_smoke_plan(manifest)
+  list(
+    schema = "isdm-identifiability-static-verification-v1",
+    planned_n = as.integer(nrow(plan)),
+    smoke_n = as.integer(nrow(smoke)),
+    nonspatial_n = as.integer(sum(plan$slice == "nonspatial")),
+    spatial_n = as.integer(sum(plan$slice == "spatial"))
+  )
+}
 
 isdm_diag_verify_seed_manifest <- function(path, production_dir = NULL) {
   path <- normalizePath(path, mustWork = TRUE)
@@ -77,6 +146,12 @@ isdm_diag_verify_seed_manifest <- function(path, production_dir = NULL) {
 }
 
 isdm_diag_verify_cli <- function(args = commandArgs(trailingOnly = TRUE)) {
+  if (length(args) == 0L) {
+    result <- isdm_diag_verify_static_contract()
+    print(result)
+    cat("DIAGNOSTIC_CONTRACT_VERIFIED\n")
+    return(invisible(result))
+  }
   if (!length(args) %in% c(1L, 2L)) {
     stop("usage: verify-contract.R SEED_MANIFEST_RDS [PRODUCTION_DIR]")
   }

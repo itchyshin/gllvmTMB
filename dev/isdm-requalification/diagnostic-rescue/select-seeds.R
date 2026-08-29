@@ -5,8 +5,16 @@
   current <- tryCatch(sys.frame(1)$ofile, error = function(e) NULL)
   if (is.null(current) || !nzchar(current)) {
     script <- grep("^--file=", commandArgs(trailingOnly = FALSE), value = TRUE)
-    current <- if (length(script) == 1L)
-      sub("^--file=", "", script) else "select-seeds.R"
+    candidates <- c(
+      if (length(script) == 1L) sub("^--file=", "", script) else character(),
+      file.path("dev", "isdm-requalification", "diagnostic-rescue",
+                "select-seeds.R"),
+      file.path("..", "..", "dev", "isdm-requalification",
+                "diagnostic-rescue", "select-seeds.R"),
+      "select-seeds.R"
+    )
+    existing <- candidates[file.exists(candidates)]
+    current <- if (length(existing)) existing[[1L]] else "select-seeds.R"
   }
   normalizePath(current, mustWork = TRUE)
 })

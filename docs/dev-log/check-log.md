@@ -56080,3 +56080,30 @@ continued to pass the report structure but correctly returned nonzero because
 G12 (merge, exact-main verification, and lease release) is still unmet. This is
 the expected protected pre-landing state; the full validator must be rerun only
 after G12 is true.
+
+PR #1227 run `33268857512` failed after 40m20s with one error:
+`test-isdm-requalification-terminal-evidence.R` attempted to source the retained
+helper from `dev/`, but `.Rbuildignore` contains `^dev$`. The built tarball
+therefore contained the test and excluded its dependency. This was a packaging
+boundary failure in the new test, not a scientific or engine failure.
+
+The repair adds
+`tests/testthat/helper-isdm-requalification-terminal-evidence.R`, removes the
+invalid cross-boundary `source()`, and preserves the authoritative helper in
+`dev/`. The two helper copies are byte-identical with SHA-256
+`b1bd5be8b3e484690981e158f9055d534dece68bda7470d2bcd6b89b156eae65`.
+
+```sh
+cmp -s dev/isdm-requalification/terminal-evidence/adjudication-v3-functions.R tests/testthat/helper-isdm-requalification-terminal-evidence.R
+# PASS: ISDM_V3_HELPER_BYTE_IDENTICAL.
+
+Rscript --vanilla -e 'testthat::test_file("tests/testthat/test-isdm-requalification-terminal-evidence.R", reporter = "summary", stop_on_failure = TRUE)'
+# PASS: 13 expectations.
+
+R CMD build --no-build-vignettes .
+tar -tf gllvmTMB_0.7.1.tar.gz | rg 'helper-isdm-requalification-terminal-evidence|test-isdm-requalification-terminal-evidence'
+# PASS: both helper and test are present in the source tarball.
+
+Rscript --vanilla -e 'testthat::test_file("/private/tmp/isdm-built-test-46bc6ae83/gllvmTMB/tests/testthat/test-isdm-requalification-terminal-evidence.R", reporter = "summary", stop_on_failure = TRUE)'
+# PASS: 13 expectations from the freshly built tarball.
+```

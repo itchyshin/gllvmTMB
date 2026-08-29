@@ -1,8 +1,3 @@
-terminal_dir <- testthat::test_path(
-  "..", "..", "dev", "isdm-requalification", "terminal-evidence"
-)
-source(file.path(terminal_dir, "adjudication-v3-functions.R"), local = TRUE)
-
 test_that("v3 binds producer-shaped unnamed Psi through exact Sigma order", {
   truth <- diag(c(0.2, 0.3, 0.4))
   dimnames(truth) <- list(paste0("sp", 1:3), paste0("sp", 1:3))

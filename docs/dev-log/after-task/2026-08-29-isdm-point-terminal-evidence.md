@@ -70,6 +70,7 @@ independent review found zero targeted warnings, refusals, or diagnostics.
 - `dev/isdm-requalification/terminal-evidence/attack-gate.R`
 - `dev/isdm-requalification/terminal-evidence/adjudicate-production-v3.R`
 - `dev/isdm-requalification/terminal-evidence/adjudication-v3-functions.R`
+- `tests/testthat/helper-isdm-requalification-terminal-evidence.R`
 - `tests/testthat/test-isdm-requalification-terminal-evidence.R`
 - `docs/design/35-validation-debt-register.md`
 - `docs/dev-log/check-log.md`
@@ -107,6 +108,12 @@ Its seven-entry source/receipt chain passed `sha256sum -c`; manifest SHA-256 is
 The dedicated v3 terminal-evidence test passed 13 expectations, including the
 actual unnamed producer-shaped `Psi`, a mismatched-Sigma refusal, the routine
 Psi advisory, a targeted warning, a fit refusal, and an unhealthy fit.
+PR run `33268857512` exposed that `.Rbuildignore` excludes `dev/`, so the first
+test layout could not source the retained helper during `R CMD check`. A
+testthat helper copy with identical SHA-256
+`b1bd5be8b3e484690981e158f9055d534dece68bda7470d2bcd6b89b156eae65`
+replaced that invalid cross-boundary source. The test then passed from both the
+working tree and a freshly built source tarball.
 
 Documentation closeout checks are recorded in the check log. Full package,
 pkgdown, article, and three-OS reruns are not required for this evidence-only

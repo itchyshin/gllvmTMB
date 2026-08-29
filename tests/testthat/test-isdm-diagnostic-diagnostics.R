@@ -119,6 +119,8 @@ test_that("surface metrics normalize errors within trait", {
   expect_equal(out$normalized_rmse,
                sqrt(mean(((estimate - truth) / scales)^2)))
   expect_identical(out$per_trait$trait, c("sp1", "sp2"))
+  shifted <- estimate + rep(c(100, -50), each = 2L)
+  expect_equal(diagnostic_surface_metrics(shifted, truth, trait), out)
   expect_error(
     diagnostic_surface_metrics(c(1, NA), c(1, 2), c("a", "a")),
     class = "isdm_diagnostic_surface_invalid"

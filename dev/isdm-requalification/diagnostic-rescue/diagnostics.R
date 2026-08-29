@@ -231,8 +231,10 @@ diagnostic_extract_nonspatial <- function(fit, fixture, tolerance = 1e-10,
 #'
 #' @param estimate,truth Numeric vectors of equal length.
 #' @param trait Trait labels aligned to the vectors.
-#' @return Overall metrics and a per-trait data frame.  Normalization uses the
-#'   truth SD within trait, then averages squared standardized errors.
+#' @return Median per-trait metrics and the underlying `per_trait` data frame.
+#'   Both surfaces are centered within trait before scoring, exactly matching
+#'   the frozen production adjudicator; normalized RMSE divides by the centered
+#'   truth SD within trait.
 diagnostic_surface_metrics <- function(estimate, truth, trait) {
   estimate <- as.numeric(estimate)
   truth <- as.numeric(truth)
@@ -245,25 +247,28 @@ diagnostic_surface_metrics <- function(estimate, truth, trait) {
   levels <- unique(trait)
   per_trait <- do.call(rbind, lapply(levels, function(level) {
     idx <- trait == level
-    scale <- stats::sd(truth[idx])
+    estimate_centered <- estimate[idx] - mean(estimate[idx])
+    truth_centered <- truth[idx] - mean(truth[idx])
+    scale <- stats::sd(truth_centered)
     data.frame(
       trait = level,
       n = sum(idx),
-      correlation = if (sum(idx) > 1L) stats::cor(estimate[idx], truth[idx]) else NA_real_,
-      rmse = sqrt(mean((estimate[idx] - truth[idx])^2)),
+      correlation = if (sum(idx) > 1L && stats::sd(estimate_centered) > 0 &&
+                           is.finite(scale) && scale > 0)
+        stats::cor(estimate_centered, truth_centered) else NA_real_,
+      rmse = sqrt(mean((estimate_centered - truth_centered)^2)),
       normalized_rmse = if (is.finite(scale) && scale > 0)
-        sqrt(mean(((estimate[idx] - truth[idx]) / scale)^2)) else NA_real_,
+        sqrt(mean(((estimate_centered - truth_centered) / scale)^2)) else NA_real_,
       stringsAsFactors = FALSE
     )
   }))
-  scales <- stats::setNames(vapply(levels, function(level) {
-    stats::sd(truth[trait == level])
-  }, numeric(1L)), levels)
-  standardized <- (estimate - truth) / scales[trait]
+  finite_median <- function(x) if (any(is.finite(x))) {
+    stats::median(x, na.rm = TRUE)
+  } else NA_real_
   list(
-    correlation = stats::cor(estimate, truth),
-    rmse = sqrt(mean((estimate - truth)^2)),
-    normalized_rmse = sqrt(mean(standardized^2)),
+    correlation = finite_median(per_trait$correlation),
+    rmse = finite_median(per_trait$rmse),
+    normalized_rmse = finite_median(per_trait$normalized_rmse),
     per_trait = per_trait
   )
 }

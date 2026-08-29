@@ -943,7 +943,7 @@ extract_Sigma <- function(
       as.numeric(fit$use$response_column_coef_rho)
     } else NULL
     K_rho <- NULL
-    if (source_type %in% c("phylo", "animal")) {
+    if (source_type %in% c("phylo", "animal", "kernel")) {
       if (identical(rho_status, "estimated")) {
         U <- fit$tmb_data$column_coef_source_U
         lambda <- fit$tmb_data$column_coef_source_lambda
@@ -963,18 +963,23 @@ extract_Sigma <- function(
         levels(fit$data[[fit$trait_col]])
       dimnames(K_rho) <- list(labels, labels)
     }
+    source <- list(
+      type = source_type,
+      grouping = fit$trait_col,
+      labels = fit$use$phylo_column_slope_labels %||%
+        levels(fit$data[[fit$trait_col]])
+    )
+    if (identical(source_type, "kernel")) {
+      source$name <- fit$use$phylo_column_slope_name %||% "kernel"
+      source$scale <- "as_supplied"
+    }
     return(list(
       Sigma = Sigma,
       R = .safe_cov2cor(Sigma, basis),
       level = "column_coef",
       part = fit$use$phylo_column_slope_mode %||% "dep",
       basis = basis,
-      source = list(
-        type = source_type,
-        grouping = fit$trait_col,
-        labels = fit$use$phylo_column_slope_labels %||%
-          levels(fit$data[[fit$trait_col]])
-      ),
+      source = source,
       rho = rho,
       rho_status = rho_status,
       K_rho = K_rho,
@@ -991,7 +996,7 @@ extract_Sigma <- function(
   if (!isTRUE(fit$use$response_column_coef) &&
       identical(level, "column_coef")) {
     cli::cli_abort(
-      "The fitted model has no {.fn column_coef}, {.fn phylo_coef}, or {.fn animal_coef} term."
+      "The fitted model has no {.fn column_coef}, {.fn phylo_coef}, {.fn animal_coef}, or {.fn kernel_coef} term."
     )
   }
 

@@ -11,12 +11,13 @@
 #' `traits(...)` wide form, with bare numeric row predictors. Non-Gaussian
 #' coefficient models and interval inference are not available in this
 #' release. [phylo_coef()] and [animal_coef()] are the supported structured
-#' sources; kernel and spatial coefficient sources remain planned.
+#' sources; [kernel_coef()] supplies a labelled dense kernel. Spatial
+#' coefficient sources remain planned.
 #'
 #' @param formula A coefficient-basis bar expression such as
 #'   `1 + x | trait`, `0 + x | trait`, or `1 + x || trait`.
 #' @return A formula marker; never evaluated directly.
-#' @seealso [phylo_coef()], [extract_Sigma()]
+#' @seealso [phylo_coef()], [animal_coef()], [kernel_coef()], [extract_Sigma()]
 #' @examples
 #' set.seed(1)
 #' dat <- expand.grid(unit = factor(1:10), trait = factor(paste0("sp", 1:3)))
@@ -40,8 +41,9 @@ column_coef <- function(formula) invisible(NULL)
 #' This point-model route is covered for Gaussian multivariate data in long or
 #' `traits(...)` wide form, with a labelled positive-definite tree covariance
 #' source and bare numeric row predictors. Numeric `rho` and one estimated
-#' interior `rho` are supported. Interval inference, non-Gaussian coefficient
-#' models, and kernel or spatial coefficient helpers remain planned.
+#' interior `rho` are supported. Interval inference and non-Gaussian coefficient
+#' models remain unavailable; [animal_coef()] and [kernel_coef()] cover their
+#' bounded public source regimes, while spatial coefficients remain planned.
 #' Existing `phylo_slope()` remains current and warning-free.
 #'
 #' For exact compatibility with the released slope engine, a no-intercept
@@ -125,6 +127,47 @@ animal_coef <- function(formula, pedigree = NULL, A = NULL, Ainv = NULL,
                         rho = 1) {
   invisible(NULL)
 }
+
+#' Dense-kernel response-column coefficients
+#'
+#' Fit response-column-specific random intercepts and/or slopes with source
+#' covariance `K_rho = rho * K + (1 - rho) * diag(diag(K))`. Supply a numeric
+#' `rho` in `[0, 1]` to fix the mixture or use `rho = NULL` (the default) to
+#' estimate one interior value. The supplied labelled dense kernel retains its
+#' marginal scale. The fitted covariance across the coefficient basis is full
+#' for `|` and diagonal for `||`.
+#'
+#' This point-model route is covered for Gaussian multivariate data in long or
+#' `traits(...)` wide form, with one dense positive-definite kernel and bare
+#' numeric row predictors. Interval inference, non-Gaussian coefficient models,
+#' simultaneous coefficient sources, and sparse kernel inputs are not
+#' available. Existing [kernel_slope()] remains current and warning-free.
+#'
+#' A no-intercept `rho = 1` fit uses the released [kernel_slope()] route exactly
+#' and therefore uses raw `K` without the dense phylogenetic ridge.
+#'
+#' @param formula A coefficient-basis bar expression such as
+#'   `1 + x | trait`, `0 + x | trait`, or `1 + x || trait`.
+#' @param K A labelled dense numeric positive-definite covariance matrix whose
+#'   row and column names exactly match the response columns.
+#' @param name One non-empty name for the kernel source.
+#' @param rho `NULL` to estimate one interior source-strength value, or one
+#'   numeric value in `[0, 1]` to fix it.
+#' @return A formula marker; never evaluated directly.
+#' @seealso [kernel_slope()], [column_coef()], [phylo_coef()], [extract_Sigma()]
+#' @examples
+#' set.seed(4)
+#' dat <- expand.grid(unit = factor(1:12), trait = factor(paste0("sp", 1:4)))
+#' dat$x <- rnorm(12)[dat$unit]
+#' dat$value <- rnorm(nrow(dat))
+#' K <- 0.4 ^ abs(outer(1:4, 1:4, "-"))
+#' dimnames(K) <- list(levels(dat$trait), levels(dat$trait))
+#' fit <- gllvmTMB(value ~ 1 + kernel_coef(1 + x | trait, K = K, rho = 0.5),
+#'   data = dat, trait = "trait", unit = "unit", family = gaussian(),
+#'   control = gllvmTMBcontrol(se = FALSE), silent = TRUE)
+#' extract_Sigma(fit, level = "column_coef")
+#' @export
+kernel_coef <- function(formula, K, name = "kernel", rho = NULL) invisible(NULL)
 
 .column_coef_helpers <- c(
   "column_coef", "phylo_coef", "animal_coef", "kernel_coef", "spatial_coef"
@@ -301,7 +344,7 @@ animal_coef <- function(formula, pedigree = NULL, A = NULL, Ainv = NULL,
   ## so they do not receive ordinary R formal-argument matching automatically.
   ## Apply it explicitly for the public helpers: unknown, duplicated, or
   ## over-supplied arguments must fail rather than disappear into `extra`.
-  if (helper %in% c("column_coef", "phylo_coef", "animal_coef")) {
+  if (helper %in% c("column_coef", "phylo_coef", "animal_coef", "kernel_coef")) {
     definition <- get(helper, mode = "function", inherits = TRUE)
     marker <- tryCatch(
       match.call(
@@ -348,6 +391,32 @@ animal_coef <- function(formula, pedigree = NULL, A = NULL, Ainv = NULL,
         "{.fn animal_coef} requires exactly one non-NULL animal source.",
         "i" = "Supply one of {.arg pedigree}, {.arg A}, or {.arg Ainv}."
       ), class = "gllvmTMB_column_coef_source_invalid")
+    }
+  }
+  if (identical(helper, "kernel_coef")) {
+    k_pos <- which(arg_names == "K") + 1L
+    if (length(k_pos) != 1L || is.null(marker[[k_pos]])) {
+      .column_coef_abort(c(
+        "{.fn kernel_coef} requires one non-NULL labelled dense {.arg K} covariance.",
+        "i" = "Supply {.code K = K_matrix}; sparse precision inputs are not accepted."
+      ), class = "gllvmTMB_column_coef_source_invalid")
+    }
+    name_pos <- which(arg_names == "name") + 1L
+    if (length(name_pos)) {
+      name_value <- tryCatch(
+        eval(marker[[name_pos]], envir = environment(formula)),
+        error = function(e) .column_coef_abort(c(
+          "{.arg name} could not be evaluated in the formula environment.",
+          "x" = conditionMessage(e)
+        ), class = "gllvmTMB_column_coef_source_invalid")
+      )
+      if (!is.character(name_value) || length(name_value) != 1L ||
+          is.na(name_value) || !nzchar(name_value)) {
+        .column_coef_abort(
+          "{.arg name} in {.fn kernel_coef} must be one non-empty string.",
+          class = "gllvmTMB_column_coef_source_invalid"
+        )
+      }
     }
   }
   rho_pos <- which(arg_names == "rho") + 1L
@@ -453,9 +522,58 @@ animal_coef <- function(formula, pedigree = NULL, A = NULL, Ainv = NULL,
 .column_coef_engine_fence <- function(spec) {
   cli::cli_abort(c(
     "{.fn {spec$helper}} is reserved but is not yet available for fitting.",
-    "i" = "Only {.fn column_coef}, {.fn phylo_coef}, and {.fn animal_coef} currently have admitted Gaussian point-model engines.",
+    "i" = "Only {.fn column_coef}, {.fn phylo_coef}, {.fn animal_coef}, and {.fn kernel_coef} currently have admitted Gaussian point-model engines.",
     ">" = "Use the corresponding current response-column slope helper when a slope-only model answers the question."
   ), class = "gllvmTMB_column_coef_engine_not_admitted")
+}
+
+## Dense-kernel admission. The no-intercept rho=1 endpoint is the released
+## kernel_slope() call itself, preserving its raw-K validation, map, objective,
+## and warning behaviour. Other values use the shared coefficient engine.
+.column_coef_rewrite_kernel <- function(expr, spec) {
+  if (!is.call(expr)) return(expr)
+  fn <- if (is.symbol(expr[[1L]])) as.character(expr[[1L]]) else ""
+  if (identical(fn, "kernel_coef")) {
+    if (!identical(spec$helper, "kernel_coef")) {
+      .column_coef_abort(
+        "Internal: {.fn kernel_coef} rewrite received another source specification."
+      )
+    }
+    marker <- spec$call
+    extras <- as.list(marker)[-(1:2)]
+    extras$rho <- NULL
+    if (!isTRUE(spec$intercept) && identical(spec$rho_mode, "fixed") &&
+        identical(spec$rho, 1)) {
+      lhs <- Reduce(
+        function(acc, predictor) call("+", acc, as.name(predictor)),
+        spec$predictors[-1L], init = as.name(spec$predictors[[1L]])
+      )
+      bar <- call(spec$bar, lhs, as.name(spec$group))
+      return(as.call(c(list(as.name("kernel_slope"), bar), extras)))
+    }
+    K_expr <- extras$K
+    name_expr <- extras$name %||% "kernel"
+    bar <- call("|", 0, as.name(spec$group))
+    marks <- list(
+      .column_slope_mode = if (isTRUE(spec$correlated)) "dep" else "indep",
+      column_slope_cols = spec$basis,
+      .column_slope_source = "kernel",
+      .response_column_coef = TRUE,
+      vcv = K_expr,
+      .kernel_name = name_expr
+    )
+    if (identical(spec$rho_mode, "estimated")) {
+      marks$.column_coef_estimated_rho <- TRUE
+    } else {
+      marks$.column_coef_fixed_rho <- spec$rho
+    }
+    return(as.call(c(list(as.name("phylo_slope"), bar), marks)))
+  }
+  out <- expr
+  for (i in seq_along(out)[-1L]) {
+    out[[i]] <- .column_coef_rewrite_kernel(out[[i]], spec)
+  }
+  out
 }
 
 .column_coef_assert_gaussian_family <- function(family, helper) {

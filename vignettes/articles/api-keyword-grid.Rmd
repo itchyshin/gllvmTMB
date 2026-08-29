@@ -317,7 +317,7 @@ helpers described here.
 
 ### Intercepts and slopes by response column
 
-`column_coef()`, `phylo_coef()`, and `animal_coef()` extend the coefficient
+`column_coef()`, `phylo_coef()`, `animal_coef()`, and `kernel_coef()` extend the coefficient
 basis to an explicit random intercept, a slope, or both. They are also outside
 the 5 × 3 grid: their covariance is across coefficient-basis columns, not a new
 trait-covariance mode.
@@ -331,17 +331,30 @@ value ~ 1 + phylo_coef(1 + moisture | trait, tree = tree, rho = NULL)
 
 # Pedigree-correlated response-column intercepts and slopes; fix rho
 value ~ 1 + animal_coef(1 + moisture | trait, pedigree = pedigree, rho = 1)
+
+# C3/C4 grand intercepts and slopes, plus kernel-correlated
+# response-column intercept and slope deviations; estimate rho
+value ~ 0 + pathway + moisture:pathway +
+  kernel_coef(1 + moisture | trait, K = K, name = "environment", rho = NULL)
+
+# The same hierarchical model from a wide response data frame;
+# pass the keyed pathway table through column_data
+traits(sp1, sp2, sp3, sp4) ~ 0 + pathway + moisture:pathway +
+  kernel_coef(1 + moisture | trait, K = K, name = "environment", rho = NULL)
 ```
 
 Use `|` for a full coefficient covariance and `||` for a diagonal one. Retrieve
 the ordered basis covariance and source metadata with
-`extract_Sigma(fit, level = "column_coef")`. All three helpers support Gaussian
+`extract_Sigma(fit, level = "column_coef")`. All four helpers support Gaussian
 point models through long or `traits(...)` wide input. Numeric `rho` fixes the
-phylogenetic or animal mixture; `phylo_coef(rho = NULL)` estimates one interior
-value. `animal_coef()` accepts exactly one pedigree, relationship covariance
-`A`, or precision `Ainv`; estimated animal `rho`, kernel and spatial coefficient
-helpers, non-Gaussian responses, and intervals remain unavailable. The existing
-slope-only helpers above remain current, warning-free, and non-deprecated.
+phylogenetic, animal, or dense-kernel mixture; `phylo_coef(rho = NULL)` and
+`kernel_coef(rho = NULL)` estimate one interior value. `animal_coef()` accepts
+exactly one pedigree, relationship covariance `A`, or precision `Ainv`;
+`kernel_coef()` accepts one labelled dense positive-definite covariance `K` and
+reports its name and supplied scale. Estimated animal `rho`, spatial
+coefficient helpers, non-Gaussian responses, and intervals remain unavailable.
+The existing slope-only helpers above remain current, warning-free, and
+non-deprecated.
 
 For exact compatibility, a no-intercept dense-`vcv` `phylo_coef(..., rho = 1)`
 call uses the released `phylo_slope()` conditioning `K + 1e-8 I`. Other
@@ -350,6 +363,8 @@ At the corresponding no-intercept `rho = 1` endpoint, `animal_coef()` uses the
 released `animal_slope()` route exactly. Its dense-`A` route therefore inherits
 the released `A + 1e-8 I` conditioning seam; pedigree and sparse-`Ainv`
 endpoints retain their released precision.
+At the no-intercept `rho = 1` kernel endpoint, `kernel_coef()` uses
+`kernel_slope()` exactly and therefore retains raw `K` without a ridge.
 
 For a worked comparison of a tree among sampled species and a tree among
 response columns, read [Where does the phylogeny belong?](where-does-the-tree-go.html).

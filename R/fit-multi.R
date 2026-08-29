@@ -992,7 +992,54 @@
     Ainv = Matrix::Matrix(Ainv, sparse = TRUE),
     log_det = 2 * sum(log(diag(R))),
     n_aug = nrow(A),
-    aug_id = as.integer(group_id)
+    aug_id = as.integer(group_id),
+    K = A,
+    labels = levs
+  )
+}
+
+.resolve_kernel_coef_precision <- function(K, data, group, source_name, rho) {
+  raw <- .resolve_fixed_column_slope_precision(
+    K = K, data = data, group = group, source_name = source_name
+  )
+  K_rho <- rho * raw$K + (1 - rho) * diag(diag(raw$K))
+  dimnames(K_rho) <- dimnames(raw$K)
+  out <- .resolve_fixed_column_slope_precision(
+    K = K_rho, data = data, group = group, source_name = source_name
+  )
+  out$K_rho <- K_rho
+  out
+}
+
+.resolve_kernel_coef_spectral_source <- function(K, data, group,
+                                                  source_name = "kernel") {
+  raw <- .resolve_fixed_column_slope_precision(
+    K = K, data = data, group = group, source_name = source_name
+  )
+  K <- raw$K
+  d <- sqrt(diag(K))
+  R <- K / outer(d, d)
+  R <- (R + t(R)) / 2
+  eig <- eigen(R, symmetric = TRUE)
+  tol <- sqrt(.Machine$double.eps) * max(1, max(abs(eig$values)))
+  if (any(!is.finite(eig$values)) || any(eig$values <= tol)) {
+    cli::cli_abort(
+      "The standardized response-column covariance for {.fn kernel_coef} must be positive definite.",
+      class = "gllvmTMB_column_coef_source_invalid"
+    )
+  }
+  if (nrow(R) < 2L || max(abs(eig$values - 1)) <= tol) {
+    cli::cli_abort(c(
+      "{.arg rho} is not identifiable from this {.fn kernel_coef} source.",
+      "x" = "After marginal-scale standardisation, the kernel has no between-column correlation contrast.",
+      "i" = "Fix {.arg rho} to a numeric value, or use {.fn column_coef} for an IID source."
+    ), class = "gllvmTMB_column_coef_rho_unidentified")
+  }
+  list(
+    U = unname(eig$vectors), lambda = unname(eig$values), d = unname(d),
+    labels = rownames(K), K = K,
+    Ainv = Matrix::Diagonal(nrow(K), x = 1), log_det = 0,
+    n_aug = nrow(K), aug_id = raw$aug_id
   )
 }
 
@@ -2307,11 +2354,11 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     phylo_slope_cs$extra$.response_column_coef
   )
   column_coef_fixed_rho <- if (use_response_column_coef &&
-      phylo_column_slope_source %in% c("phylo", "animal")) {
+      phylo_column_slope_source %in% c("phylo", "animal", "kernel")) {
     phylo_slope_cs$extra$.column_coef_fixed_rho %||% NULL
   } else NULL
   use_column_coef_estimated_rho <- use_response_column_coef &&
-    identical(phylo_column_slope_source, "phylo") &&
+    phylo_column_slope_source %in% c("phylo", "kernel") &&
     isTRUE(phylo_slope_cs$extra$.column_coef_estimated_rho)
   if (use_phylo_column_slope &&
       !phylo_column_slope_source %in% c("ordinary", "phylo", "animal", "kernel", "spatial")) {
@@ -4246,12 +4293,19 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   if (use_fixed_column_slope ||
       (use_phylo_slope_engine && !use_phylo_slope_correlated)) {
     slope_phy <- if (use_column_coef_estimated_rho) {
-      spectral <- .resolve_phylo_coef_spectral_source(
-        phylo_tree = phylo_tree,
-        phylo_vcv = phylo_vcv,
-        data = data,
-        group = phylo_slope_group
-      )
+      spectral <- if (identical(phylo_column_slope_source, "kernel")) {
+        .resolve_kernel_coef_spectral_source(
+          K = phylo_vcv, data = data, group = phylo_slope_group,
+          source_name = phylo_column_slope_name
+        )
+      } else {
+        .resolve_phylo_coef_spectral_source(
+          phylo_tree = phylo_tree,
+          phylo_vcv = phylo_vcv,
+          data = data,
+          group = phylo_slope_group
+        )
+      }
       column_coef_source_U <- spectral$U
       column_coef_source_lambda <- spectral$lambda
       column_coef_source_inv_d <- 1 / spectral$d
@@ -4289,12 +4343,20 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       )
     } else if (use_fixed_column_slope &&
         identical(phylo_column_slope_source, "kernel")) {
-      .resolve_fixed_column_slope_precision(
-        K = phylo_vcv,
-        data = data,
-        group = phylo_slope_group,
-        source_name = phylo_column_slope_name
-      )
+      if (use_response_column_coef && !is.null(column_coef_fixed_rho)) {
+        .resolve_kernel_coef_precision(
+          K = phylo_vcv, data = data, group = phylo_slope_group,
+          source_name = phylo_column_slope_name,
+          rho = column_coef_fixed_rho
+        )
+      } else {
+        .resolve_fixed_column_slope_precision(
+          K = phylo_vcv,
+          data = data,
+          group = phylo_slope_group,
+          source_name = phylo_column_slope_name
+        )
+      }
     } else {
       .resolve_phylo_slope_precision(
         phylo_tree = phylo_tree,

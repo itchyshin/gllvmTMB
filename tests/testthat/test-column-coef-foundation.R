@@ -336,9 +336,12 @@ test_that("coefficient sources retain fixed and estimated rho intentions", {
   )
 
   for (helper in c("phylo_coef", "kernel_coef")) {
-    omitted_call <- call(
-      helper, quote(0 + latitude | trait)
-    )
+    source_args <- if (identical(helper, "kernel_coef")) {
+      list(K = as.name("K"))
+    } else list()
+    omitted_call <- as.call(c(
+      list(as.name(helper), quote(0 + latitude | trait)), source_args
+    ))
     omitted_formula <- call("~", as.name("value"), omitted_call)
     environment(omitted_formula) <- environment()
     omitted <- parse(omitted_formula)
@@ -346,9 +349,10 @@ test_that("coefficient sources retain fixed and estimated rho intentions", {
     expect_null(omitted$rho)
     expect_false(omitted$map_range_off)
 
-    fixed_call <- call(
-      helper, quote(0 + latitude | trait), rho = 0.25
-    )
+    fixed_call <- as.call(c(
+      list(as.name(helper), quote(0 + latitude | trait)), source_args,
+      list(rho = 0.25)
+    ))
     fixed_formula <- call("~", as.name("value"), fixed_call)
     environment(fixed_formula) <- environment()
     fixed <- parse(fixed_formula)

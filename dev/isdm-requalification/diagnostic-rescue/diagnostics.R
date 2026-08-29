@@ -151,6 +151,7 @@ diagnostic_rep3_fixture <- function(fixture, native_task_id) {
   if (is.null(last)) last <- fit$tmb_obj$env$last.par
 
   shared_add <- numeric(nrow(scoring))
+  sign_invariance <- list(available = FALSE, max_error = NA_real_)
   if (isTRUE(fit$use$rr_B)) {
     d <- as.integer(fit$d_B %||% ncol(fit$report$Lambda_B))
     lambda <- as.matrix(fit$report$Lambda_B)
@@ -170,6 +171,14 @@ diagnostic_rep3_fixture <- function(fixture, native_task_id) {
     }
     shared_add <- rowSums(lambda[tr, , drop = FALSE] *
                             t(scores[, site, drop = FALSE]))
+    if (d == 1L) {
+      rotated <- rowSums((-lambda)[tr, , drop = FALSE] *
+                           t((-scores)[, site, drop = FALSE]))
+      sign_invariance <- list(
+        available = TRUE,
+        max_error = max(abs(shared_add - rotated))
+      )
+    }
   }
 
   unique_add <- numeric(nrow(scoring))
@@ -184,7 +193,8 @@ diagnostic_rep3_fixture <- function(fixture, native_task_id) {
   }
   list(shared = fixed + shared_add,
        full = fixed + shared_add + unique_add,
-       shared_add = shared_add, unique_add = unique_add)
+       shared_add = shared_add, unique_add = unique_add,
+       sign_invariance = sign_invariance)
 }
 
 #' Extract fixed, shared, and full fitted surfaces
@@ -212,19 +222,9 @@ diagnostic_extract_nonspatial <- function(fit, fixture, tolerance = 1e-10,
       "isdm_diagnostic_public_prediction_mismatch"
     )
   }
-  sign_check <- list(available = FALSE, max_error = NA_real_)
-  if (isTRUE(fit$use$rr_B) && ncol(as.matrix(fit$report$Lambda_B)) == 1L) {
-    lambda <- as.matrix(fit$report$Lambda_B)
-    contribution <- random$shared_add
-    ## Multiplying both rank-one factors by -1 must preserve their product.
-    sign_check <- list(
-      available = TRUE,
-      max_error = max(abs(contribution - ((-1) * contribution * (-1))))
-    )
-  }
   list(fixed = fixed, shared = random$shared, full = random$full,
        public_full = public_full, identity_error = identity_error,
-       sign_invariance = sign_check)
+       sign_invariance = random$sign_invariance)
 }
 
 #' Calculate trait-aware surface correlation and normalized RMSE

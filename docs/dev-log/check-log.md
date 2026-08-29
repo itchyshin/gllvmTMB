@@ -55993,3 +55993,117 @@ and `git diff --check` passes. Exact-final-source package coverage remains the
 replacement three-OS CI gate.
 Full detail and tests-of-tests are in
 `docs/dev-log/after-task/2026-08-29-isdm-point-prediction-repair.md`.
+
+## 2026-08-29 -- integrated-JSDM point campaign terminal evidence
+
+Exact merged source `c5bb0b80a0a733c6d7cb1bab826003bbaa589fe4` (tree
+`655282a18631700e033319d299e686162b52be97`) passed exact-main GitHub Actions
+run `33262647988`: macOS 25m16s, Ubuntu 34m20s, Windows 51m41s. Totoro then
+returned `ISDM_SOURCE_QUALIFIED` and `ISDM_SOURCE_CONTRACT_VERIFIED` for an
+isolated version-0.7.1 install with retained package/DLL/source hashes.
+
+The retained 14-fit pre-run completed 14/14 started and terminal fits with no
+error, interruption, unavailable, or not-started record. Its frozen projection
+was 223.2 seconds at 40 one-thread workers. Production completed 1,600 ordinary
+nonspatial, 200 disconnected-support attack, and 800 held-out spatial attempts:
+2,600/2,600 started, terminal, and fit-returned; no replacement attempts.
+
+The first production adjudicator incorrectly invalidated the 200 attack
+terminals after adding ordinary-only pairing columns to their native plan. Its
+receipt remains retained. A v2 adjudicator first passed `sha256sum -c` over the
+10,412-entry raw manifest, then used only immutable plan fields common to the
+native ordinary and attack slices. No fit, raw record, threshold, or estimand
+changed.
+
+V3 reverified the 10,412-entry raw manifest and bound the v1/v2 receipts before
+correcting two adjudication-only defects. Frozen verdicts: nonspatial FAIL
+(surface correlation 0.812; weak 0.757; normalized RMSE 0.585; two weak/full
+RMSE ratios >2; species-1 `Psi` relative error 0.390 > 0.35, with 100%
+availability and species 2/3 passing at 0.182/0.210). The attack slice is
+COMPLETE / STRESS_ONLY with diagnostic gate FAIL: all 200 attempts returned
+healthy fits, all warnings were generic lifecycle warnings, and the targeted
+diagnostic rate was 0/200. The v2 machine PASS label from the overbroad
+any-warning gate is retracted. Spatial FAIL (302/800 = 37.75% eligible versus
+85%, despite eligible-fit correlation 0.9956, normalized RMSE 0.1144, and all
+deterministic oracles).
+
+The exact v3 receipt SHA-256 is
+`32c7a9cb325d1e45f015b38b53a8722473e0a9ffc254d3f5e79fb2c6c22001ab`.
+Its exact adjudicator/helper sources are retained in the repository and on
+Totoro. The seven-entry source/receipt manifest passed `sha256sum -c`; its
+SHA-256 is
+`b452c79c2328a88a1821bee3b1925ccd357c7af1b3dbb4ea7453509127bf9bfa`.
+The dedicated terminal-evidence regression test passed 13 expectations.
+
+No threshold was retuned. No attempt was replaced. The spatial failure blocks
+the marginal-map uncertainty implementation and 4,800-attempt calibration
+campaign in this programme. No reader-facing capability was promoted. Exact
+receipts and SHA-256 values are recorded in
+`dev/isdm-requalification/2026-08-29-point-campaign-terminal-receipt.md`; full
+reconciliation is in
+`docs/dev-log/after-task/2026-08-29-isdm-point-terminal-evidence.md`.
+
+Terminal closeout checks:
+
+```sh
+Rscript --vanilla -e 'testthat::test_file("tests/testthat/test-isdm-requalification-terminal-evidence.R", reporter = "summary", stop_on_failure = TRUE)'
+# PASS: 13 expectations.
+
+Rscript --vanilla '/Users/z3437171/Dropbox/Github Local/Shinichi/tools/check-after-task.R' docs/dev-log/after-task/2026-08-29-isdm-point-terminal-evidence.md
+# PASS: after-task structure check passed.
+
+rg -n 'attack PASS|diagnostic[^\n]*PASS|Psi[^\n]*not adjudicable|Psi[^\n]*availability (0|zero)|0/200|STRESS_ONLY|adjudication-v3' dev/isdm-requalification/2026-08-29-point-campaign-terminal-receipt.md docs/design/35-validation-debt-register.md docs/dev-log/check-log.md docs/dev-log/after-task/2026-08-29-isdm-point-terminal-evidence.md
+# PASS: remaining PASS phrases describe the explicitly retracted v2 label;
+# current attack wording is STRESS_ONLY with diagnostic FAIL 0/200; no stale
+# Psi-unavailable claim remains.
+
+rg -n '32c7a9cb325d1e45f015b38b53a8722473e0a9ffc254d3f5e79fb2c6c22001ab|b452c79c2328a88a1821bee3b1925ccd357c7af1b3dbb4ea7453509127bf9bfa|0\.3896229|0\.1822424|0\.2102653|0\.9955995|0\.114352' dev/isdm-requalification/2026-08-29-point-campaign-terminal-receipt.md docs/design/35-validation-debt-register.md docs/dev-log/check-log.md docs/dev-log/after-task/2026-08-29-isdm-point-terminal-evidence.md
+# PASS: exact receipt/manifest hashes are present; rounded scientific values
+# agree with the exact v3 receipt while preserving readable reporting.
+
+git diff --check
+# PASS.
+```
+
+Shannon pre-landing audit: **WARN, safe to proceed with one paced push**.
+The terminal branch is based exactly on `origin/main` `c5bb0b80`; its dirty
+files are all owned closeout files and the paired after-task report is present.
+Six older PRs remain open. PRs #1077, #1070, and #1065 also append
+`docs/dev-log/check-log.md`, but none has been updated since 2026-08-17; no
+active workflow exists and no recent six-hour commit touches this terminal
+branch's files except the already merged iJSDM lane. The current CI census is
+fully complete and green at exact main. Smallest safe action: one scoped commit
+and push, then wait for its CI before any follow-up or merge.
+
+After the lane-local Unlazy ledger was rehydrated, the same after-task validator
+continued to pass the report structure but correctly returned nonzero because
+G12 (merge, exact-main verification, and lease release) is still unmet. This is
+the expected protected pre-landing state; the full validator must be rerun only
+after G12 is true.
+
+PR #1227 run `33268857512` failed after 40m20s with one error:
+`test-isdm-requalification-terminal-evidence.R` attempted to source the retained
+helper from `dev/`, but `.Rbuildignore` contains `^dev$`. The built tarball
+therefore contained the test and excluded its dependency. This was a packaging
+boundary failure in the new test, not a scientific or engine failure.
+
+The repair adds
+`tests/testthat/helper-isdm-requalification-terminal-evidence.R`, removes the
+invalid cross-boundary `source()`, and preserves the authoritative helper in
+`dev/`. The two helper copies are byte-identical with SHA-256
+`b1bd5be8b3e484690981e158f9055d534dece68bda7470d2bcd6b89b156eae65`.
+
+```sh
+cmp -s dev/isdm-requalification/terminal-evidence/adjudication-v3-functions.R tests/testthat/helper-isdm-requalification-terminal-evidence.R
+# PASS: ISDM_V3_HELPER_BYTE_IDENTICAL.
+
+Rscript --vanilla -e 'testthat::test_file("tests/testthat/test-isdm-requalification-terminal-evidence.R", reporter = "summary", stop_on_failure = TRUE)'
+# PASS: 13 expectations.
+
+R CMD build --no-build-vignettes .
+tar -tf gllvmTMB_0.7.1.tar.gz | rg 'helper-isdm-requalification-terminal-evidence|test-isdm-requalification-terminal-evidence'
+# PASS: both helper and test are present in the source tarball.
+
+Rscript --vanilla -e 'testthat::test_file("/private/tmp/isdm-built-test-46bc6ae83/gllvmTMB/tests/testthat/test-isdm-requalification-terminal-evidence.R", reporter = "summary", stop_on_failure = TRUE)'
+# PASS: 13 expectations from the freshly built tarball.
+```

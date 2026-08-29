@@ -94,6 +94,7 @@ diagnostic_nonspatial_truth_components <- function(fixture) {
       value[idx] <- stats::rbinom(length(idx), 1L, probability)
     }
   }
+  storage.mode(value) <- typeof(data$value)
   value
 }
 
@@ -270,21 +271,32 @@ diagnostic_surface_metrics <- function(estimate, truth, trait) {
 .diagnostic_matrix_summary <- function(H, dimension_cap = 500L,
                                        vectors = FALSE) {
   if (is.null(H)) return(list(available = FALSE, reason = "matrix_missing"))
+  shape <- dim(H)
+  if (length(shape) != 2L || shape[[1L]] != shape[[2L]] || shape[[1L]] < 1L) {
+    return(list(available = FALSE, reason = "matrix_not_finite_square"))
+  }
+  ## The cap is a densification cap, not merely an eigendecomposition cap.
+  ## In particular, jointPrecision is sparse and may be much larger than the
+  ## diagnostic budget permits converting to an ordinary R matrix.
+  if (shape[[1L]] > dimension_cap) {
+    return(list(
+      available = TRUE, dimension = shape[[1L]], pd = NA,
+      eigen_available = FALSE,
+      reason = sprintf("dimension_%d_exceeds_cap_%d",
+                       shape[[1L]], dimension_cap)
+    ))
+  }
   H <- tryCatch(as.matrix(H), error = function(e) e)
   if (inherits(H, "condition")) {
     return(list(available = FALSE, reason = conditionMessage(H)))
   }
-  if (nrow(H) != ncol(H) || !nrow(H) || any(!is.finite(H))) {
+  if (any(!is.finite(H))) {
     return(list(available = FALSE, reason = "matrix_not_finite_square"))
   }
   H <- (H + t(H)) / 2
   pd <- !inherits(try(chol(H), silent = TRUE), "try-error")
   out <- list(available = TRUE, dimension = nrow(H), pd = pd,
-              eigen_available = nrow(H) <= dimension_cap)
-  if (!out$eigen_available) {
-    out$reason <- sprintf("dimension_%d_exceeds_cap_%d", nrow(H), dimension_cap)
-    return(out)
-  }
+              eigen_available = TRUE)
   eig <- eigen(H, symmetric = TRUE, only.values = !vectors)
   ord <- order(eig$values)
   out$eigenvalues <- eig$values[ord]
@@ -377,6 +389,13 @@ diagnostic_curvature <- function(fit, dimension_cap = 500L,
                 objective_difference = fresh_objective - fit$opt$objective,
                 reason = conditionMessage(Hf)))
   }
+  hessian_shape <- dim(Hf)
+  if (length(hessian_shape) != 2L ||
+      !identical(as.integer(hessian_shape), rep.int(length(par), 2L))) {
+    return(list(available = FALSE, fresh_objective = fresh_objective,
+                objective_difference = fresh_objective - fit$opt$objective,
+                reason = "marginal_hessian_shape_mismatch"))
+  }
   marginal_native <- .diagnostic_matrix_summary(Hf, dimension_cap, vectors = TRUE)
   fitted_pd <- fit$sd_report$pdHess %||% NA
   pd_agreement <- is.logical(fitted_pd) && length(fitted_pd) == 1L &&
@@ -387,7 +406,7 @@ diagnostic_curvature <- function(fit, dimension_cap = 500L,
   }
 
   D <- pmax(1, abs(par))
-  H_relative <- Hf * tcrossprod(D)
+  H_relative <- if (length(par) <= dimension_cap) Hf * tcrossprod(D) else Hf
   marginal_relative <- .diagnostic_matrix_summary(
     H_relative, dimension_cap, vectors = TRUE
   )
@@ -429,6 +448,7 @@ diagnostic_curvature <- function(fit, dimension_cap = 500L,
   native_top <- native_attr$smallest_algebraic$block_mass$block[[1L]] %||% NA_character_
   relative_top <- relative_attr$smallest_algebraic$block_mass$block[[1L]] %||% NA_character_
 
+  rankings_available <- !is.na(native_top) && !is.na(relative_top)
   list(
     available = pd_agreement,
     fresh_objective = fresh_objective,
@@ -442,7 +462,8 @@ diagnostic_curvature <- function(fit, dimension_cap = 500L,
     fit_pd_hessian = fitted_pd,
     direct_pd_agreement = pd_agreement,
     attribution = list(native = native_attr, relative = relative_attr,
-                       ranking_agrees = identical(native_top, relative_top),
+                       ranking_agrees = if (rankings_available)
+                         identical(native_top, relative_top) else NA,
                        native_top = native_top, relative_top = relative_top)
   )
 }

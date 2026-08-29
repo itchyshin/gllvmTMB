@@ -2354,7 +2354,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     phylo_slope_cs$extra$.response_column_coef
   )
   column_coef_fixed_rho <- if (use_response_column_coef &&
-      phylo_column_slope_source %in% c("phylo", "animal", "kernel")) {
+      phylo_column_slope_source %in% c("phylo", "animal", "kernel", "spatial")) {
     phylo_slope_cs$extra$.column_coef_fixed_rho %||% NULL
   } else NULL
   use_column_coef_estimated_rho <- use_response_column_coef &&
@@ -4591,15 +4591,22 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   } else if (use_spde_slope) 2L else 1L
   Z_spde_aug      <- array(0.0, dim = c(n_obs, n_lhs_cols_spde))
   if (use_spatial_column_slope) {
-    missing_cols <- setdiff(phylo_column_slope_cols, names(data))
+    synthetic_intercept <- use_response_column_coef &&
+      "(Intercept)" %in% phylo_column_slope_cols
+    data_cols <- if (synthetic_intercept) {
+      setdiff(phylo_column_slope_cols, "(Intercept)")
+    } else {
+      phylo_column_slope_cols
+    }
+    missing_cols <- setdiff(data_cols, names(data))
     if (length(missing_cols)) {
       cli::cli_abort(c(
         "Column-slope predictor{?s} {.val {missing_cols}} not found in {.arg data}.",
         ">" = "Add the named numeric predictor column{?s}, then refit."
       ))
     }
-    bad_type <- phylo_column_slope_cols[!vapply(
-      data[phylo_column_slope_cols], is.numeric, logical(1)
+    bad_type <- data_cols[!vapply(
+      data[data_cols], is.numeric, logical(1)
     )]
     if (length(bad_type)) {
       cli::cli_abort(c(
@@ -4608,7 +4615,11 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ))
     }
     Z_spde_aug <- vapply(phylo_column_slope_cols, function(col) {
-      as.numeric(data[[col]])
+      if (synthetic_intercept && identical(col, "(Intercept)")) {
+        rep(1, n_obs)
+      } else {
+        as.numeric(data[[col]])
+      }
     }, numeric(n_obs))
     Z_spde_aug <- matrix(
       Z_spde_aug, nrow = n_obs, ncol = n_lhs_cols_spde,

@@ -636,9 +636,12 @@ link_residual_per_trait <- function(fit) {
 #'
 #'   For `level = "column_coef"`: a list with coefficient-basis covariance
 #'   `Sigma`, correlation `R`, ordered `basis`, aligned response-column
-#'   `source`, `rho_status`, `rho`, and (for [phylo_coef()] or [animal_coef()]
-#'   fits) the effective source covariance `K_rho`. IID [column_coef()] fits report
-#'   `rho_status = "not_applicable"`, `rho = NULL`, and `K_rho = NULL`.
+#'   `source`, `rho_status`, `rho`, and (for [phylo_coef()], [animal_coef()],
+#'   [kernel_coef()], or [spatial_coef()] fits) the effective source covariance
+#'   `K_rho`. Spatial sources additionally report the same aligned coordinates,
+#'   range, normalization, and `K_column` metadata as [spatial_slope()]. IID
+#'   [column_coef()] fits report `rho_status = "not_applicable"`, `rho = NULL`,
+#'   and `K_rho = NULL`.
 #'
 #'   For a `phylo_dep(1 + x1 + ... + xs | species)` fit with one or more
 #'   slopes, call with `level = "phy"`: the result is the single full
@@ -927,14 +930,22 @@ extract_Sigma <- function(
 
   ## ---- public response-column coefficient basis -------------------------
   if (isTRUE(fit$use$response_column_coef) && identical(level, "column_coef")) {
-    Sigma <- as.matrix(fit$report$Sigma_b_dep)
+    source_type <- fit$use$response_column_coef_source %||%
+      fit$use$phylo_column_slope_source %||% "iid"
+    Sigma <- if (identical(source_type, "spatial")) {
+      fit$report$Sigma_field
+    } else {
+      fit$report$Sigma_b_dep
+    }
+    if (is.null(Sigma)) {
+      cli::cli_abort("Coefficient fit has no reported predictor covariance matrix.")
+    }
+    Sigma <- as.matrix(Sigma)
     basis <- fit$use$response_column_coef_basis
     if (is.null(basis) || length(basis) != nrow(Sigma)) {
       cli::cli_abort("Coefficient fit is missing its ordered basis metadata.")
     }
     rownames(Sigma) <- colnames(Sigma) <- basis
-    source_type <- fit$use$response_column_coef_source %||%
-      fit$use$phylo_column_slope_source %||% "iid"
     rho_status <- fit$use$response_column_coef_rho_status %||%
       if (identical(source_type, "iid")) "not_applicable" else "fixed"
     rho <- if (identical(rho_status, "estimated")) {
@@ -962,6 +973,11 @@ extract_Sigma <- function(
       labels <- fit$use$phylo_column_slope_labels %||%
         levels(fit$data[[fit$trait_col]])
       dimnames(K_rho) <- list(labels, labels)
+    } else if (identical(source_type, "spatial")) {
+      K_rho <- fit$report$spatial_column_K
+      labels <- fit$use$phylo_column_slope_labels %||%
+        levels(fit$data[[fit$trait_col]])
+      dimnames(K_rho) <- list(labels, labels)
     }
     source <- list(
       type = source_type,
@@ -972,6 +988,22 @@ extract_Sigma <- function(
     if (identical(source_type, "kernel")) {
       source$name <- fit$use$phylo_column_slope_name %||% "kernel"
       source$scale <- "as_supplied"
+    } else if (identical(source_type, "spatial")) {
+      if (is.null(fit$mesh$row_labels) || is.null(fit$mesh$loc_xy)) {
+        cli::cli_abort("Spatial coefficient fit is missing labelled mesh metadata.")
+      }
+      coordinate_order <- match(source$labels, fit$mesh$row_labels)
+      coordinates <- fit$mesh$loc_xy[coordinate_order, , drop = FALSE]
+      rownames(coordinates) <- source$labels
+      colnames(coordinates) <- fit$mesh$xy_cols
+      kappa <- as.numeric(fit$report$kappa_s %||% fit$report$kappa)
+      source$coordinates <- coordinates
+      source$coordinate_columns <- fit$mesh$xy_cols
+      source$coordinate_units <- "as_supplied"
+      source$kappa <- kappa
+      source$practical_range <- sqrt(8) / kappa
+      source$normalization <- "exact_projected_unit_diagonal"
+      source$K_column <- fit$report$spatial_column_K
     }
     return(list(
       Sigma = Sigma,
@@ -996,7 +1028,7 @@ extract_Sigma <- function(
   if (!isTRUE(fit$use$response_column_coef) &&
       identical(level, "column_coef")) {
     cli::cli_abort(
-      "The fitted model has no {.fn column_coef}, {.fn phylo_coef}, {.fn animal_coef}, or {.fn kernel_coef} term."
+      "The fitted model has no {.fn column_coef}, {.fn phylo_coef}, {.fn animal_coef}, {.fn kernel_coef}, or {.fn spatial_coef} term."
     )
   }
 

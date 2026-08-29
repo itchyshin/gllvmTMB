@@ -1577,6 +1577,12 @@ rg -n 'integrated_jsdm\(|iJSDM|repeated-visit' README.md NEWS.md ROADMAP.md _pkg
 
 git diff --check
 # PASS.
+
+Rscript --vanilla -e 'pkgdown::build_articles(lazy = FALSE)'
+# PARTIAL: rendered the edited API grid, then stopped in the unchanged
+# cross-family-correlations.Rmd fit because its fresh-process route still emits
+# the pre-existing predictor-informed-LV family fence. Both affected
+# coefficient articles pass their source-current individual builds.
 ```
 
 **Deliberately not run:** a fit, compiled objective, optimiser, profile,
@@ -51183,6 +51189,11 @@ NOT_CRAN=true Rscript --vanilla -e 'devtools::load_all(quiet=TRUE); testthat::te
 
 git diff --check
 # PASS.
+
+Rscript --vanilla -e 'devtools::document(quiet = TRUE); devtools::test(stop_on_failure = TRUE)'
+# PASS in 2269.2 s: 18,383 passes, 0 failures, 52 expected warnings, and
+# 879 declared dependency/opt-in skips. The same run passed every
+# column-coefficient, released-slope, long/wide, and spatial regression block.
 ```
 
 Exact closeout scans:
@@ -55817,3 +55828,69 @@ The notes were unavailable remote clock verification, the pre-existing
 unqualified `logLik` diagnostic, and external `xcrun_db` temp detritus. No note
 was attributable to `kernel_coef()`. Exact-head CI, protected merge,
 exact-main CI/site, and lease release remain pending.
+
+## 2026-08-29 -- public fixed-rho `spatial_coef()` candidate
+
+Branch `codex/spatial-column-coef` is based on exact verified kernel main
+`eec9cdde4ec95fe8fb61911621f4620d69e204dc`. The candidate exports
+`spatial_coef()` for Gaussian long and `traits(...)` wide response-column
+random intercepts and slopes from one labelled response-column SPDE mesh. The
+first public route fixes `rho = 1`, estimates projected-SPDE range and
+`Sigma_coef`, and hard-rewrites a no-intercept basis to the current,
+warning-free `spatial_slope()` endpoint.
+
+Focused and retained evidence:
+
+```sh
+Rscript --vanilla -e 'devtools::test(filter = "(column-coef|fixed-column-slope|spatial-column-slope)", reporter = "summary", stop_on_failure = TRUE)'
+# PASS: all five coefficient sources and every released slope-family block;
+# zero failures or warnings.
+
+Rscript --vanilla data-raw/spatial-coef-recovery.R
+# PASS in 17.9 s after review strengthening: nine cells; every fit convergence
+# 0, every max gradient < 5e-3, and every declared gate TRUE. Ordinary-cell
+# correlation truth/fit 0.375/0.391, range 2.500/2.280, variance ratios
+# 0.575/0.843, projected-K RMSE 0.0335. Edge cells cover correlation 0,
+# +/-0.8 and 0.98, low/mesh-extent-limited range, and variance near 0.01/25.
+
+Rscript --vanilla -e 'devtools::document(quiet = TRUE)'
+# PASS: export/help cascade; only three pre-existing AIC/BIC/anova S3 notices.
+
+Rscript --vanilla -e 'devtools::load_all(quiet=TRUE); set.seed(12); locations <- expand.grid(x=0:3,y=0:3,KEEP.OUT.ATTRS=FALSE); locations$trait <- paste0("sp",seq_len(nrow(locations))); locations <- locations[c("trait","x","y")]; column_mesh <- make_mesh(locations,c("x","y"),cutoff=0.1,id_col="trait"); dat <- expand.grid(unit=factor(1:24),trait=factor(locations$trait,levels=locations$trait)); site_moisture <- seq(-1,1,length.out=24); dat$moisture <- rep(site_moisture,times=nrow(locations)); trait_id <- as.integer(dat$trait); intercept_deviation <- 0.18*scale(locations$x+locations$y)[,1]; slope_deviation <- 0.25*scale(locations$x-locations$y)[,1]; dat$value <- 0.4+intercept_deviation[trait_id]+(0.15+slope_deviation[trait_id])*dat$moisture+rnorm(nrow(dat),sd=0.15); fit <- gllvmTMB(value ~ 1 + spatial_coef(1 + moisture | trait,mesh=column_mesh),data=dat,trait="trait",unit="unit",family=gaussian(),control=gllvmTMBcontrol(se=FALSE),silent=TRUE); out <- extract_Sigma(fit,level="column_coef"); stopifnot(fit$opt$convergence==0L, max(abs(fit$tmb_obj$gr(fit$opt$par)))<1e-4, identical(out$source$type,"spatial"), identical(out$basis,c("(Intercept)","moisture"))); print(c(convergence=fit$opt$convergence,max_gradient=max(abs(fit$tmb_obj$gr(fit$opt$par)))))'
+# PASS on the final 16-response / 24-unit public example geometry:
+# convergence 0, max gradient 7.1e-6, spatial source and intercept/moisture basis.
+
+git diff --check
+# PASS.
+```
+
+The first Curie review rejected a 25-column routine test with permissive
+one-sided gates. Routine package evidence is now a non-claim-bearing 5-column
+by 30-unit DGP, while `data-raw/spatial-coef-recovery.R` owns two-sided retained
+point gates and edge regimes. Curie returned terminal PASS after a fresh
+nine-cell replay. Gauss/Noether found and then re-signed a compatibility repair:
+a released `spatial_slope()` predictor literally named `(Intercept)` continues
+to read the real data column, while only internal `spatial_coef()` metadata
+creates the synthetic ones column. Their combined focused replay passed 162
+assertions. Rose/Boole/Pat found the initially hidden help example lacked
+`cutoff`, plus a stale engine comment and this missing durable append; the
+example and comment are repaired. Rose/Boole/Pat then returned terminal PASS
+on exact diff fingerprint `f5dd305...`; Grace returned PASS subject to the
+full-suite, package-check, and three-platform gates. The full suite is now
+green. The frozen-candidate package check then passed:
+
+```sh
+Rscript --vanilla -e 'devtools::check(args = "--no-manual", error_on = "warning", quiet = TRUE)'
+# PASS in 18m 48.4s: 0 errors, 0 warnings, 3 notes.
+```
+
+The notes were unavailable remote clock verification, the pre-existing
+unqualified `logLik` diagnostic, and macOS `xcrun_db` temp detritus. None is
+attributable to `spatial_coef()`. The remote gates remain.
+
+Exact-head three-OS CI, protected merge, exact-main CI,
+live pkgdown verification, and final spatial/umbrella lease releases remain
+pending. FG-20 stays `partial`: spatial IID mixtures or estimated spatial rho,
+non-Gaussian regimes, intervals/calibration, simultaneous sources, latent
+coefficient covariance, and new response-column locations remain unclaimed.
+Every current `*_slope()` helper remains warning-free and non-deprecated.

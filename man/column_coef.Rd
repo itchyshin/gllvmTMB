@@ -23,9 +23,9 @@ covariance across the coefficient basis.
 This point-model route is covered for Gaussian multivariate data in long or
 \code{traits(...)} wide form, with bare numeric row predictors. Non-Gaussian
 coefficient models and interval inference are not available in this
-release. \code{\link[=phylo_coef]{phylo_coef()}} and \code{\link[=animal_coef]{animal_coef()}} are the supported structured
-sources; \code{\link[=kernel_coef]{kernel_coef()}} supplies a labelled dense kernel. Spatial
-coefficient sources remain planned.
+release. \code{\link[=phylo_coef]{phylo_coef()}} and \code{\link[=animal_coef]{animal_coef()}} are the pedigree/tree sources;
+\code{\link[=kernel_coef]{kernel_coef()}} supplies a labelled dense kernel; and \code{\link[=spatial_coef]{spatial_coef()}}
+supplies a labelled response-column mesh.
 }
 \examples{
 set.seed(1)
@@ -38,5 +38,6 @@ fit <- gllvmTMB(value ~ 1 + column_coef(0 + x | trait), data = dat,
 extract_Sigma(fit, level = "column_coef")
 }
 \seealso{
-\code{\link[=phylo_coef]{phylo_coef()}}, \code{\link[=animal_coef]{animal_coef()}}, \code{\link[=kernel_coef]{kernel_coef()}}, \code{\link[=extract_Sigma]{extract_Sigma()}}
+\code{\link[=phylo_coef]{phylo_coef()}}, \code{\link[=animal_coef]{animal_coef()}}, \code{\link[=kernel_coef]{kernel_coef()}}, \code{\link[=spatial_coef]{spatial_coef()}},
+\code{\link[=extract_Sigma]{extract_Sigma()}}
 }

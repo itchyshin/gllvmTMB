@@ -167,6 +167,25 @@ test_that("one-predictor spatial bars are the same fitted model", {
   )
 })
 
+test_that("spatial_slope preserves a real predictor named (Intercept)", {
+  skip_if_not_installed("fmesher")
+  fx <- .spatial_column_fixture(seed = 13021L)
+  fx$data[["(Intercept)"]] <- seq(-0.8, 0.8, length.out = nrow(fx$data))
+  column_mesh <- fx$mesh
+  fit <- .fit_spatial_column(
+    fx,
+    value ~ 0 + trait +
+      spatial_slope(`(Intercept)` | trait, mesh = column_mesh)
+  )
+  expect_equal(
+    unname(fit$tmb_data$Z_spde_aug[, 1L]),
+    fx$data[["(Intercept)"]],
+    tolerance = 0
+  )
+  expect_false(isTRUE(all(fit$tmb_data$Z_spde_aug[, 1L] == 1)))
+  expect_false(isTRUE(fit$use$response_column_coef))
+})
+
 test_that("spatial column labels align independently of coordinate-table order", {
   skip_if_not_installed("fmesher")
   fx <- .spatial_column_fixture(seed = 1303L)

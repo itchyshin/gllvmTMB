@@ -35,8 +35,8 @@ This point-model route is covered for Gaussian multivariate data in long or
 \code{traits(...)} wide form, with a labelled positive-definite tree covariance
 source and bare numeric row predictors. Numeric \code{rho} and one estimated
 interior \code{rho} are supported. Interval inference and non-Gaussian coefficient
-models remain unavailable; \code{\link[=animal_coef]{animal_coef()}} and \code{\link[=kernel_coef]{kernel_coef()}} cover their
-bounded public source regimes, while spatial coefficients remain planned.
+models remain unavailable; \code{\link[=animal_coef]{animal_coef()}}, \code{\link[=kernel_coef]{kernel_coef()}}, and
+\code{\link[=spatial_coef]{spatial_coef()}} cover their bounded public source regimes.
 Existing \code{phylo_slope()} remains current and warning-free.
 
 For exact compatibility with the released slope engine, a no-intercept

@@ -382,21 +382,18 @@ test_that("coefficient sources retain fixed and estimated rho intentions", {
   expect_identical(spatial_default$rho, 1)
   expect_false(spatial_default$map_range_off)
 
-  spatial_estimated <- parse(
-    value ~ spatial_coef(
+  expect_error(
+    parse(value ~ spatial_coef(
       0 + latitude | trait, mesh = column_mesh, rho = NULL
-    )
+    )),
+    class = "gllvmTMB_column_coef_rho_not_admitted"
   )
-  expect_identical(spatial_estimated$rho_mode, "estimated")
-  expect_null(spatial_estimated$rho)
-  expect_false(spatial_estimated$map_range_off)
-
-  spatial_identity <- parse(
-    value ~ spatial_coef(0 + latitude | trait, mesh = column_mesh, rho = 0)
+  expect_error(
+    parse(value ~ spatial_coef(
+      0 + latitude | trait, mesh = column_mesh, rho = 0
+    )),
+    class = "gllvmTMB_column_coef_rho_not_admitted"
   )
-  expect_identical(spatial_identity$rho_mode, "fixed")
-  expect_identical(spatial_identity$rho, 0)
-  expect_true(spatial_identity$map_range_off)
 
   bad_rhos <- list(-0.01, 1.01, c(0.2, 0.8), NA_real_, "estimated")
   for (rho in bad_rhos) {

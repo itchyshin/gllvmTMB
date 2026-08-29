@@ -51,10 +51,12 @@ test_that("public coefficient markers are exported formula helpers", {
   expect_true("phylo_coef" %in% exports)
   expect_true("animal_coef" %in% exports)
   expect_true("kernel_coef" %in% exports)
+  expect_true("spatial_coef" %in% exports)
   expect_true(is.function(gllvmTMB::column_coef))
   expect_true(is.function(gllvmTMB::phylo_coef))
   expect_true(is.function(gllvmTMB::animal_coef))
   expect_true(is.function(gllvmTMB::kernel_coef))
+  expect_true(is.function(gllvmTMB::spatial_coef))
 })
 
 test_that("public IID column_coef fits and has a coefficient extractor", {
@@ -262,7 +264,7 @@ test_that("screen_gllvmTMB recognises public coefficient formulas", {
   }
 })
 
-test_that("animal and kernel coefficients are public while spatial remains fenced", {
+test_that("animal and kernel coefficient engines remain public", {
   fx <- .make_public_column_coef_fixture()
   K <- diag(length(fx$traits))
   dimnames(K) <- list(fx$traits, fx$traits)
@@ -278,13 +280,6 @@ test_that("animal and kernel coefficients are public while spatial remains fence
   )
   expect_identical(kernel_fit$use$response_column_coef_source, "kernel")
 
-  formulas <- list(value ~ 1 + spatial_coef(1 + x | trait, mesh = K))
-  for (formula in formulas) {
-    expect_error(
-      .fit_public_iid_coef(fx$long, formula),
-      class = "gllvmTMB_column_coef_engine_not_admitted"
-    )
-  }
 })
 
 test_that("public coefficient helpers fail closed on malformed argument lists", {

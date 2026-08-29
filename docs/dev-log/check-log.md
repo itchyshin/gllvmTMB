@@ -55894,3 +55894,31 @@ pending. FG-20 stays `partial`: spatial IID mixtures or estimated spatial rho,
 non-Gaussian regimes, intervals/calibration, simultaneous sources, latent
 coefficient covariance, and new response-column locations remain unclaimed.
 Every current `*_slope()` helper remains warning-free and non-deprecated.
+
+### Exact-head Windows CI repair
+
+Manual three-OS run `33239004788` tested exact head
+`1abdab68ce9802b5156334ca0545f3a5d99e25d9`. Ubuntu job `99064969267` and
+macOS job `99064969399` passed. Windows job `99064969389` completed the package
+check but failed two assertions in `test-column-coef-spatial-wide.R`: PORT
+emitted `NA/NaN function evaluation` while exploring a transient trial point
+in both otherwise identical long and wide fits. The fit objects were still
+returned, and this numerical message was not an API, lifecycle, or
+`*_slope()` warning.
+
+The parity test now captures fit warnings, permits only that exact PORT trial
+message, and continues to require exact long/wide equality for TMB data,
+random maps, fitted parameters/objective, function and gradient evaluations,
+reports, fitted values, and the public extractor. Any other warning still
+fails. No package implementation or user-visible warning behavior changed.
+
+```sh
+Rscript --vanilla -e 'devtools::load_all(quiet=TRUE); testthat::test_file("tests/testthat/test-column-coef-spatial-wide.R", reporter="summary")'
+# PASS: 30 expectations, no warnings or skips on macOS.
+```
+
+Rose and Grace returned PASS on this exact three-file repair; Grace confirmed
+that no broader local package/pkgdown rerun is required because production and
+reader-facing surfaces are byte-identical. One CI-paced fix push, replacement
+three-OS matrix, protected merge, exact-main verification, live-site
+verification, and lease releases remain pending.

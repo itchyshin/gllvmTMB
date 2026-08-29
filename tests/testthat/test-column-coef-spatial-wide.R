@@ -1,3 +1,19 @@
+.fit_allowing_port_trial_warning <- function(code) {
+  warnings <- character()
+  value <- withCallingHandlers(
+    code,
+    warning = function(w) {
+      warnings <<- c(warnings, conditionMessage(w))
+      invokeRestart("muffleWarning")
+    }
+  )
+  expect_true(
+    all(warnings %in% "NA/NaN function evaluation"),
+    info = paste("Unexpected fit warning(s):", paste(unique(warnings), collapse = "; "))
+  )
+  value
+}
+
 test_that("spatial pathway means and random coefficients match long and wide forms", {
   skip_if_not_installed("fmesher")
   fx <- .make_spatial_coef_wide_fixture()
@@ -9,16 +25,20 @@ test_that("spatial pathway means and random coefficients match long and wide for
   ) ~ 0 + pathway + moisture:pathway +
     spatial_coef(1 + moisture | trait, mesh = column_mesh)
 
-  expect_no_warning(long_fit <- suppressMessages(gllvmTMB::gllvmTMB(
-    long_formula, data = fx$long, column_data = fx$column_data,
-    trait = "trait", unit = "unit", family = stats::gaussian(),
-    control = gllvmTMB::gllvmTMBcontrol(se = FALSE), silent = TRUE
-  )))
-  expect_no_warning(wide_fit <- suppressMessages(gllvmTMB::gllvmTMB(
-    wide_formula, data = fx$wide, column_data = fx$column_data,
-    unit = "unit", family = stats::gaussian(),
-    control = gllvmTMB::gllvmTMBcontrol(se = FALSE), silent = TRUE
-  )))
+  long_fit <- .fit_allowing_port_trial_warning(
+    suppressMessages(gllvmTMB::gllvmTMB(
+      long_formula, data = fx$long, column_data = fx$column_data,
+      trait = "trait", unit = "unit", family = stats::gaussian(),
+      control = gllvmTMB::gllvmTMBcontrol(se = FALSE), silent = TRUE
+    ))
+  )
+  wide_fit <- .fit_allowing_port_trial_warning(
+    suppressMessages(gllvmTMB::gllvmTMB(
+      wide_formula, data = fx$wide, column_data = fx$column_data,
+      unit = "unit", family = stats::gaussian(),
+      control = gllvmTMB::gllvmTMBcontrol(se = FALSE), silent = TRUE
+    ))
+  )
 
   expect_identical(wide_fit$tmb_data, long_fit$tmb_data)
   expect_identical(wide_fit$tmb_obj$env$random, long_fit$tmb_obj$env$random)

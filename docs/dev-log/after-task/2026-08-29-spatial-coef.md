@@ -223,8 +223,16 @@ of ones. Synthetic intercept construction is now conditioned on the internal
 response-column-coefficient marker and a direct legacy regression preserves
 the real data column. Curie found that the first recovery gate was too
 permissive and too large for routine checks; the routine cell is now 5 columns
-  by 30 units and the retained script owns the strengthened nine-cell point
-evidence.
+by 30 units and the retained script owns the strengthened nine-cell point
+evidence. The first exact-head three-OS run then found a Windows-only test
+harness failure: PORT emitted `NA/NaN function evaluation` at a transient trial
+point in both long and wide versions of the small parity fixture. Ubuntu and
+macOS passed, and Windows returned both fit objects before the overly broad
+`expect_no_warning()` assertions failed. The repaired test permits only that
+exact numerical trial message and retains every exact long/wide object,
+objective, parameter, function, gradient, report, fitted-value, and extractor
+comparison; any API or other fit warning still fails. Production code and
+user-visible warning behavior were not changed.
 
 ## 11. Team Learning
 
@@ -238,7 +246,10 @@ edge campaign. **Boole/Rose/Pat** returned terminal PASS on diff fingerprint
 `f5dd305...` after the runnable help-example and stale-surface repairs.
 **Grace** returned PASS with the full suite, local package check, three-OS
 exact-head proof, protected merge, exact-main check, and live site as landing
-gates; the full suite has now passed.
+gates; the full suite has now passed. After the Windows PORT trial-message
+failure, Rose and Grace re-reviewed the exact three-file test-and-record repair
+and returned PASS; Grace required no broader local rerun before the one paced
+replacement push because package and reader-facing code did not change.
 
 ## 10. Known Residuals
 

@@ -1,10 +1,17 @@
-# Checkpoint
+# Checkpoint — iJSDM identifiability diagnostic
 
-- DONE: Ultra Plan approved; isolated branch/worktree created from exact main `1a3b0d161781468a3e647cb9b717eb1635e20730`.
-- DONE: public fixed-rho `animal_coef()` engine, export, extraction, long/wide parity, exact released `animal_slope()` endpoint, installed-namespace guards, dense-source-superset handling, deterministic recovery, and first documentation cascade implemented.
-- VERIFIED: focused animal suite 139/139; coefficient foundation plus endpoint 335/335; combined animal/public/released-slope regression 312/312. The broader coefficient sweep reached 649 passes with one stale foundation expectation, which was corrected and replayed green.
-- IN PROGRESS: exact-diff reviewer re-signature and final documentation/check-log/after-task closure.
-- NEXT: rerun the complete coefficient and released-slope filters, approve/reverify Unlazy gates, render pkgdown, then full package check and protected PR sequence.
-- OPEN GATE: none.
-- TRUTH: branch `codex/structured-column-coef-family` in this worktree.
-- RESUME: read `LOOP/GOAL.md`, `.unlazy/structured-column-coef-family/GATES.md`, `LOOP/checkpoint.md`, and `LOOP/arcs.md`.
+- DONE: exact-main worktree; route and prior-work sweep; narrow lease; frozen
+  52-fit ADEMP and compute design.
+- IN PROGRESS: resolve Curie/Gauss/Rose blocking plan-review amendments, then
+  write the deterministic harness, seed selector, verifier, and tests.
+- NEXT: obtain review PASS on the amended plan, then exact-source Totoro
+  qualification and four-fit retained smoke.
+- OPEN GATE: G5 plan-review PASS. User approved this exact experiment on
+  2026-08-29, but no Totoro compute starts before G5 passes.
+- WHERE TRUTH LIVES: this branch, `LOOP/`, the diagnostic-rescue directory,
+  immutable Totoro production records under
+  `/home/snakagaw/gllvm_work/isdm-requalification/c5bb0b80/`, and new
+  fail-if-exists root
+  `/home/snakagaw/gllvm_work/isdm-identifiability-diagnostic/09eca7b1-20260829/`.
+- RESUME: read `LOOP/GOAL.md`, `LOOP/checkpoint.md`, `LOOP/ultra-plan.md`, then
+  continue from NEXT without changing the 52-fit design.

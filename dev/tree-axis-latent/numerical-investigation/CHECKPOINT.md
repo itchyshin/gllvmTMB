@@ -372,3 +372,32 @@ evaluations preserved. Root owns logs/PR/CI. Do not suppress warnings, change
 fixture/starts/controls, or spend article fits. Production remains f2dd63b12;
 33/33 standalone slots spent. Continue diagnostic CI, then fix only on evidence;
 landing and deployed verification remain separately gated.
+
+## 23. Exact Windows failure evidence and unapproved next repair
+
+Manual33335896752 at d1e2ce3fc failedWindows again (macOS/Ubuntu and routine
+PR33335891536 pass). Captured full-bar animal fit and alias: code1, false
+convergence8, gradient0.963. Exact Gaussian likelihood finite at failedtrial,
+both old/current nativeDLLs NaN. Endpoint is also not an optimum under exact
+calculation (gradient0.799). No warning/threshold waiver is defensible.
+
+Savedpointscript, rawcoordinates and compacthashes are now durable under
+numerical-investigation/windows-coefficient-* and evidence/2026-08-30-
+windows-saved-points.json. Root/Noether bounded check complete, no more probes.
+All33standalone slots spent; no additional outerfit ran in this diagnostic.
+
+Read WINDOWS-COEFFICIENT-PROPOSAL.md next. It proposes same-model noncentred
+nonspatial Gaussian coefficient coordinates, including physical output/start/
+uncertainty compatibility, before8staged articlefits (requestedceiling41) and
+1revised primaryrender. THIS REQUEST IS NOT YET APPROVED. No production or
+assertion changes made. Retain all frozen models, starts, stabilizers/gates.
+Existing draftPR1229 remainsunmerged; no landingauthority. Dirtymissioncontrol
+untouched. Current local records will be committed; avoid a docs-only push
+that would spend anotherfullUbuntuCI before a consequential repair decision.
+
+Closeout: fetched origin/main255cedd6cc7af6792cc794712c33853f17fc51ec after
+PR1230 workflow-only merge. Shannon WARN; no new owned-file collision.
+CARRIED-OVER: codex/tree-axis-latent-repaired-20260830, local evidence commit
+ahead of draftPR1229 because the coefficient repair/ceiling41 is unapproved.
+Resume: read WINDOWS-COEFFICIENT-PROPOSAL.md, verify new user authority and
+claim this lane before implementation. Do not reuse ceiling33 as new slots.

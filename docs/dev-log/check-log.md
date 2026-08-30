@@ -56828,3 +56828,42 @@ correctly fails because G7/G8 remain unmet. No ABANDONED or pass waiver applied.
 No production/article/fixture source change, recompile or article rerender.
 Next manual CI is expected20–75min, with existing75min job cap, to capture
 the Windows trial; this is not a claimed repair or a blind rerun.
+
+## 2026-08-30 — Windows failure localized to centred coefficient numerics
+
+Diagnostic commit d1e2ce3fc, manual33335896752: macOS PASS25m40s, Ubuntu
+PASS42m13s, Windows FAIL50m42s with the same2 warning assertions. Routine
+PR33335891536 PASS. The retained diagnostic shows full-bar animal_coef and
+animal_slope both code1/false convergence8, maxgradient0.963221115; all
+route-equality assertions still pass. Warning suppression is not justified.
+
+The exact Gaussian likelihood is finite at the Windows nonfinite trial
+(NLL50.71574, maxgradient9.70e-5, min marginal eigenvalue0.19888); both old
+and current nativeDLLs returnNaN at those same coordinates. At the returned
+endpoint exactNLL50.71682/maxgradient0.7993, currentnative error-0.003151
+and oldnative error-0.103207. This is numerical failure in centred coefficient
+evaluation, not an invalid Gaussian covariance or a converged optimum.
+
+Commands: bounded.py60 env R_LIBS=cell-library-v2 Rscript windows-trial-2/
+evaluate-3.R current; corresponding immutable oldlibrary invocation. Each
+completed1.106s after2–10s estimates. Four nativefn calls,2nativegr,2inner
+scores,4exact value/gradient calls; zero outer optimizers. Two earlier
+signature checks failed before tapes (1.067s/1.052s): inactive site_species_id
+index differs in fresh capture. Used verbatim retained data plus fresh valid
+params and identical maps; randomonlyb_phy_aug, all unitflags0. The earlier
+invalid parameters field was never used. All failures/scripts/logs retained.
+
+Gauss/Noether evaluator algebra review PASS; no additional numerical probes.
+Current source remains unchanged. A scoped noncentred coefficient proposal is
+ready at numerical-investigation/WINDOWS-COEFFICIENT-PROPOSAL.md. It requests
+8future standalone fits (ceiling41) and1revised primary article render; neither
+is authorized yet. Active ceiling remains33, all33spent. No threshold, seed,
+model, start, warning assertion or landing gate waived. Full article goal open.
+
+Closeout verification: git status --short --branch, git diff --check, R parse
+of windows-coefficient-evaluate.R and JSON parsing of saved-point evidence;
+after-task structural check only. No new evaluation, fit, render or build.
+Shannon WARN: seven open PRs and Windows failure; no new owned-file collision.
+PR1230 merged workflow-only; fetched origin/main255cedd6cc7af6792cc794712c33853f17fc51ec.
+Evidence/proposal remain in a local commit ahead of draftPR1229; no docs-only
+push, merge or deployment. Resume at the explicit scope/budget decision.

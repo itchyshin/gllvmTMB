@@ -794,3 +794,48 @@ correctly fails because G7/G8 remain unmet. No ABANDONED or pass waiver applied.
 No production/article/fixture source change, recompile or article rerender.
 Next manual CI is expected20–75min, with existing75min job cap, to capture
 the Windows trial; this is not a claimed repair or a blind rerun.
+
+## 25. Saved Windows trial and consequential next choice
+
+The diagnostic CI repeated the Windows failure and captured both a nonfinite
+trial and a false-converged endpoint (code1, gradient0.963). Exact Gaussian
+comparison shows the trial covariance is valid and its likelihood finite;
+both retained native libraries fail there. At the endpoint, even the exact
+gradient is0.799. The no-warning assertions must not be relaxed. Native
+evaluation remains unstable for this near-singular coefficient covariance;
+triangular whitening repaired the negative-prior defect but did not remove
+the badly scaled centred random-effect Hessian. We do not claim that one
+exclusive floating-point operation has been isolated.
+
+Gauss/Noether reviewed the exact marginal value/gradient algebra and recommends
+standardizing the coefficients inside the existing Gaussian native engine,
+with B=U L', unchanged source covariance and physical-B outputs. The precise
+proposal lists starts/maps, warm starts, uncertainty, existing-output consumers,
+source fences and validation gates. It is not implemented or authorized.
+
+Evidence: dev/tree-axis-latent/evidence/2026-08-30-windows-saved-points.json;
+reproducible script and coordinates in numerical-investigation/windows-
+coefficient-{evaluate.R,trial.R.txt}; full local evidence windows-trial-2/.
+Two pre-tape capture-signature failures and the invalid earlier capture field
+remain explicit. Successful current/old checks each took1.106s and used no
+outer optimizer. No private extreme BFGS point was revisited.
+
+The next consequential request is scoped coefficient reparameterization,
+eight additional standalone article attempts (33 to41), and one revised
+primary render with3first-start fits accounted separately. No fresh fit is
+authorized by this report. Morphology would receive no-outer continuity
+checks; all original community gates and conditional-wide sequencing remain.
+Routine package tests/docs/CI and PR1229 remain required, with landing still
+separately gated. Restored DRAC/Totoro availability is not new fit authority
+and cannot clear Windows. The full two-example deployed article is unfinished.
+
+Closeout: Shannon coordination review WARN: Windows remains failed and the
+repository has seven open PRs, but no new collision was found for this owned
+lane. PR1230 merged only the pkgdown workflow runtime update; freshly fetched
+origin/main is 255cedd6cc7af6792cc794712c33853f17fc51ec. This lane did not
+modify that workflow or the dirty mission-control checkout. PR1229 stays draft
+at diagnostic commit d1e2ce3fc. The saved-point evidence and proposal are
+CARRIED-OVER as one local checkpoint commit, deliberately not pushed: another
+full Ubuntu run would not repair the known Windows failure. Resume by reading
+WINDOWS-COEFFICIENT-PROPOSAL.md and checking the actual user approval before
+any implementation or additional fit. Current authority remains ceiling33.

@@ -261,3 +261,51 @@ and stop. No warm-start, tolerance or stabilizer change, new engine/API, extra
 fit, or gate waiver is authorized. A specific patch is not yet justified.
 The existing goal/acceptance ledger remains authoritative; creating another
 goal would not resolve G2. Full two-example delivery remains INCOMPLETE.
+
+## 19. Gaussian cell integration repair APPROVED
+
+Shinichi approved: "Approve the scoped Gaussian cell-effect integration repair,
+including output and uncertainty compatibility, then the staged 12-fit validation
+block with ceiling 33. Preserve all frozen models, starts, stabilizers and
+acceptance gates. Landing still requires separate approval."
+
+This supersedes the earlier no-production-edit restriction for this scoped repair.
+The source localization review identifies a same-model Gaussian convolution of
+ordinary per-cell s_B with observation noise; it does NOT prove a CHOLMOD defect.
+Keep Psi and the fixed stabilizer separate in reports and covariance components.
+Reconstruct conditional s_B/eta and full uncertainty (conditional variance plus
+propagated variance). Other model routes retain their existing evaluation.
+
+Current count21 entered,20 returned plus1 historical interruption. New block:
+three morphology long starts, three IID community long starts, three phylogenetic
+community long starts, then their three wide fits only after applicable long
+gates pass (both community long models before either community wide). Total12
+new slots; ceiling33. No fits before likelihood/score/output compatibility review.
+Fresh immutable fit IDs and directory are required. Original gates and all old
+failures remain. Full two-example article goal and separate landing gate remain.
+
+Preflight2026-08-30: owned7c88 branch; origin/main fetched and verified
+9c265e76b54ea0f238d5487066964dd81e897f65. PR1229 OPEN/DRAFT at739213bfd,
+unchanged remote head; other listed PRs predate this scoped continuation.
+
+Implementation/compatibility gate PASS before any new outer fit. New library:
+/private/tmp/gllvm-tree-axis-latent-20260830/cell-library. Evidence directory:
+/private/tmp/gllvm-tree-axis-latent-20260830/cell-integration-7c88.
+Build85.323s (estimate1-3min,cap180s). Unit1 passed with a test-only parList
+warning; unit2 hyperparameter test failed because reports were read after
+sdreport's numerical Hessian changed tape state. Unit3 captures reports before
+sdreport (as production does), unchanged formulas/tolerances: clean68 assertions
+in1.699s. All preceding logs retained. Fixed checks1 and2 cover10 saved endpoints
+and5 tiny perturbations per evaluator, zero outer optimization. Fixed checks2
+passed6.139s, retaining20 identical old/new warnings for existing unsupported
+newdata prediction tiers; training fitted values and supported outputs agree.
+At h1e-6 directional derivative: native old.015043042, collapsed.006994469,
+oracle.007000835, analytic.006999691. Max endpoint NLL difference~2.1e-8.
+
+Initial manifest accidentally serialized source hashes without path names,
+making source loops vacuous. It remains provenance.json as FAILED provenance.
+Corrected provenance-v2.json is path-keyed; guards require the exact118-file
+source set before checking every SHA256. Reviewer independently verified all
+source hashes, DLL hash and frozen fixture. Gauss/Noether prefit review PASS;
+this is neither optimizer nor article signoff. No API/engine/stabilizer/gate
+changed. Count remains21 before G1. New fit IDs G1/G2/G3/GW1/GW2/GW3.

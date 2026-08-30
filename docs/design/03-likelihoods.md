@@ -798,6 +798,53 @@ AIC/BIC/LRT or interval route is licensed by a finite penalised Hessian.
 
 ## How this doc grows
 
+### Gaussian singleton-cell integration (2026-08-30; validation pending)
+
+The ordinary unit-level diagonal effect can be integrated analytically when
+each cell has one observed Gaussian response. Write its variance as
+`psi = exp(2 * theta_diag_B)` and keep the observation variance
+`e = sigma_eps^2` separate. The identity is
+
+\[
+ s_i\sim N(0,\psi_t),\quad y_i\mid s_i\sim N(\eta_{0i}+s_i,e)
+ \quad\Longrightarrow\quad y_i\sim N(\eta_{0i},\psi_t+e).
+\]
+
+This changes integration arithmetic, not the marginal model. In particular,
+the documented fixed stabilizer is retained; it is not set to zero or absorbed
+into the reported Psi. Ordinary shared latent variation, phylogenetic shared
+and diagonal variation, and response-column coefficient variation remain
+separate components with unchanged parameters.
+
+| Quantity | Native implementation | Output meaning |
+|---|---|---|
+| Cell variance `psi` | `exp(2 * theta_diag_B)` | Ordinary unique covariance |
+| Observation variance `e` | Fixed `exp(2 * log_sigma_eps)` | Same stabilizer as before |
+| Integrated density | Gaussian variance `psi + e` | Same marginal likelihood |
+| Conditional cell mean `m` | `psi/(psi+e) * (y-eta0)` | Reconstructed ordinary cell effect |
+| Conditional cell variance `v` | `psi*e/(psi+e)` | Remaining uncertainty conditional on other parameters/effects |
+
+The reconstructed predictor is `eta0 + m`. Prediction for existing units uses
+the saved reconstructed cell effects. Unconditional simulation continues to
+draw the original separate components. `extract_ordination(level="unit")`
+continues to read the retained ordinary latent scores.
+
+For uncertainty, ADREPORT of `m` propagates uncertainty from the remaining
+random effects and fixed/covariance parameters. `getREsd(block="diag_unit")`
+adds `v` to that propagated variance before taking square roots. Adding only
+the variance of `m` would omit conditional uncertainty. No additional variance
+of the estimated `v` is added: the original TMB first-order convention uses
+conditional variance evaluated at fitted covariance parameters. Removed cell
+coordinates are not fabricated in the reduced tape's raw joint precision.
+
+The initial implementation is restricted to complete, unit-weight Gaussian ML
+models with singleton ordinary cells and the supported ordinary/phylogenetic
+latent or response-column coefficient composition. Other families, repeated
+cells, missingness, incompatible maps, and other excluded model paths retain
+the existing integration route. This restriction is computational eligibility,
+not a new model keyword or public engine. Promotion remains pending compiled
+likelihood/gradient/output checks and the approved frozen-fit gates.
+
 drmTMB's `03-likelihoods.md` is 1374 lines because they've
 validated many families. gllvmTMB's lives at this thinner
 stage today, but the **structure mirrors drmTMB exactly** so

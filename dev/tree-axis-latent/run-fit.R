@@ -18,6 +18,12 @@ source(file.path(dirname(script_path), "fixture.R"))
 library(gllvmTMB)
 
 FIT_PLAN <- list(
+  G1 = list(model = "morphology", shape = "long", size = "target", starts = 3L, original = "M1"),
+  G2 = list(model = "community_iid", shape = "long", size = "target", starts = 3L, original = "M2"),
+  G3 = list(model = "community_phylo", shape = "long", size = "target", starts = 3L, original = "M3"),
+  GW1 = list(model = "morphology", shape = "wide", size = "target", start = 1L, original = "M1"),
+  GW2 = list(model = "community_iid", shape = "wide", size = "target", start = 1L, original = "M2"),
+  GW3 = list(model = "community_phylo", shape = "wide", size = "target", start = 1L, original = "M3"),
   N2 = list(model = "community_iid", shape = "long", size = "target", starts = 3L, original = "M2"),
   N3 = list(model = "community_phylo", shape = "long", size = "target", starts = 3L, original = "M3"),
   NW2 = list(model = "community_iid", shape = "wide", size = "target", start = 1L, original = "M2"),
@@ -41,8 +47,8 @@ FIT_PLAN <- list(
 )
 
 fit_id <- args[[1L]]
-if (!fit_id %in% c("N2", "N3", "NW2", "NW3")) {
-  stop("Historical fit IDs are closed. Only the approved repaired-source block may run.")
+if (!fit_id %in% c("G1", "G2", "G3", "GW1", "GW2", "GW3")) {
+  stop("Historical fit IDs are closed. Only the approved cell-integration block may run.")
 }
 if (!fit_id %in% names(FIT_PLAN)) {
   stop("Unknown fit ID. Use one of: ", paste(names(FIT_PLAN), collapse = ", "))
@@ -224,25 +230,38 @@ dir.create(result_dir, recursive = TRUE, showWarnings = FALSE)
 out <- file.path(result_dir, paste0("fit-", fit_id, ".rds"))
 if (file.exists(out)) stop("Refusing to overwrite retained receipt: ", out)
 provenance <- NULL
-if (fit_id %in% c("N2", "N3", "NW2", "NW3")) {
+if (fit_id %in% c("G1", "G2", "G3", "GW1", "GW2", "GW3")) {
   stopifnot(identical(normalizePath(result_dir),
-    "/private/tmp/gllvm-tree-axis-latent-20260830/repaired-nlminb-7c88"))
-  provenance_path <- file.path(result_dir, "provenance.json")
+    "/private/tmp/gllvm-tree-axis-latent-20260830/cell-integration-7c88"))
+  provenance_path <- file.path(result_dir, "provenance-v2.json")
   provenance <- jsonlite::read_json(provenance_path, simplifyVector = TRUE)
   stopifnot(identical(unname(tools::md5sum(file.path(dirname(script_path), "fixture.R"))),
     "6c3bae640dd86491171cb20fbb56b0e4"),
     identical(provenance$fixture_md5, "6c3bae640dd86491171cb20fbb56b0e4"))
   stopifnot(identical(normalizePath(find.package("gllvmTMB")), provenance$library),
     identical(digest::digest(file = file.path(provenance$library, "libs/gllvmTMB.so"), algo = "sha256"), provenance$dll_sha256))
-  for (path in names(provenance$source_sha256)) {
+  expected_sources <- c(list.files("R", pattern="[.]R$", full.names=TRUE),
+    "src/gllvmTMB.cpp", "inst/include/gllvmTMB/detail/column_prior.hpp", "NAMESPACE", "DESCRIPTION")
+stopifnot(length(provenance$source_sha256) > 0L,
+  !is.null(names(provenance$source_sha256)),
+  !anyDuplicated(names(provenance$source_sha256)),
+  setequal(names(provenance$source_sha256),expected_sources))
+for (path in names(provenance$source_sha256)) {
     stopifnot(identical(digest::digest(file = path, algo = "sha256"), provenance$source_sha256[[path]]))
   }
-  if (fit_id %in% c("NW2", "NW3")) {
-    gate <- readRDS(file.path(result_dir, "validation-long.rds"))
-    stopifnot(isTRUE(gate$long_pass))
-    for (id in c("N2", "N3")) stopifnot(identical(gate$receipt_md5[[id]],
-      unname(tools::md5sum(file.path(result_dir, paste0("fit-", id, ".rds"))))))
+  prefit <- readRDS(file.path(result_dir, "prefit-gate.rds"))
+  stopifnot(isTRUE(prefit$pass), identical(prefit$provenance_md5,
+    unname(tools::md5sum(provenance_path))))
+  if (fit_id %in% c("GW1", "GW2", "GW3")) {
+    needed <- if (fit_id == "GW1") "G1" else c("G2", "G3")
+    for (id in needed) {
+      gate <- readRDS(file.path(result_dir, paste0("gate-", id, ".rds")))
+      stopifnot(isTRUE(gate$pass), identical(gate$receipt_md5,
+        unname(tools::md5sum(file.path(result_dir, paste0("fit-", id, ".rds"))))))
+    }
   }
+  already <- length(list.files(result_dir, pattern="^G(W)?[123]-attempt-[123]-start[.]rds$"))
+  stopifnot(21L + already + .tree_axis_attempt_limit <= 33L)
   admission <- file.path(result_dir, paste0("admission-", fit_id))
   if (!dir.create(admission, showWarnings = FALSE)) stop("Fit ID already admitted: ", fit_id)
 }
@@ -371,6 +390,7 @@ receipt <- list(
   optimizer_entries = .tree_axis_call_entries,
   runner_checksum = unname(tools::md5sum(script_path)),
   provenance = provenance,
+  integrated_gaussian_diag_B = if (is.null(fit)) FALSE else isTRUE(fit$integrated_gaussian_diag_B),
   restart_history = if (is.null(fit)) NULL else fit$restart_history
 )
 saveRDS(receipt, out)

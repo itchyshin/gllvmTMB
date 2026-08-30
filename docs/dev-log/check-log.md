@@ -56669,3 +56669,28 @@ and stop. No warm-start, tolerance or stabilizer change, new engine/API, extra
 fit, or gate waiver is authorized. A specific patch is not yet justified.
 The existing goal/acceptance ledger remains authoritative; creating another
 goal would not resolve G2. Full two-example delivery remains INCOMPLETE.
+# 2026-08-30 — scoped Gaussian cell integration, prefit checkpoint
+
+Maintainer approved exact Gaussian ordinary-cell integration and staged12fits,
+ceiling33;21 already entered. Landing remains separately gated. Preserves Psi,
+stabilizer, frozen fixture, starts, model components and all convergence gates.
+Native/R source now integrates eligible singleton Gaussian cells, reconstructs
+cell means/full eta, and combines ADREPORT mean variance with conditional cell
+variance in getREsd. Existing unsupported paths retain their prior evaluation.
+
+Commands: isolated `R CMD INSTALL --preclean --library=.../cell-library .`
+passed85.323s; `testthat::test_file("tests/testthat/test-gaussian-cell-collapse.R",
+reporter="summary",stop_on_failure=TRUE)` final clean68 assertions1.699s;
+`Rscript --vanilla dev/tree-axis-latent/check-cell-collapse.R` final6.139s,
+all10 saved endpoints and5 signed-step points per evaluator pass. All checks
+use external caps and zero outer optimizers. Earlier warning/test-state and
+unnamed-manifest failures remain in immutable logs; corrected source binding
+uses provenance-v2.json. `roxygen2::roxygenise(".",roclets="rd",
+load_code=roxygen2::load_installed)` regenerated only man/getREsd.Rd.
+
+Source scans: `rg -n 's_B|report\$eta|par_list\$s_B' R --glob '*.R'`;
+`rg -n 'REPORT\(eta|REPORT\(s_B|REPORT\(sd_B|ADREPORT|Sigma_B' src/gllvmTMB.cpp`;
+`rg -n 'column_coef|phylo_coef|unsupported|covstruct|structured' R/julia-bridge.R`.
+Gauss/Noether qualified prefit review passes, including corrected118 source
+hashes and derivative/uncertainty math. No article render, full package check,
+CI, push, merge, deployment or additional fit has yet run at this checkpoint.

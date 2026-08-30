@@ -599,3 +599,28 @@ and stop. No warm-start, tolerance or stabilizer change, new engine/API, extra
 fit, or gate waiver is authorized. A specific patch is not yet justified.
 The existing goal/acceptance ledger remains authoritative; creating another
 goal would not resolve G2. Full two-example delivery remains INCOMPLETE.
+# 20. Approved Gaussian integration: implementation checkpoint
+
+Full article goal remains incomplete. Shinichi approved scoped ordinary-cell
+Gaussian integration including output/uncertainty compatibility and12 staged
+fits, ceiling33. The native template and R fitter preserve all frozen outer
+parameters, starts and stabilizer; eligible cell effects are integrated exactly
+and reconstructed for predictions. getREsd adds conditional variance to the
+ADREPORT variance of each reconstructed mean. Other paths retain their existing
+evaluation. No new API, engine, estimator or inference coverage claim.
+
+Build passed85.323s. Final focused compiled tests:68 assertions, clean1.699s,
+including mean/random and estimated-Psi uncertainty; prior test-only warnings
+and stale-report test failure retained. Saved-point checks passed6.139s with
+complete118-file/DLL/fixture binding. An initial unnamed-hash JSON manifest was
+rejected and retained; v2 enforces named paths and full source-set equality.
+Newdata warnings are unchanged unsupported-tier warnings, now captured; no
+broader newdata capability is claimed. Gauss/Noether independently reviewed
+source, likelihood identity, uncertainty, restored validator safeguards and
+prefit evidence. Core implementation by Gauss; bounded tests by Curie; root
+integrates outputs and receipts. All previous biological/numerical caveats stand.
+
+Example files changed: none yet. Frozen fixture unchanged; article unchanged.
+Code/help cascade: R/re-uncertainty.R and man/getREsd.Rd synchronized. This is
+a prefit implementation checkpoint, not the final11-section completion report
+or a substitute for original pending article/package/3OS/landing/deployed gates.

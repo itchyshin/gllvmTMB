@@ -131,6 +131,10 @@ wide_check <- function(l,w) {
 }
 
 argv <- commandArgs(trailingOnly = TRUE)
+if (length(argv) && identical(argv[[1L]], "--cell")) {
+  source(file.path(dirname(script_path), "validate-cell.R"))
+  quit(status = if (isTRUE(cell_ledger$pass)) 0L else 1L)
+}
 if (length(argv) && identical(argv[[1L]], "--repaired")) {
   source(file.path(dirname(script_path), "validate-repaired.R"))
   quit(status = if (isTRUE(repaired_ledger$pass)) 0L else 1L)

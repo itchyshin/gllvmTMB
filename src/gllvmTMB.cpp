@@ -565,6 +565,20 @@ Type objective_function<Type>::operator()()
   DATA_INTEGER(n_lv_B);            // columns in X_lv_B (>= 1 stub when inactive)
   DATA_MATRIX(X_lv_B);             // n_sites x n_lv_B unit-level score-mean design
   DATA_INTEGER(use_diag_B);        // 1/0
+  // Optional for saved pre-repair tapes: absence preserves the original joint
+  // Gaussian calculation. New R fits set this only after the private cell gate.
+  SEXP gaussian_diag_B_flag = getListElement(
+    TMB_OBJECTIVE_PTR->data, "integrate_gaussian_diag_B");
+  int integrate_gaussian_diag_B = 0;
+  if (!Rf_isNull(gaussian_diag_B_flag)) {
+    if (Rf_length(gaussian_diag_B_flag) != 1 ||
+        !(Rf_isInteger(gaussian_diag_B_flag) || Rf_isReal(gaussian_diag_B_flag)))
+      error("gllvmTMB_multi: integrate_gaussian_diag_B must be scalar 0 or 1");
+    double flag = Rf_asReal(gaussian_diag_B_flag);
+    if (flag != 0.0 && flag != 1.0)
+      error("gllvmTMB_multi: integrate_gaussian_diag_B must be 0 or 1");
+    integrate_gaussian_diag_B = static_cast<int>(flag);
+  }
   // Per-trait mask (length n_traits): 1 = this trait's between-unit Psi was
   // pinned off by the R-side identifiability gate (single-trial binary /
   // categorical traits), 0 = free. A pinned trait has s_B(t,.) fixed at 0 and
@@ -1238,6 +1252,48 @@ Type objective_function<Type>::operator()()
   if (estimator_id != 0 && estimator_id != 1 && estimator_id != 2)
     error("gllvmTMB_multi: estimator_id must be 0 (ML), 1 (MSPL), or 2 (internal penalty-off MSPL)");
 
+  // Exact scalar Gaussian convolution is admitted only for complete independent
+  // cell effects in the reviewed ordinary/phylogenetic ML compositions. Keep
+  // this fence on direct template calls as well as the R-side admission gate.
+  if (integrate_gaussian_diag_B != 0 && integrate_gaussian_diag_B != 1)
+    error("gllvmTMB_multi: integrate_gaussian_diag_B must be 0 or 1");
+  if (integrate_gaussian_diag_B == 1) {
+    SEXP reml_data = getListElement(TMB_OBJECTIVE_PTR->data, "REML");
+    bool gaussian_reml = !Rf_isNull(reml_data) && Rf_asLogical(reml_data) != 0;
+    if (use_diag_B != 1 || estimator_id != 0 || gaussian_reml || use_aghq != 0 ||
+        has_mi != 0 || use_equalto != 0 || use_lv_B != 0 ||
+        use_rr_W != 0 || use_diag_W != 0 || use_rr_B_slope != 0 ||
+        use_diag_B_slope != 0 || use_propto != 0 || use_diag_species != 0 ||
+        use_diag_cluster2 != 0 || use_spde != 0 ||
+        use_spatial_column_slope != 0 || use_spde_slope != 0 ||
+        use_spde_dep_slope != 0 || use_spde_latent_slope != 0 ||
+        n_kernel_tiers != 0 || use_phylo_latent_slope != 0 || use_re_int != 0 ||
+        (use_phylo_slope != 0 && use_phylo_column_slope != 1))
+      error("gllvmTMB_multi: unsupported Gaussian cell-integration composition");
+    if (n_traits < 1 || n_sites < 1 || y.size() != n_traits * n_sites ||
+        s_B.rows() != n_traits || s_B.cols() != n_sites ||
+        diag_B_skip.size() != n_traits || family_id_vec.size() != y.size() ||
+        link_id_vec.size() != y.size() || is_y_observed.size() != y.size() ||
+        weights_i.size() != y.size() || trait_id.size() != y.size() ||
+        site_id.size() != y.size())
+      error("gllvmTMB_multi: Gaussian cell integration requires a complete cell matrix");
+    vector<int> cell_counts(n_traits * n_sites);
+    cell_counts.setZero();
+    for (int t = 0; t < n_traits; ++t)
+      if (diag_B_skip(t) != 0)
+        error("gllvmTMB_multi: Gaussian cell integration cannot skip Psi coordinates");
+    for (int o = 0; o < y.size(); ++o) {
+      if (family_id_vec(o) != 0 || link_id_vec(o) != 0 ||
+          is_y_observed(o) != 1 || asDouble(weights_i(o)) != 1.0 ||
+          trait_id(o) < 0 || trait_id(o) >= n_traits ||
+          site_id(o) < 0 || site_id(o) >= n_sites)
+        error("gllvmTMB_multi: Gaussian cell integration requires observed unit-weight identity Gaussian rows");
+      int cell = trait_id(o) + n_traits * site_id(o);
+      if (++cell_counts(cell) != 1)
+        error("gllvmTMB_multi: Gaussian cell integration requires one observation per cell");
+    }
+  }
+
   // Fail closed for direct template callers. The R fence repeats these checks
   // before MakeADFun(), but unsupported structures must not acquire an MSPL
   // objective merely by bypassing that public fence.
@@ -1629,7 +1685,7 @@ Type objective_function<Type>::operator()()
         // term.  Including it would add dnorm(0, 0, ~1e-6, log = TRUE), a
         // large POSITIVE constant, once per (trait, site) cell -- which is
         // how a Bernoulli fit could report a positive log-likelihood.
-        if (diag_B_skip(t) == 1) continue;
+        if (diag_B_skip(t) == 1 || integrate_gaussian_diag_B == 1) continue;
         nll -= dnorm(s_B(t, s), Type(0), sd_B(t), true);
       }
     }
@@ -2641,7 +2697,7 @@ Type objective_function<Type>::operator()()
       }
       eta(o) += u_B_aug;
     }
-    if (use_diag_B == 1)
+    if (use_diag_B == 1 && integrate_gaussian_diag_B == 0)
       eta(o) += s_B(t, s);
     if (use_diag_B_slope == 1) {
       Type u_B_diag_aug = 0;
@@ -2795,7 +2851,15 @@ Type objective_function<Type>::operator()()
     Type ll = Type(0.0);
     if (fid == 0) {
       // Gaussian, identity link
-      ll += dnorm(y(o), eta_o, sigma_eps_gaussian, true);
+      if (integrate_gaussian_diag_B == 1) {
+        // Integrate s_B ~ N(0, psi) exactly. The independent observation
+        // stabilizer remains unchanged and contributes its original variance.
+        Type variance = exp(Type(2) * theta_diag_B(trait_id(o))) +
+          sigma_eps_gaussian * sigma_eps_gaussian;
+        ll += dnorm(y(o), eta_o, sqrt(variance), true);
+      } else {
+        ll += dnorm(y(o), eta_o, sigma_eps_gaussian, true);
+      }
     } else if (fid == 1) {
       // Bernoulli / binomial(k-of-n). Link depends on link_id_vec(o):
       //   0 = logit:    p = 1 / (1 + exp(-eta))
@@ -3662,6 +3726,27 @@ Type objective_function<Type>::operator()()
   REPORT(mspl_Lambda_spde_reference);
 
   ADREPORT(b_fix);
+  if (integrate_gaussian_diag_B == 1) {
+    // These moments condition on the retained random effects and parameters.
+    // ADREPORT(mean) propagates their uncertainty; R adds the conditional
+    // variance below to recover the original s_B marginal standard errors.
+    // Reconstruct eta only AFTER every likelihood/penalty use of eta_0.
+    matrix<Type> s_B_conditional_mean(n_traits, n_sites);
+    matrix<Type> s_B_conditional_variance(n_traits, n_sites);
+    Type eps_variance = sigma_eps_gaussian * sigma_eps_gaussian;
+    for (int o = 0; o < y.size(); ++o) {
+      int t = trait_id(o);
+      int s = site_id(o);
+      Type psi = exp(Type(2) * theta_diag_B(t));
+      Type weight = psi / (psi + eps_variance);
+      s_B_conditional_mean(t, s) = weight * (y(o) - eta(o));
+      s_B_conditional_variance(t, s) = weight * eps_variance;
+      eta(o) += s_B_conditional_mean(t, s);
+    }
+    REPORT(s_B_conditional_mean);
+    ADREPORT(s_B_conditional_mean);
+    REPORT(s_B_conditional_variance);
+  }
   REPORT(eta);
 
   // Per-trait dispersion / power for NB2 and Tweedie. These are reported

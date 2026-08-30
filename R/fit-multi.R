@@ -4985,6 +4985,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     n_lv_B           = as.integer(n_lv_B),
     X_lv_B           = X_lv_B,
     use_diag_B       = as.integer(use_diag_B),
+    integrate_gaussian_diag_B = 0L,
     ## Per-trait between-unit Psi skip mask. Filled in below when the
     ## identifiability gate pins individual traits; all-zero means every trait
     ## keeps its Psi and contributes its density term as usual.
@@ -6513,6 +6514,22 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     length(tmb_data$diag_B_skip) == n_traits &&
     isTRUE(all(tmb_data$diag_B_skip == 1L))
 
+  ## Exact convolution of the ordinary Gaussian cell effect and observation
+  ## error avoids the small-stabilizer precision in the inner Hessian. This
+  ## changes neither Psi nor sigma_eps, and every outer start stays unchanged.
+  ## Mapped s_B values are retained as provenance but are unused on this tape;
+  ## conditional modes/variances are reconstructed in the native report.
+  integrated_gaussian_diag_B <- .gllvmTMB_gaussian_diag_B_eligible(
+    data = tmb_data, map = tmb_map, parameters = tmb_params,
+    REML = REML, estimator = estimator, control = control,
+    known_V = known_V, lambda_constraint = lambda_constraint,
+    Xcoef_fixed = Xcoef_fixed
+  )
+  tmb_data$integrate_gaussian_diag_B <- as.integer(integrated_gaussian_diag_B)
+  if (integrated_gaussian_diag_B) {
+    tmb_map$s_B <- factor(rep(NA_integer_, length(tmb_params$s_B)))
+  }
+
   ## The TMB engine is compiled at install time as src/gllvmTMB.cpp; the
   ## DLL is registered via NAMESPACE useDynLib() and loaded automatically.
   ## (Earlier versions compiled the engine at runtime under
@@ -6528,7 +6545,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   if (isTRUE(REML)) random <- c(random, "b_fix")
   if (use_rr_B)   random <- c(random, "z_B")
   if (use_rr_B_slope) random <- c(random, "z_B_slope")
-  if (use_diag_B && !diag_B_all_skipped) random <- c(random, "s_B")
+  if (use_diag_B && !diag_B_all_skipped && !integrated_gaussian_diag_B)
+    random <- c(random, "s_B")
   if (use_diag_B_slope) random <- c(random, "s_B_slope")
   if (use_rr_W)   random <- c(random, "z_W")
   if (use_diag_W) random <- c(random, "s_W")
@@ -7830,8 +7848,12 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     NULL
   } else {
     tryCatch(
+      ## Cell means add n_traits * n_sites ADREPORT entries. Their marginal
+      ## variances suffice for getREsd(); avoid allocating their dense joint
+      ## report covariance while retaining all fixed-parameter covariance.
       TMB::sdreport(obj, par.fixed = opt$par,
-                    getJointPrecision = FALSE),
+                    getJointPrecision = FALSE,
+                    getReportCovariance = !integrated_gaussian_diag_B),
       error = function(e) {
         sdreport_error <<- conditionMessage(e)
         NULL
@@ -7862,6 +7884,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       tmb_data     = tmb_data,
       tmb_params   = tmb_params,
       tmb_map      = tmb_map,
+      integrated_gaussian_diag_B = integrated_gaussian_diag_B,
       REML         = REML,
       estimator    = if (identical(estimator, "mspl")) {
         "MSPL"
@@ -8285,7 +8308,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         warm_sdreport_error <- NULL
         warm_sd_report <- tryCatch(
           TMB::sdreport(obj, par.fixed = warm_opt$par,
-                        getJointPrecision = FALSE),
+                        getJointPrecision = FALSE,
+                        getReportCovariance = !integrated_gaussian_diag_B),
           error = function(e) {
             warm_sdreport_error <<- conditionMessage(e)
             NULL
@@ -8395,7 +8419,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
           newton_sdreport_error <- NULL
           newton_sd_report <- tryCatch(
             TMB::sdreport(obj, par.fixed = newton_par,
-                          getJointPrecision = FALSE),
+                          getJointPrecision = FALSE,
+                          getReportCovariance = !integrated_gaussian_diag_B),
             error = function(e) {
               newton_sdreport_error <<- conditionMessage(e)
               NULL
@@ -10258,6 +10283,50 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
 ## nothing, and the un-`factr`'d lbfgsb hazard the table's own comment warns
 ## about is unreachable from quadrature. Wiring it through would be a
 ## results-changing edit with no measured benefit behind it.
+## Private admission for an exact Gaussian convolution, not an integration
+## engine or user control. Keep unreviewed compositions on their existing path.
+## In particular, a fixed/tied s_B map changes its distribution and must never
+## be silently replaced by independent cell integration. Loading/fixed-effect
+## constraints are conservatively left on the existing route as well.
+.gllvmTMB_gaussian_diag_B_eligible <- function(
+    data, map, parameters, REML, estimator, control,
+    known_V = NULL, lambda_constraint = NULL, Xcoef_fixed = NULL) {
+  if (!identical(estimator, "ml") || isTRUE(REML) ||
+      !identical(control$integration %||% "laplace", "laplace") ||
+      !(is.null(control$aghq) || identical(control$aghq, FALSE)) ||
+      !is.null(known_V) || length(lambda_constraint) > 0L ||
+      isTRUE(Xcoef_fixed$has_fixed) ||
+      !is.null(map[["s_B", exact = TRUE]])) return(FALSE)
+  if (!identical(data$use_diag_B, 1L) ||
+      !isTRUE(all(data$diag_B_skip == 0L)) ||
+      length(data$diag_B_skip) != data$n_traits) return(FALSE)
+  inactive <- c(
+    "use_lv_B", "use_rr_W", "use_diag_W", "use_rr_B_slope",
+    "use_diag_B_slope", "use_propto", "use_diag_species",
+    "use_diag_cluster2", "use_equalto", "use_spde",
+    "use_spatial_column_slope", "use_spde_slope", "use_spde_dep_slope",
+    "use_spde_latent_slope", "n_kernel_tiers", "use_phylo_latent_slope",
+    "use_re_int", "has_mi", "use_aghq"
+  )
+  if (!all(vapply(data[inactive], function(x) identical(x, 0L), logical(1))))
+    return(FALSE)
+  if (data$use_phylo_slope != 0L && data$use_phylo_column_slope != 1L)
+    return(FALSE)
+  n <- length(data$y)
+  if (n == 0L || n != data$n_traits * data$n_sites ||
+      !identical(dim(parameters$s_B), c(data$n_traits, data$n_sites)) ||
+      length(data$family_id_vec) != n || length(data$link_id_vec) != n ||
+      length(data$is_y_observed) != n || length(data$weights_i) != n ||
+      length(data$trait_id) != n || length(data$site_id) != n ||
+      !isTRUE(all(data$family_id_vec == 0L & data$link_id_vec == 0L &
+                  data$is_y_observed == 1L & data$weights_i == 1)) ||
+      !isTRUE(all(is.finite(data$y))) ||
+      !isTRUE(all(data$trait_id >= 0L & data$trait_id < data$n_traits &
+                  data$site_id >= 0L & data$site_id < data$n_sites))) return(FALSE)
+  cells <- data$trait_id + data$n_traits * data$site_id
+  !anyDuplicated(cells)
+}
+
 .gllvmTMB_aghq_k <- function(control, d_B, family = NULL, n_traits = NA_integer_) {
   a <- control$aghq
   if (is.null(a) || identical(a, FALSE)) return(NULL)

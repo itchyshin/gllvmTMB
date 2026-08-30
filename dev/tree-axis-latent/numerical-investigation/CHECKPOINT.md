@@ -216,3 +216,48 @@ no derivative defect or specific production repair has been established.
 Oracle script parse and git diff --check pass; production source, frozen fixture
 and article are unchanged. After-task structure passes; combined checker still
 exits1 because the full article acceptance ledger remains unmet.
+
+## 18. Twelve-point repeatability result — source localization still owed
+
+The authorized repeatability check completed in5.234s, exit0, below the60s cap
+(estimate5-60s). Exactly12 declared fixed parameter points were evaluated;
+zero outer optimizer calls. The count remains21 entered out of ceiling23.
+No production code, optimizer/inner controls, frozen data or gates changed.
+
+Command: OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1
+R_LIBS=/private/tmp/gllvm-tree-axis-latent-20260830/repaired-library
+python3 /private/tmp/gllvm-tree-axis-latent-20260830/bounded.py 60
+/private/tmp/gllvm-tree-axis-latent-20260830/repaired-nlminb-7c88/repeatability.log
+Rscript --vanilla dev/tree-axis-latent/repeatability.R
+
+Baseline repetitions agree exactly. Matched fresh/reused objective values
+agree within7.276e-12 and gradients within1.420e-13. Inner scores are at most
+1.458e-8. Therefore this local matrix finds no material state-reuse effect.
+TMB-oracle objective discrepancies vary across the tiny perturbations, reaching
+2.028e-8, while analytic outer gradients agree within1.549e-8. At h=1e-6,
+TMB objective differences imply directional derivatives.0150394/.0150430;
+the independent Gaussian value gives.007000835 and its base analytic score
+.006999691. At h=1e-4, TMB gives.007012532 versus oracle.007000062.
+This is evidence of local marginal-value precision loss at small steps.
+It does not identify a log-determinant bug or another production expression.
+No gate waiver, model interpretation or alternative selected fit follows.
+
+Gauss/Noether reviewed the predeclared matrix, unchanged default inner-state
+policy, and correct separation of after-fn and after-gr modes before launch.
+They independently reviewed all12 retained results and found no record defect.
+All full modes, inner scores, outer values/scores and oracle differences are
+retained in repaired-nlminb-7c88/repeatability-N2-start1/receipt.rds.
+Source: dev/tree-axis-latent/repeatability.R. Compact evidence:
+dev/tree-axis-latent/evidence/2026-08-30-repeatability.json. Script parse and
+git diff --check pass; no package/article/production source changed.
+
+Stop condition honored: these points locate a numerical precision issue but
+not an actionable production expression. No additional probes ran. One concrete
+next choice is a bounded source-localization audit of the existing native
+Gaussian marginal-value arithmetic, using these saved12 points and the exact
+oracle. It must identify a file:line cause and an algebraically equivalent
+repair proposal BEFORE production edits; if none can be localized, report that
+and stop. No warm-start, tolerance or stabilizer change, new engine/API, extra
+fit, or gate waiver is authorized. A specific patch is not yet justified.
+The existing goal/acceptance ledger remains authoritative; creating another
+goal would not resolve G2. Full two-example delivery remains INCOMPLETE.

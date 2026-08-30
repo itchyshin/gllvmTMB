@@ -56190,3 +56190,18 @@ objective tests. Ctrl-C interrupted one compilation, so that emitted failure is
 an artificial stop artifact, not a package verdict. The focused diagnostic
 suite remained green. Full package verification is delegated to the required
 three-OS PR CI before merge; simulation compute did not use GitHub Actions.
+
+Pre-push built-package reproduction found that the receipt and runner tests
+sourced `dev/` files excluded by `.Rbuildignore`, matching the prior iJSDM
+source-tarball failure mode. Both tests now share the existing developer-only
+skip boundary used by the contract and diagnostics tests.
+
+```sh
+Rscript --vanilla -e 'devtools::test(filter = "isdm-diagnostic", stop_on_failure = TRUE)'
+# PASS after repair: 139 passed, 0 failed, 0 warned, 0 skipped.
+
+R CMD build --no-build-vignettes --no-manual <checkout>
+Rscript --vanilla -e 'testthat::test_file("tests/testthat/test-isdm-diagnostic-receipts.R", stop_on_failure=TRUE); testthat::test_file("tests/testthat/test-isdm-diagnostic-runner.R", stop_on_failure=TRUE)'
+# PASS from the fresh built source tree: each developer-only file skipped once;
+# 0 failures and 0 warnings.
+```

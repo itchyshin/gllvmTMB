@@ -1,5 +1,10 @@
 receipt_dir <- testthat::test_path("..", "..", "dev", "isdm-requalification",
                                   "diagnostic-rescue")
+if (!file.exists(file.path(receipt_dir, "verify-remote-receipt.R"))) {
+  test_that("developer-only iSDM diagnostic receipts are available", {
+    skip("dev/isdm-requalification/diagnostic-rescue is absent from build")
+  })
+} else {
 source(file.path(receipt_dir, "verify-remote-receipt.R"), local = TRUE)
 source(file.path(receipt_dir, "summarise-independent.R"), local = TRUE)
 
@@ -173,3 +178,4 @@ test_that("retained summary must reproduce exactly from raw records", {
   .receipt_test_manifest(bundle)
   expect_error(.receipt_verify_summary(evidence), "not reproduced exactly")
 })
+}

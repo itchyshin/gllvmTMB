@@ -148,6 +148,12 @@ macOS. Its first repair then failed the new C-versus-UTF-8 regression because
 ordinary `order()` followed `LC_COLLATE`. Canonical UTF-8 radix ordering now
 passes under both collations and would catch either original defect.
 
+A built-tarball regression also failed before repair: the receipt and runner
+tests sourced developer-only files excluded by `.Rbuildignore`. Both now use
+the same explicit developer-only skip boundary as the contract and diagnostic
+tests. They still run 139 expectations from a repository checkout and skip
+honestly, without warnings or errors, from the built package.
+
 ## 7. Roadmap Tick
 
 N/A. This hypothesis-generating diagnostic does not change a public capability
@@ -190,7 +196,14 @@ The first Unlazy execution reached later gates before experiment evidence and
 closeout files existed, so G8 onward recorded expected early failures. They
 must be reverified against final evidence rather than treated as scientific
 failures. The full package suite exceeded the ledger's original 120-second
-per-gate timeout; it was rerun separately with an appropriate bound.
+per-gate timeout. A separate local run was stopped at its stated eight-minute
+overrun boundary; three-OS PR CI supplies the authoritative broad check.
+
+The pre-push CI review then reproduced a source-tarball failure in two tests
+that sourced `dev/`, which `.Rbuildignore` excludes. The package-test boundary
+was repaired before push and verified from a fresh tarball. This repeats a
+failure mode already seen in the preceding iJSDM evidence lane and should be a
+standard pre-push check whenever a package test refers to a developer artifact.
 
 ## 10. Known Residuals
 

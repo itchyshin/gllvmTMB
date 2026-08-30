@@ -1,5 +1,10 @@
 diag_dir <- testthat::test_path("..", "..", "dev", "isdm-requalification",
                                "diagnostic-rescue")
+if (!file.exists(file.path(diag_dir, "record.R"))) {
+  test_that("developer-only iSDM diagnostic runner is available", {
+    skip("dev/isdm-requalification/diagnostic-rescue is absent from build")
+  })
+} else {
 source(file.path(diag_dir, "record.R"), local = TRUE)
 
 test_that("installed manifest hash is canonical across data-frame metadata", {
@@ -207,3 +212,4 @@ test_that("launcher setup failure reconciles every opened identity", {
   expect_match(paste(readLines(file.path(output, "logs", "reconciliation.log")),
                      collapse = " "), "RECONCILED 4")
 })
+}

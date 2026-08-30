@@ -25,6 +25,7 @@
 
 #define TMB_LIB_INIT R_init_gllvmTMB
 #include "lane_b_jeffreys_maxvol_atomic_v8.h"
+#include "../inst/include/gllvmTMB/detail/column_prior.hpp"
 
 // Independently implemented standard lower-triangular factor-loading unpack.
 // Keeping one cursor-based implementation prevents the packing convention
@@ -2025,7 +2026,6 @@ Type objective_function<Type>::operator()()
         }
       }
       matrix<Type> Sigma_b_dep = Lb * Lb.transpose();
-      matrix<Type> Sigma_b_inv = atomic::matinv(Sigma_b_dep);
       // log det Sigma_b = 2 * sum_j log L_jj.
       Type logdet_Sigma_b = Type(0);
       for (int j = 0; j < C; j++) logdet_Sigma_b += Type(2) * log(Lb(j, j));
@@ -2067,37 +2067,14 @@ Type objective_function<Type>::operator()()
       // -log p(vec(B)) = 0.5 [ n*C*log(2pi) + n*logdet(Sigma_b)
       //                        + C*logdet(A) + tr(Sigma_b^{-1} B' A^{-1} B) ].
       for (int k = 0; k < b_phy_aug.dim[2]; k++) {
-        // Q(j,l) = b_j' A^{-1} b_l, C x C.
+        // Gather the source-by-coefficient deviations for this block.
         matrix<Type> Bmat(n_aug_phy_aug, C);
         for (int j = 0; j < C; j++)
           for (int i = 0; i < n_aug_phy_aug; i++) Bmat(i, j) = b_phy_aug(i, j, k);
-        matrix<Type> Q(C, C);
-        if (use_column_coef_estimated_rho == 1) {
-          matrix<Type> W(n_aug_phy_aug, C);
-          W.setZero();
-          for (int j = 0; j < C; ++j)
-            for (int r = 0; r < n_aug_phy_aug; ++r)
-              for (int i = 0; i < n_aug_phy_aug; ++i)
-                W(r, j) += column_coef_source_U(i, r) *
-                  column_coef_source_inv_d(i) * Bmat(i, j);
-          Q.setZero();
-          for (int j = 0; j < C; ++j)
-            for (int l = 0; l < C; ++l)
-              for (int r = 0; r < n_aug_phy_aug; ++r) {
-                Type s_r = Type(1) - column_coef_rho +
-                  column_coef_rho * column_coef_source_lambda(r);
-                Q(j, l) += W(r, j) * W(r, l) / s_r;
-              }
-        } else {
-          matrix<Type> AinvB = use_phylo_column_slope == 1 ?
-            Ainv_phy_slope * Bmat : Ainv_phy_rr * Bmat;
-          Q = Bmat.transpose() * AinvB;
-        }
-        // tr(Sigma_b^{-1} Q) = sum_{j,l} Sigma_b_inv(j,l) * Q(l,j).
-        Type quad = Type(0);
-        for (int j = 0; j < C; j++)
-          for (int l = 0; l < C; l++)
-            quad += Sigma_b_inv(j, l) * Q(l, j);
+        Type quad = gll_column_coef_quad(
+          Bmat, Lb, use_phylo_column_slope == 1 ? Ainv_phy_slope : Ainv_phy_rr,
+          use_column_coef_estimated_rho, column_coef_source_U,
+          column_coef_source_lambda, column_coef_source_inv_d, column_coef_rho);
         nll += Type(0.5) * (Type(n_aug_phy_aug * C) * log(2.0 * M_PI)
                             + Type(n_aug_phy_aug) * logdet_Sigma_b
                             + Type(C) * (use_column_coef_estimated_rho == 1 ?

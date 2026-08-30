@@ -56344,3 +56344,74 @@ script explicitly checks response/species order and uses log1p; it reports
 these discrepancies without creating a new acceptance threshold. This is
 evidence for the original model/objective alignment, not a waiver of any
 convergence screen and not validation of the invalid BFGS result.
+
+## 2026-08-30 — approved focused coefficient-prior numerical investigation
+
+User approved with "Yes please go ahead". No outer optimizer runs were added;
+total remains14 entered. Root preserved the old library and every failed fit.
+Gauss/Noether isolated inverse/trace cancellation at condition(L)=1.10e24 and
+reviewed the same-model triangular-whitening repair. Terra implemented the
+compiled regression fixture; root integrated and ran it. No API, parameter map,
+source scaling, reported covariance, optimizer tolerance or fixture changed.
+
+Commands (from this isolated worktree; each computation used the existing
+`/private/tmp/gllvm-tree-axis-latent-20260830/bounded.py` process-group wrapper,
+`OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1`, and retained individual logs):
+
+- Original `R_LIBS=.../library`, `Rscript --vanilla
+  dev/tree-axis-latent/numerical-investigation/replay-joint.R`: exit0,0.951s.
+  `replay-marginal.R`: exit0,3.975s, two fixed-outer evaluations with inner
+  mode calculations but no outer optimization. `isolate-prior.R`: exit0,0.892s.
+  Failed prior isolated as-4.33e27 versus positive2.22e26 triangular oracle.
+- `R CMD INSTALL --preclean
+  --library=/private/tmp/gllvm-tree-axis-latent-20260830/repaired-library .`:
+  exit0,80.627s; estimate1-3min,300s cap. Four compiler warnings retained.
+- Repaired `R_LIBS=.../repaired-library`, `Rscript --vanilla
+  dev/tree-axis-latent/numerical-investigation/check-repair.R`: exit0,2.107s;
+  estimate<1min,120s cap. Bad-point joint/oracle relative error8.63e-14;
+  M2/M3 NLL changes-5.09e-11/+1.17e-9. No outer optimization.
+- Same library, `Rscript --vanilla
+  dev/tree-axis-latent/numerical-investigation/check-repaired-marginal.R`:
+  exit0,30.517s; estimate<30s,60s cap. The diagnostic records NaN marginal
+  and inner gradient3.77e30, not success. It slightly exceeded its estimate;
+  no further such replay was run. The negative-prior defect is fixed, but
+  this extreme BFGS point still has no usable inner mode.
+- Same library, `Rscript --vanilla -e 'library(gllvmTMB);
+  source("tests/testthat/helper-tmb-compile.R");
+  testthat::test_file("tests/testthat/test-column-coef-triangular-density.R",
+  reporter="summary", stop_on_failure=TRUE)'`: initial exit1,19.837s
+  (estimate30-90s,180s cap), solely gradient matrix/vector attributes. Root
+  corrected as.numeric comparison and ordered cleanup. Rerun exit0,19.469s
+  (estimate20s,60s cap),14 assertions. Three Eigen compiler warnings and
+  TMB's three-external-pointer cleanup notice remain in the retained log.
+- `Rscript --vanilla ~/shinichi-brain/tools/check-after-task.R
+  docs/dev-log/after-task/2026-08-30-tree-axis-latent.md`: structure passed;
+  command exited1 because the full article acceptance ledger is still unmet.
+  It was not relabelled complete or abandoned to bypass that check.
+- `git diff --check`: pass. `rg -n 'Sigma_b|coefficient.*prior|estimated.*rho|matrix.normal'
+  docs/design/03-likelihoods.md` selected the aligned likelihood note.
+  `rg -n 'LaplaceNonZeroGradient|inner.control|newtonOption' R/gllvmTMB.R R`
+  found no public native inner-control route; no new one was added.
+
+Repair evidence: `dev/tree-axis-latent/evidence/2026-08-30-numerical-repair.json`.
+The private shared helper is installed only for compiled regression access;
+it is not a new public modeling API. No new capability/recovery claim or debt
+coverage promotion is made. Separate spatial_dep inverse arithmetic was noticed
+and left for another scoped review. No article render, full package check,
+remote push, CI, merge or deployment was run. Eight repaired-source nlminb
+attempts are proposed (3+3 long,1+1 wide conditional on long gates), replacing
+six unspent previous slots; total ceiling would become22, pending approval.
+
+The earlier tree-axis entries are historical receipts, not current instructions:
+"no engine changes" applied before this approved numerical investigation, and
+the six-BFGS proposal was superseded by its failed execution and the request
+above. Final test review also changed header lookup to prefer the worktree
+copy over an installed copy, avoiding stale-header tests in devtools runs.
+
+Final no-fit `pkgdown::check_pkgdown()` and regression-file parse: pass,
+"No problems found" / METADATA_AND_TEST_PARSE_PASS. Worktree/installed private
+header SHA1 bothdd29092fbff03d0b0e850bf44de800d3fc0a7821, so the final source-first
+lookup change selects the exact tested header. Gauss/Noether qualified repair
+review and Rose/Pat narrow checkpoint consistency review pass; neither waives
+G2 or publication. The lifecycle checker requires a fresh task before another
+substantial block; continuation is at numerical-investigation/CHECKPOINT.md.

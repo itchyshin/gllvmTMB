@@ -146,3 +146,30 @@ BFGS outcome: B2 attempt1 returned impossible NLL -5.3484e29 (Gaussian bound
 entered, one completed/one interrupted. B3/W2/W3 withheld after method review.
 Further numerical investigation is a separate approval boundary; no blind
 refit, threshold relaxation or partial-example publication is authorized.
+
+## Approved focused numerical investigation
+
+Shinichi answered "Yes please go ahead" to the request for a focused numerical
+investigation with frozen models and no new API or campaign. Fixed-point
+replays isolated a negative coefficient-prior quadratic caused by forming and
+inverting an ill-conditioned Cholesky covariance. The localized arithmetic
+repair uses triangular whitening in the existing native coefficient prior;
+parameterization, maps, reporting and estimand are unchanged. A private header
+allows compiled regression tests to exercise the actual production helper.
+
+No outer optimizer attempt was added by this investigation. Fourteen have
+entered so far. Baseline DLL/fits remain immutable. At the failed point the
+repaired joint agrees with an independent triangular calculation to relative
+8.63e-14; healthy M2/M3 objectives change by at most1.18e-9. The bad BFGS point
+still has no usable inner mode (NaN, inner gradient3.77e30); it remains failed.
+
+Gauss/Noether recommend requesting eight repaired-source nlminb attempts:
+three unchanged deterministic starts for EACH community model, then one wide
+fit for each only if both long models pass. This supersedes unspent BFGS/wide
+slots and increases the total ceiling from20 to22; it does not add eight on
+top of all remaining old slots. This request has NOT been approved or run.
+Prior three-start timings were60.881s IID and137.179s phylogenetic. Estimate
+1-3min and2-5min respectively, plus1-3min each wide fit; five-minute process
+limit per call and no BFGS. Total estimated5-14min. All original gates apply;
+a failed long model stops wide fits, interpretation and rendering. No seed,
+rank, diagonal, tolerance, optimizer limit or model change is proposed.

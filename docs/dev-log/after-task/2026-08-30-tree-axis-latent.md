@@ -265,3 +265,49 @@ algebra and ordering requirements. Oracle-minus-retained NLL differences are
 This supports the original objective's interpretation while leaving its
 convergence gate unresolved. The full two-example delivery still requires a
 separately authorized numerical-debugging step before more article fits.
+
+## 15. Approved numerical investigation and localized repair
+
+Shinichi approved the focused investigation with "Yes please go ahead".
+This extends the historical docs-only phase to one arithmetic repair in the
+existing native coefficient prior, not a new API, engine or statistical model.
+Root owns source and integration; the Terra worker wrote the compiled
+regression fixture/test, and Gauss/Noether reviewed the mathematical identity,
+AD arithmetic, source routing and unchanged reports/maps. The fitted
+covariance Sigma_b=L_b L_b' remains reported; the density now whitens directly
+with L_b before applying sparse or spectral source precision.
+
+At the saved BFGS random state, the old coefficient prior contributed
+-4.332790e27, while direct triangular evaluation gave+2.218243e26. The repaired
+native joint is+3.91118954034858e26 versus oracle+3.91118954034824e26. Healthy
+M2/M3 objective differences are-5.09e-11 and+1.17e-9. These checks confirm
+arithmetic and continuity, not optimizer convergence or recovery. The extreme
+bad-outer replay still returns NaN with inner gradient3.774888e30: retained as
+an unusable inner-mode calculation, never an article endpoint. It took30.517s
+against an under30s estimate and60s hard cap; no repetition was attempted.
+
+The repaired package installed in a separate library in80.627s (estimate1-3min,
+cap5min), with four compiler warnings retained. No outer fits ran; count stays
+14. The first compiled regression run took19.837s and failed only gradient
+array attributes; numeric values agreed. Root fixed the test's vector comparison
+and ensured FreeADFun precedes DLL unload. The rerun result is recorded below.
+
+Existing raw receipts and the original installed DLL were not overwritten.
+Compact evidence is dev/tree-axis-latent/evidence/2026-08-30-numerical-repair.json;
+new scripts live under dev/tree-axis-latent/numerical-investigation/. The
+likelihood note and private helper explain the same-model calculation. A
+similar spatial_dep inverse pattern was noticed but is deliberately outside
+this repair and needs a separate bounded review. No new public capability is
+advertised; inference and recovery coverage are unchanged.
+
+Gauss/Noether recommend eight repaired-source nlminb attempts (3+3 long starts,
+then1+1 wide if long gates pass), replacing unspent old slots, total ceiling22.
+This concrete next block requires approval under the existing fit-budget gate.
+All pending package checks, article render, exact-commit three-OS CI, landing
+approval and deployed-page verification remain pending. No PR/push/merge/deploy
+was performed; PR1229 stays an unmerged draft. Full goal remains INCOMPLETE.
+
+Compiled regression rerun:14 assertions passed in19.469s; three Eigen compiler
+warnings and TMB's three-pointer cleanup notice retained. After-task structural
+check passes, but the combined checker exits1 because G2-G8 are still unmet;
+this is an incomplete checkpoint, not an after-task completion certificate.

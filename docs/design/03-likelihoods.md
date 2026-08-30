@@ -318,6 +318,34 @@ legacy/shared path returns `phy_unique_slope`. Validation is
 family-by-route specific (PHY-11--PHY-18 and RE-14), not a universal
 family or interval-calibration claim.
 
+### Stable coefficient-prior evaluation
+
+The full coefficient channel above, also used by `column_coef()` and
+`phylo_coef()`, evaluates its Gaussian quadratic through the parameterized
+lower-triangular factor. With $\Sigma_b=L_bL_b^\top$, define
+$W=B L_b^{-\top}$ by forward substitution. Then
+
+$$
+\operatorname{tr}(\Sigma_b^{-1}B^\top A^{-1}B)
+=\operatorname{tr}(W^\top A^{-1}W).
+$$
+
+For estimated `rho`, the same column whitening precedes the existing source
+transform $U^\top D^{-1}W$. If $K=D U\operatorname{diag}(\lambda)U^\top D$,
+the quadratic is the sum of squared transformed entries divided by
+$1-\rho+\rho\lambda_r$. This preserves
+$K_\rho=\rho K+(1-\rho)\operatorname{diag}\{\operatorname{diag}(K)\}$,
+all normalization constants, and the reported $\Sigma_b$.
+
+Forming and inverting $L_bL_b^\top$ is avoided in this prior because it squares
+the factor's condition number. An ill-conditioned retained article attempt
+produced a negative quadratic under that arithmetic; the same point provides
+a regression check, not a biological result or a convergence guarantee.
+The helper is private implementation, with compiled tests in
+`tests/testthat/test-column-coef-triangular-density.R`. The separate spatial
+coefficient implementation is outside this bounded repair and requires its own
+numerical review.
+
 ## SPDE / GMRF spatial integration
 
 When `spatial_*(0 + trait | sites, mesh = mesh)` is in the

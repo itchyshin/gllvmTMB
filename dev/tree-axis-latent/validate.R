@@ -7,7 +7,7 @@ fixture_checksum <- unname(tools::md5sum(file.path(dirname(script_path), "fixtur
 result_dir <- Sys.getenv("GLLVM_TREE_AXIS_RESULTS")
 if (!nzchar(result_dir)) stop("Set GLLVM_TREE_AXIS_RESULTS")
 strict <- !identical(Sys.getenv("GLLVM_TREE_AXIS_REQUIRE_COMPLETE", "true"), "false")
-FIT_IDS <- c("C1", "C2", paste0("M", 1:3), paste0("S", 1:6), paste0("W", 1:3))
+FIT_IDS <- c("C1", "C2", paste0("M", 1:3), paste0("S", 1:6), paste0("W", 1:3), "B2", "B3")
 rel_norm <- function(x,y) sqrt(sum((x-y)^2))/max(sqrt(sum(y^2)),1e-8)
 matrix_ok <- function(x,p) is.matrix(x) && identical(dim(x),c(p,p)) &&
   all(is.finite(x)) && max(abs(x-t(x))) < 1e-8 &&
@@ -19,7 +19,14 @@ one_fit <- function(r) {
   if (!is.null(r$alias_of)) return(list(pass=!is.null(r$snapshot), alias=r$alias_of))
   p <- if(r$spec$model=="morphology") 6L else if(r$spec$size=="canary") 20L else 50L
   good_public <- !is.null(r$public) && is.null(r$public$error)
+  ## Exact Gaussian marginal sanity bound; this is not an optimizer tolerance.
+  ## For this frozen unweighted Gaussian fixture V >= sigma_eps^2 I.
+  lower_bound <- if (!is.null(r$fit) && length(r$gaussian$fixed_value)==1L) {
+    length(r$fit$tmb_data$y)*(r$gaussian$fixed_value + log(2*pi)/2)
+  } else NA_real_
   conditions <- c(
+    gaussian_nll_bound=is.finite(lower_bound) && is.finite(r$objective) &&
+      r$objective >= lower_bound - 1e-6,
     fit=!is.null(r$fit), finite_objective=is.finite(r$objective),
     convergence=identical(as.integer(r$convergence),0L),
     gradient=is.finite(r$max_gradient) && r$max_gradient<1e-2,
@@ -168,13 +175,28 @@ if(length(argv) && argv[[1L]]=="--self-test") {
   bad<-receipts$C1; bad$public$unit$unique[1]<-bad$public$unit$unique[1]+.5
   stopifnot(!one_fit(bad)$pass)
   bad<-receipts$C1; bad$fixture_checksum<-"wrong"; stopifnot(!one_fit(bad)$pass)
-  cat("TREE_AXIS_NEGATIVE_CONTROLS_PASS: gradient, decomposition and fixture corruption rejected\n")
+  bad<-receipts$C1; bad$objective<--5.34842345053399e29
+  stopifnot(!one_fit(bad)$pass)
+  cat("TREE_AXIS_NEGATIVE_CONTROLS_PASS: gradient, decomposition, fixture and impossible Gaussian objective rejected\n")
   quit(status=0L)
 }
-stability <- lapply(receipts[intersect(paste0("M",1:3),names(receipts))],stability_check)
+## The approved BFGS adjudication adds new receipts. Original failed nlminb
+## attempts remain explicit historical evidence, never overwritten or relabelled.
+primary_ids <- c("M1", "B2", "B3")
+stability <- lapply(receipts[intersect(primary_ids,names(receipts))],stability_check)
+historical_stability <- lapply(receipts[intersect(c("M2","M3"),names(receipts))],stability_check)
+cross_solver <- lapply(intersect(c("B2","B3"),names(receipts)),function(id) {
+  old <- receipts[[sub("B","M",id)]]; new <- receipts[[id]]
+  if(is.null(old) || is.null(new$restart_snapshots$attempts)) return(NULL)
+  a <- blocks(old$restart_snapshots$attempts[[old$restart_snapshots$selected]]$covariance)
+  b <- blocks(new$restart_snapshots$attempts[[new$restart_snapshots$selected]]$covariance)
+  list(original_id=old$id,additional_id=id,
+       objective_difference=new$objective-old$objective,
+       covariance_relative_norms=vapply(names(a),function(n)rel_norm(b[[n]],a[[n]]),numeric(1)))
+})
 wide <- list()
 for(i in 1:3) {
-  ids<-paste0(c("M","W"),i)
+  ids<-c(primary_ids[i],paste0("W",i))
   if(all(ids %in% names(receipts))) wide[[ids[1L]]] <- wide_check(receipts[[ids[1L]]],receipts[[ids[2L]]])
 }
 for(id in intersect(paste0("S",1:6),names(receipts))) {
@@ -188,12 +210,16 @@ pass <- function(xs) length(xs)>0L && all(vapply(xs,function(x)isTRUE(x$pass),lo
 complete <- !length(missing) && length(stability)==3L && length(wide)==3L
 available_pass <- pass(checks) && (!length(stability) || pass(stability)) && (!length(wide) || pass(wide))
 ledger<-list(available_ids=names(receipts),missing_ids=missing,fixture_checksum=fixture_checksum,
-             checks=checks,stability=stability,wide_equivalence=wide,
+             checks=checks,primary_ids=primary_ids,stability=stability,
+             historical_stability=historical_stability,cross_solver=cross_solver,
+             wide_equivalence=wide,
              complete=complete,pass=complete && available_pass,
              note="One synthetic realization and optimizer stability, not recovery/calibration evidence")
 saveRDS(ledger,file.path(result_dir,"validation.rds"))
 print(lapply(checks,function(x)x[c("pass","objective","gradient")]))
 print(stability)
+print(historical_stability)
+print(cross_solver)
 print(wide)
 if(complete && available_pass) cat("TREE_AXIS_VALIDATION_PASS\n") else {
   cat("TREE_AXIS_VALIDATION_INCOMPLETE_OR_FAILED; missing:",paste(missing,collapse=","),"\n")

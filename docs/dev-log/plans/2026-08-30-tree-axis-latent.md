@@ -123,3 +123,26 @@ argument sets and morphology public output generation. The source remains an
 explicitly incomplete draft. Six additional BFGS attempts (three per community
 model), each model call capped at five minutes, are recommended but NOT
 approved or executed. See the after-task report and check-log.
+
+## Approved BFGS adjudication
+
+The maintainer replied "OK - do yoiu want to unstall automatically once it is
+done??" to the explicit six-attempt request. This approves B2/B3: three BFGS
+starts for each community model, five-minute process cap per model. Continue
+through the original checks/PR preparation automatically if these pass; no
+landing approval is inferred. Models, DGP, seeds, jitter and numerical screens
+remain unchanged. Original M2/M3 failures are historical failures, not erased
+or relabelled. B2/B3 use additional immutable receipts. W2/W3 retain their
+original one-attempt budget and use the same qualified optimizer if admitted.
+
+Gauss/Noether approved process-local optim tracing before the follow-up. A
+non-statistical quadratic unit check confirms exact original return values,
+exact entry starts, and refusal of a fourth optimizer call before evaluating
+its objective. It is an instrumentation test, not another model fit. Exact
+executed scripts are retained in frozen-BFGS beside earlier frozen scripts.
+
+BFGS outcome: B2 attempt1 returned impossible NLL -5.3484e29 (Gaussian bound
+-46,170.99), then root interrupted attempt2 at76.514s. Two additional attempts
+entered, one completed/one interrupted. B3/W2/W3 withheld after method review.
+Further numerical investigation is a separate approval boundary; no blind
+refit, threshold relaxation or partial-example publication is authorized.

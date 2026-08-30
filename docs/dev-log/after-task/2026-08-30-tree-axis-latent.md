@@ -1,7 +1,9 @@
 # Tree-axis article correction: numerical-gate checkpoint
 
 Date: 2026-08-30. Status: **INCOMPLETE; community optimizer gate failed**.
-No corrected article has been published or claimed complete.
+No corrected article has been published or claimed complete. The approved BFGS
+follow-up also failed: it returned an impossible objective and was stopped.
+Section 14 records the latest evidence and remaining scope decision.
 
 ## 1. Goal
 
@@ -216,3 +218,50 @@ This requires explicit approval because it exceeds the agreed attempt budget.
 It can address the stopping-code issue, not certify rho recovery or precision.
 No such follow-up has been launched. Later landing also retains its explicit
 approval gate.
+
+## 14. Approved BFGS follow-up and numerical stop
+
+Shinichi approved six further attempts and automatic continuation if they pass.
+Before starting, Gauss/Noether checked the supported BFGS route and trace
+normalization, and a no-fit quadratic unit test verified unchanged raw returns,
+exact entry starts and the three-call cap. B2 was estimated at 1-5 minutes and
+run with a 300-second external cap.
+
+B2 attempt 1 returned code zero and NLL `-5.34842345053399e29`. For this exact
+Gaussian marginal, covariance `V >= sigma_eps^2 I` implies NLL at least
+`7500 * (log(0.0008459331) + log(2*pi)/2) = -46,170.9882`. The result violates
+a mathematical bound; it is not a better fit, a rho boundary, or a biological
+finding. Finite parameters reached absolute magnitudes of 46.46. Root stopped
+the verified B2 process group during attempt 2 after 76.514 seconds. B3 and the
+wide fits were not launched. No numerical threshold, seed or model changed.
+
+The retained per-attempt files prove two starts entered, one returned, and one
+was interrupted. Both starts match the corresponding original M2 starts exactly.
+A terminal coordinator receipt records the interruption with `fit=NULL`; no
+completed B2 fit is invented. Across this task 14 outer optimizer attempts have
+entered: the earlier 12 plus these two. Four approved BFGS attempts and two
+original wide attempts remain unstarted, but the numerical stop gate takes
+precedence over spending that remainder.
+
+The validator retains original M2/M3 failures separately from new primary
+B2/B3 evidence. Missing or failed BFGS results cannot inherit their selected
+fits. It now also rejects an objective violating the Gaussian lower bound;
+that additional negative control passes. The overall ledger correctly fails.
+
+Method review advises stopping further fits and any community interpretation.
+A separate, bounded numerical investigation is the next consequential choice;
+no new engine/API or campaign is implied. Neither dropping the second example
+nor relaxing its gates counts as completing the approved two-example goal.
+No publication, PR change, CI dispatch, merge or deployment occurred.
+
+A final no-fit diagnostic, `dev/tree-axis-latent/check-gaussian-likelihood.R`,
+checks the original M2/M3 objectives independently. For site-major stacking,
+`V = I_n (x) R + (X Sigma_b X^T) (x) K`, with fitted
+`R = Sigma_site + sigma_eps^2 I_p`. Whitening R and diagonalizing the two
+remaining factors evaluates the Gaussian determinant and quadratic form
+without a TMB objective call or any optimization. Gauss/Noether verified the
+algebra and ordering requirements. Oracle-minus-retained NLL differences are
+`1.370699e-8` and `-2.982233e-9`; no new acceptance threshold is introduced.
+This supports the original objective's interpretation while leaving its
+convergence gate unresolved. The full two-example delivery still requires a
+separately authorized numerical-debugging step before more article fits.

@@ -30,8 +30,10 @@ FIT_PLAN <- list(
   S5 = list(alias_of = "M3", restart = 2L),
   S6 = list(alias_of = "M3", restart = 3L),
   W1 = list(model = "morphology", shape = "wide", size = "target", start = 1L),
-  W2 = list(model = "community_iid", shape = "wide", size = "target", start = 1L),
-  W3 = list(model = "community_phylo", shape = "wide", size = "target", start = 1L)
+  W2 = list(model = "community_iid", shape = "wide", size = "target", start = 1L, optimizer = "optim"),
+  W3 = list(model = "community_phylo", shape = "wide", size = "target", start = 1L, optimizer = "optim"),
+  B2 = list(model = "community_iid", shape = "long", size = "target", starts = 3L, optimizer = "optim"),
+  B3 = list(model = "community_phylo", shape = "long", size = "target", starts = 3L, optimizer = "optim")
 )
 
 fit_id <- args[[1L]]
@@ -52,6 +54,8 @@ start_spec <- list(seed = 202608501L, init_jitter = 0.15)
   n_starts <- if (is.null(spec$starts)) 1L else as.integer(spec$starts)
   control <- gllvmTMBcontrol(
     se = FALSE, n_init = n_starts,
+    optimizer = if (is.null(spec$optimizer)) "nlminb" else spec$optimizer,
+    optArgs = if (identical(spec$optimizer, "optim")) list(method = "BFGS") else list(),
     init_jitter = if (n_starts > 1L) start_spec$init_jitter else 0,
     start_method = list(method = NULL, jitter.sd = 0)
   )
@@ -246,15 +250,39 @@ started <- Sys.time()
 warnings <- character()
 fit <- NULL
 fit_error <- NULL
-trace(".gllvmTMB_run_nlminb", where = asNamespace("gllvmTMB"), print = FALSE,
+trace_name <- if (identical(spec$optimizer, "optim")) "optim" else ".gllvmTMB_run_nlminb"
+trace_where <- if (identical(spec$optimizer, "optim")) asNamespace("stats") else asNamespace("gllvmTMB")
+trace(trace_name, where = trace_where, print = FALSE,
   tracer = quote({
     .GlobalEnv$.tree_axis_call_entries <- .GlobalEnv$.tree_axis_call_entries + 1L
     if (.GlobalEnv$.tree_axis_call_entries > .GlobalEnv$.tree_axis_attempt_limit)
       stop("Optimizer-attempt budget exceeded; no additional optimization allowed")
+    .tree_axis_start_copy <- if (.GlobalEnv$trace_name == "optim") par else args$start
+    message("OPTIMIZER_ATTEMPT_ENTER id=", .GlobalEnv$fit_id,
+            " attempt=", .GlobalEnv$.tree_axis_call_entries)
+    entry_path <- file.path(.GlobalEnv$result_dir, paste0(.GlobalEnv$fit_id,
+      "-attempt-", .GlobalEnv$.tree_axis_call_entries, "-start.rds"))
+    if (file.exists(entry_path)) stop("Refusing to overwrite optimizer start receipt")
+    saveRDS(.tree_axis_start_copy, entry_path)
   }),
   exit = quote({
-    .GlobalEnv$.tree_axis_calls[[length(.GlobalEnv$.tree_axis_calls) + 1L]] <-
-      list(start = args$start, result = returnValue())
+    raw <- returnValue()
+    normalized <- raw
+    if (.GlobalEnv$trace_name == "optim") {
+      normalized <- list(par = raw$par, objective = raw$value,
+        convergence = raw$convergence, message = if (is.null(raw$message)) "" else raw$message,
+        iterations = unname(raw$counts[["function"]]),
+        evaluations = unname(raw$counts[["gradient"]]))
+    }
+    captured <- list(start = .tree_axis_start_copy, result = normalized, raw = raw)
+    .GlobalEnv$.tree_axis_calls[[length(.GlobalEnv$.tree_axis_calls) + 1L]] <- captured
+    exit_path <- file.path(.GlobalEnv$result_dir, paste0(.GlobalEnv$fit_id,
+      "-attempt-", .GlobalEnv$.tree_axis_call_entries, "-result.rds"))
+    if (file.exists(exit_path)) stop("Refusing to overwrite optimizer result receipt")
+    saveRDS(captured, exit_path)
+    message("OPTIMIZER_ATTEMPT_EXIT id=", .GlobalEnv$fit_id,
+            " attempt=", .GlobalEnv$.tree_axis_call_entries,
+            " code=", normalized$convergence, " objective=", normalized$objective)
   }))
 fit <- tryCatch(
   withCallingHandlers(
@@ -269,7 +297,7 @@ fit <- tryCatch(
     NULL
   }
 )
-untrace(".gllvmTMB_run_nlminb", where = asNamespace("gllvmTMB"))
+untrace(trace_name, where = trace_where)
 elapsed_s <- as.numeric(difftime(Sys.time(), started, units = "secs"))
 diagnostic <- if (is.null(fit)) NULL else tryCatch(
   gllvmTMB_diagnose(fit, verbose = FALSE), error = function(e) list(error = conditionMessage(e))

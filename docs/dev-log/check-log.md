@@ -56288,3 +56288,59 @@ Requested next step, **not executed**: six additional BFGS attempts, three per
 community model, with unchanged data/model/gates and a five-minute timeout per
 model call. This needs approval under the agreed attempt/instability stop rule.
 See `docs/dev-log/after-task/2026-08-30-tree-axis-latent.md` for full limits.
+
+### BFGS follow-up: approved, then stopped on an impossible objective
+
+The maintainer approved six extra attempts and automatic continuation if they
+pass. Gauss/Noether passed the public BFGS route and process-local tracing.
+The runner now retains immutable per-attempt start/result files immediately,
+so an interrupted model cannot erase the attempt denominator. A quadratic
+instrumentation unit test verifies identical raw optim results and exact
+starts, and refuses a fourth call before its objective executes. This unit
+check is not a model fit.
+
+B2 (IID community), estimated 1-5 minutes for three starts, ran under a
+300-second process cap with the unchanged DGP/seeds/model. Attempt 1 returned
+code 0 but objective `-5.34842345053399e29`. The model's 7,500 Gaussian rows
+and fixed sigma 0.0008459331 imply NLL >= -46,170.9882. The reported value is
+numerically invalid. Root stopped the verified B2 R process group with SIGTERM
+while attempt 2 was running; wrapper elapsed 76.514 seconds. The attempt-1
+start/result and attempt-2 start were preserved. Both starts exactly match
+their original M2 counterparts. A coordinator interruption receipt explicitly
+records no completed model fit; it does not fabricate outputs or convergence.
+
+Total: **14 model optimizer attempts entered**, of which 13 returned and one
+was interrupted. B2 start 3, all B3 starts and W2/W3 remain unrun. The original
+M2/M3 failures remain visible historical failures. No threshold was relaxed,
+no new fit started after the stop, and no engine/API change was made.
+
+```sh
+OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 GLLVM_TREE_AXIS_RESULTS=/private/tmp/gllvm-tree-axis-latent-20260830/results R_LIBS=/private/tmp/gllvm-tree-axis-latent-20260830/library python3 /private/tmp/gllvm-tree-axis-latent-20260830/bounded.py 300 /private/tmp/gllvm-tree-axis-latent-20260830/fit-B2.log Rscript --vanilla /private/tmp/gllvm-tree-axis-latent-20260830/frozen-BFGS/run-fit.R B2
+# STOPPED after invalid attempt1, attempt2 interrupted: BOUNDED_EXIT=-15, 76.514s.
+
+GLLVM_TREE_AXIS_RESULTS=/private/tmp/gllvm-tree-axis-latent-20260830/results R_LIBS=/private/tmp/gllvm-tree-axis-latent-20260830/library Rscript --vanilla dev/tree-axis-latent/validate.R --self-test
+# PASS: adds rejection of an impossible Gaussian objective to earlier controls.
+# This is an algebraic sanity bound, not retuning an optimizer threshold.
+
+GLLVM_TREE_AXIS_RESULTS=/private/tmp/gllvm-tree-axis-latent-20260830/results R_LIBS=/private/tmp/gllvm-tree-axis-latent-20260830/library Rscript --vanilla dev/tree-axis-latent/validate.R
+# EXPECTED EXIT 1: B2 interrupted/invalid; B3, W2, W3 unrun.
+```
+
+Compact evidence: `dev/tree-axis-latent/evidence/2026-08-30-BFGS-interruption.json`.
+Raw logs, source copies and interruption recorder remain in the scratch receipt
+directory. Method review confirms a numerical pathology, not a coefficient-rho
+endpoint or biological result. Further numerical investigation needs its own
+bounded authorization; article rendering, checks, PR updates and deployment
+remain held. The full two-example objective has not been reduced or completed.
+
+No-fit follow-up: `dev/tree-axis-latent/check-gaussian-likelihood.R` rebuilds
+the exact marginal Gaussian covariance from the frozen design, public fitted
+site/column covariance and fixed-effect coefficients. It uses Kronecker
+spectral algebra, not TMB evaluation or optimization. Gauss/Noether checked
+its site-major stacking, whitening, fixed mean and fitted stabilizer. The
+reported oracle-minus-TMB NLL differences are `1.370699e-8` (M2) and
+`-2.982233e-9` (M3). The initial comparison took 1.218 seconds. The reviewed
+script explicitly checks response/species order and uses log1p; it reports
+these discrepancies without creating a new acceptance threshold. This is
+evidence for the original model/objective alignment, not a waiver of any
+convergence screen and not validation of the invalid BFGS result.

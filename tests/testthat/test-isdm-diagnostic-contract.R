@@ -178,6 +178,15 @@ test_that("public plan helpers consume only a bound seed manifest", {
                    c("rep3", "default", "bfgs_continuation", "nlminb5"))
   expect_equal(length(unique(smoke$native_task_id[smoke$slice == "spatial"])),
                1L)
+  expect_silent(isdm_diag_validate_smoke_plan(smoke))
+  tampered_smoke <- smoke
+  tampered_smoke$optimizer_seed[[1L]] <- tampered_smoke$optimizer_seed[[1L]] + 1L
+  ## Semantic validation alone admits registered values; byte identity is
+  ## separately bound by qualification/launch SHA-256 checks.
+  expect_silent(isdm_diag_validate_smoke_plan(tampered_smoke))
+  tampered_smoke$variant[[1L]] <- "baseline"
+  expect_error(isdm_diag_validate_smoke_plan(tampered_smoke),
+               class = "isdm_diag_smoke_plan_invalid")
 
   manifest$schema <- "wrong"
   expect_error(diagnostic_plan(manifest),

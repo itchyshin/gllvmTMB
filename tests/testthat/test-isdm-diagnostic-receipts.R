@@ -133,6 +133,30 @@ test_that("bundle manifest rejects corruption, extras, and unsafe rows", {
   expect_error(isdm_diag_verify_bundle_manifest(bundle), "unsafe paths")
 })
 
+test_that("optimizer target eligibility is exact in both directions", {
+  nlminb <- list(status = "fit_returned", first_start_equal_default = TRUE,
+                 target_available = TRUE)
+  expect_silent(.receipt_validate_optimizer_target(
+    nlminb, "nlminb5", default_returned = TRUE, class_match = TRUE
+  ))
+  nlminb$target_available <- FALSE
+  expect_error(.receipt_validate_optimizer_target(
+    nlminb, "nlminb5", default_returned = TRUE, class_match = TRUE
+  ), "target-availability flag")
+
+  bfgs <- list(status = "fit_returned",
+               continuation_copy = list(all_equal = FALSE),
+               target_available = FALSE,
+               target_unavailable_reason = "public_start_copy_mismatch")
+  expect_silent(.receipt_validate_optimizer_target(
+    bfgs, "bfgs_continuation", default_returned = TRUE, class_match = TRUE
+  ))
+  bfgs$target_available <- TRUE
+  expect_error(.receipt_validate_optimizer_target(
+    bfgs, "bfgs_continuation", default_returned = TRUE, class_match = TRUE
+  ), "target-availability flag")
+})
+
 test_that("retained summary must reproduce exactly from raw records", {
   evidence <- withr::local_tempdir()
   bundle <- file.path(evidence, "experiment")

@@ -66,6 +66,7 @@ diagnostic_started_record <- function(task, qualification) {
 diagnostic_terminal_record <- function(started, status, runtime_s,
                                        payload = list(), condition = NULL,
                                        optimizer_entered = FALSE,
+                                       public_fit_call_entered = FALSE,
                                        disposition_source = "worker") {
   allowed <- c("fit_returned", "error", "interrupted", "unavailable")
   if (!status %in% allowed) diagnostic_abort("invalid terminal status")
@@ -73,7 +74,12 @@ diagnostic_terminal_record <- function(started, status, runtime_s,
     status = status,
     finished_at = format(Sys.time(), tz = "UTC", usetz = TRUE),
     runtime_s = as.numeric(runtime_s),
-    optimizer_entered = isTRUE(optimizer_entered),
+    optimizer_entered = if (length(optimizer_entered) == 1L &&
+                             is.na(optimizer_entered)) NA else
+      isTRUE(optimizer_entered),
+    public_fit_call_entered = if (length(public_fit_call_entered) == 1L &&
+                                   is.na(public_fit_call_entered)) NA else
+      isTRUE(public_fit_call_entered),
     disposition_source = disposition_source
   ), payload)
   if (!is.null(condition)) {
@@ -102,12 +108,25 @@ diagnostic_write_terminal <- function(record, output_dir) {
 
 diagnostic_reconcile <- function(plan, output_dir, qualification,
                                  reason = "supervisor stopped before completion") {
+  prior_paths <- list.files(file.path(output_dir, "coordinator"),
+                            pattern = "^reconciliation-.*[.]rds$",
+                            full.names = TRUE)
+  prior <- unlist(lapply(prior_paths, function(path) {
+    readRDS(path)$dispositions %||% list()
+  }), recursive = FALSE)
+  prior_ids <- vapply(prior, function(x) as.integer(x$task_id), integer(1L))
+  if (anyDuplicated(prior_ids)) {
+    diagnostic_abort("prior coordinator receipts contain duplicate dispositions",
+                     "isdm_diagnostic_disposition_error")
+  }
   rows <- lapply(seq_len(nrow(plan)), function(i) {
     task <- plan[i, , drop = FALSE]
     leaf <- diagnostic_leaf(task$task_id[[1L]])
     started_path <- file.path(output_dir, "started", leaf)
     terminal_path <- file.path(output_dir, "attempts", leaf)
-    if (file.exists(terminal_path)) return(NULL)
+    if (file.exists(terminal_path) || task$task_id[[1L]] %in% prior_ids) {
+      return(NULL)
+    }
     started <- if (file.exists(started_path)) readRDS(started_path) else
       diagnostic_started_record(task, qualification)
     status <- if (file.exists(started_path)) "interrupted" else "unavailable"
@@ -116,7 +135,11 @@ diagnostic_reconcile <- function(plan, output_dir, qualification,
       condition = structure(list(message = reason, call = NULL),
                             class = c("isdm_diagnostic_supervisor_stop",
                                       "error", "condition")),
-      optimizer_entered = file.exists(started_path),
+      ## A started receipt precedes source verification and optimizer entry.
+      ## After a supervisor stop we cannot recover which side of that boundary
+      ## the killed process reached, so retain unknown rather than invent TRUE.
+      optimizer_entered = if (file.exists(started_path)) NA else FALSE,
+      public_fit_call_entered = if (file.exists(started_path)) NA else FALSE,
       disposition_source = "coordinator"
     )
   })
@@ -131,6 +154,12 @@ diagnostic_reconcile <- function(plan, output_dir, qualification,
                     paste0("reconciliation-", format(Sys.time(), "%Y%m%dT%H%M%S"),
                            ".rds"))
   diagnostic_atomic_save(receipt, path)
+  ## A reconciliation is not terminal until the all-attempt ledger resolves.
+  dispositions <- diagnostic_terminal_dispositions(plan, output_dir)
+  if (length(dispositions) != nrow(plan)) {
+    diagnostic_abort("reconciliation did not resolve every planned identity",
+                     "isdm_diagnostic_disposition_error")
+  }
   receipt
 }
 

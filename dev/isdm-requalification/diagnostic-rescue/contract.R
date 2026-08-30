@@ -292,6 +292,25 @@ diagnostic_smoke_plan <- function(seed_manifest) {
   out[, c("smoke_task_id", setdiff(names(out), "smoke_task_id")), drop = FALSE]
 }
 
+isdm_diag_validate_smoke_plan <- function(plan) {
+  .isdm_diag_require_columns(
+    plan, c("smoke_task_id", "task_id", "slice", "native_task_id", "variant",
+            "optimizer_seed", "source_sha", "source_tree"),
+    "diagnostic smoke plan"
+  )
+  if (nrow(plan) != 4L ||
+      !identical(as.integer(plan$smoke_task_id), 1:4) ||
+      !identical(as.character(plan$variant),
+                 c("rep3", "default", "bfgs_continuation", "nlminb5")) ||
+      length(unique(plan$native_task_id[plan$slice == "spatial"])) != 1L ||
+      any(plan$source_sha != ISDM_DIAG_PRODUCTION_SOURCE_SHA) ||
+      any(plan$source_tree != ISDM_DIAG_PRODUCTION_SOURCE_TREE)) {
+    .isdm_diag_abort("smoke plan differs from the frozen four-task contract",
+                     "isdm_diag_smoke_plan_invalid")
+  }
+  invisible(TRUE)
+}
+
 isdm_diag_contract <- function() {
   list(
     schema = ISDM_DIAG_CONTRACT_SCHEMA,

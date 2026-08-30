@@ -17,5 +17,10 @@ if (length(paths) && any(!allowed)) stop("non-allowlisted working path: ", paths
 manifest <- file.path("dev", "isdm-requalification", "diagnostic-rescue",
                       "HARNESS_SHA256.txt")
 if (!file.exists(manifest)) stop("HARNESS_SHA256.txt has not been frozen")
+command <- if (nzchar(Sys.which("sha256sum"))) "sha256sum" else "shasum"
+args <- if (command == "shasum") c("-a", "256", "-c", manifest) else
+  c("-c", manifest)
+checked <- system2(command, args, stdout = TRUE, stderr = TRUE)
+status <- attr(checked, "status"); if (is.null(status)) status <- 0L
+if (as.integer(status) != 0L) stop("frozen harness manifest verification failed")
 cat("DIAGNOSTIC_SOURCE_VERIFIED\n")
-

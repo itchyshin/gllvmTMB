@@ -6,6 +6,19 @@ script <- sub("^--file=", "", grep("^--file=", commandArgs(FALSE), value = TRUE)
 source(file.path(dirname(normalizePath(script)), "record.R"), local = TRUE)
 plan <- readRDS(args[[1L]])
 qualification <- readRDS(args[[3L]])
-receipt <- diagnostic_reconcile(plan, args[[2L]], qualification, args[[4L]])
-print(receipt[c("planned", "reconciled", "reason")])
-
+tryCatch({
+  receipt <- diagnostic_reconcile(plan, args[[2L]], qualification, args[[4L]])
+  print(receipt[c("planned", "reconciled", "reason")])
+}, error = function(e) {
+  failure <- list(
+    schema = "isdm-diagnostic-reconciliation-failure-v1",
+    created_at = format(Sys.time(), tz = "UTC", usetz = TRUE),
+    reason = args[[4L]], error_class = class(e),
+    error_message = conditionMessage(e)
+  )
+  path <- file.path(args[[2L]], "coordinator",
+                    paste0("reconciliation-failure-",
+                           format(Sys.time(), "%Y%m%dT%H%M%S"), ".rds"))
+  try(diagnostic_atomic_save(failure, path), silent = TRUE)
+  stop(e)
+})

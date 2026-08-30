@@ -125,6 +125,11 @@ ISDM_DIAG_SUMMARY_SCHEMA <- "isdm-identifiability-independent-summary-v1"
     variant = task$variant, sentinel_class = task$sentinel_class,
     n_sources = task$n_sources, overlap = task$overlap,
     status = record$status, state = .ind_state(record), returned = returned,
+    historical_class_match = if (identical(task$variant, "default"))
+      isTRUE(record$historical_class_match) else NA,
+    target_available = if (identical(task$variant, "default"))
+      returned && isTRUE(record$historical_class_match) else
+      returned && isTRUE(record$target_available),
     fresh_objective = if (returned && .ind_finite(record$diagnostics$fresh_objective))
       record$diagnostics$fresh_objective else NA,
     max_gradient = if (returned && .ind_finite(record$diagnostics$max_gradient))
@@ -179,6 +184,8 @@ ISDM_DIAG_SUMMARY_SCHEMA <- "isdm-identifiability-independent-summary-v1"
     eligible_input <- nrow(default) == 1L && default$sentinel_class != "converged_pd"
     comparable <- eligible_input && nrow(alternative) == 1L &&
       isTRUE(default$returned) && isTRUE(alternative$returned) &&
+      isTRUE(default$historical_class_match) &&
+      isTRUE(alternative$target_available) &&
       all(is.finite(c(default$fresh_objective, alternative$fresh_objective,
                       default$max_gradient, alternative$max_gradient,
                       default$heldout_correlation, alternative$heldout_correlation,

@@ -58,7 +58,7 @@ jobs:
           # main; workflow_dispatch falls back to the dispatched ref.
           ref: ${{ github.event.workflow_run.head_branch || github.ref }}
 
-      - uses: actions/configure-pages@v5
+      - uses: actions/configure-pages@v6
 
       - uses: r-lib/actions/setup-pandoc@v2
 
@@ -152,7 +152,7 @@ jobs:
         run: mv .pkgdown-hidden/AGENTS.md .pkgdown-hidden/CLAUDE.md .pkgdown-hidden/ROADMAP.md . && rmdir .pkgdown-hidden
         shell: bash
 
-      - uses: actions/upload-pages-artifact@v4
+      - uses: actions/upload-pages-artifact@v5
         with:
           # Matches `destination: pkgdown-site` in _pkgdown.yml.
           # `docs/` hosts design + dev-log scaffolding, not the rendered site.
@@ -180,4 +180,4 @@ jobs:
 
     steps:
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5

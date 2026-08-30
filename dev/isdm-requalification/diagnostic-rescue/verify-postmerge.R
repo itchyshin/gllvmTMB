@@ -17,7 +17,8 @@ if (!is.list(x) || !all(required %in% names(x)) ||
     !identical(x$ci$head_sha, x$pr_head) ||
     !identical(sort(names(x$ci$platforms)), c("macos", "ubuntu", "windows")) ||
     any(x$ci$platforms != "success")) stop("postmerge receipt is malformed")
-system2("git", c("fetch", "--quiet", "origin", "main"))
+if (system2("git", c("fetch", "--quiet", "origin", "main")) != 0L)
+  stop("origin/main fetch failed")
 main <- system2("git", c("rev-parse", "origin/main"), stdout = TRUE)[[1L]]
 tree <- system2("git", c("rev-parse", "origin/main^{tree}"), stdout = TRUE)[[1L]]
 if (!identical(main, x$origin_main) || !identical(tree, x$origin_main_tree))
@@ -32,6 +33,9 @@ if (!identical(info$state, "MERGED") ||
     !identical(info$mergeCommit$oid, x$origin_main) ||
     !identical(info$headRefOid, x$pr_head)) stop("merged PR binding changed")
 diag <- file.path("dev", "isdm-requalification", "diagnostic-rescue")
+source(file.path(diag, "verify-remote-receipt.R"), local = TRUE)
+for (bundle in c("qualification", "smoke", "experiment"))
+  isdm_diag_verify_bundle_manifest(file.path(diag, "evidence", bundle))
 manifests <- file.path(diag, "evidence", c("qualification", "smoke", "experiment"),
                        "MANIFEST.sha256")
 hash <- function(path) {

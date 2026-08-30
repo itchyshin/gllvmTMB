@@ -11,7 +11,8 @@ if (!is.list(ci) ||
     !identical(ci$event, "workflow_dispatch") ||
     !identical(sort(names(ci$platforms)), c("macos", "ubuntu", "windows")) ||
     any(ci$platforms != "success")) stop("CI receipt is malformed")
-system2("git", c("fetch", "--quiet", "origin", "main"))
+if (system2("git", c("fetch", "--quiet", "origin", "main")) != 0L)
+  stop("origin/main fetch failed")
 main <- system2("git", c("rev-parse", "origin/main"), stdout = TRUE)[[1L]]
 tree <- system2("git", c("rev-parse", "origin/main^{tree}"), stdout = TRUE)[[1L]]
 protected <- c("R", "src", "DESCRIPTION", "NAMESPACE", "man", "vignettes",
@@ -20,6 +21,7 @@ if (system2("git", c("diff", "--quiet", source_pin, "origin/main", "--", protect
   stop("package-code surfaces changed")
 raw <- system2("gh", c("pr", "view", as.character(pr), "--json",
                         "state,mergedAt,mergeCommit,headRefOid,url"), stdout = TRUE)
+if (!is.null(attr(raw, "status"))) stop("PR query failed")
 info <- jsonlite::fromJSON(paste(raw, collapse = "\n"), simplifyVector = TRUE)
 if (!identical(info$state, "MERGED") || !identical(info$mergeCommit$oid, main))
   stop("PR merge receipt differs from origin/main")
@@ -33,6 +35,9 @@ if (!is.null(attr(lease, "status"))) stop("lane lease query failed")
 if (any(grepl("codex:isdm-identifiability-diagnostic", lease, fixed = TRUE)))
   stop("iJSDM closeout lease is still active")
 diag <- file.path("dev", "isdm-requalification", "diagnostic-rescue")
+source(file.path(diag, "verify-remote-receipt.R"), local = TRUE)
+for (bundle in c("qualification", "smoke", "experiment"))
+  isdm_diag_verify_bundle_manifest(file.path(diag, "evidence", bundle))
 manifests <- file.path(diag, "evidence", c("qualification", "smoke", "experiment"),
                        "MANIFEST.sha256")
 hash <- function(path) {

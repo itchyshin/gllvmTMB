@@ -1,0 +1,117 @@
+{
+  "status": "numerical_and_article_pass_publication_pending",
+  "fixture_md5": "6c3bae640dd86491171cb20fbb56b0e4",
+  "source_commit": "853daf5f0",
+  "evidence_root": "/private/tmp/gllvm-tree-axis-latent-20260830/cell-integration-7c88",
+  "validation": {
+    "ids": ["G1", "G2", "G3", "GW1", "GW2", "GW3"],
+    "checks": {
+      "G1": {
+        "pass": true,
+        "conditions": [true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true],
+        "objective": 449.79514943564755,
+        "gradient": 0.0010958769059622741,
+        "warnings": []
+      },
+      "G2": {
+        "pass": true,
+        "conditions": [true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true],
+        "objective": 5039.6912802792167,
+        "gradient": 0.0011350957954873225,
+        "warnings": []
+      },
+      "G3": {
+        "pass": true,
+        "conditions": [true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true],
+        "objective": 5039.6912810930571,
+        "gradient": 0.0010347258885455629,
+        "warnings": []
+      },
+      "GW1": {
+        "pass": true,
+        "conditions": [true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true],
+        "objective": 449.79514943564755,
+        "gradient": 0.0010958769059622741,
+        "warnings": []
+      },
+      "GW2": {
+        "pass": true,
+        "conditions": [true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true],
+        "objective": 5039.6912802792167,
+        "gradient": 0.0011350957954873225,
+        "warnings": []
+      },
+      "GW3": {
+        "pass": true,
+        "conditions": [true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true],
+        "objective": 5039.6912813990539,
+        "gradient": 0.00072037052240179306,
+        "warnings": []
+      }
+    },
+    "stability": {
+      "G1": {
+        "pass": true,
+        "conditions": [true, true, true, true, true, true, true, true, true, true],
+        "objectives": [449.79514943564755, 449.79514945488472, 449.79514949603436],
+        "gradients": [0.0010958769059622741, 0.00052742131500904221, 0.00061809955800757699],
+        "objective_relative_spread": 1.3425402718255618e-10,
+        "relative_norms": [
+          [0, 0, 0, 0, 0, 0, 0, 0],
+          [2.2846509776444552e-05, 2.2846505121571958e-05, 0.034454371774211907, 2.1826935976313677e-05, 1.1578613271144728e-05, 9.7424360302426831e-06, 8.9217714939109328e-06, 9.286152353930633e-06],
+          [2.1162181253339277e-05, 2.116214148365992e-05, 0.061233251163292687, 2.1856807012234747e-05, 1.1562961669901091e-05, 9.5842086436961363e-06, 1.1103880613809414e-05, 1.0506536359494739e-05]
+        ]
+      },
+      "G2": {
+        "pass": true,
+        "conditions": [true, true, true, true, true, true, true, true, true, true],
+        "objectives": [5039.6912802792167, 5039.6912802881852, 5039.6912802799661],
+        "gradients": [0.0011350957954873225, 0.00086759341489119665, 0.0035226911492884324],
+        "objective_relative_spread": 1.7795786994488197e-12,
+        "relative_norms": [
+          [0, 0, 0, 0, 0],
+          [4.4211570480627318e-05, 4.1811964226415607e-05, 1.2526841769941601e-06, 2.8161137411570688e-05, 1.1974698596953844e-06],
+          [4.1662497856625414e-05, 3.9402497725117292e-05, 2.365797618134377e-06, 2.6494424553745208e-05, 2.9993442561061593e-06]
+        ]
+      },
+      "G3": {
+        "pass": true,
+        "conditions": [true, true, true, true, true, true, true, true, true, true],
+        "objectives": [5039.6912813990539, 5039.6912810930571, 5039.6912813304034],
+        "gradients": [0.00072037052240497596, 0.0010347258884727845, 0.0013361596170447698],
+        "objective_relative_spread": 6.0717362802633589e-11,
+        "relative_norms": [
+          [0, 0, 0, 0, 0, 0],
+          [3.1133968583737287e-06, 2.9555245042596015e-06, 1.4509902112403489e-06, 2.5529979060044564e-06, 3.1325334853410958e-06, 5.4453724607583607e-07],
+          [2.0738756543430299e-06, 1.9837918900693821e-06, 1.4047163484925605e-06, 2.134295183376679e-06, 1.649641604442977e-06, 1.2720557423041744e-07]
+        ]
+      }
+    },
+    "wide": {
+      "G1": {
+        "pass": true,
+        "objective_relative_difference": 0,
+        "fitted_response_sd_difference": 0
+      },
+      "G2": {
+        "pass": true,
+        "objective_relative_difference": 0,
+        "fitted_response_sd_difference": 0
+      },
+      "G3": {
+        "pass": true,
+        "objective_relative_difference": 6.0717362802633589e-11,
+        "fitted_response_sd_difference": 3.0662953021834646e-11
+      }
+    },
+    "historical_entries": 21,
+    "new_entries": 12,
+    "ceiling": 33,
+    "negative_controls": true,
+    "complete": true,
+    "pass": true
+  },
+  "primary_render_entries": 3,
+  "presentation_only_rebuilds": 3,
+  "landing": "separate approval required"
+}

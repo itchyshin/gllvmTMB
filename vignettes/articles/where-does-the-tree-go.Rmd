@@ -12,7 +12,7 @@ vignette: >
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(collapse=TRUE, comment="#>")
+knitr::opts_chunk$set(collapse=TRUE, comment="#>", dev.args=list(bg="white"))
 ```
 
 # The tree belongs to the axis it explains
@@ -22,13 +22,20 @@ It does not replace the other covariance sources in the scientific model.
 Here species are the **rows** of a morphology matrix, but the **columns** of a
 community matrix. Both examples use synthetic Gaussian responses.
 
-**Working draft:** the morphology checks passed, but the community fits have
-unresolved convergence warnings. This revision is not ready for publication.
+These examples separate tree-structured covariance from ordinary residual
+covariance. They illustrate one synthetic realization; they do not establish
+parameter recovery or interval coverage.
 
 ```{r packages}
 library(gllvmTMB)
 library(ape)
 library(ggplot2)
+
+# Use the same deterministic first start for each displayed fit.
+fit_control <- gllvmTMBcontrol(
+  se = FALSE, n_init = 1L, optimizer = "nlminb", optArgs = list(),
+  init_jitter = 0, start_method = list(method = NULL, jitter.sd = 0)
+)
 ```
 
 <details>
@@ -270,7 +277,9 @@ corplot <- function(S, title) {
                          limits = c(-1, 1)) +
     coord_equal() + labs(title = title, x = NULL, y = NULL, fill = "Correlation") +
     theme_minimal(base_size = 10) +
-    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+    theme(axis.text.x = element_text(angle = 45, hjust = 1),
+          plot.title = element_text(size = 11, face = "bold"),
+          panel.grid = element_blank())
   if (nrow(S) <= 12) {
     p <- p + geom_text(aes(label = sprintf("%.2f", r)), size = 2.6)
   } else {
@@ -281,7 +290,7 @@ corplot <- function(S, title) {
 }
 ```
 
-```{r axis-map, fig.width=8, fig.height=3.5}
+```{r axis-map, fig.width=8, fig.height=3.5, fig.alt="Two response matrices place the tree on species rows for morphology and species coefficient columns for communities. Both retain an ordinary covariance source."}
 axes <- data.frame(
   example = c("1. Species × traits", "2. Sites × species"),
   rows = c("Species rows: tree A", "Site rows: ordinary latent()"),
@@ -302,18 +311,21 @@ ggplot(axes) +
 
 # Example 1: six traits, one measurement per species
 
-We simulate 80 species and six standardized traits: leaf area, specific leaf
+We simulate 80 species and six synthetic traits on standardized scales: leaf area, specific leaf
 area, leaf dry matter content, stem height, seed mass, and root depth. Each
 species has exactly one multivariate observation: there are no populations and
-no within-species variance.
+no within-species variance. These are simulated scale units, not
+empirical measurements subsequently centred and divided by their sample SD.
 
 \[
-Y=XB+U_{\rm phy}+U_{\rm non}, \qquad
-\Sigma_k=\Lambda_k\Lambda_k^\mathsf T+\Psi_k,
+Y=XB+U_{\mathrm{phy}}+U_{\mathrm{non}}.
 \]
 \[
-\operatorname{Cov}\{\operatorname{vec}(Y^\mathsf T)\}
-=A\otimes\Sigma_{\rm phy}+I\otimes\Sigma_{\rm non}.
+\Sigma_k=\Lambda_k\Lambda_k^{\mathsf T}+\Psi_k,
+\]
+\[
+\operatorname{Cov}\{\operatorname{vec}(Y^{\mathsf T})\}
+=A\otimes\Sigma_{\mathrm{phy}}+I\otimes\Sigma_{\mathrm{non}}.
 \]
 
 Both sources are among species. The fixed effects in $XB$ are trait means
@@ -322,6 +334,9 @@ unit-diagonal tree covariance; $I$ makes different species independent in the
 ordinary source. $\Psi_k$ is a diagonal matrix of positive trait-specific
 variances. The vectorization above stacks all traits for each species together.
 Two latent dimensions alone do not establish separation of the sources.
+These equations describe the simulated components. The fitted Gaussian
+covariance also includes a fixed $\sigma_\epsilon^2 I$ stabilizer, defined
+below; the simulation itself has no additional observation-error draw.
 
 ```{r morphology-dgp}
 fixture <- make_tree_axis_fixture("target")
@@ -342,27 +357,29 @@ This check distinguishes the two covariance patterns algebraically. It does
 not guarantee accurate variance estimates from 80 species.
 
 ```{r morphology-long}
+set.seed(202608501L)
 fit_morphology <- gllvmTMB(
  value ~ 0+trait+trait:elevation+
    phylo_latent(0+trait|species,tree=tree_morph,d=2,unique=TRUE)+
    latent(0+trait|species,d=2,unique=TRUE),
  data=morphology,trait="trait",unit="species",cluster="species",
- family=gaussian(),silent=TRUE,control=gllvmTMBcontrol(se=FALSE)
+ family=gaussian(),silent=TRUE,control=fit_control
 )
 ```
 
 The matching wide-data call uses the same public entry point.
 
 ```{r morphology-wide, eval=FALSE}
+set.seed(202608501L)
 fit_morphology_wide <- gllvmTMB(
  traits(all_of(traits_morph)) ~ 1+elevation+
    phylo_latent(1|species,tree=tree_morph,d=2,unique=TRUE)+
    latent(1|species,d=2,unique=TRUE),
- data=morphology_wide,unit="species",cluster="species",family=gaussian(),silent=TRUE,control=gllvmTMBcontrol(se=FALSE)
+ data=morphology_wide,unit="species",cluster="species",family=gaussian(),silent=TRUE,control=fit_control
 )
 ```
 
-```{r morphology-figure, fig.width=8, fig.height=6}
+```{r morphology-figure, fig.width=8, fig.height=6, fig.alt="Phylogenetic and ordinary trait-correlation heatmaps above four-component variance bars. The fitted phylogenetic diagonal is near zero; ordinary diagonal variation remains visible."}
 Sphy <- extract_Sigma(fit_morphology,level="phy",part="total",link_residual="none")$Sigma
 Snon <- extract_Sigma(fit_morphology,level="unit",part="total",link_residual="none")$Sigma
 Sps <- extract_Sigma(fit_morphology,level="phy",part="shared",link_residual="none")$Sigma
@@ -372,13 +389,14 @@ pn <- extract_Sigma(fit_morphology,level="unit",part="unique",link_residual="non
 parts <- data.frame(trait=rep(traits_morph,4),
  component=rep(c("phylo shared","phylo diagonal","ordinary shared","ordinary diagonal"),each=6),
  variance=c(diag(Sps),pp,diag(Sns),pn))
-p1 <- corplot(Sphy,"Fitted phylogenetic trait correlation")
-p2 <- corplot(Snon,"Fitted ordinary trait correlation")
+p1 <- corplot(Sphy,"Phylogenetic trait correlation")
+p2 <- corplot(Snon,"Ordinary trait correlation")
 parts$trait <- factor(parts$trait, levels = traits_morph)
 p3 <- ggplot(parts,aes(trait,variance,fill=component))+geom_col()+
   scale_fill_manual(values = c("phylo shared" = "#156b42", "phylo diagonal" = "#a6dba0",
                               "ordinary shared" = "#70569b", "ordinary diagonal" = "#c5afd9"))+
-  labs(title="Fitted four-part variance decomposition",x=NULL,y="Variance")+
+  labs(title="Fitted four-part variance decomposition",x=NULL,y="Variance",
+       caption="Source components only; fixed observation stabilizer excluded.")+
   theme_minimal(base_size=10)+theme(axis.text.x=element_text(angle=45,hjust=1))
 grid::grid.newpage(); grid::pushViewport(grid::viewport(layout=grid::grid.layout(2,2)))
 print(p1,vp=grid::viewport(layout.pos.row=1,layout.pos.col=1))
@@ -398,8 +416,13 @@ truth_estimate <- data.frame(
   ordinary_communality_truth = diag(truth_morphology$Sigma_non_shared) / diag(truth_morphology$Sigma_non_total),
   ordinary_communality_fitted = extract_communality(fit_morphology, level = "unit", link_residual = "none")
 )
-knitr::kable(truth_estimate, digits = 3,
-  caption = "One synthetic realization: truth and fitted covariance summaries, not recovery evidence.")
+table_names <- c("Trait", "Phylo truth", "Phylo fitted", "Ordinary truth", "Ordinary fitted")
+knitr::kable(truth_estimate[, 1:5], digits = 3, row.names = FALSE,
+  col.names = table_names,
+  caption = "Total variance within each source. Fixed observation stabilizer excluded; one realization, not recovery evidence.")
+knitr::kable(truth_estimate[, c(1, 6:9)], digits = 3, row.names = FALSE,
+  col.names = table_names,
+  caption = "Communality: the shared fraction of variance within each source.")
 ```
 
 The table describes one synthetic realization; it is not recovery evidence.
@@ -421,19 +444,23 @@ We simulate 150 sites and 50 species. C3 and C4 fixed pathway intercepts are
 and slope deviations around those expectations. Both coefficient models retain
 a two-dimensional ordinary site residual component. Here $z_i$ denotes
 standardized latitude, $C_s$ is species $s$'s pathway, and
-$b_s=(b_{0s},b_{1s})^\mathsf T$ contains its coefficient deviations.
+$b_s=(b_{0s},b_{1s})^{\mathsf T}$ contains its coefficient deviations.
 The response is a synthetic continuous community measurement, not a count.
 The contrasting pathway slopes are design assumptions, not a general claim
 about C3 and C4 distributions.
 
 \[
-y_{is}=\alpha_{C_s}+\beta_{C_s}z_i+b_{0s}+b_{1s}z_i+e_{is},\qquad
-\operatorname{Cov}(e_i)=\Lambda_{\rm site}\Lambda_{\rm site}^{\mathsf T}+\Psi_{\rm site}.
+y_{is}=\alpha_{C_s}+\beta_{C_s}z_i+b_{0s}+b_{1s}z_i+e_{is},
+\]
+\[
+\operatorname{Cov}(e_i)=\Lambda_{\mathrm{site}}\Lambda_{\mathrm{site}}^{\mathsf T}+\Psi_{\mathrm{site}}.
 \]
 
 For the phylogenetic coefficient model,
 \[
-\operatorname{Cov}(b_s,b_t)=(K_\rho)_{st}\Sigma_b,\qquad
+\operatorname{Cov}(b_s,b_t)=(K_\rho)_{st}\Sigma_b,
+\]
+\[
 K_\rho=\rho K+(1-\rho)\operatorname{diag}\{\operatorname{diag}(K)\}.
 \]
 We plant $\rho=0.60$ and estimate it with `rho = NULL`. The tree is scaled
@@ -441,6 +468,8 @@ exactly as in Example 1, so $K$ has unit diagonal. The coefficient standard
 deviations are 0.18 and 0.55, with correlation -0.25. The IID comparator uses
 $I$ in place of $K_\rho$, while retaining the same site covariance model.
 The coefficient mixture does not describe residual co-occurrence at sites.
+As in Example 1, the fitted likelihood adds the fixed observation stabilizer
+to the simulated site covariance shown above.
 
 ```{r community-dgp}
 community <- fixture$community$long
@@ -451,41 +480,43 @@ species_comm <- fixture$community$species
 truth_community <- fixture$community$truth
 ```
 
-```{r community-long, eval=FALSE}
+```{r community-long}
+set.seed(202608501L)
 fit_columns <- gllvmTMB(
  value ~ 0+pathway+latitude:pathway+column_coef(1+latitude|trait)+
    latent(0+trait|site_id,d=2,unique=TRUE),
- data=community,trait="trait",unit="site_id",family=gaussian(),silent=TRUE,control=gllvmTMBcontrol(se=FALSE)
+ data=community,trait="trait",unit="site_id",family=gaussian(),silent=TRUE,control=fit_control
 )
+set.seed(202608501L)
 fit_phylo_coef <- gllvmTMB(
  value ~ 0+pathway+latitude:pathway+
    phylo_coef(1+latitude|trait,tree=tree_columns,rho=NULL)+
    latent(0+trait|site_id,d=2,unique=TRUE),
- data=community,trait="trait",unit="site_id",family=gaussian(),silent=TRUE,control=gllvmTMBcontrol(se=FALSE)
+ data=community,trait="trait",unit="site_id",family=gaussian(),silent=TRUE,control=fit_control
 )
 ```
 
 ```{r community-wide, eval=FALSE}
+set.seed(202608501L)
 fit_columns_wide <- gllvmTMB(
  traits(all_of(species_comm)) ~ 0+pathway+latitude:pathway+
    column_coef(1+latitude|trait)+latent(1|site_id,d=2,unique=TRUE),
- data=community_wide,column_data=column_data,unit="site_id",family=gaussian(),control=gllvmTMBcontrol(se=FALSE)
+ data=community_wide,column_data=column_data,unit="site_id",family=gaussian(),control=fit_control
 )
+set.seed(202608501L)
 fit_phylo_coef_wide <- gllvmTMB(
  traits(all_of(species_comm)) ~ 0+pathway+latitude:pathway+
    phylo_coef(1+latitude|trait,tree=tree_columns,rho=NULL)+latent(1|site_id,d=2,unique=TRUE),
- data=community_wide,column_data=column_data,unit="site_id",family=gaussian(),control=gllvmTMBcontrol(se=FALSE)
+ data=community_wide,column_data=column_data,unit="site_id",family=gaussian(),control=fit_control
 )
 ```
 
-The target community fits have unresolved convergence warnings. Their formulas
-and plotting code are retained in this working draft, but their numerical
-results are not rendered or interpreted. The code below uses planted species
+The code below uses planted species
 curves to illustrate the simulated coefficient deviations. The current public
 API provides fitted coefficient covariance, not individual species coefficient
 modes; the curves must not be read as estimates of those modes.
 
-```{r community-pathway-coefficients, eval=FALSE, fig.width=8, fig.height=3.6}
+```{r community-pathway-coefficients, fig.width=8, fig.height=4, fig.cap="Thin lines are planted species curves; dashed lines are fitted IID pathway means. Species curves are not fitted random effects. The right panel compares intercept and latitude-slope deviations, not species pairs."}
 fixed <- coef(fit_columns)
 curve <- expand.grid(latitude=seq(-2,2,length.out=100), pathway=factor(c("C3","C4"),levels=c("C3","C4")))
 X_curve <- model.matrix(~0+pathway+latitude:pathway, data=curve)
@@ -502,24 +533,36 @@ p1 <- ggplot() +
             alpha = 0.18, linewidth = 0.3) +
   geom_line(data = curve, aes(latitude, mean, colour = pathway),
             linewidth = 1.1, linetype = "dashed") +
-  labs(title = "Species deviations around pathway expectations",
-       x = "Standardized latitude", y = "Synthetic Gaussian mean",
-       caption = "Thin: planted species curves. Dashed: fitted IID pathway means.\nOne synthetic realization; species curves are not fitted random effects.") +
-  theme_minimal(base_size = 10)
+  scale_colour_manual(values = c(C3 = "#0072b2", C4 = "#d55e00")) +
+  labs(title = "Species curves and\npathway expectations",
+       x = "Standardized latitude", y = "Synthetic Gaussian mean", colour = "Pathway") +
+  theme_minimal(base_size = 10) +
+  theme(plot.title = element_text(size = 11, face = "bold"),
+        legend.position = "bottom", panel.grid.minor = element_blank())
 coefphy <- extract_Sigma(fit_phylo_coef,level="column_coef")
-p2 <- corplot(coefphy$Sigma,"Fitted phylogenetic coefficient correlation")
+p2 <- corplot(coefphy$Sigma,"Intercept–latitude\ncoefficient correlation")
 grid::grid.newpage(); grid::pushViewport(grid::viewport(layout=grid::grid.layout(1,2)))
 print(p1,vp=grid::viewport(layout.pos.row=1,layout.pos.col=1))
 print(p2,vp=grid::viewport(layout.pos.row=1,layout.pos.col=2))
 ```
 
-```{r community-residual-ordination, eval=FALSE, fig.width=8, fig.height=3.6}
+The fitted tree-mixture parameter is `r sprintf("%.3g", coefphy$rho)`, compared
+with the planted value 0.60. It describes dependence **across species**.
+The two-by-two matrix instead describes the correlation between species'
+intercept and latitude-slope deviations. These are different questions.
+A fitted mixture near zero supplies little evidence for tree-structured
+coefficient variation in this realization, even though it was planted;
+numerical convergence alone does not demonstrate recovery.
+
+```{r community-residual-ordination, fig.width=8, fig.height=3.6, fig.alt="A heatmap shows residual associations among all 50 species; a scatterplot shows the 150 sites on two ordinary latent axes."}
 Ssite <- extract_Sigma(fit_columns,level="unit",part="total",link_residual="none")$Sigma
-p3 <- corplot(Ssite,"Residual correlation among all 50 species")
+p3 <- corplot(Ssite,"Site residual correlation\n(all 50 species)")
 ord <- extract_ordination(fit_columns,level="unit")
 scores <- as.data.frame(ord$scores); names(scores)[1:2] <- c("LV1","LV2")
 p4 <- ggplot(scores,aes(LV1,LV2))+geom_point(alpha=.65)+coord_equal()+
- labs(title="Site ordination from ordinary residual fit")+theme_minimal()
+ labs(title="Ordinary site ordination")+
+ theme_minimal(base_size=10)+
+ theme(plot.title=element_text(size=11,face="bold"),panel.grid.minor=element_blank())
 grid::grid.newpage(); grid::pushViewport(grid::viewport(layout=grid::grid.layout(1,2)))
 print(p3,vp=grid::viewport(layout.pos.row=1,layout.pos.col=1))
 print(p4,vp=grid::viewport(layout.pos.row=1,layout.pos.col=2))
@@ -548,6 +591,7 @@ This small numerical stabilizer is not an estimated biological component or
 separately identified measurement error. `control = gllvmTMBcontrol(se = FALSE)`
 omits standard-error calculations; it does not itself set that residual scale.
 
-The morphology fit passes the bounded numerical screen. The community
-interpretation is withheld until its all-start convergence gate passes. Neither
-example makes a recovery, interval, or causal interaction claim.
+All three models passed a bounded check using three deterministic starts,
+with matching long- and wide-format results. This checks numerical stability
+in this realization; neither example makes a recovery, interval, or causal
+interaction claim.

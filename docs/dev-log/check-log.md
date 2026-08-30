@@ -56694,3 +56694,46 @@ Source scans: `rg -n 's_B|report\$eta|par_list\$s_B' R --glob '*.R'`;
 Gauss/Noether qualified prefit review passes, including corrected118 source
 hashes and derivative/uncertainty math. No article render, full package check,
 CI, push, merge, deployment or additional fit has yet run at this checkpoint.
+
+## 2026-08-30 — Gaussian integration: twelve fits and article pass
+
+All12 approved standalone fits pass unchanged thresholds, count33/33. G1/G2/G3
+run times4.543/21.757/49.641s; wide GW1/GW2/GW3 times2.508/6.315/15.947s.
+Commands used run-fit.R with each immutable ID under the external300s model
+cap, and validate.R --cell after each stage. Original failed receipts retained.
+Compact results: dev/tree-axis-latent/evidence/2026-08-30-cell-integration.json.
+Likelihood equivalence, conditional output/uncertainty and exact-start checks
+preceded the fits. No additional standalone slots remain.
+
+Primary render command: Rscript --vanilla dev/tree-axis-latent/render-cell-article.R
+under bounded.py; passed41.714s with exactly3 separately authorized first starts.
+Presentation-only commands: render-cell-presentation.R 1,2,3, each external60s
+cap, saved primary fits, optimizer calls forbidden. Rebuilds1/2 took12.130/
+11.997s. Final3 corrects scientific notation identified by Curie; receipts retain
+article/HTML/fitted-object hashes. Layout checks use installed Chrome with
+Playwright at1440x1000 and390x844. Final layouts have scrollWidth equal to
+viewport width,20 MathML nodes,4 valid article images/alt text and no JS errors.
+
+Metadata: pkgdown::check_pkgdown() passes. Reader-surface checker reports one
+unrelated baseline issue: PVT-02 in man/profile_ci_total_variance.Rd:49,
+verified identical using git show origin/main:man/profile_ci_total_variance.Rd.
+No baseline file was changed. Exact scoped stale scan:
+rg -n 'working draft|held|incomplete|S_B|S_W|meta_known_V|gllvmTMB_wide|causal|recovery|rho' vignettes/articles/where-does-the-tree-go.Rmd
+Verdict: no stale draft/unsupported API/notation; causal/recovery/rho hits are
+explicit limitations or frozen DGP/model expressions. git diff --check passes.
+Rd tail confirms one internal keyword; no new export or argument/default change.
+
+Capability trace remains FG-20 partial, PHY-02/PHY-08 existing covered scope.
+New tests/receipt establish bounded same-model numerical composition, not a
+promotion to recovery/interval/general newdata support. Final full package check,
+exact-head three-OS CI, separate landing authority and deployed verification
+remain outstanding at this entry. No merge or public completion claim.
+
+Current no-fit article guard: R_LIBS=.../cell-library Rscript --vanilla
+ dev/tree-axis-latent/check-cell-article.R passed1.873s (60s cap). It checks all6
+call/formula/seed/control contracts, exact regenerated frozen data, all118
+source/DLL hashes and final source/HTML/primary-fit receipt identity. Zero
+fits, objective calls, plotting or rendering. First invocation hid user-library
+dependencies and failed before loading assertthat; failure retained separately.
+Historical check-article.R is now labelled for its old pre-integration source.
+Final presentation3 passed12.801s; final Chrome layout3 passes both widths.

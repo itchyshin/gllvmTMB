@@ -1,5 +1,7 @@
 #!/usr/bin/env Rscript
-## No-fit article check. The saved M1 is used only for public extraction/plots.
+## HISTORICAL pre-integration checker: requires the old article and M1/M2.
+## Current source uses check-cell-article.R; do not run this against it.
+## Retained unchanged below for provenance of the earlier failed phase.
 library(gllvmTMB)
 root <- Sys.getenv("GLLVM_TREE_AXIS_RESULTS", "/private/tmp/gllvm-tree-axis-latent-20260830/results")
 lines <- readLines("vignettes/articles/where-does-the-tree-go.Rmd")

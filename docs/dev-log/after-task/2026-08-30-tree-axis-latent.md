@@ -1,10 +1,10 @@
-# Tree-axis article correction: numerical-gate checkpoint
+# Tree-axis article correction: validation and publication record
 
-Date: 2026-08-30. Status: **INCOMPLETE; community optimizer gate failed**.
-No corrected article has been published or claimed complete. The approved BFGS
-follow-up also failed: it returned an impossible objective and was stopped.
-Sections 15-16 record the arithmetic repair and approved repaired-source validation.
-The latest continuation remains subject to every original numerical gate.
+Date: 2026-08-30. Current status: **all twelve repaired-source validation
+fits and the primary article render pass; package/CI/landing/deployment remain
+separate gates**. No corrected article has been published or claimed complete.
+Sections1–19 retain historical failures and superseded checkpoints verbatim.
+Sections20 onward record the approved Gaussian integration and final evidence.
 
 ## 1. Goal
 
@@ -599,7 +599,7 @@ and stop. No warm-start, tolerance or stabilizer change, new engine/API, extra
 fit, or gate waiver is authorized. A specific patch is not yet justified.
 The existing goal/acceptance ledger remains authoritative; creating another
 goal would not resolve G2. Full two-example delivery remains INCOMPLETE.
-# 20. Approved Gaussian integration: implementation checkpoint
+## 20. Approved Gaussian integration: implementation checkpoint
 
 Full article goal remains incomplete. Shinichi approved scoped ordinary-cell
 Gaussian integration including output/uncertainty compatibility and12 staged
@@ -624,3 +624,53 @@ Example files changed: none yet. Frozen fixture unchanged; article unchanged.
 Code/help cascade: R/re-uncertainty.R and man/getREsd.Rd synchronized. This is
 a prefit implementation checkpoint, not the final11-section completion report
 or a substitute for original pending article/package/3OS/landing/deployed gates.
+
+## 21. Frozen fits and rendered article
+
+All twelve newly approved standalone fits passed: three starts for each of
+morphology, IID community and phylogenetic community, then one wide fit for
+each. Cumulative count33/33 includes the retained historical interruption;
+32 attempts returned. No old failure was replaced. Maximum gradients were
+0.001096, 0.003523 and 0.001336 respectively; maximum covariance relative
+norm differences were0.061234,0.0000443 and0.00000314, below0.10.
+Long/wide normalized objective differences were0,0 and6.072e-11; fitted
+response differences were0,0 and3.067e-11 response SD. All convergence codes
+were0 and objective-spread/finite-value gates passed. This is numerical
+agreement, not successful recovery of every planted covariance component.
+
+The separately approved primary article render ran exactly three first-start
+fits, matching saved G1/G2/G3 starts, and passed in41.714s. Three presentation
+rebuilds reused those fitted objects with every optimizer call prohibited.
+They fixed MathML, figure title/caption clipping, mobile equation overflow,
+alt text, tables and scientific-notation display. The original render and all
+presentation receipts remain separate immutable records. Desktop1440px and
+mobile390px checks found no document overflow, broken images or browser errors.
+
+The sole changed public example is
+vignettes/articles/where-does-the-tree-go.Rmd. Both long and wide calls,
+simulation/equations, public extracts, four figures and interpretation now
+agree. All covariance components remain. The fitted rho near zero and nearly
+zero morphology phylogenetic Psi are explicit limitations. Planted species
+curves are labelled as planted; residual association is not causal interaction.
+R/re-uncertainty.R and man/getREsd.Rd remain synchronized; no API/grammar/default
+convention changed. README, NEWS, navigation and other examples require no
+syntax cascade. The broader FG-20 coefficient capability remains partial.
+
+Curie performed bounded reader/figure review and caught malformed scientific
+notation; sprintf fixes it without changing fitted values. Gauss/Noether
+prefit review covers the likelihood and first-order uncertainty identity.
+Final package/consistency and exact-head CI results are recorded separately.
+This phase does NOT cover general recovery, interval calibration, non-Gaussian
+collapse, REML, missing/repeated cells, or newdata prediction tiers that were
+already unsupported. No source or optimizer gate has been relaxed.
+
+Final current-article checker passed1.873s with zero fit/optimizer calls,
+checking all6 formulas, controls, seeds, frozen generated data,118 source hashes,
+DLL and final article/HTML/primary-fit receipt binding. An initial dependency
+path failure is retained; corrected invocation uses R_LIBS without hiding the
+existing dependency library. Final presentation3 took12.801s. Structural
+checker check_after_task() passes; full acceptance remains open for package,
+CI, landing and deployment. Reader-surface PVT-02 issue is unchanged on main,
+not introduced by this correction.
+
+Final bounded Rose review PASS: no unresolved P0/P1/P2 findings. It verified article/source/help/defaults/capability boundaries and current no-fit checker. Package and cross-platform evidence remain separate.

@@ -798,7 +798,7 @@ AIC/BIC/LRT or interval route is licensed by a finite penalised Hessian.
 
 ## How this doc grows
 
-### Gaussian singleton-cell integration (2026-08-30; validation pending)
+### Gaussian singleton-cell integration (2026-08-30; bounded validation)
 
 The ordinary unit-level diagonal effect can be integrated analytically when
 each cell has one observed Gaussian response. Write its variance as
@@ -842,8 +842,14 @@ models with singleton ordinary cells and the supported ordinary/phylogenetic
 latent or response-column coefficient composition. Other families, repeated
 cells, missingness, incompatible maps, and other excluded model paths retain
 the existing integration route. This restriction is computational eligibility,
-not a new model keyword or public engine. Promotion remains pending compiled
-likelihood/gradient/output checks and the approved frozen-fit gates.
+not a new model keyword or public engine. Compiled likelihood/gradient/output
+checks and all twelve approved frozen fits pass. Evidence is recorded in
+`dev/tree-axis-latent/evidence/2026-08-30-cell-integration.json` and
+`tests/testthat/test-gaussian-cell-collapse.R`. This validates the named
+Gaussian compositions and first-order conditional uncertainty calculation;
+it does not establish parameter recovery or interval coverage. FG-20 remains
+partial for response-column coefficients. Package, publication and landing
+receipts remain separate gates.
 
 drmTMB's `03-likelihoods.md` is 1374 lines because they've
 validated many families. gllvmTMB's lives at this thinner

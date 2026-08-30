@@ -309,3 +309,16 @@ source set before checking every SHA256. Reviewer independently verified all
 source hashes, DLL hash and frozen fixture. Gauss/Noether prefit review PASS;
 this is neither optimizer nor article signoff. No API/engine/stabilizer/gate
 changed. Count remains21 before G1. New fit IDs G1/G2/G3/GW1/GW2/GW3.
+
+## 20. Twelve-fit validation and article render PASS
+
+All G1/G2/G3 three-start and GW1/GW2/GW3 wide gates pass, count33/33.
+Receipt: cell-integration-7c88/validation-G1-G2-G3-GW1-GW2-GW3.rds.
+All68 focused compiled assertions and old/new/oracle compatibility checks
+passed before fits. Source committed853daf5f0. Primary article render passed
+with exactly3 separately authorized first-start fits; presentation rebuilds1–3
+use saved fitted objects and prohibit all optimizer calls. Full package check
+is running; local browser and final consistency review underway. No additional
+standalone fit is authorized. Next: finish local/package checks, prepare
+existing draftPR1229 and exact-final-head manual three-OS checks. Landing
+requires separate approval. Full deployed two-example goal remains incomplete.

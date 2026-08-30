@@ -215,3 +215,14 @@ conditional and untouched. Estimate10-60s, external60s cap. Use exact N2 start1,
 original eval.max2000/iter.max1500, default bounds/scale/tolerances; replace only
 the evaluator with the previously reviewed exact Gaussian value/analytic score.
 Retain every evaluation and terminal return. No package source or API edits.
+
+## 2026-08-30 superseding approved Gaussian repair validation
+
+Maintainer explicitly approved scoped Gaussian cell integration with output
+and uncertainty compatibility, followed by12 staged fits, cumulative ceiling33.
+Every original fixture/start/stabilizer/model/acceptance constraint remains.
+All12 fits now pass;33 standalone attempts entered in total. The one primary
+article render passed with3 separately accounted first-start calls; subsequent
+presentation-only rebuilds prohibit optimizers and reuse those saved fits.
+Routine package/docs/PR preparation continues. Landing and deployment remain
+separately gated; this is not a completed-correction claim.

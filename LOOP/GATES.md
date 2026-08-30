@@ -29,15 +29,15 @@ Scope: retain and adjudicate the approved 52-fit public-route diagnostic experim
   EXPECT: DIAGNOSTIC_PLAN_REVIEWS_VERIFIED
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/z3437171/local-scratch/lanes/gllvmTMB-isdm-identifiability-diagnostic; path=1c6be4364d72/34 entries; output=DIAGNOSTIC_PLAN_REVIEWS_VERIFIED
 
-- [ ] G6: the Totoro diagnostic install matches the frozen source and harness identity
+- [x] G6: the Totoro diagnostic install matches the frozen source and harness identity
   CHECK: Rscript --vanilla dev/isdm-requalification/diagnostic-rescue/verify-remote-receipt.R qualification
   EXPECT: DIAGNOSTIC_REMOTE_QUALIFICATION_VERIFIED
-  EVIDENCE: pending
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/z3437171/local-scratch/lanes/gllvmTMB-isdm-identifiability-diagnostic; path=1c6be4364d72/34 entries; output=DIAGNOSTIC_REMOTE_QUALIFICATION_VERIFIED
 
-- [ ] G7: four smoke tasks verify byte-preserved rep3 baselines, three-estimand identity, optimizer start/copy equality, primary curvature diagnostics, complete records, and a projection no greater than 10 minutes
+- [x] G7: four smoke tasks verify byte-preserved rep3 baselines, three-estimand identity, optimizer start/copy equality, primary curvature diagnostics, complete records, and a projection no greater than 10 minutes
   CHECK: Rscript --vanilla dev/isdm-requalification/diagnostic-rescue/verify-remote-receipt.R smoke
   EXPECT: DIAGNOSTIC_SMOKE_VERIFIED
-  EVIDENCE: pending
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/z3437171/local-scratch/lanes/gllvmTMB-isdm-identifiability-diagnostic; path=1c6be4364d72/34 entries; output=DIAGNOSTIC_SMOKE_VERIFIED
 
 - [ ] G8: all 52 planned task identities have exactly one worker or coordinator terminal disposition with no replacement attempts
   CHECK: Rscript --vanilla dev/isdm-requalification/diagnostic-rescue/verify-remote-receipt.R experiment
